@@ -1,0 +1,18 @@
+# Unreal generated
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+.vs/
+.vscode/
+.idea/
+*.xcworkspace
+*.xcodeproj
+*.sln
+*.code-workspace
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+.DS_Store
+# Local build/test output from scripts/
+Artifacts/
