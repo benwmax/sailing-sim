@@ -10,11 +10,16 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Prints one line per test and exits non-zero on any failure. Report: `Artifacts/TestReport/index.json`; log `Artifacts/test.log`.
    Always rebuild first: the editor loads the dylibs in `Binaries/Mac`, it does not compile.
 3. `scripts/make-map.sh` regenerates `Content/Maps/Lake.umap` from `scripts/make_lake_map.py`. Edit the Python, not the map.
-4. `scripts/package-mac.sh [Development|Shipping]` runs RunUAT BuildCookRun and archives to `Build/Mac`. Log: `Artifacts/package.log`.
-5. `scripts/bench-mac.sh [seconds]` launches the packaged app with `-SailingBench=<s>`: 3 s warm-up, measures frame times,
-   writes `bench.json` and a screenshot, quits. Copies both to `Artifacts/`. Needs a logged-in desktop (it opens a window).
+4. `scripts/package-mac.sh [Development|Shipping]` runs RunUAT BuildCookRun (`-build -cook -stage -pak -iostore -package -archive`)
+   to `Packaged/Mac/SailingSim.app`. About 2 min. Log: `Artifacts/package.log`. Keep `-package`: on Mac it is the step that copies
+   the cooked data into the .app; without it the app crashes at startup looking for the .uproject. Never archive into `Build/`:
+   that is Unreal's own platform folder.
+5. `scripts/bench-mac.sh [seconds]` launches the packaged app windowed via `open` with `-SailingBench=<s>`: 3 s warm-up,
+   measures frame times, writes `bench.json` and a screenshot, quits; copies both to `Artifacts/`. Needs an unlocked desktop.
+   Started directly from a shell (not `open`), or fullscreen while the display is asleep, the game hangs at window creation.
+   The app is sandboxed: its log and Saved folder live in `~/Library/Containers/com.benwmax.SailingSim/Data/Library/`.
 
-`Artifacts/`, `Build/`, `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` are git-ignored.
+`Artifacts/`, `Packaged/`, `Build/`, `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` are git-ignored.
 
 ## Conventions
 
