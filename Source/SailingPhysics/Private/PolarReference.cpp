@@ -38,6 +38,13 @@ namespace Sailing
 		WindParams.SpeedKnots = TrueWindKnots;
 		WindParams.FromDegrees = 0.0; // wind from +X; heading chosen to give the TWA
 		const FWindField Wind(WindParams);
+		FWaveField Waves(7);
+		FWaveParams WaveParams;
+		WaveParams.WindSpeedKnots = TrueWindKnots;
+		WaveParams.WindFromDegrees = WindParams.FromDegrees;
+		WaveParams.FetchMeters = kPolarFetchMeters;
+		Waves.SetWind(WaveParams);
+		Waves.SnapToTarget();
 
 		FBoatModel Boat(Config);
 		const double Heading = -TrueWindAngleDeg * kDegToRad; // TWA = windFrom - heading
@@ -60,7 +67,7 @@ namespace Sailing
 		{
 			Controls = AutoTrim.Update(Boat, Controls, PhysicsDt);
 			Controls.Tiller = Pilot.Update(Boat);
-			Boat.Step(PhysicsDt, Controls, Wind);
+			Boat.Step(PhysicsDt, Controls, Wind, &Waves);
 			if (I >= SettleSteps)
 			{
 				const FBoatTelemetry& T = Boat.GetTelemetry();

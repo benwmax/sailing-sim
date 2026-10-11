@@ -8,6 +8,12 @@ namespace Sailing
 		FWindParams WindParams;
 		WindParams.SpeedKnots = TrueWindKnots;
 		const FWindField Wind(WindParams);
+		FWaveField Waves(7);
+		FWaveParams WaveParams;
+		WaveParams.WindSpeedKnots = TrueWindKnots;
+		WaveParams.FetchMeters = kPolarFetchMeters;
+		Waves.SetWind(WaveParams);
+		Waves.SnapToTarget();
 
 		FBoatModel Boat;
 		Boat.Reset(0.0, 0.0, -CloseHauledTWADeg * kDegToRad, 0.7 * TrueWindKnots * kKnot);
@@ -23,7 +29,7 @@ namespace Sailing
 			{
 				Controls = Trim.Update(Boat, Controls, PhysicsDt);
 				Controls.Tiller = Pilot.Update(Boat);
-				Boat.Step(PhysicsDt, Controls, Wind);
+				Boat.Step(PhysicsDt, Controls, Wind, &Waves);
 				PerStep();
 			}
 		};

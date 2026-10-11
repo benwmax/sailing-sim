@@ -7,9 +7,26 @@ namespace Sailing
 		SetParams(InParams);
 	}
 
+	double FGustFront::DistanceAhead(double X, double Y, double T) const
+	{
+		const double A = MoveDegrees * kDegToRad;
+		const double Along = (X - StartX) * std::cos(A) + (Y - StartY) * std::sin(A);
+		return Along - SpeedMs * (T - StartTime);
+	}
+
+	void FWindField::SetParamsAt(const FWindParams& InParams, double T)
+	{
+		const double Offset = Advected(T);
+		SetParams(InParams);
+		AdvectionOffset = Offset;
+		AdvectionTime = T;
+	}
+
 	void FWindField::SetParams(const FWindParams& InParams)
 	{
 		Params = InParams;
+		AdvectionOffset = 0.0;
+		AdvectionTime = 0.0;
 		MeanSpeed10 = Params.SpeedKnots * kKnot;
 		const double From = Params.FromDegrees * kDegToRad;
 		DownwindDir = Vec3(-std::cos(From), -std::sin(From), 0.0);
@@ -45,7 +62,7 @@ namespace Sailing
 			return 1.0;
 		}
 		// Position along the wind, minus how far the air has travelled: patches move downwind with the flow.
-		const double Along = WorldPos.Dot(DownwindDir) - MeanSpeed10 * TimeSeconds;
+		const double Along = WorldPos.Dot(DownwindDir) - Advected(TimeSeconds);
 		const Vec3 Across(-DownwindDir.Y, DownwindDir.X, 0.0);
 		const double S = Along / Params.GustLengthMeters * 2.0 * kPi + 0.6 * std::sin(WorldPos.Dot(Across) / Params.GustLengthMeters * 2.0 * kPi + Phases[3]);
 		return std::max(0.2, 1.0 + Params.GustIntensity * 1.6 * Noise(S, 0));
@@ -57,7 +74,7 @@ namespace Sailing
 		{
 			return 0.0;
 		}
-		const double Along = WorldPos.Dot(DownwindDir) - MeanSpeed10 * TimeSeconds;
+		const double Along = WorldPos.Dot(DownwindDir) - Advected(TimeSeconds);
 		const double S = -Along / (MeanSpeed10 * Params.ShiftPeriodSeconds + 1.0) * 2.0 * kPi;
 		return Params.ShiftDegrees * kDegToRad * 1.4 * Noise(S, 1);
 	}
@@ -68,6 +85,33 @@ namespace Sailing
 		const double Shift = ShiftAt(WorldPos, TimeSeconds);
 		const double C = std::cos(Shift), S = std::sin(Shift);
 		const Vec3 Dir(DownwindDir.X * C - DownwindDir.Y * S, DownwindDir.X * S + DownwindDir.Y * C, 0.0);
-		return Dir * Speed;
+		Vec3 Wind = Dir * Speed;
+
+		if (Front.bActive && TimeSeconds >= Front.StartTime)
+		{
+			const double Ahead = Front.DistanceAhead(WorldPos.X, WorldPos.Y, TimeSeconds);
+			const double W = SmoothStep(Front.LeadingEdgeMeters, -Front.LeadingEdgeMeters, Ahead);
+			if (W > 0.0)
+			{
+				const double Decay = 1.0 - SmoothStep(Front.DecayStartTime, Front.DecayStartTime + Front.DecaySeconds, TimeSeconds);
+				// Outflow: from the storm, strongest just behind the leading edge, with its own fast, violent gusts.
+				const double OutFrom = Front.OutflowFromDegrees * kDegToRad;
+				const Vec3 OutDir(-std::cos(OutFrom), -std::sin(OutFrom), 0.0);
+				const double Profile = std::log(std::max(WorldPos.Z, 0.05) / Params.RoughnessLength) / std::log(10.0 / Params.RoughnessLength);
+				const double Behind = std::max(0.0, -Ahead);
+				const double EdgeBoost = 1.0 + 0.15 * std::exp(-Behind / 400.0);
+				const double S2 = (WorldPos.Dot(OutDir) - Front.OutflowKnots * kKnot * TimeSeconds) / 120.0 * 2.0 * kPi;
+				const double Gust = std::max(0.3, 1.0 + Front.OutflowGustIntensity * 1.6 * Noise(S2, 1));
+				const Vec3 Outflow = OutDir * (Front.OutflowKnots * kKnot * Profile * EdgeBoost * Gust);
+				const double Blend = W * Decay;
+				Wind = Wind * (1.0 - Blend) + Outflow * Blend;
+			}
+		}
+		return Wind;
+	}
+
+	double FWindField::SurfaceRoughnessAt(double X, double Y, double TimeSeconds) const
+	{
+		return VelocityAt(Vec3(X, Y, 10.0), TimeSeconds).LengthXY() / 8.0;
 	}
 }
