@@ -11,7 +11,7 @@ public class SailingSim : ModuleRules
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"RHI"
+			"RHI", "ProceduralMeshComponent"
 		});
 	}
 }

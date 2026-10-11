@@ -2,6 +2,8 @@
 # Runs the packaged Mac build for a fixed time, prints the measured frame rate and copies
 # the screenshot it takes into Artifacts/.
 # Usage: scripts/bench-mac.sh [seconds] [width] [height]   (default 20 s at 1920x1080, windowed)
+# Environment: DEMO=1 lets the autopilot sail and tack (-SailingDemo); RECORD=<s> also saves frames and
+# builds Artifacts/recording.gif (needs python3 with Pillow).
 # Needs an unlocked, logged-in desktop: it opens a window. Launched through LaunchServices
 # (`open`), because a game started straight from a non-GUI shell stalls at window creation.
 source "$(dirname "$0")/env.sh"
@@ -18,9 +20,12 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Conten
 CONTAINER="$HOME/Library/Containers/$BUNDLE_ID/Data/Library"
 LOG="$CONTAINER/Logs/SailingSim/SailingSim.log"
 BENCH_DIR="$CONTAINER/Application Support/Epic/SailingSim/Saved/Bench"
-rm -f "$LOG" "$BENCH_DIR/bench.json" "$BENCH_DIR/screenshot.png"
+rm -rf "$LOG" "$BENCH_DIR/bench.json" "$BENCH_DIR/screenshot.png" "$BENCH_DIR/rec"
+EXTRA=()
+[[ "${DEMO:-0}" == "1" ]] && EXTRA+=(-SailingDemo)
+[[ -n "${RECORD:-}" ]] && EXTRA+=(-SailingRecord="$RECORD")
 
-open -n -W -a "$APP" --args -SailingBench="$SECONDS_TO_MEASURE" -windowed -ResX="$RES_X" -ResY="$RES_Y" &
+open -n -W -a "$APP" --args -SailingBench="$SECONDS_TO_MEASURE" -windowed -ResX="$RES_X" -ResY="$RES_Y" ${EXTRA[@]+"${EXTRA[@]}"} &
 OPEN_PID=$!
 # Warm-up + measurement + generous startup allowance; kill the game if it hangs.
 DEADLINE=$((SECONDS_TO_MEASURE + 90))
@@ -43,3 +48,14 @@ cp "$BENCH_DIR/bench.json" "$ARTIFACTS/bench.json"
 cp "$BENCH_DIR/screenshot.png" "$ARTIFACTS/packaged-screenshot.png" 2>/dev/null || true
 echo "Bench: $(cat "$ARTIFACTS/bench.json")"
 echo "Screenshot: $ARTIFACTS/packaged-screenshot.png"
+if [[ -d "$BENCH_DIR/rec" ]]; then
+	python3 - "$BENCH_DIR/rec" "$ARTIFACTS/recording.gif" <<'PY'
+import glob, sys
+from PIL import Image
+frames = [Image.open(p).convert("RGB") for p in sorted(glob.glob(sys.argv[1] + "/frame_*.png"))[::2]]
+frames = [f.resize((640, int(640 * f.height / f.width))) for f in frames]
+frames = [f.quantize(colors=96, method=Image.Quantize.MEDIANCUT) for f in frames]
+frames[0].save(sys.argv[2], save_all=True, append_images=frames[1:], duration=200, loop=0, optimize=True)
+print(f"Recording: {sys.argv[2]} ({len(frames)} frames)")
+PY
+fi

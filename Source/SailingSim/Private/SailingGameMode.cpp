@@ -1,6 +1,8 @@
 #include "SailingGameMode.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
+#include "SailingHUD.h"
+#include "SailingSettings.h"
 #include "DynamicRHI.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -20,17 +22,33 @@ namespace
 ASailingGameMode::ASailingGameMode()
 {
 	DefaultPawnClass = ASailboatPawn::StaticClass();
+	HUDClass = ASailingHUD::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
+}
+
+void ASailingGameMode::ApplyDifficultyToWind()
+{
+	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
+	Sailing::FWindParams Params;
+	Params.SpeedKnots = WindSpeedKnots;
+	Params.FromDegrees = WindFromDegrees;
+	Params.GustIntensity = GustIntensity * (bEasy ? 0.5f : 1.f);
+	Params.ShiftDegrees = ShiftDegrees * (bEasy ? 0.5f : 1.f);
+	Params.Seed = uint32(WindSeed);
+	Wind.SetParams(Params);
 }
 
 void ASailingGameMode::StartPlay()
 {
+	ApplyDifficultyToWind();
 	Super::StartPlay();
 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
 		UE_LOG(LogSailing, Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmupSeconds);
 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
+		FParse::Value(FCommandLine::Get(), TEXT("SailingRecord="), RecordSeconds);
+		NextFrameTime = BenchWarmupSeconds;
 	}
 }
 
@@ -48,6 +66,13 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	{
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
+	}
+
+	if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmupSeconds + RecordSeconds)
+	{
+		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
+		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
+		NextFrameTime += 0.1f;
 	}
 
 	const float End = BenchWarmupSeconds + BenchSeconds;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CoreMinimal.h"
+#include "SailingPhysicsApi.h"
 
 namespace Sailing
 {
@@ -15,11 +15,11 @@ namespace Sailing
 	class SAILINGPHYSICS_API FFixedStepper
 	{
 	public:
-		explicit FFixedStepper(double InStepDt = PhysicsDt, int32 InMaxStepsPerFrame = 12)
+		explicit FFixedStepper(double InStepDt = PhysicsDt, int InMaxStepsPerFrame = 12)
 			: StepDt(InStepDt), MaxStepsPerFrame(InMaxStepsPerFrame) {}
 
 		/** Adds frame time and returns how many fixed steps to run now. Drops time past MaxStepsPerFrame (a hitch). */
-		int32 Advance(double FrameDt);
+		int Advance(double FrameDt);
 
 		/** Fraction of a step left in the accumulator, for render interpolation. */
 		double Alpha() const { return Accumulator / StepDt; }
@@ -28,7 +28,7 @@ namespace Sailing
 
 	private:
 		double StepDt;
-		int32 MaxStepsPerFrame;
+		int MaxStepsPerFrame;
 		double Accumulator = 0.0;
 	};
 }

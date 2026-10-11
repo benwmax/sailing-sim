@@ -37,15 +37,26 @@ scripts/package-mac.sh    # RunUAT BuildCookRun to Packaged/Mac/SailingSim.app
 scripts/bench-mac.sh 20   # run the packaged app for 20 s, print fps, save a screenshot
 ```
 
-## Controls (placeholder)
+## Controls
+
+Keys and buttons are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/SailingSettings.h` (add `+Bindings=` lines to `Config/DefaultInput.ini`).
 
 | Action | Keyboard and mouse | Controller |
 | --- | --- | --- |
-| Steer | A / D or Left / Right | Left stick |
-| Motor ahead / astern | W / S or Up / Down | Right / left trigger |
-| Orbit camera | Mouse | Right stick |
+| Tiller (bow left / right) | A / D or Left / Right | Left stick |
+| Mainsheet trim / ease | W / S | Right / left trigger |
+| Jib sheet trim / ease | E / Q | Right / left bumper |
+| Traveler to windward / leeward | Z / C | D-pad left / right |
+| Crew hike out / in | F / V | D-pad up / down |
+| Vang, cunningham, outhaul, backstay (less / more) | 1-2, 3-4, 5-6, 7-8 | Backstay: B / A |
+| Wing-on-wing (jib out opposite the main) | G | X |
+| Learning mode on / off | L | Y |
+| Difficulty easy / realistic | K | Menu |
+| Instruments on / off | H | |
+| Reset boat | R | View |
+| Orbit / zoom camera | Mouse, wheel | Right stick |
 
-The motor is a Phase 0 stand-in; sails, foils and hull resistance arrive in Phase 1.
+On **easy** the crew trims for you whenever you leave the sheets alone for 4 seconds, the helm is light and gusts are softer. **Realistic** is the raw model. Learning mode shows the wind diagram, the point of sail and trim tips; game mode hides them. The physics is the same in every combination.
 
 ## Phase 0 gate results (Oct 11, 2026)
 
@@ -55,3 +66,13 @@ The motor is a Phase 0 stand-in; sails, foils and hull resistance arrive in Phas
 | Automation tests | 8 of 8 pass headless |
 | Mac package (RunUAT BuildCookRun, Development, Metal SM6) | Passes, about 825 MB app |
 | Frame rate, packaged, default quality, 1440x1080 window | 119 fps average, 8.8 ms p99 (capped by the 120 Hz display) |
+
+## Phase 1 gate results (Oct 11, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 12 of 12 pass (`scripts/test.sh`) |
+| Polar | All 30 points within 10% of the J/22 reference (worst 8.8%), see `Source/SailingPhysics/Public/PolarReference.h` |
+| Tack time | 7.5 s at 6 kn, 5.7 s at 10 kn, 5.5 s at 15 kn, keeping 55-75% of speed |
+| In irons | Stopped head to wind: drifts back about 0.4 kn and stays in the no-go zone for 8+ s before paying off |
+| Frame rate, packaged | 118.7 fps reaching, 114.8 fps while tacking (120 Hz display cap) |
