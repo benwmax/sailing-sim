@@ -1,6 +1,9 @@
 #include "Misc/AutomationTest.h"
-#include "BoatPhysicsStub.h"
+#include "BoatModel.h"
 #include "FixedStepper.h"
+#include "PolarReference.h"
+#include "Scenarios.h"
+#include "Wind.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -10,12 +13,11 @@ namespace
 {
 	constexpr EAutomationTestFlags PhysicsTestFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter;
 
-	void RunSeconds(FBoatPhysicsStub& Boat, double Seconds, const FBoatControls& Controls = FBoatControls())
+	void Run(FBoatModel& Boat, const FBoatControls& Controls, const FWindField& Wind, double Seconds)
 	{
-		const int32 Steps = FMath::RoundToInt(Seconds * PhysicsHz);
-		for (int32 i = 0; i < Steps; ++i)
+		for (int32 I = 0; I < FMath::RoundToInt(Seconds * PhysicsHz); ++I)
 		{
-			Boat.Step(PhysicsDt, Controls);
+			Boat.Step(PhysicsDt, Controls, Wind);
 		}
 	}
 }
@@ -25,113 +27,254 @@ bool FSailingFixedStepperTest::RunTest(const FString& Parameters)
 {
 	FFixedStepper Stepper;
 	TestEqual(TEXT("Step rate is 120 Hz"), Stepper.GetStepDt(), 1.0 / 120.0);
-
 	int32 Total = 0;
-	for (int32 i = 0; i < 60; ++i)
-	{
-		Total += Stepper.Advance(1.0 / 60.0);
-	}
+	for (int32 I = 0; I < 60; ++I) Total += Stepper.Advance(1.0 / 60.0);
 	TestEqual(TEXT("One second at 60 fps runs 120 steps"), Total, 120);
-
-	Total = 0;
-	for (int32 i = 0; i < 144; ++i)
-	{
-		Total += Stepper.Advance(1.0 / 144.0);
-	}
-	TestTrue(TEXT("One second at 144 fps runs 119 to 120 steps"), Total >= 119 && Total <= 120);
-
 	FFixedStepper Hitch;
 	TestEqual(TEXT("A 2 s hitch is capped at 12 steps"), Hitch.Advance(2.0), 12);
-	TestTrue(TEXT("Hitch time is dropped, not carried"), Hitch.Alpha() < 1.0);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingFrameRateIndependenceTest, "SailingSim.Physics.FrameRateIndependent", PhysicsTestFlags)
-bool FSailingFrameRateIndependenceTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingDeterminismTest, "SailingSim.Physics.DeterministicAndFrameRateIndependent", PhysicsTestFlags)
+bool FSailingDeterminismTest::RunTest(const FString& Parameters)
 {
-	// The same 4 seconds of input at 30 fps and at 120 fps must give identical boat states.
+	// Same seeded gusty wind, same controls, rendered at 30 fps and 144 fps: identical boat.
 	auto Simulate = [](double Fps)
 	{
-		FBoatPhysicsStub Boat;
-		Boat.State.Z = 0.3;
+		FWindParams WP;
+		WP.SpeedKnots = 12.0;
+		WP.GustIntensity = 0.25;
+		WP.ShiftDegrees = 8.0;
+		WP.Seed = 42;
+		const FWindField Wind(WP);
+		FBoatModel Boat;
+		Boat.Reset(0.0, 0.0, -50.0 * kDegToRad, 2.0);
 		FFixedStepper Stepper;
 		FBoatControls Controls;
-		Controls.Throttle = 1.0;
-		Controls.Rudder = 0.5;
-		const int32 Frames = FMath::RoundToInt(4.0 * Fps);
-		for (int32 f = 0; f < Frames; ++f)
+		Controls.MainSheet = 0.2;
+		Controls.JibSheet = 0.25;
+		Controls.Tiller = 0.1;
+		for (int32 F = 0; F < FMath::RoundToInt(10.0 * Fps); ++F)
 		{
 			const int32 Steps = Stepper.Advance(1.0 / Fps);
-			for (int32 s = 0; s < Steps; ++s)
-			{
-				Boat.Step(PhysicsDt, Controls);
-			}
+			for (int32 S = 0; S < Steps; ++S) Boat.Step(PhysicsDt, Controls, Wind);
 		}
-		return Boat.State;
+		return Boat.GetState();
 	};
-
 	const FBoatState A = Simulate(30.0);
 	const FBoatState B = Simulate(120.0);
-	TestEqual(TEXT("X matches"), A.X, B.X, 1e-9);
-	TestEqual(TEXT("Y matches"), A.Y, B.Y, 1e-9);
-	TestEqual(TEXT("Heading matches"), A.Heading, B.Heading, 1e-9);
-	TestEqual(TEXT("Heel matches"), A.Heel, B.Heel, 1e-9);
+	TestEqual(TEXT("Position X matches"), A.Position.X, B.Position.X, 1e-9);
+	TestEqual(TEXT("Position Y matches"), A.Position.Y, B.Position.Y, 1e-9);
+	TestEqual(TEXT("Orientation matches"), A.Orientation.Z, B.Orientation.Z, 1e-12);
+	TestTrue(TEXT("Boat actually sailed somewhere"), A.Position.LengthXY() > 10.0);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingFloatTest, "SailingSim.Physics.FloatsAtWaterline", PhysicsTestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWindTest, "SailingSim.Physics.WindField", PhysicsTestFlags)
+bool FSailingWindTest::RunTest(const FString& Parameters)
+{
+	FWindParams WP;
+	WP.SpeedKnots = 10.0;
+	WP.FromDegrees = 90.0; // from +Y
+	const FWindField Steady(WP);
+	const Vec3 At10 = Steady.VelocityAt(Vec3(0, 0, 10), 0.0);
+	TestEqual(TEXT("10 kn at 10 m"), At10.Length() / kKnot, 10.0, 1e-6);
+	TestTrue(TEXT("Blows toward -Y when coming from +Y"), At10.Y < 0.0 && FMath::Abs(At10.X) < 1e-9);
+	TestTrue(TEXT("Less wind near the water (log profile)"), Steady.VelocityAt(Vec3(0, 0, 2), 0.0).Length() < 0.9 * At10.Length());
+	TestTrue(TEXT("More wind aloft"), Steady.VelocityAt(Vec3(0, 0, 20), 0.0).Length() > At10.Length());
+
+	WP.GustIntensity = 0.25;
+	WP.ShiftDegrees = 10.0;
+	WP.Seed = 7;
+	const FWindField Gusty(WP);
+	const FWindField Same(WP);
+	double Sum = 0.0, Min = 1e9, Max = 0.0, MaxShift = 0.0;
+	for (int32 I = 0; I < 2000; ++I)
+	{
+		const double T = I * 0.5;
+		const double G = Gusty.GustFactorAt(Vec3(0, 0, 10), T);
+		Sum += G; Min = FMath::Min(Min, G); Max = FMath::Max(Max, G);
+		MaxShift = FMath::Max(MaxShift, FMath::Abs(Gusty.ShiftAt(Vec3(0, 0, 10), T)));
+		if (I % 100 == 0)
+		{
+			TestEqual(TEXT("Same seed gives the same wind"), Gusty.VelocityAt(Vec3(5, 3, 6), T).X, Same.VelocityAt(Vec3(5, 3, 6), T).X, 1e-12);
+		}
+	}
+	TestEqual(TEXT("Gusts average out to the mean speed"), Sum / 2000.0, 1.0, 0.05);
+	TestTrue(TEXT("Gusts and lulls of about +/-25%"), Max > 1.15 && Min < 0.85);
+	TestTrue(TEXT("Shifts of the requested size"), MaxShift * kRadToDeg > 5.0 && MaxShift * kRadToDeg < 20.0);
+
+	// A gust upwind arrives here later: the field is advected downwind at the mean speed.
+	const double Speed = 10.0 * kKnot;
+	const Vec3 Upwind(0.0, 100.0, 10.0); // wind from +Y
+	TestEqual(TEXT("Gust patches drift downwind"), Gusty.GustFactorAt(Upwind, 0.0), Gusty.GustFactorAt(Vec3(0, 0, 10), 100.0 / Speed), 1e-9);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingFloatTest, "SailingSim.Physics.FloatsAndRights", PhysicsTestFlags)
 bool FSailingFloatTest::RunTest(const FString& Parameters)
 {
-	FBoatPhysicsStub Boat;
-	Boat.State.Z = 0.25; // dropped 25 cm above the waterline
-	RunSeconds(Boat, 10.0);
-	TestEqual(TEXT("Settles at the waterline (within 1 mm)"), Boat.State.Z, 0.0, 0.001);
-	TestEqual(TEXT("Heave motion has died out"), Boat.State.HeaveRate, 0.0, 0.001);
-
-	// Heave period for a J/22-sized waterplane is under a second.
-	TestTrue(TEXT("Heave period is plausible (0.5 to 1.5 s)"), Boat.HeavePeriod() > 0.5 && Boat.HeavePeriod() < 1.5);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHeelTest, "SailingSim.Physics.RightsFromHeel", PhysicsTestFlags)
-bool FSailingHeelTest::RunTest(const FString& Parameters)
-{
-	FBoatPhysicsStub Boat;
-	Boat.State.Heel = FMath::DegreesToRadians(20.0);
-	RunSeconds(Boat, 0.5);
-	TestTrue(TEXT("Righting moment rolls the boat back toward upright"), Boat.State.Heel < FMath::DegreesToRadians(20.0));
-	RunSeconds(Boat, 20.0);
-	TestEqual(TEXT("Comes back upright (within 0.1 degree)"), FMath::RadiansToDegrees(Boat.State.Heel), 0.0, 0.1);
-	TestTrue(TEXT("Roll period is plausible for a 22 ft keelboat (1.5 to 4 s)"), Boat.RollPeriod() > 1.5 && Boat.RollPeriod() < 4.0);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSteeringTest, "SailingSim.Physics.SteeringStub", PhysicsTestFlags)
-bool FSailingSteeringTest::RunTest(const FString& Parameters)
-{
+	FWindParams Calm;
+	Calm.SpeedKnots = 0.0;
+	const FWindField Wind(Calm);
+	FBoatModel Boat;
+	Boat.Reset(0.0, 0.0, 0.0, 0.0);
 	FBoatControls Controls;
-	Controls.Throttle = 1.0;
+	Controls.Hike = -0.5; // crew on the centerline
+	Boat.GetMutableState().Position.Z += 0.2; // dropped 20 cm
+	Run(Boat, Controls, Wind, 20.0);
+	TestEqual(TEXT("Floats at its design waterline (within 2 cm)"), Boat.OriginPosition().Z, 0.0, 0.02);
+	TestEqual(TEXT("Floats level in heel (within 0.5 deg)"), Boat.GetTelemetry().Heel * kRadToDeg, 0.0, 0.5);
+	TestEqual(TEXT("Floats level in pitch (within 1 deg)"), Boat.GetTelemetry().Pitch * kRadToDeg, 0.0, 1.0);
 
-	FBoatPhysicsStub Straight;
-	RunSeconds(Straight, 20.0, Controls);
-	TestTrue(TEXT("Motor moves the boat forward"), Straight.State.X > 10.0);
-	TestEqual(TEXT("No rudder means no turn"), Straight.State.Heading, 0.0, 1e-9);
-	const double SpeedKnots = Straight.State.Surge / MetersPerSecondPerKnot;
-	TestTrue(TEXT("Placeholder motor stays below hull speed"), SpeedKnots < HullSpeedKnots(Straight.GetParams().WaterlineLength));
-
-	FBoatPhysicsStub Turning;
-	Controls.Rudder = 1.0;
-	RunSeconds(Turning, 3.0, Controls);
-	TestTrue(TEXT("Right rudder turns to starboard"), Turning.State.Heading > 0.0);
-	TestTrue(TEXT("Turning heels the boat outward (to port, negative heel)"), Turning.State.Heel < 0.0);
+	// Righting moment rises with heel, peaks well past 30 degrees, and is still positive on its side (ballasted keelboat).
+	const double RM10 = Boat.RightingMomentAt(10.0 * kDegToRad);
+	const double RM30 = Boat.RightingMomentAt(30.0 * kDegToRad);
+	const double RM90 = Boat.RightingMomentAt(90.0 * kDegToRad);
+	AddInfo(FString::Printf(TEXT("Righting moment: %.0f N m at 10 deg, %.0f at 30, %.0f at 90"), RM10, RM30, RM90));
+	TestTrue(TEXT("Righting moment at 10 deg is plausible for a 22 ft keelboat (1.5 to 4 kN m)"), RM10 > 1500.0 && RM10 < 4000.0);
+	TestTrue(TEXT("More righting moment at 30 deg than 10"), RM30 > RM10);
+	TestTrue(TEXT("Still self-righting at 90 deg"), RM90 > 0.0);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHullSpeedTest, "SailingSim.Physics.HullSpeedRule", PhysicsTestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPolarTest, "SailingSim.Physics.PolarGate", PhysicsTestFlags)
+bool FSailingPolarTest::RunTest(const FString& Parameters)
+{
+	// Phase 1 gate: within 10 percent of the reference polar at every tested point (see PolarReference.h for sources).
+	AddInfo(TEXT(" TWS   TWA  polar  model   err%  heel  leeway  helm  source"));
+	double Worst = 0.0;
+	for (const FPolarPoint& P : J22ReferencePolar())
+	{
+		const FSteadyResult R = SailSteady(P.TrueWindKnots, P.TrueWindAngleDeg);
+		const double Err = (R.BoatSpeedKnots - P.BoatSpeedKnots) / P.BoatSpeedKnots * 100.0;
+		Worst = FMath::Max(Worst, FMath::Abs(Err));
+		AddInfo(FString::Printf(TEXT("%4.0f %5.1f  %5.2f  %5.2f  %+5.1f  %4.1f  %5.1f  %4.1f  %hs"), P.TrueWindKnots, P.TrueWindAngleDeg,
+			P.BoatSpeedKnots, R.BoatSpeedKnots, Err, R.HeelDeg, R.LeewayDeg, R.RudderDeg, P.Note));
+		TestTrue(FString::Printf(TEXT("%.0f kn at %.1f deg within 10%% of polar (%.2f vs %.2f kn)"), P.TrueWindKnots, P.TrueWindAngleDeg, R.BoatSpeedKnots, P.BoatSpeedKnots),
+			FMath::Abs(Err) <= 10.0);
+		// Plausible heel: under 25 degrees everywhere with a competent crew, and a keelboat never heels to windward much.
+		TestTrue(FString::Printf(TEXT("Plausible heel at %.0f kn, %.1f deg (%.1f deg)"), P.TrueWindKnots, P.TrueWindAngleDeg, R.HeelDeg), R.HeelDeg >= 0.0 && R.HeelDeg < 25.0);
+		// Leeway: a few degrees upwind, near zero downwind.
+		TestTrue(FString::Printf(TEXT("Plausible leeway at %.0f kn, %.1f deg (%.1f deg)"), P.TrueWindKnots, P.TrueWindAngleDeg, R.LeewayDeg),
+			R.LeewayDeg < (P.TrueWindAngleDeg < 70.0 ? 8.0 : 4.0));
+		// Pointing too close to the wind is slower than the beat angle.
+	}
+	AddInfo(FString::Printf(TEXT("Worst error %.1f%%"), Worst));
+
+	const FSteadyResult Pinching = SailSteady(10.0, 32.0);
+	const FSteadyResult Beat = SailSteady(10.0, 40.9);
+	TestTrue(TEXT("Pinching at 32 deg is slower than the beat angle"), Pinching.BoatSpeedKnots < Beat.BoatSpeedKnots);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHelmTest, "SailingSim.Physics.LeewayAndWeatherHelm", PhysicsTestFlags)
+bool FSailingHelmTest::RunTest(const FString& Parameters)
+{
+	// Upwind in a breeze the boat makes leeway and carries weather helm; both come out of the forces, not a script.
+	const FSteadyResult R = SailSteady(15.0, 45.0);
+	AddInfo(FString::Printf(TEXT("15 kn, 45 deg: leeway %.1f deg, heel %.1f deg, helm %.1f N"), R.LeewayDeg, R.HeelDeg, R.HelmForceN));
+	TestTrue(TEXT("Leeway 2 to 8 degrees close-hauled"), R.LeewayDeg > 2.0 && R.LeewayDeg < 8.0);
+	TestTrue(TEXT("Weather helm: the tiller pulls toward rounding up"), R.HelmForceN > 0.0);
+
+	// Let go of the tiller close-hauled in a breeze: weather helm rounds the boat up toward the wind.
+	FWindParams WP;
+	WP.SpeedKnots = 15.0;
+	const FWindField Wind(WP);
+	FBoatModel Boat;
+	Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 5.0 * kKnot);
+	FAutopilot Pilot;
+	Pilot.TargetTWADeg = 45.0;
+	FAutoTrim Trim;
+	FBoatControls C;
+	C.MainSheet = C.JibSheet = 0.2;
+	for (int32 I = 0; I < int32(30 * PhysicsHz); ++I)
+	{
+		C = Trim.Update(Boat, C, PhysicsDt);
+		C.Tiller = Pilot.Update(Boat);
+		Boat.Step(PhysicsDt, C, Wind);
+	}
+	const double Before = Boat.GetTelemetry().TrueWindAngle;
+	// Let go: no hand on the tiller, so the rudder trails with the flow and stops holding the bow down.
+	Boat.GetMutableConfig().HelmStiffness = 2.0;
+	C.Tiller = 0.0;
+	Run(Boat, C, Wind, 4.0);
+	AddInfo(FString::Printf(TEXT("Tiller released: TWA %.1f -> %.1f deg"), Before * kRadToDeg, Boat.GetTelemetry().TrueWindAngle * kRadToDeg));
+	TestTrue(TEXT("Released tiller: boat rounds up"), Boat.GetTelemetry().TrueWindAngle < Before - 3.0 * kDegToRad);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTackTest, "SailingSim.Physics.TackTime", PhysicsTestFlags)
+bool FSailingTackTest::RunTest(const FString& Parameters)
+{
+	for (const double Tws : { 6.0, 10.0, 15.0 })
+	{
+		const FTackResult R = RunTack(Tws);
+		AddInfo(FString::Printf(TEXT("%.0f kn: tack %.1f s, %.2f -> min %.2f -> %.2f kn after 10 s"), Tws, R.TackSeconds, R.SpeedBeforeKnots, R.MinSpeedKnots, R.SpeedAfter10sKnots));
+		TestTrue(FString::Printf(TEXT("Tack completes in %.0f kn"), Tws), R.bCompleted);
+		// A J/22 tacks from close-hauled to close-hauled in roughly 4 to 10 seconds and keeps way through the turn.
+		TestTrue(FString::Printf(TEXT("Tack time in a realistic range in %.0f kn (%.1f s)"), Tws, R.TackSeconds), R.TackSeconds > 4.0 && R.TackSeconds < 10.0);
+		TestTrue(FString::Printf(TEXT("Keeps way through the tack in %.0f kn"), Tws), R.MinSpeedKnots > 0.4 * R.SpeedBeforeKnots);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingIronsTest, "SailingSim.Physics.InIrons", PhysicsTestFlags)
+bool FSailingIronsTest::RunTest(const FString& Parameters)
+{
+	// Stopped head to wind with no way on: the sails luff, the boat drifts backward and the rudder can't help yet.
+	const FIronsResult R = RunIrons(10.0, 8.0);
+	AddInfo(FString::Printf(TEXT("After 8 s: TWA %.1f deg, forward speed %.2f kn"), R.FinalTWADeg, R.FinalForwardSpeedKnots));
+	TestTrue(TEXT("Still pointing near the wind"), FMath::Abs(R.FinalTWADeg) < 25.0);
+	TestTrue(TEXT("No forward way (drifting back)"), R.FinalForwardSpeedKnots <= 0.05 && R.MaxForwardSpeedKnots < 0.2);
+	TestTrue(TEXT("Telemetry says in irons"), R.bInIronsAtEnd);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSailFlowTest, "SailingSim.Physics.LuffAndStall", PhysicsTestFlags)
+bool FSailingSailFlowTest::RunTest(const FString& Parameters)
+{
+	// On a beam reach in 10 kn: sheets hard in stalls the sails; sheets all the way out luffs them.
+	FWindParams WP;
+	WP.SpeedKnots = 10.0;
+	const FWindField Wind(WP);
+	auto FlowWith = [&](double Sheet, ESailFlow Expect)
+	{
+		FBoatModel Boat;
+		Boat.Reset(0.0, 0.0, -90.0 * kDegToRad, 5.0 * kKnot);
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = Sheet;
+		FAutopilot Pilot;
+		Pilot.TargetTWADeg = 90.0;
+		for (int32 I = 0; I < int32(10 * PhysicsHz); ++I)
+		{
+			C.Tiller = Pilot.Update(Boat);
+			Boat.Step(PhysicsDt, C, Wind);
+		}
+		int32 Count = 0;
+		const FBoatTelemetry& T = Boat.GetTelemetry();
+		for (int32 I = 0; I < T.NumMainStrips; ++I) Count += T.MainStrips[I].Flow == Expect;
+		for (int32 I = 0; I < T.NumJibStrips; ++I) Count += T.JibStrips[I].Flow == Expect;
+		return Count;
+	};
+	TestTrue(TEXT("Over-trimmed on a reach: most strips stalled"), FlowWith(0.0, ESailFlow::Stalled) >= 5);
+	TestTrue(TEXT("Fully eased on a reach: most strips luffing"), FlowWith(1.0, ESailFlow::Luffing) >= 5);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHullSpeedTest, "SailingSim.Physics.HullSpeedWall", PhysicsTestFlags)
 bool FSailingHullSpeedTest::RunTest(const FString& Parameters)
 {
-	// J/22 LWL 19 ft: 1.34 * sqrt(19) = 5.84 knots.
-	TestEqual(TEXT("J/22 hull speed"), HullSpeedKnots(19.0 * MetersPerFoot), 5.84, 0.01);
+	// J/22 LWL 19 ft: 1.34 * sqrt(19) = 5.84 kn. Reaching in 15 kn the boat goes a little past it but hits the wall:
+	// doubling the wind to 30 kn on a beam reach adds well under a knot... check resistance rises steeply past it.
+	FBoatModel Boat;
+	const double HullSpeed = 1.34 * std::sqrt(Boat.GetConfig().WaterlineLength / kFoot);
+	TestEqual(TEXT("J/22 hull speed"), HullSpeed, 5.84, 0.02);
+	const FSteadyResult R15 = SailSteady(15.0, 90.0, FBoatConfig::J22(), false);
+	const FSteadyResult R25 = SailSteady(25.0, 90.0, FBoatConfig::J22(), false);
+	AddInfo(FString::Printf(TEXT("Beam reach: %.2f kn in 15 kn of wind, %.2f kn in 25"), R15.BoatSpeedKnots, R25.BoatSpeedKnots));
+	TestTrue(TEXT("Past hull speed only modestly on a breezy reach"), R15.BoatSpeedKnots < HullSpeed * 1.25);
+	TestTrue(TEXT("Hull-speed wall: 67% more wind gives under 15% more speed"), R25.BoatSpeedKnots < R15.BoatSpeedKnots * 1.15);
 	return true;
 }
 

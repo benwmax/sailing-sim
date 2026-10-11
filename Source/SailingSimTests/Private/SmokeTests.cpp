@@ -10,6 +10,7 @@
 #include "FlatWater.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
+#include "ProceduralMeshComponent.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -48,7 +49,7 @@ bool FSailingLakeMapLoadsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBoatSpawnsAndFloatsTest, "SailingSim.Smoke.BoatSpawnsAndFloats", SmokeTestFlags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBoatSpawnsAndFloatsTest, "SailingSim.Smoke.BoatSpawnsFloatsAndSails", SmokeTestFlags)
 bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 {
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingSmokeWorld"));
@@ -71,20 +72,25 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Hull has a colorable material"), HullMaterial && HullMaterial->GetVectorParameterValue(TEXT("Color"), HullColor));
 		TestTrue(TEXT("Hull is painted red"), HullColor.R > 0.5f && HullColor.G < 0.2f);
 
-		TestTrue(TEXT("Boat starts above the water (drop test)"), Boat->GetActorLocation().Z > WaterZ + 10.0);
+		const FVector Start = Boat->GetActorLocation();
+		TestEqual(TEXT("Boat starts at the water surface"), Start.Z, WaterZ, 2.0);
 
-		// 5 seconds at 60 fps through the real world tick.
-		for (int32 Frame = 0; Frame < 300; ++Frame)
+		// 10 seconds at 60 fps through the real world tick. The bare world has no game mode, so the boat uses
+		// its fallback wind: 10 kn from +X, a beam reach for a boat heading +Y.
+		for (int32 Frame = 0; Frame < 600; ++Frame)
 		{
 			// Tick functions run at most once per engine frame, so advance the frame counter too.
 			++GFrameCounter;
 			World->Tick(LEVELTICK_All, 1.f / 60.f);
 		}
 
-		TestEqual(TEXT("Boat floats at the water surface (within 1 cm)"), Boat->GetActorLocation().Z, WaterZ, 1.0);
-		TestEqual(TEXT("Boat is upright"), Boat->GetActorRotation().Roll, 0.0, 0.5);
-		TestEqual(TEXT("Boat keeps its heading"), Boat->GetActorRotation().Yaw, 90.0, 0.01);
-		TestEqual(TEXT("Boat stays where it was put"), Boat->GetActorLocation().X, 1000.0, 0.1);
+		const FVector End = Boat->GetActorLocation();
+		AddInfo(FString::Printf(TEXT("After 10 s: moved %.1f m, z %.1f cm, heel %.1f deg, speed %.2f kn"), (End - Start).Size2D() / 100.0, End.Z,
+			FMath::RadiansToDegrees(Boat->GetBoatModel().GetTelemetry().Heel), Boat->GetBoatModel().GetTelemetry().BoatSpeed / Sailing::kKnot));
+		TestEqual(TEXT("Boat floats at the water surface (within 5 cm)"), End.Z, WaterZ, 5.0);
+		TestTrue(TEXT("Boat heels a little, not over"), FMath::Abs(Boat->GetActorRotation().Roll) < 25.0);
+		TestTrue(TEXT("Boat sails: moved more than 15 m in 10 s"), (End - Start).Size2D() > 1500.0);
+		TestTrue(TEXT("Sail meshes were built"), Boat->FindComponentByClass<UProceduralMeshComponent>() && Boat->FindComponentByClass<UProceduralMeshComponent>()->GetNumSections() > 0);
 	}
 
 	World->EndPlay(EEndPlayReason::Quit);
