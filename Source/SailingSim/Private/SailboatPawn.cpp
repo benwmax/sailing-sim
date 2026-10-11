@@ -17,6 +17,8 @@
 #include "InputModifiers.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "UObject/ConstructorHelpers.h"
 
 using namespace Sailing;
@@ -196,6 +198,19 @@ void ASailboatPawn::BeginPlay()
 
 	ApplyDifficulty();
 	ResetBoat();
+
+	bDemo = FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"));
+	if (bDemo)
+	{
+		// Reset has not stepped the physics yet, so work out the starting tack from the wind and heading.
+		const FWindField& DemoWind = GetWind();
+		const Vec3 W = DemoWind.VelocityAt(Vec3(0, 0, 10), 0.0);
+		DemoFirstSign = WrapAngle(std::atan2(-W.Y, -W.X) - FMath::DegreesToRadians(StartYaw)) >= 0.0 ? 1.0 : -1.0;
+		DemoPilot.MaxTiller = 0.8;
+		CameraYaw = 150.f;
+		CameraPitch = -18.f;
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	}
 }
 
 void ASailboatPawn::ApplyDifficulty()
@@ -223,6 +238,16 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	ApplyHeldInputs(DeltaSeconds);
+	if (bDemo)
+	{
+		// Close-hauled from the start, tack after 9 s and every 12 s after that; the camera drifts around the boat.
+		const double T = Boat.GetState().Time;
+		const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
+		DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+		Controls.Tiller = DemoPilot.Update(Boat);
+		CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	}
 
 	const FWindField& Wind = GetWind();
 	const int32 Steps = Stepper.Advance(DeltaSeconds);
@@ -464,7 +489,13 @@ void ASailboatPawn::OnAxisReleased(const FInputActionValue& Value, FName Action)
 
 void ASailboatPawn::OnLook(const FInputActionValue& Value)
 {
-	const FVector2D Delta = Value.Get<FVector2D>();
+	// Ignore the camera in scripted runs, and clamp single events: capturing the mouse at launch can deliver one huge jump.
+	float BenchSeconds = 0.f;
+	if (bDemo || FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds))
+	{
+		return;
+	}
+	const FVector2D Delta = Value.Get<FVector2D>().ClampAxes(-10.0, 10.0);
 	CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
 	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));

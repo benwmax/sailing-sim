@@ -80,6 +80,10 @@ private:
 	Sailing::FBoatControls Controls;
 	Sailing::FFixedStepper Stepper;
 	Sailing::FAutoTrim TrimAssist;
+	/** -SailingDemo: the autopilot sails close-hauled and tacks every few seconds, for recordings and the QA gate. */
+	bool bDemo = false;
+	Sailing::FAutopilot DemoPilot;
+	double DemoFirstSign = 1.0;
 	Sailing::FWindField FallbackWind;
 	double WaterSurfaceZ = 0.0; // cm
 	FVector StartLocation = FVector::ZeroVector;

@@ -47,6 +47,8 @@ void ASailingGameMode::StartPlay()
 	{
 		UE_LOG(LogSailing, Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmupSeconds);
 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
+		FParse::Value(FCommandLine::Get(), TEXT("SailingRecord="), RecordSeconds);
+		NextFrameTime = BenchWarmupSeconds;
 	}
 }
 
@@ -64,6 +66,13 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	{
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
+	}
+
+	if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmupSeconds + RecordSeconds)
+	{
+		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
+		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
+		NextFrameTime += 0.1f;
 	}
 
 	const float End = BenchWarmupSeconds + BenchSeconds;

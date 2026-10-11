@@ -9,6 +9,7 @@
  * Spawns the player's boat and owns the true wind. Also runs an optional frame-time benchmark. Also runs an optional frame-time benchmark for the QA gate:
  *   -SailingBench=<seconds>   measure frame times after a 3 s warm-up, log a summary, write
  *                             Saved/Bench/bench.json and a screenshot, then quit.
+ *   -SailingRecord=<seconds>  also save frames at 10 fps from the end of the warm-up (Saved/Bench/rec/).
  */
 UCLASS()
 class SAILINGSIM_API ASailingGameMode : public AGameModeBase
@@ -49,6 +50,9 @@ private:
 	void FinishBenchmark();
 
 	float BenchSeconds = 0.f;
+	float RecordSeconds = 0.f;
+	float NextFrameTime = 0.f;
+	int32 FrameIndex = 0;
 	float Elapsed = 0.f;
 	bool bScreenshotRequested = false;
 	bool bBenchDone = false;
