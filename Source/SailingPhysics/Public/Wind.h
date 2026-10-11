@@ -23,7 +23,7 @@ namespace Sailing
 	 * storm, much harder and gustier. It is the same field the sails feel, so it shows on the water (cat's paws,
 	 * a dark line) before it reaches the boat.
 	 */
-	struct FGustFront
+	struct SAILINGPHYSICS_API FGustFront
 	{
 		bool bActive = false;
 		double StartX = 0.0, StartY = 0.0; // a point on the front line at StartTime (world, m)

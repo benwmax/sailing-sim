@@ -7,7 +7,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/WorldSettings.h"
-#include "FlatWater.h"
+#include "WaterSurface.h"
+#include "SailingEnvironment.h"
+#include "Components/VolumetricCloudComponent.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
 #include "ProceduralMeshComponent.h"
@@ -31,14 +33,18 @@ bool FSailingLakeMapLoadsTest::RunTest(const FString& Parameters)
 	}
 
 	// Inspect the level's actors directly; the map is loaded as an asset, not played.
-	int32 Water = 0, Lights = 0, Starts = 0;
+	int32 Water = 0, Lights = 0, Starts = 0, Environment = 0, Clouds = 0;
 	for (AActor* Actor : World->PersistentLevel->Actors)
 	{
-		Water += Actor && Actor->IsA<AFlatWater>();
+		Water += Actor && Actor->IsA<AWaterSurface>();
+		Environment += Actor && Actor->IsA<ASailingEnvironment>();
+		Clouds += Actor && Actor->IsA<AVolumetricCloud>();
 		Lights += Actor && Actor->IsA<ADirectionalLight>();
 		Starts += Actor && Actor->IsA<APlayerStart>();
 	}
 	TestEqual(TEXT("One water surface"), Water, 1);
+	TestEqual(TEXT("One weather environment"), Environment, 1);
+	TestEqual(TEXT("Volumetric clouds"), Clouds, 1);
 	TestTrue(TEXT("Has a sun"), Lights >= 1);
 	TestTrue(TEXT("Has a player start"), Starts >= 1);
 
@@ -60,7 +66,7 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 	World->GetWorldSettings()->NotifyBeginPlay();
 
 	const double WaterZ = 50.0;
-	AFlatWater* Water = World->SpawnActor<AFlatWater>(FVector(0.f, 0.f, WaterZ), FRotator::ZeroRotator);
+	AWaterSurface* Water = World->SpawnActor<AWaterSurface>(FVector(0.f, 0.f, WaterZ), FRotator::ZeroRotator);
 	ASailboatPawn* Boat = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
 	TestNotNull(TEXT("Water spawns"), Water);
 	const bool bSpawned = TestNotNull(TEXT("Boat spawns"), Boat);

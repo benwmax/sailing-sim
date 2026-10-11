@@ -14,6 +14,35 @@ enum class ESailingDifficulty : uint8
 	Realistic
 };
 
+/** Weather picker; same order as Sailing::EWeatherPreset. */
+UENUM(BlueprintType)
+enum class ESailingWeather : uint8
+{
+	CalmMorning,
+	AfternoonBreeze,
+	Overcast,
+	Rain,
+	Thunderstorm,
+	RandomDay
+};
+
+/** Graphics quality tier, measured on the build Mac (see docs/phase-2). */
+UENUM(BlueprintType)
+enum class ESailingQuality : uint8
+{
+	Low,
+	Medium,
+	High
+};
+
+/** Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest. Full: every control. */
+UENUM(BlueprintType)
+enum class ESailingControlLayout : uint8
+{
+	Simple,
+	Full
+};
+
 /**
  * Player-facing settings, saved per user in GameUserSettings.ini. The physics is identical in learning and
  * game mode; learning mode only adds help on screen.
@@ -33,6 +62,34 @@ public:
 
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	bool bShowHud = true;
+
+	/** Simple is the default; on Easy the layout is always Simple. */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	ESailingControlLayout ControlLayout = ESailingControlLayout::Simple;
+
+	/** The crew trims the sails whenever you leave the sheets alone for a few seconds. */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	bool bTrimAssist = true;
+
+	UPROPERTY(config, EditAnywhere, Category = "Weather")
+	ESailingWeather WeatherPreset = ESailingWeather::AfternoonBreeze;
+
+	/** Local solar time the session starts at (dawn to dusk; night sailing comes in a later phase). */
+	UPROPERTY(config, EditAnywhere, Category = "Weather", meta = (ClampMin = "6.0", ClampMax = "20.0"))
+	float StartHour = 15.f;
+
+	/** Same seed, same weather: gusts, shifts, lightning and the random day all repeat. */
+	UPROPERTY(config, EditAnywhere, Category = "Weather")
+	int32 WeatherSeed = 2027;
+
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	ESailingQuality Quality = ESailingQuality::High;
+
+	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float Volume = 0.8f;
+
+	/** Simple layout is in effect (always on Easy). */
+	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
 
 	static USailingSettings* Get() { return GetMutableDefault<USailingSettings>(); }
 	void Save() { SaveConfig(); }
