@@ -3,6 +3,8 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Engine/DirectionalLight.h"
+#include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/WorldSettings.h"
 #include "FlatWater.h"
@@ -64,6 +66,11 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 
 	if (bSpawned)
 	{
+		const UMaterialInstanceDynamic* HullMaterial = Cast<UMaterialInstanceDynamic>(Boat->Hull->GetMaterial(0));
+		FLinearColor HullColor = FLinearColor::Black;
+		TestTrue(TEXT("Hull has a colorable material"), HullMaterial && HullMaterial->GetVectorParameterValue(TEXT("Color"), HullColor));
+		TestTrue(TEXT("Hull is painted red"), HullColor.R > 0.5f && HullColor.G < 0.2f);
+
 		TestTrue(TEXT("Boat starts above the water (drop test)"), Boat->GetActorLocation().Z > WaterZ + 10.0);
 
 		// 5 seconds at 60 fps through the real world tick.

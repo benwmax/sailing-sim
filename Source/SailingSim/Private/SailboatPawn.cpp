@@ -27,8 +27,11 @@ ASailboatPawn::ASailboatPawn()
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	// The engine cube ships with a grid material; use the basic shape material, which has a Color parameter.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	UStaticMesh* Cube = CubeMesh.Object;
 	UStaticMesh* Cylinder = CylinderMesh.Object;
+	PartMaterial = ShapeMaterial.Object;
 
 	// J/22 placeholder, sized from class figures (LOA 6.86 m, beam 2.44 m, draft 1.16 m).
 	// Origin is the design waterline at midships. The bow is a box turned 45 degrees.
@@ -62,6 +65,7 @@ UStaticMeshComponent* ASailboatPawn::AddPart(FName Name, UStaticMesh* Mesh, cons
 	UStaticMeshComponent* Part = CreateDefaultSubobject<UStaticMeshComponent>(Name);
 	Part->SetupAttachment(BoatRoot);
 	Part->SetStaticMesh(Mesh);
+	Part->SetMaterial(0, PartMaterial);
 	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Part->SetRelativeLocation(LocationCm);
 	Part->SetRelativeRotation(Rotation);
@@ -96,7 +100,7 @@ void ASailboatPawn::BeginPlay()
 		if (PartName == TEXT("Keel") || PartName == TEXT("Rudder")) Color = FLinearColor(0.05f, 0.05f, 0.06f);
 		else if (PartName == TEXT("Mast") || PartName == TEXT("Boom")) Color = FLinearColor(0.55f, 0.56f, 0.58f);
 		else if (PartName == TEXT("Mainsail")) Color = FLinearColor(0.95f, 0.94f, 0.90f);
-		else if (PartName == TEXT("Hull")) Color = FLinearColor(0.75f, 0.06f, 0.06f);
+		else if (PartName == TEXT("Hull") || PartName == TEXT("Bow")) Color = FLinearColor(0.75f, 0.06f, 0.06f);
 		if (UMaterialInstanceDynamic* Mid = Part->CreateAndSetMaterialInstanceDynamic(0))
 		{
 			Mid->SetVectorParameterValue(TEXT("Color"), Color);

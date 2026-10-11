@@ -67,6 +67,9 @@ private:
 	float CameraYaw = 0.f;
 	float CameraPitch = -12.f;
 
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> PartMaterial;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> MappingContext;
 	UPROPERTY(Transient)
