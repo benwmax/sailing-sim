@@ -21,14 +21,27 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 
 `Artifacts/`, `Packaged/`, `Build/`, `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` are git-ignored.
 
+6. `scripts/polar.sh [--quick | --scenarios | --point <tws> <twa>]` builds `Source/SailingPhysics` standalone with clang
+   (no Unreal) and sails the J/22 reference polar in about 2 s. Use it for any physics tuning, then confirm with
+   `scripts/test.sh` (`SailingSim.Physics.PolarGate`). `--scenarios` prints tack and irons results; `--point` dumps
+   per-strip sail state.
+7. `DEMO=1 RECORD=15 scripts/bench-mac.sh 17` runs the packaged game with the autopilot tacking (`-SailingDemo`) and
+   writes `Artifacts/recording.gif`. Recording drops the frame rate; measure fps without RECORD.
+
 ## Conventions
 
-- Physics lives in `Source/SailingPhysics`: plain C++ in namespace `Sailing`, SI units (meters, kg, seconds, radians),
-  Core-only dependencies, stepped at a fixed 120 Hz through `FFixedStepper`. Unreal code converts cm <-> m at the edge
-  (`Sailing::CmPerMeter`). Axes match Unreal: X forward, Y right (starboard), Z up; positive heel = starboard side down.
+- Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
+  namespace `Sailing`, SI units (meters, kg, seconds, radians), stepped at a fixed 120 Hz through `FFixedStepper`.
+  `FBoatModel` is the J/22 (config in `FBoatConfig`), `FWindField` the wind, `FAutoTrim`/`FAutopilot` the crew helpers.
+  `Quat` uses FQuat's algebra, so copy X/Y/Z/W straight across. Positive heel = starboard side up (heeled to port);
+  positive yaw/rudder/tiller = bow to starboard; TWA/AWA positive = wind from starboard.
+- Calibration knobs, if the polar drifts: residuary table and `ChopResistance` (hull), sail `InducedAspectRatio`,
+  keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
+- Avoid identifiers that collide with Unreal macros in physics code (`PI`, `check`, `verify`).
+- Unreal code converts cm <-> m at the edge (`Sailing::CmPerMeter`). Axes match Unreal: X forward, Y right (starboard), Z up.
+- Input actions and the mapping context are built in code from `USailingInputSettings` (rebindable in Input.ini).
 - Every physics change gets an automation test in `Source/SailingSimTests` (`SailingSim.Physics.*`). Game/world checks go
   under `SailingSim.Smoke.*`. Tests that tick a world must `++GFrameCounter` each frame.
-- Input assets (actions, mapping context) are created in code in `ASailboatPawn::CreateInput`, not as `.uasset`s.
 - Binary assets go through Git LFS (`.gitattributes`). Prefer generating content from scripts so diffs stay reviewable.
 - Warnings are errors in this toolchain (for example `-Wunreachable-code-loop-increment`); `TestEqual` needs matching
   double/float argument types.
