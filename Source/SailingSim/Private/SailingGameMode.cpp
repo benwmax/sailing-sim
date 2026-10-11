@@ -1,6 +1,8 @@
 #include "SailingGameMode.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
+#include "SailingHUD.h"
+#include "SailingSettings.h"
 #include "DynamicRHI.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -20,11 +22,25 @@ namespace
 ASailingGameMode::ASailingGameMode()
 {
 	DefaultPawnClass = ASailboatPawn::StaticClass();
+	HUDClass = ASailingHUD::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
+}
+
+void ASailingGameMode::ApplyDifficultyToWind()
+{
+	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
+	Sailing::FWindParams Params;
+	Params.SpeedKnots = WindSpeedKnots;
+	Params.FromDegrees = WindFromDegrees;
+	Params.GustIntensity = GustIntensity * (bEasy ? 0.5f : 1.f);
+	Params.ShiftDegrees = ShiftDegrees * (bEasy ? 0.5f : 1.f);
+	Params.Seed = uint32(WindSeed);
+	Wind.SetParams(Params);
 }
 
 void ASailingGameMode::StartPlay()
 {
+	ApplyDifficultyToWind();
 	Super::StartPlay();
 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
