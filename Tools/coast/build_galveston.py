@@ -179,7 +179,9 @@ for path in cells:  # coarse cells first, detailed ones paint over them inside t
                 fill_polygon(dr_draw, p, len(vals) - 1)
         dr = np.asarray(dr_img)
         hit = cov & (dr > 0)
-        dredged[hit] = np.array(vals, np.float32)[dr[hit]]
+        # Overlapping cells: keep the deepest charted dredged depth (a cell whose polygon gives no depth must not
+        # erase another's 45 ft for the Houston Ship Channel).
+        dredged[hit] = np.fmax(dredged[hit], np.array(vals, np.float32)[dr[hit]])
     covered |= cov
     # Soundings and contours as depth samples; everything else kept for the chart and the world.
     for layer in ("SOUNDG", "DEPCNT"):
@@ -528,12 +530,16 @@ for nm, la, lo_, hd in LAUNCH:
     launch.append({"name": nm, "xy": [round(x, 1), round(y, 1)], "heading": hd, "depth_m": round(float(-height[best] if best else 0.0), 1)})
 
 # ---------------------------------------------------------------- magnetic variation (ENC, updated to the bake year)
-mv = features["MAGVAR"][0] if features["MAGVAR"] else None
+# The ENC carries the variation two ways: whole-degree area bands (between isogonic lines) and the compass roses'
+# exact values. Use the compass rose nearest home (Kemah, the map origin), not whichever record comes first.
+roses = [r for r in features["MAGVAR"] if r.get("geom_xy") is not None and r["geom_xy"].geom_type == "Point"]
+mv = min(roses, key=lambda r: r["geom_xy"].x ** 2 + r["geom_xy"].y ** 2) if roses else (features["MAGVAR"][0] if features["MAGVAR"] else None)
 variation = None
 if mv is not None:
     base_year = int(scalar(mv.get("RYRMGV")) or 2021)
     variation = {"deg_east": round(float(mv["VALMAG"]) + (2026 - base_year) * float(mv.get("VALACM") or 0.0) / 60.0, 2),
-                 "base": float(mv["VALMAG"]), "base_year": base_year, "annual_change_min": float(mv.get("VALACM") or 0.0), "year": 2026}
+                 "base": float(mv["VALMAG"]), "base_year": base_year, "annual_change_min": float(mv.get("VALACM") or 0.0), "year": 2026,
+                 "rose_xy": [round(mv["geom_xy"].x), round(mv["geom_xy"].y)] if mv.get("geom_xy") is not None and mv["geom_xy"].geom_type == "Point" else None}
 
 # ---------------------------------------------------------------- vector chart for the chart view
 def tri(poly, tol=4.0):

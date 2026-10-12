@@ -327,8 +327,9 @@ bool FCoastFixTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("With +-2 degree error: within 0.2 nm (370 m)"), WorstNoisy < 370.0);
 
 	// Variation: east is least (magnetic = true - east) and a bearing round-trips.
-	TestTrue(TEXT("Variation is about 0.4 E in 2026"), Var > 0.2 && Var < 0.7);
-	TestTrue(TEXT("090 T is 089.6 M"), FMath::Abs(SailingNav::TrueToMagnetic(90.0, Var) - (90.0 - Var)) < 1e-9);
+	// The chart's compass rose near Kemah: 2 deg 01' E in 2021, decreasing 6.5' a year, so about 1 deg 28' E in 2026.
+	TestTrue(TEXT("Variation is about 1.5 E in 2026 (the compass rose near Kemah)"), Var > 1.3 && Var < 1.6);
+	TestTrue(TEXT("090 T is 088.5 M"), FMath::Abs(SailingNav::TrueToMagnetic(90.0, Var) - (90.0 - Var)) < 1e-9);
 
 	// Dead reckoning: 10 minutes at 5 knots on 090 T puts you 0.83 nm east.
 	SailingNav::FPlot Dr;

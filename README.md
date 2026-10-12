@@ -139,8 +139,8 @@ south to Bolivar Roads and the Gulf. Everything comes from the NOAA chart and NO
   and the next high or low water, the current at the boat.
 - **Chart view (P)**: the NOAA chart in its paper colors, with soundings in feet, depth contours, channels, every aid
   with its Chart No. 1 symbol and legend ("G C \"19\"", "Fl R 6s 17ft 4M \"2\""), conspicuous landmarks, a compass
-  rose with the variation (0°25'E in 2026), a scale bar, and a course line from the boat to the crosshair in degrees
-  true and magnetic with distance and time.
+  rose with the variation (1°28'E in 2026, from the chart's compass rose near Kemah), a scale bar, and a course line
+  from the boat to the crosshair in degrees true and magnetic with distance and time.
 - **Plotting**: turn the camera onto a buoy, beacon, light or landmark and press **U** for a hand-bearing compass
   bearing (magnetic; on Realistic it carries a degree or two of error). Two bearings crossing at 30 degrees or more
   plot a fix with its cocked hat; dead reckoning then runs from the fix on the compass and the log (it knows nothing
