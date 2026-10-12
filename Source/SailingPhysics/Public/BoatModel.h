@@ -6,6 +6,7 @@
 #include "Sail.h"
 #include "Wind.h"
 #include "Waves.h"
+#include "LakeTerrain.h"
 #include <vector>
 
 namespace Sailing
@@ -22,6 +23,7 @@ namespace Sailing
 		double Outhaul = 0.3;    // 0..1, 1 = foot flat
 		double Backstay = 0.0;   // 0..1, bends the mast and tightens the forestay
 		bool bWingOnWing = false; // running: hold the jib out on the windward side, opposite the main
+		bool bBackJib = false;    // hold the jib aback (sheeted on the windward side): heaving to, getting out of irons
 		double Hike = 0.0;       // -1 = crew on the leeward side, 0 = sitting on the windward rail, 1 = fully hiked
 	};
 
@@ -79,6 +81,26 @@ namespace Sailing
 		static FBoatConfig J22() { return FBoatConfig(); }
 	};
 
+	/**
+	 * Something the boat can hit: a dock edge, piling or bridge deck, as a capsule around a horizontal segment
+	 * between Bottom and Top heights (m). Docks reach down into the water; a bridge deck spans from its clearance
+	 * upward, so the hull passes under but a tall mast does not.
+	 */
+	struct FObstacleSegment
+	{
+		double AX = 0, AY = 0, BX = 0, BY = 0;
+		double Radius = 0.3;
+		double Bottom = -1.0, Top = 0.5;
+	};
+
+	/** A dock line from a cleat on the boat (body frame) to a point ashore (world), slack below its length. */
+	struct FMooringLine
+	{
+		Vec3 BodyPoint;
+		Vec3 Anchor;
+		double Length = 1.0;
+	};
+
 	struct FBoatState
 	{
 		Vec3 Position;          // world position of the center of gravity (m)
@@ -89,6 +111,7 @@ namespace Sailing
 		double BoomAngle = 0.0;     // rad, positive = boom on the starboard side
 		double JibAngle = 0.0;      // rad, positive = jib clew on the starboard side
 		int MainSide = 1, JibSide = 1;
+		int BackedJibSide = 0;      // side the jib is held aback on (fixed by its sheet), 0 = not backed
 		double CrewOffset = 0.0;    // m, crew position from centerline (+ = starboard)
 		int WindwardSide = 1;       // +1 = wind from starboard (starboard tack), -1 = from port
 		double Time = 0.0;
@@ -113,6 +136,9 @@ namespace Sailing
 		double DriveForce = 0.0;      // N, sail force along the bow
 		double HeelingForce = 0.0;    // N, sail force across the boat
 		bool bInIrons = false;
+		bool bAground = false;        // keel, rudder or hull touching the bottom
+		bool bCollision = false;      // touching a dock or bridge this step
+		double DepthUnderKeel = 100.0; // m of water below the keel tip
 		bool IsStarboardTack() const { return TrueWindAngle > 0.0; }
 
 		FSailStripState MainStrips[kMaxSailStrips];
@@ -152,6 +178,12 @@ namespace Sailing
 		const Vec3& GetCenterOfGravity() const { return CenterOfGravity; }
 		double HullDepth() const { return CanoeDepth; }
 
+		/** Lake bed for grounding (optional), docks and bridges for collisions (optional). */
+		void SetTerrain(const FLakeTerrain* InTerrain) { Terrain = InTerrain; }
+		void SetObstacles(const std::vector<FObstacleSegment>* InObstacles) { Obstacles = InObstacles; }
+		std::vector<FMooringLine>& GetMooringLines() { return Mooring; }
+		const std::vector<FMooringLine>& GetMooringLines() const { return Mooring; }
+
 		/** Water surface height at a world XY at the boat's current time (the wave field of the last Step). */
 		double WaterHeightAt(double X, double Y) const { return CurrentWaves ? CurrentWaves->Height(X, Y, State.Time) : 0.0; }
 
@@ -177,5 +209,8 @@ namespace Sailing
 		double CanoeDepth = 0.25;
 		double MainMeanLift = 0.0;
 		const FWaveField* CurrentWaves = nullptr;
+		const FLakeTerrain* Terrain = nullptr;
+		const std::vector<FObstacleSegment>* Obstacles = nullptr;
+		std::vector<FMooringLine> Mooring;
 	};
 }
