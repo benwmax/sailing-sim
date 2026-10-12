@@ -514,7 +514,8 @@ namespace Sailing
 					WaveResistance = C.AddedResistanceCoef * Response * kWaterDensity * kGravity * 0.25 * Hs * Hs * HullBeam * HullBeam / Lwl
 						* (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25 * Clamp(V / 2.0, 0.0, C.AddedResistanceSpeedCap) * Clamp(Vol / std::max(DesignHullVolume[H], 1e-3), 0.0, 1.0);
 				}
-				AddBodyForce(Vec3(-Sign(U) * (Friction + Residuary + WaveResistance), 0.0, 0.0), HullPoint);
+				// Going astern, the transom leads: much more form drag than with the bow first.
+				AddBodyForce(Vec3(-Sign(U) * (Friction + Residuary + WaveResistance) * (U < 0.0 ? 1.6 : 1.0), 0.0, 0.0), HullPoint);
 			}
 			// Cross-flow drag at two stations: sway resistance and yaw damping at low speed.
 			const double Share = Vol / std::max(DesignVolume, 1e-6);
@@ -536,18 +537,23 @@ namespace Sailing
 		// Engines: thrust lags the throttle by about a second; it falls off toward the propeller's pitch speed.
 		double PropWash[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 		double PropWashX[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		// Twin engines: the split runs one ahead and one astern. With the throttle in neutral the skipper balances
+		// them (the one going ahead is eased to match the weaker one astern), so the boat pivots in place.
+		const bool bPivot = C.Engines.size() >= 2 && std::fabs(Controls.Throttle) < 0.05 && std::fabs(Controls.ThrottleSplit) > 0.0;
 		for (int E = 0; E < int(C.Engines.size()) && E < 4; ++E)
 		{
 			const FEngineDef& Eng = C.Engines[E];
 			double Throttle = Clamp(Controls.Throttle, -1.0, 1.0);
 			if (C.Engines.size() >= 2) Throttle = Clamp(Throttle + (Eng.Position.Y < 0.0 ? 1.0 : -1.0) * Controls.ThrottleSplit, -1.0, 1.0);
+			if (bPivot && Throttle > 0.0) Throttle *= Eng.ReverseFraction;
 			const double Target = Throttle * Eng.MaxThrustN * (Throttle < 0.0 ? Eng.ReverseFraction : 1.0);
 			State.EngineThrust[E] = MoveToward(State.EngineThrust[E], Target, Eng.MaxThrustN * Dt);
 			const double T = State.EngineThrust[E];
 			if (std::fabs(T) < 1e-3) continue;
 			const double U = Q.Unrotate(PointVelocityWorld(Eng.Position)).X;
 			const double Vp = Eng.PropSpeedKnots * kKnot;
-			const double Eff = T > 0.0 ? std::max(0.0, 1.0 - (U / Vp) * std::fabs(U / Vp)) : std::max(0.0, 1.0 + 0.3 * U / Vp);
+			// Astern the propeller works backward through its own wake: the thrust is gone by about half the pitch speed.
+			const double Eff = T > 0.0 ? std::max(0.0, 1.0 - (U / Vp) * std::fabs(U / Vp)) : std::max(0.0, 1.0 - (U < 0.0 ? (U / (0.5 * Vp)) * (U / (0.5 * Vp)) : 0.0));
 			// The propeller has to be in the water to push.
 			const Vec3 PropWorld = Origin + Q.Rotate(Eng.Position);
 			const double Submerged = Clamp((WaterAt(PropWorld) - PropWorld.Z) / 0.2, 0.0, 1.0);
@@ -765,6 +771,11 @@ namespace Sailing
 			TargetY = DownHullY;
 			TargetZ = -C.RightingLever;
 		}
+		else if (std::fabs(HeelNow) > 60.0 * kDegToRad)
+		{
+			// On its side: the crew has fallen in, or is hanging on at the centerline, until they try to right her.
+			TargetY = 0.0;
+		}
 		else
 		{
 			const double Hike = Clamp(Controls.Hike, -1.0, 1.0);
@@ -818,8 +829,9 @@ namespace Sailing
 		State.CapsizedTime = HeelAbs > 70.0 * kDegToRad ? State.CapsizedTime + Dt : 0.0;
 		T.bCapsized = State.CapsizedTime > 2.0;
 
-		// Windward side with hysteresis, from the apparent wind at the masthead.
-		if (std::fabs(T.ApparentWindAngle) > 15.0 * kDegToRad && std::fabs(T.ApparentWindAngle) < 165.0 * kDegToRad)
+		// Windward side with hysteresis, from the apparent wind at the masthead (not while knocked flat: the masthead
+		// is then in the lee of the hull and the wind there says nothing about which side is windward).
+		if (std::fabs(T.ApparentWindAngle) > 15.0 * kDegToRad && std::fabs(T.ApparentWindAngle) < 165.0 * kDegToRad && HeelAbs < 45.0 * kDegToRad)
 		{
 			State.WindwardSide = T.ApparentWindAngle > 0.0 ? 1 : -1;
 		}
