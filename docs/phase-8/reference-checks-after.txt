@@ -1,0 +1,48 @@
+Heel       J/22 close-hauled, 6 kn                                 4.01 deg   [  0.00 ..   7.00] ok
+Heel       J/22 close-hauled, 8 kn                                 3.86 deg   [  0.00 ..   7.00] ok
+Heel       J/22 close-hauled, 10 kn                                6.70 deg   [  0.00 ..  15.00] ok
+Heel       J/22 close-hauled, 12 kn                               11.28 deg   [  0.00 ..  15.00] ok
+Heel       J/22 close-hauled, 14 kn                               12.31 deg   [  0.00 ..  15.00] ok
+Heel       Catalina 30 close-hauled, 6 kn                          4.01 deg   [  1.00 ..   7.00] ok
+Heel       Catalina 30 close-hauled, 10 kn                        13.92 deg   [ 12.00 ..  18.00] ok
+Heel       Catalina 30 close-hauled, 12 kn                        19.42 deg   [ 14.00 ..  20.00] ok
+Heel       Catalina 30 close-hauled, 16 kn                        22.51 deg   [ 18.00 ..  24.00] ok
+Heel       Catalina 30 close-hauled, 20 kn, one reef              22.59 deg   [ 19.00 ..  25.00] ok
+Tacking    J/22 tacking angle, 10 kn                              76.10 deg   [ 72.00 ..  93.00] ok
+Tacking    Hobie 16 tacking angle, 10 kn                          91.23 deg   [ 87.00 .. 103.00] ok
+Tacking    ILCA 7 best upwind TWA, 10 kn                          42.74 deg   [ 37.00 ..  49.00] ok
+Roll       J/22 natural roll period                                1.87 s     [  1.70 ..   2.30] ok
+Waves      Ray Hubbard Hs, 15 kn over 8 mi                         0.45 m     [  0.36 ..   0.56] ok
+Waves      Ray Hubbard peak period, 15 kn over 8 mi                2.89 s     [  1.80 ..   3.10] ok
+Capsize    Sunfish left alone on her side for 60 s               176.96 deg   [ 60.00 .. 180.00] ok
+Capsize    ILCA 7 (Laser) left alone on her side for 60 s        178.48 deg   [ 60.00 .. 180.00] ok
+Capsize    Hobie 16 left alone on her side for 60 s              127.83 deg   [ 60.00 .. 180.00] ok
+Capsize    Sunfish 20 s after a capsize in 18 kn                 141.86 deg   [ 60.00 .. 145.00] ok
+Capsize    Sunfish righted from her side                          11.02 s     [  3.00 ..  30.00] ok
+Capsize    ILCA 7 (Laser) 20 s after a capsize in 18 kn          110.95 deg   [ 60.00 .. 145.00] ok
+Capsize    ILCA 7 (Laser) righted from her side                    4.78 s     [  3.00 ..  30.00] ok
+Capsize    Hobie 16 20 s after a capsize in 18 kn                110.20 deg   [ 60.00 .. 145.00] ok
+Capsize    Hobie 16 righted from her side                         13.20 s     [  3.00 ..  30.00] ok
+Capsize    J/22 knocked down to 85 deg, 30 s later                 3.00 deg   [  0.00 ..  35.00] ok
+Capsize    Catalina 22 knocked down to 85 deg, 30 s later          8.40 deg   [  0.00 ..  35.00] ok
+Capsize    Catalina 30 knocked down to 85 deg, 30 s later          1.39 deg   [  0.00 ..  35.00] ok
+Capsize    Corsair 880 inverted, 60 s later                      178.82 deg   [150.00 .. 180.00] ok
+Capsize    Lagoon 42 inverted, 60 s later                        179.94 deg   [150.00 .. 180.00] ok
+Top speed  J/22 spinnaker 135 deg, 20 kn steady                    8.28 kn    [  8.65 ..  10.15] <-- OUT
+Top speed  J/22 spinnaker run, 20 kn gusting 25: peak             11.73 kn    [  8.00 ..  12.00] ok
+Top speed  J/22 running, 30 kn, reefed: peak                      12.41 kn    [  9.00 ..  16.00] ok
+Top speed  ILCA 7 broad reach, 22 kn: peak                        12.67 kn    [ 10.00 ..  16.00] ok
+Portsmouth Sunfish lap time / ILCA, DPN2 4-7 kn                    1.16 ratio [  1.00 ..   1.17] ok
+Portsmouth Catalina 22 lap time / ILCA, DPN2 4-7 kn                0.93 ratio [  0.96 ..   1.13] <-- OUT
+Portsmouth Catalina 30 lap time / ILCA, DPN2 4-7 kn                0.88 ratio [  0.87 ..   1.02] ok
+Portsmouth Hobie 16 lap time / ILCA, DPN2 4-7 kn                   0.85 ratio [  0.78 ..   0.92] ok
+Portsmouth Sunfish lap time / ILCA, DPN3 8-11 kn                   1.14 ratio [  0.99 ..   1.16] ok
+Portsmouth Catalina 22 lap time / ILCA, DPN3 8-11 kn               1.00 ratio [  0.96 ..   1.13] ok
+Portsmouth Catalina 30 lap time / ILCA, DPN3 8-11 kn               0.94 ratio [  0.86 ..   1.01] ok
+Portsmouth Hobie 16 lap time / ILCA, DPN3 8-11 kn                  0.80 ratio [  0.75 ..   0.88] ok
+Portsmouth Sunfish lap time / ILCA, DPN4 12+ kn                    1.03 ratio [  1.00 ..   1.17] ok
+Portsmouth Catalina 22 lap time / ILCA, DPN4 12+ kn                1.08 ratio [  0.99 ..   1.16] ok
+Portsmouth Catalina 30 lap time / ILCA, DPN4 12+ kn                0.97 ratio [  0.86 ..   1.01] ok
+Portsmouth Hobie 16 lap time / ILCA, DPN4 12+ kn                   0.67 ratio [  0.74 ..   0.87] <-- OUT
+
+3 of 46 checks outside their reference range

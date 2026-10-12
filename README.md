@@ -3,7 +3,8 @@
 A technically accurate sailing simulator built in Unreal Engine 5.8. First boat: J/22. Home water: Lake Ray Hubbard, Texas, sailing from Rush Creek Yacht Club in Heath.
 
 The research and phased plan live in the Claude Doc "Sailing Game: Research and Phased Plan". Phases so far:
-0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake), 4 (the fleet).
+0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake), 4 (the fleet),
+5 (Galveston Bay), 6 (traffic and races), 7 (the Gulf, logbook and debrief), 8 (reference realism).
 
 ## Toolchain on the build Mac
 
@@ -223,6 +224,32 @@ towboat pushing barges, and tankers and container ships held to the Houston Ship
   angle you sweep round it); finish upwind through the line; low-point scoring. The race panel shows the countdown,
   your next task, the distance and bearing to the next mark, your position, and the results.
 
+## Reference realism (Phase 8)
+
+Phase 8 checks the game against real sailing, following `docs/phase-8/reference-kit/method.md`:
+
+- **Reference library.** `docs/phase-8/reference-log.csv` grades 190 YouTube clips (A 29, B 91, C 70) with their
+  venue, wind, sea, sun, camera and what can be measured in them.
+- **Capture mode.** `-SailingCapture=HelmEye|ActionCam|Chase|Drone|ShoreTele` puts a camera where a real one would be,
+  with its lens: a phone at the helm (70 deg, windward side, looking to leeward), a stern-pulpit action cam (118 deg with
+  barrel distortion), a chase boat abeam, a drone 30 m up, or a 200 m telephoto from shore. Exposure is locked
+  (`-SailingEV` or auto exposure frozen at 2.5 s), with no HUD, motion blur or depth of field. Each run writes the still,
+  `<shot>.camera.json` (lens, sun, wind, boat, crew) and `<shot>.telemetry.csv` (speed, heel, rudder, sheets, wind,
+  waves at 120 Hz). `scripts/capture-scenes.sh` reproduces the 12 reference scenes in
+  `docs/phase-8/reference-scenes.csv`; `scripts/make_compare_page.py` builds `docs/phase-8/compare/index.html`, each
+  clip playing from its timestamp beside the game frame, with scores.
+- **Physics checks.** `scripts/reference-checks.sh` measures heel, tacking angles, roll period, lake waves, capsize and
+  righting, top speeds and Portsmouth lap-time ratios against published numbers, each with its tolerance and source
+  (`docs/phase-8/reference-checks-after.txt`).
+- **Fixes.** Ranked by severity, visibility, teaching impact and cost in `docs/phase-8/fix-list.md` and worked top
+  down, with golden screenshots in `docs/phase-8/golden/`: whitecaps from 7 kn by Beaufort coverage, weather helm that
+  grows with heel, a J/22 that no longer surfs past 12 kn in 20 kn, dinghies that lie on their side until righted,
+  less heel close-hauled, turbid olive-brown lake water, a darker and greyer storm, a faint wake, and the moon's phase
+  and place in the sky.
+- **Blind test.** 20 stills (10 Commons photos, 10 game frames under matched conditions) in
+  `docs/phase-8/blind-test/stills/`, for sailors to mark real or game. Credits in `credits.md`; the answer key is
+  `answer-key.csv` (don't open it before marking).
+
 ## Rebuilding the lake
 
 ```sh
@@ -350,7 +377,29 @@ Found and fixed along the way: summing added resistance over the spectrum at fir
 with speed when heading into them, as model tests show. The ghost material was not in the cooked build (it was only
 loaded by path) and the bench scripts' `NO_DOCS` guard stopped the regression run after Phase 2.
 
+## Phase 8 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 70 of 70 pass, including 5 new: reference capture, turtled-counts-as-capsized, weather helm, the reference checks (quick set) and moon phase |
+| Reference library | 190 clips graded (A 29, B 91, C 70) in `docs/phase-8/reference-log.csv` |
+| Physics against real numbers | `scripts/reference-checks.sh`: 43 of 46 within their reference range (6 of 39 out before the fixes). The 3 out are open: J/22 steady spinnaker speed at 20 kn (8.3 kn vs ORC 9.4), Hobie 16 against the ILCA in 12+ kn, Catalina 22 against the ILCA in light air. The J/22 polar gate is unchanged (0 of 39 out, worst 8.1%) |
+| Fixes | 8 of 12 done, 3 partly, 1 open, each with a golden screenshot or test (`docs/phase-8/fix-list.md`) |
+| Comparison | 12 reference scenes reproduced with the capture mode and scored side by side (`docs/phase-8/compare/index.html`) |
+| Blind test | 20 stills ready (`docs/phase-8/blind-test/`); waiting on Bean's marks |
+| Frame rate, default (Medium) tier | Capture views: helm eye 84 fps, action cam 87, drone 119, storm from shore 119, full-moon night 109 (`docs/phase-8/frame-budget.csv`) |
+| No regressions | Every earlier phase's views rerun on this build (`docs/phase-8/regression.csv`): all above 60 on Medium (lowest 66, the logbook), every view the same as or faster than at Phase 7 within 1 fps |
+| Screenshots | `docs/phase-8/helm-eye.png`, `action-cam.png`, `drone.png`, `storm-shore.png`, `full-moon.png`, the captures in `docs/phase-8/captures/` and the goldens in `docs/phase-8/golden/` |
+
+Found and fixed along the way: the moon, once placed in the sky, made the clouds trace shadow rays toward a light near
+the horizon and cost the night views 5 fps (its light now stays at least 25 deg up); a turtled dinghy did not count as
+capsized and could not be righted (heel reads near 0 upside down); the helm-eye camera sat inside a crew figure.
+
 ## Known gaps
+
+- Phase 8: crew are cylinders and decks are boxes (fix 9); sails are smooth sheets without wrinkles or leech flutter;
+  storms have no shelf-cloud structure; the J/22's spinnaker is half the certificate's area (steady broad-reach speed
+  11% under ORC). Sounds, docks and trees wait on Bean's recordings, photos and scans (method step 6).
 
 - The Gulf: waves do not break over the bars or the jetties (the open sea fades out with depth and shelter instead);
   no refraction or reflection; the swell always comes from the southeast.
@@ -375,13 +424,11 @@ loaded by path) and the bench scripts' `NO_DOCS` guard stopped the regression ru
 - The chart has no area names, chart notes or contour labels; legends overlap where aids crowd together (zoom in).
   The course line runs to the crosshair (no click-to-plot), and bearings for a fix must be taken within 10 minutes
   (no running fix yet).
-- The moon has no phase: moonlight is the same every night.
 - The sun is now placed by the local clock (longitude, time zone, equation of time). Before Phase 5 the clock hour
   was treated as solar time, so the same start hour on the lake now has the sun about an hour earlier in its arc.
 
 - The fleet polars other than the J/22 and Catalina 30 are estimates (see the tolerance tiers above); the Hobie 16 has
   no reference above 10 kn, so it is checked for behavior there instead.
-- The Sunfish's low lateen often lifts her back up on her own after a knockdown; a real one usually stays on her side.
 - Beach cats in strong wind are faster upwind than the (estimated) references suggest; pitching and slamming in chop
   are approximated by an added-resistance term.
 - Hulls are generated from the physics shapes but have no cabin interiors, hardware or rigging beyond the forestay;
@@ -397,7 +444,8 @@ loaded by path) and the bench scripts' `NO_DOCS` guard stopped the regression ru
 - Bridge piers are drawn every 30 m along the deck but only the deck is a collision obstacle; the hull passes
   through piers.
 
-- Storm sky reads light grey rather than menacing; no towering cell is visible on the horizon before the front.
+- Storm: the deck now darkens and greys the scene, but there is no shelf (arcus) cloud structure or towering cell on
+  the horizon before the front.
 - Gust front and cat's paws are visible but subtle from a low camera; learning mode tips point them out.
 - The J/22 can surf to about 14 kn in 30 kn gusts, which is optimistic; resistance past Fn 0.8 is flat.
 - High quality tier dips just under 60 fps in clear breezy afternoons on the M5 Pro.

@@ -285,7 +285,10 @@ bool FRaceAiFleetTest::RunTest(const FString& Parameters)
 	// right way and finishes; the scores are 1 to 5. Close racing in a pack still brings the odd touch (known gap):
 	// at most two of the eight races may have one.
 	int32 RacesWithContact = 0, Contacts = 0;
-	for (unsigned Seed = 1; Seed <= 8; ++Seed)
+	// Sixteen races, bound a third: a pack of five AI J/22s touches in about one race in four or five (measured over 32
+	// races: 25% before Phase 8's helm balance, 19% after), so eight races at a 25% bound failed by chance as often as
+	// not. Fewer touches needs better AI racing (fix list); this guards against it getting worse.
+	for (unsigned Seed = 1; Seed <= 16; ++Seed)
 	{
 		const FRaceScenarioResult R = RunAiRace(5, 2, 600.0, Seed);
 		FString Line = FString::Printf(TEXT("Race %u: %.0f s;"), Seed, R.RaceSeconds);
@@ -304,8 +307,8 @@ bool FRaceAiFleetTest::RunTest(const FString& Parameters)
 		RacesWithContact += R.Collisions > 0;
 		Contacts += R.Collisions;
 	}
-	AddInfo(FString::Printf(TEXT("%d contacts in 8 races (%d races with any)"), Contacts, RacesWithContact));
-	TestTrue(TEXT("At most two races of eight with a touch between AI racers"), RacesWithContact <= 2);
+	AddInfo(FString::Printf(TEXT("%d contacts in 16 races (%d races with any)"), Contacts, RacesWithContact));
+	TestTrue(TEXT("At most a third of the races with a touch between AI racers"), RacesWithContact <= 5);
 	return true;
 }
 

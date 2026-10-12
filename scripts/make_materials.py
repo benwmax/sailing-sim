@@ -171,13 +171,25 @@ sx += rs.x; sy += rs.y;
 float rr = Rain * 0.06 * near;
 sx += rr * (sin(p.x * 61.0 + T * 23.0) * cos(p.y * 47.0 - T * 17.0) + sin(p.y * 83.0 + T * 31.0));
 sy += rr * (cos(p.x * 53.0 - T * 29.0) * sin(p.y * 71.0 + T * 19.0) + cos(p.x * 97.0 - T * 27.0));
-// Whitecaps on steep crests once the wind is up.
+// Whitecaps on the crests, by the Beaufort scale: the first scattered ones at 7-10 kn (Force 3), numerous at 11-16,
+// many at 17-21, everywhere from 22. They follow the local wind (from the cat's-paw map), so a gust front shows as a
+// band of breaking crests and a puff shows as a patch of them.
 float slope = length(float2(sx, sy));
-// Whitecaps follow the local wind (from the cat's-paw map), so a gust front shows as a band of breaking crests.
 float localKnots = rough * 15.56;
-float capsLevel = saturate((localKnots - 11.0) / 7.0);
-float capNoise = saturate(sin(p.x * 1.7 + sin(p.y * 1.3 + T * 0.7) * 2.0) * sin(p.y * 2.1 - T * 0.9 + sin(p.x * 0.9)) * 2.0);
-float caps = saturate((slope - 0.26) * 4.0) * saturate(h * 6.0) * capsLevel * (0.4 + 0.6 * capNoise) * 0.7;
+float capsLevel = saturate((localKnots - 7.0) / 15.0);
+// Wind sets how much of the water is breaking (about 1% at Force 3, 5% at Force 4, 20% at Force 6); each cap is
+// bright white. Caps are short along the wind and long across it, drift downwind, and sit on the crests.
+float cover = 0.2 * pow(capsLevel, 1.5);
+float2 q = float2(dot(p.xy, d), dot(p.xy, n));
+float n1 = 0.5 + 0.5 * sin(q.x * 1.3 - T * 1.6 + sin(q.y * 0.5) * 2.0);
+float n2 = 0.5 + 0.5 * sin(q.y * 0.45 + sin(q.x * 0.7 + T * 0.4) * 2.0);
+float n3 = 0.5 + 0.5 * sin(p.x * 0.23 + p.y * 0.31 + T * 0.2 + sin(p.y * 0.17) * 1.5);
+float blob = n1 * lerp(0.55, 1.0, n2) * lerp(0.6, 1.0, n3);
+float thr = 1.0 - 2.2 * cover;
+float sharp = smoothstep(thr, thr + 0.06, blob) * (cover > 0.0 ? 1.0 : 0.0) * lerp(0.6, saturate(h * 6.0 + 0.6), fade)
+    * (1.0 + 0.5 * saturate((slope - 0.12) * 5.0));
+// Far off the caps are smaller than a pixel: show their average whiteness instead of shimmering flecks.
+float caps = lerp(saturate(sharp) * 0.9, cover * 0.9, saturate((dist - 250.0) / 1200.0));
 // Wake and bow wave foam from the boat (CPU-filled map around the boat).
 float2 wuv = (p.xy - WakeRect.xy) / WakeRect.z + 0.5;
 float inside = step(0.0, wuv.x) * step(wuv.x, 1.0) * step(0.0, wuv.y) * step(wuv.y, 1.0);
@@ -258,8 +270,9 @@ def build_water():
     connect(rain, "", shade, "Rain")
     connect(debug, "", shade, "DebugGust")
 
-    # Turbid green-brown Texas lake water; foam is white and rough.
-    water_color = vector(mat, "WaterColor", (0.018, 0.045, 0.042, 1), -300, 600)
+    # Turbid olive-green Texas lake water (Ray Hubbard, White Rock, Galveston Bay from above: Phase 8 RH-004, TXL-005,
+    # GB-008): green and red come back from the suspended silt, blue is absorbed. Foam is white and rough.
+    water_color = vector(mat, "WaterColor", (0.048, 0.054, 0.028, 1), -300, 600)
     foam_color = node(mat, unreal.MaterialExpressionConstant3Vector, -300, 700, constant=unreal.LinearColor(0.85, 0.88, 0.9, 1))
     base = node(mat, unreal.MaterialExpressionLinearInterpolate, -100, 650)
     connect(water_color, "", base, "A")

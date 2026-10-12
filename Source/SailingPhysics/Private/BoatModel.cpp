@@ -109,7 +109,24 @@ namespace Sailing
 		// Residuary resistance per unit weight against Froude number. Shape follows the Delft series for a
 		// light-displacement keelboat; tuned against the J/22 polar.
 		Residuary = { { 0.00, 0.0000 }, { 0.10, 0.0002 }, { 0.15, 0.0005 }, { 0.20, 0.0012 }, { 0.25, 0.0025 }, { 0.30, 0.0050 },
-			{ 0.35, 0.0100 }, { 0.40, 0.0220 }, { 0.45, 0.0480 }, { 0.50, 0.0800 }, { 0.55, 0.1000 }, { 0.60, 0.1100 }, { 0.70, 0.1200 }, { 0.80, 0.1250 } };
+			{ 0.35, 0.0100 }, { 0.40, 0.0220 }, { 0.45, 0.0480 }, { 0.50, 0.0800 }, { 0.55, 0.1000 }, { 0.60, 0.1100 },
+			// Past the hump a displacement keelboat's wave drag keeps climbing (Delft series); she is not a planing hull.
+			// Flat here, she surfed to 12.5 kn in 20 kn of wind; the references are bursts of 9-12 kn and rare peaks near
+			// her 16 kn record (Phase 8: J22-H-003, J22-S-001).
+			{ 0.70, 0.1400 }, { 0.80, 0.1700 }, { 0.90, 0.2000 }, { 1.00, 0.2300 } };
+
+		// Balance (Phase 8): the keel's side force includes the canoe body's (folded into its area below), so the rudder
+		// sits in the downwash of the lower-aspect hull-and-keel system, more than a bare fin's: 1.7 x. With the
+		// heel-induced yaw, she carries the weather helm the tuning guides describe: about 1 deg of rudder at 6 kn,
+		// 1.5 at 10, 4-5 at 15 kn, growing as she heels.
+		KeelDownwashFactor = 1.7;
+		HeelYawCoef = 0.06;
+		// J/22 crews keep her nearly flat upwind: traveler down, backstay on, ease in the puffs past about 13 deg
+		// (North Sails and Quantum J/22 guides).
+		TrimHeelLimitDeg = 13.0;
+		// With the rudder now carrying its share of the side force (and its drag), the hull's form factor comes back to
+		// the ITTC norm for a fair keelboat hull: the earlier 1.10 was standing in for that missing rudder drag.
+		FormFactor = 1.04;
 
 		// Fin keel, 3 ft 10 in draft. The canoe body's own side force is folded into the keel's area.
 		FFoilDef Keel;
@@ -569,6 +586,13 @@ namespace Sailing
 			// Munk moment: the canoe body wants to turn broadside to its motion (part of weather helm).
 			const Vec3 CGVelBody = Q.Unrotate(State.Velocity - WaterCurrent);
 			TorqueBody.Z += -C.MunkAddedMass * CGVelBody.X * CGVelBody.Y;
+			if (C.HeelYawCoef > 0.0 && !C.Hulls.empty())
+			{
+				// Heel-induced yaw toward windward (positive heel = heeled to port, wind from starboard: bow to starboard).
+				const double L = C.Hulls[0].WaterlineLength();
+				const double Heel = Clamp(Q.Heel(), -60.0 * kDegToRad, 60.0 * kDegToRad);
+				TorqueBody.Z += C.HeelYawCoef * 0.5 * kWaterDensity * CGVelBody.X * std::fabs(CGVelBody.X) * L * L * HullDepth() * std::sin(Heel);
+			}
 			TorqueBody.Z += -C.YawDampingLinear * State.AngularVelocity.Z;
 			TorqueBody.X += -C.ExtraRollDamping * State.AngularVelocity.X;
 		}
@@ -680,11 +704,15 @@ namespace Sailing
 		{
 			const Vec3 MastBase = Vec3(C.MastX, 0.0, C.BoomZ);
 			const int N = 6;
-			const double SegLen = (C.MastheadZ - C.BoomZ) / N;
-			const double SegVol = 0.25 * kPi * C.MastDiameter * C.MastDiameter * SegLen;
+			// The rig reaches as high as the sail does (a lateen's yard stands well above its short mast).
+			const double RigTopZ = std::max(C.MastheadZ, C.Main.NumStrips > 0 ? C.Main.Strips[C.Main.NumStrips - 1].ZTop : C.MastheadZ);
+			const double SegLen = (RigTopZ - C.BoomZ) / N;
+			const double MastSegVol = 0.25 * kPi * C.MastDiameter * C.MastDiameter * SegLen;
+			const double SparSegVol = 0.001 * C.SparFloatLiters / N;
 			for (int I = 0; I < N; ++I)
 			{
 				const Vec3 Body = MastBase + Vec3(0.0, 0.0, (I + 0.5) * SegLen);
+				const double SegVol = (Body.Z <= C.MastheadZ ? MastSegVol : 0.0) + SparSegVol;
 				const Vec3 P = Origin + Q.Rotate(Body);
 				const double Depth = WaterAt(P) - P.Z;
 				if (Depth <= 0.0) continue;
@@ -697,7 +725,10 @@ namespace Sailing
 				const Vec3 R = P - CGWorld;
 				const double R2 = R.X * R.X + R.Y * R.Y + R.Z * R.Z;
 				const double PointMass = 1.0 / (1.0 / Mass + R2 / std::min(EffectiveInertia.X, EffectiveInertia.Y));
-				const double Coef = std::min(0.5 * kWaterDensity * 1.2 * PlateArea * Vel.Length() * Wet, 0.3 * PointMass / Dt);
+				// A sail lying on the water sinks only as fast as the water can flow round a plate that size, so slow motion
+				// is resisted too (drag on at least 0.6 m/s): a capsized dinghy lies on her side for a while before she
+				// turns turtle, as in the Phase 8 references (SUN-S-004, SUN-S-006, H16-C-004).
+				const double Coef = std::min(0.5 * kWaterDensity * 1.2 * PlateArea * std::max(Vel.Length(), 0.6) * Wet, 0.3 * PointMass / Dt);
 				const Vec3 Drag = Vel * -Coef;
 				AddWorldForce(Drag + Vec3(0.0, 0.0, kWaterDensity * kGravity * SegVol * Wet), P);
 			}
@@ -826,9 +857,17 @@ namespace Sailing
 		// Crew: to the windward side, sitting, hiking or out on the trapeze; on the board (or the righting line)
 		// to bring a capsized boat back up.
 		const double HeelNow = Q.Heel();
+		const double TiltNow = Q.Tilt(); // like |heel|, but reads 180 deg turned turtle (the heel reads near 0 there)
 		double TargetY, TargetZ = 0.0;
-		const bool bRighting = Controls.bRighting && C.RightingLever > 0.0 && std::fabs(HeelNow) > 50.0 * kDegToRad;
-		if (bRighting)
+		const bool bRighting = Controls.bRighting && C.RightingLever > 0.0 && TiltNow > 50.0 * kDegToRad;
+		if (bRighting && TiltNow > 150.0 * kDegToRad && !C.bMultihull)
+		{
+			// Turned turtle: stand on the edge of the upturned hull and lean right back on the board, which pulls her
+			// onto her side first (then the usual righting below brings her up).
+			TargetY = (HeelNow >= 0.0 ? 1.0 : -1.0) * (0.5 * C.Beam + 1.6 * C.RightingLever);
+			TargetZ = -1.2 * C.RightingLever;
+		}
+		else if (bRighting)
 		{
 			// Heeled to port (positive heel): the port hull (or the port side) is down.
 			double DownHullY = 0.0;
@@ -836,7 +875,7 @@ namespace Sailing
 			TargetY = DownHullY;
 			TargetZ = -C.RightingLever;
 		}
-		else if (std::fabs(HeelNow) > 60.0 * kDegToRad)
+		else if (TiltNow > 60.0 * kDegToRad)
 		{
 			// On its side: the crew has fallen in, or is hanging on at the centerline, until they try to right her.
 			TargetY = 0.0;

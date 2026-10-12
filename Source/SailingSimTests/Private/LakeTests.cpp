@@ -104,8 +104,10 @@ bool FSailingGroundingTest::RunTest(const FString& Parameters)
 	const FWindField Wind = WindFrom(10.0, 90.0); // beam reach
 	FBoatControls C;
 	FAutoTrim Trim;
+	FAutopilot Helm; // someone has to steer: she carries weather helm and rounds up if the tiller is let go
+	Helm.TargetTWADeg = 90.0;
 	bool bEverAground = false;
-	SailFor(Boat, C, Wind, 90.0, &Trim, [&] { bEverAground |= Boat.GetTelemetry().bAground; });
+	SailFor(Boat, C, Wind, 90.0, &Trim, [&] { C.Tiller = Helm.Update(Boat); bEverAground |= Boat.GetTelemetry().bAground; });
 	const double X = Boat.OriginPosition().X;
 	AddInfo(FString::Printf(TEXT("Stopped at x = %.1f m, %.2f kn, depth under keel %.2f m"), X, Boat.GetTelemetry().BoatSpeed / kKnot, Boat.GetTelemetry().DepthUnderKeel));
 	TestTrue(TEXT("Ran aground"), bEverAground);
@@ -128,8 +130,10 @@ bool FSailingObstacleTest::RunTest(const FString& Parameters)
 		Boat.Reset(0.0, 0.0, 0.0, 4.0 * kKnot);
 		FBoatControls C;
 		FAutoTrim Trim;
+		FAutopilot Helm; // steered on a beam reach (with the tiller let go she would round up)
+		Helm.TargetTWADeg = 90.0;
 		bool bHit = false;
-		SailFor(Boat, C, Wind, 40.0, &Trim, [&] { bHit |= Boat.GetTelemetry().bCollision; });
+		SailFor(Boat, C, Wind, 40.0, &Trim, [&] { C.Tiller = Helm.Update(Boat); bHit |= Boat.GetTelemetry().bCollision; });
 		return TPair<double, bool>(Boat.OriginPosition().X, bHit);
 	};
 	const auto Dock = RunInto(-2.0, 0.8, 0.25);
@@ -205,11 +209,17 @@ bool FSailingHeaveToTest::RunTest(const FString& Parameters)
 
 	FDrillRunner Drill;
 	Drill.Start(ESailingDrill::HeaveTo, Boat, 0.0);
-	// Back the jib, ease the main, tiller a little to leeward and hold it.
-	C.bBackJib = true; C.JibSheet = 0.1; C.MainSheet = 0.8; C.Tiller = 0.5;
+	// Back the jib and ease the main, hold her course while the backed jib takes her way off, then put the tiller to
+	// leeward and hold it. (With the tiller over at full speed she carries her way through the wind and tacks.)
+	C.bBackJib = true; C.JibSheet = 0.1; C.MainSheet = 0.8; C.Tiller = 0.0;
 	FDrillContext Ctx;
 	Ctx.bBackJib = true;
-	for (int32 I = 0; I < int32(90 * PhysicsHz) && Drill.IsActive(); ++I) { Boat.Step(PhysicsDt, C, Wind); Drill.Update(Boat, Ctx, PhysicsDt); }
+	for (int32 I = 0; I < int32(90 * PhysicsHz) && Drill.IsActive(); ++I)
+	{
+		if (I == int32(6 * PhysicsHz)) C.Tiller = 0.3;
+		Boat.Step(PhysicsDt, C, Wind);
+		Drill.Update(Boat, Ctx, PhysicsDt);
+	}
 	AddInfo(Drill.GetStatus());
 	TestTrue(TEXT("Hove to within 90 s and held it 20 s"), Drill.IsComplete());
 	return true;

@@ -168,6 +168,29 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateLightning(DeltaSeconds, CamPos);
 }
 
+namespace
+{
+	constexpr double kSynodicMonthDays = 29.530588853;
+	constexpr double kNewMoon2000Unix = 947182440.0; // 2000-01-06 18:14 UTC
+}
+
+double ASailingEnvironment::MoonAgeDays(double UnixUtc)
+{
+	const double Age = FMath::Fmod((UnixUtc - kNewMoon2000Unix) / 86400.0, kSynodicMonthDays);
+	return Age < 0.0 ? Age + kSynodicMonthDays : Age;
+}
+
+double ASailingEnvironment::MoonIllumination(double AgeDays)
+{
+	return 0.5 * (1.0 - FMath::Cos(2.0 * PI * AgeDays / kSynodicMonthDays));
+}
+
+void ASailingEnvironment::MoonPosition(double ClockHour, double DayOfYear, double AgeDays, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth)
+{
+	const double ElongationDeg = 360.0 * AgeDays / kSynodicMonthDays; // east of the sun
+	SunPosition(ClockHour - ElongationDeg / 15.0, DayOfYear + 365.25 * ElongationDeg / 360.0, LatitudeDeg, LongitudeDeg, UtcOffsetHours, OutElevation, OutAzimuth);
+}
+
 void ASailingEnvironment::UpdateSun(double Hour)
 {
 	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
@@ -187,8 +210,17 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		// Moonlight is about a thousandth of the sun here (not the real four hundred thousandth: the eye adapts and the
 		// exposure floor keeps the night dark); it lights the atmosphere as its second sun, a deep blue sky.
+		// Phase 8: the moon has its phase and its place in the sky for the date (a new moon leaves only the town glow).
 		static const bool bNoMoon = FParse::Param(FCommandLine::Get(), TEXT("SailingNoMoon")); // profiling
-		MoonLight->SetIntensity(bNoMoon ? 0.f : SunIntensity * 0.0015f * Night);
+		const double Age = MoonAgeDays(GM->GetUnixTime());
+		double MoonEl, MoonAz;
+		MoonPosition(Hour, GM->GetDayOfYear(), Age, GM->GetLake().Latitude, GM->GetLake().Longitude, GM->GetUtcOffsetHours(), MoonEl, MoonAz);
+		const float Up = FMath::SmoothStep(-3.f, 4.f, float(MoonEl));
+		const float Lit = 0.15f + 0.85f * float(MoonIllumination(Age)) * Up;
+		// The light keeps the moon's bearing but stays at least 25 deg up: the clouds' shadow rays toward a light near
+		// the horizon cost several ms a frame (as with a low sun), and a low moon's light is dim anyway (Up above).
+		MoonLight->SetWorldRotation(FRotator(-FMath::Max(MoonEl, 25.0), MoonAz + 180.0, 0.0));
+		MoonLight->SetIntensity(bNoMoon ? 0.f : SunIntensity * 0.0015f * Night * Lit);
 		MoonLight->SetVisibility(!bNoMoon && Night > 0.f);
 	}
 	if (Sun)
@@ -228,7 +260,9 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	}
 	if (SkyLightActor)
 	{
-		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f + 0.8f * float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.08f, Night));
+		// Under a storm's deck the whole sky is darker, not brighter: illuminance under a shelf cloud falls by one to two
+		// orders of magnitude (Phase 8: STORM-001, SQ-001, C30-S-001 all go grey-dark as it passes over).
+		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f - 0.6f * float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.08f, Night));
 		SkyLightActor->GetLightComponent()->SetLightColor(FMath::Lerp(FLinearColor::White, FLinearColor(0.55f, 0.65f, 1.f), Night));
 	}
 }
@@ -252,9 +286,15 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 	}
 	if (PostProcess)
 	{
-		// Eyes adapt to the gloom under a storm: lift exposure as the sky darkens.
+		// Eyes and cameras adapt only part of the way to the gloom under a storm: the scene should read dark (every storm
+		// reference does), so hold exposure a stop and a half under where auto exposure would take it at full darkness.
 		PostProcess->Settings.bOverride_AutoExposureBias = true;
-		PostProcess->Settings.AutoExposureBias = 0.5f + 0.6f * float(W.CloudDarkness);
+		PostProcess->Settings.AutoExposureBias = 0.5f - 1.5f * float(W.CloudDarkness);
+		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
+		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.
+		const float Grey = FMath::SmoothStep(0.3f, 0.8f, float(W.CloudDarkness));
+		PostProcess->Settings.bOverride_ColorSaturation = true;
+		PostProcess->Settings.ColorSaturation = FVector4(1.f, 1.f, 1.f, 1.f - 0.7f * Grey);
 	}
 	if (Fog)
 	{

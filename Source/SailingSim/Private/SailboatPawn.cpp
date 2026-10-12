@@ -2303,8 +2303,15 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		OnboardCameraMount(CapturePreset, Boat.GetConfig(), FMath::Sign(HelmSide), Location, Rotation);
 		Location.Y *= FMath::Abs(HelmSide);
 		CaptureCamera->SetRelativeLocationAndRotation(Location, Rotation);
-		// We are the helmsman: hide the aftmost crew figure (the camera is in its head).
-		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false);
+		// We are the helmsman: hide the crew figures beside us (the camera is in one's head and the simple figures
+		// would fill a phone's frame); those further forward stay in view, as in the reference clips.
+		if (CapturePreset == ECapturePreset::HelmEye)
+		{
+			for (UPrimitiveComponent* Figure : Crew)
+			{
+				if (Figure) Figure->SetVisibility(FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter);
+			}
+		}
 	}
 	if (!Info.bOnboard)
 	{

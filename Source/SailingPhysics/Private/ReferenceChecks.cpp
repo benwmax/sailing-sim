@@ -12,7 +12,7 @@ namespace Sailing
 {
 	namespace
 	{
-		struct FRunResult { double MeanKnots = 0.0, PeakKnots = 0.0, MeanHeelDeg = 0.0, MeanTwaDeg = 0.0; };
+		struct FRunResult { double MeanKnots = 0.0, PeakKnots = 0.0, MeanHeelDeg = 0.0, MeanTwaDeg = 0.0, MeanLeewayDeg = 0.0; };
 
 		/** The polar's way of sailing a point (autopilot, auto-trim, crew already hiking), with reefs, gusts and a fetch. */
 		FRunResult SteadyRun(const FBoatConfig& Config, double Tws, double Twa, bool bSpinnaker, int Reefs, double Settle, double Average,
@@ -60,11 +60,13 @@ namespace Sailing
 					R.PeakKnots = std::max(R.PeakKnots, T.BoatSpeed / kKnot);
 					R.MeanHeelDeg += std::fabs(T.Heel) * kRadToDeg;
 					R.MeanTwaDeg += std::fabs(T.TrueWindAngle) * kRadToDeg;
+					R.MeanLeewayDeg += std::fabs(T.Leeway) * kRadToDeg;
 				}
 			}
 			R.MeanKnots /= AverageSteps;
 			R.MeanHeelDeg /= AverageSteps;
 			R.MeanTwaDeg /= AverageSteps;
+			R.MeanLeewayDeg /= AverageSteps;
 			return R;
 		}
 
@@ -91,12 +93,37 @@ namespace Sailing
 
 	FVmgResult BestUpwind(const FBoatConfig& Config, double TrueWindKnots)
 	{
-		FVmgResult Best;
+		// VMG is flat near its best angle, so the single best sample jumps about with noise: fit a parabola through the
+		// best point and its neighbours and take its peak.
+		std::vector<double> Twas, Vmgs;
+		std::vector<FRunResult> Runs;
 		for (double Twa = 34.0; Twa <= 58.0; Twa += 2.0)
 		{
 			const FRunResult R = SteadyRun(Config, TrueWindKnots, Twa, false, 0, 25.0, 10.0);
-			const double Vmg = R.MeanKnots * std::cos(R.MeanTwaDeg * kDegToRad);
-			if (Vmg > Best.VmgKnots) { Best.TwaDeg = R.MeanTwaDeg; Best.SpeedKnots = R.MeanKnots; Best.VmgKnots = Vmg; Best.HeelDeg = R.MeanHeelDeg; }
+			// Made good over the ground: leeway carries her that much further off the wind than she is heading.
+			Twas.push_back(R.MeanTwaDeg);
+			Vmgs.push_back(R.MeanKnots * std::cos((R.MeanTwaDeg + R.MeanLeewayDeg) * kDegToRad));
+			Runs.push_back(R);
+		}
+		size_t I = size_t(std::max_element(Vmgs.begin(), Vmgs.end()) - Vmgs.begin());
+		FVmgResult Best;
+		Best.TwaDeg = Twas[I]; Best.SpeedKnots = Runs[I].MeanKnots; Best.VmgKnots = Vmgs[I]; Best.HeelDeg = Runs[I].MeanHeelDeg;
+		// Least-squares parabola through every sample within 8 degrees of the best one (in u = TWA - best, for conditioning).
+		double S0 = 0, S1 = 0, S2 = 0, S3 = 0, S4 = 0, T0 = 0, T1 = 0, T2 = 0;
+		for (size_t K = 0; K < Vmgs.size(); ++K)
+		{
+			const double U = Twas[K] - Twas[I];
+			if (std::fabs(U) > 8.5) continue;
+			S0 += 1; S1 += U; S2 += U * U; S3 += U * U * U; S4 += U * U * U * U;
+			T0 += Vmgs[K]; T1 += U * Vmgs[K]; T2 += U * U * Vmgs[K];
+		}
+		// Normal equations for y = a u^2 + b u + c (Cramer's rule).
+		const double D = S4 * (S2 * S0 - S1 * S1) - S3 * (S3 * S0 - S1 * S2) + S2 * (S3 * S1 - S2 * S2);
+		if (S0 >= 4 && std::fabs(D) > 1e-12)
+		{
+			const double A = (T2 * (S2 * S0 - S1 * S1) - S3 * (T1 * S0 - S1 * T0) + S2 * (T1 * S1 - S2 * T0)) / D;
+			const double B = (S4 * (T1 * S0 - S1 * T0) - T2 * (S3 * S0 - S1 * S2) + S2 * (S3 * T0 - T1 * S2)) / D;
+			if (A < 0.0) Best.TwaDeg = Twas[I] + Clamp(-B / (2.0 * A), -8.0, 8.0);
 		}
 		return Best;
 	}
@@ -170,6 +197,45 @@ namespace Sailing
 		return Boat.GetState().Orientation.Tilt() * kRadToDeg; // 0 upright, 90 on her side, 180 turtled
 	}
 
+	FCapsizeRun CapsizeAndRight(const FBoatConfig& Config, double TrueWindKnots, double WaitSeconds)
+	{
+		FWindParams WindParams;
+		WindParams.SpeedKnots = TrueWindKnots;
+		WindParams.GustIntensity = 0.2;
+		const FWindField Wind(WindParams);
+		FWaveField Waves(7);
+		FWaveParams WaveParams;
+		WaveParams.WindSpeedKnots = TrueWindKnots;
+		WaveParams.FetchMeters = kPolarFetchMeters;
+		Waves.SetWind(WaveParams);
+		Waves.SnapToTarget();
+		FBoatModel Boat(Config);
+		Boat.Reset(0.0, 0.0, -70.0 * kDegToRad, 2.0);
+		FAutopilot Pilot;
+		Pilot.TargetTWADeg = 70.0;
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 0.0; // cleated hard in, nobody hiking: over she goes
+		FCapsizeRun R;
+		double CapsizedAt = -1.0;
+		for (int I = 0; I < int(120.0 * PhysicsHz); ++I)
+		{
+			const double T = I * PhysicsDt;
+			if (CapsizedAt < 0.0)
+			{
+				C.Tiller = Pilot.Update(Boat);
+				if (Boat.GetTelemetry().bCapsized) { CapsizedAt = T; C.MainSheet = C.JibSheet = 1.0; C.Tiller = 0.0; }
+			}
+			else if (T >= CapsizedAt + WaitSeconds)
+			{
+				if (!C.bRighting) R.TiltAfterWaitDeg = Boat.GetState().Orientation.Tilt() * kRadToDeg;
+				C.bRighting = true;
+				if (Boat.GetState().Orientation.Tilt() < 30.0 * kDegToRad) { R.RightingSeconds = T - CapsizedAt - WaitSeconds; break; }
+			}
+			Boat.Step(PhysicsDt, C, Wind, &Waves);
+		}
+		return R;
+	}
+
 	FSpeedRun SpeedRun(const FBoatConfig& Config, double TrueWindKnots, double TwaDeg, bool bSpinnaker, double GustIntensity, double FetchMeters, double Seconds, int Reefs)
 	{
 		const FRunResult R = SteadyRun(Config, TrueWindKnots, TwaDeg, bSpinnaker, Reefs, 30.0, Seconds, GustIntensity, FetchMeters, 3);
@@ -228,6 +294,15 @@ namespace Sailing
 			Out.push_back(Check("Capsize", std::string(C.Name) + " left alone on her side for 60 s", HeelAfterCapsize(C, 88.0, 12.0, 60.0), 60.0, 180.0, "deg",
 				"Capsized dinghies and beach cats lie at about 90 deg (or turtle) until the crew rights them"));
 		}
+		for (EBoatType T : { EBoatType::Sunfish, EBoatType::ILCA7, EBoatType::Hobie16 })
+		{
+			const FBoatConfig C = FBoatConfig::Make(T);
+			const FCapsizeRun Run = CapsizeAndRight(C, 18.0, 20.0);
+			Out.push_back(Check("Capsize", std::string(C.Name) + " 20 s after a capsize in 18 kn", Run.TiltAfterWaitDeg, 60.0, 145.0, "deg",
+				"Still on her side, sail on the water (SUN-S-004, SUN-S-006, H16-C-004)"));
+			Out.push_back(Check("Capsize", std::string(C.Name) + " righted from her side", Run.RightingSeconds, 3.0, 30.0, "s",
+				"Righted in about 10-30 s with the crew on the board or the righting line (SUN-S-004, H16-C-001)"));
+		}
 		for (EBoatType T : { EBoatType::J22, EBoatType::Catalina22, EBoatType::Catalina30 })
 		{
 			const FBoatConfig C = FBoatConfig::Make(T);
@@ -243,8 +318,10 @@ namespace Sailing
 
 		// Speed ceilings (gusty wind, short lake waves, 3 minutes).
 		{
+			const FRunResult Steady = SteadyRun(J22, 20.0, 135.0, true, 0, 40.0, 20.0);
+			Out.push_back(Check("Top speed", "J/22 spinnaker 135 deg, 20 kn steady", Steady.MeanKnots, 9.40 * 0.92, 9.40 * 1.08, "kn", "ORC J/22 certificate: 9.40 kn (tolerance 8%)"));
 			const FSpeedRun A = SpeedRun(J22, 20.0, 135.0, true, 0.2, 13000.0, 180.0);
-			Out.push_back(Check("Top speed", "J/22 spinnaker run, 20 kn: peak", A.PeakKnots, 8.0, 11.0, "kn", "Singlehanded J/22 GPS 9.7 kn peak surfing in just under 20 kn; ORC 9.2 kn at 120 deg"));
+			Out.push_back(Check("Top speed", "J/22 spinnaker run, 20 kn gusting 25: peak", A.PeakKnots, 8.0, 12.0, "kn", "Bursts of about 9-12 kn on waves (J/22 GPS 9.7 kn peak in just under 20 kn; method target)"));
 			const FSpeedRun B = SpeedRun(J22, 30.0, 150.0, false, 0.2, 13000.0, 180.0, 1);
 			Out.push_back(Check("Top speed", "J/22 running, 30 kn, reefed: peak", B.PeakKnots, 9.0, 16.0, "kn", "Geronimo J/22, 30+ kn: 'around 14 or 15 knots'; 16 kn record"));
 			const FSpeedRun L = SpeedRun(FBoatConfig::Make(EBoatType::ILCA7), 22.0, 110.0, false, 0.25, 13000.0, 180.0);

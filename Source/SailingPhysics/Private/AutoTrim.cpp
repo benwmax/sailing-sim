@@ -90,6 +90,8 @@ namespace Sailing
 		double StallDeg = 14.0;
 		for (const FFoilDef& F : Cfg.Foils) if (F.Role == EFoilRole::Rudder) StallDeg = F.Params.StallAngleDeg;
 		const double Limit = bKeepShortOfStall ? std::min(MaxTiller, (StallDeg + 2.0) / Cfg.MaxRudderAngleDeg) : MaxTiller;
-		return Clamp(Gain * Error - RateGain * YawRate, -Limit, Limit);
+		// Heeled to port (wind from starboard) she wants to round up to starboard: hold the tiller against it (bow to port).
+		const double Lean = Cfg.HeelYawCoef > 0.0 ? -HelmPerHeel * (T.Heel * kRadToDeg) / Cfg.MaxRudderAngleDeg : 0.0;
+		return Clamp(Gain * Error + Lean - RateGain * YawRate, -Limit, Limit);
 	}
 }

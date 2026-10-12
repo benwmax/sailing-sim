@@ -23,7 +23,8 @@ namespace Sailing
 		bool Pass() const { return Value >= Low && Value <= High; }
 	};
 
-	/** Best upwind VMG: heading-based true wind angle (deg), boat speed (kn) and VMG (kn). Sweeps the angle in 2 degree steps. */
+	/** Best upwind VMG: heading-based true wind angle (deg), boat speed (kn) and VMG made good over the ground (kn, after
+	 *  leeway). Sweeps the angle in 2 degree steps. */
 	struct FVmgResult { double TwaDeg = 0.0, SpeedKnots = 0.0, VmgKnots = 0.0, HeelDeg = 0.0; };
 	SAILINGPHYSICS_API FVmgResult BestUpwind(const FBoatConfig& Config, double TrueWindKnots);
 	SAILINGPHYSICS_API FVmgResult BestDownwind(const FBoatConfig& Config, double TrueWindKnots);
@@ -33,6 +34,11 @@ namespace Sailing
 
 	/** Tilt from upright (deg, 0..180; 180 = turtled) after Seconds lying capsized at StartHeelDeg in a breeze with the sheets free and nobody righting her. */
 	SAILINGPHYSICS_API double HeelAfterCapsize(const FBoatConfig& Config, double StartHeelDeg, double TrueWindKnots, double Seconds);
+
+	/** Sails her over in a gusty breeze with the sheets cleated, lets go, waits, then rights her with the crew on the
+	 *  board or the righting line. Tilt from upright (deg) when the wait ends, and the seconds the righting took (-1 if not). */
+	struct FCapsizeRun { double TiltAfterWaitDeg = 0.0, RightingSeconds = -1.0; };
+	SAILINGPHYSICS_API FCapsizeRun CapsizeAndRight(const FBoatConfig& Config, double TrueWindKnots, double WaitSeconds);
 
 	/** Peak and mean boat speed (kn) over Seconds on a set point of sail in gusty wind and lake waves. */
 	struct FSpeedRun { double PeakKnots = 0.0, MeanKnots = 0.0; };

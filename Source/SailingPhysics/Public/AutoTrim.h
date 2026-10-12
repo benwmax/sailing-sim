@@ -44,6 +44,9 @@ namespace Sailing
 		double RateGain = 1.2;      // tiller per rad/s of yaw rate
 		double MaxTiller = 0.6;     // a good helmsman keeps the rudder short of stalling (about 18 degrees)
 		bool bKeepShortOfStall = true; // also limit the rudder to just past its stall angle (off for a deliberate hard tack)
+		/** A helmsman leans on the tiller against the weather helm, which grows as she heels: rudder degrees per degree
+		 *  of heel held in advance, so she does not settle a few degrees above her course. */
+		double HelmPerHeel = 0.25;
 
 		double Update(const FBoatModel& Boat) const;
 	};

@@ -84,6 +84,9 @@ namespace Sailing
 			C.MaxRudderAngleDeg = 35.0; C.RudderStockToCP = 0.03; C.TillerLength = 0.8; C.HelmStiffness = 150.0;
 			// Lateen: the sail hangs between the boom and the upper spar; the luff (upper spar) rakes far aft.
 			C.MastX = 1.25; C.MastheadZ = 3.3; C.MastDiameter = 0.065;
+			// The yard and boom are sealed aluminium tubes (about 5 cm by 4.5 m each): capsized, they and the sail lie on the
+			// water and hold her on her side until the sailor rights her (or the mast fills and she turns turtle slowly).
+			C.SparFloatLiters = 18.0;
 			SetMain(C, 0.55, 4.3, 3.6, 0.25, 0.0, 1.9, -0.6, 6.97, 2.8, 2.0, 0.12);
 			C.Jib.NumStrips = 0; C.Spinnaker.NumStrips = 0;
 			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee C.TravelerRangeDeg = 3.0;
@@ -327,17 +330,26 @@ namespace Sailing
 
 	FBoatConfig FBoatConfig::Make(EBoatType Type)
 	{
+		FBoatConfig C;
 		switch (Type)
 		{
-		case EBoatType::Sunfish: return Sunfish();
-		case EBoatType::ILCA7: return ILCA7();
-		case EBoatType::Catalina22: return Catalina22();
-		case EBoatType::Catalina30: return Catalina30();
-		case EBoatType::Hobie16: return Hobie16();
-		case EBoatType::Corsair880: return Corsair880();
-		case EBoatType::Lagoon42: return Lagoon42();
-		default: return FBoatConfig();
+		case EBoatType::Sunfish: C = Sunfish(); break;
+		case EBoatType::ILCA7: C = ILCA7(); break;
+		case EBoatType::Catalina22: C = Catalina22(); break;
+		case EBoatType::Catalina30: C = Catalina30(); break;
+		case EBoatType::Hobie16: C = Hobie16(); break;
+		case EBoatType::Corsair880: C = Corsair880(); break;
+		case EBoatType::Lagoon42: C = Lagoon42(); break;
+		default: return C;
 		}
+		// The rest of the fleet starts from the J/22. Her helm balance (Phase 8: rudder downwash, heel-induced yaw and the
+		// form factor that went with them) was calibrated on the J/22 alone, so a boat that does not set its own keeps
+		// the earlier values.
+		const FBoatConfig J22;
+		if (C.KeelDownwashFactor == J22.KeelDownwashFactor) C.KeelDownwashFactor = 1.0;
+		if (C.HeelYawCoef == J22.HeelYawCoef) C.HeelYawCoef = 0.0;
+		if (C.FormFactor == J22.FormFactor) C.FormFactor = 1.10;
+		return C;
 	}
 
 	namespace

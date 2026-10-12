@@ -57,23 +57,22 @@ void OnboardCameraMount(ECapturePreset Preset, const FBoatConfig& Config, float 
 		OutRotation = FRotator(-6.f, 0.f, 0.f);
 		return;
 	}
-	// Helm eye: the helmsman's head, sitting on the windward side at the tiller: 1 m above the cockpit sole (taken as
-	// 0.45 m below the sheer, and never below the waterline on a dinghy), at the aftmost crew place and 0.3 m in
-	// from the rail. 
-	// The aftmost crew place is the helmsman's (the crew sit 0.55 m apart about their centre of gravity).
+	// Helm eye: the helmsman's head, sitting on the windward side deck at the tiller extension, as in the onboard
+	// clips (J22-M-007): 0.85 m above the deck at the rail (0.75 m above the waterline at least, on a dinghy), at the
+	// aftmost crew place. The aftmost crew place is the helmsman's (the crew sit 0.55 m apart about their CG).
 	const double X = FMath::Max(Hull.SternX + 0.6, Config.CrewCG.X - 0.55 * 0.5 * (Config.CrewCount - 1) + 0.1);
 	const double Sheer = Config.bMultihull ? Hull.SheerZ : Hull.SheerHeight(X);
-	const double Sole = FMath::Max(Sheer - 0.45, 0.1);
-	const double Y = Config.bMultihull ? Hull.CenterY : FMath::Max(Hull.DeckHalfBeam(X) - 0.3, 0.0) * FMath::Sign(Side);
-	OutLocation = FVector(X, Y, Sole + 1.0) * CmPerMeter;
-	// Across to leeward at the jib (its luff and telltales are what a helmsman watches), over the crew ahead.
-	OutRotation = FRotator(-5.f, Config.bMultihull ? 0.f : -25.f * FMath::Sign(Side), 0.f);
+	const double Y = Config.bMultihull ? Hull.CenterY : FMath::Max(Hull.DeckHalfBeam(X) - 0.1, 0.0) * FMath::Sign(Side);
+	OutLocation = FVector(X, Y, FMath::Max(Sheer + 0.85, 0.75)) * CmPerMeter;
+	// Forward and a little to leeward, toward the jib luff and its telltales (what a helmsman watches).
+	OutRotation = FRotator(-7.f, Config.bMultihull ? 0.f : -12.f * FMath::Sign(Side), 0.f);
 }
 
 void WorldCameraPose(ECapturePreset Preset, const FVector& BoatOrigin, float HeadingDeg, float BearingDeg,
 	float MastheadMeters, float WaterZ, FVector& OutLocation, FRotator& OutRotation)
 {
-	float Range = 15.f, Height = 2.f, AimFraction = 0.33f;
+	// A chase boat stands off far enough to frame the whole rig (15 m for a J/22, more for the bigger boats).
+	float Range = FMath::Max(15.f, 1.9f * MastheadMeters), Height = 2.f, AimFraction = 0.42f;
 	switch (Preset)
 	{
 	case ECapturePreset::Drone: Range = 30.f; Height = 30.f; AimFraction = 0.2f; break;

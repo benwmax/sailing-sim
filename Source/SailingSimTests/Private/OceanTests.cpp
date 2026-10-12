@@ -128,7 +128,9 @@ bool FOceanAddedResistanceTest::RunTest(const FString& Parameters)
 		const double Flat = Sail(Twa, false), Sea = Sail(Twa, true);
 		const double Loss = 1.0 - Sea / Flat;
 		AddInfo(FString::Printf(TEXT("TWA %.0f: %.2f kn flat, %.2f kn in the sea (%.0f%% slower)"), Twa, Flat, Sea, Loss * 100.0));
-		if (Twa < 60.0) TestTrue(TEXT("Upwind in a 1.5 m sea: 10 to 30% slower"), Loss > 0.10 && Loss < 0.30);
+		// A 22-footer close-hauled in a short 1.5 m sea loses a quarter to a third of her speed (Gerritsma-Beukelman added
+		// resistance; since Phase 8 the rudder also carries weather helm through it).
+		if (Twa < 60.0) TestTrue(TEXT("Upwind in a 1.5 m sea: 10 to 35% slower"), Loss > 0.10 && Loss < 0.35);
 		else TestTrue(FString::Printf(TEXT("TWA %.0f: under 10%% slower"), Twa), Loss < 0.10);
 	}
 	return true;
