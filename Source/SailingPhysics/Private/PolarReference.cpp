@@ -32,7 +32,7 @@ namespace Sailing
 		return Polar;
 	}
 
-	FSteadyResult SailSteadyWith(double TrueWindKnots, double TrueWindAngleDeg, const FAutoTrimSettings& Trim, const FBoatConfig& Config, double SettleSeconds, double AverageSeconds)
+	FSteadyResult SailSteadyWith(double TrueWindKnots, double TrueWindAngleDeg, const FAutoTrimSettings& Trim, const FBoatConfig& Config, double SettleSeconds, double AverageSeconds, bool bSpinnaker)
 	{
 		FWindParams WindParams;
 		WindParams.SpeedKnots = TrueWindKnots;
@@ -49,6 +49,10 @@ namespace Sailing
 		FBoatModel Boat(Config);
 		const double Heading = -TrueWindAngleDeg * kDegToRad; // TWA = windFrom - heading
 		Boat.Reset(0.0, 0.0, Heading, 0.6 * TrueWindKnots * kKnot);
+		// Start with the crew already on the windward side, as they would be on a steady course.
+		const int Windward = TrueWindAngleDeg >= 0.0 ? 1 : -1;
+		Boat.GetMutableState().WindwardSide = Windward;
+		Boat.GetMutableState().CrewOffset = Windward * Config.CrewSitOut;
 
 		FAutopilot Pilot;
 		Pilot.TargetTWADeg = TrueWindAngleDeg;
@@ -57,6 +61,10 @@ namespace Sailing
 		FBoatControls Controls;
 		Controls.MainSheet = Clamp(TrueWindAngleDeg / 180.0, 0.0, 1.0);
 		Controls.JibSheet = Controls.MainSheet;
+		Controls.bSpinnaker = bSpinnaker && Config.HasSpinnaker();
+		// Already hiking in a breeze when reaching or beating; sitting in, ready to move, running.
+		Controls.Hike = Clamp((TrueWindKnots - 6.0) / 6.0, 0.0, 1.0) * (1.0 - SmoothStep(95.0, 115.0, std::fabs(TrueWindAngleDeg)));
+		Controls.SpinSheet = 0.5;
 
 		const int SettleSteps = int(SettleSeconds * PhysicsHz);
 		const int AverageSteps = int(AverageSeconds * PhysicsHz);
@@ -92,12 +100,12 @@ namespace Sailing
 		return R;
 	}
 
-	FSteadyResult SailSteady(double TrueWindKnots, double TrueWindAngleDeg, const FBoatConfig& Config, bool bSearchTrim)
+	FSteadyResult SailSteady(double TrueWindKnots, double TrueWindAngleDeg, const FBoatConfig& Config, bool bSearchTrim, bool bSpinnaker)
 	{
 		FAutoTrimSettings Base;
 		if (!bSearchTrim)
 		{
-			return SailSteadyWith(TrueWindKnots, TrueWindAngleDeg, Base, Config);
+			return SailSteadyWith(TrueWindKnots, TrueWindAngleDeg, Base, Config, 40.0, 15.0, bSpinnaker);
 		}
 		FSteadyResult Best;
 		for (double Margin : { 0.0, 2.0, 4.0 })
@@ -107,7 +115,7 @@ namespace Sailing
 				FAutoTrimSettings Trim = Base;
 				Trim.AlphaMarginDeg = Margin;
 				Trim.HeelLimitDeg = HeelLimit;
-				const FSteadyResult R = SailSteadyWith(TrueWindKnots, TrueWindAngleDeg, Trim, Config);
+				const FSteadyResult R = SailSteadyWith(TrueWindKnots, TrueWindAngleDeg, Trim, Config, 40.0, 15.0, bSpinnaker);
 				if (R.BoatSpeedKnots > Best.BoatSpeedKnots)
 				{
 					Best = R;

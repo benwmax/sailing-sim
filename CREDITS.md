@@ -30,4 +30,8 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Lake bottom: Texas Water Development Board, 2015 Volumetric and Sedimentation Survey of Lake Ray Hubbard,
   interpolated bottom points (public information).
 - Pool elevation and gauge level: Texas Water Development Board, Water Data for Texas (public information).
+- Fleet particulars and reference polars (Phase 4): class associations and builders (ILCA, International Sunfish
+  Class, Catalina, Hobie, Corsair Marine, Lagoon), ORC public certificate data (data.orc.org), keelindex.com,
+  Day (2017) "Performance prediction for sailing dinghies" (Ocean Engineering), the Hobie Hotline 1978 polar, and
+  boat reviews (SAIL, Yachting Monthly, 48North). Every number and its source URL is in `docs/phase-4/fleet-data.json`.
 - Fetch-limited wave growth: U.S. Army Corps of Engineers Shore Protection Manual / JONSWAP relations (public).

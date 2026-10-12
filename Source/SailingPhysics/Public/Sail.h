@@ -33,6 +33,10 @@ namespace Sailing
 		double LiftSlope = 4.2;           // per radian, 3D sail
 		double InducedAspectRatio = 6.0;  // for induced drag of the whole rig, including the deck's mirror effect
 		double BaseCamber = 0.12;         // depth/chord at mid height
+		// Spinnakers: very deep, low-aspect sails whose leech flow is never fully attached. Their lift tops out lower
+		// and they carry extra drag even when well trimmed (Marchaj; spinnaker wind-tunnel data around CL 1.2-1.3).
+		double MaxLift = 99.0;
+		double ParasiteDrag = 0.0;
 	};
 
 	/** Per-strip shape and aerodynamic state, kept for the visuals and the tests. */

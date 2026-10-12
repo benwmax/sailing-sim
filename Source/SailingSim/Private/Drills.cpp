@@ -170,7 +170,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 }
 
 bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>& Obstacles, FVector2D Near,
-	double MaxRange, double WindFromRad, FVector2D& OutPosition, double& OutHeading)
+	double MaxRange, double WindFromRad, FVector2D& OutPosition, double& OutHeading, const FBoatConfig& Boat)
 {
 	auto DistToSegment = [](const FObstacleSegment& S, const FVector2D& P)
 	{
@@ -180,7 +180,8 @@ bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>&
 		const double T = Len2 > 1e-9 ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Len2, 0.0, 1.0) : 0.0;
 		return FVector2D::Distance(P, A + AB * T) - S.Radius;
 	};
-	const double HalfBeam = 1.25, HalfLength = 3.5, MinDepth = 2.3; // J/22: 2.4 m beam, 6.9 m long, 1.2 m draft
+	// Room for the whole boat with water under the keel (the J/22: 2.4 m beam, 6.9 m long, 1.2 m draft).
+	const double HalfBeam = 0.5 * Boat.Beam + 0.05, HalfLength = 0.5 * Boat.LengthOverall + 0.07, MinDepth = Boat.Draft + 1.14;
 	double Best = MaxRange;
 	bool bFound = false;
 	for (size_t I = 0; I < Obstacles.size(); ++I)
@@ -235,8 +236,7 @@ std::vector<FMooringLine> FindDockLines(const FBoatModel& Boat, const std::vecto
 {
 	std::vector<FMooringLine> Lines;
 	// Bow, stern quarters and the midship spring cleats.
-	static const Vec3 Cleats[] = { Vec3(3.2, 0.0, 0.5), Vec3(-3.2, 0.9, 0.5), Vec3(-3.2, -0.9, 0.5), Vec3(0.0, 1.2, 0.5), Vec3(0.0, -1.2, 0.5) };
-	for (const Vec3& Cleat : Cleats)
+	for (const Vec3& Cleat : Boat.CleatPoints())
 	{
 		const Vec3 P = Boat.BodyToWorld(Cleat);
 		double Best = Reach;

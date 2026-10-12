@@ -21,9 +21,10 @@ class USailingSynthWave;
 class AWaterSurface;
 
 /**
- * The player's J/22. Physics (Sailing::FBoatModel) steps at a fixed 120 Hz; this actor turns the boat's
- * state into visuals (hull, rig, sails shaped by the physics strips, telltales, masthead fly, crew) and
- * the player's input into tiller, sheets, traveler, sail shape and crew weight.
+ * The player's boat (any of the fleet; the J/22 by default). Physics (Sailing::FBoatModel) steps at a fixed
+ * 120 Hz; this actor builds the boat's visuals from its particulars (hulls, foils, rig, crew), shapes the sails
+ * from the physics strips, and turns the player's input into tiller, sheets, traveler, sail shape, crew weight,
+ * spinnaker, reefs, board, engine and righting.
  */
 UCLASS()
 class SAILINGSIM_API ASailboatPawn : public APawn
@@ -61,6 +62,9 @@ public:
 	/** Applies the current difficulty to the physics (helm feel, damping). */
 	void ApplyDifficulty();
 
+	/** Switches to another boat in the fleet (Sailing::EBoatType) and puts it at the launch spot. */
+	void SetBoat(int32 Type);
+
 	/** Settings menu (Tab / controller Menu) and controls card (? / controller View). */
 	bool IsMenuOpen() const { return bMenuOpen; }
 	int32 GetMenuIndex() const { return MenuIndex; }
@@ -77,8 +81,9 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Boat")
 	TObjectPtr<USceneComponent> BoatRoot;
 
+	/** Hull shells and decks, generated from the physics hull shapes. */
 	UPROPERTY(VisibleAnywhere, Category = "Boat")
-	TObjectPtr<UStaticMeshComponent> Hull;
+	TObjectPtr<UProceduralMeshComponent> HullMesh;
 
 	UPROPERTY(VisibleAnywhere, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -88,6 +93,12 @@ public:
 
 private:
 	UStaticMeshComponent* AddPart(FName Name, UStaticMesh* Mesh, const FVector& LocationCm, const FVector& SizeCm, const FRotator& Rotation = FRotator::ZeroRotator, USceneComponent* Parent = nullptr);
+	/** A runtime part of the current boat (rebuilt when the boat changes), colored. */
+	UStaticMeshComponent* AddBoatPart(UStaticMesh* Mesh, const FVector& LocationCm, const FVector& SizeCm, const FLinearColor& Color, const FRotator& Rotation = FRotator::ZeroRotator, USceneComponent* Parent = nullptr);
+	/** A cylinder from one body point to another (stays, beams). */
+	UStaticMeshComponent* AddRod(const Sailing::Vec3& A, const Sailing::Vec3& B, double DiameterM, const FLinearColor& Color);
+	void RebuildBoatVisuals();
+	void BuildHullMesh();
 	void ApplyStateToTransform();
 	void UpdateRigVisuals(float DeltaSeconds);
 	void BuildSailMesh(UProceduralMeshComponent* Mesh, const Sailing::FSailGeometry& Geo, const Sailing::FSailStripState* Strips, int32 Side, bool bMain);
@@ -141,8 +152,12 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> MainSail;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> JibSail;
+	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> SpinSail;
+	UPROPERTY(Transient) TObjectPtr<UStaticMesh> CubeMesh;
+	UPROPERTY(Transient) TObjectPtr<UStaticMesh> CylinderMesh;
+	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> BoatParts;     // everything rebuilt with the boat
+	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> RudderPivots;  // one per rudder
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
-	UPROPERTY(Transient) TObjectPtr<USceneComponent> RudderPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Crew;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibTelltales;  // windward/leeward pairs at three heights

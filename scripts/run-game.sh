@@ -9,5 +9,5 @@ rm -f "$REPO_ROOT/Saved/Bench/bench.json"
 open -n -W -a "$APP" --args "$PROJECT" -game -windowed -ResX=1440 -ResY=1080 -SailingBench="$SECONDS_TO_RUN" -SailingDemo "$@" &
 PID=$!
 for ((i = 0; i < SECONDS_TO_RUN + 240; i++)); do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
-kill -0 "$PID" 2>/dev/null && { echo "timed out" >&2; pkill -f "UnrealEditor.app/Contents/MacOS/UnrealEditor $PROJECT" || true; }
+kill -0 "$PID" 2>/dev/null && { echo "timed out (or crashed: see ~/Library/Logs/SailingSim)" >&2; pkill -9 -f "$PROJECT -game" || true; }
 cat "$REPO_ROOT/Saved/Bench/bench.json" 2>/dev/null; echo

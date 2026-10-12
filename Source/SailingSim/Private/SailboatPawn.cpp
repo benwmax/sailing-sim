@@ -47,7 +47,8 @@ namespace
 	{
 		return Action == TEXT("WingOnWing") || Action == TEXT("ToggleLearning") || Action == TEXT("ToggleDifficulty")
 			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard") || Action == TEXT("DockLines") || Action == TEXT("BackJib")
-			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight");
+			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight")
+			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -56,7 +57,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowBoat, RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -69,31 +70,24 @@ ASailboatPawn::ASailboatPawn()
 	BoatRoot = CreateDefaultSubobject<USceneComponent>(TEXT("BoatRoot"));
 	RootComponent = BoatRoot;
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BasicMaterial(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	UStaticMesh* Cube = CubeMesh.Object;
-	UStaticMesh* Cylinder = CylinderMesh.Object;
+	UStaticMesh* Cube = CubeFinder.Object;
+	UStaticMesh* Cylinder = CylinderFinder.Object;
 	ShapeMaterial = BasicMaterial.Object;
 
-	// Hull and rig, sized from J/22 class figures. Origin is the design waterline, midships of the waterline.
-	Hull = AddPart(TEXT("Hull"), Cube, FVector(-63.f, 0.f, 15.f), FVector(559.f, 244.f, 90.f));
-	AddPart(TEXT("Bow"), Cube, FVector(216.f, 0.f, 15.f), FVector(180.f, 180.f, 90.f), FRotator(0.f, 45.f, 0.f));
-	AddPart(TEXT("Cockpit"), Cube, FVector(-190.f, 0.f, 58.f), FVector(220.f, 150.f, 6.f));
-	AddPart(TEXT("Keel"), Cube, FVector(45.f, 0.f, -73.f), FVector(90.f, 14.f, 86.f));
-	AddPart(TEXT("Mast"), Cylinder, FVector(100.f, 0.f, 492.f), FVector(10.f, 10.f, 865.f));
-	AddPart(TEXT("Forestay"), Cylinder, FVector(222.f, 0.f, 460.f), FVector(1.5f, 1.5f, 785.f), FRotator(-16.f, 0.f, 0.f));
+	CubeMesh = Cube;
+	CylinderMesh = Cylinder;
 
-	RudderPivot = CreateDefaultSubobject<USceneComponent>(TEXT("RudderPivot"));
-	RudderPivot->SetupAttachment(BoatRoot);
-	RudderPivot->SetRelativeLocation(FVector(-330.f, 0.f, 0.f));
-	AddPart(TEXT("Rudder"), Cube, FVector(-18.f, 0.f, -40.f), FVector(36.f, 5.f, 100.f), FRotator::ZeroRotator, RudderPivot);
-	AddPart(TEXT("Tiller"), Cube, FVector(55.f, 0.f, 62.f), FVector(110.f, 4.f, 4.f), FRotator::ZeroRotator, RudderPivot);
+	// The hull, foils, spars and crew are built at runtime from the boat's particulars (RebuildBoatVisuals), so any
+	// boat in the fleet can be sailed. What stays fixed: the hull mesh component, the pivots and the sails.
+	HullMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HullMesh"));
+	HullMesh->SetupAttachment(BoatRoot);
+	HullMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	BoomPivot = CreateDefaultSubobject<USceneComponent>(TEXT("BoomPivot"));
 	BoomPivot->SetupAttachment(BoatRoot);
-	BoomPivot->SetRelativeLocation(FVector(95.f, 0.f, 145.f));
-	AddPart(TEXT("Boom"), Cylinder, FVector(-150.f, 0.f, 0.f), FVector(8.f, 8.f, 300.f), FRotator(90.f, 0.f, 0.f), BoomPivot);
 
 	MastheadFly = CreateDefaultSubobject<USceneComponent>(TEXT("MastheadFly"));
 	MastheadFly->SetupAttachment(BoatRoot);
@@ -101,17 +95,15 @@ ASailboatPawn::ASailboatPawn()
 	AddPart(TEXT("FlyArrow"), Cube, FVector(18.f, 0.f, 0.f), FVector(45.f, 2.5f, 2.5f), FRotator::ZeroRotator, MastheadFly);
 	AddPart(TEXT("FlyVane"), Cube, FVector(-8.f, 0.f, 0.f), FVector(12.f, 1.f, 10.f), FRotator::ZeroRotator, MastheadFly);
 
-	for (int32 I = 0; I < 3; ++I)
-	{
-		Crew.Add(AddPart(*FString::Printf(TEXT("Crew%d"), I), Cylinder, FVector(-90.f - 55.f * I, 30.f, 115.f), FVector(40.f, 40.f, 110.f)));
-	}
-
 	MainSail = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("MainSail"));
 	MainSail->SetupAttachment(BoatRoot);
 	MainSail->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	JibSail = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("JibSail"));
 	JibSail->SetupAttachment(BoatRoot);
 	JibSail->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SpinSail = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("SpinSail"));
+	SpinSail->SetupAttachment(BoatRoot);
+	SpinSail->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	for (int32 I = 0; I < 6; ++I)
 	{
@@ -151,6 +143,270 @@ UStaticMeshComponent* ASailboatPawn::AddPart(FName Name, UStaticMesh* Mesh, cons
 	// Engine basic shapes are 100 cm across.
 	Part->SetRelativeScale3D(SizeCm / 100.f);
 	return Part;
+}
+
+UStaticMeshComponent* ASailboatPawn::AddBoatPart(UStaticMesh* Mesh, const FVector& LocationCm, const FVector& SizeCm, const FLinearColor& Color, const FRotator& Rotation, USceneComponent* Parent)
+{
+	UStaticMeshComponent* Part = NewObject<UStaticMeshComponent>(this);
+	Part->SetupAttachment(Parent ? Parent : BoatRoot.Get());
+	Part->SetStaticMesh(Mesh);
+	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Part->SetRelativeLocation(LocationCm);
+	Part->SetRelativeRotation(Rotation);
+	Part->SetRelativeScale3D(SizeCm / 100.f); // engine basic shapes are 100 cm across
+	Part->RegisterComponent();
+	if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShapeMaterial, this))
+	{
+		Mid->SetVectorParameterValue(TEXT("Color"), Color);
+		Part->SetMaterial(0, Mid);
+	}
+	BoatParts.Add(Part);
+	return Part;
+}
+
+UStaticMeshComponent* ASailboatPawn::AddRod(const Vec3& A, const Vec3& B, double DiameterM, const FLinearColor& Color)
+{
+	const FVector From = ToCm(A), To = ToCm(B);
+	const FVector Dir = To - From;
+	// The engine cylinder stands along Z: rotate Z onto the rod's direction.
+	const FRotator Rot = FRotationMatrix::MakeFromZ(Dir.GetSafeNormal()).Rotator();
+	return AddBoatPart(CylinderMesh, 0.5f * (From + To), FVector(DiameterM * CmPerMeter, DiameterM * CmPerMeter, Dir.Size()), Color, Rot);
+}
+
+void ASailboatPawn::SetBoat(int32 Type)
+{
+	const double StartSeconds = FPlatformTime::Seconds();
+	const EBoatType BoatType = EBoatType(FMath::Clamp(Type, 0, int32(EBoatType::Count) - 1));
+	const double Time = Boat.GetState().Time;
+	Boat = FBoatModel(FBoatConfig::Make(BoatType));
+	Boat.GetMutableState().Time = Time; // the weather clock runs on
+	if (const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr)
+	{
+		if (GM->GetLake().IsLoaded())
+		{
+			Boat.SetTerrain(&GM->GetLake().Terrain);
+			Boat.SetObstacles(&GM->GetLake().Obstacles);
+		}
+	}
+	ApplyDifficulty();
+	RebuildBoatVisuals();
+	// Frame the boat: the camera stands off about two and a half boat lengths, looking at the middle of the rig.
+	const FBoatConfig& C = Boat.GetConfig();
+	CameraDistance = FMath::Clamp(float(C.LengthOverall) * 2.4f, 9.f, 40.f) * CmPerMeter;
+	CameraBoom->TargetArmLength = CameraDistance;
+	CameraBoom->SocketOffset = FVector(0.f, 0.f, float(C.MastheadZ) * 0.33f * CmPerMeter);
+	ResetBoat();
+	// The Phase 4 gate asks that every boat loads fast: building one is physics setup plus a few dozen meshes.
+	UE_LOG(LogSailing, Log, TEXT("Boat ready: %hs in %.1f ms"), C.Name, (FPlatformTime::Seconds() - StartSeconds) * 1000.0);
+}
+
+void ASailboatPawn::BuildHullMesh()
+{
+	const FBoatConfig& C = Boat.GetConfig();
+	const double Depth = Boat.HullDepth();
+	TArray<FVector> ShellV, DeckV;
+	TArray<int32> ShellT, DeckT;
+	const int32 NX = 36, NY = 14;
+	for (const FHullShape& H : C.Hulls)
+	{
+		const int32 Base = ShellV.Num(), DeckBase = DeckV.Num();
+		for (int32 I = 0; I <= NX; ++I)
+		{
+			const double X = H.SternX + (H.BowX - H.SternX) * I / NX;
+			const double B = H.DeckHalfBeam(X);
+			const double Sheer = H.SheerHeight(X);
+			for (int32 J = 0; J <= NY; ++J)
+			{
+				const double Y = -B + 2.0 * B * J / NY;
+				ShellV.Add(ToCm(X, H.CenterY + Y, FMath::Min(H.BottomZ(X, Y, Depth), Sheer)));
+				DeckV.Add(ToCm(X, H.CenterY + Y, Sheer));
+			}
+		}
+		for (int32 I = 0; I < NX; ++I)
+		{
+			for (int32 J = 0; J < NY; ++J)
+			{
+				const int32 A = I * (NY + 1) + J, Bq = A + 1, Cq = A + NY + 1, D = Cq + 1;
+				ShellT.Append({ Base + A, Base + Cq, Base + Bq, Base + Bq, Base + Cq, Base + D });   // facing down and out
+				DeckT.Append({ DeckBase + A, DeckBase + Bq, DeckBase + Cq, DeckBase + Bq, DeckBase + D, DeckBase + Cq }); // facing up
+			}
+		}
+		// Transom: close the stern between the shell and the deck.
+		const int32 TBase = ShellV.Num();
+		for (int32 J = 0; J <= NY; ++J)
+		{
+			const FVector Bottom = ShellV[Base + J]; // copy first: Add may reallocate the array it reads from
+			ShellV.Add(Bottom);
+			ShellV.Add(DeckV[DeckBase + J]);
+		}
+		for (int32 J = 0; J < NY; ++J)
+		{
+			const int32 A = TBase + 2 * J;
+			ShellT.Append({ A, A + 2, A + 1, A + 1, A + 2, A + 3 });
+		}
+	}
+	auto Normals = [](const TArray<FVector>& V, const TArray<int32>& T)
+	{
+		TArray<FVector> N;
+		N.SetNumZeroed(V.Num());
+		for (int32 I = 0; I + 2 < T.Num(); I += 3)
+		{
+			const FVector F = FVector::CrossProduct(V[T[I + 1]] - V[T[I]], V[T[I + 2]] - V[T[I]]) * -1.0;
+			N[T[I]] += F; N[T[I + 1]] += F; N[T[I + 2]] += F;
+		}
+		for (FVector& X : N) X = X.GetSafeNormal();
+		return N;
+	};
+	HullMesh->ClearAllMeshSections();
+	HullMesh->CreateMeshSection_LinearColor(0, ShellV, ShellT, Normals(ShellV, ShellT), {}, {}, {}, false);
+	HullMesh->CreateMeshSection_LinearColor(1, DeckV, DeckT, Normals(DeckV, DeckT), {}, {}, {}, false);
+	FLinearColor HullColor(0.94f, 0.94f, 0.92f);
+	switch (C.Type)
+	{
+	case EBoatType::J22: HullColor = FLinearColor(0.75f, 0.06f, 0.06f); break;      // the lesson boat stays red
+	case EBoatType::Sunfish: HullColor = FLinearColor(0.95f, 0.72f, 0.10f); break;
+	case EBoatType::Catalina30: HullColor = FLinearColor(0.08f, 0.13f, 0.30f); break;
+	case EBoatType::Hobie16: HullColor = FLinearColor(0.10f, 0.45f, 0.75f); break;
+	default: break;
+	}
+	for (int32 Section = 0; Section < 2; ++Section)
+	{
+		if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShapeMaterial, this))
+		{
+			Mid->SetVectorParameterValue(TEXT("Color"), Section == 0 ? HullColor : FLinearColor(0.86f, 0.86f, 0.83f));
+			HullMesh->SetMaterial(Section, Mid);
+		}
+	}
+}
+
+void ASailboatPawn::RebuildBoatVisuals()
+{
+	for (USceneComponent* Part : BoatParts) if (Part) Part->DestroyComponent();
+	BoatParts.Reset();
+	RudderPivots.Reset();
+	Crew.Reset();
+	BuildHullMesh();
+
+	const FBoatConfig& C = Boat.GetConfig();
+	const FHullShape& Main = C.Hulls[0];
+	const FLinearColor Dark(0.05f, 0.05f, 0.06f), Spar(0.55f, 0.56f, 0.58f), Wood(0.45f, 0.28f, 0.12f), Grey(0.25f, 0.25f, 0.27f), White(0.92f, 0.92f, 0.9f);
+	const double DeckZ = C.bMultihull ? Main.SheerZ : Main.SheerHeight(C.MastX);
+
+	// Keels, boards and rudders (a slender cat hull's own lift has no part to show).
+	for (const FFoilDef& F : C.Foils)
+	{
+		if (F.Role == EFoilRole::HullLateral) continue;
+		const double Span = F.Span(), Chord = F.Params.Chord, Thick = 0.06 * Chord + 0.015;
+		if (F.Role != EFoilRole::Rudder)
+		{
+			AddBoatPart(CubeMesh, ToCm(F.Params.Center), FVector(Chord, Thick, Span) * CmPerMeter, Dark);
+			continue;
+		}
+		USceneComponent* Pivot = NewObject<USceneComponent>(this);
+		Pivot->SetupAttachment(BoatRoot);
+		Pivot->SetRelativeLocation(ToCm(F.Params.Center.X + 0.25 * Chord, F.Params.Center.Y, 0.0));
+		Pivot->RegisterComponent();
+		BoatParts.Add(Pivot);
+		RudderPivots.Add(Pivot);
+		AddBoatPart(CubeMesh, ToCm(-0.25 * Chord, 0.0, F.Params.Center.Z), FVector(Chord, Thick, Span) * CmPerMeter, Dark, FRotator::ZeroRotator, Pivot);
+		if (C.TillerLength > 0.6) // tiller boats; wheel steering shows no tiller
+		{
+			const double Hz = (C.bMultihull ? Main.SheerZ : Main.SheerHeight(F.Params.Center.X)) + 0.1;
+			AddBoatPart(CubeMesh, ToCm(0.5 * C.TillerLength, 0.0, Hz), FVector(C.TillerLength, 0.04, 0.04) * CmPerMeter, Wood, FRotator::ZeroRotator, Pivot);
+		}
+	}
+
+	// Mast, boom, forestay.
+	AddBoatPart(CylinderMesh, ToCm(C.MastX, 0.0, 0.5 * (DeckZ + C.MastheadZ)), FVector(C.MastDiameter, C.MastDiameter, C.MastheadZ - DeckZ) * CmPerMeter, Spar);
+	BoomPivot->SetRelativeLocation(ToCm(C.MainLuffX, 0.0, C.BoomZ));
+	AddBoatPart(CylinderMesh, ToCm(-0.5 * C.MainFootChord, 0.0, 0.0), FVector(0.7 * C.MastDiameter, 0.7 * C.MastDiameter, C.MainFootChord) * CmPerMeter, Spar, FRotator(90.f, 0.f, 0.f), BoomPivot);
+	if (C.HasJib())
+	{
+		const FSailStripGeometry& Foot = C.Jib.Strips[0];
+		const FSailStripGeometry& Head = C.Jib.Strips[C.Jib.NumStrips - 1];
+		const double Slope = (Head.LuffX - Foot.LuffX) / FMath::Max(0.5 * (Head.ZBottom + Head.ZTop) - 0.5 * (Foot.ZBottom + Foot.ZTop), 0.1);
+		const Vec3 Tack(Foot.LuffX - Slope * 0.5 * (Foot.ZTop - Foot.ZBottom), 0.0, Foot.ZBottom - 0.1);
+		const Vec3 Hounds(Head.LuffX + Slope * 0.5 * (Head.ZTop - Head.ZBottom), 0.0, Head.ZTop + 0.1);
+		AddRod(Tack, Hounds, 0.012, Spar);
+	}
+	MastheadFly->SetRelativeLocation(ToCm(C.MastX, 0.0, C.MastheadZ + 0.08));
+
+	// Deck structure: a cabin on the keelboats; beams and trampolines on the cats; akas and nets on the trimaran.
+	const double Loa = C.LengthOverall;
+	switch (C.Type)
+	{
+	case EBoatType::J22: case EBoatType::Catalina22: case EBoatType::Catalina30:
+	{
+		const double Len = 0.33 * Loa, Width = 0.62 * C.Beam, Height = C.Type == EBoatType::J22 ? 0.25 : (C.Type == EBoatType::Catalina22 ? 0.4 : 0.55);
+		const double X = C.MastX - 0.35 * Len;
+		AddBoatPart(CubeMesh, ToCm(X, 0.0, Main.SheerHeight(X) + 0.5 * Height), FVector(Len, Width, Height) * CmPerMeter, White);
+		// Cockpit sole, a step down aft.
+		const double CX = Main.SternX + 0.17 * Loa;
+		AddBoatPart(CubeMesh, ToCm(CX, 0.0, Main.SheerHeight(CX) + 0.01), FVector(0.25 * Loa, 0.55 * C.Beam, 0.02) * CmPerMeter, Grey);
+		break;
+	}
+	case EBoatType::Hobie16:
+	{
+		const double Y = C.Hulls[1].CenterY - C.Hulls[0].CenterY, MidY = 0.5 * (C.Hulls[1].CenterY + C.Hulls[0].CenterY);
+		for (double X : { C.MastX, -1.9 })
+		{
+			AddRod(Vec3(X, C.Hulls[0].CenterY, Main.SheerZ + 0.02), Vec3(X, C.Hulls[1].CenterY, Main.SheerZ + 0.02), 0.08, Spar);
+		}
+		AddBoatPart(CubeMesh, ToCm(0.5 * (C.MastX - 1.9), MidY, Main.SheerZ), FVector(C.MastX + 1.9, Y - 0.3, 0.01) * CmPerMeter, Grey);
+		break;
+	}
+	case EBoatType::Lagoon42:
+	{
+		const double Inner = C.Hulls[1].CenterY - 0.6;
+		AddBoatPart(CubeMesh, ToCm(-1.0, 0.0, 1.30), FVector(9.0, 2.0 * Inner, 0.5) * CmPerMeter, White);           // bridgedeck
+		AddBoatPart(CubeMesh, ToCm(-0.6, 0.0, 2.45), FVector(6.2, 2.0 * C.Hulls[1].CenterY + 1.2, 1.8) * CmPerMeter, White); // saloon house
+		AddBoatPart(CubeMesh, ToCm(1.5, 0.0, 2.80), FVector(0.1, 2.0 * C.Hulls[1].CenterY, 1.0) * CmPerMeter, Grey);     // windows
+		AddBoatPart(CubeMesh, ToCm(-4.0, 0.0, 3.40), FVector(3.2, 4.0, 0.08) * CmPerMeter, Grey);                        // flybridge bimini
+		AddBoatPart(CubeMesh, ToCm(4.3, 0.0, 1.20), FVector(4.0, 2.0 * Inner, 0.02) * CmPerMeter, Grey);                // forward trampoline
+		break;
+	}
+	case EBoatType::Corsair880:
+	{
+		for (int32 H = 1; H <= 2; ++H)
+		{
+			const double Y = C.Hulls[H].CenterY;
+			for (double X : { 1.2, -1.7 })
+			{
+				AddRod(Vec3(X, 0.6 * FMath::Sign(Y), Main.SheerZ - 0.1), Vec3(X, Y, C.Hulls[H].SheerZ), 0.14, White);
+			}
+			AddBoatPart(CubeMesh, ToCm(-0.25, 0.5 * (0.7 * FMath::Sign(Y) + Y), Main.SheerZ - 0.1), FVector(2.6, FMath::Abs(Y) - 0.9, 0.01) * CmPerMeter, Grey);
+		}
+		const double CX = Main.SternX + 1.3;
+		AddBoatPart(CubeMesh, ToCm(C.MastX - 1.2, 0.0, Main.SheerZ + 0.2), FVector(2.4, 1.3, 0.4) * CmPerMeter, White);
+		AddBoatPart(CubeMesh, ToCm(CX, 0.0, Main.SheerZ + 0.01), FVector(2.0, 1.0, 0.02) * CmPerMeter, Grey);
+		break;
+	}
+	default:
+		break;
+	}
+
+	// Outboards hang on the transom (inboards and saildrives are out of sight).
+	for (const FEngineDef& E : C.Engines)
+	{
+		if (E.Position.X < Main.SternX + 0.2)
+		{
+			AddBoatPart(CubeMesh, ToCm(E.Position.X - 0.1, E.Position.Y, E.Position.Z + 0.55), FVector(0.3, 0.25, 1.1) * CmPerMeter, Grey);
+		}
+	}
+
+	// Crew.
+	for (int32 I = 0; I < C.CrewCount; ++I)
+	{
+		Crew.Add(AddBoatPart(CylinderMesh, FVector::ZeroVector, FVector(40.f, 40.f, 110.f), FLinearColor(0.95f, 0.75f, 0.10f)));
+	}
+
+	// Telltales on the jib only when there is one.
+	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(C.HasJib());
+	JibSail->SetVisibility(C.HasJib());
+	if (C.HasJib()) JibSail->ClearAllMeshSections();
+	MainSail->ClearAllMeshSections();
+	SpinSail->ClearAllMeshSections();
+	SpinSail->SetVisibility(false);
 }
 
 const FWindField& ASailboatPawn::GetWind() const
@@ -204,12 +460,7 @@ void ASailboatPawn::BeginPlay()
 	{
 		const FString PartName = Part->GetName();
 		FLinearColor Color(0.88f, 0.89f, 0.90f);
-		if (PartName == TEXT("Hull") || PartName == TEXT("Bow")) Color = FLinearColor(0.75f, 0.06f, 0.06f);
-		else if (PartName == TEXT("Keel") || PartName == TEXT("Rudder")) Color = FLinearColor(0.05f, 0.05f, 0.06f);
-		else if (PartName == TEXT("Mast") || PartName == TEXT("Boom") || PartName == TEXT("Forestay")) Color = FLinearColor(0.55f, 0.56f, 0.58f);
-		else if (PartName == TEXT("Tiller")) Color = FLinearColor(0.45f, 0.28f, 0.12f);
-		else if (PartName.StartsWith(TEXT("Crew"))) Color = FLinearColor(0.95f, 0.75f, 0.10f);
-		else if (PartName == TEXT("FlyArrow") || PartName == TEXT("FlyVane")) Color = FLinearColor(0.02f, 0.02f, 0.02f);
+		if (PartName == TEXT("FlyArrow") || PartName == TEXT("FlyVane")) Color = FLinearColor(0.02f, 0.02f, 0.02f);
 		else if (PartName.StartsWith(TEXT("JibTelltale")) || PartName.StartsWith(TEXT("LeechTelltale")))
 		{
 			// Red on port, green on starboard, as on a real boat; leech telltales red.
@@ -222,15 +473,28 @@ void ASailboatPawn::BeginPlay()
 		}
 	}
 	UMaterialInterface* SailMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Sail.M_Sail"));
-	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get() })
+	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get(), SpinSail.Get() })
 	{
 		UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(SailMaterial ? SailMaterial : ShapeMaterial.Get(), this);
-		Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.96f, 0.95f, 0.92f));
+		// The spinnaker in the classic red, white and blue; working sails in white Dacron.
+		Mid->SetVectorParameterValue(TEXT("Color"), Sail == SpinSail ? FLinearColor(0.85f, 0.12f, 0.12f) : FLinearColor(0.96f, 0.95f, 0.92f));
 		Sail->SetMaterial(0, Mid);
 	}
 
-	ApplyDifficulty();
-	ResetBoat();
+	FString BoatArg;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBoat="), BoatArg))
+	{
+		// -SailingBoat=Hobie (the first letters of a fleet boat's name, any case), for this run only.
+		for (int32 I = 0; I < int32(EBoatType::Count); ++I)
+		{
+			if (FString(BoatTypeName(EBoatType(I))).Replace(TEXT(" "), TEXT("")).StartsWith(BoatArg.Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase))
+			{
+				USailingSettings::Get()->BoatType = I;
+				break;
+			}
+		}
+	}
+	SetBoat(USailingSettings::Get()->BoatType);
 
 	// Sound: one synthesized voice for everything on board.
 	Synth = NewObject<USailingSynthWave>(this);
@@ -278,16 +542,17 @@ void ASailboatPawn::BeginPlay()
 		}
 	}
 	if (FParse::Param(FCommandLine::Get(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
+	if (FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker(); // start with it up
 }
 
 void ASailboatPawn::ApplyDifficulty()
 {
 	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
 	FBoatConfig& Config = Boat.GetMutableConfig();
-	const FBoatConfig Defaults;
+	const FBoatConfig Defaults = FBoatConfig::Make(Config.Type);
 	// Easy: the helm holds the tiller rigidly (no weather-helm drift) and the boat rolls less in gusts.
 	Config.HelmStiffness = bEasy ? 1.0e5 : Defaults.HelmStiffness;
-	Config.ExtraRollDamping = bEasy ? 2500.0 : 0.0;
+	Config.ExtraRollDamping = bEasy ? 2500.0 * Boat.TotalMass() / 1052.0 : 0.0;
 }
 
 void ASailboatPawn::ResetBoat()
@@ -300,6 +565,11 @@ void ASailboatPawn::ResetBoat()
 			StartLocation = FVector(Spot.X, Spot.Y, 0.0) * CmPerMeter;
 			StartYaw = Spot.HeadingDeg;
 		}
+	}
+	float StartTwa = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
+	{
+		StartYaw = GetWind().GetParams().FromDegrees - StartTwa; // recordings and benchmarks start on a set point of sail
 	}
 	Boat.GetMooringLines().clear();
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
@@ -318,6 +588,10 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	ApplyHeldInputs(DeltaSeconds);
+	if (Controls.bRighting && FMath::Abs(Boat.GetTelemetry().Heel) < 20.0 * kDegToRad && Boat.GetState().CrewOffsetZ > -0.05)
+	{
+		Controls.bRighting = false; // back aboard once she is up
+	}
 	if (bDemo)
 	{
 		// Close-hauled from the start, tack after 9 s and every 12 s after that; the camera drifts around the boat.
@@ -409,7 +683,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		FVector2D Berth;
 		double BerthHeading = 0.0;
 		const double WindFromRad = GM->GetWeatherState().Wind.FromDegrees * kDegToRad;
-		if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading))
+		if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
 		{
 			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
@@ -531,20 +805,36 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
 	BoomPivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
-	RudderPivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
+	// Crew: along the cockpit at the windward rail, leaning out to hike; flat out on the wire on a trapeze;
+	// standing on the board (or leaning back on the righting line) when righting a capsized boat.
+	const FBoatConfig& Cfg = Boat.GetConfig();
+	const FHullShape& MainHull = Cfg.Hulls[0];
+	const double Sit = Cfg.bMultihull ? MainHull.SheerZ + 0.1 : MainHull.SheerHeight(Cfg.CrewCG.X);
 	for (int32 I = 0; I < Crew.Num(); ++I)
 	{
-		const float Y = S.CrewOffset * CmPerMeter;
-		const float Lean = FMath::Clamp((FMath::Abs(S.CrewOffset) - 0.4f) / 0.5f, 0.f, 1.f) * 35.f * FMath::Sign(S.CrewOffset);
-		Crew[I]->SetRelativeLocation(FVector(-90.f - 55.f * I, Y, 115.f));
-		Crew[I]->SetRelativeRotation(FRotator(0.f, 0.f, Lean));
+		const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (Crew.Num() - 1) - I);
+		const double Out = FMath::Abs(S.CrewOffset);
+		const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : 0.5 * Cfg.Beam;
+		const bool bOnWire = Cfg.bTrapeze && Out > Rail;
+		float Lean = FMath::Clamp(float(Out - 0.6 * Rail) / 0.5f, 0.f, 1.f) * 35.f;
+		double Z = Sit + 0.45 + S.CrewOffsetZ;
+		if (bOnWire)
+		{
+			Lean = 75.f; // feet on the rail, body out over the water
+			Z = Sit + 0.75;
+		}
+		Crew[I]->SetRelativeLocation(ToCm(X, S.CrewOffset, Z));
+		Crew[I]->SetRelativeRotation(FRotator(0.f, 0.f, Lean * FMath::Sign(S.CrewOffset)));
 	}
 
-	BuildSailMesh(MainSail, Boat.GetConfig().Main, T.MainStrips, S.MainSide, true);
-	BuildSailMesh(JibSail, Boat.GetConfig().Jib, T.JibStrips, S.JibSide, false);
+	BuildSailMesh(MainSail, Cfg.Main, T.MainStrips, S.MainSide, true);
+	if (Cfg.HasJib()) BuildSailMesh(JibSail, Cfg.Jib, T.JibStrips, S.JibSide, false);
+	SpinSail->SetVisibility(T.NumSpinStrips > 0);
+	if (T.NumSpinStrips > 0) BuildSailMesh(SpinSail, Cfg.Spinnaker, T.SpinStrips, S.SpinSide, false);
 	UpdateTelltales();
 }
 
@@ -656,7 +946,7 @@ void ASailboatPawn::UpdateTelltales()
 	};
 
 	// Jib luff telltales, windward (index 2k) and leeward (2k+1... colored by side) at three heights.
-	for (int32 K = 0; K < 3; ++K)
+	for (int32 K = 0; K < 3 && Cfg.HasJib(); ++K)
 	{
 		const FSailStripState& St = T.JibStrips[K];
 		const FSailStripGeometry& G = Cfg.Jib.Strips[K];
@@ -720,7 +1010,16 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 		}
 	};
 	Adjust(Controls.MainSheet, NAME_MainSheet, 0.35, 0.0, 1.0);
-	Adjust(Controls.JibSheet, NAME_JibSheet, 0.35, 0.0, 1.0);
+	// With the spinnaker up the jib-sheet keys trim the spinnaker sheet (the jib is in its shadow anyway).
+	Adjust(Controls.bSpinnaker ? Controls.SpinSheet : Controls.JibSheet, NAME_JibSheet, 0.35, 0.0, 1.0);
+	// Engine: throttle and (twin engines) the split, held to change; 0 is neutral.
+	if (!Boat.GetConfig().Engines.empty())
+	{
+		const float Throttle = Held(TEXT("Throttle"));
+		if (Throttle != 0.f) Controls.Throttle = FMath::Clamp(Controls.Throttle + Throttle * 0.5 * DeltaSeconds, -1.0, 1.0);
+		const float Split = Held(TEXT("ThrottleSplit"));
+		if (Boat.GetConfig().Engines.size() >= 2 && Split != 0.f) Controls.ThrottleSplit = FMath::Clamp(Controls.ThrottleSplit + Split * 0.8 * DeltaSeconds, -1.0, 1.0);
+	}
 	Adjust(Controls.Traveler, NAME_Traveler, 0.8, -1.0, 1.0);
 	// (Hike is yours in both layouts.)
 	Adjust(Controls.Hike, NAME_Hike, 0.8, -1.0, 1.0);
@@ -822,6 +1121,57 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	{
 		ToggleDockLines();
 	}
+	else if (Action == TEXT("Spinnaker"))
+	{
+		const FBoatConfig& C = Boat.GetConfig();
+		if (!C.HasSpinnaker())
+		{
+			StatusMessage = FString::Printf(TEXT("The %hs carries no spinnaker"), C.Name);
+		}
+		else
+		{
+			Controls.bSpinnaker = !Controls.bSpinnaker;
+			Controls.SpinSheet = 0.5;
+			const TCHAR* Kind = C.bAsymmetricSpinnaker ? TEXT("Gennaker") : TEXT("Spinnaker");
+			StatusMessage = FString::Printf(TEXT("%s %s"), Kind, Controls.bSpinnaker ? TEXT("up: Q/E trims its sheet") : TEXT("down"));
+		}
+		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("Reef"))
+	{
+		const int32 Max = int32(Boat.GetConfig().ReefLuffFraction.size());
+		Controls.Reef = Max == 0 ? 0 : (Controls.Reef + 1) % (Max + 1);
+		StatusMessage = Max == 0 ? FString::Printf(TEXT("The %hs has no reef points"), Boat.GetConfig().Name)
+			: (Controls.Reef == 0 ? FString(TEXT("Reefs shaken out: full main")) : FString::Printf(TEXT("Reef %d in"), Controls.Reef));
+		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("Board"))
+	{
+		if (!Boat.GetConfig().HasBoard())
+		{
+			StatusMessage = TEXT("Fixed keel: nothing to raise");
+		}
+		else
+		{
+			Controls.Board = Controls.Board > 0.5 ? 0.25 : 1.0;
+			StatusMessage = Controls.Board > 0.5 ? TEXT("Board down") : TEXT("Board up (less drag downwind, more leeway upwind)");
+		}
+		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("Righting"))
+	{
+		Controls.bRighting = !Controls.bRighting;
+		StatusMessage = Boat.GetConfig().RightingLever <= 0.0 ? TEXT("This boat cannot be righted by her crew: reset with R")
+			: (Controls.bRighting ? TEXT("Crew on the board (or the righting line): let the sheets go") : TEXT("Crew back aboard"));
+		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("EngineNeutral"))
+	{
+		Controls.Throttle = 0.0;
+		Controls.ThrottleSplit = 0.0;
+		StatusMessage = Boat.GetConfig().Engines.empty() ? TEXT("No engine: sail her in") : TEXT("Engine in neutral");
+		StatusUntil = Boat.GetState().Time + 2.0;
+	}
 	else if (Action == TEXT("BackJib"))
 	{
 		Controls.bBackJib = !Controls.bBackJib;
@@ -869,6 +1219,7 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	const USailingSettings* S = USailingSettings::Get();
 	auto OnOff = [](bool b) { return FString(b ? TEXT("On") : TEXT("Off")); };
 	TArray<TPair<FString, FString>> Rows;
+	Rows.Add({ TEXT("Boat"), FString(BoatTypeName(EBoatType(FMath::Clamp(S->BoatType, 0, int32(EBoatType::Count) - 1)))) });
 	Rows.Add({ TEXT("Drill (Left/Right starts it)"), FString(DrillName(MenuDrill)) });
 	FString Launch = TEXT("Open water");
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
@@ -904,6 +1255,10 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 	ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	switch (MenuIndex)
 	{
+	case RowBoat:
+		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
+		SetBoat(S->BoatType);
+		break;
 	case RowDrill:
 		MenuDrill = ESailingDrill((int32(MenuDrill) + int32(ESailingDrill::Count) + Direction) % int32(ESailingDrill::Count));
 		StartDrill(MenuDrill);

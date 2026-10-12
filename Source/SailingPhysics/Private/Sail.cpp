@@ -45,9 +45,13 @@ namespace Sailing
 
 		const double Profile = 0.012 + 0.5 * Camber * Camber;
 		const double Induced = CL * CL / (kPi * Geo.InducedAspectRatio);
-		const double FlatPlate = 1.40 * std::sin(AlphaN) * std::sin(AlphaN);
+		// Well past the stall a sail is a bluff plate: a normal force coefficient of about 1.25, so drag grows with
+		// sin(alpha) (Marchaj's wind-tunnel sails). This is what drives a boat on a run.
+		const double Separated = SmoothStep(Stall, Stall + 10.0 * kDegToRad, AlphaN) * 1.25 * std::fabs(std::sin(AlphaN));
+		const double FlatPlate = std::max(1.40 * std::sin(AlphaN) * std::sin(AlphaN), Separated);
+		CL = std::min(CL, Geo.MaxLift);
 		OutCL = CL;
-		OutCD = std::max(Profile + Induced + SeparationDrag + Flog, FlatPlate);
+		OutCD = std::max(Profile + Induced + SeparationDrag + Flog + Geo.ParasiteDrag * std::max(CL, 0.0) / std::max(Geo.MaxLift, 1.0), FlatPlate);
 
 		if (Back > 0.5)
 		{

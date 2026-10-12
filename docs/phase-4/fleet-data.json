@@ -1,0 +1,3355 @@
+[
+ {
+  "name": "ILCA 7 (formerly Laser Standard rig)",
+  "variant_notes": "Same hull as ILCA 6/ILCA 4; ILCA 7 = 7.06 m2 sail, MkII sail per Sept-2025 class diagram. Una (cat) rig, unstayed two-piece aluminium/composite mast, daggerboard (class calls it centreboard), single-handed, hiking only. No spinnaker.",
+  "dimensions": {
+   "loa": {
+    "value": 4.23,
+    "unit": "m",
+    "si": 4.23,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "Wikipedia infobox 4.23 m (13 ft 11 in); goodoldboat lists 13.75 ft"
+   },
+   "lwl": {
+    "value": 3.81,
+    "unit": "m",
+    "si": 3.81,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "infobox 3.81 m (12 ft 6 in); article body elsewhere gives 3.96 m; goodoldboat 12.50 ft"
+   },
+   "beam": {
+    "value": 1.37,
+    "unit": "m",
+    "si": 1.37,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "goodoldboat 4.583 ft (1.40 m)"
+   },
+   "draft_board_down": {
+    "value": 0.787,
+    "unit": "m",
+    "si": 0.787,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)"
+   },
+   "draft_board_up": {
+    "value": null,
+    "note": "not found; hull canoe-body draft is small (estimate ~0.1-0.15 m, not sourced)"
+   },
+   "hull_weight": {
+    "value": 58.97,
+    "unit": "kg",
+    "si": 58.97,
+    "si_unit": "kg",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "130 lb; Australian class site gives 56.7 kg"
+   },
+   "boat_rigged_no_sail": {
+    "value": 79.5,
+    "unit": "kg",
+    "si": 79.5,
+    "si_unit": "kg",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf",
+    "note": "Day (2017) weighed a Laser with mast, boom and foils, no sail: 79.5 kg"
+   },
+   "sailing_weight_typical": {
+    "value": 160,
+    "unit": "kg",
+    "si": 160,
+    "si_unit": "kg",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf",
+    "note": "Day (2017) all-up 160 kg = 80 kg boat/foils/rig + 80 kg sailor; tank tests at 150-170 kg"
+   },
+   "confidence": "high for LOA/beam/hull weight/sail area; medium for LWL (sources disagree 3.81 vs 3.96 m)"
+  },
+  "rig": {
+   "type": "una (cat) rig, unstayed mast, sleeved luff, no reefing",
+   "sail_area": {
+    "value": 7.06,
+    "unit": "m2",
+    "si": 7.06,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "76.0 ft2"
+   },
+   "luff_max": {
+    "value": 5105,
+    "unit": "mm",
+    "si": 5.105,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php",
+    "note": "ILCA 7 MkII sail diagram (Sept 2025): luff max 5105, measured from front corner of luff sleeve"
+   },
+   "foot_max": {
+    "value": 2735,
+    "unit": "mm",
+    "si": 2.735,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php"
+   },
+   "leech_max": {
+    "value": 5540,
+    "unit": "mm",
+    "si": 5.54,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php"
+   },
+   "girths": {
+    "value": {
+     "quarter_leech_max_mm": 2335,
+     "half_leech_max_mm": 1750,
+     "three_quarter_leech_max_mm": 980
+    },
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php"
+   },
+   "battens": {
+    "value": "3 tapered battens, 750/600/400 mm max",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php"
+   },
+   "P_equiv": {
+    "value": 5.105,
+    "unit": "m",
+    "si": 5.105,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php",
+    "note": "P taken = luff max; goodoldboat gives P 16.83 ft (5.13 m)"
+   },
+   "E_equiv": {
+    "value": 2.735,
+    "unit": "m",
+    "si": 2.735,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php",
+    "note": "E taken = foot max; goodoldboat gives E 8.98 ft (2.74 m)"
+   },
+   "mast_bottom_section": {
+    "value": 2865,
+    "unit": "mm",
+    "si": 2.865,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php",
+    "note": "max incl. base plug"
+   },
+   "mast_top_section": {
+    "value": 3600,
+    "unit": "mm",
+    "si": 3.6,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php",
+    "note": "max incl. top plug; sleeve joint marked 305 mm from bottom"
+   },
+   "boom_length": {
+    "value": 2740,
+    "unit": "mm",
+    "si": 2.74,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php",
+    "note": "max"
+   },
+   "mast_height_above_deck": {
+    "value": 5.8,
+    "unit": "m",
+    "si": 5.8,
+    "si_unit": "m",
+    "type": "estimate",
+    "note": "estimate: 2865+3600-305 (sleeve overlap) = 6.16 m overall, minus ~0.35 m in the mast step (step depth not found)",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "centre_of_effort": {
+    "value": "36.4% of luff above boom (ORC method with foot-curve correction); longitudinal 33% of foot aft of luff; effective mast rake ~11 deg upwind",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf"
+   },
+   "sail_coefficients": {
+    "value": "Day used ORC 'low lift' mainsail coefficients; beta 0/7/9/12/28/60/90/120/150/180 deg -> CL 0/0.862/1.052/1.164/1.347/1.239/1.125/0.838/0.296/-0.112, CDviscous 0.043/0.026/0.023/0.023/0.033/0.113/0.383/0.969/1.316/1.345",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf"
+   },
+   "reefing": "none (class depowers with vang/cunningham/outhaul; Day models TWIST/FLAT/SPILL)",
+   "confidence": "high (class measurement diagrams) except mast height above deck (estimate)"
+  },
+  "foils": {
+   "daggerboard_chord": {
+    "value": 341,
+    "unit": "mm",
+    "si": 0.341,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php",
+    "note": "class diagram, centreboard chord dimension 341"
+   },
+   "daggerboard_thickness_max": {
+    "value": 33,
+    "unit": "mm",
+    "si": 0.033,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "daggerboard_span_below_hull": {
+    "value": 0.7,
+    "unit": "m",
+    "si": 0.7,
+    "si_unit": "m",
+    "type": "estimate",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php",
+    "note": "diagram gives 680 mm (and a further 135 mm dimension) along the leading edge below the 'keel line'; overall draft 0.787 m (Wikipedia). Estimate 0.68-0.80 m; 0.70 m used"
+   },
+   "daggerboard_area": {
+    "value": 0.24,
+    "unit": "m2",
+    "si": 0.24,
+    "si_unit": "m2",
+    "type": "estimate",
+    "note": "0.70 m x 0.341 m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "rudder_leading_edge_max": {
+    "value": 635,
+    "unit": "mm",
+    "si": 0.635,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php",
+    "note": "blade length incl. part inside stock"
+   },
+   "rudder_trailing_edge_max": {
+    "value": 527,
+    "unit": "mm",
+    "si": 0.527,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "rudder_chord": {
+    "value": 203,
+    "unit": "mm",
+    "si": 0.203,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "rudder_thickness_max": {
+    "value": 20,
+    "unit": "mm",
+    "si": 0.02,
+    "si_unit": "m",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "rudder_immersed_span": {
+    "value": 0.5,
+    "unit": "m",
+    "si": 0.5,
+    "si_unit": "m",
+    "type": "estimate",
+    "note": "estimate: trailing edge 527 mm, transom near waterline",
+    "source": "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php"
+   },
+   "rudder_area": {
+    "value": 0.1,
+    "unit": "m2",
+    "si": 0.1,
+    "si_unit": "m2",
+    "type": "estimate",
+    "note": "0.50 m x 0.203 m"
+   },
+   "centre_of_pressure": {
+    "value": "quarter-chord at 43% of foil draft below waterline (Keuning & Vermeulen, as used by Day)",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf"
+   },
+   "confidence": "chords/thickness high (class diagram); spans/areas estimated"
+  },
+  "crew": {
+   "count": 1,
+   "weight_range": {
+    "value": 70,
+    "unit": "kg",
+    "si": 70,
+    "si_unit": "kg",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "ILCA 7 range 70-95 kg"
+   },
+   "weight_range_max": {
+    "value": 95,
+    "unit": "kg",
+    "si": 95,
+    "si_unit": "kg",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)"
+   },
+   "weight_ideal": {
+    "value": 82,
+    "unit": "kg",
+    "si": 82,
+    "si_unit": "kg",
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "note": "ideal 80-84 kg; Goodison suggests 78-83 kg (cited in Day 2017)"
+   },
+   "hiking": "hiking only (toe strap on centreline), no trapeze",
+   "baseline_sailor_height": {
+    "value": 1.83,
+    "unit": "m",
+    "si": 1.83,
+    "si_unit": "m",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf",
+    "note": "Day baseline 80 kg / 1.83 m, +5 kg clothing"
+   },
+   "confidence": "high"
+  },
+  "engine": {
+   "type": "none"
+  },
+  "stability": {
+   "notes": "Form stability small; righting moment dominated by hiking sailor (Day: crew >50% of total weight, heel decoupled from righting moment). Capsizes regularly; righted by the sailor standing/pulling on the daggerboard. Inverts (turtles) readily if the sailor does not get to the board quickly; sailors climb onto the board to prevent inversion.",
+   "boat_cg": {
+    "value": "CG of boat without sail 12 cm above deck at forward end of cockpit",
+    "source": "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf"
+   },
+   "sources": [
+    "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf",
+    "https://kids.kiddle.co/Capsizing"
+   ],
+   "confidence": "medium (qualitative; GZ curve not published numerically)"
+  },
+  "planing": {
+   "boat_speed_onset": {
+    "value": "6-7 kn",
+    "source": "https://bettersailing.com/how-fast-is-a-laser-sailboat-laser-sailboat-top-speed/"
+   },
+   "wind_onset": {
+    "value": "reaching: light sailor planes in gusts ~13 kn (15 mph); typical full planing on reaches 12-14 kn TWS",
+    "source": "https://bettersailing.com/how-fast-is-a-laser-sailboat-laser-sailboat-top-speed/"
+   },
+   "upwind": "does not plane upwind; Day finds boat speed nearly insensitive to TWS above ~9 kn at TWA 40-50 (depowering)",
+   "top_speed": {
+    "value": "18.6 kn recorded (2017, UK); ~20 kn surfing briefly",
+    "source": "https://bettersailing.com/how-fast-is-a-laser-sailboat-laser-sailboat-top-speed/"
+   },
+   "confidence": "medium (secondary/blog source for thresholds)"
+  },
+  "handicaps": {
+   "us_sailing_dpn": {
+    "value": 91.1,
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+    "also": "https://arizonayachtclub.org/racing/club-rating-tables/",
+    "note": "primary US Sailing table not retrievable (PY Online login); value matches two secondary sources"
+   },
+   "rya_pn_2026": {
+    "value": 1100,
+    "source": "https://www.tatasteelsailing.org.uk/res/docs/2026 Club PN.pdf",
+    "note": "club copy of RYA 2026 list; RYA announcement at https://www.rya.org.uk/news/portsmouth-yardstick-numbers-2026/. Wikipedia table gives 1102 (older)"
+   },
+   "phrf": {
+    "value": 217,
+    "source": "https://en.wikipedia.org/wiki/Laser_(dinghy)"
+   }
+  },
+  "polar": {
+   "source": "estimate anchored to Day (2017) VPP findings and Olympic-level GNSS VMG data",
+   "type": "estimate",
+   "method": "No numeric Laser polar table found published (Day 2017, Binns 2002, Carrico 2005 give plots only). Built by hand: upwind speeds from VMG measured at 2019-2020 World Cup/Tokyo regattas (PMC9719898: upwind VMG 2.5/3.2/3.7 kn in <8/8-12/>12 kn bands; downwind 3.3/4.7/7.8; reaching 4.2/5.8/9.1) divided by cos(TWA~45); Day: best upwind TWA 40-46 deg, upwind speed nearly flat above ~9 kn TWS; planing on reaches from ~13 kn TWS, onset 6-7 kn boat speed (bettersailing). Flat-water, steady-state, 80 kg sailor. Regatta VMG data includes waves/surfing and manoeuvres.",
+   "includes_spinnaker": false,
+   "tws_kn": [
+    6,
+    10,
+    15
+   ],
+   "twa_deg": [
+    45,
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150,
+    165
+   ],
+   "speeds_kn": {
+    "6": [
+     3.4,
+     3.9,
+     4.2,
+     4.3,
+     4.3,
+     4.2,
+     3.9,
+     3.6,
+     3.4
+    ],
+    "10": [
+     4.7,
+     5.4,
+     5.9,
+     6.2,
+     6.4,
+     6.2,
+     5.6,
+     5.1,
+     4.8
+    ],
+    "15": [
+     5.2,
+     6.6,
+     8.0,
+     9.0,
+     9.6,
+     9.4,
+     8.6,
+     8.2,
+     7.6
+    ]
+   },
+   "beat": {
+    "6": {
+     "twa": 45,
+     "bsp": 3.4
+    },
+    "10": {
+     "twa": 43,
+     "bsp": 4.6
+    },
+    "15": {
+     "twa": 42,
+     "bsp": 5.1
+    }
+   },
+   "run": {
+    "6": {
+     "twa": 155,
+     "bsp": 3.5
+    },
+    "10": {
+     "twa": 165,
+     "bsp": 4.8
+    },
+    "15": {
+     "twa": 165,
+     "bsp": 7.6
+    }
+   },
+   "anchor_checks": "VMG from table: upwind 2.4/3.4/3.8 vs measured 2.5/3.2/3.7; downwind (best) 3.2/4.6/7.3 vs measured 3.3/4.7/7.8 (measured includes surfing on sea waves)",
+   "confidence": "low-medium (estimate; upwind well anchored, reaching/running +-15%)"
+  },
+  "sources": [
+   "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+   "https://goodoldboat.com/saildata/boat/laser/",
+   "https://www.laserjapan.org/info/rules/classrules/masttopboomfoils.php",
+   "https://www.laserjapan.org/info/rules/classrules/ilca7mk2sail.php",
+   "https://pureportal.strath.ac.uk/files-asset/64217569/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC9719898/",
+   "https://bettersailing.com/how-fast-is-a-laser-sailboat-laser-sailboat-top-speed/",
+   "https://arizonayachtclub.org/racing/club-rating-tables/",
+   "https://www.tatasteelsailing.org.uk/res/docs/2026 Club PN.pdf",
+   "https://www.rya.org.uk/news/portsmouth-yardstick-numbers-2026/",
+   "https://www.ussailing.org/competition/offshore/dpn/",
+   "https://kids.kiddle.co/Capsizing",
+   "https://laser.asn.au/?page_id=61"
+  ],
+  "not_found": [
+   "numeric published polar table (only plots in Day 2017 / Binns 2002 / Carrico 2005)",
+   "board-up draft",
+   "exact daggerboard/rudder immersed span (diagram ambiguous)",
+   "mast height above deck / mast step depth",
+   "official US Sailing DPN table page (behind PY Online)",
+   "numeric GZ curve",
+   "wind-band DPN numbers for ILCA 7"
+  ]
+ },
+ {
+  "name": "Sunfish (International Sunfish Class / LaserPerformance)",
+  "variant_notes": "Flat board-boat hull, lateen ('Oceanic lateen') rig: short unstayed mast with upper spar (yard) and boom of equal length, daggerboard, kick-up/fixed rudder. Single-handed for racing (1-2 recreational). No spinnaker. Super Sunfish is a different boat.",
+  "dimensions": {
+   "loa": {
+    "value": 13.75,
+    "unit": "ft",
+    "si": 4.191,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "note": "13 ft 9 in; goodoldboat 13.9 ft"
+   },
+   "lwl": {
+    "value": 13.0,
+    "unit": "ft",
+    "si": 3.9624,
+    "si_unit": "m",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/",
+    "note": "goodoldboat value; suspicious (nearly = LOA) for a hull with raked bow; treat as upper bound"
+   },
+   "beam": {
+    "value": 49,
+    "unit": "in",
+    "si": 1.2446,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "note": "4 ft 1 in"
+   },
+   "draft_board_down": {
+    "value": 35,
+    "unit": "in",
+    "si": 0.889,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "note": "2 ft 11 in; US Sailing same"
+   },
+   "draft_board_up": {
+    "value": 0.58,
+    "unit": "ft",
+    "si": 0.1768,
+    "si_unit": "m",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/"
+   },
+   "hull_weight": {
+    "value": 120,
+    "unit": "lb",
+    "si": 54.4311,
+    "si_unit": "kg",
+    "source": "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "note": "Wikipedia 120 lb; tuning guide says factory boats average ~126 lb; goodoldboat displacement 129 lb"
+   },
+   "sailing_weight_typical": {
+    "value": 290,
+    "unit": "lb",
+    "si": 131.5,
+    "si_unit": "kg",
+    "type": "estimate",
+    "note": "estimate: ~130 lb rigged boat + ~160 lb sailor (middle of US Sailing ideal range)",
+    "source": "https://www.ussailing.org/one-design-profile/united-states-sunfish-class-association/"
+   },
+   "confidence": "high for LOA/beam/draft/weight; low for LWL"
+  },
+  "rig": {
+   "type": "lateen, unstayed mast, no reefing",
+   "sail_area": {
+    "value": 75,
+    "unit": "ft2",
+    "si": 6.9677,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "note": "7.0 m2 official; triangle from goodoldboat edges gives 80.5 ft2"
+   },
+   "mast_length": {
+    "value": 120.25,
+    "unit": "in",
+    "si": 3.0543,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "10 ft 1/4 in +-1/4 in incl. base cap; US Sailing lists mast height 10 ft"
+   },
+   "upper_spar_length_max": {
+    "value": 164.0625,
+    "unit": "in",
+    "si": 4.1672,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "13 ft 8-1/16 in max"
+   },
+   "boom_length_max": {
+    "value": 164.0625,
+    "unit": "in",
+    "si": 4.1672,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "13 ft 8-1/16 in max"
+   },
+   "luff_along_upper_spar": {
+    "value": 13.33,
+    "unit": "ft",
+    "si": 4.063,
+    "si_unit": "m",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/"
+   },
+   "foot_along_boom": {
+    "value": 13.33,
+    "unit": "ft",
+    "si": 4.063,
+    "si_unit": "m",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/"
+   },
+   "leech": {
+    "value": 14.33,
+    "unit": "ft",
+    "si": 4.3678,
+    "si_unit": "m",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/"
+   },
+   "tack_angle": {
+    "value": 65.0,
+    "unit": "deg",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/",
+    "note": "angle between spars at gooseneck (computed by goodoldboat)"
+   },
+   "P_E_equivalent": {
+    "type": "estimate",
+    "note": "Not a P/E rig. For a VPP treat as a triangle with two 4.06 m edges on the spars and 4.37 m leech; geometric area 7.48 m2 vs class 6.97 m2 (roach/hollow). Peak height above deck depends on halyard position on upper spar; not found.",
+    "source": "https://goodoldboat.com/saildata/boat/sunfish/"
+   },
+   "reefing": "none",
+   "confidence": "high for spar lengths and area; sail edge lengths from secondary source"
+  },
+  "foils": {
+   "daggerboard_length_from_deck": {
+    "value": 44,
+    "unit": "in",
+    "si": 1.1176,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "c.1993+ board, 44 in max from deck line"
+   },
+   "deck_to_hull_line": {
+    "value": 13.375,
+    "unit": "in",
+    "si": 0.3397,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "13-3/8 in REF"
+   },
+   "daggerboard_span_below_hull": {
+    "value": 30.6,
+    "unit": "in",
+    "si": 0.778,
+    "si_unit": "m",
+    "type": "derived",
+    "note": "44 - 13.375 in",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f"
+   },
+   "daggerboard_chord_max": {
+    "value": 9.5,
+    "unit": "in",
+    "si": 0.2413,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "9-1/2 in max at head; tip rounded"
+   },
+   "daggerboard_thickness_max": {
+    "value": 0.84375,
+    "unit": "in",
+    "si": 0.0214,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f"
+   },
+   "daggerboard_area": {
+    "value": 0.17,
+    "unit": "m2",
+    "si": 0.17,
+    "si_unit": "m2",
+    "type": "estimate",
+    "note": "0.778 m x ~0.225 m mean chord (rounded tip)"
+   },
+   "rudder_blade_length_max": {
+    "value": 23.75,
+    "unit": "in",
+    "si": 0.6032,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+    "note": "current blade (Fig 2) 23-3/4 in max; older c.1971 blade 25-1/2 in, chord 9-3/8 in"
+   },
+   "rudder_chord_max": {
+    "value": 8.5,
+    "unit": "in",
+    "si": 0.2159,
+    "si_unit": "m",
+    "source": "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f"
+   },
+   "rudder_area": {
+    "value": 0.08,
+    "unit": "m2",
+    "si": 0.08,
+    "si_unit": "m2",
+    "type": "estimate",
+    "note": "estimate: ~0.40 m immersed x 0.20 m chord (blade raked aft ~30 deg from vertical)"
+   },
+   "confidence": "board dimensions high (class diagram); rudder immersion and areas estimated"
+  },
+  "crew": {
+   "count": 1,
+   "count_recreational": "1-2 (https://en.wikipedia.org/wiki/Sunfish_(sailboat))",
+   "weight_ideal_min": {
+    "value": 120,
+    "unit": "lb",
+    "si": 54.4311,
+    "si_unit": "kg",
+    "source": "https://www.ussailing.org/one-design-profile/united-states-sunfish-class-association/",
+    "note": "US Sailing class profile: ideal combined crew weight 120-185 lb"
+   },
+   "weight_ideal_max": {
+    "value": 185,
+    "unit": "lb",
+    "si": 83.9146,
+    "si_unit": "kg",
+    "source": "https://www.ussailing.org/one-design-profile/united-states-sunfish-class-association/"
+   },
+   "hiking": "hiking (hiking strap in cockpit), no trapeze",
+   "confidence": "medium-high"
+  },
+  "engine": {
+   "type": "none"
+  },
+  "stability": {
+   "notes": "Very flat, low-freeboard board boat; capsizes easily, rights by standing/pulling on daggerboard; hull floats (described as self-rescuing). Can turtle (masthead floats sold to prevent it). Righting moment almost all from sailor.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "https://www.desertcart.tw/products/27655217-40ltr-mast-float-10086",
+    "https://forum.daysailer.org/viewtopic.php?p=35019"
+   ],
+   "confidence": "low-medium (qualitative)"
+  },
+  "planing": {
+   "notes": "Planes off the wind; Wikipedia notes its downwind performance lets it reach a planing attitude at lower wind speeds than high-aspect-ratio rigs. No published threshold. Theoretical displacement hull speed ~4.8 kn (1.34 sqrt(LWL)). Anecdotal 15+ kn in very strong winds.",
+   "wind_onset_estimate": {
+    "value": "12-15 kn TWS on a broad reach",
+    "type": "estimate",
+    "note": "estimate by analogy with ILCA 7 (similar length/weight/sail area)"
+   },
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "https://forums.sailboatowners.com/goto/post?id=1508598",
+    "https://goodoldboat.com/saildata/boat/sunfish/"
+   ],
+   "confidence": "low"
+  },
+  "handicaps": {
+   "us_sailing_dpn": {
+    "value": 99.6,
+    "source": "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+    "also": "https://arizonayachtclub.org/racing/club-rating-tables/",
+    "note": "wind-band DPN: BN0-1 102.9, BN2-3 100.3, BN4 97.7, BN5-9 95.6 (Wikipedia)"
+   },
+   "rya_pn": {
+    "value": 1153,
+    "source": "https://arizonayachtclub.org/racing/club-rating-tables/",
+    "note": "club table, year and source not stated; Sunfish not in the RYA 2026 club copy checked; low confidence"
+   },
+   "phrf": {
+    "value": 268,
+    "source": "https://arizonayachtclub.org/racing/club-rating-tables/"
+   }
+  },
+  "polar": {
+   "source": "estimate from Portsmouth ratio applied to the ILCA 7 estimated polar in this file",
+   "type": "estimate",
+   "method": "No Sunfish polar published (searched VPP papers, polar libraries). Sunfish speed = ILCA 7 speed x (DPN_ILCA7 / DPN_Sunfish) = 91.1/99.6 = 0.9147, applied uniformly. Caveats: lateen points lower than the Laser, so best beat TWA set ~3 deg wider; Sunfish is relatively better reaching/downwind than its DPN suggests and worse upwind (wind-band DPNs 102.9 light to 95.6 heavy also imply it is relatively stronger in more wind).",
+   "includes_spinnaker": false,
+   "tws_kn": [
+    6,
+    10,
+    15
+   ],
+   "twa_deg": [
+    45,
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150,
+    165
+   ],
+   "speeds_kn": {
+    "6": [
+     3.11,
+     3.57,
+     3.84,
+     3.93,
+     3.93,
+     3.84,
+     3.57,
+     3.29,
+     3.11
+    ],
+    "10": [
+     4.3,
+     4.94,
+     5.4,
+     5.67,
+     5.85,
+     5.67,
+     5.12,
+     4.66,
+     4.39
+    ],
+    "15": [
+     4.76,
+     6.04,
+     7.32,
+     8.23,
+     8.78,
+     8.6,
+     7.87,
+     7.5,
+     6.95
+    ]
+   },
+   "beat": {
+    "6": {
+     "twa": 48,
+     "bsp": 3.11
+    },
+    "10": {
+     "twa": 46,
+     "bsp": 4.21
+    },
+    "15": {
+     "twa": 45,
+     "bsp": 4.66
+    }
+   },
+   "run": {
+    "6": {
+     "twa": 155,
+     "bsp": 3.2
+    },
+    "10": {
+     "twa": 165,
+     "bsp": 4.39
+    },
+    "15": {
+     "twa": 165,
+     "bsp": 6.95
+    }
+   },
+   "confidence": "low"
+  },
+  "sources": [
+   "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+   "https://goodoldboat.com/saildata/boat/sunfish/",
+   "https://www.ussailing.org/one-design-profile/united-states-sunfish-class-association/",
+   "https://www.sunfishclass.org/rulesandmeasurement",
+   "https://www.sunfishclass.org/assets/06670/85482c0cd3550fa3bb7490edb1f6503f",
+   "https://www.sailing.org/tools/documents/SUN2013CRC151212-[14118].pdf",
+   "https://myc.org/wp-content/uploads/2020/11/Sunfish-Tuning-Guide-by-Scott-Kyle.pdf",
+   "https://arizonayachtclub.org/racing/club-rating-tables/",
+   "https://www.ussailing.org/competition/offshore/dpn/",
+   "https://www.desertcart.tw/products/27655217-40ltr-mast-float-10086",
+   "https://forums.sailboatowners.com/goto/post?id=1508598"
+  ],
+  "not_found": [
+   "any published polar / VPP",
+   "reliable LWL",
+   "peak height of lateen rig above deck / mast step depth",
+   "rudder immersed depth",
+   "planing threshold (measured)",
+   "official RYA PN (current)",
+   "official US Sailing DPN page (behind PY Online)",
+   "numeric GZ curve"
+  ]
+ },
+ {
+  "name": "Catalina 22",
+  "variant_notes": "Original swing-keel Catalina 22 (Frank Butler, 1969-1994; ~15,000 built). Mk II (1995-2004): LOA 23.83 ft incl. transom/sprit per Wikipedia, swing keel 5.0/2.0 ft draft, 2,290 lb displ, swing-keel ballast ~452-454 lb; fin keel 3.5 ft draft / 765 lb ballast; wing keel 2.5 ft / 708 lb. Catalina 22 Sport (2004-): 2,380 lb, 550 lb ballast, 5.0/1.67 ft draft. Displacement for the original boat varies by source: 2,250 lb (keelindex, 1987 listing) vs 2,490 lb (Wikipedia); 2,250 used here.",
+  "dimensions": {
+   "loa": {
+    "value": 21.5,
+    "unit": "ft",
+    "si": 6.553,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "lwl": {
+    "value": 19.33,
+    "unit": "ft",
+    "si": 5.892,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "beam": {
+    "value": 7.67,
+    "unit": "ft",
+    "si": 2.338,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "draft_keel_down": {
+    "value": 5.0,
+    "unit": "ft",
+    "si": 1.524,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "draft_keel_up": {
+    "value": 2.0,
+    "unit": "ft",
+    "si": 0.61,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "Wikipedia gives 1.67 ft keel up: https://en.wikipedia.org/wiki/Catalina_22"
+   },
+   "displacement": {
+    "value": 2250,
+    "unit": "lb",
+    "si": 1020.6,
+    "si_unit": "kg",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "Wikipedia lists 2,490 lb for the original boat; Mk II swing 2,290 lb (https://soundingsonline.com/?p=37064); Sport 2,380 lb (https://en.wikipedia.org/wiki/Catalina_22)"
+   },
+   "ballast": {
+    "value": 550,
+    "unit": "lb",
+    "si": 249.5,
+    "si_unit": "kg",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "Cast iron swing keel. Wikipedia infobox says 450 lb and its text 800 lb; Mk II swing keel 454 lb (https://www.boat-specs.com/sailing/sailboats/catalina-yachts/catalina-22-mkii-swing-keel). 550 lb is the most common figure for the original swing keel."
+   },
+   "ballast_type": {
+    "value": "cast iron swing (pivoting) keel, cable-raised",
+    "unit": "text",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "hull_speed": {
+    "value": 5.89,
+    "unit": "kn",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "si": 3.03,
+    "si_unit": "m/s",
+    "note": "formula 1.34*sqrt(LWL ft)"
+   },
+   "pounds_per_inch_immersion": {
+    "value": 530,
+    "unit": "lb/in",
+    "source": "https://keelindex.com/boat/catalina-22/performance",
+    "si": 9.47,
+    "si_unit": "kg/mm"
+   },
+   "confidence": "high for LOA/LWL/beam/draft; medium for displacement and ballast (sources disagree by ~10% and ~50% respectively)"
+  },
+  "rig": {
+   "type": {
+    "value": "masthead sloop",
+    "unit": "text",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22"
+   },
+   "I": {
+    "value": 25.83,
+    "unit": "ft",
+    "si": 7.873,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22"
+   },
+   "J": {
+    "value": 8.0,
+    "unit": "ft",
+    "si": 2.438,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22"
+   },
+   "P": {
+    "value": 21.0,
+    "unit": "ft",
+    "si": 6.401,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22"
+   },
+   "E": {
+    "value": 9.66,
+    "unit": "ft",
+    "si": 2.944,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22"
+   },
+   "mast_height_above_dwl_est": {
+    "value": 29.0,
+    "unit": "ft",
+    "si": 8.839,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22",
+    "note": "ESTIMATE: I (25.83 ft, measured from sheer) + ~2.5 ft freeboard at the mast + ~0.5 ft masthead fitting. No published air draft found."
+   },
+   "mainsail_area": {
+    "value": 101.43,
+    "unit": "ft2",
+    "si": 9.42,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22",
+    "note": "triangle P*E/2; Good Old Boat lists 104.9 ft2 with roach: https://goodoldboat.com/saildata/boat/catalina-22/"
+   },
+   "foretriangle_100pct": {
+    "value": 103.32,
+    "unit": "ft2",
+    "si": 9.6,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22",
+    "note": "I*J/2"
+   },
+   "jib_110pct_est": {
+    "value": 113.6,
+    "unit": "ft2",
+    "si": 10.55,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22",
+    "note": "ESTIMATE: I*1.1J/2. Class max jib luff 22'10\", foot 10'9\" (https://catalina22.org/index.php/rules/68-class-rules)"
+   },
+   "genoa_150pct_est": {
+    "value": 155.0,
+    "unit": "ft2",
+    "si": 14.4,
+    "si_unit": "m2",
+    "source": "https://catalina22.org/index.php/rules/68-class-rules",
+    "note": "ESTIMATE: I*LP/2 with class max genoa LP 12 ft (=150% of J) and luff 26'4\""
+   },
+   "spinnaker_est": {
+    "value": 309.0,
+    "unit": "ft2",
+    "si": 28.71,
+    "si_unit": "m2",
+    "source": "https://catalina22.org/index.php/rules/68-class-rules",
+    "note": "ESTIMATE: 0.83*luff*girth from class max luff 25'10\" and max girth 14'5\" (symmetric)"
+   },
+   "total_working_sail_area": {
+    "value": 204.75,
+    "unit": "ft2",
+    "si": 19.02,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Catalina_22",
+    "note": "main + 100% foretriangle; keelindex reports 206.53 ft2"
+   },
+   "class_sail_limits": {
+    "value": "main luff 21'0\" max, foot 9'10\" max; jib luff 22'10\", foot 10'9\", leech 20'; genoa luff 26'4\", LP 12'; spinnaker luff 25'10\", girth 14'5\"",
+    "unit": "text",
+    "source": "https://catalina22.org/index.php/rules/68-class-rules"
+   },
+   "reef_points": {
+    "value": null,
+    "unit": "count",
+    "source": null,
+    "note": "Not found; one slab reef is common on cruising C22 mains but no published source located"
+   },
+   "confidence": "high for I/J/P/E and class sail limits; low for mast height, genoa and spinnaker areas (estimates)"
+  },
+  "foils": {
+   "keel_type": {
+    "value": "pivoting cast-iron plate in a hull trunk; keel-down draft 5.0 ft, keel-up 1.67-2.0 ft",
+    "unit": "text",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "keel_span_below_hull_est": {
+    "value": 3.3,
+    "unit": "ft",
+    "si": 1.006,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "ESTIMATE: keel-down draft 5.0 ft minus ~1.7 ft keel-up draft (hull + keel stub). No published span."
+   },
+   "keel_mean_chord_est": {
+    "value": 2.0,
+    "unit": "ft",
+    "si": 0.61,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "ESTIMATE: 550 lb cast iron (7,200 kg/m3) = 0.035 m3; with ~1.25 in plate thickness this is ~1 m2 total plate, part of it in the trunk; exposed area ~0.6 m2 over ~1.0 m span gives ~0.6 m chord."
+   },
+   "keel_area_est": {
+    "value": 6.5,
+    "unit": "ft2",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "si": 0.6,
+    "si_unit": "m2",
+    "note": "ESTIMATE (method above), exposed lateral area"
+   },
+   "rudder_type": {
+    "value": "transom-hung kick-up rudder, fiberglass-foam-wood from approved mold",
+    "unit": "text",
+    "source": "https://catalina22.org/index.php/rules/68-class-rules"
+   },
+   "rudder_span_est": {
+    "value": 3.0,
+    "unit": "ft",
+    "si": 0.914,
+    "si_unit": "m",
+    "source": "https://forums.sailboatowners.com/threads/length-of-catalina-kick-up-rudder.108894/",
+    "note": "ESTIMATE: no published dimension found (forum asking for kick-up blade length got no answer)"
+   },
+   "rudder_chord_est": {
+    "value": 1.0,
+    "unit": "ft",
+    "si": 0.305,
+    "si_unit": "m",
+    "source": "https://forums.sailboatowners.com/threads/length-of-catalina-kick-up-rudder.108894/",
+    "note": "ESTIMATE"
+   },
+   "rudder_area_est": {
+    "value": 2.7,
+    "unit": "ft2",
+    "source": "https://forums.sailboatowners.com/threads/length-of-catalina-kick-up-rudder.108894/",
+    "si": 0.25,
+    "si_unit": "m2",
+    "note": "ESTIMATE, immersed area"
+   },
+   "confidence": "low: no published keel or rudder dimensions found; all foil sizes are labeled estimates"
+  },
+  "crew": {
+   "typical_count": {
+    "value": 3,
+    "unit": "persons",
+    "source": null,
+    "note": "ESTIMATE: 2-3 when racing, 2-4 cruising. No class crew limit found in the class rules (https://catalina22.org/index.php/rules/68-class-rules)"
+   },
+   "typical_weight_est": {
+    "value": 500,
+    "unit": "lb",
+    "si": 226.8,
+    "si_unit": "kg",
+    "source": null,
+    "note": "ESTIMATE: 3 x ~167 lb (75.6 kg); 2 crew ~340 lb"
+   },
+   "confidence": "low (estimate)"
+  },
+  "engine": {
+   "type": {
+    "value": "outboard on transom bracket",
+    "unit": "text",
+    "source": "https://www.keelindex.com/boat/catalina-22"
+   },
+   "hp_range": {
+    "value": "4-6",
+    "unit": "hp",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "si": "3.0-4.5",
+    "si_unit": "kW",
+    "note": "Wikipedia says typically 3-6 hp (https://en.wikipedia.org/wiki/Catalina_22). Class rules require an operable outboard of at least 40 lb incl. fuel tank (https://catalina22.org/index.php/rules/68-class-rules)"
+   },
+   "propellers": {
+    "value": 1,
+    "unit": "count",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "single outboard"
+   },
+   "max_motoring_speed_est": {
+    "value": 5.5,
+    "unit": "kn",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "si": 2.83,
+    "si_unit": "m/s",
+    "note": "ESTIMATE: just below hull speed 5.89 kn; no published figure"
+   },
+   "confidence": "medium for hp range; low for motoring speed"
+  },
+  "stability": {
+   "capsize_screening": {
+    "value": 2.34,
+    "unit": "ratio",
+    "source": "https://www.keelindex.com/boat/catalina-22",
+    "note": "B/(D/64)^(1/3) = 7.67/(2250/64)^(1/3) = 2.34 (checked)"
+   },
+   "ballast_displacement_ratio": {
+    "value": 0.244,
+    "unit": "ratio",
+    "source": "https://keelindex.com/boat/catalina-22/performance",
+    "note": "keelindex calls it tender; reef early"
+   },
+   "avs_deg": {
+    "value": null,
+    "unit": "deg",
+    "source": null,
+    "note": "Not found"
+   },
+   "righting_moment": {
+    "value": null,
+    "unit": "N*m/deg",
+    "source": null,
+    "note": "Not found"
+   },
+   "confidence": "high for capsize ratio (formula); AVS/RM missing"
+  },
+  "planing": {
+   "planes": false,
+   "note": "Displacement cruiser, D/L 139 (keelindex); hull speed 5.89 kn. May surf briefly in waves; no planing data.",
+   "source": "https://www.keelindex.com/boat/catalina-22"
+  },
+  "handicaps": {
+   "phrf": {
+    "value": 270,
+    "unit": "s/nm",
+    "source": "https://keelindex.com/boat/catalina-22/performance",
+    "note": "Wikipedia: average 270, high 280, low 243 (https://en.wikipedia.org/wiki/Catalina_22)"
+   },
+   "orc": {
+    "value": null,
+    "unit": "",
+    "source": null,
+    "note": "No ORC certificate found for any Catalina 22 in ORC USA/CAN/AUS/GRE/ITA data (https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json)"
+   }
+  },
+  "polar": {
+   "source": "Derived from ORC 2026 club certificate of Catalina 30 standard rig 'River Weasel' (US 3522) https://data.orc.org/public/WPub.dll/CC/04560004IWP (data via https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json), scaled",
+   "type": "estimate",
+   "method": "No published polar for the Catalina 22 (none on keelindex, none in ORC data). Scaled the Catalina 30 standard-rig ORC polar by a speed ratio. PHRF ratio: C30 GPH 733.2 s/nm (ORC average); C22 time = 733.2 + (PHRF 270 - C30 std PHRF 183) = 820.2 s/nm; ratio = 0.894. Froude ratio sqrt(LWL22/LWL30) = sqrt(19.33/25) = 0.879. Factor used: 0.894 at TWS 6 and 10, min(PHRF, Froude) = 0.879 at TWS 16. Beat and gybe angles copied from the C30 certificate (unadjusted). The C22's higher SA/D (19.2 vs 15.2) suggests it is relatively better than this in light air and the swing keel worse upwind; not modeled. PHRF sources: C22 270 https://keelindex.com/boat/catalina-22/performance; C30 std 183 (Lake Michigan) https://forums.sailboatowners.com/threads/tall-rig.150951/ (SoCal 192 std per same thread).",
+   "includes_spinnaker": true,
+   "tws_kn": [
+    6,
+    10,
+    16
+   ],
+   "twa_deg": [
+    52,
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150,
+    165
+   ],
+   "speeds_kn": {
+    "6": [
+     4.03,
+     4.26,
+     4.39,
+     4.32,
+     4.23,
+     4.09,
+     3.72,
+     3.23,
+     2.77
+    ],
+    "10": [
+     5.19,
+     5.36,
+     5.49,
+     5.52,
+     5.6,
+     5.52,
+     5.25,
+     4.81,
+     4.33
+    ],
+    "16": [
+     5.56,
+     5.72,
+     5.91,
+     5.99,
+     6.25,
+     6.25,
+     6.12,
+     5.89,
+     5.64
+    ]
+   },
+   "beat": {
+    "6": {
+     "twa": 43.7,
+     "bsp": 3.65,
+     "vmg": 2.64
+    },
+    "10": {
+     "twa": 41.2,
+     "bsp": 4.69,
+     "vmg": 3.53
+    },
+    "16": {
+     "twa": 40,
+     "bsp": 5.07,
+     "vmg": 3.89
+    }
+   },
+   "run": {
+    "6": {
+     "twa": 148.5,
+     "bsp": 3.28,
+     "vmg": 2.8
+    },
+    "10": {
+     "twa": 156.8,
+     "bsp": 4.58,
+     "vmg": 4.21
+    },
+    "16": {
+     "twa": 176.3,
+     "bsp": 5.52,
+     "vmg": 5.51
+    }
+   },
+   "scale_factor": {
+    "6": 0.894,
+    "10": 0.894,
+    "16": 0.879
+   },
+   "confidence": "low (scaled estimate, +/-10%)"
+  },
+  "sources": [
+   "https://www.keelindex.com/boat/catalina-22",
+   "https://keelindex.com/boat/catalina-22/performance",
+   "https://en.wikipedia.org/wiki/Catalina_22",
+   "https://catalina22.org/index.php/rules/68-class-rules",
+   "https://sailboat.guide/onad3m",
+   "https://www.boat-specs.com/sailing/sailboats/catalina-yachts/catalina-22-mkii-swing-keel",
+   "https://soundingsonline.com/?p=37064",
+   "https://goodoldboat.com/saildata/boat/catalina-22/",
+   "https://forums.sailboatowners.com/threads/length-of-catalina-kick-up-rudder.108894/",
+   "https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json",
+   "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+   "https://forums.sailboatowners.com/threads/tall-rig.150951/"
+  ],
+  "not_found": [
+   "published polar / ORC certificate",
+   "keel span, chord, area",
+   "rudder dimensions",
+   "mast height / air draft",
+   "reef points and reefed area",
+   "AVS and righting moment",
+   "published motoring speed",
+   "official spinnaker / genoa areas (only class max dimensions)",
+   "class crew limits"
+  ]
+ },
+ {
+  "name": "Catalina 30",
+  "variant_notes": "Mk I (1974/76-1986), Mk II (~hull 3300, 1986, T-shaped cockpit), Mk III (1994, walk-through transom; keelindex says Mk III keel 5.75 ft / 4,400 lb). Standard rig (I 41, J 11.5, P 35, E 11.5) is the primary entry; tall rig (I 43, J 13.16 with short bowsprit, P 37, E 12, mast ~2 ft taller) given as tall_rig. Keels: deep fin (5.25 ft), shoal and wing (wing 10,300 lb, 4,300 lb ballast) options. Dimensions are for the deep-fin standard boat.",
+  "dimensions": {
+   "loa": {
+    "value": 29.92,
+    "unit": "ft",
+    "si": 9.12,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-30"
+   },
+   "lwl": {
+    "value": 25.0,
+    "unit": "ft",
+    "si": 7.62,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-30"
+   },
+   "beam": {
+    "value": 10.83,
+    "unit": "ft",
+    "si": 3.301,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-30"
+   },
+   "draft_deep_fin": {
+    "value": 5.25,
+    "unit": "ft",
+    "si": 1.6,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "note": "ORC certificates measure 1.600-1.622 m"
+   },
+   "displacement": {
+    "value": 10200,
+    "unit": "lb",
+    "si": 4626.6,
+    "si_unit": "kg",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "note": "ORC measured (lightship) displacement on 3 boats: 4,622-5,004 kg; ORC sailing displacement incl. crew/gear 5,259-5,648 kg (https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json)"
+   },
+   "ballast": {
+    "value": 4200,
+    "unit": "lb",
+    "si": 1905.1,
+    "si_unit": "kg",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "note": "Wikipedia says 4,250 lb (https://en.wikipedia.org/wiki/Catalina_30); wing keel 4,300 lb"
+   },
+   "ballast_type": {
+    "value": "listed as lead (keelindex spec table); keelindex buyer's guide/survey text describes a cast iron fin keel - conflicting",
+    "unit": "text",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "note": "see https://keelindex.com/articles/catalina-30-buyers-guide"
+   },
+   "hull_speed": {
+    "value": 6.7,
+    "unit": "kn",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "si": 3.45,
+    "si_unit": "m/s",
+    "note": "formula"
+   },
+   "orc_imsl": {
+    "value": 7.628,
+    "unit": "m",
+    "source": "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+    "si": 7.628,
+    "si_unit": "m",
+    "note": "ORC IMS sailing length (River Weasel)"
+   },
+   "orc_max_beam": {
+    "value": 3.237,
+    "unit": "m",
+    "source": "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+    "si": 3.237,
+    "si_unit": "m"
+   },
+   "orc_wetted_surface": {
+    "value": 21.73,
+    "unit": "m2",
+    "source": "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+    "si": 21.73,
+    "si_unit": "m2"
+   },
+   "pounds_per_inch_immersion": {
+    "value": 967,
+    "unit": "lb/in",
+    "source": "https://keelindex.com/boat/catalina-30/performance",
+    "si": 17.27,
+    "si_unit": "kg/mm"
+   },
+   "confidence": "high"
+  },
+  "rig": {
+   "type": {
+    "value": "masthead sloop",
+    "unit": "text",
+    "source": "https://en.wikipedia.org/wiki/Catalina_30"
+   },
+   "chosen": "standard rig (tall rig in tall_rig)",
+   "I": {
+    "value": 41.0,
+    "unit": "ft",
+    "si": 12.497,
+    "si_unit": "m",
+    "source": "https://keelindex.com/boat/catalina-30/sails"
+   },
+   "J": {
+    "value": 11.5,
+    "unit": "ft",
+    "si": 3.505,
+    "si_unit": "m",
+    "source": "https://keelindex.com/boat/catalina-30/sails"
+   },
+   "P": {
+    "value": 35.0,
+    "unit": "ft",
+    "si": 10.668,
+    "si_unit": "m",
+    "source": "https://keelindex.com/boat/catalina-30/sails"
+   },
+   "E": {
+    "value": 11.5,
+    "unit": "ft",
+    "si": 3.505,
+    "si_unit": "m",
+    "source": "https://keelindex.com/boat/catalina-30/sails"
+   },
+   "mast_height_above_dwl": {
+    "value": 45.9,
+    "unit": "ft",
+    "si": 13.99,
+    "si_unit": "m",
+    "source": "https://keelindex.com/boat/catalina-30/sails",
+    "note": "standard rig"
+   },
+   "mainsail_area": {
+    "value": 201.3,
+    "unit": "ft2",
+    "si": 18.7,
+    "si_unit": "m2",
+    "source": "https://keelindex.com/boat/catalina-30/sails",
+    "note": "triangle; ORC measured main with roach 22.57 m2 (https://data.orc.org/public/WPub.dll/CC/04560004IWP)"
+   },
+   "foretriangle_100pct": {
+    "value": 235.8,
+    "unit": "ft2",
+    "si": 21.91,
+    "si_unit": "m2",
+    "source": "https://keelindex.com/boat/catalina-30/sails"
+   },
+   "jib_110pct": {
+    "value": 259.0,
+    "unit": "ft2",
+    "si": 24.06,
+    "si_unit": "m2",
+    "source": "https://keelindex.com/boat/catalina-30/sails"
+   },
+   "genoa_150pct": {
+    "value": 353.6,
+    "unit": "ft2",
+    "si": 32.85,
+    "si_unit": "m2",
+    "source": "https://keelindex.com/boat/catalina-30/sails",
+    "note": "ORC measured largest headsail 33.4 m2 (https://data.orc.org/public/WPub.dll/CC/04560004IWP)"
+   },
+   "spinnaker_symmetric": {
+    "value": 712.0,
+    "unit": "ft2",
+    "si": 66.15,
+    "si_unit": "m2",
+    "source": "https://goodoldboat.com/saildata/boat/catalina-30-standard/",
+    "note": "keelindex estimates 848.7 ft2; ORC measured symmetric spinnaker 60.3 m2 (649 ft2) on River Weasel (https://data.orc.org/public/WPub.dll/CC/04560004IWP)"
+   },
+   "spinnaker_asymmetric": {
+    "value": 615.0,
+    "unit": "ft2",
+    "si": 57.14,
+    "si_unit": "m2",
+    "source": "https://goodoldboat.com/saildata/boat/catalina-30-standard/"
+   },
+   "reef_points": {
+    "value": 2,
+    "unit": "count",
+    "source": "https://keelindex.com/boat/catalina-30/sails",
+    "note": "standard cross-cut Dacron main has 2 reef points; reefed areas not published"
+   },
+   "tall_rig": {
+    "I": {
+     "value": 43.0,
+     "unit": "ft",
+     "si": 13.106,
+     "si_unit": "m",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/"
+    },
+    "J": {
+     "value": 13.16,
+     "unit": "ft",
+     "si": 4.011,
+     "si_unit": "m",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+     "note": "short bowsprit"
+    },
+    "P": {
+     "value": 37.0,
+     "unit": "ft",
+     "si": 11.278,
+     "si_unit": "m",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/"
+    },
+    "E": {
+     "value": 12.0,
+     "unit": "ft",
+     "si": 3.658,
+     "si_unit": "m",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/"
+    },
+    "mast_height_above_dwl_est": {
+     "value": 47.9,
+     "unit": "ft",
+     "si": 14.6,
+     "si_unit": "m",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+     "note": "ESTIMATE: standard 45.9 ft (https://keelindex.com/boat/catalina-30/sails) + ~2 ft (tall mast ~2 ft taller per https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/)"
+    },
+    "mainsail_area": {
+     "value": 222.0,
+     "unit": "ft2",
+     "si": 20.62,
+     "si_unit": "m2",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+     "note": "triangle P*E/2 computed; ORC measured 23.85-25.06 m2 with roach (https://data.orc.org/public/WPub.dll/CC/04560004V5K)"
+    },
+    "foretriangle_100pct": {
+     "value": 282.9,
+     "unit": "ft2",
+     "si": 26.28,
+     "si_unit": "m2",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+     "note": "I*J/2 computed"
+    },
+    "genoa_150pct": {
+     "value": 407.5,
+     "unit": "ft2",
+     "si": 37.86,
+     "si_unit": "m2",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+     "note": "sailmaker listing, LP 150.15%"
+    },
+    "spinnaker_symmetric": {
+     "value": 860.0,
+     "unit": "ft2",
+     "si": 79.9,
+     "si_unit": "m2",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/"
+    },
+    "spinnaker_asymmetric": {
+     "value": 750.0,
+     "unit": "ft2",
+     "si": 69.68,
+     "si_unit": "m2",
+     "source": "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+     "note": "ORC measured asym 63.42-74.06 m2 (https://data.orc.org/public/WPub.dll/CC/04560004V5K)"
+    }
+   },
+   "confidence": "high for I/J/P/E and standard mast height; medium for spinnaker areas (sources differ)"
+  },
+  "foils": {
+   "keel_type": {
+    "value": "bolted fin keel, spade rudder",
+    "unit": "text",
+    "source": "https://www.keelindex.com/boat/catalina-30"
+   },
+   "keel_span_below_hull_est": {
+    "value": 3.6,
+    "unit": "ft",
+    "si": 1.097,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "note": "ESTIMATE: draft 5.25 ft minus ~1.6 ft canoe-body depth (typical for this hull form; not published)"
+   },
+   "keel_mean_chord_est": {
+    "value": 4.0,
+    "unit": "ft",
+    "si": 1.219,
+    "si_unit": "m",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "note": "ESTIMATE: no published chord; typical 1970s fin aspect ratio ~0.9 (span/mean chord)"
+   },
+   "keel_area_est": {
+    "value": 14.5,
+    "unit": "ft2",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "si": 1.35,
+    "si_unit": "m2",
+    "note": "ESTIMATE span*chord"
+   },
+   "rudder_type": {
+    "value": "internally mounted spade rudder",
+    "unit": "text",
+    "source": "https://en.wikipedia.org/wiki/Catalina_30"
+   },
+   "rudder_span_est": {
+    "value": 4.0,
+    "unit": "ft",
+    "si": 1.219,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_30",
+    "note": "ESTIMATE"
+   },
+   "rudder_chord_est": {
+    "value": 1.5,
+    "unit": "ft",
+    "si": 0.457,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Catalina_30",
+    "note": "ESTIMATE"
+   },
+   "rudder_area_est": {
+    "value": 6.0,
+    "unit": "ft2",
+    "source": "https://en.wikipedia.org/wiki/Catalina_30",
+    "si": 0.56,
+    "si_unit": "m2",
+    "note": "ESTIMATE"
+   },
+   "confidence": "low: no published foil dimensions; estimates only"
+  },
+  "crew": {
+   "orc_crew_weight": {
+    "value": 465,
+    "unit": "kg",
+    "source": "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+    "si": 465,
+    "si_unit": "kg",
+    "note": "ORC certificate crew weight (standard rig); tall-rig certificates 459 kg (https://data.orc.org/public/WPub.dll/CC/04560004V5K) and 650 kg (https://data.orc.org/public/WPub.dll/CC/04560004V6J)"
+   },
+   "typical_count": {
+    "value": 6,
+    "unit": "persons",
+    "source": "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+    "note": "ESTIMATE: 465 kg / ~80 kg = ~6 racing crew; 2-4 cruising"
+   },
+   "confidence": "high for ORC rated crew weight; count is an estimate"
+  },
+  "engine": {
+   "type": {
+    "value": "inboard diesel (early boats: Atomic 4 gasoline, Universal 5411, Yanmar)",
+    "unit": "text",
+    "source": "https://en.wikipedia.org/wiki/Catalina_30"
+   },
+   "universal_5411_hp": {
+    "value": 11,
+    "unit": "hp",
+    "source": "https://resources.boattrader.com/boat/1985-catalina-30-9308407",
+    "si": 8.2,
+    "si_unit": "kW",
+    "note": "owner: 10.75 hp at max rpm (https://forums.sailboatowners.com/threads/is-11-hp-too-little-for-a-30.190248/)"
+   },
+   "atomic_4_hp": {
+    "value": 30,
+    "unit": "hp",
+    "source": "https://en.wikipedia.org/wiki/Universal_Atomic_4",
+    "si": 22.4,
+    "si_unit": "kW",
+    "note": "gasoline; 18 and 30 hp versions produced"
+   },
+   "universal_m25_hp": {
+    "value": 21,
+    "unit": "hp",
+    "source": "https://www.westerbeke.com/universalengines.htm",
+    "si": 15.7,
+    "si_unit": "kW",
+    "note": "3 cyl, 3200 rpm"
+   },
+   "universal_m25xp_hp": {
+    "value": 23,
+    "unit": "hp",
+    "source": "https://www.westerbeke.com/universalengines.htm",
+    "si": 17.2,
+    "si_unit": "kW",
+    "note": "3 cyl, 3200 rpm; some listings say 25 hp"
+   },
+   "propellers": {
+    "value": 1,
+    "unit": "count",
+    "source": "https://forums.sailboatowners.com/threads/cruising-rpm-for-universal-m25-xp.141749/",
+    "note": "single shaft; owners report 2- or 3-blade fixed props"
+   },
+   "motoring_speed": {
+    "value": 5.5,
+    "unit": "kn",
+    "source": "https://forums.sailboatowners.com/threads/c-30-motoring-speed.1249928747/post-1690628",
+    "si": 2.83,
+    "si_unit": "m/s",
+    "note": "owner reports: ~5 kn at 1800-2000 rpm, ~5.5 kn at 2200 rpm, practical max ~6-6.5 kn near 2450-2500 rpm in calm water (forum anecdotes)"
+   },
+   "max_motoring_speed_est": {
+    "value": 6.5,
+    "unit": "kn",
+    "source": "https://forums.sailboatowners.com/threads/c-30-motoring-speed.1249928747/post-1690628",
+    "si": 3.34,
+    "si_unit": "m/s",
+    "note": "ESTIMATE from owner reports; near hull speed 6.7 kn"
+   },
+   "fuel_tank": {
+    "value": 21,
+    "unit": "gal",
+    "source": "https://www.keelindex.com/boat/catalina-30",
+    "si": 79,
+    "si_unit": "L"
+   },
+   "confidence": "high for hp ratings; medium-low for motoring speeds (forum)"
+  },
+  "stability": {
+   "capsize_screening": {
+    "value": 2.0,
+    "unit": "ratio",
+    "source": "https://keelindex.com/boat/catalina-30/performance",
+    "note": "B/(D/64)^(1/3) = 10.83/(10200/64)^(1/3) = 2.00 (checked)"
+   },
+   "ballast_displacement_ratio": {
+    "value": 0.412,
+    "unit": "ratio",
+    "source": "https://keelindex.com/boat/catalina-30/performance"
+   },
+   "avs_deg": {
+    "value": null,
+    "unit": "deg",
+    "source": null,
+    "note": "Not found (ORC public data omit RM/LPS; Catalina 34 owner-reported LPS 127 deg is a different boat: https://c34.org/bbs/index.php/topic,6681.0.html)"
+   },
+   "righting_moment": {
+    "value": null,
+    "unit": "N*m/deg",
+    "source": null,
+    "note": "Not found"
+   },
+   "confidence": "high for capsize ratio; AVS/RM missing"
+  },
+  "planing": {
+   "planes": false,
+   "note": "Displacement cruiser, D/L 291; ORC predicts max ~7.6-7.9 kn at TWS 20 broad reaching with spinnaker.",
+   "source": "https://keelindex.com/boat/catalina-30/performance"
+  },
+  "handicaps": {
+   "phrf": {
+    "value": 180,
+    "unit": "s/nm",
+    "source": "https://keelindex.com/boat/catalina-30/performance",
+    "note": "rig not specified on keelindex"
+   },
+   "phrf_standard_rig": {
+    "value": "183 (Lake Michigan) / 192 (SoCal); E. Connecticut range 192-213",
+    "unit": "s/nm",
+    "source": "https://forums.sailboatowners.com/threads/tall-rig.150951/",
+    "note": "forum reports, see also https://forums.sailboatowners.com/threads/catalina-30-phrf-rating-spread.45315/latest"
+   },
+   "phrf_tall_rig": {
+    "value": "168 (Lake Michigan and SoCal); E. Connecticut 180-202",
+    "unit": "s/nm",
+    "source": "https://forums.sailboatowners.com/threads/tall-rig.150951/"
+   },
+   "orc_gph": {
+    "value": "733.2 (std rig, River Weasel); 715.5 (tall, Goblin); 708.4 (tall, Saving Grace II)",
+    "unit": "s/nm",
+    "source": "https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json",
+    "note": "keelindex median 719.0 over 3 certs: https://keelindex.com/boat/catalina-30/performance"
+   }
+  },
+  "polar": {
+   "source": "ORC 2026 club certificate, Catalina 30 standard rig 'River Weasel' US 3522 (1984, symmetric spinnaker 60.3 m2, crew 465 kg): https://data.orc.org/public/WPub.dll/CC/04560004IWP; numbers from the ORC public data feed https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json",
+   "type": "published",
+   "method": null,
+   "includes_spinnaker": true,
+   "tws_kn": [
+    6,
+    10,
+    16
+   ],
+   "twa_deg": [
+    52,
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150,
+    165
+   ],
+   "speeds_kn": {
+    "6": [
+     4.51,
+     4.76,
+     4.91,
+     4.83,
+     4.73,
+     4.57,
+     4.16,
+     3.61,
+     3.1
+    ],
+    "10": [
+     5.8,
+     5.99,
+     6.14,
+     6.18,
+     6.26,
+     6.17,
+     5.87,
+     5.38,
+     4.84
+    ],
+    "16": [
+     6.33,
+     6.51,
+     6.72,
+     6.82,
+     7.11,
+     7.11,
+     6.96,
+     6.7,
+     6.42
+    ]
+   },
+   "beat": {
+    "6": {
+     "twa": 43.7,
+     "bsp": 4.08,
+     "vmg": 2.95
+    },
+    "10": {
+     "twa": 41.2,
+     "bsp": 5.25,
+     "vmg": 3.95
+    },
+    "16": {
+     "twa": 40,
+     "bsp": 5.77,
+     "vmg": 4.42
+    }
+   },
+   "run": {
+    "6": {
+     "twa": 148.5,
+     "bsp": 3.67,
+     "vmg": 3.13
+    },
+    "10": {
+     "twa": 156.8,
+     "bsp": 5.12,
+     "vmg": 4.71
+    },
+    "16": {
+     "twa": 176.3,
+     "bsp": 6.28,
+     "vmg": 6.27
+    }
+   },
+   "confidence": "high (ORC VPP prediction, not measured)",
+   "tall_rig_polar": {
+    "source": "ORC 2026 club certificate, Catalina 30 TM (tall mast) 'Goblin' US 4118, asymmetric spinnaker 63.42 m2: https://data.orc.org/public/WPub.dll/CC/04560004V5K",
+    "includes_spinnaker": true,
+    "tws_kn": [
+     6,
+     10,
+     16
+    ],
+    "twa_deg": [
+     52,
+     60,
+     75,
+     90,
+     110,
+     120,
+     135,
+     150,
+     165
+    ],
+    "speeds_kn": {
+     "6": [
+      4.7,
+      4.96,
+      5.13,
+      5.05,
+      5.06,
+      4.91,
+      4.43,
+      3.79,
+      2.97
+     ],
+     "10": [
+      5.94,
+      6.12,
+      6.25,
+      6.38,
+      6.46,
+      6.38,
+      6.1,
+      5.53,
+      4.66
+     ],
+     "16": [
+      6.32,
+      6.5,
+      6.76,
+      6.93,
+      7.35,
+      7.35,
+      7.13,
+      6.71,
+      6.27
+     ]
+    },
+    "beat": {
+     "6": {
+      "twa": 43.9,
+      "bsp": 4.26,
+      "vmg": 3.07
+     },
+     "10": {
+      "twa": 41.3,
+      "bsp": 5.41,
+      "vmg": 4.06
+     },
+     "16": {
+      "twa": 40.7,
+      "bsp": 5.77,
+      "vmg": 4.37
+     }
+    },
+    "run": {
+     "6": {
+      "twa": 145.9,
+      "bsp": 3.96,
+      "vmg": 3.28
+     },
+     "10": {
+      "twa": 149.4,
+      "bsp": 5.56,
+      "vmg": 4.79
+     },
+     "16": {
+      "twa": 175,
+      "bsp": 6.12,
+      "vmg": 6.09
+     }
+    }
+   }
+  },
+  "sources": [
+   "https://www.keelindex.com/boat/catalina-30",
+   "https://keelindex.com/boat/catalina-30/performance",
+   "https://keelindex.com/boat/catalina-30/sails",
+   "https://keelindex.com/articles/catalina-30-buyers-guide",
+   "https://en.wikipedia.org/wiki/Catalina_30",
+   "https://goodoldboat.com/saildata/boat/catalina-30-standard/",
+   "https://goodoldboat.com/saildata/boat/catalina-30-tall-rig/",
+   "https://data.orc.org/public/WPub.dll?action=DownRMS&CountryId=USA&ext=json",
+   "https://data.orc.org/public/WPub.dll/CC/04560004IWP",
+   "https://data.orc.org/public/WPub.dll/CC/04560004V5K",
+   "https://data.orc.org/public/WPub.dll/CC/04560004V6J",
+   "https://forums.sailboatowners.com/threads/tall-rig.150951/",
+   "https://forums.sailboatowners.com/threads/catalina-30-phrf-rating-spread.45315/latest",
+   "https://www.westerbeke.com/universalengines.htm",
+   "https://forums.sailboatowners.com/threads/is-11-hp-too-little-for-a-30.190248/",
+   "https://resources.boattrader.com/boat/1985-catalina-30-9308407",
+   "https://en.wikipedia.org/wiki/Universal_Atomic_4",
+   "https://forums.sailboatowners.com/threads/c-30-motoring-speed.1249928747/post-1690628",
+   "https://forums.sailboatowners.com/threads/cruising-rpm-for-universal-m25-xp.141749/"
+  ],
+  "not_found": [
+   "keel span/chord/area",
+   "rudder dimensions",
+   "AVS / righting moment",
+   "reefed sail areas",
+   "official max motoring speed (only owner reports)",
+   "certain ballast material (lead vs cast iron conflict)"
+  ]
+ },
+ {
+  "name": "Hobie 16",
+  "variant_notes": "Standard Hobie 16 (two-person, double trapeze, no boards, asymmetric hulls, kick-up rudders). Hobie's spec page also lists a lighter-sail configuration (main 10.5 m2 / jib 3.7 m2, weight 149 kg) without naming the variant (probably the Hobie 16 Easy/youth rig; unconfirmed). Spinnaker is optional (Hobie 16 Spi). Values below are for the standard rig unless noted.",
+  "dimensions": {
+   "loa": {
+    "value": 16.58,
+    "unit": "ft",
+    "si": 5.0536,
+    "si_unit": "m",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "16' 7\" / 5.04 m (IHCA); Hobie.com gives 5.11 m / 16' 9\"; Wikipedia 5.05 m"
+   },
+   "lwl": {
+    "value": 15.17,
+    "unit": "ft",
+    "si": 4.6238,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+    "note": "15' 2\" / 4.64 m (boat-specs only; not in Hobie/IHCA specs)"
+   },
+   "beam_overall": {
+    "value": 7.92,
+    "unit": "ft",
+    "si": 2.414,
+    "si_unit": "m",
+    "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+    "note": "7' 11\" / 2.41 m (Hobie, IHCA, Wikipedia agree)"
+   },
+   "hull_centerline_spacing": {
+    "value": 2.0,
+    "unit": "m",
+    "si": 2.0,
+    "si_unit": "m",
+    "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+    "note": "ESTIMATE: overall beam 2.41 m minus an assumed single-hull deck width of ~0.40 m. No published figure found."
+   },
+   "hull_beam_waterline_each": {
+    "value": 0.3,
+    "unit": "m",
+    "si": 0.3,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+    "note": "ESTIMATE (rough): narrow V/asymmetric hull; from DLR 41 and 4.64 m LWL. No published figure found."
+   },
+   "draft_rudders_up": {
+    "value": 10,
+    "unit": "in",
+    "si": 0.254,
+    "si_unit": "m",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "0.25 m (IHCA, Wikipedia); boat-specs gives 0.27 m"
+   },
+   "draft_rudders_down": {
+    "value": 2.0,
+    "unit": "ft",
+    "si": 0.6096,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+    "note": "2'0\" / 0.6 m (boat-specs); Hobie forum admin guessed ~2.5 ft blade depth while sailing (https://www.hobie.com/au/en/forums/viewtopic.php?p=21222)"
+   },
+   "hull_weight_rigged": {
+    "value": 320,
+    "unit": "lb",
+    "si": 145.1496,
+    "si_unit": "kg",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "Class minimum 320 lb / 145 kg since 1984 (earlier 315, then 340); Hobie.com lists 145 kg and 149 kg"
+   },
+   "max_load": {
+    "value": 800,
+    "unit": "lb",
+    "si": 362.8739,
+    "si_unit": "kg",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "Max load 800 lb / 362 kg (IHCA); Hobie.com capacity 240 kg / 529 lb"
+   },
+   "sailing_weight_typical": {
+    "value": 605,
+    "unit": "lb",
+    "si": 274.4,
+    "si_unit": "kg",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "DERIVED: 320 lb boat + 285 lb class minimum crew. Optimum open-racing crew 285-310 lb gives 605-630 lb (274-286 kg)."
+   },
+   "confidence": "high for LOA/beam/weight (manufacturer + class); medium for LWL/draft (boat-specs); hull spacing and WL beam are estimates"
+  },
+  "rig": {
+   "mast_height": {
+    "value": 26.5,
+    "unit": "ft",
+    "si": 8.0772,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Hobie_16",
+    "note": "26' 6\" / 8.08 m (Wikipedia, Small Boats); Hobie.com lists 7.92 m / 26'"
+   },
+   "P_main_hoist": {
+    "value": 24.42,
+    "unit": "ft",
+    "si": 7.4432,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+    "note": "Mainsail hoist 24'5\" / 7.45 m (boat-specs)"
+   },
+   "I_foretriangle_height": {
+    "value": 14.83,
+    "unit": "ft",
+    "si": 4.5202,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+    "note": "Fore triangle height 14'10\" / 4.5 m as listed by boat-specs; looks low for the H16 (jib luff is ~15 ft, forestay attaches near hounds) - treat as unreliable"
+   },
+   "mainsail_area": {
+    "value": 148.2,
+    "unit": "ft2",
+    "si": 13.7682,
+    "si_unit": "m2",
+    "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+    "note": "13.77 m2, fully battened, square-ish top (Hobie, Wikipedia, Small Boats agree)"
+   },
+   "jib_area": {
+    "value": 55.1,
+    "unit": "ft2",
+    "si": 5.119,
+    "si_unit": "m2",
+    "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+    "note": "5.12 m2, fully battened jib on hanks"
+   },
+   "upwind_sail_area": {
+    "value": 218,
+    "unit": "ft2",
+    "si": 20.2529,
+    "si_unit": "m2",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "20 m2 class figure (boat-specs computes 18.89 m2 / 203 ft2 = main+jib)"
+   },
+   "spinnaker_area_optional": {
+    "value": 188.3,
+    "unit": "ft2",
+    "si": 17.4936,
+    "si_unit": "m2",
+    "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+    "note": "17.5 m2 optional asymmetric (Hobie.com); boat-specs gives 15 m2 / 161 ft2"
+   },
+   "reduced_rig_variant": {
+    "main": {
+     "value": 10.5,
+     "unit": "m2",
+     "si": 10.5,
+     "si_unit": "m2",
+     "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+     "note": "Hobie.com second listing, variant not named"
+    },
+    "jib": {
+     "value": 3.7,
+     "unit": "m2",
+     "si": 3.7,
+     "si_unit": "m2",
+     "source": "https://www.hobie.com/xe/en/sail/hobie-16/",
+     "note": "Hobie.com second listing, variant not named"
+    }
+   },
+   "reef_points": {
+    "value": "Mainsail can be reefed: tack downhaul, clew outhaul and three reef points (five reefing lines)",
+    "source": "https://smallboatsmonthly.com/article/hobie-16/"
+   },
+   "mast_type": "Rotating aluminium mast (Comptip mast required for racing)",
+   "confidence": "high for sail areas; medium for mast height (7.92 vs 8.08 m); low for I/P"
+  },
+  "foils": {
+   "boards": {
+    "value": "none",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "Centerboards: None. Asymmetric hulls (flatter inboard side, fuller outboard side) generate the lateral force; expect larger leeway than boarded cats (estimate 5-10 deg upwind; not published)."
+   },
+   "rudders": {
+    "count": 2,
+    "type": "kick-up blades in cast stocks (EPO/EZ Loc), tiller crossbar",
+    "source": "https://murrays.com/blogs/technical-blog/hobie-rudder-information"
+   },
+   "rudder_span_immersed": {
+    "value": 0.5,
+    "unit": "m",
+    "si": 0.5,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+    "note": "ESTIMATE: max draft 0.6 m (rudders down) minus ~0.1-0.15 m hull draft. Forum admin guess ~2.5 ft blade depth (https://www.hobie.com/au/en/forums/viewtopic.php?p=21222). No published blade outline."
+   },
+   "rudder_chord": {
+    "value": 0.2,
+    "unit": "m",
+    "si": 0.2,
+    "si_unit": "m",
+    "source": "https://murrays.com/blogs/technical-blog/hobie-rudder-information",
+    "note": "ESTIMATE (typical beach-cat blade ~8 in chord); not published."
+   },
+   "rudder_blade_weight": {
+    "value": 4.3,
+    "unit": "lb",
+    "si": 1.9504,
+    "si_unit": "kg",
+    "source": "https://murrays.com/blogs/technical-blog/hobie-rudder-information",
+    "note": "EPO 1 blades about 4.2-4.4 lb each"
+   },
+   "confidence": "low for foil geometry (estimates); high that there are no boards"
+  },
+  "crew": {
+   "count": {
+    "value": 2,
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "Designed for 2; Hobie.com says 2-3; can carry 3 adults / family of 4 casually"
+   },
+   "min_crew_weight_racing": {
+    "value": 285,
+    "unit": "lb",
+    "si": 129.2738,
+    "si_unit": "kg",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "Combined minimum 285 lb (129.3 kg); youth 250 lb, women 260 lb; optimum 285-310 lb. Also in 2026 NOR (https://hobieclass.com/wp-content/uploads/2026/06/Hobie-Asian-Champship-NOR.02.docx)"
+   },
+   "trapeze": {
+    "value": "Double trapeze: both crew trapeze; most teams double-trapeze upwind from about 12 kn",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/"
+   },
+   "confidence": "high"
+  },
+  "engine": {
+   "value": "none",
+   "confidence": "high"
+  },
+  "stability": {
+   "righting_moment_estimate": {
+    "value": 5400,
+    "unit": "N.m",
+    "si": 5400,
+    "si_unit": "N.m",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "ESTIMATE at hull-fly with both crew on trapeze: g*(145 kg * ~1.0 m [boat CG to leeward hull CL] + 135 kg crew * ~3.0 m [trapezing crew CG to leeward hull CL]) ~= 5.4 kN.m. Crew sitting on windward hull: ~g*(145*1.0+135*2.1) ~= 4.2 kN.m. Not published."
+   },
+   "hull_flying": {
+    "value": "Flies a hull with crew on trapeze from roughly 10-12 kn true wind; boat \"powers up in about 12 knots\"; no official number",
+    "source": "https://hobieclass.com/hobie-classes/hobie-16/",
+    "note": "The 10-12 kn flying threshold is an inference from the class statement that crews double-trapeze from ~12 kn; not a published figure."
+   },
+   "capsize": {
+    "value": "Capsizes sideways once the CG passes over the leeward hull (tipping point); pitchpoles when the leeward bow buries on reaches/runs (no foredeck buoyancy, low bows). Righting is done with a righting line from the mast/dolphin striker, hulls into wind.",
+    "source": "https://www.hobie.com/au/en/forums/viewtopic.php?p=260293",
+    "note": "Owner-forum anecdotes; Small Boats notes solo capsizes in breeze are hard to recover (https://smallboatsmonthly.com/article/hobie-16/)"
+   },
+   "confidence": "low (estimates and anecdotes)"
+  },
+  "planing": {
+   "type": {
+    "value": "Slender displacement hulls (no planing hump); Al Bowers classes the H16 among displacement boats in his polar comparison",
+    "source": "http://web.archive.org/web/20250822211159/https://www.thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/feature3.htm"
+   },
+   "top_speed_reported": {
+    "value": 22.4,
+    "unit": "kn",
+    "si": 11.5235,
+    "si_unit": "m/s",
+    "source": "https://thebeachcats.com/forums/general-sailing-forum/speed-runs-with-hobie-16/",
+    "note": "GPS peak 22.4 kn reaching in ~20 kn wind, flat water, double trapeze, 150 kg crew; best 500 m 20.5 kn, best 250 m 21.3 kn. Small Boats says up to ~24 kn in ideal conditions (https://smallboatsmonthly.com/article/hobie-16/)."
+   },
+   "confidence": "medium (GPS self-reports)"
+  },
+  "handicaps": {
+   "us_sailing_dpn": {
+    "value": 76.0,
+    "source": "https://web.archive.org/web/20120816160222/http://offshore.ussailing.org/Portsmouth_Yardstick/Current_Tables/Multihull_Classes.htm",
+    "note": "Archived US Sailing multihull table (2012) as cited by Wikipedia; a 2004 forum quote lists 76.1 (one wind column) and 81.7 (another)."
+   },
+   "rya_pn": {
+    "value": 811,
+    "source": "http://www.rya.org.uk/SiteCollectionDocuments/technical/Web%20Documents/py-general/2012%20listv3.xls",
+    "note": "RYA Portsmouth Number List 2012 as cited by Wikipedia; current (2025/2026) RYA multihull number not retrieved."
+   },
+   "cited_via": "https://en.wikipedia.org/wiki/Hobie_16"
+  },
+  "polar": {
+   "source": "http://web.archive.org/web/20250822211159/https://www.thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/feature3.htm (chart image http://web.archive.org/web/20250822211159im_/https://www.thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/polar1.jpg; data credited to Hobie Hotline, circa 1978, compiled by Al Bowers)",
+   "type": "published (10 kn only, digitized from chart) + estimate (6 and 15 kn)",
+   "method": "TWS 10: digitized by measuring the curve radius along each TWA ray of the published polar chart (radial scale read from the labelled rings, ~37.5 px per knot; reading uncertainty about +/-0.3 kn). The article warns the chart software may be inaccurate and that the numbers are optimistic (\"most of the time none should be able to get numbers this good\") and do NOT scale to other wind speeds. TWS 6 and 15: ESTIMATES = 10-kn curve times factors (6 kn: ~0.62 reaching, ~0.65 upwind, light-air cats are weak; 15 kn: ~1.15 upwind, ~1.2 reaching, ~1.4 deep downwind as the boat stays righting-moment-limited when reaching), sanity-checked against GPS reports of 20-22 kn reaching in ~20 kn wind (https://thebeachcats.com/forums/general-sailing-forum/speed-runs-with-hobie-16/). Values at 110 deg interpolated between the 105 and 120 deg chart readings; beat at 45 deg (chart curve starts at ~44 deg).",
+   "includes_spinnaker": false,
+   "tws_kn": [
+    6,
+    10,
+    15
+   ],
+   "twa_deg": [
+    45,
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150,
+    165,
+    180
+   ],
+   "speeds_kn": {
+    "6": [
+     4.5,
+     5.6,
+     6.7,
+     7.4,
+     6.8,
+     6.3,
+     5.1,
+     4.0,
+     3.4,
+     3.1
+    ],
+    "10": [
+     7.0,
+     9.1,
+     11.0,
+     12.0,
+     11.0,
+     10.3,
+     8.4,
+     6.4,
+     5.4,
+     5.0
+    ],
+    "15": [
+     8.1,
+     10.6,
+     13.0,
+     14.5,
+     14.5,
+     13.6,
+     11.6,
+     9.0,
+     7.6,
+     7.0
+    ]
+   },
+   "beat": {
+    "twa_deg": {
+     "6": 46,
+     "10": 44,
+     "15": 43
+    },
+    "speed_kn": {
+     "6": 4.4,
+     "10": 7.0,
+     "15": 8.2
+    },
+    "note": "10-kn beat from the chart (curve start ~44 deg, VMG ~5.0 kn); 6/15 estimated. Real-world H16 sailors typically report ~6-6.5 kn upwind in 10 kn (anecdotal, not sourced), so the chart is optimistic."
+   },
+   "run": {
+    "twa_deg": {
+     "6": 140,
+     "10": 135,
+     "15": 140
+    },
+    "speed_kn": {
+     "6": 5.0,
+     "10": 8.4,
+     "15": 11.0
+    },
+    "note": "Optimal downwind VMG at ~135 deg on the 10-kn chart (VMG ~5.9 kn vs 5.0 kn dead downwind); cats gybe downwind. No spinnaker."
+   },
+   "confidence": "low-medium: 10 kn is a 1978 class-magazine polar, digitized; 6/15 kn are estimates"
+  },
+  "sources": [
+   "http://web.archive.org/web/20250822211159/https://www.thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/feature3.htm",
+   "http://web.archive.org/web/20250822211159im_/https://www.thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/polar1.jpg",
+   "http://www.rya.org.uk/SiteCollectionDocuments/technical/Web%20Documents/py-general/2012%20listv3.xls",
+   "https://en.wikipedia.org/wiki/Hobie_16",
+   "https://hobieclass.com/hobie-classes/hobie-16/",
+   "https://hobieclass.com/wp-content/uploads/2026/06/Hobie-Asian-Champship-NOR.02.docx",
+   "https://murrays.com/blogs/technical-blog/hobie-rudder-information",
+   "https://smallboatsmonthly.com/article/hobie-16/",
+   "https://thebeachcats.com/forums/general-sailing-forum/speed-runs-with-hobie-16/",
+   "https://web.archive.org/web/20120816160222/http://offshore.ussailing.org/Portsmouth_Yardstick/Current_Tables/Multihull_Classes.htm",
+   "https://www.boat-specs.com/hobie-cat/hobie-cat-16-classic",
+   "https://www.hobie.com/au/en/forums/viewtopic.php?p=21222",
+   "https://www.hobie.com/au/en/forums/viewtopic.php?p=260293",
+   "https://www.hobie.com/forums/viewtopic.php?t=6544",
+   "https://www.hobie.com/xe/en/sail/hobie-16/"
+  ],
+  "not_found": [
+   "Official hull centerline spacing and hull waterline beam",
+   "Official I/J/P/E (Hobie does not publish sail dimensions; boat-specs I value looks wrong)",
+   "Rudder blade span/chord",
+   "Published righting moment or flying-a-hull wind speed",
+   "Measured polar at 6 and 15 kn (only a 10-kn 1978 polar found; Hobie forum says no proper H16 polar exists: https://www.hobie.com/forums/viewtopic.php?t=6544)",
+   "Current (2025/2026) RYA PN and current US Sailing D-PN table"
+  ]
+ },
+ {
+  "name": "Corsair 880",
+  "variant_notes": "Folding trimaran, Corsair Marine International (Vietnam), designed by Yacht Design Collective (Perus & Scolari), launched ~2019-2020. Two rigs: Standard (12 m carbon rotating wing mast, square-top main + self-tacking jib, 51.5 m2 upwind) and Sport (13.5 m (spec text) / 13.8 m (spec header) carbon mast, 110% (Corsair) or 115% (Multihull World AU) overlapping jib/genoa, 1.5 m carbon bowsprit for screacher/asymmetric spinnaker, 62.9 m2 upwind). Same hull/weight.",
+  "dimensions": {
+   "loa": {
+    "value": 28.67,
+    "unit": "ft",
+    "si": 8.7386,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "28' 8\" / 8.8 m"
+   },
+   "lwl": {
+    "value": 8.8,
+    "unit": "m",
+    "si": 8.8,
+    "si_unit": "m",
+    "source": "https://sailboat.guide/4hqwnw",
+    "note": "Listing says LWL = LOA = 28 ft 8 in (near-plumb main-hull bow); treat as approximate; Corsair does not publish LWL."
+   },
+   "beam_overall": {
+    "value": 22.25,
+    "unit": "ft",
+    "si": 6.7818,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "22' 3\" / 6.8 m floats extended"
+   },
+   "beam_folded": {
+    "value": 8.17,
+    "unit": "ft",
+    "si": 2.4902,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "8' 2\" / 2.5 m"
+   },
+   "main_hull_to_float_centerline_spacing": {
+    "value": 2.95,
+    "unit": "m",
+    "si": 2.95,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "ESTIMATE: half of 6.8 m beam (3.4 m) minus ~0.45 m float half-width at deck. Not published."
+   },
+   "float_length": {
+    "value": null,
+    "unit": "m",
+    "si": null,
+    "si_unit": "m",
+    "source": null,
+    "note": "Not published. Photos suggest floats nearly full length (~8 m); unverified estimate only."
+   },
+   "float_buoyancy": {
+    "value": null,
+    "unit": "kg",
+    "si": null,
+    "si_unit": "kg",
+    "source": "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf",
+    "note": "Not published for the 880. Corsair manual: floats have 3 watertight compartments each; each of the four beams has up to 170 lb buoyancy. Typical modern trimaran floats are 150-200% of displacement (general design practice, not a 880 figure)."
+   },
+   "draft_board_up": {
+    "value": 1.42,
+    "unit": "ft",
+    "si": 0.4328,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "1' 5\" / 0.45 m"
+   },
+   "draft_board_down": {
+    "value": 5.25,
+    "unit": "ft",
+    "si": 1.6002,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "5' 3\" / 1.6 m"
+   },
+   "unladen_weight": {
+    "value": 3659,
+    "unit": "lb",
+    "si": 1659.6945,
+    "si_unit": "kg",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "1,660 kg unladen (Corsair, Multihulls World, keelindex 3,660 lb). Yachting Monthly text says 1,630 kg; on trailer ~2.2 t (Multihull World AU)."
+   },
+   "sailing_weight_typical": {
+    "value": 2000,
+    "unit": "kg",
+    "si": 2000,
+    "si_unit": "kg",
+    "source": "https://sailingmagazine.net/article-permalink-2096.html",
+    "note": "ESTIMATE: 1,660 kg + 3 crew (240 kg) + ~100 kg gear/fuel/water. Sailing Magazine also suggests adding ~1,000 lb to the unladen weight for a realistic D/L (88 vs 69)."
+   },
+   "confidence": "high for LOA/beam/draft/weight (manufacturer); low for LWL; spacing and float data are estimates/not found"
+  },
+  "rig": {
+   "mast_length_standard": {
+    "value": 12,
+    "unit": "m",
+    "si": 12,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "39' 4\" carbon rotating wing mast"
+   },
+   "mast_length_sport": {
+    "value": 13.8,
+    "unit": "m",
+    "si": 13.8,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/sport-specifications/",
+    "note": "Spec header 13.8 m; spec text says 13.5 m; Multihull World AU says 13.5 m; Multihulls World test says Sport spar is 70 cm longer"
+   },
+   "mast_height_above_water": {
+    "value": null,
+    "unit": "m",
+    "si": null,
+    "si_unit": "m",
+    "source": null,
+    "note": "Not published. ESTIMATE ~13 m (standard) / ~14.5 m (Sport): mast length plus ~1 m deck/step height above waterline."
+   },
+   "upwind_sail_area_standard": {
+    "value": 554.3,
+    "unit": "ft2",
+    "si": 51.4962,
+    "si_unit": "m2",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "51.5 m2 main + self-tacking jib"
+   },
+   "upwind_sail_area_sport": {
+    "value": 677,
+    "unit": "ft2",
+    "si": 62.8954,
+    "si_unit": "m2",
+    "source": "https://corsairmarine.com/corsair-880/sport-specifications/",
+    "note": "62.9 m2 main + 110% overlapping jib"
+   },
+   "mainsail_area_sport": {
+    "value": 38.2,
+    "unit": "m2",
+    "si": 38.2,
+    "si_unit": "m2",
+    "source": "https://southeastasiasails.com/corsair-mainsails/corsair-880-sport-high-roach-mainsail",
+    "note": "LOW CONFIDENCE: from a search-result snippet of a sailmaker replacement-main listing (\"approx. 38.2 m2\", \"made to the original factory specs\"); the page now redirects to seasailmakers.com and no longer shows the figure. Implies jib ~24.7 m2 for the Sport (62.9 - 38.2)."
+   },
+   "mainsail_area_standard": {
+    "value": 33.5,
+    "unit": "m2",
+    "si": 33.5,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/F-27_Sport_Cruiser",
+    "note": "ESTIMATE: 65% of 51.5 m2 (square-top main + small self-tacking jib; F-27 main 25 m2 of 41.3 m2 = 61%). Jib ~18 m2 by difference."
+   },
+   "jib_area_standard": {
+    "value": 18.0,
+    "unit": "m2",
+    "si": 18.0,
+    "si_unit": "m2",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "ESTIMATE by difference (51.5 - 33.5)."
+   },
+   "screacher_area": {
+    "value": null,
+    "unit": "m2",
+    "si": null,
+    "si_unit": "m2",
+    "source": "https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran",
+    "note": "Not published. Screacher/Code Zero is optional, furling, flown from the bowsprit. ESTIMATE ~40-45 m2 (Code Zero ~ main + jib - main, i.e. roughly 1.1-1.2x the Sport jib foretriangle extended to sprit); treat as placeholder."
+   },
+   "spinnaker_area": {
+    "value": null,
+    "unit": "m2",
+    "si": null,
+    "si_unit": "m2",
+    "source": "http://multihull.com.au/index.php?Itemid=101&catid=19&id=213%3Acorsair-880&option=com_content&view=article",
+    "note": "Not published. Asymmetric spinnaker from 1.5 m carbon bowsprit (Sport). ESTIMATE ~75-85 m2 (Corsair 24 gennaker 53 m2 on 33.9 m2 upwind => ~1.6x upwind area; 1.3x applied to 62.9 m2); placeholder."
+   },
+   "bowsprit_length": {
+    "value": 1.5,
+    "unit": "m",
+    "si": 1.5,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/sport-specifications/",
+    "note": "carbon, Sport"
+   },
+   "reef_points": {
+    "value": "Slab (jiffy) reefing; manual: 1st reef at 20 kn, 2nd reef at 25 kn, roller to 4th batten from top above 35 kn; replace genoa/screacher with jib above 12 kn",
+    "source": "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf",
+    "note": "Generic Corsair guidance (2014 manual for all models). YM test sailed upwind with \"one slab\" in the main."
+   },
+   "confidence": "high for total areas and mast lengths; individual sail areas are estimates or low-confidence; I/J/P/E not found"
+  },
+  "foils": {
+   "daggerboard_span_below_hull": {
+    "value": 1.15,
+    "unit": "m",
+    "si": 1.15,
+    "si_unit": "m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "DERIVED: draft board down 1.6 m minus board-up draft 0.45 m. Board is a pivoting centerboard per some sources (\"retractable centreboard\", Multihull World AU; \"daggerboard\", Cruising World)."
+   },
+   "daggerboard_chord": {
+    "value": 0.3,
+    "unit": "m",
+    "si": 0.3,
+    "si_unit": "m",
+    "source": null,
+    "note": "ESTIMATE (typical for 8-9 m trailerable trimarans); not published."
+   },
+   "daggerboard_area": {
+    "value": 0.35,
+    "unit": "m2",
+    "si": 0.35,
+    "si_unit": "m2",
+    "source": null,
+    "note": "ESTIMATE = 1.15 m x 0.30 m."
+   },
+   "rudder": {
+    "value": "Kick-up blade rudder on transom, tiller with extension",
+    "source": "http://multihull.com.au/index.php?Itemid=101&catid=19&id=213%3Acorsair-880&option=com_content&view=article"
+   },
+   "rudder_span": {
+    "value": 1.0,
+    "unit": "m",
+    "si": 1.0,
+    "si_unit": "m",
+    "source": null,
+    "note": "ESTIMATE; not published."
+   },
+   "rudder_chord": {
+    "value": 0.25,
+    "unit": "m",
+    "si": 0.25,
+    "si_unit": "m",
+    "source": null,
+    "note": "ESTIMATE; not published. Corsair manual notes rudder ventilation can occur above ~15 kn."
+   },
+   "confidence": "low (only total draft published)"
+  },
+  "crew": {
+   "max_persons": {
+    "value": 8,
+    "source": "https://corsairmarine.com/corsair-880/specifications/"
+   },
+   "typical_count": {
+    "value": "2-4 (sleeps 5); YM test sailed with two",
+    "source": "https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran"
+   },
+   "typical_crew_weight": {
+    "value": 80,
+    "unit": "kg",
+    "si": 80,
+    "si_unit": "kg",
+    "source": null,
+    "note": "ESTIMATE per person."
+   },
+   "position": {
+    "value": "Crew sits on windward main-hull deck/cockpit coaming or on the windward float/side trampoline (\"the side trampolines offer ... opportunity for very effective hiking out\" - Multihulls World test extract)",
+    "source": "https://blog.corsairmarine.com/wp-content/uploads/2022/08/MW185-Corsair-880-Trimaran-Test-Sail-Extract.pdf"
+   },
+   "confidence": "medium"
+  },
+  "engine": {
+   "type": {
+    "value": "Outboard on transom bracket, tilted up when sailing",
+    "source": "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf"
+   },
+   "power": {
+    "value": 9.9,
+    "unit": "hp",
+    "si": 7.3824,
+    "si_unit": "kW",
+    "source": "https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran",
+    "note": "YM spec sheet: outboard 6-10 hp, tested with 9.9 hp electric tilt. Multihulls World and Sailing Magazine list a 15 hp outboard (https://www.multihulls-world.com/fiche-technique/corsair-marine-intl/corsair-880, https://sailingmagazine.net/article-permalink-2096.html). Brokerage boats: Tohatsu 9.9 EFI (https://www.multihullcompany.com/?p=586679), Yamaha 9.9 four-stroke (https://uk.boats.com/sailing-boats/2023-corsair-880-10179552/)."
+   },
+   "max_motoring_speed": {
+    "value": 7.0,
+    "unit": "kn",
+    "si": 3.6,
+    "si_unit": "m/s",
+    "source": null,
+    "note": "ESTIMATE (not published): ~6.5-7.5 kn with 9.9 hp on a ~2 t trimaran."
+   },
+   "confidence": "high for outboard 9.9-15 hp; motoring speed is an estimate"
+  },
+  "stability": {
+   "righting_moment_max_estimate": {
+    "value": 55000,
+    "unit": "N.m",
+    "si": 55000,
+    "si_unit": "N.m",
+    "source": "https://corsairmarine.com/corsair-880/specifications/",
+    "note": "ESTIMATE when the main hull lifts and all weight is on the leeward float: ~1,900 kg x 9.81 x ~2.95 m main-hull-to-float spacing. Not published."
+   },
+   "sail_carrying_guidance": {
+    "value": "Genoa/screacher replaced by jib above 12 kn; 1st reef at 20 kn, 2nd at 25 kn; storm jib + deep reef above 35 kn; main furled/storm jib only at 50+ kn. Overpowered when leeward float is pressed so waves regularly wash over it. Risk rises when boat speed exceeds ~15 kn reaching or ~10 kn upwind. Folded (mast down) boat self-rights to 80-85 deg heel; folded stability with mast up is limited.",
+    "source": "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf",
+    "note": "Generic Corsair (all models) 2014 manual guidance"
+   },
+   "capsize": {
+    "value": "Capsize possible past the tipping point (float buried, main hull flying high); unsinkable foam sandwich with up to 12 watertight compartments; floats high when inverted (water around bottom of beams). Pitchpole danger when spinnaker running at 20+ kn in big seas (drop main). Designers gave raked, high-volume bows to resist pitchpoling.",
+    "source": "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf",
+    "note": "Bow design note from http://multihull.com.au/index.php?Itemid=101&catid=19&id=213%3Acorsair-880&option=com_content&view=article"
+   },
+   "confidence": "medium for guidance (manufacturer manual, generic); RM is an estimate"
+  },
+  "planing": {
+   "type": {
+    "value": "Slender main hull and floats; the sterns have less rocker and more flat area aft to support the boat at high speed (\"when planing\")",
+    "source": "http://multihull.com.au/index.php?Itemid=101&catid=19&id=213%3Acorsair-880&option=com_content&view=article"
+   },
+   "observed_speeds": [
+    {
+     "value": "13-15 kn typical, 18 kn peak on a Code Zero reach in ~12 kn TWS gusting 16-17 kn (apparent forward of beam), crew of two",
+     "source": "https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran"
+    },
+    {
+     "value": "7.5-9.5 kn upwind with one reef + self-tacking jib, AWS low-mid 20s, AWA ~35 deg",
+     "source": "https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran"
+    },
+    {
+     "value": "16.8 kn on a reach with the screacher",
+     "source": "https://www.sailmagazine.com/boats/boat-review-corsair-880"
+    },
+    {
+     "value": "19 kn top speed on day 1 testing of de-tuned prototype",
+     "source": "https://yachtsandyachting.com/news/229225/Corsair-Marine-introduces-new-Corsair-880"
+    },
+    {
+     "value": "Main-only: 5-6 kn in 10-15 kn wind (generic Corsair manual)",
+     "source": "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf"
+    },
+    {
+     "value": "Owner claim (tuned Sport): >16 kn upwind and >20 kn downwind",
+     "source": "https://www.multihullcompany.com/?p=586679",
+     "note": "broker listing claim; unverified"
+    }
+   ],
+   "confidence": "medium (magazine tests)"
+  },
+  "handicaps": {
+   "us_sailing_dpn": {
+    "value": null,
+    "note": "Not found"
+   },
+   "rya_pn": {
+    "value": null,
+    "note": "Not found"
+   },
+   "texel": {
+    "value": null,
+    "note": "Not found"
+   },
+   "orc_mh": {
+    "value": null,
+    "note": "No ORC multihull certificate found online"
+   },
+   "related": {
+    "value": "Corsair F-28 PHRF ~60-75 (predecessor-size boat)",
+    "source": "https://www.goodoldboat.com/saildata/boat/corsair-f-28-trimaran"
+   }
+  },
+  "polar": {
+   "source": "Estimate anchored on magazine test data: https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran; https://www.sailmagazine.com/boats/boat-review-corsair-880; https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf",
+   "type": "estimate",
+   "method": "No published polar, ORC or Texel certificate found. Built by hand: (1) anchor points - 13-15 kn close reach under Code Zero at ~12-16 kn TWS (YM), 16.8 kn reach with screacher (SAIL), 7.5-9.5 kn upwind reefed in ~14-17 kn TWS (YM; derived from AWS low-mid 20s at AWA 35 deg), manual: risk rises above 15 kn reaching; (2) shape from typical trailerable-trimaran polars (peak at 90-110 deg, VMG-optimal gybing angles 135-150 deg, beat ~40-45 deg TWA); (3) 6-kn values scaled ~0.68-0.72 of 10-kn values. Main+jib for 45 deg; screacher assumed 60-110 deg; asymmetric spinnaker 120-180 deg (Sport rig). Expect +/-15-20%.",
+   "includes_spinnaker": true,
+   "tws_kn": [
+    6,
+    10,
+    15
+   ],
+   "twa_deg": [
+    45,
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150,
+    165,
+    180
+   ],
+   "speeds_kn": {
+    "6": [
+     4.8,
+     6.2,
+     7.0,
+     7.5,
+     7.5,
+     7.2,
+     6.3,
+     5.2,
+     4.3,
+     4.0
+    ],
+    "10": [
+     6.8,
+     8.5,
+     10.0,
+     11.0,
+     11.0,
+     10.5,
+     9.5,
+     7.8,
+     6.5,
+     6.0
+    ],
+    "15": [
+     8.5,
+     10.5,
+     12.5,
+     14.0,
+     14.5,
+     14.0,
+     12.5,
+     10.5,
+     8.8,
+     8.2
+    ]
+   },
+   "beat": {
+    "twa_deg": {
+     "6": 45,
+     "10": 42,
+     "15": 42
+    },
+    "speed_kn": {
+     "6": 4.8,
+     "10": 6.8,
+     "15": 8.5
+    },
+    "note": "estimate; YM reefed upwind 7.5-9.5 kn"
+   },
+   "run": {
+    "twa_deg": {
+     "6": 140,
+     "10": 140,
+     "15": 145
+    },
+    "speed_kn": {
+     "6": 5.9,
+     "10": 8.9,
+     "15": 11.6
+    },
+    "note": "estimate with asymmetric spinnaker; Corsair manual advises tacking downwind keeping AWA ~90 deg"
+   },
+   "confidence": "low (estimate)"
+  },
+  "sources": [
+   "http://multihull.com.au/index.php?Itemid=101&catid=19&id=213%3Acorsair-880&option=com_content&view=article",
+   "https://blog.corsairmarine.com/wp-content/uploads/2022/08/MW185-Corsair-880-Trimaran-Test-Sail-Extract.pdf",
+   "https://corsairmarine.com/corsair-880/specifications/",
+   "https://corsairmarine.com/corsair-880/sport-specifications/",
+   "https://en.wikipedia.org/wiki/Corsair_24",
+   "https://en.wikipedia.org/wiki/F-27_Sport_Cruiser",
+   "https://keelindex.com/boat/corsair-880",
+   "https://sailboat.guide/4hqwnw",
+   "https://sailingmagazine.net/article-permalink-2096.html",
+   "https://southeastasiasails.com/corsair-mainsails/corsair-880-sport-high-roach-mainsail",
+   "https://static1.squarespace.com/static/553d4e19e4b0e21d56a49470/t/58aa47141e5b6ce697e55936/1487554343122/Corsair_Sailing_Manual_2014_V2.pdf",
+   "https://uk.boats.com/sailing-boats/2023-corsair-880-10179552/",
+   "https://www.cruisingworld.com/story/sailboats/corsair-880-best-sport-boat-2021-boty/",
+   "https://www.goodoldboat.com/saildata/boat/corsair-f-28-trimaran",
+   "https://www.multihullcompany.com/?p=586679",
+   "https://www.multihulls-world.com/fiche-technique/corsair-marine-intl/corsair-880",
+   "https://www.multihulls-world.com/review/trimaran/corsair-880-a-brilliant-toy-for-gliding-across-the-water",
+   "https://www.sailmagazine.com/boats/boat-review-corsair-880",
+   "https://www.yachtingmonthly.com/reviews/yacht-reviews/corsair-880-review-fantastic-sporty-trailable-trimaran",
+   "https://yachtsandyachting.com/news/229225/Corsair-Marine-introduces-new-Corsair-880"
+  ],
+  "not_found": [
+   "Individual mainsail, jib, screacher and spinnaker areas from Corsair (only totals 51.5 / 62.9 m2 upwind; one low-confidence 38.2 m2 Sport main)",
+   "I, J, P, E",
+   "LWL (only a listing claiming LWL = LOA)",
+   "Float length, float volume/buoyancy, hull-to-float spacing",
+   "Daggerboard and rudder span/chord",
+   "Published righting moment",
+   "Motoring speed",
+   "Any handicap (D-PN, RYA PN, Texel, ORC mh, OMR)",
+   "Published polar diagram"
+  ]
+ },
+ {
+  "name": "Lagoon 42 (2016+, VPLP design; a.k.a. Lagoon 42-2)",
+  "variant_notes": "The 2016+ VPLP Lagoon 42, built by CNB/Beneteau. Do not confuse it with the unrelated 1990 Lagoon 42 (7.5 t). Wikipedia/goodoldboat I/J/P/E figures (I 14.80, J 4.20, P 15.30, E 4.20 m) appear to belong to the 1990 boat and are NOT used. Sail areas vary by source and year. Launch brochure: high-roach main 55 m2, square-top main 59 m2, self-tacker 35 m2, Code 0 68 m2. Current official page: Code 0 78 m2 and upwind area 94 m2. boat-specs/Wikipedia: main 69 m2, upwind 104 m2. Fuel is 300 L on early boats (2016-2018 reviews) and 570 L on the current official page (later model year). Standard engines: 2x45 hp early, 2x57 hp on the current page.",
+  "dimensions": {
+   "LOA": {
+    "value": 43.33,
+    "unit": "ft",
+    "si": 13.22,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Official 'Length overall 13.22 m / 43'4''' (includes bow fittings). Hull length 12.79 m / 42 ft from the same page."
+   },
+   "hull_length": {
+    "value": 42.0,
+    "unit": "ft",
+    "si": 12.79,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42"
+   },
+   "LWL": {
+    "value": 41.0,
+    "unit": "ft",
+    "si": 12.5,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016",
+    "note": "Also on en.wikipedia.org/wiki/Lagoon_42-2. Lagoon itself does not publish LWL."
+   },
+   "beam_overall": {
+    "value": 25.17,
+    "unit": "ft",
+    "si": 7.68,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Early material says 7.70 m / 25'3'' (katamarans.com, boat-specs)."
+   },
+   "hull_centerline_spacing": {
+    "value": 19.0,
+    "unit": "ft",
+    "si": 5.8,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Overall beam 7.68 m minus one hull's maximum beam at the sheer (about 1.9 m, judged from Lagoon photos and typical VPLP cruising-cat proportions). Uncertainty is about +/-0.3 m."
+   },
+   "hull_beam_waterline": {
+    "value": 4.3,
+    "unit": "ft",
+    "si": 1.3,
+    "si_unit": "m",
+    "source": "https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016",
+    "note": "ESTIMATE. Assumes LWL/BWL of about 9.5 per hull, typical for heavy cruising cats, with LWL 12.5 m. Uncertainty is about +/-0.15 m."
+   },
+   "draft": {
+    "value": 4.17,
+    "unit": "ft",
+    "si": 1.26,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Early figures are 1.25 m (katamarans.com, VPLP) or 1.24 m (Wikipedia)."
+   },
+   "air_draft": {
+    "value": 67.6,
+    "unit": "ft",
+    "si": 20.6,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Early material says 20.65 m / 67'9'' from DWL (boat-specs, katamarans.com). Keelindex's 56.8 ft is an outlier."
+   },
+   "light_displacement": {
+    "value": 26681,
+    "unit": "lb",
+    "si": 12100,
+    "si_unit": "kg",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Official 'Light displacement (EEC) 12,1 t'. boat-specs gives 12,000 kg (MLC); Wikipedia gives 12,002 kg."
+   },
+   "max_displacement": {
+    "value": null,
+    "unit": "lb",
+    "si": null,
+    "si_unit": "kg",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "NOT FOUND. Lagoon publishes only light displacement. ESTIMATE for a cruising sailing weight: 12.1 t light + 4 crew (320 kg) + full tanks (300 L water + 300-570 L fuel, about 550-780 kg) + stores and gear (about 1,000 kg) = roughly 14.0-14.3 t. A simulator default of 14,000 kg is reasonable."
+   },
+   "sailing_weight_estimate": {
+    "value": 30860,
+    "unit": "lb",
+    "si": 14000,
+    "si_unit": "kg",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE (method in max_displacement note)."
+   },
+   "water_tank": {
+    "value": 79,
+    "unit": "US gal",
+    "si": 300,
+    "si_unit": "L",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42"
+   },
+   "fuel_tank": {
+    "value": 151,
+    "unit": "US gal",
+    "si": 570,
+    "si_unit": "L",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Current official figure. 2016-2018 boats have 300 L / 79 US gal (https://www.katamarans.com/lagoon-42/, https://en.wikipedia.org/wiki/Lagoon_42-2)."
+   },
+   "holding_tank": {
+    "value": 42.3,
+    "unit": "US gal",
+    "si": 160,
+    "si_unit": "L",
+    "source": "https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016"
+   },
+   "ratios": {
+    "value": 17.4,
+    "unit": "SA/D (std main)",
+    "si": 17.4,
+    "si_unit": "-",
+    "source": "https://www.katamarans.com/lagoon-42/",
+    "note": "katamarans.com: SA/D 17.4 std / 18.1 square top; D/L 161; Bruce number 1.04 std / 1.07 square top; LOA/bridgedeck length 1.52. boat-specs gives D/L 174."
+   },
+   "confidence": "High for LOA, beam, draft, air draft, light displacement and tanks (official page). Low for hull spacing and waterline hull beam (estimates). Max displacement not published."
+  },
+  "rig": {
+   "type": {
+    "value": "Fractional sloop, deck-stepped aluminium mast set well aft (mast about 53% aft per katamarans.com), self-tacking jib, high-roach or square-top main, single-line slab reefing",
+    "source": "https://www.katamarans.com/lagoon-42/"
+   },
+   "mainsail_high_roach": {
+    "value": 592,
+    "unit": "ft2",
+    "si": 55,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "boat-specs and Wikipedia list a 69 m2 main (https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016). That is probably a different measurement basis or the square-top option, so the official 55 m2 is preferred."
+   },
+   "mainsail_square_top": {
+    "value": 635,
+    "unit": "ft2",
+    "si": 59,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Optional."
+   },
+   "self_tacking_jib": {
+    "value": 377,
+    "unit": "ft2",
+    "si": 35,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42"
+   },
+   "genoa": {
+    "value": null,
+    "unit": "ft2",
+    "si": null,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "No genoa option listed. The self-tacker is the only headsail."
+   },
+   "code0": {
+    "value": 839,
+    "unit": "ft2",
+    "si": 78,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Current official page. The 2016 launch spec and reviews give 68 m2 / 732 ft2 (https://www.katamarans.com/lagoon-42/, https://www.sailmagazine.com/boats/boat-review-lagoon-42)."
+   },
+   "upwind_sail_area": {
+    "value": 1011,
+    "unit": "ft2",
+    "si": 94,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Square-top main + jib. Launch spec gives 90 m2 (https://www.vplp.fr/en/?p=20247)."
+   },
+   "downwind_sail_area": {
+    "value": 1475,
+    "unit": "ft2",
+    "si": 137,
+    "si_unit": "m2",
+    "source": "https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016",
+    "note": "Composition not stated. It equals 69 + 68 = main + Code 0."
+   },
+   "asymmetric_spinnaker_gennaker": {
+    "value": null,
+    "unit": "ft2",
+    "si": null,
+    "si_unit": "m2",
+    "source": "https://www.katamarans.com/lagoon-42/",
+    "note": "No official area found. Reviews mention a gennaker or kite option. ESTIMATE for a cruising-cat gennaker flown from the bow beam: about 110-130 m2. Keelindex gives 111.9 m2, but its estimate uses the suspect 1990 I/J (https://keelindex.com/boat/lagoon-42/sails)."
+   },
+   "I": {
+    "value": 54.1,
+    "unit": "ft",
+    "si": 16.5,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Air draft 20.6 m minus about 2.6 m deck/cabin-top height above DWL minus about 1.5 m fractional hounds offset."
+   },
+   "J": {
+    "value": 14.8,
+    "unit": "ft",
+    "si": 4.5,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Back-solved so a 35 m2 self-tacker with luff about 16.6 m gives LP about 4.2 m (area = 0.5 x luff x LP); J is taken slightly larger than LP."
+   },
+   "P": {
+    "value": 57.4,
+    "unit": "ft",
+    "si": 17.5,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Mast above deck (about 18 m) minus boom height and masthead fittings."
+   },
+   "E": {
+    "value": 19.0,
+    "unit": "ft",
+    "si": 5.8,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. A 55 m2 high-roach main = 0.5 x P x E x about 1.08 roach factor with P 17.5 m, so E is about 5.8 m. Not verified against a sail plan."
+   },
+   "reef_points": {
+    "value": 3,
+    "unit": "count",
+    "si": 3,
+    "si_unit": "count",
+    "source": "https://www.themultihullgroup.com/reefing-a-mainsail-on-a-catamaran",
+    "note": "ESTIMATE. The source confirms single-line slab reefing on the Lagoon 42 but not the count. Three reefs is the Lagoon norm for this size. Reef areas not found. Rough split: about 80%, 62% and 45% of the main."
+   },
+   "confidence": "High for the official sail areas, with the 55 vs 69 m2 main discrepancy noted. Low for I/J/P/E (estimates only). Low for gennaker area and reef details."
+  },
+  "foils": {
+   "type": {
+    "value": "Twin fixed low-aspect mini-keels (one per hull, molded or bolted), twin spade rudders, wheel steering",
+    "source": "https://en.wikipedia.org/wiki/Lagoon_42-2"
+   },
+   "keel_depth_below_hull": {
+    "value": 2.1,
+    "unit": "ft",
+    "si": 0.65,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Total draft 1.26 m minus about 0.6 m canoe-body draft at 12 t."
+   },
+   "keel_length": {
+    "value": 12.5,
+    "unit": "ft",
+    "si": 3.8,
+    "si_unit": "m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Root chord of a long low Lagoon keel, judged from haul-out photos. About 30% of LWL."
+   },
+   "keel_area_each": {
+    "value": 23.7,
+    "unit": "ft2",
+    "si": 2.2,
+    "si_unit": "m2",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. Trapezoid with mean chord about 3.4 m x span 0.65 m. Geometric aspect ratio about 0.2. Hull lateral area adds substantially."
+   },
+   "rudder_span": {
+    "value": 3.0,
+    "unit": "ft",
+    "si": 0.9,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Lagoon_42-2",
+    "note": "ESTIMATE. The rudder tip sits at or just above keel depth."
+   },
+   "rudder_chord": {
+    "value": 1.8,
+    "unit": "ft",
+    "si": 0.55,
+    "si_unit": "m",
+    "source": "https://en.wikipedia.org/wiki/Lagoon_42-2",
+    "note": "ESTIMATE"
+   },
+   "rudder_area_each": {
+    "value": 5.3,
+    "unit": "ft2",
+    "si": 0.5,
+    "si_unit": "m2",
+    "source": "https://en.wikipedia.org/wiki/Lagoon_42-2",
+    "note": "ESTIMATE"
+   },
+   "confidence": "Low. Only the type and total draft are sourced. All dimensions are estimates. katamarans.com notes the boat makes leeway when pinched to about 50 deg TWA."
+  },
+  "crew": {
+   "ce_max_persons": {
+    "value": 12,
+    "unit": "persons (cat A)",
+    "si": 12,
+    "si_unit": "persons",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "A:12 / B:14 / C:20 / D:30"
+   },
+   "berths": {
+    "value": "6 to 12",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42"
+   },
+   "typical_cruising_crew": {
+    "value": 4,
+    "unit": "persons",
+    "si": 320,
+    "si_unit": "kg",
+    "source": "https://48north.com/boats-and-gear/boat-test-lagoon-42/",
+    "note": "ESTIMATE. A couple or family of 2-6 at about 80 kg each. Crew weight is small next to 12+ t. The source confirms only 3- and 4-cabin layouts."
+   },
+   "confidence": "Medium (CE numbers official; typical crew is an estimate)"
+  },
+  "engine": {
+   "standard_early": {
+    "value": "2 x 45 hp Yanmar 4JH45 diesels (34 kW each) on SD60 saildrives",
+    "source": "https://en.wikipedia.org/wiki/Lagoon_42-2",
+    "note": "Wikipedia names them '4JH4'. katamarans.com confirms 2 x 45 hp standard."
+   },
+   "standard_current_or_option": {
+    "value": "2 x 57 hp Yanmar (4JH57)",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "Standard on the current official page. Optional on 2016 boats (https://www.sailmagazine.com/boats/boat-review-lagoon-42)."
+   },
+   "propellers": {
+    "value": "2 (one per saildrive). Test boat had Flexofold folding props; standard is probably a fixed 2- or 3-blade (not confirmed)",
+    "source": "https://www.sailmagazine.com/boats/boat-review-lagoon-42"
+   },
+   "motoring_speed_57hp": {
+    "value": "7.8 kn at 2,000 rpm (cruise); 8.7 kn at 3,200 rpm (WOT)",
+    "source": "https://www.sailmagazine.com/boats/boat-review-lagoon-42"
+   },
+   "motoring_speed_45hp": {
+    "value": "about 7 kn at 2,000 rpm; just over 8 kn at 3,200 rpm",
+    "source": "https://www.katamarans.com/lagoon-42/",
+    "note": "The reviewer says the 57 hp engines add about 0.5 kn and folding props add about 1 kn."
+   },
+   "max_motoring_speed_observed": {
+    "value": 9.0,
+    "unit": "kn",
+    "si": 4.63,
+    "si_unit": "m/s",
+    "source": "https://48north.com/boats-and-gear/boat-test-lagoon-42/",
+    "note": "Both engines at full throttle, bow-up trim."
+   },
+   "fuel_consumption": {
+    "value": null,
+    "unit": "L/h",
+    "si": null,
+    "si_unit": "L/h",
+    "source": "https://www.katamarans.com/lagoon-42/",
+    "note": "NOT FOUND. ESTIMATE: about 2 x 2.5-3 L/h at 2,000 rpm, from Yanmar 4JH prop-curve consumption at about 40% load."
+   },
+   "confidence": "High for engine options and motoring speeds (two independent reviews agree). Fuel burn not published."
+  },
+  "stability": {
+   "ce_design_category": {
+    "value": "A",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "boat-specs: category A = wind up to Beaufort 9, significant wave height up to about 7 m (the page writes 'waves under 10 m') (https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016)."
+   },
+   "bruce_number": {
+    "value": 1.04,
+    "unit": "-",
+    "si": 1.04,
+    "si_unit": "-",
+    "source": "https://www.katamarans.com/lagoon-42/",
+    "note": "1.07 with the square-top main. A low value (under about 1.1) marks a conservatively canvassed cruising cat."
+   },
+   "max_righting_moment": {
+    "value": null,
+    "unit": "kN m",
+    "si": 345,
+    "si_unit": "kN m",
+    "source": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+    "note": "ESTIMATE. RM_max is about displacement x g x half hull spacing = 12,100 kg x 9.81 x 2.9 m = about 345 kN m at light ship, or about 400 kN m at 14 t. It peaks near the point where the windward hull lifts, at about 8-12 deg heel. Not a published figure."
+   },
+   "capsize_notes": {
+    "value": "Multihull: stability peaks when the windward hull flies (about 10 deg heel) and falls off sharply after that. Inverted stability is high. No published AVS or STIX applies. Lagoon builds it as a non-flying cruising cat with a fixed sheet layout; the crew should reef by wind speed, not heel. Rough estimate: sail-overturning wind with full main + jib (94 m2, CE about 9 m above WL) is about 35-40 kn apparent at light ship (from RM above, no gust factor). Treat as order-of-magnitude only.",
+    "source": "https://www.katamarans.com/lagoon-42/"
+   },
+   "reefing_guidance": {
+    "value": null,
+    "source": "https://www.themultihullgroup.com/reefing-a-mainsail-on-a-catamaran",
+    "note": "Lagoon's per-reef wind table (owner's manual) NOT FOUND online; the source says to check the manual. Keelindex's generic guide says reef or shorten sail at 20-28 kn TWS (https://keelindex.com/boat/lagoon-42-2/performance). For comparison, typical Lagoon manual tables for this size put reef 1 at about 18-20 kn TWS, reef 2 at about 25 kn and reef 3 at about 30 kn (unverified, from general Lagoon practice)."
+   },
+   "confidence": "Medium for CE category and Bruce number. Low for righting moment and capsize thresholds (estimates)."
+  },
+  "planing": {
+   "planes": false,
+   "note": "A displacement cruising cat. Slender hulls (LWL/BWL about 9-10) pass the monohull 1.34*sqrt(LWL) 'hull speed' of 8.6 kn with no planing. A 15 kn burst under kite in 22 kn TWS, flat water, is reported secondhand (https://www.sailmagazine.com/boats/boat-review-lagoon-42). katamarans.com reports gennaker speeds in the 'low teens'.",
+   "source": "https://www.katamarans.com/lagoon-42/"
+  },
+  "handicaps": {
+   "ORC": null,
+   "PHRF": null,
+   "note": "No ORC Multihull or other rating certificate found for the 2016+ Lagoon 42.",
+   "source": null
+  },
+  "polar": {
+   "source": "https://raw.githubusercontent.com/sailing12388/passage-weather/main/sabado.pol",
+   "type": "estimate",
+   "method": "No Lagoon/VPLP or ORC polar was found online. The 60-150 deg values are copied directly from 'sabado.pol', the Lagoon 42 polar shipped in the public GitHub repo sailing12388/passage-weather. The README says only 'the polars for a Lagoon 42'; provenance is unknown and it looks like a smoothed, conservative cruising polar (main + self-tacker, no Code 0 or spinnaker). The 'beat' and 'run' entries are my extrapolations, labeled. Cross-checks: (1) katamarans.com, about 7 kn at 60 deg TWA in Force 4 (11-16 kn TWS); sabado gives 6.2-6.5, about 8% conservative. (2) Sail Magazine, 6.1 kn in 11.6 kn wind at '50 deg' (angle type unstated, probably apparent, i.e. TWA about 65-70); sabado gives about 5.6 at 12 kn/70. (3) Sail Magazine, with Code 0, 7.0 kn at 75 deg AWA in 10 kn and 5.3 kn at 110 deg; sabado (no Code 0) gives 4.7-5.6. (4) 48North, 3-4 kn upwind in 4-8 kn TWS; sabado gives 2.5-3.4 at 60 deg. Conclusion: sabado is a reasonable conservative cruising baseline; scale by about 1.05-1.10 for a clean boat with the square-top main. A second, noisier Lagoon 42 table in the same repo ('lagoon42_performance.txt', apparently logged data, TWS 4-35) is summarized in alt_table.",
+   "includes_spinnaker": false,
+   "tws_kn": [
+    6,
+    10,
+    16
+   ],
+   "twa_deg": [
+    60,
+    75,
+    90,
+    110,
+    120,
+    135,
+    150
+   ],
+   "speeds_kn": {
+    "6": {
+     "60": 2.5,
+     "75": 2.8,
+     "90": 3.1,
+     "110": 3.4,
+     "120": 3.3,
+     "135": 2.9,
+     "150": 2.4
+    },
+    "10": {
+     "60": 4.1,
+     "75": 4.8,
+     "90": 5.1,
+     "110": 5.6,
+     "120": 5.7,
+     "135": 5.2,
+     "150": 4.3
+    },
+    "16": {
+     "60": 6.5,
+     "75": 6.8,
+     "90": 7.1,
+     "110": 7.5,
+     "120": 7.6,
+     "135": 7.5,
+     "150": 6.7
+    }
+   },
+   "speeds_note": "Values at 60/90/110/120/150 deg are direct from sabado.pol. 75 and 135 deg are linear interpolations of its 70/80 and 130/140 columns. TWS 16 is a sabado column. A 15 kn value would be about the mean of its 14 and 16 columns: 60:6.35, 90:6.9, 120:7.35, 150:6.4.",
+   "beat": {
+    "twa_deg": {
+     "6": 55,
+     "10": 55,
+     "16": 52
+    },
+    "speed_kn": {
+     "6": 2.2,
+     "10": 3.7,
+     "16": 6.0
+    },
+    "note": "ESTIMATE. sabado.pol has no angle below 60 deg. Optimal VMG upwind for this fixed-keel cruising cat is about 55-60 deg TWA. katamarans.com recommends about 60 deg and says pinching to 50 deg loses speed and adds leeway. Speeds come from extrapolating the 60-70 deg slope. VMG at 60 deg TWA is about 0.5 x Vs, which may be as good as or better than 55 deg.",
+    "source": "https://www.katamarans.com/lagoon-42/"
+   },
+   "run": {
+    "twa_deg": {
+     "6": 165,
+     "10": 165,
+     "16": 165
+    },
+    "speed_kn": {
+     "6": 2.0,
+     "10": 3.6,
+     "16": 6.0
+    },
+    "note": "ESTIMATE. Extrapolated from sabado.pol's 140-150 deg decline. Main + self-tacker only; dead downwind the jib is blanketed. Optimal downwind VMG is about 140-150 deg TWA without a gennaker. With a gennaker, speeds would be markedly higher; katamarans.com cites the 'low teens' in a breeze.",
+    "source": "https://raw.githubusercontent.com/sailing12388/passage-weather/main/sabado.pol"
+   },
+   "alt_table": {
+    "source": "https://raw.githubusercontent.com/sailing12388/passage-weather/main/lagoon42_performance.txt",
+    "note": "Same repo, provenance unknown, noisy and possibly includes Code 0 or gennaker at some angles. Selected rows (TWA:kn). TWS 8: 50:5.3, 60:5.89, 70:6.1, 90:5.84, 110:5.42, 120:6.33, 150:6.11. TWS 12: 50:6.84, 60:6.44, 90:6.33, 110:8.01, 120:7.31, 150:7.28. TWS 16: 50:5.92, 60:6.75, 70:7.5, 90:7.72, 110:9.25, 120:9.18, 150:8.24. TWS 20: 110:9.97, 130:10.0. These run about 15-30% faster than sabado.pol; treat them as an upper bound with extra sails."
+   },
+   "confidence": "Low-medium. Third-party polar of unknown provenance, consistent within about 10% of four independent review observations. No builder or ORC polar exists online."
+  },
+  "sources": [
+   "https://www.catamarans-lagoon.com/boats/lagoon-42",
+   "https://www.boat-specs.com/sailing/sailboats/lagoon/lagoon-42-2016",
+   "https://en.wikipedia.org/wiki/Lagoon_42-2",
+   "https://www.vplp.fr/en/?p=20247",
+   "https://www.katamarans.com/lagoon-42/",
+   "https://www.sailmagazine.com/boats/boat-review-lagoon-42",
+   "https://48north.com/boats-and-gear/boat-test-lagoon-42/",
+   "https://www.themultihullgroup.com/reefing-a-mainsail-on-a-catamaran",
+   "https://keelindex.com/boat/lagoon-42-2/performance",
+   "https://keelindex.com/boat/lagoon-42/sails",
+   "https://github.com/sailing12388/passage-weather",
+   "https://raw.githubusercontent.com/sailing12388/passage-weather/main/sabado.pol",
+   "https://raw.githubusercontent.com/sailing12388/passage-weather/main/lagoon42_performance.txt"
+  ],
+  "not_found": [
+   "Lagoon/VPLP official polar diagram",
+   "ORC Multihull (or any) rating certificate",
+   "Maximum/loaded displacement (only light displacement published)",
+   "Published I, J, P, E for the 2016+ boat (the online figures belong to the 1990 Lagoon 42)",
+   "Gennaker/asymmetric spinnaker area",
+   "Number of reefs and reef areas; Lagoon reefing-by-wind-speed table",
+   "Keel and rudder dimensions",
+   "Hull centerline spacing and waterline hull beam",
+   "Righting moment curve / stability data",
+   "Fuel consumption figures",
+   "Standard propeller type"
+  ]
+ }
+]
