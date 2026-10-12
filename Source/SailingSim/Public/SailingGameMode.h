@@ -6,6 +6,7 @@
 #include "Weather.h"
 #include "Wind.h"
 #include "LakeData.h"
+#include "Chart.h"
 #include "Async/Future.h"
 #include "SailingGameMode.generated.h"
 
@@ -51,6 +52,15 @@ public:
 	/** Tidal current at a point (m/s, map frame). */
 	Sailing::Vec3 GetCurrentAt(double X, double Y) const { return Lake.IsTidal() ? Lake.Tides.CurrentAt(X, Y, GetUnixTime()) : Sailing::Vec3(); }
 
+	/** The next high or low water at the boat (refreshed every minute); false off the coast. */
+	bool GetNextTide(Sailing::FTideEvent& Out) const { Out = NextTide; return bHasNextTide; }
+	/** Hours to add to UTC for the area's local clock. */
+	int32 GetUtcOffsetHours() const { return UtcOffsetHours; }
+	/** The vector chart of the area (loaded the first time it is asked for); empty on the lake. */
+	const FChartData& GetChart() const;
+	/** Whether lights are showing: from sunset to sunrise (sun below the horizon) and in restricted visibility. */
+	bool IsDark() const;
+
 	/** Physics time (s): the boat's clock, which the wind, waves and water material all use. */
 	double GetSimTime() const;
 	/** Seconds since the current weather started (the storm timeline runs on this). */
@@ -71,6 +81,11 @@ private:
 	int32 DayOfYear = 285;
 	int32 UtcOffsetHours = -5;
 	double TideHeight = 0.0;
+	Sailing::FTideEvent NextTide;
+	bool bHasNextTide = false;
+	double NextTideUpdate = -1e9;
+	mutable FChartData Chart;
+	mutable bool bChartTried = false;
 	TWeakObjectPtr<AActor> TerrainActor;
 	void FinishBenchmark();
 

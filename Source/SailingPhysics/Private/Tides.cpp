@@ -1,4 +1,5 @@
 #include "Tides.h"
+#include <algorithm>
 #include <cstring>
 #include <unordered_map>
 
@@ -166,5 +167,93 @@ namespace Sailing
 		const double Speed = StationCurrent(UnixSeconds - Delay[I]) * (Gain[I] / 1000.0);
 		// The field stores the flood direction; an ebb (negative speed) runs the other way.
 		return Vec3(DirX[I] / 10000.0, DirY[I] / 10000.0, 0.0) * Speed;
+	}
+
+	namespace
+	{
+		/** Turning points of f between two times: 6-minute scan, then golden-section refinement to a few seconds. */
+		template <typename F>
+		void FindExtrema(const F& Func, double From, double To, std::vector<FTideEvent>& Out)
+		{
+			const double Step = 360.0;
+			double T0 = From - Step, T1 = From, V0 = Func(T0), V1 = Func(T1);
+			for (double T2 = From + Step; T1 <= To; T2 += Step)
+			{
+				const double V2 = Func(T2);
+				const bool bMax = V1 > V0 && V1 >= V2, bMin = V1 < V0 && V1 <= V2;
+				if (bMax || bMin)
+				{
+					// Refine inside [T0, T2]: golden section on +-f.
+					const double Sign = bMax ? 1.0 : -1.0, G = 0.6180339887;
+					double A = T0, B = T2, C = B - G * (B - A), D = A + G * (B - A);
+					for (int I = 0; I < 30; ++I)
+					{
+						if (Sign * Func(C) > Sign * Func(D)) B = D; else A = C;
+						C = B - G * (B - A);
+						D = A + G * (B - A);
+					}
+					FTideEvent E;
+					E.Time = 0.5 * (A + B);
+					E.Value = Func(E.Time);
+					E.Type = bMax ? FTideEvent::High : FTideEvent::Low;
+					if (E.Time >= From && E.Time <= To) Out.push_back(E);
+				}
+				T0 = T1; V0 = V1; T1 = T2; V1 = V2;
+			}
+		}
+	}
+
+	std::vector<FTideEvent> TideExtremes(const FTideStation& Station, double From, double To)
+	{
+		std::vector<FTideEvent> Out;
+		FindExtrema([&](double T) { return PredictTide(Station, T); }, From, To, Out);
+		return Out;
+	}
+
+	std::vector<FTideEvent> CurrentEvents(const FTideStation& Station, double From, double To)
+	{
+		auto Func = [&](double T) { return PredictTide(Station, T); };
+		std::vector<FTideEvent> Extrema, Out;
+		FindExtrema(Func, From, To, Extrema);
+		// Slack: sign changes, found by bisection on a one-minute scan.
+		std::vector<FTideEvent> Slacks;
+		double TPrev = From, VPrev = Func(From);
+		for (double T = From + 60.0; T <= To; T += 60.0)
+		{
+			const double V = Func(T);
+			if ((V > 0.0) != (VPrev > 0.0))
+			{
+				double A = TPrev, B = T, FA = VPrev;
+				for (int I = 0; I < 30; ++I)
+				{
+					const double M = 0.5 * (A + B), FM = Func(M);
+					if ((FM > 0.0) == (FA > 0.0)) { A = M; FA = FM; } else B = M;
+				}
+				FTideEvent E;
+				E.Time = 0.5 * (A + B);
+				E.Value = 0.0;
+				E.Type = FTideEvent::Slack;
+				Slacks.push_back(E);
+			}
+			TPrev = T; VPrev = V;
+		}
+		// Keep the maxima of each direction: highs while flooding, lows while ebbing.
+		for (const FTideEvent& E : Extrema)
+		{
+			if ((E.Type == FTideEvent::High && E.Value > 0.0) || (E.Type == FTideEvent::Low && E.Value < 0.0)) Out.push_back(E);
+		}
+		Out.insert(Out.end(), Slacks.begin(), Slacks.end());
+		std::sort(Out.begin(), Out.end(), [](const FTideEvent& L, const FTideEvent& R) { return L.Time < R.Time; });
+		return Out;
+	}
+
+	bool FTideModel::NextExtreme(double X, double Y, double UnixSeconds, FTideEvent& Out) const
+	{
+		if (HeightStations.empty()) return false;
+		std::vector<FTideEvent> Events;
+		FindExtrema([&](double T) { return HeightAt(X, Y, T); }, UnixSeconds, UnixSeconds + 30.0 * 3600.0, Events);
+		if (Events.empty()) return false;
+		Out = Events.front();
+		return true;
 	}
 }

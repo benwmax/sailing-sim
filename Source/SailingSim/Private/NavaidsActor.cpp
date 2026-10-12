@@ -170,10 +170,7 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	FixedRoot->SetRelativeLocation(FVector(0, 0, -GM->GetTideHeight() * CmPerMeter));
 
 	// Lights come on after sunset (a photocell) or when visibility closes in.
-	double Elevation = 0.0, Azimuth = 0.0;
-	ASailingEnvironment::SunPosition(GM->GetWeatherState().HourOfDay, GM->GetDayOfYear(), GM->GetLake().Latitude, Elevation, Azimuth);
-	static const bool bForceOn = FParse::Param(FCommandLine::Get(), TEXT("SailingLightsOn")); // screenshots, debugging
-	const bool bDark = bForceOn || Elevation < -1.0 || GM->GetWeatherState().VisibilityKm < 2.0;
+	const bool bDark = GM->IsDark();
 	FVector Camera = FVector::ZeroVector;
 	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation();
 	const double Now = GM->GetUnixTime();

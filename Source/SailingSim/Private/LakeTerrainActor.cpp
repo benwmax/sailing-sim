@@ -15,7 +15,9 @@ using namespace Sailing;
 
 namespace
 {
-	constexpr int32 kChunkCells = 64;
+	// Cells per chunk side: 64, or 128 on grids of 10 m or coarser (Galveston Bay: 1,000 chunks instead of 4,000;
+	// culling every chunk each frame cost 4 ms of render thread).
+	int32 GChunkCells = 64;
 	constexpr int32 kMaxBuildsInFlight = 4;
 	constexpr int32 kMaxUploadsPerFrame = 3;
 
@@ -104,8 +106,9 @@ void ALakeTerrainActor::BeginPlay()
 		return;
 	}
 	const FLakeTerrain& T = Lake->Terrain;
-	ChunkRows = FMath::DivideAndRoundUp(T.GetRows() - 1, kChunkCells);
-	ChunkCols = FMath::DivideAndRoundUp(T.GetCols() - 1, kChunkCells);
+	GChunkCells = T.GetCell() >= 9.99 ? 128 : 64;
+	ChunkRows = FMath::DivideAndRoundUp(T.GetRows() - 1, GChunkCells);
+	ChunkCols = FMath::DivideAndRoundUp(T.GetCols() - 1, GChunkCells);
 	Chunks.SetNum(ChunkRows * ChunkCols);
 	for (int32 R = 0; R < ChunkRows; ++R)
 	{
@@ -120,6 +123,7 @@ void ALakeTerrainActor::BeginPlay()
 			Mesh->bUseAsyncCooking = true;
 			Mesh->RegisterComponent();
 			Mesh->SetMaterial(0, TerrainMaterial);
+			Mesh->SetCullDistance(20000.f * 100.f); // past 20 km the land is a sliver on the horizon, under the haze
 			Ch.Mesh = Mesh;
 		}
 	}
@@ -144,10 +148,10 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 	FChunkMesh M;
 	if (!Lake) return M;
 	const FLakeTerrain& T = Lake->Terrain;
-	const int32 N = kChunkCells / Step;
+	const int32 N = GChunkCells / Step;
 	const double Cell = T.GetCell();
 	auto H = [&](int32 R, int32 C) { return T.NodeHeight(R, C); };
-	const int32 R0 = ChunkRow * kChunkCells, C0 = ChunkCol * kChunkCells;
+	const int32 R0 = ChunkRow * GChunkCells, C0 = ChunkCol * GChunkCells;
 
 	M.Vertices.Reserve((N + 1) * (N + 1) + 4 * (N + 1));
 	for (int32 I = 0; I <= N; ++I)
@@ -216,7 +220,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CM->GetCameraLocation();
 	const double CamX = Cam.X / CmPerMeter, CamY = Cam.Y / CmPerMeter;
 	const FLakeTerrain& T = Lake->Terrain;
-	const double ChunkSize = kChunkCells * T.GetCell();
+	const double ChunkSize = GChunkCells * T.GetCell();
 
 	// Wanted level of detail by distance to the camera; queue the closest chunks first.
 	TArray<int32> Order;
@@ -259,6 +263,10 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		Ch.Mesh->ClearAllMeshSections();
 		Ch.Mesh->CreateMeshSection_LinearColor(0, M.Vertices, M.Triangles, M.Normals, {}, M.Colors, {}, false);
 		Ch.Lod = -2 - Ch.Lod;
+		// Only chunks within about 2 km cast shadows: farther, the shadows are under a pixel but every chunk is a
+		// draw in each cascade (Galveston Bay has some 4,000 chunks; facing the shore cost 15 fps on the render thread).
+		const bool bShadow = Ch.Lod <= 2;
+		if (Ch.Mesh->CastShadow != bShadow) Ch.Mesh->SetCastShadow(bShadow);
 		Ch.bBuilding = false;
 	}
 }

@@ -7,6 +7,7 @@
 #include "FixedStepper.h"
 #include "InputActionValue.h"
 #include "Drills.h"
+#include "Navigation.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -74,6 +75,20 @@ public:
 	/** Seconds of physics time since the boat was put on the water (resets don't restart the weather clock). */
 	double GetSessionTime() const { return Boat.GetState().Time; }
 
+	/** Navigation (on the coast): the chart view, the plot of bearings, fixes and dead reckoning, and the GPS. */
+	bool IsChartOpen() const { return bChartOpen; }
+	FVector2D GetChartCenter() const { return ChartCenter; }
+	double GetChartMetersPerPixel() const { return ChartMetersPerPixel; }
+	const SailingNav::FPlot& GetPlot() const { return Plot; }
+	bool IsGpsShown() const { return bShowGps; }
+	/** Where the boat really is (map frame, m) and her heading (true, degrees). */
+	FVector2D GetMapPosition() const;
+	double GetHeadingTrueDeg() const;
+	/** Takes a bearing with the hand-bearing compass on the charted object nearest the line of sight. */
+	bool TakeBearing();
+	/** Records a bearing on a charted object (what TakeBearing does once it has found one). */
+	bool RecordBearing(const FString& Name, const FVector2D& Object);
+
 	/** Initial speed through the water in knots. */
 	UPROPERTY(EditAnywhere, Category = "Boat")
 	float StartSpeedKnots = 3.f;
@@ -127,6 +142,17 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> MarkMeshes;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> DummyMesh;
 	void UpdateDrillVisuals();
+	void UpdateNavLights();
+	void SetChartOpen(bool bOpen);
+	SailingNav::FPlot Plot;
+	bool bChartOpen = false;
+	bool bShowGps = true;
+	bool bChartArgsApplied = false;
+	FVector2D ChartCenter = FVector2D::ZeroVector;
+	double ChartMetersPerPixel = 8.0;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> NavLights; // port, starboard, stern, steaming
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> EmissiveMaterial;
+	UPROPERTY(Transient) TObjectPtr<UStaticMesh> SphereMesh;
 	double StatusUntil = 0.0;
 	bool bDemoTacks = true;
 	bool bMenuOpen = false;

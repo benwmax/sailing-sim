@@ -867,11 +867,14 @@ namespace Sailing
 		State.CapsizedTime = HeelAbs > 70.0 * kDegToRad ? State.CapsizedTime + Dt : 0.0;
 		T.bCapsized = State.CapsizedTime > 2.0;
 
-		// Windward side with hysteresis, from the apparent wind at the masthead (not while knocked flat: the masthead
-		// is then in the lee of the hull and the wind there says nothing about which side is windward).
-		if (std::fabs(T.ApparentWindAngle) > 15.0 * kDegToRad && std::fabs(T.ApparentWindAngle) < 165.0 * kDegToRad && HeelAbs < 45.0 * kDegToRad)
+		// Windward side with hysteresis, from the apparent wind over the moving boat at masthead height. Not from the
+		// masthead's own motion: a rolling mast swings the wind there from side to side, and a crew that followed it
+		// would rock the boat (in a calm she rocked herself up to a knot). Not while knocked flat either.
+		const Vec3 CrewWind = Q.Unrotate(Wind.VelocityAt(MastheadWorld, State.Time) - State.Velocity);
+		const double CrewAwa = std::atan2(-CrewWind.Y, -CrewWind.X);
+		if (CrewWind.LengthXY() > 0.5 && std::fabs(CrewAwa) > 15.0 * kDegToRad && std::fabs(CrewAwa) < 165.0 * kDegToRad && HeelAbs < 45.0 * kDegToRad)
 		{
-			State.WindwardSide = T.ApparentWindAngle > 0.0 ? 1 : -1;
+			State.WindwardSide = CrewAwa > 0.0 ? 1 : -1;
 		}
 	}
 

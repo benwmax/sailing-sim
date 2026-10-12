@@ -14,6 +14,7 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CommandLine.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/Parse.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
@@ -78,10 +79,17 @@ ASailingEnvironment::ASailingEnvironment()
 	FlashLight->SetMobility(EComponentMobility::Movable);
 }
 
-void ASailingEnvironment::SunPosition(double Hour, double DayOfYear, double LatitudeDeg, double& OutElevation, double& OutAzimuth)
+void ASailingEnvironment::SunPosition(double ClockHour, double DayOfYear, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth)
 {
+	// Equation of time (minutes, Spencer's short form): sundials run up to 16 minutes ahead of or behind the clock.
+	const double B = 2.0 * kPi * (DayOfYear - 81.0) / 365.0;
+	const double EquationOfTime = 9.87 * std::sin(2.0 * B) - 7.53 * std::cos(B) - 1.5 * std::sin(B);
+	const double Hour = ClockHour - UtcOffsetHours + LongitudeDeg / 15.0 + EquationOfTime / 60.0;
 	const double Lat = LatitudeDeg * kDegToRad;
-	const double Decl = 23.44 * kDegToRad * std::sin(2.0 * kPi * (284.0 + DayOfYear) / 365.0);
+	// Declination (Spencer's Fourier series, good to a few hundredths of a degree).
+	const double G = 2.0 * kPi * (DayOfYear - 1.0) / 365.0;
+	const double Decl = 0.006918 - 0.399912 * std::cos(G) + 0.070257 * std::sin(G) - 0.006758 * std::cos(2.0 * G)
+		+ 0.000907 * std::sin(2.0 * G) - 0.002697 * std::cos(3.0 * G) + 0.00148 * std::sin(3.0 * G);
 	const double HourAngle = (Hour - 12.0) * 15.0 * kDegToRad;
 	const double SinEl = std::sin(Lat) * std::sin(Decl) + std::cos(Lat) * std::cos(Decl) * std::cos(HourAngle);
 	OutElevation = std::asin(Clamp(SinEl, -1.0, 1.0)) * kRadToDeg;
@@ -166,7 +174,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	double Elevation, Azimuth;
 	// The sailing area's latitude and the session's date; through the whole day and night.
-	SunPosition(Hour, GM->GetDayOfYear(), GM->GetLake().Latitude, Elevation, Azimuth);
+	SunPosition(Hour, GM->GetDayOfYear(), GM->GetLake().Latitude, GM->GetLake().Longitude, GM->GetUtcOffsetHours(), Elevation, Azimuth);
 	// Night: below civil twilight the scene is lit by a dim, bluish sky (moonlight and town glow) and the eye does not
 	// adapt all the way to darkness, so the water stays dark and the navigation lights stand out.
 	const float Night = 1.f - FMath::SmoothStep(-12.f, -2.f, float(Elevation));
@@ -179,7 +187,9 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		// Moonlight is about a thousandth of the sun here (not the real four hundred thousandth: the eye adapts and the
 		// exposure floor keeps the night dark); it lights the atmosphere as its second sun, a deep blue sky.
-		MoonLight->SetIntensity(SunIntensity * 0.0015f * Night);
+		static const bool bNoMoon = FParse::Param(FCommandLine::Get(), TEXT("SailingNoMoon")); // profiling
+		MoonLight->SetIntensity(bNoMoon ? 0.f : SunIntensity * 0.0015f * Night);
+		MoonLight->SetVisibility(!bNoMoon && Night > 0.f);
 	}
 	if (Sun)
 	{
@@ -197,6 +207,19 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		SunComp->SetIntensity(SunIntensity * Intensity * FMath::Lerp(1.f, 0.002f, Night));
 		SunComp->SetDiffuseScale(CloudShade / Intensity);
 		SunComp->SetSpecularScale(FMath::Square(CloudShade / Intensity));
+		// Once the sun is down it casts no shadows, and the clouds' shadow rays toward it (which run the whole layer
+		// when the light skims the horizon: night ran at two-thirds of day's frame rate) get only a few samples.
+		const bool bShadows = Elevation > 2.0; // shadows from a sun within 2 degrees of the horizon are too long to see
+		if (SunComp->CastShadows != bShadows) SunComp->SetCastShadows(bShadows);
+		const int32 CloudShadowSamples = Elevation < 0.0 ? 4 : (Elevation < 10.0 ? 6 : 80); // 80: the engine default
+		if (CloudShadowSamples != AppliedCloudShadowSamples)
+		{
+			AppliedCloudShadowSamples = CloudShadowSamples;
+			if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.Shadow.ViewRaySampleMaxCount")))
+			{
+				Var->Set(float(CloudShadowSamples), ECVF_SetByCode);
+			}
+		}
 		if (UDirectionalLightComponent* Dir = Cast<UDirectionalLightComponent>(SunComp))
 		{
 			const float Disk = FMath::Square(CloudShade);

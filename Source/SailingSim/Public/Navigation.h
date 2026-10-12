@@ -40,4 +40,33 @@ namespace SailingNav
 
 	/** "2.3 nm" style distance. */
 	SAILINGSIM_API FString FormatDistance(double Meters);
+
+	/**
+	 * The navigator's plot: bearings taken, the latest fix and the dead-reckoning track from it. A fix is plotted
+	 * whenever the bearings taken within FixWindow seconds include two that cross at a good angle (30 degrees or more);
+	 * dead reckoning then runs from the fix on the compass heading and the log's speed, as on a paper chart (it does
+	 * not know the current or leeway, which is why the next fix lands somewhere else).
+	 */
+	struct SAILINGSIM_API FPlot
+	{
+		static constexpr double FixWindow = 600.0;       // s: bearings older than this don't make a fix
+		static constexpr double TrackInterval = 30.0;    // s between DR track points
+		static constexpr int32 MaxBearings = 8;
+
+		TArray<FBearing> Bearings;
+		bool bHasFix = false;
+		FVector2D Fix = FVector2D::ZeroVector;
+		double FixTime = 0.0;
+		double FixSpread = 0.0;    // m, the cocked hat
+		FVector2D Dr = FVector2D::ZeroVector;
+		TArray<FVector2D> DrTrack; // from the last fix
+		double LastTrackTime = 0.0;
+
+		/** Clears the plot and starts DR from a known position (the departure). */
+		void Start(const FVector2D& Known, double Time);
+		/** Adds a bearing; returns true if it made a new fix. */
+		bool AddBearing(const FBearing& Bearing, double VariationEastDeg);
+		/** Dead reckoning: heading (true, degrees) and speed through the water (m/s) for Dt seconds. */
+		void Advance(double HeadingTrueDeg, double SpeedThroughWater, double Dt, double Time);
+	};
 }

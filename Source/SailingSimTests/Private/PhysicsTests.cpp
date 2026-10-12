@@ -278,4 +278,37 @@ bool FSailingHullSpeedTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCalmStaysPutTest, "SailingSim.Physics.CalmDoesNotRockTheBoat", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FSailingCalmStaysPutTest::RunTest(const FString& Parameters)
+{
+	// No wind, no waves, sheets slack: she should lie still. (The crew used to follow the masthead's apparent wind,
+	// which swings with the roll, and rocked her up to two knots.)
+	FWindParams P;
+	P.SpeedKnots = 0.0;
+	const FWindField Calm(P);
+	FBoatModel Boat;
+	Boat.Reset(0.0, 0.0, 0.0, 0.0);
+	FBoatControls C;
+	C.MainSheet = 1.0;
+	C.JibSheet = 1.0;
+	// The crew's weight to one side gives her a steady list; rocking is the heel swinging, so measure its range
+	// over the second half minute.
+	double MinHeel = 1e9, MaxHeel = -1e9;
+	for (int32 I = 0; I < int32(60.0 * PhysicsHz); ++I)
+	{
+		Boat.Step(PhysicsDt, C, Calm);
+		if (I > int32(30.0 * PhysicsHz))
+		{
+			MinHeel = FMath::Min(MinHeel, Boat.GetTelemetry().Heel);
+			MaxHeel = FMath::Max(MaxHeel, Boat.GetTelemetry().Heel);
+		}
+	}
+	const double Speed = Boat.GetState().Velocity.LengthXY();
+	const double Swing = FMath::RadiansToDegrees(MaxHeel - MinHeel);
+	AddInfo(FString::Printf(TEXT("After a minute: %.3f m/s, heel %.1f to %.1f deg"), Speed, FMath::RadiansToDegrees(MinHeel), FMath::RadiansToDegrees(MaxHeel)));
+	TestTrue(TEXT("Lies still (under 0.05 m/s)"), Speed < 0.05);
+	TestTrue(TEXT("Does not rock (heel swings under 1 deg)"), Swing < 1.0);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

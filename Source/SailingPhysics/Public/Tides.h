@@ -33,6 +33,27 @@ namespace Sailing
 	 */
 	SAILINGPHYSICS_API double PredictTide(const FTideStation& Station, double UnixSeconds);
 
+	/** A turn of the tide or the current: high or low water, maximum flood or ebb, or slack. */
+	struct FTideEvent
+	{
+		enum EType { Low = -1, Slack = 0, High = 1 }; // for currents: Low = maximum ebb, High = maximum flood
+		double Time = 0.0;   // Unix seconds
+		double Value = 0.0;  // height above datum (m) or current (m/s, + = flood)
+		EType Type = Slack;
+	};
+
+	/**
+	 * High and low waters between two times, the way NOAA's tables list them: the turning points of the predicted
+	 * curve, to the minute.
+	 */
+	SAILINGPHYSICS_API std::vector<FTideEvent> TideExtremes(const FTideStation& Station, double From, double To);
+
+	/**
+	 * A current station's slack waters (where the current changes direction) and maximum flood and ebb (the strongest
+	 * point of each run; a weakening between two maxima of the same direction is not listed, as in NOAA's tables).
+	 */
+	SAILINGPHYSICS_API std::vector<FTideEvent> CurrentEvents(const FTideStation& Station, double From, double To);
+
 	/** Seconds since 1970-01-01 UTC for a calendar date and time (UTC). */
 	SAILINGPHYSICS_API double UnixSecondsUtc(int Year, int Month, int Day, int Hour, int Minute, double Second = 0.0);
 
@@ -59,6 +80,8 @@ namespace Sailing
 		Vec3 CurrentAt(double X, double Y, double UnixSeconds) const;
 		/** Current at the reference station along its flood direction (m/s, + = flood). */
 		double StationCurrent(double UnixSeconds) const;
+		/** The next high or low water at a point after a time (searched up to 30 h ahead); false if none. */
+		bool NextExtreme(double X, double Y, double UnixSeconds, FTideEvent& Out) const;
 
 	private:
 		int Rows = 0, Cols = 0;

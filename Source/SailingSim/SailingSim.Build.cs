@@ -7,7 +7,7 @@ public class SailingSim : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] {
-			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "SailingPhysics"
+			"Core", "CoreUObject", "Engine", "RenderCore", "InputCore", "EnhancedInput", "SailingPhysics"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {

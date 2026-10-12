@@ -8,7 +8,7 @@ public class SailingSimTests : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"Core", "CoreUObject", "Engine", "SailingPhysics", "SailingSim", "ProceduralMeshComponent"
+			"Core", "CoreUObject", "Engine", "SailingPhysics", "SailingSim", "ProceduralMeshComponent", "Json"
 		});
 	}
 }

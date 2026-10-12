@@ -57,4 +57,61 @@ namespace SailingNav
 		const double Nm = Meters / MetersPerNauticalMile;
 		return Nm < 0.1 ? FString::Printf(TEXT("%.0f m"), Meters) : FString::Printf(TEXT("%.2f nm"), Nm);
 	}
+
+	void FPlot::Start(const FVector2D& Known, double Time)
+	{
+		Bearings.Reset();
+		bHasFix = false;
+		Fix = Known;
+		FixTime = Time;
+		FixSpread = 0.0;
+		Dr = Known;
+		DrTrack.Reset();
+		DrTrack.Add(Known);
+		LastTrackTime = Time;
+	}
+
+	bool FPlot::AddBearing(const FBearing& Bearing, double VariationEastDeg)
+	{
+		Bearings.Add(Bearing);
+		if (Bearings.Num() > MaxBearings) Bearings.RemoveAt(0);
+		// The recent bearings, newest first, up to three; at least two must cross at 30 degrees or more.
+		TArray<FBearing> Recent;
+		for (int32 I = Bearings.Num() - 1; I >= 0 && Recent.Num() < 3; --I)
+		{
+			if (Bearing.Time - Bearings[I].Time <= FixWindow) Recent.Add(Bearings[I]);
+		}
+		bool bCrossing = false;
+		for (int32 I = 0; I < Recent.Num(); ++I)
+		{
+			for (int32 J = I + 1; J < Recent.Num(); ++J)
+			{
+				const double Cut = FMath::Abs(FMath::Fmod(Recent[I].MagneticDeg - Recent[J].MagneticDeg + 360.0, 180.0));
+				if (Cut >= 30.0 && Cut <= 150.0) bCrossing = true;
+			}
+		}
+		FVector2D NewFix;
+		double Spread = 0.0;
+		if (!bCrossing || !PlotFix(Recent, VariationEastDeg, NewFix, Spread)) return false;
+		bHasFix = true;
+		Fix = NewFix;
+		FixTime = Bearing.Time;
+		FixSpread = Spread;
+		Dr = NewFix;
+		DrTrack.Reset();
+		DrTrack.Add(NewFix);
+		LastTrackTime = Bearing.Time;
+		return true;
+	}
+
+	void FPlot::Advance(double HeadingTrueDeg, double SpeedThroughWater, double Dt, double Time)
+	{
+		Dr = DeadReckon(Dr, HeadingTrueDeg, SpeedThroughWater, Dt);
+		if (Time - LastTrackTime >= TrackInterval)
+		{
+			LastTrackTime = Time;
+			DrTrack.Add(Dr);
+			if (DrTrack.Num() > 720) DrTrack.RemoveAt(0);
+		}
+	}
 }

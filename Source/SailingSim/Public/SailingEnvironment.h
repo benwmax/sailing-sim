@@ -30,7 +30,11 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 	/** Sun elevation and azimuth (degrees, azimuth clockwise from +X / north) for a local solar hour. */
-	static void SunPosition(double Hour, double DayOfYear, double LatitudeDeg, double& OutElevation, double& OutAzimuth);
+	/**
+	 * Sun elevation and azimuth (degrees) for a local clock time: the clock hour is turned into apparent solar time
+	 * with the longitude, the time zone and the equation of time (solar noon in Galveston on CDT is about 13:07).
+	 */
+	static void SunPosition(double ClockHour, double DayOfYear, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth);
 
 	/** A thunderclap reaching the listener: loudness 0..1 (distance) and how long ago it started. */
 	struct FThunder { float Loudness; float Age; float Duration; };
@@ -71,4 +75,5 @@ private:
 	float SunIntensity = 10.f;
 	float SkyIntensity = 1.f;
 	float FogBaseDensity = 0.02f;
+	int32 AppliedCloudShadowSamples = -1;
 };

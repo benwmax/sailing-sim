@@ -19,6 +19,7 @@
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
+#include "SailingEnvironment.h"
 #include "UnrealClient.h"
 
 using namespace Sailing;
@@ -109,6 +110,24 @@ double ASailingGameMode::GetLocalHour() const
 	return Hours < 0.0 ? Hours + 24.0 : Hours;
 }
 
+const FChartData& ASailingGameMode::GetChart() const
+{
+	if (!bChartTried && Lake.IsTidal())
+	{
+		bChartTried = true;
+		Chart.Load(FLakeData::DefaultDirectory() / (Lake.FileName + TEXT(".chart.json")));
+	}
+	return Chart;
+}
+
+bool ASailingGameMode::IsDark() const
+{
+	static const bool bForceOn = FParse::Param(FCommandLine::Get(), TEXT("SailingLightsOn")); // screenshots, debugging
+	double Elevation = 0.0, Azimuth = 0.0;
+	ASailingEnvironment::SunPosition(WeatherState.HourOfDay, DayOfYear, Lake.Latitude, Lake.Longitude, UtcOffsetHours, Elevation, Azimuth);
+	return bForceOn || Elevation < -1.0 || WeatherState.VisibilityKm < 2.0;
+}
+
 void ASailingGameMode::UpdateTide()
 {
 	if (!Lake.IsTidal()) return;
@@ -124,6 +143,11 @@ void ASailingGameMode::UpdateTide()
 		}
 	}
 	TideHeight = Lake.Tides.HeightAt(X, Y, GetUnixTime());
+	if (FMath::Abs(GetUnixTime() - NextTideUpdate) > 60.0)
+	{
+		NextTideUpdate = GetUnixTime();
+		bHasNextTide = Lake.Tides.NextExtreme(X, Y, GetUnixTime(), NextTide);
+	}
 	Lake.Terrain.SetLevelBelowPool(-TideHeight);
 	if (!TerrainActor.IsValid())
 	{
@@ -171,8 +195,10 @@ void ASailingGameMode::UpdateShelter()
 		const Sailing::FLakeTerrain* Terrain = &Lake.Terrain;
 		PendingShelter = Async(EAsyncExecution::ThreadPool, [Terrain, From]()
 		{
+			const double Start = FPlatformTime::Seconds();
 			TSharedPtr<Sailing::FShelterMap> Map = MakeShared<Sailing::FShelterMap>();
 			Map->Build(*Terrain, From);
+			UE_LOG(LogSailing, Display, TEXT("Shelter map for wind from %.0f built in %.0f ms"), FMath::RadiansToDegrees(From), (FPlatformTime::Seconds() - Start) * 1000.0);
 			return Map;
 		});
 	}

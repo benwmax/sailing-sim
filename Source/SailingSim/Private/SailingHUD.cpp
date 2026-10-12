@@ -6,6 +6,10 @@
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
+#include "CanvasItem.h"
+#include "Chart.h"
+#include "Navigation.h"
+#include "Tides.h"
 
 using namespace Sailing;
 
@@ -75,6 +79,11 @@ void ASailingHUD::DrawHUD()
 		DrawControlsCard(*Boat);
 		return;
 	}
+	if (Boat->IsChartOpen())
+	{
+		DrawChart(*Boat);
+		return;
+	}
 	if (!Settings->bShowHud)
 	{
 		Text(TEXT("H: show instruments   ?: controls   Tab: settings"), 20.f, 20.f, Dim, 0.8f);
@@ -89,6 +98,349 @@ void ASailingHUD::DrawHUD()
 		DrawWindDiagram(*Boat, FVector2D(Canvas->ClipX / UIScale - 140.f, 160.f), 100.f);
 		DrawTips(*Boat);
 	}
+	DrawNavigation(*Boat, Settings->bLearningMode ? 300.f : 10.f);
+}
+
+void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || !GM->GetLake().IsTidal()) return;
+	const FLakeData& Lake = GM->GetLake();
+	const FBoatModel& Model = Boat.GetBoatModel();
+	const FBoatTelemetry& T = Model.GetTelemetry();
+	const float W = 270.f, X = Canvas->ClipX / UIScale - W - 10.f;
+	DrawRect(Panel, X * UIScale, Top * UIScale, W * UIScale, 196.f * UIScale);
+	float Y = Top + 8.f;
+	const double HeadingT = Boat.GetHeadingTrueDeg();
+	Text(FString::Printf(TEXT("Compass  %03.0f M"), SailingNav::TrueToMagnetic(HeadingT, Lake.VariationDeg)), X + 12.f, Y, FLinearColor::White, 1.f);
+	Y += 24.f;
+	// The depth sounder reads from the transducer (about 0.3 m down) to the bottom, in feet as the chart is.
+	const double Depth = T.DepthUnderKeel + Model.GetConfig().Draft - 0.3;
+	Text(FString::Printf(TEXT("Depth    %.1f ft"), Depth / 0.3048), X + 12.f, Y, T.DepthUnderKeel < 1.0 ? Warn : FLinearColor::White, 1.f);
+	Y += 24.f;
+	Text(FString::Printf(TEXT("Log      %.1f kn"), T.SpeedThroughWater / kKnot), X + 12.f, Y, FLinearColor::White, 1.f);
+	Y += 24.f;
+	const Vec3 V = Model.GetState().Velocity;
+	const double Sog = FMath::Sqrt(V.X * V.X + V.Y * V.Y);
+	if (Boat.IsGpsShown())
+	{
+		const double Cog = SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(V.Y, V.X)));
+		Text(FString::Printf(TEXT("GPS      %.1f kn  %03.0f T"), Sog / kKnot, Sog > 0.1 ? Cog : HeadingT), X + 12.f, Y, Dim, 0.9f);
+	}
+	else
+	{
+		Text(TEXT("GPS      off (O)"), X + 12.f, Y, Dim, 0.9f);
+	}
+	Y += 24.f;
+	// Tide: height above chart datum (MLLW) and the next turn, in local time.
+	FTideEvent Next;
+	FString TideLine = FString::Printf(TEXT("Tide     %+.1f ft"), GM->GetTideHeight() / 0.3048);
+	if (GM->GetNextTide(Next))
+	{
+		const double Local = Next.Time + GM->GetUtcOffsetHours() * 3600.0;
+		const int32 Minutes = int32(FMath::Fmod(Local / 60.0, 1440.0));
+		TideLine += FString::Printf(TEXT("  %s %02d:%02d"), Next.Type == FTideEvent::High ? TEXT("HW") : TEXT("LW"), Minutes / 60, Minutes % 60);
+	}
+	Text(TideLine, X + 12.f, Y, FLinearColor::White, 0.9f);
+	Y += 24.f;
+	const Vec3 Cur = GM->GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
+	const double Set = SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)));
+	const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
+	Text(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f T"), Drift / kKnot, Set), X + 12.f, Y, Dim, 0.9f);
+	Y += 24.f;
+	Text(TEXT("P chart   U bearing   O GPS"), X + 12.f, Y + 2.f, Dim, 0.75f);
+}
+
+void ASailingHUD::DrawChart(const ASailboatPawn& Boat)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM) return;
+	const FChartData& Chart = GM->GetChart();
+	const FLakeData& Lake = GM->GetLake();
+	const SailingNav::FPlot& Plot = Boat.GetPlot();
+	const double Var = Lake.VariationDeg;
+	const float SW = Canvas->ClipX, SH = Canvas->ClipY;
+	const FVector2D Center = Boat.GetChartCenter();
+	const double Mpp = Boat.GetChartMetersPerPixel() / UIScale; // meters per screen pixel
+	auto ToScreen = [&](const FVector2D& P) { return FVector2D(SW * 0.5 + (P.Y - Center.Y) / Mpp, SH * 0.5 - (P.X - Center.X) / Mpp); };
+	const FBox2D View(FVector2D(Center.X - SH * 0.5 * Mpp, Center.Y - SW * 0.5 * Mpp), FVector2D(Center.X + SH * 0.5 * Mpp, Center.Y + SW * 0.5 * Mpp));
+	auto Visible = [&](const FBox2D& B) { return B.bIsValid && B.Intersect(View); };
+	const FLinearColor Ink(0.08f, 0.08f, 0.1f), Magenta = FLinearColor::FromSRGBColor(FColor(200, 30, 140)), ContourInk = FLinearColor::FromSRGBColor(FColor(70, 110, 160));
+
+	// Paper: white inside the chart's coverage (dredged channels, not depth areas in the ENC, print white), grey beyond.
+	DrawRect(FLinearColor(0.6f, 0.6f, 0.6f), 0.f, 0.f, SW, SH);
+	if (Chart.Bounds.bIsValid)
+	{
+		const FVector2D A = ToScreen(FVector2D(Chart.Bounds.Max.X, Chart.Bounds.Min.Y)), B = ToScreen(FVector2D(Chart.Bounds.Min.X, Chart.Bounds.Max.Y));
+		DrawRect(FLinearColor::White, A.X, A.Y, B.X - A.X, B.Y - A.Y);
+	}
+	TArray<FCanvasUVTri> Tris;
+	Tris.Reserve(Chart.TriangleClass.Num());
+	for (int32 Block = 0; Block < Chart.TriangleBounds.Num(); ++Block)
+	{
+		if (!Visible(Chart.TriangleBounds[Block])) continue;
+		const int32 End = FMath::Min((Block + 1) * FChartData::TrianglesPerBlock, Chart.TriangleClass.Num());
+		for (int32 I = Block * FChartData::TrianglesPerBlock; I < End; ++I)
+		{
+			FCanvasUVTri Tri;
+			Tri.V0_Pos = ToScreen(Chart.Triangles[3 * I]);
+			Tri.V1_Pos = ToScreen(Chart.Triangles[3 * I + 1]);
+			Tri.V2_Pos = ToScreen(Chart.Triangles[3 * I + 2]);
+			Tri.V0_Color = Tri.V1_Color = Tri.V2_Color = SailingChart::AreaColour(Chart.TriangleClass[I]);
+			Tris.Add(Tri);
+		}
+	}
+	if (Tris.Num() > 0)
+	{
+		FCanvasTriangleItem Item(Tris, GWhiteTexture);
+		Item.BlendMode = SE_BLEND_Opaque;
+		Canvas->DrawItem(Item);
+	}
+
+	auto DrawPolyline = [&](const FChartData::FLine& L, const FLinearColor& Colour, float Thickness, bool bDashed = false)
+	{
+		if (!Visible(L.Bounds)) return;
+		FVector2D Prev = ToScreen(L.Points[0]);
+		for (int32 I = 1; I < L.Points.Num(); ++I)
+		{
+			const FVector2D P = ToScreen(L.Points[I]);
+			if (!bDashed || (I % 2) == 1) DrawLine(Prev.X, Prev.Y, P.X, P.Y, Colour, Thickness);
+			Prev = P;
+		}
+	};
+	const double Zoom = Boat.GetChartMetersPerPixel(); // m per (1080p) pixel: smaller is closer in
+	if (Zoom < 25.0) for (const FChartData::FLine& L : Chart.Contours) DrawPolyline(L, ContourInk, 1.f);
+	for (const FChartData::FLine& L : Chart.Channels) DrawPolyline(L, Magenta, 1.f, true);
+	for (const FChartData::FLine& L : Chart.Coast) DrawPolyline(L, Ink, 1.5f);
+	if (Zoom < 8.0) for (const FChartData::FLine& L : Chart.Docks) DrawPolyline(L, Ink, 1.f);
+	for (const FChartData::FLine& L : Chart.Bridges) DrawPolyline(L, Ink, 2.5f);
+
+	UFont* Small = GEngine->GetSmallFont();
+	UFont* Tiny = GEngine->GetTinyFont();
+	// Soundings in feet, thinned so they never pile up.
+	if (Zoom < 14.0)
+	{
+		TSet<int64> Used;
+		const float Cell = 34.f * UIScale;
+		for (const FVector3d& S : Chart.Soundings)
+		{
+			const FVector2D P = ToScreen(FVector2D(S.X, S.Y));
+			if (P.X < 0 || P.Y < 0 || P.X > SW || P.Y > SH) continue;
+			const int64 Key = (int64(P.X / Cell) << 32) | int64(P.Y / Cell);
+			if (Used.Contains(Key)) continue;
+			Used.Add(Key);
+			DrawText(SailingChart::SoundingText(S.Z), Ink, P.X - 5.f * UIScale, P.Y - 6.f * UIScale, Tiny, UIScale);
+		}
+	}
+
+	// Aids to navigation (U.S. Chart No. 1): buoys and beacons in their colors, a magenta flare on every light.
+	TArray<FCanvasUVTri> Symbols;
+	auto Tri = [&](const FVector2D& A, const FVector2D& B, const FVector2D& C, const FLinearColor& Colour)
+	{
+		FCanvasUVTri T;
+		T.V0_Pos = A; T.V1_Pos = B; T.V2_Pos = C;
+		T.V0_Color = T.V1_Color = T.V2_Color = Colour;
+		Symbols.Add(T);
+	};
+	auto Quad = [&](const FVector2D& A, const FVector2D& B, const FVector2D& C, const FVector2D& D, const FLinearColor& Colour) { Tri(A, B, C, Colour); Tri(A, C, D, Colour); };
+	const float U = FMath::Clamp(float(6.0 / FMath::Sqrt(Zoom)), 0.8f, 2.0f) * UIScale; // symbol size
+	TArray<TPair<FVector2D, FString>> Labels;
+	TArray<FVector2D> Outlines;
+	for (const FNavaid& N : Lake.Navaids)
+	{
+		const FVector2D P = ToScreen(FVector2D(N.X, N.Y));
+		if (P.X < -20 || P.Y < -20 || P.X > SW + 20 || P.Y > SH + 20) continue;
+		const FLinearColor C = SailingChart::AidColour(N);
+		const SailingChart::ESymbol Sym = SailingChart::SymbolFor(N);
+		if (N.bLit)
+		{
+			// The light flare: a magenta teardrop from the position, pointing up and to the right.
+			Tri(P, P + FVector2D(5.f, -12.f) * U, P + FVector2D(9.f, -9.f) * U, Magenta);
+		}
+		switch (Sym)
+		{
+		case SailingChart::ESymbol::Can:
+			Quad(P + FVector2D(-3.f, -1.f) * U, P + FVector2D(3.f, -1.f) * U, P + FVector2D(4.f, -7.f) * U, P + FVector2D(-2.f, -7.f) * U, C);
+			break;
+		case SailingChart::ESymbol::Nun:
+			Tri(P + FVector2D(-4.f, -1.f) * U, P + FVector2D(4.f, -1.f) * U, P + FVector2D(1.5f, -9.f) * U, C);
+			break;
+		case SailingChart::ESymbol::Beacon:
+			if (N.Colours.Num() == 0 && N.DaymarkColours.Num() == 0 && N.CatLam == 0)
+			{
+				// A private or special-purpose beacon with no charted color: the plain beacon outline.
+				Outlines.Add(P + FVector2D(0.f, -4.f) * U);
+				break;
+			}
+			// Daybeacon: green square, red triangle (by the daymark's shape when charted, else by side).
+			if (C.R > C.G) Tri(P + FVector2D(-4.f, -2.f) * U, P + FVector2D(4.f, -2.f) * U, P + FVector2D(0.f, -9.f) * U, C);
+			else Quad(P + FVector2D(-3.5f, -2.f) * U, P + FVector2D(3.5f, -2.f) * U, P + FVector2D(3.5f, -9.f) * U, P + FVector2D(-3.5f, -9.f) * U, C);
+			break;
+		case SailingChart::ESymbol::LightMajor:
+			Tri(P + FVector2D(-2.f, 0.f) * U, P + FVector2D(2.f, 0.f) * U, P + FVector2D(0.f, -14.f) * U, Magenta);
+			break;
+		default: // pillar, spar, sphere: a slanted buoy
+			Quad(P + FVector2D(-3.5f, -1.f) * U, P + FVector2D(3.5f, -1.f) * U, P + FVector2D(4.5f, -8.f) * U, P + FVector2D(-1.f, -10.f) * U, C);
+			break;
+		}
+		if (Zoom < 6.0) Labels.Add({ P + FVector2D(8.f, -2.f) * U, SailingChart::AidLabel(N) });
+	}
+	if (Symbols.Num() > 0)
+	{
+		FCanvasTriangleItem Item(Symbols, GWhiteTexture);
+		Canvas->DrawItem(Item);
+	}
+	for (const FNavaid& N : Lake.Navaids)
+	{
+		// The position circle at the foot of each symbol.
+		const FVector2D P = ToScreen(FVector2D(N.X, N.Y));
+		if (P.X < 0 || P.Y < 0 || P.X > SW || P.Y > SH) continue;
+		DrawRect(Ink, P.X - 1.5f, P.Y - 1.5f, 3.f, 3.f);
+	}
+	for (const FVector2D& O : Outlines)
+	{
+		const float H = 3.f * U;
+		DrawLine(O.X - H, O.Y - H, O.X + H, O.Y - H, Ink, 1.f);
+		DrawLine(O.X + H, O.Y - H, O.X + H, O.Y + H, Ink, 1.f);
+		DrawLine(O.X + H, O.Y + H, O.X - H, O.Y + H, Ink, 1.f);
+		DrawLine(O.X - H, O.Y + H, O.X - H, O.Y - H, Ink, 1.f);
+	}
+	for (const TPair<FVector2D, FString>& L : Labels) DrawText(L.Value, FLinearColor(0.3f, 0.05f, 0.3f), L.Key.X, L.Key.Y, Tiny, UIScale);
+	if (Zoom < 10.0)
+	{
+		for (const FLandmark& L : Lake.Landmarks)
+		{
+			if (!L.bConspicuous || L.Name.IsEmpty() || L.Name == TEXT("Landmark")) continue;
+			const FVector2D P = ToScreen(FVector2D(L.X, L.Y));
+			if (P.X < 0 || P.Y < 0 || P.X > SW || P.Y > SH) continue;
+			for (int32 I = 0; I < 12; ++I)
+			{
+				const float A0 = I * PI / 6.f, A1 = (I + 1) * PI / 6.f;
+				DrawLine(P.X + 4.f * UIScale * FMath::Cos(A0), P.Y + 4.f * UIScale * FMath::Sin(A0), P.X + 4.f * UIScale * FMath::Cos(A1), P.Y + 4.f * UIScale * FMath::Sin(A1), Ink, 1.f);
+			}
+			DrawText(L.Name.ToUpper(), Ink, P.X + 6.f * UIScale, P.Y - 4.f * UIScale, Tiny, UIScale);
+		}
+	}
+
+	// The plot: bearing lines (LOPs), the fix, the DR track.
+	auto Circle = [&](const FVector2D& P, float R, const FLinearColor& Colour, float Thick)
+	{
+		for (int32 I = 0; I < 20; ++I)
+		{
+			const float A0 = I * PI / 10.f, A1 = (I + 1) * PI / 10.f;
+			DrawLine(P.X + R * FMath::Cos(A0), P.Y + R * FMath::Sin(A0), P.X + R * FMath::Cos(A1), P.Y + R * FMath::Sin(A1), Colour, Thick);
+		}
+	};
+	const double Now = Boat.GetSessionTime();
+	for (const SailingNav::FBearing& B : Plot.Bearings)
+	{
+		const bool bRecent = Now - B.Time <= SailingNav::FPlot::FixWindow;
+		const double Back = FMath::DegreesToRadians(SailingNav::MagneticToTrue(B.MagneticDeg, Var) + 180.0);
+		// Drawn from the object to a little past the boat's side, as on paper.
+		const double Length = FVector2D::Distance(B.Object, Plot.bHasFix ? Plot.Fix : Plot.Dr) * 1.12 + 300.0;
+		const FVector2D A = ToScreen(B.Object), E = ToScreen(B.Object + FVector2D(FMath::Cos(Back), FMath::Sin(Back)) * Length);
+		DrawLine(A.X, A.Y, E.X, E.Y, bRecent ? Ink : FLinearColor(0.4f, 0.4f, 0.4f), bRecent ? 1.5f : 1.f);
+		const FVector2D Mid = A + (E - A) * 0.35;
+		DrawText(FString::Printf(TEXT("%03.0f M"), B.MagneticDeg), Ink, Mid.X + 4.f, Mid.Y, Small, UIScale * 0.9f);
+	}
+	if (Plot.DrTrack.Num() > 0)
+	{
+		FVector2D Prev = ToScreen(Plot.DrTrack[0]);
+		for (int32 I = 1; I <= Plot.DrTrack.Num(); ++I)
+		{
+			const FVector2D P = ToScreen(I < Plot.DrTrack.Num() ? Plot.DrTrack[I] : Plot.Dr);
+			DrawLine(Prev.X, Prev.Y, P.X, P.Y, Ink, 1.f);
+			Prev = P;
+		}
+		// DR position: a half circle (Chapman's convention) with "DR".
+		const FVector2D D = ToScreen(Plot.Dr);
+		for (int32 I = 0; I < 10; ++I)
+		{
+			const float A0 = PI + I * PI / 10.f, A1 = PI + (I + 1) * PI / 10.f;
+			DrawLine(D.X + 7.f * UIScale * FMath::Cos(A0), D.Y + 7.f * UIScale * FMath::Sin(A0), D.X + 7.f * UIScale * FMath::Cos(A1), D.Y + 7.f * UIScale * FMath::Sin(A1), Ink, 2.f);
+		}
+		DrawLine(D.X - 7.f * UIScale, D.Y, D.X + 7.f * UIScale, D.Y, Ink, 2.f);
+		DrawText(TEXT("DR"), Ink, D.X + 8.f * UIScale, D.Y - 18.f * UIScale, Small, UIScale);
+	}
+	if (Plot.bHasFix)
+	{
+		const FVector2D F = ToScreen(Plot.Fix);
+		Circle(F, 7.f * UIScale, Ink, 2.f);
+		DrawRect(Ink, F.X - 1.5f, F.Y - 1.5f, 3.f, 3.f);
+		const int32 Minutes = FMath::RoundToInt((Now - Plot.FixTime) / 60.0);
+		DrawText(FString::Printf(TEXT("FIX (%d min ago, cocked hat %.0f m)"), Minutes, Plot.FixSpread), Ink, F.X + 9.f * UIScale, F.Y + 4.f * UIScale, Small, UIScale * 0.9f);
+	}
+
+	// The boat (GPS) and her heading.
+	const FVector2D Me = Boat.GetMapPosition();
+	const double HeadingT = Boat.GetHeadingTrueDeg();
+	if (Boat.IsGpsShown())
+	{
+		const FVector2D P = ToScreen(Me);
+		const double H = FMath::DegreesToRadians(HeadingT);
+		const FVector2D Fwd(FMath::Sin(H), -FMath::Cos(H)), Side(-Fwd.Y, Fwd.X);
+		const float L = 10.f * UIScale;
+		DrawLine(P.X + Fwd.X * L, P.Y + Fwd.Y * L, P.X - Fwd.X * L + Side.X * L * 0.5f, P.Y - Fwd.Y * L + Side.Y * L * 0.5f, Bad, 2.5f);
+		DrawLine(P.X + Fwd.X * L, P.Y + Fwd.Y * L, P.X - Fwd.X * L - Side.X * L * 0.5f, P.Y - Fwd.Y * L - Side.Y * L * 0.5f, Bad, 2.5f);
+		DrawLine(P.X - Fwd.X * L + Side.X * L * 0.5f, P.Y - Fwd.Y * L + Side.Y * L * 0.5f, P.X - Fwd.X * L - Side.X * L * 0.5f, P.Y - Fwd.Y * L - Side.Y * L * 0.5f, Bad, 2.5f);
+		DrawLine(P.X, P.Y, P.X + Fwd.X * 60.f * UIScale, P.Y + Fwd.Y * 60.f * UIScale, Bad, 1.f);
+	}
+
+	// Course line: from the boat (GPS) or the DR to the crosshair, with its true and magnetic course and distance.
+	const FVector2D From = Boat.IsGpsShown() ? Me : Plot.Dr;
+	const FVector2D FS = ToScreen(From), CS(SW * 0.5f, SH * 0.5f);
+	DrawLine(CS.X - 12.f, CS.Y, CS.X + 12.f, CS.Y, Ink, 1.f);
+	DrawLine(CS.X, CS.Y - 12.f, CS.X, CS.Y + 12.f, Ink, 1.f);
+	const double Dist = FVector2D::Distance(From, Center);
+	if (Dist > 20.0)
+	{
+		DrawLine(FS.X, FS.Y, CS.X, CS.Y, Magenta, 1.5f);
+		const double Course = SailingNav::BearingDeg(From, Center);
+		const double Sog = FMath::Max(Boat.GetBoatModel().GetTelemetry().SpeedThroughWater, 0.3);
+		DrawText(FString::Printf(TEXT("%03.0f T  %03.0f M  %s  %.0f min"), Course, SailingNav::TrueToMagnetic(Course, Var), *SailingNav::FormatDistance(Dist), Dist / Sog / 60.0),
+			Magenta, CS.X + 14.f * UIScale, CS.Y + 6.f * UIScale, Small, UIScale);
+	}
+
+	// Compass rose: true outside (star at north), magnetic inside, turned by the variation.
+	const FVector2D Rose(SW - 150.f * UIScale, SH - 170.f * UIScale);
+	const float RO = 110.f * UIScale, RI = 80.f * UIScale;
+	Circle(Rose, RO, Magenta, 1.f);
+	Circle(Rose, RI, Magenta, 1.f);
+	for (int32 D = 0; D < 360; D += 10)
+	{
+		const float AT = FMath::DegreesToRadians(float(D)), AM = FMath::DegreesToRadians(float(D + Var));
+		const float LT = D % 30 == 0 ? 10.f : 5.f;
+		DrawLine(Rose.X + RO * FMath::Sin(AT), Rose.Y - RO * FMath::Cos(AT), Rose.X + (RO - LT * UIScale) * FMath::Sin(AT), Rose.Y - (RO - LT * UIScale) * FMath::Cos(AT), Magenta, 1.f);
+		DrawLine(Rose.X + RI * FMath::Sin(AM), Rose.Y - RI * FMath::Cos(AM), Rose.X + (RI - LT * UIScale) * FMath::Sin(AM), Rose.Y - (RI - LT * UIScale) * FMath::Cos(AM), Magenta, 1.f);
+		if (D % 30 == 0)
+		{
+			DrawText(FString::Printf(TEXT("%d"), D), Magenta, Rose.X + (RO + 12.f * UIScale) * FMath::Sin(AT) - 8.f * UIScale, Rose.Y - (RO + 12.f * UIScale) * FMath::Cos(AT) - 6.f * UIScale, Tiny, UIScale);
+		}
+	}
+	Symbols.Reset();
+	Tri(Rose + FVector2D(0.f, -RO - 4.f * UIScale), Rose + FVector2D(-5.f * UIScale, -RO + 10.f * UIScale), Rose + FVector2D(5.f * UIScale, -RO + 10.f * UIScale), Magenta);
+	{
+		FCanvasTriangleItem Star(Symbols, GWhiteTexture);
+		Canvas->DrawItem(Star);
+	}
+	const double VarMin = FMath::Abs(Var) * 60.0;
+	DrawText(FString::Printf(TEXT("VAR %d%c%02d'%s (%d)"), int32(VarMin / 60.0), TCHAR(0xB0), int32(FMath::Fmod(VarMin, 60.0)), Var >= 0.0 ? TEXT("E") : TEXT("W"), 2026), Magenta, Rose.X - 50.f * UIScale, Rose.Y - 6.f * UIScale, Small, UIScale);
+
+	// Scale bar: one nautical mile (or a tenth).
+	const double BarM = Zoom > 3.0 ? SailingNav::MetersPerNauticalMile : 0.1 * SailingNav::MetersPerNauticalMile;
+	const float BarPx = float(BarM / Mpp), BX = 30.f * UIScale, BY = SH - 40.f * UIScale;
+	DrawRect(Ink, BX, BY, BarPx, 4.f * UIScale);
+	DrawText(Zoom > 3.0 ? TEXT("1 nautical mile") : TEXT("0.1 nautical mile"), Ink, BX, BY - 18.f * UIScale, Small, UIScale);
+
+	// Title block and keys.
+	DrawRect(FLinearColor(1.f, 1.f, 1.f, 0.85f), 10.f * UIScale, 10.f * UIScale, 520.f * UIScale, 92.f * UIScale);
+	Text(FString::Printf(TEXT("%s  (NOAA ENC)  soundings in feet at MLLW"), *Lake.LakeName), 20.f, 16.f, Ink, 0.95f);
+	FTideEvent Next;
+	const bool bNext = GM->GetNextTide(Next);
+	const int32 NextMin = bNext ? int32(FMath::Fmod((Next.Time + GM->GetUtcOffsetHours() * 3600.0) / 60.0, 1440.0)) : 0;
+	Text(FString::Printf(TEXT("Tide %+.1f ft%s   Not for navigation"), GM->GetTideHeight() / 0.3048,
+		bNext ? *FString::Printf(TEXT(", %s %02d:%02d"), Next.Type == FTideEvent::High ? TEXT("high") : TEXT("low"), NextMin / 60, NextMin % 60) : TEXT("")), 20.f, 40.f, Ink, 0.85f);
+	Text(TEXT("Mouse pans, wheel zooms, P closes.  U bearing on what the camera faces,  O GPS,  I clear the plot"), 20.f, 64.f, Ink, 0.7f);
 }
 
 void ASailingHUD::DrawInstruments(const ASailboatPawn& Boat)
@@ -273,7 +625,9 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 54.f, Dim, 0.8f);
 	// Required attribution for the map data (OpenStreetMap is ODbL); see CREDITS.md.
 	Text(TEXT("Map data (c) OpenStreetMap contributors, ODbL. Terrain: USGS 3DEP."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
-	Text(TEXT("Lake depths and levels: Texas Water Development Board."), X + 20.f, Y + H - 12.f, Dim, 0.7f);
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	Text(GM && GM->GetLake().IsTidal() ? TEXT("Chart, tides and currents: NOAA (ENC, CO-OPS). Not for navigation.")
+		: TEXT("Lake depths and levels: Texas Water Development Board."), X + 20.f, Y + H - 12.f, Dim, 0.7f);
 }
 
 void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
