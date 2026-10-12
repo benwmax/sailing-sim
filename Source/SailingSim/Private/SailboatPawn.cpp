@@ -240,6 +240,8 @@ void ASailboatPawn::BeginPlay()
 		DemoPilot.MaxTiller = 0.8;
 		CameraYaw = bDemoTacks ? 150.f : 210.f;
 		CameraPitch = -14.f;
+		FParse::Value(FCommandLine::Get(), TEXT("SailingCamYaw="), CameraYaw);
+		FParse::Value(FCommandLine::Get(), TEXT("SailingCamPitch="), CameraPitch);
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
 }
@@ -282,7 +284,10 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
 		}
 		Controls.Tiller = DemoPilot.Update(Boat);
-		CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);
+		if (bDemoTacks)
+		{
+			CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);
+		}
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
 

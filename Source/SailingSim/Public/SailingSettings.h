@@ -83,7 +83,7 @@ public:
 	int32 WeatherSeed = 2027;
 
 	UPROPERTY(config, EditAnywhere, Category = "Graphics")
-	ESailingQuality Quality = ESailingQuality::High;
+	ESailingQuality Quality = ESailingQuality::Medium;
 
 	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float Volume = 0.8f;

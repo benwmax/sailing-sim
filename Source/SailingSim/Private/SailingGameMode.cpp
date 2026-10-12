@@ -101,6 +101,13 @@ void ASailingGameMode::ApplyQualitySettings()
 	Scalability::FQualityLevels Levels = Scalability::GetQualityLevels();
 	Levels.SetFromSingleQualityLevel(Quality == ESailingQuality::Low ? 1 : (Quality == ESailingQuality::Medium ? 2 : 3));
 	Scalability::SetQualityLevels(Levels);
+	// Volumetric clouds are the most expensive part of the sky: cap their ray-march samples per tier.
+	auto SetCVar = [](const TCHAR* Name, int32 Value)
+	{
+		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(Name)) Var->Set(Value, ECVF_SetByCode);
+	};
+	SetCVar(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), Quality == ESailingQuality::Low ? 48 : (Quality == ESailingQuality::Medium ? 80 : 96));
+	SetCVar(TEXT("r.VolumetricCloud.ReflectionRaySampleMaxCount"), Quality == ESailingQuality::High ? 24 : 16);
 	for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It)
 	{
 		It->SetRingCount(Quality == ESailingQuality::Low ? 4 : (Quality == ESailingQuality::Medium ? 5 : 6));
@@ -148,9 +155,10 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 
 void ASailingGameMode::StartPlay()
 {
-	Super::StartPlay();
+	// Weather first: the boat reads the wind when it is spawned during Super::StartPlay.
 	ApplyQualitySettings();
 	ApplyWeatherSettings();
+	Super::StartPlay();
 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
@@ -186,6 +194,14 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
 		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		NextFrameTime += RecordInterval;
+	}
+
+	// -SailingProfileGPU: dump one frame's GPU timings to the log (for tuning quality tiers).
+	static bool bProfiled = false;
+	if (!bProfiled && Elapsed > BenchWarmupSeconds + 3.f && FParse::Param(FCommandLine::Get(), TEXT("SailingProfileGPU")))
+	{
+		bProfiled = true;
+		GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
 	}
 
 	const float End = BenchWarmupSeconds + BenchSeconds;

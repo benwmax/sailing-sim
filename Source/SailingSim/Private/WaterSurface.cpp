@@ -9,6 +9,10 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Misc/CommandLine.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Parse.h"
+#include "Misc/Paths.h"
 #include "Waves.h"
 #include "Wind.h"
 
@@ -27,7 +31,9 @@ namespace
 	UTexture2D* MakeMap(int32 Size)
 	{
 		UTexture2D* Tex = UTexture2D::CreateTransient(Size, Size, PF_B8G8R8A8);
-		Tex->SRGB = false;
+		// sRGB to match the material's Color sampler (a mismatch makes the renderer fall back to the default
+		// texture); values are gamma-encoded on the CPU so the GPU decodes them back to linear.
+		Tex->SRGB = true;
 		Tex->Filter = TF_Bilinear;
 		Tex->AddressX = TA_Clamp;
 		Tex->AddressY = TA_Clamp;
@@ -35,8 +41,16 @@ namespace
 		return Tex;
 	}
 
+	uint8 EncodeSrgb(float Linear)
+	{
+		const float C = FMath::Clamp(Linear, 0.f, 1.f);
+		const float S = C <= 0.0031308f ? 12.92f * C : 1.055f * FMath::Pow(C, 1.f / 2.4f) - 0.055f;
+		return uint8(FMath::RoundToInt(S * 255.f));
+	}
+
 	void Upload(UTexture2D* Tex, const TArray<uint8>& Pixels, int32 Size)
 	{
+		// Copy the pixels for the render thread; it frees them when the upload is done.
 		uint8* Copy = new uint8[Pixels.Num()];
 		FMemory::Memcpy(Copy, Pixels.GetData(), Pixels.Num());
 		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Size, Size);
@@ -98,8 +112,15 @@ void AWaterSurface::BeginPlay()
 	WakePixels.SetNumZeroed(kWakeRes * kWakeRes * 4);
 	if (WaterMaterial)
 	{
+		float DebugGust = 0.f;
+		FParse::Value(FCommandLine::Get(), TEXT("SailingDebugGust="), DebugGust);
+		WaterMaterial->SetScalarParameterValue(TEXT("DebugGust"), DebugGust);
 		WaterMaterial->SetTextureParameterValue(TEXT("GustMap"), GustMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("WakeMap"), WakeMap);
+		UTexture* Bound = nullptr;
+		const bool bFound = WaterMaterial->GetTextureParameterValue(FHashedMaterialParameterInfo(TEXT("GustMap")), Bound);
+		UE_LOG(LogSailing, Display, TEXT("Water material %s: GustMap parameter %s, bound to %s"), *WaterMaterial->GetName(),
+			bFound ? TEXT("found") : TEXT("MISSING"), Bound ? *Bound->GetName() : TEXT("nothing"));
 	}
 	BuildRings();
 }
@@ -198,7 +219,12 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		UpdateGustMap();
 		GustTimer = 0.1f;
 	}
-	UpdateWakeMap(DeltaSeconds);
+	WakeTimer -= DeltaSeconds;
+	if (WakeTimer <= 0.f)
+	{
+		UpdateWakeMap(FMath::Max(DeltaSeconds, 1.f / 30.f));
+		WakeTimer = 1.f / 30.f;
+	}
 	UpdateMaterial();
 }
 
@@ -261,13 +287,27 @@ void AWaterSurface::UpdateGustMap()
 			const double WX = Center.X + (X + 0.5 - kGustRes * 0.5) * Texel;
 			const double WY = Center.Y + (Y + 0.5 - kGustRes * 0.5) * Texel;
 			const double R = Wind->SurfaceRoughnessAt(WX, WY, T);
-			const uint8 V = uint8(FMath::Clamp(R / 2.5, 0.0, 1.0) * 255.0);
+			const uint8 V = EncodeSrgb(float(R / 2.5));
 			// Texture rows run along +V; the material uses u = world X, v = world Y.
 			uint8* Px = &GustPixels[(Y * kGustRes + X) * 4];
 			Px[0] = V; Px[1] = V; Px[2] = V; Px[3] = 255; // B, G, R, A
 		}
 	});
 	Upload(GustMap, GustPixels, kGustRes);
+
+	// -SailingDumpGust: write the cat's-paw map as a PGM image once, to check what the water is shown.
+	static bool bDumped = false;
+	if (!bDumped && T > 4.0 && FParse::Param(FCommandLine::Get(), TEXT("SailingDumpGust")))
+	{
+		bDumped = true;
+		FString Pgm = FString::Printf(TEXT("P2\n%d %d\n255\n"), kGustRes, kGustRes);
+		for (int32 Y = kGustRes - 1; Y >= 0; --Y)
+		{
+			for (int32 X = 0; X < kGustRes; ++X) Pgm += FString::Printf(TEXT("%d "), GustPixels[(Y * kGustRes + X) * 4]);
+			Pgm += TEXT("\n");
+		}
+		FFileHelper::SaveStringToFile(Pgm, *(FPaths::ProjectSavedDir() / TEXT("Bench/gust.pgm")));
+	}
 }
 
 void AWaterSurface::UpdateWakeMap(float DeltaSeconds)
@@ -294,52 +334,73 @@ void AWaterSurface::UpdateWakeMap(float DeltaSeconds)
 	const FVector2D Side(-Fwd.Y, Fwd.X);
 	const float SpeedFactor = FMath::Clamp((BoatSpeed - 0.5f) / 3.0f, 0.f, 1.f);
 	const FVector2D Bow = BoatPos + Fwd * 3.3f;
-	const TArray<FWakePoint> Trail = WakeTrail;
+	const FVector2D Origin = Center - FVector2D(kWakeSizeM * 0.5f, kWakeSizeM * 0.5f);
 
-	ParallelFor(kWakeRes, [&](int32 Y)
+	// Turbulent wake: stamp each trail segment into the texels it can reach (a widening, fading band).
+	TArray<float> Foam;
+	Foam.SetNumZeroed(kWakeRes * kWakeRes);
+	for (int32 I = 1; I < WakeTrail.Num(); ++I)
 	{
-		for (int32 X = 0; X < kWakeRes; ++X)
+		const FWakePoint& PA = WakeTrail[I - 1];
+		const FWakePoint& PB = WakeTrail[I];
+		const float Speed = 0.5f * (PA.Speed + PB.Speed);
+		const float Age = 0.5f * (PA.Age + PB.Age);
+		const float Strength = FMath::Clamp((Speed - 0.5f) / 3.f, 0.f, 1.f) * FMath::Square(1.f - Age / kTrailSeconds) * 0.4f;
+		if (Strength < 0.01f) continue;
+		const float Width = 0.35f + 0.06f * Age * FMath::Max(Speed, 0.5f);
+		const float Reach = 2.5f * Width;
+		const FVector2D A = PA.Pos, AB = PB.Pos - PA.Pos;
+		const float Len2 = AB.SizeSquared();
+		const int32 X0 = FMath::Max(0, FMath::FloorToInt((FMath::Min(A.X, PB.Pos.X) - Reach - Origin.X) / Texel));
+		const int32 X1 = FMath::Min(kWakeRes - 1, FMath::CeilToInt((FMath::Max(A.X, PB.Pos.X) + Reach - Origin.X) / Texel));
+		const int32 Y0 = FMath::Max(0, FMath::FloorToInt((FMath::Min(A.Y, PB.Pos.Y) - Reach - Origin.Y) / Texel));
+		const int32 Y1 = FMath::Min(kWakeRes - 1, FMath::CeilToInt((FMath::Max(A.Y, PB.Pos.Y) + Reach - Origin.Y) / Texel));
+		for (int32 Y = Y0; Y <= Y1; ++Y)
 		{
-			const FVector2D P(Center.X + (X + 0.5f - kWakeRes * 0.5f) * Texel, Center.Y + (Y + 0.5f - kWakeRes * 0.5f) * Texel);
-			float Foam = 0.f;
-
-			// Turbulent wake: a widening, fading band along the stern's track.
-			for (int32 I = 1; I < Trail.Num(); ++I)
+			for (int32 X = X0; X <= X1; ++X)
 			{
-				const FVector2D A = Trail[I - 1].Pos, B = Trail[I].Pos;
-				const FVector2D AB = B - A;
-				const float Len2 = AB.SizeSquared();
+				const FVector2D P(Origin.X + (X + 0.5f) * Texel, Origin.Y + (Y + 0.5f) * Texel);
 				const float T = Len2 > 1e-6f ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Len2, 0.f, 1.f) : 0.f;
-				const float D = FVector2D::Distance(P, A + AB * T);
-				const float Age = FMath::Lerp(Trail[I - 1].Age, Trail[I].Age, T);
-				const float Speed = FMath::Lerp(Trail[I - 1].Speed, Trail[I].Speed, T);
-				const float Width = 0.45f + 0.10f * Age * FMath::Max(Speed, 0.5f);
-				if (D > 3.f * Width) continue;
-				const float Strength = FMath::Clamp((Speed - 0.5f) / 3.f, 0.f, 1.f) * (1.f - Age / kTrailSeconds) * 0.75f;
-				Foam = FMath::Max(Foam, Strength * FMath::Exp(-(D * D) / (Width * Width)));
+				const float D2 = FVector2D::DistSquared(P, A + AB * T);
+				float& F = Foam[Y * kWakeRes + X];
+				F = FMath::Max(F, Strength * FMath::Exp(-D2 / (Width * Width)));
 			}
+		}
+	}
 
-			// Kelvin wake arms (19.5 degrees each side) and the bow wave.
-			const FVector2D R = P - Bow;
-			const float Along = FVector2D::DotProduct(R, Fwd);
-			const float Across = FMath::Abs(FVector2D::DotProduct(R, Side));
-			if (Along < 0.f)
+	// Kelvin wake arms (19.5 degrees each side) and the bow wave, near the bow only.
+	if (SpeedFactor > 0.f)
+	{
+		const float Range = 22.f;
+		const int32 X0 = FMath::Max(0, FMath::FloorToInt((Bow.X - Range - Origin.X) / Texel)), X1 = FMath::Min(kWakeRes - 1, FMath::CeilToInt((Bow.X + Range - Origin.X) / Texel));
+		const int32 Y0 = FMath::Max(0, FMath::FloorToInt((Bow.Y - Range - Origin.Y) / Texel)), Y1 = FMath::Min(kWakeRes - 1, FMath::CeilToInt((Bow.Y + Range - Origin.Y) / Texel));
+		for (int32 Y = Y0; Y <= Y1; ++Y)
+		{
+			for (int32 X = X0; X <= X1; ++X)
 			{
-				const float Behind = -Along;
-				const float Arm = Behind * 0.3536f + 0.9f; // tan(19.47 deg), starting at the beam
-				const float Band = (Across - Arm) / (0.25f + 0.02f * Behind);
-				Foam = FMath::Max(Foam, SpeedFactor * SpeedFactor * 0.7f * FMath::Exp(-Band * Band) * FMath::Exp(-Behind / 14.f));
-			}
-			{
+				const FVector2D R(Origin.X + (X + 0.5f) * Texel - Bow.X, Origin.Y + (Y + 0.5f) * Texel - Bow.Y);
+				const float Along = FVector2D::DotProduct(R, Fwd);
+				const float Across = FMath::Abs(FVector2D::DotProduct(R, Side));
+				float& F = Foam[Y * kWakeRes + X];
+				if (Along < 0.f)
+				{
+					const float Behind = -Along;
+					const float Arm = Behind * 0.3536f + 0.9f; // tan(19.47 deg), starting at the beam
+					const float Band = (Across - Arm) / (0.25f + 0.02f * Behind);
+					F = FMath::Max(F, SpeedFactor * SpeedFactor * 0.35f * FMath::Exp(-Band * Band) * FMath::Exp(-Behind / 10.f));
+				}
 				const float BowBand = (Along + 0.6f) / 0.9f;
 				const float SideBand = (Across - 1.05f) / 0.45f;
-				Foam = FMath::Max(Foam, SpeedFactor * 0.8f * FMath::Exp(-BowBand * BowBand - SideBand * SideBand));
+				F = FMath::Max(F, SpeedFactor * 0.5f * FMath::Exp(-BowBand * BowBand - SideBand * SideBand));
 			}
-
-			const uint8 V = uint8(FMath::Clamp(Foam, 0.f, 1.f) * 255.f);
-			uint8* Px = &WakePixels[(Y * kWakeRes + X) * 4];
-			Px[0] = V; Px[1] = V; Px[2] = V; Px[3] = 255;
 		}
-	});
+	}
+
+	for (int32 I = 0; I < kWakeRes * kWakeRes; ++I)
+	{
+		const uint8 V = EncodeSrgb(Foam[I]);
+		uint8* Px = &WakePixels[I * 4];
+		Px[0] = V; Px[1] = V; Px[2] = V; Px[3] = 255;
+	}
 	Upload(WakeMap, WakePixels, kWakeRes);
 }

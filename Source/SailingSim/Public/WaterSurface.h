@@ -58,6 +58,7 @@ private:
 	int32 RingCount = 6;
 	FVector2D GustCenter = FVector2D::ZeroVector;
 	float GustTimer = 0.f;
+	float WakeTimer = 0.f;
 	TArray<uint8> GustPixels;
 	TArray<uint8> WakePixels;
 	FVector2D WakeCenter = FVector2D::ZeroVector;

@@ -34,6 +34,7 @@ sun_light = sun.get_component_by_class(unreal.DirectionalLightComponent)
 sun_light.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
 sun_light.set_editor_property("atmosphere_sun_light", True)
 sun_light.set_editor_property("intensity", 10.0)
+sun_light.set_editor_property("cast_cloud_shadows", False)  # 4+ ms on this Mac; the environment dims the sun from the cloud state instead
 
 spawn(unreal.SkyAtmosphere, label="SkyAtmosphere")
 
@@ -54,11 +55,11 @@ post = spawn(unreal.PostProcessVolume, label="PostProcess")
 post.set_editor_property("unbound", True)
 pps = post.get_editor_property("settings")
 pps.set_editor_property("override_auto_exposure_min_brightness", True)
-pps.set_editor_property("auto_exposure_min_brightness", -2.0)
+pps.set_editor_property("auto_exposure_min_brightness", -5.0)
 pps.set_editor_property("override_auto_exposure_max_brightness", True)
 pps.set_editor_property("auto_exposure_max_brightness", 14.0)
 pps.set_editor_property("override_auto_exposure_bias", True)
-pps.set_editor_property("auto_exposure_bias", 0.3)
+pps.set_editor_property("auto_exposure_bias", 0.5)
 post.set_editor_property("settings", pps)
 
 fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0), label="HeightFog")

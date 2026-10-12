@@ -81,7 +81,8 @@ void ASailingEnvironment::FindSceneActors()
 {
 	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
 	{
-		if (It->GetComponent() && It->GetComponent()->IsUsedAsAtmosphereSunLight())
+		const UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(It->GetLightComponent());
+		if (Light && Light->IsUsedAsAtmosphereSunLight())
 		{
 			Sun = *It;
 		}
@@ -90,7 +91,7 @@ void ASailingEnvironment::FindSceneActors()
 	if (TActorIterator<AExponentialHeightFog> It(GetWorld()); It) Fog = *It;
 	if (TActorIterator<AVolumetricCloud> It(GetWorld()); It) Clouds = *It;
 
-	if (Sun) SunIntensity = Sun->GetComponent()->Intensity;
+	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;
 	if (SkyLightActor) SkyIntensity = SkyLightActor->GetLightComponent()->Intensity;
 	if (Clouds)
 	{
@@ -153,12 +154,13 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		// The light travels from the sun toward the ground.
 		Sun->SetActorRotation(FRotator(-Elevation, Azimuth + 180.0, 0.0));
-		const float CloudShade = 1.f - 0.8f * FMath::Square(float(W.CloudCover)) * (0.5f + 0.5f * float(W.CloudDarkness));
-		Sun->GetComponent()->SetIntensity(SunIntensity * CloudShade);
+		// Cloud shadows already dim the sun where clouds pass; a solid overcast or storm deck also scatters it away.
+		const float CloudShade = 1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness));
+		Sun->GetLightComponent()->SetIntensity(SunIntensity * CloudShade);
 	}
 	if (SkyLightActor)
 	{
-		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f - 0.45f * float(W.CloudDarkness)));
+		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f - 0.3f * float(W.CloudDarkness)));
 	}
 }
 
@@ -167,9 +169,9 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
 	if (CloudMaterial)
 	{
-		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalCoverage"), FMath::Lerp(-0.45f, 0.55f, float(W.CloudCover)));
-		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalDensity"), FMath::Lerp(0.007f, 0.02f, float(W.CloudDarkness)));
-		CloudMaterial->SetScalarParameterValue(TEXT("StormClouds"), float(W.CloudDarkness));
+		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalCoverage"), FMath::Lerp(-0.2f, 0.6f, float(W.CloudCover)));
+		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalDensity"), FMath::Lerp(0.007f, 0.011f, float(W.CloudDarkness)));
+		CloudMaterial->SetScalarParameterValue(TEXT("StormClouds"), 0.6f * float(W.CloudDarkness));
 	}
 	if (Clouds)
 	{

@@ -70,10 +70,11 @@ def wave_terms(kind):
     for i in range(NUM_WAVES):
         amp = f"A{i // 4}.{'xyzw'[i % 4]}"
         arg = f"W{i}.x * p.x + W{i}.y * p.y - W{i}.z * T + W{i}.w"
+        # Components with no energy in the current sea are skipped (a uniform branch: cheap on the GPU).
         if kind == "height":
-            lines.append(f"h += {amp} * sin({arg});")
+            lines.append(f"[branch] if ({amp} > 1e-5) h += {amp} * sin({arg});")
         else:
-            lines.append(f"{{ float s, c; sincos({arg}, s, c); float a = {amp} * fade; h += a * s; sx += a * W{i}.x * c; sy += a * W{i}.y * c; }}")
+            lines.append(f"[branch] if ({amp} > 1e-5) {{ float s, c; sincos({arg}, s, c); float a = {amp} * fade; h += a * s; sx += a * W{i}.x * c; sy += a * W{i}.y * c; }}")
     return "\n".join(lines)
 
 
@@ -92,7 +93,10 @@ float3 cam = Cam * 0.01;
 float dist = distance(p.xy, cam.xy);
 float fade = saturate(1.0 - dist / Fade);
 float h = 0.0, sx = 0.0, sy = 0.0;
+[branch] if (fade > 0.0)
+{
 """ + wave_terms("normal") + """
+}
 // Cat's paws: local wind relative to 15 kn, from the same wind field the sails feel (CPU-filled map).
 float2 guv = (p.xy - GustRect.xy) / GustRect.z + 0.5;
 float rough = Gust.SampleLevel(GustSampler, guv, 0).r * 2.5;
@@ -101,7 +105,7 @@ float near = saturate(1.0 - dist / 1500.0);
 float2 d = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 n = float2(-d.y, d.x);
 float u = dot(p.xy, d), v = dot(p.xy, n);
-float rip = saturate(rough - 0.12) * 0.055 * near;
+float rip = saturate(rough - 0.12) * 0.075 * near;
 float rx = 0.0, ry = 0.0;
 { float k = 9.0;  float c = cos(k * u + 2.0 * v - T * 9.4 + 1.3);  rx += k * c; ry += 2.0 * c; }
 { float k = 14.0; float c = cos(k * u - 5.0 * v - T * 11.7 + 4.1); rx += k * c * 0.6; ry -= 5.0 * c * 0.6; }
@@ -115,13 +119,26 @@ sx += rr * (sin(p.x * 61.0 + T * 23.0) * cos(p.y * 47.0 - T * 17.0) + sin(p.y * 
 sy += rr * (cos(p.x * 53.0 - T * 29.0) * sin(p.y * 71.0 + T * 19.0) + cos(p.x * 97.0 - T * 27.0));
 // Whitecaps on steep crests once the wind is up.
 float slope = length(float2(sx, sy));
-float caps = saturate((slope - 0.22) * 5.0) * saturate(h * 8.0 + 0.3) * WindP.w;
+// Whitecaps follow the local wind (from the cat's-paw map), so a gust front shows as a band of breaking crests.
+float localKnots = rough * 15.56;
+float capsLevel = saturate((localKnots - 11.0) / 7.0);
+float capNoise = saturate(sin(p.x * 1.7 + sin(p.y * 1.3 + T * 0.7) * 2.0) * sin(p.y * 2.1 - T * 0.9 + sin(p.x * 0.9)) * 2.0);
+float caps = (saturate((slope - 0.18) * 5.0) * saturate(h * 8.0 + 0.3) + 0.25 * capNoise * capsLevel) * capsLevel;
 // Wake and bow wave foam from the boat (CPU-filled map around the boat).
 float2 wuv = (p.xy - WakeRect.xy) / WakeRect.z + 0.5;
 float inside = step(0.0, wuv.x) * step(wuv.x, 1.0) * step(0.0, wuv.y) * step(wuv.y, 1.0);
 float wake = Wake.SampleLevel(WakeSampler, saturate(wuv), 0).r * inside;
+// Break the foam into streaks and patches rather than a smooth white band.
+float breakup = saturate(0.35 + 0.65 * (0.5 + 0.5 * sin(p.x * 3.1 + sin(p.y * 2.3) * 2.0)) * (0.5 + 0.5 * sin(p.y * 2.7 + sin(p.x * 1.9 + T * 0.3) * 2.0)));
+wake *= breakup;
 Foam = saturate(caps + wake);
-Rough = lerp(0.025, 0.16, saturate(rough - 0.35)) + Rain * 0.08;
+// Debug view (DebugGust > 0): show the cat's-paw map as foam.
+Foam = DebugGust > 1.5 ? frac(guv.x * 8.0) * step(0.5, frac(guv.y * 8.0)) : lerp(Foam, saturate(rough / 2.5), saturate(DebugGust));
+// Sailors read puffs relative to the wind around them: compare local wind with the mean wind at the boat.
+float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
+Dark = saturate((gustRatio - 0.95) * 2.5);
+// Ruffled water reflects less of the bright sky: cat's paws read as dark patches, the gust front as a dark line.
+Rough = lerp(0.02, 0.3, saturate((rough - 0.4) * 0.8)) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.08;
 return normalize(float3(-sx, -sy, 1.0));
 """
 
@@ -147,25 +164,29 @@ def build_water():
     wake_rect = vector(mat, "WakeRect", (0, 0, 64, 0), -1600, 900)
     wind = vector(mat, "WindParams", (1, 0, 5, 0), -1600, 1000)
     rain = scalar(mat, "Rain", 0.0, -1600, 1100)
-    shade = custom(mat, SHADE_CODE, common + ["Gust", "Wake", "GustRect", "WakeRect", "WindP", "Rain"],
+    debug = scalar(mat, "DebugGust", 0.0, -1600, 1200)
+    shade = custom(mat, SHADE_CODE, common + ["Gust", "Wake", "GustRect", "WakeRect", "WindP", "Rain", "DebugGust"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 400,
-                   extra_outputs=[("Foam", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+                   extra_outputs=[("Foam", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
+                                  ("Dark", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
 
     for c in (wpo, shade):
         connect(pos, "", c, "P")
         connect(cam, "", c, "Cam")
         connect(time, "", c, "T")
         connect(fade, "", c, "Fade")
+        # Vector parameters carry four floats: wire their RGBA output, not the default RGB.
         for i, w in enumerate(waves):
-            connect(w, "", c, f"W{i}")
+            connect(w, "RGBA", c, f"W{i}")
         for i, a in enumerate(amps):
-            connect(a, "", c, f"A{i}")
+            connect(a, "RGBA", c, f"A{i}")
     connect(gust_tex, "", shade, "Gust")
     connect(wake_tex, "", shade, "Wake")
-    connect(gust_rect, "", shade, "GustRect")
-    connect(wake_rect, "", shade, "WakeRect")
-    connect(wind, "", shade, "WindP")
+    connect(gust_rect, "RGBA", shade, "GustRect")
+    connect(wake_rect, "RGBA", shade, "WakeRect")
+    connect(wind, "RGBA", shade, "WindP")
     connect(rain, "", shade, "Rain")
+    connect(debug, "", shade, "DebugGust")
 
     # Turbid green-brown Texas lake water; foam is white and rough.
     water_color = vector(mat, "WaterColor", (0.018, 0.045, 0.042, 1), -300, 600)
@@ -182,7 +203,26 @@ def build_water():
 
     MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.connect_material_property(shade, "", unreal.MaterialProperty.MP_NORMAL)
-    MEL.connect_material_property(base, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    # Darken ruffled water a little more (less sky reflection, deeper colour).
+    shade_mul = node(mat, unreal.MaterialExpressionOneMinus, 100, 900)
+    dark_scale = node(mat, unreal.MaterialExpressionMultiply, 0, 900)
+    dark_k = node(mat, unreal.MaterialExpressionConstant, -100, 950, r=0.45)
+    connect(shade, "Dark", dark_scale, "A")
+    connect(dark_k, "", dark_scale, "B")
+    connect(dark_scale, "", shade_mul, "")
+    darker = node(mat, unreal.MaterialExpressionMultiply, 200, 650)
+    connect(base, "", darker, "A")
+    connect(shade_mul, "", darker, "B")
+    MEL.connect_material_property(darker, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    # Ruffled water also reflects less of the sky (specular occlusion), which is what makes a puff or a gust
+    # front read as a dark patch at the low angles you see it from a boat.
+    ao_scale = node(mat, unreal.MaterialExpressionMultiply, 0, 1050)
+    ao_k = node(mat, unreal.MaterialExpressionConstant, -100, 1100, r=1.1)
+    connect(shade, "Dark", ao_scale, "A")
+    connect(ao_k, "", ao_scale, "B")
+    ao = node(mat, unreal.MaterialExpressionOneMinus, 100, 1050)
+    connect(ao_scale, "", ao, "")
+    MEL.connect_material_property(ao, "", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
     MEL.connect_material_property(rough_mix, "", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
