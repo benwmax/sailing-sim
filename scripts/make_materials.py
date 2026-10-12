@@ -293,7 +293,30 @@ def build_sail():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_terrain():
+    """Terrain colored by the vertex colors the terrain builder computes (mud, clay and sand banks, rock, grass,
+    woods), with world-space variation so large areas don't look flat."""
+    mat = new_material("M_Terrain")
+    vc = node(mat, unreal.MaterialExpressionVertexColor, -800, 0)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -800, 200)
+    code = """
+float3 p = P * 0.01;
+float n = sin(p.x * 0.11 + sin(p.y * 0.07) * 2.0) * sin(p.y * 0.13 + sin(p.x * 0.05) * 2.0);
+float m = sin(p.x * 1.3 + p.y * 0.7) * sin(p.y * 1.7 - p.x * 0.4);
+return C * (0.88 + 0.12 * n + 0.05 * m);
+"""
+    c = custom(mat, code, ["C", "P"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100)
+    connect(vc, "", c, "C")
+    connect(pos, "", c, "P")
+    rough = node(mat, unreal.MaterialExpressionConstant, -400, 300, r=0.92)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 build_water()
+build_terrain()
 build_rain()
 build_emissive()
 build_sail()

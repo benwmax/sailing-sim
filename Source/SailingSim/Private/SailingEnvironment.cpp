@@ -21,7 +21,7 @@ using namespace Sailing;
 
 namespace
 {
-	constexpr double kLatitude = 33.4;   // Lake Ray Roberts, Texas
+	constexpr double kLatitude = 32.82;  // Lake Ray Hubbard, Texas
 	constexpr double kDayOfYear = 284.0; // mid October
 	constexpr float kCloudBaseKm = 1.4f;
 }

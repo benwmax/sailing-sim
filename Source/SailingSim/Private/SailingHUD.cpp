@@ -83,6 +83,7 @@ void ASailingHUD::DrawHUD()
 	DrawInstruments(*Boat);
 	DrawControls(*Boat);
 	DrawWeather(*Boat);
+	DrawDrillAndStatus(*Boat);
 	if (Settings->bLearningMode)
 	{
 		DrawWindDiagram(*Boat, FVector2D(Canvas->ClipX / UIScale - 140.f, 160.f), 100.f);
@@ -177,6 +178,48 @@ void ASailingHUD::DrawWeather(const ASailboatPawn& Boat)
 	}
 }
 
+void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
+{
+	const FBoatTelemetry& T = Boat.GetBoatModel().GetTelemetry();
+	const float CX = Canvas->ClipX / UIScale * 0.5f;
+	float Y = Canvas->ClipY / UIScale * 0.62f;
+	if (T.bAground)
+	{
+		Text(TEXT("AGROUND"), CX - 70.f, Y, Bad, 1.6f, true);
+		Text(TEXT("Ease the sheets, heel her (crew to leeward) and back off the way you came."), CX - 300.f, Y + 40.f, Bad, 0.85f);
+		Y += 80.f;
+	}
+	else if (T.DepthUnderKeel < 1.0)
+	{
+		Text(FString::Printf(TEXT("Shoal water: %.1f m under the keel"), T.DepthUnderKeel), CX - 150.f, Y, Warn, 0.95f);
+		Y += 30.f;
+	}
+	if (T.bCollision)
+	{
+		Text(TEXT("Contact!"), CX - 50.f, Y, Bad, 1.1f, true);
+		Y += 34.f;
+	}
+	const FString Msg = Boat.GetStatusMessage();
+	if (!Msg.IsEmpty())
+	{
+		Text(Msg, CX - 220.f, Y, FLinearColor::White, 0.95f);
+	}
+
+	const FDrillRunner& D = Boat.GetDrill();
+	if (D.GetDrill() == ESailingDrill::None) return;
+	const TArray<FString>& Steps = D.GetSteps();
+	const float X = 360.f, Top = 300.f, W = 520.f, H = 70.f + Steps.Num() * 24.f;
+	DrawRect(Panel, X * UIScale, Top * UIScale, W * UIScale, H * UIScale);
+	Text(FString::Printf(TEXT("Drill: %s%s"), DrillName(D.GetDrill()), D.IsComplete() ? TEXT("  (complete)") : TEXT("")), X + 12.f, Top + 8.f, D.IsComplete() ? Good : FLinearColor::White, 1.f);
+	for (int32 I = 0; I < Steps.Num(); ++I)
+	{
+		const bool bCurrent = !D.IsComplete() && I == D.GetStep();
+		const bool bDone = D.IsComplete() || I < D.GetStep();
+		Text(FString::Printf(TEXT("%s %d. %s"), bDone ? TEXT("+") : (bCurrent ? TEXT(">") : TEXT(" ")), I + 1, *Steps[I]), X + 12.f, Top + 36.f + I * 24.f, bCurrent ? Warn : (bDone ? Good : Dim), 0.82f);
+	}
+	Text(D.GetStatus(), X + 12.f, Top + H - 26.f, FLinearColor::White, 0.82f);
+}
+
 void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 {
 	const TArray<TPair<FString, FString>> Rows = Boat.GetMenuRows();
@@ -204,6 +247,8 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		{ TEXT("Jib sheet trim / ease"), TEXT("E / Q        Right / left bumper") },
 		{ TEXT("Crew hike out / in"), TEXT("F / V        D-pad up / down") },
 		{ TEXT("Wing-on-wing"), TEXT("G            X") },
+		{ TEXT("Back the jib (heave to, irons)"), TEXT("B            Left stick press") },
+		{ TEXT("Dock lines on / off"), TEXT("T            Right stick press") },
 	};
 	if (!bSimple)
 	{

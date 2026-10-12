@@ -5,6 +5,8 @@
 #include "Waves.h"
 #include "Weather.h"
 #include "Wind.h"
+#include "LakeData.h"
+#include "Async/Future.h"
 #include "SailingGameMode.generated.h"
 
 /**
@@ -30,6 +32,10 @@ public:
 	const Sailing::FWaveField& GetWaves() const { return Waves; }
 	const Sailing::FWeatherState& GetWeatherState() const { return WeatherState; }
 	const Sailing::FWeatherSystem& GetWeather() const { return Weather; }
+	/** The lake (terrain, docks, bridges, launch spots); empty if no lake data is found (open water). */
+	const FLakeData& GetLake() const { return Lake; }
+	/** Where the boat is launched (from the settings' launch spot); false on open water. */
+	bool GetLaunchSpot(FLaunchSpot& Out) const;
 
 	/** Physics time (s): the boat's clock, which the wind, waves and water material all use. */
 	double GetSimTime() const;
@@ -51,6 +57,11 @@ private:
 	Sailing::FWeatherState WeatherState;
 	Sailing::FWindField Wind;
 	Sailing::FWaveField Waves{ 2027 };
+	FLakeData Lake;
+	TSharedPtr<Sailing::FShelterMap> Shelter;
+	TFuture<TSharedPtr<Sailing::FShelterMap>> PendingShelter;
+	bool bShelterBuilding = false;
+	void UpdateShelter();
 	double WeatherStartTime = 0.0;
 	double OwnClock = 0.0;
 	float WindOverrideKnots = 0.f;

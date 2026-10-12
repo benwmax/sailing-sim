@@ -65,6 +65,10 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("ToggleDifficulty"), EKeys::K);
 	Add(TEXT("ToggleHud"), EKeys::H);
 	Add(TEXT("ResetBoat"), EKeys::R);
+	Add(TEXT("DockLines"), EKeys::T);
+	Add(TEXT("BackJib"), EKeys::B);
+	Add(TEXT("BackJib"), EKeys::Gamepad_LeftThumbstick);
+	Add(TEXT("DockLines"), EKeys::Gamepad_RightThumbstick);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);

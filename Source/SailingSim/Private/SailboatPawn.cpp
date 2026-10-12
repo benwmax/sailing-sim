@@ -46,7 +46,7 @@ namespace
 	bool IsButtonAction(FName Action)
 	{
 		return Action == TEXT("WingOnWing") || Action == TEXT("ToggleLearning") || Action == TEXT("ToggleDifficulty")
-			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard")
+			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard") || Action == TEXT("DockLines") || Action == TEXT("BackJib")
 			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight");
 	}
 
@@ -56,7 +56,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowDrill, RowLaunch, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -178,6 +178,20 @@ void ASailboatPawn::BeginPlay()
 	}
 	StartLocation = GetActorLocation();
 	StartYaw = GetActorRotation().Yaw;
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		FLaunchSpot Spot;
+		if (GM->GetLaunchSpot(Spot))
+		{
+			StartLocation = FVector(Spot.X, Spot.Y, 0.0) * CmPerMeter;
+			StartYaw = Spot.HeadingDeg;
+		}
+		if (GM->GetLake().IsLoaded())
+		{
+			Boat.SetTerrain(&GM->GetLake().Terrain);
+			Boat.SetObstacles(&GM->GetLake().Obstacles);
+		}
+	}
 	float StartTwa = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
 	{
@@ -242,6 +256,10 @@ void ASailboatPawn::BeginPlay()
 		CameraPitch = -14.f;
 		FParse::Value(FCommandLine::Get(), TEXT("SailingCamYaw="), CameraYaw);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingCamPitch="), CameraPitch);
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamDist="), CameraDistance))
+		{
+			CameraBoom->TargetArmLength = CameraDistance;
+		}
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
 }
@@ -258,6 +276,16 @@ void ASailboatPawn::ApplyDifficulty()
 
 void ASailboatPawn::ResetBoat()
 {
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		FLaunchSpot Spot;
+		if (GM->GetLaunchSpot(Spot) && !FParse::Param(FCommandLine::Get(), TEXT("SailingKeepStart")))
+		{
+			StartLocation = FVector(Spot.X, Spot.Y, 0.0) * CmPerMeter;
+			StartYaw = Spot.HeadingDeg;
+		}
+	}
+	Boat.GetMooringLines().clear();
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
 	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), StartSpeedKnots * kKnot);
@@ -330,6 +358,104 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	UpdateSound(DeltaSeconds);
+
+	// Drills: follow the boat and the crew's actions.
+	const FBoatTelemetry& Tel = Boat.GetTelemetry();
+	if (Tel.bCollision) MaxContactKnots = FMath::Max(MaxContactKnots, Tel.BoatSpeed / kKnot);
+	if (DrillRunner.IsActive())
+	{
+		FDrillContext Ctx;
+		Ctx.bTiedUp = IsTiedUp();
+		Ctx.bBackJib = Controls.bBackJib;
+		Ctx.MaxContactSpeed = MaxContactKnots;
+		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
+	}
+	UpdateDrillVisuals();
+}
+
+void ASailboatPawn::StartDrill(ESailingDrill Drill)
+{
+	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (Drill == ESailingDrill::None)
+	{
+		DrillRunner.Stop();
+		return;
+	}
+	if (GM && GM->GetLake().IsLoaded() && (Drill == ESailingDrill::LeaveTheDock || Drill == ESailingDrill::ReturnAndDock))
+	{
+		// Find the home club's main dock (the largest outline near the origin) and its westmost face.
+		const FLakeDock* Main = nullptr;
+		for (const FLakeDock& D : GM->GetLake().Docks)
+		{
+			if (D.bClosed && D.Points[0].Size() < 600.0 && (!Main || D.Points.Num() > Main->Points.Num())) Main = &D;
+		}
+		const double Time = Boat.GetState().Time;
+		if (Main && Drill == ESailingDrill::LeaveTheDock)
+		{
+			int32 West = 0;
+			for (int32 I = 1; I < Main->Points.Num(); ++I) if (Main->Points[I].Y < Main->Points[West].Y) West = I;
+			const FVector2D A = Main->Points[West], B = Main->Points[(West + 1) % Main->Points.Num()];
+			FVector2D Along = (B - A).GetSafeNormal();
+			if (Along.IsNearlyZero()) Along = FVector2D(1, 0);
+			const FVector2D Pos = A + FVector2D(0.0, -1.9);
+			Boat.Reset(Pos.X, Pos.Y, FMath::Atan2(Along.Y, Along.X), 0.0);
+			Boat.GetMutableState().Time = Time;
+			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+		}
+		else if (Drill == ESailingDrill::ReturnAndDock && GM->GetLake().LaunchSpots.Num() > 1)
+		{
+			const FLaunchSpot& Spot = GM->GetLake().LaunchSpots[1];
+			const double Heading = Main ? FMath::Atan2(Main->Points[0].Y - Spot.Y, Main->Points[0].X - Spot.X) : 0.0;
+			Boat.Reset(Spot.X, Spot.Y, Heading, 2.0 * kKnot);
+			Boat.GetMutableState().Time = Time;
+			Boat.GetMooringLines().clear();
+		}
+		Controls = FBoatControls();
+		Controls.MainSheet = Controls.JibSheet = 0.6;
+		ApplyStateToTransform();
+	}
+	MaxContactKnots = 0.0;
+	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
+	DrillRunner.Start(Drill, Boat, WindFrom);
+	bMenuOpen = false;
+}
+
+void ASailboatPawn::UpdateDrillVisuals()
+{
+	if (MarkMeshes.Num() == 0)
+	{
+		UStaticMesh* Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+		UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+		auto Make = [&](UStaticMesh* Mesh, const FLinearColor& Color, const FVector& Scale)
+		{
+			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+			C->SetStaticMesh(Mesh);
+			C->SetUsingAbsoluteLocation(true);
+			C->SetUsingAbsoluteRotation(true);
+			C->SetUsingAbsoluteScale(true);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetWorldScale3D(Scale);
+			C->SetupAttachment(RootComponent);
+			C->RegisterComponent();
+			UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShapeMaterial, this);
+			Mid->SetVectorParameterValue(TEXT("Color"), Color);
+			C->SetMaterial(0, Mid);
+			C->SetVisibility(false);
+			return C;
+		};
+		for (int32 I = 0; I < 3; ++I) MarkMeshes.Add(Make(Cylinder, FLinearColor(1.f, 0.35f, 0.02f), FVector(1.2f, 1.2f, 2.0f)));
+		DummyMesh = Make(Sphere, FLinearColor(1.f, 0.85f, 0.05f), FVector(0.6f));
+	}
+	const TArray<FVector2D>& Marks = DrillRunner.GetMarks();
+	for (int32 I = 0; I < MarkMeshes.Num(); ++I)
+	{
+		const bool bShow = DrillRunner.IsActive() && I < Marks.Num() && I >= DrillRunner.GetNextMark();
+		MarkMeshes[I]->SetVisibility(bShow);
+		if (bShow) MarkMeshes[I]->SetWorldLocation(FVector(Marks[I].X * CmPerMeter, Marks[I].Y * CmPerMeter, WaterSurfaceZ + 60.f));
+	}
+	const bool bDummy = DrillRunner.IsActive() && DrillRunner.HasDummy();
+	DummyMesh->SetVisibility(bDummy);
+	if (bDummy) DummyMesh->SetWorldLocation(FVector(DrillRunner.GetDummy().X * CmPerMeter, DrillRunner.GetDummy().Y * CmPerMeter, WaterSurfaceZ + 10.f));
 }
 
 void ASailboatPawn::UpdateSound(float DeltaSeconds)
@@ -679,6 +805,50 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	{
 		ResetBoat();
 	}
+	else if (Action == TEXT("DockLines"))
+	{
+		ToggleDockLines();
+	}
+	else if (Action == TEXT("BackJib"))
+	{
+		Controls.bBackJib = !Controls.bBackJib;
+		StatusMessage = Controls.bBackJib ? TEXT("Jib held aback (to windward)") : TEXT("Jib released");
+		StatusUntil = Boat.GetState().Time + 2.5;
+	}
+}
+
+bool ASailboatPawn::ToggleDockLines()
+{
+	std::vector<FMooringLine>& Lines = Boat.GetMooringLines();
+	const double Now = Boat.GetState().Time;
+	if (!Lines.empty())
+	{
+		Lines.clear();
+		StatusMessage = TEXT("Lines cast off");
+		StatusUntil = Now + 3.0;
+		return true;
+	}
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || !GM->GetLake().IsLoaded())
+	{
+		return false;
+	}
+	if (Boat.GetTelemetry().BoatSpeed > 1.5 * kKnot)
+	{
+		StatusMessage = TEXT("Too fast to get a line ashore: slow below 1.5 kn");
+		StatusUntil = Now + 3.0;
+		return false;
+	}
+	Lines = FindDockLines(Boat, GM->GetLake().Obstacles);
+	if (Lines.empty())
+	{
+		StatusMessage = TEXT("No dock within reach of two cleats: come alongside first");
+		StatusUntil = Now + 3.0;
+		return false;
+	}
+	StatusMessage = FString::Printf(TEXT("Tied up with %d lines"), int32(Lines.size()));
+	StatusUntil = Now + 3.0;
+	return true;
 }
 
 TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
@@ -686,6 +856,14 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	const USailingSettings* S = USailingSettings::Get();
 	auto OnOff = [](bool b) { return FString(b ? TEXT("On") : TEXT("Off")); };
 	TArray<TPair<FString, FString>> Rows;
+	Rows.Add({ TEXT("Drill (Left/Right starts it)"), FString(DrillName(MenuDrill)) });
+	FString Launch = TEXT("Open water");
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		const TArray<FLaunchSpot>& Spots = GM->GetLake().LaunchSpots;
+		if (Spots.Num() > 0) Launch = Spots[FMath::Clamp(S->LaunchSpot, 0, Spots.Num() - 1)].Name;
+	}
+	Rows.Add({ TEXT("Launch spot"), Launch });
 	Rows.Add({ TEXT("Weather"), FString(WeatherPresetName(EWeatherPreset(S->WeatherPreset))) });
 	Rows.Add({ TEXT("Start time"), FString::Printf(TEXT("%02d:%02d"), int32(S->StartHour), int32(FMath::Fmod(S->StartHour, 1.f) * 60.f)) });
 	Rows.Add({ TEXT("Weather seed"), FString::FromInt(S->WeatherSeed) });
@@ -704,6 +882,18 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 	ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	switch (MenuIndex)
 	{
+	case RowDrill:
+		MenuDrill = ESailingDrill((int32(MenuDrill) + int32(ESailingDrill::Count) + Direction) % int32(ESailingDrill::Count));
+		StartDrill(MenuDrill);
+		break;
+	case RowLaunch:
+		if (GameMode && GameMode->GetLake().LaunchSpots.Num() > 0)
+		{
+			const int32 N = GameMode->GetLake().LaunchSpots.Num();
+			S->LaunchSpot = (S->LaunchSpot + N + Direction) % N;
+			ResetBoat();
+		}
+		break;
 	case RowWeather:
 		S->WeatherPreset = ESailingWeather((int32(S->WeatherPreset) + int32(EWeatherPreset::Count) + Direction) % int32(EWeatherPreset::Count));
 		if (GameMode) GameMode->ApplyWeatherSettings();

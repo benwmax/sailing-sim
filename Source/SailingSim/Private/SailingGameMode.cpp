@@ -16,6 +16,8 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Scalability.h"
+#include "Async/Async.h"
+#include "LakeTerrainActor.h"
 #include "UnrealClient.h"
 
 using namespace Sailing;
@@ -36,6 +38,7 @@ ASailingGameMode::ASailingGameMode()
 void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
+	Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard"));
 
 	// Command-line overrides (benchmarks, recordings) are applied to settings for this run only.
 	USailingSettings* Settings = USailingSettings::Get();
@@ -53,6 +56,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	FParse::Value(FCommandLine::Get(), TEXT("SailingHour="), Settings->StartHour);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingSeed="), Settings->WeatherSeed);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), WindOverrideKnots);
+	FParse::Value(FCommandLine::Get(), TEXT("SailingLaunch="), Settings->LaunchSpot);
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingQuality="), Value))
 	{
 		Settings->Quality = Value.Equals(TEXT("Low"), ESearchCase::IgnoreCase) ? ESailingQuality::Low
@@ -73,6 +77,49 @@ double ASailingGameMode::GetSimTime() const
 		}
 	}
 	return OwnClock;
+}
+
+bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
+{
+	// -SailingStartAt=<north m>,<east m>,<heading deg> overrides (tests, screenshots).
+	FString At;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingStartAt="), At))
+	{
+		TArray<FString> Parts;
+		At.ParseIntoArray(Parts, TEXT(","));
+		if (Parts.Num() >= 3)
+		{
+			Out = { TEXT("Command line"), FCString::Atod(*Parts[0]), FCString::Atod(*Parts[1]), FCString::Atod(*Parts[2]) };
+			return true;
+		}
+	}
+	if (Lake.LaunchSpots.Num() == 0) return false;
+	Out = Lake.LaunchSpots[FMath::Clamp(USailingSettings::Get()->LaunchSpot, 0, Lake.LaunchSpots.Num() - 1)];
+	return true;
+}
+
+void ASailingGameMode::UpdateShelter()
+{
+	if (!Lake.IsLoaded()) return;
+	if (bShelterBuilding && PendingShelter.IsReady())
+	{
+		Shelter = PendingShelter.Get();
+		Wind.SetShelter(Shelter.Get());
+		bShelterBuilding = false;
+	}
+	// Rebuild the lee map on a worker thread when the wind has swung more than 8 degrees.
+	const double From = WeatherState.Wind.FromDegrees * Sailing::kDegToRad;
+	if (!bShelterBuilding && (!Shelter || FMath::Abs(Sailing::WrapAngle(Shelter->GetFromRadians() - From)) > 8.0 * Sailing::kDegToRad))
+	{
+		bShelterBuilding = true;
+		const Sailing::FLakeTerrain* Terrain = &Lake.Terrain;
+		PendingShelter = Async(EAsyncExecution::ThreadPool, [Terrain, From]()
+		{
+			TSharedPtr<Sailing::FShelterMap> Map = MakeShared<Sailing::FShelterMap>();
+			Map->Build(*Terrain, From);
+			return Map;
+		});
+	}
 }
 
 void ASailingGameMode::ApplyWeatherSettings()
@@ -112,6 +159,10 @@ void ASailingGameMode::ApplyQualitySettings()
 	{
 		It->SetRingCount(Quality == ESailingQuality::Low ? 4 : (Quality == ESailingQuality::Medium ? 5 : 6));
 	}
+	for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
+	{
+		It->SetTreeFraction(Quality == ESailingQuality::Low ? 0.35f : (Quality == ESailingQuality::Medium ? 0.7f : 1.f));
+	}
 }
 
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
@@ -142,7 +193,11 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	FWaveParams WaveParams;
 	WaveParams.WindSpeedKnots = WeatherState.Wind.SpeedKnots;
 	WaveParams.WindFromDegrees = WeatherState.Wind.FromDegrees;
-	WaveParams.FetchMeters = WeatherState.FetchMeters;
+	// On the lake, fetch is the open water upwind of the boat, to the real shore.
+	WaveParams.FetchMeters = Lake.IsLoaded()
+		? FMath::Clamp(Lake.Terrain.FetchToward(BoatPos.X, BoatPos.Y, WeatherState.Wind.FromDegrees * kDegToRad), 200.0, 15000.0)
+		: WeatherState.FetchMeters;
+	UpdateShelter();
 	if (WeatherState.Front.bActive && WeatherState.Front.DistanceAhead(BoatPos.X, BoatPos.Y, Now) < 0.0 && Now < WeatherState.Front.DecayStartTime)
 	{
 		WaveParams.WindSpeedKnots = WeatherState.Front.OutflowKnots;
