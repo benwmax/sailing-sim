@@ -44,6 +44,8 @@ private:
 	void UpdateMaterial();
 	void UpdateGustMap();
 	void UpdateWakeMap(float DeltaSeconds);
+	/** Open sea: uploads the FFT ocean's grids (and its mask when rebuilt) for the material. */
+	void UpdateOcean();
 	const Sailing::FWaveField* GetWaves() const;
 	const Sailing::FWindField* GetWind() const;
 	double GetSimTime() const;
@@ -53,6 +55,10 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WaterMaterial;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> GustMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeMap;
+	UPROPERTY(Transient) TArray<TObjectPtr<UTexture2D>> OceanMaps;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> OceanMaskMap;
+	const void* UploadedMask = nullptr;
+	size_t UploadedMaskHash = 0;
 
 	TArray<float> RingSpacing;
 	int32 RingCount = 6;

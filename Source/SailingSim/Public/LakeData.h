@@ -97,7 +97,9 @@ struct SAILINGSIM_API FLakeData
 	double VariationDeg = 0.0;   // magnetic variation, + = east
 	double MeanHighWater = 0.0;  // m above the datum
 	double Latitude = 32.82, Longitude = -96.50;
-	FString FileName;            // "RayHubbard", "GalvestonBay"
+	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage"
+	bool bOcean = false;         // open sea: the FFT ocean with swell (the Gulf passage)
+	TArray<TPair<FString, FVector2D>> Passage; // the passage plan's waypoints, in order
 
 	/** The coast's extras: navaids, landmarks, tides and currents, variation. */
 	void LoadCoast(const class FJsonObject& Root, const FString& Directory, const FString& Name);

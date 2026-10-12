@@ -1,4 +1,5 @@
 #include "Waves.h"
+#include "Ocean.h"
 
 namespace Sailing
 {
@@ -140,6 +141,7 @@ namespace Sailing
 				H += C.Amplitude * std::sin(C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase);
 			}
 		}
+		if (Ocean) H += Ocean->Height(X, Y, T);
 		return H;
 	}
 
@@ -156,12 +158,22 @@ namespace Sailing
 			OutSlopeX += C.Amplitude * C.Kx * Co;
 			OutSlopeY += C.Amplitude * C.Ky * Co;
 		}
+		if (Ocean)
+		{
+			double H, Vz, Sx, Sy;
+			Ocean->Sample(X, Y, T, H, Vz, Sx, Sy);
+			OutHeight += H;
+			OutVerticalVelocity += Vz;
+			OutSlopeX += Sx;
+			OutSlopeY += Sy;
+		}
 	}
 
 	double FWaveField::SignificantHeight() const
 	{
 		double Variance = 0.0;
 		for (const FWaveComponent& C : Components) Variance += 0.5 * C.Amplitude * C.Amplitude;
+		if (Ocean) Variance += Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
 		return 4.0 * std::sqrt(Variance);
 	}
 
@@ -173,6 +185,12 @@ namespace Sailing
 			const double K = std::sqrt(C.Kx * C.Kx + C.Ky * C.Ky);
 			const double E = C.Amplitude * C.Amplitude;
 			if (K > 0.0) { X += E * C.Kx / K; Y += E * C.Ky / K; }
+		}
+		if (Ocean)
+		{
+			const double E = 2.0 * Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
+			X += E * std::cos(Ocean->MeanDirection());
+			Y += E * std::sin(Ocean->MeanDirection());
 		}
 		return std::atan2(Y, X);
 	}
@@ -189,6 +207,29 @@ namespace Sailing
 			E += Energy;
 			EW += Energy * C.Omega;
 		}
+		if (Ocean && Ocean->MeanPeriod() > 0.0)
+		{
+			const double Energy = 2.0 * Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
+			E += Energy;
+			EW += Energy * 2.0 * kPi / Ocean->MeanPeriod();
+		}
 		return EW > 1e-12 ? 2.0 * kPi * E / EW : 1.0;
+	}
+
+	const std::vector<FWaveBand>& FWaveField::Bands() const
+	{
+		BandCache.clear();
+		for (const FWaveComponent& C : Components)
+		{
+			if (C.Amplitude <= 1e-6) continue;
+			FWaveBand B;
+			const double K = std::sqrt(C.Kx * C.Kx + C.Ky * C.Ky);
+			B.Wavelength = 2.0 * kPi / std::max(K, 1e-6);
+			B.Variance = 0.5 * C.Amplitude * C.Amplitude;
+			B.Direction = std::atan2(C.Ky, C.Kx);
+			BandCache.push_back(B);
+		}
+		if (Ocean) BandCache.insert(BandCache.end(), Ocean->Bands().begin(), Ocean->Bands().end());
+		return BandCache;
 	}
 }

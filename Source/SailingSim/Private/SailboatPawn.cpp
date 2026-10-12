@@ -1534,7 +1534,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 	switch (MenuIndex)
 	{
 	case RowWorld:
-		S->World = (S->World + 2 + Direction) % 2;
+		S->World = (S->World + 3 + Direction) % 3;
 		S->LaunchSpot = 0;
 		S->Save();
 		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));

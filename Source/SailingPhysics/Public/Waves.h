@@ -3,12 +3,24 @@
 #include "SailingPhysicsApi.h"
 #include "SailingMath.h"
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace Sailing
 {
+	class FOcean;
+
 	constexpr int kWaveBands = 16;
 	constexpr int kWaveDirectionsPerBand = 3;
 	constexpr int kWaveComponents = kWaveBands * kWaveDirectionsPerBand; // 48
+
+	/** A slice of the sea's spectrum: its wavelength, its share of the surface variance and where it travels. */
+	struct FWaveBand
+	{
+		double Wavelength = 0.0; // m
+		double Variance = 0.0;   // m^2 (a^2 / 2 summed over the slice)
+		double Direction = 0.0;  // rad, where it travels toward
+	};
 
 	/** One linear (Airy) wave train. Direction and wavenumber are fixed; only the amplitude follows the wind. */
 	struct FWaveComponent
@@ -65,6 +77,12 @@ namespace Sailing
 		static double TargetPeakPeriod(double WindMs, double FetchMeters);
 
 		const FWaveComponent* GetComponents() const { return Components; }
+		/** The sea's spectrum in bands (the lake components one by one, the ocean in wavelength bins), for added resistance. */
+		const std::vector<FWaveBand>& Bands() const;
+
+		/** Open sea: an FFT ocean (wind sea and swell) added to everything this field reports. */
+		void SetOcean(std::shared_ptr<FOcean> InOcean) { Ocean = std::move(InOcean); bBandsDirty = true; }
+		const FOcean* GetOcean() const { return Ocean.get(); }
 		const FWaveParams& GetParams() const { return Params; }
 
 	private:
@@ -75,5 +93,8 @@ namespace Sailing
 		double BandFrequency[kWaveBands];
 		double BandWidth[kWaveBands];
 		FWaveParams Params;
+		std::shared_ptr<FOcean> Ocean;
+		mutable std::vector<FWaveBand> BandCache;
+		mutable bool bBandsDirty = true;
 	};
 }

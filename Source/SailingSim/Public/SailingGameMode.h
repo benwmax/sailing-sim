@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Waves.h"
+#include "Ocean.h"
 #include "Weather.h"
 #include "Wind.h"
 #include "LakeData.h"
@@ -75,6 +76,9 @@ public:
 
 private:
 	void UpdateWeather(float DeltaSeconds);
+	void UpdateOcean(double WindKnots, double WindFromDeg);
+	TSharedPtr<Sailing::FOcean> Ocean;
+	bool bOceanConfigured = false;
 	void UpdateTide();
 	double StartUnix = 0.0;
 	double ClockBase = 0.0;
