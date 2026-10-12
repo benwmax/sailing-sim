@@ -51,6 +51,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> SkyLightActor;
 	UPROPERTY(Transient) TObjectPtr<AExponentialHeightFog> Fog;
 	UPROPERTY(Transient) TObjectPtr<AVolumetricCloud> Clouds;
+	UPROPERTY(Transient) TObjectPtr<class APostProcessVolume> PostProcess;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> CloudMaterial;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainNear;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainFar;

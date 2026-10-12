@@ -123,7 +123,7 @@ float slope = length(float2(sx, sy));
 float localKnots = rough * 15.56;
 float capsLevel = saturate((localKnots - 11.0) / 7.0);
 float capNoise = saturate(sin(p.x * 1.7 + sin(p.y * 1.3 + T * 0.7) * 2.0) * sin(p.y * 2.1 - T * 0.9 + sin(p.x * 0.9)) * 2.0);
-float caps = (saturate((slope - 0.18) * 5.0) * saturate(h * 8.0 + 0.3) + 0.25 * capNoise * capsLevel) * capsLevel;
+float caps = saturate((slope - 0.26) * 4.0) * saturate(h * 6.0) * capsLevel * (0.4 + 0.6 * capNoise) * 0.7;
 // Wake and bow wave foam from the boat (CPU-filled map around the boat).
 float2 wuv = (p.xy - WakeRect.xy) / WakeRect.z + 0.5;
 float inside = step(0.0, wuv.x) * step(wuv.x, 1.0) * step(0.0, wuv.y) * step(wuv.y, 1.0);

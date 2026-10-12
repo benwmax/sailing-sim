@@ -9,6 +9,7 @@
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/SkyLight.h"
+#include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
@@ -90,6 +91,7 @@ void ASailingEnvironment::FindSceneActors()
 	if (TActorIterator<ASkyLight> It(GetWorld()); It) SkyLightActor = *It;
 	if (TActorIterator<AExponentialHeightFog> It(GetWorld()); It) Fog = *It;
 	if (TActorIterator<AVolumetricCloud> It(GetWorld()); It) Clouds = *It;
+	if (TActorIterator<APostProcessVolume> It(GetWorld()); It) PostProcess = *It;
 
 	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;
 	if (SkyLightActor) SkyIntensity = SkyLightActor->GetLightComponent()->Intensity;
@@ -155,12 +157,25 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		// The light travels from the sun toward the ground.
 		Sun->SetActorRotation(FRotator(-Elevation, Azimuth + 180.0, 0.0));
 		// Cloud shadows already dim the sun where clouds pass; a solid overcast or storm deck also scatters it away.
-		const float CloudShade = 1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness));
-		Sun->GetLightComponent()->SetIntensity(SunIntensity * CloudShade);
+		// How much direct sun reaches the water and boat through the clouds.
+		const float CloudShade = (1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness)))
+			* (1.f - FMath::SmoothStep(0.3f, 0.7f, float(W.CloudDarkness)));
+		// The sky atmosphere is lit by this light too, so keep enough intensity for a grey storm sky and take the
+		// direct light off the scene with the diffuse and specular scales instead (no glitter, no hard shadows).
+		const float Intensity = FMath::Max(CloudShade, 0.35f);
+		ULightComponent* SunComp = Sun->GetLightComponent();
+		SunComp->SetIntensity(SunIntensity * Intensity);
+		SunComp->SetDiffuseScale(CloudShade / Intensity);
+		SunComp->SetSpecularScale(FMath::Square(CloudShade / Intensity));
+		if (UDirectionalLightComponent* Dir = Cast<UDirectionalLightComponent>(SunComp))
+		{
+			const float Disk = FMath::Square(CloudShade);
+			Dir->SetAtmosphereSunDiskColorScale(FLinearColor(Disk, Disk, Disk));
+		}
 	}
 	if (SkyLightActor)
 	{
-		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f - 0.3f * float(W.CloudDarkness)));
+		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f + 0.8f * float(W.CloudDarkness)));
 	}
 }
 
@@ -170,8 +185,8 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 	if (CloudMaterial)
 	{
 		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalCoverage"), FMath::Lerp(-0.2f, 0.6f, float(W.CloudCover)));
-		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalDensity"), FMath::Lerp(0.007f, 0.011f, float(W.CloudDarkness)));
-		CloudMaterial->SetScalarParameterValue(TEXT("StormClouds"), 0.6f * float(W.CloudDarkness));
+		CloudMaterial->SetScalarParameterValue(TEXT("Cloud_GlobalDensity"), FMath::Lerp(0.007f, 0.016f, float(W.CloudDarkness)));
+		CloudMaterial->SetScalarParameterValue(TEXT("StormClouds"), 0.85f * float(W.CloudDarkness));
 	}
 	if (Clouds)
 	{
@@ -180,6 +195,12 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 			C->SetLayerBottomAltitude(kCloudBaseKm);
 			C->SetLayerHeight(FMath::Max(1.f, float(W.CloudTopKm) - kCloudBaseKm));
 		}
+	}
+	if (PostProcess)
+	{
+		// Eyes adapt to the gloom under a storm: lift exposure as the sky darkens.
+		PostProcess->Settings.bOverride_AutoExposureBias = true;
+		PostProcess->Settings.AutoExposureBias = 0.5f + 0.6f * float(W.CloudDarkness);
 	}
 	if (Fog)
 	{
@@ -203,7 +224,7 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 	}
 	RainNear->SetWorldLocation(CameraPos + FVector(0.f, 0.f, 200.f));
 	RainFar->SetWorldLocation(CameraPos + FVector(0.f, 0.f, 600.f));
-	RainMaterial->SetScalarParameterValue(TEXT("Rain"), float(W.Rain) * 0.7f);
+	RainMaterial->SetScalarParameterValue(TEXT("Rain"), float(W.Rain) * 0.35f);
 }
 
 void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& CameraPos)
