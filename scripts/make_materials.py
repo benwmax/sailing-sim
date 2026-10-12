@@ -406,10 +406,36 @@ return C * (0.88 + 0.12 * n + 0.05 * m);
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_lens_distortion():
+    """M_LensDistortion: barrel distortion for the action-cam reference preset (a GoPro's wide lens). The image is
+    rendered rectilinear at the camera's full field of view; this pulls the middle in so straight lines bow outward
+    the way they do in action-cam footage, keeping the edges (and so the field of view) where they were."""
+    mat = new_material("M_LensDistortion")
+    mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_POST_PROCESS)
+    mat.set_editor_property("blendable_location", unreal.BlendableLocation.BL_SCENE_COLOR_AFTER_TONEMAPPING)
+    strength = scalar(mat, "Strength", 0.35, -900, 0)
+    code = """
+float2 uv = GetViewportUV(Parameters);
+float aspect = View.ViewSizeAndInvSize.x * View.ViewSizeAndInvSize.w;
+float2 d = (uv - 0.5) * 2.0 * float2(1.0, 1.0 / aspect);
+float s = (1.0 + K * dot(d, d)) / (1.0 + K);
+return 0.5 + d * s * 0.5 * float2(1.0, aspect);
+"""
+    c = custom(mat, code, ["K"], unreal.CustomMaterialOutputType.CMOT_FLOAT2, -600, 0)
+    connect(strength, "", c, "K")
+    tex = node(mat, unreal.MaterialExpressionSceneTexture, -300, 0)
+    tex.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
+    connect(c, "", tex, "UVs")
+    MEL.connect_material_property(tex, "Color", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 build_water()
 build_terrain()
 build_rain()
 build_emissive()
 build_sail()
 build_ghost()
+build_lens_distortion()
 unreal.log("Materials built")

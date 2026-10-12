@@ -118,6 +118,8 @@ namespace Sailing
 		double Heading() const { const Vec3 F = Forward(); return std::atan2(F.Y, F.X); }
 		/** Heel angle: positive when the starboard side is lifted (heeled to port). */
 		double Heel() const { const Vec3 R = Right(); return std::asin(Clamp(R.Z, -1.0, 1.0)); }
+		/** Tilt from upright, 0..pi: like the heel, but upside down reads pi (the heel reads ~0 there). */
+		double Tilt() const { return std::acos(Clamp(Rotate(Vec3(0.0, 0.0, 1.0)).Z, -1.0, 1.0)); }
 		/** Pitch: positive bow down (same sign as rotation about +Y). */
 		double Pitch() const { const Vec3 F = Forward(); return -std::asin(Clamp(F.Z, -1.0, 1.0)); }
 	};

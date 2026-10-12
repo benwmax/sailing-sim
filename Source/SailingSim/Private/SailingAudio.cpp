@@ -37,14 +37,14 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		const float Tr = Smooth(STrim, TTrim, Rate), Rn = Smooth(SRain, TRain, Rate), Th = Smooth(SThunder, TThunder, Rate), Cr = Smooth(SCrack, TCrack, Rate * 4.f);
 		const float Vol = Smooth(SVolume, TVolume, Rate);
 
-		const float White = Noise();
+		const float WhiteN = Noise();
 		// Pink noise (Paul Kellet's filter) and brown noise (leaky integrator).
-		Pink[0] = 0.99886f * Pink[0] + White * 0.0555179f; Pink[1] = 0.99332f * Pink[1] + White * 0.0750759f;
-		Pink[2] = 0.96900f * Pink[2] + White * 0.1538520f; Pink[3] = 0.86650f * Pink[3] + White * 0.3104856f;
-		Pink[4] = 0.55000f * Pink[4] + White * 0.5329522f; Pink[5] = -0.7616f * Pink[5] - White * 0.0168980f;
-		const float PinkN = (Pink[0] + Pink[1] + Pink[2] + Pink[3] + Pink[4] + Pink[5] + Pink[6] + White * 0.5362f) * 0.11f;
-		Pink[6] = White * 0.115926f;
-		Brown = (Brown + 0.02f * White) * 0.996f;
+		Pink[0] = 0.99886f * Pink[0] + WhiteN * 0.0555179f; Pink[1] = 0.99332f * Pink[1] + WhiteN * 0.0750759f;
+		Pink[2] = 0.96900f * Pink[2] + WhiteN * 0.1538520f; Pink[3] = 0.86650f * Pink[3] + WhiteN * 0.3104856f;
+		Pink[4] = 0.55000f * Pink[4] + WhiteN * 0.5329522f; Pink[5] = -0.7616f * Pink[5] - WhiteN * 0.0168980f;
+		const float PinkN = (Pink[0] + Pink[1] + Pink[2] + Pink[3] + Pink[4] + Pink[5] + Pink[6] + WhiteN * 0.5362f) * 0.11f;
+		Pink[6] = WhiteN * 0.115926f;
+		Brown = (Brown + 0.02f * WhiteN) * 0.996f;
 		const float BrownN = Brown * 3.5f;
 
 		float Mix = 0.f;
@@ -54,19 +54,19 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		const float Gust = 0.75f + 0.25f * FMath::Sin(2.f * PI * GustPhase) * FMath::Sin(2.f * PI * GustPhase * 0.37f);
 		const float WindLevel = FMath::Clamp(W / 10.f, 0.f, 2.5f);
 		Mix += WindBand.Process(PinkN, FMath::Min(0.9f, 2.f * PI * (220.f + 55.f * W) / Sr), 0.7f) * 0.35f * WindLevel * WindLevel * Gust;
-		Mix += Whistle.Process(White, FMath::Min(0.9f, 2.f * PI * (850.f + 70.f * W) / Sr), 0.06f) * 0.012f * FMath::Pow(WindLevel, 3.f) * Gust;
+		Mix += Whistle.Process(WhiteN, FMath::Min(0.9f, 2.f * PI * (850.f + 70.f * W) / Sr), 0.06f) * 0.012f * FMath::Pow(WindLevel, 3.f) * Gust;
 
 		// Luffing / flogging: slapping bursts at a rate that rises with the wind.
 		FlapPhase += (3.5f + 0.9f * W) / Sr;
 		if (FlapPhase > 1.f) FlapPhase -= 1.f;
 		const float Flap = FMath::Pow(0.5f + 0.5f * FMath::Sin(2.f * PI * FlapPhase), 8.f);
-		const float FlogNoise = White - FlogLow.Low(White, 0.05f);
+		const float FlogNoise = WhiteN - FlogLow.Low(WhiteN, 0.05f);
 		Mix += FlogHigh.Process(FlogNoise * Flap, 0.25f, 0.5f) * 0.9f * Lf * FMath::Clamp(W / 8.f, 0.f, 2.f);
 
 		// Telltales: a light, fast rattle.
 		TellPhase += 23.f / Sr;
 		if (TellPhase > 1.f) TellPhase -= 1.f;
-		Mix += TellBand.Process(White * (TellPhase < 0.3f ? 1.f : 0.2f), 0.45f, 0.4f) * 0.02f * Tl * FMath::Clamp(W / 8.f, 0.f, 1.5f);
+		Mix += TellBand.Process(WhiteN * (TellPhase < 0.3f ? 1.f : 0.2f), 0.45f, 0.4f) * 0.02f * Tl * FMath::Clamp(W / 8.f, 0.f, 1.5f);
 
 		// Water past the hull: brighter and louder with speed; a deep rumble as she nears hull speed.
 		const float WaterCut = FMath::Min(0.9f, 2.f * PI * (120.f + 140.f * Sp) / Sr);
@@ -77,7 +77,7 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		// Bow wave slaps when the bow meets a wave.
 		if (Noise() > 1.f - 0.0004f * Sl) SlapEnv = 1.f;
 		SlapEnv *= 0.9993f;
-		Mix += SlapBand.Process(White, 0.12f, 0.7f) * 0.35f * SlapEnv * Sl;
+		Mix += SlapBand.Process(WhiteN, 0.12f, 0.7f) * 0.35f * SlapEnv * Sl;
 
 		// Winch clicks while trimming in; the whir of a sheet running out while easing.
 		if (Tr > 0.05f)
@@ -86,18 +86,18 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 			if (ClickPhase > 1.f) { ClickPhase -= 1.f; ClickEnv = 1.f; }
 		}
 		ClickEnv *= 0.992f;
-		Mix += ClickBand.Process(White * ClickEnv, 0.38f, 0.15f) * 0.5f;
-		Mix += ZipBand.Process(White, 0.15f, 0.3f) * 0.08f * FMath::Clamp(-Tr, 0.f, 1.f);
+		Mix += ClickBand.Process(WhiteN * ClickEnv, 0.38f, 0.15f) * 0.5f;
+		Mix += ZipBand.Process(WhiteN, 0.15f, 0.3f) * 0.08f * FMath::Clamp(-Tr, 0.f, 1.f);
 
 		// Rain: hiss on the water and drops on the deck.
-		Mix += (White - RainHigh.Low(White, 0.08f)) * 0.06f * Rn;
+		Mix += (WhiteN - RainHigh.Low(WhiteN, 0.08f)) * 0.06f * Rn;
 		if (Noise() > 1.f - 0.004f * Rn) DropEnv = 1.f;
 		DropEnv *= 0.99f;
-		Mix += DropBand.Process(White * DropEnv, 0.5f, 0.3f) * 0.2f * Rn;
+		Mix += DropBand.Process(WhiteN * DropEnv, 0.5f, 0.3f) * 0.2f * Rn;
 
 		// Thunder: a rolling low rumble, and a crack for a close strike.
 		Mix += ThunderLow.Low(BrownN, 2.f * PI * 70.f / Sr) * 2.2f * Th;
-		Mix += CrackBand.Process(White, 0.08f, 0.6f) * 0.8f * Cr;
+		Mix += CrackBand.Process(WhiteN, 0.08f, 0.6f) * 0.8f * Cr;
 
 		// A whistle: a reedy tone (odd and even harmonics) with a little vibrato, fading in and out over 30 ms.
 		const float Hn = Smooth(SHorn, THorn, Rate * 1.6f);

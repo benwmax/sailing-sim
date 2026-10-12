@@ -71,6 +71,7 @@ void ASailingHUD::DrawHUD()
 	UIScale = FMath::Clamp(Canvas->ClipY / 1080.f, 0.7f, 2.f);
 
 	const USailingSettings* Settings = USailingSettings::Get();
+	if (Boat->IsCaptureMode()) return; // reference captures: the picture only
 	if (Boat->IsPhotoMode())
 	{
 		// Nothing over the picture but a moment's hint.

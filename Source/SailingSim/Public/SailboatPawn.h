@@ -10,6 +10,7 @@
 #include "Navigation.h"
 #include "Logbook.h"
 #include "Replay.h"
+#include "ReferenceCapture.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -128,6 +129,11 @@ public:
 	float GetWatchSpeed() const { return WatchSpeed; }
 	double GetPhotoHintUntil() const { return PhotoHintUntil; }
 	void SetGhostFrame(const FReplayFrame& Frame);
+
+	/** Reference capture (-SailingCapture=<preset>): a reference camera, locked exposure, no HUD, telemetry CSV. */
+	bool IsCaptureMode() const { return CapturePreset != ECapturePreset::None; }
+	ECapturePreset GetCapturePreset() const { return CapturePreset; }
+	UCameraComponent* GetCaptureCamera() const { return CaptureCamera; }
 	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);
 
 	/** Another vessel's whistle or the committee's horn, heard aboard (0 = silent). */
@@ -151,6 +157,10 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Camera")
 	TObjectPtr<UCameraComponent> Camera;
+
+	/** The reference camera (capture mode only): rigid on the boat, or standing off her on the water. */
+	UPROPERTY(VisibleAnywhere, Category = "Camera")
+	TObjectPtr<UCameraComponent> CaptureCamera;
 
 private:
 	UStaticMeshComponent* AddPart(FName Name, UStaticMesh* Mesh, const FVector& LocationCm, const FVector& SizeCm, const FRotator& Rotation = FRotator::ZeroRotator, USceneComponent* Parent = nullptr);
@@ -206,6 +216,21 @@ private:
 	void SetPhoto(bool bOn);
 	void TakePhoto();
 	FReplay Recording, LastRun;
+	void SetupCapture();
+	void UpdateCapture(float DeltaSeconds);
+	void WriteCaptureSettings() const;
+	ECapturePreset CapturePreset = ECapturePreset::None;
+	FCaptureTelemetry CaptureTelemetry;
+	FString CaptureName;
+	float CaptureBearing = NAN;       // degrees off the bow; NAN until the leeward side is known
+	float CaptureEV = NAN;            // -SailingEV; NAN = auto exposure, frozen once settled
+	double CaptureElapsed = 0.0, CaptureSettingsWritten = -1.0;
+	bool bExposureFrozen = false;
+	bool bShoreStandSet = false;
+	float HelmSide = 0.f;             // helm eye: -1 port .. +1 starboard, moving across after a tack
+	FVector ShoreStand = FVector::ZeroVector;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensDistortionMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> LensDistortionAsset; // referenced for the cook
 	bool bGhostOn = false, bWatching = false, bPhoto = false;
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;

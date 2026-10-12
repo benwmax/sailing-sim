@@ -276,6 +276,17 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	const double Now = GetSimTime();
 	WeatherState = Weather.Evaluate(Now - WeatherStartTime);
 	WeatherState.Wind.SpeedKnots *= WindScale;
+	// Reference captures: the wind of the real clip (direction it blows from, degrees true; gust intensity as a fraction).
+	static float WindFromArg = NAN, GustArg = NAN;
+	static bool bWindArgsRead = false;
+	if (!bWindArgsRead)
+	{
+		bWindArgsRead = true;
+		FParse::Value(FCommandLine::Get(), TEXT("SailingWindFrom="), WindFromArg);
+		FParse::Value(FCommandLine::Get(), TEXT("SailingGust="), GustArg);
+	}
+	if (!FMath::IsNaN(WindFromArg)) WeatherState.Wind.FromDegrees = WindFromArg;
+	if (!FMath::IsNaN(GustArg)) WeatherState.Wind.GustIntensity = GustArg;
 	if (bEasy)
 	{
 		WeatherState.Wind.GustIntensity *= 0.5;

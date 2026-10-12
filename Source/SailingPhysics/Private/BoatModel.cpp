@@ -895,7 +895,8 @@ namespace Sailing
 				T.bFlyingHull = HullVolume[0] < 0.02 * DesignVolume;
 			}
 		}
-		State.CapsizedTime = HeelAbs > 70.0 * kDegToRad ? State.CapsizedTime + Dt : 0.0;
+		// Lying on her side or turned turtle (the heel alone reads near zero upside down).
+		State.CapsizedTime = Q.Tilt() > 70.0 * kDegToRad ? State.CapsizedTime + Dt : 0.0;
 		T.bCapsized = State.CapsizedTime > 2.0;
 
 		// Windward side with hysteresis, from the apparent wind over the moving boat at masthead height. Not from the

@@ -30,6 +30,8 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "UObject/ConstructorHelpers.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/FileHelper.h"
 
 using namespace Sailing;
 
@@ -143,6 +145,12 @@ ASailboatPawn::ASailboatPawn()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 
+	CaptureCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("CaptureCamera"));
+	CaptureCamera->SetupAttachment(BoatRoot);
+	CaptureCamera->bAutoActivate = false;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensFinder(TEXT("/Game/Materials/M_LensDistortion.M_LensDistortion"));
+	LensDistortionAsset = LensFinder.Object;
+
 	AutoPossessPlayer = EAutoReceiveInput::Disabled;
 }
 
@@ -193,7 +201,13 @@ void ASailboatPawn::SetBoat(int32 Type)
 	const double StartSeconds = FPlatformTime::Seconds();
 	const EBoatType BoatType = EBoatType(FMath::Clamp(Type, 0, int32(EBoatType::Count) - 1));
 	const double Time = Boat.GetState().Time;
-	Boat = FBoatModel(FBoatConfig::Make(BoatType));
+	FBoatConfig Config = FBoatConfig::Make(BoatType);
+	float CrewKg = 0.f;
+	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingCrewKg="), CrewKg) && CrewKg > 0.f)
+	{
+		Config.CrewMass = CrewKg; // reference captures: the crew weight aboard the boat in the clip
+	}
+	Boat = FBoatModel(Config);
 	Boat.GetMutableState().Time = Time; // the weather clock runs on
 	if (const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr)
 	{
@@ -574,6 +588,12 @@ void ASailboatPawn::BeginPlay()
 		CameraBoom->TargetArmLength = CameraDistance;
 	}
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	FString CaptureArg;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCapture="), CaptureArg))
+	{
+		CapturePreset = ParseCapturePreset(CaptureArg);
+		SetupCapture();
+	}
 	FString DrillArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDrill="), DrillArg))
 	{
@@ -624,6 +644,11 @@ void ASailboatPawn::ResetBoat()
 	Controls = FBoatControls();
 	Controls.MainSheet = 0.45;
 	Controls.JibSheet = 0.45;
+	int32 ReefArg = 0;
+	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingReef="), ReefArg))
+	{
+		Controls.Reef = FMath::Clamp(ReefArg, 0, int32(Boat.GetConfig().ReefLuffFraction.size()));
+	}
 	TrimAssist.Reset();
 	KeyboardTiller = 0.f;
 	ApplyStateToTransform();
@@ -714,6 +739,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	}
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
+	if (IsCaptureMode() && !bTrafficBoat) UpdateCapture(DeltaSeconds);
 
 	if (Water)
 	{
@@ -2205,4 +2231,161 @@ void ASailboatPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 			Input->BindAction(Action, ETriggerEvent::Completed, this, &ASailboatPawn::OnAxisReleased, Name);
 		}
 	}
+}
+
+void ASailboatPawn::SetupCapture()
+{
+	if (CapturePreset == ECapturePreset::None || bTrafficBoat) return;
+	const FCapturePresetInfo& Info = CapturePresetInfo(CapturePreset);
+	FParse::Value(FCommandLine::Get(), TEXT("SailingCaptureBearing="), CaptureBearing);
+	FParse::Value(FCommandLine::Get(), TEXT("SailingEV="), CaptureEV);
+	if (!FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
+
+	Camera->SetActive(false);
+	CaptureCamera->SetActive(true);
+	CaptureCamera->SetFieldOfView(Info.HFovDeg);
+	CaptureCamera->bConstrainAspectRatio = false;
+	if (Info.bOnboard)
+	{
+		FVector Location;
+		FRotator Rotation;
+		OnboardCameraMount(CapturePreset, Boat.GetConfig(), 0.f, Location, Rotation);
+		CaptureCamera->SetUsingAbsoluteLocation(false);
+		CaptureCamera->SetUsingAbsoluteRotation(false);
+		CaptureCamera->SetRelativeLocationAndRotation(Location, Rotation);
+	}
+	else
+	{
+		// A chase boat, drone or tripod does not heel with the boat: place and aim it in the world every frame.
+		CaptureCamera->SetUsingAbsoluteLocation(true);
+		CaptureCamera->SetUsingAbsoluteRotation(true);
+	}
+
+	// A still that can be compared: exposure locked, no motion blur, no depth of field.
+	FPostProcessSettings& PP = CaptureCamera->PostProcessSettings;
+	CaptureCamera->PostProcessBlendWeight = 1.f;
+	PP.bOverride_MotionBlurAmount = true;
+	PP.MotionBlurAmount = 0.f;
+	if (!FMath::IsNaN(CaptureEV))
+	{
+		PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = PP.bOverride_AutoExposureBias = true;
+		PP.AutoExposureMinBrightness = PP.AutoExposureMaxBrightness = CaptureEV;
+		PP.AutoExposureBias = 0.f;
+		bExposureFrozen = true;
+	}
+	if (IConsoleVariable* Dof = IConsoleManager::Get().FindConsoleVariable(TEXT("r.DepthOfFieldQuality"))) Dof->Set(0, ECVF_SetByCode);
+	if (Info.bBarrel && LensDistortionAsset)
+	{
+		LensDistortionMaterial = LensDistortionAsset;
+		PP.AddBlendable(LensDistortionMaterial, 1.f);
+	}
+
+	const FString Dir = FPaths::ProjectSavedDir() / TEXT("Bench");
+	CaptureTelemetry.Open(Dir / (CaptureName + TEXT(".telemetry.csv")));
+	UE_LOG(LogTemp, Display, TEXT("Reference capture: %s, %.0f deg, %s"), Info.Name, Info.HFovDeg,
+		FMath::IsNaN(CaptureEV) ? TEXT("auto exposure frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV));
+}
+
+void ASailboatPawn::UpdateCapture(float DeltaSeconds)
+{
+	CaptureElapsed += DeltaSeconds;
+	const FCapturePresetInfo& Info = CapturePresetInfo(CapturePreset);
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+
+	if (CapturePreset == ECapturePreset::HelmEye)
+	{
+		// The helmsman sits to windward and crosses over a couple of seconds after each tack.
+		const float WantSide = T.TrueWindAngle >= 0.0 ? 1.f : -1.f;
+		HelmSide = FMath::FInterpTo(HelmSide, WantSide, DeltaSeconds, 1.5f);
+		FVector Location;
+		FRotator Rotation;
+		OnboardCameraMount(CapturePreset, Boat.GetConfig(), FMath::Sign(HelmSide), Location, Rotation);
+		Location.Y *= FMath::Abs(HelmSide);
+		CaptureCamera->SetRelativeLocationAndRotation(Location, Rotation);
+		// We are the helmsman: hide the aftmost crew figure (the camera is in its head).
+		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false);
+	}
+	if (!Info.bOnboard)
+	{
+		if (FMath::IsNaN(CaptureBearing) && CaptureElapsed > 0.2)
+		{
+			// Stand to leeward by default, where the sails show their faces (+ = starboard).
+			CaptureBearing = FMath::IsNaN(Info.DefaultBearingDeg) ? (T.TrueWindAngle >= 0.0 ? -90.f : 90.f) : Info.DefaultBearingDeg;
+		}
+		const float Bearing = FMath::IsNaN(CaptureBearing) ? -90.f : CaptureBearing;
+		const Vec3 O = Boat.OriginPosition();
+		const FVector Origin(O.X * CmPerMeter, O.Y * CmPerMeter, 0.0);
+		const float Heading = float(FMath::RadiansToDegrees(T.Heading));
+		FVector Location;
+		FRotator Rotation;
+		WorldCameraPose(CapturePreset, Origin, Heading, Bearing, float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
+		if (CapturePreset == ECapturePreset::ShoreTele)
+		{
+			// A tripod: it stays where it was set up and only pans.
+			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = Location; bShoreStandSet = true; }
+			if (bShoreStandSet)
+			{
+				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + 0.33f * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
+				Location = ShoreStand;
+				Rotation = (Aim - ShoreStand).Rotation();
+			}
+		}
+		CaptureCamera->SetWorldLocationAndRotation(Location, Rotation);
+	}
+
+	// Auto exposure settles in the first seconds; then it is held so the stills compare.
+	if (!bExposureFrozen && CaptureElapsed > 2.5)
+	{
+		FPostProcessSettings& PP = CaptureCamera->PostProcessSettings;
+		PP.bOverride_AutoExposureSpeedUp = PP.bOverride_AutoExposureSpeedDown = true;
+		PP.AutoExposureSpeedUp = PP.AutoExposureSpeedDown = 0.0001f;
+		bExposureFrozen = true;
+	}
+
+	const Vec3 O = Boat.OriginPosition();
+	const double Wave = GM ? GM->GetWaves().Height(O.X, O.Y, Boat.GetState().Time) : 0.0;
+	CaptureTelemetry.Add(FCaptureTelemetryRow::FromBoat(CaptureElapsed, Boat, Controls, Wave));
+
+	if (CaptureElapsed - CaptureSettingsWritten >= 1.0)
+	{
+		WriteCaptureSettings();
+		CaptureSettingsWritten = CaptureElapsed;
+	}
+}
+
+void ASailboatPawn::WriteCaptureSettings() const
+{
+	const FCapturePresetInfo& Info = CapturePresetInfo(CapturePreset);
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const FVector L = CaptureCamera->GetComponentLocation();
+	const FRotator R = CaptureCamera->GetComponentRotation();
+	double SunElevation = 0.0, SunAzimuth = 0.0;
+	FString Area, Date;
+	double Latitude = 0.0, Longitude = 0.0, Hour = 0.0, Gust = 0.0;
+	if (GM)
+	{
+		ASailingEnvironment::SunPosition(GM->GetWeatherState().HourOfDay, GM->GetDayOfYear(), GM->GetLake().Latitude, GM->GetLake().Longitude, GM->GetUtcOffsetHours(), SunElevation, SunAzimuth);
+		Area = ASailingGameMode::WorldDisplayName(USailingSettings::Get()->World);
+		Latitude = GM->GetLake().Latitude;
+		Longitude = GM->GetLake().Longitude;
+		Hour = GM->GetWeatherState().HourOfDay;
+		Gust = GM->GetWind().GetParams().GustIntensity;
+		Date = FDateTime::FromUnixTimestamp(int64(GM->GetUnixTime() + GM->GetUtcOffsetHours() * 3600.0)).ToString(TEXT("%Y-%m-%d"));
+	}
+	const FString Json = FString::Printf(
+		TEXT("{\n  \"preset\": \"%s\",\n  \"hfov_deg\": %.1f,\n  \"barrel_distortion\": %s,\n  \"exposure\": \"%s\",\n")
+		TEXT("  \"camera_m\": [%.2f, %.2f, %.2f],\n  \"camera_pitch_yaw_roll_deg\": [%.1f, %.1f, %.1f],\n  \"bearing_off_bow_deg\": %.0f,\n")
+		TEXT("  \"area\": \"%s\",\n  \"latitude\": %.4f,\n  \"longitude\": %.4f,\n  \"date\": \"%s\",\n  \"clock_hour\": %.2f,\n")
+		TEXT("  \"sun_elevation_deg\": %.1f,\n  \"sun_azimuth_deg\": %.1f,\n")
+		TEXT("  \"true_wind_kn\": %.1f,\n  \"true_wind_from_deg\": %.0f,\n  \"gust_intensity\": %.2f,\n")
+		TEXT("  \"boat\": \"%hs\",\n  \"reef\": %d,\n  \"spinnaker\": %s,\n  \"crew_kg\": %.0f,\n  \"seconds_into_capture\": %.1f\n}\n"),
+		Info.Name, Info.HFovDeg, Info.bBarrel ? TEXT("true") : TEXT("false"),
+		FMath::IsNaN(CaptureEV) ? TEXT("auto, frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV),
+		L.X / CmPerMeter, L.Y / CmPerMeter, L.Z / CmPerMeter, R.Pitch, R.Yaw, R.Roll, FMath::IsNaN(CaptureBearing) ? 0.f : CaptureBearing,
+		*Area, Latitude, Longitude, *Date, Hour, SunElevation, SunAzimuth, // SunPosition works in degrees
+		T.TrueWindSpeed / kKnot, FMath::Fmod(FMath::RadiansToDegrees(T.Heading + T.TrueWindAngle) + 720.0, 360.0), Gust,
+		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed);
+	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));
 }
