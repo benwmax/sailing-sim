@@ -89,6 +89,18 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 LaunchSpot = 0;
 
+	/** Sailing area: 0 = Lake Ray Hubbard (Rush Creek Yacht Club), 1 = Galveston Bay (Clear Lake / Kemah). */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 World = 0;
+
+	/** Other vessels on the water: 0 none, 1 light, 2 busy. */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 TrafficLevel = 1;
+
+	/** The boat you sail (Sailing::EBoatType: 0 = J/22, the lesson boat). */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 BoatType = 0;
+
 	/** Sail at the lake's last gauge reading instead of full pool (takes effect at the next start). */
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	bool bGaugeLakeLevel = false;

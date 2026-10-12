@@ -30,4 +30,23 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Lake bottom: Texas Water Development Board, 2015 Volumetric and Sedimentation Survey of Lake Ray Hubbard,
   interpolated bottom points (public information).
 - Pool elevation and gauge level: Texas Water Development Board, Water Data for Texas (public information).
+- Fleet particulars and reference polars (Phase 4): class associations and builders (ILCA, International Sunfish
+  Class, Catalina, Hobie, Corsair Marine, Lagoon), ORC public certificate data (data.orc.org), keelindex.com,
+  Day (2017) "Performance prediction for sailing dinghies" (Ocean Engineering), the Hobie Hotline 1978 polar, and
+  boat reviews (SAIL, Yachting Monthly, 48North). Every number and its source URL is in `docs/phase-4/fleet-data.json`.
 - Fetch-limited wave growth: U.S. Army Corps of Engineers Shore Protection Manual / JONSWAP relations (public).
+- Galveston Bay chart (Phase 5): NOAA Office of Coast Survey Electronic Navigational Charts (ENC, S-57), cells
+  US4TX1MJ, US4TX1MK, US4TX1NJ, US4TX1NK, US5HOUAG-AI, US5HOUBF-BI, US5HOUCF, US5HOUCI, US5HOUDG, US5HOUDH, US5TX3GI and
+  US5TXTDA-EC (charts.noaa.gov; public domain). Depths, shoreline, aids to navigation and their light characteristics,
+  landmarks and magnetic variation are taken from them. The in-game chart is drawn from this data and is not for
+  navigation.
+- Tides and currents: NOAA Center for Operational Oceanographic Products and Services (CO-OPS), harmonic constituents,
+  datums and predictions for stations 8771450, 8771341, 8771013, 8770613, 8771486 and current stations ACT8856 and
+  ACT8851 (tidesandcurrents.noaa.gov; public domain). NOAA's published predictions are kept as the test reference.
+- Galveston Bay land elevation: USGS 3DEP 1/3 arc-second DEM (public domain). Buildings, land use, piers and marinas:
+  © OpenStreetMap contributors (ODbL, as above).
+- Chart symbology follows U.S. Chart No. 1 (NOAA / NGA, public domain). Sun times were checked against published
+  Galveston sunrise and sunset tables.
+- Navigation Rules (Phase 6): U.S. Coast Guard, Navigation Rules and Regulations Handbook (International and Inland
+  Rules; public domain). Racing: rule numbers from World Sailing's Racing Rules of Sailing are cited; no rule text is
+  reproduced.

@@ -83,7 +83,7 @@ private:
  * the face allows. Returns false if there is none.
  */
 SAILINGSIM_API bool FindBerth(const Sailing::FLakeTerrain& Terrain, const std::vector<Sailing::FObstacleSegment>& Obstacles, FVector2D Near,
-	double MaxRange, double WindFromRad, FVector2D& OutPosition, double& OutHeading);
+	double MaxRange, double WindFromRad, FVector2D& OutPosition, double& OutHeading, const Sailing::FBoatConfig& Boat = Sailing::FBoatConfig::J22());
 
 /**
  * Dock lines: from the boat's cleats (bow, quarters, springs) to the nearest dock edge within reach.

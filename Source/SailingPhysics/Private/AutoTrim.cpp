@@ -7,6 +7,7 @@ namespace Sailing
 		const FBoatTelemetry& T = Boat.GetTelemetry();
 		const FBoatState& S = Boat.GetState();
 		FBoatControls Out = Current;
+		const FBoatConfig& Cfg = Boat.GetConfig();
 		const FAutoTrimSettings& Set = Settings;
 
 		// Angle each sail's foot should sit at: apparent wind angle minus twist minus the target angle of attack, averaged over strips.
@@ -25,8 +26,14 @@ namespace Sailing
 
 		// Heel toward leeward is positive here; heeled to windward is negative.
 		const double Heel = T.Heel * S.WindwardSide * kRadToDeg;
-		const double Excess = Heel - Set.HeelLimitDeg;
-		MainEase = Clamp(MainEase + (Excess > 0.0 ? Excess * 0.6 : -2.0) * kDegToRad * Dt, 0.0, 25.0 * kDegToRad);
+		// Heel rate toward leeward (deg/s): a good crew reacts to the boat starting to roll, not only to where it is.
+		const double HeelRate = S.AngularVelocity.X * S.WindwardSide * kRadToDeg;
+		// The settings' heel limit is for a keelboat that likes 22 degrees; boats that sail flatter scale it down.
+		const double Excess = Heel + 0.3 * HeelRate - Set.HeelLimitDeg * Cfg.TrimHeelLimitDeg / 22.0;
+		const double EaseRate = 0.6 * std::sqrt(22.0 / Cfg.TrimHeelLimitDeg);
+		// Ease as the boat heels past the limit; trim back in slowly, or at once if it starts to heel to windward.
+		const double Recover = Heel < 0.0 ? std::min(-2.0, Heel * 3.0) : -2.0;
+		MainEase = Clamp(MainEase + (Excess > 0.0 ? Excess * EaseRate : Recover) * kDegToRad * Dt, 0.0, Cfg.TrimMaxEaseDeg * kDegToRad);
 
 		const double TwsKnots = T.TrueWindSpeed / kKnot;
 		const double Flatten = Clamp((TwsKnots - Set.FlattenFromKnots) / Set.FlattenRangeKnots, 0.0, 1.0);
@@ -39,15 +46,21 @@ namespace Sailing
 		{
 			const double Foot = FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide) + MainEase;
 			// Traveler carries the boom toward the centerline upwind; the sheet does the rest.
-			const double Traveler = Clamp(Foot / (8.0 * kDegToRad), -1.0, 0.0) + Clamp(MainEase / (8.0 * kDegToRad), 0.0, 1.0);
-			const double Sheet = Clamp((Foot - Clamp(Traveler, -1.0, 1.0) * 8.0 * kDegToRad) / (85.0 * kDegToRad), 0.0, 1.0);
+			const double Range = Cfg.TravelerRangeDeg * kDegToRad;
+			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0);
+			const double Sheet = Clamp((Foot - Clamp(Traveler, -1.0, 1.0) * Range) / (Cfg.MainMaxEaseDeg * kDegToRad), 0.0, 1.0);
 			Out.Traveler = MoveToward(Current.Traveler, Clamp(Traveler, -1.0, 1.0), Rate * 2.0);
 			Out.MainSheet = MoveToward(Current.MainSheet, Sheet, Rate);
 		}
 		if (Set.bTrimJib && T.NumJibStrips > 0)
 		{
 			const double Foot = FootAngleFor(T.JibStrips, T.NumJibStrips, S.JibAngle * S.JibSide);
-			Out.JibSheet = MoveToward(Current.JibSheet, Clamp((Foot - 8.0 * kDegToRad) / (72.0 * kDegToRad), 0.0, 1.0), Rate);
+			Out.JibSheet = MoveToward(Current.JibSheet, Clamp((Foot - Cfg.JibMinAngleDeg * kDegToRad) / ((Cfg.JibMaxAngleDeg - Cfg.JibMinAngleDeg) * kDegToRad), 0.0, 1.0), Rate);
+		}
+		if (Set.bTrimJib && T.NumSpinStrips > 0)
+		{
+			const double Foot = FootAngleFor(T.SpinStrips, T.NumSpinStrips, S.SpinAngle * S.SpinSide);
+			Out.SpinSheet = MoveToward(Current.SpinSheet, Clamp((Foot - 12.0 * kDegToRad) / (85.0 * kDegToRad), 0.0, 1.0), Rate);
 		}
 		Out.bWingOnWing = Twa > 155.0;
 		if (Set.bShape)
@@ -60,7 +73,8 @@ namespace Sailing
 		if (Set.bHike)
 		{
 			// Hike out as the boat heels; in light air or running, move in (or to leeward) to keep a little leeward heel.
-			Out.Hike = Clamp(Current.Hike + Clamp((Heel - 4.0) / 4.0, -1.0, 1.0) * 0.8 * Dt, -1.0, 1.0);
+			const double HikeRate = 0.8 * std::max(1.0, Cfg.CrewMoveSpeed / 1.6); // a dinghy sailor moves quicker than keelboat crew
+			Out.Hike = Clamp(Current.Hike + Clamp((Heel - 4.0 + 0.8 * HeelRate) / 4.0, -1.0, 1.0) * HikeRate * Dt, -1.0, 1.0);
 		}
 		return Out;
 	}
@@ -71,6 +85,11 @@ namespace Sailing
 		// Heading error: to raise the TWA on starboard tack (wind from +Y side), turn the bow away (to port).
 		const double Error = WrapAngle(T.TrueWindAngle - TargetTWADeg * kDegToRad);
 		const double YawRate = Boat.GetState().AngularVelocity.Z;
-		return Clamp(Gain * Error - RateGain * YawRate, -MaxTiller, MaxTiller);
+		// A good helmsman keeps the rudder a little short of its stall angle.
+		const FBoatConfig& Cfg = Boat.GetConfig();
+		double StallDeg = 14.0;
+		for (const FFoilDef& F : Cfg.Foils) if (F.Role == EFoilRole::Rudder) StallDeg = F.Params.StallAngleDeg;
+		const double Limit = bKeepShortOfStall ? std::min(MaxTiller, (StallDeg + 2.0) / Cfg.MaxRudderAngleDeg) : MaxTiller;
+		return Clamp(Gain * Error - RateGain * YawRate, -Limit, Limit);
 	}
 }

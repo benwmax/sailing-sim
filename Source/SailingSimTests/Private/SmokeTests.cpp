@@ -73,7 +73,7 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 
 	if (bSpawned)
 	{
-		const UMaterialInstanceDynamic* HullMaterial = Cast<UMaterialInstanceDynamic>(Boat->Hull->GetMaterial(0));
+		const UMaterialInstanceDynamic* HullMaterial = Cast<UMaterialInstanceDynamic>(Boat->HullMesh->GetMaterial(0));
 		FLinearColor HullColor = FLinearColor::Black;
 		TestTrue(TEXT("Hull has a colorable material"), HullMaterial && HullMaterial->GetVectorParameterValue(TEXT("Color"), HullColor));
 		TestTrue(TEXT("Hull is painted red"), HullColor.R > 0.5f && HullColor.G < 0.2f);

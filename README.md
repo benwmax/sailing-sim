@@ -3,7 +3,7 @@
 A technically accurate sailing simulator built in Unreal Engine 5.8. First boat: J/22. Home water: Lake Ray Hubbard, Texas, sailing from Rush Creek Yacht Club in Heath.
 
 The research and phased plan live in the Claude Doc "Sailing Game: Research and Phased Plan". Phases so far:
-0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake).
+0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake), 4 (the fleet).
 
 ## Toolchain on the build Mac
 
@@ -54,10 +54,20 @@ Keys are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/Sa
 | Wing-on-wing | G | X |
 | Back the jib (heave to) | B | Left stick press |
 | Dock lines on / off (under 1.5 kn, next to a dock) | T | Right stick press |
+| Spinnaker / gennaker up or down (Q/E then trim its sheet) | N | |
+| Take a reef (cycles back to a full main) | M | |
+| Board or swing keel up / down | J | |
+| Right a capsized boat (crew on the board or the righting line) | X | |
+| Engine ahead / astern, neutral | = / - (or PgUp / PgDn), 0 | |
+| Twin engines: pivot in place | [ / ] | |
 | Full layout only: traveler, vang, cunningham, outhaul, backstay | Z / C, 1-2, 3-4, 5-6, 7-8 | D-pad left / right, A / B |
 | Learning mode, difficulty, instruments, reset | L, K, H, R | Y |
 | Settings menu, controls card | Tab, ? | Menu, View |
 | Orbit / zoom camera | Mouse, wheel | Right stick |
+| Coast: chart view (mouse pans, wheel zooms) | P | |
+| Coast: take a bearing on the mark the camera faces | U | |
+| Coast: GPS on the chart on / off, clear the plot | O, I | |
+| Traffic (none / light / busy), start or end a race | Tab > Traffic, Tab > Race | |
 
 **Simple** layout (the default, and always on Easy): you steer, trim both sheets and hike; the crew handles the
 traveler and sail shape. **Full** gives you every control. **Trim assist** (its own setting) lets the crew trim the
@@ -67,7 +77,7 @@ weather tips; game mode hides them. The physics is the same in every combination
 ## Weather and time
 
 In the settings menu (Tab): **Weather** (calm morning, afternoon breeze, overcast, rain, thunderstorm, random day),
-**Start time** (06:00 to 20:00, local solar time at Lake Ray Hubbard), **Weather seed** (same seed, same gusts,
+**Start time** (local clock time; the sun is placed for the area's longitude and the Mac's time zone), **Weather seed** (same seed, same gusts,
 shifts and lightning), **Graphics quality** (Low / Medium / High) and **Volume**. The thunderstorm plays in about nine
 minutes: towering cells build to the west-northwest, the gust front crosses the water (watch for the dark band and
 whitecaps) with a sharp shift and gusts near 30 knots, rain follows a minute later with lightning and thunder at the
@@ -90,12 +100,101 @@ Z = 0 at the conservation pool (435.5 ft NGVD29).
   bridges stop the mast (only the hull fits under). Woods and bluffs cast wind shadows that recover over 2 to 25
   obstacle heights downwind, and the chop grows with the open-water fetch upwind.
 
+## The fleet
+
+Pick a boat in the settings menu (**Boat**, the first row) or start with `-SailingBoat=Hobie`. All eight sail on the
+same physics; what changes is the boat: hulls (one, two or three), keel or boards, rig, crew, engines.
+
+| Boat | What it teaches | Particulars in the model |
+| --- | --- | --- |
+| J/22 | ASA 101 on the lesson boat | 22 ft 6 in keelboat, 1,790 lb, main + jib, symmetric spinnaker, small outboard |
+| Sunfish | Balance, one sheet, capsize | 13 ft 9 in lateen dinghy, daggerboard, one sailor |
+| ILCA 7 (Laser) | Hiking, planing, capsize and righting | 13 ft 10 in una-rig dinghy, daggerboard, planes from about 12 kn of wind |
+| Catalina 22 | A common lake keelboat | swing keel (J raises it), 135% genoa, spinnaker, outboard |
+| Catalina 30 | ASA 103: reefing, engine, a heavier boat | 10,200 lb, wheel, two reefs, 21 hp diesel with prop walk, sails as measured on its ORC certificate |
+| Hobie 16 | Apparent wind, flying a hull, trapeze | beach cat, no boards (the hulls are the foils), double trapeze, righting line |
+| Corsair 880 | Speed, float pressure, reefing early | folding trimaran, daggerboard, gennaker on a sprit, two reefs, outboard |
+| Lagoon 42 | Chartering a big cat, twin engines | 14 t cruising cat, Code 0, three reefs, twin diesels that pivot her in place |
+
+Every number comes from a source listed in `docs/phase-4/fleet-data.json` (class rules, builders, ORC certificates,
+reviews); where nothing was published the file says how it was estimated. Dinghies capsize when overpowered and come
+back up with the crew on the board; the Hobie flies a hull and goes over past its tipping point; keelboats knock down
+and come back; the Lagoon and Corsair cannot be righted by their crew (R resets).
+
+## The coast: Galveston Bay
+
+Pick **Area: Galveston Bay** in the settings menu (or `-SailingWorld=1`). Home is Clear Lake and Kemah; the bay runs
+south to Bolivar Roads and the Gulf. Everything comes from the NOAA chart and NOAA's tide tables (see `CREDITS.md`):
+
+- **Depths and shore** from the NOAA ENC cells (depth areas, soundings, contours, dredged channels, coastline),
+  with USGS 3DEP for the land. Heights are relative to chart datum (MLLW).
+- **Tides** predicted in game the way NOAA makes its tables (harmonic constituents with nodal corrections) at five
+  CO-OPS stations, blended across the bay. The water rises and falls; shoals uncover at low water.
+- **Currents** from the Bolivar Roads current station, carried through the channels with the delay and strength of a
+  baked field: strong in the entrance and the ship channel, slack in the open bay. The current sets the boat
+  (the log reads speed through the water, the GPS speed over the ground).
+- **Aids to navigation**: all 582 buoys, beacons and lights where the chart puts them, in their colors and shapes.
+  After sunset every light shows its charted character (Fl G 4s, Q R, Iso W 6s, Mo(A)...), out to its range.
+  Your own boat shows sidelights and a sternlight at night, and a masthead light when motoring.
+- **Instruments** (right side): compass (magnetic), depth sounder in feet, log, GPS speed and course, tide height
+  and the next high or low water, the current at the boat.
+- **Chart view (P)**: the NOAA chart in its paper colors, with soundings in feet, depth contours, channels, every aid
+  with its Chart No. 1 symbol and legend ("G C \"19\"", "Fl R 6s 17ft 4M \"2\""), conspicuous landmarks, a compass
+  rose with the variation (1°28'E in 2026, from the chart's compass rose near Kemah), a scale bar, and a course line
+  from the boat to the crosshair in degrees true and magnetic with distance and time.
+- **Plotting**: turn the camera onto a buoy, beacon, light or landmark and press **U** for a hand-bearing compass
+  bearing (magnetic; on Realistic it carries a degree or two of error). Two bearings crossing at 30 degrees or more
+  plot a fix with its cocked hat; dead reckoning then runs from the fix on the compass and the log (it knows nothing
+  of current or leeway, as on paper). Turn the GPS off (**O**) to navigate by bearings and DR alone; **I** clears
+  the plot.
+- Command line: `-SailingWorld=1`, `-SailingDate=2026-10-12`, `-SailingChart=<m per pixel>` (open the chart),
+  `-SailingPlotFix` (take three bearings at the start), `-SailingNoGps`, `-SailingLightsOn`.
+
+## Traffic, the Rules of the Road and races
+
+Other vessels share the water (Tab > **Traffic**: none, light or busy; `-SailingTraffic=0|1|2`): AI sailboats on the
+same physics as yours (J/22s, Catalinas, Hobies), runabouts, and on the coast shrimp trawlers with their nets out, a
+towboat pushing barges, and tankers and container ships held to the Houston Ship Channel.
+
+- **They follow the Navigation Rules** (COLREGS / U.S. Inland Rules): overtaking (Rule 13) first; then Rule 18's
+  order (not under command or restricted, constrained by draft, fishing, sailing, power-driven; everyone keeps clear
+  of a vessel at anchor); between sailboats Rule 12 (port tack keeps clear of starboard, windward of leeward); between
+  power-driven vessels Rule 14 (head-on: both turn to starboard) and Rule 15 (crossing: the one with the other on her
+  starboard side keeps clear). The give-way vessel acts early and plainly, at least 30 degrees under power and 20
+  under sail (Rules 8 and 16), and never onto a shoal; the stand-on vessel holds course and speed, sounds five short
+  blasts if the other is not acting, and takes action herself only at close quarters (Rule 17). Roles are settled
+  when the risk first appears and kept until they are past and clear.
+- **Signals and lights**: power-driven vessels sound one short blast turning to starboard, two to port (Rule 34), and
+  you hear them (pitch by size). By night every vessel shows her lights over their proper arcs (Rule 21): sidelights,
+  sternlight and masthead lights; green over white for the trawler, red-white-red for the tow, three reds for a ship
+  constrained by her draft; by day their shapes (cones, ball-diamond-ball, a cylinder). Your boat's lights follow the
+  same arcs.
+- **Learning mode** names the vessel that matters most ("Runabout (power-driven vessel) on your starboard bow,
+  240 m"), your role (give way / stand on), the rule and why, and what to do, with the closest approach. **Game mode**
+  scores you: +10 for keeping clear early and plainly, +5 for holding your course as stand-on, -5 for altering as
+  stand-on, -10 if the other had to act for you or you passed too close, -30 for a collision.
+- **The chart** shows the traffic as AIS targets with six-minute course vectors when the GPS is on.
+- **Races** (Tab > **Race against the fleet**, Right starts one; `-SailingRace=<seconds to the start>`): five AI boats
+  of your class on a windward-leeward course laid upwind of you (two laps; the beat as long as the water allows, up
+  to 900 m), a committee boat at the starboard end of the line and an orange pin at the port end. The start sequence
+  of the Racing Rules (warning at 5:00, preparatory at 4:00, one minute, start, with the flags on the HUD and the
+  sounds); over the line early: individual recall, come back below the line; each mark left to port (counted by the
+  angle you sweep round it); finish upwind through the line; low-point scoring. The race panel shows the countdown,
+  your next task, the distance and bearing to the next mark, your position, and the results.
+
 ## Rebuilding the lake
 
 ```sh
 python3 -m venv Tools/venv && Tools/venv/bin/pip install pyshp pyproj numpy scipy pillow tifffile
 Tools/terrain/fetch_rayhubbard.sh    # USGS DEM, TWDB survey and levels, OpenStreetMap into Data/RayHubbard/raw (git-ignored)
 Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/TerrainData; rerun to pick up a new gauge level
+```
+
+Galveston Bay (also needs `pyogrio shapely` in the venv):
+
+```sh
+Tools/coast/fetch_galveston.sh                       # NOAA ENC, CO-OPS tides and currents, USGS DEM, OpenStreetMap
+Tools/venv/bin/python Tools/coast/build_galveston.py # writes Content/TerrainData/GalvestonBay.* and the chart
 ```
 
 ## Phase 0 gate results (Oct 11, 2026)
@@ -139,7 +238,89 @@ Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/Terra
 | Frame rate, Low / High | Low 119 (display cap); High 51 at the marina (under 60, as in Phase 2) |
 | Screenshots | `docs/phase-3/marina-*.png`, `bridge-medium.png`, `wide-medium.png`, `sailing-medium.png`, `settings-menu.png`, `terrain-preview.png` |
 
+## Phase 4 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 43 of 43 pass, including every boat's polar, dinghy capsize and righting, keelboat knockdowns, flying a hull and capsizing a Hobie, planing, spinnaker, reefing and engines |
+| Polars | Every boat within its tolerance at every point: J/22 39 points (incl. spinnaker) worst 8.4%; Catalina 30 (ORC certificate) worst 5.3%; Catalina 22 9.9%; ILCA 7 11.7% (15% tier on reaches); Sunfish 14.6%; Hobie 16 19.3%; Corsair 880 19.8%; Lagoon 42 19.5% |
+| Tolerance by source | 10% for ORC certificates and polars anchored on measured speeds; 15% for handicap-scaled estimates and judged reaching speeds; 20% for hand-built estimates (the research's own stated uncertainty). See `FleetReferencePolar` in `Source/SailingPhysics/Private/Fleet.cpp` |
+| Behavior | ILCA 7 knocked flat in 20 kn with the sheet cleated, righted from the board in 4 s; Hobie flies a hull in 15 kn and capsizes when cleated in 20 kn, righted in 10 s; J/22 and Catalinas knock down to 57-69 deg and recover; ILCA planes at 9.2 kn on a 15 kn reach; spinnaker adds 7% at 135 deg; two reefs cut the Catalina 30's heel from 36 to 32 deg; Catalina 30 motors at 5.7 kn, Lagoon at 7.7, about half that astern |
+| Frame rate, default (Medium) tier | 75 to 77 fps for every boat, p99 under 15.2 ms (`docs/phase-4/frame-budget.csv`) |
+| Loads fast | Switching boats builds the physics and visuals in 0.3 to 1.1 ms |
+| Screenshots | `docs/phase-4/fleet.png` (all eight), `fleet-<boat>.png`, `fleet-j22-spinnaker.png`, `fleet-hobie-flying.png` |
+
+## Phase 5 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 52 of 52 pass, including 8 new coast tests (`SailingSim.Coast.*`) and a calm-water physics test |
+| Chart symbols match the NOAA chart | Seven aids checked against the raw ENC records (shape, color, legend: "G C \"19\"", "R N \"18\"", "Fl G 1s \"11\"", "Fl R 6s 17ft 4M \"2\"", "Q G 1s 17ft 4M \"23\""...); all 260 numbered lateral aids follow the U.S. system (green odd cans, red even nuns) |
+| Plotted fixes within tolerance | Three bearings read to the degree: worst fix 20 m from the true position over five spots in the bay (limit 93 m, 0.05 nm); with a +-2 degree compass error, worst 140 m (limit 370 m) |
+| Tide timing vs NOAA tables | All 42 highs and lows at Galveston Pier 21 and 36 at Eagle Point match NOAA's predictions: worst 6 minutes on well-defined turns, heights within 0.5 cm |
+| Current timing vs NOAA tables | Bolivar Roads: all 15 slacks within 10 minutes (worst 4.1); all 17 strong floods and ebbs within 0.03 m/s and on the same peak |
+| Lights flash their characteristics | Rhythm and label checked for Fl, Fl(2), Q, Iso, Oc, LFl, Mo(A); all 235 lit aids in the bay show a period and duty that fit their charted character |
+| Depths | Terrain at the 4,622 charted soundings: median error 0.00 m, 90th percentile 0.05 m |
+| Sun | Sunrise and sunset within a minute of published Galveston tables (06:45 / 20:03 against 06:46 / 20:02 on 12 Aug) |
+| Frame rate, default (Medium) tier | Galveston Bay day 81 fps, open bay 78, night with lights 69, dusk 76, chart view 120 (display cap); see `docs/phase-5/frame-budget.csv` |
+| No regressions | The fleet still runs 71 to 73 fps on the lake; every earlier test passes; the J/22 polar is unchanged (worst 8.7%) |
+| Screenshots | `docs/phase-5/coast-day.png`, `coast-bay.png`, `coast-night.png`, `coast-dusk.png`, `chart.png` (Clear Creek with a three-bearing fix), `chart-bay.png`, `terrain-preview.png` |
+
+Found and fixed along the way: the crew used to follow the masthead's apparent wind, which swings as the mast rolls,
+so in a calm the boat rocked herself up to a knot (now she lies still); the sun was placed by clock time as if it
+were solar time (now longitude, time zone and the equation of time); the clouds' shadow rays toward a low sun cost a
+third of the frame at night; and Galveston's 4,000 terrain chunks cost 4 ms of culling a frame (now 1,000).
+
+## Phase 6 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 59 of 59 pass, including 7 new traffic and race tests |
+| Rules scenarios (`SailingSim.Traffic.RulesScenarios`, `scripts/traffic.sh`) | 10 encounters, each first run with nobody following the rules (they collide or pass within 21 m) and then with the AI following them: port/starboard, windward/leeward, a powerboat overtaking, a sailboat overtaking a powerboat (Rule 13 before 18), head-on (both turn 30 degrees to starboard, pass port to port, one short blast each), crossing, power gives way to sail, sail keeps clear of a trawler, sail does not impede a ship (Rule 9), and a stand-on vessel acting when the other will not (five short blasts, then a turn). The right vessel acts every time, the stand-on vessel holds within 1 degree, passing at 58 to 790 m |
+| Right-of-way table | 11 pairings decided the same whichever vessel asks, including vessels at anchor and motorsailing |
+| No AI-caused collisions | 20 minutes of busy open water (10 vessels) and 15 minutes of Galveston Bay (6 sailboats, 4 runabouts, 2 ships and a tow in the channel): no collisions, nobody aground |
+| Races score correctly | Scripted boats: the winner 1 point, second 2, a boat recalled that came back and finished third 3; a boat that rounded the windward mark the wrong way and one that never came back after being over early both score 6 (entries + 1, DNF and OCS) |
+| AI fleet races | 8 races of 5 J/22s: every boat starts, rounds all four marks and finishes (23 to 40 minutes); scores 1 to 5 each race. Close racing in a pack still brings an occasional touch: 3 in 16 races (see known gaps) |
+| Coach | Giving way early: +10; holding on as the give-way boat (the other had to act): -10; standing on: +5 |
+| Lights | A ship seen from her starboard beam shows one green, two masthead lights and three reds; from astern the sternlight and the reds; from ahead both sidelights; nothing by day |
+| Frame rate, default (Medium) tier | Busy lake 78 fps, a race 70, the bay with ships 77, the bay at night with vessels' lights 71, the chart with AIS targets 120 (`docs/phase-6/frame-budget.csv`) |
+| No regressions | Every earlier test passes; the Phase 5 views are unchanged |
+| Screenshots | `docs/phase-6/lake-busy.png`, `lake-race.png`, `bay-ships.png`, `bay-night-traffic.png`, `bay-chart-ais.png` |
+
+Found and fixed along the way: the Galveston bake had missed the Houston Ship Channel's own chart cells (the mid-bay
+channel was 10 m instead of its dredged 45 ft) and took the magnetic variation from a whole-degree area band
+(0 deg 25' E) instead of the compass rose near Kemah (1 deg 28' E in 2026); both fixed in the Phase 5 branch too.
+
 ## Known gaps
+
+- Races: the AI racers keep clear by the rules, but a five-boat pack still touches about once in five races (most
+  often in the first minute after the start). There is no mark-room (RRS 18) or protest/penalty turn yet; the AI
+  does not play tactics (no covering, no lifts and headers). Contacts are scored against whoever had to keep clear.
+- Traffic does not tie up, anchor or come and go from the marinas; ships use one channel route out and back; there is
+  no traffic in restricted visibility (sound signals in fog, Rule 35) yet.
+- The AI sees every vessel within 4 km at once (no lookout limits, no radar); the player's boat is never moved by the
+  fend-off that keeps two AI hulls from locking together.
+
+- Coast: navigation lights (yours and the aids') are all-round points; sidelight and sector arcs come with the
+  Rules of the Road in Phase 6. Buoys do not lean or swing in the current, and there are no fog signals or racons.
+- The current comes from one reference station spread by a baked field: no eddies, no wind-driven setup, no river
+  outflow. Water levels between stations are blended by distance.
+- The chart has no area names, chart notes or contour labels; legends overlap where aids crowd together (zoom in).
+  The course line runs to the crosshair (no click-to-plot), and bearings for a fix must be taken within 10 minutes
+  (no running fix yet).
+- The moon has no phase: moonlight is the same every night.
+- No Gulf swell outside the jetties yet (the FFT ocean is Phase 7) and no ship traffic (Phase 6).
+- The sun is now placed by the local clock (longitude, time zone, equation of time). Before Phase 5 the clock hour
+  was treated as solar time, so the same start hour on the lake now has the sun about an hour earlier in its arc.
+
+- The fleet polars other than the J/22 and Catalina 30 are estimates (see the tolerance tiers above); the Hobie 16 has
+  no reference above 10 kn, so it is checked for behavior there instead.
+- The Sunfish's low lateen often lifts her back up on her own after a knockdown; a real one usually stays on her side.
+- Beach cats in strong wind are faster upwind than the (estimated) references suggest; pitching and slamming in chop
+  are approximated by an added-resistance term.
+- Hulls are generated from the physics shapes but have no cabin interiors, hardware or rigging beyond the forestay;
+  the lateen's upper spar and the Lagoon's flybridge are left out. The engine has no gamepad binding yet.
+- Phone and tablet builds come later in the plan, so "loads fast on your phone" is measured on the Mac for now.
 
 - Docks, buildings and trees are simple shapes; the clubhouse and ramp are boxes from OpenStreetMap outlines.
 - Depths inside the marina basins come from the nearest TWDB survey point, so slips read shallower than they are;
@@ -152,7 +333,7 @@ Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/Terra
 
 - Storm sky reads light grey rather than menacing; no towering cell is visible on the horizon before the front.
 - Gust front and cat's paws are visible but subtle from a low camera; learning mode tips point them out.
-- Without a spinnaker the J/22 can surf to about 14 kn in 30 kn gusts, which is optimistic; resistance past Fn 0.8 is flat.
+- The J/22 can surf to about 14 kn in 30 kn gusts, which is optimistic; resistance past Fn 0.8 is flat.
 - High quality tier dips just under 60 fps in clear breezy afternoons on the M5 Pro.
 - Sound is synthesized and not yet tuned by ear; it has not been checked on headphones.
-- The downwind polar reference is an approximation (no spinnaker yet); boat art is still boxes.
+- The J/22's non-spinnaker downwind reference is an approximation (ORC rates her with a spinnaker).

@@ -43,6 +43,7 @@ namespace Sailing
 		double Gain = 2.5;          // tiller per radian of heading error
 		double RateGain = 1.2;      // tiller per rad/s of yaw rate
 		double MaxTiller = 0.6;     // a good helmsman keeps the rudder short of stalling (about 18 degrees)
+		bool bKeepShortOfStall = true; // also limit the rudder to just past its stall angle (off for a deliberate hard tack)
 
 		double Update(const FBoatModel& Boat) const;
 	};

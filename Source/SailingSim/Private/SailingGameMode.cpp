@@ -18,6 +18,9 @@
 #include "Scalability.h"
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
+#include "NavaidsActor.h"
+#include "TrafficManager.h"
+#include "SailingEnvironment.h"
 #include "UnrealClient.h"
 
 using namespace Sailing;
@@ -38,11 +41,15 @@ ASailingGameMode::ASailingGameMode()
 void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard"));
 
 	// Command-line overrides (benchmarks, recordings) are applied to settings for this run only.
 	USailingSettings* Settings = USailingSettings::Get();
 	FString Value;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWorld="), Value))
+	{
+		Settings->World = Value.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Value == TEXT("1") ? 1 : 0;
+	}
+	Lake.Load(FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWeather="), Value))
 	{
 		for (int32 I = 0; I < int32(EWeatherPreset::Count); ++I)
@@ -87,6 +94,72 @@ double ASailingGameMode::GetSimTime() const
 	return OwnClock;
 }
 
+const TCHAR* ASailingGameMode::WorldFileName(int32 World)
+{
+	return World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard");
+}
+
+const TCHAR* ASailingGameMode::WorldDisplayName(int32 World)
+{
+	return World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)");
+}
+
+double ASailingGameMode::GetLocalHour() const
+{
+	const double Local = GetUnixTime() + UtcOffsetHours * 3600.0;
+	double Hours = FMath::Fmod(Local / 3600.0, 24.0);
+	return Hours < 0.0 ? Hours + 24.0 : Hours;
+}
+
+const FChartData& ASailingGameMode::GetChart() const
+{
+	if (!bChartTried && Lake.IsTidal())
+	{
+		bChartTried = true;
+		Chart.Load(FLakeData::DefaultDirectory() / (Lake.FileName + TEXT(".chart.json")));
+	}
+	return Chart;
+}
+
+bool ASailingGameMode::IsDark() const
+{
+	static const bool bForceOn = FParse::Param(FCommandLine::Get(), TEXT("SailingLightsOn")); // screenshots, debugging
+	double Elevation = 0.0, Azimuth = 0.0;
+	ASailingEnvironment::SunPosition(WeatherState.HourOfDay, DayOfYear, Lake.Latitude, Lake.Longitude, UtcOffsetHours, Elevation, Azimuth);
+	return bForceOn || Elevation < -1.0 || WeatherState.VisibilityKm < 2.0;
+}
+
+void ASailingGameMode::UpdateTide()
+{
+	if (!Lake.IsTidal()) return;
+	// The water level at the boat: the terrain (and everything on it) moves down as the tide rises, so the water
+	// surface stays at zero; the physics sees the same bed through the terrain's level offset.
+	double X = 0.0, Y = 0.0;
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (const APawn* P = PC->GetPawn())
+		{
+			X = P->GetActorLocation().X / CmPerMeter;
+			Y = P->GetActorLocation().Y / CmPerMeter;
+		}
+	}
+	TideHeight = Lake.Tides.HeightAt(X, Y, GetUnixTime());
+	if (FMath::Abs(GetUnixTime() - NextTideUpdate) > 60.0)
+	{
+		NextTideUpdate = GetUnixTime();
+		bHasNextTide = Lake.Tides.NextExtreme(X, Y, GetUnixTime(), NextTide);
+	}
+	Lake.Terrain.SetLevelBelowPool(-TideHeight);
+	if (!TerrainActor.IsValid())
+	{
+		for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It) TerrainActor = *It;
+	}
+	if (TerrainActor.IsValid())
+	{
+		TerrainActor->SetActorLocation(FVector(0.0, 0.0, -TideHeight * CmPerMeter));
+	}
+}
+
 bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 {
 	// -SailingStartAt=<north m>,<east m>,<heading deg> overrides (tests, screenshots).
@@ -123,8 +196,10 @@ void ASailingGameMode::UpdateShelter()
 		const Sailing::FLakeTerrain* Terrain = &Lake.Terrain;
 		PendingShelter = Async(EAsyncExecution::ThreadPool, [Terrain, From]()
 		{
+			const double Start = FPlatformTime::Seconds();
 			TSharedPtr<Sailing::FShelterMap> Map = MakeShared<Sailing::FShelterMap>();
 			Map->Build(*Terrain, From);
+			UE_LOG(LogSailing, Display, TEXT("Shelter map for wind from %.0f built in %.0f ms"), FMath::RadiansToDegrees(From), (FPlatformTime::Seconds() - Start) * 1000.0);
 			return Map;
 		});
 	}
@@ -137,6 +212,20 @@ void ASailingGameMode::ApplyWeatherSettings()
 	FParse::Value(FCommandLine::Get(), TEXT("SailingWeatherTime="), WeatherOffset);
 	WeatherStartTime = GetSimTime() - WeatherOffset;
 	Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour);
+
+	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
+	FDateTime Date = FDateTime::Now();
+	FString DateArg;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDate="), DateArg))
+	{
+		TArray<FString> Parts;
+		DateArg.ParseIntoArray(Parts, TEXT("-"));
+		if (Parts.Num() == 3) Date = FDateTime(FCString::Atoi(*Parts[0]), FCString::Atoi(*Parts[1]), FCString::Atoi(*Parts[2]));
+	}
+	UtcOffsetHours = FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
+	DayOfYear = Date.GetDayOfYear();
+	ClockBase = GetSimTime() - WeatherOffset;
+	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (double(Settings->StartHour) - UtcOffsetHours) * 3600.0;
 
 	// Scale the preset's wind to an explicit base speed when asked (benchmarks).
 	WindScale = 1.0;
@@ -222,6 +311,14 @@ void ASailingGameMode::StartPlay()
 	ApplyQualitySettings();
 	ApplyWeatherSettings();
 	Super::StartPlay();
+	if (Lake.Navaids.Num() > 0)
+	{
+		GetWorld()->SpawnActor<ANavaidsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
+	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
+	int32 TrafficArg = 0;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTraffic="), TrafficArg)) USailingSettings::Get()->TrafficLevel = FMath::Clamp(TrafficArg, 0, 2);
+	GetWorld()->SpawnActor<ATrafficManager>(FVector::ZeroVector, FRotator::ZeroRotator);
 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
@@ -239,6 +336,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	OwnClock += DeltaSeconds;
 	UpdateWeather(DeltaSeconds);
+	UpdateTide();
 
 	if (BenchSeconds <= 0.f || bBenchDone)
 	{

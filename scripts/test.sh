@@ -33,7 +33,8 @@ for t in tests:
         ev = e.get("event", {})
         if ev.get("type") == "Error":
             print(f"         ! {ev.get('message')}")
-passed = report.get("succeeded", 0)
+# Warnings (for example the editor's own network probe timing out during a long test) do not fail a test.
+passed = report.get("succeeded", 0) + report.get("succeededWithWarnings", 0)
 failed = report.get("failed", 0)
 print(f"\n{passed} passed, {failed} failed, {len(tests)} total")
 sys.exit(1 if failed or not tests else 0)

@@ -44,6 +44,22 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 11. `Tools/venv/bin/python Tools/terrain/build_rayhubbard.py` rebakes `Content/TerrainData` from `Data/RayHubbard/raw`
    (git-ignored; see README). Then `scripts/test.sh SailingSim.Lake` and repackage (the data is staged as loose files).
 
+12. `scripts/bench-phase4.sh [seconds]` runs every boat on the packaged build (fps, p99, build time) and copies
+   screenshots to `docs/phase-4/`. Fleet args: `-SailingBoat=<name prefix>`, `-SailingSpinnaker`. Standalone polar for
+   any boat: `scripts/polar.sh --boat hobie [--quick | --point <tws> <twa> [spin]]`.
+
+13. `scripts/bench-phase5.sh [seconds]` runs Galveston Bay on the packaged build (day, open bay, night lights, dusk,
+   chart view near and far) and copies screenshots to `docs/phase-5/`. Coast args: `-SailingWorld=1`
+   (`-SailingDate=YYYY-MM-DD`), `-SailingChart=<m per px>`, `-SailingPlotFix`, `-SailingNoGps`, `-SailingLightsOn`,
+   `-SailingNoMoon`. Rebake the coast with `Tools/coast/fetch_galveston.sh` then
+   `Tools/venv/bin/python Tools/coast/build_galveston.py`, then `scripts/test.sh SailingSim.Coast`.
+
+14. `scripts/traffic.sh [index]` builds SailingPhysics standalone and runs the Navigation Rules scenarios (each with
+   and without the rules) and an AI race in seconds; `98` runs 16 races, `99` one race with its signals. Tune traffic
+   here, then `scripts/test.sh SailingSim.Traffic` and `SailingSim.Race`. `scripts/bench-phase6.sh [seconds]` runs the
+   traffic and race views on the packaged build (`docs/phase-6/`). Args: `-SailingTraffic=0|1|2`,
+   `-SailingRace=<seconds to the start>`, `-SailingTrafficNear` (ships start close by).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -55,16 +71,35 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   lightning) live in SailingPhysics; `ASailingGameMode` owns them and the clock (= the boat's physics time).
   `AWaterSurface` renders the waves and fills the cat's-paw and wake maps; `ASailingEnvironment` does sun, clouds,
   haze, rain and lightning; `USailingSynthWave` synthesizes all sound.
+- The fleet: `FBoatConfig::Make(EBoatType)` in `Source/SailingPhysics/Private/Fleet.cpp` builds each boat (hulls,
+  foils, sails, engines, crew) and `FleetReferencePolar` holds its reference polar with per-point tolerance. The J/22
+  is `FBoatConfig`'s default constructor and must keep passing `SailingSim.Physics.PolarGate` unchanged. Calibrate a boat
+  with `scripts/polar.sh --boat <name>`; knobs are the residuary table, wetted-area coefficient, windage, sail aspect
+  ratios and foil sizes, each justified in a comment. The pawn builds visuals from the config (`RebuildBoatVisuals`).
 - The lake: `FLakeTerrain` (height grid, tree canopy, fetch) and `FShelterMap` live in SailingPhysics; `FLakeData`
   (`LakeData.h`) loads the bake and builds dock/bridge obstacles; `ALakeTerrainActor` streams chunks; drills are
   `FDrillRunner` (`Drills.h`), pure logic so tests can drive them. Map frame: +X north, +Y east, origin at Rush
   Creek Yacht Club (32.8233 N, 96.5000 W), Z = 0 at the 435.5 ft pool.
+- The coast: `FTideModel` (`Tides.h`, harmonic prediction with V from mean longitudes and nodal f/u; `TideExtremes`,
+  `CurrentEvents`) and `FLightCharacter` (`Lights.h`, S-57 LITCHR/SIGGRP/SIGPER to rhythm and label) live in
+  SailingPhysics. `FChartData`/`SailingChart` (`Chart.h`: the vector chart and Chart No. 1 symbology), `SailingNav`
+  (`Navigation.h`: bearings, `PlotFix`, DR, `FPlot`) and `ANavaidsActor` live in SailingSim. Heights on the coast are
+  meters above MLLW; the game mode moves the terrain actor by -tide and sets the physics level to match. Reference
+  times from CO-OPS are GMT. `ASailingEnvironment::SunPosition` takes the local clock hour (longitude, UTC offset and
+  equation of time make solar time).
+- Traffic: `Rules.h` (right of way, risk by CPA, signals), `Traffic.h` (`FTrafficSim`: AI helmsmen, power vessels,
+  collisions with who had to keep clear, routes and the ship channel path), `Race.h` (`FRaceRunner`: sequence, OCS,
+  rounding by swept angle, scoring, AI tactics), `RulesCoach.h` and `TrafficScenarios.h` live in SailingPhysics.
+  `ATrafficManager` spawns and steps it on the game clock; AI sailboats are `ASailboatPawn`s with `bTrafficBoat` (the
+  simulation borrows their `FBoatModel`); `APowerVesselActor` draws the rest with lights over their arcs. Roles in an
+  encounter are decided once and kept until past (`LastGiveWay`); don't let sailboats luff to avoid (they stall).
 - Bake gotchas: read the DEM's georeferencing from its GeoTIFF tags (the export widens the requested box); OSM
   shoreline cells get symmetric heights so the zero contour lands on the OSM line; `FParse::Value` stops at commas
   unless you pass `false`.
 - Gotchas found the hard way: wire vector parameters into Custom nodes via their RGBA output; runtime textures fed to
   a Color sampler must be sRGB (values gamma-encoded on the CPU); never call UpdateResource per frame; volumetric
-  cloud shadows on the sun cost 4+ ms on this Mac (left off); the gust front is easiest to see from a low camera.
+  cloud shadows on the sun cost 4+ ms on this Mac (left off); the clouds' shadow rays toward a sun near the horizon
+  cost a third of the frame at night, so `r.VolumetricCloud.Shadow.ViewRaySampleMaxCount` drops with sun elevation; the gust front is easiest to see from a low camera.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
 - Avoid identifiers that collide with Unreal macros in physics code (`PI`, `check`, `verify`).
