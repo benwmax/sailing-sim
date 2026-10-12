@@ -19,6 +19,7 @@
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Kismet/GameplayStatics.h"
 #include "ProceduralMeshComponent.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -57,7 +58,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowBoat, RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowWorld, RowBoat, RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -613,6 +614,12 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FWaveField* Waves = GameMode ? &GameMode->GetWaves() : nullptr;
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
+	if (GameMode)
+	{
+		// The tidal current where the boat is (it changes over minutes and kilometers, so once a frame is plenty).
+		const Vec3 O = Boat.OriginPosition();
+		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
+	}
 	const int32 Steps = Stepper.Advance(DeltaSeconds);
 	for (int32 I = 0; I < Steps; ++I)
 	{
@@ -1219,6 +1226,7 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	const USailingSettings* S = USailingSettings::Get();
 	auto OnOff = [](bool b) { return FString(b ? TEXT("On") : TEXT("Off")); };
 	TArray<TPair<FString, FString>> Rows;
+	Rows.Add({ TEXT("Sailing area (restarts)"), FString(ASailingGameMode::WorldDisplayName(S->World)) });
 	Rows.Add({ TEXT("Boat"), FString(BoatTypeName(EBoatType(FMath::Clamp(S->BoatType, 0, int32(EBoatType::Count) - 1)))) });
 	Rows.Add({ TEXT("Drill (Left/Right starts it)"), FString(DrillName(MenuDrill)) });
 	FString Launch = TEXT("Open water");
@@ -1255,6 +1263,12 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 	ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	switch (MenuIndex)
 	{
+	case RowWorld:
+		S->World = (S->World + 2 + Direction) % 2;
+		S->LaunchSpot = 0;
+		S->Save();
+		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
+		break;
 	case RowBoat:
 		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
 		SetBoat(S->BoatType);
@@ -1279,7 +1293,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		if (GameMode) GameMode->ApplyWeatherSettings();
 		break;
 	case RowHour:
-		S->StartHour = FMath::Clamp(S->StartHour + Direction, 6.f, 20.f);
+		S->StartHour = FMath::Fmod(S->StartHour + Direction + 24.f, 24.f); // round the clock: night sailing too
 		if (GameMode) GameMode->ApplyWeatherSettings();
 		break;
 	case RowSeed:

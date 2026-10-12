@@ -36,6 +36,20 @@ public:
 	const FLakeData& GetLake() const { return Lake; }
 	/** Where the boat is launched (from the settings' launch spot); false on open water. */
 	bool GetLaunchSpot(FLaunchSpot& Out) const;
+	/** The area's data files by setting: "RayHubbard" or "GalvestonBay". */
+	static const TCHAR* WorldFileName(int32 World);
+	static const TCHAR* WorldDisplayName(int32 World);
+
+	/** Real time (seconds since 1970 UTC): the chosen date and start time plus the time sailed. Tides run on it. */
+	double GetUnixTime() const { return StartUnix + (GetSimTime() - ClockBase); }
+	/** Day of the year (1-366) of the session's date, for the sun. */
+	int32 GetDayOfYear() const { return DayOfYear; }
+	/** Local clock hours (0-24) now, in the area's time zone. */
+	double GetLocalHour() const;
+	/** Water level above chart datum at the boat (m); 0 on the lake. */
+	double GetTideHeight() const { return TideHeight; }
+	/** Tidal current at a point (m/s, map frame). */
+	Sailing::Vec3 GetCurrentAt(double X, double Y) const { return Lake.IsTidal() ? Lake.Tides.CurrentAt(X, Y, GetUnixTime()) : Sailing::Vec3(); }
 
 	/** Physics time (s): the boat's clock, which the wind, waves and water material all use. */
 	double GetSimTime() const;
@@ -51,6 +65,13 @@ public:
 
 private:
 	void UpdateWeather(float DeltaSeconds);
+	void UpdateTide();
+	double StartUnix = 0.0;
+	double ClockBase = 0.0;
+	int32 DayOfYear = 285;
+	int32 UtcOffsetHours = -5;
+	double TideHeight = 0.0;
+	TWeakObjectPtr<AActor> TerrainActor;
 	void FinishBenchmark();
 
 	Sailing::FWeatherSystem Weather;

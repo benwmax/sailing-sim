@@ -272,6 +272,8 @@ def build_rain():
 def build_emissive():
     mat = new_material("M_Emissive")
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    # Navigation lights are drawn as instanced meshes (and the lightning bolt as a procedural mesh).
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
     color = vector(mat, "Color", (1, 1, 1, 1), -500, 0)
     intensity = scalar(mat, "Intensity", 1.0, -500, 150)
     m = node(mat, unreal.MaterialExpressionMultiply, -250, 50)

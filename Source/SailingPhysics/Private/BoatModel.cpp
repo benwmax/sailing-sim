@@ -325,6 +325,36 @@ namespace Sailing
 		return Cleats;
 	}
 
+	void FBoatModel::SetObstacles(const std::vector<FObstacleSegment>* InObstacles)
+	{
+		Obstacles = InObstacles;
+		ObstacleBuckets.clear();
+		ObstacleRows = ObstacleCols = 0;
+		if (!Obstacles || Obstacles->empty()) return;
+		double MinX = 1e30, MinY = 1e30, MaxX = -1e30, MaxY = -1e30;
+		for (const FObstacleSegment& S : *Obstacles)
+		{
+			MinX = std::min({ MinX, S.AX - S.Radius, S.BX - S.Radius }); MaxX = std::max({ MaxX, S.AX + S.Radius, S.BX + S.Radius });
+			MinY = std::min({ MinY, S.AY - S.Radius, S.BY - S.Radius }); MaxY = std::max({ MaxY, S.AY + S.Radius, S.BY + S.Radius });
+		}
+		const double Margin = 1.0; // hull points within contact distance (radius + 0.1 m) of a segment
+		ObstacleX0 = MinX - Margin;
+		ObstacleY0 = MinY - Margin;
+		ObstacleRows = int((MaxX - ObstacleX0 + Margin) / ObstacleCell) + 1;
+		ObstacleCols = int((MaxY - ObstacleY0 + Margin) / ObstacleCell) + 1;
+		ObstacleBuckets.assign(size_t(ObstacleRows) * ObstacleCols, {});
+		for (int I = 0; I < int(Obstacles->size()); ++I)
+		{
+			const FObstacleSegment& S = (*Obstacles)[I];
+			const double Pad = S.Radius + Margin;
+			const int R0 = int((std::min(S.AX, S.BX) - Pad - ObstacleX0) / ObstacleCell), R1 = int((std::max(S.AX, S.BX) + Pad - ObstacleX0) / ObstacleCell);
+			const int C0 = int((std::min(S.AY, S.BY) - Pad - ObstacleY0) / ObstacleCell), C1 = int((std::max(S.AY, S.BY) + Pad - ObstacleY0) / ObstacleCell);
+			for (int R = std::max(R0, 0); R <= std::min(R1, ObstacleRows - 1); ++R)
+				for (int C = std::max(C0, 0); C <= std::min(C1, ObstacleCols - 1); ++C)
+					ObstacleBuckets[size_t(R) * ObstacleCols + C].push_back(I);
+		}
+	}
+
 	void FBoatModel::Reset(double X, double Y, double Heading, double Speed)
 	{
 		const int Reef = State.Reef;
@@ -471,7 +501,7 @@ namespace Sailing
 			if (Vol < 1e-5) continue;
 			const double HullDepthHere = std::max(CanoeDepth * Hull.DepthScale - Hull.DepthOffset, 0.02);
 			const Vec3 HullPoint(Hull.WaterlineMidX, Hull.CenterY, -0.5 * HullDepthHere);
-			const Vec3 HullVel = Q.Unrotate(PointVelocityWorld(HullPoint));
+			const Vec3 HullVel = Q.Unrotate(PointVelocityThroughWater(HullPoint));
 			const double U = HullVel.X;
 			const double V = std::fabs(U);
 			const double Lwl = Hull.WaterlineLength();
@@ -522,13 +552,13 @@ namespace Sailing
 			for (double StationX : { 0.328 * Lwl, -0.328 * Lwl })
 			{
 				const Vec3 P(StationX, Hull.CenterY, -0.12);
-				const double VY = Q.Unrotate(PointVelocityWorld(P)).Y;
+				const double VY = Q.Unrotate(PointVelocityThroughWater(P)).Y;
 				AddBodyForce(Vec3(0.0, -0.5 * kWaterDensity * C.HullLateralCd * C.HullLateralArea * Share * VY * std::fabs(VY), 0.0), P);
 			}
 		}
 		{
 			// Munk moment: the canoe body wants to turn broadside to its motion (part of weather helm).
-			const Vec3 CGVelBody = Q.Unrotate(State.Velocity);
+			const Vec3 CGVelBody = Q.Unrotate(State.Velocity - WaterCurrent);
 			TorqueBody.Z += -C.MunkAddedMass * CGVelBody.X * CGVelBody.Y;
 			TorqueBody.Z += -C.YawDampingLinear * State.AngularVelocity.Z;
 			TorqueBody.X += -C.ExtraRollDamping * State.AngularVelocity.X;
@@ -550,7 +580,7 @@ namespace Sailing
 			State.EngineThrust[E] = MoveToward(State.EngineThrust[E], Target, Eng.MaxThrustN * Dt);
 			const double T = State.EngineThrust[E];
 			if (std::fabs(T) < 1e-3) continue;
-			const double U = Q.Unrotate(PointVelocityWorld(Eng.Position)).X;
+			const double U = Q.Unrotate(PointVelocityThroughWater(Eng.Position)).X;
 			const double Vp = Eng.PropSpeedKnots * kKnot;
 			// Astern the propeller works backward through its own wake: the thrust is gone by about half the pitch speed.
 			const double Eff = T > 0.0 ? std::max(0.0, 1.0 - (U / Vp) * std::fabs(U / Vp)) : std::max(0.0, 1.0 - (U < 0.0 ? (U / (0.5 * Vp)) * (U / (0.5 * Vp)) : 0.0));
@@ -602,7 +632,7 @@ namespace Sailing
 					const double Wet = Immersion(P);
 					if (Wet <= 0.0) continue;
 					const double Vent = 1.0 - F.VentDepth * SmoothStep(F.VentStartDeg * kDegToRad, F.VentEndDeg * kDegToRad, HeelAbs);
-					Vec3 Flow = -Q.Unrotate(PointVelocityWorld(P.Center));
+					Vec3 Flow = -Q.Unrotate(PointVelocityThroughWater(P.Center));
 					FFoilResult R;
 					if (!bRudder)
 					{
@@ -650,7 +680,7 @@ namespace Sailing
 				const double Depth = WaterAt(P) - P.Z;
 				if (Depth <= 0.0) continue;
 				const double Wet = Clamp(Depth / 0.3, 0.0, 1.0);
-				const Vec3 Vel = State.Velocity + OmegaWorld.Cross(P - CGWorld);
+				const Vec3 Vel = State.Velocity + OmegaWorld.Cross(P - CGWorld) - WaterCurrent;
 				// The sail beside this part of the mast acts as a large flat plate in the water.
 				const double PlateArea = (C.Main.TotalArea + (C.HasJib() ? C.Jib.TotalArea : 0.0)) / N;
 				// Quadratic drag, capped at what one step can take out of this point's motion: the masthead of a dinghy
@@ -692,18 +722,22 @@ namespace Sailing
 					// Soft lake mud: firm enough to stop the boat, with a lot of friction.
 					const double GX = (Terrain->HeightAt(P.X + 1.0, P.Y) - Terrain->HeightAt(P.X - 1.0, P.Y)) * 0.5;
 					const double GY = (Terrain->HeightAt(P.X, P.Y + 1.0) - Terrain->HeightAt(P.X, P.Y - 1.0)) * 0.5;
-					Contact(P, Vec3(-GX, -GY, 1.0).Normalized(), Ground - P.Z, 2.5e5 * ContactScale, 3.0e4 * ContactScale, 0.8);
+					// Penetration capped: a boat put down inside the bank is eased out, not fired out.
+					Contact(P, Vec3(-GX, -GY, 1.0).Normalized(), std::min(Ground - P.Z, 0.3), 2.5e5 * ContactScale, 3.0e4 * ContactScale, 0.8);
 					Telemetry.bAground = true;
 				}
 			}
 		}
-		if (Obstacles && !Obstacles->empty())
+		if (Obstacles && !Obstacles->empty() && ObstacleRows > 0)
 		{
 			for (const Vec3& HP : OutlinePoints)
 			{
 				const Vec3 P = Origin + Q.Rotate(HP);
-				for (const FObstacleSegment& S : *Obstacles)
+				const int BR = int(std::floor((P.X - ObstacleX0) / ObstacleCell)), BC = int(std::floor((P.Y - ObstacleY0) / ObstacleCell));
+				if (BR < 0 || BC < 0 || BR >= ObstacleRows || BC >= ObstacleCols) continue;
+				for (const int SegmentIndex : ObstacleBuckets[size_t(BR) * ObstacleCols + BC])
 				{
+					const FObstacleSegment& S = (*Obstacles)[SegmentIndex];
 					if (P.Z < S.Bottom || P.Z > S.Top) continue;
 					const double SX = S.BX - S.AX, SY = S.BY - S.AY;
 					const double Len2 = SX * SX + SY * SY;
@@ -794,7 +828,11 @@ namespace Sailing
 		T.Heading = Q.Heading();
 		T.Heel = Q.Heel();
 		T.Pitch = Q.Pitch();
-		T.Leeway = T.BoatSpeed > 0.2 ? WrapAngle(std::atan2(State.Velocity.Y, State.Velocity.X) - T.Heading) : 0.0;
+		// Leeway is measured through the water (what the keel feels); course over ground includes the current.
+		const Vec3 VelWater = State.Velocity - WaterCurrent;
+		T.SpeedThroughWater = Q.Unrotate(VelWater).X;
+		T.Leeway = VelWater.LengthXY() > 0.2 ? WrapAngle(std::atan2(VelWater.Y, VelWater.X) - T.Heading) : 0.0;
+		T.CourseOverGround = T.BoatSpeed > 0.05 ? std::atan2(State.Velocity.Y, State.Velocity.X) : T.Heading;
 		const Vec3 TrueWind = Wind.VelocityAt(Vec3(CGWorld.X, CGWorld.Y, 10.0), State.Time);
 		T.TrueWindSpeed = TrueWind.LengthXY();
 		const double WindFrom = std::atan2(-TrueWind.Y, -TrueWind.X);

@@ -27,3 +27,4 @@
 # Baked terrain data
 *.height filter=lfs diff=lfs merge=lfs -text
 *.trees filter=lfs diff=lfs merge=lfs -text
+*.current filter=lfs diff=lfs merge=lfs -text

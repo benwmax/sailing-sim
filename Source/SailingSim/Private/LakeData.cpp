@@ -32,8 +32,12 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		UE_LOG(LogSailing, Warning, TEXT("Lake %s: no metadata"), *Name);
 		return true;
 	}
+	FileName = Name;
 	LakeName = Root->GetStringField(TEXT("name"));
-	PoolFeet = Root->GetNumberField(TEXT("pool_ft_ngvd29"));
+	Root->TryGetNumberField(TEXT("pool_ft_ngvd29"), PoolFeet);
+	Root->TryGetNumberField(TEXT("mhw_m"), MeanHighWater);
+	Root->TryGetNumberField(TEXT("latitude"), Latitude);
+	Root->TryGetNumberField(TEXT("longitude"), Longitude);
 	LevelFeet = PoolFeet;
 	for (const auto& Field : Root->Values)
 	{
@@ -95,9 +99,10 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 			Buildings.Add({ B[0]->AsNumber(), B[1]->AsNumber(), B[2]->AsNumber(), B[3]->AsNumber(), B[4]->AsNumber(), B[5]->AsNumber(), B[6]->AsNumber() });
 		}
 	}
+	LoadCoast(*Root, Directory, Name);
 	BuildObstacles();
-	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d bridges, %d buildings, %d launch spots"), *LakeName,
-		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Bridges.Num(), Buildings.Num(), LaunchSpots.Num());
+	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d bridges, %d buildings, %d launch spots, %d navaids, %d tide stations"), *LakeName,
+		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Bridges.Num(), Buildings.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
 	return true;
 }
 
@@ -132,5 +137,144 @@ void FLakeData::BuildObstacles()
 			S.Top = Bridge.DeckHeight + 3.0;
 			Obstacles.push_back(S);
 		}
+	}
+}
+
+namespace
+{
+	// The bake writes S-57 attributes as charted: a number, a string, or a list of strings.
+	int32 JsonInt(const TSharedPtr<FJsonValue>& V)
+	{
+		if (!V.IsValid() || V->IsNull()) return 0;
+		if (V->Type == EJson::Number) return int32(V->AsNumber());
+		if (V->Type == EJson::String) return FCString::Atoi(*V->AsString());
+		if (V->Type == EJson::Array && V->AsArray().Num() > 0) return JsonInt(V->AsArray()[0]);
+		return 0;
+	}
+
+	TArray<int32> JsonInts(const TSharedPtr<FJsonValue>& V)
+	{
+		TArray<int32> Out;
+		if (!V.IsValid() || V->IsNull()) return Out;
+		if (V->Type == EJson::Array)
+		{
+			for (const TSharedPtr<FJsonValue>& E : V->AsArray())
+			{
+				// A colour list may arrive as "3" or "3,4".
+				TArray<FString> Parts;
+				(E->Type == EJson::String ? E->AsString() : FString::FromInt(int32(E->AsNumber()))).ParseIntoArray(Parts, TEXT(","));
+				for (const FString& P : Parts) Out.Add(FCString::Atoi(*P));
+			}
+		}
+		else
+		{
+			Out.Add(JsonInt(V));
+		}
+		return Out;
+	}
+
+	Sailing::FTideStation ReadStation(const FJsonObject& O)
+	{
+		Sailing::FTideStation S;
+		S.Name = TCHAR_TO_UTF8(*O.GetStringField(TEXT("name")));
+		S.X = O.GetNumberField(TEXT("x"));
+		S.Y = O.GetNumberField(TEXT("y"));
+		S.Z0 = O.GetNumberField(TEXT("z0"));
+		double Flood = 0.0;
+		if (O.TryGetNumberField(TEXT("flood_deg"), Flood)) S.FloodDirRad = FMath::DegreesToRadians(Flood);
+		for (const TSharedPtr<FJsonValue>& C : O.GetArrayField(TEXT("constituents")))
+		{
+			const TArray<TSharedPtr<FJsonValue>>& A = C->AsArray();
+			S.Constituents.push_back({ TCHAR_TO_UTF8(*A[0]->AsString()), A[1]->AsNumber(), A[2]->AsNumber() });
+		}
+		return S;
+	}
+}
+
+FLinearColor FNavaid::DisplayColour() const
+{
+	const int32 C = Colours.Num() > 0 ? Colours[0] : (CatLam == 1 ? 4 : (CatLam == 2 ? 3 : 6));
+	switch (C)
+	{
+	case 1: return FLinearColor(0.9f, 0.9f, 0.88f);
+	case 2: return FLinearColor(0.03f, 0.03f, 0.03f);
+	case 3: return FLinearColor(0.75f, 0.06f, 0.05f);
+	case 4: return FLinearColor(0.04f, 0.45f, 0.12f);
+	case 6: return FLinearColor(0.95f, 0.75f, 0.05f);
+	case 11: return FLinearColor(0.95f, 0.45f, 0.05f);
+	default: return FLinearColor(0.6f, 0.6f, 0.6f);
+	}
+}
+
+void FLakeData::LoadCoast(const FJsonObject& Root, const FString& Directory, const FString& Name)
+{
+	const TSharedPtr<FJsonObject>* Variation = nullptr;
+	if (Root.TryGetObjectField(TEXT("variation"), Variation) && Variation && Variation->IsValid())
+	{
+		(*Variation)->TryGetNumberField(TEXT("deg_east"), VariationDeg);
+	}
+	const TArray<TSharedPtr<FJsonValue>>* Array = nullptr;
+	if (Root.TryGetArrayField(TEXT("navaids"), Array))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *Array)
+		{
+			const TSharedPtr<FJsonObject> O = V->AsObject();
+			FNavaid N;
+			N.X = O->GetNumberField(TEXT("x"));
+			N.Y = O->GetNumberField(TEXT("y"));
+			N.Kind = O->GetStringField(TEXT("kind"));
+			N.Layer = O->GetStringField(TEXT("layer"));
+			O->TryGetStringField(TEXT("name"), N.Name);
+			N.Shape = JsonInt(O->TryGetField(TEXT("shape")));
+			N.Colours = JsonInts(O->TryGetField(TEXT("colour")));
+			N.CatLam = JsonInt(O->TryGetField(TEXT("catlam")));
+			const TSharedPtr<FJsonObject>* Light = nullptr;
+			if (O->TryGetObjectField(TEXT("light"), Light) && Light && Light->IsValid())
+			{
+				const FJsonObject& L = **Light;
+				N.bLit = true;
+				N.Light.Litchr = FMath::Max(1, JsonInt(L.TryGetField(TEXT("litchr"))));
+				FString Group;
+				L.TryGetStringField(TEXT("siggrp"), Group);
+				N.Light.SetGroup(TCHAR_TO_UTF8(*Group));
+				double Value = 0.0;
+				if (L.TryGetNumberField(TEXT("sigper"), Value)) N.Light.Period = Value;
+				if (L.TryGetNumberField(TEXT("range"), Value)) N.Light.RangeNm = Value;
+				if (L.TryGetNumberField(TEXT("height"), Value)) N.Light.HeightM = Value;
+				for (int32 C : JsonInts(L.TryGetField(TEXT("colour")))) N.Light.Colours.push_back(C);
+			}
+			const TSharedPtr<FJsonObject>* Daymark = nullptr;
+			if (O->TryGetObjectField(TEXT("daymark"), Daymark) && Daymark && Daymark->IsValid())
+			{
+				N.DaymarkShape = JsonInt((*Daymark)->TryGetField(TEXT("shape")));
+				N.DaymarkColours = JsonInts((*Daymark)->TryGetField(TEXT("colour")));
+			}
+			Navaids.Add(MoveTemp(N));
+		}
+	}
+	if (Root.TryGetArrayField(TEXT("landmarks"), Array))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *Array)
+		{
+			const TSharedPtr<FJsonObject> O = V->AsObject();
+			FLandmark L;
+			L.X = O->GetNumberField(TEXT("x"));
+			L.Y = O->GetNumberField(TEXT("y"));
+			O->TryGetStringField(TEXT("name"), L.Name);
+			O->TryGetBoolField(TEXT("conspicuous"), L.bConspicuous);
+			O->TryGetNumberField(TEXT("height"), L.Height);
+			Landmarks.Add(MoveTemp(L));
+		}
+	}
+	if (Root.TryGetArrayField(TEXT("tide_stations"), Array))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *Array) Tides.HeightStations.push_back(ReadStation(*V->AsObject()));
+	}
+	const TSharedPtr<FJsonObject>* Current = nullptr;
+	if (Root.TryGetObjectField(TEXT("current_station"), Current) && Current && Current->IsValid())
+	{
+		Tides.CurrentStation = ReadStation(**Current);
+		Tides.bHasCurrent = FFileHelper::LoadFileToArray(CurrentBytes, *(Directory / (Name + TEXT(".current"))))
+			&& Tides.LoadCurrentField(CurrentBytes.GetData(), CurrentBytes.Num());
 	}
 }

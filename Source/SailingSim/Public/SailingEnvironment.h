@@ -59,6 +59,8 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UProceduralMeshComponent> Bolt;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> BoltMaterial;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UDirectionalLightComponent> FlashLight;
+	/** Night: a dim, cool light from high in the sky (moonlight and the glow of the coast's towns). */
+	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UDirectionalLightComponent> MoonLight;
 
 	int32 NextStrike = 0;
 	float Flash = 0.f;

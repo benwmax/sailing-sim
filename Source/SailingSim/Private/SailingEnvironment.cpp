@@ -13,6 +13,8 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -21,8 +23,6 @@ using namespace Sailing;
 
 namespace
 {
-	constexpr double kLatitude = 32.82;  // Lake Ray Hubbard, Texas
-	constexpr double kDayOfYear = 284.0; // mid October
 	constexpr float kCloudBaseKm = 1.4f;
 }
 
@@ -57,12 +57,24 @@ ASailingEnvironment::ASailingEnvironment()
 	Bolt->SetCastShadow(false);
 	Bolt->SetMaterial(0, Emissive.Object);
 
+	MoonLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("MoonLight"));
+	MoonLight->SetupAttachment(RootComponent);
+	MoonLight->SetIntensity(0.f);
+	MoonLight->SetLightColor(FLinearColor(0.62f, 0.72f, 1.f));
+	MoonLight->SetCastShadows(false);
+	MoonLight->SetAtmosphereSunLight(true);
+	MoonLight->SetAtmosphereSunLightIndex(1); // the atmosphere's second light: a dim blue night sky
+	MoonLight->SetMobility(EComponentMobility::Movable);
+	MoonLight->SetRelativeRotation(FRotator(-38.f, 140.f, 0.f));
+	MoonLight->SetForwardShadingPriority(-1); // the sun stays the light for water, translucency and fog
+
 	FlashLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("LightningFlash"));
 	FlashLight->SetupAttachment(RootComponent);
 	FlashLight->SetIntensity(0.f);
 	FlashLight->SetLightColor(FLinearColor(0.8f, 0.85f, 1.f));
 	FlashLight->SetCastShadows(false);
 	FlashLight->SetAtmosphereSunLight(false);
+	FlashLight->SetForwardShadingPriority(-2);
 	FlashLight->SetMobility(EComponentMobility::Movable);
 }
 
@@ -94,6 +106,7 @@ void ASailingEnvironment::FindSceneActors()
 	if (TActorIterator<APostProcessVolume> It(GetWorld()); It) PostProcess = *It;
 
 	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;
+	if (Sun) if (UDirectionalLightComponent* SunDir = Cast<UDirectionalLightComponent>(Sun->GetLightComponent())) SunDir->SetForwardShadingPriority(1);
 	if (SkyLightActor) SkyIntensity = SkyLightActor->GetLightComponent()->Intensity;
 	if (Clouds)
 	{
@@ -150,12 +163,29 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 void ASailingEnvironment::UpdateSun(double Hour)
 {
 	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	double Elevation, Azimuth;
-	SunPosition(FMath::Clamp(Hour, 5.5, 20.5), kDayOfYear, kLatitude, Elevation, Azimuth);
+	// The sailing area's latitude and the session's date; through the whole day and night.
+	SunPosition(Hour, GM->GetDayOfYear(), GM->GetLake().Latitude, Elevation, Azimuth);
+	// Night: below civil twilight the scene is lit by a dim, bluish sky (moonlight and town glow) and the eye does not
+	// adapt all the way to darkness, so the water stays dark and the navigation lights stand out.
+	const float Night = 1.f - FMath::SmoothStep(-12.f, -2.f, float(Elevation));
+	if (PostProcess && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
+	{
+		PostProcess->Settings.bOverride_AutoExposureMinBrightness = true;
+		PostProcess->Settings.AutoExposureMinBrightness = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
+	}
+	if (MoonLight)
+	{
+		// Moonlight is about a thousandth of the sun here (not the real four hundred thousandth: the eye adapts and the
+		// exposure floor keeps the night dark); it lights the atmosphere as its second sun, a deep blue sky.
+		MoonLight->SetIntensity(SunIntensity * 0.0015f * Night);
+	}
 	if (Sun)
 	{
 		// The light travels from the sun toward the ground.
-		Sun->SetActorRotation(FRotator(-Elevation, Azimuth + 180.0, 0.0));
+		// Below the horizon the light stays just under it (the sky keeps its twilight glow) and fades out with the night.
+		Sun->SetActorRotation(FRotator(-FMath::Max(Elevation, -4.0), Azimuth + 180.0, 0.0));
 		// Cloud shadows already dim the sun where clouds pass; a solid overcast or storm deck also scatters it away.
 		// How much direct sun reaches the water and boat through the clouds.
 		const float CloudShade = (1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness)))
@@ -164,7 +194,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		// direct light off the scene with the diffuse and specular scales instead (no glitter, no hard shadows).
 		const float Intensity = FMath::Max(CloudShade, 0.35f);
 		ULightComponent* SunComp = Sun->GetLightComponent();
-		SunComp->SetIntensity(SunIntensity * Intensity);
+		SunComp->SetIntensity(SunIntensity * Intensity * FMath::Lerp(1.f, 0.002f, Night));
 		SunComp->SetDiffuseScale(CloudShade / Intensity);
 		SunComp->SetSpecularScale(FMath::Square(CloudShade / Intensity));
 		if (UDirectionalLightComponent* Dir = Cast<UDirectionalLightComponent>(SunComp))
@@ -175,7 +205,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	}
 	if (SkyLightActor)
 	{
-		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f + 0.8f * float(W.CloudDarkness)));
+		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f + 0.8f * float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.08f, Night));
+		SkyLightActor->GetLightComponent()->SetLightColor(FMath::Lerp(FLinearColor::White, FLinearColor(0.55f, 0.65f, 1.f), Night));
 	}
 }
 
