@@ -17,3 +17,5 @@ Plugins/*/Intermediate/
 .DS_Store
 # Local build/test output from scripts/
 Artifacts/
+Tools/venv/
+Data/*/raw/

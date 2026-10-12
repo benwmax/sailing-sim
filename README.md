@@ -86,3 +86,22 @@ speed of sound, then it clears to a light northwesterly.
 | Tack time | 7.5 s at 6 kn, 5.7 s at 10 kn, 5.5 s at 15 kn, keeping 55-75% of speed |
 | In irons | Stopped head to wind: drifts back about 0.4 kn and stays in the no-go zone for 8+ s before paying off |
 | Frame rate, packaged | 118.7 fps reaching, 114.8 fps while tacking (120 Hz display cap) |
+
+## Phase 2 gate results (Oct 11, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 18 of 18 pass, including fetch-limited chop, boat in waves, thunderstorm sequence, gusts visible before they arrive |
+| Polar in moderate lake chop | All 30 points within 10% (worst 8.3%); the Phase 1 chop stand-in is replaced by added resistance from the real waves |
+| Frame rate, default (Medium) tier | 94 fps beam reach, 78 fps beating in 15 kn, 119 fps thunderstorm (see `docs/phase-2/frame-budget.csv`) |
+| Frame rate, Low / High | Low 119 everywhere (display cap); High 56 to 75 (dips under 60 in clear breezy weather) |
+| Screenshots | `docs/phase-2/beam8.png`, `beat15.png`, `storm.png`, `compare-phase1-phase2.png`, `thunderstorm-sequence.png`, `thunderstorm.gif` |
+
+## Known gaps
+
+- Storm sky reads light grey rather than menacing; no towering cell is visible on the horizon before the front.
+- Gust front and cat's paws are visible but subtle from a low camera; learning mode tips point them out.
+- Without a spinnaker the J/22 can surf to about 14 kn in 30 kn gusts, which is optimistic; resistance past Fn 0.8 is flat.
+- High quality tier dips just under 60 fps in clear breezy afternoons on the M5 Pro.
+- Sound is synthesized and not yet tuned by ear; it has not been checked on headphones.
+- The downwind polar reference is an approximation (no spinnaker yet); boat art is still boxes.
