@@ -1,0 +1,4526 @@
+<title>Phase 8 Reference Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: chart-table sheet. Narrow reading column, sticky tab rail, tables scroll in place. Palette borrows NOAA chart ink: navy, chart magenta, shoal buff. */
+:root{
+  --bg:#f5f6f3; --sheet:#ffffff; --ink:#15233a; --muted:#56627a; --rule:#d5dae2;
+  --accent:#a3186b; --shoal:#efe6cf; --link:#1b4f9c;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Source Serif 4",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1420; --sheet:#121b2a; --ink:#e3e8f0; --muted:#9aa6ba; --rule:#2a3750;
+  --accent:#e66aae; --shoal:#2a2618; --link:#8cb4ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1420; --sheet:#121b2a; --ink:#e3e8f0; --muted:#9aa6ba; --rule:#2a3750;
+  --accent:#e66aae; --shoal:#2a2618; --link:#8cb4ff; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--body);padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:860px;margin:0 auto}
+header{padding-block:32px 16px;border-bottom:2px solid var(--ink)}
+.eyebrow{font:600 13px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font:700 clamp(36px,7vw,56px)/1 var(--display);margin:.25em 0 .2em;text-wrap:balance;letter-spacing:.01em}
+.lede{max-width:65ch;color:var(--muted);margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:16px;font:500 13px/1.4 var(--mono);color:var(--muted)}
+.facts b{color:var(--ink);font-weight:500}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);display:flex;gap:4px;flex-wrap:wrap;padding-block:10px;border-bottom:1px solid var(--rule)}
+nav button{font:600 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid transparent;color:var(--muted);padding:8px 12px;border-radius:3px;cursor:pointer}
+nav button[aria-selected="true"]{color:var(--ink);border-color:var(--ink);background:var(--sheet)}
+nav button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section.panel{background:var(--sheet);border:1px solid var(--rule);margin-top:20px;padding:8px 24px 24px;min-width:0}
+@media (max-width:520px){section.panel{padding:4px 14px 16px}}
+.panel h1{font:700 32px/1.1 var(--display);margin:20px 0 8px}
+.panel h2{font:700 26px/1.15 var(--display);margin:32px 0 8px;padding-top:8px;border-top:1px solid var(--rule);text-wrap:balance}
+.panel h3{font:600 20px/1.2 var(--display);margin:24px 0 6px;color:var(--accent);letter-spacing:.02em}
+.panel p,.panel li{max-width:72ch}
+.panel li{margin-block:3px}
+.panel ul ul{margin-block:2px}
+a{color:var(--link);overflow-wrap:anywhere}
+code{font:13px var(--mono);background:var(--shoal);padding:1px 4px;border-radius:2px}
+table{display:block;overflow-x:auto;border-collapse:collapse;font-size:14px;line-height:1.45;margin-block:12px;max-width:100%}
+th,td{border:1px solid var(--rule);padding:6px 8px;vertical-align:top;text-align:left;min-width:90px}
+th{background:var(--shoal);font:600 14px/1.3 var(--display);letter-spacing:.04em;text-transform:uppercase}
+td{font-variant-numeric:tabular-nums}
+hr{border:0;border-top:1px solid var(--rule)}
+.note{background:var(--shoal);padding:12px 16px;border-left:3px solid var(--accent);margin-top:20px;font-size:15px}
+footer{margin-top:24px;color:var(--muted);font:13px/1.5 var(--mono)}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Sailing sim · Phase 8 pre-work · Oct 12 2026</div>
+  <h1>Phase 8 Reference Kit</h1>
+  <p class="lede">How to compare the game against real sailing, and the library of real footage, data and tools to compare it with. J/22 on Lake Ray Hubbard comes first; the other seven boats get a lighter pass.</p>
+  <div class="facts"><span><b>370</b> links</span><span><b>8</b> boats</span><span><b>3</b> venues</span><span>Wind bands <b>L 0–7 · M 8–15 · H 16–25 · S 25+ kn</b></span></div>
+  <div class="note">Nobody has watched the clips yet: YouTube blocked playback during research. <b>[V]</b> means the title and channel were confirmed, <b>[S]</b> means the link came from search results only. Grading each clip is step 1 of the method.</div>
+</header>
+<nav role="tablist" aria-label="Sections">
+  <button role="tab" id="t-method" data-p="method" aria-selected="true">Method</button>
+  <button role="tab" id="t-boats" data-p="boats" aria-selected="false">Monohulls</button>
+  <button role="tab" id="t-env" data-p="env" aria-selected="false">Multihulls &amp; water/sky</button>
+  <button role="tab" id="t-cal" data-p="cal" aria-selected="false">Calibration data</button>
+</nav>
+<section class="panel" id="p-method" role="tabpanel">
+<h1 id="method-phase-8-method-reference-realism-pass">Phase 8 method:
+reference realism pass</h1>
+<p>Written Oct 12 2026 as pre-work for the sailing-sim thread. Companion
+files in this folder: <code>references-boats.md</code> (J/22, Sunfish,
+ILCA 7, Catalina 22, Catalina 30),
+<code>references-multihulls-environment.md</code> (Hobie 16, Corsair
+880, Lagoon 42, Texas lake and Gulf water, sky, storms, webcams),
+<code>calibration-sources.md</code> (weather stations, polars, ratings,
+wave and wake physics, tools), <code>reference-links.csv</code> (every
+URL in one list).</p>
+<p><strong>Status of the links.</strong> Nobody has watched the videos
+yet. YouTube blocked playback from the research environment, so each
+"shows" note is inferred from the title, channel and event reports.
+Entries marked [V] had their title and channel confirmed; [S] came from
+search results only. The first job in Phase 8 is to scrub each clip and
+grade it (step 1).</p>
+<h2 id="method-principles">Principles</h2>
+<ol type="1">
+<li><strong>Physics truth and look truth are different jobs.</strong>
+Physics gets measured against numbers with a tolerance. Looks get judged
+side by side and then blind. Don't let a pretty frame hide a wrong
+number, or a right number excuse an ugly frame.</li>
+<li><strong>Every reference carries its conditions.</strong> Wind speed
+and direction, sun position, sea state, camera and lens. A clip without
+known wind is mood reference only.</li>
+<li><strong>Reproduce, then compare.</strong> A game shot is only
+compared with a real shot taken under the same conditions and
+camera.</li>
+<li><strong>J/22 on Lake Ray Hubbard is the anchor.</strong> It is the
+boat and lake Bean actually sails, and Bean confirmed going deep on it
+first. The other seven boats get a lighter pass, focused on the known
+gaps.</li>
+<li><strong>Wrong habits outrank wrong pixels.</strong> A gap that would
+teach Bean something false on the water (helm feel, heel, when to reef)
+ranks above a cosmetic one.</li>
+</ol>
+<h2 id="method-step-1-grade-the-reference-library">Step 1: Grade the
+reference library</h2>
+<p>For each clip, scrub it and fill in a row in
+<code>reference-log.csv</code> (to create in Phase 8):</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>id</td>
+<td>J22-H-019 (boat, wind band, entry number)</td>
+</tr>
+<tr class="even">
+<td>url and useful time ranges</td>
+<td>02:10-02:45 upwind chase-boat shot</td>
+</tr>
+<tr class="odd">
+<td>venue type</td>
+<td>TX reservoir, shallow bay, open Gulf, other</td>
+</tr>
+<tr class="even">
+<td>wind</td>
+<td>stated or from a regatta report or station data; else inferred from
+Beaufort cues</td>
+</tr>
+<tr class="odd">
+<td>sea state</td>
+<td>flat, chop with height estimate, swell</td>
+</tr>
+<tr class="even">
+<td>sun</td>
+<td>date, local time, rough elevation from shadows</td>
+</tr>
+<tr class="odd">
+<td>camera</td>
+<td>onboard helm, onboard bow, chase boat, shore, drone; lens (action
+cam wide, normal, tele)</td>
+</tr>
+<tr class="even">
+<td>measurable</td>
+<td>heel, speed, tack angle, wake angle, roll period, sail shape</td>
+</tr>
+<tr class="odd">
+<td>grade</td>
+<td>A: wind known, steady camera, boat clearly visible. B: one of those
+missing. C: mood only</td>
+</tr>
+</tbody>
+</table>
+<p>Selection rules:</p>
+<ul>
+<li>Prefer clips with stated wind, or races where a day report gives the
+wind (the 2024 J/22 Worlds days are ideal).</li>
+<li>For motion measurement, avoid gimbal-stabilised or warped (fisheye,
+horizon-leveled) footage. An unstabilised action cam on a rigid mount is
+best.</li>
+<li>For colour, avoid graded, slow-motion or sunset-filtered footage.
+Use webcams and Bean's own phone photos.</li>
+<li>When wind is not stated, estimate it from the water using the NOAA
+Beaufort descriptions: scattered whitecaps start at Force 3 (7-10 kn),
+many whitecaps at Force 4 (11-16 kn). Mark it as estimated.</li>
+<li>Pair Bean's own photos and clips with station wind at the same
+minute: Mesquite (KHQZ, 5.6 mi from the club) and Rockwall (F46, 8.2 mi)
+through the Iowa Environmental Mesonet ASOS download.</li>
+</ul>
+<h2 id="method-step-2-build-a-reference-capture-mode-in-the-game">Step
+2: Build a "reference capture" mode in the game</h2>
+<p>A debug panel or console command that sets everything needed to
+reproduce a real shot:</p>
+<ul>
+<li>date, time, latitude and longitude (sun and moon position)</li>
+<li>true wind speed, direction, gust factor; sea-state seed</li>
+<li>boat, sail plan (reef, spinnaker), crew weight and position</li>
+<li>camera preset, with exposure locked (fixed EV100), motion blur and
+depth of field off for stills</li>
+</ul>
+<p>Camera presets to match common reference cameras:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Preset</th>
+<th>Placement</th>
+<th>Lens</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Helm eye</td>
+<td>1.0 m above cockpit sole at the tiller, looking forward</td>
+<td>70° horizontal FOV (phone main camera)</td>
+</tr>
+<tr class="even">
+<td>Action cam stern</td>
+<td>stern pulpit or transom mount, looking forward</td>
+<td>about 118° horizontal (GoPro wide), with lens distortion on</td>
+</tr>
+<tr class="odd">
+<td>Chase boat</td>
+<td>15 m abeam, 2 m above water</td>
+<td>50°</td>
+</tr>
+<tr class="even">
+<td>Drone</td>
+<td>30 m up, 45° down, 40 m off</td>
+<td>80°</td>
+</tr>
+<tr class="odd">
+<td>Shore tele</td>
+<td>200 m off, 3 m above water</td>
+<td>15°</td>
+</tr>
+</tbody>
+</table>
+<p>Each capture saves a PNG still (plus EXR if cheap), the camera
+settings, and a telemetry CSV at frame rate: time, speed through water,
+speed over ground, heel, pitch, roll rate, rudder angle, sheet
+positions, true and apparent wind, wave height under the boat. Clips go
+through the Movie Render Queue at the source clip's frame rate.</p>
+<h2 id="method-step-3-compare">Step 3: Compare</h2>
+<h3 id="method-physics-measured-against-numbers">Physics, measured
+against numbers</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Reference</th>
+<th>Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>J/22 speed vs wind and angle</td>
+<td>ORC one-design certificate (calibration-sources §3.2) and keelindex
+polar</td>
+<td>5%</td>
+</tr>
+<tr class="even">
+<td>Catalina 30 speed</td>
+<td>keelindex/ORC table</td>
+<td>5%</td>
+</tr>
+<tr class="odd">
+<td>Other six boats</td>
+<td>US Sailing Portsmouth numbers by wind band, as lap-time ratios on
+the same course</td>
+<td>8% on ratio</td>
+</tr>
+<tr class="even">
+<td>J/22 heel</td>
+<td>North Sails: 3-4° in 6-8 kn; crew hiking, flat upwind to about 14
+kn</td>
+<td>3°</td>
+</tr>
+<tr class="odd">
+<td>Catalina 30 heel</td>
+<td>owner table: 4° at 6 kn, 15° at 10, 17° at 12, 21° at 16, 22° at 20
+with one reef</td>
+<td>3°</td>
+</tr>
+<tr class="even">
+<td>Tacking angle</td>
+<td>J/22 about 75-90° between tacks; Hobie 16 about 90-100°; ILCA best
+TWA 40-46°</td>
+<td>3°</td>
+</tr>
+<tr class="odd">
+<td>Roll period</td>
+<td>J/22 about 2 s estimated from ORC righting moment; check with Bean's
+phone roll-decay test</td>
+<td>15%</td>
+</tr>
+<tr class="even">
+<td>Wave height and period, Ray Hubbard</td>
+<td>fetch-limited tables in calibration-sources §4.1; 15 kn over 8 mi
+gives about 0.45 m at 2.2-2.6 s</td>
+<td>20%</td>
+</tr>
+<tr class="odd">
+<td>Whitecaps</td>
+<td>none below about 7 kn, scattered 7-10, numerous 11-16, everywhere
+22+</td>
+<td>by eye</td>
+</tr>
+<tr class="even">
+<td>Wake</td>
+<td>Kelvin half-angle 19.5° for displacement boats; narrower for planing
+dinghies and cats</td>
+<td>2°</td>
+</tr>
+<tr class="odd">
+<td>Capsize</td>
+<td>Sunfish, ILCA, Hobie 16 stay down (and can turtle) until righted;
+keelboats self-right; Corsair and Lagoon can't be righted by crew</td>
+<td>behaviour</td>
+</tr>
+<tr class="even">
+<td>Top speeds</td>
+<td>J/22 about 9 kn on a 20 kn spinnaker reach, record anecdote 16 kn;
+ILCA about 15 kn GPS in a big gust</td>
+<td>ceiling</td>
+</tr>
+</tbody>
+</table>
+<p>Measure heel and angles from video with Tracker (free video
+analysis), using the horizon and the mast as lines. Frame-step with
+ffmpeg.</p>
+<h3 id="method-looks-judged-side-by-side">Looks, judged side by
+side</h3>
+<p>Put each matched pair in one image (real left, game right) and score
+these from 1 (same) to 5 (obviously wrong):</p>
+<ul>
+<li><strong>Water:</strong> colour for the venue (Ray Hubbard and
+Galveston Bay are turbid olive-green to tan; Gulf offshore bluer), chop
+scale and steepness, foam and whitecap coverage, sun glint, cat's paws,
+reflections.</li>
+<li><strong>Sky:</strong> haze near the horizon, cloud types, storm
+darkness (shelf cloud and rain curtain), sun disc and glare, night sky
+and moon.</li>
+<li><strong>Sails:</strong> depth, twist, telltales, luffing, wrinkles,
+leech flutter, translucency against the sun.</li>
+<li><strong>Boat:</strong> heel posture, crew position, waterline, bow
+wave, spray, wake.</li>
+<li><strong>Motion:</strong> camera shake and horizon roll for onboard
+views; pitching in chop.</li>
+<li><strong>Sound</strong> (from Bean's recordings): luff flutter, water
+along the hull, wind noise against speed, winches, halyard slap at the
+dock.</li>
+</ul>
+<p>Also run NVIDIA FLIP on matched stills as a rough difference number.
+It is only a trend signal, because real and game frames will never align
+pixel for pixel.</p>
+<h2 id="method-step-4-turn-differences-into-a-ranked-fix-list">Step 4:
+Turn differences into a ranked fix list</h2>
+<p>Score every gap:</p>
+<p><strong>Priority = Severity (1-5) × Visibility (1-5) × Teaching
+impact (1-3) ÷ Cost (1-5)</strong></p>
+<ul>
+<li>Severity: how far off it is (5 = clearly wrong to a sailor).</li>
+<li>Visibility: how often it shows up in a normal session on the home
+lake.</li>
+<li>Teaching impact: 3 if it would teach a wrong habit or wrong
+expectation, 1 if purely cosmetic.</li>
+<li>Cost: rough effort to fix.</li>
+</ul>
+<p>Work the list top down. After each fix, recapture the same reference
+scenes, rescore, and save the new frame as a "golden" screenshot so
+later changes can't quietly undo it.</p>
+<h2 id="method-step-5-blind-test">Step 5: Blind test</h2>
+<p>Make 20 stills (10 real, 10 game, matched conditions), shuffled. Bean
+(and anyone else who sails) marks each real or game and write one line
+on why. Every "why" for a correctly spotted game frame becomes a
+fix-list item. Goal: game frames spotted under 70% of the time by the
+end of Phase 8. Repeat once after fixes.</p>
+<h2 id="method-step-6-beans-own-data-best-references">Step 6: Bean's own
+data (best references)</h2>
+<p>Bean has no lesson media yet, so these start from the next lesson.
+With the instructor's OK:</p>
+<ul>
+<li><strong>Phone logger.</strong> Mount the phone rigidly (cockpit
+bulkhead, not a pocket). Run Sensor Logger or phyphox at 10 Hz or more:
+GPS, accelerometer, gyroscope, orientation. Note crew, sail plan, start
+and stop times. This gives real heel, roll period, tacking angle and
+speed at known wind.</li>
+<li><strong>Roll-decay test</strong> at the dock: rock the boat sharply
+once, let it settle, log it. Gives the real roll period and
+damping.</li>
+<li><strong>Helm feel.</strong> Tape a phone to the tiller or film the
+tiller from above for a minute upwind in steady wind. Gives real
+weather-helm angle for the light weather helm gap.</li>
+<li><strong>Shot list:</strong> helm view upwind and downwind; boat from
+the dock at the slip; sky every hour; water close-up; the marina from
+the end of the dock; 30-second sound clips (luffing, sailing upwind, at
+the dock).</li>
+<li><strong>Scans.</strong> J/22 and Rush Creek docks, 150-250
+overlapping photos in rings at two heights, overcast light if possible.
+Process with Apple Object Capture on the Mac or RealityScan. Bean's
+iPhone is a Pro, so use a LiDAR scan app (for example Polycam or
+RealityScan's LiDAR mode) for the docks and the photo method for the
+hull.</li>
+<li><strong>Colour.</strong> One photo per session that includes
+something of known colour (white sail, a grey card if Bean has
+one).</li>
+</ul>
+<h2 id="method-step-7-sailor-review">Step 7: Sailor review</h2>
+<p>Bean's answers (Oct 12 2026): no lesson photos or video yet; will log
+GPS and heel on future lessons; instructor probably won't play the sim;
+go deep on J/22 first; iPhone is a Pro (LiDAR available).</p>
+<p>So the instructor review is optional. Instead:</p>
+<ul>
+<li><strong>Bean replays the same drill on the water and in the
+sim</strong> within a day or two: tacks, gybes, heave-to, docking at
+Rush Creek, using the same wind from station data. Bean notes what felt
+different (helm, heel, how fast the boat stops, how it turns), and each
+note becomes a fix-list item with Teaching impact 3.</li>
+<li><strong>Compare the phone logs</strong> from that lesson with the
+sim telemetry for the same drill: tack duration, speed lost, heel,
+turning rate.</li>
+<li>If the instructor is willing later, even a 2-minute look at
+side-by-side stills or the blind test is useful, without needing to
+play.</li>
+</ul>
+<h2 id="method-known-gaps-and-where-to-start">Known gaps and where to
+start</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Gap from Phases 2-7</th>
+<th>Reference to check against</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Light weather helm</td>
+<td>Quantum and North J/22 tuning guides; J/22 Worlds Thursday 16-18 kn
+onboard and chase; Bean's tiller video</td>
+<td>a few degrees of weather helm at 10-15 kn, rising with heel; rounds
+up if over-pressed</td>
+</tr>
+<tr class="even">
+<td>Storm sky too light</td>
+<td>DFW storm timelapse over a lake; North Texas shelf cloud and
+microburst; Commons shelf cloud category; NBC DFW Ray Hubbard storm,
+Sept 3 2023</td>
+<td>ground light falls sharply under a shelf cloud; rain curtain
+visible; chop builds within minutes</td>
+</tr>
+<tr class="odd">
+<td>Boat surfs too fast in 30 kn gusts</td>
+<td>J/22 polar (9.2 kn at 120° in 20 kn); Geronimo J/22 16 kn record;
+ILCA 15 kn GPS</td>
+<td>J/22 bursts of about 9-12 kn on waves, rare peaks near 16</td>
+</tr>
+<tr class="even">
+<td>Sunfish self-rights</td>
+<td>Sunfish capsize and righting clips (four), Sail Safer turtling
+clip</td>
+<td>lies at about 90°, can turtle; needs the sailor on the
+daggerboard</td>
+</tr>
+<tr class="odd">
+<td>Hobie 16 fast upwind</td>
+<td>Portsmouth numbers per wind band; onboard Midwinters 2024 clip</td>
+<td>tacks through about 90-100°; course time ratio vs ILCA per band</td>
+</tr>
+<tr class="even">
+<td>Sounds not tuned</td>
+<td>Bean's recordings; onboard night storm clip</td>
+<td>by ear, by Bean</td>
+</tr>
+<tr class="odd">
+<td>Simple docks, buildings, trees</td>
+<td>Bean's photos and scans of Rush Creek; drone footage of the
+lake</td>
+<td>silhouettes and materials match photos</td>
+</tr>
+<tr class="even">
+<td>No moon phases</td>
+<td>USNO API, SunCalc or Meeus</td>
+<td>phase and position correct for date and place</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section class="panel" id="p-boats" role="tabpanel" hidden>
+<h1
+id="boats-reference-footage-monohulls-j22-sunfish-ilcalaser-catalina-22-catalina-30">Reference
+Footage: Monohulls (J/22, Sunfish, ILCA/Laser, Catalina 22, Catalina
+30)</h1>
+<p>Researched 2026-10-12 for the sailing simulator realism pass.</p>
+<h2 id="boats-how-to-read-this-file">How to read this file</h2>
+<ul>
+<li>Every URL below came from a web search result. None was made
+up.</li>
+<li><strong>[V]</strong> means the title and channel were confirmed
+through the YouTube oEmbed proxy (noembed.com). Titles marked [V] are
+the live titles.</li>
+<li><strong>[S]</strong> means the URL comes from search results
+only.</li>
+<li><strong>I could not watch any of the videos.</strong> YouTube pages
+and descriptions blocked fetching from this environment. So "Shows" is
+inferred from the title, the channel and any linked event reports. Treat
+it as <em>expected</em> content and confirm it while scrubbing the
+clip.</li>
+<li>Wind figures come from the clip title or from regatta reports for
+the same day, and the source is cited each time. "Wind: not stated"
+means I found no figure.</li>
+<li>Buckets used: LIGHT 0-7 kn, MODERATE 8-15 kn, HEAVY 16-25 kn, STORM
+25+ kn (knockdown, capsize, broach).</li>
+</ul>
+<hr />
+<h2 id="boats-1-j22-highest-priority">1. J/22 (highest priority)</h2>
+<h3 id="boats-published-data-points-j22">Published data points
+(J/22)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Value</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>LWL / hull speed</td>
+<td>19.0 ft / 5.8 kn</td>
+<td>keelindex.com/boat/j-22/performance</td>
+</tr>
+<tr class="even">
+<td>Displacement</td>
+<td>1,790 lb; ballast/disp 39.1%; SA/D about 24.2</td>
+<td>keelindex; North Sails speed guide</td>
+</tr>
+<tr class="odd">
+<td>VPP polar (site says ORC VPP; I did not verify where it came
+from)</td>
+<td>TWS 6/10/14/20 kn. Best upwind VMG speed 2.8 / 3.9 / 4.3 / 4.3 kn.
+Beam reach (90°) 4.9 / 6.1 / 6.6 / 7.5 kn. At 120° TWA: 4.7 / 6.1 / 7.2
+/ <strong>9.2</strong> kn (planing/surfing at 20 kn). At 14 kn: best
+upwind TWA 37°, best downwind TWA 172°</td>
+<td><a
+href="https://keelindex.com/boat/j-22/performance">https://keelindex.com/boat/j-22/performance</a></td>
+</tr>
+<tr class="even">
+<td>Crew weight limit</td>
+<td>605 lb (3-4 people). "Flat is fast": hike hard upwind. Planes "near
+the top of the wind range"</td>
+<td><a
+href="https://northsails.com/sailing/en/resources/j-22-speed-guide">https://northsails.com/sailing/en/resources/j-22-speed-guide</a></td>
+</tr>
+<tr class="odd">
+<td>Rig tension by wind</td>
+<td>Bands of 0-4, 5-9, 10-13, 14-16, 17-18 and 18-25 kn, with Loos gauge
+numbers. Crew all on the rail at 10-15 kn. At 12+ kn about ½" backstay.
+Ease the jib 1-3" in puffs at 12-18 kn</td>
+<td><a
+href="https://www.quantumsails.com/en/sails/one-design/documents/j22/j22_tuningguide">https://www.quantumsails.com/en/sails/one-design/documents/j22/j22_tuningguide</a></td>
+</tr>
+<tr class="even">
+<td>Top speed anecdote</td>
+<td>The J22 <em>Geronimo</em> crew sailed in "30+ knots of breeze".
+Their earlier personal best was <strong>16 kn</strong> of boat speed.
+The article references a YouTube video but gives no URL</td>
+<td><a
+href="https://spinsheet.com/node/7283">https://spinsheet.com/node/7283</a></td>
+</tr>
+</tbody>
+</table>
+<p>Sim check: in 14-18 kn, upwind speed should top out at about 4.3 kn
+VMG (6.0-6.4 kn at 52-60° TWA). A 20 kn broad reach under spinnaker
+should reach about 8-9 kn in bursts. Heel upwind should stay low (crew
+hiking, traveler and backstay depower) instead of growing linearly with
+wind.</p>
+<h3 id="boats-j22-light-0-7-kn">J/22: LIGHT (0-7 kn)</h3>
+<ol type="1">
+<li><p><strong>2024 J/22 World Championship - Friday</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=evSED4AFYIU">https://www.youtube.com/watch?v=evSED4AFYIU</a></li>
+<li>Source: T2PTV: Sailing On Demand</li>
+<li>Wind/location/date: <strong>southerly 5-7 kn</strong>, Chesapeake
+Bay, Annapolis (Eastport YC), 25 Oct 2024. Yachtsandyachting Day 3
+report: <a
+href="https://yachtsandyachting.com/news/280858/2024-J-22-Worlds-at-Annapolis-Maryland-Day-3">https://yachtsandyachting.com/news/280858/2024-J-22-Worlds-at-Annapolis-Maryland-Day-3</a></li>
+<li>Shows (expected): professional chase-boat and on-water coverage of a
+48-boat fleet in light air, with a general recall and black-flag starts
+that day.</li>
+<li>Check: near-zero heel, crew weight to leeward or centered, fuller
+sails, eased backstay, slow tacks that hold speed, flat wake. Compare
+boat speed against the 6 kn polar (about 2.8 kn VMG upwind).</li>
+</ul></li>
+<li><p><strong>J/22 World Championship 2021, Corpus Christi YC, Texas
+(report and photos; no video found)</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.marinebusinessworld.com/news/239741/J-22-Worlds-at-Corpus-Christi-day-1">https://www.marinebusinessworld.com/news/239741/J-22-Worlds-at-Corpus-Christi-day-1</a></li>
+<li>Wind/location/date: <strong>6-8 kn</strong> on Day 1, "unsettled",
+only one race. Corpus Christi Bay, TX, 19-23 Jul 2021. A KIII-TV piece
+says winds built over the last two days: <a
+href="https://www.kiiitv.com/article/sports/j22-champion-leads-wire-to-wire-this-week-kiii-3sports/503-f8d264cd-a4ff-4048-86c7-e2ce287d0c47">https://www.kiiitv.com/article/sports/j22-champion-leads-wire-to-wire-this-week-kiii-3sports/503-f8d264cd-a4ff-4048-86c7-e2ce287d0c47</a>
+(local TV page; it may embed a news video, not confirmed).</li>
+<li>Check: Texas coastal light-to-moderate sea breeze and the photo look
+of J/22 fleets in Texas water and light.</li>
+</ul></li>
+<li><p><strong>Sailing a J22 in Newport Beach, CA (July 2022)</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=xnap2aMQTxo">https://www.youtube.com/watch?v=xnap2aMQTxo</a></li>
+<li>Source: keeldragger</li>
+<li>Wind: not stated. Newport Harbor in summer is typically light to
+moderate.</li>
+<li>Shows (expected): onboard daysail footage.</li>
+<li>Check: cockpit-level camera, how the sails look from the helm, and
+harbor chop.</li>
+</ul></li>
+<li><p><strong>J22 Sailing Lake Washington February</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=E1tYvoxQ4CA">https://www.youtube.com/watch?v=E1tYvoxQ4CA</a></li>
+<li>Source: danamite358</li>
+<li>Wind: not stated. Winter lake.</li>
+<li>Check: inland-lake water texture (short wind chop with no swell),
+which is relevant to Texas lakes.</li>
+</ul></li>
+</ol>
+<h3 id="boats-j22-moderate-8-15-kn">J/22: MODERATE (8-15 kn)</h3>
+<ol start="5" type="1">
+<li><p><strong>2024 J/22 World Championship - Wednesday</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=gg61tm1bwjI">https://www.youtube.com/watch?v=gg61tm1bwjI</a></li>
+<li>Source: T2PTV: Sailing On Demand</li>
+<li>Wind/location/date: Day 1 report says <strong>8-10 kn, light
+chop</strong>, blue skies, Annapolis, 23 Oct 2024 (<a
+href="https://yachtsandyachting.com/news/280794/2024-J-22-Worlds-at-Annapolis-Maryland-Day-1">https://yachtsandyachting.com/news/280794/2024-J-22-Worlds-at-Annapolis-Maryland-Day-1</a>).</li>
+<li>Check: the low end of the moderate band. Crew start to hike, heel is
+about 5-12° with the traveler working, and jibs trimmed tight. Fleet
+starts and mark roundings work as overall scene composition
+reference.</li>
+</ul></li>
+<li><p><strong>2024 J/22 World Championship - Saturday</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=BFntxjaYtDI">https://www.youtube.com/watch?v=BFntxjaYtDI</a></li>
+<li>Source: T2PTV</li>
+<li>Wind: not stated in reports. The final day; <em>Baby Doll</em>
+(Glenn Darden, a Fort Worth sailor) won two races. Annapolis, 26 Oct
+2024.</li>
+<li>Check: the closing races. Watch for a Texas team's boat
+handling.</li>
+</ul></li>
+<li><p><strong>2024 J/22 World Championship - Wrap Up</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=Z68kGceoCOs">https://www.youtube.com/watch?v=Z68kGceoCOs</a></li>
+<li>Source: T2PTV (by series naming)</li>
+<li>Shows: a highlight compilation that likely covers all conditions
+from 5-7 kn to 16-18 kn. It is a good single clip for A/B comparison
+against the sim.</li>
+</ul></li>
+<li><p><strong>J/22 Tacking</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=t2qLleZ0HAs">https://www.youtube.com/watch?v=t2qLleZ0HAs</a></li>
+<li>Source: Al Sargent</li>
+<li>Shows (expected): an instructional clip of a tack sequence, likely
+filmed onboard.</li>
+<li>Check: tack timing (helm to new close-hauled), jib cross and
+re-trim, crew cross, speed loss through the tack, and how far the boat
+turns (about 75-90° between close-hauled tacks on a J/22).</li>
+</ul></li>
+<li><p><strong>J/22 Spinnaker Sets</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=5T4qPmYgV-I">https://www.youtube.com/watch?v=5T4qPmYgV-I</a></li>
+<li>Source: Al Sargent</li>
+<li>Check: bear-away and hoist sequence, the pole going up, and when the
+chute fills relative to the turn.</li>
+</ul></li>
+<li><p><strong>J/22 Spinnaker Jibes</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=h42r8WXgxY4">https://www.youtube.com/watch?v=h42r8WXgxY4</a></li>
+<li>Source: Al Sargent</li>
+<li>Check: end-for-end pole gybe on a symmetric spinnaker, the timing of
+the boom crossing, and whether the chute stays full or collapses during
+the gybe.</li>
+</ul></li>
+<li><p><strong>J/22 Spinnaker Douses</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=2G3LSq2SFSc">https://www.youtube.com/watch?v=2G3LSq2SFSc</a></li>
+<li>Source: Al Sargent</li>
+<li>Check: the takedown sequence before a leeward mark, and how the sail
+collapses and is pulled in.</li>
+</ul></li>
+<li><p><strong>Sailing a J22 under a Bright Blue Spinnaker</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=nzMY-8iQ0c0">https://www.youtube.com/watch?v=nzMY-8iQ0c0</a></li>
+<li>Source: Clyde Outside</li>
+<li>Check: spinnaker shape and luff curl, the boat's attitude downwind,
+and the stern wake.</li>
+</ul></li>
+<li><p><strong>J22 Sailing Practice - Cleveland, Ohio</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=RBvnch38sP0">https://www.youtube.com/watch?v=RBvnch38sP0</a></li>
+<li>Source: Ryan Lashaway</li>
+<li>Shows: practice on Lake Erie. Likely an onboard camera.</li>
+<li>Check: freshwater lake chop and practice maneuvers.</li>
+</ul></li>
+<li><p><strong>Inside the Class: J/22</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=XlEAD1SVrSU">https://www.youtube.com/watch?v=XlEAD1SVrSU</a></li>
+<li>Source: Sailing World</li>
+<li>Shows: a class profile with on-water footage and interviews.</li>
+<li>Check: general proportions of the boat and rig, crew positions, and
+the cockpit layout for the onboard camera.</li>
+</ul></li>
+<li><p><strong>J/22 Singlehanded sailing</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=bppni8MVqs8">https://www.youtube.com/watch?v=bppni8MVqs8</a></li>
+<li>Source: ian hunter</li>
+<li>Check: a single-crew helm view, which is useful if the sim allows
+solo play. Expect more heel because there is no crew weight on the
+rail.</li>
+</ul></li>
+<li><p><strong>Sailboat Racing, Sailing Crashes - J22 Regatta</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=zjp62xjwkyw">https://www.youtube.com/watch?v=zjp62xjwkyw</a></li>
+<li>Source: Clyde Outside</li>
+<li>Shows (expected): close-quarters fleet racing and contact or
+near-misses.</li>
+<li>Check: collision and near-collision behavior, plus bow-wave size at
+close range.</li>
+</ul></li>
+<li><p><strong>Blue J ducking a J22 under spinnaker</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=wy_6cJ0Y-ck">https://www.youtube.com/watch?v=wy_6cJ0Y-ck</a></li>
+<li>Check: a J/22 under spinnaker seen from another boat, a good
+external camera reference.</li>
+</ul></li>
+<li><p><strong>J22s of Annapolis</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=wGKwclDvFVA">https://www.youtube.com/watch?v=wGKwclDvFVA</a></li>
+<li>Check: fleet racing on the Chesapeake.</li>
+</ul></li>
+</ol>
+<h3 id="boats-j22-heavy-16-25-kn">J/22: HEAVY (16-25 kn)</h3>
+<ol start="19" type="1">
+<li><p><strong>2024 J/22 World Championship - Thursday</strong> [V], the
+best J/22 heavy-air clip with a stated wind speed.</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=N_tNWa-hfw0">https://www.youtube.com/watch?v=N_tNWa-hfw0</a></li>
+<li>Source: T2PTV</li>
+<li>Wind/location/date: <strong>16-18 kn, dropping only
+slightly</strong>, sunny, <strong>choppy seas</strong>, Chesapeake Bay,
+24 Oct 2024. Sources: <a
+href="https://j22.org/?p=1249">https://j22.org/?p=1249</a> and <a
+href="https://yachtsandyachting.com/news/280823/2024-J-22-Worlds-at-Annapolis-Maryland-Day-2">https://yachtsandyachting.com/news/280823/2024-J-22-Worlds-at-Annapolis-Maryland-Day-2</a></li>
+<li>Check: full hike, max backstay, eased traveler, vang sheeting, and
+how much the main is feathered or luffing in puffs. Spray over the bow
+in chop, pitching motion, spinnaker reaching or planing bursts downwind,
+and broach risk at mark roundings. Target speeds: about 4.3 kn VMG
+upwind, 7-9 kn bursts downwind.</li>
+</ul></li>
+<li><p><strong>Legendary J22 Sailboat Takes On HEAVY Air Action #sailing
+#sailboatracing #racingboat</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=iRTATat7KbU">https://www.youtube.com/watch?v=iRTATat7KbU</a></li>
+<li>Source: Sailing Team Tally Ho!</li>
+<li>Wind: not stated ("HEAVY air").</li>
+<li>Check: heel angle under gusts, crew hiking, and spray.</li>
+</ul></li>
+<li><p><strong>Awesome heavy air mark rounding..j22! Sailing Team Tally
+Ho! captures expert crew work.</strong> [S] (YouTube Short)</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/shorts/emLwO97YfT0">https://www.youtube.com/shorts/emLwO97YfT0</a></li>
+<li>Source: Sailing Team Tally Ho! (by title)</li>
+<li>Check: windward or leeward mark rounding in breeze, the spinnaker
+hoist or douse under load, and rudder loading and heel during the
+turn.</li>
+</ul></li>
+<li><p><strong>Crazy J/22 sailing in Jamaica</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=Thc4S-pR5XI">https://www.youtube.com/watch?v=Thc4S-pR5XI</a></li>
+<li>Source: J22-Geronimo</li>
+<li>Wind: not stated. This is the same crew as the Spinsheet speed-trial
+article, where they sailed in 30+ kn with a previous best of 16 kn boat
+speed (<a
+href="https://spinsheet.com/node/7283">https://spinsheet.com/node/7283</a>).
+It is likely heavy trade-wind conditions, possibly STORM bucket.</li>
+<li>Check: planing under spinnaker, rooster tail and stern wake at high
+speed, and wipeouts.</li>
+</ul></li>
+<li><p><strong>33rd Annual Jamin J/22 Regatta at Montego Bay Yacht Club
+- Highlights</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=0YjUvAofpVM">https://www.youtube.com/watch?v=0YjUvAofpVM</a></li>
+<li>Source: DRIFT UAV Services (drone)</li>
+<li>Wind: not stated. Montego Bay trades are typically moderate to
+heavy.</li>
+<li>Check: <strong>aerial/drone</strong> view of wake patterns, fleet
+spacing and whitecap density. Good for a sim chase or overhead
+camera.</li>
+</ul></li>
+<li><p><strong>Round The Island Race in a J22...</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=uw2EumJQzj4">https://www.youtube.com/watch?v=uw2EumJQzj4</a></li>
+<li>Source: jaaaaapor</li>
+<li>Wind: not stated. Likely the Isle of Wight Round the Island Race
+(Solent), which often has strong tide and chop. Bucket is not
+certain.</li>
+<li>Check: open-water waves and an onboard view.</li>
+</ul></li>
+</ol>
+<h3 id="boats-j22-storm--broach">J/22: STORM / broach</h3>
+<ul>
+<li>No J/22-specific broach or knockdown clip with a confirmed title was
+found. Candidates:
+<ul>
+<li>The <em>Geronimo</em> clip above (#22).</li>
+<li>A generic keelboat broach recovery clip, "Recovering from a broach /
+wipeout" [S]: <a
+href="https://www.youtube.com/watch?v=M3q5sxacAoQ">https://www.youtube.com/watch?v=M3q5sxacAoQ</a></li>
+<li>"Amazing broach on an Etchells 22" [S], a similar-size keelboat: <a
+href="https://www.youtube.com/watch?v=emJaVjjK4UE">https://www.youtube.com/watch?v=emJaVjjK4UE</a></li>
+</ul></li>
+<li>Sim check: a J/22 keelboat should round up and lie on its side with
+the spinnaker flogging, then <strong>self-right</strong> once the sheets
+are eased (39% ballast ratio). It should not turtle.</li>
+</ul>
+<h3 id="boats-j22-texas-lakes-specific-search-results">J/22: Texas lakes
+(specific search results)</h3>
+<ul>
+<li>No YouTube clip of a J/22 on Lake Ray Hubbard, Rush Creek YC,
+Corinthian SC or Austin YC turned up in search. The Texas material I
+found:
+<ul>
+<li><strong>Rush Creek Yacht Club YouTube channel</strong> [S]: <a
+href="https://www.youtube.com/@rushcreekyachtclub7644">https://www.youtube.com/@rushcreekyachtclub7644</a>.
+Check it for club-made J/22 clips. RCYC (Heath, TX, on Lake Ray Hubbard)
+hosted the <strong>2025 J/22 Midwinters, 14-16 Mar 2025</strong>. Friday
+had "gusty winds" with only one race, and the weekend was calmer (<a
+href="https://yachtsandyachting.com/news/284464/J-22-Midwinters-at-New-Orleans-overall;">https://yachtsandyachting.com/news/284464/J-22-Midwinters-at-New-Orleans-overall;</a>
+the URL slug says New Orleans but the content is RCYC).</li>
+<li><strong>Texas Yacht Club Challenge Cup, Fort Worth Boat
+Club</strong> (Eagle Mountain Lake, Dec 2023), sailed in the club's
+fleet of 10 J/22s; expected conditions were "calm-to-moderate breeze".
+Article: <a
+href="https://yachtsandyachting.com/news/269078/Dave-Valentine-on-the-TX-Yacht-Club-Challenge-Cup">https://yachtsandyachting.com/news/269078/Dave-Valentine-on-the-TX-Yacht-Club-Challenge-Cup</a></li>
+<li><strong>Sailing Lake Ray Hubbard</strong> [V], from channel
+dallasboricua21c (boat type unknown). Use it for the look of the lake's
+water, shoreline and haze: <a
+href="https://www.youtube.com/watch?v=n6omVtBbU1A">https://www.youtube.com/watch?v=n6omVtBbU1A</a></li>
+<li><strong>Catalina 310 Sailboat Racing</strong> [S], which came up in
+a Lake Ray Hubbard search: <a
+href="https://www.youtube.com/watch?v=ozwlWtKaTYw">https://www.youtube.com/watch?v=ozwlWtKaTYw</a></li>
+<li><strong>J24 March Madness Austin Yacht Club</strong> [V], from
+WeekendSailing. It shows the J/24, a larger sister boat with similar
+handling, on Lake Travis with the Hill Country backdrop: <a
+href="https://www.youtube.com/watch?v=AJBbpRBcSuU">https://www.youtube.com/watch?v=AJBbpRBcSuU</a></li>
+<li><strong>J/22 photo archive:</strong> "J/22 Sailboat Regatta",
+Oklahoma Historical Society, 21 Jul 2003, lake not identified. It is a
+regional (southern plains) lake regatta photo: <a
+href="https://gateway.okhistory.org/ark:/67531/metadc1650759/">https://gateway.okhistory.org/ark:/67531/metadc1650759/</a></li>
+</ul></li>
+</ul>
+<hr />
+<h2 id="boats-2-sunfish">2. Sunfish</h2>
+<h3 id="boats-published-data-points--behavior-notes-sunfish">Published
+data points / behavior notes (Sunfish)</h3>
+<ul>
+<li><strong>Capsize behavior:</strong> a Sunfish does <strong>not
+self-right</strong>. After a capsize it floats on its side with the
+lateen sail flat on the water. If the sail is left there, it can turtle
+with the mast pointing down, and in shallow lakes the mast can stick in
+mud. To recover, the sailor swims to the daggerboard, which must stay
+fully down, pulls or stands on it, and the boat comes up, usually
+pointing head to wind. The Lee Montes clip below covers how to avoid
+turtling.</li>
+<li><strong>Turtling:</strong> a capsized dinghy that is not righted
+promptly can roll from about 90° to fully inverted. A float on the
+masthead prevents this. Climbing onto the high side of a knocked-down
+boat raises weight and windage and makes turtling more likely. Righting
+from turtle means standing on the centreboard. Source: <a
+href="https://en.wikipedia.org/wiki/Turtling_(sailing)">https://en.wikipedia.org/wiki/Turtling_(sailing)</a></li>
+<li><strong>2023 Sunfish Worlds, Miami (5-9 Dec 2023):</strong> Day 1
+had a strong NW wind gusting into the 20s. Days 2-5 had gusts to about
+12 kn. <strong>Steep chop</strong> made upwind work hard, and offwind
+conditions gave "near-ideal surfing". Source: <a
+href="https://www.sailingscuttlebutt.com/?p=123413">https://www.sailingscuttlebutt.com/?p=123413</a></li>
+</ul>
+<p>Sim check: in a capsize the Sunfish should settle at about 90° and
+stay there until the sailor applies a righting moment on the
+daggerboard. Any sim auto-righting is unrealistic. When it comes up it
+often swings head to wind and can capsize again to windward if the sheet
+is cleated. The low freeboard means water sweeps over the deck in
+chop.</p>
+<h3 id="boats-sunfish-light">Sunfish: LIGHT</h3>
+<ol start="25" type="1">
+<li><p><strong>Sailing a Sunfish, Small Sailboat &amp; Light
+Wind</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=snKLjcqKJfg">https://www.youtube.com/watch?v=snKLjcqKJfg</a></li>
+<li>Source: AngelsTravels</li>
+<li>Check: lateen sail shape in light air (wrinkles off the gooseneck),
+a flat boat with the sailor to leeward, and a glassy lake surface.</li>
+</ul></li>
+<li><p><strong>'60's Sunfish 'Happily Used' 5 mph sailing</strong>
+[S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=6TaylfF6mIg">https://www.youtube.com/watch?v=6TaylfF6mIg</a></li>
+<li>Wind: title says <strong>5 mph</strong> (about 4.3 kn).</li>
+<li>Check: speed and flow at the low end of the range.</li>
+</ul></li>
+<li><p><strong>Go-Pro Sunfish Sailing</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=tCNEUMd7I1Y">https://www.youtube.com/watch?v=tCNEUMd7I1Y</a></li>
+<li>Also <strong>Sunfish Sailing GoPro</strong> [S]: <a
+href="https://www.youtube.com/watch?v=Ipx6_TBAHYM">https://www.youtube.com/watch?v=Ipx6_TBAHYM</a></li>
+<li>Check: a mast- or deck-mounted POV, the closest match to a sim
+first-person camera.</li>
+</ul></li>
+</ol>
+<h3 id="boats-sunfish-moderate">Sunfish: MODERATE</h3>
+<ol start="28" type="1">
+<li><p><strong>Start of Race 2 at the 2023 Sunfish Worlds Miami</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=1dtKUHEeTsY">https://www.youtube.com/watch?v=1dtKUHEeTsY</a></li>
+<li>Source: Kathleen Tocke Media</li>
+<li>Wind: an event day on 6-9 Dec, gusts about 12 kn, steep chop
+(scuttlebutt).</li>
+<li>Check: hiking posture, the bow slamming into chop, and the line-up
+of a starting fleet.</li>
+</ul></li>
+<li><p><strong>2023 Sunfish Worlds Final day</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=EoIm7XGVq3c">https://www.youtube.com/watch?v=EoIm7XGVq3c</a></li>
+<li>Source: Sunfishworlds</li>
+<li>Wind: 9 Dec 2023, gusts about 12 kn.</li>
+<li>Check: top-level hiking and surfing downwind.</li>
+<li>Also <strong>2023 Sunfish Worlds last race</strong> [S]: <a
+href="https://www.youtube.com/watch?v=zONWOIUJlMQ">https://www.youtube.com/watch?v=zONWOIUJlMQ</a></li>
+</ul></li>
+<li><p><strong>Sunfish World Championships, Sarasota</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=ukerpvUFJNc">https://www.youtube.com/watch?v=ukerpvUFJNc</a></li>
+<li>Check: a fleet on Gulf of Mexico water.</li>
+</ul></li>
+</ol>
+<h3 id="boats-sunfish-heavy">Sunfish: HEAVY</h3>
+<ol start="31" type="1">
+<li><p><strong>Sailing a Sunfish in 20 knot wind</strong> [V], with a
+stated wind speed.</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=GGqbbAT5Xvc">https://www.youtube.com/watch?v=GGqbbAT5Xvc</a></li>
+<li>Source: David Martineau</li>
+<li>Wind: <strong>20 kn</strong> (title).</li>
+<li>Check: a full-hike, overpowered boat with the sail luffed in puffs,
+the leeward rail and deck awash, and spray. Planing reaches.</li>
+</ul></li>
+<li><p><strong>Sunfish Sailing in Heavy Winds</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=_DIZVO3DbDI">https://www.youtube.com/watch?v=_DIZVO3DbDI</a></li>
+<li>Source: PrestonHarris</li>
+<li>Also <strong>Sunfish Sailing in Heavy Winds with Collision</strong>
+[S]: <a
+href="https://www.youtube.com/watch?v=rCXKWCLU6e8">https://www.youtube.com/watch?v=rCXKWCLU6e8</a></li>
+</ul></li>
+<li><p><strong>Heavy Wind Sunfish Sailing</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=hqVYrYxfTPc">https://www.youtube.com/watch?v=hqVYrYxfTPc</a></li>
+<li>Source: Boating with Billy</li>
+</ul></li>
+<li><p><strong>Megan sails a Sunfish for the first time--high
+wind.</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=e6QYTWr56kY">https://www.youtube.com/watch?v=e6QYTWr56kY</a></li>
+<li>Check: novice handling, with uncontrolled heel and rounding up. This
+is a good model for how a sim's beginner mode should look.</li>
+</ul></li>
+<li><p><strong>Sunfish Sailing High Wind with SPARS ONLY.</strong>
+[S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=c_H7z0xcix0">https://www.youtube.com/watch?v=c_H7z0xcix0</a></li>
+<li>Check: windage-only drift and the speed under bare spars.</li>
+</ul></li>
+</ol>
+<h3 id="boats-sunfish-storm--capsize-and-recovery">Sunfish: STORM /
+capsize and recovery</h3>
+<ol start="36" type="1">
+<li><p><strong>Sunfish high wind capsize</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=28prJEmB1tY">https://www.youtube.com/watch?v=28prJEmB1tY</a></li>
+<li>Source: planesnthings</li>
+<li>Check: the capsize dynamics, either to leeward in a gust or to
+windward on a death roll, and the boat settling at about 90° and staying
+there. It does not come back up by itself.</li>
+</ul></li>
+<li><p><strong>Demonstrating how to right a capsized Sunfish
+Sailboat</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=Lwokzjlcjvk">https://www.youtube.com/watch?v=Lwokzjlcjvk</a></li>
+<li>Source: JTColePhoto</li>
+<li>Check: the full recovery sequence (swim to the daggerboard, lever
+it, the boat rises, the sailor climbs in). Time each step for the sim's
+recovery animation.</li>
+</ul></li>
+<li><p><strong>Flip your Sunfish Sailboat without getting wet!</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=Wja6cbzthNU">https://www.youtube.com/watch?v=Wja6cbzthNU</a></li>
+<li>Source: Adventures In Reach</li>
+<li>Shows: a "dry capsize", where the sailor steps over the rail onto
+the daggerboard as the boat goes over.</li>
+</ul></li>
+<li><p><strong>Capsize recovery of a Sunfish by a 7-year-old (first
+attempt)</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=5CbmkAeWZ0Y">https://www.youtube.com/watch?v=5CbmkAeWZ0Y</a></li>
+<li>Source: Bruce Liese</li>
+<li>Check: how little righting force is needed. A light child can right
+it, so the righting moment the sim requires should be modest.</li>
+</ul></li>
+<li><p><strong>Sunfish Sailing How to Avoid Capsizing Turning Turtle |
+Sail Safer</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=FkqmF-MJ47g">https://www.youtube.com/watch?v=FkqmF-MJ47g</a></li>
+<li>Source: Lee Montes</li>
+<li>Check: the turtle mechanism and how the sail filling with water
+makes it worse.</li>
+<li>Also <strong>5 Cautions and Solutions when Flipping a Sunfish
+Sailboat</strong> [S]: <a
+href="https://www.youtube.com/watch?v=vv-XaMFtOmM">https://www.youtube.com/watch?v=vv-XaMFtOmM</a></li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="boats-3-ilca-7--laser">3. ILCA 7 / Laser</h2>
+<h3 id="boats-published-data-points-ilcalaser">Published data points
+(ILCA/Laser)</h3>
+<ul>
+<li><strong>Polars and heel (Day et al. 2017, "Performance prediction
+for sailing dinghies", Ocean Engineering, Strathclyde):</strong> <a
+href="https://strathprints.strath.ac.uk/59980/1/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf">https://strathprints.strath.ac.uk/59980/1/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf</a>
+<ul>
+<li>Measured Laser polars exist at 9 and 12 kn TWS (Binns et al. 2002)
+and from an instrumented GPS boat at about 12.5 kn (Clark 2014).</li>
+<li>Best upwind VMG falls at <strong>TWA about 40-46°</strong> in flat
+water. Apparent wind angle runs <strong>about 27° at 5 kn to about 33°
+at 15 kn</strong>.</li>
+<li>Upwind, the boat is sailed <strong>flat up to about 9 kn
+TWS</strong>, then with a small heel.</li>
+<li>Downwind in light air, the typical <strong>windward heel is about
+20°</strong> (by the lee, "kiting"). The VPP finds the optimum heel
+switching abruptly at about 9.1 kn TWS.</li>
+<li>The text gives no numeric speeds (they are in figures only).</li>
+</ul></li>
+<li><strong>Chalmers study:</strong> best heel and trim of a Laser
+upwind at 2-5 kn of boat speed. It finds a small heel is beneficial in
+higher winds. <a
+href="https://research.chalmers.se/en/publication/234579">https://research.chalmers.se/en/publication/234579</a></li>
+<li><strong>Anecdotal top speed:</strong> 15 kn GPS on a broad reach in
+a "very big gust", including about 2 kn of tide (forum post): <a
+href="https://www.yachtsandyachting.com/FORUM/printer_friendly_posts.asp?TID=13885">https://www.yachtsandyachting.com/FORUM/printer_friendly_posts.asp?TID=13885</a></li>
+<li><strong>2024 ILCA 7 Men's Worlds, Adelaide (Jan 2024):</strong>
+<ul>
+<li>Day 1 was a gradient breeze of about <strong>10-20 kn</strong>: <a
+href="https://paris2024.sailing.org/2024/01/26/tomasgaard-draws-first-blood-on-opening-day-of-ilca-7-worlds-in-adelaide/">https://paris2024.sailing.org/2024/01/26/tomasgaard-draws-first-blood-on-opening-day-of-ilca-7-worlds-in-adelaide/</a></li>
+<li>Day 3 started at <strong>5-7 kn and built to 12-15 kn</strong>: <a
+href="https://ilcasailing.org/2024-ilca-7-mens-world-championships-day-3/">https://ilcasailing.org/2024-ilca-7-mens-world-championships-day-3/</a></li>
+<li>Finals Day 1 (30 Jan) was a strong sea breeze, "proper windy", with
+<strong>steep swells</strong>: <a
+href="https://paris2024.sailing.org/2024/01/30/podium-begins-to-take-shape-as-the-top-sailors-battle-adelaides-windy-conditions/">https://paris2024.sailing.org/2024/01/30/podium-begins-to-take-shape-as-the-top-sailors-battle-adelaides-windy-conditions/</a></li>
+</ul></li>
+</ul>
+<h3 id="boats-ilca-light">ILCA: LIGHT</h3>
+<ol start="41" type="1">
+<li><p><strong>Laser Sailing - Roll Tack with Slow Motion [HD]</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=kQbf-1fyDH8">https://www.youtube.com/watch?v=kQbf-1fyDH8</a></li>
+<li>Source: LaserXD</li>
+<li>Check: the roll-tack sequence (heel to windward, then the flattening
+flick) and the speed retained. Slow motion helps for timing the
+animation.</li>
+</ul></li>
+<li><p><strong>ILCA (LASER) SAILING IN LIGHT/MEDIUM WIND with British
+Sailing Team's Sam Whaley &amp; Hannah Snellgrove</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=n9uQFyg2F4A">https://www.youtube.com/watch?v=n9uQFyg2F4A</a></li>
+<li>Source: Dinghy Racing Channel</li>
+<li>Check: sailor positioned forward and to leeward, induced leeward
+heel upwind, and kiting downwind at about 20° windward heel (matches Day
+et al.).</li>
+<li>Also <strong>3 roll tacks in 25 seconds- 3knts wind</strong> [S]
+(Short, <strong>3 kn</strong> stated): <a
+href="https://www.youtube.com/shorts/aM71roUPHqo">https://www.youtube.com/shorts/aM71roUPHqo</a></li>
+</ul></li>
+</ol>
+<h3 id="boats-ilca-moderate">ILCA: MODERATE</h3>
+<ol start="43" type="1">
+<li><p><strong>Day 3 Highlights - 2024 ILCA 7 Men's World Championship
+AUSTRALIA, Adelaide</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=2vTuqRYPuSc">https://www.youtube.com/watch?v=2vTuqRYPuSc</a></li>
+<li>Source: jonemmettsailing</li>
+<li>Wind: <strong>5-7 kn building to 12-15 kn</strong> (ILCA report), 28
+Jan 2024.</li>
+<li>Check: the transition from flat sailing to full hiking, all in one
+clip.</li>
+</ul></li>
+<li><p><strong>Day 1 Highlights - 2024 ILCA 7 Men's World Championship
+AUSTRALIA, Adelaide</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=oKw2KXuMy-g">https://www.youtube.com/watch?v=oKw2KXuMy-g</a></li>
+<li>Source: jonemmettsailing</li>
+<li>Wind: <strong>10-20 kn gradient</strong> breeze, about 26 Jan
+2024.</li>
+<li>Check: straddles the MODERATE and HEAVY buckets. Look at hiking
+angle, vang and cunningham depower (flattened sail with a twisted
+leech), and the hull slapping in waves.</li>
+</ul></li>
+<li><p><strong>Boom Cam of Brett Beyer working the ILCA/Laser
+downwind</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=j8YkrQfRuHA">https://www.youtube.com/watch?v=j8YkrQfRuHA</a></li>
+<li>Source: Andy Rice</li>
+<li>Check: a <strong>boom-mounted camera</strong> view of the
+steering-by-heel downwind technique, the timing of sheet pumps, and
+catching waves.</li>
+</ul></li>
+</ol>
+<h3 id="boats-ilca-heavy">ILCA: HEAVY</h3>
+<ol start="46" type="1">
+<li><p><strong>Laser Sailing like Olympians || Upwind in Windy
+Conditions</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=Xpm-o09FLGk">https://www.youtube.com/watch?v=Xpm-o09FLGk</a></li>
+<li>Source: Dan Self Sailing</li>
+<li>Check: the full-hike body angle, the mainsheet eased and pulled in
+through waves, the bow lifting over chop, and a flat boat at heel under
+10°.</li>
+</ul></li>
+<li><p><strong>Laser Sailing Like the Pros - Surfing Downwind</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=LYSJXsbOVv8">https://www.youtube.com/watch?v=LYSJXsbOVv8</a></li>
+<li>Source: Dan Self Sailing</li>
+<li>Check: <strong>planing and surfing downwind</strong>. Look for the
+bow lifting, the wake and spray signature at planing speed, and S-turns
+down the waves.</li>
+<li>Also <strong>DOWNWIND TECHNIQUE: ILCA (LASER) TECHNIQUE TIPS -
+British Sailing Team</strong> [S]: <a
+href="https://www.youtube.com/watch?v=i28JBeWFtRM">https://www.youtube.com/watch?v=i28JBeWFtRM</a></li>
+</ul></li>
+<li><p><strong>Laser sailing 25+knots</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=6o5kPepxvsI">https://www.youtube.com/watch?v=6o5kPepxvsI</a></li>
+<li>Source: Haul Parteck</li>
+<li>Wind: <strong>25+ kn</strong> (title). This is the HEAVY/STORM
+edge.</li>
+</ul></li>
+</ol>
+<h3 id="boats-ilca-storm--capsize">ILCA: STORM / capsize</h3>
+<ol start="49" type="1">
+<li><p><strong>Extreme Laser downwind sailing +30 knots - SYLT</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=OA-mOpjef2E">https://www.youtube.com/watch?v=OA-mOpjef2E</a></li>
+<li>Source: Swedish Youth Laser Team</li>
+<li>Wind: <strong>30+ kn</strong> (title).</li>
+<li>Check: top-end planing, nosedives, and the edge of control. Likely
+includes wipeouts.</li>
+</ul></li>
+<li><p><strong>Fast Laser Sailing with a downwind double death roll!
+(GOPRO HD)</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=M5H9aI7N2hM">https://www.youtube.com/watch?v=M5H9aI7N2hM</a></li>
+<li>Source: pipercub37</li>
+<li>Check: the <strong>death roll</strong> dynamics (rhythmic rolling
+builds up and the boat capsizes to windward on a run). This is a key
+failure mode for the sim.</li>
+</ul></li>
+<li><p><strong>22 Apr 12 - 20+mph downwind deathroll</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=L-rkD4NMs8c">https://www.youtube.com/watch?v=L-rkD4NMs8c</a></li>
+<li>Source: staRgraZer</li>
+<li>Wind: <strong>20+ mph</strong> (about 17+ kn), with a stated
+condition.</li>
+<li>Also <strong>ILCA Death Roll</strong> [S] (Short): <a
+href="https://www.youtube.com/shorts/7LoxjKAxF7A">https://www.youtube.com/shorts/7LoxjKAxF7A</a></li>
+</ul></li>
+<li><p><strong>Laser sailing - dry capsize recovery</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=yX57m4RP8bo">https://www.youtube.com/watch?v=yX57m4RP8bo</a></li>
+<li>Source: Don Silva</li>
+<li>Check: a Laser also does <strong>not self-right</strong>. It lies on
+its side, and the sailor steps over onto the centreboard. Capture the
+timing.</li>
+<li>Also <strong>Capsized? Dont waste time and energy righting the boat
+the wrong way.</strong> [S]: <a
+href="https://www.youtube.com/watch?v=T7lUaEafLv8">https://www.youtube.com/watch?v=T7lUaEafLv8</a></li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="boats-4-catalina-22">4. Catalina 22</h2>
+<h3 id="boats-published-data-points-catalina-22">Published data points
+(Catalina 22)</h3>
+<ul>
+<li>Hull speed 5.9 kn (LWL 19.3 ft). Displacement 2,250 lb. Ballast 550
+lb, so the ballast ratio is <strong>24.4%</strong>, much more tender
+than the J/22. SA/D 19.2, PHRF 270.</li>
+<li>Wind guide from the same site: ghosting at 0-6 kn, sweet spot 6-16
+kn, <strong>reef at 16-24 kn</strong>, heavy weather above 24 kn.</li>
+<li>Source: <a
+href="https://keelindex.com/boat/catalina-22/performance">https://keelindex.com/boat/catalina-22/performance</a></li>
+<li>Sim check: compared with a J/22 in the same breeze, the Catalina 22
+should heel more and earlier, round up sooner, and be slower (about 90
+s/nm slower by PHRF).</li>
+</ul>
+<h3 id="boats-catalina-22-light--moderate">Catalina 22: LIGHT /
+MODERATE</h3>
+<ol start="53" type="1">
+<li><p><strong>Playing the Puffs - Sailing Upwind in Gusty Air --
+Catalina 22 - Jim's Little Boat</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=MiDIk3l19Po">https://www.youtube.com/watch?v=MiDIk3l19Po</a></li>
+<li>Source: Jim's Little Boat</li>
+<li>Check: the heel response to puffs, easing the main, and the boat
+feathering up. Gives a puff-to-heel transient time constant.</li>
+<li>The same channel has an instructional series: <strong>Single-hand
+Your Small Sailboat -- Catalina 22</strong> [S]: <a
+href="https://www.youtube.com/watch?v=0BP_M5rsmGY">https://www.youtube.com/watch?v=0BP_M5rsmGY</a></li>
+</ul></li>
+<li><p><strong>Catalina 22 Racing | Sisters with Sails</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=XVcPAIoaaAI">https://www.youtube.com/watch?v=XVcPAIoaaAI</a></li>
+<li>Source: Kostas Lazanas</li>
+<li>Check: racing trim on a cruiser-racer, with crew on the rail.</li>
+</ul></li>
+<li><p><strong>How to sail a small sailboat (on our Catalina
+22)</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=uNW54RFtmew">https://www.youtube.com/watch?v=uNW54RFtmew</a></li>
+<li>Also <strong>Sailing my Catalina 22 with Laura on Lake
+Michigan</strong> [S]: <a
+href="https://www.youtube.com/watch?v=MBd20cUAl3o">https://www.youtube.com/watch?v=MBd20cUAl3o</a></li>
+</ul></li>
+</ol>
+<h3 id="boats-catalina-22-heavy">Catalina 22: HEAVY</h3>
+<ol start="56" type="1">
+<li><p><strong>Sailing in strong wind on our Catalina 22</strong>
+[V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=3cqosurPe3Y">https://www.youtube.com/watch?v=3cqosurPe3Y</a></li>
+<li>Source: Sailing Okaliptüs</li>
+<li>Check: heel likely 20-30°, a flogging jib, weather helm, and
+spray.</li>
+</ul></li>
+<li><p><strong>Catalina 22 heeling in gusty winds #2</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=nswepMFtfj4">https://www.youtube.com/watch?v=nswepMFtfj4</a></li>
+<li>Source: Robert Forrester</li>
+<li>Same series: #1 [S] <a
+href="https://www.youtube.com/watch?v=HhrIOcKLHjQ">https://www.youtube.com/watch?v=HhrIOcKLHjQ</a>
+and #5 [S] <a
+href="https://www.youtube.com/watch?v=OmrfFR6EpvU">https://www.youtube.com/watch?v=OmrfFR6EpvU</a></li>
+<li>Check: heel angle per gust. These are short clips useful for
+measuring the angle (look for the horizon in frame).</li>
+</ul></li>
+<li><p><strong>reefed the main and jib.</strong> [S]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=59t3FjDuEZo">https://www.youtube.com/watch?v=59t3FjDuEZo</a></li>
+<li>Appeared in a Catalina 22 search, but the boat type is not
+confirmed.</li>
+<li>Related, a different boat: <strong>Sailing a Catalina Capri 22 with
+two reefs and a storm jib</strong> [S]. The Capri 22 is a fin-keel sport
+cruiser, not a Catalina 22. Its oEmbed returned 401, so the video may be
+private or have embedding disabled: <a
+href="https://www.youtube.com/watch?v=2CM8ZPfDzdk">https://www.youtube.com/watch?v=2CM8ZPfDzdk</a></li>
+</ul></li>
+</ol>
+<h3 id="boats-catalina-22-storm">Catalina 22: STORM</h3>
+<ol start="59" type="1">
+<li><strong>Catalina 22; gusts over 50, Main Destroyed.</strong> [V]
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=l7d1WP6pQ7A">https://www.youtube.com/watch?v=l7d1WP6pQ7A</a></li>
+<li>Source: "Catalina 22"</li>
+<li>Wind: <strong>gusts over 50</strong> (units not given in the title,
+probably mph or kn).</li>
+<li>Check: sail failure (a torn, flogging main), extreme heel, and
+wind-blown spray and spindrift on the water surface. This is the storm
+reference for small keelboats.</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="boats-5-catalina-30">5. Catalina 30</h2>
+<h3 id="boats-published-data-points-catalina-30">Published data points
+(Catalina 30)</h3>
+<ul>
+<li><p>Hull speed 6.7 kn (LWL 25 ft). Displacement 10,200 lb. Ballast
+ratio 41.2%. SA/D about 15. D/L 291. PHRF 180.</p></li>
+<li><p>VPP polar (site-listed; I did not verify where it came from), at
+TWS 6/10/14/20 kn:</p>
+<ul>
+<li>Best upwind VMG speed: 3.1 / 4.1 / 4.3 / 4.3 kn</li>
+<li>90° TWA: 5.1 / 6.4 / 6.8 / 7.2 kn</li>
+<li>120° TWA: 4.9 / 6.4 / 7.0 / 7.9 kn</li>
+<li>At 14 kn: best upwind TWA 41°, best downwind TWA 160°, top speed 7.1
+kn at 110°</li>
+<li>Source: <a
+href="https://keelindex.com/boat/catalina-30/performance">https://keelindex.com/boat/catalina-30/performance</a></li>
+</ul></li>
+<li><p><strong>Owner-reported heel vs wind (C30, fully crewed,
+close-hauled):</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th>True wind</th>
+<th>Apparent wind</th>
+<th>Sails</th>
+<th>Heel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>6 kn</td>
+<td>9 kn</td>
+<td>full</td>
+<td><strong>4°</strong></td>
+</tr>
+<tr class="even">
+<td>10 kn</td>
+<td>13-14 kn</td>
+<td>full</td>
+<td><strong>about 15°</strong></td>
+</tr>
+<tr class="odd">
+<td>12 kn</td>
+<td>16 kn</td>
+<td>full</td>
+<td><strong>17°</strong></td>
+</tr>
+<tr class="even">
+<td>16 kn</td>
+<td>19-20 kn</td>
+<td>full</td>
+<td><strong>21°</strong></td>
+</tr>
+<tr class="odd">
+<td>20 kn</td>
+<td>23 kn</td>
+<td>1st reef</td>
+<td><strong>22°</strong></td>
+</tr>
+<tr class="even">
+<td>30+ kn</td>
+<td>not stated</td>
+<td>2 reefs, 100% jib</td>
+<td><strong>20-25°</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The owner advises reefing above 20 kn true wind to keep heel under
+25°. Short-handed crews should reef sooner. Too much heel makes the
+rudder "a brake". Source: <a
+href="https://forums.sailboatowners.com/threads/max-optimum-angle-of-heel-for-catalina-30.80892/latest">https://forums.sailboatowners.com/threads/max-optimum-angle-of-heel-for-catalina-30.80892/latest</a>.
+<strong>This is the best heel-calibration table found.</strong></p></li>
+</ul>
+<h3 id="boats-catalina-30-light--moderate-cruising">Catalina 30: LIGHT /
+MODERATE (cruising)</h3>
+<ol start="60" type="1">
+<li><p><strong>Catalina 30 Sailing past Silver Lake on Lake
+Michigan</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=fcCoBgivdHI">https://www.youtube.com/watch?v=fcCoBgivdHI</a></li>
+<li>Source: Saltless Shakedowns</li>
+<li>Check: cruising pace on a big lake.</li>
+</ul></li>
+<li><p><strong>SOLO SAILING HOME from LITTLE FISHERMANS COVE on a
+CATALINA 30</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=1YiC0MdPtKI">https://www.youtube.com/watch?v=1YiC0MdPtKI</a></li>
+<li>Source: Sailing Solé (Catalina Island, CA)</li>
+<li>Check: a single-hander's cockpit view.</li>
+</ul></li>
+<li><p><strong>Coastal Cruising on a Catalina 30 | Sailing Fujin
+S1E9</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=F-9B8ltKqTM">https://www.youtube.com/watch?v=F-9B8ltKqTM</a></li>
+<li>Source: Sailing Fujin</li>
+<li>Also <strong>Sailing Catalina 30 with Autohelm 4000</strong> [S]: <a
+href="https://www.youtube.com/watch?v=_d_NHuJEWn8">https://www.youtube.com/watch?v=_d_NHuJEWn8</a></li>
+<li>Also <strong>BOAT LIFE: Day Sail and fishing on our Catalina 30 //
+Pacific Northwest // Ep. 48</strong> [S]: <a
+href="https://www.youtube.com/watch?v=rzwLW_30IzU">https://www.youtube.com/watch?v=rzwLW_30IzU</a></li>
+</ul></li>
+<li><p><strong>Full Moon Regatta THE BEST Sailing Race you've Never
+Heard of! Racing a Catalina 30 | A&amp;J Sailing</strong> [V]</p>
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=Qvx32qiDrWc">https://www.youtube.com/watch?v=Qvx32qiDrWc</a></li>
+<li>Source: Allison &amp; James</li>
+<li>Also a season racing compilation, listed in search as "GAMBIT - A
+Season Racing a Catalina 30" [V]. Its live title is "2020 Season: Set to
+Tchaikovsky's 1812 Overture (June 3 - Oct. 14)", channel Marshall
+Lystra: <a
+href="https://www.youtube.com/watch?v=Vr8zQK-IBBs">https://www.youtube.com/watch?v=Vr8zQK-IBBs</a></li>
+<li>Also <strong>Sailing Tom's Catalina 30 Tall Rig</strong> [S]: <a
+href="https://www.youtube.com/watch?v=S_lsVZoqudQ">https://www.youtube.com/watch?v=S_lsVZoqudQ</a></li>
+</ul></li>
+</ol>
+<h3 id="boats-catalina-30-heavy--storm">Catalina 30: HEAVY / STORM</h3>
+<ol start="64" type="1">
+<li><strong>Offshore on a Catalina 30 Sailboat</strong> [V]
+<ul>
+<li>URL: <a
+href="https://www.youtube.com/watch?v=3wYxyxO3kFM">https://www.youtube.com/watch?v=3wYxyxO3kFM</a></li>
+<li>Source: Wicked Salty</li>
+<li>Check: ocean swell, pitching and rolling motion, and probably a
+reefed main.</li>
+<li>No Catalina 30 clip with stated 20+ kn wind and a confirmed title
+was found. Closest substitutes from similar 30-38 ft production
+cruisers:
+<ul>
+<li><strong>45 Seconds of SAILING in 30 Knots of Wind in a Catalina
+387</strong> [S]: <a
+href="https://www.youtube.com/watch?v=BEBb2L6t0SE">https://www.youtube.com/watch?v=BEBb2L6t0SE</a></li>
+<li><strong>SQUALL sailing thru Line Squall storm on Lake Michigan on
+Tartan 30</strong> [S], a lake squall that matches a Texas-lake storm
+scenario: <a
+href="https://www.youtube.com/watch?v=Hl5NYDbSygc">https://www.youtube.com/watch?v=Hl5NYDbSygc</a></li>
+<li><strong>Sailing Into a 30 Knot Squall: 4K 360 - Eastbound and
+Up</strong> [S], a 360° camera: <a
+href="https://www.youtube.com/watch?v=Z-gFBIFtr90">https://www.youtube.com/watch?v=Z-gFBIFtr90</a></li>
+<li><strong>Heavy Weather Sailing in Force 6 - 8. Reefing, Heaving-To
+&amp; Storm Tactics</strong> [S]: <a
+href="https://www.youtube.com/watch?v=BDMxhuxaaHI">https://www.youtube.com/watch?v=BDMxhuxaaHI</a></li>
+</ul></li>
+<li>Sim check: with a first reef at about 20 kn, heel should stay at
+20-25° (owner table). The 41% ballast ratio means it should stiffen and
+resist knockdown. A squall gust front should show a dark ruffled band on
+the water and then a whitecap field.</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="boats-gaps-and-recommendations">Gaps and recommendations</h2>
+<ul>
+<li><strong>Texas J/22 footage is the main gap.</strong> Search found no
+YouTube J/22 clips from Lake Ray Hubbard, RCYC, CSC, AYC or FWBC. Ways
+to fill it:
+<ol type="1">
+<li>Browse the RCYC channel (<a
+href="https://www.youtube.com/@rushcreekyachtclub7644">https://www.youtube.com/@rushcreekyachtclub7644</a>).</li>
+<li>Check the International J/22 Class Facebook page, which j22.org says
+carries the 2024 Worlds videos and photos.</li>
+<li>Ask the Texas fleets (FWBC runs a 10-boat J/22 fleet; RCYC hosted
+the 2025 Midwinters).</li>
+<li>Use the J/24 Austin YC clip as a proxy for the look of Lake
+Travis.</li>
+</ol></li>
+<li>No J/22 broach or knockdown clip with a confirmed title. The
+<em>Geronimo</em> Jamaica clip (#22) is the best candidate. The
+Spinsheet article links a 30+ kn run whose URL I could not extract.</li>
+<li>Wind speeds came from regatta reports for about 10 clips: the 2024
+J/22 Worlds days, the 2023 Sunfish Worlds and the 2024 ILCA 7 Worlds.
+Others carry the speed in the title (Sunfish 20 kn, Laser 25+ and 30+,
+deathroll 20+ mph, Sunfish 5 mph, roll tacks 3 kn). The rest are
+unquantified.</li>
+<li>Strongest quantitative references for calibration:
+<ol type="1">
+<li>The owner-reported Catalina 30 heel table.</li>
+<li>The keelindex J/22 and C30 polar tables.</li>
+<li>Day et al. 2017 for Laser heel and AWA behavior.</li>
+<li>The Quantum J/22 tuning wind bands.</li>
+</ol></li>
+</ul>
+</section>
+<section class="panel" id="p-env" role="tabpanel" hidden>
+<h1
+id="env-reference-footage-multihulls--texasgulf-environment-realism-pass">Reference
+Footage: Multihulls + Texas/Gulf Environment (realism pass)</h1>
+<p>Compiled 2026-10-12. Every URL below came back from a live web search
+during this session; no video IDs were invented.</p>
+<p><strong>Verification status:</strong></p>
+<ul>
+<li><strong>[S]</strong>: found in search results. The title and URL
+come from the search index, but nobody watched the page. YouTube fetches
+were rate-limited (HTTP 429) during this session, so most videos carry
+this tag.</li>
+<li><strong>[V]</strong>: the page was fetched with WebFetch and its
+content was confirmed.</li>
+<li>Conditions in brackets come from the video title. Treat them as
+claims, and check them against what you see in the footage.</li>
+</ul>
+<p>Wind bands: <strong>LIGHT</strong> 0-7 kn, <strong>MODERATE</strong>
+8-15, <strong>HEAVY</strong> 16-25, <strong>STORM</strong> 25+ / capsize
+/ pitchpole / broach.</p>
+<p>Reference specs for sanity checks:</p>
+<ul>
+<li><strong>Hobie 16</strong> [V], from <a
+href="https://en.wikipedia.org/wiki/Hobie_16">https://en.wikipedia.org/wiki/Hobie_16</a>
+<ul>
+<li>LOA 5.05 m, beam 2.41 m, hull weight 145 kg, sail area 20 m².</li>
+</ul></li>
+<li><strong>Lake Ray Hubbard</strong> [V], from <a
+href="https://en.wikipedia.org/wiki/Lake_Ray_Hubbard">https://en.wikipedia.org/wiki/Lake_Ray_Hubbard</a>
+<ul>
+<li>22,745 acres (~92 km²), max depth 12 m (40 ft).</li>
+<li>Shallow and fetch-limited, so expect short, steep chop rather than
+swell.</li>
+</ul></li>
+<li><strong>Kelvin wake</strong> [V], from <a
+href="https://en.wikipedia.org/wiki/Kelvin_wake_pattern">https://en.wikipedia.org/wiki/Kelvin_wake_pattern</a>
+<ul>
+<li>Each arm sits 19.47° off the track (arcsin 1/3), for a full V of
+~39°.</li>
+<li>The individual wavelets lie at ~53° to the track.</li>
+</ul></li>
+</ul>
+<hr />
+<h2 id="env-part-a-boats">PART A: BOATS</h2>
+<h3 id="env-a1-hobie-16">A1. Hobie 16</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Band</th>
+<th>URL</th>
+<th>Title / Source</th>
+<th>What it shows / what to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>LIGHT</td>
+<td><a
+href="https://steemit.steemapps.com/hobie16/@joyridertv/qcw7wkp0">https://steemit.steemapps.com/hobie16/@joyridertv/qcw7wkp0</a></td>
+<td>"Solo Hobie 16 light wind technique - multi cam with live
+commentary" (JoyriderTV, mirrored on Steemit)</td>
+<td>Light-air solo technique, filmed multi-cam. <strong>Check:</strong>
+both hulls stay in the water, crew weight goes forward and to leeward,
+sail twist and the soft leech in light air, and a near-flat wake.</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>LIGHT/MOD</td>
+<td><a
+href="https://steemit.com/sailing/@joyridertv/hobie-16-tutorial-multicam-video-lesson-with-live-commentary">https://steemit.com/sailing/@joyridertv/hobie-16-tutorial-multicam-video-lesson-with-live-commentary</a></td>
+<td>"Hobie 16 tutorial. Multicam video lesson with live commentary"
+(JoyriderTV)</td>
+<td>Narrated lesson from several cameras. Useful for the onboard camera
+framing and for sheet/traveller handling.</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>LIGHT/MOD</td>
+<td><a
+href="https://www.youtube.com/playlist?list=PLbNtP4MQ_X3fuMgJnVC7RU3N5EzhciXa5">https://www.youtube.com/playlist?list=PLbNtP4MQ_X3fuMgJnVC7RU3N5EzhciXa5</a></td>
+<td>"HOBIE 16 tutorials" playlist (YouTube) [S]</td>
+<td>Tutorial series covering tacking, gybing and flying a hull. Good for
+checking crew animation timing through a tack. Note that an H16 often
+stalls in irons in light air.</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>MOD</td>
+<td><a
+href="https://m.youtube.com/watch?v=_H-CkORf3-w">https://m.youtube.com/watch?v=_H-CkORf3-w</a></td>
+<td>"How to fly the hull, a Hobie 16 tutorial" [S]</td>
+<td>Shows when the windward hull lifts and how sheet and steering
+control the fly height. <strong>Check:</strong> the threshold wind and
+heel angle at liftoff (roughly 10-12 kn with crew on the wire), and how
+the boat feels once it is balanced on one hull.</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=44zxTHNF_mg">https://www.youtube.com/watch?v=44zxTHNF_mg</a></td>
+<td>"3 Minutes of Hobie 16 Hull Flying!" [S]</td>
+<td>Sustained hull flying. <strong>Check:</strong> how steady the fly
+height is, spray off the leeward bow, and the shape of the leeward
+hull's bow wave.</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=wg3H3REKN0M">https://www.youtube.com/watch?v=wg3H3REKN0M</a></td>
+<td>"Hobie High Life - Near Vertical Hull Fly on a Hobie 16" [S]</td>
+<td>An extreme heel just before capsize. <strong>Check:</strong> the
+angle at which righting moment collapses (past ~45-50° it goes over
+quickly), and how the crew scramble.</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=ht3G4G2JIKo">https://www.youtube.com/watch?v=ht3G4G2JIKo</a></td>
+<td>"DJI Mavic Pro Drone Footage 'Flying A Hull' Hobie Cat 16 Sailing"
+[S]</td>
+<td><strong>Drone view, which is valuable for chase-camera
+work.</strong> Wake pattern from two hulls versus one, plus the colour
+and glint of the water from altitude.</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=B4nv0dhEFG0">https://www.youtube.com/watch?v=B4nv0dhEFG0</a></td>
+<td>"Flying a Hull - Hobie Cat 16 - Catamaran Sailing" [S]</td>
+<td>Hull flying shot from onboard, for reference on the onboard camera's
+motion.</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=JbRZ2JJ83nA">https://www.youtube.com/watch?v=JbRZ2JJ83nA</a></td>
+<td>"How to Trapeze as Crew on a Catamaran" [S]</td>
+<td>Trapeze technique: hooking in, stepping out, body angle.
+<strong>Check:</strong> the trapeze wire's angle from the hounds, and
+foot placement on the hull.</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=iIr6JU0y8a0">https://www.youtube.com/watch?v=iIr6JU0y8a0</a></td>
+<td>"Hobiecat 16 racing ONBOARD Midwinters Regatta USA 2024" [S]</td>
+<td>Upwind racing filmed onboard, with fleet traffic.
+<strong>Check:</strong> tacking angles (H16 tacks through about 90-100°
+true), pointing, and how fast the boat accelerates out of a tack.</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=kEsVJqW90QM">https://www.youtube.com/watch?v=kEsVJqW90QM</a></td>
+<td>"22nd Hobie 16 Worlds" [S]</td>
+<td>Fleet footage from the World Championship. Useful for checking
+several boats on screen at once, plus sail colours and numbering.</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=OJnWAmwokeI">https://www.youtube.com/watch?v=OJnWAmwokeI</a></td>
+<td>"90lb Crew. 25 Knots of Wind. How Fast?" [S]</td>
+<td>Top end of the HEAVY band. <strong>Check:</strong> boat speed
+against true wind, how often the bow buries, and spray density.</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=BLJRTX1mKUU">https://www.youtube.com/watch?v=BLJRTX1mKUU</a></td>
+<td>"Fast and windy Hobie 16 multi cam with commentary and capsize!"
+(JoyriderTV) [S]</td>
+<td>Several cameras in heavy air, ending in a capsize. Ideal for syncing
+your capsize animation to the real timing.</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=Dtg16aF9qQc">https://www.youtube.com/watch?v=Dtg16aF9qQc</a></td>
+<td>"Hobie 16, Wind 30 knots, Top Speed" [S]</td>
+<td>30 kn top-speed run. <strong>Check:</strong> the GPS/speed overlay,
+if one is shown. An H16 tops out around 20+ kn.</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=teOQ9vZ8ono">https://www.youtube.com/watch?v=teOQ9vZ8ono</a></td>
+<td>"30 knots of wind, four very different joyrides, Hobie 16 onboard"
+[S]</td>
+<td>Four runs in the same 30 kn conditions with different outcomes. Good
+for tuning variance in your physics.</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=HHrvRg9ue4I">https://www.youtube.com/watch?v=HHrvRg9ue4I</a></td>
+<td>"Sailing Hobie 16 in 20-30 knot winds - Crash - Capsize - HD Helmet
+Cam" [S]</td>
+<td>First-person (helmet cam) footage of a capsize in 20-30 kn.
+<strong>Check:</strong> how the camera behaves as the crew are thrown,
+and the sequence of the rig hitting the water.</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=pUHXmuGMDPc">https://www.youtube.com/watch?v=pUHXmuGMDPc</a></td>
+<td>"Hobie 16 Nantucket Extreme Sailing. Pitchpoles, Hull Flying, Waves,
+and Pabst." [S]</td>
+<td>Open-water waves with several pitchpoles. <strong>Check:</strong>
+bow burial in a wave face, and the stern lifting over.</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=d9YnsYm9Uik">https://www.youtube.com/watch?v=d9YnsYm9Uik</a></td>
+<td>"Hobie 16 Pitchpole" [S]</td>
+<td>The classic pitchpole sequence. <strong>Check:</strong> the leeward
+bow digs in, the boat decelerates hard, the stern rises, and it rolls
+over diagonally. Real pitchpoles are usually part-pitch, part-roll
+rather than a pure end-over-end.</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=rtCwM0peiUE">https://www.youtube.com/watch?v=rtCwM0peiUE</a></td>
+<td>"Hobie 16 Pitchpoling in Slowmotion" [S]</td>
+<td><strong>Slow motion, the best clip for keyframe timing</strong> of a
+pitchpole.</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=orFmS-q78y4">https://www.youtube.com/watch?v=orFmS-q78y4</a></td>
+<td>"GoPro: Hobie 16 Pitchpole" [S]</td>
+<td>The same event from an onboard GoPro, for first-person camera
+reference.</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=LQuW2PwCvmY">https://www.youtube.com/watch?v=LQuW2PwCvmY</a></td>
+<td>"Hobie 16 pitchpole - Wildwind, Vassiliki" [S]</td>
+<td>Location stated: Vassiliki, Greece, a known spot for strong
+afternoon thermal winds. Filmed from shore.</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=m_IaEVEM434">https://www.youtube.com/watch?v=m_IaEVEM434</a></td>
+<td>"Pitchpole a Hobie 16 on Emma Lake August 2011" [S]</td>
+<td><strong>Pitchpole on a lake, the closest analogue to a Texas
+reservoir.</strong> Short chop rather than swell. Dated August
+2011.</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=lxR1236ARng">https://www.youtube.com/watch?v=lxR1236ARng</a></td>
+<td>"Hobie 16 Anti Pitchpole Planes do work! 7-30-13" [S]</td>
+<td>Shows the bow's behaviour with anti-pitchpole foils fitted. Optional
+reference for modelling bow lift.</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td>CAPSIZE</td>
+<td><a
+href="https://www.youtube.com/watch?v=1sjkOV5QmZM">https://www.youtube.com/watch?v=1sjkOV5QmZM</a></td>
+<td>"The Ultimate Hobie 16 Capsize Recovery Guide" [S]</td>
+<td>The full righting procedure. <strong>Check:</strong> the mast-float
+hull position, crew pulling on the righting line, the boat swinging
+bow-to-wind, and how long righting takes (often 1-3 min).</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td>CAPSIZE</td>
+<td><a
+href="https://www.youtube.com/watch?v=FB_JI4KCTDE">https://www.youtube.com/watch?v=FB_JI4KCTDE</a></td>
+<td>"Hobie 16 Righting from Capsize Take 1." [S]</td>
+<td>A real-time righting attempt. Use it to time each stage of a
+righting minigame.</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td>CAPSIZE</td>
+<td><a
+href="https://www.youtube.com/watch?v=NsSz_vlRTFI">https://www.youtube.com/watch?v=NsSz_vlRTFI</a></td>
+<td>"Solo Capsize and Righting Hobie 16 with water bag" [S]</td>
+<td>A solo sailor righting the boat using a water bag. Relevant if your
+sim allows singlehanded righting.</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td>CAPSIZE</td>
+<td><a
+href="https://www.youtube.com/watch?v=ODNBYzvl--4">https://www.youtube.com/watch?v=ODNBYzvl--4</a></td>
+<td>"Hobie Cat 16 Spi capsize in strong wind condition" [S]</td>
+<td>A capsize with the spinnaker up.</td>
+</tr>
+<tr class="even">
+<td>28</td>
+<td>REGIONAL</td>
+<td><a
+href="https://www.youtube.com/watch?v=JcXzc__it5c">https://www.youtube.com/watch?v=JcXzc__it5c</a></td>
+<td>"Hobie 16 Sailing on Galveston Bay" [S]</td>
+<td><strong>The Hobie 16 sailing in the actual target
+environment.</strong> Bay chop and the bay's brown-green water
+colour.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="env-a2-corsair-880-trimaran-with-f-28--28r-as-fallbacks">A2.
+Corsair 880 trimaran (with F-28 / 28R as fallbacks)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Band</th>
+<th>URL</th>
+<th>Title / Source</th>
+<th>What it shows / what to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>29</td>
+<td>MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=Ry732XpMiPw">https://www.youtube.com/watch?v=Ry732XpMiPw</a></td>
+<td>"REVIEW: Sailing The Corsair 880 Sport Trimaran" (Mysailing AU) [S].
+Companion article: <a
+href="https://www.mysailing.com.au/sailing-the-corsair-880-sport-trimaran/">https://www.mysailing.com.au/sailing-the-corsair-880-sport-trimaran/</a></td>
+<td>Test sail and review. <strong>Check:</strong> how much the leeward
+ama is immersed, how clean the main hull's wake is, and speed numbers if
+given.</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=N_wOqxaydxA">https://www.youtube.com/watch?v=N_wOqxaydxA</a></td>
+<td>"Corsair 880 sea trials - leeward float performance at 15 kts"
+[S]</td>
+<td><strong>A focused look at the leeward float at 15 kn.</strong>
+<strong>Check:</strong> the float's bow wave, spray off the float, and
+whether the windward float stays just clear of the water.</td>
+</tr>
+<tr class="odd">
+<td>31</td>
+<td>LIGHT/MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=iL9Qdr2WzA8">https://www.youtube.com/watch?v=iL9Qdr2WzA8</a></td>
+<td>"Is the Corsair 880 the PERFECT Trailer Sailer? // Foldable trimaran
+sailboat in Newport Harbor" [S]</td>
+<td>Sailing in the harbour. Also covers folding the amas, which is
+useful for a trailer or docking state.</td>
+</tr>
+<tr class="even">
+<td>32</td>
+<td>n/a</td>
+<td><a
+href="https://www.youtube.com/watch?v=OfUTdCE245k">https://www.youtube.com/watch?v=OfUTdCE245k</a></td>
+<td>"Corsair 880 Trimaran COMPLETE TECHNICAL TOUR" [S]</td>
+<td>Deck layout and rig details for the model and texture pass.</td>
+</tr>
+<tr class="odd">
+<td>33</td>
+<td>n/a</td>
+<td><a
+href="https://www.youtube.com/watch?v=zfgAc7AeeFg">https://www.youtube.com/watch?v=zfgAc7AeeFg</a></td>
+<td>"Launch the new 880 trimaran from Corsair Marine" (Corsair Marine)
+[S]</td>
+<td>Manufacturer launch footage.</td>
+</tr>
+<tr class="even">
+<td>34</td>
+<td>HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=tHvRhl0E9mw">https://www.youtube.com/watch?v=tHvRhl0E9mw</a></td>
+<td>"Trimaran CorsairMarine F28 surfing the Mistral" [S]</td>
+<td><strong>F-28 surfing downwind in a Mistral (strong wind).</strong>
+<strong>Check:</strong> surfing on wave faces, spray, and how the bow
+behaves.</td>
+</tr>
+<tr class="odd">
+<td>35</td>
+<td>HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=gNMgp_GPGqk">https://www.youtube.com/watch?v=gNMgp_GPGqk</a></td>
+<td>"F28 Corsair Trimaran Goes 22.5" [S]</td>
+<td>A 22.5 kn top speed. Use it to cap your speed polars.</td>
+</tr>
+<tr class="even">
+<td>36</td>
+<td>HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=N9Kmo9oOuPg">https://www.youtube.com/watch?v=N9Kmo9oOuPg</a></td>
+<td>"Corsair Trimaran Beating to Windward in Strong Breeze" [S]</td>
+<td>Upwind in strong breeze. <strong>Check:</strong> slamming into chop,
+heel angle (a trimaran settles at ~10-15°), and spray off the windward
+bow.</td>
+</tr>
+<tr class="odd">
+<td>37</td>
+<td>HEAVY/STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=c5ifsmfKa5U">https://www.youtube.com/watch?v=c5ifsmfKa5U</a></td>
+<td>"Corsair f24 trimaran in 25 to 30 knots wind" [S]</td>
+<td>A smaller sistership in 25-30 kn. Good proxy for reefed heavy-air
+behaviour.</td>
+</tr>
+<tr class="even">
+<td>38</td>
+<td>MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=cwmH__Qe5_A">https://www.youtube.com/watch?v=cwmH__Qe5_A</a></td>
+<td>"Sailing Corsair F28 trimaran in Santa Monica Bay" [S]</td>
+<td>Ocean swell with moderate breeze.</td>
+</tr>
+<tr class="odd">
+<td>39</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=xN1Gh427vR4">https://www.youtube.com/watch?v=xN1Gh427vR4</a></td>
+<td>"Corsair 28R won the third place Multihull Weldome Race Kieler Woche
+2019" [S]</td>
+<td>Racing in 2019 at Kiel.</td>
+</tr>
+<tr class="even">
+<td>40</td>
+<td>CAPSIZE</td>
+<td><a
+href="https://www.youtube.com/watch?v=aaoPJJY6ZiA">https://www.youtube.com/watch?v=aaoPJJY6ZiA</a></td>
+<td>"How to right a Corsair trimaran - Dec. 2009" [S]</td>
+<td><strong>Rare footage of righting a Corsair after capsize.</strong>
+It needs outside help, so it is not something the crew can do alone. In
+a sim, a trimaran capsize should probably end the session or require a
+tow.</td>
+</tr>
+<tr class="odd">
+<td>41</td>
+<td>STORM</td>
+<td><a
+href="https://www.youtube.com/watch?v=oAli34gq6w4">https://www.youtube.com/watch?v=oAli34gq6w4</a></td>
+<td>"How to (almost) capsize a c-foil trimaran" [S]</td>
+<td>A near-capsize with the float buried. <strong>Check:</strong> the
+ama submerges completely and the boat trips over it.</td>
+</tr>
+</tbody>
+</table>
+<p>The 880 has very little coverage in heavy air or capsize. Use the
+F-28 and F-24 clips above as stand-ins for the HEAVY and STORM
+bands.</p>
+<h3 id="env-a3-lagoon-42-catamaran">A3. Lagoon 42 catamaran</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Band</th>
+<th>URL</th>
+<th>Title / Source</th>
+<th>What it shows / what to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>42</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=bJhQlGl38fE">https://www.youtube.com/watch?v=bJhQlGl38fE</a></td>
+<td>"Lagoon 42 close reach to close haul in 10-25 knots of wind"
+[S]</td>
+<td><strong>The best single Lagoon 42 clip, because it covers the whole
+moderate-to-heavy range.</strong> <strong>Check:</strong> pointing (a
+cruising cat sails ~50-55° apparent at best), little to no heel, slap
+under the bridgedeck, and pitching.</td>
+</tr>
+<tr class="even">
+<td>43</td>
+<td>MOD/HEAVY</td>
+<td><a
+href="https://www.youtube.com/watch?v=-RKQ-A8ivdI">https://www.youtube.com/watch?v=-RKQ-A8ivdI</a></td>
+<td>"Lagoon 42 - Reaching 16 knots" [S]</td>
+<td>A reach at 16 kn (unclear whether that is boat speed or wind speed).
+Treat any claim of 16 kn boat speed as an upper-bound outlier.</td>
+</tr>
+<tr class="odd">
+<td>44</td>
+<td>LIGHT/MOD</td>
+<td><a
+href="https://www.youtube.com/watch?v=P4ggOm_yG_8">https://www.youtube.com/watch?v=P4ggOm_yG_8</a></td>
+<td>"First time Solo Sailing 42 ft Catamaran - 8 knots full sails out!"
+[S]</td>
+<td>Full sail at 8 kn. Shows calm cruising motion.</td>
+</tr>
+<tr class="even">
+<td>45</td>
+<td>n/a</td>
+<td><a
+href="https://www.youtube.com/watch?v=da1EMHDS83E">https://www.youtube.com/watch?v=da1EMHDS83E</a></td>
+<td>"Lagoon 42 Catamaran Review 2021" [S]</td>
+<td>Review with sailing shots. Good for proportions and for the
+flybridge helm position, which sets the camera height.</td>
+</tr>
+<tr class="odd">
+<td>46</td>
+<td>n/a</td>
+<td><a
+href="https://www.youtube.com/watch?v=4msMtVVdPh0">https://www.youtube.com/watch?v=4msMtVVdPh0</a></td>
+<td>"Lagoon 42 - Blackbird" [S]</td>
+<td>Owner footage.</td>
+</tr>
+<tr class="even">
+<td>47</td>
+<td>HEAVY (reefing)</td>
+<td><a
+href="https://www.youtube.com/watch?v=ShUj6Go7IlM">https://www.youtube.com/watch?v=ShUj6Go7IlM</a></td>
+<td>"How to Reef your Mainsail on a Catamaran" [S]</td>
+<td>The reefing procedure. Check the reefed sail shape and lazy-bag
+behaviour.</td>
+</tr>
+<tr class="odd">
+<td>48</td>
+<td>STORM (proxy)</td>
+<td><a
+href="https://www.youtube.com/watch?v=M5pczBRO7Io">https://www.youtube.com/watch?v=M5pczBRO7Io</a></td>
+<td>"BIG WAVES sailing our CATAMARAN straight to FRANCE" [S]</td>
+<td>A cruising cat in big seas. Not confirmed as a Lagoon.
+<strong>Check:</strong> how the hulls ride over waves, and green water
+on the trampoline.</td>
+</tr>
+<tr class="even">
+<td>49</td>
+<td>DOCKING</td>
+<td><a
+href="https://www.youtube.com/watch?v=-p9_f3qa0Zs">https://www.youtube.com/watch?v=-p9_f3qa0Zs</a></td>
+<td>"Katamarantraum Catamaran Docking Maneuver Sailing Training - Lagoon
+42" [S]</td>
+<td><strong>Lagoon 42 docking with the twin engines.</strong>
+<strong>Check:</strong> pivoting with one engine forward and one in
+reverse, and windage drift.</td>
+</tr>
+<tr class="odd">
+<td>50</td>
+<td>DOCKING</td>
+<td><a
+href="https://www.youtube.com/watch?v=NhfBQr3aBsA">https://www.youtube.com/watch?v=NhfBQr3aBsA</a></td>
+<td>"SINGLE-HANDED DOCKING IN 20 KNOT CROSSWIND" [S]</td>
+<td>A cat docking in a 20 kn crosswind. Calibrate drift rate from the
+high windage.</td>
+</tr>
+<tr class="even">
+<td>51</td>
+<td>DOCKING</td>
+<td><a
+href="https://youtube.com/watch?pp=0gcJCdgAo7VqN5tD&amp;v=H0KWhZOmPk8">https://youtube.com/watch?pp=0gcJCdgAo7VqN5tD&amp;v=H0KWhZOmPk8</a></td>
+<td>"How to Dock in a Crosswind on a Catamaran (in a tight space)"
+[S]</td>
+<td>Crosswind docking technique in tight quarters.</td>
+</tr>
+<tr class="odd">
+<td>52</td>
+<td>DOCKING</td>
+<td><a
+href="https://www.youtube.com/watch?v=wagOy9IpjMY">https://www.youtube.com/watch?v=wagOy9IpjMY</a></td>
+<td>"Catamaran Manoeuvring Tips &amp; Leaving a Marina" [S]</td>
+<td>Low-speed handling under power.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="env-a4-squalls-broaches-and-knockdowns-generic-any-boat">A4.
+Squalls, broaches and knockdowns (generic, any boat)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>URL</th>
+<th>Title</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>53</td>
+<td><a
+href="https://www.youtube.com/watch?v=Wm3VodUT2Ts">https://www.youtube.com/watch?v=Wm3VodUT2Ts</a></td>
+<td>"Squall hits during a sailboat race" [S]</td>
+<td>How fast the gust front arrives, and the darkening on the water
+ahead of it.</td>
+</tr>
+<tr class="even">
+<td>54</td>
+<td><a
+href="https://www.youtube.com/watch?v=aC7ysgEEAQM">https://www.youtube.com/watch?v=aC7ysgEEAQM</a></td>
+<td>"Line Squall Hits Sailing Race!" [S]</td>
+<td>A whole fleet hit by a squall at once.</td>
+</tr>
+<tr class="odd">
+<td>55</td>
+<td><a
+href="https://www.youtube.com/watch?v=4ySCwgLa4p8">https://www.youtube.com/watch?v=4ySCwgLa4p8</a></td>
+<td>"high wind sailing knockdown extreme squall intense heeling sailboat
+11/11/11" [S]</td>
+<td>Knockdown and heel dynamics.</td>
+</tr>
+<tr class="even">
+<td>56</td>
+<td><a
+href="https://www.youtube.com/shorts/f_yBND4zjcc">https://www.youtube.com/shorts/f_yBND4zjcc</a></td>
+<td>"Sudden Squall Causes Massive J/80 Broach" [S]</td>
+<td><strong>A broach</strong>: rounding up uncontrollably, the boat goes
+flat on its side, and the spinnaker flogs.</td>
+</tr>
+<tr class="odd">
+<td>57</td>
+<td><a
+href="https://www.youtube.com/watch?v=5wKh7yZ0J-0">https://www.youtube.com/watch?v=5wKh7yZ0J-0</a></td>
+<td>"Timelapse of squall line with gust front" [S]</td>
+<td>Timelapse of the cloud structure arriving with a squall line.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="env-part-b-environment">PART B: ENVIRONMENT</h2>
+<h3 id="env-b1-texas-lakes-water-sky-and-boats">B1. Texas lakes: water,
+sky and boats</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Location</th>
+<th>URL</th>
+<th>Title / Source</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>58</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=n6omVtBbU1A">https://www.youtube.com/watch?v=n6omVtBbU1A</a></td>
+<td>"Sailing Lake Ray Hubbard" [S]</td>
+<td><strong>Primary local reference.</strong> Water colour (expect
+turbid olive or tan-green, never Caribbean blue), shoreline (low, with
+the I-30 bridge and the Rockwall Harbor buildings), and chop size.</td>
+</tr>
+<tr class="even">
+<td>59</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=hWHmlrk2k58">https://www.youtube.com/watch?v=hWHmlrk2k58</a></td>
+<td>"Sunset Sailing on Lake Ray Hubbard" [S]</td>
+<td>Sunset colour grading over the lake, and the sun's glint path on
+short chop.</td>
+</tr>
+<tr class="odd">
+<td>60</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=BMUq9bjO2l8">https://www.youtube.com/watch?v=BMUq9bjO2l8</a></td>
+<td>"Sail Lake Ray Hubbard" [S]</td>
+<td>Extra sailing footage on the lake.</td>
+</tr>
+<tr class="even">
+<td>61</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=ozwlWtKaTYw">https://www.youtube.com/watch?v=ozwlWtKaTYw</a></td>
+<td>"Catalina 310 Sailboat Racing" (returned for a Ray Hubbard search;
+venue not confirmed) [S]</td>
+<td>Club racing among keelboats.</td>
+</tr>
+<tr class="odd">
+<td>62</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=Yifd6WcX8XY">https://www.youtube.com/watch?v=Yifd6WcX8XY</a></td>
+<td>"Aerial Drone Tour of Rowlett, Texas &amp; Lake Ray Hubbard in 4K
+60fps — Bridge, Water Tower &amp; Downtown" [S]</td>
+<td><strong>4K drone footage.</strong> Water colour from altitude, the
+bridges, shoreline vegetation and the skyline. Use it for the terrain
+layout.</td>
+</tr>
+<tr class="even">
+<td>63</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=7kqfLmIVYNg">https://www.youtube.com/watch?v=7kqfLmIVYNg</a></td>
+<td>"Lake Ray Hubbard Marina Rockwall Texas" [S]</td>
+<td>The marina. Useful for docks, slips and the masts of moored
+boats.</td>
+</tr>
+<tr class="odd">
+<td>64</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=91vCYZz39Cg">https://www.youtube.com/watch?v=91vCYZz39Cg</a></td>
+<td>"Sunset at The Harbor Rockwall" [S]</td>
+<td>Sunset at Rockwall Harbor, including lights reflecting on the
+water.</td>
+</tr>
+<tr class="even">
+<td>65</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.youtube.com/watch?v=XzhTtiODKE4">https://www.youtube.com/watch?v=XzhTtiODKE4</a></td>
+<td>"Spotlight on Lake Ray Hubbard" [S]</td>
+<td>Overview of the lake.</td>
+</tr>
+<tr class="odd">
+<td>66</td>
+<td>Ray Hubbard (storm)</td>
+<td><a
+href="https://www.nbcdfw.com/news/local/afternoon-storm-caused-choppy-conditions-on-lake-ray-hubbard/3329530/?amp=1">https://www.nbcdfw.com/news/local/afternoon-storm-caused-choppy-conditions-on-lake-ray-hubbard/3329530/?amp=1</a></td>
+<td>NBC DFW, Sept 3 2023: "Afternoon storm caused choppy conditions on
+Lake Ray Hubbard" <strong>[V]</strong></td>
+<td>A Labor Day afternoon storm brought rain, gusty winds, lightning and
+possibly hail. One boater said "this thing turned into an ocean real
+quick." About ten boats sheltered under the I-30 bridge for 30-45
+minutes. <strong>Narrative reference for STORM events on the
+lake</strong> (how fast the chop builds, sheltering spots).</td>
+</tr>
+<tr class="even">
+<td>67</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://www.cbsnews.com/texas/news/18-people-rescued-from-lake-ray-hubbard-after-2-boats-capsize">https://www.cbsnews.com/texas/news/18-people-rescued-from-lake-ray-hubbard-after-2-boats-capsize</a></td>
+<td>CBS Texas: "18 People Rescued From Lake Ray Hubbard After 2 Boats
+Capsize" [S]</td>
+<td>A real capsize incident on the lake. Useful context for
+scenarios.</td>
+</tr>
+<tr class="odd">
+<td>68</td>
+<td>Ray Hubbard (wind data)</td>
+<td><a
+href="https://www.windfinder.com/windstatistics/rockwall_ray_hubbard">https://www.windfinder.com/windstatistics/rockwall_ray_hubbard</a></td>
+<td>Windfinder wind statistics for Rockwall / Ray Hubbard [S]</td>
+<td><strong>Monthly wind direction and speed distributions.</strong> Use
+these to weight the sim's random weather. The prevailing wind in North
+Texas is from the south, with northerly fronts in winter.</td>
+</tr>
+<tr class="even">
+<td>69</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://tpwd.texas.gov/fishboat/fish/recreational/lakes/ray_hubbard/access.phtml">https://tpwd.texas.gov/fishboat/fish/recreational/lakes/ray_hubbard/access.phtml</a></td>
+<td>TPWD Lake Ray Hubbard access page [S]</td>
+<td>Boat ramps and access points. TPWD lake pages often include photos
+and maps.</td>
+</tr>
+<tr class="odd">
+<td>70</td>
+<td>Ray Hubbard</td>
+<td><a
+href="https://texashistory.unt.edu/ark:/67531/metapth1411724/">https://texashistory.unt.edu/ark:/67531/metapth1411724/</a></td>
+<td>UNT Portal to Texas History: "[Lake Ray Hubbard &amp; Captain's Cove
+Marina]" [S]</td>
+<td>Historical aerial or marina photo.</td>
+</tr>
+<tr class="even">
+<td>71</td>
+<td>Grapevine</td>
+<td><a
+href="https://www.youtube.com/watch?v=lMHSeEobqew">https://www.youtube.com/watch?v=lMHSeEobqew</a></td>
+<td>"Sailing in Grapevine Lake" [S]</td>
+<td>A comparable DFW reservoir. Compare its water colour with Ray
+Hubbard's (Grapevine is often clearer and greener).</td>
+</tr>
+<tr class="odd">
+<td>72</td>
+<td>Grapevine</td>
+<td><a
+href="https://www.youtube.com/watch?v=itcS_7uE6iw">https://www.youtube.com/watch?v=itcS_7uE6iw</a></td>
+<td>"Black Watch Sailing Charters - Lake Grapevine, TX" [S]</td>
+<td>Charter sailing on Lake Grapevine.</td>
+</tr>
+<tr class="even">
+<td>73</td>
+<td>Lewisville</td>
+<td><a
+href="https://www.youtube.com/watch?v=busXAwhw4Io">https://www.youtube.com/watch?v=busXAwhw4Io</a></td>
+<td>"Sailing with Big D Cats on the Chamonix II Lake Lewisville"
+[S]</td>
+<td><strong>A cruising catamaran on a DFW lake</strong>, which makes it
+a close analogue for a Lagoon 42 in the sim.</td>
+</tr>
+<tr class="odd">
+<td>74</td>
+<td>White Rock</td>
+<td><a
+href="https://www.youtube.com/watch?v=J4qxL53-1fI">https://www.youtube.com/watch?v=J4qxL53-1fI</a></td>
+<td>"Sunset Sailboat Ride on White Rock Lake in Dallas" [S]</td>
+<td>A small urban lake with the Dallas skyline behind. Good for sunset
+and haze.</td>
+</tr>
+<tr class="even">
+<td>75</td>
+<td>White Rock</td>
+<td><a
+href="https://www.youtube.com/watch?v=i0GuKRrfQGI">https://www.youtube.com/watch?v=i0GuKRrfQGI</a></td>
+<td>"White Rock Lake's Fastest Wooden Boat - The Sailing Flattie!"
+[S]</td>
+<td>Small-boat sailing on White Rock Lake.</td>
+</tr>
+<tr class="odd">
+<td>76</td>
+<td>Lake Travis</td>
+<td><a
+href="https://www.youtube.com/watch?v=Tr9IJRH80D8">https://www.youtube.com/watch?v=Tr9IJRH80D8</a></td>
+<td>"Sailing Ranger 28 with Mack on Lake Travis, Austin, Texas" [S]</td>
+<td>Hill Country lake with limestone bluffs, clearer blue-green water
+and gustier winds funnelled by the terrain. A contrast map.</td>
+</tr>
+<tr class="even">
+<td>77</td>
+<td>Lake Travis</td>
+<td><a
+href="https://www.youtube.com/watch?v=84x9A9xyLcE">https://www.youtube.com/watch?v=84x9A9xyLcE</a></td>
+<td>"Windsurfing Lake Travis Austin Texas GoPro Video" [S]</td>
+<td>Windy-day chop on Lake Travis, likely at Windy Point.</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="env-b2-north-texas-storms-shelf-clouds-supercells-gust-fronts">B2.
+North Texas storms (shelf clouds, supercells, gust fronts)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>URL</th>
+<th>Title</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>78</td>
+<td><a
+href="https://www.youtube.com/watch?v=X-1jzz3HAEo">https://www.youtube.com/watch?v=X-1jzz3HAEo</a></td>
+<td>"DFW storm timelapse: Wall of rain, clouds, lightning rolls over
+lake" [S]</td>
+<td><strong>The closest match for a storm approaching over a DFW
+lake.</strong> The rain curtain, the water darkening under the gust
+front, and lightning.</td>
+</tr>
+<tr class="even">
+<td>79</td>
+<td><a
+href="https://www.youtube.com/watch?v=TkctH4_NwRI">https://www.youtube.com/watch?v=TkctH4_NwRI</a></td>
+<td>"Incredible Shelf Cloud in North Texas; Fort Worth Microburst
+[10/4/23]" [S]</td>
+<td>Shelf cloud structure plus a microburst, dated 10/4/2023.
+<strong>Check:</strong> the layered tiers of the shelf cloud, the
+green-grey light underneath, and how the outflow wind arrives.</td>
+</tr>
+<tr class="odd">
+<td>80</td>
+<td><a
+href="https://www.youtube.com/watch?v=TxSjWEhaBBk">https://www.youtube.com/watch?v=TxSjWEhaBBk</a></td>
+<td>"Impressive Shelf Cloud Hangs Over Texas Sky" [S]</td>
+<td>Shelf cloud reference.</td>
+</tr>
+<tr class="even">
+<td>81</td>
+<td><a
+href="https://www.youtube.com/watch?v=qldN23UlLZ8">https://www.youtube.com/watch?v=qldN23UlLZ8</a></td>
+<td>"Supercell over Dallas-Ft. Worth, TX with cool structure as it
+slowly dissipates!" [S]</td>
+<td>Supercell structure and the striations in its updraft.</td>
+</tr>
+<tr class="odd">
+<td>82</td>
+<td><a
+href="https://www.youtube.com/watch?v=ab_7AelNo04">https://www.youtube.com/watch?v=ab_7AelNo04</a></td>
+<td>"03-16-2023 Fort Worth - Hail, Drone, Supercell Timelapse" [S]</td>
+<td>Drone timelapse plus hail, dated 3/16/2023.</td>
+</tr>
+<tr class="even">
+<td>83</td>
+<td><a
+href="https://www.youtube.com/watch?v=BrDNBxKPr0A">https://www.youtube.com/watch?v=BrDNBxKPr0A</a></td>
+<td>"03-16-2023 Dallas/Fort Worth, TX - Tornadic Supercells - Ominous
+Skies - Heavy Rain" [S]</td>
+<td>The same day in Dallas. Heavy rain and the sky colours that come
+with it.</td>
+</tr>
+<tr class="odd">
+<td>84</td>
+<td><a
+href="https://www.youtube.com/watch?v=9lRvLDe_I44">https://www.youtube.com/watch?v=9lRvLDe_I44</a></td>
+<td>"Massive supercell storm over Texas captured in stunning timelapse
+footage" [S]</td>
+<td>Timelapse of a Texas supercell.</td>
+</tr>
+<tr class="even">
+<td>85</td>
+<td><a
+href="https://commons.wikimedia.org/wiki/Category:Shelf_clouds">https://commons.wikimedia.org/wiki/Category:Shelf_clouds</a></td>
+<td>Wikimedia Commons, Category: Shelf clouds <strong>[V]</strong> (149
+files, 8 subcategories)</td>
+<td><strong>Freely licensed stills</strong> for texture and matte
+reference. Check each file's licence.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="env-b3-galveston-bay-clear-lake-kemah-and-the-gulf">B3.
+Galveston Bay, Clear Lake, Kemah and the Gulf</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>URL</th>
+<th>Title</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>86</td>
+<td><a
+href="https://www.youtube.com/watch?v=qTCIVQsQJOk">https://www.youtube.com/watch?v=qTCIVQsQJOk</a></td>
+<td>"Sailing from Harborwalk Galveston to Kemah, TX" [S]</td>
+<td><strong>A bay transit</strong>: chop, the brown-green turbid water,
+channel markers and the flat horizon.</td>
+</tr>
+<tr class="even">
+<td>87</td>
+<td><a
+href="https://www.youtube.com/watch?v=MSlcTD6kVpI">https://www.youtube.com/watch?v=MSlcTD6kVpI</a></td>
+<td>"sailing on galveston bay" [S]</td>
+<td>General footage of the bay.</td>
+</tr>
+<tr class="odd">
+<td>88</td>
+<td><a
+href="https://www.youtube.com/watch?v=L5d4_CQdzVI">https://www.youtube.com/watch?v=L5d4_CQdzVI</a></td>
+<td>"Sailing with Friends on Galveston Bay - Storm Encounters" [S]</td>
+<td><strong>A storm on the bay.</strong></td>
+</tr>
+<tr class="even">
+<td>89</td>
+<td><a
+href="https://www.youtube.com/watch?v=e5icGmexr7E">https://www.youtube.com/watch?v=e5icGmexr7E</a></td>
+<td>"Sailing Galveston Bay 2025 GBCA Cruzan Rum Icicle Race No. 3"
+[S]</td>
+<td>Winter racing (Icicle Series, 2025). Shows grey winter light and a
+northerly breeze.</td>
+</tr>
+<tr class="odd">
+<td>90</td>
+<td><a
+href="https://www.youtube.com/@gbca-galvestonbaycruisinga4803">https://www.youtube.com/@gbca-galvestonbaycruisinga4803</a></td>
+<td>Galveston Bay Cruising Association YouTube channel [S]</td>
+<td>Ongoing race footage from the bay.</td>
+</tr>
+<tr class="even">
+<td>91</td>
+<td><a
+href="https://www.youtube.com/watch?v=TUs6axoP5gA">https://www.youtube.com/watch?v=TUs6axoP5gA</a></td>
+<td>"Texas Sailing on Galveston Bay #shorts #racing" [S]</td>
+<td>A short racing clip.</td>
+</tr>
+<tr class="odd">
+<td>92</td>
+<td><a
+href="https://www.youtube.com/watch?v=aJ7Irt7YkMQ">https://www.youtube.com/watch?v=aJ7Irt7YkMQ</a></td>
+<td>"Sailing from Rattlesnake Island to the Galveston Boat Club"
+[S]</td>
+<td>Cruising across the bay.</td>
+</tr>
+<tr class="even">
+<td>93</td>
+<td><a
+href="https://www.youtube.com/watch?v=xZwIY9HCU28">https://www.youtube.com/watch?v=xZwIY9HCU28</a></td>
+<td>"HARVEST MOON REGATTA 2024! 147 nm race down the TEXAS coast -
+Galveston to Port Aransas - EP 26" [S]</td>
+<td><strong>Offshore Gulf sailing</strong>, including Gulf swell and
+night sailing under the full moon (the race is timed to it).</td>
+</tr>
+<tr class="odd">
+<td>94</td>
+<td><a
+href="https://www.youtube.com/watch?v=SLrBwkB4LdA">https://www.youtube.com/watch?v=SLrBwkB4LdA</a></td>
+<td>"Harvest Moon Regatta: October 29, 2020" [S]</td>
+<td>Harvest Moon Regatta, 2020 edition.</td>
+</tr>
+<tr class="even">
+<td>95</td>
+<td><a
+href="https://www.youtube.com/watch?v=T052kA6vGPY">https://www.youtube.com/watch?v=T052kA6vGPY</a></td>
+<td>"Over night sailing offshore in dense fog! Galveston to Port Aransas
+Texas" [S]</td>
+<td><strong>Night sailing in fog</strong> in the Gulf. Shows how nav
+lights look through fog.</td>
+</tr>
+<tr class="odd">
+<td>96</td>
+<td><a
+href="https://www.youtube.com/watch?v=Tie3De9eWDw">https://www.youtube.com/watch?v=Tie3De9eWDw</a></td>
+<td>"Sailing the Gulf of Mexico from Galveston to Freeport, TX in a
+Catalina 387" [S]</td>
+<td>Gulf swell near the coast.</td>
+</tr>
+<tr class="even">
+<td>97</td>
+<td><a
+href="https://www.youtube.com/watch?v=wNVOF_sGaYk">https://www.youtube.com/watch?v=wNVOF_sGaYk</a></td>
+<td>"Gulf of Mexico, Sailing from Freeport to Galveston Texas" [S]</td>
+<td>Gulf swell, the reverse passage.</td>
+</tr>
+<tr class="odd">
+<td>98</td>
+<td><a
+href="https://www.youtube.com/watch?v=Q_HzPEDlZiU">https://www.youtube.com/watch?v=Q_HzPEDlZiU</a></td>
+<td>"Houston Ship Channel Traffic - Time Lapse" [S]</td>
+<td>Ship traffic and scale in the channel.</td>
+</tr>
+<tr class="even">
+<td>99</td>
+<td><a
+href="https://www.youtube.com/watch?v=DVsgzQxuqm4">https://www.youtube.com/watch?v=DVsgzQxuqm4</a></td>
+<td>"Large LPG Tanker in The Houston Ship Channel Escorted by Dolphins
+Near Galveston Texas" [S]</td>
+<td>A large ship's bow wave and wake near Galveston.</td>
+</tr>
+<tr class="odd">
+<td>100</td>
+<td><a
+href="https://www.youtube.com/watch?v=JUWiPBHQrV4">https://www.youtube.com/watch?v=JUWiPBHQrV4</a></td>
+<td>"Houston Shipping Channel Tanker Surfing" [S]</td>
+<td><strong>The wake from a tanker in the ship channel</strong>:
+long-period wake waves rolling across the shallow bay. A ship channel
+hazard worth simulating.</td>
+</tr>
+<tr class="even">
+<td>101</td>
+<td><a
+href="https://www.youtube.com/watch?v=yxIW02i9buk">https://www.youtube.com/watch?v=yxIW02i9buk</a></td>
+<td>"Galveston Bay Supercell &amp; Possible Waterspout [5/28/2020]"
+[S]</td>
+<td><strong>A supercell over the bay itself.</strong></td>
+</tr>
+<tr class="odd">
+<td>102</td>
+<td><a
+href="https://www.youtube.com/watch?v=3Cilc_g78lM">https://www.youtube.com/watch?v=3Cilc_g78lM</a></td>
+<td>"Waterspout forms near Galveston Island" [S]</td>
+<td>Waterspout. <strong>Check:</strong> the spray ring at the base, the
+condensation funnel, and its contrast against the sky.</td>
+</tr>
+<tr class="even">
+<td>103</td>
+<td><a
+href="https://www.youtube.com/watch?v=_h3tTbonFfU">https://www.youtube.com/watch?v=_h3tTbonFfU</a></td>
+<td>"Waterspouts spotted in Galveston" [S]</td>
+<td>More than one waterspout.</td>
+</tr>
+<tr class="odd">
+<td>104</td>
+<td><a
+href="https://www.youtube.com/watch?v=tyHLXR6xpGA">https://www.youtube.com/watch?v=tyHLXR6xpGA</a></td>
+<td>"Waterspout jumps to land in Galveston: KHOU Chief Meteorologist
+David Paul explains how they work" [S]</td>
+<td>Explanation of how waterspouts form.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="env-b4-generic-water-and-lighting-phenomena">B4. Generic water
+and lighting phenomena</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>URL</th>
+<th>Title</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>105</td>
+<td><a
+href="https://en.wikipedia.org/wiki/Kelvin_wake_pattern">https://en.wikipedia.org/wiki/Kelvin_wake_pattern</a></td>
+<td>Kelvin wake pattern (Wikipedia) <strong>[V]</strong></td>
+<td>Arms at 19.47° off the track, wavelets at ~53°. At high Froude
+numbers the apparent angle narrows; see the next row.</td>
+</tr>
+<tr class="even">
+<td>106</td>
+<td><a
+href="https://arxiv.org/pdf/1304.2653">https://arxiv.org/pdf/1304.2653</a></td>
+<td>Rabaud &amp; Moisy, "Ship wakes: Kelvin or Mach angle?" (arXiv / PRL
+2013) [S]</td>
+<td><strong>Fast planing hulls make wakes narrower than the Kelvin
+angle</strong>, with the angle falling roughly as 1/Fr. Relevant for a
+Hobie 16 at speed and for powerboat wakes.</td>
+</tr>
+<tr class="odd">
+<td>107</td>
+<td><a
+href="https://www.youtube.com/watch?v=uVChr-nlkL8">https://www.youtube.com/watch?v=uVChr-nlkL8</a></td>
+<td>"How to spot gusts of wind over water using 'Cat's Paws'" [S]</td>
+<td><strong>Cat's paws</strong>: darker, ruffled patches that move
+downwind. A good model for patches in a wind-noise texture.</td>
+</tr>
+<tr class="even">
+<td>108</td>
+<td><a
+href="https://www.youtube.com/watch?v=kqqVNSd7yYA">https://www.youtube.com/watch?v=kqqVNSd7yYA</a></td>
+<td>"Reading the Wind: Spotting Gusts, Wind Shifts &amp; Sail Feedback"
+[S]</td>
+<td>Reading gusts and shifts from the water, and the feedback they give
+through the sails.</td>
+</tr>
+<tr class="odd">
+<td>109</td>
+<td><a
+href="https://www.youtube.com/watch?v=fveUl2ixurI">https://www.youtube.com/watch?v=fveUl2ixurI</a></td>
+<td>"How to READ WIND SPEED using the WATER" [S]</td>
+<td><strong>How the surface looks at each wind strength</strong>,
+Beaufort-style: ripples, then scattered whitecaps around 12-15 kn, then
+widespread whitecaps. Use it to map surface appearance to wind
+speed.</td>
+</tr>
+<tr class="even">
+<td>110</td>
+<td><a
+href="https://www.youtube.com/watch?v=2th-AXwkNrA">https://www.youtube.com/watch?v=2th-AXwkNrA</a></td>
+<td>"Sailing at Night - Lights" [S]</td>
+<td>Nav light arcs: red/green sidelights 112.5° each, stern light 135°
+(white), tricolour at the masthead.</td>
+</tr>
+<tr class="odd">
+<td>111</td>
+<td><a
+href="https://www.youtube.com/watch?v=U-L3MUxxhew">https://www.youtube.com/watch?v=U-L3MUxxhew</a></td>
+<td>"DAY SHAPES and NIGHT LIGHTS for sailing yachts... and more. Sail
+Ho! Ep. 70" [S]</td>
+<td>Light configurations under COLREGS.</td>
+</tr>
+<tr class="even">
+<td>112</td>
+<td><a
+href="https://www.youtube.com/watch?v=pDwM1yRjaLM">https://www.youtube.com/watch?v=pDwM1yRjaLM</a></td>
+<td>"RAIN ON LAKE SURFACE READ AS ART slow motion x 4" [S]</td>
+<td><strong>Rain on a lake surface</strong>: ring ripples and splash
+crowns. Shows how droplet density relates to rain rate.</td>
+</tr>
+<tr class="odd">
+<td>113</td>
+<td><a
+href="https://www.youtube.com/watch?v=o7hONUEJABQ">https://www.youtube.com/watch?v=o7hONUEJABQ</a></td>
+<td>"Spectacular 4K views of Rain in Slow Mo" [S]</td>
+<td>Rain in 4K slow motion.</td>
+</tr>
+<tr class="even">
+<td>114</td>
+<td><a
+href="https://www.youtube.com/watch?v=v6NSR5VZ_KA">https://www.youtube.com/watch?v=v6NSR5VZ_KA</a></td>
+<td>"CAUGHT IN LIGHTNING STORM WHILE SAILING" [S]</td>
+<td>Lightning seen from a sailboat. <strong>Check:</strong> flash
+illumination of the sails and how the exposure blooms.</td>
+</tr>
+<tr class="odd">
+<td>115</td>
+<td><a
+href="https://www.youtube.com/watch?v=dqW30uzeI2E">https://www.youtube.com/watch?v=dqW30uzeI2E</a></td>
+<td>"Inside a Sailboat During a Violent Night Storm" [S]</td>
+<td>A night storm on board, recorded with the sound.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="env-b5-webcams-and-photo-sources-for-daily-colour-reference">B5.
+Webcams and photo sources (for daily colour reference)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>URL</th>
+<th>Source</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>116</td>
+<td><a
+href="https://visitgalveston.com/webcams/seawall-beach-webcam">https://visitgalveston.com/webcams/seawall-beach-webcam</a></td>
+<td>Visit Galveston: Seawall Beach webcam <strong>[V]</strong></td>
+<td>Live view of Seawall Blvd at 28th St. <strong>Gulf surf colour and
+sky</strong>, every day.</td>
+</tr>
+<tr class="even">
+<td>117</td>
+<td><a
+href="https://www.galveston.com/webcams/surfvideocam/">https://www.galveston.com/webcams/surfvideocam/</a></td>
+<td>Galveston.com surf video cam [S]</td>
+<td>Live surf conditions.</td>
+</tr>
+<tr class="odd">
+<td>118</td>
+<td><a
+href="https://www.windfinder.com/webcams/kemah">https://www.windfinder.com/webcams/kemah</a></td>
+<td>Windfinder webcams near Kemah <strong>[V]</strong></td>
+<td>Lists a single webcam, at Space Center Houston (~7.6 km west of
+Kemah). Not a direct view of the water.</td>
+</tr>
+<tr class="even">
+<td>119</td>
+<td><a
+href="https://www.windfinder.com/webcams/clear-lake_second-outflow">https://www.windfinder.com/webcams/clear-lake_second-outflow</a></td>
+<td>Windfinder: Clear Lake 2nd Outflow webcam [S]</td>
+<td>Possibly a view of Clear Lake / Galveston Bay.</td>
+</tr>
+<tr class="odd">
+<td>120</td>
+<td><a
+href="https://www.windfinder.com/webcams/trophy_club">https://www.windfinder.com/webcams/trophy_club</a></td>
+<td>Windfinder: Trophy Club / Grapevine Lake webcam [S]</td>
+<td>DFW lake webcam. Other Windfinder pages list Grapevine Lake Lakeview
+and Murrell Park.</td>
+</tr>
+<tr class="even">
+<td>121</td>
+<td><a
+href="https://www.windy.com/webcams/1666643385">https://www.windy.com/webcams/1666643385</a></td>
+<td>Windy.com webcam (returned for a Ray Hubbard webcam search; page
+content could not be confirmed) [S]</td>
+<td>Possibly a Rockwall/Ray Hubbard camera. Check it manually.</td>
+</tr>
+<tr class="odd">
+<td>122</td>
+<td><a
+href="https://earthcam.com/usa/texas/lakeway">https://earthcam.com/usa/texas/lakeway</a></td>
+<td>EarthCam Lakeway (Lake Travis) [S]</td>
+<td>Live view of Lake Travis.</td>
+</tr>
+<tr class="even">
+<td>123</td>
+<td><a
+href="https://waterdata.usgs.gov/monitoring-location/USGS-325545096283000">https://waterdata.usgs.gov/monitoring-location/USGS-325545096283000</a></td>
+<td>USGS monitoring location near Lake Ray Hubbard [S]</td>
+<td><strong>Water-quality and turbidity data</strong>, if the station
+reports it. Use it to justify the water's colour and murk. Other USGS
+site IDs near the lake: 325324096292601, 325645096301401,
+325641096300001.</td>
+</tr>
+<tr class="odd">
+<td>124</td>
+<td><a
+href="https://commons.flickr.org/tags/sailboats/">https://commons.flickr.org/tags/sailboats/</a></td>
+<td>Flickr Commons, sailboats tag [S]</td>
+<td>Public-domain or no-known-copyright photos. Mostly historic.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Photo search tips.</strong> Wikimedia Commons pages for Lake
+Ray Hubbard, Hobie 16 and Galveston Bay would not load through the fetch
+tool, so I could not confirm those categories exist. Search Commons by
+hand: <a
+href="https://commons.wikimedia.org/w/index.php?search=Lake+Ray+Hubbard">https://commons.wikimedia.org/w/index.php?search=Lake+Ray+Hubbard</a>.
+On Flickr, search "Lake Ray Hubbard sailing", "Galveston Bay sailboat"
+and "Hobie 16 trapeze", and filter by licence (CC). The TPWD and UNT
+Portal to Texas History (texashistory.unt.edu) have public-domain or
+educational-use photos.</p>
+<hr />
+<h2 id="env-key-realism-takeaways-for-the-sim-developer">Key realism
+takeaways for the sim developer</h2>
+<ol type="1">
+<li><strong>Water colour.</strong> DFW reservoirs (Ray Hubbard,
+Lewisville) and Galveston Bay are turbid. Aim for olive-green to
+tan-brown, with little light reaching the bottom and a short absorption
+depth. Lake Travis is the clear-water outlier. Calibrate against entries
+58, 62, 86 and 116.</li>
+<li><strong>Wave spectrum.</strong> Ray Hubbard is a fetch-limited
+reservoir: max depth 12 m and only a few km of fetch. Expect short,
+steep chop of about 0.3-0.6 m in 20 kn, with periods of 2-3 s and no
+swell. Galveston Bay is also shallow (~2-3 m), so its chop is short and
+steep. The Gulf adds swell of 5-8 s.</li>
+<li><strong>Whitecaps</strong> start appearing around 12-15 kn (entry
+109).</li>
+<li><strong>Hobie 16 events.</strong> A pitchpole starts with the
+leeward bow burying in a bear-away or a gust. It is a diagonal
+pitch-roll, not a clean end-over-end (entries 18-22). Righting takes 1-3
+minutes and needs a righting line plus crew weight (entries 24-26).</li>
+<li><strong>Trimarans.</strong> A trimaran heels ~10-15° on the leeward
+ama and <strong>cannot be righted by its crew</strong>. Use F-28 clips
+for the heavy-air band (entries 34-37).</li>
+<li><strong>Lagoon 42.</strong> Heel is minimal and it slams under the
+bridgedeck in chop. It points poorly, and its high windage makes it
+drift quickly at the dock (entries 42 and 49-51).</li>
+<li><strong>North Texas storms.</strong> An arriving shelf cloud brings
+a sudden wind shift, gusts of 40+ kn, a rain curtain and lightning. The
+chop can build in minutes, as in the NBC DFW article (entry 66).</li>
+<li><strong>Kelvin wake.</strong> Arms sit at 19.47°, narrowing at high
+Froude number (entries 105-106). Ship-channel wakes run across Galveston
+Bay as long-period waves (entry 100).</li>
+</ol>
+</section>
+<section class="panel" id="p-cal" role="tabpanel" hidden>
+<h1
+id="cal-calibration-data-sources--methodology-references--realism-pass">Calibration
+Data Sources &amp; Methodology References — Realism Pass</h1>
+<p>Scope: UE5 sailing sim set on Lake Ray Hubbard (Rush Creek Yacht
+Club, Heath TX), Galveston Bay (Clear Lake/Kemah to Bolivar Roads) and
+the Gulf off Galveston. Compiled 2026-10-12. Every URL below was fetched
+or returned by search during compilation unless marked
+<strong>[unverified]</strong>. Numbers marked <em>(derived)</em> are my
+own calculations from cited inputs.</p>
+<p>Reference point used for distances: USGS site "Lk Ray Hubbard nr Rush
+Ck Yacht Club" 32.8234 N, -96.4976 W (Ray Hubbard); Kemah approx 29.54
+N, -95.02 W (Galveston Bay).</p>
+<hr />
+<h2 id="cal-1-lake-ray-hubbard--wind-weather-water-level-radar">1. Lake
+Ray Hubbard — wind, weather, water level, radar</h2>
+<h3
+id="cal-11-surface-stations-asosawos-distance-from-rcyc-derived-great-circle">1.1
+Surface stations (ASOS/AWOS), distance from RCYC <em>(derived
+great-circle)</em></h3>
+<table>
+<thead>
+<tr class="header">
+<th>ID</th>
+<th>Name</th>
+<th>Lat, Lon</th>
+<th>Dist / bearing from RCYC</th>
+<th>IEM archive start</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>F46</td>
+<td>Rockwall (Ralph M. Hall Muni)</td>
+<td>32.9306, -96.4355</td>
+<td>8.2 mi, 026°</td>
+<td>2012-08-27</td>
+<td>AWOS; closest airport on the lake's NE side. Nearest exposure
+analogue for N/NE winds.</td>
+</tr>
+<tr class="even">
+<td>HQZ</td>
+<td>Mesquite (Metro)</td>
+<td>32.7470, -96.5304</td>
+<td>5.6 mi, 200°</td>
+<td>2003-07-09</td>
+<td>Closest station of all; good for S flow (dominant summer
+direction).</td>
+</tr>
+<tr class="odd">
+<td>TRL</td>
+<td>Terrell Muni</td>
+<td>32.71, -96.27</td>
+<td>15.4 mi, 121°</td>
+<td>1997-05-31</td>
+<td>Rural/open exposure; useful for SE flow.</td>
+</tr>
+<tr class="even">
+<td>DAL</td>
+<td>Dallas Love Field</td>
+<td>32.8471, -96.8518</td>
+<td>20.6 mi, 275°</td>
+<td>1930-01-01</td>
+<td>NWS ASOS — has 1-minute data.</td>
+</tr>
+<tr class="odd">
+<td>ADS</td>
+<td>Dallas/Addison</td>
+<td>32.9686, -96.8364</td>
+<td>22.1 mi, 297°</td>
+<td>1974-01-31</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>GVT</td>
+<td>Greenville/Majors</td>
+<td>33.0678, -96.0653</td>
+<td>30.2 mi, 056°</td>
+<td>1942-09-11</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>DFW</td>
+<td>Dallas/Fort Worth Intl</td>
+<td>32.8968, -97.038</td>
+<td>31.8 mi, 279°</td>
+<td>1953-05-01</td>
+<td>NWS ASOS; long climatology, 1-min data.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>No ASOS was found at Garland. Station pages:
+<code>https://mesonet.agron.iastate.edu/sites/site.php?station=HQZ&amp;network=TX_ASOS</code>
+(swap the ID).</li>
+<li>Sources: IEM network table <a
+href="https://mesonet.agron.iastate.edu/sites/networks.php?network=TX_ASOS">https://mesonet.agron.iastate.edu/sites/networks.php?network=TX_ASOS</a>
+; F46 on SkyVector <a
+href="https://skyvector.com/airport/F46/Ralph-M-Hall-Rockwall-Municipal-Airport">https://skyvector.com/airport/F46/Ralph-M-Hall-Rockwall-Municipal-Airport</a></li>
+</ul>
+<p><strong>How to use:</strong> HQZ and F46 bracket the lake (S and NE).
+Pull several years of 5-minute and hourly wind (speed, gust, direction).
+Build per-month wind roses, Weibull fits of wind speed, and gust-factor
+distributions. These become the sim's weather generator: random draws
+per season and time of day, plus a gust/lull model with realistic gust
+factor and duration. Airport anemometers sit at 10 m over grass, so
+apply an overwater roughness correction. Over-water winds are typically
+~10–20 % stronger. Treat that range as a tunable parameter and check it
+against your own on-lake logging (§5.2).</p>
+<h3 id="cal-12-download-tools-for-historical-surface-wind">1.2 Download
+tools for historical surface wind</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>What it gives</th>
+<th>How to use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>IEM ASOS/AWOS download</td>
+<td><a
+href="https://mesonet.agron.iastate.edu/request/download.phtml?network=TX_ASOS">https://mesonet.agron.iastate.edu/request/download.phtml?network=TX_ASOS</a></td>
+<td>METAR-derived routine, special, and <strong>MADIS HFMETAR
+5-minute</strong> obs. CSV/TSV output with selectable variables (sknt,
+drct, gust, peak wind, tmpf, dwpf, mslp, vsby, skyc/skyl, wxcodes, raw
+METAR) and timezone. Up to 1,000 station-years per request.</td>
+<td>Main bulk source. Request F46, HQZ, TRL, DAL, ADS with the
+America/Chicago timezone. Also scriptable (see IEM's backend docs).</td>
+</tr>
+<tr class="even">
+<td>IEM ASOS 1-minute</td>
+<td><a
+href="https://mesonet.agron.iastate.edu/request/asos/1min.phtml">https://mesonet.agron.iastate.edu/request/asos/1min.phtml</a></td>
+<td>NCEI 1-minute ASOS archive, 2000–present (to ~2 days ago): wind
+speed/dir, <strong>5-second gust</strong> speed/dir, temp, dewpoint,
+pressure, precip. NWS ASOS sites only (DAL, DFW, likely ADS/TRL), not
+AWOS like F46.</td>
+<td>Build gust spectra and gust-onset time scales for the gust model
+(puff duration, ramp rate, direction shifts in puffs).</td>
+</tr>
+<tr class="odd">
+<td>NCEI Local Climatological Data v2</td>
+<td><a
+href="https://ncei.noaa.gov/products/land-based-station/local-climatological-data">https://ncei.noaa.gov/products/land-based-station/local-climatological-data</a>
+· map <a
+href="https://www.ncei.noaa.gov/maps/lcd/">https://www.ncei.noaa.gov/maps/lcd/</a>
+· bulk <a
+href="https://www.ncei.noaa.gov/oa/local-climatological-data/index.html#v2/access/">https://www.ncei.noaa.gov/oa/local-climatological-data/index.html#v2/access/</a>
+· docs <a
+href="https://www.ncei.noaa.gov/oa/local-climatological-data/v2/doc/lcdv2_DOCUMENTATION.pdf">https://www.ncei.noaa.gov/oa/local-climatological-data/v2/doc/lcdv2_DOCUMENTATION.pdf</a>
+· station list <a
+href="https://www.ncei.noaa.gov/oa/local-climatological-data/v2/doc/lcdv2-station-list.txt">https://www.ncei.noaa.gov/oa/local-climatological-data/v2/doc/lcdv2-station-list.txt</a></td>
+<td>Official hourly, daily, and monthly summaries in CSV (SI units) or
+certified PDF. Derived from GHCNh/GHCNd.</td>
+<td>Climatology cross-check, e.g. monthly mean wind and peak gust by
+month for the season system.</td>
+</tr>
+<tr class="even">
+<td>Synoptic Data Viewer (MesoWest successor)</td>
+<td><a
+href="https://viewer.synopticdata.com/">https://viewer.synopticdata.com/</a>
+· API docs <a
+href="https://docs.synopticdata.com/services/time-series">https://docs.synopticdata.com/services/time-series</a></td>
+<td>Aggregates all public networks, including CWOP/personal stations,
+TxDOT, and possibly lakeside stations. Time-series API needs a token
+(paid/commercial tiers; I did not confirm a free tier).</td>
+<td>Look for any <strong>lakeshore or on-lake station</strong> around
+Rockwall/Heath/Rowlett, which would beat airports for overwater
+wind.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-13-lake-level--lake-stations">1.3 Lake level / lake
+stations</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>What it gives</th>
+<th>How to use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>USGS 08061550 Lk Ray Hubbard nr Forney, TX</strong></td>
+<td><a
+href="https://nwis.waterdata.usgs.gov/monitoring-location/08061550">https://nwis.waterdata.usgs.gov/monitoring-location/08061550</a>
+· graphs <a
+href="https://waterdata.usgs.gov/monitoring-location/USGS-08061550/all-graphs">https://waterdata.usgs.gov/monitoring-location/USGS-08061550/all-graphs</a></td>
+<td>Reservoir water-surface elevation gauge (the TWDB data source).</td>
+<td>Drive the sim's lake level from it, which moves shoreline, exposed
+riprap, and dock heights.</td>
+</tr>
+<tr class="even">
+<td>TWDB Water Data for Texas — Ray Hubbard</td>
+<td><a
+href="https://waterdatafortexas.org/reservoirs/individual/ray-hubbard">https://waterdatafortexas.org/reservoirs/individual/ray-hubbard</a>
+· CSV: <code>.../ray-hubbard.csv</code> (POR),
+<code>ray-hubbard-1year.csv</code>,
+<code>ray-hubbard-30day.csv</code></td>
+<td>Conservation pool <strong>435.50 ft NGVD29</strong>. Conservation
+capacity <strong>439,559 ac-ft</strong>. Surface area <strong>~19,489
+ac</strong> (at fetch time). 96.4 % full as of 2026-07-30.</td>
+<td>Mean depth ≈ 439,559 / 19,489 ≈ <strong>22.6 ft (6.9 m)</strong>
+<em>(derived)</em>. Use it as h in the shallow-water wave formulas
+(§4.1). Typical level range sets the water-plane height.</td>
+</tr>
+<tr class="odd">
+<td>USGS lake water-quality sites (incl. one <strong>at
+RCYC</strong>)</td>
+<td>Rush Ck YC site 324924096295100: <a
+href="https://nwis.waterdata.usgs.gov/monitoring-location/324924096295100">https://nwis.waterdata.usgs.gov/monitoring-location/324924096295100</a>
+· RHP site 324857096304801 · Release Gates 324807096294201 · Terry Park
+325023096302500 · PS site 324929096305601</td>
+<td>Discrete sampling sites, established 2010. Instrument flags show no
+continuous met sensors.</td>
+<td>Possible source of water-clarity data (Secchi/turbidity, if sampled)
+for the water shader's absorption and scattering. No wind data
+here.</td>
+</tr>
+<tr class="even">
+<td>Outflow USGS 08061551 E Fk Trinity Rv blw Lk Ray Hubbard</td>
+<td><a
+href="https://nwis.waterdata.usgs.gov/monitoring-location/08061551">https://nwis.waterdata.usgs.gov/monitoring-location/08061551</a></td>
+<td>Dam release flow.</td>
+<td>Optional: currents near the dam (negligible elsewhere).</td>
+</tr>
+<tr class="odd">
+<td>No NDBC/buoy on Ray Hubbard was found.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-14-storms-and-radar-nws-fort-worth-fwd">1.4 Storms and radar
+(NWS Fort Worth, FWD)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>What it gives</th>
+<th>How to use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>NWS Fort Worth office</td>
+<td><a
+href="https://weather.gov/fwd/office">https://weather.gov/fwd/office</a></td>
+<td>Event summaries (e.g. <a
+href="https://www.weather.gov/fwd/torradar041307">https://www.weather.gov/fwd/torradar041307</a>).</td>
+<td>Pick reference storm days for squall/outflow-boundary
+scenarios.</td>
+</tr>
+<tr class="even">
+<td>NEXRAD <strong>KFWS</strong> level II</td>
+<td>Info: <a
+href="https://radar2pub.ncep.noaa.gov/site/kfws.html">https://radar2pub.ncep.noaa.gov/site/kfws.html</a>
+· AWS Open Data <a
+href="https://registry.opendata.aws/noaa-nexrad/">https://registry.opendata.aws/noaa-nexrad/</a>
+→ bucket <code>s3://unidata-nexrad-level2</code> (archive),
+<code>s3://unidata-nexrad-level2-chunks</code> (real-time). Anonymous:
+<code>aws s3 ls --no-sign-request s3://unidata-nexrad-level2/</code></td>
+<td>Reflectivity and radial velocity volume scans.</td>
+<td>Replay real squall-line passages: timing of outflow wind shift, then
+rain, then the clearing sky. Gives a timeline for scripting storm
+fronts. Velocity data gives gust-front wind magnitudes. (Galveston
+equivalent: <strong>KHGX</strong> League City <strong>[ID from memory,
+verify]</strong>.)</td>
+</tr>
+<tr class="odd">
+<td>NCEI Storm Events Database</td>
+<td><a
+href="https://www.ncdc.noaa.gov/stormevents/">https://www.ncdc.noaa.gov/stormevents/</a>
+<strong>[unverified URL — search didn't return it
+directly]</strong></td>
+<td>County-level thunderstorm-wind and hail reports with measured or
+estimated gusts.</td>
+<td>Frequency and severity of severe wind events in Rockwall/Dallas
+counties for the "storm" weather tier.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cal-2-galveston-bay--gulf--noaa-co-ops--ports--ndbc--tabs">2.
+Galveston Bay &amp; Gulf — NOAA CO-OPS / PORTS / NDBC / TABS</h2>
+<h3
+id="cal-21-co-ops-water-level--met-stations-houstongalveston-ports">2.1
+CO-OPS water-level + met stations (Houston/Galveston PORTS)</h3>
+<p>Metadata verified via the CO-OPS MDAPI
+(<code>https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{id}.json?expand=sensors</code>).
+All four list sensors: <strong>Wind, Air Temp, Water Temp, Barometric
+Pressure, Microwave WL, Tsunami (1-min) WL</strong>. Eagle Point and
+Morgans Point also have Conductivity.</p>
+<table>
+<thead>
+<tr class="header">
+<th>ID</th>
+<th>Name</th>
+<th>Lat, Lon</th>
+<th>Dist from Kemah <em>(derived)</em></th>
+<th>Tidal datums (ft, STND)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>8771013</strong></td>
+<td>Eagle Point, Galveston Bay</td>
+<td>29.4813, -94.9173</td>
+<td>7.4 mi</td>
+<td>MHHW 5.39, MSL 4.88, MLLW 4.27 → <strong>GT 1.12 ft</strong>, MN
+1.02 ft</td>
+</tr>
+<tr class="even">
+<td><strong>8770613</strong></td>
+<td>Morgans Point, Barbours Cut</td>
+<td>29.6817, -94.985</td>
+<td>10.0 mi</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><strong>8771450</strong></td>
+<td>Galveston Pier 21</td>
+<td>29.31, -94.7933</td>
+<td>20.9 mi</td>
+<td>MHHW 5.79, MSL 5.21, MLLW 4.38 → <strong>GT 1.41 ft</strong>, MN
+1.02 ft</td>
+</tr>
+<tr class="even">
+<td><strong>8771341</strong></td>
+<td>Galveston Bay Entrance, North Jetty</td>
+<td>29.3575, -94.7247</td>
+<td>21.8 mi</td>
+<td>PORTS page: <a
+href="https://tidesandcurrents.noaa.gov/ports/ports.html?id=8771341">https://tidesandcurrents.noaa.gov/ports/ports.html?id=8771341</a></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Data API (CSV/JSON, 6-min water level and 6-min met, up to 31 days
+per call for 6-min data):
+<code>https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=8771013&amp;product=wind&amp;begin_date=20250101&amp;end_date=20250131&amp;units=english&amp;time_zone=lst_ldt&amp;format=csv</code>
+(products: <code>water_level</code>, <code>predictions</code>,
+<code>wind</code>, <code>air_temperature</code>,
+<code>water_temperature</code>, <code>air_pressure</code>,
+<code>currents</code>) <strong>[URL pattern from CO-OPS API docs, not
+fetched]</strong>.</li>
+<li>Datums:
+<code>https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8771450/datums.json</code></li>
+<li>Station home (JS page): <a
+href="https://tidesandcurrents.noaa.gov/stationhome.html?id=8771013">https://tidesandcurrents.noaa.gov/stationhome.html?id=8771013</a>
+; physical oceanography <a
+href="https://tidesandcurrents.noaa.gov/physocean.html?id=8771450">https://tidesandcurrents.noaa.gov/physocean.html?id=8771450</a></li>
+<li>CO-OPS current stations (from MDAPI): <strong>g06010</strong>
+Galveston Bay Entr Channel LB 11 · <strong>g08010</strong> Fred Hartman
+Br., HSC · <strong>g09010</strong> Galveston Channel W end ·
+<strong>g11010</strong> Galveston Channel E end · g10010 610 Bridge
+HSC.</li>
+</ul>
+<p><strong>How to use:</strong> The tide is small: mean range ~1 ft,
+great diurnal range 1.1–1.4 ft, mixed/diurnal. Wind setup and setdown
+often exceed the astronomical tide. Drive the sim water level from
+predictions plus a wind-setup term, and validate against observed minus
+predicted. Use g06010 for ebb/flood strength at Bolivar Roads, the
+strongest currents in the play area, and apply them in the entrance
+channel. Eagle Point wind is the best open-bay overwater anemometer for
+the Clear Lake to mid-bay area.</p>
+<h3 id="cal-22-tcoon">2.2 TCOON</h3>
+<p>Texas Coastal Ocean Observation Network (TAMU-CC Conrad Blucher
+Institute): <a
+href="https://lighthouse.tamucc.edu/">https://lighthouse.tamucc.edu/</a>
+(e.g. station 503 = Morgans Point, now <strong>INACTIVE</strong>; TCOON
+O&amp;M unfunded since 31 Aug 2014). Overview PDF: <a
+href="https://www.cbi.tamucc.edu/wp-content/uploads/TCOON-Overview-2010-FINAL.pdf">https://www.cbi.tamucc.edu/wp-content/uploads/TCOON-Overview-2010-FINAL.pdf</a>.
+Use for older historical records only. Current data lives in the CO-OPS
+stations above.</p>
+<h3 id="cal-23-offshore-buoys-waves-spectra">2.3 Offshore buoys (waves,
+spectra)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>ID</th>
+<th>Name / location</th>
+<th>Depth</th>
+<th>Data</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>NDBC 42035</strong></td>
+<td>Galveston, 22 NM E of Galveston; 29.235 N, 94.410 W (≈42 mi from
+Kemah)</td>
+<td>15.5 m</td>
+<td>Active. Met (wind 10 m/20 m adjusted, gust, pressure, air/water
+temp) + <strong>WVHT, DPD, APD, MWD</strong>. Historical: stdmet
+1993–2025; <strong>spectral density (swden) 1996–2025</strong>;
+alpha1/alpha2/r1/r2 directional 1998–2025 (no 2022); continuous winds
+2005–2017.</td>
+<td><a
+href="https://www.ndbc.noaa.gov/station_page.php?station=42035">https://www.ndbc.noaa.gov/station_page.php?station=42035</a>
+· history <a
+href="https://www.ndbc.noaa.gov/station_history.php?station=42035">https://www.ndbc.noaa.gov/station_history.php?station=42035</a></td>
+</tr>
+<tr class="even">
+<td>NDBC 42019</td>
+<td>Freeport, 60 NM S; 27.908 N, 95.343 W</td>
+<td>85 m</td>
+<td>Deep-water reference. <strong>Went adrift 2025-02-26, recovered
+2026-05-04</strong>, so expect a data gap.</td>
+<td><a
+href="https://www.ndbc.noaa.gov/station_page.php?station=42019">https://www.ndbc.noaa.gov/station_page.php?station=42019</a></td>
+</tr>
+<tr class="odd">
+<td>TABS buoys (TAMU GERG / Texas GLO)</td>
+<td>B, D, F, J, K, R, W, X</td>
+<td>—</td>
+<td>Currents, met, some waves. THREDDS archive.</td>
+<td><a
+href="https://tabs.gerg.tamu.edu/">https://tabs.gerg.tamu.edu/</a> ·
+status <a
+href="https://tabs.gerg.tamu.edu/tglo/?mapidx=4">https://tabs.gerg.tamu.edu/tglo/?mapidx=4</a>
+· THREDDS <a
+href="https://thredds.gerg.tamu.edu/thredds/">https://thredds.gerg.tamu.edu/thredds/</a>
+· Buoy B <a
+href="https://tabs.gerg.tamu.edu/tglo/stations.php?buoy=B&amp;type=ven">https://tabs.gerg.tamu.edu/tglo/stations.php?buoy=B&amp;type=ven</a>
+· TABS paper <a
+href="https://tabs.gerg.tamu.edu/tglo/TABS_Descriptive_Paper.pdf">https://tabs.gerg.tamu.edu/tglo/TABS_Descriptive_Paper.pdf</a></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>NDBC historical file pattern:
+<code>https://www.ndbc.noaa.gov/download_data.php?filename=42035w2024.txt.gz&amp;dir=data/historical/swden/</code>.
+Type letters: <code>h</code> stdmet, <code>w</code> spectral density,
+<code>d</code> alpha1, <code>i</code> alpha2, <code>j</code> r1,
+<code>k</code> r2, <code>c</code> continuous wind, <code>s</code>
+supplemental. Real-time 45-day files:
+<code>https://www.ndbc.noaa.gov/data/realtime2/42035.data_spec</code>
+and <code>.swdir/.swdir2/.swr1/.swr2/.spec/.txt</code>
+<strong>[realtime2 pattern from memory; the measdes page confirms the
+45-day realtime files exist]</strong>.</li>
+<li>Definitions: <a
+href="https://www.ndbc.noaa.gov/faq/measdes.shtml">https://www.ndbc.noaa.gov/faq/measdes.shtml</a>.
+WVHT = mean of highest 1/3 over a 20-min record. Spectral density in
+m²/Hz, bins ~0.03–0.40 Hz. Buoy WSPD = <strong>8-min average</strong>,
+GST = 5- or 8-s peak. r1/r2 in historical files are ×100.</li>
+<li>Web data guide: <a
+href="https://www.ndbc.noaa.gov/docs/ndbc_web_data_guide.pdf">https://www.ndbc.noaa.gov/docs/ndbc_web_data_guide.pdf</a>
+· THREDDS <a
+href="https://dods.ndbc.noaa.gov/">https://dods.ndbc.noaa.gov/</a></li>
+</ul>
+<p><strong>How to use:</strong> Fit JONSWAP parameters (Hs, Tp, γ,
+spreading from r1/r2) to 42035 spectra binned by wind speed and
+direction. Do it separately for wind-sea (onshore SE flow) and swell.
+Drive the Gulf ocean FFT/spectrum with these fits, which beats a generic
+Pierson–Moskowitz. Then check that sim Hs and Tp at given winds fall
+within the 42035 distribution. For inside the bay, use the shallow-water
+formulas (§4.1). Bay mean depth is ~6 ft (1.8–2 m), max undredged ~10
+ft. The bay is ~30 mi × 17 mi, ~600 sq mi (<a
+href="https://en.wikipedia.org/wiki/Galveston_Bay">https://en.wikipedia.org/wiki/Galveston_Bay</a>).
+Expect short, steep chop with Tp ≈ 2–3.5 s.</p>
+<h3 id="cal-24-galveston-area-airports-iem">2.4 Galveston-area airports
+(IEM)</h3>
+<p>GLS Galveston/Scholes 29.2653, -94.8604 (21 mi from Kemah, since
+1939). <strong>T41 La Porte</strong> 29.6692, -95.0641 (9.3 mi, since
+2019). EFD Houston/Ellington 29.6073, -95.1588 (9.5 mi, since 1941). HOU
+Hobby 29.6375, -95.2825 (17 mi). LBX Angleton 29.1086, -95.4621.</p>
+<hr />
+<h2 id="cal-3-boat-polars-ratings-and-specs">3. Boat polars, ratings and
+specs</h2>
+<h3 id="cal-31-summary-table">3.1 Summary table</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Boat</th>
+<th>Key specs (source)</th>
+<th>US Portsmouth D-PN (US Sailing 2017 precalc: DPN / DPN1 / DPN2 /
+DPN3 / DPN4 by wind band)</th>
+<th>PHRF (typical)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>J/22</strong></td>
+<td>LOA 22.5 ft (6.86 m), LWL 19.0 ft, beam 8.0 ft, <strong>displ 1,790
+lb (812 kg)</strong>, ballast 700 lb, draft 3.8 ft, SA 226.6 sq ft
+(Wikipedia). ORC OD cert: displ <strong>857 kg</strong> (sailing trim),
+main 13.76 m² measured/14.11 rated, jib 9.49 m², spinnaker 30.94 m²,
+<strong>RM 15.9 kg·m (ORC RM, per degree)</strong>, stability index
+96.2, GPH 736.1. Crew limit 275 kg (605 lb).</td>
+<td>Not listed in 2017 precalc.</td>
+<td><strong>180–183</strong> (Wikipedia)</td>
+</tr>
+<tr class="even">
+<td><strong>Sunfish</strong></td>
+<td>LOA 13'9" (4.19 m), beam 4'1", hull 120 lb (54 kg), sail 75 sq ft
+(7.0 m²) lateen (Wikipedia)</td>
+<td><strong>99.6</strong> / 103.0 / 100.4 / 97.8 / 95.8</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td><strong>ILCA 7 (Laser)</strong></td>
+<td>LOA 4.23 m, LWL 3.96 m, hull 59 kg, sail 7.06 m² (Wikipedia
+ILCA)</td>
+<td><strong>91.1</strong> / 93.7 / 92.3 / 91.0 / 88.2 (RYA PN 1101 for
+ILCA 7)</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td><strong>Catalina 22</strong></td>
+<td>LOA 21.5 ft, LWL 19.33 ft, beam 7.67 ft, displ 2,490 lb, swing keel
+draft 5.0 / 1.67 ft, SA 204.75 sq ft (main 101.4, jib 103.3)
+(Wikipedia)</td>
+<td>SK/WK no spi <strong>96.3</strong>/98.4/96.3/95.3/95.1. SK w/spi
+94.7. Fixed keel no spi 97.1.</td>
+<td><strong>270</strong> avg (243–280)</td>
+</tr>
+<tr class="odd">
+<td><strong>Catalina 30</strong></td>
+<td>LOA 29.9 ft, LWL 25.0 ft, displ 10,200 lb, ballast ~4,200 lb, SA
+~446 sq ft (keelindex)</td>
+<td>Std rig <strong>85.8</strong>/88.6/87.1/85.5/82.7. Tall rig
+84.0.</td>
+<td><strong>180</strong> (keelindex)</td>
+</tr>
+<tr class="even">
+<td><strong>Hobie 16</strong></td>
+<td>LOA 5.05 m, beam 2.41 m, hull 145 kg (320 lb), main 13.77 m², jib
+5.12 m², total ≈ 20 m² (Wikipedia)</td>
+<td><strong>76.0</strong> / 81.5 / 78.7 / 74.1 / 71.3</td>
+<td>~126 (Arizona YC conversion)</td>
+</tr>
+<tr class="odd">
+<td><strong>Corsair 880</strong></td>
+<td>LOA 28'8" (8.8 m), beam 8'2" folded / 22'3" open, <strong>displ
+3,659–3,660 lb (1,660 kg)</strong>, SA 554 / 677 sq ft (51.5 / 62.9 m²),
+mast 39'4" (12 m), Sport +70 cm (Multihulls World test MW185)</td>
+<td>Not listed. Nearest: <strong>Corsair F-28 67.1</strong> (F-28R
+65.0).</td>
+<td>F-28 ≈ 30 (Arizona YC)</td>
+</tr>
+<tr class="even">
+<td><strong>Lagoon 42 (2016)</strong></td>
+<td>LOA 42 ft (12.80 m), LWL 41 ft, beam 25'3" (7.70 m), light displ
+<strong>12.1 t (26,681 lb)</strong> (Lagoon), main 55–59 m²
+(std/square-top), self-tacking jib 35 m², Code 0 68–78 m², air draft
+20.6 m (67'7"), draft 4'1" (Lagoon site, Sailing Mag)</td>
+<td>Not listed.</td>
+<td>No PHRF found.</td>
+</tr>
+</tbody>
+</table>
+<p>Sources:</p>
+<ul>
+<li>US Sailing D-PN page: <a
+href="https://www.ussailing.org/competition/offshore/dpn/">https://www.ussailing.org/competition/offshore/dpn/</a>
+· <strong>Precalculated table PDF</strong> <a
+href="https://www.ussailing.org/wp-content/uploads/2018/01/2017-Portsmouth-Precalculated-Classes.pdf">https://www.ussailing.org/wp-content/uploads/2018/01/2017-Portsmouth-Precalculated-Classes.pdf</a>
+· Handbook <a
+href="https://www.ussailing.org/wp-content/uploads/2018/01/2017-North-American-Portsmouth-Yardstick-Handbook.pdf">https://www.ussailing.org/wp-content/uploads/2018/01/2017-North-American-Portsmouth-Yardstick-Handbook.pdf</a></li>
+<li>D-PN wind bands (per the Handbook): DPN1 = 0–3 kt, DPN2 = 4–7, DPN3
+= 8–11, DPN4 = 12+ <strong>[band edges from memory; confirm in
+Handbook]</strong>. Corrected time = elapsed × 100 / D-PN (<a
+href="https://en.wikipedia.org/wiki/Portsmouth_Yardstick">https://en.wikipedia.org/wiki/Portsmouth_Yardstick</a>).</li>
+<li>Arizona YC club tables (PHRF/DPN cross-reference): <a
+href="https://arizonayachtclub.org/racing/club-rating-tables/">https://arizonayachtclub.org/racing/club-rating-tables/</a></li>
+<li>J/22: <a
+href="https://en.wikipedia.org/wiki/J/22">https://en.wikipedia.org/wiki/J/22</a>
+· <a
+href="https://sail1design.com/j22/">https://sail1design.com/j22/</a> ·
+class site <a href="http://www.j22.org/">http://www.j22.org/</a>
+<strong>[not fetched]</strong></li>
+<li>Sunfish <a
+href="https://en.wikipedia.org/wiki/Sunfish_(sailboat)">https://en.wikipedia.org/wiki/Sunfish_(sailboat)</a>
+· ILCA <a
+href="https://en.wikipedia.org/wiki/ILCA_(dinghy)">https://en.wikipedia.org/wiki/ILCA_(dinghy)</a>
+· Hobie 16 <a
+href="https://en.wikipedia.org/wiki/Hobie_16">https://en.wikipedia.org/wiki/Hobie_16</a>
+· Catalina 22 <a
+href="https://en.wikipedia.org/wiki/Catalina_22">https://en.wikipedia.org/wiki/Catalina_22</a>
+· Catalina 30 <a
+href="https://keelindex.com/boat/catalina-30/performance">https://keelindex.com/boat/catalina-30/performance</a></li>
+<li>Corsair 880: <a
+href="https://blog.corsairmarine.com/wp-content/uploads/2022/08/MW185-Corsair-880-Trimaran-Test-Sail-Extract.pdf">https://blog.corsairmarine.com/wp-content/uploads/2022/08/MW185-Corsair-880-Trimaran-Test-Sail-Extract.pdf</a>
+· <a
+href="https://corsairmarine.com/corsair-880-sport">https://corsairmarine.com/corsair-880-sport</a></li>
+<li>Lagoon 42: <a
+href="https://www.catamarans-lagoon.com/boats/lagoon-42">https://www.catamarans-lagoon.com/boats/lagoon-42</a>
+· <a
+href="https://wikipedia.com/wiki/Lagoon_42-2">https://wikipedia.com/wiki/Lagoon_42-2</a>
+· <a
+href="https://sailingmagazine.net/article-1852-lagoon-42.html">https://sailingmagazine.net/article-1852-lagoon-42.html</a>
+(SA/D 18.99, D/L 171). Note <a
+href="https://en.wikipedia.org/wiki/Lagoon_42">https://en.wikipedia.org/wiki/Lagoon_42</a>
+is the <strong>1990</strong> model, a different boat.</li>
+</ul>
+<p><strong>How to use D-PN as a calibration check:</strong> D-PN is a
+speed ratio around a course (time ∝ D-PN). Over a W/L or triangle course
+in a given wind band, sim lap times should satisfy t_boat / t_ref ≈
+DPN_boat / DPN_ref. Example at 8–11 kt (DPN3): ILCA 91.0, Sunfish 97.8,
+Hobie 16 74.1, Catalina 30 85.5, C22 95.3, F-28 67.2. So a Sunfish
+should take ~7.5 % longer than an ILCA, and a Hobie 16 ~19 % less time
+than an ILCA. Use the per-band columns, because ranking changes with
+wind: the Sunfish is relatively better in heavy air, and the Hobie much
+better in breeze. For PHRF (sec/mile), the corrected-time difference per
+mile between two boats ≈ ΔPHRF seconds. A J/22 (~180) and Catalina 30
+(180) should be roughly equal around a course. The C22 (270) is ~90
+s/mile slower.</p>
+<h3 id="cal-32-polars--speed-data">3.2 Polars / speed data</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>What it gives</th>
+<th>How to use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>ORC One-Design certificate — J/22 (2021)</strong></td>
+<td><a
+href="https://data.orc.org/public/od/2021/j22.od.html?nav=1">https://data.orc.org/public/od/2021/j22.od.html?nav=1</a>
+(PDF 2019: <a
+href="https://data.orc.org/public/od/2019/j22.od.pdf">https://data.orc.org/public/od/2019/j22.od.pdf</a>)</td>
+<td>Full VPP polar (table below), RM, sail areas.</td>
+<td><strong>Primary J/22 target polar.</strong></td>
+</tr>
+<tr class="even">
+<td>keelindex Catalina 30</td>
+<td><a
+href="https://keelindex.com/boat/catalina-30/performance">https://keelindex.com/boat/catalina-30/performance</a></td>
+<td>ORC-VPP-based speeds averaged from 3 ORC certificates (table
+below).</td>
+<td>Catalina 30 target polar. Also look for individual ORC Club certs
+(e.g. <a
+href="https://data.orc.org/public/WPub.dll/CC/04560004V6J">https://data.orc.org/public/WPub.dll/CC/04560004V6J</a>
+redirects to sas.orc.org and needs a browser).</td>
+</tr>
+<tr class="odd">
+<td>keelindex J/22</td>
+<td><a
+href="https://keelindex.com/boat/j-22/performance">https://keelindex.com/boat/j-22/performance</a></td>
+<td>Same method for J/22.</td>
+<td>Cross-check.</td>
+</tr>
+<tr class="even">
+<td>ORC Sailor Services</td>
+<td><a
+href="https://orc.org/sailors/sailor-services">https://orc.org/sailors/sailor-services</a></td>
+<td>Self-service ORC VPP runs.</td>
+<td>Generate Catalina 22/30 polars from measured hull/rig if needed
+(paid).</td>
+</tr>
+<tr class="odd">
+<td>Hobie 16 polar (Hobie Hotline ~1978, Al Bowers)</td>
+<td><a
+href="https://thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/feature3.htm">https://thebeachcats.com/OnTheWire/westnet/_lpm/hobie/archives/v1-i3/feature3.htm</a></td>
+<td>Polar <strong>image</strong> at 10 kt TWS only, comparing H16 with
+other boats. Notes: H16 "all tack downwind" (fastest VMG not at 180°).
+Accuracy caveats.</td>
+<td>Shape check only. No published VPP for Hobie 16 was found, so build
+one from GPS logs (§5.2) or the H16 measured-speed folklore.</td>
+</tr>
+<tr class="even">
+<td>Laser VPP validated vs measured data — Day (2017)</td>
+<td><a
+href="https://strathprints.strath.ac.uk/59980/">https://strathprints.strath.ac.uk/59980/</a>
+(PDF <a
+href="https://strathprints.strath.ac.uk/59980/1/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf">https://strathprints.strath.ac.uk/59980/1/Day_OE_2017_Performance_prediction_for_sailing_dinghies.pdf</a>)</td>
+<td>Ocean Engineering 136:67–79, doi:10.1016/j.oceaneng.2017.02.025.
+Custom Laser VPP with "excellent agreement" upwind against measured
+data. Covers depowering, heel decoupled from hiking moment, and crew
+weight (±10 kg gives &gt;60 s/hr).</td>
+<td><strong>ILCA 7 polar source</strong>. Its formulation (hiking
+moment, depower) is a good template for the dinghy physics model.</td>
+</tr>
+<tr class="odd">
+<td>Laser best heel/trim — Pennanen et al. (2016)</td>
+<td><a
+href="https://research.chalmers.se/en/publication/234579">https://research.chalmers.se/en/publication/234579</a></td>
+<td>Procedia Eng. 147:336–341. Inverse VPP from towing tank + CFD (2–5
+kt). Small heel is beneficial in higher winds.</td>
+<td>Tune ILCA AI/auto-hike target heel.</td>
+</tr>
+<tr class="even">
+<td>Laser sailor motion/hiking — Taylor, Banks, Turnock (2016)</td>
+<td><a
+href="https://eprints.soton.ac.uk/400462">https://eprints.soton.ac.uk/400462</a></td>
+<td>CSYS 2016: IMU suit + video to measure hiking moment on a
+Laser.</td>
+<td>Hiking moment magnitudes and dynamics for crew-weight animation and
+physics.</td>
+</tr>
+<tr class="odd">
+<td>Corsair 880 measured speeds (MW185 test)</td>
+<td>link above</td>
+<td>10–15 kt TWS: <strong>&gt;8 kt upwind at ~40° TWA in 15 kt</strong>.
+<strong>10.4 kt</strong> max on a run (≥9 kt sustained). ~7 kt under 9.9
+hp outboard.</td>
+<td>Spot-check points for the trimaran polar.</td>
+</tr>
+<tr class="even">
+<td>Lagoon 42</td>
+<td>—</td>
+<td>No manufacturer polar found online (brochure request only:
+catamarans-lagoon.com/brochure). Listing sheets show cruise ~7 kt, max
+~8 kt (motor). keelindex hull speed 8.6 kt is a monohull formula and not
+meaningful for a cat.</td>
+<td>Build the polar from SA/D 18–19 and D/L ~171 with cruising-cat rules
+of thumb. Ask the Lagoon dealer for the polar.</td>
+</tr>
+<tr class="odd">
+<td>US Sailing Speed Guide explanation/sample</td>
+<td><a
+href="https://www.ussailing.org/wp-content/uploads/2018/01/Speed-Guide-Explanation.pdf">https://www.ussailing.org/wp-content/uploads/2018/01/Speed-Guide-Explanation.pdf</a>
+· <a
+href="https://www.ussailing.org/wp-content/uploads/2018/01/Speed-Guide-Sample.pdf">https://www.ussailing.org/wp-content/uploads/2018/01/Speed-Guide-Sample.pdf</a></td>
+<td>How VPP speed guides are presented.</td>
+<td>Format reference.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>J/22 ORC OD rated boat speeds (kt):</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th>TWA \ TWS</th>
+<th>6</th>
+<th>8</th>
+<th>10</th>
+<th>12</th>
+<th>14</th>
+<th>16</th>
+<th>20</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Beat angle</td>
+<td>43.5°</td>
+<td>42.4°</td>
+<td>40.9°</td>
+<td>39.0°</td>
+<td>38.6°</td>
+<td>39.0°</td>
+<td>40.5°</td>
+</tr>
+<tr class="even">
+<td>Beat VMG</td>
+<td>2.85</td>
+<td>3.44</td>
+<td>3.87</td>
+<td>4.14</td>
+<td>4.20</td>
+<td>4.20</td>
+<td>4.15</td>
+</tr>
+<tr class="odd">
+<td>52°</td>
+<td>4.38</td>
+<td>5.21</td>
+<td>5.62</td>
+<td>5.83</td>
+<td>5.94</td>
+<td>5.97</td>
+<td>5.98</td>
+</tr>
+<tr class="even">
+<td>60°</td>
+<td>4.65</td>
+<td>5.43</td>
+<td>5.77</td>
+<td>6.00</td>
+<td>6.18</td>
+<td>6.25</td>
+<td>6.26</td>
+</tr>
+<tr class="odd">
+<td>75°</td>
+<td>4.84</td>
+<td>5.56</td>
+<td>5.91</td>
+<td>6.21</td>
+<td>6.52</td>
+<td>6.74</td>
+<td>6.89</td>
+</tr>
+<tr class="even">
+<td>90°</td>
+<td>4.99</td>
+<td>5.75</td>
+<td>6.16</td>
+<td>6.45</td>
+<td>6.67</td>
+<td>7.02</td>
+<td>7.59</td>
+</tr>
+<tr class="odd">
+<td>110°</td>
+<td>5.03</td>
+<td>5.81</td>
+<td>6.30</td>
+<td>6.84</td>
+<td>7.33</td>
+<td>7.70</td>
+<td>8.39</td>
+</tr>
+<tr class="even">
+<td>120°</td>
+<td>4.87</td>
+<td>5.71</td>
+<td>6.20</td>
+<td>6.75</td>
+<td>7.37</td>
+<td>8.04</td>
+<td>9.19</td>
+</tr>
+<tr class="odd">
+<td>135°</td>
+<td>4.38</td>
+<td>5.29</td>
+<td>5.91</td>
+<td>6.37</td>
+<td>6.91</td>
+<td>7.55</td>
+<td>9.40</td>
+</tr>
+<tr class="even">
+<td>150°</td>
+<td>3.65</td>
+<td>4.61</td>
+<td>5.42</td>
+<td>5.95</td>
+<td>6.38</td>
+<td>6.87</td>
+<td>8.14</td>
+</tr>
+<tr class="odd">
+<td>Run VMG</td>
+<td>3.16</td>
+<td>4.00</td>
+<td>4.73</td>
+<td>5.40</td>
+<td>5.87</td>
+<td>6.26</td>
+<td>7.19</td>
+</tr>
+<tr class="even">
+<td>Gybe angle</td>
+<td>148°</td>
+<td>151°</td>
+<td>154°</td>
+<td>174°</td>
+<td>180°</td>
+<td>180°</td>
+<td>180°</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Catalina 30 (keelindex, ORC-VPP median):</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th>6 kt</th>
+<th>10 kt</th>
+<th>14 kt</th>
+<th>20 kt</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Beat VMG</td>
+<td>3.1</td>
+<td>4.1</td>
+<td>4.3</td>
+<td>4.3</td>
+</tr>
+<tr class="even">
+<td>90°</td>
+<td>5.1</td>
+<td>6.4</td>
+<td>6.8</td>
+<td>7.2</td>
+</tr>
+<tr class="odd">
+<td>110°</td>
+<td>5.1</td>
+<td>6.5</td>
+<td>7.1</td>
+<td>7.7</td>
+</tr>
+<tr class="even">
+<td>120°</td>
+<td>4.9</td>
+<td>6.4</td>
+<td>7.0</td>
+<td>7.9</td>
+</tr>
+<tr class="odd">
+<td>Run VMG</td>
+<td>3.3</td>
+<td>4.8</td>
+<td>5.7</td>
+<td>6.7</td>
+</tr>
+</tbody>
+</table>
+<p>At 14 kt: best upwind VMG at 41°, best downwind at 160°, top speed
+7.1 kt at 110°.</p>
+<p>Hull speeds (1.34√LWL ft) <em>(derived)</em>: J/22 5.8 kt · C22 5.9 ·
+C30 6.7 · ILCA 4.8 · Lagoon 42 8.6 (not meaningful for a cat). J/22 VPP
+exceeds hull speed only off the wind at 16–20 kt with spinnaker, which
+is consistent.</p>
+<p><strong>J/22 stability</strong> <em>(derived)</em>: ORC RM 15.9 kg·m
+per degree with Δ 857 kg gives GM ≈ 15.9 × 57.3 / 857 ≈ <strong>1.06
+m</strong> (small-angle). In the sim, linear RM ≈ 15.9 kg·m/° × φ is
+valid only to ~10–15°. Use a GZ curve beyond that. Crew hiking adds
+more: the 275 kg crew limit at ~1 m lever ≈ 275 kg·m.</p>
+<h3 id="cal-33-j22-tuning-guides-rig-and-expected-behaviour">3.3 J/22
+tuning guides (rig and expected behaviour)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>Key numbers</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>North Sails J/22 Tuning Guide</strong></td>
+<td><a
+href="https://northsails.com/sailing/en/resources/j22-tuning-guide">https://northsails.com/sailing/en/resources/j22-tuning-guide</a></td>
+<td>Rake: gooseneck band → template/bow-plate junction
+<strong>4'11"</strong> (hulls &lt;1460) / <strong>5' 1/8"</strong>
+(≥1460). Pre-bend ~1" halyard off mast at spreaders. Base: uppers
+<strong>250 lb ≈ 26 on PT-1</strong> (~10 kt). Lowers ~5 on the black
+PT-1. Forestay ~6–7. Leeward upper should not wiggle &gt;½". Spreader
+sag ½"–1½", straight at 20+. <strong>Heel ~3–4° in 6–8 kt</strong> with
+max-weight crew. Trim matrix 0–8 / 8–15 / 15–20 / 20+ kt: backstay slack
+→ gradual → hard (blocks ~1' apart); vang slack until ~12 kt, then hard
+with boom bend; outhaul seam 1¾" → 1" → tight; traveler within 2" of
+weather seat in light air → centerline 15+; jib lead aft up to 2 holes
+(max 3) above 15 kt.</td>
+</tr>
+<tr class="even">
+<td><strong>Quantum J/22 Tuning Guide</strong></td>
+<td><a
+href="https://www.quantumsails.com/en/sails/one-design/documents/j22/j22_tuningguide">https://www.quantumsails.com/en/sails/one-design/documents/j22/j22_tuningguide</a></td>
+<td>Headstay length <strong>4'11½"–5'1"</strong>. Loos
+<strong>PT-1</strong> uppers/lowers/headstay by TWS: 0–4: 15/11/3 · 5–9:
+20/15/5 · 10–13: 25/19/8 · 14–16: 28/21/10 · 17–18: 31/25/13 · 18–25:
+33/30/17. Loos Model A: 23/20/4 → 44/42/23. Main: top telltale flying 60
+% (0–5 kt) → 30 % (6–8) → 15 % (8–12). Boom ~8" below centerline at 12+.
+"Keep the boat almost flat" at ~5 kt. Play backstay in puffs to limit
+heel and helm. Jib ease 1–3" in puffs.</td>
+</tr>
+<tr class="odd">
+<td>Catalina 22 tuning (North)</td>
+<td><a
+href="https://northsails.com/sailing/en/resources/catalina-22-tuning-guide">https://northsails.com/sailing/en/resources/catalina-22-tuning-guide</a></td>
+<td>Same structure for the C22.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>How to use:</strong> Make sail-control states (backstay,
+vang, outhaul, traveler, lead) map to the guide's wind bands. The sim's
+"auto-trim" should reproduce these settings. Calibrate the heel model so
+a J/22 with full crew hiking is ~3–4° at 6–8 kt and stays moderate (well
+under ~20°) when depowered per the guide up to ~15–18 kt. Excess heel
+then indicates missing depower physics.</p>
+<h3 id="cal-34-capsize-behaviour-sunfish-ilca-hobie-16">3.4 Capsize
+behaviour (Sunfish, ILCA, Hobie 16)</h3>
+<ul>
+<li>Sunfish: the hull is a sealed hollow pontoon, so it floats when
+capsized ("self-rescuing", not self-righting) (<a
+href="https://en.wikipedia.org/wiki/Sunfish_(sailboat)">https://en.wikipedia.org/wiki/Sunfish_(sailboat)</a>).
+No official Sunfish manual text on righting was retrievable. The
+Vanguard rigging manual (<a
+href="https://www.manualslib.com/manual/1739245/Vanguard-Sunfish.html">https://www.manualslib.com/manual/1739245/Vanguard-Sunfish.html</a>)
+and the MYC rigging manual (<a
+href="https://myc.org/wp-content/uploads/2020/11/Sunfish-Riggin-Manual.pdf">https://myc.org/wp-content/uploads/2020/11/Sunfish-Riggin-Manual.pdf</a>)
+don't cover it.</li>
+<li>General dinghy procedure (<a
+href="https://en.wikipedia.org/wiki/Capsizing">https://en.wikipedia.org/wiki/Capsizing</a>):
+stand on or pull the centreboard/daggerboard to lift the mast, and "the
+hull's righting moment usually takes over once the mast is about 30
+degrees from horizontal". Point the bow into the wind so the wind helps
+lift the sail, and avoid a re-capsize to the other side. Dinghies are
+treated as <strong>non-self-righting</strong>, and they can turtle (<a
+href="https://en.wikipedia.org/wiki/Turtling_(sailing)">https://en.wikipedia.org/wiki/Turtling_(sailing)</a>).
+Recovery from turtle: release sheets, stand on the hull or board,
+lever.</li>
+<li>Hobie 16: stand on the lower hull and pull a righting line over the
+upper hull. Act immediately, or it may turtle and be very hard to
+right.</li>
+<li>Discover Boating capsize recovery (scoop and single-handed): <a
+href="https://www.discoverboating.com/resources/sailing-capsize-recovery-scoop-and-single-handed-methods">https://www.discoverboating.com/resources/sailing-capsize-recovery-scoop-and-single-handed-methods</a></li>
+<li>US Sailing Dinghy Entrapment report: <a
+href="https://www.ussailing.org/wp-content/uploads/2018/01/Dinghy-Entrapment-Report_Final.pdf">https://www.ussailing.org/wp-content/uploads/2018/01/Dinghy-Entrapment-Report_Final.pdf</a></li>
+<li><strong>Sim rule:</strong> Sunfish, ILCA, and Hobie 16 must stay
+capsized (stable at ~90°, able to turtle) until the player applies a
+righting action (board/line). Keelboats (J/22, C22, C30) self-right.
+Corsair 880 and Lagoon 42 are not self-righting once inverted, but they
+have very high initial stability.</li>
+</ul>
+<hr />
+<h2 id="cal-4-physics--visual-references">4. Physics &amp; visual
+references</h2>
+<h3 id="cal-41-fetch-limited-wave-growth">4.1 Fetch-limited wave
+growth</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>What it gives</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>USACE Coastal Engineering Manual EM 1110-2-1100 Part II Ch. 2
+(Meteorology &amp; Wave Climate)</td>
+<td>PDF copy: <a
+href="https://pdhonline.com/courses/c772/Part-II-Chap_2entire.pdf">https://pdhonline.com/courses/c772/Part-II-Chap_2entire.pdf</a></td>
+<td>Fetch definition: direction within ±15° and speed within ±2.5 m/s,
+and the upwind coast limits fetch. Fully developed limit. Narrow-fetch
+and shallow-water sections II-2-2.b(1)(c),(d), b(3).</td>
+</tr>
+<tr class="even">
+<td>PlanetCalc CEM calculator</td>
+<td><a
+href="https://planetcalc.com/4442">https://planetcalc.com/4442</a></td>
+<td>Restates the CEM equations (below).</td>
+</tr>
+<tr class="odd">
+<td>USGS UMESC wind-fetch/wave tools</td>
+<td><a
+href="https://www.umesc.usgs.gov/management/dss/wind_fetch_wave_models.html">https://www.umesc.usgs.gov/management/dss/wind_fetch_wave_models.html</a>
+(OFR <a
+href="https://pubs.usgs.gov/of/2008/1200/">https://pubs.usgs.gov/of/2008/1200/</a>)</td>
+<td>ArcGIS fetch + wave model (SPM 1984, CEM 2002, Smith 1991 restricted
+fetch). <strong>Use it to compute directional fetch for Ray Hubbard from
+a shoreline polygon.</strong></td>
+</tr>
+<tr class="even">
+<td>ScientiMate (Python) <code>parametricwaveshallow</code></td>
+<td><a
+href="https://scientimate.readthedocs.io/en/latest/python_functions/ocean_wave_parametric_model/parametricwaveshallow.html">https://scientimate.readthedocs.io/en/latest/python_functions/ocean_wave_parametric_model/parametricwaveshallow.html</a></td>
+<td>Implements SPM-shallow, Young &amp; Verhagen (1996, for shallow
+lakes), and Karimpour (2017). Input U10, fetch, mean depth. Also
+<code>mindurationdeep</code> etc.</td>
+</tr>
+</tbody>
+</table>
+<p>Equations (CEM, deep-water fetch-limited; U10 = 10-m wind, m/s):</p>
+<ul>
+<li>C_D = 0.001 (1.1 + 0.035 U10), u* = U10 √C_D</li>
+<li>g·Hm0 / u<em>² = 4.13×10⁻² (g·X / u</em>²)^½</li>
+<li>g·Tp / u* = <strong>0.651</strong> (g·X / u*²)^⅓. PlanetCalc prints
+0.751; my recollection of CEM Eq. II-2-36 is 0.651, so verify in the
+PDF. The table below gives both.</li>
+<li>Duration to reach fetch-limited: t = 77.23 X^0.67 / (U^0.34
+g^0.33)</li>
+<li>Fully developed: g·Hm0/u<em>² = 211.5, g·Tp/u</em> = 239.8</li>
+<li>Shallow-water caps (PlanetCalc): Tp ≤ 9.78 √(d/g), H ≤ 0.6 d</li>
+<li>SPM 1984 shallow-water (Eqs. 3-39/3-40, from memory), with adjusted
+wind U_A = 0.71 U10^1.23: H = 0.283 tanh[0.530 (gd/U_A²)^¾] ·
+tanh{0.00565 (gF/U_A²)^½ / tanh[0.530 (gd/U_A²)^¾]} · U_A²/g T = 7.54
+tanh[0.833 (gd/U_A²)^⅜] · tanh{0.0379 (gF/U_A²)^⅓ / tanh[0.833
+(gd/U_A²)^⅜]} · U_A/g</li>
+</ul>
+<p><strong>Computed for Lake Ray Hubbard</strong> <em>(derived; mean
+depth 6.9 m; fetch in statute miles)</em>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Wind</th>
+<th>Fetch</th>
+<th>CEM Hm0 m (ft)</th>
+<th>CEM Tp s [Tp with 0.751]</th>
+<th>Min. duration h</th>
+<th>SPM-shallow H m (ft) / T s</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>10 kt</td>
+<td>3 mi</td>
+<td>0.17 (0.6)</td>
+<td>1.4 [1.6]</td>
+<td>1.7</td>
+<td>0.18 (0.6) / 1.7</td>
+</tr>
+<tr class="even">
+<td>10 kt</td>
+<td>8 mi</td>
+<td>0.28 (0.9)</td>
+<td>1.9 [2.2]</td>
+<td>3.3</td>
+<td>0.29 (0.9) / 2.2</td>
+</tr>
+<tr class="odd">
+<td>10 kt</td>
+<td>22 mi</td>
+<td>0.46 (1.5)</td>
+<td>2.7 [3.1]</td>
+<td>6.5</td>
+<td>0.42 (1.4) / 2.6</td>
+</tr>
+<tr class="even">
+<td>15 kt</td>
+<td>3 mi</td>
+<td>0.26 (0.9)</td>
+<td>1.6 [1.8]</td>
+<td>1.5</td>
+<td>0.30 (1.0) / 2.0</td>
+</tr>
+<tr class="odd">
+<td>15 kt</td>
+<td>8 mi</td>
+<td>0.43 (1.4)</td>
+<td>2.2 [2.5]</td>
+<td>2.9</td>
+<td>0.47 (1.5) / 2.6</td>
+</tr>
+<tr class="even">
+<td>15 kt</td>
+<td>22 mi</td>
+<td>0.71 (2.3)</td>
+<td>3.1 [3.5]</td>
+<td>5.6</td>
+<td>0.69 (2.2) / 3.3</td>
+</tr>
+<tr class="odd">
+<td>20 kt</td>
+<td>3 mi</td>
+<td>0.36 (1.2)</td>
+<td>1.8 [2.0]</td>
+<td>1.3</td>
+<td>0.43 (1.4) / 2.3</td>
+</tr>
+<tr class="even">
+<td>20 kt</td>
+<td>8 mi</td>
+<td>0.59 (1.9)</td>
+<td>2.4 [2.8]</td>
+<td>2.6</td>
+<td>0.65 (2.1) / 3.0</td>
+</tr>
+<tr class="odd">
+<td>20 kt</td>
+<td>22 mi</td>
+<td>0.98 (3.2)</td>
+<td>3.4 [3.9]</td>
+<td>5.1</td>
+<td>0.93 (3.0) / 3.8</td>
+</tr>
+<tr class="even">
+<td>25 kt</td>
+<td>8 mi</td>
+<td>0.76 (2.5)</td>
+<td>2.7 [3.1]</td>
+<td>2.4</td>
+<td>0.83 (2.7) / 3.3</td>
+</tr>
+<tr class="odd">
+<td>30 kt</td>
+<td>8 mi</td>
+<td>0.94 (3.1)</td>
+<td>2.8 [3.3]</td>
+<td>2.3</td>
+<td>1.02 (3.3) / 3.5</td>
+</tr>
+</tbody>
+</table>
+<p>Caveat: Ray Hubbard's actual longest straight-line over-water fetch
+is probably well under 22 mi. The lake is ~19,500 acres and elongated
+roughly N–S, with I-30 causeways splitting it. <strong>Measure
+directional fetch from the shoreline (UMESC tool or a GIS
+raycast)</strong> and use the 3–8 mi rows as the likely realistic range.
+RCYC sits near the south end, so S winds have a short fetch there and N
+winds a long one. Use Hm0 as the spectrum's Hs, Tp as peak, and a
+JONSWAP shape with γ ≈ 3.3 for young fetch-limited seas.</p>
+<h3 id="cal-42-beaufort--sea-state--whitecaps">4.2 Beaufort / sea state
+/ whitecaps</h3>
+<ul>
+<li>NOAA <em>Guide to Sea State, Wind and Clouds</em>: <a
+href="https://www.weather.gov/media/marine/SeaState.pdf">https://www.weather.gov/media/marine/SeaState.pdf</a>.
+Also <a
+href="https://www.wpc.ncep.noaa.gov/html/beaufort.shtml">https://www.wpc.ncep.noaa.gov/html/beaufort.shtml</a>
+and <a
+href="https://www.weather.gov/pqr/Beaufort">https://www.weather.gov/pqr/Beaufort</a></li>
+<li>Key rows: F2 4–6 kt small wavelets, glassy crests, not breaking.
+<strong>F3 7–10 kt crests begin to break, scattered whitecaps</strong>
+(whitecap onset ~7–10 kt). F4 11–16 kt numerous whitecaps. F5 17–21 kt
+many whitecaps, some spray. F6 22–27 kt whitecaps everywhere. F7 28–33
+kt foam blown in streaks. Probable wave heights in the table (F3 0.6–1
+m, F4 1–1.5 m) are <strong>open-ocean</strong> values. A fetch-limited
+lake is far lower (see §4.1). Use the visual descriptors (whitecap
+coverage, streaks) and the §4.1 heights.</li>
+<li><strong>How to use:</strong> Drive the foam/whitecap coverage
+parameter from wind speed. It should be zero below ~7 kt and ramp
+through F3–F6. Check against reference photos taken at known logged wind
+speed (§5).</li>
+</ul>
+<h3 id="cal-43-kelvin-wake">4.3 Kelvin wake</h3>
+<ul>
+<li><a
+href="https://en.wikipedia.org/wiki/Kelvin_wake_pattern">https://en.wikipedia.org/wiki/Kelvin_wake_pattern</a>:
+half-angle <strong>19.47° = arcsin(1/3)</strong> (total ~39°), deep
+water, independent of speed at moderate Froude number. At high hull
+Froude number Fr = U/√(gL) (Rabaud &amp; Moisy 2013), the apparent wake
+angle narrows. In shallow water (depth Froude U/√(gh) → 1) the wake
+widens toward 90°.</li>
+<li><strong>How to use:</strong> Check that the sim wake arms sit at
+~19.5° for a displacement keelboat. Transverse wavelength λ = 2πU²/g
+(e.g. 6 kt → ~9.5 m, physics-standard). Narrower apparent wakes are
+expected for planing dinghies and cats.</li>
+</ul>
+<h3 id="cal-44-heel-righting-moment-roll-period">4.4 Heel, righting
+moment, roll period</h3>
+<ul>
+<li>Static heel: RM(φ) = Δ·g·GZ(φ) with GZ ≈ GM·sin φ at small angles.
+Equilibrium where heeling moment from sails (F_side × CE height above
+CLR) = RM(φ) + crew hiking moment. Standard references: Larsson &amp;
+Eliasson, <em>Principles of Yacht Design</em> <strong>[book, no
+URL]</strong>, and the ORC VPP documentation at <a
+href="https://orc.org">https://orc.org</a> <strong>[not
+fetched]</strong>.</li>
+<li>Roll period (IMO Res. A.562(14) weather criterion): T = 2·C·B / √GM,
+with C = 0.373 + 0.023 (B/d) − 0.043 (L/100) (L, B, d, GM in metres): <a
+href="https://wwwcdn.imo.org/localresources/en/KnowledgeCentre/IndexofIMOResolutions/AssemblyDocuments/A.562(14).pdf">https://wwwcdn.imo.org/localresources/en/KnowledgeCentre/IndexofIMOResolutions/AssemblyDocuments/A.562(14).pdf</a>.
+Ships formula, so use it only as a sanity check. J/22 example
+<em>(derived)</em>: B 2.446, d 1.179, L 6.86, GM 1.06 gives C 0.418 and
+<strong>T ≈ 2.0 s</strong>. Compare with the phone-measured roll decay
+(§5.2), since the free roll period of a small keelboat should come out
+~2–3 s. Physics form: T = 2π k / √(g·GM), k = roll radius of gyration ≈
+0.35–0.45 B.</li>
+</ul>
+<h3 id="cal-45-sky-atmosphere-exposure">4.5 Sky, atmosphere,
+exposure</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Hillaire 2020, "A Scalable and Production Ready Sky and Atmosphere
+Rendering Technique" (EGSR, CGF 39(4))</td>
+<td><a
+href="https://diglib.eg.org/handle/10.1111/cgf14050">https://diglib.eg.org/handle/10.1111/cgf14050</a>
+· PDF <a
+href="https://diglib7.eg.org/bitstream/handle/10.1111/cgf14050/v39i4pp013-022.pdf">https://diglib7.eg.org/bitstream/handle/10.1111/cgf14050/v39i4pp013-022.pdf</a>
+· slides <a
+href="https://blog.selfshadow.com/publications/s2020-shading-course/hillaire/s2020_pbs_hillaire_slides.pdf">https://blog.selfshadow.com/publications/s2020-shading-course/hillaire/s2020_pbs_hillaire_slides.pdf</a></td>
+<td>The model behind UE's SkyAtmosphere component. Its parameter
+definitions (Rayleigh/Mie scattering, ozone absorption) let you set
+physically measured values.</td>
+</tr>
+<tr class="even">
+<td>UE Sky Atmosphere docs</td>
+<td><a
+href="https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine">https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine</a></td>
+<td>Component parameters.</td>
+</tr>
+<tr class="odd">
+<td>UE Physical Lighting Units</td>
+<td><a
+href="https://dev.epicgames.com/documentation/en-us/unreal-engine/using-physical-lighting-units-in-unreal-engine">https://dev.epicgames.com/documentation/en-us/unreal-engine/using-physical-lighting-units-in-unreal-engine</a></td>
+<td>cd, lm, lux, EV100. Sky light luminance = pixel × intensity (cd/m²).
+Raise Auto Exposure Max EV100 if the image goes white. Clear-sky sun is
+commonly ~100–120 klux at the ground <strong>[general physics figure,
+not from this page]</strong>.</td>
+</tr>
+<tr class="even">
+<td>Kider et al. 2014, "A Framework for the Experimental Comparison of
+Solar and Skydome Illumination" (ACM TOG / SIGGRAPH Asia, doi
+10.1145/2661229.2661259)</td>
+<td>PDF <a
+href="https://w1.graphics.cornell.edu/Kider-ClearSkyCapture(2014).pdf">https://w1.graphics.cornell.edu/Kider-ClearSkyCapture(2014).pdf</a>
+· dataset <a
+href="http://www.graphics.cornell.edu/resources/clearsky/">http://www.graphics.cornell.edu/resources/clearsky/</a></td>
+<td><strong>Measured</strong> spectral sky radiance (81
+points/hemisphere, 350–2500 nm), HDR fisheye, and pyranometer data.
+Analytic models err most near the sun and horizon. Hosek beats Preetham,
+which shows red horizon saturation. Use the dataset to check the UE sky
+gradient and horizon colour.</td>
+</tr>
+<tr class="odd">
+<td>Magnopus: lighting in Unreal with photography principles (PBL)</td>
+<td><a
+href="https://www.magnopus.com/blog/lighting-in-unreal-with-photography-principles">https://www.magnopus.com/blog/lighting-in-unreal-with-photography-principles</a></td>
+<td>Practical EV100 / camera-matched workflow.</td>
+</tr>
+<tr class="even">
+<td>"Towards Physically-Based Sky-Modeling" (arXiv 2412.11883)</td>
+<td><a
+href="https://arxiv.org/pdf/2412.11883">https://arxiv.org/pdf/2412.11883</a></td>
+<td>Recent sky-model evaluation.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-46-moon--sun-ephemeris">4.6 Moon / sun ephemeris</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>USNO Astronomical Applications API</td>
+<td><a
+href="https://aa.usno.navy.mil/data/api">https://aa.usno.navy.mil/data/api</a>
+· phases:
+<code>https://aa.usno.navy.mil/api/moon/phases/date?date=2026-10-1&amp;nump=12</code>,
+<code>.../phases/year?year=2026</code> · rise/set/transit +
+<strong>fracillum, curphase</strong>:
+<code>https://aa.usno.navy.mil/api/rstt/oneday?date=2026-10-12&amp;coords=32.82,-96.50&amp;tz=-6&amp;dst=true</code></td>
+<td>Ground truth for moon phase, illumination fraction, and rise/set at
+RCYC and Kemah. Unit-test the in-engine ephemeris against it.</td>
+</tr>
+<tr class="even">
+<td>Meeus, <em>Astronomical Algorithms</em> (2nd ed., Willmann-Bell
+1998) <strong>[book]</strong></td>
+<td>—</td>
+<td>Standard algorithms (ch. 47 Moon position, ch. 48 illuminated
+fraction, ch. 49 phases) <strong>[chapter numbers from
+memory]</strong>.</td>
+</tr>
+<tr class="odd">
+<td>SunCalc (JS, based on Astronomy Answers formulas)</td>
+<td><a
+href="https://github.com/mourner/suncalc">https://github.com/mourner/suncalc</a></td>
+<td>Compact sun/moon position, illumination, and parallactic angle. Easy
+to port to C++ for UE. Moon disc orientation (bright-limb angle) comes
+from the parallactic angle.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cal-5-methodology--tools">5. Methodology &amp; tools</h2>
+<h3 id="cal-51-photogrammetry--scanning">5.1 Photogrammetry /
+scanning</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tool</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>RealityScan 2.0 (ex-RealityCapture, Epic)</td>
+<td><a
+href="https://www.realityscan.com/news/realityscan-20-new-release-brings-powerful-new-features-to-a-rebranded-realitycapture">https://www.realityscan.com/news/realityscan-20-new-release-brings-powerful-new-features-to-a-rebranded-realitycapture</a>
+· <a
+href="https://en.wikipedia.org/wiki/RealityCapture">https://en.wikipedia.org/wiki/RealityCapture</a></td>
+<td>Desktop photogrammetry released 17 Jun 2025 via the Epic Launcher.
+Free below US$1M revenue (subscription above). AI masking, quality
+heatmaps, LiDAR fusion. Use it for club docks, the clubhouse, shoreline
+riprap, and boat hulls. RealityScan Mobile is the phone app.</td>
+</tr>
+<tr class="even">
+<td>Apple Object Capture (RealityKit <code>PhotogrammetrySession</code>,
+macOS)</td>
+<td><a
+href="https://developer.apple.com/documentation/realitykit/realitykit-object-capture.md">https://developer.apple.com/documentation/realitykit/realitykit-object-capture.md</a>
+· CLI tutorial <a
+href="https://developer.apple.com/tutorials/data/documentation/realitykit/creating-a-photogrammetry-command-line-app.md">https://developer.apple.com/tutorials/data/documentation/realitykit/creating-a-photogrammetry-command-line-app.md</a>
+· WWDC21 <a
+href="https://developer.apple.com/wwdc21/10076/">https://developer.apple.com/wwdc21/10076/</a></td>
+<td>Mac-side reconstruction of fittings, blocks, tillers, and small
+objects. iPhone LiDAR depth can be supplied with samples.</td>
+</tr>
+<tr class="odd">
+<td>Polycam</td>
+<td><a href="https://poly.cam">https://poly.cam</a> <strong>[unverified
+URL]</strong></td>
+<td>iPhone LiDAR room/dock scans and quick scale reference.</td>
+</tr>
+<tr class="even">
+<td>Workflow note</td>
+<td>—</td>
+<td>Shoot with a ColorChecker in frame and a known-length scale bar. Use
+overcast light for albedo capture. Hulls are glossy gelcoat, so use
+cross-polarisation or dulling spray on small parts.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-52-on-water-sensor-logging-heel-roll-speed-gps">5.2 On-water
+sensor logging (heel, roll, speed, GPS)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tool</th>
+<th>URL</th>
+<th>What it gives / use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Sensor Logger (Tsz Hei Choi)</td>
+<td><a
+href="https://apps.apple.com/us/app/-/id1531582925">https://apps.apple.com/us/app/-/id1531582925</a></td>
+<td>iOS/watchOS: accelerometer, gyro, <strong>orientation
+(roll/pitch/yaw)</strong>, magnetometer/compass, barometer, GPS
+speed/heading, video, timestamped annotations. Export
+CSV/JSON/KML/SQLite (some formats paid). Mount the phone on the
+centreline bulkhead to log heel and roll time series plus GPS
+SOG/COG.</td>
+</tr>
+<tr class="even">
+<td>SensorLogger – CSV Export (different app)</td>
+<td><a
+href="https://apps.apple.com/app/id1505203547">https://apps.apple.com/app/id1505203547</a></td>
+<td>Alternative iOS logger.</td>
+</tr>
+<tr class="odd">
+<td>phyphox (RWTH Aachen)</td>
+<td><a href="https://phyphox.org/">https://phyphox.org/</a> · F-Droid <a
+href="https://f-droid.org/packages/de.rwth_aachen.phyphox/">https://f-droid.org/packages/de.rwth_aachen.phyphox/</a>
+· iOS <a
+href="https://apps.apple.com/app/1127319693">https://apps.apple.com/app/1127319693</a></td>
+<td>Free on iOS and Android. Includes an inclination experiment.
+<strong>Remote control and download from a laptop browser.</strong>
+Export CSV/Excel. Good for <strong>roll-decay tests</strong> at the dock
+(push the boat and log roll to get the natural roll period and damping)
+and for heel-vs-wind logs.</td>
+</tr>
+<tr class="even">
+<td>GPS tracks (Strava GPX, Navionics track export, SailGPS etc.)</td>
+<td><strong>[no URLs verified]</strong></td>
+<td>SOG/COG per second. Combine with the simultaneous Eagle Point / HQZ
+/ F46 wind (or a handheld anemometer) to build measured polar
+points.</td>
+</tr>
+<tr class="odd">
+<td>Building a polar from logs</td>
+<td><a
+href="https://firstshiftsailing.substack.com/p/how-to-build-a-polar-for-the-boat">https://firstshiftsailing.substack.com/p/how-to-build-a-polar-for-the-boat</a></td>
+<td>Method: 1 Hz logging. Drop data within minutes of manoeuvres. Bin by
+TWS (1–2 kt) × TWA (5°). Take the <strong>90th percentile</strong> per
+bin, not the mean. Check sample counts, smooth, and flag sparse bins.
+Apply it to your J/22 and Sunfish logs, then compare with the ORC and
+D-PN predictions.</td>
+</tr>
+<tr class="even">
+<td>SailGRIB polar creation</td>
+<td><a
+href="https://sailgrib.com/en/apps/sailgrib-wr/aide/routing/create-your-boat-polar/">https://sailgrib.com/en/apps/sailgrib-wr/aide/routing/create-your-boat-polar/</a></td>
+<td>Polar file format (TWA × TWS grid). Handy as the sim's polar data
+format.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-53-video-analysis">5.3 Video analysis</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tool</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Tracker (Open Source Physics, D. Brown)</td>
+<td><a
+href="https://physlets.org/tracker/">https://physlets.org/tracker/</a>
+<strong>[canonical URL from memory; mirrors: <a
+href="https://www.linuxlinks.com/tracker-2/">https://www.linuxlinks.com/tracker-2/</a>]</strong></td>
+<td>Frame-by-frame point tracking with scale calibration. Measure
+mast-tip roll amplitude and period, wave crest speed and period (Tp
+check vs §4.1), wake angle, and tack/gybe timing.</td>
+</tr>
+<tr class="even">
+<td>ffmpeg</td>
+<td><a href="https://ffmpeg.org">https://ffmpeg.org</a> <strong>[not
+fetched]</strong></td>
+<td>Extract frames at fixed fps
+(<code>ffmpeg -i in.mp4 -vf fps=10 f_%05d.png</code>) for side-by-side
+comparison with sim captures. Make matched-framerate stacks with
+<code>hstack</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-54-image-comparison">5.4 Image comparison</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Tool</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>NVIDIA ꟻLIP</td>
+<td><a
+href="https://github.com/NVlabs/flip">https://github.com/NVlabs/flip</a>
+· paper <a
+href="https://research.nvidia.com/publication/flip">https://research.nvidia.com/publication/flip</a></td>
+<td>LDR-FLIP and HDR-FLIP perceptual error maps.
+<code>pip install flip-evaluator</code>, then
+<code>flip -r ref.png -t test.png</code> (BSD-3). Use HDR-FLIP on EXR
+captures against calibrated reference HDR photos at the same camera pose
+and time.</td>
+</tr>
+<tr class="even">
+<td>SSIM (scikit-image <code>structural_similarity</code>)</td>
+<td><a
+href="https://scikit-image.org/docs/stable/api/skimage.metrics.html">https://scikit-image.org/docs/stable/api/skimage.metrics.html</a>
+<strong>[not fetched]</strong></td>
+<td>Structural similarity for regression tests of sky, water, and foam
+looks.</td>
+</tr>
+<tr class="odd">
+<td>ColorChecker workflow</td>
+<td>—</td>
+<td>Photograph the chart in each reference shot. White-balance and
+expose to the 18 % grey patch, then compare chart patch values rendered
+in UE (chart model in scene under the same sky) with photo values.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-55-look-dev-with-reference-photography">5.5 Look-dev with
+reference photography</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CAVE Academy — neutral look-dev environment</td>
+<td><a
+href="https://caveacademy.com/wiki/post-production-assets/surfacing/surfacing-training/creating-a-neutral-look-development-environment/">https://caveacademy.com/wiki/post-production-assets/surfacing/surfacing-training/creating-a-neutral-look-development-environment/</a></td>
+<td>Calibrate the real and CG sets with a grey ball (exposure) and
+colour chart (white balance), which "gets you 90% of the way". HDRI
+pixel values are relative and must be converted to absolute units.</td>
+</tr>
+<tr class="even">
+<td>HDRI shooting &amp; editing (Xuan Prada &amp; Greg Zaal)</td>
+<td><a
+href="https://pixelsham.com/?p=13000">https://pixelsham.com/?p=13000</a></td>
+<td>Bracketed HDRI capture on the water or dock for UE HDRI backdrop and
+sky-light comparison. Measure the sun with a lux meter to set absolute
+scale.</td>
+</tr>
+<tr class="odd">
+<td>Chrome-ball lighting reference</td>
+<td><a
+href="https://forum.highend3d.com/t/how-to-use-chrome-balls-for-lighting-reference/62023">https://forum.highend3d.com/t/how-to-use-chrome-balls-for-lighting-reference/62023</a></td>
+<td>Shoot chrome and grey balls on the boat deck next to a ColorChecker
+at known times. Render identical balls in UE at the same sun position
+(USNO/SunCalc) and compare with FLIP.</td>
+</tr>
+<tr class="even">
+<td>VFX Voice article</td>
+<td><a
+href="https://vfxvoice.com/?p=726">https://vfxvoice.com/?p=726</a>
+<strong>[content not checked]</strong></td>
+<td>Industry practice.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cal-56-how-other-sailing-sims-validated-physics">5.6 How other
+sailing sims validated physics</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>URL</th>
+<th>Takeaway</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Clark, N.A. (2023) <em>Validation of a sailing simulator using full
+scale experimental data</em>, Univ. Tasmania PhD/MPhil thesis</td>
+<td><a
+href="https://figshare.utas.edu.au/articles/thesis/Validation_of_a_sailing_simulator_using_full_scale_experimental_data/23235968">https://figshare.utas.edu.au/articles/thesis/Validation_of_a_sailing_simulator_using_full_scale_experimental_data/23235968</a>
+· <a
+href="https://eprints.utas.edu.au/18684/">https://eprints.utas.edu.au/18684/</a></td>
+<td>Virtual Sailing Pty Ltd ride-on simulator (Laser, Megabyte, V-Sail
+Access). Full-scale trials at Albert Park Lake logged VOG, apparent wind
+speed and angle, rudder angle, and GPS, then the simulator replayed the
+same course. <strong>Manoeuvring matched, but speed vs TWA differed by
+up to an order of magnitude.</strong> Recommends separately validating
+hull drag, sailor righting moment, and sail forces. That is a direct
+template for this project.</td>
+</tr>
+<tr class="even">
+<td>UTas "Verification and validation of an active sailing simulator"
+(conf.)</td>
+<td><a
+href="https://figshare.utas.edu.au/articles/conference_contribution/Verification_and_validation_of_an_active_sailing_simulator/23090681">https://figshare.utas.edu.au/articles/conference_contribution/Verification_and_validation_of_an_active_sailing_simulator/23090681</a></td>
+<td>Embargoed. Same group.</td>
+</tr>
+<tr class="odd">
+<td>Sailaway (Richard Knol)</td>
+<td><a
+href="https://www.gamepressure.com/newsroom/meet-sailaway-the-most-accurate-sailing-simulator-ever/za44b">https://www.gamepressure.com/newsroom/meet-sailaway-the-most-accurate-sailing-simulator-ever/za44b</a></td>
+<td>Solo developer. Real-time NOAA weather. No published validation
+method found.</td>
+</tr>
+<tr class="even">
+<td>eSail</td>
+<td><a
+href="https://www.pressreader.com/uk/practical-boat-owner/20181201/282875141770019">https://www.pressreader.com/uk/practical-boat-owner/20181201/282875141770019</a>
+(PBO review)</td>
+<td>No validation paper found.</td>
+</tr>
+<tr class="odd">
+<td>Virtual Regatta</td>
+<td>—</td>
+<td>No public statement found on how polars are derived. Community
+polars are typically VPP/ORC-like. <strong>[not found]</strong></td>
+</tr>
+<tr class="even">
+<td>"Multiple Applications of Sailing Simulation"</td>
+<td><a
+href="https://www.academia.edu/12254307/Multiple_Applications_of_Sailing_Simulation">https://www.academia.edu/12254307/Multiple_Applications_of_Sailing_Simulation</a></td>
+<td>Background.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2
+id="cal-6-suggested-calibration-checklist-how-the-above-fits-together">6.
+Suggested calibration checklist (how the above fits together)</h2>
+<ol type="1">
+<li><strong>Wind climate:</strong> fetch HQZ + F46 (5-min), DAL (1-min
+gusts), Eagle Point (6-min overwater). Fit seasonal speed, direction,
+and gust-factor distributions.</li>
+<li><strong>Waves:</strong> Ray Hubbard uses directional fetch × §4.1
+(Hs 0.2–1 m, Tp 1.5–3.5 s for 10–25 kt). Galveston Bay uses SPM-shallow
+with d ≈ 2 m. The Gulf uses JONSWAP fits to 42035 spectra.</li>
+<li><strong>Boat speed:</strong> J/22 against the ORC table. C30 against
+keelindex/ORC. ILCA against Day (2017). Cross-boat ratios against D-PN
+per wind band. Corsair 880 against the MW185 spot points. Fill Hobie and
+Lagoon from your own GPS logs.</li>
+<li><strong>Heel and roll:</strong> J/22 3–4° heel at 6–8 kt per North.
+GM ≈ 1.06 m from ORC RM. Roll period ~2 s (IMO estimate), validated by
+phone roll-decay tests.</li>
+<li><strong>Capsize:</strong> dinghies and the beach cat stay down until
+righted. Keelboats self-right.</li>
+<li><strong>Visuals:</strong> whitecap onset at F3 (7–10 kt). Kelvin
+half-angle 19.47°. Sky checked against Kider measured radiance. Exposure
+in physical units. Moon from USNO. Reference photos with ColorChecker,
+grey and chrome balls, and HDRI, compared via ꟻLIP.</li>
+</ol>
+</section>
+<footer>Source files for the sim thread: /mnt/project-files/sailing-sim-phase8/ (method.md, references-boats.md, references-multihulls-environment.md, calibration-sources.md, reference-links.csv).</footer>
+</div>
+<script>
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('nav button'));
+  function show(p,push){
+    tabs.forEach(function(b){var on=b.dataset.p===p;b.setAttribute('aria-selected',on);document.getElementById('p-'+b.dataset.p).hidden=!on;});
+    if(push){try{history.replaceState(null,'','#'+p)}catch(e){}}
+  }
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.p,true);window.scrollTo({top:document.querySelector('nav').offsetTop})})});
+  var h=(location.hash||'').slice(1); if(['method','boats','env','cal'].indexOf(h)>=0) show(h,false);
+})();
+</script>
