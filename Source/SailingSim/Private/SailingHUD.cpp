@@ -194,7 +194,7 @@ void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
 		Text(FString::Printf(TEXT("Shoal water: %.1f m under the keel"), T.DepthUnderKeel), CX - 150.f, Y, Warn, 0.95f);
 		Y += 30.f;
 	}
-	if (T.bCollision)
+	if (T.bCollision && T.BoatSpeed > 0.25 * kKnot) // lying quietly against the fenders is not news
 	{
 		Text(TEXT("Contact!"), CX - 50.f, Y, Bad, 1.1f, true);
 		Y += 34.f;
@@ -223,7 +223,7 @@ void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
 void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 {
 	const TArray<TPair<FString, FString>> Rows = Boat.GetMenuRows();
-	const float W = 560.f, H = 70.f + Rows.Num() * 32.f;
+	const float W = 680.f, H = 120.f + Rows.Num() * 32.f;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale * 0.5f - H * 0.5f;
 	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.7f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
 	Text(TEXT("Settings"), X + 20.f, Y + 14.f, FLinearColor::White, 1.1f, true);
@@ -235,7 +235,10 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 		Text(Rows[I].Key, X + 24.f, RY, bSel ? FLinearColor::White : Dim);
 		Text(FString::Printf(TEXT("<  %s  >"), *Rows[I].Value), X + 260.f, RY, bSel ? Good : FLinearColor::White);
 	}
-	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 4.f, Dim, 0.8f);
+	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 54.f, Dim, 0.8f);
+	// Required attribution for the map data (OpenStreetMap is ODbL); see CREDITS.md.
+	Text(TEXT("Map data (c) OpenStreetMap contributors, ODbL. Terrain: USGS 3DEP."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
+	Text(TEXT("Lake depths and levels: Texas Water Development Board."), X + 20.f, Y + H - 12.f, Dim, 0.7f);
 }
 
 void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)

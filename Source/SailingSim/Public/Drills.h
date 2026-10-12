@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "BoatModel.h"
+#include "LakeTerrain.h"
 
 /** Learning-mode drills for the ASA 101 practical skills, in the order a lesson usually runs. */
 enum class ESailingDrill : uint8
@@ -75,6 +76,14 @@ private:
 	int32 TacksOrGybes = 0;
 	int32 LastSide = 0;
 };
+
+/**
+ * A berth to tie up at: alongside a dock face (Top <= 1.5 m obstacles) within MaxRange of Near, with enough water under
+ * the whole hull and no other dock or the shore in the way. Picks the one nearest Near, bow as close to the wind as
+ * the face allows. Returns false if there is none.
+ */
+SAILINGSIM_API bool FindBerth(const Sailing::FLakeTerrain& Terrain, const std::vector<Sailing::FObstacleSegment>& Obstacles, FVector2D Near,
+	double MaxRange, double WindFromRad, FVector2D& OutPosition, double& OutHeading);
 
 /**
  * Dock lines: from the boat's cleats (bow, quarters, springs) to the nearest dock edge within reach.

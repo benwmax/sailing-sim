@@ -1,11 +1,12 @@
 """Bakes Lake Ray Hubbard (Dallas / Rockwall, Texas) into game data.
 
 Inputs (downloaded into Data/RayHubbard/raw by Tools/terrain/fetch_rayhubbard.sh):
+  - TWDB daily levels (level.csv): the latest reading becomes the "gauge" lake level in game
   - USGS 3DEP 1/3 arc-second elevation (dem_3dep.tif), public domain
   - OpenStreetMap: lake multipolygon 952396, docks, bridges, buildings, land use (ODbL)
   - TWDB 2015 volumetric survey of Lake Ray Hubbard: interpolated lake-bottom points (public)
 Outputs (Content/TerrainData, packaged with the game):
-  - RayHubbard.height : int16 heights in cm relative to the conservation pool (435.5 ft NGVD29), 10 m grid
+  - RayHubbard.height : int16 heights in cm relative to the conservation pool (435.5 ft NGVD29), 5 m grid
   - RayHubbard.trees  : uint8 tree density, 20 m grid
   - RayHubbard.json   : grid and projection, sources, docks, bridges, buildings, launch spots, shoreline checkpoints
   - docs/phase-3/terrain-preview.png
@@ -77,11 +78,16 @@ def xy2rc(x, y):
 
 
 # ---------------------------------------------------------------- land: USGS 3DEP
-dem = tifffile.imread(os.path.join(RAW, "dem_3dep.tif")).astype(np.float64)
+# Georeferencing comes from the GeoTIFF itself: the export service widens the requested box to keep square
+# pixels, so the requested DEM_BBOX is not the raster's extent.
+with tifffile.TiffFile(os.path.join(RAW, "dem_3dep.tif")) as tif:
+    dem = tif.pages[0].asarray().astype(np.float64)
+    tie = tif.pages[0].tags["ModelTiepointTag"].value
+    scale = tif.pages[0].tags["ModelPixelScaleTag"].value
+DEM_LON0, DEM_LAT0, DEM_DLON, DEM_DLAT = tie[3], tie[4], scale[0], scale[1]  # top-left corner of pixel (0, 0)
 lon, lat = from_local.transform(GY, GX)
-dh, dw = dem.shape
-fc = (lon - DEM_BBOX[0]) / (DEM_BBOX[2] - DEM_BBOX[0]) * dw - 0.5
-fr = (DEM_BBOX[3] - lat) / (DEM_BBOX[3] - DEM_BBOX[1]) * dh - 0.5
+fc = (lon - DEM_LON0) / DEM_DLON - 0.5
+fr = (DEM_LAT0 - lat) / DEM_DLAT - 0.5
 land = ndimage.map_coordinates(dem, [fr, fc], order=1, mode="nearest") - POOL_M
 print(f"land relative to pool: {land.min():.1f} .. {land.max():.1f} m")
 
@@ -327,13 +333,23 @@ for name, la, lo in (("Rush Creek Yacht Club docks", 32.8228, -96.4983), ("Chand
     k = int(np.argmin(np.hypot(shore[:, 0] - x, shore[:, 1] - y)))
     checkpoints.append({"name": name, "shore": [round(float(shore[k, 0]), 2), round(float(shore[k, 1]), 2)]})
 
+# Latest TWDB gauge reading (level.csv from Water Data for Texas), or the reading at the first bake.
+level_date, level_ft = "2026-10-11", 432.32
+level_csv = os.path.join(RAW, "level.csv")
+if os.path.exists(level_csv):
+    rows = [l.split(",") for l in open(level_csv) if l[:1].isdigit()]
+    rows = [r for r in rows if len(r) > 1 and r[1]]
+    if rows:
+        level_date, level_ft = rows[-1][0], float(rows[-1][1])
+print(f"gauge {level_date}: {level_ft:.2f} ft ({POOL_FT - level_ft:.2f} ft below pool)")
+
 meta = {
     "name": "Lake Ray Hubbard",
     "grid": {"rows_north": NY, "cols_east": NX, "cell_m": CELL, "origin_north_m": X0, "origin_east_m": Y0, "height_unit_m": 0.01},
     "trees": {"rows_north": TNY, "cols_east": TNX, "cell_m": TREE_CELL},
     "projection": LOCAL,
     "pool_ft_ngvd29": POOL_FT,
-    "level_2026_10_11_ft": 432.32,
+    f"level_{level_date.replace('-', '_')}_ft": level_ft,
     "sources": {
         "elevation": "USGS 3D Elevation Program, 1/3 arc-second, exported Oct 2026 (public domain)",
         "bathymetry": "Texas Water Development Board, 2015 Volumetric Survey of Lake Ray Hubbard, interpolated bottom points (public)",

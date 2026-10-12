@@ -55,6 +55,9 @@ struct SAILINGSIM_API FLakeData
 	TArray<FLakeBuilding> Buildings;
 	TArray<TPair<FString, FVector2D>> Checkpoints;
 	double PoolFeet = 0.0;
+	/** The most recent gauge reading baked in (feet, same datum as the pool) and its date (YYYY-MM-DD). */
+	double LevelFeet = 0.0;
+	FString LevelDate;
 	TArray<uint8> TreeBytes;
 
 	/** Default content location of the baked lake. */

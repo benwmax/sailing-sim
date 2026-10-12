@@ -354,4 +354,51 @@ bool FSailingDockingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingLakeLevelTest, "SailingSim.Lake.GaugeLevel", Flags)
+bool FSailingLakeLevelTest::RunTest(const FString& Parameters)
+{
+	// At the gauge reading the water is shallower everywhere by the deficit, and some shoals dry out.
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	TestTrue(TEXT("A gauge reading is baked in"), !Lake.LevelDate.IsEmpty() && Lake.LevelFeet > 400.0 && Lake.LevelFeet < 440.0);
+	const FLaunchSpot& Club = Lake.LaunchSpots[1];
+	const double FullDepth = Lake.Terrain.DepthAt(Club.X, Club.Y);
+	const double Low = (Lake.PoolFeet - Lake.LevelFeet) * 0.3048;
+	Lake.Terrain.SetLevelBelowPool(Low);
+	const double GaugeDepth = Lake.Terrain.DepthAt(Club.X, Club.Y);
+	AddInfo(FString::Printf(TEXT("Gauge %s: %.2f ft, %.2f m low; depth off Rush Creek %.1f m at full pool, %.1f m today"), *Lake.LevelDate, Lake.LevelFeet, Low, FullDepth, GaugeDepth));
+	TestTrue(TEXT("Depth drops by the deficit"), FMath::Abs((FullDepth - GaugeDepth) - Low) < 0.01);
+	return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingClubBerthTest, "SailingSim.Lake.ClubBerth", Flags)
+bool FSailingClubBerthTest::RunTest(const FString& Parameters)
+{
+	// Leave-the-dock starts tied up at Rush Creek: the berth must float the boat, and the lines must reach.
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	for (const double WindDeg : { 0.0, 90.0, 180.0, 270.0 })
+	{
+		FVector2D Berth;
+		double Heading = 0.0;
+		if (!TestTrue(TEXT("A berth near the club"), FindBerth(Lake.Terrain, Lake.Obstacles, FVector2D::ZeroVector, 600.0, WindDeg * kDegToRad, Berth, Heading))) return false;
+		FBoatModel Boat;
+		Boat.SetTerrain(&Lake.Terrain);
+		Boat.SetObstacles(&Lake.Obstacles);
+		Boat.Reset(Berth.X, Berth.Y, Heading, 0.0);
+		Boat.GetMooringLines() = FindDockLines(Boat, Lake.Obstacles);
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 1.0;
+		const FWindField Wind = WindFrom(12.0, WindDeg);
+		bool bAground = false, bHit = false;
+		for (int32 I = 0; I < int32(20 * PhysicsHz); ++I) { Boat.Step(PhysicsDt, C, Wind); bAground |= Boat.GetTelemetry().bAground; bHit |= Boat.GetTelemetry().BoatSpeed > 0.5 * kKnot && Boat.GetTelemetry().bCollision; }
+		AddInfo(FString::Printf(TEXT("Wind from %.0f: berth at (%.0f, %.0f) m, %.1f m from the club, %d lines, %.1f m under the keel"), WindDeg, Berth.X, Berth.Y, Berth.Size(),
+			int32(Boat.GetMooringLines().size()), Boat.GetTelemetry().DepthUnderKeel));
+		TestTrue(TEXT("Lines reach the dock"), Boat.GetMooringLines().size() >= 2);
+		TestFalse(TEXT("Afloat at the berth"), bAground);
+		TestFalse(TEXT("Lies quietly against the dock"), bHit);
+	}
+	return true;
+}
+
 #endif

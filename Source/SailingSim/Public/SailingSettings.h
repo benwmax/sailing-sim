@@ -89,6 +89,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 LaunchSpot = 0;
 
+	/** Sail at the lake's last gauge reading instead of full pool (takes effect at the next start). */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	bool bGaugeLakeLevel = false;
+
 	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float Volume = 0.8f;
 

@@ -57,6 +57,14 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	FParse::Value(FCommandLine::Get(), TEXT("SailingSeed="), Settings->WeatherSeed);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), WindOverrideKnots);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingLaunch="), Settings->LaunchSpot);
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingLakeLevel="), Value))
+	{
+		Settings->bGaugeLakeLevel = Value.Equals(TEXT("gauge"), ESearchCase::IgnoreCase);
+	}
+	if (Settings->bGaugeLakeLevel)
+	{
+		Lake.Terrain.SetLevelBelowPool(FMath::Max(0.0, (Lake.PoolFeet - Lake.LevelFeet) * 0.3048));
+	}
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingQuality="), Value))
 	{
 		Settings->Quality = Value.Equals(TEXT("Low"), ESearchCase::IgnoreCase) ? ESailingQuality::Low
@@ -83,7 +91,7 @@ bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 {
 	// -SailingStartAt=<north m>,<east m>,<heading deg> overrides (tests, screenshots).
 	FString At;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingStartAt="), At))
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingStartAt="), At, false))
 	{
 		TArray<FString> Parts;
 		At.ParseIntoArray(Parts, TEXT(","));

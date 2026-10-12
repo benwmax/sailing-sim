@@ -56,7 +56,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowDrill, RowLaunch, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -254,14 +254,30 @@ void ASailboatPawn::BeginPlay()
 		DemoPilot.MaxTiller = 0.8;
 		CameraYaw = bDemoTacks ? 150.f : 210.f;
 		CameraPitch = -14.f;
-		FParse::Value(FCommandLine::Get(), TEXT("SailingCamYaw="), CameraYaw);
-		FParse::Value(FCommandLine::Get(), TEXT("SailingCamPitch="), CameraPitch);
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamDist="), CameraDistance))
-		{
-			CameraBoom->TargetArmLength = CameraDistance;
-		}
-		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
+	// Benchmarks and screenshots: camera angle (degrees) and distance (meters), and a drill to start in.
+	FParse::Value(FCommandLine::Get(), TEXT("SailingCamYaw="), CameraYaw);
+	FParse::Value(FCommandLine::Get(), TEXT("SailingCamPitch="), CameraPitch);
+	float CamMeters = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamDist="), CamMeters))
+	{
+		CameraDistance = CamMeters * CmPerMeter;
+		CameraBoom->TargetArmLength = CameraDistance;
+	}
+	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	FString DrillArg;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDrill="), DrillArg))
+	{
+		for (int32 I = 1; I < int32(ESailingDrill::Count); ++I)
+		{
+			if (DrillArg.Equals(FString(DrillName(ESailingDrill(I))).Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase))
+			{
+				MenuDrill = ESailingDrill(I);
+				StartDrill(MenuDrill);
+			}
+		}
+	}
+	if (FParse::Param(FCommandLine::Get(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
 }
 
 void ASailboatPawn::ApplyDifficulty()
@@ -390,15 +406,12 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 			if (D.bClosed && D.Points[0].Size() < 600.0 && (!Main || D.Points.Num() > Main->Points.Num())) Main = &D;
 		}
 		const double Time = Boat.GetState().Time;
-		if (Main && Drill == ESailingDrill::LeaveTheDock)
+		FVector2D Berth;
+		double BerthHeading = 0.0;
+		const double WindFromRad = GM->GetWeatherState().Wind.FromDegrees * kDegToRad;
+		if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading))
 		{
-			int32 West = 0;
-			for (int32 I = 1; I < Main->Points.Num(); ++I) if (Main->Points[I].Y < Main->Points[West].Y) West = I;
-			const FVector2D A = Main->Points[West], B = Main->Points[(West + 1) % Main->Points.Num()];
-			FVector2D Along = (B - A).GetSafeNormal();
-			if (Along.IsNearlyZero()) Along = FVector2D(1, 0);
-			const FVector2D Pos = A + FVector2D(0.0, -1.9);
-			Boat.Reset(Pos.X, Pos.Y, FMath::Atan2(Along.Y, Along.X), 0.0);
+			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
 		}
@@ -864,6 +877,15 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 		if (Spots.Num() > 0) Launch = Spots[FMath::Clamp(S->LaunchSpot, 0, Spots.Num() - 1)].Name;
 	}
 	Rows.Add({ TEXT("Launch spot"), Launch });
+	FString Level = TEXT("Full pool");
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		const FLakeData& L = GM->GetLake();
+		Level = S->bGaugeLakeLevel ? FString::Printf(TEXT("Gauge %s: %.1f ft (%.1f ft low)"), *L.LevelDate, L.LevelFeet, L.PoolFeet - L.LevelFeet)
+			: FString::Printf(TEXT("Full pool: %.1f ft"), L.PoolFeet);
+		if (S->bGaugeLakeLevel != (L.Terrain.GetLevelBelowPool() > 0.0)) Level += TEXT(" (next start)");
+	}
+	Rows.Add({ TEXT("Lake level"), Level });
 	Rows.Add({ TEXT("Weather"), FString(WeatherPresetName(EWeatherPreset(S->WeatherPreset))) });
 	Rows.Add({ TEXT("Start time"), FString::Printf(TEXT("%02d:%02d"), int32(S->StartHour), int32(FMath::Fmod(S->StartHour, 1.f) * 60.f)) });
 	Rows.Add({ TEXT("Weather seed"), FString::FromInt(S->WeatherSeed) });
@@ -893,6 +915,9 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 			S->LaunchSpot = (S->LaunchSpot + N + Direction) % N;
 			ResetBoat();
 		}
+		break;
+	case RowLakeLevel:
+		S->bGaugeLakeLevel = !S->bGaugeLakeLevel;
 		break;
 	case RowWeather:
 		S->WeatherPreset = ESailingWeather((int32(S->WeatherPreset) + int32(EWeatherPreset::Count) + Direction) % int32(EWeatherPreset::Count));

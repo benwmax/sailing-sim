@@ -34,6 +34,17 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	}
 	LakeName = Root->GetStringField(TEXT("name"));
 	PoolFeet = Root->GetNumberField(TEXT("pool_ft_ngvd29"));
+	LevelFeet = PoolFeet;
+	for (const auto& Field : Root->Values)
+	{
+		// "level_2026_10_11_ft": the TWDB reading on the day of the bake.
+		const FString Key(Field.Key);
+		if (Key.StartsWith(TEXT("level_")) && Key.EndsWith(TEXT("_ft")))
+		{
+			LevelFeet = Field.Value->AsNumber();
+			LevelDate = Key.Mid(6, 10).Replace(TEXT("_"), TEXT("-"));
+		}
+	}
 
 	auto ReadPoints = [](const TArray<TSharedPtr<FJsonValue>>& Array)
 	{
@@ -101,7 +112,8 @@ void FLakeData::BuildObstacles()
 			Sailing::FObstacleSegment S;
 			S.AX = Dock.Points[I - 1].X; S.AY = Dock.Points[I - 1].Y;
 			S.BX = Dock.Points[I].X; S.BY = Dock.Points[I].Y;
-			S.Radius = Dock.Kind == TEXT("breakwater") ? 1.5 : 0.25;
+			// Breakwaters are rubble; open lines are drawn as 2 m walkways; closed outlines are the deck edge.
+			S.Radius = Dock.Kind == TEXT("breakwater") ? 1.5 : (Dock.bClosed ? 0.25 : 1.0);
 			S.Bottom = -2.0;
 			S.Top = Dock.Kind == TEXT("breakwater") ? 2.0 : 0.8;
 			Obstacles.push_back(S);

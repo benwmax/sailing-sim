@@ -169,6 +169,68 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 	return !bComplete;
 }
 
+bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>& Obstacles, FVector2D Near,
+	double MaxRange, double WindFromRad, FVector2D& OutPosition, double& OutHeading)
+{
+	auto DistToSegment = [](const FObstacleSegment& S, const FVector2D& P)
+	{
+		const FVector2D A(S.AX, S.AY), B(S.BX, S.BY);
+		const FVector2D AB = B - A;
+		const double Len2 = AB.SizeSquared();
+		const double T = Len2 > 1e-9 ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Len2, 0.0, 1.0) : 0.0;
+		return FVector2D::Distance(P, A + AB * T) - S.Radius;
+	};
+	const double HalfBeam = 1.25, HalfLength = 3.5, MinDepth = 2.3; // J/22: 2.4 m beam, 6.9 m long, 1.2 m draft
+	double Best = MaxRange;
+	bool bFound = false;
+	for (size_t I = 0; I < Obstacles.size(); ++I)
+	{
+		const FObstacleSegment& S = Obstacles[I];
+		if (S.Top > 1.5) continue;
+		const FVector2D A(S.AX, S.AY), B(S.BX, S.BY);
+		const double Len = FVector2D::Distance(A, B);
+		if (Len < 2.0 * HalfLength + 1.0) continue;
+		const FVector2D Along = (B - A) / Len, Normal(-Along.Y, Along.X);
+		// Slide along the face in 2 m steps, trying both sides.
+		for (double T = HalfLength + 0.5; T <= Len - HalfLength - 0.5; T += 2.0)
+		{
+			for (int32 Side = -1; Side <= 1; Side += 2)
+			{
+				const FVector2D P = A + Along * T + Normal * (Side * (S.Radius + HalfBeam + 0.15));
+				const double D = FVector2D::Distance(P, Near);
+				if (D >= Best) continue;
+				bool bOk = true;
+				for (double U = -HalfLength; U <= HalfLength && bOk; U += HalfLength)
+				{
+					for (double V = -HalfBeam; V <= HalfBeam && bOk; V += HalfBeam)
+					{
+						const FVector2D Q = P + Along * U + Normal * V;
+						if (Terrain.DepthAt(Q.X, Q.Y) < MinDepth) bOk = false;
+						for (size_t J = 0; J < Obstacles.size() && bOk; ++J)
+						{
+							if (J != I && Obstacles[J].Bottom < 0.0 && DistToSegment(Obstacles[J], Q) < 0.3) bOk = false;
+						}
+					}
+				}
+				// Room to sail off: open water a few boat lengths out from the face.
+				for (double Out = 6.0; Out <= 18.0 && bOk; Out += 6.0)
+				{
+					const FVector2D Q = P + Normal * (Side * Out);
+					if (Terrain.DepthAt(Q.X, Q.Y) < MinDepth) bOk = false;
+				}
+				if (!bOk) continue;
+				Best = D;
+				bFound = true;
+				OutPosition = P;
+				const FVector2D Up(FMath::Cos(WindFromRad), FMath::Sin(WindFromRad));
+				const FVector2D Bow = FVector2D::DotProduct(Along, Up) >= 0.0 ? Along : -Along;
+				OutHeading = FMath::Atan2(Bow.Y, Bow.X);
+			}
+		}
+	}
+	return bFound;
+}
+
 std::vector<FMooringLine> FindDockLines(const FBoatModel& Boat, const std::vector<FObstacleSegment>& Obstacles, double Reach)
 {
 	std::vector<FMooringLine> Lines;

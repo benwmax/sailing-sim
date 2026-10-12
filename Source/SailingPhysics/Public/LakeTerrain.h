@@ -38,12 +38,20 @@ namespace Sailing
 		double GetCell() const { return Cell; }
 		double GetOriginX() const { return OriginX; }
 		double GetOriginY() const { return OriginY; }
-		/** Raw height of a grid node (row north, column east), meters. */
+		/** Height of a grid node (row north, column east), meters above the water. */
 		double NodeHeight(int Row, int Col) const;
+
+		/**
+		 * The water stands this far (m) below the conservation pool: the whole bed and shore are raised by it, so
+		 * the water surface stays at Z = 0 and shoals and banks show the way they do at today's level.
+		 */
+		void SetLevelBelowPool(double Meters) { LevelBelowPool = Meters; }
+		double GetLevelBelowPool() const { return LevelBelowPool; }
 
 	private:
 		int Rows = 0, Cols = 0;
 		double Cell = 10.0, OriginX = 0.0, OriginY = 0.0, Unit = 0.01;
+		double LevelBelowPool = 0.0;
 		std::vector<int16_t> Heights;
 		int TreeRows = 0, TreeCols = 0;
 		double TreeCell = 20.0, TreeOriginX = 0.0, TreeOriginY = 0.0;

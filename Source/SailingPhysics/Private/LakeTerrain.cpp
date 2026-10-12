@@ -61,7 +61,7 @@ namespace Sailing
 	{
 		Row = Row < 0 ? 0 : (Row >= Rows ? Rows - 1 : Row);
 		Col = Col < 0 ? 0 : (Col >= Cols ? Cols - 1 : Col);
-		return Heights[size_t(Row) * Cols + Col] * Unit;
+		return Heights[size_t(Row) * Cols + Col] * Unit + LevelBelowPool;
 	}
 
 	double FLakeTerrain::HeightAt(double X, double Y) const
