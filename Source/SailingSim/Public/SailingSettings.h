@@ -93,6 +93,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 World = 0;
 
+	/** Other vessels on the water: 0 none, 1 light, 2 busy. */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 TrafficLevel = 1;
+
 	/** The boat you sail (Sailing::EBoatType: 0 = J/22, the lesson boat). */
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 BoatType = 0;

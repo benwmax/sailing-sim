@@ -54,6 +54,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `-SailingNoMoon`. Rebake the coast with `Tools/coast/fetch_galveston.sh` then
    `Tools/venv/bin/python Tools/coast/build_galveston.py`, then `scripts/test.sh SailingSim.Coast`.
 
+14. `scripts/traffic.sh [index]` builds SailingPhysics standalone and runs the Navigation Rules scenarios (each with
+   and without the rules) and an AI race in seconds; `98` runs 16 races, `99` one race with its signals. Tune traffic
+   here, then `scripts/test.sh SailingSim.Traffic` and `SailingSim.Race`. `scripts/bench-phase6.sh [seconds]` runs the
+   traffic and race views on the packaged build (`docs/phase-6/`). Args: `-SailingTraffic=0|1|2`,
+   `-SailingRace=<seconds to the start>`, `-SailingTrafficNear` (ships start close by).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -81,6 +87,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   meters above MLLW; the game mode moves the terrain actor by -tide and sets the physics level to match. Reference
   times from CO-OPS are GMT. `ASailingEnvironment::SunPosition` takes the local clock hour (longitude, UTC offset and
   equation of time make solar time).
+- Traffic: `Rules.h` (right of way, risk by CPA, signals), `Traffic.h` (`FTrafficSim`: AI helmsmen, power vessels,
+  collisions with who had to keep clear, routes and the ship channel path), `Race.h` (`FRaceRunner`: sequence, OCS,
+  rounding by swept angle, scoring, AI tactics), `RulesCoach.h` and `TrafficScenarios.h` live in SailingPhysics.
+  `ATrafficManager` spawns and steps it on the game clock; AI sailboats are `ASailboatPawn`s with `bTrafficBoat` (the
+  simulation borrows their `FBoatModel`); `APowerVesselActor` draws the rest with lights over their arcs. Roles in an
+  encounter are decided once and kept until past (`LastGiveWay`); don't let sailboats luff to avoid (they stall).
 - Bake gotchas: read the DEM's georeferencing from its GeoTIFF tags (the export widens the requested box); OSM
   shoreline cells get symmetric heights so the zero contour lands on the OSM line; `FParse::Value` stops at commas
   unless you pass `false`.

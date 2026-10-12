@@ -18,6 +18,8 @@ struct FSailingSoundParams
 	std::atomic<float> Rain{ 0.f };          // 0..1
 	std::atomic<float> Thunder{ 0.f };       // 0..1 rumble level
 	std::atomic<float> ThunderCrack{ 0.f };  // 0..1 sharp crack of a close strike
+	std::atomic<float> HornLevel{ 0.f };     // 0..1 another vessel's whistle (or the committee's horn), by distance
+	std::atomic<float> HornHz{ 400.f };      // its pitch: about 110 Hz for a ship, 400 for a small boat
 	std::atomic<float> Volume{ 0.8f };
 };
 
@@ -52,6 +54,7 @@ private:
 	uint32 Rng = 0x2545F491u;
 	float SampleRateHz = 48000.f;
 	// Smoothed parameters.
+	float SHorn = 0.f, HornPhase = 0.f, HornVib = 0.f;
 	float SWind = 0.f, SLuff = 0.f, STell = 0.f, SSpeed = 0.f, SHull = 0.f, SSlam = 0.f, STrim = 0.f, SRain = 0.f, SThunder = 0.f, SCrack = 0.f, SVolume = 0.8f;
 	// Generators.
 	float Pink[7] = {};

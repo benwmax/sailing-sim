@@ -89,6 +89,20 @@ public:
 	/** Records a bearing on a charted object (what TakeBearing does once it has found one). */
 	bool RecordBearing(const FString& Name, const FVector2D& Object);
 
+	/**
+	 * Traffic: an AI sailboat drawn by this same actor. Set before BeginPlay (spawn deferred); the traffic simulation
+	 * steps the returned model and hands over the controls each frame; this actor only draws her.
+	 */
+	UPROPERTY() bool bTrafficBoat = false;
+	FLinearColor TrafficHullColor = FLinearColor(0.94f, 0.94f, 0.92f);
+	Sailing::FBoatModel* InitTraffic(int32 Type, double X, double Y, double HeadingRad);
+	void SetTrafficControls(const Sailing::FBoatControls& InControls) { Controls = InControls; }
+	Sailing::FBoatModel& GetMutableBoatModel() { return Boat; }
+	/** Another vessel's whistle or the committee's horn, heard aboard (0 = silent). */
+	void SetHorn(float Level, float Hz);
+	/** The player's status under the rules: sailing, or power-driven with the engine running. */
+	bool IsMotoring() const;
+
 	/** Initial speed through the water in knots. */
 	UPROPERTY(EditAnywhere, Category = "Boat")
 	float StartSpeedKnots = 3.f;

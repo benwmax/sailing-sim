@@ -10,6 +10,7 @@
 #include "Chart.h"
 #include "Navigation.h"
 #include "Tides.h"
+#include "TrafficManager.h"
 
 using namespace Sailing;
 
@@ -99,6 +100,111 @@ void ASailingHUD::DrawHUD()
 		DrawTips(*Boat);
 	}
 	DrawNavigation(*Boat, Settings->bLearningMode ? 300.f : 10.f);
+	DrawTraffic(*Boat);
+}
+
+void ASailingHUD::DrawTraffic(const ASailboatPawn& Boat)
+{
+	const ATrafficManager* TM = ATrafficManager::Find(GetWorld());
+	if (!TM) return;
+	const USailingSettings* Settings = USailingSettings::Get();
+	const double Now = TM->GetSim().GetTime();
+	const float CX = Canvas->ClipX / UIScale * 0.5f, Bottom = Canvas->ClipY / UIScale;
+	const FRulesCoach& Coach = TM->GetCoach();
+	float Y = Bottom - 140.f;
+
+	// Learning: what the rules say about the vessel that matters most right now.
+	const FRulesCoach::FAdvice& A = Coach.GetAdvice();
+	if (Settings->bLearningMode && A.bActive)
+	{
+		const float W = 700.f, H = 118.f;
+		Y = Bottom - 150.f - H;
+		DrawRect(Panel, (CX - W * 0.5f) * UIScale, Y * UIScale, W * UIScale, H * UIScale);
+		const FLinearColor RoleColour = A.bGiveWay ? Warn : (A.bStandOn ? Good : Dim);
+		Text(UTF8_TO_TCHAR(A.Who.c_str()), CX - W * 0.5f + 12.f, Y + 8.f, FLinearColor::White, 0.85f);
+		Text(FString::Printf(TEXT("%s  (%s)"), UTF8_TO_TCHAR(A.Role.c_str()), UTF8_TO_TCHAR(A.Rule.c_str())), CX - W * 0.5f + 12.f, Y + 30.f, RoleColour, 0.95f);
+		Text(UTF8_TO_TCHAR(A.Reason.c_str()), CX - W * 0.5f + 12.f, Y + 54.f, Dim, 0.72f);
+		Text(UTF8_TO_TCHAR(A.Action.c_str()), CX - W * 0.5f + 12.f, Y + 74.f, FLinearColor::White, 0.75f);
+		if (A.Tcpa > 0.0 && A.Tcpa < 900.0)
+		{
+			Text(FString::Printf(TEXT("Closest approach %.0f m in %.0f s"), A.Cpa, A.Tcpa), CX - W * 0.5f + 12.f, Y + 96.f, A.Cpa < 30.0 ? Bad : Dim, 0.72f);
+		}
+	}
+	// Game mode: the rules score and the latest judgment.
+	if (!Settings->bLearningMode || !Coach.GetScores().empty())
+	{
+		const std::vector<FRulesCoach::FScore>& Scores = Coach.GetScores();
+		if (!Settings->bLearningMode)
+		{
+			Text(FString::Printf(TEXT("Rules score %+d"), Coach.GetScore()), CX - 70.f, 14.f, Coach.GetScore() < 0 ? Bad : Good, 0.95f);
+		}
+		if (!Scores.empty() && Now - Scores.back().Time < 8.0)
+		{
+			const FRulesCoach::FScore& Last = Scores.back();
+			Text(FString::Printf(TEXT("%+d  %s"), Last.Points, UTF8_TO_TCHAR(Last.Text.c_str())), CX - 330.f, Y - 26.f, Last.Points < 0 ? Bad : Good, 0.8f);
+		}
+	}
+	// Signals heard and vessels keeping clear: the last few seconds.
+	float MY = Y - 52.f;
+	const TArray<TPair<double, FString>>& Messages = TM->GetMessages();
+	for (int32 I = Messages.Num() - 1, Shown = 0; I >= 0 && Shown < 3; --I)
+	{
+		if (Now - Messages[I].Key > 8.0) break;
+		Text(Messages[I].Value, CX - 330.f, MY, FLinearColor(0.85f, 0.9f, 1.f), 0.75f);
+		MY -= 22.f;
+		++Shown;
+	}
+
+	// The race.
+	const FRaceRunner* R = TM->GetRace();
+	if (!R) return;
+	const FRaceEntry* Me = R->FindEntry(FTrafficSim::PlayerId);
+	const float X = 10.f, Top = 300.f, W = 330.f;
+	const int32 Rows = R->IsOver() ? int32(R->Entries.size()) : 0;
+	DrawRect(Panel, X * UIScale, Top * UIScale, W * UIScale, (104.f + Rows * 22.f) * UIScale);
+	const double ToStart = R->StartTime() - Now;
+	FString Head;
+	FLinearColor HeadColour = FLinearColor::White;
+	switch (R->Phase(Now))
+	{
+	case FRaceRunner::EPhase::Warning: Head = FString::Printf(TEXT("Start in %d:%02d   class flag up"), int32(ToStart) / 60, int32(ToStart) % 60); break;
+	case FRaceRunner::EPhase::Preparatory: Head = FString::Printf(TEXT("Start in %d:%02d   class flag + P flag"), int32(ToStart) / 60, int32(ToStart) % 60); HeadColour = Warn; break;
+	case FRaceRunner::EPhase::OneMinute: Head = FString::Printf(TEXT("Start in 0:%02d   P flag down"), int32(ToStart)); HeadColour = Bad; break;
+	case FRaceRunner::EPhase::Racing: Head = FString::Printf(TEXT("Racing %d:%02d   position %d of %d"), int32(-ToStart) / 60, int32(-ToStart) % 60, TM->GetRacePosition(), int32(R->Entries.size())); HeadColour = Good; break;
+	default: Head = TEXT("Race over: results"); break;
+	}
+	Text(Head, X + 12.f, Top + 8.f, HeadColour, 0.95f);
+	if (Me)
+	{
+		Text(UTF8_TO_TCHAR(R->NextTask(*Me).c_str()), X + 12.f, Top + 34.f, Me->bOcs ? Bad : FLinearColor::White, 0.78f);
+		// How far to the line (before the start) or to the next mark.
+		const FVector2D P = Boat.GetMapPosition();
+		if (!Me->bStarted || Me->bOcs)
+		{
+			Text(FString::Printf(TEXT("Line: %.0f m %s"), FMath::Abs(R->Course.CourseSide(P.X, P.Y)), R->Course.CourseSide(P.X, P.Y) > 0.0 ? TEXT("over (on the course side)") : TEXT("below")),
+				X + 12.f, Top + 58.f, R->Course.CourseSide(P.X, P.Y) > 0.0 ? Bad : Dim, 0.75f);
+		}
+		else if (Me->NextMark < int32(R->Course.Marks.size()))
+		{
+			const FRaceMark& M = R->Course.Marks[Me->NextMark];
+			const double Brg = SailingNav::BearingDeg(P, FVector2D(M.X, M.Y));
+			Text(FString::Printf(TEXT("%s: %.0f m, bearing %03.0f"), UTF8_TO_TCHAR(M.Name.c_str()), FVector2D::Distance(P, FVector2D(M.X, M.Y)), Brg), X + 12.f, Top + 58.f, Dim, 0.75f);
+		}
+	}
+	Text(TEXT("Tab > Race: Left ends the race"), X + 12.f, Top + 80.f, Dim, 0.65f);
+	if (R->IsOver())
+	{
+		TArray<const FRaceEntry*> Sorted;
+		for (const FRaceEntry& E : R->Entries) Sorted.Add(&E);
+		Sorted.Sort([](const FRaceEntry& A2, const FRaceEntry& B2) { return A2.Points < B2.Points; });
+		for (int32 I = 0; I < Sorted.Num(); ++I)
+		{
+			const FRaceEntry& E = *Sorted[I];
+			const FString Line = E.bFinished ? FString::Printf(TEXT("%d. %s  %d:%02d  %d pt"), E.Place, UTF8_TO_TCHAR(E.Name.c_str()), int32(E.FinishTime - R->StartTime()) / 60, int32(E.FinishTime - R->StartTime()) % 60, E.Points)
+				: FString::Printf(TEXT("-  %s  %s  %d pt"), UTF8_TO_TCHAR(E.Name.c_str()), UTF8_TO_TCHAR(E.Status.c_str()), E.Points);
+			Text(Line, X + 12.f, Top + 104.f + I * 22.f, E.VesselId == FTrafficSim::PlayerId ? Good : FLinearColor::White, 0.78f);
+		}
+	}
 }
 
 void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
@@ -369,6 +475,31 @@ void ASailingHUD::DrawChart(const ASailboatPawn& Boat)
 		DrawRect(Ink, F.X - 1.5f, F.Y - 1.5f, 3.f, 3.f);
 		const int32 Minutes = FMath::RoundToInt((Now - Plot.FixTime) / 60.0);
 		DrawText(FString::Printf(TEXT("FIX (%d min ago, cocked hat %.0f m)"), Minutes, Plot.FixSpread), Ink, F.X + 9.f * UIScale, F.Y + 4.f * UIScale, Small, UIScale * 0.9f);
+	}
+
+	// Other vessels as a chartplotter shows AIS targets (with the GPS on): a pointed outline along her heading.
+	if (Boat.IsGpsShown())
+	{
+		if (const ATrafficManager* TM = ATrafficManager::Find(GetWorld()))
+		{
+			for (const FTrafficVessel& V : TM->GetSim().GetVessels())
+			{
+				const FVesselSnapshot S = V.Snapshot();
+				const FVector2D P = ToScreen(FVector2D(S.X, S.Y));
+				if (P.X < 0 || P.Y < 0 || P.X > SW || P.Y > SH) continue;
+				const FLinearColor C = V.IsSail() ? FLinearColor(0.1f, 0.5f, 0.2f) : (V.Kind == ETrafficKind::Ship || V.Kind == ETrafficKind::TugAndTow ? Magenta : Ink);
+				const double H = S.Heading;
+				const FVector2D Fwd(FMath::Sin(H), -FMath::Cos(H)), Side(-Fwd.Y, Fwd.X);
+				const float L = FMath::Max(7.f * UIScale, float(0.5 * S.Length / Mpp));
+				DrawLine(P.X + Fwd.X * L, P.Y + Fwd.Y * L, P.X - Fwd.X * L + Side.X * L * 0.45f, P.Y - Fwd.Y * L + Side.Y * L * 0.45f, C, 1.5f);
+				DrawLine(P.X + Fwd.X * L, P.Y + Fwd.Y * L, P.X - Fwd.X * L - Side.X * L * 0.45f, P.Y - Fwd.Y * L - Side.Y * L * 0.45f, C, 1.5f);
+				DrawLine(P.X - Fwd.X * L + Side.X * L * 0.45f, P.Y - Fwd.Y * L + Side.Y * L * 0.45f, P.X - Fwd.X * L - Side.X * L * 0.45f, P.Y - Fwd.Y * L - Side.Y * L * 0.45f, C, 1.5f);
+				// Course over ground vector: six minutes ahead.
+				const FVector2D Ahead = ToScreen(FVector2D(S.X + S.VX * 360.0, S.Y + S.VY * 360.0));
+				DrawLine(P.X, P.Y, Ahead.X, Ahead.Y, C, 1.f);
+				if (Zoom < 12.0) DrawText(UTF8_TO_TCHAR(V.Name.c_str()), C, P.X + 8.f * UIScale, P.Y + 4.f * UIScale, Tiny, UIScale);
+			}
+		}
 	}
 
 	// The boat (GPS) and her heading.

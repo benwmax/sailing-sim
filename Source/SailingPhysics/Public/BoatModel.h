@@ -200,6 +200,7 @@ namespace Sailing
 		double AX = 0, AY = 0, BX = 0, BY = 0;
 		double Radius = 0.3;
 		double Bottom = -1.0, Top = 0.5;
+		double VX = 0.0, VY = 0.0;   // velocity of a moving obstacle (another vessel's hull), m/s
 	};
 
 	/** A dock line from a cleat on the boat (body frame) to a point ashore (world), slack below its length. */
@@ -252,7 +253,8 @@ namespace Sailing
 		double HeelingForce = 0.0;    // N, sail force across the boat
 		bool bInIrons = false;
 		bool bAground = false;        // keel, rudder or hull touching the bottom
-		bool bCollision = false;      // touching a dock or bridge this step
+		bool bCollision = false;      // touching a dock, bridge or another vessel this step
+		bool bVesselContact = false;  // touching another vessel this step
 		double DepthUnderKeel = 100.0; // m of water below the keel tip
 		double SpeedThroughWater = 0.0; // m/s, forward speed relative to the water (the log); BoatSpeed is over ground
 		double CourseOverGround = 0.0;  // rad, direction of travel over the ground
@@ -305,6 +307,8 @@ namespace Sailing
 		void SetTerrain(const FLakeTerrain* InTerrain) { Terrain = InTerrain; }
 		/** Obstacles are indexed on a grid when set, so a bay full of piers and jetties costs no more than a lake. */
 		void SetObstacles(const std::vector<FObstacleSegment>* InObstacles);
+		/** Other vessels' hulls near this one (a few segments each, replaced every frame; checked without the grid). */
+		void SetMovingObstacles(const std::vector<FObstacleSegment>& InMoving) { MovingObstacles = InMoving; }
 		/** The water's own motion (tidal current, m/s, world XY) around the boat: the hull and foils feel water relative to it. */
 		void SetWaterCurrent(const Vec3& Current) { WaterCurrent = Vec3(Current.X, Current.Y, 0.0); }
 		const Vec3& GetWaterCurrent() const { return WaterCurrent; }
@@ -347,6 +351,7 @@ namespace Sailing
 		const FWaveField* CurrentWaves = nullptr;
 		const FLakeTerrain* Terrain = nullptr;
 		const std::vector<FObstacleSegment>* Obstacles = nullptr;
+		std::vector<FObstacleSegment> MovingObstacles;
 		// Obstacle grid: cells of ObstacleCell meters, each listing the segments (with their radius) that reach into it.
 		double ObstacleCell = 32.0, ObstacleX0 = 0.0, ObstacleY0 = 0.0;
 		int ObstacleRows = 0, ObstacleCols = 0;

@@ -19,6 +19,7 @@
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
+#include "TrafficManager.h"
 #include "SailingEnvironment.h"
 #include "UnrealClient.h"
 
@@ -314,6 +315,10 @@ void ASailingGameMode::StartPlay()
 	{
 		GetWorld()->SpawnActor<ANavaidsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
+	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
+	int32 TrafficArg = 0;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTraffic="), TrafficArg)) USailingSettings::Get()->TrafficLevel = FMath::Clamp(TrafficArg, 0, 2);
+	GetWorld()->SpawnActor<ATrafficManager>(FVector::ZeroVector, FRotator::ZeroRotator);
 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
