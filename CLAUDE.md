@@ -9,7 +9,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 2. `scripts/test.sh [Filter]` runs automation tests headless (`-nullrhi`), default filter `SailingSim`.
    Prints one line per test and exits non-zero on any failure. Report: `Artifacts/TestReport/index.json`; log `Artifacts/test.log`.
    Always rebuild first: the editor loads the dylibs in `Binaries/Mac`, it does not compile.
-3. `scripts/make-map.sh` regenerates `Content/Maps/Lake.umap` from `scripts/make_lake_map.py`. Edit the Python, not the map.
+3. `scripts/make-content.sh` regenerates `/Game/Materials` (`scripts/make_materials.py`) and `Content/Maps/Lake.umap`
+   (`scripts/make_lake_map.py`). Edit the Python, not the assets. Run after `scripts/build.sh` (the map uses C++ classes).
+   M_Water's wave sum must match `FWaveField::Height` (same 48 components; amplitudes pushed each frame by AWaterSurface).
 4. `scripts/package-mac.sh [Development|Shipping]` runs RunUAT BuildCookRun (`-build -cook -stage -pak -iostore -package -archive`)
    to `Packaged/Mac/SailingSim.app`. About 2 min. Log: `Artifacts/package.log`. Keep `-package`: on Mac it is the step that copies
    the cooked data into the .app; without it the app crashes at startup looking for the .uproject. Never archive into `Build/`:
@@ -25,6 +27,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    (no Unreal) and sails the J/22 reference polar in about 2 s. Use it for any physics tuning, then confirm with
    `scripts/test.sh` (`SailingSim.Physics.PolarGate`). `--scenarios` prints tack and irons results; `--point` dumps
    per-strip sail state.
+8. `scripts/run-game.sh <s> [args]` runs the game uncooked from the editor binary (about 30 s, no packaging) and saves
+   `Saved/Bench/<shot>.png`: the fast loop for visual tuning. Game args: `-SailingWeather=Thunderstorm -SailingHour=16
+   -SailingWeatherTime=120 -SailingWind=8 -SailingTWA=90 -SailingHoldTWA=90 -SailingCamYaw=0 -SailingCamPitch=-10
+   -SailingQuality=High -SailingShot=name -SailingDebugGust=1|2 -SailingDumpGust -SailingProfileGPU`.
+9. `scripts/bench-phase2.sh [seconds]` measures three reference conditions on each quality tier (packaged build) and
+   copies the High screenshots to `docs/phase-2/`. Leave the windows visible: macOS throttles hidden ones.
 7. `DEMO=1 RECORD=15 scripts/bench-mac.sh 17` runs the packaged game with the autopilot tacking (`-SailingDemo`) and
    writes `Artifacts/recording.gif`. Recording drops the frame rate; measure fps without RECORD.
 
@@ -35,7 +43,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FBoatModel` is the J/22 (config in `FBoatConfig`), `FWindField` the wind, `FAutoTrim`/`FAutopilot` the crew helpers.
   `Quat` uses FQuat's algebra, so copy X/Y/Z/W straight across. Positive heel = starboard side up (heeled to port);
   positive yaw/rudder/tiller = bow to starboard; TWA/AWA positive = wind from starboard.
-- Calibration knobs, if the polar drifts: residuary table and `ChopResistance` (hull), sail `InducedAspectRatio`,
+- World systems: `FWaveField` (lake chop), `FWindField` (+ `FGustFront`), `FWeatherSystem` (presets, storm timeline,
+  lightning) live in SailingPhysics; `ASailingGameMode` owns them and the clock (= the boat's physics time).
+  `AWaterSurface` renders the waves and fills the cat's-paw and wake maps; `ASailingEnvironment` does sun, clouds,
+  haze, rain and lightning; `USailingSynthWave` synthesizes all sound.
+- Gotchas found the hard way: wire vector parameters into Custom nodes via their RGBA output; runtime textures fed to
+  a Color sampler must be sRGB (values gamma-encoded on the CPU); never call UpdateResource per frame; volumetric
+  cloud shadows on the sun cost 4+ ms on this Mac (left off); the gust front is easiest to see from a low camera.
+- Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
 - Avoid identifiers that collide with Unreal macros in physics code (`PI`, `check`, `verify`).
 - Unreal code converts cm <-> m at the edge (`Sailing::CmPerMeter`). Axes match Unreal: X forward, Y right (starboard), Z up.
