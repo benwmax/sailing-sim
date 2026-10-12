@@ -698,9 +698,9 @@ namespace Sailing
 		Telemetry.bAground = false;
 		Telemetry.bCollision = false;
 		Telemetry.DepthUnderKeel = 100.0;
-		auto Contact = [&](const Vec3& PointWorld, const Vec3& Normal, double Penetration, double Stiffness, double Damping, double Friction)
+		auto Contact = [&](const Vec3& PointWorld, const Vec3& Normal, double Penetration, double Stiffness, double Damping, double Friction, const Vec3& SurfaceVel = Vec3())
 		{
-			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld);
+			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld) - SurfaceVel;
 			const double Vn = Vel.Dot(Normal);
 			const double Fn = std::max(0.0, Stiffness * Penetration - Damping * Vn);
 			const Vec3 Vt = Vel - Normal * Vn;
@@ -751,6 +751,28 @@ namespace Sailing
 						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3);
 						Telemetry.bCollision = true;
 					}
+				}
+			}
+		}
+		// Other vessels: the same contact as a dock, moving with the other hull (a fender-off, not a crash model).
+		Telemetry.bVesselContact = false;
+		for (const FObstacleSegment& S : MovingObstacles)
+		{
+			for (const Vec3& HP : OutlinePoints)
+			{
+				const Vec3 P = Origin + Q.Rotate(HP);
+				if (P.Z < S.Bottom || P.Z > S.Top) continue;
+				const double SX = S.BX - S.AX, SY = S.BY - S.AY;
+				const double Len2 = SX * SX + SY * SY;
+				const double T = Len2 > 1e-9 ? Clamp(((P.X - S.AX) * SX + (P.Y - S.AY) * SY) / Len2, 0.0, 1.0) : 0.0;
+				const double DX = P.X - (S.AX + SX * T), DY = P.Y - (S.AY + SY * T);
+				const double Dist = std::sqrt(DX * DX + DY * DY);
+				const double Pen = S.Radius + 0.1 - Dist;
+				if (Pen > 0.0 && Dist > 1e-6)
+				{
+					Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(S.VX, S.VY, 0.0));
+					Telemetry.bCollision = true;
+					Telemetry.bVesselContact = true;
 				}
 			}
 		}

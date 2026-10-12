@@ -47,3 +47,6 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
   © OpenStreetMap contributors (ODbL, as above).
 - Chart symbology follows U.S. Chart No. 1 (NOAA / NGA, public domain). Sun times were checked against published
   Galveston sunrise and sunset tables.
+- Navigation Rules (Phase 6): U.S. Coast Guard, Navigation Rules and Regulations Handbook (International and Inland
+  Rules; public domain). Racing: rule numbers from World Sailing's Racing Rules of Sailing are cited; no rule text is
+  reproduced.

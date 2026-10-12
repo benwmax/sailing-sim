@@ -28,6 +28,7 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 	const float TSpeed = Params.BoatSpeed.load(), THull = Params.HullSpeedRatio.load(), TSlam = Params.BowSlam.load();
 	const float TTrim = Params.TrimRate.load(), TRain = Params.Rain.load(), TThunder = Params.Thunder.load(), TCrack = Params.ThunderCrack.load();
 	const float TVolume = Params.Volume.load();
+	const float THorn = Params.HornLevel.load(), HornFreq = FMath::Max(Params.HornHz.load(), 40.f);
 
 	for (int32 I = 0; I < NumSamples; ++I)
 	{
@@ -97,6 +98,17 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		// Thunder: a rolling low rumble, and a crack for a close strike.
 		Mix += ThunderLow.Low(BrownN, 2.f * PI * 70.f / Sr) * 2.2f * Th;
 		Mix += CrackBand.Process(White, 0.08f, 0.6f) * 0.8f * Cr;
+
+		// A whistle: a reedy tone (odd and even harmonics) with a little vibrato, fading in and out over 30 ms.
+		const float Hn = Smooth(SHorn, THorn, Rate * 1.6f);
+		if (Hn > 1e-4f)
+		{
+			HornVib += 5.5f / Sr;
+			HornPhase += HornFreq * (1.f + 0.004f * FMath::Sin(2.f * PI * HornVib)) / Sr;
+			HornPhase -= FMath::FloorToFloat(HornPhase);
+			const float A = 2.f * PI * HornPhase;
+			Mix += (FMath::Sin(A) + 0.5f * FMath::Sin(2.f * A) + 0.33f * FMath::Sin(3.f * A) + 0.18f * FMath::Sin(5.f * A)) * 0.35f * Hn;
+		}
 
 		const float Sample = FMath::Clamp(FMath::Tanh(Mix * Vol * 1.4f), -1.f, 1.f);
 		Out[I] = int16(Sample * 32000.f);

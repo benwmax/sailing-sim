@@ -6,6 +6,7 @@
 #include "WaterSurface.h"
 #include "SailingAudio.h"
 #include "SailingEnvironment.h"
+#include "TrafficManager.h"
 #include "Components/AudioComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -60,7 +61,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowWorld, RowBoat, RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowWorld, RowBoat, RowDrill, RowRace, RowTraffic, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -268,13 +269,13 @@ void ASailboatPawn::BuildHullMesh()
 	HullMesh->CreateMeshSection_LinearColor(0, ShellV, ShellT, Normals(ShellV, ShellT), {}, {}, {}, false);
 	HullMesh->CreateMeshSection_LinearColor(1, DeckV, DeckT, Normals(DeckV, DeckT), {}, {}, {}, false);
 	FLinearColor HullColor(0.94f, 0.94f, 0.92f);
-	switch (C.Type)
+	switch (bTrafficBoat ? EBoatType::Count : C.Type)
 	{
 	case EBoatType::J22: HullColor = FLinearColor(0.75f, 0.06f, 0.06f); break;      // the lesson boat stays red
 	case EBoatType::Sunfish: HullColor = FLinearColor(0.95f, 0.72f, 0.10f); break;
 	case EBoatType::Catalina30: HullColor = FLinearColor(0.08f, 0.13f, 0.30f); break;
 	case EBoatType::Hobie16: HullColor = FLinearColor(0.10f, 0.45f, 0.75f); break;
-	default: break;
+	default: if (bTrafficBoat) HullColor = TrafficHullColor; break;
 	}
 	for (int32 Section = 0; Section < 2; ++Section)
 	{
@@ -467,7 +468,7 @@ void ASailboatPawn::BeginPlay()
 	}
 	StartLocation = GetActorLocation();
 	StartYaw = GetActorRotation().Yaw;
-	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	if (const ASailingGameMode* GM = bTrafficBoat ? nullptr : GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
 		FLaunchSpot Spot;
 		if (GM->GetLaunchSpot(Spot))
@@ -482,7 +483,7 @@ void ASailboatPawn::BeginPlay()
 		}
 	}
 	float StartTwa = 0.f;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
+	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
 	{
 		// Point the boat so the wind is StartTwa off the starboard bow (TWA = wind from - heading).
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa;
@@ -514,6 +515,10 @@ void ASailboatPawn::BeginPlay()
 		Sail->SetMaterial(0, Mid);
 	}
 
+	if (bTrafficBoat)
+	{
+		return; // the traffic manager picks her boat and puts her on the water (InitTraffic)
+	}
 	FString BoatArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBoat="), BoatArg))
 	{
@@ -621,6 +626,14 @@ void ASailboatPawn::ResetBoat()
 void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (bTrafficBoat)
+	{
+		// The traffic simulation sails her; draw where she is, her rig and sails, and her lights.
+		ApplyStateToTransform();
+		UpdateRigVisuals(DeltaSeconds);
+		UpdateNavLights();
+		return;
+	}
 	ApplyHeldInputs(DeltaSeconds);
 	if (Controls.bRighting && FMath::Abs(Boat.GetTelemetry().Heel) < 20.0 * kDegToRad && Boat.GetState().CrewOffsetZ > -0.05)
 	{
@@ -740,6 +753,28 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	UpdateNavLights();
 }
 
+Sailing::FBoatModel* ASailboatPawn::InitTraffic(int32 Type, double X, double Y, double HeadingRad)
+{
+	SetBoat(Type);
+	const double Time = Boat.GetState().Time;
+	Boat.Reset(X, Y, HeadingRad, 2.0);
+	Boat.GetMutableState().Time = Time;
+	ApplyStateToTransform();
+	return &Boat;
+}
+
+void ASailboatPawn::SetHorn(float Level, float Hz)
+{
+	if (!Synth) return;
+	Synth->Params.HornLevel.store(Level);
+	Synth->Params.HornHz.store(Hz);
+}
+
+bool ASailboatPawn::IsMotoring() const
+{
+	return !Boat.GetConfig().Engines.empty() && FMath::Abs(Controls.Throttle) > 0.02;
+}
+
 void ASailboatPawn::SetChartOpen(bool bOpen)
 {
 	bChartOpen = bOpen;
@@ -835,10 +870,25 @@ void ASailboatPawn::UpdateNavLights()
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const bool bDark = GM && GM->IsDark();
 	const bool bMotoring = FMath::Abs(Controls.Throttle) > 0.02 && !Boat.GetConfig().Engines.empty();
-	// Rule 25: sidelights and sternlight under sail; Rule 23: add the masthead (steaming) light under power.
+	// Rule 25: sidelights and sternlight under sail; Rule 23: add the masthead (steaming) light under power. Each shows
+	// only over its arc (Rule 21): sidelights from right ahead to 22.5 degrees abaft the beam on their own side, the
+	// sternlight over the 135 degrees astern, the masthead light over the 225 degrees forward.
+	double Rel = 0.0, Dist = 0.0;
+	if (const APlayerCameraManager* Cam = GetWorld()->GetFirstPlayerController() ? GetWorld()->GetFirstPlayerController()->PlayerCameraManager.Get() : nullptr)
+	{
+		const FVector D = Cam->GetCameraLocation() - GetActorLocation();
+		Rel = FMath::UnwindDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)) - FMath::RadiansToDegrees(Boat.GetTelemetry().Heading));
+		Dist = D.Size() / CmPerMeter;
+	}
+	const bool bArc[4] = { Rel <= 2.0 && Rel >= -112.5, Rel >= -2.0 && Rel <= 112.5, FMath::Abs(Rel) >= 112.5, FMath::Abs(Rel) <= 112.5 };
+	// Seen as a point at any distance: a few centimeters close to, growing with range so it stays a couple of pixels.
+	const float Size = FMath::Max(6.f, float(Dist) * 0.25f);
 	for (int32 I = 0; I < NavLights.Num(); ++I)
 	{
-		if (NavLights[I]) NavLights[I]->SetVisibility(bDark && (I < 3 || bMotoring));
+		if (!NavLights[I]) continue;
+		const bool bOn = bDark && (I < 3 || bMotoring) && bArc[FMath::Min(I, 3)];
+		NavLights[I]->SetVisibility(bOn);
+		if (bOn) NavLights[I]->SetRelativeScale3D(FVector(Size / 100.f));
 	}
 }
 
@@ -1441,6 +1491,14 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	Rows.Add({ TEXT("Sailing area (restarts)"), FString(ASailingGameMode::WorldDisplayName(S->World)) });
 	Rows.Add({ TEXT("Boat"), FString(BoatTypeName(EBoatType(FMath::Clamp(S->BoatType, 0, int32(EBoatType::Count) - 1)))) });
 	Rows.Add({ TEXT("Drill (Left/Right starts it)"), FString(DrillName(MenuDrill)) });
+	FString RaceState = TEXT("None (Right starts one)");
+	if (const ATrafficManager* TM = ATrafficManager::Find(GetWorld()))
+	{
+		if (const FRaceRunner* R = TM->GetRace()) RaceState = R->IsOver() ? FString(TEXT("Finished (Left ends it)")) : FString(TEXT("Racing (Left ends it)"));
+	}
+	Rows.Add({ TEXT("Race against the fleet"), RaceState });
+	const int32 Traffic = FMath::Clamp(USailingSettings::Get()->TrafficLevel, 0, 2);
+	Rows.Add({ TEXT("Traffic"), Traffic == 0 ? TEXT("None") : (Traffic == 1 ? TEXT("Light") : TEXT("Busy")) });
 	FString Launch = TEXT("Open water");
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -1480,6 +1538,17 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->LaunchSpot = 0;
 		S->Save();
 		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
+		break;
+	case RowRace:
+		if (ATrafficManager* TM = ATrafficManager::Find(GetWorld()))
+		{
+			if (Direction > 0 && !TM->IsRacing()) TM->StartRace(5, 300.0);
+			else if (Direction < 0) TM->EndRace();
+		}
+		break;
+	case RowTraffic:
+		S->TrafficLevel = (S->TrafficLevel + 3 + Direction) % 3;
+		S->Save();
 		break;
 	case RowBoat:
 		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);

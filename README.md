@@ -67,6 +67,7 @@ Keys are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/Sa
 | Coast: chart view (mouse pans, wheel zooms) | P | |
 | Coast: take a bearing on the mark the camera faces | U | |
 | Coast: GPS on the chart on / off, clear the plot | O, I | |
+| Traffic (none / light / busy), start or end a race | Tab > Traffic, Tab > Race | |
 
 **Simple** layout (the default, and always on Easy): you steer, trim both sheets and hike; the crew handles the
 traveler and sail shape. **Full** gives you every control. **Trim assist** (its own setting) lets the crew trim the
@@ -148,6 +149,38 @@ south to Bolivar Roads and the Gulf. Everything comes from the NOAA chart and NO
   the plot.
 - Command line: `-SailingWorld=1`, `-SailingDate=2026-10-12`, `-SailingChart=<m per pixel>` (open the chart),
   `-SailingPlotFix` (take three bearings at the start), `-SailingNoGps`, `-SailingLightsOn`.
+
+## Traffic, the Rules of the Road and races
+
+Other vessels share the water (Tab > **Traffic**: none, light or busy; `-SailingTraffic=0|1|2`): AI sailboats on the
+same physics as yours (J/22s, Catalinas, Hobies), runabouts, and on the coast shrimp trawlers with their nets out, a
+towboat pushing barges, and tankers and container ships held to the Houston Ship Channel.
+
+- **They follow the Navigation Rules** (COLREGS / U.S. Inland Rules): overtaking (Rule 13) first; then Rule 18's
+  order (not under command or restricted, constrained by draft, fishing, sailing, power-driven; everyone keeps clear
+  of a vessel at anchor); between sailboats Rule 12 (port tack keeps clear of starboard, windward of leeward); between
+  power-driven vessels Rule 14 (head-on: both turn to starboard) and Rule 15 (crossing: the one with the other on her
+  starboard side keeps clear). The give-way vessel acts early and plainly, at least 30 degrees under power and 20
+  under sail (Rules 8 and 16), and never onto a shoal; the stand-on vessel holds course and speed, sounds five short
+  blasts if the other is not acting, and takes action herself only at close quarters (Rule 17). Roles are settled
+  when the risk first appears and kept until they are past and clear.
+- **Signals and lights**: power-driven vessels sound one short blast turning to starboard, two to port (Rule 34), and
+  you hear them (pitch by size). By night every vessel shows her lights over their proper arcs (Rule 21): sidelights,
+  sternlight and masthead lights; green over white for the trawler, red-white-red for the tow, three reds for a ship
+  constrained by her draft; by day their shapes (cones, ball-diamond-ball, a cylinder). Your boat's lights follow the
+  same arcs.
+- **Learning mode** names the vessel that matters most ("Runabout (power-driven vessel) on your starboard bow,
+  240 m"), your role (give way / stand on), the rule and why, and what to do, with the closest approach. **Game mode**
+  scores you: +10 for keeping clear early and plainly, +5 for holding your course as stand-on, -5 for altering as
+  stand-on, -10 if the other had to act for you or you passed too close, -30 for a collision.
+- **The chart** shows the traffic as AIS targets with six-minute course vectors when the GPS is on.
+- **Races** (Tab > **Race against the fleet**, Right starts one; `-SailingRace=<seconds to the start>`): five AI boats
+  of your class on a windward-leeward course laid upwind of you (two laps; the beat as long as the water allows, up
+  to 900 m), a committee boat at the starboard end of the line and an orange pin at the port end. The start sequence
+  of the Racing Rules (warning at 5:00, preparatory at 4:00, one minute, start, with the flags on the HUD and the
+  sounds); over the line early: individual recall, come back below the line; each mark left to port (counted by the
+  angle you sweep round it); finish upwind through the line; low-point scoring. The race panel shows the countdown,
+  your next task, the distance and bearing to the next mark, your position, and the results.
 
 ## Rebuilding the lake
 
@@ -238,7 +271,35 @@ so in a calm the boat rocked herself up to a knot (now she lies still); the sun 
 were solar time (now longitude, time zone and the equation of time); the clouds' shadow rays toward a low sun cost a
 third of the frame at night; and Galveston's 4,000 terrain chunks cost 4 ms of culling a frame (now 1,000).
 
+## Phase 6 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 59 of 59 pass, including 7 new traffic and race tests |
+| Rules scenarios (`SailingSim.Traffic.RulesScenarios`, `scripts/traffic.sh`) | 10 encounters, each first run with nobody following the rules (they collide or pass within 21 m) and then with the AI following them: port/starboard, windward/leeward, a powerboat overtaking, a sailboat overtaking a powerboat (Rule 13 before 18), head-on (both turn 30 degrees to starboard, pass port to port, one short blast each), crossing, power gives way to sail, sail keeps clear of a trawler, sail does not impede a ship (Rule 9), and a stand-on vessel acting when the other will not (five short blasts, then a turn). The right vessel acts every time, the stand-on vessel holds within 1 degree, passing at 58 to 790 m |
+| Right-of-way table | 11 pairings decided the same whichever vessel asks, including vessels at anchor and motorsailing |
+| No AI-caused collisions | 20 minutes of busy open water (10 vessels) and 15 minutes of Galveston Bay (6 sailboats, 4 runabouts, 2 ships and a tow in the channel): no collisions, nobody aground |
+| Races score correctly | Scripted boats: the winner 1 point, second 2, a boat recalled that came back and finished third 3; a boat that rounded the windward mark the wrong way and one that never came back after being over early both score 6 (entries + 1, DNF and OCS) |
+| AI fleet races | 8 races of 5 J/22s: every boat starts, rounds all four marks and finishes (23 to 40 minutes); scores 1 to 5 each race. Close racing in a pack still brings an occasional touch: 3 in 16 races (see known gaps) |
+| Coach | Giving way early: +10; holding on as the give-way boat (the other had to act): -10; standing on: +5 |
+| Lights | A ship seen from her starboard beam shows one green, two masthead lights and three reds; from astern the sternlight and the reds; from ahead both sidelights; nothing by day |
+| Frame rate, default (Medium) tier | Busy lake 78 fps, a race 70, the bay with ships 77, the bay at night with vessels' lights 71, the chart with AIS targets 120 (`docs/phase-6/frame-budget.csv`) |
+| No regressions | Every earlier test passes; the Phase 5 views are unchanged |
+| Screenshots | `docs/phase-6/lake-busy.png`, `lake-race.png`, `bay-ships.png`, `bay-night-traffic.png`, `bay-chart-ais.png` |
+
+Found and fixed along the way: the Galveston bake had missed the Houston Ship Channel's own chart cells (the mid-bay
+channel was 10 m instead of its dredged 45 ft) and took the magnetic variation from a whole-degree area band
+(0 deg 25' E) instead of the compass rose near Kemah (1 deg 28' E in 2026); both fixed in the Phase 5 branch too.
+
 ## Known gaps
+
+- Races: the AI racers keep clear by the rules, but a five-boat pack still touches about once in five races (most
+  often in the first minute after the start). There is no mark-room (RRS 18) or protest/penalty turn yet; the AI
+  does not play tactics (no covering, no lifts and headers). Contacts are scored against whoever had to keep clear.
+- Traffic does not tie up, anchor or come and go from the marinas; ships use one channel route out and back; there is
+  no traffic in restricted visibility (sound signals in fog, Rule 35) yet.
+- The AI sees every vessel within 4 km at once (no lookout limits, no radar); the player's boat is never moved by the
+  fend-off that keeps two AI hulls from locking together.
 
 - Coast: navigation lights (yours and the aids') are all-round points; sidelight and sector arcs come with the
   Rules of the Road in Phase 6. Buoys do not lean or swing in the current, and there are no fog signals or racons.
