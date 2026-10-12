@@ -21,4 +21,13 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - J/22 reference polar: ORC VPP polar (median of 13 ORC certificates) as tabulated by
   [keelindex.com](https://keelindex.com/boat/j-22/performance), cross-checked against the
   [ORC 2021 J/22 one-design certificate](https://data.orc.org/public/od/2021/j22.od.html). Used for validation only.
+- Lake Ray Hubbard shoreline, docks, slips, breakwaters, bridges, buildings and land use:
+  © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the
+  [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/). The baked files in
+  `Content/TerrainData` are a derived database and are offered under the same license. The credit is also shown in
+  the game's settings menu.
+- Land elevation: U.S. Geological Survey, 3D Elevation Program (3DEP), 1/3 arc-second DEM (public domain).
+- Lake bottom: Texas Water Development Board, 2015 Volumetric and Sedimentation Survey of Lake Ray Hubbard,
+  interpolated bottom points (public information).
+- Pool elevation and gauge level: Texas Water Development Board, Water Data for Texas (public information).
 - Fetch-limited wave growth: U.S. Army Corps of Engineers Shore Protection Manual / JONSWAP relations (public).

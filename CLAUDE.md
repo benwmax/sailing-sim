@@ -36,6 +36,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 7. `DEMO=1 RECORD=15 scripts/bench-mac.sh 17` runs the packaged game with the autopilot tacking (`-SailingDemo`) and
    writes `Artifacts/recording.gif`. Recording drops the frame rate; measure fps without RECORD.
 
+10. `scripts/bench-phase3.sh [seconds]` measures the lake views (marina on each tier, the I-30 bridge, a wide view,
+   sailing) on the packaged build and copies screenshots to `docs/phase-3/`. More game args: `-SailingLaunch=N`,
+   `-SailingStartAt=<north m>,<east m>,<heading deg>`, `-SailingDrill=LeavetheDock` (drill name without spaces),
+   `-SailingLakeLevel=gauge|pool`, `-SailingCamDist=<m>`, `-SailingKeepStart`, `-SailingMenu`. Camera args work without
+   `-SailingDemo`; the camera yaw is relative to the boat.
+11. `Tools/venv/bin/python Tools/terrain/build_rayhubbard.py` rebakes `Content/TerrainData` from `Data/RayHubbard/raw`
+   (git-ignored; see README). Then `scripts/test.sh SailingSim.Lake` and repackage (the data is staged as loose files).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -47,6 +55,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   lightning) live in SailingPhysics; `ASailingGameMode` owns them and the clock (= the boat's physics time).
   `AWaterSurface` renders the waves and fills the cat's-paw and wake maps; `ASailingEnvironment` does sun, clouds,
   haze, rain and lightning; `USailingSynthWave` synthesizes all sound.
+- The lake: `FLakeTerrain` (height grid, tree canopy, fetch) and `FShelterMap` live in SailingPhysics; `FLakeData`
+  (`LakeData.h`) loads the bake and builds dock/bridge obstacles; `ALakeTerrainActor` streams chunks; drills are
+  `FDrillRunner` (`Drills.h`), pure logic so tests can drive them. Map frame: +X north, +Y east, origin at Rush
+  Creek Yacht Club (32.8233 N, 96.5000 W), Z = 0 at the 435.5 ft pool.
+- Bake gotchas: read the DEM's georeferencing from its GeoTIFF tags (the export widens the requested box); OSM
+  shoreline cells get symmetric heights so the zero contour lands on the OSM line; `FParse::Value` stops at commas
+  unless you pass `false`.
 - Gotchas found the hard way: wire vector parameters into Custom nodes via their RGBA output; runtime textures fed to
   a Color sampler must be sRGB (values gamma-encoded on the CPU); never call UpdateResource per frame; volumetric
   cloud shadows on the sun cost 4+ ms on this Mac (left off); the gust front is easiest to see from a low camera.
