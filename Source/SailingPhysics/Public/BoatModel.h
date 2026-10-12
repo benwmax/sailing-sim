@@ -48,7 +48,7 @@ namespace Sailing
 	 * Z up). Plan view: a half-ellipse forward of the widest station, a gentle taper aft to the transom. Sections: a
 	 * flat run with a turn of the bilge set by BilgePower (4 = firm bilge, 2 = round, closer to 1 = V).
 	 */
-	struct FHullShape
+	struct SAILINGPHYSICS_API FHullShape
 	{
 		double CenterY = 0.0;          // lateral position of this hull's centerline (multihulls)
 		double BowX = 3.45, SternX = -3.41;

@@ -94,7 +94,7 @@ void ASailingHUD::DrawHUD()
 void ASailingHUD::DrawInstruments(const ASailboatPawn& Boat)
 {
 	const FBoatTelemetry& T = Boat.GetBoatModel().GetTelemetry();
-	DrawRect(Panel, 10.f * UIScale, 10.f * UIScale, 330.f * UIScale, 250.f * UIScale);
+	DrawRect(Panel, 10.f * UIScale, 10.f * UIScale, 330.f * UIScale, 278.f * UIScale);
 
 	double Heading = FMath::RadiansToDegrees(T.Heading);
 	if (Heading < 0.0) Heading += 360.0;
@@ -121,6 +121,16 @@ void ASailingHUD::DrawInstruments(const ASailboatPawn& Boat)
 	Text(FString::Printf(TEXT("VMG       %.1f kn"), T.VMG / kKnot), 22.f, Y);
 	Y += 24.f;
 	Text(FString::Printf(TEXT("Leeway    %.1f"), FMath::Abs(FMath::RadiansToDegrees(T.Leeway))), 22.f, Y, Dim);
+	Y += 26.f;
+	// The boat and what she is carrying.
+	const FBoatConfig& Cfg = Boat.GetBoatModel().GetConfig();
+	const FBoatControls& C = Boat.GetControls();
+	FString Rig = FString(Cfg.Name);
+	if (Boat.GetBoatModel().GetState().Reef > 0) Rig += FString::Printf(TEXT(" | reef %d"), Boat.GetBoatModel().GetState().Reef);
+	if (T.NumSpinStrips > 0) Rig += Cfg.bAsymmetricSpinnaker ? TEXT(" | gennaker") : TEXT(" | spinnaker");
+	if (Cfg.HasBoard() && C.Board < 0.5) Rig += TEXT(" | board up");
+	if (!Cfg.Engines.empty() && FMath::Abs(C.Throttle) > 0.02) Rig += FString::Printf(TEXT(" | engine %.0f%% %s"), FMath::Abs(C.Throttle) * 100.0, C.Throttle > 0.0 ? TEXT("ahead") : TEXT("astern"));
+	Text(Rig, 22.f, Y, Good, 0.85f);
 }
 
 void ASailingHUD::DrawControls(const ASailboatPawn& Boat)
@@ -143,8 +153,15 @@ void ASailingHUD::DrawControls(const ASailboatPawn& Boat)
 	// Weather helm: how hard the tiller pulls (N), positive = boat wants to round up.
 	Bar(FString::Printf(TEXT("Helm %3.0f N"), T.HelmForce), T.HelmForce, -60.f, 60.f, X + 12.f, Y, 190.f, T.HelmForce > 40.0 ? Warn : FLinearColor(0.6f, 0.8f, 1.f)); Y += 24.f;
 	Bar(TEXT("Mainsheet"), 1.f - C.MainSheet, 0.f, 1.f, X + 12.f, Y, 190.f, FLinearColor(0.4f, 0.8f, 1.f)); Y += 20.f;
-	Bar(TEXT("Jib sheet"), 1.f - C.JibSheet, 0.f, 1.f, X + 12.f, Y, 190.f, FLinearColor(0.4f, 0.8f, 1.f)); Y += 20.f;
+	const FBoatConfig& Cfg = Boat.GetBoatModel().GetConfig();
+	if (C.bSpinnaker && Cfg.HasSpinnaker()) { Bar(TEXT("Spin sheet"), 1.f - C.SpinSheet, 0.f, 1.f, X + 12.f, Y, 190.f, FLinearColor(1.f, 0.45f, 0.4f)); Y += 20.f; }
+	else if (Cfg.HasJib()) { Bar(TEXT("Jib sheet"), 1.f - C.JibSheet, 0.f, 1.f, X + 12.f, Y, 190.f, FLinearColor(0.4f, 0.8f, 1.f)); Y += 20.f; }
+	else { Text(TEXT("(una rig: one sail)"), X + 12.f, Y - 2.f, Dim, 0.8f); Y += 20.f; }
 	Bar(TEXT("Crew"), C.Hike, -1.f, 1.f, X + 12.f, Y, 190.f, FLinearColor(1.f, 0.8f, 0.2f)); Y += 20.f;
+	if (!Cfg.Engines.empty() && FMath::Abs(C.Throttle) > 0.0)
+	{
+		Bar(TEXT("Throttle"), C.Throttle, -1.f, 1.f, X + 12.f, Y - 2.f, 190.f, FLinearColor(0.8f, 0.8f, 0.8f));
+	}
 	if (!bSimple)
 	{
 		Bar(TEXT("Traveler"), C.Traveler, -1.f, 1.f, X + 12.f, Y, 190.f, FLinearColor(0.7f, 0.7f, 1.f)); Y += 20.f;
@@ -192,6 +209,24 @@ void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
 	else if (T.DepthUnderKeel < 1.0)
 	{
 		Text(FString::Printf(TEXT("Shoal water: %.1f m under the keel"), T.DepthUnderKeel), CX - 150.f, Y, Warn, 0.95f);
+		Y += 30.f;
+	}
+	const FBoatConfig& Cfg = Boat.GetBoatModel().GetConfig();
+	if (T.bCapsized)
+	{
+		Text(TEXT("CAPSIZED"), CX - 80.f, Y, Bad, 1.6f, true);
+		Text(Cfg.RightingLever > 0.0 ? TEXT("Let the sheets go, point the bow toward the wind and press X to right her.")
+			: TEXT("She will not come back up on her own. Press R to start again."), CX - 330.f, Y + 40.f, Bad, 0.85f);
+		Y += 80.f;
+	}
+	else if (T.bFlyingHull)
+	{
+		Text(TEXT("Flying a hull"), CX - 60.f, Y, Good, 0.95f);
+		Y += 30.f;
+	}
+	else if (T.bPlaning)
+	{
+		Text(TEXT("Planing"), CX - 40.f, Y, Good, 0.95f);
 		Y += 30.f;
 	}
 	if (T.bCollision && T.BoatSpeed > 0.25 * kKnot) // lying quietly against the fenders is not news
@@ -252,6 +287,12 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		{ TEXT("Wing-on-wing"), TEXT("G            X") },
 		{ TEXT("Back the jib (heave to, irons)"), TEXT("B            Left stick press") },
 		{ TEXT("Dock lines on / off"), TEXT("T            Right stick press") },
+		{ TEXT("Spinnaker up / down (Q/E trims it)"), TEXT("N") },
+		{ TEXT("Take a reef / shake out"), TEXT("M") },
+		{ TEXT("Board or swing keel up / down"), TEXT("J") },
+		{ TEXT("Right a capsized boat"), TEXT("X") },
+		{ TEXT("Engine ahead / astern, neutral"), TEXT("= / -  (PgUp/PgDn), 0") },
+		{ TEXT("Twin engines: pivot"), TEXT("[ / ]") },
 	};
 	if (!bSimple)
 	{

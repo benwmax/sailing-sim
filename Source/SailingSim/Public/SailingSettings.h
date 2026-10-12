@@ -89,6 +89,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 LaunchSpot = 0;
 
+	/** The boat you sail (Sailing::EBoatType: 0 = J/22, the lesson boat). */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 BoatType = 0;
+
 	/** Sail at the lake's last gauge reading instead of full pool (takes effect at the next start). */
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	bool bGaugeLakeLevel = false;

@@ -69,6 +69,18 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("BackJib"), EKeys::B);
 	Add(TEXT("BackJib"), EKeys::Gamepad_LeftThumbstick);
 	Add(TEXT("DockLines"), EKeys::Gamepad_RightThumbstick);
+	// Fleet: spinnaker, reefs, the board, the engine(s) and righting a capsized boat.
+	Add(TEXT("Spinnaker"), EKeys::N);
+	Add(TEXT("Reef"), EKeys::M);
+	Add(TEXT("Board"), EKeys::J);
+	Add(TEXT("Righting"), EKeys::X);
+	Add(TEXT("EngineNeutral"), EKeys::Zero);
+	Add(TEXT("Throttle"), EKeys::Equals);
+	Add(TEXT("Throttle"), EKeys::Hyphen, -1.f);
+	Add(TEXT("Throttle"), EKeys::PageUp);
+	Add(TEXT("Throttle"), EKeys::PageDown, -1.f);
+	Add(TEXT("ThrottleSplit"), EKeys::RightBracket);
+	Add(TEXT("ThrottleSplit"), EKeys::LeftBracket, -1.f);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);
