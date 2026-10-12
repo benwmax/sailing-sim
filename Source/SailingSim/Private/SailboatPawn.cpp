@@ -542,6 +542,7 @@ void ASailboatPawn::BeginPlay()
 		}
 	}
 	if (FParse::Param(FCommandLine::Get(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
+	if (FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker(); // start with it up
 }
 
 void ASailboatPawn::ApplyDifficulty()

@@ -3,7 +3,7 @@
 A technically accurate sailing simulator built in Unreal Engine 5.8. First boat: J/22. Home water: Lake Ray Hubbard, Texas, sailing from Rush Creek Yacht Club in Heath.
 
 The research and phased plan live in the Claude Doc "Sailing Game: Research and Phased Plan". Phases so far:
-0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake).
+0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake), 4 (the fleet).
 
 ## Toolchain on the build Mac
 
@@ -54,6 +54,12 @@ Keys are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/Sa
 | Wing-on-wing | G | X |
 | Back the jib (heave to) | B | Left stick press |
 | Dock lines on / off (under 1.5 kn, next to a dock) | T | Right stick press |
+| Spinnaker / gennaker up or down (Q/E then trim its sheet) | N | |
+| Take a reef (cycles back to a full main) | M | |
+| Board or swing keel up / down | J | |
+| Right a capsized boat (crew on the board or the righting line) | X | |
+| Engine ahead / astern, neutral | = / - (or PgUp / PgDn), 0 | |
+| Twin engines: pivot in place | [ / ] | |
 | Full layout only: traveler, vang, cunningham, outhaul, backstay | Z / C, 1-2, 3-4, 5-6, 7-8 | D-pad left / right, A / B |
 | Learning mode, difficulty, instruments, reset | L, K, H, R | Y |
 | Settings menu, controls card | Tab, ? | Menu, View |
@@ -89,6 +95,27 @@ Z = 0 at the conservation pool (435.5 ft NGVD29).
 - **Hazards**: you can run aground (the HUD warns under 1 m below the keel), hit docks and breakwaters, and the
   bridges stop the mast (only the hull fits under). Woods and bluffs cast wind shadows that recover over 2 to 25
   obstacle heights downwind, and the chop grows with the open-water fetch upwind.
+
+## The fleet
+
+Pick a boat in the settings menu (**Boat**, the first row) or start with `-SailingBoat=Hobie`. All eight sail on the
+same physics; what changes is the boat: hulls (one, two or three), keel or boards, rig, crew, engines.
+
+| Boat | What it teaches | Particulars in the model |
+| --- | --- | --- |
+| J/22 | ASA 101 on the lesson boat | 22 ft 6 in keelboat, 1,790 lb, main + jib, symmetric spinnaker, small outboard |
+| Sunfish | Balance, one sheet, capsize | 13 ft 9 in lateen dinghy, daggerboard, one sailor |
+| ILCA 7 (Laser) | Hiking, planing, capsize and righting | 13 ft 10 in una-rig dinghy, daggerboard, planes from about 12 kn of wind |
+| Catalina 22 | A common lake keelboat | swing keel (J raises it), 135% genoa, spinnaker, outboard |
+| Catalina 30 | ASA 103: reefing, engine, a heavier boat | 10,200 lb, wheel, two reefs, 21 hp diesel with prop walk, sails as measured on its ORC certificate |
+| Hobie 16 | Apparent wind, flying a hull, trapeze | beach cat, no boards (the hulls are the foils), double trapeze, righting line |
+| Corsair 880 | Speed, float pressure, reefing early | folding trimaran, daggerboard, gennaker on a sprit, two reefs, outboard |
+| Lagoon 42 | Chartering a big cat, twin engines | 14 t cruising cat, Code 0, three reefs, twin diesels that pivot her in place |
+
+Every number comes from a source listed in `docs/phase-4/fleet-data.json` (class rules, builders, ORC certificates,
+reviews); where nothing was published the file says how it was estimated. Dinghies capsize when overpowered and come
+back up with the crew on the board; the Hobie flies a hull and goes over past its tipping point; keelboats knock down
+and come back; the Lagoon and Corsair cannot be righted by their crew (R resets).
 
 ## Rebuilding the lake
 
@@ -139,7 +166,28 @@ Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/Terra
 | Frame rate, Low / High | Low 119 (display cap); High 51 at the marina (under 60, as in Phase 2) |
 | Screenshots | `docs/phase-3/marina-*.png`, `bridge-medium.png`, `wide-medium.png`, `sailing-medium.png`, `settings-menu.png`, `terrain-preview.png` |
 
+## Phase 4 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 43 of 43 pass, including every boat's polar, dinghy capsize and righting, keelboat knockdowns, flying a hull and capsizing a Hobie, planing, spinnaker, reefing and engines |
+| Polars | Every boat within its tolerance at every point: J/22 39 points (incl. spinnaker) worst 8.4%; Catalina 30 (ORC certificate) worst 5.3%; Catalina 22 9.9%; ILCA 7 11.7% (15% tier on reaches); Sunfish 14.6%; Hobie 16 19.3%; Corsair 880 19.8%; Lagoon 42 19.5% |
+| Tolerance by source | 10% for ORC certificates and polars anchored on measured speeds; 15% for handicap-scaled estimates and judged reaching speeds; 20% for hand-built estimates (the research's own stated uncertainty). See `FleetReferencePolar` in `Source/SailingPhysics/Private/Fleet.cpp` |
+| Behavior | ILCA 7 knocked flat in 20 kn with the sheet cleated, righted from the board in 4 s; Hobie flies a hull in 15 kn and capsizes when cleated in 20 kn, righted in 10 s; J/22 and Catalinas knock down to 57-69 deg and recover; ILCA planes at 9.2 kn on a 15 kn reach; spinnaker adds 7% at 135 deg; two reefs cut the Catalina 30's heel from 36 to 32 deg; Catalina 30 motors at 5.7 kn, Lagoon at 7.7, about half that astern |
+| Frame rate, default (Medium) tier | 75 to 77 fps for every boat, p99 under 15.2 ms (`docs/phase-4/frame-budget.csv`) |
+| Loads fast | Switching boats builds the physics and visuals in 0.3 to 1.1 ms |
+| Screenshots | `docs/phase-4/fleet.png` (all eight), `fleet-<boat>.png`, `fleet-j22-spinnaker.png`, `fleet-hobie-flying.png` |
+
 ## Known gaps
+
+- The fleet polars other than the J/22 and Catalina 30 are estimates (see the tolerance tiers above); the Hobie 16 has
+  no reference above 10 kn, so it is checked for behavior there instead.
+- The Sunfish's low lateen often lifts her back up on her own after a knockdown; a real one usually stays on her side.
+- Beach cats in strong wind are faster upwind than the (estimated) references suggest; pitching and slamming in chop
+  are approximated by an added-resistance term.
+- Hulls are generated from the physics shapes but have no cabin interiors, hardware or rigging beyond the forestay;
+  the lateen's upper spar and the Lagoon's flybridge are left out. The engine has no gamepad binding yet.
+- Phone and tablet builds come later in the plan, so "loads fast on your phone" is measured on the Mac for now.
 
 - Docks, buildings and trees are simple shapes; the clubhouse and ramp are boxes from OpenStreetMap outlines.
 - Depths inside the marina basins come from the nearest TWDB survey point, so slips read shallower than they are;
@@ -152,7 +200,7 @@ Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/Terra
 
 - Storm sky reads light grey rather than menacing; no towering cell is visible on the horizon before the front.
 - Gust front and cat's paws are visible but subtle from a low camera; learning mode tips point them out.
-- Without a spinnaker the J/22 can surf to about 14 kn in 30 kn gusts, which is optimistic; resistance past Fn 0.8 is flat.
+- The J/22 can surf to about 14 kn in 30 kn gusts, which is optimistic; resistance past Fn 0.8 is flat.
 - High quality tier dips just under 60 fps in clear breezy afternoons on the M5 Pro.
 - Sound is synthesized and not yet tuned by ear; it has not been checked on headphones.
-- The downwind polar reference is an approximation (no spinnaker yet); boat art is still boxes.
+- The J/22's non-spinnaker downwind reference is an approximation (ORC rates her with a spinnaker).
