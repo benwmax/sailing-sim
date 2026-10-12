@@ -254,6 +254,8 @@ namespace Sailing
 		bool bAground = false;        // keel, rudder or hull touching the bottom
 		bool bCollision = false;      // touching a dock or bridge this step
 		double DepthUnderKeel = 100.0; // m of water below the keel tip
+		double SpeedThroughWater = 0.0; // m/s, forward speed relative to the water (the log); BoatSpeed is over ground
+		double CourseOverGround = 0.0;  // rad, direction of travel over the ground
 		bool bCapsized = false;       // lying on its side (or worse) for more than two seconds
 		bool bPlaning = false;        // dinghies and beach cats: up on the plane
 		bool bFlyingHull = false;     // multihulls: the windward hull (or ama) is clear of the water
@@ -301,7 +303,11 @@ namespace Sailing
 
 		/** Lake bed for grounding (optional), docks and bridges for collisions (optional). */
 		void SetTerrain(const FLakeTerrain* InTerrain) { Terrain = InTerrain; }
-		void SetObstacles(const std::vector<FObstacleSegment>* InObstacles) { Obstacles = InObstacles; }
+		/** Obstacles are indexed on a grid when set, so a bay full of piers and jetties costs no more than a lake. */
+		void SetObstacles(const std::vector<FObstacleSegment>* InObstacles);
+		/** The water's own motion (tidal current, m/s, world XY) around the boat: the hull and foils feel water relative to it. */
+		void SetWaterCurrent(const Vec3& Current) { WaterCurrent = Vec3(Current.X, Current.Y, 0.0); }
+		const Vec3& GetWaterCurrent() const { return WaterCurrent; }
 		std::vector<FMooringLine>& GetMooringLines() { return Mooring; }
 		const std::vector<FMooringLine>& GetMooringLines() const { return Mooring; }
 
@@ -321,6 +327,8 @@ namespace Sailing
 		double SubmergedVolumeUpright(double Depth) const;
 		void ComputeSails(double Dt, const FBoatControls& Controls, const FWindField& Wind, Vec3& InOutForceBody, Vec3& InOutTorqueBody);
 		Vec3 PointVelocityWorld(const Vec3& BodyPoint) const;
+		/** Velocity of a body point relative to the water (over ground minus the current). */
+		Vec3 PointVelocityThroughWater(const Vec3& BodyPoint) const { return PointVelocityWorld(BodyPoint) - WaterCurrent; }
 		double ResistanceCoefficient(double Froude) const;
 		void BuildContactPoints();
 
@@ -339,6 +347,11 @@ namespace Sailing
 		const FWaveField* CurrentWaves = nullptr;
 		const FLakeTerrain* Terrain = nullptr;
 		const std::vector<FObstacleSegment>* Obstacles = nullptr;
+		// Obstacle grid: cells of ObstacleCell meters, each listing the segments (with their radius) that reach into it.
+		double ObstacleCell = 32.0, ObstacleX0 = 0.0, ObstacleY0 = 0.0;
+		int ObstacleRows = 0, ObstacleCols = 0;
+		std::vector<std::vector<int>> ObstacleBuckets;
+		Vec3 WaterCurrent;
 		std::vector<FMooringLine> Mooring;
 	};
 }

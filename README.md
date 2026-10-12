@@ -64,6 +64,9 @@ Keys are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/Sa
 | Learning mode, difficulty, instruments, reset | L, K, H, R | Y |
 | Settings menu, controls card | Tab, ? | Menu, View |
 | Orbit / zoom camera | Mouse, wheel | Right stick |
+| Coast: chart view (mouse pans, wheel zooms) | P | |
+| Coast: take a bearing on the mark the camera faces | U | |
+| Coast: GPS on the chart on / off, clear the plot | O, I | |
 
 **Simple** layout (the default, and always on Easy): you steer, trim both sheets and hike; the crew handles the
 traveler and sail shape. **Full** gives you every control. **Trim assist** (its own setting) lets the crew trim the
@@ -73,7 +76,7 @@ weather tips; game mode hides them. The physics is the same in every combination
 ## Weather and time
 
 In the settings menu (Tab): **Weather** (calm morning, afternoon breeze, overcast, rain, thunderstorm, random day),
-**Start time** (06:00 to 20:00, local solar time at Lake Ray Hubbard), **Weather seed** (same seed, same gusts,
+**Start time** (local clock time; the sun is placed for the area's longitude and the Mac's time zone), **Weather seed** (same seed, same gusts,
 shifts and lightning), **Graphics quality** (Low / Medium / High) and **Volume**. The thunderstorm plays in about nine
 minutes: towering cells build to the west-northwest, the gust front crosses the water (watch for the dark band and
 whitecaps) with a sharp shift and gusts near 30 knots, rain follows a minute later with lightning and thunder at the
@@ -117,12 +120,48 @@ reviews); where nothing was published the file says how it was estimated. Dinghi
 back up with the crew on the board; the Hobie flies a hull and goes over past its tipping point; keelboats knock down
 and come back; the Lagoon and Corsair cannot be righted by their crew (R resets).
 
+## The coast: Galveston Bay
+
+Pick **Area: Galveston Bay** in the settings menu (or `-SailingWorld=1`). Home is Clear Lake and Kemah; the bay runs
+south to Bolivar Roads and the Gulf. Everything comes from the NOAA chart and NOAA's tide tables (see `CREDITS.md`):
+
+- **Depths and shore** from the NOAA ENC cells (depth areas, soundings, contours, dredged channels, coastline),
+  with USGS 3DEP for the land. Heights are relative to chart datum (MLLW).
+- **Tides** predicted in game the way NOAA makes its tables (harmonic constituents with nodal corrections) at five
+  CO-OPS stations, blended across the bay. The water rises and falls; shoals uncover at low water.
+- **Currents** from the Bolivar Roads current station, carried through the channels with the delay and strength of a
+  baked field: strong in the entrance and the ship channel, slack in the open bay. The current sets the boat
+  (the log reads speed through the water, the GPS speed over the ground).
+- **Aids to navigation**: all 582 buoys, beacons and lights where the chart puts them, in their colors and shapes.
+  After sunset every light shows its charted character (Fl G 4s, Q R, Iso W 6s, Mo(A)...), out to its range.
+  Your own boat shows sidelights and a sternlight at night, and a masthead light when motoring.
+- **Instruments** (right side): compass (magnetic), depth sounder in feet, log, GPS speed and course, tide height
+  and the next high or low water, the current at the boat.
+- **Chart view (P)**: the NOAA chart in its paper colors, with soundings in feet, depth contours, channels, every aid
+  with its Chart No. 1 symbol and legend ("G C \"19\"", "Fl R 6s 17ft 4M \"2\""), conspicuous landmarks, a compass
+  rose with the variation (0°25'E in 2026), a scale bar, and a course line from the boat to the crosshair in degrees
+  true and magnetic with distance and time.
+- **Plotting**: turn the camera onto a buoy, beacon, light or landmark and press **U** for a hand-bearing compass
+  bearing (magnetic; on Realistic it carries a degree or two of error). Two bearings crossing at 30 degrees or more
+  plot a fix with its cocked hat; dead reckoning then runs from the fix on the compass and the log (it knows nothing
+  of current or leeway, as on paper). Turn the GPS off (**O**) to navigate by bearings and DR alone; **I** clears
+  the plot.
+- Command line: `-SailingWorld=1`, `-SailingDate=2026-10-12`, `-SailingChart=<m per pixel>` (open the chart),
+  `-SailingPlotFix` (take three bearings at the start), `-SailingNoGps`, `-SailingLightsOn`.
+
 ## Rebuilding the lake
 
 ```sh
 python3 -m venv Tools/venv && Tools/venv/bin/pip install pyshp pyproj numpy scipy pillow tifffile
 Tools/terrain/fetch_rayhubbard.sh    # USGS DEM, TWDB survey and levels, OpenStreetMap into Data/RayHubbard/raw (git-ignored)
 Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/TerrainData; rerun to pick up a new gauge level
+```
+
+Galveston Bay (also needs `pyogrio shapely` in the venv):
+
+```sh
+Tools/coast/fetch_galveston.sh                       # NOAA ENC, CO-OPS tides and currents, USGS DEM, OpenStreetMap
+Tools/venv/bin/python Tools/coast/build_galveston.py # writes Content/TerrainData/GalvestonBay.* and the chart
 ```
 
 ## Phase 0 gate results (Oct 11, 2026)
@@ -178,7 +217,40 @@ Tools/venv/bin/python Tools/terrain/build_rayhubbard.py   # writes Content/Terra
 | Loads fast | Switching boats builds the physics and visuals in 0.3 to 1.1 ms |
 | Screenshots | `docs/phase-4/fleet.png` (all eight), `fleet-<boat>.png`, `fleet-j22-spinnaker.png`, `fleet-hobie-flying.png` |
 
+## Phase 5 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 52 of 52 pass, including 8 new coast tests (`SailingSim.Coast.*`) and a calm-water physics test |
+| Chart symbols match the NOAA chart | Seven aids checked against the raw ENC records (shape, color, legend: "G C \"19\"", "R N \"18\"", "Fl G 1s \"11\"", "Fl R 6s 17ft 4M \"2\"", "Q G 1s 17ft 4M \"23\""...); all 260 numbered lateral aids follow the U.S. system (green odd cans, red even nuns) |
+| Plotted fixes within tolerance | Three bearings read to the degree: worst fix 20 m from the true position over five spots in the bay (limit 93 m, 0.05 nm); with a +-2 degree compass error, worst 140 m (limit 370 m) |
+| Tide timing vs NOAA tables | All 42 highs and lows at Galveston Pier 21 and 36 at Eagle Point match NOAA's predictions: worst 6 minutes on well-defined turns, heights within 0.5 cm |
+| Current timing vs NOAA tables | Bolivar Roads: all 15 slacks within 10 minutes (worst 4.1); all 17 strong floods and ebbs within 0.03 m/s and on the same peak |
+| Lights flash their characteristics | Rhythm and label checked for Fl, Fl(2), Q, Iso, Oc, LFl, Mo(A); all 235 lit aids in the bay show a period and duty that fit their charted character |
+| Depths | Terrain at the 4,622 charted soundings: median error 0.00 m, 90th percentile 0.05 m |
+| Sun | Sunrise and sunset within a minute of published Galveston tables (06:45 / 20:03 against 06:46 / 20:02 on 12 Aug) |
+| Frame rate, default (Medium) tier | Galveston Bay day 81 fps, open bay 78, night with lights 69, dusk 76, chart view 120 (display cap); see `docs/phase-5/frame-budget.csv` |
+| No regressions | The fleet still runs 71 to 73 fps on the lake; every earlier test passes; the J/22 polar is unchanged (worst 8.7%) |
+| Screenshots | `docs/phase-5/coast-day.png`, `coast-bay.png`, `coast-night.png`, `coast-dusk.png`, `chart.png` (Clear Creek with a three-bearing fix), `chart-bay.png`, `terrain-preview.png` |
+
+Found and fixed along the way: the crew used to follow the masthead's apparent wind, which swings as the mast rolls,
+so in a calm the boat rocked herself up to a knot (now she lies still); the sun was placed by clock time as if it
+were solar time (now longitude, time zone and the equation of time); the clouds' shadow rays toward a low sun cost a
+third of the frame at night; and Galveston's 4,000 terrain chunks cost 4 ms of culling a frame (now 1,000).
+
 ## Known gaps
+
+- Coast: navigation lights (yours and the aids') are all-round points; sidelight and sector arcs come with the
+  Rules of the Road in Phase 6. Buoys do not lean or swing in the current, and there are no fog signals or racons.
+- The current comes from one reference station spread by a baked field: no eddies, no wind-driven setup, no river
+  outflow. Water levels between stations are blended by distance.
+- The chart has no area names, chart notes or contour labels; legends overlap where aids crowd together (zoom in).
+  The course line runs to the crosshair (no click-to-plot), and bearings for a fix must be taken within 10 minutes
+  (no running fix yet).
+- The moon has no phase: moonlight is the same every night.
+- No Gulf swell outside the jetties yet (the FFT ocean is Phase 7) and no ship traffic (Phase 6).
+- The sun is now placed by the local clock (longitude, time zone, equation of time). Before Phase 5 the clock hour
+  was treated as solar time, so the same start hour on the lake now has the sun about an hour earlier in its arc.
 
 - The fleet polars other than the J/22 and Catalina 30 are estimates (see the tolerance tiers above); the Hobie 16 has
   no reference above 10 kn, so it is checked for behavior there instead.

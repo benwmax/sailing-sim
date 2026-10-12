@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "BoatModel.h"
 #include "LakeTerrain.h"
+#include "Lights.h"
+#include "Tides.h"
 
 /** A named place to put the boat on the water. */
 struct FLaunchSpot
@@ -34,9 +36,35 @@ struct FLakeBridge
 	double DeckHeight = 7.0;
 };
 
+/** A buoy, beacon or light from the NOAA chart, with its light's character. S-57 codes are kept as charted. */
+struct FNavaid
+{
+	double X = 0.0, Y = 0.0;
+	FString Kind;              // "buoy", "beacon" or "light" (a light on its own structure)
+	FString Layer;             // S-57 object class: BOYLAT, BCNLAT, BOYSPP, ...
+	FString Name;
+	int32 Shape = 0;           // BOYSHP (1 conical/nun, 2 can, 3 spherical, 4 pillar, 5 spar) or BCNSHP
+	TArray<int32> Colours;     // S-57 colours: 1 white, 2 black, 3 red, 4 green, 6 yellow
+	int32 CatLam = 0;          // lateral category: 1 port (green, can, odd), 2 starboard (red, nun, even)
+	bool bLit = false;
+	Sailing::FLightCharacter Light;
+	int32 DaymarkShape = 0;
+	TArray<int32> DaymarkColours;
+	FLinearColor DisplayColour() const;
+};
+
+/** A charted landmark (tank, tower, stack): something to take a bearing on. */
+struct FLandmark
+{
+	double X = 0.0, Y = 0.0, Height = 0.0;
+	FString Name;
+	bool bConspicuous = false;
+};
+
 /**
- * Lake Ray Hubbard as baked by Tools/terrain/build_rayhubbard.py (Content/TerrainData/RayHubbard.*):
- * terrain and tree heights for the physics, plus docks, bridges, buildings, launch spots and shoreline checkpoints.
+ * A sailing area as baked by Tools/terrain/build_rayhubbard.py (Lake Ray Hubbard) or Tools/coast/build_galveston.py
+ * (Galveston Bay): terrain and tree heights for the physics, docks, bridges, buildings, launch spots, shoreline
+ * checkpoints, and on the coast the chart's navaids and landmarks, the tide and current model and the variation.
  */
 struct SAILINGSIM_API FLakeData
 {
@@ -59,6 +87,20 @@ struct SAILINGSIM_API FLakeData
 	double LevelFeet = 0.0;
 	FString LevelDate;
 	TArray<uint8> TreeBytes;
+	TArray<uint8> CurrentBytes;
+
+	// Coast.
+	TArray<FNavaid> Navaids;
+	TArray<FLandmark> Landmarks;
+	Sailing::FTideModel Tides;
+	bool IsTidal() const { return Tides.IsValid(); }
+	double VariationDeg = 0.0;   // magnetic variation, + = east
+	double MeanHighWater = 0.0;  // m above the datum
+	double Latitude = 32.82, Longitude = -96.50;
+	FString FileName;            // "RayHubbard", "GalvestonBay"
+
+	/** The coast's extras: navaids, landmarks, tides and currents, variation. */
+	void LoadCoast(const class FJsonObject& Root, const FString& Directory, const FString& Name);
 
 	/** Default content location of the baked lake. */
 	static FString DefaultDirectory();

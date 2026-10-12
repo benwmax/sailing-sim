@@ -89,6 +89,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 LaunchSpot = 0;
 
+	/** Sailing area: 0 = Lake Ray Hubbard (Rush Creek Yacht Club), 1 = Galveston Bay (Clear Lake / Kemah). */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 World = 0;
+
 	/** The boat you sail (Sailing::EBoatType: 0 = J/22, the lesson boat). */
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	int32 BoatType = 0;

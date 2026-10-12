@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "Engine/GameViewportClient.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
@@ -19,6 +20,7 @@
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Kismet/GameplayStatics.h"
 #include "ProceduralMeshComponent.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -48,7 +50,8 @@ namespace
 		return Action == TEXT("WingOnWing") || Action == TEXT("ToggleLearning") || Action == TEXT("ToggleDifficulty")
 			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard") || Action == TEXT("DockLines") || Action == TEXT("BackJib")
 			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight")
-			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral");
+			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
+			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -57,7 +60,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowBoat, RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowWorld, RowBoat, RowDrill, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -79,6 +82,10 @@ ASailboatPawn::ASailboatPawn()
 
 	CubeMesh = Cube;
 	CylinderMesh = Cylinder;
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> EmissiveFinder(TEXT("/Game/Materials/M_Emissive.M_Emissive"));
+	SphereMesh = SphereFinder.Object;
+	EmissiveMaterial = EmissiveFinder.Object;
 
 	// The hull, foils, spars and crew are built at runtime from the boat's particulars (RebuildBoatVisuals), so any
 	// boat in the fleet can be sailed. What stays fixed: the hull mesh component, the pivots and the sails.
@@ -407,6 +414,32 @@ void ASailboatPawn::RebuildBoatVisuals()
 	MainSail->ClearAllMeshSections();
 	SpinSail->ClearAllMeshSections();
 	SpinSail->SetVisibility(false);
+
+	// Navigation lights (COLREGS Rule 25): red to port and green to starboard at the bow, white at the stern, and the
+	// masthead (steaming) light on the front of the mast for motoring. Shown from sunset to sunrise.
+	NavLights.Reset();
+	const double BowZ = (C.bMultihull ? Main.SheerZ : Main.SheerHeight(Main.BowX - 0.4)) + 0.12;
+	const double SternZ = (C.bMultihull ? Main.SheerZ : Main.SheerHeight(Main.SternX + 0.1)) + 0.15;
+	const double BowY = C.bMultihull ? 0.5 * C.Beam - 0.3 : 0.3;
+	const struct { FVector Pos; FLinearColor Colour; } Specs[] = {
+		{ ToCm(Main.BowX - 0.4, -BowY, BowZ), FLinearColor(1.f, 0.05f, 0.03f) },
+		{ ToCm(Main.BowX - 0.4, BowY, BowZ), FLinearColor(0.05f, 1.f, 0.2f) },
+		{ ToCm(Main.SternX + 0.1, 0.0, SternZ), FLinearColor(1.f, 0.95f, 0.85f) },
+		{ ToCm(C.MastX + 0.08, 0.0, DeckZ + 0.6 * (C.MastheadZ - DeckZ)), FLinearColor(1.f, 0.95f, 0.85f) },
+	};
+	for (const auto& Spec : Specs)
+	{
+		UStaticMeshComponent* Light = AddBoatPart(SphereMesh, Spec.Pos, FVector(6.f), Spec.Colour);
+		if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(EmissiveMaterial, this))
+		{
+			Mid->SetVectorParameterValue(TEXT("Color"), Spec.Colour);
+			Mid->SetScalarParameterValue(TEXT("Intensity"), 30.f);
+			Light->SetMaterial(0, Mid);
+		}
+		Light->SetCastShadow(false);
+		Light->SetVisibility(false);
+		NavLights.Add(Light);
+	}
 }
 
 const FWindField& ASailboatPawn::GetWind() const
@@ -582,6 +615,7 @@ void ASailboatPawn::ResetBoat()
 	TrimAssist.Reset();
 	KeyboardTiller = 0.f;
 	ApplyStateToTransform();
+	Plot.Start(GetMapPosition(), Time); // the departure is a known position
 }
 
 void ASailboatPawn::Tick(float DeltaSeconds)
@@ -613,6 +647,12 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FWaveField* Waves = GameMode ? &GameMode->GetWaves() : nullptr;
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
+	if (GameMode)
+	{
+		// The tidal current where the boat is (it changes over minutes and kilometers, so once a frame is plenty).
+		const Vec3 O = Boat.OriginPosition();
+		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
+	}
 	const int32 Steps = Stepper.Advance(DeltaSeconds);
 	for (int32 I = 0; I < Steps; ++I)
 	{
@@ -661,6 +701,145 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
 	}
 	UpdateDrillVisuals();
+
+	// Screenshots and the gate: -SailingChart=<m per pixel> opens the chart, -SailingPlotFix takes three bearings.
+	if (!bChartArgsApplied && Boat.GetState().Time > 2.0 && GameMode)
+	{
+		bChartArgsApplied = true;
+		if (FParse::Param(FCommandLine::Get(), TEXT("SailingPlotFix")))
+		{
+			// The three nearest charted aids within 3 nm that spread around the horizon.
+			const FVector2D Me = GetMapPosition();
+			TArray<const FNavaid*> Aids;
+			for (const FNavaid& N : GameMode->GetLake().Navaids) if (FVector2D::Distance(Me, FVector2D(N.X, N.Y)) < 5556.0) Aids.Add(&N);
+			Aids.Sort([&](const FNavaid& A, const FNavaid& B) { return FVector2D::Distance(Me, FVector2D(A.X, A.Y)) < FVector2D::Distance(Me, FVector2D(B.X, B.Y)); });
+			TArray<double> Taken;
+			for (const FNavaid* N : Aids)
+			{
+				const double Brg = SailingNav::BearingDeg(Me, FVector2D(N->X, N->Y));
+				bool bSpread = true;
+				for (double T : Taken) { const double Cut = FMath::Abs(FMath::Fmod(Brg - T + 360.0, 180.0)); if (Cut < 40.0 || Cut > 140.0) bSpread = false; }
+				if (!bSpread) continue;
+				Taken.Add(Brg);
+				RecordBearing(N->Name, FVector2D(N->X, N->Y));
+				if (Taken.Num() == 3) break;
+			}
+		}
+		double ChartZoom = 0.0;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingChart="), ChartZoom) && GameMode->GetChart().IsLoaded())
+		{
+			SetChartOpen(true);
+			ChartMetersPerPixel = ChartZoom;
+			ChartCenter = GetMapPosition();
+		}
+		if (FParse::Param(FCommandLine::Get(), TEXT("SailingNoGps"))) bShowGps = false;
+	}
+
+	// Dead reckoning on the compass heading and the log (speed through the water).
+	Plot.Advance(GetHeadingTrueDeg(), Tel.SpeedThroughWater, DeltaSeconds, Boat.GetState().Time);
+	UpdateNavLights();
+}
+
+void ASailboatPawn::SetChartOpen(bool bOpen)
+{
+	bChartOpen = bOpen;
+	// The chart covers the screen: skip drawing the world under it (the boat keeps sailing).
+	if (UGameViewportClient* Viewport = GetWorld()->GetGameViewport()) Viewport->bDisableWorldRendering = bOpen;
+}
+
+FVector2D ASailboatPawn::GetMapPosition() const
+{
+	const Vec3 O = Boat.OriginPosition();
+	return FVector2D(O.X, O.Y);
+}
+
+double ASailboatPawn::GetHeadingTrueDeg() const
+{
+	return SailingNav::NormalizeDeg(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading));
+}
+
+bool ASailboatPawn::TakeBearing()
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const double Now = Boat.GetState().Time;
+	StatusUntil = Now + 4.0;
+	if (!GM || GM->GetLake().Navaids.Num() == 0)
+	{
+		StatusMessage = TEXT("Nothing charted to take a bearing on here");
+		return false;
+	}
+	// Sight along the camera: the charted object nearest the line of sight within 6 degrees, in sight range.
+	const FLakeData& Lake = GM->GetLake();
+	const FVector2D Me = GetMapPosition();
+	const double Sight = SailingNav::NormalizeDeg(Camera->GetComponentRotation().Yaw);
+	const bool bDark = GM->IsDark();
+	const double Visibility = FMath::Min(GM->GetWeatherState().VisibilityKm * 1000.0, 15000.0);
+	FString BestName;
+	FVector2D BestPos;
+	double BestError = 6.0;
+	auto Consider = [&](const FString& Name, const FVector2D& Pos, double Range)
+	{
+		const double Dist = FVector2D::Distance(Me, Pos);
+		if (Dist > FMath::Min(Range, Visibility) || Dist < 20.0) return;
+		const double Error = FMath::Abs(FMath::UnwindDegrees(SailingNav::BearingDeg(Me, Pos) - Sight));
+		if (Error < BestError) { BestError = Error; BestName = Name; BestPos = Pos; }
+	};
+	for (const FNavaid& N : Lake.Navaids)
+	{
+		// By day, aids are seen to a few miles; at night only the lights, out to their range.
+		const double Range = bDark ? (N.bLit ? (N.Light.RangeNm > 0.0 ? N.Light.RangeNm : 3.0) * SailingNav::MetersPerNauticalMile : 0.0) : 3.0 * SailingNav::MetersPerNauticalMile;
+		Consider(N.Name.IsEmpty() ? FString(TEXT("Aid")) : N.Name, FVector2D(N.X, N.Y), Range);
+	}
+	if (!bDark)
+	{
+		for (const FLandmark& L : Lake.Landmarks)
+		{
+			Consider(L.Name.IsEmpty() ? FString(TEXT("Landmark")) : L.Name, FVector2D(L.X, L.Y), (L.bConspicuous ? 8.0 : 4.0) * SailingNav::MetersPerNauticalMile);
+		}
+	}
+	if (BestName.IsEmpty())
+	{
+		StatusMessage = TEXT("No charted mark in your line of sight: turn the camera onto a buoy, beacon, light or landmark and press U");
+		return false;
+	}
+	return RecordBearing(BestName, BestPos);
+}
+
+bool ASailboatPawn::RecordBearing(const FString& Name, const FVector2D& Object)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const double Variation = GM ? GM->GetLake().VariationDeg : 0.0;
+	const FVector2D Me = GetMapPosition();
+	const double Now = Boat.GetState().Time;
+	// The hand-bearing compass reads magnetic; on Realistic it carries the usual degree or two of error.
+	double Magnetic = SailingNav::TrueToMagnetic(SailingNav::BearingDeg(Me, Object), Variation);
+	if (USailingSettings::Get()->Difficulty == ESailingDifficulty::Realistic)
+	{
+		Magnetic += (FMath::FRand() + FMath::FRand() + FMath::FRand() - 1.5) * 2.0;
+	}
+	SailingNav::FBearing B;
+	B.ObjectName = Name;
+	B.Object = Object;
+	B.MagneticDeg = SailingNav::NormalizeDeg(FMath::RoundToDouble(Magnetic));
+	B.Time = Now;
+	const bool bFix = Plot.AddBearing(B, Variation);
+	StatusMessage = FString::Printf(TEXT("Bearing %03.0f M on %s%s"), B.MagneticDeg, *Name,
+		bFix ? *FString::Printf(TEXT(": fix plotted (%s from the GPS position)"), *SailingNav::FormatDistance(FVector2D::Distance(Plot.Fix, Me)))
+			: TEXT(" (take another at least 30 degrees away for a fix)"));
+	StatusUntil = Now + 4.0;
+	return true;
+}
+
+void ASailboatPawn::UpdateNavLights()
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const bool bDark = GM && GM->IsDark();
+	const bool bMotoring = FMath::Abs(Controls.Throttle) > 0.02 && !Boat.GetConfig().Engines.empty();
+	// Rule 25: sidelights and sternlight under sail; Rule 23: add the masthead (steaming) light under power.
+	for (int32 I = 0; I < NavLights.Num(); ++I)
+	{
+		if (NavLights[I]) NavLights[I]->SetVisibility(bDark && (I < 3 || bMotoring));
+	}
 }
 
 void ASailboatPawn::StartDrill(ESailingDrill Drill)
@@ -1051,6 +1230,12 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		return;
 	}
 	const FVector2D Delta = Value.Get<FVector2D>().ClampAxes(-10.0, 10.0);
+	if (bChartOpen)
+	{
+		// The crosshair stays in the middle; the chart slides under it (mouse right = look east, up = north).
+		ChartCenter += FVector2D(Delta.Y, Delta.X) * ChartMetersPerPixel * 4.0;
+		return;
+	}
 	CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
 	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
@@ -1058,6 +1243,11 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 
 void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 {
+	if (bChartOpen)
+	{
+		ChartMetersPerPixel = FMath::Clamp(ChartMetersPerPixel * FMath::Pow(0.8, double(Value.Get<float>())), 0.5, 60.0);
+		return;
+	}
 	CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 120.f, 400.f, 4000.f);
 	CameraBoom->TargetArmLength = CameraDistance;
 }
@@ -1172,6 +1362,35 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		StatusMessage = Boat.GetConfig().Engines.empty() ? TEXT("No engine: sail her in") : TEXT("Engine in neutral");
 		StatusUntil = Boat.GetState().Time + 2.0;
 	}
+	else if (Action == TEXT("Chart"))
+	{
+		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		if (!GM || GM->GetChart().Triangles.Num() == 0)
+		{
+			StatusMessage = TEXT("No chart for this area (charts are for the coast: choose Galveston Bay in Tab settings)");
+			StatusUntil = Boat.GetState().Time + 3.0;
+			return;
+		}
+		SetChartOpen(!bChartOpen);
+		// Open on the boat if the GPS is on, else on the navigator's best position (the DR).
+		if (bChartOpen) ChartCenter = bShowGps ? GetMapPosition() : Plot.Dr;
+	}
+	else if (Action == TEXT("Bearing"))
+	{
+		TakeBearing();
+	}
+	else if (Action == TEXT("Gps"))
+	{
+		bShowGps = !bShowGps;
+		StatusMessage = bShowGps ? TEXT("GPS on: the chart shows where you are") : TEXT("GPS off: navigate by bearings (U) and dead reckoning");
+		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("ClearPlot"))
+	{
+		Plot.Start(GetMapPosition(), Boat.GetState().Time);
+		StatusMessage = TEXT("Plot cleared: dead reckoning from here");
+		StatusUntil = Boat.GetState().Time + 3.0;
+	}
 	else if (Action == TEXT("BackJib"))
 	{
 		Controls.bBackJib = !Controls.bBackJib;
@@ -1219,6 +1438,7 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	const USailingSettings* S = USailingSettings::Get();
 	auto OnOff = [](bool b) { return FString(b ? TEXT("On") : TEXT("Off")); };
 	TArray<TPair<FString, FString>> Rows;
+	Rows.Add({ TEXT("Sailing area (restarts)"), FString(ASailingGameMode::WorldDisplayName(S->World)) });
 	Rows.Add({ TEXT("Boat"), FString(BoatTypeName(EBoatType(FMath::Clamp(S->BoatType, 0, int32(EBoatType::Count) - 1)))) });
 	Rows.Add({ TEXT("Drill (Left/Right starts it)"), FString(DrillName(MenuDrill)) });
 	FString Launch = TEXT("Open water");
@@ -1255,6 +1475,12 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 	ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	switch (MenuIndex)
 	{
+	case RowWorld:
+		S->World = (S->World + 2 + Direction) % 2;
+		S->LaunchSpot = 0;
+		S->Save();
+		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
+		break;
 	case RowBoat:
 		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
 		SetBoat(S->BoatType);
@@ -1279,7 +1505,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		if (GameMode) GameMode->ApplyWeatherSettings();
 		break;
 	case RowHour:
-		S->StartHour = FMath::Clamp(S->StartHour + Direction, 6.f, 20.f);
+		S->StartHour = FMath::Fmod(S->StartHour + Direction + 24.f, 24.f); // round the clock: night sailing too
 		if (GameMode) GameMode->ApplyWeatherSettings();
 		break;
 	case RowSeed:
