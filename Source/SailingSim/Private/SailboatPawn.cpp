@@ -2,7 +2,10 @@
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
-#include "FlatWater.h"
+#include "WaterSurface.h"
+#include "SailingAudio.h"
+#include "SailingEnvironment.h"
+#include "Components/AudioComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/LocalPlayer.h"
@@ -43,8 +46,17 @@ namespace
 	bool IsButtonAction(FName Action)
 	{
 		return Action == TEXT("WingOnWing") || Action == TEXT("ToggleLearning") || Action == TEXT("ToggleDifficulty")
-			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat");
+			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard")
+			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight");
 	}
+
+	/** Controls the crew handles in the Simple layout. */
+	bool IsCrewHandled(FName Action)
+	{
+		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
+	}
+
+	enum EMenuRow { RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -152,20 +164,26 @@ const FWindField& ASailboatPawn::GetWind() const
 
 bool ASailboatPawn::IsTrimAssistActive() const
 {
-	return USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy
-		&& Boat.GetState().Time - LastManualTrimTime > kTrimAssistIdleSeconds;
+	return USailingSettings::Get()->bTrimAssist && Boat.GetState().Time - LastManualTrimTime > kTrimAssistIdleSeconds;
 }
 
 void ASailboatPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (TActorIterator<AFlatWater> It(GetWorld()); It)
+	if (TActorIterator<AWaterSurface> It(GetWorld()); It)
 	{
+		Water = *It;
 		WaterSurfaceZ = It->GetSurfaceZ();
 	}
 	StartLocation = GetActorLocation();
 	StartYaw = GetActorRotation().Yaw;
+	float StartTwa = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
+	{
+		// Point the boat so the wind is StartTwa off the starboard bow (TWA = wind from - heading).
+		StartYaw = GetWind().GetParams().FromDegrees - StartTwa;
+	}
 
 	TInlineComponentArray<UStaticMeshComponent*> Parts(this);
 	for (UStaticMeshComponent* Part : Parts)
@@ -189,9 +207,10 @@ void ASailboatPawn::BeginPlay()
 			Mid->SetVectorParameterValue(TEXT("Color"), Color);
 		}
 	}
+	UMaterialInterface* SailMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Sail.M_Sail"));
 	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get() })
 	{
-		UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShapeMaterial, this);
+		UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(SailMaterial ? SailMaterial : ShapeMaterial.Get(), this);
 		Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.96f, 0.95f, 0.92f));
 		Sail->SetMaterial(0, Mid);
 	}
@@ -199,16 +218,30 @@ void ASailboatPawn::BeginPlay()
 	ApplyDifficulty();
 	ResetBoat();
 
+	// Sound: one synthesized voice for everything on board.
+	Synth = NewObject<USailingSynthWave>(this);
+	SoundComponent = NewObject<UAudioComponent>(this, TEXT("Sound"));
+	SoundComponent->SetupAttachment(BoatRoot);
+	SoundComponent->bAutoActivate = false;
+	SoundComponent->bAllowSpatialization = false;
+	SoundComponent->SetSound(Synth);
+	SoundComponent->RegisterComponent();
+	SoundComponent->Play();
+
 	bDemo = FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"));
+	float HoldTwa = 0.f;
 	if (bDemo)
 	{
+		bDemoTacks = !FParse::Value(FCommandLine::Get(), TEXT("SailingHoldTWA="), HoldTwa);
 		// Reset has not stepped the physics yet, so work out the starting tack from the wind and heading.
-		const FWindField& DemoWind = GetWind();
-		const Vec3 W = DemoWind.VelocityAt(Vec3(0, 0, 10), 0.0);
+		const Vec3 W = GetWind().VelocityAt(Vec3(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, 10.0), Boat.GetState().Time);
 		DemoFirstSign = WrapAngle(std::atan2(-W.Y, -W.X) - FMath::DegreesToRadians(StartYaw)) >= 0.0 ? 1.0 : -1.0;
+		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : HoldTwa * DemoFirstSign;
 		DemoPilot.MaxTiller = 0.8;
-		CameraYaw = 150.f;
-		CameraPitch = -18.f;
+		CameraYaw = bDemoTacks ? 150.f : 210.f;
+		CameraPitch = -14.f;
+		FParse::Value(FCommandLine::Get(), TEXT("SailingCamYaw="), CameraYaw);
+		FParse::Value(FCommandLine::Get(), TEXT("SailingCamPitch="), CameraPitch);
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
 }
@@ -225,7 +258,10 @@ void ASailboatPawn::ApplyDifficulty()
 
 void ASailboatPawn::ResetBoat()
 {
+	// Keep the clock running through a reset: the weather, wind and waves all run on it.
+	const double Time = Boat.GetState().Time;
 	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), StartSpeedKnots * kKnot);
+	Boat.GetMutableState().Time = Time;
 	Controls = FBoatControls();
 	Controls.MainSheet = 0.45;
 	Controls.JibSheet = 0.45;
@@ -242,29 +278,103 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	{
 		// Close-hauled from the start, tack after 9 s and every 12 s after that; the camera drifts around the boat.
 		const double T = Boat.GetState().Time;
-		const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
-		DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+		if (bDemoTacks)
+		{
+			const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
+			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+		}
 		Controls.Tiller = DemoPilot.Update(Boat);
-		CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);
+		if (bDemoTacks)
+		{
+			CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);
+		}
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
 
 	const FWindField& Wind = GetWind();
+	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FWaveField* Waves = GameMode ? &GameMode->GetWaves() : nullptr;
+	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
 	const int32 Steps = Stepper.Advance(DeltaSeconds);
 	for (int32 I = 0; I < Steps; ++I)
 	{
-		if (IsTrimAssistActive())
+		const FBoatControls Before = Controls;
+		if (IsTrimAssistActive() || bSimple)
 		{
-			const double Tiller = Controls.Tiller;
-			const bool bWing = Controls.bWingOnWing;
-			Controls = TrimAssist.Update(Boat, Controls, Stepper.GetStepDt());
-			Controls.Tiller = Tiller;
-			Controls.bWingOnWing = bWing;
+			const FBoatControls Assisted = TrimAssist.Update(Boat, Controls, Stepper.GetStepDt());
+			if (IsTrimAssistActive())
+			{
+				Controls = Assisted;
+			}
+			else
+			{
+				// Simple layout: the crew handles traveler and sail shape; you keep the sheets and hiking.
+				Controls.Traveler = Assisted.Traveler;
+				Controls.Vang = Assisted.Vang;
+				Controls.Cunningham = Assisted.Cunningham;
+				Controls.Outhaul = Assisted.Outhaul;
+				Controls.Backstay = Assisted.Backstay;
+			}
+			Controls.Tiller = Before.Tiller;
+			Controls.bWingOnWing = Before.bWingOnWing;
 		}
-		Boat.Step(Stepper.GetStepDt(), Controls, Wind);
+		Boat.Step(Stepper.GetStepDt(), Controls, Wind, Waves);
 	}
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
+
+	if (Water)
+	{
+		const FBoatTelemetry& T = Boat.GetTelemetry();
+		const Vec3 O = Boat.OriginPosition();
+		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
+	}
+	UpdateSound(DeltaSeconds);
+}
+
+void ASailboatPawn::UpdateSound(float DeltaSeconds)
+{
+	if (!Synth)
+	{
+		return;
+	}
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	FSailingSoundParams& P = Synth->Params;
+	P.ApparentWind = float(T.ApparentWindSpeed);
+	int32 Luffing = 0, Streaming = 0;
+	for (int32 I = 0; I < T.NumMainStrips; ++I) { Luffing += T.MainStrips[I].Flow == ESailFlow::Luffing || T.MainStrips[I].Flow == ESailFlow::Backed; Streaming += T.MainStrips[I].Flow == ESailFlow::Attached; }
+	for (int32 I = 0; I < T.NumJibStrips; ++I) { Luffing += T.JibStrips[I].Flow == ESailFlow::Luffing || T.JibStrips[I].Flow == ESailFlow::Backed; Streaming += T.JibStrips[I].Flow == ESailFlow::Attached; }
+	const float Strips = float(FMath::Max(T.NumMainStrips + T.NumJibStrips, 1));
+	P.Luff = Luffing / Strips;
+	P.Telltales = 0.3f + 0.7f * Streaming / Strips;
+	P.BoatSpeed = float(T.BoatSpeed);
+	P.HullSpeedRatio = float(T.BoatSpeed / (1.34 * std::sqrt(Boat.GetConfig().WaterlineLength / kFoot) * kKnot));
+	// Bow slamming: the boat pitching quickly while making way.
+	P.BowSlam = FMath::Clamp(float(FMath::Abs(Boat.GetState().AngularVelocity.Y)) * 3.f * FMath::Clamp(float(T.BoatSpeed) / 2.5f, 0.f, 1.f), 0.f, 1.f);
+	const float Dt = FMath::Max(DeltaSeconds, 1e-3f);
+	P.TrimRate = FMath::Clamp(float(-((Controls.MainSheet - PrevMainSheet) + (Controls.JibSheet - PrevJibSheet)) / Dt) * 2.f, -1.f, 1.f);
+	PrevMainSheet = Controls.MainSheet;
+	PrevJibSheet = Controls.JibSheet;
+	P.Volume = USailingSettings::Get()->Volume;
+
+	float Rain = 0.f, Thunder = 0.f, Crack = 0.f;
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		Rain = float(GM->GetWeatherState().Rain);
+	}
+	if (TActorIterator<ASailingEnvironment> It(GetWorld()); It)
+	{
+		for (const ASailingEnvironment::FThunder& Th : It->GetActiveThunder())
+		{
+			// Rolling envelope: quick rise, long irregular decay.
+			const float Env = FMath::Clamp(Th.Age / 0.15f, 0.f, 1.f) * FMath::Exp(-Th.Age / (0.35f * Th.Duration)) * (0.7f + 0.3f * FMath::Sin(Th.Age * 7.f + Th.Duration));
+			Thunder = FMath::Max(Thunder, Th.Loudness * Env);
+			if (Th.Loudness > 0.6f && Th.Age < 0.25f) Crack = FMath::Max(Crack, Th.Loudness * (1.f - Th.Age / 0.25f));
+		}
+	}
+	P.Rain = Rain;
+	P.Thunder = Thunder;
+	P.ThunderCrack = Crack;
 }
 
 void ASailboatPawn::ApplyStateToTransform()
@@ -454,7 +564,13 @@ void ASailboatPawn::UpdateTelltales()
 
 void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 {
-	auto Held = [this](FName Action) { const float* V = HeldAxes.Find(Action); return V ? *V : 0.f; };
+	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
+	auto Held = [this, bSimple](FName Action)
+	{
+		if (bMenuOpen || (bSimple && IsCrewHandled(Action))) return 0.f;
+		const float* V = HeldAxes.Find(Action);
+		return V ? *V : 0.f;
+	};
 	auto Adjust = [&](double& Value, FName Action, double Rate, double Lo, double Hi)
 	{
 		const float H = Held(Action);
@@ -467,6 +583,7 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 	Adjust(Controls.MainSheet, NAME_MainSheet, 0.35, 0.0, 1.0);
 	Adjust(Controls.JibSheet, NAME_JibSheet, 0.35, 0.0, 1.0);
 	Adjust(Controls.Traveler, NAME_Traveler, 0.8, -1.0, 1.0);
+	// (Hike is yours in both layouts.)
 	Adjust(Controls.Hike, NAME_Hike, 0.8, -1.0, 1.0);
 	Adjust(Controls.Vang, NAME_Vang, 0.5, 0.0, 1.0);
 	Adjust(Controls.Cunningham, NAME_Cunningham, 0.5, 0.0, 1.0);
@@ -510,6 +627,30 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 {
 	USailingSettings* Settings = USailingSettings::Get();
+	if (Action == TEXT("Menu"))
+	{
+		bMenuOpen = !bMenuOpen;
+		bControlsCard = false;
+		return;
+	}
+	if (Action == TEXT("ControlsCard"))
+	{
+		bControlsCard = !bControlsCard;
+		bMenuOpen = false;
+		return;
+	}
+	if (bMenuOpen)
+	{
+		if (Action == TEXT("MenuUp")) MenuIndex = (MenuIndex + RowCount - 1) % RowCount;
+		else if (Action == TEXT("MenuDown")) MenuIndex = (MenuIndex + 1) % RowCount;
+		else if (Action == TEXT("MenuLeft")) ChangeMenuValue(-1);
+		else if (Action == TEXT("MenuRight")) ChangeMenuValue(1);
+		return;
+	}
+	if (Action.ToString().StartsWith(TEXT("Menu")))
+	{
+		return;
+	}
 	if (Action == TEXT("WingOnWing"))
 	{
 		Controls.bWingOnWing = !Controls.bWingOnWing;
@@ -538,6 +679,68 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	{
 		ResetBoat();
 	}
+}
+
+TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
+{
+	const USailingSettings* S = USailingSettings::Get();
+	auto OnOff = [](bool b) { return FString(b ? TEXT("On") : TEXT("Off")); };
+	TArray<TPair<FString, FString>> Rows;
+	Rows.Add({ TEXT("Weather"), FString(WeatherPresetName(EWeatherPreset(S->WeatherPreset))) });
+	Rows.Add({ TEXT("Start time"), FString::Printf(TEXT("%02d:%02d"), int32(S->StartHour), int32(FMath::Fmod(S->StartHour, 1.f) * 60.f)) });
+	Rows.Add({ TEXT("Weather seed"), FString::FromInt(S->WeatherSeed) });
+	Rows.Add({ TEXT("Difficulty"), S->Difficulty == ESailingDifficulty::Easy ? TEXT("Easy") : TEXT("Realistic") });
+	Rows.Add({ TEXT("Controls"), S->Difficulty == ESailingDifficulty::Easy ? TEXT("Simple (always on Easy)") : (S->ControlLayout == ESailingControlLayout::Simple ? TEXT("Simple") : TEXT("Full")) });
+	Rows.Add({ TEXT("Trim assist"), OnOff(S->bTrimAssist) });
+	Rows.Add({ TEXT("Learning mode"), OnOff(S->bLearningMode) });
+	Rows.Add({ TEXT("Graphics quality"), S->Quality == ESailingQuality::Low ? TEXT("Low") : (S->Quality == ESailingQuality::Medium ? TEXT("Medium") : TEXT("High")) });
+	Rows.Add({ TEXT("Volume"), FString::Printf(TEXT("%d%%"), FMath::RoundToInt(S->Volume * 100.f)) });
+	return Rows;
+}
+
+void ASailboatPawn::ChangeMenuValue(int32 Direction)
+{
+	USailingSettings* S = USailingSettings::Get();
+	ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	switch (MenuIndex)
+	{
+	case RowWeather:
+		S->WeatherPreset = ESailingWeather((int32(S->WeatherPreset) + int32(EWeatherPreset::Count) + Direction) % int32(EWeatherPreset::Count));
+		if (GameMode) GameMode->ApplyWeatherSettings();
+		break;
+	case RowHour:
+		S->StartHour = FMath::Clamp(S->StartHour + Direction, 6.f, 20.f);
+		if (GameMode) GameMode->ApplyWeatherSettings();
+		break;
+	case RowSeed:
+		S->WeatherSeed = FMath::Max(1, S->WeatherSeed + Direction);
+		if (GameMode) GameMode->ApplyWeatherSettings();
+		break;
+	case RowDifficulty:
+		S->Difficulty = S->Difficulty == ESailingDifficulty::Easy ? ESailingDifficulty::Realistic : ESailingDifficulty::Easy;
+		ApplyDifficulty();
+		if (GameMode) GameMode->ApplyDifficultyToWind();
+		break;
+	case RowControls:
+		S->ControlLayout = S->ControlLayout == ESailingControlLayout::Simple ? ESailingControlLayout::Full : ESailingControlLayout::Simple;
+		break;
+	case RowTrimAssist:
+		S->bTrimAssist = !S->bTrimAssist;
+		break;
+	case RowLearning:
+		S->bLearningMode = !S->bLearningMode;
+		break;
+	case RowQuality:
+		S->Quality = ESailingQuality((int32(S->Quality) + 3 + Direction) % 3);
+		if (GameMode) GameMode->ApplyQualitySettings();
+		break;
+	case RowVolume:
+		S->Volume = FMath::Clamp(S->Volume + 0.1f * Direction, 0.f, 1.f);
+		break;
+	default:
+		break;
+	}
+	S->Save();
 }
 
 void ASailboatPawn::CreateInput()

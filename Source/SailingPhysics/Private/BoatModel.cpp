@@ -242,8 +242,9 @@ namespace Sailing
 		return -MX * kWaterDensity * kGravity;
 	}
 
-	void FBoatModel::Step(double Dt, const FBoatControls& Controls, const FWindField& Wind)
+	void FBoatModel::Step(double Dt, const FBoatControls& Controls, const FWindField& Wind, const FWaveField* Waves)
 	{
+		CurrentWaves = Waves;
 		const FBoatConfig& C = Config;
 		const Quat& Q = State.Orientation;
 		const Vec3 Origin = OriginPosition();
@@ -269,7 +270,12 @@ namespace Sailing
 		for (const FColumn& Col : Columns)
 		{
 			const Vec3 Bottom = Origin + Q.Rotate(Vec3(Col.X, Col.Y, Col.ZBottom));
-			const double Water = WaterHeightAt(Bottom.X, Bottom.Y);
+			if (Bottom.Z >= 1.0) continue; // well clear of any lake chop
+			double Water = 0.0, WaterVZ = 0.0, SlopeX = 0.0, SlopeY = 0.0;
+			if (Waves)
+			{
+				Waves->Sample(Bottom.X, Bottom.Y, State.Time, Water, WaterVZ, SlopeX, SlopeY);
+			}
 			if (Bottom.Z >= Water) continue;
 			const double Len = Col.ZTop - Col.ZBottom;
 			const double TopZ = Bottom.Z + Axis.Z * Len;
@@ -278,7 +284,7 @@ namespace Sailing
 			const Vec3 Point = Bottom + Axis * (0.5 * F * Len);
 			const Vec3 PointVel = State.Velocity + OmegaWorld.Cross(Point - CGWorld);
 			const double Wet = std::min(1.0, F * Len / 0.1);
-			const double Damping = -C.HeaveDamping * Col.Area * Wet * PointVel.Z;
+			const double Damping = -C.HeaveDamping * Col.Area * Wet * (PointVel.Z - WaterVZ);
 			AddWorldForce(Vec3(0.0, 0.0, kWaterDensity * kGravity * Volume + Damping), Point);
 		}
 
@@ -303,12 +309,23 @@ namespace Sailing
 				const double Friction = 0.5 * kWaterDensity * V * V * C.WettedArea * Cf * C.FormFactor * (1.0 + 0.4 * std::sin(HeelAbs));
 				const double Froude = V / std::sqrt(kGravity * C.WaterlineLength);
 				const double Residuary = Mass * kGravity * ResistanceCoefficient(Froude) * (1.0 + 2.0 * std::sin(HeelAbs) * std::sin(HeelAbs));
-				// Chop: from the wind at the boat (waves come from where the wind comes from).
-				const Vec3 WindHere = Wind.VelocityAt(Vec3(CGWorld.X, CGWorld.Y, 10.0), State.Time);
-				const double Tws = WindHere.LengthXY() / (10.0 * kKnot);
-				const double IntoWaves = Tws > 1e-6 ? -WindHere.Dot(Q.Forward()) / WindHere.LengthXY() : 0.0; // cos TWA
-				const double Chop = Mass * kGravity * C.ChopResistance * Tws * Tws * Tws * (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25 * Clamp(V / 2.0, 0.0, 1.0);
-				AddBodyForce(Vec3(-Sign(U) * (Friction + Residuary + Chop), 0.0, 0.0), HullPoint);
+				// Added resistance in waves, from the actual sea state.
+				double WaveResistance = 0.0;
+				if (Waves)
+				{
+					const double Hs = Waves->SignificantHeight();
+					const double TravelDir = Waves->MeanDirection();
+					const Vec3 Fwd = Q.Forward();
+					const double IntoWaves = -(std::cos(TravelDir) * Fwd.X + std::sin(TravelDir) * Fwd.Y); // cos of angle off the waves' source
+					// Short chop barely makes a boat pitch; the response grows as the wavelength approaches hull length.
+					const double Period = Waves->MeanPeriod();
+					const double Ratio = kGravity * Period * Period / (2.0 * kPi) / C.WaterlineLength;
+					const double R4 = Ratio * Ratio * Ratio * Ratio;
+					const double Response = R4 / (0.25 + R4);
+					WaveResistance = C.AddedResistanceCoef * Response * kWaterDensity * kGravity * 0.25 * Hs * Hs * C.Beam * C.Beam / C.WaterlineLength
+						* (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25 * Clamp(V / 2.0, 0.0, 1.0);
+				}
+				AddBodyForce(Vec3(-Sign(U) * (Friction + Residuary + WaveResistance), 0.0, 0.0), HullPoint);
 			}
 			// Cross-flow drag at two stations: sway resistance and yaw damping at low speed.
 			for (double StationX : { 1.9, -1.9 })

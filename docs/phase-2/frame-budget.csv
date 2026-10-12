@@ -1,0 +1,10 @@
+condition,quality,avg_fps,p99_ms,resolution
+beam8,Low,119.0,8.49,1440x1080
+beam8,Medium,94.2,11.53,1440x1080
+beam8,High,56.2,18.8,1440x1080
+beat15,Low,119.1,8.51,1440x1080
+beat15,Medium,77.7,14.09,1440x1080
+beat15,High,56.7,19.82,1440x1080
+storm,Low,119.1,8.55,1440x1080
+storm,Medium,119.1,8.54,1440x1080
+storm,High,74.5,14.02,1440x1080

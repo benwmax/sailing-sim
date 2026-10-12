@@ -53,6 +53,12 @@ namespace Sailing
 	 */
 	SAILINGPHYSICS_API FSteadyResult SailSteady(double TrueWindKnots, double TrueWindAngleDeg, const FBoatConfig& Config = FBoatConfig::J22(), bool bSearchTrim = true);
 
+	/**
+	 * Lake chop used for the polar: ORC's polars assume a moderate sea state, so the boat is sailed in the
+	 * fetch-limited waves for this fetch (about 0.11 / 0.19 / 0.28 m significant height at 6 / 10 / 15 kn).
+	 */
+	constexpr double kPolarFetchMeters = 5000.0;
+
 	/** One run with fixed trim settings. */
 	SAILINGPHYSICS_API FSteadyResult SailSteadyWith(double TrueWindKnots, double TrueWindAngleDeg, const FAutoTrimSettings& Trim, const FBoatConfig& Config, double SettleSeconds = 40.0, double AverageSeconds = 15.0);
 }

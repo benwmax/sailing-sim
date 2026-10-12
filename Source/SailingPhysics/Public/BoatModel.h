@@ -5,6 +5,7 @@
 #include "Foil.h"
 #include "Sail.h"
 #include "Wind.h"
+#include "Waves.h"
 #include <vector>
 
 namespace Sailing
@@ -49,10 +50,12 @@ namespace Sailing
 		double HullLateralArea = 0.55;    // m^2 at each of two stations
 		double MunkAddedMass = 250.0;     // A22 - A11 of the canoe body (kg)
 		double ExtraRollDamping = 0.0;    // N m s; the easy difficulty adds some
-		// Added resistance from wind-driven chop, as fraction of displacement weight at 10 kn true wind heading
-		// straight into it. Scales with wind speed cubed (chop barely exists in light air) and (1 + cos TWA)^2 / 4. The flat water of Phase 1
-		// has no waves to slow the boat; ORC's polars include a sea state, so this stands in until Phase 2.
-		double ChopResistance = 0.008;
+		// Added resistance in waves: AddedResistanceCoef x R(lambda/LWL) x rho g (Hs/2)^2 B^2 / LWL, largest heading
+		// into the waves ((1 + cos)^2 / 4 of the angle off the wave direction) and growing with speed up to about 4 kn.
+		// R = r^4 / (0.25 + r^4) with r = mean wavelength / LWL: short chop barely pitches the boat, waves near hull
+		// length do (Gerritsma-Beukelman style scaling). The coefficient is calibrated so the J/22 matches ORC's polar,
+		// which assumes a moderate sea state. Heave and pitch in the waves come from the hydrostatics directly.
+		double AddedResistanceCoef = 1.3;
 
 		// Foils.
 		FFoilParams Keel;
@@ -132,8 +135,8 @@ namespace Sailing
 		/** Puts the boat on the water at a world XY with a heading (rad) and forward speed (m/s), floating level. */
 		void Reset(double X, double Y, double Heading, double Speed = 0.0);
 
-		/** One fixed physics step. */
-		void Step(double Dt, const FBoatControls& Controls, const FWindField& Wind);
+		/** One fixed physics step. Waves are optional (flat water when null). */
+		void Step(double Dt, const FBoatControls& Controls, const FWindField& Wind, const FWaveField* Waves = nullptr);
 
 		const FBoatState& GetState() const { return State; }
 		FBoatState& GetMutableState() { return State; }
@@ -149,8 +152,8 @@ namespace Sailing
 		const Vec3& GetCenterOfGravity() const { return CenterOfGravity; }
 		double HullDepth() const { return CanoeDepth; }
 
-		/** Water surface height at a world XY. Flat for Phase 1; waves arrive in Phase 2. */
-		double WaterHeightAt(double, double) const { return 0.0; }
+		/** Water surface height at a world XY at the boat's current time (the wave field of the last Step). */
+		double WaterHeightAt(double X, double Y) const { return CurrentWaves ? CurrentWaves->Height(X, Y, State.Time) : 0.0; }
 
 		/** Hydrostatic righting moment (N m) at a fixed heel, boat level in pitch and floating at its waterline. For tests. */
 		double RightingMomentAt(double HeelRad) const;
@@ -173,5 +176,6 @@ namespace Sailing
 		Vec3 Inertia, EffectiveInertia, EffectiveMass;
 		double CanoeDepth = 0.25;
 		double MainMeanLift = 0.0;
+		const FWaveField* CurrentWaves = nullptr;
 	};
 }

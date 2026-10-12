@@ -63,8 +63,18 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("ToggleLearning"), EKeys::L);
 	Add(TEXT("ToggleLearning"), EKeys::Gamepad_FaceButton_Top);
 	Add(TEXT("ToggleDifficulty"), EKeys::K);
-	Add(TEXT("ToggleDifficulty"), EKeys::Gamepad_Special_Right);
 	Add(TEXT("ToggleHud"), EKeys::H);
 	Add(TEXT("ResetBoat"), EKeys::R);
-	Add(TEXT("ResetBoat"), EKeys::Gamepad_Special_Left);
+	Add(TEXT("ControlsCard"), EKeys::Slash);
+	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
+	Add(TEXT("Menu"), EKeys::Tab);
+	Add(TEXT("Menu"), EKeys::Gamepad_Special_Right);
+	Add(TEXT("MenuUp"), EKeys::Up);
+	Add(TEXT("MenuUp"), EKeys::Gamepad_DPad_Up);
+	Add(TEXT("MenuDown"), EKeys::Down);
+	Add(TEXT("MenuDown"), EKeys::Gamepad_DPad_Down);
+	Add(TEXT("MenuLeft"), EKeys::Left);
+	Add(TEXT("MenuLeft"), EKeys::Gamepad_DPad_Left);
+	Add(TEXT("MenuRight"), EKeys::Right);
+	Add(TEXT("MenuRight"), EKeys::Gamepad_DPad_Right);
 }

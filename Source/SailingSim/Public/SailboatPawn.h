@@ -15,6 +15,9 @@ class UProceduralMeshComponent;
 class UInputAction;
 class UInputMappingContext;
 class UMaterialInterface;
+class UAudioComponent;
+class USailingSynthWave;
+class AWaterSurface;
 
 /**
  * The player's J/22. Physics (Sailing::FBoatModel) steps at a fixed 120 Hz; this actor turns the boat's
@@ -44,6 +47,15 @@ public:
 
 	/** Applies the current difficulty to the physics (helm feel, damping). */
 	void ApplyDifficulty();
+
+	/** Settings menu (Tab / controller Menu) and controls card (? / controller View). */
+	bool IsMenuOpen() const { return bMenuOpen; }
+	int32 GetMenuIndex() const { return MenuIndex; }
+	bool IsControlsCardOpen() const { return bControlsCard; }
+	/** Menu rows: label and current value, for the HUD. */
+	TArray<TPair<FString, FString>> GetMenuRows() const;
+	/** Seconds of physics time since the boat was put on the water (resets don't restart the weather clock). */
+	double GetSessionTime() const { return Boat.GetState().Time; }
 
 	/** Initial speed through the water in knots. */
 	UPROPERTY(EditAnywhere, Category = "Boat")
@@ -75,6 +87,8 @@ private:
 	void OnLook(const FInputActionValue& Value);
 	void OnZoom(const FInputActionValue& Value);
 	void OnButton(const FInputActionValue& Value, FName Action);
+	void ChangeMenuValue(int32 Direction);
+	void UpdateSound(float DeltaSeconds);
 
 	Sailing::FBoatModel Boat;
 	Sailing::FBoatControls Controls;
@@ -82,6 +96,11 @@ private:
 	Sailing::FAutoTrim TrimAssist;
 	/** -SailingDemo: the autopilot sails close-hauled and tacks every few seconds, for recordings and the QA gate. */
 	bool bDemo = false;
+	bool bDemoTacks = true;
+	bool bMenuOpen = false;
+	bool bControlsCard = false;
+	int32 MenuIndex = 0;
+	double PrevMainSheet = 0.0, PrevJibSheet = 0.0;
 	Sailing::FAutopilot DemoPilot;
 	double DemoFirstSign = 1.0;
 	Sailing::FWindField FallbackWind;
@@ -107,6 +126,10 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Crew;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibTelltales;  // windward/leeward pairs at three heights
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> LeechTelltales; // main leech, three heights
+
+	UPROPERTY(Transient) TObjectPtr<UAudioComponent> SoundComponent;
+	UPROPERTY(Transient) TObjectPtr<USailingSynthWave> Synth;
+	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;
 	UPROPERTY(Transient) TMap<FName, TObjectPtr<UInputAction>> Actions;
