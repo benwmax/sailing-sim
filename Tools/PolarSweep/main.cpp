@@ -4,14 +4,28 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <strings.h>
 #include "FixedStepper.h"
 
 using namespace Sailing;
 
 int main(int Argc, char** Argv)
 {
+	// --boat <name> (first word, any case) picks a boat from the fleet; it can come first, before the other options.
+	EBoatType Type = EBoatType::J22;
+	if (Argc > 2 && std::strcmp(Argv[1], "--boat") == 0)
+	{
+		for (int I = 0; I < int(EBoatType::Count); ++I)
+		{
+			if (strncasecmp(BoatTypeName(EBoatType(I)), Argv[2], std::strlen(Argv[2])) == 0) Type = EBoatType(I);
+		}
+		Argv += 2;
+		Argc -= 2;
+	}
 	const bool bQuick = Argc > 1 && std::strcmp(Argv[1], "--quick") == 0;
-	const FBoatConfig Config = FBoatConfig::J22();
+	const FBoatConfig Config = FBoatConfig::Make(Type);
+	const std::vector<FPolarPoint>& Polar = FleetReferencePolar(Type);
+	std::printf("%s\n", Config.Name);
 	if (Argc > 1 && std::strcmp(Argv[1], "--scenarios") == 0)
 	{
 		for (double Tws : { 6.0, 10.0, 15.0 })
@@ -32,7 +46,8 @@ int main(int Argc, char** Argv)
 	{
 		// Detailed look at one point: --point <tws> <twa>
 		const double Tws = std::atof(Argv[2]), Twa = std::atof(Argv[3]);
-		const FSteadyResult Best = SailSteady(Tws, Twa, Config, true);
+		const bool bSpin = Argc > 4 && std::strcmp(Argv[4], "spin") == 0;
+		const FSteadyResult Best = SailSteady(Tws, Twa, Config, true, bSpin);
 		std::printf("best: %.2f kn heel %.1f leeway %.1f rudder %.1f margin %.0f heelLimit %.0f\n", Best.BoatSpeedKnots, Best.HeelDeg,
 			Best.LeewayDeg, Best.RudderDeg, Best.Trim.AlphaMarginDeg, Best.Trim.HeelLimitDeg);
 		// Re-run that trim and dump the final state.
@@ -41,7 +56,7 @@ int main(int Argc, char** Argv)
 		Boat.Reset(0, 0, -Twa * kDegToRad, 0.6 * Tws * kKnot);
 		FAutopilot Pilot; Pilot.TargetTWADeg = Twa;
 		FAutoTrim Trim; Trim.Settings = Best.Trim;
-		FBoatControls C; C.MainSheet = C.JibSheet = Twa / 180.0;
+		FBoatControls C; C.MainSheet = C.JibSheet = Twa / 180.0; C.bSpinnaker = bSpin;
 		for (int I = 0; I < int(55 * PhysicsHz); ++I) { C = Trim.Update(Boat, C, PhysicsDt); C.Tiller = Pilot.Update(Boat); Boat.Step(PhysicsDt, C, Wind); }
 		const FBoatTelemetry& T = Boat.GetTelemetry();
 		std::printf("speed %.2f AWA %.1f AWS %.2f kn drive %.0f N heelF %.0f N boom %.1f jib %.1f\n", T.BoatSpeed / kKnot, T.ApparentWindAngle * kRadToDeg,
@@ -69,15 +84,15 @@ int main(int Argc, char** Argv)
 	std::printf("\n TWS  TWA   polar   model   err%%   heel  leeway rudder  helmN  note\n");
 	int Fails = 0;
 	double WorstErr = 0.0;
-	for (const FPolarPoint& P : J22ReferencePolar())
+	for (const FPolarPoint& P : Polar)
 	{
-		const FSteadyResult R = SailSteady(P.TrueWindKnots, P.TrueWindAngleDeg, Config, !bQuick);
+		const FSteadyResult R = SailSteady(P.TrueWindKnots, P.TrueWindAngleDeg, Config, !bQuick, P.bSpinnaker);
 		const double Err = (R.BoatSpeedKnots - P.BoatSpeedKnots) / P.BoatSpeedKnots * 100.0;
 		WorstErr = std::max(WorstErr, std::fabs(Err));
-		Fails += std::fabs(Err) > 10.0;
+		Fails += std::fabs(Err) > P.Tolerance * 100.0;
 		std::printf("%4.0f %5.1f  %5.2f   %5.2f  %+5.1f  %5.1f  %5.1f  %5.1f  %5.0f  %s%s\n", P.TrueWindKnots, P.TrueWindAngleDeg,
-			P.BoatSpeedKnots, R.BoatSpeedKnots, Err, R.HeelDeg, R.LeewayDeg, R.RudderDeg, R.HelmForceN, P.Note, std::fabs(Err) > 10.0 ? "  <-- FAIL" : "");
+			P.BoatSpeedKnots, R.BoatSpeedKnots, Err, R.HeelDeg, R.LeewayDeg, R.RudderDeg, R.HelmForceN, P.Note, std::fabs(Err) > P.Tolerance * 100.0 ? "  <-- FAIL" : "");
 	}
-	std::printf("\n%d of %zu points outside 10%%, worst %.1f%%\n", Fails, J22ReferencePolar().size(), WorstErr);
+	std::printf("\n%d of %zu points outside tolerance, worst %.1f%%\n", Fails, Polar.size(), WorstErr);
 	return Fails ? 1 : 0;
 }

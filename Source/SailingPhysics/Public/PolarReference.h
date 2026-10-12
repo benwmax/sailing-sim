@@ -30,9 +30,16 @@ namespace Sailing
 		double TrueWindAngleDeg;
 		double BoatSpeedKnots;
 		const char* Note;
+		bool bSpinnaker = false; // sailed with the spinnaker (or gennaker / screacher) up
+		// Allowed error, set by how good the source is: 10% for ORC certificates and polars anchored on measured
+		// speeds, 15% for handicap-scaled estimates, 20% for hand-built estimates (the research's own uncertainty).
+		double Tolerance = 0.10;
 	};
 
 	SAILINGPHYSICS_API const std::vector<FPolarPoint>& J22ReferencePolar();
+
+	/** Reference polar for any boat in the fleet (the J/22's adds its spinnaker points). Sources in docs/phase-4/fleet-data.json. */
+	SAILINGPHYSICS_API const std::vector<FPolarPoint>& FleetReferencePolar(EBoatType Type);
 
 	/** Result of sailing the boat steadily at one point. */
 	struct FSteadyResult
@@ -51,7 +58,7 @@ namespace Sailing
 	 * Sails the J/22 at a fixed true wind speed and angle with the autopilot and auto-trim, lets it settle,
 	 * and averages the last part. Tries a few trim settings and keeps the fastest (the polar is optimal trim).
 	 */
-	SAILINGPHYSICS_API FSteadyResult SailSteady(double TrueWindKnots, double TrueWindAngleDeg, const FBoatConfig& Config = FBoatConfig::J22(), bool bSearchTrim = true);
+	SAILINGPHYSICS_API FSteadyResult SailSteady(double TrueWindKnots, double TrueWindAngleDeg, const FBoatConfig& Config = FBoatConfig::J22(), bool bSearchTrim = true, bool bSpinnaker = false);
 
 	/**
 	 * Lake chop used for the polar: ORC's polars assume a moderate sea state, so the boat is sailed in the
@@ -60,5 +67,5 @@ namespace Sailing
 	constexpr double kPolarFetchMeters = 5000.0;
 
 	/** One run with fixed trim settings. */
-	SAILINGPHYSICS_API FSteadyResult SailSteadyWith(double TrueWindKnots, double TrueWindAngleDeg, const FAutoTrimSettings& Trim, const FBoatConfig& Config, double SettleSeconds = 40.0, double AverageSeconds = 15.0);
+	SAILINGPHYSICS_API FSteadyResult SailSteadyWith(double TrueWindKnots, double TrueWindAngleDeg, const FAutoTrimSettings& Trim, const FBoatConfig& Config, double SettleSeconds = 40.0, double AverageSeconds = 15.0, bool bSpinnaker = false);
 }

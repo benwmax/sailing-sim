@@ -42,6 +42,7 @@ namespace Sailing
 		// Helm over firmly (about 24 degrees of rudder) and steer for the same angle on port tack.
 		Pilot.TargetTWADeg = -CloseHauledTWADeg;
 		Pilot.MaxTiller = TackTiller;
+		Pilot.bKeepShortOfStall = false;
 		const double Start = Boat.GetState().Time;
 		Run(25.0, [&]
 		{
