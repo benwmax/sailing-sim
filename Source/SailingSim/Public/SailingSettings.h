@@ -150,6 +150,7 @@ public:
 
 	/** Bindings in effect: the configured ones, or the defaults. */
 	const TArray<FSailingKeyBinding>& GetBindings() const { return Bindings.Num() > 0 ? Bindings : Defaults; }
+	const TArray<FSailingKeyBinding>& GetDefaults() const { return Defaults; }
 
 private:
 	TArray<FSailingKeyBinding> Defaults;

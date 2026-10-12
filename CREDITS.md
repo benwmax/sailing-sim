@@ -50,3 +50,9 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Navigation Rules (Phase 6): U.S. Coast Guard, Navigation Rules and Regulations Handbook (International and Inland
   Rules; public domain). Racing: rule numbers from World Sailing's Racing Rules of Sailing are cited; no rule text is
   reproduced.
+- Gulf passage (Phase 7): NOAA ENC cells US3TX1DC, US4TX1KI-KJ, US4TX1LI-LK, US4TX1MI-MK, US5FPOBB-BC, US5FPOCA-CC,
+  US5FPODA-DB, US5TXTDB-DF and US5TXTEC-EE (charts.noaa.gov; public domain), including offshore platforms as
+  landmarks; tides from CO-OPS stations 8771510, 8771341, 8771972 and 8772447 (public domain). No land DEM is used
+  for the open coast (land is flat above mean high water).
+- Ocean waves: Tessendorf (2001) "Simulating Ocean Water"; JONSWAP spectrum (Hasselmann et al. 1973); added
+  resistance in waves after Gerritsma and Beukelman (1972). Methods only; no code reproduced.

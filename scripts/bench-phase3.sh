@@ -25,7 +25,7 @@ try:
 except Exception:
     print(f"{sys.argv[2]},{sys.argv[3]},error,,")
 PY
-	[[ -f "$ARTIFACTS/$SHOT_NAME.png" ]] && cp "$ARTIFACTS/$SHOT_NAME.png" "$REPO_ROOT/docs/phase-3/$SHOT_NAME.png"
+	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$SHOT_NAME.png" ]] && cp "$ARTIFACTS/$SHOT_NAME.png" "$REPO_ROOT/docs/phase-3/$SHOT_NAME.png" || true
 }
 
 COMMON="-SailingWeather=AfternoonBreeze -SailingHour=11 -SailingWind=10 -SailingKeepStart"

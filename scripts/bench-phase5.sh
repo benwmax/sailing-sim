@@ -31,6 +31,6 @@ try:
 except Exception:
     print(f"{sys.argv[2]},error,")
 PY
-	[[ -f "$ARTIFACTS/$SHOT.png" ]] && cp "$ARTIFACTS/$SHOT.png" "$REPO_ROOT/docs/phase-5/$SHOT.png"
+	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$SHOT.png" ]] && cp "$ARTIFACTS/$SHOT.png" "$REPO_ROOT/docs/phase-5/$SHOT.png" || true
 done
 cat "$OUT"

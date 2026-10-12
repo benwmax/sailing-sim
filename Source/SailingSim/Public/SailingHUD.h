@@ -33,6 +33,10 @@ private:
 	void DrawChart(const ASailboatPawn& Boat);
 	/** Traffic: the rules callout (learning) or the rules score (game), signals heard, and the race panel. */
 	void DrawTraffic(const ASailboatPawn& Boat);
+	/** The ship's log page (Y). */
+	void DrawLogbook(const ASailboatPawn& Boat);
+	/** The keys screen. */
+	void DrawKeys(const ASailboatPawn& Boat);
 	void Text(const FString& Str, float X, float Y, const FLinearColor& Color = FLinearColor::White, float Scale = 1.f, bool bBig = false);
 	void Bar(const FString& Label, float Value, float Lo, float Hi, float X, float Y, float Width, const FLinearColor& Color);
 	float UIScale = 1.f;

@@ -533,7 +533,9 @@ namespace Sailing
 				{
 					// Summed over the sea's spectrum (Gerritsma-Beukelman shape): a hull pitches and heaves most, and so
 					// loses most, in waves near her own length; chop much shorter than her barely moves her, and a
-					// long swell she simply rides over. Each band counts by how far it comes from ahead.
+					// long swell she simply rides over. Into the waves the peak moves to longer waves as she goes faster
+					// (she meets them more often, so a longer wave still matches her pitch period). Each band counts by
+					// how far it comes from ahead.
 					const Vec3 Fwd = Q.Forward();
 					const double HullBeam = 2.0 * Hull.MaxHalfBeam;
 					double Sum = 0.0;
@@ -541,9 +543,10 @@ namespace Sailing
 					{
 						const double IntoWaves = -(std::cos(Band.Direction) * Fwd.X + std::sin(Band.Direction) * Fwd.Y);
 						const double Ratio = Band.Wavelength / Lwl;
+						const double PeakEnd = 1.2 + 1.0 * Froude * std::max(IntoWaves, 0.0);
 						const double R4 = Ratio * Ratio * Ratio * Ratio;
 						double Response = R4 / (0.25 + R4);
-						if (Ratio > 1.2) Response *= 1.0 / (1.0 + (Ratio - 1.2) * (Ratio - 1.2) / 0.64);
+						if (Ratio > PeakEnd) Response *= 1.0 / (1.0 + (Ratio - PeakEnd) * (Ratio - PeakEnd) / 0.64);
 						// (Hs/2)^2 of a band is four times its variance.
 						Sum += Response * 4.0 * Band.Variance * (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25;
 					}

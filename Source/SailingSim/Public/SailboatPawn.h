@@ -8,6 +8,8 @@
 #include "InputActionValue.h"
 #include "Drills.h"
 #include "Navigation.h"
+#include "Logbook.h"
+#include "Replay.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -70,6 +72,15 @@ public:
 	bool IsMenuOpen() const { return bMenuOpen; }
 	int32 GetMenuIndex() const { return MenuIndex; }
 	bool IsControlsCardOpen() const { return bControlsCard; }
+	/** The keys screen (Tab > Keys): every command with its keyboard key; Enter rebinds, Backspace restores. */
+	struct FKeyRow { FName Action; bool bNegative = false; FString Label; FKey Key; };
+	bool IsKeysOpen() const { return bKeysOpen; }
+	const TArray<FKeyRow>& GetKeyRows() const { return KeyRows; }
+	int32 GetKeysIndex() const { return KeysIndex; }
+	bool IsCapturingKey() const { return bCapturingKey; }
+	const FString& GetKeysMessage() const { return KeysMessage; }
+	/** Rebinds a command's keyboard key (as the keys screen does; for tests). Returns false if no such command. */
+	bool Rebind(FName Action, bool bNegative, const FKey& Key);
 	/** Menu rows: label and current value, for the HUD. */
 	TArray<TPair<FString, FString>> GetMenuRows() const;
 	/** Seconds of physics time since the boat was put on the water (resets don't restart the weather clock). */
@@ -98,6 +109,27 @@ public:
 	Sailing::FBoatModel* InitTraffic(int32 Type, double X, double Y, double HeadingRad);
 	void SetTrafficControls(const Sailing::FBoatControls& InControls) { Controls = InControls; }
 	Sailing::FBoatModel& GetMutableBoatModel() { return Boat; }
+	/** The ship's log (Y shows it). Other systems add events (race results, rules judgments). */
+	const FLogbook& GetLogbook() const { return Logbook; }
+	bool IsLogOpen() const { return bLogOpen; }
+	void AddLogEvent(const FString& Remarks);
+	/** The passage plan's next waypoint on the coast (index into the area's plan), or -1. */
+	int32 GetPassageIndex() const { return PassageIndex; }
+
+	/** Replays: each run (from a reset, a drill or a race start) is recorded; watch the last one (,) or sail against
+	 *  it as a ghost (Tab > Ghost). Photo mode (9) freezes the world for pictures. */
+	UPROPERTY() bool bGhost = false;  // a traffic-mode actor drawn translucent: the replay's boat
+	void BeginRun(const FString& Label);
+	bool IsWatching() const { return bWatching; }
+	bool IsPhotoMode() const { return bPhoto; }
+	bool IsGhostOn() const { return bGhostOn; }
+	const FReplay& GetLastRun() const { return LastRun; }
+	double GetWatchTime() const { return WatchTime; }
+	float GetWatchSpeed() const { return WatchSpeed; }
+	double GetPhotoHintUntil() const { return PhotoHintUntil; }
+	void SetGhostFrame(const FReplayFrame& Frame);
+	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);
+
 	/** Another vessel's whistle or the committee's horn, heard aboard (0 = silent). */
 	void SetHorn(float Level, float Hz);
 	/** The player's status under the rules: sailing, or power-driven with the engine running. */
@@ -157,6 +189,36 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> DummyMesh;
 	void UpdateDrillVisuals();
 	void UpdateNavLights();
+	void UpdateLogbook(float DeltaSeconds);
+	void UpdateGhost(float DeltaSeconds);
+	void BuildKeyRows();
+	void AssignKey(int32 Row, const FKey& Key);
+	void RebuildMappings();
+	void PollKeyCapture();
+	bool bKeysOpen = false, bCapturingKey = false;
+	uint64 CaptureFrame = 0;
+	int32 KeysIndex = 0;
+	TArray<FKeyRow> KeyRows;
+	FString KeysMessage;
+	ASailboatPawn* EnsureGhost();
+	void ApplyGhostMaterial();
+	void SetWatching(bool bOn);
+	void SetPhoto(bool bOn);
+	void TakePhoto();
+	FReplay Recording, LastRun;
+	bool bGhostOn = false, bWatching = false, bPhoto = false;
+	double WatchTime = 0.0;
+	float WatchSpeed = 1.f;
+	double PhotoHintUntil = 0.0;
+	UPROPERTY(Transient) TObjectPtr<ASailboatPawn> GhostBoat;
+	FLogEntry MakeLogEntry(const TCHAR* Kind, const FString& Remarks) const;
+	FLogbook Logbook;
+	bool bLogOpen = false;
+	bool bLogStarted = false;
+	double LogNm = 0.0;
+	double NextWatchUnix = 0.0;
+	int32 PassageIndex = -1;
+	bool bWasAground = false, bWasCapsized = false, bWasTouching = false, bWasDrillComplete = false;
 	void SetChartOpen(bool bOpen);
 	SailingNav::FPlot Plot;
 	bool bChartOpen = false;
@@ -166,6 +228,8 @@ private:
 	double ChartMetersPerPixel = 8.0;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> NavLights; // port, starboard, stern, steaming
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> EmissiveMaterial;
+	// Not transient: the default object's reference is what puts M_Ghost into the cook (it is only used at runtime).
+	UPROPERTY() TObjectPtr<UMaterialInterface> GhostMaterial;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> SphereMesh;
 	double StatusUntil = 0.0;
 	bool bDemoTacks = true;

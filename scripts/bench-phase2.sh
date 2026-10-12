@@ -29,7 +29,7 @@ try:
 except Exception as e:
     print(f"{sys.argv[2]},{sys.argv[3]},error,,")
 PY
-		[[ "$Q" == High && -f "$ARTIFACTS/$NAME.png" ]] && cp "$ARTIFACTS/$NAME.png" "$REPO_ROOT/docs/phase-2/${NAMES[$I]}.png"
+		[[ -z "${NO_DOCS:-}" && "$Q" == High && -f "$ARTIFACTS/$NAME.png" ]] && cp "$ARTIFACTS/$NAME.png" "$REPO_ROOT/docs/phase-2/${NAMES[$I]}.png" || true
 	done
 done
 cat "$OUT"

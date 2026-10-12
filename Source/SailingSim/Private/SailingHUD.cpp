@@ -6,6 +6,7 @@
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
+#include "Misc/Paths.h"
 #include "CanvasItem.h"
 #include "Chart.h"
 #include "Navigation.h"
@@ -70,6 +71,35 @@ void ASailingHUD::DrawHUD()
 	UIScale = FMath::Clamp(Canvas->ClipY / 1080.f, 0.7f, 2.f);
 
 	const USailingSettings* Settings = USailingSettings::Get();
+	if (Boat->IsPhotoMode())
+	{
+		// Nothing over the picture but a moment's hint.
+		if (FPlatformTime::Seconds() < Boat->GetPhotoHintUntil())
+		{
+			const FString Msg = Boat->GetStatusMessage();
+			Text(Msg.IsEmpty() ? FString(TEXT("Photo mode: mouse orbits, wheel moves in and out, [ ] lens, Enter takes a photo, 9 leaves")) : Msg,
+				20.f, Canvas->ClipY / UIScale - 40.f, FLinearColor::White, 0.8f);
+		}
+		return;
+	}
+	if (Boat->IsWatching())
+	{
+		const FReplay& Run = Boat->GetLastRun();
+		const float W = 760.f, X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale - 110.f;
+		DrawRect(Panel, X * UIScale, Y * UIScale, W * UIScale, 90.f * UIScale);
+		const double T = Boat->GetWatchTime(), D = Run.Duration();
+		Text(FString::Printf(TEXT("Replay: %s   %d:%02d / %d:%02d   x%g"), *Run.Label, int32(T) / 60, int32(T) % 60, int32(D) / 60, int32(D) % 60, Boat->GetWatchSpeed()),
+			X + 14.f, Y + 10.f, FLinearColor::White, 0.95f);
+		DrawRect(FLinearColor(1, 1, 1, 0.2f), (X + 14.f) * UIScale, (Y + 42.f) * UIScale, (W - 28.f) * UIScale, 6.f * UIScale);
+		DrawRect(Good, (X + 14.f) * UIScale, (Y + 42.f) * UIScale, float((W - 28.f) * (D > 0.0 ? T / D : 0.0)) * UIScale, 6.f * UIScale);
+		Text(TEXT("Left / Right skip 10 s, Up / Down speed, mouse orbits, wheel zooms, comma returns to your boat"), X + 14.f, Y + 58.f, Dim, 0.75f);
+		return;
+	}
+	if (Boat->IsKeysOpen())
+	{
+		DrawKeys(*Boat);
+		return;
+	}
 	if (Boat->IsMenuOpen())
 	{
 		DrawMenu(*Boat);
@@ -83,6 +113,11 @@ void ASailingHUD::DrawHUD()
 	if (Boat->IsChartOpen())
 	{
 		DrawChart(*Boat);
+		return;
+	}
+	if (Boat->IsLogOpen())
+	{
+		DrawLogbook(*Boat);
 		return;
 	}
 	if (!Settings->bShowHud)
@@ -101,6 +136,65 @@ void ASailingHUD::DrawHUD()
 	}
 	DrawNavigation(*Boat, Settings->bLearningMode ? 300.f : 10.f);
 	DrawTraffic(*Boat);
+}
+
+void ASailingHUD::DrawKeys(const ASailboatPawn& Boat)
+{
+	const TArray<ASailboatPawn::FKeyRow>& Rows = Boat.GetKeyRows();
+	const float RowH = 24.f;
+	const int32 PerColumn = FMath::Max(1, int32((Canvas->ClipY / UIScale - 200.f) / RowH));
+	const int32 Columns = (Rows.Num() + PerColumn - 1) / PerColumn;
+	const float ColW = 470.f, W = FMath::Max(1, Columns) * ColW + 40.f, H = FMath::Min(Rows.Num(), PerColumn) * RowH + 140.f;
+	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale * 0.5f - H * 0.5f;
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.78f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
+	Text(TEXT("Keys"), X + 20.f, Y + 14.f, FLinearColor::White, 1.1f, true);
+	for (int32 I = 0; I < Rows.Num(); ++I)
+	{
+		const float CX = X + 20.f + (I / PerColumn) * ColW, RY = Y + 60.f + (I % PerColumn) * RowH;
+		const bool bSel = I == Boat.GetKeysIndex();
+		if (bSel) DrawRect(FLinearColor(0.3f, 0.5f, 0.8f, 0.5f), (CX - 6.f) * UIScale, (RY - 3.f) * UIScale, (ColW - 20.f) * UIScale, RowH * UIScale);
+		Text(Rows[I].Label, CX, RY, bSel ? FLinearColor::White : Dim, 0.78f);
+		Text(bSel && Boat.IsCapturingKey() ? FString(TEXT("...")) : Rows[I].Key.GetDisplayName().ToString(), CX + 330.f, RY, bSel ? Good : FLinearColor::White, 0.78f);
+	}
+	Text(Boat.GetKeysMessage(), X + 20.f, Y + H - 56.f, Boat.IsCapturingKey() ? Warn : Dim, 0.8f);
+	Text(TEXT("Saved to your Input.ini. Mouse and controller bindings are unchanged."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
+}
+
+void ASailingHUD::DrawLogbook(const ASailboatPawn& Boat)
+{
+	const FLogbook& Log = Boat.GetLogbook();
+	const float W = 1240.f, H = Canvas->ClipY / UIScale - 80.f;
+	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = 40.f;
+	// Paper and ink.
+	DrawRect(FLinearColor(0.72f, 0.68f, 0.56f, 1.f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
+	const FLinearColor Ink(0.f, 0.f, 0.02f), Faint(0.12f, 0.11f, 0.09f), Red(0.45f, 0.02f, 0.01f);
+	Text(FString::Printf(TEXT("Ship's log: %s, %s"), *Log.GetBoat(), *Log.GetArea()), X + 20.f, Y + 12.f, Ink, 1.05f, true);
+	const TArray<FLogEntry>& E = Log.GetEntries();
+	const double Hours = E.Num() > 0 ? (E.Last().UnixTime - Log.SessionStartUnix) / 3600.0 : 0.0;
+	Text(FString::Printf(TEXT("%.1f nm by the log in %.1f h; best speed %.1f kn. Saved to %s"), E.Num() ? E.Last().LogNm : 0.0, Hours, Log.MaxSpeedKnots,
+		*FPaths::GetCleanFilename(Log.GetFilePath())), X + 20.f, Y + 48.f, Faint, 0.72f);
+	const float Cols[] = { 20.f, 90.f, 340.f, 420.f, 490.f, 560.f, 640.f, 760.f, 830.f };
+	const TCHAR* Heads[] = { TEXT("Time"), TEXT("Position"), TEXT("Course"), TEXT("Speed"), TEXT("Hdg M"), TEXT("Log nm"), TEXT("Wind"), TEXT("Sea"), TEXT("Remarks") };
+	float RY = Y + 78.f;
+	for (int32 I = 0; I < UE_ARRAY_COUNT(Cols); ++I) Text(Heads[I], X + Cols[I], RY, Faint, 0.75f);
+	RY += 26.f;
+	const int32 Rows = FMath::Max(1, int32((H - 130.f) / 22.f));
+	for (int32 I = FMath::Max(0, E.Num() - Rows); I < E.Num(); ++I)
+	{
+		const FLogEntry& L = E[I];
+		const FLinearColor C = L.Kind == TEXT("Watch") ? Ink : Red;
+		Text(L.Clock, X + Cols[0], RY, C, 0.72f);
+		Text(FLogbook::FormatPosition(L.Latitude, L.Longitude), X + Cols[1], RY, C, 0.72f);
+		Text(FString::Printf(TEXT("%03.0f T"), L.CourseTrue), X + Cols[2], RY, C, 0.72f);
+		Text(FString::Printf(TEXT("%.1f"), L.SpeedKnots), X + Cols[3], RY, C, 0.72f);
+		Text(FString::Printf(TEXT("%03.0f"), L.HeadingMagnetic), X + Cols[4], RY, C, 0.72f);
+		Text(FString::Printf(TEXT("%.1f"), L.LogNm), X + Cols[5], RY, C, 0.72f);
+		Text(FString::Printf(TEXT("%03.0f %.0f kn"), L.WindFromDeg, L.WindKnots), X + Cols[6], RY, C, 0.72f);
+		Text(FString::Printf(TEXT("%.1f m"), L.SeaMeters), X + Cols[7], RY, C, 0.72f);
+		Text(L.Remarks.IsEmpty() ? FString(TEXT("Watch")) : L.Remarks, X + Cols[8], RY, C, 0.72f);
+		RY += 22.f;
+	}
+	Text(TEXT("Y closes the log"), X + 20.f, Y + H - 28.f, Faint, 0.7f);
 }
 
 void ASailingHUD::DrawTraffic(const ASailboatPawn& Boat)
@@ -215,7 +309,9 @@ void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
 	const FBoatModel& Model = Boat.GetBoatModel();
 	const FBoatTelemetry& T = Model.GetTelemetry();
 	const float W = 270.f, X = Canvas->ClipX / UIScale - W - 10.f;
-	DrawRect(Panel, X * UIScale, Top * UIScale, W * UIScale, 196.f * UIScale);
+	const TArray<TPair<FString, FVector2D>>& Plan = Lake.Passage;
+	const bool bPassage = Boat.GetPassageIndex() >= 0 && Boat.GetPassageIndex() < Plan.Num();
+	DrawRect(Panel, X * UIScale, Top * UIScale, W * UIScale, (bPassage ? 222.f : 196.f) * UIScale);
 	float Y = Top + 8.f;
 	const double HeadingT = Boat.GetHeadingTrueDeg();
 	Text(FString::Printf(TEXT("Compass  %03.0f M"), SailingNav::TrueToMagnetic(HeadingT, Lake.VariationDeg)), X + 12.f, Y, FLinearColor::White, 1.f);
@@ -254,7 +350,18 @@ void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
 	const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
 	Text(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f T"), Drift / kKnot, Set), X + 12.f, Y, Dim, 0.9f);
 	Y += 24.f;
-	Text(TEXT("P chart   U bearing   O GPS"), X + 12.f, Y + 2.f, Dim, 0.75f);
+	if (bPassage)
+	{
+		// The passage plan: the next waypoint by GPS, bearing in degrees magnetic, and time at the speed made good.
+		const TPair<FString, FVector2D>& Waypoint = Plan[Boat.GetPassageIndex()];
+		const FVector2D Here = Boat.GetMapPosition();
+		const double Dist = FVector2D::Distance(Here, Waypoint.Value);
+		const double Brg = SailingNav::TrueToMagnetic(SailingNav::BearingDeg(Here, Waypoint.Value), Lake.VariationDeg);
+		Text(FString::Printf(TEXT("Next   %s %s %03.0f M%s"), *Waypoint.Key, *SailingNav::FormatDistance(Dist), Brg,
+			Sog > 0.5 ? *FString::Printf(TEXT("  %.0f min"), Dist / Sog / 60.0) : TEXT("")), X + 12.f, Y, Warn, 0.72f);
+		Y += 24.f;
+	}
+	Text(TEXT("P chart   U bearing   O GPS   Y log"), X + 12.f, Y + 2.f, Dim, 0.75f);
 }
 
 void ASailingHUD::DrawChart(const ASailboatPawn& Boat)
@@ -741,17 +848,26 @@ void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
 void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 {
 	const TArray<TPair<FString, FString>> Rows = Boat.GetMenuRows();
-	const float W = 680.f, H = 120.f + Rows.Num() * 32.f;
-	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale * 0.5f - H * 0.5f;
-	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.7f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
-	Text(TEXT("Settings"), X + 20.f, Y + 14.f, FLinearColor::White, 1.1f, true);
+	// Sections: what you sail and against whom, the water and weather, how the game helps, display and keys.
+	const TMap<int32, const TCHAR*> Sections = { { 0, TEXT("SAILING") }, { 6, TEXT("WATER AND WEATHER") }, { 11, TEXT("HELP AND CONTROLS") }, { 15, TEXT("DISPLAY, SOUND AND KEYS") } };
+	const float RowH = 29.f, SectionH = 24.f;
+	const float W = 760.f, H = 110.f + Rows.Num() * RowH + Sections.Num() * SectionH;
+	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = FMath::Max(10.f, Canvas->ClipY / UIScale * 0.5f - H * 0.5f);
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.72f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
+	Text(TEXT("Settings"), X + 20.f, Y + 12.f, FLinearColor::White, 1.1f, true);
+	float RY = Y + 50.f;
 	for (int32 I = 0; I < Rows.Num(); ++I)
 	{
+		if (const TCHAR* const* Section = Sections.Find(I))
+		{
+			Text(*Section, X + 20.f, RY + 4.f, FLinearColor(0.55f, 0.75f, 1.f), 0.68f);
+			RY += SectionH;
+		}
 		const bool bSel = I == Boat.GetMenuIndex();
-		const float RY = Y + 60.f + I * 32.f;
-		if (bSel) DrawRect(FLinearColor(0.3f, 0.5f, 0.8f, 0.5f), (X + 10.f) * UIScale, (RY - 4.f) * UIScale, (W - 20.f) * UIScale, 30.f * UIScale);
-		Text(Rows[I].Key, X + 24.f, RY, bSel ? FLinearColor::White : Dim);
-		Text(FString::Printf(TEXT("<  %s  >"), *Rows[I].Value), X + 260.f, RY, bSel ? Good : FLinearColor::White);
+		ON_SCOPE_EXIT { RY += RowH; };
+		if (bSel) DrawRect(FLinearColor(0.3f, 0.5f, 0.8f, 0.5f), (X + 10.f) * UIScale, (RY - 4.f) * UIScale, (W - 20.f) * UIScale, (RowH - 1.f) * UIScale);
+		Text(Rows[I].Key, X + 24.f, RY, bSel ? FLinearColor::White : Dim, 0.9f);
+		Text(FString::Printf(TEXT("<  %s  >"), *Rows[I].Value), X + 290.f, RY, bSel ? Good : FLinearColor::White, 0.9f);
 	}
 	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 54.f, Dim, 0.8f);
 	// Required attribution for the map data (OpenStreetMap is ODbL); see CREDITS.md.
@@ -786,9 +902,13 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		Lines.Add({ TEXT("Backstay ease / on"), TEXT("7 / 8        A / B") });
 	}
 	Lines.Append({
-		{ TEXT("Learning mode"), TEXT("L            Y") },
+		{ TEXT("Chart, bearing, GPS, clear the plot (coast)"), TEXT("P, U, O, I") },
+		{ TEXT("Ship's log"), TEXT("Y") },
+		{ TEXT("Watch your last run (ghost: Tab > Ghost)"), TEXT(",") },
+		{ TEXT("Photo mode, take a photo"), TEXT("9, Enter") },
+		{ TEXT("Learning mode"), TEXT("L            Y button") },
 		{ TEXT("Difficulty"), TEXT("K") },
-		{ TEXT("Settings (weather, time, quality)"), TEXT("Tab          Menu") },
+		{ TEXT("Settings (area, races, traffic, weather, keys)"), TEXT("Tab          Menu") },
 		{ TEXT("Instruments"), TEXT("H") },
 		{ TEXT("Reset boat"), TEXT("R") },
 		{ TEXT("Camera"), TEXT("Mouse, wheel  Right stick") },

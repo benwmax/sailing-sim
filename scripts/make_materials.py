@@ -365,6 +365,25 @@ def build_sail():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_ghost():
+    """M_Ghost: a translucent, two-sided, faintly glowing copy of a boat (replays: your last run beside you)."""
+    mat = new_material("M_Ghost")
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    color = vector(mat, "Color", (0.55, 0.8, 1.0, 1), -500, 0)
+    opacity = scalar(mat, "Opacity", 0.38, -500, 150)
+    glow = node(mat, unreal.MaterialExpressionMultiply, -250, 250)
+    k = node(mat, unreal.MaterialExpressionConstant, -500, 300, r=0.25)
+    connect(color, "", glow, "A")
+    connect(k, "", glow, "B")
+    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_terrain():
     """Terrain colored by the vertex colors the terrain builder computes (mud, clay and sand banks, rock, grass,
     woods), with world-space variation so large areas don't look flat."""
@@ -392,4 +411,5 @@ build_terrain()
 build_rain()
 build_emissive()
 build_sail()
+build_ghost()
 unreal.log("Materials built")

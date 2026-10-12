@@ -1,4 +1,8 @@
 #include "SailboatPawn.h"
+#include "Components/MeshComponent.h"
+#include "Misc/Paths.h"
+#include "HAL/FileManager.h"
+#include "UnrealClient.h"
 #include "Engine/GameViewportClient.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -52,7 +56,8 @@ namespace
 			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard") || Action == TEXT("DockLines") || Action == TEXT("BackJib")
 			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight")
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
-			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot");
+			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
+			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -61,7 +66,7 @@ namespace
 		return Action == NAME_Traveler || Action == NAME_Vang || Action == NAME_Cunningham || Action == NAME_Outhaul || Action == NAME_Backstay;
 	}
 
-	enum EMenuRow { RowWorld, RowBoat, RowDrill, RowRace, RowTraffic, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowCount };
+	enum EMenuRow { RowWorld, RowBoat, RowDrill, RowRace, RowGhost, RowTraffic, RowLaunch, RowLakeLevel, RowWeather, RowHour, RowSeed, RowDifficulty, RowControls, RowTrimAssist, RowLearning, RowQuality, RowVolume, RowKeys, RowCount };
 
 	constexpr double kTrimAssistIdleSeconds = 4.0;
 }
@@ -87,6 +92,8 @@ ASailboatPawn::ASailboatPawn()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> EmissiveFinder(TEXT("/Game/Materials/M_Emissive.M_Emissive"));
 	SphereMesh = SphereFinder.Object;
 	EmissiveMaterial = EmissiveFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GhostFinder(TEXT("/Game/Materials/M_Ghost.M_Ghost"));
+	GhostMaterial = GhostFinder.Object;
 
 	// The hull, foils, spars and crew are built at runtime from the boat's particulars (RebuildBoatVisuals), so any
 	// boat in the fleet can be sailed. What stays fixed: the hull mesh component, the pivots and the sails.
@@ -621,11 +628,25 @@ void ASailboatPawn::ResetBoat()
 	KeyboardTiller = 0.f;
 	ApplyStateToTransform();
 	Plot.Start(GetMapPosition(), Time); // the departure is a known position
+	if (!bTrafficBoat) BeginRun(TEXT("Sail"));
 }
 
 void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (bKeysOpen) PollKeyCapture();
+	if (!bTrafficBoat && (bWatching || bPhoto))
+	{
+		// The world holds still (everything runs on the boat's clock); only the replay and the cameras move.
+		if (bPhoto)
+		{
+			// The lens: [ and ] (the twin-engine pivot keys) zoom in and out.
+			const float Zoom = HeldAxes.FindRef(TEXT("ThrottleSplit"));
+			if (Zoom != 0.f) Camera->SetFieldOfView(FMath::Clamp(Camera->FieldOfView - Zoom * 30.f * DeltaSeconds, 10.f, 110.f));
+		}
+		UpdateGhost(DeltaSeconds);
+		return;
+	}
 	if (bTrafficBoat)
 	{
 		// The traffic simulation sails her; draw where she is, her rig and sails, and her lights.
@@ -746,11 +767,44 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			ChartCenter = GetMapPosition();
 		}
 		if (FParse::Param(FCommandLine::Get(), TEXT("SailingNoGps"))) bShowGps = false;
+		if (FParse::Param(FCommandLine::Get(), TEXT("SailingLogOpen"))) bLogOpen = true;
+		if (FParse::Param(FCommandLine::Get(), TEXT("SailingKeys"))) { BuildKeyRows(); bKeysOpen = true; KeysMessage = TEXT("Up / Down choose, Enter then press the new key, Backspace restores the default, Tab closes"); }
+	}
+
+	// Scripted debrief checks: -SailingGhostAt=<s> resets then sails beside the ghost of the run so far;
+	// -SailingWatchAt=<s> starts watching it.
+	{
+		static float GhostAt = -1.f, WatchAt = -1.f;
+		static bool bParsed = false;
+		if (!bParsed)
+		{
+			bParsed = true;
+			FParse::Value(FCommandLine::Get(), TEXT("SailingGhostAt="), GhostAt);
+			FParse::Value(FCommandLine::Get(), TEXT("SailingWatchAt="), WatchAt);
+		}
+		if (GhostAt > 0.f && Boat.GetState().Time >= GhostAt)
+		{
+			GhostAt = -1.f;
+			ResetBoat();
+			bGhostOn = !LastRun.IsEmpty();
+			// Start 15 m to port of the ghost; on the same autopilot course she would sail exactly inside it.
+			Sailing::FBoatState& S = Boat.GetMutableState();
+			S.Position = S.Position + S.Orientation.Rotate(Sailing::Vec3(0.0, -15.0, 0.0));
+		}
+		if (WatchAt > 0.f && Boat.GetState().Time >= WatchAt)
+		{
+			WatchAt = -1.f;
+			BeginRun(TEXT("Sail"));
+			if (!LastRun.IsEmpty()) { SetWatching(true); WatchTime = 0.5 * LastRun.Duration(); }
+		}
 	}
 
 	// Dead reckoning on the compass heading and the log (speed through the water).
 	Plot.Advance(GetHeadingTrueDeg(), Tel.SpeedThroughWater, DeltaSeconds, Boat.GetState().Time);
 	UpdateNavLights();
+	UpdateLogbook(DeltaSeconds);
+	Recording.Record(Boat);
+	UpdateGhost(DeltaSeconds);
 }
 
 Sailing::FBoatModel* ASailboatPawn::InitTraffic(int32 Type, double X, double Y, double HeadingRad)
@@ -858,11 +912,379 @@ bool ASailboatPawn::RecordBearing(const FString& Name, const FVector2D& Object)
 	B.MagneticDeg = SailingNav::NormalizeDeg(FMath::RoundToDouble(Magnetic));
 	B.Time = Now;
 	const bool bFix = Plot.AddBearing(B, Variation);
+	if (bFix) AddLogEvent(FString::Printf(TEXT("Fix by bearings (last on %s, %03.0f M); cocked hat %.0f m"), *Name, B.MagneticDeg, Plot.FixSpread));
 	StatusMessage = FString::Printf(TEXT("Bearing %03.0f M on %s%s"), B.MagneticDeg, *Name,
 		bFix ? *FString::Printf(TEXT(": fix plotted (%s from the GPS position)"), *SailingNav::FormatDistance(FVector2D::Distance(Plot.Fix, Me)))
 			: TEXT(" (take another at least 30 degrees away for a fix)"));
 	StatusUntil = Now + 4.0;
 	return true;
+}
+
+FLogEntry ASailboatPawn::MakeLogEntry(const TCHAR* Kind, const FString& Remarks) const
+{
+	FLogEntry E;
+	E.Kind = Kind;
+	E.Remarks = Remarks;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const FVector2D P = GetMapPosition();
+	if (GM)
+	{
+		E.UnixTime = GM->GetUnixTime();
+		const int32 Minutes = int32(FMath::Fmod(GM->GetLocalHour(), 24.0) * 60.0);
+		E.Clock = FString::Printf(TEXT("%02d:%02d"), Minutes / 60, Minutes % 60);
+		// The map is a local projection about the area's origin: near enough for a log's position.
+		const double Lat0 = GM->GetLake().Latitude, Lon0 = GM->GetLake().Longitude;
+		E.Latitude = Lat0 + P.X / 111320.0;
+		E.Longitude = Lon0 + P.Y / (111320.0 * FMath::Cos(FMath::DegreesToRadians(Lat0)));
+		E.HeadingMagnetic = SailingNav::TrueToMagnetic(GetHeadingTrueDeg(), GM->GetLake().VariationDeg);
+		E.WindFromDeg = SailingNav::NormalizeDeg(GM->GetWeatherState().Wind.FromDegrees);
+		E.WindKnots = T.TrueWindSpeed / kKnot;
+		E.SeaMeters = GM->GetWaves().SignificantHeight();
+	}
+	const Vec3 V = Boat.GetState().Velocity;
+	E.SpeedKnots = FMath::Sqrt(V.X * V.X + V.Y * V.Y) / kKnot;
+	E.CourseTrue = SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(V.Y, V.X)));
+	E.LogNm = LogNm;
+	return E;
+}
+
+namespace
+{
+	/** Plain words for each command (and its negative direction). */
+	FString CommandLabel(FName Action, bool bNegative)
+	{
+		static const TMap<FString, TPair<FString, FString>> Names = {
+			{ TEXT("Tiller"), { TEXT("Steer: bow to starboard"), TEXT("Steer: bow to port") } },
+			{ TEXT("MainSheet"), { TEXT("Mainsheet: ease"), TEXT("Mainsheet: trim") } },
+			{ TEXT("JibSheet"), { TEXT("Jib sheet: ease"), TEXT("Jib sheet: trim") } },
+			{ TEXT("Traveler"), { TEXT("Traveler: to leeward"), TEXT("Traveler: to windward") } },
+			{ TEXT("Hike"), { TEXT("Crew: hike out"), TEXT("Crew: move in") } },
+			{ TEXT("Vang"), { TEXT("Vang: on"), TEXT("Vang: ease") } },
+			{ TEXT("Cunningham"), { TEXT("Cunningham: on"), TEXT("Cunningham: ease") } },
+			{ TEXT("Outhaul"), { TEXT("Outhaul: on"), TEXT("Outhaul: ease") } },
+			{ TEXT("Backstay"), { TEXT("Backstay: on"), TEXT("Backstay: ease") } },
+			{ TEXT("Throttle"), { TEXT("Engine: ahead"), TEXT("Engine: astern") } },
+			{ TEXT("ThrottleSplit"), { TEXT("Twin engines: pivot to starboard"), TEXT("Twin engines: pivot to port") } },
+			{ TEXT("WingOnWing"), { TEXT("Wing-on-wing"), TEXT("") } }, { TEXT("BackJib"), { TEXT("Back the jib"), TEXT("") } },
+			{ TEXT("DockLines"), { TEXT("Dock lines"), TEXT("") } }, { TEXT("Spinnaker"), { TEXT("Spinnaker up / down"), TEXT("") } },
+			{ TEXT("Reef"), { TEXT("Reef"), TEXT("") } }, { TEXT("Board"), { TEXT("Board up / down"), TEXT("") } },
+			{ TEXT("Righting"), { TEXT("Right a capsized boat"), TEXT("") } }, { TEXT("EngineNeutral"), { TEXT("Engine to neutral"), TEXT("") } },
+			{ TEXT("ToggleLearning"), { TEXT("Learning mode"), TEXT("") } }, { TEXT("ToggleDifficulty"), { TEXT("Difficulty"), TEXT("") } },
+			{ TEXT("ToggleHud"), { TEXT("Instruments"), TEXT("") } }, { TEXT("ResetBoat"), { TEXT("Reset the boat"), TEXT("") } },
+			{ TEXT("Chart"), { TEXT("Chart"), TEXT("") } }, { TEXT("Bearing"), { TEXT("Take a bearing"), TEXT("") } },
+			{ TEXT("Gps"), { TEXT("GPS on the chart"), TEXT("") } }, { TEXT("ClearPlot"), { TEXT("Clear the plot"), TEXT("") } },
+			{ TEXT("Logbook"), { TEXT("Ship's log"), TEXT("") } }, { TEXT("Replay"), { TEXT("Watch your last run"), TEXT("") } },
+			{ TEXT("Photo"), { TEXT("Photo mode"), TEXT("") } }, { TEXT("PhotoShot"), { TEXT("Take a photo / choose"), TEXT("") } },
+			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
+		};
+		if (const TPair<FString, FString>* N = Names.Find(Action.ToString())) return bNegative && !N->Value.IsEmpty() ? N->Value : N->Key;
+		return Action.ToString();
+	}
+}
+
+void ASailboatPawn::BuildKeyRows()
+{
+	KeyRows.Reset();
+	// One row per command and direction, showing its first keyboard key (mouse and gamepad stay as they are).
+	for (const FSailingKeyBinding& B : GetDefault<USailingInputSettings>()->GetBindings())
+	{
+		if (B.Key.IsGamepadKey() || B.Key.IsMouseButton() || B.Key.IsAxis1D() || B.Key.IsAxis2D()) continue;
+		if (B.Action.ToString().StartsWith(TEXT("Menu")) && B.Action != TEXT("Menu")) continue; // arrow keys stay arrows
+		const bool bNeg = B.Scale < 0.f;
+		if (KeyRows.ContainsByPredicate([&](const FKeyRow& R) { return R.Action == B.Action && R.bNegative == bNeg; })) continue;
+		FKeyRow Row;
+		Row.Action = B.Action;
+		Row.bNegative = bNeg;
+		Row.Label = CommandLabel(B.Action, bNeg);
+		Row.Key = B.Key;
+		KeyRows.Add(Row);
+	}
+}
+
+void ASailboatPawn::PollKeyCapture()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC || !bCapturingKey || GFrameCounter <= CaptureFrame + 1) return;
+	if (PC->WasInputKeyJustPressed(EKeys::Escape))
+	{
+		bCapturingKey = false;
+		KeysMessage = TEXT("Cancelled");
+		return;
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::BackSpace))
+	{
+		// Restore this command's default key.
+		bCapturingKey = false;
+		const FKeyRow& Row = KeyRows[KeysIndex];
+		for (const FSailingKeyBinding& B : GetDefault<USailingInputSettings>()->GetDefaults())
+		{
+			if (B.Action == Row.Action && (B.Scale < 0.f) == Row.bNegative && !B.Key.IsGamepadKey() && !B.Key.IsMouseButton() && !B.Key.IsAxis1D() && !B.Key.IsAxis2D())
+			{
+				AssignKey(KeysIndex, B.Key);
+				break;
+			}
+		}
+		return;
+	}
+	TArray<FKey> All;
+	EKeys::GetAllKeys(All);
+	for (const FKey& K : All)
+	{
+		if (K.IsGamepadKey() || K.IsMouseButton() || K.IsAxis1D() || K.IsAxis2D() || K.IsTouch() || K == EKeys::Escape || K == EKeys::BackSpace) continue;
+		if (K.IsModifierKey()) continue;
+		if (PC->WasInputKeyJustPressed(K))
+		{
+			bCapturingKey = false;
+			AssignKey(KeysIndex, K);
+			return;
+		}
+	}
+}
+
+void ASailboatPawn::AssignKey(int32 Row, const FKey& Key)
+{
+	USailingInputSettings* Settings = GetMutableDefault<USailingInputSettings>();
+	if (Settings->Bindings.Num() == 0) Settings->Bindings = Settings->GetDefaults();
+	FKeyRow& Target = KeyRows[Row];
+	const FKey Old = Target.Key;
+	// If another command had this key, it takes this one's old key (a swap, so nothing is left without a key).
+	FString Swapped;
+	for (FSailingKeyBinding& B : Settings->Bindings)
+	{
+		if (B.Key == Key && !(B.Action == Target.Action && (B.Scale < 0.f) == Target.bNegative))
+		{
+			B.Key = Old;
+			Swapped = CommandLabel(B.Action, B.Scale < 0.f);
+		}
+	}
+	for (FSailingKeyBinding& B : Settings->Bindings)
+	{
+		if (B.Action == Target.Action && (B.Scale < 0.f) == Target.bNegative && B.Key == Old) { B.Key = Key; break; }
+	}
+	Settings->SaveConfig();
+	RebuildMappings();
+	BuildKeyRows();
+	KeysMessage = Swapped.IsEmpty() ? FString::Printf(TEXT("%s: %s"), *Target.Label, *Key.GetDisplayName().ToString())
+		: FString::Printf(TEXT("%s: %s (swapped: %s now %s)"), *CommandLabel(Target.Action, Target.bNegative), *Key.GetDisplayName().ToString(), *Swapped, *Old.GetDisplayName().ToString());
+}
+
+bool ASailboatPawn::Rebind(FName Action, bool bNegative, const FKey& Key)
+{
+	BuildKeyRows();
+	const int32 Row = KeyRows.IndexOfByPredicate([&](const FKeyRow& R) { return R.Action == Action && R.bNegative == bNegative; });
+	if (Row == INDEX_NONE) return false;
+	AssignKey(Row, Key);
+	return true;
+}
+
+void ASailboatPawn::RebuildMappings()
+{
+	// The same actions (bound to the same handlers), mapped to the new keys.
+	UInputMappingContext* Context = NewObject<UInputMappingContext>(this, TEXT("IMC_Sailboat_Rebound"));
+	for (const FSailingKeyBinding& Binding : GetDefault<USailingInputSettings>()->GetBindings())
+	{
+		const TObjectPtr<UInputAction>* Action = Actions.Find(Binding.Action);
+		if (!Action || !*Action) continue;
+		FEnhancedActionKeyMapping& Mapping = Context->MapKey(*Action, Binding.Key);
+		if (Binding.Scale < 0.f) Mapping.Modifiers.Add(NewObject<UInputModifierNegate>(Context));
+		if (FMath::Abs(Binding.Scale) != 1.f)
+		{
+			UInputModifierScalar* Scalar = NewObject<UInputModifierScalar>(Context);
+			Scalar->Scalar = FVector(FMath::Abs(Binding.Scale));
+			Mapping.Modifiers.Add(Scalar);
+		}
+	}
+	MappingContext = Context;
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Subsystem->ClearAllMappings();
+			Subsystem->AddMappingContext(MappingContext, 0);
+		}
+	}
+}
+
+void ASailboatPawn::BeginRun(const FString& Label)
+{
+	// The run that just ended becomes the one to replay (if there was anything to it).
+	if (Recording.Duration() > 20.0) LastRun = Recording;
+	Recording.Begin(int32(Boat.GetConfig().Type), Label, Boat.GetState().Time);
+}
+
+ASailboatPawn* ASailboatPawn::EnsureGhost()
+{
+	if (GhostBoat && GhostBoat->GetBoatModel().GetConfig().Type == EBoatType(LastRun.BoatType)) return GhostBoat;
+	if (GhostBoat) GhostBoat->Destroy();
+	GhostBoat = GetWorld()->SpawnActorDeferred<ASailboatPawn>(ASailboatPawn::StaticClass(), GetActorTransform(), nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!GhostBoat) return nullptr;
+	GhostBoat->bTrafficBoat = true;
+	GhostBoat->bGhost = true;
+	GhostBoat->AutoPossessPlayer = EAutoReceiveInput::Disabled;
+	GhostBoat->AutoPossessAI = EAutoPossessAI::Disabled;
+	GhostBoat->FinishSpawning(GetActorTransform());
+	GhostBoat->InitTraffic(LastRun.BoatType, 0.0, 0.0, 0.0);
+	GhostBoat->ApplyGhostMaterial();
+	return GhostBoat;
+}
+
+void ASailboatPawn::ApplyGhostMaterial()
+{
+	UMaterialInterface* Ghost = GhostMaterial;
+	if (!Ghost) return;
+	TInlineComponentArray<UMeshComponent*> Meshes(this);
+	for (UMeshComponent* M : Meshes)
+	{
+		M->SetCastShadow(false);
+		for (int32 I = 0; I < FMath::Max(M->GetNumMaterials(), 4); ++I) M->SetMaterial(I, Ghost);
+	}
+	for (UStaticMeshComponent* L : NavLights) if (L) L->SetVisibility(false);
+}
+
+void ASailboatPawn::SetGhostFrame(const FReplayFrame& Frame)
+{
+	FReplay::Apply(Frame, Boat);
+	ApplyStateToTransform();
+}
+
+void ASailboatPawn::AddCameraOrbit(const FVector2D& Delta, float ZoomDelta)
+{
+	CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
+	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -85.f, 20.f);
+	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	if (ZoomDelta != 0.f)
+	{
+		CameraDistance = FMath::Clamp(CameraDistance - ZoomDelta * 150.f, 400.f, 8000.f);
+		CameraBoom->TargetArmLength = CameraDistance;
+	}
+}
+
+void ASailboatPawn::UpdateGhost(float DeltaSeconds)
+{
+	if (bWatching)
+	{
+		WatchTime = FMath::Min(WatchTime + DeltaSeconds * WatchSpeed, LastRun.Duration());
+	}
+	const bool bShow = bWatching || (bGhostOn && !LastRun.IsEmpty());
+	if (!bShow)
+	{
+		if (GhostBoat) GhostBoat->SetActorHiddenInGame(true);
+		return;
+	}
+	// The ghost sails her run in step with yours (from the start of each), or at the replay's own time.
+	const double T = bWatching ? WatchTime : Boat.GetState().Time - Recording.StartTime;
+	FReplayFrame Frame;
+	ASailboatPawn* G = EnsureGhost();
+	if (!G) return;
+	if (LastRun.Sample(T, Frame))
+	{
+		G->SetGhostFrame(Frame);
+		G->SetActorHiddenInGame(false);
+	}
+	else
+	{
+		G->SetActorHiddenInGame(true);
+	}
+}
+
+void ASailboatPawn::SetWatching(bool bOn)
+{
+	bWatching = bOn;
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (bOn)
+	{
+		bPhoto = false;
+		WatchTime = 0.0;
+		WatchSpeed = 1.f;
+		UpdateGhost(0.f);
+		if (PC && GhostBoat) PC->SetViewTargetWithBlend(GhostBoat, 0.5f);
+		SetActorHiddenInGame(true); // the replay alone
+	}
+	else
+	{
+		if (PC) PC->SetViewTargetWithBlend(this, 0.5f);
+		SetActorHiddenInGame(false);
+		if (GhostBoat && !bGhostOn) GhostBoat->SetActorHiddenInGame(true);
+	}
+}
+
+void ASailboatPawn::SetPhoto(bool bOn)
+{
+	bPhoto = bOn;
+	if (bOn)
+	{
+		if (bWatching) SetWatching(false);
+		PhotoHintUntil = FPlatformTime::Seconds() + 4.0;
+	}
+	else
+	{
+		Camera->SetFieldOfView(90.f);
+		CameraPitch = FMath::Clamp(CameraPitch, -75.f, 5.f);
+		CameraDistance = FMath::Clamp(CameraDistance, 400.f, 4000.f);
+		CameraBoom->TargetArmLength = CameraDistance;
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	}
+}
+
+void ASailboatPawn::TakePhoto()
+{
+	const FString Name = FString::Printf(TEXT("Sailing %s.png"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H%M%S")));
+	const FString Path = FPaths::ProjectSavedDir() / TEXT("Photos") / Name;
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
+	FScreenshotRequest::RequestScreenshot(Path, false, false);
+	StatusMessage = FString::Printf(TEXT("Photo saved: %s"), *Name);
+	StatusUntil = Boat.GetState().Time + 3.0;
+	PhotoHintUntil = FPlatformTime::Seconds() + 2.5;
+	UE_LOG(LogSailing, Display, TEXT("Photo saved to %s"), *Path);
+}
+
+void ASailboatPawn::AddLogEvent(const FString& Remarks)
+{
+	if (bLogStarted) Logbook.Add(MakeLogEntry(TEXT("Event"), Remarks));
+}
+
+void ASailboatPawn::UpdateLogbook(float DeltaSeconds)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || Boat.GetState().Time < 1.0) return;
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	if (!bLogStarted)
+	{
+		bLogStarted = true;
+		FLaunchSpot Spot;
+		const FString From = GM->GetLaunchSpot(Spot) ? Spot.Name : FString(TEXT("open water"));
+		Logbook.Begin(ASailingGameMode::WorldDisplayName(USailingSettings::Get()->World), UTF8_TO_TCHAR(Boat.GetConfig().Name), GM->GetUnixTime(), FString());
+		Logbook.Add(MakeLogEntry(TEXT("Event"), FString::Printf(TEXT("Underway from %s in the %hs; %s"), *From, Boat.GetConfig().Name,
+			*FString(WeatherPresetName(GM->GetWeather().GetPreset())).ToLower())));
+		// Watches on the half hour of the local clock.
+		NextWatchUnix = FMath::CeilToDouble(GM->GetUnixTime() / 1800.0) * 1800.0;
+		PassageIndex = GM->GetLake().Passage.Num() > 0 ? 0 : -1;
+	}
+	LogNm += FMath::Max(0.0, T.SpeedThroughWater) * DeltaSeconds / SailingNav::MetersPerNauticalMile;
+	if (GM->GetUnixTime() >= NextWatchUnix)
+	{
+		Logbook.Add(MakeLogEntry(TEXT("Watch"), FString()));
+		NextWatchUnix += 1800.0;
+	}
+	// Things worth writing down as they happen.
+	if (T.bAground && !bWasAground) AddLogEvent(FString::Printf(TEXT("Aground in %.1f ft of water"), (T.DepthUnderKeel + Boat.GetConfig().Draft) / 0.3048));
+	if (T.bCapsized && !bWasCapsized) AddLogEvent(TEXT("Capsized"));
+	if (T.bVesselContact && !bWasTouching) AddLogEvent(TEXT("Contact with another vessel"));
+	const bool bDrillDone = DrillRunner.IsComplete();
+	if (bDrillDone && !bWasDrillComplete) AddLogEvent(FString::Printf(TEXT("Drill complete: %s"), DrillName(DrillRunner.GetDrill())));
+	bWasAground = T.bAground;
+	bWasCapsized = T.bCapsized;
+	bWasTouching = T.bVesselContact;
+	bWasDrillComplete = bDrillDone;
+	// The passage plan: mark each waypoint off as she comes within 0.2 nm of it.
+	const TArray<TPair<FString, FVector2D>>& Plan = GM->GetLake().Passage;
+	if (PassageIndex >= 0 && PassageIndex < Plan.Num() && FVector2D::Distance(GetMapPosition(), Plan[PassageIndex].Value) < 370.0)
+	{
+		AddLogEvent(FString::Printf(TEXT("Passed %s"), *Plan[PassageIndex].Key));
+		++PassageIndex;
+		if (PassageIndex == Plan.Num()) AddLogEvent(FString::Printf(TEXT("Passage complete: %.1f nm by the log"), LogNm));
+	}
 }
 
 void ASailboatPawn::UpdateNavLights()
@@ -894,6 +1316,7 @@ void ASailboatPawn::UpdateNavLights()
 
 void ASailboatPawn::StartDrill(ESailingDrill Drill)
 {
+	if (Drill != ESailingDrill::None) BeginRun(FString(DrillName(Drill)));
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (Drill == ESailingDrill::None)
 	{
@@ -1280,6 +1703,19 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		return;
 	}
 	const FVector2D Delta = Value.Get<FVector2D>().ClampAxes(-10.0, 10.0);
+	if (bWatching && GhostBoat)
+	{
+		GhostBoat->AddCameraOrbit(Delta, 0.f);
+		return;
+	}
+	if (bPhoto)
+	{
+		// Photo mode: look from anywhere, below the boom to straight down.
+		CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
+		CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -89.f, 35.f);
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+		return;
+	}
 	if (bChartOpen)
 	{
 		// The crosshair stays in the middle; the chart slides under it (mouse right = look east, up = north).
@@ -1298,6 +1734,17 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 		ChartMetersPerPixel = FMath::Clamp(ChartMetersPerPixel * FMath::Pow(0.8, double(Value.Get<float>())), 0.5, 60.0);
 		return;
 	}
+	if (bWatching && GhostBoat)
+	{
+		GhostBoat->AddCameraOrbit(FVector2D::ZeroVector, Value.Get<float>());
+		return;
+	}
+	if (bPhoto)
+	{
+		CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 200.f, 150.f, 30000.f);
+		CameraBoom->TargetArmLength = CameraDistance;
+		return;
+	}
 	CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 120.f, 400.f, 4000.f);
 	CameraBoom->TargetArmLength = CameraDistance;
 }
@@ -1305,6 +1752,50 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 {
 	USailingSettings* Settings = USailingSettings::Get();
+	if (bKeysOpen)
+	{
+		if (bCapturingKey) return; // the next key pressed is taken in Tick
+		if (Action == TEXT("Menu")) { bKeysOpen = false; bMenuOpen = true; }
+		else if (Action == TEXT("MenuUp") && KeyRows.Num()) KeysIndex = (KeysIndex + KeyRows.Num() - 1) % KeyRows.Num();
+		else if (Action == TEXT("MenuDown") && KeyRows.Num()) KeysIndex = (KeysIndex + 1) % KeyRows.Num();
+		else if (Action == TEXT("PhotoShot"))
+		{
+			bCapturingKey = true;
+			CaptureFrame = GFrameCounter; // the Enter that started it is not the new key
+			KeysMessage = FString::Printf(TEXT("Press the new key for \"%s\" (Escape cancels)"), *KeyRows[KeysIndex].Label);
+		}
+		return;
+	}
+	if (Action == TEXT("Photo"))
+	{
+		SetPhoto(!bPhoto);
+		return;
+	}
+	if (Action == TEXT("Replay"))
+	{
+		if (LastRun.IsEmpty() && !bWatching)
+		{
+			StatusMessage = TEXT("Nothing to replay yet: a run is kept when you reset, start a drill or start a race");
+			StatusUntil = Boat.GetState().Time + 4.0;
+			return;
+		}
+		SetWatching(!bWatching);
+		return;
+	}
+	if (bPhoto)
+	{
+		if (Action == TEXT("PhotoShot")) TakePhoto();
+		return;
+	}
+	if (bWatching)
+	{
+		// Scrub ten seconds at a time; play slower or faster.
+		if (Action == TEXT("MenuLeft")) WatchTime = FMath::Max(0.0, WatchTime - 10.0);
+		else if (Action == TEXT("MenuRight")) WatchTime = FMath::Min(LastRun.Duration(), WatchTime + 10.0);
+		else if (Action == TEXT("MenuUp")) WatchSpeed = FMath::Min(WatchSpeed * 2.f, 16.f);
+		else if (Action == TEXT("MenuDown")) WatchSpeed = FMath::Max(WatchSpeed * 0.5f, 0.25f);
+		return;
+	}
 	if (Action == TEXT("Menu"))
 	{
 		bMenuOpen = !bMenuOpen;
@@ -1429,6 +1920,10 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	{
 		TakeBearing();
 	}
+	else if (Action == TEXT("Logbook"))
+	{
+		bLogOpen = !bLogOpen;
+	}
 	else if (Action == TEXT("Gps"))
 	{
 		bShowGps = !bShowGps;
@@ -1497,6 +1992,7 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 		if (const FRaceRunner* R = TM->GetRace()) RaceState = R->IsOver() ? FString(TEXT("Finished (Left ends it)")) : FString(TEXT("Racing (Left ends it)"));
 	}
 	Rows.Add({ TEXT("Race against the fleet"), RaceState });
+	Rows.Add({ TEXT("Ghost of your last run"), LastRun.IsEmpty() ? FString(TEXT("(sail a run first)")) : (bGhostOn ? FString::Printf(TEXT("On: %s"), *LastRun.Label) : FString(TEXT("Off"))) });
 	const int32 Traffic = FMath::Clamp(USailingSettings::Get()->TrafficLevel, 0, 2);
 	Rows.Add({ TEXT("Traffic"), Traffic == 0 ? TEXT("None") : (Traffic == 1 ? TEXT("Light") : TEXT("Busy")) });
 	FString Launch = TEXT("Open water");
@@ -1510,11 +2006,16 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
 		const FLakeData& L = GM->GetLake();
-		Level = S->bGaugeLakeLevel ? FString::Printf(TEXT("Gauge %s: %.1f ft (%.1f ft low)"), *L.LevelDate, L.LevelFeet, L.PoolFeet - L.LevelFeet)
+		if (L.IsTidal())
+		{
+			Rows.Add({ TEXT("Water level"), FString::Printf(TEXT("Tidal: %+.1f ft above chart datum now"), GM->GetTideHeight() / 0.3048) });
+			Level.Reset();
+		}
+		else Level = S->bGaugeLakeLevel ? FString::Printf(TEXT("Gauge %s: %.1f ft (%.1f ft low)"), *L.LevelDate, L.LevelFeet, L.PoolFeet - L.LevelFeet)
 			: FString::Printf(TEXT("Full pool: %.1f ft"), L.PoolFeet);
 		if (S->bGaugeLakeLevel != (L.Terrain.GetLevelBelowPool() > 0.0)) Level += TEXT(" (next start)");
 	}
-	Rows.Add({ TEXT("Lake level"), Level });
+	if (!Level.IsEmpty()) Rows.Add({ TEXT("Lake level"), Level });
 	Rows.Add({ TEXT("Weather"), FString(WeatherPresetName(EWeatherPreset(S->WeatherPreset))) });
 	Rows.Add({ TEXT("Start time"), FString::Printf(TEXT("%02d:%02d"), int32(S->StartHour), int32(FMath::Fmod(S->StartHour, 1.f) * 60.f)) });
 	Rows.Add({ TEXT("Weather seed"), FString::FromInt(S->WeatherSeed) });
@@ -1524,6 +2025,7 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	Rows.Add({ TEXT("Learning mode"), OnOff(S->bLearningMode) });
 	Rows.Add({ TEXT("Graphics quality"), S->Quality == ESailingQuality::Low ? TEXT("Low") : (S->Quality == ESailingQuality::Medium ? TEXT("Medium") : TEXT("High")) });
 	Rows.Add({ TEXT("Volume"), FString::Printf(TEXT("%d%%"), FMath::RoundToInt(S->Volume * 100.f)) });
+	Rows.Add({ TEXT("Keys"), TEXT("Right: change your keys") });
 	return Rows;
 }
 
@@ -1545,6 +2047,20 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 			if (Direction > 0 && !TM->IsRacing()) TM->StartRace(5, 300.0);
 			else if (Direction < 0) TM->EndRace();
 		}
+		break;
+	case RowKeys:
+		if (Direction > 0)
+		{
+			BuildKeyRows();
+			bKeysOpen = true;
+			bMenuOpen = false;
+			KeysIndex = 0;
+			KeysMessage = TEXT("Up / Down choose, Enter then press the new key, Backspace restores the default, Tab closes");
+		}
+		break;
+	case RowGhost:
+		bGhostOn = !bGhostOn && !LastRun.IsEmpty();
+		if (!bGhostOn && GhostBoat) GhostBoat->SetActorHiddenInGame(true);
 		break;
 	case RowTraffic:
 		S->TrafficLevel = (S->TrafficLevel + 3 + Direction) % 3;

@@ -60,6 +60,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    traffic and race views on the packaged build (`docs/phase-6/`). Args: `-SailingTraffic=0|1|2`,
    `-SailingRace=<seconds to the start>`, `-SailingTrafficNear` (ships start close by).
 
+15. `scripts/bench-phase7.sh [seconds] [--regression]` measures the Gulf views (sea, swell, dusk, entrance, chart), the
+   logbook and the ghost on the packaged build and copies screenshots to `docs/phase-7/`; `--regression` then reruns
+   bench-phase2..6 with `NO_DOCS=1` (their screenshots are not overwritten). Phase 7 args: `-SailingWorld=Gulf|2`,
+   `-SailingSwell=<Hs m>`, `-SailingLogOpen`, `-SailingKeys`, `-SailingGhostAt=<s>`, `-SailingWatchAt=<s>`.
+   Rebake the Gulf with `Tools/coast/fetch_gulf.sh` then `Tools/venv/bin/python Tools/coast/build_galveston.py gulf`.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -96,6 +102,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 - Bake gotchas: read the DEM's georeferencing from its GeoTIFF tags (the export widens the requested box); OSM
   shoreline cells get symmetric heights so the zero contour lands on the OSM line; `FParse::Value` stops at commas
   unless you pass `false`.
+- The ocean: `FOcean` (`Ocean.h`) is a Tessendorf FFT (two 64x64 cascades, 480 m and 60 m tiles) evaluated at 30 Hz
+  and blended; `FWaveField::SetOcean` adds it to the chop, and `Bands()` feeds the boat's spectral added resistance.
+  Its mask (open sea 1, sheltered 0) comes from a fetch march toward the swell plus a depth limit. `AWaterSurface`
+  uploads the same grids (float textures) so M_Water's ocean term matches the physics. Debrief: `FReplay`
+  (`Replay.h`, 10 Hz), `FLogbook` (`Logbook.h`); the ghost is a traffic-mode pawn with `bGhost` and M_Ghost.
 - Gotchas found the hard way: wire vector parameters into Custom nodes via their RGBA output; runtime textures fed to
   a Color sampler must be sRGB (values gamma-encoded on the CPU); never call UpdateResource per frame; volumetric
   cloud shadows on the sun cost 4+ ms on this Mac (left off); the clouds' shadow rays toward a sun near the horizon

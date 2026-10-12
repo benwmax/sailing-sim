@@ -292,6 +292,8 @@ namespace Sailing
 		const FBoatState& GetState() const { return State; }
 		FBoatState& GetMutableState() { return State; }
 		const FBoatTelemetry& GetTelemetry() const { return Telemetry; }
+		/** Replays draw a recorded boat by setting her telemetry (sail shapes) directly. */
+		FBoatTelemetry& GetMutableTelemetry() { return Telemetry; }
 		const FBoatConfig& GetConfig() const { return Config; }
 		FBoatConfig& GetMutableConfig() { return Config; }
 
