@@ -6,6 +6,7 @@
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "InputActionValue.h"
+#include "Drills.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -42,8 +43,20 @@ public:
 	const Sailing::FWindField& GetWind() const;
 	bool IsTrimAssistActive() const;
 
-	/** Puts the boat back at its start, on a beam reach with a little way on. */
+	/** Puts the boat back at its start (the launch spot on the lake), with a little way on. */
 	void ResetBoat();
+
+	/** Dock lines: tie up to the nearest dock (within reach of the cleats, nearly stopped), or cast off. */
+	bool ToggleDockLines();
+	bool IsTiedUp() const { return Boat.GetMooringLines().size() > 0; }
+
+	/** Starts a learning drill (positions the boat for docking drills). */
+	void StartDrill(ESailingDrill Drill);
+	const FDrillRunner& GetDrill() const { return DrillRunner; }
+	/** A short message for the HUD (tie-up results and the like), empty when none. */
+	FString GetStatusMessage() const { return Boat.GetState().Time < StatusUntil ? StatusMessage : FString(); }
+	/** Index of the selected drill in the settings menu. */
+	ESailingDrill GetMenuDrill() const { return MenuDrill; }
 
 	/** Applies the current difficulty to the physics (helm feel, damping). */
 	void ApplyDifficulty();
@@ -96,6 +109,14 @@ private:
 	Sailing::FAutoTrim TrimAssist;
 	/** -SailingDemo: the autopilot sails close-hauled and tacks every few seconds, for recordings and the QA gate. */
 	bool bDemo = false;
+	FString StatusMessage;
+	FDrillRunner DrillRunner;
+	ESailingDrill MenuDrill = ESailingDrill::None;
+	double MaxContactKnots = 0.0;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> MarkMeshes;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> DummyMesh;
+	void UpdateDrillVisuals();
+	double StatusUntil = 0.0;
 	bool bDemoTacks = true;
 	bool bMenuOpen = false;
 	bool bControlsCard = false;

@@ -369,6 +369,81 @@ namespace Sailing
 		// Sails and windage.
 		ComputeSails(Dt, Controls, Wind, ForceBody, TorqueBody);
 
+		// Contact: the bottom (grounding), docks and bridges, dock lines.
+		Telemetry.bAground = false;
+		Telemetry.bCollision = false;
+		Telemetry.DepthUnderKeel = 100.0;
+		auto Contact = [&](const Vec3& PointWorld, const Vec3& Normal, double Penetration, double Stiffness, double Damping, double Friction)
+		{
+			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld);
+			const double Vn = Vel.Dot(Normal);
+			const double Fn = std::max(0.0, Stiffness * Penetration - Damping * Vn);
+			const Vec3 Vt = Vel - Normal * Vn;
+			const double VtLen = Vt.Length();
+			// Regularized Coulomb friction: smooth near zero slip so a grounded boat settles instead of jittering.
+			const Vec3 Ft = VtLen > 1e-6 ? Vt * (-Friction * Fn / std::max(VtLen, 0.05)) * std::min(1.0, VtLen / 0.05) : Vec3();
+			AddWorldForce(Normal * Fn + Ft, PointWorld);
+		};
+		if (Terrain && Terrain->IsValid())
+		{
+			// Keel tip (leading and trailing), rudder tip and the canoe body.
+			static const Vec3 BottomPoints[] = { Vec3(0.95, 0.0, -1.16), Vec3(0.30, 0.0, -1.16), Vec3(-3.05, 0.0, -0.95), Vec3(0.0, 0.0, -0.22), Vec3(2.6, 0.0, -0.05), Vec3(-2.0, 0.0, -0.1) };
+			for (const Vec3& B : BottomPoints)
+			{
+				const Vec3 P = Origin + Q.Rotate(B);
+				const double Ground = Terrain->HeightAt(P.X, P.Y);
+				Telemetry.DepthUnderKeel = std::min(Telemetry.DepthUnderKeel, P.Z - Ground);
+				if (P.Z < Ground)
+				{
+					// Soft lake mud: firm enough to stop the boat, with a lot of friction.
+					const double GX = (Terrain->HeightAt(P.X + 1.0, P.Y) - Terrain->HeightAt(P.X - 1.0, P.Y)) * 0.5;
+					const double GY = (Terrain->HeightAt(P.X, P.Y + 1.0) - Terrain->HeightAt(P.X, P.Y - 1.0)) * 0.5;
+					Contact(P, Vec3(-GX, -GY, 1.0).Normalized(), Ground - P.Z, 2.5e5, 3.0e4, 0.8);
+					Telemetry.bAground = true;
+				}
+			}
+		}
+		if (Obstacles && !Obstacles->empty())
+		{
+			// Hull outline at the rail and the masthead.
+			static const Vec3 HullPoints[] = { Vec3(3.4, 0.0, 0.4), Vec3(2.4, 0.75, 0.4), Vec3(2.4, -0.75, 0.4), Vec3(0.6, 1.2, 0.4), Vec3(0.6, -1.2, 0.4),
+				Vec3(-1.6, 1.15, 0.4), Vec3(-1.6, -1.15, 0.4), Vec3(-3.35, 0.95, 0.4), Vec3(-3.35, -0.95, 0.4), Vec3(-3.4, 0.0, 0.4), Vec3(1.0, 0.0, 9.2) };
+			for (const Vec3& HP : HullPoints)
+			{
+				const Vec3 P = Origin + Q.Rotate(HP);
+				for (const FObstacleSegment& S : *Obstacles)
+				{
+					if (P.Z < S.Bottom || P.Z > S.Top) continue;
+					const double SX = S.BX - S.AX, SY = S.BY - S.AY;
+					const double Len2 = SX * SX + SY * SY;
+					const double T = Len2 > 1e-9 ? Clamp(((P.X - S.AX) * SX + (P.Y - S.AY) * SY) / Len2, 0.0, 1.0) : 0.0;
+					const double CX = S.AX + SX * T, CY = S.AY + SY * T;
+					const double DX = P.X - CX, DY = P.Y - CY;
+					const double Dist = std::sqrt(DX * DX + DY * DY);
+					const double Pen = S.Radius + 0.1 - Dist;
+					if (Pen > 0.0 && Dist > 1e-6)
+					{
+						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5, 2.0e4, 0.3);
+						Telemetry.bCollision = true;
+					}
+				}
+			}
+		}
+		for (const FMooringLine& Line : Mooring)
+		{
+			const Vec3 P = Origin + Q.Rotate(Line.BodyPoint);
+			const Vec3 D = Line.Anchor - P;
+			const double Dist = D.Length();
+			if (Dist > Line.Length && Dist > 1e-6)
+			{
+				const Vec3 Dir = D / Dist;
+				const Vec3 Vel = State.Velocity + OmegaWorld.Cross(P - CGWorld);
+				// Nylon dock line: stretchy, with damping only while it is being pulled tighter.
+				const double Tension = 6000.0 * (Dist - Line.Length) + 1500.0 * std::max(0.0, -Vel.Dot(Dir));
+				AddWorldForce(Dir * Tension, P);
+			}
+		}
+
 		// Combine and integrate (semi-implicit Euler). Added mass and inertia act along body axes.
 		ForceWorld += Q.Rotate(ForceBody);
 		const Vec3 TorqueTotalBody = Q.Unrotate(TorqueWorld) + TorqueBody;
@@ -471,8 +546,23 @@ namespace Sailing
 		};
 		UpdateSide(State.MainSide, MainAWA);
 		UpdateSide(State.JibSide, JibAWA);
+		// Backing the jib: hold it out on the windward side (heaving to, pushing the bow off when in irons).
+		// The sheet holds it on the side it was backed on (the windward side at that moment), whatever the boat does next.
+		const bool bBacked = Controls.bBackJib;
+		if (bBacked)
+		{
+			if (State.BackedJibSide == 0)
+			{
+				State.BackedJibSide = JibAWA > 0.0 ? 1 : -1; // wind from starboard: jib held to starboard (windward)
+			}
+			State.JibSide = State.BackedJibSide;
+		}
+		else
+		{
+			State.BackedJibSide = 0;
+		}
 		// Wing-on-wing: deep enough downwind, the jib can be held out on the side opposite the main.
-		const bool bWing = Controls.bWingOnWing && std::fabs(JibAWA) > 150.0 * kDegToRad;
+		const bool bWing = !Controls.bBackJib && Controls.bWingOnWing && std::fabs(JibAWA) > 150.0 * kDegToRad;
 		if (bWing)
 		{
 			State.JibSide = -State.MainSide;
@@ -505,7 +595,8 @@ namespace Sailing
 		};
 
 		// The sheet limits how far the sail can go out; the wind pushes it out to that limit or until it
-		// lines up with the flow and luffs.
+		// lines up with the flow and luffs. A free sail weathervanes until even its foot (the least twisted part)
+		// luffs, so a fully eased sail flogs instead of quietly driving from its lower panels.
 		auto NaturalAngle = [&](double AWA, double MeanTwist, double LuffAlpha)
 		{
 			return std::fabs(AWA) - MeanTwist - LuffAlpha + 2.0 * kDegToRad;
@@ -515,9 +606,9 @@ namespace Sailing
 		const double TravelerAngle = Clamp(Controls.Traveler, -1.0, 1.0) * 8.0 * kDegToRad;
 		const double MainLimit = std::max(TravelerAngle + MainSheet * 85.0 * kDegToRad, -4.0 * kDegToRad);
 		const double JibLimit = (8.0 + JibSheet * 72.0) * kDegToRad;
-		const double MainTarget = Clamp(std::min(MainLimit, NaturalAngle(MainAWA, 0.5 * MainTwist, MainLuff)), -4.0 * kDegToRad, 85.0 * kDegToRad);
-		const double JibTarget = bWing ? std::min(JibLimit, 80.0 * kDegToRad)
-			: Clamp(std::min(JibLimit, NaturalAngle(JibAWA, 0.5 * JibTwist, JibLuff)), 0.0, 80.0 * kDegToRad);
+		const double MainTarget = Clamp(std::min(MainLimit, NaturalAngle(MainAWA, 0.0, MainLuff)), -4.0 * kDegToRad, 85.0 * kDegToRad);
+		const double JibTarget = (bWing || bBacked) ? std::min(JibLimit, 80.0 * kDegToRad)
+			: Clamp(std::min(JibLimit, NaturalAngle(JibAWA, 0.0, JibLuff)), 0.0, 80.0 * kDegToRad);
 
 		State.BoomAngle = MoveToward(State.BoomAngle, State.MainSide * MainTarget, 150.0 * kDegToRad * Dt);
 		State.JibAngle = MoveToward(State.JibAngle, State.JibSide * JibTarget, 200.0 * kDegToRad * Dt);

@@ -1,0 +1,7 @@
+view,quality,avg_fps,p99_ms,resolution
+marina,Low,119.0,8.51,1440x1080
+marina,Medium,82.4,13.89,1440x1080
+marina,High,50.7,21.52,1440x1080
+bridge,Medium,78.6,13.67,1440x1080
+wide,Medium,81.2,13.48,1440x1080
+sailing,Medium,70.9,15.37,1440x1080

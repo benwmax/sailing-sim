@@ -27,8 +27,10 @@ def spawn(cls, location=(0, 0, 0), rotation=(0, 0, 0), label=None):
 
 water = spawn(unreal.load_class(None, "/Script/SailingSim.WaterSurface"), label="Water")
 spawn(unreal.load_class(None, "/Script/SailingSim.SailingEnvironment"), label="Environment")
+# Lake Ray Hubbard terrain, trees, buildings, bridges and docks (from Content/TerrainData, baked by Tools/terrain).
+spawn(unreal.load_class(None, "/Script/SailingSim.LakeTerrainActor"), label="LakeTerrain")
 
-# Afternoon sun from the southwest, typical of a Texas summer sea breeze day.
+# Sun (the environment actor moves it with the time of day).
 sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-35, 225, 0), "Sun")
 sun_light = sun.get_component_by_class(unreal.DirectionalLightComponent)
 sun_light.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)

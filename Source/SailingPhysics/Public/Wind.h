@@ -58,6 +58,8 @@ namespace Sailing
 		void SetParamsAt(const FWindParams& InParams, double T);
 
 		void SetFront(const FGustFront& InFront) { Front = InFront; }
+		/** Lee of land and trees (optional): slows and roughens the wind near the shore. */
+		void SetShelter(const class FShelterMap* InShelter) { Shelter = InShelter; }
 		const FGustFront& GetFront() const { return Front; }
 
 		/**
@@ -91,6 +93,7 @@ namespace Sailing
 		double AdvectionOffset = 0.0; // m the gust pattern had travelled at AdvectionTime
 		double AdvectionTime = 0.0;
 		FGustFront Front;
+		const class FShelterMap* Shelter = nullptr;
 
 		double Advected(double TimeSeconds) const { return AdvectionOffset + MeanSpeed10 * (TimeSeconds - AdvectionTime); }
 	};

@@ -1,4 +1,5 @@
 #include "Wind.h"
+#include "LakeTerrain.h"
 
 namespace Sailing
 {
@@ -86,6 +87,17 @@ namespace Sailing
 		const double C = std::cos(Shift), S = std::sin(Shift);
 		const Vec3 Dir(DownwindDir.X * C - DownwindDir.Y * S, DownwindDir.X * S + DownwindDir.Y * C, 0.0);
 		Vec3 Wind = Dir * Speed;
+		if (Shelter)
+		{
+			// In the lee of a point or treeline: less wind, and what is left is gustier.
+			const double F = Shelter->FactorAt(WorldPos.X, WorldPos.Y);
+			if (F < 0.999)
+			{
+				const double Along = WorldPos.Dot(DownwindDir) - Advected(TimeSeconds);
+				const double Turbulence = 1.0 + (1.0 - F) * 0.8 * Noise(Along / 60.0 * 2.0 * kPi, 1);
+				Wind *= F * std::max(0.3, Turbulence);
+			}
+		}
 
 		if (Front.bActive && TimeSeconds >= Front.StartTime)
 		{

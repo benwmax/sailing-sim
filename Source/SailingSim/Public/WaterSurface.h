@@ -37,7 +37,7 @@ public:
 	void SetBoatForWake(const FVector2D& PositionM, float HeadingRad, float SpeedMs, float HeelRad);
 
 	UPROPERTY(EditAnywhere, Category = "Water")
-	float FarPlaneSizeMeters = 20000.f;
+	float FarPlaneSizeMeters = 40000.f;
 
 private:
 	void BuildRings();
