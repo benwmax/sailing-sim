@@ -15,6 +15,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "ProceduralMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
+#include "CrewPose.h"
 
 using namespace Sailing;
 
@@ -260,4 +262,95 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WaterZ"), float(WetLineZ));
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WetBand"), Band);
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("DeckWet"), DeckWetness);
+}
+
+void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
+{
+	// Visual V3: each sailor's stance and place from the physics crew model (CrewPose.h), blended over a fraction of a
+	// second so a tack or a hike reads as movement, not a cut.
+	const FBoatState& S = Boat.GetState();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const FBoatConfig& Cfg = Boat.GetConfig();
+	const FHullShape& Hull = Cfg.Hulls[0];
+	const int32 N = Crew.Num();
+	const double Rate = DeltaSeconds > 1e-4f ? (S.CrewOffset - PrevCrewOffset) / DeltaSeconds : 0.0;
+	PrevCrewOffset = S.CrewOffset;
+	const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
+	const float Side = S.CrewOffset != 0.0 ? float(FMath::Sign(S.CrewOffset)) : float(S.WindwardSide);
+	const double Out = FMath::Abs(S.CrewOffset);
+	const float Blend = 1.f - FMath::Exp(-DeltaSeconds * 7.f);
+	for (int32 I = 0; I < N && I < CrewFigures.Num(); ++I)
+	{
+		const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I);
+		const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
+		const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
+		const bool bHelm = I == N - 1;
+		FCrewPoseParams P;
+		P.Side = Side;
+		P.Hike = float(FMath::Clamp((Out - Cfg.CrewSitOut * 0.8) / FMath::Max(Cfg.CrewHikeOut, 0.1), 0.0, 1.0));
+		FVector Pelvis;
+		float Roll = 0.f;
+		if (T.bCapsized && Controls.bRighting)
+		{
+			P.Stance = ECrewStance::Righting;
+			Pelvis = FVector(X, S.CrewOffset, Sheer + 0.45 + S.CrewOffsetZ);
+		}
+		else if (Cfg.bTrapeze && !bHelm && Out > Rail)
+		{
+			// On the wire: feet on the rail, body out over the water.
+			P.Stance = ECrewStance::Trapeze;
+			Pelvis = FVector(X, Side * (Rail + 0.8), Sheer + 0.35);
+			Roll = 72.f * Side;
+		}
+		else if (FMath::Abs(Rate) > 0.6)
+		{
+			P.Stance = ECrewStance::Crossing;
+			P.Side = -float(FMath::Sign(Rate)); // facing the side they are heading for
+			Pelvis = FVector(X, S.CrewOffset, Sheer + (bDinghy ? 0.25 : 0.05));
+		}
+		else if (bDinghy)
+		{
+			P.Stance = ECrewStance::DinghyHike;
+			Pelvis = FVector(X, Side * (Rail - 0.04), Sheer + 0.06);
+		}
+		else if (bHelm)
+		{
+			P.Stance = ECrewStance::Helm;
+			Pelvis = FVector(X, Side * FMath::Max(Rail - 0.18, 0.3), Sheer + 0.07);
+		}
+		else if (Out > 0.55 * Rail)
+		{
+			P.Stance = ECrewStance::RailHike;
+			Pelvis = FVector(X, Side * (Rail - 0.02), Sheer + 0.07);
+		}
+		else
+		{
+			// Light air or downwind: on the cockpit seat (to leeward if the crew model put them there).
+			P.Stance = ECrewStance::Cockpit;
+			Pelvis = FVector(X, Side * FMath::Clamp(Out, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
+		}
+		TMap<FName, FQuat> Target;
+		CrewJointRotations(P, Target);
+		FCrewFigure& F = CrewFigures[I];
+		const FVector Location = Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f); // the sailor's pelvis is 93 cm above the feet
+		const float Yaw = CrewFacingYaw(P);
+		if (!F.bStarted)
+		{
+			F.Joints = Target;
+			F.Location = Location;
+			F.Yaw = Yaw;
+			F.Roll = Roll;
+			F.bStarted = true;
+		}
+		else
+		{
+			for (TPair<FName, FQuat>& J : F.Joints) J.Value = FQuat::Slerp(J.Value, Target.Contains(J.Key) ? Target[J.Key] : FQuat::Identity, Blend);
+			for (const TPair<FName, FQuat>& J : Target) if (!F.Joints.Contains(J.Key)) F.Joints.Add(J.Key, FQuat::Slerp(FQuat::Identity, J.Value, Blend));
+			F.Location = FMath::Lerp(F.Location, Location, Blend);
+			F.Yaw = F.Yaw + FMath::FindDeltaAngleDegrees(F.Yaw, Yaw) * Blend;
+			F.Roll = FMath::Lerp(F.Roll, Roll, Blend);
+		}
+		Crew[I]->SetRelativeLocationAndRotation(F.Location, FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
+		ApplyCrewPose(Crew[I], F.Joints);
+	}
 }

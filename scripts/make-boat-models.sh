@@ -16,6 +16,9 @@ BLENDER="${BLENDER:-$(command -v blender || echo /Applications/Blender.app/Conte
 "$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_j22.py" -- "$MODELS/j22.json" "$MODELS" > "$ARTIFACTS/blender-j22.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/blender-j22.log"; exit 1; }
 grep -E "^J22:" "$ARTIFACTS/blender-j22.log" || true
+"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_crew.py" -- "$MODELS" > "$ARTIFACTS/blender-crew.log" 2>&1 \
+	|| { tail -30 "$ARTIFACTS/blender-crew.log"; exit 1; }
+grep -E "^Crew:" "$ARTIFACTS/blender-crew.log" || true
 [[ "${1:-}" == "--no-import" ]] && exit 0
 "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_boats.py" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import-boats.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/import-boats.log"; exit 1; }

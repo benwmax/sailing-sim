@@ -1,0 +1,13 @@
+scene,boat_before,boat_after,sails_before,sails_after,light_before,light_after,water_before,water_after,sky_before,sky_after,notes
+j22-heavy-chase,3,2,3,2,2,2,2,2,2,2,"Sails now carry crosscut seams, batten pockets, the J/22 insignia and the sail number, shaped from the physics strips; the crew sit on the rail as proportioned sailors in jackets, PFDs and caps."
+j22-light-chase,3,2,3,2,2,2,2,2,2,2,"Light-air sail shape and the crew sitting in, read naturally from the chase boat."
+j22-moderate-chase,3,2,3,2,2,2,2,2,2,2,Main and jib with seams and battens; crew hiking on the rail.
+j22-helm-reservoir,2,2,3,2,2,2,2,2,2,2,No crew in frame; the jib's seams and telltales show from the helm.
+j22-actioncam-lake,3,3,3,2,2,2,2,2,2,2,"The crew replace the cylinders and sit and steer in the right places, but close up they are stylised mannequins (no faces or hands detail): boat 3 here."
+rh-drone-cat,4,4,3,3,2,2,1,1,2,2,The Lagoon's crew from above read as people; hull still procedural (V7).
+rh-c30-evening,4,4,3,2,2,2,2,2,2,2,Crew in the cockpit; hull still procedural (V7).
+storm-lake,3,2,4,3,3,3,2,2,3,3,Small in frame; sails and crew read right in silhouette.
+squall-lake,3,3,4,3,3,3,2,2,3,3,Crew in silhouette; sky unchanged (V5).
+gulf-passage,4,4,3,2,2,2,3,3,2,2,Crew beside the helm view; hull still procedural (V7).
+bay-hobie,4,3,3,3,2,2,2,2,2,2,"The Hobie's crew on the trampoline, close to the lens: stylised mannequin, boat 3."
+sunfish-reach,4,3,3,3,2,2,2,2,2,2,"The Sunfish sailor hiking from the straps, close to the lens: stylised, boat 3."

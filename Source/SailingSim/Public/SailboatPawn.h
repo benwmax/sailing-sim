@@ -10,6 +10,7 @@
 #include "Navigation.h"
 #include "Logbook.h"
 #include "Replay.h"
+#include "SailCloth.h"
 #include "ReferenceCapture.h"
 #include "SailboatPawn.generated.h"
 
@@ -183,6 +184,14 @@ private:
 	void ApplyStateToTransform();
 	void UpdateRigVisuals(float DeltaSeconds);
 	void BuildSailMesh(UProceduralMeshComponent* Mesh, const Sailing::FSailGeometry& Geo, const Sailing::FSailStripState* Strips, int32 Side, bool bMain);
+	// Visual V3: the sails as cloth (SailCloth.h) and the telltales as ribbons.
+	void UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& Cloth, const Sailing::FSailGeometry& Geo, ESailKind Kind,
+		const Sailing::FSailStripState* Strips, int32 Side, float DeltaSeconds);
+	void UpdateTelltaleRibbons();
+public:
+	/** Seconds spent simulating sail cloth, all boats, since the game started (the bench reports it per frame). */
+	static double ClothCpuSeconds;
+private:
 	void UpdateTelltales();
 	void CreateInput();
 	void ApplyHeldInputs(float DeltaSeconds);
@@ -273,6 +282,21 @@ private:
 	UPROPERTY() TObjectPtr<UStaticMesh> J22BoomMesh;
 	UPROPERTY() TObjectPtr<UStaticMesh> J22RudderMesh;
 	UPROPERTY() TObjectPtr<UMaterialInterface> RopeMaterial;
+	UPROPERTY() TObjectPtr<class USkeletalMesh> SailorMesh;
+	UPROPERTY() TMap<FName, TObjectPtr<UMaterialInterface>> CrewMaterials; // slot name -> MI_Boat_Crew<slot>
+	// Visual V3: the crew's posed state, blended toward each frame's stance (CrewPose.h).
+	struct FCrewFigure { TMap<FName, FQuat> Joints; FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; };
+	TArray<FCrewFigure> CrewFigures;
+	double PrevCrewOffset = 0.0;
+	void UpdateCrewFigures(float DeltaSeconds);
+	UPROPERTY() TObjectPtr<UMaterialInterface> SailMainMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> SailJibMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> SailSpinMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> TelltaleMaterial;
+	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> TelltaleRibbons;
+	FSailCloth MainCloth, JibCloth, SpinCloth;
+	double ClothMainHeadZ = -1.0;  // re-init the main's cloth when a reef changes it
+	bool bTelltalesBuilt = false;
 	UPROPERTY() TObjectPtr<UMaterialInterface> WireMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> CarMaterial;
 	UPROPERTY() TObjectPtr<class UMaterialParameterCollection> BoatParameters;
@@ -321,7 +345,7 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> RudderPivots;  // one per rudder
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
-	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Crew;
+	UPROPERTY(Transient) TArray<TObjectPtr<class UPoseableMeshComponent>> Crew;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibTelltales;  // windward/leeward pairs at three heights
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> LeechTelltales; // main leech, three heights
 

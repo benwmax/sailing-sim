@@ -33,6 +33,8 @@
 #include "HAL/IConsoleManager.h"
 #include "Misc/FileHelper.h"
 #include "Materials/MaterialParameterCollection.h"
+#include "Components/PoseableMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 
 using namespace Sailing;
 
@@ -169,6 +171,25 @@ ASailboatPawn::ASailboatPawn()
 	WireMaterial = Wire.Object;
 	CarMaterial = Car.Object;
 	BoatParameters = BoatMpc.Object;
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> Sailor(TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
+	SailorMesh = Sailor.Object;
+	for (const TCHAR* Slot : { TEXT("Jacket"), TEXT("PFD"), TEXT("Trousers"), TEXT("Boots"), TEXT("Skin"), TEXT("Cap"), TEXT("Glasses") })
+	{
+		ConstructorHelpers::FObjectFinder<UMaterialInterface> Mat(*FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_Crew%s.MI_Boat_Crew%s"), Slot, Slot));
+		if (Mat.Succeeded()) CrewMaterials.Add(Slot, Mat.Object);
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SailMain(TEXT("/Game/Materials/MI_Sail_Main.MI_Sail_Main"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SailJib(TEXT("/Game/Materials/MI_Sail_Jib.MI_Sail_Jib"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SailSpin(TEXT("/Game/Materials/MI_Sail_Spinnaker.MI_Sail_Spinnaker"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Telltale(TEXT("/Game/Materials/M_Telltale.M_Telltale"));
+	SailMainMaterial = SailMain.Object;
+	SailJibMaterial = SailJib.Object;
+	SailSpinMaterial = SailSpin.Object;
+	TelltaleMaterial = Telltale.Object;
+	TelltaleRibbons = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("TelltaleRibbons"));
+	TelltaleRibbons->SetupAttachment(BoatRoot);
+	TelltaleRibbons->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TelltaleRibbons->SetCastShadow(false);
 	RigLines = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RigLines"));
 	RigLines->SetupAttachment(BoatRoot);
 	RigLines->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -467,14 +488,45 @@ void ASailboatPawn::RebuildBoatVisuals()
 		}
 	}
 
-	// Crew.
-	for (int32 I = 0; I < C.CrewCount; ++I)
+	// Crew (Visual V3): posed sailors in foul-weather jackets of their own colours (CrewPose.h).
+	CrewFigures.Reset();
+	static const FLinearColor Jackets[] = { FLinearColor(0.45f, 0.03f, 0.03f), FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.55f, 0.42f, 0.02f), FLinearColor(0.12f, 0.13f, 0.14f) };
+	for (int32 I = 0; I < C.CrewCount && SailorMesh; ++I)
 	{
-		Crew.Add(AddBoatPart(CylinderMesh, FVector::ZeroVector, FVector(40.f, 40.f, 110.f), FLinearColor(0.95f, 0.75f, 0.10f)));
+		UPoseableMeshComponent* Figure = NewObject<UPoseableMeshComponent>(this);
+		Figure->SetupAttachment(BoatRoot);
+		Figure->SetSkinnedAssetAndUpdate(SailorMesh);
+		Figure->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Figure->RegisterComponent();
+		for (const TPair<FName, TObjectPtr<UMaterialInterface>>& M : CrewMaterials) Figure->SetMaterialByName(M.Key, M.Value);
+		const int32 JacketSlot = Figure->GetMaterialIndex(TEXT("Jacket"));
+		if (JacketSlot >= 0)
+		{
+			if (UMaterialInstanceDynamic* Mid = Figure->CreateDynamicMaterialInstance(JacketSlot))
+			{
+				Mid->SetVectorParameterValue(TEXT("Color"), Jackets[(I + int32(C.Type)) % UE_ARRAY_COUNT(Jackets)]);
+			}
+		}
+		BoatParts.Add(Figure);
+		Crew.Add(Figure);
+		CrewFigures.AddDefaulted();
 	}
 
-	// Telltales on the jib only when there is one.
-	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(C.HasJib());
+	// Sails as cloth (Visual V3); the telltales are ribbons drawn from it (the old cube telltales stay hidden).
+	MainCloth.Init(C.Main, ESailKind::Main);
+	JibCloth.Init(C.Jib, ESailKind::Jib);
+	SpinCloth.Init(C.Spinnaker, ESailKind::Spinnaker);
+	ClothMainHeadZ = C.Main.NumStrips > 0 ? C.Main.Strips[C.Main.NumStrips - 1].ZTop : -1.0;
+	TelltaleRibbons->ClearAllMeshSections();
+	bTelltalesBuilt = false;
+	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(false);
+	for (UStaticMeshComponent* T : LeechTelltales) T->SetVisibility(false);
+	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0)))
+	{
+		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : 0.f);       // class insignia and number
+		Mid->SetScalarParameterValue(TEXT("Battens"), C.Type == EBoatType::Sunfish ? 0.f : 1.f); // the lateen has none
+		Mid->SetScalarParameterValue(TEXT("Height"), C.Main.NumStrips > 0 ? float(C.Main.Strips[C.Main.NumStrips - 1].ZTop - C.Main.Strips[0].ZBottom) : 1.f);
+	}
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
 	MainSail->ClearAllMeshSections();
@@ -571,14 +623,13 @@ void ASailboatPawn::BeginPlay()
 			Mid->SetVectorParameterValue(TEXT("Color"), Color);
 		}
 	}
-	UMaterialInterface* SailMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Sail.M_Sail"));
-	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get(), SpinSail.Get() })
-	{
-		UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(SailMaterial ? SailMaterial : ShapeMaterial.Get(), this);
-		// The spinnaker in the classic red, white and blue; working sails in white Dacron.
-		Mid->SetVectorParameterValue(TEXT("Color"), Sail == SpinSail ? FLinearColor(0.85f, 0.12f, 0.12f) : FLinearColor(0.96f, 0.95f, 0.92f));
-		Sail->SetMaterial(0, Mid);
-	}
+	// Visual V3: Dacron cloth with seams, batten pockets and (on the J/22's main) the class insignia and sail number;
+	// a red nylon spinnaker. Set per boat in RebuildBoatVisuals.
+	MainSail->SetMaterial(0, UMaterialInstanceDynamic::Create(SailMainMaterial ? SailMainMaterial.Get() : ShapeMaterial.Get(), this));
+	JibSail->SetMaterial(0, UMaterialInstanceDynamic::Create(SailJibMaterial ? SailJibMaterial.Get() : ShapeMaterial.Get(), this));
+	SpinSail->SetMaterial(0, UMaterialInstanceDynamic::Create(SailSpinMaterial ? SailSpinMaterial.Get() : ShapeMaterial.Get(), this));
+	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(false);
+	for (UStaticMeshComponent* T : LeechTelltales) T->SetVisibility(false);
 
 	if (bTrafficBoat)
 	{
@@ -688,6 +739,8 @@ void ASailboatPawn::ResetBoat()
 	Controls = FBoatControls();
 	Controls.MainSheet = 0.45;
 	Controls.JibSheet = 0.45;
+	// -SailingSpinnaker: start with it up, whenever the boat is (re)started.
+	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 	int32 ReefArg = 0;
 	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingReef="), ReefArg))
 	{
@@ -1421,6 +1474,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		}
 		Controls = FBoatControls();
 		Controls.MainSheet = Controls.JibSheet = 0.6;
+		if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 		ApplyStateToTransform();
 	}
 	MaxContactKnots = 0.0;
@@ -1531,37 +1585,30 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
-	// Crew: along the cockpit at the windward rail, leaning out to hike; flat out on the wire on a trapeze;
-	// standing on the board (or leaning back on the righting line) when righting a capsized boat.
 	const FBoatConfig& Cfg = Boat.GetConfig();
-	const FHullShape& MainHull = Cfg.Hulls[0];
-	const double Sit = Cfg.bMultihull ? MainHull.SheerZ + 0.1 : MainHull.SheerHeight(Cfg.CrewCG.X);
-	for (int32 I = 0; I < Crew.Num(); ++I)
-	{
-		const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (Crew.Num() - 1) - I);
-		const double Out = FMath::Abs(S.CrewOffset);
-		const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : 0.5 * Cfg.Beam;
-		const bool bOnWire = Cfg.bTrapeze && Out > Rail;
-		float Lean = FMath::Clamp(float(Out - 0.6 * Rail) / 0.5f, 0.f, 1.f) * 35.f;
-		double Z = Sit + 0.45 + S.CrewOffsetZ;
-		if (bOnWire)
-		{
-			Lean = 75.f; // feet on the rail, body out over the water
-			Z = Sit + 0.75;
-		}
-		Crew[I]->SetRelativeLocation(ToCm(X, S.CrewOffset, Z));
-		Crew[I]->SetRelativeRotation(FRotator(0.f, 0.f, Lean * FMath::Sign(S.CrewOffset)));
-	}
+	UpdateCrewFigures(DeltaSeconds);
 
 	if (ModelHull)
 	{
 		UpdateModelRig(DeltaSeconds);
 	}
-	BuildSailMesh(MainSail, Cfg.Main, T.MainStrips, S.MainSide, true);
-	if (Cfg.HasJib()) BuildSailMesh(JibSail, Cfg.Jib, T.JibStrips, S.JibSide, false);
+	// A reef changes the main's planform: rebuild its cloth.
+	const double MainHead = Cfg.Main.NumStrips > 0 ? Cfg.Main.Strips[Cfg.Main.NumStrips - 1].ZTop : -1.0;
+	if (MainHead != ClothMainHeadZ)
+	{
+		MainCloth.Init(Cfg.Main, ESailKind::Main);
+		ClothMainHeadZ = MainHead;
+		MainSail->ClearAllMeshSections();
+	}
+	UpdateSailCloth(MainSail, MainCloth, Cfg.Main, ESailKind::Main, T.MainStrips, S.MainSide, DeltaSeconds);
+	if (Cfg.HasJib())
+	{
+		UpdateSailCloth(JibSail, JibCloth, Cfg.Jib, ESailKind::Jib, T.JibStrips, S.JibSide, DeltaSeconds);
+		JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
+	}
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
-	if (T.NumSpinStrips > 0) BuildSailMesh(SpinSail, Cfg.Spinnaker, T.SpinStrips, S.SpinSide, false);
-	UpdateTelltales();
+	if (T.NumSpinStrips > 0) UpdateSailCloth(SpinSail, SpinCloth, Cfg.Spinnaker, ESailKind::Spinnaker, T.SpinStrips, S.SpinSide, DeltaSeconds);
+	UpdateTelltaleRibbons();
 	if (ModelHull)
 	{
 		UpdateBoatWetness(DeltaSeconds);
