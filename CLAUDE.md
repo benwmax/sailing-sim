@@ -84,6 +84,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `-SailingLumenHW=0|1`, `-SailingGI=<scalability level>`. `scripts/make_before_after_page.py <phase>` builds the
    before/after compare page from `docs/<phase>/compare/scores.csv`.
 
+17. Boat models (Visual V2): `scripts/make-boat-models.sh` exports the physics geometry (`Tools/BoatExport`, standalone
+   C++), builds the model in Blender headless (`Tools/blender/build_j22.py`; `brew install --cask blender`) and imports
+   it into `/Game/Boats/J22` with Nanite, the `MI_Boat_*` materials and the rig sockets (`scripts/import_boats.py`).
+   Run `scripts/make-content.sh` first (it builds `M_BoatSurface`, `M_BoatMast`, the `MI_Boat_*` library and
+   `MPC_Boat`). Edit the Blender script, never the assets; `SailingSim.Visual.J22Mesh` holds the model to the physics
+   (length, beam, draft, centre of buoyancy within 2 cm).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -135,6 +142,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   High GI scalability, not Epic's (5.5 ms at native). Virtual shadow maps cost about 2 ms on Medium and 4 ms on High
   until the scene has Nanite meshes. Exposure on Medium and High follows the light (incident meter), not the frame;
   `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun.
+- Boat models: below the waterline the J/22 model is the physics hull surface itself (`FHullShape` at the computed canoe
+  depth), so a hull shape change in the physics means rerunning `make-boat-models.sh`. `ASailboatPawn::ModelMeshesFor`
+  picks a class's meshes (only the J/22 so far); the rig lines, traveler car, mast bend and wet line are in
+  `BoatModelVisuals.cpp`. `MI_Boat_*` instances are updated in place, never deleted (the meshes reference them).
+  `line` is a reserved word in HLSL custom nodes; Substrate's slab wants a tangent-space normal (the meshes carry
+  box-projected UVs for their tangent frame).
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

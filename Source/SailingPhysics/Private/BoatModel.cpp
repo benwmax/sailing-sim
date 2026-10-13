@@ -266,6 +266,21 @@ namespace Sailing
 		}
 	}
 
+	Vec3 FBoatModel::DesignBuoyancyCentre() const
+	{
+		// The same columns the hydrostatics use, each cut at the design waterline (body Z = 0).
+		double V = 0.0;
+		Vec3 M;
+		for (const FColumn& C : Columns)
+		{
+			if (C.ZBottom >= 0.0) continue;
+			const double Vol = -C.ZBottom * C.Area;
+			V += Vol;
+			M += Vec3(C.X, C.Y, 0.5 * C.ZBottom) * Vol;
+		}
+		return V > 0.0 ? M * (1.0 / V) : Vec3();
+	}
+
 	void FBoatModel::BuildContactPoints()
 	{
 		BottomPoints.clear();

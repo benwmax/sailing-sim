@@ -3,7 +3,7 @@
 privacy-enhanced embed from its timestamp; no frames are copied), the game before (docs/phase-8/captures) and after
 (docs/<phase>/captures), and the 1 (same) to 5 (obviously wrong) scores before and after from <phase>/compare/scores.csv
 (columns scene, then <category>_before and <category>_after, then notes).
-Usage: python3 scripts/make_before_after_page.py visual-1 "Visual V1: rendering pipeline\""""
+Usage: python3 scripts/make_before_after_page.py visual-2 "Visual V2: the J/22 model" visual-1   (the last argument: the before phase)"""
 import csv, html, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,7 +15,7 @@ def video_id(url):
     return m.group(1) if m else ""
 
 
-def main(phase, title):
+def main(phase, title, before="phase-8"):
     scenes = list(csv.DictReader(open(os.path.join(DOCS, "phase-8", "reference-scenes.csv"))))
     rows = list(csv.DictReader(open(os.path.join(DOCS, phase, "compare", "scores.csv"))))
     scores = {r["scene"]: r for r in rows}
@@ -37,7 +37,7 @@ def main(phase, title):
   <div class="trio">
     <figure><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/{video_id(s['url'])}?start={start}&rel=0" title="{html.escape(s['reference_id'])}"
       allow="encrypted-media; picture-in-picture" allowfullscreen></iframe><figcaption>Reference, from {start} s · <a href="{html.escape(s['url'])}&t={start}s">YouTube</a></figcaption></figure>
-    <figure><a href="../../phase-8/captures/{name}.png"><img loading="lazy" src="../../phase-8/captures/{name}.png" alt="before"></a><figcaption>Before (Phase 8)</figcaption></figure>
+    <figure><a href="../../{before}/captures/{name}.png"><img loading="lazy" src="../../{before}/captures/{name}.png" alt="before"></a><figcaption>Before ({before})</figcaption></figure>
     <figure><a href="../captures/{name}.png"><img loading="lazy" src="../captures/{name}.png" alt="after"></a><figcaption>After ({html.escape(phase)})</figcaption></figure>
   </div>
   <table><tr>{''.join(f'<th>{html.escape(c)}</th>' for c in cats)}</tr><tr>{''.join(cell(c) for c in cats)}</tr></table>
@@ -74,4 +74,4 @@ Open this file locally; the clips stream from YouTube.</p>
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else sys.argv[1], sys.argv[3] if len(sys.argv) > 3 else "phase-8")

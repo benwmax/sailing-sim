@@ -3,6 +3,11 @@
 #include "VisualPipeline.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
+#include "BoatModel.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/StaticMeshSocket.h"
+#include "MeshDescription.h"
+#include "StaticMeshAttributes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -130,6 +135,82 @@ bool FVisualPipelineSmokeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Ray tracing compiled in"), Int(TEXT("r.RayTracing")), 1);
 	TestEqual(TEXT("Ray tracing on demand"), Int(TEXT("r.RayTracing.EnableOnDemand")), 1);
 	TestEqual(TEXT("Lumen GI"), Int(TEXT("r.DynamicGlobalIlluminationMethod")), 1);
+	return true;
+}
+
+// Visual V2: the J/22 model is held to the physics: length, beam and draft within 2 cm of FBoatConfig, and the canoe
+// body's centre of buoyancy (its triangles cut at the design waterline) within 2 cm of the hydrostatics'.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualJ22MeshTest, "SailingSim.Visual.J22Mesh", VisualFlags)
+bool FVisualJ22MeshTest::RunTest(const FString& Parameters)
+{
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Boats/J22/SM_J22_Hull.SM_J22_Hull"));
+	if (!TestNotNull(TEXT("SM_J22_Hull is in the project (scripts/make-boat-models.sh)"), Mesh)) return false;
+#if WITH_EDITORONLY_DATA
+	const FMeshDescription* MD = Mesh->GetMeshDescription(0);
+	if (!TestNotNull(TEXT("Source mesh"), MD)) return false;
+	FStaticMeshConstAttributes Attr(*MD);
+	const TVertexAttributesConstRef<FVector3f> Pos = Attr.GetVertexPositions();
+	const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
+	auto IsCanoe = [](FName Slot) { return Slot == TEXT("Topsides") || Slot == TEXT("Bootstripe") || Slot == TEXT("CoveStripe") || Slot == TEXT("Antifouling"); };
+
+	FBox Canoe(ForceInit);
+	double MinZ = 1e9, Volume = 0.0;
+	FVector3d Moment(0.0);
+	for (const FTriangleID T : MD->Triangles().GetElementIDs())
+	{
+		const TArrayView<const FVertexID> V = MD->GetTriangleVertices(T);
+		FVector3d P[3];
+		for (int32 K = 0; K < 3; ++K)
+		{
+			P[K] = FVector3d(Pos[V[K]]) / 100.0; // m
+			MinZ = FMath::Min(MinZ, P[K].Z);
+		}
+		if (!IsCanoe(Slots[MD->GetTrianglePolygonGroup(T)])) continue;
+		for (const FVector3d& Q : P) Canoe += FVector(Q);
+		// Cut at Z = 0 and sum the tetrahedra to the origin (on the cut plane, so the cap adds nothing).
+		TArray<FVector3d, TInlineAllocator<4>> Poly;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			const FVector3d& A = P[K], & B = P[(K + 1) % 3];
+			if (A.Z <= 0.0) Poly.Add(A);
+			if ((A.Z <= 0.0) != (B.Z <= 0.0)) Poly.Add(A + (B - A) * (-A.Z / (B.Z - A.Z)));
+		}
+		for (int32 K = 1; K + 1 < Poly.Num(); ++K)
+		{
+			const double Vol = FVector3d::DotProduct(Poly[0], FVector3d::CrossProduct(Poly[K], Poly[K + 1])) / 6.0;
+			Volume += Vol;
+			Moment += Vol * (Poly[0] + Poly[K] + Poly[K + 1]) / 4.0;
+		}
+	}
+	const FVector3d CB = FMath::Abs(Volume) > 1e-9 ? Moment / Volume : FVector3d(0.0);
+	const Sailing::FBoatConfig C = Sailing::FBoatConfig::J22();
+	const Sailing::FBoatModel Physics(C);
+	const Sailing::Vec3 PhysCB = Physics.DesignBuoyancyCentre();
+	const double Tol = 0.02;
+	TestTrue(FString::Printf(TEXT("Length overall %.3f m (physics %.3f)"), Canoe.GetSize().X, C.LengthOverall), FMath::Abs(Canoe.GetSize().X - C.LengthOverall) < Tol);
+	TestTrue(FString::Printf(TEXT("Beam %.3f m (physics %.3f)"), Canoe.GetSize().Y, C.Beam), FMath::Abs(Canoe.GetSize().Y - C.Beam) < Tol);
+	TestTrue(FString::Printf(TEXT("Draft %.3f m (physics %.3f)"), -MinZ, C.Draft), FMath::Abs(-MinZ - C.Draft) < Tol);
+	TestTrue(FString::Printf(TEXT("Canoe body volume %.3f m^3 within 2%% of the physics %.3f"), FMath::Abs(Volume), Physics.DesignDisplacedVolume()),
+		FMath::Abs(FMath::Abs(Volume) - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
+	TestTrue(FString::Printf(TEXT("Centre of buoyancy (%.3f, %.3f, %.3f) within 2 cm of the physics (%.3f, %.3f, %.3f)"), CB.X, CB.Y, CB.Z, PhysCB.X, PhysCB.Y, PhysCB.Z),
+		FVector3d::Dist(CB, FVector3d(PhysCB.X, PhysCB.Y, PhysCB.Z)) < Tol);
+#endif
+	// Starboard is +Y (the FBX import keeps Blender's port-is-+Y space as Unreal's), the mesh is Nanite, every slot has its material.
+	const UStaticMeshSocket* Stbd = Mesh->FindSocket(TEXT("ChainplateUpper_S"));
+	const UStaticMeshSocket* Port = Mesh->FindSocket(TEXT("ChainplateUpper_P"));
+	if (TestNotNull(TEXT("Rig sockets"), Stbd) && TestNotNull(TEXT("Rig sockets (port)"), Port))
+	{
+		TestTrue(TEXT("Starboard chainplate on +Y"), Stbd->RelativeLocation.Y > 50.f && Port->RelativeLocation.Y < -50.f);
+	}
+	for (const TCHAR* Name : { TEXT("MastStep"), TEXT("ForestayTack"), TEXT("BackstayPlate"), TEXT("JibLead_S"), TEXT("JibWinch_P"), TEXT("Traveler_C"), TEXT("RudderPivot"), TEXT("LazySheetVia") })
+	{
+		TestNotNull(FString::Printf(TEXT("Socket %s"), Name), Mesh->FindSocket(Name));
+	}
+	TestTrue(TEXT("Hull is Nanite"), Mesh->IsNaniteEnabled());
+	for (const FStaticMaterial& M : Mesh->GetStaticMaterials())
+	{
+		TestTrue(FString::Printf(TEXT("Slot %s has a boat material"), *M.MaterialSlotName.ToString()), M.MaterialInterface && M.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));
+	}
 	return true;
 }
 

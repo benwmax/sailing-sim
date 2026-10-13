@@ -8,6 +8,8 @@
 - M_Rain: translucent falling streaks for cylinders around the camera.
 - M_Emissive: unlit glow (lightning).
 - M_Sail: two-sided lit cloth.
+- M_BoatSurface, M_BoatMast and the MI_Boat_* library (Visual V2): gelcoat with clear coat, antifouling, non-skid,
+  metals, plastic and varnished wood; wet below the splash line and on deck in rain and spray (MPC_Boat).
 Run with scripts/make-content.sh.
 """
 import unreal
@@ -444,6 +446,164 @@ return 0.5 + d * s * 0.5 * float2(1.0, aspect);
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+# ---------------------------------------------------------------- boats (Visual V2)
+BOAT_FOLDER = "/Game/Boats/Materials"
+
+BOAT_CODE = r"""
+// Visual V2 boat surfaces: gelcoat (clear coat), antifouling, non-skid, metals, plastic, varnished wood.
+// LP: local position (cm, boat frame), WP: world position (cm), N: world normal, LX/LY: world axes of the boat's X/Y.
+float3 n = normalize(N);
+// Non-skid: a raised diamond pattern anchored to the boat (8 mm pitch), only where NonSkid > 0.
+float k = 6.2831853 / 0.8;
+float gx = cos(LP.x * k) * sin(LP.y * k), gy = sin(LP.x * k) * cos(LP.y * k);
+float3 grad = (gx * LX + gy * LY) * 0.35 * NonSkid;
+// Wet below the splash line: the water level plus the band the waves and heel throw spray to; a ragged, dripping
+// edge (streaks along the hull) rather than a ruled line.
+float streak = 0.5 + 0.5 * sin(LP.x * 0.21 + sin(LP.x * 0.047) * 3.0);
+float wetLine = WaterZ + WetBand * (0.6 + 0.4 * streak);
+float wet = 1.0 - smoothstep(wetLine - 3.0, wetLine + 3.0, WP.z);
+// Deck wetness from rain and spray: up-facing surfaces darken a little, gloss up and carry droplets.
+float up = saturate((n.z - 0.4) * 2.5);
+float2 cell = floor(LP.xy / 0.9);
+float h = frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
+float2 f = frac(LP.xy / 0.9) - 0.5;
+float drop = h > 0.72 ? saturate(1.0 - length(f) * 4.0) : 0.0;
+float deckWet = saturate(DeckWet) * up;
+grad += (f.x * LX + f.y * LY) * drop * deckWet * 1.2;
+float wetAll = saturate(max(wet, deckWet * 0.8));
+float3 base = C.rgb * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
+AlbedoOut = base * (1.0 - Metal);
+F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
+RoughOut = lerp(R, lerp(0.06, R, 0.25), wetAll * (1.0 - Metal));
+// A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
+CoatOut = saturate(Coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
+return normalize(n - grad);
+"""
+
+
+def collection():
+    path = "/Game/Boats/MPC_Boat"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        return unreal.load_asset(path)
+    mpc = ASSETS.create_asset("MPC_Boat", "/Game/Boats", unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+    params = []
+    for name, default in (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0)):
+        p = unreal.CollectionScalarParameter()
+        p.set_editor_property("parameter_name", name)
+        p.set_editor_property("default_value", default)
+        params.append(p)
+    mpc.set_editor_property("scalar_parameters", params)
+    unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    return mpc
+
+
+def build_boat_surface(name, bend):
+    """M_BoatSurface / M_BoatMast: one lit surface for every part of a boat model, set by material instances;
+    the mast's variant bends fore and aft (BendCm at mid-height, a half-sine over BendHeightCm)."""
+    path = f"{BOAT_FOLDER}/{name}"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        unreal.EditorAssetLibrary.delete_asset(path)
+    mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+    mpc = collection()
+    color = vector(mat, "Color", (0.85, 0.85, 0.82, 1), -1400, -200)
+    rough = scalar(mat, "Roughness", 0.35, -1400, -50)
+    metal = scalar(mat, "Metallic", 0.0, -1400, 50)
+    coat = scalar(mat, "ClearCoat", 1.0, -1400, 150)
+    coat_r = scalar(mat, "ClearCoatRoughness", 0.05, -1400, 250)
+    nonskid = scalar(mat, "NonSkid", 0.0, -1400, 350)
+    porosity = scalar(mat, "Porosity", 0.15, -1400, 450)
+    lp = node(mat, unreal.MaterialExpressionLocalPosition, -1400, 550)
+    wp = node(mat, unreal.MaterialExpressionWorldPosition, -1400, 650)
+    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1400, 750)
+    axes = []
+    for i, (vx, vy) in enumerate(((1.0, 0.0), (0.0, 1.0))):
+        c = node(mat, unreal.MaterialExpressionConstant3Vector, -1600, 850 + i * 120, constant=unreal.LinearColor(vx, vy, 0.0, 0.0))
+        t = node(mat, unreal.MaterialExpressionTransform, -1400, 850 + i * 120)
+        t.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
+        t.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
+        connect(c, "", t, "")
+        axes.append(t)
+    params = {}
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet")):
+        cp = node(mat, unreal.MaterialExpressionCollectionParameter, -1400, 1100 + i * 100)
+        cp.set_editor_property("collection", mpc)
+        cp.set_editor_property("parameter_name", pname)
+        params[pname] = cp
+    F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet"],
+               F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
+    for src, pin in ((color, "C"), (rough, "R"), (metal, "Metal"), (coat, "Coat"), (nonskid, "NonSkid"), (porosity, "Porosity"), (lp, "LP"),
+                     (wp, "WP"), (nrm, "N"), (axes[0], "LX"), (axes[1], "LY"), (params["WaterZ"], "WaterZ"), (params["WetBand"], "WetBand"),
+                     (params["DeckWet"], "DeckWet")):
+        connect(src, "RGBA" if src is color else "", c, pin)
+    # Substrate slab: the gelcoat's clear coat (and a wet film) as the slab's second, glossier specular lobe.
+    slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -400, 200)
+    connect(c, "AlbedoOut", slab, "Diffuse Albedo")
+    connect(c, "F0Out", slab, "F0")
+    connect(c, "RoughOut", slab, "Roughness")
+    # Substrate's slab takes a tangent-space normal: the custom node works in world space, so transform it.
+    to_tangent = node(mat, unreal.MaterialExpressionTransform, -600, 400)
+    to_tangent.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+    to_tangent.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_TANGENT)
+    connect(c, "", to_tangent, "")
+    connect(to_tangent, "", slab, "Normal")
+    connect(coat_r, "", slab, "Second Roughness")
+    connect(c, "CoatOut", slab, "Second Roughness Weight")
+    MEL.connect_material_property(slab, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
+    if bend:
+        b = scalar(mat, "BendCm", 0.0, -900, 600)
+        hgt = scalar(mat, "BendHeightCm", 800.0, -900, 700)
+        code = "float t = saturate(LP.z / max(Hgt, 1.0)); return LX * (Bend * sin(3.14159265 * t) - 0.35 * Bend * t * t);"
+        w = custom(mat, code, ["LP", "Bend", "Hgt", "LX"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 650)
+        connect(lp, "", w, "LP")
+        connect(b, "", w, "Bend")
+        connect(hgt, "", w, "Hgt")
+        connect(axes[0], "", w, "LX")
+        MEL.connect_material_property(w, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    return mat
+
+
+# The boat material library: slot name -> (parent, colour, roughness, metallic, clear coat, non-skid, porosity).
+BOAT_LIBRARY = {
+    "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.30, 0.0, 1.0, 0.0, 0.10),     # white gelcoat
+    "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.35, 0.0, 1.0, 0.0, 0.10),
+    "NonSkid": ("M_BoatSurface", (0.70, 0.70, 0.66), 0.62, 0.0, 0.3, 1.0, 0.30),
+    "Bootstripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),  # navy gelcoat stripes
+    "CoveStripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),
+    "Antifouling": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.80, 0.0, 0.0, 0.0, 0.60),  # ablative bottom paint
+    "Keel": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.75, 0.0, 0.0, 0.0, 0.60),
+    "CabinWindow": ("M_BoatSurface", (0.006, 0.008, 0.010), 0.04, 0.0, 1.0, 0.0, 0.0),  # smoked acrylic
+    "Stainless": ("M_BoatSurface", (0.72, 0.72, 0.74), 0.14, 1.0, 0.0, 0.0, 0.0),
+    "Aluminium": ("M_BoatSurface", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),        # clear anodized spars
+    "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
+    "Wood": ("M_BoatSurface", (0.30, 0.17, 0.07), 0.30, 0.0, 1.0, 0.0, 0.15),           # varnished ash tiller
+    "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
+    "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
+    "Rope": ("M_BoatSurface", (0.62, 0.64, 0.68), 0.75, 0.0, 0.0, 0.0, 0.50),         # braided polyester sheets
+    "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
+}
+
+
+def build_boat_library():
+    parents = {"M_BoatSurface": build_boat_surface("M_BoatSurface", False), "M_BoatMast": build_boat_surface("M_BoatMast", True)}
+    for slot, (parent, col, rough, metal, coat, nonskid, porosity) in BOAT_LIBRARY.items():
+        name = f"MI_Boat_{slot}"
+        path = f"{BOAT_FOLDER}/{name}"
+        # Updated in place (never deleted): the boat meshes reference these instances.
+        if unreal.EditorAssetLibrary.does_asset_exist(path):
+            mi = unreal.load_asset(path)
+        else:
+            mi = ASSETS.create_asset(name, BOAT_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        MEL.set_material_instance_parent(mi, parents[parent])
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
+        for pname, value in (("Roughness", rough), ("Metallic", metal), ("ClearCoat", coat), ("NonSkid", nonskid), ("Porosity", porosity)):
+            MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
 build_water()
 build_terrain()
 build_rain()
@@ -451,4 +611,5 @@ build_emissive()
 build_sail()
 build_ghost()
 build_lens_distortion()
+build_boat_library()
 unreal.log("Materials built")

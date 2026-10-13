@@ -73,10 +73,15 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 
 	if (bSpawned)
 	{
-		const UMaterialInstanceDynamic* HullMaterial = Cast<UMaterialInstanceDynamic>(Boat->HullMesh->GetMaterial(0));
+		// Visual V2: the J/22 is the modelled boat (white gelcoat), not the procedural hull.
+		const UStaticMeshComponent* ModelHull = nullptr;
+		Boat->ForEachComponent<UStaticMeshComponent>(false, [&](UStaticMeshComponent* C) { if (C->GetStaticMesh() && C->GetStaticMesh()->GetName() == TEXT("SM_J22_Hull")) ModelHull = C; });
+		TestNotNull(TEXT("The J/22 shows its model"), ModelHull);
+		TestEqual(TEXT("The procedural hull is cleared"), Boat->HullMesh->GetNumSections(), 0);
+		const UMaterialInterface* Topsides = ModelHull ? ModelHull->GetMaterial(ModelHull->GetMaterialIndex(TEXT("Topsides"))) : nullptr;
 		FLinearColor HullColor = FLinearColor::Black;
-		TestTrue(TEXT("Hull has a colorable material"), HullMaterial && HullMaterial->GetVectorParameterValue(TEXT("Color"), HullColor));
-		TestTrue(TEXT("Hull is painted red"), HullColor.R > 0.5f && HullColor.G < 0.2f);
+		TestTrue(TEXT("Topsides have a gelcoat colour"), Topsides && Topsides->GetVectorParameterValue(TEXT("Color"), HullColor));
+		TestTrue(TEXT("White gelcoat topsides"), HullColor.R > 0.6f && HullColor.G > 0.6f && HullColor.B > 0.6f);
 
 		const FVector Start = Boat->GetActorLocation();
 		TestEqual(TEXT("Boat starts at the water surface"), Start.Z, WaterZ, 2.0);
@@ -96,7 +101,9 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Boat floats at the water surface (within 5 cm)"), End.Z, WaterZ, 5.0);
 		TestTrue(TEXT("Boat heels a little, not over"), FMath::Abs(Boat->GetActorRotation().Roll) < 25.0);
 		TestTrue(TEXT("Boat sails: moved more than 15 m in 10 s"), (End - Start).Size2D() > 1500.0);
-		TestTrue(TEXT("Sail meshes were built"), Boat->FindComponentByClass<UProceduralMeshComponent>() && Boat->FindComponentByClass<UProceduralMeshComponent>()->GetNumSections() > 0);
+		int32 Built = 0;
+		Boat->ForEachComponent<UProceduralMeshComponent>(false, [&](UProceduralMeshComponent* C) { Built += C->GetNumSections() > 0; });
+		TestTrue(TEXT("Sail and rig meshes were built"), Built >= 3); // main, jib, rig lines
 	}
 
 	World->EndPlay(EEndPlayReason::Quit);
