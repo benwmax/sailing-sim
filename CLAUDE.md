@@ -238,6 +238,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   scalability, TSR at native, half-resolution clouds with the most samples, no resolution governor. The Mac gates stay
   Medium 60 and High 45; Ultra is only checked to run on the Mac. Windows: package with `RunUAT BuildCookRun -platform=Win64`
   (not scripted yet).
+- Shore (Graphics G2): `Tools/terrain/build_shore_detail.py` bakes the USGS 3DEP 1 m lidar DEM (`fetch_rayhubbard.sh` puts the
+  2.6 GB of tiles in `Data/RayHubbard/raw/lidar`) into `RayHubbard.detail`: 64 m tiles of 1 m heights along the shore
+  (land within 150 m of the water, water within 30 m), zlib-packed. The lidar is hydro-flattened on the water, so the bed
+  there is the bathymetry under a shelf from the lidar shoreline; the band's edge fades into the 5 m grid. `FLakeTerrain::
+  HeightAt` prefers the detail (physics and placement follow it); `ALakeTerrainActor` meshes shore chunks within 300 m at
+  1 m (Step 0). Run it after `build_rayhubbard.py`; `-SailingNoShoreDetail` compares; `SailingSim.Lake.ShoreDetail` checks
+  seams and agreement with the grid.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
