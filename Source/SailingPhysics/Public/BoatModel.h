@@ -309,6 +309,10 @@ namespace Sailing
 		double TotalMass() const { return Mass; }
 		const Vec3& GetCenterOfGravity() const { return CenterOfGravity; }
 		double HullDepth() const { return CanoeDepth; }
+		/** The design (upright, at rest) displaced volume of the canoe bodies (m^3) and its centroid, the centre of
+		 *  buoyancy, in the body frame. The visual models are checked against these (SailingSim.Visual.J22Mesh). */
+		double DesignDisplacedVolume() const { return DesignVolume; }
+		Vec3 DesignBuoyancyCentre() const;
 
 		/** Lake bed for grounding (optional), docks and bridges for collisions (optional). */
 		void SetTerrain(const FLakeTerrain* InTerrain) { Terrain = InTerrain; }

@@ -32,6 +32,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/FileHelper.h"
+#include "Materials/MaterialParameterCollection.h"
 
 using namespace Sailing;
 
@@ -150,6 +151,28 @@ ASailboatPawn::ASailboatPawn()
 	CaptureCamera->bAutoActivate = false;
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensFinder(TEXT("/Game/Materials/M_LensDistortion.M_LensDistortion"));
 	LensDistortionAsset = LensFinder.Object;
+
+	// Visual V2: the modelled boats (Tools/blender, scripts/make-boat-models.sh) and their material library.
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> J22Hull(TEXT("/Game/Boats/J22/SM_J22_Hull.SM_J22_Hull"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> J22Mast(TEXT("/Game/Boats/J22/SM_J22_Mast.SM_J22_Mast"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> J22Boom(TEXT("/Game/Boats/J22/SM_J22_Boom.SM_J22_Boom"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> J22Rudder(TEXT("/Game/Boats/J22/SM_J22_Rudder.SM_J22_Rudder"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Rope(TEXT("/Game/Boats/Materials/MI_Boat_Rope.MI_Boat_Rope"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Wire(TEXT("/Game/Boats/Materials/MI_Boat_Stainless.MI_Boat_Stainless"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Car(TEXT("/Game/Boats/Materials/MI_Boat_BlackPlastic.MI_Boat_BlackPlastic"));
+	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> BoatMpc(TEXT("/Game/Boats/MPC_Boat.MPC_Boat"));
+	J22HullMesh = J22Hull.Object;
+	J22MastMesh = J22Mast.Object;
+	J22BoomMesh = J22Boom.Object;
+	J22RudderMesh = J22Rudder.Object;
+	RopeMaterial = Rope.Object;
+	WireMaterial = Wire.Object;
+	CarMaterial = Car.Object;
+	BoatParameters = BoatMpc.Object;
+	RigLines = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RigLines"));
+	RigLines->SetupAttachment(BoatRoot);
+	RigLines->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RigLines->SetCastShadow(true);
 
 	AutoPossessPlayer = EAutoReceiveInput::Disabled;
 }
@@ -314,7 +337,20 @@ void ASailboatPawn::RebuildBoatVisuals()
 	BoatParts.Reset();
 	RudderPivots.Reset();
 	Crew.Reset();
-	BuildHullMesh();
+	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
+	MastMaterial = nullptr;
+	RigLines->ClearAllMeshSections();
+	bRigLinesBuilt = false;
+	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
+	if (Model.Hull)
+	{
+		HullMesh->ClearAllMeshSections();
+		BuildModelVisuals(Model);
+	}
+	else
+	{
+		BuildHullMesh();
+	}
 
 	const FBoatConfig& C = Boat.GetConfig();
 	const FHullShape& Main = C.Hulls[0];
@@ -324,6 +360,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Keels, boards and rudders (a slender cat hull's own lift has no part to show).
 	for (const FFoilDef& F : C.Foils)
 	{
+		if (ModelHull) break; // the model has its own keel, rudder and tiller
 		if (F.Role == EFoilRole::HullLateral) continue;
 		const double Span = F.Span(), Chord = F.Params.Chord, Thick = 0.06 * Chord + 0.015;
 		if (F.Role != EFoilRole::Rudder)
@@ -346,6 +383,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 
 	// Mast, boom, forestay.
+	if (!ModelHull)
+	{
 	AddBoatPart(CylinderMesh, ToCm(C.MastX, 0.0, 0.5 * (DeckZ + C.MastheadZ)), FVector(C.MastDiameter, C.MastDiameter, C.MastheadZ - DeckZ) * CmPerMeter, Spar);
 	BoomPivot->SetRelativeLocation(ToCm(C.MainLuffX, 0.0, C.BoomZ));
 	AddBoatPart(CylinderMesh, ToCm(-0.5 * C.MainFootChord, 0.0, 0.0), FVector(0.7 * C.MastDiameter, 0.7 * C.MastDiameter, C.MainFootChord) * CmPerMeter, Spar, FRotator(90.f, 0.f, 0.f), BoomPivot);
@@ -358,11 +397,16 @@ void ASailboatPawn::RebuildBoatVisuals()
 		const Vec3 Hounds(Head.LuffX + Slope * 0.5 * (Head.ZTop - Head.ZBottom), 0.0, Head.ZTop + 0.1);
 		AddRod(Tack, Hounds, 0.012, Spar);
 	}
+	}
+	else
+	{
+		BoomPivot->SetRelativeLocation(ToCm(C.MainLuffX, 0.0, C.BoomZ));
+	}
 	MastheadFly->SetRelativeLocation(ToCm(C.MastX, 0.0, C.MastheadZ + 0.08));
 
 	// Deck structure: a cabin on the keelboats; beams and trampolines on the cats; akas and nets on the trimaran.
 	const double Loa = C.LengthOverall;
-	switch (C.Type)
+	switch (ModelHull ? EBoatType::Count : C.Type)
 	{
 	case EBoatType::J22: case EBoatType::Catalina22: case EBoatType::Catalina30:
 	{
@@ -1509,11 +1553,19 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		Crew[I]->SetRelativeRotation(FRotator(0.f, 0.f, Lean * FMath::Sign(S.CrewOffset)));
 	}
 
+	if (ModelHull)
+	{
+		UpdateModelRig(DeltaSeconds);
+	}
 	BuildSailMesh(MainSail, Cfg.Main, T.MainStrips, S.MainSide, true);
 	if (Cfg.HasJib()) BuildSailMesh(JibSail, Cfg.Jib, T.JibStrips, S.JibSide, false);
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
 	if (T.NumSpinStrips > 0) BuildSailMesh(SpinSail, Cfg.Spinnaker, T.SpinStrips, S.SpinSide, false);
 	UpdateTelltales();
+	if (ModelHull)
+	{
+		UpdateBoatWetness(DeltaSeconds);
+	}
 }
 
 void ASailboatPawn::BuildSailMesh(UProceduralMeshComponent* Mesh, const FSailGeometry& Geo, const FSailStripState* Strips, int32 Side, bool bMain)
@@ -1566,6 +1618,7 @@ void ASailboatPawn::BuildSailMesh(UProceduralMeshComponent* Mesh, const FSailGeo
 			Verts[R * Cols + C] = ToCm(P);
 		}
 	}
+	if (!bMain) JibClewCm = Verts[Cols - 1]; // the foot's leech end: where the jib sheets lead from
 	// Back face: same positions, separate vertices so it can carry the opposite normal.
 	for (int32 I = 0; I < Rows * Cols; ++I)
 	{

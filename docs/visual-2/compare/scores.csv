@@ -1,0 +1,13 @@
+scene,boat_before,boat_after,light_before,light_after,sails_before,sails_after,water_before,water_after,sky_before,sky_after,notes
+j22-heavy-chase,4,3,2,2,3,3,2,2,2,2,"The J/22 model: sheer, cove stripe and boot stripe, cabin trunk with its windows, pulpits, stanchions and lifelines, shrouds through the spreaders. Hull and rig 2; the cylinder crew (V3) keep the boat at 3."
+j22-light-chase,4,3,2,2,3,3,2,2,2,2,"Hull, deck and rig read as a J/22 from a chase boat; flat sails and cylinder crew remain (V3)."
+j22-moderate-chase,4,3,2,2,3,3,2,2,2,2,"Gelcoat with its clear coat, stainless fittings and the wet line along the lee topsides. Crew still cylinders."
+j22-helm-reservoir,3,2,2,2,3,3,2,2,2,2,"From the helm: the cabin top, the forehatch, the lazy jib sheet draped over the cabin, shrouds, lifelines and the pulpit. Boat 2 here: no crew figure in frame."
+j22-actioncam-lake,4,3,2,2,3,3,2,2,2,2,"The cockpit from the stern: coamings, seats, traveler bridge, companionway, tiller, the backstay crossing the lens as on the real boat. Crew cylinders fill the right of the frame."
+rh-drone-cat,4,4,2,2,3,3,1,1,2,2,Not a J/22 (procedural model until V7); unchanged.
+rh-c30-evening,4,4,2,2,3,3,2,2,2,2,Not a J/22 (procedural model until V7); unchanged.
+storm-lake,3,3,3,3,4,4,2,2,3,3,"The boat is small in frame; the hull now reads right in silhouette (pulpits, stanchions)."
+squall-lake,3,3,3,3,4,4,2,2,3,3,Not a J/22 (procedural model until V7); unchanged.
+gulf-passage,4,4,2,2,3,3,3,3,2,2,Not a J/22 (procedural model until V7); unchanged.
+bay-hobie,4,4,2,2,3,3,2,2,2,2,Not a J/22 (procedural model until V7); unchanged.
+sunfish-reach,4,4,2,2,3,3,2,2,2,2,Not a J/22 (procedural model until V7); unchanged.

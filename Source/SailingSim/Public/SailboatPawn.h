@@ -170,6 +170,16 @@ private:
 	UStaticMeshComponent* AddRod(const Sailing::Vec3& A, const Sailing::Vec3& B, double DiameterM, const FLinearColor& Color);
 	void RebuildBoatVisuals();
 	void BuildHullMesh();
+	// Visual V2: modelled boats (the J/22 first; BoatModelVisuals.cpp). A class with a model uses its hull, mast, boom
+	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; };
+	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
+	void BuildModelVisuals(const FBoatModelMeshes& Model);
+	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
+	/** A rig point in the boat frame (cm) from a socket on one of the model's parts; mast points follow its bend. */
+	FVector RigPoint(const UStaticMeshComponent* Part, FName Socket) const;
+	void UpdateModelRig(float DeltaSeconds);
+	void UpdateBoatWetness(float DeltaSeconds);
 	void ApplyStateToTransform();
 	void UpdateRigVisuals(float DeltaSeconds);
 	void BuildSailMesh(UProceduralMeshComponent* Mesh, const Sailing::FSailGeometry& Geo, const Sailing::FSailStripState* Strips, int32 Side, bool bMain);
@@ -256,6 +266,29 @@ private:
 	// Not transient: the default object's reference is what puts M_Ghost into the cook (it is only used at runtime).
 	UPROPERTY() TObjectPtr<UMaterialInterface> GhostMaterial;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> SphereMesh;
+	// Visual V2: the J/22 model's meshes and the boat parameter collection (not transient: the default object's
+	// references put them into the cook).
+	UPROPERTY() TObjectPtr<UStaticMesh> J22HullMesh;
+	UPROPERTY() TObjectPtr<UStaticMesh> J22MastMesh;
+	UPROPERTY() TObjectPtr<UStaticMesh> J22BoomMesh;
+	UPROPERTY() TObjectPtr<UStaticMesh> J22RudderMesh;
+	UPROPERTY() TObjectPtr<UMaterialInterface> RopeMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> WireMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> CarMaterial;
+	UPROPERTY() TObjectPtr<class UMaterialParameterCollection> BoatParameters;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelHull;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelMast;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelBoom;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelRudder;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> TravelerCar;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
+	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
+	FVector JibClewCm = FVector::ZeroVector;  // body frame, from the jib mesh
+	float MastBendCm = 0.f;
+	float MastBendHeightCm = 800.f;
+	double WetLineZ = -1e9;   // world cm: the highest recent water at the hull, drying back down
+	float DeckWetness = 0.f;
+	bool bRigLinesBuilt = false;
 	double StatusUntil = 0.0;
 	bool bDemoTacks = true;
 	bool bMenuOpen = false;
