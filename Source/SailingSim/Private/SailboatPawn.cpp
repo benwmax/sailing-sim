@@ -2358,7 +2358,8 @@ TArray<TPair<FString, FString>> ASailboatPawn::GetMenuRows() const
 	Rows.Add({ TEXT("Controls"), S->Difficulty == ESailingDifficulty::Easy ? TEXT("Simple (always on Easy)") : (S->ControlLayout == ESailingControlLayout::Simple ? TEXT("Simple") : TEXT("Full")) });
 	Rows.Add({ TEXT("Trim assist"), OnOff(S->bTrimAssist) });
 	Rows.Add({ TEXT("Learning mode"), OnOff(S->bLearningMode) });
-	Rows.Add({ TEXT("Graphics quality"), S->Quality == ESailingQuality::Low ? TEXT("Low") : (S->Quality == ESailingQuality::Medium ? TEXT("Medium") : TEXT("High")) });
+	Rows.Add({ TEXT("Graphics quality"), S->Quality == ESailingQuality::Low ? TEXT("Low") : (S->Quality == ESailingQuality::Medium ? TEXT("Medium")
+		: (S->Quality == ESailingQuality::High ? TEXT("High") : TEXT("Ultra (desktop GPU)"))) });
 	Rows.Add({ TEXT("Volume"), FString::Printf(TEXT("%d%%"), FMath::RoundToInt(S->Volume * 100.f)) });
 	Rows.Add({ TEXT("Keys"), TEXT("Right: change your keys") });
 	return Rows;
@@ -2447,7 +2448,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->bLearningMode = !S->bLearningMode;
 		break;
 	case RowQuality:
-		S->Quality = ESailingQuality((int32(S->Quality) + 3 + Direction) % 3);
+		S->Quality = ESailingQuality((int32(S->Quality) + 4 + Direction) % 4);
 		if (GameMode) GameMode->ApplyQualitySettings();
 		break;
 	case RowVolume:

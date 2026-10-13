@@ -79,7 +79,7 @@ namespace Sailing
 	class SAILINGPHYSICS_API FWeatherMap
 	{
 	public:
-		static constexpr int N = 256;
+		static constexpr int N = 1024;   // Graphics G1: 62.5 m texels (was 256: 250 m cells read as blocks)
 		static constexpr double SizeMeters = 64000.0;
 
 		/** Land fraction (0 water .. 1 land) at a map point, optional: cumulus build over the land on a summer day. */

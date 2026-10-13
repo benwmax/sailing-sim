@@ -73,7 +73,7 @@ namespace Sailing
 
 		/** Presence from a field: the (1 - coverage) quantile is the edge, soft over half a standard deviation either way,
 		 *  so the mean presence is the coverage. */
-		void Threshold(std::vector<double>& V, double Coverage, std::vector<float>& Out, int Channel)
+		void Threshold(std::vector<double>& V, double Coverage, std::vector<float>& Out, int Channel, double SoftStd = 0.5)
 		{
 			const size_t Count = V.size();
 			if (Coverage <= 0.0) { for (size_t I = 0; I < Count; ++I) Out[I * 4 + Channel] = 0.f; return; }
@@ -86,7 +86,7 @@ namespace Sailing
 			const size_t K = std::min(Count - 1, size_t((1.0 - Coverage) * double(Count)));
 			std::nth_element(Sorted.begin(), Sorted.begin() + K, Sorted.end());
 			const double Edge = Sorted[K];
-			const double Soft = 0.5 * Std;
+			const double Soft = SoftStd * Std;
 			for (size_t I = 0; I < Count; ++I) Out[I * 4 + Channel] = float(Clamp(0.5 + (V[I] - Edge) / (2.0 * Soft), 0.0, 1.0));
 		}
 	}
@@ -108,12 +108,12 @@ namespace Sailing
 		const double Core = Smooth(-CoreBehindM, -CoreBehindM - 1500.0, D) * (1.0 - Smooth(-CoreBehindM - 14000.0, -CoreBehindM - 20000.0, D));
 		const double CoreTop = CoreBaseM + (CoreTopM - CoreBaseM) * Build;
 		if (Core > 0.0) Dens = std::max(Dens, Core * Smooth(CoreBaseM, CoreBaseM + 200.0, Alt) * (1.0 - Smooth(CoreTop - 1500.0, CoreTop, Alt)));
-		// Anvil, spreading ahead high up and thinning.
+		// Anvil, spreading ahead high up and thinning: thin ice cloud (Graphics G1; mirrored in make_materials.py).
 		if (D > -CoreBehindM - 15000.0 && D < AnvilAheadM)
 		{
 			const double Ahead = Clamp(1.0 - std::max(D, 0.0) / AnvilAheadM, 0.0, 1.0);
 			const double Lower = AnvilBaseM + (1.0 - Ahead) * 2000.0;
-			Dens = std::max(Dens, 0.35 * Ahead * Build * Smooth(Lower, Lower + 400.0, Alt) * (1.0 - Smooth(CoreTopM - 800.0, CoreTopM, Alt)));
+			Dens = std::max(Dens, 0.12 * Ahead * Build * Smooth(Lower, Lower + 400.0, Alt) * (1.0 - Smooth(CoreTopM - 800.0, CoreTopM, Alt)));
 		}
 		return Dens * Mask;
 	}
@@ -130,6 +130,8 @@ namespace Sailing
 		Rgba.assign(Count * 4, 0.f);
 		const double DriftLen = std::sqrt(Sky.DriftX * Sky.DriftX + Sky.DriftY * Sky.DriftY);
 		const double Ux = DriftLen > 0.1 ? Sky.DriftX / DriftLen : 1.0, Uy = DriftLen > 0.1 ? Sky.DriftY / DriftLen : 0.0;
+		// Cloud streets form in a steady wind aloft (about 4 m/s and up).
+		const double Streets = Clamp((DriftLen - 3.0) / 5.0, 0.0, 1.0);
 
 		std::vector<double> Cu(Count), St(Count), Ci(Count);
 		std::vector<double> Land(Count, 0.5);
@@ -147,8 +149,12 @@ namespace Sailing
 			{
 				const size_t I = size_t(R) * N + C;
 				const double X = X0 + (R + 0.5) * Cell, Y = Y0 + (C + 0.5) * Cell;
-				// Cumulus: cells a kilometre or two across, more of them over the land (heated in the afternoon).
-				Cu[I] = Fbm(X / 2200.0, Y / 2200.0, 11u, 4) + 0.18 * (Land[I] - LandMean);
+				// Cumulus: cells a kilometre or two across, more and bigger over the land (heated in the afternoon); with a
+				// wind aloft they line up in streets along it, 3 to 4 km apart (Graphics G1).
+				const double Ac = X * Ux + Y * Uy, Bc = -X * Uy + Y * Ux;
+				const double Stretch = 1.0 + 0.8 * Streets;
+				Cu[I] = Fbm(Ac / (2000.0 * Stretch), Bc / 2000.0, 11u, 5) + 0.28 * (Land[I] - LandMean)
+					+ 0.12 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2));
 				// Stratus: broad, gently varied.
 				St[I] = Fbm(X / 9000.0, Y / 9000.0, 23u, 3);
 				// Cirrus: streaks drawn out along the wind aloft.
@@ -156,7 +162,9 @@ namespace Sailing
 				Ci[I] = Fbm(A / 9000.0, B / 1400.0, 37u, 4);
 			}
 		}
-		Threshold(Cu, Sky[ECloudLayer::Cumulus].Coverage, Rgba, 0);
+		// Cumulus presence ramps over a whole standard deviation: the renderer raises each cell's top with it (domes, not
+		// flat-topped prisms).
+		Threshold(Cu, Sky[ECloudLayer::Cumulus].Coverage, Rgba, 0, 1.1);
 		Threshold(St, Sky[ECloudLayer::Stratus].Coverage, Rgba, 1);
 		Threshold(Ci, Sky[ECloudLayer::Cirrus].Coverage, Rgba, 2);
 

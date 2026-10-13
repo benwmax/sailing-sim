@@ -1127,7 +1127,10 @@ float altKm = alt * 0.001;
 float hCu = (altKm - Cu.y) / max(Cu.z - Cu.y, 0.05);
 float hSt = (altKm - St.y) / max(St.z - St.y, 0.05);
 float hCi = (altKm - Ci.y) / max(Ci.z - Ci.y, 0.05);
-float pCu = smoothstep(0.0, 0.07, hCu) * (1.0 - smoothstep(0.35, 1.0, hCu));
+// Graphics G1: a cumulus cell's top rises with its presence in the map (domes, taller in the middle of a cell and over
+// the heated land), its base stays flat.
+float cuTop = max(saturate(w.r * 1.25), 0.12);
+float pCu = smoothstep(0.0, 0.07, hCu) * (1.0 - smoothstep(0.3 * cuTop, cuTop, hCu));
 float pSt = smoothstep(0.0, 0.12, hSt) * (1.0 - smoothstep(0.7, 1.0, hSt));
 float pCi = smoothstep(0.0, 0.3, hCi) * (1.0 - smoothstep(0.6, 1.0, hCi));
 // Storm structure along the front (D: metres ahead of the outflow).
@@ -1153,7 +1156,8 @@ float storm = 0.0, shelf = 0.0, rain = 0.0;
     {
         float ahead = saturate(1.0 - max(D, 0.0) / ANVIL_AHEAD);
         float lower = ANVIL_BASE + (1.0 - ahead) * 2000.0;
-        storm = max(storm, 0.35 * ahead * FrontB.z * smoothstep(lower, lower + 400.0, alt) * (1.0 - smoothstep(CORE_TOP - 800.0, CORE_TOP, alt)));
+        // The anvil is thin ice cloud: a light veil overhead, not a second dark lid (it hid the shelf's edge, Graphics G1).
+        storm = max(storm, 0.12 * ahead * FrontB.z * smoothstep(lower, lower + 400.0, alt) * (1.0 - smoothstep(CORE_TOP - 800.0, CORE_TOP, alt)));
     }
     // The rain curtain: falling rain under the core, from its base to the water, densest just behind the shelf; it
     // hides the far shore as it comes.
@@ -1174,33 +1178,62 @@ Emit = float3(0.0, 0.0, 0.0);
 AO = 1.0;
 [branch] if (Cons > 0.001)
 {
-    // Shape and erosion noise (the engine's Perlin-Worley volume), drifting with the wind aloft.
+    // Graphics G1: the baked noise (Tools/clouds/make_cloud_noise.py), drifting with the wind aloft. A curl field 13 km
+    // across (incommensurate with the shape's 4 km tile) warps the shape volume by up to 1.3 km, so no cloud repeats
+    // within tens of kilometres (SailingSim.Visual.CloudNoise); the Worley detail
+    // (667 m tile) erodes the edges.
     float3 q = (p - float3(Drift.xy, 0.0)) * 0.001;   // km
-    float n1 = Noise.SampleLevel(NoiseSampler, q * float3(0.8, 0.8, 0.9), 0).r;
-    float n2 = Noise.SampleLevel(NoiseSampler, q * 1.7 + float3(0.31, 0.17, 0.0), 0).r;
-    // Cumulus: cells narrowing upward into lumpy, cauliflower tops over a flat base; stratus: an even deck with a ragged
-    // base; cirrus: thin streaks.
-    float body = cu * (1.0 - 0.55 * saturate(hCu)) - (1.0 - n1) * 0.45;
-    float dCu = saturate(body * 2.2 - (1.0 - n2) * 0.12 * saturate(1.0 - body * 2.2)) * 1.6;
+    // Filter by what a sample covers: a pixel's footprint at this distance, but never finer than the march step
+    // (100-200 m): mip 0 everywhere aliased into speckle (the V5 grain).
+    float foot = max(distance(p, Cam * 0.01) * 0.0022, 45.0);   // m
+    float shapeMip = clamp(log2(foot / 31.0), 0.0, 6.0);        // shape texel: 4 km / 128
+    float detailMip = clamp(log2(foot / 10.4), 0.0, 5.0);       // detail texel: 667 m / 64
+    float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
+    float3 qw = q + float3(cw * 1.3, 0.0) + float3(0.0, 0.0, 0.2 * cw.x);
+    float4 sh = Shape.SampleLevel(ShapeSampler, qw * 0.25, shapeMip);
+    float lowFbm = sh.g * 0.5 + sh.b * 0.3 + sh.a * 0.2;     // the 500 m and 250 m octaves carry the billows
+    // Perlin-Worley remapped by the low Worley octaves (Nubis): billows packed into cells, 0..1.
+    float base = saturate((sh.r - (lowFbm - 1.0)) / (2.0 - lowFbm) * 1.9 - 0.75);
+    float3 dq = qw * 1.5 + float3(0.0, 0.0, -0.4 * q.z);
+    float3 dt = Detail.SampleLevel(DetailSampler, dq, detailMip).rgb;
+    float hf = dt.r * 0.625 + dt.g * 0.25 + dt.b * 0.125;
+    float n1 = base;
+    float n2 = hf;
+    // Cumulus: the weather map's cells, shaped by the base noise (narrowing upward into cauliflower tops over a flat
+    // base), then eroded: wispy, torn edges low down, billowed ones higher up.
+    float shapeCu = saturate(cu * (1.0 - 0.5 * saturate(hCu)) - (1.0 - base) * 0.6);
+    float ero = lerp(hf, 1.0 - hf, saturate(hCu * 3.0)) * 0.35;
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * 2.4) * 1.6;
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
-    float band = 0.75 + 0.25 * sin(alt * 0.045 + D * 0.003); // the shelf's tiers
+    // The shelf's tiers: a few soft steps on its face only (on all storm cloud they striped the whole sky).
+    float band = 1.0 - shelf * 0.14 * (0.5 + 0.5 * sin(alt * 0.03 + D * 0.002 + 2.0 * cw.y));
     // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
     float nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
-    float dSm = saturate((storm - (1.0 - n1) * lerp(0.25, 0.4, saturate(alt / 6000.0)) - (1.0 - n2) * (0.15 * shelf + 0.45 * nearBase)) * 2.2) * band;
+    // Storm cloud uses the coarser shape octaves (a big dense mass at 100-200 m steps speckled with the fine ones); the
+    // shelf's face is smooth, its base and the core's ragged.
+    float nS = saturate(sh.g * 1.25 - 0.1);
+    // The lip (the shelf's first few hundred metres) keeps a clean edge.
+    float lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
+    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * lip) - (1.0 - n2) * (0.06 * shelf + 0.35 * nearBase) * (1.0 - lip)) * 1.6) * band;
     // Rain shafts: streaks drawn out vertically (falling), thin veils rather than cloud.
-    float streak = Noise.SampleLevel(NoiseSampler, q * float3(1.6, 1.6, 0.35) + float3(0.0, 0.0, View.RealTime * 0.002), 0).r;
+    float streak = Shape.SampleLevel(ShapeSampler, q * float3(1.6, 1.6, 0.35) + float3(0.0, 0.0, View.RealTime * 0.002), 0).g;
     // Rain falls in shafts a kilometre or two apart, with lighter gaps between them.
     float shafts = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(L / 900.0 + sin(L / 2700.0) * 2.0) * sin(D / 1300.0 + 0.7));
     float dRain = rain * (0.03 + 0.09 * shafts) * (0.8 + 0.4 * smoothstep(0.3, 0.9, streak));
     d = max(max(max(dCu, dSt), max(dCi, dSm)), dRain);
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
-    float wet = saturate(dSm / max(d, 1e-3));
+    // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
+    float wet = saturate(dSm / max(d, 1e-3)) * (1.0 - smoothstep(3000.0, 4500.0, alt));
     float rainy = saturate(dRain / max(d, 1e-3)) * (1.0 - wet);
     Albedo = lerp(lerp(float3(0.96, 0.96, 0.96), float3(0.74, 0.76, 0.8), wet * FrontB.w), float3(0.95, 0.95, 0.96), rainy);
     // The storm's base sits in deep shadow; the rain under it is lit from the sides and reads lighter grey.
     AO = lerp(lerp(1.0, 0.3, wet * saturate(1.0 - alt / 4000.0)), 0.9, rainy) * lerp(0.75, 1.0, saturate(hCu));
+    // The shelf's tiers (Graphics G1): stacked rolls along the front, each lit on its top and shadowed underneath, so the
+    // face reads as layered striations instead of one dark wall.
+    float tier = frac((alt - 300.0) / 120.0 + D / 1100.0 + 0.35 * cw.x);
+    AO *= lerp(1.0, lerp(0.45, 1.35, smoothstep(0.15, 0.85, tier)), shelf);
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
     Emit = float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
@@ -1231,20 +1264,24 @@ def build_cloud_layers():
     linear = linear_default()
     wx = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 200, parameter_name="WeatherMap", texture=linear,
               sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    noise_tex = unreal.load_asset("/Engine/EngineSky/VolumetricClouds/VT_PerlinWorley_Balanced")
-    noise = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 350, parameter_name="CloudNoise", texture=noise_tex)
+    # Graphics G1: the baked noise volumes and curl field (scripts/import_cloud_noise.py).
+    tex = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 350 + 60 * i, parameter_name=n,
+                   texture=unreal.load_asset(f"/Game/Materials/Clouds/T_Cloud{n}"))
+           for i, n in enumerate(("Shape", "Detail", "Curl"))}
     vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, cloud_code(), ["P", "Alt", "Wx", "Noise", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
     connect(attr, "Altitude", c, "Alt")
     connect(wx, "", c, "Wx")
-    connect(noise, "", c, "Noise")
+    for n, t in tex.items():
+        connect(t, "", c, n)
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
                    ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift")):
         connect(vecs[n], "RGBA", c, pin)
@@ -1261,9 +1298,17 @@ def build_cloud_layers():
     connect(cons, "", adv, "ConservativeDensity")
     # Two-lobe phase (a bright silver lining toward the sun, some back-scatter) and the multiple-scattering approximation
     # that keeps thick cloud white inside instead of dark at the base.
-    for k, v in (("const_phase_g", 0.6), ("const_phase_g2", -0.25), ("const_phase_blend", 0.25), ("const_multi_scattering_contribution", 0.75),
-                 ("const_multi_scattering_occlusion", 0.35), ("const_multi_scattering_eccentricity", 0.6), ("multi_scattering_approximation_octave_count", 2), ("gray_scale_material", True)):
+    # Graphics G1: a sharper forward lobe (silver linings), less multiple-scattering brightening (grey, self-shadowed bases),
+    # a third octave so thick cloud stays luminous inside, and the ground's bounce lighting the bases.
+    for k, v in (("const_phase_g", 0.72), ("const_phase_g2", -0.3), ("const_phase_blend", 0.3), ("const_multi_scattering_contribution", 0.55),
+                 ("const_multi_scattering_occlusion", 0.5), ("const_multi_scattering_eccentricity", 0.55), ("multi_scattering_approximation_octave_count", 3), ("gray_scale_material", True)):
         adv.set_editor_property(k, v)
+    for k in ("ground_contribution", "b_ground_contribution"):
+        try:
+            adv.set_editor_property(k, True)
+            break
+        except Exception:
+            pass
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 

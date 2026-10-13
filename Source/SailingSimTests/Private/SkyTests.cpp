@@ -169,3 +169,108 @@ bool FWorldCanopyTest::RunTest(const FString&)
 	for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S) TestTrue(TEXT("Every species grows"), Species[S] > Trees.Num() / 20);
 	return true;
 }
+
+#if WITH_EDITORONLY_DATA
+#include "Engine/VolumeTexture.h"
+#include "Engine/Texture2D.h"
+
+namespace
+{
+	/** A texture's source texels (BGRA8), for sampling on the CPU the way the cloud shader samples on the GPU. */
+	struct FSourceTexels
+	{
+		int32 X = 0, Y = 0, Z = 0;
+		TArray64<uint8> Data;
+		bool Load(UTexture* Tex)
+		{
+			if (!Tex || Tex->Source.GetFormat() != TSF_BGRA8) return false;
+			X = Tex->Source.GetSizeX();
+			Y = Tex->Source.GetSizeY();
+			Z = FMath::Max(1, Tex->Source.GetNumSlices());
+			return Tex->Source.GetMipData(Data, 0) && Data.Num() >= int64(X) * Y * Z * 4;
+		}
+		/** Channel (0 R, 1 G, 2 B, 3 A) at texel coordinates, wrapped. */
+		float At(int32 I, int32 J, int32 K, int32 Channel) const
+		{
+			I = ((I % X) + X) % X; J = ((J % Y) + Y) % Y; K = ((K % Z) + Z) % Z;
+			static const int32 Bgra[4] = { 2, 1, 0, 3 };
+			return Data[((int64(K) * Y + J) * X + I) * 4 + Bgra[Channel]] / 255.f;
+		}
+		/** Trilinear (bilinear for a 2D texture) at uv in tiles. */
+		float Sample(double U, double V, double W, int32 Channel) const
+		{
+			const double Fx = U * X - 0.5, Fy = V * Y - 0.5, Fz = W * Z - 0.5;
+			const int32 I = FMath::FloorToInt32(Fx), J = FMath::FloorToInt32(Fy), K = FMath::FloorToInt32(Fz);
+			const float Tx = float(Fx - I), Ty = float(Fy - J), Tz = float(Fz - K);
+			auto Plane = [&](int32 Kk) { return FMath::Lerp(FMath::Lerp(At(I, J, Kk, Channel), At(I + 1, J, Kk, Channel), Tx), FMath::Lerp(At(I, J + 1, Kk, Channel), At(I + 1, J + 1, Kk, Channel), Tx), Ty); };
+			return Z > 1 ? FMath::Lerp(Plane(K), Plane(K + 1), Tz) : Plane(K);
+		}
+	};
+
+	/** Highest normalised autocorrelation of a series over a range of lags. */
+	double MaxAutocorrelation(const TArray<double>& S, int32 LagFrom, int32 LagTo)
+	{
+		double Mean = 0.0, Var = 0.0;
+		for (double V : S) Mean += V;
+		Mean /= S.Num();
+		for (double V : S) Var += (V - Mean) * (V - Mean);
+		double Best = -1.0;
+		for (int32 Lag = LagFrom; Lag <= LagTo; ++Lag)
+		{
+			double C = 0.0;
+			for (int32 I = 0; I + Lag < S.Num(); ++I) C += (S[I] - Mean) * (S[I + Lag] - Mean);
+			Best = FMath::Max(Best, C / Var * S.Num() / (S.Num() - Lag));
+		}
+		return Best;
+	}
+}
+
+/**
+ * Graphics G1: the cloud noise is ours (Tools/clouds/make_cloud_noise.py): the shape and detail volumes and the curl
+ * field load at their sizes, and the shape field the shader draws (the shape volume's 4 km tile warped by the 13 km curl
+ * field) doesn't repeat: along a 40 km line its autocorrelation stays under 0.5 at every lag from 2 to 15 km, where the
+ * unwarped volume repeats exactly every 4 km (the V5 noise every 1.25 km: the same puff over and over). The 1024^2
+ * weather map's cumulus field doesn't repeat either.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCloudNoiseTest, "SailingSim.Visual.CloudNoise", SkyFlags)
+bool FSkyCloudNoiseTest::RunTest(const FString&)
+{
+	UVolumeTexture* Shape = LoadObject<UVolumeTexture>(nullptr, TEXT("/Game/Materials/Clouds/T_CloudShape.T_CloudShape"));
+	UVolumeTexture* Detail = LoadObject<UVolumeTexture>(nullptr, TEXT("/Game/Materials/Clouds/T_CloudDetail.T_CloudDetail"));
+	UTexture2D* Curl = LoadObject<UTexture2D>(nullptr, TEXT("/Game/Materials/Clouds/T_CloudCurl.T_CloudCurl"));
+	if (!TestNotNull(TEXT("T_CloudShape (scripts/make-content.sh)"), Shape) || !TestNotNull(TEXT("T_CloudDetail"), Detail) || !TestNotNull(TEXT("T_CloudCurl"), Curl)) return false;
+	FSourceTexels S, D, C;
+	if (!TestTrue(TEXT("Shape source readable"), S.Load(Shape)) || !TestTrue(TEXT("Detail source readable"), D.Load(Detail)) || !TestTrue(TEXT("Curl source readable"), C.Load(Curl))) return false;
+	TestEqual(TEXT("Shape volume 128^3"), S.X * 10000 + S.Y * 100 + S.Z, 128 * 10000 + 128 * 100 + 128);
+	TestEqual(TEXT("Detail volume 64^3"), D.X * 10000 + D.Y * 100 + D.Z, 64 * 10000 + 64 * 100 + 64);
+	TestEqual(TEXT("Curl 128^2"), C.X * 1000 + C.Y, 128 * 1000 + 128);
+
+	// The shader's sampling (make_materials.py, CLOUD_CODE): q in km; curl at 0.077 cycles/km, +/-1.3 km; shape at 0.25.
+	constexpr int32 Count = 800;          // 50 m steps over 40 km
+	TArray<double> Plain, Warped;
+	for (int32 I = 0; I < Count; ++I)
+	{
+		const double Qx = 0.05 * I, Qy = 3.1, Qz = 1.8;   // along an axis: the worst case for a tiling volume
+		Plain.Add(S.Sample(Qx * 0.25, Qy * 0.25, Qz * 0.25, 0));
+		const double Cx = C.Sample(Qx * 0.077, Qy * 0.077, 0.0, 0) * 2.0 - 1.0, Cy = C.Sample(Qx * 0.077, Qy * 0.077, 0.0, 1) * 2.0 - 1.0;
+		Warped.Add(S.Sample((Qx + 1.3 * Cx) * 0.25, (Qy + 1.3 * Cy) * 0.25, (Qz + 0.2 * Cx) * 0.25, 0));
+	}
+	const double PlainRepeat = MaxAutocorrelation(Plain, 40, 300), WarpedRepeat = MaxAutocorrelation(Warped, 40, 300);
+	AddInfo(FString::Printf(TEXT("Shape autocorrelation, 2-15 km lags: unwarped %.2f, warped %.2f"), PlainRepeat, WarpedRepeat));
+	TestTrue(TEXT("The unwarped volume repeats (sanity: it tiles every 4 km)"), PlainRepeat > 0.8);
+	TestTrue(TEXT("The warped shape field doesn't repeat within 15 km"), WarpedRepeat < 0.5);
+
+	// The weather map: 1024^2 over 64 km; its cumulus doesn't repeat across a row.
+	FWeatherSystem W;
+	W.Configure(EWeatherPreset::AfternoonBreeze, 7, 15.0);
+	FWeatherMap Map;
+	Map.Paint(W.Evaluate(60.0).Sky, FGustFront(), 0.0, 0.0, 0.0);
+	TestEqual(TEXT("Weather map 1024^2"), int32(Map.Pixels().size() / 4), FWeatherMap::N * FWeatherMap::N);
+	TArray<double> Row;
+	for (int32 Col = 0; Col < FWeatherMap::N; ++Col) Row.Add(Map.Pixels()[(size_t(FWeatherMap::N / 2) * FWeatherMap::N + Col) * 4]);
+	const double MapRepeat = MaxAutocorrelation(Row, 48, 400);   // 3 to 25 km
+	AddInfo(FString::Printf(TEXT("Weather map cumulus autocorrelation, 3-25 km: %.2f"), MapRepeat));
+	TestTrue(TEXT("The weather map's cumulus doesn't repeat"), MapRepeat < 0.5);
+	return true;
+}
+#endif

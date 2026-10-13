@@ -56,9 +56,22 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Cloud samples rise with the tier"), CVarOf(Low, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")) <= CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"))
 		&& CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")) <= CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")));
 	TestTrue(TEXT("Physical camera on Medium and High only"), !UsesPhysicalCamera(ESailingQuality::Low) && UsesPhysicalCamera(ESailingQuality::Medium) && UsesPhysicalCamera(ESailingQuality::High));
-	for (const FQualityCVar& C : High)
+	// Graphics G1: Ultra (a desktop GPU) is High and more: Epic scalability, TSR at native, clouds traced at half
+	// resolution with the most samples; the Mac tiers keep the quarter-resolution clouds.
+	const TArray<FQualityCVar> Ultra = QualityCVars(ESailingQuality::Ultra);
+	TestEqual(TEXT("Ultra: Epic scalability (4)"), QualityScalabilityLevel(ESailingQuality::Ultra), 4);
+	TestEqual(TEXT("Ultra: hardware Lumen"), CVarOf(Ultra, TEXT("r.Lumen.HardwareRayTracing")), 1.f);
+	TestEqual(TEXT("Ultra: TSR"), CVarOf(Ultra, TEXT("r.AntiAliasingMethod")), 4.f);
+	TestEqual(TEXT("Ultra: native resolution"), CVarOf(Ultra, TEXT("r.ScreenPercentage")), 100.f);
+	TestEqual(TEXT("Ultra: clouds traced at half resolution"), CVarOf(Ultra, TEXT("r.VolumetricRenderTarget.Mode")), 1.f);
+	TestEqual(TEXT("High: clouds at quarter resolution"), CVarOf(High, TEXT("r.VolumetricRenderTarget.Mode")), 0.f);
+	TestTrue(TEXT("Ultra has the most cloud samples"), CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")) > CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")));
+	for (const TArray<FQualityCVar>* Tier : { &High, &Ultra })
 	{
-		TestNotNull(FString::Printf(TEXT("%s exists in this engine"), C.Name), IConsoleManager::Get().FindConsoleVariable(C.Name));
+		for (const FQualityCVar& C : *Tier)
+		{
+			TestNotNull(FString::Printf(TEXT("%s exists in this engine"), C.Name), IConsoleManager::Get().FindConsoleVariable(C.Name));
+		}
 	}
 	return true;
 }

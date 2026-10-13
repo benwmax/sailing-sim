@@ -179,8 +179,23 @@ void ASailingEnvironment::BeginPlay()
 		{
 			CloudMaterial = UMaterialInstanceDynamic::Create(CloudLayersMaterial, this);
 			CloudComp->SetMaterial(CloudMaterial);
+			// Graphics G1: more samples on the shadow rays inside the cloud (their jitter was most of the speckle) and, on
+			// High and Ultra, along the view ray. -SailingCloudScale=<view>,<shadow> overrides, for measuring.
+			const ESailingQuality Q = USailingSettings::Get()->Quality;
+			CloudComp->SetViewSampleCountScale(Q >= ESailingQuality::High ? 2.f : 1.f);
+			CloudComp->SetShadowViewSampleCountScale(Q >= ESailingQuality::High ? 4.f : 2.f);
+			FString Scales;
+			if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudScale="), Scales, false))
+			{
+				FString A, B;
+				if (Scales.Split(TEXT(","), &A, &B))
+				{
+					CloudComp->SetViewSampleCountScale(FCString::Atof(*A));
+					CloudComp->SetShadowViewSampleCountScale(FCString::Atof(*B));
+				}
+			}
 		}
-		WeatherMapTexture = UTexture2D::CreateTransient(FWeatherMap::N, FWeatherMap::N, PF_A32B32G32R32F);
+		WeatherMapTexture = UTexture2D::CreateTransient(FWeatherMap::N, FWeatherMap::N, PF_FloatRGBA); // half floats (1024^2)
 		WeatherMapTexture->SRGB = false;
 		WeatherMapTexture->Filter = TF_Bilinear;
 		WeatherMapTexture->AddressX = TA_Clamp;
@@ -191,7 +206,7 @@ void ASailingEnvironment::BeginPlay()
 		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
 		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudNoise="), NoisePath))
 		{
-			if (UTexture* Noise = LoadObject<UTexture>(nullptr, *NoisePath)) CloudMaterial->SetTextureParameterValue(TEXT("CloudNoise"), Noise);
+			if (UTexture* Noise = LoadObject<UTexture>(nullptr, *NoisePath)) CloudMaterial->SetTextureParameterValue(TEXT("Shape"), Noise); // the shape volume (Graphics G1)
 		}
 	}
 	if (bLayeredClouds)
@@ -203,7 +218,7 @@ void ASailingEnvironment::BeginPlay()
 		MoonLight->SetAtmosphereSunDiskColorScale(FLinearColor::Black);
 	}
 	// Visual V5 (High, not in the capture mode): water on the lens.
-	if (USailingSettings::Get()->Quality == ESailingQuality::High && LensWaterMaterial && PostProcess
+	if (USailingSettings::Get()->Quality >= ESailingQuality::High && LensWaterMaterial && PostProcess
 		&& !FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")))
 	{
 		LensMaterial = UMaterialInstanceDynamic::Create(LensWaterMaterial, this);
@@ -675,16 +690,17 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	const double Tw = GM->GetWeatherTime();
 	if (bWeatherMapPending && PendingWeatherMap.IsReady())
 	{
-		LastWeatherMap = PendingWeatherMap.Get().Map;
+		FWeatherMapFrame Done = PendingWeatherMap.Get();
+		LastWeatherMap = MoveTemp(Done.Map);
 		LastWeatherMap.LandFraction = nullptr;
 		bHasWeatherMap = true;
 		bWeatherMapPending = false;
 		struct { double X0, Y0; } Frame = { LastWeatherMap.OriginX(), LastWeatherMap.OriginY() };
-		const int32 Bytes = int32(LastWeatherMap.Pixels().size() * sizeof(float));
+		const int32 Bytes = Done.Half.Num() * int32(sizeof(FFloat16));
 		uint8* Copy = new uint8[Bytes];
-		FMemory::Memcpy(Copy, LastWeatherMap.Pixels().data(), Bytes);
+		FMemory::Memcpy(Copy, Done.Half.GetData(), Bytes);
 		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
-		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 16, 16, Copy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
+		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 8, 8, Copy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
 		CloudMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
 		if (SkyMaterial) SkyMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
 	}
@@ -707,6 +723,8 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 			}
 			Map.Paint(Sky, Front, Cx, Cy, Tw);
 			FWeatherMapFrame Out;
+			Out.Half.SetNumUninitialized(int32(Map.Pixels().size()));
+			for (int32 I = 0; I < Out.Half.Num(); ++I) Out.Half[I] = FFloat16(Map.Pixels()[I]);
 			Out.Map = MoveTemp(Map);
 			return Out;
 		});
@@ -731,7 +749,7 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		float(W.Sky[ECloudLayer::Storm].Coverage), float(W.CloudDarkness)));
 	CloudMaterial->SetVectorParameterValue(TEXT("Flash"), FLinearColor(FlashParams.X, FlashParams.Y, FlashParams.Z, Flash * FlashParams.W));
 	// Extinction per metre at full density: thicker in a storm.
-	CloudMaterial->SetScalarParameterValue(TEXT("CloudDensity"), FMath::Lerp(0.02f, 0.035f, float(W.CloudDarkness)));
+	CloudMaterial->SetScalarParameterValue(TEXT("CloudDensity"), FMath::Lerp(0.045f, 0.065f, float(W.CloudDarkness)) /* Graphics G1: real cumulus extinction, 0.05-0.1 /m */);
 }
 
 void ASailingEnvironment::UpdateHaze()

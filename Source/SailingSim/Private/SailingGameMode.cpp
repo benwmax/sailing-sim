@@ -89,7 +89,8 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingQuality="), Value))
 	{
 		Settings->Quality = Value.Equals(TEXT("Low"), ESearchCase::IgnoreCase) ? ESailingQuality::Low
-			: (Value.Equals(TEXT("Medium"), ESearchCase::IgnoreCase) ? ESailingQuality::Medium : ESailingQuality::High);
+			: (Value.Equals(TEXT("Medium"), ESearchCase::IgnoreCase) ? ESailingQuality::Medium
+			: (Value.Equals(TEXT("Ultra"), ESearchCase::IgnoreCase) ? ESailingQuality::Ultra : ESailingQuality::High));
 	}
 }
 
@@ -580,7 +581,8 @@ void ASailingGameMode::FinishBenchmark()
 		N, Total, AvgFps, AvgMs, P99Ms, MaxMs, GDynamicRHI ? GDynamicRHI->GetName() : TEXT("none"),
 		GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport ? GEngine->GameViewport->Viewport->GetSizeXY().X : 0,
 		GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport ? GEngine->GameViewport->Viewport->GetSizeXY().Y : 0,
-		Settings->Quality == ESailingQuality::Low ? TEXT("Low") : (Settings->Quality == ESailingQuality::Medium ? TEXT("Medium") : TEXT("High")),
+		Settings->Quality == ESailingQuality::Low ? TEXT("Low") : (Settings->Quality == ESailingQuality::Medium ? TEXT("Medium")
+			: (Settings->Quality == ESailingQuality::High ? TEXT("High") : TEXT("Ultra"))),
 		WeatherPresetName(EWeatherPreset(Settings->WeatherPreset)), WeatherState.HourOfDay);
 	// Visual V3: sail cloth simulation on the CPU, all boats, per frame of the measured window.
 	if (N > 0 && ClothSecondsAtStart >= 0.0)

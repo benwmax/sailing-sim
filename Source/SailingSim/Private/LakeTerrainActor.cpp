@@ -29,7 +29,7 @@ namespace
 		// out to 600 m about a millisecond there; the opaque crowns read the same at that size on its 67% resolution).
 		static const double M = []
 		{
-			double V = USailingSettings::Get()->Quality == ESailingQuality::High ? 600.0 : 350.0;
+			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 600.0 : 350.0;
 			FParse::Value(FCommandLine::Get(), TEXT("SailingNearTrees="), V);
 			return V;
 		}();
