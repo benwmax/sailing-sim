@@ -4,6 +4,8 @@
 #include "LakeData.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Kismet/GameplayStatics.h"
+#include "WorldKit.h"
 
 using namespace Sailing;
 
@@ -21,7 +23,7 @@ void ALandmarksActor::BeginPlay()
 	if (!GM) return;
 	const FLakeData& Lake = GM->GetLake();
 	bTidal = Lake.Tides.HeightStations.size() > 0;
-	RootComponent->SetMobility(bTidal ? EComponentMobility::Movable : EComponentMobility::Static);
+	RootComponent->SetMobility(EComponentMobility::Movable); // the tide and the curvature move them
 	// Chart name -> model and its modelled height (m).
 	struct FKind { const TCHAR* Chart; const TCHAR* Mesh; double Height; };
 	static const FKind Kinds[] = {
@@ -60,6 +62,7 @@ void ALandmarksActor::BeginPlay()
 		const double Scale = L.Height > 1.0 && !bPlatform ? L.Height / K->Height : 1.0;
 		const float Yaw = FMath::Frac(FMath::Sin(I * 12.9898) * 43758.5453) * 360.f;
 		Ism->AddInstance(FTransform(FRotator(0.f, Yaw, 0.f), FVector(L.X, L.Y, Ground) * CmPerMeter, FVector(Scale)));
+		Instances.Add({ Ism, Ism->GetInstanceCount() - 1, FVector(L.X, L.Y, Ground), Yaw, float(Scale) });
 		++Placed;
 	}
 	UE_LOG(LogSailing, Display, TEXT("Landmarks: %d of %d placed with %d models"), Placed, Lake.Landmarks.Num(), Meshes.Num());
@@ -68,8 +71,24 @@ void ALandmarksActor::BeginPlay()
 void ALandmarksActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	if (!bTidal) return;
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
-	const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
-	if (!FMath::IsNearlyEqual(GetActorLocation().Z, Z, 0.1)) SetActorLocation(FVector(0.0, 0.0, Z));
+	if (bTidal)
+	{
+		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
+		if (!FMath::IsNearlyEqual(GetActorLocation().Z, Z, 0.1)) SetActorLocation(FVector(0.0, 0.0, Z));
+	}
+	// Far landmarks sink with the earth's curvature (a tower's foot goes below the horizon before its top): placed again
+	// when the camera has moved 200 m.
+	FVector Camera = FVector::ZeroVector;
+	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation() / CmPerMeter;
+	if (FVector2D::Distance(FVector2D(Camera), CurvedFrom) < 200.0) return;
+	CurvedFrom = FVector2D(Camera);
+	TSet<UInstancedStaticMeshComponent*> Dirty;
+	for (const FInstance& I : Instances)
+	{
+		const double Drop = CurvatureDrop(FVector2D::Distance(FVector2D(I.Base), CurvedFrom));
+		I.Ism->UpdateInstanceTransform(I.Index, FTransform(FRotator(0.f, I.Yaw, 0.f), (I.Base - FVector(0.0, 0.0, Drop)) * CmPerMeter, FVector(I.Scale)), false, false, true);
+		Dirty.Add(I.Ism);
+	}
+	for (UInstancedStaticMeshComponent* Ism : Dirty) Ism->MarkRenderStateDirty();
 }

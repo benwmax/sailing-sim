@@ -94,6 +94,31 @@ def connect(a, a_out, b, b_in):
         raise RuntimeError(f"connect failed: {a.get_name()}.{a_out} -> {b.get_name()}.{b_in}")
 
 
+CURVATURE_CODE = """
+// Visual V6: the earth's curvature as the eye sees it over water: everything drops d^2 / 2R below the camera's tangent
+// plane, with R the earth's radius stretched by standard refraction (7/6 of 6371 km). 8 m at 10 km, 31 m at 20 km: far
+// shores sink behind the horizon and a tower's foot is lost before its top.
+float2 d = (WP - Cam).xy;
+return float3(0.0, 0.0, -dot(d, d) / (2.0 * 7.433e8));
+"""
+
+
+def curvature(mat, x, y):
+    """A WPO node (cm) for the earth's curvature; add it to the material's other offsets."""
+    c = custom(mat, CURVATURE_CODE, ["WP", "Cam"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, x, y)
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, x - 300, y), "", c, "WP")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, x - 300, y + 80), "", c, "Cam")
+    return c
+
+
+def with_curvature(mat, wpo, x, y):
+    """wpo + the curvature drop."""
+    add = node(mat, unreal.MaterialExpressionAdd, x, y)
+    connect(wpo, "", add, "A")
+    connect(curvature(mat, x - 300, y + 100), "", add, "B")
+    return add
+
+
 # ---------------------------------------------------------------- water
 def wave_terms(kind):
     lines = []
@@ -287,7 +312,7 @@ def build_water():
     connect(foam_rough, "", rough_mix, "B")
     connect(shade, "Foam", rough_mix, "Alpha")
 
-    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.connect_material_property(with_curvature(mat, wpo, 200, 1300), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.connect_material_property(shade, "", unreal.MaterialProperty.MP_NORMAL)
     # Darken ruffled water a little more (less sky reflection, deeper colour).
     shade_mul = node(mat, unreal.MaterialExpressionOneMinus, 100, 900)
@@ -438,6 +463,7 @@ return C * (0.88 + 0.12 * n + 0.05 * m);
     rough = node(mat, unreal.MaterialExpressionConstant, -400, 300, r=0.92)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -1021,7 +1047,7 @@ def build_water_v4():
     connect(extinction, "", slw, "WaterExtinction")
     connect(phase, "", slw, "WaterPhaseG")
     MEL.connect_material_property(slw, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
-    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.connect_material_property(with_curvature(mat, wpo, 200, 1300), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 

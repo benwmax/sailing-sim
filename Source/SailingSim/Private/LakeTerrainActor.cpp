@@ -241,7 +241,9 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		UStaticMesh* Mesh = (bNear ? TreeModels : TreeFar)[Index]->GetStaticMesh();
 		const float MeshHeight = Mesh ? FMath::Max(100.f, float(Mesh->GetBounds().BoxExtent.Z * 2.0)) : 1000.f;
 		const float Scale = I.Height * CmPerMeter / MeshHeight;
-		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, I.Ground * CmPerMeter), FVector(Scale)));
+		// The earth's curvature (as M_Terrain's offset does for the ground): far trees sink with the shore they stand on.
+		const double Drop = CurvatureDrop(FVector2D::Distance(I.Position, Camera));
+		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(Scale)));
 	}
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{

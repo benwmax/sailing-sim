@@ -26,6 +26,15 @@ public:
 
 private:
 	UPROPERTY(Transient) TMap<FString, TObjectPtr<UInstancedStaticMeshComponent>> Meshes;
+	struct FInstance
+	{
+		UInstancedStaticMeshComponent* Ism = nullptr;
+		int32 Index = 0;
+		FVector Base;   // m
+		float Yaw = 0.f, Scale = 1.f;
+	};
+	TArray<FInstance> Instances;
+	FVector2D CurvedFrom = FVector2D(1e12, 1e12);
 	int32 Placed = 0;
 	bool bTidal = false;
 };

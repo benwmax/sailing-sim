@@ -23,6 +23,9 @@ struct FKitLookDesc
 	float Roughness, Pattern, Windows, Metallic;
 };
 SAILINGSIM_API const FKitLookDesc& KitLook(EKitLook Look);
+/** How far (m) the earth's curvature, with standard refraction (R = 7/6 of 6371 km), sinks a point Distance metres away
+ *  below the camera's horizontal (the materials' curvature offset; CPU-placed things use this). */
+inline double CurvatureDrop(double DistanceM) { return DistanceM * DistanceM / (2.0 * 7.433e6); }
 /** The look's material instance, MI_World_<Name>. */
 SAILINGSIM_API UMaterialInterface* KitMaterial(EKitLook Look);
 
