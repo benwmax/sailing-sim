@@ -248,6 +248,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   which on the Mac only METAL_SM6 has (this project is SM5), so the Mac draws cards; Windows High/Ultra get strands.
   `scripts/make-metahumans.sh` builds at High (`MH_QUALITY`); it reuses the source characters' cloud rig (`MH_RERIG=1` asks
   again; the request blocks on an Epic sign-in). `-SailingNoGrooms` measures without hair.
+- Shore (Graphics G2): `Tools/terrain/build_shore_detail.py` bakes the USGS 3DEP 1 m lidar DEM (`fetch_rayhubbard.sh` puts the
+  2.6 GB of tiles in `Data/RayHubbard/raw/lidar`) into `RayHubbard.detail`: 64 m tiles of 1 m heights along the shore
+  (land within 150 m of the water, water within 30 m), zlib-packed. The lidar is hydro-flattened on the water, so the bed
+  there is the bathymetry under a shelf from the lidar shoreline; the band's edge fades into the 5 m grid. `FLakeTerrain::
+  HeightAt` prefers the detail (physics and placement follow it); `ALakeTerrainActor` meshes shore chunks within 300 m at
+  1 m (Step 0). Run it after `build_rayhubbard.py`; `-SailingNoShoreDetail` compares; `SailingSim.Lake.ShoreDetail` checks
+  seams and agreement with the grid.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
