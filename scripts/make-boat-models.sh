@@ -19,7 +19,15 @@ grep -E "^J22:" "$ARTIFACTS/blender-j22.log" || true
 "$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_crew.py" -- "$MODELS" > "$ARTIFACTS/blender-crew.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/blender-crew.log"; exit 1; }
 grep -E "^Crew:" "$ARTIFACTS/blender-crew.log" || true
+# Visual V7: the other seven boats from the same exported physics (Tools/blender/build_fleet.py).
+for PAIR in sunfish:Sunfish ilca7:ILCA7 catalina22:Catalina22 catalina30:Catalina30 hobie16:Hobie16 corsair880:Corsair880 lagoon42:Lagoon42; do
+	KEY="${PAIR%%:*}"; TAG="${PAIR#*:}"
+	"$ARTIFACTS/boat-export" "$KEY" "$MODELS/$KEY.json"
+	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_fleet.py" -- "$MODELS/$KEY.json" "$TAG" "$MODELS" > "$ARTIFACTS/blender-$TAG.log" 2>&1 \
+		|| { tail -30 "$ARTIFACTS/blender-$TAG.log"; exit 1; }
+	grep -E "^$TAG: LOA" "$ARTIFACTS/blender-$TAG.log" || true
+done
 [[ "${1:-}" == "--no-import" ]] && exit 0
-"$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_boats.py" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import-boats.log" 2>&1 \
+"$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_boats.py ${IMPORT_ARGS:-}" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import-boats.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/import-boats.log"; exit 1; }
 grep -E "LogPython: (Imported|Error|Warning)" "$ARTIFACTS/import-boats.log" || true

@@ -219,6 +219,97 @@ bool FVisualJ22MeshTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Visual V7: the other seven boats (Tools/blender/build_fleet.py) are held to their physics like the J/22: the canoe
+// bodies' length and beam to the extent of the physics hulls, the draft (hull, keel or board, and the rudders where a
+// beach cat has no board) to FBoatConfig::Draft, and the displaced volume (2%) and centre of buoyancy (2 cm) to the
+// hydrostatics. Where the config's published LOA or beam differs from its own hull shapes, that is reported, not failed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualFleetMeshTest, "SailingSim.Visual.FleetMesh", VisualFlags)
+bool FVisualFleetMeshTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	static const TCHAR* Tags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
+	for (int32 Type = 1; Type < int32(UE_ARRAY_COUNT(Tags)); ++Type)
+	{
+		const TCHAR* Tag = Tags[Type];
+		auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
+		UStaticMesh* Hull = Load(TEXT("Hull"));
+		UStaticMesh* Rudder = Load(TEXT("Rudder"));
+		if (!TestNotNull(FString::Printf(TEXT("SM_%s_Hull (scripts/make-boat-models.sh)"), Tag), Hull) || !Rudder) continue;
+		const FBoatConfig C = FBoatConfig::Make(EBoatType(Type));
+		const FBoatModel Physics(C);
+#if WITH_EDITORONLY_DATA
+		const FMeshDescription* MD = Hull->GetMeshDescription(0);
+		if (!TestNotNull(TEXT("Source mesh"), MD)) continue;
+		FStaticMeshConstAttributes Attr(*MD);
+		const TVertexAttributesConstRef<FVector3f> Pos = Attr.GetVertexPositions();
+		const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
+		auto IsCanoe = [](FName Slot) { return Slot == TEXT("Topsides") || Slot == TEXT("Bootstripe") || Slot == TEXT("CoveStripe") || Slot == TEXT("Antifouling"); };
+		FBox Canoe(ForceInit);
+		double MinZ = 1e9, Volume = 0.0;
+		FVector3d Moment(0.0);
+		for (const FTriangleID T : MD->Triangles().GetElementIDs())
+		{
+			const TArrayView<const FVertexID> V = MD->GetTriangleVertices(T);
+			FVector3d P[3];
+			for (int32 K = 0; K < 3; ++K) { P[K] = FVector3d(Pos[V[K]]) / 100.0; MinZ = FMath::Min(MinZ, P[K].Z); }
+			if (!IsCanoe(Slots[MD->GetTrianglePolygonGroup(T)])) continue;
+			for (const FVector3d& Q : P) Canoe += FVector(Q);
+			TArray<FVector3d, TInlineAllocator<4>> Poly;
+			for (int32 K = 0; K < 3; ++K)
+			{
+				const FVector3d& A = P[K], & B = P[(K + 1) % 3];
+				if (A.Z <= 0.0) Poly.Add(A);
+				if ((A.Z <= 0.0) != (B.Z <= 0.0)) Poly.Add(A + (B - A) * (-A.Z / (B.Z - A.Z)));
+			}
+			for (int32 K = 1; K + 1 < Poly.Num(); ++K)
+			{
+				const double Vol = FVector3d::DotProduct(Poly[0], FVector3d::CrossProduct(Poly[K], Poly[K + 1])) / 6.0;
+				Volume += Vol;
+				Moment += Vol * (Poly[0] + Poly[K] + Poly[K + 1]) / 4.0;
+			}
+		}
+		// The rudders reach down too (a beach cat's draft is its rudders').
+		if (const UStaticMeshSocket* Pivot = Hull->FindSocket(TEXT("RudderPivot")))
+		{
+			MinZ = FMath::Min(MinZ, (Pivot->RelativeLocation.Z + Rudder->GetBoundingBox().Min.Z) / 100.0);
+		}
+		double Bow = -1e9, Stern = 1e9, Side = 0.0;
+		for (const FHullShape& H : C.Hulls)
+		{
+			Bow = FMath::Max(Bow, H.BowX);
+			Stern = FMath::Min(Stern, H.SternX);
+			Side = FMath::Max(Side, FMath::Abs(H.CenterY) + H.MaxHalfBeam);
+		}
+		const FVector3d CB = FMath::Abs(Volume) > 1e-9 ? Moment / Volume : FVector3d(0.0);
+		const Vec3 PhysCB = Physics.DesignBuoyancyCentre();
+		const double Tol = 0.02;
+		const FString Name(C.Name);
+		TestTrue(FString::Printf(TEXT("%s: length %.3f m (physics hulls %.3f)"), *Name, Canoe.GetSize().X, Bow - Stern), FMath::Abs(Canoe.GetSize().X - (Bow - Stern)) < Tol);
+		TestTrue(FString::Printf(TEXT("%s: beam %.3f m (physics hulls %.3f)"), *Name, Canoe.GetSize().Y, 2.0 * Side), FMath::Abs(Canoe.GetSize().Y - 2.0 * Side) < Tol);
+		if (FMath::Abs((Bow - Stern) - C.LengthOverall) > Tol || FMath::Abs(2.0 * Side - C.Beam) > Tol)
+		{
+			AddInfo(FString::Printf(TEXT("%s: the config's published LOA %.2f m / beam %.2f m differ from its hull shapes (%.2f / %.2f): an open item in Fleet.cpp, not the model"),
+				*Name, C.LengthOverall, C.Beam, Bow - Stern, 2.0 * Side));
+		}
+		TestTrue(FString::Printf(TEXT("%s: draft %.3f m (physics %.3f)"), *Name, -MinZ, C.Draft), FMath::Abs(-MinZ - C.Draft) < Tol);
+		TestTrue(FString::Printf(TEXT("%s: canoe volume %.3f m^3 within 2%% of the physics %.3f"), *Name, FMath::Abs(Volume), Physics.DesignDisplacedVolume()),
+			FMath::Abs(FMath::Abs(Volume) - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
+		TestTrue(FString::Printf(TEXT("%s: centre of buoyancy (%.3f, %.3f, %.3f) within 2 cm of (%.3f, %.3f, %.3f)"), *Name, CB.X, CB.Y, CB.Z, PhysCB.X, PhysCB.Y, PhysCB.Z),
+			FVector3d::Dist(CB, FVector3d(PhysCB.X, PhysCB.Y, PhysCB.Z)) < Tol);
+#endif
+		TestNotNull(FString::Printf(TEXT("%s: MastStep socket"), Tag), Hull->FindSocket(TEXT("MastStep")));
+		TestTrue(FString::Printf(TEXT("%s: hull is Nanite"), Tag), Hull->IsNaniteEnabled());
+		for (const FStaticMaterial& M : Hull->GetStaticMaterials())
+		{
+			TestTrue(FString::Printf(TEXT("%s: slot %s has a boat material"), Tag, *M.MaterialSlotName.ToString()), M.MaterialInterface && M.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));
+		}
+		int32 Rudders = 0;
+		for (const FFoilDef& F : C.Foils) Rudders += F.Role == EFoilRole::Rudder;
+		TestEqual(FString::Printf(TEXT("%s: a rudder pivot per rudder"), Tag), int32(Hull->FindSocket(TEXT("RudderPivot")) != nullptr) + int32(Hull->FindSocket(TEXT("RudderPivot_1")) != nullptr), Rudders);
+	}
+	return true;
+}
+
 // Visual V3: the rendered sail is the one the forces came from: depth/chord at each strip's height matches its camber,
 // the chord angle its twist, the draft sits forward of mid-chord, and the planform has the sail's area.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSailShapeTest, "SailingSim.Visual.SailShape", VisualFlags)

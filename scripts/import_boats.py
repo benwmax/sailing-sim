@@ -117,5 +117,15 @@ def import_crew():
     unreal.log(f"Imported {name}: {len(mats)} materials, skeleton {skel.get_name() if skel else None}")
 
 
-import_boat("J22", "/Game/Boats/J22")
-import_crew()
+import sys
+# Visual V7: the other seven boats (Tools/blender/build_fleet.py). `-- fleet` imports only them.
+FLEET = ("Sunfish", "ILCA7", "Catalina22", "Catalina30", "Hobie16", "Corsair880", "Lagoon42")
+only_fleet = "fleet" in sys.argv
+if not only_fleet:
+    import_boat("J22", "/Game/Boats/J22")
+    import_crew()
+for tag in FLEET:
+    if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
+        import_boat(tag, f"/Game/Boats/{tag}")
+unreal.log("Import done")
+os._exit(0)
