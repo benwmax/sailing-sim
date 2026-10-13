@@ -38,6 +38,17 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	Root->TryGetNumberField(TEXT("mhw_m"), MeanHighWater);
 	Root->TryGetNumberField(TEXT("latitude"), Latitude);
 	Root->TryGetNumberField(TEXT("longitude"), Longitude);
+	Root->TryGetBoolField(TEXT("ocean"), bOcean);
+	const TArray<TSharedPtr<FJsonValue>>* PassageArray = nullptr;
+	if (Root->TryGetArrayField(TEXT("passage"), PassageArray))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *PassageArray)
+		{
+			const TSharedPtr<FJsonObject> O = V->AsObject();
+			const TArray<TSharedPtr<FJsonValue>>& XY = O->GetArrayField(TEXT("xy"));
+			Passage.Add({ O->GetStringField(TEXT("name")), FVector2D(XY[0]->AsNumber(), XY[1]->AsNumber()) });
+		}
+	}
 	LevelFeet = PoolFeet;
 	for (const auto& Field : Root->Values)
 	{

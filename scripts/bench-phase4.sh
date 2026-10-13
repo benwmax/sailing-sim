@@ -26,6 +26,6 @@ try:
 except Exception:
     print(f"{sys.argv[2]},error,,{sys.argv[3]}")
 PY
-	[[ -f "$ARTIFACTS/$SHOT.png" ]] && cp "$ARTIFACTS/$SHOT.png" "$REPO_ROOT/docs/phase-4/$SHOT.png"
+	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$SHOT.png" ]] && cp "$ARTIFACTS/$SHOT.png" "$REPO_ROOT/docs/phase-4/$SHOT.png" || true
 done
 cat "$OUT"

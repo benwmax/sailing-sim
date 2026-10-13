@@ -18,7 +18,11 @@ Outputs (Content/TerrainData):
 Heights are in meters above MLLW (the chart datum): depths on the chart are positive below it. In game the water
 surface stands at the predicted tide, so the terrain is shifted by the tide each frame.
 
-Run: Tools/venv/bin/python Tools/coast/build_galveston.py
+Run: Tools/venv/bin/python Tools/coast/build_galveston.py [galveston|gulf]
+
+The same pipeline bakes the Gulf passage (Galveston to Freeport, `gulf`): 50 m cells from the offshore and
+approach charts, flat barrier islands (no DEM), Gulf tide stations, no tidal-current field, written as
+GulfPassage.* with its passage plan.
 """
 import collections
 import glob
@@ -41,14 +45,45 @@ sys.path.insert(0, os.path.dirname(__file__))
 import enc  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-RAW = os.path.join(ROOT, "Data", "GalvestonBay", "raw")
+REGION = sys.argv[1] if len(sys.argv) > 1 else "galveston"
+REGIONS = {
+    "galveston": {
+        "name": "GalvestonBay", "display": "Galveston Bay", "docs": "phase-5", "cell": 10.0,
+        "center": (29.5446, -95.0193),             # Kemah, at the Clear Lake channel
+        "bbox": (-95.115, 29.295, -94.665, 29.625),  # lon_min, lat_min, lon_max, lat_max
+        "datum_station": "8771450", "stations": ("8771450", "8771341", "8771013", "8770613", "8771486"),
+        "current": True, "reference": True, "ocean": False,
+        "check": (("Kemah, Clear Lake channel", 29.5440, -95.0150), ("Texas City Dike", 29.3880, -94.8800), ("Eagle Point", 29.4810, -94.9170)),
+        "launch": (("Clear Lake, off the yacht clubs", 29.5560, -95.0560, 90.0), ("Kemah channel, outbound", 29.5418, -95.0080, 110.0),
+                   ("Galveston Bay, off Clear Lake", 29.5250, -94.9700, 130.0), ("Red Fish Bar", 29.4950, -94.8750, 180.0),
+                   ("Texas City Dike", 29.4000, -94.8600, 140.0), ("Bolivar Roads", 29.3550, -94.7700, 120.0)),
+        "passage": (),
+    },
+    "gulf": {
+        "name": "GulfPassage", "display": "Gulf passage: Galveston to Freeport", "docs": "phase-7", "cell": 50.0,
+        "center": (29.3300, -94.6900),             # the Galveston entrance, between the jetties
+        "bbox": (-95.42, 28.76, -94.56, 29.36),
+        "datum_station": "8771510", "stations": ("8771510", "8771341", "8771972", "8772447"),
+        "current": False, "reference": False, "ocean": True,
+        "check": (("Galveston beach, Pleasure Pier", 29.2853, -94.7894), ("Freeport, Surfside beach", 28.9420, -95.2850)),
+        "launch": (("Galveston entrance, outbound", 29.3150, -94.6650, 135.0), ("Galveston sea buoy", 29.2850, -94.6200, 225.0),
+                   ("Offshore, 15 nm south of Galveston", 29.0500, -94.7500, 240.0), ("Freeport sea buoy", 28.8700, -95.2300, 45.0)),
+        # The passage plan: out of the Galveston entrance, offshore along the beach, into Freeport (about 45 nm).
+        "passage": (("Galveston entrance", 29.3150, -94.6650), ("Galveston sea buoy", 29.2850, -94.6200),
+                    ("Off Galveston Island", 29.1500, -94.8500), ("Off San Luis Pass", 28.9900, -95.0600),
+                    ("Freeport sea buoy", 28.8750, -95.2250), ("Freeport entrance", 28.9300, -95.2900)),
+    },
+}
+CFG = REGIONS[REGION]
+NAME = CFG["name"]
+RAW = os.path.join(ROOT, "Data", NAME, "raw")
 OUT = os.path.join(ROOT, "Content", "TerrainData")
-DOCS = os.path.join(ROOT, "docs", "phase-5")
-CELL = 10.0
-TREE_CELL = 20.0
+DOCS = os.path.join(ROOT, "docs", CFG["docs"])
+CELL = CFG["cell"]
+TREE_CELL = 20.0 if CELL <= 10.0 else 100.0
 CURRENT_CELL = 50.0
-CENTER = (29.5446, -95.0193)            # Kemah, at the Clear Lake channel
-BBOX = (-95.115, 29.295, -94.665, 29.625)  # lon_min, lat_min, lon_max, lat_max
+CENTER = CFG["center"]
+BBOX = CFG["bbox"]
 LOCAL = f"+proj=tmerc +lat_0={CENTER[0]} +lon_0={CENTER[1]} +k=1 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 to_local = Transformer.from_crs("EPSG:4326", LOCAL, always_xy=True)
 from_local = Transformer.from_crs(LOCAL, "EPSG:4326", always_xy=True)
@@ -205,7 +240,7 @@ for path in cells:  # coarse cells first, detailed ones paint over them inside t
                         samples.append((p.x, p.y, float(v)))
                 features["DEPCNT"].append((g, float(v), name))
     for layer in ("COALNE", "SLCONS", "PONTON", "BRIDGE", "BOYLAT", "BOYSPP", "BOYCAR", "BOYSAW", "BOYISD", "BCNLAT", "BCNSPP",
-                  "BCNCAR", "BCNSAW", "BCNISD", "LIGHTS", "DAYMAR", "TOPMAR", "LNDMRK", "FAIRWY", "MAGVAR", "OBSTRN", "WRECKS"):
+                  "BCNCAR", "BCNSAW", "BCNISD", "LIGHTS", "DAYMAR", "TOPMAR", "LNDMRK", "FAIRWY", "MAGVAR", "OBSTRN", "WRECKS", "OFSPLF"):
         if layer in layers:
             for row in enc.read(path, layer):
                 row["geom_xy"] = geom_xy(row["geom"]) if row["geom"] is not None else None
@@ -237,17 +272,21 @@ water_bottom = -depth  # height above MLLW
 print(f"deepest {np.nanmax(depth):.1f} m below MLLW, water cells {water.sum()}")
 
 # ---------------------------------------------------------------- land: USGS 3DEP, NAVD88 -> MLLW
-datums = {d["name"]: d["value"] for d in json.load(open(os.path.join(RAW, "tides", "datums_8771450.json")))["datums"]}
+datums = {d["name"]: d["value"] for d in json.load(open(os.path.join(RAW, "tides", f"datums_{CFG['datum_station']}.json")))["datums"]}
 NAVD_TO_MLLW = datums["NAVD88"] - datums["MLLW"]
 MHW = datums["MHW"] - datums["MLLW"]
-with tifffile.TiffFile(os.path.join(RAW, "dem_3dep.tif")) as tif:
-    dem = tif.pages[0].asarray().astype(np.float64)
-    tie = tif.pages[0].tags["ModelTiepointTag"].value
-    scale = tif.pages[0].tags["ModelPixelScaleTag"].value
-lon, lat = from_local.transform(GY, GX)
-fc = (lon - tie[3]) / scale[0] - 0.5
-fr = (tie[4] - lat) / scale[1] - 0.5
-land_z = ndimage.map_coordinates(dem, [fr, fc], order=1, mode="nearest") + NAVD_TO_MLLW
+if os.path.exists(os.path.join(RAW, "dem_3dep.tif")):
+    with tifffile.TiffFile(os.path.join(RAW, "dem_3dep.tif")) as tif:
+        dem = tif.pages[0].asarray().astype(np.float64)
+        tie = tif.pages[0].tags["ModelTiepointTag"].value
+        scale = tif.pages[0].tags["ModelPixelScaleTag"].value
+    lon, lat = from_local.transform(GY, GX)
+    fc = (lon - tie[3]) / scale[0] - 0.5
+    fr = (tie[4] - lat) / scale[1] - 0.5
+    land_z = ndimage.map_coordinates(dem, [fr, fc], order=1, mode="nearest") + NAVD_TO_MLLW
+else:
+    # No DEM (the Gulf passage): the barrier islands and the beach as low, flat land a couple of meters up.
+    land_z = np.full((NY, NX), MHW + 1.8)
 land_z = np.maximum(land_z, MHW + 0.25)
 f = 1.0 - land_frac
 height = (1.0 - f) * land_z + f * np.where(np.isnan(water_bottom), -0.5, np.minimum(water_bottom, MHW - 0.3))
@@ -256,11 +295,16 @@ height[shore_cells] = MHW + 0.6 - 1.2 * f[shore_cells]  # the water's edge at me
 # Outside the charts' coverage (inland) the land comes from the DEM; a DEM surface below high water there is a
 # pond or marsh, kept shallow.
 outside = ~covered
-height[outside] = np.where(land_z[outside] > MHW + 0.25, land_z[outside], -0.5)
+if os.path.exists(os.path.join(RAW, "dem_3dep.tif")):
+    height[outside] = np.where(land_z[outside] > MHW + 0.25, land_z[outside], -0.5)
+else:
+    # Offshore past the charts' coverage (the Gulf passage's far corners): open water, as deep as the nearest charted water.
+    idx = ndimage.distance_transform_edt(outside, return_distances=False, return_indices=True)
+    height[outside] = np.minimum(height[idx[0][outside], idx[1][outside]], -5.0)
 height = np.clip(height, -320.0, 320.0)
 
 # ---------------------------------------------------------------- shoreline checkpoints (chart coastline vs the terrain's MHW contour)
-CHECK = (("Kemah, Clear Lake channel", 29.5440, -95.0150), ("Texas City Dike", 29.3880, -94.8800), ("Eagle Point", 29.4810, -94.9170))
+CHECK = CFG["check"]
 coast = [ln for row in features["COALNE"] for ln in lines(row["geom_xy"])]
 checkpoints = []
 for cname, la, lo_ in CHECK:
@@ -332,6 +376,15 @@ for row in features["LNDMRK"]:
     if in_box(c.x, c.y):
         landmarks.append({"x": round(c.x, 1), "y": round(c.y, 1), "name": scalar(row.get("OBJNAM")) or CATLMK.get(int(cat) if cat else 0, "Landmark"), "category": cat,
                           "conspicuous": scalar(row.get("CONVIS")) == 1, "height": scalar(row.get("HEIGHT"))})
+# Offshore oil and gas platforms: landmarks to take a bearing on (their lights come in with the lights below).
+for row in features["OFSPLF"]:
+    g = row["geom_xy"]
+    if g is None:
+        continue
+    c = g.centroid
+    if in_box(c.x, c.y):
+        landmarks.append({"x": round(c.x, 1), "y": round(c.y, 1), "name": scalar(row.get("OBJNAM")) or "Platform", "category": "platform",
+                          "conspicuous": True, "height": scalar(row.get("HEIGHT"))})
 # Major lights not on a buoy or beacon (jetty lights, range lights) are aids too.
 for lt in lights:
     if in_box(lt["x"], lt["y"]) and not any((a["x"] - lt["x"]) ** 2 + (a["y"] - lt["y"]) ** 2 < 9.0 for a in navaids):
@@ -446,71 +499,71 @@ def station(st):
             "constituents": [[c["name"].upper(), c["amplitude"], c["phase_GMT"]] for c in hc if c["amplitude"] > 0.0]}
 
 
-height_stations = [station(s) for s in ("8771450", "8771341", "8771013", "8770613", "8771486")]
-cur = json.load(open(os.path.join(TIDES, "curharcon_ACT8856.json")))["HarmonicConstituents"]
-cur_const = [[c["constituentName"].upper(), c["majorAmplitude"] / 100.0, c["majorPhaseGMT"]] for c in cur if c["majorAmplitude"] > 0.0]
-sys.path.insert(0, os.path.dirname(__file__))
-import datetime as dtm  # noqa: E402
-import tides as tidepy  # noqa: E402
-month = json.load(open(os.path.join(TIDES, "curpred6_ACT8856_month.json")))["current_predictions"]["cp"]
-residual = np.mean([float(p["Velocity_Major"]) / 100.0 - tidepy.predict(cur_const, 0.0, dtm.datetime.strptime(p["Time"], "%Y-%m-%d %H:%M").replace(
-    tzinfo=dtm.timezone.utc)) for p in month[::3]])
-flood_dir = float(month[0]["meanFloodDir"])
-cx, cy = ll2xy(29.343299865722656, -94.78130340576172)
-current_station = {"id": "ACT8856", "name": "Bolivar Roads", "x": round(cx, 1), "y": round(cy, 1), "z0": round(float(residual), 4),
-                   "flood_deg": flood_dir, "constituents": cur_const}
-print(f"current: Bolivar Roads mean (non-tidal) {residual * 100:.1f} cm/s, flood toward {flood_dir:.0f} deg")
-reference = {"hilo": {}, "current_max_slack": []}
-for st in ("8771450", "8771013"):
-    reference["hilo"][st] = [[p["t"], float(p["v"]), p["type"]] for p in json.load(open(os.path.join(TIDES, f"pred_hilo_{st}.json")))["predictions"]]
-reference["current_max_slack"] = [[p["Time"], p["Type"], float(p["Velocity_Major"]) * 0.514444] for p in json.load(
-    open(os.path.join(TIDES, "curpred_ACT8856.json")))["current_predictions"]["cp"]]
+height_stations = [station(s) for s in CFG["stations"]]
+current_station = None
+reference = None
+if CFG["current"]:
+    cur = json.load(open(os.path.join(TIDES, "curharcon_ACT8856.json")))["HarmonicConstituents"]
+    cur_const = [[c["constituentName"].upper(), c["majorAmplitude"] / 100.0, c["majorPhaseGMT"]] for c in cur if c["majorAmplitude"] > 0.0]
+    sys.path.insert(0, os.path.dirname(__file__))
+    import datetime as dtm  # noqa: E402
+    import tides as tidepy  # noqa: E402
+    month = json.load(open(os.path.join(TIDES, "curpred6_ACT8856_month.json")))["current_predictions"]["cp"]
+    residual = np.mean([float(p["Velocity_Major"]) / 100.0 - tidepy.predict(cur_const, 0.0, dtm.datetime.strptime(p["Time"], "%Y-%m-%d %H:%M").replace(
+        tzinfo=dtm.timezone.utc)) for p in month[::3]])
+    flood_dir = float(month[0]["meanFloodDir"])
+    cx, cy = ll2xy(29.343299865722656, -94.78130340576172)
+    current_station = {"id": "ACT8856", "name": "Bolivar Roads", "x": round(cx, 1), "y": round(cy, 1), "z0": round(float(residual), 4),
+                       "flood_deg": flood_dir, "constituents": cur_const}
+    print(f"current: Bolivar Roads mean (non-tidal) {residual * 100:.1f} cm/s, flood toward {flood_dir:.0f} deg")
+    reference = {"hilo": {}, "current_max_slack": []}
+    for st in ("8771450", "8771013"):
+        reference["hilo"][st] = [[p["t"], float(p["v"]), p["type"]] for p in json.load(open(os.path.join(TIDES, f"pred_hilo_{st}.json")))["predictions"]]
+    reference["current_max_slack"] = [[p["Time"], p["Type"], float(p["Velocity_Major"]) * 0.514444] for p in json.load(
+        open(os.path.join(TIDES, "curpred_ACT8856.json")))["current_predictions"]["cp"]]
 
-# Current field: geodesic distance from the entrance through the water (channels are cheaper to travel), flood
-# along increasing distance, strength falling with distance and in shallow water, arrival delayed by distance.
-step = int(CURRENT_CELL / CELL)
-cdepth = depth[::step, ::step]
-cwater = water[::step, ::step] & (np.nan_to_num(cdepth) > 0.3)
-cny, cnx = cdepth.shape
-dist = np.full((cny, cnx), np.inf)
-sr, sc = int(round((cx - X0) / CURRENT_CELL)), int(round((cy - Y0) / CURRENT_CELL))
-heap = [(0.0, sr, sc)]
-dist[sr, sc] = 0.0
-while heap:
-    d0, r, c = heapq.heappop(heap)
-    if d0 > dist[r, c]:
-        continue
-    for dr in (-1, 0, 1):
-        for dc in (-1, 0, 1):
-            if dr == 0 and dc == 0:
-                continue
-            rr, cc = r + dr, c + dc
-            if 0 <= rr < cny and 0 <= cc < cnx and cwater[rr, cc]:
-                w = CURRENT_CELL * math.hypot(dr, dc) * math.sqrt(12.0 / max(min(cdepth[rr, cc], 12.0), 0.5))
-                if d0 + w < dist[rr, cc]:
-                    dist[rr, cc] = d0 + w
-                    heapq.heappush(heap, (d0 + w, rr, cc))
-reach = np.isfinite(dist)
-dfill = np.where(reach, dist, np.nanmax(np.where(reach, dist, np.nan)) * 1.5)
-gr, gc = np.gradient(ndimage.gaussian_filter(dfill, 2.0))
-norm = np.hypot(gr, gc) + 1e-9
-dir_x, dir_y = gr / norm, gc / norm
-# At the station the field points along NOAA's mean flood direction.
-geo_km = np.where(reach, dist, 0.0) / 1000.0
-gain = np.clip(np.sqrt(np.nan_to_num(cdepth) / 12.0), 0.15, 1.2) * np.exp(-geo_km / 12.0)
-gain = np.where(reach, gain / max(gain[sr, sc], 1e-6), 0.0)
-delay = np.where(reach, np.minimum(dist / 5.0, 65000.0), 0.0)
-fd = math.radians(flood_dir)
-blend = np.clip(1.0 - geo_km / 3.0, 0.0, 1.0)  # near the station, use NOAA's measured axis
-dir_x = (1 - blend) * dir_x + blend * math.cos(fd)
-dir_y = (1 - blend) * dir_y + blend * math.sin(fd)
-norm = np.hypot(dir_x, dir_y) + 1e-9
-dir_x, dir_y = dir_x / norm, dir_y / norm
-
+    # Current field: geodesic distance from the entrance through the water (channels are cheaper to travel), flood
+    # along increasing distance, strength falling with distance and in shallow water, arrival delayed by distance.
+    step = int(CURRENT_CELL / CELL)
+    cdepth = depth[::step, ::step]
+    cwater = water[::step, ::step] & (np.nan_to_num(cdepth) > 0.3)
+    cny, cnx = cdepth.shape
+    dist = np.full((cny, cnx), np.inf)
+    sr, sc = int(round((cx - X0) / CURRENT_CELL)), int(round((cy - Y0) / CURRENT_CELL))
+    heap = [(0.0, sr, sc)]
+    dist[sr, sc] = 0.0
+    while heap:
+        d0, r, c = heapq.heappop(heap)
+        if d0 > dist[r, c]:
+            continue
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                if dr == 0 and dc == 0:
+                    continue
+                rr, cc = r + dr, c + dc
+                if 0 <= rr < cny and 0 <= cc < cnx and cwater[rr, cc]:
+                    w = CURRENT_CELL * math.hypot(dr, dc) * math.sqrt(12.0 / max(min(cdepth[rr, cc], 12.0), 0.5))
+                    if d0 + w < dist[rr, cc]:
+                        dist[rr, cc] = d0 + w
+                        heapq.heappush(heap, (d0 + w, rr, cc))
+    reach = np.isfinite(dist)
+    dfill = np.where(reach, dist, np.nanmax(np.where(reach, dist, np.nan)) * 1.5)
+    gr, gc = np.gradient(ndimage.gaussian_filter(dfill, 2.0))
+    norm = np.hypot(gr, gc) + 1e-9
+    dir_x, dir_y = gr / norm, gc / norm
+    # At the station the field points along NOAA's mean flood direction.
+    geo_km = np.where(reach, dist, 0.0) / 1000.0
+    gain = np.clip(np.sqrt(np.nan_to_num(cdepth) / 12.0), 0.15, 1.2) * np.exp(-geo_km / 12.0)
+    gain = np.where(reach, gain / max(gain[sr, sc], 1e-6), 0.0)
+    delay = np.where(reach, np.minimum(dist / 5.0, 65000.0), 0.0)
+    fd = math.radians(flood_dir)
+    blend = np.clip(1.0 - geo_km / 3.0, 0.0, 1.0)  # near the station, use NOAA's measured axis
+    dir_x = (1 - blend) * dir_x + blend * math.cos(fd)
+    dir_y = (1 - blend) * dir_y + blend * math.sin(fd)
+    norm = np.hypot(dir_x, dir_y) + 1e-9
+    dir_x, dir_y = dir_x / norm, dir_y / norm
 # ---------------------------------------------------------------- launch spots
-LAUNCH = (("Clear Lake, off the yacht clubs", 29.5560, -95.0560, 90.0), ("Kemah channel, outbound", 29.5418, -95.0080, 110.0),
-          ("Galveston Bay, off Clear Lake", 29.5250, -94.9700, 130.0), ("Red Fish Bar", 29.4950, -94.8750, 180.0),
-          ("Texas City Dike", 29.4000, -94.8600, 140.0), ("Bolivar Roads", 29.3550, -94.7700, 120.0))
+LAUNCH = CFG["launch"]
 launch = []
 for nm, la, lo_, hd in LAUNCH:
     x, y = ll2xy(la, lo_)
@@ -542,7 +595,7 @@ if mv is not None:
                  "rose_xy": [round(mv["geom_xy"].x), round(mv["geom_xy"].y)] if mv.get("geom_xy") is not None and mv["geom_xy"].geom_type == "Point" else None}
 
 # ---------------------------------------------------------------- vector chart for the chart view
-def tri(poly, tol=4.0):
+def tri(poly, tol=max(4.0, 0.4 * CELL)):
     poly = poly.simplify(tol, preserve_topology=True)
     if poly.is_empty or poly.area < 200.0:
         return []
@@ -609,20 +662,22 @@ print(f"chart: {len(chart['areas'])} triangles, {len(chart['contours'])} contour
 # ---------------------------------------------------------------- write
 os.makedirs(OUT, exist_ok=True)
 os.makedirs(DOCS, exist_ok=True)
-with open(os.path.join(OUT, "GalvestonBay.height"), "wb") as fh:
+with open(os.path.join(OUT, f"{NAME}.height"), "wb") as fh:
     fh.write(b"SSHT" + struct.pack("<III", 1, NX, NY) + struct.pack("<ffff", CELL, X0, Y0, 0.01))
     fh.write(np.round(height * 100.0).astype("<i2").tobytes())
-with open(os.path.join(OUT, "GalvestonBay.trees"), "wb") as fh:
+with open(os.path.join(OUT, f"{NAME}.trees"), "wb") as fh:
     fh.write(b"SSTR" + struct.pack("<III", 1, TNX, TNY) + struct.pack("<fff", TREE_CELL, X0, Y0))
     fh.write(trees.astype(np.uint8).tobytes())
-with open(os.path.join(OUT, "GalvestonBay.current"), "wb") as fh:
-    fh.write(b"SSCF" + struct.pack("<III", 1, cnx, cny) + struct.pack("<fff", CURRENT_CELL, X0, Y0))
-    fh.write(np.round(dir_x * 10000).astype("<i2").tobytes())
-    fh.write(np.round(dir_y * 10000).astype("<i2").tobytes())
-    fh.write(np.clip(np.round(gain * 1000), 0, 65535).astype("<u2").tobytes())
-    fh.write(np.clip(np.round(delay), 0, 65535).astype("<u2").tobytes())
+if CFG["current"]:
+    with open(os.path.join(OUT, f"{NAME}.current"), "wb") as fh:
+        fh.write(b"SSCF" + struct.pack("<III", 1, cnx, cny) + struct.pack("<fff", CURRENT_CELL, X0, Y0))
+        fh.write(np.round(dir_x * 10000).astype("<i2").tobytes())
+        fh.write(np.round(dir_y * 10000).astype("<i2").tobytes())
+        fh.write(np.clip(np.round(gain * 1000), 0, 65535).astype("<u2").tobytes())
+        fh.write(np.clip(np.round(delay), 0, 65535).astype("<u2").tobytes())
 meta = {
-    "name": "Galveston Bay",
+    "name": CFG["display"],
+    "ocean": CFG["ocean"],
     "grid": {"rows_north": NY, "cols_east": NX, "cell_m": CELL, "origin_north_m": X0, "origin_east_m": Y0, "height_unit_m": 0.01},
     "trees": {"rows_north": TNY, "cols_east": TNX, "cell_m": TREE_CELL},
     "projection": LOCAL,
@@ -631,8 +686,8 @@ meta = {
     "latitude": CENTER[0], "longitude": CENTER[1],
     "sources": {
         "chart": "NOAA ENC cells " + ", ".join(sorted(os.path.basename(c)[:-4] for c in cells)) + " (public domain)",
-        "elevation": "USGS 3D Elevation Program, 1/3 arc-second, NAVD88 converted to MLLW with the Galveston Pier 21 datums (public domain)",
-        "tides": "NOAA CO-OPS harmonic constituents and datums: Galveston Pier 21, North Jetty, Eagle Point, Morgans Point, Railroad Bridge; currents: Bolivar Roads ACT8856 bin 2",
+        "elevation": "USGS 3D Elevation Program, 1/3 arc-second, NAVD88 converted to MLLW (public domain)" if os.path.exists(os.path.join(RAW, "dem_3dep.tif")) else "none: barrier islands as flat land",
+        "tides": "NOAA CO-OPS harmonic constituents and datums: " + ", ".join(st["name"] for st in height_stations) + ("; currents: Bolivar Roads ACT8856 bin 2" if CFG["current"] else ""),
         "buildings_landuse": "OpenStreetMap contributors, ODbL 1.0",
     },
     "variation": variation,
@@ -646,10 +701,11 @@ meta = {
     "tide_stations": height_stations,
     "current_station": current_station,
     "reference_predictions": reference,
+    "passage": [{"name": nm, "xy": [round(v, 1) for v in ll2xy(la, lo_)]} for nm, la, lo_ in CFG["passage"]],
 }
-with open(os.path.join(OUT, "GalvestonBay.json"), "w") as fh:
+with open(os.path.join(OUT, f"{NAME}.json"), "w") as fh:
     json.dump(meta, fh, separators=(",", ":"), default=lambda o: o.item() if hasattr(o, "item") else str(o))
-with open(os.path.join(OUT, "GalvestonBay.chart.json"), "w") as fh:
+with open(os.path.join(OUT, f"{NAME}.chart.json"), "w") as fh:
     json.dump(chart, fh, separators=(",", ":"))
 
 # Preview: depth shading, land, navaids.
@@ -665,5 +721,5 @@ for a in navaids:
     col = (220, 40, 40) if a.get("catlam") == 2 else ((40, 170, 40) if a.get("catlam") == 1 else (240, 220, 40))
     dr.ellipse([px - 4, py - 4, px + 4, py + 4], fill=col)
 img.thumbnail((1600, 1600))
-img.save(os.path.join(DOCS, "terrain-preview.png"))
+img.save(os.path.join(DOCS, "terrain-preview.png" if REGION == "galveston" else f"{NAME}-preview.png"))
 print("wrote", OUT, "and", DOCS)

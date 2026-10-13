@@ -40,10 +40,14 @@ scripts/package-mac.sh    # RunUAT BuildCookRun to Packaged/Mac/SailingSim.app
 scripts/bench-mac.sh 20   # run the packaged app for 20 s, print fps, save a screenshot
 ```
 
+Windows: see `docs/windows-build.md` (steps written out, not yet tested).
+
 ## Controls
 
 Press **?** (controller: View) in the game for the controls card and **Tab** (controller: Menu) for settings.
-Keys are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/SailingSettings.h`.
+Keys are rebindable in game (Tab > **Keys**, Right opens it: pick an action, press Enter, press the new key; a key
+already in use swaps with it) and saved to `Input.ini`; the defaults are in `USailingInputSettings`
+(`Source/SailingSim/Public/SailingSettings.h`).
 
 | Action | Keyboard and mouse | Controller |
 | --- | --- | --- |
@@ -68,6 +72,9 @@ Keys are rebindable: see `USailingInputSettings` in `Source/SailingSim/Public/Sa
 | Coast: take a bearing on the mark the camera faces | U | |
 | Coast: GPS on the chart on / off, clear the plot | O, I | |
 | Traffic (none / light / busy), start or end a race | Tab > Traffic, Tab > Race | |
+| Logbook | Y | |
+| Watch the last run again (Left / Right scrub, Up / Down speed) | , (comma) | |
+| Photo mode (Enter saves, [ / ] zoom) | 9 | |
 
 **Simple** layout (the default, and always on Easy): you steer, trim both sheets and hike; the crew handles the
 traveler and sail shape. **Full** gives you every control. **Trim assist** (its own setting) lets the crew trim the
@@ -149,6 +156,40 @@ south to Bolivar Roads and the Gulf. Everything comes from the NOAA chart and NO
   the plot.
 - Command line: `-SailingWorld=1`, `-SailingDate=2026-10-12`, `-SailingChart=<m per pixel>` (open the chart),
   `-SailingPlotFix` (take three bearings at the start), `-SailingNoGps`, `-SailingLightsOn`.
+
+## The Gulf passage: Galveston to Freeport
+
+Pick **Area: Gulf passage** in the settings menu (or `-SailingWorld=Gulf`). You start inside the Galveston jetties;
+the passage runs out past the sea buoy and 40 nm down the coast, outside the bars off Galveston Island and San Luis
+Pass, to the Freeport sea buoy and in between its jetties. The chart, aids, tides and landmarks (the offshore
+platforms) come from the NOAA ENC cells and CO-OPS stations listed in `CREDITS.md`, baked the same way as the bay.
+
+- **The sea** is a Tessendorf FFT ocean: a JONSWAP wind sea grown to the wind (fully developed offshore) and a swell
+  from the southeast with narrow spreading, in two cascades (480 m and 60 m tiles) rendered by the water material
+  and sampled by the physics at the same points, so the boat rides the waves you see. Its height depends on the
+  weather (a calm morning has 0.5 m of swell at 8 s, an overcast day 1.2 m at 9 s, a thunderstorm 1.4 m plus its own
+wind sea; `-SailingSwell=<Hs m>` overrides the swell height).
+- **Shelter**: the open sea fades out behind the jetties, over the bars (waves break where the depth is under about
+  1.6 times their height) and in the lee of the land, so the channel and the harbors stay calm.
+- **Waves slow the boat** the way they do: a pitching response to each wavelength band of the spectrum, strongest for
+  waves about her own length. In 1.5 m of sea a J/22 loses about a quarter of her speed close-hauled, a twentieth on a
+  reach and nothing running.
+- **The nav panel** shows the next passage waypoint with its bearing and distance; each one passed goes in the log.
+
+## Logbook, debrief and photos
+
+- **Logbook (Y)**: a watch entry every half hour of sailing (time, position, course and speed, heading magnetic,
+  distance run by the log, wind and sea) and an entry for every event: a fix, a drill finished, a waypoint passed,
+  grounding, a capsize, contact with another vessel, rules scores and race results. Each session is saved as it goes
+  to `Saved/Logbook/<date> <time> <area>.json` (packaged: in the app's container,
+  `~/Library/Containers/com.benwmax.SailingSim/Data/Library/`).
+- **Watch it again (,)**: every run (from a reset, a drill or a race start) is recorded ten times a second, up to forty
+  minutes. The comma key pauses the world and plays the run back with the camera free: Left / Right scrub, Up / Down
+  change the speed, comma again returns you where you were.
+- **Ghost of your last run** (Tab menu): sail against a translucent copy of your previous run from the same start.
+- **Photo mode (9)**: the world pauses, the HUD hides, the camera orbits freely (pitch from overhead to below the
+  horizon, out to 300 m); [ and ] change the field of view and Enter saves a full-resolution picture to
+  `Saved/Photos`.
 
 ## Traffic, the Rules of the Road and races
 
@@ -291,7 +332,33 @@ Found and fixed along the way: the Galveston bake had missed the Houston Ship Ch
 channel was 10 m instead of its dredged 45 ft) and took the magnetic variation from a whole-degree area band
 (0 deg 25' E) instead of the compass rose near Kemah (1 deg 28' E in 2026); both fixed in the Phase 5 branch too.
 
+## Phase 7 gate results (Oct 12, 2026)
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 65 of 65 pass, including 6 new: ocean spectrum and shelter, added resistance in waves, a long passage, replay, logbook and key rebinding |
+| Ocean spectrum | The FFT sea's significant height measures 1.42 m against the 1.45 m asked for; the open-sea mask reads 1.00 offshore, 0.03 inside the Galveston jetties and 0.00 in West Bay |
+| Waves slow the boat | A J/22 in a 1.5 m sea: 25% slower close-hauled, 5% on a beam reach, none running (the same boat on flat water as reference) |
+| Long passage stable | 90 minutes from the Galveston entrance on the autopilot in the open Gulf: 7.3 nm by the log, past the sea buoy and on toward the third mark, heel at most 34 degrees, never aground or capsized |
+| Debrief | A 60 s run is recorded at ten frames a second and replays within 5 cm of where the boat was; the logbook writes watch and event entries to its JSON file; a rebound key moves its action and swaps with the clash |
+| Frame rate, default (Medium) tier | The Gulf: open sea 93 fps, swell 102, dusk 88, the Galveston entrance 89, the chart 120; the logbook open 66; sailing with the ghost 76 (`docs/phase-7/frame-budget.csv`) |
+| No regressions | Every earlier phase's views rerun on this build (`docs/phase-7/regression.csv`): all above 60 on Medium (lowest 68), and every Phase 6 view the same or faster than at its gate. The lake views are 2 to 5 fps under their Phase 2 to 4 gates, as they already were in Phases 5 and 6. The J/22 polar is unchanged (worst 8.8%) |
+| Screenshots | `docs/phase-7/gulf-sea.png`, `gulf-swell.png`, `gulf-dusk.png`, `gulf-entrance.png`, `gulf-chart.png`, `logbook.png`, `ghost.png`, and the bake preview `GulfPassage-preview.png` |
+
+Found and fixed along the way: summing added resistance over the spectrum at first let the Sunfish sail 17% too fast in
+15 kn of lake chop (her short hull put most of the chop past the response peak); the peak now moves to longer waves
+with speed when heading into them, as model tests show. The ghost material was not in the cooked build (it was only
+loaded by path) and the bench scripts' `NO_DOCS` guard stopped the regression run after Phase 2.
+
 ## Known gaps
+
+- The Gulf: waves do not break over the bars or the jetties (the open sea fades out with depth and shelter instead);
+  no refraction or reflection; the swell always comes from the southeast.
+  The land along the open coast is flat (no DEM was used there).
+- Debrief: only the last run is kept, in memory (not saved to disk); the ghost passes through boats and docks. The
+  logbook page shows the current session; earlier sessions are JSON files in `Saved/Logbook`.
+- Photo mode has no depth of field, filters or hidden-boat option. Windows builds are described
+  (`docs/windows-build.md`) but untested.
 
 - Races: the AI racers keep clear by the rules, but a five-boat pack still touches about once in five races (most
   often in the first minute after the start). There is no mark-room (RRS 18) or protest/penalty turn yet; the AI
@@ -309,7 +376,6 @@ channel was 10 m instead of its dredged 45 ft) and took the magnetic variation f
   The course line runs to the crosshair (no click-to-plot), and bearings for a fix must be taken within 10 minutes
   (no running fix yet).
 - The moon has no phase: moonlight is the same every night.
-- No Gulf swell outside the jetties yet (the FFT ocean is Phase 7) and no ship traffic (Phase 6).
 - The sun is now placed by the local clock (longitude, time zone, equation of time). Before Phase 5 the clock hour
   was treated as solar time, so the same start hour on the lake now has the sun about an hour earlier in its arc.
 

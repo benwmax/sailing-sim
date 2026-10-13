@@ -288,6 +288,9 @@ void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
 	Sim.SetRace(&Race);
 	Race.Begin(Sim.GetTime(), SecondsToStart);
 	bRace = true;
+	bRaceLogged = false;
+	const_cast<ASailboatPawn*>(Player)->BeginRun(TEXT("Race"));
+	const_cast<ASailboatPawn*>(Player)->AddLogEvent(FString::Printf(TEXT("Race: start sequence begun, windward-leeward, %.0f m beats"), Beat));
 	SignalsSeen = 0;
 
 	// Marks: orange inflatable cylinders; the pin end a buoy with a flag.
@@ -454,7 +457,23 @@ void ATrafficManager::Tick(float DeltaSeconds)
 	if (Sim.GetTime() - CoachTime > 0.25)
 	{
 		CoachTime = Sim.GetTime();
+		const size_t Before = Coach.GetScores().size();
 		Coach.Update(Sim.GetTime(), Me, Sim);
+		// The rules judgments go in the log.
+		for (size_t I = Before; I < Coach.GetScores().size(); ++I)
+		{
+			Player->AddLogEvent(FString::Printf(TEXT("Rules %+d: %s"), Coach.GetScores()[I].Points, UTF8_TO_TCHAR(Coach.GetScores()[I].Text.c_str())));
+		}
+	}
+	if (bRace && Race.IsOver() && !bRaceLogged)
+	{
+		bRaceLogged = true;
+		if (const FRaceEntry* E = Race.FindEntry(FTrafficSim::PlayerId))
+		{
+			Player->AddLogEvent(E->bFinished ? FString::Printf(TEXT("Race: finished %d of %d (%d:%02d)"), E->Place, int32(Race.Entries.size()),
+				int32(E->FinishTime - Race.StartTime()) / 60, int32(E->FinishTime - Race.StartTime()) % 60)
+				: FString::Printf(TEXT("Race: %s"), UTF8_TO_TCHAR(E->Status.c_str())));
+		}
 	}
 	UpdateHorns(Sim.GetTime());
 }

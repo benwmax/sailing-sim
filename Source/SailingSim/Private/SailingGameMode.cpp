@@ -19,6 +19,7 @@
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
+#include "Ocean.h"
 #include "TrafficManager.h"
 #include "SailingEnvironment.h"
 #include "UnrealClient.h"
@@ -47,9 +48,16 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	FString Value;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWorld="), Value))
 	{
-		Settings->World = Value.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Value == TEXT("1") ? 1 : 0;
+		// 0 or "Lake", 1 or "Galveston", 2 or "Gulf".
+		Settings->World = (Value.StartsWith(TEXT("Gulf"), ESearchCase::IgnoreCase) || Value == TEXT("2")) ? 2
+			: ((Value.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Value == TEXT("1")) ? 1 : 0);
 	}
 	Lake.Load(FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
+	if (Lake.bOcean)
+	{
+		Ocean = MakeShared<FOcean>();
+		Waves.SetOcean(std::shared_ptr<FOcean>(Ocean.Get(), [Keep = Ocean](FOcean*) {}));
+	}
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWeather="), Value))
 	{
 		for (int32 I = 0; I < int32(EWeatherPreset::Count); ++I)
@@ -96,12 +104,12 @@ double ASailingGameMode::GetSimTime() const
 
 const TCHAR* ASailingGameMode::WorldFileName(int32 World)
 {
-	return World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard");
+	return World == 2 ? TEXT("GulfPassage") : (World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard"));
 }
 
 const TCHAR* ASailingGameMode::WorldDisplayName(int32 World)
 {
-	return World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)");
+	return World == 2 ? TEXT("Gulf passage (Galveston to Freeport)") : (World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)"));
 }
 
 double ASailingGameMode::GetLocalHour() const
@@ -300,9 +308,43 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		WaveParams.WindSpeedKnots = WeatherState.Front.OutflowKnots;
 		WaveParams.WindFromDegrees = WeatherState.Front.OutflowFromDegrees;
 	}
+	if (Ocean)
+	{
+		// Offshore the wind sea and swell are the FFT ocean's; the chop components only make the sheltered water's.
+		if (Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5) WaveParams.FetchMeters = 200.0;
+		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
+	}
 	Waves.SetWind(WaveParams);
 	// Short-fetch chop builds within a minute or two.
 	Waves.Update(DeltaSeconds, 40.0);
+}
+
+void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)
+{
+	// The Gulf's swell by the day's weather: it runs in from the southeast, longer and higher ahead of a front.
+	FOceanParams P = Ocean->GetParams();
+	P.WindMs = WindKnots * kKnot;
+	P.WindFromRad = WindFromDeg * kDegToRad;
+	switch (Weather.GetPreset())
+	{
+	case EWeatherPreset::CalmMorning: P.SwellHs = 0.5; P.SwellTp = 8.0; break;
+	case EWeatherPreset::Overcast: P.SwellHs = 1.2; P.SwellTp = 9.0; break;
+	case EWeatherPreset::Rain: P.SwellHs = 1.0; P.SwellTp = 8.0; break;
+	case EWeatherPreset::Thunderstorm: P.SwellHs = 1.4; P.SwellTp = 8.0; break;
+	default: P.SwellHs = 0.9; P.SwellTp = 9.0; break;
+	}
+	float SwellArg = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingSwell="), SwellArg)) P.SwellHs = SwellArg;
+	P.SwellFromRad = 135.0 * kDegToRad;
+	const FOceanParams& Old = Ocean->GetParams();
+	const bool bChanged = !bOceanConfigured || FMath::Abs(P.WindMs - Old.WindMs) > 0.4 || FMath::Abs(FMath::UnwindRadians(P.WindFromRad - Old.WindFromRad)) > 0.1
+		|| P.SwellHs != Old.SwellHs || P.SwellTp != Old.SwellTp;
+	if (!bChanged) return;
+	const double OldHs = Ocean->SignificantHeight();
+	Ocean->Configure(P);
+	// The depth limit depends on the wave height: rebuild the mask when it has changed noticeably.
+	if (!bOceanConfigured || FMath::Abs(Ocean->SignificantHeight() - OldHs) > 0.15 * OldHs) Ocean->BuildMask(Lake.Terrain);
+	bOceanConfigured = true;
 }
 
 void ASailingGameMode::StartPlay()

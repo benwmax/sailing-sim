@@ -1,6 +1,8 @@
 """Builds the Phase 2 materials in /Game/Materials from code, so they can be regenerated and reviewed.
 
-- M_Water: lake surface. Vertex shader displaces by the same 48-wave sum the physics uses (FWaveField);
+- M_Water: water surface. Vertex shader displaces by the same 48-wave sum the physics uses (FWaveField), plus on
+  the open sea the FFT ocean's two cascades (FOcean, uploaded as float textures each frame, masked where the sea
+  reaches);
   pixel shader adds per-pixel wave normals, wind ripples from the cat's-paw map (the wind field's surface
   roughness), rain ripples, whitecaps and wake foam.
 - M_Rain: translucent falling streaks for cylinders around the camera.
@@ -59,6 +61,31 @@ def custom(mat, code, inputs, output_type, x, y, extra_outputs=()):
     return c
 
 
+def linear_default():
+    """A tiny black texture without sRGB: the default for the float-data texture parameters (linear samplers)."""
+    path = f"{FOLDER}/T_LinearBlack"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        return unreal.load_asset(path)
+    import os, struct, tempfile, zlib
+    raw = b"".join(b"\x00" + b"\x00\x00\x00" * 4 for _ in range(4))
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 4, 4, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    file = os.path.join(tempfile.gettempdir(), "T_LinearBlack.png")
+    open(file, "wb").write(png)
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", file)
+    task.set_editor_property("destination_path", FOLDER)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("save", False)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(path)
+    tex.set_editor_property("srgb", False)
+    tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
+
+
 def connect(a, a_out, b, b_in):
     if not MEL.connect_material_expressions(a, a_out, b, b_in):
         raise RuntimeError(f"connect failed: {a.get_name()}.{a_out} -> {b.get_name()}.{b_in}")
@@ -84,7 +111,19 @@ float3 cam = Cam * 0.01;
 float fade = saturate(1.0 - distance(p.xy, cam.xy) / Fade);
 float h = 0.0;
 """ + wave_terms("height") + """
-return float3(0.0, 0.0, h * fade * 100.0);
+float ho = 0.0;
+[branch] if (OceanP.z > 0.0)
+{
+    // The FFT ocean: two cascades (texel i,j = the grid point at x = i * cell north, y = j * cell east), masked where
+    // the open sea reaches and faded far out.
+    float2 mr = (p.xy - OceanMaskRect.xy) / OceanMaskRect.zw;
+    float om = (all(mr >= 0.0) && all(mr <= 1.0)) ? OceanMask.SampleLevel(OceanMaskSampler, float2(mr.y, mr.x), 0).r : 1.0;
+    float of = om * saturate(1.0 - distance(p.xy, cam.xy) / OceanP.w);
+    float4 oa = OceanA.SampleLevel(OceanASampler, float2(p.y, p.x) / OceanP.x + 0.5 / 64.0, 0);
+    float4 ob = OceanB.SampleLevel(OceanBSampler, float2(p.y, p.x) / OceanP.y + 0.5 / 64.0, 0);
+    ho = (oa.r + ob.r) * of;
+}
+return float3(0.0, 0.0, (h * fade + ho) * 100.0);
 """
 
 SHADE_CODE = """
@@ -96,6 +135,21 @@ float h = 0.0, sx = 0.0, sy = 0.0;
 [branch] if (fade > 0.0)
 {
 """ + wave_terms("normal") + """
+}
+float ho = 0.0;
+[branch] if (OceanP.z > 0.0)
+{
+    // The FFT ocean: two cascades (texel i,j = the grid point at x = i * cell north, y = j * cell east), masked where
+    // the open sea reaches and faded far out.
+    float2 mr = (p.xy - OceanMaskRect.xy) / OceanMaskRect.zw;
+    float om = (all(mr >= 0.0) && all(mr <= 1.0)) ? OceanMask.SampleLevel(OceanMaskSampler, float2(mr.y, mr.x), 0).r : 1.0;
+    float of = om * saturate(1.0 - distance(p.xy, cam.xy) / OceanP.w);
+    float4 oa = OceanA.SampleLevel(OceanASampler, float2(p.y, p.x) / OceanP.x + 0.5 / 64.0, 0);
+    float4 ob = OceanB.SampleLevel(OceanBSampler, float2(p.y, p.x) / OceanP.y + 0.5 / 64.0, 0);
+    ho = (oa.r + ob.r) * of;
+    sx += (oa.g + ob.g) * of;
+    sy += (oa.b + ob.b) * of;
+    h += ho;
 }
 // Cat's paws: local wind relative to 15 kn, from the same wind field the sails feel (CPU-filled map).
 float2 guv = (p.xy - GustRect.xy) / GustRect.z + 0.5;
@@ -154,7 +208,18 @@ def build_water():
     waves = [vector(mat, f"Wave{i:02d}", (0, 0, 0, 0), -1400, -2000 + i * 60) for i in range(NUM_WAVES)]
     amps = [vector(mat, f"WaveAmp{i:02d}", (0, 0, 0, 0), -1200, -2000 + i * 60) for i in range(NUM_WAVES // 4)]
 
-    common = ["P", "Cam", "T", "Fade"] + [f"W{i}" for i in range(NUM_WAVES)] + [f"A{i}" for i in range(NUM_WAVES // 4)]
+    common = ["P", "Cam", "T", "Fade"] + [f"W{i}" for i in range(NUM_WAVES)] + [f"A{i}" for i in range(NUM_WAVES // 4)] \
+        + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect"]
+    linear = linear_default()
+    ocean_a = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 1300, parameter_name="OceanA", texture=linear,
+                   sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    ocean_b = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 1450, parameter_name="OceanB", texture=linear,
+                   sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    ocean_mask = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 1600, parameter_name="OceanMask", texture=linear,
+                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    # x, y: tile sizes of the two cascades (m); z: 1 on the open sea, 0 elsewhere; w: fade distance (m).
+    ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1600, 1750)
+    ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1600, 1850)
     wpo = custom(mat, WPO_CODE, common, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, -400)
 
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
@@ -180,6 +245,11 @@ def build_water():
             connect(w, "RGBA", c, f"W{i}")
         for i, a in enumerate(amps):
             connect(a, "RGBA", c, f"A{i}")
+        connect(ocean_a, "", c, "OceanA")
+        connect(ocean_b, "", c, "OceanB")
+        connect(ocean_mask, "", c, "OceanMask")
+        connect(ocean_p, "RGBA", c, "OceanP")
+        connect(ocean_rect, "RGBA", c, "OceanMaskRect")
     connect(gust_tex, "", shade, "Gust")
     connect(wake_tex, "", shade, "Wake")
     connect(gust_rect, "RGBA", shade, "GustRect")
@@ -295,6 +365,25 @@ def build_sail():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_ghost():
+    """M_Ghost: a translucent, two-sided, faintly glowing copy of a boat (replays: your last run beside you)."""
+    mat = new_material("M_Ghost")
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    color = vector(mat, "Color", (0.55, 0.8, 1.0, 1), -500, 0)
+    opacity = scalar(mat, "Opacity", 0.38, -500, 150)
+    glow = node(mat, unreal.MaterialExpressionMultiply, -250, 250)
+    k = node(mat, unreal.MaterialExpressionConstant, -500, 300, r=0.25)
+    connect(color, "", glow, "A")
+    connect(k, "", glow, "B")
+    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_terrain():
     """Terrain colored by the vertex colors the terrain builder computes (mud, clay and sand banks, rock, grass,
     woods), with world-space variation so large areas don't look flat."""
@@ -322,4 +411,5 @@ build_terrain()
 build_rain()
 build_emissive()
 build_sail()
+build_ghost()
 unreal.log("Materials built")

@@ -60,6 +60,7 @@ private:
 	Sailing::FRaceRunner Race;
 	Sailing::FRulesCoach Coach;
 	bool bRace = false;
+	bool bRaceLogged = false;
 	int32 CommitteeId = -1;
 	std::mt19937 Rng{ 2026 };
 

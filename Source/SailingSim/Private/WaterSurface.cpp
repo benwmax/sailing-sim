@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "Ocean.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "Async/ParallelFor.h"
@@ -46,6 +47,32 @@ namespace
 		const float C = FMath::Clamp(Linear, 0.f, 1.f);
 		const float S = C <= 0.0031308f ? 12.92f * C : 1.055f * FMath::Pow(C, 1.f / 2.4f) - 0.055f;
 		return uint8(FMath::RoundToInt(S * 255.f));
+	}
+
+	/** A float texture (data, not colour: no sRGB), wrapping or clamped. */
+	UTexture2D* MakeFloatMap(int32 Width, int32 Height, EPixelFormat Format, bool bWrap)
+	{
+		UTexture2D* Tex = UTexture2D::CreateTransient(Width, Height, Format);
+		Tex->SRGB = false;
+		Tex->Filter = TF_Bilinear;
+		Tex->AddressX = bWrap ? TA_Wrap : TA_Clamp;
+		Tex->AddressY = bWrap ? TA_Wrap : TA_Clamp;
+		Tex->CompressionSettings = TC_HDR;
+		Tex->UpdateResource();
+		return Tex;
+	}
+
+	void UploadFloats(UTexture2D* Tex, const TArray<float>& Values, int32 Width, int32 Height, int32 Channels)
+	{
+		const int32 Bytes = Values.Num() * sizeof(float);
+		uint8* Copy = new uint8[Bytes];
+		FMemory::Memcpy(Copy, Values.GetData(), Bytes);
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, Height);
+		Tex->UpdateTextureRegions(0, 1, Region, Width * Channels * sizeof(float), Channels * sizeof(float), Copy, [](uint8* Data, const FUpdateTextureRegion2D* R)
+		{
+			delete[] Data;
+			delete R;
+		});
 	}
 
 	void Upload(UTexture2D* Tex, const TArray<uint8>& Pixels, int32 Size)
@@ -226,6 +253,63 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		WakeTimer = 1.f / 30.f;
 	}
 	UpdateMaterial();
+	UpdateOcean();
+}
+
+void AWaterSurface::UpdateOcean()
+{
+	const FWaveField* Waves = GetWaves();
+	const FOcean* Ocean = Waves ? Waves->GetOcean() : nullptr;
+	if (!WaterMaterial) return;
+	if (!Ocean)
+	{
+		WaterMaterial->SetVectorParameterValue(TEXT("OceanParams"), FLinearColor(480.f, 60.f, 0.f, 6000.f));
+		return;
+	}
+	if (OceanMaps.Num() == 0)
+	{
+		for (int32 C = 0; C < FOcean::NumCascades; ++C) OceanMaps.Add(MakeFloatMap(FOcean::N, FOcean::N, PF_A32B32G32R32F, true));
+		WaterMaterial->SetTextureParameterValue(TEXT("OceanA"), OceanMaps[0]);
+		WaterMaterial->SetTextureParameterValue(TEXT("OceanB"), OceanMaps[1]);
+		// Open Gulf water: bluer and clearer than the bay.
+		WaterMaterial->SetVectorParameterValue(TEXT("WaterColor"), FLinearColor(0.012f, 0.05f, 0.06f));
+	}
+	// The grids at the frame's time, blended between the ocean's 30 Hz evaluations exactly as the physics does.
+	const double T = GetSimTime();
+	const double T0 = FMath::FloorToDouble(T * 30.0) / 30.0, W = (T - T0) * 30.0;
+	TArray<float> Pixels;
+	Pixels.SetNumUninitialized(FOcean::N * FOcean::N * 4);
+	for (int32 C = 0; C < FOcean::NumCascades; ++C)
+	{
+		const FOcean::FGrid& A = Ocean->Evaluate(C, T0);
+		const FOcean::FGrid& B = Ocean->Evaluate(C, T0 + 1.0 / 30.0);
+		for (int32 I = 0; I < FOcean::N * FOcean::N; ++I)
+		{
+			Pixels[4 * I + 0] = float((1.0 - W) * A.H[I] + W * B.H[I]);
+			Pixels[4 * I + 1] = float((1.0 - W) * A.Sx[I] + W * B.Sx[I]);
+			Pixels[4 * I + 2] = float((1.0 - W) * A.Sy[I] + W * B.Sy[I]);
+			Pixels[4 * I + 3] = 0.f;
+		}
+		UploadFloats(OceanMaps[C], Pixels, FOcean::N, FOcean::N, 4);
+	}
+	// The mask (where the open sea reaches), uploaded again only when the ocean rebuilt it.
+	const FOcean::FMask& M = Ocean->GetMask();
+	const size_t Hash = M.Values.size() ^ (M.Values.empty() ? 0 : size_t(M.Values[M.Values.size() / 2] * 1e6f + M.Values[M.Values.size() / 3] * 1e3f));
+	if (M.Rows > 0 && (UploadedMask != M.Values.data() || Hash != UploadedMaskHash))
+	{
+		if (!OceanMaskMap || OceanMaskMap->GetSizeX() != M.Cols || OceanMaskMap->GetSizeY() != M.Rows)
+		{
+			OceanMaskMap = MakeFloatMap(M.Cols, M.Rows, PF_R32_FLOAT, false);
+			WaterMaterial->SetTextureParameterValue(TEXT("OceanMask"), OceanMaskMap);
+		}
+		TArray<float> Mask(M.Values.data(), int32(M.Values.size()));
+		UploadFloats(OceanMaskMap, Mask, M.Cols, M.Rows, 1);
+		WaterMaterial->SetVectorParameterValue(TEXT("OceanMaskRect"), FLinearColor(M.X0, M.Y0, (M.Rows - 1) * M.Cell, (M.Cols - 1) * M.Cell));
+		UploadedMask = M.Values.data();
+		UploadedMaskHash = Hash;
+	}
+	// The sea runs out to the horizon: fade it only far away.
+	WaterMaterial->SetVectorParameterValue(TEXT("OceanParams"), FLinearColor(float(FOcean::Tile[0]), float(FOcean::Tile[1]), 1.f, 8000.f));
 }
 
 void AWaterSurface::UpdateMaterial()

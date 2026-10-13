@@ -86,6 +86,11 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("Bearing"), EKeys::U);
 	Add(TEXT("Gps"), EKeys::O);
 	Add(TEXT("ClearPlot"), EKeys::I);
+	Add(TEXT("Logbook"), EKeys::Y);
+	// Debrief and pictures: watch the last run, photo mode and its shutter.
+	Add(TEXT("Replay"), EKeys::Comma);
+	Add(TEXT("Photo"), EKeys::Nine);
+	Add(TEXT("PhotoShot"), EKeys::Enter);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);
