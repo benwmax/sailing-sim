@@ -164,12 +164,13 @@ namespace Sailing
 		Jib.InducedAspectRatio = 4.5;
 		Jib.BaseCamber = 0.13;
 
-		// Symmetric spinnaker on a pole, 16.3 m^2 (175 sq ft class maximum), hoisted to the hounds.
-		BuildSail(Spinnaker, 4, 0.9, 7.9, 3.6, 0.9, 0.0, 3.6, 2.6, 16.3);
+		// Symmetric spinnaker on a pole, hoisted to the hounds: 30.94 m^2 as measured on the ORC one-design certificate
+		// (Visual V3; the 16.3 m^2 used before was about half the real sail and left her slow downwind in a breeze).
+		BuildSail(Spinnaker, 4, 0.9, 7.9, 5.2, 1.5, 0.0, 3.6, 2.6, 30.94);
 		Spinnaker.LiftSlope = 2.6;
 		Spinnaker.InducedAspectRatio = 2.2;
 		Spinnaker.BaseCamber = 0.20;
-		Spinnaker.MaxLift = 1.3;
+		Spinnaker.MaxLift = 1.18; // with the full 30.94 m^2 (Visual V3): ORC 9.4 kn at 135 deg in 20 kn
 		Spinnaker.ParasiteDrag = 0.30;
 
 		ReefLuffFraction = { 0.82 };

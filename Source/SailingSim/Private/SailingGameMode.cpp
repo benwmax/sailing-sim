@@ -431,6 +431,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	Elapsed += DeltaSeconds;
 	if (Elapsed > BenchWarmupSeconds && Elapsed <= BenchWarmupSeconds + BenchSeconds)
 	{
+		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
 	}
@@ -527,6 +528,11 @@ void ASailingGameMode::FinishBenchmark()
 		GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport ? GEngine->GameViewport->Viewport->GetSizeXY().Y : 0,
 		Settings->Quality == ESailingQuality::Low ? TEXT("Low") : (Settings->Quality == ESailingQuality::Medium ? TEXT("Medium") : TEXT("High")),
 		WeatherPresetName(EWeatherPreset(Settings->WeatherPreset)), WeatherState.HourOfDay);
+	// Visual V3: sail cloth simulation on the CPU, all boats, per frame of the measured window.
+	if (N > 0 && ClothSecondsAtStart >= 0.0)
+	{
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"cloth_cpu_ms\":%.3f}"), (ASailboatPawn::ClothCpuSeconds - ClothSecondsAtStart) * 1000.0 / N);
+	}
 	if (!GpuSlicesJson.IsEmpty())
 	{
 		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + TEXT("}");

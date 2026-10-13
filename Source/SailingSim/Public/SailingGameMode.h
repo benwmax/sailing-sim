@@ -121,5 +121,6 @@ private:
 	TSharedPtr<class FGpuProfileCapture> GpuCapture;
 	int32 GpuProfilesRequested = 0;
 	FString GpuSlicesJson;
+	double ClothSecondsAtStart = -1.0;
 	void FinishGpuSlices();
 };

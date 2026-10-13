@@ -504,6 +504,7 @@ def build_boat_surface(name, bend):
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         unreal.EditorAssetLibrary.delete_asset(path)
     mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+    mat.set_editor_property("used_with_skeletal_mesh", True)  # the crew (Visual V3) wear these materials too
     mpc = collection()
     color = vector(mat, "Color", (0.85, 0.85, 0.82, 1), -1400, -200)
     rough = scalar(mat, "Roughness", 0.35, -1400, -50)
@@ -581,6 +582,15 @@ BOAT_LIBRARY = {
     "Wood": ("M_BoatSurface", (0.30, 0.17, 0.07), 0.30, 0.0, 1.0, 0.0, 0.15),           # varnished ash tiller
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
+    # The crew (Visual V3): foul-weather jacket (recoloured per sailor), PFD, trousers, deck boots, skin, cap, glasses.
+    "CrewJacket": ("M_BoatSurface", (0.45, 0.03, 0.03), 0.55, 0.0, 0.2, 0.0, 0.20),
+    "CrewPFD": ("M_BoatSurface", (0.02, 0.03, 0.10), 0.60, 0.0, 0.0, 0.0, 0.30),
+    "CrewTrousers": ("M_BoatSurface", (0.03, 0.03, 0.035), 0.70, 0.0, 0.0, 0.0, 0.50),
+    "CrewBoots": ("M_BoatSurface", (0.55, 0.55, 0.57), 0.50, 0.0, 0.0, 0.0, 0.10),
+    "CrewSkin": ("M_BoatSurface", (0.42, 0.28, 0.21), 0.55, 0.0, 0.0, 0.0, 0.10),
+    "CrewCap": ("M_BoatSurface", (0.72, 0.72, 0.72), 0.80, 0.0, 0.0, 0.0, 0.40),
+    "CrewGlasses": ("M_BoatSurface", (0.01, 0.01, 0.012), 0.05, 0.0, 1.0, 0.0, 0.0),
+    "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
     "Rope": ("M_BoatSurface", (0.62, 0.64, 0.68), 0.75, 0.0, 0.0, 0.0, 0.50),         # braided polyester sheets
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
 }
@@ -604,6 +614,104 @@ def build_boat_library():
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
 
+# ---------------------------------------------------------------- sails (Visual V3)
+SAIL_CODE = r"""
+// Visual V3 sail cloth. UV0: metres (x along the chord from the luff, y up from the foot); UV1: normalized planform;
+// UV2.x: metres from the leech. Crosscut seams every 0.9 m, batten pockets on the main's leech, the class insignia and
+// sail number from the marks atlas (top half insignia, bottom half number).
+float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
+float seam = 1.0 - smoothstep(0.006, 0.010, seamDist);
+float batten = 0.0;
+for (int i = 1; i <= 4; i++)
+{
+    float vb = 0.2 * i;
+    float len = 0.45 + 0.25 * (i == 2 || i == 3);
+    batten = max(batten, (1.0 - smoothstep(0.018, 0.026, abs(UV1.y - vb) * Height)) * (1.0 - smoothstep(len - 0.02, len, UV2.x)));
+}
+batten *= Battens;
+float mark = 0.0;
+float3 ink = float3(0.0, 0.0, 0.0);
+if (Marks > 0.5)
+{
+    float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
+    float2 r1 = (UV1 - float2(0.24, 0.62)) / float2(0.58, 0.12);
+    if (all(r0 >= 0.0) && all(r0 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r0.x, 0.5 - r0.y * 0.5), 0); mark = t.a; ink = t.rgb; }
+    if (all(r1 >= 0.0) && all(r1 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r1.x, 1.0 - r1.y * 0.5), 0); mark = t.a; ink = t.rgb; }
+}
+// A faint weave and the panels' slight tone differences.
+float weave = 0.5 + 0.5 * sin(UV0.x * 1400.0) * sin(UV0.y * 1400.0);
+float panel = frac(sin(floor(UV0.y / 0.9) * 12.9898) * 43758.5453);
+float3 cloth = C.rgb * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
+float3 col = lerp(cloth * (1.0 - 0.12 * seam), C.rgb * 0.93, batten);
+col = lerp(col, ink, mark);
+// Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
+Transmit = C.rgb * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
+return col;
+"""
+
+
+def sail_marks_texture():
+    import os
+    path = f"{FOLDER}/T_SailMarks"
+    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Artifacts", "textures", "T_SailMarks.png")
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", src)
+    task.set_editor_property("destination_path", FOLDER)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("save", True)
+    ASSETS.import_asset_tasks([task])
+    return unreal.load_asset(path)
+
+
+def build_sail_cloth():
+    """M_SailCloth: two-sided Dacron that lets the sun through (two-sided foliage: lit from behind it glows), with the
+    seams, batten pockets, insignia and number drawn from the cloth mesh's UVs (FSailCloth)."""
+    mat = new_material("M_SailCloth")
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    color = vector(mat, "Color", (0.82, 0.82, 0.80, 1), -1200, -100)
+    battens = scalar(mat, "Battens", 0.0, -1200, 50)
+    marks = scalar(mat, "Marks", 0.0, -1200, 150)
+    height = scalar(mat, "Height", 7.6, -1200, 250)
+    rough = scalar(mat, "Roughness", 0.62, -400, 300)
+    tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
+    uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+               extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2")):
+        connect(src, "RGBA" if src is color else "", c, pin)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    # Instances: the J/22 main (battens, insignia, number), the jib, the spinnaker (nylon, red).
+    for name, col, bat, mk, h in (("MI_Sail_Main", (0.82, 0.82, 0.80), 1.0, 1.0, 7.6), ("MI_Sail_Jib", (0.82, 0.82, 0.80), 0.0, 0.0, 7.5),
+                                  ("MI_Sail_Spinnaker", (0.55, 0.03, 0.03), 0.0, 0.0, 7.0)):
+        path = f"{FOLDER}/{name}"
+        mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
+            ASSETS.create_asset(name, FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        MEL.set_material_instance_parent(mi, mat)
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
+        for pname, value in (("Battens", bat), ("Marks", mk), ("Height", h), ("Roughness", 0.62 if name != "MI_Sail_Spinnaker" else 0.45)):
+            MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
+def build_telltale():
+    """M_Telltale: two-sided ribbons coloured by vertex colour (red to port, green to starboard)."""
+    mat = new_material("M_Telltale")
+    mat.set_editor_property("two_sided", True)
+    vc = node(mat, unreal.MaterialExpressionVertexColor, -500, 0)
+    rough = node(mat, unreal.MaterialExpressionConstant, -500, 200, r=0.7)
+    MEL.connect_material_property(vc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 build_water()
 build_terrain()
 build_rain()
@@ -612,4 +720,6 @@ build_sail()
 build_ghost()
 build_lens_distortion()
 build_boat_library()
+build_sail_cloth()
+build_telltale()
 unreal.log("Materials built")

@@ -4,6 +4,11 @@
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
 #include "BoatModel.h"
+#include "AutoTrim.h"
+#include "SailCloth.h"
+#include "CrewPose.h"
+#include "Engine/SkeletalMesh.h"
+#include "Wind.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
 #include "MeshDescription.h"
@@ -211,6 +216,168 @@ bool FVisualJ22MeshTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(FString::Printf(TEXT("Slot %s has a boat material"), *M.MaterialSlotName.ToString()), M.MaterialInterface && M.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));
 	}
+	return true;
+}
+
+// Visual V3: the rendered sail is the one the forces came from: depth/chord at each strip's height matches its camber,
+// the chord angle its twist, the draft sits forward of mid-chord, and the planform has the sail's area.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSailShapeTest, "SailingSim.Visual.SailShape", VisualFlags)
+bool FVisualSailShapeTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig C = FBoatConfig::J22();
+	for (const ESailKind Kind : { ESailKind::Main, ESailKind::Jib })
+	{
+		const FSailGeometry& Geo = Kind == ESailKind::Main ? C.Main : C.Jib;
+		FSailCloth Cloth;
+		Cloth.Init(Geo, Kind);
+		FSailStripState Strips[kMaxSailStrips];
+		for (int32 I = 0; I < Geo.NumStrips; ++I)
+		{
+			Strips[I].Camber = 0.10 + 0.02 * I;                       // fuller aloft
+			Strips[I].AngleFromCenterline = (12.0 + 4.0 * I) * kDegToRad; // twist
+			Strips[I].Flow = ESailFlow::Attached;
+		}
+		TArray<FVector> P;
+		Cloth.ComputeTarget(Strips, 1, P);
+		const TCHAR* Name = Kind == ESailKind::Main ? TEXT("Main") : TEXT("Jib");
+		for (int32 I = 0; I < Geo.NumStrips; ++I)
+		{
+			// The row nearest the strip's mid-height.
+			const double Zc = 0.5 * (Geo.Strips[I].ZBottom + Geo.Strips[I].ZTop);
+			const int32 R = FMath::RoundToInt((Zc - Geo.Strips[0].ZBottom) / (Geo.Strips[Geo.NumStrips - 1].ZTop - Geo.Strips[0].ZBottom) * (FSailCloth::Rows - 1));
+			const FVector Luff = P[R * FSailCloth::Cols], Leech = P[R * FSailCloth::Cols + FSailCloth::Cols - 1];
+			const FVector ChordV = Leech - Luff;
+			double MaxDepth = 0.0, DraftU = 0.0;
+			for (int32 Col = 0; Col < FSailCloth::Cols; ++Col)
+			{
+				const FVector Q = P[R * FSailCloth::Cols + Col] - Luff;
+				const double D = FVector::CrossProduct(ChordV.GetSafeNormal2D(), Q).Z;
+				if (FMath::Abs(D) > MaxDepth) { MaxDepth = FMath::Abs(D); DraftU = double(Col) / (FSailCloth::Cols - 1); }
+			}
+			const double Camber = MaxDepth / ChordV.Size2D();
+			const double Angle = FMath::Atan2(ChordV.Y, -ChordV.X);
+			TestTrue(FString::Printf(TEXT("%s strip %d: depth/chord %.3f vs camber %.3f"), Name, I, Camber, Strips[I].Camber), FMath::Abs(Camber - Strips[I].Camber) < 0.12 * Strips[I].Camber);
+			TestTrue(FString::Printf(TEXT("%s strip %d: chord angle %.1f vs %.1f deg"), Name, I, FMath::RadiansToDegrees(Angle), FMath::RadiansToDegrees(Strips[I].AngleFromCenterline)),
+				FMath::Abs(Angle - Strips[I].AngleFromCenterline) < 2.0 * kDegToRad);
+			TestTrue(FString::Printf(TEXT("%s strip %d: draft at %.0f%% of the chord"), Name, I, DraftU * 100.0), DraftU > 0.3 && DraftU < 0.5);
+		}
+		// Planform area (flat): within 8% of the sail's area (the foot and head are extrapolated from the strips).
+		FSailStripState Flat[kMaxSailStrips];
+		for (int32 I = 0; I < Geo.NumStrips; ++I) Flat[I].Camber = 0.0;
+		Cloth.ComputeTarget(Flat, 1, P);
+		double Area = 0.0;
+		for (int32 R = 0; R + 1 < FSailCloth::Rows; ++R)
+		{
+			for (int32 Col = 0; Col + 1 < FSailCloth::Cols; ++Col)
+			{
+				const FVector A = P[R * FSailCloth::Cols + Col], B = P[R * FSailCloth::Cols + Col + 1], D = P[(R + 1) * FSailCloth::Cols + Col], E = P[(R + 1) * FSailCloth::Cols + Col + 1];
+				Area += 0.5 * (FVector::CrossProduct(B - A, D - A).Size() + FVector::CrossProduct(E - B, D - B).Size()) / 10000.0;
+			}
+		}
+		TestTrue(FString::Printf(TEXT("%s planform %.2f m^2 vs %.2f"), Name, Area, Geo.TotalArea), FMath::Abs(Area - Geo.TotalArea) < 0.08 * Geo.TotalArea);
+	}
+	return true;
+}
+
+namespace
+{
+	/** Sails the physics J/22 at a true wind angle with the auto-trimmer for a while, then (optionally) holds the sheets
+	 *  and turns to a new angle: the jib's mid strip state at the end. */
+	Sailing::FSailStripState JibMidStrip(double TwsKnots, double TrimTwa, double SailTwa)
+	{
+		using namespace Sailing;
+		FWindParams WP;
+		WP.SpeedKnots = TwsKnots;
+		const FWindField Wind(WP);
+		FBoatModel Boat(FBoatConfig::J22());
+		Boat.Reset(0.0, 0.0, -TrimTwa * kDegToRad, 2.5);
+		FAutoTrim Trim;
+		FAutopilot Pilot;
+		Pilot.TargetTWADeg = TrimTwa;
+		FBoatControls Ctl;
+		const double Dt = 1.0 / 120.0;
+		for (int32 I = 0; I < 40 * 120; ++I)
+		{
+			Ctl = Trim.Update(Boat, Ctl, Dt);
+			Ctl.Tiller = Pilot.Update(Boat);
+			Boat.Step(Dt, Ctl, Wind, nullptr);
+		}
+		Pilot.TargetTWADeg = SailTwa; // sheets stay where they were
+		for (int32 I = 0; I < 12 * 120; ++I)
+		{
+			Ctl.Tiller = Pilot.Update(Boat);
+			Boat.Step(Dt, Ctl, Wind, nullptr);
+		}
+		const FBoatTelemetry& T = Boat.GetTelemetry();
+		return T.JibStrips[T.NumJibStrips / 2];
+	}
+}
+
+// Visual V3: the jib telltales tell the truth: both streaming when trimmed close-hauled, the windward one lifting when
+// pinched, the leeward one stalled when the boat bears away with the sheet still hard in.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualTelltalesTest, "SailingSim.Visual.Telltales", VisualFlags)
+bool FVisualTelltalesTest::RunTest(const FString& Parameters)
+{
+	const Sailing::FSailStripState Trimmed = JibMidStrip(10.0, 42.0, 42.0);
+	TestEqual(TEXT("Trimmed close-hauled: windward telltale streams"), JibTelltaleState(Trimmed, true), ETelltaleState::Streaming);
+	TestEqual(TEXT("Trimmed close-hauled: leeward telltale streams"), JibTelltaleState(Trimmed, false), ETelltaleState::Streaming);
+	const Sailing::FSailStripState Pinched = JibMidStrip(10.0, 42.0, 30.0);
+	TestEqual(TEXT("Pinched: windward telltale lifts"), JibTelltaleState(Pinched, true), ETelltaleState::Lifting);
+	const Sailing::FSailStripState Oversheeted = JibMidStrip(10.0, 42.0, 62.0);
+	TestEqual(TEXT("Sheet hard in on a close reach: leeward telltale stalls"), JibTelltaleState(Oversheeted, false), ETelltaleState::Stalled);
+	// The leech telltale streams on a drawing main and curls behind a stalled one.
+	Sailing::FSailStripState Leech;
+	Leech.Flow = Sailing::ESailFlow::Attached;
+	TestEqual(TEXT("Leech telltale streams"), LeechTelltaleState(Leech), ETelltaleState::Streaming);
+	Leech.Flow = Sailing::ESailFlow::Stalled;
+	TestEqual(TEXT("Leech telltale stalls"), LeechTelltaleState(Leech), ETelltaleState::Stalled);
+	return true;
+}
+
+// Visual V3: the crew's stances put the body where a sailor's is: leaning out over the rail (keelboat, facing out),
+// leaning back from the straps (dinghy, facing in), thighs level and knees forward when seated, low when crossing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewPoseTest, "SailingSim.Visual.CrewPose", VisualFlags)
+bool FVisualCrewPoseTest::RunTest(const FString& Parameters)
+{
+	const USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
+	if (!TestNotNull(TEXT("SK_Sailor is in the project (scripts/make-boat-models.sh)"), Mesh)) return false;
+	for (const TCHAR* Bone : { TEXT("pelvis"), TEXT("spine"), TEXT("chest"), TEXT("head"), TEXT("thigh_l"), TEXT("calf_r"), TEXT("upperarm_l"), TEXT("hand_r"), TEXT("foot_l") })
+	{
+		TestTrue(FString::Printf(TEXT("Bone %s"), Bone), Mesh->GetRefSkeleton().FindBoneIndex(Bone) != INDEX_NONE);
+	}
+	auto Pose = [&](ECrewStance Stance, float Hike, TMap<FName, FVector>& Out)
+	{
+		FCrewPoseParams P;
+		P.Stance = Stance;
+		P.Hike = Hike;
+		TMap<FName, FQuat> Joints;
+		CrewJointRotations(P, Joints);
+		CrewPosedJoints(Mesh, Joints, Out);
+	};
+	TMap<FName, FVector> Rest, J;
+	CrewPosedJoints(Mesh, {}, Rest);
+	TestTrue(TEXT("Standing: head about 1.6 m up"), Rest[TEXT("head")].Z > 150.f && Rest[TEXT("head")].Z < 165.f);
+	// Character frame: X is the way the sailor faces.
+	Pose(ECrewStance::RailHike, 1.f, J);
+	TestTrue(FString::Printf(TEXT("Hiking on the rail: chest out over the legs (%.0f cm forward of the pelvis)"), J[TEXT("neck")].X - J[TEXT("pelvis")].X),
+		J[TEXT("neck")].X - J[TEXT("pelvis")].X > 15.f);
+	TestTrue(TEXT("Hiking on the rail: lower legs hang down the topsides"), J[TEXT("foot_l")].Z < J[TEXT("calf_l")].Z - 30.f);
+	Pose(ECrewStance::DinghyHike, 1.f, J);
+	TestTrue(FString::Printf(TEXT("Dinghy hiking: leaning back (%.0f cm behind the pelvis)"), J[TEXT("pelvis")].X - J[TEXT("neck")].X), J[TEXT("pelvis")].X - J[TEXT("neck")].X > 30.f);
+	Pose(ECrewStance::Cockpit, 0.f, J);
+	TestTrue(TEXT("Seated: knees forward of the hips"), J[TEXT("calf_l")].X - J[TEXT("thigh_l")].X > 30.f);
+	TestTrue(TEXT("Seated: thighs about level"), FMath::Abs(J[TEXT("calf_l")].Z - J[TEXT("thigh_l")].Z) < 12.f);
+	TestTrue(TEXT("Seated: feet below the knees"), J[TEXT("foot_l")].Z < J[TEXT("calf_l")].Z - 30.f);
+	Pose(ECrewStance::Crossing, 0.f, J);
+	TestTrue(FString::Printf(TEXT("Crossing: crouched, head %.0f cm above the feet (standing %.0f)"), J[TEXT("head")].Z - J[TEXT("foot_l")].Z, Rest[TEXT("head")].Z - Rest[TEXT("foot_l")].Z),
+		(J[TEXT("head")].Z - J[TEXT("foot_l")].Z) < (Rest[TEXT("head")].Z - Rest[TEXT("foot_l")].Z) - 35.f);
+	FCrewPoseParams Out;
+	Out.Stance = ECrewStance::RailHike;
+	Out.Side = 1.f;
+	TestEqual(TEXT("On the starboard rail the crew face starboard (outboard)"), CrewFacingYaw(Out), 90.f);
+	Out.Stance = ECrewStance::DinghyHike;
+	TestEqual(TEXT("A dinghy sailor on the starboard side faces port (inboard)"), CrewFacingYaw(Out), -90.f);
 	return true;
 }
 

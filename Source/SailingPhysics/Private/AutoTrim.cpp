@@ -60,7 +60,12 @@ namespace Sailing
 		if (Set.bTrimJib && T.NumSpinStrips > 0)
 		{
 			const double Foot = FootAngleFor(T.SpinStrips, T.NumSpinStrips, S.SpinAngle * S.SpinSide);
-			Out.SpinSheet = MoveToward(Current.SpinSheet, Clamp((Foot - 12.0 * kDegToRad) / (85.0 * kDegToRad), 0.0, 1.0), Rate);
+			// Past the heel limit the trimmer blows the sheet at once (a broach starts in a second or two) and trims
+			// back on as she comes upright; the main is eased with it (MainEase above).
+			SpinEase = Clamp(SpinEase + (Excess > 0.0 ? 0.25 * Excess : -0.15) * Dt, 0.0, 1.0);
+			const double Target = Clamp((Foot - 12.0 * kDegToRad) / (85.0 * kDegToRad), 0.0, 1.0);
+			Out.SpinSheet = SpinEase > 0.0 ? std::max(MoveToward(Current.SpinSheet, std::max(Target, SpinEase), 4.0 * Rate), Target)
+				: MoveToward(Current.SpinSheet, Target, Rate);
 		}
 		Out.bWingOnWing = Twa > 155.0;
 		if (Set.bShape)

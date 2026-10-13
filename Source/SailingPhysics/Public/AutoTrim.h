@@ -30,10 +30,11 @@ namespace Sailing
 		/** Returns new controls; Tiller and anything not enabled in the settings pass through unchanged. */
 		FBoatControls Update(const FBoatModel& Boat, const FBoatControls& Current, double Dt);
 
-		void Reset() { MainEase = 0.0; }
+		void Reset() { MainEase = 0.0; SpinEase = 0.0; }
 
 	private:
 		double MainEase = 0.0; // rad, extra ease from heel feedback
+		double SpinEase = 0.0;   // spinnaker sheet blown (0..1) when she heels past the limit: how a crew stops a broach
 	};
 
 	/** Holds a true wind angle with the tiller. For tests and the AI later. */

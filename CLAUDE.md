@@ -89,7 +89,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    it into `/Game/Boats/J22` with Nanite, the `MI_Boat_*` materials and the rig sockets (`scripts/import_boats.py`).
    Run `scripts/make-content.sh` first (it builds `M_BoatSurface`, `M_BoatMast`, the `MI_Boat_*` library and
    `MPC_Boat`). Edit the Blender script, never the assets; `SailingSim.Visual.J22Mesh` holds the model to the physics
-   (length, beam, draft, centre of buoyancy within 2 cm).
+   (length, beam, draft, centre of buoyancy within 2 cm). The crew (`Tools/blender/build_crew.py`, `SK_Sailor`) is
+   built and imported by the same script.
 
 ## Conventions
 
@@ -142,6 +143,15 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   High GI scalability, not Epic's (5.5 ms at native). Virtual shadow maps cost about 2 ms on Medium and 4 ms on High
   until the scene has Nanite meshes. Exposure on Medium and High follows the light (incident meter), not the frame;
   `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun.
+- Sails and crew (Visual V3): `FSailCloth` (`SailCloth.h`) builds each sail's grid from the physics strips (target shape)
+  and runs a position-based cloth over it on Medium and High (flogging, leech flutter, luff wrinkles, spinnaker
+  collapse); `M_SailCloth` draws seams, battens, insignia and number from its UVs (marks atlas from
+  `scripts/make_sail_marks.py`). Telltale rules (`JibTelltaleState`, `LeechTelltaleState`) are shared with
+  `SailingSim.Visual.Telltales`. The crew are `UPoseableMeshComponent`s posed by `CrewPose.h` (stances from the crew
+  model, forward kinematics from the reference pose); their materials are set by slot name at runtime, and
+  `M_BoatSurface` must keep `used_with_skeletal_mesh` or they fall back to the default material. MetaHuman Creator needs
+  its optional content and Epic's cloud auto-rigging (not available headless here). `-SailingSpinnaker` survives the
+  start resets; in shaders, clamp before `sqrt` (float `PI` times 1.0 is past pi).
 - Boat models: below the waterline the J/22 model is the physics hull surface itself (`FHullShape` at the computed canoe
   depth), so a hull shape change in the physics means rerunning `make-boat-models.sh`. `ASailboatPawn::ModelMeshesFor`
   picks a class's meshes (only the J/22 so far); the rig lines, traveler car, mast bend and wet line are in

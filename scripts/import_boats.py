@@ -77,4 +77,45 @@ def import_boat(tag, dest):
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
 
 
+def import_crew():
+    """SK_Sailor (Tools/blender/build_crew.py): a skeletal mesh posed by the game; the MI_Boat_Crew* materials by slot."""
+    dest, name = "/Game/Crew", "SK_Sailor"
+    for asset in (f"{dest}/{name}", f"{dest}/{name}_Skeleton", f"{dest}/{name}_PhysicsAsset"):
+        if unreal.EditorAssetLibrary.does_asset_exist(asset):
+            unreal.EditorAssetLibrary.delete_asset(asset)
+    ui = unreal.FbxImportUI()
+    ui.set_editor_property("import_mesh", True)
+    ui.set_editor_property("import_as_skeletal", True)
+    ui.set_editor_property("import_materials", False)
+    ui.set_editor_property("import_textures", False)
+    ui.set_editor_property("import_animations", False)
+    ui.set_editor_property("create_physics_asset", False)
+    ui.set_editor_property("mesh_type_to_import", unreal.FBXImportType.FBXIT_SKELETAL_MESH)
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", os.path.join(MODELS, name + ".fbx"))
+    task.set_editor_property("destination_path", dest)
+    task.set_editor_property("destination_name", name)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("options", ui)
+    ASSETS.import_asset_tasks([task])
+    mesh = unreal.load_asset(f"{dest}/{name}")
+    if not mesh:
+        raise RuntimeError("crew import failed")
+    mats = mesh.get_editor_property("materials")
+    for m in mats:
+        slot = str(m.get_editor_property("material_slot_name")).split(".")[0]
+        mi = unreal.load_asset(f"{MATERIALS}/MI_Boat_Crew{slot}")
+        if not mi:
+            raise RuntimeError(f"No crew material for slot {slot}")
+        m.set_editor_property("material_interface", mi)
+    mesh.set_editor_property("materials", mats)
+    unreal.EditorAssetLibrary.save_loaded_asset(mesh)
+    skel = mesh.get_editor_property("skeleton")
+    if skel:
+        unreal.EditorAssetLibrary.save_loaded_asset(skel)
+    unreal.log(f"Imported {name}: {len(mats)} materials, skeleton {skel.get_name() if skel else None}")
+
+
 import_boat("J22", "/Game/Boats/J22")
+import_crew()
