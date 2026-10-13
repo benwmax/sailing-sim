@@ -181,10 +181,12 @@ def far_version(b, name, seed):
         centers = [sum(g, Vector()) / len(g) if g else centers[i] for i, g in enumerate(groups)]
     trunk_top = Vector((0, 0, max(1.5, b.height * 0.3)))
     far.tube([Vector((0, 0, -0.3)), trunk_top], [0.25 + b.height * 0.02, 0.18 + b.height * 0.015], sides=6)
+    far.blobs = []
     for c, g in zip(centers, groups):
         if not g:
             continue
         ext = Vector((max(abs(p.x - c.x) for p in g), max(abs(p.y - c.y) for p in g), max(abs(p.z - c.z) for p in g)))
+        far.blobs.append((c.copy(), ext.copy()))
         ret = bmesh.ops.create_icosphere(far.bm, subdivisions=2, radius=1.0)
         for v in ret["verts"]:
             n = v.co.normalized()
@@ -199,6 +201,35 @@ def far_version(b, name, seed):
     return far
 
 
+def hollow(b, blobs, seed):
+    """Fill the near tree's crown with an opaque core (the far crown's blobs at 75%) and drop most of the leaf cards
+    deep inside it: they were hidden behind the outer ones yet cost their alpha-tested overdraw (on High, eight
+    milliseconds of base pass for a lakeshore of trees). The fringe of cards keeps the ragged, see-through outline."""
+    random.seed(seed + 2)
+    drop = []
+    for f, (c, _) in zip(b.leaf_faces, b.leaf_centers):
+        d = min(((c.x - bc.x) / max(e.x, 0.3)) ** 2 + ((c.y - bc.y) / max(e.y, 0.3)) ** 2 + ((c.z - bc.z) / max(e.z, 0.3)) ** 2 for bc, e in blobs) ** 0.5
+        if d < 0.72 and random.random() < 0.85:
+            drop.append(f)
+    keep = set(drop)
+    b.leaf_faces = [f for f in b.leaf_faces if f not in keep]
+    bmesh.ops.delete(b.bm, geom=drop, context="FACES")
+    b.core_faces = []
+    for k, (c, ext) in enumerate(blobs):
+        ret = bmesh.ops.create_icosphere(b.bm, subdivisions=2, radius=1.0)
+        for v in ret["verts"]:
+            n = v.co.normalized()
+            bump = 1.0 + 0.15 * math.sin(n.x * 7.1 + seed + k) * math.sin(n.y * 6.3 + 1.7 * seed)
+            v.co = c + Vector((n.x * ext.x * 0.62, n.y * ext.y * 0.62, n.z * ext.z * 0.55)) * bump
+        for f in {f for v in ret["verts"] for f in v.link_faces}:
+            for loop in f.loops:
+                sway = min(1.0, loop.vert.co.z / b.height) ** 2
+                loop[b.color] = (sway, random.random(), 0.2 * random.random(), 1.0)
+                loop[b.uv].uv = (loop.vert.co.x * 0.1, loop.vert.co.z * 0.1)
+            b.core_faces.append(f)
+    return len(drop)
+
+
 def finish(b, name, far=False):
     mesh = bpy.data.meshes.new(name)
     bark = bpy.data.materials.new("Bark")
@@ -209,6 +240,10 @@ def finish(b, name, far=False):
         f.material_index = 0
     for f in b.leaf_faces:
         f.material_index = 1
+    if getattr(b, "core_faces", None):
+        mesh.materials.append(bpy.data.materials.new("Crown"))
+        for f in b.core_faces:
+            f.material_index = 2
     b.bm.normal_update()
     b.bm.to_mesh(mesh)
     b.bm.free()
@@ -235,7 +270,9 @@ def main():
             b = cone_tree(name, spec, seed) if spec["kind"] == "cone" else broad_tree(name, spec, seed)
             full = f"SM_{name}_{variant}"
             far = far_version(b, full + "_Far", seed)
+            dropped = hollow(b, far.blobs, seed)
             obj, tris = finish(b, full)
+            print(f"Trees: {full} dropped {dropped} inner cards for an opaque core")
             export(obj, os.path.join(OUT, full + ".fbx"))
             print(f"Trees: {full} {tris}")
             bpy.data.objects.remove(obj)

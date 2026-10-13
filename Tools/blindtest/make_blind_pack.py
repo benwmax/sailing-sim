@@ -24,7 +24,9 @@ def fit(path):
 
 
 def main(game_dir, commons_dir, out=OUT, seed=8):
-    scenes = list(csv.DictReader(open(os.path.join(OUT, "scenes.csv"))))
+    # The scene list: <out dir>/scenes.csv when the phase has its own (Visual V6 on), else Phase 8's.
+    own = os.path.join(out, "scenes.csv")
+    scenes = list(csv.DictReader(open(own if os.path.exists(own) else os.path.join(OUT, "scenes.csv"))))
     os.makedirs(out, exist_ok=True)
     credits = {os.path.splitext(os.path.basename(c["local"]))[0]: c for c in json.load(open(os.path.join(commons_dir, "credits.json")))}
     items = []
@@ -45,7 +47,8 @@ def main(game_dir, commons_dir, out=OUT, seed=8):
             w.writerow([sid, it["source"], it["name"], it["pair"], c.get("file", ""), c.get("author", ""), c.get("license", ""), c.get("page", "")])
     used = [it["credit"] for it in items if it["source"] == "real"]
     with open(os.path.join(out, "credits.md"), "w") as f:
-        f.write("# Blind test photo credits\n\nThe ten real photos come from Wikimedia Commons, cropped to 4:3 and resized "
+        n = {8: "eight", 10: "ten"}.get(len(used), str(len(used)))
+        f.write(f"# Blind test photo credits\n\nThe {n} real photos come from Wikimedia Commons, cropped to 4:3 and resized "
                 "(\"changes were made\"). Listed alphabetically, so the list does not say which still is which.\n\n")
         for c in sorted(used, key=lambda c: c["file"].lower()):
             f.write(f"- [{c['file']}]({c['page']}) by {c['author']}, [{c['license']}]({c['license_url']})\n")

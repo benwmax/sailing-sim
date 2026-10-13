@@ -22,7 +22,19 @@ namespace
 	// Cells per chunk side: 64, or 128 on grids of 10 m or coarser (Galveston Bay: 1,000 chunks instead of 4,000;
 	// culling every chunk each frame cost 4 ms of render thread).
 	int32 GChunkCells = 64;
-	constexpr double kNearTreesM = 1200.0; // leaf-card trees within this; opaque crowns beyond (Visual V6)
+	// Leaf-card trees within this; opaque crowns beyond (Visual V6). -SailingNearTrees=<m> to measure.
+	double NearTreesM()
+	{
+		// 600 m on High; 350 m on Medium, where the base pass is budgeted at 4 ms (cards within 300 m cost almost nothing,
+		// out to 600 m about a millisecond there; the opaque crowns read the same at that size on its 67% resolution).
+		static const double M = []
+		{
+			double V = USailingSettings::Get()->Quality == ESailingQuality::High ? 600.0 : 350.0;
+			FParse::Value(FCommandLine::Get(), TEXT("SailingNearTrees="), V);
+			return V;
+		}();
+		return M;
+	}
 	constexpr int32 kMaxBuildsInFlight = 4;
 	constexpr int32 kMaxUploadsPerFrame = 3;
 
@@ -228,12 +240,12 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 {
 	// Visual V6: leaf-card trees near the camera (alpha-masked Nanite is costly over many pixels), the opaque far
 	// crowns beyond; regrouped when the camera has moved a quarter of the near radius.
-	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < 0.25 * kNearTreesM) return;
+	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < 0.25 * NearTreesM()) return;
 	TreeCenter = Camera;
 	TArray<TArray<FTransform>> Near, Far;
 	Near.SetNum(TreeModels.Num());
 	Far.SetNum(TreeFar.Num());
-	const double R2 = FMath::Square(kNearTreesM);
+	const double R2 = FMath::Square(NearTreesM());
 	for (const FTreeInstance& I : ModelTrees)
 	{
 		const int32 Index = int32(I.Species) * 2 + I.Variant;
@@ -353,8 +365,8 @@ void ALakeTerrainActor::PlaceTrees()
 					// pages (thousands of swaying trees would invalidate the cache every frame).
 					C->SetCastShadow(true);
 					C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-					C->SetCullDistances(0, (Pass == 0 ? kNearTreesM + 200.0 : 9000.0) * 100.0);
-					C->SetWorldPositionOffsetDisableDistance(int32((Pass == 0 ? kNearTreesM : 1500.0) * 100.0));
+					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : 9000.0) * 100.0);
+					C->SetWorldPositionOffsetDisableDistance(int32((Pass == 0 ? NearTreesM() : 1500.0) * 100.0));
 					C->RegisterComponent();
 					(Pass == 0 ? TreeModels : TreeFar).Add(C);
 				}
@@ -366,7 +378,7 @@ void ALakeTerrainActor::PlaceTrees()
 		ModelTrees = MoveTemp(Trees);
 		TreeCenter = FVector2D(1e12, 1e12); // rebuilt around the camera on the next tick
 		bTreesPlaced = true;
-		UE_LOG(LogSailing, Display, TEXT("Trees: %d (Nanite models; leaf cards within %.0f m)"), ModelTrees.Num(), kNearTreesM);
+		UE_LOG(LogSailing, Display, TEXT("Trees: %d (Nanite models; leaf cards within %.0f m)"), ModelTrees.Num(), NearTreesM());
 		return;
 	}
 

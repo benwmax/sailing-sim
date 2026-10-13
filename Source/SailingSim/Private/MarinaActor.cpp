@@ -146,7 +146,13 @@ void AMarinaActor::Build(const FMarina& Marina)
 		for (const FMarinaSlip& Slip : Marina.Slips)
 		{
 			if (!Slip.bOccupied) continue;
-			const FTransform Boat(FRotator(0.f, Slip.HeadingDeg, 0.f), FVector(Slip.Center.X, Slip.Center.Y, 0.0) * 100.0);
+			// A marina holds more than J/22s: scale some up toward 25-30 ft cruisers (a stand-in until the fleet has berth
+			// models), and nudge each a little in its slip.
+			const uint32 H = uint32(Slip.Row * 7919 + Slip.Index * 104729 + (Slip.Side > 0 ? 1 : 0));
+			const float Size = 1.f + 0.3f * FMath::Square(MRand(H));
+			const FVector2D Nudge = FVector2D(MRand(H + 1) - 0.5f, MRand(H + 2) - 0.5f) * 0.3f;
+			const FTransform Boat(FRotator(0.f, Slip.HeadingDeg + (MRand(H + 3) - 0.5f) * 4.f, 0.f),
+				FVector(Slip.Center.X + Nudge.X, Slip.Center.Y + Nudge.Y, 0.0) * 100.0, FVector(Size));
 			for (int32 K = 0; K < 4; ++K) Per[K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
 		}
 		for (int32 K = 0; K < 4; ++K)
@@ -187,7 +193,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		for (float X = 1.0f; X < Length; X += 9.f)
 		{
 			const FVector2D P = A + Dir * X + Left * ((int32(X / 9.f) % 2 ? 1.0 : -1.0) * (0.5 * R.Width + 0.2));
-			G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -3.f), 0.17f, 5.6f);
+			G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -3.f), 0.17f, 4.9f);
 		}
 		for (float X = 4.0f; X < Length; X += 16.f)
 		{
@@ -211,7 +217,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
 			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.03f), FVector(0.14f, 0.03f, 0.04f), float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X))));
 		}
-		G[EKitLook::Pilings].Cylinder(FVector(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45, -3.f), 0.15f, 5.2f);
+		G[EKitLook::Pilings].Cylinder(FVector(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45, -3.f), 0.15f, 4.5f);
 		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
 		const FVector2D Root = Slip.FingerA + Out * 0.6;
 		if (MRand(Seed) < 0.35f)
