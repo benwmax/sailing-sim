@@ -59,6 +59,7 @@ private:
 	/** How deep the water hides the bed: where its colour has absorbed 99% of the light coming back (Visual V4). */
 	double HideBelow = -1e9;
 	void PlaceTrees();
+	bool PlaceHouseModels(const struct FLakeData& Lake);
 	void PlaceBuildings();
 	void PlaceBridgesAndDocks();
 

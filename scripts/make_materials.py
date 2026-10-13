@@ -1730,6 +1730,98 @@ def build_navaid_paint():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+HOUSE_WALL_CODE = """
+// Visual V6: the walls of the OSM buildings (Tools/blender/build_houses.py archetypes scaled to each footprint). Per instance:
+// D0 wall colour, D1 (pattern 0 brick, 1 lap siding, 2 stucco; height m; seed). Windows are laid out in world space so
+// they keep their size: storeys of 2.9 m, a window every 3.2 m along the wall, some lit at night. The face normal comes from
+// the position's screen derivatives (the vertex-normal input is not in world space on these Nanite instances).
+float3 n = normalize(cross(ddy(WP), ddx(WP)));
+float2 t = normalize(float2(-n.y, n.x) + 1e-4);
+float u = dot(WP.xy, t) / 100.0;
+float3 c = D0;
+float pat = D1.x, height = D1.y, seed = D1.z;
+// G: the instance's ground height (m, custom data 9).
+float v = WP.z / 100.0 - G;
+float r = 0.8;
+if (pat < 0.5)
+{
+    float row = floor(v / 0.075);
+    float bu = frac(u / 0.22 + 0.5 * fmod(row, 2.0));
+    float mortar = max(step(0.88, frac(v / 0.075)), step(0.95, bu));
+    float b = frac(sin(row * 17.1 + floor(u / 0.22 + 0.5 * fmod(row, 2.0)) * 31.7) * 4375.5);
+    c *= (0.85 + 0.25 * b);
+    c = lerp(c, float3(0.55, 0.53, 0.5), mortar * 0.8);
+}
+else if (pat < 1.5)
+{
+    c *= 0.88 + 0.14 * frac(v / 0.17);
+    r = 0.6;
+}
+else
+{
+    c *= 0.94 + 0.08 * frac(sin(dot(floor(float2(u, v) * 3.0), float2(12.9, 78.2))) * 43758.5);
+}
+float wu = frac(u / 3.2 + seed);
+float wv = frac(v / 2.9);
+float win = step(0.25, wu) * step(wu, 0.6) * step(0.3, wv) * step(wv, 0.76) * step(floor(v / 2.9) * 2.9 + 2.3, height * 0.62) * step(0.4, v) * step(abs(n.z), 0.5);
+float3 glass = float3(0.03, 0.035, 0.04);
+c = lerp(c, glass, win);
+r = lerp(r, 0.05, win);
+float lit = step(0.55, frac(sin(floor(u / 3.2 + seed) * 37.7 + floor(v / 2.9) * 11.3 + seed * 91.0) * 4375.5));
+Emit = float3(1.0, 0.7, 0.4) * 5.0 * win * lit * Night;
+Out = r;
+return c;
+"""
+
+HOUSE_ROOF_CODE = """
+// Asphalt shingles in world space: courses every 14 cm up the roof, tabs 33 cm along, each tab its own shade.
+float3 n = normalize(cross(ddy(WP), ddx(WP)));
+float2 t = normalize(float2(-n.y, n.x) + 1e-4);
+float u = dot(WP.xy, t) / 100.0;
+float v = WP.z / 100.0 / max(0.25, 1.0 - abs(n.z)) * 0.6;
+float row = floor(v / 0.14);
+float tab = floor(u / 0.33 + 0.5 * fmod(row, 2.0));
+float b = frac(sin(row * 31.1 + tab * 17.3) * 4375.5);
+float3 c = D2 * (0.8 + 0.3 * b) * (1.0 - 0.3 * step(0.9, frac(v / 0.14)));
+return c;
+"""
+
+
+def build_house_materials():
+    for name, code, chans in (("M_HouseWall", HOUSE_WALL_CODE, ((0, 1, 2), (3, 4, 5))), ("M_HouseRoof", HOUSE_ROOF_CODE, ((6, 7, 8),))):
+        mat = world_material(name)
+        ins = ["WP", "OP", "N"]
+        c = custom(mat, code, ins + [f"D{k}" for k in range(len(chans))] + (["Night", "G"] if name == "M_HouseWall" else []),
+                   unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 100,
+                   extra_outputs=[("Out", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)]
+                   if name == "M_HouseWall" else [])
+        connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 0), "", c, "WP")
+        connect(node(mat, unreal.MaterialExpressionObjectPositionWS, -900, 80), "", c, "OP")
+        connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 160), "", c, "N")
+        for k, idx in enumerate(chans):
+            d = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1300, 260 + k * 300 + j * 90, data_index=i, const_default_value=0.5) for j, i in enumerate(idx)]
+            ab = node(mat, unreal.MaterialExpressionAppendVector, -1100, 300 + k * 300)
+            connect(d[0], "", ab, "A")
+            connect(d[1], "", ab, "B")
+            abc = node(mat, unreal.MaterialExpressionAppendVector, -950, 320 + k * 300)
+            connect(ab, "", abc, "A")
+            connect(d[2], "", abc, "B")
+            connect(abc, "", c, f"D{k}")
+        MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        if name == "M_HouseWall":
+            night = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 900)
+            night.set_editor_property("collection", world_collection())
+            night.set_editor_property("parameter_name", "Night")
+            connect(night, "", c, "Night")
+            connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 1000, data_index=9, const_default_value=0.0), "", c, "G")
+            MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+            MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        else:
+            MEL.connect_material_property(scalar(mat, "Roughness", 0.85, -300, 300), "", unreal.MaterialProperty.MP_ROUGHNESS)
+        MEL.recompile_material(mat)
+        unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 # Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
 # The rest are the generated structures' looks and must match KitLook() in Source/SailingSim/Private/WorldKit.cpp.
 WORLD_LIBRARY = {
@@ -1781,6 +1873,7 @@ build_trees_materials()
 build_world_surface()
 build_vehicle_paint()
 build_navaid_paint()
+build_house_materials()
 build_terrain()
 build_rain()
 build_emissive()

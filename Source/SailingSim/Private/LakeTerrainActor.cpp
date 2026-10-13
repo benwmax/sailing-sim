@@ -423,6 +423,7 @@ void ALakeTerrainActor::PlaceBuildings()
 {
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;
+	if (PlaceHouseModels(*Lake)) return;
 	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
 	const FLinearColor Colors[] = { FLinearColor(0.75f, 0.72f, 0.66f), FLinearColor(0.55f, 0.40f, 0.32f), FLinearColor(0.85f, 0.84f, 0.80f) };
 	for (const FLinearColor& Col : Colors)
@@ -452,6 +453,64 @@ void ALakeTerrainActor::PlaceBuildings()
 		Lists[Hash(K) % 3].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground + B.Height * 0.5) * CmPerMeter, FVector(B.Length, B.Width, B.Height)));
 	}
 	for (int32 K = 0; K < 3; ++K) BuildingMeshes[K]->AddInstances(Lists[K], false, true);
+}
+
+bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
+{
+	// Visual V6 (Medium and High): each OSM footprint gets an archetype scaled to it (Tools/blender/build_houses.py): a
+	// gable-roofed ranch for one storey, a hip-roofed two-storey, a flat-roofed block for the big footprints, with wall
+	// (brick, siding, stucco) and roof colours from North Texas streets. Windows are drawn by M_HouseWall in world space.
+	if (USailingSettings::Get()->Quality == ESailingQuality::Low) return false;
+	static const TCHAR* Names[] = { TEXT("SM_House_Gable"), TEXT("SM_House_Hip"), TEXT("SM_House_Flat") };
+	TArray<UInstancedStaticMeshComponent*> Ism;
+	for (const TCHAR* Name : Names)
+	{
+		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Houses/%s.%s"), Name, Name));
+		if (!Mesh) return false;
+		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this);
+		I->SetMobility(EComponentMobility::Static);
+		I->SetupAttachment(RootComponent);
+		I->SetStaticMesh(Mesh);
+		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		I->SetCullDistances(0, 8000 * 100);
+		I->NumCustomDataFloats = 10;
+		I->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		I->RegisterComponent();
+		Ism.Add(I);
+		BuildingMeshes.Add(I);
+	}
+	static const FLinearColor Brick[] = { FLinearColor(0.30f, 0.11f, 0.07f), FLinearColor(0.38f, 0.18f, 0.10f), FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.25f, 0.13f, 0.09f) };
+	static const FLinearColor Light[] = { FLinearColor(0.72f, 0.68f, 0.58f), FLinearColor(0.62f, 0.60f, 0.55f), FLinearColor(0.78f, 0.77f, 0.73f), FLinearColor(0.45f, 0.50f, 0.52f), FLinearColor(0.60f, 0.52f, 0.40f) };
+	static const FLinearColor Roofs[] = { FLinearColor(0.10f, 0.10f, 0.10f), FLinearColor(0.16f, 0.14f, 0.12f), FLinearColor(0.20f, 0.20f, 0.21f), FLinearColor(0.22f, 0.16f, 0.11f) };
+	TArray<FTransform> X[3];
+	TArray<float> D[3];
+	const bool bMarina = Lake.Marina.IsLoaded();
+	for (int32 K = 0; K < Lake.Buildings.Num(); ++K)
+	{
+		const FLakeBuilding& B = Lake.Buildings[K];
+		if (bMarina && Lake.Marina.Buildings.ContainsByPredicate([&](const FMarinaBuilding& M)
+			{ return FVector2D::Distance(M.Center, FVector2D(B.X, B.Y)) < 0.5 * M.Size.Size() + 5.0; }))
+		{
+			continue;
+		}
+		const uint32 H = Hash(K);
+		const double Area = B.Length * B.Width;
+		const int32 Kind = Area > 600.0 ? 2 : (B.Height >= 6.5 || (H % 5) == 0 ? 1 : 0);
+		const float Height = Kind == 2 ? FMath::Max(float(B.Height), 6.f) : float(B.Height);
+		X[Kind].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(B.Length, B.Width, Height)));
+		const int32 Pat = Kind == 2 ? 2 : int32((H >> 4) % 3);
+		const FLinearColor Wall = Pat == 0 ? Brick[(H >> 8) % UE_ARRAY_COUNT(Brick)] : Light[(H >> 8) % UE_ARRAY_COUNT(Light)];
+		const FLinearColor Roof = Roofs[(H >> 12) % UE_ARRAY_COUNT(Roofs)];
+		D[Kind].Append({ Wall.R, Wall.G, Wall.B, float(Pat), Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+	}
+	for (int32 K = 0; K < 3; ++K)
+	{
+		Ism[K]->AddInstances(X[K], false, true);
+		for (int32 I = 0; I < X[K].Num(); ++I) Ism[K]->SetCustomData(I, TArrayView<const float>(&D[K][10 * I], 10), false);
+		Ism[K]->MarkRenderStateDirty();
+	}
+	UE_LOG(LogSailing, Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks"), X[0].Num(), X[1].Num(), X[2].Num());
+	return true;
 }
 
 void ALakeTerrainActor::PlaceBridgesAndDocks()
