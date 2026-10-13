@@ -230,8 +230,15 @@ void ASailingGameMode::ApplyWeatherSettings()
 	// was the map origin, so a start away from the club met the front a minute or more early.
 	FLaunchSpot Start;
 	const bool bStart = GetLaunchSpot(Start);
+	// -SailingStormDelay=<s> (stills, Graphics G1): the front reaches the start that much later, so a capture a few seconds
+	// in sees the storm still kilometres off (the point it reaches at kFrontArrives moved back up its track, toward 290 deg,
+	// where it comes from).
+	double StormDelay = 0.0;
+	FParse::Value(FCommandLine::Get(), TEXT("SailingStormDelay="), StormDelay);
+	const double TrackRad = FMath::DegreesToRadians(290.0);
+	const double Shift = 12.0 * StormDelay; // FWeatherSystem's front speed, m/s
 	Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour,
-		bStart ? Start.X : 0.0, bStart ? Start.Y : 0.0);
+		(bStart ? Start.X : 0.0) + FMath::Cos(TrackRad) * Shift, (bStart ? Start.Y : 0.0) + FMath::Sin(TrackRad) * Shift);
 
 	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
 	FDateTime Date = FDateTime::Now();
@@ -279,6 +286,12 @@ void ASailingGameMode::ApplyQualitySettings()
 			if (Var->GetFloat() != Value) Var->Set(Value, ECVF_SetByCode);
 		}
 	}
+	// Measuring (Graphics G1): -SailingCloudMode=<r.VolumetricRenderTarget.Mode> -SailingCloudSamples=<view ray max>.
+	int32 CloudMode = -1, CloudSamples = 0;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudMode="), CloudMode))
+		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"))) Var->Set(CloudMode, ECVF_SetByCode);
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudSamples="), CloudSamples))
+		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"))) Var->Set(float(CloudSamples), ECVF_SetByCode);
 	// Measuring (Visual V1): -SailingAA=<0 none, 2 TAA, 4 TSR, 5 SMAA> and -SailingScreenPct=<percent> override the tier.
 	int32 AAOverride = -1, PctOverride = -1;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingAA="), AAOverride))

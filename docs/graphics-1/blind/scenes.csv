@@ -1,0 +1,6 @@
+scene,pairs_with,preset,args,description
+g1-shelf-lake,real01,Chase,"-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=Thunderstorm -SailingWeatherTime=90 -SailingStormDelay=300 -SailingHour=15 -SailingTWA=60 -SailingHoldTWA=60 -SailingCamWorld=-103,282,4,290,6 -SailingQuality=High",A shelf cloud coming across Lake Ray Hubbard
+g1-squall,real02,Chase,-SailingWorld=Lake -SailingLaunch=1 -SailingBoat=Catalina30 -SailingWeather=Thunderstorm -SailingWeatherTime=170 -SailingHour=15 -SailingTWA=70 -SailingHoldTWA=70 -SailingQuality=High,A squall line arriving over the lake (Catalina 30)
+g1-cumulus-chase,real03,Chase,-SailingWorld=Lake -SailingLaunch=1 -SailingDate=2024-10-24 -SailingHour=13 -SailingWeather=AfternoonBreeze -SailingWind=17 -SailingGust=0.15 -SailingTWA=42 -SailingHoldTWA=42 -SailingQuality=High,A J/22 under afternoon cumulus
+g1-cumulus-lake,real04,Chase,"-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=15 -SailingWind=10 -SailingTWA=90 -SailingHoldTWA=90 -SailingCamWorld=0,0,2,200,8 -SailingQuality=High",Afternoon cumulus over the lake
+g1-cumulus-hobie,real05,ShoreTele,-SailingWorld=Lake -SailingLaunch=1 -SailingBoat=Hobie -SailingHour=13 -SailingWeather=AfternoonBreeze -SailingWind=9 -SailingTWA=90 -SailingHoldTWA=90 -SailingQuality=High,A Hobie 16 under fair-weather cumulus

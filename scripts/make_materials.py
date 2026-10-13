@@ -1138,7 +1138,10 @@ float D = dot(p.xy - FrontA.xy, FrontA.zw) - FrontB.x;
 // The front isn't ruler-straight: its line wanders a few hundred metres along its length (zero on the start line).
 float L = dot(p.xy - FrontA.xy, float2(-FrontA.w, FrontA.z));
 D += 300.0 * sin(L / 2300.0) + 150.0 * sin(L / 900.0);
-float storm = 0.0, shelf = 0.0, rain = 0.0;
+// Graphics G1: the storm's walls bulge in and out by a few hundred metres (a straight-sided core read as a block from afar).
+float2 sw = Curl.SampleLevel(CurlSampler, (p.xy - Drift.xy) * 0.00035, 0).rg * 2.0 - 1.0;
+D += 600.0 * sw.x + 250.0 * sw.y * sin(alt * 0.0012);
+float storm = 0.0, shelf = 0.0, rain = 0.0, shelfH = 0.0;
 [branch] if (FrontB.y > 0.0 && w.a > 0.0)
 {
     float x = SHELF_LEAD - D;
@@ -1147,6 +1150,9 @@ float storm = 0.0, shelf = 0.0, rain = 0.0;
         float base = SHELF_BASE - 120.0 * smoothstep(0.0, 800.0, x);
         float top = base + SHELF_LIP + x * SHELF_SLOPE;
         shelf = 1.0 * smoothstep(base, base + 25.0, alt) * (1.0 - smoothstep(top - 150.0, top, alt)) * (1.0 - smoothstep(SHELF_DEPTH - 600.0, SHELF_DEPTH, x));
+        // Graphics G1: no tiers in the density: anything finer than the march step (about 190 m) aliased into grain
+        // (the V5 bands too). The face is shaded smoothly instead: dark at the base, brighter up the face.
+        shelfH = saturate((alt - base) / max(top - base, 1.0));
         storm = shelf;
     }
     float core = smoothstep(-CORE_BEHIND, -CORE_BEHIND - 1500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 14000.0, -CORE_BEHIND - 20000.0, D));
@@ -1185,7 +1191,7 @@ AO = 1.0;
     float3 q = (p - float3(Drift.xy, 0.0)) * 0.001;   // km
     // Filter by what a sample covers: a pixel's footprint at this distance, but never finer than the march step
     // (100-200 m): mip 0 everywhere aliased into speckle (the V5 grain).
-    float foot = max(distance(p, Cam * 0.01) * 0.0022, 45.0);   // m
+    float foot = max(distance(p, Cam * 0.01) * 0.0022, 160.0);  // m: never finer than a march step (about 190 m at 80 samples over 15 km)
     float shapeMip = clamp(log2(foot / 31.0), 0.0, 6.0);        // shape texel: 4 km / 128
     float detailMip = clamp(log2(foot / 10.4), 0.0, 5.0);       // detail texel: 667 m / 64
     float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
@@ -1201,22 +1207,24 @@ AO = 1.0;
     float n2 = hf;
     // Cumulus: the weather map's cells, shaped by the base noise (narrowing upward into cauliflower tops over a flat
     // base), then eroded: wispy, torn edges low down, billowed ones higher up.
-    float shapeCu = saturate(cu * (1.0 - 0.5 * saturate(hCu)) - (1.0 - base) * 0.6);
-    float ero = lerp(hf, 1.0 - hf, saturate(hCu * 3.0)) * 0.35;
-    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * 2.4) * 1.6;
+    // Coverage remap (Nubis): the billow noise's iso-surface is the cloud's outline, so cells are cauliflowered all round
+    // rather than the map's footprint extruded; coverage narrows toward the top.
+    float covCu = saturate(cu * (1.0 - 0.45 * saturate(hCu)));
+    float shapeCu = saturate((base - (1.0 - covCu)) / max(covCu, 0.08)) * step(0.001, covCu);
+    float ero = lerp(hf, 1.0 - hf, saturate(hCu * 3.0)) * 0.4;
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * 2.2) * 1.6;
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
-    // The shelf's tiers: a few soft steps on its face only (on all storm cloud they striped the whole sky).
-    float band = 1.0 - shelf * 0.14 * (0.5 + 0.5 * sin(alt * 0.03 + D * 0.002 + 2.0 * cw.y));
+
     // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
     float nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
     // Storm cloud uses the coarser shape octaves (a big dense mass at 100-200 m steps speckled with the fine ones); the
     // shelf's face is smooth, its base and the core's ragged.
-    float nS = saturate(sh.g * 1.25 - 0.1);
+    float nS = saturate(lerp(sh.g * 1.25 - 0.1, base, 0.5));   // the billows too: a tower's cauliflower sides
     // The lip (the shelf's first few hundred metres) keeps a clean edge.
     float lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
-    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * lip) - (1.0 - n2) * (0.06 * shelf + 0.35 * nearBase) * (1.0 - lip)) * 1.6) * band;
+    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * lip) - (1.0 - n2) * (0.06 * shelf + 0.35 * nearBase) * (1.0 - lip)) * 1.6);
     // Rain shafts: streaks drawn out vertically (falling), thin veils rather than cloud.
     float streak = Shape.SampleLevel(ShapeSampler, q * float3(1.6, 1.6, 0.35) + float3(0.0, 0.0, View.RealTime * 0.002), 0).g;
     // Rain falls in shafts a kilometre or two apart, with lighter gaps between them.
@@ -1230,10 +1238,11 @@ AO = 1.0;
     Albedo = lerp(lerp(float3(0.96, 0.96, 0.96), float3(0.74, 0.76, 0.8), wet * FrontB.w), float3(0.95, 0.95, 0.96), rainy);
     // The storm's base sits in deep shadow; the rain under it is lit from the sides and reads lighter grey.
     AO = lerp(lerp(1.0, 0.3, wet * saturate(1.0 - alt / 4000.0)), 0.9, rainy) * lerp(0.75, 1.0, saturate(hCu));
-    // The shelf's tiers (Graphics G1): stacked rolls along the front, each lit on its top and shadowed underneath, so the
-    // face reads as layered striations instead of one dark wall.
-    float tier = frac((alt - 300.0) / 120.0 + D / 1100.0 + 0.35 * cw.x);
-    AO *= lerp(1.0, lerp(0.45, 1.35, smoothstep(0.15, 0.85, tier)), shelf);
+    // The shelf (Graphics G1): its base in its own shadow, its face brighter as it rises.
+    // Its front faces the clear sky behind the observer and reads lighter than the underside (the lip's pale roll over a
+    // dark base): both over hundreds of metres, which the march resolves.
+    float front = 1.0 - smoothstep(150.0, 450.0, SHELF_LEAD - D);
+    AO *= lerp(1.0, lerp(0.35, 1.25, shelfH) * lerp(1.0, 1.6, front * smoothstep(0.15, 0.5, shelfH)), shelf);
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
     Emit = float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
@@ -1245,6 +1254,9 @@ return d * Density;
 def cloud_code():
     import os
     c = CLOUD_CODE.replace("DEBUGSTORM", "float3(dSm * 50.0, dRain * 200.0, 0.0)" if os.environ.get("SAILING_DEBUG_STORM") else "0.0")
+    if os.environ.get("SAILING_DEBUG_LAYERS"):
+        # Which layer is which: cumulus red, stratus green, storm blue, rain white (albedo, so exposure is untouched).
+        c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9 + dRain * 4.0;\n    // Lightning inside the cloud")
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),

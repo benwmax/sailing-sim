@@ -182,8 +182,13 @@ void ASailingEnvironment::BeginPlay()
 			// Graphics G1: more samples on the shadow rays inside the cloud (their jitter was most of the speckle) and, on
 			// High and Ultra, along the view ray. -SailingCloudScale=<view>,<shadow> overrides, for measuring.
 			const ESailingQuality Q = USailingSettings::Get()->Quality;
-			CloudComp->SetViewSampleCountScale(Q >= ESailingQuality::High ? 2.f : 1.f);
-			CloudComp->SetShadowViewSampleCountScale(Q >= ESailingQuality::High ? 4.f : 2.f);
+			CloudComp->SetViewSampleCountScale(Q == ESailingQuality::Ultra ? 2.f : 1.f);
+			CloudComp->SetShadowViewSampleCountScale(Q == ESailingQuality::Ultra ? 4.f : 1.f);
+			// The shadow rays' samples over 4 km instead of the default 15: the same count, three times as dense where the
+			// light is actually lost (a cloud's own few kilometres), so far less jitter (the grain) at no cost.
+			CloudComp->SetShadowTracingDistance(4.f);
+			float ShadowKm = 0.f;
+			if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudShadowKm="), ShadowKm)) CloudComp->SetShadowTracingDistance(ShadowKm);
 			FString Scales;
 			if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudScale="), Scales, false))
 			{

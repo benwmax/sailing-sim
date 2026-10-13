@@ -152,9 +152,9 @@ namespace Sailing
 				// Cumulus: cells a kilometre or two across, more and bigger over the land (heated in the afternoon); with a
 				// wind aloft they line up in streets along it, 3 to 4 km apart (Graphics G1).
 				const double Ac = X * Ux + Y * Uy, Bc = -X * Uy + Y * Ux;
-				const double Stretch = 1.0 + 0.8 * Streets;
+				const double Stretch = 1.0 + 0.4 * Streets;
 				Cu[I] = Fbm(Ac / (2000.0 * Stretch), Bc / 2000.0, 11u, 5) + 0.28 * (Land[I] - LandMean)
-					+ 0.12 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2));
+					+ 0.06 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2));
 				// Stratus: broad, gently varied.
 				St[I] = Fbm(X / 9000.0, Y / 9000.0, 23u, 3);
 				// Cirrus: streaks drawn out along the wind aloft.
