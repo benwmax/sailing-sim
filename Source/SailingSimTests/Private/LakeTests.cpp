@@ -95,6 +95,58 @@ bool FSailingShorelineTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Graphics G2: the 1 m lidar shore detail loads, covers the shore near the club, agrees with the 5 m grid away from the
+// water's edge (same survey, finer), and has no steps: along transects, neighbouring 1 m samples never jump more than
+// the steepest real bank does.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShoreDetailTest, "SailingSim.Lake.ShoreDetail", Flags)
+bool FSailingShoreDetailTest::RunTest(const FString& Parameters)
+{
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	const FLakeTerrain& T = Lake.Terrain;
+	if (!TestTrue(TEXT("Shore detail loaded"), T.HasDetail())) return false;
+	TestTrue(TEXT("Detail covers the shore within 2 km of the club"), T.HasDetailIn(-2000.0, -2000.0, 2000.0, 2000.0));
+	TArray<double> LandDiff;
+	int32 Steps = 0, BigSteps = 0, Edges = 0;
+	double WorstSeam = 0.0;
+	FRandomStream Rng(7);
+	const double Span = 64.0 * T.GetDetailCell();
+	for (int32 K = 0; K < 3000; ++K)
+	{
+		const double X = Rng.FRandRange(-6000.0, 6000.0), Y = Rng.FRandRange(-6000.0, 6000.0);
+		double Fine;
+		if (!T.DetailHeightAt(X, Y, Fine)) continue;
+		// The grid's own value, by its nodes (HeightAt prefers the detail).
+		const double R = (X - T.GetOriginX()) / T.GetCell(), C = (Y - T.GetOriginY()) / T.GetCell();
+		const int32 R0 = FMath::FloorToInt(R), C0 = FMath::FloorToInt(C);
+		const double Coarse = FMath::Lerp(FMath::Lerp(T.NodeHeight(R0, C0), T.NodeHeight(R0, C0 + 1), C - C0), FMath::Lerp(T.NodeHeight(R0 + 1, C0), T.NodeHeight(R0 + 1, C0 + 1), C - C0), R - R0);
+		if (Coarse > 2.0 && Fine > 2.0) LandDiff.Add(FMath::Abs(Fine - Coarse));
+		// A transect across tiles and the band's edge: steps over 1.5 m per metre are walls (bulkheads, the dam), rare.
+		double Prev = T.HeightAt(X, Y);
+		for (int32 S = 1; S <= 80; ++S)
+		{
+			const double H = T.HeightAt(X + S, Y + 0.5 * S);
+			++Steps;
+			BigSteps += FMath::Abs(H - Prev) > 1.5 * FMath::Sqrt(1.25);
+			Prev = H;
+		}
+		// The next tile edge north: both sides of it give the same height.
+		const double Edge = T.GetOriginX() + FMath::CeilToDouble((X - T.GetOriginX()) / Span) * Span;
+		double A, B;
+		if (T.DetailHeightAt(Edge - 1e-6, Y, A) && T.DetailHeightAt(Edge + 1e-6, Y, B)) { WorstSeam = FMath::Max(WorstSeam, FMath::Abs(A - B)); ++Edges; }
+	}
+	LandDiff.Sort();
+	const double Median = LandDiff.Num() ? LandDiff[LandDiff.Num() / 2] : 99.0;
+	const double WallShare = Steps ? double(BigSteps) / Steps : 1.0;
+	AddInfo(FString::Printf(TEXT("%d detail points; land |1 m - 5 m| median %.2f m; steps over 1.5 m %.3f%%; %d tile edges, worst seam %.3f m"),
+		LandDiff.Num(), Median, WallShare * 100.0, Edges, WorstSeam));
+	TestTrue(TEXT("Some of the sample points are in the shore band"), Steps > 8000);
+	TestTrue(FString::Printf(TEXT("Land agrees with the 5 m grid (median %.2f m)"), Median), Median < 0.35);
+	TestTrue(FString::Printf(TEXT("Walls are rare (%.3f%% of 1 m steps)"), WallShare * 100.0), WallShare < 0.002);
+	TestTrue(FString::Printf(TEXT("Tiles meet without a seam (%.3f m)"), WorstSeam), Edges > 20 && WorstSeam < 0.02);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingGroundingTest, "SailingSim.Lake.RunsAgroundInShallows", Flags)
 bool FSailingGroundingTest::RunTest(const FString& Parameters)
 {

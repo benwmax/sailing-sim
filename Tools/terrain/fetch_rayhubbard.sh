@@ -26,3 +26,13 @@ curl -sS -m 60 -A "$UA" -o level.csv "https://waterdatafortexas.org/reservoirs/i
 "$OVERPASS" "[out:json][timeout:280];way[\"building\"]($B);out geom;" buildings_osm.json; sleep 10
 "$OVERPASS" "[out:json][timeout:200];(nwr[\"leisure\"~\"marina|slipway\"]($B);nwr[\"man_made\"~\"pier|breakwater\"]($B);nwr[\"name\"~\"Robertson|Harry Myers|Rockwall Harbor|Chandlers|Sapphire|Lakeside Village\",i]($B););out geom tags;" marinas_osm.json
 ls -la "$RAW"
+
+# Graphics G2: the USGS 3DEP 1 m lidar DEM (TX Pecos Dallas 2018, UTM 14 tiles, about 2.6 GB, public domain) for the shore
+# within reach of the camera. Listed by the TNM API for the lake's box; skipped when a tile is already here.
+mkdir -p lidar
+curl -sS -m 120 "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital%20Elevation%20Model%20(DEM)%201%20meter&bbox=-96.62,32.78,-96.445,33.025&max=50&outputFormat=JSON" \
+	| python3 -c "import json,sys; [print(i['downloadURL']) for i in json.load(sys.stdin)['items']]" > lidar/urls.txt
+while read -r url; do
+	f="lidar/$(basename "$url")"
+	[ -s "$f" ] || curl -sS -m 3600 --retry 3 -o "$f" "$url" < /dev/null
+done < lidar/urls.txt

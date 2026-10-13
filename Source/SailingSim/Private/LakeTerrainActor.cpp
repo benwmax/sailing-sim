@@ -36,6 +36,8 @@ namespace
 		return M;
 	}
 	constexpr int32 kMaxBuildsInFlight = 4;
+	// Graphics G2: chunks this close (m, to their nearest edge) with lidar detail are meshed at 1 m.
+	constexpr double kFineTerrainM = 300.0;
 	constexpr int32 kMaxUploadsPerFrame = 3;
 
 	uint32 Hash(uint32 X)
@@ -139,6 +141,8 @@ void ALakeTerrainActor::BeginPlay()
 			FChunk& Ch = Chunks[R * ChunkCols + C];
 			Ch.Row = R;
 			Ch.Col = C;
+			const double Size = GChunkCells * T.GetCell();
+			Ch.bHasDetail = T.HasDetailIn(T.GetOriginX() + R * Size, T.GetOriginY() + C * Size, T.GetOriginX() + (R + 1) * Size, T.GetOriginY() + (C + 1) * Size);
 			UProceduralMeshComponent* Mesh = NewObject<UProceduralMeshComponent>(this);
 			Mesh->SetupAttachment(RootComponent);
 			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -171,19 +175,26 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 	FChunkMesh M;
 	if (!Lake) return M;
 	const FLakeTerrain& T = Lake->Terrain;
-	const int32 N = GChunkCells / Step;
-	const double Cell = T.GetCell();
-	auto H = [&](int32 R, int32 C) { return T.NodeHeight(R, C); };
-	const int32 R0 = ChunkRow * GChunkCells, C0 = ChunkCol * GChunkCells;
+	// Graphics G2: Step 0 is the near level on the shore: the chunk meshed at the 1 m lidar detail's spacing (HeightAt
+	// takes the detail where a tile covers the point and the grid elsewhere in the chunk).
+	const bool bFine = Step == 0;
+	const double Cell = bFine ? T.GetDetailCell() : T.GetCell();
+	const int32 Sub = bFine ? FMath::Max(1, FMath::RoundToInt(T.GetCell() / Cell)) : 1;
+	if (bFine) Step = 1;
+	const int32 N = GChunkCells * Sub / Step;
+	const double OX = T.GetOriginX(), OY = T.GetOriginY();
+	auto H = [&](int32 R, int32 C) { return bFine ? T.HeightAt(OX + R * Cell, OY + C * Cell) : T.NodeHeight(R, C); };
+	const int32 R0 = ChunkRow * GChunkCells * Sub, C0 = ChunkCol * GChunkCells * Sub;
+	const int32 MaxR = (T.GetRows() - 1) * Sub, MaxC = (T.GetCols() - 1) * Sub;
 
 	M.Vertices.Reserve((N + 1) * (N + 1) + 4 * (N + 1));
 	for (int32 I = 0; I <= N; ++I)
 	{
 		for (int32 J = 0; J <= N; ++J)
 		{
-			const int32 R = FMath::Min(R0 + I * Step, T.GetRows() - 1), C = FMath::Min(C0 + J * Step, T.GetCols() - 1);
+			const int32 R = FMath::Min(R0 + I * Step, MaxR), C = FMath::Min(C0 + J * Step, MaxC);
 			const double Z = H(R, C);
-			M.Vertices.Add(FVector(T.GetOriginX() + R * Cell, T.GetOriginY() + C * Cell, Z) * CmPerMeter);
+			M.Vertices.Add(FVector(OX + R * Cell, OY + C * Cell, Z) * CmPerMeter);
 			const double DZX = (H(R + Step, C) - H(R - Step, C)) / (2.0 * Step * Cell);
 			const double DZY = (H(R, C + Step) - H(R, C - Step)) / (2.0 * Step * Cell);
 			const FVector Nrm = FVector(-DZX, -DZY, 1.0).GetSafeNormal();
@@ -191,11 +202,12 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 			// Texas cross-timbers colors: muddy lake bed, red-brown clay and sand at the waterline, rock on steep
 			// banks, dry grass above, darker under woods.
 			const double Slope = 1.0 - Nrm.Z;
-			const double Canopy = T.CanopyAt(T.GetOriginX() + R * Cell, T.GetOriginY() + C * Cell) / 12.0;
-			const float Noise = 0.9f + 0.2f * Rand01(uint32(R * 7919 + C * 104729));
+			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
+			const int32 GR = R / Sub, GC = C / Sub; // the colour noise stays on the 5 m grid's cells at every level
+			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
 			FLinearColor Col;
 			if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
-			else if (Z < 0.6) Col = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(R * 31 + C * 17))));
+			else if (Z < 0.6) Col = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
 			if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
 			M.Colors.Add(Col * Noise);
@@ -291,6 +303,8 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		const double CX = T.GetOriginX() + (Ch.Row + 0.5) * ChunkSize, CY = T.GetOriginY() + (Ch.Col + 0.5) * ChunkSize;
 		const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), FVector2D(CamX, CamY)) - 0.5 * ChunkSize);
 		Ch.Wanted = D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8));
+		// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
+		if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
 		if (Ch.bBuilding) ++InFlight;
 		if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(I); ++Pending; }
 	}
