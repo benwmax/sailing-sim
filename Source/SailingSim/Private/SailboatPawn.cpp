@@ -524,11 +524,37 @@ void ASailboatPawn::RebuildBoatVisuals()
 	bTelltalesBuilt = false;
 	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(false);
 	for (UStaticMeshComponent* T : LeechTelltales) T->SetVisibility(false);
+	// Per-class sail layouts (Visual V7): the Sunfish's striped sail, the Hobie's coloured panels and seven full battens,
+	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens.
+	struct FSailLayout { float Layout, Battens, Full; };
+	auto LayoutFor = [](EBoatType T) -> FSailLayout
+	{
+		switch (T)
+		{
+		case EBoatType::Sunfish: return { 1.f, 0.f, 0.f };
+		case EBoatType::ILCA7: return { 0.f, 3.f, 0.f };
+		case EBoatType::Hobie16: return { 2.f, 7.f, 1.f };
+		case EBoatType::Corsair880: return { 3.f, 5.f, 1.f };
+		case EBoatType::Lagoon42: return { 3.f, 5.f, 1.f };
+		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f };
+		default: return { 0.f, 4.f, 0.f };
+		}
+	};
+	const FSailLayout Lay = LayoutFor(C.Type);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0)))
 	{
 		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : 0.f);       // class insignia and number
-		Mid->SetScalarParameterValue(TEXT("Battens"), C.Type == EBoatType::Sunfish ? 0.f : 1.f); // the lateen has none
+		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
+		Mid->SetScalarParameterValue(TEXT("BattenCount"), Lay.Battens);
+		Mid->SetScalarParameterValue(TEXT("FullBattens"), Lay.Full);
+		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Main.NumStrips > 0 ? float(C.Main.Strips[C.Main.NumStrips - 1].ZTop - C.Main.Strips[0].ZBottom) : 1.f);
+	}
+	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(JibSail->GetMaterial(0)))
+	{
+		// The jibs match their mains' colours (no battens).
+		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout == 2.f ? 2.f : (Lay.Layout == 3.f ? 3.f : 0.f));
+		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
 	}
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();

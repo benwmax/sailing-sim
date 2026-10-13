@@ -668,13 +668,25 @@ SAIL_CODE = r"""
 // Visual V3 sail cloth. UV0: metres (x along the chord from the luff, y up from the foot); UV1: normalized planform;
 // UV2.x: metres from the leech. Crosscut seams every 0.9 m, batten pockets on the main's leech, the class insignia and
 // sail number from the marks atlas (top half insignia, bottom half number).
+// Visual V7: per-class layouts (Layout 0 crosscut, 1 the Sunfish's striped sail, 2 the Hobie's coloured panels, 3 tri-radial
+// panels for the bigger multihulls), BattenCount pockets (FullBattens: luff to leech).
 float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
+if (Layout > 2.5)
+{
+    // Tri-radial: seams fan out from the clew (UV1 (1, 0)) and the head, crossing at the sail's middle.
+    float2 fromClew = float2(1.0 - UV1.x, UV1.y);
+    float ang = atan2(fromClew.y, fromClew.x + 1e-3);
+    float fan = abs(frac(ang / 0.16 + 0.5) - 0.5) * 0.16 * length(fromClew) * Height;
+    seamDist = lerp(fan, seamDist, step(0.55, UV1.y));
+}
 float seam = 1.0 - smoothstep(0.006, 0.010, seamDist);
 float batten = 0.0;
-for (int i = 1; i <= 4; i++)
+int nb = (int)BattenCount;
+for (int i = 1; i <= 8; i++)
 {
-    float vb = 0.2 * i;
-    float len = 0.45 + 0.25 * (i == 2 || i == 3);
+    if (i > nb) break;
+    float vb = float(i) / (BattenCount + 1.0);
+    float len = FullBattens > 0.5 ? 50.0 : 0.45 + 0.25 * (i == 2 || i == 3);
     batten = max(batten, (1.0 - smoothstep(0.018, 0.026, abs(UV1.y - vb) * Height)) * (1.0 - smoothstep(len - 0.02, len, UV2.x)));
 }
 batten *= Battens;
@@ -690,11 +702,26 @@ if (Marks > 0.5)
 // A faint weave and the panels' slight tone differences.
 float weave = 0.5 + 0.5 * sin(UV0.x * 1400.0) * sin(UV0.y * 1400.0);
 float panel = frac(sin(floor(UV0.y / 0.9) * 12.9898) * 43758.5453);
-float3 cloth = C.rgb * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
-float3 col = lerp(cloth * (1.0 - 0.12 * seam), C.rgb * 0.93, batten);
+float3 base = C.rgb;
+if (Layout > 0.5 && Layout < 1.5)
+{
+    // The Sunfish's sail: bands of colour, from the foot up.
+    int band = (int)floor(UV0.y / 0.42);
+    float3 pal[6] = { float3(0.60, 0.04, 0.03), float3(0.75, 0.30, 0.02), float3(0.80, 0.62, 0.05), float3(0.05, 0.35, 0.10), float3(0.02, 0.12, 0.45), float3(0.80, 0.80, 0.78) };
+    base = pal[band % 6];
+}
+else if (Layout > 1.5 && Layout < 2.5)
+{
+    // The Hobie 16's main and jib: wide panels of colour between white ones.
+    int band = (int)floor(UV0.y / 0.9);
+    float3 pal[4] = { float3(0.02, 0.10, 0.45), float3(0.80, 0.80, 0.78), float3(0.70, 0.08, 0.04), float3(0.85, 0.65, 0.05) };
+    base = pal[band % 4];
+}
+float3 cloth = base * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
+float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = C.rgb * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
 return col;
 """
 
@@ -723,12 +750,16 @@ def build_sail_cloth():
     battens = scalar(mat, "Battens", 0.0, -1200, 50)
     marks = scalar(mat, "Marks", 0.0, -1200, 150)
     height = scalar(mat, "Height", 7.6, -1200, 250)
+    layout = scalar(mat, "Layout", 0.0, -1400, 50)
+    bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
+    full = scalar(mat, "FullBattens", 0.0, -1400, 250)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
-    for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2")):
+    for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
