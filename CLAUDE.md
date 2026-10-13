@@ -238,6 +238,16 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   scalability, TSR at native, half-resolution clouds with the most samples, no resolution governor. The Mac gates stay
   Medium 60 and High 45; Ultra is only checked to run on the Mac. Windows: package with `RunUAT BuildCookRun -platform=Win64`
   (not scripted yet).
+- Boats and crew (Graphics G3): liveries come from `Inputs/g3/boat-catalogue.json` through `Tools/fleet/make_liveries.py`
+  (generates `BoatLiveryData.inl`; edit the catalogue or the script, not the .inl). `SampleBoatLivery(type, seed)`: seed 0
+  is the player's boat (commonest scheme, club wear, number 1288); AI boats seed from their unique id, marina neighbours
+  from their slip; `-SailingLiverySeed=<n>` for stills. `M_BoatSurface` takes `Wear` (oxidation, scum, scuffs, rust) and
+  `IsHull`, or per-instance custom data on the marina ISMs (0-3 wear, 4-6 hull colour). Sail numbers are composed in
+  `M_SailCloth` from the digit strip in `T_SailMarks` (`SailNum`, `SailDigits`; `Marks` 1 insignia and number, 2 number).
+  MetaHuman grooms (`LoadMetaHumanGrooms`, the HairStrands plugin) bind to the face: strands need `bSupportsHairStrandGeometry`,
+  which on the Mac only METAL_SM6 has (this project is SM5), so the Mac draws cards; Windows High/Ultra get strands.
+  `scripts/make-metahumans.sh` builds at High (`MH_QUALITY`); it reuses the source characters' cloud rig (`MH_RERIG=1` asks
+  again; the request blocks on an Epic sign-in). `-SailingNoGrooms` measures without hair.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

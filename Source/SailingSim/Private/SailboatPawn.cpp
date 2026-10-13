@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "GroomComponent.h"
 #include "PowerVesselActor.h"
 #include "EngineUtils.h"
 #include "Components/MeshComponent.h"
@@ -2796,10 +2797,12 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	Body->RegisterComponent();
 	BoatParts.Add(Body);
 	// The face and the clothes follow the body's bones (the face's own joints rest: no expressions).
+	USkeletalMeshComponent* FacePart = nullptr;
 	for (int32 K = 1; K <= 2; ++K)
 	{
 		if (!MetaCrewMeshes[3 * Role + K]) continue;
 		USkeletalMeshComponent* Part = NewObject<USkeletalMeshComponent>(this);
+		if (K == 1) FacePart = Part;
 		Part->SetupAttachment(Body);
 		Part->SetSkeletalMesh(MetaCrewMeshes[3 * Role + K]);
 		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -2824,7 +2827,24 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		}
 		BoatParts.Add(Part);
 	}
-	// The life jacket over the shirt, the cap over the (ungroomed) head, each scaled to this skeleton and carried by the
+	// Graphics G3: hair, brows and beard on the face. Strands on High and Ultra; the groom's cards on Medium.
+	if (FacePart && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoGrooms")))
+	{
+		const bool bStrands = USailingSettings::Get()->Quality >= ESailingQuality::High;
+		TArray<TPair<UGroomAsset*, UGroomBindingAsset*>> Grooms;
+		LoadMetaHumanGrooms(Role, Grooms);
+		for (const TPair<UGroomAsset*, UGroomBindingAsset*>& G : Grooms)
+		{
+			UGroomComponent* Hair = NewObject<UGroomComponent>(this);
+			Hair->SetupAttachment(FacePart);
+			Hair->SetUseCards(!bStrands);
+			Hair->SetGroomAsset(G.Key, G.Value);
+			Hair->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Hair->RegisterComponent();
+			BoatParts.Add(Hair);
+		}
+	}
+	// The life jacket over the shirt, the cap over the head, each scaled to this skeleton and carried by the
 	// chest and head bones: placed on the T-posed rest, relative to the bone's rest.
 	const auto At = [&](const TCHAR* Bone) { return Rig.Rest(BodyMesh, Bone).GetLocation(); };
 	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);

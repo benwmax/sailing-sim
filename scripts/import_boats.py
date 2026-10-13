@@ -128,7 +128,7 @@ def import_gear():
     for name in ("SM_CrewPFD", "SM_CrewCap"):
         path = os.path.join(MODELS, name + ".fbx")
         if os.path.exists(path):
-            setup(import_fbx(path, "/Game/Crew/Gear", name), False, {"PFD": "CrewPFD", "Straps": "CrewBoots", "Cap": "CrewCap"}, {})
+            setup(import_fbx(path, "/Game/Crew/Gear", name), False, {"PFD": "CrewPFD", "Straps": "CrewStraps", "Buckle": "CrewBuckle", "Reflective": "CrewReflective", "Cap": "CrewCap", "CapUnder": "CrewCapUnder"}, {})
             unreal.log(f"Imported {name}")
 
 

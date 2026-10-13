@@ -697,6 +697,12 @@ BOAT_LIBRARY = {
     "CrewBoots": ("M_BoatSurface", (0.55, 0.55, 0.57), 0.50, 0.0, 0.0, 0.0, 0.10),
     "CrewSkin": ("M_BoatSurface", (0.42, 0.28, 0.21), 0.55, 0.0, 0.0, 0.0, 0.10),
     "CrewCap": ("M_BoatSurface", (0.72, 0.72, 0.72), 0.80, 0.0, 0.0, 0.0, 0.40),
+    # Graphics G3: the life jacket's webbing and buckles, its reflective patches (glass-bead tape: grey, a broad bright
+    # lobe), the cap's brim underside and sweatband.
+    "CrewStraps": ("M_BoatSurface", (0.022, 0.022, 0.026), 0.72, 0.0, 0.0, 0.0, 0.45),
+    "CrewBuckle": ("M_BoatSurface", (0.012, 0.012, 0.013), 0.38, 0.0, 0.3, 0.0, 0.02),
+    "CrewReflective": ("M_BoatSurface", (0.55, 0.56, 0.58), 0.30, 0.0, 0.6, 0.0, 0.05),
+    "CrewCapUnder": ("M_BoatSurface", (0.07, 0.09, 0.07), 0.85, 0.0, 0.0, 0.0, 0.40),
     "CrewGlasses": ("M_BoatSurface", (0.01, 0.01, 0.012), 0.05, 0.0, 1.0, 0.0, 0.0),
     "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
     "SailCover": ("M_BoatSurface", (0.02, 0.05, 0.14), 0.8, 0.0, 0.0, 0.0, 0.6),      # navy acrylic canvas: sail covers, sun strips (V7)

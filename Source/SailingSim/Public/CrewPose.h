@@ -55,6 +55,8 @@ SAILINGSIM_API const TCHAR* MetaHumanRoleName(int32 Role);
 
 /** Loads a role's built MetaHuman (body, face, outfit under /Game/Crew/MetaHumans, git-ignored); false if not built. */
 SAILINGSIM_API bool LoadMetaHumanCrew(int32 Role, class USkeletalMesh*& Body, class USkeletalMesh*& Face, class USkeletalMesh*& Outfit);
+/** Graphics G3: a MetaHuman's grooms (hair, brows, beard) with their face bindings, from its Grooms folder. */
+SAILINGSIM_API void LoadMetaHumanGrooms(int32 Role, TArray<TPair<class UGroomAsset*, class UGroomBindingAsset*>>& Grooms);
 
 /** Builds the rig for a skeleton (identity for SK_Sailor's own). */
 SAILINGSIM_API void BuildCrewRig(const class USkeletalMesh* Mesh, FCrewRig& Out);

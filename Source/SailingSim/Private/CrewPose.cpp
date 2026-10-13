@@ -1,4 +1,7 @@
 #include "CrewPose.h"
+#include "GroomAsset.h"
+#include "GroomBindingAsset.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/PoseableMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "ReferenceSkeleton.h"
@@ -204,6 +207,28 @@ bool LoadMetaHumanCrew(int32 Role, USkeletalMesh*& Body, USkeletalMesh*& Face, U
 	Face = Load(FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Face/SKM_%s_FaceMesh.SKM_%s_FaceMesh"), *R, *R, *R));
 	Outfit = Load(FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/%s_Outfits.%s_Outfits"), *R, *R, *R));
 	return Body && Face;
+}
+
+void LoadMetaHumanGrooms(int32 Role, TArray<TPair<UGroomAsset*, UGroomBindingAsset*>>& Grooms)
+{
+	// Graphics G3: the grooms the build made for this character (hair, eyebrows, beard, moustache), each with the binding
+	// to its face mesh (<Groom>_Binding). Eyelashes and peach fuzz are left out: at sailing distances they cost and show nothing.
+	Grooms.Reset();
+	const FString Dir = FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Grooms"), MetaHumanRoleName(Role));
+	TArray<FAssetData> Assets;
+	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get();
+	Registry.ScanPathsSynchronous({ Dir }); // uncooked runs scan in the background: the folder may not be in yet
+	Registry.GetAssetsByPath(FName(*Dir), Assets);
+	for (const FAssetData& A : Assets)
+	{
+		if (A.AssetClassPath != UGroomAsset::StaticClass()->GetClassPathName()) continue;
+		const FString Name = A.AssetName.ToString();
+		if (Name.Contains(TEXT("Eyelash")) || Name.Contains(TEXT("Fuzz"))) continue;
+		UGroomAsset* Groom = Cast<UGroomAsset>(A.GetAsset());
+		UGroomBindingAsset* Binding = LoadObject<UGroomBindingAsset>(nullptr, *FString::Printf(TEXT("%s/%s_Binding.%s_Binding"), *Dir, *Name, *Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (Groom && Binding) Grooms.Add({ Groom, Binding });
+	}
+	UE_LOG(LogTemp, Log, TEXT("MetaHuman %s: %d grooms"), MetaHumanRoleName(Role), Grooms.Num());
 }
 
 void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
