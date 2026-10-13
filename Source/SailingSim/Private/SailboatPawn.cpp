@@ -661,6 +661,7 @@ void ASailboatPawn::BeginPlay()
 	SoundComponent->SetSound(Synth);
 	SoundComponent->RegisterComponent();
 	SoundComponent->Play();
+	StartSampleLayer();
 
 	bDemo = FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"));
 	float HoldTwa = 0.f;
@@ -1532,6 +1533,32 @@ void ASailboatPawn::UpdateDrillVisuals()
 	if (bDummy) DummyMesh->SetWorldLocation(FVector(DrillRunner.GetDummy().X * CmPerMeter, DrillRunner.GetDummy().Y * CmPerMeter, WaterSurfaceZ + 10.f));
 }
 
+void ASailboatPawn::StartSampleLayer()
+{
+	// A recorded sample (Audio/Samples/<Cue>.wav, imported by scripts/import_audio.py as /Game/Audio/Samples/S_<Cue>)
+	// plays in place of that synth voice, looping, its level driven by the same physics as the voice it replaces.
+	SampleCues.SetNum(int32(ESailingCue::Count));
+	uint32 Mask = 0;
+	for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
+	{
+		const FString Name = SailingCueName(ESailingCue(K));
+		USoundBase* Wave = LoadObject<USoundBase>(nullptr, *FString::Printf(TEXT("/Game/Audio/Samples/S_%s.S_%s"), *Name, *Name));
+		if (!Wave || bTrafficBoat) continue;
+		UAudioComponent* A = NewObject<UAudioComponent>(this);
+		A->SetupAttachment(BoatRoot);
+		A->bAllowSpatialization = false;
+		A->bAutoActivate = false;
+		A->SetSound(Wave);
+		A->SetVolumeMultiplier(0.f);
+		A->RegisterComponent();
+		A->Play();
+		SampleCues[K] = A;
+		Mask |= 1u << K;
+	}
+	if (Synth) Synth->Params.SampledMask = Mask;
+	if (Mask) UE_LOG(LogSailing, Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
+}
+
 void ASailboatPawn::UpdateSound(float DeltaSeconds)
 {
 	if (!Synth)
@@ -1575,6 +1602,48 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	P.Rain = Rain;
 	P.Thunder = Thunder;
 	P.ThunderCrack = Crack;
+
+	// Visual V7: the wind's gusts and shelter at the boat, at rest in a slip, and a squall coming across the water.
+	float Squall = 0.f;
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		const Vec3 O = Boat.OriginPosition();
+		const double Now = Boat.GetState().Time;
+		const FWindField& Wind = GM->GetWind();
+		P.GustRatio = float(Wind.GustFactorAt(Vec3(O.X, O.Y, 10.0), Now));
+		const double Mean = FMath::Max(Wind.MeanSpeedAtHeight(10.0), 0.5);
+		P.WindShadow = FMath::Clamp(float(1.0 - Wind.VelocityAt(Vec3(O.X, O.Y, 10.0), Now).LengthXY() / (Mean * Wind.GustFactorAt(Vec3(O.X, O.Y, 10.0), Now))), 0.f, 1.f);
+		const FGustFront& Front = Wind.GetFront();
+		if (Front.bActive)
+		{
+			const double D = Front.DistanceAhead(O.X, O.Y, GM->GetSimTime());
+			Squall = D > 0.0 ? FMath::Clamp(float(1.0 - D / 1500.0), 0.f, 1.f) : FMath::Clamp(float(1.0 + D / 250.0), 0.f, 1.f);
+		}
+	}
+	P.Moored = FMath::Clamp(1.f - float(T.BoatSpeed) / 0.4f, 0.f, 1.f);
+	P.RainDeck = Rain;
+	P.RainWater = Rain;
+	P.Squall = Squall;
+	// The sample layer follows the same levels as the voices it replaces.
+	if (SampleCues.Num() == int32(ESailingCue::Count))
+	{
+		const float Aws = float(T.ApparentWindSpeed) * (1.f - 0.55f * P.WindShadow.load());
+		const float Levels[] = {
+			FMath::Pow(FMath::Clamp(Aws / 12.f, 0.f, 1.5f), 1.5f),                                                    // Wind
+			FMath::Clamp((P.GustRatio.load() - 1.f) * 2.5f, 0.f, 1.f) * FMath::Clamp(Aws / 7.f, 0.f, 1.5f),            // GustRumble
+			P.Luff.load() * FMath::Clamp(Aws / 8.f, 0.f, 2.f),                                                         // SailFlog
+			P.Telltales.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.5f) * 0.3f,                                            // Telltales
+			FMath::Pow(FMath::Clamp(float(T.BoatSpeed) / 3.f, 0.f, 1.5f), 1.5f),                                       // BowWave
+			FMath::Max(P.Moored.load() * 0.5f, P.BowSlam.load()),                                                      // HullSlap
+			FMath::Clamp(P.TrimRate.load(), 0.f, 1.f),                                                                 // Winch
+			FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f),                                                                // SheetBlock
+			P.Moored.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.f),                                                       // HalyardSlap
+			Rain, Rain, Squall * Squall, Thunder };                                                                    // RainDeck, RainWater, SquallHiss, Thunder
+		for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
+		{
+			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load());
+		}
+	}
 }
 
 void ASailboatPawn::ApplyStateToTransform()

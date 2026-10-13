@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "SailingAudio.h"
 #include "GpuSlices.h"
 #include "VisualPipeline.h"
 #include "HAL/IConsoleManager.h"
@@ -306,6 +307,68 @@ bool FVisualFleetMeshTest::RunTest(const FString& Parameters)
 		int32 Rudders = 0;
 		for (const FFoilDef& F : C.Foils) Rudders += F.Role == EFoilRole::Rudder;
 		TestEqual(FString::Printf(TEXT("%s: a rudder pivot per rudder"), Tag), int32(Hull->FindSocket(TEXT("RudderPivot")) != nullptr) + int32(Hull->FindSocket(TEXT("RudderPivot_1")) != nullptr), Rudders);
+	}
+	return true;
+}
+
+// Visual V7: the sound layers. Each new voice sounds when its condition holds (a gust's rumble, the halyard and the
+// lapping at rest, rain on the water, a squall coming), a cue a recorded sample replaces goes quiet in the synth, the
+// shelter hushes the wind in the ears, and every spatialised world source makes sound.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSmokeSoundLayersTest, "SailingSim.Smoke.SoundLayers", VisualFlags)
+bool FSmokeSoundLayersTest::RunTest(const FString& Parameters)
+{
+	auto Rms = [](USoundWaveProcedural* W, int32 N)
+	{
+		TArray<uint8> Buf;
+		double Sum = 0.0;
+		for (int32 Block = 0; Block < 8; ++Block)
+		{
+			W->OnGeneratePCMAudio(Buf, N);
+			const int16* S = reinterpret_cast<const int16*>(Buf.GetData());
+			for (int32 I = 0; I < N; ++I) Sum += double(S[I]) * S[I];
+		}
+		return FMath::Sqrt(Sum / (8.0 * N)) / 32768.0;
+	};
+	auto Fresh = []() { USailingSynthWave* W = NewObject<USailingSynthWave>(); W->Params.Volume = 1.f; return W; };
+	{
+		USailingSynthWave* Quiet = Fresh();
+		const double Base = Rms(Quiet, 24000);
+		USailingSynthWave* Gust = Fresh();
+		Gust->Params.ApparentWind = 7.f; Gust->Params.GustRatio = 1.6f;
+		USailingSynthWave* Calm = Fresh();
+		Calm->Params.ApparentWind = 7.f; Calm->Params.GustRatio = 1.0f;
+		const double G = Rms(Gust, 24000), C = Rms(Calm, 24000);
+		AddInfo(FString::Printf(TEXT("Silence %.4f, wind %.4f, wind in a gust %.4f"), Base, C, G));
+		TestTrue(TEXT("A gust adds its rumble"), G > C * 1.05);
+		USailingSynthWave* Lee = Fresh();
+		Lee->Params.ApparentWind = 7.f; Lee->Params.WindShadow = 1.f;
+		TestTrue(TEXT("The wind hushes in a shadow"), Rms(Lee, 24000) < C * 0.8);
+		USailingSynthWave* Muted = Fresh();
+		Muted->Params.ApparentWind = 7.f; Muted->Params.SampledMask = (1u << uint32(ESailingCue::Wind)) | (1u << uint32(ESailingCue::GustRumble));
+		TestTrue(TEXT("A sampled cue is silent in the synth"), Rms(Muted, 24000) < C * 0.2);
+	}
+	{
+		USailingSynthWave* Rain = Fresh();
+		Rain->Params.RainWater = 1.f;
+		USailingSynthWave* Squall = Fresh();
+		Squall->Params.Squall = 1.f;
+		USailingSynthWave* Moored = Fresh();
+		Moored->Params.Moored = 1.f; Moored->Params.ApparentWind = 8.f;
+		USailingSynthWave* Sailing = Fresh();
+		Sailing->Params.Moored = 0.f; Sailing->Params.ApparentWind = 8.f;
+		TestTrue(TEXT("Rain hisses on the water"), Rms(Rain, 24000) > 0.005);
+		TestTrue(TEXT("A squall is heard coming"), Rms(Squall, 24000) > 0.005);
+		TestTrue(TEXT("At rest the hull laps and the halyard slaps"), Rms(Moored, 48000) > Rms(Sailing, 48000));
+	}
+	for (int32 K = 0; K < int32(EWorldSound::Count); ++K)
+	{
+		USailingWorldSynth* W = NewObject<USailingWorldSynth>();
+		W->Kind = EWorldSound(K);
+		W->Level = 1.f;
+		W->Rate = 1.f;
+		const double R = Rms(W, 48000 * 2);
+		AddInfo(FString::Printf(TEXT("%s: %.4f"), WorldSoundName(EWorldSound(K)), R));
+		TestTrue(FString::Printf(TEXT("%s makes sound"), WorldSoundName(EWorldSound(K))), R > 0.001);
 	}
 	return true;
 }

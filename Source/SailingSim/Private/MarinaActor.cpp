@@ -5,6 +5,8 @@
 #include "LakeData.h"
 #include "Marina.h"
 #include "WorldKit.h"
+#include "SailingAudio.h"
+#include "Components/AudioComponent.h"
 #include "BoatModel.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -46,7 +48,8 @@ namespace
 
 AMarinaActor::AMarinaActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 0.25f;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	// Nothing here moves: static components keep their cached virtual shadow pages (movable ones re-mark them every frame).
 	RootComponent->SetMobility(EComponentMobility::Static);
@@ -57,6 +60,34 @@ void AMarinaActor::BeginPlay()
 	Super::BeginPlay();
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (GM && GM->GetLake().Marina.IsLoaded()) Build(GM->GetLake().Marina);
+}
+
+void AMarinaActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || Voices.Num() == 0) return;
+	const double Wind = GM->GetWind().VelocityAt(Sailing::Vec3(-40.0, 160.0, 10.0), GM->GetSimTime()).LengthXY();
+	for (USailingWorldSynth* V : Voices)
+	{
+		if (V->Kind == EWorldSound::MarinaHalyards)
+		{
+			V->Rate = FMath::Clamp(float(Wind) / 9.f, 0.f, 1.f);
+			V->Level = FMath::Clamp(float(Wind - 1.5) / 5.f, 0.f, 1.f) * 0.9f;
+		}
+		else
+		{
+			// Gulls fly by day, and call more on a calm morning.
+			V->Rate = FMath::Clamp(1.f - float(Wind) / 12.f, 0.2f, 1.f);
+		}
+	}
+	// The gulls wheel in wide circles over the rows, one higher and wider than the other.
+	GullClock += DeltaSeconds;
+	for (int32 K = 0; K < GullPoints.Num(); ++K)
+	{
+		const float A = GullClock * (0.05f + 0.02f * K) + K * 2.1f;
+		GullPoints[K]->SetRelativeLocation(FVector(-30.0 + (60.0 + 40.0 * K) * FMath::Cos(A), 170.0 + (80.0 + 30.0 * K) * FMath::Sin(A), 15.0 + 10.0 * K) * 100.0);
+	}
 }
 
 void AMarinaActor::Build(const FMarina& Marina)
@@ -187,6 +218,30 @@ void AMarinaActor::Build(const FMarina& Marina)
 			}
 		}
 	}
+	// Sound: halyards on every dock row (louder with the wind), and a pair of gulls wheeling over the harbour.
+	for (const FMarinaRow& R : Marina.Rows)
+	{
+		const FVector2D Mid = 0.5 * (R.Points[0] + R.Points.Last());
+		USceneComponent* At = NewObject<USceneComponent>(this);
+		At->SetupAttachment(RootComponent);
+		At->SetRelativeLocation(FVector(Mid.X, Mid.Y, 6.0) * 100.0);
+		At->RegisterComponent();
+		USailingWorldSynth* Voice = nullptr;
+		SailingSound::MakeWorldSound(this, At, EWorldSound::MarinaHalyards, 250.f, Voice);
+		Voices.Add(Voice);
+	}
+	for (int32 K = 0; K < 2; ++K)
+	{
+		USceneComponent* At = NewObject<USceneComponent>(this);
+		At->SetupAttachment(RootComponent);
+		At->RegisterComponent();
+		USailingWorldSynth* Voice = nullptr;
+		SailingSound::MakeWorldSound(this, At, EWorldSound::Gulls, 400.f, Voice);
+		Voice->Level = 0.6f;
+		Voices.Add(Voice);
+		GullPoints.Add(At);
+	}
+
 	UE_LOG(LogSailing, Display, TEXT("Marina %s: %d rows, %d slips (%d occupied), %d buildings, %d of %d tiles baked, home slip %s"), *Marina.Name, Marina.Rows.Num(), Marina.Slips.Num(),
 		Marina.Slips.FilterByPredicate([](const FMarinaSlip& Sl) { return Sl.bOccupied; }).Num(), Marina.Buildings.Num(), Baked, Tiles.Num(),
 		Marina.HomeSlip != INDEX_NONE ? *Marina.Slips[Marina.HomeSlip].Id : TEXT("none"));

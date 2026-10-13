@@ -352,6 +352,9 @@ private:
 
 	UPROPERTY(Transient) TObjectPtr<UAudioComponent> SoundComponent;
 	UPROPERTY(Transient) TObjectPtr<USailingSynthWave> Synth;
+	/** Visual V7: recorded samples that replace synth voices (one looping component per ESailingCue found). */
+	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> SampleCues;
+	void StartSampleLayer();
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;

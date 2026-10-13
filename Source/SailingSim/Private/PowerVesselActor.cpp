@@ -3,6 +3,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "SailingSettings.h"
+#include "SailingAudio.h"
+#include "Components/AudioComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -142,6 +144,22 @@ void APowerVesselActor::Light(const FVector& LocationM, const FLinearColor& Colo
 void APowerVesselActor::Build(ETrafficKind InKind)
 {
 	Kind = InKind;
+	// Sound (Visual V7): the engine where it is, and the gulls that follow a shrimper working her nets.
+	if (Kind != ETrafficKind::Committee)
+	{
+		USailingWorldSynth* Engine = nullptr;
+		const bool bOutboard = Kind == ETrafficKind::Powerboat;
+		SailingSound::MakeWorldSound(this, Root, bOutboard ? EWorldSound::Outboard : EWorldSound::Diesel, bOutboard ? 350.f : (Kind == ETrafficKind::Ship ? 1500.f : 700.f), Engine);
+		Voices.Add(Engine);
+		if (Kind == ETrafficKind::Trawler)
+		{
+			USailingWorldSynth* Gulls = nullptr;
+			SailingSound::MakeWorldSound(this, Root, EWorldSound::Gulls, 500.f, Gulls);
+			Gulls->Level = 0.8f;
+			Gulls->Rate = 1.f;
+			Voices.Add(Gulls);
+		}
+	}
 	auto Sidelights = [&](float X, float Y, float Z)
 	{
 		Light(FVector(X, Y, Z), NavGreen, Starboard[0], Starboard[1]);
@@ -289,6 +307,13 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 void APowerVesselActor::UpdateFrom(const FTrafficVessel& V, bool bDark, const FVector& Observer, float Time)
 {
 	const FVesselSnapshot S = V.Snapshot();
+	for (USailingWorldSynth* Voice : Voices)
+	{
+		if (Voice->Kind == EWorldSound::Gulls) continue;
+		const float Throttle = FMath::Clamp(float(FMath::Sqrt(S.VX * S.VX + S.VY * S.VY) / FMath::Max(V.Power.Type.CruiseKnots * 0.514444, 1.0)), 0.f, 1.f);
+		Voice->Rate = Throttle;
+		Voice->Level = 0.35f + 0.65f * Throttle;
+	}
 	// A little pitch and roll so she is not frozen on the water; heavier vessels move less.
 	const float Motion = FMath::Clamp(6.f / float(V.Power.Type.Length), 0.02f, 0.6f);
 	const FRotator Rot(Motion * FMath::Sin(Time * 0.9f + S.Id), FMath::RadiansToDegrees(S.Heading), Motion * 1.6f * FMath::Sin(Time * 0.7f + 2.f * S.Id));
