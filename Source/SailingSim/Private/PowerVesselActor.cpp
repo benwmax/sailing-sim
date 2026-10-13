@@ -1,6 +1,8 @@
 #include "PowerVesselActor.h"
 #include "SailingSim.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "SailingSettings.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -57,6 +59,60 @@ UStaticMeshComponent* APowerVesselActor::Part(UStaticMesh* Mesh, const FVector& 
 	return C;
 }
 
+bool APowerVesselActor::Model(const TCHAR* Name, const FVector& LocationM, const FVector& Scale)
+{
+	// Visual V6: the Blender-built hulls (Tools/blender/build_vessels.py) on Medium and High; Low keeps the boxes.
+	if (USailingSettings::Get()->Quality == ESailingQuality::Low) return false;
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Vessels/%s.%s"), Name, Name));
+	if (!Mesh) return false;
+	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+	C->SetupAttachment(Root);
+	C->SetStaticMesh(Mesh);
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->SetRelativeLocation(LocationM * 100.0);
+	C->SetRelativeScale3D(Scale);
+	C->RegisterComponent();
+	Parts.Add(C);
+	return true;
+}
+
+void APowerVesselActor::Containers(float Beam)
+{
+	// Boxes stacked three to six high in the fourteen bays, a few bays light, colours of the big lines' fleets.
+	UStaticMesh* Box = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Vessels/SM_Container_40.SM_Container_40"));
+	if (!Box) return;
+	UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+	C->SetupAttachment(Root);
+	C->SetStaticMesh(Box);
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->NumCustomDataFloats = 3;
+	C->RegisterComponent();
+	static const FLinearColor Lines[] = { FLinearColor(0.02f, 0.06f, 0.20f), FLinearColor(0.35f, 0.03f, 0.02f), FLinearColor(0.45f, 0.45f, 0.42f),
+		FLinearColor(0.02f, 0.15f, 0.07f), FLinearColor(0.55f, 0.20f, 0.02f), FLinearColor(0.20f, 0.12f, 0.05f), FLinearColor(0.70f, 0.70f, 0.68f),
+		FLinearColor(0.03f, 0.10f, 0.22f), FLinearColor(0.08f, 0.08f, 0.09f) };
+	uint32 Seed = uint32(GetUniqueID()) * 2654435761u;
+	auto Rand = [&]() { Seed = Seed * 1664525u + 1013904223u; return (Seed >> 8) / float(1 << 24); };
+	const int32 Rows = FMath::FloorToInt32(Beam * 0.86f / 2.5f);
+	for (int32 Bay = 0; Bay < 14; ++Bay)
+	{
+		const float X = -74.f + Bay * 12.8f;
+		const int32 Base = 3 + int32(Rand() * 3.f);
+		for (int32 R = 0; R < Rows; ++R)
+		{
+			const float Y = (R - 0.5f * (Rows - 1)) * 2.5f;
+			const int32 Tiers = FMath::Max(0, Base + int32(Rand() * 2.f) - (R == 0 || R == Rows - 1 ? 1 : 0));
+			for (int32 T = 0; T < Tiers; ++T)
+			{
+				const int32 I = C->AddInstance(FTransform(FVector(X, Y, 12.8f + T * 2.59f) * 100.0));
+				const FLinearColor L = Lines[int32(Rand() * UE_ARRAY_COUNT(Lines)) % UE_ARRAY_COUNT(Lines)] * (0.85f + 0.3f * Rand());
+				const float D[3] = { L.R, L.G, L.B };
+				C->SetCustomData(I, TArrayView<const float>(D, 3), false);
+			}
+		}
+	}
+	Parts.Add(C);
+}
+
 void APowerVesselActor::Light(const FVector& LocationM, const FLinearColor& Color, float ArcFrom, float ArcTo)
 {
 	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
@@ -97,16 +153,20 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 	case ETrafficKind::Powerboat:
 	{
 		// A 21 ft center console: white hull, blue boot stripe, console and outboard.
-		Part(Cube, FVector(-0.3, 0, 0.35), FVector(4.6, 2.3, 0.8), HullWhite);
-		Part(Cube, FVector(2.3, 0, 0.4), FVector(1.7, 1.6, 0.75), HullWhite, FRotator(0, 0, 0));
-		Part(Cube, FVector(-0.3, 0, -0.02), FVector(4.6, 2.32, 0.12), FLinearColor(0.05f, 0.15f, 0.45f));
-		Part(Cube, FVector(0.4, 0, 1.2), FVector(0.7, 0.8, 1.0), HullWhite);
-		Part(Cylinder, FVector(-2.75, 0, 0.6), FVector(0.35, 0.35, 1.2), HullDark);
-		Part(Cylinder, FVector(-0.3, 0, 1.3), FVector(0.45, 0.45, 1.2), FLinearColor(0.9f, 0.6f, 0.1f));
+		const bool bModel = Model(TEXT("SM_Vessel_Runabout"), FVector::ZeroVector);
+		if (!bModel)
+		{
+			Part(Cube, FVector(-0.3, 0, 0.35), FVector(4.6, 2.3, 0.8), HullWhite);
+			Part(Cube, FVector(2.3, 0, 0.4), FVector(1.7, 1.6, 0.75), HullWhite, FRotator(0, 0, 0));
+			Part(Cube, FVector(-0.3, 0, -0.02), FVector(4.6, 2.32, 0.12), FLinearColor(0.05f, 0.15f, 0.45f));
+			Part(Cube, FVector(0.4, 0, 1.2), FVector(0.7, 0.8, 1.0), HullWhite);
+			Part(Cylinder, FVector(-2.75, 0, 0.6), FVector(0.35, 0.35, 1.2), HullDark);
+			Part(Cylinder, FVector(-0.3, 0, 1.3), FVector(0.45, 0.45, 1.2), FLinearColor(0.9f, 0.6f, 0.1f));
+		}
 		// Rule 23(c): under 12 m, sidelights and an all-round white light instead of masthead and stern lights.
 		Sidelights(2.6f, 0.6f, 0.95f);
 		Light(FVector(-2.6f, 0.f, 2.4f), NavWhite, AllRound[0], AllRound[1]);
-		Part(Cylinder, FVector(-2.6, 0, 1.6), FVector(0.05, 0.05, 1.6), HullSteel);
+		if (!bModel) Part(Cylinder, FVector(-2.6, 0, 1.6), FVector(0.05, 0.05, 1.6), HullSteel);
 		break;
 	}
 	case ETrafficKind::Trawler:
@@ -114,25 +174,32 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 	{
 		const bool bCommittee = Kind == ETrafficKind::Committee;
 		const float L = bCommittee ? 11.f : 21.f, B = bCommittee ? 3.8f : 6.5f;
-		Part(Cube, FVector(0, 0, 0.6), FVector(L * 0.85f, B, 2.0), bCommittee ? HullWhite : FLinearColor(0.15f, 0.3f, 0.2f));
-		Part(Cube, FVector(L * 0.42f, 0, 0.8), FVector(L * 0.2f, B * 0.7f, 1.8), bCommittee ? HullWhite : FLinearColor(0.15f, 0.3f, 0.2f), FRotator(0, 45, 0));
-		Part(Cube, FVector(L * 0.18f, 0, 2.6), FVector(L * 0.22f, B * 0.6f, 2.2), HullWhite);
 		const float MastX = bCommittee ? 0.f : L * 0.02f, MastH = bCommittee ? 6.f : 11.f;
-		Part(Cylinder, FVector(MastX, 0, 1.6 + MastH * 0.5f), FVector(0.25, 0.25, MastH), HullSteel);
+		const bool bModel = Model(bCommittee ? TEXT("SM_Vessel_Committee") : TEXT("SM_Vessel_Shrimper"), FVector::ZeroVector);
+		if (!bModel)
+		{
+			Part(Cube, FVector(0, 0, 0.6), FVector(L * 0.85f, B, 2.0), bCommittee ? HullWhite : FLinearColor(0.15f, 0.3f, 0.2f));
+			Part(Cube, FVector(L * 0.42f, 0, 0.8), FVector(L * 0.2f, B * 0.7f, 1.8), bCommittee ? HullWhite : FLinearColor(0.15f, 0.3f, 0.2f), FRotator(0, 45, 0));
+			Part(Cube, FVector(L * 0.18f, 0, 2.6), FVector(L * 0.22f, B * 0.6f, 2.2), HullWhite);
+			Part(Cylinder, FVector(MastX, 0, 1.6 + MastH * 0.5f), FVector(0.25, 0.25, MastH), HullSteel);
+		}
 		if (bCommittee)
 		{
 			// The race committee's orange flag, and at anchor: a white all-round light (Rule 30) and a black ball by day.
 			Part(Cube, FVector(MastX - 0.6f, 0, 1.6 + MastH - 0.5f), FVector(1.2, 0.03, 0.8), FLinearColor(1.f, 0.35f, 0.02f));
 			Light(FVector(L * 0.4f, 0.f, 4.f), NavWhite, AllRound[0], AllRound[1]);
 			DayShapes.Add(Part(Sphere, FVector(L * 0.4f, 0, 3.4), FVector(0.6), HullDark));
-			Part(Cylinder, FVector(L * 0.4f, 0, 2.6), FVector(0.06, 0.06, 1.6), HullSteel);
+			if (!bModel) Part(Cylinder, FVector(L * 0.4f, 0, 2.6), FVector(0.06, 0.06, 1.6), HullSteel);
 			break;
 		}
 		// Outriggers swung out with the nets towing astern.
-		Part(Cylinder, FVector(MastX, 4.5, 4.5), FVector(0.15, 0.15, 10.0), HullSteel, FRotator(0, 0, -60));
-		Part(Cylinder, FVector(MastX, -4.5, 4.5), FVector(0.15, 0.15, 10.0), HullSteel, FRotator(0, 0, 60));
-		Part(Cylinder, FVector(-12.0, 9.0, 0.8), FVector(0.04, 0.04, 26.0), HullDark, FRotator(80, 18, 0));
-		Part(Cylinder, FVector(-12.0, -9.0, 0.8), FVector(0.04, 0.04, 26.0), HullDark, FRotator(80, -18, 0));
+		if (!bModel)
+		{
+			Part(Cylinder, FVector(MastX, 4.5, 4.5), FVector(0.15, 0.15, 10.0), HullSteel, FRotator(0, 0, -60));
+			Part(Cylinder, FVector(MastX, -4.5, 4.5), FVector(0.15, 0.15, 10.0), HullSteel, FRotator(0, 0, 60));
+			Part(Cylinder, FVector(-12.0, 9.0, 0.8), FVector(0.04, 0.04, 26.0), HullDark, FRotator(80, 18, 0));
+			Part(Cylinder, FVector(-12.0, -9.0, 0.8), FVector(0.04, 0.04, 26.0), HullDark, FRotator(80, -18, 0));
+		}
 		// Rule 26(b): trawling, green over white all-round; by day two cones with their points together.
 		Light(FVector(MastX, 0.f, 1.6f + MastH + 0.6f), NavGreen, AllRound[0], AllRound[1]);
 		Light(FVector(MastX, 0.f, 1.6f + MastH - 0.6f), NavWhite, AllRound[0], AllRound[1]);
@@ -146,14 +213,19 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 	{
 		// A towboat pushing two hopper barges ahead: 120 m in all. Barges forward of the tug.
 		const FLinearColor Rust(0.35f, 0.15f, 0.07f), Hopper(0.18f, 0.18f, 0.2f);
-		Part(Cube, FVector(31.0, 0, 1.0), FVector(58.0, 10.6, 3.6), Rust);
-		Part(Cube, FVector(31.0, 0, 3.0), FVector(52.0, 8.0, 0.8), Hopper);
-		Part(Cube, FVector(-15.0, 0, 1.0), FVector(32.0, 10.6, 3.6), Rust);
-		Part(Cube, FVector(-15.0, 0, 3.0), FVector(28.0, 8.0, 0.8), Hopper);
-		Part(Cube, FVector(-45.0, 0, 1.4), FVector(26.0, 10.0, 3.6), HullWhite);
-		Part(Cube, FVector(-46.0, 0, 5.4), FVector(12.0, 8.0, 4.4), HullWhite);
-		Part(Cube, FVector(-46.0, 0, 9.3), FVector(6.0, 7.0, 3.4), FLinearColor(0.15f, 0.25f, 0.45f));
-		Part(Cylinder, FVector(-46.0, 0, 13.5), FVector(0.3, 0.3, 5.0), HullSteel);
+		// Models: a jumbo hopper at the head of the tow, a shorter one behind it, the towboat's knees against that.
+		if (!(Model(TEXT("SM_Barge_Hopper"), FVector(30.25, 0, 0)) && Model(TEXT("SM_Barge_Hopper"), FVector(-15.0, 0, 0), FVector(32.0 / 59.5, 1.0, 1.0))
+			&& Model(TEXT("SM_Vessel_Towboat"), FVector(-45.0, 0, 0))))
+		{
+			Part(Cube, FVector(31.0, 0, 1.0), FVector(58.0, 10.6, 3.6), Rust);
+			Part(Cube, FVector(31.0, 0, 3.0), FVector(52.0, 8.0, 0.8), Hopper);
+			Part(Cube, FVector(-15.0, 0, 1.0), FVector(32.0, 10.6, 3.6), Rust);
+			Part(Cube, FVector(-15.0, 0, 3.0), FVector(28.0, 8.0, 0.8), Hopper);
+			Part(Cube, FVector(-45.0, 0, 1.4), FVector(26.0, 10.0, 3.6), HullWhite);
+			Part(Cube, FVector(-46.0, 0, 5.4), FVector(12.0, 8.0, 4.4), HullWhite);
+			Part(Cube, FVector(-46.0, 0, 9.3), FVector(6.0, 7.0, 3.4), FLinearColor(0.15f, 0.25f, 0.45f));
+			Part(Cylinder, FVector(-46.0, 0, 13.5), FVector(0.3, 0.3, 5.0), HullSteel);
+		}
 		// Pushing ahead (Rule 24(c)): two masthead lights, sidelights, sternlight; sidelights also at the head of the tow.
 		Light(FVector(-46.f, 0.f, 15.6f), NavWhite, Masthead[0], Masthead[1]);
 		Light(FVector(-46.f, 0.f, 14.6f), NavWhite, Masthead[0], Masthead[1]);
@@ -173,6 +245,21 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 	{
 		// A product tanker: black topsides, red boot top, white house aft, a funnel; pipework on deck.
 		const float L = 230.f, B = 32.f;
+		if (Model(TEXT("SM_Vessel_Container"), FVector::ZeroVector))
+		{
+			// A feeder container ship: masthead lights on the foremast and higher aft (Rule 23(a)), sidelights on the
+			// bridge wings, sternlight; constrained by her draft (Rule 28), three reds; a cylinder by day.
+			Containers(B);
+			Light(FVector(100.f, 0.f, 32.f), NavWhite, Masthead[0], Masthead[1]);
+			Light(FVector(-90.f, 0.f, 43.f), NavWhite, Masthead[0], Masthead[1]);
+			Sidelights(-92.f, B * 0.51f + 0.3f, 28.f);
+			Stern(-115.f, 12.f);
+			Light(FVector(-92.f, 0.f, 41.f), NavRed, AllRound[0], AllRound[1]);
+			Light(FVector(-92.f, 0.f, 39.f), NavRed, AllRound[0], AllRound[1]);
+			Light(FVector(-92.f, 0.f, 37.f), NavRed, AllRound[0], AllRound[1]);
+			DayShapes.Add(Part(Cylinder, FVector(-88, 0, 38.5), FVector(1.5, 1.5, 3.0), HullDark));
+			break;
+		}
 		Part(Cube, FVector(-5, 0, 4.0), FVector(L * 0.86f, B, 14.0), FLinearColor(0.07f, 0.08f, 0.1f));
 		Part(Cube, FVector(L * 0.45f, 0, 4.5), FVector(L * 0.16f, B * 0.72f, 13.0), FLinearColor(0.07f, 0.08f, 0.1f), FRotator(0, 45, 0));
 		Part(Cube, FVector(-5, 0, -2.2), FVector(L * 0.86f, B + 0.1f, 1.8), FLinearColor(0.45f, 0.07f, 0.06f));

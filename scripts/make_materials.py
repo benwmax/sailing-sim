@@ -1541,6 +1541,12 @@ float2 uv = UV;
 float3 c = Color.rgb;
 float r = Rough;
 float n = frac(sin(dot(floor(uv * float2(7.0, 7.0)), float2(12.9898, 78.233))) * 43758.5453);
+// Smooth value noise (blotches about 1.4 m across), for concrete and weathered steel.
+float2 p = uv * 0.7;
+float2 i0 = floor(p), f0 = smoothstep(0.0, 1.0, frac(p));
+float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(i0 + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
 if (Pattern > 0.5 && Pattern < 1.5)
 {
     // 14 cm boards with 1 cm gaps, each board its own grey.
@@ -1570,20 +1576,19 @@ else if (Pattern > 2.5 && Pattern < 3.5)
 }
 else if (Pattern > 3.5 && Pattern < 4.5)
 {
-    // Concrete: smooth blotches at two scales, darker run-off streaks down from the top, form-tie lines every 1.2 m.
-    float2 p = uv * 0.7;
-    float2 i0 = floor(p), f0 = smoothstep(0.0, 1.0, frac(p));
-    float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(i0 + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
-    float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
-    float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
+    // Concrete: smooth blotches, darker run-off streaks down from the top, form-tie lines every 1.2 m.
     float streak = frac(sin(floor(uv.x * 3.0) * 91.3) * 4375.5) * saturate(1.0 - frac(uv.y * 0.25));
     float form = 1.0 - 0.06 * step(0.97, frac(uv.y / 1.2));
     c *= (0.86 + 0.22 * blot) * (1.0 - 0.12 * streak) * form * (0.97 + 0.06 * n);
 }
 else if (Pattern > 4.5 && Pattern < 5.5)
 {
-    float rust = saturate(sin(uv.x * 3.1 + n * 5.0) * 0.5 + 0.5) * saturate(1.0 - uv.y * 0.6);
-    c = lerp(c, float3(0.35, 0.18, 0.08), rust * 0.35);
+    // Weathered painted steel: blotchy fading, and rust weeping down in streaks from seams.
+    float lane = floor(uv.x * 1.5);
+    float hl = frac(sin(lane * 91.7) * 4375.5);
+    float weep = step(0.6, hl) * saturate(1.0 - frac(uv.y * 0.35 + hl)) * 0.8;
+    c *= 0.9 + 0.2 * blot;
+    c = lerp(c, float3(0.30, 0.14, 0.06), saturate(weep + 0.25 * saturate(blot - 0.6)) * 0.6);
 }
 else if (Pattern > 5.5)
 {
@@ -1671,6 +1676,15 @@ def build_vehicle_paint():
     MEL.connect_material_property(scalar(mat, "Metallic", 0.35, -450, 400), "", unreal.MaterialProperty.MP_METALLIC)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    # Containers on the ship: the same per-instance colour, matte weathered paint.
+    path = f"{WORLD_FOLDER}/MI_World_ContainerPaint"
+    mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
+        ASSETS.create_asset("MI_World_ContainerPaint", WORLD_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    MEL.set_material_instance_parent(mi, mat)
+    MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", 0.7)
+    MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", 0.15)
+    MEL.update_material_instance(mi)
+    unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
 
 NAVAID_CODE = """
@@ -1742,6 +1756,18 @@ WORLD_LIBRARY = {
     "Trailer": ((0.80, 0.80, 0.78), 0.5, 5.0, 0.0, 0.3),
     # Navaids (Tools/blender/build_navaids.py slots): retroreflective tape.
     "Reflective": ((0.85, 0.85, 0.82), 0.3, 0.0, 0.0, 0.0),
+    # Vessels (Tools/blender/build_vessels.py slots).
+    "Gelcoat": ((0.80, 0.80, 0.78), 0.3, 0.0, 0.0, 0.0),
+    "Antifouling": ((0.33, 0.04, 0.03), 0.8, 0.0, 0.0, 0.0),
+    "TrimGreen": ((0.03, 0.14, 0.08), 0.45, 0.0, 0.0, 0.0),
+    "Deck": ((0.55, 0.55, 0.52), 0.8, 0.0, 0.0, 0.0),
+    "Cushion": ((0.62, 0.56, 0.44), 0.7, 0.0, 0.0, 0.0),
+    "Net": ((0.05, 0.06, 0.05), 0.95, 0.0, 0.0, 0.0),
+    "Barge": ((0.22, 0.10, 0.05), 0.85, 5.0, 0.0, 0.3),
+    "Cargo": ((0.40, 0.36, 0.30), 0.95, 4.0, 0.0, 0.0),
+    "Pilothouse": ((0.80, 0.80, 0.78), 0.4, 3.0, 1.0, 0.0),
+    "Funnel": ((0.08, 0.08, 0.09), 0.6, 0.0, 0.0, 0.0),
+    "ShipHull": ((0.03, 0.06, 0.12), 0.55, 5.0, 0.0, 0.2),
 }
 
 
