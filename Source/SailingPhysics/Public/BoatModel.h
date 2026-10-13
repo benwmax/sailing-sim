@@ -120,6 +120,7 @@ namespace Sailing
 		// Hulls (one for a monohull, two for a catamaran, three for a trimaran: main hull first).
 		std::vector<FHullShape> Hulls;
 		double LengthOverall = 6.86, WaterlineLength = 5.79, Beam = 2.44, WaterlineBeam = 2.0;
+		double Bowsprit = 0.0; // of LengthOverall, ahead of the hulls (a fixed sprit)
 		double Draft = 1.16;              // m, deepest point with the board down (grounding probes stop here)
 		double WettedAreaCoef = 2.75;     // wetted area = coef x sqrt(volume x LWL), per hull (6.8 m^2 for the J/22 at rest)
 		double FormFactor = 1.10;         // (1 + k) on ITTC-57 friction

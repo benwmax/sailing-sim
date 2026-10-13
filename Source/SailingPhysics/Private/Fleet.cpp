@@ -204,7 +204,7 @@ namespace Sailing
 			// Hobie 16: LOA 16 ft 7 in, beam 7 ft 11 in, 320 lb rigged, no boards (the asymmetric hulls give the lift),
 			// main 13.77 m^2 + jib 5.12 m^2 on a rotating 26 ft 6 in mast, two crew on double trapeze.
 			FBoatConfig C;
-			C.Type = EBoatType::Hobie16; C.AddedResistanceCoef = 4.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.0; C.TrimMaxEaseDeg = 45.0; C.Name = "Hobie 16"; C.bMultihull = true;
+			C.Type = EBoatType::Hobie16; C.AddedResistanceCoef = 4.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.7; C.TrimMaxEaseDeg = 45.0; C.Name = "Hobie 16"; C.bMultihull = true;
 			C.HullRigMass = 145.0; C.HullRigCG = Vec3(0.0, 0.0, 0.75);
 			C.BallastMass = 0.0; C.BallastCG = Vec3();
 			C.CrewMass = 150.0; C.CrewCG = Vec3(-0.7, 0.0, 0.60); C.CrewCount = 2;
@@ -216,7 +216,8 @@ namespace Sailing
 			H.MaxHalfBeam = 0.27; H.MaxBeamX = -0.2; H.AftLength = 2.3; H.TransomBeamLoss = 0.06;
 			H.SheerZ = 0.45; H.SheerRise = 0.12; H.SheerRiseFromX = 1.0; H.BilgePower = 1.6; H.BowOverhangSlope = 0.4; H.SternOverhangSlope = 0.2;
 			FHullShape Port = H, Stbd = H;
-			Port.CenterY = -1.0; Stbd.CenterY = 1.0;
+			Port.CenterY = -0.935; Stbd.CenterY = 0.935; // Graphics G3: outside of the hulls at the published 2.41 m beam (the hull flies
+			// at a little more heel than at 2.54 m, so the trimmer's heel limit went from 10 to 10.7 degrees: still flies in 15 kn)
 			C.Hulls = { Port, Stbd };
 			C.LengthOverall = 5.04; C.WaterlineLength = 4.62; C.Beam = 2.41; C.WaterlineBeam = 0.3; C.Draft = 0.61;
 			C.Residuary = kSlenderCat;
@@ -262,7 +263,7 @@ namespace Sailing
 			Ama.MaxHalfBeam = 0.55; Ama.MaxBeamX = -0.2; Ama.AftLength = 3.2; Ama.TransomBeamLoss = 0.25;
 			Ama.SheerZ = 0.95; Ama.SheerRise = 0.1; Ama.BilgePower = 2.0; Ama.DepthScale = 1.6; Ama.DepthOffset = 0.68;
 			FHullShape PortAma = Ama, StbdAma = Ama;
-			PortAma.CenterY = -2.95; StbdAma.CenterY = 2.95;
+			PortAma.CenterY = -2.84; StbdAma.CenterY = 2.84; // Graphics G3: outside of the amas at the published 6.78 m beam
 			C.Hulls = { Main, PortAma, StbdAma };
 			C.LengthOverall = 8.74; C.WaterlineLength = 8.3; C.Beam = 6.78; C.WaterlineBeam = 1.4; C.Draft = 1.60;
 			C.Residuary = kTrimaran;
@@ -304,7 +305,7 @@ namespace Sailing
 			FHullShape Port = H, Stbd = H;
 			Port.CenterY = -2.9; Stbd.CenterY = 2.9;
 			C.Hulls = { Port, Stbd };
-			C.LengthOverall = 13.22; C.WaterlineLength = 12.5; C.Beam = 7.68; C.WaterlineBeam = 1.3; C.Draft = 1.26;
+			C.LengthOverall = 13.22; C.Bowsprit = 0.43; C.WaterlineLength = 12.5; C.Beam = 7.68; C.WaterlineBeam = 1.3; C.Draft = 1.26; // LOA with the bowsprit (hulls 12.79 m)
 			C.Residuary = kCruisingCat;
 			C.WettedAreaCoef = 3.0; C.HullLateralArea = 2.0; C.MunkAddedMass = 4000.0; C.YawDampingLinear = 20000.0; C.HeaveDamping = 1500.0;
 			C.Foils = {

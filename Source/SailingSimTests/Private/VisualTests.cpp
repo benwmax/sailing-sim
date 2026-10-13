@@ -301,11 +301,10 @@ bool FVisualFleetMeshTest::RunTest(const FString& Parameters)
 		const FString Name(C.Name);
 		TestTrue(FString::Printf(TEXT("%s: length %.3f m (physics hulls %.3f)"), *Name, Canoe.GetSize().X, Bow - Stern), FMath::Abs(Canoe.GetSize().X - (Bow - Stern)) < Tol);
 		TestTrue(FString::Printf(TEXT("%s: beam %.3f m (physics hulls %.3f)"), *Name, Canoe.GetSize().Y, 2.0 * Side), FMath::Abs(Canoe.GetSize().Y - 2.0 * Side) < Tol);
-		if (FMath::Abs((Bow - Stern) - C.LengthOverall) > Tol || FMath::Abs(2.0 * Side - C.Beam) > Tol)
-		{
-			AddInfo(FString::Printf(TEXT("%s: the config's published LOA %.2f m / beam %.2f m differ from its hull shapes (%.2f / %.2f): an open item in Fleet.cpp, not the model"),
-				*Name, C.LengthOverall, C.Beam, Bow - Stern, 2.0 * Side));
-		}
+		// Graphics G3: the configs' published LOA (less a fixed bowsprit) and beam match their own hull shapes.
+		TestTrue(FString::Printf(TEXT("%s: published LOA %.2f m (less bowsprit %.2f) matches the hulls' %.2f"), *Name, C.LengthOverall, C.Bowsprit, Bow - Stern),
+			FMath::Abs((Bow - Stern) - (C.LengthOverall - C.Bowsprit)) < 0.03);
+		TestTrue(FString::Printf(TEXT("%s: published beam %.2f m matches the hulls' %.2f"), *Name, C.Beam, 2.0 * Side), FMath::Abs(2.0 * Side - C.Beam) < 0.03);
 		TestTrue(FString::Printf(TEXT("%s: draft %.3f m (physics %.3f)"), *Name, -MinZ, C.Draft), FMath::Abs(-MinZ - C.Draft) < Tol);
 		TestTrue(FString::Printf(TEXT("%s: canoe volume %.3f m^3 within 2%% of the physics %.3f"), *Name, FMath::Abs(Volume), Physics.DesignDisplacedVolume()),
 			FMath::Abs(FMath::Abs(Volume) - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
