@@ -252,6 +252,17 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensDistortionMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> LensDistortionAsset; // referenced for the cook
 	bool bGhostOn = false, bWatching = false, bPhoto = false;
+	/** Visual V7: the cockpit view (the helm's eyes): a filtered copy of the boat's accelerations moves the head, it
+	 *  leans a little into the heel (bounded so the instruments stay readable and the horizon honest). */
+	bool bCockpit = false;
+	FVector CockpitAccel = FVector::ZeroVector, CockpitPrevVel = FVector::ZeroVector, CockpitHead = FVector::ZeroVector;
+	float CockpitRoll = 0.f;
+	void UpdateCockpitCamera(float DeltaSeconds);
+	void UpdatePhotoLens();
+public:
+	bool IsCockpitView() const { return bCockpit; }
+	void SetCockpitView(bool bOn);
+private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;
 	double PhotoHintUntil = 0.0;

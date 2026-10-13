@@ -64,7 +64,8 @@ namespace
 			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight")
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
-			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot");
+			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
+			|| Action == TEXT("CockpitView");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -664,6 +665,7 @@ void ASailboatPawn::BeginPlay()
 	StartSampleLayer();
 
 	bDemo = FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"));
+	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingCockpit"))) SetCockpitView(true);
 	float HoldTwa = 0.f;
 	if (bDemo)
 	{
@@ -768,6 +770,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			// The lens: [ and ] (the twin-engine pivot keys) zoom in and out.
 			const float Zoom = HeldAxes.FindRef(TEXT("ThrottleSplit"));
 			if (Zoom != 0.f) Camera->SetFieldOfView(FMath::Clamp(Camera->FieldOfView - Zoom * 30.f * DeltaSeconds, 10.f, 110.f));
+			UpdatePhotoLens();
 		}
 		UpdateGhost(DeltaSeconds);
 		return;
@@ -848,6 +851,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	UpdateSound(DeltaSeconds);
+	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
 
 	// Drills: follow the boat and the crew's actions.
 	const FBoatTelemetry& Tel = Boat.GetTelemetry();
@@ -1102,6 +1106,7 @@ namespace
 			{ TEXT("Gps"), { TEXT("GPS on the chart"), TEXT("") } }, { TEXT("ClearPlot"), { TEXT("Clear the plot"), TEXT("") } },
 			{ TEXT("Logbook"), { TEXT("Ship's log"), TEXT("") } }, { TEXT("Replay"), { TEXT("Watch your last run"), TEXT("") } },
 			{ TEXT("Photo"), { TEXT("Photo mode"), TEXT("") } }, { TEXT("PhotoShot"), { TEXT("Take a photo / choose"), TEXT("") } },
+			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
 		};
 		if (const TPair<FString, FString>* N = Names.Find(Action.ToString())) return bNegative && !N->Value.IsEmpty() ? N->Value : N->Key;
@@ -1335,6 +1340,80 @@ void ASailboatPawn::SetWatching(bool bOn)
 	}
 }
 
+void ASailboatPawn::SetCockpitView(bool bOn)
+{
+	bCockpit = bOn;
+	CockpitAccel = CockpitHead = FVector::ZeroVector;
+	CockpitPrevVel = FVector(Boat.GetState().Velocity.X, Boat.GetState().Velocity.Y, Boat.GetState().Velocity.Z);
+	CockpitRoll = 0.f;
+	// The head is placed in the world each frame, free of the chase camera's arm and its lag.
+	Camera->SetUsingAbsoluteLocation(bOn);
+	Camera->SetUsingAbsoluteRotation(bOn);
+	if (bOn) { CameraPitch = -8.f; CameraYaw = 0.f; }
+	else
+	{
+		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(true);
+		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+		Camera->SetFieldOfView(90.f);
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	}
+	StatusMessage = bOn ? TEXT("Cockpit view: you are at the helm. Look around with the mouse; press \\ for the chase camera") : TEXT("Chase camera");
+	StatusUntil = Boat.GetState().Time + 3.0;
+}
+
+void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
+{
+	// The helm's head: on the windward side of the cockpit, about 0.8 m above the seat (or the rail when hiking).
+	const FBoatConfig& C = Boat.GetConfig();
+	const FBoatState& S = Boat.GetState();
+	const int32 N = FMath::Max(C.CrewCount, 1);
+	const double X = C.CrewCG.X + 0.55 * (0.5 * (N - 1) - (N - 1));
+	const FHullShape& H = C.Hulls[0];
+	const double Rail = C.bMultihull ? FMath::Abs(C.Hulls.back().CenterY) + 0.2 : H.DeckHalfBeam(X);
+	const double Sheer = C.bMultihull ? H.SheerZ + 0.1 : H.SheerHeight(X);
+	const float Side = S.CrewOffset != 0.0 ? float(FMath::Sign(S.CrewOffset)) : float(S.WindwardSide);
+	const FVector Eye = FVector(X, Side * FMath::Max(Rail - 0.3, 0.25), Sheer + 0.85) * CmPerMeter;
+
+	// Accelerations felt at the head (the boat's, low-passed over 0.3 s): surging forward pushes the head back, a wave
+	// lifting the boat sinks it a little; plus a head-bob the neck lets through. A few centimetres at most.
+	const float Dt = FMath::Max(DeltaSeconds, 1e-3f);
+	const FVector Vel(S.Velocity.X, S.Velocity.Y, S.Velocity.Z);
+	const FVector Acc = (Vel - CockpitPrevVel) / Dt;
+	CockpitPrevVel = Vel;
+	CockpitAccel += (Acc - CockpitAccel) * FMath::Clamp(Dt / 0.3f, 0.f, 1.f);
+	const FVector AccBoat = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(CockpitAccel);
+	const FVector Target = (-AccBoat * 1.2f).GetClampedToMaxSize(10.f); // cm per m/s^2, at most 10 cm
+	CockpitHead += (Target - CockpitHead) * FMath::Clamp(Dt / 0.15f, 0.f, 1.f);
+
+	// The head stays nearly upright as the boat heels: it leans a third of the heel, at most 8 degrees, so the
+	// horizon tilts the way it does to a sailor (the heel lesson) without the instruments sliding off.
+	const float Heel = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heel));
+	CockpitRoll += (FMath::Clamp(Heel * 0.33f, -8.f, 8.f) - CockpitRoll) * FMath::Clamp(Dt / 0.4f, 0.f, 1.f);
+	const FTransform BoatXf = BoatRoot->GetComponentTransform();
+	const FVector World = BoatXf.TransformPosition(Eye + CockpitHead);
+	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw);
+	// You are the helm: the helm's own figure is not drawn from inside it.
+	if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false);
+	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
+	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
+	Camera->SetFieldOfView(80.f);
+}
+
+void ASailboatPawn::UpdatePhotoLens()
+{
+	// Photo mode is a camera: focus on the boat at f/2.8 on a full-frame sensor (the background softens with the lens),
+	// and the lens profile from Visual V1 (barrel distortion, vignetting and fringing, M_LensDistortion).
+	FPostProcessSettings& PP = Camera->PostProcessSettings;
+	PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = true;
+	PP.DepthOfFieldFocalDistance = float(FVector::Dist(Camera->GetComponentLocation(), BoatRoot->GetComponentLocation()));
+	PP.DepthOfFieldFstop = 2.8f;
+	PP.DepthOfFieldSensorWidth = 36.f;
+	if (LensDistortionAsset && !PP.WeightedBlendables.Array.ContainsByPredicate([&](const FWeightedBlendable& B) { return B.Object == LensDistortionAsset; }))
+	{
+		PP.AddBlendable(LensDistortionAsset, 1.f);
+	}
+}
+
 void ASailboatPawn::SetPhoto(bool bOn)
 {
 	bPhoto = bOn;
@@ -1345,6 +1424,10 @@ void ASailboatPawn::SetPhoto(bool bOn)
 	}
 	else
 	{
+		// Back to the sailing camera: no depth of field, no lens profile.
+		FPostProcessSettings& PP = Camera->PostProcessSettings;
+		PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = false;
+		if (LensDistortionAsset) PP.RemoveBlendable(LensDistortionAsset);
 		Camera->SetFieldOfView(90.f);
 		CameraPitch = FMath::Clamp(CameraPitch, -75.f, 5.f);
 		CameraDistance = FMath::Clamp(CameraDistance, 400.f, 4000.f);
@@ -1975,6 +2058,11 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	if (Action == TEXT("Photo"))
 	{
 		SetPhoto(!bPhoto);
+		return;
+	}
+	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching)
+	{
+		SetCockpitView(!bCockpit);
 		return;
 	}
 	if (Action == TEXT("Replay"))
