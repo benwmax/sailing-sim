@@ -743,6 +743,20 @@ void ASailboatPawn::BeginPlay()
 		CameraBoom->TargetArmLength = CameraDistance;
 	}
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	// Stills of the boat's details (crew, fittings): -SailingCamTarget=<forward>,<starboard>,<up> m in the boat frame is
+	// what the camera turns about, instead of 3 m over the hull's origin.
+	FString CamTarget;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamTarget="), CamTarget, false))
+	{
+		TArray<FString> P;
+		CamTarget.ParseIntoArray(P, TEXT(","));
+		if (P.Num() == 3)
+		{
+			CameraBoom->SetRelativeLocation(FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter);
+			CameraBoom->SocketOffset = FVector::ZeroVector;
+			CameraBoom->bEnableCameraLag = false;
+		}
+	}
 	FString CaptureArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCapture="), CaptureArg))
 	{
@@ -2835,6 +2849,8 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		LoadMetaHumanGrooms(Role, Grooms);
 		for (const TPair<UGroomAsset*, UGroomBindingAsset*>& G : Grooms)
 		{
+			// Under a cap the scalp hair would poke through its crown: only brows, beard and moustache.
+			if (Role != 0 && CrewCapMesh && G.Key->GetName().StartsWith(TEXT("Hair_"))) continue;
 			UGroomComponent* Hair = NewObject<UGroomComponent>(this);
 			Hair->SetupAttachment(FacePart);
 			Hair->SetUseCards(!bStrands);
@@ -2849,7 +2865,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	const auto At = [&](const TCHAR* Bone) { return Rig.Rest(BodyMesh, Bone).GetLocation(); };
 	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
 	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
-	const float Waist = float(At(TEXT("spine_01")).Z) - 4.f;
+	const float Waist = float(At(TEXT("spine_01")).Z) + 3.f; // the hem at the navel, clear of the shorts' waistband
 	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
 	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
 	if (CrewPFDMesh && Span > 10.f && Top > Waist)
@@ -2866,10 +2882,12 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
 		BoatParts.Add(Pfd);
 	}
-	if (CrewCapMesh)
+	// The helm goes bare-headed (his hair and the trimmer's and bow's caps: crews are mixed).
+	if (CrewCapMesh && Role != 0)
 	{
-		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.5f) + Fwd * 1.f;
-		const FTransform Place(Rig.Frame, Head, FVector(0.106f, 0.106f, 0.08f)); // a cap's crown is lower than a helmet's
+		// On the head: the scalp groom is left off under it (see the grooms above).
+		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 10.5f) + Fwd * 0.8f;
+		const FTransform Place(Rig.Frame, Head, FVector(0.108f, 0.107f, 0.088f));
 		UStaticMeshComponent* Cap = NewObject<UStaticMeshComponent>(this);
 		Cap->SetStaticMesh(CrewCapMesh);
 		Cap->SetupAttachment(Body, TEXT("head"));
