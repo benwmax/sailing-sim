@@ -1024,9 +1024,359 @@ def build_water_v4():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+# ---------------------------------------------------------------- sky, Visual V5
+# FStormShape (CloudSky.h): keep these in step with the C++ (SailingSim.Visual.ShelfCloud checks the C++).
+STORM = dict(ShelfLeadM=250.0, ShelfBaseM=520.0, ShelfLipM=180.0, ShelfSlope=0.85, ShelfDepthM=3500.0, CoreBehindM=700.0,
+             CoreBaseM=750.0, CoreTopM=6500.0, AnvilBaseM=4800.0, AnvilAheadM=9000.0)
+
+CLOUD_CODE = """
+// Visual V5: the cloud layers from the weather map (FWeatherMap: cumulus, stratus, cirrus, storm extent), each with its
+// own base, top, density profile and noise; the storm's built structure (shelf cloud, rain core, anvil) from the gust
+// front (FStormShape); lightning lighting the cloud from inside.
+float3 p = P * 0.01;            // m, map frame
+float alt = Alt * 0.01;         // m above the water
+// The map lies in the clouds' drifting frame (world = field + Drift).
+float2 wuv = (p.xy - Drift.xy - WRect.xy) / WRect.z;
+float4 w = Wx.SampleLevel(WxSampler, float2(wuv.y, wuv.x), 0);
+float altKm = alt * 0.001;
+// Layer profiles: flat bases, rounded tops.
+float hCu = (altKm - Cu.y) / max(Cu.z - Cu.y, 0.05);
+float hSt = (altKm - St.y) / max(St.z - St.y, 0.05);
+float hCi = (altKm - Ci.y) / max(Ci.z - Ci.y, 0.05);
+float pCu = smoothstep(0.0, 0.07, hCu) * (1.0 - smoothstep(0.35, 1.0, hCu));
+float pSt = smoothstep(0.0, 0.12, hSt) * (1.0 - smoothstep(0.7, 1.0, hSt));
+float pCi = smoothstep(0.0, 0.3, hCi) * (1.0 - smoothstep(0.6, 1.0, hCi));
+// Storm structure along the front (D: metres ahead of the outflow).
+float D = dot(p.xy - FrontA.xy, FrontA.zw) - FrontB.x;
+// The front isn't ruler-straight: its line wanders a few hundred metres along its length (zero on the start line).
+float L = dot(p.xy - FrontA.xy, float2(-FrontA.w, FrontA.z));
+D += 300.0 * sin(L / 2300.0) + 150.0 * sin(L / 900.0);
+float storm = 0.0, shelf = 0.0, rain = 0.0;
+[branch] if (FrontB.y > 0.0 && w.a > 0.0)
+{
+    float x = SHELF_LEAD - D;
+    if (x >= 0.0 && x <= SHELF_DEPTH)
+    {
+        float base = SHELF_BASE - 120.0 * smoothstep(0.0, 800.0, x);
+        float top = base + SHELF_LIP + x * SHELF_SLOPE;
+        shelf = 1.0 * smoothstep(base, base + 25.0, alt) * (1.0 - smoothstep(top - 150.0, top, alt)) * (1.0 - smoothstep(SHELF_DEPTH - 600.0, SHELF_DEPTH, x));
+        storm = shelf;
+    }
+    float core = smoothstep(-CORE_BEHIND, -CORE_BEHIND - 1500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 14000.0, -CORE_BEHIND - 20000.0, D));
+    float coreTop = CORE_BASE + (CORE_TOP - CORE_BASE) * FrontB.z;
+    storm = max(storm, core * smoothstep(CORE_BASE, CORE_BASE + 200.0, alt) * (1.0 - smoothstep(coreTop - 1500.0, coreTop, alt)));
+    if (D > -CORE_BEHIND - 15000.0 && D < ANVIL_AHEAD)
+    {
+        float ahead = saturate(1.0 - max(D, 0.0) / ANVIL_AHEAD);
+        float lower = ANVIL_BASE + (1.0 - ahead) * 2000.0;
+        storm = max(storm, 0.35 * ahead * FrontB.z * smoothstep(lower, lower + 400.0, alt) * (1.0 - smoothstep(CORE_TOP - 800.0, CORE_TOP, alt)));
+    }
+    // The rain curtain: falling rain under the core, from its base to the water, densest just behind the shelf; it
+    // hides the far shore as it comes.
+    float rainCore = smoothstep(-CORE_BEHIND + 300.0, -CORE_BEHIND - 800.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 9000.0, -CORE_BEHIND - 14000.0, D));
+    rain = rainCore * (1.0 - smoothstep(CORE_BASE - 150.0, CORE_BASE + 100.0, alt)) * FrontB.z;
+    storm *= w.a;
+    shelf *= w.a;
+    rain *= w.a;
+}
+float cu = w.r * pCu * Cu.w;
+float st = w.g * pSt * St.w;
+float ci = w.b * pCi * Ci.w;
+// Conservative density: what the noise can at most leave (lets the tracer skip empty sky quickly).
+Cons = saturate(cu + st + ci + storm + rain);
+float d = 0.0;
+Albedo = float3(0.95, 0.95, 0.95);
+Emit = float3(0.0, 0.0, 0.0);
+AO = 1.0;
+[branch] if (Cons > 0.001)
+{
+    // Shape and erosion noise (the engine's Perlin-Worley volume), drifting with the wind aloft.
+    float3 q = (p - float3(Drift.xy, 0.0)) * 0.001;   // km
+    float n1 = Noise.SampleLevel(NoiseSampler, q * float3(0.8, 0.8, 0.9), 0).r;
+    float n2 = Noise.SampleLevel(NoiseSampler, q * 1.7 + float3(0.31, 0.17, 0.0), 0).r;
+    // Cumulus: cells narrowing upward into lumpy, cauliflower tops over a flat base; stratus: an even deck with a ragged
+    // base; cirrus: thin streaks.
+    float body = cu * (1.0 - 0.55 * saturate(hCu)) - (1.0 - n1) * 0.45;
+    float dCu = saturate(body * 2.2 - (1.0 - n2) * 0.12 * saturate(1.0 - body * 2.2)) * 1.6;
+    float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
+    float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
+    // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
+    float band = 0.75 + 0.25 * sin(alt * 0.045 + D * 0.003); // the shelf's tiers
+    // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
+    float nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
+    float dSm = saturate((storm - (1.0 - n1) * lerp(0.25, 0.4, saturate(alt / 6000.0)) - (1.0 - n2) * (0.15 * shelf + 0.45 * nearBase)) * 2.2) * band;
+    // Rain shafts: streaks drawn out vertically (falling), thin veils rather than cloud.
+    float streak = Noise.SampleLevel(NoiseSampler, q * float3(1.6, 1.6, 0.35) + float3(0.0, 0.0, View.RealTime * 0.002), 0).r;
+    // Rain falls in shafts a kilometre or two apart, with lighter gaps between them.
+    float shafts = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(L / 900.0 + sin(L / 2700.0) * 2.0) * sin(D / 1300.0 + 0.7));
+    float dRain = rain * (0.03 + 0.09 * shafts) * (0.8 + 0.4 * smoothstep(0.3, 0.9, streak));
+    d = max(max(max(dCu, dSt), max(dCi, dSm)), dRain);
+    // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
+    float wet = saturate(dSm / max(d, 1e-3));
+    float rainy = saturate(dRain / max(d, 1e-3)) * (1.0 - wet);
+    Albedo = lerp(lerp(float3(0.96, 0.96, 0.96), float3(0.74, 0.76, 0.8), wet * FrontB.w), float3(0.95, 0.95, 0.96), rainy);
+    // The storm's base sits in deep shadow; the rain under it is lit from the sides and reads lighter grey.
+    AO = lerp(lerp(1.0, 0.3, wet * saturate(1.0 - alt / 4000.0)), 0.9, rainy) * lerp(0.75, 1.0, saturate(hCu));
+    // Lightning inside the cloud: lights it from within around the strike.
+    float r = distance(p, Flash.xyz);
+    Emit = float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
+}
+return d * Density;
+"""
+
+
+def cloud_code():
+    import os
+    c = CLOUD_CODE.replace("DEBUGSTORM", "float3(dSm * 50.0, dRain * 200.0, 0.0)" if os.environ.get("SAILING_DEBUG_STORM") else "0.0")
+    for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
+                 ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
+                 ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
+                 ("ANVIL_AHEAD", STORM["AnvilAheadM"])):
+        c = c.replace(k, repr(float(v)))
+    return c
+
+
+def build_cloud_layers():
+    """M_CloudLayers (Visual V5, Medium and High): the volumetric clouds from the weather map and the storm's structure."""
+    mat = new_material("M_CloudLayers")
+    mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_VOLUME)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    mat.set_editor_property("used_with_volumetric_cloud", True)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0)
+    attr = node(mat, unreal.MaterialExpressionCloudSampleAttribute, -1600, 100)
+    linear = linear_default()
+    wx = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 200, parameter_name="WeatherMap", texture=linear,
+              sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    noise_tex = unreal.load_asset("/Engine/EngineSky/VolumetricClouds/VT_PerlinWorley_Balanced")
+    noise = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 350, parameter_name="CloudNoise", texture=noise_tex)
+    vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
+        ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
+        ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
+        ("Drift", (0, 0, 0, 0))))}
+    dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
+    F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
+    c = custom(mat, cloud_code(), ["P", "Alt", "Wx", "Noise", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density"], F1,
+               -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
+    connect(pos, "", c, "P")
+    connect(attr, "Altitude", c, "Alt")
+    connect(wx, "", c, "Wx")
+    connect(noise, "", c, "Noise")
+    for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
+                   ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift")):
+        connect(vecs[n], "RGBA", c, pin)
+    connect(dens, "", c, "Density")
+    # Extinction (per metre) in the subsurface pin; albedo in base colour; height AO; lightning as emission.
+    MEL.connect_material_property(c, "Albedo", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(c, "AO", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+    adv = node(mat, unreal.MaterialExpressionVolumetricAdvancedMaterialOutput, -400, 600)
+    cons = node(mat, unreal.MaterialExpressionMultiply, -600, 600)
+    connect(c, "Cons", cons, "A")
+    connect(dens, "", cons, "B")
+    connect(cons, "", adv, "ConservativeDensity")
+    # Two-lobe phase (a bright silver lining toward the sun, some back-scatter) and the multiple-scattering approximation
+    # that keeps thick cloud white inside instead of dark at the base.
+    for k, v in (("const_phase_g", 0.6), ("const_phase_g2", -0.25), ("const_phase_blend", 0.25), ("const_multi_scattering_contribution", 0.75),
+                 ("const_multi_scattering_occlusion", 0.35), ("const_multi_scattering_eccentricity", 0.6), ("multi_scattering_approximation_octave_count", 2), ("gray_scale_material", True)):
+        adv.set_editor_property(k, v)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+SKY_CODE = """
+// Visual V5: the sky dome (Medium and High). The atmosphere's own sky, plus: the sun's disc with limb darkening; the
+// night sky (stars and the Milky Way placed for the date, the time and the lake's latitude); the moon with its phase and
+// the dark limb in earthshine; and the cirrus layer from the weather map, a thin sheet 9 km up.
+float3 dir = -CamVec;
+float3 col = ViewLum;
+// The sun: limb darkening (Eddington, u = 0.6), normalised so the disc's total light is unchanged.
+float cosT = dot(dir, SunDir);
+float th = acos(clamp(cosT, -1.0, 1.0));
+float mu = sqrt(saturate(1.0 - (th / 0.00467) * (th / 0.00467)));
+col += SunDisk * (1.0 - 0.6 * (1.0 - mu)) / 0.8;
+float up = saturate(dir.z * 10.0 + 0.05);
+// Cirrus: where the view ray meets a sheet 9 km up, the weather map's cirrus channel (in the clouds' drifting frame),
+// drawn out in streaks; whiter than the sky around it, bright near the sun (forward scattering).
+float cirrus = 0.0;
+[branch] if (Cirrus.x > 0.0 && dir.z > 0.02)
+{
+    float t = (9000.0 - CamPos.z * 0.01) / dir.z;
+    float2 hit = CamPos.xy * 0.01 + dir.xy * t - Cirrus.yz;
+    float2 cuv = (hit - WRect.xy) / WRect.z;
+    float c = Wx.SampleLevel(WxSampler, float2(cuv.y, cuv.x), 0).b;
+    float2 wd = normalize(Cirrus.yz + float2(1e-3, 0.0));
+    float a = dot(hit, wd), b = dot(hit, float2(-wd.y, wd.x));
+    float streak = 0.55 + 0.45 * sin(b * 0.004 + sin(a * 0.0006) * 3.0) * sin(b * 0.0013 + a * 0.0002);
+    cirrus = c * saturate(streak) * saturate(1.0 - t / 60000.0) * Cirrus.w;
+    float lum = dot(ViewLum, float3(0.3, 0.59, 0.11));
+    col = lerp(col, float3(lum, lum, lum) * 2.2 * (1.0 + 2.5 * pow(saturate(cosT), 12.0)), cirrus * 0.55);
+}
+// The night sky, in equatorial coordinates.
+[branch] if (Night.x > 0.0)
+{
+    float3 e = float3(dot(dir, Rot0.xyz), dot(dir, Rot1.xyz), dot(dir, Rot2.xyz));
+    float dec = asin(clamp(e.z, -1.0, 1.0));
+    float ra = atan2(e.y, e.x);
+    float2 g = float2(ra * cos(dec), dec) / 0.006;
+    float2 cid = floor(g);
+    float2 f = frac(g);
+    float h = frac(sin(dot(cid, float2(127.1, 311.7))) * 43758.5453);
+    float h2 = frac(sin(dot(cid, float2(269.5, 183.3))) * 43758.5453);
+    float star = 0.0;
+    if (h > 0.82)
+    {
+        float mag = pow(frac(h * 91.3), 7.0);
+        float2 c2 = float2(frac(h * 13.7), h2) * 0.6 + 0.2;
+        float d2 = dot(f - c2, f - c2);
+        star = (0.03 + 4.0 * mag) * exp(-d2 * 350.0) * (0.75 + 0.25 * sin(Night.w * (3.0 + h2 * 7.0) + h * 40.0));
+    }
+    // The Milky Way: galactic latitude and longitude from the equatorial direction (IAU J2000 rotation).
+    float3 gal = float3(dot(e, float3(-0.0548756, -0.8734371, -0.4838350)), dot(e, float3(0.4941094, -0.4448296, 0.7469822)),
+                        dot(e, float3(-0.8676661, -0.1980764, 0.4559838)));
+    float b = asin(clamp(gal.z, -1.0, 1.0));
+    float l = atan2(gal.y, gal.x);
+    float band = exp(-b * b / 0.035) * (0.4 + 0.6 * pow(0.5 + 0.5 * cos(l), 2.0));
+    float rift = 1.0 - 0.45 * exp(-pow((b - 0.03 * sin(l * 3.0)) / 0.04, 2.0)) * (0.6 + 0.4 * sin(l * 4.0 + 1.3)); // the Great Rift's dust lane
+    float mw = band * rift;
+    col += (float3(1.0, 0.97, 0.93) * star + float3(0.8, 0.85, 1.0) * mw * 0.12) * Night.x * up * (1.0 - cirrus);
+}
+// The moon: lit by the sun (its phase), the dark part faintly lit by the earth.
+float cm = dot(dir, MoonDir.xyz);
+[branch] if (MoonDir.w > 0.0 && cm > 0.99997)
+{
+    float3 mx = normalize(cross(MoonDir.xyz, float3(0.0, 0.0, 1.0)));
+    float3 my = cross(mx, MoonDir.xyz);
+    float2 uv = float2(dot(dir, mx), dot(dir, my)) / 0.0045;
+    float rr = dot(uv, uv);
+    if (rr < 1.0)
+    {
+        float3 n = uv.x * mx + uv.y * my - sqrt(1.0 - rr) * MoonDir.xyz;
+        float lit = saturate(dot(n, SunTrue.xyz));
+        float maria = 0.82 + 0.18 * sin(uv.x * 5.0 + 1.0) * sin(uv.y * 4.0 + 2.0 + uv.x * 3.0);
+        col += MoonDir.w * (lit + SunTrue.w) * maria * saturate(dir.z * 6.0 + 0.2);
+    }
+}
+return col;
+"""
+
+
+def build_sky_dome():
+    """M_SkyDome (Visual V5, Medium and High): the sky behind everything (a sky material: clouds and fog draw over it)."""
+    mat = new_material("M_SkyDome")
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("is_sky", True)
+    camvec = node(mat, unreal.MaterialExpressionCameraVectorWS, -1400, 0)
+    campos = node(mat, unreal.MaterialExpressionCameraPositionWS, -1400, 100)
+    view_lum = node(mat, unreal.MaterialExpressionSkyAtmosphereViewLuminance, -1400, 200)
+    sun_dir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1400, 300)
+    sun_disk = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDiskLuminance, -1400, 400)
+    linear = linear_default()
+    wx = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 500, parameter_name="WeatherMap", texture=linear,
+              sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    vecs = {n: vector(mat, n, d, -1400, 650 + 90 * i) for i, (n, d) in enumerate((
+        ("WeatherRect", (-32000, -32000, 64000, 0)), ("CirrusParams", (0, 0, 0, 0)), ("NightParams", (0, 0, 0, 0)), ("StarRot0", (1, 0, 0, 0)),
+        ("StarRot1", (0, 1, 0, 0)), ("StarRot2", (0, 0, 1, 0)), ("MoonDir", (0, 0, 1, 0)), ("SunTrue", (0, 0, 1, 0))))}
+    c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue"],
+               unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
+    connect(camvec, "", c, "CamVec")
+    connect(campos, "", c, "CamPos")
+    connect(view_lum, "", c, "ViewLum")
+    connect(sun_dir, "", c, "SunDir")
+    connect(sun_disk, "", c, "SunDisk")
+    connect(wx, "", c, "Wx")
+    for n, pin in (("WeatherRect", "WRect"), ("CirrusParams", "Cirrus"), ("NightParams", "Night"), ("StarRot0", "Rot0"), ("StarRot1", "Rot1"),
+                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue")):
+        connect(vecs[n], "RGBA", c, pin)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+LENS_CODE = """
+// Visual V5 (High): water on the lens. Raindrops land and run across the glass with the apparent wind (WindScreen: the
+// screen direction the air pushes them, gravity included); spray after a wave leaves a burst of larger spots. Each drop
+// refracts the scene behind it (a small lens: the image inside is shifted and slightly dimmed). Returns the UV shift
+// (xy) and the drop mask (z).
+float2 uv = GetViewportUV(Parameters);
+float aspect = View.ViewSizeAndInvSize.x * View.ViewSizeAndInvSize.w;
+float2 wdir = normalize(Wind.xy + float2(0.0, 1e-3));
+float2 offset = float2(0.0, 0.0);
+float mask = 0.0;
+for (int layer = 0; layer < 3; layer++)
+{
+    float scale = 9.0 + 9.0 * layer;
+    float speed = Wind.z * (0.08 + 0.05 * layer);
+    float2 p = uv * float2(aspect, 1.0) * scale - wdir * T * speed * scale;
+    float2 cell = floor(p);
+    float2 f = frac(p);
+    float h = frac(sin(dot(cell + layer * 17.0, float2(127.1, 311.7))) * 43758.5453);
+    float chance = Rain * (0.18 + 0.06 * layer) + Spray * (layer == 0 ? 0.5 : 0.15);
+    if (h < chance)
+    {
+        float2 c = float2(frac(h * 13.1), frac(h * 7.3)) * 0.6 + 0.2;
+        float2 d = f - c;
+        // Streaked along the way it runs (longer the harder the air pushes).
+        float along = dot(d, wdir), across = dot(d, float2(-wdir.y, wdir.x));
+        float stretch = 1.0 + 2.0 * saturate(Wind.z * 0.15) * saturate(along * 4.0 + 0.5);
+        float r = length(float2(along / stretch, across)) / (0.1 + 0.12 * frac(h * 3.3));
+        float drop = smoothstep(1.0, 0.6, r) * (1.0 - 0.6 * frac(T * 0.2 + h));
+        // A drop is a little lens: it shows the scene flipped and shrunk (a large shift), its rim catches the light.
+        offset += d * drop * 1.6 / (scale * float2(aspect, 1.0));
+        mask = max(mask, drop);
+    }
+}
+return float3(offset, mask);
+"""
+
+
+def build_lens_water():
+    """M_LensWater (Visual V5, High): rain and spray on the camera's glass."""
+    mat = new_material("M_LensWater")
+    mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_POST_PROCESS)
+    mat.set_editor_property("blendable_location", unreal.BlendableLocation.BL_SCENE_COLOR_AFTER_TONEMAPPING)
+    rain = scalar(mat, "Rain", 0.0, -1000, 0)
+    spray = scalar(mat, "Spray", 0.0, -1000, 100)
+    wind = vector(mat, "WindScreen", (0, 1, 0, 0), -1000, 200)
+    t = node(mat, unreal.MaterialExpressionTime, -1000, 300)
+    c = custom(mat, LENS_CODE, ["Rain", "Spray", "Wind", "T"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100)
+    connect(rain, "", c, "Rain")
+    connect(spray, "", c, "Spray")
+    connect(wind, "RGBA", c, "Wind")
+    connect(t, "", c, "T")
+    vp = custom(mat, "return GetViewportUV(Parameters);", [], unreal.CustomMaterialOutputType.CMOT_FLOAT2, -700, 400)
+    off = node(mat, unreal.MaterialExpressionComponentMask, -450, 100, r=True, g=True, b=False, a=False)
+    connect(c, "", off, "")
+    uv2 = node(mat, unreal.MaterialExpressionSubtract, -300, 200)
+    connect(vp, "", uv2, "A")
+    connect(off, "", uv2, "B")
+    refr = node(mat, unreal.MaterialExpressionSceneTexture, -150, 200)
+    refr.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
+    connect(uv2, "", refr, "UVs")
+    scene = node(mat, unreal.MaterialExpressionSceneTexture, -150, 0)
+    scene.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
+    m = node(mat, unreal.MaterialExpressionComponentMask, -450, 300, r=False, g=False, b=True, a=False)
+    connect(c, "", m, "")
+    dim = node(mat, unreal.MaterialExpressionMultiply, 0, 250)
+    k = node(mat, unreal.MaterialExpressionConstant, -150, 350, r=1.06)
+    connect(refr, "Color", dim, "A")
+    connect(k, "", dim, "B")
+    mix = node(mat, unreal.MaterialExpressionLinearInterpolate, 150, 100)
+    connect(scene, "Color", mix, "A")
+    connect(dim, "", mix, "B")
+    connect(m, "", mix, "Alpha")
+    MEL.connect_material_property(mix, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 build_water()
 build_water_v4()
 build_spray()
+build_cloud_layers()
+build_sky_dome()
+build_lens_water()
 build_terrain()
 build_rain()
 build_emissive()

@@ -2420,6 +2420,13 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			// Stand to leeward by default, where the sails show their faces (+ = starboard).
 			CaptureBearing = FMath::IsNaN(Info.DefaultBearingDeg) ? (T.TrueWindAngle >= 0.0 ? -90.f : 90.f) : Info.DefaultBearingDeg;
 		}
+		// -SailingCaptureAbsolute: the bearing is a compass bearing from the boat (a shore tripod set up where the scene's
+		// reference stood, e.g. looking into an approaching storm), fixed when the stand is set.
+		if (!FMath::IsNaN(CaptureBearing) && !bCaptureBearingResolved && FParse::Param(FCommandLine::Get(), TEXT("SailingCaptureAbsolute")))
+		{
+			CaptureBearing = FMath::UnwindDegrees(CaptureBearing - float(FMath::RadiansToDegrees(T.Heading)));
+		}
+		bCaptureBearingResolved = true;
 		const float Bearing = FMath::IsNaN(CaptureBearing) ? -90.f : CaptureBearing;
 		const Vec3 O = Boat.OriginPosition();
 		const FVector Origin(O.X * CmPerMeter, O.Y * CmPerMeter, 0.0);
@@ -2436,6 +2443,20 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + 0.33f * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
 				Location = ShoreStand;
 				Rotation = (Aim - ShoreStand).Rotation();
+			}
+		}
+		// Measuring the sky: -SailingCamWorld=<north m>,<east m>,<up m>,<heading deg>,<pitch deg> fixes the camera in the
+		// world, relative to the boat's start (the weather's origin).
+		FString CamWorld;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamWorld="), CamWorld, false))
+		{
+			TArray<FString> P;
+			CamWorld.ParseIntoArray(P, TEXT(","));
+			if (P.Num() >= 5)
+			{
+				Location = StartLocation + FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter;
+				Location.Z = WaterSurfaceZ + FCString::Atof(*P[2]) * CmPerMeter;
+				Rotation = FRotator(FCString::Atof(*P[4]), FCString::Atof(*P[3]), 0.f);
 			}
 		}
 		CaptureCamera->SetWorldLocationAndRotation(Location, Rotation);

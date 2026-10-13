@@ -824,6 +824,13 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		}
 	}
 
+	// Spray reaching the camera's glass (lens drops on High, SailingEnvironment).
+	LensSpray = FMath::Max(0.f, LensSpray - 0.35f * Dt);
+	const FVector CamM3(Cam.X / CmPerMeter, Cam.Y / CmPerMeter, (Cam.Z - GetActorLocation().Z) / CmPerMeter);
+	for (const FDroplet& D : Droplets)
+	{
+		if (D.Age < 0.6f && FVector::DistSquared(D.P, CamM3) < 4.f) { LensSpray = 1.f; break; }
+	}
 	// Fly: gravity, the air dragging them toward the wind's speed; gone when they fall back into the water.
 	const FVector G(0, 0, -9.81);
 	for (int32 I = Droplets.Num() - 1; I >= 0; --I)

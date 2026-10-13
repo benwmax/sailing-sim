@@ -1,7 +1,12 @@
 #include "SailingEnvironment.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
+#include "Async/Async.h"
 #include "Components/DirectionalLightComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Engine/Texture2D.h"
+#include "LakeData.h"
+#include "WaterSurface.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -38,6 +43,25 @@ ASailingEnvironment::ASailingEnvironment()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Rain(TEXT("/Game/Materials/M_Rain.M_Rain"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Emissive(TEXT("/Game/Materials/M_Emissive.M_Emissive"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CloudLayers(TEXT("/Game/Materials/M_CloudLayers.M_CloudLayers"));
+	CloudLayersMaterial = CloudLayers.Object;
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkyDomeMat(TEXT("/Game/Materials/M_SkyDome.M_SkyDome"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensWater(TEXT("/Game/Materials/M_LensWater.M_LensWater"));
+	LensWaterMaterial = LensWater.Object;
+	// Visual V5: the sky dome, 200 km across the camera (a sky material: everything draws over it).
+	SkyDome = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SkyDome"));
+	SkyDome->SetupAttachment(RootComponent);
+	SkyDome->SetStaticMesh(Sphere.Object);
+	SkyDome->SetMaterial(0, SkyDomeMat.Object);
+	SkyDome->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkyDome->SetCastShadow(false);
+	SkyDome->SetUsingAbsoluteScale(true);
+	SkyDome->SetWorldScale3D(FVector(4.0e5f));
+	SkyDome->SetVisibility(false);
+	SkyDome->bVisibleInRayTracing = false;
+	SkyDome->SetAffectDistanceFieldLighting(false);
+	SkyDome->bAffectDynamicIndirectLighting = false;
 
 	auto MakeRain = [&](const TCHAR* Name, float RadiusM, float HeightM)
 	{
@@ -59,6 +83,15 @@ ASailingEnvironment::ASailingEnvironment()
 	Bolt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Bolt->SetCastShadow(false);
 	Bolt->SetMaterial(0, Emissive.Object);
+
+	// The strike's channel lights the water and the boat around it (the cloud's inside is lit by M_CloudLayers).
+	BoltLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("BoltLight"));
+	BoltLight->SetupAttachment(RootComponent);
+	BoltLight->SetIntensity(0.f);
+	BoltLight->SetAttenuationRadius(2000000.f);
+	BoltLight->SetCastShadows(false);
+	BoltLight->SetLightColor(FLinearColor(0.8f, 0.85f, 1.f));
+	BoltLight->SetMobility(EComponentMobility::Movable);
 
 	MoonLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("MoonLight"));
 	MoonLight->SetupAttachment(RootComponent);
@@ -133,6 +166,45 @@ void ASailingEnvironment::BeginPlay()
 {
 	Super::BeginPlay();
 	FindSceneActors();
+	// Visual V5: the layered clouds on Medium and High (-SailingClassicSky keeps the Phase 8 sky, for measuring).
+	bLayeredClouds = USailingSettings::Get()->Quality != ESailingQuality::Low && CloudLayersMaterial && Clouds
+		&& !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicSky"));
+	if (bLayeredClouds)
+	{
+		if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
+		{
+			CloudMaterial = UMaterialInstanceDynamic::Create(CloudLayersMaterial, this);
+			CloudComp->SetMaterial(CloudMaterial);
+		}
+		WeatherMapTexture = UTexture2D::CreateTransient(FWeatherMap::N, FWeatherMap::N, PF_A32B32G32R32F);
+		WeatherMapTexture->SRGB = false;
+		WeatherMapTexture->Filter = TF_Bilinear;
+		WeatherMapTexture->AddressX = TA_Clamp;
+		WeatherMapTexture->AddressY = TA_Clamp;
+		WeatherMapTexture->CompressionSettings = TC_HDR;
+		WeatherMapTexture->UpdateResource();
+		if (CloudMaterial) CloudMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
+		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
+		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudNoise="), NoisePath))
+		{
+			if (UTexture* Noise = LoadObject<UTexture>(nullptr, *NoisePath)) CloudMaterial->SetTextureParameterValue(TEXT("CloudNoise"), Noise);
+		}
+	}
+	if (bLayeredClouds)
+	{
+		SkyMaterial = SkyDome->CreateAndSetMaterialInstanceDynamic(0);
+		SkyDome->SetVisibility(SkyMaterial != nullptr);
+		if (SkyMaterial && WeatherMapTexture) SkyMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
+		// The moon's disc is drawn by the dome (with its phase); the atmosphere's own would be a flat white second sun.
+		MoonLight->SetAtmosphereSunDiskColorScale(FLinearColor::Black);
+	}
+	// Visual V5 (High, not in the capture mode): water on the lens.
+	if (USailingSettings::Get()->Quality == ESailingQuality::High && LensWaterMaterial && PostProcess
+		&& !FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")))
+	{
+		LensMaterial = UMaterialInstanceDynamic::Create(LensWaterMaterial, this);
+		PostProcess->Settings.WeightedBlendables.Array.Add(FWeightedBlendable(1.f, LensMaterial));
+	}
 	RainMaterial = RainNear->CreateAndSetMaterialInstanceDynamic(0);
 	RainFar->SetMaterial(0, RainMaterial);
 	BoltMaterial = Bolt->CreateAndSetMaterialInstanceDynamic(0);
@@ -166,6 +238,8 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	const FWeatherState& W = GM->GetWeatherState();
 	UpdateSun(W.HourOfDay);
 	UpdateClouds(DeltaSeconds);
+	UpdateCloudLayers(CamPos);
+	UpdateHaze();
 	UpdateRain(CamPos);
 	UpdateLightning(DeltaSeconds, CamPos);
 }
@@ -229,6 +303,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	// Night: below civil twilight the scene is lit by a dim, bluish sky (moonlight and town glow) and the eye does not
 	// adapt all the way to darkness, so the water stays dark and the navigation lights stand out.
 	const float Night = 1.f - FMath::SmoothStep(-12.f, -2.f, float(Elevation));
+	NightAmount = Night;
 	const float NightFloorEV = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
 	const bool bPhysicalCamera = UsesPhysicalCamera(USailingSettings::Get()->Quality);
 	if (PostProcess && !bPhysicalCamera && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
@@ -279,6 +354,14 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		MoonLight->SetIntensity(bNoMoon ? 0.f : SunIntensity * 0.0015f * Night * Lit);
 		MoonLight->SetVisibility(!bNoMoon && Night > 0.f);
 	}
+	if (SkyMaterial)
+	{
+		auto Dir = [](double El, double Az) { const double E = El * kDegToRad, A = Az * kDegToRad; return FVector(FMath::Cos(E) * FMath::Cos(A), FMath::Cos(E) * FMath::Sin(A), FMath::Sin(E)); };
+		const float Lit = float(MoonIllumination(MoonAge));
+		// The moon's disc luminance: its light's illuminance over the disc's solid angle (as the atmosphere draws the sun).
+		const float MoonLux = MoonLight ? MoonLight->Intensity : 0.f;
+		UpdateSkyDome(Dir(Elevation, Azimuth), Dir(MoonEl, MoonAz), MoonLux / (PI * 0.0045f * 0.0045f) * 0.35f, Lit, Night * (1.f - float(W.CloudCover)), GM->GetUnixTime());
+	}
 	if (Sun)
 	{
 		// The light travels from the sun toward the ground.
@@ -290,6 +373,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		ULightComponent* SunComp = Sun->GetLightComponent();
 		SunComp->SetIntensity(SunIntensity * Intensity * FMath::Lerp(1.f, 0.002f, Night));
 		SunComp->SetDiffuseScale(CloudShade / Intensity);
+		// The haze and rain under a storm deck aren't sunlit: no glowing white fog (volumetric fog has no cloud shadow).
+		SunComp->SetVolumetricScatteringIntensity(FMath::Clamp(CloudShade * 1.2f, 0.05f, 1.f));
 		SunComp->SetSpecularScale(FMath::Square(CloudShade / Intensity));
 		// Once the sun is down it casts no shadows, and the clouds' shadow rays toward it (which run the whole layer
 		// when the light skims the horizon: night ran at two-thirds of day's frame rate) get only a few samples.
@@ -308,6 +393,15 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		{
 			const float Disk = FMath::Square(CloudShade);
 			Dir->SetAtmosphereSunDiskColorScale(FLinearColor(Disk, Disk, Disk));
+			// Visual V5: the layered clouds shade themselves (their bases are dark because the cloud above shadows them),
+			// so they are lit by the undimmed sun: the scene's light is cut for the deck's shadow, the clouds' is not.
+			// That is what gives a storm its form: a lit shelf face and anvil top over a dark base.
+			const float CloudLight = bLayeredClouds ? FMath::Clamp(1.f / FMath::Max(Intensity, 0.05f), 1.f, 4.f) : 1.f;
+			if (!Dir->CloudScatteredLuminanceScale.Equals(FLinearColor(CloudLight, CloudLight, CloudLight), 0.01f))
+			{
+				Dir->CloudScatteredLuminanceScale = FLinearColor(CloudLight, CloudLight, CloudLight);
+				Dir->MarkRenderStateDirty();
+			}
 		}
 	}
 	if (SkyLightActor)
@@ -332,8 +426,19 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 	{
 		if (UVolumetricCloudComponent* C = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
 		{
-			C->SetLayerBottomAltitude(kCloudBaseKm);
-			C->SetLayerHeight(FMath::Max(1.f, float(W.CloudTopKm) - kCloudBaseKm));
+			if (bLayeredClouds)
+			{
+				// The tracer spans only the layers present: its samples go where the cloud is.
+				double Base, Top;
+				W.Sky.Span(Base, Top);
+				C->SetLayerBottomAltitude(float(FMath::Max(0.0, Base - 0.05)));
+				C->SetLayerHeight(float(FMath::Max(0.6, Top - Base + 0.1)));
+			}
+			else
+			{
+				C->SetLayerBottomAltitude(kCloudBaseKm);
+				C->SetLayerHeight(FMath::Max(1.f, float(W.CloudTopKm) - kCloudBaseKm));
+			}
 		}
 	}
 	if (PostProcess)
@@ -351,20 +456,34 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		PostProcess->Settings.bOverride_ColorSaturation = true;
 		PostProcess->Settings.ColorSaturation = FVector4(1.f, 1.f, 1.f, 1.f - 0.7f * Grey);
 	}
-	if (Fog)
-	{
-		// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day and 1.5 km a downpour.
-		const float Density = FMath::Clamp(0.03f * (2.f / FMath::Max(float(W.VisibilityKm), 0.3f)), 0.0015f, 0.12f);
-		UExponentialHeightFogComponent* F = Fog->GetComponent();
-		F->SetFogDensity(Density);
-		F->SetFogHeightFalloff(FMath::Lerp(0.2f, 0.05f, float(W.Rain)));
-	}
 }
 
 void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 {
 	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
 	const bool bRaining = W.Rain > 0.01;
+	if (LensMaterial)
+	{
+		// The air over the glass: the wind less the camera's own motion, in screen axes (+y down), with gravity.
+		const float Dt = FMath::Max(GetWorld()->GetDeltaSeconds(), 1e-3f);
+		const FVector CamVel = (CameraPos - LastCameraPos) / Dt / CmPerMeter;
+		LastCameraPos = CameraPos;
+		const double From = W.Wind.FromDegrees * kDegToRad;
+		const FVector Air = FVector(-FMath::Cos(From), -FMath::Sin(From), 0.0) * (W.Wind.SpeedKnots * kKnot) - CamVel.GetClampedToMaxSize(30.0);
+		FVector Right(0, 1, 0), Up(0, 0, 1);
+		if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0))
+		{
+			const FRotator R = Cam->GetCameraRotation();
+			Right = FRotationMatrix(R).GetUnitAxis(EAxis::Y);
+			Up = FRotationMatrix(R).GetUnitAxis(EAxis::Z);
+		}
+		const FVector2D Screen(float(FVector::DotProduct(Air, Right)), float(-FVector::DotProduct(Air, Up)) + 3.f);
+		float Spray = 0.f;
+		for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It) Spray = It->GetLensSpray();
+		LensMaterial->SetScalarParameterValue(TEXT("Rain"), float(W.Rain));
+		LensMaterial->SetScalarParameterValue(TEXT("Spray"), Spray);
+		LensMaterial->SetVectorParameterValue(TEXT("WindScreen"), FLinearColor(float(Screen.X), float(Screen.Y), float(Screen.Size()), 0.f));
+	}
 	RainNear->SetVisibility(bRaining);
 	RainFar->SetVisibility(bRaining);
 	if (!bRaining || !RainMaterial)
@@ -373,6 +492,15 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 	}
 	RainNear->SetWorldLocation(CameraPos + FVector(0.f, 0.f, 200.f));
 	RainFar->SetWorldLocation(CameraPos + FVector(0.f, 0.f, 600.f));
+	// Visual V5: the rain slants with the wind it falls through (drops fall at about 7 m/s): the sheet leans downwind.
+	{
+		const double From = W.Wind.FromDegrees * kDegToRad;
+		const double Speed = W.Wind.SpeedKnots * kKnot;
+		const FVector Down = FVector(-FMath::Cos(From) * Speed, -FMath::Sin(From) * Speed, -7.0).GetSafeNormal();
+		const FQuat Lean = FQuat::FindBetweenNormals(FVector(0, 0, -1), Down);
+		RainNear->SetWorldRotation(Lean);
+		RainFar->SetWorldRotation(Lean);
+	}
 	RainMaterial->SetScalarParameterValue(TEXT("Rain"), float(W.Rain) * 0.35f);
 }
 
@@ -389,10 +517,14 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		const float Distance = FVector2D::Distance(FVector2D(S.X, S.Y), Listener);
 		const float Near = FMath::Clamp(1.f - Distance / 15000.f, 0.f, 1.f);
 		Flash = FMath::Max(Flash, 0.35f + 0.65f * Near);
+		// Visual V5: the flash lights the cloud from inside around the strike (M_CloudLayers) and, for a ground
+		// strike, the channel lights the water.
+		FlashParams = FVector4f(float(S.X), float(S.Y), S.bCloudToGround ? 2500.f : 4500.f, 1.f);
 		if (S.bCloudToGround)
 		{
-			BuildBolt(FVector(S.X, S.Y, 0.0) * CmPerMeter, kCloudBaseKm * 1000.f * CmPerMeter);
+			BuildBolt(FVector(S.X, S.Y, 0.0) * CmPerMeter, (bLayeredClouds ? 0.7f : kCloudBaseKm) * 1000.f * CmPerMeter);
 			BoltTime = 0.f;
+			BoltLight->SetWorldLocation(FVector(S.X, S.Y, 300.0) * CmPerMeter);
 		}
 		// Light from the strike's direction.
 		const FVector Dir = (FVector(Listener.X - S.X, Listener.Y - S.Y, -1500.f)).GetSafeNormal();
@@ -417,11 +549,13 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		const bool bVisible = BoltTime < 0.35f && FMath::Fmod(BoltTime, 0.12f) < 0.08f;
 		Bolt->SetVisibility(bVisible);
 		if (BoltMaterial) BoltMaterial->SetScalarParameterValue(TEXT("Intensity"), 400.f);
+		BoltLight->SetIntensity(bVisible ? 4.0e9f : 0.f);
 		if (BoltTime > 0.4f) BoltTime = -1.f;
 	}
 	else
 	{
 		Bolt->SetVisibility(false);
+		BoltLight->SetIntensity(0.f);
 	}
 
 	// Thunder arrives later, at the speed of sound.
@@ -440,38 +574,188 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 
 void ASailingEnvironment::BuildBolt(const FVector& Ground, float CloudBaseCm)
 {
-	// A jagged channel from the cloud base to the water, as camera-facing ribbons.
+	// Visual V5: a branching channel. The main stroke steps down from the cloud base in short tortuous segments (each
+	// turning a little at random, drifting overall to the ground point); branches fork from it at random, run down and
+	// out, thinner and fainter, and stop short of the ground. Built as camera-facing ribbons.
 	FVector CamPos = Ground + FVector(-100000.f, 0.f, 0.f);
 	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0))
 	{
 		CamPos = Cam->GetCameraLocation();
 	}
-	TArray<FVector> Points;
-	FVector P = Ground + FVector(FMath::FRandRange(-30000.f, 30000.f), FMath::FRandRange(-30000.f, 30000.f), CloudBaseCm);
-	const int32 Segments = 28;
-	for (int32 I = 0; I <= Segments; ++I)
-	{
-		const float T = float(I) / Segments;
-		const FVector Target = FMath::Lerp(P, Ground, T);
-		Points.Add(Target + (I > 0 && I < Segments ? FVector(FMath::FRandRange(-6000.f, 6000.f), FMath::FRandRange(-6000.f, 6000.f), 0.f) : FVector::ZeroVector));
-	}
+	FRandomStream Rng(int32(Ground.X * 0.013f + Ground.Y * 0.007f));
 	TArray<FVector> Verts;
 	TArray<int32> Tris;
-	const float Width = 400.f;
-	for (int32 I = 0; I < Points.Num(); ++I)
+	TArray<FLinearColor> Colors;
+	auto Ribbon = [&](const TArray<FVector>& Points, float Width, float Bright)
 	{
-		const FVector Along = (Points[FMath::Min(I + 1, Points.Num() - 1)] - Points[FMath::Max(I - 1, 0)]).GetSafeNormal();
-		const FVector ToCam = (CamPos - Points[I]).GetSafeNormal();
-		const FVector Side = FVector::CrossProduct(Along, ToCam).GetSafeNormal() * Width * 0.5f;
-		Verts.Add(Points[I] - Side);
-		Verts.Add(Points[I] + Side);
-		if (I > 0)
+		const int32 Base = Verts.Num();
+		for (int32 I = 0; I < Points.Num(); ++I)
 		{
-			const int32 B = (I - 1) * 2;
-			Tris.Append({ B, B + 1, B + 2, B + 1, B + 3, B + 2, B, B + 2, B + 1, B + 1, B + 2, B + 3 });
+			const FVector Along = (Points[FMath::Min(I + 1, Points.Num() - 1)] - Points[FMath::Max(I - 1, 0)]).GetSafeNormal();
+			const FVector ToCam = (CamPos - Points[I]).GetSafeNormal();
+			const float Taper = FMath::Lerp(1.f, 0.4f, float(I) / FMath::Max(1, Points.Num() - 1));
+			const FVector Side = FVector::CrossProduct(Along, ToCam).GetSafeNormal() * Width * Taper * 0.5f;
+			Verts.Add(Points[I] - Side);
+			Verts.Add(Points[I] + Side);
+			Colors.Add(FLinearColor(Bright, Bright, Bright));
+			Colors.Add(FLinearColor(Bright, Bright, Bright));
+			if (I > 0)
+			{
+				const int32 B = Base + (I - 1) * 2;
+				Tris.Append({ B, B + 1, B + 2, B + 1, B + 3, B + 2, B, B + 2, B + 1, B + 1, B + 2, B + 3 });
+			}
 		}
+	};
+	// The stepped walk from a start toward a target.
+	auto Walk = [&](FVector P, const FVector& Target, float StepCm, int32 MaxSteps, float Jitter)
+	{
+		TArray<FVector> Points = { P };
+		for (int32 I = 0; I < MaxSteps; ++I)
+		{
+			const FVector ToTarget = Target - P;
+			if (ToTarget.Size() < StepCm) { Points.Add(Target); break; }
+			const FVector Dir = (ToTarget.GetSafeNormal() + FVector(Rng.FRandRange(-Jitter, Jitter), Rng.FRandRange(-Jitter, Jitter), Rng.FRandRange(-0.3f * Jitter, 0.3f * Jitter))).GetSafeNormal();
+			P += Dir * StepCm * Rng.FRandRange(0.6f, 1.4f);
+			Points.Add(P);
+		}
+		return Points;
+	};
+	const FVector Top = Ground + FVector(Rng.FRandRange(-1500.f, 1500.f) * CmPerMeter, Rng.FRandRange(-1500.f, 1500.f) * CmPerMeter, CloudBaseCm);
+	const TArray<FVector> Main = Walk(Top, Ground, 4000.f, 200, 0.9f);
+	Ribbon(Main, 350.f, 1.f);
+	const int32 Branches = Rng.RandRange(4, 9);
+	for (int32 B = 0; B < Branches; ++B)
+	{
+		const int32 From = Rng.RandRange(1, FMath::Max(2, Main.Num() / 2));
+		const FVector Start = Main[FMath::Min(From, Main.Num() - 1)];
+		const float Height = Start.Z - Ground.Z;
+		const FVector Out = FVector(Rng.FRandRange(-1.f, 1.f), Rng.FRandRange(-1.f, 1.f), 0.f).GetSafeNormal();
+		const FVector End = Start + Out * Height * Rng.FRandRange(0.3f, 0.7f) - FVector(0, 0, Height * Rng.FRandRange(0.25f, 0.6f));
+		Ribbon(Walk(Start, End, 3000.f, 60, 1.1f), 160.f, 0.45f);
 	}
 	Bolt->SetWorldLocation(FVector::ZeroVector);
 	Bolt->SetWorldRotation(FRotator::ZeroRotator);
-	Bolt->CreateMeshSection_LinearColor(0, Verts, Tris, {}, {}, {}, {}, false);
+	Bolt->CreateMeshSection_LinearColor(0, Verts, Tris, {}, {}, Colors, {}, false);
+}
+
+void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!bLayeredClouds || !CloudMaterial || !GM) return;
+	const FWeatherState& W = GM->GetWeatherState();
+	const double Tw = GM->GetWeatherTime();
+	if (bWeatherMapPending && PendingWeatherMap.IsReady())
+	{
+		FWeatherMapFrame Frame = PendingWeatherMap.Get();
+		bWeatherMapPending = false;
+		const int32 Bytes = int32(Frame.Pixels.size() * sizeof(float));
+		uint8* Copy = new uint8[Bytes];
+		FMemory::Memcpy(Copy, Frame.Pixels.data(), Bytes);
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
+		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 16, 16, Copy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
+		CloudMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
+		if (SkyMaterial) SkyMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
+	}
+	// Repainted every two seconds on a worker (the layers change slowly; the map drifts with the clouds in between).
+	WeatherMapAge += GetWorld()->GetDeltaSeconds();
+	if (!bWeatherMapPending && WeatherMapAge > 2.0)
+	{
+		WeatherMapAge = 0.0;
+		const FCloudSky Sky = W.Sky;
+		const FGustFront Front = W.Front;
+		const FLakeData* Lake = GM->GetLake().IsLoaded() ? &GM->GetLake() : nullptr;
+		const double Cx = CameraPos.X / CmPerMeter, Cy = CameraPos.Y / CmPerMeter;
+		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Lake, Cx, Cy, Tw]()
+		{
+			FWeatherMap Map;
+			if (Lake)
+			{
+				// Cumulus build over the heated land, not the lake.
+				Map.LandFraction = [Lake](double X, double Y) { return FMath::Clamp((Lake->Terrain.HeightAt(X, Y) + 0.5) / 2.0, 0.0, 1.0); };
+			}
+			Map.Paint(Sky, Front, Cx, Cy, Tw);
+			FWeatherMapFrame Out;
+			Out.Pixels = Map.Pixels();
+			Out.X0 = Map.OriginX();
+			Out.Y0 = Map.OriginY();
+			return Out;
+		});
+		bWeatherMapPending = true;
+	}
+	auto Layer = [](const FCloudLayer& L) { return FLinearColor(float(L.Coverage), float(L.BaseKm), float(L.TopKm), float(L.Density)); };
+	CloudMaterial->SetVectorParameterValue(TEXT("LayerCumulus"), Layer(W.Sky[ECloudLayer::Cumulus]));
+	CloudMaterial->SetVectorParameterValue(TEXT("LayerStratus"), Layer(W.Sky[ECloudLayer::Stratus]));
+	CloudMaterial->SetVectorParameterValue(TEXT("LayerCirrus"), Layer(W.Sky[ECloudLayer::Cirrus]));
+	CloudMaterial->SetVectorParameterValue(TEXT("Drift"), FLinearColor(float(W.Sky.DriftX * Tw), float(W.Sky.DriftY * Tw), 0.f, 0.f));
+	if (SkyMaterial)
+	{
+		// Cirrus: coverage, the drift (m), its opacity.
+		SkyMaterial->SetVectorParameterValue(TEXT("CirrusParams"), FLinearColor(float(W.Sky[ECloudLayer::Cirrus].Coverage), float(W.Sky.DriftX * Tw), float(W.Sky.DriftY * Tw), 0.8f));
+		SkyDome->SetWorldLocation(CameraPos);
+	}
+	const FGustFront& F = W.Front;
+	const double Move = F.MoveDegrees * kDegToRad;
+	CloudMaterial->SetVectorParameterValue(TEXT("FrontA"), FLinearColor(float(F.StartX), float(F.StartY), float(FMath::Cos(Move)), float(FMath::Sin(Move))));
+	// The game mode keeps the front on the physics clock (sim time), not the weather's.
+	CloudMaterial->SetVectorParameterValue(TEXT("FrontB"), FLinearColor(float(F.SpeedMs * (GM->GetSimTime() - F.StartTime)), F.bActive ? 1.f : 0.f,
+		float(W.Sky[ECloudLayer::Storm].Coverage), float(W.CloudDarkness)));
+	CloudMaterial->SetVectorParameterValue(TEXT("Flash"), FLinearColor(FlashParams.X, FlashParams.Y, FlashParams.Z, Flash * FlashParams.W));
+	// Extinction per metre at full density: thicker in a storm.
+	CloudMaterial->SetScalarParameterValue(TEXT("CloudDensity"), FMath::Lerp(0.02f, 0.035f, float(W.CloudDarkness)));
+}
+
+void ASailingEnvironment::UpdateHaze()
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!Fog || !GM) return;
+	const FWeatherState& W = GM->GetWeatherState();
+	const int32 World = USailingSettings::Get()->World;
+	// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day and 1.5 km a downpour.
+	const float Density = FMath::Clamp(0.03f * (2.f / FMath::Max(float(W.VisibilityKm), 0.3f)), 0.0015f, 0.12f);
+	UExponentialHeightFogComponent* F = Fog->GetComponent();
+	F->SetFogHeightFalloff(FMath::Lerp(0.2f, 0.05f, float(W.Rain)));
+	if (USailingSettings::Get()->Quality == ESailingQuality::Low)
+	{
+		F->SetFogDensity(Density);
+		return;
+	}
+	// Visual V5: humidity haze. A humid Texas summer day is milky; a dry norther is crisp; on the bay and offshore,
+	// sea-salt haze. The haze thickens the visibility's fog near the surface and whitens it.
+	const float Haze = FMath::Clamp(float(W.Sky.Haze) + (World >= 1 ? 0.2f : 0.f), 0.f, 1.f);
+	F->SetFogDensity(Density * FMath::Lerp(0.6f, 1.6f, Haze));
+	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
+	const FLinearColor Tint = FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze);
+	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
+	F->SetFogInscatteringColor(Tint * FMath::Lerp(1.f, 0.25f, float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.004f, NightAmount));
+	// Volumetric fog: the sun scatters in it, so shafts show through gaps in the cloud (forward-scattering haze).
+	if (!F->bEnableVolumetricFog) F->SetVolumetricFog(true);
+	F->SetVolumetricFogScatteringDistribution(0.75f);
+	F->SetVolumetricFogExtinctionScale(FMath::Lerp(0.12f, 0.3f, Haze)); // the volumetric fog reads much thicker than the analytic fog at the same density
+	F->SetVolumetricFogAlbedo(FColor(240, 244, 250));
+	F->SetVolumetricFogDistance(FMath::Lerp(3000.f, 1200.f, float(W.Rain)) * CmPerMeter);
+}
+
+void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& MoonTrue, float MoonLuminance, float MoonLit, float Night, double UnixUtc)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!SkyMaterial || !GM) return;
+	// Stars: local sidereal time from the date (GMST, IAU 1982 to a few seconds), then the rotation from the lake's
+	// horizon frame (X north, Y east, Z up) to equatorial (X toward RA 0, Z the celestial pole).
+	const double JD = UnixUtc / 86400.0 + 2440587.5;
+	const double Gmst = FMath::Fmod(18.697374558 + 24.06570982441908 * (JD - 2451545.0), 24.0);
+	const double Lst = (Gmst + GM->GetLake().Longitude / 15.0) * 15.0 * kDegToRad;
+	const double Phi = GM->GetLake().Latitude * kDegToRad;
+	const FVector M0(-FMath::Sin(Phi), 0.0, FMath::Cos(Phi)), West(0.0, -1.0, 0.0), Pole(FMath::Cos(Phi), 0.0, FMath::Sin(Phi));
+	const FVector R0 = M0 * FMath::Cos(Lst) + West * FMath::Sin(Lst);
+	const FVector R1 = M0 * FMath::Sin(Lst) - West * FMath::Cos(Lst);
+	SkyMaterial->SetVectorParameterValue(TEXT("StarRot0"), FLinearColor(float(R0.X), float(R0.Y), float(R0.Z), 0.f));
+	SkyMaterial->SetVectorParameterValue(TEXT("StarRot1"), FLinearColor(float(R1.X), float(R1.Y), float(R1.Z), 0.f));
+	SkyMaterial->SetVectorParameterValue(TEXT("StarRot2"), FLinearColor(float(Pole.X), float(Pole.Y), float(Pole.Z), 0.f));
+	// Star brightness tracks the moonlight's scale (both exposed by the same night exposure); a bright moon washes the
+	// faint stars and the Milky Way out a little.
+	const float StarScale = float(SunIntensity) * 0.006f * Night * (1.f - 0.6f * MoonLit);
+	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, 0.f, 0.f, GetWorld()->GetTimeSeconds()));
+	SkyMaterial->SetVectorParameterValue(TEXT("MoonDir"), FLinearColor(float(MoonTrue.X), float(MoonTrue.Y), float(MoonTrue.Z), MoonTrue.Z > -0.02f ? MoonLuminance : 0.f));
+	// Earthshine: the dark limb at about a few thousandths of the lit side (strongest near new moon).
+	SkyMaterial->SetVectorParameterValue(TEXT("SunTrue"), FLinearColor(float(SunTrue.X), float(SunTrue.Y), float(SunTrue.Z), 0.004f * (1.f - MoonLit)));
 }

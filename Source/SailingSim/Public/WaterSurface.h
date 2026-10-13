@@ -47,6 +47,8 @@ public:
 	 *  a larger wake grid). */
 	void SetQualityTier(int32 InTier);
 	bool IsDetailedWater() const { return bV4; }
+	/** Visual V5: spray that just hit the camera's glass (1 = a fresh burst, fading over a few seconds). */
+	float GetLensSpray() const { return LensSpray; }
 
 	/** Horizontal choppiness of the drawn waves (Gerstner lambda) and the frequency below which the physics' own trains
 	 *  are drawn (above it the FFT takes over): the upper edge of FWaveField's eighth band, so the long waves are exactly
@@ -126,6 +128,7 @@ private:
 	TArray<FDroplet> Droplets;
 	TMap<TWeakObjectPtr<AActor>, FVector> LastBow;
 	FRandomStream SprayRng = FRandomStream(5);
+	float LensSpray = 0.f;
 	struct FShoreFrame { TArray<float> Depth; FVector2D Origin = FVector2D::ZeroVector; double Level = 0.0; };
 	TFuture<FShoreFrame> PendingShore;
 	bool bShorePending = false;

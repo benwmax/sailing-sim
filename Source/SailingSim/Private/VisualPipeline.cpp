@@ -26,7 +26,11 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// Volumetric clouds are the most expensive part of the sky: cap their ray-march samples per tier.
 	V.Add({ TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), bLow ? 48.f : (bHigh ? 80.f : 72.f) });
 	V.Add({ TEXT("r.VolumetricCloud.ReflectionRaySampleMaxCount"), bHigh ? 24.f : 16.f });
-	// Shadows: virtual shadow maps from Medium up (crisp rig and sail shadows on the deck); Low keeps cascades.
+	// Visual V5: the volumetric fog that carries the sun's shafts is coarse on Medium, finer on High. (Longer strides
+	// through empty sky, r.VolumetricCloud.StepSizeOnZeroConservativeDensity, sparkled: left at 1.)
+	V.Add({ TEXT("r.VolumetricFog.GridPixelSize"), bHigh ? 8.f : 16.f });
+	V.Add({ TEXT("r.VolumetricFog.GridSizeZ"), bHigh ? 96.f : 64.f });
+		// Shadows: virtual shadow maps from Medium up (crisp rig and sail shadows on the deck); Low keeps cascades.
 	V.Add({ TEXT("r.Shadow.Virtual.Enable"), bLow ? 0.f : 1.f });
 	// Ray tracing is compiled in on demand; only High turns it on, for Lumen's hardware ray tracing.
 	V.Add({ TEXT("r.RayTracing.Enable"), bHigh ? 1.f : 0.f });

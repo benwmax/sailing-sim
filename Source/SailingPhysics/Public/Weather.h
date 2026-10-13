@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SailingPhysicsApi.h"
+#include "CloudSky.h"
 #include "Wind.h"
 #include <cstdint>
 #include <vector>
@@ -46,6 +47,7 @@ namespace Sailing
 		EStormPhase Storm = EStormPhase::None;
 		double StormDirectionDeg = 0.0; // where the storm cell is (from the boat's start), for towering cloud placement
 		double StormDistanceKm = 0.0;
+		FCloudSky Sky;               // Visual V5: the cloud layers, haze and the wind aloft
 	};
 
 	/**

@@ -221,7 +221,12 @@ void ASailingGameMode::ApplyWeatherSettings()
 	float WeatherOffset = 0.f;
 	FParse::Value(FCommandLine::Get(), TEXT("SailingWeatherTime="), WeatherOffset);
 	WeatherStartTime = GetSimTime() - WeatherOffset;
-	Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour);
+	// The storm's timeline is set for the boat's start (the gust front reaches it at kFrontArrives); before Visual V5 it
+	// was the map origin, so a start away from the club met the front a minute or more early.
+	FLaunchSpot Start;
+	const bool bStart = GetLaunchSpot(Start);
+	Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour,
+		bStart ? Start.X : 0.0, bStart ? Start.Y : 0.0);
 
 	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
 	FDateTime Date = FDateTime::Now();

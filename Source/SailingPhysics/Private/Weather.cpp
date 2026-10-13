@@ -48,6 +48,73 @@ namespace Sailing
 			return S;
 		}
 		double Rand01(uint32_t& S) { S = Hash(S + 0x9e3779b9U); return (S % 1000000u) / 1000000.0; }
+
+		/**
+		 * Visual V5: the cloud layers for a preset (reference: North Texas summer climatology). Fair-weather cumulus grows
+		 * as the land heats, from scattered puffs late in the morning to a third of the sky by mid-afternoon, its base
+		 * rising from about 1.2 to 1.5 km with the deepening boundary layer, fading at dusk; the overcast is a low stratus
+		 * deck behind a dry northerly (crisp air); rain falls from a thick nimbostratus; the thunderstorm towers, blows
+		 * cirrus off its anvil ahead of itself and leaves broken debris cloud behind.
+		 */
+		void FillSky(EWeatherPreset P, double T, FWeatherState& W)
+		{
+			FCloudSky& S = W.Sky;
+			const double H = W.HourOfDay;
+			FCloudLayer& Cu = S[ECloudLayer::Cumulus];
+			FCloudLayer& St = S[ECloudLayer::Stratus];
+			FCloudLayer& Ci = S[ECloudLayer::Cirrus];
+			FCloudLayer& Sm = S[ECloudLayer::Storm];
+			Ci.BaseKm = 8.5; Ci.TopKm = 10.0; Ci.Density = 0.25;
+			St.BaseKm = 0.9; St.TopKm = 1.6; St.Density = 0.8;
+			const double Afternoon = SmoothStep(10.5, 15.0, H) * (1.0 - 0.6 * SmoothStep(18.5, 20.5, H));
+			Cu.BaseKm = 1.2 + 0.3 * SmoothStep(11.0, 16.0, H);
+			Cu.TopKm = Cu.BaseKm + 0.6 + 0.9 * Afternoon;
+			switch (P)
+			{
+			case EWeatherPreset::CalmMorning:
+				Cu.Coverage = 0.04 + 0.12 * Afternoon;
+				Ci.Coverage = 0.25;
+				S.Haze = 0.75;
+				break;
+			case EWeatherPreset::AfternoonBreeze:
+				Cu.Coverage = 0.06 + 0.29 * Afternoon;
+				Ci.Coverage = 0.1;
+				S.Haze = 0.55;
+				break;
+			case EWeatherPreset::Overcast:
+				St.Coverage = 0.95;
+				St.BaseKm = 0.9; St.TopKm = 1.7;
+				S.Haze = 0.15;
+				break;
+			case EWeatherPreset::Rain:
+				St.Coverage = 1.0;
+				St.BaseKm = 0.6; St.TopKm = 3.5; St.Density = 1.2;
+				S.Haze = 0.85;
+				break;
+			case EWeatherPreset::Thunderstorm:
+			{
+				const double Build = SmoothStep(0.0, FWeatherSystem::kFrontArrives, T);
+				const double Clearing = SmoothStep(FWeatherSystem::kClearingStarts, FWeatherSystem::kClear, T);
+				Cu.Coverage = Lerp(0.3, 0.15, Build) * (1.0 - Clearing) + 0.3 * Clearing;
+				Cu.TopKm = Cu.BaseKm + 2.5;
+				Ci.Coverage = 0.5 * Build * (1.0 - Clearing) + 0.2 * Clearing;
+				Sm.Coverage = Lerp(0.35, 1.0, Build) * (1.0 - Clearing);
+				Sm.BaseKm = 0.03; // the rain shafts under the core reach the water (the shelf's base is FStormShape::ShelfBaseM)
+				Sm.TopKm = FStormShape::CoreTopM / 1000.0;
+				St.Coverage = 0.5 * SmoothStep(FWeatherSystem::kRainStarts, FWeatherSystem::kClearingStarts, T) * (1.0 - Clearing) + 0.25 * Clearing;
+				St.BaseKm = 0.7; St.TopKm = 2.0;
+				S.Haze = Lerp(0.6, 0.25, Clearing);
+				break;
+			}
+			default:
+				break;
+			}
+			// The clouds drift with the wind at their height: about twice the surface wind, from a little to the right.
+			const double From = (W.Wind.FromDegrees + 15.0) * kDegToRad;
+			const double Aloft = std::max(4.0, 2.0 * W.Wind.SpeedKnots * kKnot);
+			S.DriftX = -std::cos(From) * Aloft;
+			S.DriftY = -std::sin(From) * Aloft;
+		}
 	}
 
 	void FWeatherSystem::Configure(EWeatherPreset InPreset, uint32_t InSeed, double InStartHour, double BoatX, double BoatY)
@@ -201,6 +268,7 @@ namespace Sailing
 			break;
 		}
 
+		FillSky(P, T, W);
 		W.Wind.SpeedKnots *= SpeedScale;
 		W.Wind.FromDegrees = std::fmod(W.Wind.FromDegrees + DirOffset + 360.0, 360.0);
 		return W;
