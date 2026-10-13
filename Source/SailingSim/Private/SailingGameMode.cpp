@@ -442,12 +442,39 @@ void ASailingGameMode::StartPlay()
 	}
 }
 
+void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
+{
+	// Visual V7: High renders at native resolution, but where a view is heavier than 45 fps allows (Bean's slip at Rush
+	// Creek: a hundred berthed boats, leaf-card trees and Lumen's reflections of them), the resolution steps down, at most
+	// to 82% (TAA upsamples it back), and climbs back when there is headroom. Not in the capture mode (comparable stills)
+	// or when -SailingScreenPct fixes it.
+	static const bool bFixed = FParse::Param(FCommandLine::Get(), TEXT("SailingScreenPct")) || FCommandLine::Get() && FCString::Strifind(FCommandLine::Get(), TEXT("SailingScreenPct=")) != nullptr
+		|| FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")) != nullptr;
+	if (bFixed || USailingSettings::Get()->Quality != ESailingQuality::High || DeltaSeconds <= 0.f || DeltaSeconds > 0.25f) return;
+	GovernorMs += (DeltaSeconds * 1000.f - GovernorMs) * FMath::Clamp(DeltaSeconds / 0.5f, 0.f, 1.f);
+	GovernorClock += DeltaSeconds;
+	if (GovernorClock < 0.5f) return;
+	GovernorClock = 0.f;
+	IConsoleVariable* Pct = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"));
+	const float Now = Pct->GetFloat();
+	float Next = Now;
+	if (GovernorMs > 21.6f) Next = FMath::Max(82.f, Now - 3.f);      // over 46 fps' budget: step down
+	else if (GovernorMs < 18.5f) Next = FMath::Min(100.f, Now + 2.f); // headroom: step back up
+	if (Next != Now) Pct->Set(Next, ECVF_SetByCode);
+}
+
+float ASailingGameMode::GetRenderScale() const
+{
+	return IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->GetFloat();
+}
+
 void ASailingGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	OwnClock += DeltaSeconds;
 	UpdateWeather(DeltaSeconds);
 	UpdateTide();
+	UpdateResolutionGovernor(DeltaSeconds);
 
 	if (BenchSeconds <= 0.f || bBenchDone)
 	{
@@ -569,6 +596,8 @@ void ASailingGameMode::FinishBenchmark()
 	{
 		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + TEXT("}");
 	}
+	// Visual V7: the render resolution at the end of the window (High's governor may have lowered it).
+	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"render_pct\":%.0f}"), GetRenderScale());
 
 	UE_LOG(LogSailing, Display, TEXT("SailingBench result: %s"), *Summary);
 	FFileHelper::SaveStringToFile(Summary, *(FPaths::ProjectSavedDir() / TEXT("Bench/bench.json")));

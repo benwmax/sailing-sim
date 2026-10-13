@@ -511,6 +511,8 @@ float wetLine = WaterZ + WetBand * (0.6 + 0.4 * streak);
 float wet = 1.0 - smoothstep(wetLine - 3.0, wetLine + 3.0, WP.z);
 // Deck wetness from rain and spray: up-facing surfaces darken a little, gloss up and carry droplets.
 float up = saturate((n.z - 0.4) * 2.5);
+// The splash line wets the hull's sides, not the cockpit sole inside it (low cockpits sit near the outside water level).
+wet *= 1.0 - up;
 float2 cell = floor(LP.xy / 0.9);
 float h = frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
 float2 f = frac(LP.xy / 0.9) - 0.5;
@@ -521,7 +523,7 @@ float wetAll = saturate(max(wet, deckWet * 0.8));
 float3 base = C.rgb * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
-RoughOut = lerp(R, lerp(0.06, R, 0.25), wetAll * (1.0 - Metal));
+RoughOut = lerp(R, lerp(0.06, R, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
 CoatOut = saturate(Coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
 return normalize(n - grad);
@@ -553,6 +555,9 @@ def build_boat_surface(name, bend):
     mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("used_with_skeletal_mesh", True)  # the crew (Visual V3) wear these materials too
     mat.set_editor_property("used_with_instanced_static_meshes", True)  # the boats berthed in the marina (Visual V6)
+    # Two-sided (Visual V7): the generated cockpits, cabins, dodgers and nets are open shells whose faces aren't all
+    # wound outward; culled, a cockpit sole showed the water under the boat. The hull's outside never shows its back.
+    mat.set_editor_property("two_sided", True)
     mpc = collection()
     color = vector(mat, "Color", (0.85, 0.85, 0.82, 1), -1400, -200)
     rough = scalar(mat, "Roughness", 0.35, -1400, -50)
@@ -618,7 +623,7 @@ def build_boat_surface(name, bend):
 BOAT_LIBRARY = {
     "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.30, 0.0, 1.0, 0.0, 0.10),     # white gelcoat
     "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.35, 0.0, 1.0, 0.0, 0.10),
-    "NonSkid": ("M_BoatSurface", (0.70, 0.70, 0.66), 0.62, 0.0, 0.3, 1.0, 0.30),
+    "NonSkid": ("M_BoatSurface", (0.70, 0.70, 0.66), 0.62, 0.0, 0.0, 1.0, 0.30),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
     "Bootstripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),  # navy gelcoat stripes
     "CoveStripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),
     "Antifouling": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.80, 0.0, 0.0, 0.0, 0.60),  # ablative bottom paint
@@ -857,7 +862,17 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
     float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
     h *= k; d *= k; ho *= k;
 }
-return float3(d.x * 100.0, d.y * 100.0, (h + ho) * 100.0);
+// Inside the player's hull (Visual V7): the water drops 2 m below its deck so it never shows in the cockpit. The plan
+// view is the physics' FHullShape (ellipse forward of the widest station, taper aft), 80% of the beam so the dip stays
+// behind the topsides when she heels.
+float2 hr = p.xy - HullClipA.xy;
+float hbx = hr.x * HullClipA.z + hr.y * HullClipA.w;
+float hby = -hr.x * HullClipA.w + hr.y * HullClipA.z - HullClipC.z;
+float hfu = (hbx - HullClipB.z) / max(HullClipB.x - HullClipB.z, 0.1);
+float hau = (HullClipB.z - hbx) / max(HullClipC.x, 0.1);
+float hhb = hbx > HullClipB.z ? HullClipB.w * sqrt(saturate(1.0 - hfu * hfu)) : HullClipB.w - HullClipC.y * hau * hau;
+float hin = saturate((0.8 * hhb - abs(hby)) / 0.1) * step(HullClipB.y + 0.2, hbx) * step(hbx, HullClipB.x - 0.3) * HullClipC.w;
+return float3(d.x * 100.0, d.y * 100.0, (h + ho - 2.0 * hin) * 100.0);
 """
 
 V4_SHADE = """
@@ -1008,8 +1023,12 @@ def build_water_v4():
     shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
     common = ["P", "Cam", "T", "Fade", "Chop"] + [f"W{i}" for i in range(NUM_LONG)] + [f"A{i}" for i in range(NUM_LONG // 4)] \
         + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect"]
-    wpo = custom(mat, V4_WPO, common, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
+    wpo = custom(mat, V4_WPO, common + ["HullClipA", "HullClipB", "HullClipC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    # The player's hull (AWaterSurface): A (x, y m, cos, sin heading), B (bow x, stern x, widest x, half beam), C (aft
+    # length, transom beam loss, hull centre y, on).
+    for i, (n, v) in enumerate((("HullClipA", (0, 0, 1, 0)), ("HullClipB", (3, -3, 0, 1)), ("HullClipC", (3, 0.2, 0, 0)))):
+        connect(vector(mat, n, v, -1800, 3000 + 100 * i), "RGBA", wpo, n)
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")

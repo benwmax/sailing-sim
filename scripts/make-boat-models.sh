@@ -19,6 +19,10 @@ grep -E "^J22:" "$ARTIFACTS/blender-j22.log" || true
 "$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_crew.py" -- "$MODELS" > "$ARTIFACTS/blender-crew.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/blender-crew.log"; exit 1; }
 grep -E "^Crew:" "$ARTIFACTS/blender-crew.log" || true
+# Visual V7: the MetaHuman crew's life jacket and cap (Tools/blender/build_crew_gear.py).
+"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_crew_gear.py" -- "$MODELS" > "$ARTIFACTS/blender-gear.log" 2>&1 \
+	|| { tail -30 "$ARTIFACTS/blender-gear.log"; exit 1; }
+grep -E "^Gear:" "$ARTIFACTS/blender-gear.log" || true
 # Visual V7: the other seven boats from the same exported physics (Tools/blender/build_fleet.py).
 for PAIR in sunfish:Sunfish ilca7:ILCA7 catalina22:Catalina22 catalina30:Catalina30 hobie16:Hobie16 corsair880:Corsair880 lagoon42:Lagoon42; do
 	KEY="${PAIR%%:*}"; TAG="${PAIR#*:}"

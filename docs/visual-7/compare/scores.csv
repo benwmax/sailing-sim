@@ -1,0 +1,13 @@
+scene,boat_before,boat_after,sails_before,sails_after,light_before,light_after,water_before,water_after,sky_before,sky_after,notes
+j22-heavy-chase,2,2,2,2,2,2,2,2,2,2,"Unchanged J/22; the crew on the rail are MetaHumans now (shirts, life jackets, caps), small in frame."
+j22-light-chase,2,2,2,2,2,2,2,2,2,2,MetaHuman crew in the cockpit; otherwise as V5.
+j22-moderate-chase,2,2,2,2,2,2,2,2,2,2,MetaHuman crew; as V5.
+j22-helm-reservoir,2,2,2,2,2,2,2,2,2,2,"From the helm the trimmer and bow are people at arm's length: skin, faces, cotton shirts, a cap's peak. The groomed hair is left off (caps)."
+j22-actioncam-lake,3,2,2,2,2,2,2,2,2,2,"The open item from V3 is closed: the stylised mannequins are MetaHumans posed from the same physics stances (helm on the tiller, trimmer and bow on the seat or rail). Faces don't animate."
+rh-drone-cat,4,2,3,2,2,2,1,1,2,2,"The Lagoon 42 is modelled: twin hulls exactly the physics', bridgedeck and saloon, bimini, trampoline forward, twin rudders; full-batten tri-radial main."
+rh-c30-evening,4,2,2,2,2,2,2,2,2,2,"A Catalina 30 from its physics: cabin with ports, dodger, wheel, lifelines, the masthead rig on its own sockets."
+storm-lake,2,2,3,2,3,3,2,2,3,3,"Sails clean in silhouette. Not met (open): the shelf cloud's lip, bright gap and rain wall still don't read from under the storm."
+squall-lake,3,2,3,2,3,2,2,2,3,2,"The Catalina 30 modelled (it was the procedural box until V7); the jib flogs as the squall hits; lit towers beyond a dark storm base."
+gulf-passage,4,2,2,2,2,2,2,2,2,2,"The Catalina 30 from the helm: dodger with windows, coachroof, side deck and lifelines in the swell. Fixed on the way: the sea showed through the cockpit (open shells culled; the water now also drops inside the hull)."
+bay-hobie,3,2,3,2,2,2,2,2,2,2,"The Hobie 16: beams, trampoline, bridles, its coloured panel sail with seven full battens; MetaHuman crew in life jackets."
+sunfish-reach,3,2,3,2,2,2,2,2,2,2,"The Sunfish: hull and footwell from its physics, the striped lateen sail; the sailor hiking is a MetaHuman."

@@ -201,6 +201,8 @@ void AMarinaActor::Build(const FMarina& Marina)
 			for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K)
 			{
 				UStaticMesh* Mesh = MeshesByClass[KV.Key][K];
+				// The berthed dress carries a straight Nanite mast: the class's bending (non-Nanite) mast is left out.
+				if (K == 1 && MeshesByClass[KV.Key][4]) continue;
 				if (!Mesh || KV.Value[K].Num() == 0) continue;
 				UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 				C->SetMobility(EComponentMobility::Static);
@@ -211,7 +213,10 @@ void AMarinaActor::Build(const FMarina& Marina)
 				// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
 				C->SetCastShadow(K != 1);
 				C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-				C->SetCullDistances(0, 1500 * 100);
+				C->SetCullDistances(0, (K == 4 ? 900 : 1500) * 100);
+				// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
+				// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
+				if (K >= 2) C->SetCastShadow(false);
 				C->RegisterComponent();
 				C->AddInstances(KV.Value[K], false, true);
 				Boats.Add(C);

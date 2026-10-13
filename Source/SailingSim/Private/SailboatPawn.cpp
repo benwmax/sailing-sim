@@ -36,6 +36,7 @@
 #include "Misc/FileHelper.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Components/PoseableMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 
 using namespace Sailing;
@@ -494,7 +495,20 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Crew (Visual V3): posed sailors in foul-weather jackets of their own colours (CrewPose.h).
 	CrewFigures.Reset();
 	static const FLinearColor Jackets[] = { FLinearColor(0.45f, 0.03f, 0.03f), FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.55f, 0.42f, 0.02f), FLinearColor(0.12f, 0.13f, 0.14f) };
-	for (int32 I = 0; I < C.CrewCount && SailorMesh; ++I)
+	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
+	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
+	const bool bMeta = !bTrafficBoat && USailingSettings::Get()->Quality != ESailingQuality::Low
+		&& !FParse::Param(FCommandLine::Get(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
+	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
+	{
+		const int32 Role = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
+		if (UPoseableMeshComponent* Figure = AddMetaHumanFigure(Role, I))
+		{
+			Crew.Add(Figure);
+			CrewFigures.AddDefaulted_GetRef().Rig = Role;
+		}
+	}
+	for (int32 I = 0; I < C.CrewCount && SailorMesh && !bMeta; ++I)
 	{
 		UPoseableMeshComponent* Figure = NewObject<UPoseableMeshComponent>(this);
 		Figure->SetupAttachment(BoatRoot);
@@ -719,6 +733,7 @@ void ASailboatPawn::BeginPlay()
 	{
 		CapturePreset = ParseCapturePreset(CaptureArg);
 		SetupCapture();
+		GAreScreenMessagesEnabled = false; // engine warnings (VSM overflow) would be burned into the still
 	}
 	FString DrillArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDrill="), DrillArg))
@@ -1378,7 +1393,7 @@ void ASailboatPawn::SetCockpitView(bool bOn)
 	if (bOn) { CameraPitch = -8.f; CameraYaw = 0.f; }
 	else
 	{
-		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(true);
+		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(true, true);
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
 		Camera->SetFieldOfView(90.f);
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
@@ -1419,7 +1434,7 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	const FVector World = BoatXf.TransformPosition(Eye + CockpitHead);
 	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw);
 	// You are the helm: the helm's own figure is not drawn from inside it.
-	if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false);
+	if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false, true);
 	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
 	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
 	Camera->SetFieldOfView(80.f);
@@ -2734,4 +2749,101 @@ void ASailboatPawn::WriteCaptureSettings() const
 		T.TrueWindSpeed / kKnot, FMath::Fmod(FMath::RadiansToDegrees(T.Heading + T.TrueWindAngle) + 720.0, 360.0), Gust,
 		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed);
 	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));
+}
+
+bool ASailboatPawn::LoadMetaCrew()
+{
+	if (MetaCrewRigs.Num() == NumMetaHumanRoles) return true;
+	TArray<TObjectPtr<USkeletalMesh>> Meshes;
+	TArray<FCrewRig> Rigs;
+	for (int32 R = 0; R < NumMetaHumanRoles; ++R)
+	{
+		USkeletalMesh *Body = nullptr, *Face = nullptr, *Outfit = nullptr;
+		if (!LoadMetaHumanCrew(R, Body, Face, Outfit)) return false;
+		Meshes.Append({ Body, Face, Outfit });
+		BuildCrewRig(Body, Rigs.AddDefaulted_GetRef());
+	}
+	CrewPFDMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Crew/Gear/SM_CrewPFD.SM_CrewPFD"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	CrewCapMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Crew/Gear/SM_CrewCap.SM_CrewCap"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	MetaCrewMeshes = Meshes;
+	MetaCrewRigs = MoveTemp(Rigs);
+	return true;
+}
+
+UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Index)
+{
+	USkeletalMesh* BodyMesh = MetaCrewMeshes[3 * Role];
+	const FCrewRig& Rig = MetaCrewRigs[Role];
+	UPoseableMeshComponent* Body = NewObject<UPoseableMeshComponent>(this);
+	Body->SetupAttachment(BoatRoot);
+	Body->SetSkinnedAssetAndUpdate(BodyMesh);
+	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Body->RegisterComponent();
+	BoatParts.Add(Body);
+	// The face and the clothes follow the body's bones (the face's own joints rest: no expressions).
+	for (int32 K = 1; K <= 2; ++K)
+	{
+		if (!MetaCrewMeshes[3 * Role + K]) continue;
+		USkeletalMeshComponent* Part = NewObject<USkeletalMeshComponent>(this);
+		Part->SetupAttachment(Body);
+		Part->SetSkeletalMesh(MetaCrewMeshes[3 * Role + K]);
+		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Part->RegisterComponent();
+		Part->SetLeaderPoseComponent(Body);
+		Part->SetDisablePostProcessBlueprint(true); // the face's RigLogic post-process would run for a resting face
+		if (K == 2)
+		{
+			// The default garment comes white; sailing tops and shorts of each sailor's own colours.
+			static const FLinearColor Shirts[] = { FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.36f, 0.38f), FLinearColor(0.18f, 0.02f, 0.02f), FLinearColor(0.03f, 0.12f, 0.16f) };
+			static const FLinearColor Shorts[] = { FLinearColor(0.25f, 0.2f, 0.12f), FLinearColor(0.02f, 0.03f, 0.08f), FLinearColor(0.1f, 0.1f, 0.1f) };
+			for (int32 M = 0; M < Part->GetNumMaterials(); ++M)
+			{
+				const UMaterialInterface* Base = Part->GetMaterial(M);
+				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
+				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
+				if (UMaterialInstanceDynamic* Mid = Part->CreateDynamicMaterialInstance(M))
+				{
+					for (const TCHAR* Param : { TEXT("diffuse_color_1"), TEXT("diffuse_color_2"), TEXT("B_diffuse_color_1"), TEXT("C_color") }) Mid->SetVectorParameterValue(Param, Col);
+				}
+			}
+		}
+		BoatParts.Add(Part);
+	}
+	// The life jacket over the shirt, the cap over the (ungroomed) head, each scaled to this skeleton and carried by the
+	// chest and head bones: placed on the T-posed rest, relative to the bone's rest.
+	const auto At = [&](const TCHAR* Bone) { return Rig.Rest(BodyMesh, Bone).GetLocation(); };
+	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
+	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
+	const float Waist = float(At(TEXT("spine_01")).Z) - 4.f;
+	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
+	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
+	if (CrewPFDMesh && Span > 10.f && Top > Waist)
+	{
+		const FVector Chest = At(TEXT("spine_03"));
+		// Over the shirt (mesh X is depth, Y width): the torso plus foam, centred a little ahead of the spine joints.
+		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.12f * Span), FVector(0.0125f * Span, 0.0115f * Span, 0.0092f * (Top - Waist + 2.f)));
+		UStaticMeshComponent* Pfd = NewObject<UStaticMeshComponent>(this);
+		Pfd->SetStaticMesh(CrewPFDMesh);
+		Pfd->SetupAttachment(Body, TEXT("spine_04"));
+		Pfd->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("spine_04"))));
+		Pfd->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Pfd->RegisterComponent();
+		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		BoatParts.Add(Pfd);
+	}
+	if (CrewCapMesh)
+	{
+		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.5f) + Fwd * 1.f;
+		const FTransform Place(Rig.Frame, Head, FVector(0.106f, 0.106f, 0.08f)); // a cap's crown is lower than a helmet's
+		UStaticMeshComponent* Cap = NewObject<UStaticMeshComponent>(this);
+		Cap->SetStaticMesh(CrewCapMesh);
+		Cap->SetupAttachment(Body, TEXT("head"));
+		Cap->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("head"))));
+		Cap->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Cap->RegisterComponent();
+		static const FLinearColor Caps[] = { FLinearColor(0.8f, 0.8f, 0.78f), FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.3f, 0.2f) };
+		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Caps[Role % UE_ARRAY_COUNT(Caps)]);
+		BoatParts.Add(Cap);
+	}
+	return Body;
 }

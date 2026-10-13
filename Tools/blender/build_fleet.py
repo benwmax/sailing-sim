@@ -205,8 +205,10 @@ def box(m, c, size, slot, yaw=0.0):
         return (cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, cz + dz)
     p = [P(-sx, -sy, -sz), P(sx, -sy, -sz), P(sx, sy, -sz), P(-sx, sy, -sz),
          P(-sx, -sy, sz), P(sx, -sy, sz), P(sx, sy, sz), P(-sx, sy, sz)]
+    # Wound for Unreal's axes: Mesh.v mirrors Y into Blender, which turns each face over, so list them clockwise here
+    # (counter-clockwise lists made every box inside out: cockpit seats you could see the water through).
     for f in ((0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)):
-        m.face([p[i] for i in f], slot)
+        m.face([p[i] for i in reversed(f)], slot)
 
 
 def tube(m, path, radius, slot, sides=10, cap=True):
@@ -348,7 +350,7 @@ def cockpit(H, spec):
         pts = [(x, H.cy - w, H.deck_z(x, H.cy - w)), (x, H.cy + w, H.deck_z(x, H.cy + w)), (x, H.cy + w, H.deck_z(x, H.cy + w) - depth), (x, H.cy - w, H.deck_z(x, H.cy - w) - depth)]
         hull.face(pts if sgn < 0 else list(reversed(pts)), "Deck")
     sole = lambda x: H.deck_z(x, H.cy + w) - depth
-    hull.face([(x0, H.cy - w, sole(x0)), (x1, H.cy - w, sole(x1)), (x1, H.cy + w, sole(x1)), (x0, H.cy + w, sole(x0))], "NonSkid")
+    hull.face([(x0, H.cy + w, sole(x0)), (x1, H.cy + w, sole(x1)), (x1, H.cy - w, sole(x1)), (x0, H.cy - w, sole(x0))], "NonSkid")  # faces up
     if depth > 0.3:
         for side in (1, -1):
             seat_w = 0.34 * min(1.0, w / 0.6)
@@ -505,10 +507,12 @@ elif TAG in ("Catalina22", "Catalina30"):
             tube(hull, [(wxp - 0.12, 0, sole + 0.95), (wxp - 0.12, r * math.cos(a), sole + 0.95 + r * math.sin(a))], 0.008, "Stainless", 6)
     if SPEC.get("dodger"):
         x0 = cb[0]
-        frame = [(x0 - 0.05 - 0.7 * math.sin(math.pi / 2 * k / 8), 0.0, top(x0) + 0.75 * math.cos(math.pi / 2 * k / 8)) for k in range(9)]
+        # Fixed to the cabin top forward of the companionway, rising aft to its bow frame, open aft; windows in the front.
+        frame = [(x0 - 0.1 + 0.7 * math.cos(math.pi / 2 * k / 8), 0.0, top(x0) + 0.75 * math.sin(math.pi / 2 * k / 8)) for k in range(9)]
         rows = [[(p[0], v * (half(x0) + 0.05), MAIN.deck_z(x0, 0) + (p[2] - MAIN.deck_z(x0, 0)) * (1 - 0.15 * v * v)) for v in [-1 + 2 * j / 8 for j in range(9)]] for p in frame]
-        hull.grid(rows, "SailCover")
-        hull.grid(rows, "SailCover", flip=True)
+        pane = lambda i, j: "CabinWindow" if 1 <= i <= 4 and j in (1, 2, 5, 6) else "SailCover"
+        hull.grid(rows, "SailCover", slot_fn=pane)
+        hull.grid(rows, "SailCover", flip=True, slot_fn=pane)
     if SPEC.get("outboard"):
         e = CFG["engines"][0]["position"]
         tz = MAIN.deck_z(st, 0)

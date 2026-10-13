@@ -378,8 +378,11 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		TMap<FName, FQuat> Target;
 		CrewJointRotations(P, Target);
 		FCrewFigure& F = CrewFigures[I];
-		const FVector Location = Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f); // the sailor's pelvis is 93 cm above the feet
+		const FCrewRig* Rig = MetaCrewRigs.IsValidIndex(F.Rig) ? &MetaCrewRigs[F.Rig] : nullptr;
 		const float Yaw = CrewFacingYaw(P);
+		// The sailor's pelvis is 93 cm above the feet; a MetaHuman's is where its skeleton has it, turned with the figure.
+		const FVector Location = Rig ? Pelvis * CmPerMeter - (FQuat(FRotator(0.f, Yaw, Roll)) * Rig->Frame.Inverse()).RotateVector(Rig->Pelvis)
+			: Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f);
 		if (!F.bStarted)
 		{
 			F.Joints = Target;
@@ -396,7 +399,8 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			F.Yaw = F.Yaw + FMath::FindDeltaAngleDegrees(F.Yaw, Yaw) * Blend;
 			F.Roll = FMath::Lerp(F.Roll, Roll, Blend);
 		}
-		Crew[I]->SetRelativeLocationAndRotation(F.Location, FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
-		ApplyCrewPose(Crew[I], F.Joints);
+		const FQuat Facing(FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
+		Crew[I]->SetRelativeLocationAndRotation(F.Location, Rig ? Facing * Rig->Frame.Inverse() : Facing);
+		ApplyCrewPose(Crew[I], F.Joints, Rig);
 	}
 }

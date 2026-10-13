@@ -81,6 +81,8 @@ private:
 	void UpdateSpray(float DeltaSeconds);
 	/** Steps the wake grid with every hull in range and uploads it. */
 	void UpdateWakeGrid(float DeltaSeconds);
+	/** Medium and High: the player's hull plan for M_WaterV4, which drops the water inside it (no sea in the cockpit). */
+	void UpdateHullClip();
 	/** Makes the water material instance for the tier and binds every map to it. */
 	void CreateWaterMaterial();
 	/** Waits for the background FFT and wake-grid steps (before the grid is rebuilt, and at the end of play). */

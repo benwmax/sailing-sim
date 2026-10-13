@@ -21,7 +21,7 @@ TAG, CFG_PATH, MODELS = sys.argv[sys.argv.index("--") + 1:]
 CFG = json.load(open(CFG_PATH))
 META = json.load(open(os.path.join(MODELS, f"{TAG}_sockets.json")))
 S = {k: Vector(v) / 100.0 for k, v in META["sockets"].items()}       # boat frame, metres (Unreal axes)
-SLOTS = ["Stainless", "SailCover", "Deck", "Rope", "BlackPlastic"]
+SLOTS = ["Stainless", "SailCover", "Deck", "Rope", "BlackPlastic", "Aluminium"]
 
 bm = bmesh.new()
 
@@ -74,6 +74,15 @@ if "Hounds" in S and "ForestayTack" in S:
     a, b = S["ForestayTack"], S["Hounds"]
     roll = [a + (b - a) * t for t in [0.06 + 0.86 * k / 16 for k in range(17)]]
     tube(roll, 0.075 if CFG["loa"] > 8 else 0.055, "SailCover", 10, 0.02)
+# The mast itself (the sailing boat's bends, so it is not Nanite; at rest a straight tube in this Nanite mesh will do),
+# with its spreaders, so the marina draws no non-Nanite masts.
+if "MastStep" in S:
+    top = CFG["rig"]["masthead_z"]
+    d = CFG["rig"]["mast_diameter"]
+    tube([S["MastStep"], Vector((S["MastStep"].x, 0.0, top))], 0.5 * d, "Aluminium", 10, 0.35 * d)
+    for tag in ("S", "P"):
+        if f"SpreaderTip_{tag}" in S:
+            tube([Vector((S["MastStep"].x, 0.0, S[f"SpreaderTip_{tag}"].z)), S[f"SpreaderTip_{tag}"]], 0.012, "Aluminium", 6)
 # Halyards along the mast, slapping distance off it, cleated at the base.
 if "MastStep" in S:
     top = S["MastStep"].z + (CFG["rig"]["masthead_z"] - S["MastStep"].z) * 0.98

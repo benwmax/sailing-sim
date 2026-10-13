@@ -31,8 +31,38 @@ SAILINGSIM_API void CrewJointRotations(const FCrewPoseParams& Params, TMap<FName
 /** The yaw (deg, boat frame) the sailor faces for a stance: outboard, forward, inboard. */
 SAILINGSIM_API float CrewFacingYaw(const FCrewPoseParams& Params);
 
-/** Poses the skeleton: forward kinematics from the reference pose with the joint rotations (missing joints rest). */
-SAILINGSIM_API void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints);
+/**
+ * Visual V7: how a skeleton other than SK_Sailor's takes the same poses (the MetaHuman crew). Its frame (a MetaHuman faces
+ * +Y), the bones each sailor joint spreads over (spine over spine_01..02, chest over spine_03..05, neck over
+ * neck_01..02, forearm to lowerarm) and its reference pose turned into SK_Sailor's T-pose (a MetaHuman stands in an
+ * A-pose), so every stance's rotations mean the same on both.
+ */
+struct SAILINGSIM_API FCrewRig
+{
+	bool bValid = false;
+	FQuat Frame = FQuat::Identity;              // character frame (X facing, Y right, Z up) to the mesh's component frame
+	TArray<FTransform> RestCS;                  // the T-posed reference, component space
+	TMap<FName, TArray<TPair<FName, float>>> Map;
+	FVector Pelvis = FVector::ZeroVector;       // T-posed rest pelvis (cm, component space)
+
+	/** The rest transform of a bone (component space, T-posed); identity if it has none. */
+	FTransform Rest(const class USkeletalMesh* Mesh, FName Bone) const;
+};
+
+/** The MetaHuman crew's roles (scripts/make_metahumans.py): 0 the helm, 1 the trimmer, 2 the bow. */
+constexpr int32 NumMetaHumanRoles = 3;
+SAILINGSIM_API const TCHAR* MetaHumanRoleName(int32 Role);
+
+/** Loads a role's built MetaHuman (body, face, outfit under /Game/Crew/MetaHumans, git-ignored); false if not built. */
+SAILINGSIM_API bool LoadMetaHumanCrew(int32 Role, class USkeletalMesh*& Body, class USkeletalMesh*& Face, class USkeletalMesh*& Outfit);
+
+/** Builds the rig for a skeleton (identity for SK_Sailor's own). */
+SAILINGSIM_API void BuildCrewRig(const class USkeletalMesh* Mesh, FCrewRig& Out);
+
+/** Poses the skeleton: forward kinematics from the reference pose with the joint rotations (missing joints rest). With
+ *  a rig, the sailor's joints are carried to its skeleton first. */
+SAILINGSIM_API void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig = nullptr);
 
 /** Component-space joint positions of the reference skeleton posed with the rotations (cm): for the tests. */
-SAILINGSIM_API void CrewPosedJoints(const class USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& OutPositions);
+SAILINGSIM_API void CrewPosedJoints(const class USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& OutPositions,
+	const FCrewRig* Rig = nullptr);

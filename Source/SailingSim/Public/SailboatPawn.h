@@ -12,6 +12,7 @@
 #include "Replay.h"
 #include "SailCloth.h"
 #include "ReferenceCapture.h"
+#include "CrewPose.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -297,7 +298,20 @@ private:
 	UPROPERTY() TObjectPtr<class USkeletalMesh> SailorMesh;
 	UPROPERTY() TMap<FName, TObjectPtr<UMaterialInterface>> CrewMaterials; // slot name -> MI_Boat_Crew<slot>
 	// Visual V3: the crew's posed state, blended toward each frame's stance (CrewPose.h).
-	struct FCrewFigure { TMap<FName, FQuat> Joints; FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; };
+	struct FCrewFigure { TMap<FName, FQuat> Joints; FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; int32 Rig = -1; };
+	// Visual V7: the MetaHuman crew on the player's boat on Medium and High (SK_Sailor elsewhere): per role the body,
+	// face and outfit meshes (MetaCrewMeshes, 3 per role) and the rig that carries SK_Sailor's poses to them.
+	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMesh>> MetaCrewMeshes;
+	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewPFDMesh;
+	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewCapMesh;
+	TArray<FCrewRig> MetaCrewRigs;
+	bool LoadMetaCrew();
+	class UPoseableMeshComponent* AddMetaHumanFigure(int32 Role, int32 Index);
+public:
+	/** Whether the crew are MetaHumans (for the tests and the bench). */
+	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
+	const TArray<TObjectPtr<class UPoseableMeshComponent>>& GetCrewMeshes() const { return Crew; }
+private:
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;
 	void UpdateCrewFigures(float DeltaSeconds);

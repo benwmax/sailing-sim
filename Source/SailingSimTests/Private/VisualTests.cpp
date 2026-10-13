@@ -535,4 +535,59 @@ bool FVisualCrewPoseTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualMetaHumanCrewTest, "SailingSim.Visual.MetaHumanCrew", VisualFlags)
+bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
+{
+	// Visual V7: the MetaHuman crew load (scripts/make-metahumans.sh) and take every stance the way SK_Sailor does: each
+	// limb and the trunk point the same way in the character's frame.
+	const USkeletalMesh* Sailor = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
+	if (!TestNotNull(TEXT("SK_Sailor"), Sailor)) return false;
+	struct FSeg { const TCHAR* A; const TCHAR* B; const TCHAR* MA; const TCHAR* MB; float Tol; };
+	const FSeg Segs[] = {
+		{ TEXT("thigh_l"), TEXT("calf_l"), TEXT("thigh_l"), TEXT("calf_l"), 15.f }, { TEXT("thigh_r"), TEXT("calf_r"), TEXT("thigh_r"), TEXT("calf_r"), 15.f },
+		{ TEXT("calf_l"), TEXT("foot_l"), TEXT("calf_l"), TEXT("foot_l"), 15.f }, { TEXT("calf_r"), TEXT("foot_r"), TEXT("calf_r"), TEXT("foot_r"), 15.f },
+		{ TEXT("upperarm_l"), TEXT("forearm_l"), TEXT("upperarm_l"), TEXT("lowerarm_l"), 15.f }, { TEXT("upperarm_r"), TEXT("forearm_r"), TEXT("upperarm_r"), TEXT("lowerarm_r"), 15.f },
+		{ TEXT("forearm_l"), TEXT("hand_l"), TEXT("lowerarm_l"), TEXT("hand_l"), 15.f }, { TEXT("forearm_r"), TEXT("hand_r"), TEXT("lowerarm_r"), TEXT("hand_r"), 15.f },
+		{ TEXT("pelvis"), TEXT("neck"), TEXT("pelvis"), TEXT("neck_01"), 20.f },
+	};
+	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting };
+	for (int32 Role = 0; Role < NumMetaHumanRoles; ++Role)
+	{
+		USkeletalMesh *Body = nullptr, *Face = nullptr, *Outfit = nullptr;
+		if (!TestTrue(FString::Printf(TEXT("The %s MetaHuman is built (scripts/make-metahumans.sh)"), MetaHumanRoleName(Role)), LoadMetaHumanCrew(Role, Body, Face, Outfit))) continue;
+		TestNotNull(FString::Printf(TEXT("%s: outfit"), MetaHumanRoleName(Role)), Outfit);
+		FCrewRig Rig;
+		BuildCrewRig(Body, Rig);
+		if (!TestTrue(TEXT("Rig built"), Rig.bValid)) continue;
+		TestTrue(TEXT("The rig's frame is a turn about the vertical"), Rig.Frame.RotateVector(FVector::UpVector).Z > 0.999);
+		TestTrue(FString::Printf(TEXT("%s: pelvis %.0f cm up (SK_Sailor 93)"), MetaHumanRoleName(Role), Rig.Pelvis.Z), Rig.Pelvis.Z > 80.f && Rig.Pelvis.Z < 110.f);
+		const FQuat ToChar = Rig.Frame.Inverse();
+		for (const ECrewStance Stance : Stances)
+		{
+			for (const float Hike : { 0.f, 1.f })
+			{
+				FCrewPoseParams P;
+				P.Stance = Stance;
+				P.Hike = Hike;
+				TMap<FName, FQuat> Joints;
+				CrewJointRotations(P, Joints);
+				TMap<FName, FVector> S, M;
+				CrewPosedJoints(Sailor, Joints, S);
+				CrewPosedJoints(Body, Joints, M, &Rig);
+				for (const FSeg& G : Segs)
+				{
+					const FVector Ds = (S[G.B] - S[G.A]).GetSafeNormal();
+					const FVector Dm = ToChar.RotateVector(M[G.MB] - M[G.MA]).GetSafeNormal();
+					const float Deg = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(Ds, Dm), -1.0, 1.0)));
+					if (Deg > G.Tol)
+					{
+						AddError(FString::Printf(TEXT("%s, stance %d hike %.0f: %s-%s points %.0f deg off SK_Sailor's"), MetaHumanRoleName(Role), int32(Stance), Hike, G.MA, G.MB, Deg));
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
 #endif
