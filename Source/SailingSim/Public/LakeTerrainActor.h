@@ -46,9 +46,10 @@ private:
 	struct FChunk
 	{
 		int32 Row = 0, Col = 0;   // chunk indices
-		int32 Lod = -1;           // step in cells (1, 2, 4, 8), -1 = not built
+		int32 Lod = -1;           // step in cells (1, 2, 4, 8; 0 the 1 m shore detail), -1 = not built
 		int32 Wanted = 8;
 		bool bBuilding = false;
+		bool bHasDetail = false;  // the lidar shore detail covers part of it
 		TObjectPtr<UProceduralMeshComponent> Mesh;
 		TFuture<FChunkMesh> Future;
 	};

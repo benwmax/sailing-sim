@@ -1,4 +1,5 @@
 #include "LakeTerrain.h"
+#include <cmath>
 #include <cstring>
 
 namespace Sailing
@@ -42,6 +43,73 @@ namespace Sailing
 		return true;
 	}
 
+	bool FLakeTerrain::LoadDetail(const uint8_t* Data, size_t Size)
+	{
+		const size_t Header = 4 + 4 * 3 + 4 * 4;
+		if (Size < Header || std::memcmp(Data, "SSDT", 4) != 0 || ReadLE<uint32_t>(Data + 4) != 1 || Rows == 0) return false;
+		const int Tile = int(ReadLE<uint32_t>(Data + 8));
+		const size_t Count = ReadLE<uint32_t>(Data + 12);
+		const size_t Nodes = size_t(Tile + 1) * (Tile + 1);
+		if (Tile < 2 || Size < Header + Count * (8 + Nodes * 2)) return false;
+		DetailTile = Tile;
+		DetailCell = ReadLE<float>(Data + 16);
+		DetailOriginX = ReadLE<float>(Data + 20);
+		DetailOriginY = ReadLE<float>(Data + 24);
+		DetailUnit = ReadLE<float>(Data + 28);
+		const double Span = Tile * DetailCell;
+		DetailRows = int(std::ceil((OriginX + (Rows - 1) * Cell - DetailOriginX) / Span)) + 1;
+		DetailCols = int(std::ceil((OriginY + (Cols - 1) * Cell - DetailOriginY) / Span)) + 1;
+		DetailIndex.assign(size_t(DetailRows) * DetailCols, -1);
+		const uint8_t* P = Data + Header;
+		for (size_t K = 0; K < Count; ++K)
+		{
+			const int R = ReadLE<int32_t>(P + 8 * K), C = ReadLE<int32_t>(P + 8 * K + 4);
+			if (R >= 0 && C >= 0 && R < DetailRows && C < DetailCols) DetailIndex[size_t(R) * DetailCols + C] = int32_t(K);
+		}
+		Detail.resize(Count * Nodes);
+		std::memcpy(Detail.data(), P + 8 * Count, Detail.size() * 2);
+		return true;
+	}
+
+	int FLakeTerrain::DetailTileAt(double X, double Y, double& U, double& V) const
+	{
+		if (Detail.empty()) return -1;
+		const double Span = DetailTile * DetailCell;
+		const double TX = (X - DetailOriginX) / Span, TY = (Y - DetailOriginY) / Span;
+		if (TX < 0.0 || TY < 0.0) return -1;
+		const int R = int(TX), C = int(TY);
+		if (R >= DetailRows || C >= DetailCols) return -1;
+		U = (TX - R) * DetailTile;
+		V = (TY - C) * DetailTile;
+		return DetailIndex[size_t(R) * DetailCols + C];
+	}
+
+	bool FLakeTerrain::DetailHeightAt(double X, double Y, double& Height) const
+	{
+		double U, V;
+		const int Index = DetailTileAt(X, Y, U, V);
+		if (Index < 0) return false;
+		const int N = DetailTile + 1;
+		const int R0 = int(U) < DetailTile ? int(U) : DetailTile - 1, C0 = int(V) < DetailTile ? int(V) : DetailTile - 1;
+		const double FR = U - R0, FC = V - C0;
+		const int16_t* T = Detail.data() + size_t(Index) * N * N;
+		const double H00 = T[R0 * N + C0], H01 = T[R0 * N + C0 + 1], H10 = T[(R0 + 1) * N + C0], H11 = T[(R0 + 1) * N + C0 + 1];
+		Height = Lerp(Lerp(H00, H01, FC), Lerp(H10, H11, FC), FR) * DetailUnit + LevelBelowPool;
+		return true;
+	}
+
+	bool FLakeTerrain::HasDetailIn(double MinX, double MinY, double MaxX, double MaxY) const
+	{
+		if (Detail.empty()) return false;
+		const double Span = DetailTile * DetailCell;
+		const int R0 = int(std::floor((MinX - DetailOriginX) / Span)), R1 = int(std::floor((MaxX - DetailOriginX) / Span));
+		const int C0 = int(std::floor((MinY - DetailOriginY) / Span)), C1 = int(std::floor((MaxY - DetailOriginY) / Span));
+		for (int R = R0 < 0 ? 0 : R0; R <= R1 && R < DetailRows; ++R)
+			for (int C = C0 < 0 ? 0 : C0; C <= C1 && C < DetailCols; ++C)
+				if (DetailIndex[size_t(R) * DetailCols + C] >= 0) return true;
+		return false;
+	}
+
 	void FLakeTerrain::InitSynthetic(int InRows, int InCols, double InCell, double InOriginX, double InOriginY, const std::vector<float>& InHeights)
 	{
 		Rows = InRows;
@@ -67,6 +135,8 @@ namespace Sailing
 	double FLakeTerrain::HeightAt(double X, double Y) const
 	{
 		if (Rows == 0) return -1000.0; // no terrain: open water everywhere
+		double Fine;
+		if (DetailHeightAt(X, Y, Fine)) return Fine;
 		const double R = (X - OriginX) / Cell, C = (Y - OriginY) / Cell;
 		if (R < -1.0 || C < -1.0 || R > Rows || C > Cols) return 50.0; // off the map: land
 		const int R0 = int(std::floor(R)), C0 = int(std::floor(C));

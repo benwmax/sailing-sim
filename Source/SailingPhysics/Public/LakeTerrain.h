@@ -19,6 +19,17 @@ namespace Sailing
 		bool LoadHeight(const uint8_t* Data, size_t Size);
 		/** Parses a .trees file ("SSTR" header + uint8 density, 0..255). Optional. */
 		bool LoadTrees(const uint8_t* Data, size_t Size);
+		/**
+		 * Graphics G2: parses the 1 m shore detail ("SSDT", uncompressed: Tools/terrain/build_shore_detail.py), lidar
+		 * heights in 64 m tiles along the shoreline. Where a tile exists HeightAt uses it instead of the grid.
+		 */
+		bool LoadDetail(const uint8_t* Data, size_t Size);
+		bool HasDetail() const { return !Detail.empty(); }
+		double GetDetailCell() const { return DetailCell; }
+		/** The 1 m height at a world XY, if a detail tile covers it. */
+		bool DetailHeightAt(double X, double Y, double& Height) const;
+		/** Whether any detail tile overlaps the box (world metres, X north, Y east). */
+		bool HasDetailIn(double MinX, double MinY, double MaxX, double MaxY) const;
 		/** Builds a synthetic grid (tests). */
 		void InitSynthetic(int Rows, int Cols, double Cell, double OriginX, double OriginY, const std::vector<float>& Heights);
 
@@ -56,6 +67,11 @@ namespace Sailing
 		int TreeRows = 0, TreeCols = 0;
 		double TreeCell = 20.0, TreeOriginX = 0.0, TreeOriginY = 0.0;
 		std::vector<uint8_t> Trees;
+		int DetailTile = 64, DetailRows = 0, DetailCols = 0;
+		double DetailCell = 1.0, DetailOriginX = 0.0, DetailOriginY = 0.0, DetailUnit = 0.01;
+		std::vector<int32_t> DetailIndex;   // per tile of the grid's extent: index into Detail, or -1
+		std::vector<int16_t> Detail;        // (DetailTile + 1)^2 nodes per tile
+		int DetailTileAt(double X, double Y, double& U, double& V) const;
 	};
 
 	/**

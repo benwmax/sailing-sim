@@ -3,6 +3,8 @@
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/Compression.h"
+#include "Misc/CommandLine.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -22,6 +24,25 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	if (FFileHelper::LoadFileToArray(TreeBytes, *(Directory / (Name + TEXT(".trees")))))
 	{
 		Terrain.LoadTrees(TreeBytes.GetData(), TreeBytes.Num());
+	}
+	// Graphics G2: the 1 m lidar shore detail ("SSDZ" + raw size + zlib), where baked. -SailingNoShoreDetail compares.
+	TArray<uint8> DetailBytes;
+	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoShoreDetail")) && FFileHelper::LoadFileToArray(DetailBytes, *(Directory / (Name + TEXT(".detail"))))
+		&& DetailBytes.Num() > 8 && FMemory::Memcmp(DetailBytes.GetData(), "SSDZ", 4) == 0)
+	{
+		uint32 RawSize = 0;
+		FMemory::Memcpy(&RawSize, DetailBytes.GetData() + 4, 4);
+		TArray<uint8> Raw;
+		Raw.SetNumUninitialized(RawSize);
+		if (FCompression::UncompressMemory(NAME_Zlib, Raw.GetData(), RawSize, DetailBytes.GetData() + 8, DetailBytes.Num() - 8)
+			&& Terrain.LoadDetail(Raw.GetData(), Raw.Num()))
+		{
+			UE_LOG(LogSailing, Log, TEXT("Lake %s: 1 m shore detail loaded (%.1f MB)"), *Name, RawSize / 1e6);
+		}
+		else
+		{
+			UE_LOG(LogSailing, Warning, TEXT("Lake %s: shore detail did not load"), *Name);
+		}
 	}
 
 	FString JsonText;
