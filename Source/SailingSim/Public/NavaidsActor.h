@@ -30,6 +30,9 @@ public:
 private:
 	UInstancedStaticMeshComponent* MakeIsm(UStaticMesh* Mesh, const FLinearColor& Color, USceneComponent* Parent, bool bEmissive = false);
 	void Build();
+	/** Visual V6 (Medium and High): the Blender-built buoys and beacons (Tools/blender/build_navaids.py), painted per instance. */
+	bool BuildModels();
+	UInstancedStaticMeshComponent* ModelIsm(const TCHAR* Name, bool bFloating);
 
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> FloatingRoot; // buoys: at the water surface
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> FixedRoot;    // beacons and lights: on the bottom, moving with the tide
@@ -52,6 +55,17 @@ private:
 		double Phase = 0.0;  // s, so lights with the same character don't flash in step
 	};
 	TArray<FLightInstance> Lights;
+
+	struct FBuoy
+	{
+		UInstancedStaticMeshComponent* Ism = nullptr;
+		int32 Instance = 0;
+		double X = 0.0, Y = 0.0;   // m
+		float Yaw = 0.f;
+	};
+	TArray<FBuoy> Buoys;                  // floating models, bobbing on the waves
+	TMap<int32, int32> LightBuoy;         // light index -> buoy index
+	TMap<FString, TObjectPtr<UInstancedStaticMeshComponent>> Models;
 	int32 LitCount = 0;
 	bool bBuilt = false;
 };

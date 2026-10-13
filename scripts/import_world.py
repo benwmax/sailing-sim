@@ -13,8 +13,11 @@ WORLD = "/Game/World"
 # Slot name -> material (under /Game/World unless a full path).
 WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeCrown", "Rock": "MI_World_Rock",
                "Paint": "M_VehiclePaint", "Glass": "MI_World_Glass", "Tyre": "MI_World_Tyre", "HeadLight": "MI_World_HeadLight",
-               "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer"}
-KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"))
+               "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer",
+               "Dark": "MI_World_Tyre", "Steel": "MI_World_Steel", "Wood": "MI_World_Pilings", "Lantern": "MI_World_Glass",
+               "Reflective": "MI_World_Reflective"}
+KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"),
+         ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"))
 
 
 def import_fbx(path, dest, name):
@@ -45,13 +48,17 @@ def import_fbx(path, dest, name):
     return mesh
 
 
-def setup(mesh, nanite=True):
+# Per-folder slot overrides: a navaid's Paint weathers (rust, growth line); a vehicle's is glossy.
+FOLDER_SLOTS = {"Navaids": {"Paint": "M_NavaidPaint"}}
+
+
+def setup(mesh, nanite=True, overrides=None):
     ns = mesh.get_editor_property("nanite_settings")
     ns.set_editor_property("enabled", nanite)
     mesh.set_editor_property("nanite_settings", ns)
     for index, m in enumerate(mesh.get_editor_property("static_materials")):
         slot = re.sub(r"_\d+$", "", str(m.get_editor_property("material_slot_name")).split(".")[0])  # Blender's .001 copies
-        target = WORLD_SLOTS.get(slot)
+        target = (overrides or {}).get(slot) or WORLD_SLOTS.get(slot)
         if not target:
             raise RuntimeError(f"{mesh.get_name()}: no material for slot {slot}")
         mat = unreal.load_asset(target if target.startswith("/") else f"{WORLD}/{target}")
@@ -65,7 +72,7 @@ for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
     name = os.path.splitext(os.path.basename(path))[0]
     folder = next((k for prefix, k in KINDS if name.startswith(prefix)), "Misc")
     mesh = import_fbx(path, f"{WORLD}/{folder}", name)
-    setup(mesh)
+    setup(mesh, overrides=FOLDER_SLOTS.get(folder))
     b = mesh.get_bounding_box()
     unreal.log(f"Imported {name}: bounds {b.min} .. {b.max}")
 

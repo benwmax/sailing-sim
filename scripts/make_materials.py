@@ -1673,6 +1673,49 @@ def build_vehicle_paint():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+NAVAID_CODE = """
+// Visual V6: an aid's paint (colour per instance) weathered the way steel buoys and treated piles are: rust weeping in
+// streaks down from seams and fittings, sun-faded chalky paint on top, and a band of green-brown growth from the waterline
+// up (with slime below it). LP: local position (cm, origin at the waterline or the pile's foot); UV.x runs round the part.
+float z = LP.z / 100.0;
+float3 c = Col;
+float r = 0.55;
+float lane = floor(UV.x * 5.0);
+float h = frac(sin(lane * 91.7 + 3.1) * 4375.5);
+float run = saturate(1.0 - frac(z * 0.6 + h)) * step(0.55, h) * saturate(z * 2.0);
+c = lerp(c, float3(0.28, 0.13, 0.05), run * 0.55);
+c = lerp(c, c * 1.15 + 0.04, saturate((z - 1.0) * 0.3));
+float edge = 0.14 + 0.03 * sin(UV.x * 9.0 + h * 6.0);
+float growth = 1.0 - smoothstep(edge - 0.04, edge, z);
+c = lerp(c, float3(0.07, 0.09, 0.04), growth * 0.85);
+r = lerp(r, 0.35, growth);
+Out = r;
+return c;
+"""
+
+
+def build_navaid_paint():
+    mat = world_material("M_NavaidPaint")
+    chans = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1100, i * 120, data_index=i, const_default_value=0.5) for i in range(3)]
+    rg = node(mat, unreal.MaterialExpressionAppendVector, -850, 60)
+    connect(chans[0], "", rg, "A")
+    connect(chans[1], "", rg, "B")
+    rgb = node(mat, unreal.MaterialExpressionAppendVector, -650, 120)
+    connect(rg, "", rgb, "A")
+    connect(chans[2], "", rgb, "B")
+    lp = node(mat, unreal.MaterialExpressionLocalPosition, -650, 300)
+    uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -650, 400)
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    c = custom(mat, NAVAID_CODE, ["Col", "LP", "UV"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 200, extra_outputs=[("Out", F1)])
+    connect(rgb, "", c, "Col")
+    connect(lp, "", c, "LP")
+    connect(uv, "", c, "UV")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 # Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
 # The rest are the generated structures' looks and must match KitLook() in Source/SailingSim/Private/WorldKit.cpp.
 WORLD_LIBRARY = {
@@ -1697,6 +1740,8 @@ WORLD_LIBRARY = {
     "HeadLight": ((0.9, 0.9, 0.85), 0.2, 0.0, 0.0, 0.0, 60.0),
     "TailLight": ((0.6, 0.03, 0.02), 0.3, 0.0, 0.0, 0.0, 30.0),
     "Trailer": ((0.80, 0.80, 0.78), 0.5, 5.0, 0.0, 0.3),
+    # Navaids (Tools/blender/build_navaids.py slots): retroreflective tape.
+    "Reflective": ((0.85, 0.85, 0.82), 0.3, 0.0, 0.0, 0.0),
 }
 
 
@@ -1709,6 +1754,7 @@ build_lens_water()
 build_trees_materials()
 build_world_surface()
 build_vehicle_paint()
+build_navaid_paint()
 build_terrain()
 build_rain()
 build_emissive()

@@ -2,6 +2,7 @@
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingEnvironment.h"
+#include "SailingSettings.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Kismet/GameplayStatics.h"
@@ -54,6 +55,120 @@ UInstancedStaticMeshComponent* ANavaidsActor::MakeIsm(UStaticMesh* Mesh, const F
 	return Ism;
 }
 
+UInstancedStaticMeshComponent* ANavaidsActor::ModelIsm(const TCHAR* Name, bool bFloating)
+{
+	const FString Key = FString::Printf(TEXT("%s_%d"), Name, bFloating);
+	if (TObjectPtr<UInstancedStaticMeshComponent>* Found = Models.Find(Key)) return *Found;
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Navaids/%s.%s"), Name, Name));
+	if (!Mesh) return nullptr;
+	UInstancedStaticMeshComponent* Ism = NewObject<UInstancedStaticMeshComponent>(this);
+	Ism->SetupAttachment(bFloating ? FloatingRoot.Get() : FixedRoot.Get());
+	Ism->SetStaticMesh(Mesh);
+	Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Ism->SetCullDistances(0, 600000);
+	Ism->NumCustomDataFloats = 3;
+	Ism->RegisterComponent();
+	Meshes.Add(Ism);
+	Models.Add(Key, Ism);
+	return Ism;
+}
+
+bool ANavaidsActor::BuildModels()
+{
+	if (USailingSettings::Get()->Quality == ESailingQuality::Low || !LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Navaids/SM_Buoy_Can.SM_Buoy_Can"))) return false;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const TArray<FNavaid>& Navaids = GM->GetLake().Navaids;
+	auto Paint = [](UInstancedStaticMeshComponent* Ism, int32 Instance, const FLinearColor& C)
+	{
+		const float D[3] = { C.R, C.G, C.B };
+		Ism->SetCustomData(Instance, TArrayView<const float>(D, 3), false);
+	};
+	// Marine paint (linear albedo), not the chart's display tints: USCG red and green are deep, the yellow is chrome yellow.
+	auto PaintOf = [](int32 S57) -> FLinearColor
+	{
+		switch (S57)
+		{
+		case 1: return FLinearColor(0.72f, 0.72f, 0.68f);
+		case 2: return FLinearColor(0.02f, 0.02f, 0.02f);
+		case 3: return FLinearColor(0.42f, 0.025f, 0.018f);
+		case 4: return FLinearColor(0.012f, 0.11f, 0.045f);
+		case 6: return FLinearColor(0.72f, 0.48f, 0.02f);
+		default: return FLinearColor(0.4f, 0.4f, 0.38f);
+		}
+	};
+	for (int32 I = 0; I < Navaids.Num(); ++I)
+	{
+		const FNavaid& N = Navaids[I];
+		const FLinearColor Col = N.Colours.Num() > 0 ? PaintOf(N.Colours[0]) : (N.CatLam == 1 ? PaintOf(4) : (N.CatLam == 2 ? PaintOf(3) : PaintOf(0)));
+		const bool bFloating = N.Kind == TEXT("buoy");
+		const float Yaw = FMath::Frac(FMath::Sin(I * 78.233) * 43758.5453) * 360.f;
+		double LightZ = 0.0;
+		if (bFloating)
+		{
+			// Lighted buoys are pillar buoys (lantern at 3.4 m); unlighted ones are cans (green, odd) and nuns (red, even).
+			const bool bPillar = N.bLit || N.Shape == 4 || N.Shape == 5;
+			const TCHAR* Name = bPillar ? TEXT("SM_Buoy_Pillar") : (N.Shape == 1 ? TEXT("SM_Buoy_Nun") : (N.Shape == 3 ? TEXT("SM_Buoy_Sphere") : TEXT("SM_Buoy_Can")));
+			UInstancedStaticMeshComponent* Ism = ModelIsm(Name, true);
+			if (!Ism) return false;
+			FBuoy B;
+			B.Ism = Ism;
+			B.X = N.X;
+			B.Y = N.Y;
+			B.Yaw = Yaw;
+			B.Instance = Ism->AddInstance(FTransform(FRotator(0.f, Yaw, 0.f), FVector(N.X, N.Y, 0.0) * CmPerMeter));
+			Paint(Ism, B.Instance, Col);
+			if (N.bLit) LightBuoy.Add(Lights.Num(), Buoys.Num());
+			Buoys.Add(B);
+			LightZ = bPillar ? 3.45 : 1.6;
+		}
+		else
+		{
+			// Beacons: a three-pile dolphin standing on the bottom with its dayboard; a light structure is a steel tower.
+			const bool bTower = N.Kind == TEXT("light");
+			const double Top = bTower ? FMath::Max(N.Light.HeightM, 6.0) : FMath::Max(N.Light.HeightM, 4.5);
+			if (bTower)
+			{
+				UInstancedStaticMeshComponent* Ism = ModelIsm(TEXT("SM_Light_Tower"), false);
+				if (!Ism) return false;
+				Paint(Ism, Ism->AddInstance(FTransform(FRotator(0.f, Yaw, 0.f), FVector(N.X, N.Y, 0.0) * CmPerMeter, FVector(1.0, 1.0, Top / 9.68))), Col);
+			}
+			else
+			{
+				UInstancedStaticMeshComponent* Pile = ModelIsm(TEXT("SM_Beacon_Pile"), false);
+				const bool bTriangle = N.CatLam == 2 || (N.DaymarkColours.Num() > 0 && N.DaymarkColours[0] == 3);
+				UInstancedStaticMeshComponent* Board = ModelIsm(bTriangle ? TEXT("SM_Dayboard_Triangle") : TEXT("SM_Dayboard_Square"), false);
+				if (!Pile || !Board) return false;
+				const double Z0 = -1.0;
+				Paint(Pile, Pile->AddInstance(FTransform(FRotator(0.f, Yaw, 0.f), FVector(N.X, N.Y, Z0) * CmPerMeter, FVector(1.0, 1.0, (Top - Z0) / 6.1))), Col);
+				const FRotator R(0.f, Yaw, 0.f);
+				const FVector At = FVector(N.X, N.Y, Top - 1.3) * CmPerMeter + R.RotateVector(FVector(45.0, 0.0, 0.0));
+				Paint(Board, Board->AddInstance(FTransform(R, At)), N.CatLam == 1 ? PaintOf(4) : (N.DaymarkColours.Num() > 0 ? PaintOf(N.DaymarkColours[0]) : Col));
+			}
+			LightZ = Top + (bTower ? 0.0 : 0.2);
+		}
+		if (N.bLit)
+		{
+			const int32 Colour = N.Light.Colours.size() > 0 ? N.Light.Colours[0] : 1;
+			TObjectPtr<UInstancedStaticMeshComponent>& LightIsm = LightMeshes.FindOrAdd(Colour * 2 + (bFloating ? 1 : 0));
+			if (!LightIsm)
+			{
+				const FLinearColor LightColor = Colour == 3 ? FLinearColor(1.f, 0.05f, 0.03f) : (Colour == 4 ? FLinearColor(0.05f, 1.f, 0.25f)
+					: (Colour == 6 ? FLinearColor(1.f, 0.75f, 0.1f) : FLinearColor(1.f, 0.95f, 0.8f)));
+				LightIsm = MakeIsm(Sphere, LightColor, bFloating ? FloatingRoot.Get() : FixedRoot.Get(), true);
+			}
+			FLightInstance L;
+			L.Navaid = I;
+			L.Colour = Colour * 2 + (bFloating ? 1 : 0);
+			L.bFloating = bFloating;
+			L.Position = FVector(N.X * CmPerMeter, N.Y * CmPerMeter, LightZ * CmPerMeter);
+			L.Phase = FMath::Frac(FMath::Sin(I * 12.9898) * 43758.5453) * 10.0;
+			L.Instance = LightIsm->AddInstance(FTransform(FQuat::Identity, L.Position, FVector(1.0)));
+			Lights.Add(L);
+		}
+	}
+	return true;
+}
+
 void ANavaidsActor::Build()
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -65,6 +180,14 @@ void ANavaidsActor::Build()
 	FixedRoot = NewObject<USceneComponent>(this, TEXT("Fixed"));
 	FixedRoot->SetupAttachment(RootComponent);
 	FixedRoot->RegisterComponent();
+	if (BuildModels())
+	{
+		for (UInstancedStaticMeshComponent* M : Meshes) { M->UpdateBounds(); M->MarkRenderStateDirty(); }
+		UE_LOG(LogSailing, Display, TEXT("Navaids: %d aids (models), %d buoys afloat, %d lights"), GM->GetLake().Navaids.Num(), Buoys.Num(), Lights.Num());
+		return;
+	}
+	Lights.Reset();
+	LightBuoy.Reset();
 
 	// One instanced mesh per shape and colour.
 	TMap<FString, UInstancedStaticMeshComponent*> Ism;
@@ -173,6 +296,27 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	const bool bDark = GM->IsDark();
 	FVector Camera = FVector::ZeroVector;
 	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation();
+
+	// Buoys ride the waves: heave with the surface and tilt with its slope (a float this size follows the long waves
+	// and only partly the chop). Only those within 3 km move; the rest keep their last pose.
+	const double T = GM->GetSimTime();
+	TSet<UInstancedStaticMeshComponent*> Bobbed;
+	TArray<double> Heave;
+	Heave.SetNumZeroed(Buoys.Num());
+	for (int32 I = 0; I < Buoys.Num(); ++I)
+	{
+		const FBuoy& B = Buoys[I];
+		if (FVector2D::Distance(FVector2D(B.X, B.Y), FVector2D(Camera) / CmPerMeter) > 3000.0) continue;
+		const FWaveField& W = GM->GetWaves();
+		const double H = W.Height(B.X, B.Y, T);
+		const double Hx = (W.Height(B.X + 0.8, B.Y, T) - W.Height(B.X - 0.8, B.Y, T)) / 1.6;
+		const double Hy = (W.Height(B.X, B.Y + 0.8, T) - W.Height(B.X, B.Y - 0.8, T)) / 1.6;
+		Heave[I] = H;
+		const FRotator Tilt(float(-FMath::RadiansToDegrees(FMath::Atan(Hx)) * 0.6), B.Yaw, float(FMath::RadiansToDegrees(FMath::Atan(Hy)) * 0.6));
+		B.Ism->UpdateInstanceTransform(B.Instance, FTransform(Tilt, FVector(B.X, B.Y, H - 0.05) * CmPerMeter), false, false, true);
+		Bobbed.Add(B.Ism);
+	}
+	for (UInstancedStaticMeshComponent* Ism : Bobbed) Ism->MarkRenderStateDirty();
 	const double Now = GM->GetUnixTime();
 	const TArray<FNavaid>& Navaids = GM->GetLake().Navaids;
 	LitCount = 0;
@@ -187,7 +331,9 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 		// A light is a point: keep it about two pixels across however far away, never smaller than the lantern.
 		const double Size = bOn ? FMath::Max(0.3, Distance * 0.003) : 0.0;
 		UInstancedStaticMeshComponent* Ism = LightMeshes[L.Colour];
-		Ism->UpdateInstanceTransform(L.Instance, FTransform(FQuat::Identity, L.Position, FVector(Size)), false, false, true);
+		const int32* Buoy = LightBuoy.Find(int32(&L - Lights.GetData()));
+		const FVector At = L.Position + FVector(0.0, 0.0, Buoy ? Heave[*Buoy] * CmPerMeter : 0.0);
+		Ism->UpdateInstanceTransform(L.Instance, FTransform(FQuat::Identity, At, FVector(Size)), false, false, true);
 		Dirty.Add(Ism);
 		LitCount += bOn;
 	}
