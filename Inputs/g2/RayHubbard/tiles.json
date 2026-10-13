@@ -1,0 +1,2724 @@
+{
+ "region": "RayHubbard",
+ "crs": "EPSG:26914",
+ "tile_size_m": 1000,
+ "naming": "<zone>_<E km>_<N km> of the tile's south-west corner",
+ "dem": "dem/<tile>.tif float32 1 m NAVD88 m, nodata -9999",
+ "dsm": "dsm/<tile>.tif float32 1 m NAVD88 m, nodata -9999 (land tiles only)",
+ "cover": "cover/<tile>.tif uint8 0.5 m, nodata 255 (land tiles only)",
+ "ortho": "ortho/<tile>.tif RGB uint8 0.6 m native NAIP grid (land tiles only)",
+ "sim_z_offset_m": -132.7406654808,
+ "grid_convergence_deg": 1.3557,
+ "tiles": [
+  {
+   "name": "14_0723_3640",
+   "utm_epsg": 26914,
+   "e_min": 723000,
+   "n_min": 3640000,
+   "points": 5726632,
+   "has_land": true,
+   "valid_frac": 0.004,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0723_3641",
+   "utm_epsg": 26914,
+   "e_min": 723000,
+   "n_min": 3641000,
+   "points": 5705018,
+   "has_land": true,
+   "valid_frac": 0.004,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0724_3634",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3634000,
+   "points": 5457132,
+   "has_land": true,
+   "valid_frac": 0.1863,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0724_3635",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3635000,
+   "points": 5534519,
+   "has_land": true,
+   "valid_frac": 0.529,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0724_3636",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3636000,
+   "points": 5989881,
+   "has_land": true,
+   "valid_frac": 0.0606,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0724_3639",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3639000,
+   "points": 6005234,
+   "has_land": true,
+   "valid_frac": 0.2643,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0724_3640",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3640000,
+   "points": 5703318,
+   "has_land": true,
+   "valid_frac": 0.8569,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0724_3641",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3641000,
+   "points": 5440175,
+   "has_land": true,
+   "valid_frac": 0.8263,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0724_3642",
+   "utm_epsg": 26914,
+   "e_min": 724000,
+   "n_min": 3642000,
+   "points": 5866183,
+   "has_land": true,
+   "valid_frac": 0.0074,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0725_3634",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3634000,
+   "points": 5360313,
+   "has_land": true,
+   "valid_frac": 0.7421,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0725_3635",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3635000,
+   "points": 5796306,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 130.807
+  },
+  {
+   "name": "14_0725_3636",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3636000,
+   "points": 5507493,
+   "has_land": true,
+   "valid_frac": 0.3542,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0725_3638",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3638000,
+   "points": 5464687,
+   "has_land": true,
+   "valid_frac": 0.3827,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0725_3639",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3639000,
+   "points": 4861451,
+   "has_land": true,
+   "valid_frac": 0.9943,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0725_3640",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3640000,
+   "points": 2443471,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0725_3641",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3641000,
+   "points": 4975394,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0725_3642",
+   "utm_epsg": 26914,
+   "e_min": 725000,
+   "n_min": 3642000,
+   "points": 5237524,
+   "has_land": true,
+   "valid_frac": 0.1391,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0726_3633",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3633000,
+   "points": 5108266,
+   "has_land": true,
+   "valid_frac": 0.3479,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0726_3634",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3634000,
+   "points": 5313919,
+   "has_land": true,
+   "valid_frac": 0.9373,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0726_3635",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3635000,
+   "points": 5611381,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.279
+  },
+  {
+   "name": "14_0726_3636",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3636000,
+   "points": 4972407,
+   "has_land": true,
+   "valid_frac": 0.5891,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0726_3638",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3638000,
+   "points": 4467631,
+   "has_land": true,
+   "valid_frac": 0.9046,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0726_3639",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3639000,
+   "points": 1386272,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0726_3640",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3640000,
+   "points": 2687757,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0726_3641",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3641000,
+   "points": 4595839,
+   "has_land": true,
+   "valid_frac": 0.9993,
+   "water_level_navd88": 132.458
+  },
+  {
+   "name": "14_0726_3642",
+   "utm_epsg": 26914,
+   "e_min": 726000,
+   "n_min": 3642000,
+   "points": 4482421,
+   "has_land": true,
+   "valid_frac": 0.2119,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0727_3632",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3632000,
+   "points": 4343989,
+   "has_land": true,
+   "valid_frac": 0.5775,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0727_3633",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3633000,
+   "points": 4585289,
+   "has_land": true,
+   "valid_frac": 0.986,
+   "water_level_navd88": 130.111
+  },
+  {
+   "name": "14_0727_3634",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3634000,
+   "points": 5087289,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 130.149
+  },
+  {
+   "name": "14_0727_3635",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3635000,
+   "points": 4702230,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.591
+  },
+  {
+   "name": "14_0727_3636",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3636000,
+   "points": 4787701,
+   "has_land": true,
+   "valid_frac": 0.6662,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0727_3637",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3637000,
+   "points": 4702296,
+   "has_land": true,
+   "valid_frac": 0.1924,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0727_3638",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3638000,
+   "points": 4574041,
+   "has_land": true,
+   "valid_frac": 0.9978,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0727_3639",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3639000,
+   "points": 1721593,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0727_3640",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3640000,
+   "points": 4729206,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0727_3641",
+   "utm_epsg": 26914,
+   "e_min": 727000,
+   "n_min": 3641000,
+   "points": 5078769,
+   "has_land": true,
+   "valid_frac": 0.5526,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3631",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3631000,
+   "points": 4624618,
+   "has_land": true,
+   "valid_frac": 0.2482,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3632",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3632000,
+   "points": 4571215,
+   "has_land": true,
+   "valid_frac": 0.9941,
+   "water_level_navd88": 129.012
+  },
+  {
+   "name": "14_0728_3633",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3633000,
+   "points": 5185751,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 128.003
+  },
+  {
+   "name": "14_0728_3634",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3634000,
+   "points": 5053948,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 129.376
+  },
+  {
+   "name": "14_0728_3635",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3635000,
+   "points": 4544385,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.618
+  },
+  {
+   "name": "14_0728_3636",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3636000,
+   "points": 4740324,
+   "has_land": true,
+   "valid_frac": 0.7341,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3637",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3637000,
+   "points": 4728974,
+   "has_land": true,
+   "valid_frac": 0.6331,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3638",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3638000,
+   "points": 3579554,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0728_3639",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3639000,
+   "points": 1499823,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0728_3640",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3640000,
+   "points": 3943950,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0728_3641",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3641000,
+   "points": 5235958,
+   "has_land": true,
+   "valid_frac": 0.9299,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3642",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3642000,
+   "points": 5171047,
+   "has_land": true,
+   "valid_frac": 0.6051,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3643",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3643000,
+   "points": 5305108,
+   "has_land": true,
+   "valid_frac": 0.6723,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3644",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3644000,
+   "points": 5719862,
+   "has_land": true,
+   "valid_frac": 0.6449,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0728_3645",
+   "utm_epsg": 26914,
+   "e_min": 728000,
+   "n_min": 3645000,
+   "points": 5261302,
+   "has_land": true,
+   "valid_frac": 0.2964,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0729_3629",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3629000,
+   "points": 4765234,
+   "has_land": true,
+   "valid_frac": 0.5997,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0729_3630",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3630000,
+   "points": 4744864,
+   "has_land": true,
+   "valid_frac": 0.2038,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0729_3631",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3631000,
+   "points": 4572521,
+   "has_land": true,
+   "valid_frac": 0.8645,
+   "water_level_navd88": 130.023
+  },
+  {
+   "name": "14_0729_3632",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3632000,
+   "points": 4880915,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 126.406
+  },
+  {
+   "name": "14_0729_3633",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3633000,
+   "points": 5002890,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 126.629
+  },
+  {
+   "name": "14_0729_3634",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3634000,
+   "points": 4722844,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.734
+  },
+  {
+   "name": "14_0729_3635",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3635000,
+   "points": 4515710,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.431
+  },
+  {
+   "name": "14_0729_3636",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3636000,
+   "points": 4449445,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.431
+  },
+  {
+   "name": "14_0729_3637",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3637000,
+   "points": 4133668,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0729_3638",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3638000,
+   "points": 4171366,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0729_3639",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3639000,
+   "points": 1671622,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0729_3640",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3640000,
+   "points": 2761493,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0729_3641",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3641000,
+   "points": 3067549,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0729_3642",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3642000,
+   "points": 3538931,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0729_3643",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3643000,
+   "points": 3090504,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0729_3644",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3644000,
+   "points": 2775172,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0729_3645",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3645000,
+   "points": 5513774,
+   "has_land": true,
+   "valid_frac": 0.9333,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0729_3646",
+   "utm_epsg": 26914,
+   "e_min": 729000,
+   "n_min": 3646000,
+   "points": 5485975,
+   "has_land": true,
+   "valid_frac": 0.0262,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0730_3629",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3629000,
+   "points": 5039863,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 130.704
+  },
+  {
+   "name": "14_0730_3630",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3630000,
+   "points": 5178388,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.407
+  },
+  {
+   "name": "14_0730_3631",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3631000,
+   "points": 5401437,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 124.019
+  },
+  {
+   "name": "14_0730_3632",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3632000,
+   "points": 5662709,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 124.779
+  },
+  {
+   "name": "14_0730_3633",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3633000,
+   "points": 4238711,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.43
+  },
+  {
+   "name": "14_0730_3634",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3634000,
+   "points": 2830716,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.43
+  },
+  {
+   "name": "14_0730_3635",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3635000,
+   "points": 1697991,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0730_3636",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3636000,
+   "points": 1456406,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0730_3637",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3637000,
+   "points": 1266577,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0730_3638",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3638000,
+   "points": 2735612,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0730_3639",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3639000,
+   "points": 1673305,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0730_3640",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3640000,
+   "points": 1968960,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0730_3641",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3641000,
+   "points": 4632147,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0730_3642",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3642000,
+   "points": 3305165,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0730_3643",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3643000,
+   "points": 3856912,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0730_3644",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3644000,
+   "points": 4642437,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0730_3645",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3645000,
+   "points": 5293470,
+   "has_land": true,
+   "valid_frac": 0.811,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0730_3646",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3646000,
+   "points": 5196226,
+   "has_land": true,
+   "valid_frac": 0.0311,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0730_3647",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3647000,
+   "points": 4954573,
+   "has_land": true,
+   "valid_frac": 0.099,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0730_3648",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3648000,
+   "points": 4769377,
+   "has_land": true,
+   "valid_frac": 0.0516,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0730_3649",
+   "utm_epsg": 26914,
+   "e_min": 730000,
+   "n_min": 3649000,
+   "points": 4680129,
+   "has_land": true,
+   "valid_frac": 0.0024,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3629",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3629000,
+   "points": 5719372,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 127.29
+  },
+  {
+   "name": "14_0731_3630",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3630000,
+   "points": 5944604,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 124.491
+  },
+  {
+   "name": "14_0731_3631",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3631000,
+   "points": 6262790,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 121.369
+  },
+  {
+   "name": "14_0731_3632",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3632000,
+   "points": 4058125,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 129.975
+  },
+  {
+   "name": "14_0731_3633",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3633000,
+   "points": 1397591,
+   "has_land": true,
+   "valid_frac": 0.9724,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3634",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3634000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.5058,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3635",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3635000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.2511,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3636",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3636000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.2048,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3637",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3637000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.516,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3638",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3638000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.783,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0731_3639",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3639000,
+   "points": 1025121,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0731_3640",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3640000,
+   "points": 3623912,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0731_3641",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3641000,
+   "points": 5203700,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3642",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3642000,
+   "points": 4671538,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3643",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3643000,
+   "points": 4861457,
+   "has_land": true,
+   "valid_frac": 0.7987,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3644",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3644000,
+   "points": 4827720,
+   "has_land": true,
+   "valid_frac": 0.1839,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3645",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3645000,
+   "points": 5027652,
+   "has_land": true,
+   "valid_frac": 0.3609,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3646",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3646000,
+   "points": 5073848,
+   "has_land": true,
+   "valid_frac": 0.8306,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3647",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3647000,
+   "points": 5494183,
+   "has_land": true,
+   "valid_frac": 0.9912,
+   "water_level_navd88": 132.438
+  },
+  {
+   "name": "14_0731_3648",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3648000,
+   "points": 5211826,
+   "has_land": true,
+   "valid_frac": 0.9857,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0731_3649",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3649000,
+   "points": 5597311,
+   "has_land": true,
+   "valid_frac": 0.8221,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0731_3650",
+   "utm_epsg": 26914,
+   "e_min": 731000,
+   "n_min": 3650000,
+   "points": 5221889,
+   "has_land": true,
+   "valid_frac": 0.3035,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3629",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3629000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.7547,
+   "water_level_navd88": 117.682
+  },
+  {
+   "name": "14_0732_3630",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3630000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.5064,
+   "water_level_navd88": 118.192
+  },
+  {
+   "name": "14_0732_3631",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3631000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.9204,
+   "water_level_navd88": 119.705
+  },
+  {
+   "name": "14_0732_3632",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3632000,
+   "points": 2100617,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3633",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3633000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.4071,
+   "water_level_navd88": 132.429
+  },
+  {
+   "name": "14_0732_3634",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3634000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.1657,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3635",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3635000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.726,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3636",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3636000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.5877,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3637",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3637000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.0571,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3638",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3638000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.646,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3639",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3639000,
+   "points": 2366315,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3640",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3640000,
+   "points": 2651528,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0732_3641",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3641000,
+   "points": 2360119,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0732_3642",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3642000,
+   "points": 3202432,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.435
+  },
+  {
+   "name": "14_0732_3643",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3643000,
+   "points": 4597382,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0732_3644",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3644000,
+   "points": 4718708,
+   "has_land": true,
+   "valid_frac": 0.7991,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3645",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3645000,
+   "points": 4537697,
+   "has_land": true,
+   "valid_frac": 0.9792,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0732_3646",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3646000,
+   "points": 2694963,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.438
+  },
+  {
+   "name": "14_0732_3647",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3647000,
+   "points": 1689077,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3648",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3648000,
+   "points": 1908640,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3649",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3649000,
+   "points": 2766749,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0732_3650",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3650000,
+   "points": 4896443,
+   "has_land": true,
+   "valid_frac": 0.9972,
+   "water_level_navd88": 132.44
+  },
+  {
+   "name": "14_0732_3651",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3651000,
+   "points": 5286231,
+   "has_land": true,
+   "valid_frac": 0.9,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3652",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3652000,
+   "points": 5408149,
+   "has_land": true,
+   "valid_frac": 0.7249,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3653",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3653000,
+   "points": 5446083,
+   "has_land": true,
+   "valid_frac": 0.2056,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0732_3654",
+   "utm_epsg": 26914,
+   "e_min": 732000,
+   "n_min": 3654000,
+   "points": 5491392,
+   "has_land": true,
+   "valid_frac": 0.0752,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0733_3630",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3630000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.4857,
+   "water_level_navd88": 118.151
+  },
+  {
+   "name": "14_0733_3631",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3631000,
+   "points": 6002868,
+   "has_land": true,
+   "valid_frac": 0.9587,
+   "water_level_navd88": 119.185
+  },
+  {
+   "name": "14_0733_3632",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3632000,
+   "points": 1756875,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0733_3633",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3633000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.5835,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0733_3634",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3634000,
+   "points": 1073323,
+   "has_land": true,
+   "valid_frac": 0.9696,
+   "water_level_navd88": 132.429
+  },
+  {
+   "name": "14_0733_3635",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3635000,
+   "points": 2478533,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.43
+  },
+  {
+   "name": "14_0733_3636",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3636000,
+   "points": 2678949,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0733_3637",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3637000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.7796,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0733_3638",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3638000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.2314,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0733_3639",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3639000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.6969,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0733_3640",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3640000,
+   "points": 1285055,
+   "has_land": true,
+   "valid_frac": 0.9826,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0733_3641",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3641000,
+   "points": 1441888,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0733_3642",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3642000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.9305,
+   "water_level_navd88": 132.435
+  },
+  {
+   "name": "14_0733_3643",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3643000,
+   "points": 1293170,
+   "has_land": true,
+   "valid_frac": 0.999,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0733_3644",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3644000,
+   "points": 3868970,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0733_3645",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3645000,
+   "points": 2445083,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0733_3646",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3646000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.707,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0733_3647",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3647000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.8001,
+   "water_level_navd88": 132.438
+  },
+  {
+   "name": "14_0733_3648",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3648000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.9941,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0733_3649",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3649000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.7955,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0733_3650",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3650000,
+   "points": 1447802,
+   "has_land": true,
+   "valid_frac": 0.9742,
+   "water_level_navd88": 132.44
+  },
+  {
+   "name": "14_0733_3651",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3651000,
+   "points": 2089127,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0733_3652",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3652000,
+   "points": 3559962,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0733_3653",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3653000,
+   "points": 4867982,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.443
+  },
+  {
+   "name": "14_0733_3654",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3654000,
+   "points": 5628657,
+   "has_land": true,
+   "valid_frac": 0.9927,
+   "water_level_navd88": 132.451
+  },
+  {
+   "name": "14_0733_3655",
+   "utm_epsg": 26914,
+   "e_min": 733000,
+   "n_min": 3655000,
+   "points": 5745507,
+   "has_land": true,
+   "valid_frac": 0.4415,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0734_3629",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3629000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.8394,
+   "water_level_navd88": 117.694
+  },
+  {
+   "name": "14_0734_3630",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3630000,
+   "points": 4418077,
+   "has_land": true,
+   "valid_frac": 0.8711,
+   "water_level_navd88": 118.083
+  },
+  {
+   "name": "14_0734_3631",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3631000,
+   "points": 3995750,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 119.632
+  },
+  {
+   "name": "14_0734_3632",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3632000,
+   "points": 1525569,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0734_3633",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3633000,
+   "points": 1416757,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0734_3634",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3634000,
+   "points": 3357077,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.429
+  },
+  {
+   "name": "14_0734_3635",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3635000,
+   "points": 4384894,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.43
+  },
+  {
+   "name": "14_0734_3636",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3636000,
+   "points": 5378660,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0734_3637",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3637000,
+   "points": 3601608,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.432
+  },
+  {
+   "name": "14_0734_3638",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3638000,
+   "points": 2137200,
+   "has_land": true,
+   "valid_frac": 0.9971,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0734_3639",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3639000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.683,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0734_3640",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3640000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.9522,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0734_3641",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3641000,
+   "points": 1445667,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.435
+  },
+  {
+   "name": "14_0734_3642",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3642000,
+   "points": 1276584,
+   "has_land": true,
+   "valid_frac": 0.8823,
+   "water_level_navd88": 132.435
+  },
+  {
+   "name": "14_0734_3643",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3643000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.5466,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0734_3644",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3644000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.755,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0734_3645",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3645000,
+   "points": 1207208,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0734_3646",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3646000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.899,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0734_3647",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3647000,
+   "points": 1434848,
+   "has_land": true,
+   "valid_frac": 0.9878,
+   "water_level_navd88": 132.438
+  },
+  {
+   "name": "14_0734_3648",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3648000,
+   "points": 3009765,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0734_3649",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3649000,
+   "points": 1320799,
+   "has_land": true,
+   "valid_frac": 0.9235,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0734_3650",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3650000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.6506,
+   "water_level_navd88": 132.44
+  },
+  {
+   "name": "14_0734_3651",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3651000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.8382,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0734_3652",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3652000,
+   "points": 1844175,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0734_3653",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3653000,
+   "points": 1479401,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.442
+  },
+  {
+   "name": "14_0734_3654",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3654000,
+   "points": 3510016,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.452
+  },
+  {
+   "name": "14_0734_3655",
+   "utm_epsg": 26914,
+   "e_min": 734000,
+   "n_min": 3655000,
+   "points": 5548303,
+   "has_land": true,
+   "valid_frac": 0.7536,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3629",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3629000,
+   "points": 4350901,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 117.773
+  },
+  {
+   "name": "14_0735_3630",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3630000,
+   "points": 4243127,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 119.235
+  },
+  {
+   "name": "14_0735_3631",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3631000,
+   "points": 4433575,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 129.734
+  },
+  {
+   "name": "14_0735_3632",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3632000,
+   "points": 4258385,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3633",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3633000,
+   "points": 3944990,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3634",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3634000,
+   "points": 4792766,
+   "has_land": true,
+   "valid_frac": 0.9401,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3635",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3635000,
+   "points": 4957843,
+   "has_land": true,
+   "valid_frac": 0.5985,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3636",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3636000,
+   "points": 5406315,
+   "has_land": true,
+   "valid_frac": 0.5982,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3637",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3637000,
+   "points": 5855912,
+   "has_land": true,
+   "valid_frac": 0.9733,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0735_3638",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3638000,
+   "points": 5237114,
+   "has_land": true,
+   "valid_frac": 0.98,
+   "water_level_navd88": 132.433
+  },
+  {
+   "name": "14_0735_3639",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3639000,
+   "points": 2516071,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0735_3640",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3640000,
+   "points": 3348055,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.434
+  },
+  {
+   "name": "14_0735_3641",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3641000,
+   "points": 3084963,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.435
+  },
+  {
+   "name": "14_0735_3642",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3642000,
+   "points": 2849950,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.435
+  },
+  {
+   "name": "14_0735_3643",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3643000,
+   "points": 1428189,
+   "has_land": true,
+   "valid_frac": 0.9933,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3644",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3644000,
+   "points": 0,
+   "has_land": false,
+   "valid_frac": 0.4849,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0735_3645",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3645000,
+   "points": 1132966,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0735_3646",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3646000,
+   "points": 2661086,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0735_3647",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3647000,
+   "points": 4614413,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.438
+  },
+  {
+   "name": "14_0735_3648",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3648000,
+   "points": 5462093,
+   "has_land": true,
+   "valid_frac": 0.9815,
+   "water_level_navd88": 132.439
+  },
+  {
+   "name": "14_0735_3649",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3649000,
+   "points": 4488203,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.44
+  },
+  {
+   "name": "14_0735_3650",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3650000,
+   "points": 3919436,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.44
+  },
+  {
+   "name": "14_0735_3651",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3651000,
+   "points": 1802715,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0735_3652",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3652000,
+   "points": 3738701,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0735_3653",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3653000,
+   "points": 1983420,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.442
+  },
+  {
+   "name": "14_0735_3654",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3654000,
+   "points": 5153443,
+   "has_land": true,
+   "valid_frac": 0.9678,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0735_3655",
+   "utm_epsg": 26914,
+   "e_min": 735000,
+   "n_min": 3655000,
+   "points": 4947500,
+   "has_land": true,
+   "valid_frac": 0.2812,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3629",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3629000,
+   "points": 5089177,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 124.55
+  },
+  {
+   "name": "14_0736_3630",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3630000,
+   "points": 5234992,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 126.91
+  },
+  {
+   "name": "14_0736_3631",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3631000,
+   "points": 5257784,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.664
+  },
+  {
+   "name": "14_0736_3632",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3632000,
+   "points": 5431556,
+   "has_land": true,
+   "valid_frac": 0.9103,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3633",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3633000,
+   "points": 5081230,
+   "has_land": true,
+   "valid_frac": 0.5097,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3634",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3634000,
+   "points": 5148628,
+   "has_land": true,
+   "valid_frac": 0.019,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3637",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3637000,
+   "points": 5836603,
+   "has_land": true,
+   "valid_frac": 0.0065,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3638",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3638000,
+   "points": 5565397,
+   "has_land": true,
+   "valid_frac": 0.2554,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3639",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3639000,
+   "points": 6091463,
+   "has_land": true,
+   "valid_frac": 0.7363,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3640",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3640000,
+   "points": 5973691,
+   "has_land": true,
+   "valid_frac": 0.6,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3641",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3641000,
+   "points": 6054731,
+   "has_land": true,
+   "valid_frac": 0.4975,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3642",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3642000,
+   "points": 5744867,
+   "has_land": true,
+   "valid_frac": 0.7661,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3643",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3643000,
+   "points": 4728313,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0736_3644",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3644000,
+   "points": 2379662,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.436
+  },
+  {
+   "name": "14_0736_3645",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3645000,
+   "points": 3725937,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0736_3646",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3646000,
+   "points": 4880496,
+   "has_land": true,
+   "valid_frac": 0.9971,
+   "water_level_navd88": 132.437
+  },
+  {
+   "name": "14_0736_3647",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3647000,
+   "points": 5148292,
+   "has_land": true,
+   "valid_frac": 0.4617,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3648",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3648000,
+   "points": 5222089,
+   "has_land": true,
+   "valid_frac": 0.0981,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3649",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3649000,
+   "points": 4897345,
+   "has_land": true,
+   "valid_frac": 0.4463,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3650",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3650000,
+   "points": 4806005,
+   "has_land": true,
+   "valid_frac": 0.6346,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3651",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3651000,
+   "points": 5029559,
+   "has_land": true,
+   "valid_frac": 0.9508,
+   "water_level_navd88": 132.441
+  },
+  {
+   "name": "14_0736_3652",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3652000,
+   "points": 6671724,
+   "has_land": true,
+   "valid_frac": 0.8619,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0736_3653",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3653000,
+   "points": 4924176,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.442
+  },
+  {
+   "name": "14_0736_3654",
+   "utm_epsg": 26914,
+   "e_min": 736000,
+   "n_min": 3654000,
+   "points": 5277202,
+   "has_land": true,
+   "valid_frac": 0.6402,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3629",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3629000,
+   "points": 5635193,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 124.418
+  },
+  {
+   "name": "14_0737_3630",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3630000,
+   "points": 6091854,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 125.205
+  },
+  {
+   "name": "14_0737_3631",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3631000,
+   "points": 5417142,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 126.646
+  },
+  {
+   "name": "14_0737_3632",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3632000,
+   "points": 5635133,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 128.846
+  },
+  {
+   "name": "14_0737_3633",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3633000,
+   "points": 5014117,
+   "has_land": true,
+   "valid_frac": 0.9088,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3634",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3634000,
+   "points": 5418768,
+   "has_land": true,
+   "valid_frac": 0.7713,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3635",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3635000,
+   "points": 5923116,
+   "has_land": true,
+   "valid_frac": 0.1878,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3642",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3642000,
+   "points": 5088674,
+   "has_land": true,
+   "valid_frac": 0.0306,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3643",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3643000,
+   "points": 5172185,
+   "has_land": true,
+   "valid_frac": 0.5638,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3644",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3644000,
+   "points": 5374714,
+   "has_land": true,
+   "valid_frac": 0.8738,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3645",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3645000,
+   "points": 5193779,
+   "has_land": true,
+   "valid_frac": 0.6377,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3646",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3646000,
+   "points": 5350145,
+   "has_land": true,
+   "valid_frac": 0.2103,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3652",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3652000,
+   "points": 7929333,
+   "has_land": true,
+   "valid_frac": 0.0107,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3653",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3653000,
+   "points": 5970957,
+   "has_land": true,
+   "valid_frac": 0.2112,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0737_3654",
+   "utm_epsg": 26914,
+   "e_min": 737000,
+   "n_min": 3654000,
+   "points": 5042039,
+   "has_land": true,
+   "valid_frac": 0.0206,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0738_3629",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3629000,
+   "points": 5415971,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0738_3630",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3630000,
+   "points": 5247937,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 126.823
+  },
+  {
+   "name": "14_0738_3631",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3631000,
+   "points": 5531238,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 127.543
+  },
+  {
+   "name": "14_0738_3632",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3632000,
+   "points": 5978365,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 129.16
+  },
+  {
+   "name": "14_0738_3633",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3633000,
+   "points": 5742242,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.079
+  },
+  {
+   "name": "14_0738_3634",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3634000,
+   "points": 5574053,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.943
+  },
+  {
+   "name": "14_0738_3635",
+   "utm_epsg": 26914,
+   "e_min": 738000,
+   "n_min": 3635000,
+   "points": 5245396,
+   "has_land": true,
+   "valid_frac": 0.6459,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0739_3629",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3629000,
+   "points": 5355447,
+   "has_land": true,
+   "valid_frac": 0.9782,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0739_3630",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3630000,
+   "points": 5120918,
+   "has_land": true,
+   "valid_frac": 0.9998,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0739_3631",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3631000,
+   "points": 4851532,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.428
+  },
+  {
+   "name": "14_0739_3632",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3632000,
+   "points": 4813447,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.455
+  },
+  {
+   "name": "14_0739_3633",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3633000,
+   "points": 4483652,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 131.931
+  },
+  {
+   "name": "14_0739_3634",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3634000,
+   "points": 4905827,
+   "has_land": true,
+   "valid_frac": 1.0,
+   "water_level_navd88": 132.421
+  },
+  {
+   "name": "14_0739_3635",
+   "utm_epsg": 26914,
+   "e_min": 739000,
+   "n_min": 3635000,
+   "points": 4700309,
+   "has_land": true,
+   "valid_frac": 0.937,
+   "water_level_navd88": 132.428
+  }
+ ]
+}

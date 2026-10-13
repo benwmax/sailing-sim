@@ -9,5 +9,5 @@ to the generators, not game content; nothing here is loaded by the game at run t
   script the garments in Blender as MetaHuman outfit assets; prove the polo first.
 - `g4/ui-spec.md`, `g4/sailing-sim-front-end.html`: the front end and HUD spec and its clickable mockup. Class and
   binding names in the spec are suggestions; use the repo's real types.
-- `g2/` (when present): GeoJSON for buildings, trees and shore armour plus `tiles.json`; the 1 m rasters are too big
-  for git and arrive as a release asset (see `g2/README.md`).
+- `g2/`: GeoJSON (gzipped) for buildings, trees and shore armour, cover-class tiles, `tiles.json` and the generator
+  scripts; the 1 m DEM/DSM and ortho tiles are rebuilt on the Mac (see `g2/README.md`).
