@@ -98,6 +98,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		const TSharedPtr<FJsonObject> O = V->AsObject();
 		FLakeBridge Bridge;
 		Bridge.Name = O->GetStringField(TEXT("name"));
+		O->TryGetStringField(TEXT("kind"), Bridge.Kind);
 		Bridge.Points = ReadPoints(O->GetArrayField(TEXT("points")));
 		Bridge.DeckHeight = O->GetNumberField(TEXT("deck"));
 		if (Bridge.Points.Num() >= 2) Bridges.Add(MoveTemp(Bridge));

@@ -49,19 +49,6 @@ AMarinaActor::AMarinaActor()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	// Nothing here moves: static components keep their cached virtual shadow pages (movable ones re-mark them every frame).
 	RootComponent->SetMobility(EComponentMobility::Static);
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Surf(TEXT("/Game/World/M_WorldSurface.M_WorldSurface"));
-	SurfaceMaterial = Surf.Object;
-}
-
-UMaterialInterface* AMarinaActor::Surface(const FLinearColor& Color, float Roughness, float Pattern, float Windows, float Metallic)
-{
-	UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(SurfaceMaterial, this);
-	M->SetVectorParameterValue(TEXT("Color"), Color);
-	M->SetScalarParameterValue(TEXT("Roughness"), Roughness);
-	M->SetScalarParameterValue(TEXT("Pattern"), Pattern);
-	M->SetScalarParameterValue(TEXT("Windows"), Windows);
-	M->SetScalarParameterValue(TEXT("Metallic"), Metallic);
-	return M;
 }
 
 void AMarinaActor::BeginPlay()
@@ -99,47 +86,9 @@ void AMarinaActor::Build(const FMarina& Marina)
 	BuildGeometry(Marina, Terrain, Generated, All);
 	TMap<FIntPoint, FKitGeometry> Tiles;
 	All.SplitTiles(UWorldKitLibrary::TileM, Tiles);
-	// Each 40 m tile: the Nanite mesh baked from this same geometry (scripts/make-world-models.sh), or else a static
-	// procedural mesh (no Nanite: on High its virtual shadow marking overflows, so rebake after changing the layout).
-	UMaterialInterface* Materials[int32(EKitLook::Count)] = {};
-	int32 Baked = 0;
-	const bool bForceProcedural = FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralMarina"));
-	for (const auto& KV : Tiles)
-	{
-		const FString Name = FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key);
-		UStaticMesh* BakedMesh = bForceProcedural || Replaced.Num() > 0 ? nullptr : LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Baked/%s.%s"), *Name, *Name));
-		if (BakedMesh)
-		{
-			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
-			C->SetMobility(EComponentMobility::Static);
-			C->SetupAttachment(RootComponent);
-			C->SetStaticMesh(BakedMesh);
-			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			C->RegisterComponent();
-			Tiled.Add(C);
-			++Baked;
-			continue;
-		}
-		UProceduralMeshComponent* M = NewObject<UProceduralMeshComponent>(this);
-		M->SetMobility(EComponentMobility::Static);
-		M->SetupAttachment(RootComponent);
-		M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		M->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-		M->RegisterComponent();
-		for (int32 K = 0; K < int32(EKitLook::Count); ++K)
-		{
-			const FKitSection& D = KV.Value.Sections[K];
-			if (D.V.Num() == 0) continue;
-			if (!Materials[K])
-			{
-				const FKitLookDesc& L = KitLook(EKitLook(K));
-				Materials[K] = Surface(L.Color, L.Roughness, L.Pattern, L.Windows, L.Metallic);
-			}
-			M->CreateMeshSection_LinearColor(K, D.V, D.T, D.N, D.UV, {}, D.Tan, false);
-			M->SetMaterial(K, Materials[K]);
-		}
-		Tiled.Add(M);
-	}
+	// Each 40 m tile: the Nanite mesh baked from this same geometry (scripts/make-world-models.sh), or else procedural.
+	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Marina"), Replaced.Num() > 0 || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralWorld")),
+		KitMaterial, Tiled);
 
 	// The breakwater: limestone riprap piled along its line (the world kit's three rocks, scaled and turned per piece).
 	TArray<FTransform> RockX[3];
@@ -284,7 +233,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		for (int32 I = 1; I < L.Points.Num(); ++I)
 		{
 			const FVector2D A = L.Points[I - 1], B = L.Points[I];
-			G[EKitLook::Decking].Span(A, B, L.Width, L.Height - 0.15f, L.Height);
+			G[EKitLook::Decking].Span(A, B, L.Width, L.Height - 0.15f, L.Height, true);
 			const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
 			const float Len = float(FVector2D::Distance(A, B));
 			for (float X = 0.f; X <= Len; X += 4.f)

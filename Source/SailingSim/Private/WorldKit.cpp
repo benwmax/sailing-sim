@@ -4,6 +4,8 @@
 #include "Marina.h"
 #include "MarinaActor.h"
 #include "Engine/StaticMesh.h"
+#include "Components/StaticMeshComponent.h"
+#include "GameFramework/Actor.h"
 #include "Materials/MaterialInterface.h"
 #if WITH_EDITOR
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -25,8 +27,17 @@ const FKitLookDesc& KitLook(EKitLook Look)
 		{ TEXT("PoolWater"), FLinearColor(0.10f, 0.45f, 0.55f), 0.05f, 0.f, 0.f, 0.f }, // pool
 		{ TEXT("Trim"), FLinearColor(0.88f, 0.88f, 0.86f), 0.5f, 0.f, 0.f, 0.f },       // white trim and rails
 		{ TEXT("Lamp"), FLinearColor(0.15f, 0.15f, 0.15f), 0.5f, 5.f, 0.f, 0.5f },      // painted steel lamp posts
+		{ TEXT("Asphalt"), FLinearColor(0.11f, 0.11f, 0.11f), 0.9f, 6.f, 0.f, 0.f },    // road surface with lane markings
+		{ TEXT("Steel"), FLinearColor(0.30f, 0.36f, 0.40f), 0.55f, 5.f, 0.f, 0.6f },    // painted steel girders
+		{ TEXT("LampGlow"), FLinearColor(1.0f, 0.78f, 0.50f), 0.4f, 0.f, 0.f, 0.f },    // sodium/LED lamp heads (glow at night)
 	};
 	return Looks[int32(Look)];
+}
+
+UMaterialInterface* KitMaterial(EKitLook Look)
+{
+	const TCHAR* Name = KitLook(Look).Name;
+	return LoadObject<UMaterialInterface>(nullptr, *FString::Printf(TEXT("/Game/World/MI_World_%s.MI_World_%s"), Name, Name));
 }
 
 void FKitSection::Quad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC, const FVector2D& UD)
@@ -101,6 +112,178 @@ FString FKitGeometry::TileAssetName(const FString& Prefix, const FIntPoint& Tile
 {
 	auto Num = [](int32 X) { return X < 0 ? FString::Printf(TEXT("m%d"), -X) : FString::FromInt(X); };
 	return FString::Printf(TEXT("SM_%s_%s_%s"), *Prefix, *Num(Tile.X), *Num(Tile.Y));
+}
+
+int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
+	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out)
+{
+	int32 Baked = 0;
+	for (const auto& KV : Tiles)
+	{
+		const FString Name = FKitGeometry::TileAssetName(Prefix, KV.Key);
+		UStaticMesh* Mesh = bProcedural ? nullptr : LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Baked/%s.%s"), *Name, *Name));
+		if (Mesh)
+		{
+			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
+			C->SetMobility(EComponentMobility::Static);
+			C->SetupAttachment(Owner->GetRootComponent());
+			C->SetStaticMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->RegisterComponent();
+			Out.Add(C);
+			++Baked;
+			continue;
+		}
+		// No Nanite: on High a big procedural layout overflows the virtual shadow map's non-Nanite marking (rebake instead).
+		UProceduralMeshComponent* M = NewObject<UProceduralMeshComponent>(Owner);
+		M->SetMobility(EComponentMobility::Static);
+		M->SetupAttachment(Owner->GetRootComponent());
+		M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		M->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		M->RegisterComponent();
+		for (int32 K = 0; K < int32(EKitLook::Count); ++K)
+		{
+			const FKitSection& D = KV.Value.Sections[K];
+			if (D.V.Num() == 0) continue;
+			M->CreateMeshSection_LinearColor(K, D.V, D.T, D.N, D.UV, {}, D.Tan, false);
+			M->SetMaterial(K, Material(EKitLook(K)));
+		}
+		Out.Add(M);
+	}
+	return Baked;
+}
+
+float BridgeWidth(const FLakeBridge& Br)
+{
+	if (Br.Kind.IsEmpty()) return 10.f; // charted bridges (S-57) carry no road class
+	if (Br.Kind == TEXT("motorway") || Br.Kind == TEXT("construction") || Br.Kind == TEXT("trunk")) return 16.f;
+	if (Br.Kind == TEXT("primary")) return 12.f;
+	if (Br.Kind == TEXT("secondary") || Br.Kind == TEXT("tertiary")) return 10.f;
+	if (Br.Kind == TEXT("motorway_link") || Br.Kind == TEXT("trunk_link") || Br.Kind == TEXT("primary_link") || Br.Kind == TEXT("residential")) return 8.f;
+	return 0.f;
+}
+
+float BridgeRoadZ(const FLakeBridge& Br) { return float(Br.DeckHeight) + 0.33f; }
+
+void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
+{
+	for (const FLakeBridge& Br : Lake.Bridges)
+	{
+		const bool bRail = Br.Kind == TEXT("rail");
+		const float Road = BridgeWidth(Br);
+		const bool bFoot = !bRail && Road == 0.f;
+		const float W = bRail ? 5.f : (bFoot ? 3.f : Road + 1.2f);
+		const float Z0 = float(Br.DeckHeight);               // underside of the slab
+		const float GirderDepth = bRail ? 1.5f : (bFoot ? 0.4f : 0.9f);
+		const float Bottom = Z0 - GirderDepth;               // where a mast strikes (FLakeData::BuildObstacles: deck - 1 m)
+		const float Spacing = bFoot ? 6.f : (bRail ? 20.f : (Road >= 16.f ? 36.f : 30.f));
+		double Along = 0.0, NextPier = 0.0, NextLamp = 20.0;
+		for (int32 I = 1; I < Br.Points.Num(); ++I)
+		{
+			const FVector2D A = Br.Points[I - 1], B = Br.Points[I];
+			const double Len = FVector2D::Distance(A, B);
+			if (Len < 0.5) continue;
+			const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
+			// Carry the deck a little past each joint so bends close up.
+			const FVector2D A1 = A - Dir * 0.4, B1 = B + Dir * 0.4;
+			if (bFoot)
+			{
+				G[EKitLook::Decking].Span(A1, B1, W, Z0, Z0 + 0.15f, true);
+				G[EKitLook::Pilings].Span(A1 + Left * (0.5 * W - 0.2), B1 + Left * (0.5 * W - 0.2), 0.25f, Bottom, Z0);
+				G[EKitLook::Pilings].Span(A1 - Left * (0.5 * W - 0.2), B1 - Left * (0.5 * W - 0.2), 0.25f, Bottom, Z0);
+				for (const double Side : { -1.0, 1.0 })
+				{
+					G[EKitLook::Trim].Span(A1 + Left * (Side * (0.5 * W - 0.05)), B1 + Left * (Side * (0.5 * W - 0.05)), 0.08f, Z0 + 1.05f, Z0 + 1.15f);
+				}
+			}
+			else
+			{
+				G[EKitLook::Concrete].Span(A1, B1, W, Z0, Z0 + 0.3f, true);
+				if (bRail)
+				{
+					G[EKitLook::Concrete].Span(A1, B1, 3.6f, Z0 + 0.3f, Z0 + 0.6f);
+					for (const double Side : { -0.72, 0.72 }) G[EKitLook::Metal].Span(A1 + Left * Side, B1 + Left * Side, 0.07f, Z0 + 0.6f, Z0 + 0.76f);
+					for (const double Side : { -1.3, 1.3 }) G[EKitLook::Steel].Span(A1 + Left * Side, B1 + Left * Side, 0.5f, Bottom, Z0, true);
+				}
+				else
+				{
+					G[EKitLook::Asphalt].Span(A1 + Left * 0.0, B1, Road, Z0 + 0.3f, Z0 + 0.33f);
+					const int32 Girders = FMath::Max(2, int32(W / 2.6f));
+					for (int32 K = 0; K < Girders; ++K)
+					{
+						const double Off = (K + 0.5) / Girders * (W - 1.0) - 0.5 * (W - 1.0);
+						G[EKitLook::Concrete].Span(A1 + Left * Off, B1 + Left * Off, 0.5f, Bottom, Z0, true);
+					}
+					// Jersey barriers: a wide foot and a narrower wall.
+					for (const double Side : { -1.0, 1.0 })
+					{
+						const FVector2D O = Left * (Side * (0.5 * W - 0.3));
+						G[EKitLook::Concrete].Span(A1 + O, B1 + O, 0.6f, Z0 + 0.3f, Z0 + 0.6f);
+						G[EKitLook::Concrete].Span(A1 + O, B1 + O, 0.3f, Z0 + 0.6f, Z0 + 1.15f);
+					}
+				}
+			}
+			// Pier bents and lamp posts at their spacing along the whole way.
+			while (NextPier <= Along + Len)
+			{
+				const FVector2D P = A + Dir * (NextPier - Along);
+				NextPier += Spacing;
+				const float Ground = float(Lake.Terrain.HeightAt(P.X, P.Y));
+				if (Ground > Bottom - 0.5f) continue;              // on the embankment: no pier needed
+				const float Bed = FMath::Min(Ground, 0.f) - 0.5f;
+				const float Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X)));
+				if (bFoot)
+				{
+					for (const double Side : { -1.0, 1.0 })
+					{
+						const FVector2D Q = P + Left * (Side * (0.5 * W - 0.2));
+						G[EKitLook::Pilings].Cylinder(FVector(Q.X, Q.Y, Bed), 0.15f, Bottom - Bed);
+					}
+					continue;
+				}
+				const int32 Cols = bRail ? 2 : (Road >= 16.f ? 3 : (Road >= 10.f ? 2 : 1));
+				const float Radius = Cols == 1 ? 0.75f : (bRail ? 0.45f : 0.55f);
+				for (int32 K = 0; K < Cols; ++K)
+				{
+					const double Off = Cols == 1 ? 0.0 : (double(K) / (Cols - 1) - 0.5) * (W - 3.0);
+					const FVector2D Q = P + Left * Off;
+					G[EKitLook::Concrete].Cylinder(FVector(Q.X, Q.Y, Bed), Radius, Bottom - 1.1f - Bed, 12);
+				}
+				G[EKitLook::Concrete].Box(FVector(P.X, P.Y, Bottom - 0.55f), FVector(1.f, 0.5f * (W - 0.6f), 0.55f), Yaw, true);
+			}
+			while (!bRail && !bFoot && Road >= 10.f && NextLamp <= Along + Len)
+			{
+				// Lamp posts on the left barrier every 60 m, arms reaching over the lanes.
+				const FVector2D P = A + Dir * (NextLamp - Along) + Left * (0.5 * W - 0.3);
+				NextLamp += 60.0;
+				const float Top = Z0 + 11.f;
+				G[EKitLook::Lamp].Cylinder(FVector(P.X, P.Y, Z0 + 1.15f), 0.12f, Top - Z0 - 1.15f, 6);
+				const FVector2D Head = P - Left * 2.6;
+				G[EKitLook::Lamp].Span(P, Head, 0.1f, Top - 0.1f, Top);
+				G[EKitLook::LampGlow].Box(FVector(Head.X, Head.Y, Top - 0.16f), FVector(0.35f, 0.18f, 0.07f), float(FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X))), true);
+			}
+			Along += Len;
+		}
+	}
+}
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeBridges(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName)) return Out;
+	FKitGeometry All;
+	BuildBridgeGeometry(Lake, All);
+	TMap<FIntPoint, FKitGeometry> Tiles;
+	All.SplitTiles(BridgeTileM, Tiles);
+	for (const auto& KV : Tiles)
+	{
+		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Bridges_") + LakeName, KV.Key))) Out.Add(M);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Baked the %s bridges: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+#endif
+	return Out;
 }
 
 TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)

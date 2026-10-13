@@ -11,8 +11,10 @@ MODELS = os.path.join(REPO, "Artifacts", "models", "world")
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 WORLD = "/Game/World"
 # Slot name -> material (under /Game/World unless a full path).
-WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeCrown", "Rock": "MI_World_Rock"}
-KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"))
+WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeCrown", "Rock": "MI_World_Rock",
+               "Paint": "M_VehiclePaint", "Glass": "MI_World_Glass", "Tyre": "MI_World_Tyre", "HeadLight": "MI_World_HeadLight",
+               "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer"}
+KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"))
 
 
 def import_fbx(path, dest, name):
@@ -70,12 +72,12 @@ for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
 # The generated structures (WorldKit.h): bake the marina into Nanite tiles. Stale tiles from an older layout are removed.
 BAKED = f"{WORLD}/Baked"
 old = set(a.split(".")[0] for a in unreal.EditorAssetLibrary.list_assets(BAKED, recursive=False)) if unreal.EditorAssetLibrary.does_directory_exist(BAKED) else set()
-for lake in ("RayHubbard",):
-    meshes = unreal.WorldKitLibrary.bake_marina(lake)
+for what, lake in (("marina", "RayHubbard"), ("bridges", "RayHubbard"), ("bridges", "GalvestonBay")):
+    meshes = (unreal.WorldKitLibrary.bake_marina if what == "marina" else unreal.WorldKitLibrary.bake_bridges)(lake)
     for m in meshes:
         unreal.EditorAssetLibrary.save_loaded_asset(m)
         old.discard(m.get_path_name().split(".")[0])
-    unreal.log(f"Imported the {lake} marina: {len(meshes)} Nanite tiles")
+    unreal.log(f"Imported the {lake} {what}: {len(meshes)} Nanite tiles")
 for path in sorted(old):
     unreal.EditorAssetLibrary.delete_asset(path)
     unreal.log(f"Removed stale {path}")

@@ -476,8 +476,11 @@ void ALakeTerrainActor::PlaceBridgesAndDocks()
 	Pilings = MakeIsm(Cylinder, FLinearColor(0.45f, 0.44f, 0.42f));
 
 	TArray<FTransform> Decks, Piles;
+	// Medium and High draw the bridge kit (ABridgesActor); Low keeps these deck boxes and piles.
+	const bool bBridgeKit = USailingSettings::Get()->Quality != ESailingQuality::Low;
 	for (const FLakeBridge& Br : Lake->Bridges)
 	{
+		if (bBridgeKit) break;
 		const float Width = Br.DeckHeight >= 7.0 ? 16.f : 8.f;
 		for (int32 I = 1; I < Br.Points.Num(); ++I)
 		{

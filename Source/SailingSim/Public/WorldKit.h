@@ -14,7 +14,7 @@ class UMaterialInterface;
  * Nanite static meshes, one per 40 m tile (UWorldKitLibrary::BakeMarina, run by scripts/make-world-models.sh), and the game
  * loads those. Without a bake (or for a tile it lacks) it draws the same geometry as static procedural meshes.
  */
-enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Count };
+enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Count };
 
 struct FKitLookDesc
 {
@@ -23,6 +23,8 @@ struct FKitLookDesc
 	float Roughness, Pattern, Windows, Metallic;
 };
 SAILINGSIM_API const FKitLookDesc& KitLook(EKitLook Look);
+/** The look's material instance, MI_World_<Name>. */
+SAILINGSIM_API UMaterialInterface* KitMaterial(EKitLook Look);
 
 struct SAILINGSIM_API FKitSection
 {
@@ -54,6 +56,22 @@ struct SAILINGSIM_API FKitGeometry
 	static FString TileAssetName(const FString& Prefix, const FIntPoint& Tile);
 };
 
+struct FLakeData;
+struct FLakeBridge;
+
+/** The bridges of a lake or coast from their OSM ways (FLakeBridge: kind, deck clearance): decks, girders, pier bents, barriers,
+ *  lamp posts; rail and foot bridges in their own styles. The girders' underside sits where the physics stops a mast. */
+SAILINGSIM_API void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& Out);
+/** Carriageway width (m) of a bridge by its OSM kind; 0 for kinds drawn without traffic. */
+SAILINGSIM_API float BridgeWidth(const FLakeBridge& Bridge);
+/** The top of a bridge's road surface (m above the water/datum). */
+SAILINGSIM_API float BridgeRoadZ(const FLakeBridge& Bridge);
+
+/** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
+ *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
+SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
+	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out);
+
 /** Bakes generated geometry into Nanite static meshes (editor only; Python saves them). */
 UCLASS()
 class SAILINGSIM_API UWorldKitLibrary : public UBlueprintFunctionLibrary
@@ -66,6 +84,11 @@ public:
 	/** Builds the marina of a lake (Content/TerrainData/<Lake>.marina.json) and returns its tile meshes (unsaved). */
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
 	static TArray<UStaticMesh*> BakeMarina(const FString& LakeName);
+
+	/** Bridges come in 200 m tiles: SM_Bridges_<Lake>_<x>_<y>. */
+	static constexpr double BridgeTileM = 200.0;
+	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
+	static TArray<UStaticMesh*> BakeBridges(const FString& LakeName);
 
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);

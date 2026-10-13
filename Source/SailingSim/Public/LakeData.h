@@ -33,6 +33,7 @@ struct FLakeDock
 struct FLakeBridge
 {
 	FString Name;
+	FString Kind;              // OSM highway/railway kind: motorway, primary, rail, path, ...
 	TArray<FVector2D> Points;
 	double DeckHeight = 7.0;
 };

@@ -1397,12 +1397,21 @@ return off * 100.0;
 def world_collection():
     path = f"{WORLD_FOLDER}/MPC_World"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
-        return unreal.load_asset(path)
-    mpc = ASSETS.create_asset("MPC_World", WORLD_FOLDER, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
-    p = unreal.CollectionVectorParameter()
-    p.set_editor_property("parameter_name", "Wind")
-    p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
-    mpc.set_editor_property("vector_parameters", [p])
+        mpc = unreal.load_asset(path)
+    else:
+        mpc = ASSETS.create_asset("MPC_World", WORLD_FOLDER, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+        p = unreal.CollectionVectorParameter()
+        p.set_editor_property("parameter_name", "Wind")
+        p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
+        mpc.set_editor_property("vector_parameters", [p])
+    # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
+    scalars = list(mpc.get_editor_property("scalar_parameters"))
+    if not any(str(x.get_editor_property("parameter_name")) == "Night" for x in scalars):
+        n = unreal.CollectionScalarParameter()
+        n.set_editor_property("parameter_name", "Night")
+        n.set_editor_property("default_value", 0.0)
+        scalars.append(n)
+        mpc.set_editor_property("scalar_parameters", scalars)
     unreal.EditorAssetLibrary.save_loaded_asset(mpc)
     return mpc
 
@@ -1526,7 +1535,8 @@ return c;
 
 WORLD_SURFACE_CODE = """
 // Visual V6: one surface for the generated world (docks, buildings, bridges), set by instance parameters. UV is in
-// metres along the part. Pattern: 0 plain, 1 deck planks, 2 shingles, 3 lap siding, 4 concrete, 5 weathered metal.
+// metres along the part. Pattern: 0 plain, 1 deck planks, 2 shingles, 3 lap siding, 4 concrete, 5 weathered metal,
+// 6 asphalt with lane markings (U across from the left edge, V along). Night lights the windows and anything with Glow.
 float2 uv = UV;
 float3 c = Color.rgb;
 float r = Rough;
@@ -1560,14 +1570,42 @@ else if (Pattern > 2.5 && Pattern < 3.5)
 }
 else if (Pattern > 3.5 && Pattern < 4.5)
 {
-    c *= 0.85 + 0.25 * n;
+    // Concrete: smooth blotches at two scales, darker run-off streaks down from the top, form-tie lines every 1.2 m.
+    float2 p = uv * 0.7;
+    float2 i0 = floor(p), f0 = smoothstep(0.0, 1.0, frac(p));
+    float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(i0 + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+    float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+    float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
+    float streak = frac(sin(floor(uv.x * 3.0) * 91.3) * 4375.5) * saturate(1.0 - frac(uv.y * 0.25));
+    float form = 1.0 - 0.06 * step(0.97, frac(uv.y / 1.2));
+    c *= (0.86 + 0.22 * blot) * (1.0 - 0.12 * streak) * form * (0.97 + 0.06 * n);
 }
-else if (Pattern > 4.5)
+else if (Pattern > 4.5 && Pattern < 5.5)
 {
     float rust = saturate(sin(uv.x * 3.1 + n * 5.0) * 0.5 + 0.5) * saturate(1.0 - uv.y * 0.6);
     c = lerp(c, float3(0.35, 0.18, 0.08), rust * 0.35);
 }
+else if (Pattern > 5.5)
+{
+    // Asphalt: aggregate speckle, oil down the lane centres, a solid edge line and 3 m dashes every 12 m between lanes.
+    c *= 0.85 + 0.3 * n;
+    float lane = frac((uv.x - 0.6) / 3.6);
+    c *= 1.0 - 0.15 * exp(-pow((lane - 0.5) * 6.0, 2.0));
+    float edge = step(0.3, uv.x) * step(uv.x, 0.45);
+    float dash = step(abs(lane - 0.0) * 3.6, 0.07) * step(frac(uv.y / 12.0), 0.25) * step(1.0, uv.x);
+    c = lerp(c, float3(0.75, 0.74, 0.70), saturate(edge + dash));
+}
 Out = r;
+Emit = float3(0, 0, 0);
+if (Pattern > 2.5 && Pattern < 3.5)
+{
+    // Some windows lit at night, warm.
+    float wx = frac(uv.x / 2.4), wy = uv.y;
+    float win = step(0.25, wx) * step(wx, 0.75) * step(0.9, wy) * step(wy, 2.3) * Windows;
+    float lit = step(0.45, frac(sin(floor(uv.x / 2.4) * 37.7) * 4375.5));
+    Emit = float3(1.0, 0.72, 0.42) * 6.0 * win * lit * Night;
+}
+Emit += c * Glow * Night;
 return c;
 """
 
@@ -1581,9 +1619,15 @@ def build_world_surface():
     pattern = scalar(mat, "Pattern", 0.0, -900, 300)
     windows = scalar(mat, "Windows", 0.0, -900, 400)
     metal = scalar(mat, "Metallic", 0.0, -900, 500)
+    glow = scalar(mat, "Glow", 0.0, -900, 600)
+    night = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 700)
+    night.set_editor_property("collection", world_collection())
+    night.set_editor_property("parameter_name", "Night")
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
-               extra_outputs=[("Out", F1)])
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
+               extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    connect(glow, "", c, "Glow")
+    connect(night, "", c, "Night")
     connect(uv, "", c, "UV")
     connect(color, "RGBA", c, "Color")
     connect(rough, "", c, "Rough")
@@ -1591,11 +1635,12 @@ def build_world_surface():
     connect(windows, "", c, "Windows")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     # Instances for the world kit's static meshes (slot name -> MI_World_<slot>); updated in place like the boat library.
-    for slot, (col, rough, pattern, windows, metallic) in WORLD_LIBRARY.items():
+    for slot, (col, rough, pattern, windows, metallic, *rest) in WORLD_LIBRARY.items():
         name = f"MI_World_{slot}"
         path = f"{WORLD_FOLDER}/{name}"
         mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
@@ -1606,8 +1651,26 @@ def build_world_surface():
         MEL.set_material_instance_scalar_parameter_value(mi, "Pattern", pattern)
         MEL.set_material_instance_scalar_parameter_value(mi, "Windows", windows)
         MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", metallic)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Glow", rest[0] if rest else 0.0)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
+def build_vehicle_paint():
+    """The bridge traffic's paint: colour per instance (custom data 0..2, set by ABridgesActor), glossy clear-coated."""
+    mat = world_material("M_VehiclePaint")
+    chans = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, i * 120, data_index=i, const_default_value=0.5) for i in range(3)]
+    rg = node(mat, unreal.MaterialExpressionAppendVector, -650, 60)
+    connect(chans[0], "", rg, "A")
+    connect(chans[1], "", rg, "B")
+    rgb = node(mat, unreal.MaterialExpressionAppendVector, -450, 120)
+    connect(rg, "", rgb, "A")
+    connect(chans[2], "", rgb, "B")
+    MEL.connect_material_property(rgb, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(scalar(mat, "Roughness", 0.28, -450, 300), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(scalar(mat, "Metallic", 0.35, -450, 400), "", unreal.MaterialProperty.MP_METALLIC)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
 # Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
@@ -1625,6 +1688,15 @@ WORLD_LIBRARY = {
     "PoolWater": ((0.10, 0.45, 0.55), 0.05, 0.0, 0.0, 0.0),
     "Trim": ((0.88, 0.88, 0.86), 0.5, 0.0, 0.0, 0.0),
     "Lamp": ((0.15, 0.15, 0.15), 0.5, 5.0, 0.0, 0.5),
+    "Asphalt": ((0.11, 0.11, 0.11), 0.9, 6.0, 0.0, 0.0),
+    "Steel": ((0.30, 0.36, 0.40), 0.55, 5.0, 0.0, 0.6),
+    "LampGlow": ((1.0, 0.78, 0.50), 0.4, 0.0, 0.0, 0.0, 40.0),
+    # Vehicles (Tools/blender/build_props.py slots).
+    "Glass": ((0.03, 0.035, 0.04), 0.06, 0.0, 0.0, 0.0),
+    "Tyre": ((0.03, 0.03, 0.03), 0.85, 0.0, 0.0, 0.0),
+    "HeadLight": ((0.9, 0.9, 0.85), 0.2, 0.0, 0.0, 0.0, 60.0),
+    "TailLight": ((0.6, 0.03, 0.02), 0.3, 0.0, 0.0, 0.0, 30.0),
+    "Trailer": ((0.80, 0.80, 0.78), 0.5, 5.0, 0.0, 0.3),
 }
 
 
@@ -1636,6 +1708,7 @@ build_sky_dome()
 build_lens_water()
 build_trees_materials()
 build_world_surface()
+build_vehicle_paint()
 build_terrain()
 build_rain()
 build_emissive()

@@ -36,11 +36,9 @@ public:
 
 private:
 	void Build(const FMarina& Marina);
-	UMaterialInterface* Surface(const FLinearColor& Color, float Roughness, float Pattern, float Windows = 0.f, float Metallic = 0.f);
 
 	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> Tiled;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Rocks;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Boats;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Scans;
-	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> SurfaceMaterial;
 };
