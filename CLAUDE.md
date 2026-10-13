@@ -75,6 +75,15 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `.camera.json` and `.telemetry.csv`. More args: `-SailingWindFrom=<deg>`, `-SailingGust=<0..1>`,
    `-SailingReef=<n>`, `-SailingCrewKg=<kg>`. `scripts/bench-phase8.sh [seconds] [--regression]` is the gate bench.
 
+16. Visual phases (plan: the Claude Doc "Sailing Game: Visual Realism Plan"; `docs/visual-N/`). `scripts/bench-visual.sh
+   [seconds] [label] [tiers...]` runs eight views on each tier of the packaged build with GPU time per budget slice
+   (`DOCS=<dir>` keeps the screenshots). Every bench.json now has a `gpu` object (base, lumen, water, clouds_fog,
+   niagara, post, other: three `ProfileGPU` frames after the measured window, parsed by `GpuSlices.h`; skip with
+   `-SailingNoGpuSlices`) and the bench-phase CSVs carry those columns. Tier pipeline: `VisualPipeline.h`
+   (`QualityCVars`, `CameraEV100`). Measuring args: `-SailingAA=<0|2 TAA|4 TSR|5 SMAA>`, `-SailingScreenPct=<n>`,
+   `-SailingLumenHW=0|1`, `-SailingGI=<scalability level>`. `scripts/make_before_after_page.py <phase>` builds the
+   before/after compare page from `docs/<phase>/compare/scores.csv`.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -120,6 +129,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   a Color sampler must be sRGB (values gamma-encoded on the CPU); never call UpdateResource per frame; volumetric
   cloud shadows on the sun cost 4+ ms on this Mac (left off); the clouds' shadow rays toward a sun near the horizon
   cost a third of the frame at night, so `r.VolumetricCloud.Shadow.ViewRaySampleMaxCount` drops with sun elevation; the gust front is easiest to see from a low camera.
+- Rendering (Visual V1): Substrate is on project-wide; ray tracing is compiled in on demand (`r.RayTracing.Enable` is
+  set per tier, only High uses it, for Lumen) and needs `r.SkinCache.CompileShaders=True` or the packaged game dies at
+  startup. TSR is off (TAA at 67% on Medium, native TAA on High; this engine build has no MetalFX). High uses Lumen's
+  High GI scalability, not Epic's (5.5 ms at native). Virtual shadow maps cost about 2 ms on Medium and 4 ms on High
+  until the scene has Nanite meshes. Exposure on Medium and High follows the light (incident meter), not the frame;
+  `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

@@ -9,7 +9,7 @@ source "$(dirname "$0")/env.sh"
 SECONDS_PER_RUN="${1:-15}"
 OUT="$ARTIFACTS/phase3-bench.csv"
 mkdir -p "$REPO_ROOT/docs/phase-3"
-echo "view,quality,avg_fps,p99_ms,resolution" > "$OUT"
+echo "view,quality,avg_fps,p99_ms,resolution,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms" > "$OUT"
 
 run() # name quality demo args
 {
@@ -19,11 +19,13 @@ run() # name quality demo args
 	DEMO="$DEMO_FLAG" SHOT="$SHOT_NAME" ARGS="$* -SailingQuality=$Q" "$(dirname "$0")/bench-mac.sh" "$SECONDS_PER_RUN" > /dev/null || true
 	python3 - "$ARTIFACTS/bench.json" "$NAME" "$Q" >> "$OUT" <<'PY'
 import json, sys
+G = ('total_ms', 'base_ms', 'lumen_ms', 'water_ms', 'clouds_fog_ms', 'niagara_ms', 'post_ms')
+gpu = lambda b: ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G)
 try:
     b = json.load(open(sys.argv[1]))
-    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']},{b['resolution']}")
+    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']},{b['resolution']}" + gpu(b))
 except Exception:
-    print(f"{sys.argv[2]},{sys.argv[3]},error,,")
+    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,")
 PY
 	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$SHOT_NAME.png" ]] && cp "$ARTIFACTS/$SHOT_NAME.png" "$REPO_ROOT/docs/phase-3/$SHOT_NAME.png" || true
 }

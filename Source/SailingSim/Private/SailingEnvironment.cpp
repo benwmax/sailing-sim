@@ -8,6 +8,8 @@
 #include "Components/VolumetricCloudComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
+#include "VisualPipeline.h"
+#include "SailingSettings.h"
 #include "Engine/SkyLight.h"
 #include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
@@ -191,6 +193,32 @@ void ASailingEnvironment::MoonPosition(double ClockHour, double DayOfYear, doubl
 	SunPosition(ClockHour - ElongationDeg / 15.0, DayOfYear + 365.25 * ElongationDeg / 360.0, LatitudeDeg, LongitudeDeg, UtcOffsetHours, OutElevation, OutAzimuth);
 }
 
+void ASailingEnvironment::ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness)
+{
+	// Visual V1: one filmic look on Medium and High. The engine's filmic tone curve with a slight warm bias for Texas
+	// afternoons (neutral under a storm deck), local exposure so a white sail against a bright sky keeps its detail,
+	// modest bloom and lens flare, a little vignetting, per-object motion blur at a 90 degree shutter, and no chromatic
+	// aberration or film grain. Depth of field stays off outside photo mode. Low keeps the Phase 8 post.
+	FPostProcessSettings& PP = PostProcess->Settings;
+	PP.bOverride_WhiteTemp = PP.bOverride_LocalExposureHighlightContrastScale = PP.bOverride_LocalExposureShadowContrastScale = bPhysicalCamera;
+	PP.bOverride_BloomIntensity = PP.bOverride_LensFlareIntensity = PP.bOverride_SceneFringeIntensity = PP.bOverride_VignetteIntensity = bPhysicalCamera;
+	PP.bOverride_MotionBlurAmount = PP.bOverride_MotionBlurMax = PP.bOverride_FilmGrainIntensity = bPhysicalCamera;
+	if (!bPhysicalCamera)
+	{
+		return;
+	}
+	PP.WhiteTemp = FMath::Lerp(6900.f, 6500.f, FMath::Clamp(float(CloudDarkness) * 1.5f, 0.f, 1.f));
+	PP.LocalExposureHighlightContrastScale = 0.7f;
+	PP.LocalExposureShadowContrastScale = 0.9f;
+	PP.BloomIntensity = 0.35f;
+	PP.LensFlareIntensity = 0.15f;
+	PP.SceneFringeIntensity = 0.f;
+	PP.VignetteIntensity = 0.25f;
+	PP.MotionBlurAmount = 0.25f;
+	PP.MotionBlurMax = 2.f;
+	PP.FilmGrainIntensity = 0.f;
+}
+
 void ASailingEnvironment::UpdateSun(double Hour)
 {
 	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
@@ -201,10 +229,40 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	// Night: below civil twilight the scene is lit by a dim, bluish sky (moonlight and town glow) and the eye does not
 	// adapt all the way to darkness, so the water stays dark and the navigation lights stand out.
 	const float Night = 1.f - FMath::SmoothStep(-12.f, -2.f, float(Elevation));
-	if (PostProcess && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
+	const float NightFloorEV = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
+	const bool bPhysicalCamera = UsesPhysicalCamera(USailingSettings::Get()->Quality);
+	if (PostProcess && !bPhysicalCamera && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
 	{
 		PostProcess->Settings.bOverride_AutoExposureMinBrightness = true;
-		PostProcess->Settings.AutoExposureMinBrightness = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
+		PostProcess->Settings.AutoExposureMinBrightness = NightFloorEV;
+	}
+	const double MoonAge = MoonAgeDays(GM->GetUnixTime());
+	double MoonEl, MoonAz;
+	MoonPosition(Hour, GM->GetDayOfYear(), MoonAge, GM->GetLake().Latitude, GM->GetLake().Longitude, GM->GetUtcOffsetHours(), MoonEl, MoonAz);
+	// How much direct sun reaches the water and boat through the clouds: cloud shadows dim it where clouds pass, and a
+	// solid overcast or storm deck also scatters it away.
+	const float CloudShade = (1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness)))
+		* (1.f - FMath::SmoothStep(0.3f, 0.7f, float(W.CloudDarkness)));
+	if (PostProcess)
+	{
+		ApplyCameraLook(bPhysicalCamera, W.CloudDarkness);
+		if (bPhysicalCamera)
+		{
+			// Visual V1: exposure follows the light, as an incident meter would (VisualPipeline.h), with a little room
+			// for the histogram to react to framing.
+			const double EV = CameraEV100(Elevation, CloudShade, W.CloudDarkness, MoonEl, MoonIllumination(MoonAge), NightFloorEV);
+			FPostProcessSettings& PP = PostProcess->Settings;
+			PP.bOverride_AutoExposureMethod = PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = PP.bOverride_AutoExposureBias = true;
+			PP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
+			// Under a storm deck the band narrows: the eye does not brighten the gloom much (Phase 8, fix 7).
+			// In clear air the band and the half-stop lift match the Phase 8 look (a camera's auto exposure, as in the
+			// reference clips); both fade out under the deck.
+			const float Dark = FMath::Clamp(float(W.CloudDarkness), 0.f, 1.f);
+			const float Band = FMath::Lerp(1.f, 0.3f, Dark);
+			PP.AutoExposureMinBrightness = float(EV) - Band;
+			PP.AutoExposureMaxBrightness = float(EV) + Band;
+			PP.AutoExposureBias = 0.5f * (1.f - Dark);
+		}
 	}
 	if (MoonLight)
 	{
@@ -212,9 +270,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		// exposure floor keeps the night dark); it lights the atmosphere as its second sun, a deep blue sky.
 		// Phase 8: the moon has its phase and its place in the sky for the date (a new moon leaves only the town glow).
 		static const bool bNoMoon = FParse::Param(FCommandLine::Get(), TEXT("SailingNoMoon")); // profiling
-		const double Age = MoonAgeDays(GM->GetUnixTime());
-		double MoonEl, MoonAz;
-		MoonPosition(Hour, GM->GetDayOfYear(), Age, GM->GetLake().Latitude, GM->GetLake().Longitude, GM->GetUtcOffsetHours(), MoonEl, MoonAz);
+		const double Age = MoonAge;
 		const float Up = FMath::SmoothStep(-3.f, 4.f, float(MoonEl));
 		const float Lit = 0.15f + 0.85f * float(MoonIllumination(Age)) * Up;
 		// The light keeps the moon's bearing but stays at least 25 deg up: the clouds' shadow rays toward a light near
@@ -228,10 +284,6 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		// The light travels from the sun toward the ground.
 		// Below the horizon the light stays just under it (the sky keeps its twilight glow) and fades out with the night.
 		Sun->SetActorRotation(FRotator(-FMath::Max(Elevation, -4.0), Azimuth + 180.0, 0.0));
-		// Cloud shadows already dim the sun where clouds pass; a solid overcast or storm deck also scatters it away.
-		// How much direct sun reaches the water and boat through the clouds.
-		const float CloudShade = (1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness)))
-			* (1.f - FMath::SmoothStep(0.3f, 0.7f, float(W.CloudDarkness)));
 		// The sky atmosphere is lit by this light too, so keep enough intensity for a grey storm sky and take the
 		// direct light off the scene with the diffuse and specular scales instead (no glitter, no hard shadows).
 		const float Intensity = FMath::Max(CloudShade, 0.35f);
@@ -288,8 +340,11 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 	{
 		// Eyes and cameras adapt only part of the way to the gloom under a storm: the scene should read dark (every storm
 		// reference does), so hold exposure a stop and a half under where auto exposure would take it at full darkness.
-		PostProcess->Settings.bOverride_AutoExposureBias = true;
-		PostProcess->Settings.AutoExposureBias = 0.5f - 1.5f * float(W.CloudDarkness);
+		if (!UsesPhysicalCamera(USailingSettings::Get()->Quality)) // the physical camera meters the gloom itself
+		{
+			PostProcess->Settings.bOverride_AutoExposureBias = true;
+			PostProcess->Settings.AutoExposureBias = 0.5f - 1.5f * float(W.CloudDarkness);
+		}
 		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.
 		const float Grey = FMath::SmoothStep(0.3f, 0.8f, float(W.CloudDarkness));

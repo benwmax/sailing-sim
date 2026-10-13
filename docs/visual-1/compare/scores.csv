@@ -1,0 +1,13 @@
+scene,light_before,light_after,water_before,water_after,sky_before,sky_after,sails_before,sails_after,boat_before,boat_after,notes
+j22-heavy-chase,3,2,2,2,2,2,3,3,4,4,Crisper rig and crew shadows on the deck (virtual shadow maps); sky highlights hold detail; sails take soft bounce light. The box deck and cylinder crew still give it away.
+j22-light-chase,3,2,2,2,2,2,3,3,4,4,Sail shading reads softer and more like cloth under skylight; exposure matches the clear-day look.
+j22-moderate-chase,3,2,2,2,2,2,3,3,4,4,Shading across the mainsail now varies with the light; contact shadows of the crew are crisp. Geometry is unchanged.
+j22-helm-reservoir,3,2,2,2,2,2,3,3,3,3,Boom and sail shadows on the deck are sharper; exposure no longer jumps when the sail fills the frame.
+j22-actioncam-lake,3,2,2,2,2,2,3,3,4,4,Deck shadows from the boom and crew are crisp; the barrel distortion and exposure match the action cam.
+rh-drone-cat,3,2,1,1,2,2,3,3,4,4,"Exposure follows the light, not the dark water, so the drone frame is about 0.7 stop darker than the Phase 8 auto exposure; the reference drone is brighter."
+rh-c30-evening,3,2,2,2,2,2,3,3,4,4,Low evening sun: the sail picks up warmth and the sky keeps its gradient with local exposure.
+storm-lake,3,3,2,2,3,3,4,4,3,3,Same gloom as Phase 8 (the camera opens only a little under the deck). No shelf-cloud structure yet (V5).
+squall-lake,3,3,2,2,3,3,4,4,3,3,A little darker than Phase 8 under the squall; the sky is still a flat gradient (V5).
+gulf-passage,3,2,3,3,2,2,3,3,4,4,Cabin box and shadows crisper; colour unchanged.
+bay-hobie,3,2,2,2,2,2,3,3,4,4,Overcast light slightly brighter and softer; trampoline and crew are simple shapes.
+sunfish-reach,3,2,2,2,2,2,3,3,4,4,Deck and sail shading softer; the sailor is still a cylinder.
