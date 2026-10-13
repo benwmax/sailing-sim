@@ -16,12 +16,12 @@ WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeC
                "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer",
                "Dark": "MI_World_Tyre", "Steel": "MI_World_Steel", "Wood": "MI_World_Pilings", "Lantern": "MI_World_Glass",
                "Reflective": "MI_World_Reflective", "ContainerPaint": "MI_World_ContainerPaint", "Trim": "MI_World_Trim"}
-for _slot in ("White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull"):
+for _slot in ("Reed", "ReedHead", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull"):
     WORLD_SLOTS[_slot] = f"MI_World_{_slot}"
 KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"),
          ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"),
          ("SM_Vessel", "Vessels"), ("SM_Barge", "Vessels"), ("SM_Container", "Vessels"),
-         ("SM_House", "Houses"), ("SM_Landmark", "Landmarks"))
+         ("SM_House", "Houses"), ("SM_Landmark", "Landmarks"), ("SM_Reeds", "Props"))
 
 
 def import_fbx(path, dest, name):
@@ -73,8 +73,12 @@ def setup(mesh, nanite=True, overrides=None):
     unreal.EditorAssetLibrary.save_loaded_asset(mesh)
 
 
+# ONLY=<prefix> imports just those models and skips the bakes (iterating on one generator).
+ONLY = os.environ.get("ONLY", "")
 for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
     name = os.path.splitext(os.path.basename(path))[0]
+    if ONLY and not name.startswith(ONLY):
+        continue
     folder = next((k for prefix, k in KINDS if name.startswith(prefix)), "Misc")
     mesh = import_fbx(path, f"{WORLD}/{folder}", name)
     setup(mesh, overrides=FOLDER_SLOTS.get(folder))
@@ -85,7 +89,7 @@ for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
 BAKED = f"{WORLD}/Baked"
 old = set(a.split(".")[0] for a in unreal.EditorAssetLibrary.list_assets(BAKED, recursive=False)) if unreal.EditorAssetLibrary.does_directory_exist(BAKED) else set()
 BAKES = {"marina": unreal.WorldKitLibrary.bake_marina, "bridges": unreal.WorldKitLibrary.bake_bridges, "shore": unreal.WorldKitLibrary.bake_shore}
-for what, lake in (("marina", "RayHubbard"), ("bridges", "RayHubbard"), ("bridges", "GalvestonBay"), ("bridges", "GulfPassage"),
+for what, lake in () if ONLY else (("marina", "RayHubbard"), ("bridges", "RayHubbard"), ("bridges", "GalvestonBay"), ("bridges", "GulfPassage"),
                    ("shore", "RayHubbard"), ("shore", "GalvestonBay"), ("shore", "GulfPassage")):
     meshes = BAKES[what](lake)
     for m in meshes:
@@ -93,7 +97,7 @@ for what, lake in (("marina", "RayHubbard"), ("bridges", "RayHubbard"), ("bridge
         old.discard(m.get_path_name().split(".")[0])
     unreal.log(f"Imported the {lake} {what}: {len(meshes)} Nanite tiles")
     meshes = None
-for path in sorted(old):
+for path in ([] if ONLY else sorted(old)):  # never with ONLY: no bake ran, so every tile would look stale
     unreal.EditorAssetLibrary.delete_asset(path)
     unreal.log(f"Removed stale {path}")
 

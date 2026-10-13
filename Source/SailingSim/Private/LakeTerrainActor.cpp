@@ -150,6 +150,7 @@ void ALakeTerrainActor::BeginPlay()
 		}
 	}
 	PlaceTrees();
+	PlaceReeds();
 	PlaceBuildings();
 	PlaceBridgesAndDocks();
 	bTreesPlaced = true;
@@ -432,6 +433,65 @@ void ALakeTerrainActor::PlaceTrees()
 	TreeMeshes[3]->AddInstances(Trunk, false, true);
 	UE_LOG(LogSailing, Display, TEXT("Trees: %d oak, %d cedar elm, %d red cedar"), Oak.Num(), Elm.Num(), Cedar.Num());
 	bTreesPlaced = true;
+}
+
+void ALakeTerrainActor::PlaceReeds()
+{
+	const FLakeData* Lake = GetLake();
+	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0) return;
+	UStaticMesh* Meshes[2] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")) };
+	if (!Meshes[0] || !Meshes[1]) return;
+	const FLakeTerrain& T = Lake->Terrain;
+	// Every grid node: gentle ground from 0.4 m under the water to 0.6 m above it, in patches
+	// (a low-frequency field gates them, so coves fill and open banks stay bare), clear of the club's marina.
+	const int32 Step = 1;
+	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
+	TArray<FTransform> Out[2];
+	for (int32 R = 1; R < T.GetRows() - 1; R += Step)
+	{
+		for (int32 C = 1; C < T.GetCols() - 1; C += Step)
+		{
+			const double H = T.NodeHeight(R, C);
+			if (H < -0.4 || H > 0.6) continue;
+			const double Slope = FMath::Max(FMath::Abs(T.NodeHeight(R + 1, C) - T.NodeHeight(R - 1, C)), FMath::Abs(T.NodeHeight(R, C + 1) - T.NodeHeight(R, C - 1))) / (2.0 * T.GetCell());
+			if (Slope > 0.2) continue;
+			// At the water's edge only: open water within three cells (15 m on the lake), not a flat meadow at lake level.
+			if (H > -0.05 && R > 3 && C > 3 && R < T.GetRows() - 4 && C < T.GetCols() - 4
+				&& FMath::Min(FMath::Min(T.NodeHeight(R + 3, C), T.NodeHeight(R - 3, C)), FMath::Min(T.NodeHeight(R, C + 3), T.NodeHeight(R, C - 3))) > -0.05) continue;
+			const double X = T.GetOriginX() + R * T.GetCell(), Y = T.GetOriginY() + C * T.GetCell();
+			if (X * X + Y * Y < 350.0 * 350.0) continue;
+			const double Patch = FMath::Sin(X * 0.011 + FMath::Sin(Y * 0.007) * 2.0) * FMath::Sin(Y * 0.013 + FMath::Sin(X * 0.005) * 2.0);
+			const uint32 Hh = Hash(uint32(R) * 73856093u ^ uint32(C) * 19349663u);
+			if (Patch < -0.1 || (Hh & 1023) > 760) continue;
+			const int32 Kind = H < 0.05 ? 0 : int32((Hh >> 10) & 1);   // cattails stand in the water, rushes on the bank
+			for (int32 K = 0; K < 2; ++K)
+			{
+				const uint32 Hk = Hash(Hh + K * 2654435761u);
+				const double Dx = (((Hk & 255) / 255.0) - 0.5) * T.GetCell() * Step, Dy = ((((Hk >> 8) & 255) / 255.0) - 0.5) * T.GetCell() * Step;
+				const double Ground = FMath::Max(T.HeightAt(X + Dx, Y + Dy), -0.35);
+				const float S = 0.75f + 0.55f * ((Hk >> 16) & 255) / 255.f;
+				Out[Kind].Add(FTransform(FRotator(0.f, ((Hk >> 24) & 255) * 1.41f, 0.f), FVector(X + Dx, Y + Dy, Ground) * CmPerMeter, FVector(S)));
+			}
+		}
+	}
+	for (int32 Kind = 0; Kind < 2; ++Kind)
+	{
+		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+		C->SetupAttachment(RootComponent);
+		C->SetStaticMesh(Meshes[Kind]);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->bAffectDynamicIndirectLighting = false;
+		C->bAffectDistanceFieldLighting = false;
+		C->bVisibleInRayTracing = false;
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		C->SetCullDistances(0, 500.f * 100.f);
+		C->RegisterComponent();
+		C->AddInstances(Out[Kind], false, true);
+		ReedModels.Add(C);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail and %d rush clumps (first at %s)"), Out[0].Num(), Out[1].Num(),
+		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
 }
 
 void ALakeTerrainActor::PlaceBuildings()
