@@ -11,8 +11,8 @@ MODELS = os.path.join(REPO, "Artifacts", "models", "world")
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 WORLD = "/Game/World"
 # Slot name -> material (under /Game/World unless a full path).
-WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeCrown"}
-KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"))
+WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeCrown", "Rock": "MI_World_Rock"}
+KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"))
 
 
 def import_fbx(path, dest, name):
@@ -66,3 +66,16 @@ for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
     setup(mesh)
     b = mesh.get_bounding_box()
     unreal.log(f"Imported {name}: bounds {b.min} .. {b.max}")
+
+# The generated structures (WorldKit.h): bake the marina into Nanite tiles. Stale tiles from an older layout are removed.
+BAKED = f"{WORLD}/Baked"
+old = set(a.split(".")[0] for a in unreal.EditorAssetLibrary.list_assets(BAKED, recursive=False)) if unreal.EditorAssetLibrary.does_directory_exist(BAKED) else set()
+for lake in ("RayHubbard",):
+    meshes = unreal.WorldKitLibrary.bake_marina(lake)
+    for m in meshes:
+        unreal.EditorAssetLibrary.save_loaded_asset(m)
+        old.discard(m.get_path_name().split(".")[0])
+    unreal.log(f"Imported the {lake} marina: {len(meshes)} Nanite tiles")
+for path in sorted(old):
+    unreal.EditorAssetLibrary.delete_asset(path)
+    unreal.log(f"Removed stale {path}")

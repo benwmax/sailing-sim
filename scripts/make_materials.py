@@ -526,6 +526,7 @@ def build_boat_surface(name, bend):
         unreal.EditorAssetLibrary.delete_asset(path)
     mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("used_with_skeletal_mesh", True)  # the crew (Visual V3) wear these materials too
+    mat.set_editor_property("used_with_instanced_static_meshes", True)  # the boats berthed in the marina (Visual V6)
     mpc = collection()
     color = vector(mat, "Color", (0.85, 0.85, 0.82, 1), -1400, -200)
     rough = scalar(mat, "Roughness", 0.35, -1400, -50)
@@ -1523,6 +1524,110 @@ return c;
     unreal.EditorAssetLibrary.save_loaded_asset(bark)
 
 
+WORLD_SURFACE_CODE = """
+// Visual V6: one surface for the generated world (docks, buildings, bridges), set by instance parameters. UV is in
+// metres along the part. Pattern: 0 plain, 1 deck planks, 2 shingles, 3 lap siding, 4 concrete, 5 weathered metal.
+float2 uv = UV;
+float3 c = Color.rgb;
+float r = Rough;
+float n = frac(sin(dot(floor(uv * float2(7.0, 7.0)), float2(12.9898, 78.233))) * 43758.5453);
+if (Pattern > 0.5 && Pattern < 1.5)
+{
+    // 14 cm boards with 1 cm gaps, each board its own grey.
+    float board = floor(uv.y / 0.15);
+    float gap = step(0.93, frac(uv.y / 0.15));
+    float b = frac(sin(board * 91.7) * 4375.5);
+    float grain = 0.5 + 0.5 * sin(uv.x * 40.0 + b * 30.0 + sin(uv.x * 3.0 + board) * 2.0);
+    c *= (0.82 + 0.25 * b) * (0.93 + 0.07 * grain);
+    c = lerp(c, c * 0.25, gap);
+}
+else if (Pattern > 1.5 && Pattern < 2.5)
+{
+    float row = floor(uv.y / 0.14);
+    float tab = frac(uv.x / 0.33 + 0.5 * fmod(row, 2.0));
+    float b = frac(sin(row * 31.1 + floor(uv.x / 0.33) * 17.3) * 4375.5);
+    c *= (0.85 + 0.2 * b) * (1.0 - 0.35 * step(0.96, tab)) * (1.0 - 0.3 * step(0.9, frac(uv.y / 0.14)));
+}
+else if (Pattern > 2.5 && Pattern < 3.5)
+{
+    float lap = frac(uv.y / 0.18);
+    c *= 0.9 + 0.12 * lap;
+    // Windows: a band at sill height, panes every 2.4 m (only on walls tall enough).
+    float wx = frac(uv.x / 2.4), wy = uv.y;
+    float win = step(0.25, wx) * step(wx, 0.75) * step(0.9, wy) * step(wy, 2.3) * Windows;
+    c = lerp(c, float3(0.04, 0.05, 0.06), win);
+    r = lerp(r, 0.08, win);
+}
+else if (Pattern > 3.5 && Pattern < 4.5)
+{
+    c *= 0.85 + 0.25 * n;
+}
+else if (Pattern > 4.5)
+{
+    float rust = saturate(sin(uv.x * 3.1 + n * 5.0) * 0.5 + 0.5) * saturate(1.0 - uv.y * 0.6);
+    c = lerp(c, float3(0.35, 0.18, 0.08), rust * 0.35);
+}
+Out = r;
+return c;
+"""
+
+
+def build_world_surface():
+    mat = world_material("M_WorldSurface")
+    mat.set_editor_property("used_with_static_lighting", False)
+    uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0)
+    color = vector(mat, "Color", (0.6, 0.6, 0.58, 1), -900, 100)
+    rough = scalar(mat, "Roughness", 0.8, -900, 200)
+    pattern = scalar(mat, "Pattern", 0.0, -900, 300)
+    windows = scalar(mat, "Windows", 0.0, -900, 400)
+    metal = scalar(mat, "Metallic", 0.0, -900, 500)
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
+               extra_outputs=[("Out", F1)])
+    connect(uv, "", c, "UV")
+    connect(color, "RGBA", c, "Color")
+    connect(rough, "", c, "Rough")
+    connect(pattern, "", c, "Pattern")
+    connect(windows, "", c, "Windows")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    # Instances for the world kit's static meshes (slot name -> MI_World_<slot>); updated in place like the boat library.
+    for slot, (col, rough, pattern, windows, metallic) in WORLD_LIBRARY.items():
+        name = f"MI_World_{slot}"
+        path = f"{WORLD_FOLDER}/{name}"
+        mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
+            ASSETS.create_asset(name, WORLD_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        MEL.set_material_instance_parent(mi, mat)
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
+        MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", rough)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Pattern", pattern)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Windows", windows)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", metallic)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
+# Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
+# The rest are the generated structures' looks and must match KitLook() in Source/SailingSim/Private/WorldKit.cpp.
+WORLD_LIBRARY = {
+    "Rock": ((0.52, 0.49, 0.43), 0.9, 4.0, 0.0, 0.0),
+    "Decking": ((0.42, 0.40, 0.36), 0.85, 1.0, 0.0, 0.0),
+    "Floats": ((0.05, 0.05, 0.05), 0.6, 0.0, 0.0, 0.0),
+    "Pilings": ((0.32, 0.27, 0.21), 0.9, 4.0, 0.0, 0.0),
+    "Metal": ((0.75, 0.76, 0.78), 0.3, 0.0, 0.0, 1.0),
+    "White": ((0.85, 0.86, 0.84), 0.45, 0.0, 0.0, 0.0),
+    "Siding": ((0.78, 0.74, 0.64), 0.75, 3.0, 1.0, 0.0),
+    "Roof": ((0.20, 0.20, 0.21), 0.8, 2.0, 0.0, 0.0),
+    "Concrete": ((0.62, 0.60, 0.56), 0.85, 4.0, 0.0, 0.0),
+    "PoolWater": ((0.10, 0.45, 0.55), 0.05, 0.0, 0.0, 0.0),
+    "Trim": ((0.88, 0.88, 0.86), 0.5, 0.0, 0.0, 0.0),
+    "Lamp": ((0.15, 0.15, 0.15), 0.5, 5.0, 0.0, 0.5),
+}
+
+
 build_water()
 build_water_v4()
 build_spray()
@@ -1530,6 +1635,7 @@ build_cloud_layers()
 build_sky_dome()
 build_lens_water()
 build_trees_materials()
+build_world_surface()
 build_terrain()
 build_rain()
 build_emissive()

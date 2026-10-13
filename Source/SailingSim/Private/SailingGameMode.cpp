@@ -21,6 +21,7 @@
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
+#include "MarinaActor.h"
 #include "Ocean.h"
 #include "TrafficManager.h"
 #include "SailingEnvironment.h"
@@ -405,6 +406,10 @@ void ASailingGameMode::StartPlay()
 	if (Lake.Navaids.Num() > 0)
 	{
 		GetWorld()->SpawnActor<ANavaidsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
+	if (Lake.Marina.IsLoaded() && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoMarina")))
+	{
+		GetWorld()->SpawnActor<AMarinaActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
 	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
 	int32 TrafficArg = 0;

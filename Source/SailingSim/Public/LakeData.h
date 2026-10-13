@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Marina.h"
 #include "BoatModel.h"
 #include "LakeTerrain.h"
 #include "Lights.h"
@@ -79,6 +80,8 @@ struct SAILINGSIM_API FLakeData
 	std::vector<Sailing::FObstacleSegment> Obstacles;
 	TArray<FLaunchSpot> LaunchSpots;
 	TArray<FLakeDock> Docks;
+	/** Visual V6: the club's marina (rows, slips, piers, breakwater, buildings), when <Name>.marina.json exists. */
+	FMarina Marina;
 	TArray<FLakeBridge> Bridges;
 	TArray<FLakeBuilding> Buildings;
 	TArray<TPair<FString, FVector2D>> Checkpoints;

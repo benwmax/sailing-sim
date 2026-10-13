@@ -3,6 +3,7 @@
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "LakeData.h"
+#include "Marina.h"
 #include "TreePlacement.h"
 #include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
@@ -438,9 +439,16 @@ void ALakeTerrainActor::PlaceBuildings()
 		BuildingMeshes.Add(I);
 	}
 	TArray<FTransform> Lists[3];
+	// The marina actor draws the club's own buildings: leave out the OSM boxes under them.
+	const bool bMarina = Lake->Marina.IsLoaded();
 	for (int32 K = 0; K < Lake->Buildings.Num(); ++K)
 	{
 		const FLakeBuilding& B = Lake->Buildings[K];
+		if (bMarina && Lake->Marina.Buildings.ContainsByPredicate([&](const FMarinaBuilding& M)
+			{ return FVector2D::Distance(M.Center, FVector2D(B.X, B.Y)) < 0.5 * M.Size.Size() + 5.0; }))
+		{
+			continue;
+		}
 		Lists[Hash(K) % 3].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground + B.Height * 0.5) * CmPerMeter, FVector(B.Length, B.Width, B.Height)));
 	}
 	for (int32 K = 0; K < 3; ++K) BuildingMeshes[K]->AddInstances(Lists[K], false, true);
@@ -502,8 +510,11 @@ void ALakeTerrainActor::PlaceBridgesAndDocks()
 	TArray<int32> Tri;
 	TArray<FVector> N;
 	constexpr double Deck = 0.45;
+	// The club's marina (AMarinaActor) replaces the OSM docks inside it, as in the physics (FLakeData::BuildObstacles).
+	const FBox2D MarinaBox = Lake->Marina.Bounds();
 	for (const FLakeDock& Dock : Lake->Docks)
 	{
+		if (MarinaBox.bIsValid && MarinaBox.IsInside(Dock.Points[0])) continue;
 		if (Dock.bClosed)
 		{
 			TArray<FVector2D> Pts = Dock.Points;

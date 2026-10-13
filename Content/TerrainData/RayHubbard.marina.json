@@ -1,0 +1,25 @@
+{
+  "name": "Rush Creek Yacht Club",
+  "note": "Laid out by eye from public aerial views (2026) and georeferenced to the map frame (m, X north, Y east). Each id can be replaced by a scan: Content/World/Scans.json maps an id to a static mesh.",
+  "walkways": [
+    { "id": "rcyc.walkway", "points": [[4.8, 76.0], [-86.8, 140.1]], "width": 2.4 }
+  ],
+  "rows": [
+    { "id": "rcyc.dock.a", "points": [[-23.8, 104.0], [9.8, 167.5]], "width": 1.8, "slip_width": 3.6, "finger_length": 7.3, "start_offset": 6.0 },
+    { "id": "rcyc.dock.b", "points": [[-58.7, 124.0], [-7.6, 204.9]], "width": 1.8, "slip_width": 3.6, "finger_length": 7.3, "start_offset": 6.0 },
+    { "id": "rcyc.dock.c", "points": [[-83.0, 151.3], [-39.4, 219.9]], "width": 1.8, "slip_width": 3.6, "finger_length": 7.3, "start_offset": 6.0 }
+  ],
+  "piers": [
+    { "id": "rcyc.pier.north", "points": [[61.5, 181.2], [46.0, 187.5], [46.0, 224.9]], "width": 2.0 },
+    { "id": "rcyc.pier.ramp", "points": [[32.2, 166.3], [14.8, 221.7]], "width": 2.0 }
+  ],
+  "breakwaters": [
+    { "id": "rcyc.breakwater", "points": [[-2.6, 62.9], [-44.4, 70.4], [-75.5, 90.9], [-94.2, 125.2], [-109.8, 171.9]], "width": 6.0, "height": 1.6 }
+  ],
+  "buildings": [
+    { "id": "rcyc.clubhouse", "kind": "clubhouse", "center": [82.5, 79.1], "size": [30.5, 19.8], "heading": 31.8, "height": 4.2, "roof": 3.0 },
+    { "id": "rcyc.pool", "kind": "pool", "center": [92.7, 49.2], "size": [12.0, 6.0], "heading": 30.0 }
+  ],
+  "home_slip": { "row": "rcyc.dock.b", "side": 1, "index": 17 },
+  "occupancy": 0.65
+}

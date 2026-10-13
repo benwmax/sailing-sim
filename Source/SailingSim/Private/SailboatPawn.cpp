@@ -1458,7 +1458,16 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		FVector2D Berth;
 		double BerthHeading = 0.0;
 		const double WindFromRad = GM->GetWeatherState().Wind.FromDegrees * kDegToRad;
-		if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
+		const FMarina& Marina = GM->GetLake().Marina;
+		if (Drill == ESailingDrill::LeaveTheDock && Boat.GetConfig().Type == EBoatType::J22 && Marina.HomeSlip != INDEX_NONE)
+		{
+			// The J/22 starts in its own slip at the club (Visual V6), bow in, tied to the fingers.
+			const FMarinaSlip& Home = Marina.Slips[Marina.HomeSlip];
+			Boat.Reset(Home.Center.X, Home.Center.Y, Home.HeadingDeg * kDegToRad, 0.0);
+			Boat.GetMutableState().Time = Time;
+			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+		}
+		else if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
 		{
 			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
