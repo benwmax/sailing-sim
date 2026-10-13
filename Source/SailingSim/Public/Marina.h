@@ -32,6 +32,15 @@ struct FMarinaSlip
 	int32 Row = 0, Side = 1, Index = 0;
 	bool bOccupied = false;
 	bool bHome = false;
+	uint8 BoatType = 0;                        // Sailing::EBoatType of the boat in it (J/22 or Catalina 22) when occupied
+};
+
+/** A bigger boat lying alongside a fixed pier (a Catalina 30 is too beamy for the 3.6 m slips). */
+struct FMarinaAlongside
+{
+	FVector2D Center = FVector2D::ZeroVector;
+	float HeadingDeg = 0.f;
+	uint8 BoatType = 0;
 };
 
 struct FMarinaBuilding
@@ -51,12 +60,15 @@ struct SAILINGSIM_API FMarina
 	TArray<FMarinaRow> Rows;
 	TArray<FMarinaBuilding> Buildings;
 	TArray<FMarinaSlip> Slips;
+	TArray<FMarinaAlongside> Alongside;
 	int32 HomeSlip = INDEX_NONE;
 
 	bool IsLoaded() const { return Rows.Num() > 0 || Piers.Num() > 0; }
 	/** Reads the layout and lays out the slips (deterministic occupancy). */
 	bool Load(const FString& Path);
-	/** Every deck and breakwater as polylines for the obstacles: (points, kind, half-width). */
+	/** Visual V7: Catalina 30s alongside the fixed piers, on whichever side has the water for them. */
+	void PlaceAlongside(TFunctionRef<double(double, double)> DepthAt);
+	/** Every deck, breakwater and berthed boat as polylines for the obstacles: (points, kind, half-width). */
 	void ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, const FString&, float)> Visit) const;
 	/** The marina's footprint plus a margin: OSM docks inside it are replaced by the marina's own (drawn and in physics). */
 	FBox2D Bounds(double Margin = 20.0) const;

@@ -639,6 +639,7 @@ BOAT_LIBRARY = {
     "CrewCap": ("M_BoatSurface", (0.72, 0.72, 0.72), 0.80, 0.0, 0.0, 0.0, 0.40),
     "CrewGlasses": ("M_BoatSurface", (0.01, 0.01, 0.012), 0.05, 0.0, 1.0, 0.0, 0.0),
     "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
+    "SailCover": ("M_BoatSurface", (0.02, 0.05, 0.14), 0.8, 0.0, 0.0, 0.0, 0.6),      # navy acrylic canvas: sail covers, sun strips (V7)
     "Rope": ("M_BoatSurface", (0.62, 0.64, 0.68), 0.75, 0.0, 0.0, 0.0, 0.50),         # braided polyester sheets
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
 }
@@ -932,8 +933,13 @@ float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + l
 // Heavy rain: splashes and mist grey the surface.
 Foam = saturate(max(caps + wakeBreak, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
+// Glassy calm (Visual V7): under about 2 kn (rough = wind / 8 m/s) the capillaries die and the lake becomes a mirror
+// at dawn; only cat's-paws (the gust map darkens them) and boat wakes ruffle it.
+float glass = (1.0 - saturate((rough - 0.06) / 0.07)) * (1.0 - Dark);
+sx *= 1.0 - 0.85 * glass; sy *= 1.0 - 0.85 * glass;
+slopeVar *= 1.0 - 0.92 * glass;
 // Glint: a calm morning's sharp sun path, broadening with the wind and the ripples it raises; rain flattens and greys.
-float r0 = lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7));
+float r0 = lerp(lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7)), 0.004, glass);
 // GGX alpha = roughness^2; the unresolved slope variance adds to it (scaled down: the engine's GGX has no multiple
 // scattering, so a fully rough grazing reflection comes out darker than the sky sheen real water shows).
 float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);

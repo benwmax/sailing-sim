@@ -75,6 +75,12 @@ def import_boat(tag, dest):
         b = mesh.get_bounding_box()
         unreal.log(f"Imported {name}: {len(sockets)} sockets, Nanite {nanite}, bounds {b.min} .. {b.max}")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
+    # Visual V7: the boat as she lies in her slip (Tools/blender/build_berthed.py), for the marina's neighbours.
+    berthed = os.path.join(MODELS, f"SM_{tag}_Berthed.fbx")
+    if os.path.exists(berthed):
+        mesh = import_fbx(berthed, dest, f"SM_{tag}_Berthed")
+        setup(mesh, True, {}, {})
+        unreal.log(f"Imported SM_{tag}_Berthed")
 
 
 def import_crew():
@@ -121,7 +127,7 @@ import sys
 # Visual V7: the other seven boats (Tools/blender/build_fleet.py). `-- fleet` imports only them.
 FLEET = ("Sunfish", "ILCA7", "Catalina22", "Catalina30", "Hobie16", "Corsair880", "Lagoon42")
 only_fleet = "fleet" in sys.argv
-if not only_fleet:
+if not only_fleet or "berthed" in sys.argv:
     import_boat("J22", "/Game/Boats/J22")
     import_crew()
 for tag in FLEET:

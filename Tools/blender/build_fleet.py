@@ -36,7 +36,7 @@ HULLS = CFG["hulls"]
 DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
-         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail"]
+         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover"]
 CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
@@ -507,8 +507,8 @@ elif TAG in ("Catalina22", "Catalina30"):
         x0 = cb[0]
         frame = [(x0 - 0.05 - 0.7 * math.sin(math.pi / 2 * k / 8), 0.0, top(x0) + 0.75 * math.cos(math.pi / 2 * k / 8)) for k in range(9)]
         rows = [[(p[0], v * (half(x0) + 0.05), MAIN.deck_z(x0, 0) + (p[2] - MAIN.deck_z(x0, 0)) * (1 - 0.15 * v * v)) for v in [-1 + 2 * j / 8 for j in range(9)]] for p in frame]
-        hull.grid(rows, "Graphics")
-        hull.grid(rows, "Graphics", flip=True)
+        hull.grid(rows, "SailCover")
+        hull.grid(rows, "SailCover", flip=True)
     if SPEC.get("outboard"):
         e = CFG["engines"][0]["position"]
         tz = MAIN.deck_z(st, 0)
@@ -630,7 +630,7 @@ elif TAG == "Lagoon42":
     for side in (1, -1):
         for x in (s0 - 0.1, b0 + 0.4):
             tube(hull, [(x, side * (inner(x) - 0.1), dz), (x, side * (inner(x) - 0.1), roof)], 0.02, "Stainless", 8)
-    hull.grid([[(x, (inner(x) - 0.05) * v, roof + 0.05) for v in [-1 + 2 * k / 6 for k in range(7)]] for x in stations(b0 + 0.3, s0, 4)], "Graphics")
+    hull.grid([[(x, (inner(x) - 0.05) * v, roof + 0.05) for v in [-1 + 2 * k / 6 for k in range(7)]] for x in stations(b0 + 0.3, s0, 4)], "SailCover")
     tube(hull, [(b1 + 0.9, HS[0].cy, dz - 0.05), (b1 + 0.9, HS[1].cy, dz - 0.05)], 0.11, "Topsides", 12)
     rows = [[(x, -inner(x) + 0.05 + (2 * inner(x) - 0.1) * k / 10, dz - 0.05) for k in range(11)] for x in stations(b1, b1 + 0.9, 3)]
     hull.grid(rows, "BlackPlastic")
