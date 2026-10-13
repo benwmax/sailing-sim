@@ -35,7 +35,7 @@ try:
 except Exception:
     print(f"{sys.argv[2]},error,")
 PY
-	[[ -f "$ARTIFACTS/$NAME.png" ]] && cp "$ARTIFACTS/$NAME.png" "$REPO_ROOT/docs/phase-7/$NAME.png"
+	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$NAME.png" ]] && cp "$ARTIFACTS/$NAME.png" "$REPO_ROOT/docs/phase-7/$NAME.png" || true
 done
 cat "$OUT"
 if [[ "${2:-}" == "--regression" ]]; then

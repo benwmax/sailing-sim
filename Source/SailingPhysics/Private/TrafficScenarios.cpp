@@ -1,4 +1,5 @@
 #include "TrafficScenarios.h"
+#include <cstdio>
 #include "Traffic.h"
 #include "Race.h"
 #include "Wind.h"
@@ -294,7 +295,9 @@ namespace Sailing
 			if (E.Type != FTrafficEvent::Collision) continue;
 			++Out.Collisions;
 			if (E.GiveWayId != FTrafficSim::PlayerId) ++Out.AiCausedCollisions;
-			Out.Signals.push_back(E.Text);
+			char When[48];
+			std::snprintf(When, sizeof(When), " (%.0f s after the start)", E.Time - Race.StartTime());
+			Out.Signals.push_back(E.Text + When);
 		}
 		return Out;
 	}

@@ -1,0 +1,24 @@
+# Phase 8 ranked fix list
+
+Scored per the method (step 4): **Priority = Severity (1-5) × Visibility (1-5) × Teaching impact (1-3) ÷ Cost (1-5)**.
+Evidence is a graded clip in `reference-log.csv`, a number from `scripts/reference-checks.sh`, or a capture
+(`-SailingCapture`). Worked top down; each fix has a golden screenshot or a test so it can't quietly come undone.
+
+| # | Gap | Evidence | S | V | T | C | Priority | Status |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Whitecaps start at 11 kn; Beaufort puts scattered whitecaps at 7-10 kn (Force 3), numerous at 11-16. A sailor reading the water would guess the wind 4 kn low. | NOAA Beaufort (calibration-sources 4.2); ENV-003; J22-M-001 vs J22-L-001 | 3 | 4 | 3 | 1 | **36** | **done**: whitecaps by Beaufort coverage from 7 kn; golden `golden/whitecaps-*.png` |
+| 2 | J/22 has 1 deg of lee helm close-hauled at 6-10 kn and none at 15 kn with 19 deg of heel. A real J/22 carries a few degrees of weather helm that grows with heel and rounds up when over-pressed. | `polar.sh` rudder column; North/Quantum guides; J22-M-003, J22-H-001 | 4 | 5 | 3 | 3 | **20** | **done**: heel-yaw moment, weather helm +1/+1.6/+2-4.5 deg at 6/10/15 kn; test `Physics.WeatherHelm`; polar gate unchanged |
+| 3 | J/22 surfs too fast: 12.5 kn peaks on a 20 kn spinnaker run (reference 9.7 kn GPS peak; ORC 9.2 kn at 120 deg). | reference-checks "Top speed"; J22-H-003; J22-S-001 | 4 | 3 | 3 | 2 | **18** | **done**: residuary tail steepened past Froude 0.7; 20 kn gusting peak 11.7 kn (was 12.5-16); steady spinnaker 135 deg now 8.3 kn vs ORC 9.4 (open: model spinnaker 16 m² vs 31 m² certificate) |
+| 4 | Capsized dinghies turn turtle within seconds (Sunfish ~10 s, Hobie ~45 s); a real one lies on its side with the sail flat on the water. A turtled boat could not be righted (righting was gated on heel, which reads ~0 upside down) and did not count as capsized. | SUN-S-001, SUN-S-004, SUN-S-006, H16-C-004; debug trace | 5 | 2 | 3 | 2 | **15** | **done**: spars float, she lies on her side ~20 s, rights in 5-13 s; turtle stage; tests `TurtledCountsAsCapsized`, reference checks |
+| 5 | J/22 heels 16 deg close-hauled at 14 kn; the guides keep her nearly flat to about 14 kn (hiking and depowering). | reference-checks "Heel"; North / Quantum | 2 | 4 | 3 | 2 | **12** | **done**: trim heel limit 13 deg; 12.3 deg at 14 kn |
+| 6 | Lake water reads teal-blue; Ray Hubbard (and every North Texas reservoir clip) is turbid olive-green, even from a drone on a clear day. | RH-004, TXL-005, RH-002, TXL-002; drone capture | 4 | 5 | 1 | 2 | **10** | **done**: olive-brown turbid lake colour; golden `golden/water-*.png` |
+| 7 | Storm sky too light: under a shelf cloud the ground light falls sharply and the rain curtain is opaque. | STORM-001, STORM-005, C30-S-001, SQ-001 | 4 | 2 | 3 | 3 | **8** | **partly**: storm skylight and exposure darken under the deck; the shelf structure itself still reads soft (open) |
+| 8 | Wake trail is a bright white streak from above; real small-boat wakes are faint. | RH-004, TXL-005, J22-H-006 (drone) | 2 | 3 | 1 | 1 | **6** | **done**: trail strength 0.4 -> 0.22 |
+| 9 | Crew are yellow cylinders; cabin and deck are bare boxes. | every onboard capture; J22-M-007, J22-L-003 | 3 | 5 | 1 | 4 | 3.8 | open (needs modelling time and Bean's photos) |
+| 10 | Hobie 16 16-30% too fast against the ILCA at 8 kn and up (Portsmouth). | reference-checks "Portsmouth"; H16-M-006 | 3 | 1 | 2 | 2 | 3 | **partly**: DPN2/3 in range; DPN4 0.67 vs 0.74 (steady laps leave out tacking and capsize losses) |
+| 11 | No moon phases. | method known gaps | 2 | 2 | 1 | 2 | 2 | **done**: moon age, illumination and sky position from the date; test `Smoke.MoonPhase` |
+| 12 | Catalina 22 / 30 a little fast against the ILCA in light air. | reference-checks "Portsmouth" | 2 | 1 | 1 | 2 | 1 | **partly**: Catalina 30 in range; Catalina 22 DPN2 0.93 vs 0.96 (open) |
+| - | Sounds not tuned by ear | needs Bean's recordings (method step 6) | | | | | deferred | |
+| - | Docks, buildings and trees are simple shapes | needs Bean's photos and LiDAR scans of Rush Creek | | | | | deferred | |
+
+Reference checks after the fixes: 3 of 46 outside (all listed as open above); before: 6 of 39 (`reference-checks-before.txt`, `reference-checks-after.txt`).

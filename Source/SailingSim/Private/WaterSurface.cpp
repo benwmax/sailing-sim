@@ -27,7 +27,7 @@ namespace
 	constexpr float kWakeSizeM = 64.f;
 	constexpr int32 kRingQuads = 128;     // quads across each ring
 	constexpr float kFinestSpacingM = 0.5f;
-	constexpr float kTrailSeconds = 15.f;
+	constexpr float kTrailSeconds = 8.f;
 
 	UTexture2D* MakeMap(int32 Size)
 	{
@@ -342,8 +342,8 @@ void AWaterSurface::UpdateMaterial()
 		const FWindParams& P = Wind->GetParams();
 		const float From = FMath::DegreesToRadians(P.FromDegrees);
 		const float Knots = Wind->VelocityAt(Vec3(BoatPos.X, BoatPos.Y, 10.0), GetSimTime()).LengthXY() / kKnot;
-		// Whitecaps start around 11 kn and are common by 18.
-		const float Caps = FMath::Clamp((Knots - 11.f) / 7.f, 0.f, 1.f);
+		// Whitecaps by the Beaufort scale: scattered from 7-10 kn, numerous by 11-16, everywhere from 22 (as in M_Water).
+		const float Caps = FMath::Pow(FMath::Clamp((Knots - 7.f) / 15.f, 0.f, 1.f), 1.2f);
 		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), Knots * kKnot, Caps));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
@@ -429,7 +429,9 @@ void AWaterSurface::UpdateWakeMap(float DeltaSeconds)
 		const FWakePoint& PB = WakeTrail[I];
 		const float Speed = 0.5f * (PA.Speed + PB.Speed);
 		const float Age = 0.5f * (PA.Age + PB.Age);
-		const float Strength = FMath::Clamp((Speed - 0.5f) / 3.f, 0.f, 1.f) * FMath::Square(1.f - Age / kTrailSeconds) * 0.4f;
+		// A small boat's wake is a faint, broken trail of bubbles that is gone a few lengths astern; what lasts is a
+		// smooth slick, not foam (Phase 8: RH-004, TXL-005, J22-H-006 from a drone; the blind test's ILCA frame).
+		const float Strength = FMath::Clamp((Speed - 0.5f) / 3.f, 0.f, 1.f) * FMath::Exp(-Age / 2.f) * 0.3f;
 		if (Strength < 0.01f) continue;
 		const float Width = 0.35f + 0.06f * Age * FMath::Max(Speed, 0.5f);
 		const float Reach = 2.5f * Width;

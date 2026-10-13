@@ -36,6 +36,15 @@ public:
 	 */
 	static void SunPosition(double ClockHour, double DayOfYear, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth);
 
+	/** The moon's age in days since new moon (0 to 29.53) at a UTC time, from the mean synodic month and a known new moon
+	 *  (2000-01-06 18:14 UTC): within about half a day of the almanac. */
+	static double MoonAgeDays(double UnixUtc);
+	/** Fraction of the moon's disc that is lit (0 new, 1 full). */
+	static double MoonIllumination(double AgeDays);
+	/** Where the moon is: it trails the sun across the sky by its elongation (rising about 50 minutes later each day), at
+	 *  roughly the sun's declination for where the sun will be that far round the ecliptic. Degrees, like SunPosition. */
+	static void MoonPosition(double ClockHour, double DayOfYear, double AgeDays, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth);
+
 	/** A thunderclap reaching the listener: loudness 0..1 (distance) and how long ago it started. */
 	struct FThunder { float Loudness; float Age; float Duration; };
 	const TArray<FThunder>& GetActiveThunder() const { return Thunder; }

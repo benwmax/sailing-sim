@@ -22,7 +22,7 @@ CONTAINER="$HOME/Library/Containers/$BUNDLE_ID/Data/Library"
 LOG="$CONTAINER/Logs/SailingSim/SailingSim.log"
 BENCH_DIR="$CONTAINER/Application Support/Epic/SailingSim/Saved/Bench"
 SHOT="${SHOT:-screenshot}"
-rm -rf "$LOG" "$BENCH_DIR/bench.json" "$BENCH_DIR/$SHOT.png" "$BENCH_DIR/rec"
+rm -rf "$LOG" "$BENCH_DIR/bench.json" "$BENCH_DIR/$SHOT.png" "$BENCH_DIR/$SHOT.camera.json" "$BENCH_DIR/$SHOT.telemetry.csv" "$BENCH_DIR/rec"
 EXTRA=(-SailingShot="$SHOT")
 [[ -n "${ARGS:-}" ]] && read -r -a ARGV <<< "$ARGS" && EXTRA+=("${ARGV[@]}")
 [[ -n "${RECORD_INTERVAL:-}" ]] && EXTRA+=(-SailingRecordInterval="$RECORD_INTERVAL")
@@ -50,6 +50,10 @@ if [[ ! -f "$BENCH_DIR/bench.json" ]]; then
 fi
 cp "$BENCH_DIR/bench.json" "$ARTIFACTS/bench.json"
 cp "$BENCH_DIR/$SHOT.png" "$ARTIFACTS/$SHOT.png" 2>/dev/null || true
+# Reference captures (-SailingCapture) also leave the camera settings and the telemetry.
+for EXT in camera.json telemetry.csv; do
+	[[ -f "$BENCH_DIR/$SHOT.$EXT" ]] && cp "$BENCH_DIR/$SHOT.$EXT" "$ARTIFACTS/$SHOT.$EXT"
+done
 echo "Bench: $(cat "$ARTIFACTS/bench.json")"
 echo "Screenshot: $ARTIFACTS/$SHOT.png"
 if [[ -d "$BENCH_DIR/rec" ]]; then

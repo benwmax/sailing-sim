@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference Comparison</title>
+<style>
+:root { --bg:#f6f5f1; --fg:#1c1d1f; --mute:#666; --card:#fff; --line:#ddd; }
+@media (prefers-color-scheme: dark) { :root { --bg:#141516; --fg:#e8e6e1; --mute:#999; --card:#1d1f21; --line:#333; } }
+body { background:var(--bg); color:var(--fg); font:15px/1.45 -apple-system, system-ui, sans-serif; margin:0; padding:16px; }
+main { max-width:1400px; margin:auto; }
+section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:16px 0; }
+h2 small { color:var(--mute); font-weight:400; font-size:.75em; }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:800px) { .pair { grid-template-columns:1fr; } }
+iframe, img { width:100%; aspect-ratio:16/9; border:0; object-fit:cover; background:#000; border-radius:4px; }
+img { aspect-ratio:4/3; }
+.tele, a { color:var(--mute); font-size:.85em; }
+table { border-collapse:collapse; margin-top:8px; } th, td { border:1px solid var(--line); padding:3px 10px; text-align:center; }
+.s1 { background:#2e7d3240; } .s2 { background:#7cb34240; } .s3 { background:#fbc02d40; } .s4 { background:#ef6c0040; } .s5 { background:#c6282840; }
+.note { color:var(--mute); }
+</style></head><body><main>
+<h1>Phase 8: real against game</h1>
+<p>Each reference clip (left, from its timestamp) beside the game under the same conditions and camera (right).
+Scores from 1 (same) to 5 (obviously wrong), per method step 3. Open this file locally; the clips stream from YouTube.</p>
+
+<section>
+  <h2>j22-heavy-chase <small>J22-H-001 · Chase</small></h2>
+  <p>J/22 close-hauled in 16-18 kn, chase boat abeam (Worlds Thursday)</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/N_tNWa-hfw0?start=143&rel=0"
+      title="J22-H-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=N_tNWa-hfw0&t=143s">open on YouTube at 143 s</a></div>
+    <div class="game"><a href="../captures/j22-heavy-chase.png"><img loading="lazy" src="../captures/j22-heavy-chase.png" alt="game capture j22-heavy-chase"></a>
+      <span class="tele">wind 18.0 kn · TWA 42.4° · boat 5.9 kn · heel 15.1° · rudder -2.8°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s2">2</td></tr></table>
+  <p class="note">Chop and whitecap cover now match 17 kn (Beaufort 5); heel and weather helm look right in motion. Sails are smooth flat sheets (no wrinkles or leech flutter); crew are cylinders, deck is bare.</p>
+</section>
+<section>
+  <h2>j22-light-chase <small>J22-L-001 · Chase</small></h2>
+  <p>J/22 close-hauled in light air, chase boat (Worlds Friday)</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/evSED4AFYIU?start=166&rel=0"
+      title="J22-L-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=evSED4AFYIU&t=166s">open on YouTube at 166 s</a></div>
+    <div class="game"><a href="../captures/j22-light-chase.png"><img loading="lazy" src="../captures/j22-light-chase.png" alt="game capture j22-light-chase"></a>
+      <span class="tele">wind 7.2 kn · TWA 46.0° · boat 3.9 kn · heel 4.3° · rudder -0.2°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s2">2</td></tr></table>
+  <p class="note">Light-air water and haze are close; sails lack draft shape and telltales read small. Boat geometry is the main tell.</p>
+</section>
+<section>
+  <h2>j22-moderate-chase <small>J22-M-001 · Chase</small></h2>
+  <p>J/22 close-hauled in 10-14 kn, chase boat (Worlds Wednesday)</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/gg61tm1bwjI?start=330&rel=0"
+      title="J22-M-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=gg61tm1bwjI&t=330s">open on YouTube at 330 s</a></div>
+    <div class="game"><a href="../captures/j22-moderate-chase.png"><img loading="lazy" src="../captures/j22-moderate-chase.png" alt="game capture j22-moderate-chase"></a>
+      <span class="tele">wind 11.2 kn · TWA 43.6° · boat 5.6 kn · heel 9.3° · rudder -1.6°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s2">2</td></tr></table>
+  <p class="note">Scattered whitecaps at 12 kn now match the clip. Same boat and sail tells.</p>
+</section>
+<section>
+  <h2>j22-helm-reservoir <small>J22-M-007 · HelmEye</small></h2>
+  <p>Helm view upwind on a wooded reservoir (Lake Chickamauga)</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/nzMY-8iQ0c0?start=16&rel=0"
+      title="J22-M-007" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=nzMY-8iQ0c0&t=16s">open on YouTube at 16 s</a></div>
+    <div class="game"><a href="../captures/j22-helm-reservoir.png"><img loading="lazy" src="../captures/j22-helm-reservoir.png" alt="game capture j22-helm-reservoir"></a>
+      <span class="tele">wind 7.7 kn · TWA 44.8° · boat 4.4 kn · heel 4.4° · rudder -1.2°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s3">3</td><td class="s3">3</td></tr></table>
+  <p class="note">Helm eye on the windward deck now frames the boom, jib luff and water like the clip; the deck is a smooth box and there is no hand-held camera shake.</p>
+</section>
+<section>
+  <h2>j22-actioncam-lake <small>J22-L-003 · ActionCam</small></h2>
+  <p>Stern-pulpit action cam, light-moderate air on a lake, low winter sun</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/E1tYvoxQ4CA?start=23&rel=0"
+      title="J22-L-003" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=E1tYvoxQ4CA&t=23s">open on YouTube at 23 s</a></div>
+    <div class="game"><a href="../captures/j22-actioncam-lake.png"><img loading="lazy" src="../captures/j22-actioncam-lake.png" alt="game capture j22-actioncam-lake"></a>
+      <span class="tele">wind 7.7 kn · TWA 49.7° · boat 4.6 kn · heel 4.2° · rudder -1.3°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s2">2</td></tr></table>
+  <p class="note">Barrel distortion and winter sun match; crew cylinders fill the frame where the clip shows people.</p>
+</section>
+<section>
+  <h2>rh-drone-cat <small>RH-004 · Drone</small></h2>
+  <p>Drone over a cruising catamaran on Lake Ray Hubbard, late afternoon</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/BMUq9bjO2l8?start=4&rel=0"
+      title="RH-004" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=BMUq9bjO2l8&t=4s">open on YouTube at 4 s</a></div>
+    <div class="game"><a href="../captures/rh-drone-cat.png"><img loading="lazy" src="../captures/rh-drone-cat.png" alt="game capture rh-drone-cat"></a>
+      <span class="tele">wind 7.1 kn · TWA 68.7° · boat 3.3 kn · heel 0.4° · rudder -2.1°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s1">1</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s2">2</td></tr></table>
+  <p class="note">Turbid olive-green lake from above matches RH-004; the wake is now a faint short trail. The Lagoon&#x27;s hull is blocky.</p>
+</section>
+<section>
+  <h2>rh-c30-evening <small>RH-002 · Chase</small></h2>
+  <p>A 30-ft cruiser racing on Ray Hubbard on a June evening (Dallas Race Week)</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/ozwlWtKaTYw?start=148&rel=0"
+      title="RH-002" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=ozwlWtKaTYw&t=148s">open on YouTube at 148 s</a></div>
+    <div class="game"><a href="../captures/rh-c30-evening.png"><img loading="lazy" src="../captures/rh-c30-evening.png" alt="game capture rh-c30-evening"></a>
+      <span class="tele">wind 10.4 kn · TWA 45.4° · boat 5.1 kn · heel 13.4° · rudder 0.9°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s2">2</td></tr></table>
+  <p class="note">Evening light and haze are close; the chase camera now frames the whole rig. Hull detail is the tell.</p>
+</section>
+<section>
+  <h2>storm-lake <small>STORM-001 · ShoreTele</small></h2>
+  <p>Shelf cloud and rain wall over a North Texas reservoir</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/X-1jzz3HAEo?start=15&rel=0"
+      title="STORM-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=X-1jzz3HAEo&t=15s">open on YouTube at 15 s</a></div>
+    <div class="game"><a href="../captures/storm-lake.png"><img loading="lazy" src="../captures/storm-lake.png" alt="game capture storm-lake"></a>
+      <span class="tele">wind 21.2 kn · TWA 61.1° · boat 6.2 kn · heel 7.7° · rudder -0.4°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s3">3</td><td class="s2">2</td></tr></table>
+  <p class="note">Ground light falls and the scene greys under the deck; the shelf cloud itself has no visible structure.</p>
+</section>
+<section>
+  <h2>squall-lake <small>C30-S-001 · Chase</small></h2>
+  <p>A line squall arriving over open lake water (chase view; the reference is from the cockpit)</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/Hl5NYDbSygc?start=60&rel=0"
+      title="C30-S-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=Hl5NYDbSygc&t=60s">open on YouTube at 60 s</a></div>
+    <div class="game"><a href="../captures/squall-lake.png"><img loading="lazy" src="../captures/squall-lake.png" alt="game capture squall-lake"></a>
+      <span class="tele">wind 22.0 kn · TWA -21.9° · boat 1.9 kn · heel -22.1° · rudder 17.0°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s3">3</td><td class="s2">2</td></tr></table>
+  <p class="note">Dark and grey as the line arrives, without the arcus edge or a visible rain curtain.</p>
+</section>
+<section>
+  <h2>gulf-passage <small>GULF-004 · HelmEye</small></h2>
+  <p>Off Galveston Island bound for Freeport, Gulf swell</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/Tie3De9eWDw?start=300&rel=0"
+      title="GULF-004" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=Tie3De9eWDw&t=300s">open on YouTube at 300 s</a></div>
+    <div class="game"><a href="../captures/gulf-passage.png"><img loading="lazy" src="../captures/gulf-passage.png" alt="game capture gulf-passage"></a>
+      <span class="tele">wind 12.1 kn · TWA 99.2° · boat 6.0 kn · heel 5.1° · rudder -1.5°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s3">3</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s3">3</td></tr></table>
+  <p class="note">Gulf swell and colour fair; the C30 cockpit is a box from the helm.</p>
+</section>
+<section>
+  <h2>bay-hobie <small>H16-R-001 · ActionCam</small></h2>
+  <p>Hobie 16 reaching fast on Galveston Bay, rigid trampoline cam</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/JcXzc__it5c?start=60&rel=0"
+      title="H16-R-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=JcXzc__it5c&t=60s">open on YouTube at 60 s</a></div>
+    <div class="game"><a href="../captures/bay-hobie.png"><img loading="lazy" src="../captures/bay-hobie.png" alt="game capture bay-hobie"></a>
+      <span class="tele">wind 17.1 kn · TWA 102.3° · boat 18.6 kn · heel 5.7° · rudder 3.3°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s3">3</td></tr></table>
+  <p class="note">Overcast bay colour fair; trampoline and crew are simple shapes.</p>
+</section>
+<section>
+  <h2>sunfish-reach <small>SUN-H-001 · ActionCam</small></h2>
+  <p>Sunfish planing on a reach in 15-22 kn, deck cam</p>
+  <div class="pair">
+    <div class="real"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/GGqbbAT5Xvc?start=60&rel=0"
+      title="SUN-H-001" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=GGqbbAT5Xvc&t=60s">open on YouTube at 60 s</a></div>
+    <div class="game"><a href="../captures/sunfish-reach.png"><img loading="lazy" src="../captures/sunfish-reach.png" alt="game capture sunfish-reach"></a>
+      <span class="tele">wind 17.0 kn · TWA 89.3° · boat 11.3 kn · heel 8.5° · rudder -1.2°</span></div>
+  </div>
+  <table><tr><th>water</th><th>sky</th><th>sails</th><th>boat</th><th>motion</th></tr><tr><td class="s2">2</td><td class="s2">2</td><td class="s3">3</td><td class="s4">4</td><td class="s3">3</td></tr></table>
+  <p class="note">Chop at 17 kn fair; the sail and deck are smooth and the sailor is a cylinder.</p>
+</section>
+</main></body></html>

@@ -66,6 +66,15 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `-SailingSwell=<Hs m>`, `-SailingLogOpen`, `-SailingKeys`, `-SailingGhostAt=<s>`, `-SailingWatchAt=<s>`.
    Rebake the Gulf with `Tools/coast/fetch_gulf.sh` then `Tools/venv/bin/python Tools/coast/build_galveston.py gulf`.
 
+15. Phase 8 reference realism (`docs/phase-8/`, method in `reference-kit/method.md`): `scripts/reference-checks.sh
+   [--quick] [--csv]` runs the physics checks against real numbers standalone (heel, tacking, roll, waves, capsize,
+   top speed, Portsmouth); `SailingSim.Physics.ReferenceChecks` runs the quick set and lists the known gaps.
+   `scripts/capture-scenes.sh [seconds] [scene...]` reproduces `reference-scenes.csv` (or `SCENES=<csv> OUT=<dir>`)
+   with the capture mode: `-SailingCapture=HelmEye|ActionCam|Chase|Drone|ShoreTele` (`-SailingCaptureBearing=<deg>`,
+   `-SailingEV=<ev100>` or auto exposure frozen at 2.5 s; no HUD, blur or depth of field) writes `<shot>.png`,
+   `.camera.json` and `.telemetry.csv`. More args: `-SailingWindFrom=<deg>`, `-SailingGust=<0..1>`,
+   `-SailingReef=<n>`, `-SailingCrewKg=<kg>`. `scripts/bench-phase8.sh [seconds] [--regression]` is the gate bench.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -111,6 +120,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   a Color sampler must be sRGB (values gamma-encoded on the CPU); never call UpdateResource per frame; volumetric
   cloud shadows on the sun cost 4+ ms on this Mac (left off); the clouds' shadow rays toward a sun near the horizon
   cost a third of the frame at night, so `r.VolumetricCloud.Shadow.ViewRaySampleMaxCount` drops with sun elevation; the gust front is easiest to see from a low camera.
+- Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
+  `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
+- Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
 - Avoid identifiers that collide with Unreal macros in physics code (`PI`, `check`, `verify`).

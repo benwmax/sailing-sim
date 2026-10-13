@@ -130,6 +130,10 @@ namespace Sailing
 		double HullLateralCd = 1.0;
 		double HullLateralArea = 0.55;    // m^2 at each of two stations (shared among the hulls by displacement)
 		double MunkAddedMass = 250.0;     // A22 - A11 of the canoe body (kg)
+		// Heeled, the immersed hull is lopsided (the lee bow digs in, the windward quarter lifts) and the boat wants to turn
+		// to windward: the yaw moment is HeelYawCoef x 1/2 rho V^2 x LWL^2 x canoe depth x sin(heel). With the drive pulled
+		// out to leeward by the heeled rig, it is why a keelboat's weather helm grows as she heels (Keuning & Sonnenberg).
+		double HeelYawCoef = 0.0;
 		double ExtraRollDamping = 0.0;    // N m s; the easy difficulty adds some
 		// Added resistance in waves: AddedResistanceCoef x R(lambda/LWL) x rho g (Hs/2)^2 B^2 / LWL, largest heading
 		// into the waves ((1 + cos)^2 / 4 of the angle off the wave direction) and growing with speed up to about 4 kn.
@@ -158,6 +162,7 @@ namespace Sailing
 		double MastX = 1.0;
 		double MastheadZ = 9.25;
 		double MastDiameter = 0.10;       // m; a sealed mast floats a little when the boat is on its side
+		double SparFloatLiters = 0.0; // sealed spars (yard, boom, mast plugs, mast float) that float a capsized rig: holds a dinghy on her side
 		double BoomZ = 1.45;              // m, gooseneck height
 		double MainMaxEaseDeg = 85.0;     // how far the boom can go out (shrouds)
 		double TravelerRangeDeg = 8.0;    // boom angle the traveler moves either side of the centerline
