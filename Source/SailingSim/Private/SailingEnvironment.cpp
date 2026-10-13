@@ -20,6 +20,8 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialParameterCollection.h"
 #include "Misc/CommandLine.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/Parse.h"
@@ -49,6 +51,8 @@ ASailingEnvironment::ASailingEnvironment()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkyDomeMat(TEXT("/Game/Materials/M_SkyDome.M_SkyDome"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensWater(TEXT("/Game/Materials/M_LensWater.M_LensWater"));
 	LensWaterMaterial = LensWater.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> WorldMpc(TEXT("/Game/World/MPC_World.MPC_World"));
+	WorldCollection = WorldMpc.Object;
 	// Visual V5: the sky dome, 200 km across the camera (a sky material: everything draws over it).
 	SkyDome = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SkyDome"));
 	SkyDome->SetupAttachment(RootComponent);
@@ -241,6 +245,15 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateCloudLayers(CamPos);
 	UpdateHaze();
 	UpdateRain(CamPos);
+	if (WorldCollection)
+	{
+		// The trees on the shore sway with the wind there (MPC_World.Wind: direction it blows toward, speed with gusts).
+		const Vec3 V = GM->GetWind().VelocityAt(Vec3(CamPos.X / CmPerMeter, CamPos.Y / CmPerMeter, 10.0), GM->GetSimTime());
+		const double Speed = V.LengthXY();
+		const double Mean = FMath::Max(W.Wind.SpeedKnots * kKnot, 0.5);
+		UKismetMaterialLibrary::SetVectorParameterValue(this, WorldCollection, TEXT("Wind"),
+			FLinearColor(float(V.X / FMath::Max(Speed, 1e-3)), float(V.Y / FMath::Max(Speed, 1e-3)), float(Speed), float(FMath::Clamp(Speed / Mean - 1.0, 0.0, 1.0))));
+	}
 	UpdateLightning(DeltaSeconds, CamPos);
 }
 

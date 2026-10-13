@@ -3,6 +3,7 @@
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "LakeData.h"
+#include "TreePlacement.h"
 #include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -19,6 +20,7 @@ namespace
 	// Cells per chunk side: 64, or 128 on grids of 10 m or coarser (Galveston Bay: 1,000 chunks instead of 4,000;
 	// culling every chunk each frame cost 4 ms of render thread).
 	int32 GChunkCells = 64;
+	constexpr double kNearTreesM = 1200.0; // leaf-card trees within this; opaque crowns beyond (Visual V6)
 	constexpr int32 kMaxBuildsInFlight = 4;
 	constexpr int32 kMaxUploadsPerFrame = 3;
 
@@ -94,6 +96,8 @@ void ALakeTerrainActor::SetTreeFraction(float Fraction)
 	if (bTreesPlaced)
 	{
 		for (UHierarchicalInstancedStaticMeshComponent* T : TreeMeshes) T->ClearInstances();
+		for (UInstancedStaticMeshComponent* T : TreeModels) T->ClearInstances();
+		for (UInstancedStaticMeshComponent* T : TreeFar) T->ClearInstances();
 		PlaceTrees();
 	}
 }
@@ -218,6 +222,34 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 	return M;
 }
 
+void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
+{
+	// Visual V6: leaf-card trees near the camera (alpha-masked Nanite is costly over many pixels), the opaque far
+	// crowns beyond; regrouped when the camera has moved a quarter of the near radius.
+	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < 0.25 * kNearTreesM) return;
+	TreeCenter = Camera;
+	TArray<TArray<FTransform>> Near, Far;
+	Near.SetNum(TreeModels.Num());
+	Far.SetNum(TreeFar.Num());
+	const double R2 = FMath::Square(kNearTreesM);
+	for (const FTreeInstance& I : ModelTrees)
+	{
+		const int32 Index = int32(I.Species) * 2 + I.Variant;
+		const bool bNear = FVector2D::DistSquared(I.Position, Camera) < R2;
+		UStaticMesh* Mesh = (bNear ? TreeModels : TreeFar)[Index]->GetStaticMesh();
+		const float MeshHeight = Mesh ? FMath::Max(100.f, float(Mesh->GetBounds().BoxExtent.Z * 2.0)) : 1000.f;
+		const float Scale = I.Height * CmPerMeter / MeshHeight;
+		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, I.Ground * CmPerMeter), FVector(Scale)));
+	}
+	for (int32 M = 0; M < TreeModels.Num(); ++M)
+	{
+		TreeModels[M]->ClearInstances();
+		TreeModels[M]->AddInstances(Near[M], false, true);
+		TreeFar[M]->ClearInstances();
+		TreeFar[M]->AddInstances(Far[M], false, true);
+	}
+}
+
 void ALakeTerrainActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -228,6 +260,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	FVector Cam = FVector::ZeroVector;
 	if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CM->GetCameraLocation();
 	const double CamX = Cam.X / CmPerMeter, CamY = Cam.Y / CmPerMeter;
+	UpdateModelTrees(FVector2D(CamX, CamY));
 	const FLakeTerrain& T = Lake->Terrain;
 	const double ChunkSize = GChunkCells * T.GetCell();
 
@@ -286,6 +319,53 @@ void ALakeTerrainActor::PlaceTrees()
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;
 	const FLakeTerrain& T = Lake->Terrain;
+	TArray<FTreeInstance> Trees;
+	PlaceTreeInstances(T, TreeFraction, Trees);
+
+	// Visual V6 (Medium and High): Nanite trees built in Blender (four species, two variants each), swaying in the wind
+	// (M_TreeLeaves / M_TreeBark read MPC_World). Low keeps the Phase 3 shapes.
+	static const TCHAR* SpeciesNames[] = { TEXT("LiveOak"), TEXT("PostOak"), TEXT("CedarElm"), TEXT("RedCedar") };
+	const bool bModelTrees = USailingSettings::Get()->Quality != ESailingQuality::Low;
+	if (bModelTrees && TreeModels.Num() == 0)
+	{
+		for (int32 Pass = 0; Pass < 2; ++Pass)
+		{
+			for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S)
+			{
+				for (int32 V = 0; V < 2; ++V)
+				{
+					const FString Name = FString::Printf(TEXT("SM_%s_%d%s"), SpeciesNames[S], V, Pass == 1 ? TEXT("_Far") : TEXT(""));
+					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
+					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+					C->SetupAttachment(RootComponent);
+					C->SetStaticMesh(Mesh);
+					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					// Out of Lumen's scene and ray tracing: capturing thousands of leaf cards into Lumen's surface cache
+					// cost 10 ms; the trees still take Lumen's lighting.
+					C->bAffectDynamicIndirectLighting = false;
+					C->bAffectDistanceFieldLighting = false;
+					C->bVisibleInRayTracing = false;
+					// Shadows (virtual shadow maps), cached as if still: the sway never re-renders the trees' shadow
+					// pages (thousands of swaying trees would invalidate the cache every frame).
+					C->SetCastShadow(true);
+					C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+					C->SetCullDistances(0, (Pass == 0 ? kNearTreesM + 200.0 : 9000.0) * 100.0);
+					C->SetWorldPositionOffsetDisableDistance(int32((Pass == 0 ? kNearTreesM : 1500.0) * 100.0));
+					C->RegisterComponent();
+					(Pass == 0 ? TreeModels : TreeFar).Add(C);
+				}
+			}
+		}
+	}
+	if (bModelTrees && TreeModels.Num() > 0)
+	{
+		ModelTrees = MoveTemp(Trees);
+		TreeCenter = FVector2D(1e12, 1e12); // rebuilt around the camera on the next tick
+		bTreesPlaced = true;
+		UE_LOG(LogSailing, Display, TEXT("Trees: %d (Nanite models; leaf cards within %.0f m)"), ModelTrees.Num(), kNearTreesM);
+		return;
+	}
+
 	if (TreeMeshes.Num() == 0)
 	{
 		UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
@@ -312,57 +392,30 @@ void ALakeTerrainActor::PlaceTrees()
 			TreeMeshes.Add(H);
 		}
 	}
-
-	// Trees within about 1.5 km of the water (what you can see from the lake), from the density map.
+	// Low: the Phase 3 shapes (spheres and cones) at the same places.
 	TArray<FTransform> Oak, Elm, Cedar, Trunk;
-	const double Step = 20.0;
-	const int32 Rows = int32(T.GetRows() * T.GetCell() / Step), Cols = int32(T.GetCols() * T.GetCell() / Step);
-	// Coarse water proximity: 100 m cells within 15 cells of water.
-	const int32 CR = Rows / 5 + 1, CC = Cols / 5 + 1;
-	TArray<uint8> NearWater;
-	NearWater.SetNumZeroed(CR * CC);
-	for (int32 R = 0; R < CR; ++R)
-		for (int32 C = 0; C < CC; ++C)
-			if (T.HeightAt(T.GetOriginX() + (R + 0.5) * 100.0, T.GetOriginY() + (C + 0.5) * 100.0) < 0.0)
-				for (int32 DR = -15; DR <= 15; ++DR)
-					for (int32 DC = -15; DC <= 15; ++DC)
-						if (R + DR >= 0 && R + DR < CR && C + DC >= 0 && C + DC < CC && DR * DR + DC * DC <= 225) NearWater[(R + DR) * CC + C + DC] = 1;
-
-	for (int32 R = 0; R < Rows; ++R)
+	for (const FTreeInstance& I : Trees)
 	{
-		for (int32 C = 0; C < Cols; ++C)
+		const float Height = I.Height;
+		const FVector Base(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, I.Ground * CmPerMeter);
+		if (I.Species == ETreeSpecies::RedCedar)
 		{
-			if (!NearWater[(R / 5) * CC + C / 5]) continue;
-			const double X = T.GetOriginX() + (R + 0.5) * Step, Y = T.GetOriginY() + (C + 0.5) * Step;
-			const double Density = T.CanopyAt(X, Y) / 12.0 * TreeFraction;
-			const uint32 Seed = uint32(R * 92821 + C * 68917);
-			const int32 Count = int32(Density * 1.6 + Rand01(Seed));
-			for (int32 K = 0; K < Count; ++K)
-			{
-				const double PX = X + (Rand01(Seed + K * 13 + 1) - 0.5) * Step, PY = Y + (Rand01(Seed + K * 13 + 2) - 0.5) * Step;
-				const double Ground = T.HeightAt(PX, PY);
-				if (Ground < 0.8) continue;
-				const float Kind = Rand01(Seed + K * 13 + 3);
-				const float Height = 6.f + 8.f * Rand01(Seed + K * 13 + 4);
-				const FVector Base(PX * CmPerMeter, PY * CmPerMeter, Ground * CmPerMeter);
-				if (Kind < 0.3f)
-				{
-					Cedar.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 50.f), FVector(Height * 0.35f, Height * 0.35f, Height)));
-				}
-				else
-				{
-					const float W = Height * (Kind < 0.75f ? 0.9f : 0.7f);
-					(Kind < 0.75f ? Oak : Elm).Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 60.f), FVector(W, W, Height * 0.7f)));
-					Trunk.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 20.f), FVector(0.4f, 0.4f, Height * 0.4f)));
-				}
-			}
+			Cedar.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 50.f), FVector(Height * 0.35f, Height * 0.35f, Height)));
+		}
+		else
+		{
+			const bool bOak = I.Species != ETreeSpecies::CedarElm;
+			const float W = Height * (bOak ? 0.9f : 0.7f);
+			(bOak ? Oak : Elm).Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 60.f), FVector(W, W, Height * 0.7f)));
+			Trunk.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 20.f), FVector(0.4f, 0.4f, Height * 0.4f)));
 		}
 	}
 	TreeMeshes[0]->AddInstances(Oak, false, true);
 	TreeMeshes[1]->AddInstances(Elm, false, true);
 	TreeMeshes[2]->AddInstances(Cedar, false, true);
 	TreeMeshes[3]->AddInstances(Trunk, false, true);
-	UE_LOG(LogSailing, Display, TEXT("Trees: %d post oak, %d cedar elm, %d red cedar"), Oak.Num(), Elm.Num(), Cedar.Num());
+	UE_LOG(LogSailing, Display, TEXT("Trees: %d oak, %d cedar elm, %d red cedar"), Oak.Num(), Elm.Num(), Cedar.Num());
+	bTreesPlaced = true;
 }
 
 void ALakeTerrainActor::PlaceBuildings()

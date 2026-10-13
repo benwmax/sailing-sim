@@ -12,6 +12,7 @@
   metals, plastic and varnished wood; wet below the splash line and on deck in rain and spray (MPC_Boat).
 Run with scripts/make-content.sh.
 """
+import os
 import unreal
 
 NUM_WAVES = 48
@@ -1371,12 +1372,164 @@ def build_lens_water():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+# ---------------------------------------------------------------- world, Visual V6
+WORLD_FOLDER = "/Game/World"
+
+TREE_WIND_CODE = """
+// Visual V6: trees in the wind (MPC_World.Wind: direction xy, speed m/s, gust 0..1). The whole tree leans downwind and
+// sways (more toward the crown and the limb tips: vertex colour R), each tree in its own phase (from its position); the
+// leaves flutter on top (G: the card's phase). A learner can read the wind's strength and direction off the shore.
+float3 inst = ObjPos * 0.01;
+float phase = dot(inst.xy, float2(0.0131, 0.0173));
+float speed = Wind.z * (1.0 + 0.5 * Wind.w);
+float s = VC.r;
+float lean = speed * speed * 0.0022;
+float osc = 0.6 * sin(T * (0.9 + 0.25 * sin(phase)) + phase) + 0.3 * sin(T * 2.3 + phase * 1.7);
+float sway = lean * (0.75 + 0.35 * osc) * s;
+float3 off = float3(Wind.xy * sway, -0.25 * sway * s);
+float flutter = Leaf * saturate(speed * 0.12) * 0.035;
+off += float3(sin(T * 9.0 + VC.g * 40.0), cos(T * 7.3 + VC.g * 31.0), sin(T * 8.1 + VC.g * 17.0)) * flutter;
+return off * 100.0;
+"""
+
+
+def world_collection():
+    path = f"{WORLD_FOLDER}/MPC_World"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        return unreal.load_asset(path)
+    mpc = ASSETS.create_asset("MPC_World", WORLD_FOLDER, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+    p = unreal.CollectionVectorParameter()
+    p.set_editor_property("parameter_name", "Wind")
+    p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
+    mpc.set_editor_property("vector_parameters", [p])
+    unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    return mpc
+
+
+def import_texture(src, folder, srgb=True):
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", src)
+    task.set_editor_property("destination_path", folder)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("save", True)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(f"{folder}/{os.path.splitext(os.path.basename(src))[0]}")
+    tex.set_editor_property("srgb", srgb)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
+
+
+def tree_wind(mat, leaf, x=-1200, y=600):
+    mpc = world_collection()
+    wind = node(mat, unreal.MaterialExpressionCollectionParameter, x, y, collection=mpc, parameter_name="Wind")
+    vc = node(mat, unreal.MaterialExpressionVertexColor, x, y + 100)
+    obj = node(mat, unreal.MaterialExpressionObjectPositionWS, x, y + 200)
+    t = node(mat, unreal.MaterialExpressionTime, x, y + 300)
+    lf = node(mat, unreal.MaterialExpressionConstant, x, y + 400, r=1.0 if leaf else 0.0)
+    c = custom(mat, TREE_WIND_CODE, ["VC", "ObjPos", "Wind", "T", "Leaf"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, x + 400, y)
+    connect(vc, "", c, "VC")
+    connect(obj, "", c, "ObjPos")
+    connect(wind, "", c, "Wind")
+    connect(t, "", c, "T")
+    connect(lf, "", c, "Leaf")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    mat.set_editor_property("max_world_position_offset_displacement", 120.0)
+
+
+def world_material(name):
+    path = f"{WORLD_FOLDER}/{name}"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        unreal.EditorAssetLibrary.delete_asset(path)
+    mat = ASSETS.create_asset(name, WORLD_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    mat.set_editor_property("used_with_nanite", True)
+    return mat
+
+
+def build_trees_materials():
+    """M_TreeLeaves / M_TreeBark (Visual V6): leaf cards cut from the atlas (two-sided foliage, lit through), bark, wind."""
+    import os as _os
+    atlas_src = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "Artifacts", "models", "world", "T_LeafAtlas.png")
+    atlas = import_texture(atlas_src, WORLD_FOLDER)
+    leaves = world_material("M_TreeLeaves")
+    leaves.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    leaves.set_editor_property("two_sided", True)
+    leaves.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    tex = node(leaves, unreal.MaterialExpressionTextureSample, -800, 0, texture=atlas)
+    vc = node(leaves, unreal.MaterialExpressionVertexColor, -800, 250)
+    code = """
+// Each card a little different: yellower, darker, bluer (B: the card's tint); the crown's sunny outside paler.
+float3 c = Tex.rgb;
+float t = VC.b;
+c *= lerp(float3(0.82, 0.86, 0.78), float3(1.15, 1.1, 0.9), t);
+c = lerp(c, c * float3(1.15, 1.08, 0.85), VC.r * 0.35);
+return c;
+"""
+    tint = custom(leaves, code, ["Tex", "VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
+    connect(tex, "RGB", tint, "Tex")
+    connect(vc, "", tint, "VC")
+    sss = node(leaves, unreal.MaterialExpressionMultiply, -300, 150)
+    k = node(leaves, unreal.MaterialExpressionConstant3Vector, -500, 200, constant=unreal.LinearColor(0.55, 0.65, 0.3, 1))
+    connect(tint, "", sss, "A")
+    connect(k, "", sss, "B")
+    rough = node(leaves, unreal.MaterialExpressionConstant, -300, 300, r=0.62)
+    MEL.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(sss, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    MEL.connect_material_property(tex, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    tree_wind(leaves, True)
+    MEL.recompile_material(leaves)
+    unreal.EditorAssetLibrary.save_loaded_asset(leaves)
+
+    # The distant crowns: opaque, leafy in colour and shading (dappled by world-space noise), swaying with the rest.
+    crown = world_material("M_TreeCrown")
+    wp = node(crown, unreal.MaterialExpressionWorldPosition, -900, 0)
+    vc2 = node(crown, unreal.MaterialExpressionVertexColor, -900, 150)
+    code = """
+float3 p = WP * 0.01;
+float n = frac(sin(dot(floor(p * 1.7), float3(12.9898, 78.233, 37.719))) * 43758.5453);
+float m = 0.5 + 0.5 * sin(p.x * 2.1 + sin(p.y * 1.7) * 2.0) * sin(p.y * 2.3 + p.z * 1.9);
+float3 c = lerp(float3(0.045, 0.085, 0.03), float3(0.10, 0.16, 0.06), m * 0.6 + n * 0.4);
+return c * lerp(0.85, 1.15, VC.b);
+"""
+    cc = custom(crown, code, ["WP", "VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0)
+    connect(wp, "", cc, "WP")
+    connect(vc2, "", cc, "VC")
+    rr = node(crown, unreal.MaterialExpressionConstant, -300, 200, r=0.75)
+    MEL.connect_material_property(cc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rr, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    tree_wind(crown, False)
+    MEL.recompile_material(crown)
+    unreal.EditorAssetLibrary.save_loaded_asset(crown)
+
+    bark = world_material("M_TreeBark")
+    uv = node(bark, unreal.MaterialExpressionTextureCoordinate, -800, 0)
+    code = """
+// Grey-brown bark with vertical furrows and lichen.
+float f = 0.5 + 0.5 * sin(UV.x * 6.2832 * 7.0 + sin(UV.y * 9.0) * 1.5);
+float n = frac(sin(dot(floor(UV * float2(24.0, 6.0)), float2(12.9898, 78.233))) * 43758.5453);
+float3 c = lerp(float3(0.16, 0.13, 0.11), float3(0.30, 0.27, 0.23), f * 0.7 + n * 0.3);
+c = lerp(c, float3(0.35, 0.38, 0.30), step(0.92, n) * 0.6);
+return c;
+"""
+    bc = custom(bark, code, ["UV"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
+    connect(uv, "", bc, "UV")
+    r = node(bark, unreal.MaterialExpressionConstant, -300, 200, r=0.85)
+    MEL.connect_material_property(bc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(r, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    tree_wind(bark, False)
+    MEL.recompile_material(bark)
+    unreal.EditorAssetLibrary.save_loaded_asset(bark)
+
+
 build_water()
 build_water_v4()
 build_spray()
 build_cloud_layers()
 build_sky_dome()
 build_lens_water()
+build_trees_materials()
 build_terrain()
 build_rain()
 build_emissive()

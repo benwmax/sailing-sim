@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Async/Future.h"
+#include "TreePlacement.h"
 #include "LakeTerrainActor.generated.h"
 
 class UProceduralMeshComponent;
@@ -70,6 +71,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> TerrainMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
 	UPROPERTY(Transient) TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> TreeMeshes;
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeModels; // Visual V6: leaf-card trees near the camera
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
+	TArray<struct FTreeInstance> ModelTrees;
+	FVector2D TreeCenter = FVector2D(1e12, 1e12);
+	void UpdateModelTrees(const FVector2D& Camera);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> BridgeDecks;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Pilings;

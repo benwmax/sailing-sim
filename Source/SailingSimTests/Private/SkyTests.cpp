@@ -111,3 +111,61 @@ bool FSkyShelfCloudTest::RunTest(const FString&)
 	TestTrue(TEXT("The rain core follows the front"), CoreAt > FrontAt);
 	return true;
 }
+
+#include "LakeData.h"
+#include "TreePlacement.h"
+
+/**
+ * The shore's trees stand where the canopy map has trees (Visual V6): over the lake bake, the trees per hectare in each
+ * 100 m cell follow the baked canopy (correlation over 0.8), none stand in the water or where the canopy is bare, and
+ * every species appears.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldCanopyTest, "SailingSim.Visual.Canopy", SkyFlags)
+bool FWorldCanopyTest::RunTest(const FString&)
+{
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	const FLakeTerrain& T = Lake.Terrain;
+	TArray<FTreeInstance> Trees;
+	PlaceTreeInstances(T, 1.f, Trees);
+	TestTrue(TEXT("Trees placed"), Trees.Num() > 10000);
+	// Count per 100 m cell.
+	TMap<FIntPoint, int32> Counts;
+	int32 InWater = 0, OnBare = 0, Species[int32(ETreeSpecies::Count)] = {};
+	for (const FTreeInstance& I : Trees)
+	{
+		Counts.FindOrAdd(FIntPoint(FMath::FloorToInt(I.Position.X / 100.0), FMath::FloorToInt(I.Position.Y / 100.0)))++;
+		InWater += T.HeightAt(I.Position.X, I.Position.Y) < 0.0;
+		OnBare += T.CanopyAt(I.Position.X, I.Position.Y) <= 0.0;
+		Species[int32(I.Species)]++;
+	}
+	// Correlate the count with the mean canopy over cells with trees.
+	double Sx = 0, Sy = 0, Sxx = 0, Syy = 0, Sxy = 0;
+	int32 N = 0;
+	TSet<FIntPoint> Cells;
+	for (const auto& KV : Counts) Cells.Add(KV.Key);
+	for (const FIntPoint& Cell : Cells)
+	{
+		// Cells wholly on dry land (the shore's water's-edge cells lose their trees to the 0.8 m rule).
+		double Canopy = 0.0;
+		bool bLand = true;
+		for (int32 I = 0; I < 5; ++I)
+			for (int32 J = 0; J < 5; ++J)
+			{
+				const double X = Cell.X * 100.0 + 10.0 + I * 20.0, Y = Cell.Y * 100.0 + 10.0 + J * 20.0;
+				Canopy += T.CanopyAt(X, Y) / 25.0;
+				bLand &= T.HeightAt(X - 10.0, Y - 10.0) > 1.0 && T.HeightAt(X + 10.0, Y + 10.0) > 1.0;
+			}
+		if (!bLand) continue;
+		const double C = Counts.FindRef(Cell);
+		Sx += Canopy; Sy += C; Sxx += Canopy * Canopy; Syy += C * C; Sxy += Canopy * C; ++N;
+	}
+	const double Corr = (N * Sxy - Sx * Sy) / FMath::Sqrt(FMath::Max((N * Sxx - Sx * Sx) * (N * Syy - Sy * Sy), 1e-9));
+	AddInfo(FString::Printf(TEXT("%d trees in %d cells: correlation with the canopy %.2f; in water %d, on bare ground %d; live oak %d, post oak %d, cedar elm %d, red cedar %d"),
+		Trees.Num(), N, Corr, InWater, OnBare, Species[0], Species[1], Species[2], Species[3]));
+	TestTrue(TEXT("Tree counts follow the canopy map"), Corr > 0.8);
+	TestEqual(TEXT("No trees in the water"), InWater, 0);
+	TestTrue(TEXT("Hardly any on bare ground (edges of canopy cells)"), OnBare < Trees.Num() / 50);
+	for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S) TestTrue(TEXT("Every species grows"), Species[S] > Trees.Num() / 20);
+	return true;
+}

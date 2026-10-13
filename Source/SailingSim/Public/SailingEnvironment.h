@@ -82,6 +82,7 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> SkyDome;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> SkyMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensWaterMaterial;
+	UPROPERTY(Transient) TObjectPtr<class UMaterialParameterCollection> WorldCollection; // MPC_World (Visual V6: the wind)
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LensMaterial;
 	FVector LastCameraPos = FVector::ZeroVector;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WeatherMapTexture;

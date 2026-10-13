@@ -3,6 +3,7 @@
 # Run after scripts/build.sh.
 source "$(dirname "$0")/env.sh"
 "$REPO_ROOT/Tools/venv/bin/python" -I "$REPO_ROOT/scripts/make_sail_marks.py" > /dev/null
+mkdir -p "$ARTIFACTS/models/world" && "$REPO_ROOT/Tools/venv/bin/python" -I "$REPO_ROOT/Tools/blender/make_leaf_atlas.py" "$ARTIFACTS/models/world/T_LeafAtlas.png"
 for SCRIPT in make_materials.py make_lake_map.py; do
 	# The map is rebuilt from scratch; remove the old file so stale actor classes can't block it.
 	[[ "$SCRIPT" == make_lake_map.py ]] && rm -f "$REPO_ROOT/Content/Maps/Lake.umap"
