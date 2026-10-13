@@ -13,6 +13,7 @@
 #include "SailCloth.h"
 #include "ReferenceCapture.h"
 #include "CrewPose.h"
+#include "BoatLivery.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -305,12 +306,14 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewPFDMesh;
 	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewCapMesh;
 	TArray<FCrewRig> MetaCrewRigs;
+	FBoatLivery Livery; // Graphics G3: this boat's colours, wear and sail number
 	bool LoadMetaCrew();
 	class UPoseableMeshComponent* AddMetaHumanFigure(int32 Role, int32 Index);
 public:
 	/** Whether the crew are MetaHumans (for the tests and the bench). */
 	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
 	const TArray<TObjectPtr<class UPoseableMeshComponent>>& GetCrewMeshes() const { return Crew; }
+	const FBoatLivery& GetLivery() const { return Livery; }
 private:
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;

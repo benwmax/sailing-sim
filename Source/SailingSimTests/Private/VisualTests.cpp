@@ -8,6 +8,7 @@
 #include "AutoTrim.h"
 #include "SailCloth.h"
 #include "CrewPose.h"
+#include "BoatLivery.h"
 #include "Engine/SkeletalMesh.h"
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
@@ -604,3 +605,37 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+// Graphics G3: liveries follow the catalogue's weights, seed 0 is the class's commonest scheme, wear stays in 0..1 and a
+// class that requires sail numbers always has one.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualLiveryTest, "SailingSim.Visual.Livery", VisualFlags)
+bool FVisualLiveryTest::RunTest(const FString&)
+{
+	for (int32 T = 0; T < 8; ++T)
+	{
+		const int32 N = NumLiverySchemes(T);
+		TestTrue(FString::Printf(TEXT("class %d has schemes"), T), N > 0);
+		TestEqual(FString::Printf(TEXT("class %d seed 0 scheme"), T), SampleBoatLivery(T, 0).Scheme, 0);
+		TArray<int32> Count; Count.SetNumZeroed(N);
+		const int32 Draws = 4000;
+		TArray<uint32> FirstSeed; FirstSeed.Init(0, N);
+		for (int32 S = 1; S <= Draws; ++S)
+		{
+			const FBoatLivery L = SampleBoatLivery(T, uint32(S));
+			++Count[L.Scheme];
+			if (!FirstSeed[L.Scheme]) FirstSeed[L.Scheme] = uint32(S);
+			for (int32 K = 0; K < 4; ++K)
+				if (L.Wear[K] < 0.f || L.Wear[K] > 1.f) { AddError(FString::Printf(TEXT("class %d seed %d wear %d = %f"), T, S, K, L.Wear[K])); return false; }
+		}
+		FString Seeds;
+		for (int32 I = 0; I < N; ++I) Seeds += FString::Printf(TEXT(" %u"), FirstSeed[I]);
+		AddInfo(FString::Printf(TEXT("class %d: first seed per scheme%s"), T, *Seeds));
+	}
+	// The J/22 weights from the catalogue: 60 % white factory, 6 % navy.
+	int32 White = 0, Navy = 0;
+	for (int32 S = 1; S <= 4000; ++S) { const int32 K = SampleBoatLivery(0, uint32(S)).Scheme; White += K == 0; Navy += K == 3; }
+	TestTrue(FString::Printf(TEXT("J/22 white share %.3f near 0.60"), White / 4000.f), FMath::Abs(White / 4000.f - 0.60f) < 0.03f);
+	TestTrue(FString::Printf(TEXT("J/22 navy share %.3f near 0.06"), Navy / 4000.f), FMath::Abs(Navy / 4000.f - 0.06f) < 0.02f);
+	TestFalse(TEXT("J/22 has a sail number"), SampleBoatLivery(0, 77).SailNumber.IsEmpty());
+	return true;
+}

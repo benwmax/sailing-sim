@@ -535,12 +535,43 @@ float drop = h > 0.72 ? saturate(1.0 - length(f) * 4.0) : 0.0;
 float deckWet = saturate(DeckWet) * up;
 grad += (f.x * LX + f.y * LY) * drop * deckWet * 1.2;
 float wetAll = saturate(max(wet, deckWet * 0.8));
-float3 base = C.rgb * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
+// Graphics G3: the boat's own livery and wear (BoatLivery.h, from the catalogue): the hull colour and four wear channels,
+// per boat (Wear, on the player's and the AI boats' materials) or per instance (the marina's neighbours: custom data 0-3
+// wear, 4-6 hull colour; -1 = none).
+float4 wear = CD0 >= 0.0 ? float4(CD0, CD1, CD2, CD3) : Wear;
+float3 col = (IsHull > 0.5 && CD4 >= 0.0) ? float3(CD4, CD5, CD6) : C.rgb;
+float zcm = LP.z;
+float gel = (1.0 - Metal) * saturate(Coat) * (1.0 - saturate(NonSkid));
+float rough = R, coat = Coat;
+// Oxidation: gelcoat chalks under the Texas sun, decks and tops first: paler, flatter, the clear coat gone.
+float ox = wear.x * gel * (0.55 + 0.45 * up);
+float lum = dot(col, float3(0.3, 0.59, 0.11));
+// Pale gelcoat goes toward chalk; dark paint (linear polyurethane, slower to chalk) only greys and loses depth.
+float3 chalk = lerp(lerp(float3(lum, lum, lum), float3(0.82, 0.80, 0.74), 0.5) * 1.02, col * 1.25 + lum * 0.35 + 0.01, saturate(1.0 - lum * 2.5));
+col = lerp(col, chalk, 0.4 * ox);
+rough = lerp(rough, 0.72, ox);
+coat *= 1.0 - 0.85 * ox;
+// Worn, grimy non-skid.
+col = lerp(col, col * 0.78 + 0.02, wear.x * saturate(NonSkid) * 0.7);
+// The waterline "mustache": a brown band from the waterline up a few centimetres, ragged, strongest forward.
+float scumBand = (1.0 - smoothstep(2.0, 6.0 + 4.0 * streak, zcm)) * smoothstep(-4.0, 0.0, zcm);
+float scum = wear.y * IsHull * scumBand * (0.6 + 0.4 * saturate(LP.x / 300.0 + 0.5));
+col = lerp(col, float3(0.24, 0.15, 0.07), 0.6 * scum);
+// Dock rash and fender marks along the upper topsides, in patches.
+float2 cellS = floor(float2(LP.x / 35.0, zcm / 12.0));
+float patchS = frac(sin(dot(cellS, float2(41.3, 17.7))) * 4375.5);
+float scuff = wear.z * IsHull * step(abs(n.z), 0.6) * smoothstep(20.0, 45.0, zcm) * step(0.72, patchS);
+col *= 1.0 - 0.3 * scuff;
+// Rust streaks from fittings, running down vertical faces.
+float lane = frac(sin(floor(LP.x / 9.0 + LP.y / 23.0) * 91.7) * 437.5);
+float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.86, lane) * (0.5 + 0.5 * sin(zcm * 0.07 + lane * 20.0));
+col = lerp(col, float3(0.30, 0.13, 0.05), 0.45 * rust);
+float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
-RoughOut = lerp(R, lerp(0.06, R, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
+RoughOut = lerp(rough, lerp(0.06, rough, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
-CoatOut = saturate(Coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
+CoatOut = saturate(coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
 return normalize(n - grad);
 """
 
@@ -599,8 +630,17 @@ def build_boat_surface(name, bend):
         cp.set_editor_property("parameter_name", pname)
         params[pname] = cp
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet"],
+    c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
+                                "Wear", "IsHull"] + [f"CD{k}" for k in range(7)],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
+    # Graphics G3: per-boat livery and wear (BoatLivery.h).
+    connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
+    connect(scalar(mat, "IsHull", 0.0, -1400, 1550), "", c, "IsHull")
+    for k in range(7):
+        cd = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 1650 + 60 * k)
+        cd.set_editor_property("data_index", k)
+        cd.set_editor_property("const_default_value", -1.0)
+        connect(cd, "", c, f"CD{k}")
     for src, pin in ((color, "C"), (rough, "R"), (metal, "Metal"), (coat, "Coat"), (nonskid, "NonSkid"), (porosity, "Porosity"), (lp, "LP"),
                      (wp, "WP"), (nrm, "N"), (axes[0], "LX"), (axes[1], "LY"), (params["WaterZ"], "WaterZ"), (params["WetBand"], "WetBand"),
                      (params["DeckWet"], "DeckWet")):
@@ -677,7 +717,8 @@ def build_boat_library():
             mi = ASSETS.create_asset(name, BOAT_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
         MEL.set_material_instance_parent(mi, parents[parent])
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
-        for pname, value in (("Roughness", rough), ("Metallic", metal), ("ClearCoat", coat), ("NonSkid", nonskid), ("Porosity", porosity)):
+        for pname, value in (("Roughness", rough), ("Metallic", metal), ("ClearCoat", coat), ("NonSkid", nonskid), ("Porosity", porosity),
+                             ("IsHull", 1.0 if slot == "Topsides" else 0.0)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
@@ -715,9 +756,17 @@ float3 ink = float3(0.0, 0.0, 0.0);
 if (Marks > 0.5)
 {
     float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
-    float2 r1 = (UV1 - float2(0.24, 0.62)) / float2(0.58, 0.12);
-    if (all(r0 >= 0.0) && all(r0 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r0.x, 0.5 - r0.y * 0.5), 0); mark = t.a; ink = t.rgb; }
-    if (all(r1 >= 0.0) && all(r1 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r1.x, 1.0 - r1.y * 0.5), 0); mark = t.a; ink = t.rgb; }
+    // Graphics G3: the number is SailDigits digits of SailNum, each from the atlas's digit strip (bottom half: ten cells).
+    float nd = max(SailDigits, 1.0);
+    float bw = min(0.58, 0.145 * nd);
+    float2 r1 = (UV1 - float2(0.53 - 0.5 * bw, 0.62)) / float2(bw, 0.12);
+    if (Marks < 1.5 && all(r0 >= 0.0) && all(r0 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r0.x, 0.5 - r0.y * 0.5), 0); mark = t.a; ink = t.rgb; }
+    if (all(r1 >= 0.0) && all(r1 <= 0.999))
+    {
+        float i = floor(r1.x * nd);
+        float d = fmod(floor(SailNum / pow(10.0, nd - 1.0 - i) + 0.01), 10.0);
+        float4 t = Tex.SampleLevel(TexSampler, float2((d + frac(r1.x * nd)) / 10.0, 1.0 - r1.y * 0.5), 0); mark = t.a; ink = t.rgb;
+    }
 }
 // A faint weave and the panels' slight tone differences.
 float weave = 0.5 + 0.5 * sin(UV0.x * 1400.0) * sin(UV0.y * 1400.0);
@@ -769,6 +818,8 @@ def build_sail_cloth():
     color = vector(mat, "Color", (0.82, 0.82, 0.80, 1), -1200, -100)
     battens = scalar(mat, "Battens", 0.0, -1200, 50)
     marks = scalar(mat, "Marks", 0.0, -1200, 150)
+    sailnum = scalar(mat, "SailNum", 1288.0, -1400, 350)
+    saildig = scalar(mat, "SailDigits", 4.0, -1400, 450)
     height = scalar(mat, "Height", 7.6, -1200, 250)
     layout = scalar(mat, "Layout", 0.0, -1400, 50)
     bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
@@ -776,10 +827,10 @@ def build_sail_cloth():
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
-                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens")):
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)

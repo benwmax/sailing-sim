@@ -1,4 +1,5 @@
 #include "MarinaActor.h"
+#include "BoatLivery.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
@@ -175,6 +176,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 		for (const FMarinaAlongside& A : Marina.Alongside) Boats3.Add({ A.Center, A.HeadingDeg, A.BoatType });
 		static const TCHAR* Parts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Berthed") };
 		TMap<uint8, TArray<TArray<FTransform>>> PerClass;
+		TMap<uint8, TArray<uint32>> Seeds; // Graphics G3: each neighbour's livery (hull colour and wear, per instance)
 		TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
 		for (const FPlaced& P : Boats3)
 		{
@@ -196,6 +198,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 			const uint32 H = uint32(P.Center.X * 13.0 + P.Center.Y * 7.0);
 			const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0);
 			for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
+			Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 		}
 		for (const auto& KV : PerClass)
 		{
@@ -218,8 +221,20 @@ void AMarinaActor::Build(const FMarina& Marina)
 				// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
 				// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
 				if (K >= 2) C->SetCastShadow(false);
+				if (K == 0) C->NumCustomDataFloats = 7;
 				C->RegisterComponent();
 				C->AddInstances(KV.Value[K], false, true);
+				if (K == 0)
+				{
+					const TArray<uint32>& S = Seeds[KV.Key];
+					for (int32 I = 0; I < S.Num(); ++I)
+					{
+						const FBoatLivery L = SampleBoatLivery(int32(KV.Key), S[I]);
+						const float D[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
+						C->SetCustomData(I, TArrayView<const float>(D, 7), false);
+					}
+					C->MarkRenderStateDirty();
+				}
 				Boats.Add(C);
 			}
 		}

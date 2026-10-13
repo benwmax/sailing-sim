@@ -7,6 +7,8 @@
 // wind (its material's world position offset; the rig points on it follow the same curve), the traveler car moves
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
+#include "BoatLivery.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "Components/StaticMeshComponent.h"
@@ -115,6 +117,21 @@ UStaticMeshComponent* ASailboatPawn::AddModelPart(UStaticMesh* Mesh, USceneCompo
 void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 {
 	ModelHull = AddModelPart(Model.Hull, BoatRoot, FVector::ZeroVector);
+	// Graphics G3: this boat's livery and wear (sampled in RebuildBoatVisuals) on each hull slot.
+	{
+		const FBoatLivery& L = Livery;
+		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
+		for (int32 I = 0; I < Slots.Num(); ++I)
+		{
+			UMaterialInstanceDynamic* Mid = ModelHull->CreateDynamicMaterialInstance(I);
+			if (!Mid) continue;
+			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
+			const FString Name = Slots[I].ToString();
+			const FLinearColor* Col = Name == TEXT("Topsides") ? &L.Hull : Name == TEXT("Deck") ? &L.Deck : Name == TEXT("NonSkid") ? &L.NonSkid
+				: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove : nullptr;
+			if (Col) Mid->SetVectorParameterValue(TEXT("Color"), *Col);
+		}
+	}
 	ModelMast = AddModelPart(Model.Mast, BoatRoot, ModelHull->GetSocketTransform(TEXT("MastStep"), RTS_Component).GetLocation());
 	MastBendHeightCm = FMath::Max(Model.Mast->GetBounds().GetBox().Max.Z, 100.f);
 	MastMaterial = ModelMast->CreateDynamicMaterialInstance(ModelMast->GetMaterialIndex(TEXT("Aluminium")) >= 0 ? ModelMast->GetMaterialIndex(TEXT("Aluminium")) : 0);

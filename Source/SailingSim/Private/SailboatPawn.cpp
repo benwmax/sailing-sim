@@ -366,6 +366,13 @@ void ASailboatPawn::RebuildBoatVisuals()
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
 	bRigLinesBuilt = false;
+	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
+	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
+	{
+		uint32 Seed = bTrafficBoat && !bGhost ? GetUniqueID() * 7919u + 1u : 0u;
+		FParse::Value(FCommandLine::Get(), TEXT("SailingLiverySeed="), Seed);
+		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
+	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
 	if (Model.Hull)
 	{
@@ -557,7 +564,14 @@ void ASailboatPawn::RebuildBoatVisuals()
 	const FSailLayout Lay = LayoutFor(C.Type);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0)))
 	{
-		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : 0.f);       // class insignia and number
+		// The J/22's class insignia and number; the other classes' numbers only (where the class carries one). The number
+		// is composed from a digit strip in the marks atlas (Graphics G3: each boat its own, from the livery).
+		FString Digits;
+		for (TCHAR Ch : Livery.SailNumber) if (FChar::IsDigit(Ch)) Digits.AppendChar(Ch);
+		Digits = Digits.Right(6);
+		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
+		Mid->SetScalarParameterValue(TEXT("SailDigits"), float(Digits.Len()));
+		Mid->SetScalarParameterValue(TEXT("SailNum"), Digits.IsEmpty() ? 0.f : float(FCString::Atoi(*Digits)));
 		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
 		Mid->SetScalarParameterValue(TEXT("BattenCount"), Lay.Battens);
 		Mid->SetScalarParameterValue(TEXT("FullBattens"), Lay.Full);
