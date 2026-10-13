@@ -248,6 +248,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   which on the Mac only METAL_SM6 has (this project is SM5), so the Mac draws cards; Windows High/Ultra get strands.
   `scripts/make-metahumans.sh` builds at High (`MH_QUALITY`); it reuses the source characters' cloud rig (`MH_RERIG=1` asks
   again; the request blocks on an Epic sign-in). `-SailingNoGrooms` measures without hair.
+  Clothing is free and scripted (Bean's choice): the optimized MetaHuman body has no torso under the clothes, so
+  `scripts/make-crew-clothes.sh` exports each outfit, tailors the polo from its T-shirt in Blender (`build_polo.py`: facings
+  dropped, collar from a smooth neck ring, placket, buttons, rib cuffs, folds) and in Unreal copies the T-shirt's skin
+  weights onto it with Geometry Script (`import_crew_clothes.py`, `SKM_<Role>_Polo`, git-ignored with the MetaHumans).
+  The pawn hides the outfit's shirt sections and adds the polo (`-SailingNoPolo` compares). `-SailingCamTarget=f,s,u`
+  frames close stills.
 - Shore (Graphics G2): `Tools/terrain/build_shore_detail.py` bakes the USGS 3DEP 1 m lidar DEM (`fetch_rayhubbard.sh` puts the
   2.6 GB of tiles in `Data/RayHubbard/raw/lidar`) into `RayHubbard.detail`: 64 m tiles of 1 m heights along the shore
   (land within 150 m of the water, water within 30 m), zlib-packed. The lidar is hydro-flattened on the water, so the bed

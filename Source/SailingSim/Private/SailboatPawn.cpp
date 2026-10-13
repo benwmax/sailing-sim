@@ -1,5 +1,6 @@
 #include "SailboatPawn.h"
 #include "GroomComponent.h"
+#include "Rendering/SkeletalMeshRenderData.h"
 #include "PowerVesselActor.h"
 #include "EngineUtils.h"
 #include "Components/MeshComponent.h"
@@ -2840,6 +2841,40 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 			}
 		}
 		BoatParts.Add(Part);
+		// Graphics G3: the scripted polo (scripts/make-crew-clothes.sh) over the shorts, in place of the default T-shirt:
+		// the outfit's shirt sections are hidden on every LOD and the polo follows the body like the rest.
+		if (K == 2 && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
+		{
+			const FString R = MetaHumanRoleName(Role);
+			USkeletalMesh* PoloMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Polo.SKM_%s_Polo"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			const FSkeletalMeshRenderData* Render = Part->GetSkeletalMeshAsset() ? Part->GetSkeletalMeshAsset()->GetResourceForRendering() : nullptr;
+			if (PoloMesh && Render)
+			{
+				for (int32 L = 0; L < Render->LODRenderData.Num(); ++L)
+				{
+					const TArray<FSkelMeshRenderSection>& Sections = Render->LODRenderData[L].RenderSections;
+					for (int32 S = 0; S < Sections.Num(); ++S)
+					{
+						const UMaterialInterface* Mat = Part->GetMaterial(Sections[S].MaterialIndex);
+						if (Mat && Mat->GetName().Contains(TEXT("Shirt"))) Part->ShowMaterialSection(Sections[S].MaterialIndex, S, false, L);
+					}
+				}
+				USkeletalMeshComponent* Polo = NewObject<USkeletalMeshComponent>(this);
+				Polo->SetupAttachment(Body);
+				Polo->SetSkeletalMesh(PoloMesh);
+				Polo->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				Polo->RegisterComponent();
+				Polo->SetLeaderPoseComponent(Body);
+				static const FLinearColor Polos[] = { FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.75f, 0.74f, 0.70f), FLinearColor(0.20f, 0.02f, 0.02f), FLinearColor(0.03f, 0.14f, 0.18f) };
+				const FLinearColor Col = Polos[Role % UE_ARRAY_COUNT(Polos)];
+				for (int32 M = 0; M < Polo->GetNumMaterials(); ++M)
+				{
+					if (M == Polo->GetMaterialIndex(TEXT("Button"))) continue;
+					if (UMaterialInstanceDynamic* Mid = Polo->CreateDynamicMaterialInstance(M)) Mid->SetVectorParameterValue(TEXT("Color"), M == Polo->GetMaterialIndex(TEXT("Rib")) ? Col * 0.92f : Col);
+				}
+				BoatParts.Add(Polo);
+			}
+		}
 	}
 	// Graphics G3: hair, brows and beard on the face. Strands on High and Ultra; the groom's cards on Medium.
 	if (FacePart && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoGrooms")))
@@ -2886,8 +2921,8 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	if (CrewCapMesh && Role != 0)
 	{
 		// On the head: the scalp groom is left off under it (see the grooms above).
-		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 10.5f) + Fwd * 0.8f;
-		const FTransform Place(Rig.Frame, Head, FVector(0.108f, 0.107f, 0.088f));
+		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.0f) + Fwd * 0.8f;
+		const FTransform Place(Rig.Frame, Head, FVector(0.106f, 0.105f, 0.076f));
 		UStaticMeshComponent* Cap = NewObject<UStaticMeshComponent>(this);
 		Cap->SetStaticMesh(CrewCapMesh);
 		Cap->SetupAttachment(Body, TEXT("head"));

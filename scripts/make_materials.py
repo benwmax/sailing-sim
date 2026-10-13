@@ -703,6 +703,10 @@ BOAT_LIBRARY = {
     "CrewBuckle": ("M_BoatSurface", (0.012, 0.012, 0.013), 0.38, 0.0, 0.3, 0.0, 0.02),
     "CrewReflective": ("M_BoatSurface", (0.55, 0.56, 0.58), 0.30, 0.0, 0.6, 0.0, 0.05),
     "CrewCapUnder": ("M_BoatSurface", (0.07, 0.09, 0.07), 0.85, 0.0, 0.0, 0.0, 0.40),
+    # The polo (cotton pique, recoloured per sailor), its ribbed collar and cuffs, its buttons.
+    "CrewPolo": ("M_BoatSurface", (0.05, 0.10, 0.30), 0.88, 0.0, 0.0, 0.0, 0.55),
+    "CrewPoloRib": ("M_BoatSurface", (0.05, 0.10, 0.30), 0.80, 0.0, 0.0, 0.0, 0.55),
+    "CrewButton": ("M_BoatSurface", (0.75, 0.74, 0.70), 0.30, 0.0, 0.5, 0.0, 0.02),
     "CrewGlasses": ("M_BoatSurface", (0.01, 0.01, 0.012), 0.05, 0.0, 1.0, 0.0, 0.0),
     "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
     "SailCover": ("M_BoatSurface", (0.02, 0.05, 0.14), 0.8, 0.0, 0.0, 0.0, 0.6),      # navy acrylic canvas: sail covers, sun strips (V7)
