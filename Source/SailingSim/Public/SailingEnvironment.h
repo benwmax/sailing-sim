@@ -88,7 +88,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UPointLightComponent> BoltLight;
 	bool bLayeredClouds = false;
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
-	struct FWeatherMapFrame { std::vector<float> Pixels; double X0 = 0.0, Y0 = 0.0; };
+	struct FWeatherMapFrame { Sailing::FWeatherMap Map; };
+	Sailing::FWeatherMap LastWeatherMap;
+	float SunVisibility = 1.f; // smoothed transmittance toward the sun through the clouds (layered clouds)
+	bool bHasWeatherMap = false;
 	TFuture<FWeatherMapFrame> PendingWeatherMap;
 	bool bWeatherMapPending = false;
 	double WeatherMapAge = 1e9;

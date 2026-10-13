@@ -1,0 +1,13 @@
+scene,boat_before,boat_after,sails_before,sails_after,light_before,light_after,water_before,water_after,sky_before,sky_after,notes
+j22-heavy-chase,2,2,2,2,2,2,2,2,2,2,"Texas afternoon cumulus from the weather map (flat bases near 1.4 km, lit tops, grey bases) instead of a streaky haze."
+j22-light-chase,2,2,2,2,2,2,2,2,2,2,Scattered fair-weather cumulus over the far shore; haze at the horizon from the humidity term.
+j22-moderate-chase,2,2,2,2,2,2,2,2,2,2,Cumulus cells with sunlit tops; the sky dome draws the sun's disc with limb darkening.
+j22-helm-reservoir,2,2,2,2,2,2,2,2,2,2,Broken cumulus through the rig from the helm.
+j22-actioncam-lake,3,3,2,2,2,2,2,2,2,2,Cumulus and their reflections in the water.
+rh-drone-cat,4,4,3,3,2,2,1,1,2,2,No sky in frame; the lake is lit through the cloud field (cumulus shadows from the transmittance toward the sun).
+rh-c30-evening,4,4,2,2,2,2,2,2,2,2,Late-day cumulus; the low sun's light through the haze.
+storm-lake,2,2,3,3,3,3,2,2,3,3,"Better than V4's flat grey (layered, lit storm cloud) but still no shelf cloud with a bright gap and rain wall as in the reference: the shelf's form reads only from the side. Not met."
+squall-lake,3,3,3,3,3,3,2,2,3,2,"A storm reads: dark storm cloud overhead and sunlit towers beyond, the lake dimmed by the cloud toward the sun."
+gulf-passage,4,4,2,2,2,2,2,2,2,2,Offshore cumulus and sea haze.
+bay-hobie,3,3,3,3,2,2,2,2,2,2,Grey overcast with sea haze over the bay.
+sunfish-reach,3,3,3,3,2,2,2,2,2,2,Overcast deck from the weather; flatter light.

@@ -89,6 +89,14 @@ namespace Sailing
 		 *  are field coordinates, and world = field + Drift * T. */
 		void Paint(const FCloudSky& Sky, const FGustFront& Front, double CenterX, double CenterY, double T);
 
+		/**
+		 * How much direct sun reaches a point on the water (0..1): the transmittance along the ray toward the sun through
+		 * the layers (their presence in this map, profiles and an average extinction) and the storm (FStormShape). The
+		 * scene's sunlight follows the clouds overhead, so a cumulus shadow or the shelf cloud's arrival darkens the lake.
+		 * FrontTravelM: how far the gust front has moved (m); SunX/Y/Z: unit vector toward the sun (map frame).
+		 */
+		double SunTransmittance(const FCloudSky& Sky, const FGustFront& Front, double FrontTravelM, double DriftT, double X, double Y,
+			double SunX, double SunY, double SunZ) const;
 		double OriginX() const { return X0; }
 		double OriginY() const { return Y0; }
 		const std::vector<float>& Pixels() const { return Rgba; }

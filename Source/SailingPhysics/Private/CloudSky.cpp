@@ -179,6 +179,46 @@ namespace Sailing
 		}
 	}
 
+	double FWeatherMap::SunTransmittance(const FCloudSky& Sky, const FGustFront& Front, double FrontTravelM, double DriftT, double X, double Y,
+		double SunX, double SunY, double SunZ) const
+	{
+		if (Rgba.empty() || SunZ <= 0.02) return SunZ > 0.0 ? 0.5 : 0.0;
+		const double Cell = SizeMeters / N;
+		auto Sample = [&](double Px, double Py, int Channel)
+		{
+			// The map lies in the drifting frame (world = field + Drift * T).
+			const double U = (Px - Sky.DriftX * DriftT - X0) / Cell - 0.5, V = (Py - Sky.DriftY * DriftT - Y0) / Cell - 0.5;
+			const int R = Clamp(int(std::floor(U + 0.5)), 0, N - 1), C = Clamp(int(std::floor(V + 0.5)), 0, N - 1);
+			return double(Rgba[(size_t(R) * N + C) * 4 + Channel]);
+		};
+		const double Move = Front.MoveDegrees * kDegToRad;
+		const double Dx = std::cos(Move), Dy = std::sin(Move);
+		double Depth = 0.0;
+		constexpr int Steps = 48;
+		const double Top = 7000.0, Step = Top / Steps;
+		for (int I = 0; I < Steps; ++I)
+		{
+			const double Alt = (I + 0.5) * Step;
+			const double T = Alt / SunZ;
+			const double Px = X + SunX * T, Py = Y + SunY * T;
+			double Dens = 0.0;
+			auto Profile = [&](const FCloudLayer& L, int Channel)
+			{
+				const double H = (Alt / 1000.0 - L.BaseKm) / std::max(L.TopKm - L.BaseKm, 0.05);
+				return H > 0.0 && H < 1.0 ? Sample(Px, Py, Channel) * L.Density : 0.0;
+			};
+			Dens += Profile(Sky[ECloudLayer::Cumulus], 0) * 0.6 + Profile(Sky[ECloudLayer::Stratus], 1);
+			if (Front.bActive && Sky[ECloudLayer::Storm].Coverage > 0.0)
+			{
+				const double D = (Px - Front.StartX) * Dx + (Py - Front.StartY) * Dy - FrontTravelM;
+				Dens += FStormShape::Density(D, Alt, Sample(Px, Py, 3), Sky[ECloudLayer::Storm].Coverage);
+			}
+			// An average cloud extinction: 0.02 /m at full density, about half of that left after the noise.
+			Depth += Dens * 0.01 * Step / SunZ;
+		}
+		return std::exp(-Depth);
+	}
+
 	double FWeatherMap::Mean(int Channel) const
 	{
 		double Sum = 0.0;

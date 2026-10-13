@@ -316,8 +316,21 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	MoonPosition(Hour, GM->GetDayOfYear(), MoonAge, GM->GetLake().Latitude, GM->GetLake().Longitude, GM->GetUtcOffsetHours(), MoonEl, MoonAz);
 	// How much direct sun reaches the water and boat through the clouds: cloud shadows dim it where clouds pass, and a
 	// solid overcast or storm deck also scatters it away.
-	const float CloudShade = (1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness)))
+	float CloudShade = (1.f - 0.82f * FMath::SmoothStep(0.45f, 1.f, float(W.CloudCover)) * (0.6f + 0.4f * float(W.CloudDarkness)))
 		* (1.f - FMath::SmoothStep(0.3f, 0.7f, float(W.CloudDarkness)));
+	// Visual V5: with the layered clouds, the sunlight on the lake is what passes through them toward the sun (a cumulus
+	// shadow, the shelf cloud's arrival), not a guess from the cloud cover.
+	if (bLayeredClouds && bHasWeatherMap && Elevation > 0.0)
+	{
+		const double E = Elevation * kDegToRad, A = Azimuth * kDegToRad;
+		FVector Cam = FVector::ZeroVector;
+		if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CamMgr->GetCameraLocation() / CmPerMeter;
+		const FGustFront& F = W.Front;
+		const double Seen = LastWeatherMap.SunTransmittance(W.Sky, F, F.SpeedMs * (GM->GetSimTime() - F.StartTime), GM->GetWeatherTime(), Cam.X, Cam.Y,
+			FMath::Cos(E) * FMath::Cos(A), FMath::Cos(E) * FMath::Sin(A), FMath::Sin(E));
+		SunVisibility = FMath::FInterpTo(SunVisibility, float(Seen), GetWorld()->GetDeltaSeconds(), 1.5f);
+		CloudShade = 0.12f + 0.88f * SunVisibility;
+	}
 	if (PostProcess)
 	{
 		ApplyCameraLook(bPhysicalCamera, W.CloudDarkness);
@@ -646,11 +659,14 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	const double Tw = GM->GetWeatherTime();
 	if (bWeatherMapPending && PendingWeatherMap.IsReady())
 	{
-		FWeatherMapFrame Frame = PendingWeatherMap.Get();
+		LastWeatherMap = PendingWeatherMap.Get().Map;
+		LastWeatherMap.LandFraction = nullptr;
+		bHasWeatherMap = true;
 		bWeatherMapPending = false;
-		const int32 Bytes = int32(Frame.Pixels.size() * sizeof(float));
+		struct { double X0, Y0; } Frame = { LastWeatherMap.OriginX(), LastWeatherMap.OriginY() };
+		const int32 Bytes = int32(LastWeatherMap.Pixels().size() * sizeof(float));
 		uint8* Copy = new uint8[Bytes];
-		FMemory::Memcpy(Copy, Frame.Pixels.data(), Bytes);
+		FMemory::Memcpy(Copy, LastWeatherMap.Pixels().data(), Bytes);
 		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
 		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 16, 16, Copy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
 		CloudMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
@@ -675,9 +691,7 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 			}
 			Map.Paint(Sky, Front, Cx, Cy, Tw);
 			FWeatherMapFrame Out;
-			Out.Pixels = Map.Pixels();
-			Out.X0 = Map.OriginX();
-			Out.Y0 = Map.OriginY();
+			Out.Map = MoveTemp(Map);
 			return Out;
 		});
 		bWeatherMapPending = true;
