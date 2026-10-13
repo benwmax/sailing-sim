@@ -89,6 +89,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UPointLightComponent> BoltLight;
 	bool bLayeredClouds = false;
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
+public:
+	float GetNightAmount() const { return NightAmount; }
+private:
 	struct FWeatherMapFrame { Sailing::FWeatherMap Map; };
 	Sailing::FWeatherMap LastWeatherMap;
 	float SunVisibility = 1.f; // smoothed transmittance toward the sun through the clouds (layered clouds)

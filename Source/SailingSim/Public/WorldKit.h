@@ -14,7 +14,7 @@ class UMaterialInterface;
  * Nanite static meshes, one per 40 m tile (UWorldKitLibrary::BakeMarina, run by scripts/make-world-models.sh), and the game
  * loads those. Without a bake (or for a tile it lacks) it draws the same geometry as static procedural meshes.
  */
-enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Count };
+enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Riprap, Count };
 
 struct FKitLookDesc
 {
@@ -44,9 +44,18 @@ struct SAILINGSIM_API FKitSection
 	void Cylinder(const FVector& Base, float Radius, float Height, int32 Sides = 8);
 };
 
+/** A light the generators put on a fixture (for ANightLightsActor): position (m), kind (0 street lamp, 1 dock lamp,
+ *  2 building floodlight, 3 waterfront business). */
+struct FKitLight
+{
+	FVector Position;
+	int32 Kind = 0;
+};
+
 struct SAILINGSIM_API FKitGeometry
 {
 	FKitSection Sections[int32(EKitLook::Count)];
+	TArray<FKitLight> Lights;
 	FKitSection& operator[](EKitLook L) { return Sections[int32(L)]; }
 	const FKitSection& operator[](EKitLook L) const { return Sections[int32(L)]; }
 	int32 NumQuads() const;
@@ -62,6 +71,11 @@ struct FLakeBridge;
 /** The bridges of a lake or coast from their OSM ways (FLakeBridge: kind, deck clearance): decks, girders, pier bents, barriers,
  *  lamp posts; rail and foot bridges in their own styles. The girders' underside sits where the physics stops a mast. */
 SAILINGSIM_API void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& Out);
+/** The shore's charted constructions: breakwaters, jetties and revetments as a riprap band (jittered rock cross-sections);
+ *  on a lake also its private piers (decking on pilings). Coasts keep their thousands of piers as ALakeTerrainActor draws them. */
+SAILINGSIM_API void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& Out);
+/** Whether BuildShoreGeometry draws a lake's piers (and ALakeTerrainActor leaves them out). */
+SAILINGSIM_API bool KitDrawsPiers(const FLakeData& Lake);
 /** Carriageway width (m) of a bridge by its OSM kind; 0 for kinds drawn without traffic. */
 SAILINGSIM_API float BridgeWidth(const FLakeBridge& Bridge);
 /** The top of a bridge's road surface (m above the water/datum). */
@@ -70,7 +84,8 @@ SAILINGSIM_API float BridgeRoadZ(const FLakeBridge& Bridge);
 /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
 SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
-	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out);
+	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out,
+	EComponentMobility::Type Mobility = EComponentMobility::Static);
 
 /** Bakes generated geometry into Nanite static meshes (editor only; Python saves them). */
 UCLASS()
@@ -89,6 +104,10 @@ public:
 	static constexpr double BridgeTileM = 200.0;
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
 	static TArray<UStaticMesh*> BakeBridges(const FString& LakeName);
+	/** The shore kit, in 1 km tiles (it runs along whole coastlines): SM_Shore_<Lake>_<x>_<y>. */
+	static constexpr double ShoreTileM = 1000.0;
+	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
+	static TArray<UStaticMesh*> BakeShore(const FString& LakeName);
 
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);

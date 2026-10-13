@@ -23,6 +23,8 @@
 #include "NavaidsActor.h"
 #include "MarinaActor.h"
 #include "BridgesActor.h"
+#include "LandmarksActor.h"
+#include "NightLightsActor.h"
 #include "Ocean.h"
 #include "TrafficManager.h"
 #include "SailingEnvironment.h"
@@ -412,9 +414,17 @@ void ASailingGameMode::StartPlay()
 	{
 		GetWorld()->SpawnActor<AMarinaActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
-	if (Lake.Bridges.Num() > 0 && USailingSettings::Get()->Quality != ESailingQuality::Low)
+	if ((Lake.Bridges.Num() > 0 || Lake.Docks.Num() > 0) && USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
 		GetWorld()->SpawnActor<ABridgesActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
+	if (Lake.Landmarks.Num() > 0 && USailingSettings::Get()->Quality != ESailingQuality::Low)
+	{
+		GetWorld()->SpawnActor<ALandmarksActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
+	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
+	{
+		GetWorld()->SpawnActor<ANightLightsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
 	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
 	int32 TrafficArg = 0;

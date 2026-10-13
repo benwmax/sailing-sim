@@ -36,14 +36,22 @@ void ABridgesActor::BeginPlay()
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM || !GM->GetLake().IsLoaded()) return;
 	const FLakeData& Lake = GM->GetLake();
-	FKitGeometry All;
+	// On a coast the structures stand on the bottom: they follow the terrain's tide offset (Tick), so they move.
+	bTidal = Lake.Tides.HeightStations.size() > 0;
+	const EComponentMobility::Type Mobility = bTidal ? EComponentMobility::Movable : EComponentMobility::Static;
+	RootComponent->SetMobility(Mobility);
+	const bool bProcedural = FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralWorld"));
+	FKitGeometry All, Shore;
 	BuildBridgeGeometry(Lake, All);
-	TMap<FIntPoint, FKitGeometry> Tiles;
+	BuildShoreGeometry(Lake, Shore);
+	TMap<FIntPoint, FKitGeometry> Tiles, ShoreTiles;
 	All.SplitTiles(UWorldKitLibrary::BridgeTileM, Tiles);
-	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Lake.FileName, FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralWorld")), KitMaterial, Tiled);
+	Shore.SplitTiles(UWorldKitLibrary::ShoreTileM, ShoreTiles);
+	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
+	const int32 ShoreBaked = SpawnKitTiles(this, ShoreTiles, TEXT("Shore_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
 	BuildTraffic();
-	UE_LOG(LogSailing, Display, TEXT("Bridges %s: %d ways, %d quads in %d tiles (%d baked), %d lanes, %d vehicles"), *Lake.FileName, Lake.Bridges.Num(), All.NumQuads(), Tiles.Num(), Baked,
-		Lanes.Num(), Vehicles.Num());
+	UE_LOG(LogSailing, Display, TEXT("Bridges %s: %d ways, %d quads in %d tiles (%d baked), %d lanes, %d vehicles; shore %d quads in %d tiles (%d baked)"), *Lake.FileName,
+		Lake.Bridges.Num(), All.NumQuads(), Tiles.Num(), Baked, Lanes.Num(), Vehicles.Num(), Shore.NumQuads(), ShoreTiles.Num(), ShoreBaked);
 }
 
 void ABridgesActor::BuildTraffic()
@@ -130,6 +138,13 @@ void ABridgesActor::BuildTraffic()
 void ABridgesActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (bTidal)
+	{
+		// Follow the terrain's tide offset in 2 cm steps (moving them every frame would keep invalidating their shadows).
+		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
+		if (!FMath::IsNearlyEqual(GetActorLocation().Z, Z, 0.1)) SetActorLocation(FVector(0.0, 0.0, Z));
+	}
 	if (VehicleMeshes.Num() == 0) return;
 	const float Dt = FMath::Min(DeltaSeconds, 0.1f);
 	for (FVehicle& V : Vehicles)

@@ -5,6 +5,7 @@
 #include "LakeData.h"
 #include "Marina.h"
 #include "TreePlacement.h"
+#include "WorldKit.h"
 #include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -574,9 +575,13 @@ void ALakeTerrainActor::PlaceBridgesAndDocks()
 	constexpr double Deck = 0.45;
 	// The club's marina (AMarinaActor) replaces the OSM docks inside it, as in the physics (FLakeData::BuildObstacles).
 	const FBox2D MarinaBox = Lake->Marina.Bounds();
+	// Medium and High draw riprap (and a lake's piers) from the shore kit (ABridgesActor, BuildShoreGeometry).
+	const bool bShoreKit = USailingSettings::Get()->Quality != ESailingQuality::Low;
+	const bool bKitPiers = bShoreKit && KitDrawsPiers(*Lake);
 	for (const FLakeDock& Dock : Lake->Docks)
 	{
 		if (MarinaBox.bIsValid && MarinaBox.IsInside(Dock.Points[0])) continue;
+		if (bShoreKit && (Dock.Kind == TEXT("breakwater") || bKitPiers)) continue;
 		if (Dock.bClosed)
 		{
 			TArray<FVector2D> Pts = Dock.Points;

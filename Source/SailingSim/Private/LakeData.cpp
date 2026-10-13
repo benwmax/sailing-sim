@@ -133,7 +133,8 @@ void FLakeData::BuildObstacles()
 			S.AX = Dock.Points[I - 1].X; S.AY = Dock.Points[I - 1].Y;
 			S.BX = Dock.Points[I].X; S.BY = Dock.Points[I].Y;
 			// Breakwaters are rubble; open lines are drawn as 2 m walkways; closed outlines are the deck edge.
-			S.Radius = Dock.Kind == TEXT("breakwater") ? 1.5 : (Dock.bClosed ? 0.25 : 1.0);
+			// Breakwaters: the riprap band's half-width at the waterline (BuildShoreGeometry); piers as drawn.
+			S.Radius = Dock.Kind == TEXT("breakwater") ? 2.2 : (Dock.bClosed ? 0.25 : 1.0);
 			S.Bottom = -2.0;
 			S.Top = Dock.Kind == TEXT("breakwater") ? 2.0 : 0.8;
 			Obstacles.push_back(S);

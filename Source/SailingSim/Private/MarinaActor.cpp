@@ -193,7 +193,8 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		{
 			const FVector2D P = A + Dir * X;
 			G[EKitLook::Lamp].Box(FVector(P.X, P.Y, Deck + 0.5f), FVector(0.06f, 0.06f, 0.5f), 0.f);
-			G[EKitLook::White].Box(FVector(P.X, P.Y, Deck + 1.05f), FVector(0.12f, 0.12f, 0.06f), 0.f);
+			G[EKitLook::LampGlow].Box(FVector(P.X, P.Y, Deck + 1.05f), FVector(0.12f, 0.12f, 0.06f), 0.f);
+			G.Lights.Add({ FVector(P.X, P.Y, Deck + 1.0f), 1 });
 		}
 	}
 	for (const FMarinaSlip& Slip : Marina.Slips)
@@ -289,6 +290,8 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		G[EKitLook::Roof].Quad(E11, R1, R0, E01, { 0, 0 }, { HX + O - RX, Slope }, { HX + O + RX, Slope }, { 2 * (HX + O), 0 });
 		G[EKitLook::Roof].Quad(E01, R0, R0, E00, { 0, 0 }, { HY + O, Slope }, { HY + O, Slope }, { 2 * (HY + O), 0 });
 		G[EKitLook::Roof].Quad(E10, R1, R1, E11, { 0, 0 }, { HY + O, Slope }, { HY + O, Slope }, { 2 * (HY + O), 0 });
+		// Floodlights at the eaves' corners.
+		for (const FVector& E : { E00, E10, E11, E01 }) G.Lights.Add({ FVector(E.X, E.Y, Z0 - 0.4f), 2 });
 		// Fascia under the eaves.
 		G[EKitLook::Trim].Span(FVector2D(E00), FVector2D(E10), 0.06f, Z0 - 0.25f, Z0);
 		G[EKitLook::Trim].Span(FVector2D(E10), FVector2D(E11), 0.06f, Z0 - 0.25f, Z0);

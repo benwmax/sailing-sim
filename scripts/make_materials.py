@@ -1243,6 +1243,16 @@ float cirrus = 0.0;
     float mw = band * rift;
     col += (float3(1.0, 0.97, 0.93) * star + float3(0.8, 0.85, 1.0) * mw * 0.12) * Night.x * up * (1.0 - cirrus);
 }
+// Light pollution (Visual V6): the sodium-and-LED dome over the nearest big city (Night.y its strength, Night.z its
+// azimuth in the map frame), brightest on the horizon toward it, and a fainter glow all round.
+[branch] if (Night.y > 0.0)
+{
+    float az = atan2(dir.y, dir.x);
+    float da = abs(atan2(sin(az - Night.z), cos(az - Night.z)));
+    float h = max(dir.z, 0.0);
+    float glow = Night.y * (0.12 + 1.6 * exp(-da * da / 0.5)) * exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
+    col += float3(1.0, 0.70, 0.42) * glow;
+}
 // The moon: lit by the sun (its phase), the dark part faintly lit by the earth.
 float cm = dot(dir, MoonDir.xyz);
 [branch] if (MoonDir.w > 0.0 && cm > 0.99997)
@@ -1600,6 +1610,28 @@ else if (Pattern > 5.5)
     float dash = step(abs(lane - 0.0) * 3.6, 0.07) * step(frac(uv.y / 12.0), 0.25) * step(1.0, uv.x);
     c = lerp(c, float3(0.75, 0.74, 0.70), saturate(edge + dash));
 }
+else if (Pattern > 6.5)
+{
+    // Riprap: blocks about a metre across (jittered cells), each its own shade of granite or limestone, dark gaps between,
+    // darker and greener toward the water (UV.y 0 at the toe).
+    float2 q = uv * 1.1;
+    float2 cell = floor(q);
+    float best = 9.0, second = 9.0;
+    float shade = 0.0;
+    for (int j = -1; j <= 1; j++)
+        for (int i = -1; i <= 1; i++)
+        {
+            float2 g = cell + float2(i, j);
+            float2 o = frac(sin(float2(dot(g, float2(127.1, 311.7)), dot(g, float2(269.5, 183.3)))) * 43758.5);
+            float d = length(g + o - q);
+            if (d < best) { second = best; best = d; shade = frac(o.x * 7.3 + o.y * 3.1); }
+            else if (d < second) second = d;
+        }
+    float gap = 1.0 - smoothstep(0.02, 0.12, second - best);
+    c *= (0.7 + 0.5 * shade) * (0.9 + 0.2 * blot);
+    c = lerp(c, c * 0.25, gap);
+    c = lerp(c * float3(0.55, 0.6, 0.45), c, saturate(uv.y / 2.5));
+}
 Out = r;
 Emit = float3(0, 0, 0);
 if (Pattern > 2.5 && Pattern < 3.5)
@@ -1840,6 +1872,11 @@ WORLD_LIBRARY = {
     "Asphalt": ((0.11, 0.11, 0.11), 0.9, 6.0, 0.0, 0.0),
     "Steel": ((0.30, 0.36, 0.40), 0.55, 5.0, 0.0, 0.6),
     "LampGlow": ((1.0, 0.78, 0.50), 0.4, 0.0, 0.0, 0.0, 40.0),
+    "Riprap": ((0.50, 0.47, 0.42), 0.9, 7.0, 0.0, 0.0),
+    # Landmarks (Tools/blender/build_landmarks.py slots).
+    "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
+    "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),
+    "Brick": ((0.36, 0.15, 0.09), 0.85, 4.0, 0.0, 0.0),
     # Vehicles (Tools/blender/build_props.py slots).
     "Glass": ((0.03, 0.035, 0.04), 0.06, 0.0, 0.0, 0.0),
     "Tyre": ((0.03, 0.03, 0.03), 0.85, 0.0, 0.0, 0.0),

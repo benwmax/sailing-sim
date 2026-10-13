@@ -30,6 +30,7 @@ const FKitLookDesc& KitLook(EKitLook Look)
 		{ TEXT("Asphalt"), FLinearColor(0.11f, 0.11f, 0.11f), 0.9f, 6.f, 0.f, 0.f },    // road surface with lane markings
 		{ TEXT("Steel"), FLinearColor(0.30f, 0.36f, 0.40f), 0.55f, 5.f, 0.f, 0.6f },    // painted steel girders
 		{ TEXT("LampGlow"), FLinearColor(1.0f, 0.78f, 0.50f), 0.4f, 0.f, 0.f, 0.f },    // sodium/LED lamp heads (glow at night)
+		{ TEXT("Riprap"), FLinearColor(0.50f, 0.47f, 0.42f), 0.9f, 7.f, 0.f, 0.f },     // granite and limestone riprap
 	};
 	return Looks[int32(Look)];
 }
@@ -115,7 +116,7 @@ FString FKitGeometry::TileAssetName(const FString& Prefix, const FIntPoint& Tile
 }
 
 int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
-	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out)
+	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out, EComponentMobility::Type Mobility)
 {
 	int32 Baked = 0;
 	for (const auto& KV : Tiles)
@@ -125,9 +126,10 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		if (Mesh)
 		{
 			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
-			C->SetMobility(EComponentMobility::Static);
+			C->SetMobility(Mobility);
 			C->SetupAttachment(Owner->GetRootComponent());
 			C->SetStaticMesh(Mesh);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			C->RegisterComponent();
 			Out.Add(C);
@@ -136,7 +138,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		}
 		// No Nanite: on High a big procedural layout overflows the virtual shadow map's non-Nanite marking (rebake instead).
 		UProceduralMeshComponent* M = NewObject<UProceduralMeshComponent>(Owner);
-		M->SetMobility(EComponentMobility::Static);
+		M->SetMobility(Mobility);
 		M->SetupAttachment(Owner->GetRootComponent());
 		M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		M->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
@@ -161,6 +163,91 @@ float BridgeWidth(const FLakeBridge& Br)
 	if (Br.Kind == TEXT("secondary") || Br.Kind == TEXT("tertiary")) return 10.f;
 	if (Br.Kind == TEXT("motorway_link") || Br.Kind == TEXT("trunk_link") || Br.Kind == TEXT("primary_link") || Br.Kind == TEXT("residential")) return 8.f;
 	return 0.f;
+}
+
+bool KitDrawsPiers(const FLakeData& Lake)
+{
+	double Length = 0.0;
+	for (const FLakeDock& D : Lake.Docks)
+	{
+		if (D.Kind == TEXT("breakwater")) continue;
+		for (int32 I = 1; I < D.Points.Num(); ++I) Length += FVector2D::Distance(D.Points[I - 1], D.Points[I]);
+	}
+	return Length < 50000.0;
+}
+
+void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
+{
+	const bool bPiers = KitDrawsPiers(Lake);
+	const FBox2D MarinaBox = Lake.Marina.Bounds();
+	auto Jitter = [](const FVector2D& P, uint32 Salt)
+	{
+		uint32 X = uint32(int32(FMath::FloorToInt32(P.X * 0.5)) * 73856093) ^ uint32(int32(FMath::FloorToInt32(P.Y * 0.5)) * 19349663) ^ (Salt * 83492791u);
+		X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16;
+		return (X & 0xFFFF) / 65535.f - 0.5f;
+	};
+	for (const FLakeDock& D : Lake.Docks)
+	{
+		if (MarinaBox.bIsValid && MarinaBox.IsInside(D.Points[0])) continue;
+		const bool bRiprap = D.Kind == TEXT("breakwater");
+		if (!bRiprap && !bPiers) continue;
+		if (bRiprap)
+		{
+			// Riprap: a rubble mound about 6 m across and 1.6 m above the water, its cross-sections jittered every 3 m so the
+			// crest and flanks are ragged; it runs 1.5 m below the water.
+			FKitSection& S = G[EKitLook::Riprap];
+			for (int32 I = 1; I < D.Points.Num(); ++I)
+			{
+				const FVector2D A = D.Points[I - 1], B = D.Points[I];
+				const double Len = FVector2D::Distance(A, B);
+				if (Len < 0.5) continue;
+				const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
+				const int32 Steps = FMath::Max(1, int32(Len / 3.0));
+				auto Section = [&](int32 K, FVector Out[5])
+				{
+					const FVector2D C = A + Dir * (Len * K / Steps);
+					static const float Across[5] = { -3.2f, -1.6f, 0.f, 1.6f, 3.2f };
+					static const float Up[5] = { -1.5f, 1.0f, 1.6f, 1.0f, -1.5f };
+					for (int32 J = 0; J < 5; ++J)
+					{
+						const FVector2D P = C + Left * (Across[J] + 0.5f * Jitter(C, J * 7 + 1));
+						Out[J] = FVector(P.X, P.Y, Up[J] + (J == 0 || J == 4 ? 0.f : 0.7f * Jitter(C, J * 7 + 2)));
+					}
+				};
+				FVector Prev[5], Next[5];
+				Section(0, Prev);
+				for (int32 K = 1; K <= Steps; ++K)
+				{
+					Section(K, Next);
+					const float U0 = float(Len * (K - 1) / Steps), U1 = float(Len * K / Steps);
+					for (int32 J = 0; J < 4; ++J)
+					{
+						S.Quad(Prev[J], Prev[J + 1], Next[J + 1], Next[J], { U0, float(J) * 1.8f }, { U0, float(J + 1) * 1.8f }, { U1, float(J + 1) * 1.8f }, { U1, float(J) * 1.8f });
+					}
+					FMemory::Memcpy(Prev, Next, sizeof(Prev));
+				}
+			}
+			continue;
+		}
+		// A private pier: 1.8 m of decking 0.6 m above the pool on pilings every 3 m, both sides.
+		for (int32 I = 1; I < D.Points.Num(); ++I)
+		{
+			const FVector2D A = D.Points[I - 1], B = D.Points[I];
+			const double Len = FVector2D::Distance(A, B);
+			if (Len < 0.3) continue;
+			const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
+			const float W = D.bClosed ? 0.6f : 1.8f;  // closed outlines (platforms): a 0.6 m rim board round the edge
+			G[EKitLook::Decking].Span(A - Dir * 0.3, B + Dir * 0.3, W, 0.45f, 0.6f, true);
+			for (double X = 0.0; X <= Len; X += 3.0)
+			{
+				for (const double Side : { -1.0, 1.0 })
+				{
+					const FVector2D P = A + Dir * X + Left * (Side * (0.5 * W - 0.1));
+					G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -2.5f), 0.12f, 3.4f, 6);
+				}
+			}
+		}
+	}
 }
 
 float BridgeRoadZ(const FLakeBridge& Br) { return float(Br.DeckHeight) + 0.33f; }
@@ -261,6 +348,7 @@ void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
 				const FVector2D Head = P - Left * 2.6;
 				G[EKitLook::Lamp].Span(P, Head, 0.1f, Top - 0.1f, Top);
 				G[EKitLook::LampGlow].Box(FVector(Head.X, Head.Y, Top - 0.16f), FVector(0.35f, 0.18f, 0.07f), float(FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X))), true);
+				G.Lights.Add({ FVector(Head.X, Head.Y, Top - 0.4f), 0 });
 			}
 			Along += Len;
 		}
@@ -282,6 +370,25 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeBridges(const FString& LakeName)
 		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Bridges_") + LakeName, KV.Key))) Out.Add(M);
 	}
 	UE_LOG(LogSailing, Display, TEXT("Baked the %s bridges: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+#endif
+	return Out;
+}
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeShore(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName)) return Out;
+	FKitGeometry All;
+	BuildShoreGeometry(Lake, All);
+	TMap<FIntPoint, FKitGeometry> Tiles;
+	All.SplitTiles(ShoreTileM, Tiles);
+	for (const auto& KV : Tiles)
+	{
+		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Shore_") + LakeName, KV.Key))) Out.Add(M);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Baked the %s shore: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
 #endif
 	return Out;
 }

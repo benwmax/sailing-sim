@@ -10,7 +10,8 @@ class UPrimitiveComponent;
 /**
  * Visual V6: the world's bridges from the lake or coast data (BuildBridgeGeometry in WorldKit.h, baked to Nanite tiles) and
  * sparse traffic on the road decks: sedans, pickups and semis at highway speed in their lanes, painted per instance,
- * with head and tail lights at night. Medium and High; Low keeps the plain deck boxes of ALakeTerrainActor.
+ * with head and tail lights at night. Also the shore kit (BuildShoreGeometry: riprap, a lake's piers). Medium and High;
+ * Low keeps the plain shapes of ALakeTerrainActor. On a coast everything follows the terrain's tide offset.
  */
 UCLASS()
 class SAILINGSIM_API ABridgesActor : public AActor
@@ -39,6 +40,7 @@ private:
 	};
 	void BuildTraffic();
 
+	bool bTidal = false;
 	TArray<FLane> Lanes;
 	TArray<FVehicle> Vehicles;
 	TArray<TArray<int32>> KindVehicles; // per mesh: vehicle indices in instance order
