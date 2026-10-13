@@ -1137,6 +1137,8 @@ float alt = Alt * 0.01;         // m above the water
 // The map lies in the clouds' drifting frame (world = field + Drift).
 float2 wuv = (p.xy - Drift.xy - WRect.xy) / WRect.z;
 float4 w = Wx.SampleLevel(WxSampler, float2(wuv.y, wuv.x), 0);
+// Graphics G2: no cloud past the map's edge (32 km out): its clamped edge texels smeared into streaks toward the horizon.
+w *= saturate(min(min(wuv.x, 1.0 - wuv.x), min(wuv.y, 1.0 - wuv.y)) * 25.0);
 float altKm = alt * 0.001;
 // Layer profiles: flat bases, rounded tops.
 float hCu = (altKm - Cu.y) / max(Cu.z - Cu.y, 0.05);
@@ -1211,7 +1213,9 @@ AO = 1.0;
     float detailMip = clamp(log2(foot / 10.4), 0.0, 5.0);       // detail texel: 667 m / 64
     float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
     float3 qw = q + float3(cw * 1.3, 0.0) + float3(0.0, 0.0, 0.2 * cw.x);
-    float4 sh = Shape.SampleLevel(ShapeSampler, qw * 0.25, shapeMip);
+    // Vertically the shape varies 2.4 times faster than across (a cloud is a few hundred metres to 2 km deep): at one rate a
+    // lone peak of the noise stood as a thin column under thin cloud.
+    float4 sh = Shape.SampleLevel(ShapeSampler, qw * float3(0.25, 0.25, 0.6), shapeMip);
     float lowFbm = sh.g * 0.5 + sh.b * 0.3 + sh.a * 0.2;     // the 500 m and 250 m octaves carry the billows
     // Perlin-Worley remapped by the low Worley octaves (Nubis): billows packed into cells, 0..1.
     float base = saturate((sh.r - (lowFbm - 1.0)) / (2.0 - lowFbm) * 1.9 - 0.75);
@@ -1928,6 +1932,9 @@ float2 t = normalize(float2(-n.y, n.x) + 1e-4);
 float u = dot(WP.xy, t) / 100.0;
 float3 c = D0;
 float pat = D1.x, height = D1.y, seed = D1.z;
+// Graphics G2: pattern + 10 = a near house with modelled windows (Tools/blender/build_houses_near.py): no painted ones.
+float modelled = step(9.5, pat);
+pat -= 10.0 * modelled;
 // G: the instance's ground height (m, custom data 9).
 float v = WP.z / 100.0 - G;
 float r = 0.8;
@@ -1952,6 +1959,7 @@ else
 float wu = frac(u / 3.2 + seed);
 float wv = frac(v / 2.9);
 float win = step(0.25, wu) * step(wu, 0.6) * step(0.3, wv) * step(wv, 0.76) * step(floor(v / 2.9) * 2.9 + 2.3, height * 0.62) * step(0.4, v) * step(abs(n.z), 0.5);
+win *= 1.0 - modelled;
 float3 glass = float3(0.03, 0.035, 0.04);
 c = lerp(c, glass, win);
 r = lerp(r, 0.05, win);
@@ -2032,6 +2040,8 @@ WORLD_LIBRARY = {
     # Shore plants (Graphics G2, Tools/blender/build_reeds.py): cattail and rush blades, cattail heads.
     "Reed": ((0.17, 0.21, 0.08), 0.75, 2.0, 0.0, 0.0),
     "ReedHead": ((0.20, 0.12, 0.06), 0.85, 0.0, 0.0, 0.0),
+    # Near houses (Graphics G2): front doors.
+    "Door": ((0.30, 0.10, 0.06), 0.45, 0.0, 0.0, 0.0),
     # Landmarks (Tools/blender/build_landmarks.py slots).
     "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
     "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),
