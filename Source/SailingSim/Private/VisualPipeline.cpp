@@ -31,6 +31,8 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// Ray tracing is compiled in on demand; only High turns it on, for Lumen's hardware ray tracing.
 	V.Add({ TEXT("r.RayTracing.Enable"), bHigh ? 1.f : 0.f });
 	V.Add({ TEXT("r.Lumen.HardwareRayTracing"), bHigh ? 1.f : 0.f });
+	// Single Layer Water (Visual V4, Medium and High): its reflections traced at half resolution and denoised.
+	V.Add({ TEXT("r.Water.SingleLayer.Reflection.DownsampleFactor"), bLow ? 1.f : 2.f });
 	// Anti-aliasing and resolution: Medium renders at 67% and upscales temporally; High renders at native.
 	// (0 = none, 2 = TAA, 4 = TSR, 5 = SMAA.) MetalFX is not in this engine build; see docs/visual-1/README.md.
 	if (!bLow)

@@ -17,7 +17,7 @@ VIEWS=(
 	"gulf-sea|-SailingWorld=Gulf -SailingLaunch=2 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=11 -SailingCamYaw=200 -SailingCamPitch=-5 -SailingCamDist=22"
 	"helm-eye|-SailingWorld=Lake -SailingLaunch=1 -SailingCapture=HelmEye -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingHour=15 -SailingTWA=45 -SailingHoldTWA=45"
 )
-echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms" > "$OUT"
+echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms" > "$OUT"
 for V in "${VIEWS[@]}"; do
 	NAME="${V%%|*}"; EXTRA="${V#*|}"
 	for Q in "${TIERS[@]}"; do
@@ -32,9 +32,9 @@ import json, sys
 G = ('total_ms', 'base_ms', 'lumen_ms', 'water_ms', 'clouds_fog_ms', 'niagara_ms', 'post_ms', 'other_ms')
 try:
     b = json.load(open(sys.argv[1]))
-    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']}" + ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G) + f",{b.get('cloth_cpu_ms', '')}")
+    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']}" + ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G) + f",{b.get('cloth_cpu_ms', '')},{b.get('water_cpu_ms', '')}")
 except Exception:
-    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,,")
+    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,,,")
 PY
 		[[ -n "${DOCS:-}" && -f "$ARTIFACTS/$SHOT.png" ]] && { mkdir -p "$DOCS"; cp "$ARTIFACTS/$SHOT.png" "$DOCS/$SHOT.png"; }
 	done

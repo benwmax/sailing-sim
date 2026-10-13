@@ -1,0 +1,13 @@
+scene,boat_before,boat_after,sails_before,sails_after,light_before,light_after,water_before,water_after,sky_before,sky_after,notes
+j22-heavy-chase,2,2,2,2,2,2,2,2,2,2,Wind chop from the FFT under the physics' long waves; scattered whitecaps at the Monahan rate for 17 kn instead of V3's long white bands.
+j22-light-chase,2,2,2,2,2,2,2,2,2,2,Light-air chop without the crisscross pattern; the sky's sheen at a distance.
+j22-moderate-chase,2,2,2,2,2,2,2,2,2,2,Chop and glint read naturally; the hull's wake and quarter wave from the wake grid.
+j22-helm-reservoir,2,2,2,2,2,2,2,2,2,2,From the helm the near chop is random and the far water averages to a sheen instead of a repeating pattern.
+j22-actioncam-lake,3,3,2,2,2,2,2,2,2,2,Near the lens the short waves and ripples hold up; the lake's olive tint shows in the troughs.
+rh-drone-cat,4,4,3,3,2,2,1,1,2,2,From above: olive grey-green water with irregular ripples (V3's diagonal grid is gone) and the stern wake.
+rh-c30-evening,4,4,2,2,2,2,2,2,2,2,"Low sun glitter path from the FFT slopes, widened by the unresolved slope variance (LEAN)."
+storm-lake,2,2,3,3,3,3,2,2,3,3,"V3's dark blotches are gone: a grey, rain-flattened surface that reflects the storm light."
+squall-lake,3,3,3,3,3,3,2,2,3,3,Squall chop and streaks; heavy rain beats the short waves down.
+gulf-passage,4,4,2,2,2,2,3,2,2,2,Slate blue-green offshore water with the FFT ocean and chop; it was grey and flat (3) in V3.
+bay-hobie,3,3,3,3,2,2,2,2,2,2,Grey-green bay water; chop scaled to the short fetch.
+sunfish-reach,3,3,3,3,2,2,2,2,2,2,Close chop beside the dinghy without the stripes; some dark patches remain where the bed shows through the shallows.

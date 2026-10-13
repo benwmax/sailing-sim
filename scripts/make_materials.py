@@ -399,6 +399,26 @@ def build_ghost():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_spray():
+    """M_Spray (Visual V4, High): droplets of spray, instanced; a dithered half opacity the temporal AA blends to mist."""
+    mat = new_material("M_Spray")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.82, 0.86, 0.88, 1))
+    rough = node(mat, unreal.MaterialExpressionConstant, -500, 150, r=0.35)
+    alpha = node(mat, unreal.MaterialExpressionConstant, -500, 300, r=0.55)
+    # Interleaved-gradient noise per pixel, shifted each frame: the temporal AA averages it to the alpha.
+    dither = custom(mat, """float2 px = Parameters.SvPosition.xy + float(View.StateFrameIndexMod8) * float2(7.0, 3.0);
+float n = frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
+return Alpha - n + 0.3333;""", ["Alpha"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 300)
+    connect(alpha, "", dither, "Alpha")
+    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_terrain():
     """Terrain colored by the vertex colors the terrain builder computes (mud, clay and sand banks, rock, grass,
     woods), with world-space variation so large areas don't look flat."""
@@ -712,7 +732,301 @@ def build_telltale():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+# ---------------------------------------------------------------- water, Visual V4 (Medium and High)
+NUM_LONG = 24  # FWaveField's first eight bands (under AWaterSurface::SplitHz, 3.6 m and longer)
+
+
+def long_wave_terms():
+    """The physics' wave trains longer than 3.6 m (its first eight bands), drawn exactly, with Gerstner choppiness:
+    vertices move toward the crests (crests sharpen, troughs flatten); the Jacobian of that map is where crests fold.
+    Straight-line code (no branches): the vertex shader runs it for every ring vertex."""
+    lines = []
+    for i in range(NUM_LONG):
+        amp = f"A{i // 4}.{'xyzw'[i % 4]}"
+        w = f"W{i}"
+        arg = f"{w}.x * p.x + {w}.y * p.y - {w}.z * T + {w}.w"
+        lines.append(f"{{ float s, c; sincos({arg}, s, c); float k = length({w}.xy); float2 kd = {w}.xy / k; h += {amp} * s; d += Chop * {amp} * kd * c; "
+                     f"float a = {amp} * saturate(6.2832 / (k * spacing) / 4.0 - 1.0); lsx += a * {w}.x * c; lsy += a * {w}.y * c; "
+                     f"float q = Chop * a * s / k; ljxx -= q * {w}.x * {w}.x; ljyy -= q * {w}.y * {w}.y; ljxy -= q * {w}.x * {w}.y; }}")
+    return "\n".join(lines)
+
+
+V4_WPO = """
+// The vertex: the long waves (their height and choppy displacement; and their slopes and fold, which the pixels get
+// interpolated: at 3.6 m and longer the mesh carries them, each train fading before the mesh spacing would alias it).
+float3 p = P * 0.01;
+float3 cam = Cam * 0.01;
+float dist = distance(p.xy, cam.xy);
+float fade = saturate(1.0 - dist / Fade);
+float spacing = max(0.5, dist / 64.0);
+float h = 0.0;
+float2 d = float2(0.0, 0.0);
+float lsx = 0.0, lsy = 0.0, ljxx = 1.0, ljyy = 1.0, ljxy = 0.0;
+""" + long_wave_terms() + """
+h *= fade; d *= fade;
+lsx *= fade; lsy *= fade;
+ljxx = lerp(1.0, ljxx, fade); ljyy = lerp(1.0, ljyy, fade); ljxy *= fade;
+// The short waves (FFT of the same spectrum, FWaveDetail), near the camera.
+float df = saturate(1.0 - dist / DetailP.z);
+[branch] if (df > 0.0)
+{
+    float4 da = DetailA.SampleLevel(DetailASampler, float2(p.y, p.x) / DetailP.x + 0.5 / 128.0, 0);
+    h += da.r * df;
+    d += da.gb * df;
+}
+// The water the boats push around (FWakeGrid).
+float2 wg = (p.xy - WakeGridRect.xy) / WakeGridRect.z;
+[branch] if (all(wg > 0.0) && all(wg < 1.0)) h += WakeGrid.SampleLevel(WakeGridSampler, float2(wg.y, wg.x), 0).r;
+float ho = 0.0;
+[branch] if (OceanP.z > 0.0)
+{
+    float2 mr = (p.xy - OceanMaskRect.xy) / OceanMaskRect.zw;
+    float om = (all(mr >= 0.0) && all(mr <= 1.0)) ? OceanMask.SampleLevel(OceanMaskSampler, float2(mr.y, mr.x), 0).r : 1.0;
+    float of = om * saturate(1.0 - dist / OceanP.w);
+    float4 oa = OceanA.SampleLevel(OceanASampler, float2(p.y, p.x) / OceanP.x + 0.5 / 64.0, 0);
+    float4 ob = OceanB.SampleLevel(OceanBSampler, float2(p.y, p.x) / OceanP.y + 0.5 / 64.0, 0);
+    ho = (oa.r + ob.r) * of;
+}
+// The long waves' slopes and fold for the pixels (interpolated), from the same sincos.
+LongN = float3(lsx, lsy, ljxx * ljyy - ljxy * ljxy);
+// The shore: waves grow a little as they feel the bottom (shoaling) and die on the beach.
+float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
+[branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0))
+{
+    float sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
+    float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
+    h *= k; d *= k; ho *= k;
+}
+return float3(d.x * 100.0, d.y * 100.0, (h + ho) * 100.0);
+"""
+
+V4_SHADE = """
+float3 p = P * 0.01;
+float3 cam = Cam * 0.01;
+float dist = distance(p.xy, cam.xy);
+float fade = saturate(1.0 - dist / Fade);
+// The long waves, from the vertices (V4_WPO).
+float sx = LongN.x, sy = LongN.y;
+float J = LongN.z;
+// Cat's paws: the wind's surface roughness map (local wind relative to 15 kn). In a lee (the shelter map, a puff's
+// edge) the short waves and ripples the local wind raises are smaller.
+float2 guv = (p.xy - GustRect.xy) / GustRect.z + 0.5;
+float rough = Gust.SampleLevel(GustSampler, guv, 0).r * 2.5;
+float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
+float calm = saturate(0.25 + 0.75 * gustRatio);
+// Heavy rain beats down the short waves (and greys the surface: below).
+calm *= 1.0 - 0.5 * Rain;
+// The shore: depth from the shore map (deep where it doesn't reach).
+float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
+float sd = 100.0;
+[branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0)) sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
+float shoal = saturate(1.0 - sd / 2.0) * saturate(sd / 0.1);
+// Short waves and ripples: slopes for the normals, the Jacobian for the foam. Mip-mapped and filtered by the hardware
+// (anisotropic at grazing angles), so they never sparkle in the distance; the slope variance a mip averages away (the
+// textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
+float2 duv = float2(p.y, p.x) / DetailP.x + 0.5 / 128.0;
+float4 da = Texture2DSample(DetailA, DetailASampler, duv);
+float4 db = Texture2DSample(DetailB, DetailBSampler, duv);
+sx += db.r * calm; sy += db.g * calm;
+float jd = lerp(1.0, da.a, calm);
+float slopeVar = (max(db.b - db.r * db.r, 0.0) + max(db.a - db.g * db.g, 0.0)) * calm * calm;
+if (DetailP.w > 0.0)
+{
+    float4 rb = Texture2DSample(RippleB, RippleBSampler, float2(p.y, p.x) / DetailP.y + 0.5 / 64.0);
+    sx += rb.r * calm; sy += rb.g * calm;
+    slopeVar += (max(rb.b - rb.r * rb.r, 0.0) + max(rb.a - rb.g * rb.g, 0.0)) * calm * calm;
+}
+float far = saturate((dist - 0.5 * DetailP.z) / (2.0 * DetailP.z));
+// The boats' own waves: slopes by finite differences, and their foam.
+float2 wg = (p.xy - WakeGridRect.xy) / WakeGridRect.z;
+float wakeFoam = 0.0;
+[branch] if (all(wg > 0.001) && all(wg < 0.999))
+{
+    float e = 1.0 / WakeGridRect.w;
+    float2 uv = float2(wg.y, wg.x);
+    float2 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0).rg;
+    float hx = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(0.0, e), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(0.0, e), 0).r;
+    float hy = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(e, 0.0), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(e, 0.0), 0).r;
+    float cell = WakeGridRect.z / WakeGridRect.w;
+    sx += hx / (2.0 * cell); sy += hy / (2.0 * cell);
+    wakeFoam = c.g;
+}
+[branch] if (OceanP.z > 0.0)
+{
+    float2 mr = (p.xy - OceanMaskRect.xy) / OceanMaskRect.zw;
+    float om = (all(mr >= 0.0) && all(mr <= 1.0)) ? OceanMask.SampleLevel(OceanMaskSampler, float2(mr.y, mr.x), 0).r : 1.0;
+    float of = om * saturate(1.0 - dist / OceanP.w);
+    float4 oa = OceanA.SampleLevel(OceanASampler, float2(p.y, p.x) / OceanP.x + 0.5 / 64.0, 0);
+    float4 ob = OceanB.SampleLevel(OceanBSampler, float2(p.y, p.x) / OceanP.y + 0.5 / 64.0, 0);
+    sx += (oa.g + ob.g) * of; sy += (oa.b + ob.b) * of;
+}
+// Rain: rings spreading from drops, a fresh set every few tenths of a second in each 40 cm cell, by the rain rate.
+[branch] if (Rain > 0.01 && dist < 80.0)
+{
+    for (int layer = 0; layer < 2; layer++)
+    {
+        float2 q = p.xy / 0.4 + layer * 0.37;
+        float2 cellId = floor(q);
+        float rnd = frac(sin(dot(cellId, float2(12.9898, 78.233)) + layer) * 43758.5453);
+        float2 centre = cellId + 0.5 + 0.35 * float2(frac(rnd * 13.1) - 0.5, frac(rnd * 7.7) - 0.5);
+        float life = frac(T * 1.6 + rnd);
+        float2 off = q - centre;
+        float r = length(off);
+        float ring = sin((r - life * 0.55) * 50.0) * saturate(1.0 - abs(r - life * 0.55) * 8.0) * (1.0 - life) * step(rnd, Rain * 1.2);
+        float2 g = off / max(r, 1e-3) * ring * 0.35;
+        sx += g.x; sy += g.y;
+    }
+}
+// Whitecaps: where the crests fold (the Jacobian of the choppy waves drops under 0.6), as many as the Monahan
+// law gives for the wind (SailingSim.Visual.Whitecaps); the foam they leave lingers on the back of the wave in
+// streaks along the wind, and breaks up as it fades.
+// Shoaling waves steepen; in the last half metre they die on the beach.
+sx *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2); sy *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2);
+float Jt = J * jd - 0.25 * shoal;
+// Lacy, broken foam rather than flat patches: two crossed wavy bands at foam-bubble scale.
+float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
+float crest = saturate((FoamThreshold - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
+float2 wd = normalize(WindP.xy + float2(1e-4, 0.0));
+float2 wn = float2(-wd.y, wd.x);
+float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
+float residue = saturate((FoamThreshold + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
+float caps = max(crest, residue) * fade;
+// Far off whitecaps are sub-pixel: their average whiteness, from the same law.
+float knots = rough * 15.56;
+float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41); // Monahan's coverage, with the foam it leaves
+caps = lerp(caps, saturate(farCover), far);
+// Foam the boats make.
+float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
+float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
+// Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them.
+float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
+float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
+// Heavy rain: splashes and mist grey the surface.
+Foam = saturate(max(caps + wakeBreak, 0.85 * lap) + 0.10 * Rain);
+Dark = saturate((gustRatio - 0.95) * 2.5);
+// Glint: a calm morning's sharp sun path, broadening with the wind and the ripples it raises; rain flattens and greys.
+float r0 = lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7));
+// GGX alpha = roughness^2; the unresolved slope variance adds to it (scaled down: the engine's GGX has no multiple
+// scattering, so a fully rough grazing reflection comes out darker than the sky sheen real water shows).
+float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);
+Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
+return normalize(float3(-sx, -sy, 1.0));
+"""
+
+
+def build_water_v4():
+    """M_WaterV4 (Visual V4, Medium and High): the physics' long waves drawn exactly with Gerstner choppiness, the short
+    waves from the FFT of the same spectrum, whitecaps from folding crests, the boats' own waves (iWave), rain rings,
+    and Single Layer Water: light absorbed and scattered by the water body itself (olive-brown and murky on the lake,
+    grey-green on the bay, blue-green offshore), the bottom showing through in the shallows, the hull refracted below."""
+    mat = new_material("M_WaterV4")
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0)
+    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1800, 100)
+    time = scalar(mat, "WaveTime", 0.0, -1800, 200)
+    fade = scalar(mat, "WaveFadeMeters", 900.0, -1800, 300)
+    chop = scalar(mat, "Choppiness", 1.5, -1800, 460)
+    thr = scalar(mat, "FoamThreshold", 0.6, -1800, 540)
+    waves = [vector(mat, f"Wave{i:02d}", (0, 0, 0, 0), -1600, -2000 + i * 60) for i in range(NUM_WAVES)]
+    amps = [vector(mat, f"WaveAmp{i:02d}", (0, 0, 0, 0), -1400, -2000 + i * 60) for i in range(NUM_WAVES // 4)]
+    linear = linear_default()
+    def tex(name, y):
+        return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
+                    sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap"))}
+    ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
+    ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
+    # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
+    detail_p = vector(mat, "DetailParams", (23, 3.1, 300, 0), -1800, 2600)
+    wake_rect = vector(mat, "WakeGridRect", (0, 0, 25.6, 128), -1800, 2700)
+    # Shore map (water depth, m): x0, y0, size (m), w = 1 when bound.
+    shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
+    common = ["P", "Cam", "T", "Fade", "Chop"] + [f"W{i}" for i in range(NUM_LONG)] + [f"A{i}" for i in range(NUM_LONG // 4)] \
+        + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect"]
+    wpo = custom(mat, V4_WPO, common, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
+                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
+    connect(wpo, "LongN", interp, "")
+    white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
+    gust_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, 700, parameter_name="GustMap", texture=white)
+    gust_rect = vector(mat, "GustRect", (0, 0, 1600, 0), -1800, 800)
+    wind = vector(mat, "WindParams", (1, 0, 5, 0), -1800, 900)
+    rain = scalar(mat, "Rain", 0.0, -1800, 1000)
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect"]
+    shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold"],
+                   unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400, extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1)])
+    for c in (wpo,):
+        connect(chop, "", c, "Chop")
+        for i, w in enumerate(waves[:NUM_LONG]):
+            connect(w, "RGBA", c, f"W{i}")
+        for i, a in enumerate(amps[:NUM_LONG // 4]):
+            connect(a, "RGBA", c, f"A{i}")
+    for c in (wpo, shade):
+        connect(pos, "", c, "P")
+        connect(cam, "", c, "Cam")
+        connect(time, "", c, "T")
+        connect(fade, "", c, "Fade")
+    connect(interp, "", shade, "LongN")
+    for c in (wpo, shade):
+        for n in ("OceanA", "OceanB", "OceanMask", "DetailA", "WakeGrid", "ShoreMap"):
+            connect(tx[n], "", c, n)
+        connect(shore_rect, "RGBA", c, "ShoreRect")
+        connect(ocean_p, "RGBA", c, "OceanP")
+        connect(ocean_rect, "RGBA", c, "OceanMaskRect")
+        connect(detail_p, "RGBA", c, "DetailP")
+        connect(wake_rect, "RGBA", c, "WakeGridRect")
+    connect(tx["DetailB"], "", shade, "DetailB")
+    connect(tx["RippleB"], "", shade, "RippleB")
+    connect(gust_tex, "", shade, "Gust")
+    connect(gust_rect, "RGBA", shade, "GustRect")
+    connect(wind, "RGBA", shade, "WindP")
+    connect(rain, "", shade, "Rain")
+    connect(thr, "", shade, "FoamThreshold")
+
+    # Surface: foam on top (opaque, white, rough); the water body itself is light the water absorbs and scatters.
+    albedo = vector(mat, "WaterAlbedo", (0.16, 0.18, 0.11, 1), -400, 900)        # Ray Hubbard: olive grey-green silt
+    extinction = vector(mat, "WaterExtinction", (2.6, 2.4, 3.2, 1), -400, 1000)  # 1/m: about half a metre of visibility
+    phase = scalar(mat, "WaterPhaseG", 0.3, -400, 1100)
+    foam_col = node(mat, unreal.MaterialExpressionConstant3Vector, -400, 1200, constant=unreal.LinearColor(0.85, 0.88, 0.9, 1))
+    foam_rough = node(mat, unreal.MaterialExpressionConstant, -400, 1300, r=0.7)
+    rough_mix = node(mat, unreal.MaterialExpressionLinearInterpolate, -200, 1300)
+    connect(shade, "Rough", rough_mix, "A")
+    connect(foam_rough, "", rough_mix, "B")
+    connect(shade, "Foam", rough_mix, "Alpha")
+    to_tangent = node(mat, unreal.MaterialExpressionTransform, -300, 500)
+    to_tangent.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+    to_tangent.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_TANGENT)
+    connect(shade, "", to_tangent, "")
+    # Ruffled water (a puff, the gust front) reflects less of the sky: scale the scattering a little darker there.
+    dark_k = node(mat, unreal.MaterialExpressionMultiply, -200, 950)
+    dk = node(mat, unreal.MaterialExpressionConstant, -400, 1450, r=-0.35)
+    connect(shade, "Dark", dark_k, "A")
+    connect(dk, "", dark_k, "B")
+    dark_scale = node(mat, unreal.MaterialExpressionAdd, -100, 950)
+    one = node(mat, unreal.MaterialExpressionConstant, -400, 1500, r=1.0)
+    connect(one, "", dark_scale, "A")
+    connect(dark_k, "", dark_scale, "B")
+    albedo_dark = node(mat, unreal.MaterialExpressionMultiply, 0, 900)
+    connect(albedo, "", albedo_dark, "A")
+    connect(dark_scale, "", albedo_dark, "B")
+    slw = node(mat, unreal.MaterialExpressionSubstrateSingleLayerWaterBSDF, 200, 600)
+    connect(foam_col, "", slw, "BaseColor")
+    connect(rough_mix, "", slw, "Roughness")
+    connect(to_tangent, "", slw, "Normal")
+    connect(shade, "Foam", slw, "TopMaterialOpacity")
+    connect(albedo_dark, "", slw, "WaterAlbedo")
+    connect(extinction, "", slw, "WaterExtinction")
+    connect(phase, "", slw, "WaterPhaseG")
+    MEL.connect_material_property(slw, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
+    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 build_water()
+build_water_v4()
+build_spray()
 build_terrain()
 build_rain()
 build_emissive()

@@ -53,7 +53,10 @@ private:
 	};
 
 	const FLakeData* GetLake() const;
-	static FChunkMesh BuildChunk(const FLakeData* Lake, int32 ChunkRow, int32 ChunkCol, int32 Step);
+	/** HideBelow: the bed deeper than this (m, map frame) is not meshed (it can't be seen through the water). */
+	static FChunkMesh BuildChunk(const FLakeData* Lake, int32 ChunkRow, int32 ChunkCol, int32 Step, double HideBelow);
+	/** How deep the water hides the bed: where its colour has absorbed 99% of the light coming back (Visual V4). */
+	double HideBelow = -1e9;
 	void PlaceTrees();
 	void PlaceBuildings();
 	void PlaceBridgesAndDocks();

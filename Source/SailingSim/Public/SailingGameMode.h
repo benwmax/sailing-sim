@@ -122,5 +122,6 @@ private:
 	int32 GpuProfilesRequested = 0;
 	FString GpuSlicesJson;
 	double ClothSecondsAtStart = -1.0;
+	double WaterSecondsAtStart = -1.0;
 	void FinishGpuSlices();
 };

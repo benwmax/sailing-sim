@@ -287,7 +287,8 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 	for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It)
 	{
-		It->SetRingCount(Quality == ESailingQuality::Low ? 4 : (Quality == ESailingQuality::Medium ? 5 : 6));
+		It->SetRingCount(Quality == ESailingQuality::Low ? 4 : 5);
+		It->SetQualityTier(Quality == ESailingQuality::Low ? 0 : (Quality == ESailingQuality::Medium ? 1 : 2));
 	}
 	UE_LOG(LogSailing, Display, TEXT("Quality %d: AA %d, screen %d%%, VSM %d, ray tracing supported %d enabled %d, Lumen HW %d, Substrate %d"),
 		int32(Quality), IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->GetInt(),
@@ -432,6 +433,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	if (Elapsed > BenchWarmupSeconds && Elapsed <= BenchWarmupSeconds + BenchSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
+		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
 	}
@@ -532,6 +534,11 @@ void ASailingGameMode::FinishBenchmark()
 	if (N > 0 && ClothSecondsAtStart >= 0.0)
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"cloth_cpu_ms\":%.3f}"), (ASailboatPawn::ClothCpuSeconds - ClothSecondsAtStart) * 1000.0 / N);
+	}
+	// Visual V4: the water's game-thread work (FFT frames blended and uploaded, the wake grid stepped).
+	if (N > 0 && WaterSecondsAtStart >= 0.0)
+	{
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
 	}
 	if (!GpuSlicesJson.IsEmpty())
 	{
