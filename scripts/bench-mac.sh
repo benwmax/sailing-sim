@@ -56,6 +56,13 @@ for EXT in camera.json telemetry.csv; do
 done
 echo "Bench: $(cat "$ARTIFACTS/bench.json")"
 echo "Screenshot: $ARTIFACTS/$SHOT.png"
+# Visual V1: GPU time per budget slice (bench.json "gpu", averaged over three ProfileGPU frames after the window).
+python3 - "$ARTIFACTS/bench.json" <<'PY'
+import json, sys
+g = json.load(open(sys.argv[1])).get("gpu")
+if g:
+    print("GPU ms: total {total_ms}  base {base_ms}  lumen {lumen_ms}  water {water_ms}  clouds+fog {clouds_fog_ms}  niagara {niagara_ms}  post {post_ms}  other {other_ms}".format(**g))
+PY
 if [[ -d "$BENCH_DIR/rec" ]]; then
 	python3 - "$BENCH_DIR/rec" "$ARTIFACTS/recording.gif" <<'PY'
 import glob, sys

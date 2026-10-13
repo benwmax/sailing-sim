@@ -55,6 +55,7 @@ public:
 private:
 	void FindSceneActors();
 	void UpdateSun(double Hour);
+	void ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness);
 	void UpdateClouds(float DeltaSeconds);
 	void UpdateRain(const FVector& CameraPos);
 	void UpdateLightning(float DeltaSeconds, const FVector& CameraPos);

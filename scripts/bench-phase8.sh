@@ -16,7 +16,7 @@ VIEWS=(
 	"storm-shore|-SailingCapture=ShoreTele -SailingWeather=Thunderstorm -SailingWeatherTime=150 -SailingHour=16 -SailingTWA=60 -SailingHoldTWA=60 -SailingCaptureBearing=150"
 	"full-moon|-SailingCapture=Chase -SailingDate=2024-10-17 -SailingWeather=CalmMorning -SailingWind=6 -SailingHour=22.5 -SailingTWA=90 -SailingHoldTWA=90"
 )
-echo "view,avg_fps,p99_ms" > "$OUT"
+echo "view,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms" > "$OUT"
 for V in "${VIEWS[@]}"; do
 	NAME="${V%%|*}"; EXTRA="${V#*|}"
 	for TRY in 1 2; do
@@ -26,10 +26,12 @@ for V in "${VIEWS[@]}"; do
 	done
 	python3 - "$ARTIFACTS/bench.json" "$NAME" >> "$OUT" <<'PY'
 import json, sys
+G = ('total_ms', 'base_ms', 'lumen_ms', 'water_ms', 'clouds_fog_ms', 'niagara_ms', 'post_ms')
+gpu = lambda b: ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G)
 try:
-    b = json.load(open(sys.argv[1])); print(f"{sys.argv[2]},{b['avg_fps']},{b['p99_ms']}")
+    b = json.load(open(sys.argv[1])); print(f"{sys.argv[2]},{b['avg_fps']},{b['p99_ms']}" + gpu(b))
 except Exception:
-    print(f"{sys.argv[2]},error,")
+    print(f"{sys.argv[2]},error,,,,,,,,")
 PY
 	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$NAME.png" ]] && cp "$ARTIFACTS/$NAME.png" "$REPO_ROOT/docs/phase-8/$NAME.png" || true
 done

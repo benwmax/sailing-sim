@@ -117,4 +117,9 @@ private:
 	bool bBenchDone = false;
 	FString ShotName = TEXT("screenshot");
 	TArray<float> FrameTimes;
+	// Visual V1: GPU time per budget slice, profiled after the measured window (see GpuSlices.h).
+	TSharedPtr<class FGpuProfileCapture> GpuCapture;
+	int32 GpuProfilesRequested = 0;
+	FString GpuSlicesJson;
+	void FinishGpuSlices();
 };

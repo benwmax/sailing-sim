@@ -13,6 +13,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
+#include "GpuSlices.h"
+#include "VisualPipeline.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Scalability.h"
@@ -249,21 +251,51 @@ void ASailingGameMode::ApplyWeatherSettings()
 void ASailingGameMode::ApplyQualitySettings()
 {
 	const ESailingQuality Quality = USailingSettings::Get()->Quality;
-	// Engine scalability: Low = engine Medium (no Lumen), Medium = High, High = Epic.
+	// Engine scalability: Low = engine Medium (no Lumen), Medium = High, High = Epic. Then the tier's own console
+	// variables (VisualPipeline.h: cloud samples, virtual shadow maps, ray tracing, anti-aliasing and resolution).
 	Scalability::FQualityLevels Levels = Scalability::GetQualityLevels();
-	Levels.SetFromSingleQualityLevel(Quality == ESailingQuality::Low ? 1 : (Quality == ESailingQuality::Medium ? 2 : 3));
+	Levels.SetFromSingleQualityLevel(QualityScalabilityLevel(Quality));
+	Levels.GlobalIlluminationQuality = QualityGIScalabilityLevel(Quality);
+	FParse::Value(FCommandLine::Get(), TEXT("SailingGI="), Levels.GlobalIlluminationQuality); // measuring
 	Scalability::SetQualityLevels(Levels);
-	// Volumetric clouds are the most expensive part of the sky: cap their ray-march samples per tier.
-	auto SetCVar = [](const TCHAR* Name, int32 Value)
+	for (const FQualityCVar& C : QualityCVars(Quality))
 	{
-		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(Name)) Var->Set(Value, ECVF_SetByCode);
-	};
-	SetCVar(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), Quality == ESailingQuality::Low ? 48 : (Quality == ESailingQuality::Medium ? 80 : 96));
-	SetCVar(TEXT("r.VolumetricCloud.ReflectionRaySampleMaxCount"), Quality == ESailingQuality::High ? 24 : 16);
+		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(C.Name))
+		{
+			// Hardware ray tracing only where the RHI has it (Metal on Apple silicon M3 and later, SM6).
+			const bool bRayTracing = FCString::Strcmp(C.Name, TEXT("r.RayTracing.Enable")) == 0 || FCString::Strcmp(C.Name, TEXT("r.Lumen.HardwareRayTracing")) == 0;
+			const float Value = bRayTracing && !GRHISupportsRayTracing ? 0.f : C.Value;
+			// Only on a change: toggling ray tracing recreates every render state.
+			if (Var->GetFloat() != Value) Var->Set(Value, ECVF_SetByCode);
+		}
+	}
+	// Measuring (Visual V1): -SailingAA=<0 none, 2 TAA, 4 TSR, 5 SMAA> and -SailingScreenPct=<percent> override the tier.
+	int32 AAOverride = -1, PctOverride = -1;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingAA="), AAOverride))
+	{
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->Set(AAOverride, ECVF_SetByCode);
+	}
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingScreenPct="), PctOverride))
+	{
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(PctOverride, ECVF_SetByCode);
+	}
+	int32 LumenHW = -1;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingLumenHW="), LumenHW))
+	{
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.RayTracing.Enable"))->Set(LumenHW, ECVF_SetByCode);
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing"))->Set(LumenHW, ECVF_SetByCode);
+	}
 	for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It)
 	{
 		It->SetRingCount(Quality == ESailingQuality::Low ? 4 : (Quality == ESailingQuality::Medium ? 5 : 6));
 	}
+	UE_LOG(LogSailing, Display, TEXT("Quality %d: AA %d, screen %d%%, VSM %d, ray tracing supported %d enabled %d, Lumen HW %d, Substrate %d"),
+		int32(Quality), IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->GetInt(),
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->GetInt(),
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Shadow.Virtual.Enable"))->GetInt(), int32(GRHISupportsRayTracing),
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.RayTracing.Enable"))->GetInt(),
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing"))->GetInt(),
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Substrate"))->GetInt());
 	for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
 	{
 		It->SetTreeFraction(Quality == ESailingQuality::Low ? 0.35f : (Quality == ESailingQuality::Medium ? 0.7f : 1.f));
@@ -397,7 +429,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	}
 
 	Elapsed += DeltaSeconds;
-	if (Elapsed > BenchWarmupSeconds)
+	if (Elapsed > BenchWarmupSeconds && Elapsed <= BenchWarmupSeconds + BenchSeconds)
 	{
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
@@ -425,10 +457,49 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		FScreenshotRequest::RequestScreenshot(ShotPath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		bScreenshotRequested = true;
 	}
+	// Visual V1: after the measured window, profile three frames on the GPU (their frame times are not counted) and
+	// sum their passes into the plan's budget slices. -SailingNoGpuSlices skips it.
+	static const bool bGpuSlices = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoGpuSlices"));
+	const float ProfileTimes[] = { 0.3f, 0.9f, 1.5f };
+	if (bGpuSlices && Elapsed > End && Elapsed <= End + 2.4f)
+	{
+		if (!GpuCapture.IsValid())
+		{
+			GpuCapture = MakeShared<FGpuProfileCapture>();
+			GLog->AddOutputDevice(GpuCapture.Get());
+		}
+		if (GpuProfilesRequested < UE_ARRAY_COUNT(ProfileTimes) && Elapsed > End + ProfileTimes[GpuProfilesRequested])
+		{
+			++GpuProfilesRequested;
+			GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
+		}
+		return;
+	}
 	if (Elapsed > End)
 	{
+		FinishGpuSlices();
 		FinishBenchmark();
 	}
+}
+
+void ASailingGameMode::FinishGpuSlices()
+{
+	if (!GpuCapture.IsValid())
+	{
+		return;
+	}
+	GLog->RemoveOutputDevice(GpuCapture.Get());
+	FGpuSlices Sum;
+	for (const TArray<FString>& Dump : GpuCapture->Take())
+	{
+		FGpuSlices Frame;
+		if (ParseProfileGpu(Dump, Frame)) Sum.Accumulate(Frame);
+	}
+	if (Sum.Frames > 0)
+	{
+		GpuSlicesJson = Sum.Average().ToJsonField();
+	}
+	GpuCapture.Reset();
 }
 
 void ASailingGameMode::FinishBenchmark()
@@ -449,13 +520,17 @@ void ASailingGameMode::FinishBenchmark()
 	const double MaxMs = N > 0 ? Sorted.Last() * 1000.0 : 0.0;
 	const USailingSettings* Settings = USailingSettings::Get();
 
-	const FString Summary = FString::Printf(
+	FString Summary = FString::Printf(
 		TEXT("{\"frames\":%d,\"seconds\":%.2f,\"avg_fps\":%.1f,\"avg_ms\":%.2f,\"p99_ms\":%.2f,\"max_ms\":%.2f,\"rhi\":\"%s\",\"resolution\":\"%dx%d\",\"quality\":\"%s\",\"weather\":\"%hs\",\"hour\":%.1f}"),
 		N, Total, AvgFps, AvgMs, P99Ms, MaxMs, GDynamicRHI ? GDynamicRHI->GetName() : TEXT("none"),
 		GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport ? GEngine->GameViewport->Viewport->GetSizeXY().X : 0,
 		GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport ? GEngine->GameViewport->Viewport->GetSizeXY().Y : 0,
 		Settings->Quality == ESailingQuality::Low ? TEXT("Low") : (Settings->Quality == ESailingQuality::Medium ? TEXT("Medium") : TEXT("High")),
 		WeatherPresetName(EWeatherPreset(Settings->WeatherPreset)), WeatherState.HourOfDay);
+	if (!GpuSlicesJson.IsEmpty())
+	{
+		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + TEXT("}");
+	}
 
 	UE_LOG(LogSailing, Display, TEXT("SailingBench result: %s"), *Summary);
 	FFileHelper::SaveStringToFile(Summary, *(FPaths::ProjectSavedDir() / TEXT("Bench/bench.json")));

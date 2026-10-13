@@ -15,7 +15,7 @@ VIEWS=(
 	"chart|-SailingLaunch=1 -SailingHour=11 -SailingChart=4 -SailingPlotFix"
 	"chart-bay|-SailingLaunch=2 -SailingHour=11 -SailingChart=25"
 )
-echo "view,avg_fps,p99_ms" > "$OUT"
+echo "view,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms" > "$OUT"
 for V in "${VIEWS[@]}"; do
 	NAME="${V%%|*}"; EXTRA="${V#*|}"
 	SHOT="$NAME"
@@ -26,10 +26,12 @@ for V in "${VIEWS[@]}"; do
 	done
 	python3 - "$ARTIFACTS/bench.json" "$NAME" >> "$OUT" <<'PY'
 import json, sys
+G = ('total_ms', 'base_ms', 'lumen_ms', 'water_ms', 'clouds_fog_ms', 'niagara_ms', 'post_ms')
+gpu = lambda b: ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G)
 try:
-    b = json.load(open(sys.argv[1])); print(f"{sys.argv[2]},{b['avg_fps']},{b['p99_ms']}")
+    b = json.load(open(sys.argv[1])); print(f"{sys.argv[2]},{b['avg_fps']},{b['p99_ms']}" + gpu(b))
 except Exception:
-    print(f"{sys.argv[2]},error,")
+    print(f"{sys.argv[2]},error,,,,,,,,")
 PY
 	[[ -z "${NO_DOCS:-}" && -f "$ARTIFACTS/$SHOT.png" ]] && cp "$ARTIFACTS/$SHOT.png" "$REPO_ROOT/docs/phase-5/$SHOT.png" || true
 done

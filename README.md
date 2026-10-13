@@ -395,6 +395,22 @@ Found and fixed along the way: the moon, once placed in the sky, made the clouds
 the horizon and cost the night views 5 fps (its light now stays at least 25 deg up); a turtled dinghy did not count as
 capsized and could not be righted (heel reads near 0 upside down); the helm-eye camera sat inside a crew figure.
 
+## Visual V1 gate results (Oct 13, 2026)
+
+The rendering pipeline of the Visual Realism Plan, all behind the quality tiers (details: `docs/visual-1/README.md`):
+
+- **Lighting:** Lumen everywhere above Low (hardware ray tracing on High), virtual shadow maps, and Substrate materials.
+- **Anti-aliasing:** TAA upscaling from 67% on Medium; TSR is off and MetalFX is not in this engine build.
+- **Exposure:** a physical camera that meters the light rather than the frame, with one filmic look.
+- **Benches:** GPU time per budget slice in every bench.
+
+| Check | Result |
+| --- | --- |
+| Automation tests | 74 of 74 pass, including 4 new under `SailingSim.Visual.*` |
+| Frame rate, Medium | Every benchmark view from Phases 2 to 8 at 75 fps or more (lowest: Galveston dusk 75, logbook 76); the eight V1 views 80 to 119 (`docs/visual-1/regression.csv`, `bench-after.csv`) |
+| Frame rate, High | 48 to 74 fps (target 45) |
+| Comparison | 12 reference scenes recaptured, before/after page `docs/visual-1/compare/index.html`; light 3 to 2 in clear weather, storms unchanged |
+
 ## Known gaps
 
 - Phase 8: crew are cylinders and decks are boxes (fix 9); sails are smooth sheets without wrinkles or leech flutter;
