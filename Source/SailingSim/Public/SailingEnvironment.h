@@ -91,6 +91,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UPointLightComponent> BoltLight;
 	bool bLayeredClouds = false;
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
+	/** Graphics G5: the haze's light relative to a clear midday (the metered exposure's light), and the sun's elevation. */
+	float HazeLight = 1.f;
+	float SunElevationDeg = 45.f;
 public:
 	float GetNightAmount() const { return NightAmount; }
 private:
