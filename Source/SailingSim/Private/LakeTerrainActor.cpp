@@ -64,47 +64,6 @@ namespace
 	}
 	float Rand01(uint32 Seed) { return (Hash(Seed) & 0xFFFFFF) / float(0xFFFFFF); }
 
-	/** Ear-clipping triangulation of a simple polygon (no holes). Returns triangle indices into Points. */
-	TArray<int32> Triangulate(const TArray<FVector2D>& Points)
-	{
-		TArray<int32> Result;
-		TArray<int32> Idx;
-		const int32 N = Points.Num();
-		if (N < 3) return Result;
-		double Area = 0.0;
-		for (int32 I = 0; I < N; ++I) Area += FVector2D::CrossProduct(Points[I], Points[(I + 1) % N]);
-		for (int32 I = 0; I < N; ++I) Idx.Add(Area > 0.0 ? I : N - 1 - I);
-		int32 Guard = 0;
-		while (Idx.Num() > 3 && Guard++ < N * N)
-		{
-			bool bClipped = false;
-			for (int32 I = 0; I < Idx.Num(); ++I)
-			{
-				const int32 A = Idx[(I + Idx.Num() - 1) % Idx.Num()], B = Idx[I], C = Idx[(I + 1) % Idx.Num()];
-				const FVector2D PA = Points[A], PB = Points[B], PC = Points[C];
-				if (FVector2D::CrossProduct(PB - PA, PC - PB) <= 0.0) continue; // reflex
-				bool bInside = false;
-				for (int32 K : Idx)
-				{
-					if (K == A || K == B || K == C) continue;
-					const FVector2D P = Points[K];
-					if (FVector2D::CrossProduct(PB - PA, P - PA) > 0.0 && FVector2D::CrossProduct(PC - PB, P - PB) > 0.0 && FVector2D::CrossProduct(PA - PC, P - PC) > 0.0)
-					{
-						bInside = true;
-						break;
-					}
-				}
-				if (bInside) continue;
-				Result.Append({ A, B, C });
-				Idx.RemoveAt(I);
-				bClipped = true;
-				break;
-			}
-			if (!bClipped) break;
-		}
-		if (Idx.Num() == 3) Result.Append({ Idx[0], Idx[1], Idx[2] });
-		return Result;
-	}
 }
 
 ALakeTerrainActor::ALakeTerrainActor()
@@ -937,12 +896,15 @@ void ALakeTerrainActor::PlaceBridgesAndDocks()
 	for (const FLakeDock& Dock : Lake->Docks)
 	{
 		if (MarinaBox.bIsValid && MarinaBox.IsInside(Dock.Points[0])) continue;
-		if (bShoreKit && (Dock.Kind == TEXT("breakwater") || bKitPiers)) continue;
+		if (bShoreKit && (Dock.Kind == TEXT("breakwater") || Dock.Kind == TEXT("groin") || bKitPiers)) continue;
+		// Graphics G7: the dike and the Seawall are drawn by the shore kit (or the terrain on Low), floating walkways by
+		// ACoastMarinasActor at the water's level.
+		if (Dock.Kind == TEXT("dike") || Dock.Kind == TEXT("seawall") || Dock.Kind == TEXT("floating")) continue;
 		if (Dock.bClosed)
 		{
 			TArray<FVector2D> Pts = Dock.Points;
 			Pts.Pop(); // closing point
-			const TArray<int32> Ids = Triangulate(Pts);
+			const TArray<int32> Ids = KitTriangulate(Pts);
 			const int32 Base = V.Num();
 			for (const FVector2D& P : Pts) { V.Add(FVector(P.X, P.Y, Deck) * CmPerMeter); N.Add(FVector::UpVector); }
 			for (int32 I = 0; I + 2 < Ids.Num(); I += 3) Tri.Append({ Base + Ids[I], Base + Ids[I + 2], Base + Ids[I + 1] });

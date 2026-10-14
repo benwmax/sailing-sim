@@ -42,7 +42,28 @@ struct FLakeDock
 {
 	TArray<FVector2D> Points;
 	bool bClosed = false;
-	FString Kind;
+	FString Kind;              // "pier", "breakwater"; Graphics G7 adds "dike", "seawall" and "floating" (inferred walkways)
+	float Width = 0.f;         // Graphics G7: metres across at the waterline (0: the kit's default for the kind)
+	float Crest = 0.f;         // Graphics G7: crest or deck height above the datum (0: the kit's default)
+};
+
+/** Graphics G7: an over-water structure on piles from the G2 lidar (Inputs/g2/piers): its deck outline and height. */
+struct FLakeDeck
+{
+	TArray<FVector2D> Outline;  // closed, map frame
+	float Deck = 1.5f;          // m above the datum (MLLW on the coast)
+	bool bCovered = false;      // a covered slip or a building on piles
+	FString Kind;               // pier, dock_complex, platform_or_wharf, covered_slip_or_building, deck
+};
+
+/** Graphics G7: a boat moored in the 2018 lidar, where the map has water under her. */
+struct FMooredBoat
+{
+	FVector2D Center = FVector2D::ZeroVector;
+	float HeadingDeg = 0.f;     // the bow
+	float Length = 7.f, Beam = 2.5f;
+	bool bMast = false;
+	int32 Marina = INDEX_NONE;
 };
 
 /** A bridge over the water: the deck follows the line at DeckHeight above the pool. */
@@ -95,12 +116,18 @@ struct SAILINGSIM_API FLakeData
 	void LoadHouses(const FString& Path);
 	/** Graphics G6: reads <Name>.crowns (Tools/terrain/build_crowns.py) into Crowns. */
 	void LoadCrowns(const FString& Path);
+	/** Graphics G7: reads <Name>.piers (Tools/coast/build_piers.py): decks, riprap, inferred walkways, moored boats. OSM piers
+	 *  that a lidar deck covers are dropped (the deck has the measured height). */
+	void LoadPiers(const FString& Path);
 
 	FString LakeName;
 	Sailing::FLakeTerrain Terrain;
 	std::vector<Sailing::FObstacleSegment> Obstacles;
 	TArray<FLaunchSpot> LaunchSpots;
 	TArray<FLakeDock> Docks;
+	/** Graphics G7: the lidar decks and the moored boats (<Name>.piers). */
+	TArray<FLakeDeck> Decks;
+	TArray<FMooredBoat> MooredBoats;
 	/** Visual V6: the club's marina (rows, slips, piers, breakwater, buildings), when <Name>.marina.json exists. */
 	FMarina Marina;
 	TArray<FLakeBridge> Bridges;

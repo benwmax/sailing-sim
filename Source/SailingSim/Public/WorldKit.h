@@ -46,6 +46,8 @@ struct SAILINGSIM_API FKitSection
 
 	/** Positions in metres (stored in cm); UVs as given (metres). Front face is the side the A->D x A->B normal points to. */
 	void Quad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC, const FVector2D& UD);
+	/** Graphics G7: a triangle facing up (the deck of a lidar pier). */
+	void Tri(const FVector& A, const FVector& B, const FVector& C, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC);
 	/** A box centred at C with half extents E, turned by Yaw (deg) about Z. Top UVs run across it (U = local Y: deck boards). */
 	void Box(const FVector& C, const FVector& E, float YawDeg, bool bBottom = false);
 	/** A box from A to B (plan, metres), width W, from Z0 to Z1. */
@@ -77,6 +79,20 @@ struct SAILINGSIM_API FKitGeometry
 
 struct FLakeData;
 struct FLakeBridge;
+struct FLakeDock;
+
+/** Ear-clipping triangulation of a simple polygon (no holes): triangle indices into Points. */
+SAILINGSIM_API TArray<int32> KitTriangulate(const TArray<FVector2D>& Points);
+
+/** Graphics G7: a band of riprap along a line: a breakwater or jetty is one, the Texas City Dike one along each edge. */
+struct FRiprapBand
+{
+	TArray<FVector2D> Points;
+	float HalfWidth = 3.2f;   // at the waterline
+	float Crest = 0.8f;       // above the datum
+};
+/** The riprap bands of a dock line (breakwater, groin, dike); none for other kinds. */
+SAILINGSIM_API void RiprapBands(const FLakeDock& Dock, TArray<FRiprapBand>& Out);
 
 /** The bridges of a lake or coast from their OSM ways (FLakeBridge: kind, deck clearance): decks, girders, pier bents, barriers,
  *  lamp posts; rail and foot bridges in their own styles. The girders' underside sits where the physics stops a mast. */
