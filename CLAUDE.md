@@ -107,6 +107,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `bench-visual.sh`). `scripts/pack-metahumans.sh` zips the git-ignored crew on the Mac for the PC. Setup and what is
    untested: `docs/windows/README.md`. Keep new code MSVC-clean too, and run batch files through `cmd /s /c` (see
    `Invoke-Tool` in `scripts/windows/env.ps1`).
+   Graphics G8 added the PC's own loop: `run-python.ps1 <script.py> [-Only fn,...]` (editor Python, e.g. make_materials.py),
+   `run-game.ps1` (uncooked), `capture-scenes-win.ps1` (scene CSV on the packaged game). `M_WorldSurface` patterns 9
+   (wood pilings) and 10 (dock boxes) are new and output a normal; keep `KitLook()` in step.
 
 ## Conventions
 
