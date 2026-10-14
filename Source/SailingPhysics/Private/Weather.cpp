@@ -82,7 +82,8 @@ namespace Sailing
 				S.Haze = 0.55;
 				break;
 			case EWeatherPreset::Overcast:
-				St.Coverage = 0.95;
+				// Graphics G6: an overcast is eight oktas: at 0.95 the deck showed blue holes (the round 7 race start).
+				St.Coverage = 1.0;
 				St.BaseKm = 0.9; St.TopKm = 1.7;
 				S.Haze = 0.15;
 				break;

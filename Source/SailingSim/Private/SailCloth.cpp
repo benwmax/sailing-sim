@@ -1,4 +1,5 @@
 #include "SailCloth.h"
+#include "ProceduralMeshComponent.h"
 #include "SailingSim.h"
 
 using namespace Sailing;
@@ -271,6 +272,19 @@ void FSailCloth::ComputeNormals(TArray<FVector>& Out) const
 			const FVector DU = Pos[Index(R, FMath::Min(C + 1, Cols - 1))] - Pos[Index(R, FMath::Max(C - 1, 0))];
 			const FVector DV = Pos[Index(FMath::Min(R + 1, Rows - 1), C)] - Pos[Index(FMath::Max(R - 1, 0), C)];
 			Out[Index(R, C)] = FVector::CrossProduct(DU, DV).GetSafeNormal();
+		}
+	}
+}
+
+void FSailCloth::ComputeTangents(TArray<FProcMeshTangent>& Out) const
+{
+	Out.SetNum(Pos.Num());
+	for (int32 R = 0; R < Rows; ++R)
+	{
+		for (int32 C = 0; C < Cols; ++C)
+		{
+			const FVector DU = Pos[Index(R, FMath::Min(C + 1, Cols - 1))] - Pos[Index(R, FMath::Max(C - 1, 0))];
+			Out[Index(R, C)] = FProcMeshTangent(DU.GetSafeNormal(), false);
 		}
 	}
 }

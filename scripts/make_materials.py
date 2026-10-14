@@ -461,16 +461,17 @@ float3 col = C * (0.88 + 0.12 * n + 0.05 * m) * (0.93 + 0.07 * f);
 // The wet band: banks are dark and glossy from the water up the swash, about half a metre (ragged); just under the
 // surface the bed takes the water's olive cast.
 float h = (P.z - WaterZ) * 0.01;
-float wet = 1.0 - smoothstep(0.05, 0.45 + 0.2 * n + 0.08 * f, h);
+float wet = (1.0 - smoothstep(0.05, 0.45 + 0.2 * n + 0.08 * f, h)) * CA;   // CA: open water within 14 m (Graphics G6)
 float under = smoothstep(0.0, -0.35, h);
 col = lerp(col, col * 0.55, wet);
 col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
 return col;
 """
-    c = custom(mat, code, ["C", "P", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
+    connect(vc, "A", c, "CA")
     connect(pos, "", c, "P")
     wz = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 350)
     wz.set_editor_property("collection", world_collection())
@@ -811,6 +812,28 @@ float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
 Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
+// Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
+// flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
+// from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
+float dhdu = 0.0, dhdv = 0.0;
+float yk = UV0.y / 0.75;
+float k = floor(yk + 0.5);
+float jit = frac(sin(k * 91.7) * 4375.5) - 0.5;
+float dy = (yk - k - 0.2 * jit) * 0.75;
+float strength = 0.0018 * (0.35 + 0.65 * (0.5 + 0.5 * sin(UV0.x * 1.7 + k * 2.3))) * (frac(k * 0.5) > 0.25 ? 1.0 : -0.7) * (1.0 - batten);
+float w = 0.014;
+dhdv += strength * (-2.0 * dy / (w * w)) * exp(-dy * dy / (w * w));
+float ca = UV2.x, cb = UV0.y;
+float cr2 = max(ca * ca + cb * cb, 1e-3);
+float cth = atan2(cb, max(ca, 1e-3));
+float camp = 0.0012 * exp(-sqrt(cr2) / 0.7) * step(Layout, 0.5);
+float dth = camp * 34.0 * cos(34.0 * cth);
+dhdu += dth * (cb / cr2);      // UV2.x runs from the leech toward the luff: d/du = -d/da
+dhdv += dth * (ca / cr2);
+float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
+dhdu += pucker * 55.0 * cos(UV0.x * 55.0);
+NormalTS = normalize(float3(-dhdu, -dhdv, 1.0));
+Rough = lerp(R, 0.28, mark);
 return col;
 """
 
@@ -847,14 +870,17 @@ def build_sail_cloth():
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
-               extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+               extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
+                              ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    connect(rough, "", c, "R")
+    MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(c, "NormalTS", unreal.MaterialProperty.MP_NORMAL)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     # Instances: the J/22 main (battens, insignia, number), the jib, the spinnaker (nylon, red).
@@ -1075,6 +1101,12 @@ float r0 = lerp(lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7)), 0.004, glass);
 // GGX alpha = roughness^2; the unresolved slope variance adds to it (scaled down: the engine's GGX has no multiple
 // scattering, so a fully rough grazing reflection comes out darker than the sky sheen real water shows).
 float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);
+// Graphics G6: never smoother than the wind allows. Cox and Munk's mean square slope (0.003 + 0.00512 U, U in m/s at 10 m)
+// is mostly in waves shorter than any texel here: unresolved, it is roughness. Without it a 16 kn bay mirrored the boats
+// like a calm (round 7's race start) and the far lake from the drone read as a glossy sheet. A little over half of it
+// (the resolved slopes carry the rest), none on glassy water.
+float cm = 0.003 + 0.00512 * rough * 8.0;
+alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - glass));
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 return normalize(float3(-sx, -sy, 1.0));
 """
@@ -1344,12 +1376,15 @@ AO = 1.0;
     // contrast comes from the shading below (dark bases, lit faces), not from the edge's opacity.
     // Graphics G6: no more than MaxStepDepth of optical depth in one march step. Denser than that, a ray goes opaque within a step and
     // the pixel is lit at whatever depth its jittered sample landed (bright skin or dark core): the frosted grain. Capped,
-    // cloud closes over two or three steps and the march averages its light; thick cloud stays opaque. The storm, stratus
-    // and rain are capped by the longer of the view and shadow steps (their light came through 400 m shadow steps that
-    // were all-or-nothing); fair cumulus only by the view step, so its sunlit tops keep their shaded bases.
+    // cloud closes over two or three steps and the march averages its light; thick cloud stays opaque. The storm and rain
+    // are capped by the longer of the view and shadow steps (their light came through 400 m shadow steps that were
+    // all-or-nothing); fair cumulus only by the view step, so its sunlit tops keep their shaded bases.
     float cV = Tracer.y > 0.0 ? 2.0 * MaxStepDepth / (stepM * Density) : 1e6;   // cumulus: twice the storm's
     float cS = Tracer.y > 0.0 ? MaxStepDepth / (capStepM * Density) : 1e6;
-    d = max(max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cS)), max(dCi, min(dSm * Ext.z, cS))), min(dRain * Ext.w, cS));
+    // A stratus deck is flat and even (little for the jitter to catch): three times the storm's by the view step, so an
+    // overcast stays thick and grey (capped by the shadow step it thinned to an optical depth under 2 and went beige).
+    float cT = Tracer.y > 0.0 ? 3.0 * MaxStepDepth / (stepM * Density) : 1e6;
+    d = max(max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cT)), max(dCi, min(dSm * Ext.z, cS))), min(dRain * Ext.w, cS));
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
     // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
     float wet = saturate(dSm / max(d, 1e-3)) * (1.0 - smoothstep(3000.0, 4500.0, alt));
@@ -2156,6 +2191,148 @@ def build_house_materials():
         unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+# ---------------------------------------------------------------- houses from the G2 footprints (Graphics G6)
+# WorldKit's HouseWall and HouseRoof looks (HouseKit.cpp): the colour per vertex (sRGB bytes, undecoded by the vertex
+# factory), the finish in its alpha, UV0 in metres (along the wall, height above the ground), UV1 the eave height and a
+# seed (+2: windows painted, for the reduced-detail band and commercial blocks).
+HOUSE_KIT_WALL_CODE = """
+float3 c = pow(saturate(VC.rgb), 2.2);
+float code = floor(VA * 255.0 + 0.5);
+float u = UV.x, v = UV.y;
+float eave = Tag.x, seed = frac(Tag.y), painted = step(1.5, Tag.y);
+float r = 0.8;
+float3 e = float3(0.0, 0.0, 0.0);
+if (code < 0.5)
+{
+    // Brick: 7.5 cm courses, 22 cm bricks in running bond, each its own shade; grey mortar.
+    float row = floor(v / 0.075);
+    float bu = frac(u / 0.22 + 0.5 * fmod(row, 2.0));
+    float mortar = max(step(0.88, frac(v / 0.075)), step(0.95, bu));
+    float b = frac(sin(row * 17.1 + floor(u / 0.22 + 0.5 * fmod(row, 2.0)) * 31.7) * 4375.5);
+    c *= 0.85 + 0.25 * b;
+    c = lerp(c, float3(0.55, 0.53, 0.5), mortar * 0.8);
+    r = 0.85;
+}
+else if (code < 1.5)
+{
+    // Lap siding: 17 cm boards, each lip throwing a thin shadow line.
+    float f = frac(v / 0.17);
+    c *= (0.9 + 0.08 * f) * lerp(0.62, 1.0, smoothstep(0.0, 0.06, f));
+    r = 0.6;
+}
+else if (code < 2.5)
+{
+    // Stucco: a fine trowelled mottle.
+    float2 g = floor(float2(u, v) * 3.0);
+    c *= 0.93 + 0.09 * frac(sin(dot(g, float2(12.9, 78.2))) * 43758.5);
+    r = 0.9;
+}
+else if (code < 3.5)
+{
+    // Window glass: dark, glossy; some lit at night (warm), by window.
+    c = float3(0.018, 0.02, 0.024);
+    r = 0.04;
+    float lit = step(0.55, frac(sin(dot(floor(WP.xy / 150.0), float2(37.7, 11.3)) + floor(WP.z / 290.0) * 7.1) * 4375.5));
+    e = float3(1.0, 0.7, 0.4) * 4.0 * lit * Night;
+}
+else if (code < 4.5)
+{
+    // A front door: raised panels.
+    float2 q = float2(frac(u / 0.48), frac(v / 0.7));
+    float inset = step(0.15, q.x) * step(q.x, 0.85) * step(0.12, q.y) * step(q.y, 0.88);
+    c *= lerp(1.0, 0.82, inset);
+    r = 0.45;
+}
+else
+{
+    // A sectional garage door: four horizontal panels with grooves.
+    float f = frac(v / 0.53);
+    c *= lerp(0.7, 1.0, smoothstep(0.0, 0.04, f) * smoothstep(1.0, 0.94, f)) * (0.96 + 0.04 * step(0.5, frac(u / 0.6)));
+    r = 0.5;
+}
+// Windows painted on the plain walls far from the water (and on commercial blocks): 2.9 m storeys, one every 3.2 m.
+if (painted > 0.5 && code < 2.5)
+{
+    float wu = frac(u / 3.2 + seed);
+    float wv = frac(v / 2.9);
+    float win = step(0.25, wu) * step(wu, 0.6) * step(0.3, wv) * step(wv, 0.76) * step(floor(v / 2.9) * 2.9 + 2.3, eave) * step(0.4, v);
+    c = lerp(c, float3(0.03, 0.035, 0.04), win);
+    r = lerp(r, 0.05, win);
+    float lit = step(0.55, frac(sin(floor(u / 3.2 + seed) * 37.7 + floor(v / 2.9) * 11.3 + seed * 91.0) * 4375.5));
+    e += float3(1.0, 0.7, 0.4) * 5.0 * win * lit * Night;
+}
+// Weathering: splash-back near the ground, a little grime under the eaves.
+c *= lerp(0.78, 1.0, saturate(v / 0.5)) * lerp(1.0, 0.9, saturate((v - eave + 0.6) / 0.6) * step(code, 2.5));
+Emit = e;
+Out = r;
+return c;
+"""
+
+HOUSE_KIT_ROOF_CODE = """
+float3 c = pow(saturate(VC.rgb), 2.2);
+float code = floor(VA * 255.0 + 0.5);
+float u = UV.x, v = UV.y;   // along the eave, up the slope (m)
+float r = 0.85;
+if (code < 0.5)
+{
+    // Asphalt shingles: 14 cm courses, 33 cm tabs, each its own shade; the course lines in shadow.
+    float row = floor(v / 0.14);
+    float tab = floor(u / 0.33 + 0.5 * fmod(row, 2.0));
+    float b = frac(sin(row * 31.1 + tab * 17.3 + Tag.x * 91.0) * 4375.5);
+    c *= (0.8 + 0.3 * b) * (1.0 - 0.3 * step(0.9, frac(v / 0.14)));
+    // Streaks and weathering over the whole roof (tens of metres): no two roofs alike.
+    c *= 0.9 + 0.12 * frac(sin(floor(u / 3.0) * 12.7 + Tag.x * 47.0) * 4375.5);
+}
+else if (code < 1.5)
+{
+    // A flat roof's membrane or gravel: mottled, a seam every 3 m.
+    float2 g = floor(float2(u, v) * 2.0);
+    c *= (0.9 + 0.12 * frac(sin(dot(g, float2(12.9, 78.2))) * 43758.5)) * (1.0 - 0.15 * step(0.97, frac(u / 3.0)));
+    r = 0.9;
+}
+else
+{
+    // Standing-seam metal: ribs every 45 cm.
+    c *= 0.9 + 0.1 * step(0.92, frac(u / 0.45));
+    r = 0.4;
+}
+Out = r;
+return c;
+"""
+
+
+def build_house_kit_materials():
+    F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
+    for name, code, slot in (("M_HouseKitWall", HOUSE_KIT_WALL_CODE, "HouseWall"), ("M_HouseKitRoof", HOUSE_KIT_ROOF_CODE, "HouseRoof")):
+        mat = world_material(name)
+        wall = name == "M_HouseKitWall"
+        ins = ["UV", "Tag", "VC", "VA"] + (["WP", "Night"] if wall else [])
+        c = custom(mat, code, ins, F3, -300, 100, extra_outputs=[("Out", F1)] + ([("Emit", F3)] if wall else []))
+        connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0, coordinate_index=0), "", c, "UV")
+        connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 100, coordinate_index=1), "", c, "Tag")
+        vc = node(mat, unreal.MaterialExpressionVertexColor, -900, 200)
+        connect(vc, "", c, "VC")
+        connect(vc, "A", c, "VA")
+        if wall:
+            connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 300), "", c, "WP")
+            night = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 400)
+            night.set_editor_property("collection", world_collection())
+            night.set_editor_property("parameter_name", "Night")
+            connect(night, "", c, "Night")
+            MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+        MEL.recompile_material(mat)
+        unreal.EditorAssetLibrary.save_loaded_asset(mat)
+        # The kit's look instance (WorldKit KitMaterial: MI_World_<slot>).
+        path = f"{WORLD_FOLDER}/MI_World_{slot}"
+        mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
+            ASSETS.create_asset(f"MI_World_{slot}", WORLD_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        MEL.set_material_instance_parent(mi, mat)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
 # Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
 # The rest are the generated structures' looks and must match KitLook() in Source/SailingSim/Private/WorldKit.cpp.
 WORLD_LIBRARY = {
@@ -2227,6 +2404,7 @@ build(build_world_surface)
 build(build_vehicle_paint)
 build(build_navaid_paint)
 build(build_house_materials)
+build(build_house_kit_materials)
 build(build_terrain)
 build(build_rain)
 build(build_emissive)

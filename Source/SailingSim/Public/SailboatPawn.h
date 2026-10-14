@@ -345,6 +345,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelMast;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelBoom;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelRudder;
+	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
+	 *  shown instead of the sails, mast and running rig while bSailsStowed. */
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> StowedDress;
+	bool bSailsStowed = false;
+	bool bStowedShown = false;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> TravelerCar;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;

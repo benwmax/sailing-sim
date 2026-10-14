@@ -1647,12 +1647,14 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 			Boat.Reset(Home.Center.X, Home.Center.Y, Home.HeadingDeg * kDegToRad, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+			bSailsStowed = true;   // Graphics G6: covered and furled until she casts off
 		}
 		else if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
 		{
 			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+			bSailsStowed = true;
 		}
 		else if (Drill == ESailingDrill::ReturnAndDock && GM->GetLake().LaunchSpots.Num() > 1)
 		{
@@ -1837,8 +1839,21 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 
+	// Graphics G6: tied up in her slip, a keelboat's sails are stowed (the berthed dress), the boom on the centreline.
+	const bool bStowed = bSailsStowed && StowedDress && IsTiedUp();
+	if (bStowed != bStowedShown)
+	{
+		bStowedShown = bStowed;
+		StowedDress->SetVisibility(bStowed);
+		MainSail->SetVisibility(!bStowed);
+		JibSail->SetVisibility(!bStowed && Boat.GetConfig().HasJib());
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(!bStowed);
+		if (ModelMast) ModelMast->SetVisibility(!bStowed);   // the dress carries its own (straight) mast and standing rig
+		if (RigLines) RigLines->SetVisibility(!bStowed);
+		if (TravelerCar) TravelerCar->SetVisibility(!bStowed);
+	}
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
-	BoomPivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
+	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
 	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
@@ -1849,6 +1864,12 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (ModelHull)
 	{
 		UpdateModelRig(DeltaSeconds);
+	}
+	if (bStowed)
+	{
+		SpinSail->SetVisibility(false);
+		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
+		return;
 	}
 	// A reef changes the main's planform: rebuild its cloth.
 	const double MainHead = Cfg.Main.NumStrips > 0 ? Cfg.Main.Strips[Cfg.Main.NumStrips - 1].ZTop : -1.0;
@@ -2352,7 +2373,9 @@ bool ASailboatPawn::ToggleDockLines()
 	if (!Lines.empty())
 	{
 		Lines.clear();
-		StatusMessage = TEXT("Lines cast off");
+		// Graphics G6: the crew hoists the sails and takes the cover off as the lines come in.
+		StatusMessage = bSailsStowed && StowedDress ? TEXT("Lines cast off, sails up") : TEXT("Lines cast off");
+		bSailsStowed = false;
 		StatusUntil = Now + 3.0;
 		return true;
 	}

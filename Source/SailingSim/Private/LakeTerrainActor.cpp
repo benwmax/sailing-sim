@@ -15,6 +15,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Misc/PackageName.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 using namespace Sailing;
 
@@ -224,12 +227,37 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
 			const int32 GR = R / Sub, GC = C / Sub; // the colour noise stays on the 5 m grid's cells at every level
 			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
+			// Graphics G6: how close open water is (1 at the edge, 0 past 14 m): the bare clay and sand band and the
+			// material's wet band (alpha) are the waterline's, not every low flat's. A cove's head a few decimetres above
+			// the pool read as a glossy mud plain hundreds of metres across from the drone.
+			float Near = Z < -0.3 ? 1.f : 0.f;
+			if (Z >= -0.3 && Z < 1.5)
+			{
+				const double X = OX + R * Cell, Y = OY + C * Cell;
+				static const double Radii[] = { 4.0, 8.0, 14.0 };
+				static const float Weights[] = { 1.f, 0.6f, 0.25f };
+				for (int32 K = 0; K < 3 && Near == 0.f; ++K)
+				{
+					for (int32 A = 0; A < 8; ++A)
+					{
+						const double Ang = A * UE_DOUBLE_PI / 4.0;
+						if (T.HeightAt(X + Radii[K] * FMath::Cos(Ang), Y + Radii[K] * FMath::Sin(Ang)) < -0.05) { Near = Weights[K]; break; }
+					}
+				}
+			}
 			FLinearColor Col;
 			if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
-			else if (Z < 0.6) Col = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
+			else if (Z < 0.6)
+			{
+				// Low ground back from the edge: sedge and lush grass (the lake's flats grow over).
+				const FLinearColor Bank = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
+				Col = FMath::Lerp(FLinearColor(0.24f, 0.28f, 0.12f), Bank, Near);
+			}
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
 			if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
-			M.Colors.Add(Col * Noise);
+			Col = Col * Noise;
+			Col.A = Near;
+			M.Colors.Add(Col);
 		}
 	}
 	for (int32 I = 0; I < N; ++I)
@@ -390,6 +418,39 @@ void ALakeTerrainActor::PlaceTrees()
 	const FLakeTerrain& T = Lake->Terrain;
 	TArray<FTreeInstance> Trees;
 	PlaceTreeInstances(T, TreeFraction, Trees);
+	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
+	if (Lake->Houses.Num() > 0)
+	{
+		constexpr double Cell = 50.0;
+		TMap<FIntPoint, TArray<int32, TInlineAllocator<4>>> Grid;
+		for (int32 K = 0; K < Lake->Houses.Num(); ++K)
+		{
+			const FLakeHouse& H = Lake->Houses[K];
+			Grid.FindOrAdd(FIntPoint(FMath::FloorToInt32(H.X / Cell), FMath::FloorToInt32(H.Y / Cell))).Add(K);
+		}
+		const int32 Before = Trees.Num();
+		Trees.RemoveAll([&](const FTreeInstance& I)
+		{
+			const FIntPoint C(FMath::FloorToInt32(I.Position.X / Cell), FMath::FloorToInt32(I.Position.Y / Cell));
+			for (int32 Dx = -1; Dx <= 1; ++Dx) for (int32 Dy = -1; Dy <= 1; ++Dy)
+			{
+				const auto* List = Grid.Find(C + FIntPoint(Dx, Dy));
+				if (!List) continue;
+				for (const int32 K : *List)
+				{
+					for (const FLakeHouse::FWing& W : Lake->Houses[K].Wings)
+					{
+						const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+						const double Dx2 = I.Position.X - W.X, Dy2 = I.Position.Y - W.Y;
+						const double A = Dx2 * FMath::Cos(Yaw) + Dy2 * FMath::Sin(Yaw), B = -Dx2 * FMath::Sin(Yaw) + Dy2 * FMath::Cos(Yaw);
+						if (FMath::Abs(A) < W.HalfLength + 2.0 && FMath::Abs(B) < W.HalfWidth + 2.0) return true;
+					}
+				}
+			}
+			return false;
+		});
+		UE_LOG(LogSailing, Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
+	}
 
 	// Visual V6 (Medium and High): Nanite trees built in Blender (four species, two variants each), swaying in the wind
 	// (M_TreeLeaves / M_TreeBark read MPC_World). Low keeps the Phase 3 shapes.
@@ -591,6 +652,28 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	// gable-roofed ranch for one storey, a hip-roofed two-storey, a flat-roofed block for the big footprints, with wall
 	// (brick, siding, stucco) and roof colours from North Texas streets. Windows are drawn by M_HouseWall in world space.
 	if (USailingSettings::Get()->Quality == ESailingQuality::Low) return false;
+	// Graphics G6: the G2 houses (real footprints, lidar eaves and roofs, NAIP roof colours; WorldKit's HouseKit.cpp) replace
+	// the archetypes below where the world has them (-SailingClassicHouses compares). The private docks stay.
+	const bool bKitHouses = Lake.Houses.Num() > 0 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHouses"));
+	if (bKitHouses)
+	{
+		TMap<FIntPoint, TArray<int32>> ByTile;
+		HouseTiles(Lake, ByTile);
+		TMap<FIntPoint, FKitGeometry> Tiles;
+		int32 Procedural = 0;
+		const FString Prefix = TEXT("Houses_") + Lake.FileName;
+		for (const auto& KV : ByTile)
+		{
+			FKitGeometry& G = Tiles.Add(KV.Key);
+			if (!FPackageName::DoesPackageExist(TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(Prefix, KV.Key)))
+			{
+				BuildHouseGeometry(Lake, KV.Value, G);
+				++Procedural;
+			}
+		}
+		const int32 Baked = SpawnKitTiles(this, Tiles, Prefix, false, [](EKitLook L) { return KitMaterial(L); }, HouseTileMeshes);
+		UE_LOG(LogSailing, Display, TEXT("Houses: %d from the G2 footprints in %d tiles (%d baked, %d procedural)"), Lake.Houses.Num(), Tiles.Num(), Baked, Procedural);
+	}
 	static const TCHAR* Names[] = { TEXT("SM_House_Gable"), TEXT("SM_House_Hip"), TEXT("SM_House_Flat") };
 	TArray<UInstancedStaticMeshComponent*> Ism;
 	for (const TCHAR* Name : Names)
@@ -704,8 +787,11 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 			float Yaw = float(B.YawDeg) + (B.Length >= B.Width ? 0.f : 90.f);
 			const FVector2D Back(FMath::Sin(FMath::DegreesToRadians(Yaw)), -FMath::Cos(FMath::DegreesToRadians(Yaw)));
 			if (FVector2D::DotProduct(Back, WaterDir) < 0.0) Yaw += 180.f;
-			NearX[Best].Add(FTransform(FRotator(0, Yaw, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(Sx, Sy, 1.f)));
-			NearD[Best].Append({ Wall.R, Wall.G, Wall.B, float(Pat) + 10.f, Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+			if (!bKitHouses)
+			{
+				NearX[Best].Add(FTransform(FRotator(0, Yaw, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(Sx, Sy, 1.f)));
+				NearD[Best].Append({ Wall.R, Wall.G, Wall.B, float(Pat) + 10.f, Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+			}
 			// A private dock for the lakefront houses: from the bank toward the water, a few metres clear of the next.
 			if (WaterM <= 75.0 && ((H >> 24) % 10) < 6)
 			{
@@ -725,6 +811,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 			}
 			continue;
 		}
+		if (bKitHouses) continue;
 		X[Kind].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(B.Length, B.Width, Height)));
 		D[Kind].Append({ Wall.R, Wall.G, Wall.B, float(Pat), Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
 	}

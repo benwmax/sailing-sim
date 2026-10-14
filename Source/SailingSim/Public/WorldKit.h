@@ -14,7 +14,8 @@ class UMaterialInterface;
  * Nanite static meshes, one per 40 m tile (UWorldKitLibrary::BakeMarina, run by scripts/make-world-models.sh), and the game
  * loads those. Without a bake (or for a tile it lacks) it draws the same geometry as static procedural meshes.
  */
-enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Riprap, Count };
+enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Riprap,
+	HouseWall, HouseRoof, Count };   // Graphics G6: the houses' walls and roofs, coloured per vertex (FKitSection::Paint)
 
 struct FKitLookDesc
 {
@@ -36,6 +37,12 @@ struct SAILINGSIM_API FKitSection
 	TArray<FVector> N;
 	TArray<FVector2D> UV;
 	TArray<FProcMeshTangent> Tan;
+	/** Graphics G6: per-vertex colour and a second UV channel, for looks that vary per building (HouseWall, HouseRoof). Every
+	 *  vertex added takes the current Paint and Tag. */
+	TArray<FColor> Col;
+	TArray<FVector2D> UV1;
+	FColor Paint = FColor::White;
+	FVector2D Tag = FVector2D::ZeroVector;
 
 	/** Positions in metres (stored in cm); UVs as given (metres). Front face is the side the A->D x A->B normal points to. */
 	void Quad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC, const FVector2D& UD);
@@ -84,6 +91,11 @@ SAILINGSIM_API float BridgeWidth(const FLakeBridge& Bridge);
 /** The top of a bridge's road surface (m above the water/datum). */
 SAILINGSIM_API float BridgeRoadZ(const FLakeBridge& Bridge);
 
+/** Graphics G6: the G2 houses (FLakeData::Houses) by HouseTileM tile of their centre, leaving out the marina's own buildings. */
+SAILINGSIM_API void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int32>>& Out);
+/** The houses' walls, roofs, eaves and (full detail) windows, doors and chimneys (HouseKit.cpp). */
+SAILINGSIM_API void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Houses, FKitGeometry& Out);
+
 /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
 SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
@@ -111,6 +123,11 @@ public:
 	static constexpr double ShoreTileM = 1000.0;
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
 	static TArray<UStaticMesh*> BakeShore(const FString& LakeName);
+
+	/** Graphics G6: the G2 houses in 500 m tiles (by house centre): SM_Houses_<Lake>_<x>_<y>. */
+	static constexpr double HouseTileM = 500.0;
+	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
+	static TArray<UStaticMesh*> BakeHouses(const FString& LakeName);
 
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);

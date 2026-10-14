@@ -83,6 +83,8 @@ private:
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
 	void UpdateModelTrees(const FVector2D& Camera);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
+	/** Graphics G6: the G2 houses' tiles (baked Nanite, or procedural where a tile has no bake). */
+	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> HouseTileMeshes;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> BridgeDecks;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Pilings;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> DockMesh;

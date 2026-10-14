@@ -88,9 +88,10 @@ for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
 # The generated structures (WorldKit.h): bake the marina into Nanite tiles. Stale tiles from an older layout are removed.
 BAKED = f"{WORLD}/Baked"
 old = set(a.split(".")[0] for a in unreal.EditorAssetLibrary.list_assets(BAKED, recursive=False)) if unreal.EditorAssetLibrary.does_directory_exist(BAKED) else set()
-BAKES = {"marina": unreal.WorldKitLibrary.bake_marina, "bridges": unreal.WorldKitLibrary.bake_bridges, "shore": unreal.WorldKitLibrary.bake_shore}
+BAKES = {"marina": unreal.WorldKitLibrary.bake_marina, "bridges": unreal.WorldKitLibrary.bake_bridges, "shore": unreal.WorldKitLibrary.bake_shore,
+         "houses": unreal.WorldKitLibrary.bake_houses}
 for what, lake in () if ONLY else (("marina", "RayHubbard"), ("bridges", "RayHubbard"), ("bridges", "GalvestonBay"), ("bridges", "GulfPassage"),
-                   ("shore", "RayHubbard"), ("shore", "GalvestonBay"), ("shore", "GulfPassage")):
+                   ("shore", "RayHubbard"), ("shore", "GalvestonBay"), ("shore", "GulfPassage"), ("houses", "RayHubbard"), ("houses", "GalvestonBay")):
     meshes = BAKES[what](lake)
     for m in meshes:
         unreal.EditorAssetLibrary.save_loaded_asset(m)
