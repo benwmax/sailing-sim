@@ -21,7 +21,9 @@ VIEWS=(
 	"crew|-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=15 -SailingWind=10 -SailingTWA=60 -SailingHoldTWA=60 -SailingCamYaw=250 -SailingCamPitch=-6 -SailingCamDist=2.6 -SailingCamTarget=-1.6,0.8,0.9"
 	"marina-night|-SailingWorld=Lake -SailingDrill=LeavetheDock -SailingWeather=AfternoonBreeze -SailingHour=21.5 -SailingWind=4 -SailingCamYaw=200 -SailingCamPitch=-10 -SailingCamDist=40"
 )
-echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms" > "$OUT"
+echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms,game_ms,game_p99_ms,render_ms,rhi_ms,gpu_frame_ms" > "$OUT"
+# Perf 1: the game thread's named slices (PerfScopes.h), ms per frame, one row per run.
+GT_OUT="${OUT%.csv}-gt.csv"; rm -f "$GT_OUT"
 for V in "${VIEWS[@]}"; do
 	NAME="${V%%|*}"; EXTRA="${V#*|}"
 	for Q in "${TIERS[@]}"; do
@@ -31,14 +33,23 @@ for V in "${VIEWS[@]}"; do
 			DEMO=1 SHOT="$SHOT" ARGS="$EXTRA -SailingQuality=$Q" "$(dirname "$0")/bench-mac.sh" "$SECONDS_PER_RUN" > /dev/null || true
 			[[ -f "$ARTIFACTS/bench.json" ]] && break
 		done
-		python3 - "$ARTIFACTS/bench.json" "$NAME" "$Q" >> "$OUT" <<'PY'
+		python3 - "$ARTIFACTS/bench.json" "$NAME" "$Q" "$GT_OUT" >> "$OUT" <<'PY'
 import json, sys
+import os
 G = ('total_ms', 'base_ms', 'lumen_ms', 'water_ms', 'clouds_fog_ms', 'niagara_ms', 'post_ms', 'other_ms')
+T = ('game_ms', 'game_p99_ms', 'render_ms', 'rhi_ms', 'gpu_frame_ms')
 try:
     b = json.load(open(sys.argv[1]))
-    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']}" + ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G) + f",{b.get('cloth_cpu_ms', '')},{b.get('water_cpu_ms', '')}")
+    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']}" + ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G) + f",{b.get('cloth_cpu_ms', '')},{b.get('water_cpu_ms', '')}" + ''.join(',' + str(b.get(k, '')) for k in T))
+    gt = b.get('gt', {})
+    if gt:
+        path = sys.argv[4]
+        new = not os.path.exists(path)
+        with open(path, 'a') as f:
+            if new: f.write('view,quality,game_ms,' + ','.join(gt) + '\n')
+            f.write(f"{sys.argv[2]},{sys.argv[3]},{b.get('game_ms', '')}," + ','.join(str(v) for v in gt.values()) + '\n')
 except Exception:
-    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,,,")
+    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,,,,,,,,")
 PY
 		[[ -n "${DOCS:-}" && -f "$ARTIFACTS/$SHOT.png" ]] && { mkdir -p "$DOCS"; cp "$ARTIFACTS/$SHOT.png" "$DOCS/$SHOT.png"; }
 	done

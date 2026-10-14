@@ -4,6 +4,7 @@
 #include "SailingMath.h"
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace Sailing
@@ -94,7 +95,12 @@ namespace Sailing
 		double BandWidth[kWaveBands];
 		FWaveParams Params;
 		std::shared_ptr<FOcean> Ocean;
+		// Perf 1: boats stepping in parallel call Bands(): it is rebuilt under a lock, and only when the amplitudes or the
+		// ocean changed (on the game thread, never during a step).
 		mutable std::vector<FWaveBand> BandCache;
 		mutable bool bBandsDirty = true;
+		mutable uint64_t BandOceanGeneration = ~0ull;
+		struct FLock { std::mutex M; FLock() = default; FLock(const FLock&) {} FLock& operator=(const FLock&) { return *this; } };
+		mutable FLock BandLock;
 	};
 }

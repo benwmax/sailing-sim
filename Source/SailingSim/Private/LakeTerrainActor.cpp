@@ -1,4 +1,5 @@
 #include "LakeTerrainActor.h"
+#include "PerfScopes.h"
 #include "UObject/UObjectIterator.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -317,6 +318,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 void ALakeTerrainActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Terrain);
 	// Once, 8 s in: every instanced mesh in the world by owner and mesh (the render thread culls each instance).
 	if (!bLoggedInstances && GetWorld()->GetTimeSeconds() > 8.0)
 	{
@@ -343,43 +345,54 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	FVector Cam = FVector::ZeroVector;
 	if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CM->GetCameraLocation();
 	const double CamX = Cam.X / CmPerMeter, CamY = Cam.Y / CmPerMeter;
-	UpdateModelTrees(FVector2D(CamX, CamY));
+	{ SAILING_PERF_SCOPE(Trees); UpdateModelTrees(FVector2D(CamX, CamY)); }
 	const FLakeTerrain& T = Lake->Terrain;
 	const double ChunkSize = GChunkCells * T.GetCell();
 
-	// Wanted level of detail by distance to the camera; queue the closest chunks first.
-	TArray<int32> Order;
-	Pending = 0;
-	int32 InFlight = 0;
-	for (int32 I = 0; I < Chunks.Num(); ++I)
+	// Perf 1 fix 7: a chunk's wanted detail changes only as the camera moves, so look again after 20 m or half a second
+	// (every frame while chunks are queued or building). Galveston Bay has some 4,000 chunks.
+	const double Now = FPlatformTime::Seconds();
+	const bool bLook = Pending > 0 || Building > 0 || FVector2D::Distance(FVector2D(CamX, CamY), LodCamera) > 20.0 || Now - LodTime > 0.5;
+	if (bLook)
 	{
-		FChunk& Ch = Chunks[I];
-		const double CX = T.GetOriginX() + (Ch.Row + 0.5) * ChunkSize, CY = T.GetOriginY() + (Ch.Col + 0.5) * ChunkSize;
-		const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), FVector2D(CamX, CamY)) - 0.5 * ChunkSize);
-		Ch.Wanted = D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8));
-		// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
-		if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
-		if (Ch.bBuilding) ++InFlight;
-		if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(I); ++Pending; }
+		LodCamera = FVector2D(CamX, CamY);
+		LodTime = Now;
+		// Wanted level of detail by distance to the camera; queue the closest chunks first.
+		TArray<int32> Order;
+		Pending = 0;
+		int32 InFlight = 0;
+		for (int32 I = 0; I < Chunks.Num(); ++I)
+		{
+			FChunk& Ch = Chunks[I];
+			const double CX = T.GetOriginX() + (Ch.Row + 0.5) * ChunkSize, CY = T.GetOriginY() + (Ch.Col + 0.5) * ChunkSize;
+			const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), FVector2D(CamX, CamY)) - 0.5 * ChunkSize);
+			Ch.Wanted = D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8));
+			// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
+			if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
+			if (Ch.bBuilding) ++InFlight;
+			if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(I); ++Pending; }
+		}
+		Order.Sort([&](int32 A, int32 B)
+		{
+			// Unbuilt chunks first (so the whole lake appears quickly at low detail), then nearest.
+			const bool BuiltA = Chunks[A].Lod >= 0, BuiltB = Chunks[B].Lod >= 0;
+			if (BuiltA != BuiltB) return !BuiltA;
+			return Chunks[A].Wanted < Chunks[B].Wanted;
+		});
+		for (int32 Index : Order)
+		{
+			if (InFlight >= kMaxBuildsInFlight) break;
+			FChunk& Ch = Chunks[Index];
+			Ch.bBuilding = true;
+			const int32 Row = Ch.Row, Col = Ch.Col, Step = Ch.Wanted;
+			Ch.Lod = -2 - Step; // marks the step being built
+			const double Hide = HideBelow;
+			Ch.Future = Async(EAsyncExecution::ThreadPool, [Lake, Row, Col, Step, Hide]() { return BuildChunk(Lake, Row, Col, Step, Hide); });
+			++InFlight;
+		}
+		Building = InFlight;
 	}
-	Order.Sort([&](int32 A, int32 B)
-	{
-		// Unbuilt chunks first (so the whole lake appears quickly at low detail), then nearest.
-		const bool BuiltA = Chunks[A].Lod >= 0, BuiltB = Chunks[B].Lod >= 0;
-		if (BuiltA != BuiltB) return !BuiltA;
-		return Chunks[A].Wanted < Chunks[B].Wanted;
-	});
-	for (int32 Index : Order)
-	{
-		if (InFlight >= kMaxBuildsInFlight) break;
-		FChunk& Ch = Chunks[Index];
-		Ch.bBuilding = true;
-		const int32 Row = Ch.Row, Col = Ch.Col, Step = Ch.Wanted;
-		Ch.Lod = -2 - Step; // marks the step being built
-		const double Hide = HideBelow;
-		Ch.Future = Async(EAsyncExecution::ThreadPool, [Lake, Row, Col, Step, Hide]() { return BuildChunk(Lake, Row, Col, Step, Hide); });
-		++InFlight;
-	}
+	if (Building == 0) return;
 
 	// Upload finished chunks, a few per frame.
 	int32 Uploads = 0;
@@ -396,6 +409,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		const bool bShadow = Ch.Lod <= 2;
 		if (Ch.Mesh->CastShadow != bShadow) Ch.Mesh->SetCastShadow(bShadow);
 		Ch.bBuilding = false;
+		--Building;
 	}
 }
 

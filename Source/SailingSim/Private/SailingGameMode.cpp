@@ -562,6 +562,10 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
+		if (!bSlicesStarted) { bSlicesStarted = true; FMemory::Memcpy(SlicesAtStart, SailingPerf::GSliceSeconds, sizeof(SlicesAtStart)); }
+		// (The thread times read here are the previous frame's, all of them inside the window but the first.)
+		ThreadTimes.Sample();
+		FMemory::Memcpy(SlicesAtEnd, SailingPerf::GSliceSeconds, sizeof(SlicesAtEnd));
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
 	}
@@ -668,6 +672,11 @@ void ASailingGameMode::FinishBenchmark()
 	if (N > 0 && WaterSecondsAtStart >= 0.0)
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
+	}
+	// Perf 1: the threads' own times (game thread without its waits) and the game thread's named slices.
+	if (const FString Threads = ThreadTimes.JsonFields(); !Threads.IsEmpty())
+	{
+		Summary = Summary.LeftChop(1) + TEXT(",") + Threads + TEXT(",\"gt\":") + SailingPerf::SlicesJson(SlicesAtStart, SlicesAtEnd, N) + TEXT("}");
 	}
 	if (!GpuSlicesJson.IsEmpty())
 	{

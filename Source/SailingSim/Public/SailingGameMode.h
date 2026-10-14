@@ -6,6 +6,7 @@
 #include "Ocean.h"
 #include "Weather.h"
 #include "Wind.h"
+#include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
 #include "Async/Future.h"
@@ -139,5 +140,10 @@ private:
 	FString GpuSlicesJson;
 	double ClothSecondsAtStart = -1.0;
 	double WaterSecondsAtStart = -1.0;
+	// Perf 1: stat unit's thread times over the measured window, and the game thread's slices at its start.
+	SailingPerf::FThreadTimes ThreadTimes;
+	double SlicesAtStart[int32(SailingPerf::ESlice::Count)] = {};
+	double SlicesAtEnd[int32(SailingPerf::ESlice::Count)] = {};
+	bool bSlicesStarted = false;
 	void FinishGpuSlices();
 };

@@ -1,4 +1,6 @@
 #include "UI/SailHud.h"
+#include "Widgets/SInvalidationPanel.h"
+#include "PerfScopes.h"
 #include "Learning.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
@@ -59,7 +61,7 @@ namespace SailHudImpl
 			SLATE_ATTRIBUTE(float, Heading)
 			SLATE_ATTRIBUTE(float, WindFrom)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Heading = A._Heading; WindFrom = A._WindFrom; }
+		void Construct(const FArguments& A) { Heading = A._Heading; WindFrom = A._WindFrom; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(650, 50); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -104,7 +106,7 @@ namespace SailHudImpl
 			SLATE_ATTRIBUTE(float, Awa)
 			SLATE_ATTRIBUTE(float, Twa)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; }
+		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(200, 200); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -148,7 +150,7 @@ namespace SailHudImpl
 			SLATE_ARGUMENT(TWeakObjectPtr<APlayerController>, Player)
 			SLATE_ARGUMENT(TSharedPtr<FSlateBrush>, Map)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Player = A._Player; Map = A._Map; }
+		void Construct(const FArguments& A) { Player = A._Player; Map = A._Map; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(210, 210); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -189,7 +191,7 @@ namespace SailHudImpl
 		SLATE_BEGIN_ARGS(STrimView) {}
 			SLATE_ARGUMENT(TWeakObjectPtr<APlayerController>, Player)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Player = A._Player; }
+		void Construct(const FArguments& A) { Player = A._Player; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(258, 96); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -289,6 +291,10 @@ void SSailHud::Construct(const FArguments& A)
 	const float M = HudMargin;
 	ChildSlot
 	[
+		// Perf 1 fix 9: the HUD is cached and repainted only where something changed (its text changes at 10 Hz); the
+		// instruments drawn from the live boat (compass, wind dial, minimap, trim) are volatile and drawn every frame.
+		SNew(SInvalidationPanel)
+		[
 		// Settings > Display > HUD size scales every panel around its anchor.
 		SNew(SDPIScaler).DPIScale_Lambda([]() { return FMath::Clamp(USailingSettings::Get()->HudScale, 85, 130) / 100.f; })
 		[
@@ -483,6 +489,7 @@ void SSailHud::Construct(const FArguments& A)
 			[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HintsText; }), EType::Small, FSlateColor(Muted)) ]
 		]
 		]
+		]
 	];
 	Refresh();
 }
@@ -495,6 +502,7 @@ ASailboatPawn* SSailHud::Pawn() const
 void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 {
 	SCompoundWidget::Tick(G, Now, Dt);
+	SAILING_PERF_SCOPE(Hud);
 	if (Now >= NextRefresh)
 	{
 		NextRefresh = Now + (SailUI::IsLow() ? 0.2 : 0.1);

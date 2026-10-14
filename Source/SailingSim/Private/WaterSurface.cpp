@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "PerfScopes.h"
 #include "Ocean.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -132,25 +133,16 @@ namespace
 		return Tex;
 	}
 
-	void UploadHalfsMip(UTexture2D* Tex, int32 MipIndex, const TArray<float>& Values, int32 Width, int32 Height)
+	/** Level 0 (RGBA floats) and its box-filtered mips, packed to half floats: one new[] block per mip, which
+	 *  UploadPackedMips hands to the render thread (Perf 1: built on a worker). */
+	void PackMips(TArray<float> Level, int32 Size, TArray<uint8*>& Out)
 	{
-		uint8* Bytes = new uint8[Values.Num() * sizeof(FFloat16)];
-		FFloat16* Halfs = reinterpret_cast<FFloat16*>(Bytes);
-		for (int32 I = 0; I < Values.Num(); ++I) Halfs[I] = FFloat16(Values[I]);
-		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, Height);
-		Tex->UpdateTextureRegions(MipIndex, 1, Region, Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Bytes, [](uint8* Data, const FUpdateTextureRegion2D* R)
+		for (int32 S = Size;;)
 		{
-			delete[] Data;
-			delete R;
-		});
-	}
-
-	/** Uploads level 0 (RGBA floats) and its box-filtered mips. */
-	void UploadFloatsWithMips(UTexture2D* Tex, TArray<float> Level, int32 Size)
-	{
-		for (int32 Mip = 0, S = Size;; ++Mip)
-		{
-			UploadHalfsMip(Tex, Mip, Level, S, S);
+			uint8* Bytes = new uint8[Level.Num() * sizeof(FFloat16)];
+			FFloat16* Halfs = reinterpret_cast<FFloat16*>(Bytes);
+			for (int32 I = 0; I < Level.Num(); ++I) Halfs[I] = FFloat16(Level[I]);
+			Out.Add(Bytes);
 			if (S == 1) break;
 			const int32 Half = S / 2;
 			TArray<float> Next;
@@ -169,6 +161,21 @@ namespace
 			Level = MoveTemp(Next);
 			S = Half;
 		}
+	}
+
+	/** Enqueues the packed mips' upload (the render thread frees each block when done). */
+	void UploadPackedMips(UTexture2D* Tex, TArray<uint8*>& Mips, int32 Size)
+	{
+		for (int32 Mip = 0, S = Size; Mip < Mips.Num(); ++Mip, S = FMath::Max(1, S / 2))
+		{
+			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, S, S);
+			Tex->UpdateTextureRegions(Mip, 1, Region, S * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Mips[Mip], [](uint8* Data, const FUpdateTextureRegion2D* R)
+			{
+				delete[] Data;
+				delete R;
+			});
+		}
+		Mips.Reset();
 	}
 
 	void Upload(UTexture2D* Tex, const TArray<uint8>& Pixels, int32 Size)
@@ -400,6 +407,7 @@ void AWaterSurface::SetBoatForWake(const FVector2D& PositionM, float HeadingRad,
 void AWaterSurface::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Water);
 
 	// Rings follow the camera, each snapped to twice its spacing so vertices don't swim.
 	FVector CamPos = GetActorLocation();
@@ -432,7 +440,7 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	UpdateOcean();
 	if (bV4)
 	{
-		UpdateDetail();
+		{ SAILING_PERF_SCOPE(WaterUploads); UpdateDetail(); }
 		UpdateWakeGrid(DeltaSeconds);
 		UpdateShoreMap();
 		if (Tier >= 2) UpdateSpray(DeltaSeconds);
@@ -514,50 +522,77 @@ void AWaterSurface::UpdateDetail()
 		Launch(FrameNext->Time + kDetailStep);
 	}
 
-	// Blend the two frames to this instant and upload: A = height, displacement, Jacobian; B = slopes and their squares.
-	const float W = float(FMath::Clamp((T - FramePrev->Time) / kDetailStep, 0.0, 1.0));
-	auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
+	// Perf 1 fix 5: hand last frame's blend (made on a worker for this frame's time) to the render thread, then start the
+	// next one. A worker still busy (a long hitch) keeps what is drawn.
+	if (bUploadPending && PendingUpload.IsReady())
 	{
-		const FWaveDetail::FGrid& A = FramePrev->Chop;
-		const FWaveDetail::FGrid& B = FrameNext->Chop;
-		const int32 NN = A.N * A.N;
-		TArray<float> PixA, PixB;
-		PixA.SetNumUninitialized(NN * 4);
-		PixB.SetNumUninitialized(NN * 4);
-		for (int32 I = 0; I < NN; ++I)
+		bUploadPending = false;
+		if (const FDetailUploadPtr Done = PendingUpload.Get())
 		{
-			PixA[4 * I + 0] = Blend(A.H, B.H, I);
-			PixA[4 * I + 1] = Blend(A.Dx, B.Dx, I);
-			PixA[4 * I + 2] = Blend(A.Dy, B.Dy, I);
-			PixA[4 * I + 3] = Blend(A.J, B.J, I);
-			// Slopes and their squares (LEAN mapping: a mip's mean square minus its squared mean is the slope variance
-			// it averaged away, which the material turns into roughness).
-			const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
-			PixB[4 * I + 0] = Sx;
-			PixB[4 * I + 1] = Sy;
-			PixB[4 * I + 2] = Sx * Sx;
-			PixB[4 * I + 3] = Sy * Sy;
+			UploadPackedMips(DetailAMap, Done->A, Done->N);
+			UploadPackedMips(DetailBMap, Done->B, Done->N);
+			if (Done->RippleN > 0) UploadPackedMips(RippleBMap, Done->Ripple, Done->RippleN);
 		}
-		UploadFloatsWithMips(DetailAMap, MoveTemp(PixA), A.N);
-		UploadFloatsWithMips(DetailBMap, MoveTemp(PixB), A.N);
 	}
-	if (FramePrev->Ripple.N > 0 && FrameNext->Ripple.N == FramePrev->Ripple.N)
+	if (bUploadPending) return;
+
+	// Blend the two frames to the next frame's instant (this one plus this frame's length): A = height, displacement,
+	// Jacobian; B = slopes and their squares.
+	const double Ahead = T + FMath::Clamp(double(GetWorld()->GetDeltaSeconds()), 0.0, kDetailStep);
+	const float W = float(FMath::Clamp((Ahead - FramePrev->Time) / kDetailStep, 0.0, 1.0));
+	const FDetailFramePtr Prev = FramePrev, Next = FrameNext;
+	const bool bRipple = Prev->Ripple.N > 0 && Next->Ripple.N == Prev->Ripple.N;
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple]() -> FDetailUploadPtr
 	{
-		const FWaveDetail::FGrid& A = FramePrev->Ripple;
-		const FWaveDetail::FGrid& B = FrameNext->Ripple;
-		const int32 NN = A.N * A.N;
-		TArray<float> Pix;
-		Pix.SetNumUninitialized(NN * 4);
-		for (int32 I = 0; I < NN; ++I)
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
+		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
+		FDetailUploadPtr Out = MakeShared<FDetailUpload, ESPMode::ThreadSafe>();
 		{
-			const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
-			Pix[4 * I + 0] = Sx;
-			Pix[4 * I + 1] = Sy;
-			Pix[4 * I + 2] = Sx * Sx;
-			Pix[4 * I + 3] = Sy * Sy;
+			const FWaveDetail::FGrid& A = Prev->Chop;
+			const FWaveDetail::FGrid& B = Next->Chop;
+			const int32 NN = A.N * A.N;
+			TArray<float> PixA, PixB;
+			PixA.SetNumUninitialized(NN * 4);
+			PixB.SetNumUninitialized(NN * 4);
+			for (int32 I = 0; I < NN; ++I)
+			{
+				PixA[4 * I + 0] = Blend(A.H, B.H, I);
+				PixA[4 * I + 1] = Blend(A.Dx, B.Dx, I);
+				PixA[4 * I + 2] = Blend(A.Dy, B.Dy, I);
+				PixA[4 * I + 3] = Blend(A.J, B.J, I);
+				// Slopes and their squares (LEAN mapping: a mip's mean square minus its squared mean is the slope variance
+				// it averaged away, which the material turns into roughness).
+				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
+				PixB[4 * I + 0] = Sx;
+				PixB[4 * I + 1] = Sy;
+				PixB[4 * I + 2] = Sx * Sx;
+				PixB[4 * I + 3] = Sy * Sy;
+			}
+			Out->N = A.N;
+			PackMips(MoveTemp(PixA), A.N, Out->A);
+			PackMips(MoveTemp(PixB), A.N, Out->B);
 		}
-		UploadFloatsWithMips(RippleBMap, MoveTemp(Pix), A.N);
-	}
+		if (bRipple)
+		{
+			const FWaveDetail::FGrid& A = Prev->Ripple;
+			const FWaveDetail::FGrid& B = Next->Ripple;
+			const int32 NN = A.N * A.N;
+			TArray<float> Pix;
+			Pix.SetNumUninitialized(NN * 4);
+			for (int32 I = 0; I < NN; ++I)
+			{
+				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
+				Pix[4 * I + 0] = Sx;
+				Pix[4 * I + 1] = Sy;
+				Pix[4 * I + 2] = Sx * Sx;
+				Pix[4 * I + 3] = Sy * Sy;
+			}
+			Out->RippleN = A.N;
+			PackMips(MoveTemp(Pix), A.N, Out->Ripple);
+		}
+		return Out;
+	});
+	bUploadPending = true;
 }
 
 void AWaterSurface::UpdateHullClip()
@@ -888,6 +923,7 @@ void AWaterSurface::WaitForWorkers()
 	if (bShorePending) { PendingShore.Wait(); bShorePending = false; }
 	if (bWakePending) { PendingWake.Wait(); bWakePending = false; }
 	if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
+	if (bUploadPending) { PendingUpload.Wait(); bUploadPending = false; }
 }
 
 void AWaterSurface::EndPlay(const EEndPlayReason::Type Reason)

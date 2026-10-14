@@ -414,10 +414,21 @@ void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joint
 	const FReferenceSkeleton& Ref = Mesh->GetSkinnedAsset()->GetRefSkeleton();
 	TArray<FTransform> CS;
 	Pose(Ref, Joints, Rig, CS, Hands);
+	// Perf 1: SetBoneTransformByName in component space rebuilds the whole pose to find each bone's parent (quadratic in
+	// the bones: 1.9 ms a frame for three MetaHumans on the Mac). Every bone is posed here, so write the local transforms
+	// straight from the component-space ones (the array is the component's own; GetBoneSpaceTransforms is its getter).
+	TArray<FTransform>& Local = const_cast<TArray<FTransform>&>(Mesh->GetBoneSpaceTransforms());
+	if (Local.Num() != CS.Num())
+	{
+		for (int32 B = 0; B < CS.Num(); ++B) Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
+		return;
+	}
 	for (int32 B = 0; B < CS.Num(); ++B)
 	{
-		Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
+		const int32 Parent = Ref.GetParentIndex(B);
+		Local[B] = Parent >= 0 ? CS[B].GetRelativeTransform(CS[Parent]) : CS[B];
 	}
+	Mesh->MarkRefreshTransformDirty();
 }
 
 void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out, const FCrewRig* Rig, const FCrewHands* Hands)

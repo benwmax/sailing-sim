@@ -136,6 +136,10 @@ namespace Sailing
 		void SetPlayer(const FVesselSnapshot& Player, double Beam, bool bPresent = true);
 
 		void Step(double Dt);
+		/** Perf 1: runs Body(0..Count-1), perhaps in parallel. The game sets it to Unreal's ParallelFor: each sailboat's
+		 *  step touches only that boat (wind, waves, terrain and the current are read-only meanwhile), so the result is
+		 *  the same as stepping them in order, which is what happens when it is unset. */
+		std::function<void(int, const std::function<void(int)>&)> ParallelFor;
 
 		/** Other vessels' hulls as obstacle segments near a point (for the player's boat physics). */
 		std::vector<FObstacleSegment> HullsNear(double X, double Y, double Radius, int ExcludeId) const;
