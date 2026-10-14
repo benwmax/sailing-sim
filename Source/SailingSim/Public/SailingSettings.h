@@ -109,6 +109,55 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float Volume = 0.8f;
 
+	// Graphics G4: the Settings screen's rows (ui-spec.md 5.10).
+	/** Render resolution: 0 = the tier's own (and High's governor), otherwise a fixed percentage. */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 ResolutionScale = 0;
+
+	/** Frame-rate cap (t.MaxFPS); 0 = uncapped. */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 FrameCap = 0;
+
+	/** HUD scale around its anchors, percent (85..130). */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	int32 HudScale = 100;
+
+	/** Body, small and UI text, percent (100..150). */
+	UPROPERTY(config, EditAnywhere, Category = "Accessibility")
+	int32 TextScale = 100;
+
+	/** Boat speed and wind: 0 knots, 1 mph, 2 km/h. */
+	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
+	int32 SpeedUnits = 0;
+
+	/** Depth: 0 feet, 1 metres, 2 fathoms. */
+	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
+	int32 DepthUnits = 0;
+
+	/** Headings in degrees true instead of magnetic. */
+	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
+	bool bHeadingsTrue = false;
+
+	/** Skip the "Start sailing" prompt when the world has loaded. */
+	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
+	bool bAutoStart = false;
+
+	/** Pause when the window loses focus. */
+	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
+	bool bPauseOnFocusLoss = false;
+
+	/** Speed (m/s) in the chosen unit, and the unit's label. */
+	double SpeedIn(double MetersPerSecond) const { return MetersPerSecond * (SpeedUnits == 1 ? 2.236936 : (SpeedUnits == 2 ? 3.6 : 1.943844)); }
+	const TCHAR* SpeedUnit() const { return SpeedUnits == 1 ? TEXT("mph") : (SpeedUnits == 2 ? TEXT("km/h") : TEXT("kn")); }
+	double DepthIn(double Meters) const { return Meters / (DepthUnits == 1 ? 1.0 : (DepthUnits == 2 ? 1.8288 : 0.3048)); }
+	const TCHAR* DepthUnit() const { return DepthUnits == 1 ? TEXT("m") : (DepthUnits == 2 ? TEXT("fm") : TEXT("ft")); }
+	/** Applies the display rows that live outside the quality tiers (frame cap, focus pause). */
+	void ApplyDisplay() const;
+	/** A benchmark or capture run (-SailingBench): it measures the tiers as they are, not the player's display rows. */
+	static bool IsMeasuring();
+	/** The player's fixed resolution percentage, or 0 (the tier's own; always 0 when measuring). */
+	int32 FixedResolutionScale() const { return IsMeasuring() ? 0 : ResolutionScale; }
+
 	/** Simple layout is in effect (always on Easy). */
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
 

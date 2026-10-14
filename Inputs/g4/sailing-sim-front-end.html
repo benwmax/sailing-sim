@@ -1,0 +1,1072 @@
+<title>Sailing Sim Front End</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira+Semi+Condensed:wght@400;500;600&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: one 16:9 game screen that scales like a real 1920x1080 UI (1cqw = 19.2px at 1080p, 38.4px at 4K).
+   Single dark look on purpose: it is a game front end over a 3D world. Tokens mirror the UE spec (ui-spec.md, section 3). */
+:root{
+  color-scheme: dark;
+  --ink:#0a141c;          /* deep lake at dusk: page and screen ground */
+  --panel:rgba(13,29,40,.80);
+  --panel-solid:#102130;
+  --raise:#17303f;
+  --line:#2b4554;
+  --fg:#eaf0f2;
+  --muted:#93a8b4;
+  --dim:#71889a;
+  --accent:#f4c430;       /* Q-flag yellow: focus and primary action */
+  --accent-ink:#1d1600;
+  --chart:#d14f9b;        /* NOAA chart magenta: routes, nav aids, map pins */
+  --water:#2f6f97;
+  --land:#cdbf98;         /* chart buff */
+  --port:#e2483d;         /* port red */
+  --stbd:#2db36a;         /* starboard green */
+  --warn:#ff9a2e;
+  --sel:rgba(234,240,242,.75); /* chosen item: white edge + yellow tick; focus is the yellow ring */
+  --f-display:"Saira Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-ui:"Saira Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+}
+html,body{background:var(--ink);color:var(--fg)}
+body{font-family:var(--f-body);padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1600px;margin-inline:auto;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.top h1{font-family:var(--f-display);font-weight:600;font-size:22px;letter-spacing:.04em;margin:0;text-transform:uppercase}
+.top h1 span{color:var(--muted);font-weight:500}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.tool{font:500 13px/1 var(--f-ui);color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:4px;padding:8px 11px;cursor:pointer;letter-spacing:.03em}
+.tool[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tool:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.jump{display:flex;flex-wrap:wrap;gap:6px}
+.jump button{font:500 12px/1 var(--f-ui);background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 10px;cursor:pointer}
+.jump button.on{color:var(--fg);border-color:var(--accent)}
+.hint{font-size:13px;color:var(--muted);margin:0;max-width:110ch}
+.hint kbd{font:600 11px var(--f-ui);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--fg)}
+
+/* ===== the game screen ===== */
+.screen-frame{container-type:inline-size;width:100%;aspect-ratio:16/9;max-width:100%;position:relative;overflow:hidden;border-radius:6px;border:1px solid var(--line);background:#06101a;user-select:none}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;font-size:.94cqw}
+.scr[hidden]{display:none!important}
+.world-bg{position:absolute;inset:0;z-index:0}
+.world-bg.lake{background:
+  radial-gradient(ellipse 30% 18% at 72% 34%,rgba(255,226,170,.55),transparent 70%),
+  linear-gradient(180deg,#6f9cc2 0%,#a9c6d8 34%,#d9d6c4 47%,#55705f 49.5%,#4b6a62 51%,#5f7c76 60%,#3d5a59 100%)}
+.world-bg.bay{background:
+  radial-gradient(ellipse 30% 18% at 30% 30%,rgba(255,214,160,.6),transparent 70%),
+  linear-gradient(180deg,#4e7fae 0%,#9ab8cf 36%,#d4c7ae 47%,#6b6e5c 49.2%,#53727a 50.5%,#466876 62%,#2c4b5a 100%)}
+.world-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,16,24,.86) 0%,rgba(8,16,24,.55) 38%,rgba(8,16,24,.15) 70%,rgba(8,16,24,.35) 100%)}
+.scr.hud .world-bg::after{background:linear-gradient(180deg,rgba(0,0,0,.18),transparent 14%,transparent 78%,rgba(0,0,0,.35))}
+.shore{position:absolute;left:0;top:44%;width:100%;height:7%;z-index:0}
+.layer{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;padding:2.6cqw 3.4cqw 0;min-height:0}
+
+/* header + step bar */
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:2cqw}
+.eyebrow{font:600 .72cqw var(--f-ui);letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+.h{font:600 3.1cqw/1 var(--f-display);text-transform:uppercase;letter-spacing:.02em;margin:.3cqw 0 0}
+.steps{display:flex;gap:.3cqw;align-items:center}
+.step{font:500 .7cqw var(--f-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:.35cqw .7cqw;border-bottom:.15cqw solid var(--line)}
+.step.done{color:var(--muted);border-color:var(--muted)}
+.step.cur{color:var(--fg);border-color:var(--accent)}
+.body{flex:1;display:flex;gap:1.6cqw;margin-top:1.8cqw;min-height:0}
+
+/* footer prompt bar (controller / keyboard glyphs) */
+.prompts{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:2cqw;padding:1.1cqw 3.4cqw;border-top:1px solid rgba(147,168,180,.18);background:rgba(6,14,20,.55);font:500 .78cqw var(--f-ui);color:var(--muted)}
+.prompts .grp{display:flex;gap:1.6cqw;align-items:center}
+.g{display:inline-flex;align-items:center;gap:.45cqw}
+.glyph{display:inline-grid;place-items:center;min-width:1.35cqw;height:1.35cqw;padding:0 .3cqw;border-radius:.3cqw;border:1px solid var(--line);border-bottom-width:.15cqw;font:600 .66cqw var(--f-ui);color:var(--fg);background:var(--raise)}
+.glyph.pad{border-radius:50%;border-bottom-width:1px}
+.glyph.a{background:#2a8a4c;border-color:#2a8a4c}.glyph.b{background:#b23a32;border-color:#b23a32}.glyph.x{background:#2f63b0;border-color:#2f63b0}.glyph.y{background:#b8901a;border-color:#b8901a}
+.glyph.sh{border-radius:.3cqw .3cqw .6cqw .6cqw}
+
+/* focusable base: every [data-f] is a focus stop */
+[data-f]{position:relative;outline:none;cursor:pointer}
+[data-f].focus{box-shadow:0 0 0 .16cqw var(--accent),0 0 1.4cqw rgba(244,196,48,.35)}
+.fo-badge{position:absolute;top:-.55cqw;left:-.55cqw;z-index:5;min-width:1.25cqw;height:1.25cqw;padding:0 .25cqw;border-radius:.65cqw;background:var(--chart);color:#fff;font:700 .62cqw/1.25cqw var(--f-ui);text-align:center;pointer-events:none;box-shadow:0 0 0 .1cqw #06101a}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.6cqw;font:600 1cqw var(--f-ui);letter-spacing:.06em;text-transform:uppercase;padding:.8cqw 1.6cqw;border-radius:.25cqw;background:var(--panel);border:1px solid var(--line);color:var(--fg)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary.focus{box-shadow:0 0 0 .16cqw var(--fg),0 0 1.4cqw rgba(244,196,48,.5)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:.35cqw;backdrop-filter:blur(.8cqw)}
+.low .panel{backdrop-filter:none;background:var(--panel-solid)}
+
+/* ===== title ===== */
+.title-wrap{flex:1;display:grid;grid-template-columns:30cqw 1fr;gap:3cqw;padding:0 3.4cqw 2.4cqw;align-items:end;position:relative;z-index:1}
+.logo{font:700 6.2cqw/.86 var(--f-display);text-transform:uppercase;letter-spacing:.01em;margin:0}
+.logo small{display:block;font:500 1.05cqw var(--f-ui);letter-spacing:.32em;color:var(--muted);margin-top:1cqw}
+.menu{display:flex;flex-direction:column;gap:.15cqw;margin-top:2.4cqw}
+.mi{display:flex;align-items:baseline;justify-content:space-between;gap:1cqw;padding:.62cqw 1cqw;border-left:.2cqw solid transparent;font:600 1.55cqw var(--f-display);text-transform:uppercase;letter-spacing:.04em;color:var(--fg)}
+.mi .sub{font:400 .8cqw var(--f-body);text-transform:none;letter-spacing:0;color:var(--muted)}
+.mi.focus{box-shadow:none;border-left-color:var(--accent);background:linear-gradient(90deg,rgba(244,196,48,.18),transparent)}
+.mi.focus .sub{color:var(--fg)}
+.cont-card{justify-self:end;width:24cqw;padding:1.2cqw 1.4cqw;display:flex;flex-direction:column;gap:.5cqw}
+.cont-card .k{font:600 .68cqw var(--f-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.cont-card .v{font:600 1.3cqw var(--f-display);text-transform:uppercase}
+.cont-card p{margin:0;font-size:.82cqw;color:var(--muted);line-height:1.4}
+.version{position:absolute;right:3.4cqw;top:2.6cqw;z-index:1;font:500 .7cqw var(--f-ui);color:var(--muted);letter-spacing:.1em}
+
+/* ===== world select ===== */
+.worlds{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1.6cqw;padding-bottom:1.8cqw}
+.wcard{display:flex;flex-direction:column;border-radius:.4cqw;overflow:hidden;border:1px solid var(--line);background:var(--panel-solid)}
+.wcard .art{height:13cqw;position:relative}
+.wcard .art.lake{background:radial-gradient(ellipse 40% 30% at 70% 30%,rgba(255,228,180,.6),transparent),linear-gradient(180deg,#78a3c8,#c9d3cc 52%,#5b7a62 54%,#4f6f6a 60%,#2f4b4d)}
+.wcard .art.bay{background:radial-gradient(ellipse 40% 30% at 25% 30%,rgba(255,210,150,.6),transparent),linear-gradient(180deg,#5584b2,#cdbfa4 52%,#6b6a58 53.5%,#4a6b77 58%,#24404e)}
+.wcard .art svg{position:absolute;inset:0;width:100%;height:100%}
+.wcard .tag{position:absolute;left:1.2cqw;top:1cqw;font:600 .66cqw var(--f-ui);letter-spacing:.16em;text-transform:uppercase;background:rgba(6,14,20,.7);padding:.3cqw .6cqw;border-radius:.2cqw}
+.wcard .info{padding:1.3cqw 1.5cqw;display:flex;flex-direction:column;gap:.8cqw;flex:1}
+.wcard h3{margin:0;font:600 2cqw/1 var(--f-display);text-transform:uppercase}
+.wcard p{margin:0;font-size:.9cqw;line-height:1.45;color:var(--muted);max-width:60ch}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:.6cqw;margin-top:auto}
+.fact{border-top:1px solid var(--line);padding-top:.5cqw}
+.fact b{display:block;font:600 1.25cqw var(--f-ui);font-variant-numeric:tabular-nums}
+.fact span{font:500 .64cqw var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.wcard.focus{box-shadow:0 0 0 .2cqw var(--accent),0 0 2cqw rgba(244,196,48,.3)}
+.wcard.sel .tag{background:var(--accent);color:var(--accent-ink)}
+
+/* ===== launch spot ===== */
+.mapbox{flex:1.55;position:relative;border-radius:.4cqw;overflow:hidden;border:1px solid var(--line);background:#1c3a50}
+.mapbox svg{position:absolute;inset:0;width:100%;height:100%}
+.pin{cursor:pointer}
+.pin circle.ring{fill:none;stroke:transparent;stroke-width:3}
+.pin.focus circle.ring{stroke:var(--accent)}
+.pin.sel circle.dot{fill:var(--accent)}
+.side{flex:1;display:flex;flex-direction:column;gap:.8cqw;min-width:0;padding-bottom:1.8cqw}
+.spot{padding:.9cqw 1.1cqw;border-radius:.3cqw;border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:auto 1fr auto;gap:.2cqw 1cqw;align-items:center}
+.spot .num{grid-row:span 2;width:1.9cqw;height:1.9cqw;border-radius:50%;display:grid;place-items:center;background:var(--chart);font:700 .8cqw var(--f-ui)}
+.spot b{font:600 1.1cqw var(--f-ui)}
+.spot small{font-size:.76cqw;color:var(--muted);grid-column:2}
+.spot .pill{grid-row:1;grid-column:3}
+.spot.sel{border-color:var(--sel)}
+.spot.sel .num{background:var(--accent);color:var(--accent-ink)}
+.pill{font:600 .6cqw var(--f-ui);letter-spacing:.12em;text-transform:uppercase;padding:.2cqw .5cqw;border-radius:.2cqw;background:var(--raise);color:var(--muted);white-space:nowrap}
+.pill.y{background:rgba(244,196,48,.15);color:var(--accent)}
+.maplegend{position:absolute;left:1cqw;bottom:1cqw;display:flex;gap:1.2cqw;font:500 .66cqw var(--f-ui);color:#1b2b33;background:rgba(232,224,200,.85);padding:.4cqw .8cqw;border-radius:.2cqw}
+.maplegend i{display:inline-block;width:1.4cqw;height:.18cqw;vertical-align:middle;margin-right:.35cqw}
+
+/* ===== boat select ===== */
+.boats{display:grid;grid-template-columns:repeat(4,1fr);gap:1cqw;flex:1.3;align-content:start}
+.bcard{padding:.9cqw 1cqw;border-radius:.35cqw;border:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:.35cqw}
+.bcard svg{width:100%;height:5.2cqw}
+.bcard b{font:600 1.15cqw var(--f-display);text-transform:uppercase;letter-spacing:.03em}
+.bcard small{font-size:.72cqw;color:var(--muted)}
+.bcard.sel{border-color:var(--sel)}
+.bcard.sel b::after,.mode.sel b::after,.preset.sel b::after{content:" ✓";color:var(--accent)}
+.bcard .flags{display:flex;gap:.3cqw;flex-wrap:wrap}
+.bdetail{flex:1;padding:1.4cqw 1.6cqw;display:flex;flex-direction:column;gap:.9cqw;min-width:0;margin-bottom:1.8cqw}
+.bdetail h3{margin:0;font:600 2.3cqw/1 var(--f-display);text-transform:uppercase}
+.bdetail p{margin:0;font-size:.88cqw;line-height:1.45;color:var(--muted)}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:.5cqw 1.2cqw}
+.specs div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:.3cqw 0;font-size:.82cqw}
+.specs span{color:var(--muted)}
+.specs b{font:600 .9cqw var(--f-ui);font-variant-numeric:tabular-nums}
+.meter{display:flex;gap:.25cqw}
+.meter i{width:1.6cqw;height:.45cqw;background:var(--line);border-radius:.1cqw}
+.meter i.on{background:var(--accent)}
+
+/* ===== conditions ===== */
+.presets{display:flex;gap:.6cqw;flex-wrap:wrap}
+.preset{padding:.6cqw 1cqw;border-radius:.3cqw;border:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:.1cqw;min-width:11cqw}
+.preset b{font:600 .95cqw var(--f-ui)}
+.preset small{font-size:.68cqw;color:var(--muted)}
+.preset.sel{border-color:var(--sel)}
+.preset.na{opacity:.38}
+.cgrid{display:grid;grid-template-columns:16cqw 1fr 1fr;gap:1.2cqw;flex:1;min-height:0;padding-bottom:1.8cqw}
+.dialbox{padding:1cqw;display:flex;flex-direction:column;align-items:center;gap:.4cqw}
+.dialbox svg{width:13cqw;height:13cqw}
+.lbl{font:600 .66cqw var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.col{display:flex;flex-direction:column;gap:.75cqw;min-width:0}
+.row{padding:.7cqw 1cqw;border-radius:.3cqw;border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:8.5cqw 1fr 6.5cqw;align-items:center;gap:1cqw}
+.row .nm{font:500 .9cqw var(--f-ui)}
+.row .val{font:600 1cqw var(--f-ui);text-align:right;font-variant-numeric:tabular-nums}
+.track{height:.35cqw;background:var(--line);border-radius:.2cqw;position:relative}
+.track .fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:.2cqw}
+.track .knob{position:absolute;top:50%;width:1cqw;height:1cqw;margin:-.5cqw 0 0 -.5cqw;border-radius:50%;background:var(--fg)}
+.chips{display:flex;gap:.35cqw;flex-wrap:wrap}
+.chip{font:500 .76cqw var(--f-ui);padding:.3cqw .65cqw;border-radius:.2cqw;background:var(--raise);color:var(--muted)}
+.chip.on{background:var(--fg);color:var(--ink)}
+.row.disabled{opacity:.45}
+.row .note{grid-column:2/4;font-size:.72cqw;color:var(--muted)}
+.forecast{padding:.9cqw 1.1cqw;font-size:.8cqw;line-height:1.45;color:var(--muted)}
+.forecast b{color:var(--fg);font-weight:600}
+
+/* ===== mode ===== */
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:1cqw}
+.mode{padding:1.2cqw;border-radius:.35cqw;border:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:.5cqw;min-height:9cqw}
+.mode b{font:600 1.5cqw var(--f-display);text-transform:uppercase}
+.mode small{font-size:.78cqw;color:var(--muted);line-height:1.4}
+.mode.sel{border-color:var(--sel)}
+.drills{display:grid;grid-template-columns:repeat(3,1fr);gap:.5cqw}
+.drill{padding:.55cqw .8cqw;border-radius:.25cqw;border:1px solid var(--line);background:var(--panel);font:500 .82cqw var(--f-ui);display:flex;justify-content:space-between;gap:.5cqw}
+.drill.sel{border-color:var(--sel)}
+.drill.sel::before{content:"✓";color:var(--accent);margin-right:.2cqw}
+.drill span{color:var(--dim)}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:.6cqw}
+.tg{padding:.7cqw 1cqw;border-radius:.3cqw;border:1px solid var(--line);background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:1cqw}
+.tg .nm{font:500 .9cqw var(--f-ui)}
+.tg .nm small{display:block;font:400 .7cqw var(--f-body);color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:.25cqw;overflow:hidden}
+.seg span{font:600 .72cqw var(--f-ui);letter-spacing:.06em;text-transform:uppercase;padding:.35cqw .7cqw;color:var(--muted)}
+.seg span.on{background:var(--fg);color:var(--ink)}
+.summary{display:flex;gap:1.6cqw;flex-wrap:wrap;padding:.9cqw 1.2cqw;align-items:center}
+.summary div{display:flex;flex-direction:column}
+.summary span{font:600 .6cqw var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.summary b{font:600 .95cqw var(--f-ui)}
+
+/* ===== loading ===== */
+.load-wrap{position:relative;z-index:1;flex:1;display:grid;grid-template-columns:1fr 30cqw;gap:3cqw;padding:3cqw 3.4cqw;align-items:end}
+.load-title{font:700 4.2cqw/.9 var(--f-display);text-transform:uppercase;margin:0}
+.load-sub{font:500 1cqw var(--f-ui);color:var(--muted);margin-top:.8cqw;letter-spacing:.06em}
+.tip{padding:1.3cqw 1.5cqw;display:flex;flex-direction:column;gap:.7cqw}
+.tip h4{margin:0;font:600 1.3cqw var(--f-display);text-transform:uppercase}
+.tip p{margin:0;font-size:.9cqw;line-height:1.5;color:#cfdadf}
+.tip svg{width:100%;height:9cqw}
+.progress{grid-column:1/-1;display:flex;flex-direction:column;gap:.6cqw}
+.bar{height:.3cqw;background:rgba(255,255,255,.12);border-radius:.15cqw;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s linear}
+.stage{display:flex;justify-content:space-between;font:500 .8cqw var(--f-ui);color:var(--muted)}
+
+/* ===== HUD ===== */
+.hud-ui{position:absolute;inset:0;z-index:2;font-family:var(--f-ui)}
+.compass{position:absolute;top:1.4cqw;left:50%;transform:translateX(-50%);width:34cqw;height:2.6cqw;overflow:hidden;
+  mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)}
+.compass .tape{position:absolute;top:0;height:100%;display:flex;align-items:flex-start;will-change:transform}
+.compass .tk{width:1.7cqw;flex:none;text-align:center;font:600 .74cqw var(--f-ui);color:rgba(255,255,255,.9);text-shadow:0 0 .3cqw rgba(0,0,0,.7)}
+.compass .tk::before{content:"";display:block;width:1px;height:.5cqw;margin:0 auto .15cqw;background:rgba(255,255,255,.8)}
+.compass .tk.minor{color:transparent;text-shadow:none}
+.compass .tk.minor::before{height:.3cqw;opacity:.6}
+.compass .tk.card{color:var(--accent)}
+.compass .mark{position:absolute;left:50%;top:0;width:0;height:0;border:.45cqw solid transparent;border-top-color:var(--accent);transform:translateX(-50%)}
+.compass .wnd{position:absolute;top:1.85cqw;font:700 .58cqw var(--f-ui);color:#9fd3ff;letter-spacing:.1em}
+.hdgread{position:absolute;top:4.2cqw;left:50%;transform:translateX(-50%);font:600 1.05cqw var(--f-ui);font-variant-numeric:tabular-nums;text-shadow:0 0 .4cqw rgba(0,0,0,.8)}
+.hdgread small{color:var(--muted);font-size:.7cqw}
+.envbox{position:absolute;top:1.4cqw;left:1.6cqw;padding:.7cqw 1cqw;display:flex;gap:1.3cqw}
+.envbox div{display:flex;flex-direction:column}
+.envbox span{font:600 .56cqw var(--f-ui);letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.envbox b{font:600 .92cqw var(--f-ui);font-variant-numeric:tabular-nums}
+.tipcard{position:absolute;top:5.6cqw;left:1.6cqw;width:21cqw;padding:1cqw 1.2cqw;display:flex;flex-direction:column;gap:.5cqw;border-left:.22cqw solid var(--accent)}
+.tipcard .lbl{color:var(--accent)}
+.tipcard b{font:600 1.05cqw var(--f-ui)}
+.tipcard p{margin:0;font:400 .82cqw/1.45 var(--f-body);color:#d5dfe3}
+.tipcard .why{font-size:.72cqw;color:var(--muted)}
+.drillbox{position:absolute;top:1.4cqw;right:1.6cqw;width:19cqw;padding:1cqw 1.2cqw;display:flex;flex-direction:column;gap:.55cqw}
+.drillbox b{font:600 1.15cqw var(--f-display);text-transform:uppercase}
+.objs{display:flex;flex-direction:column;gap:.3cqw;font-size:.8cqw}
+.objs div{display:flex;gap:.6cqw;align-items:center}
+.objs i{width:.85cqw;height:.85cqw;border-radius:.15cqw;border:1px solid var(--muted);flex:none}
+.objs .ok i{background:var(--stbd);border-color:var(--stbd)}
+.objs .ok{color:var(--muted)}
+.objs .now{color:var(--fg);font-weight:600}
+.objs .now i{border-color:var(--accent)}
+.scoreline{display:flex;justify-content:space-between;font:600 .8cqw var(--f-ui);color:var(--muted);border-top:1px solid var(--line);padding-top:.4cqw}
+.scoreline b{font-size:.95cqw;color:var(--fg)}
+.cluster{position:absolute;left:50%;bottom:1.4cqw;transform:translateX(-50%);display:flex;gap:.5cqw;align-items:stretch}
+.inst{padding:.7cqw 1cqw;display:flex;flex-direction:column;justify-content:space-between;min-width:7.4cqw}
+.inst .lbl{font-size:.56cqw}
+.inst .big{font:600 2.5cqw/1 var(--f-ui);font-variant-numeric:tabular-nums}
+.inst .big small{font-size:.8cqw;color:var(--muted);margin-left:.2cqw}
+.inst .sub{font:500 .7cqw var(--f-ui);color:var(--muted);font-variant-numeric:tabular-nums}
+.inst.shallow{border-color:var(--warn)}
+.inst.shallow .big{color:var(--warn)}
+.awa{padding:.5cqw;display:grid;place-items:center}
+.awa svg{width:10.4cqw;height:10.4cqw}
+.heelbar{position:relative;height:.35cqw;background:var(--line);border-radius:.2cqw;margin-top:.4cqw}
+.heelbar i{position:absolute;top:-.25cqw;width:.18cqw;height:.85cqw;background:var(--fg);left:50%}
+.heelbar .zone{position:absolute;top:0;bottom:0;background:rgba(45,179,106,.45);left:58%;width:14%}
+.trim{position:absolute;right:1.6cqw;bottom:9.4cqw;width:15cqw;padding:.8cqw 1cqw;display:flex;flex-direction:column;gap:.5cqw}
+.tt{display:grid;grid-template-columns:4.2cqw 1fr;gap:.6cqw;align-items:center;font:500 .72cqw var(--f-ui);color:var(--muted)}
+.tt svg{width:100%;height:1.6cqw}
+.pos{font:600 .95cqw var(--f-ui);color:var(--fg)}
+.minimap{position:absolute;left:1.6cqw;bottom:1.4cqw;width:11cqw;height:11cqw;border-radius:50%;overflow:hidden;border:1px solid var(--line)}
+.minimap svg{width:100%;height:100%}
+.keyhints{position:absolute;right:1.6cqw;bottom:1.4cqw;display:flex;flex-direction:column;gap:.35cqw;align-items:flex-end;font:500 .72cqw var(--f-ui);color:#d6e0e4;text-shadow:0 0 .3cqw rgba(0,0,0,.9)}
+.toast{position:absolute;left:50%;top:7.2cqw;transform:translateX(-50%);padding:.5cqw 1.2cqw;font:600 .9cqw var(--f-ui);border-left:.22cqw solid var(--stbd)}
+.hud-min .tipcard,.hud-min .trim,.hud-min .keyhints,.hud-min .envbox,.hud-min .minimap{display:none}
+.hud-off .hud-ui > :not(.toast){display:none}
+.tips-off .tipcard{display:none}
+
+/* ===== overlay screens (pause/settings/keys) ===== */
+.dim{position:absolute;inset:0;z-index:1;background:rgba(5,11,16,.72);backdrop-filter:blur(.5cqw)}
+.low .dim{backdrop-filter:none;background:rgba(5,11,16,.88)}
+.pause-wrap{position:relative;z-index:2;flex:1;display:grid;grid-template-columns:24cqw 1fr;gap:3cqw;padding:3cqw 3.4cqw}
+.pmenu{display:flex;flex-direction:column;gap:.15cqw}
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1cqw;align-content:start}
+.stat{padding:1cqw 1.2cqw}
+.stat b{display:block;font:600 1.9cqw var(--f-ui);font-variant-numeric:tabular-nums}
+.stat span{font:600 .62cqw var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tabs{display:flex;gap:.3cqw;align-items:center}
+.tab{font:600 .95cqw var(--f-ui);letter-spacing:.08em;text-transform:uppercase;padding:.6cqw 1.2cqw;color:var(--muted);border-bottom:.18cqw solid transparent}
+.tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+.set-wrap{display:grid;grid-template-columns:1fr 22cqw;gap:1.6cqw;flex:1;min-height:0;padding-bottom:1.8cqw}
+.setlist{display:flex;flex-direction:column;gap:.4cqw;overflow:hidden}
+.srow{display:grid;grid-template-columns:1fr 18cqw;align-items:center;gap:1cqw;padding:.55cqw 1cqw;border-radius:.25cqw;background:var(--panel);border:1px solid transparent}
+.srow .nm{font:500 .9cqw var(--f-ui)}
+.srow .opt{display:flex;align-items:center;justify-content:space-between;gap:.6cqw;font:600 .9cqw var(--f-ui)}
+.srow .opt .arr{color:var(--muted);font-size:.8cqw}
+.srow .dots{display:flex;gap:.2cqw;justify-content:center;margin-top:.25cqw}
+.srow .dots i{width:.5cqw;height:.15cqw;background:var(--line)}
+.srow .dots i.on{background:var(--accent)}
+.srow.changed .nm::after{content:" •";color:var(--accent)}
+.helpbox{padding:1.2cqw 1.4cqw;display:flex;flex-direction:column;gap:.7cqw;align-self:start}
+.helpbox h4{margin:0;font:600 1.2cqw var(--f-display);text-transform:uppercase}
+.helpbox p{margin:0;font-size:.82cqw;line-height:1.5;color:var(--muted)}
+.fpsbar{display:flex;flex-direction:column;gap:.35cqw}
+.fpsbar .bar{height:.5cqw}
+.fpsbar .bar i{transition:none}
+.secthd{font:600 .62cqw var(--f-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);padding:.5cqw 0 .1cqw}
+.keys{display:grid;grid-template-columns:1fr 9cqw 9cqw;gap:.3cqw;align-content:start}
+.keys .kh{font:600 .62cqw var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:.3cqw .8cqw}
+.kname{padding:.5cqw .8cqw;font:500 .86cqw var(--f-ui);background:var(--panel);border-radius:.2cqw}
+.kbind{padding:.5cqw .8cqw;background:var(--panel);border-radius:.2cqw;display:flex;align-items:center;justify-content:center;gap:.3cqw;font:600 .8cqw var(--f-ui)}
+.kbind.listen{background:rgba(244,196,48,.15);color:var(--accent);animation:pulse 1s ease-in-out infinite}
+.kbind.conflict{box-shadow:inset 0 0 0 1px var(--warn)}
+@keyframes pulse{50%{opacity:.55}}
+.keyscroll{overflow:hidden;flex:1}
+.conflictnote{padding:.8cqw 1cqw;border-left:.22cqw solid var(--warn);font-size:.8cqw;color:#f3d3b2}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.low *{animation:none!important}
+.annot{font-size:13px;color:var(--muted);line-height:1.55;margin:0;max-width:120ch}
+.annot b{color:var(--fg);font-weight:600}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <h1>Sailing Sim <span>· G4 front end mockup</span></h1>
+    <div class="tools">
+      <button class="tool" id="t-focus" aria-pressed="false">Show focus order</button>
+      <button class="tool" id="t-glyph" aria-pressed="false">Controller prompts</button>
+      <button class="tool" id="t-low" aria-pressed="false">Low quality look</button>
+    </div>
+  </div>
+  <p class="hint">Click the screen, then drive it like a controller: <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move focus (left and right change a focused setting), <kbd>Enter</kbd> selects (Ⓐ), <kbd>Esc</kbd> goes back (Ⓑ), <kbd>Q</kbd>/<kbd>E</kbd> switch tabs (LB/RB), <kbd>Tab</kbd> pauses in the HUD. The mouse works everywhere too. Sample data throughout: values come from game state in the build.</p>
+  <div class="jump" id="jump"></div>
+
+  <div class="screen-frame" id="frame" tabindex="0" aria-label="Game screen mockup">
+
+  <!-- ===================== TITLE ===================== -->
+  <section class="scr" data-screen="title" data-name="Title">
+    <div class="world-bg lake"></div>
+    <svg class="shore" viewBox="0 0 1000 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52 C60 40 90 46 140 38 S230 30 280 40 S380 28 430 36 S520 44 600 30 S700 26 760 38 S880 30 1000 42 L1000 70 L0 70Z" fill="#33503f"/><path d="M0 60 L1000 58 L1000 70 L0 70Z" fill="#46645a"/></svg>
+    <div class="version">BUILD G4 · UE 5.8.3</div>
+    <div class="layer" style="padding-bottom:0"></div>
+    <div class="title-wrap">
+      <div>
+        <h2 class="logo">Sailing<br>Sim<small>LAKE RAY HUBBARD · GALVESTON BAY</small></h2>
+        <nav class="menu">
+          <div class="mi" data-f data-go="loading" data-cont>Continue <span class="sub">J/22 · Rush Creek</span></div>
+          <div class="mi" data-f data-go="world">Sail <span class="sub">Pick world, boat and weather</span></div>
+          <div class="mi" data-f data-go="world" data-preset-mode="drill">ASA 101 Drills <span class="sub">6 drills · 2 passed</span></div>
+          <div class="mi" data-f data-go="world" data-preset-mode="race">Race <span class="sub">vs five AI boats</span></div>
+          <div class="mi" data-f>Logbook <span class="sub">14 sessions · 38.6 nm</span></div>
+          <div class="mi" data-f>Replays <span class="sub">Ghost boat</span></div>
+          <div class="mi" data-f data-go="settings">Settings</div>
+          <div class="mi" data-f>Quit</div>
+        </nav>
+      </div>
+      <div class="cont-card panel">
+        <span class="k">Last session · Oct 12</span>
+        <span class="v">J/22 on Lake Ray Hubbard</span>
+        <p>Dock B, slip N18 · 11 kn SSE gusting 16 · Fair cumulus · Learning mode, easy sailing. Drill 3, Tacking, was in progress.</p>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a">Select</span><span class="g" data-pr="b">Quit</span></div><div class="grp"><span>Signed in as Bean · Mac · Medium</span></div></div>
+  </section>
+
+  <!-- ===================== WORLD ===================== -->
+  <section class="scr" data-screen="world" data-name="World" hidden>
+    <div class="world-bg lake"></div>
+    <div class="layer">
+      <div class="hdr"><div><div class="eyebrow">New session</div><h2 class="h">Choose a world</h2></div><div class="steps" data-steps="0"></div></div>
+      <div class="body">
+        <div class="worlds">
+          <div class="wcard" data-f data-world="lake">
+            <div class="art lake"><svg viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 62 C40 55 80 60 120 52 S200 50 240 56 S330 48 400 58 L400 66 L0 66Z" fill="#2f4a37"/><g fill="#e9eef0"><path d="M262 40 L262 63 L276 63Z"/><path d="M259 42 L259 63 L250 63Z" opacity=".8"/></g></svg><span class="tag">Fresh water · No tide</span></div>
+            <div class="info">
+              <h3>Lake Ray Hubbard</h3>
+              <p>Your home lake east of Dallas. Leave from Rush Creek Yacht Club in Heath, short-tack under the I-30 causeway, and learn to read gusts coming off the trees. Pop-up afternoon storms in summer.</p>
+              <div class="facts">
+                <div class="fact"><b>22,745</b><span>acres</span></div>
+                <div class="fact"><b>4</b><span>launch spots</span></div>
+                <div class="fact"><b>6</b><span>ASA 101 drills</span></div>
+                <div class="fact"><b>435.5 ft</b><span>normal pool</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="wcard" data-f data-world="bay">
+            <div class="art bay"><svg viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 62 L60 61 L64 54 L70 61 L160 60 L240 61 L400 60 L400 64 L0 64Z" fill="#3a3c33"/><rect x="300" y="50" width="70" height="8" fill="#5b2f2a"/><rect x="306" y="44" width="10" height="6" fill="#e9eef0"/></svg><span class="tag">Tide · Current · Ship traffic</span></div>
+            <div class="info">
+              <h3>Galveston Bay &amp; Gulf</h3>
+              <p>Built from NOAA charts with every buoy and light. Sail the bay with tide and current, cross the Houston Ship Channel with ships and tugs, then take the 45-mile Gulf passage from the Galveston entrance to Freeport.</p>
+              <div class="facts">
+                <div class="fact"><b>582</b><span>aids to nav</span></div>
+                <div class="fact"><b>5</b><span>launch spots</span></div>
+                <div class="fact"><b>45 nm</b><span>Gulf passage</span></div>
+                <div class="fact"><b>1°28′ E</b><span>variation</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a">Choose</span><span class="g" data-pr="b">Back</span></div><div class="grp"><span>Worlds load from the same map; switching takes about 20 s on the Mac</span></div></div>
+  </section>
+
+  <!-- ===================== LAUNCH ===================== -->
+  <section class="scr" data-screen="launch" data-name="Launch spot" hidden>
+    <div class="world-bg lake"></div>
+    <div class="layer">
+      <div class="hdr"><div><div class="eyebrow" data-worldname>Lake Ray Hubbard</div><h2 class="h">Where do you start?</h2></div><div class="steps" data-steps="1"></div></div>
+      <div class="body">
+        <div class="mapbox" id="mapbox"></div>
+        <div class="side" id="spotlist"></div>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a">Choose</span><span class="g" data-pr="b">Back</span><span class="g" data-pr="ry">Zoom map</span></div><div class="grp"><span>Schematic map · the game draws it from the world's chart data</span></div></div>
+  </section>
+
+  <!-- ===================== BOAT ===================== -->
+  <section class="scr" data-screen="boat" data-name="Boat" hidden>
+    <div class="world-bg lake"></div>
+    <div class="layer">
+      <div class="hdr"><div><div class="eyebrow">Fleet of eight</div><h2 class="h">Choose a boat</h2></div><div class="steps" data-steps="2"></div></div>
+      <div class="body">
+        <div class="boats" id="boats"></div>
+        <div class="bdetail panel" id="bdetail"></div>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a">Choose</span><span class="g" data-pr="b">Back</span><span class="g" data-pr="x">Inspect in 3D</span></div><div class="grp"><span>Speeds are this boat's polar at 12 kn true wind</span></div></div>
+  </section>
+
+  <!-- ===================== CONDITIONS ===================== -->
+  <section class="scr" data-screen="cond" data-name="Conditions" hidden>
+    <div class="world-bg lake"></div>
+    <div class="layer">
+      <div class="hdr"><div><div class="eyebrow">Weather and time</div><h2 class="h">Set the conditions</h2></div><div class="steps" data-steps="3"></div></div>
+      <div class="presets" id="presets" style="margin-top:1.4cqw"></div>
+      <div class="body" style="margin-top:1cqw">
+        <div class="cgrid">
+          <div class="col">
+            <div class="dialbox panel" data-f data-slider="dir"><span class="lbl">True wind from</span><svg id="winddial" viewBox="-110 -110 220 220"></svg></div>
+            <div class="forecast panel" id="forecast"></div>
+          </div>
+          <div class="col" id="condA"></div>
+          <div class="col" id="condB"></div>
+        </div>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a">Next</span><span class="g" data-pr="b">Back</span><span class="g" data-pr="lr">Adjust</span><span class="g" data-pr="y">Randomise</span></div><div class="grp"><span>Weather runs on the physics wind field; the sky and water follow it</span></div></div>
+  </section>
+
+  <!-- ===================== MODE ===================== -->
+  <section class="scr" data-screen="mode" data-name="Mode" hidden>
+    <div class="world-bg lake"></div>
+    <div class="layer">
+      <div class="hdr"><div><div class="eyebrow">Last step</div><h2 class="h">How do you want to sail?</h2></div><div class="steps" data-steps="4"></div></div>
+      <div class="body" style="flex-direction:column;gap:1cqw">
+        <div class="modes" id="modes"></div>
+        <div id="modeextra"></div>
+        <div class="toggles" id="toggles"></div>
+        <div style="display:flex;gap:1cqw;align-items:stretch;margin-top:auto;margin-bottom:1.8cqw">
+          <div class="summary panel" id="summary" style="flex:1"></div>
+          <div class="btn primary" data-f data-go="loading" style="padding-inline:3cqw">Cast off</div>
+        </div>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a">Select</span><span class="g" data-pr="b">Back</span><span class="g" data-pr="menu">Cast off</span></div><div class="grp"><span>Everything here can be changed later from the pause menu</span></div></div>
+  </section>
+
+  <!-- ===================== LOADING ===================== -->
+  <section class="scr" data-screen="loading" data-name="Loading" hidden>
+    <div class="world-bg lake"></div>
+    <svg class="shore" viewBox="0 0 1000 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52 C60 40 90 46 140 38 S230 30 280 40 S380 28 430 36 S520 44 600 30 S700 26 760 38 S880 30 1000 42 L1000 70 L0 70Z" fill="#33503f"/></svg>
+    <div class="load-wrap">
+      <div>
+        <div class="eyebrow" id="ld-eyebrow">Lake Ray Hubbard · Dock B, slip N18</div>
+        <h2 class="load-title" id="ld-title">J/22<br>Leave the dock</h2>
+        <div class="load-sub" id="ld-sub">11 kn SSE gusting 16 · Fair cumulus · Oct 13, 14:30 · Learning mode</div>
+      </div>
+      <div class="tip panel">
+        <span class="lbl" style="color:var(--accent)">Sailing tip · 7 of 42</span>
+        <h4 id="tip-h">Leaving a slip with the wind behind you</h4>
+        <svg viewBox="0 0 300 110" aria-hidden="true">
+          <rect x="0" y="0" width="300" height="110" fill="#1d4560"/>
+          <rect x="0" y="0" width="300" height="22" fill="#cdbf98"/><g fill="#8a7a58"><rect x="40" y="22" width="6" height="50"/><rect x="100" y="22" width="6" height="50"/><rect x="160" y="22" width="6" height="50"/></g>
+          <path d="M70 34 q8 -6 16 0 l0 30 q-8 6 -16 0z" fill="#eaf0f2"/>
+          <path d="M78 74 C 82 92 120 98 160 92" stroke="#d14f9b" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/><path d="M160 92 l-9 -5 l2 9z" fill="#d14f9b"/>
+          <g stroke="#9fd3ff" stroke-width="2"><path d="M240 20 v30"/><path d="M234 42 l6 9 l6 -9" fill="none"/><path d="M270 30 v30"/><path d="M264 52 l6 9 l6 -9" fill="none"/></g>
+          <text x="226" y="80" fill="#9fd3ff" font-size="11" font-family="Saira Semi Condensed,sans-serif">WIND</text>
+        </svg>
+        <p id="tip-p">Back out under bare poles or the motor, turn the bow away from the docks, and raise the main only once you are head to wind in open water. Raising it in the slip with the wind behind you will drive you into the dock.</p>
+      </div>
+      <div class="progress">
+        <div class="stage"><span id="ld-stage">Streaming shoreline and trees</span><span id="ld-pct">0%</span></div>
+        <div class="bar"><i id="ld-bar"></i></div>
+      </div>
+    </div>
+    <div class="prompts"><div class="grp"><span class="g" data-pr="a" id="ld-cont" style="visibility:hidden">Start sailing</span><span class="g" data-pr="x">Next tip</span></div><div class="grp"><span>Shaders and weather map warm up here, so the first minute on the water stays smooth</span></div></div>
+  </section>
+
+  <!-- ===================== HUD ===================== -->
+  <section class="scr hud" data-screen="hud" data-name="HUD" hidden>
+    <div class="world-bg lake"></div>
+    <svg class="shore" viewBox="0 0 1000 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52 C60 40 90 46 140 38 S230 30 280 40 S380 28 430 36 S520 44 600 30 S700 26 760 38 S880 30 1000 42 L1000 70 L0 70Z" fill="#33503f"/><g fill="#eef2f2"><path d="M610 22 L610 46 L622 46Z"/><path d="M820 30 L820 46 L828 46Z"/></g></svg>
+    <!-- foredeck and jib from the helm -->
+    <svg style="position:absolute;inset:0;width:100%;height:100%;z-index:1" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <path d="M560 900 C620 700 760 560 812 470 C866 560 1000 700 1060 900Z" fill="#e6e9e7"/>
+      <path d="M600 900 C650 730 770 600 812 520 C856 600 970 730 1020 900Z" fill="#cfd5d3"/>
+      <path d="M812 470 L812 120" stroke="#9aa3a6" stroke-width="5"/>
+      <path d="M812 470 L812 160 C760 250 690 380 640 520 Z" fill="#f2f1ea" opacity=".92"/>
+      <path d="M806 120 C770 240 752 420 762 600 L806 600Z" fill="#f7f6ef" opacity=".85"/>
+      <path d="M716 360 l-18 -6" stroke="#e2483d" stroke-width="3"/><path d="M700 410 l-18 2" stroke="#2db36a" stroke-width="3"/>
+    </svg>
+    <div class="hud-ui" id="hudui">
+      <div class="envbox panel">
+        <div><span>Time</span><b id="h-time">14:42</b></div>
+        <div><span>True wind</span><b>11 kn SSE <small style="color:var(--muted)">G16</small></b></div>
+        <div><span>Sky</span><b>Fair cumulus · 91°F</b></div>
+      </div>
+      <div class="compass"><div class="tape" id="tape"></div><div class="mark"></div></div>
+      <div class="hdgread"><span id="h-hdg">200</span>°<small>M</small></div>
+      <div class="tipcard panel">
+        <span class="lbl">Learning tip</span>
+        <b>Close-hauled on starboard tack</b>
+        <p>The windward jib telltale is lifting. Bear away a few degrees, or ease the jib sheet a hand's width, until both telltales stream aft.</p>
+        <span class="why">Hide tips with T · Tips off in Game mode</span>
+      </div>
+      <div class="drillbox panel">
+        <span class="lbl" style="color:var(--accent)">ASA 101 drill 3 of 6</span>
+        <b>Tacking</b>
+        <div class="objs">
+          <div class="ok"><i></i>Sail close-hauled for 30 s</div>
+          <div class="ok"><i></i>Tack onto port, call "Ready about"</div>
+          <div class="now"><i></i>Tack back onto starboard · 2 of 4</div>
+          <div><i></i>Hold course within 10° for 20 s</div>
+        </div>
+        <div class="scoreline"><span>Learning mode · Easy</span><b>3:12</b></div>
+      </div>
+      <div class="toast panel" id="h-toast">Good tack · lost 0.9 kn, back up to speed in 6 s</div>
+      <div class="trim panel">
+        <span class="lbl">Sail trim</span>
+        <div class="pos" id="h-pos">Close-hauled · starboard</div>
+        <div class="tt"><span>Jib</span><svg viewBox="0 0 100 20"><path d="M2 6 C 30 2 60 10 98 4" stroke="#e2483d" stroke-width="3" fill="none"/><path d="M2 14 L98 14" stroke="#2db36a" stroke-width="3"/></svg></div>
+        <div class="tt"><span>Main leech</span><svg viewBox="0 0 100 20"><path d="M2 10 L98 10" stroke="#eaf0f2" stroke-width="3"/></svg></div>
+        <div class="tt"><span>Heel 14°</span><div class="heelbar"><span class="zone"></span><i style="left:63%"></i></div></div>
+      </div>
+      <div class="cluster">
+        <div class="inst panel"><span class="lbl">Speed</span><span class="big" id="h-spd">4.8<small>kn</small></span><span class="sub">VMG 3.6 · target 5.1</span></div>
+        <div class="awa panel"><svg id="awadial" viewBox="-110 -110 220 220"></svg></div>
+        <div class="inst panel" id="h-depthbox"><span class="lbl">Depth</span><span class="big" id="h-depth">14<small>ft</small></span><span class="sub">Keel 3.8 ft · alarm 6</span></div>
+      </div>
+      <div class="minimap panel"><svg viewBox="-60 -60 120 120">
+        <rect x="-60" y="-60" width="120" height="120" fill="#2b5a78"/>
+        <path d="M-60 -60 L-60 60 L-28 60 C-34 30 -24 0 -30 -30 C-34 -48 -26 -60 -20 -60Z" fill="#cdbf98"/>
+        <path d="M60 -60 L60 60 L44 60 C38 20 48 -20 40 -60Z" fill="#cdbf98"/>
+        <path d="M-60 26 L60 22" stroke="#7a6f58" stroke-width="5"/>
+        <circle cx="10" cy="-36" r="3" fill="#2db36a"/><circle cx="-6" cy="-40" r="3" fill="#e2483d"/>
+        <path d="M-12 -14 l0 -10" stroke="#9fd3ff" stroke-width="2"/><path d="M-15 -17 l3 4 l3 -4" stroke="#9fd3ff" stroke-width="2" fill="none"/>
+        <path d="M0 6 l4 -12 l4 12 l-4 -3z" fill="#f4c430" transform="rotate(200 4 0)"/>
+        <text x="0" y="-48" text-anchor="middle" fill="#eaf0f2" font-size="9" font-family="Saira Semi Condensed,sans-serif">N</text>
+      </svg></div>
+      <div class="keyhints">
+        <span class="g" data-pr="kh-tack">Tack</span>
+        <span class="g" data-pr="kh-chart">Chart</span>
+        <span class="g" data-pr="kh-pause">Pause</span>
+      </div>
+    </div>
+    <div class="layer" style="padding:0"></div>
+  </section>
+
+  <!-- ===================== PAUSE ===================== -->
+  <section class="scr" data-screen="pause" data-name="Pause" hidden>
+    <div class="world-bg lake"></div><div class="dim"></div>
+    <div class="pause-wrap">
+      <div>
+        <div class="eyebrow">Paused · 14:42 on the water</div>
+        <h2 class="h" style="margin-bottom:1.6cqw">Drill 3 · Tacking</h2>
+        <nav class="pmenu">
+          <div class="mi" data-f data-go="hud">Resume</div>
+          <div class="mi" data-f data-go="loading">Restart drill</div>
+          <div class="mi" data-f data-go="cond">Change conditions <span class="sub">Wind, weather, time</span></div>
+          <div class="mi" data-f>Chart <span class="sub">P</span></div>
+          <div class="mi" data-f>Logbook <span class="sub">Y</span></div>
+          <div class="mi" data-f>Photo mode <span class="sub">9</span></div>
+          <div class="mi" data-f data-go="settings">Settings</div>
+          <div class="mi" data-f data-go="keys">Controls</div>
+          <div class="mi" data-f data-go="title">Quit to title</div>
+        </nav>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1cqw">
+        <div class="pstats">
+          <div class="stat panel"><span>Distance</span><b>1.84 nm</b></div>
+          <div class="stat panel"><span>Top speed</span><b>6.2 kn</b></div>
+          <div class="stat panel"><span>Tacks · gybes</span><b>7 · 1</b></div>
+        </div>
+        <div class="panel" style="padding:1.2cqw 1.4cqw;display:flex;flex-direction:column;gap:.6cqw;max-width:46cqw">
+          <span class="lbl">This drill so far</span>
+          <p style="margin:0;font-size:.9cqw;line-height:1.5;color:#d5dfe3">Two of four tacks done. Your tacks average 9 s head to wind; ASA 101 asks for a smooth turn without stalling, and under 8 s keeps the J/22 moving in this breeze.</p>
+          <p style="margin:0;font-size:.8cqw;color:var(--muted)">Right-of-way reminder: on starboard tack you are the stand-on vessel against a port-tack boat.</p>
+        </div>
+      </div>
+    </div>
+    <div class="prompts" style="z-index:2"><div class="grp"><span class="g" data-pr="a">Select</span><span class="g" data-pr="b">Resume</span></div><div class="grp"><span>Game time is stopped; replays keep recording when you resume</span></div></div>
+  </section>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <section class="scr" data-screen="settings" data-name="Settings" hidden>
+    <div class="world-bg lake"></div><div class="dim"></div>
+    <div class="layer" style="z-index:2">
+      <div class="hdr"><div><div class="eyebrow">Settings</div><h2 class="h">Graphics</h2></div>
+        <div class="tabs" id="settabs"></div></div>
+      <div class="body"><div class="set-wrap"><div class="setlist" id="setlist"></div><div class="helpbox panel" id="sethelp"></div></div></div>
+    </div>
+    <div class="prompts" style="z-index:2"><div class="grp"><span class="g" data-pr="a">Change</span><span class="g" data-pr="b">Back</span><span class="g" data-pr="lbrb">Tabs</span><span class="g" data-pr="y">Reset tab</span></div><div class="grp"><span id="applynote">Changes apply instantly · resolution changes ask to keep or revert after 15 s</span></div></div>
+  </section>
+
+  <!-- ===================== KEYS ===================== -->
+  <section class="scr" data-screen="keys" data-name="Controls" hidden>
+    <div class="world-bg lake"></div><div class="dim"></div>
+    <div class="layer" style="z-index:2">
+      <div class="hdr"><div><div class="eyebrow">Controls</div><h2 class="h">Keys and buttons</h2></div>
+        <div class="tabs" id="keytabs"></div></div>
+      <div class="body" style="gap:1.6cqw">
+        <div class="keyscroll"><div class="keys" id="keygrid"></div></div>
+        <div style="width:22cqw;display:flex;flex-direction:column;gap:1cqw">
+          <div class="helpbox panel"><h4>Rebinding</h4><p>Select a key or button, then press the new one. Esc or Ⓑ cancels. A key used twice in the same context turns orange, and you choose which action keeps it.</p><p>Bindings are saved per device, so the Mac and the PC can differ.</p></div>
+          <div class="conflictnote panel" id="conflict" hidden>R is already <b>Reef</b> in Sailing. Press R again to move it here and leave Reef unbound, or Ⓑ to cancel.</div>
+        </div>
+      </div>
+    </div>
+    <div class="prompts" style="z-index:2"><div class="grp"><span class="g" data-pr="a">Rebind</span><span class="g" data-pr="b">Back</span><span class="g" data-pr="lbrb">Context</span><span class="g" data-pr="y">Reset to default</span></div><div class="grp"><span>Steering also works on the left stick and A/D at the same time</span></div></div>
+  </section>
+
+  </div>
+
+  <p class="annot"><b>What this shows.</b> Every screen of the G4 front end at 1920×1080 proportions; the layout scales 2× on a 4K monitor. Yellow is focus and the primary action, chart magenta marks routes, pins and nav aids, red and green mean port and starboard only. Pink numbers (Show focus order) are the controller focus order the spec lists widget by widget. Low quality look shows the cheaper treatment: no background blur, solid panels, no animation, static loading art. The spec for building this in Common UI and UMG is <b>sailing-sim-g4/ui-spec.md</b> in the project files.</p>
+</div>
+
+<script>
+(()=>{
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const frame=$('#frame');
+const S={world:'lake',spot:0,boat:0,preset:0,mode:'drill',drill:2,learn:true,diff:'easy',tips:true,traffic:'Light',
+  cond:{dir:157,wind:11,gust:16,sky:1,time:14.5,month:9,day:13,temp:91,tide:1,level:0,visib:10},
+  gfx:{quality:1},prompts:'kb',focusOrder:false,low:false,hudMode:0};
+let cur='title', hist=[];
+const FLOW=['world','launch','boat','cond','mode'];
+const STEPNAMES=['World','Start','Boat','Conditions','Mode'];
+
+/* ---------------- data ---------------- */
+const SPOTS={
+ lake:[
+  {n:'Rush Creek Yacht Club',d:'Dock B, slip N18 · your slip',p:'Leave the dock',x:388,y:300,tag:'Home'},
+  {n:"Chandler's Landing",d:'Marina on the east shore, Rockwall',p:'Open water north of I-30',x:398,y:178},
+  {n:'Paddle Point Park',d:'West shore, Rowlett · small boats',p:'Beach launch',x:244,y:216},
+  {n:'Mid-lake, north',d:'Start under sail, nothing to hit',p:'Free sail',x:318,y:104}],
+ bay:[
+  {n:'Kemah · Clear Lake',d:'Marina inside the Kemah channel',p:'Leave the dock',x:150,y:92,tag:'Busy'},
+  {n:'Galveston Yacht Basin',d:'East end of the island',p:'Short sail to Bolivar Roads',x:404,y:282},
+  {n:'Texas City Dike',d:'Open bay, ship channel close by',p:'Traffic practice',x:300,y:206},
+  {n:'Galveston entrance',d:'Between the jetties, outbound',p:'Start of the Gulf passage',x:470,y:306},
+  {n:'Freeport',d:'45 nm down the coast · arrival',p:'Inbound landfall',x:36,y:372}]
+};
+const BOATS=[
+ {n:'J/22',t:'Keelboat · 3 to 4 crew',loa:"22'6\"",beam:"8'0\"",draft:"3'9\"",disp:'1,790 lb',spd:'5.4 kn',diff:2,flags:['Spinnaker','Your lesson boat'],
+  d:'The ASA 101 boat you sail at Rush Creek. Stable, responsive tiller, fractional rig. Shows every trim mistake without punishing it.',shape:'keel'},
+ {n:'Sunfish',t:'Dinghy · single-handed',loa:"13'9\"",beam:"4'1\"",draft:"2'11\" board",disp:'130 lb',spd:'4.6 kn',diff:3,flags:['Capsize','Lateen rig'],
+  d:'Lateen sail on a flat board boat. Wet, simple and forgiving, and it capsizes. Righting it is part of the fun.',shape:'dinghy'},
+ {n:'ILCA 7',t:'Olympic dinghy · single',loa:"13'10\"",beam:"4'6\"",draft:"2'9\" board",disp:'130 lb',spd:'5.2 kn',diff:4,flags:['Capsize','Hiking'],
+  d:'The Laser. Fast, physical, and quick to capsize in gusts. Easy sailing mode hikes for you.',shape:'dinghy'},
+ {n:'Catalina 22',t:'Trailerable keelboat',loa:"21'6\"",beam:"7'8\"",draft:"1'8\" swing keel",disp:'2,490 lb',spd:'5.0 kn',diff:1,flags:['Outboard','Reef'],
+  d:'A gentle family boat with an outboard. Good for docking practice and first solo sails.',shape:'keel'},
+ {n:'Catalina 30',t:'Cruiser · ASA 103',loa:"29'11\"",beam:"10'10\"",draft:"5'3\"",disp:'10,200 lb',spd:'6.1 kn',diff:2,flags:['Inboard','Wheel','Reef'],
+  d:'The classic ASA 103 coastal cruiser. Wheel steering, inboard diesel, and heavy enough to carry its way through a tack.',shape:'keel'},
+ {n:'Hobie 16',t:'Beach catamaran',loa:"16'7\"",beam:"7'11\"",draft:"10\" rudders",disp:'320 lb',spd:'9.0 kn',diff:4,flags:['Capsize','Trapeze'],
+  d:'Fast on a reach and easy to pitchpole. Flying a hull is the goal; going over is the risk.',shape:'cat'},
+ {n:'Corsair 880',t:'Trailerable trimaran',loa:"28'10\"",beam:"20'0\"",draft:"5'7\" board",disp:'3,800 lb',spd:'9.8 kn',diff:3,flags:['Outboard','Spinnaker'],
+  d:'A folding trimaran that sails at wind speed on a reach. Watch the leeward float in gusts.',shape:'tri'},
+ {n:'Lagoon 42',t:'Cruising catamaran',loa:"42'0\"",beam:"25'3\"",draft:"4'1\"",disp:'26,000 lb',spd:'6.8 kn',diff:2,flags:['Twin engines','Wheel'],
+  d:'A big charter cat. Spins in place on twin engines, which makes docking a different skill.',shape:'cat2'}];
+const PRESETS=[
+ {n:'ASA 101 lesson day',s:'10 kn S · fair · 10:00',w:'both',c:{dir:180,wind:10,gust:13,sky:1,time:10,month:3,day:18,temp:74,tide:1}},
+ {n:'Typical July afternoon',s:'12 kn S G20 · storms after 4 pm',w:'both',c:{dir:170,wind:12,gust:20,sky:3,time:14.5,month:6,day:15,temp:98,tide:1}},
+ {n:'Glassy morning',s:'2 kn · haze · 7:30',w:'both',c:{dir:120,wind:2,gust:4,sky:0,time:7.5,month:7,day:9,temp:79,tide:0}},
+ {n:'Blue norther',s:'20 kn N G28 · cold front',w:'both',c:{dir:0,wind:20,gust:28,sky:2,time:11,month:10,day:22,temp:48,tide:2}},
+ {n:'Bay sea breeze',s:'14 kn SE · ebb tide',w:'bay',c:{dir:140,wind:14,gust:18,sky:1,time:15,month:5,day:20,temp:88,tide:2}},
+ {n:'Live from today',s:'Weather station history',w:'both',c:{dir:157,wind:11,gust:16,sky:1,time:14.5,month:9,day:13,temp:91,tide:1}}];
+const SKY=['Clear','Fair cumulus','Overcast','Thunderstorms building','Fog'];
+const TIDE=['Slack low','Flooding','Ebbing','Slack high'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MODES=[
+ {k:'free',n:'Free sail',d:'No goals. Explore the world, practise what you like.'},
+ {k:'drill',n:'ASA 101 drills',d:'Six guided drills from leaving the dock to crew overboard.'},
+ {k:'race',n:'Race',d:'Five-minute start sequence against five AI boats.'},
+ {k:'passage',n:'Passage',d:'Point to point with chart fixes. Galveston to Freeport.'}];
+const DRILLS=['Leave the dock','Points of sail','Tacking','Gybing','Crew overboard','Return to the dock'];
+const DRILLDONE=[true,true,false,false,false,false];
+
+/* ---------------- prompts / glyphs ---------------- */
+const PR={kb:{a:'Enter',b:'Esc',x:'I',y:'R',lr:'← →',lbrb:'Q E',ry:'Z',menu:'Enter',
+   'kh-tack':'Space','kh-chart':'P','kh-pause':'Tab'},
+  pad:{a:'A',b:'B',x:'X',y:'Y',lr:'◀ ▶',lbrb:'LB RB',ry:'RS',menu:'☰','kh-tack':'A','kh-chart':'View','kh-pause':'☰'}};
+function renderPrompts(){
+  $$('[data-pr]').forEach(el=>{
+    const k=el.dataset.pr, g=PR[S.prompts][k]; if(!g) return;
+    el.querySelector('.glyph')?.remove();
+    const s=document.createElement('span');
+    const pad=S.prompts==='pad', round=pad&&['a','b','x','y'].includes(k)||pad&&['kh-tack'].includes(k);
+    s.className='glyph'+(round?' pad '+(k==='kh-tack'?'a':k):'')+(pad&&k==='lbrb'?' sh':'');
+    s.textContent=g; el.prepend(s);
+  });
+}
+
+/* ---------------- steps ---------------- */
+function renderSteps(){
+  $$('[data-steps]').forEach(el=>{
+    const i=+el.dataset.steps;
+    el.innerHTML=STEPNAMES.map((n,j)=>`<span class="step ${j<i?'done':j===i?'cur':''}">${j+1} ${n}</span>`).join('');
+  });
+}
+
+/* ---------------- world ---------------- */
+function setWorldBg(){
+  $$('.world-bg').forEach(b=>{b.classList.toggle('lake',S.world==='lake');b.classList.toggle('bay',S.world==='bay')});
+  $$('.wcard').forEach(c=>c.classList.toggle('sel',c.dataset.world===S.world));
+  $$('[data-worldname]').forEach(e=>e.textContent=S.world==='lake'?'Lake Ray Hubbard':'Galveston Bay & Gulf');
+}
+
+/* ---------------- launch map ---------------- */
+function mapSvg(){
+  if(S.world==='lake') return `<svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+   <rect width="600" height="400" fill="#cdbf98"/>
+   <g stroke="#b9ab84" stroke-width="1" fill="none" opacity=".7"><path d="M0 60 H600 M0 140 H600 M0 220 H600 M0 300 H600 M120 0 V400 M240 0 V400 M360 0 V400 M480 0 V400"/></g>
+   <path d="M300 0 C292 30 316 52 304 80 C292 110 330 120 318 150 C306 170 270 160 262 190 C254 220 300 230 288 260 C278 290 300 320 284 350 C276 370 268 390 262 400 L300 400 C320 370 344 350 360 320 C374 296 352 270 372 250 C392 230 412 206 404 180 C396 150 360 150 366 120 C372 92 352 60 344 30 C340 14 336 6 334 0Z" fill="#2f6f97"/>
+   <path d="M262 190 C230 196 214 182 196 190 C186 196 200 206 218 206 C236 208 248 212 258 212Z" fill="#2f6f97"/>
+   <path d="M372 250 C400 258 420 276 446 270 C452 266 444 256 430 254 C410 250 396 244 380 240Z" fill="#2f6f97"/>
+   <path d="M140 246 L520 236" stroke="#7a6f58" stroke-width="7"/><path d="M140 246 L520 236" stroke="#e9e1c8" stroke-width="1.4" stroke-dasharray="8 6"/>
+   <text x="476" y="228" fill="#4b4232" font-size="12" font-family="Saira Semi Condensed,sans-serif">I-30</text>
+   <path d="M300 30 C314 80 318 130 300 180 C288 220 300 260 296 300 C292 330 290 360 284 390" stroke="#d14f9b" stroke-width="1.6" fill="none" stroke-dasharray="3 5" opacity=".9"/>
+   <text x="150" y="40" fill="#4b4232" font-size="12" font-family="Saira Semi Condensed,sans-serif" letter-spacing="2">ROWLETT</text>
+   <text x="440" y="140" fill="#4b4232" font-size="12" font-family="Saira Semi Condensed,sans-serif" letter-spacing="2">ROCKWALL</text>
+   <text x="420" y="350" fill="#4b4232" font-size="12" font-family="Saira Semi Condensed,sans-serif" letter-spacing="2">HEATH</text>
+   ${compassRose(540,60)}${pins()}</svg>`;
+  return `<svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+   <rect width="600" height="400" fill="#2f6f97"/>
+   <path d="M0 0 H600 V130 C560 120 540 150 520 140 C500 130 470 110 440 120 C400 130 380 90 340 96 C300 102 250 70 210 80 C180 88 160 70 130 74 C100 78 70 60 40 70 C20 76 6 70 0 72Z" fill="#cdbf98"/>
+   <path d="M0 72 C20 90 30 140 24 200 C20 250 40 290 60 320 L0 340Z" fill="#cdbf98"/>
+   <path d="M60 330 C160 300 300 288 456 288 L462 296 C300 300 170 314 70 344Z" fill="#cdbf98"/>
+   <path d="M480 300 C520 280 570 262 600 250 L600 240 C570 248 530 262 490 280Z" fill="#cdbf98"/>
+   <path d="M0 344 L60 334 L70 348 L0 360Z" fill="#cdbf98"/>
+   <rect x="0" y="360" width="600" height="40" fill="#24587a"/>
+   <path d="M286 186 L330 210" stroke="#cdbf98" stroke-width="5"/>
+   <path d="M120 70 C150 120 210 150 270 180 C330 210 390 250 430 280 C450 296 462 304 476 318 L520 380" stroke="#d14f9b" stroke-width="2.2" fill="none" stroke-dasharray="7 5"/>
+   <path d="M476 318 C380 352 200 372 40 384" stroke="#d14f9b" stroke-width="1.6" fill="none" stroke-dasharray="2 6"/>
+   <text x="210" y="196" fill="#f3d6e6" font-size="11" font-family="Saira Semi Condensed,sans-serif" transform="rotate(26 210 196)">HOUSTON SHIP CHANNEL</text>
+   <text x="210" y="390" fill="#bfe0f5" font-size="11" font-family="Saira Semi Condensed,sans-serif" letter-spacing="2">GULF OF MEXICO · 45 NM PASSAGE</text>
+   <text x="250" y="322" fill="#4b4232" font-size="11" font-family="Saira Semi Condensed,sans-serif" letter-spacing="2">GALVESTON ISLAND</text>
+   <text x="510" y="236" fill="#4b4232" font-size="11" font-family="Saira Semi Condensed,sans-serif" letter-spacing="2">BOLIVAR</text>
+   <g fill="#e2483d"><circle cx="230" cy="160" r="2.5"/><circle cx="330" cy="226" r="2.5"/><circle cx="420" cy="270" r="2.5"/></g>
+   <g fill="#2db36a"><circle cx="244" cy="150" r="2.5"/><circle cx="344" cy="216" r="2.5"/><circle cx="436" cy="262" r="2.5"/></g>
+   ${compassRose(560,190)}${pins()}</svg>`;
+}
+function compassRose(x,y){return `<g transform="translate(${x} ${y})"><circle r="22" fill="none" stroke="#d14f9b" stroke-width="1"/><circle r="16" fill="none" stroke="#d14f9b" stroke-width=".6"/><path d="M0 -26 L4 0 L0 4 L-4 0Z" fill="#d14f9b"/><text y="-30" text-anchor="middle" fill="#d14f9b" font-size="9" font-family="Saira Semi Condensed,sans-serif">N</text></g>`}
+function pins(){return SPOTS[S.world].map((p,i)=>`<g class="pin ${i===S.spot?'sel':''}" data-f data-spot="${i}" transform="translate(${p.x} ${p.y})"><circle class="ring" r="15"/><circle class="dot" r="10" fill="#d14f9b" stroke="#fff" stroke-width="2"/><text y="4" text-anchor="middle" fill="${i===S.spot?'#1d1600':'#fff'}" font-size="11" font-weight="700" font-family="Saira Semi Condensed,sans-serif">${i+1}</text></g>`).join('')}
+function renderLaunch(){
+  $('#mapbox').innerHTML=mapSvg()+`<div class="maplegend"><span><i style="background:#d14f9b"></i>${S.world==='lake'?'Deep-water route':'Ship channel'}</span><span><i style="background:#7a6f58"></i>${S.world==='lake'?'Causeway':'Jetty'}</span></div>`;
+  $('#spotlist').innerHTML=SPOTS[S.world].map((p,i)=>`<div class="spot ${i===S.spot?'sel':''}" data-f data-spot="${i}"><span class="num">${i+1}</span><b>${p.n}</b>${p.tag?`<span class="pill y">${p.tag}</span>`:`<span class="pill">${S.world==='lake'?'Lake':'Bay'}</span>`}<small>${p.d} · ${p.p}</small></div>`).join('')+
+   `<div class="btn primary" data-f data-go="boat" style="margin-top:auto">Next: boat</div>`;
+}
+
+/* ---------------- boats ---------------- */
+function boatIcon(sh){
+  const hull={keel:'M10 60 Q60 72 150 60 L144 52 L16 52Z',dinghy:'M30 60 Q80 66 130 60 L126 54 L34 54Z',cat:'M14 60 Q70 66 146 60 L146 56 L14 56Z',cat2:'M6 62 Q70 70 154 62 L150 50 L10 50Z',tri:'M8 60 Q70 68 152 60 L148 54 L12 54Z'}[sh];
+  const rig=sh==='dinghy'?'<path d="M76 54 L76 12 L112 50Z" fill="#eaf0f2"/>':sh==='cat2'?'<path d="M82 50 L82 6 L128 46Z" fill="#eaf0f2"/><path d="M80 10 L44 46 L80 46Z" fill="#cdd6da"/><rect x="40" y="40" width="76" height="10" fill="#cdd6da"/>':'<path d="M82 52 L82 6 L124 48Z" fill="#eaf0f2"/><path d="M80 12 L40 50 L80 50Z" fill="#cdd6da"/>';
+  return `<svg viewBox="0 0 160 76" aria-hidden="true">${rig}<path d="${hull}" fill="#5d7684"/><path d="M0 66 Q80 62 160 66" stroke="#2f6f97" stroke-width="2" fill="none"/></svg>`;
+}
+function renderBoats(){
+  $('#boats').innerHTML=BOATS.map((b,i)=>`<div class="bcard ${i===S.boat?'sel':''}" data-f data-boat="${i}">${boatIcon(b.shape)}<b>${b.n}</b><small>${b.t}</small></div>`).join('');
+  const b=BOATS[S.boat];
+  $('#bdetail').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1cqw"><div><span class="lbl">${b.t}</span><h3>${b.n}</h3></div><div class="flags" style="display:flex;gap:.3cqw;flex-wrap:wrap;justify-content:flex-end">${b.flags.map((f,j)=>`<span class="pill ${f==='Your lesson boat'?'y':''}">${f}</span>`).join('')}</div></div>
+   <p>${b.d}</p>
+   <div class="specs"><div><span>Length</span><b>${b.loa}</b></div><div><span>Beam</span><b>${b.beam}</b></div><div><span>Draft</span><b>${b.draft}</b></div><div><span>Weight</span><b>${b.disp}</b></div><div><span>Close-hauled at 12 kn</span><b>${b.spd}</b></div><div><span>Handling</span><span class="meter">${[1,2,3,4,5].map(k=>`<i class="${k<=b.diff?'on':''}"></i>`).join('')}</span></div></div>
+   <div style="display:flex;gap:.6cqw;margin-top:auto"><div class="btn" data-f>Inspect in 3D</div><div class="btn primary" data-f data-go="cond" style="flex:1">Next: conditions</div></div>`;
+}
+
+/* ---------------- conditions ---------------- */
+const fmtTime=t=>{const h=Math.floor(t),m=Math.round((t-h)*60);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`};
+const card=d=>['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(((d%360)+360)%360/22.5)%16];
+const SL={
+ wind:{n:'Wind speed',min:0,max:30,step:1,f:v=>v+' kn'},
+ gust:{n:'Gusts to',min:0,max:40,step:1,f:v=>v+' kn'},
+ time:{n:'Time of day',min:5,max:22,step:.25,f:fmtTime},
+ month:{n:'Date',min:0,max:11,step:1,f:v=>`${MONTHS[v]} ${S.cond.day}`},
+ temp:{n:'Air temp',min:30,max:105,step:1,f:v=>v+'°F'},
+ tide:{n:'Tide',min:0,max:3,step:1,f:v=>TIDE[v]},
+ level:{n:'Lake level',min:-6,max:3,step:.5,f:v=>(v>0?'+':'')+v.toFixed(1)+' ft'},
+ sky:{n:'Sky',min:0,max:4,step:1,f:v=>SKY[v]},
+ dir:{n:'Wind from',min:0,max:359,step:5,wrap:true,f:v=>`${card(v)} ${v}°`}
+};
+function sliderRow(k,extra=''){
+  const s=SL[k],v=S.cond[k],p=(v-s.min)/(s.max-s.min)*100;
+  return `<div class="row ${extra}" data-f data-slider="${k}"><span class="nm">${s.n}</span><div class="track"><span class="fill" style="width:${p}%"></span><span class="knob" style="left:${p}%"></span></div><span class="val">${s.f(v)}</span></div>`;
+}
+function chipRow(k,opts){const v=S.cond[k];return `<div class="row" data-f data-slider="${k}" style="grid-template-columns:8.5cqw 1fr"><span class="nm">${SL[k].n}</span><div class="chips">${opts.map((o,i)=>`<span class="chip ${i===v?'on':''}">${o}</span>`).join('')}</div></div>`}
+function renderCond(keepFocus){
+  $('#presets').innerHTML=PRESETS.map((p,i)=>{const na=p.w==='bay'&&S.world!=='bay';return `<div class="preset ${i===S.preset?'sel':''} ${na?'na':''}" data-f data-preset="${i}"><b>${p.n}</b><small>${na?'Galveston only':p.s}</small></div>`}).join('');
+  $('#condA').innerHTML=sliderRow('wind')+sliderRow('gust')+chipRow('sky',['Clear','Fair','Overcast','Storms','Fog'])+sliderRow('temp');
+  const lake=S.world==='lake';
+  $('#condB').innerHTML=sliderRow('time')+sliderRow('month')+
+    (lake?`<div class="row disabled"><span class="nm">Tide</span><span class="note">No tide on Lake Ray Hubbard. Lake level replaces it.</span></div>`+sliderRow('level')
+         :sliderRow('tide')+`<div class="row disabled"><span class="nm">Current</span><span class="note">From NOAA station at Galveston Bay entrance · 1.4 kn ebb at this tide</span></div>`)+
+    `<div class="btn primary" data-f data-go="mode" style="margin-top:auto">Next: mode</div>`;
+  drawWindDial();
+  const c=S.cond, storm=c.sky===3;
+  $('#forecast').innerHTML=`<span class="lbl">What to expect</span><br><b>${c.wind} kn ${card(c.dir)}, gusting ${c.gust}.</b> ${c.wind<4?'Very light: expect to drift between puffs.':c.wind<13?'Good learning breeze for the '+BOATS[S.boat].n+'.':c.wind<19?'Fresh. Consider a reef on the '+BOATS[S.boat].n+'.':'Strong. Realistic mode will overpower the '+BOATS[S.boat].n+' without a reef.'} ${storm?'A storm cell builds after 4 pm with a gust front of about 35 kn.':''} Sunset ${['17:38','18:05','19:32','20:01','20:19','20:37','20:36','20:13','19:39','19:00','17:27','17:23'][c.month]}.`;
+  if(keepFocus) restoreFocus(keepFocus);
+}
+function drawWindDial(){
+  const d=S.cond.dir;let t='';
+  for(let a=0;a<360;a+=10){const r1=a%90?92:86,big=a%30===0;const s=Math.sin(a*Math.PI/180),c=-Math.cos(a*Math.PI/180);t+=`<line x1="${s*r1}" y1="${c*r1}" x2="${s*100}" y2="${c*100}" stroke="#93a8b4" stroke-width="${big?1.6:.8}"/>`;}
+  ['N','E','S','W'].forEach((l,i)=>{const a=i*90*Math.PI/180;t+=`<text x="${Math.sin(a)*74}" y="${-Math.cos(a)*74+5}" text-anchor="middle" fill="${i?'#93a8b4':'#f4c430'}" font-size="15" font-family="Saira Semi Condensed,sans-serif" font-weight="600">${l}</text>`});
+  t+=`<g transform="rotate(${d})"><path d="M-7 -98 L7 -98 L0 -80Z" fill="#9fd3ff"/><line x1="0" y1="-80" x2="0" y2="-30" stroke="#9fd3ff" stroke-width="4" stroke-linecap="round"/></g>`;
+  t+=`<text y="8" text-anchor="middle" fill="#eaf0f2" font-size="24" font-weight="600" font-family="Saira Semi Condensed,sans-serif">${card(d)}</text><text y="28" text-anchor="middle" fill="#93a8b4" font-size="12" font-family="Saira Semi Condensed,sans-serif">${d}° true</text>`;
+  $('#winddial').innerHTML=t;
+}
+
+/* ---------------- mode ---------------- */
+function seg(opts,i){return `<span class="seg">${opts.map((o,j)=>`<span class="${j===i?'on':''}">${o}</span>`).join('')}</span>`}
+function renderMode(keepFocus){
+  $('#modes').innerHTML=MODES.map(m=>{const na=m.k==='passage'&&S.world!=='bay';return `<div class="mode ${S.mode===m.k?'sel':''}" data-f data-mode="${m.k}" style="${na?'opacity:.4':''}"><b>${m.n}</b><small>${na?'Galveston world only':m.d}</small></div>`}).join('');
+  $('#modeextra').innerHTML=S.mode==='drill'?`<div class="drills">${DRILLS.map((d,i)=>`<div class="drill ${i===S.drill?'sel':''}" data-f data-drill="${i}">${i+1}. ${d}<span>${DRILLDONE[i]?'Passed':'Not yet'}</span></div>`).join('')}</div>`:
+    S.mode==='race'?`<div class="drills"><div class="drill sel" data-f>Windward-leeward, 2 laps<span>~25 min</span></div><div class="drill" data-f>Triangle course<span>~30 min</span></div><div class="drill" data-f>Five AI boats · J/22 class<span>Rules on</span></div></div>`:'';
+  $('#toggles').innerHTML=
+   `<div class="tg" data-f data-tg="learn"><span class="nm">Mode<small>Learning explains; Game scores you</small></span>${seg(['Learning','Game'],S.learn?0:1)}</div>`+
+   `<div class="tg" data-f data-tg="diff"><span class="nm">Difficulty<small>Easy trims and hikes for you</small></span>${seg(['Easy sailing','Realistic hard'],S.diff==='easy'?0:1)}</div>`+
+   `<div class="tg" data-f data-tg="tips"><span class="nm">Learning tips<small>Coach card in the HUD</small></span>${seg(['On','Off'],S.tips?0:1)}</div>`+
+   `<div class="tg" data-f data-tg="traffic"><span class="nm">Traffic<small>AI boats follow the Navigation Rules</small></span>${seg(['Off','Light','Busy'],['Off','Light','Busy'].indexOf(S.traffic))}</div>`;
+  const c=S.cond;
+  $('#summary').innerHTML=[['World',S.world==='lake'?'Lake Ray Hubbard':'Galveston Bay'],['Start',SPOTS[S.world][S.spot].n],['Boat',BOATS[S.boat].n],['Wind',`${c.wind} kn ${card(c.dir)} G${c.gust}`],['When',`${MONTHS[c.month]} ${c.day}, ${fmtTime(c.time)}`]].map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+  if(keepFocus) restoreFocus(keepFocus);
+}
+
+/* ---------------- settings ---------------- */
+const QUAL=['Low','Medium','High','Ultra','Custom'];
+const SETTABS=['Graphics','Display','Audio','Gameplay','Accessibility'];
+let setTab=0;
+const SETS={
+ Graphics:[
+  {h:'Preset'},
+  {k:'quality',n:'Quality',o:QUAL,v:1,help:['Low: old look, no Lumen, half-res clouds, stylised crew. For older Macs.','Medium: Lumen with virtual shadow maps. Mac target 60 fps.','High: hardware ray tracing, MetaHuman crew. Mac target 45 fps.','Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor. RTX 4090 PC.','Custom: you changed a setting below.']},
+  {h:'Detail'},
+  {k:'clouds',n:'Clouds',o:['Low','Medium','High','Ultra'],v:1},
+  {k:'water',n:'Water and wakes',o:['Low','Medium','High','Ultra'],v:1},
+  {k:'shore',n:'Shoreline and buildings',o:['Low','Medium','High','Ultra'],v:1},
+  {k:'crew',n:'Crew',o:['Stylised','MetaHuman','MetaHuman + hair'],v:1},
+  {k:'gi',n:'Lighting',o:['Baked','Lumen software','Lumen ray traced'],v:1},
+  {k:'upscale',n:'Upscaling',o:['Off','TAA 82%','TAA 67%','DLSS Quality'],v:1},
+  {k:'fps',n:'Frame rate cap',o:['30','45','60','120','Uncapped'],v:2}],
+ Display:[{k:'res',n:'Resolution',o:['1920 × 1080','2560 × 1440','3024 × 1964','3840 × 2160'],v:2},{k:'win',n:'Window',o:['Windowed','Borderless','Fullscreen'],v:1},{k:'hdr',n:'HDR',o:['Off','On'],v:0},{k:'bright',n:'Brightness',o:['-2','-1','0','+1','+2'],v:2},{k:'hudscale',n:'HUD size',o:['85%','100%','115%','130%'],v:1},{k:'hudmode',n:'HUD',o:['Full','Minimal','Off'],v:0}],
+ Audio:[{k:'master',n:'Master',o:['0','25','50','75','100'],v:3},{k:'wind',n:'Wind and water',o:['0','25','50','75','100'],v:4},{k:'boat',n:'Boat and rigging',o:['0','25','50','75','100'],v:3},{k:'radio',n:'VHF radio chatter',o:['Off','On'],v:1},{k:'coach',n:'Coach voice',o:['Off','On'],v:0}],
+ Gameplay:[{k:'units',n:'Speed units',o:['Knots','mph','km/h'],v:0},{k:'depth',n:'Depth units',o:['Feet','Metres','Fathoms'],v:0},{k:'bearing',n:'Headings',o:['Magnetic','True'],v:0},{k:'cam',n:'Default camera',o:['Helm','Cockpit','Chase'],v:0},{k:'assist',n:'Steering assist',o:['Off','Light','Strong'],v:1},{k:'pausefocus',n:'Pause when window loses focus',o:['Off','On'],v:1}],
+ Accessibility:[{k:'cb',n:'Port and starboard colours',o:['Red and green','Red and green + shapes','Blue and orange + shapes'],v:1},{k:'text',n:'Text size',o:['100%','115%','130%','150%'],v:0},{k:'motion',n:'Camera motion',o:['Full','Reduced','Horizon locked'],v:0},{k:'subs',n:'Subtitles for radio and coach',o:['Off','On'],v:1},{k:'hold',n:'Hold to toggle',o:['Hold','Toggle'],v:0}]
+};
+const QPRESET=[[0,0,0,0,0,2,2],[1,1,1,1,1,1,2],[2,2,2,1,2,1,2],[3,3,3,2,2,3,4]];
+const FPS=[[118,'Low · Mac M5'],[75,'Medium · Mac M5 · slowest view'],[46.7,'High · Mac M5 · slowest view'],[72,'Ultra · RTX 4090 at 4K DLSS']];
+function renderSettings(keepFocus){
+  $('#settabs').innerHTML=`<span class="glyph" data-pr-inline>${S.prompts==='pad'?'LB':'Q'}</span>`+SETTABS.map((t,i)=>`<span class="tab ${i===setTab?'on':''}">${t}</span>`).join('')+`<span class="glyph">${S.prompts==='pad'?'RB':'E'}</span>`;
+  $('[data-screen="settings"] .h').textContent=SETTABS[setTab];
+  const rows=SETS[SETTABS[setTab]];
+  $('#setlist').innerHTML=rows.map(r=>r.h?`<div class="secthd">${r.h}</div>`:
+   `<div class="srow ${r.chg?'changed':''}" data-f data-set="${r.k}"><span class="nm">${r.n}</span><div><div class="opt"><span class="arr">◀</span><span>${r.o[r.v]}</span><span class="arr">▶</span></div><div class="dots">${r.o.map((_,i)=>`<i class="${i===r.v?'on':''}"></i>`).join('')}</div></div></div>`).join('');
+  const q=SETS.Graphics[1].v;
+  if(setTab===0){
+    const f=FPS[Math.min(q,3)], pct=Math.min(100,f[0]/120*100);
+    $('#sethelp').innerHTML=`<h4>${QUAL[q]}</h4><p>${SETS.Graphics[1].help[q]}</p><div class="fpsbar"><span class="lbl">Measured ${f[1]}</span><div class="bar"><i style="width:${pct}%;background:${f[0]<45?'var(--warn)':'var(--stbd)'}"></i></div><span style="font:600 1.4cqw var(--f-ui)">${f[0]} fps</span></div><p>Numbers come from the bench run for this preset; Custom shows a live counter.</p>`;
+  } else $('#sethelp').innerHTML=`<h4>${SETTABS[setTab]}</h4><p>${{Display:'HUD size scales every in-game panel; menus follow the DPI curve, so 4K stays sharp at the same physical size.',Audio:'Sliders move in steps of 25 with ◀ ▶ and in steps of 5 while held.',Gameplay:'Magnetic headings match the J/22 compass. Galveston uses 1°28′ E variation.',Accessibility:'Shapes add a triangle to starboard and a square to port everywhere red and green are used.'}[SETTABS[setTab]]}</p>`;
+  renderPrompts();
+  if(keepFocus) restoreFocus(keepFocus);
+}
+function changeSetting(k,dir){
+  const rows=SETS[SETTABS[setTab]], r=rows.find(x=>x.k===k); if(!r) return;
+  r.v=(r.v+dir+r.o.length)%r.o.length; r.chg=true;
+  if(k==='quality'&&r.v<4){const g=SETS.Graphics;['clouds','water','shore','crew','gi','upscale','fps'].forEach((kk,i)=>{const x=g.find(y=>y.k===kk);x.v=Math.min(QPRESET[r.v][i],x.o.length-1)});setLow(r.v===0)}
+  else if(setTab===0&&k!=='quality'){SETS.Graphics[1].v=4}
+  if(k==='hudmode'){S.hudMode=r.v}
+  renderSettings('[data-set="'+k+'"]');
+}
+
+/* ---------------- keys ---------------- */
+const KEYTABS=['Sailing','Boat systems','Camera and views','Menus'];let keyTab=0;
+const KEYS={
+ Sailing:[['Steer to port','A','LS ◀'],['Steer to starboard','D','LS ▶'],['Sheet in main','W','RT'],['Ease main','S','LT'],['Sheet in jib','E','RB'],['Ease jib','Q','LB'],['Tack or gybe','Space','A'],['Hike out','Shift','B'],['Spinnaker up/down','N','Y'],['Reef','M','D-pad ▼']],
+ 'Boat systems':[['Centreboard / daggerboard','J','D-pad ▲'],['Throttle up','=','D-pad ▶'],['Throttle down','-','D-pad ◀'],['Twin-engine spin port','[','LB + LS ◀'],['Twin-engine spin starboard',']','LB + LS ▶'],['Right the boat','X','X'],['Nav lights','L','LB + X']],
+ 'Camera and views':[['Look around','Mouse','RS'],['Cockpit camera','\\','RS click'],['Chart','P','View'],['Take bearing','U','D-pad ▲ in chart'],['Plot fix','O','A in chart'],['Bearing info','I','X in chart'],['Photo mode','9','LS click'],['Logbook','Y','View hold']],
+ Menus:[['Pause and session menu','Tab','Menu'],['Toggle learning tips','T','LB + Y'],['Cycle HUD','H','LB + View'],['Quick save','F5','—']]
+};
+let listening=null;
+function renderKeys(keepFocus){
+  $('#keytabs').innerHTML=`<span class="glyph">${S.prompts==='pad'?'LB':'Q'}</span>`+KEYTABS.map((t,i)=>`<span class="tab ${i===keyTab?'on':''}">${t}</span>`).join('')+`<span class="glyph">${S.prompts==='pad'?'RB':'E'}</span>`;
+  $('#keygrid').innerHTML=`<span class="kh">Action</span><span class="kh">Keyboard</span><span class="kh">Controller</span>`+KEYS[KEYTABS[keyTab]].map((r,i)=>`<span class="kname">${r[0]}</span><span class="kbind ${listening===i+'k'?'listen':''} ${r[3]?'conflict':''}" data-f data-key="${i}k">${listening===i+'k'?'Press a key…':`<span class="glyph">${r[1]}</span>`}</span><span class="kbind ${listening===i+'p'?'listen':''}" data-f data-key="${i}p">${listening===i+'p'?'Press a button…':`<span class="glyph">${r[2]}</span>`}</span>`).join('');
+  if(keepFocus) restoreFocus(keepFocus);
+}
+
+/* ---------------- HUD ---------------- */
+function drawAwa(awa){
+  let t=`<circle r="100" fill="rgba(10,20,28,.55)"/>`;
+  const arc=(a0,a1,col)=>{const p=a=>[Math.sin(a*Math.PI/180)*92,-Math.cos(a*Math.PI/180)*92];const [x0,y0]=p(a0),[x1,y1]=p(a1);return `<path d="M${x0} ${y0} A92 92 0 0 1 ${x1} ${y1}" stroke="${col}" stroke-width="10" fill="none"/>`};
+  t+=arc(20,60,'#2db36a')+arc(-60,-20,'#e2483d')+arc(-20,20,'rgba(147,168,180,.35)');
+  for(let a=0;a<360;a+=30){const s=Math.sin(a*Math.PI/180),c=-Math.cos(a*Math.PI/180);t+=`<line x1="${s*80}" y1="${c*80}" x2="${s*86}" y2="${c*86}" stroke="#93a8b4" stroke-width="1.5"/>`}
+  t+=`<path d="M0 -40 C14 -20 16 20 10 40 L-10 40 C-16 20 -14 -20 0 -40Z" fill="none" stroke="#eaf0f2" stroke-width="2"/>`;
+  t+=`<g transform="rotate(${awa})"><path d="M0 -96 L8 -72 L-8 -72Z" fill="#f4c430"/><line x1="0" y1="-72" x2="0" y2="-44" stroke="#f4c430" stroke-width="3"/></g>`;
+  t+=`<g transform="rotate(${awa+9})"><path d="M0 -96 L5 -80 L-5 -80Z" fill="#9fd3ff"/></g>`;
+  t+=`<text y="62" text-anchor="middle" fill="#eaf0f2" font-size="17" font-weight="600" font-family="Saira Semi Condensed,sans-serif">${Math.abs(Math.round(awa))}° ${awa>=0?'S':'P'}</text><text y="78" text-anchor="middle" fill="#93a8b4" font-size="10" font-family="Saira Semi Condensed,sans-serif" letter-spacing="1.5">APP WIND · 14.6 KN</text>`;
+  $('#awadial').innerHTML=t;
+}
+function buildTape(){
+  let h='';for(let rep=0;rep<3;rep++)for(let d=0;d<360;d+=5){const lab=d%90===0?['N','E','S','W'][d/90]:d%30===0?String(d):'';h+=`<span class="tk ${d%15?'minor':''} ${d%90===0?'card':''}">${lab||'·'}</span>`}
+  $('#tape').innerHTML=h;
+}
+function setHdg(h){
+  const tickW=$('#tape .tk')?.getBoundingClientRect().width||0, cw=$('.compass').getBoundingClientRect().width;
+  const x=cw/2-(360/5+h/5)*tickW-tickW/2; $('#tape').style.transform=`translateX(${x}px)`;
+  $('#h-hdg').textContent=String(Math.round((h+360)%360)).padStart(3,'0');
+}
+let hudTimer=null,tick=0;
+function hudStart(){
+  buildTape();drawAwa(30);setHdg(200);applyHudMode();
+  clearInterval(hudTimer);
+  if(S.low||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  hudTimer=setInterval(()=>{tick++;const w=Math.sin(tick/7)*3+Math.sin(tick/3)*1.2;
+    setHdg(200+w);drawAwa(30-w*.8);$('#h-spd').innerHTML=(4.8+Math.sin(tick/5)*.25).toFixed(1)+'<small>kn</small>';
+    const dep=14+Math.round(Math.sin(tick/11)*2);$('#h-depth').innerHTML=dep+'<small>ft</small>';},120);
+}
+function applyHudMode(){
+  const s=$('[data-screen="hud"]');s.classList.toggle('hud-min',S.hudMode===1);s.classList.toggle('hud-off',S.hudMode===2);s.classList.toggle('tips-off',!S.tips);
+}
+
+/* ---------------- loading ---------------- */
+const STAGES=['Streaming shoreline and trees','Baking cloud weather map','Rigging the boat and crew','Warming water and wake shaders','Placing traffic','Ready'];
+const TIPS=[['Leaving a slip with the wind behind you',null],['The no-go zone','You cannot sail closer than about 45° to the true wind. Inside that zone the sails luff and the boat stops. Bear away until the jib fills.'],['Starboard tack has right of way','When two sailboats meet on opposite tacks, the boat with the wind on its starboard side is the stand-on vessel. Port tack keeps clear.']];
+let loadTimer=null,tipI=0;
+function loadStart(){
+  const sp=SPOTS[S.world][S.spot],b=BOATS[S.boat],c=S.cond;
+  $('#ld-eyebrow').textContent=(S.world==='lake'?'Lake Ray Hubbard':'Galveston Bay')+' · '+sp.n;
+  $('#ld-title').innerHTML=`${b.n}<br>${S.mode==='drill'?DRILLS[S.drill]:MODES.find(m=>m.k===S.mode).n}`;
+  $('#ld-sub').textContent=`${c.wind} kn ${card(c.dir)} gusting ${c.gust} · ${SKY[c.sky]} · ${MONTHS[c.month]} ${c.day}, ${fmtTime(c.time)} · ${S.learn?'Learning':'Game'} mode`;
+  let p=0;$('#ld-cont').style.visibility='hidden';clearInterval(loadTimer);
+  const step=()=>{p=Math.min(100,p+(S.low?100:2+Math.random()*3));$('#ld-bar').style.width=p+'%';$('#ld-pct').textContent=Math.round(p)+'%';$('#ld-stage').textContent=STAGES[Math.min(5,Math.floor(p/100*5.99))];
+    if(p>=100){clearInterval(loadTimer);$('#ld-cont').style.visibility='visible';$('#ld-cont').setAttribute('data-f','');$('#ld-cont').dataset.go='hud';refreshFocusables();setFocus(0)}};
+  loadTimer=setInterval(step,80);step();
+}
+
+/* ---------------- focus / navigation ---------------- */
+let focusables=[],fi=0;
+function scrEl(){return $(`[data-screen="${cur}"]`)}
+function refreshFocusables(){focusables=$$('[data-f]',scrEl()).filter(e=>e.offsetParent!==null||e instanceof SVGElement);badges()}
+function setFocus(i){focusables.forEach(e=>e.classList.remove('focus'));fi=Math.max(0,Math.min(i,focusables.length-1));focusables[fi]?.classList.add('focus')}
+function restoreFocus(sel){refreshFocusables();const el=$(sel,scrEl());const i=focusables.indexOf(el);setFocus(i<0?0:i)}
+function badges(){
+  $$('.fo-badge').forEach(b=>b.remove());
+  if(!S.focusOrder) return;
+  focusables.forEach((e,i)=>{
+    if(e instanceof SVGElement){
+      const r=e.getBoundingClientRect(),fr=frame.getBoundingClientRect();const b=document.createElement('span');b.className='fo-badge';b.textContent=i+1;b.style.left=(r.left-fr.left-4)+'px';b.style.top=(r.top-fr.top-4)+'px';b.style.position='absolute';frame.appendChild(b);return}
+    const b=document.createElement('span');b.className='fo-badge';b.textContent=i+1;e.appendChild(b)});
+}
+function rectOf(e){return e.getBoundingClientRect()}
+function moveDir(dx,dy){
+  const a=rectOf(focusables[fi]);const ax=a.left+a.width/2,ay=a.top+a.height/2;let best=-1,bd=1e9;
+  focusables.forEach((e,i)=>{if(i===fi)return;const r=rectOf(e);const x=r.left+r.width/2,y=r.top+r.height/2;const vx=x-ax,vy=y-ay;
+    const along=vx*dx+vy*dy;if(along<=4)return;const perp=Math.abs(vx*dy-vy*dx);const d=along+perp*2.2;if(d<bd){bd=d;best=i}});
+  if(best>=0) setFocus(best);
+}
+function isAdjustable(e){return e&&(e.dataset.slider||e.dataset.set||e.dataset.tg)}
+function adjust(e,dir){
+  if(e.dataset.slider){const k=e.dataset.slider,s=SL[k];let v=S.cond[k]+dir*s.step;if(s.wrap)v=(v+360)%360;v=Math.max(s.min,Math.min(s.max,v));if(k==='gust'&&v<S.cond.wind)v=S.cond.wind;S.cond[k]=v;if(k==='wind'&&S.cond.gust<v)S.cond.gust=v;S.preset=-1;renderCond(`[data-slider="${k}"]`)}
+  else if(e.dataset.set) changeSetting(e.dataset.set,dir);
+  else if(e.dataset.tg){const k=e.dataset.tg;if(k==='learn')S.learn=!S.learn;if(k==='diff')S.diff=S.diff==='easy'?'hard':'easy';if(k==='tips')S.tips=!S.tips;if(k==='traffic'){const o=['Off','Light','Busy'];S.traffic=o[(o.indexOf(S.traffic)+dir+3)%3]}renderMode(`[data-tg="${k}"]`)}
+}
+function activate(e){
+  if(!e) return;
+  if(e.dataset.world){S.world=e.dataset.world;S.spot=0;setWorldBg();go('launch');return}
+  if(e.dataset.spot!==undefined){S.spot=+e.dataset.spot;renderLaunch();restoreFocus(`.spot[data-spot="${S.spot}"]`);return}
+  if(e.dataset.boat!==undefined){S.boat=+e.dataset.boat;renderBoats();restoreFocus(`[data-boat="${S.boat}"]`);return}
+  if(e.dataset.preset!==undefined){const p=PRESETS[+e.dataset.preset];if(p.w==='bay'&&S.world!=='bay')return;S.preset=+e.dataset.preset;Object.assign(S.cond,p.c);renderCond(`[data-preset="${S.preset}"]`);return}
+  if(e.dataset.mode){if(e.dataset.mode==='passage'&&S.world!=='bay')return;S.mode=e.dataset.mode;renderMode(`[data-mode="${S.mode}"]`);return}
+  if(e.dataset.drill!==undefined){S.drill=+e.dataset.drill;renderMode(`[data-drill="${S.drill}"]`);return}
+  if(e.dataset.key){listening=listening===e.dataset.key?null:e.dataset.key;renderKeys(`[data-key="${e.dataset.key}"]`);return}
+  if(isAdjustable(e)){adjust(e,1);return}
+  if(e.dataset.presetMode) S.mode=e.dataset.presetMode;
+  if(e.dataset.go) go(e.dataset.go);
+}
+function go(name,back){
+  if(!back&&cur!==name) hist.push(cur);
+  cur=name;$$('[data-screen]').forEach(s=>s.hidden=s.dataset.screen!==name);
+  clearInterval(hudTimer);
+  if(name==='launch') renderLaunch();
+  if(name==='boat') renderBoats();
+  if(name==='cond') renderCond();
+  if(name==='mode') renderMode();
+  if(name==='settings') renderSettings();
+  if(name==='keys') renderKeys();
+  if(name==='loading') loadStart(); else clearInterval(loadTimer);
+  renderPrompts();
+  requestAnimationFrame(()=>{if(name==='hud')hudStart();refreshFocusables();
+    let i=0;
+    if(name==='world') i=focusables.findIndex(e=>e.dataset.world===S.world);
+    if(name==='launch') i=focusables.findIndex(e=>e.dataset.spot==S.spot);
+    if(name==='boat') i=focusables.findIndex(e=>e.dataset.boat==S.boat);
+    setFocus(Math.max(0,i))});
+  $$('#jump button').forEach(b=>b.classList.toggle('on',b.dataset.j===name));
+}
+function back(){
+  if(listening){listening=null;renderKeys('[data-key]');return}
+  if(cur==='hud'){go('pause');return}
+  const p=hist.pop(); if(p) go(p,true); else go('title',true);
+}
+function tabSwitch(dir){
+  if(cur==='settings'){setTab=(setTab+dir+SETTABS.length)%SETTABS.length;renderSettings();refreshFocusables();setFocus(0)}
+  if(cur==='keys'){keyTab=(keyTab+dir+KEYTABS.length)%KEYTABS.length;listening=null;renderKeys();refreshFocusables();setFocus(0)}
+}
+
+frame.addEventListener('keydown',ev=>{
+  const k=ev.key;let used=true;const e=focusables[fi];
+  if(listening&&!['Escape','Backspace'].includes(k)){const[i,t]=[parseInt(listening),listening.slice(-1)];const row=KEYS[KEYTABS[keyTab]][i];
+    if(t==='k'){const nk=k.length===1?k.toUpperCase():k;const clash=Object.values(KEYS).flat().find(r=>r!==row&&r[1]===nk);row[1]=nk;row[3]=!!clash;$('#conflict').hidden=!clash;if(clash)$('#conflict').innerHTML=`${nk} is already <b>${clash[0]}</b>. Press it again to move it here and leave ${clash[0]} unbound, or Ⓑ to cancel.`}
+    const keep=listening;listening=null;renderKeys(`[data-key="${keep}"]`);ev.preventDefault();return}
+  if(cur==='hud'&&(k==='Tab'||k==='Escape')){go('pause');ev.preventDefault();return}
+  if(cur==='hud'&&k.toLowerCase()==='t'){S.tips=!S.tips;applyHudMode();ev.preventDefault();return}
+  if(cur==='hud'&&k.toLowerCase()==='h'){S.hudMode=(S.hudMode+1)%3;applyHudMode();ev.preventDefault();return}
+  if(k==='ArrowUp')moveDir(0,-1);
+  else if(k==='ArrowDown')moveDir(0,1);
+  else if(k==='ArrowLeft'){isAdjustable(e)&&!e.dataset.tg?adjust(e,-1):e?.dataset.tg?adjust(e,-1):moveDir(-1,0)}
+  else if(k==='ArrowRight'){isAdjustable(e)?adjust(e,1):moveDir(1,0)}
+  else if(k==='Enter'||k===' ')activate(e);
+  else if(k==='Escape'||k==='Backspace')back();
+  else if(k.toLowerCase()==='q')tabSwitch(-1);
+  else if(k.toLowerCase()==='e')tabSwitch(1);
+  else used=false;
+  if(used) ev.preventDefault();
+});
+frame.addEventListener('click',ev=>{
+  frame.focus({preventScroll:true});
+  const el=ev.target.closest('[data-f]');
+  if(cur==='hud'&&!el){go('pause');return}
+  if(!el) return;
+  const i=focusables.indexOf(el);if(i>=0)setFocus(i);
+  if(el.dataset.slider&&ev.target.closest('.track')){const tr=ev.target.closest('.track').getBoundingClientRect(),s=SL[el.dataset.slider];let v=s.min+(ev.clientX-tr.left)/tr.width*(s.max-s.min);v=Math.round(v/s.step)*s.step;S.cond[el.dataset.slider]=Math.max(s.min,Math.min(s.max,v));S.preset=-1;renderCond(`[data-slider="${el.dataset.slider}"]`);return}
+  if(el.dataset.slider==='dir'){const r=$('#winddial').getBoundingClientRect();const a=Math.atan2(ev.clientX-(r.left+r.width/2),-(ev.clientY-(r.top+r.height/2)))*180/Math.PI;S.cond.dir=Math.round(((a+360)%360)/5)*5%360;S.preset=-1;renderCond('[data-slider="dir"]');return}
+  if(el.dataset.slider&&ev.target.closest('.chips')){const ch=ev.target.closest('.chip');if(ch){S.cond[el.dataset.slider]=[...ch.parentNode.children].indexOf(ch);renderCond(`[data-slider="${el.dataset.slider}"]`)}return}
+  if(el.dataset.set){const r=el.getBoundingClientRect();changeSetting(el.dataset.set,ev.clientX<r.left+r.width*.62?-1:1);return}
+  activate(el);
+});
+frame.addEventListener('mousemove',ev=>{const el=ev.target.closest('[data-f]');if(el){const i=focusables.indexOf(el);if(i>=0&&i!==fi)setFocus(i)}});
+$('#t-focus').onclick=e=>{S.focusOrder=!S.focusOrder;e.target.setAttribute('aria-pressed',S.focusOrder);refreshFocusables()};
+$('#t-glyph').onclick=e=>{S.prompts=S.prompts==='kb'?'pad':'kb';e.target.setAttribute('aria-pressed',S.prompts==='pad');renderPrompts();if(cur==='settings')renderSettings();if(cur==='keys')renderKeys();refreshFocusables()};
+function setLow(on){S.low=on;frame.classList.toggle('low',on);$('#t-low').setAttribute('aria-pressed',on);if(cur==='hud')hudStart()}
+$('#t-low').onclick=()=>{setLow(!S.low);SETS.Graphics[1].v=S.low?0:1;if(cur==='settings')renderSettings()};
+$('#jump').innerHTML=$$('[data-screen]').map(s=>`<button data-j="${s.dataset.screen}">${s.dataset.name}</button>`).join('');
+$('#jump').onclick=e=>{const b=e.target.closest('button');if(b){hist=[];go(b.dataset.j);frame.focus({preventScroll:true})}};
+window.addEventListener('resize',()=>{if(cur==="hud")setHdg(200);badges()});
+renderSteps();setWorldBg();renderPrompts();go('title',true);
+})();
+</script>

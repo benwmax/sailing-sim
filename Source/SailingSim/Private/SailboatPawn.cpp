@@ -1,4 +1,7 @@
 #include "SailboatPawn.h"
+#include "SailingHUD.h"
+#include "UI/SailHud.h"
+#include "SailSession.h"
 #include "GroomComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "PowerVesselActor.h"
@@ -783,6 +786,13 @@ void ASailboatPawn::BeginPlay()
 			}
 		}
 	}
+	// Graphics G4: a session from the front end starts its drill (the race starts with the traffic, TrafficManager.cpp).
+	if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); Session && Session->bHasActive && !bTrafficBoat && DrillArg.IsEmpty()
+		&& Session->Active.Mode == ESailMode::Drill)
+	{
+		MenuDrill = ESailingDrill(FMath::Clamp(Session->Active.DrillIndex + 1, 1, int32(ESailingDrill::Count) - 1));
+		StartDrill(MenuDrill);
+	}
 	if (FParse::Param(FCommandLine::Get(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
 	if (FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker(); // start with it up
 }
@@ -892,7 +902,8 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		const Vec3 O = Boat.OriginPosition();
 		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
 	}
-	const int32 Steps = Stepper.Advance(DeltaSeconds);
+	// Graphics G4: the front end and the loading screen hold the boat where it is (the world keeps moving behind them).
+	const int32 Steps = bHeldByUI && !bTrafficBoat ? 0 : Stepper.Advance(DeltaSeconds);
 	for (int32 I = 0; I < Steps; ++I)
 	{
 		const FBoatControls Before = Controls;
@@ -940,6 +951,13 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		Ctx.bBackJib = Controls.bBackJib;
 		Ctx.MaxContactSpeed = MaxContactKnots;
 		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
+		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
+		if (DrillRunner.IsComplete() && !bTrafficBoat)
+		{
+			USailSessionSave* Save = USailSessionSave::Get();
+			const int32 Index = int32(DrillRunner.GetDrill()) - 1;
+			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); Save->SaveConfig(); }
+		}
 	}
 	UpdateDrillVisuals();
 
@@ -2169,6 +2187,16 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	if (Action == TEXT("Menu"))
 	{
+		// Graphics G4: Tab opens Pause (the old settings list stays for the runs that start without the front end).
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			if (ASailingHUD* Hud = PC->GetHUD<ASailingHUD>(); Hud && Hud->UsesFrontEnd() && !bTrafficBoat)
+			{
+				bMenuOpen = false;
+				Hud->OpenPause();
+				return;
+			}
+		}
 		bMenuOpen = !bMenuOpen;
 		bControlsCard = false;
 		return;
@@ -2212,7 +2240,9 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	else if (Action == TEXT("ToggleHud"))
 	{
-		Settings->bShowHud = !Settings->bShowHud;
+		// Graphics G4: H cycles the HUD: full, minimal (cluster, compass, drill, toasts), off (toasts only).
+		Settings->bShowHud = true;
+		SSailHud::Mode = (SSailHud::Mode + 1) % 3;
 		Settings->Save();
 	}
 	else if (Action == TEXT("ResetBoat"))
@@ -2841,7 +2871,8 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
 				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
 				// Graphics G3: the shorts in scanned cotton twill (M_CrewFabric), where it has been built.
-				static UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+				// Loaded each time (not cached in a static: a level reload collects it and the pointer would dangle).
+				UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 				if (!bShirt && ShortsCloth)
 				{
 					UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShortsCloth, this);
