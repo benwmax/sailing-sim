@@ -92,7 +92,7 @@ private:
 public:
 	float GetNightAmount() const { return NightAmount; }
 private:
-	struct FWeatherMapFrame { Sailing::FWeatherMap Map; };
+	struct FWeatherMapFrame { Sailing::FWeatherMap Map; TArray<FFloat16> Half; };
 	Sailing::FWeatherMap LastWeatherMap;
 	float SunVisibility = 1.f; // smoothed transmittance toward the sun through the clouds (layered clouds)
 	bool bHasWeatherMap = false;

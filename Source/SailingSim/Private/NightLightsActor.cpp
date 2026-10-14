@@ -59,7 +59,7 @@ void ANightLightsActor::BeginPlay()
 			}
 		}
 	}
-	const bool bHigh = USailingSettings::Get()->Quality == ESailingQuality::High;
+	const bool bHigh = USailingSettings::Get()->Quality >= ESailingQuality::High;
 	const int32 N = FMath::Min(Fixtures.Num(), bHigh ? 160 : 48);
 	for (int32 I = 0; I < N; ++I)
 	{

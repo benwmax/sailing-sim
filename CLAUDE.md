@@ -225,6 +225,19 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   MetaHuman skeleton (its +Y facing, A-pose turned to SK_Sailor's T-pose, spine/neck spread over its bones); face and
   outfit follow the body by leader pose; the life jacket and cap (`/Game/Crew/Gear`, `build_crew_gear.py`) are scaled
   from the skeleton. `SailingSim.Visual.MetaHumanCrew` checks every stance points each limb as SK_Sailor's does.
+- Sky (Graphics G1): the cloud noise is ours (`Tools/clouds/make_cloud_noise.py` -> `/Game/Materials/Clouds`, imported by
+  `scripts/import_cloud_noise.py`; `make-content.sh` bakes it when missing, `CLOUD_NOISE=1` rebakes). In `CLOUD_CODE`,
+  nothing may vary faster than the march step (about 190 m: 80 samples over 15 km) or it aliases into grain: noise mips
+  come from the sample footprint (floor 160 m), and the shelf has no altitude tiers. The weather map is 1024^2 (half
+  floats). Cloud rendering per tier is in `QualityCVars` (upsampling mode 3 with clamped reprojection; Ultra traces at
+  half resolution) and `ASailingEnvironment::BeginPlay` (sample scales, 4 km shadow rays). Measuring: `-SailingCloudScale=
+  <view>,<shadow>`, `-SailingCloudShadowKm=<km>`, `-SailingCloudMode=<n>`, `-SailingCloudSamples=<n>`,
+  `-SailingStormDelay=<s>` (the front reaches the start later), `SAILING_DEBUG_LAYERS=1 scripts/make-content.sh` (cloud
+  layers tinted). CSV args with commas must be quoted.
+- Ultra tier (Graphics G1): `ESailingQuality::Ultra`, for a desktop GPU (Bean's RTX 4090): everything High has plus Epic
+  scalability, TSR at native, half-resolution clouds with the most samples, no resolution governor. The Mac gates stay
+  Medium 60 and High 45; Ultra is only checked to run on the Mac. Windows: package with `RunUAT BuildCookRun -platform=Win64`
+  (not scripted yet).
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

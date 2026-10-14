@@ -1,0 +1,13 @@
+scene,boat_before,boat_after,sails_before,sails_after,light_before,light_after,water_before,water_after,sky_before,sky_after,notes
+j22-heavy-chase,2,2,2,2,2,2,2,2,2,2,"Cumulus from the baked noise: varied cauliflower puffs, flat grey bases, no repeated puff (V7 drew the same one every 1.25 km)."
+j22-light-chase,2,2,2,2,2,2,2,2,2,2,A scattered fair-weather field over the far shore; each cloud different.
+j22-moderate-chase,2,2,2,2,2,2,2,2,2,2,Cumulus with lit tops and shadowed undersides; the old pancake layering is gone.
+j22-helm-reservoir,2,2,2,2,2,2,2,2,2,2,Broken cumulus through the rig; edges smooth (the speckle was aliasing of 3 m noise under 190 m ray steps).
+j22-actioncam-lake,2,2,2,2,2,2,2,2,2,2,Cumulus and their reflections; unchanged otherwise.
+rh-drone-cat,2,2,2,2,2,2,1,1,2,2,No sky in frame; cloud shadows on the lake from the new field.
+rh-c30-evening,2,2,2,2,2,2,2,2,2,2,"Late-day cumulus lit warm from the side, darker bases."
+storm-lake,2,2,2,2,3,2,2,2,3,3,"Rebuilt from the water facing the storm (the old scene looked away from it): a lit storm band over a dark base and the bright gap above the lake. Not met (sky 3): the lit storm cloud still looks frosted at full size (grain 6.6 to 4.1 on the measure) and the shelf reads as a cumulonimbus band, not laminar tiers."
+squall-lake,2,2,2,2,2,2,2,2,2,2,Storm towers and the dark base behind the Catalina 30; grain down by a third.
+gulf-passage,2,2,2,2,2,2,2,2,2,2,Offshore cumulus; unchanged otherwise.
+bay-hobie,2,2,2,2,2,2,2,2,2,2,Overcast deck; unchanged.
+sunfish-reach,2,2,2,2,2,2,2,2,2,2,Overcast deck; unchanged.

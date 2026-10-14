@@ -32,7 +32,8 @@ enum class ESailingQuality : uint8
 {
 	Low,
 	Medium,
-	High
+	High,
+	Ultra      // Graphics G1: for a desktop GPU (Bean's RTX 4090); the Mac's gates stay Medium 60 and High 45
 };
 
 /** Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest. Full: every control. */
