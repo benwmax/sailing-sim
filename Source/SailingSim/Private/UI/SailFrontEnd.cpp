@@ -95,7 +95,7 @@ namespace SailFrontEndImpl
 				{ 0.44f, 0.56f, 0.30f, 0.f, false, false, false }, { 0.58f, 0.55f, 0.28f, 0.22f, false, false, true }, { 0.70f, 0.70f, 0.30f, 0.28f, false, false, true },
 				{ 0.52f, 0.62f, 0.30f, 0.16f, true, false, false }, { 0.70f, 0.70f, 0.30f, 0.24f, true, false, true }, { 0.80f, 0.68f, 0.30f, 0.26f, true, false, true } };
 			const FShape& F = Shapes[FMath::Clamp(Type, 0, 7)];
-			auto Line = [&](TArray<FVector2f> P, const FLinearColor& C, float W)
+			auto DrawLine = [&](TArray<FVector2f> P, const FLinearColor& C, float W)
 			{
 				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), P, ESlateDrawEffect::None, C * Style.GetColorAndOpacityTint(), true, W);
 			};
@@ -112,7 +112,7 @@ namespace SailFrontEndImpl
 						const FVector2f P = Ed[0], Q = Ed[1];
 						if ((Y >= FMath::Min(P.Y, Q.Y)) && (Y <= FMath::Max(P.Y, Q.Y)) && P.Y != Q.Y && N < 3) Xs[N++] = P.X + (Y - P.Y) / (Q.Y - P.Y) * (Q.X - P.X);
 					}
-					if (N >= 2) Line({ FVector2f(FMath::Min(Xs[0], Xs[1]), Y), FVector2f(FMath::Max(Xs[0], Xs[1]), Y) }, Col, 1.2f);
+					if (N >= 2) DrawLine({ FVector2f(FMath::Min(Xs[0], Xs[1]), Y), FVector2f(FMath::Max(Xs[0], Xs[1]), Y) }, Col, 1.2f);
 				}
 			};
 			const float HL = S.X * F.Hull, MastH = S.Y * F.Mast, MastX = Cx + HL * 0.05f;
@@ -121,14 +121,14 @@ namespace SailFrontEndImpl
 			Tri(FVector2f(Cx - HL * 0.5f, Base - 6.f), FVector2f(Cx + HL * 0.5f, Base - 6.f), FVector2f(Cx - HL * 0.42f, Base + 4.f), HullC);
 			Tri(FVector2f(Cx + HL * 0.5f, Base - 6.f), FVector2f(Cx - HL * 0.42f, Base + 4.f), FVector2f(Cx + HL * 0.38f, Base + 4.f), HullC);
 			if (F.bCabin) Tri(FVector2f(Cx - HL * 0.2f, Base - 6.f), FVector2f(Cx + HL * 0.1f, Base - 6.f), FVector2f(Cx - HL * 0.12f, Base - 13.f), HullC);
-			Line({ FVector2f(Cx - S.X * 0.46f, Base + 6.f), FVector2f(Cx + S.X * 0.46f, Base + 6.f) }, Hex(0x3C5F78), 2.f);
-			if (F.bMulti) Line({ FVector2f(Cx - HL * 0.45f, Base + 2.f), FVector2f(Cx + HL * 0.45f, Base + 2.f) }, HullC, 3.f);
+			DrawLine({ FVector2f(Cx - S.X * 0.46f, Base + 6.f), FVector2f(Cx + S.X * 0.46f, Base + 6.f) }, Hex(0x3C5F78), 2.f);
+			if (F.bMulti) DrawLine({ FVector2f(Cx - HL * 0.45f, Base + 2.f), FVector2f(Cx + HL * 0.45f, Base + 2.f) }, HullC, 3.f);
 			if (F.bLateen)
 			{
 				Tri(FVector2f(Cx - HL * 0.35f, Base - 10.f), FVector2f(Cx + HL * 0.40f, Base - MastH), FVector2f(Cx + HL * 0.42f, Base - 12.f), SailC);
 				return Layer + 1;
 			}
-			Line({ FVector2f(MastX, Base - 6.f), FVector2f(MastX, Base - MastH) }, Hex(0x9AA9B3), 1.5f);
+			DrawLine({ FVector2f(MastX, Base - 6.f), FVector2f(MastX, Base - MastH) }, Hex(0x9AA9B3), 1.5f);
 			Tri(FVector2f(MastX - 2.f, Base - MastH + 2.f), FVector2f(MastX - 2.f, Base - 12.f), FVector2f(MastX - HL * F.Main * 1.4f, Base - 12.f), SailC);
 			if (F.Jib > 0.f) Tri(FVector2f(MastX + 3.f, Base - MastH * 0.85f), FVector2f(MastX + 3.f, Base - 10.f), FVector2f(MastX + HL * F.Jib * 1.6f, Base - 10.f), SailB);
 			return Layer + 1;
