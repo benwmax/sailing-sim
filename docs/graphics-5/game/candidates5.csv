@@ -1,0 +1,6 @@
+scene,preset,args
+s01j,Chase,"-SailingWorld=1 -SailingLaunch=2 -SailingKeepStart -SailingBoat=Catalina30 -SailingWindFrom=0 -SailingRace=20 -SailingRaceBoats=14 -SailingRaceMixed -SailingWeather=Overcast -SailingWind=16 -SailingHour=11 -SailingCamWorld=90,-60,3,75,-2 -SailingQuality=High"
+s01k,Chase,"-SailingWorld=1 -SailingLaunch=2 -SailingKeepStart -SailingBoat=Catalina30 -SailingWindFrom=0 -SailingRace=20 -SailingRaceBoats=14 -SailingRaceMixed -SailingWeather=Overcast -SailingWind=16 -SailingHour=11 -SailingCamWorld=40,-40,4,60,-3 -SailingQuality=High"
+s01l,Chase,"-SailingWorld=1 -SailingLaunch=2 -SailingKeepStart -SailingBoat=Catalina30 -SailingWindFrom=0 -SailingRace=25 -SailingRaceBoats=14 -SailingRaceMixed -SailingWeather=Overcast -SailingWind=16 -SailingHour=11 -SailingCamWorld=150,-120,3,90,-2 -SailingQuality=High"
+s09g,Chase,"-SailingWorld=Lake -SailingStartAt=-1150,1150,315 -SailingKeepStart -SailingBoat=Hobie -SailingWindFrom=45 -SailingWeather=CalmMorning -SailingWind=9 -SailingHour=12 -SailingTWA=90 -SailingHoldTWA=90 -SailingCamWorld=-70,-70,2,15,0 -SailingQuality=High"
+s09h,Chase,"-SailingWorld=Lake -SailingStartAt=-1150,1150,315 -SailingKeepStart -SailingBoat=Hobie -SailingWindFrom=45 -SailingWeather=CalmMorning -SailingWind=9 -SailingHour=12 -SailingTWA=90 -SailingHoldTWA=90 -SailingCamWorld=-50,-90,2,5,0 -SailingQuality=High"
