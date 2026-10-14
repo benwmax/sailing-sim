@@ -264,6 +264,21 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   HeightAt` prefers the detail (physics and placement follow it); `ALakeTerrainActor` meshes shore chunks within 300 m at
   1 m (Step 0). Run it after `build_rayhubbard.py`; `-SailingNoShoreDetail` compares; `SailingSim.Lake.ShoreDetail` checks
   seams and agreement with the grid.
+- Front end and HUD (Graphics G4): Slate in C++ (`Source/SailingSim/Private/UI/`), not Common UI assets. `SSailFrontEnd`
+  (screen stack: Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm),
+  `SSailLoading` (real readiness stages; waits for Enter unless Settings > Start when loaded), `SSailHud` (instruments,
+  tips, drill/race panel, rules callout, coast navigation, minimap; text at 10 Hz), shared widgets `SailWidgets.h`, tokens
+  and fonts `SailUIStyle.h`, data `SailCatalog.h` (spots and grids from the bakes, boats from the configs and polars).
+  `USailSessionSubsystem` (`SailSession.h`) carries the choices over the map reload; the game mode applies them through
+  the command-line override paths. Art: `Tools/ui/make_ui_art.py` (maps, label-free `T_MiniMap_<World>`, cards and
+  loading stills from captures) then `scripts/import_ui_art.py` (`UI_ART_ONLY=<prefix>` reimports some). Args:
+  `-SailingFrontEnd=<Screen|Loading>` (screenshots; Pause opens 4 s in), `-SailingUIScript=Down,Enter,Wait,...` (keys
+  through Slate, survives the cast-off reload; `Log` prints the applied session), `-SailingNoHud`; `RESX`/`RESY` for
+  `run-game.sh`. The front end is off for bench, capture, shot-only, demo, drill and automation runs; benches also ignore
+  the player's resolution, frame cap and focus pause (`USailingSettings::IsMeasuring`). Pitfalls: no file-scope
+  `using namespace` (unity build); `FSlateDrawElement::MakeBox` ignores the brush tint (multiply it in); never cache
+  UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
+  from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

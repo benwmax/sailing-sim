@@ -107,7 +107,31 @@ flow in reverse, and Continue on the title starts the last session again.
   Both reach the loading screen, wait for Enter, and start sailing with the chosen world, boat and conditions.
 - The screenshots on this page come from `-SailingFrontEnd=<screen>` (`scripts/run-game.sh`).
 
-PERF
+## Performance (packaged, fps)
+
+| View | Medium G3 | Medium G4 | High G3 | High G4 |
+|---|---|---|---|---|
+| beam8 | 95.0 | 95.5 | 51.6 | 53.0 |
+| beat15 | 90.1 | 92.5 | 49.2 | 51.8 |
+| storm | 85.3 | 86.6 | 50.1 | 50.4 |
+| marina | 87.7 | 89.2 | 46.9 | 47.0 |
+| coast-day | 86.8 | 86.2 | 48.6 | 46.8 |
+| coast-night | 113.5 | 115.2 | 56.5 | 56.2 |
+| gulf-sea | 113.3 | 114.0 | 60.1 | 61.6 |
+| helm-eye | 86.7 | 84.7 | 45.3 | 44.9 |
+| slip | 76.4 | 77.9 | 47.4 | 47.3 |
+| bridge | 94.3 | 95.4 | 51.9 | 52.1 |
+| crew | 73.1 | 72.9 | 46.9 | 46.5 |
+| marina-night | 91.9 | 91.5 | 57.5 | 57.4 |
+
+- The views move by about ±2 fps against G3, which is run-to-run noise.
+- Every view clears the gates (Medium 60, High 45) except helm-eye on High, which sits on the line: 44.9, and 45.1 on
+  a rerun (45.3 in G3). Helm-eye is a capture view with no HUD drawn, so this isn't the UI.
+- **The HUD's own cost**, High, with and without it (`-SailingNoHud`): beam8 52.8 against 52.6, marina 47.5 against
+  47.4. That's within noise. The dials and tape are a few hundred line and box elements, and the text changes 10
+  times a second, not every frame.
+- Benchmarks run with the front end off (`-SailingBench`), so the numbers compare straight with G3. The screenshots
+  are in `bench/`.
 
 ## Found and fixed on the way
 
