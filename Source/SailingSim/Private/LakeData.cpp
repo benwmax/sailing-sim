@@ -211,7 +211,11 @@ void FLakeData::LoadPiers(const FString& Path)
 		FLakeDock D;
 		D.Points = Points(O->GetArrayField(TEXT("pts")));
 		const FString Kind = O->GetStringField(TEXT("kind"));
-		D.Kind = Kind == TEXT("dike") || Kind == TEXT("seawall") || Kind == TEXT("groin") ? Kind : FString(TEXT("breakwater"));
+		// The named landmarks (both Galveston jetties, the Texas City Dike) are breakwaters and dikes with boulders; the
+		// other pieces from the narrow-structures layer keep only the baked rock core, like groins (the boulders cost the
+		// High tier 3 fps on the coast).
+		const bool bNamed = O->HasField(TEXT("name"));
+		D.Kind = Kind == TEXT("seawall") ? Kind : (!bNamed ? FString(TEXT("groin")) : (Kind == TEXT("dike") ? Kind : FString(TEXT("breakwater"))));
 		D.Width = float(O->GetNumberField(TEXT("width")));
 		D.Crest = float(O->GetNumberField(TEXT("crest")));
 		if (D.Points.Num() >= 2) { Docks.Add(MoveTemp(D)); ++Riprap; }
