@@ -3,6 +3,7 @@
 #include "FixedStepper.h"
 #include "Chart.h"
 #include "LakeData.h"
+#include "WorldKit.h"
 #include "Lights.h"
 #include "Navigation.h"
 #include "Tides.h"
@@ -394,3 +395,66 @@ bool FCoastSunTimesTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+/**
+ * Graphics G7: the G2 piers pack on the coast (<Lake>.piers, Tools/coast/build_piers.py): the named structures are there
+ * (both Galveston jetties, the Texas City Dike, the Seawall), every lidar deck stands above the water on a sensible
+ * height, every moored boat floats (water under her) and stops the player's boat, and the shore kit keeps whole quads
+ * when it splits a deck's triangles into tiles.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoastPiersTest, "SailingSim.Coast.Piers", Flags)
+bool FCoastPiersTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Galveston();
+	if (!TestTrue(TEXT("Galveston loads"), Lake.IsLoaded())) return false;
+	TestTrue(FString::Printf(TEXT("Lidar decks (%d)"), Lake.Decks.Num()), Lake.Decks.Num() > 1000);
+	TestTrue(FString::Printf(TEXT("Moored boats (%d)"), Lake.MooredBoats.Num()), Lake.MooredBoats.Num() > 1000);
+	int32 Dikes = 0, Seawalls = 0, Floating = 0;
+	double LongestRock = 0.0;
+	for (const FLakeDock& D : Lake.Docks)
+	{
+		Dikes += D.Kind == TEXT("dike");
+		Seawalls += D.Kind == TEXT("seawall");
+		Floating += D.Kind == TEXT("floating");
+		if (D.Kind == TEXT("breakwater") && D.Width > 0.f)
+		{
+			double Len = 0.0;
+			for (int32 I = 1; I < D.Points.Num(); ++I) Len += FVector2D::Distance(D.Points[I - 1], D.Points[I]);
+			LongestRock = FMath::Max(LongestRock, Len);
+		}
+	}
+	TestTrue(TEXT("The Texas City Dike"), Dikes >= 1);
+	TestEqual(TEXT("The Seawall's end"), Seawalls, 1);
+	TestTrue(FString::Printf(TEXT("A jetty over 3 km (%.0f m)"), LongestRock), LongestRock > 3000.0);
+	TestTrue(FString::Printf(TEXT("Inferred floating walkways (%d)"), Floating), Floating > 0);
+	for (const FLakeDeck& D : Lake.Decks)
+	{
+		if (!TestTrue(FString::Printf(TEXT("Deck heights between 0.4 and 40 m above MLLW (%.2f)"), D.Deck), D.Deck > 0.4f && D.Deck < 40.f)) break;
+	}
+	int32 Dry = 0;
+	for (const FMooredBoat& B : Lake.MooredBoats)
+	{
+		const double H = Lake.Terrain.HeightAt(B.Center.X, B.Center.Y);
+		if (H > 0.15 && Dry++ < 3) AddInfo(FString::Printf(TEXT("Dry boat at %.1f, %.1f: %.2f m"), B.Center.X, B.Center.Y, H));
+	}
+	TestEqual(TEXT("No moored boat on dry land"), Dry, 0);
+	// A moored boat stops the player's boat: there is an obstacle (not a dock to tie to) along her hull.
+	const FMooredBoat& B = Lake.MooredBoats[Lake.MooredBoats.Num() / 2];
+	bool bHull = false;
+	for (const Sailing::FObstacleSegment& S : Lake.Obstacles)
+	{
+		const FVector2D Mid(0.5 * (S.AX + S.BX), 0.5 * (S.AY + S.BY));
+		bHull |= S.Top > 1.5 && FVector2D::Distance(Mid, B.Center) < 0.1;
+	}
+	TestTrue(TEXT("A moored boat is an obstacle"), bHull);
+	// Triangles go into the kit as quads (FKitGeometry::SplitTiles walks four vertices at a time).
+	FKitGeometry G;
+	G[EKitLook::Decking].Tri(FVector(0, 0, 1), FVector(10, 0, 1), FVector(0, 10, 1), FVector2D::ZeroVector, FVector2D::ZeroVector, FVector2D::ZeroVector);
+	G[EKitLook::Decking].Quad(FVector(0, 0, 2), FVector(0, 5, 2), FVector(5, 5, 2), FVector(5, 0, 2), FVector2D::ZeroVector, FVector2D::ZeroVector, FVector2D::ZeroVector, FVector2D::ZeroVector);
+	TMap<FIntPoint, FKitGeometry> Tiles;
+	G.SplitTiles(1000.0, Tiles);
+	const FKitSection& T = Tiles.FindChecked(FIntPoint(0, 0))[EKitLook::Decking];
+	TestEqual(TEXT("Both pieces land in one tile, whole"), T.V.Num(), 8);
+	TestTrue(TEXT("The triangle faces up"), T.N[0].Z > 0.99);
+	return true;
+}

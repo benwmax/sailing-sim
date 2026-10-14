@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "CoastMarinasActor.h"
 #include "SailSession.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
@@ -469,6 +470,11 @@ void ASailingGameMode::StartPlay()
 	if (Lake.Marina.IsLoaded() && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoMarina")))
 	{
 		GetWorld()->SpawnActor<AMarinaActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
+	// Graphics G7: the coast's moored boats and floating walkways (Inputs/g2/piers, <Lake>.piers).
+	if (Lake.MooredBoats.Num() > 0 && USailingSettings::Get()->Quality != ESailingQuality::Low)
+	{
+		GetWorld()->SpawnActor<ACoastMarinasActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
 	if ((Lake.Bridges.Num() > 0 || Lake.Docks.Num() > 0) && USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{

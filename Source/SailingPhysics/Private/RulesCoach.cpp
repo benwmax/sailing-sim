@@ -160,6 +160,12 @@ namespace Sailing
 			Advice.Role = S.Decision.GiveWayId == FRuleDecision::Both ? "Both give way" : (Advice.bGiveWay ? "You give way" : "You stand on");
 			Advice.Rule = S.Decision.Rule;
 			Advice.Reason = S.Decision.Reason;
+			Advice.Encounter = S.Decision.Encounter;
+			Advice.PlayerStatus = Player.Status;
+			Advice.OtherStatus = O.Status;
+			Advice.PlayerTack = Player.Tack;
+			Advice.OtherTack = O.Tack;
+			Advice.bRisk = S.Risk.bRisk;
 			Advice.Action = S.Risk.bRisk ? WhatToDo(S.Decision, Player, O, Advice.bGiveWay) : "No risk of collision at present: keep a lookout (Rule 5).";
 			break;
 		}

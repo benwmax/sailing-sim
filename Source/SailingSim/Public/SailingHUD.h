@@ -32,6 +32,8 @@ public:
 	void OpenFrontEnd(ESailScreen Screen);
 	void CloseFrontEnd();
 	void OpenPause();
+	/** Graphics G7: the drill briefing or the quiz after it (paused, like the pause menu). */
+	void OpenLearning(ESailScreen Screen);
 	bool IsFrontEndOpen() const { return FrontEnd.IsValid() || Loading.IsValid(); }
 
 private:
@@ -67,4 +69,9 @@ private:
 	/** -SailingUIScript=Enter,Down,Wait,... : keys sent to the menus every 0.6 s (the front end's end-to-end check). */
 	virtual void Tick(float DeltaSeconds) override;
 	double NextScriptKey = 0.0;
+	/** The drill each briefing and quiz was shown for (ASailboatPawn::GetDrillSerial). */
+	int32 BriefedSerial = 0, QuizzedSerial = 0;
+	double DrillDoneAt = -1.0;
+	bool bLearningScreensAuto = true;
+	void WatchDrill();
 };

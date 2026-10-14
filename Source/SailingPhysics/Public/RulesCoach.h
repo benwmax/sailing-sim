@@ -35,6 +35,11 @@ namespace Sailing
 			std::string Rule;     // "Rule 12(a)(i)"
 			std::string Reason;
 			std::string Action;   // what to do now
+			// Graphics G7: what the learning tips key on.
+			EEncounter Encounter = EEncounter::None;
+			EVesselStatus PlayerStatus = EVesselStatus::Sailing, OtherStatus = EVesselStatus::PowerDriven;
+			int PlayerTack = 0, OtherTack = 0;
+			bool bRisk = false;
 		};
 
 		void Update(double Now, const FVesselSnapshot& Player, const FTrafficSim& Sim);

@@ -12,6 +12,21 @@ struct FMarina;
 struct FKitGeometry;
 namespace Sailing { class FLakeTerrain; }
 
+/** Graphics G7: a neighbour boat in her berth: the marina's slips, the coast's moored boats (Type: Sailing::EBoatType, or
+ *  PowerBoat for the runabout, PowerYacht for the trawler yacht; Scale to her measured length). */
+struct FBerthedBoat
+{
+	static constexpr uint8 PowerBoat = 255, PowerYacht = 254;
+	FVector2D Center = FVector2D::ZeroVector;
+	float HeadingDeg = 0.f;
+	uint8 Type = 0;
+	float Scale = 1.f;
+};
+/** Draws berthed boats as instanced meshes on Root: each class's hull (livery per instance), boom, rudder and one of six
+ *  berthed dresses (build_berthed.py). CullScale stretches the cull distances (1: the club's 900 m dress, 1.5 km hull). */
+SAILINGSIM_API void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBerthedBoat> Boats, float CullScale, EComponentMobility::Type Mobility,
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out);
+
 /**
  * Visual V6: draws the club's marina from its layout (FMarina, FLakeData::Marina): floating dock rows on their floats,
  * finger piers, pilings, cleats, dock boxes, power pedestals and dock lights; the shore walkway and fixed piers; the

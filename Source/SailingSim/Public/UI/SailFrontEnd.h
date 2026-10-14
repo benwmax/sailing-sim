@@ -4,6 +4,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "SailSession.h"
+#include "Learning.h"
 
 class SBox;
 class APlayerController;
@@ -14,7 +15,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz };
 
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
@@ -54,6 +55,10 @@ private:
 	FEntry BuildSettings();
 	FEntry BuildControls();
 	FEntry BuildConfirm();
+	/** Graphics G7: the drill's briefing (Content/Learning) and the quiz after it. */
+	FEntry BuildBriefing();
+	FEntry BuildQuiz();
+	void StartQuiz();
 	void Show(const FEntry& Entry, bool bForward);
 	void CastOff();
 	void Close();
@@ -68,6 +73,10 @@ private:
 	int32 FocusedBoat = 0;
 	int32 SettingsTab = 0;
 	FString ConfirmQuestion, ConfirmYes;
+	// The quiz: its questions, the one on screen, the option chosen (-1: not yet), the score and the debrief line.
+	TArray<FQuizQuestion> Quiz;
+	int32 QuizIndex = 0, QuizChosen = -1, QuizRight = 0;
+	FString QuizDebrief, QuizDrillName;
 	TFunction<void()> ConfirmAction;
 	// Screen transitions (3.3): a 180 ms fade with a 24 px slide.
 	double TransitionStart = 0.0;

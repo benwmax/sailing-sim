@@ -1,4 +1,5 @@
 #include "MarinaActor.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "BoatLivery.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -44,6 +45,99 @@ namespace
 			for (const auto& KV : Root->Values) Out.Add(FString(KV.Key), KV.Value->AsString());
 		}
 		return Out;
+	}
+}
+
+void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBerthedBoat> Placed, float CullScale, EComponentMobility::Type Mobility,
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out)
+{
+	// Graphics G6: six berthed dresses per class (build_berthed.py variants: cover colours, flaked mains, a tarp, dodgers,
+	// fenders, gear), one picked per slip, so no two neighbours in a row look alike. Graphics G7: a boat may be scaled to her
+	// measured length (the coast's moored boats), and a power boat (Type 255) is the runabout.
+	static const TCHAR* Parts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Berthed"),
+		TEXT("Berthed_1"), TEXT("Berthed_2"), TEXT("Berthed_3"), TEXT("Berthed_4"), TEXT("Berthed_5") };
+	constexpr int32 NumDress = 6;
+	TMap<uint8, TArray<TArray<FTransform>>> PerClass;
+	TMap<uint8, TArray<uint32>> Seeds; // Graphics G3: each neighbour's livery (hull colour and wear, per instance)
+	TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
+	for (const FBerthedBoat& P : Placed)
+	{
+		if (!MeshesByClass.Contains(P.Type))
+		{
+			TArray<UStaticMesh*> M;
+			if (P.Type == FBerthedBoat::PowerBoat || P.Type == FBerthedBoat::PowerYacht)
+			{
+				M.Add(P.Type == FBerthedBoat::PowerBoat ? LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Vessels/SM_Vessel_Runabout.SM_Vessel_Runabout"))
+					: LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Vessels/SM_Vessel_Committee.SM_Vessel_Committee")));
+				M.SetNum(UE_ARRAY_COUNT(Parts));
+			}
+			else
+			{
+				const TCHAR* Tag = P.Type == uint8(Sailing::EBoatType::Catalina22) ? TEXT("Catalina22") : (P.Type == uint8(Sailing::EBoatType::Catalina30) ? TEXT("Catalina30") : TEXT("J22"));
+				for (const TCHAR* Part : Parts) M.Add(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
+			}
+			MeshesByClass.Add(P.Type, M);
+			PerClass.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
+		}
+		const TArray<UStaticMesh*>& M = MeshesByClass[P.Type];
+		if (!M[0]) continue;
+		const uint32 H = uint32(P.Center.X * 13.0 + P.Center.Y * 7.0);
+		const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0, FVector(P.Scale));
+		if (P.Type == FBerthedBoat::PowerBoat || P.Type == FBerthedBoat::PowerYacht)
+		{
+			PerClass[P.Type][0].Add(Boat);
+			continue;
+		}
+		const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(P.Type));
+		const UStaticMeshSocket* Step = M[0]->FindSocket(TEXT("MastStep"));
+		const UStaticMeshSocket* Stock = M[0]->FindSocket(TEXT("RudderPivot"));
+		const FVector Offsets[] = { FVector::ZeroVector, Step ? Step->RelativeLocation : FVector::ZeroVector,
+			FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector };
+		for (int32 K = 0; K < 4; ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
+		int32 Dress = 4 + int32(MHash(H * 31u + 7u) % NumDress);
+		if (!M[Dress]) Dress = 4;
+		PerClass[P.Type][Dress].Add(Boat);
+		Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
+	}
+	for (const auto& KV : PerClass)
+	{
+		for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K)
+		{
+			UStaticMesh* Mesh = MeshesByClass[KV.Key][K];
+			// The berthed dress carries a straight Nanite mast: the class's bending (non-Nanite) mast is left out.
+			if (K == 1 && MeshesByClass[KV.Key][4]) continue;
+			if (!Mesh || KV.Value[K].Num() == 0) continue;
+			// Many boats over a bay (Graphics G7: two thousand on the coast) are culled by cluster.
+			UInstancedStaticMeshComponent* C = KV.Value[K].Num() > 400 ? NewObject<UHierarchicalInstancedStaticMeshComponent>(Owner) : NewObject<UInstancedStaticMeshComponent>(Owner);
+			C->SetMobility(Mobility);
+			C->SetupAttachment(Root);
+			C->SetStaticMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			// The masts are not Nanite (they bend on a sailing boat): ninety of them overflow the virtual shadow
+			// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
+			C->SetCastShadow(K != 1);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+			C->SetCullDistances(0, int32((K >= 4 ? 900 : 1500) * 100 * CullScale));
+			// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
+			// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
+			if (K >= 2) C->SetCastShadow(false);
+			const bool bLivery = K == 0 && KV.Key != FBerthedBoat::PowerBoat && KV.Key != FBerthedBoat::PowerYacht;
+			if (bLivery) C->NumCustomDataFloats = 7;
+			C->RegisterComponent();
+			C->AddInstances(KV.Value[K], false, true);
+			if (bLivery)
+			{
+				const TArray<uint32>& S = Seeds[KV.Key];
+				for (int32 I = 0; I < S.Num(); ++I)
+				{
+					const FBoatLivery L = SampleBoatLivery(int32(KV.Key), S[I]);
+					const float D[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
+					C->SetCustomData(I, TArrayView<const float>(D, 7), false);
+				}
+				C->MarkRenderStateDirty();
+			}
+			Out.Add(C);
+		}
 	}
 }
 
@@ -170,81 +264,10 @@ void AMarinaActor::Build(const FMarina& Marina)
 	// cover, halyards, fenders, dock lines). Low keeps the docks but leaves the slips empty.
 	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
-		struct FPlaced { FVector2D Center; float HeadingDeg; uint8 Type; };
-		TArray<FPlaced> Boats3;
-		for (const FMarinaSlip& Slip : Marina.Slips) if (Slip.bOccupied) Boats3.Add({ Slip.Center, Slip.HeadingDeg, Slip.BoatType });
-		for (const FMarinaAlongside& A : Marina.Alongside) Boats3.Add({ A.Center, A.HeadingDeg, A.BoatType });
-		// Graphics G6: six berthed dresses per class (build_berthed.py variants: cover colours, flaked mains, a tarp, dodgers,
-		// fenders, gear), one picked per slip, so no two neighbours in a row look alike.
-		static const TCHAR* Parts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Berthed"),
-			TEXT("Berthed_1"), TEXT("Berthed_2"), TEXT("Berthed_3"), TEXT("Berthed_4"), TEXT("Berthed_5") };
-		constexpr int32 NumDress = 6;
-		TMap<uint8, TArray<TArray<FTransform>>> PerClass;
-		TMap<uint8, TArray<uint32>> Seeds; // Graphics G3: each neighbour's livery (hull colour and wear, per instance)
-		TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
-		for (const FPlaced& P : Boats3)
-		{
-			const TCHAR* Tag = P.Type == uint8(Sailing::EBoatType::Catalina22) ? TEXT("Catalina22") : (P.Type == uint8(Sailing::EBoatType::Catalina30) ? TEXT("Catalina30") : TEXT("J22"));
-			if (!MeshesByClass.Contains(P.Type))
-			{
-				TArray<UStaticMesh*> M;
-				for (const TCHAR* Part : Parts) M.Add(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
-				MeshesByClass.Add(P.Type, M);
-				PerClass.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
-			}
-			const TArray<UStaticMesh*>& M = MeshesByClass[P.Type];
-			if (!M[0]) continue;
-			const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(P.Type));
-			const UStaticMeshSocket* Step = M[0]->FindSocket(TEXT("MastStep"));
-			const UStaticMeshSocket* Stock = M[0]->FindSocket(TEXT("RudderPivot"));
-			const FVector Offsets[] = { FVector::ZeroVector, Step ? Step->RelativeLocation : FVector::ZeroVector,
-				FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector };
-			const uint32 H = uint32(P.Center.X * 13.0 + P.Center.Y * 7.0);
-			const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0);
-			for (int32 K = 0; K < 4; ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
-			int32 Dress = 4 + int32(MHash(H * 31u + 7u) % NumDress);
-			if (!M[Dress]) Dress = 4;
-			PerClass[P.Type][Dress].Add(Boat);
-			Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
-		}
-		for (const auto& KV : PerClass)
-		{
-			for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K)
-			{
-				UStaticMesh* Mesh = MeshesByClass[KV.Key][K];
-				// The berthed dress carries a straight Nanite mast: the class's bending (non-Nanite) mast is left out.
-				if (K == 1 && MeshesByClass[KV.Key][4]) continue;
-				if (!Mesh || KV.Value[K].Num() == 0) continue;
-				UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
-				C->SetMobility(EComponentMobility::Static);
-				C->SetupAttachment(RootComponent);
-				C->SetStaticMesh(Mesh);
-				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-				// The masts are not Nanite (they bend on a sailing boat): ninety of them overflow the virtual shadow
-				// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
-				C->SetCastShadow(K != 1);
-				C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-				C->SetCullDistances(0, (K >= 4 ? 900 : 1500) * 100);
-				// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
-				// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
-				if (K >= 2) C->SetCastShadow(false);
-				if (K == 0) C->NumCustomDataFloats = 7;
-				C->RegisterComponent();
-				C->AddInstances(KV.Value[K], false, true);
-				if (K == 0)
-				{
-					const TArray<uint32>& S = Seeds[KV.Key];
-					for (int32 I = 0; I < S.Num(); ++I)
-					{
-						const FBoatLivery L = SampleBoatLivery(int32(KV.Key), S[I]);
-						const float D[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
-						C->SetCustomData(I, TArrayView<const float>(D, 7), false);
-					}
-					C->MarkRenderStateDirty();
-				}
-				Boats.Add(C);
-			}
-		}
+		TArray<FBerthedBoat> Placed;
+		for (const FMarinaSlip& Slip : Marina.Slips) if (Slip.bOccupied) Placed.Add({ Slip.Center, Slip.HeadingDeg, Slip.BoatType });
+		for (const FMarinaAlongside& A : Marina.Alongside) Placed.Add({ A.Center, A.HeadingDeg, A.BoatType });
+		SpawnBerthedBoats(this, RootComponent, Placed, 1.f, EComponentMobility::Static, Boats);
 	}
 	// Sound: halyards on every dock row (louder with the wind), and a pair of gulls wheeling over the harbour.
 	for (const FMarinaRow& R : Marina.Rows)

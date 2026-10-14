@@ -1,6 +1,9 @@
 #include "SailingAudio.h"
 #include "Components/AudioComponent.h"
 #include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
+#include "Kismet/GameplayStatics.h"
+#include "SailingGameMode.h"
 
 const TCHAR* SailingCueName(ESailingCue Cue)
 {
@@ -250,7 +253,7 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 		}
 		default: break;
 		}
-		Out[I] = int16(FMath::Clamp(FMath::Tanh(Mix * SLevel * 1.5f), -1.f, 1.f) * 30000.f);
+		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * SLevel * 1.5f), -1.f, 1.f) * 30000.f);
 	}
 	return NumSamples;
 }
@@ -277,5 +280,166 @@ UAudioComponent* SailingSound::MakeWorldSound(UObject* Owner, USceneComponent* P
 	A->SetSound(OutSynth);
 	A->RegisterComponent();
 	A->Play();
+	// Graphics G7: the pack's recordings for this kind, when imported, play instead of the synth.
+	if (AActor* Actor = Cast<AActor>(Owner))
+	{
+		USailingWorldSamples* Samples = NewObject<USailingWorldSamples>(Actor);
+		const ASailingGameMode* GM = Actor->GetWorld() ? Actor->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+		if (Samples->Init(OutSynth, Parent, FalloffM, GM && GM->GetLake().IsTidal())) Samples->RegisterComponent();
+		else Samples->MarkAsGarbage();
+	}
 	return A;
+}
+
+// ---------------------------------------------------------------- Graphics G7: the sample pack
+
+void SailingSound::Crossfade(float X, const float* Centers, int32 N, float* OutWeights)
+{
+	for (int32 I = 0; I < N; ++I) OutWeights[I] = 0.f;
+	if (N <= 0) return;
+	if (X <= Centers[0]) { OutWeights[0] = 1.f; return; }
+	if (X >= Centers[N - 1]) { OutWeights[N - 1] = 1.f; return; }
+	for (int32 I = 0; I + 1 < N; ++I)
+	{
+		if (X <= Centers[I + 1])
+		{
+			const float T = (X - Centers[I]) / FMath::Max(Centers[I + 1] - Centers[I], 1e-4f);
+			OutWeights[I] = FMath::Cos(T * HALF_PI);
+			OutWeights[I + 1] = FMath::Sin(T * HALF_PI);
+			return;
+		}
+	}
+}
+
+USoundBase* SailingSound::LoadPack(const FString& Asset)
+{
+	const FString Name = FPaths::GetBaseFilename(Asset);
+	return LoadObject<USoundBase>(nullptr, *FString::Printf(TEXT("/Game/Audio/Pack/%s.%s"), *Asset, *Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+}
+
+TConstArrayView<SailingSound::FPackLoop> SailingSound::PackLoops()
+{
+	// Inputs/audio/manifest.json's "Game parameter" column: which FSailingSoundParams value each loop follows.
+	static const FPackLoop Loops[] = {
+		{ TEXT("Wind/wind_rigging_light_loop"), ESailingCue::Wind, 0 },            // apparent wind under 5 m/s
+		{ TEXT("Wind/wind_rigging_moderate_loop"), ESailingCue::Wind, 1 },         // 5 to 9
+		{ TEXT("Wind/wind_rigging_strong_loop"), ESailingCue::Wind, 2 },           // over 9
+		{ TEXT("Sails/sail_luff_light_loop"), ESailingCue::SailFlog, 0 },          // luff 0.1 to 0.4
+		{ TEXT("Sails/sail_luff_moderate_loop"), ESailingCue::SailFlog, 1 },       // 0.4 to 0.7
+		{ TEXT("Sails/sail_flog_strong_loop"), ESailingCue::SailFlog, 2 },         // over 0.7 in more than 7 m/s
+		{ TEXT("Water/hull_wash_1kn_loop"), ESailingCue::BowWave, 0 },             // boat speed 0.5 m/s
+		{ TEXT("Water/hull_wash_3kn_loop"), ESailingCue::BowWave, 1 },             // 1.5
+		{ TEXT("Water/hull_wash_5kn_loop"), ESailingCue::BowWave, 2 },             // 2.6
+		{ TEXT("Water/hull_wash_7kn_loop"), ESailingCue::BowWave, 3 },             // 3.6, raised near hull speed
+		{ TEXT("Water/water_lapping_hull_calm_loop"), ESailingCue::HullSlap, 0 },  // at rest
+		{ TEXT("Water/water_lapping_dock_loop"), ESailingCue::HullSlap, 1 },       // at rest in the slip
+		{ TEXT("Water/water_lapping_hull_choppy_loop"), ESailingCue::HullSlap, 2 },// bow slam, or drifting in a chop
+		{ TEXT("Winch/winch_ratchet_slow_loop"), ESailingCue::Winch, 0 },          // trimming slowly
+		{ TEXT("Winch/winch_ratchet_tailing_loop"), ESailingCue::Winch, 1 },       // trimming fast
+		{ TEXT("Rigging/sheet_running_block_loop"), ESailingCue::SheetBlock, 0 },  // easing
+		{ TEXT("Weather/rain_on_roof_light_loop"), ESailingCue::RainDeck, 0 },     // rain
+	};
+	return Loops;
+}
+
+TArray<FString> SailingSound::PackShots(EPackShot Shot)
+{
+	auto Numbered = [](const TCHAR* Base, int32 N) { TArray<FString> Out; for (int32 I = 1; I <= N; ++I) Out.Add(FString::Printf(TEXT("%s_%02d"), Base, I)); return Out; };
+	switch (Shot)
+	{
+	case EPackShot::HalyardSlap: return Numbered(TEXT("Rigging/halyard_slap"), 6);
+	case EPackShot::SailFill: return Numbered(TEXT("Sails/sail_fill_snap"), 3);
+	case EPackShot::WinchClick: return Numbered(TEXT("Winch/winch_click"), 4);
+	case EPackShot::SheetEaseFast: return { TEXT("Rigging/sheet_ease_through_block_01") };
+	case EPackShot::SheetEaseSlow: return { TEXT("Rigging/sheet_ease_through_block_02") };
+	case EPackShot::DockCreak: return Numbered(TEXT("Dock/dock_creak"), 5);
+	case EPackShot::FenderSqueak: return Numbered(TEXT("Dock/fender_squeak"), 3);
+	default: return {};
+	}
+}
+
+USailingWorldSamples::USailingWorldSamples()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.TickInterval = 0.1f;
+}
+
+bool USailingWorldSamples::Init(USailingWorldSynth* InSynth, USceneComponent* Parent, float FalloffM, bool bCoast)
+{
+	Synth = InSynth;
+	TArray<FString> LoopAssets;
+	switch (InSynth->Kind)
+	{
+	case EWorldSound::MarinaHalyards: LoopAssets = { TEXT("Rigging/marina_halyards_distant_loop") }; Centers = { 0.f }; break;
+	case EWorldSound::Outboard: LoopAssets = { TEXT("Engines/outboard_idle_loop"), TEXT("Engines/outboard_lowspeed_loop"), TEXT("Engines/outboard_running_loop") }; Centers = { 0.05f, 0.4f, 0.9f }; break;
+	case EWorldSound::Gulls:
+	{
+		// Herring-type gulls on the lake; on the coast the laughing gull, Galveston Bay's commonest, joins them.
+		TArray<FString> Names = { TEXT("Birds/gull_call_01"), TEXT("Birds/gull_call_02"), TEXT("Birds/gull_call_03") };
+		if (bCoast) { Names.Add(TEXT("Birds/laughing_gull_01")); Names.Add(TEXT("Birds/laughing_gull_01")); }
+		for (const FString& N : Names) if (USoundBase* S = SailingSound::LoadPack(N)) Calls.Add(S);
+		break;
+	}
+	default: break;
+	}
+	auto MakeVoice = [&](USoundBase* Sound)
+	{
+		UAudioComponent* A = NewObject<UAudioComponent>(GetOwner());
+		A->SetupAttachment(Parent);
+		A->bAutoActivate = false;
+		A->bAllowSpatialization = true;
+		A->bOverrideAttenuation = true;
+		A->AttenuationOverrides.bAttenuate = true;
+		A->AttenuationOverrides.bSpatialize = true;
+		A->AttenuationOverrides.AttenuationShape = EAttenuationShape::Sphere;
+		A->AttenuationOverrides.AttenuationShapeExtents = FVector(FalloffM * 0.05f * 100.f);
+		A->AttenuationOverrides.FalloffDistance = FalloffM * 100.f;
+		A->AttenuationOverrides.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
+		A->AttenuationOverrides.bAttenuateWithLPF = true;
+		A->AttenuationOverrides.LPFRadiusMin = FalloffM * 10.f;
+		A->AttenuationOverrides.LPFRadiusMax = FalloffM * 100.f;
+		A->SetSound(Sound);
+		A->SetVolumeMultiplier(0.f);
+		A->RegisterComponent();
+		return A;
+	};
+	for (const FString& Asset : LoopAssets)
+	{
+		USoundBase* Sound = SailingSound::LoadPack(Asset);
+		if (!Sound) { Loops.Reset(); return false; }
+		UAudioComponent* A = MakeVoice(Sound);
+		A->Play(FMath::FRand() * 5.f);   // each source from its own place in the loop
+		Loops.Add(A);
+	}
+	if (Calls.Num()) CallVoice = MakeVoice(Calls[0]);
+	if (Loops.Num() == 0 && Calls.Num() == 0) return false;
+	Synth->bMuted = true;
+	return true;
+}
+
+void USailingWorldSamples::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (!Synth) return;
+	const float Level = Synth->Level.load(), Rate = Synth->Rate.load();
+	if (Loops.Num())
+	{
+		float W[4] = {};
+		SailingSound::Crossfade(Rate, Centers.GetData(), FMath::Min(Centers.Num(), 4), W);
+		for (int32 I = 0; I < Loops.Num() && I < 4; ++I) if (Loops[I]) Loops[I]->SetVolumeMultiplier(Level * W[I] * (Synth->Kind == EWorldSound::MarinaHalyards ? 0.4f + 0.8f * Rate : 1.f));
+	}
+	if (CallVoice && Calls.Num() && Level > 0.02f)
+	{
+		const double Now = GetWorld()->GetTimeSeconds();
+		if (NextCall <= 0.0) NextCall = Now + FMath::FRandRange(1.0, 8.0);
+		if (Now >= NextCall)
+		{
+			// A call now and then, more often where there are more gulls (the owner's level and rate).
+			NextCall = Now + FMath::FRandRange(2.5, 9.0) / FMath::Max(0.3f + Rate, 0.3f);
+			CallVoice->SetSound(Calls[FMath::RandRange(0, Calls.Num() - 1)]);
+			CallVoice->SetPitchMultiplier(FMath::FRandRange(0.95f, 1.05f));
+			CallVoice->SetVolumeMultiplier(Level);
+			CallVoice->Play();
+		}
+	}
 }
