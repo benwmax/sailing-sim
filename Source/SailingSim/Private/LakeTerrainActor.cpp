@@ -1,6 +1,7 @@
 #include "LakeTerrainActor.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
+#include "SailingSettings.h"
 #include "LakeData.h"
 #include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
@@ -100,6 +101,9 @@ void ALakeTerrainActor::SetTreeFraction(float Fraction)
 void ALakeTerrainActor::BeginPlay()
 {
 	Super::BeginPlay();
+	// The bed is hidden where the water (Single Layer Water, Visual V4) absorbs 99% of the light coming back from it:
+	// about 2 m in the lake's and the bay's silt, 14 m offshore; with a metre to spare for the lake level and the tide.
+	HideBelow = USailingSettings::Get()->World == 2 ? -15.0 : -3.5;
 	const FLakeData* Lake = GetLake();
 	if (!Lake)
 	{
@@ -142,7 +146,7 @@ void ALakeTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
 	Super::EndPlay(Reason);
 }
 
-ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lake, int32 ChunkRow, int32 ChunkCol, int32 Step)
+ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lake, int32 ChunkRow, int32 ChunkCol, int32 Step, double HideBelow)
 {
 	// Runs on a worker thread: reads only the immutable lake data.
 	FChunkMesh M;
@@ -183,6 +187,10 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 		for (int32 J = 0; J < N; ++J)
 		{
 			const int32 V0 = I * (N + 1) + J, V1 = V0 + 1, V2 = V0 + N + 1, V3 = V2 + 1;
+			// The bed deeper than light comes back from is left out: nobody sees it through the water, and drawn it
+			// costs shading and shadow pages behind the Single Layer Water.
+			const double Hide = HideBelow * CmPerMeter;
+			if (M.Vertices[V0].Z < Hide && M.Vertices[V1].Z < Hide && M.Vertices[V2].Z < Hide && M.Vertices[V3].Z < Hide) continue;
 			M.Triangles.Append({ V0, V1, V2, V1, V3, V2 });
 		}
 	}
@@ -191,6 +199,7 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 	{
 		// Copy first: adding an element of an array to itself can reallocate under the reference.
 		const FVector VA = M.Vertices[A], VB = M.Vertices[B], NA = M.Normals[A], NB = M.Normals[B];
+		if (VA.Z < HideBelow * CmPerMeter && VB.Z < HideBelow * CmPerMeter) return;
 		const FLinearColor CA = M.Colors[A], CB = M.Colors[B];
 		const int32 SA = M.Vertices.Add(VA - FVector(0, 0, 400.0));
 		M.Normals.Add(NA); M.Colors.Add(CA);
@@ -249,7 +258,8 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		Ch.bBuilding = true;
 		const int32 Row = Ch.Row, Col = Ch.Col, Step = Ch.Wanted;
 		Ch.Lod = -2 - Step; // marks the step being built
-		Ch.Future = Async(EAsyncExecution::ThreadPool, [Lake, Row, Col, Step]() { return BuildChunk(Lake, Row, Col, Step); });
+		const double Hide = HideBelow;
+		Ch.Future = Async(EAsyncExecution::ThreadPool, [Lake, Row, Col, Step, Hide]() { return BuildChunk(Lake, Row, Col, Step, Hide); });
 		++InFlight;
 	}
 

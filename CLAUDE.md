@@ -12,6 +12,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 3. `scripts/make-content.sh` regenerates `/Game/Materials` (`scripts/make_materials.py`) and `Content/Maps/Lake.umap`
    (`scripts/make_lake_map.py`). Edit the Python, not the assets. Run after `scripts/build.sh` (the map uses C++ classes).
    M_Water's wave sum must match `FWaveField::Height` (same 48 components; amplitudes pushed each frame by AWaterSurface).
+   M_WaterV4 (Medium and High) draws exactly the first 24 (`AWaterSurface::LongComponents`, under `SplitHz`, the edge of
+   FWaveField's eighth band) and the rest from `FWaveDetail`; `SailingSim.Visual.WaveMatch` mirrors its vertex formula.
 4. `scripts/package-mac.sh [Development|Shipping]` runs RunUAT BuildCookRun (`-build -cook -stage -pak -iostore -package -archive`)
    to `Packaged/Mac/SailingSim.app`. About 2 min. Log: `Artifacts/package.log`. Keep `-package`: on Mac it is the step that copies
    the cooked data into the .app; without it the app crashes at startup looking for the .uproject. Never archive into `Build/`:
@@ -152,6 +154,18 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `M_BoatSurface` must keep `used_with_skeletal_mesh` or they fall back to the default material. MetaHuman Creator needs
   its optional content and Epic's cloud auto-rigging (not available headless here). `-SailingSpinnaker` survives the
   start resets; in shaders, clamp before `sqrt` (float `PI` times 1.0 is past pi).
+- Water (Visual V4): Medium and High use `M_WaterV4` (Substrate Single Layer Water); Low keeps `M_Water`. The long
+  waves' height, Gerstner displacement, slopes and Jacobian are computed per vertex in the WPO custom node (straight
+  code, no branches: the vertex shader runs for every ring vertex) and interpolated to the pixels. `FWaveDetail`
+  (`WaveDetail.h`, SailingPhysics) is the FFT of the same normalized JONSWAP for the short waves, evaluated off the
+  game thread at 30 Hz, blended and uploaded as half-float mip-mapped textures (slopes plus squared slopes: LEAN
+  roughness; sample with `Texture2DSample`, never `.Sample`, or the ray-tracing hit shaders fail). Foam where the
+  Jacobian < `FoamThreshold` 0.6 (`SailingSim.Visual.Whitecaps` against Monahan). `FWakeGrid` (`WakeGrid.h`) solves the
+  wave equation spectrally on a worker with each hull as a pressure patch (a truncated iWave kernel gives the wrong
+  dispersion). Water bodies' albedo and extinction are in `WaterBodyFor`; the shore depth map is rebuilt on a worker;
+  spray (High) is CPU droplets in an ISM. The terrain doesn't mesh the bed deeper than the water lets you see
+  (`ALakeTerrainActor::HideBelow`): drawn behind SLW it cost 6 fps on High in shading and shadow pages.
+  Measuring args: `-SailingClassicWater`, `-SailingWaterRings=N`; bench.json has `water_cpu_ms`.
 - Boat models: below the waterline the J/22 model is the physics hull surface itself (`FHullShape` at the computed canoe
   depth), so a hull shape change in the physics means rerunning `make-boat-models.sh`. `ASailboatPawn::ModelMeshesFor`
   picks a class's meshes (only the J/22 so far); the rig lines, traveler car, mast bend and wet line are in
