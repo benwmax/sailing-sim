@@ -28,6 +28,7 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	Marks.Reset();
 	Step = 0;
 	bComplete = false;
+	Outcome.Reset();
 	Elapsed = Hold = MaxDistance = 0.0;
 	NextMark = 0;
 	bDummy = false;
@@ -65,7 +66,7 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 		if (Drill == ESailingDrill::CrewOverboardFigureEight)
 		{
 			Steps = { TEXT("Shout \"Crew overboard!\", point, and keep pointing"), TEXT("Sail away on a beam reach, about five boat lengths"),
-				TEXT("Tack, then bear away to a broad reach back toward them"), TEXT("Approach on a close reach and luff to stop alongside, to windward of them") };
+				TEXT("Tack, then bear away to a broad reach back toward them"), TEXT("Approach on a close reach and turn into the wind to stop alongside them") };
 		}
 		else
 		{
@@ -82,6 +83,20 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 		break;
 	default:
 		break;
+	}
+}
+
+TArray<FString> FDrillRunner::Outcomes(ESailingDrill Drill)
+{
+	switch (Drill)
+	{
+	case ESailingDrill::LeaveTheDock: return { TEXT("clean"), TEXT("contact") };
+	case ESailingDrill::SailATriangle:
+	case ESailingDrill::HeaveTo: return { TEXT("done") };
+	case ESailingDrill::CrewOverboardFigureEight:
+	case ESailingDrill::CrewOverboardQuickStop: return { TEXT("proper"), TEXT("improper") };
+	case ESailingDrill::ReturnAndDock: return { TEXT("gentle"), TEXT("hard") };
+	default: return {};
 	}
 }
 
@@ -106,6 +121,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 		if (!Context.bTiedUp && Clear > 100.0)
 		{
 			bComplete = true;
+			Outcome = Context.MaxContactSpeed > 1.0 ? TEXT("contact") : TEXT("clean");
 			Status = Context.MaxContactSpeed > 1.0 ? FString::Printf(TEXT("Clear, but you touched a dock at %.1f kn. Try again without touching."), Context.MaxContactSpeed)
 				: TEXT("Clean departure: well done.");
 		}
@@ -117,7 +133,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 		if (D < 20.0 && Elapsed > 5.0)
 		{
 			++NextMark;
-			if (NextMark >= Marks.Num()) { bComplete = true; Status = FString::Printf(TEXT("Triangle done in %d:%02d."), int32(Elapsed) / 60, int32(Elapsed) % 60); break; }
+			if (NextMark >= Marks.Num()) { bComplete = true; Outcome = TEXT("done"); Status = FString::Printf(TEXT("Triangle done in %d:%02d."), int32(Elapsed) / 60, int32(Elapsed) % 60); break; }
 		}
 		Step = NextMark;
 		Status = FString::Printf(TEXT("Next mark %.0f m away"), FVector2D::Distance(P, Marks[NextMark]));
@@ -129,7 +145,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 		Hold = bAbackAndSlow ? Hold + Dt : 0.0;
 		Step = !Context.bBackJib ? (FMath::Abs(TwaDeg) < 60.0 ? 1 : 0) : (Knots > 3.0 ? 2 : (Hold > 0.0 ? 4 : 3));
 		Status = bAbackAndSlow ? FString::Printf(TEXT("Hove to: %.0f of 20 seconds, %.1f kn"), Hold, Knots) : FString::Printf(TEXT("%.1f kn, wind %.0f degrees off the bow"), Knots, FMath::Abs(TwaDeg));
-		if (Hold >= 20.0) { bComplete = true; Status = TEXT("Hove to. This is how you stop to reef, rest or wait out a squall."); }
+		if (Hold >= 20.0) { bComplete = true; Outcome = TEXT("done"); Status = TEXT("Hove to. This is how you stop to reef, rest or wait out a squall."); }
 		break;
 	}
 	case ESailingDrill::CrewOverboardFigureEight:
@@ -146,7 +162,8 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 		{
 			const bool bProper = bFigure8 ? (MaxDistance > 30.0 && TacksOrGybes >= 1) : (MaxDistance < 80.0);
 			bComplete = true;
-			Status = bProper ? FString::Printf(TEXT("Recovered in %d:%02d. Get them aboard on the windward side."), int32(Elapsed) / 60, int32(Elapsed) % 60)
+			Outcome = bProper ? TEXT("proper") : TEXT("improper");
+			Status = bProper ? FString::Printf(TEXT("Recovered in %d:%02d. Get them aboard, on either side, and keep them warm."), int32(Elapsed) / 60, int32(Elapsed) % 60)
 				: TEXT("Recovered, but not with this maneuver. Try the steps in order.");
 		}
 		break;
@@ -158,6 +175,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 		if (Context.bTiedUp)
 		{
 			bComplete = true;
+			Outcome = Context.MaxContactSpeed > 1.5 ? TEXT("hard") : TEXT("gentle");
 			Status = Context.MaxContactSpeed > 1.5 ? FString::Printf(TEXT("Docked, but you hit at %.1f kn. Slow down earlier."), Context.MaxContactSpeed)
 				: TEXT("Docked gently. Well done.");
 		}

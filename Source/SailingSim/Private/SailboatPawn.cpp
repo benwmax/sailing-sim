@@ -779,7 +779,7 @@ void ASailboatPawn::BeginPlay()
 	{
 		for (int32 I = 1; I < int32(ESailingDrill::Count); ++I)
 		{
-			if (DrillArg.Equals(FString(DrillName(ESailingDrill(I))).Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase))
+			if (DrillArg.Equals(FString(DrillName(ESailingDrill(I))).Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase) || DrillArg == FLearningContent::DrillId(ESailingDrill(I)))
 			{
 				MenuDrill = ESailingDrill(I);
 				StartDrill(MenuDrill);
@@ -960,6 +960,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 	}
 	UpdateDrillVisuals();
+	if (!bTrafficBoat && !bGhost) UpdateLearning();
 
 	// Screenshots and the gate: -SailingChart=<m per pixel> opens the chart, -SailingPlotFix takes three bearings.
 	if (!bChartArgsApplied && Boat.GetState().Time > 2.0 && GameMode)
@@ -1672,7 +1673,97 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	MaxContactKnots = 0.0;
 	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
 	DrillRunner.Start(Drill, Boat, WindFrom);
+	if (!bTrafficBoat) ++DrillSerial;
 	bMenuOpen = false;
+}
+
+void ASailboatPawn::UpdateLearning()
+{
+	// Graphics G7: the learning tips' events (Content/Learning/learning-tips.json), in learning mode only.
+	if (!USailingSettings::Get()->bLearningMode) return;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	FLearningFrame F;
+	F.Time = Boat.GetState().Time;
+	F.TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
+	F.Knots = T.SpeedThroughWater / kKnot;
+	F.TwsKnots = T.TrueWindSpeed / kKnot;
+	F.HeelLeewardDeg = FMath::RadiansToDegrees(T.Heel) * Boat.GetState().WindwardSide;
+	F.HelmForce = T.HelmForce;
+	F.DepthUnderKeel = T.DepthUnderKeel;
+	F.Tiller = Controls.Tiller;
+	F.MainSheet = Controls.MainSheet;
+	F.JibSheet = Controls.JibSheet;
+	F.bInIrons = T.bInIrons;
+	F.bAground = T.bAground;
+	F.bCollision = T.bCollision;
+	F.bVesselContact = T.bVesselContact;
+	F.bBackJib = Controls.bBackJib;
+	F.bTiedUp = IsTiedUp();
+	F.bMotoring = FMath::Abs(Controls.Throttle) > 0.02 && !Boat.GetConfig().Engines.empty();
+	auto Count = [](const FSailStripState* Strips, int32 N, ESailFlow A, ESailFlow B) { int32 K = 0; for (int32 I = 0; I < N; ++I) K += Strips[I].Flow == A || Strips[I].Flow == B; return K; };
+	F.JibLuff = Count(T.JibStrips, T.NumJibStrips, ESailFlow::Luffing, ESailFlow::Backed);
+	F.JibStall = Count(T.JibStrips, T.NumJibStrips, ESailFlow::Stalled, ESailFlow::Stalled);
+	F.MainLuff = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Luffing, ESailFlow::Backed);
+	F.MainStall = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Stalled, ESailFlow::Stalled);
+	F.Drill = DrillRunner.GetDrill();
+	F.bDrillActive = DrillRunner.IsActive();
+	F.bDrillComplete = DrillRunner.IsComplete();
+	F.DrillStep = DrillRunner.GetStep();
+	const FVector2D Here(Boat.OriginPosition().X, Boat.OriginPosition().Y);
+	if (F.bDrillActive && DrillRunner.GetMarks().IsValidIndex(DrillRunner.GetNextMark())) F.MarkDistance = FVector2D::Distance(Here, DrillRunner.GetMarks()[DrillRunner.GetNextMark()]);
+	if (F.bDrillActive && DrillRunner.HasDummy()) F.DummyDistance = FVector2D::Distance(Here, DrillRunner.GetDummy());
+	// The nearest dock face within 200 m, twice a second (the coast has thousands of segments).
+	if (GM && F.Time >= NextDockScan)
+	{
+		NextDockScan = F.Time + 0.5;
+		NearestDock = -1.0;
+		double Best = 200.0;
+		for (const FObstacleSegment& S : GM->GetLake().Obstacles)
+		{
+			if (S.Top > 1.5) continue;
+			const FVector2D A(S.AX, S.AY), B(S.BX, S.BY);
+			if (FMath::Min(FVector2D::Distance(Here, A), FVector2D::Distance(Here, B)) - FVector2D::Distance(A, B) > Best) continue;
+			const double D = FMath::PointDistToSegment(FVector(Here, 0.0), FVector(A, 0.0), FVector(B, 0.0)) - S.Radius;
+			if (D < Best) { Best = D; NearestDock = FMath::Max(0.0, D); }
+		}
+	}
+	F.DockDistance = NearestDock;
+	if (const ATrafficManager* TM = ATrafficManager::Find(GetWorld()))
+	{
+		const FRulesCoach::FAdvice& A = TM->GetCoach().GetAdvice();
+		F.bAdvice = A.bActive;
+		F.bGiveWay = A.bGiveWay;
+		F.bStandOn = A.bStandOn;
+		F.bRisk = A.bRisk;
+		F.Encounter = A.Encounter;
+		F.PlayerStatus = A.PlayerStatus;
+		F.OtherStatus = A.OtherStatus;
+		F.PlayerTack = A.PlayerTack;
+		F.OtherTack = A.OtherTack;
+		F.Cpa = A.Cpa;
+		F.Tcpa = A.Tcpa;
+		const std::vector<FTrafficEvent>& Events = TM->GetSim().Events();
+		for (size_t I = FMath::Min(LearningTrafficEvents, Events.size()); I < Events.size(); ++I)
+			F.bFiveBlasts |= Events[I].Type == FTrafficEvent::Signal && Events[I].Sound == ESoundSignal::FiveShort;
+		LearningTrafficEvents = Events.size();
+		// A big vessel at speed close by: her wake is coming.
+		for (const FTrafficVessel& V : TM->GetSim().GetVessels())
+		{
+			if (V.IsSail() || V.Length() < 15.0) continue;
+			const FVesselSnapshot S = V.Snapshot();
+			if (S.Speed() > 8.0 * kKnot && FVector2D::Distance(Here, FVector2D(S.X, S.Y)) < 250.0) F.bBigWakeNear = true;
+		}
+	}
+	if (GM)
+	{
+		const FWeatherState& W = GM->GetWeatherState();
+		F.Storm = W.Storm;
+		F.WindFromDeg = W.Wind.FromDegrees;
+		F.bTidal = GM->GetLake().IsTidal();
+	}
+	if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); Session && Session->bHasActive) F.AirTempF = Session->Active.Conditions.AirTempF;
+	Learning.Update(F, FLearningContent::Get());
 }
 
 void ASailboatPawn::UpdateDrillVisuals()

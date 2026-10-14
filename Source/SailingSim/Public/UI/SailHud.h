@@ -40,7 +40,7 @@ private:
 	double ToastSince = 0.0;
 	FString LastToast, LastTip;
 	double TipShownAt = 0.0;
-	TArray<TPair<FString, int32>> DrillSteps;   // text, 0 upcoming 1 current 2 done
+	TArray<TTuple<FString, int32, FString>> DrillSteps;   // text, 0 upcoming 1 current 2 done, coach line
 	TSharedPtr<class SVerticalBox> DrillList;
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.

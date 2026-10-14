@@ -7,6 +7,7 @@
 #include "FixedStepper.h"
 #include "InputActionValue.h"
 #include "Drills.h"
+#include "Learning.h"
 #include "Navigation.h"
 #include "Logbook.h"
 #include "Replay.h"
@@ -61,6 +62,12 @@ public:
 	/** Starts a learning drill (positions the boat for docking drills). */
 	void StartDrill(ESailingDrill Drill);
 	const FDrillRunner& GetDrill() const { return DrillRunner; }
+	/** Graphics G7: counts drill starts (the HUD opens the briefing and, once it is done, the quiz for each). */
+	int32 GetDrillSerial() const { return DrillSerial; }
+	double GetMaxContactKnots() const { return MaxContactKnots; }
+	/** The learning tips' coach (player's boat in learning mode). */
+	const FLearningCoach& GetLearning() const { return Learning; }
+	double GetSimTime() const { return Boat.GetState().Time; }
 	/** A short message for the HUD (tie-up results and the like), empty when none. */
 	FString GetStatusMessage() const { return Boat.GetState().Time < StatusUntil ? StatusMessage : FString(); }
 	/** Index of the selected drill in the settings menu. */
@@ -227,6 +234,11 @@ private:
 	FDrillRunner DrillRunner;
 	ESailingDrill MenuDrill = ESailingDrill::None;
 	double MaxContactKnots = 0.0;
+	int32 DrillSerial = 0;
+	FLearningCoach Learning;
+	size_t LearningTrafficEvents = 0;
+	double NextDockScan = 0.0, NearestDock = -1.0;
+	void UpdateLearning();
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> MarkMeshes;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> DummyMesh;
 	void UpdateDrillVisuals();
