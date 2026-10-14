@@ -2294,7 +2294,7 @@ else if (code < 3.5)
     c = float3(0.018, 0.02, 0.024);
     r = 0.04;
     float lit = step(0.55, frac(sin(dot(floor(WP.xy / 150.0), float2(37.7, 11.3)) + floor(WP.z / 290.0) * 7.1) * 4375.5));
-    e = float3(1.0, 0.7, 0.4) * 4.0 * lit * Night;
+    e = float3(1.0, 0.7, 0.4) * 1.5 * lit * smoothstep(0.4, 0.95, Night);   // G6: lights on at dusk, not in a storm's gloom
 }
 else if (code < 4.5)
 {
@@ -2320,7 +2320,7 @@ if (painted > 0.5 && code < 2.5)
     c = lerp(c, float3(0.03, 0.035, 0.04), win);
     r = lerp(r, 0.05, win);
     float lit = step(0.55, frac(sin(floor(u / 3.2 + seed) * 37.7 + floor(v / 2.9) * 11.3 + seed * 91.0) * 4375.5));
-    e += float3(1.0, 0.7, 0.4) * 5.0 * win * lit * Night;
+    e += float3(1.0, 0.7, 0.4) * 1.8 * win * lit * smoothstep(0.4, 0.95, Night);
 }
 // Weathering: splash-back near the ground, a little grime under the eaves.
 c *= lerp(0.78, 1.0, saturate(v / 0.5)) * lerp(1.0, 0.9, saturate((v - eave + 0.6) / 0.6) * step(code, 2.5));
