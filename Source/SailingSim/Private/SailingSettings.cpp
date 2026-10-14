@@ -1,4 +1,21 @@
 #include "SailingSettings.h"
+#include "Engine/Engine.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/CommandLine.h"
+
+bool USailingSettings::IsMeasuring()
+{
+	static const bool bMeasuring = FCString::Strifind(FCommandLine::Get(), TEXT("SailingBench=")) != nullptr;
+	return bMeasuring;
+}
+
+void USailingSettings::ApplyDisplay() const
+{
+	// Benchmarks and captures measure the uncapped game in the foreground, whatever the player chose.
+	if (IsMeasuring()) return;
+	if (IConsoleVariable* Cap = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"))) Cap->Set(float(FrameCap), ECVF_SetByGameSetting);
+	if (GEngine) GEngine->bPauseOnLossOfFocus = bPauseOnFocusLoss;
+}
 
 USailingInputSettings::USailingInputSettings()
 {

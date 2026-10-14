@@ -1,4 +1,5 @@
 #include "SailingHUD.h"
+#include "SailingSim.h"
 #include "SailSession.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailLoading.h"
@@ -101,8 +102,6 @@ void ASailingHUD::BeginPlay()
 	// A session that has just loaded goes to its loading screen, whatever screen the command line asked for first.
 	const bool bLoadingSession = Session && Session->bHasActive && !Session->bStarted && Session->Active.SavedAt > FDateTime::MinValue()
 		&& (FDateTime::Now() - Session->Active.SavedAt).GetTotalMinutes() < 10.0;
-	UE_LOG(LogTemp, Display, TEXT("Front end: session %s, active %d, started %d, loading %d"), Session ? TEXT("yes") : TEXT("no"),
-		Session ? int32(Session->bHasActive) : -1, Session ? int32(Session->bStarted) : -1, int32(bLoadingSession));
 	if (!bLoadingSession && FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Screen))
 	{
 		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Loading.
@@ -125,7 +124,13 @@ void ASailingHUD::BeginPlay()
 						for (int32 K = 1; K <= I && K <= int32(ESailScreen::Mode); ++K) FrontEnd->Push(ESailScreen(K));
 						if (I > int32(ESailScreen::Mode)) FrontEnd->Push(ESailScreen(I));
 					}
-					else if (I == int32(ESailScreen::Pause)) { CloseFrontEnd(); OpenPause(); }
+					else if (I == int32(ESailScreen::Pause))
+					{
+						// Paused a few seconds in, once the camera has settled behind the boat.
+						CloseFrontEnd();
+						FTimerHandle Later;
+						GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateUObject(this, &ASailingHUD::OpenPause), 4.f, false);
+					}
 					return;
 				}
 			}
@@ -166,7 +171,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 		const USailingSettings* S = USailingSettings::Get();
 		FString Stage = TEXT("-");
 		const float Progress = Loading.IsValid() ? Loading->Progress(Stage) : 1.f;
-		UE_LOG(LogTemp, Display, TEXT("UI script: world %d, launch %d, boat %d, preset %d, hour %.2f, traffic %d, front end %s, loading %.0f%% (%s)"),
+		UE_LOG(LogSailing, Display, TEXT("UI script: world %d, launch %d, boat %d, preset %d, hour %.2f, traffic %d, front end %s, loading %.0f%% (%s)"),
 			S->World, S->LaunchSpot, S->BoatType, int32(S->WeatherPreset), S->StartHour, S->TrafficLevel, IsFrontEndOpen() ? TEXT("open") : TEXT("closed"), Progress * 100.f, *Stage);
 		return;
 	}
@@ -176,7 +181,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	const FKeyEvent Down(Key, FModifierKeysState(), 0, false, 0, 0);
 	const TSharedPtr<SWidget> Focused = App.GetUserFocusedWidget(0);
 	const bool bHandled = App.ProcessKeyDownEvent(Down);
-	UE_LOG(LogTemp, Display, TEXT("UI script: %s -> %s (%s)"), *Token, Focused.IsValid() ? *Focused->GetTypeAsString() : TEXT("nothing"), bHandled ? TEXT("handled") : TEXT("unhandled"));
+	UE_LOG(LogSailing, Display, TEXT("UI script: %s -> %s (%s)"), *Token, Focused.IsValid() ? *Focused->GetTypeAsString() : TEXT("nothing"), bHandled ? TEXT("handled") : TEXT("unhandled"));
 	App.ProcessKeyUpEvent(FKeyEvent(Key, FModifierKeysState(), 0, false, 0, 0));
 }
 
@@ -319,9 +324,8 @@ void ASailingHUD::DrawHUD()
 	}
 	if (SlateHud.IsValid())
 	{
-		// Graphics G4: the Slate HUD (UI/SailHud.h) draws the instruments, tips, drill and trim; the rules callouts and
-		// the race panel stay here.
-		DrawTraffic(*Boat);
+		// Graphics G4: the Slate HUD (UI/SailHud.h) draws everything the canvas did: instruments, tips, drill, race,
+		// rules callouts and the coast's navigation.
 		return;
 	}
 	DrawInstruments(*Boat);

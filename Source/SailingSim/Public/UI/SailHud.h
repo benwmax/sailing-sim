@@ -29,11 +29,12 @@ public:
 
 private:
 	void Refresh();
+	void RefreshTraffic(const ASailboatPawn& P, const class ASailingGameMode& GM);
 	TWeakObjectPtr<APlayerController> Player;
 	double NextRefresh = 0.0;
 	// Text refreshed at 10 Hz.
 	FText TimeText, WindText, SkyText, TideText, HeadingText, SpeedText, SpeedSub, DepthText, DepthSub, AwaText, AwsText,
-		PointText, TipTitle, TipBody, ToastText, DrillTitle, DrillFooter, HintsText;
+		PointText, SpeedUnitText, DepthUnitText, TipTitle, TipBody, ToastText, DrillTitle, DrillFooter, HintsText;
 	FLinearColor ToastColor = FLinearColor::White;
 	bool bShallow = false, bTidal = false, bTip = false, bDrill = false, bToast = false;
 	double ToastSince = 0.0;
@@ -42,4 +43,9 @@ private:
 	TArray<TPair<FString, int32>> DrillSteps;   // text, 0 upcoming 1 current 2 done
 	TSharedPtr<class SVerticalBox> DrillList;
 	TSharedPtr<struct FSlateBrush> MapBrush;
+	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
+	bool bCoach = false, bSignals = false, bRace = false, bNav = false;
+	FText CoachWho, CoachRole, CoachReason, CoachAction, CoachCpa, SignalsText, ScoreText, RaceHead, RaceTask, RaceLine, RaceResults, NavText, NextText;
+	FLinearColor CoachRoleColor = FLinearColor::White, CoachCpaColor = FLinearColor::White, RaceHeadColor = FLinearColor::White, RaceTaskColor = FLinearColor::White,
+		RaceLineColor = FLinearColor::White, ScoreColor = FLinearColor::White;
 };

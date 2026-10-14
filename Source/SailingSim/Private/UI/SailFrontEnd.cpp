@@ -1,6 +1,11 @@
 #include "UI/SailFrontEnd.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
+#include "UI/SailHud.h"
+#include "Engine/Engine.h"
+#include "GameFramework/GameUserSettings.h"
+#include "Engine/GameViewportClient.h"
+#include "Widgets/SWindow.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
@@ -325,7 +330,7 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
 	if (Current() == ESailScreen::Settings && (K == EKeys::Q || K == EKeys::E || K == EKeys::Gamepad_LeftShoulder || K == EKeys::Gamepad_RightShoulder))
 	{
-		SettingsTab = (SettingsTab + ((K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) ? 3 : 1)) % 4;
+		SettingsTab = (SettingsTab + ((K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) ? 4 : 1)) % 5;
 		Stack.Last() = Build(ESailScreen::Settings);
 		Show(Stack.Last(), true);
 		return FReply::Handled();
@@ -978,10 +983,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	USailingSettings* S = USailingSettings::Get();
-	static const TCHAR* Tabs[] = { TEXT("Graphics"), TEXT("Gameplay"), TEXT("Audio"), TEXT("Accessibility") };
+	static const TCHAR* Tabs[] = { TEXT("Graphics"), TEXT("Display"), TEXT("Audio"), TEXT("Gameplay"), TEXT("Accessibility") };
 	TSharedRef<SHorizontalBox> TabRow = SNew(SHorizontalBox);
 	TabRow->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ KeyCap(TEXT("Q"), TEXT("LB")) ];
-	for (int32 I = 0; I < 4; ++I)
+	for (int32 I = 0; I < UE_ARRAY_COUNT(Tabs); ++I)
 	{
 		TabRow->AddSlot().AutoWidth().Padding(6.f, 0.f)
 		[
@@ -993,17 +998,68 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	FString Help;
 	auto Add = [&](TSharedRef<SWidget> W) { Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ W ]; if (!E.Focus.IsValid()) E.Focus = W; };
+	auto Section = [&](const TCHAR* Name) { Rows->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 8.f)[ SailUI::Text(Name, EType::Eyebrow, Accent) ]; };
+	// Picks an option from a list of values (the first that matches, else the first).
+	auto IndexOf = [](const TArray<int32>& Values, int32 V) { const int32 I = Values.IndexOfByKey(V); return I == INDEX_NONE ? 0 : I; };
 	ASailingGameMode* GM = Player.IsValid() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	// Text size rebuilds the screen so the change shows at once.
+	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Settings); Show(Stack.Last(), true); };
 	switch (SettingsTab)
 	{
 	case 0:
+	{
 		Add(SNew(SSailChoice).Label(TEXT("Quality")).Options({ TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") })
 			.Index_Lambda([S]() { return int32(S->Quality); })
 			.OnChanged_Lambda([S, GM](int32 I) { S->Quality = ESailingQuality(I); S->Save(); if (GM) GM->ApplyQualitySettings(); }));
+		static const TArray<int32> Scales = { 0, 100, 82, 67, 50 };
+		Add(SNew(SSailChoice).Label(TEXT("Resolution")).Options({ TEXT("Auto"), TEXT("100%"), TEXT("82%"), TEXT("67%"), TEXT("50%") })
+			.Index_Lambda([S, IndexOf]() { return IndexOf(Scales, S->ResolutionScale); })
+			.OnChanged_Lambda([S, GM](int32 I) { S->ResolutionScale = Scales[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
+			.Note(TEXT("Auto is the tier's own: 67% with TAA on Medium, native on High with the governor stepping to 82% in heavy views.")));
+		static const TArray<int32> Caps = { 30, 45, 60, 120, 0 };
+		Add(SNew(SSailChoice).Label(TEXT("Frame rate cap")).Options({ TEXT("30"), TEXT("45"), TEXT("60"), TEXT("120"), TEXT("Uncapped") })
+			.Index_Lambda([S, IndexOf]() { return IndexOf(Caps, S->FrameCap); })
+			.OnChanged_Lambda([S](int32 I) { S->FrameCap = Caps[I]; S->Save(); S->ApplyDisplay(); }));
 		Help = TEXT("Measured on the packaged build, slowest view (docs/graphics-3/bench.csv): Medium 71.6 fps, High 45.3 fps on the M5 Pro. "
-			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor. RTX 4090 PC.");
+			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor (RTX 4090 PC).\n\nA fixed resolution turns High's governor off.");
 		break;
+	}
 	case 1:
+	{
+		UGameUserSettings* G = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+		Add(SNew(SSailChoice).Label(TEXT("Window")).Options({ TEXT("Windowed"), TEXT("Borderless"), TEXT("Fullscreen") })
+			.Index_Lambda([G]()
+			{
+				// The window as it is (a -windowed run ignores the saved mode).
+				const TSharedPtr<SWindow> Window = GEngine && GEngine->GameViewport ? GEngine->GameViewport->GetWindow() : nullptr;
+				const EWindowMode::Type M = Window.IsValid() ? Window->GetWindowMode() : (G ? G->GetFullscreenMode() : EWindowMode::Windowed);
+				return M == EWindowMode::Windowed ? 0 : (M == EWindowMode::WindowedFullscreen ? 1 : 2);
+			})
+			.OnChanged_Lambda([G](int32 I)
+			{
+				if (!G) return;
+				G->SetFullscreenMode(I == 0 ? EWindowMode::Windowed : (I == 1 ? EWindowMode::WindowedFullscreen : EWindowMode::Fullscreen));
+				G->ApplyResolutionSettings(false);
+				G->SaveSettings();
+			}));
+		Add(SNew(SSailChoice).Label(TEXT("HUD")).Options({ TEXT("Full"), TEXT("Minimal"), TEXT("Off") })
+			.Index_Lambda([S]() { return S->bShowHud ? FMath::Clamp(SSailHud::Mode, 0, 2) : 2; })
+			.OnChanged_Lambda([S](int32 I) { S->bShowHud = true; SSailHud::Mode = I; S->Save(); })
+			.Note(TEXT("H cycles it while sailing. Off keeps the toasts (aground, capsized) for photos and video.")));
+		static const TArray<int32> Sizes = { 85, 100, 115, 130 };
+		Add(SNew(SSailChoice).Label(TEXT("HUD size")).Options({ TEXT("85%"), TEXT("100%"), TEXT("115%"), TEXT("130%") })
+			.Index_Lambda([S, IndexOf]() { return IndexOf(Sizes, S->HudScale); })
+			.OnChanged_Lambda([S](int32 I) { S->HudScale = Sizes[I]; S->Save(); }));
+		Help = TEXT("The window choice applies at once. The HUD scales around each corner, so nothing moves into the middle of the view.");
+		break;
+	}
+	case 2:
+		Add(SNew(SSailSlider).Label(TEXT("Master volume")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->Volume * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->Volume * 100.f); }).OnChanged_Lambda([S](float V) { S->Volume = V / 100.f; S->Save(); }));
+		Help = TEXT("Every sound is synthesised from the wind, water and boat, with a few recorded samples (Audio/Samples/CREDITS.md).");
+		break;
+	case 3:
+		Section(TEXT("Sailing"));
 		Add(SNew(SSailChoice).Label(TEXT("Difficulty")).Options({ TEXT("Easy sailing"), TEXT("Realistic") }).Index_Lambda([S]() { return S->Difficulty == ESailingDifficulty::Easy ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->Difficulty = I == 0 ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic; S->Save(); }));
 		Add(SNew(SSailChoice).Label(TEXT("Learning mode")).Options({ TEXT("On"), TEXT("Off") }).Index_Lambda([S]() { return S->bLearningMode ? 0 : 1; })
@@ -1013,20 +1069,34 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		Add(SNew(SSailChoice).Label(TEXT("Controls")).Options({ TEXT("Simple"), TEXT("Full") }).Index_Lambda([S]() { return S->ControlLayout == ESailingControlLayout::Simple ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->ControlLayout = I == 0 ? ESailingControlLayout::Simple : ESailingControlLayout::Full; S->Save(); })
 			.Note(TEXT("Easy always uses Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest.")));
-		Add(SNew(SSailChoice).Label(TEXT("HUD")).Options({ TEXT("Full"), TEXT("Off") }).Index_Lambda([S]() { return S->bShowHud ? 0 : 1; })
-			.OnChanged_Lambda([S](int32 I) { S->bShowHud = I == 0; S->Save(); }));
-		Help = TEXT("Learning mode explains what the boat is doing; Game mode keeps score. The physics is the same in both.");
-		break;
-	case 2:
-		Add(SNew(SSailSlider).Label(TEXT("Master volume")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->Volume * 100.f; })
-			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->Volume * 100.f); }).OnChanged_Lambda([S](float V) { S->Volume = V / 100.f; S->Save(); }));
-		Help = TEXT("Every sound is synthesised from the wind, water and boat (and a few recorded samples).");
+		Section(TEXT("Units"));
+		Add(SNew(SSailChoice).Label(TEXT("Speed")).Options({ TEXT("Knots"), TEXT("mph"), TEXT("km/h") }).Index_Lambda([S]() { return S->SpeedUnits; })
+			.OnChanged_Lambda([S](int32 I) { S->SpeedUnits = I; S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Depth")).Options({ TEXT("Feet"), TEXT("Metres"), TEXT("Fathoms") }).Index_Lambda([S]() { return S->DepthUnits; })
+			.OnChanged_Lambda([S](int32 I) { S->DepthUnits = I; S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Headings")).Options({ TEXT("Magnetic"), TEXT("True") }).Index_Lambda([S]() { return S->bHeadingsTrue ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bHeadingsTrue = I == 1; S->Save(); })
+			.Note(TEXT("Galveston applies 1°28′ E. The lake's bake has no variation, so it reads true there.")));
+		Section(TEXT("Sessions"));
+		Add(SNew(SSailChoice).Label(TEXT("Start when loaded")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bAutoStart ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bAutoStart = I == 1; S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Pause when unfocused")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bPauseOnFocusLoss ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bPauseOnFocusLoss = I == 1; S->Save(); S->ApplyDisplay(); }));
+		Help = TEXT("Learning mode explains what the boat is doing; Game mode keeps score. The physics is the same in both.\n\n"
+			"Off, Start when loaded holds the loading screen until you press Enter, so the first frame you see is smooth.");
 		break;
 	default:
+	{
+		static const TArray<int32> Texts = { 100, 115, 130, 150 };
+		Add(SNew(SSailChoice).Label(TEXT("Text size")).Options({ TEXT("100%"), TEXT("115%"), TEXT("130%"), TEXT("150%") })
+			.Index_Lambda([S, IndexOf]() { return IndexOf(Texts, S->TextScale); })
+			.OnChanged_Lambda([S, Rebuild](int32 I) { S->TextScale = Texts[I]; S->Save(); Rebuild(); })
+			.Note(TEXT("Body text, notes and instrument labels. The HUD takes it at the next session.")));
 		Add(SNew(SSailChoice).Label(TEXT("Port and starboard colours")).Options({ TEXT("Red and green") }).Index(0)
-			.Note(TEXT("Shape and colour-blind options come with the HUD's accessibility pass.")));
-		Help = TEXT("Text size, camera motion and subtitles are next on the accessibility list.");
+			.Note(TEXT("The HUD pairs every side colour with a letter (P and S) or a word, so it never relies on colour alone.")));
+		Help = TEXT("Every screen works with the keyboard, a controller or the mouse; the prompts follow whichever you used last.");
 		break;
+	}
 	}
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Settings"), Tabs[SettingsTab], 0) ]
@@ -1034,8 +1104,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ Rows ]
-			+ SHorizontalBox::Slot().FillWidth(0.38f)[ PanelBox(SailUI::Text(Help, EType::Body, Muted, true)) ]
+			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Rows ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.38f).VAlign(VAlign_Top)[ PanelBox(SailUI::Text(Help, EType::Body, Muted, true)) ]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")), Prompt(TEXT("Q / E"), TEXT("LB / RB"), TEXT("Tab")),
 		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, TEXT("Changes apply at once and are saved"));

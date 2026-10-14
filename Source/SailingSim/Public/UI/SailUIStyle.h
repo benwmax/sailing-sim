@@ -19,6 +19,8 @@ namespace SailUI
 
 	// Type (3.2).
 	enum class EType : uint8 { Logo, ScreenTitle, CardTitle, CardTitleM, CardTitleS, MenuItem, Eyebrow, Label, Ui, Button, Value, InstrumentBig, Body, Small };
+	/** Settings > Accessibility > Text size (Body, Small and Ui styles only, as the spec says). */
+	float TextScale();
 	FSlateFontInfo Font(EType Type);
 	/** Upper-case styles are drawn upper case: the text helpers apply it. */
 	bool IsUpper(EType Type);

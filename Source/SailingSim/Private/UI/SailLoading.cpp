@@ -1,4 +1,5 @@
 #include "UI/SailLoading.h"
+#include "SailingSettings.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
 #include "SailSession.h"
@@ -41,6 +42,16 @@ void SSailLoading::Construct(const FArguments& A)
 	using namespace SailUI;
 	World = A._World;
 	OnStart = A._OnStart;
+	// Settings > Gameplay > Start automatically when loaded.
+	if (USailingSettings::Get()->bAutoStart)
+	{
+		RegisterActiveTimer(0.25f, FWidgetActiveTimerDelegate::CreateLambda([this](double, float)
+		{
+			if (!IsReady()) return EActiveTimerReturnType::Continue;
+			OnStart.ExecuteIfBound();
+			return EActiveTimerReturnType::Stop;
+		}));
+	}
 	RegisterInputTracker();
 	ShownAt = FPlatformTime::Seconds();
 	const USailSessionSubsystem* Session = World.IsValid() ? USailSessionSubsystem::Get(World.Get()) : nullptr;

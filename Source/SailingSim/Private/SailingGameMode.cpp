@@ -338,6 +338,12 @@ void ASailingGameMode::ApplyQualitySettings()
 	{
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(PctOverride, ECVF_SetByCode);
 	}
+	// Graphics G4: the player's resolution scale (Settings > Graphics) fixes the tier's percentage, governor off.
+	else if (USailingSettings::Get()->FixedResolutionScale() > 0)
+	{
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(float(USailingSettings::Get()->FixedResolutionScale()), ECVF_SetByCode);
+	}
+	USailingSettings::Get()->ApplyDisplay();
 	int32 LumenHW = -1;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingLumenHW="), LumenHW))
 	{
@@ -488,6 +494,8 @@ void ASailingGameMode::StartPlay()
 		FParse::Value(FCommandLine::Get(), TEXT("SailingRecordInterval="), RecordInterval);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmupSeconds;
+		// Graphics G4: a bench of the pause menu still ends (and takes its screenshot) while the game is paused.
+		SetTickableWhenPaused(true);
 	}
 }
 
@@ -499,6 +507,7 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	// or when -SailingScreenPct fixes it.
 	static const bool bFixed = FParse::Param(FCommandLine::Get(), TEXT("SailingScreenPct")) || FCommandLine::Get() && FCString::Strifind(FCommandLine::Get(), TEXT("SailingScreenPct=")) != nullptr
 		|| FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")) != nullptr;
+	if (USailingSettings::Get()->FixedResolutionScale() > 0) return;   // the player fixed it
 	if (bFixed || USailingSettings::Get()->Quality != ESailingQuality::High || DeltaSeconds <= 0.f || DeltaSeconds > 0.25f) return;
 	GovernorMs += (DeltaSeconds * 1000.f - GovernorMs) * FMath::Clamp(DeltaSeconds / 0.5f, 0.f, 1.f);
 	GovernorClock += DeltaSeconds;
@@ -520,10 +529,13 @@ float ASailingGameMode::GetRenderScale() const
 void ASailingGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	OwnClock += DeltaSeconds;
-	UpdateWeather(DeltaSeconds);
-	UpdateTide();
-	UpdateResolutionGovernor(DeltaSeconds);
+	if (!GetWorld()->IsPaused())
+	{
+		OwnClock += DeltaSeconds;
+		UpdateWeather(DeltaSeconds);
+		UpdateTide();
+		UpdateResolutionGovernor(DeltaSeconds);
+	}
 
 	if (BenchSeconds <= 0.f || bBenchDone)
 	{

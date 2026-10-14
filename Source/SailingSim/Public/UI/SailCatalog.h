@@ -40,6 +40,13 @@ namespace SailCatalog
 
 	SAILINGSIM_API const TArray<FWorld>& Worlds();
 	SAILINGSIM_API const FWorld& World(int32 Index);
+	/** The HUD minimap for a settings world (0 lake, 1 Galveston Bay, 2 the Gulf passage): its texture and grid extent. */
+	struct FMiniMap
+	{
+		FString Texture;
+		double GridNorth = 0.0, GridEast = 0.0, GridHeightM = 1.0, GridWidthM = 1.0, SpanM = 3000.0;
+	};
+	SAILINGSIM_API const FMiniMap& MiniMap(int32 SettingsWorld);
 	SAILINGSIM_API const TArray<FBoat>& Boats();
 	SAILINGSIM_API const FBoat& Boat(int32 Type);
 	SAILINGSIM_API FString FeetInches(double Meters);

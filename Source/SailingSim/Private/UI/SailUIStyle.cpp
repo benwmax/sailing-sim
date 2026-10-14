@@ -60,6 +60,11 @@ namespace SailUI
 		}
 	}
 
+	float TextScale()
+	{
+		return FMath::Clamp(USailingSettings::Get()->TextScale, 100, 150) / 100.f;
+	}
+
 	FSlateFontInfo Font(EType T)
 	{
 		switch (T)
@@ -72,12 +77,12 @@ namespace SailUI
 		case EType::MenuItem: return Make(Saira(), TEXT("SemiBold"), 30, 40);
 		case EType::Eyebrow: return Make(SairaSemi(), TEXT("SemiBold"), 14, 180);
 		case EType::Label: return Make(SairaSemi(), TEXT("SemiBold"), 12, 140);
-		case EType::Ui: return Make(SairaSemi(), TEXT("Medium"), 17, 0);
+		case EType::Ui: return Make(SairaSemi(), TEXT("Medium"), 17 * TextScale(), 0);
 		case EType::Button: return Make(SairaSemi(), TEXT("SemiBold"), 19, 60);
 		case EType::Value: return Make(SairaSemi(), TEXT("SemiBold"), 19, 0);
 		case EType::InstrumentBig: return Make(SairaSemi(), TEXT("SemiBold"), 48, 0);
-		case EType::Body: return Make(Sans(), TEXT("Regular"), 17, 0);
-		case EType::Small: return Make(Sans(), TEXT("Regular"), 14, 0);
+		case EType::Body: return Make(Sans(), TEXT("Regular"), 17 * TextScale(), 0);
+		case EType::Small: return Make(Sans(), TEXT("Regular"), 14 * TextScale(), 0);
 		}
 		return Make(Sans(), TEXT("Regular"), 17, 0);
 	}

@@ -168,6 +168,28 @@ namespace SailCatalog
 
 	const TArray<FWorld>& Worlds() { static TArray<FWorld> W = MakeWorlds(); return W; }
 	const FWorld& World(int32 Index) { return Worlds()[FMath::Clamp(Index == 2 ? 1 : Index, 0, Worlds().Num() - 1)]; }
+	const FMiniMap& MiniMap(int32 SettingsWorld)
+	{
+		static TArray<FMiniMap> Maps = []()
+		{
+			TArray<FMiniMap> Out;
+			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
+			for (int32 I = 0; I < 3; ++I)
+			{
+				FWorld W;
+				W.File = Files[I];
+				ReadWorld(W);
+				FMiniMap M;
+				M.Texture = FString::Printf(TEXT("/Game/UI/T_MiniMap_%s.T_MiniMap_%s"), Files[I], Files[I]);
+				M.GridNorth = W.GridNorth; M.GridEast = W.GridEast; M.GridHeightM = W.GridHeightM; M.GridWidthM = W.GridWidthM;
+				M.SpanM = I == 2 ? 8000.0 : 3000.0;   // offshore, the coast is further away
+				Out.Add(M);
+			}
+			return Out;
+		}();
+		return Maps[FMath::Clamp(SettingsWorld, 0, 2)];
+	}
+
 	const TArray<FBoat>& Boats() { static TArray<FBoat> B = MakeBoats(); return B; }
 	const FBoat& Boat(int32 Type) { return Boats()[FMath::Clamp(Type, 0, Boats().Num() - 1)]; }
 

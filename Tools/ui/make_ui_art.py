@@ -4,6 +4,7 @@
                                    bridges and causeways in brown, place names in tracked capitals (Saira), a magenta
                                    compass rose. The map covers the world's whole height grid, north up, so the game
                                    places pins by the grid's extent (Content/TerrainData/<World>.json "grid").
+  Artifacts/ui/T_MiniMap_<World>.png  the same chart for the HUD's minimap, 4096 px, no names (and the Gulf passage's).
   Artifacts/ui/T_Card_<World>.jpg  world card art and T_Load_<World>_<n>.jpg loading images, cropped from the bench
                                    screenshots in docs/ (the game itself, never photos).
 
@@ -51,12 +52,14 @@ def load(world):
     return meta, h, (nx, ny, cell, x0, y0)
 
 
-def make_map(world, long_side=1800):
+def make_map(world, long_side=1800, mini=False):
     meta, h, (nx, ny, cell, x0, y0) = load(world)
     # North up: grid rows run north, so flip; columns run east.
     img_h = h[::-1, :]
     scale = long_side / max(nx, ny)
     w, hh = int(nx * scale), int(ny * scale)
+    if mini:
+        w, hh = w // 4 * 4, hh // 4 * 4   # block compression
     small = np.asarray(Image.fromarray(img_h).resize((w, hh), Image.BILINEAR))
     water = small < 0.0
     depth = np.clip(-small / 8.0, 0, 1)[..., None]
@@ -78,6 +81,11 @@ def make_map(world, long_side=1800):
         pts = [px(p[0], p[1]) for p in b.get("points", [])]
         if len(pts) > 1:
             d.line(pts, fill=ROAD, width=max(3, int(6 * scale * 10 / cell)))
+    if mini:
+        # The HUD's minimap: the same chart without names or rose (it shows a few km around the boat).
+        im.save(os.path.join(OUT, f"T_MiniMap_{world}.png"))
+        print(f"T_MiniMap_{world}: {w}x{hh}")
+        return
     to_local = Transformer.from_crs("EPSG:4326", meta["projection"], always_xy=True)
     font = ImageFont.truetype(os.path.join(FONTS, "SairaSemiCondensed-SemiBold.ttf"), 30)
     for name, lat, lon in PLACES.get(world, []):
@@ -112,14 +120,17 @@ def crop(src, out, aspect=16 / 9, size=(1600, 900), focus=0.5):
 
 for world in ("RayHubbard", "GalvestonBay"):
     make_map(world)
+for world in ("RayHubbard", "GalvestonBay", "GulfPassage"):
+    make_map(world, long_side=4096, mini=True)
 # The capture-mode stills and the blind test's frames: the game without its HUD.
 CAP = "docs/graphics-3/captures/"
+CAP4 = "docs/graphics-4/captures/"   # Galveston stills in the capture mode (scripts/run-game.sh -SailingWorld=1 -SailingCapture=Chase)
 crop(CAP + "j22-light-chase.png", "T_Card_RayHubbard.jpg", aspect=2.2, size=(1320, 600))
-crop(CAP + "bay-hobie.png", "T_Card_GalvestonBay.jpg", aspect=2.2, size=(1320, 600))
+crop(CAP4 + "bay-hobie-chase.png", "T_Card_GalvestonBay.jpg", aspect=2.2, size=(1320, 600))
 for i, src in enumerate((CAP + "rh-c30-evening.png", CAP + "j22-moderate-chase.png", CAP + "storm-lake.png")):
     crop(src, f"T_Load_RayHubbard_{i}.jpg")
-for i, src in enumerate((CAP + "gulf-passage.png", CAP + "bay-hobie.png", CAP + "sunfish-reach.png")):
+for i, src in enumerate((CAP4 + "bay-j22-chase.png", CAP4 + "bay-hobie-chase.png", CAP + "sunfish-reach.png")):
     crop(src, f"T_Load_GalvestonBay_{i}.jpg")
 crop(CAP + "j22-heavy-chase.png", "T_Title_RayHubbard.jpg")
-crop(CAP + "bay-hobie.png", "T_Title_GalvestonBay.jpg")
+crop(CAP4 + "bay-j22-chase.png", "T_Title_GalvestonBay.jpg")
 print("ui art in", OUT)
