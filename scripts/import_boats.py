@@ -128,7 +128,15 @@ def import_gear():
     for name in ("SM_CrewPFD", "SM_CrewCap"):
         path = os.path.join(MODELS, name + ".fbx")
         if os.path.exists(path):
-            setup(import_fbx(path, "/Game/Crew/Gear", name), False, {"PFD": "CrewPFD", "Straps": "CrewStraps", "Buckle": "CrewBuckle", "Reflective": "CrewReflective", "Cap": "CrewCap", "CapUnder": "CrewCapUnder"}, {})
+            mesh = import_fbx(path, "/Game/Crew/Gear", name)
+            setup(mesh, False, {"PFD": "CrewPFD", "Straps": "CrewStraps", "Buckle": "CrewBuckle", "Reflective": "CrewReflective", "Cap": "CrewCap", "CapUnder": "CrewCapUnder"}, {})
+            # Graphics G3: the shell and the cap's cloth in the crew fabric (scanned weave), where it has been built.
+            for index, m in enumerate(mesh.get_editor_property("static_materials")):
+                slot = str(m.get_editor_property("material_slot_name")).split(".")[0]
+                cloth = {"PFD": "MI_Crew_PFDShell", "Cap": "MI_Crew_CapCloth"}.get(slot)
+                if cloth and unreal.EditorAssetLibrary.does_asset_exist(f"/Game/Crew/Fabric/{cloth}"):
+                    mesh.set_material(index, unreal.load_asset(f"/Game/Crew/Fabric/{cloth}"))
+            unreal.EditorAssetLibrary.save_loaded_asset(mesh)
             unreal.log(f"Imported {name}")
 
 

@@ -27,7 +27,7 @@ def export(name, bm, slots):
     for f in bm.faces:
         for loop in f.loops:
             c = loop.vert.co
-            loop[uv].uv = (math.atan2(c.y, c.x), c.z)
+            loop[uv].uv = (math.atan2(c.y, c.x) * math.hypot(c.x, c.y), c.z)  # arc length: the cloth's weave stays square
     tris = sum(len(f.verts) - 2 for f in bm.faces)
     bm.to_mesh(me)
     bm.free()

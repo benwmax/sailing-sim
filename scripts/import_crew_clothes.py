@@ -1,14 +1,15 @@
 """Graphics G3: imports each sailor's polo (Tools/blender/build_polo.py, Artifacts/crew/<Role>_Polo.fbx) as a skeletal mesh
 on the MetaHuman's skeleton: the FBX comes in as a static mesh in the outfit's space, the default T-shirt's skin weights are
 transferred onto it (Geometry Script, closest point on the surface) and a skeletal mesh is made with the outfit's bones
-and proportions: /Game/Crew/MetaHumans/<Role>/Clothing/SKM_<Role>_Polo. Slots go to MI_Boat_CrewPolo, CrewPoloRib and
-CrewButton. Run by scripts/make-crew-clothes.sh."""
+and proportions: /Game/Crew/MetaHumans/<Role>/Clothing/SKM_<Role>_Polo. Slots go to MI_Crew_Polo, MI_Crew_PoloRib and
+MI_Boat_CrewButton. Run by scripts/make-crew-clothes.sh."""
 import os
 import unreal
 
 CREW = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Artifacts", "crew")
 LIB = unreal.EditorAssetLibrary
-SLOTS = {"Polo": "CrewPolo", "Rib": "CrewPoloRib", "Button": "CrewButton"}
+# The polo in the crew cloth (make_materials.py, build_crew_fabric), its buttons in the boat library.
+SLOTS = {"Polo": "/Game/Crew/Fabric/MI_Crew_Polo", "Rib": "/Game/Crew/Fabric/MI_Crew_PoloRib", "Button": "/Game/Boats/Materials/MI_Boat_CrewButton"}
 
 
 def log(m):
@@ -64,7 +65,7 @@ for role in ("Helm", "Trimmer", "Bow"):
     c.enable_recompute_tangents = True
     mats = {}
     for slot, lib in SLOTS.items():
-        mats[slot] = unreal.load_asset(f"/Game/Boats/Materials/MI_Boat_{lib}")
+        mats[slot] = unreal.load_asset(lib)
     c.materials = mats
     path = f"{folder}/SKM_{role}_Polo"
     if LIB.does_asset_exist(path):

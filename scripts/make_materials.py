@@ -2147,7 +2147,127 @@ build_emissive()
 build_sail()
 build_ghost()
 build_lens_distortion()
+
+# ---------------------------------------------------------------- crew cloth (Graphics G3)
+FABRIC_FOLDER = "/Game/Crew/Fabric"
+FABRIC_RAW = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "Fabrics", "raw")
+# CC0 scans from ambientCG (Data/Fabrics/raw, fetched by Tools/fabrics/fetch_fabrics.sh): the knit or weave's relief and
+# roughness; the colour is the sailor's, modulated by the scan's own light and dark (its mean luminance, measured in the
+# venv, normalises it to 1). Fabric070: sportswear knit (the polo's pique); Fabric048: polyester vest (the life jacket's
+# shell); Fabric036: smooth woven cotton (cap).
+FABRIC_SETS = {"Fabric070": 0.4114, "Fabric048": 0.9051, "Fabric036": 0.4931}
+FABRIC_CODE = r"""
+// Graphics G3 crew cloth: the sailor's colour over the scan's knit (its luminance, normalised by its mean), a slow dye
+// variation, the scan's normal faded with distance (past a few metres the knit is under a pixel and only shimmers), and
+// fuzz: cotton and polyester scatter light at grazing angles (the sheen on a shoulder against the sun).
+float lumA = dot(A, float3(0.3, 0.59, 0.11));
+float detail = lerp(1.0, lumA / max(AvgLum, 0.05), DetailAmount);
+float dye = 1.0 + 0.05 * sin(WP.x * 0.031 + WP.z * 0.017) * sin(WP.y * 0.027 - WP.z * 0.011);
+AlbedoOut = saturate(C.rgb * detail * dye);
+float fade = saturate(1.0 - (Depth - 150.0) / 600.0);
+float3 tn = normalize(lerp(float3(0, 0, 1), Nt, saturate(Strength * fade)));
+RoughOut = saturate(lerp(RoughBase, R, 0.6 * fade + 0.2));
+FuzzOut = Sheen;
+return tn;
+"""
+
+
+def fabric_texture(name, src, kind):
+    path = f"{FABRIC_FOLDER}/{name}"
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", src)
+    task.set_editor_property("destination_path", FABRIC_FOLDER)
+    task.set_editor_property("destination_name", name)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("save", False)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(path)
+    if kind == "normal":
+        tex.set_editor_property("srgb", False)
+        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
+    elif kind == "rough":
+        tex.set_editor_property("srgb", False)
+        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
+
+
+def build_crew_fabric():
+    """M_CrewFabric and its instances: the crew's polo, collar and cuffs, life jacket shell and cap."""
+    if not all(os.path.isdir(os.path.join(FABRIC_RAW, k)) for k in FABRIC_SETS):
+        unreal.log_warning("Crew fabric: no scans in Data/Fabrics/raw (Tools/fabrics/fetch_fabrics.sh); skipped")
+        return
+    texs = {}
+    for k in FABRIC_SETS:
+        base = os.path.join(FABRIC_RAW, k, f"{k}_2K-JPG")
+        texs[k] = (fabric_texture(f"T_{k}_C", base + "_Color.jpg", "color"), fabric_texture(f"T_{k}_N", base + "_NormalDX.jpg", "normal"),
+                   fabric_texture(f"T_{k}_R", base + "_Roughness.jpg", "rough"))
+    path = f"{FABRIC_FOLDER}/M_CrewFabric"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        unreal.EditorAssetLibrary.delete_asset(path)
+    mat = ASSETS.create_asset("M_CrewFabric", FABRIC_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+    mat.set_editor_property("used_with_skeletal_mesh", True)
+    mat.set_editor_property("two_sided", True)
+    first = texs["Fabric070"]
+    color = vector(mat, "Color", (0.05, 0.10, 0.30, 1), -1600, -300)
+    tiling = scalar(mat, "Tiling", 8.0, -1900, 0)
+    uv0 = node(mat, unreal.MaterialExpressionTextureCoordinate, -1900, -100)
+    mul = node(mat, unreal.MaterialExpressionMultiply, -1700, -50)
+    connect(uv0, "", mul, "A")
+    connect(tiling, "", mul, "B")
+    ta = node(mat, unreal.MaterialExpressionTextureSampleParameter2D, -1450, -150, parameter_name="AlbedoMap", texture=first[0])
+    tn = node(mat, unreal.MaterialExpressionTextureSampleParameter2D, -1450, 100, parameter_name="NormalMap", texture=first[1])
+    tn.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+    tr = node(mat, unreal.MaterialExpressionTextureSampleParameter2D, -1450, 350, parameter_name="RoughMap", texture=first[2])
+    tr.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+    for t in (ta, tn, tr):
+        connect(mul, "", t, "UVs")
+    depth = node(mat, unreal.MaterialExpressionPixelDepth, -1450, 600)
+    wp = node(mat, unreal.MaterialExpressionWorldPosition, -1450, 700)
+    F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    c = custom(mat, FABRIC_CODE, ["C", "A", "Nt", "R", "AvgLum", "DetailAmount", "Strength", "RoughBase", "Sheen", "Depth", "WP"], F3, -900, 100,
+               extra_outputs=[("AlbedoOut", F3), ("RoughOut", F1), ("FuzzOut", F1)])
+    connect(color, "RGBA", c, "C")
+    connect(ta, "RGB", c, "A")
+    connect(tn, "RGB", c, "Nt")
+    connect(tr, "R", c, "R")
+    for i, (pname, default) in enumerate((("AvgLum", 0.41), ("DetailAmount", 0.8), ("Strength", 1.0), ("RoughBase", 0.85), ("Sheen", 0.5))):
+        connect(scalar(mat, pname, default, -1200, 800 + 90 * i), "", c, pname)
+    connect(depth, "", c, "Depth")
+    connect(wp, "", c, "WP")
+    slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -400, 100)
+    connect(c, "AlbedoOut", slab, "Diffuse Albedo")
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -700, 400, constant=unreal.LinearColor(0.04, 0.04, 0.04, 1)), "", slab, "F0")
+    connect(c, "RoughOut", slab, "Roughness")
+    connect(c, "", slab, "Normal")
+    connect(c, "FuzzOut", slab, "Fuzz Amount")
+    connect(c, "AlbedoOut", slab, "Fuzz Color")
+    MEL.connect_material_property(slab, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    # Instances: (scan, colour, tiling, normal strength, base roughness, sheen). Tiling is per UV unit: the polo keeps the
+    # T-shirt's UVs (about a metre of garment per unit), the gear's are in its unit size scaled to the sailor.
+    for name, (k, col, tile, strength, rough, sheen) in {
+        "MI_Crew_Polo": ("Fabric070", (0.05, 0.10, 0.30), 9.0, 1.0, 0.85, 0.45),
+        "MI_Crew_PoloRib": ("Fabric070", (0.05, 0.10, 0.30), 16.0, 1.0, 0.85, 0.45),
+        "MI_Crew_PFDShell": ("Fabric048", (0.02, 0.05, 0.25), 30.0, 0.35, 0.55, 0.25),
+        "MI_Crew_CapCloth": ("Fabric036", (0.72, 0.72, 0.72), 20.0, 0.5, 0.85, 0.5),
+    }.items():
+        mpath = f"{FABRIC_FOLDER}/{name}"
+        mi = unreal.load_asset(mpath) if unreal.EditorAssetLibrary.does_asset_exist(mpath) else \
+            ASSETS.create_asset(name, FABRIC_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        MEL.set_material_instance_parent(mi, mat)
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
+        for pname, value in (("Tiling", tile), ("Strength", strength), ("RoughBase", rough), ("Sheen", sheen), ("AvgLum", FABRIC_SETS[k])):
+            MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        for pname, t in zip(("AlbedoMap", "NormalMap", "RoughMap"), texs[k]):
+            MEL.set_material_instance_texture_parameter_value(mi, pname, t)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
 build_boat_library()
+build_crew_fabric()
 build_sail_cloth()
 build_telltale()
 unreal.log("Materials built")

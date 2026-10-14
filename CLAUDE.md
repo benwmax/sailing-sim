@@ -253,7 +253,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   dropped, collar from a smooth neck ring, placket, buttons, rib cuffs, folds) and in Unreal copies the T-shirt's skin
   weights onto it with Geometry Script (`import_crew_clothes.py`, `SKM_<Role>_Polo`, git-ignored with the MetaHumans).
   The pawn hides the outfit's shirt sections and adds the polo (`-SailingNoPolo` compares). `-SailingCamTarget=f,s,u`
-  frames close stills.
+  frames close stills. Cloth: `M_CrewFabric` (`build_crew_fabric` in make_materials.py) puts the sailor's colour over CC0
+  ambientCG scans (`Tools/fabrics/fetch_fabrics.sh` -> `Data/Fabrics/raw`, imported to `/Game/Crew/Fabric`): knit for
+  the polo, polyester for the life jacket shell, woven cotton for the cap; normals fade past a few metres. Sampler types
+  must match (`LINEAR_GRAYSCALE` for roughness) or the material falls back to the default checker.
 - Shore (Graphics G2): `Tools/terrain/build_shore_detail.py` bakes the USGS 3DEP 1 m lidar DEM (`fetch_rayhubbard.sh` puts the
   2.6 GB of tiles in `Data/RayHubbard/raw/lidar`) into `RayHubbard.detail`: 64 m tiles of 1 m heights along the shore
   (land within 150 m of the water, water within 30 m), zlib-packed. The lidar is hydro-flattened on the water, so the bed
