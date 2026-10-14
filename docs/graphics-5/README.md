@@ -60,3 +60,52 @@ sharper but just as frosted. The frosting is in the density, not the upsampling.
 - A handled engine ensure in Galveston runs: a distance-field object with an out-of-range transform on frame 2
   (`FDFMatrix::MakeToRelativeWorldMatrix`). Harmless but noisy.
 - A second blind round (round 7) was built on this branch at the same time by another session, in `game/`.
+
+## Round 7: ten game stills for the "real or game" pack
+
+The cloud side holds ten real photos. `game/game-01.png` to `game-10.png` are the matching game frames: capture mode
+(no HUD, blur or depth of field, auto exposure frozen at 2.5 s), High tier, 1440x1080. I didn't try Ultra on the Mac.
+`game/captures.csv` lists each still's world, boat, weather, hour, camera and full arguments. `game/candidates*.csv` are
+the roughly 60 candidates I chose from, and `game/final.csv` the picks, recaptured together on one build:
+`SCENES=docs/graphics-5/game/final.csv OUT=<dir> scripts/capture-scenes.sh 12`.
+
+| Still | Scene | Notes |
+|---|---|---|
+| 01 | Galveston Bay race start, 14 mixed keelboats, overcast | New `-SailingRaceBoats=<n>` (up to 16, the line closes up) and `-SailingRaceMixed` (Catalina 30, J/22, Catalina 22) |
+| 02 | Rush Creek's masts from the shore, flat overcast | |
+| 03 | Drone over the club at golden hour (18:12) | |
+| 04 | Catalina 30 sunlit against the shelf cloud | `-SailingStormDelay` keeps the front off the boat |
+| 05 | Sunfish with a sailor, another behind, cumulus | |
+| 06 | J/22 crew in PFDs from the stern action cam, overcast | |
+| 07 | J/22 in her slip, blue sky | Weak match: the photo has the boom down and the sails stowed. In the drill the sails are up. |
+| 08 | Dark storm base and a bright band over the open bay | |
+| 09 | Hobie 16 passing lakeside houses, clear sky | Weak match: the houses are plain boxes |
+| 10 | Storm over a lake cove with houses and docks | |
+
+`capture-scenes.sh` now reads its scene list from a private temp file first. Two runs at once used to rewrite the shared
+list and cut each other short.
+
+### Bench after round 7
+
+`scripts/bench-visual.sh 12 g5 Medium High` on the packaged build, at HEAD after the round-7 stills (this includes the
+haze, exposure and cirrus fixes above). The full table is in `game/bench-visual.csv`.
+
+| View | Medium fps (G4 -> now) | High fps (G4 -> now) | High GPU ms (G4 -> now) |
+|---|---|---|---|
+| beam8 | 95.5 -> 90.6 | 53.0 -> 50.4 | 16.4 -> 17.8 |
+| beat15 | 92.5 -> 88.5 | 51.8 -> 50.2 | 16.5 -> 17.5 |
+| storm | 86.6 -> 81.5 | 50.4 -> 48.4 | 17.9 -> 19.6 |
+| marina | 89.2 -> 84.5 | 47.0 -> 46.9 | 17.7 -> 20.0 |
+| coast-day | 86.2 -> 81.5 | 46.8 -> 47.3 | 16.8 -> 16.7 |
+| coast-night | 115.2 -> 107.8 | 56.2 -> 54.0 | 13.9 -> 15.0 |
+| gulf-sea | 114.0 -> 108.5 | 61.6 -> 59.3 | 13.8 -> 13.8 |
+| helm-eye | 84.7 -> 80.4 | 44.9 -> 43.1 | 20.3 -> 20.8 |
+| slip | 77.9 -> 74.0 | 47.3 -> 45.3 | 18.9 -> 20.5 |
+| bridge | 95.4 -> 91.2 | 52.1 -> 50.3 | 16.9 -> 17.7 |
+| crew | 72.9 -> 68.5 | 46.5 -> 44.9 | 19.5 -> 20.0 |
+| marina-night | 91.5 -> 88.7 | 57.4 -> 54.8 | 15.4 -> 16.2 |
+
+Every view is 2-5% lower in fps, including those whose GPU time didn't move (most Medium views). Reruns of beam8 Medium
+gave 89.9 and 93.2, and crew High gave 45.0 and 44.8, so about half of the drop is run-to-run noise. On High the clouds
+and fog slice is up 0.1-0.5 ms on most views, from the new haze and cirrus. Medium stays far above its 60 fps gate.
+High holds 45 except helm-eye (43.1, already 44.9 in G4) and crew, which sits on the line (44.9).
