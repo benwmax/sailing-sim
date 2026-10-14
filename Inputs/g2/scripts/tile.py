@@ -105,7 +105,7 @@ def run(reg, te, tn):
     bright = (red + grn + blu) / 3
 
     ccap = None
-    if reg == "GalvestonBay":
+    if reg != "RayHubbard":   # coast regions (GalvestonBay, GalvestonGulf)
         ccap = np.zeros((2 * S, 2 * S), np.uint8)
         with rasterio.open(CCAP) as s:
             reproject(rasterio.band(s, 1), ccap, dst_transform=tr5, dst_crs=U, resampling=Resampling.nearest)

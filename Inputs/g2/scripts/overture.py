@@ -6,7 +6,7 @@ fs = pfs.S3FileSystem(anonymous=True, region="us-west-2")
 REL = "2026-09-23.1"
 base = f"overturemaps-us-west-2/release/{REL}/theme=buildings/type=building/"
 files = [f.path for f in fs.get_file_info(pfs.FileSelector(base))]
-BB = {"RayHubbard": (-96.64, 32.77, -96.42, 33.03), "GalvestonBay": (-95.13, 29.28, -94.65, 29.64)}
+BB = {"RayHubbard": (-96.64, 32.77, -96.42, 33.03), "GalvestonBay": (-95.13, 29.28, -94.65, 29.64), "GalvestonGulf": (-95.13, 29.19, -94.65, 29.31)}
 def rg_hits(path):
     md = pq.ParquetFile(path, filesystem=fs).metadata
     names = [md.schema.column(i).path for i in range(md.num_columns)]

@@ -3,8 +3,9 @@ import sys, os, json, glob, pickle, math, collections, numpy as np
 from scipy.spatial import cKDTree
 from common import *
 reg = sys.argv[1]; R = REGIONS[reg]; U = f"EPSG:{R['utm_epsg']}"
-SIMJSON = {"RayHubbard": "/home/claude/benwmax/sailing-sim/Content/TerrainData/RayHubbard.json",
-           "GalvestonBay": "/home/claude/benwmax/sailing-sim/Content/TerrainData/GalvestonBay.json"}[reg]
+SIMJSON = {"RayHubbard": f"{SIM_REPO}/Content/TerrainData/RayHubbard.json",
+           "GalvestonBay": f"{SIM_REPO}/Content/TerrainData/GalvestonBay.json",
+           "GalvestonGulf": f"{SIM_REPO}/Content/TerrainData/GalvestonBay.json"}[reg]
 D = f"{OUT}/{reg}"
 tiles, B, Tr, Sh = [], [], [], []
 for p in sorted(glob.glob(f"{WORK}/{reg}/tiles/*.pkl")):

@@ -1,0 +1,7 @@
+[
+ {"name": "Galveston North Jetty", "layer": "B", "kinds": ["jetty", "breakwater", "groin", "spoil_or_ridge"], "lat": 29.364, "lon": -94.722, "radius_m": 1500, "note": "approximate landward end on Bolivar"},
+ {"name": "Galveston South Jetty", "layer": "B", "kinds": ["jetty", "breakwater", "groin", "spoil_or_ridge"], "lat": 29.331, "lon": -94.733, "radius_m": 1500, "note": "approximate landward end at East Beach"},
+ {"name": "Texas City Dike", "layer": "B", "kinds": ["dike_or_causeway", "jetty", "spoil_or_ridge"], "lat": 29.372, "lon": -94.880, "radius_m": 2500, "note": "approximate middle"},
+ {"name": "Galveston Island Historic Pleasure Pier", "layer": "A", "kinds": ["pier", "platform_or_wharf", "covered_slip_or_building"], "lat": 29.2858, "lon": -94.7905, "radius_m": 300, "note": "Gulf side, south of the bay grid"},
+ {"name": "Kemah Boardwalk Marina", "layer": "M", "lat": 29.5435, "lon": -95.0205, "radius_m": 400}
+]

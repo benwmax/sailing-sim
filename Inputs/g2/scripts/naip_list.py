@@ -4,7 +4,7 @@ from shapely.ops import transform as stf
 from common import *
 r = shapefile.Reader(f"{SRC}/naipidx/naip-2022-nccir-60cm_index")
 prj = open(f"{SRC}/naipidx/naip-2022-nccir-60cm_index.prj").read()
-for reg in REGIONS:
+for reg in active_regions():
     m = np.load(f"{WORK}/{reg}_mask10.npz"); band = m["band"]; C = float(m["cell"]); ntop = float(m["n_top"]); el = float(m["e_left"])
     t = tf(reg, prj, "local")
     out = []

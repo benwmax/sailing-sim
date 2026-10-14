@@ -8,9 +8,10 @@ os.environ.setdefault("GDAL_HTTP_MAX_RETRY", "5")
 os.environ.setdefault("GDAL_HTTP_RETRY_DELAY", "2")
 from pyproj import Transformer
 
-WORK = "/tmp/g2/work"
-SRC = "/tmp/g2/src"
-OUT = "/mnt/project-files/sailing-sim-g2"
+WORK = os.environ.get("G2_WORK", "/tmp/g2/work")
+SRC = os.environ.get("G2_SRC", "/tmp/g2/src")
+OUT = os.environ.get("G2_OUT", "/mnt/project-files/sailing-sim-g2")
+SIM_REPO = os.environ.get("SIM_REPO", "/home/claude/benwmax/sailing-sim")   # checkout of benwmax/sailing-sim (for merge.py)
 TNM = "https://prd-tnm.s3.amazonaws.com"
 TNRIS = "https://tnris-data-warehouse.s3.us-east-1.amazonaws.com"
 EPT = "https://usgs-lidar-public.s3.amazonaws.com"
@@ -37,7 +38,25 @@ REGIONS = {
         seed_xy=(0.0, 3000.0),
         zero_note="sim Z=0 is MLLW; MLLW height = NAVD88 height + 0.094 m (GalvestonBay.json navd88_to_mllw_m)",
     ),
+    # Gulf front of Galveston Island south of the bay grid (added Oct 14 2026 for the piers pack): Seawall, Pleasure Pier,
+    # fishing piers and groins, from 29.20 N up to 1 km past the bay grid's south edge (29.295 N), same frame and sources.
+    "GalvestonGulf": dict(
+        local="+proj=tmerc +lat_0=29.5446 +lon_0=-95.0193 +k=1 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",
+        north=(-38200.0, -26600.0), east=(-9250.0, -9250.0 + 4356 * 10.0),
+        dem13=["n30w095", "n30w096"],
+        dem1m_project="TX_CoastalRegion_2018_A18", utm_epsg=26915,
+        ept=["TX_Coastal_B3_2018", "TX_Coastal_B1_2018"],
+        cell=2.0, tile_px=1024,
+        seed_xy=(-32620.0, 26180.0),  # open Gulf off East Beach
+        zero_note="sim Z=0 is MLLW; MLLW height = NAVD88 height + 0.094 m (GalvestonBay.json navd88_to_mllw_m)",
+    ),
 }
+
+
+def active_regions():
+    """regions to process: all, or the comma list in G2_REGIONS (e.g. G2_REGIONS=GalvestonGulf)."""
+    sel = os.environ.get("G2_REGIONS")
+    return [r for r in REGIONS if not sel or r in sel.split(",")]
 
 
 def tf(region, src, dst):

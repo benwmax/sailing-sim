@@ -3,7 +3,7 @@ in the cover raster; grey edges backed by grass or marsh are mud or shell flats 
 import json, numpy as np, rasterio, os, collections
 from pyproj import Transformer
 from common import *
-for reg in REGIONS:
+for reg in active_regions():
     U = REGIONS[reg]["utm_epsg"]; t = Transformer.from_crs(4326, U, always_xy=True)
     p = f"{OUT}/{reg}/shore_armour.geojson"; d = json.load(open(p))
     cache = {}; cnt = collections.Counter()
