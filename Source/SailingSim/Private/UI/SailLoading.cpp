@@ -47,7 +47,7 @@ void SSailLoading::Construct(const FArguments& A)
 	const FSailSessionConfig C = Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault();
 	const SailCatalog::FWorld& W = SailCatalog::World(C.World);
 	Tip = int32(FMath::Rand() % UE_ARRAY_COUNT(Tips));
-	UTexture2D* Tex = W.LoadingTextures.Num() ? LoadObject<UTexture2D>(nullptr, *W.LoadingTextures[FMath::Rand() % W.LoadingTextures.Num()], nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	UTexture2D* Tex = W.LoadingTextures.Num() ? SailUI::KeptTexture(W.LoadingTextures[FMath::Rand() % W.LoadingTextures.Num()]) : nullptr;
 	Image = MakeShared<FSlateBrush>();
 	if (Tex) { Image->SetResourceObject(Tex); Image->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
 	else Image->TintColor = FSlateColor(Ink);

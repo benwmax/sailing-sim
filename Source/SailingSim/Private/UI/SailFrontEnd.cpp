@@ -34,7 +34,7 @@ namespace SailFrontEndImpl
 	/** A texture as a Slate brush (kept alive with the brush). */
 	TSharedPtr<FSlateBrush> TextureBrush(const FString& Path)
 	{
-		UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		UTexture2D* Tex = SailUI::KeptTexture(Path);
 		TSharedPtr<FSlateBrush> B = MakeShared<FSlateBrush>();
 		if (Tex)
 		{
@@ -154,7 +154,7 @@ namespace SailFrontEndImpl
 		virtual FReply OnMouseButtonDown(const FGeometry& G, const FPointerEvent& E) override { bDrag = true; SetFrom(G, E); return FReply::Handled().CaptureMouse(SharedThis(this)).SetUserFocus(SharedThis(this), EFocusCause::Mouse); }
 		virtual FReply OnMouseMove(const FGeometry& G, const FPointerEvent& E) override { if (bDrag) SetFrom(G, E); return bDrag ? FReply::Handled() : FReply::Unhandled(); }
 		virtual FReply OnMouseButtonUp(const FGeometry&, const FPointerEvent&) override { bDrag = false; return FReply::Handled().ReleaseMouseCapture(); }
-		virtual void OnMouseEnter(const FGeometry& G, const FPointerEvent& E) override { SLeafWidget::OnMouseEnter(G, E); FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::Mouse); }
+		virtual void OnMouseEnter(const FGeometry& G, const FPointerEvent& E) override { SLeafWidget::OnMouseEnter(G, E); if (SailUI::MouseIsActive()) FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::Mouse); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle& Style, bool) const override
 		{
 			const FVector2D S = G.GetLocalSize();
@@ -687,7 +687,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 		const bool bOk = !P.bGalvestonOnly || bGalveston;
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(14.f, 10.f)).IsEnabled(bOk)
 			.IsSelected_Lambda([this, Id = P.Id]() { return Pending.Conditions.PresetId == Id; })
-			.OnClicked_Lambda([this, P]() { USailSessionSubsystem::ApplyPreset(Pending.Conditions, P); })
+			.OnClicked_Lambda([this, P, bInGame]()
+			{
+				// Confirm on the preset already chosen moves on (as on the launch spots and boats).
+				if (Pending.Conditions.PresetId == P.Id && !bInGame) Push(ESailScreen::Mode);
+				else USailSessionSubsystem::ApplyPreset(Pending.Conditions, P);
+			})
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(P.Name, EType::Ui, Fg) ]

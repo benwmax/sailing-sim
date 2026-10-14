@@ -22,7 +22,7 @@
 
 using namespace Sailing;
 
-namespace
+namespace SailingHUDLocal
 {
 	const FLinearColor Panel(0.f, 0.f, 0.f, 0.45f);
 	const FLinearColor Dim(0.75f, 0.8f, 0.85f);
@@ -45,12 +45,14 @@ namespace
 
 void ASailingHUD::Text(const FString& Str, float X, float Y, const FLinearColor& Color, float Scale, bool bBig)
 {
+	using namespace SailingHUDLocal;
 	UFont* Font = bBig ? GEngine->GetLargeFont() : GEngine->GetMediumFont();
 	DrawText(Str, Color, X * UIScale, Y * UIScale, Font, Scale * UIScale);
 }
 
 void ASailingHUD::Bar(const FString& Label, float Value, float Lo, float Hi, float X, float Y, float Width, const FLinearColor& Color)
 {
+	using namespace SailingHUDLocal;
 	const float T = FMath::Clamp((Value - Lo) / (Hi - Lo), 0.f, 1.f);
 	Text(Label, X, Y - 2.f, Dim, 0.9f);
 	const float BX = X + 110.f;
@@ -67,8 +69,15 @@ void ASailingHUD::Bar(const FString& Label, float Value, float Lo, float Hi, flo
 	}
 }
 
+ASailingHUD::ASailingHUD()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bTickEvenWhenPaused = true;   // the scripted menu check runs through Pause too
+}
+
 bool ASailingHUD::UsesFrontEnd() const
 {
+	using namespace SailingHUDLocal;
 	static const bool bOff = GIsAutomationTesting || FParse::Param(FCommandLine::Get(), TEXT("SailingNoFrontEnd")) || FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"))
 		|| FCommandLine::Get() && (FString(FCommandLine::Get()).Contains(TEXT("SailingBench=")) || FString(FCommandLine::Get()).Contains(TEXT("SailingCapture="))
 			|| FString(FCommandLine::Get()).Contains(TEXT("SailingShot=")) || FString(FCommandLine::Get()).Contains(TEXT("SailingDrill=")))
@@ -79,6 +88,7 @@ bool ASailingHUD::UsesFrontEnd() const
 
 void ASailingHUD::BeginPlay()
 {
+	using namespace SailingHUDLocal;
 	Super::BeginPlay();
 	if (PlayerOwner && GEngine && GEngine->GameViewport && !IsRunningCommandlet())
 	{
@@ -88,7 +98,12 @@ void ASailingHUD::BeginPlay()
 	if (!UsesFrontEnd() || !PlayerOwner) return;
 	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
 	FString Screen;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Screen))
+	// A session that has just loaded goes to its loading screen, whatever screen the command line asked for first.
+	const bool bLoadingSession = Session && Session->bHasActive && !Session->bStarted && Session->Active.SavedAt > FDateTime::MinValue()
+		&& (FDateTime::Now() - Session->Active.SavedAt).GetTotalMinutes() < 10.0;
+	UE_LOG(LogTemp, Display, TEXT("Front end: session %s, active %d, started %d, loading %d"), Session ? TEXT("yes") : TEXT("no"),
+		Session ? int32(Session->bHasActive) : -1, Session ? int32(Session->bStarted) : -1, int32(bLoadingSession));
+	if (!bLoadingSession && FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Screen))
 	{
 		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Loading.
 		if (Screen == TEXT("Loading"))
@@ -129,8 +144,45 @@ void ASailingHUD::BeginPlay()
 	}
 }
 
+void ASailingHUD::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+	if (!Session) return;
+	if (!Session->bUIScriptRead)
+	{
+		Session->bUIScriptRead = true;
+		FString Script;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingUIScript="), Script, false)) Script.ParseIntoArray(Session->UIScript, TEXT(","));
+		NextScriptKey = FPlatformTime::Seconds() + 4.0;
+	}
+	if (Session->UIScript.Num() == 0 || FPlatformTime::Seconds() < NextScriptKey) return;
+	NextScriptKey = FPlatformTime::Seconds() + 0.6;
+	const FString Token = Session->UIScript[0];
+	Session->UIScript.RemoveAt(0);
+	if (Token == TEXT("Wait")) { NextScriptKey += 2.0; return; }
+	if (Token == TEXT("Log"))
+	{
+		const USailingSettings* S = USailingSettings::Get();
+		FString Stage = TEXT("-");
+		const float Progress = Loading.IsValid() ? Loading->Progress(Stage) : 1.f;
+		UE_LOG(LogTemp, Display, TEXT("UI script: world %d, launch %d, boat %d, preset %d, hour %.2f, traffic %d, front end %s, loading %.0f%% (%s)"),
+			S->World, S->LaunchSpot, S->BoatType, int32(S->WeatherPreset), S->StartHour, S->TrafficLevel, IsFrontEndOpen() ? TEXT("open") : TEXT("closed"), Progress * 100.f, *Stage);
+		return;
+	}
+	const FKey Key(*Token);
+	if (!Key.IsValid()) return;
+	FSlateApplication& App = FSlateApplication::Get();
+	const FKeyEvent Down(Key, FModifierKeysState(), 0, false, 0, 0);
+	const TSharedPtr<SWidget> Focused = App.GetUserFocusedWidget(0);
+	const bool bHandled = App.ProcessKeyDownEvent(Down);
+	UE_LOG(LogTemp, Display, TEXT("UI script: %s -> %s (%s)"), *Token, Focused.IsValid() ? *Focused->GetTypeAsString() : TEXT("nothing"), bHandled ? TEXT("handled") : TEXT("unhandled"));
+	App.ProcessKeyUpEvent(FKeyEvent(Key, FModifierKeysState(), 0, false, 0, 0));
+}
+
 void ASailingHUD::EndPlay(const EEndPlayReason::Type Reason)
 {
+	using namespace SailingHUDLocal;
 	RemoveWidgets();
 	if (SlateHud.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(SlateHud.ToSharedRef());
 	SlateHud.Reset();
@@ -139,6 +191,7 @@ void ASailingHUD::EndPlay(const EEndPlayReason::Type Reason)
 
 void ASailingHUD::ShowWidget(TSharedRef<SWidget> Widget, TSharedPtr<SWidget> Focus)
 {
+	using namespace SailingHUDLocal;
 	RemoveWidgets();
 	if (!GEngine || !GEngine->GameViewport) return;
 	GEngine->GameViewport->AddViewportWidgetContent(Widget, 50);
@@ -152,12 +205,14 @@ void ASailingHUD::ShowWidget(TSharedRef<SWidget> Widget, TSharedPtr<SWidget> Foc
 
 void ASailingHUD::RemoveWidgets()
 {
+	using namespace SailingHUDLocal;
 	if (ShownWidget.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(ShownWidget.ToSharedRef());
 	ShownWidget.Reset();
 }
 
 void ASailingHUD::OpenFrontEnd(ESailScreen Screen)
 {
+	using namespace SailingHUDLocal;
 	if (ASailboatPawn* Pawn = Cast<ASailboatPawn>(PlayerOwner->GetPawn()); Pawn && Screen != ESailScreen::Pause) Pawn->SetHeldByUI(true);
 	Loading.Reset();
 	FrontEnd = SNew(SSailFrontEnd).Start(Screen).Player(PlayerOwner).OnClose(FSimpleDelegate::CreateUObject(this, &ASailingHUD::CloseFrontEnd));
@@ -167,6 +222,7 @@ void ASailingHUD::OpenFrontEnd(ESailScreen Screen)
 
 void ASailingHUD::OpenPause()
 {
+	using namespace SailingHUDLocal;
 	if (IsFrontEndOpen()) return;
 	UGameplayStatics::SetGamePaused(this, true);
 	bPausedByMenu = true;
@@ -175,6 +231,7 @@ void ASailingHUD::OpenPause()
 
 void ASailingHUD::CloseFrontEnd()
 {
+	using namespace SailingHUDLocal;
 	RemoveWidgets();
 	FrontEnd.Reset();
 	Loading.Reset();
@@ -187,12 +244,14 @@ void ASailingHUD::CloseFrontEnd()
 
 void ASailingHUD::StartSailing()
 {
+	using namespace SailingHUDLocal;
 	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->bStarted = true;
 	CloseFrontEnd();
 }
 
 void ASailingHUD::DrawHUD()
 {
+	using namespace SailingHUDLocal;
 	Super::DrawHUD();
 	if (IsFrontEndOpen()) return;   // the menus own the screen
 	const ASailboatPawn* Boat = PlayerOwner ? Cast<ASailboatPawn>(PlayerOwner->GetPawn()) : nullptr;
@@ -280,6 +339,7 @@ void ASailingHUD::DrawHUD()
 
 void ASailingHUD::DrawKeys(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const TArray<ASailboatPawn::FKeyRow>& Rows = Boat.GetKeyRows();
 	const float RowH = 24.f;
 	const int32 PerColumn = FMath::Max(1, int32((Canvas->ClipY / UIScale - 200.f) / RowH));
@@ -302,6 +362,7 @@ void ASailingHUD::DrawKeys(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawLogbook(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const FLogbook& Log = Boat.GetLogbook();
 	const float W = 1240.f, H = Canvas->ClipY / UIScale - 80.f;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = 40.f;
@@ -339,6 +400,7 @@ void ASailingHUD::DrawLogbook(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawTraffic(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const ATrafficManager* TM = ATrafficManager::Find(GetWorld());
 	if (!TM) return;
 	const USailingSettings* Settings = USailingSettings::Get();
@@ -443,6 +505,7 @@ void ASailingHUD::DrawTraffic(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
 {
+	using namespace SailingHUDLocal;
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM || !GM->GetLake().IsTidal()) return;
 	const FLakeData& Lake = GM->GetLake();
@@ -506,6 +569,7 @@ void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
 
 void ASailingHUD::DrawChart(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return;
 	const FChartData& Chart = GM->GetChart();
@@ -823,6 +887,7 @@ void ASailingHUD::DrawChart(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawInstruments(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const FBoatTelemetry& T = Boat.GetBoatModel().GetTelemetry();
 	DrawRect(Panel, 10.f * UIScale, 10.f * UIScale, 330.f * UIScale, 278.f * UIScale);
 
@@ -865,6 +930,7 @@ void ASailingHUD::DrawInstruments(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawControls(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const FBoatControls& C = Boat.GetControls();
 	const FBoatTelemetry& T = Boat.GetBoatModel().GetTelemetry();
 	const USailingSettings* Settings = USailingSettings::Get();
@@ -909,6 +975,7 @@ void ASailingHUD::DrawControls(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawWeather(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return;
 	const FWeatherState& W = GM->GetWeatherState();
@@ -927,6 +994,7 @@ void ASailingHUD::DrawWeather(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const FBoatTelemetry& T = Boat.GetBoatModel().GetTelemetry();
 	const float CX = Canvas->ClipX / UIScale * 0.5f;
 	float Y = Canvas->ClipY / UIScale * 0.62f;
@@ -987,6 +1055,7 @@ void ASailingHUD::DrawDrillAndStatus(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const TArray<TPair<FString, FString>> Rows = Boat.GetMenuRows();
 	// Sections: what you sail and against whom, the water and weather, how the game helps, display and keys.
 	const TMap<int32, const TCHAR*> Sections = { { 0, TEXT("SAILING") }, { 6, TEXT("WATER AND WEATHER") }, { 11, TEXT("HELP AND CONTROLS") }, { 15, TEXT("DISPLAY, SOUND AND KEYS") } };
@@ -1019,6 +1088,7 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
 	TArray<TPair<FString, FString>> Lines = {
 		{ TEXT("Steer (tiller)"), TEXT("A / D        Left stick") },
@@ -1066,6 +1136,7 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 
 void ASailingHUD::DrawWindDiagram(const ASailboatPawn& Boat, const FVector2D& Center, float Radius)
 {
+	using namespace SailingHUDLocal;
 	// Boat-up diagram: true wind (blue) and apparent wind (yellow) arrows point where the wind comes from.
 	const FBoatTelemetry& T = Boat.GetBoatModel().GetTelemetry();
 	const FVector2D C = Center * UIScale;
@@ -1104,11 +1175,12 @@ void ASailingHUD::DrawWindDiagram(const ASailboatPawn& Boat, const FVector2D& Ce
 	Text(TEXT("apparent"), Center.X - Radius + 50.f, Center.Y + Radius + 6.f, FLinearColor(1.f, 0.85f, 0.2f), 0.8f);
 }
 
-FString SailingPointOfSail(double TwaDeg, bool bInIrons) { return PointOfSail(TwaDeg, bInIrons); }
+FString SailingPointOfSail(double TwaDeg, bool bInIrons) { return SailingHUDLocal::PointOfSail(TwaDeg, bInIrons); }
 
 /** Graphics G4: the coach's trim and safety tips, shared by the canvas HUD and the Slate HUD (severity 0 note, 1 good, 2 caution, 3 fault). */
 void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<TPair<FString, int32>>& Tips)
 {
+	using namespace SailingHUDLocal;
 	const FBoatModel& Model = Boat.GetBoatModel();
 	const FBoatTelemetry& T = Model.GetTelemetry();
 	const FBoatControls& C = Boat.GetControls();
@@ -1176,6 +1248,7 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 
 void ASailingHUD::DrawTips(const ASailboatPawn& Boat)
 {
+	using namespace SailingHUDLocal;
 	TArray<TPair<FString, int32>> Collected;
 	SailingCollectTips(Boat, GetWorld(), Collected);
 	TArray<TPair<FString, FLinearColor>> Tips;

@@ -1,0 +1,2784 @@
+{
+  "schema_version": 1,
+  "generated": "2026-10-13",
+  "conventions": {
+    "units": "metres, kilograms, square metres; mm for marking sizes",
+    "hex": "sRGB #RRGGBB; 'stripes:#a,#b,...' means sail panel bands in that order from foot to head; 'multi' means pick a multi-colour panel pattern; 'match ...' references another field; null means leave base material",
+    "weights": "relative within a list; normalise before sampling",
+    "intensity": "0..1 range [min,max] per wear profile; seed per boat, sample a profile from wear.profile_weights, then sample each zone uniformly in its range",
+    "rrs_appendix_g_heights_mm": {
+      "under_3.5m": [
+        230,
+        45
+      ],
+      "3.5_to_8.5m": [
+        300,
+        60
+      ],
+      "8.5_to_11m": [
+        375,
+        75
+      ],
+      "over_11m": [
+        450,
+        90
+      ]
+    },
+    "rrs_source": "https://www.racingrulesofsailing.org/rules?part_id=81"
+  },
+  "classes": [
+    {
+      "id": "j22",
+      "name": "J/22",
+      "kind": "keelboat",
+      "dimensions": {
+        "loa_m": 6.86,
+        "lwl_m": 5.79,
+        "beam_m": 2.44,
+        "draft_m": {
+          "fixed": 1.16
+        },
+        "displacement_kg": 812,
+        "boat_min_weight_kg": 857,
+        "ballast_kg": 318,
+        "I_m": 7.56,
+        "main_luff_m": 7.96,
+        "sail_area_m2": {
+          "main": 10.91,
+          "jib": 10.14,
+          "spinnaker": 33.5
+        },
+        "sources": [
+          "https://en.wikipedia.org/wiki/J/22",
+          "https://arbitrage.ffvoile.fr/media/w25lbhof/j22-2021-e.pdf"
+        ],
+        "notes": "Class rule D.6.1: hull with keel, rudder, tiller 770-815 kg; boat minimum 857 kg."
+      },
+      "colour_schemes": [
+        {
+          "id": "white_factory_teak",
+          "weight": 0.6,
+          "hull_hex": "#F2F0EA",
+          "deck_hex": "#F2F0EA",
+          "nonskid_hex": "#D9D7D0",
+          "bottom_hex": "#6E6A5E",
+          "stripes": [
+            {
+              "zone": "boot",
+              "hex": "#1C2A44",
+              "height_mm": 25
+            }
+          ],
+          "trim": {
+            "handrails": "teak",
+            "toerail": "teak",
+            "teak_hex": "#8C8478"
+          },
+          "notes": "TPI-built 1983 on: white gelcoat, teak handrails and toe rails, VC17m-style bottom weathered grey-brown in fresh water. Typical Rush Creek club boat.",
+          "confidence": "medium (white sourced; stripe and non-skid colours inferred)"
+        },
+        {
+          "id": "white_late_model",
+          "weight": 0.15,
+          "hull_hex": "#F4F2EC",
+          "deck_hex": "#F4F2EC",
+          "nonskid_hex": "#DCDAD3",
+          "bottom_hex": "#2E4F8A",
+          "stripes": [],
+          "trim": {
+            "handrails": "stainless",
+            "toerail": "white composite"
+          },
+          "notes": "Waterline Systems / late boats: no teak trim, stainless handrails; VC Offshore blue bottom.",
+          "confidence": "medium"
+        },
+        {
+          "id": "white_race_polished",
+          "weight": 0.12,
+          "hull_hex": "#F5F4EF",
+          "deck_hex": "#F2F0EA",
+          "nonskid_hex": "#D9D7D0",
+          "bottom_hex": "#F2F0EA",
+          "stripes": [
+            {
+              "zone": "boot",
+              "hex": "#1C2A44",
+              "height_mm": 25
+            }
+          ],
+          "trim": {
+            "handrails": "teak",
+            "toerail": "teak",
+            "teak_hex": "#9A6233"
+          },
+          "notes": "Dry-sailed race boat, faired bottom (barrier coat or white/VC sanded to 220 grit), oiled teak.",
+          "confidence": "low-medium"
+        },
+        {
+          "id": "painted_navy",
+          "weight": 0.06,
+          "hull_hex": "#1C2A44",
+          "deck_hex": "#F2F0EA",
+          "nonskid_hex": "#D9D7D0",
+          "bottom_hex": "#F2F0EA",
+          "stripes": [],
+          "trim": {
+            "handrails": "teak",
+            "toerail": "teak",
+            "teak_hex": "#9A6233"
+          },
+          "notes": "Awlgrip/Imron painted topsides on race boats; navy most common of the painted colours (inferred).",
+          "confidence": "low"
+        },
+        {
+          "id": "painted_red",
+          "weight": 0.04,
+          "hull_hex": "#8E1C1C",
+          "deck_hex": "#F2F0EA",
+          "nonskid_hex": "#D9D7D0",
+          "bottom_hex": "#F2F0EA",
+          "stripes": [],
+          "trim": {
+            "handrails": "teak",
+            "toerail": "teak"
+          },
+          "notes": "Painted race boat.",
+          "confidence": "low"
+        },
+        {
+          "id": "painted_dark_grey",
+          "weight": 0.03,
+          "hull_hex": "#3A3F45",
+          "deck_hex": "#F2F0EA",
+          "nonskid_hex": "#D9D7D0",
+          "bottom_hex": "#F2F0EA",
+          "stripes": [],
+          "trim": {
+            "handrails": "teak",
+            "toerail": "teak"
+          },
+          "notes": "Painted race boat (grey/black).",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": true,
+        "format": "USA {n}",
+        "number_range": [
+          1,
+          1700
+        ],
+        "number_is_hull_number": true,
+        "height_mm": 300,
+        "spacing_mm": 60,
+        "font": "sans-serif capitals (Helvetica-like); cut vinyl",
+        "colour_hex": "#111111",
+        "alt_colours": [
+          {
+            "hex": "#1C2A44",
+            "weight": 0.3
+          }
+        ],
+        "placement": {
+          "main": "both sides, starboard uppermost, wholly above arc centred at head with radius 0.6 x leech; class insignia above national letters, letters above numbers",
+          "jib": "none (J/22 jib foot < 1.3 x J)",
+          "spinnaker": "front side, between arcs 0.4 and 0.6 x foot median from head"
+        },
+        "insignia": {
+          "main": "blue 'J/22' class insignia within 305 x 610 mm box, above numbers",
+          "hex": "#1F4E9A"
+        },
+        "transom": "hull ID number on transom; boat name optional; class membership sticker upper starboard corner of transom",
+        "sources": [
+          "https://www.racingrulesofsailing.org/rules?part_id=81",
+          "https://arbitrage.ffvoile.fr/media/w25lbhof/j22-2021-e.pdf",
+          "https://www.ussailing.org/one-design-profile/international-j-22-class-association"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "woven polyester (Dacron), single ply, no film",
+          "weight_gsm_min": 198,
+          "weight_oz_typical": 5.5,
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 0.7,
+              "name": "white"
+            },
+            {
+              "hex": "#EDE6D3",
+              "weight": 0.3,
+              "name": "aged cream"
+            }
+          ],
+          "panel_layout": "crosscut horizontal panels, radial head section and radial clew patch",
+          "panel_width_mm": [
+            700,
+            900
+          ],
+          "battens": {
+            "count": 4,
+            "type": "fibreglass, leech battens"
+          },
+          "windows": [
+            {
+              "pos": "low luff visibility window",
+              "max_side_mm": 1500
+            }
+          ],
+          "branding": [
+            {
+              "maker": "North Sails",
+              "weight": 0.6
+            },
+            {
+              "maker": "Quantum",
+              "weight": 0.25
+            },
+            {
+              "maker": "Doyle",
+              "weight": 0.1
+            },
+            {
+              "maker": "other",
+              "weight": 0.05
+            }
+          ],
+          "logo_placement": "sailmaker logo near tack/low luff (convention, unsourced); royalty label stitched near tack",
+          "sources": [
+            "https://www.northsails.com/products/j-22-m7-mainsail",
+            "https://www.quantumsails.com/en/sails/one-design/inshore/j-22",
+            "https://arbitrage.ffvoile.fr/media/w25lbhof/j22-2021-e.pdf"
+          ]
+        },
+        {
+          "sail": "jib",
+          "cloth": "woven polyester, single ply",
+          "weight_gsm_min": 186,
+          "weight_oz_typical": 5.5,
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 1.0,
+              "name": "white"
+            }
+          ],
+          "panel_layout": "crosscut, radial clew patch, optional trim stripe and draft stripes",
+          "battens": {
+            "count": 3,
+            "type": "fibreglass leech battens, equally spaced"
+          },
+          "windows": [
+            {
+              "pos": "mid-foot window"
+            }
+          ],
+          "hanks": "bronze hanks on forestay",
+          "telltales": "3 pairs on luff",
+          "sources": [
+            "https://northsails.com/en-ca/products/j-22-big-foot-jib",
+            "https://www.quantumsails.com/en/sails/one-design/inshore/j-22"
+          ]
+        },
+        {
+          "sail": "spinnaker",
+          "cloth": "woven nylon, min 40 g/m2 (AIRX 600/650 typical)",
+          "weight_gsm_min": 40,
+          "colours": [
+            {
+              "hex": "#F6F6F4",
+              "weight": 0.25,
+              "name": "white"
+            },
+            {
+              "hex": "#1E3A78",
+              "weight": 0.3,
+              "name": "dark blue"
+            },
+            {
+              "hex": "#C4212F",
+              "weight": 0.25,
+              "name": "red"
+            },
+            {
+              "hex": "#F2C230",
+              "weight": 0.05,
+              "name": "yellow"
+            },
+            {
+              "hex": "multi",
+              "weight": 0.15,
+              "name": "two/three-colour panels (red/white/blue)"
+            }
+          ],
+          "panel_layout": "tri-radial or full radial (head, clew and tack radials)",
+          "sources": [
+            "https://www.northsails.com/products/j-22-fr-1-airx-spinnaker",
+            "https://www.quantumsails.com/en/sails/one-design/inshore/j-22",
+            "https://www.uksailmakers.com/one-design/j-22/"
+          ]
+        }
+      ],
+      "covers": [
+        {
+          "item": "mainsail/boom cover, tiller cover",
+          "hex": "#1C5A8C",
+          "name": "Sunbrella Pacific Blue",
+          "weight": 0.6
+        },
+        {
+          "item": "same",
+          "hex": "#1E2A44",
+          "name": "Captain's Navy",
+          "weight": 0.4
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "club": 0.8,
+          "race": 0.2
+        },
+        "zones": [
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.5,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          },
+          {
+            "id": "waterline_scum",
+            "zone": "topsides band 0-60 mm above DWL, strongest at bow",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#8A6E45",
+            "notes": "Brown 'mustache' from tannins and algae on lake boats; alpha 0.3-0.6 at full intensity.",
+            "source": "https://www.practical-sailor.com/waypoints-tips/how-to-safely-remove-the-dreaded-icw-mustache/"
+          },
+          {
+            "id": "dock_rash_gunwale",
+            "zone": "hull-deck joint/toe rail, max at shoulders (0.15-0.35 LOA) and quarters",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.05,
+                0.2
+              ]
+            },
+            "colour_hex": "#BDB8AC",
+            "notes": "Grey scuffs and black fender marks; club boats share slips.",
+            "source": "https://forums.sailinganarchy.com/threads/looking-for-advice-teak-hand-and-toe-rail-repair-replacement-j-22-repost-from-fix-it.242187/"
+          },
+          {
+            "id": "bow_scuffs",
+            "zone": "stem and first 0.5 m of topsides",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#B0AA9C",
+            "notes": "Dock and trailer bunks.",
+            "source": null
+          },
+          {
+            "id": "teak_greying",
+            "zone": "handrails, toe rails, companionway boards",
+            "kind": "weathering",
+            "intensity": {
+              "club": [
+                0.6,
+                1.0
+              ],
+              "race": [
+                0.0,
+                0.3
+              ]
+            },
+            "colour_hex": "#8C8478",
+            "notes": "Grey, checked, 'worn and wobbly' on community fleets.",
+            "source": "https://forums.sailinganarchy.com/threads/looking-for-advice-teak-hand-and-toe-rail-repair-replacement-j-22-repost-from-fix-it.242187/"
+          },
+          {
+            "id": "chainplate_rust_weep",
+            "zone": "streaks 50-200 mm below chainplates and stanchion bases",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.2,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#8B4A22",
+            "notes": "Leaks at chainplates and deck fittings.",
+            "source": "https://www.sailboatlistings.com/view/107011"
+          },
+          {
+            "id": "transom_outboard_bracket",
+            "zone": "below outboard bracket bolts on transom",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#8B4A22",
+            "notes": "Club boats carry outboards; race boats often remove the bracket.",
+            "source": null
+          },
+          {
+            "id": "nonskid_wear",
+            "zone": "cockpit sole, companionway approach, foredeck by mast",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": "#E8E5DC",
+            "notes": "Pattern flattened and lighter where feet go.",
+            "source": null
+          },
+          {
+            "id": "gelcoat_crazing",
+            "zone": "cockpit corners, around winches and mast step",
+            "kind": "crack",
+            "intensity": {
+              "club": [
+                0.2,
+                0.5
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#9C978C",
+            "notes": "Spider cracks.",
+            "source": "https://boatsign.com/for-sale/j22-sailboat"
+          },
+          {
+            "id": "cover_uv_fade",
+            "zone": "sail and tiller covers",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.3
+              ]
+            },
+            "colour_hex": null,
+            "notes": "Shift hue toward grey and lighten 10-25%.",
+            "source": "https://www.practical-sailor.com/sails-rigging-deckgear/the-case-of-the-painted-jib"
+          },
+          {
+            "id": "sail_age",
+            "zone": "main and jib body",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#EDE6D3",
+            "notes": "Cream tint, soft creases, stretched leech.",
+            "source": null
+          }
+        ]
+      },
+      "decals": [
+        {
+          "item": "boat name on transom",
+          "probability": 0.7
+        },
+        {
+          "item": "hull number on transom",
+          "probability": 1.0
+        },
+        {
+          "item": "hull-side graphics",
+          "probability": 0.05
+        }
+      ],
+      "research_notes": "Deepest coverage. Hull colour frequency inferred from ~32 listings where white was the only colour stated; stripe and non-skid colours not sourced."
+    },
+    {
+      "id": "sunfish",
+      "name": "Sunfish",
+      "kind": "dinghy",
+      "dimensions": {
+        "loa_m": 4.19,
+        "beam_m": 1.24,
+        "hull_weight_kg": 54,
+        "sail_area_m2": {
+          "lateen": 7.0
+        },
+        "mast_length_m": 3.05,
+        "boom_and_gaff_length_m": 4.17,
+        "sail_edges_m": {
+          "luff": 4.04,
+          "leech": 4.34,
+          "foot": 4.04
+        },
+        "sources": [
+          "https://en.wikipedia.org/wiki/Sunfish_(sailboat)",
+          "https://seroinnovation.com/product/sero-innovation-sunfish-sailboat-century-edition-all-blue-deck-w-white-stripes/",
+          "https://www.rigrite.com/Spars/A_spec_classes/Sunfish_spars.php",
+          "https://seroinnovation.com/?p=4148"
+        ]
+      },
+      "colour_schemes": [
+        {
+          "id": "white_red_stripe",
+          "weight": 0.45,
+          "hull_hex": "#F4F2EC",
+          "deck_hex": "#F4F2EC",
+          "nonskid_hex": "#E9E6DD",
+          "stripes": [
+            {
+              "zone": "deck three-stripe",
+              "hex": "#C8202B"
+            }
+          ],
+          "coaming_hex": "#C8202B",
+          "notes": "Current ISCA/SERO standard.",
+          "confidence": "medium"
+        },
+        {
+          "id": "white_blue_stripe",
+          "weight": 0.35,
+          "hull_hex": "#F4F2EC",
+          "deck_hex": "#F4F2EC",
+          "nonskid_hex": "#E9E6DD",
+          "stripes": [
+            {
+              "zone": "deck three-stripe",
+              "hex": "#1F4E9A"
+            }
+          ],
+          "coaming_hex": "#1F4E9A",
+          "notes": "",
+          "confidence": "medium"
+        },
+        {
+          "id": "blue_deck_white_stripe",
+          "weight": 0.08,
+          "hull_hex": "#F4F2EC",
+          "deck_hex": "#1F4E9A",
+          "nonskid_hex": "#1F4E9A",
+          "stripes": [
+            {
+              "zone": "deck",
+              "hex": "#F4F2EC"
+            }
+          ],
+          "coaming_hex": "#F4F2EC",
+          "notes": "SERO Century Edition.",
+          "confidence": "medium"
+        },
+        {
+          "id": "vintage_solid_deck",
+          "weight": 0.12,
+          "hull_hex": "#F0ECE0",
+          "deck_hex": "#2A8C8C",
+          "deck_hex_options": [
+            "#2A8C8C",
+            "#D9B33A",
+            "#3E6FB0",
+            "#B83A2E"
+          ],
+          "nonskid_hex": null,
+          "stripes": [],
+          "notes": "Older AMF/Alcort boats with coloured decks (unsourced).",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": true,
+        "format": "{n}",
+        "number_range": [
+          1000,
+          99999
+        ],
+        "height_mm": 300,
+        "spacing_mm": 60,
+        "font": "sans-serif or segmented digital cut numbers",
+        "colour_hex": "#111111",
+        "alt_colours": [
+          {
+            "hex": "#1E2A44",
+            "weight": 0.2
+          },
+          {
+            "hex": "#F6F6F4",
+            "weight": 0.0,
+            "when": "dark sail"
+          }
+        ],
+        "placement": {
+          "lateen": "centred beneath ISCA/Sunfish emblem; starboard above the seam, port below; parallel to seam"
+        },
+        "insignia": {
+          "lateen": "Sunfish fish emblem (ISCA emblem on class sails), upper sail"
+        },
+        "sources": [
+          "https://sunfishclass.org/sailnumbers",
+          "https://zimsailing.com/content/ISCA-Sail-Numbers-Requirements-Diagram-2025-3-21.pdf"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "lateen",
+          "cloth": "Dacron 3.8 oz",
+          "weight_oz_typical": 3.8,
+          "colours": [
+            {
+              "hex": "#F6F5EF",
+              "weight": 0.35,
+              "name": "white class racing sail (5 panels)"
+            },
+            {
+              "hex": "stripes:#1F4E9A,#F6F5EF",
+              "weight": 0.2,
+              "name": "blue & white"
+            },
+            {
+              "hex": "stripes:#C8202B,#F6F5EF",
+              "weight": 0.15,
+              "name": "red & white"
+            },
+            {
+              "hex": "stripes:#2E9C6A,#F6F5EF",
+              "weight": 0.1,
+              "name": "green & white"
+            },
+            {
+              "hex": "stripes:#6B3FA0,#2E6FD0,#2E9C6A,#F2C230,#F07A1E",
+              "weight": 0.2,
+              "name": "rainbow recreational (6 panels)"
+            }
+          ],
+          "panel_layout": "horizontal bands parallel to the boom; 5 panels (class racing) or 6 (recreational)",
+          "battens": {
+            "count": 0
+          },
+          "windows": [
+            {
+              "pos": "lower sail window"
+            }
+          ],
+          "branding": [
+            {
+              "maker": "North Sails (class sail)",
+              "weight": 1.0
+            }
+          ],
+          "sources": [
+            "https://www.sunfishclass.org/isca_faq",
+            "https://seroinnovation.com/?p=4148",
+            "https://westcoastsailing.net/sunfish-sail-afterglow-SF-7C2"
+          ]
+        }
+      ],
+      "spars": {
+        "material": "clear anodised aluminium",
+        "hex": "#C9CCCF"
+      },
+      "wear": {
+        "profile_weights": {
+          "club": 0.85,
+          "race": 0.15
+        },
+        "zones": [
+          {
+            "id": "keel_line_beach_scuff",
+            "zone": "hull bottom centreline and bow forefoot",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.5,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#C9C4B6",
+            "notes": "Dragged up beaches and ramps.",
+            "source": null
+          },
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.4,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          },
+          {
+            "id": "sail_panel_fade",
+            "zone": "coloured sail panels",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": null,
+            "notes": "Reds fade to pink first, blues least.",
+            "source": "https://forums.ybw.com/threads/why-blue.571766"
+          },
+          {
+            "id": "spar_oxidation",
+            "zone": "mast, boom, gaff",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#A9ADB0",
+            "notes": "Dull chalky anodizing.",
+            "source": null
+          },
+          {
+            "id": "cockpit_scuffs",
+            "zone": "cockpit well and deck around it",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#D6D1C4",
+            "notes": "",
+            "source": null
+          }
+        ]
+      },
+      "research_notes": "Class-legal boat now called ISCA (Zim builder 2024); SERO owns the Sunfish brand since 2025. Vintage solid-deck frequency unsourced."
+    },
+    {
+      "id": "ilca7",
+      "name": "ILCA 7",
+      "kind": "dinghy",
+      "dimensions": {
+        "loa_m": 4.23,
+        "lwl_m": 3.81,
+        "beam_m": 1.37,
+        "draft_m": {
+          "board_down": 0.787
+        },
+        "hull_weight_kg": 59,
+        "sail_area_m2": {
+          "main": 7.06
+        },
+        "sources": [
+          "https://en.wikipedia.org/wiki/Laser_(dinghy)",
+          "https://binksmarine.com.au/products/ilca-ex-charter-boat"
+        ],
+        "notes": "Wikipedia LWL inconsistent (3.81 infobox vs 3.96 text)."
+      },
+      "colour_schemes": [
+        {
+          "id": "white",
+          "weight": 0.8,
+          "hull_hex": "#F2F1EC",
+          "deck_hex": "#F2F1EC",
+          "nonskid_hex": "#E6E5E0",
+          "stripes": [],
+          "notes": "Modern builders (PSA, Ovington, Zim...)",
+          "confidence": "medium"
+        },
+        {
+          "id": "grey_white",
+          "weight": 0.1,
+          "hull_hex": "#D9DADB",
+          "deck_hex": "#E2E3E3",
+          "nonskid_hex": "#D2D3D3",
+          "stripes": [],
+          "notes": "'slightly different shades of white or grey'",
+          "confidence": "medium"
+        },
+        {
+          "id": "vintage_coloured",
+          "weight": 0.1,
+          "hull_hex": "#A9C7DA",
+          "hull_hex_options": [
+            "#A9C7DA",
+            "#B83A2E",
+            "#2E5C9A",
+            "#5A3D2B"
+          ],
+          "deck_hex": "#F2F1EC",
+          "nonskid_hex": "#E6E5E0",
+          "stripes": [],
+          "notes": "Older Laser hulls (ice blue, red, blue, brown), heavily faded.",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": true,
+        "format": "{n6}",
+        "number_range": [
+          100000,
+          225000
+        ],
+        "height_mm": 300,
+        "char_width_mm": 200,
+        "stroke_mm": 45,
+        "spacing_mm": 60,
+        "font": "sans-serif or segmented 'digital 8' adhesive numbers",
+        "colour_rule": "last four digits black/dark (#111111); preceding digits contrasting colour, red recommended (#D0202E)",
+        "colour_hex": "#111111",
+        "lead_digits_hex": "#D0202E",
+        "placement": {
+          "main": "starboard above port; first starboard digit 100 mm (+/-12) from leech; base 400 mm (+/-12) below seam at middle batten pocket"
+        },
+        "insignia": {
+          "main": "ILCA logo (Laser sunburst on older sails) on one side only, near head",
+          "hex": "#C8202B"
+        },
+        "options": {
+          "women_red_rhombus_probability": 0.25,
+          "national_flag_mm": [
+            567,
+            337
+          ]
+        },
+        "sources": [
+          "https://www.laserjapan.org/info/rules/classrules/2021/4-sailnumbers2021.php",
+          "https://ilcasailing.org/laser-sail-numbers-and-national-letters/"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "Dacron 4.5 oz",
+          "weight_oz_typical": 4.5,
+          "colours": [
+            {
+              "hex": "#F7F6F0",
+              "weight": 0.65,
+              "name": "white"
+            },
+            {
+              "hex": "#E8E3D3",
+              "weight": 0.35,
+              "name": "aged cream"
+            }
+          ],
+          "panel_layout": "MKII radial cut (current); MKI crosscut on older sails",
+          "panel_layout_weights": {
+            "radial_mk2": 0.6,
+            "crosscut_mk1": 0.4
+          },
+          "battens": {
+            "count": 3
+          },
+          "windows": [
+            {
+              "pos": "large window low in sail"
+            }
+          ],
+          "branding": [
+            {
+              "maker": "Hyde",
+              "weight": 0.5
+            },
+            {
+              "maker": "North",
+              "weight": 0.5
+            }
+          ],
+          "sources": [
+            "https://westcoastsailing.net/ilca-7-sail-mk2-hyde/",
+            "https://www.roostersailing.com/collections/shop-by-boat-laserilca/products/133327"
+          ]
+        }
+      ],
+      "spars": {
+        "lower_mast": "alloy, #B7BBBE",
+        "top_mast": "composite (since 2017), #2A2A2A",
+        "boom": "alloy"
+      },
+      "wear": {
+        "profile_weights": {
+          "club": 0.7,
+          "race": 0.3
+        },
+        "zones": [
+          {
+            "id": "trolley_pad_marks",
+            "zone": "hull bottom where trolley supports, ~1/3 LOA from bow",
+            "kind": "crack/scuff",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#C8C6BE",
+            "notes": "Cracked or soft gelcoat at trolley supports.",
+            "source": "https://www.kgsc.org.uk/sailing/buying-a-used-laser"
+          },
+          {
+            "id": "sidedeck_cracks",
+            "zone": "side decks at top of cockpit footwell",
+            "kind": "crack",
+            "intensity": {
+              "club": [
+                0.2,
+                0.5
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#9C978C",
+            "notes": "",
+            "source": "https://www.kgsc.org.uk/sailing/buying-a-used-laser"
+          },
+          {
+            "id": "foil_edge_wear",
+            "zone": "daggerboard and rudder trailing edges and tips",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#D8D4C8",
+            "notes": "",
+            "source": "https://www.kgsc.org.uk/sailing/buying-a-used-laser"
+          },
+          {
+            "id": "nonskid_wear",
+            "zone": "deck where sailor sits and hikes",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": "#F6F5F1",
+            "notes": "",
+            "source": null
+          },
+          {
+            "id": "sail_creases",
+            "zone": "main body, under cunningham eye",
+            "kind": "crease",
+            "intensity": {
+              "club": [
+                0.4,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.3
+              ]
+            },
+            "colour_hex": null,
+            "notes": "Crinkly new -> soft and creased.",
+            "source": "https://www.kgsc.org.uk/sailing/buying-a-used-laser"
+          },
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.15
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          }
+        ]
+      },
+      "research_notes": "LaserPerformance boats since 2019 are not ILCA-legal; branding on sim boats should be ILCA."
+    },
+    {
+      "id": "catalina22",
+      "name": "Catalina 22",
+      "kind": "trailer sailer",
+      "dimensions": {
+        "loa_m": 6.55,
+        "loa_incl_rudder_m": 7.26,
+        "lwl_m": 5.89,
+        "beam_m": 2.34,
+        "draft_m": {
+          "board_up": 0.51,
+          "board_down": 1.52
+        },
+        "displacement_kg": 1021,
+        "ballast_kg": 249,
+        "I_m": 7.87,
+        "J_m": 2.44,
+        "P_m": 6.4,
+        "E_m": 2.95,
+        "mast_above_dwl_m": 8.69,
+        "sail_area_m2": {
+          "main": 9.43,
+          "jib_100": 9.6,
+          "genoa_135_150": "optional"
+        },
+        "sources": [
+          "https://sailboatdata.com/sailboat/catalina-22",
+          "https://www.catalinayachts.com/sport-series/22-sport/",
+          "https://en.wikipedia.org/wiki/Catalina_22"
+        ],
+        "notes": "Original hull 21'6\" (6.55 m) LOD; 23'10\" (7.26 m) figure includes rudder. Use 6.55 m for the hull mesh."
+      },
+      "colour_schemes": [
+        {
+          "id": "white_blue_stripes",
+          "weight": 0.6,
+          "hull_hex": "#F4F2EC",
+          "deck_hex": "#F2EFE6",
+          "nonskid_hex": "#ECE8DC",
+          "stripes": [
+            {
+              "zone": "boot/waterline",
+              "hex": "#1F3A68"
+            },
+            {
+              "zone": "sheer double",
+              "hex": "#1F3A68"
+            },
+            {
+              "zone": "sheer thin",
+              "hex": "#B9BDC1"
+            }
+          ],
+          "notes": "Sport/Mk II: moulded-in Midwatch Blue waterline stripe, blue + silver sheer stripes.",
+          "confidence": "medium"
+        },
+        {
+          "id": "white_brown_70s",
+          "weight": 0.2,
+          "hull_hex": "#EFEADC",
+          "deck_hex": "#EDE6D3",
+          "nonskid_hex": "#D9CDB2",
+          "stripes": [
+            {
+              "zone": "boot",
+              "hex": "#6B4A2E"
+            },
+            {
+              "zone": "sheer",
+              "hex": "#6B4A2E"
+            }
+          ],
+          "notes": "1970s brown/earth-tone stripes.",
+          "confidence": "low-medium"
+        },
+        {
+          "id": "white_70s_coloured_deck",
+          "weight": 0.1,
+          "hull_hex": "#EFEADC",
+          "deck_hex": "#C9D3A6",
+          "deck_hex_options": [
+            "#C9D3A6",
+            "#A9C4DA"
+          ],
+          "nonskid_hex": null,
+          "stripes": [
+            {
+              "zone": "boot",
+              "hex": "#6B4A2E"
+            }
+          ],
+          "notes": "Avocado green or baby blue decks reported on 70s boats.",
+          "confidence": "low"
+        },
+        {
+          "id": "white_red_stripes",
+          "weight": 0.1,
+          "hull_hex": "#F4F2EC",
+          "deck_hex": "#F2EFE6",
+          "nonskid_hex": "#ECE8DC",
+          "stripes": [
+            {
+              "zone": "boot",
+              "hex": "#8E1C1C"
+            },
+            {
+              "zone": "sheer",
+              "hex": "#8E1C1C"
+            }
+          ],
+          "notes": "Unsourced variety option.",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": false,
+        "probability": 0.5,
+        "format": "{n}",
+        "number_range": [
+          1,
+          15500
+        ],
+        "height_mm": 300,
+        "spacing_mm": 60,
+        "font": "sans-serif",
+        "colour_hex": "#111111",
+        "placement": {
+          "main": "under class insignia, RRS G1.3 (above 0.6 x leech arc), starboard uppermost"
+        },
+        "insignia": {
+          "main": "red diamond outline, 'C' in top half, '22' in bottom half",
+          "hex": "#C4212F",
+          "probability": 0.9
+        },
+        "sources": [
+          "https://catalina22.org/index.php/rules/68-class-rules",
+          "https://www.racingrulesofsailing.org/rules?part_id=81"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "Dacron",
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 0.6
+            },
+            {
+              "hex": "#E9E1CC",
+              "weight": 0.4,
+              "name": "aged"
+            }
+          ],
+          "panel_layout": "crosscut",
+          "battens": {
+            "count": 4,
+            "type": "short leech battens; full battens allowed"
+          },
+          "sources": [
+            "https://catalina22.org/index.php/rules/68-class-rules"
+          ]
+        },
+        {
+          "sail": "genoa",
+          "cloth": "Dacron",
+          "size": "110-150% (roller furling common)",
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 1.0
+            }
+          ],
+          "panel_layout": "crosscut",
+          "battens": {
+            "count": 0
+          },
+          "uv_strip": {
+            "probability": 0.6,
+            "colours": [
+              {
+                "hex": "#1C5A8C",
+                "weight": 0.6,
+                "name": "Pacific Blue"
+              },
+              {
+                "hex": "#1E2A44",
+                "weight": 0.25,
+                "name": "Captain's Navy"
+              },
+              {
+                "hex": "#5E1F2A",
+                "weight": 0.1,
+                "name": "Burgundy"
+              },
+              {
+                "hex": "#8A8F94",
+                "weight": 0.05,
+                "name": "Grey"
+              }
+            ]
+          },
+          "sources": [
+            "https://www.catalinayachts.com/sport-series/22-sport/",
+            "https://sailrite.com/Sunbrella-6001-0000-Pacific-Blue-60"
+          ]
+        }
+      ],
+      "covers": [
+        {
+          "item": "main cover, hatch cover",
+          "hex": "#1E2A44",
+          "name": "Captain's Navy",
+          "weight": 0.5
+        },
+        {
+          "item": "same",
+          "hex": "#1C5A8C",
+          "name": "Pacific Blue",
+          "weight": 0.5
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "club": 0.85,
+          "race": 0.15
+        },
+        "zones": [
+          {
+            "id": "swing_keel_rust",
+            "zone": "cast-iron swing keel and keel trunk slot",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.5,
+                1.0
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": "#7A3E1C",
+            "notes": "1969-94 iron keel 'rusted, pitted and bleeding'; rust bleeds onto hull bottom near slot.",
+            "source": "https://keelindex.com/articles/catalina-22-buyers-guide"
+          },
+          {
+            "id": "chainplate_rust_weep",
+            "zone": "below chainplates and stanchion bases",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#8B4A22",
+            "notes": "",
+            "source": "https://keelindex.com/articles/catalina-22-buyers-guide"
+          },
+          {
+            "id": "mast_step_crazing",
+            "zone": "deck around mast step",
+            "kind": "crack",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#9C978C",
+            "notes": "",
+            "source": "https://keelindex.com/articles/catalina-22-buyers-guide"
+          },
+          {
+            "id": "window_frame_streaks",
+            "zone": "below aluminium-framed cabin windows",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#6E6A5E",
+            "notes": "Leaking frames streak grime.",
+            "source": "https://keelindex.com/articles/catalina-22-buyers-guide"
+          },
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.5,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          },
+          {
+            "id": "waterline_scum",
+            "zone": "topsides band 0-60 mm above DWL, strongest at bow",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#8A6E45",
+            "notes": "Brown 'mustache' from tannins and algae on lake boats; alpha 0.3-0.6 at full intensity.",
+            "source": "https://www.practical-sailor.com/waypoints-tips/how-to-safely-remove-the-dreaded-icw-mustache/"
+          },
+          {
+            "id": "dock_rash",
+            "zone": "rub rail and topsides at shoulders/quarters",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#BDB8AC",
+            "notes": "",
+            "source": null
+          },
+          {
+            "id": "uv_strip_fade",
+            "zone": "genoa UV strip",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.4,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.3
+              ]
+            },
+            "colour_hex": null,
+            "notes": "Blue looks tired; stitching fails at 4-6 years.",
+            "source": "https://www.practical-sailor.com/sails-rigging-deckgear/the-case-of-the-painted-jib"
+          }
+        ]
+      },
+      "research_notes": "About 15,000 built since 1969; eras: original, New Design 1986, Mk II 1995, Sport 2004."
+    },
+    {
+      "id": "catalina30",
+      "name": "Catalina 30",
+      "kind": "cruiser",
+      "dimensions": {
+        "loa_m": 9.12,
+        "lwl_m": 7.62,
+        "beam_m": 3.3,
+        "draft_m": {
+          "standard": 1.6,
+          "shoal": 1.31,
+          "wing": 1.17
+        },
+        "displacement_kg": 4627,
+        "ballast_kg": 1905,
+        "I_m": 12.5,
+        "J_m": 3.51,
+        "P_m": 10.67,
+        "E_m": 3.51,
+        "tall_rig": {
+          "I_m": 13.11,
+          "J_m": 4.01,
+          "P_m": 11.43,
+          "E_m": 3.66
+        },
+        "mast_above_dwl_m": 14.0,
+        "sources": [
+          "https://sailboatdata.com/sailboat/catalina-30",
+          "https://en.wikipedia.org/wiki/Catalina_30"
+        ],
+        "notes": "Built 1976-2008, about 6,430. Mk II from ~1986 (#3300), Mk III 1994 (walk-through transom)."
+      },
+      "colour_schemes": [
+        {
+          "id": "white_blue_cove",
+          "weight": 0.6,
+          "hull_hex": "#F2F0EA",
+          "deck_hex": "#F0EDE4",
+          "nonskid_hex": "#E6E1D3",
+          "stripes": [
+            {
+              "zone": "cove double",
+              "hex": "#1E3F7A"
+            },
+            {
+              "zone": "boot",
+              "hex": "#1E3F7A"
+            }
+          ],
+          "trim": {
+            "teak_hex": "#9A958A"
+          },
+          "notes": "Sapphire blue double cove stripe common replacement.",
+          "confidence": "medium"
+        },
+        {
+          "id": "white_brown_cove",
+          "weight": 0.25,
+          "hull_hex": "#EFEADC",
+          "deck_hex": "#EDE6D3",
+          "nonskid_hex": "#D9CDB2",
+          "stripes": [
+            {
+              "zone": "cove",
+              "hex": "#6B4A2E"
+            },
+            {
+              "zone": "boot",
+              "hex": "#6B4A2E"
+            }
+          ],
+          "trim": {
+            "teak_hex": "#9A958A"
+          },
+          "notes": "Late-70s/early-80s earth tones (low confidence).",
+          "confidence": "low"
+        },
+        {
+          "id": "white_burgundy_cove",
+          "weight": 0.15,
+          "hull_hex": "#F2F0EA",
+          "deck_hex": "#F0EDE4",
+          "nonskid_hex": "#E6E1D3",
+          "stripes": [
+            {
+              "zone": "cove",
+              "hex": "#5E1F2A"
+            },
+            {
+              "zone": "boot",
+              "hex": "#5E1F2A"
+            }
+          ],
+          "notes": "Unsourced variety option.",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": false,
+        "probability": 0.25,
+        "format": "{n}",
+        "number_range": [
+          1,
+          6430
+        ],
+        "height_mm": 375,
+        "spacing_mm": 75,
+        "font": "sans-serif",
+        "colour_hex": "#111111",
+        "placement": {
+          "main": "RRS G1.3, starboard uppermost"
+        },
+        "insignia": {
+          "main": "Catalina logo near head",
+          "probability": 0.7
+        },
+        "sources": [
+          "https://www.racingrulesofsailing.org/rules?part_id=81"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "Dacron",
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 0.5
+            },
+            {
+              "hex": "#E9E1CC",
+              "weight": 0.5
+            }
+          ],
+          "panel_layout": "crosscut",
+          "battens": {
+            "count": 4,
+            "type": "short leech"
+          },
+          "stowage": {
+            "type": "sail cover on boom (or stack pack)",
+            "colours": [
+              {
+                "hex": "#1C5A8C",
+                "weight": 0.5
+              },
+              {
+                "hex": "#1E2A44",
+                "weight": 0.3
+              },
+              {
+                "hex": "#5E1F2A",
+                "weight": 0.1
+              },
+              {
+                "hex": "#B59A74",
+                "weight": 0.1
+              }
+            ]
+          },
+          "sources": [
+            "https://forums.sailboatowners.com/threads/c30-main-sail-cover.17551/latest",
+            "https://forums.sailboatowners.com/threads/which-sunbrella-blue.158102/"
+          ]
+        },
+        {
+          "sail": "genoa",
+          "cloth": "Dacron",
+          "size": "135-150% roller furling",
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 1.0
+            }
+          ],
+          "panel_layout": "crosscut",
+          "uv_strip": {
+            "probability": 0.95,
+            "colours": [
+              {
+                "hex": "#1C5A8C",
+                "weight": 0.55
+              },
+              {
+                "hex": "#1E2A44",
+                "weight": 0.25
+              },
+              {
+                "hex": "#5E1F2A",
+                "weight": 0.1
+              },
+              {
+                "hex": "#8A8F94",
+                "weight": 0.1
+              }
+            ]
+          },
+          "sources": [
+            "https://ca.boats.com/sailing-boats/1980-catalina-30-10082806",
+            "https://forums.ybw.com/threads/why-blue.571766"
+          ]
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "club": 0.8,
+          "race": 0.2
+        },
+        "zones": [
+          {
+            "id": "chainplate_rust_weep",
+            "zone": "below chainplates through deck",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#8B4A22",
+            "notes": "Prone to rust where they pass the deck.",
+            "source": "https://keelindex.com/articles/catalina-30-buyers-guide"
+          },
+          {
+            "id": "keel_joint_weep",
+            "zone": "hull-keel joint",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#7A3E1C",
+            "notes": "Cracking, weeping or rust staining.",
+            "source": "https://keelindex.com/articles/catalina-30-buyers-guide"
+          },
+          {
+            "id": "teak_greying",
+            "zone": "handrails, eyebrow trim, companionway",
+            "kind": "weathering",
+            "intensity": {
+              "club": [
+                0.6,
+                1.0
+              ],
+              "race": [
+                0.1,
+                0.4
+              ]
+            },
+            "colour_hex": "#9A958A",
+            "notes": "",
+            "source": null
+          },
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.5,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          },
+          {
+            "id": "waterline_scum",
+            "zone": "topsides band 0-60 mm above DWL, strongest at bow",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.5,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#8A6E45",
+            "notes": "Brown 'mustache' from tannins and algae on lake boats; alpha 0.3-0.6 at full intensity.",
+            "source": "https://www.practical-sailor.com/waypoints-tips/how-to-safely-remove-the-dreaded-icw-mustache/"
+          },
+          {
+            "id": "dock_rash",
+            "zone": "rub rail, max at shoulders and quarters",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#BDB8AC",
+            "notes": "",
+            "source": null
+          },
+          {
+            "id": "canvas_mildew",
+            "zone": "sail cover, dodger seams",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.2,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#4A4A3A",
+            "notes": "Dark speckle along seams.",
+            "source": null
+          },
+          {
+            "id": "uv_strip_fade",
+            "zone": "genoa UV strip",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.4,
+                0.9
+              ],
+              "race": [
+                0.0,
+                0.3
+              ]
+            },
+            "colour_hex": null,
+            "notes": "",
+            "source": "https://www.practical-sailor.com/sails-rigging-deckgear/the-case-of-the-painted-jib"
+          }
+        ]
+      },
+      "research_notes": "Wikipedia gives 1972 start date; sailboatdata 1976."
+    },
+    {
+      "id": "hobie16",
+      "name": "Hobie 16",
+      "kind": "beach catamaran",
+      "dimensions": {
+        "loa_m": 5.04,
+        "beam_m": 2.41,
+        "hull_weight_kg": 145,
+        "mast_length_m": 8.07,
+        "draft_rudder_up_m": 0.25,
+        "sail_area_m2": {
+          "main": 13.77,
+          "jib": 5.12,
+          "total": 20.0,
+          "spinnaker": 17.5
+        },
+        "sources": [
+          "https://hobie.com/sail/hobie-16/",
+          "https://en.wikipedia.org/wiki/Hobie_16",
+          "https://www.hobie.com/xe/en/sail/hobie-16/"
+        ],
+        "notes": "Hobie US page: 16'7\" / 5.04 m, 7'11\" / 2.41 m, mast 26'6\" / 8.07 m. Hobie international page gives 5.11 m and mast 7.92 m; Wikipedia 5.05 m / 8.08 m. Use 5.04 x 2.41 (beam is over both hulls, outside to outside)."
+      },
+      "colour_schemes": [
+        {
+          "id": "white_modern",
+          "weight": 0.75,
+          "hull_hex": "#F3F3EF",
+          "deck_hex": "#F3F3EF",
+          "tramp_hex": "#1C1C1E",
+          "tramp_options": [
+            {
+              "hex": "#1C1C1E",
+              "weight": 0.5
+            },
+            {
+              "hex": "#6E7378",
+              "weight": 0.3
+            },
+            {
+              "hex": "#1FA3A8",
+              "weight": 0.2
+            }
+          ],
+          "frame_hex": "#BFC3C6",
+          "stripes": [
+            {
+              "zone": "hull side graphic",
+              "hex": "match sail scheme",
+              "probability": 0.6
+            }
+          ],
+          "notes": "Hobie switched to white after coloured hulls faded.",
+          "confidence": "medium"
+        },
+        {
+          "id": "vintage_yellow",
+          "weight": 0.12,
+          "hull_hex": "#F2C230",
+          "deck_hex": "#F2C230",
+          "tramp_hex": "#1C1C1E",
+          "frame_hex": "#BFC3C6",
+          "stripes": [],
+          "notes": "1980s yellow hulls.",
+          "confidence": "medium"
+        },
+        {
+          "id": "vintage_light_blue",
+          "weight": 0.1,
+          "hull_hex": "#7FB3D9",
+          "deck_hex": "#7FB3D9",
+          "tramp_hex": "#1C1C1E",
+          "frame_hex": "#BFC3C6",
+          "stripes": [],
+          "notes": "1980s blue hulls.",
+          "confidence": "medium"
+        },
+        {
+          "id": "vintage_lime",
+          "weight": 0.03,
+          "hull_hex": "#A6C83A",
+          "deck_hex": "#A6C83A",
+          "tramp_hex": "#1C1C1E",
+          "frame_hex": "#BFC3C6",
+          "stripes": [],
+          "notes": "Rare lime green hulls.",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": true,
+        "format": "{n}",
+        "number_range": [
+          1,
+          120000
+        ],
+        "max_digits": 6,
+        "height_mm": 254,
+        "spacing_mm": 50,
+        "font": "sans-serif",
+        "colour_hex": "#111111",
+        "placement": {
+          "main": "each side of the main, upper third between battens, starboard uppermost"
+        },
+        "insignia": {
+          "main": "Hobie logo near head",
+          "probability": 1.0
+        },
+        "sources": [
+          "https://hobieclass.com/ihca-class-rules-updated/"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "Dacron 6 oz, dyed coloured panels",
+          "weight_oz_typical": 6,
+          "colours": [
+            {
+              "hex": "stripes:#C6D92E,#F6F6F4,#8A8F94",
+              "weight": 0.15,
+              "name": "Cayman (2017)"
+            },
+            {
+              "hex": "stripes:#F07A1E,#2BB3C0,#F6F6F4",
+              "weight": 0.15,
+              "name": "Tortola (2017)"
+            },
+            {
+              "hex": "stripes:#1E3A78,#2BB3C0,#F6F6F4",
+              "weight": 0.2,
+              "name": "Zephyr-style blues (popular; exact colours unconfirmed)"
+            },
+            {
+              "hex": "stripes:#6B3FA0,#1E3A78,#2E9C6A",
+              "weight": 0.15,
+              "name": "1990s blues/purples/greens"
+            },
+            {
+              "hex": "stripes:#E6332A,#F28C28,#F7D23A",
+              "weight": 0.15,
+              "name": "Tequila Sunrise-style (vintage)"
+            },
+            {
+              "hex": "#F6F6F4",
+              "weight": 0.2,
+              "name": "White (race)"
+            }
+          ],
+          "panel_layout": "crosscut horizontal panels; colour bands follow panel seams, often diagonal sweep on modern schemes",
+          "battens": {
+            "count": 8,
+            "type": "full-length fibreglass, longest ~2.7 m"
+          },
+          "windows": [
+            {
+              "pos": "low luff window",
+              "probability": 0.7
+            }
+          ],
+          "sources": [
+            "https://murrays.com/collections/hobie-16-sail-parts",
+            "https://www.sailingscuttlebutt.com/2015/10/19/the-power-of-color/",
+            "https://www.hobie.com/blog/post/260/A-Trip-to-the-Caribbean-Introducing-Hobiee28099s-New-Sail-Colors"
+          ]
+        },
+        {
+          "sail": "jib",
+          "cloth": "Dacron 6 oz",
+          "colours": [
+            {
+              "hex": "match main scheme",
+              "weight": 1.0
+            }
+          ],
+          "panel_layout": "crosscut",
+          "battens": {
+            "count": 4,
+            "lengths_in": [
+              30,
+              44,
+              58,
+              67
+            ]
+          },
+          "sources": [
+            "https://murrays.com/collections/hobie-16-sail-parts"
+          ]
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "club": 0.8,
+          "race": 0.2
+        },
+        "zones": [
+          {
+            "id": "keel_strip_wear",
+            "zone": "hull keel line, full length, strongest aft third",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.6,
+                1.0
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": "#B9B2A0",
+            "notes": "Gelcoat worn through, flat then concave; repaired keels show translucent glass strips.",
+            "source": "https://www.hobie.com/au/en/forums/viewtopic.php?p=35039"
+          },
+          {
+            "id": "hull_bottom_gouges",
+            "zone": "hull bottoms, bows",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#CFC9BA",
+            "notes": "Sand abrasion from beaching.",
+            "source": "https://thebeachcats.com/forums/general-sailing-forum/hobie-hull-wear-prevention/"
+          },
+          {
+            "id": "coloured_hull_fade",
+            "zone": "coloured gelcoat topsides",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.5,
+                0.9
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": null,
+            "notes": "Why Hobie went to white hulls.",
+            "source": "https://www.hobie.com/au/en/forums/viewtopic.php?p=5861"
+          },
+          {
+            "id": "sail_fade",
+            "zone": "coloured sail panels",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": null,
+            "notes": "Red/orange fade most.",
+            "source": "https://forums.ybw.com/threads/why-blue.571766"
+          },
+          {
+            "id": "tramp_uv_fade",
+            "zone": "trampoline mesh",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.4,
+                0.8
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#4A4D52",
+            "notes": "Black tramp greys.",
+            "source": null
+          },
+          {
+            "id": "frame_oxidation",
+            "zone": "aluminium beams and castings",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.3,
+                0.7
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#A9ADB0",
+            "notes": "",
+            "source": null
+          }
+        ]
+      },
+      "research_notes": "Hull colour history: 12 gelcoat colours in the 60s-70s (H14), cut to white/blue/yellow in the 80s, now white."
+    },
+    {
+      "id": "corsair880",
+      "name": "Corsair 880",
+      "kind": "folding trimaran",
+      "dimensions": {
+        "loa_m": 8.8,
+        "beam_m": 6.8,
+        "beam_folded_m": 2.5,
+        "draft_m": {
+          "boards_up": 0.45,
+          "boards_down": 1.6
+        },
+        "unladen_weight_kg": 1660,
+        "mast_length_m": {
+          "standard": 12.0,
+          "sport": 13.5
+        },
+        "sail_area_m2": {
+          "upwind_standard": 51.5,
+          "upwind_sport": 62.9
+        },
+        "sources": [
+          "https://corsairmarine.com/corsair-880/specifications/",
+          "https://corsairmarine.com/corsair-880/sport-specifications/",
+          "https://sailboat.guide/payb63"
+        ],
+        "notes": "Builder page: 28'8\" / 8.8 m LOA, 22'3\" / 6.8 m beam deployed, 8'2\" / 2.5 m folded. Sport page gives mast 13.8 and 13.5 m in different places; listings say ~45 ft. sailboatdata gives LOA 28.87 ft. First built 2019."
+      },
+      "colour_schemes": [
+        {
+          "id": "white_standard",
+          "weight": 0.85,
+          "hull_hex": "#F5F5F2",
+          "deck_hex": "#F5F5F2",
+          "cabintop_hex": "#C9CBCB",
+          "nonskid_hex": "#C9CBCB",
+          "spar_hex": "#F2F2F0",
+          "stripes": [
+            {
+              "zone": "main hull sheer graphic 'CORSAIR'",
+              "hex": "#2A2F35",
+              "probability": 0.5
+            }
+          ],
+          "notes": "White gelcoat, light grey cabintop finish; standard mast painted white.",
+          "confidence": "medium"
+        },
+        {
+          "id": "white_sport_carbon",
+          "weight": 0.15,
+          "hull_hex": "#F5F5F2",
+          "deck_hex": "#F5F5F2",
+          "cabintop_hex": "#C9CBCB",
+          "nonskid_hex": "#C9CBCB",
+          "spar_hex": "#1A1A1A",
+          "stripes": [],
+          "notes": "Sport: carbon rotating wing mast, clear-coat carbon boom and sprit.",
+          "confidence": "medium"
+        }
+      ],
+      "sail_number": {
+        "required": false,
+        "probability": 0.4,
+        "format": "{n}",
+        "number_range": [
+          1,
+          200
+        ],
+        "height_mm": 375,
+        "spacing_mm": 75,
+        "font": "sans-serif",
+        "colour_hex": "#111111",
+        "alt_colours": [
+          {
+            "hex": "#F6F6F4",
+            "weight": 0.5,
+            "when": "black laminate main"
+          }
+        ],
+        "placement": {
+          "main": "RRS G1.3",
+          "spinnaker": "front side, 0.4-0.6 foot median"
+        },
+        "insignia": {
+          "main": "Corsair logo near head",
+          "probability": 0.6
+        },
+        "sources": [
+          "https://www.racingrulesofsailing.org/rules?part_id=81"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "variants": [
+            {
+              "id": "standard",
+              "weight": 0.6,
+              "cloth": "fully battened Dacron",
+              "colours": [
+                {
+                  "hex": "#F4F1E8",
+                  "weight": 1.0
+                }
+              ],
+              "panel_layout": "crosscut"
+            },
+            {
+              "id": "sport",
+              "weight": 0.4,
+              "cloth": "black aramid laminate (e.g. Doyle)",
+              "colours": [
+                {
+                  "hex": "#1E1E1F",
+                  "weight": 1.0
+                }
+              ],
+              "panel_layout": "tri-radial laminate, visible yellow/gold aramid scrim grid at 10-15% contrast",
+              "scrim_hex": "#B79A3A"
+            }
+          ],
+          "battens": {
+            "count": 6,
+            "type": "full-length"
+          },
+          "head": "large roach / square-top on Sport",
+          "stowage": {
+            "type": "Mack Pack / lazy bag",
+            "colours": [
+              {
+                "hex": "#2A2F35",
+                "weight": 0.5
+              },
+              {
+                "hex": "#1E2A44",
+                "weight": 0.5
+              }
+            ]
+          },
+          "sources": [
+            "https://corsairmarine.com/corsair-880/specifications/",
+            "https://corsairmarine.com/corsair-880/sport-specifications/",
+            "https://multihullcompany.com/boat/corsair-880-sport-4195167"
+          ]
+        },
+        {
+          "sail": "jib",
+          "variants": [
+            {
+              "id": "standard",
+              "cloth": "hank-on Dacron",
+              "colours": [
+                {
+                  "hex": "#F4F1E8",
+                  "weight": 1.0
+                }
+              ]
+            },
+            {
+              "id": "sport",
+              "cloth": "aramid 110% self-tacking furling",
+              "colours": [
+                {
+                  "hex": "#1E1E1F",
+                  "weight": 1.0
+                }
+              ]
+            }
+          ],
+          "sources": [
+            "https://corsairmarine.com/corsair-880/sport-specifications/"
+          ]
+        },
+        {
+          "sail": "screecher",
+          "cloth": "laminate (e.g. Doyle black X-Tech) on furler",
+          "colours": [
+            {
+              "hex": "#1E1E1F",
+              "weight": 0.5
+            },
+            {
+              "hex": "#E9E6DA",
+              "weight": 0.5,
+              "name": "clear/grey film laminate"
+            }
+          ],
+          "sources": [
+            "https://www.multihullcompany.com/boat/corsair-880-sport-4257043"
+          ]
+        },
+        {
+          "sail": "asymmetric_spinnaker",
+          "cloth": "nylon",
+          "colours": [
+            {
+              "hex": "#C4212F",
+              "weight": 0.3
+            },
+            {
+              "hex": "#1E3A78",
+              "weight": 0.3
+            },
+            {
+              "hex": "#F07A1E",
+              "weight": 0.2
+            },
+            {
+              "hex": "multi",
+              "weight": 0.2
+            }
+          ],
+          "panel_layout": "tri-radial",
+          "sources": [
+            "(colours unsourced)"
+          ]
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "club": 0.5,
+          "race": 0.5
+        },
+        "zones": [
+          {
+            "id": "float_bottom_scuffs",
+            "zone": "float and main hull bottoms near trailer bunks",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.2
+              ]
+            },
+            "colour_hex": "#CFC9BA",
+            "notes": "Trailer-launched.",
+            "source": null
+          },
+          {
+            "id": "beam_hinge_marks",
+            "zone": "around folding beam hinges and seals",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": "#7A7A72",
+            "notes": "Grime lines at the fold.",
+            "source": null
+          },
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.15
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          },
+          {
+            "id": "waterline_scum",
+            "zone": "topsides band 0-60 mm above DWL, strongest at bow",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#8A6E45",
+            "notes": "Brown 'mustache' from tannins and algae on lake boats; alpha 0.3-0.6 at full intensity.",
+            "source": "https://www.practical-sailor.com/waypoints-tips/how-to-safely-remove-the-dreaded-icw-mustache/"
+          },
+          {
+            "id": "nonskid_wear",
+            "zone": "cockpit and net edges",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.2,
+                0.5
+              ],
+              "race": [
+                0.1,
+                0.3
+              ]
+            },
+            "colour_hex": "#D6D8D8",
+            "notes": "",
+            "source": null
+          }
+        ]
+      },
+      "research_notes": "Newer design: lighter wear overall. Hull colour beyond white not sourced."
+    },
+    {
+      "id": "lagoon42",
+      "name": "Lagoon 42",
+      "kind": "cruising catamaran",
+      "dimensions": {
+        "loa_m": 13.22,
+        "hull_length_m": 12.79,
+        "beam_m": 7.68,
+        "draft_m": {
+          "fixed": 1.26
+        },
+        "air_draft_m": 20.6,
+        "light_displacement_kg": 12100,
+        "sail_area_m2": {
+          "main_high_roach": 55,
+          "main_square_top_opt": 59,
+          "self_tacking_jib": 35,
+          "code0_opt": 78
+        },
+        "sources": [
+          "https://www.catamarans-lagoon.com/boats/lagoon-42",
+          "https://catamarans-lagoon.com/boats/lagoon-42-millenium",
+          "https://www.yachtall.com/en/boat/lagoon-42-s233753?print=1",
+          "https://www.sailmagazine.com/boats/boat-review-lagoon-42"
+        ],
+        "notes": "Launched 2016. Builder: hull 12.79 m (42'), LOA 13.22 m with all options (bowsprit), beam 7.68 m, air draft 20.6 m. Older listings give 12.80 x 7.70 m, draft 1.25 m, clearance 20.65 m. Model the hulls at 12.79 m and add the sprit to reach 13.22 m. Do not use the Wikipedia 'Lagoon 42' page: it is a 1990-94 boat (12.95 x 6.91 m)."
+      },
+      "colour_schemes": [
+        {
+          "id": "white_charter",
+          "weight": 0.8,
+          "hull_hex": "#F7F7F5",
+          "deck_hex": "#F7F7F5",
+          "nonskid_hex": "#DADBD8",
+          "glazing_hex": "#1E2226",
+          "stripes": [
+            {
+              "zone": "hull window bands (long dark ports)",
+              "hex": "#1E2226"
+            },
+            {
+              "zone": "wrap-around saloon glazing",
+              "hex": "#1E2226"
+            },
+            {
+              "zone": "boot",
+              "hex": "#2A2F35",
+              "probability": 0.4
+            }
+          ],
+          "bottom_hex": "#2A3A5A",
+          "notes": "White hull confirmed in listings; dark bands visual (unsourced).",
+          "confidence": "medium"
+        },
+        {
+          "id": "white_grey_accent",
+          "weight": 0.2,
+          "hull_hex": "#F7F7F5",
+          "deck_hex": "#F7F7F5",
+          "nonskid_hex": "#DADBD8",
+          "glazing_hex": "#1E2226",
+          "stripes": [
+            {
+              "zone": "hull window bands",
+              "hex": "#1E2226"
+            },
+            {
+              "zone": "hull flank accent",
+              "hex": "#8A8F94"
+            }
+          ],
+          "bottom_hex": "#1A1A1A",
+          "notes": "Privately owned variant (unsourced).",
+          "confidence": "low"
+        }
+      ],
+      "sail_number": {
+        "required": false,
+        "probability": 0.05,
+        "height_mm": 450,
+        "spacing_mm": 90,
+        "font": "sans-serif",
+        "colour_hex": "#111111",
+        "insignia": {
+          "main": "Lagoon logo near head / on lazy bag",
+          "probability": 0.8
+        },
+        "charter_decals": {
+          "probability": 0.6,
+          "zone": "hull side aft and lazy bag",
+          "note": "Charter company name and boat name"
+        },
+        "sources": [
+          "https://www.racingrulesofsailing.org/rules?part_id=81"
+        ]
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "Dacron / Hydranet-style polyester (cloth unsourced)",
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 0.6
+            },
+            {
+              "hex": "#D8D6CE",
+              "weight": 0.4,
+              "name": "grey Hydranet"
+            }
+          ],
+          "panel_layout": "crosscut, high roach (square-top optional, by Incidence)",
+          "battens": {
+            "count": 6,
+            "type": "full-length"
+          },
+          "stowage": {
+            "type": "lazy bag with lazy jacks",
+            "colours": [
+              {
+                "hex": "#8A8F94",
+                "weight": 0.4
+              },
+              {
+                "hex": "#1E2A44",
+                "weight": 0.4
+              },
+              {
+                "hex": "#F2F0EA",
+                "weight": 0.2
+              }
+            ]
+          },
+          "sources": [
+            "https://www.sailmagazine.com/boats/boat-review-lagoon-42",
+            "https://www.catamarans-lagoon.com/boats/lagoon-42"
+          ]
+        },
+        {
+          "sail": "self_tacking_jib",
+          "cloth": "Dacron",
+          "colours": [
+            {
+              "hex": "#F4F1E8",
+              "weight": 1.0
+            }
+          ],
+          "panel_layout": "crosscut on furler, track forward of mast",
+          "uv_strip": {
+            "probability": 0.9,
+            "colours": [
+              {
+                "hex": "#8A8F94",
+                "weight": 0.5
+              },
+              {
+                "hex": "#1E2A44",
+                "weight": 0.5
+              }
+            ]
+          },
+          "sources": [
+            "https://www.sailmagazine.com/boats/boat-review-lagoon-42"
+          ]
+        },
+        {
+          "sail": "code0",
+          "cloth": "laminate/nylon on sprit",
+          "probability": 0.3,
+          "colours": [
+            {
+              "hex": "#2BB3A8",
+              "weight": 0.5,
+              "name": "aquamarine (review boat)"
+            },
+            {
+              "hex": "#F4F1E8",
+              "weight": 0.5
+            }
+          ],
+          "sources": [
+            "https://www.sailmagazine.com/boats/boat-review-lagoon-42"
+          ]
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "charter": 0.65,
+          "club": 0.15,
+          "race": 0.2
+        },
+        "zones": [
+          {
+            "id": "dock_rash_bows_quarters",
+            "zone": "hull bows, sugar scoops and topside quarters",
+            "kind": "scuff",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.15
+              ],
+              "charter": [
+                0.5,
+                0.9
+              ]
+            },
+            "colour_hex": "#BDB8AC",
+            "notes": "Charter docking.",
+            "source": "https://ca.boats.com/sailing-boats/2018-lagoon-42-10092793"
+          },
+          {
+            "id": "sugar_scoop_wear",
+            "zone": "transom steps",
+            "kind": "abrasion",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.2
+              ],
+              "charter": [
+                0.6,
+                1.0
+              ]
+            },
+            "colour_hex": "#D6D1C4",
+            "notes": "Foot traffic and dinghy boarding.",
+            "source": null
+          },
+          {
+            "id": "gelcoat_chalking",
+            "zone": "topsides and deck, strongest on sun-facing horizontal surfaces",
+            "kind": "oxidation",
+            "intensity": {
+              "club": [
+                0.2,
+                0.5
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#E6E1D3",
+            "notes": "Desaturates and roughens gelcoat; raise roughness 0.35->0.7 and lerp albedo toward colour_hex. Texas sun makes club boats heavy.",
+            "source": "https://www.sailboatlistings.com/view/108081"
+          },
+          {
+            "id": "waterline_scum",
+            "zone": "topsides band 0-60 mm above DWL, strongest at bow",
+            "kind": "stain",
+            "intensity": {
+              "club": [
+                0.2,
+                0.5
+              ],
+              "race": [
+                0.0,
+                0.1
+              ]
+            },
+            "colour_hex": "#8A6E45",
+            "notes": "Brown 'mustache' from tannins and algae on lake boats; alpha 0.3-0.6 at full intensity.",
+            "source": "https://www.practical-sailor.com/waypoints-tips/how-to-safely-remove-the-dreaded-icw-mustache/"
+          },
+          {
+            "id": "stainless_tea_staining",
+            "zone": "below stanchions, cleats and davits",
+            "kind": "rust",
+            "intensity": {
+              "club": [
+                0.2,
+                0.5
+              ],
+              "race": [
+                0.0,
+                0.1
+              ],
+              "charter": [
+                0.3,
+                0.6
+              ]
+            },
+            "colour_hex": "#9A6A3A",
+            "notes": "Light tea staining in salt air (Galveston).",
+            "source": null
+          },
+          {
+            "id": "lazy_bag_fade",
+            "zone": "lazy bag canvas",
+            "kind": "fade",
+            "intensity": {
+              "club": [
+                0.3,
+                0.6
+              ],
+              "race": [
+                0.0,
+                0.2
+              ],
+              "charter": [
+                0.5,
+                0.9
+              ]
+            },
+            "colour_hex": null,
+            "notes": "",
+            "source": null
+          }
+        ]
+      },
+      "research_notes": "Lives at Galveston in the sim; salt-air wear profile rather than lake."
+    }
+  ]
+}

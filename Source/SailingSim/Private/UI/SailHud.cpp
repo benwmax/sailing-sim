@@ -259,7 +259,7 @@ void SSailHud::Construct(const FArguments& A)
 	Player = A._Player;
 	RegisterInputTracker();
 	const SailCatalog::FWorld& W = SailCatalog::World(USailingSettings::Get()->World);
-	UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *W.MapTexture, nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UTexture2D* Tex = SailUI::KeptTexture(W.MapTexture);
 	MapBrush = MakeShared<FSlateBrush>();
 	if (Tex) { MapBrush->SetResourceObject(Tex); MapBrush->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
 	auto Full = [](){ return Mode == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; };

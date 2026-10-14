@@ -83,6 +83,9 @@ public:
 	bool bHasActive = false;
 	/** The player confirmed "Start sailing" (or the session needs no loading screen). */
 	bool bStarted = false;
+	/** Graphics G4: -SailingUIScript keys still to play (they carry over the reload a cast off makes). */
+	TArray<FString> UIScript;
+	bool bUIScriptRead = false;
 
 	/** Starts a session: saves it for Continue, applies the settings it overrides, and reloads the map. */
 	void StartSession(const FSailSessionConfig& Config, UObject* WorldContext);

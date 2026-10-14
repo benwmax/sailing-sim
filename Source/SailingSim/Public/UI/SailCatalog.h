@@ -38,15 +38,15 @@ namespace SailCatalog
 		float ReefKn = 18.f, ComfortKn = 12.f;   // the "what to expect" bands
 	};
 
-	const TArray<FWorld>& Worlds();
-	const FWorld& World(int32 Index);
-	const TArray<FBoat>& Boats();
-	const FBoat& Boat(int32 Type);
-	FString FeetInches(double Meters);
+	SAILINGSIM_API const TArray<FWorld>& Worlds();
+	SAILINGSIM_API const FWorld& World(int32 Index);
+	SAILINGSIM_API const TArray<FBoat>& Boats();
+	SAILINGSIM_API const FBoat& Boat(int32 Type);
+	SAILINGSIM_API FString FeetInches(double Meters);
 	/** "What to expect" for the conditions panel (ui-spec.md 5.5). */
-	FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 World);
+	SAILINGSIM_API FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 World);
 	/** Sunset (local clock hour) for a date at a world's latitude. */
-	float SunsetHour(int32 Month, int32 Day, int32 World);
-	FString ClockText(float Hour);
-	FString MonthName(int32 Month);
+	SAILINGSIM_API float SunsetHour(int32 Month, int32 Day, int32 World);
+	SAILINGSIM_API FString ClockText(float Hour);
+	SAILINGSIM_API FString MonthName(int32 Month);
 }

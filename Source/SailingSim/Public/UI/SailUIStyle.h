@@ -28,6 +28,10 @@ namespace SailUI
 	const FSlateBrush* Rounded(const FLinearColor& Fill, float Radius, const FLinearColor& Outline = FLinearColor::Transparent, float OutlineWidth = 0.f);
 	const FSlateBrush* White();
 
+	/** A UI texture by path, kept referenced for the garbage collector (a Slate brush alone does not hold its texture: a
+	 *  level reload collected the minimap's map under the HUD). Null if missing. */
+	class UTexture2D* KeptTexture(const FString& Path);
+
 	// Measures (3.3).
 	constexpr float SafeX = 64.f, SafeTop = 50.f, HudMargin = 30.f, RadiusButton = 5.f, RadiusCard = 7.f;
 
@@ -35,5 +39,8 @@ namespace SailUI
 	bool IsLow();
 	/** The player last used a gamepad (glyphs follow the device). */
 	bool UsingGamepad();
+	/** The mouse moved more recently than a key or the pad was used: only then does hovering move focus (a screen that
+	 *  opens under a still cursor keeps its default focus). */
+	bool MouseIsActive();
 	void RegisterInputTracker();
 }

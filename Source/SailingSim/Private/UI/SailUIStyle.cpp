@@ -6,6 +6,8 @@
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/Paths.h"
+#include "Engine/Texture2D.h"
+#include "UObject/GCObject.h"
 
 namespace SailUI
 {
@@ -108,6 +110,26 @@ namespace SailUI
 		return &B;
 	}
 
+	namespace
+	{
+		class FKeptTextures : public FGCObject
+		{
+		public:
+			TMap<FString, TObjectPtr<UTexture2D>> Textures;
+			virtual void AddReferencedObjects(FReferenceCollector& Collector) override { Collector.AddReferencedObjects(Textures); }
+			virtual FString GetReferencerName() const override { return TEXT("SailUI textures"); }
+		};
+	}
+
+	UTexture2D* KeptTexture(const FString& Path)
+	{
+		static FKeptTextures Kept;
+		if (TObjectPtr<UTexture2D>* Found = Kept.Textures.Find(Path); Found && *Found) return *Found;
+		UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (Tex) Kept.Textures.Add(Path, Tex);
+		return Tex;
+	}
+
 	bool IsLow()
 	{
 		return USailingSettings::Get()->Quality == ESailingQuality::Low;
@@ -116,15 +138,17 @@ namespace SailUI
 	namespace
 	{
 		bool GGamepad = false;
+		bool GMouseActive = false;   // the mouse was used more recently than the keys or the pad
 
 		class FDeviceTracker : public IInputProcessor
 		{
 		public:
 			virtual void Tick(const float, FSlateApplication&, TSharedRef<ICursor>) override {}
-			virtual bool HandleKeyDownEvent(FSlateApplication&, const FKeyEvent& E) override { GGamepad = E.GetKey().IsGamepadKey(); return false; }
+			virtual bool HandleKeyDownEvent(FSlateApplication&, const FKeyEvent& E) override { GGamepad = E.GetKey().IsGamepadKey(); GMouseActive = false; return false; }
+			virtual bool HandleMouseMoveEvent(FSlateApplication&, const FPointerEvent& E) override { if (E.GetCursorDelta().SizeSquared() > 4.f) GMouseActive = true; return false; }
 			virtual bool HandleAnalogInputEvent(FSlateApplication&, const FAnalogInputEvent& E) override
 			{
-				if (FMath::Abs(E.GetAnalogValue()) > 0.5f) GGamepad = true;
+				if (FMath::Abs(E.GetAnalogValue()) > 0.5f) { GGamepad = true; GMouseActive = false; }
 				return false;
 			}
 			virtual bool HandleMouseButtonDownEvent(FSlateApplication&, const FPointerEvent&) override { GGamepad = false; return false; }
@@ -133,6 +157,7 @@ namespace SailUI
 	}
 
 	bool UsingGamepad() { return GGamepad; }
+	bool MouseIsActive() { return GMouseActive; }
 
 	void RegisterInputTracker()
 	{

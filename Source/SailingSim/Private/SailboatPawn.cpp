@@ -951,6 +951,13 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		Ctx.bBackJib = Controls.bBackJib;
 		Ctx.MaxContactSpeed = MaxContactKnots;
 		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
+		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
+		if (DrillRunner.IsComplete() && !bTrafficBoat)
+		{
+			USailSessionSave* Save = USailSessionSave::Get();
+			const int32 Index = int32(DrillRunner.GetDrill()) - 1;
+			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); Save->SaveConfig(); }
+		}
 	}
 	UpdateDrillVisuals();
 
@@ -2864,7 +2871,8 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
 				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
 				// Graphics G3: the shorts in scanned cotton twill (M_CrewFabric), where it has been built.
-				static UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+				// Loaded each time (not cached in a static: a level reload collects it and the pointer would dangle).
+				UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 				if (!bShirt && ShortsCloth)
 				{
 					UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShortsCloth, this);

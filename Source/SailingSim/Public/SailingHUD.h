@@ -21,6 +21,7 @@ class SAILINGSIM_API ASailingHUD : public AHUD
 	GENERATED_BODY()
 
 public:
+	ASailingHUD();
 	virtual void DrawHUD() override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
@@ -63,4 +64,7 @@ private:
 	TSharedPtr<class SWidget> ShownWidget;
 	TSharedPtr<class SSailHud> SlateHud;   // the in-game HUD (Graphics G4): replaces the canvas instruments
 	bool bPausedByMenu = false;
+	/** -SailingUIScript=Enter,Down,Wait,... : keys sent to the menus every 0.6 s (the front end's end-to-end check). */
+	virtual void Tick(float DeltaSeconds) override;
+	double NextScriptKey = 0.0;
 };
