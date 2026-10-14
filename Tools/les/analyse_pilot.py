@@ -1,7 +1,7 @@
 """Water W6 LES pilot: what the near-surface wind of the North Texas afternoon CBL (ntxcbl) says about the game's wind
 field (FWindField: GustIntensity, GustLengthMeters, ShiftDegrees, ShiftPeriodSeconds). Reads MicroHH's xy
 cross-sections (12.5, 62.5 and 212.5 m, every 60 s) over the saved last hour and the statistics file.
-Writes docs/water-6/les-pilot.json (the numbers) and the figures docs/water-6/speed-12m.png, w-212m.png,
+Writes docs/water-6/les-pilot.json (the numbers) and the figures docs/water-6/speed-12m.png, w-225m.png,
 spectrum.png. Usage (WSL): python3 Tools/les/analyse_pilot.py [work dir, default /root/les-runs/ntxcbl]"""
 import glob
 import json
@@ -17,13 +17,17 @@ DX = L / N
 KN = 0.514444
 
 
+STAGGER = {"u": "100", "v": "010", "w": "001", "th": "000"}   # MicroHH names cross-sections <var>.xy.<stagger>.<k>.<time>
+
+
 def read(work, var, k, t):
-    f = os.path.join(work, f"{var}.xy.001.{k:05d}.{t:07d}")
+    """A level of an xy cross-section: k is the cell index for u, v and th (0 = 12.5 m), the face index for w (9 = 225 m)."""
+    f = os.path.join(work, f"{var}.xy.{STAGGER[var]}.{k:05d}.{t:07d}")
     return np.fromfile(f, dtype="<f8").reshape(N, N) if os.path.exists(f) else None
 
 
 def times(work):
-    return sorted({int(p.rsplit(".", 1)[1]) for p in glob.glob(os.path.join(work, "u.xy.001.00001.*"))})
+    return sorted({int(p.rsplit(".", 1)[1]) for p in glob.glob(os.path.join(work, "u.xy.100.00000.*"))})
 
 
 def corr_length(a):
@@ -48,7 +52,7 @@ def main(work):
     out = {"times_s": [ts[0], ts[-1]], "frames": len(ts)}
     spd, dirn, gust_local, lens, lens_w = [], [], [], [], []
     for t in ts:
-        u, v = read(work, "u", 1, t), read(work, "v", 1, t)
+        u, v = read(work, "u", 0, t), read(work, "v", 0, t)
         s = np.hypot(u, v)
         spd.append(s)
         dirn.append((np.degrees(np.arctan2(-u, -v)) + 360) % 360)   # from which the wind blows
@@ -66,7 +70,7 @@ def main(work):
     dd = (dirn - dirn.mean(axis=0) + 180) % 360 - 180
     out["direction_std_deg_point"] = float(np.mean(dd.std(axis=0)))
     out["speed_corr_length_m"] = float(np.nanmedian(lens))
-    out["w212_corr_length_m"] = float(np.nanmedian(lens_w)) if lens_w else None
+    out["w225_corr_length_m"] = float(np.nanmedian(lens_w)) if lens_w else None
     # The period of the shifts at a point: the first zero crossing of the direction's autocorrelation in time.
     if len(ts) > 8:
         x = dd.reshape(len(ts), -1)
@@ -101,7 +105,7 @@ def figures(work, t, s):
     ext = [0, L / 1000, 0, L / 1000]
     fig, ax = plt.subplots(figsize=(6.5, 5.5), dpi=110)
     im = ax.imshow(s / KN, origin="lower", extent=ext, cmap="viridis")
-    ax.set_title(f"Wind speed at 12.5 m, t = {t / 3600:.2f} h (kn)\nmean 13 kn from the south, 250 W/m2")
+    ax.set_title(f"Wind speed at 12.5 m, t = {t / 3600:.2f} h (kn)\n13 kn geostrophic from the south, 250 W/m2")
     ax.set_xlabel("east (km)")
     ax.set_ylabel("north (km)")
     fig.colorbar(im, ax=ax, shrink=0.8)
@@ -112,12 +116,12 @@ def figures(work, t, s):
     if w is not None:
         fig, ax = plt.subplots(figsize=(6.5, 5.5), dpi=110)
         im = ax.imshow(w, origin="lower", extent=ext, cmap="RdBu_r", vmin=-3, vmax=3)
-        ax.set_title(f"Vertical wind at 212.5 m, t = {t / 3600:.2f} h (m/s): thermals and their sinking lanes")
+        ax.set_title(f"Vertical wind at 225 m, t = {t / 3600:.2f} h (m/s): thermals and their sinking lanes")
         ax.set_xlabel("east (km)")
         ax.set_ylabel("north (km)")
         fig.colorbar(im, ax=ax, shrink=0.8)
         fig.tight_layout()
-        fig.savefig(os.path.join(DOCS, "w-212m.png"))
+        fig.savefig(os.path.join(DOCS, "w-225m.png"))
         plt.close(fig)
     # The 1-D spectrum of the speed along the mean wind (north), averaged over columns.
     a = s - s.mean(axis=0)

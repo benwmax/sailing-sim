@@ -1,0 +1,16 @@
+{
+ "times_s": [
+  7200,
+  10800
+ ],
+ "frames": 61,
+ "speed_12m_mean_kn": 8.952416130888114,
+ "gust_intensity_spatial": 0.29535992225270014,
+ "gust_intensity_point": 0.29240820778129006,
+ "gust_factor_p99_point": 1.642968940116237,
+ "direction_std_deg_point": 19.194494333302764,
+ "speed_corr_length_m": 300.0,
+ "w225_corr_length_m": 200.0,
+ "shift_period_s": 1920.0,
+ "mixed_layer_m": 1912.5
+}
