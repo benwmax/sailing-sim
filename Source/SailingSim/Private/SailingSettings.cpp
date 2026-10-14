@@ -3,6 +3,15 @@
 #include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
 
+USailingSettings::USailingSettings()
+{
+#if PLATFORM_WINDOWS && !WITH_EDITOR
+	// The packaged PC game starts on Ultra, the desktop tier (Bean's RTX 4090); a choice saved in GameUserSettings.ini
+	// still wins. The editor (and so the tests) keeps Medium, as on the Mac.
+	Quality = ESailingQuality::Ultra;
+#endif
+}
+
 bool USailingSettings::IsMeasuring()
 {
 	static const bool bMeasuring = FCString::Strifind(FCommandLine::Get(), TEXT("SailingBench=")) != nullptr;

@@ -4,6 +4,8 @@
 #include "VisualPipeline.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
+#include "Misc/Paths.h"
+#include "HAL/FileManager.h"
 #include "BoatModel.h"
 #include "AutoTrim.h"
 #include "SailCloth.h"
@@ -586,6 +588,13 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		{ TEXT("pelvis"), TEXT("neck"), TEXT("pelvis"), TEXT("neck_01"), 20.f },
 	};
 	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting };
+	// The crew is git-ignored and optional on a fresh checkout (the PC without the Mac's zip): the game falls back to
+	// SK_Sailor, so only check it where it is installed.
+	if (!IFileManager::Get().DirectoryExists(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Crew/MetaHumans"))))
+	{
+		AddWarning(TEXT("Content/Crew/MetaHumans is not installed (scripts/make-metahumans.sh, or the zip on Windows); skipped"));
+		return true;
+	}
 	for (int32 Role = 0; Role < NumMetaHumanRoles; ++Role)
 	{
 		USkeletalMesh *Body = nullptr, *Face = nullptr, *Outfit = nullptr;

@@ -101,6 +101,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Rerun it after changing `WorldKit.cpp`, `MarinaActor::BuildGeometry` or `<Lake>.marina.json`; without a bake a tile
    falls back to a procedural mesh (fine on Medium, overflows VSM marking on High). Run `scripts/make-content.sh` first.
 
+19. Windows (Bean's RTX 4090 PC; build, tests, package and Ultra bench run Oct 14 2026): `build-windows.bat` runs `scripts/windows/all.ps1` (checks, `git lfs pull`,
+   MetaHuman zip, build, tests, package, warm-up and an Ultra bench). Single steps `scripts/windows/build.ps1`, `test.ps1`,
+   `package-win.ps1` (to `Packaged/Windows/`), `bench-win.ps1`, `bench-visual-win.ps1` (keep its views in step with
+   `bench-visual.sh`). `scripts/pack-metahumans.sh` zips the git-ignored crew on the Mac for the PC. Setup and what is
+   untested: `docs/windows/README.md`. Keep new code MSVC-clean too, and run batch files through `cmd /s /c` (see
+   `Invoke-Tool` in `scripts/windows/env.ps1`).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -236,8 +243,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   layers tinted). CSV args with commas must be quoted.
 - Ultra tier (Graphics G1): `ESailingQuality::Ultra`, for a desktop GPU (Bean's RTX 4090): everything High has plus Epic
   scalability, TSR at native, half-resolution clouds with the most samples, no resolution governor. The Mac gates stay
-  Medium 60 and High 45; Ultra is only checked to run on the Mac. Windows: package with `RunUAT BuildCookRun -platform=Win64`
-  (not scripted yet).
+  Medium 60 and High 45; Ultra is only checked to run on the Mac, and the packaged Windows game starts on it
+  (`USailingSettings` constructor).
 - Boats and crew (Graphics G3): liveries come from `Inputs/g3/boat-catalogue.json` through `Tools/fleet/make_liveries.py`
   (generates `BoatLiveryData.inl`; edit the catalogue or the script, not the .inl). `SampleBoatLivery(type, seed)`: seed 0
   is the player's boat (commonest scheme, club wear, number 1288); AI boats seed from their unique id, marina neighbours

@@ -54,6 +54,8 @@ class SAILINGSIM_API USailingSettings : public UObject
 	GENERATED_BODY()
 
 public:
+	USailingSettings();
+
 	/** Learning mode shows wind arrows, point-of-sail names and trim tips. Game mode hides them. */
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	bool bLearningMode = true;
