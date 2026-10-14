@@ -506,6 +506,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 
 	// Crew (Visual V3): posed sailors in foul-weather jackets of their own colours (CrewPose.h).
 	CrewFigures.Reset();
+	CrewGrooms.Reset();
 	static const FLinearColor Jackets[] = { FLinearColor(0.45f, 0.03f, 0.03f), FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.55f, 0.42f, 0.02f), FLinearColor(0.12f, 0.13f, 0.14f) };
 	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
 	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
@@ -2062,6 +2063,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 
 	const FBoatConfig& Cfg = Boat.GetConfig();
 	UpdateCrewFigures(DeltaSeconds);
+	UpdateCrewGroomLOD();
 
 	if (ModelHull)
 	{
@@ -3043,6 +3045,21 @@ void ASailboatPawn::WriteCaptureSettings() const
 	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));
 }
 
+void ASailboatPawn::UpdateCrewGroomLOD()
+{
+	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (CrewGrooms.IsEmpty() || !PC || !PC->PlayerCameraManager) return;
+	const FVector Eye = PC->PlayerCameraManager->GetCameraLocation();
+	for (const TPair<TWeakObjectPtr<UGroomComponent>, int32>& G : CrewGrooms)
+	{
+		UGroomComponent* Hair = G.Key.Get();
+		if (!Hair) continue;
+		// Up close the groom picks its own LOD (strands or finer cards); from 6 m it stays on its last cards.
+		const int32 Want = FVector::Dist(Eye, Hair->Bounds.Origin) > 600.0 ? G.Value : -1;
+		if (Hair->GetForcedLOD() != Want) Hair->SetForcedLOD(Want);
+	}
+}
+
 bool ASailboatPawn::LoadMetaCrew()
 {
 	if (MetaCrewRigs.Num() == NumMetaHumanRoles) return true;
@@ -3126,8 +3143,12 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 					const TArray<FSkelMeshRenderSection>& Sections = Render->LODRenderData[L].RenderSections;
 					for (int32 S = 0; S < Sections.Num(); ++S)
 					{
-						const UMaterialInterface* Mat = Part->GetMaterial(Sections[S].MaterialIndex);
-						if (Mat && Mat->GetName().Contains(TEXT("Shirt"))) Part->ShowMaterialSection(Sections[S].MaterialIndex, S, false, L);
+						// Graphics G8: by the asset's own slot material (the component's is a dynamic instance by now, named
+						// MaterialInstanceDynamic_N, so a shirt recoloured above was never hidden).
+						const TArray<FSkeletalMaterial>& Slots = Part->GetSkeletalMeshAsset()->GetMaterials();
+						const int32 M = Sections[S].MaterialIndex;
+						const UMaterialInterface* Mat = Slots.IsValidIndex(M) ? Slots[M].MaterialInterface.Get() : nullptr;
+						if (Mat && Mat->GetName().Contains(TEXT("Shirt"))) Part->ShowMaterialSection(M, S, false, L);
 					}
 				}
 				USkeletalMeshComponent* Polo = NewObject<USkeletalMeshComponent>(this);
@@ -3191,6 +3212,18 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 			Hair->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Hair->RegisterComponent();
 			BoatParts.Add(Hair);
+			// Graphics G8: the coarsest LOD that has a card mesh and draws cards (the build made cards for LODs 1 and 3 only:
+			// LODs 2 and 4 draw nothing).
+			int32 CardsLOD = -1;
+			const TArray<FHairGroupsLOD>& Lods = G.Key->GetHairGroupsLOD();
+			for (const FHairGroupsCardsSourceDescription& Cards : G.Key->GetHairGroupsCards())
+			{
+				const int32 L = Cards.LODIndex;
+				if (!Cards.ImportedMesh || !Lods.IsValidIndex(Cards.GroupIndex) || !Lods[Cards.GroupIndex].LODs.IsValidIndex(L)) continue;
+				const FHairLODSettings& Set = Lods[Cards.GroupIndex].LODs[L];
+				if (Set.bVisible && Set.GeometryType == EGroomGeometryType::Cards) CardsLOD = FMath::Max(CardsLOD, L);
+			}
+			if (CardsLOD >= 0) CrewGrooms.Add({ Hair, CardsLOD });
 		}
 	}
 	// The life jacket over the shirt, the cap over the head, each scaled to this skeleton and carried by the

@@ -544,7 +544,29 @@ bool FVisualCrewPoseTest::RunTest(const FString& Parameters)
 	Out.Side = 1.f;
 	TestEqual(TEXT("On the starboard rail the crew face starboard (outboard)"), CrewFacingYaw(Out), 90.f);
 	Out.Stance = ECrewStance::DinghyHike;
-	TestEqual(TEXT("A dinghy sailor on the starboard side faces port (inboard)"), CrewFacingYaw(Out), -90.f);
+	TestEqual(TEXT("A dinghy sailor on the starboard side faces port (inboard, turned a little forward)"), CrewFacingYaw(Out), -75.f);
+
+	// Graphics G8: the hands. Reach brings the wrist to a point within the arm's reach (the tiller extension, a sheet);
+	// Knee rests it on top of that side's knee; the elbow keeps the stance's side.
+	FCrewPoseParams Seat;
+	Seat.Stance = ECrewStance::Cockpit;
+	TMap<FName, FQuat> Joints;
+	CrewJointRotations(Seat, Joints);
+	TMap<FName, FVector> Free, Held;
+	CrewPosedJoints(Mesh, Joints, Free);
+	FCrewHands Hands;
+	Hands.Mode[0] = FCrewHands::EMode::Reach;
+	Hands.Target[0] = Free[TEXT("upperarm_l")] + FVector(35.f, -10.f, -25.f);
+	Hands.Mode[1] = FCrewHands::EMode::Knee;
+	CrewPosedJoints(Mesh, Joints, Held, nullptr, &Hands);
+	TestTrue(FString::Printf(TEXT("Reach: the left wrist %.1f cm from its target"), FVector::Dist(Held[TEXT("hand_l")], Hands.Target[0])),
+		FVector::Dist(Held[TEXT("hand_l")], Hands.Target[0]) < 3.f);
+	TestTrue(TEXT("Reach: the shoulder stays put"), FVector::Dist(Held[TEXT("upperarm_l")], Free[TEXT("upperarm_l")]) < 0.5f);
+	TestTrue(TEXT("Reach: the arm keeps its bones' lengths"),
+		FMath::Abs(FVector::Dist(Held[TEXT("upperarm_l")], Held[TEXT("forearm_l")]) - FVector::Dist(Free[TEXT("upperarm_l")], Free[TEXT("forearm_l")])) < 0.5f);
+	const FVector Knee = Held[TEXT("calf_r")];
+	TestTrue(FString::Printf(TEXT("Knee: the right wrist %.0f cm from the knee, above it"), FVector::Dist(Held[TEXT("hand_r")], Knee)),
+		FVector::Dist(Held[TEXT("hand_r")], Knee) < 20.f && Held[TEXT("hand_r")].Z > Knee.Z);
 	return true;
 }
 
@@ -599,6 +621,32 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 				}
 			}
 		}
+		// Graphics G8: the grip closes the fingers toward the palm (each fingertip nearer the wrist), and Reach still lands.
+		TestTrue(FString::Printf(TEXT("%s: curl axes for the fingers"), MetaHumanRoleName(Role)), Rig.CurlAxis.Num() >= 24);
+		FCrewPoseParams P;
+		P.Stance = ECrewStance::Helm;
+		TMap<FName, FQuat> Joints;
+		CrewJointRotations(P, Joints);
+		TMap<FName, FVector> Open, Closed;
+		FCrewHands OpenHands, Fist;
+		OpenHands.Grip[0] = OpenHands.Grip[1] = 0.f;
+		Fist.Grip[0] = Fist.Grip[1] = 1.f;
+		CrewPosedJoints(Body, Joints, Open, &Rig, &OpenHands);
+		CrewPosedJoints(Body, Joints, Closed, &Rig, &Fist);
+		for (const TCHAR* Tip : { TEXT("index_03_l"), TEXT("middle_03_r"), TEXT("pinky_03_l") })
+		{
+			const FString Wrist = FString(Tip).EndsWith(TEXT("_l")) ? TEXT("hand_l") : TEXT("hand_r");
+			const float DOpen = FVector::Dist(Open[Tip], Open[*Wrist]), DClosed = FVector::Dist(Closed[Tip], Closed[*Wrist]);
+			TestTrue(FString::Printf(TEXT("%s: %s closes in a fist (%.1f -> %.1f cm from the wrist)"), MetaHumanRoleName(Role), Tip, DOpen, DClosed), DClosed < DOpen - 2.f);
+		}
+		FCrewHands Reach;
+		Reach.Mode[1] = FCrewHands::EMode::Reach;
+		Reach.Target[1] = Open[TEXT("upperarm_r")] + Rig.Frame.RotateVector(FVector(35.f, 5.f, -25.f));
+		TMap<FName, FVector> Held;
+		CrewPosedJoints(Body, Joints, Held, &Rig, &Reach);
+		const FVector Palm = Held[TEXT("hand_r")] + (Held[TEXT("middle_01_r")] - Held[TEXT("hand_r")]) * 0.75;
+		TestTrue(FString::Printf(TEXT("%s: the palm closes %.1f cm from the reach target"), MetaHumanRoleName(Role), FVector::Dist(Palm, Reach.Target[1])),
+			FVector::Dist(Palm, Reach.Target[1]) < 4.f);
 	}
 	return true;
 }
