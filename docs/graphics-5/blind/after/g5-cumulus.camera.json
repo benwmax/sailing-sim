@@ -13,12 +13,12 @@
   "clock_hour": 15.00,
   "sun_elevation_deg": 41.8,
   "sun_azimuth_deg": 217.4,
-  "true_wind_kn": 9.0,
+  "true_wind_kn": 9.1,
   "true_wind_from_deg": 182,
   "gust_intensity": 0.10,
   "boat": "J/22",
   "reef": 0,
   "spinnaker": false,
   "crew_kg": 240,
-  "seconds_into_capture": 18.6
+  "seconds_into_capture": 18.5
 }

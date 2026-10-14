@@ -1440,10 +1440,14 @@ float cirrus = 0.0;
     float a = dot(hit, wd), b = dot(hit, float2(-wd.y, wd.x));
     // Graphics G5: fibres from value noise stretched along the wind (four octaves, no fixed period). The sine streaks
     // before read as brush strokes in the blind test. The fine octaves fade with distance, where they would shimmer.
+    // Only where the map has cirrus (most of a sky has none), three octaves (a fourth faded out at distance anyway).
+    float fib = 0.0;
+    [branch] if (c > 0.005)
+    {
     float2 q = float2(a * 0.00012, b * 0.0011);
-    float fib = 0.0, amp = 0.5;
+    float amp = 0.5;
     float far = saturate(t / 40000.0);
-    [unroll] for (int o = 0; o < 4; o++)
+    [unroll] for (int o = 0; o < 3; o++)
     {
         float2 ci = floor(q), cf = frac(q);
         float2 u = cf * cf * (3.0 - 2.0 * cf);
@@ -1455,6 +1459,8 @@ float cirrus = 0.0;
         fib += amp * nv * (o < 2 ? 1.0 : 1.0 - far);
         q = float2(q.x * 2.03 + 3.1, q.y * 2.11 - 1.7);
         amp *= 0.5;
+    }
+    fib *= 1.071;   // the three octaves' sum to the four's range
     }
     float streak = saturate((fib - 0.32) * 2.2);
     streak *= streak;
