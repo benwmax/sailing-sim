@@ -246,6 +246,7 @@ private:
 	double CaptureElapsed = 0.0, CaptureSettingsWritten = -1.0;
 	bool bExposureFrozen = false;
 	bool bShoreStandSet = false;
+	bool bCaptureBearingResolved = false;
 	float HelmSide = 0.f;             // helm eye: -1 port .. +1 starboard, moving across after a tack
 	FVector ShoreStand = FVector::ZeroVector;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensDistortionMaterial;

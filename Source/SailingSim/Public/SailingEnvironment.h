@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Async/Future.h"
+#include "CloudSky.h"
 #include "SailingEnvironment.generated.h"
 
 class ADirectionalLight;
@@ -12,6 +14,9 @@ class UStaticMeshComponent;
 class UProceduralMeshComponent;
 class UMaterialInstanceDynamic;
 class UDirectionalLightComponent;
+class UMaterialInterface;
+class UTexture2D;
+class UPointLightComponent;
 
 /**
  * Turns the weather state into the sky: sun position for the time of day at Lake Ray Roberts (33.4 N),
@@ -60,6 +65,12 @@ private:
 	void UpdateRain(const FVector& CameraPos);
 	void UpdateLightning(float DeltaSeconds, const FVector& CameraPos);
 	void BuildBolt(const FVector& Ground, float CloudBaseCm);
+	/** Visual V5 (Medium and High): paints the weather map on a worker every couple of seconds and drives M_CloudLayers. */
+	void UpdateCloudLayers(const FVector& CameraPos);
+	/** Visual V5: the sky dome's sun disc, night sky, moon and cirrus. Directions are map-frame unit vectors. */
+	void UpdateSkyDome(const FVector& SunTrue, const FVector& MoonTrue, float MoonLuminance, float MoonLit, float Night, double UnixUtc);
+	/** Visual V5: height fog and volumetric fog from the visibility, the humidity haze and the water body. */
+	void UpdateHaze();
 
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> SkyLightActor;
@@ -67,6 +78,24 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AVolumetricCloud> Clouds;
 	UPROPERTY(Transient) TObjectPtr<class APostProcessVolume> PostProcess;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> CloudMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> CloudLayersMaterial;
+	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> SkyDome;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> SkyMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensWaterMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LensMaterial;
+	FVector LastCameraPos = FVector::ZeroVector;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> WeatherMapTexture;
+	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UPointLightComponent> BoltLight;
+	bool bLayeredClouds = false;
+	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
+	struct FWeatherMapFrame { Sailing::FWeatherMap Map; };
+	Sailing::FWeatherMap LastWeatherMap;
+	float SunVisibility = 1.f; // smoothed transmittance toward the sun through the clouds (layered clouds)
+	bool bHasWeatherMap = false;
+	TFuture<FWeatherMapFrame> PendingWeatherMap;
+	bool bWeatherMapPending = false;
+	double WeatherMapAge = 1e9;
+	FVector4f FlashParams = FVector4f(0.f, 0.f, 0.f, 0.f);
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainNear;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainFar;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainMaterial;

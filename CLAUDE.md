@@ -166,6 +166,19 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   spray (High) is CPU droplets in an ISM. The terrain doesn't mesh the bed deeper than the water lets you see
   (`ALakeTerrainActor::HideBelow`): drawn behind SLW it cost 6 fps on High in shading and shadow pages.
   Measuring args: `-SailingClassicWater`, `-SailingWaterRings=N`; bench.json has `water_cpu_ms`.
+- Sky (Visual V5): `FCloudSky` (`CloudSky.h`, in `FWeatherState::Sky`) holds the cloud layers per preset (cumulus,
+  stratus, cirrus, storm), haze and the wind aloft; `FWeatherMap` paints them (plus the storm's lateral extent) around the
+  camera in the clouds' drifting frame (world = field + Drift * T), on a worker every 2 s. `M_CloudLayers` (volumetric,
+  Medium and High) reads it; `FStormShape` (shelf, rain core, anvil, distances from `FGustFront::DistanceAhead`) is
+  mirrored in `make_materials.py` (`STORM`; `SailingSim.Visual.ShelfCloud`). The game mode keeps the front on the sim
+  clock (pass sim time, not weather time) and the storm's timeline now starts at the boat's launch spot. Cirrus and the
+  night sky are on `M_SkyDome` (an is-sky material: `SkyAtmosphereViewLuminance` plus the sun's limb-darkened disc,
+  stars and the Milky Way rotated by sidereal time, the moon's phase); the moon light's own disc is off. The scene's sun
+  follows `FWeatherMap::SunTransmittance` toward the sun; the clouds get the undimmed sun
+  (`CloudScatteredLuminanceScale`). Volumetric fog thickens fast: its extinction scale is 0.12–0.3. Lens water is a
+  post-process blendable on High outside the capture mode. Measuring: `-SailingClassicSky`, `-SailingCloudNoise=<path>`,
+  `-SailingCamWorld=<n>,<e>,<up>,<heading>,<pitch>` (capture mode), `-SailingCaptureAbsolute` (compass bearing for the
+  shore tripod).
 - Boat models: below the waterline the J/22 model is the physics hull surface itself (`FHullShape` at the computed canoe
   depth), so a hull shape change in the physics means rerunning `make-boat-models.sh`. `ASailboatPawn::ModelMeshesFor`
   picks a class's meshes (only the J/22 so far); the rig lines, traveler car, mast bend and wet line are in
