@@ -94,6 +94,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    (length, beam, draft, centre of buoyancy within 2 cm). The crew (`Tools/blender/build_crew.py`, `SK_Sailor`) is
    built and imported by the same script.
 
+18. World kit (Visual V6): `scripts/make-world-models.sh` runs the Blender generators (`Tools/blender/build_trees.py`,
+   `build_props.py` rocks and vehicles, `build_navaids.py`, `build_vessels.py`, `build_houses.py`, `build_landmarks.py`),
+   imports them to `/Game/World/<Kind>` (`scripts/import_world.py`, slots to `MI_World_*` / `M_*` by name) and bakes the
+   generated structures to Nanite tiles in `/Game/World/Baked` (`UWorldKitLibrary::BakeMarina/BakeBridges/BakeShore`).
+   Rerun it after changing `WorldKit.cpp`, `MarinaActor::BuildGeometry` or `<Lake>.marina.json`; without a bake a tile
+   falls back to a procedural mesh (fine on Medium, overflows VSM marking on High). Run `scripts/make-content.sh` first.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -185,6 +192,17 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `BoatModelVisuals.cpp`. `MI_Boat_*` instances are updated in place, never deleted (the meshes reference them).
   `line` is a reserved word in HLSL custom nodes; Substrate's slab wants a tangent-space normal (the meshes carry
   box-projected UVs for their tangent frame).
+- World (Visual V6): `FMarina` (`Marina.h`, `Content/TerrainData/RayHubbard.marina.json`: rows, slips, fingers, piers,
+  breakwater, clubhouse; the home slip) is both physics obstacles and `AMarinaActor`; OSM docks and buildings inside it
+  are dropped. `WorldKit.h`: generators write quads per look (`EKitLook`, which must match `WORLD_LIBRARY` in
+  make_materials.py) plus light fixtures. `ABridgesActor` (bridges, shore riprap, a lake's piers, bridge traffic),
+  `ALandmarksActor`, `ANightLightsActor` (pooled point lights; MegaLights on High via `r.MegaLights.EnableForProject`),
+  house archetypes in `ALakeTerrainActor::PlaceHouseModels`. On a coast these follow the tide offset in 2 cm steps.
+  Earth curvature: terrain and water materials offset by d^2/2R (R = 7/6 earth radius); trees and landmarks are placed
+  with `CurvatureDrop`. Gotchas: `ObjectPositionWS` on instances is the bounds centre, not the pivot; `VertexNormalWS`
+  was not world space on Nanite instances in a Custom node (use position derivatives); runtime-built components must be
+  Static (or ShadowCacheInvalidationBehavior::Static) or VSM re-marks them every frame; the editor's Python crashes at
+  shutdown after big bakes, so `import_world.py` ends with `os._exit(0)`; zsh does not word-split `$VAR` args.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

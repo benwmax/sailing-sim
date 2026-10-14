@@ -82,12 +82,16 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> SkyDome;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> SkyMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensWaterMaterial;
+	UPROPERTY(Transient) TObjectPtr<class UMaterialParameterCollection> WorldCollection; // MPC_World (Visual V6: the wind)
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LensMaterial;
 	FVector LastCameraPos = FVector::ZeroVector;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WeatherMapTexture;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UPointLightComponent> BoltLight;
 	bool bLayeredClouds = false;
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
+public:
+	float GetNightAmount() const { return NightAmount; }
+private:
 	struct FWeatherMapFrame { Sailing::FWeatherMap Map; };
 	Sailing::FWeatherMap LastWeatherMap;
 	float SunVisibility = 1.f; // smoothed transmittance toward the sun through the clouds (layered clouds)

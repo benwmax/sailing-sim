@@ -1,0 +1,9 @@
+scene,pairs_with,preset,args,description
+blind-marina-shore,real01,Drone,"-SailingWorld=Lake -SailingStartAt=-140,95,40 -SailingKeepStart -SailingWeather=CalmMorning -SailingWind=3 -SailingHour=17.5 -SailingCamWorld=160,25,1.7,140,-2",Rush Creek's slips and masts from the lawn by the ramp
+blind-causeway,real02,Drone,"-SailingWorld=Lake -SailingStartAt=7060,880,183 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingHour=13 -SailingCamWorld=-250,40,1.5,12,0.5",The I-30 causeway across the lake from a kilometre off
+blind-riprap-shore,real03,Drone,"-SailingWorld=Lake -SailingStartAt=-140,95,40 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingHour=13 -SailingCamWorld=96,-25,2.0,290,-3",Open lake and cumulus from the club's riprap breakwater
+blind-container,real06,Drone,"-SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingWeather=Overcast -SailingWind=16 -SailingHour=11 -SailingCamVessel=4,350,70",A container ship in the channel under grey sky
+blind-shrimper,real07,Drone,"-SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingHour=11 -SailingCamVessel=2,35,100",A Gulf shrimp boat at close range
+blind-lake-piers,real08,Drone,"-SailingWorld=Lake -SailingStartAt=-1150,1150,0 -SailingKeepStart -SailingWeather=Overcast -SailingWind=5 -SailingHour=12 -SailingCamWorld=-40,0,1.6,40,-4",Private piers along a lake cove
+blind-tow,real09,Drone,"-SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingWeather=Overcast -SailingWind=10 -SailingHour=12 -SailingCamVessel=3,900,90",A towboat and barges far off under a pale sky
+blind-sunset-light,real10,Drone,"-SailingWorld=1 -SailingLaunch=1 -SailingKeepStart -SailingDate=2026-06-21 -SailingWeather=CalmMorning -SailingWind=3 -SailingHour=20.35 -SailingCamWorld=955,104,1.8,270,1",A channel light against the sunset

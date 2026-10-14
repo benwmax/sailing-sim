@@ -35,6 +35,9 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// Ray tracing is compiled in on demand; only High turns it on, for Lumen's hardware ray tracing.
 	V.Add({ TEXT("r.RayTracing.Enable"), bHigh ? 1.f : 0.f });
 	V.Add({ TEXT("r.Lumen.HardwareRayTracing"), bHigh ? 1.f : 0.f });
+	// Visual V6: MegaLights on High shadows the night's street, dock and waterfront lights (ANightLightsActor) at a fixed
+	// cost; Medium lights them unshadowed.
+	V.Add({ TEXT("r.MegaLights.EnableForProject"), bHigh ? 1.f : 0.f });
 	// Single Layer Water (Visual V4, Medium and High): its reflections traced at half resolution and denoised.
 	V.Add({ TEXT("r.Water.SingleLayer.Reflection.DownsampleFactor"), bLow ? 1.f : 2.f });
 	// Anti-aliasing and resolution: Medium renders at 67% and upscales temporally; High renders at native.

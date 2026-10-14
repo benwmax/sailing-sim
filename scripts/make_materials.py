@@ -12,6 +12,7 @@
   metals, plastic and varnished wood; wet below the splash line and on deck in rain and spray (MPC_Boat).
 Run with scripts/make-content.sh.
 """
+import os
 import unreal
 
 NUM_WAVES = 48
@@ -91,6 +92,31 @@ def linear_default():
 def connect(a, a_out, b, b_in):
     if not MEL.connect_material_expressions(a, a_out, b, b_in):
         raise RuntimeError(f"connect failed: {a.get_name()}.{a_out} -> {b.get_name()}.{b_in}")
+
+
+CURVATURE_CODE = """
+// Visual V6: the earth's curvature as the eye sees it over water: everything drops d^2 / 2R below the camera's tangent
+// plane, with R the earth's radius stretched by standard refraction (7/6 of 6371 km). 8 m at 10 km, 31 m at 20 km: far
+// shores sink behind the horizon and a tower's foot is lost before its top.
+float2 d = (WP - Cam).xy;
+return float3(0.0, 0.0, -dot(d, d) / (2.0 * 7.433e8));
+"""
+
+
+def curvature(mat, x, y):
+    """A WPO node (cm) for the earth's curvature; add it to the material's other offsets."""
+    c = custom(mat, CURVATURE_CODE, ["WP", "Cam"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, x, y)
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, x - 300, y), "", c, "WP")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, x - 300, y + 80), "", c, "Cam")
+    return c
+
+
+def with_curvature(mat, wpo, x, y):
+    """wpo + the curvature drop."""
+    add = node(mat, unreal.MaterialExpressionAdd, x, y)
+    connect(wpo, "", add, "A")
+    connect(curvature(mat, x - 300, y + 100), "", add, "B")
+    return add
 
 
 # ---------------------------------------------------------------- water
@@ -286,7 +312,7 @@ def build_water():
     connect(foam_rough, "", rough_mix, "B")
     connect(shade, "Foam", rough_mix, "Alpha")
 
-    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.connect_material_property(with_curvature(mat, wpo, 200, 1300), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.connect_material_property(shade, "", unreal.MaterialProperty.MP_NORMAL)
     # Darken ruffled water a little more (less sky reflection, deeper colour).
     shade_mul = node(mat, unreal.MaterialExpressionOneMinus, 100, 900)
@@ -437,6 +463,7 @@ return C * (0.88 + 0.12 * n + 0.05 * m);
     rough = node(mat, unreal.MaterialExpressionConstant, -400, 300, r=0.92)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -525,6 +552,7 @@ def build_boat_surface(name, bend):
         unreal.EditorAssetLibrary.delete_asset(path)
     mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("used_with_skeletal_mesh", True)  # the crew (Visual V3) wear these materials too
+    mat.set_editor_property("used_with_instanced_static_meshes", True)  # the boats berthed in the marina (Visual V6)
     mpc = collection()
     color = vector(mat, "Color", (0.85, 0.85, 0.82, 1), -1400, -200)
     rough = scalar(mat, "Roughness", 0.35, -1400, -50)
@@ -1019,7 +1047,7 @@ def build_water_v4():
     connect(extinction, "", slw, "WaterExtinction")
     connect(phase, "", slw, "WaterPhaseG")
     MEL.connect_material_property(slw, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
-    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.connect_material_property(with_curvature(mat, wpo, 200, 1300), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -1241,6 +1269,16 @@ float cirrus = 0.0;
     float mw = band * rift;
     col += (float3(1.0, 0.97, 0.93) * star + float3(0.8, 0.85, 1.0) * mw * 0.12) * Night.x * up * (1.0 - cirrus);
 }
+// Light pollution (Visual V6): the sodium-and-LED dome over the nearest big city (Night.y its strength, Night.z its
+// azimuth in the map frame), brightest on the horizon toward it, and a fainter glow all round.
+[branch] if (Night.y > 0.0)
+{
+    float az = atan2(dir.y, dir.x);
+    float da = abs(atan2(sin(az - Night.z), cos(az - Night.z)));
+    float h = max(dir.z, 0.0);
+    float glow = Night.y * (0.12 + 1.6 * exp(-da * da / 0.5)) * exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
+    col += float3(1.0, 0.70, 0.42) * glow;
+}
 // The moon: lit by the sun (its phase), the dark part faintly lit by the earth.
 float cm = dot(dir, MoonDir.xyz);
 [branch] if (MoonDir.w > 0.0 && cm > 0.99997)
@@ -1371,12 +1409,534 @@ def build_lens_water():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+# ---------------------------------------------------------------- world, Visual V6
+WORLD_FOLDER = "/Game/World"
+
+TREE_WIND_CODE = """
+// Visual V6: trees in the wind (MPC_World.Wind: direction xy, speed m/s, gust 0..1). The whole tree leans downwind and
+// sways (more toward the crown and the limb tips: vertex colour R), each tree in its own phase (from its position); the
+// leaves flutter on top (G: the card's phase). A learner can read the wind's strength and direction off the shore.
+float3 inst = ObjPos * 0.01;
+float phase = dot(inst.xy, float2(0.0131, 0.0173));
+float speed = Wind.z * (1.0 + 0.5 * Wind.w);
+float s = VC.r;
+float lean = speed * speed * 0.0022;
+float osc = 0.6 * sin(T * (0.9 + 0.25 * sin(phase)) + phase) + 0.3 * sin(T * 2.3 + phase * 1.7);
+float sway = lean * (0.75 + 0.35 * osc) * s;
+float3 off = float3(Wind.xy * sway, -0.25 * sway * s);
+float flutter = Leaf * saturate(speed * 0.12) * 0.035;
+off += float3(sin(T * 9.0 + VC.g * 40.0), cos(T * 7.3 + VC.g * 31.0), sin(T * 8.1 + VC.g * 17.0)) * flutter;
+return off * 100.0;
+"""
+
+
+def world_collection():
+    path = f"{WORLD_FOLDER}/MPC_World"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        mpc = unreal.load_asset(path)
+    else:
+        mpc = ASSETS.create_asset("MPC_World", WORLD_FOLDER, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+        p = unreal.CollectionVectorParameter()
+        p.set_editor_property("parameter_name", "Wind")
+        p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
+        mpc.set_editor_property("vector_parameters", [p])
+    # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
+    scalars = list(mpc.get_editor_property("scalar_parameters"))
+    if not any(str(x.get_editor_property("parameter_name")) == "Night" for x in scalars):
+        n = unreal.CollectionScalarParameter()
+        n.set_editor_property("parameter_name", "Night")
+        n.set_editor_property("default_value", 0.0)
+        scalars.append(n)
+        mpc.set_editor_property("scalar_parameters", scalars)
+    unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    return mpc
+
+
+def import_texture(src, folder, srgb=True):
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", src)
+    task.set_editor_property("destination_path", folder)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("save", True)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(f"{folder}/{os.path.splitext(os.path.basename(src))[0]}")
+    tex.set_editor_property("srgb", srgb)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
+
+
+def tree_wind(mat, leaf, x=-1200, y=600):
+    mpc = world_collection()
+    wind = node(mat, unreal.MaterialExpressionCollectionParameter, x, y, collection=mpc, parameter_name="Wind")
+    vc = node(mat, unreal.MaterialExpressionVertexColor, x, y + 100)
+    obj = node(mat, unreal.MaterialExpressionObjectPositionWS, x, y + 200)
+    t = node(mat, unreal.MaterialExpressionTime, x, y + 300)
+    lf = node(mat, unreal.MaterialExpressionConstant, x, y + 400, r=1.0 if leaf else 0.0)
+    c = custom(mat, TREE_WIND_CODE, ["VC", "ObjPos", "Wind", "T", "Leaf"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, x + 400, y)
+    connect(vc, "", c, "VC")
+    connect(obj, "", c, "ObjPos")
+    connect(wind, "", c, "Wind")
+    connect(t, "", c, "T")
+    connect(lf, "", c, "Leaf")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    mat.set_editor_property("max_world_position_offset_displacement", 120.0)
+
+
+def world_material(name):
+    path = f"{WORLD_FOLDER}/{name}"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        unreal.EditorAssetLibrary.delete_asset(path)
+    mat = ASSETS.create_asset(name, WORLD_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    mat.set_editor_property("used_with_nanite", True)
+    return mat
+
+
+def build_trees_materials():
+    """M_TreeLeaves / M_TreeBark (Visual V6): leaf cards cut from the atlas (two-sided foliage, lit through), bark, wind."""
+    import os as _os
+    atlas_src = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "Artifacts", "models", "world", "T_LeafAtlas.png")
+    atlas = import_texture(atlas_src, WORLD_FOLDER)
+    leaves = world_material("M_TreeLeaves")
+    leaves.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    leaves.set_editor_property("two_sided", True)
+    leaves.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    tex = node(leaves, unreal.MaterialExpressionTextureSample, -800, 0, texture=atlas)
+    vc = node(leaves, unreal.MaterialExpressionVertexColor, -800, 250)
+    code = """
+// Each card a little different: yellower, darker, bluer (B: the card's tint); the crown's sunny outside paler.
+float3 c = Tex.rgb;
+float t = VC.b;
+c *= lerp(float3(0.82, 0.86, 0.78), float3(1.15, 1.1, 0.9), t);
+c = lerp(c, c * float3(1.15, 1.08, 0.85), VC.r * 0.35);
+return c;
+"""
+    tint = custom(leaves, code, ["Tex", "VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
+    connect(tex, "RGB", tint, "Tex")
+    connect(vc, "", tint, "VC")
+    sss = node(leaves, unreal.MaterialExpressionMultiply, -300, 150)
+    k = node(leaves, unreal.MaterialExpressionConstant3Vector, -500, 200, constant=unreal.LinearColor(0.55, 0.65, 0.3, 1))
+    connect(tint, "", sss, "A")
+    connect(k, "", sss, "B")
+    rough = node(leaves, unreal.MaterialExpressionConstant, -300, 300, r=0.62)
+    MEL.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(sss, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    MEL.connect_material_property(tex, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    tree_wind(leaves, True)
+    MEL.recompile_material(leaves)
+    unreal.EditorAssetLibrary.save_loaded_asset(leaves)
+
+    # The distant crowns: opaque, leafy in colour and shading (dappled by world-space noise), swaying with the rest.
+    crown = world_material("M_TreeCrown")
+    wp = node(crown, unreal.MaterialExpressionWorldPosition, -900, 0)
+    vc2 = node(crown, unreal.MaterialExpressionVertexColor, -900, 150)
+    code = """
+float3 p = WP * 0.01;
+float n = frac(sin(dot(floor(p * 1.7), float3(12.9898, 78.233, 37.719))) * 43758.5453);
+float m = 0.5 + 0.5 * sin(p.x * 2.1 + sin(p.y * 1.7) * 2.0) * sin(p.y * 2.3 + p.z * 1.9);
+float3 c = lerp(float3(0.045, 0.085, 0.03), float3(0.10, 0.16, 0.06), m * 0.6 + n * 0.4);
+return c * lerp(0.85, 1.15, VC.b);
+"""
+    cc = custom(crown, code, ["WP", "VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0)
+    connect(wp, "", cc, "WP")
+    connect(vc2, "", cc, "VC")
+    rr = node(crown, unreal.MaterialExpressionConstant, -300, 200, r=0.75)
+    MEL.connect_material_property(cc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rr, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    tree_wind(crown, False)
+    MEL.recompile_material(crown)
+    unreal.EditorAssetLibrary.save_loaded_asset(crown)
+
+    bark = world_material("M_TreeBark")
+    uv = node(bark, unreal.MaterialExpressionTextureCoordinate, -800, 0)
+    code = """
+// Grey-brown bark with vertical furrows and lichen.
+float f = 0.5 + 0.5 * sin(UV.x * 6.2832 * 7.0 + sin(UV.y * 9.0) * 1.5);
+float n = frac(sin(dot(floor(UV * float2(24.0, 6.0)), float2(12.9898, 78.233))) * 43758.5453);
+float3 c = lerp(float3(0.16, 0.13, 0.11), float3(0.30, 0.27, 0.23), f * 0.7 + n * 0.3);
+c = lerp(c, float3(0.35, 0.38, 0.30), step(0.92, n) * 0.6);
+return c;
+"""
+    bc = custom(bark, code, ["UV"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
+    connect(uv, "", bc, "UV")
+    r = node(bark, unreal.MaterialExpressionConstant, -300, 200, r=0.85)
+    MEL.connect_material_property(bc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(r, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    tree_wind(bark, False)
+    MEL.recompile_material(bark)
+    unreal.EditorAssetLibrary.save_loaded_asset(bark)
+
+
+WORLD_SURFACE_CODE = """
+// Visual V6: one surface for the generated world (docks, buildings, bridges), set by instance parameters. UV is in
+// metres along the part. Pattern: 0 plain, 1 deck planks, 2 shingles, 3 lap siding, 4 concrete, 5 weathered metal,
+// 6 asphalt with lane markings (U across from the left edge, V along). Night lights the windows and anything with Glow.
+float2 uv = UV;
+float3 c = Color.rgb;
+float r = Rough;
+float n = frac(sin(dot(floor(uv * float2(7.0, 7.0)), float2(12.9898, 78.233))) * 43758.5453);
+// Smooth value noise (blotches about 1.4 m across), for concrete and weathered steel.
+float2 p = uv * 0.7;
+float2 i0 = floor(p), f0 = smoothstep(0.0, 1.0, frac(p));
+float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(i0 + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
+if (Pattern > 0.5 && Pattern < 1.5)
+{
+    // 14 cm boards with 1 cm gaps, each board its own grey.
+    float board = floor(uv.y / 0.15);
+    float gap = step(0.93, frac(uv.y / 0.15));
+    float b = frac(sin(board * 91.7) * 4375.5);
+    float grain = 0.5 + 0.5 * sin(uv.x * 40.0 + b * 30.0 + sin(uv.x * 3.0 + board) * 2.0);
+    c *= (0.82 + 0.25 * b) * (0.93 + 0.07 * grain);
+    c = lerp(c, c * 0.25, gap);
+}
+else if (Pattern > 1.5 && Pattern < 2.5)
+{
+    float row = floor(uv.y / 0.14);
+    float tab = frac(uv.x / 0.33 + 0.5 * fmod(row, 2.0));
+    float b = frac(sin(row * 31.1 + floor(uv.x / 0.33) * 17.3) * 4375.5);
+    c *= (0.85 + 0.2 * b) * (1.0 - 0.35 * step(0.96, tab)) * (1.0 - 0.3 * step(0.9, frac(uv.y / 0.14)));
+}
+else if (Pattern > 2.5 && Pattern < 3.5)
+{
+    float lap = frac(uv.y / 0.18);
+    c *= 0.9 + 0.12 * lap;
+    // Windows: a band at sill height, panes every 2.4 m (only on walls tall enough).
+    float wx = frac(uv.x / 2.4), wy = uv.y;
+    float win = step(0.25, wx) * step(wx, 0.75) * step(0.9, wy) * step(wy, 2.3) * Windows;
+    c = lerp(c, float3(0.04, 0.05, 0.06), win);
+    r = lerp(r, 0.08, win);
+}
+else if (Pattern > 3.5 && Pattern < 4.5)
+{
+    // Concrete: smooth blotches, darker run-off streaks down from the top, form-tie lines every 1.2 m.
+    float streak = frac(sin(floor(uv.x * 3.0) * 91.3) * 4375.5) * saturate(1.0 - frac(uv.y * 0.25));
+    float form = 1.0 - 0.06 * step(0.97, frac(uv.y / 1.2));
+    c *= (0.86 + 0.22 * blot) * (1.0 - 0.12 * streak) * form * (0.97 + 0.06 * n);
+}
+else if (Pattern > 4.5 && Pattern < 5.5)
+{
+    // Weathered painted steel: blotchy fading, and rust weeping down in streaks from seams.
+    float lane = floor(uv.x * 1.5);
+    float hl = frac(sin(lane * 91.7) * 4375.5);
+    float weep = step(0.6, hl) * saturate(1.0 - frac(uv.y * 0.35 + hl)) * 0.8;
+    c *= 0.9 + 0.2 * blot;
+    c = lerp(c, float3(0.30, 0.14, 0.06), saturate(weep + 0.25 * saturate(blot - 0.6)) * 0.6);
+}
+else if (Pattern > 5.5)
+{
+    // Asphalt: aggregate speckle, oil down the lane centres, a solid edge line and 3 m dashes every 12 m between lanes.
+    c *= 0.85 + 0.3 * n;
+    float lane = frac((uv.x - 0.6) / 3.6);
+    c *= 1.0 - 0.15 * exp(-pow((lane - 0.5) * 6.0, 2.0));
+    float edge = step(0.3, uv.x) * step(uv.x, 0.45);
+    float dash = step(abs(lane - 0.0) * 3.6, 0.07) * step(frac(uv.y / 12.0), 0.25) * step(1.0, uv.x);
+    c = lerp(c, float3(0.75, 0.74, 0.70), saturate(edge + dash));
+}
+else if (Pattern > 6.5)
+{
+    // Riprap: blocks about a metre across (jittered cells), each its own shade of granite or limestone, dark gaps between,
+    // darker and greener toward the water (UV.y 0 at the toe).
+    float2 q = uv * 1.1;
+    float2 cell = floor(q);
+    float best = 9.0, second = 9.0;
+    float shade = 0.0;
+    for (int j = -1; j <= 1; j++)
+        for (int i = -1; i <= 1; i++)
+        {
+            float2 g = cell + float2(i, j);
+            float2 o = frac(sin(float2(dot(g, float2(127.1, 311.7)), dot(g, float2(269.5, 183.3)))) * 43758.5);
+            float d = length(g + o - q);
+            if (d < best) { second = best; best = d; shade = frac(o.x * 7.3 + o.y * 3.1); }
+            else if (d < second) second = d;
+        }
+    float gap = 1.0 - smoothstep(0.02, 0.12, second - best);
+    c *= (0.7 + 0.5 * shade) * (0.9 + 0.2 * blot);
+    c = lerp(c, c * 0.25, gap);
+    c = lerp(c * float3(0.55, 0.6, 0.45), c, saturate(uv.y / 2.5));
+}
+Out = r;
+Emit = float3(0, 0, 0);
+if (Pattern > 2.5 && Pattern < 3.5)
+{
+    // Some windows lit at night, warm.
+    float wx = frac(uv.x / 2.4), wy = uv.y;
+    float win = step(0.25, wx) * step(wx, 0.75) * step(0.9, wy) * step(wy, 2.3) * Windows;
+    float lit = step(0.45, frac(sin(floor(uv.x / 2.4) * 37.7) * 4375.5));
+    Emit = float3(1.0, 0.72, 0.42) * 6.0 * win * lit * Night;
+}
+Emit += c * Glow * Night;
+return c;
+"""
+
+
+def build_world_surface():
+    mat = world_material("M_WorldSurface")
+    mat.set_editor_property("used_with_static_lighting", False)
+    uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0)
+    color = vector(mat, "Color", (0.6, 0.6, 0.58, 1), -900, 100)
+    rough = scalar(mat, "Roughness", 0.8, -900, 200)
+    pattern = scalar(mat, "Pattern", 0.0, -900, 300)
+    windows = scalar(mat, "Windows", 0.0, -900, 400)
+    metal = scalar(mat, "Metallic", 0.0, -900, 500)
+    glow = scalar(mat, "Glow", 0.0, -900, 600)
+    night = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 700)
+    night.set_editor_property("collection", world_collection())
+    night.set_editor_property("parameter_name", "Night")
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
+               extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    connect(glow, "", c, "Glow")
+    connect(night, "", c, "Night")
+    connect(uv, "", c, "UV")
+    connect(color, "RGBA", c, "Color")
+    connect(rough, "", c, "Rough")
+    connect(pattern, "", c, "Pattern")
+    connect(windows, "", c, "Windows")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    # Instances for the world kit's static meshes (slot name -> MI_World_<slot>); updated in place like the boat library.
+    for slot, (col, rough, pattern, windows, metallic, *rest) in WORLD_LIBRARY.items():
+        name = f"MI_World_{slot}"
+        path = f"{WORLD_FOLDER}/{name}"
+        mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
+            ASSETS.create_asset(name, WORLD_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        MEL.set_material_instance_parent(mi, mat)
+        MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
+        MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", rough)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Pattern", pattern)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Windows", windows)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", metallic)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Glow", rest[0] if rest else 0.0)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
+def build_vehicle_paint():
+    """The bridge traffic's paint: colour per instance (custom data 0..2, set by ABridgesActor), glossy clear-coated."""
+    mat = world_material("M_VehiclePaint")
+    chans = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, i * 120, data_index=i, const_default_value=0.5) for i in range(3)]
+    rg = node(mat, unreal.MaterialExpressionAppendVector, -650, 60)
+    connect(chans[0], "", rg, "A")
+    connect(chans[1], "", rg, "B")
+    rgb = node(mat, unreal.MaterialExpressionAppendVector, -450, 120)
+    connect(rg, "", rgb, "A")
+    connect(chans[2], "", rgb, "B")
+    MEL.connect_material_property(rgb, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(scalar(mat, "Roughness", 0.28, -450, 300), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(scalar(mat, "Metallic", 0.35, -450, 400), "", unreal.MaterialProperty.MP_METALLIC)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+    # Containers on the ship: the same per-instance colour, matte weathered paint.
+    path = f"{WORLD_FOLDER}/MI_World_ContainerPaint"
+    mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
+        ASSETS.create_asset("MI_World_ContainerPaint", WORLD_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    MEL.set_material_instance_parent(mi, mat)
+    MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", 0.7)
+    MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", 0.15)
+    MEL.update_material_instance(mi)
+    unreal.EditorAssetLibrary.save_loaded_asset(mi)
+
+
+NAVAID_CODE = """
+// Visual V6: an aid's paint (colour per instance) weathered the way steel buoys and treated piles are: rust weeping in
+// streaks down from seams and fittings, sun-faded chalky paint on top, and a band of green-brown growth from the waterline
+// up (with slime below it). LP: local position (cm, origin at the waterline or the pile's foot); UV.x runs round the part.
+float z = LP.z / 100.0;
+float3 c = Col;
+float r = 0.55;
+float lane = floor(UV.x * 5.0);
+float h = frac(sin(lane * 91.7 + 3.1) * 4375.5);
+float run = saturate(1.0 - frac(z * 0.6 + h)) * step(0.55, h) * saturate(z * 2.0);
+c = lerp(c, float3(0.28, 0.13, 0.05), run * 0.55);
+c = lerp(c, c * 1.15 + 0.04, saturate((z - 1.0) * 0.3));
+float edge = 0.14 + 0.03 * sin(UV.x * 9.0 + h * 6.0);
+float growth = 1.0 - smoothstep(edge - 0.04, edge, z);
+c = lerp(c, float3(0.07, 0.09, 0.04), growth * 0.85);
+r = lerp(r, 0.35, growth);
+Out = r;
+return c;
+"""
+
+
+def build_navaid_paint():
+    mat = world_material("M_NavaidPaint")
+    chans = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1100, i * 120, data_index=i, const_default_value=0.5) for i in range(3)]
+    rg = node(mat, unreal.MaterialExpressionAppendVector, -850, 60)
+    connect(chans[0], "", rg, "A")
+    connect(chans[1], "", rg, "B")
+    rgb = node(mat, unreal.MaterialExpressionAppendVector, -650, 120)
+    connect(rg, "", rgb, "A")
+    connect(chans[2], "", rgb, "B")
+    lp = node(mat, unreal.MaterialExpressionLocalPosition, -650, 300)
+    uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -650, 400)
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    c = custom(mat, NAVAID_CODE, ["Col", "LP", "UV"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 200, extra_outputs=[("Out", F1)])
+    connect(rgb, "", c, "Col")
+    connect(lp, "", c, "LP")
+    connect(uv, "", c, "UV")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+HOUSE_WALL_CODE = """
+// Visual V6: the walls of the OSM buildings (Tools/blender/build_houses.py archetypes scaled to each footprint). Per instance:
+// D0 wall colour, D1 (pattern 0 brick, 1 lap siding, 2 stucco; height m; seed). Windows are laid out in world space so
+// they keep their size: storeys of 2.9 m, a window every 3.2 m along the wall, some lit at night. The face normal comes from
+// the position's screen derivatives (the vertex-normal input is not in world space on these Nanite instances).
+float3 n = normalize(cross(ddy(WP), ddx(WP)));
+float2 t = normalize(float2(-n.y, n.x) + 1e-4);
+float u = dot(WP.xy, t) / 100.0;
+float3 c = D0;
+float pat = D1.x, height = D1.y, seed = D1.z;
+// G: the instance's ground height (m, custom data 9).
+float v = WP.z / 100.0 - G;
+float r = 0.8;
+if (pat < 0.5)
+{
+    float row = floor(v / 0.075);
+    float bu = frac(u / 0.22 + 0.5 * fmod(row, 2.0));
+    float mortar = max(step(0.88, frac(v / 0.075)), step(0.95, bu));
+    float b = frac(sin(row * 17.1 + floor(u / 0.22 + 0.5 * fmod(row, 2.0)) * 31.7) * 4375.5);
+    c *= (0.85 + 0.25 * b);
+    c = lerp(c, float3(0.55, 0.53, 0.5), mortar * 0.8);
+}
+else if (pat < 1.5)
+{
+    c *= 0.88 + 0.14 * frac(v / 0.17);
+    r = 0.6;
+}
+else
+{
+    c *= 0.94 + 0.08 * frac(sin(dot(floor(float2(u, v) * 3.0), float2(12.9, 78.2))) * 43758.5);
+}
+float wu = frac(u / 3.2 + seed);
+float wv = frac(v / 2.9);
+float win = step(0.25, wu) * step(wu, 0.6) * step(0.3, wv) * step(wv, 0.76) * step(floor(v / 2.9) * 2.9 + 2.3, height * 0.62) * step(0.4, v) * step(abs(n.z), 0.5);
+float3 glass = float3(0.03, 0.035, 0.04);
+c = lerp(c, glass, win);
+r = lerp(r, 0.05, win);
+float lit = step(0.55, frac(sin(floor(u / 3.2 + seed) * 37.7 + floor(v / 2.9) * 11.3 + seed * 91.0) * 4375.5));
+Emit = float3(1.0, 0.7, 0.4) * 5.0 * win * lit * Night;
+Out = r;
+return c;
+"""
+
+HOUSE_ROOF_CODE = """
+// Asphalt shingles in world space: courses every 14 cm up the roof, tabs 33 cm along, each tab its own shade.
+float3 n = normalize(cross(ddy(WP), ddx(WP)));
+float2 t = normalize(float2(-n.y, n.x) + 1e-4);
+float u = dot(WP.xy, t) / 100.0;
+float v = WP.z / 100.0 / max(0.25, 1.0 - abs(n.z)) * 0.6;
+float row = floor(v / 0.14);
+float tab = floor(u / 0.33 + 0.5 * fmod(row, 2.0));
+float b = frac(sin(row * 31.1 + tab * 17.3) * 4375.5);
+float3 c = D2 * (0.8 + 0.3 * b) * (1.0 - 0.3 * step(0.9, frac(v / 0.14)));
+return c;
+"""
+
+
+def build_house_materials():
+    for name, code, chans in (("M_HouseWall", HOUSE_WALL_CODE, ((0, 1, 2), (3, 4, 5))), ("M_HouseRoof", HOUSE_ROOF_CODE, ((6, 7, 8),))):
+        mat = world_material(name)
+        ins = ["WP", "OP", "N"]
+        c = custom(mat, code, ins + [f"D{k}" for k in range(len(chans))] + (["Night", "G"] if name == "M_HouseWall" else []),
+                   unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 100,
+                   extra_outputs=[("Out", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)]
+                   if name == "M_HouseWall" else [])
+        connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 0), "", c, "WP")
+        connect(node(mat, unreal.MaterialExpressionObjectPositionWS, -900, 80), "", c, "OP")
+        connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 160), "", c, "N")
+        for k, idx in enumerate(chans):
+            d = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1300, 260 + k * 300 + j * 90, data_index=i, const_default_value=0.5) for j, i in enumerate(idx)]
+            ab = node(mat, unreal.MaterialExpressionAppendVector, -1100, 300 + k * 300)
+            connect(d[0], "", ab, "A")
+            connect(d[1], "", ab, "B")
+            abc = node(mat, unreal.MaterialExpressionAppendVector, -950, 320 + k * 300)
+            connect(ab, "", abc, "A")
+            connect(d[2], "", abc, "B")
+            connect(abc, "", c, f"D{k}")
+        MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        if name == "M_HouseWall":
+            night = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 900)
+            night.set_editor_property("collection", world_collection())
+            night.set_editor_property("parameter_name", "Night")
+            connect(night, "", c, "Night")
+            connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 1000, data_index=9, const_default_value=0.0), "", c, "G")
+            MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
+            MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        else:
+            MEL.connect_material_property(scalar(mat, "Roughness", 0.85, -300, 300), "", unreal.MaterialProperty.MP_ROUGHNESS)
+        MEL.recompile_material(mat)
+        unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+# Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
+# The rest are the generated structures' looks and must match KitLook() in Source/SailingSim/Private/WorldKit.cpp.
+WORLD_LIBRARY = {
+    "Rock": ((0.52, 0.49, 0.43), 0.9, 4.0, 0.0, 0.0),
+    "Decking": ((0.42, 0.40, 0.36), 0.85, 1.0, 0.0, 0.0),
+    "Floats": ((0.05, 0.05, 0.05), 0.6, 0.0, 0.0, 0.0),
+    "Pilings": ((0.32, 0.27, 0.21), 0.9, 4.0, 0.0, 0.0),
+    "Metal": ((0.75, 0.76, 0.78), 0.3, 0.0, 0.0, 1.0),
+    "White": ((0.85, 0.86, 0.84), 0.45, 0.0, 0.0, 0.0),
+    "Siding": ((0.78, 0.74, 0.64), 0.75, 3.0, 1.0, 0.0),
+    "Roof": ((0.20, 0.20, 0.21), 0.8, 2.0, 0.0, 0.0),
+    "Concrete": ((0.62, 0.60, 0.56), 0.85, 4.0, 0.0, 0.0),
+    "PoolWater": ((0.10, 0.45, 0.55), 0.05, 0.0, 0.0, 0.0),
+    "Trim": ((0.88, 0.88, 0.86), 0.5, 0.0, 0.0, 0.0),
+    "Lamp": ((0.15, 0.15, 0.15), 0.5, 5.0, 0.0, 0.5),
+    "Asphalt": ((0.11, 0.11, 0.11), 0.9, 6.0, 0.0, 0.0),
+    "Steel": ((0.30, 0.36, 0.40), 0.55, 5.0, 0.0, 0.6),
+    "LampGlow": ((1.0, 0.78, 0.50), 0.4, 0.0, 0.0, 0.0, 40.0),
+    "Riprap": ((0.50, 0.47, 0.42), 0.9, 7.0, 0.0, 0.0),
+    # Landmarks (Tools/blender/build_landmarks.py slots).
+    "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
+    "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),
+    "Brick": ((0.36, 0.15, 0.09), 0.85, 4.0, 0.0, 0.0),
+    # Vehicles (Tools/blender/build_props.py slots).
+    "Glass": ((0.03, 0.035, 0.04), 0.06, 0.0, 0.0, 0.0),
+    "Tyre": ((0.03, 0.03, 0.03), 0.85, 0.0, 0.0, 0.0),
+    "HeadLight": ((0.9, 0.9, 0.85), 0.2, 0.0, 0.0, 0.0, 60.0),
+    "TailLight": ((0.6, 0.03, 0.02), 0.3, 0.0, 0.0, 0.0, 30.0),
+    "Trailer": ((0.80, 0.80, 0.78), 0.5, 5.0, 0.0, 0.3),
+    # Navaids (Tools/blender/build_navaids.py slots): retroreflective tape.
+    "Reflective": ((0.85, 0.85, 0.82), 0.3, 0.0, 0.0, 0.0),
+    # Vessels (Tools/blender/build_vessels.py slots).
+    "Gelcoat": ((0.80, 0.80, 0.78), 0.3, 0.0, 0.0, 0.0),
+    "Antifouling": ((0.33, 0.04, 0.03), 0.8, 0.0, 0.0, 0.0),
+    "TrimGreen": ((0.03, 0.14, 0.08), 0.45, 0.0, 0.0, 0.0),
+    "Deck": ((0.55, 0.55, 0.52), 0.8, 0.0, 0.0, 0.0),
+    "Cushion": ((0.62, 0.56, 0.44), 0.7, 0.0, 0.0, 0.0),
+    "Net": ((0.05, 0.06, 0.05), 0.95, 0.0, 0.0, 0.0),
+    "Barge": ((0.22, 0.10, 0.05), 0.85, 5.0, 0.0, 0.3),
+    "Cargo": ((0.40, 0.36, 0.30), 0.95, 4.0, 0.0, 0.0),
+    "Pilothouse": ((0.80, 0.80, 0.78), 0.4, 3.0, 1.0, 0.0),
+    "Funnel": ((0.08, 0.08, 0.09), 0.6, 0.0, 0.0, 0.0),
+    "ShipHull": ((0.03, 0.06, 0.12), 0.55, 5.0, 0.0, 0.2),
+}
+
+
 build_water()
 build_water_v4()
 build_spray()
 build_cloud_layers()
 build_sky_dome()
 build_lens_water()
+build_trees_materials()
+build_world_surface()
+build_vehicle_paint()
+build_navaid_paint()
+build_house_materials()
 build_terrain()
 build_rain()
 build_emissive()

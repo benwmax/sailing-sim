@@ -20,6 +20,8 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialParameterCollection.h"
 #include "Misc/CommandLine.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/Parse.h"
@@ -49,6 +51,8 @@ ASailingEnvironment::ASailingEnvironment()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkyDomeMat(TEXT("/Game/Materials/M_SkyDome.M_SkyDome"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensWater(TEXT("/Game/Materials/M_LensWater.M_LensWater"));
 	LensWaterMaterial = LensWater.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> WorldMpc(TEXT("/Game/World/MPC_World.MPC_World"));
+	WorldCollection = WorldMpc.Object;
 	// Visual V5: the sky dome, 200 km across the camera (a sky material: everything draws over it).
 	SkyDome = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SkyDome"));
 	SkyDome->SetupAttachment(RootComponent);
@@ -241,6 +245,18 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateCloudLayers(CamPos);
 	UpdateHaze();
 	UpdateRain(CamPos);
+	if (WorldCollection)
+	{
+		// The trees on the shore sway with the wind there (MPC_World.Wind: direction it blows toward, speed with gusts).
+		const Vec3 V = GM->GetWind().VelocityAt(Vec3(CamPos.X / CmPerMeter, CamPos.Y / CmPerMeter, 10.0), GM->GetSimTime());
+		const double Speed = V.LengthXY();
+		const double Mean = FMath::Max(W.Wind.SpeedKnots * kKnot, 0.5);
+		UKismetMaterialLibrary::SetVectorParameterValue(this, WorldCollection, TEXT("Wind"),
+			FLinearColor(float(V.X / FMath::Max(Speed, 1e-3)), float(V.Y / FMath::Max(Speed, 1e-3)), float(Speed), float(FMath::Clamp(Speed / Mean - 1.0, 0.0, 1.0))));
+		// Street lamps, lit windows and vehicle lights come on through dusk (and under a storm's darkness).
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Night"),
+			FMath::Max(NightAmount, FMath::Clamp(float(W.CloudDarkness) * 1.4f - 0.6f, 0.f, 0.6f)));
+	}
 	UpdateLightning(DeltaSeconds, CamPos);
 }
 
@@ -768,7 +784,21 @@ void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& M
 	// Star brightness tracks the moonlight's scale (both exposed by the same night exposure); a bright moon washes the
 	// faint stars and the Milky Way out a little.
 	const float StarScale = float(SunIntensity) * 0.006f * Night * (1.f - 0.6f * MoonLit);
-	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, 0.f, 0.f, GetWorld()->GetTimeSeconds()));
+	// The nearest big city's light dome (Visual V6): Dallas from the lake, Houston from the bay, scaled by population light
+	// and falling off with distance.
+	struct FCity { double Lat, Lon, Light; };
+	static const FCity Cities[] = { { 32.78, -96.80, 1.0 }, { 29.76, -95.37, 1.3 }, { 29.39, -94.92, 0.35 }, { 32.75, -97.33, 0.6 } };
+	const double CosLat = FMath::Cos(GM->GetLake().Latitude * kDegToRad);
+	float Glow = 0.f, GlowAz = 0.f;
+	for (const FCity& C : Cities)
+	{
+		const double North = (C.Lat - GM->GetLake().Latitude) * 111.2, East = (C.Lon - GM->GetLake().Longitude) * 111.2 * CosLat;
+		const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
+		const float G = float(C.Light * FMath::Pow(30.0 / Km, 1.5));
+		if (G > Glow) { Glow = G; GlowAz = float(FMath::Atan2(East, North)); }
+	}
+	const float GlowScale = float(SunIntensity) * 0.006f * NightAmount * Glow * 1.1f;
+	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowScale, GlowAz, GetWorld()->GetTimeSeconds()));
 	SkyMaterial->SetVectorParameterValue(TEXT("MoonDir"), FLinearColor(float(MoonTrue.X), float(MoonTrue.Y), float(MoonTrue.Z), MoonTrue.Z > -0.02f ? MoonLuminance : 0.f));
 	// Earthshine: the dark limb at about a few thousandths of the lit side (strongest near new moon).
 	SkyMaterial->SetVectorParameterValue(TEXT("SunTrue"), FLinearColor(float(SunTrue.X), float(SunTrue.Y), float(SunTrue.Z), 0.004f * (1.f - MoonLit)));

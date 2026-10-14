@@ -5,6 +5,7 @@
 #include "FixedStepper.h"
 #include "LakeData.h"
 #include "LakeTerrain.h"
+#include "Marina.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -408,6 +409,67 @@ bool FSailingClubBerthTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("Afloat at the berth"), bAground);
 		TestFalse(TEXT("Lies quietly against the dock"), bHit);
 	}
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingMarinaTest, "SailingSim.Lake.Marina", Flags)
+bool FSailingMarinaTest::RunTest(const FString& Parameters)
+{
+	// Visual V6: the drawn marina (AMarinaActor) and the physics see the same docks; the home slip floats a J/22.
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	const FMarina& M = Lake.Marina;
+	if (!TestTrue(TEXT("Marina loads"), M.IsLoaded())) return false;
+	TestTrue(TEXT("Over a hundred slips"), M.Slips.Num() > 100);
+	if (!TestTrue(TEXT("Home slip"), M.HomeSlip != INDEX_NONE)) return false;
+	const FMarinaSlip& Home = M.Slips[M.HomeSlip];
+	TestFalse(TEXT("Home slip is free"), Home.bOccupied);
+	auto Covered = [&](const FVector2D& P, double Clear)
+	{
+		for (const FObstacleSegment& O : Lake.Obstacles)
+		{
+			const FVector2D A(O.AX, O.AY), B(O.BX, O.BY);
+			const FVector2D AB = B - A;
+			const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / FMath::Max(AB.SizeSquared(), 1e-9), 0.0, 1.0);
+			if (FVector2D::Distance(P, A + AB * T) <= O.Radius + Clear) return true;
+		}
+		return false;
+	};
+	int32 Missing = 0, Shallow = 0;
+	M.ForEachObstacleLine([&](const TArray<FVector2D>& Pts, const FString&, float)
+	{
+		for (int32 I = 1; I < Pts.Num(); ++I)
+			for (double T = 0.0; T <= 1.0; T += 0.1) Missing += Covered(FMath::Lerp(Pts[I - 1], Pts[I], T), 0.05) ? 0 : 1;
+	});
+	for (const FMarinaSlip& S : M.Slips) Shallow += Lake.Terrain.HeightAt(S.Center.X, S.Center.Y) > -1.2 ? 1 : 0;
+	const double HomeDepth = -Lake.Terrain.HeightAt(Home.Center.X, Home.Center.Y);
+	AddInfo(FString::Printf(TEXT("%d slips (%d occupied), home %s at (%.1f, %.1f) in %.1f m; %d slips under 1.2 m"), M.Slips.Num(),
+		M.Slips.FilterByPredicate([](const FMarinaSlip& S) { return S.bOccupied; }).Num(), *Home.Id, Home.Center.X, Home.Center.Y, HomeDepth, Shallow));
+	TestEqual(TEXT("Every drawn deck is an obstacle"), Missing, 0);
+	TestTrue(TEXT("The home slip floats a J/22"), HomeDepth > 1.2);
+	// Moored in the home slip, the boat lies between its fingers without touching them.
+	FBoatModel Boat;
+	Boat.SetTerrain(&Lake.Terrain);
+	Boat.SetObstacles(&Lake.Obstacles);
+	Boat.Reset(Home.Center.X, Home.Center.Y, FMath::DegreesToRadians(Home.HeadingDeg), 0.0);
+	Boat.GetMooringLines() = FindDockLines(Boat, Lake.Obstacles);
+	FBoatControls C;
+	bool bHit = false;
+	const FWindField Wind = WindFrom(8.0, 180.0);
+	for (int32 I = 0; I < int32(20 * PhysicsHz); ++I)
+	{
+		Boat.Step(PhysicsDt, C, Wind);
+		const bool bNow = Boat.GetTelemetry().BoatSpeed > 0.5 * kKnot && Boat.GetTelemetry().bCollision;
+		if (bNow && !bHit)
+		{
+			AddInfo(FString::Printf(TEXT("Struck at %.2f s, (%.2f, %.2f) heading %.0f, speed %.2f m/s, %d lines"), I * PhysicsDt, Boat.GetState().Position.X, Boat.GetState().Position.Y,
+				FMath::RadiansToDegrees(Boat.GetTelemetry().Heading), Boat.GetTelemetry().BoatSpeed, int32(Boat.GetMooringLines().size())));
+		}
+		bHit |= bNow;
+	}
+	TestTrue(TEXT("Lines reach the fingers"), Boat.GetMooringLines().size() >= 2);
+	TestFalse(TEXT("Lies quietly in the home slip"), bHit);
 	return true;
 }
 

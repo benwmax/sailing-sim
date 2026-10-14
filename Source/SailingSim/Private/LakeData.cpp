@@ -98,6 +98,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		const TSharedPtr<FJsonObject> O = V->AsObject();
 		FLakeBridge Bridge;
 		Bridge.Name = O->GetStringField(TEXT("name"));
+		O->TryGetStringField(TEXT("kind"), Bridge.Kind);
 		Bridge.Points = ReadPoints(O->GetArrayField(TEXT("points")));
 		Bridge.DeckHeight = O->GetNumberField(TEXT("deck"));
 		if (Bridge.Points.Num() >= 2) Bridges.Add(MoveTemp(Bridge));
@@ -111,6 +112,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		}
 	}
 	LoadCoast(*Root, Directory, Name);
+	Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json")));
 	BuildObstacles();
 	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d bridges, %d buildings, %d launch spots, %d navaids, %d tide stations"), *LakeName,
 		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Bridges.Num(), Buildings.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
@@ -120,8 +122,10 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 void FLakeData::BuildObstacles()
 {
 	Obstacles.clear();
+	const FBox2D MarinaBox = Marina.Bounds();
 	for (const FLakeDock& Dock : Docks)
 	{
+		if (MarinaBox.bIsValid && MarinaBox.IsInside(Dock.Points[0])) continue; // the marina's own docks stand in
 		// Floating docks and fixed piers: decks about 0.5 m above the water, reaching below the hull.
 		for (int32 I = 1; I < Dock.Points.Num(); ++I)
 		{
@@ -129,12 +133,27 @@ void FLakeData::BuildObstacles()
 			S.AX = Dock.Points[I - 1].X; S.AY = Dock.Points[I - 1].Y;
 			S.BX = Dock.Points[I].X; S.BY = Dock.Points[I].Y;
 			// Breakwaters are rubble; open lines are drawn as 2 m walkways; closed outlines are the deck edge.
-			S.Radius = Dock.Kind == TEXT("breakwater") ? 1.5 : (Dock.bClosed ? 0.25 : 1.0);
+			// Breakwaters: the riprap band's half-width at the waterline (BuildShoreGeometry); piers as drawn.
+			S.Radius = Dock.Kind == TEXT("breakwater") ? 2.2 : (Dock.bClosed ? 0.25 : 1.0);
 			S.Bottom = -2.0;
 			S.Top = Dock.Kind == TEXT("breakwater") ? 2.0 : 0.8;
 			Obstacles.push_back(S);
 		}
 	}
+	// Visual V6: the marina's docks, finger piers and breakwater stop the boat where they are drawn (AMarinaActor).
+	Marina.ForEachObstacleLine([this](const TArray<FVector2D>& Points, const FString& Kind, float HalfWidth)
+	{
+		for (int32 I = 1; I < Points.Num(); ++I)
+		{
+			Sailing::FObstacleSegment S;
+			S.AX = Points[I - 1].X; S.AY = Points[I - 1].Y;
+			S.BX = Points[I].X; S.BY = Points[I].Y;
+			S.Radius = HalfWidth;
+			S.Bottom = -2.0;
+			S.Top = Kind == TEXT("breakwater") ? 2.0 : 0.8;
+			Obstacles.push_back(S);
+		}
+	});
 	for (const FLakeBridge& Bridge : Bridges)
 	{
 		// The deck spans from its clearance upward: the hull passes under, the mast (9.2 m) does not.

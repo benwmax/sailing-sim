@@ -9,7 +9,7 @@ class UStaticMeshComponent;
 class UMaterialInterface;
 
 /**
- * A power-driven vessel of the traffic, drawn from simple shapes: a runabout, a shrimp trawler with her outriggers,
+ * A power-driven vessel of the traffic, drawn from the Blender-built models (simple shapes on Low): a runabout, a shrimp trawler with her outriggers,
  * a towboat pushing barges, a deep-draft ship, or the race committee boat. Each carries the lights of her status
  * (Rules 23 to 30: masthead, sidelights and sternlight over their arcs; all-round green over white trawling; red-
  * white-red restricted in ability to maneuver; three reds constrained by draft; a white anchor light) and her day
@@ -24,11 +24,16 @@ public:
 	APowerVesselActor();
 
 	void Build(Sailing::ETrafficKind Kind);
+	Sailing::ETrafficKind GetKind() const { return Kind; }
 	/** Moves her to the simulated vessel and lights her for the observer (lights show only over their arcs). */
 	void UpdateFrom(const Sailing::FTrafficVessel& Vessel, bool bDark, const FVector& Observer, float Time);
 
 private:
 	UStaticMeshComponent* Part(UStaticMesh* Mesh, const FVector& LocationM, const FVector& SizeM, const FLinearColor& Color, const FRotator& Rotation = FRotator::ZeroRotator);
+	/** Adds a vessel model from /Game/World/Vessels; false (draw the boxes) on Low or when it is missing. */
+	bool Model(const TCHAR* Name, const FVector& LocationM, const FVector& Scale = FVector::OneVector);
+	/** The container ship's deck cargo. */
+	void Containers(float Beam);
 	/** A navigation light: shown when the observer's bearing from the bow (degrees) lies within [ArcFrom, ArcTo]. */
 	void Light(const FVector& LocationM, const FLinearColor& Color, float ArcFrom, float ArcTo);
 

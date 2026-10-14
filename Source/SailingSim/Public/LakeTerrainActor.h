@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Async/Future.h"
+#include "TreePlacement.h"
 #include "LakeTerrainActor.generated.h"
 
 class UProceduralMeshComponent;
@@ -58,6 +59,7 @@ private:
 	/** How deep the water hides the bed: where its colour has absorbed 99% of the light coming back (Visual V4). */
 	double HideBelow = -1e9;
 	void PlaceTrees();
+	bool PlaceHouseModels(const struct FLakeData& Lake);
 	void PlaceBuildings();
 	void PlaceBridgesAndDocks();
 
@@ -70,6 +72,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> TerrainMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
 	UPROPERTY(Transient) TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> TreeMeshes;
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeModels; // Visual V6: leaf-card trees near the camera
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
+	TArray<struct FTreeInstance> ModelTrees;
+	FVector2D TreeCenter = FVector2D(1e12, 1e12);
+	void UpdateModelTrees(const FVector2D& Camera);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> BridgeDecks;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Pilings;

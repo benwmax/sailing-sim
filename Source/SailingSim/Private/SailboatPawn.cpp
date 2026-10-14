@@ -1,4 +1,6 @@
 #include "SailboatPawn.h"
+#include "PowerVesselActor.h"
+#include "EngineUtils.h"
 #include "Components/MeshComponent.h"
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
@@ -1458,7 +1460,16 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		FVector2D Berth;
 		double BerthHeading = 0.0;
 		const double WindFromRad = GM->GetWeatherState().Wind.FromDegrees * kDegToRad;
-		if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
+		const FMarina& Marina = GM->GetLake().Marina;
+		if (Drill == ESailingDrill::LeaveTheDock && Boat.GetConfig().Type == EBoatType::J22 && Marina.HomeSlip != INDEX_NONE)
+		{
+			// The J/22 starts in its own slip at the club (Visual V6), bow in, tied to the fingers.
+			const FMarinaSlip& Home = Marina.Slips[Marina.HomeSlip];
+			Boat.Reset(Home.Center.X, Home.Center.Y, Home.HeadingDeg * kDegToRad, 0.0);
+			Boat.GetMutableState().Time = Time;
+			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+		}
+		else if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
 		{
 			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
@@ -2457,6 +2468,30 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 				Location = StartLocation + FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter;
 				Location.Z = WaterSurfaceZ + FCString::Atof(*P[2]) * CmPerMeter;
 				Rotation = FRotator(FCString::Atof(*P[4]), FCString::Atof(*P[3]), 0.f);
+			}
+		}
+		// -SailingCamVessel=<kind>[,<distance m>,<bearing deg from her bow>]: frame the nearest traffic vessel of that kind
+		// (ETrafficKind: 1 runabout, 2 trawler, 3 tug and tow, 4 ship, 5 committee boat) from the water, for the vessel models.
+		FString CamVessel;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamVessel="), CamVessel, false))
+		{
+			TArray<FString> P;
+			CamVessel.ParseIntoArray(P, TEXT(","));
+			const int32 Want = P.Num() > 0 ? FCString::Atoi(*P[0]) : 3;
+			const APowerVesselActor* Best = nullptr;
+			for (TActorIterator<APowerVesselActor> It(GetWorld()); It; ++It)
+			{
+				if (int32(It->GetKind()) != Want) continue;
+				if (!Best || FVector::Dist(It->GetActorLocation(), Origin) < FVector::Dist(Best->GetActorLocation(), Origin)) Best = *It;
+			}
+			if (Best)
+			{
+				const float Dist = P.Num() > 1 ? FCString::Atof(*P[1]) : 120.f;
+				const float Brg = P.Num() > 2 ? FCString::Atof(*P[2]) : 50.f;
+				const FRotator Dir(0.f, Best->GetActorRotation().Yaw + Brg, 0.f);
+				Location = Best->GetActorLocation() + Dir.Vector() * Dist * CmPerMeter;
+				Location.Z = WaterSurfaceZ + 2.0 * CmPerMeter;
+				Rotation = (Best->GetActorLocation() + FVector(0, 0, 3.0 * CmPerMeter) - Location).Rotation();
 			}
 		}
 		CaptureCamera->SetWorldLocationAndRotation(Location, Rotation);
