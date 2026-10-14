@@ -35,6 +35,11 @@ namespace SailingPerf
 	/** {"boat_physics":ms,...}: the slices' time per frame between two snapshots of GSliceSeconds, for bench.json. */
 	SAILINGSIM_API FString SlicesJson(const double* Start, const double* End, int32 Frames);
 
+	/** Perf 1 fix 4: the meshes an actor rebuilds or poses every frame (sails, telltales, rig lines; the crew's skinned
+	 *  meshes and grooms) leave the ray-tracing scene, where each was rebuilt into a BLAS every frame. Lumen's hardware
+	 *  traces barely see them; screen traces still do. The procedural hull (built once) stays. */
+	SAILINGSIM_API void KeepDynamicMeshesOutOfRayTracing(AActor* Actor);
+
 	/** stat unit's thread times (game and render thread without their waits, RHI thread, GPU), summed per frame. */
 	struct SAILINGSIM_API FThreadTimes
 	{
@@ -83,4 +88,4 @@ namespace SailingPerf
 #define SAILING_PERF_SCOPE_END(Slice) SailingPerfManual_##Slice.End()
 #define SAILING_PERF_SCOPE(Slice) \
 	TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_##Slice); \
-	SailingPerf::FScope PREPROCESSOR_JOIN(SailingPerfScope_, __LINE__)(SailingPerf::ESlice::Slice)
+	SailingPerf::FScope UE_JOIN(SailingPerfScope_, __LINE__)(SailingPerf::ESlice::Slice)

@@ -2,6 +2,9 @@
 #include "PerfScopes.h"
 #include "RenderTimer.h"
 #include "RHI.h"
+#include "ProceduralMeshComponent.h"
+#include "Components/SkinnedMeshComponent.h"
+#include "GroomComponent.h"
 
 namespace SailingPerf
 {
@@ -25,6 +28,17 @@ namespace SailingPerf
 			Out += FString::Printf(TEXT("\"%s\":%.3f"), SliceName(ESlice(I)), Frames > 0 ? (End[I] - Start[I]) * 1000.0 / Frames : 0.0);
 		}
 		return Out + TEXT("}");
+	}
+
+	void KeepDynamicMeshesOutOfRayTracing(AActor* Actor)
+	{
+		if (!Actor) return;
+		TInlineComponentArray<UPrimitiveComponent*> Parts(Actor);
+		for (UPrimitiveComponent* P : Parts)
+		{
+			const bool bDynamic = (P->IsA<UProceduralMeshComponent>() && P->GetFName() != TEXT("HullMesh")) || P->IsA<USkinnedMeshComponent>() || P->IsA<UGroomComponent>();
+			if (bDynamic && P->bVisibleInRayTracing) P->SetVisibleInRayTracing(false);
+		}
 	}
 
 	void FThreadTimes::Sample()

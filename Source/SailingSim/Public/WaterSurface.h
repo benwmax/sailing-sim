@@ -119,6 +119,17 @@ private:
 	FDetailFramePtr FramePrev, FrameNext;
 	TFuture<FDetailFramePtr> PendingFrame;
 	bool bFramePending = false;
+	// Perf 1 fix 5: the detail maps' blend, mips and half-float packing run on a worker for the next frame's time; the
+	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
+	struct FDetailUpload
+	{
+		TArray<uint8*> A, B, Ripple; // half-float RGBA mips, new[] blocks
+		int32 N = 0, RippleN = 0;
+		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : Ripple) delete[] P; }
+	};
+	using FDetailUploadPtr = TSharedPtr<FDetailUpload, ESPMode::ThreadSafe>;
+	TFuture<FDetailUploadPtr> PendingUpload;
+	bool bUploadPending = false;
 	FWakeGrid Wake;  // stepped on a worker: touched by the game thread only while no step is pending
 	struct FWakeFrame { TArray<float> Pixels; FVector2D Origin = FVector2D::ZeroVector; int32 N = 0; float Cell = 0.f; };
 	TFuture<FWakeFrame> PendingWake;
