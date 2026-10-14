@@ -36,7 +36,7 @@ DEPTH = CFG["canoe_depth"]
 RIG = CFG["rig"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
-         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail"]
+         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "Rope", "Teak"]
 
 
 # ---------------------------------------------------------------- the physics hull (FHullShape, BoatModel.cpp)
@@ -261,6 +261,67 @@ def socket(name, p):
     SOCKETS[name] = [round(p[0] * 100, 2), round(p[1] * 100, 2), round(p[2] * 100, 2)]
 
 
+# Graphics G6: deck hardware a close camera reads (the round 7 action cam: "few details").
+def ring(c, r, z, n, wobble=None):
+    return [(c[0] + (r + (wobble(k) if wobble else 0.0)) * math.cos(2 * math.pi * k / n),
+             c[1] + (r + (wobble(k) if wobble else 0.0)) * math.sin(2 * math.pi * k / n), z) for k in range(n + 1)]
+
+
+def disc(m, c, r, z, slot, n=24, up=True):
+    pts = ring(c, r, z, n)[:-1]
+    m.face(pts if up else list(reversed(pts)), slot)
+
+
+def winch(m, x, y, z):
+    """A two-speed self-tailing winch (a Harken 16 size): base flange, fluted drum, the tailer's jaws and stripper arm, a top
+    cap with the handle socket."""
+    c = (x, y)
+    flute = lambda k: 0.0035 * (k % 2)
+    m.grid([ring(c, 0.078, z, 32), ring(c, 0.078, z + 0.012, 32), ring(c, 0.062, z + 0.018, 32)], "Stainless", flip=True)
+    rows = [ring(c, 0.050, z + 0.018 + h, 32, flute) for h in (0.0, 0.07)] + [ring(c, 0.056, z + 0.095, 32)]
+    m.grid(rows, "Stainless", flip=True)
+    # Self-tailer: two black jaws with the line's gap between them, and the cap above.
+    m.grid([ring(c, 0.056, z + 0.095, 32), ring(c, 0.064, z + 0.1, 32), ring(c, 0.064, z + 0.11, 32), ring(c, 0.052, z + 0.113, 32),
+            ring(c, 0.064, z + 0.118, 32), ring(c, 0.064, z + 0.128, 32), ring(c, 0.05, z + 0.14, 32), ring(c, 0.02, z + 0.145, 32)],
+           "BlackPlastic", flip=True)
+    disc(m, c, 0.02, z + 0.145, "BlackPlastic", 16)
+    m.grid([ring(c, 0.012, z + 0.146, 12), ring(c, 0.012, z + 0.12, 12)], "Stainless", flip=True)   # handle socket
+    box(m, (x + 0.05, y, z + 0.112), (0.05, 0.02, 0.014), "BlackPlastic")                          # stripper arm
+
+
+def cam_cleat(m, x, y, z, yaw):
+    """A cam cleat on its base, with the fairlead ahead of the cams."""
+    box(m, (x, y, z + 0.006), (0.09, 0.05, 0.012), "BlackPlastic", yaw)
+    cs, sn = math.cos(yaw), math.sin(yaw)
+    for s in (1, -1):
+        px, py = x - 0.01 * cs - s * 0.014 * sn, y - 0.01 * sn + s * 0.014 * cs
+        m.grid([ring((px, py), 0.012, z + 0.012, 10, lambda k: 0.002 * (k % 2)), ring((px, py), 0.012, z + 0.032, 10, lambda k: 0.002 * (k % 2))],
+               "Aluminium", flip=True)
+        disc(m, (px, py), 0.012, z + 0.032, "Aluminium", 10)
+    fx, fy = x + 0.04 * cs, y + 0.04 * sn
+    tube(m, [(fx - 0.012 * sn + 0.0, fy + 0.012 * cs, z + 0.01), (fx, fy, z + 0.03), (fx + 0.012 * sn, fy - 0.012 * cs, z + 0.01)], 0.003, "Stainless", 6)
+
+
+def block(m, p, axis_y=True, r=0.025, slot="BlackPlastic"):
+    """A single block: cheeks round a sheave (axis across Y or X)."""
+    x, y, z = p
+    for s in (1, -1):
+        off = (0, s * 0.012, 0) if axis_y else (s * 0.012, 0, 0)
+        cylinder(m, (x + off[0], y + off[1], z), (0, 1, 0) if axis_y else (1, 0, 0), r, 0.004, slot, 16)
+    cylinder(m, (x, y - 0.008, z) if axis_y else (x - 0.008, y, z), (0, 1, 0) if axis_y else (1, 0, 0), r * 0.75, 0.016, "Aluminium", 16)
+
+
+def coil(m, c, r, turns, z, slot="Rope", rope=0.0045, seed=0):
+    """A coiled tail lying on deck: a flattened spiral of rope, each turn a little off the last."""
+    pts = []
+    n = int(turns * 24)
+    for k in range(n + 1):
+        a = 2 * math.pi * k / 24 + seed
+        rr = r * (1.0 + 0.08 * math.sin(3 * a + seed) - 0.06 * k / n)
+        pts.append((c[0] + rr * math.cos(a), c[1] + 0.85 * rr * math.sin(a), z + rope * (1.0 + 0.6 * k / n)))
+    tube(m, pts, rope, slot, 6, cap=True)
+
+
 # ---------------------------------------------------------------- the hull
 
 hull = Mesh("SM_J22_Hull")
@@ -322,6 +383,16 @@ hull.face(list(reversed(loop)), "Topsides")
 # Rubrail along the hull-deck joint.
 for side in (1, -1):
     tube(hull, [(x, side * (sharp_half_beam(x) + 0.008), sheer(x) - 0.01) for x in XS[2:-3:3]], 0.014, "Rubrail", 8)
+
+# Graphics G6: the teak toe rails along the deck edge, weathered grey (Bean's lesson photos), from the bow to the cockpit's end.
+for side in (1, -1):
+    pts = []
+    for x in XS[8:-12:3]:
+        if x < COCKPIT_AFT + 0.15 or x > BOW - 0.4:
+            continue
+        y = side * (sharp_half_beam(x) - 0.028)
+        pts.append((x, y, deck_z(x, y) + 0.016))
+    tube(hull, pts, 0.017, "Teak", 4)
 
 # ---------------------------------------------------------------- deck, cabin trunk, cockpit
 
@@ -390,6 +461,10 @@ box(hull, (fh_x, 0, deck_z(fh_x, 0) + 0.035), (0.5, 0.5, 0.07), "Deck")
 box(hull, (fh_x, 0, deck_z(fh_x, 0) + 0.072), (0.44, 0.44, 0.006), "CabinWindow")
 mast_step_z = cabin_top_edge(RIG["mast_x"])[1] + 0.035
 box(hull, (RIG["mast_x"], 0, mast_step_z + 0.015), (0.2, 0.14, 0.03), "Aluminium")
+# Graphics G6: the halyards' turning blocks round the mast step, and the vang's base block.
+for k in range(3):
+    for side in (1, -1):
+        block(hull, (RIG["mast_x"] - 0.12, side * (0.06 + 0.02 * k), mast_step_z + 0.03), axis_y=True, r=0.02)
 socket("MastStep", (RIG["mast_x"], 0, mast_step_z))
 lazy_x = RIG["mast_x"] + 0.32
 socket("LazySheetVia", (lazy_x, 0, cabin_top_edge(lazy_x)[1] + 0.035 + 0.03))
@@ -472,12 +547,29 @@ for side, tag in ((1, "S"), (-1, "P")):
     wx = CABIN_AFT - 0.28
     wy = side * (inner_edge(wx) + 0.16)
     wz = deck_z(wx, wy)
-    cylinder(hull, (wx, wy, wz), (0, 0, 1), 0.075, 0.02, "Stainless", 20)
-    cylinder(hull, (wx, wy, wz + 0.02), (0, 0, 1), 0.052, 0.09, "Stainless", 20)
-    cylinder(hull, (wx, wy, wz + 0.11), (0, 0, 1), 0.045, 0.025, "BlackPlastic", 20)
+    winch(hull, wx, wy, wz)
     socket(f"JibWinch_{tag}", (wx, wy, wz + 0.07))
+    socket(f"JibTailer_{tag}", (wx, wy, wz + 0.11))
     cx2 = wx - 0.25
-    box(hull, (cx2, side * (inner_edge(cx2) + 0.1), deck_z(cx2, inner_edge(cx2)) + 0.02), (0.1, 0.04, 0.035), "BlackPlastic")
+    cam_cleat(hull, cx2, side * (inner_edge(cx2) + 0.1), deck_z(cx2, inner_edge(cx2)), 0.0)
+    # The jib sheet's tail: from the self-tailer down onto the cockpit seat, the rest coiled there.
+    sz = SEAT_Z + 0.002
+    ty0 = side * (inner_edge(wx - 0.35) - 0.12)
+    tube(hull, [(wx - 0.02, wy - side * 0.06, wz + 0.11), (wx - 0.12, wy - side * 0.1, wz + 0.05), (wx - 0.25, ty0, sz + 0.02), (wx - 0.38, ty0, sz + 0.005)],
+         0.0045, "Rope", 6)
+    coil(hull, (wx - 0.55, ty0), 0.11, 3.0, sz, seed=0.7 * side)
+    # Rope clutches beside the companionway (halyards, cunningham), their tails coiled on the cabin top's aft edge.
+    for k in range(3):
+        kx = CABIN_AFT + 0.12
+        ky = side * (0.42 + 0.05 * k)
+        kz = cabin_top_edge(kx)[1] + 0.035 * (1 - (ky / cabin_top_edge(kx)[0]) ** 2)
+        box(hull, (kx, ky, kz + 0.02), (0.12, 0.04, 0.04), "BlackPlastic")
+        box(hull, (kx - 0.03, ky, kz + 0.045), (0.07, 0.03, 0.012), "Aluminium")
+        # Its halyard runs forward along the cabin top to the turning block at the mast step.
+        hx = RIG["mast_x"] - 0.12
+        tube(hull, [(kx + 0.06, ky, kz + 0.02), (0.5 * (kx + hx), side * (0.3 + 0.04 * k), cabin_top_edge(0.5 * (kx + hx))[1] + 0.04), (hx, side * (0.06 + 0.02 * k), cabin_top_edge(hx)[1] + 0.05)],
+             0.004, "Rope", 6)
+    coil(hull, (CABIN_AFT + 0.05, side * 0.55), 0.09, 2.5, cabin_top_edge(CABIN_AFT + 0.05)[1] + 0.01, seed=1.3 * side)
     # Jib track on the side deck and its car with a block.
     tx0, tx1 = 0.45, -0.25
     ty = side * (sharp_half_beam(0.1) - 0.24)
@@ -607,7 +699,7 @@ for p0, p1 in zip(tiller[:-1], tiller[1:]):
     tube(rudder, [p0, p1], 0.022 - 0.008 * ((p0[0] - STOCK_X) / RIG["tiller_length"]), "Wood", 10)
 end = tiller[-1]
 cylinder(rudder, (end[0] - 0.01, 0, end[2] + 0.02), (0, 0, 1), 0.012, 0.03, "BlackPlastic", 12)
-tube(rudder, [(end[0], 0.0, end[2] + 0.045), (end[0] - 0.85, 0.035, end[2] - 0.03)], 0.011, "Aluminium", 10)
+# Graphics G6: the tiller extension is drawn by the pawn (BoatModelVisuals.cpp), from here to the helm's hand.
 socket("TillerEnd", end)
 socket("RudderStock", (STOCK_X, 0, TILLER_Z0))
 socket("RudderPivot", (STOCK_X, 0, 0))

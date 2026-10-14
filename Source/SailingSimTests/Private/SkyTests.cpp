@@ -54,6 +54,16 @@ bool FSkyCloudLayersTest::RunTest(const FString&)
 	// Low decks under overcast and rain; the storm's base lower than the fair-weather cumulus.
 	W.Configure(EWeatherPreset::Overcast, 7, 13.0);
 	TestTrue(TEXT("Overcast is a low stratus deck"), W.Evaluate(0.0).Sky[ECloudLayer::Stratus].Coverage > 0.9 && W.Evaluate(0.0).Sky[ECloudLayer::Stratus].BaseKm < 1.2);
+	// Graphics G6: and an unbroken one (eight oktas): no texel of the map without stratus.
+	{
+		const FWeatherState Over = W.Evaluate(60.0);
+		FWeatherMap Deck;
+		Deck.Paint(Over.Sky, Over.Front, 0.0, 0.0, 60.0);
+		float Thinnest = 1.f;
+		for (int32 I = 0; I < FWeatherMap::N * FWeatherMap::N; ++I) Thinnest = FMath::Min(Thinnest, Deck.Pixels()[I * 4 + 1]);
+		AddInfo(FString::Printf(TEXT("Overcast: thinnest stratus texel %.2f"), Thinnest));
+		TestTrue(TEXT("The overcast has no holes"), Thinnest > 0.99f);
+	}
 	W.Configure(EWeatherPreset::Thunderstorm, 7, 15.0);
 	const FWeatherState Storm = W.Evaluate(140.0);
 	TestTrue(TEXT("The storm's base is below the cumulus"), Storm.Sky[ECloudLayer::Storm].BaseKm < Storm.Sky[ECloudLayer::Cumulus].BaseKm && Storm.Sky[ECloudLayer::Cirrus].Coverage > 0.3);

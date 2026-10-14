@@ -40,7 +40,7 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	switch (Drill)
 	{
 	case ESailingDrill::LeaveTheDock:
-		Steps = { TEXT("Check the wind and plan which way you will leave"), TEXT("Cast off the dock lines (T)"),
+		Steps = { TEXT("Check the wind and plan which way you will leave"), TEXT("Cast off the dock lines (T): the crew hoists the sails"),
 			TEXT("Sail out without touching the docks or other boats"), TEXT("Get 100 m clear of the marina") };
 		Status = TEXT("You are tied up. Look at the wind arrow before you cast off.");
 		break;

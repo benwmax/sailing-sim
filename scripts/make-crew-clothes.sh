@@ -21,6 +21,10 @@ for role in Helm Trimmer Bow; do
 	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_shoes.py" -- "$CREW/${role}_Body.fbx" "$CREW/${role}_Shoes.fbx" \
 		> "$ARTIFACTS/crew-shoes-$role.log" 2>&1 || { tail -30 "$ARTIFACTS/crew-shoes-$role.log"; exit 1; }
 	grep -E "^Shoes:" "$ARTIFACTS/crew-shoes-$role.log" || true
+	# Graphics G6: the life jacket tailored over the polo.
+	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_vest.py" -- "$CREW/${role}_Polo.fbx" "$CREW/${role}_Vest.fbx" \
+		> "$ARTIFACTS/crew-vest-$role.log" 2>&1 || { tail -30 "$ARTIFACTS/crew-vest-$role.log"; exit 1; }
+	grep -E "^Vest:" "$ARTIFACTS/crew-vest-$role.log" || true
 done
 "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_crew_clothes.py" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/crew-import.log" 2>&1 || true
 grep "Crew clothes" "$ARTIFACTS/crew-import.log" | sed 's/.*LogPython: //'

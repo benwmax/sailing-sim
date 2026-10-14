@@ -31,6 +31,8 @@ const FKitLookDesc& KitLook(EKitLook Look)
 		{ TEXT("Steel"), FLinearColor(0.30f, 0.36f, 0.40f), 0.55f, 5.f, 0.f, 0.6f },    // painted steel girders
 		{ TEXT("LampGlow"), FLinearColor(1.0f, 0.78f, 0.50f), 0.4f, 0.f, 0.f, 0.f },    // sodium/LED lamp heads (glow at night)
 		{ TEXT("Riprap"), FLinearColor(0.50f, 0.47f, 0.42f), 0.9f, 7.f, 0.f, 0.f },     // granite and limestone riprap
+		{ TEXT("HouseWall"), FLinearColor(0.7f, 0.66f, 0.58f), 0.8f, 0.f, 0.f, 0.f },   // M_HouseKitWall: colour and finish per vertex
+		{ TEXT("HouseRoof"), FLinearColor(0.2f, 0.2f, 0.2f), 0.85f, 0.f, 0.f, 0.f },    // M_HouseKitRoof: NAIP roof colour per vertex
 	};
 	return Looks[int32(Look)];
 }
@@ -46,7 +48,7 @@ void FKitSection::Quad(const FVector& A, const FVector& B, const FVector& C, con
 	const int32 I = V.Num();
 	const FVector Nrm = FVector::CrossProduct(D - A, B - A).GetSafeNormal();
 	const FProcMeshTangent Tg((B - A).GetSafeNormal(), false);
-	for (const FVector& P : { A, B, C, D }) { V.Add(P * 100.0); N.Add(Nrm); Tan.Add(Tg); }
+	for (const FVector& P : { A, B, C, D }) { V.Add(P * 100.0); N.Add(Nrm); Tan.Add(Tg); Col.Add(Paint); UV1.Add(Tag); }
 	UV.Append({ UA, UB, UC, UD });
 	T.Append({ I, I + 1, I + 2, I, I + 2, I + 3 });
 }
@@ -103,7 +105,11 @@ void FKitGeometry::SplitTiles(double TileM, TMap<FIntPoint, FKitGeometry>& Out) 
 			const FVector C = 0.25 * (Src.V[Q] + Src.V[Q + 1] + Src.V[Q + 2] + Src.V[Q + 3]);
 			FKitSection& D = Out.FindOrAdd(FIntPoint(FMath::FloorToInt32(C.X / TileCm), FMath::FloorToInt32(C.Y / TileCm))).Sections[K];
 			const int32 I = D.V.Num();
-			for (int32 J = 0; J < 4; ++J) { D.V.Add(Src.V[Q + J]); D.N.Add(Src.N[Q + J]); D.UV.Add(Src.UV[Q + J]); D.Tan.Add(Src.Tan[Q + J]); }
+			for (int32 J = 0; J < 4; ++J)
+			{
+				D.V.Add(Src.V[Q + J]); D.N.Add(Src.N[Q + J]); D.UV.Add(Src.UV[Q + J]); D.Tan.Add(Src.Tan[Q + J]);
+				D.Col.Add(Src.Col[Q + J]); D.UV1.Add(Src.UV1[Q + J]);
+			}
 			D.T.Append({ I, I + 1, I + 2, I, I + 2, I + 3 });
 		}
 	}
@@ -147,7 +153,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		{
 			const FKitSection& D = KV.Value.Sections[K];
 			if (D.V.Num() == 0) continue;
-			M->CreateMeshSection_LinearColor(K, D.V, D.T, D.N, D.UV, {}, D.Tan, false);
+			M->CreateMeshSection(K, D.V, D.T, D.N, D.UV, D.UV1, {}, {}, D.Col, D.Tan, false);
 			M->SetMaterial(K, Material(EKitLook(K)));
 		}
 		Out.Add(M);
@@ -393,6 +399,27 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeShore(const FString& LakeName)
 	return Out;
 }
 
+TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || Lake.Houses.Num() == 0) return Out;
+	TMap<FIntPoint, TArray<int32>> Tiles;
+	HouseTiles(Lake, Tiles);
+	int64 Quads = 0;
+	for (const auto& KV : Tiles)
+	{
+		FKitGeometry G;
+		BuildHouseGeometry(Lake, KV.Value, G);
+		Quads += G.NumQuads();
+		if (UStaticMesh* M = BakeMesh(G, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Houses_") + LakeName, KV.Key))) Out.Add(M);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Baked the %s houses: %d houses, %lld quads in %d tiles"), *LakeName, Lake.Houses.Num(), Quads, Out.Num());
+#endif
+	return Out;
+}
+
 TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 {
 	TArray<UStaticMesh*> Out;
@@ -430,7 +457,9 @@ UStaticMesh* UWorldKitLibrary::BakeMesh(const FKitGeometry& Geometry, const FStr
 	TVertexInstanceAttributesRef<float> Signs = Attr.GetVertexInstanceBinormalSigns();
 	TVertexInstanceAttributesRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
 	TPolygonGroupAttributesRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
-	UVs.SetNumChannels(1);
+	// Graphics G6: a second UV channel and vertex colours for the looks that carry them (the houses).
+	TVertexInstanceAttributesRef<FVector4f> Colors = Attr.GetVertexInstanceColors();
+	UVs.SetNumChannels(2);
 	Mesh->GetStaticMaterials().Reset();
 	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
 	{
@@ -453,6 +482,8 @@ UStaticMesh* UWorldKitLibrary::BakeMesh(const FKitGeometry& Geometry, const FStr
 			Tangents[VI] = FVector3f(S.Tan[I].TangentX);
 			Signs[VI] = 1.f;
 			UVs.Set(VI, 0, FVector2f(S.UV[I]));
+			UVs.Set(VI, 1, FVector2f(S.UV1[I]));
+			Colors[VI] = FVector4f(FLinearColor::FromSRGBColor(S.Col[I]));
 			Inst.Add(VI);
 		}
 		for (int32 I = 0; I + 2 < S.T.Num(); I += 3)

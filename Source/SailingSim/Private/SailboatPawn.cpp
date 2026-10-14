@@ -1647,12 +1647,14 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 			Boat.Reset(Home.Center.X, Home.Center.Y, Home.HeadingDeg * kDegToRad, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+			bSailsStowed = true;   // Graphics G6: covered and furled until she casts off
 		}
 		else if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
 		{
 			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+			bSailsStowed = true;
 		}
 		else if (Drill == ESailingDrill::ReturnAndDock && GM->GetLake().LaunchSpots.Num() > 1)
 		{
@@ -1837,8 +1839,21 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 
+	// Graphics G6: tied up in her slip, a keelboat's sails are stowed (the berthed dress), the boom on the centreline.
+	const bool bStowed = bSailsStowed && StowedDress && IsTiedUp();
+	if (bStowed != bStowedShown)
+	{
+		bStowedShown = bStowed;
+		StowedDress->SetVisibility(bStowed);
+		MainSail->SetVisibility(!bStowed);
+		JibSail->SetVisibility(!bStowed && Boat.GetConfig().HasJib());
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(!bStowed);
+		if (ModelMast) ModelMast->SetVisibility(!bStowed);   // the dress carries its own (straight) mast and standing rig
+		if (RigLines) RigLines->SetVisibility(!bStowed);
+		if (TravelerCar) TravelerCar->SetVisibility(!bStowed);
+	}
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
-	BoomPivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
+	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
 	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
@@ -1849,6 +1864,12 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (ModelHull)
 	{
 		UpdateModelRig(DeltaSeconds);
+	}
+	if (bStowed)
+	{
+		SpinSail->SetVisibility(false);
+		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
+		return;
 	}
 	// A reef changes the main's planform: rebuild its cloth.
 	const double MainHead = Cfg.Main.NumStrips > 0 ? Cfg.Main.Strips[Cfg.Main.NumStrips - 1].ZTop : -1.0;
@@ -2352,7 +2373,9 @@ bool ASailboatPawn::ToggleDockLines()
 	if (!Lines.empty())
 	{
 		Lines.clear();
-		StatusMessage = TEXT("Lines cast off");
+		// Graphics G6: the crew hoists the sails and takes the cover off as the lines come in.
+		StatusMessage = bSailsStowed && StowedDress ? TEXT("Lines cast off, sails up") : TEXT("Lines cast off");
+		bSailsStowed = false;
 		StatusUntil = Now + 3.0;
 		return true;
 	}
@@ -2974,13 +2997,33 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
 	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
 	const float Waist = float(At(TEXT("spine_01")).Z) + 3.f; // the hem at the navel, clear of the shorts' waistband
-	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
-	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
-	if (CrewPFDMesh && Span > 10.f && Top > Waist)
+	const float Top = float(At(TEXT("neck_01")).Z) + 1.f;   // Graphics G6: up to the collarbones (the vest's shoulders)
+	// Graphics G6: the sailing school's royal blue vests (Bean's lesson photos), one older and faded.
+	static const FLinearColor Foam[] = { FLinearColor(0.012f, 0.075f, 0.52f), FLinearColor(0.014f, 0.09f, 0.48f), FLinearColor(0.03f, 0.10f, 0.38f) };
+	// Graphics G6: the life jacket tailored over this sailor's polo (Tools/blender/build_vest.py) and skinned like it, so it
+	// wraps the body as it sits; the rigid one below where it has not been built (or with -SailingNoPolo).
+	const FString VestRole = MetaHumanRoleName(Role);
+	USkeletalMesh* VestMesh = FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")) ? nullptr
+		: LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Vest.SKM_%s_Vest"), *VestRole, *VestRole, *VestRole), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (VestMesh)
+	{
+		USkeletalMeshComponent* Vest = NewObject<USkeletalMeshComponent>(this);
+		Vest->SetupAttachment(Body);
+		Vest->SetSkeletalMesh(VestMesh);
+		Vest->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vest->RegisterComponent();
+		Vest->SetLeaderPoseComponent(Body);
+		const int32 Shell = Vest->GetMaterialIndex(TEXT("PFD"));
+		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		BoatParts.Add(Vest);
+	}
+	else if (CrewPFDMesh && Span > 10.f && Top > Waist)
 	{
 		const FVector Chest = At(TEXT("spine_03"));
 		// Over the shirt (mesh X is depth, Y width): the torso plus foam, centred a little ahead of the spine joints.
-		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.12f * Span), FVector(0.0125f * Span, 0.0115f * Span, 0.0092f * (Top - Waist + 2.f)));
+		// Graphics G6: deeper and centred further back, so it wraps the polo's back and sides (ahead of the spine it left the
+		// polo showing through behind).
+		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.06f * Span), FVector(0.0158f * Span, 0.0128f * Span, 0.0092f * (Top - Waist + 2.f)));
 		UStaticMeshComponent* Pfd = NewObject<UStaticMeshComponent>(this);
 		Pfd->SetStaticMesh(CrewPFDMesh);
 		Pfd->SetupAttachment(Body, TEXT("spine_04"));

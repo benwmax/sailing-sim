@@ -16,7 +16,7 @@ WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeC
                "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer",
                "Dark": "MI_World_Tyre", "Steel": "MI_World_Steel", "Wood": "MI_World_Pilings", "Lantern": "MI_World_Glass",
                "Reflective": "MI_World_Reflective", "ContainerPaint": "MI_World_ContainerPaint", "Trim": "MI_World_Trim"}
-for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull"):
+for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed"):
     WORLD_SLOTS[_slot] = f"MI_World_{_slot}"
 KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"),
          ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"),
@@ -73,11 +73,11 @@ def setup(mesh, nanite=True, overrides=None):
     unreal.EditorAssetLibrary.save_loaded_asset(mesh)
 
 
-# ONLY=<prefix> imports just those models and skips the bakes (iterating on one generator).
+# ONLY=<prefix>[,<prefix>...] imports just those models and skips the bakes (iterating on one generator).
 ONLY = os.environ.get("ONLY", "")
 for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
     name = os.path.splitext(os.path.basename(path))[0]
-    if ONLY and not name.startswith(ONLY):
+    if ONLY and not any(name.startswith(o) for o in ONLY.split(",")):
         continue
     folder = next((k for prefix, k in KINDS if name.startswith(prefix)), "Misc")
     mesh = import_fbx(path, f"{WORLD}/{folder}", name)
@@ -88,9 +88,10 @@ for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
 # The generated structures (WorldKit.h): bake the marina into Nanite tiles. Stale tiles from an older layout are removed.
 BAKED = f"{WORLD}/Baked"
 old = set(a.split(".")[0] for a in unreal.EditorAssetLibrary.list_assets(BAKED, recursive=False)) if unreal.EditorAssetLibrary.does_directory_exist(BAKED) else set()
-BAKES = {"marina": unreal.WorldKitLibrary.bake_marina, "bridges": unreal.WorldKitLibrary.bake_bridges, "shore": unreal.WorldKitLibrary.bake_shore}
+BAKES = {"marina": unreal.WorldKitLibrary.bake_marina, "bridges": unreal.WorldKitLibrary.bake_bridges, "shore": unreal.WorldKitLibrary.bake_shore,
+         "houses": unreal.WorldKitLibrary.bake_houses}
 for what, lake in () if ONLY else (("marina", "RayHubbard"), ("bridges", "RayHubbard"), ("bridges", "GalvestonBay"), ("bridges", "GulfPassage"),
-                   ("shore", "RayHubbard"), ("shore", "GalvestonBay"), ("shore", "GulfPassage")):
+                   ("shore", "RayHubbard"), ("shore", "GalvestonBay"), ("shore", "GulfPassage"), ("houses", "RayHubbard"), ("houses", "GalvestonBay")):
     meshes = BAKES[what](lake)
     for m in meshes:
         unreal.EditorAssetLibrary.save_loaded_asset(m)

@@ -6,6 +6,7 @@
 #include "LakeTerrain.h"
 #include "Lights.h"
 #include "Tides.h"
+#include "TreePlacement.h"
 
 /** A named place to put the boat on the water. */
 struct FLaunchSpot
@@ -19,6 +20,21 @@ struct FLaunchSpot
 struct FLakeBuilding
 {
 	double X, Y, Ground, Length, Width, Height, YawDeg;
+};
+
+/** Graphics G6: a house from the G2 footprints (Tools/terrain/build_houses.py, <Name>.houses): its lidar eave and roof,
+ *  NAIP roof colour and one rectangle per wing. Heights in metres above Ground; rectangles in the map frame. */
+struct FLakeHouse
+{
+	enum ERoof : uint8 { Flat, Gable, Hip, Shed };
+	struct FWing { double X, Y, HalfLength, HalfWidth, YawDeg; };
+	double X = 0.0, Y = 0.0, Ground = 0.0;  // Ground below -900: not measured (take the terrain's)
+	float Eave = 3.f, Ridge = 0.f, PitchDeg = 24.f;
+	ERoof Roof = Hip;
+	bool bFullDetail = false, bLidar = false, bCommercial = false;
+	int32 Storeys = 1;
+	FColor RoofColor = FColor(96, 96, 96);
+	TArray<FWing, TInlineAllocator<4>> Wings;
 };
 
 /** A dock, pier or breakwater from OpenStreetMap: a closed outline or an open line, world meters. */
@@ -75,6 +91,10 @@ struct SAILINGSIM_API FLakeData
 
 	/** Obstacles for the boat: dock edges and bridge decks (clearance below the deck, a mast cannot pass). */
 	void BuildObstacles();
+	/** Graphics G6: reads <Name>.houses (Tools/terrain/build_houses.py) into Houses. */
+	void LoadHouses(const FString& Path);
+	/** Graphics G6: reads <Name>.crowns (Tools/terrain/build_crowns.py) into Crowns. */
+	void LoadCrowns(const FString& Path);
 
 	FString LakeName;
 	Sailing::FLakeTerrain Terrain;
@@ -85,6 +105,10 @@ struct SAILINGSIM_API FLakeData
 	FMarina Marina;
 	TArray<FLakeBridge> Bridges;
 	TArray<FLakeBuilding> Buildings;
+	/** Graphics G6: the G2 houses, when <Name>.houses exists (the shore's buildings drawn from them instead of Buildings). */
+	TArray<FLakeHouse> Houses;
+	/** Graphics G6: the G2 lidar tree crowns, when <Name>.crowns exists (PlaceCrownTrees). */
+	TArray<FLakeCrown> Crowns;
 	TArray<TPair<FString, FVector2D>> Checkpoints;
 	double PoolFeet = 0.0;
 	/** The most recent gauge reading baked in (feet, same datum as the pool) and its date (YYYY-MM-DD). */
