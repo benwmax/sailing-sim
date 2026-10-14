@@ -58,6 +58,9 @@ Double-click `build-windows.bat` in the repo root, or from a terminal in the rep
 build-windows.bat
 ```
 
+In PowerShell (the default terminal on Windows 11) type `.\build-windows.bat`: PowerShell does not run files from
+the current folder without the `.\`.
+
 It runs `scripts\windows\all.ps1`, which:
 
 1. checks Git LFS, Visual Studio's C++ game workload, Unreal and the GPU;
