@@ -1,5 +1,6 @@
 #include "TreePlacement.h"
 #include "LakeTerrain.h"
+#include "SailingSim.h"
 
 namespace
 {
@@ -57,4 +58,48 @@ void PlaceTreeInstances(const Sailing::FLakeTerrain& T, float Fraction, TArray<F
 			}
 		}
 	}
+}
+
+void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out)
+{
+	PlaceTreeInstances(T, Fraction, Out);
+	if (Crowns.Num() == 0) return;
+	// The crowns' band, in 100 m cells: any cell with a crown within 200 m. The canopy-map trees there give way.
+	TSet<FIntPoint> Band;
+	for (const FLakeCrown& C : Crowns)
+	{
+		const FIntPoint Cell(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f));
+		for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Band.Add(Cell + FIntPoint(Dx, Dy));
+	}
+	Out.RemoveAll([&](const FTreeInstance& I) { return Band.Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0))); });
+	const int32 Filled = Out.Num();
+	for (int32 K = 0; K < Crowns.Num(); ++K)
+	{
+		const FLakeCrown& C = Crowns[K];
+		const uint32 Seed = TreeHash(uint32(FMath::RoundToInt32(C.X * 10.f)) * 73856093u ^ uint32(FMath::RoundToInt32(C.Y * 10.f)) * 19349663u);
+		if (TreeRand(Seed) > Fraction) continue;
+		// Stand on the drawn ground (the lidar's median can sit a little off the 5 m grid's surface).
+		const double Ground = T.HeightAt(C.X, C.Y);
+		if (Ground < 0.3) continue;
+		FTreeInstance I;
+		I.Position = FVector2D(C.X, C.Y);
+		I.Ground = float(Ground);
+		I.Height = C.Height;
+		// The kept far crowns stand for their neighbours: a little wider, so the far shore keeps its mass.
+		I.Crown = C.Radius * (C.Weight > 1 ? 1.25f : 1.f);
+		// By the crown's shape as well as its height: a spreading crown (radius over half the height) is an oak, live oak
+		// most of all; a narrow one an elm or a cedar. The model then needs little stretching to the measured width.
+		const float U = TreeRand(Seed + 3);
+		const float Aspect = C.Radius / FMath::Max(C.Height, 1.f);
+		if (C.bCedar) I.Species = ETreeSpecies::RedCedar;
+		else if (Aspect > 0.5f) I.Species = U < 0.55f ? ETreeSpecies::LiveOak : ETreeSpecies::PostOak;
+		else if (Aspect < 0.28f) I.Species = U < 0.6f ? ETreeSpecies::CedarElm : (U < 0.8f ? ETreeSpecies::RedCedar : ETreeSpecies::PostOak);
+		else if (C.Height < 7.f) I.Species = U < 0.6f ? ETreeSpecies::CedarElm : (U < 0.85f ? ETreeSpecies::PostOak : ETreeSpecies::RedCedar);
+		else if (C.Height > 14.f) I.Species = U < 0.6f ? ETreeSpecies::PostOak : (U < 0.85f ? ETreeSpecies::LiveOak : ETreeSpecies::CedarElm);
+		else I.Species = U < 0.45f ? ETreeSpecies::PostOak : (U < 0.75f ? ETreeSpecies::CedarElm : (U < 0.92f ? ETreeSpecies::LiveOak : ETreeSpecies::RedCedar));
+		I.Yaw = 360.f * TreeRand(Seed + 5);
+		I.Variant = uint8(TreeRand(Seed + 6) < 0.5f ? 0 : 1);
+		Out.Add(I);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Trees: %d lidar crowns placed, %d canopy-map trees outside their band"), Out.Num() - Filled, Filled);
 }

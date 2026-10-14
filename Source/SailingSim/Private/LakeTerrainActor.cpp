@@ -313,9 +313,17 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		UStaticMesh* Mesh = (bNear ? TreeModels : TreeFar)[Index]->GetStaticMesh();
 		const float MeshHeight = Mesh ? FMath::Max(100.f, float(Mesh->GetBounds().BoxExtent.Z * 2.0)) : 1000.f;
 		const float Scale = I.Height * CmPerMeter / MeshHeight;
+		// Graphics G6: a lidar crown's own width (about 0.85 of the model's half-extent is its crown's equal-area radius),
+		// kept within a believable stretch of the model's proportions.
+		float ScaleXY = Scale;
+		if (I.Crown > 0.f && Mesh)
+		{
+			const float MeshRadius = FMath::Max(50.f, 0.85f * float(FMath::Max(Mesh->GetBounds().BoxExtent.X, Mesh->GetBounds().BoxExtent.Y)));
+			ScaleXY = FMath::Clamp(I.Crown * CmPerMeter / MeshRadius, 0.8f * Scale, 1.3f * Scale);
+		}
 		// The earth's curvature (as M_Terrain's offset does for the ground): far trees sink with the shore they stand on.
 		const double Drop = CurvatureDrop(FVector2D::Distance(I.Position, Camera));
-		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(Scale)));
+		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(ScaleXY, ScaleXY, Scale)));
 	}
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{
@@ -417,7 +425,9 @@ void ALakeTerrainActor::PlaceTrees()
 	if (!Lake) return;
 	const FLakeTerrain& T = Lake->Terrain;
 	TArray<FTreeInstance> Trees;
-	PlaceTreeInstances(T, TreeFraction, Trees);
+	// Graphics G6: the lidar's crowns where the G2 band has them (-SailingClassicTrees compares).
+	if (Lake->Crowns.Num() > 0 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicTrees"))) PlaceCrownTrees(T, Lake->Crowns, TreeFraction, Trees);
+	else PlaceTreeInstances(T, TreeFraction, Trees);
 	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
 	if (Lake->Houses.Num() > 0)
 	{
@@ -535,7 +545,7 @@ void ALakeTerrainActor::PlaceTrees()
 		else
 		{
 			const bool bOak = I.Species != ETreeSpecies::CedarElm;
-			const float W = Height * (bOak ? 0.9f : 0.7f);
+			const float W = I.Crown > 0.f ? FMath::Clamp(I.Crown * 2.f, Height * 0.45f, Height * 1.2f) : Height * (bOak ? 0.9f : 0.7f);
 			(bOak ? Oak : Elm).Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 60.f), FVector(W, W, Height * 0.7f)));
 			Trunk.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 20.f), FVector(0.4f, 0.4f, Height * 0.4f)));
 		}

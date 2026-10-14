@@ -236,6 +236,48 @@ bool FSailingHousesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * Graphics G6: the shore's trees from the G2 lidar crowns (Tools/terrain/build_crowns.py). They load with the lake; every
+ * placed crown keeps its measured height and a width near its crown radius; none stands in the water; the canopy-map
+ * trees stay only outside the crowns' band; tall crowns are not all one species.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCrownsTest, "SailingSim.Lake.Crowns", Flags)
+bool FSailingCrownsTest::RunTest(const FString& Parameters)
+{
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	if (!TestTrue(TEXT("The lidar crowns load (RayHubbard.crowns)"), Lake.Crowns.Num() > 100000)) return false;
+	int32 Full = 0, Cedar = 0;
+	for (const FLakeCrown& C : Lake.Crowns) { Full += C.bFullDetail; Cedar += C.bCedar; }
+	AddInfo(FString::Printf(TEXT("%d crowns, %d within 400 m of the water, %d red cedar"), Lake.Crowns.Num(), Full, Cedar));
+	TestTrue(TEXT("Most kept crowns are in the full-detail band"), Full > Lake.Crowns.Num() / 2);
+	TArray<FTreeInstance> Trees;
+	PlaceCrownTrees(Lake.Terrain, Lake.Crowns, 1.f, Trees);
+	TSet<FIntPoint> CrownCells;
+	for (const FLakeCrown& C : Lake.Crowns) CrownCells.Add(FIntPoint(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f)));
+	int32 Placed = 0, InWater = 0, MapInBand = 0, TooTall = 0, Tall = 0;
+	int32 TallSpecies[int32(ETreeSpecies::Count)] = {};
+	for (const FTreeInstance& I : Trees)
+	{
+		InWater += Lake.Terrain.HeightAt(I.Position.X, I.Position.Y) < 0.0;
+		if (I.Crown > 0.f)
+		{
+			++Placed;
+			TooTall += I.Height > 30.f;
+			if (I.Height > 14.f) { ++Tall; TallSpecies[int32(I.Species)]++; }
+		}
+		else MapInBand += CrownCells.Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0)));
+	}
+	AddInfo(FString::Printf(TEXT("%d trees: %d from crowns, %d tall (post oak %d, live oak %d, cedar elm %d)"), Trees.Num(), Placed, Tall,
+		TallSpecies[int32(ETreeSpecies::PostOak)], TallSpecies[int32(ETreeSpecies::LiveOak)], TallSpecies[int32(ETreeSpecies::CedarElm)]));
+	TestTrue(TEXT("Nearly every crown on land placed"), Placed > Lake.Crowns.Num() * 9 / 10);
+	TestEqual(TEXT("No tree in the water"), InWater, 0);
+	TestEqual(TEXT("No crown over 30 m"), TooTall, 0);
+	TestEqual(TEXT("No canopy-map tree inside the crowns' band"), MapInBand, 0);
+	TestTrue(TEXT("Tall crowns of more than one species"), TallSpecies[int32(ETreeSpecies::PostOak)] < Tall * 3 / 4 && TallSpecies[int32(ETreeSpecies::LiveOak)] > Tall / 10);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingGroundingTest, "SailingSim.Lake.RunsAgroundInShallows", Flags)
 bool FSailingGroundingTest::RunTest(const FString& Parameters)
 {

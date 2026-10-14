@@ -134,6 +134,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	}
 	LoadCoast(*Root, Directory, Name);
 	LoadHouses(Directory / (Name + TEXT(".houses")));
+	LoadCrowns(Directory / (Name + TEXT(".crowns")));
 	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
 	{
 		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
@@ -176,6 +177,31 @@ void FLakeData::LoadHouses(const FString& Path)
 			H.Wings.Add(Wing);
 		}
 		if (H.Wings.Num() > 0) Houses.Add(MoveTemp(H));
+	}
+}
+
+void FLakeData::LoadCrowns(const FString& Path)
+{
+	Crowns.Reset();
+	TArray<uint8> Bytes;
+	if (!FFileHelper::LoadFileToArray(Bytes, *Path, FILEREAD_Silent) || Bytes.Num() < 12 || FMemory::Memcmp(Bytes.GetData(), "CROW", 4) != 0) return;
+	uint32 Version = 0, Count = 0;
+	FMemory::Memcpy(&Version, Bytes.GetData() + 4, 4);
+	FMemory::Memcpy(&Count, Bytes.GetData() + 8, 4);
+	constexpr int32 Stride = 24;
+	if (Version != 1) return;
+	Count = FMath::Min<uint32>(Count, uint32((Bytes.Num() - 12) / Stride));
+	Crowns.SetNum(Count);
+	for (uint32 K = 0; K < Count; ++K)
+	{
+		const uint8* P = Bytes.GetData() + 12 + int64(K) * Stride;
+		float F[5];
+		FMemory::Memcpy(F, P, sizeof(F));
+		FLakeCrown& C = Crowns[K];
+		C.X = F[0]; C.Y = F[1]; C.Ground = F[2]; C.Height = F[3]; C.Radius = F[4];
+		C.bCedar = P[20] != 0;
+		C.bFullDetail = P[21] != 0;
+		C.Weight = FMath::Max<uint8>(1, P[22]);
 	}
 }
 

@@ -6,6 +6,7 @@
 #include "LakeTerrain.h"
 #include "Lights.h"
 #include "Tides.h"
+#include "TreePlacement.h"
 
 /** A named place to put the boat on the water. */
 struct FLaunchSpot
@@ -92,6 +93,8 @@ struct SAILINGSIM_API FLakeData
 	void BuildObstacles();
 	/** Graphics G6: reads <Name>.houses (Tools/terrain/build_houses.py) into Houses. */
 	void LoadHouses(const FString& Path);
+	/** Graphics G6: reads <Name>.crowns (Tools/terrain/build_crowns.py) into Crowns. */
+	void LoadCrowns(const FString& Path);
 
 	FString LakeName;
 	Sailing::FLakeTerrain Terrain;
@@ -104,6 +107,8 @@ struct SAILINGSIM_API FLakeData
 	TArray<FLakeBuilding> Buildings;
 	/** Graphics G6: the G2 houses, when <Name>.houses exists (the shore's buildings drawn from them instead of Buildings). */
 	TArray<FLakeHouse> Houses;
+	/** Graphics G6: the G2 lidar tree crowns, when <Name>.crowns exists (PlaceCrownTrees). */
+	TArray<FLakeCrown> Crowns;
 	TArray<TPair<FString, FVector2D>> Checkpoints;
 	double PoolFeet = 0.0;
 	/** The most recent gauge reading baked in (feet, same datum as the pool) and its date (YYYY-MM-DD). */

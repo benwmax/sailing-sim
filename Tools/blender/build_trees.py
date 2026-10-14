@@ -193,6 +193,7 @@ def far_version(b, name, seed):
             bump = 1.0 + 0.18 * math.sin(n.x * 7.1 + seed) * math.sin(n.y * 6.3 + 1.7 * seed) + 0.1 * random.uniform(-1, 1)
             v.co = c + Vector((n.x * ext.x * 0.85, n.y * ext.y * 0.85, n.z * ext.z * 0.75)) * bump
         for f in {f for v in ret["verts"] for f in v.link_faces}:
+            f.smooth = True
             for loop in f.loops:
                 sway = min(1.0, loop.vert.co.z / far.height) ** 2
                 loop[far.color] = (sway, random.random(), random.random(), 1.0)
@@ -209,7 +210,9 @@ def hollow(b, blobs, seed):
     drop = []
     for f, (c, _) in zip(b.leaf_faces, b.leaf_centers):
         d = min(((c.x - bc.x) / max(e.x, 0.3)) ** 2 + ((c.y - bc.y) / max(e.y, 0.3)) ** 2 + ((c.z - bc.z) / max(e.z, 0.3)) ** 2 for bc, e in blobs) ** 0.5
-        if d < 0.72 and random.random() < 0.85:
+        # Graphics G6: only the cards well inside the core go (0.72 left the cores' faceted shells showing through a thin
+        # fringe up close: round 7's "odd trees").
+        if d < 0.58 and random.random() < 0.8:
             drop.append(f)
     keep = set(drop)
     b.leaf_faces = [f for f in b.leaf_faces if f not in keep]
@@ -220,11 +223,12 @@ def hollow(b, blobs, seed):
         for v in ret["verts"]:
             n = v.co.normalized()
             bump = 1.0 + 0.15 * math.sin(n.x * 7.1 + seed + k) * math.sin(n.y * 6.3 + 1.7 * seed)
-            v.co = c + Vector((n.x * ext.x * 0.62, n.y * ext.y * 0.62, n.z * ext.z * 0.55)) * bump
+            v.co = c + Vector((n.x * ext.x * 0.5, n.y * ext.y * 0.5, n.z * ext.z * 0.45)) * bump
         for f in {f for v in ret["verts"] for f in v.link_faces}:
+            f.smooth = True   # Graphics G6: a soft volume, not facets, where the fringe lets it show
             for loop in f.loops:
                 sway = min(1.0, loop.vert.co.z / b.height) ** 2
-                loop[b.color] = (sway, random.random(), 0.2 * random.random(), 1.0)
+                loop[b.color] = (sway, random.random(), 0.2 * random.random(), 0.0)   # alpha 0: a near tree's core (shaded)
                 loop[b.uv].uv = (loop.vert.co.x * 0.1, loop.vert.co.z * 0.1)
             b.core_faces.append(f)
     return len(drop)

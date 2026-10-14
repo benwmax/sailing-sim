@@ -73,11 +73,11 @@ def setup(mesh, nanite=True, overrides=None):
     unreal.EditorAssetLibrary.save_loaded_asset(mesh)
 
 
-# ONLY=<prefix> imports just those models and skips the bakes (iterating on one generator).
+# ONLY=<prefix>[,<prefix>...] imports just those models and skips the bakes (iterating on one generator).
 ONLY = os.environ.get("ONLY", "")
 for path in sorted(glob.glob(os.path.join(MODELS, "SM_*.fbx"))):
     name = os.path.splitext(os.path.basename(path))[0]
-    if ONLY and not name.startswith(ONLY):
+    if ONLY and not any(name.startswith(o) for o in ONLY.split(",")):
         continue
     folder = next((k for prefix, k in KINDS if name.startswith(prefix)), "Misc")
     mesh = import_fbx(path, f"{WORLD}/{folder}", name)

@@ -174,7 +174,11 @@ void AMarinaActor::Build(const FMarina& Marina)
 		TArray<FPlaced> Boats3;
 		for (const FMarinaSlip& Slip : Marina.Slips) if (Slip.bOccupied) Boats3.Add({ Slip.Center, Slip.HeadingDeg, Slip.BoatType });
 		for (const FMarinaAlongside& A : Marina.Alongside) Boats3.Add({ A.Center, A.HeadingDeg, A.BoatType });
-		static const TCHAR* Parts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Berthed") };
+		// Graphics G6: six berthed dresses per class (build_berthed.py variants: cover colours, flaked mains, a tarp, dodgers,
+		// fenders, gear), one picked per slip, so no two neighbours in a row look alike.
+		static const TCHAR* Parts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Berthed"),
+			TEXT("Berthed_1"), TEXT("Berthed_2"), TEXT("Berthed_3"), TEXT("Berthed_4"), TEXT("Berthed_5") };
+		constexpr int32 NumDress = 6;
 		TMap<uint8, TArray<TArray<FTransform>>> PerClass;
 		TMap<uint8, TArray<uint32>> Seeds; // Graphics G3: each neighbour's livery (hull colour and wear, per instance)
 		TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
@@ -194,10 +198,13 @@ void AMarinaActor::Build(const FMarina& Marina)
 			const UStaticMeshSocket* Step = M[0]->FindSocket(TEXT("MastStep"));
 			const UStaticMeshSocket* Stock = M[0]->FindSocket(TEXT("RudderPivot"));
 			const FVector Offsets[] = { FVector::ZeroVector, Step ? Step->RelativeLocation : FVector::ZeroVector,
-				FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector, FVector::ZeroVector };
+				FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector };
 			const uint32 H = uint32(P.Center.X * 13.0 + P.Center.Y * 7.0);
 			const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0);
-			for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
+			for (int32 K = 0; K < 4; ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
+			int32 Dress = 4 + int32(MHash(H * 31u + 7u) % NumDress);
+			if (!M[Dress]) Dress = 4;
+			PerClass[P.Type][Dress].Add(Boat);
 			Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 		}
 		for (const auto& KV : PerClass)
@@ -217,7 +224,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 				// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
 				C->SetCastShadow(K != 1);
 				C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-				C->SetCullDistances(0, (K == 4 ? 900 : 1500) * 100);
+				C->SetCullDistances(0, (K >= 4 ? 900 : 1500) * 100);
 				// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
 				// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
 				if (K >= 2) C->SetCastShadow(false);

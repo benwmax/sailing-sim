@@ -722,6 +722,15 @@ BOAT_LIBRARY = {
     "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
     "SailCover": ("M_BoatSurface", (0.02, 0.05, 0.14), 0.8, 0.0, 0.0, 0.0, 0.6),      # navy acrylic canvas: sail covers, sun strips (V7)
     "Rope": ("M_BoatSurface", (0.62, 0.64, 0.68), 0.75, 0.0, 0.0, 0.0, 0.50),         # braided polyester sheets
+    # Graphics G6: the marina's variety (build_berthed.py variants): cover canvases, a poly tarp, a flaked Dacron main,
+    # fender covers, a cooler lid.
+    "SailCoverRed": ("M_BoatSurface", (0.13, 0.016, 0.022), 0.8, 0.0, 0.0, 0.0, 0.6),   # burgundy acrylic canvas
+    "SailCoverGreen": ("M_BoatSurface", (0.014, 0.06, 0.03), 0.8, 0.0, 0.0, 0.0, 0.6),  # forest green
+    "SailCoverTan": ("M_BoatSurface", (0.30, 0.25, 0.17), 0.85, 0.0, 0.0, 0.0, 0.6),    # sun-faded tan
+    "Tarp": ("M_BoatSurface", (0.07, 0.085, 0.10), 0.8, 0.0, 0.0, 0.0, 0.5),           # grey canvas cockpit cover
+    "Dacron": ("M_BoatSurface", (0.68, 0.66, 0.60), 0.55, 0.0, 0.0, 0.0, 0.3),          # off-white sailcloth
+    "FenderBlue": ("M_BoatSurface", (0.02, 0.04, 0.12), 0.95, 0.0, 0.0, 0.0, 0.6),      # navy fleece fender covers
+    "CoolerLid": ("M_BoatSurface", (0.04, 0.14, 0.42), 0.45, 0.0, 0.0, 0.0, 0.05),
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
 }
 
@@ -808,6 +817,27 @@ else if (Layout > 1.5 && Layout < 2.5)
     base = pal[band % 4];
 }
 float3 cloth = base * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
+// Graphics G6: a club boat's Dacron is off-white and shows its age (round 7: "too white"). The leech and the head take the
+// most sun and yellow first, each panel a little differently; the foot is greyed from the deck and from being flaked
+// there; a few mildew specks low down. Only on the white cloth (the Sunfish and Hobie colours keep theirs).
+float2 gp = UV0 / 0.6;
+float2 gi = floor(gp);
+float2 gf = frac(gp);
+gf = gf * gf * (3.0 - 2.0 * gf);
+float n00 = frac(sin(dot(gi, float2(127.1, 311.7))) * 43758.5);
+float n10 = frac(sin(dot(gi + float2(1.0, 0.0), float2(127.1, 311.7))) * 43758.5);
+float n01 = frac(sin(dot(gi + float2(0.0, 1.0), float2(127.1, 311.7))) * 43758.5);
+float n11 = frac(sin(dot(gi + float2(1.0, 1.0), float2(127.1, 311.7))) * 43758.5);
+float mott = lerp(lerp(n00, n10, gf.x), lerp(n01, n11, gf.x), gf.y);
+float whiteish = saturate((min(base.r, min(base.g, base.b)) - 0.4) * 4.0);
+float age = saturate(0.3 + 0.45 * exp(-UV2.x / 0.6) + 0.25 * UV1.y + 0.35 * (panel - 0.5) + 0.15 * (mott - 0.5));
+cloth *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.95, 0.83), age * 0.6 * whiteish);
+float foot = (1.0 - smoothstep(0.05, 0.55 + 0.3 * mott, UV0.y)) * (0.6 + 0.4 * mott);
+cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.78, 0.72), foot * 0.5 * whiteish);
+float2 sp = UV0 / 0.045;
+float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
+float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
+cloth *= 1.0 - 0.35 * speck * whiteish;
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
@@ -833,7 +863,10 @@ dhdv += dth * (ca / cr2);
 float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
 dhdu += pucker * 55.0 * cos(UV0.x * 55.0);
 NormalTS = normalize(float3(-dhdu, -dhdv, 1.0));
-Rough = lerp(R, 0.28, mark);
+// The resin cracks along a fold: the line reads a shade darker and rougher than the sheen around it.
+float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
+col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
+Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
 return col;
 """
 
@@ -858,7 +891,7 @@ def build_sail_cloth():
     mat = new_material("M_SailCloth")
     mat.set_editor_property("two_sided", True)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
-    color = vector(mat, "Color", (0.82, 0.82, 0.80, 1), -1200, -100)
+    color = vector(mat, "Color", (0.70, 0.68, 0.63, 1), -1200, -100)
     battens = scalar(mat, "Battens", 0.0, -1200, 50)
     marks = scalar(mat, "Marks", 0.0, -1200, 150)
     sailnum = scalar(mat, "SailNum", 1288.0, -1400, 350)
@@ -884,14 +917,15 @@ def build_sail_cloth():
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     # Instances: the J/22 main (battens, insignia, number), the jib, the spinnaker (nylon, red).
-    for name, col, bat, mk, h in (("MI_Sail_Main", (0.82, 0.82, 0.80), 1.0, 1.0, 7.6), ("MI_Sail_Jib", (0.82, 0.82, 0.80), 0.0, 0.0, 7.5),
+    # Graphics G6: off-white Dacron (0.82 read as paper white in the blind test), a resin sheen (roughness 0.5).
+    for name, col, bat, mk, h in (("MI_Sail_Main", (0.70, 0.68, 0.63), 1.0, 1.0, 7.6), ("MI_Sail_Jib", (0.71, 0.69, 0.64), 0.0, 0.0, 7.5),
                                   ("MI_Sail_Spinnaker", (0.55, 0.03, 0.03), 0.0, 0.0, 7.0)):
         path = f"{FOLDER}/{name}"
         mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
             ASSETS.create_asset(name, FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
         MEL.set_material_instance_parent(mi, mat)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
-        for pname, value in (("Battens", bat), ("Marks", mk), ("Height", h), ("Roughness", 0.62 if name != "MI_Sail_Spinnaker" else 0.45)):
+        for pname, value in (("Battens", bat), ("Marks", mk), ("Height", h), ("Roughness", 0.5 if name != "MI_Sail_Spinnaker" else 0.45)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
@@ -1832,11 +1866,13 @@ float3 p = WP * 0.01;
 float n = frac(sin(dot(floor(p * 1.7), float3(12.9898, 78.233, 37.719))) * 43758.5453);
 float m = 0.5 + 0.5 * sin(p.x * 2.1 + sin(p.y * 1.7) * 2.0) * sin(p.y * 2.3 + p.z * 1.9);
 float3 c = lerp(float3(0.045, 0.085, 0.03), float3(0.10, 0.16, 0.06), m * 0.6 + n * 0.4);
-return c * lerp(0.85, 1.15, VC.b);
+// Graphics G6: a near tree's core (vertex alpha 0) is the crown's shaded inside, seen only through gaps in the cards.
+return c * lerp(0.85, 1.15, VC.b) * lerp(0.55, 1.0, VA);
 """
-    cc = custom(crown, code, ["WP", "VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0)
+    cc = custom(crown, code, ["WP", "VC", "VA"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0)
     connect(wp, "", cc, "WP")
     connect(vc2, "", cc, "VC")
+    connect(vc2, "A", cc, "VA")
     rr = node(crown, unreal.MaterialExpressionConstant, -300, 200, r=0.75)
     MEL.connect_material_property(cc, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rr, "", unreal.MaterialProperty.MP_ROUGHNESS)
