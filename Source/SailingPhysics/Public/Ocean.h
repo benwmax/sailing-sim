@@ -3,6 +3,8 @@
 #include "SailingPhysicsApi.h"
 #include "Waves.h"
 #include <array>
+#include <atomic>
+#include <mutex>
 #include <complex>
 #include <cstdint>
 #include <vector>
@@ -47,6 +49,8 @@ namespace Sailing
 		FOcean();
 		void Configure(const FOceanParams& Params);
 		const FOceanParams& GetParams() const { return Params; }
+		/** Changes with every Configure (the spectrum and its bands are new). */
+		uint64_t GetGeneration() const { return Generation; }
 
 		/** Height (m) at a point and time. */
 		double Height(double X, double Y, double T) const;
@@ -86,9 +90,15 @@ namespace Sailing
 		std::vector<struct FWaveBand> BandList;
 		FMask Mask;
 
-		static constexpr int CacheSize = 6;
+		uint64_t Generation = 0;
+		static constexpr int CacheSize = 8;
 		mutable std::array<std::array<FGrid, CacheSize>, NumCascades> Cache;
 		mutable std::array<int, NumCascades> CacheNext{};
 		mutable std::vector<std::complex<double>> Work[4];
+		// Perf 1: boats stepping in parallel share the cache. A slot's time is published (release) once its grid is
+		// filled and found without the lock; a miss evaluates under it. A slot is reused only CacheSize grid times later
+		// (a quarter second at 30 Hz), long after any step that found it is done with it.
+		mutable std::array<std::array<std::atomic<double>, CacheSize>, NumCascades> CacheTime;
+		mutable std::mutex CacheLock;
 	};
 }

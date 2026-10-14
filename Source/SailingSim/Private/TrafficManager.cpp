@@ -14,6 +14,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Async/ParallelFor.h"
 
 using namespace Sailing;
 
@@ -58,8 +59,11 @@ void ATrafficManager::BeginPlay()
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return;
 	const FLakeData& Lake = GM->GetLake();
+	// Perf 1: the AI sailboats step in parallel, so the current reads the clock taken on the game thread (it is the same
+	// for the whole frame's steps: the player's boat, whose time it is, has already stepped).
 	Sim.SetWorld(&GM->GetWind(), &GM->GetWaves(), Lake.IsLoaded() ? &Lake.Terrain : nullptr,
-		[GM](double X, double Y) { return GM->GetCurrentAt(X, Y); });
+		[this, GM](double X, double Y) { const FLakeData& L = GM->GetLake(); return L.IsTidal() ? L.Tides.CurrentAt(X, Y, UnixNow) : Sailing::Vec3(); });
+	Sim.ParallelFor = [](int Count, const std::function<void(int)>& Body) { ::ParallelFor(Count, [&Body](int32 I) { Body(I); }); };
 	Sim.SetTime(GM->GetSimTime());
 }
 
@@ -417,6 +421,14 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		}
 	}
 
+	// Perf 1 fix 6: no traffic, no race and no horn sounding: keep the clock and skip the rest (0.9 ms on the PC).
+	if (Sim.GetVessels().empty() && !bRace && Blasts.IsEmpty())
+	{
+		Sim.SetTime(GM->GetSimTime());
+		Player->GetMutableBoatModel().SetMovingObstacles({});
+		return;
+	}
+	UnixNow = GM->GetUnixTime();
 	const FVesselSnapshot Me = PlayerSnapshot();
 	Sim.SetPlayer(Me, Player->GetBoatModel().GetConfig().Beam, true);
 	// Run the traffic on the game's clock (the boat's physics time), a frame at a time.

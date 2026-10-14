@@ -637,6 +637,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Light->SetVisibility(false);
 		NavLights.Add(Light);
 	}
+	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
 }
 
 const FWindField& ASailboatPawn::GetWind() const
@@ -921,32 +922,36 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	}
 	// Graphics G4: the front end and the loading screen hold the boat where it is (the world keeps moving behind them).
 	const int32 Steps = bHeldByUI && !bTrafficBoat ? 0 : Stepper.Advance(DeltaSeconds);
-	SAILING_PERF_SCOPE_BEGIN(BoatPhysics);
-	for (int32 I = 0; I < Steps; ++I)
+	// Perf 1: the steps run on a task when they can (BoatPhysicsTask.h); the join tick (TG_PostPhysics) does the rest.
+	FBoatStepJob Job;
+	Job.Boat = &Boat;
+	Job.Controls = &Controls;
+	Job.Trim = &TrimAssist;
+	Job.Wind = &Wind;
+	Job.Waves = Waves;
+	Job.Steps = Steps;
+	Job.StepDt = Stepper.GetStepDt();
+	Job.bTrimAssist = USailingSettings::Get()->bTrimAssist; // IsTrimAssistActive, step by step
+	Job.LastManualTrimTime = LastManualTrimTime;
+	Job.TrimIdleSeconds = kTrimAssistIdleSeconds;
+	Job.bSimple = bSimple;
 	{
-		const FBoatControls Before = Controls;
-		if (IsTrimAssistActive() || bSimple)
-		{
-			const FBoatControls Assisted = TrimAssist.Update(Boat, Controls, Stepper.GetStepDt());
-			if (IsTrimAssistActive())
-			{
-				Controls = Assisted;
-			}
-			else
-			{
-				// Simple layout: the crew handles traveler and sail shape; you keep the sheets and hiking.
-				Controls.Traveler = Assisted.Traveler;
-				Controls.Vang = Assisted.Vang;
-				Controls.Cunningham = Assisted.Cunningham;
-				Controls.Outhaul = Assisted.Outhaul;
-				Controls.Backstay = Assisted.Backstay;
-			}
-			Controls.Tiller = Before.Tiller;
-			Controls.bWingOnWing = Before.bWingOnWing;
-		}
-		Boat.Step(Stepper.GetStepDt(), Controls, Wind, Waves);
+		SAILING_PERF_SCOPE(BoatPhysics);
+		if (PhysicsTask.Start(this, PhysicsJoinTick, Job)) return;
 	}
-	SAILING_PERF_SCOPE_END(BoatPhysics);
+	TickAfterPhysics(DeltaSeconds);
+}
+
+void ASailboatPawn::RegisterActorTickFunctions(bool bRegister)
+{
+	Super::RegisterActorTickFunctions(bRegister);
+	FBoatPhysicsTask::RegisterJoin(this, PhysicsJoinTick, bRegister);
+}
+
+void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
+{
+	if (PhysicsTask.IsPending()) { SAILING_PERF_SCOPE(BoatPhysics); PhysicsTask.Wait(); }
+	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
@@ -3077,8 +3082,14 @@ void ASailboatPawn::UpdateCrewGroomLOD()
 		UGroomComponent* Hair = G.Key.Get();
 		if (!Hair) continue;
 		// Up close the groom picks its own LOD (strands or finer cards); from 6 m it stays on its last cards.
-		const int32 Want = FVector::Dist(Eye, Hair->Bounds.Origin) > 600.0 ? G.Value : -1;
+		const double Dist = FVector::Dist(Eye, Hair->Bounds.Origin);
+		const int32 Want = Dist > 600.0 ? G.Value : -1;
 		if (Hair->GetForcedLOD() != Want) Hair->SetForcedLOD(Want);
+		// Perf 1 fix 8: brows, beards and moustaches go past 8 m, the hair past 40 m (a few pixels; each groom drawn
+		// costs its card interpolation on the render thread every frame).
+		const bool bScalp = Hair->GroomAsset && Hair->GroomAsset->GetName().StartsWith(TEXT("Hair"));
+		const bool bHide = Dist > (bScalp ? 4000.0 : 800.0);
+		if (Hair->bHiddenInGame != bHide) { Hair->SetHiddenInGame(bHide); Hair->SetComponentTickEnabled(!bHide); }
 	}
 }
 

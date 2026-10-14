@@ -15,6 +15,7 @@
 #include "ReferenceCapture.h"
 #include "CrewPose.h"
 #include "BoatLivery.h"
+#include "BoatPhysicsTask.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -44,6 +45,9 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void RegisterActorTickFunctions(bool bRegister) override;
+	/** Perf 1: the rest of the tick after the physics steps (from the join tick when they ran on a task). */
+	void TickAfterPhysics(float DeltaSeconds);
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void PawnClientRestart() override;
 
@@ -434,4 +438,9 @@ private:
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;
 	UPROPERTY(Transient) TMap<FName, TObjectPtr<UInputAction>> Actions;
+
+public:
+	// Perf 1: the physics task and its join tick (last, so the task is joined before the boat it steps is destroyed).
+	FBoatPhysicsTask PhysicsTask;
+	FBoatPhysicsJoinTick PhysicsJoinTick;
 };

@@ -755,6 +755,8 @@ namespace Sailing
 		if (!Wind) return;
 		Accumulator += std::min(Dt, 0.25);
 		int Steps = 0;
+		std::vector<FTrafficVessel*> Sails;
+		if (ParallelFor) for (FTrafficVessel& V : Vessels) if (V.IsSail()) Sails.push_back(&V);
 		while (Accumulator >= PhysicsDt)
 		{
 			Accumulator -= PhysicsDt;
@@ -772,7 +774,15 @@ namespace Sailing
 					V.Boat->SetMovingObstacles(HullsNear(O.X, O.Y, 40.0, V.Id));
 				}
 			}
-			for (FTrafficVessel& V : Vessels) Apply(V, PhysicsDt);
+			if (ParallelFor && Sails.size() > 1)
+			{
+				for (FTrafficVessel& V : Vessels) if (!V.IsSail()) Apply(V, PhysicsDt);
+				ParallelFor(int(Sails.size()), [this, &Sails](int K) { Apply(*Sails[K], PhysicsDt); });
+			}
+			else
+			{
+				for (FTrafficVessel& V : Vessels) Apply(V, PhysicsDt);
+			}
 			if (++Steps % 4 == 0) DetectCollisions();
 		}
 	}

@@ -81,4 +81,6 @@ private:
 	TArray<FBlast> Blasts;
 	double CoachTime = 0.0;
 	int32 PopulatedLevel = -1;
+	/** Perf 1: the game's clock (unix seconds) for the tidal current, read once a frame on the game thread. */
+	double UnixNow = 0.0;
 };
