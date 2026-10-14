@@ -1,0 +1,2 @@
+# Sample pack WAVs are stored as plain git blobs (cloud sessions cannot upload to LFS storage); ~50 MB budget.
+*.wav -filter -diff -merge binary
