@@ -584,8 +584,23 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Main.NumStrips > 0 ? float(C.Main.Strips[C.Main.NumStrips - 1].ZTop - C.Main.Strips[0].ZBottom) : 1.f);
 	}
+	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
+	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
+	// (light enough that the dark sail numbers still read). The player's boat keeps the club's Dacron.
+	FLinearColor SailColor(0.70f, 0.68f, 0.63f);
+	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7)
+	{
+		const uint32 H = (GetUniqueID() * 2654435761u) >> 8;
+		if (Livery.Profile == 1 || (H % 100u) < 33u)
+		{
+			static const FLinearColor Laminates[] = { FLinearColor(0.30f, 0.30f, 0.31f), FLinearColor(0.42f, 0.42f, 0.41f), FLinearColor(0.40f, 0.29f, 0.13f) };
+			SailColor = Laminates[(H / 100u) % UE_ARRAY_COUNT(Laminates)];
+		}
+	}
+	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0))) Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(JibSail->GetMaterial(0)))
 	{
+		Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
 		// The jibs match their mains' colours (no battens).
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout == 2.f ? 2.f : (Lay.Layout == 3.f ? 3.f : 0.f));
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
