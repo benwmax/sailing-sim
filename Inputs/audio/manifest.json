@@ -493,6 +493,23 @@
   "source": "Wikimedia Commons"
  },
  {
+  "file": "Weather/thunder_rumble_01.wav",
+  "seconds": 12.0,
+  "channels": 1,
+  "loop": false,
+  "loop_start": null,
+  "loop_end": null,
+  "source_title": "Tonitrus.ogg",
+  "source_page": "https://commons.wikimedia.org/wiki/File:Tonitrus.ogg",
+  "author": "Mysid",
+  "license": "Public domain",
+  "license_url": "",
+  "use": "Distant thunder rumble (storm approaching)",
+  "cut_from_s": 0.51,
+  "kind": "one-shot",
+  "source": "Wikimedia Commons"
+ },
+ {
   "file": "Winch/winch_click_01.wav",
   "kind": "one-shot",
   "use": "Single winch pawl click",

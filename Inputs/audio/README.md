@@ -72,6 +72,7 @@ Everything is 48 kHz 16-bit PCM WAV. Mono unless the table says 2 channels (ster
 | `Water/water_lapping_hull_calm_loop.wav` | loop | 20.0 | 1 | Boat at rest or in the slip: small wavelets lapping the hull | BoatSpeed < 0.3 m/s | script |
 | `Water/water_lapping_hull_choppy_loop.wav` | loop | 20.0 | 1 | Drifting or hove-to in chop: frequent slaps under the bow | BowSlam or low BoatSpeed in chop | script |
 | `Weather/rain_on_roof_light_loop.wav` | loop | 16.0 | 2 | Light rain on a hard surface: layer for rain on deck and cabin top | Rain (light < 0.5, heavy > 0.5) | [Public domain](https://commons.wikimedia.org/wiki/File:Rain_on_a_veranda_and_t.ogg) |
+| `Weather/thunder_rumble_01.wav` | one-shot | 12.0 | 1 | Distant thunder rumble (storm approaching) | Thunder | [Public domain](https://commons.wikimedia.org/wiki/File:Tonitrus.ogg) |
 | `Winch/winch_click_01.wav` | one-shot | 0.08 | 1 | Single winch pawl click | TrimRate > 0, small adjustments | script |
 | `Winch/winch_click_02.wav` | one-shot | 0.08 | 1 | Single winch pawl click | TrimRate > 0, small adjustments | script |
 | `Winch/winch_click_03.wav` | one-shot | 0.08 | 1 | Single winch pawl click | TrimRate > 0, small adjustments | script |
@@ -81,3 +82,19 @@ Everything is 48 kHz 16-bit PCM WAV. Mono unless the table says 2 channels (ster
 | `Wind/wind_rigging_light_loop.wav` | loop | 20.0 | 1 | Apparent wind 5-10 kn: soft wind with faint shroud hum | ApparentWind (crossfade light < 5 m/s, moderate 5-9, strong > 9; howl layer on gusts) | script |
 | `Wind/wind_rigging_moderate_loop.wav` | loop | 20.0 | 1 | Apparent wind 10-18 kn: steady wind, audible shroud and stay whistle | ApparentWind (crossfade light < 5 m/s, moderate 5-9, strong > 9; howl layer on gusts) | script |
 | `Wind/wind_rigging_strong_loop.wav` | loop | 20.0 | 1 | Apparent wind 18 kn+: gusty roar with singing rigging | ApparentWind (crossfade light < 5 m/s, moderate 5-9, strong > 9; howl layer on gusts) | script |
+
+## Finishing the recorded clips on the Mac
+
+Wikimedia rate-limited the cloud server after six downloads, so 24 of the 30 chosen Commons recordings are not in the
+pack yet. A home connection is not throttled the same way. On the Mac (needs `python3` with `numpy`, and `ffmpeg`):
+
+```sh
+cd Inputs/audio/scripts
+mkdir -p ../dl && cp commons_sources.json ../dl/meta.json
+python3 slowfetch.py ../dl ../dl/meta.json      # downloads the 30 sources, waits politely on HTTP 429
+python3 process.py ../dl ../Samples             # cuts loops and one-shots into Samples/
+python3 make_docs.py ..                         # rebuilds README table, CREDITS.md and manifest.json
+```
+
+`process.py` holds the cut recipe for every source (target file, loop length, filter, use). Delete `../dl` afterwards;
+the source recordings are not needed in the repo.

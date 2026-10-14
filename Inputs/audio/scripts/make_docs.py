@@ -58,7 +58,9 @@ for r in allr:
     src = 'script' if r['source'].startswith('script') else f"[{r['license']}]({r['source_page']})"
     kind = 'loop' if r['loop'] else 'one-shot'
     L.append(f"| `{r['file']}` | {kind} | {r['seconds']} | {r.get('channels',1)} | {r['use']} | {param(r['file'])} | {src} |")
-open(os.path.join(OUT, 'README.md'), 'w').write('\n'.join(L) + '\n')
+fin = os.path.join(OUT, 'scripts', 'finishing.md')
+extra = ('\n' + open(fin).read()) if os.path.exists(fin) and len(rec) < 60 else ''
+open(os.path.join(OUT, 'README.md'), 'w').write('\n'.join(L) + '\n' + extra)
 
 C = ['# Credits for recorded sounds', '',
  'Script-built files (`source: script` in `manifest.json`) were made for this project and are released CC0.',

@@ -1,0 +1,389 @@
+[
+ {
+  "file": "Wind/wind_rigging_light_loop.wav",
+  "kind": "loop",
+  "use": "Apparent wind 5-10 kn: soft wind with faint shroud hum",
+  "loop": true,
+  "seconds": 20.0,
+  "loop_start": 0,
+  "loop_end": 960000
+ },
+ {
+  "file": "Wind/wind_rigging_moderate_loop.wav",
+  "kind": "loop",
+  "use": "Apparent wind 10-18 kn: steady wind, audible shroud and stay whistle",
+  "loop": true,
+  "seconds": 20.0,
+  "loop_start": 0,
+  "loop_end": 960000
+ },
+ {
+  "file": "Wind/wind_rigging_strong_loop.wav",
+  "kind": "loop",
+  "use": "Apparent wind 18 kn+: gusty roar with singing rigging",
+  "loop": true,
+  "seconds": 20.0,
+  "loop_start": 0,
+  "loop_end": 960000
+ },
+ {
+  "file": "Rigging/halyard_slap_01.wav",
+  "kind": "one-shot",
+  "use": "Halyard or wire slapping an aluminium mast (randomise, pitch +-5%)",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/halyard_slap_02.wav",
+  "kind": "one-shot",
+  "use": "Halyard or wire slapping an aluminium mast (randomise, pitch +-5%)",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/halyard_slap_03.wav",
+  "kind": "one-shot",
+  "use": "Halyard or wire slapping an aluminium mast (randomise, pitch +-5%)",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/halyard_slap_04.wav",
+  "kind": "one-shot",
+  "use": "Halyard or wire slapping an aluminium mast (randomise, pitch +-5%)",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/halyard_slap_05.wav",
+  "kind": "one-shot",
+  "use": "Halyard or wire slapping an aluminium mast (randomise, pitch +-5%)",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/halyard_slap_06.wav",
+  "kind": "one-shot",
+  "use": "Halyard or wire slapping an aluminium mast (randomise, pitch +-5%)",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/marina_halyards_distant_loop.wav",
+  "kind": "loop",
+  "use": "Marina ambience: many masts tinkling in the breeze (layer under marina bed)",
+  "loop": true,
+  "seconds": 24.0,
+  "loop_start": 0,
+  "loop_end": 1152000
+ },
+ {
+  "file": "Sails/sail_luff_light_loop.wav",
+  "kind": "loop",
+  "use": "Luffing sail, light air or slightly pinched (blend with trim error)",
+  "loop": true,
+  "seconds": 12.0,
+  "loop_start": 0,
+  "loop_end": 576000
+ },
+ {
+  "file": "Sails/sail_luff_moderate_loop.wav",
+  "kind": "loop",
+  "use": "Luffing sail in 10-15 kn, head to wind or eased too far",
+  "loop": true,
+  "seconds": 12.0,
+  "loop_start": 0,
+  "loop_end": 576000
+ },
+ {
+  "file": "Sails/sail_flog_strong_loop.wav",
+  "kind": "loop",
+  "use": "Violent flogging: tacking through the wind or sheet let fly in a breeze",
+  "loop": true,
+  "seconds": 12.0,
+  "loop_start": 0,
+  "loop_end": 576000
+ },
+ {
+  "file": "Sails/sail_fill_snap_01.wav",
+  "kind": "one-shot",
+  "use": "Sail filling with a snap after a tack or gybe",
+  "loop": false,
+  "seconds": 0.35,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Sails/sail_fill_snap_02.wav",
+  "kind": "one-shot",
+  "use": "Sail filling with a snap after a tack or gybe",
+  "loop": false,
+  "seconds": 0.35,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Sails/sail_fill_snap_03.wav",
+  "kind": "one-shot",
+  "use": "Sail filling with a snap after a tack or gybe",
+  "loop": false,
+  "seconds": 0.35,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Winch/winch_click_01.wav",
+  "kind": "one-shot",
+  "use": "Single winch pawl click",
+  "loop": false,
+  "seconds": 0.08,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Winch/winch_click_02.wav",
+  "kind": "one-shot",
+  "use": "Single winch pawl click",
+  "loop": false,
+  "seconds": 0.08,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Winch/winch_click_03.wav",
+  "kind": "one-shot",
+  "use": "Single winch pawl click",
+  "loop": false,
+  "seconds": 0.08,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Winch/winch_click_04.wav",
+  "kind": "one-shot",
+  "use": "Single winch pawl click",
+  "loop": false,
+  "seconds": 0.08,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Winch/winch_ratchet_tailing_loop.wav",
+  "kind": "loop",
+  "use": "Winch turning while tailing a sheet (pitch/rate up with speed)",
+  "loop": true,
+  "seconds": 4.0,
+  "loop_start": 0,
+  "loop_end": 192000
+ },
+ {
+  "file": "Winch/winch_ratchet_slow_loop.wav",
+  "kind": "loop",
+  "use": "Winch turned slowly with a handle under load",
+  "loop": true,
+  "seconds": 4.0,
+  "loop_start": 0,
+  "loop_end": 192000
+ },
+ {
+  "file": "Rigging/sheet_ease_through_block_01.wav",
+  "kind": "one-shot",
+  "use": "Sheet eased quickly through a block",
+  "loop": false,
+  "seconds": 1.6,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/sheet_ease_through_block_02.wav",
+  "kind": "one-shot",
+  "use": "Sheet eased slowly through a block",
+  "loop": false,
+  "seconds": 2.4,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Rigging/sheet_running_block_loop.wav",
+  "kind": "loop",
+  "use": "Sheet running continuously through a block (gybe, letting fly)",
+  "loop": true,
+  "seconds": 6.0,
+  "loop_start": 0,
+  "loop_end": 288000
+ },
+ {
+  "file": "Water/hull_wash_1kn_loop.wav",
+  "kind": "loop",
+  "use": "Hull wash / bow wave at about 1 kn boat speed (crossfade between speeds)",
+  "loop": true,
+  "seconds": 16.0,
+  "loop_start": 0,
+  "loop_end": 768000
+ },
+ {
+  "file": "Water/hull_wash_3kn_loop.wav",
+  "kind": "loop",
+  "use": "Hull wash / bow wave at about 3 kn boat speed (crossfade between speeds)",
+  "loop": true,
+  "seconds": 16.0,
+  "loop_start": 0,
+  "loop_end": 768000
+ },
+ {
+  "file": "Water/hull_wash_5kn_loop.wav",
+  "kind": "loop",
+  "use": "Hull wash / bow wave at about 5 kn boat speed (crossfade between speeds)",
+  "loop": true,
+  "seconds": 16.0,
+  "loop_start": 0,
+  "loop_end": 768000
+ },
+ {
+  "file": "Water/hull_wash_7kn_loop.wav",
+  "kind": "loop",
+  "use": "Hull wash / bow wave at about 7 kn boat speed (crossfade between speeds)",
+  "loop": true,
+  "seconds": 16.0,
+  "loop_start": 0,
+  "loop_end": 768000
+ },
+ {
+  "file": "Water/water_lapping_hull_calm_loop.wav",
+  "kind": "loop",
+  "use": "Boat at rest or in the slip: small wavelets lapping the hull",
+  "loop": true,
+  "seconds": 20.0,
+  "loop_start": 0,
+  "loop_end": 960000
+ },
+ {
+  "file": "Water/water_lapping_hull_choppy_loop.wav",
+  "kind": "loop",
+  "use": "Drifting or hove-to in chop: frequent slaps under the bow",
+  "loop": true,
+  "seconds": 20.0,
+  "loop_start": 0,
+  "loop_end": 960000
+ },
+ {
+  "file": "Water/water_lapping_dock_loop.wav",
+  "kind": "loop",
+  "use": "Water lapping pilings and the dock at Rush Creek",
+  "loop": true,
+  "seconds": 20.0,
+  "loop_start": 0,
+  "loop_end": 960000
+ },
+ {
+  "file": "Dock/dock_creak_01.wav",
+  "kind": "one-shot",
+  "use": "Dock line or wooden dock creaking as the boat surges in the slip",
+  "loop": false,
+  "seconds": 0.625,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/dock_creak_02.wav",
+  "kind": "one-shot",
+  "use": "Dock line or wooden dock creaking as the boat surges in the slip",
+  "loop": false,
+  "seconds": 0.806,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/dock_creak_03.wav",
+  "kind": "one-shot",
+  "use": "Dock line or wooden dock creaking as the boat surges in the slip",
+  "loop": false,
+  "seconds": 0.684,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/dock_creak_04.wav",
+  "kind": "one-shot",
+  "use": "Dock line or wooden dock creaking as the boat surges in the slip",
+  "loop": false,
+  "seconds": 0.572,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/dock_creak_05.wav",
+  "kind": "one-shot",
+  "use": "Dock line or wooden dock creaking as the boat surges in the slip",
+  "loop": false,
+  "seconds": 0.726,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/fender_squeak_01.wav",
+  "kind": "one-shot",
+  "use": "Fender squeezed between hull and dock",
+  "loop": false,
+  "seconds": 0.83,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/fender_squeak_02.wav",
+  "kind": "one-shot",
+  "use": "Fender squeezed between hull and dock",
+  "loop": false,
+  "seconds": 0.64,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Dock/fender_squeak_03.wav",
+  "kind": "one-shot",
+  "use": "Fender squeezed between hull and dock",
+  "loop": false,
+  "seconds": 0.832,
+  "loop_start": null,
+  "loop_end": null
+ },
+ {
+  "file": "Engines/outboard_idle_loop.wav",
+  "kind": "loop",
+  "use": "Small 2-stroke outboard idling in neutral (instructor or club launch)",
+  "loop": true,
+  "seconds": 8.0,
+  "loop_start": 0,
+  "loop_end": 384000
+ },
+ {
+  "file": "Engines/outboard_lowspeed_loop.wav",
+  "kind": "loop",
+  "use": "Outboard in gear at low speed, motoring out of the slip",
+  "loop": true,
+  "seconds": 8.0,
+  "loop_start": 0,
+  "loop_end": 384000
+ },
+ {
+  "file": "Engines/outboard_running_loop.wav",
+  "kind": "loop",
+  "use": "Outboard near full throttle (passing ski boats and launches)",
+  "loop": true,
+  "seconds": 8.0,
+  "loop_start": 0,
+  "loop_end": 384000
+ }
+]
