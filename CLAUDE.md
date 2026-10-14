@@ -249,9 +249,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `scripts/make-metahumans.sh` builds at High (`MH_QUALITY`); it reuses the source characters' cloud rig (`MH_RERIG=1` asks
   again; the request blocks on an Epic sign-in). `-SailingNoGrooms` measures without hair.
   Clothing is free and scripted (Bean's choice): the optimized MetaHuman body has no torso under the clothes, so
-  `scripts/make-crew-clothes.sh` exports each outfit, tailors the polo from its T-shirt in Blender (`build_polo.py`: facings
+  `scripts/make-crew-clothes.sh` exports each outfit, tailors the polo from its T-shirt and deck shoes round its feet in Blender (`build_polo.py`, `build_shoes.py`: facings
   dropped, collar from a smooth neck ring, placket, buttons, rib cuffs, folds) and in Unreal copies the T-shirt's skin
-  weights onto it with Geometry Script (`import_crew_clothes.py`, `SKM_<Role>_Polo`, git-ignored with the MetaHumans).
+  weights onto it with Geometry Script (`import_crew_clothes.py`, `SKM_<Role>_Polo`/`_Shoes`, git-ignored with the MetaHumans); shorts wear `MI_Crew_Shorts`.
   The pawn hides the outfit's shirt sections and adds the polo (`-SailingNoPolo` compares). `-SailingCamTarget=f,s,u`
   frames close stills. Cloth: `M_CrewFabric` (`build_crew_fabric` in make_materials.py) puts the sailor's colour over CC0
   ambientCG scans (`Tools/fabrics/fetch_fabrics.sh` -> `Data/Fabrics/raw`, imported to `/Game/Crew/Fabric`): knit for

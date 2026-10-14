@@ -2834,6 +2834,15 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 				const UMaterialInterface* Base = Part->GetMaterial(M);
 				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
 				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
+				// Graphics G3: the shorts in scanned cotton twill (M_CrewFabric), where it has been built.
+				static UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+				if (!bShirt && ShortsCloth)
+				{
+					UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShortsCloth, this);
+					Mid->SetVectorParameterValue(TEXT("Color"), Col);
+					Part->SetMaterial(M, Mid);
+					continue;
+				}
 				if (UMaterialInstanceDynamic* Mid = Part->CreateDynamicMaterialInstance(M))
 				{
 					for (const TCHAR* Param : { TEXT("diffuse_color_1"), TEXT("diffuse_color_2"), TEXT("B_diffuse_color_1"), TEXT("C_color") }) Mid->SetVectorParameterValue(Param, Col);
@@ -2874,6 +2883,25 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 				}
 				BoatParts.Add(Polo);
 			}
+		}
+	}
+	// Graphics G3: deck shoes (scripts/make-crew-clothes.sh, built round each sailor's feet and skinned from them).
+	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
+	{
+		const FString R = MetaHumanRoleName(Role);
+		if (USkeletalMesh* ShoeMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Shoes.SKM_%s_Shoes"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			USkeletalMeshComponent* Shoes = NewObject<USkeletalMeshComponent>(this);
+			Shoes->SetupAttachment(Body);
+			Shoes->SetSkeletalMesh(ShoeMesh);
+			Shoes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Shoes->RegisterComponent();
+			Shoes->SetLeaderPoseComponent(Body);
+			static const FLinearColor Leather[] = { FLinearColor(0.28f, 0.14f, 0.06f), FLinearColor(0.12f, 0.07f, 0.04f), FLinearColor(0.35f, 0.24f, 0.14f) };
+			const int32 Upper = Shoes->GetMaterialIndex(TEXT("Upper"));
+			if (Upper >= 0)
+				if (UMaterialInstanceDynamic* Mid = Shoes->CreateDynamicMaterialInstance(Upper)) Mid->SetVectorParameterValue(TEXT("Color"), Leather[Role % UE_ARRAY_COUNT(Leather)]);
+			BoatParts.Add(Shoes);
 		}
 	}
 	// Graphics G3: hair, brows and beard on the face. Strands on High and Ultra; the groom's cards on Medium.

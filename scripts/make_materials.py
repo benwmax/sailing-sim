@@ -707,6 +707,8 @@ BOAT_LIBRARY = {
     "CrewPolo": ("M_BoatSurface", (0.05, 0.10, 0.30), 0.88, 0.0, 0.0, 0.0, 0.55),
     "CrewPoloRib": ("M_BoatSurface", (0.05, 0.10, 0.30), 0.80, 0.0, 0.0, 0.0, 0.55),
     "CrewButton": ("M_BoatSurface", (0.75, 0.74, 0.70), 0.30, 0.0, 0.5, 0.0, 0.02),
+    "CrewSole": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.70, 0.0, 0.0, 0.0, 0.20),      # white non-marking rubber
+    "CrewLace": ("M_BoatSurface", (0.22, 0.13, 0.06), 0.65, 0.0, 0.0, 0.0, 0.40),      # rawhide lace
     "CrewGlasses": ("M_BoatSurface", (0.01, 0.01, 0.012), 0.05, 0.0, 1.0, 0.0, 0.0),
     "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
     "SailCover": ("M_BoatSurface", (0.02, 0.05, 0.14), 0.8, 0.0, 0.0, 0.0, 0.6),      # navy acrylic canvas: sail covers, sun strips (V7)
@@ -2155,7 +2157,7 @@ FABRIC_RAW = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 # roughness; the colour is the sailor's, modulated by the scan's own light and dark (its mean luminance, measured in the
 # venv, normalises it to 1). Fabric070: sportswear knit (the polo's pique); Fabric048: polyester vest (the life jacket's
 # shell); Fabric036: smooth woven cotton (cap).
-FABRIC_SETS = {"Fabric070": 0.4114, "Fabric048": 0.9051, "Fabric036": 0.4931}
+FABRIC_SETS = {"Fabric070": 0.4114, "Fabric048": 0.9051, "Fabric036": 0.4931, "Leather038": 0.2911}
 FABRIC_CODE = r"""
 // Graphics G3 crew cloth: the sailor's colour over the scan's knit (its luminance, normalised by its mean), a slow dye
 // variation, the scan's normal faded with distance (past a few metres the knit is under a pixel and only shimmers), and
@@ -2253,6 +2255,8 @@ def build_crew_fabric():
         "MI_Crew_PoloRib": ("Fabric070", (0.05, 0.10, 0.30), 16.0, 1.0, 0.85, 0.45),
         "MI_Crew_PFDShell": ("Fabric048", (0.02, 0.05, 0.25), 30.0, 0.35, 0.55, 0.25),
         "MI_Crew_CapCloth": ("Fabric036", (0.72, 0.72, 0.72), 20.0, 0.5, 0.85, 0.5),
+        "MI_Crew_Shorts": ("Fabric036", (0.30, 0.25, 0.16), 10.0, 0.7, 0.85, 0.45),     # cotton twill shorts (colour per sailor)
+        "MI_Crew_ShoeLeather": ("Leather038", (0.28, 0.14, 0.06), 8.0, 0.8, 0.55, 0.1),  # oiled leather deck shoe uppers
     }.items():
         mpath = f"{FABRIC_FOLDER}/{name}"
         mi = unreal.load_asset(mpath) if unreal.EditorAssetLibrary.does_asset_exist(mpath) else \
