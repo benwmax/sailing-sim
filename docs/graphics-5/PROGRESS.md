@@ -11,7 +11,7 @@ the place to resume from. Branch `graphics-5-blind` (from `graphics-4-ui`). No P
 - [x] 3. Game stills matched to each photo (capture mode, High), `docs/graphics-5/blind/game/`.
 - [x] 4. The pack (`Tools/blindtest/make_blind_pack.py`), 24 stills, answer key.
 - [x] 5. Publish "Real or Game: The Whole Game" (db answers), link in README.
-- [ ] 6. My own read, pair by pair: what gives each game frame away; the fix list.
+- [x] 6. My own read, pair by pair: what gives each game frame away; the fix list.
 - [ ] 7. Fix the cheapest high-impact tells from step 6 (one commit each, tests and bench after).
 - [ ] 8. Recapture the affected stills, before/after page, bench, README; G1-G5 summary (`docs/graphics-summary.md`).
 
@@ -20,3 +20,10 @@ the place to resume from. Branch `graphics-5-blind` (from `graphics-4-ui`). No P
 - Steps 1-5 (03:45 UTC): 15 Commons photos (5 from Lake Tawakoni, Texas), 15 matched captures, pack of 30 (seed 55),
   page https://claude.ai/artifact/3vCD1d83vfZx21tXNuGZzY (answers save to its db). Fixed on the way: `-SailingNoHud` stills
   no longer show the canvas hint line ("H: show instruments..."), which gave away a marina frame.
+- Step 6 and fixes 1-3 (05:00 UTC): haze lit by the metered light, exposure into a low sun, fog max opacity 0.9,
+  fibrous cirrus (commits 1cee19e, 37bf61a). Read and fix list in README.md.
+- GPU turns: session "sailing-sim-d7" (round 7 of the blind test, docs/graphics-5/game/) shares this checkout and holds
+  the GPU until it sends "GPU free". Stage explicit paths only.
+- Next (step 7-8, after "GPU free"): rebuild, recapture all 15 (scenes.csv), rebuild the pack (seed 55) and republish
+  the page with the fixed frames? No: the published pack is the "before" test; publish an "after" compare page instead
+  (before/after per scene), bench-visual High/Medium against G4, tests.
