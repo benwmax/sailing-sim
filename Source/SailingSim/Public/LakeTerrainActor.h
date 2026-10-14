@@ -79,10 +79,13 @@ private:
 	bool bLoggedInstances = false;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeMid;    // Graphics G6: opaque crowns that still cast shadows
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
 	void UpdateModelTrees(const FVector2D& Camera);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
+	/** Graphics G6: the G2 houses' tiles (baked Nanite, or procedural where a tile has no bake). */
+	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> HouseTileMeshes;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> BridgeDecks;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Pilings;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> DockMesh;

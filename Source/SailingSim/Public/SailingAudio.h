@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Sound/SoundWaveProcedural.h"
+#include "Components/ActorComponent.h"
 #include <atomic>
 #include "SailingAudio.generated.h"
 
@@ -106,6 +107,7 @@ public:
 	EWorldSound Kind = EWorldSound::MarinaHalyards;
 	std::atomic<float> Level{ 0.f };   // 0..1
 	std::atomic<float> Rate{ 0.5f };   // 0..1: the wind for halyards, throttle for engines
+	std::atomic<bool> bMuted{ false }; // Graphics G7: recorded samples play this source instead (USailingWorldSamples)
 	uint32 Seed = 1;
 
 private:
@@ -116,8 +118,48 @@ private:
 };
 
 class UAudioComponent;
+class USoundBase;
+
+/**
+ * Graphics G7: plays the sample pack's recordings for a world source in place of its synth voice, at the level and
+ * rate its owner sets on the synth: the marina's distant halyards (a loop), gulls (random calls; laughing gulls on the
+ * coast), an outboard (idle, low and running loops crossfaded by throttle). Created by MakeWorldSound when the pack is
+ * imported; the diesel has no recording and stays synthesized.
+ */
+UCLASS()
+class SAILINGSIM_API USailingWorldSamples : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	USailingWorldSamples();
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	/** Sets up the recordings for the synth's kind; false when the pack has none (the synth keeps playing). */
+	bool Init(USailingWorldSynth* InSynth, USceneComponent* Parent, float FalloffM, bool bCoast);
+
+	UPROPERTY(Transient) TObjectPtr<USailingWorldSynth> Synth;
+	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> Loops;
+	UPROPERTY(Transient) TArray<TObjectPtr<USoundBase>> Calls;
+	UPROPERTY(Transient) TObjectPtr<UAudioComponent> CallVoice;
+
+private:
+	TArray<float> Centers;   // the loops' crossfade centres over the source's rate
+	double NextCall = 0.0;
+};
+
 namespace SailingSound
 {
+	/** Equal-power crossfade weights for X over bands centred at Centers (ascending); weights outside clamp to the ends. */
+	SAILINGSIM_API void Crossfade(float X, const float* Centers, int32 N, float* OutWeights);
+	/** A pack recording, /Game/Audio/Pack/<Folder>/<name> (null when not imported). */
+	SAILINGSIM_API USoundBase* LoadPack(const FString& Asset);
+	/** The pack's loops for the boat's voices: each plays one band of a cue's crossfade. */
+	struct FPackLoop { const TCHAR* Asset; ESailingCue Cue; int32 Band; };
+	SAILINGSIM_API TConstArrayView<FPackLoop> PackLoops();
+	/** The pack's one-shots, chosen at random with a +-5% pitch spread. */
+	enum class EPackShot : uint8 { HalyardSlap, SailFill, WinchClick, SheetEaseFast, SheetEaseSlow, DockCreak, FenderSqueak, Count };
+	SAILINGSIM_API TArray<FString> PackShots(EPackShot Shot);
+
 	/** A looping spatialised voice of the given kind attached to Parent, falling off over about FalloffM. */
 	SAILINGSIM_API UAudioComponent* MakeWorldSound(UObject* Owner, USceneComponent* Parent, EWorldSound Kind, float FalloffM, USailingWorldSynth*& OutSynth);
 }

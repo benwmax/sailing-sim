@@ -779,7 +779,7 @@ void ASailboatPawn::BeginPlay()
 	{
 		for (int32 I = 1; I < int32(ESailingDrill::Count); ++I)
 		{
-			if (DrillArg.Equals(FString(DrillName(ESailingDrill(I))).Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase))
+			if (DrillArg.Equals(FString(DrillName(ESailingDrill(I))).Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase) || DrillArg == FLearningContent::DrillId(ESailingDrill(I)))
 			{
 				MenuDrill = ESailingDrill(I);
 				StartDrill(MenuDrill);
@@ -960,6 +960,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 	}
 	UpdateDrillVisuals();
+	if (!bTrafficBoat && !bGhost) UpdateLearning();
 
 	// Screenshots and the gate: -SailingChart=<m per pixel> opens the chart, -SailingPlotFix takes three bearings.
 	if (!bChartArgsApplied && Boat.GetState().Time > 2.0 && GameMode)
@@ -1647,12 +1648,14 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 			Boat.Reset(Home.Center.X, Home.Center.Y, Home.HeadingDeg * kDegToRad, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+			bSailsStowed = true;   // Graphics G6: covered and furled until she casts off
 		}
 		else if (Drill == ESailingDrill::LeaveTheDock && FindBerth(GM->GetLake().Terrain, GM->GetLake().Obstacles, FVector2D::ZeroVector, 600.0, WindFromRad, Berth, BerthHeading, Boat.GetConfig()))
 		{
 			Boat.Reset(Berth.X, Berth.Y, BerthHeading, 0.0);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines() = FindDockLines(Boat, GM->GetLake().Obstacles);
+			bSailsStowed = true;
 		}
 		else if (Drill == ESailingDrill::ReturnAndDock && GM->GetLake().LaunchSpots.Num() > 1)
 		{
@@ -1670,7 +1673,97 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	MaxContactKnots = 0.0;
 	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
 	DrillRunner.Start(Drill, Boat, WindFrom);
+	if (!bTrafficBoat) ++DrillSerial;
 	bMenuOpen = false;
+}
+
+void ASailboatPawn::UpdateLearning()
+{
+	// Graphics G7: the learning tips' events (Content/Learning/learning-tips.json), in learning mode only.
+	if (!USailingSettings::Get()->bLearningMode) return;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	FLearningFrame F;
+	F.Time = Boat.GetState().Time;
+	F.TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
+	F.Knots = T.SpeedThroughWater / kKnot;
+	F.TwsKnots = T.TrueWindSpeed / kKnot;
+	F.HeelLeewardDeg = FMath::RadiansToDegrees(T.Heel) * Boat.GetState().WindwardSide;
+	F.HelmForce = T.HelmForce;
+	F.DepthUnderKeel = T.DepthUnderKeel;
+	F.Tiller = Controls.Tiller;
+	F.MainSheet = Controls.MainSheet;
+	F.JibSheet = Controls.JibSheet;
+	F.bInIrons = T.bInIrons;
+	F.bAground = T.bAground;
+	F.bCollision = T.bCollision;
+	F.bVesselContact = T.bVesselContact;
+	F.bBackJib = Controls.bBackJib;
+	F.bTiedUp = IsTiedUp();
+	F.bMotoring = FMath::Abs(Controls.Throttle) > 0.02 && !Boat.GetConfig().Engines.empty();
+	auto Count = [](const FSailStripState* Strips, int32 N, ESailFlow A, ESailFlow B) { int32 K = 0; for (int32 I = 0; I < N; ++I) K += Strips[I].Flow == A || Strips[I].Flow == B; return K; };
+	F.JibLuff = Count(T.JibStrips, T.NumJibStrips, ESailFlow::Luffing, ESailFlow::Backed);
+	F.JibStall = Count(T.JibStrips, T.NumJibStrips, ESailFlow::Stalled, ESailFlow::Stalled);
+	F.MainLuff = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Luffing, ESailFlow::Backed);
+	F.MainStall = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Stalled, ESailFlow::Stalled);
+	F.Drill = DrillRunner.GetDrill();
+	F.bDrillActive = DrillRunner.IsActive();
+	F.bDrillComplete = DrillRunner.IsComplete();
+	F.DrillStep = DrillRunner.GetStep();
+	const FVector2D Here(Boat.OriginPosition().X, Boat.OriginPosition().Y);
+	if (F.bDrillActive && DrillRunner.GetMarks().IsValidIndex(DrillRunner.GetNextMark())) F.MarkDistance = FVector2D::Distance(Here, DrillRunner.GetMarks()[DrillRunner.GetNextMark()]);
+	if (F.bDrillActive && DrillRunner.HasDummy()) F.DummyDistance = FVector2D::Distance(Here, DrillRunner.GetDummy());
+	// The nearest dock face within 200 m, twice a second (the coast has thousands of segments).
+	if (GM && F.Time >= NextDockScan)
+	{
+		NextDockScan = F.Time + 0.5;
+		NearestDock = -1.0;
+		double Best = 200.0;
+		for (const FObstacleSegment& S : GM->GetLake().Obstacles)
+		{
+			if (S.Top > 1.5) continue;
+			const FVector2D A(S.AX, S.AY), B(S.BX, S.BY);
+			if (FMath::Min(FVector2D::Distance(Here, A), FVector2D::Distance(Here, B)) - FVector2D::Distance(A, B) > Best) continue;
+			const double D = FMath::PointDistToSegment(FVector(Here, 0.0), FVector(A, 0.0), FVector(B, 0.0)) - S.Radius;
+			if (D < Best) { Best = D; NearestDock = FMath::Max(0.0, D); }
+		}
+	}
+	F.DockDistance = NearestDock;
+	if (const ATrafficManager* TM = ATrafficManager::Find(GetWorld()))
+	{
+		const FRulesCoach::FAdvice& A = TM->GetCoach().GetAdvice();
+		F.bAdvice = A.bActive;
+		F.bGiveWay = A.bGiveWay;
+		F.bStandOn = A.bStandOn;
+		F.bRisk = A.bRisk;
+		F.Encounter = A.Encounter;
+		F.PlayerStatus = A.PlayerStatus;
+		F.OtherStatus = A.OtherStatus;
+		F.PlayerTack = A.PlayerTack;
+		F.OtherTack = A.OtherTack;
+		F.Cpa = A.Cpa;
+		F.Tcpa = A.Tcpa;
+		const std::vector<FTrafficEvent>& Events = TM->GetSim().Events();
+		for (size_t I = FMath::Min(LearningTrafficEvents, Events.size()); I < Events.size(); ++I)
+			F.bFiveBlasts |= Events[I].Type == FTrafficEvent::Signal && Events[I].Sound == ESoundSignal::FiveShort;
+		LearningTrafficEvents = Events.size();
+		// A big vessel at speed close by: her wake is coming.
+		for (const FTrafficVessel& V : TM->GetSim().GetVessels())
+		{
+			if (V.IsSail() || V.Length() < 15.0) continue;
+			const FVesselSnapshot S = V.Snapshot();
+			if (S.Speed() > 8.0 * kKnot && FVector2D::Distance(Here, FVector2D(S.X, S.Y)) < 250.0) F.bBigWakeNear = true;
+		}
+	}
+	if (GM)
+	{
+		const FWeatherState& W = GM->GetWeatherState();
+		F.Storm = W.Storm;
+		F.WindFromDeg = W.Wind.FromDegrees;
+		F.bTidal = GM->GetLake().IsTidal();
+	}
+	if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); Session && Session->bHasActive) F.AirTempF = Session->Active.Conditions.AirTempF;
+	Learning.Update(F, FLearningContent::Get());
 }
 
 void ASailboatPawn::UpdateDrillVisuals()
@@ -1732,6 +1825,37 @@ void ASailboatPawn::StartSampleLayer()
 		A->Play();
 		SampleCues[K] = A;
 		Mask |= 1u << K;
+	}
+	// Graphics G7: the sample pack (Inputs/audio, /Game/Audio/Pack) for the cues no single recording replaces.
+	if (!bTrafficBoat)
+	{
+		const TConstArrayView<SailingSound::FPackLoop> Loops = SailingSound::PackLoops();
+		for (int32 I = 0; I < Loops.Num(); ++I)
+		{
+			if (SampleCues[int32(Loops[I].Cue)]) continue;
+			USoundBase* Wave = SailingSound::LoadPack(Loops[I].Asset);
+			if (!Wave) continue;
+			UAudioComponent* A = NewObject<UAudioComponent>(this);
+			A->SetupAttachment(BoatRoot);
+			A->bAllowSpatialization = false;
+			A->bAutoActivate = false;
+			A->SetSound(Wave);
+			A->SetVolumeMultiplier(0.f);
+			A->RegisterComponent();
+			A->Play();
+			PackLoopComps.Add(A);
+			PackLoopDefs.Add(I);
+			Mask |= 1u << uint32(Loops[I].Cue);
+		}
+		for (uint8 K = 0; K < uint8(SailingSound::EPackShot::Count); ++K)
+		{
+			for (const FString& Asset : SailingSound::PackShots(SailingSound::EPackShot(K)))
+			{
+				if (USoundBase* Wave = SailingSound::LoadPack(Asset)) { PackShotSounds.Add(Wave); PackShotKinds.Add(K); }
+			}
+		}
+		if (PackShotKinds.Contains(uint8(SailingSound::EPackShot::HalyardSlap)) && !SampleCues[int32(ESailingCue::HalyardSlap)]) Mask |= 1u << uint32(ESailingCue::HalyardSlap);
+		if (PackLoopComps.Num()) UE_LOG(LogSailing, Display, TEXT("Sound: sample pack, %d loops and %d one-shots"), PackLoopComps.Num(), PackShotSounds.Num());
 	}
 	if (Synth) Synth->Params.SampledMask = Mask;
 	if (Mask) UE_LOG(LogSailing, Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
@@ -1821,6 +1945,86 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 		{
 			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load());
 		}
+		UpdatePackSound(P, Aws, Levels);
+	}
+}
+
+void ASailboatPawn::PlayPackShot(uint8 Kind, float Volume)
+{
+	TArray<int32> Choices;
+	for (int32 I = 0; I < PackShotKinds.Num(); ++I) if (PackShotKinds[I] == Kind) Choices.Add(I);
+	if (Choices.Num() == 0 || Volume <= 0.01f) return;
+	UGameplayStatics::PlaySound2D(this, PackShotSounds[Choices[FMath::RandRange(0, Choices.Num() - 1)]], Volume, FMath::FRandRange(0.95f, 1.05f));
+}
+
+void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, const float* CueLevels)
+{
+	// Graphics G7: each pack loop is one band of its cue: the cue's level (as the synth voice it replaces) times the
+	// band's crossfade weight over the parameter manifest.json names for it.
+	using namespace SailingSound;
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const float Vol = P.Volume.load();
+	const float Luff = P.Luff.load(), Speed = P.BoatSpeed.load(), Trim = P.TrimRate.load(), Slam = P.BowSlam.load(), Moored = P.Moored.load();
+	const float Tied = IsTiedUp() ? 1.f : 0.f;
+	const float Chop = FMath::Clamp((float(T.TrueWindSpeed) - 5.f) / 5.f, 0.f, 1.f);
+	float Wind[3], Flog[3], Wash[4], Winch[2];
+	static const float WindC[] = { 3.f, 7.f, 11.f }, FlogC[] = { 0.25f, 0.55f, 0.85f }, WashC[] = { 0.5f, 1.5f, 2.6f, 3.6f }, WinchC[] = { 0.2f, 0.7f };
+	Crossfade(Aws, WindC, 3, Wind);
+	Crossfade(Luff, FlogC, 3, Flog);
+	if (Aws < 7.f) { Flog[1] = FMath::Sqrt(FMath::Square(Flog[1]) + FMath::Square(Flog[2])); Flog[2] = 0.f; }   // a strong flog needs a breeze
+	Crossfade(Speed, WashC, 4, Wash);
+	Wash[3] = FMath::Max(Wash[3], FMath::Clamp((P.HullSpeedRatio.load() - 0.9f) * 5.f, 0.f, 1.f));
+	Crossfade(Trim, WinchC, 2, Winch);
+	float Lap[3] = { (1.f - Chop) * (1.f - Tied), Tied * (1.f - 0.5f * Chop), FMath::Max(Chop * Moored, Slam) };
+	const float LapSum = FMath::Max(Lap[0] + Lap[1] + Lap[2], 1e-3f);
+	for (float& L : Lap) L /= LapSum;
+	const TConstArrayView<FPackLoop> Loops = PackLoops();
+	for (int32 I = 0; I < PackLoopComps.Num(); ++I)
+	{
+		const FPackLoop& L = Loops[PackLoopDefs[I]];
+		const int32 B = L.Band;
+		float W = 1.f;
+		switch (L.Cue)
+		{
+		case ESailingCue::Wind: W = Wind[B]; break;
+		case ESailingCue::SailFlog: W = Flog[B]; break;
+		case ESailingCue::BowWave: W = Wash[B]; break;
+		case ESailingCue::HullSlap: W = Lap[B]; break;
+		case ESailingCue::Winch: W = Winch[B]; break;
+		default: break;
+		}
+		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Vol);
+	}
+	if (PackShotSounds.Num() == 0) return;
+	const double Now = GetWorld()->GetTimeSeconds();
+	// The halyard on the mast, at rest or head to wind in a breeze.
+	const float Slap = FMath::Max(Moored, T.bInIrons ? 1.f : 0.f) * FMath::Clamp(Aws / 8.f, 0.f, 1.f);
+	if (Slap > 0.05f && Now >= NextHalyardShot)
+	{
+		PlayPackShot(uint8(EPackShot::HalyardSlap), Slap * 0.8f * Vol);
+		NextHalyardShot = Now + FMath::FRandRange(0.7, 3.0) / FMath::Max(Slap, 0.3f);
+	}
+	// A sail filling with a snap as a tack or jibe completes (luff from over 0.6 to under 0.2).
+	if (Luff > 0.6f) LuffHighAt = Now;
+	if (Luff < 0.2f && Now - LuffHighAt < 1.5 && LuffHighAt > 0.0)
+	{
+		PlayPackShot(uint8(EPackShot::SailFill), FMath::Clamp(Aws / 8.f, 0.2f, 1.f) * Vol);
+		LuffHighAt = -100.0;
+	}
+	// Winch clicks for small trims; a sheet running out through its block when easing starts.
+	if (Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
+	{
+		PlayPackShot(uint8(EPackShot::WinchClick), 0.6f * Vol);
+		NextWinchClick = Now + 0.14;
+	}
+	if (Trim < -0.3f && PrevTrimRate >= -0.3f) PlayPackShot(uint8(Trim < -0.6f ? EPackShot::SheetEaseFast : EPackShot::SheetEaseSlow), 0.7f * Vol);
+	PrevTrimRate = Trim;
+	// In the slip: the lines creak and the fenders squeak as she surges.
+	if (Tied > 0.f && Now >= NextDockShot)
+	{
+		const float Surge = FMath::Clamp(float(Boat.GetState().Velocity.Length()) * 4.f + Chop * 0.5f + Aws / 20.f, 0.f, 1.f);
+		if (NextDockShot > 0.0) PlayPackShot(uint8(FMath::RandBool() ? EPackShot::DockCreak : EPackShot::FenderSqueak), (0.3f + 0.5f * Surge) * Vol);
+		NextDockShot = Now + FMath::FRandRange(2.5, 8.0) / (0.4f + Surge);
 	}
 }
 
@@ -1837,8 +2041,21 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 
+	// Graphics G6: tied up in her slip, a keelboat's sails are stowed (the berthed dress), the boom on the centreline.
+	const bool bStowed = bSailsStowed && StowedDress && IsTiedUp();
+	if (bStowed != bStowedShown)
+	{
+		bStowedShown = bStowed;
+		StowedDress->SetVisibility(bStowed);
+		MainSail->SetVisibility(!bStowed);
+		JibSail->SetVisibility(!bStowed && Boat.GetConfig().HasJib());
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(!bStowed);
+		if (ModelMast) ModelMast->SetVisibility(!bStowed);   // the dress carries its own (straight) mast and standing rig
+		if (RigLines) RigLines->SetVisibility(!bStowed);
+		if (TravelerCar) TravelerCar->SetVisibility(!bStowed);
+	}
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
-	BoomPivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
+	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
 	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
@@ -1849,6 +2066,12 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (ModelHull)
 	{
 		UpdateModelRig(DeltaSeconds);
+	}
+	if (bStowed)
+	{
+		SpinSail->SetVisibility(false);
+		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
+		return;
 	}
 	// A reef changes the main's planform: rebuild its cloth.
 	const double MainHead = Cfg.Main.NumStrips > 0 ? Cfg.Main.Strips[Cfg.Main.NumStrips - 1].ZTop : -1.0;
@@ -2352,7 +2575,9 @@ bool ASailboatPawn::ToggleDockLines()
 	if (!Lines.empty())
 	{
 		Lines.clear();
-		StatusMessage = TEXT("Lines cast off");
+		// Graphics G6: the crew hoists the sails and takes the cover off as the lines come in.
+		StatusMessage = bSailsStowed && StowedDress ? TEXT("Lines cast off, sails up") : TEXT("Lines cast off");
+		bSailsStowed = false;
 		StatusUntil = Now + 3.0;
 		return true;
 	}
@@ -2974,13 +3199,33 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
 	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
 	const float Waist = float(At(TEXT("spine_01")).Z) + 3.f; // the hem at the navel, clear of the shorts' waistband
-	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
-	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
-	if (CrewPFDMesh && Span > 10.f && Top > Waist)
+	const float Top = float(At(TEXT("neck_01")).Z) + 1.f;   // Graphics G6: up to the collarbones (the vest's shoulders)
+	// Graphics G6: the sailing school's royal blue vests (Bean's lesson photos), one older and faded.
+	static const FLinearColor Foam[] = { FLinearColor(0.012f, 0.075f, 0.52f), FLinearColor(0.014f, 0.09f, 0.48f), FLinearColor(0.03f, 0.10f, 0.38f) };
+	// Graphics G6: the life jacket tailored over this sailor's polo (Tools/blender/build_vest.py) and skinned like it, so it
+	// wraps the body as it sits; the rigid one below where it has not been built (or with -SailingNoPolo).
+	const FString VestRole = MetaHumanRoleName(Role);
+	USkeletalMesh* VestMesh = FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")) ? nullptr
+		: LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Vest.SKM_%s_Vest"), *VestRole, *VestRole, *VestRole), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (VestMesh)
+	{
+		USkeletalMeshComponent* Vest = NewObject<USkeletalMeshComponent>(this);
+		Vest->SetupAttachment(Body);
+		Vest->SetSkeletalMesh(VestMesh);
+		Vest->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vest->RegisterComponent();
+		Vest->SetLeaderPoseComponent(Body);
+		const int32 Shell = Vest->GetMaterialIndex(TEXT("PFD"));
+		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		BoatParts.Add(Vest);
+	}
+	else if (CrewPFDMesh && Span > 10.f && Top > Waist)
 	{
 		const FVector Chest = At(TEXT("spine_03"));
 		// Over the shirt (mesh X is depth, Y width): the torso plus foam, centred a little ahead of the spine joints.
-		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.12f * Span), FVector(0.0125f * Span, 0.0115f * Span, 0.0092f * (Top - Waist + 2.f)));
+		// Graphics G6: deeper and centred further back, so it wraps the polo's back and sides (ahead of the spine it left the
+		// polo showing through behind).
+		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.06f * Span), FVector(0.0158f * Span, 0.0128f * Span, 0.0092f * (Top - Waist + 2.f)));
 		UStaticMeshComponent* Pfd = NewObject<UStaticMeshComponent>(this);
 		Pfd->SetStaticMesh(CrewPFDMesh);
 		Pfd->SetupAttachment(Body, TEXT("spine_04"));

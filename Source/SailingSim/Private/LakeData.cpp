@@ -133,14 +133,179 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		}
 	}
 	LoadCoast(*Root, Directory, Name);
+	LoadHouses(Directory / (Name + TEXT(".houses")));
+	LoadCrowns(Directory / (Name + TEXT(".crowns")));
+	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoPiers"))) LoadPiers(Directory / (Name + TEXT(".piers")));
 	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
 	{
 		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
 	}
 	BuildObstacles();
-	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d bridges, %d buildings, %d launch spots, %d navaids, %d tide stations"), *LakeName,
-		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Bridges.Num(), Buildings.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
+	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d decks, %d moored boats, %d bridges, %d buildings, %d houses, %d launch spots, %d navaids, %d tide stations"), *LakeName,
+		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Decks.Num(), MooredBoats.Num(), Bridges.Num(), Buildings.Num(), Houses.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
 	return true;
+}
+
+void FLakeData::LoadPiers(const FString& Path)
+{
+	Decks.Reset();
+	MooredBoats.Reset();
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *Path)) return;
+	TSharedPtr<FJsonObject> Root;
+	if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Root) || !Root.IsValid())
+	{
+		UE_LOG(LogSailing, Warning, TEXT("Piers: bad JSON in %s"), *Path);
+		return;
+	}
+	auto Points = [](const TArray<TSharedPtr<FJsonValue>>& A)
+	{
+		TArray<FVector2D> P;
+		P.Reserve(A.Num());
+		for (const TSharedPtr<FJsonValue>& V : A) { const TArray<TSharedPtr<FJsonValue>>& XY = V->AsArray(); P.Add(FVector2D(XY[0]->AsNumber(), XY[1]->AsNumber())); }
+		return P;
+	};
+	// -SailingPiersSkip=decks,riprap,walkways,boats leaves layers out (to compare).
+	FString Skip;
+	FParse::Value(FCommandLine::Get(), TEXT("SailingPiersSkip="), Skip, false);
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("decks")))
+	{
+		if (Skip.Contains(TEXT("decks"))) break;
+		const TSharedPtr<FJsonObject> O = V->AsObject();
+		FLakeDeck D;
+		D.Outline = Points(O->GetArrayField(TEXT("pts")));
+		D.Deck = float(O->GetNumberField(TEXT("deck")));
+		D.bCovered = O->GetBoolField(TEXT("covered"));
+		D.Kind = O->GetStringField(TEXT("kind"));
+		if (D.Outline.Num() >= 4) Decks.Add(MoveTemp(D));
+	}
+	// OSM piers a lidar deck covers are the same structure: keep the measured one.
+	TArray<FBox2D> Boxes;
+	for (const FLakeDeck& D : Decks) Boxes.Add(FBox2D(D.Outline).ExpandBy(1.5));
+	auto Inside = [](const TArray<FVector2D>& Poly, const FVector2D& P)
+	{
+		bool bIn = false;
+		for (int32 I = 0, J = Poly.Num() - 1; I < Poly.Num(); J = I++)
+		{
+			if (((Poly[I].Y > P.Y) != (Poly[J].Y > P.Y)) && (P.X < (Poly[J].X - Poly[I].X) * (P.Y - Poly[I].Y) / (Poly[J].Y - Poly[I].Y) + Poly[I].X)) bIn = !bIn;
+		}
+		return bIn;
+	};
+	const int32 Before = Docks.Num();
+	Docks.RemoveAll([&](const FLakeDock& Dock)
+	{
+		if (Dock.Kind == TEXT("breakwater")) return false;
+		int32 In = 0;
+		for (const FVector2D& P : Dock.Points)
+		{
+			for (int32 K = 0; K < Decks.Num(); ++K) if (Boxes[K].IsInside(P) && Inside(Decks[K].Outline, P)) { ++In; break; }
+		}
+		return In * 2 > Dock.Points.Num();
+	});
+	const int32 Superseded = Before - Docks.Num();
+	int32 Riprap = 0, Walkways = 0;
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("riprap")))
+	{
+		if (Skip.Contains(TEXT("riprap"))) break;
+		const TSharedPtr<FJsonObject> O = V->AsObject();
+		FLakeDock D;
+		D.Points = Points(O->GetArrayField(TEXT("pts")));
+		const FString Kind = O->GetStringField(TEXT("kind"));
+		// The named landmarks (both Galveston jetties, the Texas City Dike) are breakwaters and dikes with boulders; the
+		// other pieces from the narrow-structures layer keep only the baked rock core, like groins (the boulders cost the
+		// High tier 3 fps on the coast).
+		const bool bNamed = O->HasField(TEXT("name"));
+		D.Kind = Kind == TEXT("seawall") ? Kind : (!bNamed ? FString(TEXT("groin")) : (Kind == TEXT("dike") ? Kind : FString(TEXT("breakwater"))));
+		D.Width = float(O->GetNumberField(TEXT("width")));
+		D.Crest = float(O->GetNumberField(TEXT("crest")));
+		if (D.Points.Num() >= 2) { Docks.Add(MoveTemp(D)); ++Riprap; }
+	}
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("walkways")))
+	{
+		if (Skip.Contains(TEXT("walkways"))) break;
+		const TSharedPtr<FJsonObject> O = V->AsObject();
+		FLakeDock D;
+		D.Points = Points(O->GetArrayField(TEXT("pts")));
+		D.Kind = TEXT("floating");
+		D.Width = float(O->GetNumberField(TEXT("w")));
+		if (D.Points.Num() >= 2) { Docks.Add(MoveTemp(D)); ++Walkways; }
+	}
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("boats")))
+	{
+		if (Skip.Contains(TEXT("boats"))) break;
+		const TArray<TSharedPtr<FJsonValue>>& B = V->AsArray();
+		if (B.Num() < 7) continue;
+		FMooredBoat M;
+		M.Center = FVector2D(B[0]->AsNumber(), B[1]->AsNumber());
+		M.HeadingDeg = float(B[2]->AsNumber());
+		M.Length = float(B[3]->AsNumber());
+		M.Beam = float(B[4]->AsNumber());
+		M.bMast = B[5]->AsNumber() > 0.5;
+		M.Marina = int32(B[6]->AsNumber());
+		MooredBoats.Add(M);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Piers: %d lidar decks (%d OSM piers they cover dropped), %d riprap lines, %d inferred walkways, %d moored boats"),
+		Decks.Num(), Superseded, Riprap, Walkways, MooredBoats.Num());
+}
+
+void FLakeData::LoadHouses(const FString& Path)
+{
+	Houses.Reset();
+	TArray<uint8> Bytes;
+	if (!FFileHelper::LoadFileToArray(Bytes, *Path, FILEREAD_Silent) || Bytes.Num() < 12 || FMemory::Memcmp(Bytes.GetData(), "HOUS", 4) != 0) return;
+	int64 At = 4;
+	auto U32 = [&] { uint32 V = 0; FMemory::Memcpy(&V, Bytes.GetData() + At, 4); At += 4; return V; };
+	auto F32 = [&] { float V = 0.f; FMemory::Memcpy(&V, Bytes.GetData() + At, 4); At += 4; return V; };
+	if (U32() != 1) return;
+	const uint32 Count = U32();
+	Houses.Reserve(Count);
+	for (uint32 K = 0; K < Count && At + 32 <= Bytes.Num(); ++K)
+	{
+		FLakeHouse H;
+		H.X = F32(); H.Y = F32(); H.Ground = F32(); H.Eave = F32(); H.Ridge = F32(); H.PitchDeg = F32();
+		const uint8* B = Bytes.GetData() + At;
+		At += 8;
+		H.Roof = FLakeHouse::ERoof(FMath::Min<uint8>(B[0], 3));
+		H.bFullDetail = B[1] != 0;
+		const int32 NumWings = B[2];
+		H.Storeys = FMath::Max<int32>(1, B[3]);
+		H.RoofColor = FColor(B[4], B[5], B[6]);
+		H.bLidar = (B[7] & 1) != 0;
+		H.bCommercial = (B[7] & 2) != 0;
+		if (At + 20 * NumWings > Bytes.Num()) break;
+		for (int32 W = 0; W < NumWings; ++W)
+		{
+			FLakeHouse::FWing Wing;
+			Wing.X = F32(); Wing.Y = F32(); Wing.HalfLength = F32(); Wing.HalfWidth = F32(); Wing.YawDeg = F32();
+			H.Wings.Add(Wing);
+		}
+		if (H.Wings.Num() > 0) Houses.Add(MoveTemp(H));
+	}
+}
+
+void FLakeData::LoadCrowns(const FString& Path)
+{
+	Crowns.Reset();
+	TArray<uint8> Bytes;
+	if (!FFileHelper::LoadFileToArray(Bytes, *Path, FILEREAD_Silent) || Bytes.Num() < 12 || FMemory::Memcmp(Bytes.GetData(), "CROW", 4) != 0) return;
+	uint32 Version = 0, Count = 0;
+	FMemory::Memcpy(&Version, Bytes.GetData() + 4, 4);
+	FMemory::Memcpy(&Count, Bytes.GetData() + 8, 4);
+	constexpr int32 Stride = 24;
+	if (Version != 1) return;
+	Count = FMath::Min<uint32>(Count, uint32((Bytes.Num() - 12) / Stride));
+	Crowns.SetNum(Count);
+	for (uint32 K = 0; K < Count; ++K)
+	{
+		const uint8* P = Bytes.GetData() + 12 + int64(K) * Stride;
+		float F[5];
+		FMemory::Memcpy(F, P, sizeof(F));
+		FLakeCrown& C = Crowns[K];
+		C.X = F[0]; C.Y = F[1]; C.Ground = F[2]; C.Height = F[3]; C.Radius = F[4];
+		C.bCedar = P[20] != 0;
+		C.bFullDetail = P[21] != 0;
+		C.Weight = FMath::Max<uint8>(1, P[22]);
+	}
 }
 
 void FLakeData::BuildObstacles()
@@ -158,11 +323,38 @@ void FLakeData::BuildObstacles()
 			S.BX = Dock.Points[I].X; S.BY = Dock.Points[I].Y;
 			// Breakwaters are rubble; open lines are drawn as 2 m walkways; closed outlines are the deck edge.
 			// Breakwaters: the riprap band's half-width at the waterline (BuildShoreGeometry); piers as drawn.
-			S.Radius = Dock.Kind == TEXT("breakwater") ? 2.2 : (Dock.bClosed ? 0.25 : 1.0);
+			const bool bRock = Dock.Kind == TEXT("breakwater") || Dock.Kind == TEXT("groin") || Dock.Kind == TEXT("dike") || Dock.Kind == TEXT("seawall");
+			S.Radius = Dock.Width > 0.f ? (bRock ? 0.4 * Dock.Width : 0.5 * Dock.Width) : (Dock.Kind == TEXT("breakwater") ? 2.2 : (Dock.bClosed ? 0.25 : 1.0));
 			S.Bottom = -2.0;
-			S.Top = Dock.Kind == TEXT("breakwater") ? 2.0 : 0.8;
+			S.Top = bRock ? FMath::Max(2.0, double(Dock.Crest)) : 0.8;
 			Obstacles.push_back(S);
 		}
+	}
+	// Graphics G7: the lidar decks stand on piles round their outline; the moored boats are hulls along their axis.
+	for (const FLakeDeck& Deck : Decks)
+	{
+		for (int32 I = 1; I < Deck.Outline.Num(); ++I)
+		{
+			Sailing::FObstacleSegment S;
+			S.AX = Deck.Outline[I - 1].X; S.AY = Deck.Outline[I - 1].Y;
+			S.BX = Deck.Outline[I].X; S.BY = Deck.Outline[I].Y;
+			S.Radius = 0.3;
+			S.Bottom = -2.0;
+			S.Top = FMath::Min(double(Deck.Deck), 1.5);   // a dock face to tie to (FindDockLines takes Top <= 1.5)
+			Obstacles.push_back(S);
+		}
+	}
+	for (const FMooredBoat& B : MooredBoats)
+	{
+		const double H = FMath::DegreesToRadians(B.HeadingDeg);
+		const FVector2D Half = FVector2D(FMath::Cos(H), FMath::Sin(H)) * (0.5 * B.Length - 0.5 * B.Beam);
+		Sailing::FObstacleSegment S;
+		S.AX = B.Center.X - Half.X; S.AY = B.Center.Y - Half.Y;
+		S.BX = B.Center.X + Half.X; S.BY = B.Center.Y + Half.Y;
+		S.Radius = 0.45 * B.Beam;
+		S.Bottom = -1.2;
+		S.Top = 1.6;   // over 1.5: not a dock to tie to
+		Obstacles.push_back(S);
 	}
 	// Visual V6: the marina's docks, finger piers and breakwater stop the boat where they are drawn (AMarinaActor).
 	Marina.ForEachObstacleLine([this](const TArray<FVector2D>& Points, const FString& Kind, float HalfWidth)

@@ -7,6 +7,7 @@
 #include "FixedStepper.h"
 #include "InputActionValue.h"
 #include "Drills.h"
+#include "Learning.h"
 #include "Navigation.h"
 #include "Logbook.h"
 #include "Replay.h"
@@ -61,6 +62,12 @@ public:
 	/** Starts a learning drill (positions the boat for docking drills). */
 	void StartDrill(ESailingDrill Drill);
 	const FDrillRunner& GetDrill() const { return DrillRunner; }
+	/** Graphics G7: counts drill starts (the HUD opens the briefing and, once it is done, the quiz for each). */
+	int32 GetDrillSerial() const { return DrillSerial; }
+	double GetMaxContactKnots() const { return MaxContactKnots; }
+	/** The learning tips' coach (player's boat in learning mode). */
+	const FLearningCoach& GetLearning() const { return Learning; }
+	double GetSimTime() const { return Boat.GetState().Time; }
 	/** A short message for the HUD (tie-up results and the like), empty when none. */
 	FString GetStatusMessage() const { return Boat.GetState().Time < StatusUntil ? StatusMessage : FString(); }
 	/** Index of the selected drill in the settings menu. */
@@ -227,6 +234,11 @@ private:
 	FDrillRunner DrillRunner;
 	ESailingDrill MenuDrill = ESailingDrill::None;
 	double MaxContactKnots = 0.0;
+	int32 DrillSerial = 0;
+	FLearningCoach Learning;
+	size_t LearningTrafficEvents = 0;
+	double NextDockScan = 0.0, NearestDock = -1.0;
+	void UpdateLearning();
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> MarkMeshes;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> DummyMesh;
 	void UpdateDrillVisuals();
@@ -345,6 +357,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelMast;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelBoom;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelRudder;
+	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
+	 *  shown instead of the sails, mast and running rig while bSailsStowed. */
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> StowedDress;
+	bool bSailsStowed = false;
+	bool bStowedShown = false;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> TravelerCar;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
@@ -395,6 +412,15 @@ private:
 	/** Visual V7: recorded samples that replace synth voices (one looping component per ESailingCue found). */
 	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> SampleCues;
 	void StartSampleLayer();
+	// Graphics G7: the sample pack's loops (each one band of a cue's crossfade) and one-shots.
+	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> PackLoopComps;
+	TArray<int32> PackLoopDefs;   // index into SailingSound::PackLoops()
+	UPROPERTY(Transient) TArray<TObjectPtr<USoundBase>> PackShotSounds;
+	TArray<uint8> PackShotKinds;  // SailingSound::EPackShot per sound
+	double NextHalyardShot = 0.0, NextDockShot = 0.0, NextWinchClick = 0.0, LuffHighAt = -100.0;
+	float PrevTrimRate = 0.f;
+	void UpdatePackSound(const struct FSailingSoundParams& P, float Aws, const float* CueLevels);
+	void PlayPackShot(uint8 Kind, float Volume);
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;

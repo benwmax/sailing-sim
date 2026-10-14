@@ -1,0 +1,36 @@
+{
+ "region": "GalvestonBay",
+ "overwater": {
+  "pier": 1287,
+  "covered_slip_or_building": 401,
+  "bridge": 216,
+  "dock_complex": 275,
+  "deck_small": 8189,
+  "platform_or_wharf": 374,
+  "boats_in_slips": 330,
+  "vessel_large": 30
+ },
+ "boats": 8241,
+ "narrow": {
+  "dike_or_causeway": 28,
+  "groin": 537,
+  "spoil_or_ridge": 133,
+  "breakwater": 154,
+  "jetty": 33
+ },
+ "marinas": 128,
+ "named": [
+  [
+   "Galveston South Jetty",
+   "B00158"
+  ],
+  [
+   "Galveston North Jetty",
+   "B00209"
+  ],
+  [
+   "Texas City Dike",
+   "B00317"
+  ]
+ ]
+}

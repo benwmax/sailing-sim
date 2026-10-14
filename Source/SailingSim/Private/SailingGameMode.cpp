@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "CoastMarinasActor.h"
 #include "SailSession.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
@@ -30,6 +31,7 @@
 #include "TrafficManager.h"
 #include "SailingEnvironment.h"
 #include "UnrealClient.h"
+#include "ShaderCompiler.h"
 
 using namespace Sailing;
 
@@ -469,6 +471,11 @@ void ASailingGameMode::StartPlay()
 	{
 		GetWorld()->SpawnActor<AMarinaActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
+	// Graphics G7: the coast's moored boats and floating walkways (Inputs/g2/piers, <Lake>.piers).
+	if (Lake.MooredBoats.Num() > 0 && USailingSettings::Get()->Quality != ESailingQuality::Low)
+	{
+		GetWorld()->SpawnActor<ACoastMarinasActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
 	if ((Lake.Bridges.Num() > 0 || Lake.Docks.Num() > 0) && USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
 		GetWorld()->SpawnActor<ABridgesActor>(FVector::ZeroVector, FRotator::ZeroRotator);
@@ -542,6 +549,14 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		return;
 	}
 
+#if WITH_EDITOR
+	// Graphics G6: uncooked runs (run-game.sh, capture-scenes.sh) compile shaders on demand and draw a material's default
+	// until it is ready: a still once showed a storm sky with no clouds. Finish the compiling before the measured window.
+	if (Elapsed < BenchWarmupSeconds && GShaderCompilingManager && GShaderCompilingManager->GetNumRemainingJobs() > 0)
+	{
+		GShaderCompilingManager->FinishAllCompilation();
+	}
+#endif
 	Elapsed += DeltaSeconds;
 	if (Elapsed > BenchWarmupSeconds && Elapsed <= BenchWarmupSeconds + BenchSeconds)
 	{

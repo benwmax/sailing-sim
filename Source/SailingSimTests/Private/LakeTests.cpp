@@ -6,6 +6,7 @@
 #include "LakeData.h"
 #include "LakeTerrain.h"
 #include "Marina.h"
+#include "WorldKit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -144,6 +145,136 @@ bool FSailingShoreDetailTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("Land agrees with the 5 m grid (median %.2f m)"), Median), Median < 0.35);
 	TestTrue(FString::Printf(TEXT("Walls are rare (%.3f%% of 1 m steps)"), WallShare * 100.0), WallShare < 0.002);
 	TestTrue(FString::Printf(TEXT("Tiles meet without a seam (%.3f m)"), WorstSeam), Edges > 20 && WorstSeam < 0.02);
+	return true;
+}
+
+/**
+ * Graphics G6: the shore's houses from the G2 footprints (Tools/terrain/build_houses.py, HouseKit.cpp). They load with
+ * the lake; the full-detail band is the houses within 400 m of the water; every wall faces out of its wing, every roof
+ * plane faces up; a lidar ridge is kept; windows and doors only on the outside walls.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHousesTest, "SailingSim.Lake.Houses", Flags)
+bool FSailingHousesTest::RunTest(const FString& Parameters)
+{
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	if (!TestTrue(TEXT("The G2 houses load (RayHubbard.houses)"), Lake.Houses.Num() > 30000)) return false;
+	int32 Full = 0, Lidar = 0, Wings = 0;
+	for (const FLakeHouse& H : Lake.Houses) { Full += H.bFullDetail; Lidar += H.bLidar; Wings += H.Wings.Num(); }
+	AddInfo(FString::Printf(TEXT("%d houses, %d in the full-detail band, %d with lidar roofs, %d wings"), Lake.Houses.Num(), Full, Lidar, Wings));
+	TestTrue(TEXT("About a third within 400 m of the water"), Full > Lake.Houses.Num() / 5 && Full < Lake.Houses.Num() / 2);
+	TestTrue(TEXT("Most roofs measured by the lidar"), Lidar > Lake.Houses.Num() * 3 / 4);
+	// The houses of one tile near the club, built as the game draws them.
+	TMap<FIntPoint, TArray<int32>> Tiles;
+	HouseTiles(Lake, Tiles);
+	const TArray<int32>* Busiest = nullptr;
+	for (const auto& KV : Tiles) if (FMath::Abs(KV.Key.X) <= 4 && FMath::Abs(KV.Key.Y) <= 4 && (!Busiest || KV.Value.Num() > Busiest->Num())) Busiest = &KV.Value;
+	if (!TestNotNull(TEXT("A tile of houses near the club"), Busiest)) return false;
+	FKitGeometry G;
+	BuildHouseGeometry(Lake, *Busiest, G);
+	const FKitSection& Wall = G[EKitLook::HouseWall];
+	const FKitSection& Roof = G[EKitLook::HouseRoof];
+	TestTrue(TEXT("Walls and roofs built"), Wall.V.Num() > 0 && Roof.V.Num() > 0);
+	TestTrue(TEXT("Colour and tag per vertex"), Wall.Col.Num() == Wall.V.Num() && Wall.UV1.Num() == Wall.V.Num() && Roof.Col.Num() == Roof.V.Num());
+	int32 RoofDown = 0;
+	for (const FVector& N : Roof.N) RoofDown += N.Z < -0.01;
+	TestEqual(TEXT("No roof plane faces down"), RoofDown, 0);
+	// Each wing's four walls (the first quads per wing are its walls, in order): horizontal normals, facing out.
+	int32 Inward = 0, Checked = 0, OpeningsInside = 0;
+	for (const int32 K : *Busiest)
+	{
+		const FLakeHouse& H = Lake.Houses[K];
+		for (const FLakeHouse::FWing& W : H.Wings)
+		{
+			const FVector2D C(W.X, W.Y);
+			for (int32 Q = 0; Q + 3 < Wall.V.Num(); Q += 4)
+			{
+				const FVector Mid = 0.25 * (Wall.V[Q] + Wall.V[Q + 1] + Wall.V[Q + 2] + Wall.V[Q + 3]) / 100.0;
+				const FVector2D D = FVector2D(Mid) - C;
+				const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+				const double A = D.X * FMath::Cos(Yaw) + D.Y * FMath::Sin(Yaw), B = -D.X * FMath::Sin(Yaw) + D.Y * FMath::Cos(Yaw);
+				// Quads on this wing's own wall planes (within 2 cm of one, inside its extent).
+				const bool bOnLong = FMath::Abs(FMath::Abs(B) - W.HalfWidth) < 0.02 && FMath::Abs(A) < W.HalfLength - 0.1;
+				const bool bOnEnd = FMath::Abs(FMath::Abs(A) - W.HalfLength) < 0.02 && FMath::Abs(B) < W.HalfWidth - 0.1;
+				if (!bOnLong && !bOnEnd || FMath::Abs(Wall.N[Q].Z) > 0.01) continue;
+				++Checked;
+				Inward += FVector2D::DotProduct(FVector2D(Wall.N[Q]), D) < 0.0;
+			}
+		}
+		// Glass (finish 3) and doors never inside another wing of the same house.
+		for (int32 Q = 0; Q + 3 < Wall.V.Num(); Q += 4)
+		{
+			if (Wall.Col[Q].A < 3) continue;
+			const FVector2D Mid = FVector2D(0.25 * (Wall.V[Q] + Wall.V[Q + 1] + Wall.V[Q + 2] + Wall.V[Q + 3]) / 100.0) + FVector2D(Wall.N[Q]) * 0.3;
+			for (const FLakeHouse::FWing& W : H.Wings)
+			{
+				const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+				const FVector2D D = Mid - FVector2D(W.X, W.Y);
+				if (FMath::Abs(D.X * FMath::Cos(Yaw) + D.Y * FMath::Sin(Yaw)) < W.HalfLength - 0.3 && FMath::Abs(-D.X * FMath::Sin(Yaw) + D.Y * FMath::Cos(Yaw)) < W.HalfWidth - 0.3) ++OpeningsInside;
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("Tile of %d houses: %d wall quads checked, %d facing in; %d roof quads"), Busiest->Num(), Checked, Inward, Roof.V.Num() / 4));
+	TestTrue(TEXT("Walls checked"), Checked > 4 * Busiest->Num());
+	TestEqual(TEXT("Every wall faces out of its wing"), Inward, 0);
+	TestEqual(TEXT("No window or door inside another wing"), OpeningsInside, 0);
+	// A lidar ridge: the main wing's highest roof vertex is the measured ridge (within the eave overhang's drop).
+	int32 RidgeChecked = 0, RidgeOff = 0;
+	for (const int32 K : *Busiest)
+	{
+		const FLakeHouse& H = Lake.Houses[K];
+		if (!H.bLidar || H.Roof != FLakeHouse::Hip || H.Ridge <= H.Eave + 0.5f || H.Wings.Num() != 1) continue;
+		FKitGeometry One;
+		BuildHouseGeometry(Lake, TArray<int32>({ K }), One);
+		double Top = -1e9, Ground = FMath::Max(double(Lake.Terrain.HeightAt(H.X, H.Y)), 0.15);
+		for (const FVector& V : One[EKitLook::HouseRoof].V) Top = FMath::Max(Top, V.Z / 100.0);
+		++RidgeChecked;
+		RidgeOff += FMath::Abs(Top - Ground - H.Ridge) > 0.6;
+	}
+	AddInfo(FString::Printf(TEXT("%d lidar hip ridges checked, %d off by over 0.6 m"), RidgeChecked, RidgeOff));
+	TestTrue(TEXT("Lidar ridges kept"), RidgeChecked > 3 && RidgeOff * 10 <= RidgeChecked);
+	return true;
+}
+
+/**
+ * Graphics G6: the shore's trees from the G2 lidar crowns (Tools/terrain/build_crowns.py). They load with the lake; every
+ * placed crown keeps its measured height and a width near its crown radius; none stands in the water; the canopy-map
+ * trees stay only outside the crowns' band; tall crowns are not all one species.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCrownsTest, "SailingSim.Lake.Crowns", Flags)
+bool FSailingCrownsTest::RunTest(const FString& Parameters)
+{
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	if (!TestTrue(TEXT("The lidar crowns load (RayHubbard.crowns)"), Lake.Crowns.Num() > 100000)) return false;
+	int32 Full = 0, Cedar = 0;
+	for (const FLakeCrown& C : Lake.Crowns) { Full += C.bFullDetail; Cedar += C.bCedar; }
+	AddInfo(FString::Printf(TEXT("%d crowns, %d within 400 m of the water, %d red cedar"), Lake.Crowns.Num(), Full, Cedar));
+	TestTrue(TEXT("Most kept crowns are in the full-detail band"), Full > Lake.Crowns.Num() / 2);
+	TArray<FTreeInstance> Trees;
+	PlaceCrownTrees(Lake.Terrain, Lake.Crowns, 1.f, Trees);
+	TSet<FIntPoint> CrownCells;
+	for (const FLakeCrown& C : Lake.Crowns) CrownCells.Add(FIntPoint(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f)));
+	int32 Placed = 0, InWater = 0, MapInBand = 0, TooTall = 0, Tall = 0;
+	int32 TallSpecies[int32(ETreeSpecies::Count)] = {};
+	for (const FTreeInstance& I : Trees)
+	{
+		InWater += Lake.Terrain.HeightAt(I.Position.X, I.Position.Y) < 0.0;
+		if (I.Crown > 0.f)
+		{
+			++Placed;
+			TooTall += I.Height > 30.f;
+			if (I.Height > 14.f) { ++Tall; TallSpecies[int32(I.Species)]++; }
+		}
+		else MapInBand += CrownCells.Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0)));
+	}
+	AddInfo(FString::Printf(TEXT("%d trees: %d from crowns, %d tall (post oak %d, live oak %d, cedar elm %d)"), Trees.Num(), Placed, Tall,
+		TallSpecies[int32(ETreeSpecies::PostOak)], TallSpecies[int32(ETreeSpecies::LiveOak)], TallSpecies[int32(ETreeSpecies::CedarElm)]));
+	TestTrue(TEXT("Nearly every crown on land placed"), Placed > Lake.Crowns.Num() * 9 / 10);
+	TestEqual(TEXT("No tree in the water"), InWater, 0);
+	TestEqual(TEXT("No crown over 30 m"), TooTall, 0);
+	TestEqual(TEXT("No canopy-map tree inside the crowns' band"), MapInBand, 0);
+	TestTrue(TEXT("Tall crowns of more than one species"), TallSpecies[int32(ETreeSpecies::PostOak)] < Tall * 3 / 4 && TallSpecies[int32(ETreeSpecies::LiveOak)] > Tall / 10);
 	return true;
 }
 

@@ -1,0 +1,900 @@
+{
+  "schema_version": 1,
+  "generated": "2026-10-14",
+  "conventions": {
+    "levels": "info, good, warn, danger: map to SailingCollectTips severity 0, 1, 2, 3 (white, green, amber, red)",
+    "drills": "drill ids from drill-briefings.json, or Any; a drill-specific tip wins over an Any tip for the same event",
+    "cooldown_s": "minimum seconds before the same tip shows again",
+    "once_per_session": "show at most once per sail",
+    "key_tokens": "{key:Action.direction} or {key:Action}; see README",
+    "events": "the event table says what each event means and a suggested detection; tune thresholds on the Mac"
+  },
+  "events": {
+    "jib.luffing": "Two or more jib strips Luffing or Backed while not in irons and |TWA| >= 35 (as SailingCollectTips does)",
+    "jib.stalled": "Two or more jib strips Stalled",
+    "main.luffing": "Two or more main strips Luffing or Backed while not in irons and |TWA| >= 35",
+    "main.stalled": "Two or more main strips Stalled",
+    "trim.good": "All telltales streaming for 10 s on a reach or beat",
+    "pinching": "|TWA| between 30 and 38 degrees with speed falling",
+    "irons": "bInIrons",
+    "irons.escaped": "bInIrons goes false and the sails fill",
+    "head_up": "|TWA| decreases by more than 25 degrees in under 5 s without a tack",
+    "bear_away": "|TWA| increases by more than 25 degrees in under 5 s without a jibe",
+    "tack.start": "|TWA| falls below 30 with the tiller to leeward and speed above 2 kn",
+    "tack.complete": "TWA changes sign through head to wind and the boat is sailing again",
+    "tack.slow": "A tack that takes longer than 8 s head to wind, or speed below 1 kn mid-tack",
+    "jibe.start": "|TWA| above 160 and the tiller to windward",
+    "jibe.complete": "TWA changes sign through dead downwind",
+    "jibe.main_loose": "A jibe with the mainsheet eased past 70 per cent as the stern crosses the wind",
+    "by_the_lee": "|TWA| above 170 (sailing by the lee)",
+    "heel.excessive": "Leeward heel above 22 degrees",
+    "weather_helm": "HelmForce above 40 N",
+    "gust": "True wind speed up 30 per cent in 3 s",
+    "shallow": "DepthUnderKeel below 1 m",
+    "aground": "bAground",
+    "cob.start": "A crew-overboard drill starts (or a crew member falls in)",
+    "cob.far": "Person in the water more than 60 m away in a figure-eight, or 40 m in a quick-stop",
+    "cob.fast_approach": "Within 15 m of the person at more than 2 kn",
+    "cob.downwind_approach": "Within 25 m of the person with |TWA| above 120",
+    "cob.alongside": "Within 3 m of the person under 1.2 kn",
+    "heaveto.jib_released": "HeaveTo drill, a tack completed with the jib not backed",
+    "heaveto.tiller_wrong": "HeaveTo drill, jib backed but tiller to windward or centred for 5 s",
+    "heaveto.main_drawing": "HeaveTo drill, jib backed but main trimmed and speed above 3 kn",
+    "heaveto.settled": "HeaveTo drill hold timer running",
+    "dock.cast_off": "Dock lines released",
+    "dock.fenders": "Within 150 m of a berth with the dock lines aboard",
+    "dock.approach_fast": "Within 30 m of the berth at more than 2 kn",
+    "dock.approach_downwind": "Within 50 m of the berth with |TWA| above 120",
+    "dock.contact": "bCollision with a dock (MaxContactSpeed reported)",
+    "dock.lines_on": "Dock lines made fast",
+    "rules.port_starboard.give_way": "FRulesCoach advice: SailingVessels, player give way, different tacks",
+    "rules.port_starboard.stand_on": "FRulesCoach advice: SailingVessels, player stand on, different tacks",
+    "rules.same_tack.give_way": "FRulesCoach advice: SailingVessels, same tack, player to windward",
+    "rules.same_tack.stand_on": "FRulesCoach advice: SailingVessels, same tack, player to leeward",
+    "rules.overtaking.give_way": "FRulesCoach advice: Overtaking, player overtaking",
+    "rules.overtaking.stand_on": "FRulesCoach advice: Overtaking, player being overtaken",
+    "rules.power_vs_sail.stand_on": "Responsibilities: player under sail, other is power-driven and must keep clear",
+    "rules.player_motoring": "Player's engine in gear (counts as power-driven) near a vessel under sail",
+    "rules.fishing": "Responsibilities: other vessel is Fishing",
+    "rules.restricted": "Responsibilities: other vessel is RestrictedManeuverability or NotUnderCommand",
+    "rules.constrained": "Other vessel is ConstrainedByDraft or a large ship in a channel (Galveston)",
+    "rules.anchored": "Other vessel is Anchored",
+    "rules.head_on": "HeadOn while motoring",
+    "rules.crossing": "Crossing while motoring",
+    "rules.standon_must_act": "Player stand on, other not acting, CPA under the safe distance and TCPA under 15 s",
+    "rules.five_blasts": "Another vessel sounds five short blasts",
+    "rules.collision": "bVesselContact",
+    "rules.wake": "A large wake (wave height above 0.4 m) approaching",
+    "weather.storm_building": "FWeatherState Storm == Building",
+    "weather.gust_front": "Storm == GustFront",
+    "weather.lightning": "Storm == Rain with lightning",
+    "weather.heat": "Lake world, summer date, air temperature above 95 F",
+    "weather.front": "Wind veers to north and strengthens (fall or winter cold front)",
+    "weather.calm": "True wind under 3 kn for 60 s",
+    "mark.rounding": "Within 30 m of the next drill mark",
+    "drill.complete": "FDrillRunner IsComplete becomes true"
+  },
+  "tips": [
+    {
+      "id": "jib-luff-upwind",
+      "event": "jib.luffing",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "The jib is luffing: its front edge is bubbling. Trim it in ({key:JibSheet.trim}) or bear away a little. Upwind, the windward telltale lifting means you are too close to the wind."
+    },
+    {
+      "id": "jib-luff-reach",
+      "event": "jib.luffing",
+      "drills": [
+        "SailATriangle"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "Luffing is the sail flapping because it is eased too far for the wind angle. Trim the jib ({key:JibSheet.trim}) just until the bubble stops."
+    },
+    {
+      "id": "jib-stall",
+      "event": "jib.stalled",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "The leeward jib telltale is drooping: the sail is trimmed too tight for this course. Ease it ({key:JibSheet.ease}) or head up a little."
+    },
+    {
+      "id": "main-luff",
+      "event": "main.luffing",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "The main is luffing near the mast. Trim the mainsheet ({key:MainSheet.trim}) until it fills."
+    },
+    {
+      "id": "main-stall",
+      "event": "main.stalled",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "The leech telltales are curling behind the main: it is over-trimmed. Ease the mainsheet ({key:MainSheet.ease}) until they stream."
+    },
+    {
+      "id": "trim-good",
+      "event": "trim.good",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "Telltales streaming on both sails. Remember the rule: when in doubt, let it out, then trim in just until the luffing stops."
+    },
+    {
+      "id": "pinching",
+      "event": "pinching",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "You are pinching: so close to the wind that the boat slows and the jib softens. Bear away a few degrees, let the speed build, then head up gently."
+    },
+    {
+      "id": "irons",
+      "event": "irons",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "You are in irons: stopped head to wind with the sails luffing. Push the tiller toward the boom, back the jib ({key:BackJib}) to the side you want the bow to go, and wait for the bow to fall off."
+    },
+    {
+      "id": "irons-escaped",
+      "event": "irons.escaped",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Out of irons. Next time, carry more speed into the tack and keep turning steadily through head to wind."
+    },
+    {
+      "id": "head-up",
+      "event": "head_up",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 90,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Heading up: turning toward the wind. As you head up, trim the sails in to match."
+    },
+    {
+      "id": "bear-away",
+      "event": "bear_away",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 90,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Bearing away (falling off): turning away from the wind. Ease the sails out as you turn, or they will stall and the boat will heel."
+    },
+    {
+      "id": "tack-call",
+      "event": "tack.start",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Tacking: the bow turns through the wind. The calls are \"Ready about\", \"Ready\", then \"Helm's a-lee\" as you push the tiller toward the sail."
+    },
+    {
+      "id": "tack-jib",
+      "event": "tack.start",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "As the jib luffs during the tack, release the old sheet and trim the new one on the other side once the bow is through."
+    },
+    {
+      "id": "tack-done",
+      "event": "tack.complete",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Through the tack. Check the new jib sheet is trimmed and you have settled close-hauled on the new tack, not pointing too high."
+    },
+    {
+      "id": "tack-slow",
+      "event": "tack.slow",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "That tack nearly stalled. Build speed first, then turn steadily: not a jerk, and not so gently that the bow stops head to wind."
+    },
+    {
+      "id": "jibe-call",
+      "event": "jibe.start",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Jibing: the stern turns through the wind and the boom swings across. Call \"Prepare to jibe\", trim the main in ({key:MainSheet.trim}), then \"Jibe-ho\" as you turn."
+    },
+    {
+      "id": "jibe-heads",
+      "event": "jibe.start",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "Heads down in the cockpit. The boom crosses fast in a jibe."
+    },
+    {
+      "id": "jibe-main-loose",
+      "event": "jibe.main_loose",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "The main was eased all the way out when the boom crossed. That is how a jibe goes wild. Trim it toward the centre before the stern passes the wind, then ease on the new side."
+    },
+    {
+      "id": "jibe-done",
+      "event": "jibe.complete",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Jibe complete. Ease the main out on the new side and steady up on your course."
+    },
+    {
+      "id": "by-the-lee",
+      "event": "by_the_lee",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "You are sailing by the lee: the wind is coming over the same side as the boom. An accidental jibe is close. Head up a few degrees."
+    },
+    {
+      "id": "heel",
+      "event": "heel.excessive",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "Heeling too far slows the boat and makes it hard to steer. Hike out ({key:Hike.out}) and ease the main ({key:MainSheet.ease}) in the puffs."
+    },
+    {
+      "id": "weather-helm",
+      "event": "weather_helm",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "The tiller is pulling hard: weather helm, the boat wants to round up into the wind. Ease the main or flatten the boat to balance her."
+    },
+    {
+      "id": "gust",
+      "event": "gust",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "trim",
+      "text": "Puff! Ease the main or feather (head up slightly) to keep the boat on its feet, then trim back as it passes. You can see puffs coming as dark patches on the water."
+    },
+    {
+      "id": "shallow",
+      "event": "shallow",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "nav",
+      "text": "Shallow water under the keel. The J/22 draws about 1.2 m (3 ft 10 in). Ray Hubbard's coves and points shoal quickly, and the lake level changes with rain and drought."
+    },
+    {
+      "id": "aground",
+      "event": "aground",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "Aground. Ease the sails, turn back the way you came, and move the crew to leeward to heel the boat: heeling lifts the keel a little."
+    },
+    {
+      "id": "cob-first",
+      "event": "cob.start",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Crew overboard! Shout it, throw flotation, and have one person point at them and never stop pointing."
+    },
+    {
+      "id": "cob-fig8-reach",
+      "event": "cob.start",
+      "drills": [
+        "CrewOverboardFigureEight"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Figure-eight: sail away on a beam reach about four or five boat lengths, then tack."
+    },
+    {
+      "id": "cob-quickstop",
+      "event": "cob.start",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Quick-stop: head up into the wind now, tack, leave the jib backed and keep turning around them."
+    },
+    {
+      "id": "cob-far",
+      "event": "cob.far",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "level": "warn",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "You are getting far from the person. Turn back now: the further you go, the easier they are to lose."
+    },
+    {
+      "id": "cob-fast",
+      "event": "cob.fast_approach",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "level": "warn",
+      "cooldown_s": 15,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "Too fast for a pick-up. Ease both sheets and turn up into the wind to use the headwind as a brake. If you are not slowing, sail past and set up again."
+    },
+    {
+      "id": "cob-downwind",
+      "event": "cob.downwind_approach",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "level": "warn",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "You are coming at them from upwind on a run. You cannot slow down on this point of sail. Get below them and come up on a close reach."
+    },
+    {
+      "id": "cob-alongside",
+      "event": "cob.alongside",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "level": "good",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Alongside. Either side is fine. Get a line to them and attach them to the boat before you try to lift them aboard."
+    },
+    {
+      "id": "heaveto-released",
+      "event": "heaveto.jib_released",
+      "drills": [
+        "HeaveTo"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "The jib came across to the leeward side, so it is not backed. Tack again and leave the jib sheet cleated this time, or hold it to windward ({key:BackJib})."
+    },
+    {
+      "id": "heaveto-tiller",
+      "event": "heaveto.tiller_wrong",
+      "drills": [
+        "HeaveTo"
+      ],
+      "level": "warn",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Tiller to leeward: push it toward the boom and hold it. The rudder turns the bow up while the backed jib pushes it down."
+    },
+    {
+      "id": "heaveto-main",
+      "event": "heaveto.main_drawing",
+      "drills": [
+        "HeaveTo"
+      ],
+      "level": "warn",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "The main is still driving the boat. Ease it ({key:MainSheet.ease}) until it mostly luffs."
+    },
+    {
+      "id": "heaveto-settled",
+      "event": "heaveto.settled",
+      "drills": [
+        "HeaveTo"
+      ],
+      "level": "good",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "sail",
+      "text": "Hove to: the boat creeps forward and drifts slowly downwind. Make sure there is room to leeward."
+    },
+    {
+      "id": "dock-castoff",
+      "event": "dock.cast_off",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "dock",
+      "text": "Lines off. Get a little speed early so the rudder can steer, and keep the sails half drawing until you have room."
+    },
+    {
+      "id": "dock-fenders",
+      "event": "dock.fenders",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "dock",
+      "text": "Coming in: fenders over the side you will dock on, at the height where the hull meets the dock, and bow and stern lines ready."
+    },
+    {
+      "id": "dock-fast",
+      "event": "dock.approach_fast",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 10,
+      "once_per_session": false,
+      "asa_topic": "dock",
+      "text": "Too fast for the dock. Ease the sheets to luff, and if that is not enough, turn away and go around."
+    },
+    {
+      "id": "dock-downwind",
+      "event": "dock.approach_downwind",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "dock",
+      "text": "You are running toward the dock. Downwind, the sails keep pulling even when eased. Plan to finish heading into the wind."
+    },
+    {
+      "id": "dock-contact",
+      "event": "dock.contact",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 10,
+      "once_per_session": false,
+      "asa_topic": "dock",
+      "text": "Contact with the dock. Fend off with a hand or foot on the boat, never a leg between the boat and the dock."
+    },
+    {
+      "id": "dock-lines",
+      "event": "dock.lines_on",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "knots",
+      "text": "Lines on. Make fast with a cleat hitch: a turn round the base, a figure-eight over the horns, and a locking hitch."
+    },
+    {
+      "id": "r-ps-give",
+      "event": "rules.port_starboard.give_way",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 45,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "You are on port tack and they are on starboard: you give way. Act early and obviously, usually by bearing away to pass behind them."
+    },
+    {
+      "id": "r-ps-stand",
+      "event": "rules.port_starboard.stand_on",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 45,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "You are on starboard tack: you are the stand-on boat. Hold your course and speed so they can predict you, but watch that they act."
+    },
+    {
+      "id": "r-same-give",
+      "event": "rules.same_tack.give_way",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 45,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "Same tack, and you are to windward: you keep clear of the leeward boat."
+    },
+    {
+      "id": "r-same-stand",
+      "event": "rules.same_tack.stand_on",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 45,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "Same tack, and you are the leeward boat: you stand on. Hold your course."
+    },
+    {
+      "id": "r-ot-give",
+      "event": "rules.overtaking.give_way",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 45,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "You are overtaking: you keep clear, whatever kind of boat they are and whichever tack you are on."
+    },
+    {
+      "id": "r-ot-stand",
+      "event": "rules.overtaking.stand_on",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 45,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "A boat is overtaking you. They must keep clear; hold your course and speed."
+    },
+    {
+      "id": "r-power-sail",
+      "event": "rules.power_vs_sail.stand_on",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "A powerboat normally keeps clear of a sailboat under sail. Still, many weekend drivers on the lake do not know the rules. Hold your course, but be ready to act."
+    },
+    {
+      "id": "r-motoring",
+      "event": "rules.player_motoring",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "With the outboard running in gear you are a power-driven vessel under the rules, even with the sails up."
+    },
+    {
+      "id": "r-fishing",
+      "event": "rules.fishing",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "A vessel engaged in fishing with nets or trawls: you keep clear. A bass boat trolling a line does not count as fishing under the rules."
+    },
+    {
+      "id": "r-restricted",
+      "event": "rules.restricted",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "That vessel is restricted in its ability to maneuver or not under command. Everyone keeps clear of it."
+    },
+    {
+      "id": "r-constrained",
+      "event": "rules.constrained",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "A large ship can only use the channel. Do not impede it: stay out of the channel or cross quickly at right angles."
+    },
+    {
+      "id": "r-anchored",
+      "event": "rules.anchored",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "An anchored vessel cannot move out of your way. Keep clear, and pass astern of it, away from its anchor line."
+    },
+    {
+      "id": "r-headon",
+      "event": "rules.head_on",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "Head-on under power: both vessels turn to starboard and pass port to port."
+    },
+    {
+      "id": "r-crossing",
+      "event": "rules.crossing",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "Crossing under power: the vessel that has the other on her starboard side gives way."
+    },
+    {
+      "id": "r-must-act",
+      "event": "rules.standon_must_act",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "They are not keeping clear. As the stand-on vessel you must now act yourself to avoid a collision."
+    },
+    {
+      "id": "r-five",
+      "event": "rules.five_blasts",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "lights",
+      "text": "Five or more short blasts: the danger signal. They doubt you are taking enough action. Act now, clearly."
+    },
+    {
+      "id": "r-collision",
+      "event": "rules.collision",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "rules",
+      "text": "Contact with another vessel. Check for damage and injuries. Under the rules, every vessel must act to avoid a collision, even the stand-on one."
+    },
+    {
+      "id": "r-wake",
+      "event": "rules.wake",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "Big wake coming. Turn the bow to meet it at an angle, and hold on."
+    },
+    {
+      "id": "wx-building",
+      "event": "weather.storm_building",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 180,
+      "once_per_session": false,
+      "asa_topic": "weather",
+      "text": "A thunderstorm is building to the west. On Lake Ray Hubbard summer storms grow in the afternoon and arrive fast. Head for the dock or reef now, not when it reaches you."
+    },
+    {
+      "id": "wx-gust-front",
+      "event": "weather.gust_front",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "weather",
+      "text": "Gust front: the wind can jump and swing well before the rain. Depower: ease sheets, hike out, and keep the bow off the wind."
+    },
+    {
+      "id": "wx-lightning",
+      "event": "weather.lightning",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "weather",
+      "text": "Lightning: stay low in the cockpit and keep away from the mast, shrouds and other metal. If you can count less than 30 seconds from flash to thunder, you are in range."
+    },
+    {
+      "id": "wx-heat",
+      "event": "weather.heat",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Texas summer heat: drink water before you are thirsty, wear a hat and sunscreen, and watch the crew for heat exhaustion: heavy sweating, dizziness, nausea."
+    },
+    {
+      "id": "wx-front",
+      "event": "weather.front",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 300,
+      "once_per_session": false,
+      "asa_topic": "weather",
+      "text": "A cold front: the wind has swung to the north and built. Fall and winter fronts arrive with a sharp shift and gusts. Reef early."
+    },
+    {
+      "id": "wx-calm",
+      "event": "weather.calm",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 300,
+      "once_per_session": false,
+      "asa_topic": "weather",
+      "text": "Almost no wind. Keep movement in the boat gentle, ease the sails a little, and look for dark ripples that show where the breeze is."
+    },
+    {
+      "id": "mark-round",
+      "event": "mark.rounding",
+      "drills": [
+        "SailATriangle"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Rounding the mark: turn and adjust the sails together. Trim in as you head up, ease out as you bear away."
+    },
+    {
+      "id": "drill-done",
+      "event": "drill.complete",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "sail",
+      "text": "Drill complete. Press {key:ToggleLearning} to turn learning tips off when you want to try it unaided."
+    }
+  ]
+}

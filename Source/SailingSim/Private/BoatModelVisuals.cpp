@@ -128,7 +128,8 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
 			const FString Name = Slots[I].ToString();
 			const FLinearColor* Col = Name == TEXT("Topsides") ? &L.Hull : Name == TEXT("Deck") ? &L.Deck : Name == TEXT("NonSkid") ? &L.NonSkid
-				: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove : nullptr;
+				: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove
+				: Name == TEXT("Teak") ? (L.bTeak ? &L.Teak : &L.Deck) : nullptr;   // Graphics G6: the toe rails
 			if (Col) Mid->SetVectorParameterValue(TEXT("Color"), *Col);
 		}
 	}
@@ -150,6 +151,19 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		RudderPivots.Add(Pivot);
 		UStaticMeshComponent* Blade = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector); // built about its own stock
 		if (K == 0) ModelRudder = Blade;
+	}
+	// Graphics G6: the berthed dress for the player's keelboat tied up in her slip (the marina's neighbours wear the same).
+	StowedDress = nullptr;
+	bStowedShown = false;
+	const EBoatType Type = Boat.GetConfig().Type;
+	if (!bTrafficBoat && !bGhost && (Type == EBoatType::J22 || Type == EBoatType::Catalina22 || Type == EBoatType::Catalina30))
+	{
+		const TCHAR* Tag = Type == EBoatType::J22 ? TEXT("J22") : (Type == EBoatType::Catalina22 ? TEXT("Catalina22") : TEXT("Catalina30"));
+		if (UStaticMesh* Dress = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_Berthed.SM_%s_Berthed"), Tag, Tag, Tag)))
+		{
+			StowedDress = AddModelPart(Dress, BoatRoot, FVector::ZeroVector);
+			StowedDress->SetVisibility(false);
+		}
 	}
 	// The traveler car slides along the bar with the trim.
 	if (Model.Hull->FindSocket(TEXT("Traveler_C")))
@@ -257,6 +271,35 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			}
 			Ropes.Add({ Lead, Winch, 0.45f, bWorking ? 0.f : 0.02f });
 		}
+	}
+
+	// Graphics G6: the lines in the crew's hands. The working jib sheet's tail runs from its self-tailer to the trimmer's
+	// nearer hand; the tiller extension from the tiller's end to the helm's nearer hand (no extension in the rudder model).
+	auto HandNear = [this](int32 I, const FVector& To) -> TOptional<FVector>
+	{
+		if (!Crew.IsValidIndex(I) || !Crew[I] || !Crew[I]->IsVisible()) return {};
+		const FTransform& Root = BoatRoot->GetComponentTransform();
+		const FVector L = Root.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("hand_l"), EBoneSpaces::WorldSpace));
+		const FVector R = Root.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("hand_r"), EBoneSpaces::WorldSpace));
+		return FVector::DistSquared(L, To) < FVector::DistSquared(R, To) ? L : R;
+	};
+	const int32 NumCrew = Crew.Num();
+	if (Boat.GetConfig().HasJib() && NumCrew >= 2 && Has(ModelHull, TEXT("JibTailer_S")))
+	{
+		// (Always drawn, so the rig mesh keeps its vertex count: with no hand in reach, down onto the seat.)
+		const FVector Tailer = RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P"));
+		const TOptional<FVector> Hand = HandNear(NumCrew - 2, Tailer);
+		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
+		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f });
+	}
+	if (ModelRudder && Has(ModelRudder, TEXT("TillerEnd")))
+	{
+		const FVector End = RigPoint(ModelRudder, TEXT("TillerEnd"));
+		const TOptional<FVector> Hand = NumCrew >= 1 ? HandNear(NumCrew - 1, End) : TOptional<FVector>();
+		// In the helm's hand, else lying back along the tiller.
+		const FVector Grip = Hand && FVector::Dist(*Hand, End) < 140.f ? *Hand
+			: End + (RigPoint(ModelRudder, TEXT("RudderStock")) - End).GetSafeNormal() * 85.f + FVector(0.f, 3.5f, -2.f);
+		Wires.Add({ End + FVector(0.f, 0.f, 4.5f), Grip, 1.1f, 0.f });
 	}
 
 	// Mainsheet: a 4:1 tackle between the boom bail and the traveler car; taut when the main is drawing.

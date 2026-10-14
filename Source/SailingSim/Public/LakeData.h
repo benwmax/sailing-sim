@@ -6,6 +6,7 @@
 #include "LakeTerrain.h"
 #include "Lights.h"
 #include "Tides.h"
+#include "TreePlacement.h"
 
 /** A named place to put the boat on the water. */
 struct FLaunchSpot
@@ -21,12 +22,48 @@ struct FLakeBuilding
 	double X, Y, Ground, Length, Width, Height, YawDeg;
 };
 
+/** Graphics G6: a house from the G2 footprints (Tools/terrain/build_houses.py, <Name>.houses): its lidar eave and roof,
+ *  NAIP roof colour and one rectangle per wing. Heights in metres above Ground; rectangles in the map frame. */
+struct FLakeHouse
+{
+	enum ERoof : uint8 { Flat, Gable, Hip, Shed };
+	struct FWing { double X, Y, HalfLength, HalfWidth, YawDeg; };
+	double X = 0.0, Y = 0.0, Ground = 0.0;  // Ground below -900: not measured (take the terrain's)
+	float Eave = 3.f, Ridge = 0.f, PitchDeg = 24.f;
+	ERoof Roof = Hip;
+	bool bFullDetail = false, bLidar = false, bCommercial = false;
+	int32 Storeys = 1;
+	FColor RoofColor = FColor(96, 96, 96);
+	TArray<FWing, TInlineAllocator<4>> Wings;
+};
+
 /** A dock, pier or breakwater from OpenStreetMap: a closed outline or an open line, world meters. */
 struct FLakeDock
 {
 	TArray<FVector2D> Points;
 	bool bClosed = false;
-	FString Kind;
+	FString Kind;              // "pier", "breakwater"; Graphics G7 adds "dike", "seawall" and "floating" (inferred walkways)
+	float Width = 0.f;         // Graphics G7: metres across at the waterline (0: the kit's default for the kind)
+	float Crest = 0.f;         // Graphics G7: crest or deck height above the datum (0: the kit's default)
+};
+
+/** Graphics G7: an over-water structure on piles from the G2 lidar (Inputs/g2/piers): its deck outline and height. */
+struct FLakeDeck
+{
+	TArray<FVector2D> Outline;  // closed, map frame
+	float Deck = 1.5f;          // m above the datum (MLLW on the coast)
+	bool bCovered = false;      // a covered slip or a building on piles
+	FString Kind;               // pier, dock_complex, platform_or_wharf, covered_slip_or_building, deck
+};
+
+/** Graphics G7: a boat moored in the 2018 lidar, where the map has water under her. */
+struct FMooredBoat
+{
+	FVector2D Center = FVector2D::ZeroVector;
+	float HeadingDeg = 0.f;     // the bow
+	float Length = 7.f, Beam = 2.5f;
+	bool bMast = false;
+	int32 Marina = INDEX_NONE;
 };
 
 /** A bridge over the water: the deck follows the line at DeckHeight above the pool. */
@@ -75,16 +112,30 @@ struct SAILINGSIM_API FLakeData
 
 	/** Obstacles for the boat: dock edges and bridge decks (clearance below the deck, a mast cannot pass). */
 	void BuildObstacles();
+	/** Graphics G6: reads <Name>.houses (Tools/terrain/build_houses.py) into Houses. */
+	void LoadHouses(const FString& Path);
+	/** Graphics G6: reads <Name>.crowns (Tools/terrain/build_crowns.py) into Crowns. */
+	void LoadCrowns(const FString& Path);
+	/** Graphics G7: reads <Name>.piers (Tools/coast/build_piers.py): decks, riprap, inferred walkways, moored boats. OSM piers
+	 *  that a lidar deck covers are dropped (the deck has the measured height). */
+	void LoadPiers(const FString& Path);
 
 	FString LakeName;
 	Sailing::FLakeTerrain Terrain;
 	std::vector<Sailing::FObstacleSegment> Obstacles;
 	TArray<FLaunchSpot> LaunchSpots;
 	TArray<FLakeDock> Docks;
+	/** Graphics G7: the lidar decks and the moored boats (<Name>.piers). */
+	TArray<FLakeDeck> Decks;
+	TArray<FMooredBoat> MooredBoats;
 	/** Visual V6: the club's marina (rows, slips, piers, breakwater, buildings), when <Name>.marina.json exists. */
 	FMarina Marina;
 	TArray<FLakeBridge> Bridges;
 	TArray<FLakeBuilding> Buildings;
+	/** Graphics G6: the G2 houses, when <Name>.houses exists (the shore's buildings drawn from them instead of Buildings). */
+	TArray<FLakeHouse> Houses;
+	/** Graphics G6: the G2 lidar tree crowns, when <Name>.crowns exists (PlaceCrownTrees). */
+	TArray<FLakeCrown> Crowns;
 	TArray<TPair<FString, FVector2D>> Checkpoints;
 	double PoolFeet = 0.0;
 	/** The most recent gauge reading baked in (feet, same datum as the pool) and its date (YYYY-MM-DD). */

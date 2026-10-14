@@ -1,4 +1,5 @@
 #include "SailingHUD.h"
+#include "Learning.h"
 #include "SailingSim.h"
 #include "SailSession.h"
 #include "UI/SailFrontEnd.h"
@@ -105,6 +106,15 @@ void ASailingHUD::BeginPlay()
 	if (!bLoadingSession && FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Screen))
 	{
 		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Loading.
+		if (Screen == TEXT("Briefing") || Screen == TEXT("Quiz"))
+		{
+			// Graphics G7 stills: the drill's briefing or its quiz a few seconds in (with -SailingDrill=<name>).
+			bLearningScreensAuto = false;
+			FTimerHandle Later;
+			const ESailScreen Learn = Screen == TEXT("Briefing") ? ESailScreen::Briefing : ESailScreen::Quiz;
+			GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Learn]() { OpenLearning(Learn); }), 4.f, false);
+			return;
+		}
 		if (Screen == TEXT("Loading"))
 		{
 			if (Session && !Session->bHasActive) { Session->Active = USailSessionSubsystem::MakeDefault(); Session->bHasActive = true; }
@@ -152,6 +162,7 @@ void ASailingHUD::BeginPlay()
 void ASailingHUD::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	WatchDrill();
 	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
 	if (!Session) return;
 	if (!Session->bUIScriptRead)
@@ -232,6 +243,40 @@ void ASailingHUD::OpenPause()
 	UGameplayStatics::SetGamePaused(this, true);
 	bPausedByMenu = true;
 	OpenFrontEnd(ESailScreen::Pause);
+}
+
+void ASailingHUD::OpenLearning(ESailScreen Screen)
+{
+	using namespace SailingHUDLocal;
+	if (IsFrontEndOpen()) return;
+	UGameplayStatics::SetGamePaused(this, true);
+	bPausedByMenu = true;
+	OpenFrontEnd(Screen);
+}
+
+void ASailingHUD::WatchDrill()
+{
+	using namespace SailingHUDLocal;
+	// Graphics G7: in learning mode, the briefing when a drill starts and a short quiz a few seconds after it ends.
+	ASailboatPawn* Pawn = PlayerOwner ? Cast<ASailboatPawn>(PlayerOwner->GetPawn()) : nullptr;
+	if (!Pawn || !bLearningScreensAuto || !UsesFrontEnd() || IsFrontEndOpen()) return;
+	const bool bLearning = USailingSettings::Get()->bLearningMode;
+	const FDrillRunner& D = Pawn->GetDrill();
+	const int32 Serial = Pawn->GetDrillSerial();
+	if (Serial != BriefedSerial)
+	{
+		BriefedSerial = Serial;
+		DrillDoneAt = -1.0;
+		if (bLearning && D.IsActive() && FLearningContent::Get().Briefing(D.GetDrill())) OpenLearning(ESailScreen::Briefing);
+		return;
+	}
+	if (!D.IsComplete() || QuizzedSerial == Serial) return;
+	const double Now = FPlatformTime::Seconds();
+	if (DrillDoneAt < 0.0) DrillDoneAt = Now;
+	if (Now - DrillDoneAt < 3.0) return;
+	QuizzedSerial = Serial;
+	DrillDoneAt = -1.0;
+	if (bLearning && FLearningContent::Get().Briefing(D.GetDrill())) OpenLearning(ESailScreen::Quiz);
 }
 
 void ASailingHUD::CloseFrontEnd()

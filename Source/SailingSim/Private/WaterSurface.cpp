@@ -48,8 +48,9 @@ namespace
 		{
 		// Galveston Bay: shallow, silty, grey-green; about 0.6 m of Secchi depth.
 		case 1: return { FLinearColor(0.15f, 0.20f, 0.14f), FLinearColor(2.3f, 1.8f, 2.4f) };
-		// The Gulf off Galveston: slate blue-green, a few metres of visibility (river silt and plankton); red goes first.
-		case 2: return { FLinearColor(0.04f, 0.20f, 0.21f), FLinearColor(0.7f, 0.32f, 0.38f) };
+		// The Gulf off Galveston: green, a few metres of visibility (river silt and plankton); red goes first. Graphics G6:
+		// greener and less saturated than the V4 teal (0.04, 0.20, 0.21), which read as tropical under an overcast.
+		case 2: return { FLinearColor(0.08f, 0.16f, 0.13f), FLinearColor(0.62f, 0.32f, 0.42f) };
 		// Lake Ray Hubbard: olive grey-green, about half a metre of visibility, blue absorbed most. (Seen from a boat the
 		// sky's reflection dominates; the body only tints it: the drone and chase references.)
 		default: return { FLinearColor(0.16f, 0.18f, 0.11f), FLinearColor(2.4f, 2.0f, 2.8f) };

@@ -42,6 +42,7 @@ class Part:
         except ValueError:
             return None
         f.material_index = self.slot(slot)
+        f.normal_update()   # Graphics G6: a new face's normal is zero until updated (every face was projected along X)
         n = f.normal
         ax = max(range(3), key=lambda k: abs(n[k]))
         for loop in f.loops:
@@ -243,23 +244,149 @@ def towboat():
 
 
 def ship():
+    """Graphics G6: round 7's "low detail" ship. A feeder container ship as one reads from a sailboat a few hundred metres
+    off: a five-tier house aft with window bands, bridge wings and rails on every deck, a funnel with its band, a radar
+    mast; a bulwark rail along the main deck; three pedestal cranes stowed along the port side, lashing bridges between
+    the bays, the forecastle's breakwater, windlasses, bollards and hawse pipes; a freefall lifeboat on its ramp at the
+    stern. The hull's paint weeps rust from the deck edge (MI_World_ShipHull, M_WorldSurface pattern 8)."""
     p = Part("SM_Vessel_Container")
     L, B = 230.0, 32.0
     p.hull(L, B, 11.0, 14.0, 10.5, "box", top="ShipHull", bottom="Antifouling", boot=0.4, transom=0.8, stations=40, rows=12, bow_rise=0.9, bulb=True)
-    # House and funnel aft, bridge wings, mast; hatch coamings forward.
-    p.box((-90.0, 0.0, 19.0), (9.0, B * 0.42, 8.0), "Gelcoat")
-    p.box((-92.0, 0.0, 27.5), (5.0, B * 0.51, 1.5), "Gelcoat")
-    p.box((-87.1, 0.0, 27.5), (0.05, B * 0.5, 0.7), "Glass")
+    sheer = lambda x: 11.0 + 3.0 * ((x + L / 2) / L) ** 2.2
+
+    def half_beam(x):
+        u = (x + L / 2) / L
+        if u < 0.55:
+            return B / 2 * (0.8 + 0.2 * math.sin(min(u / 0.55, 1) * math.pi / 2))
+        return B / 2 * max(0.0, 1 - ((u - 0.55) / 0.45) ** 2.4)
+
+    def rail(pts, h=1.1, post=1.6, slot="Trim"):
+        """Stanchions every `post` metres along a polyline, a top rail and a mid rail."""
+        for a, b in zip(pts, pts[1:]):
+            a, b = Vector(a), Vector(b)
+            n = max(1, int((b - a).length / post))
+            for k in range(n):
+                q = a + (b - a) * (k / n)
+                p.tube(q, q + Vector((0, 0, h)), 0.03, slot, 4)
+            for z in (h, h * 0.5):
+                p.tube(a + Vector((0, 0, z)), b + Vector((0, 0, z)), 0.025, slot, 4)
+
+    # The house: five tiers stepping in, a window band on each (front and sides), rails round every deck.
+    hx, hw = -90.0, B * 0.42
+    z = sheer(hx)
+    for t in range(5):
+        dx, dw = 9.0 - 0.6 * t, hw - 0.4 * t
+        p.box((hx, 0.0, z + 1.4), (dx, dw, 1.4), "Gelcoat")
+        p.box((hx + dx + 0.03, 0.0, z + 1.6), (0.05, dw * 0.9, 0.55), "Glass")
+        for s_ in (1, -1):
+            for k in range(int(2 * dx / 2.4)):
+                p.box((hx - dx + 1.2 + 2.4 * k, s_ * (dw + 0.03), z + 1.6), (0.6, 0.05, 0.5), "Glass")
+        deck = z + 2.8
+        corners = [(hx - dx, -dw, deck), (hx + dx, -dw, deck), (hx + dx, dw, deck), (hx - dx, dw, deck), (hx - dx, -dw, deck)]
+        rail(corners, 1.0, 1.8)
+        z = deck
+    # The bridge on top, wider than the house (its wings), with its windows all round the front.
+    p.box((hx - 1.0, 0.0, z + 1.5), (5.0, B * 0.51, 1.5), "Gelcoat")
+    p.box((hx + 4.03, 0.0, z + 1.9), (0.05, B * 0.5, 0.75), "Glass")
+    for s_ in (1, -1):
+        p.box((hx - 1.0, s_ * (B * 0.51 + 0.03), z + 1.9), (4.0, 0.05, 0.75), "Glass")
+        rail([(hx + 4.0, s_ * hw, z), (hx + 4.0, s_ * B * 0.51, z)], 1.0, 1.5)
+    top = z + 3.0
+    rail([(hx - 6.0, -B * 0.5, top), (hx + 4.0, -B * 0.5, top), (hx + 4.0, B * 0.5, top), (hx - 6.0, B * 0.5, top)], 1.0, 2.0)
+    # Radar mast on the wheelhouse top: a tripod, two scanners, the masthead light.
+    mx = hx - 1.0
+    p.tube((mx, 0.0, top), (mx, 0.0, top + 9.0), 0.25, "Steel", 8)
+    p.tube((mx - 2.5, -1.5, top), (mx, 0.0, top + 6.0), 0.12, "Steel", 6)
+    p.tube((mx - 2.5, 1.5, top), (mx, 0.0, top + 6.0), 0.12, "Steel", 6)
+    p.box((mx, 0.0, top + 6.0), (0.8, 2.2, 0.08), "Steel")
+    p.box((mx + 0.3, 0.0, top + 6.5), (0.15, 2.0, 0.12), "Funnel")
+    p.box((mx + 0.3, 0.0, top + 8.3), (0.12, 1.4, 0.1), "Funnel")
+    # The funnel: dark casing, a coloured band and a black top; exhaust pipes out of it.
     p.box((-102.0, 0.0, 30.0), (4.0, 3.5, 6.0), "Funnel")
-    p.tube((-90.0, 0.0, 29.0), (-90.0, 0.0, 42.5), 0.4, "Steel")
-    p.tube((100.0, 0.0, 14.0), (100.0, 0.0, 31.5), 0.5, "Steel")
+    p.box((-102.0, 0.0, 32.0), (4.05, 3.55, 1.0), "AviationRed")
+    p.box((-102.0, 0.0, 35.8), (4.05, 3.55, 0.2), "Funnel")
+    for dy in (-1.2, 1.2):
+        p.tube((-102.5, dy, 35.5), (-102.5, dy, 37.0), 0.35, "Steel", 8)
+    # A freefall lifeboat on its ramp over the stern, and a rescue boat's davit to port.
+    p.box((-110.0, 0.0, sheer(-110.0) + 2.0), (4.5, 1.6, 0.15), "Steel")
+    ramp = Vector((-110.0, 0.0, sheer(-110.0) + 3.4))
+    p.box(tuple(ramp), (4.2, 1.5, 1.2), "Lifeboat")
+    p.box(tuple(ramp + Vector((0.5, 0.0, 1.35))), (2.0, 1.2, 0.3), "Lifeboat")
+    p.tube((-96.0, B * 0.5, sheer(-96.0)), (-96.0, B * 0.5, sheer(-96.0) + 5.0), 0.2, "Trim", 6)
+    p.tube((-96.0, B * 0.5, sheer(-96.0) + 5.0), (-96.0, B * 0.5 + 2.0, sheer(-96.0) + 4.0), 0.15, "Trim", 6)
+    p.box((-96.0, B * 0.5 - 1.2, sheer(-96.0) + 1.2), (3.0, 1.1, 0.7), "Lifeboat")
+    # Hatch coamings under the bays, lashing bridges between them.
     for i in range(14):
         x = -74.0 + i * 12.8
         p.box((x, 0.0, 11.9), (6.1, B * 0.43, 0.9), "ShipHull")
-    p.box((108.0, 0.0, 15.5), (3.0, B * 0.3, 1.5), "ShipHull")                   # forecastle
+        if i < 13:
+            xb = x + 6.4
+            for s_ in (1, -1):
+                p.box((xb, s_ * B * 0.44, 15.0), (0.15, 0.15, 2.4), "Steel")
+            p.box((xb, 0.0, 17.4), (0.25, B * 0.44, 0.08), "Steel")
+            p.box((xb, 0.0, 14.8), (0.25, B * 0.44, 0.08), "Steel")
+            rail([(xb, -B * 0.44, 17.4), (xb, B * 0.44, 17.4)], 1.0, 2.5, "Steel")
+    # The bulwark rail along the main deck, both sides, from the house to the forecastle.
+    for s_ in (1, -1):
+        pts = [(x, s_ * (half_beam(x) - 0.3), sheer(x)) for x in [-112.0 + 6.0 * k for k in range(37)] if x < 103.0]
+        rail(pts, 1.1, 2.0)
+    # Three cranes on pedestals along the port walkway, jibs stowed fore and aft on their rests.
+    for cx in (-35.5, 3.0, 41.5):
+        y = B * 0.465
+        p.tube((cx, y, 12.0), (cx, y, 24.0), 1.1, "Steel", 12)
+        p.box((cx, y, 25.6), (2.2, 1.4, 1.6), "Steel")
+        p.box((cx + 1.6, y - 1.0, 26.2), (0.7, 0.45, 0.8), "Glass")
+        p.box((cx - 2.6, y, 25.4), (0.8, 1.0, 1.0), "Steel")                    # counterweight
+        jib_a = Vector((cx + 1.8, y, 25.0))
+        jib_b = Vector((cx + 26.0, y, 28.5))
+        for dz in (0.0, 1.2):
+            for dyy in (-0.5, 0.5):
+                p.tube(jib_a + Vector((0, dyy, dz)), jib_b + Vector((0, dyy * 0.4, dz * 0.4)), 0.12, "Steel", 6)
+        for k in range(1, 12):
+            q = jib_a + (jib_b - jib_a) * (k / 12)
+            p.tube(q, q + Vector((0, 0, 1.2 * (1 - 0.6 * k / 12))), 0.06, "Steel", 4)
+        p.tube((cx + 24.0, y, 12.5), (cx + 24.0, y, 28.3), 0.25, "Steel", 6)       # the jib rest
+        p.tube(jib_a + Vector((0, 0, 2.5)), jib_b + Vector((0, 0, 0.6)), 0.03, "Steel", 4)   # luffing wire
+    # The forecastle: deck, breakwater ahead of the first bay, windlasses, bollards, the anchors in their hawse pipes.
+    p.box((108.0, 0.0, 15.5), (3.0, B * 0.3, 1.5), "ShipHull")
+    for s_ in (1, -1):
+        p.box((88.0, s_ * 5.0, sheer(88.0) + 1.6), (0.15, 6.0, 1.6), "ShipHull", yaw=s_ * 0.35)
+    for s_ in (1, -1):
+        wx, wy = 106.0, s_ * 3.0
+        p.box((wx, wy, 17.6), (1.2, 0.9, 0.6), "TrimGreen")
+        p.tube((wx, wy - 1.2, 18.0), (wx, wy + 1.2, 18.0), 0.55, "Funnel", 10)
+        for bx in (100.0, 96.0):
+            for dx in (0.0, 0.7):
+                p.tube((bx + dx, s_ * 6.0, sheer(bx)), (bx + dx, s_ * 6.0, sheer(bx) + 0.8), 0.22, "Funnel", 8)
+        # The hawse pipe and the anchor stowed in it, on the flare of the bow.
+        hx_ = 109.0
+        hy = s_ * (half_beam(hx_) + 0.15)
+        p.box((hx_, hy, 10.5), (1.0, 0.1, 0.9), "Funnel")
+        p.box((hx_ - 0.2, hy + s_ * 0.15, 9.6), (0.35, 0.12, 1.2), "Funnel")
+    # Aft mooring deck: bollards and a winch each side.
+    for s_ in (1, -1):
+        for bx in (-108.0, -104.0):
+            for dx in (0.0, 0.7):
+                p.tube((bx + dx, s_ * 10.0, sheer(bx)), (bx + dx, s_ * 10.0, sheer(bx) + 0.8), 0.22, "Funnel", 8)
+        p.box((-106.0, s_ * 6.0, sheer(-106.0) + 0.6), (1.0, 0.8, 0.6), "TrimGreen")
     p.export()
     c = Part("SM_Container_40")
-    c.box((0.0, 0.0, 1.295), (6.06, 1.22, 1.295), "ContainerPaint")
+    c.box((0.0, 0.0, 1.295), (6.0, 1.18, 1.25), "ContainerPaint")
+    # Graphics G6: what makes a box read as a container up close: corrugated side walls, top and bottom rails, corner
+    # posts with their castings, and the door end's four locking bars.
+    for s_ in (1, -1):
+        for k in range(42):
+            x = -5.9 + k * 0.287
+            c.box((x, s_ * 1.2, 1.3), (0.07, 0.025, 1.17), "ContainerPaint")
+        c.box((0.0, s_ * 1.205, 2.52), (6.06, 0.04, 0.07), "ContainerPaint")
+        c.box((0.0, s_ * 1.205, 0.08), (6.06, 0.04, 0.08), "ContainerPaint")
+    for sx in (1, -1):
+        for sy in (1, -1):
+            c.box((sx * 5.98, sy * 1.15, 1.295), (0.08, 0.08, 1.295), "ContainerPaint")
+            for z in (0.06, 2.53):
+                c.box((sx * 6.0, sy * 1.17, z), (0.09, 0.09, 0.06), "Steel")
+    for y in (-0.75, -0.35, 0.35, 0.75):
+        c.tube((6.07, y, 0.15), (6.07, y, 2.45), 0.025, "Steel", 6)
     c.export()
 
 

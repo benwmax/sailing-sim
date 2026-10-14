@@ -26,16 +26,18 @@ void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& 
 
 	TArray<FVector> Normals;
 	Cloth.ComputeNormals(Normals);
+	TArray<FProcMeshTangent> Tangents;
+	Cloth.ComputeTangents(Tangents);
 	if (Mesh->GetNumSections() == 0)
 	{
 		TArray<int32> Tris;
 		Cloth.Triangles(Tris);
 		Mesh->CreateMeshSection(0, Cloth.Positions(), Tris, Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(),
-			TArray<FColor>(), TArray<FProcMeshTangent>(), false);
+			TArray<FColor>(), Tangents, false);
 	}
 	else
 	{
-		Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>());
+		Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(), TArray<FColor>(), Tangents);
 	}
 }
 

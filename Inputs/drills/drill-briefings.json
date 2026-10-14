@@ -1,0 +1,419 @@
+{
+  "schema_version": 1,
+  "generated": "2026-10-14",
+  "conventions": {
+    "drill_ids": "ESailingDrill enumerator names (LeaveTheDock, SailATriangle, HeaveTo, CrewOverboardFigureEight, CrewOverboardQuickStop, ReturnAndDock); 'Any' in tips and quiz means not tied to one drill",
+    "steps": "one entry per FDrillRunner step, same order and count as Drills.cpp; sim_text is copied verbatim from Drills.cpp so a drift shows up in validate.py; text, when present, is the same line with the hard-coded key letter swapped for a key token",
+    "key_tokens": "{key:Action.direction} or {key:Action}; resolve to the player's current binding (see README key table)",
+    "units": "speeds in knots, distances in boat lengths or metres as written; the HUD unit setting may convert metres",
+    "wording": "ASA 101 / Sailing Made Easy terms: jibe (not gybe), crew overboard, Helm's a-lee, Jibe-ho"
+  },
+  "drills": [
+    {
+      "id": "LeaveTheDock",
+      "name": "Leave the dock",
+      "asa_skill": "Leaving the dock under sail",
+      "goal": "Get from the slip to open water without touching the dock or another boat.",
+      "why_it_matters": "Most bumps and scrapes happen in the first and last hundred metres of a sail, at slow speed with little steering.",
+      "setup": "Your boat starts tied up at Rush Creek with the main ready to hoist. The wind arrow shows where the breeze is coming from.",
+      "commands": [
+        {
+          "call": "Ready to cast off?",
+          "reply": "Ready",
+          "meaning": "Crew stand by the dock lines."
+        },
+        {
+          "call": "Cast off",
+          "reply": "Lines clear",
+          "meaning": "Release the lines and bring them aboard."
+        }
+      ],
+      "steps": [
+        {
+          "sim_text": "Check the wind and plan which way you will leave",
+          "coach": "Look at the masthead fly, flags on shore and ripples on the water. Decide which way the bow must point and where the open water is before anything comes off the cleats."
+        },
+        {
+          "sim_text": "Cast off the dock lines (T): the crew hoists the sails",
+          "text": "Cast off the dock lines ({key:DockLines}): the crew hoists the sails",
+          "coach": "Hoist the main first while the bow points into the wind, so it luffs harmlessly. Then release the lines, leaving the one that holds the bow toward your exit until last."
+        },
+        {
+          "sim_text": "Sail out without touching the docks or other boats",
+          "coach": "Get a little speed early so the rudder can steer. Keep the sails just drawing; too much power in a tight fairway is as bad as too little."
+        },
+        {
+          "sim_text": "Get 100 m clear of the marina",
+          "coach": "Once clear, bring the fenders and dock lines aboard and stow them so nothing trails in the water. Then hoist or unroll the jib if it is not already up."
+        }
+      ],
+      "good": [
+        "No contact with any dock or boat (the sim allows a touch under 1 knot).",
+        "You chose a departure that let you point head to wind or sail off on a reach, not straight downwind.",
+        "Fenders and lines were aboard once you were clear."
+      ],
+      "mistakes": [
+        {
+          "mistake": "Casting off before the main is up and the plan is clear.",
+          "fix": "Hoist, check the wind, brief the crew, then cast off."
+        },
+        {
+          "mistake": "Trying to sail off a dock the wind is pushing you onto.",
+          "fix": "Walk the boat to a better spot, use the outboard, or wait for a shift. A leeward dock is very hard to leave under sail."
+        },
+        {
+          "mistake": "Sheeting in hard right away and heeling into neighbouring boats.",
+          "fix": "Keep the sails half drawing until you have room, then trim."
+        },
+        {
+          "mistake": "Steering with no speed.",
+          "fix": "A rudder only works with water flowing past it. Build a little speed first, then turn."
+        }
+      ],
+      "lake_notes": "On Lake Ray Hubbard the summer breeze is usually from the south, and fall fronts swing it to the north, so the best way out of the slip changes with the season. Check the sky to the west before you go: summer thunderstorms build in the afternoon. Weekend powerboat wakes roll through the marina entrance, so expect the boat to rock as you leave.",
+      "debrief": {
+        "clean": "Clean departure. You planned around the wind and kept the speed under control.",
+        "contact": "You got clear, but you touched at {contact_kn} knots. Next time, leave with less sail power and fend off by hand or foot, never by putting a leg between the boat and the dock."
+      },
+      "quiz_after": 3
+    },
+    {
+      "id": "SailATriangle",
+      "name": "Sail a triangle",
+      "asa_skill": "Points of sail, tacking and jibing around a course",
+      "goal": "Beat to a windward mark, reach to a wing mark, and reach back to the start, sailing each leg on the right point of sail.",
+      "why_it_matters": "A triangle puts every point of sail, a series of tacks and a jibe into one short course, which is what the ASA 101 on-water check looks for.",
+      "setup": "Three marks are laid relative to the wind: the windward mark straight upwind, the wing mark out to one side, and the start mark where you are now.",
+      "commands": [
+        {
+          "call": "Ready about",
+          "reply": "Ready",
+          "meaning": "Crew prepare to tack: ready to release the working jib sheet."
+        },
+        {
+          "call": "Helm's a-lee",
+          "reply": "",
+          "meaning": "The helm is over and the bow is turning through the wind. Release the old jib sheet as it luffs and trim the new one."
+        },
+        {
+          "call": "Prepare to jibe",
+          "reply": "Ready",
+          "meaning": "Crew prepare to jibe: trim the main in and keep heads low."
+        },
+        {
+          "call": "Jibe-ho",
+          "reply": "",
+          "meaning": "The stern is turning through the wind and the boom is coming across."
+        }
+      ],
+      "steps": [
+        {
+          "sim_text": "Beat to the windward mark, tacking as needed (close-hauled)",
+          "coach": "The mark is in the no-go zone, so zigzag close-hauled on each tack. Steer by the jib telltales: head up until the windward one lifts, then bear away a touch. Tack when the mark is about abeam."
+        },
+        {
+          "sim_text": "Bear away and reach to the wing mark",
+          "coach": "Round the windward mark, bear away and ease both sheets as you turn. Trim each sail so it is just short of luffing."
+        },
+        {
+          "sim_text": "Reach back to the start mark",
+          "coach": "At the wing mark the wind will pass behind the stern as you turn: that is a jibe. Call it, trim the main in before the boom crosses, then ease out on the new side."
+        }
+      ],
+      "good": [
+        "Every tack carried through without stopping in irons.",
+        "Telltales streaming on most of the beat.",
+        "A controlled jibe at the wing mark with the main trimmed in first.",
+        "Sheets eased on the reaches rather than left in tight."
+      ],
+      "mistakes": [
+        {
+          "mistake": "Pinching: steering too close to the wind on the beat.",
+          "fix": "If the jib luffs or the boat slows, bear away until both telltales stream."
+        },
+        {
+          "mistake": "Tacking too slowly or with no speed and getting stuck in irons.",
+          "fix": "Build speed first and turn steadily all the way through."
+        },
+        {
+          "mistake": "Overstanding the windward mark (sailing past the layline).",
+          "fix": "Tack for the mark when it is about abeam, then adjust."
+        },
+        {
+          "mistake": "Leaving the sheets in tight on a reach.",
+          "fix": "Ease until the sail luffs, then trim in just enough to stop it."
+        },
+        {
+          "mistake": "Letting the boom fly across in the jibe.",
+          "fix": "Trim the main toward the centre before the stern crosses the wind, then ease on the new side."
+        }
+      ],
+      "lake_notes": "With the usual south breeze the windward mark ends up toward the south end of the lake. Wind on Ray Hubbard bends around the points and shifts in gusts, so expect your heading to change on the beat. Patches of darker water show the puffs coming.",
+      "debrief": {
+        "done": "Triangle done in {time}. Every leg used a different point of sail: close-hauled, then reaching, with a jibe at the wing mark."
+      },
+      "quiz_after": 4
+    },
+    {
+      "id": "HeaveTo",
+      "name": "Heave to",
+      "asa_skill": "Heaving to",
+      "goal": "Park the boat under sail: jib backed, main eased, tiller to leeward, holding a slow, steady drift for 20 seconds.",
+      "why_it_matters": "Heaving to stops the boat without lowering sails. It gives you time to reef, rest, sort out a tangle, or wait out a squall.",
+      "setup": "You start sailing in open water with room to drift downwind.",
+      "commands": [
+        {
+          "call": "Ready about",
+          "reply": "Ready",
+          "meaning": "Prepare to tack, but this time the crew keeps the jib sheet cleated."
+        },
+        {
+          "call": "Helm's a-lee",
+          "reply": "",
+          "meaning": "Tack, leaving the jib on the old side so it fills backward."
+        }
+      ],
+      "steps": [
+        {
+          "sim_text": "Sail close-hauled",
+          "coach": "Start close-hauled with some speed."
+        },
+        {
+          "sim_text": "Back the jib: tack without releasing it, or hold it to windward (B)",
+          "text": "Back the jib: tack without releasing it, or hold it to windward ({key:BackJib})",
+          "coach": "The simplest way is to tack and leave the jib sheet cleated, so the jib ends up on the windward side, pushing the bow away from the wind."
+        },
+        {
+          "sim_text": "Ease the main until it luffs",
+          "coach": "Let the main out until it mostly luffs. It only needs to give a little drive to balance the jib."
+        },
+        {
+          "sim_text": "Put the tiller to leeward and hold it",
+          "coach": "Push the tiller toward the boom and hold or lash it there. The rudder now tries to turn the bow up while the backed jib pushes it down."
+        },
+        {
+          "sim_text": "Stay hove to for 20 seconds",
+          "coach": "The boat settles about 50 to 60 degrees off the wind, creeping forward and drifting slowly to leeward."
+        }
+      ],
+      "good": [
+        "Speed settles under about 1 to 2 knots (the sim needs under 3).",
+        "The bow stays about 35 to 100 degrees off the wind, not tacking back or bearing away.",
+        "Plenty of open water to leeward."
+      ],
+      "mistakes": [
+        {
+          "mistake": "Releasing the jib sheet out of habit during the tack.",
+          "fix": "Leave it cleated; the whole point is to keep the jib on the old side."
+        },
+        {
+          "mistake": "Tiller to windward, so the boat bears away and sails off.",
+          "fix": "Tiller goes to leeward, toward the boom."
+        },
+        {
+          "mistake": "Main trimmed in, so the boat keeps sailing or tacks back.",
+          "fix": "Ease the main until it mostly luffs."
+        },
+        {
+          "mistake": "Heaving to just upwind of a shore, a bridge or the dam.",
+          "fix": "You drift to leeward, so pick a spot with room downwind."
+        }
+      ],
+      "lake_notes": "Ray Hubbard is long and narrow, so before heaving to check how much water you have downwind, especially north of the I-30 bridge and near the dam. Hove to is a good way to tuck in a reef when a summer storm is building to the west.",
+      "debrief": {
+        "done": "Hove to. This is how you stop to reef, rest or wait out a squall. To get going again, release the backed jib, trim it on the leeward side and straighten the tiller."
+      },
+      "quiz_after": 3
+    },
+    {
+      "id": "CrewOverboardFigureEight",
+      "name": "Crew overboard: figure-eight",
+      "asa_skill": "Crew overboard recovery (figure-eight method)",
+      "goal": "Return to a person in the water by sailing a figure-eight, and stop beside them at walking pace or slower.",
+      "why_it_matters": "The figure-eight gives you room and time to set up a slow, controlled approach on a close reach, the point of sail where you can stop by luffing.",
+      "setup": "A dummy goes over the stern as the drill starts. It drifts slowly downwind, as a real person would.",
+      "commands": [
+        {
+          "call": "Crew overboard!",
+          "reply": "",
+          "meaning": "Everyone knows at once. Throw flotation and name a spotter."
+        },
+        {
+          "call": "Ready about",
+          "reply": "Ready",
+          "meaning": "Tack to start the return leg."
+        }
+      ],
+      "steps": [
+        {
+          "sim_text": "Shout \"Crew overboard!\", point, and keep pointing",
+          "coach": "Shout, throw a throwable flotation device toward them, and give one person the single job of pointing at them until they are back aboard."
+        },
+        {
+          "sim_text": "Sail away on a beam reach, about five boat lengths",
+          "coach": "A beam reach gives you room to set up without going too far. About five J/22 lengths is roughly 35 metres."
+        },
+        {
+          "sim_text": "Tack, then bear away to a broad reach back toward them",
+          "coach": "Tack rather than jibe: it is calmer and keeps the boom under control. Then bear away to a broad reach so you end up a little downwind of the person."
+        },
+        {
+          "sim_text": "Approach on a close reach and turn into the wind to stop alongside them",
+          "coach": "Come up on a close reach, then turn up toward the wind for the last boat length or two and let the headwind and luffing sails slow you. Stop with the person alongside near the shrouds, on whichever side suits; port or starboard both work. If you are too fast, go around again."
+        }
+      ],
+      "good": [
+        "You never lost sight of the person.",
+        "You sailed out far enough to set up (the sim checks for more than 30 metres) and tacked once.",
+        "You stopped within 3 metres at under about 1 knot."
+      ],
+      "mistakes": [
+        {
+          "mistake": "Sailing away too far and losing sight of them.",
+          "fix": "Four or five boat lengths is enough on a beam reach."
+        },
+        {
+          "mistake": "Jibing instead of tacking in the rush.",
+          "fix": "Tack. It is slower to go wrong."
+        },
+        {
+          "mistake": "Approaching on a run or broad reach.",
+          "fix": "Downwind you cannot slow down by luffing. Get below them and come up on a close reach."
+        },
+        {
+          "mistake": "Arriving too fast and sailing past or over them.",
+          "fix": "Luff early. If it is not working, sail away and set up again."
+        }
+      ],
+      "lake_notes": "Ray Hubbard is warm in summer, so cold water is less of a threat than in a northern lake, but in winter the water can drop into the 40s °F, and cold shock can take away a swimmer's breath within a minute. Wear PFDs: a person in a life jacket is easier to see and can wait for you to come back properly.",
+      "debrief": {
+        "proper": "Recovered in {time}. Get them aboard, on either side, and keep them warm.",
+        "improper": "Recovered, but not with the figure-eight. Try again in order: beam reach away, tack, broad reach back, close reach to stop."
+      },
+      "sim_fix": "Bean (Oct 14 2026): turn into the wind to use the headwind to slow the approach; pick up on port or starboard, either works. Drills.cpp should drop the side from step 4 and the finish message; see README.",
+      "quiz_after": 4
+    },
+    {
+      "id": "CrewOverboardQuickStop",
+      "name": "Crew overboard: quick-stop",
+      "asa_skill": "Crew overboard recovery (quick-stop method)",
+      "goal": "Stop the boat at once and circle back to the person, staying close the whole time.",
+      "why_it_matters": "The quick-stop keeps you within a few boat lengths, so the person never gets far away and a short-handed crew can still manage it.",
+      "setup": "A dummy goes over the stern as the drill starts and drifts slowly downwind.",
+      "commands": [
+        {
+          "call": "Crew overboard!",
+          "reply": "",
+          "meaning": "Throw flotation, name a spotter and turn at once."
+        }
+      ],
+      "steps": [
+        {
+          "sim_text": "Shout \"Crew overboard!\" and head up into the wind at once",
+          "coach": "Shout, throw flotation, and immediately push the tiller toward the boom to turn into the wind. The boat slows right away."
+        },
+        {
+          "sim_text": "Keep turning: tack, leave the jib backed, and circle the person",
+          "coach": "Do not touch the jib sheet. Keep the turn going through the tack; the backed jib helps push the bow around. Keep circling until you are downwind of the person."
+        },
+        {
+          "sim_text": "Approach slowly and stop alongside them",
+          "coach": "Come up toward them on a close reach, then turn into the wind for the last boat length so the headwind and luffing sails stop you. Either side of the boat is fine for the pick-up."
+        }
+      ],
+      "good": [
+        "You turned the moment they went in.",
+        "You stayed close: the sim wants the person never more than 80 metres away.",
+        "You stopped within 3 metres at under about 1 knot."
+      ],
+      "mistakes": [
+        {
+          "mistake": "Hesitating before turning.",
+          "fix": "Turn into the wind as you shout. Every second sailing on adds distance."
+        },
+        {
+          "mistake": "Releasing the jib in the tack.",
+          "fix": "Leave it backed; it helps the bow come around."
+        },
+        {
+          "mistake": "Turning so tight that the boat stalls head to wind.",
+          "fix": "Keep a steady turn and let the backed jib do the work."
+        },
+        {
+          "mistake": "Rushing the final approach.",
+          "fix": "You are already close. Take it slowly and luff to stop."
+        }
+      ],
+      "lake_notes": "In the summer heat a person in the water is not in immediate danger from cold, but powerboats and jet skis on a busy weekend may not see them. Keep the spotter pointing and be ready to wave off traffic.",
+      "debrief": {
+        "proper": "Recovered in {time}, and you never strayed far. The quick-stop is the method to reach for when you are short-handed.",
+        "improper": "Recovered, but you went too far away. Turn into the wind the moment they go in and keep circling close."
+      },
+      "quiz_after": 3
+    },
+    {
+      "id": "ReturnAndDock",
+      "name": "Return and dock",
+      "asa_skill": "Approaching and docking under sail",
+      "goal": "Bring the boat alongside the dock at under 1 knot and get the lines on.",
+      "why_it_matters": "A keelboat carries its speed a long way, and the only brakes you have under sail are luffing and turning into the wind. Docking is planning, not reflexes.",
+      "setup": "You start out on the lake with a berth picked at Rush Creek.",
+      "commands": [
+        {
+          "call": "Fenders out, lines ready",
+          "reply": "Ready",
+          "meaning": "Fenders over the docking side, bow and stern lines led outside everything and ready to hand ashore."
+        },
+        {
+          "call": "Ease the sheets",
+          "reply": "",
+          "meaning": "Let the sails luff to slow down."
+        }
+      ],
+      "steps": [
+        {
+          "sim_text": "Approach the dock on a close reach or heading into the wind",
+          "coach": "Plan the last approach so you are heading close to the wind when you arrive. That way easing the sheets takes the power off."
+        },
+        {
+          "sim_text": "Luff the sails to slow down well before the dock",
+          "coach": "Start luffing several boat lengths out. The J/22 weighs over 800 kg and keeps gliding. If you are too fast, turn away and go around."
+        },
+        {
+          "sim_text": "Come alongside under 1 knot and get the lines on (T)",
+          "text": "Come alongside under 1 knot and get the lines on ({key:DockLines})",
+          "coach": "Step, don't jump, onto the dock with a line, and take a quick turn around a cleat. Make fast with a cleat hitch."
+        }
+      ],
+      "good": [
+        "Fenders out before you entered the marina.",
+        "Contact under about 1.5 knots (the sim's limit), ideally slower than a walk.",
+        "A planned bail-out if the approach went wrong."
+      ],
+      "mistakes": [
+        {
+          "mistake": "Approaching on a run.",
+          "fix": "Downwind you cannot luff to slow down. Plan to finish heading into the wind."
+        },
+        {
+          "mistake": "Luffing too late.",
+          "fix": "Slow down early. You can always sail in a little more; you cannot take speed back."
+        },
+        {
+          "mistake": "Using an arm or leg to stop the boat.",
+          "fix": "Let the fenders and lines do it. Never put yourself between the boat and the dock."
+        },
+        {
+          "mistake": "Committing to a bad approach.",
+          "fix": "Abort early and go around."
+        }
+      ],
+      "lake_notes": "Lake levels on Ray Hubbard rise after heavy rain and fall in drought, so dock heights and depths in the marina change through the year. Bring the sails down promptly once tied up if a storm is coming: the gust front can arrive well ahead of the rain.",
+      "debrief": {
+        "gentle": "Docked gently. That is how it should look: planned, slow and quiet.",
+        "hard": "Docked, but you hit at {contact_kn} knots. Start luffing earlier, and abort if you are still fast a few lengths out."
+      },
+      "quiz_after": 4
+    }
+  ]
+}

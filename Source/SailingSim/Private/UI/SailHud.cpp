@@ -1,4 +1,5 @@
 #include "UI/SailHud.h"
+#include "Learning.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
 #include "SailboatPawn.h"
@@ -248,6 +249,16 @@ namespace SailHudImpl
 
 	TAttribute<FText> Attr(const FText& Ref) { return TAttribute<FText>::CreateLambda([&Ref]() { return Ref; }); }
 	TAttribute<FSlateColor> ColorAttr(const FLinearColor& Ref) { return TAttribute<FSlateColor>::CreateLambda([&Ref]() { return FSlateColor(Ref); }); }
+
+	/** The tip card's title for a learning tip's ASA topic. */
+	FString LearningTopicName(const FString& Topic)
+	{
+		static const TMap<FString, FString> Names = { { TEXT("sail"), TEXT("Sail handling") }, { TEXT("trim"), TEXT("Trim") }, { TEXT("rules"), TEXT("Rules of the road") },
+			{ TEXT("safety"), TEXT("Safety") }, { TEXT("dock"), TEXT("Docking") }, { TEXT("weather"), TEXT("Weather") }, { TEXT("nav"), TEXT("Navigation") },
+			{ TEXT("knots"), TEXT("Knots") }, { TEXT("lights"), TEXT("Lights") }, { TEXT("parts"), TEXT("The boat") }, { TEXT("aton"), TEXT("Aids to navigation") } };
+		const FString* N = Names.Find(Topic);
+		return N ? *N : FString(TEXT("Coach"));
+	}
 
 	FString KeyName(FName Action, bool bNegative)
 	{
@@ -549,7 +560,20 @@ void SSailHud::Refresh()
 	const TPair<FString, int32>* Best = nullptr;
 	for (int32 I = 1; I < Tips.Num(); ++I) if (!Best || Tips[I].Value > Best->Value) Best = &Tips[I];
 	const double Now = FPlatformTime::Seconds();
-	if (Best && (Best->Key != LastTip) && (Now - TipShownAt > 6.0 || Best->Value >= 2))
+	// Graphics G7: a tip the learning coach raised on an event (learning-tips.json) wins while it is up.
+	const FLearningTip* Learned = P->GetLearning().Current(P->GetSimTime());
+	if (Learned && (!Best || Learned->Level >= Best->Value || P->GetLearning().CurrentText() == LastTip))
+	{
+		const FString Body = P->GetLearning().CurrentText();
+		if (Body != LastTip)
+		{
+			LastTip = Body;
+			TipShownAt = Now;
+			TipTitle = FText::FromString(LearningTopicName(Learned->Topic));
+			TipBody = FText::FromString(Body);
+		}
+	}
+	else if (Best && (Best->Key != LastTip) && (Now - TipShownAt > 6.0 || Best->Value >= 2))
 	{
 		LastTip = Best->Key;
 		TipShownAt = Now;
@@ -577,20 +601,34 @@ void SSailHud::Refresh()
 		DrillTitle = FText::FromString(FString(DrillName(D.GetDrill())).ToUpper());
 		DrillFooter = FText::FromString(FString::Printf(TEXT("%s · %s%s"), S->bLearningMode ? TEXT("Learning mode") : TEXT("Game mode"),
 			S->Difficulty == ESailingDifficulty::Easy ? TEXT("Easy") : TEXT("Realistic"), D.GetStatus().IsEmpty() ? TEXT("") : *(FString(TEXT(" · ")) + D.GetStatus())));
-		TArray<TPair<FString, int32>> Steps;
-		for (int32 I = 0; I < D.GetSteps().Num(); ++I) Steps.Add({ D.GetSteps()[I], D.IsComplete() || I < D.GetStep() ? 2 : (I == D.GetStep() ? 1 : 0) });
+		// The briefing's wording (keys follow rebinding) and, in learning mode, the coach's line under the current step.
+		const FDrillBriefing* Brief = FLearningContent::Get().Briefing(D.GetDrill());
+		const bool bBrief = Brief && Brief->Steps.Num() == D.GetSteps().Num();
+		TArray<TTuple<FString, int32, FString>> Steps;
+		for (int32 I = 0; I < D.GetSteps().Num(); ++I)
+		{
+			const int32 State = D.IsComplete() || I < D.GetStep() ? 2 : (I == D.GetStep() ? 1 : 0);
+			Steps.Add({ bBrief ? Brief->StepText(I) : D.GetSteps()[I], State, bBrief && State == 1 && S->bLearningMode ? Brief->Steps[I].Coach : FString() });
+		}
 		if (Steps != DrillSteps)
 		{
 			DrillSteps = Steps;
 			DrillList->ClearChildren();
-			for (const TPair<FString, int32>& St : Steps)
+			for (const TTuple<FString, int32, FString>& Row : Steps)
 			{
+				const TPair<FString, int32> St(Row.Get<0>(), Row.Get<1>());
+				const FString& Coach = Row.Get<2>();
 				DrillList->AddSlot().AutoHeight().Padding(0.f, 3.f)
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 3.f, 10.f, 0.f)
 					[ SNew(SBox).WidthOverride(12.f).HeightOverride(12.f)[ SNew(SBorder).BorderImage(Rounded(St.Value == 2 ? Starboard : (St.Value == 1 ? Accent : FLinearColor::Transparent), 2.f, St.Value == 0 ? Muted : FLinearColor::Transparent, 1.5f)) ] ]
-					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(St.Key, St.Value == 1 ? EType::Ui : EType::Small, St.Value == 2 ? Muted : Fg, true) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(St.Key, St.Value == 1 ? EType::Ui : EType::Small, St.Value == 2 ? Muted : Fg, true) ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f, 0.f, 2.f)[ Coach.IsEmpty() ? SNullWidget::NullWidget : SailUI::Text(Coach, EType::Small, Muted, true) ]
+					]
 				];
 			}
 		}

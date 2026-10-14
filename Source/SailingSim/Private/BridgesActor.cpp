@@ -68,26 +68,36 @@ void ABridgesActor::BeginPlay()
 		const float SizeScale = bCoast ? 1.6f : 1.f;
 		uint32 Seed = 11;
 		auto Rand = [&Seed]() { Seed ^= Seed << 13; Seed ^= Seed >> 17; Seed ^= Seed << 5; return (Seed & 0xFFFFFF) / float(0xFFFFFF); };
+		TArray<FRiprapBand> Bands;
 		for (const FLakeDock& D : Lake.Docks)
 		{
-			if (D.Kind != TEXT("breakwater") || (MarinaBox.bIsValid && MarinaBox.IsInside(D.Points[0]))) continue;
-			for (int32 I = 1; I < D.Points.Num(); ++I)
+			// Graphics G7: groins along the shore keep only their baked core (73 km of them in the G2 pack); jetties,
+			// breakwaters and the Texas City Dike's edges get the boulders.
+			if (D.Kind == TEXT("groin") || (MarinaBox.bIsValid && MarinaBox.IsInside(D.Points[0]))) continue;
+			Bands.Reset();
+			RiprapBands(D, Bands);
+			for (const FRiprapBand& Band : Bands)
 			{
-				const FVector2D A = D.Points[I - 1], B = D.Points[I];
-				const double Len = FVector2D::Distance(A, B);
-				if (Len < 0.5) continue;
-				const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
-				for (double T = 0.0; T < Len; T += Spacing)
+				const float WScale = Band.HalfWidth / 3.2f, CScale = Band.Crest / 0.8f;
+				const int32 BandRows = FMath::Clamp(FMath::RoundToInt32(Rows * WScale), Rows, Rows + 2);
+				for (int32 I = 1; I < Band.Points.Num(); ++I)
 				{
-					for (int32 K = -Rows; K <= Rows; ++K)
+					const FVector2D A = Band.Points[I - 1], B = Band.Points[I];
+					const double Len = FVector2D::Distance(A, B);
+					if (Len < 0.5) continue;
+					const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
+					for (double T = 0.0; T < Len; T += Spacing)
 					{
-						const float Across = K * (bCoast ? 2.0f : 1.3f) + (Rand() - 0.5f) * 0.7f;
-						const float Crest = 1.4f * (1.f - FMath::Square(Across / 3.4f)) - 0.2f;
-						const FVector2D P = A + Dir * (T + (Rand() - 0.5f) * 0.8) + Left * Across;
-						const float Size = (0.9f + 0.9f * Rand()) * SizeScale;
-						const int32 Kind = FMath::Min(int32(Rand() * NumRocks), NumRocks - 1);
-						RockX[Kind].Add(FTransform(FRotator((Rand() - 0.5f) * 50.f, Rand() * 360.f, (Rand() - 0.5f) * 50.f),
-							FVector(P.X, P.Y, Crest - 0.3f * Size) * CmPerMeter, FVector(Size)));
+						for (int32 K = -BandRows; K <= BandRows; ++K)
+						{
+							const float Across = (K * (bCoast ? 2.0f : 1.3f) + (Rand() - 0.5f) * 0.7f) * WScale * Rows / FMath::Max(BandRows, 1);
+							const float Crest = (1.4f * (1.f - FMath::Square(Across / (3.4f * WScale))) - 0.2f) * FMath::Max(CScale * 0.6f, 1.f);
+							const FVector2D P = A + Dir * (T + (Rand() - 0.5f) * 0.8) + Left * Across;
+							const float Size = (0.9f + 0.9f * Rand()) * SizeScale;
+							const int32 Kind = FMath::Min(int32(Rand() * NumRocks), NumRocks - 1);
+							RockX[Kind].Add(FTransform(FRotator((Rand() - 0.5f) * 50.f, Rand() * 360.f, (Rand() - 0.5f) * 50.f),
+								FVector(P.X, P.Y, Crest - 0.3f * Size) * CmPerMeter, FVector(Size)));
+						}
 					}
 				}
 			}

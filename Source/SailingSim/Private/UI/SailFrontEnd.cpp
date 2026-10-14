@@ -10,6 +10,7 @@
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "Drills.h"
+#include "Learning.h"
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/PlayerController.h"
@@ -232,7 +233,7 @@ void SSailFrontEnd::Construct(const FArguments& A)
 	USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr;
 	Pending = Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault();
 	RegisterInputTracker();
-	const bool bInGame = A._Start == ESailScreen::Pause;
+	const bool bInGame = A._Start == ESailScreen::Pause || A._Start == ESailScreen::Briefing || A._Start == ESailScreen::Quiz;
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -265,7 +266,7 @@ void SSailFrontEnd::Pop()
 	if (Stack.Num() <= 1)
 	{
 		// Pause's Back resumes; the title's asks to quit.
-		if (Current() == ESailScreen::Pause) Close();
+		if (Current() == ESailScreen::Pause || Current() == ESailScreen::Briefing || Current() == ESailScreen::Quiz) Close();
 		else if (Current() == ESailScreen::Title) Confirm(TEXT("Quit Sailing Sim?"), TEXT("Quit"), [this]() { UKismetSystemLibrary::QuitGame(Player.Get(), Player.Get(), EQuitPreference::Quit, false); });
 		return;
 	}
@@ -388,6 +389,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Settings: E = BuildSettings(); break;
 	case ESailScreen::Controls: E = BuildControls(); break;
 	case ESailScreen::Confirm: E = BuildConfirm(); break;
+	case ESailScreen::Briefing: E = BuildBriefing(); break;
+	case ESailScreen::Quiz: if (Quiz.Num() == 0) StartQuiz(); E = BuildQuiz(); break;
 	}
 	E.Screen = S;
 	return E;
@@ -1154,6 +1157,199 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 			]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Rebind")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
+	return E;
+}
+
+// ---------------------------------------------------------------- Graphics G7: drill briefing and quiz
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	const ASailboatPawn* P = Pawn();
+	const FDrillBriefing* B = P ? FLearningContent::Get().Briefing(P->GetDrill().GetDrill()) : nullptr;
+	TSharedRef<SSailButton> Go = ActionButton(TEXT("Start the drill"), FSimpleDelegate::CreateLambda([this]() { Close(); }));
+	if (!B)
+	{
+		E.Content = SNew(SBox).VAlign(VAlign_Center)[ Go ];
+		E.Focus = Go;
+		return E;
+	}
+	auto Para = [](const FString& Label, const FString& Text, const FLinearColor& Color) -> TSharedRef<SWidget>
+	{
+		return SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Label, EType::Eyebrow, Accent) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(Text, EType::Body, Color, true) ];
+	};
+	// Left: what and why, the setup and the crew's calls.
+	TSharedRef<SVerticalBox> Calls = SNew(SVerticalBox);
+	for (const FDrillBriefing::FCommand& C : B->Commands)
+	{
+		Calls->AddSlot().AutoHeight().Padding(0.f, 4.f)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Reply.IsEmpty() ? FString::Printf(TEXT("“%s”"), *C.Call) : FString::Printf(TEXT("“%s”  →  “%s”"), *C.Call, *C.Reply), EType::Value, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Meaning, EType::Small, Muted, true) ]
+		];
+	}
+	TSharedRef<SVerticalBox> Left = SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Drill briefing · ASA 101 · %s"), *B->AsaSkill), EType::Eyebrow, Accent) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 14.f)[ SailUI::Text(B->Name, B->Name.Len() > 18 ? EType::CardTitle : EType::ScreenTitle, Fg, true) ]
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->Goal, EType::Value, Fg, true) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SailUI::Text(B->Why, EType::Body, Muted, true) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Para(TEXT("Setup"), B->Setup, Fg) ];
+	if (B->Commands.Num()) Left->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Calls"), EType::Eyebrow, Accent) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ Calls ]
+	];
+	if (!B->LakeNotes.IsEmpty()) Left->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Para(TEXT("On the lake"), B->LakeNotes, Muted) ];
+	Left->AddSlot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f)[ SNew(SBox).WidthOverride(320.f)[ Go ] ];
+
+	// Right: the steps with the coach's notes, what good looks like, the usual mistakes.
+	TSharedRef<SVerticalBox> Right = SNew(SVerticalBox);
+	Right->AddSlot().AutoHeight()[ SailUI::Text(TEXT("Steps"), EType::Eyebrow, Accent) ];
+	for (int32 I = 0; I < B->Steps.Num(); ++I)
+	{
+		Right->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 12.f, 0.f)[ SNew(SBox).WidthOverride(22.f)[ SailUI::Text(FString::FromInt(I + 1), EType::Value, Accent) ] ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->StepText(I), EType::Ui, Fg, true) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(FLearningContent::ResolveKeys(B->Steps[I].Coach), EType::Small, Muted, true) ]
+			]
+		];
+	}
+	if (B->Good.Num())
+	{
+		Right->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ SailUI::Text(TEXT("What good looks like"), EType::Eyebrow, Starboard) ];
+		for (const FString& G : B->Good) Right->AddSlot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(TEXT("•  ") + G, EType::Small, Fg, true) ];
+	}
+	if (B->Mistakes.Num())
+	{
+		Right->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ SailUI::Text(TEXT("Common mistakes"), EType::Eyebrow, Warn) ];
+		for (const TPair<FString, FString>& M : B->Mistakes)
+		{
+			Right->AddSlot().AutoHeight().Padding(0.f, 5.f, 0.f, 0.f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(M.Key, EType::Small, Fg, true) ]
+				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Fix: ") + M.Value, EType::Small, Muted, true) ]
+			];
+		}
+	}
+	E.Content = SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().FillWidth(0.46f).Padding(0.f, 0.f, 40.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Left ] ]
+		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox) + SScrollBox::Slot()[ Right ], FMargin(26.f, 22.f)) ];
+	E.Focus = Go;
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Start the drill")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip")) }, TEXT("The game is paused while you read"));
+	return E;
+}
+
+void SSailFrontEnd::StartQuiz()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	const ASailboatPawn* P = Pawn();
+	const ESailingDrill Drill = P ? P->GetDrill().GetDrill() : ESailingDrill::None;
+	FRandomStream Rng{ int32(FPlatformTime::Cycles()) };
+	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng);
+	QuizIndex = QuizRight = 0;
+	QuizChosen = -1;
+	QuizDrillName = DrillName(Drill);
+	QuizDebrief.Reset();
+	if (P)
+	{
+		const FDrillRunner& D = P->GetDrill();
+		FString Outcome = D.GetOutcome();
+		if (Outcome.IsEmpty() && FDrillRunner::Outcomes(Drill).Num()) Outcome = FDrillRunner::Outcomes(Drill)[0];   // stills before the drill ends
+		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots());
+	}
+}
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Quiz); Show(Stack.Last(), true); };
+	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	const bool bDone = QuizIndex >= Quiz.Num();
+	Box->AddSlot().AutoHeight()[ SailUI::Text(bDone ? FString::Printf(TEXT("Quiz · %s"), *QuizDrillName)
+		: FString::Printf(TEXT("Quiz · %s · question %d of %d"), *QuizDrillName, QuizIndex + 1, Quiz.Num()), EType::Eyebrow, Accent) ];
+	if (!QuizDebrief.IsEmpty() && (QuizIndex == 0 || bDone))
+		Box->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 4.f)[ SailUI::Text(QuizDebrief, EType::Body, Muted, true) ];
+	if (bDone)
+	{
+		TSharedRef<SSailButton> Done = ActionButton(TEXT("Back to sailing"), FSimpleDelegate::CreateLambda([this]() { Quiz.Reset(); Close(); }));
+		Box->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 6.f)[ SailUI::Text(FString::Printf(TEXT("%d of %d right"), QuizRight, Quiz.Num()), EType::ScreenTitle, QuizRight == Quiz.Num() ? Starboard : Fg) ];
+		Box->AddSlot().AutoHeight()[ SailUI::Text(QuizRight == Quiz.Num() ? TEXT("All correct. On to the next drill.") : TEXT("The drill panel's coach notes and the briefing cover the ones you missed."), EType::Body, Muted, true) ];
+		Box->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SNew(SBox).WidthOverride(320.f)[ Done ] ];
+		E.Focus = Done;
+	}
+	else
+	{
+		const FQuizQuestion& Q = Quiz[QuizIndex];
+		const bool bAnswered = QuizChosen >= 0;
+		Box->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 16.f)[ SailUI::Text(Q.Question, EType::Value, Fg, true) ];
+		TSharedPtr<SWidget> First;
+		for (int32 I = 0; I < Q.Options.Num(); ++I)
+		{
+			const bool bRight = I == Q.Answer, bChosen = I == QuizChosen;
+			const FLinearColor Edge = !bAnswered ? FLinearColor::Transparent : (bRight ? Starboard : (bChosen ? Port : FLinearColor::Transparent));
+			TSharedRef<SSailButton> Opt = SNew(SSailButton).Look(EButtonLook::Card).Padding(FMargin(16.f, 10.f)).IsEnabled(!bAnswered)
+				.OnClicked(FSimpleDelegate::CreateLambda([this, I, Rebuild]()
+				{
+					if (QuizChosen >= 0 || !Quiz.IsValidIndex(QuizIndex)) return;
+					QuizChosen = I;
+					if (I == Quiz[QuizIndex].Answer) ++QuizRight;
+					Rebuild();
+				}))
+			[
+				SNew(SBorder).BorderImage(Rounded(FLinearColor::Transparent, RadiusButton, Edge, 2.f)).Padding(FMargin(8.f, 4.f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(FString::Chr(TCHAR('A' + I)), EType::Value, bAnswered && bRight ? Starboard : Accent) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Q.Options[I], EType::Body, bAnswered && !bRight && !bChosen ? Muted : Fg, true) ]
+				]
+			];
+			Box->AddSlot().AutoHeight().Padding(0.f, 4.f)[ Opt ];
+			if (!First.IsValid()) First = Opt;
+		}
+		if (bAnswered)
+		{
+			const bool bWasRight = QuizChosen == Q.Answer;
+			const bool bLast = QuizIndex + 1 >= Quiz.Num();
+			TSharedRef<SSailButton> Next = ActionButton(bLast ? TEXT("See the score") : TEXT("Next question"), FSimpleDelegate::CreateLambda([this, Rebuild]()
+			{
+				++QuizIndex;
+				QuizChosen = -1;
+				if (QuizIndex >= Quiz.Num())
+				{
+					if (ASailboatPawn* B = Pawn()) B->AddLogEvent(FString::Printf(TEXT("Quiz after %s: %d of %d"), *QuizDrillName, QuizRight, Quiz.Num()));
+				}
+				Rebuild();
+			}));
+			Box->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ SailUI::Text(bWasRight ? TEXT("Correct") : TEXT("Not quite"), EType::CardTitleS, bWasRight ? Starboard : Port) ];
+			Box->AddSlot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(Q.Why, EType::Body, Fg, true) ];
+			Box->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ SNew(SBox).WidthOverride(320.f)[ Next ] ];
+			E.Focus = Next;
+		}
+		else
+		{
+			E.Focus = First;
+		}
+	}
+	E.Content = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin(0.f, 0.f, 0.f, 80.f))
+	[
+		SNew(SBox).WidthOverride(940.f)[ PanelBox(Box, FMargin(34.f, 28.f)) ]
+	];
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip the quiz")) }, TEXT("Questions in ASA 101 wording, set on the lake"));
 	return E;
 }
 

@@ -24,3 +24,10 @@ Mono 48 kHz WAV, a seamless loop of 10 s or more. Bean's own recordings are best
 CC0 (Creative Commons 0), credited in `CREDITS.md` anyway.
 
 The world's spatialised sources (marina halyards, gulls, outboards, diesels) are synthesized in `USailingWorldSynth`.
+
+Graphics G7: the sample pack in `Inputs/audio/Samples` (48 kHz, CC0 / CC BY / public domain, see `CREDITS.md`) is imported by the
+same script to `/Game/Audio/Pack/<Folder>/<name>`. `SailingSound::PackLoops` crossfades its loops by the manifest's game
+parameter (wind 3 bands by apparent wind, luff and flog by luff, hull wash 4 bands by speed, lapping at rest / in the slip / in
+chop, winch by trim rate, sheet, rain on deck); `PackShots` are one-shots (halyard slaps at rest, the sail filling after a tack,
+winch clicks, a sheet easing, dock creaks and fender squeaks in the slip); `USailingWorldSamples` plays the marina's halyards,
+gulls (laughing gulls on the coast) and outboards. A `<Cue>.wav` here still wins over the pack for its cue.

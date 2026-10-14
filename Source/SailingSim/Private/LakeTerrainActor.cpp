@@ -15,6 +15,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Misc/PackageName.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 using namespace Sailing;
 
@@ -26,12 +29,25 @@ namespace
 	// Leaf-card trees within this; opaque crowns beyond (Visual V6). -SailingNearTrees=<m> to measure.
 	double NearTreesM()
 	{
-		// 600 m on High; 350 m on Medium, where the base pass is budgeted at 4 ms (cards within 300 m cost almost nothing,
-		// out to 600 m about a millisecond there; the opaque crowns read the same at that size on its 67% resolution).
+		// Graphics G6: 250 m on High, 200 m on Medium (were 600 and 350). The lidar crowns put three times as many trees on
+		// the shore, and leaf cards out to 600 m cost High 8 ms of base pass at the marina; past 250 m the smooth opaque
+		// crowns read the same.
 		static const double M = []
 		{
-			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 600.0 : 350.0;
+			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 250.0 : 200.0;
 			FParse::Value(FCommandLine::Get(), TEXT("SailingNearTrees="), V);
+			return V;
+		}();
+		return M;
+	}
+	// Graphics G6: the opaque crowns cast shadows out to this (m); beyond, none (the far crowns' virtual shadow pages cost
+	// High 6.5 ms at the slip, and their shadows are lost at that range). -SailingMidTrees=<m> to measure.
+	double MidTreesM()
+	{
+		static const double M = []
+		{
+			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 1000.0 : 600.0;
+			FParse::Value(FCommandLine::Get(), TEXT("SailingMidTrees="), V);
 			return V;
 		}();
 		return M;
@@ -48,47 +64,6 @@ namespace
 	}
 	float Rand01(uint32 Seed) { return (Hash(Seed) & 0xFFFFFF) / float(0xFFFFFF); }
 
-	/** Ear-clipping triangulation of a simple polygon (no holes). Returns triangle indices into Points. */
-	TArray<int32> Triangulate(const TArray<FVector2D>& Points)
-	{
-		TArray<int32> Result;
-		TArray<int32> Idx;
-		const int32 N = Points.Num();
-		if (N < 3) return Result;
-		double Area = 0.0;
-		for (int32 I = 0; I < N; ++I) Area += FVector2D::CrossProduct(Points[I], Points[(I + 1) % N]);
-		for (int32 I = 0; I < N; ++I) Idx.Add(Area > 0.0 ? I : N - 1 - I);
-		int32 Guard = 0;
-		while (Idx.Num() > 3 && Guard++ < N * N)
-		{
-			bool bClipped = false;
-			for (int32 I = 0; I < Idx.Num(); ++I)
-			{
-				const int32 A = Idx[(I + Idx.Num() - 1) % Idx.Num()], B = Idx[I], C = Idx[(I + 1) % Idx.Num()];
-				const FVector2D PA = Points[A], PB = Points[B], PC = Points[C];
-				if (FVector2D::CrossProduct(PB - PA, PC - PB) <= 0.0) continue; // reflex
-				bool bInside = false;
-				for (int32 K : Idx)
-				{
-					if (K == A || K == B || K == C) continue;
-					const FVector2D P = Points[K];
-					if (FVector2D::CrossProduct(PB - PA, P - PA) > 0.0 && FVector2D::CrossProduct(PC - PB, P - PB) > 0.0 && FVector2D::CrossProduct(PA - PC, P - PC) > 0.0)
-					{
-						bInside = true;
-						break;
-					}
-				}
-				if (bInside) continue;
-				Result.Append({ A, B, C });
-				Idx.RemoveAt(I);
-				bClipped = true;
-				break;
-			}
-			if (!bClipped) break;
-		}
-		if (Idx.Num() == 3) Result.Append({ Idx[0], Idx[1], Idx[2] });
-		return Result;
-	}
 }
 
 ALakeTerrainActor::ALakeTerrainActor()
@@ -115,6 +90,7 @@ void ALakeTerrainActor::SetTreeFraction(float Fraction)
 		for (UHierarchicalInstancedStaticMeshComponent* T : TreeMeshes) T->ClearInstances();
 		for (UInstancedStaticMeshComponent* T : TreeModels) T->ClearInstances();
 		for (UInstancedStaticMeshComponent* T : TreeFar) T->ClearInstances();
+		for (UInstancedStaticMeshComponent* T : TreeMid) T->ClearInstances();
 		PlaceTrees();
 	}
 }
@@ -224,12 +200,37 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
 			const int32 GR = R / Sub, GC = C / Sub; // the colour noise stays on the 5 m grid's cells at every level
 			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
+			// Graphics G6: how close open water is (1 at the edge, 0 past 14 m): the bare clay and sand band and the
+			// material's wet band (alpha) are the waterline's, not every low flat's. A cove's head a few decimetres above
+			// the pool read as a glossy mud plain hundreds of metres across from the drone.
+			float Near = Z < -0.3 ? 1.f : 0.f;
+			if (Z >= -0.3 && Z < 1.5)
+			{
+				const double X = OX + R * Cell, Y = OY + C * Cell;
+				static const double Radii[] = { 4.0, 8.0, 14.0 };
+				static const float Weights[] = { 1.f, 0.6f, 0.25f };
+				for (int32 K = 0; K < 3 && Near == 0.f; ++K)
+				{
+					for (int32 A = 0; A < 8; ++A)
+					{
+						const double Ang = A * UE_DOUBLE_PI / 4.0;
+						if (T.HeightAt(X + Radii[K] * FMath::Cos(Ang), Y + Radii[K] * FMath::Sin(Ang)) < -0.05) { Near = Weights[K]; break; }
+					}
+				}
+			}
 			FLinearColor Col;
 			if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
-			else if (Z < 0.6) Col = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
+			else if (Z < 0.6)
+			{
+				// Low ground back from the edge: sedge and lush grass (the lake's flats grow over).
+				const FLinearColor Bank = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
+				Col = FMath::Lerp(FLinearColor(0.24f, 0.28f, 0.12f), Bank, Near);
+			}
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
 			if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
-			M.Colors.Add(Col * Noise);
+			Col = Col * Noise;
+			Col.A = Near;
+			M.Colors.Add(Col);
 		}
 	}
 	for (int32 I = 0; I < N; ++I)
@@ -272,22 +273,32 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 {
 	// Visual V6: leaf-card trees near the camera (alpha-masked Nanite is costly over many pixels), the opaque far
 	// crowns beyond; regrouped when the camera has moved a quarter of the near radius.
-	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < 0.25 * NearTreesM()) return;
+	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < FMath::Max(100.0, 0.25 * NearTreesM())) return;
 	TreeCenter = Camera;
-	TArray<TArray<FTransform>> Near, Far;
+	TArray<TArray<FTransform>> Near, Mid, Far;
 	Near.SetNum(TreeModels.Num());
+	Mid.SetNum(TreeMid.Num());
 	Far.SetNum(TreeFar.Num());
-	const double R2 = FMath::Square(NearTreesM());
+	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
 	for (const FTreeInstance& I : ModelTrees)
 	{
 		const int32 Index = int32(I.Species) * 2 + I.Variant;
-		const bool bNear = FVector2D::DistSquared(I.Position, Camera) < R2;
+		const double D2 = FVector2D::DistSquared(I.Position, Camera);
+		const bool bNear = D2 < R2, bMid = !bNear && D2 < RM2 && TreeMid.Num() > 0;
 		UStaticMesh* Mesh = (bNear ? TreeModels : TreeFar)[Index]->GetStaticMesh();
 		const float MeshHeight = Mesh ? FMath::Max(100.f, float(Mesh->GetBounds().BoxExtent.Z * 2.0)) : 1000.f;
 		const float Scale = I.Height * CmPerMeter / MeshHeight;
+		// Graphics G6: a lidar crown's own width (about 0.85 of the model's half-extent is its crown's equal-area radius),
+		// kept within a believable stretch of the model's proportions.
+		float ScaleXY = Scale;
+		if (I.Crown > 0.f && Mesh)
+		{
+			const float MeshRadius = FMath::Max(50.f, 0.85f * float(FMath::Max(Mesh->GetBounds().BoxExtent.X, Mesh->GetBounds().BoxExtent.Y)));
+			ScaleXY = FMath::Clamp(I.Crown * CmPerMeter / MeshRadius, 0.8f * Scale, 1.3f * Scale);
+		}
 		// The earth's curvature (as M_Terrain's offset does for the ground): far trees sink with the shore they stand on.
 		const double Drop = CurvatureDrop(FVector2D::Distance(I.Position, Camera));
-		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(Scale)));
+		(bNear ? Near : (bMid ? Mid : Far))[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(ScaleXY, ScaleXY, Scale)));
 	}
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{
@@ -295,6 +306,11 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		TreeModels[M]->AddInstances(Near[M], false, true);
 		TreeFar[M]->ClearInstances();
 		TreeFar[M]->AddInstances(Far[M], false, true);
+		if (TreeMid.IsValidIndex(M))
+		{
+			TreeMid[M]->ClearInstances();
+			TreeMid[M]->AddInstances(Mid[M], false, true);
+		}
 	}
 }
 
@@ -389,7 +405,42 @@ void ALakeTerrainActor::PlaceTrees()
 	if (!Lake) return;
 	const FLakeTerrain& T = Lake->Terrain;
 	TArray<FTreeInstance> Trees;
-	PlaceTreeInstances(T, TreeFraction, Trees);
+	// Graphics G6: the lidar's crowns where the G2 band has them (-SailingClassicTrees compares).
+	if (Lake->Crowns.Num() > 0 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicTrees"))) PlaceCrownTrees(T, Lake->Crowns, TreeFraction, Trees);
+	else PlaceTreeInstances(T, TreeFraction, Trees);
+	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
+	if (Lake->Houses.Num() > 0)
+	{
+		constexpr double Cell = 50.0;
+		TMap<FIntPoint, TArray<int32, TInlineAllocator<4>>> Grid;
+		for (int32 K = 0; K < Lake->Houses.Num(); ++K)
+		{
+			const FLakeHouse& H = Lake->Houses[K];
+			Grid.FindOrAdd(FIntPoint(FMath::FloorToInt32(H.X / Cell), FMath::FloorToInt32(H.Y / Cell))).Add(K);
+		}
+		const int32 Before = Trees.Num();
+		Trees.RemoveAll([&](const FTreeInstance& I)
+		{
+			const FIntPoint C(FMath::FloorToInt32(I.Position.X / Cell), FMath::FloorToInt32(I.Position.Y / Cell));
+			for (int32 Dx = -1; Dx <= 1; ++Dx) for (int32 Dy = -1; Dy <= 1; ++Dy)
+			{
+				const auto* List = Grid.Find(C + FIntPoint(Dx, Dy));
+				if (!List) continue;
+				for (const int32 K : *List)
+				{
+					for (const FLakeHouse::FWing& W : Lake->Houses[K].Wings)
+					{
+						const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+						const double Dx2 = I.Position.X - W.X, Dy2 = I.Position.Y - W.Y;
+						const double A = Dx2 * FMath::Cos(Yaw) + Dy2 * FMath::Sin(Yaw), B = -Dx2 * FMath::Sin(Yaw) + Dy2 * FMath::Cos(Yaw);
+						if (FMath::Abs(A) < W.HalfLength + 2.0 && FMath::Abs(B) < W.HalfWidth + 2.0) return true;
+					}
+				}
+			}
+			return false;
+		});
+		UE_LOG(LogSailing, Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
+	}
 
 	// Visual V6 (Medium and High): Nanite trees built in Blender (four species, two variants each), swaying in the wind
 	// (M_TreeLeaves / M_TreeBark read MPC_World). Low keeps the Phase 3 shapes.
@@ -397,13 +448,14 @@ void ALakeTerrainActor::PlaceTrees()
 	const bool bModelTrees = USailingSettings::Get()->Quality != ESailingQuality::Low;
 	if (bModelTrees && TreeModels.Num() == 0)
 	{
-		for (int32 Pass = 0; Pass < 2; ++Pass)
+		// Passes: leaf cards near, opaque crowns with shadows to MidTreesM, opaque crowns without beyond (Graphics G6).
+		for (int32 Pass = 0; Pass < 3; ++Pass)
 		{
 			for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S)
 			{
 				for (int32 V = 0; V < 2; ++V)
 				{
-					const FString Name = FString::Printf(TEXT("SM_%s_%d%s"), SpeciesNames[S], V, Pass == 1 ? TEXT("_Far") : TEXT(""));
+					const FString Name = FString::Printf(TEXT("SM_%s_%d%s"), SpeciesNames[S], V, Pass >= 1 ? TEXT("_Far") : TEXT(""));
 					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
 					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 					C->SetupAttachment(RootComponent);
@@ -416,12 +468,15 @@ void ALakeTerrainActor::PlaceTrees()
 					C->bVisibleInRayTracing = false;
 					// Shadows (virtual shadow maps), cached as if still: the sway never re-renders the trees' shadow
 					// pages (thousands of swaying trees would invalidate the cache every frame).
-					C->SetCastShadow(true);
+					// Graphics G6: the far band casts none (-SailingFarTreeShadows=1 to compare).
+					int32 FarShadows = 0;
+					FParse::Value(FCommandLine::Get(), TEXT("SailingFarTreeShadows="), FarShadows);
+					C->SetCastShadow(Pass < 2 || FarShadows != 0);
 					C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : 9000.0) * 100.0);
+					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : (Pass == 1 ? MidTreesM() + 200.0 : 9000.0)) * 100.0);
 					C->SetWorldPositionOffsetDisableDistance(int32((Pass == 0 ? NearTreesM() : 1500.0) * 100.0));
 					C->RegisterComponent();
-					(Pass == 0 ? TreeModels : TreeFar).Add(C);
+					(Pass == 0 ? TreeModels : (Pass == 1 ? TreeMid : TreeFar)).Add(C);
 				}
 			}
 		}
@@ -474,7 +529,7 @@ void ALakeTerrainActor::PlaceTrees()
 		else
 		{
 			const bool bOak = I.Species != ETreeSpecies::CedarElm;
-			const float W = Height * (bOak ? 0.9f : 0.7f);
+			const float W = I.Crown > 0.f ? FMath::Clamp(I.Crown * 2.f, Height * 0.45f, Height * 1.2f) : Height * (bOak ? 0.9f : 0.7f);
 			(bOak ? Oak : Elm).Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 60.f), FVector(W, W, Height * 0.7f)));
 			Trunk.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 20.f), FVector(0.4f, 0.4f, Height * 0.4f)));
 		}
@@ -591,6 +646,28 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	// gable-roofed ranch for one storey, a hip-roofed two-storey, a flat-roofed block for the big footprints, with wall
 	// (brick, siding, stucco) and roof colours from North Texas streets. Windows are drawn by M_HouseWall in world space.
 	if (USailingSettings::Get()->Quality == ESailingQuality::Low) return false;
+	// Graphics G6: the G2 houses (real footprints, lidar eaves and roofs, NAIP roof colours; WorldKit's HouseKit.cpp) replace
+	// the archetypes below where the world has them (-SailingClassicHouses compares). The private docks stay.
+	const bool bKitHouses = Lake.Houses.Num() > 0 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHouses"));
+	if (bKitHouses)
+	{
+		TMap<FIntPoint, TArray<int32>> ByTile;
+		HouseTiles(Lake, ByTile);
+		TMap<FIntPoint, FKitGeometry> Tiles;
+		int32 Procedural = 0;
+		const FString Prefix = TEXT("Houses_") + Lake.FileName;
+		for (const auto& KV : ByTile)
+		{
+			FKitGeometry& G = Tiles.Add(KV.Key);
+			if (!FPackageName::DoesPackageExist(TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(Prefix, KV.Key)))
+			{
+				BuildHouseGeometry(Lake, KV.Value, G);
+				++Procedural;
+			}
+		}
+		const int32 Baked = SpawnKitTiles(this, Tiles, Prefix, false, [](EKitLook L) { return KitMaterial(L); }, HouseTileMeshes);
+		UE_LOG(LogSailing, Display, TEXT("Houses: %d from the G2 footprints in %d tiles (%d baked, %d procedural)"), Lake.Houses.Num(), Tiles.Num(), Baked, Procedural);
+	}
 	static const TCHAR* Names[] = { TEXT("SM_House_Gable"), TEXT("SM_House_Hip"), TEXT("SM_House_Flat") };
 	TArray<UInstancedStaticMeshComponent*> Ism;
 	for (const TCHAR* Name : Names)
@@ -704,8 +781,11 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 			float Yaw = float(B.YawDeg) + (B.Length >= B.Width ? 0.f : 90.f);
 			const FVector2D Back(FMath::Sin(FMath::DegreesToRadians(Yaw)), -FMath::Cos(FMath::DegreesToRadians(Yaw)));
 			if (FVector2D::DotProduct(Back, WaterDir) < 0.0) Yaw += 180.f;
-			NearX[Best].Add(FTransform(FRotator(0, Yaw, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(Sx, Sy, 1.f)));
-			NearD[Best].Append({ Wall.R, Wall.G, Wall.B, float(Pat) + 10.f, Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+			if (!bKitHouses)
+			{
+				NearX[Best].Add(FTransform(FRotator(0, Yaw, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(Sx, Sy, 1.f)));
+				NearD[Best].Append({ Wall.R, Wall.G, Wall.B, float(Pat) + 10.f, Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+			}
 			// A private dock for the lakefront houses: from the bank toward the water, a few metres clear of the next.
 			if (WaterM <= 75.0 && ((H >> 24) % 10) < 6)
 			{
@@ -725,6 +805,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 			}
 			continue;
 		}
+		if (bKitHouses) continue;
 		X[Kind].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(B.Length, B.Width, Height)));
 		D[Kind].Append({ Wall.R, Wall.G, Wall.B, float(Pat), Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
 	}
@@ -815,12 +896,15 @@ void ALakeTerrainActor::PlaceBridgesAndDocks()
 	for (const FLakeDock& Dock : Lake->Docks)
 	{
 		if (MarinaBox.bIsValid && MarinaBox.IsInside(Dock.Points[0])) continue;
-		if (bShoreKit && (Dock.Kind == TEXT("breakwater") || bKitPiers)) continue;
+		if (bShoreKit && (Dock.Kind == TEXT("breakwater") || Dock.Kind == TEXT("groin") || bKitPiers)) continue;
+		// Graphics G7: the dike and the Seawall are drawn by the shore kit (or the terrain on Low), floating walkways by
+		// ACoastMarinasActor at the water's level.
+		if (Dock.Kind == TEXT("dike") || Dock.Kind == TEXT("seawall") || Dock.Kind == TEXT("floating")) continue;
 		if (Dock.bClosed)
 		{
 			TArray<FVector2D> Pts = Dock.Points;
 			Pts.Pop(); // closing point
-			const TArray<int32> Ids = Triangulate(Pts);
+			const TArray<int32> Ids = KitTriangulate(Pts);
 			const int32 Base = V.Num();
 			for (const FVector2D& P : Pts) { V.Add(FVector(P.X, P.Y, Deck) * CmPerMeter); N.Add(FVector::UpVector); }
 			for (int32 I = 0; I + 2 < Ids.Num(); I += 3) Tri.Append({ Base + Ids[I], Base + Ids[I + 2], Base + Ids[I + 1] });

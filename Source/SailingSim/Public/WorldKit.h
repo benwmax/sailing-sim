@@ -14,7 +14,8 @@ class UMaterialInterface;
  * Nanite static meshes, one per 40 m tile (UWorldKitLibrary::BakeMarina, run by scripts/make-world-models.sh), and the game
  * loads those. Without a bake (or for a tile it lacks) it draws the same geometry as static procedural meshes.
  */
-enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Riprap, Count };
+enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Riprap,
+	HouseWall, HouseRoof, Count };   // Graphics G6: the houses' walls and roofs, coloured per vertex (FKitSection::Paint)
 
 struct FKitLookDesc
 {
@@ -36,9 +37,17 @@ struct SAILINGSIM_API FKitSection
 	TArray<FVector> N;
 	TArray<FVector2D> UV;
 	TArray<FProcMeshTangent> Tan;
+	/** Graphics G6: per-vertex colour and a second UV channel, for looks that vary per building (HouseWall, HouseRoof). Every
+	 *  vertex added takes the current Paint and Tag. */
+	TArray<FColor> Col;
+	TArray<FVector2D> UV1;
+	FColor Paint = FColor::White;
+	FVector2D Tag = FVector2D::ZeroVector;
 
 	/** Positions in metres (stored in cm); UVs as given (metres). Front face is the side the A->D x A->B normal points to. */
 	void Quad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC, const FVector2D& UD);
+	/** Graphics G7: a triangle facing up (the deck of a lidar pier). */
+	void Tri(const FVector& A, const FVector& B, const FVector& C, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC);
 	/** A box centred at C with half extents E, turned by Yaw (deg) about Z. Top UVs run across it (U = local Y: deck boards). */
 	void Box(const FVector& C, const FVector& E, float YawDeg, bool bBottom = false);
 	/** A box from A to B (plan, metres), width W, from Z0 to Z1. */
@@ -70,6 +79,20 @@ struct SAILINGSIM_API FKitGeometry
 
 struct FLakeData;
 struct FLakeBridge;
+struct FLakeDock;
+
+/** Ear-clipping triangulation of a simple polygon (no holes): triangle indices into Points. */
+SAILINGSIM_API TArray<int32> KitTriangulate(const TArray<FVector2D>& Points);
+
+/** Graphics G7: a band of riprap along a line: a breakwater or jetty is one, the Texas City Dike one along each edge. */
+struct FRiprapBand
+{
+	TArray<FVector2D> Points;
+	float HalfWidth = 3.2f;   // at the waterline
+	float Crest = 0.8f;       // above the datum
+};
+/** The riprap bands of a dock line (breakwater, groin, dike); none for other kinds. */
+SAILINGSIM_API void RiprapBands(const FLakeDock& Dock, TArray<FRiprapBand>& Out);
 
 /** The bridges of a lake or coast from their OSM ways (FLakeBridge: kind, deck clearance): decks, girders, pier bents, barriers,
  *  lamp posts; rail and foot bridges in their own styles. The girders' underside sits where the physics stops a mast. */
@@ -83,6 +106,11 @@ SAILINGSIM_API bool KitDrawsPiers(const FLakeData& Lake);
 SAILINGSIM_API float BridgeWidth(const FLakeBridge& Bridge);
 /** The top of a bridge's road surface (m above the water/datum). */
 SAILINGSIM_API float BridgeRoadZ(const FLakeBridge& Bridge);
+
+/** Graphics G6: the G2 houses (FLakeData::Houses) by HouseTileM tile of their centre, leaving out the marina's own buildings. */
+SAILINGSIM_API void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int32>>& Out);
+/** The houses' walls, roofs, eaves and (full detail) windows, doors and chimneys (HouseKit.cpp). */
+SAILINGSIM_API void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Houses, FKitGeometry& Out);
 
 /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
@@ -111,6 +139,11 @@ public:
 	static constexpr double ShoreTileM = 1000.0;
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
 	static TArray<UStaticMesh*> BakeShore(const FString& LakeName);
+
+	/** Graphics G6: the G2 houses in 500 m tiles (by house centre): SM_Houses_<Lake>_<x>_<y>. */
+	static constexpr double HouseTileM = 500.0;
+	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
+	static TArray<UStaticMesh*> BakeHouses(const FString& LakeName);
 
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);

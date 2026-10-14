@@ -61,6 +61,8 @@ public:
 	const TArray<FVector2D>& UV1() const { return UVNormal; }
 	const TArray<FVector2D>& UV2() const { return UVLeech; }
 	void ComputeNormals(TArray<FVector>& Out) const;
+	/** Graphics G6: tangents along the chord (UV0.x), for M_SailCloth's creases (a tangent-space normal). */
+	void ComputeTangents(TArray<struct FProcMeshTangent>& Out) const;
 	void Triangles(TArray<int32>& Out) const;
 
 	/** A point on the sail at normalized chord u and height v (bilinear on the current cloth), and the sail's normal

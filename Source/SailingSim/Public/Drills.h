@@ -50,6 +50,9 @@ public:
 	const TArray<FString>& GetSteps() const { return Steps; }
 	int32 GetStep() const { return Step; }
 	FString GetStatus() const { return Status; }
+	/** How a finished drill went, as the briefing's debrief keys: clean/contact, done, proper/improper, gentle/hard. */
+	const FString& GetOutcome() const { return Outcome; }
+	static TArray<FString> Outcomes(ESailingDrill Drill);
 
 	/** Marks to sail around (world XY, meters) and the next one to round. */
 	const TArray<FVector2D>& GetMarks() const { return Marks; }
@@ -62,7 +65,7 @@ private:
 	ESailingDrill Drill = ESailingDrill::None;
 	TArray<FString> Steps;
 	int32 Step = 0;
-	FString Status;
+	FString Status, Outcome;
 	bool bComplete = false;
 	double Elapsed = 0.0;
 	double Hold = 0.0;

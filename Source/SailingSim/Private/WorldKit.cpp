@@ -31,6 +31,8 @@ const FKitLookDesc& KitLook(EKitLook Look)
 		{ TEXT("Steel"), FLinearColor(0.30f, 0.36f, 0.40f), 0.55f, 5.f, 0.f, 0.6f },    // painted steel girders
 		{ TEXT("LampGlow"), FLinearColor(1.0f, 0.78f, 0.50f), 0.4f, 0.f, 0.f, 0.f },    // sodium/LED lamp heads (glow at night)
 		{ TEXT("Riprap"), FLinearColor(0.50f, 0.47f, 0.42f), 0.9f, 7.f, 0.f, 0.f },     // granite and limestone riprap
+		{ TEXT("HouseWall"), FLinearColor(0.7f, 0.66f, 0.58f), 0.8f, 0.f, 0.f, 0.f },   // M_HouseKitWall: colour and finish per vertex
+		{ TEXT("HouseRoof"), FLinearColor(0.2f, 0.2f, 0.2f), 0.85f, 0.f, 0.f, 0.f },    // M_HouseKitRoof: NAIP roof colour per vertex
 	};
 	return Looks[int32(Look)];
 }
@@ -46,9 +48,66 @@ void FKitSection::Quad(const FVector& A, const FVector& B, const FVector& C, con
 	const int32 I = V.Num();
 	const FVector Nrm = FVector::CrossProduct(D - A, B - A).GetSafeNormal();
 	const FProcMeshTangent Tg((B - A).GetSafeNormal(), false);
-	for (const FVector& P : { A, B, C, D }) { V.Add(P * 100.0); N.Add(Nrm); Tan.Add(Tg); }
+	for (const FVector& P : { A, B, C, D }) { V.Add(P * 100.0); N.Add(Nrm); Tan.Add(Tg); Col.Add(Paint); UV1.Add(Tag); }
 	UV.Append({ UA, UB, UC, UD });
 	T.Append({ I, I + 1, I + 2, I, I + 2, I + 3 });
+}
+
+void FKitSection::Tri(const FVector& A, const FVector& B, const FVector& C, const FVector2D& UA, const FVector2D& UB, const FVector2D& UC)
+{
+	// Front face up (or toward +Z's side): the same convention as Quad (normal = (C - A) x (B - A)).
+	FVector P1 = B, P2 = C;
+	FVector2D U1 = UB, U2 = UC;
+	if (FVector::CrossProduct(C - A, B - A).Z < 0.0) { Swap(P1, P2); Swap(U1, U2); }
+	const int32 I = V.Num();
+	const FVector Nrm = FVector::CrossProduct(P2 - A, P1 - A).GetSafeNormal();
+	const FProcMeshTangent Tg((P1 - A).GetSafeNormal(), false);
+	// Stored as a quad with its last corner repeated: FKitGeometry::SplitTiles walks the vertices four at a time.
+	for (const FVector& P : { A, P1, P2, P2 }) { V.Add(P * 100.0); N.Add(Nrm); Tan.Add(Tg); Col.Add(Paint); UV1.Add(Tag); }
+	UV.Append({ UA, U1, U2, U2 });
+	T.Append({ I, I + 1, I + 2, I, I + 2, I + 3 });
+}
+
+/** Ear-clipping triangulation of a simple polygon (no holes). Returns triangle indices into Points. */
+TArray<int32> KitTriangulate(const TArray<FVector2D>& Points)
+{
+	TArray<int32> Result;
+	TArray<int32> Idx;
+	const int32 N = Points.Num();
+	if (N < 3) return Result;
+	double Area = 0.0;
+	for (int32 I = 0; I < N; ++I) Area += FVector2D::CrossProduct(Points[I], Points[(I + 1) % N]);
+	for (int32 I = 0; I < N; ++I) Idx.Add(Area > 0.0 ? I : N - 1 - I);
+	int32 Guard = 0;
+	while (Idx.Num() > 3 && Guard++ < N * N)
+	{
+		bool bClipped = false;
+		for (int32 I = 0; I < Idx.Num(); ++I)
+		{
+			const int32 A = Idx[(I + Idx.Num() - 1) % Idx.Num()], B = Idx[I], C = Idx[(I + 1) % Idx.Num()];
+			const FVector2D PA = Points[A], PB = Points[B], PC = Points[C];
+			if (FVector2D::CrossProduct(PB - PA, PC - PB) <= 0.0) continue; // reflex
+			bool bInside = false;
+			for (int32 K : Idx)
+			{
+				if (K == A || K == B || K == C) continue;
+				const FVector2D P = Points[K];
+				if (FVector2D::CrossProduct(PB - PA, P - PA) > 0.0 && FVector2D::CrossProduct(PC - PB, P - PB) > 0.0 && FVector2D::CrossProduct(PA - PC, P - PC) > 0.0)
+				{
+					bInside = true;
+					break;
+				}
+			}
+			if (bInside) continue;
+			Result.Append({ A, B, C });
+			Idx.RemoveAt(I);
+			bClipped = true;
+			break;
+		}
+		if (!bClipped) break;
+	}
+	if (Idx.Num() == 3) Result.Append({ Idx[0], Idx[1], Idx[2] });
+	return Result;
 }
 
 void FKitSection::Box(const FVector& C, const FVector& E, float YawDeg, bool bBottom)
@@ -103,7 +162,11 @@ void FKitGeometry::SplitTiles(double TileM, TMap<FIntPoint, FKitGeometry>& Out) 
 			const FVector C = 0.25 * (Src.V[Q] + Src.V[Q + 1] + Src.V[Q + 2] + Src.V[Q + 3]);
 			FKitSection& D = Out.FindOrAdd(FIntPoint(FMath::FloorToInt32(C.X / TileCm), FMath::FloorToInt32(C.Y / TileCm))).Sections[K];
 			const int32 I = D.V.Num();
-			for (int32 J = 0; J < 4; ++J) { D.V.Add(Src.V[Q + J]); D.N.Add(Src.N[Q + J]); D.UV.Add(Src.UV[Q + J]); D.Tan.Add(Src.Tan[Q + J]); }
+			for (int32 J = 0; J < 4; ++J)
+			{
+				D.V.Add(Src.V[Q + J]); D.N.Add(Src.N[Q + J]); D.UV.Add(Src.UV[Q + J]); D.Tan.Add(Src.Tan[Q + J]);
+				D.Col.Add(Src.Col[Q + J]); D.UV1.Add(Src.UV1[Q + J]);
+			}
 			D.T.Append({ I, I + 1, I + 2, I, I + 2, I + 3 });
 		}
 	}
@@ -147,7 +210,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		{
 			const FKitSection& D = KV.Value.Sections[K];
 			if (D.V.Num() == 0) continue;
-			M->CreateMeshSection_LinearColor(K, D.V, D.T, D.N, D.UV, {}, D.Tan, false);
+			M->CreateMeshSection(K, D.V, D.T, D.N, D.UV, D.UV1, {}, {}, D.Col, D.Tan, false);
 			M->SetMaterial(K, Material(EKitLook(K)));
 		}
 		Out.Add(M);
@@ -176,6 +239,36 @@ bool KitDrawsPiers(const FLakeData& Lake)
 	return Length < 50000.0;
 }
 
+void RiprapBands(const FLakeDock& D, TArray<FRiprapBand>& Out)
+{
+	const bool bDike = D.Kind == TEXT("dike");
+	if (D.Kind != TEXT("breakwater") && D.Kind != TEXT("groin") && !bDike) return;
+	if (!bDike)
+	{
+		FRiprapBand B;
+		B.Points = D.Points;
+		if (D.Width > 0.f) B.HalfWidth = FMath::Clamp(0.5f * D.Width, 2.f, 8.f);
+		if (D.Crest > 0.f) B.Crest = FMath::Clamp(D.Crest, 0.5f, 3.f);
+		Out.Add(MoveTemp(B));
+		return;
+	}
+	// Graphics G7: a dike (the Texas City Dike, 41 m across with a road on top): a band of rock along each edge, the
+	// terrain between them.
+	const float Off = FMath::Max(0.5f * D.Width - 3.5f, 3.f);
+	for (const float Side : { -1.f, 1.f })
+	{
+		FRiprapBand B;
+		B.Crest = FMath::Clamp(D.Crest > 0.f ? D.Crest - 0.3f : 1.5f, 0.8f, 3.f);
+		for (int32 I = 0; I < D.Points.Num(); ++I)
+		{
+			const FVector2D Prev = D.Points[FMath::Max(I - 1, 0)], Next = D.Points[FMath::Min(I + 1, D.Points.Num() - 1)];
+			const FVector2D Dir = (Next - Prev).GetSafeNormal();
+			B.Points.Add(D.Points[I] + FVector2D(-Dir.Y, Dir.X) * (Side * Off));
+		}
+		Out.Add(MoveTemp(B));
+	}
+}
+
 void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 {
 	const bool bPiers = KitDrawsPiers(Lake);
@@ -186,32 +279,35 @@ void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 		X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16;
 		return (X & 0xFFFF) / 65535.f - 0.5f;
 	};
+	TArray<FRiprapBand> Bands;
 	for (const FLakeDock& D : Lake.Docks)
 	{
 		if (MarinaBox.bIsValid && MarinaBox.IsInside(D.Points[0])) continue;
-		const bool bRiprap = D.Kind == TEXT("breakwater");
-		if (!bRiprap && !bPiers) continue;
-		if (bRiprap)
+		Bands.Reset();
+		RiprapBands(D, Bands);
+		for (const FRiprapBand& Band : Bands)
 		{
-			// Riprap: a rubble mound about 6 m across and 0.8 m above the water (the core: ABridgesActor piles boulders over
-			// it on Medium and up), its cross-sections jittered every 3 m; it runs 1.5 m below the water.
+			// Riprap: a rubble mound (6.4 m across and 0.8 m above the water by default; Graphics G7: a jetty's measured
+			// width and crest) as the core: ABridgesActor piles boulders over it on Medium and up. Its cross-sections are
+			// jittered every 3 m; it runs 1.5 m below the water.
 			FKitSection& S = G[EKitLook::Riprap];
-			for (int32 I = 1; I < D.Points.Num(); ++I)
+			const float WScale = Band.HalfWidth / 3.2f, C = Band.Crest;
+			for (int32 I = 1; I < Band.Points.Num(); ++I)
 			{
-				const FVector2D A = D.Points[I - 1], B = D.Points[I];
+				const FVector2D A = Band.Points[I - 1], B = Band.Points[I];
 				const double Len = FVector2D::Distance(A, B);
 				if (Len < 0.5) continue;
 				const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
 				const int32 Steps = FMath::Max(1, int32(Len / 3.0));
 				auto Section = [&](int32 K, FVector Out[5])
 				{
-					const FVector2D C = A + Dir * (Len * K / Steps);
+					const FVector2D Ctr = A + Dir * (Len * K / Steps);
 					static const float Across[5] = { -3.2f, -1.6f, 0.f, 1.6f, 3.2f };
-					static const float Up[5] = { -1.5f, 0.4f, 0.8f, 0.4f, -1.5f };   // Graphics G2: a core under the boulders
+					const float Up[5] = { -1.5f, 0.5f * C, C, 0.5f * C, -1.5f };   // Graphics G2: a core under the boulders
 					for (int32 J = 0; J < 5; ++J)
 					{
-						const FVector2D P = C + Left * (Across[J] + 0.5f * Jitter(C, J * 7 + 1));
-						Out[J] = FVector(P.X, P.Y, Up[J] + (J == 0 || J == 4 ? 0.f : 0.7f * Jitter(C, J * 7 + 2)));
+						const FVector2D P = Ctr + Left * (Across[J] * WScale + 0.5f * Jitter(Ctr, J * 7 + 1));
+						Out[J] = FVector(P.X, P.Y, Up[J] + (J == 0 || J == 4 ? 0.f : 0.7f * Jitter(Ctr, J * 7 + 2)));
 					}
 				};
 				FVector Prev[5], Next[5];
@@ -222,13 +318,20 @@ void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 					const float U0 = float(Len * (K - 1) / Steps), U1 = float(Len * K / Steps);
 					for (int32 J = 0; J < 4; ++J)
 					{
-						S.Quad(Prev[J], Prev[J + 1], Next[J + 1], Next[J], { U0, float(J) * 1.8f }, { U0, float(J + 1) * 1.8f }, { U1, float(J + 1) * 1.8f }, { U1, float(J) * 1.8f });
+						S.Quad(Prev[J], Prev[J + 1], Next[J + 1], Next[J], { U0, float(J) * 1.8f * WScale }, { U0, float(J + 1) * 1.8f * WScale }, { U1, float(J + 1) * 1.8f * WScale }, { U1, float(J) * 1.8f * WScale });
 					}
 					FMemory::Memcpy(Prev, Next, sizeof(Prev));
 				}
 			}
+		}
+		if (Bands.Num()) continue;
+		if (D.Kind == TEXT("seawall"))
+		{
+			// Graphics G7: the Galveston Seawall's end inside the bay grid: a concrete wall from below the beach to its crest.
+			for (int32 I = 1; I < D.Points.Num(); ++I) G[EKitLook::Concrete].Span(D.Points[I - 1], D.Points[I], FMath::Max(D.Width, 3.f), -1.f, D.Crest > 0.f ? D.Crest : 4.6f);
 			continue;
 		}
+		if (D.Kind == TEXT("dike") || D.Kind == TEXT("floating") || !bPiers) continue;
 		// A private pier: 1.8 m of decking 0.6 m above the pool on pilings every 3 m, both sides.
 		for (int32 I = 1; I < D.Points.Num(); ++I)
 		{
@@ -246,6 +349,41 @@ void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 					G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -2.5f), 0.12f, 3.4f, 6);
 				}
 			}
+		}
+	}
+	// Graphics G7: the G2 lidar's decks on piles (Inputs/g2/piers): the deck at its measured height, a fascia board round
+	// the edge and pilings every 3 m along it, down into the bed.
+	for (const FLakeDeck& Deck : Lake.Decks)
+	{
+		TArray<FVector2D> Pts = Deck.Outline;
+		if (Pts.Num() > 3 && FVector2D::Distance(Pts[0], Pts.Last()) < 0.05) Pts.Pop();
+		if (Pts.Num() < 3) continue;
+		const float Z = Deck.Deck, Under = Z - 0.35f;
+		const TArray<int32> Ids = KitTriangulate(Pts);
+		FKitSection& Top = G[EKitLook::Decking];
+		for (int32 I = 0; I + 2 < Ids.Num(); I += 3)
+		{
+			const FVector2D A = Pts[Ids[I]], B = Pts[Ids[I + 1]], C = Pts[Ids[I + 2]];
+			Top.Tri(FVector(A.X, A.Y, Z), FVector(B.X, B.Y, Z), FVector(C.X, C.Y, Z), FVector2D(A.Y, A.X), FVector2D(B.Y, B.X), FVector2D(C.Y, C.X));
+		}
+		FKitSection& Rim = G[EKitLook::Decking];
+		FKitSection& Piles = G[EKitLook::Pilings];
+		double Run = 0.0;
+		for (int32 I = 0; I < Pts.Num(); ++I)
+		{
+			const FVector2D A = Pts[I], B = Pts[(I + 1) % Pts.Num()];
+			const double Len = FVector2D::Distance(A, B);
+			if (Len < 0.05) continue;
+			// The fascia, both faces (the outline's winding is not known here).
+			Rim.Quad(FVector(A.X, A.Y, Under), FVector(B.X, B.Y, Under), FVector(B.X, B.Y, Z), FVector(A.X, A.Y, Z), { 0.f, 0.f }, { float(Len), 0.f }, { float(Len), 0.35f }, { 0.f, 0.35f });
+			Rim.Quad(FVector(B.X, B.Y, Under), FVector(A.X, A.Y, Under), FVector(A.X, A.Y, Z), FVector(B.X, B.Y, Z), { 0.f, 0.f }, { float(Len), 0.f }, { float(Len), 0.35f }, { 0.f, 0.35f });
+			for (double X = FMath::Fmod(3.0 - FMath::Fmod(Run, 3.0), 3.0); X <= Len; X += 3.0)
+			{
+				const FVector2D P = A + (B - A) * (X / Len);
+				const double Bed = FMath::Min(Lake.Terrain.HeightAt(P.X, P.Y), 0.0) - 0.5;
+				Piles.Cylinder(FVector(P.X, P.Y, Bed), 0.15f, float(Under - Bed), 6);
+			}
+			Run += Len;
 		}
 	}
 }
@@ -393,6 +531,27 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeShore(const FString& LakeName)
 	return Out;
 }
 
+TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || Lake.Houses.Num() == 0) return Out;
+	TMap<FIntPoint, TArray<int32>> Tiles;
+	HouseTiles(Lake, Tiles);
+	int64 Quads = 0;
+	for (const auto& KV : Tiles)
+	{
+		FKitGeometry G;
+		BuildHouseGeometry(Lake, KV.Value, G);
+		Quads += G.NumQuads();
+		if (UStaticMesh* M = BakeMesh(G, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Houses_") + LakeName, KV.Key))) Out.Add(M);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Baked the %s houses: %d houses, %lld quads in %d tiles"), *LakeName, Lake.Houses.Num(), Quads, Out.Num());
+#endif
+	return Out;
+}
+
 TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 {
 	TArray<UStaticMesh*> Out;
@@ -430,7 +589,9 @@ UStaticMesh* UWorldKitLibrary::BakeMesh(const FKitGeometry& Geometry, const FStr
 	TVertexInstanceAttributesRef<float> Signs = Attr.GetVertexInstanceBinormalSigns();
 	TVertexInstanceAttributesRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
 	TPolygonGroupAttributesRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
-	UVs.SetNumChannels(1);
+	// Graphics G6: a second UV channel and vertex colours for the looks that carry them (the houses).
+	TVertexInstanceAttributesRef<FVector4f> Colors = Attr.GetVertexInstanceColors();
+	UVs.SetNumChannels(2);
 	Mesh->GetStaticMaterials().Reset();
 	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
 	{
@@ -453,6 +614,8 @@ UStaticMesh* UWorldKitLibrary::BakeMesh(const FKitGeometry& Geometry, const FStr
 			Tangents[VI] = FVector3f(S.Tan[I].TangentX);
 			Signs[VI] = 1.f;
 			UVs.Set(VI, 0, FVector2f(S.UV[I]));
+			UVs.Set(VI, 1, FVector2f(S.UV1[I]));
+			Colors[VI] = FVector4f(FLinearColor::FromSRGBColor(S.Col[I]));
 			Inst.Add(VI);
 		}
 		for (int32 I = 0; I + 2 < S.T.Num(); I += 3)

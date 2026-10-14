@@ -294,6 +294,26 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   Cirrus on `M_SkyDome` is stretched value noise, run only where the map has cirrus. `MATERIALS_ONLY=build_sky_dome,...`
   makes `make_materials.py` rebuild just those (otherwise every material is resaved). Two sessions sharing this checkout
   take turns on the GPU (builds, run-game, captures, benches) and stage explicit paths only.
+- Fix round (Graphics G6, `docs/graphics-6/`): houses from the G2 footprints (`Tools/terrain/build_houses.py` ->
+  `<World>.houses`, `HouseKit.cpp`, baked by `scripts/make-houses.sh` to `/Game/World/Baked/SM_Houses_*`); trees from the
+  G2 lidar crowns (`Tools/terrain/build_crowns.py` -> `<World>.crowns`, `PlaceCrownTrees`) in three bands (leaf cards to
+  250 m on High, shadowed opaque crowns to 1 km, unshadowed beyond: `-SailingNearTrees`, `-SailingMidTrees`,
+  `-SailingFarTreeShadows=1`; `-SailingClassicTrees`/`-SailingClassicHouses` compare). Marina neighbours wear one of six
+  `build_berthed.py` dresses (`SM_<Tag>_Berthed[_1..5]`); the player's keelboat wears dress 0 while tied up in her slip.
+  The crew's vests are tailored over each polo (`Tools/blender/build_vest.py`, run by `make-crew-clothes.sh`; `PIECES=Vest`
+  imports only them). `import_boats.py` takes `dress`, `gearonly`, `j22only`; `import_world.py` takes `ONLY=a,b`.
+  Reference photos (faces, never commit): `Data/Reference/raw/j22-lessons`. Gotchas: a new BMesh face's normal is zero
+  until `normal_update()`; Unreal's FBX import flips V; `env.sh` sets `-e` (a non-matching `grep` ends the script).
+- Wiring (Graphics G7, `docs/graphics-7/`): learning content in `Content/Learning` (from `Inputs/drills`, staged loose;
+  edit `Inputs/drills` and copy, then `python3 Inputs/drills/validate.py`): `FLearningContent`, `FLearningEvents` (the 63
+  tip events), `FLearningCoach` (`Learning.h`); briefing and quiz are `ESailScreen::Briefing`/`Quiz`, opened by
+  `ASailingHUD::WatchDrill` in learning mode (`-SailingDrill=<id> -SailingFrontEnd=Briefing|Quiz` for stills); a drill step
+  change must keep `SailingSim.Drills.LearningContent` green. Sample pack: `scripts/import-audio.sh` imports
+  `Inputs/audio/Samples` to `/Game/Audio/Pack` (`SailingSound::PackLoops`/`PackShots`, `USailingWorldSamples`). Coast piers:
+  `Tools/venv/bin/python Tools/coast/build_piers.py` -> `GalvestonBay.piers` (`FLakeData::LoadPiers`: lidar decks, riprap,
+  inferred `floating` walkways, `MooredBoats` drawn by `ACoastMarinasActor` via `SpawnBerthedBoats`), then
+  `scripts/bake-shore.sh GalvestonBay`; `-SailingNoPiers`, `-SailingPiersSkip=decks,riprap,walkways,boats` compare.
+  `FKitGeometry::SplitTiles` walks four vertices at a time: add triangles with `FKitSection::Tri` (a degenerate quad).
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

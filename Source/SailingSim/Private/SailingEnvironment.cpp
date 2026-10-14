@@ -208,6 +208,21 @@ void ASailingEnvironment::BeginPlay()
 		WeatherMapTexture->CompressionSettings = TC_HDR;
 		WeatherMapTexture->UpdateResource();
 		if (CloudMaterial) CloudMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
+		// Graphics G6 (measuring): each layer's extinction relative to CloudDensity, -SailingCloudLayerExt=<cu>,<st>,<storm>,<rain>
+		// (the material's LayerExtinction default otherwise).
+		FString LayerExt;
+		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudLayerExt="), LayerExt, false))
+		{
+			TArray<FString> Parts;
+			LayerExt.ParseIntoArray(Parts, TEXT(","));
+			if (Parts.Num() == 4)
+			{
+				CloudMaterial->SetVectorParameterValue(TEXT("LayerExtinction"), FLinearColor(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]),
+					FCString::Atof(*Parts[2]), FCString::Atof(*Parts[3])));
+			}
+		}
+		float MaxStepDepth = 0.f; // measuring: -SailingCloudStepDepth=<optical depth> (the material's MaxStepDepth otherwise)
+		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudStepDepth="), MaxStepDepth)) CloudMaterial->SetScalarParameterValue(TEXT("MaxStepDepth"), MaxStepDepth);
 		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
 		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudNoise="), NoisePath))
 		{
@@ -506,6 +521,20 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 				W.Sky.Span(Base, Top);
 				C->SetLayerBottomAltitude(float(FMath::Max(0.0, Base - 0.05)));
 				C->SetLayerHeight(float(FMath::Max(0.6, Top - Base + 0.1)));
+				// Graphics G6: what the material needs to know its own march step (slab km, samples, the distance below
+				// which the sample count drops in proportion, the tracing cap): it keeps each step's optical depth bounded.
+				if (CloudMaterial)
+				{
+					static IConsoleVariable* MaxCount = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"));
+					static IConsoleVariable* FullAt = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount"));
+					const float Samples = FMath::Max(2.f, FMath::Min(UVolumetricCloudComponent::BaseViewRaySampleCount * C->ViewSampleCountScale,
+						MaxCount ? MaxCount->GetFloat() : 96.f));
+					CloudMaterial->SetVectorParameterValue(TEXT("Tracer"), FLinearColor(C->LayerHeight, Samples, FullAt ? FullAt->GetFloat() : 15.f, C->TracingMaxDistance));
+					static IConsoleVariable* ShadowMax = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.Shadow.ViewRaySampleMaxCount"));
+					const float ShadowSamples = FMath::Max(2.f, FMath::Min(UVolumetricCloudComponent::BaseShadowRaySampleCount * C->ShadowViewSampleCountScale,
+						ShadowMax ? ShadowMax->GetFloat() : 80.f));
+					CloudMaterial->SetVectorParameterValue(TEXT("TracerShadow"), FLinearColor(C->ShadowTracingDistance, ShadowSamples, 0.f, 0.f));
+				}
 			}
 			else
 			{
