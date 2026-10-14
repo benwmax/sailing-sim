@@ -5,6 +5,7 @@
 #include "WorldKit.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "SailingSettings.h"
 
 using namespace Sailing;
 
@@ -50,6 +51,58 @@ void ABridgesActor::BeginPlay()
 	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
 	const int32 ShoreBaked = SpawnKitTiles(this, ShoreTiles, TEXT("Shore_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
 	BuildTraffic();
+	// Graphics G2 (Medium and up): the riprap is boulders. The baked mound is only its core now (WorldKit.cpp); the
+	// world kit's six limestone blocks are piled over it, five across every 1.2 m, each sized, tipped and turned.
+	int32 Boulders = 0;
+	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
+	{
+		constexpr int32 NumRocks = 6;
+		TArray<FTransform> RockX[NumRocks];
+		const FBox2D MarinaBox = Lake.Marina.Bounds();
+		uint32 Seed = 11;
+		auto Rand = [&Seed]() { Seed ^= Seed << 13; Seed ^= Seed >> 17; Seed ^= Seed << 5; return (Seed & 0xFFFFFF) / float(0xFFFFFF); };
+		for (const FLakeDock& D : Lake.Docks)
+		{
+			if (D.Kind != TEXT("breakwater") || (MarinaBox.bIsValid && MarinaBox.IsInside(D.Points[0]))) continue;
+			for (int32 I = 1; I < D.Points.Num(); ++I)
+			{
+				const FVector2D A = D.Points[I - 1], B = D.Points[I];
+				const double Len = FVector2D::Distance(A, B);
+				if (Len < 0.5) continue;
+				const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
+				for (double T = 0.0; T < Len; T += 1.2)
+				{
+					for (int32 K = -2; K <= 2; ++K)
+					{
+						const float Across = K * 1.3f + (Rand() - 0.5f) * 0.7f;
+						const float Crest = 1.4f * (1.f - FMath::Square(Across / 3.4f)) - 0.2f;
+						const FVector2D P = A + Dir * (T + (Rand() - 0.5f) * 0.8) + Left * Across;
+						const float Size = 0.9f + 0.9f * Rand();
+						const int32 Kind = FMath::Min(int32(Rand() * NumRocks), NumRocks - 1);
+						RockX[Kind].Add(FTransform(FRotator((Rand() - 0.5f) * 50.f, Rand() * 360.f, (Rand() - 0.5f) * 50.f),
+							FVector(P.X, P.Y, Crest - 0.3f * Size) * CmPerMeter, FVector(Size)));
+					}
+				}
+			}
+		}
+		for (int32 K = 0; K < NumRocks; ++K)
+		{
+			UStaticMesh* Rock = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Props/SM_Rock_%d.SM_Rock_%d"), K, K));
+			if (!Rock || RockX[K].Num() == 0) continue;
+			UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+			C->SetMobility(Mobility);
+			C->SetupAttachment(RootComponent);
+			C->SetStaticMesh(Rock);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetCullDistances(0, 4000.f * 100.f);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+			C->RegisterComponent();
+			C->AddInstances(RockX[K], false, true);
+			Tiled.Add(C);
+			Boulders += RockX[K].Num();
+		}
+	}
+	UE_LOG(LogSailing, Display, TEXT("Riprap: %d boulders"), Boulders);
 	UE_LOG(LogSailing, Display, TEXT("Bridges %s: %d ways, %d quads in %d tiles (%d baked), %d lanes, %d vehicles; shore %d quads in %d tiles (%d baked)"), *Lake.FileName,
 		Lake.Bridges.Num(), All.NumQuads(), Tiles.Num(), Baked, Lanes.Num(), Vehicles.Num(), Shore.NumQuads(), ShoreTiles.Num(), ShoreBaked);
 }

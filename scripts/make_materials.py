@@ -455,14 +455,29 @@ def build_terrain():
 float3 p = P * 0.01;
 float n = sin(p.x * 0.11 + sin(p.y * 0.07) * 2.0) * sin(p.y * 0.13 + sin(p.x * 0.05) * 2.0);
 float m = sin(p.x * 1.3 + p.y * 0.7) * sin(p.y * 1.7 - p.x * 0.4);
-return C * (0.88 + 0.12 * n + 0.05 * m);
+// Graphics G2: finer mottling (gravel, tufts, bare patches) so a bank isn't flat paint up close.
+float f = sin(p.x * 4.1 + sin(p.y * 3.3) * 1.7) * sin(p.y * 4.7 + sin(p.x * 2.9) * 1.9) * sin(p.x * 9.3 - p.y * 7.1);
+float3 col = C * (0.88 + 0.12 * n + 0.05 * m) * (0.93 + 0.07 * f);
+// The wet band: banks are dark and glossy from the water up the swash, about half a metre (ragged); just under the
+// surface the bed takes the water's olive cast.
+float h = (P.z - WaterZ) * 0.01;
+float wet = 1.0 - smoothstep(0.05, 0.45 + 0.2 * n + 0.08 * f, h);
+float under = smoothstep(0.0, -0.35, h);
+col = lerp(col, col * 0.55, wet);
+col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
+Rough = lerp(0.92, 0.32, wet * (1.0 - under));
+return col;
 """
-    c = custom(mat, code, ["C", "P"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100)
+    c = custom(mat, code, ["C", "P", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+               extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
     connect(pos, "", c, "P")
-    rough = node(mat, unreal.MaterialExpressionConstant, -400, 300, r=0.92)
+    wz = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 350)
+    wz.set_editor_property("collection", world_collection())
+    wz.set_editor_property("parameter_name", "WaterZ")
+    connect(wz, "", c, "WaterZ")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
@@ -1122,6 +1137,8 @@ float alt = Alt * 0.01;         // m above the water
 // The map lies in the clouds' drifting frame (world = field + Drift).
 float2 wuv = (p.xy - Drift.xy - WRect.xy) / WRect.z;
 float4 w = Wx.SampleLevel(WxSampler, float2(wuv.y, wuv.x), 0);
+// Graphics G2: no cloud past the map's edge (32 km out): its clamped edge texels smeared into streaks toward the horizon.
+w *= saturate(min(min(wuv.x, 1.0 - wuv.x), min(wuv.y, 1.0 - wuv.y)) * 25.0);
 float altKm = alt * 0.001;
 // Layer profiles: flat bases, rounded tops.
 float hCu = (altKm - Cu.y) / max(Cu.z - Cu.y, 0.05);
@@ -1196,7 +1213,9 @@ AO = 1.0;
     float detailMip = clamp(log2(foot / 10.4), 0.0, 5.0);       // detail texel: 667 m / 64
     float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
     float3 qw = q + float3(cw * 1.3, 0.0) + float3(0.0, 0.0, 0.2 * cw.x);
-    float4 sh = Shape.SampleLevel(ShapeSampler, qw * 0.25, shapeMip);
+    // Vertically the shape varies 2.4 times faster than across (a cloud is a few hundred metres to 2 km deep): at one rate a
+    // lone peak of the noise stood as a thin column under thin cloud.
+    float4 sh = Shape.SampleLevel(ShapeSampler, qw * float3(0.25, 0.25, 0.6), shapeMip);
     float lowFbm = sh.g * 0.5 + sh.b * 0.3 + sh.a * 0.2;     // the 500 m and 250 m octaves carry the billows
     // Perlin-Worley remapped by the low Worley octaves (Nubis): billows packed into cells, 0..1.
     float base = saturate((sh.r - (lowFbm - 1.0)) / (2.0 - lowFbm) * 1.9 - 0.75);
@@ -1555,12 +1574,14 @@ def world_collection():
         mpc.set_editor_property("vector_parameters", [p])
     # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
     scalars = list(mpc.get_editor_property("scalar_parameters"))
-    if not any(str(x.get_editor_property("parameter_name")) == "Night" for x in scalars):
-        n = unreal.CollectionScalarParameter()
-        n.set_editor_property("parameter_name", "Night")
-        n.set_editor_property("default_value", 0.0)
-        scalars.append(n)
-        mpc.set_editor_property("scalar_parameters", scalars)
+    # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
+    for name in ("Night", "WaterZ"):
+        if not any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
+            n = unreal.CollectionScalarParameter()
+            n.set_editor_property("parameter_name", name)
+            n.set_editor_property("default_value", 0.0)
+            scalars.append(n)
+    mpc.set_editor_property("scalar_parameters", scalars)
     unreal.EditorAssetLibrary.save_loaded_asset(mpc)
     return mpc
 
@@ -1911,6 +1932,9 @@ float2 t = normalize(float2(-n.y, n.x) + 1e-4);
 float u = dot(WP.xy, t) / 100.0;
 float3 c = D0;
 float pat = D1.x, height = D1.y, seed = D1.z;
+// Graphics G2: pattern + 10 = a near house with modelled windows (Tools/blender/build_houses_near.py): no painted ones.
+float modelled = step(9.5, pat);
+pat -= 10.0 * modelled;
 // G: the instance's ground height (m, custom data 9).
 float v = WP.z / 100.0 - G;
 float r = 0.8;
@@ -1935,6 +1959,7 @@ else
 float wu = frac(u / 3.2 + seed);
 float wv = frac(v / 2.9);
 float win = step(0.25, wu) * step(wu, 0.6) * step(0.3, wv) * step(wv, 0.76) * step(floor(v / 2.9) * 2.9 + 2.3, height * 0.62) * step(0.4, v) * step(abs(n.z), 0.5);
+win *= 1.0 - modelled;
 float3 glass = float3(0.03, 0.035, 0.04);
 c = lerp(c, glass, win);
 r = lerp(r, 0.05, win);
@@ -2012,6 +2037,11 @@ WORLD_LIBRARY = {
     "Steel": ((0.30, 0.36, 0.40), 0.55, 5.0, 0.0, 0.6),
     "LampGlow": ((1.0, 0.78, 0.50), 0.4, 0.0, 0.0, 0.0, 40.0),
     "Riprap": ((0.50, 0.47, 0.42), 0.9, 7.0, 0.0, 0.0),
+    # Shore plants (Graphics G2, Tools/blender/build_reeds.py): cattail and rush blades, cattail heads.
+    "Reed": ((0.17, 0.21, 0.08), 0.75, 2.0, 0.0, 0.0),
+    "ReedHead": ((0.20, 0.12, 0.06), 0.85, 0.0, 0.0, 0.0),
+    # Near houses (Graphics G2): front doors.
+    "Door": ((0.30, 0.10, 0.06), 0.45, 0.0, 0.0, 0.0),
     # Landmarks (Tools/blender/build_landmarks.py slots).
     "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
     "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),

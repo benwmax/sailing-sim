@@ -273,6 +273,9 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		const double Mean = FMath::Max(W.Wind.SpeedKnots * kKnot, 0.5);
 		UKismetMaterialLibrary::SetVectorParameterValue(this, WorldCollection, TEXT("Wind"),
 			FLinearColor(float(V.X / FMath::Max(Speed, 1e-3)), float(V.Y / FMath::Max(Speed, 1e-3)), float(Speed), float(FMath::Clamp(Speed / Mean - 1.0, 0.0, 1.0))));
+		// Graphics G2: the water's height, for the wet band along the shores (M_Terrain).
+		if (!WaterActor.IsValid()) { TActorIterator<AWaterSurface> It(GetWorld()); if (It) WaterActor = *It; }
+		if (WaterActor.IsValid()) UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("WaterZ"), float(WaterActor->GetActorLocation().Z));
 		// Street lamps, lit windows and vehicle lights come on through dusk (and under a storm's darkness).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Night"),
 			FMath::Max(NightAmount, FMath::Clamp(float(W.CloudDarkness) * 1.4f - 0.6f, 0.f, 0.6f)));

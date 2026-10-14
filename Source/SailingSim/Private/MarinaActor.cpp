@@ -122,8 +122,9 @@ void AMarinaActor::Build(const FMarina& Marina)
 	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Marina"), Replaced.Num() > 0 || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralWorld")),
 		KitMaterial, Tiled);
 
-	// The breakwater: limestone riprap piled along its line (the world kit's three rocks, scaled and turned per piece).
-	TArray<FTransform> RockX[3];
+	// The breakwater: limestone riprap piled along its line (the world kit's six rocks, scaled and turned per piece).
+	constexpr int32 NumRocks = 6;
+	TArray<FTransform> RockX[NumRocks];
 	uint32 Seed = 7;
 	for (const FMarinaLine& L : Marina.Breakwaters)
 	{
@@ -141,14 +142,14 @@ void AMarinaActor::Build(const FMarina& Marina)
 					const float Crest = L.Height * (1.f - FMath::Square(Across / (0.55f * L.Width)));
 					const FVector2D P = A + Dir * (D + (MRand(++Seed) - 0.5f)) + Left * Across;
 					const float Size = 0.8f + 0.9f * MRand(++Seed);
-					const int32 Kind = int32(MHash(++Seed) % 3);
+					const int32 Kind = int32(MHash(++Seed) % NumRocks);
 					const float Pitch = (MRand(++Seed) - 0.5f) * 40.f, Yaw = MRand(++Seed) * 360.f, Roll = (MRand(++Seed) - 0.5f) * 40.f;
 					RockX[Kind].Add(FTransform(FRotator(Pitch, Yaw, Roll), FVector(P.X, P.Y, Crest - 0.25f * Size) * 100.0, FVector(Size)));
 				}
 			}
 		}
 	}
-	for (int32 K = 0; K < 3; ++K)
+	for (int32 K = 0; K < NumRocks; ++K)
 	{
 		UStaticMesh* Rock = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Props/SM_Rock_%d.SM_Rock_%d"), K, K));
 		if (!Rock || RockX[K].Num() == 0) continue;

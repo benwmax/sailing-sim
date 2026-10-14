@@ -193,8 +193,8 @@ void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 		if (!bRiprap && !bPiers) continue;
 		if (bRiprap)
 		{
-			// Riprap: a rubble mound about 6 m across and 1.6 m above the water, its cross-sections jittered every 3 m so the
-			// crest and flanks are ragged; it runs 1.5 m below the water.
+			// Riprap: a rubble mound about 6 m across and 0.8 m above the water (the core: ABridgesActor piles boulders over
+			// it on Medium and up), its cross-sections jittered every 3 m; it runs 1.5 m below the water.
 			FKitSection& S = G[EKitLook::Riprap];
 			for (int32 I = 1; I < D.Points.Num(); ++I)
 			{
@@ -207,7 +207,7 @@ void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 				{
 					const FVector2D C = A + Dir * (Len * K / Steps);
 					static const float Across[5] = { -3.2f, -1.6f, 0.f, 1.6f, 3.2f };
-					static const float Up[5] = { -1.5f, 1.0f, 1.6f, 1.0f, -1.5f };
+					static const float Up[5] = { -1.5f, 0.4f, 0.8f, 0.4f, -1.5f };   // Graphics G2: a core under the boulders
 					for (int32 J = 0; J < 5; ++J)
 					{
 						const FVector2D P = C + Left * (Across[J] + 0.5f * Jitter(C, J * 7 + 1));

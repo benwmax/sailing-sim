@@ -36,6 +36,8 @@ namespace
 		return M;
 	}
 	constexpr int32 kMaxBuildsInFlight = 4;
+	// Graphics G2: chunks this close (m, to their nearest edge) with lidar detail are meshed at 1 m.
+	constexpr double kFineTerrainM = 300.0;
 	constexpr int32 kMaxUploadsPerFrame = 3;
 
 	uint32 Hash(uint32 X)
@@ -139,6 +141,8 @@ void ALakeTerrainActor::BeginPlay()
 			FChunk& Ch = Chunks[R * ChunkCols + C];
 			Ch.Row = R;
 			Ch.Col = C;
+			const double Size = GChunkCells * T.GetCell();
+			Ch.bHasDetail = T.HasDetailIn(T.GetOriginX() + R * Size, T.GetOriginY() + C * Size, T.GetOriginX() + (R + 1) * Size, T.GetOriginY() + (C + 1) * Size);
 			UProceduralMeshComponent* Mesh = NewObject<UProceduralMeshComponent>(this);
 			Mesh->SetupAttachment(RootComponent);
 			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -150,6 +154,7 @@ void ALakeTerrainActor::BeginPlay()
 		}
 	}
 	PlaceTrees();
+	PlaceReeds();
 	PlaceBuildings();
 	PlaceBridgesAndDocks();
 	bTreesPlaced = true;
@@ -170,19 +175,26 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 	FChunkMesh M;
 	if (!Lake) return M;
 	const FLakeTerrain& T = Lake->Terrain;
-	const int32 N = GChunkCells / Step;
-	const double Cell = T.GetCell();
-	auto H = [&](int32 R, int32 C) { return T.NodeHeight(R, C); };
-	const int32 R0 = ChunkRow * GChunkCells, C0 = ChunkCol * GChunkCells;
+	// Graphics G2: Step 0 is the near level on the shore: the chunk meshed at the 1 m lidar detail's spacing (HeightAt
+	// takes the detail where a tile covers the point and the grid elsewhere in the chunk).
+	const bool bFine = Step == 0;
+	const double Cell = bFine ? T.GetDetailCell() : T.GetCell();
+	const int32 Sub = bFine ? FMath::Max(1, FMath::RoundToInt(T.GetCell() / Cell)) : 1;
+	if (bFine) Step = 1;
+	const int32 N = GChunkCells * Sub / Step;
+	const double OX = T.GetOriginX(), OY = T.GetOriginY();
+	auto H = [&](int32 R, int32 C) { return bFine ? T.HeightAt(OX + R * Cell, OY + C * Cell) : T.NodeHeight(R, C); };
+	const int32 R0 = ChunkRow * GChunkCells * Sub, C0 = ChunkCol * GChunkCells * Sub;
+	const int32 MaxR = (T.GetRows() - 1) * Sub, MaxC = (T.GetCols() - 1) * Sub;
 
 	M.Vertices.Reserve((N + 1) * (N + 1) + 4 * (N + 1));
 	for (int32 I = 0; I <= N; ++I)
 	{
 		for (int32 J = 0; J <= N; ++J)
 		{
-			const int32 R = FMath::Min(R0 + I * Step, T.GetRows() - 1), C = FMath::Min(C0 + J * Step, T.GetCols() - 1);
+			const int32 R = FMath::Min(R0 + I * Step, MaxR), C = FMath::Min(C0 + J * Step, MaxC);
 			const double Z = H(R, C);
-			M.Vertices.Add(FVector(T.GetOriginX() + R * Cell, T.GetOriginY() + C * Cell, Z) * CmPerMeter);
+			M.Vertices.Add(FVector(OX + R * Cell, OY + C * Cell, Z) * CmPerMeter);
 			const double DZX = (H(R + Step, C) - H(R - Step, C)) / (2.0 * Step * Cell);
 			const double DZY = (H(R, C + Step) - H(R, C - Step)) / (2.0 * Step * Cell);
 			const FVector Nrm = FVector(-DZX, -DZY, 1.0).GetSafeNormal();
@@ -190,11 +202,12 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 			// Texas cross-timbers colors: muddy lake bed, red-brown clay and sand at the waterline, rock on steep
 			// banks, dry grass above, darker under woods.
 			const double Slope = 1.0 - Nrm.Z;
-			const double Canopy = T.CanopyAt(T.GetOriginX() + R * Cell, T.GetOriginY() + C * Cell) / 12.0;
-			const float Noise = 0.9f + 0.2f * Rand01(uint32(R * 7919 + C * 104729));
+			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
+			const int32 GR = R / Sub, GC = C / Sub; // the colour noise stays on the 5 m grid's cells at every level
+			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
 			FLinearColor Col;
 			if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
-			else if (Z < 0.6) Col = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(R * 31 + C * 17))));
+			else if (Z < 0.6) Col = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
 			if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
 			M.Colors.Add(Col * Noise);
@@ -290,6 +303,8 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		const double CX = T.GetOriginX() + (Ch.Row + 0.5) * ChunkSize, CY = T.GetOriginY() + (Ch.Col + 0.5) * ChunkSize;
 		const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), FVector2D(CamX, CamY)) - 0.5 * ChunkSize);
 		Ch.Wanted = D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8));
+		// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
+		if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
 		if (Ch.bBuilding) ++InFlight;
 		if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(I); ++Pending; }
 	}
@@ -434,6 +449,65 @@ void ALakeTerrainActor::PlaceTrees()
 	bTreesPlaced = true;
 }
 
+void ALakeTerrainActor::PlaceReeds()
+{
+	const FLakeData* Lake = GetLake();
+	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0) return;
+	UStaticMesh* Meshes[2] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")) };
+	if (!Meshes[0] || !Meshes[1]) return;
+	const FLakeTerrain& T = Lake->Terrain;
+	// Every grid node: gentle ground from 0.4 m under the water to 0.6 m above it, in patches
+	// (a low-frequency field gates them, so coves fill and open banks stay bare), clear of the club's marina.
+	const int32 Step = 1;
+	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
+	TArray<FTransform> Out[2];
+	for (int32 R = 1; R < T.GetRows() - 1; R += Step)
+	{
+		for (int32 C = 1; C < T.GetCols() - 1; C += Step)
+		{
+			const double H = T.NodeHeight(R, C);
+			if (H < -0.4 || H > 0.6) continue;
+			const double Slope = FMath::Max(FMath::Abs(T.NodeHeight(R + 1, C) - T.NodeHeight(R - 1, C)), FMath::Abs(T.NodeHeight(R, C + 1) - T.NodeHeight(R, C - 1))) / (2.0 * T.GetCell());
+			if (Slope > 0.2) continue;
+			// At the water's edge only: open water within three cells (15 m on the lake), not a flat meadow at lake level.
+			if (H > -0.05 && R > 3 && C > 3 && R < T.GetRows() - 4 && C < T.GetCols() - 4
+				&& FMath::Min(FMath::Min(T.NodeHeight(R + 3, C), T.NodeHeight(R - 3, C)), FMath::Min(T.NodeHeight(R, C + 3), T.NodeHeight(R, C - 3))) > -0.05) continue;
+			const double X = T.GetOriginX() + R * T.GetCell(), Y = T.GetOriginY() + C * T.GetCell();
+			if (X * X + Y * Y < 350.0 * 350.0) continue;
+			const double Patch = FMath::Sin(X * 0.011 + FMath::Sin(Y * 0.007) * 2.0) * FMath::Sin(Y * 0.013 + FMath::Sin(X * 0.005) * 2.0);
+			const uint32 Hh = Hash(uint32(R) * 73856093u ^ uint32(C) * 19349663u);
+			if (Patch < -0.1 || (Hh & 1023) > 760) continue;
+			const int32 Kind = H < 0.05 ? 0 : int32((Hh >> 10) & 1);   // cattails stand in the water, rushes on the bank
+			for (int32 K = 0; K < 2; ++K)
+			{
+				const uint32 Hk = Hash(Hh + K * 2654435761u);
+				const double Dx = (((Hk & 255) / 255.0) - 0.5) * T.GetCell() * Step, Dy = ((((Hk >> 8) & 255) / 255.0) - 0.5) * T.GetCell() * Step;
+				const double Ground = FMath::Max(T.HeightAt(X + Dx, Y + Dy), -0.35);
+				const float S = 0.75f + 0.55f * ((Hk >> 16) & 255) / 255.f;
+				Out[Kind].Add(FTransform(FRotator(0.f, ((Hk >> 24) & 255) * 1.41f, 0.f), FVector(X + Dx, Y + Dy, Ground) * CmPerMeter, FVector(S)));
+			}
+		}
+	}
+	for (int32 Kind = 0; Kind < 2; ++Kind)
+	{
+		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+		C->SetupAttachment(RootComponent);
+		C->SetStaticMesh(Meshes[Kind]);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->bAffectDynamicIndirectLighting = false;
+		C->bAffectDistanceFieldLighting = false;
+		C->bVisibleInRayTracing = false;
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		C->SetCullDistances(0, 500.f * 100.f);
+		C->RegisterComponent();
+		C->AddInstances(Out[Kind], false, true);
+		ReedModels.Add(C);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail and %d rush clumps (first at %s)"), Out[0].Num(), Out[1].Num(),
+		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
+}
+
 void ALakeTerrainActor::PlaceBuildings()
 {
 	const FLakeData* Lake = GetLake();
@@ -499,6 +573,59 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	static const FLinearColor Roofs[] = { FLinearColor(0.10f, 0.10f, 0.10f), FLinearColor(0.16f, 0.14f, 0.12f), FLinearColor(0.20f, 0.20f, 0.21f), FLinearColor(0.22f, 0.16f, 0.11f) };
 	TArray<FTransform> X[3];
 	TArray<float> D[3];
+	// Graphics G2: houses within 400 m of the water are real-size models with their windows, doors, porches and eaves
+	// (Tools/blender/build_houses_near.py), the closest size to the footprint, turned so the back faces the water; the
+	// lakefront ones get a private dock. Further away the unit archetypes above stay.
+	struct FNearKind { const TCHAR* Name; float L, W; bool bTwo; };
+	static const FNearKind NearKinds[] = { { TEXT("RanchS"), 13.f, 9.f, false }, { TEXT("RanchM"), 18.f, 11.f, false }, { TEXT("Cottage"), 10.f, 8.f, false },
+		{ TEXT("TwoS"), 12.f, 9.f, true }, { TEXT("TwoL"), 17.f, 12.f, true }, { TEXT("Modern"), 15.f, 10.f, true } };
+	constexpr int32 NumNear = UE_ARRAY_COUNT(NearKinds);
+	TArray<UInstancedStaticMeshComponent*> NearIsm;
+	UInstancedStaticMeshComponent* DockIsm[2] = { nullptr, nullptr };
+	auto MakeIsm = [&](const FString& Name, int32 CustomFloats, float CullM) -> UInstancedStaticMeshComponent*
+	{
+		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Houses/%s.%s"), *Name, *Name));
+		if (!Mesh) return nullptr;
+		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this);
+		I->SetMobility(EComponentMobility::Static);
+		I->SetupAttachment(RootComponent);
+		I->SetStaticMesh(Mesh);
+		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		I->SetCullDistances(0, CullM * 100.f);
+		I->NumCustomDataFloats = CustomFloats;
+		I->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		I->RegisterComponent();
+		BuildingMeshes.Add(I);
+		return I;
+	};
+	for (const FNearKind& K : NearKinds) NearIsm.Add(MakeIsm(FString(TEXT("SM_HouseNear_")) + K.Name, 10, 6000.f));
+	const bool bNear = !NearIsm.Contains(nullptr);
+	if (bNear)
+	{
+		DockIsm[0] = MakeIsm(TEXT("SM_HouseNear_Dock"), 0, 3000.f);
+		DockIsm[1] = MakeIsm(TEXT("SM_HouseNear_Boathouse"), 0, 3000.f);
+	}
+	TArray<FTransform> NearX[NumNear], DockX[2];
+	TArray<float> NearD[NumNear];
+	TArray<FVector2D> Docks;
+	const FLakeTerrain& Terr = Lake.Terrain;
+	// The nearest open water within 400 m: rings every 25 m, 16 directions.
+	auto WaterToward = [&Terr](double X0, double Y0, FVector2D& Dir) -> double
+	{
+		for (double R = 25.0; R <= 400.0; R += 25.0)
+		{
+			for (int32 A = 0; A < 16; ++A)
+			{
+				const double Ang = A * UE_DOUBLE_PI / 8.0;
+				if (Terr.HeightAt(X0 + R * FMath::Cos(Ang), Y0 + R * FMath::Sin(Ang)) < -0.3)
+				{
+					Dir = FVector2D(FMath::Cos(Ang), FMath::Sin(Ang));
+					return R;
+				}
+			}
+		}
+		return -1.0;
+	};
 	const bool bMarina = Lake.Marina.IsLoaded();
 	for (int32 K = 0; K < Lake.Buildings.Num(); ++K)
 	{
@@ -512,10 +639,52 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		const double Area = B.Length * B.Width;
 		const int32 Kind = Area > 600.0 ? 2 : (B.Height >= 6.5 || (H % 5) == 0 ? 1 : 0);
 		const float Height = Kind == 2 ? FMath::Max(float(B.Height), 6.f) : float(B.Height);
-		X[Kind].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(B.Length, B.Width, Height)));
 		const int32 Pat = Kind == 2 ? 2 : int32((H >> 4) % 3);
 		const FLinearColor Wall = Pat == 0 ? Brick[(H >> 8) % UE_ARRAY_COUNT(Brick)] : Light[(H >> 8) % UE_ARRAY_COUNT(Light)];
 		const FLinearColor Roof = Roofs[(H >> 12) % UE_ARRAY_COUNT(Roofs)];
+		FVector2D WaterDir;
+		const double WaterM = bNear && Kind != 2 ? WaterToward(B.X, B.Y, WaterDir) : -1.0;
+		if (WaterM > 0.0)
+		{
+			// The closest size among the right number of storeys (log-distance on length and width).
+			const bool bTwo = Kind == 1;
+			int32 Best = -1;
+			double BestCost = 1e9;
+			const double Lb = FMath::Max(B.Length, B.Width), Wb = FMath::Min(B.Length, B.Width);
+			for (int32 N = 0; N < NumNear; ++N)
+			{
+				if (NearKinds[N].bTwo != bTwo) continue;
+				const double Cost = FMath::Abs(FMath::Loge(Lb / NearKinds[N].L)) + FMath::Abs(FMath::Loge(Wb / NearKinds[N].W)) + ((H >> 20) % 7) * 0.02;
+				if (Cost < BestCost) { BestCost = Cost; Best = N; }
+			}
+			const FNearKind& NK = NearKinds[Best];
+			const float Sx = FMath::Clamp(float(Lb) / NK.L, 0.8f, 1.25f), Sy = FMath::Clamp(float(Wb) / NK.W, 0.8f, 1.25f);
+			// The model's length runs along its X; its back (local -Y after the mirror into Unreal) faces the water.
+			float Yaw = float(B.YawDeg) + (B.Length >= B.Width ? 0.f : 90.f);
+			const FVector2D Back(FMath::Sin(FMath::DegreesToRadians(Yaw)), -FMath::Cos(FMath::DegreesToRadians(Yaw)));
+			if (FVector2D::DotProduct(Back, WaterDir) < 0.0) Yaw += 180.f;
+			NearX[Best].Add(FTransform(FRotator(0, Yaw, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(Sx, Sy, 1.f)));
+			NearD[Best].Append({ Wall.R, Wall.G, Wall.B, float(Pat) + 10.f, Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+			// A private dock for the lakefront houses: from the bank toward the water, a few metres clear of the next.
+			if (WaterM <= 75.0 && ((H >> 24) % 10) < 6)
+			{
+				FVector2D P(B.X, B.Y), Shore = P;
+				for (double T = 0.0; T < 120.0; T += 2.0)
+				{
+					const FVector2D Q = P + WaterDir * T;
+					if (Terr.HeightAt(Q.X, Q.Y) < 0.0) break;
+					Shore = Q;
+				}
+				if (!Docks.ContainsByPredicate([&](const FVector2D& O) { return FVector2D::Distance(O, Shore) < 15.0; }))
+				{
+					Docks.Add(Shore);
+					const int32 Which = ((H >> 28) % 4) == 0 ? 1 : 0;
+					DockX[Which].Add(FTransform(FRotator(0, FMath::RadiansToDegrees(FMath::Atan2(WaterDir.Y, WaterDir.X)), 0), FVector(Shore.X, Shore.Y, 0.0) * CmPerMeter));
+				}
+			}
+			continue;
+		}
+		X[Kind].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(B.Length, B.Width, Height)));
 		D[Kind].Append({ Wall.R, Wall.G, Wall.B, float(Pat), Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
 	}
 	for (int32 K = 0; K < 3; ++K)
@@ -524,7 +693,17 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		for (int32 I = 0; I < X[K].Num(); ++I) Ism[K]->SetCustomData(I, TArrayView<const float>(&D[K][10 * I], 10), false);
 		Ism[K]->MarkRenderStateDirty();
 	}
-	UE_LOG(LogSailing, Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks"), X[0].Num(), X[1].Num(), X[2].Num());
+	int32 NearCount = 0;
+	for (int32 N = 0; N < NumNear && bNear; ++N)
+	{
+		NearIsm[N]->AddInstances(NearX[N], false, true);
+		for (int32 I = 0; I < NearX[N].Num(); ++I) NearIsm[N]->SetCustomData(I, TArrayView<const float>(&NearD[N][10 * I], 10), false);
+		NearIsm[N]->MarkRenderStateDirty();
+		NearCount += NearX[N].Num();
+	}
+	for (int32 Which = 0; Which < 2; ++Which) if (DockIsm[Which]) DockIsm[Which]->AddInstances(DockX[Which], false, true);
+	UE_LOG(LogSailing, Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks; %d near the water modelled, %d private docks"),
+		X[0].Num(), X[1].Num(), X[2].Num(), NearCount, DockX[0].Num() + DockX[1].Num());
 	return true;
 }
 

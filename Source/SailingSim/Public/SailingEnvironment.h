@@ -98,6 +98,7 @@ private:
 	bool bHasWeatherMap = false;
 	TFuture<FWeatherMapFrame> PendingWeatherMap;
 	bool bWeatherMapPending = false;
+	TWeakObjectPtr<class AWaterSurface> WaterActor;
 	double WeatherMapAge = 1e9;
 	FVector4f FlashParams = FVector4f(0.f, 0.f, 0.f, 0.f);
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainNear;

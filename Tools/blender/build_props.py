@@ -21,20 +21,34 @@ OUT = sys.argv[sys.argv.index("--") + 1]
 
 
 def rock(index):
+    """Graphics G2: a quarried limestone block at real detail (about 7k triangles): a subdivided cube rounded part-way
+    toward a boulder, broken up by ridged multi-octave noise, with a few flat fracture faces cut across it and bedding
+    planes; shaded smooth inside 40-degree edges, so the facets read as chipped stone, not polygons."""
     rng = random.Random(9001 + index * 7919)
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=5, use_grid_fill=True)
-    scale = Vector((rng.uniform(0.9, 1.25), rng.uniform(0.75, 1.0), rng.uniform(0.5, 0.75)))
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=22, use_grid_fill=True)
+    scale = Vector((rng.uniform(0.9, 1.3), rng.uniform(0.7, 1.0), rng.uniform(0.5, 0.8)))
     seed = Vector((rng.uniform(0, 100), rng.uniform(0, 100), rng.uniform(0, 100)))
+    cuts = []
+    for _ in range(rng.randint(3, 5)):                            # fracture planes: a direction and how deep they cut
+        d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.6, 1.0))).normalized()
+        cuts.append((d, rng.uniform(0.36, 0.46)))
     for v in bm.verts:
         d = v.co.normalized()
-        # Round the cube toward a pebble, then break it up.
-        p = v.co.lerp(d * 0.62, 0.45)
-        n = noise.noise(p * 2.2 + seed) * 0.16 + noise.noise(p * 6.0 + seed) * 0.05
-        p = p + d * n
-        # Bedding planes: quantize the height a little so the faces read as split layers.
-        p.z = p.z * 0.75 + round(p.z * 4.0) / 4.0 * 0.25
+        p = v.co.lerp(d * 0.62, 0.5)
+        n = 0.0
+        amp, freq = 0.14, 2.0
+        for _ in range(5):                                        # ridged fBm: sharp crests, worn hollows
+            n += amp * (1.0 - 2.0 * abs(noise.noise(p * freq + seed)))
+            amp *= 0.5
+            freq *= 2.1
+        p = p + d * n * 0.6
+        for c, depth in cuts:                                     # flatten against each fracture plane
+            k = p.dot(c)
+            if k > depth:
+                p = p - c * (k - depth) * 0.92
+        p.z = p.z * 0.85 + round(p.z * 5.0) / 5.0 * 0.15            # faint bedding planes
         v.co = Vector((p.x * scale.x, p.y * scale.y, p.z * scale.z))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     uv = bm.loops.layers.uv.new("UVMap")
@@ -50,7 +64,7 @@ def rock(index):
     tris = sum(len(f.verts) - 2 for f in bm.faces)
     bm.free()
     for p in mesh.polygons:
-        p.use_smooth = False
+        p.use_smooth = True
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     mat = bpy.data.materials.new("Rock")
@@ -58,6 +72,10 @@ def rock(index):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
+    try:
+        bpy.ops.object.shade_auto_smooth(angle=math.radians(40))
+    except Exception:
+        pass
     bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, name + ".fbx"), use_selection=True, apply_unit_scale=True,
                              apply_scale_options="FBX_SCALE_UNITS", axis_forward="X", axis_up="Z", bake_space_transform=True,
                              mesh_smooth_type="FACE")
@@ -187,7 +205,7 @@ def semi():
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.context.scene.unit_settings.system = "METRIC"
-for i in range(3):
+for i in range(6):
     rock(i)
 sedan()
 pickup()

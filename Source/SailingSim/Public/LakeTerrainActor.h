@@ -46,9 +46,10 @@ private:
 	struct FChunk
 	{
 		int32 Row = 0, Col = 0;   // chunk indices
-		int32 Lod = -1;           // step in cells (1, 2, 4, 8), -1 = not built
+		int32 Lod = -1;           // step in cells (1, 2, 4, 8; 0 the 1 m shore detail), -1 = not built
 		int32 Wanted = 8;
 		bool bBuilding = false;
+		bool bHasDetail = false;  // the lidar shore detail covers part of it
 		TObjectPtr<UProceduralMeshComponent> Mesh;
 		TFuture<FChunkMesh> Future;
 	};
@@ -59,6 +60,8 @@ private:
 	/** How deep the water hides the bed: where its colour has absorbed 99% of the light coming back (Visual V4). */
 	double HideBelow = -1e9;
 	void PlaceTrees();
+	/** Graphics G2 (Medium and up): cattail and rush clumps in the shallows and at the water's edge. */
+	void PlaceReeds();
 	bool PlaceHouseModels(const struct FLakeData& Lake);
 	void PlaceBuildings();
 	void PlaceBridgesAndDocks();
@@ -73,6 +76,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
 	UPROPERTY(Transient) TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> TreeMeshes;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeModels; // Visual V6: leaf-card trees near the camera
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
