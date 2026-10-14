@@ -123,3 +123,8 @@ Every view is 2-5% lower in fps, including those whose GPU time didn't move (mos
 gave 89.9 and 93.2, and crew High gave 45.0 and 44.8, so about half of the drop is run-to-run noise. On High the clouds
 and fog slice is up 0.1-0.5 ms on most views, from the new haze and cirrus. Medium stays far above its 60 fps gate.
 High holds 45 except helm-eye (43.1, already 44.9 in G4) and crew, which sits on the line (44.9).
+
+Update: the extra High cloud time came from the first version of the cirrus, which ran noise on every sky pixel. Since
+8150565 it runs only where the weather map has cirrus, with three octaves. Packaged High is back at G4 (helm-eye 45.0
+and 45.1, crew 47.2, beam8 52.9; see the cost table above). The round-7 stills were captured before that change, which
+affects cost, not the look.
