@@ -1438,10 +1438,29 @@ float cirrus = 0.0;
     float c = Wx.SampleLevel(WxSampler, float2(cuv.y, cuv.x), 0).b;
     float2 wd = normalize(Cirrus.yz + float2(1e-3, 0.0));
     float a = dot(hit, wd), b = dot(hit, float2(-wd.y, wd.x));
-    float streak = 0.55 + 0.45 * sin(b * 0.004 + sin(a * 0.0006) * 3.0) * sin(b * 0.0013 + a * 0.0002);
-    cirrus = c * saturate(streak) * saturate(1.0 - t / 60000.0) * Cirrus.w;
+    // Graphics G5: fibres from value noise stretched along the wind (four octaves, no fixed period). The sine streaks
+    // before read as brush strokes in the blind test. The fine octaves fade with distance, where they would shimmer.
+    float2 q = float2(a * 0.00012, b * 0.0011);
+    float fib = 0.0, amp = 0.5;
+    float far = saturate(t / 40000.0);
+    [unroll] for (int o = 0; o < 4; o++)
+    {
+        float2 ci = floor(q), cf = frac(q);
+        float2 u = cf * cf * (3.0 - 2.0 * cf);
+        float h00 = frac(sin(dot(ci, float2(127.1, 311.7))) * 43758.5453);
+        float h10 = frac(sin(dot(ci + float2(1.0, 0.0), float2(127.1, 311.7))) * 43758.5453);
+        float h01 = frac(sin(dot(ci + float2(0.0, 1.0), float2(127.1, 311.7))) * 43758.5453);
+        float h11 = frac(sin(dot(ci + float2(1.0, 1.0), float2(127.1, 311.7))) * 43758.5453);
+        float nv = lerp(lerp(h00, h10, u.x), lerp(h01, h11, u.x), u.y);
+        fib += amp * nv * (o < 2 ? 1.0 : 1.0 - far);
+        q = float2(q.x * 2.03 + 3.1, q.y * 2.11 - 1.7);
+        amp *= 0.5;
+    }
+    float streak = saturate((fib - 0.32) * 2.2);
+    streak *= streak;
+    cirrus = c * streak * saturate(1.0 - t / 60000.0) * Cirrus.w;
     float lum = dot(ViewLum, float3(0.3, 0.59, 0.11));
-    col = lerp(col, float3(lum, lum, lum) * 2.2 * (1.0 + 2.5 * pow(saturate(cosT), 12.0)), cirrus * 0.55);
+    col = lerp(col, float3(lum, lum, lum) * 2.2 * (1.0 + 2.5 * pow(saturate(cosT), 12.0)), cirrus * 0.45);
 }
 // The night sky, in equatorial coordinates.
 [branch] if (Night.x > 0.0)
@@ -2152,23 +2171,32 @@ WORLD_LIBRARY = {
 }
 
 
-build_water()
-build_water_v4()
-build_spray()
-build_cloud_layers()
-build_sky_dome()
-build_lens_water()
-build_trees_materials()
-build_world_surface()
-build_vehicle_paint()
-build_navaid_paint()
-build_house_materials()
-build_terrain()
-build_rain()
-build_emissive()
-build_sail()
-build_ghost()
-build_lens_distortion()
+# MATERIALS_ONLY=build_sky_dome,build_terrain rebuilds just those (the rest stay as they are, unsaved and untouched).
+ONLY = [n for n in os.environ.get("MATERIALS_ONLY", "").split(",") if n]
+
+
+def build(fn):
+    if not ONLY or fn.__name__ in ONLY:
+        fn()
+
+
+build(build_water)
+build(build_water_v4)
+build(build_spray)
+build(build_cloud_layers)
+build(build_sky_dome)
+build(build_lens_water)
+build(build_trees_materials)
+build(build_world_surface)
+build(build_vehicle_paint)
+build(build_navaid_paint)
+build(build_house_materials)
+build(build_terrain)
+build(build_rain)
+build(build_emissive)
+build(build_sail)
+build(build_ghost)
+build(build_lens_distortion)
 
 # ---------------------------------------------------------------- crew cloth (Graphics G3)
 FABRIC_FOLDER = "/Game/Crew/Fabric"
@@ -2290,8 +2318,8 @@ def build_crew_fabric():
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
-build_boat_library()
-build_crew_fabric()
-build_sail_cloth()
-build_telltale()
+build(build_boat_library)
+build(build_crew_fabric)
+build(build_sail_cloth)
+build(build_telltale)
 unreal.log("Materials built")

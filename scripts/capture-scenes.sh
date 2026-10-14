@@ -17,7 +17,7 @@ for r in csv.DictReader(open(sys.argv[1])):
 PY
 while IFS='|' read -r SCENE PRESET ARGS; do
 	read -r -a ARGV <<< "$ARGS"
-	"$(dirname "$0")/run-game.sh" "$SECONDS_PER_RUN" "${ARGV[@]}" -SailingCapture="$PRESET" -SailingShot="$SCENE" > /dev/null 2>&1 || true
+	"$(dirname "$0")/run-game.sh" "$SECONDS_PER_RUN" "${ARGV[@]}" -SailingCapture="$PRESET" -SailingShot="$SCENE" < /dev/null > /dev/null 2>&1 || true
 	for EXT in png camera.json telemetry.csv; do
 		[[ -f "$REPO_ROOT/Saved/Bench/$SCENE.$EXT" ]] && cp "$REPO_ROOT/Saved/Bench/$SCENE.$EXT" "$OUT/$SCENE.$EXT"
 	done
