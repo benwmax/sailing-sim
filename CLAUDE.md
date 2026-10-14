@@ -206,8 +206,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 - Fleet models (Visual V7): `Tools/blender/build_fleet.py` builds the other seven boats from `Tools/BoatExport` JSON (every
   hull, exactly the physics below the waterline; class decks, cabins, beams, nets, bridgedeck and rigs from `SPECS`),
   `build_berthed.py` the keelboats' in-slip dress for the marina; `make-boat-models.sh` runs them, `import_boats.py`
-  (`fleet`, `berthed` args) imports. `SailingSim.Visual.FleetMesh` holds each to its physics hulls (the Hobie, Corsair
-  and Lagoon configs' published beam/LOA disagree with their own hull shapes: reported, open). The rig is drawn only
+  (`fleet`, `berthed` args) imports. `SailingSim.Visual.FleetMesh` holds each to its physics hulls (and, since Graphics G3,
+  each config's published LOA, less a fixed `Bowsprit`, and beam). The rig is drawn only
   where sockets exist; twin rudders use `RudderPivot_1`. Sail layouts per class are `Layout`/`BattenCount`/`FullBattens`
   on `M_SailCloth`. Marina neighbours are FMarina's `BoatType`/`Alongside` and are physics obstacles.
 - Sound (Visual V7): `USailingSynthWave` layers (gust rumble, shelter hush, moored lapping and halyard slap, rain on
@@ -253,7 +253,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   dropped, collar from a smooth neck ring, placket, buttons, rib cuffs, folds) and in Unreal copies the T-shirt's skin
   weights onto it with Geometry Script (`import_crew_clothes.py`, `SKM_<Role>_Polo`/`_Shoes`, git-ignored with the MetaHumans); shorts wear `MI_Crew_Shorts`.
   The pawn hides the outfit's shirt sections and adds the polo (`-SailingNoPolo` compares). `-SailingCamTarget=f,s,u`
-  frames close stills. Cloth: `M_CrewFabric` (`build_crew_fabric` in make_materials.py) puts the sailor's colour over CC0
+  frames close stills; `-SailingNoHud` hides the HUD and engine messages outside the capture mode. Cloth: `M_CrewFabric` (`build_crew_fabric` in make_materials.py) puts the sailor's colour over CC0
   ambientCG scans (`Tools/fabrics/fetch_fabrics.sh` -> `Data/Fabrics/raw`, imported to `/Game/Crew/Fabric`): knit for
   the polo, polyester for the life jacket shell, woven cotton for the cap; normals fade past a few metres. Sampler types
   must match (`LINEAR_GRAYSCALE` for roughness) or the material falls back to the default checker.

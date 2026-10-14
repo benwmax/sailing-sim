@@ -744,6 +744,12 @@ void ASailboatPawn::BeginPlay()
 		CameraBoom->TargetArmLength = CameraDistance;
 	}
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	// Clean stills outside the capture mode (the blind tests' marina views): no HUD, no on-screen engine messages.
+	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingNoHud")))
+	{
+		USailingSettings::Get()->bShowHud = false;
+		GAreScreenMessagesEnabled = false;
+	}
 	// Stills of the boat's details (crew, fittings): -SailingCamTarget=<forward>,<starboard>,<up> m in the boat frame is
 	// what the camera turns about, instead of 3 m over the hull's origin.
 	FString CamTarget;
