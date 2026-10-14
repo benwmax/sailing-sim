@@ -528,6 +528,12 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 				if (Hands.Mode[Hand] == FCrewHands::EMode::Free && P.Stance != ECrewStance::DinghyHike) Hands.Mode[Hand] = FCrewHands::EMode::Knee;
 			}
 		}
+		// Crew pose fix: the feet stand on the deck, the seats or the sole, never inside the boat (CrewPose.h).
+		FCrewGround Ground;
+		Ground.Config = &Cfg;
+		Ground.HullDepth = Boat.HullDepth();
+		Ground.ToBoat = CompTM;
+		Hands.Ground = &Ground;
 		ApplyCrewPose(Crew[I], F.Joints, Rig, &Hands);
 		static double LastDebug = 0.0;
 		if (FParse::Param(FCommandLine::Get(), TEXT("SailingDebugCrew")) && S.Time - LastDebug > 1.0 && !bTrafficBoat)
