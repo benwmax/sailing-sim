@@ -126,4 +126,16 @@ namespace Sailing
 	{
 		return VelocityAt(Vec3(X, Y, 10.0), TimeSeconds).LengthXY() / 8.0;
 	}
+
+	double FWindField::MeanSurfaceRoughnessAt(double X, double Y, double TimeSeconds) const
+	{
+		double Speed = MeanSpeed10;
+		if (Front.bActive && TimeSeconds >= Front.StartTime)
+		{
+			const double W = SmoothStep(Front.LeadingEdgeMeters, -Front.LeadingEdgeMeters, Front.DistanceAhead(X, Y, TimeSeconds));
+			const double Decay = 1.0 - SmoothStep(Front.DecayStartTime, Front.DecayStartTime + Front.DecaySeconds, TimeSeconds);
+			Speed += (Front.OutflowKnots * kKnot - Speed) * W * Decay;
+		}
+		return Speed / 8.0;
+	}
 }

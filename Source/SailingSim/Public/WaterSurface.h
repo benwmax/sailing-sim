@@ -56,6 +56,15 @@ public:
 	static constexpr float Choppiness = 1.5f;
 	static constexpr double SplitHz = 0.65727;
 	static constexpr int32 LongComponents = 24;
+	/** W0: whitecap coverage against the open sea's (Monahan) by water body. Fresh water foams less (smaller, shorter-lived
+	 *  bubbles: about 0.4 of the sea's coverage on the lake), the brackish bay about 0.7, the Gulf the full law. */
+	static float WhitecapScaleFor(int32 World);
+	/** W0: the folding threshold M_WaterV4 uses at a pixel: FoamThreshold shifted so coverage scales by the body's scale
+	 *  times Monahan's (U_local / U_mean)^3.41, caps cluster in puffs and thin in lulls. CapSlope is the threshold shift
+	 *  per e-fold of coverage, measured on the drawn waves (SailingSim.Visual.Whitecaps). Mirrored in make_materials.py. */
+	static constexpr float FoamThreshold = 0.6f;
+	static constexpr float CapSlope = 0.045f;
+	static float WhitecapThreshold(float LocalOverMean, float WaterScale);
 	/** Game-thread time spent on the water each frame (the FFT blend and upload, the wake grid), summed: bench.json. */
 	static double WaterCpuSeconds;
 

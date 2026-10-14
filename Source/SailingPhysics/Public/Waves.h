@@ -55,10 +55,21 @@ namespace Sailing
 	public:
 		explicit FWaveField(uint32_t Seed = 1);
 
-		/** Target sea state from the wind. Amplitudes approach it over ResponseSeconds when Update is called. */
+		/** Target sea state from the wind. Amplitudes approach it band by band when Update is called. */
 		void SetWind(const FWaveParams& Params);
-		/** Moves amplitudes toward the target sea state (waves take time to build and decay). */
-		void Update(double Dt, double ResponseSeconds = 45.0);
+		/**
+		 * Moves amplitudes toward the target sea state (waves take time to build and decay). Each band has its own
+		 * time (GrowthSeconds): a puff raises the ripples and chop within seconds, the longest waves over minutes.
+		 */
+		void Update(double Dt);
+		/**
+		 * Water and weather W0: how long a band of this period takes to follow the wind (time constant, s). Wave growth
+		 * by wind input scales as the period squared (the growth rate per cycle falls as the waves catch up with the
+		 * wind, Plant 1982); 8 T^2 puts the 2.5 s peak of a 12 kn lake near the old 40 s, clamped to 5..300 s.
+		 */
+		static double GrowthSeconds(double PeriodSeconds);
+		/** Period at the centre of a band (s), for tests. */
+		double BandPeriod(int Band) const { return 1.0 / BandFrequency[Band]; }
 		/** Jumps straight to the target sea state. */
 		void SnapToTarget();
 

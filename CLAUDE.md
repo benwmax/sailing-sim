@@ -328,6 +328,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   failed). `scripts/tune_crew_skin.py` turns on the faces' micro skin detail and pores (run by `make-crew-clothes.sh`
   after a MetaHuman rebuild). `scripts/pack-metahumans.sh` zips the git-ignored crew for the PC. Hide outfit sections by
   the asset's slot materials, never the component's (they are MIDs by then).
+- Water W0 (`docs/w0/`): the cat's-paw map fades to `FWindField::MeanSurfaceRoughnessAt` over its outer 20% (no edge
+  streaks); `WindParams` z is the sea's mean wind (puffs and caps read against it), w the water body's whitecap scale
+  (`AWaterSurface::WhitecapScaleFor`: lake 0.4, bay 0.7, Gulf 1). M_WaterV4's cap threshold is mirrored by
+  `AWaterSurface::WhitecapThreshold` (keep `CapSlope` in step with make_materials.py). `FWaveField::Update(Dt)` grows each
+  band over `GrowthSeconds` (8 T^2, 5..300 s).
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

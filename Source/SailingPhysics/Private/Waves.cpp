@@ -114,12 +114,22 @@ namespace Sailing
 		for (double& A : TargetAmplitude) A *= Scale;
 	}
 
-	void FWaveField::Update(double Dt, double ResponseSeconds)
+	double FWaveField::GrowthSeconds(double PeriodSeconds)
 	{
-		const double T = Clamp(Dt / std::max(ResponseSeconds, 1e-3), 0.0, 1.0);
-		for (int I = 0; I < kWaveComponents; ++I)
+		return Clamp(8.0 * PeriodSeconds * PeriodSeconds, 5.0, 300.0);
+	}
+
+	void FWaveField::Update(double Dt)
+	{
+		for (int B = 0; B < kWaveBands; ++B)
 		{
-			Components[I].Amplitude += (TargetAmplitude[I] - Components[I].Amplitude) * T;
+			// Exponential approach, exact for any step.
+			const double T = 1.0 - std::exp(-std::max(Dt, 0.0) / GrowthSeconds(1.0 / BandFrequency[B]));
+			for (int D = 0; D < kWaveDirectionsPerBand; ++D)
+			{
+				const int I = B * kWaveDirectionsPerBand + D;
+				Components[I].Amplitude += (TargetAmplitude[I] - Components[I].Amplitude) * T;
+			}
 		}
 		bBandsDirty = true;
 	}

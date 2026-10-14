@@ -425,8 +425,8 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
 	Waves.SetWind(WaveParams);
-	// Short-fetch chop builds within a minute or two.
-	Waves.Update(DeltaSeconds, 40.0);
+	// Ripples and chop follow a puff within seconds, the longest lake waves over minutes (FWaveField::GrowthSeconds).
+	Waves.Update(DeltaSeconds);
 }
 
 void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)
