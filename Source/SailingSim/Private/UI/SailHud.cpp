@@ -1,4 +1,5 @@
 #include "UI/SailHud.h"
+#include "PerfScopes.h"
 #include "Learning.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
@@ -495,6 +496,7 @@ ASailboatPawn* SSailHud::Pawn() const
 void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 {
 	SCompoundWidget::Tick(G, Now, Dt);
+	SAILING_PERF_SCOPE(Hud);
 	if (Now >= NextRefresh)
 	{
 		NextRefresh = Now + (SailUI::IsLow() ? 0.2 : 0.1);

@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "PerfScopes.h"
 #include "Ocean.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -400,6 +401,7 @@ void AWaterSurface::SetBoatForWake(const FVector2D& PositionM, float HeadingRad,
 void AWaterSurface::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Water);
 
 	// Rings follow the camera, each snapped to twice its spacing so vertices don't swim.
 	FVector CamPos = GetActorLocation();
@@ -432,7 +434,7 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	UpdateOcean();
 	if (bV4)
 	{
-		UpdateDetail();
+		{ SAILING_PERF_SCOPE(WaterUploads); UpdateDetail(); }
 		UpdateWakeGrid(DeltaSeconds);
 		UpdateShoreMap();
 		if (Tier >= 2) UpdateSpray(DeltaSeconds);

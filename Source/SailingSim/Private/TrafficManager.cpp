@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "PerfScopes.h"
 #include "SailSession.h"
 #include "PowerVesselActor.h"
 #include "SailboatPawn.h"
@@ -396,6 +397,7 @@ void ATrafficManager::UpdateHorns(double Now)
 void ATrafficManager::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Traffic);
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	ASailboatPawn* Player = PC ? Cast<ASailboatPawn>(PC->GetPawn()) : nullptr;
@@ -420,7 +422,7 @@ void ATrafficManager::Tick(float DeltaSeconds)
 	// Run the traffic on the game's clock (the boat's physics time), a frame at a time.
 	const double Lag = GM->GetSimTime() - Sim.GetTime();
 	if (Lag > 2.0) Sim.SetTime(GM->GetSimTime() - 0.1); // after a pause or a reset: catch up rather than fast-forward
-	Sim.Step(FMath::Clamp(GM->GetSimTime() - Sim.GetTime(), 0.0, 0.25));
+	{ SAILING_PERF_SCOPE(TrafficStep); Sim.Step(FMath::Clamp(GM->GetSimTime() - Sim.GetTime(), 0.0, 0.25)); }
 	// Other hulls near the player's boat, for her contact physics.
 	Player->GetMutableBoatModel().SetMovingObstacles(Sim.HullsNear(Me.X, Me.Y, 80.0, FTrafficSim::PlayerId));
 

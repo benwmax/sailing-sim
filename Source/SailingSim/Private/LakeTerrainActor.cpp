@@ -1,4 +1,5 @@
 #include "LakeTerrainActor.h"
+#include "PerfScopes.h"
 #include "UObject/UObjectIterator.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -317,6 +318,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 void ALakeTerrainActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Terrain);
 	// Once, 8 s in: every instanced mesh in the world by owner and mesh (the render thread culls each instance).
 	if (!bLoggedInstances && GetWorld()->GetTimeSeconds() > 8.0)
 	{
@@ -343,7 +345,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	FVector Cam = FVector::ZeroVector;
 	if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CM->GetCameraLocation();
 	const double CamX = Cam.X / CmPerMeter, CamY = Cam.Y / CmPerMeter;
-	UpdateModelTrees(FVector2D(CamX, CamY));
+	{ SAILING_PERF_SCOPE(Trees); UpdateModelTrees(FVector2D(CamX, CamY)); }
 	const FLakeTerrain& T = Lake->Terrain;
 	const double ChunkSize = GChunkCells * T.GetCell();
 

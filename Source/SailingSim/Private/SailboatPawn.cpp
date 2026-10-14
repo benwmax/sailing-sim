@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "PerfScopes.h"
 #include "SailingHUD.h"
 #include "UI/SailHud.h"
 #include "SailSession.h"
@@ -920,6 +921,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	}
 	// Graphics G4: the front end and the loading screen hold the boat where it is (the world keeps moving behind them).
 	const int32 Steps = bHeldByUI && !bTrafficBoat ? 0 : Stepper.Advance(DeltaSeconds);
+	SAILING_PERF_SCOPE_BEGIN(BoatPhysics);
 	for (int32 I = 0; I < Steps; ++I)
 	{
 		const FBoatControls Before = Controls;
@@ -944,9 +946,10 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 		Boat.Step(Stepper.GetStepDt(), Controls, Wind, Waves);
 	}
+	SAILING_PERF_SCOPE_END(BoatPhysics);
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
-	if (IsCaptureMode() && !bTrafficBoat) UpdateCapture(DeltaSeconds);
+	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
 
 	if (Water)
 	{
@@ -954,8 +957,9 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		const Vec3 O = Boat.OriginPosition();
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
-	UpdateSound(DeltaSeconds);
+	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
 	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
+	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick
 
 	// Drills: follow the boat and the crew's actions.
 	const FBoatTelemetry& Tel = Boat.GetTelemetry();
@@ -2053,6 +2057,7 @@ void ASailboatPawn::ApplyStateToTransform()
 
 void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 {
+	SAILING_PERF_SCOPE(BoatVisuals);
 	VisualTime += DeltaSeconds;
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -2077,11 +2082,11 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
 	const FBoatConfig& Cfg = Boat.GetConfig();
-	UpdateCrewFigures(DeltaSeconds);
-	UpdateCrewGroomLOD();
+	{ SAILING_PERF_SCOPE(Crew); UpdateCrewFigures(DeltaSeconds); UpdateCrewGroomLOD(); }
 
 	if (ModelHull)
 	{
+		SAILING_PERF_SCOPE(RigLines);
 		UpdateModelRig(DeltaSeconds);
 	}
 	if (bStowed)
@@ -2090,6 +2095,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
 		return;
 	}
+	SAILING_PERF_SCOPE_BEGIN(Sails);
 	// A reef changes the main's planform: rebuild its cloth.
 	const double MainHead = Cfg.Main.NumStrips > 0 ? Cfg.Main.Strips[Cfg.Main.NumStrips - 1].ZTop : -1.0;
 	if (MainHead != ClothMainHeadZ)
@@ -2106,7 +2112,8 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	}
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
 	if (T.NumSpinStrips > 0) UpdateSailCloth(SpinSail, SpinCloth, Cfg.Spinnaker, ESailKind::Spinnaker, T.SpinStrips, S.SpinSide, DeltaSeconds);
-	UpdateTelltaleRibbons();
+	SAILING_PERF_SCOPE_END(Sails);
+	{ SAILING_PERF_SCOPE(Telltales); UpdateTelltaleRibbons(); }
 	if (ModelHull)
 	{
 		UpdateBoatWetness(DeltaSeconds);
