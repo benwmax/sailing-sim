@@ -412,6 +412,15 @@ private:
 	/** Visual V7: recorded samples that replace synth voices (one looping component per ESailingCue found). */
 	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> SampleCues;
 	void StartSampleLayer();
+	// Graphics G7: the sample pack's loops (each one band of a cue's crossfade) and one-shots.
+	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> PackLoopComps;
+	TArray<int32> PackLoopDefs;   // index into SailingSound::PackLoops()
+	UPROPERTY(Transient) TArray<TObjectPtr<USoundBase>> PackShotSounds;
+	TArray<uint8> PackShotKinds;  // SailingSound::EPackShot per sound
+	double NextHalyardShot = 0.0, NextDockShot = 0.0, NextWinchClick = 0.0, LuffHighAt = -100.0;
+	float PrevTrimRate = 0.f;
+	void UpdatePackSound(const struct FSailingSoundParams& P, float Aws, const float* CueLevels);
+	void PlayPackShot(uint8 Kind, float Volume);
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;

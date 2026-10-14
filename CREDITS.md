@@ -5,7 +5,12 @@
 Every sound in the game is synthesized at runtime in code (`Source/SailingSim/Private/SailingAudio.cpp`) from
 filtered noise and simple oscillators: wind in the rigging, luffing and flogging sails, telltale flutter, water
 past the hull and the rumble near hull speed, bow-wave slaps, winch clicks, sheets running out, rain and thunder.
-No recorded samples or third-party sound files are used, so there is nothing to license.
+Since Graphics G7 a sample pack (`Inputs/audio`, imported to `/Game/Audio/Pack`) plays in place of most of those voices
+where it is imported: script-built loops and one-shots made for this project (CC0) and three recordings from Wikimedia
+Commons, credited in `Audio/Samples/CREDITS.md`: "Gull 1.ogg" by avphillips (public domain), "Larus atricilla.ogg" by
+Tony Phillips (CC BY 3.0, https://creativecommons.org/licenses/by/3.0) and "Rain on a veranda and t.ogg" by ezwa (public
+domain), each cut, filtered and normalised. The synthesized voices remain for gusts, telltales, rain on the water, the
+squall, thunder and the diesel, and for anything not imported.
 
 The pink-noise filter coefficients follow Paul Kellet's widely published public-domain "refined" pink noise method.
 

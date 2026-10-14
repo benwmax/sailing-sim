@@ -1826,6 +1826,37 @@ void ASailboatPawn::StartSampleLayer()
 		SampleCues[K] = A;
 		Mask |= 1u << K;
 	}
+	// Graphics G7: the sample pack (Inputs/audio, /Game/Audio/Pack) for the cues no single recording replaces.
+	if (!bTrafficBoat)
+	{
+		const TConstArrayView<SailingSound::FPackLoop> Loops = SailingSound::PackLoops();
+		for (int32 I = 0; I < Loops.Num(); ++I)
+		{
+			if (SampleCues[int32(Loops[I].Cue)]) continue;
+			USoundBase* Wave = SailingSound::LoadPack(Loops[I].Asset);
+			if (!Wave) continue;
+			UAudioComponent* A = NewObject<UAudioComponent>(this);
+			A->SetupAttachment(BoatRoot);
+			A->bAllowSpatialization = false;
+			A->bAutoActivate = false;
+			A->SetSound(Wave);
+			A->SetVolumeMultiplier(0.f);
+			A->RegisterComponent();
+			A->Play();
+			PackLoopComps.Add(A);
+			PackLoopDefs.Add(I);
+			Mask |= 1u << uint32(Loops[I].Cue);
+		}
+		for (uint8 K = 0; K < uint8(SailingSound::EPackShot::Count); ++K)
+		{
+			for (const FString& Asset : SailingSound::PackShots(SailingSound::EPackShot(K)))
+			{
+				if (USoundBase* Wave = SailingSound::LoadPack(Asset)) { PackShotSounds.Add(Wave); PackShotKinds.Add(K); }
+			}
+		}
+		if (PackShotKinds.Contains(uint8(SailingSound::EPackShot::HalyardSlap)) && !SampleCues[int32(ESailingCue::HalyardSlap)]) Mask |= 1u << uint32(ESailingCue::HalyardSlap);
+		if (PackLoopComps.Num()) UE_LOG(LogSailing, Display, TEXT("Sound: sample pack, %d loops and %d one-shots"), PackLoopComps.Num(), PackShotSounds.Num());
+	}
 	if (Synth) Synth->Params.SampledMask = Mask;
 	if (Mask) UE_LOG(LogSailing, Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
 }
@@ -1914,6 +1945,86 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 		{
 			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load());
 		}
+		UpdatePackSound(P, Aws, Levels);
+	}
+}
+
+void ASailboatPawn::PlayPackShot(uint8 Kind, float Volume)
+{
+	TArray<int32> Choices;
+	for (int32 I = 0; I < PackShotKinds.Num(); ++I) if (PackShotKinds[I] == Kind) Choices.Add(I);
+	if (Choices.Num() == 0 || Volume <= 0.01f) return;
+	UGameplayStatics::PlaySound2D(this, PackShotSounds[Choices[FMath::RandRange(0, Choices.Num() - 1)]], Volume, FMath::FRandRange(0.95f, 1.05f));
+}
+
+void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, const float* CueLevels)
+{
+	// Graphics G7: each pack loop is one band of its cue: the cue's level (as the synth voice it replaces) times the
+	// band's crossfade weight over the parameter manifest.json names for it.
+	using namespace SailingSound;
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const float Vol = P.Volume.load();
+	const float Luff = P.Luff.load(), Speed = P.BoatSpeed.load(), Trim = P.TrimRate.load(), Slam = P.BowSlam.load(), Moored = P.Moored.load();
+	const float Tied = IsTiedUp() ? 1.f : 0.f;
+	const float Chop = FMath::Clamp((float(T.TrueWindSpeed) - 5.f) / 5.f, 0.f, 1.f);
+	float Wind[3], Flog[3], Wash[4], Winch[2];
+	static const float WindC[] = { 3.f, 7.f, 11.f }, FlogC[] = { 0.25f, 0.55f, 0.85f }, WashC[] = { 0.5f, 1.5f, 2.6f, 3.6f }, WinchC[] = { 0.2f, 0.7f };
+	Crossfade(Aws, WindC, 3, Wind);
+	Crossfade(Luff, FlogC, 3, Flog);
+	if (Aws < 7.f) { Flog[1] = FMath::Sqrt(FMath::Square(Flog[1]) + FMath::Square(Flog[2])); Flog[2] = 0.f; }   // a strong flog needs a breeze
+	Crossfade(Speed, WashC, 4, Wash);
+	Wash[3] = FMath::Max(Wash[3], FMath::Clamp((P.HullSpeedRatio.load() - 0.9f) * 5.f, 0.f, 1.f));
+	Crossfade(Trim, WinchC, 2, Winch);
+	float Lap[3] = { (1.f - Chop) * (1.f - Tied), Tied * (1.f - 0.5f * Chop), FMath::Max(Chop * Moored, Slam) };
+	const float LapSum = FMath::Max(Lap[0] + Lap[1] + Lap[2], 1e-3f);
+	for (float& L : Lap) L /= LapSum;
+	const TConstArrayView<FPackLoop> Loops = PackLoops();
+	for (int32 I = 0; I < PackLoopComps.Num(); ++I)
+	{
+		const FPackLoop& L = Loops[PackLoopDefs[I]];
+		const int32 B = L.Band;
+		float W = 1.f;
+		switch (L.Cue)
+		{
+		case ESailingCue::Wind: W = Wind[B]; break;
+		case ESailingCue::SailFlog: W = Flog[B]; break;
+		case ESailingCue::BowWave: W = Wash[B]; break;
+		case ESailingCue::HullSlap: W = Lap[B]; break;
+		case ESailingCue::Winch: W = Winch[B]; break;
+		default: break;
+		}
+		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Vol);
+	}
+	if (PackShotSounds.Num() == 0) return;
+	const double Now = GetWorld()->GetTimeSeconds();
+	// The halyard on the mast, at rest or head to wind in a breeze.
+	const float Slap = FMath::Max(Moored, T.bInIrons ? 1.f : 0.f) * FMath::Clamp(Aws / 8.f, 0.f, 1.f);
+	if (Slap > 0.05f && Now >= NextHalyardShot)
+	{
+		PlayPackShot(uint8(EPackShot::HalyardSlap), Slap * 0.8f * Vol);
+		NextHalyardShot = Now + FMath::FRandRange(0.7, 3.0) / FMath::Max(Slap, 0.3f);
+	}
+	// A sail filling with a snap as a tack or jibe completes (luff from over 0.6 to under 0.2).
+	if (Luff > 0.6f) LuffHighAt = Now;
+	if (Luff < 0.2f && Now - LuffHighAt < 1.5 && LuffHighAt > 0.0)
+	{
+		PlayPackShot(uint8(EPackShot::SailFill), FMath::Clamp(Aws / 8.f, 0.2f, 1.f) * Vol);
+		LuffHighAt = -100.0;
+	}
+	// Winch clicks for small trims; a sheet running out through its block when easing starts.
+	if (Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
+	{
+		PlayPackShot(uint8(EPackShot::WinchClick), 0.6f * Vol);
+		NextWinchClick = Now + 0.14;
+	}
+	if (Trim < -0.3f && PrevTrimRate >= -0.3f) PlayPackShot(uint8(Trim < -0.6f ? EPackShot::SheetEaseFast : EPackShot::SheetEaseSlow), 0.7f * Vol);
+	PrevTrimRate = Trim;
+	// In the slip: the lines creak and the fenders squeak as she surges.
+	if (Tied > 0.f && Now >= NextDockShot)
+	{
+		const float Surge = FMath::Clamp(float(Boat.GetState().Velocity.Length()) * 4.f + Chop * 0.5f + Aws / 20.f, 0.f, 1.f);
+		if (NextDockShot > 0.0) PlayPackShot(uint8(FMath::RandBool() ? EPackShot::DockCreak : EPackShot::FenderSqueak), (0.3f + 0.5f * Surge) * Vol);
+		NextDockShot = Now + FMath::FRandRange(2.5, 8.0) / (0.4f + Surge);
 	}
 }
 
