@@ -44,6 +44,8 @@ struct SAILINGSIM_API FCrewRig
 	TArray<FTransform> RestCS;                  // the T-posed reference, component space
 	TMap<FName, TArray<TPair<FName, float>>> Map;
 	FVector Pelvis = FVector::ZeroVector;       // T-posed rest pelvis (cm, component space)
+	// Graphics G8: per finger bone, the component-space axis (rest pose) a positive turn about which curls it toward the palm.
+	TMap<FName, FVector> CurlAxis;
 
 	/** The rest transform of a bone (component space, T-posed); identity if it has none. */
 	FTransform Rest(const class USkeletalMesh* Mesh, FName Bone) const;
@@ -61,10 +63,25 @@ SAILINGSIM_API void LoadMetaHumanGrooms(int32 Role, TArray<TPair<class UGroomAss
 /** Builds the rig for a skeleton (identity for SK_Sailor's own). */
 SAILINGSIM_API void BuildCrewRig(const class USkeletalMesh* Mesh, FCrewRig& Out);
 
+/**
+ * Graphics G8: where the hands go once the stance is posed (round 8: open hands held in the air read as a mannequin).
+ * Reach puts the palm on a point (component space of the posed mesh, cm: the tiller extension, a sheet) by two-bone IK
+ * from the shoulder, keeping the stance's elbow plane; Knee rests it on that side's knee. Grip curls the fingers (rigs
+ * with finger bones): 0 open, about 0.3 relaxed, 1 closed round a line.
+ */
+struct SAILINGSIM_API FCrewHands
+{
+	enum class EMode : uint8 { Free, Reach, Knee };
+	EMode Mode[2] = { EMode::Free, EMode::Free };          // [0] left, [1] right
+	FVector Target[2] = { FVector::ZeroVector, FVector::ZeroVector };
+	float Grip[2] = { 0.3f, 0.3f };
+};
+
 /** Poses the skeleton: forward kinematics from the reference pose with the joint rotations (missing joints rest). With
- *  a rig, the sailor's joints are carried to its skeleton first. */
-SAILINGSIM_API void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig = nullptr);
+ *  a rig, the sailor's joints are carried to its skeleton first; with hands, the arms reach and the fingers curl. */
+SAILINGSIM_API void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig = nullptr,
+	const FCrewHands* Hands = nullptr);
 
 /** Component-space joint positions of the reference skeleton posed with the rotations (cm): for the tests. */
 SAILINGSIM_API void CrewPosedJoints(const class USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& OutPositions,
-	const FCrewRig* Rig = nullptr);
+	const FCrewRig* Rig = nullptr, const FCrewHands* Hands = nullptr);

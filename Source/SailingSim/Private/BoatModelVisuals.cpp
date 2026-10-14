@@ -288,21 +288,27 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		// (Always drawn, so the rig mesh keeps its vertex count: with no hand in reach, down onto the seat.)
 		const FVector Tailer = RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P"));
-		const TOptional<FVector> Hand = HandNear(NumCrew - 2, Tailer);
+		const TOptional<FVector> Hand = JibGripCm ? JibGripCm : HandNear(NumCrew - 2, Tailer);
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
 		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f });
 	}
-	if (ModelRudder && Has(ModelRudder, TEXT("TillerEnd")))
+	FVector End;
+	if (TillerEndCm(End))
 	{
-		const FVector End = RigPoint(ModelRudder, TEXT("TillerEnd"));
-		const TOptional<FVector> Hand = NumCrew >= 1 ? HandNear(NumCrew - 1, End) : TOptional<FVector>();
+		const TOptional<FVector> Hand = HelmGripCm ? HelmGripCm : (NumCrew >= 1 ? HandNear(NumCrew - 1, End) : TOptional<FVector>());
 		// In the helm's hand, else lying back along the tiller.
+		const FVector Stock = Has(ModelRudder, TEXT("RudderStock")) ? RigPoint(ModelRudder, TEXT("RudderStock"))
+			: BoatRoot->GetComponentTransform().InverseTransformPosition(ModelRudder->GetComponentLocation()) + FVector(0.f, 0.f, End.Z);
 		const FVector Grip = Hand && FVector::Dist(*Hand, End) < 140.f ? *Hand
-			: End + (RigPoint(ModelRudder, TEXT("RudderStock")) - End).GetSafeNormal() * 85.f + FVector(0.f, 3.5f, -2.f);
+			: End + (Stock - End).GetSafeNormal() * 85.f + FVector(0.f, 3.5f, -2.f);
 		Wires.Add({ End + FVector(0.f, 0.f, 4.5f), Grip, 1.1f, 0.f });
 	}
 
-	// Mainsheet: a 4:1 tackle between the boom bail and the traveler car; taut when the main is drawing.
+	// Mainsheet: a 4:1 tackle between the boom bail and the traveler car; taut when the main is drawing. Graphics G8: its
+	// tail from the car to the helm's hand.
+	MainsheetCarCm = Car;
+	// (Always drawn, so the rig mesh keeps its vertex count: with no hand on it, a short tail onto the cockpit sole.)
+	Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), 0.4f, MainGripCm ? 0.01f : 0.04f });
 	const FVector BoomBlock = RigPoint(ModelBoom, TEXT("Boom_Mainsheet"));
 	const float MainSlack = FMath::Lerp(0.015f, 0.f, Loaded);
 	for (int32 K = 0; K < 4; ++K)
@@ -385,6 +391,17 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 	const float Side = S.CrewOffset != 0.0 ? float(FMath::Sign(S.CrewOffset)) : float(S.WindwardSide);
 	const double Out = FMath::Abs(S.CrewOffset);
 	const float Blend = 1.f - FMath::Exp(-DeltaSeconds * 7.f);
+	// Graphics G8: what the hands hold (round 8: open hands in the air read as a mannequin). The helm has the tiller
+	// extension in the aft hand and the mainsheet in the other, the trimmer the working jib sheet's tail; the rest rest
+	// their hands on their knees.
+	HelmGripCm.Reset();
+	MainGripCm.Reset();
+	JibGripCm.Reset();
+	FVector TillerEnd;
+	const bool bTiller = TillerEndCm(TillerEnd);
+	const bool bJibTail = Cfg.HasJib() && ModelHull && ModelHull->DoesSocketExist(TEXT("JibTailer_S"));
+	const FVector Tailer = bJibTail ? RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P")) : FVector::ZeroVector;
+	const FTransform& RootTM = BoatRoot->GetComponentTransform();
 	for (int32 I = 0; I < N && I < CrewFigures.Num(); ++I)
 	{
 		const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I);
@@ -460,7 +477,87 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			F.Roll = FMath::Lerp(F.Roll, Roll, Blend);
 		}
 		const FQuat Facing(FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
-		Crew[I]->SetRelativeLocationAndRotation(F.Location, Rig ? Facing * Rig->Frame.Inverse() : Facing);
-		ApplyCrewPose(Crew[I], F.Joints, Rig);
+		const FQuat CompRot = Rig ? Facing * Rig->Frame.Inverse() : Facing;
+		Crew[I]->SetRelativeLocationAndRotation(F.Location, CompRot);
+
+		// The hands: targets in the boat frame from the shoulders as last posed, then into the figure's own frame.
+		FCrewHands Hands;
+		const FTransform CompTM(CompRot, F.Location);
+		const FVector Shoulder[2] = {
+			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("upperarm_l"), EBoneSpaces::WorldSpace)),
+			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("upperarm_r"), EBoneSpaces::WorldSpace)) };
+		constexpr double Reach = 60.0; // shoulder to palm, cm
+		auto Hold = [&](int32 Hand, const FVector& At, TOptional<FVector>& Grip)
+		{
+			if (FVector::Dist(At, Shoulder[Hand]) > Reach * 1.05) return false;
+			Hands.Mode[Hand] = FCrewHands::EMode::Reach;
+			Hands.Target[Hand] = CompTM.InverseTransformPosition(At);
+			Hands.Grip[Hand] = 0.85f;
+			Grip = At;
+			return true;
+		};
+		const bool bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::DinghyHike || P.Stance == ECrewStance::Cockpit
+			|| P.Stance == ECrewStance::RailHike;
+		if (bSeated && !bTrafficBoat)
+		{
+			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
+			const FVector Ahead = FRotator(0.f, F.Yaw, 0.f).Vector();
+			if (bHelm && bTiller)
+			{
+				// The extension (about 90 cm) from the tiller's end up to the aft hand, held low beside the hip.
+				const FVector ToShoulder = Shoulder[Aft] + FVector(0.f, 0.f, -32.f) - TillerEnd;
+				const double Len = FMath::Min(90.0, ToShoulder.Size() - 25.0);
+				if (Len > 20.0) Hold(Aft, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm);
+				// The mainsheet's tail from its block on the car, held out in front at lap height.
+				if (!MainsheetCarCm.IsZero())
+				{
+					const int32 Fwd = 1 - Aft;
+					const FVector At = Shoulder[Fwd] + (MainsheetCarCm - Shoulder[Fwd]).GetSafeNormal() * 8.0 + Ahead * 30.0 + FVector(0.f, 0.f, -36.f);
+					Hold(Fwd, At, MainGripCm);
+				}
+			}
+			else if (!bHelm && bJibTail && I == N - 2)
+			{
+				// The trimmer: the working sheet's tail a forearm's length off its self-tailer.
+				const int32 Near = FVector::DistSquared(Shoulder[0], Tailer) < FVector::DistSquared(Shoulder[1], Tailer) ? 0 : 1;
+				const FVector ToShoulder = Shoulder[Near] - Tailer;
+				Hold(Near, Tailer + ToShoulder.GetSafeNormal() * FMath::Clamp(ToShoulder.Size() - 40.0, 25.0, 55.0), JibGripCm);
+			}
+			for (int32 Hand = 0; Hand < 2; ++Hand)
+			{
+				if (Hands.Mode[Hand] == FCrewHands::EMode::Free && P.Stance != ECrewStance::DinghyHike) Hands.Mode[Hand] = FCrewHands::EMode::Knee;
+			}
+		}
+		ApplyCrewPose(Crew[I], F.Joints, Rig, &Hands);
+		static double LastDebug = 0.0;
+		if (FParse::Param(FCommandLine::Get(), TEXT("SailingDebugCrew")) && S.Time - LastDebug > 1.0 && !bTrafficBoat)
+		{
+			if (I == N - 1) LastDebug = S.Time;
+			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d: shoulders %s / %s, tiller %d %s, car %s, modes %d %d"), I, int32(P.Stance), *Shoulder[0].ToString(), *Shoulder[1].ToString(),
+				int32(bTiller), *TillerEnd.ToString(), *MainsheetCarCm.ToString(), int32(Hands.Mode[0]), int32(Hands.Mode[1]));
+		}
 	}
+}
+
+bool ASailboatPawn::TillerEndCm(FVector& Out) const
+{
+	// Graphics G8: the end of the tiller, where the extension is hinged: a socket on the J/22's rudder; the fleet's tillered
+	// boats build theirs from the config (Tools/blender/build_fleet.py: TillerLength forward of the stock, 16 cm over the
+	// transom's sheer).
+	if (!ModelRudder) return false;
+	if (ModelRudder->DoesSocketExist(TEXT("TillerEnd")))
+	{
+		Out = RigPoint(ModelRudder, TEXT("TillerEnd"));
+		return true;
+	}
+	const FBoatConfig& Cfg = Boat.GetConfig();
+	switch (Cfg.Type)
+	{
+	case EBoatType::Sunfish: case EBoatType::ILCA7: case EBoatType::Catalina22: case EBoatType::Corsair880: break;
+	default: return false;
+	}
+	const FHullShape& Hull = Cfg.Hulls[0];
+	const FVector Local(float(Cfg.TillerLength), 0.f, float(Hull.SheerHeight(Hull.SternX) + 0.16));
+	Out = BoatRoot->GetComponentTransform().InverseTransformPosition(ModelRudder->GetComponentTransform().TransformPosition(Local * CmPerMeter));
+	return true;
 }

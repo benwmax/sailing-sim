@@ -46,6 +46,7 @@ float CrewFacingYaw(const FCrewPoseParams& P)
 	case ECrewStance::Crossing: return -90.f * P.Side;         // across, toward the new side
 	case ECrewStance::Trapeze: return -10.f * P.Side;          // forward on the rail
 	case ECrewStance::Righting: return 90.f * P.Side;          // facing the boat (she lies to the other side)
+	case ECrewStance::DinghyHike: return -75.f * P.Side;       // inboard, turned a little toward the bow (Graphics G8)
 	default: return -90.f * P.Side;                           // facing inboard
 	}
 }
@@ -100,11 +101,14 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 	{
 		// On the deck edge facing inboard, feet under the hiking strap, leaning back out over the water; the aft hand
 		// on the tiller extension, the forward hand on the mainsheet.
-		Legs(Out, 68.f, 30.f + 20.f * (1.f - H));
+		// Graphics G8: sitting up, the thighs lie level across the side deck and the lower legs drop into the cockpit well
+		// (the feet under the strap); hiking straightens them.
+		Legs(Out, 84.f - 14.f * H, 25.f + 50.f * (1.f - H), 9.f);
 		const float L = -(12.f + 58.f * H);
 		Out.Add(TEXT("spine"), Lean(0.5f * L));
 		Out.Add(TEXT("chest"), Lean(0.5f * L));
-		Out.Add(TEXT("neck"), Lean(-0.7f * L));
+		// Graphics G8: the head turned toward the bow (the luff and the water ahead), not staring across the boat.
+		Out.Add(TEXT("neck"), Q(FVector::UpVector, 30.f * P.Side) * Lean(-0.7f * L));
 		Arms(Out, 40.f, 70.f, 30.f, 40.f, 70.f, 30.f);
 		break;
 	}
@@ -140,10 +144,12 @@ namespace
 
 	/** Component-space posed transforms from a rest pose: D(bone) = D(parent) * R(bone); rotation D * rest;
 	 *  position = parent's posed position + D(parent) * (rest offset from the parent). */
-	void Solve(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, const TMap<FName, FQuat>& Joints, TArray<FTransform>& OutCS)
+	void Solve(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, const TMap<FName, FQuat>& Joints, TArray<FTransform>& OutCS,
+		TArray<FQuat>* OutD = nullptr)
 	{
 		const int32 N = Ref.GetNum();
-		TArray<FQuat> D;
+		TArray<FQuat> Local;
+		TArray<FQuat>& D = OutD ? *OutD : Local;
 		D.SetNum(N);
 		OutCS.SetNum(N);
 		for (int32 B = 0; B < N; ++B)
@@ -178,18 +184,102 @@ namespace
 		}
 	}
 
-	void Pose(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, TArray<FTransform>& CS)
+	const TCHAR* const Fingers[] = { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky"), TEXT("thumb") };
+
+	/** Graphics G8: two-bone IK for one arm toward a wrist target (component space). The elbow stays in the plane the
+	 *  stance put it in; the shoulder and elbow rotations are written back into the joint map. */
+	void ReachArm(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Hand, const FVector& Target,
+		TMap<FName, FQuat>& Joints)
 	{
-		if (Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum())
+		const int32 Lower = Ref.GetParentIndex(Hand);
+		const int32 Upper = Lower == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Lower);
+		const int32 Above = Upper == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Upper);
+		if (Above == INDEX_NONE) return;
+		const FVector S = CS[Upper].GetLocation(), E = CS[Lower].GetLocation(), W = CS[Hand].GetLocation();
+		const double A = FVector::Dist(S, E), B = FVector::Dist(E, W);
+		FVector ToT = Target - S;
+		const double Dist = FMath::Clamp(ToT.Size(), FMath::Abs(A - B) + 1.0, A + B - 0.5);
+		const FVector X = ToT.GetSafeNormal();
+		if (X.IsNearlyZero()) return;
+		FVector Y = (E - S) - X * FVector::DotProduct(E - S, X);
+		if (Y.SizeSquared() < 1.0) Y = FVector::CrossProduct(X, FVector::CrossProduct(FVector(0, 0, -1), X)); // a straight arm: elbow down
+		Y = Y.GetSafeNormal();
+		const double CosA = FMath::Clamp((A * A + Dist * Dist - B * B) / (2.0 * A * Dist), -1.0, 1.0);
+		const FVector E2 = S + X * (A * CosA) + Y * (A * FMath::Sqrt(FMath::Max(0.0, 1.0 - CosA * CosA)));
+		const FVector T2 = S + X * Dist;
+		const FQuat Q1 = FQuat::FindBetweenVectors(E - S, E2 - S);
+		const FVector W1 = S + Q1.RotateVector(W - S);
+		const FQuat Q2 = FQuat::FindBetweenVectors(W1 - E2, T2 - E2);
+		const FQuat DU = Q1 * D[Upper], DL = Q2 * Q1 * D[Lower];
+		Joints.Add(Ref.GetBoneName(Upper), D[Above].Inverse() * DU);
+		Joints.Add(Ref.GetBoneName(Lower), DU.Inverse() * DL);
+	}
+
+	void Pose(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, TArray<FTransform>& CS,
+		const FCrewHands* Hands = nullptr)
+	{
+		TArray<FTransform> Rest;
+		const bool bRig = Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum();
+		if (!bRig) RestPose(Ref, Rest);
+		const TArray<FTransform>& RestCS = bRig ? Rig->RestCS : Rest;
+		TMap<FName, FQuat> Carried;
+		if (bRig) Carry(*Rig, Joints, Carried);
+		else Carried = Joints;
+		if (!Hands)
 		{
-			TMap<FName, FQuat> Carried;
-			Carry(*Rig, Joints, Carried);
-			Solve(Ref, Rig->RestCS, Carried, CS);
+			Solve(Ref, RestCS, Carried, CS);
 			return;
 		}
-		TArray<FTransform> Rest;
-		RestPose(Ref, Rest);
-		Solve(Ref, Rest, Joints, CS);
+		// The fingers curl (a relaxed hand, or closed round a line): the base joint most, the tip least; the thumb less.
+		if (bRig)
+		{
+			for (int32 Side = 0; Side < 2; ++Side)
+			{
+				const float G = FMath::Clamp(Hands->Grip[Side], 0.f, 1.f);
+				for (const TCHAR* Finger : Fingers)
+				{
+					const bool bThumb = Finger[0] == TEXT('t');
+					const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 45.f : 95.f, bThumb ? 40.f : 62.f };
+					for (int32 K = 1; K <= 3; ++K)
+					{
+						const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
+						if (const FVector* Axis = Rig->CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
+					}
+				}
+			}
+		}
+		TArray<FQuat> D;
+		Solve(Ref, RestCS, Carried, CS, &D);
+		bool bMoved = false;
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			if (Hands->Mode[Side] == FCrewHands::EMode::Free) continue;
+			const TCHAR* Sx = Side == 0 ? TEXT("l") : TEXT("r");
+			const int32 Hand = Ref.FindBoneIndex(Side == 0 ? TEXT("hand_l") : TEXT("hand_r"));
+			if (Hand == INDEX_NONE) continue;
+			FVector Target = Hands->Target[Side];
+			if (Hands->Mode[Side] == FCrewHands::EMode::Knee)
+			{
+				// The palm on top of the knee, the wrist a hand's length back toward the hip.
+				const int32 Calf = Ref.FindBoneIndex(*FString::Printf(TEXT("calf_%s"), Sx));
+				const int32 Thigh = Ref.FindBoneIndex(*FString::Printf(TEXT("thigh_%s"), Sx));
+				if (Calf == INDEX_NONE || Thigh == INDEX_NONE) continue;
+				const FVector Knee = CS[Calf].GetLocation(), Hip = CS[Thigh].GetLocation();
+				Target = Knee + (Hip - Knee).GetSafeNormal() * 9.0 + FVector(0, 0, 9.0);
+				ReachArm(Ref, CS, D, Hand, Target, Carried);
+				bMoved = true;
+				continue;
+			}
+			// Reach: the target is where the palm closes (the middle knuckle less a little), so the wrist stops short of it.
+			const int32 Knuckle = Ref.FindBoneIndex(*FString::Printf(TEXT("middle_01_%s"), Sx));
+			for (int32 Pass = 0; Pass < 2; ++Pass)
+			{
+				const FVector Palm = Knuckle == INDEX_NONE ? FVector::ZeroVector : (CS[Knuckle].GetLocation() - CS[Hand].GetLocation()) * 0.75;
+				ReachArm(Ref, CS, D, Hand, Target - Palm, Carried);
+				Solve(Ref, RestCS, Carried, CS, &D);
+			}
+		}
+		if (bMoved) Solve(Ref, RestCS, Carried, CS);
 	}
 }
 
@@ -274,6 +364,39 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 		Fix.Add(Lower, CL);
 	}
 	Solve(Ref, Rest, Fix, Rig.RestCS);
+	// Graphics G8: the fingers' curl axes. The palm faces the side the resting fingers already bend toward (the middle
+	// finger's tip off the line of its first two joints), else the thumb's side; each joint curls about (bone x palm).
+	auto RestAt = [&](const FString& Name) -> TOptional<FVector>
+	{
+		const int32 B = Ref.FindBoneIndex(*Name);
+		return B == INDEX_NONE ? TOptional<FVector>() : TOptional<FVector>(Rig.RestCS[B].GetLocation());
+	};
+	for (const TCHAR* Sx : { TEXT("l"), TEXT("r") })
+	{
+		const TOptional<FVector> Hand = RestAt(FString::Printf(TEXT("hand_%s"), Sx)), I1 = RestAt(FString::Printf(TEXT("index_01_%s"), Sx)),
+			P1 = RestAt(FString::Printf(TEXT("pinky_01_%s"), Sx)), M1 = RestAt(FString::Printf(TEXT("middle_01_%s"), Sx)),
+			M2 = RestAt(FString::Printf(TEXT("middle_02_%s"), Sx)), M3 = RestAt(FString::Printf(TEXT("middle_03_%s"), Sx)),
+			T3 = RestAt(FString::Printf(TEXT("thumb_03_%s"), Sx));
+		if (!Hand || !I1 || !P1 || !M1 || !M2 || !M3) continue;
+		FVector Palm = FVector::CrossProduct(*I1 - *Hand, *P1 - *Hand).GetSafeNormal();
+		const FVector Line = (*M2 - *M1);
+		const FVector Bend = (*M3 - *M2) - Line.GetSafeNormal() * FVector::DotProduct(*M3 - *M2, Line.GetSafeNormal());
+		const double Sign = Bend.Size() > 0.05 ? FVector::DotProduct(Bend, Palm) : (T3 ? FVector::DotProduct(*T3 - *Hand, Palm) : 1.0);
+		if (Sign < 0.0) Palm = -Palm;
+		for (const TCHAR* Finger : Fingers)
+		{
+			for (int32 K = 1; K <= 3; ++K)
+			{
+				const TOptional<FVector> A = RestAt(FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Sx));
+				const TOptional<FVector> B = RestAt(FString::Printf(TEXT("%s_0%d_%s"), Finger, K < 3 ? K + 1 : K, Sx));
+				const TOptional<FVector> Prev = RestAt(FString::Printf(TEXT("%s_0%d_%s"), Finger, K - 1, Sx));
+				if (!A) continue;
+				const FVector Dir = K < 3 && B ? *B - *A : (Prev ? *A - *Prev : FVector::ZeroVector);
+				const FVector Axis = FVector::CrossProduct(Dir, Palm).GetSafeNormal();
+				if (!Axis.IsNearlyZero()) Rig.CurlAxis.Add(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Sx), Axis);
+			}
+		}
+	}
 	const int32 P = Ref.FindBoneIndex(TEXT("pelvis"));
 	Rig.Pelvis = P == INDEX_NONE ? FVector::ZeroVector : Rig.RestCS[P].GetLocation();
 	Rig.bValid = true;
@@ -285,24 +408,24 @@ FTransform FCrewRig::Rest(const USkeletalMesh* Mesh, FName Bone) const
 	return B == INDEX_NONE || !RestCS.IsValidIndex(B) ? FTransform::Identity : RestCS[B];
 }
 
-void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig)
+void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, const FCrewHands* Hands)
 {
 	if (!Mesh || !Mesh->GetSkinnedAsset()) return;
 	const FReferenceSkeleton& Ref = Mesh->GetSkinnedAsset()->GetRefSkeleton();
 	TArray<FTransform> CS;
-	Pose(Ref, Joints, Rig, CS);
+	Pose(Ref, Joints, Rig, CS, Hands);
 	for (int32 B = 0; B < CS.Num(); ++B)
 	{
 		Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
 	}
 }
 
-void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out, const FCrewRig* Rig)
+void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out, const FCrewRig* Rig, const FCrewHands* Hands)
 {
 	Out.Reset();
 	if (!Mesh) return;
 	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
 	TArray<FTransform> CS;
-	Pose(Ref, Joints, Rig, CS);
+	Pose(Ref, Joints, Rig, CS, Hands);
 	for (int32 B = 0; B < CS.Num(); ++B) Out.Add(Ref.GetBoneName(B), CS[B].GetLocation());
 }

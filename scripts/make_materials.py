@@ -2641,6 +2641,16 @@ float dye = 1.0 + 0.05 * sin(WP.x * 0.031 + WP.z * 0.017) * sin(WP.y * 0.027 - W
 AlbedoOut = saturate(C.rgb * detail * dye);
 float fade = saturate(1.0 - (Depth - 150.0) / 600.0);
 float3 tn = normalize(lerp(float3(0, 0, 1), Nt, saturate(Strength * fade)));
+// Graphics G8: a life jacket's foam is sewn into vertical channels (ChanPeriod along U, in metres; 0 off): each panel a
+// low pillow (4 mm), the seams between them darker.
+if (ChanPeriod > 0.0)
+{
+    float f = frac(UV0.x / ChanPeriod) - 0.5;
+    float slope = -0.004 * 3.14159 * sin(3.14159 * f) / ChanPeriod;
+    float cfade = saturate(1.0 - (Depth - 600.0) / 1200.0);
+    tn = normalize(float3(tn.xy + float2(-slope * 2.5 * cfade, 0.0), tn.z));
+    AlbedoOut *= 1.0 - 0.28 * pow(saturate(abs(2.0 * f)), 10.0);
+}
 RoughOut = saturate(lerp(RoughBase, R, 0.6 * fade + 0.2));
 FuzzOut = Sheen;
 return tn;
@@ -2701,7 +2711,7 @@ def build_crew_fabric():
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1450, 600)
     wp = node(mat, unreal.MaterialExpressionWorldPosition, -1450, 700)
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, FABRIC_CODE, ["C", "A", "Nt", "R", "AvgLum", "DetailAmount", "Strength", "RoughBase", "Sheen", "Depth", "WP"], F3, -900, 100,
+    c = custom(mat, FABRIC_CODE, ["C", "A", "Nt", "R", "AvgLum", "DetailAmount", "Strength", "RoughBase", "Sheen", "Depth", "WP", "UV0", "ChanPeriod"], F3, -900, 100,
                extra_outputs=[("AlbedoOut", F3), ("RoughOut", F1), ("FuzzOut", F1)])
     connect(color, "RGBA", c, "C")
     connect(ta, "RGB", c, "A")
@@ -2711,6 +2721,8 @@ def build_crew_fabric():
         connect(scalar(mat, pname, default, -1200, 800 + 90 * i), "", c, pname)
     connect(depth, "", c, "Depth")
     connect(wp, "", c, "WP")
+    connect(uv0, "", c, "UV0")
+    connect(scalar(mat, "ChanPeriod", 0.0, -1200, 1300), "", c, "ChanPeriod")
     slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -400, 100)
     connect(c, "AlbedoOut", slab, "Diffuse Albedo")
     connect(node(mat, unreal.MaterialExpressionConstant3Vector, -700, 400, constant=unreal.LinearColor(0.04, 0.04, 0.04, 1)), "", slab, "F0")
@@ -2727,6 +2739,7 @@ def build_crew_fabric():
         "MI_Crew_Polo": ("Fabric070", (0.05, 0.10, 0.30), 9.0, 1.0, 0.85, 0.45),
         "MI_Crew_PoloRib": ("Fabric070", (0.05, 0.10, 0.30), 16.0, 1.0, 0.85, 0.45),
         "MI_Crew_PFDShell": ("Fabric048", (0.02, 0.05, 0.25), 30.0, 0.35, 0.55, 0.25),
+        "MI_Crew_Webbing": ("Fabric036", (0.13, 0.135, 0.14), 40.0, 1.0, 0.62, 0.3),     # Graphics G8: the vest's nylon webbing
         "MI_Crew_CapCloth": ("Fabric036", (0.72, 0.72, 0.72), 20.0, 0.5, 0.85, 0.5),
         "MI_Crew_Shorts": ("Fabric036", (0.30, 0.25, 0.16), 10.0, 0.7, 0.85, 0.45),     # cotton twill shorts (colour per sailor)
         "MI_Crew_ShoeLeather": ("Leather038", (0.28, 0.14, 0.06), 8.0, 0.8, 0.55, 0.1),  # oiled leather deck shoe uppers
@@ -2736,7 +2749,8 @@ def build_crew_fabric():
             ASSETS.create_asset(name, FABRIC_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
         MEL.set_material_instance_parent(mi, mat)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
-        for pname, value in (("Tiling", tile), ("Strength", strength), ("RoughBase", rough), ("Sheen", sheen), ("AvgLum", FABRIC_SETS[k])):
+        chan = 0.065 if name == "MI_Crew_PFDShell" else 0.0   # Graphics G8: the vest's foam channels (its UVs are in metres round the torso)
+        for pname, value in (("Tiling", tile), ("Strength", strength), ("RoughBase", rough), ("Sheen", sheen), ("AvgLum", FABRIC_SETS[k]), ("ChanPeriod", chan)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         for pname, t in zip(("AlbedoMap", "NormalMap", "RoughMap"), texs[k]):
             MEL.set_material_instance_texture_parameter_value(mi, pname, t)

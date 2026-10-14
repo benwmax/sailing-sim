@@ -366,6 +366,15 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
 	FVector JibClewCm = FVector::ZeroVector;  // body frame, from the jib mesh
+	// Graphics G8: where the crew's hands hold the tiller extension, the mainsheet and the jib sheet (boat frame, cm), set
+	// by UpdateCrewFigures for the rig lines; the mainsheet's block on the car from the last UpdateModelRig.
+	TOptional<FVector> HelmGripCm, MainGripCm, JibGripCm;
+	// Graphics G8: the crew's grooms with their coarsest card LOD: past that the MetaHuman's hair LODs are helmet meshes
+	// this build doesn't have, so a sailor 10 m off went bald (game-05). Held on the cards beyond a few metres.
+	TArray<TPair<TWeakObjectPtr<class UGroomComponent>, int32>> CrewGrooms;
+	void UpdateCrewGroomLOD();
+	FVector MainsheetCarCm = FVector::ZeroVector;
+	bool TillerEndCm(FVector& Out) const;
 	float MastBendCm = 0.f;
 	float MastBendHeightCm = 800.f;
 	double WetLineZ = -1e9;   // world cm: the highest recent water at the hull, drying back down

@@ -70,7 +70,7 @@ def make(role, piece, fbx, source_mesh, slots):
 
 
 # Graphics G6: the life jacket tailored over the polo (Tools/blender/build_vest.py), skinned from the T-shirt like the polo.
-VEST_SLOTS = {"PFD": "/Game/Crew/Fabric/MI_Crew_PFDShell", "Straps": "/Game/Boats/Materials/MI_Boat_CrewStraps",
+VEST_SLOTS = {"PFD": "/Game/Crew/Fabric/MI_Crew_PFDShell", "Straps": "/Game/Crew/Fabric/MI_Crew_Webbing",   # Graphics G8: woven webbing
               "Buckle": "/Game/Boats/Materials/MI_Boat_CrewBuckle", "Piping": "/Game/Boats/Materials/MI_Boat_CrewPiping"}
 # PIECES=Vest (comma list) imports only those.
 PIECES = [p for p in os.environ.get("PIECES", "Polo,Shoes,Vest").split(",") if p]
@@ -79,6 +79,9 @@ for role in ("Helm", "Trimmer", "Bow"):
     outfit = unreal.load_asset(f"/Game/Crew/MetaHumans/{role}/Clothing/{role}_Outfits")
     body = unreal.load_asset(f"/Game/Crew/MetaHumans/{role}/Body/SKM_{role}_BodyMesh")
     polo = os.path.join(CREW, f"{role}_Polo.fbx")
+    # Graphics G8: the polo with its torso under the vest cut away (build_vest.py), where it has been made.
+    if os.path.exists(os.path.join(CREW, f"{role}_PoloOpen.fbx")):
+        polo = os.path.join(CREW, f"{role}_PoloOpen.fbx")
     shoes = os.path.join(CREW, f"{role}_Shoes.fbx")
     vest = os.path.join(CREW, f"{role}_Vest.fbx")
     if outfit and os.path.exists(polo) and "Polo" in PIECES:
@@ -86,4 +89,6 @@ for role in ("Helm", "Trimmer", "Bow"):
     if body and os.path.exists(shoes) and "Shoes" in PIECES:
         make(role, "Shoes", shoes, body, SHOE_SLOTS)  # skinned from the feet
     if outfit and os.path.exists(vest) and "Vest" in PIECES:
-        make(role, "Vest", vest, outfit, VEST_SLOTS)  # skinned from the T-shirt, over the polo
+        # Skinned from the T-shirt by closest point like the polo (Graphics G8 tried inpainting the weights where the nearest
+        # shirt was a sleeve: the solver failed on the buckles and webbing walls and the vest went to spikes).
+        make(role, "Vest", vest, outfit, VEST_SLOTS)
