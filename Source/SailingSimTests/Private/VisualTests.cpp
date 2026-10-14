@@ -10,6 +10,7 @@
 #include "AutoTrim.h"
 #include "SailCloth.h"
 #include "CrewPose.h"
+#include "SailingSim.h"
 #include "BoatLivery.h"
 #include "Engine/SkeletalMesh.h"
 #include "Wind.h"
@@ -657,6 +658,114 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("%s: the palm closes %.1f cm from the reach target"), MetaHumanRoleName(Role), FVector::Dist(Palm, Reach.Target[1])),
 			FVector::Dist(Palm, Reach.Target[1]) < 4.f);
 	}
+	return true;
+}
+
+// Crew pose fix (round 8/9): the helm's foot went through the J/22's topsides. Every stance each boat's crew takes, placed
+// the way ASailboatPawn::UpdateCrewFigures places it (keep the two in step), on both tacks, sitting up and hiked: no heel
+// or toe inside the solid boat (under the deck or through the topsides, outside the cockpit well), and the seated
+// stances' feet inside the hull plan, once the feet are planted (FCrewGround). On SK_Sailor and on the MetaHumans where they are installed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewFeetTest, "SailingSim.Visual.CrewFeet", VisualFlags)
+bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const USkeletalMesh* Sailor = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
+	if (!TestNotNull(TEXT("SK_Sailor"), Sailor)) return false;
+	struct FBody { const USkeletalMesh* Mesh; FCrewRig Rig; FString Name; };
+	TArray<FBody> Bodies;
+	Bodies.Add({ Sailor, FCrewRig(), TEXT("SK_Sailor") });
+	if (IFileManager::Get().DirectoryExists(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Crew/MetaHumans"))))
+	{
+		for (int32 Role = 0; Role < NumMetaHumanRoles; ++Role)
+		{
+			USkeletalMesh *Body = nullptr, *Face = nullptr, *Outfit = nullptr;
+			if (!LoadMetaHumanCrew(Role, Body, Face, Outfit)) continue;
+			FBody& B = Bodies.AddDefaulted_GetRef();
+			B.Mesh = Body;
+			BuildCrewRig(Body, B.Rig);
+			B.Name = MetaHumanRoleName(Role);
+		}
+	}
+	else
+	{
+		AddWarning(TEXT("Content/Crew/MetaHumans is not installed: SK_Sailor only"));
+	}
+	int32 Checked = 0;
+	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
+	{
+		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
+		const FBoatModel Model(Cfg);
+		const FHullShape& Hull = Cfg.Hulls[0];
+		const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
+		const int32 N = Cfg.CrewCount;
+		for (int32 I = 0; I < N; ++I)
+		{
+			const bool bHelm = I == N - 1;
+			const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I);
+			const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
+			const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
+			for (const float Side : { 1.f, -1.f })
+			{
+				for (const float HikeIn : { 0.f, 0.5f, 1.f })
+				{
+					const double Out = Cfg.CrewSitOut * 0.8 + HikeIn * FMath::Max(Cfg.CrewHikeOut, 0.1);
+					FCrewPoseParams P;
+					P.Side = Side;
+					P.Hike = HikeIn;
+					FVector Pelvis;
+					float Roll = 0.f;
+					if (Cfg.bTrapeze && !bHelm && Out > Rail) { P.Stance = ECrewStance::Trapeze; Pelvis = FVector(X, Side * (Rail + 0.8), Sheer + 0.35); Roll = 72.f * Side; }
+					else if (bDinghy) { P.Stance = ECrewStance::DinghyHike; Pelvis = FVector(X, Side * (Rail - 0.04), Sheer + 0.06); }
+					else if (bHelm) { P.Stance = ECrewStance::Helm; Pelvis = FVector(X, Side * FMath::Max(Rail - 0.18, 0.3), Sheer + 0.07); }
+					else if (Out > 0.55 * Rail) { P.Stance = ECrewStance::RailHike; Pelvis = FVector(X, Side * (Rail - 0.02), Sheer + 0.07); }
+					else { P.Stance = ECrewStance::Cockpit; Pelvis = FVector(X, Side * FMath::Clamp(Out, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10); }
+					TMap<FName, FQuat> Joints;
+					CrewJointRotations(P, Joints);
+					const float Yaw = CrewFacingYaw(P);
+					const FQuat Facing(FRotator(0.f, Yaw, Roll));
+					const bool bInPlan = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::DinghyHike;
+					for (const FBody& B : Bodies)
+					{
+						const bool bRig = B.Rig.bValid;
+						// A MetaHuman crews the player's boat by role: the helm is the last figure, the trimmer the one before.
+						if (bRig && B.Name != MetaHumanRoleName(bHelm ? 0 : (I == N - 2 ? 1 : 2))) continue;
+						const FQuat CompRot = bRig ? Facing * B.Rig.Frame.Inverse() : Facing;
+						const FVector Location = bRig ? Pelvis * CmPerMeter - CompRot.RotateVector(B.Rig.Pelvis) : Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f);
+						FCrewGround Ground;
+						Ground.Config = &Cfg;
+						Ground.HullDepth = Model.HullDepth();
+						Ground.ToBoat = FTransform(CompRot, Location);
+						FCrewHands Hands;
+						Hands.Ground = &Ground;
+						FVector Feet[2][2];
+						CrewFootPoints(B.Mesh, Joints, Feet, bRig ? &B.Rig : nullptr, &Hands);
+						for (int32 S = 0; S < 2; ++S)
+						{
+							for (int32 K = 0; K < 2; ++K)
+							{
+								const FVector At = (Location + CompRot.RotateVector(Feet[S][K])) / CmPerMeter;
+								++Checked;
+								const FString What = FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s %s at (%.2f, %.2f, %.2f) m"),
+									ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn,
+									S == 0 ? TEXT("left") : TEXT("right"), K == 0 ? TEXT("heel") : TEXT("toe"), At.X, At.Y, At.Z);
+								// 1.5 cm of shoe sole may touch the surface it stands on.
+								if (CrewInsideBoat(Cfg, Model.HullDepth(), At + FVector(0.0, 0.0, 0.015)))
+								{
+									AddError(What + TEXT(" is inside the boat"));
+								}
+								const FHullShape& Near = Cfg.Hulls[0];
+								if (bInPlan && !Cfg.bMultihull && (FMath::Abs(At.Y) > Near.DeckHalfBeam(At.X) || At.X < Near.SternX))
+								{
+									AddError(What + TEXT(" is outside the hull plan"));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d heel and toe points checked"), Checked));
 	return true;
 }
 
