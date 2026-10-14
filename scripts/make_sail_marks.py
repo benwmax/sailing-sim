@@ -37,7 +37,17 @@ for (t, col), w in zip(parts, widths):
     box = d.textbbox((0, 0), t, font=f)
     d.text((x - box[0], 256 - (box[3] - box[1]) / 2 - box[1]), t, font=f, fill=col)
     x += w
-# Sail number (class rules: block numerals on the main).
-centered(sys.argv[1] if len(sys.argv) > 1 else "1288", font(330, italic=False), 768, (10, 10, 12, 255))
+# Sail numbers (class rules: block numerals on the main). Graphics G3: a strip of the ten digits, one per cell (W/10 wide),
+# each centred in a cell of the widest digit's width and squeezed into its atlas cell; M_SailCloth composes each boat's number from them.
+f = font(330, italic=False)
+cw = W // 10
+gmax = max(d.textbbox((0, 0), str(k), font=f)[2] - d.textbbox((0, 0), str(k), font=f)[0] for k in range(10))
+for k in range(10):
+    t = str(k)
+    box = d.textbbox((0, 0), t, font=f)
+    gw, gh = box[2] - box[0], box[3] - box[1]
+    glyph = Image.new("RGBA", (int(gmax * 1.18), 512), (0, 0, 0, 0))  # one width for all: a "1" keeps its shape
+    ImageDraw.Draw(glyph).text(((glyph.width - gw) / 2 - box[0], 256 - gh / 2 - box[1]), t, font=f, fill=(10, 10, 12, 255))
+    img.alpha_composite(glyph.resize((cw, 512), Image.LANCZOS), (k * cw, 512))
 img.save(OUT)
 print("wrote", OUT)

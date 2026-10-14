@@ -4,9 +4,10 @@ run from a Slate tick callback.
 
 For each role a MetaHuman Creator preset is duplicated to /Game/Crew/MetaHumanSources/<Role>, rigged by Epic's cloud
 auto-rigging (joints only; needs the editor signed in to an Epic account: the first run opens the device-code page),
-given its texture sources, and assembled with the optimized pipeline (medium quality) to
+given its texture sources, and assembled with the optimized pipeline (high quality since Graphics G3) to
 /Game/Crew/MetaHumans/<Role>/... with the shared parts in /Game/Crew/MetaHumans/Common. The default garment (shirt and
-shorts) stays on; the game adds the life jacket and cap (/Game/Crew/Gear) and does not spawn the grooms.
+shorts) stays on; the game adds the life jacket and cap (/Game/Crew/Gear) and the grooms (cards on the Mac, whose SM5 shader
+platform has no strand geometry; strands on Windows High and Ultra).
 The output is git-ignored (about 0.5 GB per character, and the MetaHuman licence covers use in the game, not
 redistribution); SailingSim.Visual.MetaHumanCrew checks it.
 """
@@ -17,6 +18,9 @@ ROLES = [("Helm", "Bruce"), ("Trimmer", "Ada"), ("Bow", "Omari")]
 ROOT = "/Game/Crew/MetaHumans"            # what the game loads (cooked: Body, Face, Clothing per role)
 SOURCES = "/Game/Crew/MetaHumanSources"   # the MetaHuman Character assets (editor only, never cooked)
 PRESETS = "/MetaHumanCharacter/Optional/Presets"
+# Graphics G3: High (more face and body LODs, larger textures, the grooms' card atlases for the hair). MH_QUALITY=MEDIUM
+# for the V7 build.
+QUALITY = os.environ.get("MH_QUALITY", "HIGH").upper()
 
 
 def log(m):
@@ -31,25 +35,29 @@ def make(role, preset):
     src = f"{SOURCES}/{role}"
     path = f"{ROOT}/{role}"
     ch = unreal.load_asset(f"{src}/{role}.{role}")
-    if ch is None:
+    fresh = ch is None
+    if fresh:
         ch = tools.duplicate_asset(role, src, unreal.load_asset(f"{PRESETS}/{preset}.{preset}"))
     sub = unreal.get_editor_subsystem(unreal.MetaHumanCharacterEditorSubsystem)
     if not sub.try_add_object_to_edit(ch):
         raise RuntimeError(f"{role}: can't edit")
     try:
-        rq = unreal.MetaHumanCharacterAutoRiggingRequestParams()
-        rq.blocking = True
-        rq.report_progress = False
-        rq.rig_type = unreal.MetaHumanRigType.JOINTS_ONLY
-        sub.request_auto_rigging(ch, rq)
-        tq = unreal.MetaHumanCharacterTextureRequestParams()
-        tq.blocking = True
-        tq.report_progress = False
-        sub.request_texture_sources(character=ch, params=tq)
-        unreal.EditorAssetLibrary.save_loaded_asset(ch)
+        # The cloud rig and texture sources are saved with the source character: only a new one needs them (a rebuild at
+        # another quality reuses them; MH_RERIG=1 asks again).
+        if fresh or os.environ.get("MH_RERIG") == "1":
+            rq = unreal.MetaHumanCharacterAutoRiggingRequestParams()
+            rq.blocking = True
+            rq.report_progress = False
+            rq.rig_type = unreal.MetaHumanRigType.JOINTS_ONLY
+            sub.request_auto_rigging(ch, rq)
+            tq = unreal.MetaHumanCharacterTextureRequestParams()
+            tq.blocking = True
+            tq.report_progress = False
+            sub.request_texture_sources(character=ch, params=tq)
+            unreal.EditorAssetLibrary.save_loaded_asset(ch)
         p = unreal.MetaHumanCharacterEditorBuildParameters()
         p.pipeline_type = unreal.MetaHumanDefaultPipelineType.OPTIMIZED
-        p.pipeline_quality = unreal.MetaHumanQualityLevel.MEDIUM
+        p.pipeline_quality = getattr(unreal.MetaHumanQualityLevel, QUALITY)
         p.absolute_build_path = ROOT          # the build adds /<Role>
         p.common_folder_path = f"{ROOT}/Common"
         p.enable_wardrobe_item_validation = False

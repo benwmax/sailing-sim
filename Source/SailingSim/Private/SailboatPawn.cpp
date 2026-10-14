@@ -1,4 +1,6 @@
 #include "SailboatPawn.h"
+#include "GroomComponent.h"
+#include "Rendering/SkeletalMeshRenderData.h"
 #include "PowerVesselActor.h"
 #include "EngineUtils.h"
 #include "Components/MeshComponent.h"
@@ -366,6 +368,13 @@ void ASailboatPawn::RebuildBoatVisuals()
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
 	bRigLinesBuilt = false;
+	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
+	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
+	{
+		uint32 Seed = bTrafficBoat && !bGhost ? GetUniqueID() * 7919u + 1u : 0u;
+		FParse::Value(FCommandLine::Get(), TEXT("SailingLiverySeed="), Seed);
+		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
+	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
 	if (Model.Hull)
 	{
@@ -557,7 +566,14 @@ void ASailboatPawn::RebuildBoatVisuals()
 	const FSailLayout Lay = LayoutFor(C.Type);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0)))
 	{
-		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : 0.f);       // class insignia and number
+		// The J/22's class insignia and number; the other classes' numbers only (where the class carries one). The number
+		// is composed from a digit strip in the marks atlas (Graphics G3: each boat its own, from the livery).
+		FString Digits;
+		for (TCHAR Ch : Livery.SailNumber) if (FChar::IsDigit(Ch)) Digits.AppendChar(Ch);
+		Digits = Digits.Right(6);
+		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
+		Mid->SetScalarParameterValue(TEXT("SailDigits"), float(Digits.Len()));
+		Mid->SetScalarParameterValue(TEXT("SailNum"), Digits.IsEmpty() ? 0.f : float(FCString::Atoi(*Digits)));
 		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
 		Mid->SetScalarParameterValue(TEXT("BattenCount"), Lay.Battens);
 		Mid->SetScalarParameterValue(TEXT("FullBattens"), Lay.Full);
@@ -728,6 +744,26 @@ void ASailboatPawn::BeginPlay()
 		CameraBoom->TargetArmLength = CameraDistance;
 	}
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	// Clean stills outside the capture mode (the blind tests' marina views): no HUD, no on-screen engine messages.
+	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingNoHud")))
+	{
+		USailingSettings::Get()->bShowHud = false;
+		GAreScreenMessagesEnabled = false;
+	}
+	// Stills of the boat's details (crew, fittings): -SailingCamTarget=<forward>,<starboard>,<up> m in the boat frame is
+	// what the camera turns about, instead of 3 m over the hull's origin.
+	FString CamTarget;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamTarget="), CamTarget, false))
+	{
+		TArray<FString> P;
+		CamTarget.ParseIntoArray(P, TEXT(","));
+		if (P.Num() == 3)
+		{
+			CameraBoom->SetRelativeLocation(FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter);
+			CameraBoom->SocketOffset = FVector::ZeroVector;
+			CameraBoom->bEnableCameraLag = false;
+		}
+	}
 	FString CaptureArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCapture="), CaptureArg))
 	{
@@ -2782,10 +2818,12 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	Body->RegisterComponent();
 	BoatParts.Add(Body);
 	// The face and the clothes follow the body's bones (the face's own joints rest: no expressions).
+	USkeletalMeshComponent* FacePart = nullptr;
 	for (int32 K = 1; K <= 2; ++K)
 	{
 		if (!MetaCrewMeshes[3 * Role + K]) continue;
 		USkeletalMeshComponent* Part = NewObject<USkeletalMeshComponent>(this);
+		if (K == 1) FacePart = Part;
 		Part->SetupAttachment(Body);
 		Part->SetSkeletalMesh(MetaCrewMeshes[3 * Role + K]);
 		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -2802,6 +2840,15 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 				const UMaterialInterface* Base = Part->GetMaterial(M);
 				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
 				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
+				// Graphics G3: the shorts in scanned cotton twill (M_CrewFabric), where it has been built.
+				static UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+				if (!bShirt && ShortsCloth)
+				{
+					UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShortsCloth, this);
+					Mid->SetVectorParameterValue(TEXT("Color"), Col);
+					Part->SetMaterial(M, Mid);
+					continue;
+				}
 				if (UMaterialInstanceDynamic* Mid = Part->CreateDynamicMaterialInstance(M))
 				{
 					for (const TCHAR* Param : { TEXT("diffuse_color_1"), TEXT("diffuse_color_2"), TEXT("B_diffuse_color_1"), TEXT("C_color") }) Mid->SetVectorParameterValue(Param, Col);
@@ -2809,13 +2856,93 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 			}
 		}
 		BoatParts.Add(Part);
+		// Graphics G3: the scripted polo (scripts/make-crew-clothes.sh) over the shorts, in place of the default T-shirt:
+		// the outfit's shirt sections are hidden on every LOD and the polo follows the body like the rest.
+		if (K == 2 && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
+		{
+			const FString R = MetaHumanRoleName(Role);
+			USkeletalMesh* PoloMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Polo.SKM_%s_Polo"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			const FSkeletalMeshRenderData* Render = Part->GetSkeletalMeshAsset() ? Part->GetSkeletalMeshAsset()->GetResourceForRendering() : nullptr;
+			if (PoloMesh && Render)
+			{
+				for (int32 L = 0; L < Render->LODRenderData.Num(); ++L)
+				{
+					const TArray<FSkelMeshRenderSection>& Sections = Render->LODRenderData[L].RenderSections;
+					for (int32 S = 0; S < Sections.Num(); ++S)
+					{
+						const UMaterialInterface* Mat = Part->GetMaterial(Sections[S].MaterialIndex);
+						if (Mat && Mat->GetName().Contains(TEXT("Shirt"))) Part->ShowMaterialSection(Sections[S].MaterialIndex, S, false, L);
+					}
+				}
+				USkeletalMeshComponent* Polo = NewObject<USkeletalMeshComponent>(this);
+				Polo->SetupAttachment(Body);
+				Polo->SetSkeletalMesh(PoloMesh);
+				Polo->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				Polo->RegisterComponent();
+				Polo->SetLeaderPoseComponent(Body);
+				static const FLinearColor Polos[] = { FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.75f, 0.74f, 0.70f), FLinearColor(0.20f, 0.02f, 0.02f), FLinearColor(0.03f, 0.14f, 0.18f) };
+				const FLinearColor Col = Polos[Role % UE_ARRAY_COUNT(Polos)];
+				for (int32 M = 0; M < Polo->GetNumMaterials(); ++M)
+				{
+					if (M == Polo->GetMaterialIndex(TEXT("Button"))) continue;
+					if (UMaterialInstanceDynamic* Mid = Polo->CreateDynamicMaterialInstance(M)) Mid->SetVectorParameterValue(TEXT("Color"), M == Polo->GetMaterialIndex(TEXT("Rib")) ? Col * 0.92f : Col);
+				}
+				BoatParts.Add(Polo);
+			}
+		}
 	}
-	// The life jacket over the shirt, the cap over the (ungroomed) head, each scaled to this skeleton and carried by the
+	// Graphics G3: deck shoes (scripts/make-crew-clothes.sh, built round each sailor's feet and skinned from them).
+	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
+	{
+		const FString R = MetaHumanRoleName(Role);
+		if (USkeletalMesh* ShoeMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Shoes.SKM_%s_Shoes"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			USkeletalMeshComponent* Shoes = NewObject<USkeletalMeshComponent>(this);
+			Shoes->SetupAttachment(Body);
+			Shoes->SetSkeletalMesh(ShoeMesh);
+			Shoes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Shoes->RegisterComponent();
+			Shoes->SetLeaderPoseComponent(Body);
+			static const FLinearColor Leather[] = { FLinearColor(0.28f, 0.14f, 0.06f), FLinearColor(0.12f, 0.07f, 0.04f), FLinearColor(0.35f, 0.24f, 0.14f) };
+			const int32 Upper = Shoes->GetMaterialIndex(TEXT("Upper"));
+			if (Upper >= 0)
+				if (UMaterialInstanceDynamic* Mid = Shoes->CreateDynamicMaterialInstance(Upper)) Mid->SetVectorParameterValue(TEXT("Color"), Leather[Role % UE_ARRAY_COUNT(Leather)]);
+			BoatParts.Add(Shoes);
+		}
+	}
+	// Graphics G3: hair, brows and beard on the face. Strands on High and Ultra; the groom's cards on Medium.
+	if (FacePart && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoGrooms")))
+	{
+		const bool bStrands = USailingSettings::Get()->Quality >= ESailingQuality::High;
+		TArray<TPair<UGroomAsset*, UGroomBindingAsset*>> Grooms;
+		LoadMetaHumanGrooms(Role, Grooms);
+		for (const TPair<UGroomAsset*, UGroomBindingAsset*>& G : Grooms)
+		{
+			// Under a cap the scalp hair would poke through its crown: only brows, beard and moustache.
+			if (Role != 0 && CrewCapMesh && G.Key->GetName().StartsWith(TEXT("Hair_"))) continue;
+#if PLATFORM_MAC
+			// The Mac draws cards (no strand geometry on its SM5 platform), 1.5 ms of GPU on High for the whole crew: the hair
+			// and beard carry the look; brows and moustache cards are left off (their LOD 2+ has no cards built, so a forced LOD only hides the hair).
+			const bool bMacCards = true;
+#else
+			const bool bMacCards = false;
+#endif
+			if (bMacCards && (G.Key->GetName().StartsWith(TEXT("Eyebrows_")) || G.Key->GetName().StartsWith(TEXT("Mustache_")))) continue;
+			UGroomComponent* Hair = NewObject<UGroomComponent>(this);
+			Hair->SetupAttachment(FacePart);
+			Hair->SetUseCards(!bStrands);
+			Hair->SetGroomAsset(G.Key, G.Value);
+			Hair->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Hair->RegisterComponent();
+			BoatParts.Add(Hair);
+		}
+	}
+	// The life jacket over the shirt, the cap over the head, each scaled to this skeleton and carried by the
 	// chest and head bones: placed on the T-posed rest, relative to the bone's rest.
 	const auto At = [&](const TCHAR* Bone) { return Rig.Rest(BodyMesh, Bone).GetLocation(); };
 	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
 	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
-	const float Waist = float(At(TEXT("spine_01")).Z) - 4.f;
+	const float Waist = float(At(TEXT("spine_01")).Z) + 3.f; // the hem at the navel, clear of the shorts' waistband
 	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
 	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
 	if (CrewPFDMesh && Span > 10.f && Top > Waist)
@@ -2832,10 +2959,12 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
 		BoatParts.Add(Pfd);
 	}
-	if (CrewCapMesh)
+	// The helm goes bare-headed (his hair and the trimmer's and bow's caps: crews are mixed).
+	if (CrewCapMesh && Role != 0)
 	{
-		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.5f) + Fwd * 1.f;
-		const FTransform Place(Rig.Frame, Head, FVector(0.106f, 0.106f, 0.08f)); // a cap's crown is lower than a helmet's
+		// On the head: the scalp groom is left off under it (see the grooms above).
+		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.0f) + Fwd * 0.8f;
+		const FTransform Place(Rig.Frame, Head, FVector(0.106f, 0.105f, 0.076f));
 		UStaticMeshComponent* Cap = NewObject<UStaticMeshComponent>(this);
 		Cap->SetStaticMesh(CrewCapMesh);
 		Cap->SetupAttachment(Body, TEXT("head"));

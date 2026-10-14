@@ -1,4 +1,5 @@
 #include "LakeTerrainActor.h"
+#include "UObject/UObjectIterator.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
@@ -158,6 +159,24 @@ void ALakeTerrainActor::BeginPlay()
 	PlaceBuildings();
 	PlaceBridgesAndDocks();
 	bTreesPlaced = true;
+	// The instanced meshes by count (the render thread culls every instance: the coast's visibility cost).
+	{
+		TMap<FString, int32> ByMesh;
+		int64 Total = 0;
+		TArray<UInstancedStaticMeshComponent*> Ism;
+		GetComponents(Ism);
+		for (const UInstancedStaticMeshComponent* I : Ism)
+		{
+			const FString Name = I->GetStaticMesh() ? I->GetStaticMesh()->GetName() : TEXT("-");
+			ByMesh.FindOrAdd(Name) += I->GetInstanceCount();
+			Total += I->GetInstanceCount();
+		}
+		ByMesh.ValueSort([](int32 A, int32 B) { return A > B; });
+		FString Top;
+		int32 K = 0;
+		for (const TPair<FString, int32>& P : ByMesh) { if (K++ >= 12) break; Top += FString::Printf(TEXT(" %s %d;"), *P.Key, P.Value); }
+		UE_LOG(LogSailing, Display, TEXT("Terrain instances: %lld in %d components:%s"), Total, Ism.Num(), *Top);
+	}
 }
 
 void ALakeTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
@@ -282,6 +301,25 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 void ALakeTerrainActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	// Once, 8 s in: every instanced mesh in the world by owner and mesh (the render thread culls each instance).
+	if (!bLoggedInstances && GetWorld()->GetTimeSeconds() > 8.0)
+	{
+		bLoggedInstances = true;
+		TMap<FString, int64> By;
+		int64 Total = 0;
+		for (TObjectIterator<UInstancedStaticMeshComponent> It; It; ++It)
+		{
+			if (It->GetWorld() != GetWorld() || !It->IsRegistered()) continue;
+			const FString Key = FString::Printf(TEXT("%s/%s"), It->GetOwner() ? *It->GetOwner()->GetClass()->GetName() : TEXT("-"), It->GetStaticMesh() ? *It->GetStaticMesh()->GetName() : TEXT("-"));
+			By.FindOrAdd(Key) += It->GetInstanceCount();
+			Total += It->GetInstanceCount();
+		}
+		By.ValueSort([](int64 A, int64 B) { return A > B; });
+		FString Top;
+		int32 K = 0;
+		for (const TPair<FString, int64>& P : By) { if (K++ >= 16) break; Top += FString::Printf(TEXT(" %s %lld;"), *P.Key, P.Value); }
+		UE_LOG(LogSailing, Display, TEXT("World instances: %lld:%s"), Total, *Top);
+	}
 	if (Chunks.Num() == 0) return;
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;
@@ -452,7 +490,7 @@ void ALakeTerrainActor::PlaceTrees()
 void ALakeTerrainActor::PlaceReeds()
 {
 	const FLakeData* Lake = GetLake();
-	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0) return;
+	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0 || FParse::Param(FCommandLine::Get(), TEXT("SailingNoReeds"))) return;
 	UStaticMesh* Meshes[2] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
 		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")) };
 	if (!Meshes[0] || !Meshes[1]) return;
@@ -477,7 +515,9 @@ void ALakeTerrainActor::PlaceReeds()
 			if (X * X + Y * Y < 350.0 * 350.0) continue;
 			const double Patch = FMath::Sin(X * 0.011 + FMath::Sin(Y * 0.007) * 2.0) * FMath::Sin(Y * 0.013 + FMath::Sin(X * 0.005) * 2.0);
 			const uint32 Hh = Hash(uint32(R) * 73856093u ^ uint32(C) * 19349663u);
-			if (Patch < -0.1 || (Hh & 1023) > 760) continue;
+			// The coasts' 10 m grid would put four times the lake's clumps along Galveston's marshes: thin them to the lake's spacing.
+			const uint32 Keep = T.GetCell() >= 9.99 ? 260 : 760;
+			if (Patch < -0.1 || (Hh & 1023) > Keep) continue;
 			const int32 Kind = H < 0.05 ? 0 : int32((Hh >> 10) & 1);   // cattails stand in the water, rushes on the bank
 			for (int32 K = 0; K < 2; ++K)
 			{
@@ -491,7 +531,8 @@ void ALakeTerrainActor::PlaceReeds()
 	}
 	for (int32 Kind = 0; Kind < 2; ++Kind)
 	{
-		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+		// Hierarchical: a few hundred thousand clumps are culled by cluster, not one by one on the render thread.
+		UHierarchicalInstancedStaticMeshComponent* C = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
 		C->SetupAttachment(RootComponent);
 		C->SetStaticMesh(Meshes[Kind]);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -499,7 +540,7 @@ void ALakeTerrainActor::PlaceReeds()
 		C->bAffectDistanceFieldLighting = false;
 		C->bVisibleInRayTracing = false;
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-		C->SetCullDistances(0, 500.f * 100.f);
+		C->SetCullDistances(0, 400.f * 100.f);
 		C->RegisterComponent();
 		C->AddInstances(Out[Kind], false, true);
 		ReedModels.Add(C);

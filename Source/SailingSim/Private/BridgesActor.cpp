@@ -1,4 +1,5 @@
 #include "BridgesActor.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "LakeData.h"
@@ -59,6 +60,12 @@ void ABridgesActor::BeginPlay()
 		constexpr int32 NumRocks = 6;
 		TArray<FTransform> RockX[NumRocks];
 		const FBox2D MarinaBox = Lake.Marina.Bounds();
+		// A coast has hundreds of kilometres of jetty and seawall (Galveston's put 950,000 boulders in the scene and the render
+		// thread's visibility pass took 25 ms): there the blocks are bigger, three across every 3 m, and drawn to 1.5 km.
+		const bool bCoast = Lake.IsTidal();
+		const double Spacing = bCoast ? 3.0 : 1.2;
+		const int32 Rows = bCoast ? 1 : 2;
+		const float SizeScale = bCoast ? 1.6f : 1.f;
 		uint32 Seed = 11;
 		auto Rand = [&Seed]() { Seed ^= Seed << 13; Seed ^= Seed >> 17; Seed ^= Seed << 5; return (Seed & 0xFFFFFF) / float(0xFFFFFF); };
 		for (const FLakeDock& D : Lake.Docks)
@@ -70,14 +77,14 @@ void ABridgesActor::BeginPlay()
 				const double Len = FVector2D::Distance(A, B);
 				if (Len < 0.5) continue;
 				const FVector2D Dir = (B - A) / Len, Left(-Dir.Y, Dir.X);
-				for (double T = 0.0; T < Len; T += 1.2)
+				for (double T = 0.0; T < Len; T += Spacing)
 				{
-					for (int32 K = -2; K <= 2; ++K)
+					for (int32 K = -Rows; K <= Rows; ++K)
 					{
-						const float Across = K * 1.3f + (Rand() - 0.5f) * 0.7f;
+						const float Across = K * (bCoast ? 2.0f : 1.3f) + (Rand() - 0.5f) * 0.7f;
 						const float Crest = 1.4f * (1.f - FMath::Square(Across / 3.4f)) - 0.2f;
 						const FVector2D P = A + Dir * (T + (Rand() - 0.5f) * 0.8) + Left * Across;
-						const float Size = 0.9f + 0.9f * Rand();
+						const float Size = (0.9f + 0.9f * Rand()) * SizeScale;
 						const int32 Kind = FMath::Min(int32(Rand() * NumRocks), NumRocks - 1);
 						RockX[Kind].Add(FTransform(FRotator((Rand() - 0.5f) * 50.f, Rand() * 360.f, (Rand() - 0.5f) * 50.f),
 							FVector(P.X, P.Y, Crest - 0.3f * Size) * CmPerMeter, FVector(Size)));
@@ -89,12 +96,12 @@ void ABridgesActor::BeginPlay()
 		{
 			UStaticMesh* Rock = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Props/SM_Rock_%d.SM_Rock_%d"), K, K));
 			if (!Rock || RockX[K].Num() == 0) continue;
-			UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+			UHierarchicalInstancedStaticMeshComponent* C = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);  // culled by cluster
 			C->SetMobility(Mobility);
 			C->SetupAttachment(RootComponent);
 			C->SetStaticMesh(Rock);
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			C->SetCullDistances(0, 4000.f * 100.f);
+			C->SetCullDistances(0, (bCoast ? 1500.f : 4000.f) * 100.f);
 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 			C->RegisterComponent();
 			C->AddInstances(RockX[K], false, true);

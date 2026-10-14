@@ -1,0 +1,80 @@
+"""Graphics G3: imports each sailor's polo (Tools/blender/build_polo.py, Artifacts/crew/<Role>_Polo.fbx) and deck shoes
+(build_shoes.py, skinned from the feet: SKM_<Role>_Shoes) as skeletal meshes
+on the MetaHuman's skeleton: the FBX comes in as a static mesh in the outfit's space, the default T-shirt's skin weights are
+transferred onto it (Geometry Script, closest point on the surface) and a skeletal mesh is made with the outfit's bones
+and proportions: /Game/Crew/MetaHumans/<Role>/Clothing/SKM_<Role>_Polo. Slots go to MI_Crew_Polo, MI_Crew_PoloRib and
+MI_Boat_CrewButton. Run by scripts/make-crew-clothes.sh."""
+import os
+import unreal
+
+CREW = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Artifacts", "crew")
+LIB = unreal.EditorAssetLibrary
+# The polo in the crew cloth (make_materials.py, build_crew_fabric), its buttons in the boat library.
+SLOTS = {"Polo": "/Game/Crew/Fabric/MI_Crew_Polo", "Rib": "/Game/Crew/Fabric/MI_Crew_PoloRib", "Button": "/Game/Boats/Materials/MI_Boat_CrewButton"}
+
+
+def log(m):
+    unreal.log("Crew clothes: " + m)
+
+
+SHOE_SLOTS = {"Upper": "/Game/Crew/Fabric/MI_Crew_ShoeLeather", "Sole": "/Game/Boats/Materials/MI_Boat_CrewSole", "Lace": "/Game/Boats/Materials/MI_Boat_CrewLace"}
+
+
+def make(role, piece, fbx, source_mesh, slots):
+    """The garment's FBX as a static mesh, the source's skin weights on it, a skeletal mesh on its skeleton."""
+    folder = f"/Game/Crew/MetaHumans/{role}/Clothing"
+    task = unreal.AssetImportTask()
+    task.filename = fbx
+    task.destination_path = folder
+    task.destination_name = f"SM_{role}_{piece}Source"
+    task.automated = True
+    task.replace_existing = True
+    task.save = False
+    opts = unreal.FbxImportUI()
+    opts.import_mesh = True
+    opts.import_as_skeletal = False
+    opts.import_materials = False
+    opts.import_textures = False
+    opts.mesh_type_to_import = unreal.FBXImportType.FBXIT_STATIC_MESH
+    opts.static_mesh_import_data.combine_meshes = True
+    opts.static_mesh_import_data.auto_generate_collision = False
+    opts.static_mesh_import_data.convert_scene = True
+    task.options = opts
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    source = unreal.load_asset(f"{folder}/SM_{role}_{piece}Source")
+    if not source:
+        log(f"{role} {piece}: import FAILED")
+        return
+    read = unreal.GeometryScriptCopyMeshFromAssetOptions()
+    lod = unreal.GeometryScriptMeshReadLOD()
+    garment, o1 = unreal.GeometryScript_AssetUtils.copy_mesh_from_static_mesh(source, unreal.DynamicMesh(), read, lod)
+    donor, o2 = unreal.GeometryScript_AssetUtils.copy_mesh_from_skeletal_mesh(source_mesh, unreal.DynamicMesh(), read, lod)
+    gb = unreal.GeometryScript_MeshQueries.get_mesh_bounding_box(garment)
+    log(f"{role} {piece}: bounds z {gb.min.z:.1f}..{gb.max.z:.1f} cm")
+    t = unreal.GeometryScriptTransferBoneWeightsOptions()
+    t.transfer_method = unreal.TransferBoneWeightsMethod.CLOSEST_POINT_ON_SURFACE
+    t.output_target_mesh_bones = unreal.OutputTargetMeshBones.SOURCE_BONES
+    unreal.GeometryScript_BoneWeights.transfer_bone_weights_from_mesh(donor, garment, t)
+    c = unreal.GeometryScriptCreateNewSkeletalMeshAssetOptions()
+    c.use_mesh_bone_proportions = True
+    c.enable_recompute_tangents = True
+    c.materials = {slot: unreal.load_asset(path) for slot, path in slots.items()}
+    path = f"{folder}/SKM_{role}_{piece}"
+    if LIB.does_asset_exist(path):
+        LIB.delete_asset(path)
+    mesh, o3 = unreal.GeometryScript_NewAssetUtils.create_new_skeletal_mesh_asset_from_mesh(garment, source_mesh.skeleton, path, c)
+    if mesh:
+        LIB.save_loaded_asset(mesh)
+    LIB.delete_asset(f"{folder}/SM_{role}_{piece}Source")
+    log(f"{role}: {path} {'ok' if mesh else 'FAILED'} ({o1}, {o2}, {o3})")
+
+
+for role in ("Helm", "Trimmer", "Bow"):
+    outfit = unreal.load_asset(f"/Game/Crew/MetaHumans/{role}/Clothing/{role}_Outfits")
+    body = unreal.load_asset(f"/Game/Crew/MetaHumans/{role}/Body/SKM_{role}_BodyMesh")
+    polo = os.path.join(CREW, f"{role}_Polo.fbx")
+    shoes = os.path.join(CREW, f"{role}_Shoes.fbx")
+    if outfit and os.path.exists(polo):
+        make(role, "Polo", polo, outfit, SLOTS)    # skinned from the T-shirt it was tailored from
+    if body and os.path.exists(shoes):
+        make(role, "Shoes", shoes, body, SHOE_SLOTS)  # skinned from the feet

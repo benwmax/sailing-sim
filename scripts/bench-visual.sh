@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Visual phases: a representative set of views (lake beam reach, lake beat with tacking, storm, marina, Galveston day
-# and night, Gulf sea, the helm eye; since V6 also Bean's slip at Rush Creek, the I-30 bridge and the marina at night) on each quality tier of the packaged build, with GPU time per budget slice.
+# and night, Gulf sea, the helm eye; since V6 also Bean's slip at Rush Creek, the I-30 bridge and the marina at night; since G3 the crew close up) on each quality tier of the packaged build, with GPU time per budget slice.
 # Writes Artifacts/visual-bench-<label>.csv; with DOCS=<dir> also copies each screenshot there as <view>-<tier>.png.
 # Usage: scripts/bench-visual.sh [seconds] [label] [tiers...]   e.g. scripts/bench-visual.sh 12 before Medium High
 source "$(dirname "$0")/env.sh"
@@ -18,6 +18,7 @@ VIEWS=(
 	"helm-eye|-SailingWorld=Lake -SailingLaunch=1 -SailingCapture=HelmEye -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingHour=15 -SailingTWA=45 -SailingHoldTWA=45"
 	"slip|-SailingWorld=Lake -SailingDrill=LeavetheDock -SailingWeather=AfternoonBreeze -SailingHour=10 -SailingWind=6 -SailingCamYaw=160 -SailingCamPitch=-14 -SailingCamDist=26"
 	"bridge|-SailingWorld=Lake -SailingStartAt=7060,880,183 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingHour=11 -SailingWind=8 -SailingCamYaw=180 -SailingCamPitch=-4 -SailingCamDist=20"
+	"crew|-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=15 -SailingWind=10 -SailingTWA=60 -SailingHoldTWA=60 -SailingCamYaw=250 -SailingCamPitch=-6 -SailingCamDist=2.6 -SailingCamTarget=-1.6,0.8,0.9"
 	"marina-night|-SailingWorld=Lake -SailingDrill=LeavetheDock -SailingWeather=AfternoonBreeze -SailingHour=21.5 -SailingWind=4 -SailingCamYaw=200 -SailingCamPitch=-10 -SailingCamDist=40"
 )
 echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms" > "$OUT"

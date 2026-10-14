@@ -8,6 +8,7 @@
 #include "AutoTrim.h"
 #include "SailCloth.h"
 #include "CrewPose.h"
+#include "BoatLivery.h"
 #include "Engine/SkeletalMesh.h"
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
@@ -300,11 +301,10 @@ bool FVisualFleetMeshTest::RunTest(const FString& Parameters)
 		const FString Name(C.Name);
 		TestTrue(FString::Printf(TEXT("%s: length %.3f m (physics hulls %.3f)"), *Name, Canoe.GetSize().X, Bow - Stern), FMath::Abs(Canoe.GetSize().X - (Bow - Stern)) < Tol);
 		TestTrue(FString::Printf(TEXT("%s: beam %.3f m (physics hulls %.3f)"), *Name, Canoe.GetSize().Y, 2.0 * Side), FMath::Abs(Canoe.GetSize().Y - 2.0 * Side) < Tol);
-		if (FMath::Abs((Bow - Stern) - C.LengthOverall) > Tol || FMath::Abs(2.0 * Side - C.Beam) > Tol)
-		{
-			AddInfo(FString::Printf(TEXT("%s: the config's published LOA %.2f m / beam %.2f m differ from its hull shapes (%.2f / %.2f): an open item in Fleet.cpp, not the model"),
-				*Name, C.LengthOverall, C.Beam, Bow - Stern, 2.0 * Side));
-		}
+		// Graphics G3: the configs' published LOA (less a fixed bowsprit) and beam match their own hull shapes.
+		TestTrue(FString::Printf(TEXT("%s: published LOA %.2f m (less bowsprit %.2f) matches the hulls' %.2f"), *Name, C.LengthOverall, C.Bowsprit, Bow - Stern),
+			FMath::Abs((Bow - Stern) - (C.LengthOverall - C.Bowsprit)) < 0.03);
+		TestTrue(FString::Printf(TEXT("%s: published beam %.2f m matches the hulls' %.2f"), *Name, C.Beam, 2.0 * Side), FMath::Abs(2.0 * Side - C.Beam) < 0.03);
 		TestTrue(FString::Printf(TEXT("%s: draft %.3f m (physics %.3f)"), *Name, -MinZ, C.Draft), FMath::Abs(-MinZ - C.Draft) < Tol);
 		TestTrue(FString::Printf(TEXT("%s: canoe volume %.3f m^3 within 2%% of the physics %.3f"), *Name, FMath::Abs(Volume), Physics.DesignDisplacedVolume()),
 			FMath::Abs(FMath::Abs(Volume) - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
@@ -604,3 +604,37 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+// Graphics G3: liveries follow the catalogue's weights, seed 0 is the class's commonest scheme, wear stays in 0..1 and a
+// class that requires sail numbers always has one.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualLiveryTest, "SailingSim.Visual.Livery", VisualFlags)
+bool FVisualLiveryTest::RunTest(const FString&)
+{
+	for (int32 T = 0; T < 8; ++T)
+	{
+		const int32 N = NumLiverySchemes(T);
+		TestTrue(FString::Printf(TEXT("class %d has schemes"), T), N > 0);
+		TestEqual(FString::Printf(TEXT("class %d seed 0 scheme"), T), SampleBoatLivery(T, 0).Scheme, 0);
+		TArray<int32> Count; Count.SetNumZeroed(N);
+		const int32 Draws = 4000;
+		TArray<uint32> FirstSeed; FirstSeed.Init(0, N);
+		for (int32 S = 1; S <= Draws; ++S)
+		{
+			const FBoatLivery L = SampleBoatLivery(T, uint32(S));
+			++Count[L.Scheme];
+			if (!FirstSeed[L.Scheme]) FirstSeed[L.Scheme] = uint32(S);
+			for (int32 K = 0; K < 4; ++K)
+				if (L.Wear[K] < 0.f || L.Wear[K] > 1.f) { AddError(FString::Printf(TEXT("class %d seed %d wear %d = %f"), T, S, K, L.Wear[K])); return false; }
+		}
+		FString Seeds;
+		for (int32 I = 0; I < N; ++I) Seeds += FString::Printf(TEXT(" %u"), FirstSeed[I]);
+		AddInfo(FString::Printf(TEXT("class %d: first seed per scheme%s"), T, *Seeds));
+	}
+	// The J/22 weights from the catalogue: 60 % white factory, 6 % navy.
+	int32 White = 0, Navy = 0;
+	for (int32 S = 1; S <= 4000; ++S) { const int32 K = SampleBoatLivery(0, uint32(S)).Scheme; White += K == 0; Navy += K == 3; }
+	TestTrue(FString::Printf(TEXT("J/22 white share %.3f near 0.60"), White / 4000.f), FMath::Abs(White / 4000.f - 0.60f) < 0.03f);
+	TestTrue(FString::Printf(TEXT("J/22 navy share %.3f near 0.06"), Navy / 4000.f), FMath::Abs(Navy / 4000.f - 0.06f) < 0.02f);
+	TestFalse(TEXT("J/22 has a sail number"), SampleBoatLivery(0, 77).SailNumber.IsEmpty());
+	return true;
+}
