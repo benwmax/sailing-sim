@@ -412,6 +412,7 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		Rings[I]->SetWorldLocation(FVector(FMath::GridSnap(CamPos.X, Snap), FMath::GridSnap(CamPos.Y, Snap), GetActorLocation().Z));
 	}
 	FarPlane->SetWorldLocation(FVector(CamPos.X, CamPos.Y, GetActorLocation().Z - 6.f));
+	UpdateHullClip();
 
 	GustTimer -= DeltaSeconds;
 	if (GustTimer <= 0.f)
@@ -555,6 +556,27 @@ void AWaterSurface::UpdateDetail()
 			Pix[4 * I + 3] = Sy * Sy;
 		}
 		UploadFloatsWithMips(RippleBMap, MoveTemp(Pix), A.N);
+	}
+}
+
+void AWaterSurface::UpdateHullClip()
+{
+	if (!WaterMaterial) return;
+	for (TActorIterator<ASailboatPawn> It(GetWorld()); It; ++It)
+	{
+		if (It->bGhost || It->bTrafficBoat) continue;
+		const FBoatModel& M = It->GetBoatModel();
+		const std::vector<FHullShape>& Hulls = M.GetConfig().Hulls;
+		if (Hulls.empty()) return;
+		const FHullShape& S = Hulls[0];
+		const Vec3 O = M.OriginPosition();
+		const double H = M.GetTelemetry().Heading;
+		// Catamarans have no hull on the centreline (the water between the hulls stays); a trimaran's main hull does.
+		const bool bOn = Hulls.size() != 2;
+		WaterMaterial->SetVectorParameterValue(TEXT("HullClipA"), FLinearColor(float(O.X), float(O.Y), float(FMath::Cos(H)), float(FMath::Sin(H))));
+		WaterMaterial->SetVectorParameterValue(TEXT("HullClipB"), FLinearColor(float(S.BowX), float(S.SternX), float(S.MaxBeamX), float(S.MaxHalfBeam)));
+		WaterMaterial->SetVectorParameterValue(TEXT("HullClipC"), FLinearColor(float(S.AftLength), float(S.TransomBeamLoss), float(S.CenterY), bOn ? 1.f : 0.f));
+		return;
 	}
 }
 

@@ -511,6 +511,8 @@ float wetLine = WaterZ + WetBand * (0.6 + 0.4 * streak);
 float wet = 1.0 - smoothstep(wetLine - 3.0, wetLine + 3.0, WP.z);
 // Deck wetness from rain and spray: up-facing surfaces darken a little, gloss up and carry droplets.
 float up = saturate((n.z - 0.4) * 2.5);
+// The splash line wets the hull's sides, not the cockpit sole inside it (low cockpits sit near the outside water level).
+wet *= 1.0 - up;
 float2 cell = floor(LP.xy / 0.9);
 float h = frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
 float2 f = frac(LP.xy / 0.9) - 0.5;
@@ -521,7 +523,7 @@ float wetAll = saturate(max(wet, deckWet * 0.8));
 float3 base = C.rgb * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
-RoughOut = lerp(R, lerp(0.06, R, 0.25), wetAll * (1.0 - Metal));
+RoughOut = lerp(R, lerp(0.06, R, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
 CoatOut = saturate(Coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
 return normalize(n - grad);
@@ -553,6 +555,9 @@ def build_boat_surface(name, bend):
     mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("used_with_skeletal_mesh", True)  # the crew (Visual V3) wear these materials too
     mat.set_editor_property("used_with_instanced_static_meshes", True)  # the boats berthed in the marina (Visual V6)
+    # Two-sided (Visual V7): the generated cockpits, cabins, dodgers and nets are open shells whose faces aren't all
+    # wound outward; culled, a cockpit sole showed the water under the boat. The hull's outside never shows its back.
+    mat.set_editor_property("two_sided", True)
     mpc = collection()
     color = vector(mat, "Color", (0.85, 0.85, 0.82, 1), -1400, -200)
     rough = scalar(mat, "Roughness", 0.35, -1400, -50)
@@ -618,7 +623,7 @@ def build_boat_surface(name, bend):
 BOAT_LIBRARY = {
     "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.30, 0.0, 1.0, 0.0, 0.10),     # white gelcoat
     "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.35, 0.0, 1.0, 0.0, 0.10),
-    "NonSkid": ("M_BoatSurface", (0.70, 0.70, 0.66), 0.62, 0.0, 0.3, 1.0, 0.30),
+    "NonSkid": ("M_BoatSurface", (0.70, 0.70, 0.66), 0.62, 0.0, 0.0, 1.0, 0.30),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
     "Bootstripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),  # navy gelcoat stripes
     "CoveStripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),
     "Antifouling": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.80, 0.0, 0.0, 0.0, 0.60),  # ablative bottom paint
@@ -639,6 +644,7 @@ BOAT_LIBRARY = {
     "CrewCap": ("M_BoatSurface", (0.72, 0.72, 0.72), 0.80, 0.0, 0.0, 0.0, 0.40),
     "CrewGlasses": ("M_BoatSurface", (0.01, 0.01, 0.012), 0.05, 0.0, 1.0, 0.0, 0.0),
     "CrewHair": ("M_BoatSurface", (0.05, 0.04, 0.03), 0.60, 0.0, 0.0, 0.0, 0.30),
+    "SailCover": ("M_BoatSurface", (0.02, 0.05, 0.14), 0.8, 0.0, 0.0, 0.0, 0.6),      # navy acrylic canvas: sail covers, sun strips (V7)
     "Rope": ("M_BoatSurface", (0.62, 0.64, 0.68), 0.75, 0.0, 0.0, 0.0, 0.50),         # braided polyester sheets
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
 }
@@ -667,13 +673,25 @@ SAIL_CODE = r"""
 // Visual V3 sail cloth. UV0: metres (x along the chord from the luff, y up from the foot); UV1: normalized planform;
 // UV2.x: metres from the leech. Crosscut seams every 0.9 m, batten pockets on the main's leech, the class insignia and
 // sail number from the marks atlas (top half insignia, bottom half number).
+// Visual V7: per-class layouts (Layout 0 crosscut, 1 the Sunfish's striped sail, 2 the Hobie's coloured panels, 3 tri-radial
+// panels for the bigger multihulls), BattenCount pockets (FullBattens: luff to leech).
 float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
+if (Layout > 2.5)
+{
+    // Tri-radial: seams fan out from the clew (UV1 (1, 0)) and the head, crossing at the sail's middle.
+    float2 fromClew = float2(1.0 - UV1.x, UV1.y);
+    float ang = atan2(fromClew.y, fromClew.x + 1e-3);
+    float fan = abs(frac(ang / 0.16 + 0.5) - 0.5) * 0.16 * length(fromClew) * Height;
+    seamDist = lerp(fan, seamDist, step(0.55, UV1.y));
+}
 float seam = 1.0 - smoothstep(0.006, 0.010, seamDist);
 float batten = 0.0;
-for (int i = 1; i <= 4; i++)
+int nb = (int)BattenCount;
+for (int i = 1; i <= 8; i++)
 {
-    float vb = 0.2 * i;
-    float len = 0.45 + 0.25 * (i == 2 || i == 3);
+    if (i > nb) break;
+    float vb = float(i) / (BattenCount + 1.0);
+    float len = FullBattens > 0.5 ? 50.0 : 0.45 + 0.25 * (i == 2 || i == 3);
     batten = max(batten, (1.0 - smoothstep(0.018, 0.026, abs(UV1.y - vb) * Height)) * (1.0 - smoothstep(len - 0.02, len, UV2.x)));
 }
 batten *= Battens;
@@ -689,11 +707,26 @@ if (Marks > 0.5)
 // A faint weave and the panels' slight tone differences.
 float weave = 0.5 + 0.5 * sin(UV0.x * 1400.0) * sin(UV0.y * 1400.0);
 float panel = frac(sin(floor(UV0.y / 0.9) * 12.9898) * 43758.5453);
-float3 cloth = C.rgb * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
-float3 col = lerp(cloth * (1.0 - 0.12 * seam), C.rgb * 0.93, batten);
+float3 base = C.rgb;
+if (Layout > 0.5 && Layout < 1.5)
+{
+    // The Sunfish's sail: bands of colour, from the foot up.
+    int band = (int)floor(UV0.y / 0.42);
+    float3 pal[6] = { float3(0.60, 0.04, 0.03), float3(0.75, 0.30, 0.02), float3(0.80, 0.62, 0.05), float3(0.05, 0.35, 0.10), float3(0.02, 0.12, 0.45), float3(0.80, 0.80, 0.78) };
+    base = pal[band % 6];
+}
+else if (Layout > 1.5 && Layout < 2.5)
+{
+    // The Hobie 16's main and jib: wide panels of colour between white ones.
+    int band = (int)floor(UV0.y / 0.9);
+    float3 pal[4] = { float3(0.02, 0.10, 0.45), float3(0.80, 0.80, 0.78), float3(0.70, 0.08, 0.04), float3(0.85, 0.65, 0.05) };
+    base = pal[band % 4];
+}
+float3 cloth = base * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
+float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = C.rgb * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
 return col;
 """
 
@@ -722,12 +755,16 @@ def build_sail_cloth():
     battens = scalar(mat, "Battens", 0.0, -1200, 50)
     marks = scalar(mat, "Marks", 0.0, -1200, 150)
     height = scalar(mat, "Height", 7.6, -1200, 250)
+    layout = scalar(mat, "Layout", 0.0, -1400, 50)
+    bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
+    full = scalar(mat, "FullBattens", 0.0, -1400, 250)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
-    for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2")):
+    for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -825,7 +862,17 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
     float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
     h *= k; d *= k; ho *= k;
 }
-return float3(d.x * 100.0, d.y * 100.0, (h + ho) * 100.0);
+// Inside the player's hull (Visual V7): the water drops 2 m below its deck so it never shows in the cockpit. The plan
+// view is the physics' FHullShape (ellipse forward of the widest station, taper aft), 80% of the beam so the dip stays
+// behind the topsides when she heels.
+float2 hr = p.xy - HullClipA.xy;
+float hbx = hr.x * HullClipA.z + hr.y * HullClipA.w;
+float hby = -hr.x * HullClipA.w + hr.y * HullClipA.z - HullClipC.z;
+float hfu = (hbx - HullClipB.z) / max(HullClipB.x - HullClipB.z, 0.1);
+float hau = (HullClipB.z - hbx) / max(HullClipC.x, 0.1);
+float hhb = hbx > HullClipB.z ? HullClipB.w * sqrt(saturate(1.0 - hfu * hfu)) : HullClipB.w - HullClipC.y * hau * hau;
+float hin = saturate((0.8 * hhb - abs(hby)) / 0.1) * step(HullClipB.y + 0.2, hbx) * step(hbx, HullClipB.x - 0.3) * HullClipC.w;
+return float3(d.x * 100.0, d.y * 100.0, (h + ho - 2.0 * hin) * 100.0);
 """
 
 V4_SHADE = """
@@ -932,8 +979,13 @@ float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + l
 // Heavy rain: splashes and mist grey the surface.
 Foam = saturate(max(caps + wakeBreak, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
+// Glassy calm (Visual V7): under about 2 kn (rough = wind / 8 m/s) the capillaries die and the lake becomes a mirror
+// at dawn; only cat's-paws (the gust map darkens them) and boat wakes ruffle it.
+float glass = (1.0 - saturate((rough - 0.06) / 0.07)) * (1.0 - Dark);
+sx *= 1.0 - 0.85 * glass; sy *= 1.0 - 0.85 * glass;
+slopeVar *= 1.0 - 0.92 * glass;
 // Glint: a calm morning's sharp sun path, broadening with the wind and the ripples it raises; rain flattens and greys.
-float r0 = lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7));
+float r0 = lerp(lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7)), 0.004, glass);
 // GGX alpha = roughness^2; the unresolved slope variance adds to it (scaled down: the engine's GGX has no multiple
 // scattering, so a fully rough grazing reflection comes out darker than the sky sheen real water shows).
 float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);
@@ -971,8 +1023,12 @@ def build_water_v4():
     shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
     common = ["P", "Cam", "T", "Fade", "Chop"] + [f"W{i}" for i in range(NUM_LONG)] + [f"A{i}" for i in range(NUM_LONG // 4)] \
         + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect"]
-    wpo = custom(mat, V4_WPO, common, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
+    wpo = custom(mat, V4_WPO, common + ["HullClipA", "HullClipB", "HullClipC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    # The player's hull (AWaterSurface): A (x, y m, cos, sin heading), B (bow x, stern x, widest x, half beam), C (aft
+    # length, transom beam loss, hull centre y, on).
+    for i, (n, v) in enumerate((("HullClipA", (0, 0, 1, 0)), ("HullClipB", (3, -3, 0, 1)), ("HullClipC", (3, 0.2, 0, 0)))):
+        connect(vector(mat, n, v, -1800, 3000 + 100 * i), "RGBA", wpo, n)
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")

@@ -1,4 +1,5 @@
 #include "Marina.h"
+#include "BoatModel.h"
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
 #include "Serialization/JsonReader.h"
@@ -128,6 +129,35 @@ bool FMarina::Load(const FString& Path)
 	return true;
 }
 
+void FMarina::PlaceAlongside(TFunctionRef<double(double, double)> DepthAt)
+{
+	Alongside.Reset();
+	const Sailing::FBoatConfig C30 = Sailing::FBoatConfig::Make(Sailing::EBoatType::Catalina30);
+	for (const FMarinaLine& L : Piers)
+	{
+		for (int32 I = 1; I < L.Points.Num(); ++I)
+		{
+			const FVector2D A = L.Points[I - 1], B = L.Points[I];
+			const double Len = FVector2D::Distance(A, B);
+			const FVector2D Dir = (B - A) / FMath::Max(Len, 1e-3), Left(-Dir.Y, Dir.X);
+			for (double At = 0.5 * C30.LengthOverall + 1.5; At + 0.5 * C30.LengthOverall < Len; At += C30.LengthOverall + 2.0)
+			{
+				for (const double Side : { 1.0, -1.0 })
+				{
+					const FVector2D Center = A + Dir * At + Left * (Side * (0.5 * L.Width + 0.5 * C30.Beam + 0.35));
+					if (DepthAt(Center.X, Center.Y) < C30.Draft + 0.3) continue;
+					FMarinaAlongside B30;
+					B30.Center = Center;
+					B30.HeadingDeg = float(FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X)));
+					B30.BoatType = uint8(Sailing::EBoatType::Catalina30);
+					Alongside.Add(B30);
+					break;
+				}
+			}
+		}
+	}
+}
+
 void FMarina::ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, const FString&, float)> Visit) const
 {
 	for (const FMarinaLine& L : Walkways) Visit(L.Points, TEXT("marina"), 0.5f * L.Width);
@@ -139,6 +169,16 @@ void FMarina::ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, co
 		// One finger per slip pair is enough: each slip's own finger (the last slip's other side is open water).
 		Visit({ S.FingerA, S.FingerB }, TEXT("finger"), 0.3f);
 	}
+	// The berthed boats are in the way too (Visual V7): a capsule along each hull.
+	auto Boat = [&](const FVector2D& Center, float HeadingDeg, uint8 Type)
+	{
+		const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(Type));
+		const FVector2D Fwd(FMath::Cos(FMath::DegreesToRadians(HeadingDeg)), FMath::Sin(FMath::DegreesToRadians(HeadingDeg)));
+		const double Half = 0.5 * C.LengthOverall - 0.45 * C.Beam;
+		Visit({ Center - Fwd * Half, Center + Fwd * Half }, TEXT("boat"), float(0.45 * C.Beam));
+	};
+	for (const FMarinaSlip& S : Slips) if (S.bOccupied) Boat(S.Center, S.HeadingDeg, S.BoatType);
+	for (const FMarinaAlongside& A : Alongside) Boat(A.Center, A.HeadingDeg, A.BoatType);
 }
 
 FBox2D FMarina::Bounds(double Margin) const

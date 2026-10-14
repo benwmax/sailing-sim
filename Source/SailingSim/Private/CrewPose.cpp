@@ -123,21 +123,29 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 
 namespace
 {
-	/** Component-space posed transforms from the reference pose: D(bone) = D(parent) * R(bone); rotation D * rest;
-	 *  position = parent's posed position + D(parent) * (rest offset from the parent). */
-	void Solve(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, TArray<FTransform>& OutCS)
+	/** The reference pose in component space. */
+	void RestPose(const FReferenceSkeleton& Ref, TArray<FTransform>& Out)
 	{
 		const TArray<FTransform>& Local = Ref.GetRefBonePose();
+		Out.SetNum(Ref.GetNum());
+		for (int32 B = 0; B < Ref.GetNum(); ++B)
+		{
+			const int32 Parent = Ref.GetParentIndex(B);
+			Out[B] = Parent == INDEX_NONE ? Local[B] : Local[B] * Out[Parent];
+		}
+	}
+
+	/** Component-space posed transforms from a rest pose: D(bone) = D(parent) * R(bone); rotation D * rest;
+	 *  position = parent's posed position + D(parent) * (rest offset from the parent). */
+	void Solve(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, const TMap<FName, FQuat>& Joints, TArray<FTransform>& OutCS)
+	{
 		const int32 N = Ref.GetNum();
-		TArray<FTransform> RestCS;
-		RestCS.SetNum(N);
 		TArray<FQuat> D;
 		D.SetNum(N);
 		OutCS.SetNum(N);
 		for (int32 B = 0; B < N; ++B)
 		{
 			const int32 Parent = Ref.GetParentIndex(B);
-			RestCS[B] = Parent == INDEX_NONE ? Local[B] : Local[B] * RestCS[Parent];
 			const FQuat* R = Joints.Find(Ref.GetBoneName(B));
 			const FQuat Rot = R ? *R : FQuat::Identity;
 			D[B] = Parent == INDEX_NONE ? Rot : D[Parent] * Rot;
@@ -147,26 +155,129 @@ namespace
 			OutCS[B] = FTransform(Rotation, Position, RestCS[B].GetScale3D());
 		}
 	}
+
+	/** The sailor's joints on the rig's skeleton. */
+	void Carry(const FCrewRig& Rig, const TMap<FName, FQuat>& Joints, TMap<FName, FQuat>& Out)
+	{
+		Out.Reset();
+		const FQuat Inv = Rig.Frame.Inverse();
+		for (const TPair<FName, FQuat>& J : Joints)
+		{
+			const FQuat R = Rig.Frame * J.Value * Inv;
+			if (const TArray<TPair<FName, float>>* Bones = Rig.Map.Find(J.Key))
+			{
+				for (const TPair<FName, float>& B : *Bones) Out.Add(B.Key, FQuat::Slerp(FQuat::Identity, R, B.Value));
+			}
+			else
+			{
+				Out.Add(J.Key, R);
+			}
+		}
+	}
+
+	void Pose(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, TArray<FTransform>& CS)
+	{
+		if (Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum())
+		{
+			TMap<FName, FQuat> Carried;
+			Carry(*Rig, Joints, Carried);
+			Solve(Ref, Rig->RestCS, Carried, CS);
+			return;
+		}
+		TArray<FTransform> Rest;
+		RestPose(Ref, Rest);
+		Solve(Ref, Rest, Joints, CS);
+	}
 }
 
-void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints)
+const TCHAR* MetaHumanRoleName(int32 Role)
+{
+	static const TCHAR* Names[NumMetaHumanRoles] = { TEXT("Helm"), TEXT("Trimmer"), TEXT("Bow") };
+	return Names[FMath::Clamp(Role, 0, NumMetaHumanRoles - 1)];
+}
+
+bool LoadMetaHumanCrew(int32 Role, USkeletalMesh*& Body, USkeletalMesh*& Face, USkeletalMesh*& Outfit)
+{
+	const FString R = MetaHumanRoleName(Role);
+	auto Load = [](const FString& Path) { return LoadObject<USkeletalMesh>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet); };
+	Body = Load(FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Body/SKM_%s_BodyMesh.SKM_%s_BodyMesh"), *R, *R, *R));
+	Face = Load(FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Face/SKM_%s_FaceMesh.SKM_%s_FaceMesh"), *R, *R, *R));
+	Outfit = Load(FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/%s_Outfits.%s_Outfits"), *R, *R, *R));
+	return Body && Face;
+}
+
+void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
+{
+	Rig = FCrewRig();
+	if (!Mesh) return;
+	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+	TArray<FTransform> Rest;
+	RestPose(Ref, Rest);
+	auto At = [&](const TCHAR* Name) -> FVector
+	{
+		const int32 B = Ref.FindBoneIndex(Name);
+		return B == INDEX_NONE ? FVector::ZeroVector : Rest[B].GetLocation();
+	};
+	// Facing: heel to ball of the foot.
+	if (Ref.FindBoneIndex(TEXT("foot_l")) != INDEX_NONE && Ref.FindBoneIndex(TEXT("ball_l")) != INDEX_NONE)
+	{
+		const FVector Fwd = (At(TEXT("ball_l")) - At(TEXT("foot_l"))).GetSafeNormal2D();
+		if (!Fwd.IsNearlyZero()) Rig.Frame = FQuat::FindBetweenNormals(FVector::ForwardVector, Fwd);
+	}
+	if (Ref.FindBoneIndex(TEXT("spine_01")) != INDEX_NONE)
+	{
+		auto Add = [&](const TCHAR* Joint, std::initializer_list<TPair<FName, float>> Bones) { Rig.Map.Add(Joint, TArray<TPair<FName, float>>(Bones)); };
+		Add(TEXT("spine"), { { TEXT("spine_01"), 0.5f }, { TEXT("spine_02"), 0.5f } });
+		Add(TEXT("chest"), { { TEXT("spine_03"), 0.34f }, { TEXT("spine_04"), 0.33f }, { TEXT("spine_05"), 0.33f } });
+		Add(TEXT("neck"), { { TEXT("neck_01"), 0.5f }, { TEXT("neck_02"), 0.5f } });
+		Add(TEXT("forearm_l"), { { TEXT("lowerarm_l"), 1.f } });
+		Add(TEXT("forearm_r"), { { TEXT("lowerarm_r"), 1.f } });
+	}
+	// The arms out level (SK_Sailor's T-pose): turn each upper arm to point straight out, then straighten the elbow.
+	TMap<FName, FQuat> Fix;
+	for (const bool bLeft : { true, false })
+	{
+		const FName Upper = bLeft ? TEXT("upperarm_l") : TEXT("upperarm_r");
+		const FName Lower = bLeft ? TEXT("lowerarm_l") : TEXT("lowerarm_r");
+		const FName Hand = bLeft ? TEXT("hand_l") : TEXT("hand_r");
+		const int32 U = Ref.FindBoneIndex(Upper), L = Ref.FindBoneIndex(Lower), H = Ref.FindBoneIndex(Hand);
+		if (U == INDEX_NONE || L == INDEX_NONE || H == INDEX_NONE) continue;
+		const FVector Want = Rig.Frame.RotateVector(bLeft ? -FVector::RightVector : FVector::RightVector);
+		const FQuat CU = FQuat::FindBetweenNormals((Rest[L].GetLocation() - Rest[U].GetLocation()).GetSafeNormal(), Want);
+		const FQuat CL = FQuat::FindBetweenNormals((Rest[H].GetLocation() - Rest[L].GetLocation()).GetSafeNormal(), CU.Inverse().RotateVector(Want));
+		Fix.Add(Upper, CU);
+		Fix.Add(Lower, CL);
+	}
+	Solve(Ref, Rest, Fix, Rig.RestCS);
+	const int32 P = Ref.FindBoneIndex(TEXT("pelvis"));
+	Rig.Pelvis = P == INDEX_NONE ? FVector::ZeroVector : Rig.RestCS[P].GetLocation();
+	Rig.bValid = true;
+}
+
+FTransform FCrewRig::Rest(const USkeletalMesh* Mesh, FName Bone) const
+{
+	const int32 B = Mesh ? Mesh->GetRefSkeleton().FindBoneIndex(Bone) : INDEX_NONE;
+	return B == INDEX_NONE || !RestCS.IsValidIndex(B) ? FTransform::Identity : RestCS[B];
+}
+
+void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig)
 {
 	if (!Mesh || !Mesh->GetSkinnedAsset()) return;
 	const FReferenceSkeleton& Ref = Mesh->GetSkinnedAsset()->GetRefSkeleton();
 	TArray<FTransform> CS;
-	Solve(Ref, Joints, CS);
+	Pose(Ref, Joints, Rig, CS);
 	for (int32 B = 0; B < CS.Num(); ++B)
 	{
 		Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
 	}
 }
 
-void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out)
+void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out, const FCrewRig* Rig)
 {
 	Out.Reset();
 	if (!Mesh) return;
 	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
 	TArray<FTransform> CS;
-	Solve(Ref, Joints, CS);
+	Pose(Ref, Joints, Rig, CS);
 	for (int32 B = 0; B < CS.Num(); ++B) Out.Add(Ref.GetBoneName(B), CS[B].GetLocation());
 }

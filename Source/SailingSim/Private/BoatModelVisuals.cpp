@@ -79,14 +79,24 @@ namespace
 ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) const
 {
 	FBoatModelMeshes M;
-	// The other seven boats keep their procedural visuals until they are modelled (Visual V7).
 	if (Type == EBoatType::J22 && J22HullMesh && J22MastMesh && J22BoomMesh && J22RudderMesh)
 	{
 		M.Hull = J22HullMesh;
 		M.Mast = J22MastMesh;
 		M.Boom = J22BoomMesh;
 		M.Rudder = J22RudderMesh;
+		return M;
 	}
+	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class.
+	static const TCHAR* Tags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
+	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(Tags)) || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralBoats"))) return M;
+	const TCHAR* Tag = Tags[int32(Type)];
+	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
+	M.Hull = Load(TEXT("Hull"));
+	M.Mast = Load(TEXT("Mast"));
+	M.Boom = Load(TEXT("Boom"));
+	M.Rudder = Load(TEXT("Rudder"));
+	if (!M.Hull || !M.Mast || !M.Boom || !M.Rudder) M = FBoatModelMeshes();
 	return M;
 }
 
@@ -110,16 +120,26 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	MastMaterial = ModelMast->CreateDynamicMaterialInstance(ModelMast->GetMaterialIndex(TEXT("Aluminium")) >= 0 ? ModelMast->GetMaterialIndex(TEXT("Aluminium")) : 0);
 	// The boom hangs on the gooseneck pivot (placed from the physics rig); the rudder turns on its stock.
 	ModelBoom = AddModelPart(Model.Boom, BoomPivot, FVector::ZeroVector);
-	USceneComponent* Pivot = NewObject<USceneComponent>(this);
-	Pivot->SetupAttachment(BoatRoot);
-	Pivot->SetRelativeLocation(ModelHull->GetSocketTransform(TEXT("RudderPivot"), RTS_Component).GetLocation());
-	Pivot->RegisterComponent();
-	BoatParts.Add(Pivot);
-	RudderPivots.Add(Pivot);
-	ModelRudder = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector);
+	// Every rudder (the cats have two: RudderPivot, RudderPivot_1) turns on its own stock; the mesh is the same.
+	for (int32 K = 0; ; ++K)
+	{
+		const FName Name = K == 0 ? FName(TEXT("RudderPivot")) : FName(*FString::Printf(TEXT("RudderPivot_%d"), K));
+		if (!Model.Hull->FindSocket(Name)) break;
+		USceneComponent* Pivot = NewObject<USceneComponent>(this);
+		Pivot->SetupAttachment(BoatRoot);
+		Pivot->SetRelativeLocation(ModelHull->GetSocketTransform(Name, RTS_Component).GetLocation());
+		Pivot->RegisterComponent();
+		BoatParts.Add(Pivot);
+		RudderPivots.Add(Pivot);
+		UStaticMeshComponent* Blade = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector); // built about its own stock
+		if (K == 0) ModelRudder = Blade;
+	}
 	// The traveler car slides along the bar with the trim.
-	TravelerCar = AddBoatPart(CubeMesh, ModelHull->GetSocketTransform(TEXT("Traveler_C"), RTS_Component).GetLocation(), FVector(8.f, 7.f, 3.f), FLinearColor(0.02f, 0.02f, 0.02f));
-	if (CarMaterial) TravelerCar->SetMaterial(0, CarMaterial);
+	if (Model.Hull->FindSocket(TEXT("Traveler_C")))
+	{
+		TravelerCar = AddBoatPart(CubeMesh, ModelHull->GetSocketTransform(TEXT("Traveler_C"), RTS_Component).GetLocation(), FVector(8.f, 7.f, 3.f), FLinearColor(0.02f, 0.02f, 0.02f));
+		if (CarMaterial) TravelerCar->SetMaterial(0, CarMaterial);
+	}
 }
 
 FVector ASailboatPawn::RigPoint(const UStaticMeshComponent* Part, FName Socket) const
@@ -149,36 +169,59 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		MastMaterial->SetScalarParameterValue(TEXT("BendHeightCm"), MastBendHeightCm);
 	}
 
+	// Sockets a class may not have (an unstayed ILCA has no shrouds, the Sunfish no jib): their lines are left out.
+	auto Has = [](const UStaticMeshComponent* Part, const TCHAR* Socket) { return Part && Part->DoesSocketExist(Socket); };
 	// Traveler car: centered at 0, toward the boom's side when eased down (1 = all the way to leeward).
-	const FVector TravC = RigPoint(ModelHull, TEXT("Traveler_C")), TravS = RigPoint(ModelHull, TEXT("Traveler_S"));
-	const float BoomSide = S.BoomAngle >= 0.0 ? 1.f : -1.f;
-	FVector Car = TravC + (TravS - TravC) * FMath::Clamp(float(Controls.Traveler), -1.f, 1.f) * BoomSide;
-	TravelerCar->SetRelativeLocation(Car + FVector(0.f, 0.f, 1.5f));
+	FVector Car = RigPoint(ModelBoom, TEXT("Boom_Mainsheet")) - FVector(0.f, 0.f, 60.f);
+	if (TravelerCar && Has(ModelHull, TEXT("Traveler_S")))
+	{
+		const FVector TravC = RigPoint(ModelHull, TEXT("Traveler_C")), TravS = RigPoint(ModelHull, TEXT("Traveler_S"));
+		const float BoomSide = S.BoomAngle >= 0.0 ? 1.f : -1.f;
+		Car = TravC + (TravS - TravC) * FMath::Clamp(float(Controls.Traveler), -1.f, 1.f) * BoomSide;
+		TravelerCar->SetRelativeLocation(Car + FVector(0.f, 0.f, 1.5f));
+	}
 
 	// Which side is to leeward: the side the boom (the sails) are on; the windward rig takes the load.
 	const bool bLeeStbd = S.BoomAngle >= 0.0;
 	const float Loaded = FMath::Clamp((Aws - 3.f) / 5.f, 0.f, 1.f); // below about 3 kn nothing is loaded
 
 	TArray<FRigLine> Wires, Ropes;
-	// Standing rigging: forestay, uppers via the spreaders, lowers, backstay.
-	const FVector Hounds = RigPoint(ModelMast, TEXT("Hounds"));
-	Wires.Add({ RigPoint(ModelHull, TEXT("ForestayTack")), Hounds, 0.25f, 0.f });
-	for (const TCHAR* Tag : { TEXT("S"), TEXT("P") })
+	// Standing rigging: forestay, uppers via the spreaders, lowers, backstay (each where the class has it).
+	const float WireR = 0.25f * FMath::Clamp(float(Boat.GetConfig().MastheadZ / 8.0), 0.8f, 2.4f);
+	if (Has(ModelMast, TEXT("Hounds")))
 	{
-		const bool bStbd = Tag[0] == TEXT('S');
-		const bool bLee = bStbd == bLeeStbd;
-		// The leeward shrouds go slack in a breeze (the windward ones carry the rig).
-		const float Slack = bLee ? 0.0002f + 0.0007f * Breeze * FMath::Clamp(float(FMath::Abs(T.Heel)) / 0.1f, 0.f, 1.f) : 0.f;
-		const FVector Tip = RigPoint(ModelMast, *FString::Printf(TEXT("SpreaderTip_%s"), Tag));
-		Wires.Add({ RigPoint(ModelHull, *FString::Printf(TEXT("ChainplateUpper_%s"), Tag)), Tip, 0.25f, Slack });
-		Wires.Add({ Tip, Hounds, 0.25f, Slack });
-		Wires.Add({ RigPoint(ModelHull, *FString::Printf(TEXT("ChainplateLower_%s"), Tag)), RigPoint(ModelMast, TEXT("LowerTang")), 0.25f, Slack });
+		const FVector Hounds = RigPoint(ModelMast, TEXT("Hounds"));
+		if (Has(ModelHull, TEXT("ForestayTack"))) Wires.Add({ RigPoint(ModelHull, TEXT("ForestayTack")), Hounds, WireR, 0.f });
+		for (const TCHAR* Tag : { TEXT("S"), TEXT("P") })
+		{
+			const bool bStbd = Tag[0] == TEXT('S');
+			const bool bLee = bStbd == bLeeStbd;
+			if (!Has(ModelHull, *FString::Printf(TEXT("ChainplateUpper_%s"), Tag))) continue;
+			// The leeward shrouds go slack in a breeze (the windward ones carry the rig).
+			const float Slack = bLee ? 0.0002f + 0.0007f * Breeze * FMath::Clamp(float(FMath::Abs(T.Heel)) / 0.1f, 0.f, 1.f) : 0.f;
+			const FVector Upper = RigPoint(ModelHull, *FString::Printf(TEXT("ChainplateUpper_%s"), Tag));
+			const FString TipName = FString::Printf(TEXT("SpreaderTip_%s"), Tag);
+			if (Has(ModelMast, *TipName))
+			{
+				const FVector Tip = RigPoint(ModelMast, *TipName);
+				Wires.Add({ Upper, Tip, WireR, Slack });
+				Wires.Add({ Tip, Hounds, WireR, Slack });
+				Wires.Add({ RigPoint(ModelHull, *FString::Printf(TEXT("ChainplateLower_%s"), Tag)), RigPoint(ModelMast, TEXT("LowerTang")), WireR, Slack });
+			}
+			else
+			{
+				Wires.Add({ Upper, Hounds, WireR, Slack });
+			}
+		}
+		if (Has(ModelHull, TEXT("BackstayPlate")))
+		{
+			Wires.Add({ RigPoint(ModelHull, TEXT("BackstayPlate")), RigPoint(ModelMast, TEXT("MastheadAft")), WireR * 0.8f, 0.0008f * (1.f - float(Controls.Backstay)) * (1.f - Loaded) });
+		}
 	}
-	Wires.Add({ RigPoint(ModelHull, TEXT("BackstayPlate")), RigPoint(ModelMast, TEXT("MastheadAft")), 0.2f, 0.0008f * (1.f - float(Controls.Backstay)) * (1.f - Loaded) });
 
 	// Jib sheets: the working sheet (leeward) from the clew through its lead to the winch, nearly straight under load;
 	// the lazy sheet over the cabin top to the windward lead, drooping.
-	if (Boat.GetConfig().HasJib())
+	if (Boat.GetConfig().HasJib() && Has(ModelHull, TEXT("JibLead_S")))
 	{
 		for (const TCHAR* Tag : { TEXT("S"), TEXT("P") })
 		{
@@ -208,11 +251,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		Ropes.Add({ BoomBlock + Off, Car + FVector(0.f, 0.f, 3.f) + Off, 0.35f, MainSlack });
 	}
 	// Vang: a 3:1 tackle from the boom to the mast base, slack when eased off.
-	const FVector VangBoom = RigPoint(ModelBoom, TEXT("Boom_Vang")), VangMast = RigPoint(ModelMast, TEXT("MastBase"));
-	for (int32 K = 0; K < 3; ++K)
+	if (Has(ModelBoom, TEXT("Boom_Vang")))
 	{
-		const FVector Off(0.f, (K - 1.f) * 1.0f, 0.f);
-		Ropes.Add({ VangBoom + Off, VangMast + Off, 0.3f, 0.02f * (1.f - float(Controls.Vang)) });
+		const FVector VangBoom = RigPoint(ModelBoom, TEXT("Boom_Vang")), VangMast = RigPoint(ModelMast, TEXT("MastBase"));
+		for (int32 K = 0; K < 3; ++K)
+		{
+			const FVector Off(0.f, (K - 1.f) * 1.0f, 0.f);
+			Ropes.Add({ VangBoom + Off, VangMast + Off, 0.3f, 0.02f * (1.f - float(Controls.Vang)) });
+		}
 	}
 
 	// Gravity in the boat frame (the boat heels and pitches).
@@ -332,8 +378,11 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		TMap<FName, FQuat> Target;
 		CrewJointRotations(P, Target);
 		FCrewFigure& F = CrewFigures[I];
-		const FVector Location = Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f); // the sailor's pelvis is 93 cm above the feet
+		const FCrewRig* Rig = MetaCrewRigs.IsValidIndex(F.Rig) ? &MetaCrewRigs[F.Rig] : nullptr;
 		const float Yaw = CrewFacingYaw(P);
+		// The sailor's pelvis is 93 cm above the feet; a MetaHuman's is where its skeleton has it, turned with the figure.
+		const FVector Location = Rig ? Pelvis * CmPerMeter - (FQuat(FRotator(0.f, Yaw, Roll)) * Rig->Frame.Inverse()).RotateVector(Rig->Pelvis)
+			: Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f);
 		if (!F.bStarted)
 		{
 			F.Joints = Target;
@@ -350,7 +399,8 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			F.Yaw = F.Yaw + FMath::FindDeltaAngleDegrees(F.Yaw, Yaw) * Blend;
 			F.Roll = FMath::Lerp(F.Roll, Roll, Blend);
 		}
-		Crew[I]->SetRelativeLocationAndRotation(F.Location, FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
-		ApplyCrewPose(Crew[I], F.Joints);
+		const FQuat Facing(FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
+		Crew[I]->SetRelativeLocationAndRotation(F.Location, Rig ? Facing * Rig->Frame.Inverse() : Facing);
+		ApplyCrewPose(Crew[I], F.Joints, Rig);
 	}
 }

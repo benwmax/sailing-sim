@@ -102,6 +102,12 @@ private:
 	TFuture<TSharedPtr<Sailing::FShelterMap>> PendingShelter;
 	bool bShelterBuilding = false;
 	void UpdateShelter();
+	void UpdateResolutionGovernor(float DeltaSeconds);
+	float GovernorMs = 16.f, GovernorClock = 0.f;
+public:
+	/** The render resolution in percent now (High's governor may lower it in heavy views). */
+	float GetRenderScale() const;
+private:
 	double WeatherStartTime = 0.0;
 	double OwnClock = 0.0;
 	float WindOverrideKnots = 0.f;

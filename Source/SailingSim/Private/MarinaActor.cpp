@@ -5,6 +5,9 @@
 #include "LakeData.h"
 #include "Marina.h"
 #include "WorldKit.h"
+#include "SailingAudio.h"
+#include "Components/AudioComponent.h"
+#include "BoatModel.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Dom/JsonObject.h"
@@ -45,7 +48,8 @@ namespace
 
 AMarinaActor::AMarinaActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 0.25f;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	// Nothing here moves: static components keep their cached virtual shadow pages (movable ones re-mark them every frame).
 	RootComponent->SetMobility(EComponentMobility::Static);
@@ -56,6 +60,34 @@ void AMarinaActor::BeginPlay()
 	Super::BeginPlay();
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (GM && GM->GetLake().Marina.IsLoaded()) Build(GM->GetLake().Marina);
+}
+
+void AMarinaActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || Voices.Num() == 0) return;
+	const double Wind = GM->GetWind().VelocityAt(Sailing::Vec3(-40.0, 160.0, 10.0), GM->GetSimTime()).LengthXY();
+	for (USailingWorldSynth* V : Voices)
+	{
+		if (V->Kind == EWorldSound::MarinaHalyards)
+		{
+			V->Rate = FMath::Clamp(float(Wind) / 9.f, 0.f, 1.f);
+			V->Level = FMath::Clamp(float(Wind - 1.5) / 5.f, 0.f, 1.f) * 0.9f;
+		}
+		else
+		{
+			// Gulls fly by day, and call more on a calm morning.
+			V->Rate = FMath::Clamp(1.f - float(Wind) / 12.f, 0.2f, 1.f);
+		}
+	}
+	// The gulls wheel in wide circles over the rows, one higher and wider than the other.
+	GullClock += DeltaSeconds;
+	for (int32 K = 0; K < GullPoints.Num(); ++K)
+	{
+		const float A = GullClock * (0.05f + 0.02f * K) + K * 2.1f;
+		GullPoints[K]->SetRelativeLocation(FVector(-30.0 + (60.0 + 40.0 * K) * FMath::Cos(A), 170.0 + (80.0 + 30.0 * K) * FMath::Sin(A), 15.0 + 10.0 * K) * 100.0);
+	}
 }
 
 void AMarinaActor::Build(const FMarina& Marina)
@@ -131,47 +163,90 @@ void AMarinaActor::Build(const FMarina& Marina)
 		Rocks.Add(C);
 	}
 
-	// Neighbours: J/22s berthed bow in, sails off, in the occupied slips (the fleet's model).
-	static const TCHAR* Parts[] = { TEXT("/Game/Boats/J22/SM_J22_Hull.SM_J22_Hull"), TEXT("/Game/Boats/J22/SM_J22_Mast.SM_J22_Mast"),
-		TEXT("/Game/Boats/J22/SM_J22_Boom.SM_J22_Boom"), TEXT("/Game/Boats/J22/SM_J22_Rudder.SM_J22_Rudder") };
-	// (Low keeps the docks but leaves the slips empty.)
-	UStaticMesh* HullMesh = USailingSettings::Get()->Quality != ESailingQuality::Low ? LoadObject<UStaticMesh>(nullptr, Parts[0]) : nullptr;
-	if (HullMesh)
+	// Neighbours (Visual V7): J/22s and Catalina 22s bow in in their slips, Catalina 30s alongside the fixed pier, each
+	// the class's own model with what a boat in her slip wears (build_berthed.py: standing rigging, furled jib, sail
+	// cover, halyards, fenders, dock lines). Low keeps the docks but leaves the slips empty.
+	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
-		const FVector Step = HullMesh->FindSocket(TEXT("MastStep")) ? HullMesh->FindSocket(TEXT("MastStep"))->RelativeLocation : FVector(80.f, 0.f, 50.f);
-		const FVector RudderAt = HullMesh->FindSocket(TEXT("RudderPivot")) ? HullMesh->FindSocket(TEXT("RudderPivot"))->RelativeLocation : FVector(-330.f, 0.f, 20.f);
-		const FVector Offsets[] = { FVector::ZeroVector, Step, Step + FVector(0.f, 0.f, 95.f), RudderAt };
-		TArray<TArray<FTransform>> Per;
-		Per.SetNum(4);
-		for (const FMarinaSlip& Slip : Marina.Slips)
+		struct FPlaced { FVector2D Center; float HeadingDeg; uint8 Type; };
+		TArray<FPlaced> Boats3;
+		for (const FMarinaSlip& Slip : Marina.Slips) if (Slip.bOccupied) Boats3.Add({ Slip.Center, Slip.HeadingDeg, Slip.BoatType });
+		for (const FMarinaAlongside& A : Marina.Alongside) Boats3.Add({ A.Center, A.HeadingDeg, A.BoatType });
+		static const TCHAR* Parts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Berthed") };
+		TMap<uint8, TArray<TArray<FTransform>>> PerClass;
+		TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
+		for (const FPlaced& P : Boats3)
 		{
-			if (!Slip.bOccupied) continue;
-			// A marina holds more than J/22s: scale some up toward 25-30 ft cruisers (a stand-in until the fleet has berth
-			// models), and nudge each a little in its slip.
-			const uint32 H = uint32(Slip.Row * 7919 + Slip.Index * 104729 + (Slip.Side > 0 ? 1 : 0));
-			const float Size = 1.f + 0.3f * FMath::Square(MRand(H));
-			const FVector2D Nudge = FVector2D(MRand(H + 1) - 0.5f, MRand(H + 2) - 0.5f) * 0.3f;
-			const FTransform Boat(FRotator(0.f, Slip.HeadingDeg + (MRand(H + 3) - 0.5f) * 4.f, 0.f),
-				FVector(Slip.Center.X + Nudge.X, Slip.Center.Y + Nudge.Y, 0.0) * 100.0, FVector(Size));
-			for (int32 K = 0; K < 4; ++K) Per[K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
+			const TCHAR* Tag = P.Type == uint8(Sailing::EBoatType::Catalina22) ? TEXT("Catalina22") : (P.Type == uint8(Sailing::EBoatType::Catalina30) ? TEXT("Catalina30") : TEXT("J22"));
+			if (!MeshesByClass.Contains(P.Type))
+			{
+				TArray<UStaticMesh*> M;
+				for (const TCHAR* Part : Parts) M.Add(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
+				MeshesByClass.Add(P.Type, M);
+				PerClass.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
+			}
+			const TArray<UStaticMesh*>& M = MeshesByClass[P.Type];
+			if (!M[0]) continue;
+			const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(P.Type));
+			const UStaticMeshSocket* Step = M[0]->FindSocket(TEXT("MastStep"));
+			const UStaticMeshSocket* Stock = M[0]->FindSocket(TEXT("RudderPivot"));
+			const FVector Offsets[] = { FVector::ZeroVector, Step ? Step->RelativeLocation : FVector::ZeroVector,
+				FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector, FVector::ZeroVector };
+			const uint32 H = uint32(P.Center.X * 13.0 + P.Center.Y * 7.0);
+			const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0);
+			for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
 		}
-		for (int32 K = 0; K < 4; ++K)
+		for (const auto& KV : PerClass)
 		{
-			UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
-			C->SetMobility(EComponentMobility::Static);
-			C->SetupAttachment(RootComponent);
-			C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, Parts[K]));
-			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			// The mast is not Nanite (it bends on the sailing boat): ninety of them overflow the virtual shadow map's
-			// non-Nanite marking, and their thin shadows are lost in the shadow map's resolution anyway.
-			C->SetCastShadow(K != 1);
-			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-			C->SetCullDistances(0, 1500 * 100);
-			C->RegisterComponent();
-			C->AddInstances(Per[K], false, true);
-			Boats.Add(C);
+			for (int32 K = 0; K < UE_ARRAY_COUNT(Parts); ++K)
+			{
+				UStaticMesh* Mesh = MeshesByClass[KV.Key][K];
+				// The berthed dress carries a straight Nanite mast: the class's bending (non-Nanite) mast is left out.
+				if (K == 1 && MeshesByClass[KV.Key][4]) continue;
+				if (!Mesh || KV.Value[K].Num() == 0) continue;
+				UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+				C->SetMobility(EComponentMobility::Static);
+				C->SetupAttachment(RootComponent);
+				C->SetStaticMesh(Mesh);
+				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				// The masts are not Nanite (they bend on a sailing boat): ninety of them overflow the virtual shadow
+				// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
+				C->SetCastShadow(K != 1);
+				C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+				C->SetCullDistances(0, (K == 4 ? 900 : 1500) * 100);
+				// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
+				// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
+				if (K >= 2) C->SetCastShadow(false);
+				C->RegisterComponent();
+				C->AddInstances(KV.Value[K], false, true);
+				Boats.Add(C);
+			}
 		}
 	}
+	// Sound: halyards on every dock row (louder with the wind), and a pair of gulls wheeling over the harbour.
+	for (const FMarinaRow& R : Marina.Rows)
+	{
+		const FVector2D Mid = 0.5 * (R.Points[0] + R.Points.Last());
+		USceneComponent* At = NewObject<USceneComponent>(this);
+		At->SetupAttachment(RootComponent);
+		At->SetRelativeLocation(FVector(Mid.X, Mid.Y, 6.0) * 100.0);
+		At->RegisterComponent();
+		USailingWorldSynth* Voice = nullptr;
+		SailingSound::MakeWorldSound(this, At, EWorldSound::MarinaHalyards, 250.f, Voice);
+		Voices.Add(Voice);
+	}
+	for (int32 K = 0; K < 2; ++K)
+	{
+		USceneComponent* At = NewObject<USceneComponent>(this);
+		At->SetupAttachment(RootComponent);
+		At->RegisterComponent();
+		USailingWorldSynth* Voice = nullptr;
+		SailingSound::MakeWorldSound(this, At, EWorldSound::Gulls, 400.f, Voice);
+		Voice->Level = 0.6f;
+		Voices.Add(Voice);
+		GullPoints.Add(At);
+	}
+
 	UE_LOG(LogSailing, Display, TEXT("Marina %s: %d rows, %d slips (%d occupied), %d buildings, %d of %d tiles baked, home slip %s"), *Marina.Name, Marina.Rows.Num(), Marina.Slips.Num(),
 		Marina.Slips.FilterByPredicate([](const FMarinaSlip& Sl) { return Sl.bOccupied; }).Num(), Marina.Buildings.Num(), Baked, Tiles.Num(),
 		Marina.HomeSlip != INDEX_NONE ? *Marina.Slips[Marina.HomeSlip].Id : TEXT("none"));

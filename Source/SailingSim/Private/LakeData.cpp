@@ -112,7 +112,10 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		}
 	}
 	LoadCoast(*Root, Directory, Name);
-	Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json")));
+	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
+	{
+		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
+	}
 	BuildObstacles();
 	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d bridges, %d buildings, %d launch spots, %d navaids, %d tide stations"), *LakeName,
 		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Bridges.Num(), Buildings.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
@@ -150,7 +153,8 @@ void FLakeData::BuildObstacles()
 			S.BX = Points[I].X; S.BY = Points[I].Y;
 			S.Radius = HalfWidth;
 			S.Bottom = -2.0;
-			S.Top = Kind == TEXT("breakwater") ? 2.0 : 0.8;
+			S.Top = Kind == TEXT("breakwater") ? 2.0 : (Kind == TEXT("boat") ? 1.5 : 0.8);
+			if (Kind == TEXT("boat")) S.Bottom = -1.2;
 			Obstacles.push_back(S);
 		}
 	});

@@ -12,6 +12,7 @@
 #include "Replay.h"
 #include "SailCloth.h"
 #include "ReferenceCapture.h"
+#include "CrewPose.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -252,6 +253,17 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensDistortionMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> LensDistortionAsset; // referenced for the cook
 	bool bGhostOn = false, bWatching = false, bPhoto = false;
+	/** Visual V7: the cockpit view (the helm's eyes): a filtered copy of the boat's accelerations moves the head, it
+	 *  leans a little into the heel (bounded so the instruments stay readable and the horizon honest). */
+	bool bCockpit = false;
+	FVector CockpitAccel = FVector::ZeroVector, CockpitPrevVel = FVector::ZeroVector, CockpitHead = FVector::ZeroVector;
+	float CockpitRoll = 0.f;
+	void UpdateCockpitCamera(float DeltaSeconds);
+	void UpdatePhotoLens();
+public:
+	bool IsCockpitView() const { return bCockpit; }
+	void SetCockpitView(bool bOn);
+private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;
 	double PhotoHintUntil = 0.0;
@@ -286,7 +298,20 @@ private:
 	UPROPERTY() TObjectPtr<class USkeletalMesh> SailorMesh;
 	UPROPERTY() TMap<FName, TObjectPtr<UMaterialInterface>> CrewMaterials; // slot name -> MI_Boat_Crew<slot>
 	// Visual V3: the crew's posed state, blended toward each frame's stance (CrewPose.h).
-	struct FCrewFigure { TMap<FName, FQuat> Joints; FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; };
+	struct FCrewFigure { TMap<FName, FQuat> Joints; FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; int32 Rig = -1; };
+	// Visual V7: the MetaHuman crew on the player's boat on Medium and High (SK_Sailor elsewhere): per role the body,
+	// face and outfit meshes (MetaCrewMeshes, 3 per role) and the rig that carries SK_Sailor's poses to them.
+	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMesh>> MetaCrewMeshes;
+	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewPFDMesh;
+	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewCapMesh;
+	TArray<FCrewRig> MetaCrewRigs;
+	bool LoadMetaCrew();
+	class UPoseableMeshComponent* AddMetaHumanFigure(int32 Role, int32 Index);
+public:
+	/** Whether the crew are MetaHumans (for the tests and the bench). */
+	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
+	const TArray<TObjectPtr<class UPoseableMeshComponent>>& GetCrewMeshes() const { return Crew; }
+private:
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;
 	void UpdateCrewFigures(float DeltaSeconds);
@@ -352,6 +377,9 @@ private:
 
 	UPROPERTY(Transient) TObjectPtr<UAudioComponent> SoundComponent;
 	UPROPERTY(Transient) TObjectPtr<USailingSynthWave> Synth;
+	/** Visual V7: recorded samples that replace synth voices (one looping component per ESailingCue found). */
+	UPROPERTY(Transient) TArray<TObjectPtr<UAudioComponent>> SampleCues;
+	void StartSampleLayer();
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;

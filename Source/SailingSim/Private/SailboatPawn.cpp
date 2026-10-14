@@ -36,6 +36,7 @@
 #include "Misc/FileHelper.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Components/PoseableMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 
 using namespace Sailing;
@@ -64,7 +65,8 @@ namespace
 			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight")
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
-			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot");
+			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
+			|| Action == TEXT("CockpitView");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -493,7 +495,20 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Crew (Visual V3): posed sailors in foul-weather jackets of their own colours (CrewPose.h).
 	CrewFigures.Reset();
 	static const FLinearColor Jackets[] = { FLinearColor(0.45f, 0.03f, 0.03f), FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.55f, 0.42f, 0.02f), FLinearColor(0.12f, 0.13f, 0.14f) };
-	for (int32 I = 0; I < C.CrewCount && SailorMesh; ++I)
+	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
+	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
+	const bool bMeta = !bTrafficBoat && USailingSettings::Get()->Quality != ESailingQuality::Low
+		&& !FParse::Param(FCommandLine::Get(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
+	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
+	{
+		const int32 Role = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
+		if (UPoseableMeshComponent* Figure = AddMetaHumanFigure(Role, I))
+		{
+			Crew.Add(Figure);
+			CrewFigures.AddDefaulted_GetRef().Rig = Role;
+		}
+	}
+	for (int32 I = 0; I < C.CrewCount && SailorMesh && !bMeta; ++I)
 	{
 		UPoseableMeshComponent* Figure = NewObject<UPoseableMeshComponent>(this);
 		Figure->SetupAttachment(BoatRoot);
@@ -523,11 +538,37 @@ void ASailboatPawn::RebuildBoatVisuals()
 	bTelltalesBuilt = false;
 	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(false);
 	for (UStaticMeshComponent* T : LeechTelltales) T->SetVisibility(false);
+	// Per-class sail layouts (Visual V7): the Sunfish's striped sail, the Hobie's coloured panels and seven full battens,
+	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens.
+	struct FSailLayout { float Layout, Battens, Full; };
+	auto LayoutFor = [](EBoatType T) -> FSailLayout
+	{
+		switch (T)
+		{
+		case EBoatType::Sunfish: return { 1.f, 0.f, 0.f };
+		case EBoatType::ILCA7: return { 0.f, 3.f, 0.f };
+		case EBoatType::Hobie16: return { 2.f, 7.f, 1.f };
+		case EBoatType::Corsair880: return { 3.f, 5.f, 1.f };
+		case EBoatType::Lagoon42: return { 3.f, 5.f, 1.f };
+		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f };
+		default: return { 0.f, 4.f, 0.f };
+		}
+	};
+	const FSailLayout Lay = LayoutFor(C.Type);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0)))
 	{
 		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : 0.f);       // class insignia and number
-		Mid->SetScalarParameterValue(TEXT("Battens"), C.Type == EBoatType::Sunfish ? 0.f : 1.f); // the lateen has none
+		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
+		Mid->SetScalarParameterValue(TEXT("BattenCount"), Lay.Battens);
+		Mid->SetScalarParameterValue(TEXT("FullBattens"), Lay.Full);
+		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Main.NumStrips > 0 ? float(C.Main.Strips[C.Main.NumStrips - 1].ZTop - C.Main.Strips[0].ZBottom) : 1.f);
+	}
+	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(JibSail->GetMaterial(0)))
+	{
+		// The jibs match their mains' colours (no battens).
+		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout == 2.f ? 2.f : (Lay.Layout == 3.f ? 3.f : 0.f));
+		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
 	}
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
@@ -661,8 +702,10 @@ void ASailboatPawn::BeginPlay()
 	SoundComponent->SetSound(Synth);
 	SoundComponent->RegisterComponent();
 	SoundComponent->Play();
+	StartSampleLayer();
 
 	bDemo = FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"));
+	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingCockpit"))) SetCockpitView(true);
 	float HoldTwa = 0.f;
 	if (bDemo)
 	{
@@ -690,6 +733,7 @@ void ASailboatPawn::BeginPlay()
 	{
 		CapturePreset = ParseCapturePreset(CaptureArg);
 		SetupCapture();
+		GAreScreenMessagesEnabled = false; // engine warnings (VSM overflow) would be burned into the still
 	}
 	FString DrillArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDrill="), DrillArg))
@@ -767,6 +811,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			// The lens: [ and ] (the twin-engine pivot keys) zoom in and out.
 			const float Zoom = HeldAxes.FindRef(TEXT("ThrottleSplit"));
 			if (Zoom != 0.f) Camera->SetFieldOfView(FMath::Clamp(Camera->FieldOfView - Zoom * 30.f * DeltaSeconds, 10.f, 110.f));
+			UpdatePhotoLens();
 		}
 		UpdateGhost(DeltaSeconds);
 		return;
@@ -847,6 +892,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	UpdateSound(DeltaSeconds);
+	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
 
 	// Drills: follow the boat and the crew's actions.
 	const FBoatTelemetry& Tel = Boat.GetTelemetry();
@@ -1101,6 +1147,7 @@ namespace
 			{ TEXT("Gps"), { TEXT("GPS on the chart"), TEXT("") } }, { TEXT("ClearPlot"), { TEXT("Clear the plot"), TEXT("") } },
 			{ TEXT("Logbook"), { TEXT("Ship's log"), TEXT("") } }, { TEXT("Replay"), { TEXT("Watch your last run"), TEXT("") } },
 			{ TEXT("Photo"), { TEXT("Photo mode"), TEXT("") } }, { TEXT("PhotoShot"), { TEXT("Take a photo / choose"), TEXT("") } },
+			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
 		};
 		if (const TPair<FString, FString>* N = Names.Find(Action.ToString())) return bNegative && !N->Value.IsEmpty() ? N->Value : N->Key;
@@ -1334,6 +1381,80 @@ void ASailboatPawn::SetWatching(bool bOn)
 	}
 }
 
+void ASailboatPawn::SetCockpitView(bool bOn)
+{
+	bCockpit = bOn;
+	CockpitAccel = CockpitHead = FVector::ZeroVector;
+	CockpitPrevVel = FVector(Boat.GetState().Velocity.X, Boat.GetState().Velocity.Y, Boat.GetState().Velocity.Z);
+	CockpitRoll = 0.f;
+	// The head is placed in the world each frame, free of the chase camera's arm and its lag.
+	Camera->SetUsingAbsoluteLocation(bOn);
+	Camera->SetUsingAbsoluteRotation(bOn);
+	if (bOn) { CameraPitch = -8.f; CameraYaw = 0.f; }
+	else
+	{
+		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(true, true);
+		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+		Camera->SetFieldOfView(90.f);
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	}
+	StatusMessage = bOn ? TEXT("Cockpit view: you are at the helm. Look around with the mouse; press \\ for the chase camera") : TEXT("Chase camera");
+	StatusUntil = Boat.GetState().Time + 3.0;
+}
+
+void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
+{
+	// The helm's head: on the windward side of the cockpit, about 0.8 m above the seat (or the rail when hiking).
+	const FBoatConfig& C = Boat.GetConfig();
+	const FBoatState& S = Boat.GetState();
+	const int32 N = FMath::Max(C.CrewCount, 1);
+	const double X = C.CrewCG.X + 0.55 * (0.5 * (N - 1) - (N - 1));
+	const FHullShape& H = C.Hulls[0];
+	const double Rail = C.bMultihull ? FMath::Abs(C.Hulls.back().CenterY) + 0.2 : H.DeckHalfBeam(X);
+	const double Sheer = C.bMultihull ? H.SheerZ + 0.1 : H.SheerHeight(X);
+	const float Side = S.CrewOffset != 0.0 ? float(FMath::Sign(S.CrewOffset)) : float(S.WindwardSide);
+	const FVector Eye = FVector(X, Side * FMath::Max(Rail - 0.3, 0.25), Sheer + 0.85) * CmPerMeter;
+
+	// Accelerations felt at the head (the boat's, low-passed over 0.3 s): surging forward pushes the head back, a wave
+	// lifting the boat sinks it a little; plus a head-bob the neck lets through. A few centimetres at most.
+	const float Dt = FMath::Max(DeltaSeconds, 1e-3f);
+	const FVector Vel(S.Velocity.X, S.Velocity.Y, S.Velocity.Z);
+	const FVector Acc = (Vel - CockpitPrevVel) / Dt;
+	CockpitPrevVel = Vel;
+	CockpitAccel += (Acc - CockpitAccel) * FMath::Clamp(Dt / 0.3f, 0.f, 1.f);
+	const FVector AccBoat = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(CockpitAccel);
+	const FVector Target = (-AccBoat * 1.2f).GetClampedToMaxSize(10.f); // cm per m/s^2, at most 10 cm
+	CockpitHead += (Target - CockpitHead) * FMath::Clamp(Dt / 0.15f, 0.f, 1.f);
+
+	// The head stays nearly upright as the boat heels: it leans a third of the heel, at most 8 degrees, so the
+	// horizon tilts the way it does to a sailor (the heel lesson) without the instruments sliding off.
+	const float Heel = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heel));
+	CockpitRoll += (FMath::Clamp(Heel * 0.33f, -8.f, 8.f) - CockpitRoll) * FMath::Clamp(Dt / 0.4f, 0.f, 1.f);
+	const FTransform BoatXf = BoatRoot->GetComponentTransform();
+	const FVector World = BoatXf.TransformPosition(Eye + CockpitHead);
+	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw);
+	// You are the helm: the helm's own figure is not drawn from inside it.
+	if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false, true);
+	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
+	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
+	Camera->SetFieldOfView(80.f);
+}
+
+void ASailboatPawn::UpdatePhotoLens()
+{
+	// Photo mode is a camera: focus on the boat at f/2.8 on a full-frame sensor (the background softens with the lens),
+	// and the lens profile from Visual V1 (barrel distortion, vignetting and fringing, M_LensDistortion).
+	FPostProcessSettings& PP = Camera->PostProcessSettings;
+	PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = true;
+	PP.DepthOfFieldFocalDistance = float(FVector::Dist(Camera->GetComponentLocation(), BoatRoot->GetComponentLocation()));
+	PP.DepthOfFieldFstop = 2.8f;
+	PP.DepthOfFieldSensorWidth = 36.f;
+	if (LensDistortionAsset && !PP.WeightedBlendables.Array.ContainsByPredicate([&](const FWeightedBlendable& B) { return B.Object == LensDistortionAsset; }))
+	{
+		PP.AddBlendable(LensDistortionAsset, 1.f);
+	}
+}
+
 void ASailboatPawn::SetPhoto(bool bOn)
 {
 	bPhoto = bOn;
@@ -1344,6 +1465,10 @@ void ASailboatPawn::SetPhoto(bool bOn)
 	}
 	else
 	{
+		// Back to the sailing camera: no depth of field, no lens profile.
+		FPostProcessSettings& PP = Camera->PostProcessSettings;
+		PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = false;
+		if (LensDistortionAsset) PP.RemoveBlendable(LensDistortionAsset);
 		Camera->SetFieldOfView(90.f);
 		CameraPitch = FMath::Clamp(CameraPitch, -75.f, 5.f);
 		CameraDistance = FMath::Clamp(CameraDistance, 400.f, 4000.f);
@@ -1532,6 +1657,32 @@ void ASailboatPawn::UpdateDrillVisuals()
 	if (bDummy) DummyMesh->SetWorldLocation(FVector(DrillRunner.GetDummy().X * CmPerMeter, DrillRunner.GetDummy().Y * CmPerMeter, WaterSurfaceZ + 10.f));
 }
 
+void ASailboatPawn::StartSampleLayer()
+{
+	// A recorded sample (Audio/Samples/<Cue>.wav, imported by scripts/import_audio.py as /Game/Audio/Samples/S_<Cue>)
+	// plays in place of that synth voice, looping, its level driven by the same physics as the voice it replaces.
+	SampleCues.SetNum(int32(ESailingCue::Count));
+	uint32 Mask = 0;
+	for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
+	{
+		const FString Name = SailingCueName(ESailingCue(K));
+		USoundBase* Wave = LoadObject<USoundBase>(nullptr, *FString::Printf(TEXT("/Game/Audio/Samples/S_%s.S_%s"), *Name, *Name));
+		if (!Wave || bTrafficBoat) continue;
+		UAudioComponent* A = NewObject<UAudioComponent>(this);
+		A->SetupAttachment(BoatRoot);
+		A->bAllowSpatialization = false;
+		A->bAutoActivate = false;
+		A->SetSound(Wave);
+		A->SetVolumeMultiplier(0.f);
+		A->RegisterComponent();
+		A->Play();
+		SampleCues[K] = A;
+		Mask |= 1u << K;
+	}
+	if (Synth) Synth->Params.SampledMask = Mask;
+	if (Mask) UE_LOG(LogSailing, Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
+}
+
 void ASailboatPawn::UpdateSound(float DeltaSeconds)
 {
 	if (!Synth)
@@ -1575,6 +1726,48 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	P.Rain = Rain;
 	P.Thunder = Thunder;
 	P.ThunderCrack = Crack;
+
+	// Visual V7: the wind's gusts and shelter at the boat, at rest in a slip, and a squall coming across the water.
+	float Squall = 0.f;
+	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		const Vec3 O = Boat.OriginPosition();
+		const double Now = Boat.GetState().Time;
+		const FWindField& Wind = GM->GetWind();
+		P.GustRatio = float(Wind.GustFactorAt(Vec3(O.X, O.Y, 10.0), Now));
+		const double Mean = FMath::Max(Wind.MeanSpeedAtHeight(10.0), 0.5);
+		P.WindShadow = FMath::Clamp(float(1.0 - Wind.VelocityAt(Vec3(O.X, O.Y, 10.0), Now).LengthXY() / (Mean * Wind.GustFactorAt(Vec3(O.X, O.Y, 10.0), Now))), 0.f, 1.f);
+		const FGustFront& Front = Wind.GetFront();
+		if (Front.bActive)
+		{
+			const double D = Front.DistanceAhead(O.X, O.Y, GM->GetSimTime());
+			Squall = D > 0.0 ? FMath::Clamp(float(1.0 - D / 1500.0), 0.f, 1.f) : FMath::Clamp(float(1.0 + D / 250.0), 0.f, 1.f);
+		}
+	}
+	P.Moored = FMath::Clamp(1.f - float(T.BoatSpeed) / 0.4f, 0.f, 1.f);
+	P.RainDeck = Rain;
+	P.RainWater = Rain;
+	P.Squall = Squall;
+	// The sample layer follows the same levels as the voices it replaces.
+	if (SampleCues.Num() == int32(ESailingCue::Count))
+	{
+		const float Aws = float(T.ApparentWindSpeed) * (1.f - 0.55f * P.WindShadow.load());
+		const float Levels[] = {
+			FMath::Pow(FMath::Clamp(Aws / 12.f, 0.f, 1.5f), 1.5f),                                                    // Wind
+			FMath::Clamp((P.GustRatio.load() - 1.f) * 2.5f, 0.f, 1.f) * FMath::Clamp(Aws / 7.f, 0.f, 1.5f),            // GustRumble
+			P.Luff.load() * FMath::Clamp(Aws / 8.f, 0.f, 2.f),                                                         // SailFlog
+			P.Telltales.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.5f) * 0.3f,                                            // Telltales
+			FMath::Pow(FMath::Clamp(float(T.BoatSpeed) / 3.f, 0.f, 1.5f), 1.5f),                                       // BowWave
+			FMath::Max(P.Moored.load() * 0.5f, P.BowSlam.load()),                                                      // HullSlap
+			FMath::Clamp(P.TrimRate.load(), 0.f, 1.f),                                                                 // Winch
+			FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f),                                                                // SheetBlock
+			P.Moored.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.f),                                                       // HalyardSlap
+			Rain, Rain, Squall * Squall, Thunder };                                                                    // RainDeck, RainWater, SquallHiss, Thunder
+		for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
+		{
+			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load());
+		}
+	}
 }
 
 void ASailboatPawn::ApplyStateToTransform()
@@ -1906,6 +2099,11 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	if (Action == TEXT("Photo"))
 	{
 		SetPhoto(!bPhoto);
+		return;
+	}
+	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching)
+	{
+		SetCockpitView(!bCockpit);
 		return;
 	}
 	if (Action == TEXT("Replay"))
@@ -2551,4 +2749,101 @@ void ASailboatPawn::WriteCaptureSettings() const
 		T.TrueWindSpeed / kKnot, FMath::Fmod(FMath::RadiansToDegrees(T.Heading + T.TrueWindAngle) + 720.0, 360.0), Gust,
 		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed);
 	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));
+}
+
+bool ASailboatPawn::LoadMetaCrew()
+{
+	if (MetaCrewRigs.Num() == NumMetaHumanRoles) return true;
+	TArray<TObjectPtr<USkeletalMesh>> Meshes;
+	TArray<FCrewRig> Rigs;
+	for (int32 R = 0; R < NumMetaHumanRoles; ++R)
+	{
+		USkeletalMesh *Body = nullptr, *Face = nullptr, *Outfit = nullptr;
+		if (!LoadMetaHumanCrew(R, Body, Face, Outfit)) return false;
+		Meshes.Append({ Body, Face, Outfit });
+		BuildCrewRig(Body, Rigs.AddDefaulted_GetRef());
+	}
+	CrewPFDMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Crew/Gear/SM_CrewPFD.SM_CrewPFD"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	CrewCapMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Crew/Gear/SM_CrewCap.SM_CrewCap"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	MetaCrewMeshes = Meshes;
+	MetaCrewRigs = MoveTemp(Rigs);
+	return true;
+}
+
+UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Index)
+{
+	USkeletalMesh* BodyMesh = MetaCrewMeshes[3 * Role];
+	const FCrewRig& Rig = MetaCrewRigs[Role];
+	UPoseableMeshComponent* Body = NewObject<UPoseableMeshComponent>(this);
+	Body->SetupAttachment(BoatRoot);
+	Body->SetSkinnedAssetAndUpdate(BodyMesh);
+	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Body->RegisterComponent();
+	BoatParts.Add(Body);
+	// The face and the clothes follow the body's bones (the face's own joints rest: no expressions).
+	for (int32 K = 1; K <= 2; ++K)
+	{
+		if (!MetaCrewMeshes[3 * Role + K]) continue;
+		USkeletalMeshComponent* Part = NewObject<USkeletalMeshComponent>(this);
+		Part->SetupAttachment(Body);
+		Part->SetSkeletalMesh(MetaCrewMeshes[3 * Role + K]);
+		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Part->RegisterComponent();
+		Part->SetLeaderPoseComponent(Body);
+		Part->SetDisablePostProcessBlueprint(true); // the face's RigLogic post-process would run for a resting face
+		if (K == 2)
+		{
+			// The default garment comes white; sailing tops and shorts of each sailor's own colours.
+			static const FLinearColor Shirts[] = { FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.36f, 0.38f), FLinearColor(0.18f, 0.02f, 0.02f), FLinearColor(0.03f, 0.12f, 0.16f) };
+			static const FLinearColor Shorts[] = { FLinearColor(0.25f, 0.2f, 0.12f), FLinearColor(0.02f, 0.03f, 0.08f), FLinearColor(0.1f, 0.1f, 0.1f) };
+			for (int32 M = 0; M < Part->GetNumMaterials(); ++M)
+			{
+				const UMaterialInterface* Base = Part->GetMaterial(M);
+				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
+				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
+				if (UMaterialInstanceDynamic* Mid = Part->CreateDynamicMaterialInstance(M))
+				{
+					for (const TCHAR* Param : { TEXT("diffuse_color_1"), TEXT("diffuse_color_2"), TEXT("B_diffuse_color_1"), TEXT("C_color") }) Mid->SetVectorParameterValue(Param, Col);
+				}
+			}
+		}
+		BoatParts.Add(Part);
+	}
+	// The life jacket over the shirt, the cap over the (ungroomed) head, each scaled to this skeleton and carried by the
+	// chest and head bones: placed on the T-posed rest, relative to the bone's rest.
+	const auto At = [&](const TCHAR* Bone) { return Rig.Rest(BodyMesh, Bone).GetLocation(); };
+	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
+	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
+	const float Waist = float(At(TEXT("spine_01")).Z) - 4.f;
+	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
+	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
+	if (CrewPFDMesh && Span > 10.f && Top > Waist)
+	{
+		const FVector Chest = At(TEXT("spine_03"));
+		// Over the shirt (mesh X is depth, Y width): the torso plus foam, centred a little ahead of the spine joints.
+		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.12f * Span), FVector(0.0125f * Span, 0.0115f * Span, 0.0092f * (Top - Waist + 2.f)));
+		UStaticMeshComponent* Pfd = NewObject<UStaticMeshComponent>(this);
+		Pfd->SetStaticMesh(CrewPFDMesh);
+		Pfd->SetupAttachment(Body, TEXT("spine_04"));
+		Pfd->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("spine_04"))));
+		Pfd->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Pfd->RegisterComponent();
+		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		BoatParts.Add(Pfd);
+	}
+	if (CrewCapMesh)
+	{
+		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.5f) + Fwd * 1.f;
+		const FTransform Place(Rig.Frame, Head, FVector(0.106f, 0.106f, 0.08f)); // a cap's crown is lower than a helmet's
+		UStaticMeshComponent* Cap = NewObject<UStaticMeshComponent>(this);
+		Cap->SetStaticMesh(CrewCapMesh);
+		Cap->SetupAttachment(Body, TEXT("head"));
+		Cap->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("head"))));
+		Cap->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Cap->RegisterComponent();
+		static const FLinearColor Caps[] = { FLinearColor(0.8f, 0.8f, 0.78f), FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.3f, 0.2f) };
+		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Caps[Role % UE_ARRAY_COUNT(Caps)]);
+		BoatParts.Add(Cap);
+	}
+	return Body;
 }

@@ -27,6 +27,7 @@ class SAILINGSIM_API AMarinaActor : public AActor
 public:
 	AMarinaActor();
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	/** The generated structures (all but the rocks and boats), for drawing and for the editor's Nanite bake. */
 	static void BuildGeometry(const FMarina& Marina, const Sailing::FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& Out);
@@ -41,4 +42,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Rocks;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Boats;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Scans;
+	/** Visual V7: the halyards clanking on the dock rows and the gulls over the harbour, spatialised. */
+	UPROPERTY(Transient) TArray<TObjectPtr<class USailingWorldSynth>> Voices;
+	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> GullPoints;
+	float GullClock = 0.f;
 };

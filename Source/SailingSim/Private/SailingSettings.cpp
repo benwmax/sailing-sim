@@ -90,6 +90,7 @@ USailingInputSettings::USailingInputSettings()
 	// Debrief and pictures: watch the last run, photo mode and its shutter.
 	Add(TEXT("Replay"), EKeys::Comma);
 	Add(TEXT("Photo"), EKeys::Nine);
+	Add(TEXT("CockpitView"), EKeys::Backslash);
 	Add(TEXT("PhotoShot"), EKeys::Enter);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);

@@ -203,6 +203,30 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   was not world space on Nanite instances in a Custom node (use position derivatives); runtime-built components must be
   Static (or ShadowCacheInvalidationBehavior::Static) or VSM re-marks them every frame; the editor's Python crashes at
   shutdown after big bakes, so `import_world.py` ends with `os._exit(0)`; zsh does not word-split `$VAR` args.
+- Fleet models (Visual V7): `Tools/blender/build_fleet.py` builds the other seven boats from `Tools/BoatExport` JSON (every
+  hull, exactly the physics below the waterline; class decks, cabins, beams, nets, bridgedeck and rigs from `SPECS`),
+  `build_berthed.py` the keelboats' in-slip dress for the marina; `make-boat-models.sh` runs them, `import_boats.py`
+  (`fleet`, `berthed` args) imports. `SailingSim.Visual.FleetMesh` holds each to its physics hulls (the Hobie, Corsair
+  and Lagoon configs' published beam/LOA disagree with their own hull shapes: reported, open). The rig is drawn only
+  where sockets exist; twin rudders use `RudderPivot_1`. Sail layouts per class are `Layout`/`BattenCount`/`FullBattens`
+  on `M_SailCloth`. Marina neighbours are FMarina's `BoatType`/`Alongside` and are physics obstacles.
+- Sound (Visual V7): `USailingSynthWave` layers (gust rumble, shelter hush, moored lapping and halyard slap, rain on
+  deck and on water, squall hiss); `USailingWorldSynth` spatialised sources (`SailingSound::MakeWorldSound`: marina
+  halyards, gulls, outboards, diesels); recorded samples in `Audio/Samples/<Cue>.wav` replace a synth voice
+  (`scripts/import-audio.sh`, credits in `Audio/Samples/CREDITS.md`). Water below 2 kn goes glassy (`glass` in
+  `M_WaterV4`). Cockpit view: `\` or `-SailingCockpit` (`UpdateCockpitCamera`); photo mode has depth of field and the
+  V1 lens profile.
+- MetaHuman crew (Visual V7): `scripts/make-metahumans.sh` builds the helm, trimmer and bow (presets Bruce, Ada, Omari)
+  into `/Game/Crew/MetaHumans` in the full editor (git-ignored: about 0.5 GB, and the licence covers use, not
+  redistribution). It needs the engine's MetaHuman optional content and an Epic sign-in for the cloud auto-rig (device
+  code in the browser the first time); the editor has died on a Metal pipeline late in a run, so the script saves after
+  each character and skips built ones. The player's boat uses them on Medium and High (`LoadMetaCrew`; SK_Sailor on Low,
+  on AI boats and with `-SailingBlenderCrew`): `FCrewRig` (`CrewPose.h`) carries SK_Sailor's stance rotations to the
+  MetaHuman skeleton (its +Y facing, A-pose turned to SK_Sailor's T-pose, spine/neck spread over its bones); face and
+  outfit follow the body by leader pose; the life jacket and cap (`/Game/Crew/Gear`, `build_crew_gear.py`) are scaled
+  from the skeleton. `SailingSim.Visual.MetaHumanCrew` checks every stance points each limb as SK_Sailor's does.
+- Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
+  `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

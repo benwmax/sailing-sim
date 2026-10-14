@@ -47,6 +47,8 @@ private:
 	TArray<TObjectPtr<UStaticMeshComponent>> DayShapes;
 
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> Root;
+	/** Visual V7: her engine (an outboard's buzz, a diesel's throb) and, behind a shrimper, the gulls. */
+	UPROPERTY(Transient) TArray<TObjectPtr<class USailingWorldSynth>> Voices;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Parts;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> Cube;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> Cylinder;
