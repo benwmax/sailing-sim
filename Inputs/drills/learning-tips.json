@@ -436,7 +436,7 @@
       "cooldown_s": 15,
       "once_per_session": false,
       "asa_topic": "safety",
-      "text": "Too fast for a pick-up. Ease both sheets so the sails luff. If you are not slowing, sail past and set up again."
+      "text": "Too fast for a pick-up. Ease both sheets and turn up into the wind to use the headwind as a brake. If you are not slowing, sail past and set up again."
     },
     {
       "id": "cob-downwind",
@@ -462,7 +462,7 @@
       "cooldown_s": 30,
       "once_per_session": true,
       "asa_topic": "safety",
-      "text": "Alongside. Get a line to them and attach them to the boat before you try to lift them aboard."
+      "text": "Alongside. Either side is fine. Get a line to them and attach them to the boat before you try to lift them aboard."
     },
     {
       "id": "heaveto-released",

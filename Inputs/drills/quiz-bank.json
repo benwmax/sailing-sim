@@ -706,15 +706,15 @@
         "CrewOverboardQuickStop"
       ],
       "topic": "safety",
-      "q": "Many GPS units and VHF radios have an MOB button. Pressing it:",
+      "q": "For the final few metres of a crew-overboard pick-up, you turn into the wind so that:",
       "options": [
-        "Marks the position where the person went in",
-        "Calls the Coast Guard automatically",
-        "Drops a life ring",
-        "Stops the engine"
+        "The person drifts away from the boat",
+        "The headwind and luffing sails slow the boat to a stop",
+        "The jib fills and adds speed",
+        "You can only pick them up on the starboard side"
       ],
-      "answer": 0,
-      "why": "It records the spot so you can steer back to it if you lose sight of them."
+      "answer": 1,
+      "why": "Head to wind the sails stop driving; you can bring them aboard on port or starboard."
     },
     {
       "id": "cob-04",
@@ -723,15 +723,15 @@
         "CrewOverboardQuickStop"
       ],
       "topic": "safety",
-      "q": "Why is approaching the person on a run a bad idea?",
+      "q": "Many GPS units and VHF radios have an MOB button. Pressing it:",
       "options": [
-        "The person drifts upwind",
-        "You cannot slow down by luffing the sails downwind",
-        "It is against the rules",
-        "You will be in irons"
+        "Stops the engine",
+        "Calls the Coast Guard automatically",
+        "Drops a life ring",
+        "Marks the position where the person went in"
       ],
-      "answer": 1,
-      "why": "Downwind the sails keep pulling even when eased."
+      "answer": 3,
+      "why": "It records the spot so you can steer back to it if you lose sight of them."
     },
     {
       "id": "cob-05",
@@ -740,15 +740,15 @@
         "CrewOverboardQuickStop"
       ],
       "topic": "safety",
-      "q": "In cold water, the first danger to a person who falls in is:",
+      "q": "Why is approaching the person on a run a bad idea?",
       "options": [
-        "Hypothermia within one minute",
-        "Cold shock: gasping and loss of breath control",
-        "Sunburn",
-        "Heat stroke"
+        "You cannot slow down by luffing the sails downwind",
+        "You will be in irons",
+        "It is against the rules",
+        "The person drifts upwind"
       ],
-      "answer": 1,
-      "why": "Cold shock hits in the first minute; that is why a life jacket matters so much."
+      "answer": 0,
+      "why": "Downwind the sails keep pulling even when eased."
     },
     {
       "id": "cob-06",
@@ -757,14 +757,31 @@
         "CrewOverboardQuickStop"
       ],
       "topic": "safety",
-      "q": "A person in the water drifts:",
+      "q": "In cold water, the first danger to a person who falls in is:",
       "options": [
-        "Toward the nearest shore",
-        "Not at all",
-        "Upwind faster than the boat",
-        "Slowly downwind, more slowly than a drifting sailboat"
+        "Heat stroke",
+        "Sunburn",
+        "Hypothermia within one minute",
+        "Cold shock: gasping and loss of breath control"
       ],
       "answer": 3,
+      "why": "Cold shock hits in the first minute; that is why a life jacket matters so much."
+    },
+    {
+      "id": "cob-07",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "A person in the water drifts:",
+      "options": [
+        "Upwind faster than the boat",
+        "Not at all",
+        "Slowly downwind, more slowly than a drifting sailboat",
+        "Toward the nearest shore"
+      ],
+      "answer": 2,
       "why": "The person drifts slowly; your boat, with sails and topsides, drifts faster."
     },
     {

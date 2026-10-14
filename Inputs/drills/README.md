@@ -10,9 +10,9 @@ North Texas weather (afternoon thunderstorms, summer heat, fall fronts, lake lev
 
 | File | What it holds |
 |---|---|
-| `drill-briefings.json` | One briefing per drill: goal, why it matters, setup, crew calls, coaching for each `FDrillRunner` step, what good looks like, common mistakes with fixes, a lake note, debrief lines per outcome, and how many quiz questions to ask afterwards |
+| `drill-briefings.json` | One briefing per drill: goal, why it matters, setup, crew calls, coaching for each `FDrillRunner` step, what good looks like, common mistakes with fixes, a lake note, debrief lines per outcome, how many quiz questions to ask afterwards, and an optional `sim_fix` note for code changes |
 | `learning-tips.json` | 63 sim events (with a suggested detection for each) and 68 tips keyed to them: trim and luffing, heading up and bearing away, tacking, jibing, heel, depth, crew overboard, heaving to, docking, right-of-way encounters, weather |
-| `quiz-bank.json` | 85 multiple-choice questions with a one-line explanation, tagged by drill and ASA topic. None repeats a question from the ASA 101 Study Kit |
+| `quiz-bank.json` | 86 multiple-choice questions with a one-line explanation, tagged by drill and ASA topic. None repeats a question from the ASA 101 Study Kit |
 | `validate.py` | Checks all three files, and that each briefing's steps still match `Drills.cpp` |
 
 Run `python3 Inputs/drills/validate.py` from the repo root (plain Python 3, no packages). If someone edits a step in
@@ -34,7 +34,7 @@ drills[]: id, name (= DrillName()), asa_skill, goal, why_it_matters, setup,
           commands[]: {call, reply, meaning},
           steps[]: {sim_text, text?, coach}     same count and order as FDrillRunner::Steps
           good[], mistakes[]: {mistake, fix}, lake_notes,
-          debrief: {outcome: line}, quiz_after, check_with_book?
+          debrief: {outcome: line}, quiz_after, sim_fix?
 ```
 
 - `sim_text` is copied verbatim from `Drills.cpp`. `text` (on three steps) is the same line with the hard-coded key
@@ -92,11 +92,15 @@ Tip and step text never names a key directly. Replace each token with the player
 | `{key:DockLines}` | DockLines | T |
 | `{key:ToggleLearning}` | ToggleLearning | L |
 
-## To check before shipping
+## Fix for Drills.cpp (crew-overboard pick-up side)
 
-- **Crew-overboard pick-up side.** Figure-eight step 4 in `Drills.cpp` says to stop "to windward of them" (the person
-  ends up on your leeward side), but the finish message says "Get them aboard on the windward side". The briefing
-  avoids naming a side and its debrief points to the book. Confirm the side in *Sailing Made Easy* or with the
-  instructor, then fix whichever line in `Drills.cpp` is wrong.
-- **Figure-eight distance.** The sim says about five boat lengths; the briefing and quiz say "about four or five",
-  which covers the usual book and school wording.
+Figure-eight step 4 says to stop "to windward of them", but the finish message says "Get them aboard on the windward
+side". Bean settled it on Oct 14 2026: turn into the wind for the final approach so the headwind slows the boat, and
+pick the person up on port or starboard, either works. The briefings, tips and quiz now say that. Suggested code
+change when wiring this in (then update the matching `sim_text` and rerun `validate.py`):
+
+- Step 4: `Approach on a close reach and turn into the wind to stop alongside them`
+- Finish message: `Recovered in m:ss. Get them aboard and keep them warm.`
+
+The sim says about five boat lengths for the figure-eight; the briefing and quiz say "about four or five", which
+covers the usual book and school wording.

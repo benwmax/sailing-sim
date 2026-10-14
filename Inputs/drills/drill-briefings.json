@@ -259,7 +259,7 @@
         },
         {
           "sim_text": "Approach on a close reach and luff to stop alongside, to windward of them",
-          "coach": "Turn up onto a close reach for the last few boat lengths. Ease the sheets so the sails luff and the boat slows, and aim to stop with the person beside the boat near the shrouds. If you are too fast, go around again."
+          "coach": "Come up on a close reach, then turn up toward the wind for the last boat length or two and let the headwind and luffing sails slow you. Stop with the person alongside near the shrouds, on whichever side suits; port or starboard both work. If you are too fast, go around again."
         }
       ],
       "good": [
@@ -287,10 +287,10 @@
       ],
       "lake_notes": "Ray Hubbard is warm in summer, so cold water is less of a threat than in a northern lake, but in winter the water can drop into the 40s °F, and cold shock can take away a swimmer's breath within a minute. Wear PFDs: a person in a life jacket is easier to see and can wait for you to come back properly.",
       "debrief": {
-        "proper": "Recovered in {time}. Get them aboard and keep them warm. Check the book or your instructor for which side of the boat to bring them in on.",
+        "proper": "Recovered in {time}. Get them aboard, on either side, and keep them warm.",
         "improper": "Recovered, but not with the figure-eight. Try again in order: beam reach away, tack, broad reach back, close reach to stop."
       },
-      "check_with_book": "Drills.cpp step 4 says to stop to windward of the person, but the finish message says to get them aboard on the windward side. Confirm the pick-up side in Sailing Made Easy or with the instructor before shipping either line.",
+      "sim_fix": "Bean (Oct 14 2026): turn into the wind to use the headwind to slow the approach; pick up on port or starboard, either works. Drills.cpp should drop the side from step 4 and the finish message; see README.",
       "quiz_after": 4
     },
     {
@@ -318,7 +318,7 @@
         },
         {
           "sim_text": "Approach slowly and stop alongside them",
-          "coach": "Come up toward them on a close reach, ease the sails to luff, and stop with them beside the boat."
+          "coach": "Come up toward them on a close reach, then turn into the wind for the last boat length so the headwind and luffing sails stop you. Either side of the boat is fine for the pick-up."
         }
       ],
       "good": [
