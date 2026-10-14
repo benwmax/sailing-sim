@@ -513,11 +513,11 @@ void ASailboatPawn::RebuildBoatVisuals()
 		&& !FParse::Param(FCommandLine::Get(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
 	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
 	{
-		const int32 Role = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
-		if (UPoseableMeshComponent* Figure = AddMetaHumanFigure(Role, I))
+		const int32 CrewRole = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
+		if (UPoseableMeshComponent* Figure = AddMetaHumanFigure(CrewRole, I))
 		{
 			Crew.Add(Figure);
-			CrewFigures.AddDefaulted_GetRef().Rig = Role;
+			CrewFigures.AddDefaulted_GetRef().Rig = CrewRole;
 		}
 	}
 	for (int32 I = 0; I < C.CrewCount && SailorMesh && !bMeta; ++I)
@@ -3062,10 +3062,10 @@ bool ASailboatPawn::LoadMetaCrew()
 	return true;
 }
 
-UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Index)
+UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 Index)
 {
-	USkeletalMesh* BodyMesh = MetaCrewMeshes[3 * Role];
-	const FCrewRig& Rig = MetaCrewRigs[Role];
+	USkeletalMesh* BodyMesh = MetaCrewMeshes[3 * CrewRole];
+	const FCrewRig& Rig = MetaCrewRigs[CrewRole];
 	UPoseableMeshComponent* Body = NewObject<UPoseableMeshComponent>(this);
 	Body->SetupAttachment(BoatRoot);
 	Body->SetSkinnedAssetAndUpdate(BodyMesh);
@@ -3076,11 +3076,11 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	USkeletalMeshComponent* FacePart = nullptr;
 	for (int32 K = 1; K <= 2; ++K)
 	{
-		if (!MetaCrewMeshes[3 * Role + K]) continue;
+		if (!MetaCrewMeshes[3 * CrewRole + K]) continue;
 		USkeletalMeshComponent* Part = NewObject<USkeletalMeshComponent>(this);
 		if (K == 1) FacePart = Part;
 		Part->SetupAttachment(Body);
-		Part->SetSkeletalMesh(MetaCrewMeshes[3 * Role + K]);
+		Part->SetSkeletalMesh(MetaCrewMeshes[3 * CrewRole + K]);
 		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Part->RegisterComponent();
 		Part->SetLeaderPoseComponent(Body);
@@ -3094,7 +3094,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 			{
 				const UMaterialInterface* Base = Part->GetMaterial(M);
 				const bool bShirt = Base && Base->GetName().Contains(TEXT("Shirt"));
-				const FLinearColor Col = bShirt ? Shirts[Role % UE_ARRAY_COUNT(Shirts)] : Shorts[Role % UE_ARRAY_COUNT(Shorts)];
+				const FLinearColor Col = bShirt ? Shirts[CrewRole % UE_ARRAY_COUNT(Shirts)] : Shorts[CrewRole % UE_ARRAY_COUNT(Shorts)];
 				// Graphics G3: the shorts in scanned cotton twill (M_CrewFabric), where it has been built.
 				// Loaded each time (not cached in a static: a level reload collects it and the pointer would dangle).
 				UMaterialInterface* ShortsCloth = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Crew/Fabric/MI_Crew_Shorts.MI_Crew_Shorts"), nullptr, LOAD_NoWarn | LOAD_Quiet);
@@ -3116,7 +3116,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		// the outfit's shirt sections are hidden on every LOD and the polo follows the body like the rest.
 		if (K == 2 && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
 		{
-			const FString R = MetaHumanRoleName(Role);
+			const FString R = MetaHumanRoleName(CrewRole);
 			USkeletalMesh* PoloMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Polo.SKM_%s_Polo"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet);
 			const FSkeletalMeshRenderData* Render = Part->GetSkeletalMeshAsset() ? Part->GetSkeletalMeshAsset()->GetResourceForRendering() : nullptr;
 			if (PoloMesh && Render)
@@ -3137,7 +3137,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 				Polo->RegisterComponent();
 				Polo->SetLeaderPoseComponent(Body);
 				static const FLinearColor Polos[] = { FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.75f, 0.74f, 0.70f), FLinearColor(0.20f, 0.02f, 0.02f), FLinearColor(0.03f, 0.14f, 0.18f) };
-				const FLinearColor Col = Polos[Role % UE_ARRAY_COUNT(Polos)];
+				const FLinearColor Col = Polos[CrewRole % UE_ARRAY_COUNT(Polos)];
 				for (int32 M = 0; M < Polo->GetNumMaterials(); ++M)
 				{
 					if (M == Polo->GetMaterialIndex(TEXT("Button"))) continue;
@@ -3150,7 +3150,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	// Graphics G3: deck shoes (scripts/make-crew-clothes.sh, built round each sailor's feet and skinned from them).
 	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
 	{
-		const FString R = MetaHumanRoleName(Role);
+		const FString R = MetaHumanRoleName(CrewRole);
 		if (USkeletalMesh* ShoeMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Shoes.SKM_%s_Shoes"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet))
 		{
 			USkeletalMeshComponent* Shoes = NewObject<USkeletalMeshComponent>(this);
@@ -3162,7 +3162,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 			static const FLinearColor Leather[] = { FLinearColor(0.28f, 0.14f, 0.06f), FLinearColor(0.12f, 0.07f, 0.04f), FLinearColor(0.35f, 0.24f, 0.14f) };
 			const int32 Upper = Shoes->GetMaterialIndex(TEXT("Upper"));
 			if (Upper >= 0)
-				if (UMaterialInstanceDynamic* Mid = Shoes->CreateDynamicMaterialInstance(Upper)) Mid->SetVectorParameterValue(TEXT("Color"), Leather[Role % UE_ARRAY_COUNT(Leather)]);
+				if (UMaterialInstanceDynamic* Mid = Shoes->CreateDynamicMaterialInstance(Upper)) Mid->SetVectorParameterValue(TEXT("Color"), Leather[CrewRole % UE_ARRAY_COUNT(Leather)]);
 			BoatParts.Add(Shoes);
 		}
 	}
@@ -3171,11 +3171,11 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	{
 		const bool bStrands = USailingSettings::Get()->Quality >= ESailingQuality::High;
 		TArray<TPair<UGroomAsset*, UGroomBindingAsset*>> Grooms;
-		LoadMetaHumanGrooms(Role, Grooms);
+		LoadMetaHumanGrooms(CrewRole, Grooms);
 		for (const TPair<UGroomAsset*, UGroomBindingAsset*>& G : Grooms)
 		{
 			// Under a cap the scalp hair would poke through its crown: only brows, beard and moustache.
-			if (Role != 0 && CrewCapMesh && G.Key->GetName().StartsWith(TEXT("Hair_"))) continue;
+			if (CrewRole != 0 && CrewCapMesh && G.Key->GetName().StartsWith(TEXT("Hair_"))) continue;
 #if PLATFORM_MAC
 			// The Mac draws cards (no strand geometry on its SM5 platform), 1.5 ms of GPU on High for the whole crew: the hair
 			// and beard carry the look; brows and moustache cards are left off (their LOD 2+ has no cards built, so a forced LOD only hides the hair).
@@ -3232,11 +3232,11 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		Pfd->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("spine_04"))));
 		Pfd->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Pfd->RegisterComponent();
-		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(CrewRole + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
 		BoatParts.Add(Pfd);
 	}
 	// The helm goes bare-headed (his hair and the trimmer's and bow's caps: crews are mixed).
-	if (CrewCapMesh && Role != 0)
+	if (CrewCapMesh && CrewRole != 0)
 	{
 		// On the head: the scalp groom is left off under it (see the grooms above).
 		const FVector Head = At(TEXT("head")) + FVector(0.f, 0.f, 11.0f) + Fwd * 0.8f;
@@ -3248,7 +3248,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		Cap->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Cap->RegisterComponent();
 		static const FLinearColor Caps[] = { FLinearColor(0.8f, 0.8f, 0.78f), FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.3f, 0.2f) };
-		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Caps[Role % UE_ARRAY_COUNT(Caps)]);
+		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Caps[CrewRole % UE_ARRAY_COUNT(Caps)]);
 		BoatParts.Add(Cap);
 	}
 	return Body;

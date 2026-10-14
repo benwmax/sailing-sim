@@ -90,9 +90,9 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		return M;
 	}
 	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class.
-	static const TCHAR* Tags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
-	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(Tags)) || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralBoats"))) return M;
-	const TCHAR* Tag = Tags[int32(Type)];
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
+	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralBoats"))) return M;
+	const TCHAR* Tag = BoatTags[int32(Type)];
 	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
 	M.Hull = Load(TEXT("Hull"));
 	M.Mast = Load(TEXT("Mast"));

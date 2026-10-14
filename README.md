@@ -41,7 +41,8 @@ scripts/package-mac.sh    # RunUAT BuildCookRun to Packaged/Mac/SailingSim.app
 scripts/bench-mac.sh 20   # run the packaged app for 20 s, print fps, save a screenshot
 ```
 
-Windows: see `docs/windows-build.md` (steps written out, not yet tested).
+Windows (the RTX 4090 PC): `build-windows.bat` builds, tests, packages and benchmarks in one go; setup and the single
+steps are in `docs/windows/README.md` (scripted, not yet run on a PC).
 
 ## Controls
 
@@ -422,8 +423,8 @@ The rendering pipeline of the Visual Realism Plan, all behind the quality tiers 
   The land along the open coast is flat (no DEM was used there).
 - Debrief: only the last run is kept, in memory (not saved to disk); the ghost passes through boats and docks. The
   logbook page shows the current session; earlier sessions are JSON files in `Saved/Logbook`.
-- Photo mode has no depth of field, filters or hidden-boat option. Windows builds are described
-  (`docs/windows-build.md`) but untested.
+- Photo mode has no depth of field, filters or hidden-boat option. Windows builds are scripted
+  (`build-windows.bat`, `docs/windows/README.md`) but untested.
 
 - Races: the AI racers keep clear by the rules, but a five-boat pack still touches about once in five races (most
   often in the first minute after the start). There is no mark-room (RRS 18) or protest/penalty turn yet; the AI

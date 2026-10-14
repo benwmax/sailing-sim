@@ -332,7 +332,7 @@ private:
 	TArray<FCrewRig> MetaCrewRigs;
 	FBoatLivery Livery; // Graphics G3: this boat's colours, wear and sail number
 	bool LoadMetaCrew();
-	class UPoseableMeshComponent* AddMetaHumanFigure(int32 Role, int32 Index);
+	class UPoseableMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);
 public:
 	/** Whether the crew are MetaHumans (for the tests and the bench). */
 	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
