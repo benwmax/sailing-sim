@@ -1,0 +1,1379 @@
+{
+  "schema_version": 1,
+  "generated": "2026-10-14",
+  "conventions": {
+    "topics": "same topic tags as the ASA 101 Study Kit: parts, sail, trim, rules, lights, aton, nav, knots, safety, weather, dock",
+    "drills": "drill ids from drill-briefings.json, or Any for questions that fit any sail (rules, weather, safety)",
+    "answer": "zero-based index into options; shuffle options at run time and keep the answer with its text",
+    "why": "one line shown after the player answers",
+    "source": "written for the sim; none duplicates a question in the ASA 101 Study Kit artifact"
+  },
+  "questions": [
+    {
+      "id": "ld-01",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "weather",
+      "q": "Before leaving Rush Creek on a July afternoon, which check matters most for the next few hours?",
+      "options": [
+        "The tide table",
+        "The water temperature",
+        "The moon phase",
+        "The radar and forecast for thunderstorms"
+      ],
+      "answer": 3,
+      "why": "Summer storms build fast over North Texas in the afternoon; Ray Hubbard has no tides."
+    },
+    {
+      "id": "ld-02",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "sail",
+      "q": "Tied up with the bow pointing into the wind, which sail do you usually hoist first?",
+      "options": [
+        "The jib",
+        "Neither until you are clear of the marina",
+        "Both together",
+        "The mainsail"
+      ],
+      "answer": 3,
+      "why": "Head to wind, the main luffs harmlessly along the centreline; the jib adds power you do not need yet."
+    },
+    {
+      "id": "ld-03",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "trim",
+      "q": "While you hoist the mainsail, the mainsheet should be:",
+      "options": [
+        "Removed from the boom",
+        "Trimmed in hard",
+        "Cleated amidships",
+        "Eased so the sail can luff freely"
+      ],
+      "answer": 3,
+      "why": "A loose sheet lets the sail luff head to wind instead of filling and pushing the boat around."
+    },
+    {
+      "id": "ld-04",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "dock",
+      "q": "The wind is pinning your boat against the dock. What is the safer plan?",
+      "options": [
+        "Trim both sails in tight before casting off",
+        "Hoist the jib and push off hard",
+        "Cast off all lines and wait for the boat to drift clear",
+        "Walk the boat to a spot where it can point into the wind, or use the motor"
+      ],
+      "answer": 3,
+      "why": "Sailing off a leeward dock is very hard; move the boat or use the engine instead."
+    },
+    {
+      "id": "ld-05",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "sail",
+      "q": "Why do you want a little speed soon after leaving the dock?",
+      "options": [
+        "It keeps the boat from heeling",
+        "Speed keeps the sails from luffing",
+        "The keel only works above 3 knots",
+        "The rudder only steers with water flowing past it"
+      ],
+      "answer": 3,
+      "why": "With no flow over the rudder the boat will not turn where you push the tiller."
+    },
+    {
+      "id": "ld-06",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "dock",
+      "q": "When should the fenders come aboard after leaving the dock?",
+      "options": [
+        "Once you are clear of the dock and other boats",
+        "Only when you return",
+        "As soon as the main is up",
+        "Before you cast off"
+      ],
+      "answer": 0,
+      "why": "They protect the hull while you leave; after that they just drag and look sloppy."
+    },
+    {
+      "id": "ld-07",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "dock",
+      "q": "Once you are clear of the marina, the dock lines should be:",
+      "options": [
+        "Tied to the lifelines",
+        "Left trailing to slow the boat",
+        "Left on the cockpit floor",
+        "Coiled and stowed so nothing trails over the side"
+      ],
+      "answer": 3,
+      "why": "A trailing line can foul the rudder or outboard, and loose lines underfoot trip the crew."
+    },
+    {
+      "id": "ld-08",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "nav",
+      "q": "Ray Hubbard has no tides. What mostly changes the depth near the docks?",
+      "options": [
+        "The moon",
+        "Wind direction alone",
+        "The lake level, which rises after rain and falls in drought",
+        "The time of day"
+      ],
+      "answer": 2,
+      "why": "Reservoir levels move with rainfall, drought and water use, so check the lake level before you go."
+    },
+    {
+      "id": "ld-09",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "safety",
+      "q": "Many inflatable life jackets count toward the Coast Guard requirement only when they are:",
+      "options": [
+        "Bright yellow",
+        "Stored in a bag aboard",
+        "Inflated before you leave",
+        "Worn"
+      ],
+      "answer": 3,
+      "why": "Check the label: many inflatables count only when worn, and all need their gas cylinder armed and serviced."
+    },
+    {
+      "id": "ld-10",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "sail",
+      "q": "Which tells you the wind direction at the dock most reliably?",
+      "options": [
+        "The direction the boat in the next slip is facing",
+        "The direction of the waves from passing powerboats",
+        "Flags, ripples on the water and the masthead fly together",
+        "The forecast from yesterday"
+      ],
+      "answer": 2,
+      "why": "Use several signs; wakes and moored boats can mislead you."
+    },
+    {
+      "id": "ld-11",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "topic": "safety",
+      "q": "Before casting off, the skipper should brief the crew on:",
+      "options": [
+        "Nothing: crew learn by doing",
+        "Who handles which line and where to sit",
+        "The race results",
+        "Only where the snacks are"
+      ],
+      "answer": 1,
+      "why": "A short briefing turns a scramble into a calm departure."
+    },
+    {
+      "id": "tri-01",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "The windward mark is straight upwind. How do you get there?",
+      "options": [
+        "Motor; you cannot sail upwind",
+        "Sail a zigzag of close-hauled legs, tacking between them",
+        "Sail straight at it with the sails tight",
+        "Jibe back and forth"
+      ],
+      "answer": 1,
+      "why": "A sailboat cannot sail into the no-go zone, so it beats upwind in a series of tacks."
+    },
+    {
+      "id": "tri-02",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "trim",
+      "q": "Close-hauled, both jib telltales are streaming and you want to point higher. You should:",
+      "options": [
+        "Head up until the windward telltale starts to lift, then bear away a touch",
+        "Bear away 20 degrees",
+        "Trim the jib until both telltales droop",
+        "Ease the jib"
+      ],
+      "answer": 0,
+      "why": "The windward telltale lifting is the sign you have reached the edge of the no-go zone."
+    },
+    {
+      "id": "tri-03",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "To head up, you push the tiller toward:",
+      "options": [
+        "The windward side",
+        "Whichever side is closer",
+        "The sails (the leeward side)",
+        "The bow"
+      ],
+      "answer": 2,
+      "why": "Tiller toward the sail turns the bow toward the wind."
+    },
+    {
+      "id": "tri-04",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "From close-hauled you bear away to a beam reach with the sails eased correctly. The boat usually:",
+      "options": [
+        "Heels more and slows",
+        "Stops",
+        "Goes into irons",
+        "Heels less and speeds up"
+      ],
+      "answer": 3,
+      "why": "Off the wind the sail force points more forward, so the boat stands up and accelerates."
+    },
+    {
+      "id": "tri-05",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "For most keelboats without a spinnaker, the fastest point of sail is about:",
+      "options": [
+        "Close-hauled",
+        "A dead run",
+        "A beam reach",
+        "In irons"
+      ],
+      "answer": 2,
+      "why": "On a beam reach the sails drive well and the apparent wind stays strong."
+    },
+    {
+      "id": "tri-06",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "To avoid stopping in irons during a tack, you should:",
+      "options": [
+        "Have good speed first and turn steadily through the wind",
+        "Tack from a broad reach",
+        "Release the mainsheet completely",
+        "Turn very slowly"
+      ],
+      "answer": 0,
+      "why": "Momentum carries the bow through head to wind; a slow turn loses it."
+    },
+    {
+      "id": "tri-07",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "What does the helmsman's call \"Helm's a-lee\" tell the crew?",
+      "options": [
+        "There is a boat to leeward",
+        "The tiller is over and the boat is turning through the wind",
+        "Drop the jib",
+        "The boat is about to jibe"
+      ],
+      "answer": 1,
+      "why": "It is the moment the turn starts; the crew release the old jib sheet as the jib luffs."
+    },
+    {
+      "id": "tri-08",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "trim",
+      "q": "Feathering means:",
+      "options": [
+        "Letting the boom swing freely",
+        "Easing the jib all the way",
+        "Adding a reef",
+        "Steering slightly closer to the wind in a puff so the sails luff a little and the boat heels less"
+      ],
+      "answer": 3,
+      "why": "It is a quick way to depower upwind without touching the sheets."
+    },
+    {
+      "id": "tri-09",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "trim",
+      "q": "Telltales on the leech of the mainsail help you set the:",
+      "options": [
+        "Mainsheet",
+        "Topping lift",
+        "Jib sheet",
+        "Halyard"
+      ],
+      "answer": 0,
+      "why": "If the leech telltales curl behind the sail, the main is over-trimmed: ease the mainsheet."
+    },
+    {
+      "id": "tri-10",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "At the wing mark you turn from one reach to the other with the wind passing behind the boat. That maneuver is a:",
+      "options": [
+        "Jibe",
+        "Tack",
+        "Luff",
+        "Heave-to"
+      ],
+      "answer": 0,
+      "why": "When the stern turns through the wind it is a jibe."
+    },
+    {
+      "id": "tri-11",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "The call that starts the turn in a jibe is:",
+      "options": [
+        "Cast off",
+        "Helm's a-lee",
+        "Jibe-ho",
+        "Ready about"
+      ],
+      "answer": 2,
+      "why": "\"Prepare to jibe\", \"Ready\", then \"Jibe-ho\" as the helm turns."
+    },
+    {
+      "id": "tri-12",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "trim",
+      "q": "At the wing mark you head up from a broad reach to a close reach. The sheets should be:",
+      "options": [
+        "Eased",
+        "Released",
+        "Trimmed in",
+        "Left alone"
+      ],
+      "answer": 2,
+      "why": "The closer you sail to the wind, the more the sails need to be trimmed in."
+    },
+    {
+      "id": "tri-13",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "nav",
+      "q": "A south wind on Lake Ray Hubbard means the windward mark is laid:",
+      "options": [
+        "West of the start",
+        "South of the start",
+        "East of the start",
+        "North of the start"
+      ],
+      "answer": 1,
+      "why": "Winds are named for where they come from, and the windward mark goes upwind."
+    },
+    {
+      "id": "tri-14",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "The no-go zone for a boat like the J/22 is roughly:",
+      "options": [
+        "Anywhere downwind",
+        "Only directly into the wind",
+        "Within 10 degrees of the wind",
+        "Within about 45 degrees either side of the wind"
+      ],
+      "answer": 3,
+      "why": "Closer than about 45 degrees, the sails cannot fill and the boat stops."
+    },
+    {
+      "id": "tri-15",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "trim",
+      "q": "On a run with the wind directly behind, the mainsail should be:",
+      "options": [
+        "Lowered",
+        "Backed",
+        "Eased nearly at right angles to the boat",
+        "Trimmed to the centreline"
+      ],
+      "answer": 2,
+      "why": "Downwind the sail works by blocking the wind, so it goes all the way out."
+    },
+    {
+      "id": "tri-16",
+      "drills": [
+        "SailATriangle"
+      ],
+      "topic": "sail",
+      "q": "Wing-on-wing means:",
+      "options": [
+        "Main on one side and jib on the other, running downwind",
+        "Both sails on the same side",
+        "Two boats sailing side by side",
+        "Reefing both sails"
+      ],
+      "answer": 0,
+      "why": "Holding the jib out on the opposite side catches more wind on a run."
+    },
+    {
+      "id": "ht-01",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "sail",
+      "q": "When a boat is hove to, the jib is:",
+      "options": [
+        "Backed, held on the windward side",
+        "Trimmed normally on the leeward side",
+        "Lowered",
+        "Luffing freely"
+      ],
+      "answer": 0,
+      "why": "The backed jib pushes the bow away from the wind."
+    },
+    {
+      "id": "ht-02",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "sail",
+      "q": "When hove to, the tiller is held or lashed:",
+      "options": [
+        "To windward",
+        "To leeward",
+        "Amidships",
+        "Free to swing"
+      ],
+      "answer": 1,
+      "why": "With the tiller to leeward the rudder tries to turn the bow up, balancing the backed jib."
+    },
+    {
+      "id": "ht-03",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "trim",
+      "q": "When hove to, the mainsail is:",
+      "options": [
+        "Backed",
+        "Eased so it mostly luffs",
+        "Lowered completely",
+        "Trimmed in hard"
+      ],
+      "answer": 1,
+      "why": "It only needs a little drive to balance the jib."
+    },
+    {
+      "id": "ht-04",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "sail",
+      "q": "The simplest way to back the jib to heave to is:",
+      "options": [
+        "Tack without releasing the jib sheet",
+        "Jibe and cleat the jib",
+        "Lower the jib and raise it on the other side",
+        "Ease the jib all the way out"
+      ],
+      "answer": 0,
+      "why": "The jib stays on the old side and fills backward once the bow is through."
+    },
+    {
+      "id": "ht-05",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "sail",
+      "q": "A boat that is properly hove to:",
+      "options": [
+        "Sails at full speed",
+        "Spins in circles",
+        "Creeps forward slowly and drifts to leeward",
+        "Sits completely still"
+      ],
+      "answer": 2,
+      "why": "Expect about a knot of slow forward and sideways drift."
+    },
+    {
+      "id": "ht-06",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "safety",
+      "q": "Which is a good reason to heave to?",
+      "options": [
+        "To tie in a reef as a storm approaches",
+        "To go faster downwind",
+        "To dock",
+        "To pass a boat ahead"
+      ],
+      "answer": 0,
+      "why": "Heaving to stops the boat so you can reef, rest, eat or sort out a problem."
+    },
+    {
+      "id": "ht-07",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "nav",
+      "q": "Before heaving to, check that you have open water:",
+      "options": [
+        "Astern only",
+        "Ahead only",
+        "To windward",
+        "To leeward"
+      ],
+      "answer": 3,
+      "why": "You drift downwind while hove to, so you need room to leeward."
+    },
+    {
+      "id": "ht-08",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "sail",
+      "q": "Why does a boat stay put when hove to?",
+      "options": [
+        "The backed jib and the rudder push the bow in opposite directions and balance",
+        "The anchor is set",
+        "The keel locks it in place",
+        "The mainsail is acting as a brake"
+      ],
+      "answer": 0,
+      "why": "The forces cancel, leaving a slow drift."
+    },
+    {
+      "id": "ht-09",
+      "drills": [
+        "HeaveTo"
+      ],
+      "topic": "sail",
+      "q": "To get going again from hove to, you:",
+      "options": [
+        "Release the backed jib, trim it on the leeward side and straighten the tiller",
+        "Push the tiller further to leeward",
+        "Tack again",
+        "Lower the main"
+      ],
+      "answer": 0,
+      "why": "Free the jib to the leeward side and steer off; the boat sails away."
+    },
+    {
+      "id": "f8-01",
+      "drills": [
+        "CrewOverboardFigureEight"
+      ],
+      "topic": "safety",
+      "q": "In the figure-eight recovery, after the shout and the flotation, you sail away on a:",
+      "options": [
+        "Broad reach",
+        "Run",
+        "Close-hauled course",
+        "Beam reach"
+      ],
+      "answer": 3,
+      "why": "A beam reach is easy to sail and easy to reverse."
+    },
+    {
+      "id": "f8-02",
+      "drills": [
+        "CrewOverboardFigureEight"
+      ],
+      "topic": "safety",
+      "q": "About how far do you sail away before turning back in a figure-eight?",
+      "options": [
+        "Half a mile",
+        "Until you lose sight of them",
+        "A few boat lengths, about four or five",
+        "One boat length"
+      ],
+      "answer": 2,
+      "why": "Far enough to set up a slow approach, close enough to keep them in sight."
+    },
+    {
+      "id": "f8-03",
+      "drills": [
+        "CrewOverboardFigureEight"
+      ],
+      "topic": "safety",
+      "q": "Why tack rather than jibe to turn back in a figure-eight?",
+      "options": [
+        "The rules require it",
+        "Jibing loses sight of the person",
+        "Tacking is faster in all winds",
+        "A tack is more controlled; a hurried jibe can swing the boom violently"
+      ],
+      "answer": 3,
+      "why": "In an emergency you want the calm maneuver."
+    },
+    {
+      "id": "f8-04",
+      "drills": [
+        "CrewOverboardFigureEight"
+      ],
+      "topic": "safety",
+      "q": "After tacking in the figure-eight, you bear away to a broad reach so that you end up:",
+      "options": [
+        "Directly on top of them",
+        "In irons",
+        "Upwind of the person",
+        "A little downwind of the person"
+      ],
+      "answer": 3,
+      "why": "From downwind you can turn up onto a close reach for the final approach."
+    },
+    {
+      "id": "f8-05",
+      "drills": [
+        "CrewOverboardFigureEight"
+      ],
+      "topic": "safety",
+      "q": "Your final approach to the person is too fast. The best fix is to:",
+      "options": [
+        "Trim the sails in",
+        "Jibe right next to them",
+        "Steer straight at them and hope",
+        "Ease the sheets more, and if still too fast, sail past and set up again"
+      ],
+      "answer": 3,
+      "why": "Never rush a pick-up; another lap is safer than hitting the person."
+    },
+    {
+      "id": "cob-01",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "Right after shouting \"Crew overboard!\", someone should throw:",
+      "options": [
+        "A throwable flotation device, like a cushion or ring",
+        "The boat hook",
+        "A dock line",
+        "The anchor"
+      ],
+      "answer": 0,
+      "why": "It gives them something to hold and marks where they are."
+    },
+    {
+      "id": "cob-02",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "Once alongside the person in the water, the first thing to do is:",
+      "options": [
+        "Hoist the sails",
+        "Call a friend ashore",
+        "Lift them aboard by the arms immediately",
+        "Get a line on them so they are attached to the boat"
+      ],
+      "answer": 3,
+      "why": "Once they are secured you can work out how to get them aboard without losing them."
+    },
+    {
+      "id": "cob-03",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "Many GPS units and VHF radios have an MOB button. Pressing it:",
+      "options": [
+        "Marks the position where the person went in",
+        "Calls the Coast Guard automatically",
+        "Drops a life ring",
+        "Stops the engine"
+      ],
+      "answer": 0,
+      "why": "It records the spot so you can steer back to it if you lose sight of them."
+    },
+    {
+      "id": "cob-04",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "Why is approaching the person on a run a bad idea?",
+      "options": [
+        "The person drifts upwind",
+        "You cannot slow down by luffing the sails downwind",
+        "It is against the rules",
+        "You will be in irons"
+      ],
+      "answer": 1,
+      "why": "Downwind the sails keep pulling even when eased."
+    },
+    {
+      "id": "cob-05",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "In cold water, the first danger to a person who falls in is:",
+      "options": [
+        "Hypothermia within one minute",
+        "Cold shock: gasping and loss of breath control",
+        "Sunburn",
+        "Heat stroke"
+      ],
+      "answer": 1,
+      "why": "Cold shock hits in the first minute; that is why a life jacket matters so much."
+    },
+    {
+      "id": "cob-06",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "A person in the water drifts:",
+      "options": [
+        "Toward the nearest shore",
+        "Not at all",
+        "Upwind faster than the boat",
+        "Slowly downwind, more slowly than a drifting sailboat"
+      ],
+      "answer": 3,
+      "why": "The person drifts slowly; your boat, with sails and topsides, drifts faster."
+    },
+    {
+      "id": "qs-01",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "The quick-stop method begins by:",
+      "options": [
+        "Lowering the sails",
+        "Heading up into the wind immediately",
+        "Jibing at once",
+        "Sailing away on a beam reach"
+      ],
+      "answer": 1,
+      "why": "Turning into the wind stops the boat right away, close to the person."
+    },
+    {
+      "id": "qs-02",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "During the quick-stop, the jib is:",
+      "options": [
+        "Released and trimmed on the new side",
+        "Let fly",
+        "Left backed to help the bow come around",
+        "Lowered"
+      ],
+      "answer": 2,
+      "why": "The backed jib pushes the bow around so you can keep circling."
+    },
+    {
+      "id": "qs-03",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "A key advantage of the quick-stop over the figure-eight is that:",
+      "options": [
+        "It never needs a tack",
+        "It keeps the boat close to the person the whole time",
+        "It is faster to sail",
+        "It can only be done with a large crew"
+      ],
+      "answer": 1,
+      "why": "You never get far away, which matters most when you are short-handed."
+    },
+    {
+      "id": "qs-04",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "In the quick-stop you keep turning after the tack until you are:",
+      "options": [
+        "Downwind of the person, ready to come up on a close reach",
+        "Upwind of the person",
+        "Back at the dock",
+        "Pointing straight at them on a run"
+      ],
+      "answer": 0,
+      "why": "From downwind, a close-reach approach lets you luff to stop."
+    },
+    {
+      "id": "qs-05",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "topic": "safety",
+      "q": "You and one friend are sailing and your friend falls in. Which method suits a crew of one best?",
+      "options": [
+        "Figure-eight, because it sails further",
+        "Quick-stop, because it stays close and needs little sail handling",
+        "Heave to and wait",
+        "Lower all sails and drift"
+      ],
+      "answer": 1,
+      "why": "The quick-stop is mostly steering, which one person can manage."
+    },
+    {
+      "id": "dk-01",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "The first thing to decide when planning a docking approach is:",
+      "options": [
+        "The lake level",
+        "The wind direction relative to the dock",
+        "Which fender is newest",
+        "Who will steer next time"
+      ],
+      "answer": 1,
+      "why": "Everything else, from heading to where you luff, follows from the wind."
+    },
+    {
+      "id": "dk-02",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "Why is approaching a dock on a run a bad idea?",
+      "options": [
+        "It is illegal",
+        "You cannot slow down by luffing; the sails keep pulling",
+        "The keel hits bottom",
+        "The rudder stops working downwind"
+      ],
+      "answer": 1,
+      "why": "You need to finish heading close to the wind so that easing the sheets takes the power off."
+    },
+    {
+      "id": "dk-03",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "Why do you start luffing well before the dock in a keelboat?",
+      "options": [
+        "It is required by the rules",
+        "The sails take a minute to luff",
+        "Its weight keeps it moving a long way",
+        "So the crew can rest"
+      ],
+      "answer": 2,
+      "why": "A J/22 weighs over 800 kg and glides a long way after the sails stop driving."
+    },
+    {
+      "id": "dk-04",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "The ideal speed when you reach the dock is:",
+      "options": [
+        "It doesn't matter with fenders",
+        "Full speed so you can steer",
+        "Barely moving, slower than a walk",
+        "About 3 knots for steerage"
+      ],
+      "answer": 2,
+      "why": "Arrive slowly enough that a crew member can step off and stop the boat with a line."
+    },
+    {
+      "id": "dk-05",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "Your approach is clearly going wrong 20 metres out. The best choice is to:",
+      "options": [
+        "Keep going and fend off hard",
+        "Abort early: turn away and go around",
+        "Jump onto the dock",
+        "Drop the anchor"
+      ],
+      "answer": 1,
+      "why": "A second approach costs a minute; a crash costs a lot more."
+    },
+    {
+      "id": "dk-06",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "Fenders should be put out:",
+      "options": [
+        "Never on small keelboats",
+        "After you touch the dock",
+        "On both sides only in strong wind",
+        "Before you enter the marina, on the side you will dock"
+      ],
+      "answer": 3,
+      "why": "Set them early, at the height where the hull meets the dock."
+    },
+    {
+      "id": "dk-07",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "A crew member getting off at the dock should:",
+      "options": [
+        "Jump while the boat is still well off",
+        "Step off with a line once the boat is close and slow",
+        "Hold the boat off with a leg",
+        "Wait until the boat hits"
+      ],
+      "answer": 1,
+      "why": "Step, don't jump, and take a line so the boat can be stopped."
+    },
+    {
+      "id": "dk-08",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "knots",
+      "q": "The usual way to make a dock line fast to a cleat is a:",
+      "options": [
+        "Bowline",
+        "Sheet bend",
+        "Square knot",
+        "Cleat hitch"
+      ],
+      "answer": 3,
+      "why": "A turn around the base, a figure-eight over the horns, and a locking hitch."
+    },
+    {
+      "id": "dk-09",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "sail",
+      "q": "Head to wind after tying up, the usual order to lower the sails is:",
+      "options": [
+        "Both together",
+        "Main first, then jib",
+        "Leave them up",
+        "Jib first, then main"
+      ],
+      "answer": 3,
+      "why": "The jib comes down first so the main keeps the bow head to wind."
+    },
+    {
+      "id": "dk-10",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "safety",
+      "q": "You run aground softly in mud near a point on the lake. A good first try is to:",
+      "options": [
+        "Ease the sails, turn back the way you came, and heel the boat with crew weight",
+        "Trim in hard and sail forward",
+        "Jump overboard to push",
+        "Raise the outboard and wait"
+      ],
+      "answer": 0,
+      "why": "Heeling lifts the keel a little, and the way you came in is known to be deep enough."
+    },
+    {
+      "id": "dk-11",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "topic": "dock",
+      "q": "With the wind blowing you off the dock, the danger is that:",
+      "options": [
+        "The rudder jams",
+        "The boat is pinned against the dock",
+        "The boat drifts away before the lines are on",
+        "The sails fill backward"
+      ],
+      "answer": 2,
+      "why": "Get the windward lines on quickly, or the boat blows away from the crew on the dock."
+    },
+    {
+      "id": "rul-01",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "You are on port tack. A Catalina 22 on starboard tack is crossing ahead of you from the right. The best way to keep clear is usually to:",
+      "options": [
+        "Bear away early to pass behind her",
+        "Hold course and hail them",
+        "Speed up to cross ahead",
+        "Tack right under her bow"
+      ],
+      "answer": 0,
+      "why": "As give-way boat, act early and obviously; passing astern is the safe choice."
+    },
+    {
+      "id": "rul-02",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "Under the Navigation Rules, a personal watercraft (jet ski) is:",
+      "options": [
+        "Exempt from the rules",
+        "Always the stand-on vessel",
+        "A sailing vessel",
+        "A power-driven vessel"
+      ],
+      "answer": 3,
+      "why": "Anything propelled by machinery is a power-driven vessel."
+    },
+    {
+      "id": "rul-03",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "A bass boat is trolling a single fishing line. Under the rules, is it a vessel \"engaged in fishing\"?",
+      "options": [
+        "Only at night",
+        "Yes, any boat fishing counts",
+        "Only on weekends",
+        "No, trolling lines do not restrict its maneuverability"
+      ],
+      "answer": 3,
+      "why": "Only gear that restricts maneuverability, like nets or trawls, counts."
+    },
+    {
+      "id": "rul-04",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "You are sailing with the outboard running in gear. A sailboat under sail alone crosses from your left. Who gives way?",
+      "options": [
+        "Whoever is bigger",
+        "You, because you count as power-driven",
+        "Neither",
+        "The other sailboat"
+      ],
+      "answer": 1,
+      "why": "With the engine propelling you, you are a power-driven vessel and give way to a sailing vessel."
+    },
+    {
+      "id": "rul-05",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "The give-way vessel is clearly not acting and a collision can no longer be avoided by her alone. The stand-on vessel must:",
+      "options": [
+        "Sound one long blast and continue",
+        "Hold course and speed no matter what",
+        "Speed up to cross ahead",
+        "Take whatever action best avoids the collision"
+      ],
+      "answer": 3,
+      "why": "Rule 17: when the give-way vessel's action alone cannot prevent a collision, the stand-on vessel must act too."
+    },
+    {
+      "id": "rul-06",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "A faster boat overtakes you on the same tack and passes to leeward of you. Who must keep clear?",
+      "options": [
+        "Neither",
+        "The overtaking boat",
+        "You, because you are to windward",
+        "Whoever is on starboard"
+      ],
+      "answer": 1,
+      "why": "The overtaking rule comes first and overrides the windward-leeward rule."
+    },
+    {
+      "id": "rul-07",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "Even when you are the stand-on vessel, the rules expect you to:",
+      "options": [
+        "Speed up",
+        "Never change course",
+        "Sound five blasts at every boat",
+        "Use good seamanship and keep a proper lookout"
+      ],
+      "answer": 3,
+      "why": "Responsibility and lookout rules apply to everyone, all the time."
+    },
+    {
+      "id": "rul-08",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "A powerboat is approaching on a steady bearing and closing, and the driver does not seem to see you. Your first step is to:",
+      "options": [
+        "Ignore it; sail has right of way",
+        "Assume they will turn",
+        "Watch closely and be ready to act, signalling if you can",
+        "Tack toward them"
+      ],
+      "answer": 2,
+      "why": "A steady bearing means collision risk; never count on the other driver knowing the rules."
+    },
+    {
+      "id": "rul-09",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "Which vessel should a small sailboat keep clear of?",
+      "options": [
+        "A vessel at anchor",
+        "A powerboat crossing from your starboard side",
+        "A sailboat overtaking you",
+        "A jet ski crossing from your port side"
+      ],
+      "answer": 0,
+      "why": "An anchored vessel cannot get out of the way, so everyone keeps clear of it."
+    },
+    {
+      "id": "saf-01",
+      "drills": [
+        "Any"
+      ],
+      "topic": "safety",
+      "q": "A big powerboat wake is coming toward you. The best way to meet it is to:",
+      "options": [
+        "Jibe",
+        "Stop the boat completely",
+        "Turn the bow to meet it at an angle and hold on",
+        "Turn broadside to it"
+      ],
+      "answer": 2,
+      "why": "Taking a wake at an angle softens the roll and keeps the boat dry."
+    },
+    {
+      "id": "rul-10",
+      "drills": [
+        "Any"
+      ],
+      "topic": "rules",
+      "q": "Rule 5 requires every vessel to keep a proper lookout:",
+      "options": [
+        "Only at night",
+        "Only when under power",
+        "Only in channels",
+        "By sight and hearing at all times"
+      ],
+      "answer": 3,
+      "why": "Most collisions start with nobody looking."
+    },
+    {
+      "id": "wea-01",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "Before a thunderstorm's rain reaches you, you can expect:",
+      "options": [
+        "A rise in lake level",
+        "A steady drop in wind",
+        "A sudden strong, gusty wind shift from the gust front",
+        "Fog"
+      ],
+      "answer": 2,
+      "why": "Outflow from the storm often arrives minutes before the rain."
+    },
+    {
+      "id": "wea-02",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "A thunderstorm rule of thumb says that if the time between a lightning flash and its thunder is under 30 seconds, you should:",
+      "options": [
+        "Seek shelter, and wait 30 minutes after the last thunder before going back out",
+        "Keep sailing; it's still far off",
+        "Raise the jib to get home faster",
+        "Hold onto the mast"
+      ],
+      "answer": 0,
+      "why": "This is the 30-30 rule."
+    },
+    {
+      "id": "wea-03",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "A fall cold front passing over North Texas usually brings:",
+      "options": [
+        "A wind shift to the south and heat",
+        "Fog only",
+        "Calm air for days",
+        "A wind shift to the north with gusts and cooler air"
+      ],
+      "answer": 3,
+      "why": "Fronts can swing the wind north quickly and strongly; reef early."
+    },
+    {
+      "id": "wea-04",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "In North Texas, the National Weather Service warning for strong winds on area lakes is called a:",
+      "options": [
+        "Hurricane watch",
+        "Small craft advisory",
+        "Gale warning",
+        "Lake Wind Advisory"
+      ],
+      "answer": 3,
+      "why": "Inland offices issue Lake Wind Advisories; small craft advisories are for coastal waters."
+    },
+    {
+      "id": "wea-05",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "NOAA weather broadcasts on a marine VHF radio are on the:",
+      "options": [
+        "Channel 16",
+        "WX (weather) channels",
+        "Channel 72",
+        "Channel 9"
+      ],
+      "answer": 1,
+      "why": "Weather radio broadcasts repeat around the clock on the WX channels."
+    },
+    {
+      "id": "saf-02",
+      "drills": [
+        "Any"
+      ],
+      "topic": "safety",
+      "q": "On a 100-degree day on the lake, which is a sign of heat exhaustion?",
+      "options": [
+        "Heavy sweating, dizziness and nausea",
+        "Shivering",
+        "Blue lips",
+        "Sneezing"
+      ],
+      "answer": 0,
+      "why": "Get the person into shade, cool them and give water; confusion or hot dry skin means heat stroke: call 911."
+    },
+    {
+      "id": "saf-03",
+      "drills": [
+        "Any"
+      ],
+      "topic": "safety",
+      "q": "The best way to prevent heat illness on a summer sail is to:",
+      "options": [
+        "Drink water early and often, and wear a hat and sunscreen",
+        "Drink only when thirsty",
+        "Sail only at midday",
+        "Avoid wearing a life jacket"
+      ],
+      "answer": 0,
+      "why": "By the time you feel thirsty you are already behind."
+    },
+    {
+      "id": "wea-06",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "Where on a lake is the wind usually most patchy and unreliable?",
+      "options": [
+        "Downwind of an open stretch",
+        "In the middle of open water",
+        "Close to a high windward shore with trees or buildings",
+        "Over deep water"
+      ],
+      "answer": 2,
+      "why": "Trees and buildings upwind break the breeze into gusts and holes."
+    },
+    {
+      "id": "wea-07",
+      "drills": [
+        "Any"
+      ],
+      "topic": "weather",
+      "q": "On a summer afternoon you see a tall cumulus cloud to the west with an anvil top. You should:",
+      "options": [
+        "Keep sailing until it rains",
+        "Head for the dock or reef now",
+        "Drop anchor in open water",
+        "Sail toward it for a better view"
+      ],
+      "answer": 1,
+      "why": "Anvil tops mean a mature thunderstorm; on this lake they move in quickly from the west."
+    },
+    {
+      "id": "saf-04",
+      "drills": [
+        "Any"
+      ],
+      "topic": "safety",
+      "q": "If the lake gets rough and windy, the first sail-handling change on a J/22 is usually to:",
+      "options": [
+        "Trim everything tighter",
+        "Sail closer to shore",
+        "Hoist the spinnaker",
+        "Reduce power: ease sheets, flatten the sails, reef if you can"
+      ],
+      "answer": 3,
+      "why": "Depower before the boat is overpowered, not after."
+    },
+    {
+      "id": "saf-05",
+      "drills": [
+        "Any"
+      ],
+      "topic": "safety",
+      "q": "A sound-producing device on a small sailboat on the lake is:",
+      "options": [
+        "Only required for racing",
+        "Only required at night",
+        "Required (a whistle or horn)",
+        "Optional"
+      ],
+      "answer": 2,
+      "why": "Boats under 12 metres need some means of making an efficient sound signal."
+    }
+  ]
+}
