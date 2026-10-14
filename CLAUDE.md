@@ -101,7 +101,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Rerun it after changing `WorldKit.cpp`, `MarinaActor::BuildGeometry` or `<Lake>.marina.json`; without a bake a tile
    falls back to a procedural mesh (fine on Medium, overflows VSM marking on High). Run `scripts/make-content.sh` first.
 
-19. Windows (Bean's RTX 4090 PC; not yet run): `build-windows.bat` runs `scripts/windows/all.ps1` (checks, `git lfs pull`,
+19. Windows (Bean's RTX 4090 PC; build, tests, package and Ultra bench run Oct 14 2026): `build-windows.bat` runs `scripts/windows/all.ps1` (checks, `git lfs pull`,
    MetaHuman zip, build, tests, package, warm-up and an Ultra bench). Single steps `scripts/windows/build.ps1`, `test.ps1`,
    `package-win.ps1` (to `Packaged/Windows/`), `bench-win.ps1`, `bench-visual-win.ps1` (keep its views in step with
    `bench-visual.sh`). `scripts/pack-metahumans.sh` zips the git-ignored crew on the Mac for the PC. Setup and what is

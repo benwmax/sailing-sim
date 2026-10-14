@@ -1,8 +1,8 @@
 # Building on the Windows PC
 
-The game has only been built and measured on the Mac. The scripts in `scripts/windows/` and the settings below were
-written in a cloud session that cannot run Windows or Unreal, so **none of it has been run yet**. The first build on the
-PC is the test; expect to fix a few things (see "If something fails").
+Status (Oct 14 2026, first run on Bean's RTX 4090 PC): the editor build, the automation tests, the Win64 package and
+the Ultra benchmark have all run. Fixes that run needed are in this branch (MSVC shadowing errors, the MetaHuman test
+skipping when the crew is absent).
 
 Nothing in the game is Mac-only: the physics in `Source/SailingPhysics` is standard C++, the rendering has two
 `PLATFORM_MAC` switches (hair cards and the hair voxelization), and the content is committed through Git LFS.
@@ -129,9 +129,16 @@ they make is already committed. `polar.sh` and `traffic.sh` can run under Git Ba
   this run only, or `powershell -ExecutionPolicy Bypass -File ...`.
 - Frame rates have only been measured on the M5 Pro; the Ultra tier has only been checked to run there.
 
-## What has not been tested
+## What has been run, and what has not
 
-Everything on this page. The PowerShell scripts have not been run (written for Windows PowerShell 5.1 and
-PowerShell 7), the code has never been compiled with MSVC, the Win64 cook and package have never run, the MetaHuman
-zip has not been round-tripped, DirectX 12 rendering, strand hair and the Ultra tier have never been seen on an NVIDIA
-GPU, and the packaged game's Saved folder location is the engine's usual default, not observed.
+Run on the PC (Windows 11, RTX 4090, Visual Studio Community, Unreal 5.8.3, `C:\dev\sailing-sim`):
+
+- Editor build (after renaming locals that MSVC rejects as shadowing, C4458/C4459).
+- Automation tests: 91 of 92 passed; the one failure was `SailingSim.Visual.MetaHumanCrew` because the crew is
+  git-ignored and not on the PC. That test now skips with a warning when `Content\Crew\MetaHumans` is missing.
+- Win64 cook and package to `Packaged\Windows\SailingSim.exe`.
+- Ultra benchmark (1080p, autopilot tacking): about 72 fps average, p99 22.6 ms, with the GPU at 7.3 ms of a 13.9 ms
+  frame. The frame is CPU-bound, so a CPU profile comes before any GPU tuning.
+
+Not yet run: the full test pass after the crew-test change, the twelve-view `-Visual` bench, a Shipping package, the
+MetaHuman zip round trip (strand hair has not been seen on the NVIDIA GPU), and 4K.
