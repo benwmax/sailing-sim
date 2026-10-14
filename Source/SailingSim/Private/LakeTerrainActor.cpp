@@ -29,12 +29,25 @@ namespace
 	// Leaf-card trees within this; opaque crowns beyond (Visual V6). -SailingNearTrees=<m> to measure.
 	double NearTreesM()
 	{
-		// 600 m on High; 350 m on Medium, where the base pass is budgeted at 4 ms (cards within 300 m cost almost nothing,
-		// out to 600 m about a millisecond there; the opaque crowns read the same at that size on its 67% resolution).
+		// Graphics G6: 250 m on High, 200 m on Medium (were 600 and 350). The lidar crowns put three times as many trees on
+		// the shore, and leaf cards out to 600 m cost High 8 ms of base pass at the marina; past 250 m the smooth opaque
+		// crowns read the same.
 		static const double M = []
 		{
-			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 600.0 : 350.0;
+			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 250.0 : 200.0;
 			FParse::Value(FCommandLine::Get(), TEXT("SailingNearTrees="), V);
+			return V;
+		}();
+		return M;
+	}
+	// Graphics G6: the opaque crowns cast shadows out to this (m); beyond, none (the far crowns' virtual shadow pages cost
+	// High 6.5 ms at the slip, and their shadows are lost at that range). -SailingMidTrees=<m> to measure.
+	double MidTreesM()
+	{
+		static const double M = []
+		{
+			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 1000.0 : 600.0;
+			FParse::Value(FCommandLine::Get(), TEXT("SailingMidTrees="), V);
 			return V;
 		}();
 		return M;
@@ -118,6 +131,7 @@ void ALakeTerrainActor::SetTreeFraction(float Fraction)
 		for (UHierarchicalInstancedStaticMeshComponent* T : TreeMeshes) T->ClearInstances();
 		for (UInstancedStaticMeshComponent* T : TreeModels) T->ClearInstances();
 		for (UInstancedStaticMeshComponent* T : TreeFar) T->ClearInstances();
+		for (UInstancedStaticMeshComponent* T : TreeMid) T->ClearInstances();
 		PlaceTrees();
 	}
 }
@@ -300,16 +314,18 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 {
 	// Visual V6: leaf-card trees near the camera (alpha-masked Nanite is costly over many pixels), the opaque far
 	// crowns beyond; regrouped when the camera has moved a quarter of the near radius.
-	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < 0.25 * NearTreesM()) return;
+	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < FMath::Max(100.0, 0.25 * NearTreesM())) return;
 	TreeCenter = Camera;
-	TArray<TArray<FTransform>> Near, Far;
+	TArray<TArray<FTransform>> Near, Mid, Far;
 	Near.SetNum(TreeModels.Num());
+	Mid.SetNum(TreeMid.Num());
 	Far.SetNum(TreeFar.Num());
-	const double R2 = FMath::Square(NearTreesM());
+	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
 	for (const FTreeInstance& I : ModelTrees)
 	{
 		const int32 Index = int32(I.Species) * 2 + I.Variant;
-		const bool bNear = FVector2D::DistSquared(I.Position, Camera) < R2;
+		const double D2 = FVector2D::DistSquared(I.Position, Camera);
+		const bool bNear = D2 < R2, bMid = !bNear && D2 < RM2 && TreeMid.Num() > 0;
 		UStaticMesh* Mesh = (bNear ? TreeModels : TreeFar)[Index]->GetStaticMesh();
 		const float MeshHeight = Mesh ? FMath::Max(100.f, float(Mesh->GetBounds().BoxExtent.Z * 2.0)) : 1000.f;
 		const float Scale = I.Height * CmPerMeter / MeshHeight;
@@ -323,7 +339,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		}
 		// The earth's curvature (as M_Terrain's offset does for the ground): far trees sink with the shore they stand on.
 		const double Drop = CurvatureDrop(FVector2D::Distance(I.Position, Camera));
-		(bNear ? Near : Far)[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(ScaleXY, ScaleXY, Scale)));
+		(bNear ? Near : (bMid ? Mid : Far))[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(ScaleXY, ScaleXY, Scale)));
 	}
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{
@@ -331,6 +347,11 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		TreeModels[M]->AddInstances(Near[M], false, true);
 		TreeFar[M]->ClearInstances();
 		TreeFar[M]->AddInstances(Far[M], false, true);
+		if (TreeMid.IsValidIndex(M))
+		{
+			TreeMid[M]->ClearInstances();
+			TreeMid[M]->AddInstances(Mid[M], false, true);
+		}
 	}
 }
 
@@ -468,13 +489,14 @@ void ALakeTerrainActor::PlaceTrees()
 	const bool bModelTrees = USailingSettings::Get()->Quality != ESailingQuality::Low;
 	if (bModelTrees && TreeModels.Num() == 0)
 	{
-		for (int32 Pass = 0; Pass < 2; ++Pass)
+		// Passes: leaf cards near, opaque crowns with shadows to MidTreesM, opaque crowns without beyond (Graphics G6).
+		for (int32 Pass = 0; Pass < 3; ++Pass)
 		{
 			for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S)
 			{
 				for (int32 V = 0; V < 2; ++V)
 				{
-					const FString Name = FString::Printf(TEXT("SM_%s_%d%s"), SpeciesNames[S], V, Pass == 1 ? TEXT("_Far") : TEXT(""));
+					const FString Name = FString::Printf(TEXT("SM_%s_%d%s"), SpeciesNames[S], V, Pass >= 1 ? TEXT("_Far") : TEXT(""));
 					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
 					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 					C->SetupAttachment(RootComponent);
@@ -487,12 +509,15 @@ void ALakeTerrainActor::PlaceTrees()
 					C->bVisibleInRayTracing = false;
 					// Shadows (virtual shadow maps), cached as if still: the sway never re-renders the trees' shadow
 					// pages (thousands of swaying trees would invalidate the cache every frame).
-					C->SetCastShadow(true);
+					// Graphics G6: the far band casts none (-SailingFarTreeShadows=1 to compare).
+					int32 FarShadows = 0;
+					FParse::Value(FCommandLine::Get(), TEXT("SailingFarTreeShadows="), FarShadows);
+					C->SetCastShadow(Pass < 2 || FarShadows != 0);
 					C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : 9000.0) * 100.0);
+					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : (Pass == 1 ? MidTreesM() + 200.0 : 9000.0)) * 100.0);
 					C->SetWorldPositionOffsetDisableDistance(int32((Pass == 0 ? NearTreesM() : 1500.0) * 100.0));
 					C->RegisterComponent();
-					(Pass == 0 ? TreeModels : TreeFar).Add(C);
+					(Pass == 0 ? TreeModels : (Pass == 1 ? TreeMid : TreeFar)).Add(C);
 				}
 			}
 		}

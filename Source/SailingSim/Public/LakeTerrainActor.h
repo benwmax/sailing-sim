@@ -79,6 +79,7 @@ private:
 	bool bLoggedInstances = false;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeMid;    // Graphics G6: opaque crowns that still cast shadows
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
 	void UpdateModelTrees(const FVector2D& Camera);

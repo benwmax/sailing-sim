@@ -70,7 +70,7 @@ def keep(c):
 bmesh.ops.delete(bm, geom=[f for f in bm.faces if not keep(f.calc_center_median())], context="FACES")
 bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
 # Finer faces, so the straps' edges are straight enough.
-bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=2, use_grid_fill=True)
+bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=1, use_grid_fill=True)   # (2 cuts: 85k tris, 2 fps on High for three sailors)
 bm.normal_update()
 # The foam: everything out along its normal (smoothed normals, so the panels stay smooth).
 normals = {v: v.normal.copy() for v in bm.verts}
