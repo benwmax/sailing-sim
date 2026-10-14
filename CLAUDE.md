@@ -307,6 +307,17 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   inferred `floating` walkways, `MooredBoats` drawn by `ACoastMarinasActor` via `SpawnBerthedBoats`), then
   `scripts/bake-shore.sh GalvestonBay`; `-SailingNoPiers`, `-SailingPiersSkip=decks,riprap,walkways,boats` compare.
   `FKitGeometry::SplitTiles` walks four vertices at a time: add triangles with `FKitSection::Tri` (a degenerate quad).
+- Crew (Graphics G8, `docs/graphics-8-crew/`): `FCrewHands` (`CrewPose.h`) puts the hands after the stance: Reach (two-bone
+  IK from the shoulder, keeping the stance's elbow plane; the target is where the palm closes), Knee, and finger curl about
+  axes from each rig's palm (`FCrewRig::CurlAxis`). `UpdateCrewFigures` gives the helm the tiller extension
+  (`TillerEndCm`: the J/22's socket, or the config for the fleet's tillered boats) and the mainsheet, the trimmer the jib
+  sheet's tail; the rig lines read `HelmGripCm`/`MainGripCm`/`JibGripCm` (keep every rig line drawn every frame: the mesh's
+  vertex count is fixed). Grooms are held on their coarsest card LOD past 6 m (`UpdateCrewGroomLOD`: cards exist only at
+  LODs 1 and 3, helmets at 5+ draw nothing). The vest is cut with bmesh bisect (`build_vest.py`), and the polo is imported
+  with its torso under the vest cut away (`<Role>_PoloOpen.fbx`); keep closest-point weights for the vest (inpainting
+  failed). `scripts/tune_crew_skin.py` turns on the faces' micro skin detail and pores (run by `make-crew-clothes.sh`
+  after a MetaHuman rebuild). `scripts/pack-metahumans.sh` zips the git-ignored crew for the PC. Hide outfit sections by
+  the asset's slot materials, never the component's (they are MIDs by then).
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
