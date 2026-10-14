@@ -3204,7 +3204,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 	static const FLinearColor Foam[] = { FLinearColor(0.012f, 0.075f, 0.52f), FLinearColor(0.014f, 0.09f, 0.48f), FLinearColor(0.03f, 0.10f, 0.38f) };
 	// Graphics G6: the life jacket tailored over this sailor's polo (Tools/blender/build_vest.py) and skinned like it, so it
 	// wraps the body as it sits; the rigid one below where it has not been built (or with -SailingNoPolo).
-	const FString VestRole = MetaHumanRoleName(Role);
+	const FString VestRole = MetaHumanRoleName(CrewRole);
 	USkeletalMesh* VestMesh = FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")) ? nullptr
 		: LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Vest.SKM_%s_Vest"), *VestRole, *VestRole, *VestRole), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (VestMesh)
@@ -3216,7 +3216,7 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		Vest->RegisterComponent();
 		Vest->SetLeaderPoseComponent(Body);
 		const int32 Shell = Vest->GetMaterialIndex(TEXT("PFD"));
-		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(CrewRole + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
 		BoatParts.Add(Vest);
 	}
 	else if (CrewPFDMesh && Span > 10.f && Top > Waist)
