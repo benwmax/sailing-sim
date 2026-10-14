@@ -1960,6 +1960,28 @@ else if (Pattern > 4.5 && Pattern < 5.5)
     c *= 0.9 + 0.2 * blot;
     c = lerp(c, float3(0.30, 0.14, 0.06), saturate(weep + 0.25 * saturate(blot - 0.6)) * 0.6);
 }
+else if (Pattern > 7.5)
+{
+    // Graphics G6: a ship's topsides (UV: x along the hull; the FBX import flips V, so height above the waterline is 1 - y).
+    // Rust weeps from the deck edge and the scuppers in streaks of their own lengths; fender and tug scrapes along the
+    // waterline band; blotchy fading.
+    uv.y = 1.0 - uv.y;
+    float lane = floor(uv.x * 0.9);
+    float hl = frac(sin(lane * 91.7) * 4375.5), hl2 = frac(sin(lane * 17.3 + 7.0) * 4375.5);
+    float src = 10.4 + 3.0 * hl2;
+    float len = 3.0 + 8.0 * hl;
+    float wx = frac(uv.x * 0.9);
+    float thin = exp(-pow((wx - 0.5) * (9.0 + 12.0 * hl2), 2.0));
+    float below = src - uv.y;
+    float weep = step(0.35, hl) * thin * saturate(below / 0.3) * pow(saturate(1.0 - below / len), 0.7);
+    // The deck edge itself: a band of rust and chipped paint where the mooring lines and the sea work it.
+    float edge = saturate(1.0 - abs(uv.y - (src + 0.3)) / 0.6) * (0.4 + 0.6 * blot);
+    c *= 0.86 + 0.24 * blot;
+    c = lerp(c, float3(0.32, 0.14, 0.05), saturate(weep * 0.9 + 0.5 * edge + 0.15 * saturate(blot - 0.7)));
+    float band = saturate(1.0 - abs(uv.y - 2.0) / 1.6) * step(0.75, frac(sin(floor(uv.x * 0.12) * 12.1) * 4375.5));
+    c = lerp(c, float3(0.22, 0.20, 0.18), band * 0.6 * blot);
+    r = lerp(r, 0.75, weep);
+}
 else if (Pattern > 5.5)
 {
     // Asphalt: aggregate speckle, oil down the lane centres, a solid edge line and 3 m dashes every 12 m between lanes.
@@ -2419,7 +2441,8 @@ WORLD_LIBRARY = {
     "Cargo": ((0.40, 0.36, 0.30), 0.95, 4.0, 0.0, 0.0),
     "Pilothouse": ((0.80, 0.80, 0.78), 0.4, 3.0, 1.0, 0.0),
     "Funnel": ((0.08, 0.08, 0.09), 0.6, 0.0, 0.0, 0.0),
-    "ShipHull": ((0.03, 0.06, 0.12), 0.55, 5.0, 0.0, 0.2),
+    "ShipHull": ((0.03, 0.06, 0.12), 0.55, 8.0, 0.0, 0.2),     # Graphics G6: pattern 8, rust weeping from the deck edge
+    "Lifeboat": ((0.75, 0.22, 0.02), 0.45, 0.0, 0.0, 0.0),      # SOLAS orange
 }
 
 
