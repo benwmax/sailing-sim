@@ -1,5 +1,6 @@
 #include "SailboatPawn.h"
 #include "SailingHUD.h"
+#include "UI/SailHud.h"
 #include "SailSession.h"
 #include "GroomComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
@@ -2232,7 +2233,9 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	else if (Action == TEXT("ToggleHud"))
 	{
-		Settings->bShowHud = !Settings->bShowHud;
+		// Graphics G4: H cycles the HUD: full, minimal (cluster, compass, drill, toasts), off (toasts only).
+		Settings->bShowHud = true;
+		SSailHud::Mode = (SSailHud::Mode + 1) % 3;
 		Settings->Save();
 	}
 	else if (Action == TEXT("ResetBoat"))

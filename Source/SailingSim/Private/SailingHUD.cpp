@@ -2,6 +2,7 @@
 #include "SailSession.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailLoading.h"
+#include "UI/SailHud.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Kismet/GameplayStatics.h"
@@ -79,6 +80,11 @@ bool ASailingHUD::UsesFrontEnd() const
 void ASailingHUD::BeginPlay()
 {
 	Super::BeginPlay();
+	if (PlayerOwner && GEngine && GEngine->GameViewport && !IsRunningCommandlet())
+	{
+		SlateHud = SNew(SSailHud).Player(PlayerOwner);
+		GEngine->GameViewport->AddViewportWidgetContent(SlateHud.ToSharedRef(), 5);
+	}
 	if (!UsesFrontEnd() || !PlayerOwner) return;
 	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
 	FString Screen;
@@ -126,6 +132,8 @@ void ASailingHUD::BeginPlay()
 void ASailingHUD::EndPlay(const EEndPlayReason::Type Reason)
 {
 	RemoveWidgets();
+	if (SlateHud.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(SlateHud.ToSharedRef());
+	SlateHud.Reset();
 	Super::EndPlay(Reason);
 }
 
@@ -248,6 +256,13 @@ void ASailingHUD::DrawHUD()
 	if (!Settings->bShowHud)
 	{
 		Text(TEXT("H: show instruments   ?: controls   Tab: settings"), 20.f, 20.f, Dim, 0.8f);
+		return;
+	}
+	if (SlateHud.IsValid())
+	{
+		// Graphics G4: the Slate HUD (UI/SailHud.h) draws the instruments, tips, drill and trim; the rules callouts and
+		// the race panel stay here.
+		DrawTraffic(*Boat);
 		return;
 	}
 	DrawInstruments(*Boat);
@@ -1089,7 +1104,10 @@ void ASailingHUD::DrawWindDiagram(const ASailboatPawn& Boat, const FVector2D& Ce
 	Text(TEXT("apparent"), Center.X - Radius + 50.f, Center.Y + Radius + 6.f, FLinearColor(1.f, 0.85f, 0.2f), 0.8f);
 }
 
-void ASailingHUD::DrawTips(const ASailboatPawn& Boat)
+FString SailingPointOfSail(double TwaDeg, bool bInIrons) { return PointOfSail(TwaDeg, bInIrons); }
+
+/** Graphics G4: the coach's trim and safety tips, shared by the canvas HUD and the Slate HUD (severity 0 note, 1 good, 2 caution, 3 fault). */
+void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<TPair<FString, int32>>& Tips)
 {
 	const FBoatModel& Model = Boat.GetBoatModel();
 	const FBoatTelemetry& T = Model.GetTelemetry();
@@ -1097,18 +1115,17 @@ void ASailingHUD::DrawTips(const ASailboatPawn& Boat)
 	const double TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
 	const double HeelLeeward = FMath::RadiansToDegrees(T.Heel) * Model.GetState().WindwardSide;
 
-	TArray<TPair<FString, FLinearColor>> Tips;
 	const FString Pos = PointOfSail(TwaDeg, T.bInIrons);
-	Tips.Add({ FString::Printf(TEXT("%s  (%s tack)"), *Pos, TwaDeg >= 0.0 ? TEXT("starboard") : TEXT("port")), FLinearColor::White });
+	Tips.Add({ FString::Printf(TEXT("%s  (%s tack)"), *Pos, TwaDeg >= 0.0 ? TEXT("starboard") : TEXT("port")), 0 });
 
 	if (T.bInIrons)
 	{
-		Tips.Add({ TEXT("Stuck head to wind. Push the tiller toward the boom and hold the jib out to the side the bow should go (backing it)."), Warn });
-		Tips.Add({ TEXT("You will drift backward first; the bow falls off, then trim in and sail away."), Dim });
+		Tips.Add({ TEXT("Stuck head to wind. Push the tiller toward the boom and hold the jib out to the side the bow should go (backing it)."), 2 });
+		Tips.Add({ TEXT("You will drift backward first; the bow falls off, then trim in and sail away."), 0 });
 	}
 	else if (FMath::Abs(TwaDeg) < 35.0)
 	{
-		Tips.Add({ TEXT("Too close to the wind: the sails cannot draw. Bear away (steer away from the wind) to about 45 degrees."), Warn });
+		Tips.Add({ TEXT("Too close to the wind: the sails cannot draw. Bear away (steer away from the wind) to about 45 degrees."), 2 });
 	}
 
 	auto Count = [](const FSailStripState* Strips, int32 N, ESailFlow Flow) { int32 K = 0; for (int32 I = 0; I < N; ++I) K += Strips[I].Flow == Flow; return K; };
@@ -1121,40 +1138,48 @@ void ASailingHUD::DrawTips(const ASailboatPawn& Boat)
 	if (!T.bInIrons && FMath::Abs(TwaDeg) >= 35.0)
 	{
 		if (JibLuff >= 2)
-			Tips.Add({ bUpwind ? TEXT("Jib is luffing (windward telltales lifting): trim the jib in (E), or bear away a little.") : TEXT("Jib is luffing: trim the jib in (E) until the luff stops bubbling."), Warn });
+			Tips.Add({ bUpwind ? TEXT("Jib is luffing (windward telltales lifting): trim the jib in (E), or bear away a little.") : TEXT("Jib is luffing: trim the jib in (E) until the luff stops bubbling."), 2 });
 		else if (JibStall >= 2)
-			Tips.Add({ TEXT("Jib is stalled (leeward telltales drooping): ease the jib (Q), or head up a little."), Warn });
+			Tips.Add({ TEXT("Jib is stalled (leeward telltales drooping): ease the jib (Q), or head up a little."), 2 });
 		else
-			Tips.Add({ TEXT("Jib telltales streaming: well trimmed."), Good });
+			Tips.Add({ TEXT("Jib telltales streaming: well trimmed."), 1 });
 
 		if (MainLuff >= 2)
-			Tips.Add({ TEXT("Main is luffing: trim the mainsheet in (W)."), Warn });
+			Tips.Add({ TEXT("Main is luffing: trim the mainsheet in (W)."), 2 });
 		else if (MainStall >= 2)
-			Tips.Add({ TEXT("Main is stalled (leech telltales curling behind the sail): ease the mainsheet (S)."), Warn });
+			Tips.Add({ TEXT("Main is stalled (leech telltales curling behind the sail): ease the mainsheet (S)."), 2 });
 		else
-			Tips.Add({ TEXT("Main leech telltales streaming: well trimmed."), Good });
+			Tips.Add({ TEXT("Main leech telltales streaming: well trimmed."), 1 });
 	}
 
 	if (HeelLeeward > 22.0)
 		Tips.Add({ USailingSettings::Get()->UseSimpleControls() ? TEXT("Heeling too much: hike out (F) and ease the main (S) in the puffs.")
-			: TEXT("Heeling too much: hike out (F), ease the main or drop the traveler (C), flatten with backstay (8)."), Bad });
+			: TEXT("Heeling too much: hike out (F), ease the main or drop the traveler (C), flatten with backstay (8)."), 3 });
 	else if (HeelLeeward > 12.0 && C.Hike < 0.8)
-		Tips.Add({ TEXT("Building breeze: get the crew hiking (F)."), Dim });
+		Tips.Add({ TEXT("Building breeze: get the crew hiking (F)."), 0 });
 	if (T.HelmForce > 40.0)
-		Tips.Add({ TEXT("Heavy weather helm: the boat wants to round up. Ease the main to balance her."), Warn });
-	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+		Tips.Add({ TEXT("Heavy weather helm: the boat wants to round up. Ease the main to balance her."), 2 });
+	if (const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr)
 	{
 		const FWeatherState& W = GM->GetWeatherState();
 		if (W.Storm == EStormPhase::Building)
-			Tips.Add({ TEXT("Thunderstorm building to the west-northwest: watch for the dark line of the gust front on the water and reef or head in."), Bad });
+			Tips.Add({ TEXT("Thunderstorm building to the west-northwest: watch for the dark line of the gust front on the water and reef or head in."), 3 });
 		else if (W.Storm == EStormPhase::GustFront || W.Storm == EStormPhase::Rain)
-			Tips.Add({ TEXT("Storm: depower (ease sheets, hike), keep the bow off the wind, and stay clear of the mast in lightning."), Bad });
+			Tips.Add({ TEXT("Storm: depower (ease sheets, hike), keep the bow off the wind, and stay clear of the mast in lightning."), 3 });
 	}
 	if (FMath::Abs(TwaDeg) > 160.0 && !C.bWingOnWing)
-		Tips.Add({ TEXT("Dead downwind: try wing-on-wing (G), jib out on the opposite side. Watch for an accidental gybe."), Dim });
+		Tips.Add({ TEXT("Dead downwind: try wing-on-wing (G), jib out on the opposite side. Watch for an accidental gybe."), 0 });
 	if (FMath::Abs(TwaDeg) > 170.0)
-		Tips.Add({ TEXT("Sailing by the lee risks an accidental gybe: steer a few degrees toward the wind."), Warn });
+		Tips.Add({ TEXT("Sailing by the lee risks an accidental gybe: steer a few degrees toward the wind."), 2 });
 
+}
+
+void ASailingHUD::DrawTips(const ASailboatPawn& Boat)
+{
+	TArray<TPair<FString, int32>> Collected;
+	SailingCollectTips(Boat, GetWorld(), Collected);
+	TArray<TPair<FString, FLinearColor>> Tips;
+	for (const TPair<FString, int32>& T : Collected) Tips.Add({ T.Key, T.Value == 1 ? Good : (T.Value == 2 ? Warn : (T.Value == 3 ? Bad : FLinearColor::White)) });
 	const float X = Canvas->ClipX / UIScale * 0.5f - 330.f;
 	float Y = 18.f;
 	DrawRect(Panel, X * UIScale, 10.f * UIScale, 660.f * UIScale, (Tips.Num() * 24.f + 16.f) * UIScale);

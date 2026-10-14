@@ -26,7 +26,7 @@
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
-namespace
+namespace SailFrontEndImpl
 {
 	using namespace SailUI;
 	using Prompt = TTuple<FString, FString, FString>;
@@ -220,6 +220,8 @@ namespace
 
 void SSailFrontEnd::Construct(const FArguments& A)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	Player = A._Player;
 	OnClose = A._OnClose;
 	USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr;
@@ -238,17 +240,23 @@ void SSailFrontEnd::Construct(const FArguments& A)
 
 ASailboatPawn* SSailFrontEnd::Pawn() const
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	return Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 }
 
 void SSailFrontEnd::Push(ESailScreen Screen)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	Stack.Add(Build(Screen));
 	Show(Stack.Last(), true);
 }
 
 void SSailFrontEnd::Pop()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	if (Stack.Num() <= 1)
 	{
 		// Pause's Back resumes; the title's asks to quit.
@@ -265,6 +273,8 @@ void SSailFrontEnd::Pop()
 
 void SSailFrontEnd::Show(const FEntry& E, bool bForward)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	Body->SetContent(E.Content.ToSharedRef());
 	Footer->SetContent(E.Footer.IsValid() ? E.Footer.ToSharedRef() : SNullWidget::NullWidget);
 	bTransitionForward = bForward;
@@ -276,6 +286,8 @@ void SSailFrontEnd::Show(const FEntry& E, bool bForward)
 
 EActiveTimerReturnType SSailFrontEnd::AnimateTransition(double Time, float)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	const float T = FMath::Clamp(float(Time - TransitionStart) / 0.18f, 0.f, 1.f);
 	const float E = 1.f - FMath::Square(1.f - T);
 	Body->SetRenderOpacity(E);
@@ -285,12 +297,16 @@ EActiveTimerReturnType SSailFrontEnd::AnimateTransition(double Time, float)
 
 void SSailFrontEnd::FocusCurrent()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	if (Stack.Num() && Stack.Last().Focus.IsValid()) FSlateApplication::Get().SetUserFocus(0, Stack.Last().Focus, EFocusCause::SetDirectly);
 	else FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
 }
 
 FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	const FKey K = E.GetKey();
 	if (ListeningRow >= 0 && Current() == ESailScreen::Controls)
 	{
@@ -324,6 +340,8 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 
 void SSailFrontEnd::CastOff()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	if (USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr)
 	{
 		Session->StartSession(Pending, Player.Get());
@@ -332,11 +350,15 @@ void SSailFrontEnd::CastOff()
 
 void SSailFrontEnd::Close()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	OnClose.ExecuteIfBound();
 }
 
 void SSailFrontEnd::Confirm(const FString& Question, const FString& Yes, TFunction<void()> OnYes)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	ConfirmQuestion = Question;
 	ConfirmYes = Yes;
 	ConfirmAction = MoveTemp(OnYes);
@@ -345,6 +367,8 @@ void SSailFrontEnd::Confirm(const FString& Question, const FString& Yes, TFuncti
 
 SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	switch (S)
 	{
@@ -368,6 +392,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	const USailSessionSave* Save = USailSessionSave::Get();
 	TSharedRef<SVerticalBox> Menu = SNew(SVerticalBox);
@@ -442,6 +468,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
@@ -479,6 +507,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildLaunch()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	const SailCatalog::FWorld& W = SailCatalog::World(Pending.World);
 	TSharedPtr<FSlateBrush> Map = TextureBrush(W.MapTexture);
@@ -563,6 +593,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLaunch()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	FocusedBoat = Pending.Boat;
 	TSharedRef<SUniformGridPanel> Grid = SNew(SUniformGridPanel).SlotPadding(FMargin(8.f));
@@ -643,6 +675,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	FSailConditions* C = &Pending.Conditions;
 	auto Touch = [this]() { Pending.Conditions.PresetId = NAME_None; };
@@ -749,6 +783,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	struct FModeCard { ESailMode Mode; const TCHAR* Name; const TCHAR* Line; };
 	static const FModeCard Modes[] = { { ESailMode::Free, TEXT("Free sail"), TEXT("Go where you like") },
@@ -834,6 +870,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	ASailboatPawn* P = Pawn();
 	TSharedRef<SVerticalBox> Menu = SNew(SVerticalBox);
@@ -931,6 +969,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	USailingSettings* S = USailingSettings::Get();
 	static const TCHAR* Tabs[] = { TEXT("Graphics"), TEXT("Gameplay"), TEXT("Audio"), TEXT("Accessibility") };
@@ -1001,6 +1041,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	ASailboatPawn* P = Pawn();
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
@@ -1044,6 +1086,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildConfirm()
 {
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
 	FEntry E;
 	TSharedRef<SSailButton> Yes = ActionButton(ConfirmYes, FSimpleDelegate::CreateLambda([this]() { TFunction<void()> Do = ConfirmAction; Pop(); if (Do) Do(); }));
 	TSharedRef<SSailButton> No = ActionButton(TEXT("Cancel"), FSimpleDelegate::CreateLambda([this]() { Pop(); }), false);

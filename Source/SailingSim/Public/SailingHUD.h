@@ -7,6 +7,10 @@
 class ASailboatPawn;
 enum class ESailScreen : uint8;
 
+/** Graphics G4: the coach's trim and safety tips (severity 0 note, 1 good, 2 caution, 3 fault). */
+SAILINGSIM_API void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<TPair<FString, int32>>& Tips);
+SAILINGSIM_API FString SailingPointOfSail(double TwaDeg, bool bInIrons);
+
 /**
  * Cockpit instruments drawn on the canvas: boat speed, heading, apparent and true wind, heel, VMG, helm load
  * and sail controls. Learning mode adds a wind diagram, the point of sail and trim tips.
@@ -57,5 +61,6 @@ private:
 	TSharedPtr<class SSailFrontEnd> FrontEnd;
 	TSharedPtr<class SSailLoading> Loading;
 	TSharedPtr<class SWidget> ShownWidget;
+	TSharedPtr<class SSailHud> SlateHud;   // the in-game HUD (Graphics G4): replaces the canvas instruments
 	bool bPausedByMenu = false;
 };
