@@ -57,6 +57,65 @@ bool FSailingWaveHeightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * W0: each band of the lake sea follows the wind at its own pace (FWaveField::GrowthSeconds, tau = 8 T^2 clamped to
+ * 5..300 s). After a step from 6 to 18 kn the 0.5 s ripples reach 90% of their new amplitude long before the 4 s waves,
+ * and the steady state is the same sea as before (the targets are unchanged; only the approach is per band).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveBandGrowthTest, "SailingSim.Physics.WaveBandGrowth", Flags)
+bool FSailingWaveBandGrowthTest::RunTest(const FString& Parameters)
+{
+	FWaveField Waves = MakeWaves(6.0, 0.0, 5000.0);
+	const FWaveField Target = MakeWaves(18.0, 0.0, 5000.0);
+	auto BandNear = [&Waves](double Period)
+	{
+		int32 Best = 0;
+		for (int32 B = 1; B < kWaveBands; ++B)
+		{
+			if (FMath::Abs(Waves.BandPeriod(B) - Period) < FMath::Abs(Waves.BandPeriod(Best) - Period)) Best = B;
+		}
+		return Best;
+	};
+	auto BandRms = [](const FWaveField& W, int32 B)
+	{
+		double E = 0.0;
+		for (int32 D = 0; D < kWaveDirectionsPerBand; ++D) E += FMath::Square(W.GetComponents()[B * kWaveDirectionsPerBand + D].Amplitude);
+		return FMath::Sqrt(E);
+	};
+	const int32 Short = BandNear(0.5), Long = BandNear(4.0);
+	const double Short0 = BandRms(Waves, Short), Short1 = BandRms(Target, Short);
+	const double Long0 = BandRms(Waves, Long), Long1 = BandRms(Target, Long);
+	TestTrue(TEXT("Both bands grow with the wind"), Short1 > Short0 * 1.05 && Long1 > Long0 * 1.05);
+
+	FWaveParams P = Waves.GetParams();
+	P.WindSpeedKnots = 18.0;
+	Waves.SetWind(P);
+	constexpr double Dt = 1.0 / 60.0;
+	double ShortT90 = -1.0, LongT90 = -1.0;
+	for (int32 I = 1; I <= 1200 * 60; ++I)
+	{
+		Waves.Update(Dt);
+		const double T = I * Dt;
+		if (ShortT90 < 0.0 && (BandRms(Waves, Short) - Short0) >= 0.9 * (Short1 - Short0)) ShortT90 = T;
+		if (LongT90 < 0.0 && (BandRms(Waves, Long) - Long0) >= 0.9 * (Long1 - Long0)) LongT90 = T;
+	}
+	double MaxDiff = 0.0, MaxAmp = 0.0;
+	for (int32 I = 0; I < kWaveComponents; ++I)
+	{
+		MaxDiff = FMath::Max(MaxDiff, FMath::Abs(Waves.GetComponents()[I].Amplitude - Target.GetComponents()[I].Amplitude));
+		MaxAmp = FMath::Max(MaxAmp, Target.GetComponents()[I].Amplitude);
+	}
+	AddInfo(FString::Printf(TEXT("Band %.2f s (tau %.0f s) reached 90%% in %.1f s, band %.2f s (tau %.0f s) in %.1f s; Hs %.3f m vs %.3f m snapped"),
+		Waves.BandPeriod(Short), FWaveField::GrowthSeconds(Waves.BandPeriod(Short)), ShortT90, Waves.BandPeriod(Long),
+		FWaveField::GrowthSeconds(Waves.BandPeriod(Long)), LongT90, Waves.SignificantHeight(), Target.SignificantHeight()));
+	TestTrue(TEXT("The ripples reach 90% within half a minute"), ShortT90 > 0.0 && ShortT90 < 30.0);
+	TestTrue(TEXT("The 4 s waves take minutes"), LongT90 > 120.0);
+	TestTrue(TEXT("The ripples get there long before the 4 s waves (5x sooner)"), ShortT90 > 0.0 && LongT90 > 5.0 * ShortT90);
+	TestTrue(TEXT("Steady state equals the snapped sea"), MaxDiff < 1e-6 * FMath::Max(MaxAmp, 1e-3));
+	TestTrue(TEXT("Growth times clamp to 5..300 s"), FWaveField::GrowthSeconds(0.1) == 5.0 && FWaveField::GrowthSeconds(20.0) == 300.0);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveDirectionTest, "SailingSim.Water.FollowsTheWind", Flags)
 bool FSailingWaveDirectionTest::RunTest(const FString& Parameters)
 {

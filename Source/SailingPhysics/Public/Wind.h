@@ -67,6 +67,11 @@ namespace Sailing
 		 * and the gust front are this value on the water. Same source as the sails' wind.
 		 */
 		double SurfaceRoughnessAt(double X, double Y, double TimeSeconds) const;
+		/**
+		 * The same scale for the mean wind alone (no gusts, lulls or lee; a gust front's outflow where it has passed):
+		 * what the water looks like on average there, the value the cat's-paw map fades to at its edge.
+		 */
+		double MeanSurfaceRoughnessAt(double X, double Y, double TimeSeconds) const;
 
 		/** Air velocity (where the air is going, m/s) at a world position and time. */
 		Vec3 VelocityAt(const Vec3& WorldPos, double TimeSeconds) const;

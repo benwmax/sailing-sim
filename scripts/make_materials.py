@@ -207,7 +207,7 @@ float localKnots = rough * 15.56;
 float capsLevel = saturate((localKnots - 7.0) / 15.0);
 // Wind sets how much of the water is breaking (about 1% at Force 3, 5% at Force 4, 20% at Force 6); each cap is
 // bright white. Caps are short along the wind and long across it, drift downwind, and sit on the crests.
-float cover = 0.2 * pow(capsLevel, 1.5);
+float cover = 0.2 * pow(capsLevel, 1.5) * WindP.w; // W0: the water body's share of the sea's caps (fresh water 0.4)
 float2 q = float2(dot(p.xy, d), dot(p.xy, n));
 float n1 = 0.5 + 0.5 * sin(q.x * 1.3 - T * 1.6 + sin(q.y * 0.5) * 2.0);
 float n2 = 0.5 + 0.5 * sin(q.y * 0.45 + sin(q.x * 0.7 + T * 0.4) * 2.0);
@@ -228,7 +228,8 @@ wake *= breakup;
 Foam = saturate(caps + wake);
 // Debug view (DebugGust > 0): show the cat's-paw map as foam.
 Foam = DebugGust > 1.5 ? frac(guv.x * 8.0) * step(0.5, frac(guv.y * 8.0)) : lerp(Foam, saturate(rough / 2.5), saturate(DebugGust));
-// Sailors read puffs relative to the wind around them: compare local wind with the mean wind at the boat.
+// Sailors read puffs relative to the wind around them: compare local wind with the lake's mean wind (W0: not the wind at
+// the boat, which turned the whole lake into a lull whenever she sat in a puff).
 float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Ruffled water reflects less of the bright sky: cat's paws read as dark patches, the gust front as a dark line.
@@ -1053,8 +1054,9 @@ float fade = saturate(1.0 - dist / Fade);
 // The long waves, from the vertices (V4_WPO).
 float sx = LongN.x, sy = LongN.y;
 float J = LongN.z;
-// Cat's paws: the wind's surface roughness map (local wind relative to 15 kn). In a lee (the shelter map, a puff's
-// edge) the short waves and ripples the local wind raises are smaller.
+// Cat's paws: the wind's surface roughness map (local wind relative to 15 kn), against the sea's mean wind (WindP.z, what
+// the drawn waves were grown for). In a lee (the shelter map, a puff's edge) the short waves and ripples the local wind
+// raises are smaller.
 float2 guv = (p.xy - GustRect.xy) / GustRect.z + 0.5;
 float rough = Gust.SampleLevel(GustSampler, guv, 0).r * 2.5;
 float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
@@ -1130,15 +1132,19 @@ sx *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2); sy *= (1.0 + 0.6 * shoal) 
 float Jt = J * jd - 0.25 * shoal;
 // Lacy, broken foam rather than flat patches: two crossed wavy bands at foam-bubble scale.
 float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
-float crest = saturate((FoamThreshold - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
+// W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
+// thin in lulls) times the water body's share (WindP.w: fresh water 0.4); AWaterSurface::WhitecapThreshold mirrors it.
+float capGain = WindP.w * pow(clamp(gustRatio, 0.05, 4.0), 3.41);
+float capThr = clamp(FoamThreshold + 0.045 * log(max(capGain, 1e-4)), 0.3, 0.85);
+float crest = saturate((capThr - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
 float2 wd = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 wn = float2(-wd.y, wd.x);
 float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
-float residue = saturate((FoamThreshold + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
+float residue = saturate((capThr + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
 float caps = max(crest, residue) * fade;
 // Far off whitecaps are sub-pixel: their average whiteness, from the same law.
 float knots = rough * 15.56;
-float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41); // Monahan's coverage, with the foam it leaves
+float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41) * WindP.w; // Monahan's coverage, with the foam it leaves
 caps = lerp(caps, saturate(farCover), far);
 // Foam the boats make.
 float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));

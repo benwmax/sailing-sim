@@ -329,6 +329,22 @@ void AWaterSurface::CreateWaterMaterial()
 	UE_LOG(LogSailing, Display, TEXT("Water: tier %d, %s"), Tier, *Parent->GetName());
 }
 
+float AWaterSurface::WhitecapScaleFor(int32 World)
+{
+	switch (World)
+	{
+	case 1: return 0.7f; // Galveston Bay: brackish
+	case 2: return 1.f;  // the Gulf: sea water, Monahan's law as measured
+	default: return 0.4f; // fresh water: bubbles coalesce and burst sooner, so caps are fewer and fade faster
+	}
+}
+
+float AWaterSurface::WhitecapThreshold(float LocalOverMean, float WaterScale)
+{
+	const float Gain = WaterScale * FMath::Pow(FMath::Clamp(LocalOverMean, 0.05f, 4.f), 3.41f);
+	return FMath::Clamp(FoamThreshold + CapSlope * FMath::Loge(FMath::Max(Gain, 1e-4f)), 0.3f, 0.85f);
+}
+
 void AWaterSurface::SetRingCount(int32 Count)
 {
 	RingCount = FMath::Clamp(Count, 2, 7);
@@ -1018,10 +1034,12 @@ void AWaterSurface::UpdateMaterial()
 	{
 		const FWindParams& P = Wind->GetParams();
 		const float From = FMath::DegreesToRadians(P.FromDegrees);
-		const float Knots = Wind->VelocityAt(Vec3(BoatPos.X, BoatPos.Y, 10.0), GetSimTime()).LengthXY() / kKnot;
-		// Whitecaps by the Beaufort scale: scattered from 7-10 kn, numerous by 11-16, everywhere from 22 (as in M_Water).
-		const float Caps = FMath::Pow(FMath::Clamp((Knots - 7.f) / 15.f, 0.f, 1.f), 1.2f);
-		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), Knots * kKnot, Caps));
+		// W0: the sea's mean wind (what the drawn waves were grown for), not the wind at the boat: cat's paws darken and
+		// whitecaps gather against it, so a puff at the boat no longer turns the whole lake to a lull. W is the water
+		// body's whitecap scale.
+		const float MeanMs = float(Waves->GetParams().WindSpeedKnots * kKnot);
+		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
+			WhitecapScaleFor(USailingSettings::Get()->World)));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -1047,7 +1065,16 @@ void AWaterSurface::UpdateGustMap()
 			// Texel centers; the material maps UV (0..1) across GustRect.
 			const double WX = Center.X + (X + 0.5 - kGustRes * 0.5) * Texel;
 			const double WY = Center.Y + (Y + 0.5 - kGustRes * 0.5) * Texel;
-			const double R = Wind->SurfaceRoughnessAt(WX, WY, T);
+			double R = Wind->SurfaceRoughnessAt(WX, WY, T);
+			// W0: the map ends 800 m out and the sampler clamps, so its border texels would streak across the far
+			// water. Over the outer 20% of the radius it fades to the mean wind (gusts and lees average out at that
+			// range anyway); every border texel is the mean, and so is the water beyond it.
+			const double Radius = FVector2D(X + 0.5 - kGustRes * 0.5, Y + 0.5 - kGustRes * 0.5).Size() / (kGustRes * 0.5);
+			const double Edge = FMath::SmoothStep(0.78, 0.97, Radius);
+			if (Edge > 0.0)
+			{
+				R += (Wind->MeanSurfaceRoughnessAt(WX, WY, T) - R) * Edge;
+			}
 			const uint8 V = EncodeSrgb(float(R / 2.5));
 			// Texture rows run along +V; the material uses u = world X, v = world Y.
 			uint8* Px = &GustPixels[(Y * kGustRes + X) * 4];
