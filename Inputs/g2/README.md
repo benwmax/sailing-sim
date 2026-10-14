@@ -14,8 +14,11 @@ What is here (per world; RayHubbard = EPSG:26914, GalvestonBay = EPSG:26915):
 - `piers/` (Galveston, added Oct 14 2026): piers, docks, bridges, moored boats (2018), marinas, jetties, groins, the Texas
   City Dike and the Seawall run inside the bay grid. Start with `piers/landmarks.geojson` and `piers/README.md`; the big
   layers are `.geojson.gz`. Made from the G2 tiles by `scripts/piers/run.sh` (numpy and Pillow only), so the Mac can
-  rebuild it once it has rebuilt the dem/dsm/cover/ortho tiles. The scripts also gained a `GalvestonGulf` region for the
-  Gulf front south of the bay grid (Seawall, Pleasure Pier, fishing piers); it has not been built yet (see piers/README.md).
+  rebuild it once it has rebuilt the dem/dsm/cover/ortho tiles.
+- `gulf-front/` (Galveston, added Oct 14 2026): the Gulf side south of the bay grid. The Seawall end to end (11 km), the
+  Pleasure Pier and fishing piers, 15 groins, 398 beach profiles, both jetties to their charted heads, and the region's
+  clipped buildings, trees, shore lines, piers layers and cover tiles. Start with `gulf-front/README.md`; rebuild with
+  `scripts/gulf/run.sh`.
 
 Not here, because they are 3.2 GB and the Mac already downloads the same sources after Bean's approval: the 1 m `dem/`
 and `dsm/` float32 tiles and the NAIP 2022 `ortho/` tiles. Rebuild them on the Mac from USGS 3DEP and NAIP with

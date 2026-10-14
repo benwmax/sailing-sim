@@ -1,0 +1,58 @@
+{
+ "gulf_piers": 3,
+ "dropped_as_surf": 2636,
+ "named": [
+  "Galveston Fishing Pier (90th St)",
+  "61st Street Fishing Pier",
+  "Galveston Island Historic Pleasure Pier"
+ ],
+ "groins": 15,
+ "charted_structures": 51,
+ "beach_profiles": 398,
+ "beach_width_m_median": 60.0,
+ "backed_by": {
+  "buildings": 19,
+  "dune": 165,
+  "pavement": 6,
+  "riprap": 2,
+  "road_or_parking": 42,
+  "sand": 1,
+  "scarp_or_bank": 10,
+  "seawall": 144,
+  "vegetation": 9
+ },
+ "landmarks": [
+  [
+   "Galveston Seawall",
+   10959.3
+  ],
+  [
+   "Galveston North Jetty",
+   5980.2
+  ],
+  [
+   "Galveston North Jetty Light 6A",
+   null
+  ],
+  [
+   "Galveston South Jetty",
+   3551.7
+  ],
+  [
+   "Galveston South Jetty Light 5A",
+   null
+  ],
+  [
+   "Galveston Fishing Pier (90th St)",
+   208.5
+  ],
+  [
+   "61st Street Fishing Pier",
+   85.9
+  ],
+  [
+   "Galveston Island Historic Pleasure Pier",
+   238.5
+  ]
+ ]
+}

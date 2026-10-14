@@ -11,6 +11,8 @@ from stage1 import erode, dilate, G2
 reg = sys.argv[1]
 BOX = (-94.90, 29.20, -94.74, 29.33)        # lon/lat box holding the seawall (west end near 103rd St to the east end)
 CREST_MIN, TOE_MAX, REACH = 3.6, 2.2, 7     # m NAVD88, m NAVD88, m
+# share of sand needed in front; the Gulf front west of 61st St has a narrow beach (SEAWALL_SAND_MIN=0.15 for GalvestonGulf)
+SAND_MIN = float(os.environ.get("SEAWALL_SAND_MIN", "0.3"))
 T = {t["name"]: t for t in json.load(open(f"{G2}/{reg}/tiles.json"))["tiles"]}
 E0, N0 = ll2utm(BOX[0], BOX[1]); E1, N1 = ll2utm(BOX[2], BOX[3])
 names = [n for n, t in T.items() if E0 - 1000 <= t["e_min"] <= E1 and N0 - 1000 <= t["n_min"] <= N1]
@@ -61,7 +63,7 @@ for g in group(lab):
     faces = (np.degrees(np.arctan2(sg * nx, sg * ny)) + CONV) % 360
     high_side = max(side)
     sand = np.mean([cov_at(cx + sg * d * nx, cy + sg * d * ny) == 4 for d in range(15, 81, 5)])
-    if not (95 <= faces <= 215) or not high_side >= 3.0 or sand < 0.3:   # and a sand beach in front     # the Gulf seawall faces south-east; harbour wharves and road fills face elsewhere
+    if not (95 <= faces <= 215) or not high_side >= 3.0 or sand < SAND_MIN:   # and a sand beach in front     # the Gulf seawall faces south-east; harbour wharves and road fills face elsewhere
         print("skip run facing", round(faces), "sand", round(float(sand), 2), "land side z", round(float(high_side), 2), "at", [round(float(v), 4) for v in utm2ll(cx, cy)]); continue
     cl, wid = centreline(gx, gy, 20.0)
     cl = dp(cl, 1.0)

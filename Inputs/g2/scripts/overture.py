@@ -2,11 +2,15 @@
 import pyarrow.fs as pfs, pyarrow.parquet as pq, pyarrow as pa, json, os
 from concurrent.futures import ThreadPoolExecutor
 from common import *
-fs = pfs.S3FileSystem(anonymous=True, region="us-west-2")
+# Behind an HTTPS proxy that only allows <bucket>.s3.amazonaws.com (cloud sessions), go through it with virtual-host addressing.
+_px = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+fs = (pfs.S3FileSystem(anonymous=True, region="us-west-2", proxy_options=_px, endpoint_override="https://s3.amazonaws.com", force_virtual_addressing=True)
+      if _px else pfs.S3FileSystem(anonymous=True, region="us-west-2"))
 REL = "2026-09-23.1"
 base = f"overturemaps-us-west-2/release/{REL}/theme=buildings/type=building/"
 files = [f.path for f in fs.get_file_info(pfs.FileSelector(base))]
 BB = {"RayHubbard": (-96.64, 32.77, -96.42, 33.03), "GalvestonBay": (-95.13, 29.28, -94.65, 29.64), "GalvestonGulf": (-95.13, 29.19, -94.65, 29.31)}
+BB = {k: v for k, v in BB.items() if k in active_regions()}
 def rg_hits(path):
     md = pq.ParquetFile(path, filesystem=fs).metadata
     names = [md.schema.column(i).path for i in range(md.num_columns)]

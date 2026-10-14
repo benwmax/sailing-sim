@@ -73,28 +73,16 @@ Low, soft, wiggly strips (marsh edges) are dropped. Other properties: `crest_z_n
   as boats in rows; draw the walkways between the rows of `moored_boats_2018` inside each `marinas` hull.
 - **The lidar band stops 1 km from shore.** The outer jetties were traced in the imagery past it, but the imagery tiles
   also stop at the band edge, so both jetties end short of their real heads. The Pleasure Pier, 61st Street Pier and the
-  rest of the Seawall are south of the bay grid (29.295 N); see the Gulf front below.
+  rest of the Seawall are south of the bay grid (29.295 N); see `../gulf-front/`.
 - `deck_small` is low confidence (8,189 of them, many under 30 m²). Filter by `area_m2` and `deck_above_water_m`.
 - `bridge` includes a few tree crowns over bayous that passed the roughness check.
 - Data age: lidar 2018, imagery 2022.
 
-## Gulf front (not built yet)
-The bay grid's south edge is 29.295 N, so most of the Seawall, the Pleasure Pier, the fishing piers and the groins are
-outside every G2 tile. The G2 scripts now have a `GalvestonGulf` region (29.20 N to 1 km past the bay grid's edge, same
-frame and sources) and write to `sailing-sim-g2/GalvestonGulf/`. It needs USGS (prd-tnm, usgs-lidar-public), the TxGIO
-tnris bucket and Overture on S3, which this cloud session could not reach. To build it where those hosts are reachable:
-
-```
-cd sailing-sim-g2/scripts
-export G2_REGIONS=GalvestonGulf G2_OUT=<sailing-sim-g2 folder> SIM_REPO=<sailing-sim checkout>
-python3 masks.py GalvestonGulf && python3 naip_list.py && python3 overture.py && python3 prep.py GalvestonGulf
-python3 runall.py GalvestonGulf 4 && python3 ortho.py GalvestonGulf && python3 merge.py GalvestonGulf
-python3 beachfix.py && python3 beachfix2.py
-sh piers/run.sh GalvestonGulf 4
-```
-
-The seam tiles at 29.295 N exist in both regions; keep the bay copy north of the seam. The sim grid itself also has to
-grow south to show any of it.
+## Gulf front (built Oct 14 2026)
+The Gulf side south of the bay grid (29.295 N) is its own pack: `gulf-front/` next to this folder (in the repo,
+`Inputs/g2/gulf-front`). It has the Seawall end to end, the Pleasure Pier and fishing piers, groins, beach profiles
+every 50 m, and both jetties carried out to their charted head lights. Start with its README and `landmarks.geojson`.
+`scripts/gulf/run.sh` rebuilds it. The sim grid itself has to grow south to show any of it.
 
 ## Rebuild this pack
 `sh ../../scripts/piers/run.sh GalvestonBay 4` (numpy and Pillow only; about 12 minutes on 4 cores).
