@@ -2997,13 +2997,33 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 	const FVector Fwd = Rig.Frame.RotateVector(FVector::ForwardVector);
 	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
 	const float Waist = float(At(TEXT("spine_01")).Z) + 3.f; // the hem at the navel, clear of the shorts' waistband
-	const float Top = float(At(TEXT("neck_01")).Z) - 3.f;
-	static const FLinearColor Foam[] = { FLinearColor(0.6f, 0.05f, 0.02f), FLinearColor(0.75f, 0.45f, 0.02f), FLinearColor(0.02f, 0.06f, 0.2f) };
-	if (CrewPFDMesh && Span > 10.f && Top > Waist)
+	const float Top = float(At(TEXT("neck_01")).Z) + 1.f;   // Graphics G6: up to the collarbones (the vest's shoulders)
+	// Graphics G6: the sailing school's royal blue vests (Bean's lesson photos), one older and faded.
+	static const FLinearColor Foam[] = { FLinearColor(0.012f, 0.075f, 0.52f), FLinearColor(0.014f, 0.09f, 0.48f), FLinearColor(0.03f, 0.10f, 0.38f) };
+	// Graphics G6: the life jacket tailored over this sailor's polo (Tools/blender/build_vest.py) and skinned like it, so it
+	// wraps the body as it sits; the rigid one below where it has not been built (or with -SailingNoPolo).
+	const FString VestRole = MetaHumanRoleName(Role);
+	USkeletalMesh* VestMesh = FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")) ? nullptr
+		: LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Vest.SKM_%s_Vest"), *VestRole, *VestRole, *VestRole), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (VestMesh)
+	{
+		USkeletalMeshComponent* Vest = NewObject<USkeletalMeshComponent>(this);
+		Vest->SetupAttachment(Body);
+		Vest->SetSkeletalMesh(VestMesh);
+		Vest->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vest->RegisterComponent();
+		Vest->SetLeaderPoseComponent(Body);
+		const int32 Shell = Vest->GetMaterialIndex(TEXT("PFD"));
+		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(Role + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		BoatParts.Add(Vest);
+	}
+	else if (CrewPFDMesh && Span > 10.f && Top > Waist)
 	{
 		const FVector Chest = At(TEXT("spine_03"));
 		// Over the shirt (mesh X is depth, Y width): the torso plus foam, centred a little ahead of the spine joints.
-		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.12f * Span), FVector(0.0125f * Span, 0.0115f * Span, 0.0092f * (Top - Waist + 2.f)));
+		// Graphics G6: deeper and centred further back, so it wraps the polo's back and sides (ahead of the spine it left the
+		// polo showing through behind).
+		const FTransform Place(Rig.Frame, FVector(Chest.X, Chest.Y, Waist) + Fwd * (0.06f * Span), FVector(0.0158f * Span, 0.0128f * Span, 0.0092f * (Top - Waist + 2.f)));
 		UStaticMeshComponent* Pfd = NewObject<UStaticMeshComponent>(this);
 		Pfd->SetStaticMesh(CrewPFDMesh);
 		Pfd->SetupAttachment(Body, TEXT("spine_04"));

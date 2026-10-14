@@ -32,8 +32,11 @@ for PAIR in sunfish:Sunfish ilca7:ILCA7 catalina22:Catalina22 catalina30:Catalin
 	grep -E "^$TAG: LOA" "$ARTIFACTS/blender-$TAG.log" || true
 done
 # The keelboats as they lie in their slips (the marina's neighbours).
-for PAIR in J22:j22 Catalina22:catalina22 Catalina30:catalina30; do
-	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_berthed.py" -- "${PAIR%%:*}" "$MODELS/${PAIR#*:}.json" "$MODELS" 2>&1 | grep -E "^Berthed:" || true
+# Graphics G6: six dresses each (build_berthed.py variants), one picked per slip.
+for V in 0 1 2 3 4 5; do
+	for PAIR in J22:j22 Catalina22:catalina22 Catalina30:catalina30; do
+		"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_berthed.py" -- "${PAIR%%:*}" "$MODELS/${PAIR#*:}.json" "$MODELS" "$V" 2>&1 | grep -E "^Berthed:" || true
+	done
 done
 [[ "${1:-}" == "--no-import" ]] && exit 0
 "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_boats.py ${IMPORT_ARGS:-}" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import-boats.log" 2>&1 \

@@ -136,7 +136,7 @@ def import_gear():
         path = os.path.join(MODELS, name + ".fbx")
         if os.path.exists(path):
             mesh = import_fbx(path, "/Game/Crew/Gear", name)
-            setup(mesh, False, {"PFD": "CrewPFD", "Straps": "CrewStraps", "Buckle": "CrewBuckle", "Reflective": "CrewReflective", "Cap": "CrewCap", "CapUnder": "CrewCapUnder"}, {})
+            setup(mesh, False, {"PFD": "CrewPFD", "Straps": "CrewStraps", "Buckle": "CrewBuckle", "Reflective": "CrewReflective", "Piping": "CrewPiping", "Cap": "CrewCap", "CapUnder": "CrewCapUnder"}, {})
             # Graphics G3: the shell and the cap's cloth in the crew fabric (scanned weave), where it has been built.
             for index, m in enumerate(mesh.get_editor_property("static_materials")):
                 slot = str(m.get_editor_property("material_slot_name")).split(".")[0]
@@ -151,10 +151,15 @@ import sys
 # Visual V7: the other seven boats (Tools/blender/build_fleet.py). `-- fleet` imports only them.
 FLEET = ("Sunfish", "ILCA7", "Catalina22", "Catalina30", "Hobie16", "Corsair880", "Lagoon42")
 only_fleet = "fleet" in sys.argv
-if "dress" in sys.argv:
-    # Graphics G6: `-- dress` imports only the berthed dresses of the keelboats.
-    for tag in ("J22", "Catalina22", "Catalina30"):
-        import_berthed(tag, f"/Game/Boats/{tag}")
+if "dress" in sys.argv or "gearonly" in sys.argv or "j22only" in sys.argv:
+    # Graphics G6: `-- dress` imports only the berthed dresses of the keelboats, `-- gearonly` only the crew's gear.
+    if "dress" in sys.argv:
+        for tag in ("J22", "Catalina22", "Catalina30"):
+            import_berthed(tag, f"/Game/Boats/{tag}")
+    if "gearonly" in sys.argv:
+        import_gear()
+    if "j22only" in sys.argv:
+        import_boat("J22", "/Game/Boats/J22")
     unreal.log("Import done")
     os._exit(0)
 if not only_fleet or "berthed" in sys.argv:

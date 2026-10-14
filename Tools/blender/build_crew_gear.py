@@ -2,8 +2,8 @@
 the character's own skeleton (shoulder span, torso height, head size) and hangs it on the chest and head bones.
 
   SM_CrewPFD  a foam life jacket: a vest open at the neck and arms, X forward, Y right, Z up, from the waist (z 0) to the
-              shoulders (z 1); width 1 at the chest (y -0.5..0.5), depth 0.62; quilted shell, zip, straps, buckles and
-              reflective patches (Graphics G3; slots PFD, Straps, Buckle, Reflective)
+              shoulders (z 1); width 1 at the chest (y -0.5..0.5), depth 0.62; Graphics G6: the club's Type III vest from
+              Bean's lesson photos (smooth nylon panels, piping, three chest straps, slots PFD, Straps, Buckle, Piping)
   SM_CrewCap  a six-panel cap on a head of radius 1, the crown's centre at the origin, the peak forward (Graphics G3:
               seams, button, eyelets, a brim with thickness and stitching, the back strap; slots Cap, CapUnder, Buckle)
 
@@ -67,7 +67,8 @@ def loft(bm, rings, slot_index, closed=True):
             f.material_index = slot_index
 
 
-PROF = [(0.0, 0.47, 0.30), (0.25, 0.49, 0.31), (0.55, 0.5, 0.31), (0.8, 0.46, 0.27), (0.92, 0.36, 0.2), (1.0, 0.22, 0.13)]
+# Graphics G6: fuller at the shoulders (the club vests cover them; the polo showed over a narrow top).
+PROF = [(0.0, 0.47, 0.30), (0.25, 0.49, 0.31), (0.55, 0.5, 0.31), (0.8, 0.49, 0.3), (0.92, 0.43, 0.25), (1.0, 0.3, 0.17)]
 
 
 def shell_size(z):
@@ -81,17 +82,15 @@ def shell_size(z):
 
 
 def quilt(a, z):
-    """Graphics G3: how far the stitched seams pull the outer fabric in (foam panels between them): vertical channels on
-    the front (x > 0), horizontal ones on the back, a groove each side of the zip."""
+    """How far the stitching pulls the outer fabric in. Graphics G6: the club vests (Bean's photos) are smooth foam panels,
+    not quilted: only the front opening's edges, a side seam, and the hem and neck binding."""
     c, s = math.cos(a), math.sin(a)
-    _, d = shell_size(z)
     y = s * 0.5
     g = lambda u, w: math.exp(-(u / w) ** 2)
     front = max(0.0, c) ** 0.5
-    seams = sum(g(abs(y) - y0, 0.010) for y0 in (0.035, 0.17, 0.30)) * front
-    back = max(0.0, -c) ** 0.5
-    seams += sum(g(z - z0, 0.012) for z0 in (0.28, 0.52, 0.74)) * back
-    seams += g(z - 0.04, 0.02) + g(z - 0.97, 0.02)          # the hem and the neck binding
+    seams = g(abs(y) - 0.02, 0.012) * front                 # the two front panels meet here
+    seams += 0.6 * g(abs(c), 0.08)                           # side seams
+    seams += g(z - 0.04, 0.02) + g(z - 0.97, 0.02)           # the hem and the neck binding
     return 0.011 * min(seams, 1.0)
 
 
@@ -131,12 +130,13 @@ def box(bm, centre, half, slot):
 
 
 def pfd():
-    """Graphics G3: a foam vest as worn dinghy and keelboat sailors wear them (after Stohlquist / Onyx style vests): quilted
-    nylon shell over foam panels (stitched channels), webbing hem and neck binding, a front zip with its pull, two
-    waist straps with side-release buckles, reflective patches on the shoulders. Slots: PFD (shell, recoloured per sailor),
-    Straps (webbing), Buckle (black plastic, zip), Reflective."""
+    """Graphics G6: the Type III foam vest the club's students wear (Bean's lesson photos, after the common "universal"
+    vests): royal blue nylon over smooth foam panels, the two front panels meeting down the middle, lighter blue piping
+    round the hem, neck and armholes, three grey webbing straps across the chest with black side-release buckles, and a
+    grey strap down each front panel. Slots: PFD (shell, recoloured per sailor), Straps (grey webbing), Buckle (black
+    plastic), Piping."""
     bm = bmesh.new()
-    PFD, STRAPS, BUCKLE, REFL = 0, 1, 2, 3
+    PFD, STRAPS, BUCKLE, PIPING = 0, 1, 2, 3
     na, nz = 112, 48
     outer = grid(bm, 0.0, 2 * math.pi, 0.0, 1.0, na, nz, 0.0, PFD, closed=True)
     # The inside (foam 2.5 cm and lining), a plain smaller shell, and the hem and neck faces between them.
@@ -150,26 +150,24 @@ def pfd():
         n = len(a)
         for k in range(n):
             f = bm.faces.new((a[k], b[k], b[(k + 1) % n], a[(k + 1) % n]))
-            f.material_index = STRAPS
-    # Webbing binding at the hem and the neck, proud of the shell.
-    grid(bm, 0.0, 2 * math.pi, 0.0, 0.035, na, 2, 0.004, STRAPS, closed=True)
-    grid(bm, 0.0, 2 * math.pi, 0.965, 1.0, na, 2, 0.004, STRAPS, closed=True)
-    # Two waist straps (38 mm webbing in a 0.38 m jacket: 0.1 of the unit width) with a side-release buckle at the front.
-    for z in (0.18, 0.40):
-        grid(bm, 0.0, 2 * math.pi, z - 0.045, z + 0.045, na, 2, 0.007, STRAPS, closed=True)
-        x, _, _ = surf(0.0, z, 0.016)
-        box(bm, (x, 0.055, z), (0.010, 0.05, 0.055), BUCKLE)       # female
-        box(bm, (x + 0.004, -0.03, z), (0.007, 0.04, 0.045), BUCKLE)  # male, tongue in
-    # The zip: a tape either side of the front centre, the teeth between, the pull near the top.
-    za = 0.05
-    grid(bm, -za, za, 0.035, 0.965, 4, 40, 0.004, BUCKLE)
-    x, _, _ = surf(0.0, 0.9, 0.012)
-    box(bm, (x, 0.0, 0.88), (0.006, 0.012, 0.04), BUCKLE)
-    # Reflective patches high on the front of each shoulder.
+            f.material_index = PIPING
+    # Piping at the hem and the neck, proud of the shell, and the dark slit where the front panels meet.
+    grid(bm, 0.0, 2 * math.pi, 0.0, 0.03, na, 2, 0.004, PIPING, closed=True)
+    grid(bm, 0.0, 2 * math.pi, 0.97, 1.0, na, 2, 0.004, PIPING, closed=True)
+    grid(bm, -0.012, 0.012, 0.03, 0.97, 2, 40, 0.001, BUCKLE)
+    # A strap down each front panel (from the hem over the shoulder), standing a little off the foam.
     for sgn in (1, -1):
-        a0, a1 = sorted((sgn * 0.55, sgn * 0.95))
-        grid(bm, a0, a1, 0.80, 0.90, 8, 4, 0.003, REFL)
-    export("SM_CrewPFD", bm, ["PFD", "Straps", "Buckle", "Reflective"])
+        a = sgn * 0.36
+        grid(bm, a - 0.07, a + 0.07, 0.03, 0.97, 3, 40, 0.006, STRAPS)
+    # Three chest straps (38 mm webbing in a 0.38 m jacket: 0.1 of the unit width) with their buckles off-centre.
+    for z in (0.2, 0.42, 0.62):
+        grid(bm, 0.0, 2 * math.pi, z - 0.04, z + 0.04, na, 2, 0.009, STRAPS, closed=True)
+        x, _, _ = surf(0.12, z, 0.018)
+        box(bm, (x, 0.07, z), (0.010, 0.055, 0.05), BUCKLE)       # female
+        box(bm, (x + 0.004, -0.005, z), (0.007, 0.035, 0.042), BUCKLE)  # male, tongue in
+        # The tail hanging loose below the buckle.
+        grid(bm, 0.05, 0.12, z - 0.16, z - 0.04, 2, 4, 0.012, STRAPS)
+    export("SM_CrewPFD", bm, ["PFD", "Straps", "Buckle", "Piping"])
 
 
 def cap():

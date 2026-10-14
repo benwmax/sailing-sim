@@ -36,7 +36,7 @@ DEPTH = CFG["canoe_depth"]
 RIG = CFG["rig"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
-         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "Rope"]
+         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "Rope", "Teak"]
 
 
 # ---------------------------------------------------------------- the physics hull (FHullShape, BoatModel.cpp)
@@ -383,6 +383,16 @@ hull.face(list(reversed(loop)), "Topsides")
 # Rubrail along the hull-deck joint.
 for side in (1, -1):
     tube(hull, [(x, side * (sharp_half_beam(x) + 0.008), sheer(x) - 0.01) for x in XS[2:-3:3]], 0.014, "Rubrail", 8)
+
+# Graphics G6: the teak toe rails along the deck edge, weathered grey (Bean's lesson photos), from the bow to the cockpit's end.
+for side in (1, -1):
+    pts = []
+    for x in XS[8:-12:3]:
+        if x < COCKPIT_AFT + 0.15 or x > BOW - 0.4:
+            continue
+        y = side * (sharp_half_beam(x) - 0.028)
+        pts.append((x, y, deck_z(x, y) + 0.016))
+    tube(hull, pts, 0.017, "Teak", 4)
 
 # ---------------------------------------------------------------- deck, cabin trunk, cockpit
 

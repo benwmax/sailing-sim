@@ -1,4 +1,4 @@
-"""Graphics G3: imports each sailor's polo (Tools/blender/build_polo.py, Artifacts/crew/<Role>_Polo.fbx) and deck shoes
+"""Graphics G3: imports each sailor's polo (and Graphics G6: life jacket, build_vest.py: SKM_<Role>_Vest) (Tools/blender/build_polo.py, Artifacts/crew/<Role>_Polo.fbx) and deck shoes
 (build_shoes.py, skinned from the feet: SKM_<Role>_Shoes) as skeletal meshes
 on the MetaHuman's skeleton: the FBX comes in as a static mesh in the outfit's space, the default T-shirt's skin weights are
 transferred onto it (Geometry Script, closest point on the surface) and a skeletal mesh is made with the outfit's bones
@@ -69,12 +69,21 @@ def make(role, piece, fbx, source_mesh, slots):
     log(f"{role}: {path} {'ok' if mesh else 'FAILED'} ({o1}, {o2}, {o3})")
 
 
+# Graphics G6: the life jacket tailored over the polo (Tools/blender/build_vest.py), skinned from the T-shirt like the polo.
+VEST_SLOTS = {"PFD": "/Game/Crew/Fabric/MI_Crew_PFDShell", "Straps": "/Game/Boats/Materials/MI_Boat_CrewStraps",
+              "Buckle": "/Game/Boats/Materials/MI_Boat_CrewBuckle", "Piping": "/Game/Boats/Materials/MI_Boat_CrewPiping"}
+# PIECES=Vest (comma list) imports only those.
+PIECES = [p for p in os.environ.get("PIECES", "Polo,Shoes,Vest").split(",") if p]
+
 for role in ("Helm", "Trimmer", "Bow"):
     outfit = unreal.load_asset(f"/Game/Crew/MetaHumans/{role}/Clothing/{role}_Outfits")
     body = unreal.load_asset(f"/Game/Crew/MetaHumans/{role}/Body/SKM_{role}_BodyMesh")
     polo = os.path.join(CREW, f"{role}_Polo.fbx")
     shoes = os.path.join(CREW, f"{role}_Shoes.fbx")
-    if outfit and os.path.exists(polo):
+    vest = os.path.join(CREW, f"{role}_Vest.fbx")
+    if outfit and os.path.exists(polo) and "Polo" in PIECES:
         make(role, "Polo", polo, outfit, SLOTS)    # skinned from the T-shirt it was tailored from
-    if body and os.path.exists(shoes):
+    if body and os.path.exists(shoes) and "Shoes" in PIECES:
         make(role, "Shoes", shoes, body, SHOE_SLOTS)  # skinned from the feet
+    if outfit and os.path.exists(vest) and "Vest" in PIECES:
+        make(role, "Vest", vest, outfit, VEST_SLOTS)  # skinned from the T-shirt, over the polo

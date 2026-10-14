@@ -687,7 +687,8 @@ def build_boat_surface(name, bend):
 BOAT_LIBRARY = {
     "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.30, 0.0, 1.0, 0.0, 0.10),     # white gelcoat
     "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.35, 0.0, 1.0, 0.0, 0.10),
-    "NonSkid": ("M_BoatSurface", (0.70, 0.70, 0.66), 0.62, 0.0, 0.0, 1.0, 0.30),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
+    # Graphics G6: the club J/22s' non-skid is beige with grime worked into it (Bean's lesson photos), not white.
+    "NonSkid": ("M_BoatSurface", (0.56, 0.52, 0.43), 0.66, 0.0, 0.0, 1.0, 0.35),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
     "Bootstripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),  # navy gelcoat stripes
     "CoveStripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),
     "Antifouling": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.80, 0.0, 0.0, 0.0, 0.60),  # ablative bottom paint
@@ -697,6 +698,7 @@ BOAT_LIBRARY = {
     "Aluminium": ("M_BoatSurface", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),        # clear anodized spars
     "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
     "Wood": ("M_BoatSurface", (0.30, 0.17, 0.07), 0.30, 0.0, 1.0, 0.0, 0.15),           # varnished ash tiller
+    "Teak": ("M_BoatSurface", (0.22, 0.19, 0.15), 0.85, 0.0, 0.0, 0.0, 0.5),           # weathered grey teak toe rails (G6)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
     # The crew (Visual V3): foul-weather jacket (recoloured per sailor), PFD, trousers, deck boots, skin, cap, glasses.
@@ -708,7 +710,8 @@ BOAT_LIBRARY = {
     "CrewCap": ("M_BoatSurface", (0.72, 0.72, 0.72), 0.80, 0.0, 0.0, 0.0, 0.40),
     # Graphics G3: the life jacket's webbing and buckles, its reflective patches (glass-bead tape: grey, a broad bright
     # lobe), the cap's brim underside and sweatband.
-    "CrewStraps": ("M_BoatSurface", (0.022, 0.022, 0.026), 0.72, 0.0, 0.0, 0.0, 0.45),
+    "CrewStraps": ("M_BoatSurface", (0.26, 0.27, 0.28), 0.75, 0.0, 0.0, 0.0, 0.45),     # Graphics G6: grey webbing (the club vests)
+    "CrewPiping": ("M_BoatSurface", (0.05, 0.28, 0.72), 0.6, 0.0, 0.0, 0.0, 0.3),        # lighter blue nylon piping
     "CrewBuckle": ("M_BoatSurface", (0.012, 0.012, 0.013), 0.38, 0.0, 0.3, 0.0, 0.02),
     "CrewReflective": ("M_BoatSurface", (0.55, 0.56, 0.58), 0.30, 0.0, 0.6, 0.0, 0.05),
     "CrewCapUnder": ("M_BoatSurface", (0.07, 0.09, 0.07), 0.85, 0.0, 0.0, 0.0, 0.40),
