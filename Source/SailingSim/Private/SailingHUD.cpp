@@ -319,7 +319,9 @@ void ASailingHUD::DrawHUD()
 	}
 	if (!Settings->bShowHud)
 	{
-		Text(TEXT("H: show instruments   ?: controls   Tab: settings"), 20.f, 20.f, Dim, 0.8f);
+		// Clean stills (-SailingNoHud) get no hint line either.
+		static const bool bNoHud = FParse::Param(FCommandLine::Get(), TEXT("SailingNoHud"));
+		if (!bNoHud && !SlateHud.IsValid()) Text(TEXT("H: show instruments   ?: controls   Tab: settings"), 20.f, 20.f, Dim, 0.8f);
 		return;
 	}
 	if (SlateHud.IsValid())
