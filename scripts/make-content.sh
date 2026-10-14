@@ -10,6 +10,11 @@ if [[ -n "${CLOUD_NOISE:-}" || ! -f "$REPO_ROOT/Content/Materials/Clouds/T_Cloud
 	"$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_cloud_noise.py" \
 		-unattended -nosplash -nosound -NoP4 -stdout > "$ARTIFACTS/import_cloud_noise.log" 2>&1
 fi
+# Graphics G4: the front end's maps and images (Tools/ui/make_ui_art.py), from the terrain data and bench screenshots.
+"$REPO_ROOT/Tools/venv/bin/python" -I "$REPO_ROOT/Tools/ui/make_ui_art.py" > /dev/null
+"$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_ui_art.py" \
+	-unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import_ui_art.log" 2>&1
+grep -c "UI art:" "$ARTIFACTS/import_ui_art.log" | sed 's/^/UI art textures: /'
 for SCRIPT in make_materials.py make_lake_map.py; do
 	# The map is rebuilt from scratch; remove the old file so stale actor classes can't block it.
 	[[ "$SCRIPT" == make_lake_map.py ]] && rm -f "$REPO_ROOT/Content/Maps/Lake.umap"

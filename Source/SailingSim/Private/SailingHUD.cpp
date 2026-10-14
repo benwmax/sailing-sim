@@ -1,4 +1,10 @@
 #include "SailingHUD.h"
+#include "SailSession.h"
+#include "UI/SailFrontEnd.h"
+#include "UI/SailLoading.h"
+#include "Engine/GameViewportClient.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Kismet/GameplayStatics.h"
 #include "SailboatPawn.h"
 #include "SailingSettings.h"
 #include "SailingGameMode.h"
@@ -60,9 +66,127 @@ void ASailingHUD::Bar(const FString& Label, float Value, float Lo, float Hi, flo
 	}
 }
 
+bool ASailingHUD::UsesFrontEnd() const
+{
+	static const bool bOff = GIsAutomationTesting || FParse::Param(FCommandLine::Get(), TEXT("SailingNoFrontEnd")) || FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"))
+		|| FCommandLine::Get() && (FString(FCommandLine::Get()).Contains(TEXT("SailingBench=")) || FString(FCommandLine::Get()).Contains(TEXT("SailingCapture="))
+			|| FString(FCommandLine::Get()).Contains(TEXT("SailingShot=")) || FString(FCommandLine::Get()).Contains(TEXT("SailingDrill=")))
+		|| FParse::Param(FCommandLine::Get(), TEXT("SailingMenu")) || IsRunningCommandlet();
+	FString Forced;   // -SailingFrontEnd=<screen> forces it (screenshots of the menus)
+	return !bOff || FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Forced);
+}
+
+void ASailingHUD::BeginPlay()
+{
+	Super::BeginPlay();
+	if (!UsesFrontEnd() || !PlayerOwner) return;
+	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+	FString Screen;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Screen))
+	{
+		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Loading.
+		if (Screen == TEXT("Loading"))
+		{
+			if (Session && !Session->bHasActive) { Session->Active = USailSessionSubsystem::MakeDefault(); Session->bHasActive = true; }
+			Session->bStarted = false;
+		}
+		else
+		{
+			static const TCHAR* Names[] = { TEXT("Title"), TEXT("World"), TEXT("Launch"), TEXT("Boat"), TEXT("Conditions"), TEXT("Mode"), TEXT("Pause"), TEXT("ConditionsInGame"), TEXT("Settings"), TEXT("Controls") };
+			for (int32 I = 0; I < UE_ARRAY_COUNT(Names); ++I)
+			{
+				if (Screen == Names[I])
+				{
+					OpenFrontEnd(ESailScreen::Title);
+					if (I > 0 && I != int32(ESailScreen::Pause))
+					{
+						// Walk the flow to it, so Back works as it would.
+						for (int32 K = 1; K <= I && K <= int32(ESailScreen::Mode); ++K) FrontEnd->Push(ESailScreen(K));
+						if (I > int32(ESailScreen::Mode)) FrontEnd->Push(ESailScreen(I));
+					}
+					else if (I == int32(ESailScreen::Pause)) { CloseFrontEnd(); OpenPause(); }
+					return;
+				}
+			}
+		}
+	}
+	if (Session && Session->bHasActive && !Session->bStarted)
+	{
+		// A session just loaded: the loading screen until the world is ready and the player says go.
+		if (ASailboatPawn* Pawn = Cast<ASailboatPawn>(PlayerOwner->GetPawn())) Pawn->SetHeldByUI(true);
+		Loading = SNew(SSailLoading).World(GetWorld()).OnStart(FSimpleDelegate::CreateUObject(this, &ASailingHUD::StartSailing));
+		ShowWidget(Loading.ToSharedRef(), Loading);
+	}
+	else if (!Session || !Session->bHasActive)
+	{
+		OpenFrontEnd(ESailScreen::Title);
+	}
+}
+
+void ASailingHUD::EndPlay(const EEndPlayReason::Type Reason)
+{
+	RemoveWidgets();
+	Super::EndPlay(Reason);
+}
+
+void ASailingHUD::ShowWidget(TSharedRef<SWidget> Widget, TSharedPtr<SWidget> Focus)
+{
+	RemoveWidgets();
+	if (!GEngine || !GEngine->GameViewport) return;
+	GEngine->GameViewport->AddViewportWidgetContent(Widget, 50);
+	ShownWidget = Widget;
+	PlayerOwner->SetShowMouseCursor(true);
+	FInputModeUIOnly Mode;
+	Mode.SetWidgetToFocus(Focus);
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	PlayerOwner->SetInputMode(Mode);
+}
+
+void ASailingHUD::RemoveWidgets()
+{
+	if (ShownWidget.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(ShownWidget.ToSharedRef());
+	ShownWidget.Reset();
+}
+
+void ASailingHUD::OpenFrontEnd(ESailScreen Screen)
+{
+	if (ASailboatPawn* Pawn = Cast<ASailboatPawn>(PlayerOwner->GetPawn()); Pawn && Screen != ESailScreen::Pause) Pawn->SetHeldByUI(true);
+	Loading.Reset();
+	FrontEnd = SNew(SSailFrontEnd).Start(Screen).Player(PlayerOwner).OnClose(FSimpleDelegate::CreateUObject(this, &ASailingHUD::CloseFrontEnd));
+	ShowWidget(FrontEnd.ToSharedRef(), FrontEnd);
+	FrontEnd->FocusCurrent();
+}
+
+void ASailingHUD::OpenPause()
+{
+	if (IsFrontEndOpen()) return;
+	UGameplayStatics::SetGamePaused(this, true);
+	bPausedByMenu = true;
+	OpenFrontEnd(ESailScreen::Pause);
+}
+
+void ASailingHUD::CloseFrontEnd()
+{
+	RemoveWidgets();
+	FrontEnd.Reset();
+	Loading.Reset();
+	if (bPausedByMenu) { UGameplayStatics::SetGamePaused(this, false); bPausedByMenu = false; }
+	if (ASailboatPawn* Pawn = Cast<ASailboatPawn>(PlayerOwner->GetPawn())) Pawn->SetHeldByUI(false);
+	PlayerOwner->SetShowMouseCursor(false);
+	PlayerOwner->SetInputMode(FInputModeGameOnly());
+	FSlateApplication::Get().SetAllUserFocusToGameViewport();
+}
+
+void ASailingHUD::StartSailing()
+{
+	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->bStarted = true;
+	CloseFrontEnd();
+}
+
 void ASailingHUD::DrawHUD()
 {
 	Super::DrawHUD();
+	if (IsFrontEndOpen()) return;   // the menus own the screen
 	const ASailboatPawn* Boat = PlayerOwner ? Cast<ASailboatPawn>(PlayerOwner->GetPawn()) : nullptr;
 	if (!Boat || !Canvas)
 	{

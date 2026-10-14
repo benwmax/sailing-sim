@@ -25,6 +25,8 @@ class SAILINGSIM_API ATrafficManager : public AActor
 	GENERATED_BODY()
 
 public:
+	/** Graphics G4: the fleet for the traffic setting has been placed (the loading screen waits for it). */
+	bool IsPopulated() const { return PopulatedLevel >= 0; }
 	ATrafficManager();
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;

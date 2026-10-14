@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "SailingHUD.h"
 #include "SailSession.h"
 #include "GroomComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
@@ -900,7 +901,8 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		const Vec3 O = Boat.OriginPosition();
 		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
 	}
-	const int32 Steps = Stepper.Advance(DeltaSeconds);
+	// Graphics G4: the front end and the loading screen hold the boat where it is (the world keeps moving behind them).
+	const int32 Steps = bHeldByUI && !bTrafficBoat ? 0 : Stepper.Advance(DeltaSeconds);
 	for (int32 I = 0; I < Steps; ++I)
 	{
 		const FBoatControls Before = Controls;
@@ -2177,6 +2179,16 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	if (Action == TEXT("Menu"))
 	{
+		// Graphics G4: Tab opens Pause (the old settings list stays for the runs that start without the front end).
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			if (ASailingHUD* Hud = PC->GetHUD<ASailingHUD>(); Hud && Hud->UsesFrontEnd() && !bTrafficBoat)
+			{
+				bMenuOpen = false;
+				Hud->OpenPause();
+				return;
+			}
+		}
 		bMenuOpen = !bMenuOpen;
 		bControlsCard = false;
 		return;

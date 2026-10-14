@@ -116,6 +116,17 @@ public:
 	/** The ship's log (Y shows it). Other systems add events (race results, rules judgments). */
 	const FLogbook& GetLogbook() const { return Logbook; }
 	bool IsLogOpen() const { return bLogOpen; }
+	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
+	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
+	bool IsHeldByUI() const { return bHeldByUI; }
+	void SetLogOpen(bool bOpen) { bLogOpen = bOpen; }
+	bool HasLastRun() const { return !LastRun.IsEmpty(); }
+	void WatchLastRun() { if (!LastRun.IsEmpty()) SetWatching(true); }
+	void SetChartOpenFromUI(bool bOpen) { bChartOpen = bOpen; }
+	void SetPhotoFromUI(bool bOn) { SetPhoto(bOn); }
+	// Graphics G4: the Controls screen rebinds through the same rows the old keys screen used (swaps on a conflict).
+	void UIBuildKeyRows() { BuildKeyRows(); }
+	void UIAssignKey(int32 Row, const FKey& Key) { AssignKey(Row, Key); }
 	void AddLogEvent(const FString& Remarks);
 	/** The passage plan's next waypoint on the coast (index into the area's plan), or -1. */
 	int32 GetPassageIndex() const { return PassageIndex; }
@@ -272,6 +283,7 @@ private:
 	FLogEntry MakeLogEntry(const TCHAR* Kind, const FString& Remarks) const;
 	FLogbook Logbook;
 	bool bLogOpen = false;
+	bool bHeldByUI = false;
 	bool bLogStarted = false;
 	double LogNm = 0.0;
 	double NextWatchUnix = 0.0;

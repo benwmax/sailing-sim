@@ -29,6 +29,8 @@ class SAILINGSIM_API ASailingEnvironment : public AActor
 	GENERATED_BODY()
 
 public:
+	/** Graphics G4: the first cloud weather map has been painted (the loading screen waits for it). */
+	bool HasWeatherMap() const { return bHasWeatherMap; }
 	ASailingEnvironment();
 
 	virtual void BeginPlay() override;
