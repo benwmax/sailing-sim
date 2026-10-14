@@ -30,6 +30,7 @@
 #include "TrafficManager.h"
 #include "SailingEnvironment.h"
 #include "UnrealClient.h"
+#include "ShaderCompiler.h"
 
 using namespace Sailing;
 
@@ -542,6 +543,14 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		return;
 	}
 
+#if WITH_EDITOR
+	// Graphics G6: uncooked runs (run-game.sh, capture-scenes.sh) compile shaders on demand and draw a material's default
+	// until it is ready: a still once showed a storm sky with no clouds. Finish the compiling before the measured window.
+	if (Elapsed < BenchWarmupSeconds && GShaderCompilingManager && GShaderCompilingManager->GetNumRemainingJobs() > 0)
+	{
+		GShaderCompilingManager->FinishAllCompilation();
+	}
+#endif
 	Elapsed += DeltaSeconds;
 	if (Elapsed > BenchWarmupSeconds && Elapsed <= BenchWarmupSeconds + BenchSeconds)
 	{

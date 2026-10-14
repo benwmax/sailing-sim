@@ -1199,6 +1199,12 @@ def build_water_v4():
 STORM = dict(ShelfLeadM=250.0, ShelfBaseM=520.0, ShelfLipM=180.0, ShelfSlope=0.85, ShelfDepthM=3500.0, CoreBehindM=700.0,
              CoreBaseM=750.0, CoreTopM=6500.0, AnvilBaseM=4800.0, AnvilAheadM=9000.0)
 
+# Graphics G6: extinction of cumulus, stratus, storm and rain relative to CloudDensity (-SailingCloudLayerExt overrides).
+CLOUD_EXT = (1.0, 1.0, 1.0, 1.0)
+# Graphics G6: the most optical depth one march step of storm, stratus or rain may hold (fair cumulus twice that; see the
+# caps in CLOUD_CODE). 1 measured smoothest on the storm stills; -SailingCloudStepDepth overrides.
+MAX_STEP_DEPTH = 1.0
+
 CLOUD_CODE = """
 // Visual V5: the cloud layers from the weather map (FWeatherMap: cumulus, stratus, cirrus, storm extent), each with its
 // own base, top, density profile and noise; the storm's built structure (shelf cloud, rain core, anvil) from the gust
@@ -1267,6 +1273,14 @@ float ci = w.b * pCi * Ci.w;
 // Conservative density: what the noise can at most leave (lets the tracer skip empty sky quickly).
 Cons = saturate(cu + st + ci + storm + rain);
 float d = 0.0;
+// Graphics G6: the length of this view ray's march step (m). UE's tracer spreads up to Tracer.y samples over the ray's run
+// through the cloud slab (Tracer.x km thick), capped at Tracer.w km; runs under Tracer.z km get proportionally fewer.
+float3 vd = normalize(p - Cam * 0.01);
+float runM = min(Tracer.x * 1000.0 / max(abs(vd.z), 1e-3), Tracer.w * 1000.0);
+float stepM = max(runM, Tracer.z * 1000.0) / max(Tracer.y, 1.0);
+// The same sample feeds the shadow rays toward the sun, whose steps are Shadow.x km over Shadow.y samples: the light
+// they carry must not jump from lit to black within one of their steps either.
+float capStepM = max(stepM, Shadow.x * 1000.0 / max(Shadow.y, 1.0));
 Albedo = float3(0.95, 0.95, 0.95);
 Emit = float3(0.0, 0.0, 0.0);
 AO = 1.0;
@@ -1279,7 +1293,9 @@ AO = 1.0;
     float3 q = (p - float3(Drift.xy, 0.0)) * 0.001;   // km
     // Filter by what a sample covers: a pixel's footprint at this distance, but never finer than the march step
     // (100-200 m): mip 0 everywhere aliased into speckle (the V5 grain).
-    float foot = max(distance(p, Cam * 0.01) * 0.0022, 160.0);  // m: never finer than a march step (about 190 m at 80 samples over 15 km)
+    // Graphics G6: and never finer than this ray's actual step. Rays near the horizon cross tens of kilometres of the slab
+    // in the same sample count (steps of 600 m at 50 km), where noise filtered at 160 m aliased into grain.
+    float foot = max(distance(p, Cam * 0.01) * 0.0022, max(160.0, stepM * 0.85));
     float shapeMip = clamp(log2(foot / 31.0), 0.0, 6.0);        // shape texel: 4 km / 128
     float detailMip = clamp(log2(foot / 10.4), 0.0, 5.0);       // detail texel: 667 m / 64
     float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
@@ -1316,11 +1332,24 @@ AO = 1.0;
     float lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
     float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * lip) - (1.0 - n2) * (0.06 * shelf + 0.35 * nearBase) * (1.0 - lip)) * 1.6);
     // Rain shafts: streaks drawn out vertically (falling), thin veils rather than cloud.
-    float streak = Shape.SampleLevel(ShapeSampler, q * float3(1.6, 1.6, 0.35) + float3(0.0, 0.0, View.RealTime * 0.002), 0).g;
+    // Graphics G6: filtered by the sample's footprint like the rest (mip 0, 20 m texels, aliased into vertical scratches).
+    float streak = Shape.SampleLevel(ShapeSampler, q * float3(1.6, 1.6, 0.35) + float3(0.0, 0.0, View.RealTime * 0.002), clamp(log2(foot / 19.5), 0.0, 6.0)).g;
     // Rain falls in shafts a kilometre or two apart, with lighter gaps between them.
     float shafts = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(L / 900.0 + sin(L / 2700.0) * 2.0) * sin(D / 1300.0 + 0.7));
     float dRain = rain * (0.03 + 0.09 * shafts) * (0.8 + 0.4 * smoothstep(0.3, 0.9, streak));
-    d = max(max(max(dCu, dSt), max(dCi, dSm)), dRain);
+    // Graphics G6: each layer's extinction relative to the full CloudDensity (Ext: cumulus, stratus, storm, rain). The grain
+    // in the storm skies was optical depth per march step: at 0.1 /m over a 190 m step every ray went opaque inside one
+    // step, so each pixel was lit at whatever depth its jittered sample landed (bright skin or dark interior). A storm's
+    // mass and a stratus deck at a fifth of that take several steps to close and the march averages the light; the
+    // contrast comes from the shading below (dark bases, lit faces), not from the edge's opacity.
+    // Graphics G6: no more than MaxStepDepth of optical depth in one march step. Denser than that, a ray goes opaque within a step and
+    // the pixel is lit at whatever depth its jittered sample landed (bright skin or dark core): the frosted grain. Capped,
+    // cloud closes over two or three steps and the march averages its light; thick cloud stays opaque. The storm, stratus
+    // and rain are capped by the longer of the view and shadow steps (their light came through 400 m shadow steps that
+    // were all-or-nothing); fair cumulus only by the view step, so its sunlit tops keep their shaded bases.
+    float cV = Tracer.y > 0.0 ? 2.0 * MaxStepDepth / (stepM * Density) : 1e6;   // cumulus: twice the storm's
+    float cS = Tracer.y > 0.0 ? MaxStepDepth / (capStepM * Density) : 1e6;
+    d = max(max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cS)), max(dCi, min(dSm * Ext.z, cS))), min(dRain * Ext.w, cS));
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
     // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
     float wet = saturate(dSm / max(d, 1e-3)) * (1.0 - smoothstep(3000.0, 4500.0, alt));
@@ -1373,10 +1402,10 @@ def build_cloud_layers():
     vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
-        ("Drift", (0, 0, 0, 0))))}
+        ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -1385,9 +1414,10 @@ def build_cloud_layers():
     for n, t in tex.items():
         connect(t, "", c, n)
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
-                   ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift")):
+                   ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow")):
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
+    connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 1400), "", c, "MaxStepDepth")
     # Extinction (per metre) in the subsurface pin; albedo in base colour; height AO; lightning as emission.
     MEL.connect_material_property(c, "Albedo", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
