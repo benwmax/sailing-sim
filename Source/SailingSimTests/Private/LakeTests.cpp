@@ -364,10 +364,13 @@ bool FSailingShelterTest::RunTest(const FString& Parameters)
 	FShelterMap Shelter;
 	Shelter.Build(Lake, 0.0, 10.0);
 	const double Near = Shelter.FactorAt(560.0, 100.0), Mid = Shelter.FactorAt(400.0, 100.0), Far = Shelter.FactorAt(50.0, 100.0);
-	AddInfo(FString::Printf(TEXT("Wind behind a 15 m bluff: %.0f%% at 40 m, %.0f%% at 200 m, %.0f%% at 550 m"), Near * 100, Mid * 100, Far * 100));
+	AddInfo(FString::Printf(TEXT("Wind behind a 15 m bluff: %.0f%% at 40 m, %.0f%% at 200 m, %.0f%% at 550 m (lee %.0f%%, open-water build %.0f%%)"),
+		Near * 100, Mid * 100, Far * 100, Shelter.LeeAt(50.0, 100.0) * 100, Shelter.BuildAt(50.0, 100.0) * 100));
 	TestTrue(TEXT("Sheltered right under the bluff"), Near < 0.5);
 	TestTrue(TEXT("Recovering with distance"), Mid > Near && Far > Mid);
-	TestTrue(TEXT("Full wind 35+ heights downwind"), Far > 0.95);
+	// W1: the lee has gone 35 heights downwind; what is left is the wind still building over 550 m of open water.
+	TestTrue(TEXT("No lee 35+ heights downwind"), Shelter.LeeAt(50.0, 100.0) > 0.98);
+	TestTrue(TEXT("... the wind still building from the shore"), Far > 0.85 && Far < 0.95);
 
 	FWindParams P;
 	P.SpeedKnots = 12.0;

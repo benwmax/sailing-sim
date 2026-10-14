@@ -1,5 +1,6 @@
 // Phase 8 physics checks against real numbers, outside Unreal. Build and run with scripts/reference-checks.sh.
 #include "ReferenceChecks.h"
+#include "Wind.h"
 #include <cstdio>
 #include <cstring>
 
@@ -7,6 +8,8 @@ using namespace Sailing;
 
 int main(int Argc, char** Argv)
 {
+	// W1: the fine turbulence tile, from the repository root or from where the script runs.
+	if (!Sailing::FTurbulenceTile::LoadShared("Content/TerrainData/Wind.mann")) std::printf("(no Content/TerrainData/Wind.mann: fine turbulence stand-in)\n");
 	const bool bQuick = Argc > 1 && std::strcmp(Argv[1], "--quick") == 0;
 	const bool bCsv = Argc > 1 && std::strcmp(Argv[Argc - 1], "--csv") == 0;
 	const std::vector<FReferenceCheck> Checks = RunReferenceChecks(bQuick);

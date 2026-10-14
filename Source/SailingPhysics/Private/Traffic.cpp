@@ -233,6 +233,37 @@ namespace Sailing
 		return Wind ? Wind->GetParams().FromDegrees * kDeg : 0.0;
 	}
 
+	double FTrafficSim::LocalWindFrom(double X, double Y) const
+	{
+		// The wind a helmsman reads there (puffs and shifts), not each few seconds' turbulence.
+		if (!Wind) return 0.0;
+		double From, Factor;
+		Wind->ReadableAt(X, Y, Time, From, Factor);
+		return From;
+	}
+
+	bool FTrafficSim::WantsShiftTack(const FTrafficVessel& V, double Target) const
+	{
+		// W1: on a beat, sail the shifts. Headed by more than 7 degrees against the median wind (the boat would point
+		// further from the mark than the other tack would), tack; or tack for clearly more wind 200 m along the other tack.
+		if (!Wind || Time - V.LastTackTime < 45.0) return false;
+		const FVesselSnapshot S = V.Snapshot();
+		const double WFL = LocalWindFrom(S.X, S.Y), WFM = WindFrom();
+		const double Header = -V.Side * WrapAngle(WFL - WFM);
+		// Not on the layline: after tacking the mark must still be upwind of the new tack's course.
+		const double NewHeading = WrapAngle(WFL + V.Side * kBeatAngle);
+		if (std::fabs(WrapAngle(Target - NewHeading)) > 0.5 * kPi) return false;
+		if (Header > 7.0 * kDeg) return true;
+		const double Here = WrapAngle(WFL - V.Side * kBeatAngle);
+		auto Pressure = [&](double H)
+		{
+			double From, Factor;
+			Wind->ReadableAt(S.X + std::cos(H) * 200.0, S.Y + std::sin(H) * 200.0, Time, From, Factor);
+			return Factor;
+		};
+		return Time - V.LastTackTime > 60.0 && Pressure(NewHeading) > 1.12 * Pressure(Here);
+	}
+
 	const FTrafficVessel* FTrafficSim::Find(int Id) const
 	{
 		for (const FTrafficVessel& V : Vessels) if (V.Id == Id) return &V;
@@ -263,7 +294,9 @@ namespace Sailing
 
 	double FTrafficSim::SailableHeading(const FTrafficVessel& V, double Heading, bool bKeepTack) const
 	{
-		const double WF = WindFrom();
+		// W1: close-hauled or as deep as she goes in the wind where she is (a lift lets her point higher).
+		const FVesselSnapshot S = V.Snapshot();
+		const double WF = LocalWindFrom(S.X, S.Y);
 		const double Twa = WrapAngle(WF - Heading); // + = wind from starboard
 		const int Side = bKeepTack ? V.Side : (Twa >= 0.0 ? 1 : -1);
 		if (std::fabs(Twa) < kBeatAngle) return WrapAngle(WF - Side * kBeatAngle);
@@ -304,7 +337,8 @@ namespace Sailing
 			V.SpeedFactor = bSlow ? 0.3 : 1.0;
 			return;
 		}
-		// Under sail: beat to windward in tacks and run in gybes, switching at the layline.
+		// Under sail: beat to windward in tacks and run in gybes, switching at the layline (laylines against the median
+		// wind, so a passing shift does not flip her back and forth). W1: upwind she also tacks on the headers and for pressure.
 		const double WF = WindFrom();
 		const double Twa = WrapAngle(WF - Target);
 		const bool bCanTack = Time - V.LastTackTime > 20.0;
@@ -312,6 +346,11 @@ namespace Sailing
 		{
 			const double Rel = WrapAngle(Target - WF); // + = target to the right of the wind
 			if (bCanTack && ((V.Side > 0 && Rel > kBeatAngle - kLaylineSlack) || (V.Side < 0 && Rel < -(kBeatAngle - kLaylineSlack))))
+			{
+				V.Side = -V.Side;
+				V.LastTackTime = Time;
+			}
+			else if (WantsShiftTack(V, Target))
 			{
 				V.Side = -V.Side;
 				V.LastTackTime = Time;
@@ -628,7 +667,8 @@ namespace Sailing
 		}
 		FBoatModel& B = *V.Boat;
 		B.SetWaterCurrent(Current);
-		const double Twa = WrapAngle(WindFrom() - V.SteerHeading);
+		// W1: the wind she is sailing in (SailableHeading chose the course in it).
+		const double Twa = WrapAngle(LocalWindFrom(B.GetState().Position.X, B.GetState().Position.Y) - V.SteerHeading);
 		V.Pilot.TargetTWADeg = Clamp(Twa / kDeg, -180.0, 180.0);
 		if (std::fabs(V.Pilot.TargetTWADeg) < kBeatAngle / kDeg) V.Pilot.TargetTWADeg = (V.Pilot.TargetTWADeg >= 0.0 ? 1.0 : -1.0) * kBeatAngle / kDeg;
 		// A hard tack needs the full rudder.

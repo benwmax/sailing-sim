@@ -102,6 +102,7 @@ private:
 	TSharedPtr<Sailing::FShelterMap> Shelter;
 	TFuture<TSharedPtr<Sailing::FShelterMap>> PendingShelter;
 	bool bShelterBuilding = false;
+	std::vector<Sailing::FShelterObstacle> ShelterObstacles; // W1: the houses, for the lee map
 	void UpdateShelter();
 	void UpdateResolutionGovernor(float DeltaSeconds);
 	float GovernorMs = 16.f, GovernorClock = 0.f;
