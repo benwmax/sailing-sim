@@ -50,6 +50,12 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// Visual V6: MegaLights on High shadows the night's street, dock and waterfront lights (ANightLightsActor) at a fixed
 	// cost; Medium lights them unshadowed.
 	V.Add({ TEXT("r.MegaLights.EnableForProject"), bHigh ? 1.f : 0.f });
+	// Graphics G3: the crew's hair. On the Mac (cards: no strand geometry on its shader platform) the hair voxelization,
+	// which lights and shadows strands through each other, costs about 1 ms with the crew in view and adds nothing to
+	// cards: off (the helm's-eye view went from 44 to 45 fps on High). Windows keeps it for the strands.
+#if PLATFORM_MAC
+	V.Add({ TEXT("r.HairStrands.Voxelization"), 0.f });
+#endif
 	// Single Layer Water (Visual V4, Medium and High): its reflections traced at half resolution and denoised.
 	V.Add({ TEXT("r.Water.SingleLayer.Reflection.DownsampleFactor"), bLow ? 1.f : 2.f });
 	// Anti-aliasing and resolution: Medium renders at 67% and upscales temporally; High renders at native.

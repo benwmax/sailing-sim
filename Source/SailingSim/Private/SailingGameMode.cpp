@@ -171,7 +171,11 @@ void ASailingGameMode::UpdateTide()
 	}
 	if (TerrainActor.IsValid())
 	{
-		TerrainActor->SetActorLocation(FVector(0.0, 0.0, -TideHeight * CmPerMeter));
+		// In 2 cm steps, like the rest of the world kit: moving the actor re-uploads every instance under it (the shore's
+		// reeds, houses and docks, some 300,000 on Galveston Bay), and doing that each frame cost the render thread 20 ms.
+		const double Shown = FMath::RoundToDouble(TideHeight / 0.02) * 0.02;
+		const FVector At(0.0, 0.0, -Shown * CmPerMeter);
+		if (!TerrainActor->GetActorLocation().Equals(At, 0.1)) TerrainActor->SetActorLocation(At);
 	}
 }
 

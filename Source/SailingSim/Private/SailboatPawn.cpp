@@ -2914,6 +2914,14 @@ UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 Role, int32 Inde
 		{
 			// Under a cap the scalp hair would poke through its crown: only brows, beard and moustache.
 			if (Role != 0 && CrewCapMesh && G.Key->GetName().StartsWith(TEXT("Hair_"))) continue;
+#if PLATFORM_MAC
+			// The Mac draws cards (no strand geometry on its SM5 platform), 1.5 ms of GPU on High for the whole crew: the hair
+			// and beard carry the look; brows and moustache cards are left off (their LOD 2+ has no cards built, so a forced LOD only hides the hair).
+			const bool bMacCards = true;
+#else
+			const bool bMacCards = false;
+#endif
+			if (bMacCards && (G.Key->GetName().StartsWith(TEXT("Eyebrows_")) || G.Key->GetName().StartsWith(TEXT("Mustache_")))) continue;
 			UGroomComponent* Hair = NewObject<UGroomComponent>(this);
 			Hair->SetupAttachment(FacePart);
 			Hair->SetUseCards(!bStrands);

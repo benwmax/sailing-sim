@@ -557,15 +557,23 @@ col = lerp(col, col * 0.78 + 0.02, wear.x * saturate(NonSkid) * 0.7);
 float scumBand = (1.0 - smoothstep(2.0, 6.0 + 4.0 * streak, zcm)) * smoothstep(-4.0, 0.0, zcm);
 float scum = wear.y * IsHull * scumBand * (0.6 + 0.4 * saturate(LP.x / 300.0 + 0.5));
 col = lerp(col, float3(0.24, 0.15, 0.07), 0.6 * scum);
-// Dock rash and fender marks along the upper topsides, in patches.
-float2 cellS = floor(float2(LP.x / 35.0, zcm / 12.0));
+// Dock rash and fender marks: soft, sparse smudges in the fender band of the topsides (an ellipse per cell, faded
+// edges: hard-edged cells read as camouflage on a big hull).
+float2 cs = float2(LP.x / 45.0, zcm / 16.0);
+float2 cellS = floor(cs);
 float patchS = frac(sin(dot(cellS, float2(41.3, 17.7))) * 4375.5);
-float scuff = wear.z * IsHull * step(abs(n.z), 0.6) * smoothstep(20.0, 45.0, zcm) * step(0.72, patchS);
-col *= 1.0 - 0.3 * scuff;
-// Rust streaks from fittings, running down vertical faces.
-float lane = frac(sin(floor(LP.x / 9.0 + LP.y / 23.0) * 91.7) * 437.5);
-float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.86, lane) * (0.5 + 0.5 * sin(zcm * 0.07 + lane * 20.0));
-col = lerp(col, float3(0.30, 0.13, 0.05), 0.45 * rust);
+float2 fs = frac(cs) - 0.5;
+float smudge = 1.0 - smoothstep(0.12, 0.45, length(fs * float2(1.0, 1.8)));
+float scuff = wear.z * IsHull * step(abs(n.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
+col = lerp(col, col * 0.78 + float3(0.01, 0.01, 0.008), scuff);
+// Rust streaks from fittings: thin, tapering runs down vertical faces, few and far between.
+float laneX = LP.x / 9.0 + LP.y / 23.0;
+float lane = frac(sin(floor(laneX) * 91.7) * 437.5);
+float thin = 1.0 - smoothstep(0.02, 0.10, abs(frac(laneX) - 0.5));
+float runLen = 20.0 + 60.0 * frac(lane * 7.3);
+float top = 60.0 + 40.0 * frac(lane * 3.1);
+float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.93, lane) * thin * saturate((zcm - (top - runLen)) / runLen) * step(zcm, top);
+col = lerp(col, float3(0.30, 0.13, 0.05), 0.5 * rust);
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
@@ -1989,8 +1997,13 @@ HOUSE_WALL_CODE = """
 // Visual V6: the walls of the OSM buildings (Tools/blender/build_houses.py archetypes scaled to each footprint). Per instance:
 // D0 wall colour, D1 (pattern 0 brick, 1 lap siding, 2 stucco; height m; seed). Windows are laid out in world space so
 // they keep their size: storeys of 2.9 m, a window every 3.2 m along the wall, some lit at night. The face normal comes from
-// the position's screen derivatives (the vertex-normal input is not in world space on these Nanite instances).
+// the position's screen derivatives (the vertex-normal input is not in world space on these Nanite instances); the
+// ray-tracing hit and compute shaders have none, so they take the vertex normal.
+#if RAYHITGROUPSHADER || COMPUTESHADER
+float3 n = normalize(N);
+#else
 float3 n = normalize(cross(ddy(WP), ddx(WP)));
+#endif
 float2 t = normalize(float2(-n.y, n.x) + 1e-4);
 float u = dot(WP.xy, t) / 100.0;
 float3 c = D0;
@@ -2034,14 +2047,21 @@ return c;
 
 HOUSE_ROOF_CODE = """
 // Asphalt shingles in world space: courses every 14 cm up the roof, tabs 33 cm along, each tab its own shade.
+// The face's normal from position derivatives (VertexNormalWS isn't world space on Nanite instances), except in the
+// ray-tracing hit shaders and compute shaders (Lumen's card capture), which have no derivatives: without this guard the
+// cooked game has no roof shader.
+#if RAYHITGROUPSHADER || COMPUTESHADER
+float3 n = normalize(N);
+#else
 float3 n = normalize(cross(ddy(WP), ddx(WP)));
+#endif
 float2 t = normalize(float2(-n.y, n.x) + 1e-4);
 float u = dot(WP.xy, t) / 100.0;
 float v = WP.z / 100.0 / max(0.25, 1.0 - abs(n.z)) * 0.6;
 float row = floor(v / 0.14);
 float tab = floor(u / 0.33 + 0.5 * fmod(row, 2.0));
 float b = frac(sin(row * 31.1 + tab * 17.3) * 4375.5);
-float3 c = D2 * (0.8 + 0.3 * b) * (1.0 - 0.3 * step(0.9, frac(v / 0.14)));
+float3 c = D0 * (0.8 + 0.3 * b) * (1.0 - 0.3 * step(0.9, frac(v / 0.14)));  // D0: the roof colour (custom data 6-8)
 return c;
 """
 
