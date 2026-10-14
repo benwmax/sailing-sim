@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "SailSession.h"
 #include "GroomComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "PowerVesselActor.h"
@@ -782,6 +783,13 @@ void ASailboatPawn::BeginPlay()
 				StartDrill(MenuDrill);
 			}
 		}
+	}
+	// Graphics G4: a session from the front end starts its drill (the race starts with the traffic, TrafficManager.cpp).
+	if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); Session && Session->bHasActive && !bTrafficBoat && DrillArg.IsEmpty()
+		&& Session->Active.Mode == ESailMode::Drill)
+	{
+		MenuDrill = ESailingDrill(FMath::Clamp(Session->Active.DrillIndex + 1, 1, int32(ESailingDrill::Count) - 1));
+		StartDrill(MenuDrill);
 	}
 	if (FParse::Param(FCommandLine::Get(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
 	if (FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker(); // start with it up

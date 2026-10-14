@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "SailSession.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
 #include "SailingHUD.h"
@@ -85,6 +86,21 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	if (Settings->bGaugeLakeLevel)
 	{
 		Lake.Terrain.SetLevelBelowPool(FMath::Max(0.0, (Lake.PoolFeet - Lake.LevelFeet) * 0.3048));
+	}
+	// Graphics G4: a session started from the front end (SailSession.h): its weather, date and lake level. The
+	// command line still wins (benchmarks pass their own conditions).
+	if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); Session && Session->bHasActive)
+	{
+		const FSailConditions& C = Session->Active.Conditions;
+		if (!FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), Value)) WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
+		WindFromOverride = C.WindFromDeg;
+		GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
+		SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), FMath::Clamp(C.Day, 1, FDateTime::DaysInMonth(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12))));
+		bSessionDate = true;
+		if (!Lake.IsTidal() && FMath::Abs(C.LakeLevelFt) > 0.01f)
+		{
+			Lake.Terrain.SetLevelBelowPool(-C.LakeLevelFt * 0.3048);   // above the pool raises the water: the shore drops by as much
+		}
 	}
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingQuality="), Value))
 	{
@@ -224,6 +240,22 @@ void ASailingGameMode::UpdateShelter()
 	}
 }
 
+void ASailingGameMode::ApplyConditions(const FSailConditions& C)
+{
+	// The same weather path as a new session, without the reload: preset by sky, start hour, wind speed, direction, gusts.
+	USailingSettings* Settings = USailingSettings::Get();
+	Settings->WeatherPreset = ESailingWeather(USailSessionSubsystem::WeatherPresetFor(C.Sky));
+	Settings->StartHour = FMath::Clamp(C.LocalHour, 5.f, 22.f);
+	WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
+	WindFromOverride = C.WindFromDeg;
+	GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
+	SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), 1) + FTimespan::FromDays(FMath::Max(C.Day, 1) - 1);
+	bSessionDate = true;
+	bWindArgsRead = true;   // the session's values stand
+	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->Active.Conditions = C;
+	ApplyWeatherSettings();
+}
+
 void ASailingGameMode::ApplyWeatherSettings()
 {
 	const USailingSettings* Settings = USailingSettings::Get();
@@ -245,7 +277,7 @@ void ASailingGameMode::ApplyWeatherSettings()
 		(bStart ? Start.X : 0.0) + FMath::Cos(TrackRad) * Shift, (bStart ? Start.Y : 0.0) + FMath::Sin(TrackRad) * Shift);
 
 	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
-	FDateTime Date = FDateTime::Now();
+	FDateTime Date = bSessionDate ? SessionDate : FDateTime::Now();
 	FString DateArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDate="), DateArg))
 	{
@@ -337,16 +369,15 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	WeatherState = Weather.Evaluate(Now - WeatherStartTime);
 	WeatherState.Wind.SpeedKnots *= WindScale;
 	// Reference captures: the wind of the real clip (direction it blows from, degrees true; gust intensity as a fraction).
-	static float WindFromArg = NAN, GustArg = NAN;
-	static bool bWindArgsRead = false;
+	// Graphics G4: or the session's (InitGame); the command line wins.
 	if (!bWindArgsRead)
 	{
 		bWindArgsRead = true;
-		FParse::Value(FCommandLine::Get(), TEXT("SailingWindFrom="), WindFromArg);
-		FParse::Value(FCommandLine::Get(), TEXT("SailingGust="), GustArg);
+		FParse::Value(FCommandLine::Get(), TEXT("SailingWindFrom="), WindFromOverride);
+		FParse::Value(FCommandLine::Get(), TEXT("SailingGust="), GustOverride);
 	}
-	if (!FMath::IsNaN(WindFromArg)) WeatherState.Wind.FromDegrees = WindFromArg;
-	if (!FMath::IsNaN(GustArg)) WeatherState.Wind.GustIntensity = GustArg;
+	if (!FMath::IsNaN(WindFromOverride)) WeatherState.Wind.FromDegrees = WindFromOverride;
+	if (!FMath::IsNaN(GustOverride)) WeatherState.Wind.GustIntensity = GustOverride;
 	if (bEasy)
 	{
 		WeatherState.Wind.GustIntensity *= 0.5;

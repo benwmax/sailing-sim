@@ -112,6 +112,16 @@ private:
 	double OwnClock = 0.0;
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;
+	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.
+	float WindFromOverride = NAN, GustOverride = NAN;
+	// Graphics G4: the session's date (the clock's day); unset = today or -SailingDate.
+	FDateTime SessionDate;
+	bool bSessionDate = false;
+	bool bWindArgsRead = false;
+public:
+	/** Graphics G4: changes the running session's weather in place (Pause > Change conditions): no reload. */
+	void ApplyConditions(const struct FSailConditions& Conditions);
+private:
 
 	float BenchSeconds = 0.f;
 	float RecordSeconds = 0.f;

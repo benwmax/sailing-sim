@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "SailSession.h"
 #include "PowerVesselActor.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
@@ -398,6 +399,11 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		Populate(Level);
 		float RaceIn = 0.f;
 		if (bFirst && FParse::Value(FCommandLine::Get(), TEXT("SailingRace="), RaceIn)) StartRace(5, RaceIn); // recordings and the gate
+		// Graphics G4: a race session from the front end: five AI boats, the five-minute sequence.
+		else if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); bFirst && Session && Session->bHasActive && Session->Active.Mode == ESailMode::Race)
+		{
+			StartRace(5, 300.0);
+		}
 	}
 
 	const FVesselSnapshot Me = PlayerSnapshot();
