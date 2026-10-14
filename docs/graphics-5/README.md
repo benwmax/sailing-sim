@@ -42,11 +42,25 @@ What gives each game frame away, before the fixes, most visible first.
    - Facing a sun below 20°, the exposure closes up to 2.5 stops, as a camera metering the bright sky does.
    - The fog stops at 90% opacity, so the low sun's disc shows through the haze as it does in life.
 3. **Cirrus.**
-   - Fibres from value noise stretched along the wind (four octaves, the fine ones faded with distance) replace the sine
+   - Fibres from value noise stretched along the wind (three octaves, the fine one faded with distance) replace the sine
      streaks.
    - Fainter overall (45% at most, was 55%).
 4. **Clean stills.** `-SailingNoHud` no longer draws the canvas hint line ("H: show instruments..."), which gave a marina
    frame away.
+
+**Before and after:** [compare/index.html](compare/index.html) shows each scene's photo, the frame the test used and the
+same frame after the fixes (`blind/after/`). The two sunsets change completely. Every other scene is unchanged at a
+glance, apart from fainter cirrus.
+
+**Cost:** the first cirrus version ran its noise on every sky pixel and cost High about 0.3 ms (the round 7 bench below:
+helm-eye 43.1). It now runs only where the weather map has cirrus, with three octaves. These are packaged High runs
+against G4:
+
+| View | G4 | G5 |
+|---|---|---|
+| helm-eye | 44.9 | 45.0, 45.1 |
+| crew | 46.5 | 47.2 |
+| beam8 | 53.0 | 52.9 |
 
 Tried and not kept: doubling the cloud view samples and tripling the shadow samples (`-SailingCloudScale=2,3`) on High.
 The frosting softens a little but stays, at a cost the High gate can't afford. Half-resolution tracing (mode 1) is

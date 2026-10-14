@@ -12,8 +12,8 @@ the place to resume from. Branch `graphics-5-blind` (from `graphics-4-ui`). No P
 - [x] 4. The pack (`Tools/blindtest/make_blind_pack.py`), 24 stills, answer key.
 - [x] 5. Publish "Real or Game: The Whole Game" (db answers), link in README.
 - [x] 6. My own read, pair by pair: what gives each game frame away; the fix list.
-- [ ] 7. Fix the cheapest high-impact tells from step 6 (one commit each, tests and bench after).
-- [ ] 8. Recapture the affected stills, before/after page, bench, README; G1-G5 summary (`docs/graphics-summary.md`).
+- [x] 7. Fix the cheapest high-impact tells from step 6 (one commit each, tests and bench after).
+- [x] 8. Recapture the affected stills, before/after page, bench, README; G1-G5 summary (`docs/graphics-summary.md`).
 
 ## Log
 
@@ -27,3 +27,12 @@ the place to resume from. Branch `graphics-5-blind` (from `graphics-4-ui`). No P
 - Next (step 7-8, after "GPU free"): rebuild, recapture all 15 (scenes.csv), rebuild the pack (seed 55) and republish
   the page with the fixed frames? No: the published pack is the "before" test; publish an "after" compare page instead
   (before/after per scene), bench-visual High/Medium against G4, tests.
+- Steps 7-8 (09:10 UTC): all 15 recaptured (`blind/after/`), compare page, cirrus made cheaper (High back to G4),
+  92/92 tests, `docs/graphics-summary.md`, CLAUDE.md notes.
+
+## Final summary
+
+G5 is done. The blind pack is published (https://claude.ai/artifact/3vCD1d83vfZx21tXNuGZzY). The worst tells, the
+washed-out sunsets and the brush-stroke cirrus, are fixed at no frame-rate cost on High. The remaining tells (cumulus
+frosting, the shelf cloud, ships and shore buildings, the Gulf under overcast) are listed in README.md under Open. No PR
+was opened: #15 must merge first.
