@@ -279,6 +279,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `using namespace` (unity build); `FSlateDrawElement::MakeBox` ignores the brush tint (multiply it in); never cache
   UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
   from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`.
+- Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`
+  fetches Commons photos (CC0/PD/BY/BY-SA only) with credits.json; `docs/graphics-5/blind/scenes.csv` holds the matched
+  captures; `make_blind_pack.py` packs them; `make_g5_compare.py` builds the before/after page. The haze's inscattering
+  follows the metered light (`HazeLight`, relative to a clear midday) and warms below 12 deg; exposure closes up to 2.5
+  stops facing a sun under 20 deg; the fog's max opacity is 0.9 so the low sun shows (`-SailingClassicHaze` compares).
+  Cirrus on `M_SkyDome` is stretched value noise, run only where the map has cirrus. `MATERIALS_ONLY=build_sky_dome,...`
+  makes `make_materials.py` rebuild just those (otherwise every material is resaved). Two sessions sharing this checkout
+  take turns on the GPU (builds, run-game, captures, benches) and stage explicit paths only.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

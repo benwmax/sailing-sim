@@ -276,12 +276,21 @@ void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
 	Race.Course = FRaceCourse::WindwardLeeward(Line.X, Line.Y, WF, Beat, 120.0, 2);
 	Race.TimeLimit = 3600.0;
 	CommitteeId = AddPower(ETrafficKind::Committee, Race.Course.CommitteeX, Race.Course.CommitteeY, WF, {}, TEXT("Committee boat"));
+	// Stills of a club start (Graphics G5): -SailingRaceBoats=<n> fills the line closer, -SailingRaceMixed mixes the club's
+	// keelboats (a PHRF start) instead of one design.
+	int32 BoatsWanted = Boats;
+	FParse::Value(FCommandLine::Get(), TEXT("SailingRaceBoats="), BoatsWanted);
+	Boats = FMath::Clamp(BoatsWanted, 1, 16);
+	const bool bMixed = FParse::Param(FCommandLine::Get(), TEXT("SailingRaceMixed"));
+	const EBoatType Mixed[] = { EBoatType::Catalina30, EBoatType::J22, EBoatType::Catalina22 };
+	const double Spacing = FMath::Min(45.0, 200.0 / Boats);
 	for (int32 I = 0; I < Boats; ++I)
 	{
-		const double Lateral = (I - 0.5 * (Boats - 1)) * 45.0;
+		const double Lateral = (I - 0.5 * (Boats - 1)) * Spacing;
 		const FVector2D At = Line - W * (160.0 + 30.0 * (I % 2)) + FVector2D(-W.Y, W.X) * Lateral;
-		const FString Name = FString::Printf(TEXT("%s %d"), UTF8_TO_TCHAR(BoatTypeName(Type)), I + 2);
-		const int32 Id = AddSailboat(Type, At.X, At.Y, WF + 0.5 * PI, {}, Name);
+		const EBoatType BoatType = bMixed ? Mixed[I % UE_ARRAY_COUNT(Mixed)] : Type;
+		const FString Name = FString::Printf(TEXT("%s %d"), UTF8_TO_TCHAR(BoatTypeName(BoatType)), I + 2);
+		const int32 Id = AddSailboat(BoatType, At.X, At.Y, WF + 0.5 * PI, {}, Name);
 		if (FTrafficVessel* V = Sim.Find(Id)) V->RaceEntry = Race.AddEntry(Id, TCHAR_TO_UTF8(*Name));
 		RaceBoats.Add(Id);
 	}

@@ -343,6 +343,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	// adapt all the way to darkness, so the water stays dark and the navigation lights stand out.
 	const float Night = 1.f - FMath::SmoothStep(-12.f, -2.f, float(Elevation));
 	NightAmount = Night;
+	SunElevationDeg = float(Elevation);
 	const float NightFloorEV = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
 	const bool bPhysicalCamera = UsesPhysicalCamera(USailingSettings::Get()->Quality);
 	if (PostProcess && !bPhysicalCamera && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
@@ -378,6 +379,11 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			// Visual V1: exposure follows the light, as an incident meter would (VisualPipeline.h), with a little room
 			// for the histogram to react to framing.
 			const double EV = CameraEV100(Elevation, CloudShade, W.CloudDarkness, MoonEl, MoonIllumination(MoonAge), NightFloorEV);
+			// Graphics G5: the haze is lit by the same light the exposure meters. A fixed inscattering colour stayed at
+			// midday brightness while the exposure opened 4-5 stops for a low sun, so at sunset the horizon blew out
+			// white and hid the sun's disc (the blind test's sunsets).
+			static const double ClearNoonEV = CameraEV100(60.0, 1.0, 0.0, -90.0, 0.0, -20.0);
+			HazeLight = FMath::Clamp(float(FMath::Pow(2.0, EV - ClearNoonEV)), 0.004f, 1.f);
 			FPostProcessSettings& PP = PostProcess->Settings;
 			PP.bOverride_AutoExposureMethod = PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = PP.bOverride_AutoExposureBias = true;
 			PP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
@@ -386,8 +392,23 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			// reference clips); both fade out under the deck.
 			const float Dark = FMath::Clamp(float(W.CloudDarkness), 0.f, 1.f);
 			const float Band = FMath::Lerp(1.f, 0.3f, Dark);
-			PP.AutoExposureMinBrightness = float(EV) - Band;
-			PP.AutoExposureMaxBrightness = float(EV) + Band;
+			// Graphics G5: looking into a low sun, a camera meters the bright sky and the scene goes deep (every sunset
+			// photo); the incident meter alone left the blind test's sunsets nearly white. Up to 2.5 stops darker as the
+			// view turns toward a sun below 20 degrees.
+			float IntoSun = 0.f;
+			static const bool bClassicHaze = FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHaze"));
+			if (!bClassicHaze && Elevation > -2.0)
+			{
+				if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0))
+				{
+					const double E = Elevation * kDegToRad, A = Azimuth * kDegToRad;
+					const FVector SunDir(FMath::Cos(E) * FMath::Cos(A), FMath::Cos(E) * FMath::Sin(A), FMath::Sin(E));
+					const float Facing = float(FVector::DotProduct(CamMgr->GetCameraRotation().Vector(), SunDir));
+					IntoSun = FMath::SmoothStep(0.5f, 0.95f, Facing) * (1.f - FMath::SmoothStep(8.f, 20.f, float(Elevation))) * (1.f - Dark);
+				}
+			}
+			PP.AutoExposureMinBrightness = float(EV) - Band + 2.5f * IntoSun;
+			PP.AutoExposureMaxBrightness = float(EV) + Band + 2.5f * IntoSun;
 			PP.AutoExposureBias = 0.5f * (1.f - Dark);
 		}
 	}
@@ -782,7 +803,23 @@ void ASailingEnvironment::UpdateHaze()
 	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
 	const FLinearColor Tint = FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze);
 	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
-	F->SetFogInscatteringColor(Tint * FMath::Lerp(1.f, 0.25f, float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.004f, NightAmount));
+	static const bool bClassicHaze = FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHaze"));   // Graphics G5 compare
+	if (bClassicHaze)
+	{
+		F->SetFogInscatteringColor(Tint * FMath::Lerp(1.f, 0.25f, float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.004f, NightAmount));
+	}
+	else
+	{
+		// Graphics G5: lit by the metered light (HazeLight, which already carries the storm's gloom and the night), and
+		// toward sunset the haze takes the low sun's colour, as the sky at the horizon does.
+		const float Warm = 1.f - FMath::SmoothStep(0.f, 12.f, SunElevationDeg);
+		const FLinearColor Sunset(1.25f, 0.82f, 0.55f);
+		const FLinearColor Lit = FMath::Lerp(Tint, Tint * Sunset, Warm * (1.f - NightAmount));
+		F->SetFogInscatteringColor(Lit * FMath::Lerp(1.f, 0.6f, float(W.CloudDarkness)) * HazeLight);
+		// Analytic fog reaches full opacity at the horizon, which hid the low sun's disc completely; real haze lets a few
+		// percent of the disc through, and the disc is thousands of times the sky's brightness.
+		F->SetFogMaxOpacity(FMath::Lerp(0.9f, 1.f, float(W.Rain)));
+	}
 	// Volumetric fog: the sun scatters in it, so shafts show through gaps in the cloud (forward-scattering haze).
 	if (!F->bEnableVolumetricFog) F->SetVolumetricFog(true);
 	F->SetVolumetricFogScatteringDistribution(0.75f);
