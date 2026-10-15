@@ -119,6 +119,7 @@ namespace Sailing
 		 */
 		void SetSeaMap(std::shared_ptr<const FSeaMap> InMap);
 		const FSeaMap* GetSeaMap() const { return SeaMap.get(); }
+		std::shared_ptr<const FSeaMap> GetSeaMapShared() const { return SeaMap; }
 		/** Counts SetSeaMap calls (the renderer re-uploads the atlas when it changes). */
 		uint32_t GetSeaMapGeneration() const { return SeaMapGeneration; }
 		/** The fetch the components' targets grow on: the map's reference, else the params' fetch. */

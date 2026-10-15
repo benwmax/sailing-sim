@@ -1079,55 +1079,75 @@ void AWaterSurface::UpdateSeaMap()
 {
 	// W3: each long wave train scaled by its own direction's fetch and the depth where it is (SeaState.h). The atlas is
 	// rebuilt only when the game mode gave the field a new map (the mean wind changed); between maps the shader reads the
-	// same texels as FSeaMap::Sample.
+	// same texels as FSeaMap::Sample. The packing runs on a worker; the field switches to the new map at once and the
+	// water a frame or two later.
 	const FWaveField* Waves = GetWaves();
-	const FSeaMap* Map = Waves ? Waves->GetSeaMap() : nullptr;
+	if (bSeaPending && PendingSea.IsReady())
+	{
+		bSeaPending = false;
+		const TSharedPtr<FSeaPixels, ESPMode::ThreadSafe> P = PendingSea.Get();
+		if (!SeaAtlas || SeaAtlas->GetSizeX() != P->Width || SeaAtlas->GetSizeY() != P->Rows)
+		{
+			SeaAtlas = MakeFloatMap(P->Width, P->Rows, PF_FloatRGBA, false);
+		}
+		const int32 Bytes = P->Pixels.Num() * int32(sizeof(FFloat16));
+		uint8* Copy = new uint8[Bytes];
+		FMemory::Memcpy(Copy, P->Pixels.GetData(), Bytes);
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, P->Width, P->Rows);
+		SeaAtlas->UpdateTextureRegions(0, 1, Region, P->Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Copy,
+			[](uint8* Data, const FUpdateTextureRegion2D* Rg)
+			{
+				delete[] Data;
+				delete Rg;
+			});
+		WaterMaterial->SetTextureParameterValue(TEXT("SeaMap"), SeaAtlas);
+		WaterMaterial->SetVectorParameterValue(TEXT("SeaRect"), FLinearColor(float(P->OriginX), float(P->OriginY), float(P->Cell), float(P->Rows)));
+		WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(float(P->Cols), float(P->Width), float(P->Rows), 1.f));
+	}
 	const uint32 Generation = Waves ? Waves->GetSeaMapGeneration() : 0;
-	if (Generation == UploadedSeaGeneration)
+	if (Generation == UploadedSeaGeneration || bSeaPending)
 	{
 		return;
 	}
 	UploadedSeaGeneration = Generation;
+	std::shared_ptr<const FSeaMap> Map = Waves ? Waves->GetSeaMapShared() : nullptr;
 	if (!Map || !Map->IsValid())
 	{
 		WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(1.f, 7.f, 1.f, 0.f));
 		return;
 	}
-	constexpr int32 Tiles = 7;
-	const int32 Rows = Map->GetRows(), Cols = Map->GetCols(), Width = Tiles * Cols;
-	if (!SeaAtlas || SeaAtlas->GetSizeX() != Width || SeaAtlas->GetSizeY() != Rows)
+	bSeaPending = true;
+	PendingSea = Async(EAsyncExecution::ThreadPool, [Map, Generation]()
 	{
-		SeaAtlas = MakeFloatMap(Width, Rows, PF_FloatRGBA, false);
-	}
-	// Texel (tile t, column c, row r) holds channels 4t..4t+3 of cell (r, c); the short scale is tile 6's R.
-	const int32 Bytes = Width * Rows * 4 * int32(sizeof(FFloat16));
-	FFloat16* Pixels = reinterpret_cast<FFloat16*>(new uint8[Bytes]);
-	for (int32 R = 0; R < Rows; ++R)
-	{
-		for (int32 C = 0; C < Cols; ++C)
+		// Texel (tile t, column c, row r) holds channels 4t..4t+3 of cell (r, c); the short scale is tile 6's R.
+		constexpr int32 Tiles = 7;
+		TSharedPtr<FSeaPixels, ESPMode::ThreadSafe> P = MakeShared<FSeaPixels, ESPMode::ThreadSafe>();
+		P->Rows = Map->GetRows();
+		P->Cols = Map->GetCols();
+		P->Width = Tiles * P->Cols;
+		P->OriginX = Map->GetOriginX();
+		P->OriginY = Map->GetOriginY();
+		P->Cell = Map->GetCell();
+		P->Generation = Generation;
+		P->Pixels.SetNumUninitialized(P->Width * P->Rows * 4);
+		for (int32 R = 0; R < P->Rows; ++R)
 		{
-			const float* Cell = Map->CellAt(R, C);
-			for (int32 T = 0; T < Tiles; ++T)
+			for (int32 C = 0; C < P->Cols; ++C)
 			{
-				FFloat16* Out = Pixels + (size_t(R) * Width + size_t(T) * Cols + C) * 4;
-				for (int32 K = 0; K < 4; ++K)
+				const float* Cell = Map->CellAt(R, C);
+				for (int32 T = 0; T < Tiles; ++T)
 				{
-					const int32 Channel = 4 * T + K;
-					Out[K] = FFloat16(Channel < kSeaChannels ? Cell[Channel] : 0.f);
+					FFloat16* Out = P->Pixels.GetData() + (size_t(R) * P->Width + size_t(T) * P->Cols + C) * 4;
+					for (int32 K = 0; K < 4; ++K)
+					{
+						const int32 Channel = 4 * T + K;
+						Out[K] = FFloat16(Channel < kSeaChannels ? Cell[Channel] : 0.f);
+					}
 				}
 			}
 		}
-	}
-	FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, Rows);
-	SeaAtlas->UpdateTextureRegions(0, 1, Region, Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), reinterpret_cast<uint8*>(Pixels),
-		[](uint8* Data, const FUpdateTextureRegion2D* Rg)
-		{
-			delete[] Data;
-			delete Rg;
-		});
-	WaterMaterial->SetTextureParameterValue(TEXT("SeaMap"), SeaAtlas);
-	WaterMaterial->SetVectorParameterValue(TEXT("SeaRect"), FLinearColor(float(Map->GetOriginX()), float(Map->GetOriginY()), float(Map->GetCell()), float(Rows)));
-	WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(float(Cols), float(Width), float(Rows), 1.f));
+		return P;
+	});
 }
 
 void AWaterSurface::UpdateMaterial()

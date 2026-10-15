@@ -124,6 +124,10 @@ private:
 	/** W3: the sea map's atlas (SeaState.h): seven tiles of RGBA half floats, re-uploaded when the field gets a new map. */
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> SeaAtlas;
 	uint32 UploadedSeaGeneration = 0;
+	/** The atlas's half floats are packed on a worker (1.5M texels on the lake: a hitch on the game thread). */
+	struct FSeaPixels { TArray<FFloat16> Pixels; int32 Width = 0, Rows = 0, Cols = 0; double OriginX = 0, OriginY = 0, Cell = 0; uint32 Generation = 0; };
+	TFuture<TSharedPtr<FSeaPixels, ESPMode::ThreadSafe>> PendingSea;
+	bool bSeaPending = false;
 	/** Uploads the field's sea map (or unbinds it) when it changed, and sets SeaRect and SeaParams. */
 	void UpdateSeaMap();
 
