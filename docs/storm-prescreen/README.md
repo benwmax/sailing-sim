@@ -77,3 +77,29 @@ shading one.
 
 Each needs a pre-screen at game-04 and game-08 on High and Ultra, and a bench of the storm view next to main. The Mac's
 High is at 46.5-47.5 fps on the sentinels, so none of them may add cloud or fog cost there.
+
+## After (storm-sky-fix, merged with main 4c2584ca)
+
+![main left, fix right, in pairs: game-04, game-08, bench storm, game-10; High then Ultra](storm-fix.jpg)
+
+- game-04 reads as a slate sky behind the boat.
+- game-08's deck and the shelf's underside are dark. The sunlit cumulus beyond the storm's extent still show (see above).
+- On the bench storm view the core is darker.
+- game-10's towers are greyer: they sit inside the storm's extent, so they're now in its shade.
+
+Clear-sky and dusk views are unchanged by construction (`wet` is 0 outside a storm), and the stills confirm it:
+
+![main left, fix right, in pairs: beam8, coast-day, dusk; High then Ultra](regression.jpg)
+
+Bench on the PC, packaged game, two 10 s runs each, main's cloud and rain materials (A) against the fix (B). The game
+binary is the same in both, so B's only CPU addition is the curtain shade (up to 32 `SunTransmittance` calls twice a second).
+
+| view | tier | clouds_fog ms A | clouds_fog ms B | GPU ms A | GPU ms B |
+|---|---|---|---|---|---|
+| lake storm | High | 0.49 / 0.45 | 0.50 / 0.45 | 4.80 / 5.09 | 5.02 / 4.73 |
+| lake storm | Ultra | 1.99 / 1.99 | 2.11 / 1.85 | 7.83 / 7.22 | 7.41 / 7.05 |
+| Galveston storm | High | 0.64 / 0.51 | 0.54 / 0.53 | 5.67 / 5.36 | 5.52 / 5.69 |
+| Galveston storm | Ultra | 3.01 / 2.61 | 2.53 / 2.70 | 8.92 / 9.16 | 8.81 / 8.80 |
+
+The storm's cloud slice is flat within run-to-run noise. The change is constants plus one `max` per sample, with no new
+samples or textures, so it should be cost-neutral on Mac High too.
