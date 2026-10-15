@@ -1,0 +1,2 @@
+stations: 41411 puffs; duration median 2 min (p25 1, p75 4); veer at the peak mean -0.5 deg, median -0.4; strength median +0.131; veer per +10 % -0.36 deg
+game: 942 puffs; duration median 2 min (p25 2, p75 3); veer at the peak mean +1.7 deg, median +1.4; strength median +0.112; veer per +10 % +1.27 deg
