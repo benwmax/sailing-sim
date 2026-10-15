@@ -352,6 +352,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FShelterMap` = lee (terrain, canopy, houses, gone by 30 heights) x open-water build. AI reads `ReadableAt` (no fine
   turbulence) and tacks on headers. `Tools/wind/plot_field.sh` maps the field; `scripts/traffic.sh 98` races steady and
   shifty.
+- Cloud fixes (W5a, `docs/w5a/`): cumulus are seeded cells in four size classes (power law, `FWeatherMap::Paint`;
+  `Threshold` solves for the edge whose mean presence is the coverage); small cells take billows at twice the frequency.
+  On Ultra `r.VolumetricCloud.DistanceToSampleMaxCount` is 3 km so near rays keep their samples (the per-step opacity cap
+  is step-relative and stops binding); noise footprint floor 110 m (50 brought the frosting back). Cumulus are darkened
+  by depth into the cell and its build, not altitude. The shelf face climbs in tiers (`FStormShape::TierX`, `ShelfTierM`,
+  mirrored as `SHELF_TIER`). No rain density in `CLOUD_CODE`: `M_RainCurtain` draws it.
 - Wind on the water (W2, `docs/water-2/`): `AWaterSurface` keeps two wrap-around wind maps (near 256^2 over 3.2 km,
   512^2 on Ultra; far 128^2 over 16 km; texel i at i mod Res, refreshed in strips): RGB = roughness, local direction
   (sRGB), A = slow wind (linear). `W2_WIND` in make_materials.py is the shared HLSL both water materials read (ripples

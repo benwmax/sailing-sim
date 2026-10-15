@@ -27,6 +27,11 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// Volumetric clouds are the most expensive part of the sky: cap their ray-march samples per tier.
 	V.Add({ TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), bLow ? 48.f : (bUltra ? 160.f : (bHigh ? 80.f : 72.f)) });
 	V.Add({ TEXT("r.VolumetricCloud.ReflectionRaySampleMaxCount"), bUltra ? 48.f : (bHigh ? 24.f : 16.f) });
+	// W5a: the march fitted to the cloud. Rays shorter than this (km) get proportionally fewer samples, so with the engine's
+	// 15 km every near ray stepped about 94 m whatever the slab, and the material had to cap each step's opacity (cotton
+	// edges) or grain. On Ultra (a GPU frame half the CPU's) near rays keep all their samples: 3 km over 160 samples is
+	// 19 m steps under a cumulus deck, and the per-step cap (step-relative) stops binding there.
+	if (bUltra) V.Add({ TEXT("r.VolumetricCloud.DistanceToSampleMaxCount"), 3.f });
 	// Graphics G1: Ultra traces the clouds at half resolution (mode 1) instead of a quarter rebuilt over frames (mode 0):
 	// the cleanest edges, about four times the tracing (a desktop GPU's budget, not the Mac's).
 	V.Add({ TEXT("r.VolumetricRenderTarget.Mode"), bUltra ? 1.f : 0.f });
