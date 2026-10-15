@@ -42,6 +42,14 @@ namespace Sailing
 			return SmoothStep(0.0, Grow, Age) * (1.0 - SmoothStep(0.55 * Life, Life, Age));
 		}
 
+		/** How much a kilometre cell strengthens the small puffs inside it (per unit of the cell field): puffs come down
+		 *  harder in the big gust patches and barely show in the lulls between them (the W6 LES maps). */
+		constexpr double kCellModulation = 0.6;
+		/** The cells' spread of 2-minute means over their standard deviation (MeasureGustStats, as kPuffSlowRms). */
+		constexpr double kCellSlowRms = 0.80;
+		/** The cells' veer per unit of the cell field, as a share of PuffVeerDegrees. */
+		constexpr double kCellVeer = 0.15;
+
 		std::shared_ptr<const FTurbulenceTile>& SharedTile()
 		{
 			static std::shared_ptr<const FTurbulenceTile> Tile;
@@ -227,13 +235,35 @@ namespace Sailing
 		const double Vp = std::max(MeanSpeed10 * D.AloftRatio, 0.5);
 		D.Streets = SmoothStep(4.5, 8.5, U) * (1.0 - 0.5 * Stable);
 		const double Elong = 1.0 + 1.5 * D.Streets;
+		const double CellShare = Clamp(Params.CellShare, 0.0, 0.9);
 		const double FromLayer = Clamp(0.6 * Params.MixedLayerMeters, 300.0, 3000.0);
 		const double FromTiming = Clamp(Vp * Params.PuffIntervalSeconds / (1.3 * Elong), 300.0, 3000.0);
-		D.PuffAcross = Clamp(std::sqrt(FromLayer * FromTiming), 300.0, 3000.0);
+		// With the kilometre cells on top (they set the timing at a point now), the puffs are the streaks inside them: the
+		// LES's 250 to 500 m patches, about a quarter of the mixed layer. Alone they are the cells' size.
+		D.PuffAcross = CellShare > 0.0 ? Clamp(0.25 * Params.MixedLayerMeters, 300.0, 1000.0) : Clamp(std::sqrt(FromLayer * FromTiming), 300.0, 3000.0);
 		D.PuffAlong = D.PuffAcross * Elong;
 		D.SpacingAcross = 1.3 * D.PuffAcross * (1.0 + 0.4 * D.Streets);
 		D.SpacingAlong = 1.3 * D.PuffAlong;
-		D.Lifetime = Clamp(600.0 * std::sqrt(D.PuffAcross / 800.0), 300.0, 1200.0);
+		D.Lifetime = Clamp(600.0 * std::sqrt(D.PuffAcross / 800.0), CellShare > 0.0 ? 450.0 : 300.0, 1200.0);
+		// The cells: a band of waves 1 to 2.5 mixed-layer depths long (within 2 to 5 km: the LES spectrum's kilometre peak),
+		// in all directions, a little longer along a breeze, each drifting in phase so the pattern re-forms in about half an
+		// hour. Lulls and puffs are half a wavelength across.
+		D.CellWaveMin = Clamp(1.0 * Params.MixedLayerMeters, 2000.0, 4000.0);
+		D.CellWaveMax = Clamp(2.5 * Params.MixedLayerMeters, 3000.0, 5000.0);
+		D.CellSeconds = Clamp(1800.0 * std::sqrt(D.CellWaveMax / 4000.0), 1200.0, 2400.0);
+		const double Stretch = 1.0 + 0.5 * D.Streets;
+		uint64_t H = CellHash(-11, -13, -17, Params.Seed);
+		for (int K = 0; K < kCellWaves; ++K)
+		{
+			H = Mix(H);
+			// Wavelengths spread evenly in log over the band (jittered), directions round the compass.
+			const double Lambda = D.CellWaveMin * std::pow(D.CellWaveMax / D.CellWaveMin, (K + U01(H, 0)) / kCellWaves);
+			const double Dir = 2.0 * kPi * U01(H, 1), Kmag = 2.0 * kPi / Lambda;
+			CellKA[K] = Kmag * std::cos(Dir) / Stretch;
+			CellKC[K] = Kmag * std::sin(Dir);
+			CellPhase[K] = 2.0 * kPi * U01(H, 2);
+			CellOmega[K] = (U01(H, 3) < 0.5 ? -1.0 : 1.0) * (0.25 + 0.5 * U01(H, 4)) * 2.0 * kPi / D.CellSeconds;
+		}
 
 		// The puff field's mean and spread (Ra Rc pi / 3 and / 5 are the integrals of (1 - r^2)^2 and its square over a
 		// puff; envelope moments numerically with a 30 s growth), so the gusts average to the mean wind.
@@ -252,23 +282,31 @@ namespace Sailing
 		// The intensity splits between puffs and the fine turbulence: more puffs when the air is unstable. Or the weather
 		// gives both (station calibration): the puffs then strengthen in unstable air and weaken in stable.
 		const double GI = std::max(Params.GustIntensity, 0.0);
-		double PuffTarget;
+		// Inside the cells the small puffs are scaled by (1 + kCellModulation n), n of unit spread: their variance grows by
+		// that much more.
+		const double ModVar = CellShare > 0.0 ? 1.0 + kCellModulation * kCellModulation : 1.0;
+		double PuffTarget, CellTarget;
 		if (Params.PuffIntensity >= 0.0)
 		{
 			// Stable air over the water damps them, unless the land around is convecting deep (a hot afternoon on a small
-			// lake: the puffs come down from the mixed layer overhead whatever the water does).
-			PuffTarget = Params.PuffIntensity / kPuffSlowRms * (1.0 + 0.4 * Unstable - 0.4 * Stable * (1.0 - SmoothStep(800.0, 2000.0, Params.MixedLayerMeters)));
+			// lake: the puffs come down from the mixed layer overhead whatever the water does). The stations' spread splits
+			// between the cells and the puffs; each converts to the field's own spread by how much of it a 2-minute mean keeps.
+			const double Slow = Params.PuffIntensity * (1.0 + 0.4 * Unstable - 0.4 * Stable * (1.0 - SmoothStep(800.0, 2000.0, Params.MixedLayerMeters)));
+			PuffTarget = Slow * std::sqrt(1.0 - CellShare) / kPuffSlowRms;
+			CellTarget = Slow * std::sqrt(CellShare) / kCellSlowRms;
 			D.FineSigma = GI;
 		}
 		else
 		{
 			const double Share = Clamp(0.45 + 0.35 * Unstable - 0.35 * Stable - 0.3 * (1.0 - SmoothStep(300.0, 800.0, Params.MixedLayerMeters)), 0.1, 0.85);
-			PuffTarget = GI * std::sqrt(Share);
+			PuffTarget = GI * std::sqrt(Share * (1.0 - CellShare));
+			CellTarget = GI * std::sqrt(Share * CellShare);
 		}
-		D.PuffAmplitude = std::min(PuffTarget / std::sqrt(Var), 0.45);
-		D.PuffSigma = D.PuffAmplitude * std::sqrt(Var);
+		D.PuffAmplitude = std::min(PuffTarget / std::sqrt(Var * ModVar), 0.45);
+		D.CellSigma = std::min(CellTarget, 0.3);
+		D.PuffSigma = std::sqrt(D.PuffAmplitude * D.PuffAmplitude * Var * ModVar + D.CellSigma * D.CellSigma);
 		if (Params.PuffIntensity < 0.0) D.FineSigma = std::sqrt(std::max(GI * GI - D.PuffSigma * D.PuffSigma, 0.16 * GI * GI));
-		D.bGusty = D.FineSigma > 0.0 || D.PuffAmplitude > 0.0;
+		D.bGusty = D.FineSigma > 0.0 || D.PuffAmplitude > 0.0 || D.CellSigma > 0.0;
 	}
 
 	double FWindField::Profile(double HeightMeters) const
@@ -321,6 +359,15 @@ namespace Sailing
 		return P;
 	}
 
+	double FWindField::CellField(double Along, double Across, double T) const
+	{
+		if (D.CellSigma <= 0.0) return 0.0;
+		// Unit-amplitude cosines: the sum's variance is kCellWaves / 2.
+		double Sum = 0.0;
+		for (int K = 0; K < kCellWaves; ++K) Sum += std::cos(CellKA[K] * Along + CellKC[K] * Across + CellOmega[K] * T + CellPhase[K]);
+		return Sum * std::sqrt(2.0 / kCellWaves);
+	}
+
 	void FWindField::Fine(double X, double Y, double T, double& DU, double& DV) const
 	{
 		double Along, Across;
@@ -363,10 +410,15 @@ namespace Sailing
 		double Along, Across, Fan;
 		Puffs.Local(X, Y, T, Along, Across);
 		const double P = PuffField(Along, Across, T, Fan);
-		OutFactor = 1.0 + D.PuffAmplitude * (P - PuffMean);
-		// Veer and fan scale with how strong the puffs are (a whisper of a puff hardly turns the wind).
-		const double Scale = std::min(1.0, D.PuffAmplitude / 0.2);
-		OutShift = Scale * (Params.PuffVeerDegrees * (P - PuffMean) / std::max(1.0 - PuffMean, 0.3) + Params.PuffFanDegrees * Fan) * kDegToRad;
+		const double N = CellField(Along, Across, T);
+		// The small puffs are stronger in the big gust patches, weaker in the lulls; their direction is their own.
+		const double Mod = D.CellSigma > 0.0 ? Clamp(1.0 + kCellModulation * N, 0.2, 1.8) : 1.0;
+		OutFactor = 1.0 + D.CellSigma * N + D.PuffAmplitude * Mod * (P - PuffMean);
+		// Veer and fan scale with how strong the puffs are (a whisper of a puff hardly turns the wind); a big gust patch
+		// veers a little as a whole, a lull backs.
+		const double Scale = std::min(1.0, D.PuffAmplitude / 0.2), CellScale = std::min(1.0, D.CellSigma / 0.06);
+		OutShift = (Scale * (Params.PuffVeerDegrees * (P - PuffMean) / std::max(1.0 - PuffMean, 0.3) + Params.PuffFanDegrees * Fan)
+			+ CellScale * kCellVeer * Params.PuffVeerDegrees * N) * kDegToRad;
 	}
 
 	void FWindField::ReadableAt(double X, double Y, double T, double& OutFromRadians, double& OutFactor) const

@@ -520,7 +520,7 @@ namespace Sailing
 
 		// Crew: the CG assumes them on the centerline; moving them out (or onto the board) adds a gravity moment.
 		{
-			const Vec3 CrewWorld = Q.Rotate(Vec3(0.0, State.CrewOffset, State.CrewOffsetZ));
+			const Vec3 CrewWorld = Q.Rotate(Vec3(State.CrewOffsetX, State.CrewOffset, State.CrewOffsetZ));
 			TorqueWorld += CrewWorld.Cross(Vec3(0.0, 0.0, -C.CrewMass * kGravity));
 		}
 
@@ -901,8 +901,11 @@ namespace Sailing
 			const double Hike = Clamp(Controls.Hike, -1.0, 1.0);
 			TargetY = State.WindwardSide * (Hike >= 0.0 ? C.CrewSitOut + C.CrewHikeOut * Hike : C.CrewSitOut * (1.0 + 2.0 * Hike));
 		}
+		// Fore and aft: dinghies only (the rest have nowhere to go), and only sailing (not righting or capsized).
+		const double TargetX = bRighting || TiltNow > 60.0 * kDegToRad ? 0.0 : -Clamp(Controls.CrewAft, 0.0, 1.0) * C.CrewAftRange;
 		State.CrewOffset = MoveToward(State.CrewOffset, TargetY, C.CrewMoveSpeed * Dt);
 		State.CrewOffsetZ = MoveToward(State.CrewOffsetZ, TargetZ, C.CrewMoveSpeed * Dt);
+		State.CrewOffsetX = MoveToward(State.CrewOffsetX, TargetX, 0.5 * C.CrewMoveSpeed * Dt);
 
 		State.Time += Dt;
 

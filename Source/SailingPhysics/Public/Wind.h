@@ -30,6 +30,12 @@ namespace Sailing
 		double PuffIntervalSeconds = 240.0; // typical time between puffs at a point (station calibration)
 		double PuffVeerDegrees = 7.0;    // a puff veers by about this; lulls back
 		double PuffFanDegrees = 20.0;    // across a puff the wind turns this much outward on each side
+		/**
+		 * Share of the puffs' variance carried by the kilometre-scale cells (lulls and puffs 2 to 5 km across, the size of
+		 * the convective cells: the W6 LES pilot puts about two thirds of the gust energy there); the smaller puffs carry the
+		 * rest and are stronger inside the big puffs than in the lulls. 0 = the W1 field (one scale).
+		 */
+		double CellShare = 0.65;
 		uint32_t Seed = 1;               // the same seed always gives the same gusts and shifts
 	};
 
@@ -104,6 +110,9 @@ namespace Sailing
 	 *    a few degrees veered); streets along the wind in a breeze, open cells in light air. Each lands, grows for 20 to
 	 *    40 s, drifts, fades. Inside one the wind veers (PuffVeerDegrees) and fans out to both sides (PuffFanDegrees);
 	 *    between them it is lighter and backed.
+	 *  - kilometre cells: lulls and puffs from a band of waves 2 to 5 km long (1 to 2.5 mixed-layer depths) in the same
+	 *    drifting frame, re-forming over half an hour; they carry CellShare of the puffs' variance and scale the smaller
+	 *    puffs inside them.
 	 *  - fine turbulence under 200 m: the Mann tile as frozen flow at the mean wind.
 	 *  - slow oscillating and persistent shifts.
 	 * Stability (air minus water temperature) sets the share and size of the puffs and the height profile. Shore lee and
@@ -163,7 +172,8 @@ namespace Sailing
 		{
 			double PuffAcross = 0.0, PuffAlong = 0.0, SpacingAcross = 0.0, SpacingAlong = 0.0, Streets = 0.0;
 			double PuffSigma = 0.0, FineSigma = 0.0, PuffAmplitude = 0.0, ZetaAt10 = 0.0, AloftRatio = 1.25, Lifetime = 600.0;
-		bool bGusty = false;
+			double CellWaveMin = 0.0, CellWaveMax = 0.0, CellSeconds = 1800.0, CellSigma = 0.0;
+			bool bGusty = false;
 		};
 		const FDerived& GetDerived() const { return D; }
 
@@ -174,6 +184,8 @@ namespace Sailing
 		void Derive();
 		double Profile(double HeightMeters) const;
 		double PuffField(double Along, double Across, double T, double& Fan) const;
+		/** The kilometre cells at a point of the puffs' frame: unit standard deviation, zero mean. */
+		double CellField(double Along, double Across, double T) const;
 		void Fine(double X, double Y, double T, double& DU, double& DV) const;
 		double Slow(double Along, double Across, double T) const;
 
@@ -185,6 +197,8 @@ namespace Sailing
 		double PuffMean = 0.0;    // spatial mean of the raw puff field (subtracted so the gusts average to 1)
 		double ProfileNorm = 1.0; // the profile's value at 10 m (divided out)
 		double ObukhovL = 1e9;    // m (stable > 0, unstable < 0)
+		static constexpr int kCellWaves = 12;
+		double CellKA[kCellWaves] = {}, CellKC[kCellWaves] = {}, CellOmega[kCellWaves] = {}, CellPhase[kCellWaves] = {};
 		FDriftFrame Puffs, Air;   // puffs drift at the wind aloft; fine turbulence and shifts at the mean wind
 		FGustFront Front;
 		const class FShelterMap* Shelter = nullptr;

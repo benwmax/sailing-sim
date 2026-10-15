@@ -23,7 +23,8 @@ int main(int Argc, char** Argv)
 	const FWindField::FDerived& D = Wind.GetDerived();
 	std::printf("# month %d hour %.1f knots %.1f air-water %.1f mixed %.0f gust %.3f puff %.3f across %.0f along %.0f streets %.2f amp %.2f\n", Month, Hour, Knots,
 		S.Wind.AirMinusWaterC, S.Wind.MixedLayerMeters, S.Wind.GustIntensity, S.Wind.PuffIntensity, D.PuffAcross, D.PuffAlong, D.Streets, D.PuffAmplitude);
-	const double T = 1800.0, Half = 2000.0, Step = 25.0;
+	// Optional fourth argument: half the patch's side (m); the kilometre cells want 6 km.
+	const double T = 1800.0, Half = Argc > 4 ? std::atof(Argv[4]) : 2000.0, Step = Half / 80.0;
 	for (double X = -Half; X <= Half; X += Step)
 	{
 		for (double Y = -Half; Y <= Half; Y += Step)
