@@ -301,35 +301,43 @@ def build_cockpit():
 
 
 def build_cabin():
-    """Cabin trunk: inward-sloping sides, sloped front, cambered top, rounded corners."""
-    n = 60
+    """Cabin trunk as on TX 7295 EC (dock photo IMG_9224): low and wide, its sides almost upright and standing just
+    inboard of the side decks, a flat lightly cambered top with tight corner radii, and a long raked front that runs
+    down to the foredeck ahead of the mast."""
+    n = 72
     bm = bmesh.new()
     rings = []
     for i in range(n + 1):
         t = i / n
         x = CABIN_AFT + (CABIN_FWD - CABIN_AFT) * t
-        # plan half-width at the deck: 0.70 aft narrowing to a rounded nose
-        nose = smooth((t - 0.70) / 0.30)
-        w = (0.70 - 0.20 * t) * math.sqrt(max(1 - nose ** 2.2, 0.0)) + 0.02
+        # plan half-width at the deck: inboard edge of the side deck, rounding in to the nose over the last fifth
+        side_line = half_beam(x) - SIDE_DECK - 0.015
+        nose = smooth((t - 0.80) / 0.20)
+        w = max(side_line * math.sqrt(max(1 - nose ** 2.4, 0.0)), 0.0) + 0.02
         hgt = 0.30 - 0.06 * t                              # GUESS: trunk height above the deck at the centreline
-        front = smooth((t - 0.80) / 0.20)                   # sloped forward face
-        hgt *= (1 - 0.85 * front)
+        front = smooth((t - 0.74) / 0.26)                   # long raked forward face
+        hgt *= (1 - 0.90 * front)
         zb = deck_z(x, 0) - 0.06
         zt = deck_z(x, 0) + hgt
-        wt = max(w - 0.10, 0.01)                            # sides lean inboard
-        ring = [(x, -w - 0.02, zb), (x, -w, deck_z(x, w) + 0.01), (x, -wt, zt - 0.03), (x, -wt * 0.5, zt), (x, 0, zt + 0.012),
-                (x, wt * 0.5, zt), (x, wt, zt - 0.03), (x, w, deck_z(x, w) + 0.01), (x, w + 0.02, zb)]
-        rings.append([bm.verts.new(p) for p in ring])
-    for a, b in zip(rings[:-1], rings[1:]):
-        for j in range(len(a) - 1):
-            bm.faces.new((a[j], a[j + 1], b[j + 1], b[j]))
+        zs = deck_z(x, min(w, half_beam(x) - 0.05)) + 0.005
+        lean = 0.035 * (1 - front) + 0.02                   # sides lean inboard a few degrees
+        wt = max(w - lean, 0.01)
+        r = 0.035 * (1 - 0.5 * front)                       # corner radius between side and top
+        ring = [(x, -w - 0.02, zb), (x, -w, zs), (x, -wt + 0.002, zt - r * 1.6), (x, -wt + r * 0.35, zt - r * 0.35),
+                (x, -wt + r * 1.6, zt - 0.002), (x, -wt * 0.5, zt + 0.010), (x, 0, zt + 0.014),
+                (x, wt * 0.5, zt + 0.010), (x, wt - r * 1.6, zt - 0.002), (x, wt - r * 0.35, zt - r * 0.35),
+                (x, wt - 0.002, zt - r * 1.6), (x, w, zs), (x, w + 0.02, zb)]
+        rings.append([bm.verts.new(pt) for pt in ring])
+    for a_, b_ in zip(rings[:-1], rings[1:]):
+        for j in range(len(a_) - 1):
+            bm.faces.new((a_[j], a_[j + 1], b_[j + 1], b_[j]))
     bm.faces.new(rings[0])
     bm.faces.new(list(reversed(rings[-1])))
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     ob = mesh_obj("Cabin", bm, MAT["CabinGelcoat"])
     sub = ob.modifiers.new("sub", "SUBSURF")
-    sub.levels = 2
+    sub.levels = 1
     apply_mods(ob)
     # companionway opening and its sliding hatch garage
     comp = box("comp", CABIN_AFT - 0.2, CABIN_AFT + 0.55, -0.26, 0.26, SEAT_Z - 0.05, 2.0)
@@ -379,8 +387,36 @@ def build_keel():
 def build_rudder():
     # transom-hung blade, head above the aft deck carrying the tiller
     r = foil("Rudder", STERN - 0.04, STERN - 0.42, STERN - 0.09, STERN - 0.40, 0.55, -0.98, thick=0.10, mat=MAT["GelcoatHull"])
-    head = box("RudderHead", STERN - 0.36, STERN - 0.02, -0.035, 0.035, 0.40, 0.78, MAT["Aluminium"], bev=0.01)
-    return [r, head]
+    parts = [r]
+    # rudder head: two cast cheeks either side of the blade top, through-bolted, the tiller pinned between them
+    prof = [(STERN - 0.03, 0.40), (STERN - 0.03, 0.66), (STERN - 0.06, 0.74), (STERN - 0.15, 0.77), (STERN - 0.24, 0.75),
+            (STERN - 0.30, 0.66), (STERN - 0.36, 0.48), (STERN - 0.33, 0.40)]
+    for side in (1, -1):
+        y0, y1 = side * 0.019, side * 0.027
+        bm = bmesh.new()
+        f = bm.faces.new([bm.verts.new((x, y0, z)) for x, z in prof])
+        ext = bmesh.ops.extrude_face_region(bm, geom=[f])
+        for v in ext["geom"]:
+            if isinstance(v, bmesh.types.BMVert):
+                v.co.y = y1
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        ch = mesh_obj("RudderHead" if side > 0 else "RudderHead_cheek", bm, MAT["CastAlu"], smooth_shade=False)
+        bv = ch.modifiers.new("bev", "BEVEL")
+        bv.width, bv.segments = 0.003, 2
+        apply_mods(ch)
+        parts.append(ch)
+    for k, (x, z) in enumerate(((STERN - 0.08, 0.46), (STERN - 0.26, 0.46), (STERN - 0.13, 0.56), (STERN - 0.30, 0.56))):
+        parts.append(cyl(f"RudderBolt_{k}", (x, -0.034, z), (x, 0.034, z), 0.004, MAT["Stainless"], 10))
+        for side in (1, -1):
+            parts.append(cyl(f"RudderNut_{k}_{side}", (x, side * 0.027, z), (x, side * 0.034, z), 0.0075, MAT["Stainless"], 6))
+    parts.append(cyl("TillerPin", (STERN - 0.12, -0.036, 0.70), (STERN - 0.12, 0.036, 0.70), 0.006, MAT["Stainless"], 12))
+    # pintles on the blade's leading edge into gudgeons on the transom
+    for k, z in enumerate((0.47, 0.05)):
+        parts.append(cyl(f"Pintle_{k}", (STERN - 0.035, 0, z - 0.035), (STERN - 0.035, 0, z + 0.035), 0.007, MAT["Stainless"], 12))
+        parts.append(box(f"PintleStrap_{k}", STERN - 0.12, STERN - 0.03, -0.024, 0.024, z - 0.012, z + 0.012, MAT["Stainless"], bev=0.003))
+        parts.append(box(f"Gudgeon_{k}", STERN - 0.04, STERN + 0.003, -0.045, 0.045, z + 0.014, z + 0.034, MAT["Stainless"], bev=0.003))
+        parts.append(box(f"GudgeonPlate_{k}", STERN - 0.002, STERN + 0.004, -0.05, 0.05, z - 0.02, z + 0.06, MAT["Stainless"], bev=0.002))
+    return parts
 
 
 # ------------------------------------------------------------------ deck hardware

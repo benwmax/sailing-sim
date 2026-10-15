@@ -76,6 +76,5 @@ the guesses; there is no shoot planned for now.
 ## Known gaps
 
 Sails and ropes in the stills are one pose; in the game they stay live (see above). No spinnaker gear, no interior
-below decks, no LODs yet (Nanite covers the rigid parts). The cabin trunk is narrower and boxier than TX 7295 EC's
-low, wide trunk in the dock photo; the rudder head is a plain box. The hero material slots have no Unreal
-instances yet.
+below decks, no LODs yet (Nanite covers the rigid parts). The cabin trunk's front is rounder than the real one and its window
+outline is estimated. The hero material slots have no Unreal instances yet.

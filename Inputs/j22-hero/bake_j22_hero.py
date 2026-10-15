@@ -186,6 +186,8 @@ def game_part(o):
     cols = {c.name for c in o.users_collection}
     if "Sails" in cols or n.startswith(ROPE_LIKE) or "Rigging" in cols:
         return None
+    if n.startswith("Gudgeon"):                       # transom fittings stay put while the rudder turns
+        return "SM_J22H_Hull"
     if "Rudder" in cols:
         return "SM_J22H_Rudder"
     if "Rig" in cols:
