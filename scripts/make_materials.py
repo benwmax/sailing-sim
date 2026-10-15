@@ -1165,10 +1165,15 @@ float4 wFar = WindFar.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0);
 float2 eN = abs(p.xy - GustRect.xy) / (0.5 * GustRect.z);
 float2 eF = abs(p.xy - WindFarRect.xy) / (0.5 * WindFarRect.z);
 float4 wMean = float4(WindP.z / 20.0, 0.5 + 0.5 * WindP.x, 0.5 + 0.5 * WindP.y, WindP.z / 20.0);
-float4 wMap = lerp(lerp(wMean, wFar, 1.0 - smoothstep(0.75, 0.95, max(eF.x, eF.y))), wNear, 1.0 - smoothstep(0.72, 0.92, max(eN.x, eN.y)));
+float4 wFarMean = lerp(wMean, wFar, 1.0 - smoothstep(0.75, 0.95, max(eF.x, eF.y)));
+float4 wMap = lerp(wFarMean, wNear, 1.0 - smoothstep(0.72, 0.92, max(eN.x, eN.y)));
 float rough = wMap.r * 2.5;
 float2 ldir = normalize(wMap.gb * 2.0 - 1.0 + float2(1e-4, 0.0));
-float slowMs = wMap.a * 20.0;
+// W2 follow-up (Mac gate, 7 kn from 300 m): the slow wind that switches slicks and windrows on hands over from the near
+// map to the far one over most of the near map's half-width, not its outer 20%. The two levels read the wind differently
+// (the full wind against the readable one), and at 7 kn the slow wind sits on the slick threshold, so a hand-off over
+// 300 m drew the slicks starting along a sharp line 1.2-1.5 km out.
+float slowMs = lerp(wFarMean.a, wNear.a, 1.0 - smoothstep(0.3, 0.92, max(eN.x, eN.y))) * 20.0;
 float2 guv = p.xy / GustRect.z;
 float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
 float calm = saturate(0.25 + 0.75 * gustRatio);
@@ -1301,13 +1306,25 @@ float glass = (1.0 - smoothstep(1.5, 3.0, rough * 8.0)) * (1.0 - Dark);
 float2 sw = normalize(WindSlow.xy + float2(1e-4, 0.0));
 float2 sn = float2(-sw.y, sw.x);
 float across = dot(p.xy, sn), along = dot(p.xy, sw);
-float band = sin(across / 37.0 + 1.7 * sin(along / 260.0) + 0.8 * sin(across / 113.0)) * sin(across / 59.0 + 0.6 * sin(along / 410.0 + 1.3));
-float slick = smoothstep(0.3, 0.6, band) * (1.0 - smoothstep(3.5, 6.0, slowMs)) * (1.0 - glass);
+// W2 follow-up (Mac gate): no two bands alike. The cross-wind coordinate is bent over hundreds of metres to kilometres
+// (bands wander and converge), cut into bands about 50 m apart whose own spacing, width and offset come from a hash of
+// the band; about a third are missing, and each comes and goes along its length. (Two crossed sines read as ruled lines
+// from 300 m.) Faded out where a band would be narrower than a few pixels.
+float bu = across / 52.0 + 1.1 * sin(along / 640.0 + across / 1500.0) + 0.6 * sin(along / 1900.0 - across / 870.0 + 2.1);
+float bk = floor(bu), bf = frac(bu);
+float bh1 = frac(sin(bk * 12.9898 + 4.1) * 43758.5453), bh2 = frac(sin(bk * 78.233 + 1.3) * 24634.6345), bh3 = frac(sin(bk * 39.425 + 7.7) * 15731.743);
+float bd = abs(bf - (0.3 + 0.4 * bh2)) / lerp(0.06, 0.3, bh1);
+float bAlong = 0.5 + 0.5 * sin(along / lerp(220.0, 700.0, bh3) + bh1 * 6.2832 + 1.5 * sin(along / 1300.0 + bh2 * 6.2832));
+float band = (1.0 - smoothstep(0.55, 1.0, bd)) * step(0.33, bh3) * smoothstep(0.25, 0.65, bAlong);
+float slick = band * (1.0 - smoothstep(3.5, 6.0, slowMs)) * (1.0 - glass) * saturate(1.0 - fwidth(bu) * 2.5);
 // W2: windrows (Langmuir circulation) from about 3 m/s: thin lines of foam and smoother water along the wind, a few to
-// 20 m apart (here 14 m, wandering), broken into dashes; faded out before they alias.
-float wx = across / 14.0 + 0.35 * sin(along / 90.0) + 0.2 * sin(across / 47.0);
-float wdash = 0.5 + 0.5 * sin(along / 4.3 + floor(wx) * 2.3 + 1.7 * sin(along / 17.0 + floor(wx)));
-float wline = (1.0 - smoothstep(0.008, 0.025, abs(frac(wx) - 0.5))) * smoothstep(0.35, 0.8, wdash);
+// 20 m apart (here about 14 m: each row's spacing jittered, the rows bending), broken into dashes, some rows faint or
+// missing; faded out before they alias.
+float wx = across / 14.0 + 0.35 * sin(along / 90.0) + 0.2 * sin(across / 47.0) + 0.5 * sin(along / 230.0 + across / 170.0);
+float wk = floor(wx);
+float wh = frac(sin(wk * 12.9898 + 3.7) * 43758.5453);
+float wdash = 0.5 + 0.5 * sin(along / lerp(3.5, 6.5, wh) + wk * 2.3 + 1.7 * sin(along / 17.0 + wk));
+float wline = (1.0 - smoothstep(0.008, 0.025, abs(frac(wx) - (0.35 + 0.3 * wh)))) * smoothstep(0.35, 0.8, wdash) * lerp(0.3, 1.0, step(0.25, wh));
 float wrow = wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 260.0) * saturate(1.0 - fwidth(wx) * 8.0);
 float smoothing = max(glass, max(0.65 * slick, 0.5 * wrow));
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
