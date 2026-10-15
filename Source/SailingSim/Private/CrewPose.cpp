@@ -104,13 +104,17 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 		// on the tiller extension, the forward hand on the mainsheet.
 		// Graphics G8: sitting up, the thighs lie level across the side deck and the lower legs drop into the cockpit well
 		// (the feet under the strap); hiking straightens them.
-		Legs(Out, 84.f - 14.f * H, 25.f + 50.f * (1.f - H), 9.f);
-		const float L = -(12.f + 58.f * H);
+		// Round 10: sitting out on the edge in a breeze the legs reach across the well to the strap on the centreline
+		// (knees bent half as much, the feet planted on the floor under it), and the body leans back from the start; the
+		// thighs-level, shins-down seat read as a sailor on a chair.
+		Legs(Out, 80.f - 12.f * H, 25.f + 30.f * (1.f - H), 9.f);
+		const float L = -(20.f + 50.f * H);
 		Out.Add(TEXT("spine"), Lean(0.5f * L));
 		Out.Add(TEXT("chest"), Lean(0.5f * L));
 		// Graphics G8: the head turned toward the bow (the luff and the water ahead), not staring across the boat.
 		Out.Add(TEXT("neck"), Q(FVector::UpVector, 30.f * P.Side) * Lean(-0.7f * L));
-		Arms(Out, 40.f, 70.f, 30.f, 40.f, 70.f, 30.f);
+		// (Round 10: the elbows nearer the sides; the hands' reach keeps this plane, and 40 deg down held them out like wings.)
+		Arms(Out, 65.f, 55.f, 45.f, 65.f, 55.f, 45.f);
 		break;
 	}
 	case ECrewStance::Trapeze:

@@ -355,6 +355,7 @@ public:
 private:
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;
+	float ShownCrewOffset = 0.f, ShownCrewOffsetV = 0.f; bool bShownCrewOffset = false; // round 10: a dinghy sailor's offset, smoothed
 	void UpdateCrewFigures(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<UMaterialInterface> SailMainMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> SailJibMaterial;
