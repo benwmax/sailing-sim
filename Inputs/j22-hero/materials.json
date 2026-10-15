@@ -1,0 +1,315 @@
+{
+ "groups": {
+  "Hull": {
+   "D": "T_J22H_Hull_D.png",
+   "R": "T_J22H_Hull_R.png",
+   "N": "T_J22H_Hull_N.png"
+  },
+  "DeckMould": {
+   "D": "T_J22H_DeckMould_D.png",
+   "R": "T_J22H_DeckMould_R.png",
+   "N": "T_J22H_DeckMould_N.png"
+  },
+  "Rudder": {
+   "D": "T_J22H_Rudder_D.png",
+   "R": "T_J22H_Rudder_R.png",
+   "N": "T_J22H_Rudder_N.png"
+  },
+  "Teak": {
+   "D": "T_J22H_Teak_D.png",
+   "R": "T_J22H_Teak_R.png",
+   "N": "T_J22H_Teak_N.png"
+  }
+ },
+ "flat_materials": {
+  "Aluminium": {
+   "base_color_linear": [
+    0.5841,
+    0.6038,
+    0.624
+   ],
+   "roughness": 0.5,
+   "metallic": 1.0
+  },
+  "BlackPlastic": {
+   "base_color_linear": [
+    0.0075,
+    0.0075,
+    0.0075
+   ],
+   "roughness": 0.45,
+   "metallic": 0.0
+  },
+  "Bronze": {
+   "base_color_linear": [
+    0.3325,
+    0.1981,
+    0.0685
+   ],
+   "roughness": 0.35,
+   "metallic": 1.0
+  },
+  "CabinGelcoat": {
+   "base_color_linear": [
+    0.7305,
+    0.624,
+    0.4179
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "CamBase": {
+   "base_color_linear": [
+    0.0232,
+    0.0242,
+    0.0262
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "CastAlu": {
+   "base_color_linear": [
+    0.4735,
+    0.491,
+    0.5089
+   ],
+   "roughness": 0.5,
+   "metallic": 1.0
+  },
+  "Chrome": {
+   "base_color_linear": [
+    0.7758,
+    0.7913,
+    0.807
+   ],
+   "roughness": 0.5,
+   "metallic": 1.0
+  },
+  "DecalBlack": {
+   "base_color_linear": [
+    0.0052,
+    0.0052,
+    0.0052
+   ],
+   "roughness": 0.3,
+   "metallic": 0.0
+  },
+  "ExtensionBlack": {
+   "base_color_linear": [
+    0.0103,
+    0.0103,
+    0.0103
+   ],
+   "roughness": 0.6,
+   "metallic": 0.0
+  },
+  "Gelcoat": {
+   "base_color_linear": [
+    0.7305,
+    0.624,
+    0.4179
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "GelcoatHull": {
+   "base_color_linear": [
+    0.8963,
+    0.8632,
+    0.7835
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "HatchAcrylic": {
+   "base_color_linear": [
+    0.0232,
+    0.0273,
+    0.0331
+   ],
+   "roughness": 0.04,
+   "metallic": 0.0
+  },
+  "KeelLead": {
+   "base_color_linear": [
+    0.3231,
+    0.3325,
+    0.3095
+   ],
+   "roughness": 0.6,
+   "metallic": 0.0
+  },
+  "OutboardBlack": {
+   "base_color_linear": [
+    0.0056,
+    0.006,
+    0.007
+   ],
+   "roughness": 0.28,
+   "metallic": 0.0
+  },
+  "RedPlastic": {
+   "base_color_linear": [
+    0.2705,
+    0.011,
+    0.0086
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "RigTape": {
+   "base_color_linear": [
+    0.8879,
+    0.8879,
+    0.8714
+   ],
+   "roughness": 0.55,
+   "metallic": 0.0
+  },
+  "RopeBackstay": {
+   "base_color_linear": [
+    0.728,
+    0.5859,
+    0.5464
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
+  "RopeHalyard": {
+   "base_color_linear": [
+    0.5965,
+    0.5965,
+    0.6255
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
+  "RopeJibPort": {
+   "base_color_linear": [
+    0.728,
+    0.5859,
+    0.5464
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
+  "RopeJibStbd": {
+   "base_color_linear": [
+    0.5969,
+    0.6248,
+    0.5534
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
+  "RopeMain": {
+   "base_color_linear": [
+    0.728,
+    0.5859,
+    0.5464
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
+  "RopeVang": {
+   "base_color_linear": [
+    0.5696,
+    0.2593,
+    0.2404
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
+  "RubRail": {
+   "base_color_linear": [
+    0.1022,
+    0.0976,
+    0.0865
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "SheaveGrey": {
+   "base_color_linear": [
+    0.0423,
+    0.0452,
+    0.0497
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "Stainless": {
+   "base_color_linear": [
+    0.5776,
+    0.5906,
+    0.6038
+   ],
+   "roughness": 0.5,
+   "metallic": 1.0
+  },
+  "Sticker": {
+   "base_color_linear": [
+    0.0284,
+    0.2051,
+    0.0423
+   ],
+   "roughness": 0.3,
+   "metallic": 0.0
+  },
+  "TeakVarnish": {
+   "base_color_linear": [
+    0.1946,
+    0.0595,
+    0.0144
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "TeakWeathered": {
+   "base_color_linear": [
+    0.2747,
+    0.2582,
+    0.2232
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "TelltaleGreen": {
+   "base_color_linear": [
+    0.0137,
+    0.2542,
+    0.0423
+   ],
+   "roughness": 0.6,
+   "metallic": 0.0
+  },
+  "TelltaleRed": {
+   "base_color_linear": [
+    0.5271,
+    0.0194,
+    0.0116
+   ],
+   "roughness": 0.6,
+   "metallic": 0.0
+  },
+  "WhitePlastic": {
+   "base_color_linear": [
+    0.7991,
+    0.7835,
+    0.7454
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "Wire": {
+   "base_color_linear": [
+    0.4851,
+    0.5029,
+    0.521
+   ],
+   "roughness": 0.5,
+   "metallic": 1.0
+  }
+ },
+ "glb_bytes": 16887252
+}
