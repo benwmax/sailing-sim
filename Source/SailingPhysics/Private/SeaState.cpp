@@ -46,7 +46,7 @@ namespace Sailing
 		}
 	}
 
-	void FSeaFetch::Build(const FLakeTerrain& Terrain, double MapCell, double InMax, const std::function<double(double, double)>& OpenSea)
+	void FSeaFetch::Build(const FLakeTerrain& Terrain, double MapCell, double InMax)
 	{
 		MaxFetch = InMax;
 		const double SizeX = (Terrain.GetRows() - 1) * Terrain.GetCell(), SizeY = (Terrain.GetCols() - 1) * Terrain.GetCell();
@@ -125,17 +125,6 @@ namespace Sailing
 				}
 			}
 		}
-		if (OpenSea)
-		{
-			for (int R = 0; R < Rows; ++R)
-			{
-				for (int C = 0; C < Cols; ++C)
-				{
-					if (OpenSea(OriginX + R * Cell, OriginY + C * Cell) <= 0.5) continue;
-					for (int B = 0; B < kSeaBins; ++B) Fetch[(size_t(R) * Cols + C) * kSeaBins + B] = 200.f;
-				}
-			}
-		}
 	}
 
 	double FSeaFetch::FetchToward(double X, double Y, double TravelRadians) const
@@ -161,7 +150,8 @@ namespace Sailing
 		return 1.0;
 	}
 
-	void FSeaMap::Build(const FSeaFetch& Fetch, const FWaveComponent* Components, double InWindMs, double InTravel, bool bShallow)
+	void FSeaMap::Build(const FSeaFetch& Fetch, const FWaveComponent* Components, double InWindMs, double InTravel, bool bShallow, double TowardWind,
+		const std::function<double(double, double)>& OpenSea)
 	{
 		Rows = Fetch.GetRows(); Cols = Fetch.GetCols(); Cell = Fetch.GetCell();
 		OriginX = Fetch.GetOriginX(); OriginY = Fetch.GetOriginY();
@@ -192,7 +182,9 @@ namespace Sailing
 			const FWaveComponent& W = Components[I];
 			FComp& P = Comp[I];
 			P.Band = I / kWaveDirectionsPerBand;
-			double A = std::atan2(W.Ky, W.Kx) / (2.0 * kPi / kSeaBins);
+			// The direction its fetch is read along: its own, pulled toward the wind's by TowardWind (see Build's comment).
+			const double Own = std::atan2(W.Ky, W.Kx);
+			double A = (TravelRadians + (1.0 - TowardWind) * WrapAngle(Own - TravelRadians)) / (2.0 * kPi / kSeaBins);
 			A = std::fmod(A, double(kSeaBins));
 			if (A < 0.0) A += kSeaBins;
 			P.Bin0 = int(A) % kSeaBins; P.Bin1 = (P.Bin0 + 1) % kSeaBins; P.T = A - std::floor(A);
@@ -210,6 +202,7 @@ namespace Sailing
 			{
 				float* Out = &Values[(size_t(R) * Cols + C) * kSeaChannels];
 				const double H = Fetch.DepthAt(R, C);
+				const bool bOpen = OpenSea && OpenSea(OriginX + R * Cell, OriginY + C * Cell) > 0.5;
 				double Short = 0.0;
 				for (int I = 0; I < kWaveComponents; ++I)
 				{
@@ -218,7 +211,7 @@ namespace Sailing
 					double Ratio = 1.0;
 					if (!bCalm)
 					{
-						const double F = std::max(Fetch.FetchAt(R, C, P.Bin0) * (1.0 - P.T) + Fetch.FetchAt(R, C, P.Bin1) * P.T, 10.0);
+						const double F = bOpen ? 200.0 : std::max(Fetch.FetchAt(R, C, P.Bin0) * (1.0 - P.T) + Fetch.FetchAt(R, C, P.Bin1) * P.T, 10.0);
 						const double X = Clamp((std::log(F) - LogF0) / (LogF1 - LogF0) * (NF - 1), 0.0, NF - 1.0);
 						const int X0 = std::min(int(X), NF - 2);
 						const double Amp = Table[P.Band][X0] + (Table[P.Band][X0 + 1] - Table[P.Band][X0]) * (X - X0);

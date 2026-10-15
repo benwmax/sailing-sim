@@ -247,6 +247,7 @@ namespace Sailing
 	void FWaveField::SetSeaMap(std::shared_ptr<const FSeaMap> InMap)
 	{
 		SeaMap = std::move(InMap);
+		++SeaMapGeneration;
 		ComputeTargetAmplitudes();
 		bBandsDirty = true;
 	}

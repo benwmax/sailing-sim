@@ -121,6 +121,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailBMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> RippleBMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeGridMap;
+	/** W3: the sea map's atlas (SeaState.h): seven tiles of RGBA half floats, re-uploaded when the field gets a new map. */
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> SeaAtlas;
+	uint32 UploadedSeaGeneration = 0;
+	/** Uploads the field's sea map (or unbinds it) when it changed, and sets SeaRect and SeaParams. */
+	void UpdateSeaMap();
 
 	int32 Tier = 2;
 	bool bV4 = false;

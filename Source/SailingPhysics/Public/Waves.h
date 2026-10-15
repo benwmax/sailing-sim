@@ -119,6 +119,8 @@ namespace Sailing
 		 */
 		void SetSeaMap(std::shared_ptr<const FSeaMap> InMap);
 		const FSeaMap* GetSeaMap() const { return SeaMap.get(); }
+		/** Counts SetSeaMap calls (the renderer re-uploads the atlas when it changes). */
+		uint32_t GetSeaMapGeneration() const { return SeaMapGeneration; }
 		/** The fetch the components' targets grow on: the map's reference, else the params' fetch. */
 		double ReferenceFetch() const;
 		/** The map's channels at a point (kSeaChannels: the long components' ratios, then the short scale); 1 without a map. */
@@ -155,6 +157,7 @@ namespace Sailing
 		FWaveParams Params;
 		std::shared_ptr<FOcean> Ocean;
 		std::shared_ptr<const FSeaMap> SeaMap;
+		uint32_t SeaMapGeneration = 0;
 		double Depth = 0.0;
 		/** The component each lake entry of BandCache came from (BandsAt scales them). */
 		mutable std::vector<int> BandComponent;

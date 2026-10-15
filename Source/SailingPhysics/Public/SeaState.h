@@ -14,6 +14,14 @@ namespace Sailing
 	constexpr int kSeaLongComponents = 24;
 	/** Direction bins of the fetch map: every 22.5 deg of the direction the waves travel toward. */
 	constexpr int kSeaBins = 16;
+	/**
+	 * The direction a component's fetch is read along: its own, pulled this share of the way toward the wind's. The field
+	 * has three components a band, 120 deg apart with a seeded offset, standing in for the whole cos^2 spread: read along
+	 * their own directions, a band's fetch came from up to 60 deg off the wind at random and the points scattered twice as
+	 * far from SWAN (median |log Hs error| 0.14 against 0.08); at 0.75 they match it (0.08) and a component well off the
+	 * wind still sees the shore on its own side (docs/water-3, scripts/wave-check.sh --map).
+	 */
+	constexpr double kSeaTowardWind = 0.75;
 	/** The sea map's channels: one per long component, then the short waves' scale. */
 	constexpr int kSeaChannels = kSeaLongComponents + 1;
 
@@ -30,11 +38,9 @@ namespace Sailing
 	public:
 		/**
 		 * MapCell 0 picks it from the world's size: 50 m, doubled until neither side has more than 600 cells (Ray
-		 * Hubbard 50 m, Galveston Bay 100 m). OpenSea (optional) is 0..1, the ocean's share at a point (FOcean's mask):
-		 * where it is over half, the open sea's FFT carries the wind sea and the chop keeps a 200 m fetch, as the game did.
+		 * Hubbard 50 m, Galveston Bay 100 m, the Gulf passage 200 m). About 50 ms.
 		 */
-		void Build(const FLakeTerrain& Terrain, double MapCell = 0.0, double MaxFetch = 15000.0,
-			const std::function<double(double, double)>& OpenSea = nullptr);
+		void Build(const FLakeTerrain& Terrain, double MapCell = 0.0, double MaxFetch = 15000.0);
 		bool IsValid() const { return Rows > 0; }
 
 		int GetRows() const { return Rows; }
@@ -75,9 +81,13 @@ namespace Sailing
 	class SAILINGPHYSICS_API FSeaMap
 	{
 	public:
-		/** Ratios for the components at wind WindMs travelling toward TravelRadians (for the short waves' weights). */
+		/**
+		 * Ratios for the components at wind WindMs travelling toward TravelRadians. OpenSea (optional) is 0..1, the
+		 * ocean's share at a point (FOcean's mask): where it is over half, the open sea's FFT carries the wind sea and the
+		 * chop keeps a 200 m fetch, as the game did before. About 25 ms: the game mode runs it on a worker.
+		 */
 		void Build(const FSeaFetch& Fetch, const FWaveComponent* Components, double WindMs, double TravelRadians,
-			bool bShallow = true);
+			bool bShallow = true, double TowardWind = kSeaTowardWind, const std::function<double(double, double)>& OpenSea = nullptr);
 		bool IsValid() const { return Rows > 0; }
 		double GetWindMs() const { return WindMs; }
 		double GetTravelRadians() const { return TravelRadians; }

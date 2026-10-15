@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "SeaState.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "Ocean.h"
@@ -322,6 +323,7 @@ void AWaterSurface::CreateWaterMaterial()
 		if (Ring) Ring->SetMaterial(0, WaterMaterial);
 	}
 	bStaticParamsSet = false;
+	UploadedSeaGeneration = UINT32_MAX; // W3: bind the sea atlas to the new instance
 	float DebugGust = 0.f;
 	FParse::Value(FCommandLine::Get(), TEXT("SailingDebugGust="), DebugGust);
 	WaterMaterial->SetScalarParameterValue(TEXT("DebugGust"), DebugGust);
@@ -540,12 +542,15 @@ void AWaterSurface::UpdateDetail()
 	double Variance = 0.0;
 	const FWaveComponent* C = Waves->GetComponents();
 	for (int32 I = 0; I < kWaveComponents; ++I) Variance += 0.5 * C[I].Amplitude * C[I].Amplitude;
-	const double Target = FWaveField::TargetSignificantHeight(WindMs, WP.FetchMeters);
+	// W3: with a sea map the components grow toward the map's reference sea (15 km of fetch); each point scales the
+	// short waves by the map's short channel (SShort in the shader).
+	const double Fetch = Waves->ReferenceFetch();
+	const double Target = FWaveField::TargetSignificantHeight(WindMs, Fetch);
 	const double Development = Target > 1e-4 ? FMath::Clamp(4.0 * FMath::Sqrt(Variance) / Target, 0.0, 1.5) : 0.0;
 	FWaveDetailParams P;
 	P.WindMs = WindMs;
 	P.TravelDirRad = FMath::DegreesToRadians(WP.WindFromDegrees) + UE_DOUBLE_PI;
-	P.FetchMeters = WP.FetchMeters;
+	P.FetchMeters = Fetch;
 	P.SplitHz = SplitHz;
 	P.Development = FMath::Max(Development, 0.05);
 	P.Choppiness = Choppiness;
@@ -1070,6 +1075,61 @@ void AWaterSurface::UpdateOcean()
 	WaterMaterial->SetVectorParameterValue(TEXT("OceanParams"), FLinearColor(float(FOcean::Tile[0]), float(FOcean::Tile[1]), 1.f, 8000.f));
 }
 
+void AWaterSurface::UpdateSeaMap()
+{
+	// W3: each long wave train scaled by its own direction's fetch and the depth where it is (SeaState.h). The atlas is
+	// rebuilt only when the game mode gave the field a new map (the mean wind changed); between maps the shader reads the
+	// same texels as FSeaMap::Sample.
+	const FWaveField* Waves = GetWaves();
+	const FSeaMap* Map = Waves ? Waves->GetSeaMap() : nullptr;
+	const uint32 Generation = Waves ? Waves->GetSeaMapGeneration() : 0;
+	if (Generation == UploadedSeaGeneration)
+	{
+		return;
+	}
+	UploadedSeaGeneration = Generation;
+	if (!Map || !Map->IsValid())
+	{
+		WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(1.f, 7.f, 1.f, 0.f));
+		return;
+	}
+	constexpr int32 Tiles = 7;
+	const int32 Rows = Map->GetRows(), Cols = Map->GetCols(), Width = Tiles * Cols;
+	if (!SeaAtlas || SeaAtlas->GetSizeX() != Width || SeaAtlas->GetSizeY() != Rows)
+	{
+		SeaAtlas = MakeFloatMap(Width, Rows, PF_FloatRGBA, false);
+	}
+	// Texel (tile t, column c, row r) holds channels 4t..4t+3 of cell (r, c); the short scale is tile 6's R.
+	const int32 Bytes = Width * Rows * 4 * int32(sizeof(FFloat16));
+	FFloat16* Pixels = reinterpret_cast<FFloat16*>(new uint8[Bytes]);
+	for (int32 R = 0; R < Rows; ++R)
+	{
+		for (int32 C = 0; C < Cols; ++C)
+		{
+			const float* Cell = Map->CellAt(R, C);
+			for (int32 T = 0; T < Tiles; ++T)
+			{
+				FFloat16* Out = Pixels + (size_t(R) * Width + size_t(T) * Cols + C) * 4;
+				for (int32 K = 0; K < 4; ++K)
+				{
+					const int32 Channel = 4 * T + K;
+					Out[K] = FFloat16(Channel < kSeaChannels ? Cell[Channel] : 0.f);
+				}
+			}
+		}
+	}
+	FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, Rows);
+	SeaAtlas->UpdateTextureRegions(0, 1, Region, Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), reinterpret_cast<uint8*>(Pixels),
+		[](uint8* Data, const FUpdateTextureRegion2D* Rg)
+		{
+			delete[] Data;
+			delete Rg;
+		});
+	WaterMaterial->SetTextureParameterValue(TEXT("SeaMap"), SeaAtlas);
+	WaterMaterial->SetVectorParameterValue(TEXT("SeaRect"), FLinearColor(float(Map->GetOriginX()), float(Map->GetOriginY()), float(Map->GetCell()), float(Rows)));
+	WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(float(Cols), float(Width), float(Rows), 1.f));
+}
+
 void AWaterSurface::UpdateMaterial()
 {
 	const FWaveField* Waves = GetWaves();
@@ -1086,6 +1146,7 @@ void AWaterSurface::UpdateMaterial()
 		}
 		bStaticParamsSet = true;
 	}
+	UpdateSeaMap();
 	for (int32 I = 0; I < kWaveComponents / 4; ++I)
 	{
 		WaterMaterial->SetVectorParameterValue(*FString::Printf(TEXT("WaveAmp%02d"), I),
