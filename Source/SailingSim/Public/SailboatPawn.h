@@ -14,6 +14,7 @@
 #include "SailCloth.h"
 #include "ReferenceCapture.h"
 #include "CrewPose.h"
+#include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatPhysicsTask.h"
 #include "SailboatPawn.generated.h"
@@ -352,7 +353,20 @@ public:
 	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
 	const TArray<TObjectPtr<class USkeletalMeshComponent>>& GetCrewMeshes() const { return Crew; }
 	const FBoatLivery& GetLivery() const { return Livery; }
+	/** Crew C5: the crew's falls (CrewFalls.h), for the tests and the stills. */
+	const FCrewFalls& GetCrewFalls() const { return CrewFalls; }
+	bool HasCrewFalls() const { return bCrewFalls; }
 private:
+	// Crew C5: falls (CrewFallsVisuals.cpp): Physics Control on the MetaHuman bodies, a deck box to land on.
+	FCrewFalls CrewFalls;
+	UPROPERTY(Transient) TObjectPtr<class UPhysicsControlComponent> CrewControl;
+	UPROPERTY(Transient) TObjectPtr<class UBoxComponent> CrewDeck;
+	bool bCrewFalls = false, bKnockdownDone = false;
+	double KnockdownAt = -1.0;
+	float KnockdownRate = 80.f; // deg
+	void SetupCrewFalls();
+	void UpdateCrewFalls(float DeltaSeconds);
+	void SetCrewPhysicsActive(bool bActive);
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;
 	float ShownCrewOffset = 0.f, ShownCrewOffsetV = 0.f; bool bShownCrewOffset = false; // round 10: a dinghy sailor's offset, smoothed

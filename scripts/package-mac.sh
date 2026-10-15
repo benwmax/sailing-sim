@@ -23,6 +23,15 @@ if [[ "${FULL:-0}" != 1 && "$(cat "$CODE_STAMP" 2>/dev/null)" == "$CODE_HASH" &&
 fi
 
 START=$(date +%s)
+# The stage step reads the cooked oplog from the Zen server. When none is running, the cooker starts one owned by
+# itself (--owner-pid), which exits with the cook, and the stage then waits for it forever ("Reading oplog from Zen...").
+# So start a server that outlives the cook first (the same install, port and data the engine uses).
+ZEN_DIR="$HOME/Library/Application Support/Epic/UnrealEngine/Common/Zen"
+if ! curl -s -m 3 -o /dev/null http://127.0.0.1:8558/health/ && [[ -x "$ZEN_DIR/Install/zenserver" ]]; then
+	echo "Starting the Zen server for the cook and stage"
+	(cd "$ZEN_DIR/Install" && ./zenserver --port 8558 --data-dir "$ZEN_DIR/Data" --http asio --quiet --detach > /dev/null 2>&1 &)
+	for _ in $(seq 1 30); do curl -s -m 1 -o /dev/null http://127.0.0.1:8558/health/ && break; sleep 1; done
+fi
 "$RUNUAT" BuildCookRun \
 	-project="$PROJECT" -noP4 -utf8output -unattended \
 	-platform=Mac -clientconfig="$CONFIG" \

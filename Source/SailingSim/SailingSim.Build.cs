@@ -11,7 +11,7 @@ public class SailingSim : ModuleRules
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"RHI", "ProceduralMeshComponent", "AudioExtensions", "Json", "MeshDescription", "StaticMeshDescription", "HairStrandsCore", "Slate", "SlateCore", "ApplicationCore"
+			"RHI", "ProceduralMeshComponent", "AudioExtensions", "Json", "MeshDescription", "StaticMeshDescription", "HairStrandsCore", "Slate", "SlateCore", "ApplicationCore", "PhysicsControl", "PhysicsCore"
 		});
 	}
 }
