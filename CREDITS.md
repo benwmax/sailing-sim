@@ -61,3 +61,21 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
   for the open coast (land is flat above mean high water).
 - Ocean waves: Tessendorf (2001) "Simulating Ocean Water"; JONSWAP spectrum (Hasselmann et al. 1973); added
   resistance in waves after Gerritsma and Beukelman (1972). Methods only; no code reproduced.
+
+## Added by the licence audit (Oct 15 2026, docs/licences)
+
+- Buildings (house footprints and heights, Graphics G2/G6): Overture Maps Foundation, buildings theme (release
+  2026-09-23.1), including OpenStreetMap, Microsoft and Esri footprints: © Overture Maps Foundation and OpenStreetMap
+  contributors, ODbL 1.0. The `.houses` bakes are a derived database offered under the same licence.
+- Shore detail, tree crowns, piers and roofs: USGS 3DEP 1 m lidar DEM and lidar point clouds (TX_Pecos_Dallas 2018,
+  TX_Coastal 2018), USDA NAIP 2022 imagery and NOAA C-CAP 2020 land cover, distributed by TxGIO/TNRIS (public domain).
+- Weather and wind: NOAA HRRR and MRMS (NOAA Open Data Dissemination, public domain); NWS ASOS observations from
+  NOAA NCEI and via the Iowa Environmental Mesonet (Iowa State University); NOAA CO-OPS winds (public domain).
+- Wind turbulence tile: generated with DTU Wind Energy's Hipersim (MIT).
+- Crew clothing textures: ambientCG (Fabric036, Fabric048, Fabric070, Leather038), CC0.
+- Fonts: Saira (The Saira Project Authors) and Source Sans 3 (Adobe), SIL Open Font License 1.1; the licence texts
+  ship with them.
+- Crew: MetaHumans by Epic Games, used under the MetaHuman licence (Unreal Engine products only; not redistributed).
+- Made with Unreal Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc.
+- Boat class and brand names (J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) and ASA 101 are
+  trademarks of their owners, used to describe the boats and the course; no endorsement is implied.

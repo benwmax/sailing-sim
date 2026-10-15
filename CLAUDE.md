@@ -121,6 +121,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
    Command-line values cached in statics must use `SailingArgs::FCachedFlag`/`FOnce` (re-read when a list swaps it).
 
+21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
+   no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`
+   (path glob, source, licence, commercial, conditions); `scripts/licence-check.sh` fails otherwise. Credit what the
+   licence asks for in `CREDITS.md`. MetaHuman sources and exports are never redistributed outside the cooked game.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
