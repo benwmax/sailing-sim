@@ -1,4 +1,5 @@
 #include "SailingEnvironment.h"
+#include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "Async/Async.h"
@@ -432,7 +433,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			// photo); the incident meter alone left the blind test's sunsets nearly white. Up to 2.5 stops darker as the
 			// view turns toward a sun below 20 degrees.
 			float IntoSun = 0.f;
-			static const bool bClassicHaze = FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHaze"));
+			static SailingArgs::FCachedFlag ClassicHazeArg(TEXT("SailingClassicHaze"));
+			const bool bClassicHaze = ClassicHazeArg.Get();
 			if (!bClassicHaze && Elevation > -2.0)
 			{
 				if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0))
@@ -453,7 +455,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		// Moonlight is about a thousandth of the sun here (not the real four hundred thousandth: the eye adapts and the
 		// exposure floor keeps the night dark); it lights the atmosphere as its second sun, a deep blue sky.
 		// Phase 8: the moon has its phase and its place in the sky for the date (a new moon leaves only the town glow).
-		static const bool bNoMoon = FParse::Param(FCommandLine::Get(), TEXT("SailingNoMoon")); // profiling
+		static SailingArgs::FCachedFlag NoMoonArg(TEXT("SailingNoMoon")); // profiling
+		const bool bNoMoon = NoMoonArg.Get();
 		const double Age = MoonAge;
 		const float Up = FMath::SmoothStep(-3.f, 4.f, float(MoonEl));
 		const float Lit = 0.15f + 0.85f * float(MoonIllumination(Age)) * Up;
@@ -635,7 +638,8 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM || !RainCurtains) return;
 	// -SailingNoRainCurtains: without them (comparisons, the cost on the bench).
-	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("SailingNoRainCurtains"));
+	static SailingArgs::FCachedFlag NoCurtainsArg(TEXT("SailingNoRainCurtains"));
+	const bool bOff = NoCurtainsArg.Get();
 	if (bOff)
 	{
 		RainCurtains->SetVisibility(false);
@@ -950,7 +954,8 @@ void ASailingEnvironment::UpdateHaze()
 	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
 	const FLinearColor Tint = FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze);
 	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
-	static const bool bClassicHaze = FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHaze"));   // Graphics G5 compare
+	static SailingArgs::FCachedFlag ClassicHazeArg(TEXT("SailingClassicHaze"));   // Graphics G5 compare
+	const bool bClassicHaze = ClassicHazeArg.Get();
 	if (bClassicHaze)
 	{
 		F->SetFogInscatteringColor(Tint * FMath::Lerp(1.f, 0.25f, float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.004f, NightAmount));

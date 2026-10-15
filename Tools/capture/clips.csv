@@ -1,0 +1,10 @@
+clip,start,end,label,synthetic
+helm_steady,1.0,16.0,helm_steady,Helm=4;Helm:0.3=4;Helm=4
+helm_hike,1.0,16.0,hike,Helm=3;RailHike:0.5=3;RailHike:1=6;RailHike:0.5=3
+tack_port,1.0,0,tack_port,Helm=3;Crossing=2;Helm=4
+tack_stbd,1.0,0,tack_stbd,Helm=3;Crossing=2;Helm=4
+ease_sheet,1.0,16.0,ease_sheet,Cockpit=4;Cockpit=4;Cockpit=4
+trim_sheet,1.0,16.0,trim_sheet,Cockpit=4;RailHike:0.3=4;Cockpit=4
+rail_hike,1.0,16.0,rail_hike,RailHike:0.5=4;RailHike:1=8;RailHike:0.5=4
+cockpit_sit,1.0,16.0,cockpit_sit,Cockpit=12
+cross_low,1.0,0,cross_low,RailHike:0.5=3;Crossing=3;RailHike:0.5=4

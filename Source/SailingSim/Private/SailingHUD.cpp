@@ -1,4 +1,5 @@
 #include "SailingHUD.h"
+#include "BenchRunner.h"
 #include "Learning.h"
 #include "SailingSim.h"
 #include "SailSession.h"
@@ -363,7 +364,8 @@ void ASailingHUD::DrawHUD()
 	if (!Settings->bShowHud)
 	{
 		// Clean stills (-SailingNoHud) get no hint line either.
-		static const bool bNoHud = FParse::Param(FCommandLine::Get(), TEXT("SailingNoHud"));
+		static SailingArgs::FCachedFlag NoHudArg(TEXT("SailingNoHud"));
+		const bool bNoHud = NoHudArg.Get();
 		if (!bNoHud && !SlateHud.IsValid()) Text(TEXT("H: show instruments   ?: controls   Tab: settings"), 20.f, 20.f, Dim, 0.8f);
 		return;
 	}

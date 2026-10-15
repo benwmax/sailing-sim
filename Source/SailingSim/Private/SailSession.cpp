@@ -109,6 +109,16 @@ void USailSessionSubsystem::ApplyToSettings(const FSailSessionConfig& Config)
 	S->Save();
 }
 
+void USailSessionSubsystem::ResetForRun()
+{
+	Pending = FSailSessionConfig();
+	Active = FSailSessionConfig();
+	bHasActive = false;
+	bStarted = false;
+	UIScript.Reset();
+	bUIScriptRead = false;
+}
+
 void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObject* WorldContext)
 {
 	Active = Config;

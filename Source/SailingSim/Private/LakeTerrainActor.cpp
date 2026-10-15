@@ -1,4 +1,5 @@
 #include "LakeTerrainActor.h"
+#include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "UObject/UObjectIterator.h"
 #include "SailingSim.h"
@@ -33,7 +34,11 @@ namespace
 		// Graphics G6: 250 m on High, 200 m on Medium (were 600 and 350). The lidar crowns put three times as many trees on
 		// the shore, and leaf cards out to 600 m cost High 8 ms of base pass at the marina; past 250 m the smooth opaque
 		// crowns read the same.
-		static const double M = []
+		static uint32 Gen = MAX_uint32;
+		static double M = 0.0;
+		if (Gen == SailingArgs::Generation()) return M;
+		Gen = SailingArgs::Generation();
+		M = []
 		{
 			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 250.0 : 200.0;
 			FParse::Value(FCommandLine::Get(), TEXT("SailingNearTrees="), V);
@@ -45,7 +50,11 @@ namespace
 	// High 6.5 ms at the slip, and their shadows are lost at that range). -SailingMidTrees=<m> to measure.
 	double MidTreesM()
 	{
-		static const double M = []
+		static uint32 Gen = MAX_uint32;
+		static double M = 0.0;
+		if (Gen == SailingArgs::Generation()) return M;
+		Gen = SailingArgs::Generation();
+		M = []
 		{
 			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 1000.0 : 600.0;
 			FParse::Value(FCommandLine::Get(), TEXT("SailingMidTrees="), V);

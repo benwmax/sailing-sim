@@ -1,5 +1,6 @@
 // Perf 1 fix 2: see BoatPhysicsTask.h.
 #include "BoatPhysicsTask.h"
+#include "BenchRunner.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
 #include "TrafficManager.h"
@@ -62,7 +63,8 @@ void FBoatStepJob::Run() const
 
 bool FBoatPhysicsTask::AsyncEnabled()
 {
-	static const bool bSyncArg = FParse::Param(FCommandLine::Get(), TEXT("SailingSyncPhysics"));
+	static SailingArgs::FCachedFlag SyncArg(TEXT("SailingSyncPhysics"));
+	const bool bSyncArg = SyncArg.Get();
 	return !bSyncArg && CVarAsyncPhysics.GetValueOnGameThread() != 0;
 }
 

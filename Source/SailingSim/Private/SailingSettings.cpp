@@ -1,4 +1,5 @@
 #include "SailingSettings.h"
+#include "BenchRunner.h"
 #include "BoatModel.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
@@ -39,13 +40,17 @@ void USailingSettings::SnapshotClassDefaults()
 
 bool USailingSettings::IgnoresSavedChoices()
 {
-	static const bool bArgs = []()
+	// Read again when a bench list swaps the command line (BenchRunner.h).
+	static uint32 Gen = MAX_uint32;
+	static bool bArgs = false;
+	if (Gen != SailingArgs::Generation())
 	{
+		Gen = SailingArgs::Generation();
 		const TCHAR* Cmd = FCommandLine::Get();
-		return FCString::Strifind(Cmd, TEXT("SailingBench=")) || FCString::Strifind(Cmd, TEXT("SailingCapture="))
+		bArgs = FCString::Strifind(Cmd, TEXT("SailingBench=")) || FCString::Strifind(Cmd, TEXT("SailingCapture="))
 			|| FCString::Strifind(Cmd, TEXT("SailingShot=")) || FCString::Strifind(Cmd, TEXT("SailingDrill="))
 			|| FParse::Param(Cmd, TEXT("SailingDemo"));
-	}();
+	}
 	return bArgs || GIsAutomationTesting;
 }
 
@@ -77,7 +82,13 @@ int32 USailingSettings::MatchBoatName(const FString& Prefix)
 
 bool USailingSettings::IsMeasuring()
 {
-	static const bool bMeasuring = FCString::Strifind(FCommandLine::Get(), TEXT("SailingBench=")) != nullptr;
+	static uint32 Gen = MAX_uint32;
+	static bool bMeasuring = false;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		bMeasuring = FCString::Strifind(FCommandLine::Get(), TEXT("SailingBench=")) != nullptr;
+	}
 	return bMeasuring;
 }
 

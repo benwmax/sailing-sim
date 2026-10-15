@@ -7,6 +7,7 @@
 // wind (its material's world position offset; the rig points on it follow the same curve), the traveler car moves
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
+#include "BenchRunner.h"
 #include "CrewAnimInstance.h"
 #include "CrewMotion.h"
 #include "EngineUtils.h"
@@ -651,11 +652,11 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		else In.Gaze = R < 0.4f ? Ahead : R < 0.75f || !bOther ? Upwind : GazeBoatCm;
 		Anim->SetMotionInput(In);
 		// Stills of a tack: -SailingShotCrew=<name> saves Saved/Bench/<name>.png once the helm is crouched under the boom.
-		static bool bCrewShot = false;
+		static SailingArgs::FOnce CrewShotTaken;
 		FString CrewShot;
-		if (!bCrewShot && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(FCommandLine::Get(), TEXT("SailingShotCrew="), CrewShot))
+		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(FCommandLine::Get(), TEXT("SailingShotCrew="), CrewShot))
 		{
-			bCrewShot = true;
+			CrewShotTaken.Take();
 			FScreenshotRequest::RequestScreenshot(FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *CrewShot)), false, false);
 		}
 		static double LastDebug = 0.0;

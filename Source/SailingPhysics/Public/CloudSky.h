@@ -57,6 +57,7 @@ namespace Sailing
 		static constexpr double ShelfLipM = 180.0;    // thickness at the lip
 		static constexpr double ShelfSlope = 0.85;    // face rise per metre back
 		static constexpr double ShelfDepthM = 3500.0; // shelf to the core
+		static constexpr double ShelfTierM = 700.0;   // W5a: the face climbs in broad tiers this far apart (three, then evenly)
 		static constexpr double CoreBehindM = 700.0;   // the rain starts about a minute after the front (FWeatherSystem::kRainStarts)
 		static constexpr double CoreBaseM = 750.0;
 		static constexpr double CoreTopM = 6500.0;   // drawn to 6.5 km: from on the lake the base and lower body are what show,
@@ -67,6 +68,8 @@ namespace Sailing
 		/** Storm cloud density (0..1, before noise) at a distance ahead of the front and an altitude (m). Mask is the
 		 *  storm's lateral extent along the front (the weather map's storm channel), Build its growth (0..1). */
 		static double Density(double DistanceAheadM, double AltitudeM, double Mask, double Build);
+		/** W5a: the shelf face's run X (m behind the lip) as a smooth staircase, flat at each tier, even after the third. */
+		static double TierX(double X);
 		/** Where the shelf cloud's leading edge is (m ahead of the front). */
 		static double LeadingEdgeAhead() { return ShelfLeadM; }
 	};

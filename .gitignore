@@ -22,3 +22,5 @@ Data/*/raw/
 # Visual V7: built locally by scripts/make-metahumans.sh (size, and the MetaHuman licence)
 Content/Crew/MetaHumans/
 Content/Crew/MetaHumanSources/
+# Crew C2: Bean's filmed clips and their solves (Tools/capture/capture_clips.py), like the MetaHumans
+Content/Crew/Capture/
