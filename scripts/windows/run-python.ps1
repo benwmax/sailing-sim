@@ -3,15 +3,19 @@
 # make-world-models.sh, bake-shore.sh). Build first. Fails on a Python traceback.
 # Usage: scripts\windows\run-python.ps1 make_materials.py [-ScriptArgs "GalvestonBay"] [-Only build_boat_library,build_world_surface]
 #   -Only sets MATERIALS_ONLY (make_materials.py rebuilds just those functions).
+#   make_materials.py otherwise rebuilds only the materials whose code changed since its last run here (MATERIALS_AUTO,
+#   stamp in Saved\MaterialsBuilt.json); -Full (or $env:FULL = '1') rebuilds them all.
 param(
 	[Parameter(Mandatory = $true)][string]$Script,
 	[string]$ScriptArgs = '',
-	[string]$Only = ''
+	[string]$Only = '',
+	[switch]$Full
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
 $Path = if ([System.IO.Path]::IsPathRooted($Script)) { $Script } elseif (Test-Path (Join-Path $RepoRoot $Script)) { Join-Path $RepoRoot $Script } else { Join-Path $RepoRoot "scripts\$Script" }
 if (-not (Test-Path $Path)) { throw "No script at $Path" }
 if ($Only) { $env:MATERIALS_ONLY = $Only } else { Remove-Item Env:MATERIALS_ONLY -ErrorAction SilentlyContinue }
+$env:MATERIALS_AUTO = if ($Full -or $env:FULL -eq '1') { '' } else { '1' }
 $Name = [System.IO.Path]::GetFileNameWithoutExtension($Path)
 $Log = Join-Path $Artifacts "$Name.log"
 $Line = ($Path -replace '\\', '/') + $(if ($ScriptArgs) { " $ScriptArgs" } else { '' })

@@ -64,6 +64,31 @@ function Invoke-Tool([string]$Exe, [string]$Arguments, [string]$Log) {
 	return $P.ExitCode
 }
 
+# What a step reads, by content (scripts/gate.sh's inputs_hash, so the PC and the Mac skip the same way): each file's git
+# blob id under $Paths, uncommitted and new files hashed the same way, so a commit of the same files changes nothing.
+# Returns 16 hex digits.
+function Get-InputsHash([string[]]$Paths) {
+	Push-Location $RepoRoot
+	try {
+		$Blobs = @{}
+		foreach ($L in (git ls-files -s -- @Paths)) {
+			$Meta, $Path = $L -split "`t", 2
+			$Blobs[$Path] = ($Meta -split ' ')[1]
+		}
+		$Changed = @(git ls-files -m -o --exclude-standard -- @Paths | Where-Object { $_ })
+		$Present = @($Changed | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+		if ($Present) {
+			$Ids = @($Present | git hash-object --stdin-paths)
+			for ($I = 0; $I -lt $Present.Count; $I++) { $Blobs[$Present[$I]] = $Ids[$I] }
+		}
+		foreach ($P in $Changed) { if (-not (Test-Path -LiteralPath $P -PathType Leaf)) { $Blobs.Remove($P) } }
+		$Keys = [string[]]@($Blobs.Keys); [Array]::Sort($Keys, [StringComparer]::Ordinal)   # as Python sorts
+		$Text = ($Keys | ForEach-Object { "$($Blobs[$_]) $_`n" }) -join ''
+		$Hash = [System.Security.Cryptography.SHA1]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Text))
+		return ([System.BitConverter]::ToString($Hash).Replace('-', '').ToLower()).Substring(0, 16)
+	} finally { Pop-Location }
+}
+
 # The folder the packaged game writes Saved\ to: next to the game in Development and Test builds, under
 # %LOCALAPPDATA% in some Shipping setups. Returns every candidate; callers use the one that has the file.
 function Get-SavedDirs {
