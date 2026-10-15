@@ -612,7 +612,9 @@ void ASailingGameMode::StartPlay()
 		// Bench-fast: macOS throttles a window it hides. A single run is brought to the front by `open`; a bench list
 		// keeps one window for many views, so each view brings it forward again (bench.json "foreground" says if it
 		// stayed there).
-		FPlatformApplicationMisc::ActivateApplication();
+#if PLATFORM_MAC
+		FPlatformApplicationMisc::ActivateApplication();   // (Mac only; on Windows BringToFront below is enough)
+#endif
 		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->GetWindow().IsValid()) GEngine->GameViewport->GetWindow()->BringToFront(true);
 	}
 }
