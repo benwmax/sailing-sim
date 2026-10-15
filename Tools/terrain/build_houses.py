@@ -98,9 +98,13 @@ def hash01(s, k):
 
 def build(world):
     src = os.path.join(ROOT, "Data", world, "raw", "g2", "buildings.geojson.gz")
+    # Galveston 2: the Gulf front south of the bay pack's seam (Inputs/g2/gulf-front/shore, the same layer and fields).
+    extra = os.path.join(ROOT, "Inputs", "g2", "gulf-front", "shore", "buildings.geojson.gz") if world == "GalvestonBay" else None
     meta = json.load(open(os.path.join(ROOT, "Content", "TerrainData", f"{world}.json")))
     to_local = Transformer.from_crs("EPSG:4326", meta["projection"], always_xy=True)
     fc = json.load(gzip.open(src))
+    if extra and os.path.exists(extra):
+        fc["features"] += json.load(gzip.open(extra))["features"]
     out = []
     stats = {"rects": 0, "multi": 0, "full": 0, "lidar": 0}
     for f in fc["features"]:

@@ -34,7 +34,11 @@ def keep_far(north, east):
 
 def build(world):
     src = os.path.join(ROOT, "Data", world, "raw", "g2", "trees.geojson.gz")
+    # Galveston 2: the Gulf front south of the bay pack's seam (Inputs/g2/gulf-front/shore, the same layer and fields).
+    extra = os.path.join(ROOT, "Inputs", "g2", "gulf-front", "shore", "trees.geojson.gz") if world == "GalvestonBay" else None
     data = json.load(gzip.open(src))
+    if extra and os.path.exists(extra):
+        data["features"] += json.load(gzip.open(extra))["features"]
     out = []
     near = far = 0
     for f in data["features"]:

@@ -50,7 +50,7 @@ REGIONS = {
     "galveston": {
         "name": "GalvestonBay", "display": "Galveston Bay", "docs": "phase-5", "cell": 10.0,
         "center": (29.5446, -95.0193),             # Kemah, at the Clear Lake channel
-        "bbox": (-95.115, 29.295, -94.665, 29.625),  # lon_min, lat_min, lon_max, lat_max
+        "bbox": (-95.115, 29.19, -94.665, 29.625),   # lon_min, lat_min, lon_max, lat_max (G2b: south to take the Gulf front)
         "datum_station": "8771450", "stations": ("8771450", "8771341", "8771013", "8770613", "8771486"),
         "current": True, "reference": True, "ocean": False,
         "check": (("Kemah, Clear Lake channel", 29.5440, -95.0150), ("Texas City Dike", 29.3880, -94.8800), ("Eagle Point", 29.4810, -94.9170)),
