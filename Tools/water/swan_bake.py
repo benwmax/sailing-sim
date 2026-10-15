@@ -4,18 +4,21 @@ FLakeTerrain::FetchToward). Resumable: each case runs in its own folder and is s
 restart loses at most the case in flight. Runs under Linux (WSL) with numpy and scipy; SWAN built from source.
 
 Usage (WSL):  python3 Tools/water/swan_bake.py prepare|run|collect [--world RayHubbard|GalvestonBay] [--swan /opt/swan/src/build/bin/swan.exe]
-              [--work /root/swan-runs] [--only 270:14] [--threads 8]
+              [--work /root/swan-runs] [--only 270:14,292.5:14] [--jobs 5] [--reverse]
   prepare  resamples each world's height grid to 50 m bottom files and picks the 10 spectrum points
-  run      runs every case not yet done (or --only <dir deg>:<speed kn>)
+  run      runs every case not yet done (or --only <dir deg>:<speed kn>,...); --jobs N runs N cases at once (this SWAN
+           build uses one core per case whatever --threads says; about 4 GB each), --reverse from the end of the list
   collect  reads every finished case into <work>/<world>/summary.npz (Hs, Tp, Dir, Dspr grids; point spectra)"""
 import argparse
 import json
 import math
 import os
+import shutil
 import struct
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
@@ -165,7 +168,66 @@ def case_dir(work, world, d, kn):
     return os.path.join(work, world, f"d{int(round(d * 10)):04d}_u{kn:02d}")
 
 
-def run(work, world, swan, only, threads):
+def claim(path):
+    """Takes the claim file (holding this process's id); one whose process has gone (a killed runner) is taken over."""
+    for _ in range(2):
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                os.kill(int(open(path).read().strip() or 0), 0)
+                return False   # its runner is alive
+            except (ProcessLookupError, ValueError):
+                os.remove(path)
+            except PermissionError:
+                return False
+    return False
+
+
+def run_case(work, world, swan, d, kn, threads, grid):
+    """One case, solved in a private folder (<case>.tmp) and moved into place when it's done. Claimed with an exclusive
+    <case>.claim file so parallel runners (--jobs, or several run commands) never solve the same case; a case folder that
+    exists without "done" is a runner without claims at work there (one from before --jobs), and is left to it."""
+    cd = case_dir(work, world, d, kn)
+    if os.path.exists(os.path.join(cd, "done")) or os.path.isdir(cd):
+        return
+    if not claim(cd + ".claim"):
+        return
+    tmp = cd + ".tmp"
+    try:
+        if os.path.isdir(tmp):
+            shutil.rmtree(tmp)   # a case cut short by a restart
+        os.makedirs(tmp)
+        cell, rows, cols = grid
+        with open(os.path.join(tmp, "INPUT"), "w") as f:
+            f.write(SWN.format(world=world[:16], tag=os.path.basename(cd), x0=0.0, y0=0.0, xlen=(cols - 1) * cell, ylen=(rows - 1) * cell,
+                               mx=cols - 1, my=rows - 1, cell=cell, u=kn * KN, dirn=d))
+        env = dict(os.environ, OMP_NUM_THREADS=str(threads))
+        t0 = time.time()
+        r = subprocess.run([swan], cwd=tmp, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        ok = r.returncode == 0 and os.path.exists(os.path.join(tmp, "grid.mat"))
+        err = open(os.path.join(tmp, "Errfile")).read() if os.path.exists(os.path.join(tmp, "Errfile")) else ""
+        if not ok or "Error" in err:
+            print(f"{world} {d:5.1f} deg {kn:2d} kn: FAILED (exit {r.returncode}) {err[:300]}", flush=True)
+            return
+        if os.path.isdir(cd):
+            print(f"{world} {d:5.1f} deg {kn:2d} kn: solved, but another runner started it meanwhile; kept theirs", flush=True)
+            return
+        open(os.path.join(tmp, "done"), "w").write(f"{time.time() - t0:.0f} s\n")
+        os.rename(tmp, cd)
+        print(f"{world} {d:5.1f} deg {kn:2d} kn: {time.time() - t0:.0f} s", flush=True)
+    finally:
+        if os.path.isdir(tmp):
+            shutil.rmtree(tmp, ignore_errors=True)
+        os.remove(cd + ".claim")
+
+
+def run(work, world, swan, only, threads, jobs=1, reverse=False):
+    """Every case not yet done. SWAN as built here runs on one core whatever OMP_NUM_THREADS says, so --jobs N runs N
+    cases at once (about 4 GB each)."""
     base = os.path.join(work, world)
     g = json.load(open(os.path.join(base, "grid.json")))
     cell, rows, cols = g["cell"], g["rows"], g["cols"]
@@ -174,29 +236,13 @@ def run(work, world, swan, only, threads):
             f.write(f"{p['col'] * cell:.1f} {p['row'] * cell:.1f}\n")
     cases = [(d, kn) for kn in SPEEDS_KN for d in DIRS]
     if only:
-        dd, kk = only.split(":")
-        cases = [(float(dd), int(kk))]
-    env = dict(os.environ, OMP_NUM_THREADS=str(threads))
-    for d, kn in cases:
-        cd = case_dir(work, world, d, kn)
-        if os.path.exists(os.path.join(cd, "done")):
-            continue
-        os.makedirs(cd, exist_ok=True)
-        for stale in ("Errfile", "PRINT", "grid.mat", "spec.txt", "points.tab", "norm_end"):   # a case cut short by a restart
-            if os.path.exists(os.path.join(cd, stale)):
-                os.remove(os.path.join(cd, stale))
-        with open(os.path.join(cd, "INPUT"), "w") as f:
-            f.write(SWN.format(world=world[:16], tag=os.path.basename(cd), x0=0.0, y0=0.0, xlen=(cols - 1) * cell, ylen=(rows - 1) * cell,
-                               mx=cols - 1, my=rows - 1, cell=cell, u=kn * KN, dirn=d))
-        t0 = time.time()
-        r = subprocess.run([swan], cwd=cd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        ok = r.returncode == 0 and os.path.exists(os.path.join(cd, "grid.mat"))
-        err = open(os.path.join(cd, "Errfile")).read() if os.path.exists(os.path.join(cd, "Errfile")) else ""
-        if ok and "Error" not in err:
-            open(os.path.join(cd, "done"), "w").write(f"{time.time() - t0:.0f} s\n")
-            print(f"{world} {d:5.1f} deg {kn:2d} kn: {time.time() - t0:.0f} s", flush=True)
-        else:
-            print(f"{world} {d:5.1f} deg {kn:2d} kn: FAILED (exit {r.returncode}) {err[:300]}", flush=True)
+        cases = [(float(dd), int(kk)) for dd, kk in (o.split(":") for o in only.split(","))]
+    if reverse:
+        cases.reverse()   # from the far end of the list, to share a bake with a runner going forward
+    # Each case folder (and its .tmp sibling) reads the bottom and the spectrum points from one level up (../bottom.dat).
+    with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
+        for fut in [pool.submit(run_case, work, world, swan, d, kn, threads, (cell, rows, cols)) for d, kn in cases]:
+            fut.result()
 
 
 def collect(work, world):
@@ -229,12 +275,14 @@ if __name__ == "__main__":
     ap.add_argument("--work", default="/root/swan-runs")
     ap.add_argument("--swan", default="/opt/swan/src/build/bin/swan.exe")
     ap.add_argument("--only", default="")
-    ap.add_argument("--threads", type=int, default=8)
+    ap.add_argument("--threads", type=int, default=1)
+    ap.add_argument("--jobs", type=int, default=1)
+    ap.add_argument("--reverse", action="store_true")
     a = ap.parse_args()
     for w in a.world or WORLDS:
         if a.step == "prepare":
             prepare(a.work, w)
         elif a.step == "run":
-            run(a.work, w, a.swan, a.only, a.threads)
+            run(a.work, w, a.swan, a.only, a.threads, a.jobs, a.reverse)
         else:
             collect(a.work, w)
