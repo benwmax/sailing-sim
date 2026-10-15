@@ -36,7 +36,7 @@ HULLS = CFG["hulls"]
 DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
-         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover"]
+         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope"]   # Rope last: the earlier slots keep their indices
 CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
@@ -416,6 +416,49 @@ def lifelines(H, x_from, x_to):
         tube(hull, [(st + 0.05, H.cy + y, H.deck_z(st, H.cy)), (st + 0.05, H.cy + y, H.deck_z(st, H.cy) + hgt)], 0.014, "Stainless", 6)
 
 
+def cleat(x, y, z, yaw=0.0, length=0.2):
+    """A horn cleat: a low base and the horns across it (aluminium)."""
+    box(hull, (x, y, z + 0.012), (length * 0.45, 0.035, 0.024), "Aluminium", yaw)
+    box(hull, (x, y, z + 0.04), (length, 0.03, 0.022), "Aluminium", yaw)
+
+
+def keelboat_deck_detail(H, top, half, cb, mast_x, st, bw):
+    """Boats & models 9 (the boats "read flat"): what a keelboat's deck carries that the clean model didn't. An aluminium
+    toe rail along the sheer, mooring cleats on the foredeck and both quarters with fairleads at the bow, the halyards
+    led from the mast step aft along the cabin top to clutches beside the companionway, and their coiled tails."""
+    xs = stations(st + 0.12, bw - 0.3, 48)
+    for side in (1, -1):
+        rail = []
+        for x in xs:
+            y = H.cy + side * (H.sharp_half_beam(x) - 0.025)
+            rail.append((x, y, H.deck_z(x, y) + 0.018))
+        tube(hull, rail, 0.014, "Aluminium", 6)
+    for (cx, side) in ((bw - 0.55, 1), (bw - 0.55, -1), (st + 0.35, 1), (st + 0.35, -1)):
+        y = H.cy + side * (H.sharp_half_beam(cx) - 0.18)
+        cleat(cx, y, H.deck_z(cx, y), 0.0)
+    for side in (1, -1):                       # bow fairleads (chocks) on the toe rail
+        x = bw - 0.42
+        y = H.cy + side * (H.sharp_half_beam(x) - 0.03)
+        box(hull, (x, y, H.deck_z(x, y) + 0.035), (0.12, 0.04, 0.035), "Aluminium")
+    # Halyards and control lines: three a side, from turning blocks at the mast step aft to clutches by the hatch.
+    x0 = cb[0]
+    for side in (1, -1):
+        for k in range(3):
+            dy = side * (0.07 + 0.035 * k)
+            yc = H.cy + side * (0.24 + 0.035 * k) * min(1.0, half(x0 + 0.35) / 0.55)
+            xm = mast_x - 0.12
+            box(hull, (xm, H.cy + dy, top(xm) + 0.02), (0.05, 0.025, 0.035), "BlackPlastic")       # turning block
+            xs_l = stations(xm - 0.04, x0 + 0.38, 10)
+            line = [(x, H.cy + dy + (yc - H.cy - dy) * ((x - xm) / (x0 + 0.38 - xm)) ** 1.5, top(x) + 0.012) for x in xs_l]
+            tube(hull, line, 0.005, "Rope", 4)
+            box(hull, (x0 + 0.3, yc, top(x0 + 0.3) + 0.022), (0.11, 0.03, 0.04), "BlackPlastic")    # clutch
+        # The tails, flaked in a heap on the cabin top beside the hatch.
+        for k in range(3):
+            c = (x0 + 0.12 - 0.04 * k, H.cy + side * (0.3 + 0.02 * k), top(x0 + 0.12) + 0.008 + 0.009 * k)
+            ring = [(c[0] + 0.09 * math.cos(2 * math.pi * j / 14), c[1] + 0.07 * math.sin(2 * math.pi * j / 14), c[2]) for j in range(15)]
+            tube(hull, ring, 0.005, "Rope", 4, cap=False)
+
+
 def winch(x, y, z, r=0.055):
     tube(hull, [(x, y, z), (x, y, z + 0.11)], r, "Stainless", 14)
     tube(hull, [(x, y, z + 0.11), (x, y, z + 0.13)], r * 0.6, "BlackPlastic", 10)
@@ -480,6 +523,7 @@ elif TAG in ("Catalina22", "Catalina30"):
     mast_step_z = top(mast_x) - 0.04 + 0.035
     st, bw = MAIN.h["stern_x"], MAIN.h["bow_x"]
     lifelines(MAIN, st + 0.25, bw - 0.95)
+    keelboat_deck_detail(MAIN, top, half, cb, mast_x, st, bw)
     traveler = (ck[0] + (0.35 if TAG == "Catalina22" else 0.6), MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.12)
     tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
     wx = SPEC["winch_x"]
@@ -760,7 +804,13 @@ def build_rudder():
         box(m, (stock_x - 0.04, cy, tz - 0.12), (0.18, 0.05, 0.3), "Topsides")
         tl = RIG["tiller_length"]
         tube(m, [(stock_x - 0.02, cy, tz), (stock_x + tl, cy, tz + 0.08)], 0.02, "Wood", 10)
-        tube(m, [(stock_x + tl, cy, tz + 0.1), (stock_x + tl - 0.8, cy + 0.03, tz + 0.02)], 0.01, "Aluminium", 8)
+        # Boats & models 9: no extension baked along the tiller. The game draws the live one from this socket (in the helm's
+        # hand, or lying back along the tiller; ASailboatPawn::TillerEndCm), so the baked one showed as a second. The Hobie's
+        # extension hangs from the middle of its crossbar, which the game doesn't draw: it keeps the baked one.
+        if TAG == "Hobie16":
+            tube(m, [(stock_x + tl, cy, tz + 0.1), (stock_x + tl - 0.8, cy + 0.03, tz + 0.02)], 0.01, "Aluminium", 8)
+        else:
+            socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
     socket("RudderPivot", (stock_x, cy, 0))
     for k, g in enumerate(rudders[1:], start=1):
         socket(f"RudderPivot_{k}", (g["center"][0] + 0.25 * g["chord"], g["center"][1], 0))

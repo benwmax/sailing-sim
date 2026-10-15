@@ -15,8 +15,9 @@ if ($Only) { $env:MATERIALS_ONLY = $Only } else { Remove-Item Env:MATERIALS_ONLY
 $Name = [System.IO.Path]::GetFileNameWithoutExtension($Path)
 $Log = Join-Path $Artifacts "$Name.log"
 $Line = ($Path -replace '\\', '/') + $(if ($ScriptArgs) { " $ScriptArgs" } else { '' })
-$Code = Invoke-Tool $EditorCmd "`"$Project`" -run=pythonscript -script=`"$Line`" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput" $Log | Select-Object -Last 1
-if (Select-String -Path $Log -Pattern 'Traceback|Error: .*(Python|compil)' -Quiet) {
+$Code = Invoke-Tool $EditorCmd "`"$Project`" -run=pythonscript -script=`"$Line`" -unattended -nocrashreports -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput" $Log | Select-Object -Last 1
+# (Not the callstack of the editor's crash at shutdown after a big import, which scripts end with os._exit to dodge.)
+if (Select-String -Path $Log -Pattern 'Traceback|Error: .*(Python|compil)' | Where-Object { $_.Line -notmatch '\[Callstack\]' }) {
 	Select-String -Path $Log -Pattern 'Traceback|Error: ' -Context 0, 8 | Select-Object -First 6 | ForEach-Object { $_.ToString() }
 	Write-Host "$Name failed; see $Log" -ForegroundColor Red
 	exit 1

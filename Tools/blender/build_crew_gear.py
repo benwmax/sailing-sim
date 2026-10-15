@@ -182,8 +182,15 @@ def cap():
         # Six panels: the seams sit between them, pulled in a little; the back opening (a > 150 deg) is cut below.
         seam = min(abs(((a / (math.pi / 3)) % 1.0) - 0.5) for _ in (0,))
         pull = 0.012 * math.exp(-((0.5 - seam) / 0.03) ** 2) * math.cos(el)
-        r = (1.06 + off - pull) * math.cos(el)
-        z = (1.06 + off - pull) * math.sin(el) * 0.92 - 0.05
+        # Boats & models 9 (the caps "read as domes"): a structured crown is squarer than the head under it. The profile
+        # is a superellipse (exponent 2.6: fuller shoulders, a flatter top at the same height, so the skull still can't
+        # come through), and the two front panels stand taller than the back ones.
+        c, s = math.cos(el), math.sin(el)
+        cs = math.copysign(abs(c) ** (2 / 2.6), c)
+        ss = math.copysign(abs(s) ** (2 / 2.6), s)
+        front = 0.08 * max(0.0, math.cos(a)) ** 2 * max(0.0, s) * max(0.0, c)   # zero at the button, where the panels meet
+        r = (1.06 + off - pull) * cs
+        z = (1.06 + off - pull) * ss * 0.92 - 0.05 + front
         return (r * math.cos(a), r * math.sin(a), z)
 
     rings = []
