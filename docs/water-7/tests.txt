@@ -1,0 +1,71 @@
+SailingSim.Lake.SeaStateSwan Success
+  5 kn: lake median Hs 0.048 m, SWAN 0.048 m (-0%)
+  11 kn: lake median Hs 0.129 m, SWAN 0.125 m (+4%)
+  18 kn: lake median Hs 0.231 m, SWAN 0.238 m (-3%)
+  28 kn: lake median Hs 0.465 m, SWAN 0.493 m (-6%)
+  Rush Creek Yacht Club, northerly: Hs 0.111 m, SWAN 0.133 m
+  Off Rush Creek, northerly: Hs 0.165 m, SWAN 0.165 m
+  South lake near the dam, northerly: Hs 0.265 m, SWAN 0.256 m
+  Off Rush Creek, southerly: Hs 0.202 m, SWAN 0.197 m
+  Chandlers Landing, southerly: Hs 0.197 m, SWAN 0.200 m
+SailingSim.Physics.ReferenceChecks Success
+  Heel       J/22 close-hauled, 6 kn                                    4.01 deg   [  0.00 ..   7.00] ok
+  Heel       J/22 close-hauled, 8 kn                                    3.86 deg   [  0.00 ..   7.00] ok
+  Heel       J/22 close-hauled, 10 kn                                   6.70 deg   [  0.00 ..  15.00] ok
+  Heel       J/22 close-hauled, 12 kn                                  11.28 deg   [  0.00 ..  15.00] ok
+  Heel       J/22 close-hauled, 14 kn                                  12.31 deg   [  0.00 ..  15.00] ok
+  Heel       Catalina 30 close-hauled, 6 kn                             4.01 deg   [  1.00 ..   7.00] ok
+  Heel       Catalina 30 close-hauled, 10 kn                           13.92 deg   [ 12.00 ..  18.00] ok
+  Heel       Catalina 30 close-hauled, 12 kn                           19.42 deg   [ 14.00 ..  20.00] ok
+  Heel       Catalina 30 close-hauled, 16 kn                           22.51 deg   [ 18.00 ..  24.00] ok
+  Heel       Catalina 30 close-hauled, 20 kn, one reef                 22.59 deg   [ 19.00 ..  25.00] ok
+  Tacking    J/22 tacking angle, 10 kn                                 76.10 deg   [ 72.00 ..  93.00] ok
+  Tacking    Hobie 16 tacking angle, 10 kn                             91.11 deg   [ 87.00 .. 103.00] ok
+  Tacking    ILCA 7 best upwind TWA, 10 kn                             42.83 deg   [ 37.00 ..  49.00] ok
+  Roll       J/22 natural roll period                                   1.87 s     [  1.70 ..   2.30] ok
+  Waves      Ray Hubbard Hs, 15 kn over 8 mi                            0.51 m     [  0.36 ..   0.56] ok
+  Waves      Ray Hubbard peak period, 15 kn over 8 mi                   3.02 s     [  1.80 ..   3.10] ok
+  Capsize    Sunfish left alone on her side for 60 s                  176.96 deg   [ 60.00 .. 180.00] ok
+  Capsize    ILCA 7 (Laser) left alone on her side for 60 s           178.48 deg   [ 60.00 .. 180.00] ok
+  Capsize    Hobie 16 left alone on her side for 60 s                 118.55 deg   [ 60.00 .. 180.00] ok
+  Capsize    Sunfish 20 s after a capsize in 18 kn                    143.08 deg   [ 60.00 .. 145.00] ok
+  Capsize    Sunfish righted from her side                             10.54 s     [  3.00 ..  30.00] ok
+  Capsize    ILCA 7 (Laser) 20 s after a capsize in 18 kn             112.30 deg   [ 60.00 .. 145.00] ok
+  Capsize    ILCA 7 (Laser) righted from her side                       4.47 s     [  3.00 ..  30.00] ok
+  Capsize    Hobie 16 20 s after a capsize in 18 kn                   106.48 deg   [ 60.00 .. 145.00] ok
+  Capsize    Hobie 16 righted from her side                             9.88 s     [  3.00 ..  30.00] ok
+  Capsize    J/22 knocked down to 85 deg, 30 s later                    3.00 deg   [  0.00 ..  35.00] ok
+  Capsize    Catalina 22 knocked down to 85 deg, 30 s later             8.40 deg   [  0.00 ..  35.00] ok
+  Capsize    Catalina 30 knocked down to 85 deg, 30 s later             1.39 deg   [  0.00 ..  35.00] ok
+  Capsize    Corsair 880 inverted, 60 s later                         178.84 deg   [150.00 .. 180.00] ok
+  Capsize    Lagoon 42 inverted, 60 s later                           179.94 deg   [150.00 .. 180.00] ok
+  Top speed  J/22 spinnaker 135 deg, 20 kn steady                       9.79 kn    [  8.65 ..  10.15] ok
+  Top speed  J/22 spinnaker run, 20 kn gusting 25: peak                11.53 kn    [  8.00 ..  12.00] ok
+  Top speed  J/22 running, 30 kn, reefed: peak                         12.39 kn    [  9.00 ..  16.00] ok
+  Top speed  ILCA 7 broad reach, 22 kn: peak                           15.51 kn    [ 10.00 ..  16.00] ok
+  Top speed  ILCA 7 broad reach, 22 kn: heel at most                   49.87 deg   [  0.00 ..  70.00] ok
+  Top speed  ILCA 7 broad reach, 16 kn gusting 22: peak                15.09 kn    [ 10.00 ..  16.00] ok
+  Top speed  ILCA 7 broad reach, 16 kn gusting 22: heel at most        22.32 deg   [  0.00 ..  70.00] ok
+  Portsmouth Sunfish lap time / ILCA, DPN3 8-11 kn                      1.13 ratio [  0.99 ..   1.16] ok
+  Portsmouth Catalina 22 lap time / ILCA, DPN3 8-11 kn                  1.00 ratio [  0.96 ..   1.13] ok
+  Portsmouth Catalina 30 lap time / ILCA, DPN3 8-11 kn                  0.94 ratio [  0.86 ..   1.01] ok
+  Portsmouth Hobie 16 lap time / ILCA, DPN3 8-11 kn                     0.80 ratio [  0.75 ..   0.88] ok
+  Portsmouth Sunfish lap time / ILCA, DPN4 12+ kn                       1.05 ratio [  1.00 ..   1.17] ok
+  Portsmouth Catalina 22 lap time / ILCA, DPN4 12+ kn                   1.10 ratio [  0.99 ..   1.16] ok
+  Portsmouth Catalina 30 lap time / ILCA, DPN4 12+ kn                   0.99 ratio [  0.86 ..   1.01] ok
+  Portsmouth Hobie 16 lap time / ILCA, DPN4 12+ kn                      0.69 ratio [  0.74 ..   0.87] known gap
+SailingSim.Physics.WindPuffsAtTwoScales Success
+  July afternoon (mixed layer 2200 m): cells 2.2 to 5.0 km waves, puffs 550 m; puff variance at 2-8 km 66%, at 250-1000 m 11% (one scale: 68%, 0%)
+SailingSim.Physics.WindPuffStatistics Success
+  Lake, July afternoon (air - water +5.0 C, mixed layer 2200 m): gust factor 1.184 (stations 1.180), 2-min spread 0.113 (0.111), puffs every 7 min (7), mean 0.999
+  Lake, January morning (air - water -3.5 C, mixed layer 369 m): gust factor 1.188 (stations 1.188), 2-min spread 0.104 (0.083), puffs every 8 min (6), mean 1.001
+  Bay, April midday (air - water +1.4 C, mixed layer 963 m): gust factor 1.175 (stations 1.176), 2-min spread 0.080 (0.099), puffs every 6 min (6), mean 1.000
+  Puff amplitude: cold over warm 0.34, warm over cool 0.17
+SailingSim.Physics.WindPuffVeersAndFans Success
+  Strongest puff 75% over the mean, veered 10.2 deg at its centre; 31.3 deg on its right, -16.4 deg on its left; lulls -1.1 deg
+SailingSim.Visual.Whitecaps Success
+   6 kn: whitecaps 0.01% of the surface, Monahan 0.02%; lake 0.00% (puff 1.3x 0.01%, lull 0.7x 0.00%), bay 0.00%; threshold per e-fold 0.000
+  10 kn: whitecaps 0.14% of the surface, Monahan 0.10%; lake 0.06% (puff 1.3x 0.14%, lull 0.7x 0.02%), bay 0.10%; threshold per e-fold 0.034
+  14 kn: whitecaps 0.67% of the surface, Monahan 0.32%; lake 0.26% (puff 1.3x 0.65%, lull 0.7x 0.08%), bay 0.46%; threshold per e-fold 0.045
+  20 kn: whitecaps 2.29% of the surface, Monahan 1.09%; lake 0.96% (puff 1.3x 2.25%, lull 0.7x 0.24%), bay 1.70%; threshold per e-fold 0.066
+  25 kn: whitecaps 3.95% of the surface, Monahan 2.33%; lake 1.76% (puff 1.3x 3.89%, lull 0.7x 0.39%), bay 2.93%; threshold per e-fold 0.085
