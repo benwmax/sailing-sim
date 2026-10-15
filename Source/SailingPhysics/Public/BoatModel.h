@@ -27,6 +27,7 @@ namespace Sailing
 		bool bWingOnWing = false; // running: hold the jib out on the windward side, opposite the main
 		bool bBackJib = false;    // hold the jib aback (sheeted on the windward side): heaving to, getting out of irons
 		double Hike = 0.0;       // -1 = crew on the leeward side, 0 = sitting on the windward rail, 1 = fully hiked (or out on the wire)
+		double CrewAft = 0.0;    // 0 = the crew's usual place, 1 = as far aft as they go (a dinghy sailor sits back planing)
 		bool bSpinnaker = false; // spinnaker (or gennaker / screacher) hoisted, if the boat has one
 		double SpinSheet = 0.5;  // 0 = trimmed in, 1 = eased
 		int Reef = 0;            // mainsail reefs taken in (0 = full main)
@@ -110,6 +111,7 @@ namespace Sailing
 		double CrewSitOut = 0.30;    // m from centerline sitting on the windward side
 		double CrewHikeOut = 0.65;   // extra m at full hike (torso over the lifelines) or out on the trapeze
 		double CrewMoveSpeed = 1.6;  // m/s moving across the boat
+		double CrewAftRange = 0.0;   // m the crew can slide aft of CrewCG (dinghies: to the back of the cockpit, keeping the bow up planing)
 		bool bTrapeze = false;
 		double RightingLever = 0.0;  // m below the hull the righting crew stands (board tip, or leaning on the righting line); 0 = cannot be righted
 
@@ -180,6 +182,11 @@ namespace Sailing
 		// How a good crew sails this boat: the heel they depower at, and how far they will ease the main to do it.
 		double TrimHeelLimitDeg = 22.0;
 		double TrimMaxEaseDeg = 25.0;
+		// A dinghy sailor holds the sheet in the hand and sails the boat flat (0 = a keelboat crew on winches and cleats):
+		// boom degrees dumped at once per degree of heel past the limit (and of the roll toward it), and the sheet's travel
+		// per second when dumping.
+		double DinghyEasePerHeelDeg = 0.0;
+		double DinghySheetRate = 0.0;
 
 		FBoatConfig();
 		static FBoatConfig J22() { return FBoatConfig(); }
@@ -230,6 +237,7 @@ namespace Sailing
 		int BackedJibSide = 0;      // side the jib is held aback on (fixed by its sheet), 0 = not backed
 		double CrewOffset = 0.0;    // m, crew position from centerline (+ = starboard)
 		double CrewOffsetZ = 0.0;   // m, crew height change (standing on the board to right a capsized boat)
+		double CrewOffsetX = 0.0;   // m, crew moved fore (+) or aft (-) of their usual place
 		double SpinAngle = 0.0;     // rad, spinnaker chord angle, positive = starboard
 		int SpinSide = 1;
 		int Reef = 0;               // reefs in the main as currently built

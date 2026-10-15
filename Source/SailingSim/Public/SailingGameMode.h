@@ -68,6 +68,13 @@ public:
 	/** Seconds since the current weather started (the storm timeline runs on this). */
 	double GetWeatherTime() const { return GetSimTime() - WeatherStartTime; }
 
+	/** W5b: rain (0..1) at a point (m), where the storm's core or the radar puts it; the weather's amount otherwise. */
+	double GetRainAt(double X, double Y) const { return WeatherState.RainAt(X, Y, GetSimTime()); }
+	/** W5b: the real day running (Tools/weather), or null for a preset. */
+	const Sailing::FWeatherDay* GetRealDay() const { return RealDay.get(); }
+	/** W5b: loads Content/TerrainData/Weather/<date>.wxday; null if it is not there or not valid. */
+	static std::shared_ptr<const Sailing::FWeatherDay> LoadRealDay(const FString& Date);
+
 	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather. */
 	void ApplyWeatherSettings();
 	/** Applies the quality tier from settings to engine scalability and the water mesh. */
@@ -116,6 +123,10 @@ private:
 	double WindScale = 1.0;
 	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.
 	float WindFromOverride = NAN, GustOverride = NAN;
+	// W5b: a real day (session or -SailingDay=YYYY-MM-DD) and whether its start hour was given (-SailingHour, the session).
+	FString RealDayDate;
+	bool bRealDayHour = false;
+	std::shared_ptr<const Sailing::FWeatherDay> RealDay;
 	// Graphics G4: the session's date (the clock's day); unset = today or -SailingDate.
 	FDateTime SessionDate;
 	bool bSessionDate = false;

@@ -78,7 +78,8 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			}
 		}
 	}
-	FParse::Value(FCommandLine::Get(), TEXT("SailingHour="), Settings->StartHour);
+	bRealDayHour = FParse::Value(FCommandLine::Get(), TEXT("SailingHour="), Settings->StartHour);
+	FParse::Value(FCommandLine::Get(), TEXT("SailingDay="), RealDayDate);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingSeed="), Settings->WeatherSeed);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), WindOverrideKnots);
 	FParse::Value(FCommandLine::Get(), TEXT("SailingLaunch="), Settings->LaunchSpot);
@@ -95,9 +96,18 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); Session && Session->bHasActive)
 	{
 		const FSailConditions& C = Session->Active.Conditions;
-		if (!FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), Value)) WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
-		WindFromOverride = C.WindFromDeg;
-		GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
+		if (!C.RealDay.IsEmpty() && RealDayDate.IsEmpty())
+		{
+			// W5b: a real day brings its own wind; its start hour is the session's.
+			RealDayDate = C.RealDay;
+			bRealDayHour = true;
+		}
+		else if (C.RealDay.IsEmpty())
+		{
+			if (!FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), Value)) WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
+			WindFromOverride = C.WindFromDeg;
+			GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
+		}
 		SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), FMath::Clamp(C.Day, 1, FDateTime::DaysInMonth(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12))));
 		bSessionDate = true;
 		if (!Lake.IsTidal() && FMath::Abs(C.LakeLevelFt) > 0.01f)
@@ -264,14 +274,31 @@ void ASailingGameMode::ApplyConditions(const FSailConditions& C)
 	USailingSettings* Settings = USailingSettings::Get();
 	Settings->WeatherPreset = ESailingWeather(USailSessionSubsystem::WeatherPresetFor(C.Sky));
 	Settings->StartHour = FMath::Clamp(C.LocalHour, 5.f, 22.f);
-	WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
-	WindFromOverride = C.WindFromDeg;
-	GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
+	RealDayDate = C.RealDay;
+	bRealDayHour = true;
+	WindOverrideKnots = C.RealDay.IsEmpty() ? FMath::Max(C.WindKn, 0.5f) : 0.f;
+	WindFromOverride = C.RealDay.IsEmpty() ? C.WindFromDeg : NAN;
+	GustOverride = C.RealDay.IsEmpty() ? FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f) : NAN;
 	SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), 1) + FTimespan::FromDays(FMath::Max(C.Day, 1) - 1);
 	bSessionDate = true;
 	bWindArgsRead = true;   // the session's values stand
 	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->Active.Conditions = C;
 	ApplyWeatherSettings();
+}
+
+std::shared_ptr<const FWeatherDay> ASailingGameMode::LoadRealDay(const FString& Date)
+{
+	TArray<uint8> Bytes;
+	const FString Path = FPaths::ProjectContentDir() / TEXT("TerrainData") / TEXT("Weather") / (Date + TEXT(".wxday"));
+	if (!FFileHelper::LoadFileToArray(Bytes, *Path, FILEREAD_Silent)) return nullptr;
+	auto Day = std::make_shared<FWeatherDay>();
+	std::string Error;
+	if (!Day->LoadFromMemory(Bytes.GetData(), size_t(Bytes.Num()), &Error))
+	{
+		UE_LOG(LogSailing, Warning, TEXT("SailingDay: %s: %hs"), *Path, Error.c_str());
+		return nullptr;
+	}
+	return Day;
 }
 
 void ASailingGameMode::ApplyWeatherSettings()
@@ -290,9 +317,25 @@ void ASailingGameMode::ApplyWeatherSettings()
 	double StormDelay = 0.0;
 	FParse::Value(FCommandLine::Get(), TEXT("SailingStormDelay="), StormDelay);
 	const double TrackRad = FMath::DegreesToRadians(290.0);
-	const double Shift = 12.0 * StormDelay; // FWeatherSystem's front speed, m/s
-	Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour,
-		(bStart ? Start.X : 0.0) + FMath::Cos(TrackRad) * Shift, (bStart ? Start.Y : 0.0) + FMath::Sin(TrackRad) * Shift);
+	const double Shift = FWeatherSystem::StormFrontSpeed() * StormDelay;
+	// W5b: a real day replaces the preset (its storm, if any, reaches the start when it reached the lake).
+	double StartHour = Settings->StartHour;
+	RealDay.reset();
+	if (!RealDayDate.IsEmpty() && Settings->World == 0)
+	{
+		RealDay = LoadRealDay(RealDayDate);
+		if (!RealDay) UE_LOG(LogSailing, Warning, TEXT("SailingDay: no baked day %s in Content/TerrainData/Weather"), *RealDayDate);
+	}
+	if (RealDay)
+	{
+		if (!bRealDayHour) StartHour = RealDay->StartHour;
+		Weather.ConfigureDay(RealDay, uint32(FMath::Max(Settings->WeatherSeed, 1)), StartHour, bStart ? Start.X : 0.0, bStart ? Start.Y : 0.0);
+	}
+	else
+	{
+		Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour,
+			(bStart ? Start.X : 0.0) + FMath::Cos(TrackRad) * Shift, (bStart ? Start.Y : 0.0) + FMath::Sin(TrackRad) * Shift);
+	}
 
 	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
 	FDateTime Date = bSessionDate ? SessionDate : FDateTime::Now();
@@ -303,12 +346,13 @@ void ASailingGameMode::ApplyWeatherSettings()
 		DateArg.ParseIntoArray(Parts, TEXT("-"));
 		if (Parts.Num() == 3) Date = FDateTime(FCString::Atoi(*Parts[0]), FCString::Atoi(*Parts[1]), FCString::Atoi(*Parts[2]));
 	}
+	if (RealDay) Date = FDateTime(RealDay->Year(), RealDay->Month(), RealDay->DayOfMonth());
 	UtcOffsetHours = FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
 	DayOfYear = Date.GetDayOfYear();
 	// W1: the wind's calibration and stability follow the month and the water (the lake, or the bay and the Gulf).
 	Weather.SetClimate(Date.GetMonth(), Settings->World != 0);
 	ClockBase = GetSimTime() - WeatherOffset;
-	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (double(Settings->StartHour) - UtcOffsetHours) * 3600.0;
+	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (StartHour - UtcOffsetHours) * 3600.0;
 
 	// Scale the preset's wind to an explicit base speed when asked (benchmarks).
 	WindScale = 1.0;
@@ -422,6 +466,8 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	// The weather's own clock starts at zero; the wind field runs on simulation time.
 	WeatherState.Front.StartTime += WeatherStartTime;
 	WeatherState.Front.DecayStartTime += WeatherStartTime;
+	WeatherState.Front.BurstStartTime += WeatherStartTime;
+	WeatherState.DayStartHour -= WeatherStartTime / 3600.0; // the radar's clock too (its hour = start + sim time)
 	Vec3 BoatPos;
 	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
@@ -432,6 +478,13 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	}
 	// W1: the wind's patterns drift around the boat; a change of direction turns them about her, not the map origin.
 	FWeatherSystem::ApplyToWind(WeatherState, Wind, Now, BoatPos.X, BoatPos.Y);
+	// W5b: a storm rains where its core (or the radar's rain) is: the rain and the visibility are the boat's (the water,
+	// the deck, the sound and the haze follow them).
+	if (WeatherState.bStormRain)
+	{
+		WeatherState.Rain = WeatherState.RainAt(BoatPos.X, BoatPos.Y, Now);
+		WeatherState.VisibilityKm = FMath::Lerp(FMath::Max(WeatherState.VisibilityKm, 10.0), 1.5, WeatherState.Rain);
+	}
 
 	// The sea follows the mean wind at the boat (including a gust front's outflow once it has passed).
 	FWaveParams WaveParams;
@@ -691,7 +744,7 @@ void ASailingGameMode::FinishBenchmark()
 		GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport ? GEngine->GameViewport->Viewport->GetSizeXY().Y : 0,
 		Settings->Quality == ESailingQuality::Low ? TEXT("Low") : (Settings->Quality == ESailingQuality::Medium ? TEXT("Medium")
 			: (Settings->Quality == ESailingQuality::High ? TEXT("High") : TEXT("Ultra"))),
-		WeatherPresetName(EWeatherPreset(Settings->WeatherPreset)), WeatherState.HourOfDay);
+		RealDay ? RealDay->Date.c_str() : WeatherPresetName(EWeatherPreset(Settings->WeatherPreset)), WeatherState.HourOfDay);
 	// Visual V3: sail cloth simulation on the CPU, all boats, per frame of the measured window.
 	if (N > 0 && ClothSecondsAtStart >= 0.0)
 	{

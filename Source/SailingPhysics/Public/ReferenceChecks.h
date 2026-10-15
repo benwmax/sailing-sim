@@ -41,7 +41,7 @@ namespace Sailing
 	SAILINGPHYSICS_API FCapsizeRun CapsizeAndRight(const FBoatConfig& Config, double TrueWindKnots, double WaitSeconds);
 
 	/** Peak and mean boat speed (kn) over Seconds on a set point of sail in gusty wind and lake waves. */
-	struct FSpeedRun { double PeakKnots = 0.0, MeanKnots = 0.0; };
+	struct FSpeedRun { double PeakKnots = 0.0, MeanKnots = 0.0, MaxTiltDeg = 0.0; };
 	SAILINGPHYSICS_API FSpeedRun SpeedRun(const FBoatConfig& Config, double TrueWindKnots, double TwaDeg, bool bSpinnaker,
 		double GustIntensity, double FetchMeters, double Seconds, int Reefs = 0);
 

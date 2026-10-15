@@ -56,4 +56,14 @@ namespace SailCatalog
 	SAILINGSIM_API float SunsetHour(int32 Month, int32 Day, int32 World);
 	SAILINGSIM_API FString ClockText(float Hour);
 	SAILINGSIM_API FString MonthName(int32 Month);
+
+	/** W5b: a baked real day (Content/TerrainData/Weather/<date>.wxday, Tools/weather): Lake Ray Hubbard only. */
+	struct FRealDay
+	{
+		FString Date, Title, Summary;
+		float StartHour = 15.f;
+		int32 Month = 6, Day = 1;
+		bool bStorm = false;
+	};
+	SAILINGSIM_API const TArray<FRealDay>& RealDays();
 }

@@ -10,6 +10,8 @@
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Storm.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
@@ -81,6 +83,23 @@ ASailingEnvironment::ASailingEnvironment()
 	};
 	RainNear = MakeRain(TEXT("RainNear"), 4.f, 16.f);
 	RainFar = MakeRain(TEXT("RainFar"), 14.f, 40.f);
+
+	// W5b: the storm's rain curtains and their foot, seen from afar (UpdateRainCurtains places and turns them).
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Plane(TEXT("/Engine/BasicShapes/Plane.Plane"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Curtain(TEXT("/Game/Materials/M_RainCurtain.M_RainCurtain"));
+	RainCurtains = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("RainCurtains"));
+	RainCurtains->SetupAttachment(RootComponent);
+	RainCurtains->SetStaticMesh(Plane.Object);
+	RainCurtains->SetMaterial(0, Curtain.Object);
+	RainCurtains->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RainCurtains->SetCastShadow(false);
+	RainCurtains->NumCustomDataFloats = 3;
+	RainCurtains->bVisibleInRayTracing = false;
+	RainCurtains->SetAffectDistanceFieldLighting(false);
+	RainCurtains->bAffectDynamicIndirectLighting = false;
+	RainCurtains->SetUsingAbsoluteLocation(true);
+	RainCurtains->SetUsingAbsoluteRotation(true);
+	RainCurtains->SetUsingAbsoluteScale(true);
 
 	Bolt = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Bolt"));
 	Bolt->SetupAttachment(RootComponent);
@@ -246,6 +265,7 @@ void ASailingEnvironment::BeginPlay()
 	}
 	RainMaterial = RainNear->CreateAndSetMaterialInstanceDynamic(0);
 	RainFar->SetMaterial(0, RainMaterial);
+	RainCurtainMaterial = RainCurtains->CreateAndSetMaterialInstanceDynamic(0);
 	BoltMaterial = Bolt->CreateAndSetMaterialInstanceDynamic(0);
 	if (BoltMaterial)
 	{
@@ -280,6 +300,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateCloudLayers(CamPos);
 	UpdateHaze();
 	UpdateRain(CamPos);
+	UpdateRainCurtains(CamPos, DeltaSeconds);
 	if (WorldCollection)
 	{
 		// The trees on the shore sway with the wind there (MPC_World.Wind: direction it blows toward, speed with gusts).
@@ -562,8 +583,11 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 
 void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 {
-	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
-	const bool bRaining = W.Rain > 0.01;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FWeatherState& W = GM->GetWeatherState();
+	// W5b: the rain where the camera is (a storm's falls under its core, not everywhere at once).
+	const double RainHere = GM->GetRainAt(CameraPos.X / CmPerMeter, CameraPos.Y / CmPerMeter);
+	const bool bRaining = RainHere > 0.01;
 	if (LensMaterial)
 	{
 		// The air over the glass: the wind less the camera's own motion, in screen axes (+y down), with gravity.
@@ -582,7 +606,7 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 		const FVector2D Screen(float(FVector::DotProduct(Air, Right)), float(-FVector::DotProduct(Air, Up)) + 3.f);
 		float Spray = 0.f;
 		for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It) Spray = It->GetLensSpray();
-		LensMaterial->SetScalarParameterValue(TEXT("Rain"), float(W.Rain));
+		LensMaterial->SetScalarParameterValue(TEXT("Rain"), float(RainHere));
 		LensMaterial->SetScalarParameterValue(TEXT("Spray"), Spray);
 		LensMaterial->SetVectorParameterValue(TEXT("WindScreen"), FLinearColor(float(Screen.X), float(Screen.Y), float(Screen.Size()), 0.f));
 	}
@@ -603,7 +627,101 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 		RainNear->SetWorldRotation(Lean);
 		RainFar->SetWorldRotation(Lean);
 	}
-	RainMaterial->SetScalarParameterValue(TEXT("Rain"), float(W.Rain) * 0.35f);
+	RainMaterial->SetScalarParameterValue(TEXT("Rain"), float(RainHere) * 0.35f);
+}
+
+void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float DeltaSeconds)
+{
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || !RainCurtains) return;
+	// -SailingNoRainCurtains: without them (comparisons, the cost on the bench).
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("SailingNoRainCurtains"));
+	if (bOff)
+	{
+		RainCurtains->SetVisibility(false);
+		return;
+	}
+	const FWeatherState& W = GM->GetWeatherState();
+	const double Now = GM->GetSimTime();
+	const double Cx = CameraPos.X / CmPerMeter, Cy = CameraPos.Y / CmPerMeter;
+	constexpr double Cell = 2000.0, Reach = 26000.0;
+	CurtainClock -= DeltaSeconds;
+	if (CurtainClock <= 0.f)
+	{
+		// Twice a second: the rain field over a world grid of 2 km cells round the camera; the rainiest, nearest cells get a
+		// curtain (cells stay put in the world, so curtains don't swim as the camera moves).
+		CurtainClock = 0.5f;
+		Curtains.Reset();
+		if (W.bStormRain)
+		{
+			const int32 MaxCurtains = USailingSettings::Get()->Quality == ESailingQuality::Low ? 16 : 32;
+			const int64 I0 = int64(FMath::FloorToDouble(Cx / Cell)), J0 = int64(FMath::FloorToDouble(Cy / Cell));
+			const int32 R = int32(Reach / Cell);
+			TArray<TPair<double, FRainCurtain>> Scored;
+			for (int32 DI = -R; DI <= R; ++DI)
+			{
+				for (int32 DJ = -R; DJ <= R; ++DJ)
+				{
+					const int64 I = I0 + DI, J = J0 + DJ;
+					const uint32 H = HashCombine(GetTypeHash(I), GetTypeHash(J * 7919));
+					FRainCurtain C;
+					C.Seed = (H % 1000u) / 1000.0;
+					C.X = (I + 0.5) * Cell + ((H >> 10) % 1000u / 1000.0 - 0.5) * 900.0;
+					C.Y = (J + 0.5) * Cell + ((H >> 20) % 1000u / 1000.0 - 0.5) * 900.0;
+					const double D = FMath::Sqrt(FMath::Square(C.X - Cx) + FMath::Square(C.Y - Cy));
+					if (D > Reach) continue;
+					C.Rate = W.RainRateAt(C.X, C.Y, 0.0, Now);
+					if (C.Rate < 3.0) continue;
+					Scored.Add({ FStormRain::Amount(C.Rate) / (1.0 + D / 8000.0), C });
+				}
+			}
+			Scored.Sort([](const TPair<double, FRainCurtain>& A, const TPair<double, FRainCurtain>& B) { return A.Key > B.Key; });
+			for (int32 K = 0; K < FMath::Min(MaxCurtains, Scored.Num()); ++K) Curtains.Add(Scored[K].Value);
+		}
+		if (RainCurtainMaterial)
+		{
+			// The storm's rain falls from the core's base; other rain from the stratus deck's.
+			const double BaseM = W.Front.bActive ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
+			RainCurtainMaterial->SetScalarParameterValue(TEXT("RainBase"), float(BaseM));
+		}
+	}
+	// Two instances per curtain (the veil, its foot), turned to face the camera every frame.
+	const int32 Want = Curtains.Num() * 2;
+	if (RainCurtains->GetInstanceCount() != Want)
+	{
+		RainCurtains->ClearInstances();
+		for (int32 K = 0; K < Want; ++K) RainCurtains->AddInstance(FTransform::Identity, true);
+	}
+	RainCurtains->SetVisibility(Want > 0);
+	if (Want == 0) return;
+	const double BaseM = W.Front.bActive ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
+	// The foot runs ahead of the core toward where the storm is going.
+	const double Move = W.Front.MoveDegrees * kDegToRad;
+	const FVector FootShift = W.Front.bActive ? FVector(FMath::Cos(Move), FMath::Sin(Move), 0.0) * FStormRain::FootReachM : FVector::ZeroVector;
+	for (int32 K = 0; K < Curtains.Num(); ++K)
+	{
+		const FRainCurtain& C = Curtains[K];
+		const FVector P(C.X, C.Y, 0.0);
+		FVector N = FVector(Cx, Cy, 0.0) - P;
+		const double D = N.Size();
+		N = D > 1.0 ? N / D : FVector(1, 0, 0);
+		const FVector Up(0, 0, 1), Side = FVector::CrossProduct(Up, N);
+		const FQuat Q(FMatrix(Side, Up, N, FVector::ZeroVector));
+		// Near the camera the rain cylinders show the rain; far off the haze takes it.
+		const double Fade = FMath::SmoothStep(700.0, 2500.0, D) * (1.0 - FMath::SmoothStep(22000.0, Reach, D));
+		const double Amount = FStormRain::Amount(C.Rate) * Fade;
+		const FTransform Veil(Q, (P + FVector(0, 0, 0.5 * BaseM)) * CmPerMeter, FVector(2200.0, BaseM, 1.0));
+		const FTransform Foot(Q, (P + FootShift + FVector(0, 0, 110.0)) * CmPerMeter, FVector(3300.0, 220.0, 1.0));
+		RainCurtains->UpdateInstanceTransform(2 * K, Veil, true, false, true);
+		RainCurtains->UpdateInstanceTransform(2 * K + 1, Foot, true, false, true);
+		RainCurtains->SetCustomDataValue(2 * K, 0, float(Amount), false);
+		RainCurtains->SetCustomDataValue(2 * K, 1, 0.f, false);
+		RainCurtains->SetCustomDataValue(2 * K, 2, float(C.Seed), false);
+		RainCurtains->SetCustomDataValue(2 * K + 1, 0, float(Amount * FMath::SmoothStep(15.0, 60.0, C.Rate)), false);
+		RainCurtains->SetCustomDataValue(2 * K + 1, 1, 1.f, false);
+		RainCurtains->SetCustomDataValue(2 * K + 1, 2, float(C.Seed), false);
+	}
+	RainCurtains->MarkRenderStateDirty();
 }
 
 void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& CameraPos)

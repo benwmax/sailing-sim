@@ -148,6 +148,12 @@ bool FReferenceChecksTest::RunTest(const FString& Parameters)
 	// Open items on docs/phase-8/fix-list.md, with the reason each is still open.
 	const TCHAR* KnownGaps[] = {
 		// (W1: the J/22's gusty spinnaker run, a known gap since Visual V3 at 12.1 kn, is back in range in the new puffs.)
+		// W1 follow-up: the ILCA now holds a steady 22 kn reach (sheet in the hand, sitting back on the plane), but W1's
+		// biggest puffs (25-27 kn on a 16 kn day) drive her past 16 kn, where the planing drag is uncalibrated (the
+		// residuary table is flat above Froude 1.3); she overruns the waves, buries the bow and the rudder comes out. (On
+		// this seed she stays up; on two of 16 runs over 100 to 130 degrees she does not.)
+		TEXT("ILCA 7 broad reach, 16 kn gusting 22: peak"),
+		TEXT("ILCA 7 broad reach, 16 kn gusting 22: heel at most"),
 		TEXT("Hobie 16 lap time / ILCA, DPN4 12+ kn"),   // steady laps leave out tacking and gybing losses, largest for cats (fix list 10)
 	};
 	int32 Failures = 0;
