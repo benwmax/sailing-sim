@@ -28,17 +28,34 @@ from shapely.prepared import prep
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PACK = os.path.join(REPO, "Inputs", "g2", "piers")
+# Galveston 2: the Gulf front (Inputs/g2/gulf-front, README there): the whole Seawall, both jetties to their head lights,
+# the Gulf piers and groins, and the piers-pack layers for the island south of the old grid edge (piers/).
+GULF = os.path.join(REPO, "Inputs", "g2", "gulf-front")
 DATA = os.path.join(REPO, "Content", "TerrainData")
 NAVD_TO_MLLW = 0.094
 
 KEEP_DECKS = {"pier", "dock_complex", "platform_or_wharf", "covered_slip_or_building"}
 
 
-def load(name):
-    path = os.path.join(PACK, name)
+def load(name, pack=PACK):
+    path = os.path.join(pack, name)
     if os.path.exists(path + ".gz"):
         return json.load(gzip.open(path + ".gz"))
     return json.load(open(path))
+
+
+def load_both(name):
+    """A piers-pack layer from the bay pack and the Gulf front's piers/ (same fields), features together."""
+    feats = list(load(name)["features"])
+    if os.path.exists(os.path.join(GULF, "piers", name)) or os.path.exists(os.path.join(GULF, "piers", name + ".gz")):
+        feats += load(name, os.path.join(GULF, "piers"))["features"]
+    return feats
+
+
+def draft_m(length, mast):
+    """A moored boat's draft from her length: keelboats about 0.3 + 0.13 L (a J/22 1.2 m, a 40-footer 1.9 m), power boats
+    0.2 + 0.07 L (a 25 ft runabout 0.7 m, a 50 ft trawler 1.3 m)."""
+    return 0.3 + 0.13 * length if mast else 0.2 + 0.07 * length
 
 
 def main():
@@ -53,7 +70,7 @@ def main():
         return round(float(v), 2)
 
     # The pack's own sim coordinates agree with this projection (a check that the frame is the same).
-    boats_in = load("moored_boats_2018.geojson")["features"]
+    boats_in = load_both("moored_boats_2018.geojson")
     p0 = boats_in[0]
     n0, e0 = project([p0["geometry"]["coordinates"]])[0]
     assert abs(n0 - p0["properties"]["sim_north"]) < 1.0 and abs(e0 - p0["properties"]["sim_east"]) < 1.0, (n0, e0, p0["properties"])
@@ -81,7 +98,13 @@ def main():
     decks = []
     deck_polys = []
     counts = {}
-    for f in load("overwater_structures.geojson")["features"]:
+    gulf_named = load("gulf_piers.geojson", GULF)["features"]
+    for f in gulf_named:
+        f["properties"].setdefault("attached_to_shore", True)
+        f["properties"].setdefault("fill", 1.0)
+        f["properties"].setdefault("area_m2", f["properties"]["length_m"] * f["properties"]["width_m"])
+        f["properties"].setdefault("surface_roughness_m", 0.0)
+    for f in gulf_named + load_both("overwater_structures.geojson"):
         p = f["properties"]
         kind = p["kind"]
         small_ok = kind == "deck_small" and p["area_m2"] >= 25 and 0.4 <= p["deck_above_water_m"] <= 4.0 and p["surface_roughness_m"] < 0.25
@@ -105,10 +128,41 @@ def main():
             if min(height(c) for c in g.exterior.coords) > 0.3:
                 continue
             outline = [[r(n), r(e)] for n, e in g.exterior.coords]
-            decks.append({"kind": kind if kind != "deck_small" else "deck", "deck": r(p["sim_deck_z"]), "attached": bool(p["attached_to_shore"]),
-                          "covered": kind == "covered_slip_or_building", "pts": outline})
+            deck = {"kind": kind if kind != "deck_small" else "deck", "deck": r(p["sim_deck_z"]), "attached": bool(p["attached_to_shore"]),
+                    "covered": kind == "covered_slip_or_building", "pts": outline}
+            if p.get("name"):
+                deck["name"] = p["name"]
+            if any(g.intersects(o) and g.intersection(o).area > 0.5 * min(g.area, o.area) for o in deck_polys):
+                continue   # the Gulf front's named piers come twice (the pack's polygons and gulf_piers): keep the first
+            decks.append(deck)
             deck_polys.append(g)
             counts[kind] = counts.get(kind, 0) + 1
+    # The chart's Gulf-front piers the lidar missed (too low over the water: the 61st Street pier's walkway, the T-headed
+    # structure near -94.801). The chart gives no height: a Gulf fishing pier's deck stands about 3 m above MLLW.
+    charted = load("charted_structures.geojson", GULF)["features"]
+    chart_piers = 0
+    for f in charted:
+        if f["properties"].get("chart_kind") != "pier":
+            continue
+        cs = f["geometry"]["coordinates"]
+        ring = cs[0] if f["geometry"]["type"] == "Polygon" else cs
+        if len(ring) < 4:
+            continue
+        g = Polygon(project(ring)).buffer(0)
+        if g.is_empty or g.area < 20:
+            g = LineString(project(ring)).buffer(1.5)   # an open pier line: a 3 m walkway
+        if isinstance(g, MultiPolygon):
+            g = max(g.geoms, key=lambda q: q.area)
+        covered = sum(g.intersection(o).area for o in deck_polys if g.intersects(o))
+        if covered > 0.3 * g.area or min(height(c) for c in g.exterior.coords) > 0.3:
+            continue
+        g = g.simplify(0.6, preserve_topology=True)
+        decks.append({"kind": "pier", "deck": 3.0, "attached": True, "covered": False, "charted": True,
+                      "pts": [[r(n), r(e)] for n, e in g.exterior.coords]})
+        deck_polys.append(g)
+        chart_piers += 1
+    counts["charted_pier"] = chart_piers
+
     deck_tree = None
     deck_pts = []
     for i, g in enumerate(deck_polys):
@@ -119,7 +173,11 @@ def main():
 
     # ---------------------------------------------------------------- riprap
     riprap = []
-    landmarks = load("landmarks.geojson")["features"]
+    # The Gulf front's landmarks replace the bay pack's Seawall end and jetties (the whole wall, the jetties to their
+    # head lights); the Texas City Dike stays the bay pack's. The lights and the named piers are points and decks.
+    gulf_landmarks = [f for f in load("landmarks.geojson", GULF)["features"] if f["geometry"]["type"] == "LineString"]
+    gulf_names = {f["properties"]["name"] for f in gulf_landmarks}
+    landmarks = [f for f in load("landmarks.geojson")["features"] if f["properties"]["name"] not in gulf_names] + gulf_landmarks
     for f in landmarks:
         p = f["properties"]
         pts = project(f["geometry"]["coordinates"])
@@ -133,9 +191,15 @@ def main():
             riprap.append({"kind": "jetty", "name": p["name"], "crest": r(p.get("sim_crest_z", 1.3)), "width": r(p.get("width_m_guess", 12.0)),
                            "pts": [[r(n), r(e)] for n, e in pts]})
     landmark_lines = [LineString([(a, b) for a, b in rr["pts"]]) for rr in riprap]
-    narrow_props = {f["properties"]["id"]: f["properties"] for f in load("narrow_structures.geojson")["features"]}
+    narrow_props = {f["properties"]["id"]: f["properties"] for f in load_both("narrow_structures.geojson")}
+    for f in load("groins.geojson", GULF)["features"]:
+        narrow_props.setdefault(f["properties"]["id"], f["properties"])
     skipped_osm = skipped_landmark = 0
-    for f in load("narrow_structures_centrelines.geojson")["features"]:
+    seen_ids = set()
+    for f in load_both("narrow_structures_centrelines.geojson") + load("groins.geojson", GULF)["features"]:
+        if f["properties"]["id"] in seen_ids:
+            continue
+        seen_ids.add(f["properties"]["id"])
         p = narrow_props.get(f["properties"]["id"], f["properties"])
         kind = p["kind"]
         if kind not in ("jetty", "groin", "breakwater", "dike_or_causeway"):
@@ -157,8 +221,25 @@ def main():
         riprap.append({"kind": "dike" if kind == "dike_or_causeway" else kind, "crest": r(crest), "width": r(width),
                        "pts": [[r(c[0]), r(c[1])] for c in line.simplify(1.0).coords]})
 
+    # The chart's Gulf groins and breakwaters the lidar didn't see (awash or low): a low rock line, unless one is there.
+    have = [LineString([(a, b) for a, b in rr["pts"]]) for rr in riprap if len(rr["pts"]) >= 2]
+    chart_groins = 0
+    for f in charted:
+        if f["properties"].get("chart_kind") != "breakwater" or f["geometry"]["type"] != "LineString":
+            continue
+        line = LineString(project(f["geometry"]["coordinates"]))
+        if line.length < 20:
+            continue
+        samples = [line.interpolate(t, normalized=True) for t in np.linspace(0, 1, 7)]
+        if sum(1 for q in samples if any(l.distance(q) < 15 for l in have)) >= 4:
+            continue
+        riprap.append({"kind": "groin", "crest": 1.0, "width": 8.0, "charted": True, "pts": [[r(c[0]), r(c[1])] for c in line.simplify(1.0).coords]})
+        have.append(line)
+        chart_groins += 1
+    print(f"charted Gulf piers added {chart_piers}, groins and breakwaters added {chart_groins}")
+
     # ---------------------------------------------------------------- marinas and boats
-    marinas_in = load("marinas.geojson")["features"]
+    marinas_in = load_both("marinas.geojson")
     marina_polys = []
     marinas = []
     for f in marinas_in:
@@ -171,14 +252,21 @@ def main():
     pier_index = STRtree(pier_lines)
     deck_index = STRtree(deck_polys)
     B = []
-    on_land = overlapping = 0
+    on_land = shallow = overlapping = 0
     for f in boats_in:
         p = f["properties"]
         n, e = project([f["geometry"]["coordinates"]])[0]
-        # A boat floats where the grid has water under her at mean tide (the bay grid's 10 m cells fill narrow canals
-        # and show the boat yards as land: those boats would sit on the lawn).
-        if height((n, e)) > 0.1:
+        # Galveston 2: a boat floats only where the grid has water under her keel at MLLW (the chart datum, the lowest
+        # normal tide): deeper than her draft, or wet at MLLW inside a marina (dredged basins the 10 m cells average
+        # with their banks). Elsewhere (narrow canals the 10 m grid fills, boat yards, the flats at low water) she would
+        # sit on the ground, so she is left out.
+        ground = height((n, e))
+        in_marina = any(mp.contains(Point(n, e)) for mp in marina_polys)
+        if ground > 0.0:
             on_land += 1
+            continue
+        if ground > -draft_m(p["length_m"], p["mast_seen"]) and not in_marina:
+            shallow += 1
             continue
         # Where the 2018 boat and a dock drawn later disagree (a hull through an OSM pier or a lidar deck), keep the dock.
         hull = Point(n, e).buffer(0.45 * p["beam_m"])
@@ -343,13 +431,13 @@ def main():
             bow[bi] = B[bi, 2] if (int(bi) * 2654435761) & 1 else (B[bi, 2] + 180.0) % 360.0
 
     boats = [[r(B[i, 0]), r(B[i, 1]), r(bow[i]), r(B[i, 3]), r(B[i, 4]), int(B[i, 5]), int(owner[i])] for i in range(len(B))]
-    out = {"schema": 1, "source": "Inputs/g2/piers (G2 add-on, 2018 USGS lidar, 2022 NAIP)", "frame": "[north, east] m, heights m above MLLW",
+    out = {"schema": 1, "source": "Inputs/g2/piers and Inputs/g2/gulf-front (G2 add-ons, 2018 USGS lidar, 2022 NAIP, NOAA ENC)", "frame": "[north, east] m, heights m above MLLW",
            "decks": decks, "riprap": riprap, "walkways": walkways, "boats": boats, "marinas": marinas}
     path = os.path.join(DATA, "GalvestonBay.piers")
     with open(path, "w") as fh:
         json.dump(out, fh, separators=(",", ":"))
     print(f"decks {len(decks)} {counts}; riprap {len(riprap)} (skipped {skipped_osm} on OSM breakwaters, {skipped_landmark} on the landmarks); "
-          f"walkways {len(walkways)}; boats {len(boats)} (left out {on_land} on land in the 10 m grid, {overlapping} through a dock) ({int(B[:, 5].sum())} masts, {int((owner >= 0).sum())} in marinas); marinas {len(marinas)}; "
+          f"walkways {len(walkways)}; boats {len(boats)} (left out {on_land} on land in the 10 m grid at MLLW, {shallow} aground outside a marina, {overlapping} through a dock) ({int(B[:, 5].sum())} masts, {int((owner >= 0).sum())} in marinas); marinas {len(marinas)}; "
           f"{os.path.getsize(path) / 1e6:.1f} MB -> {path}")
 
 
