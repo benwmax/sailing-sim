@@ -351,6 +351,8 @@ namespace Sailing
 
 	private:
 		struct FColumn { double X, Y, ZBottom, ZTop, Area; int Hull; };
+		/** W3: the sea's bands where she is (FWaveField::BandsAt), refilled each step when the field has a sea map. */
+		std::vector<FWaveBand> LocalSeaBands;
 
 		void BuildHull();
 		double SubmergedVolumeUpright(double Depth) const;

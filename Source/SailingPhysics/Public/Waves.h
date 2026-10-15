@@ -10,6 +10,7 @@
 namespace Sailing
 {
 	class FOcean;
+	class FSeaMap;
 
 	constexpr int kWaveBands = 16;
 	constexpr int kWaveDirectionsPerBand = 3;
@@ -111,6 +112,34 @@ namespace Sailing
 		/** The ocean's share of its energy at a point (FOcean's mask squared; 0 without an ocean). */
 		double OceanShareAt(double X, double Y) const;
 
+		/**
+		 * W3, sea state by direction (SeaState.h): with a sea map the components grow toward the sea of the map's
+		 * reference fetch (15 km) and each point scales them by its own fetch for their direction and its depth. Height,
+		 * Sample, SignificantHeightAt and BandsAt read the map; without one (polars, reference checks) nothing changes.
+		 */
+		void SetSeaMap(std::shared_ptr<const FSeaMap> InMap);
+		const FSeaMap* GetSeaMap() const { return SeaMap.get(); }
+		/** The fetch the components' targets grow on: the map's reference, else the params' fetch. */
+		double ReferenceFetch() const;
+		/** The map's channels at a point (kSeaChannels: the long components' ratios, then the short scale); 1 without a map. */
+		void SeaRatiosAt(double X, double Y, float* Out) const;
+		/**
+		 * W3: the water's depth for the components' dispersion (omega^2 = g k tanh(k h)): their frequencies stay, their
+		 * wavelengths shorten and they travel slower in shallow water. 0 = deep (the default). Call before the sea is used.
+		 */
+		void SetDepth(double DepthMeters);
+		double GetDepth() const { return Depth; }
+		/** The band's centre frequency and width (Hz): the same for every field. */
+		static double BandCentreHz(int Band);
+		static double BandWidthHz(int Band);
+		/**
+		 * W3: the amplitude a band's components get per unit of their direction share, in the growth laws' sea at this wind
+		 * and fetch: ComputeTargetAmplitudes' JONSWAP band energy scaled to the target Hs (A = this x sqrt(w / sum w)).
+		 */
+		static double BandAmplitudeFactor(int Band, double WindMs, double FetchMeters);
+		/** Bands() with the lake components' variance as it is at a point (the sea map's ratios). */
+		void BandsAt(double X, double Y, std::vector<FWaveBand>& Out) const;
+
 		/** Open sea: an FFT ocean (wind sea and swell) added to everything this field reports. */
 		void SetOcean(std::shared_ptr<FOcean> InOcean) { Ocean = std::move(InOcean); bBandsDirty = true; }
 		const FOcean* GetOcean() const { return Ocean.get(); }
@@ -125,6 +154,10 @@ namespace Sailing
 		double BandWidth[kWaveBands];
 		FWaveParams Params;
 		std::shared_ptr<FOcean> Ocean;
+		std::shared_ptr<const FSeaMap> SeaMap;
+		double Depth = 0.0;
+		/** The component each lake entry of BandCache came from (BandsAt scales them). */
+		mutable std::vector<int> BandComponent;
 		// Perf 1: boats stepping in parallel call Bands(): it is rebuilt under a lock, and only when the amplitudes or the
 		// ocean changed (on the game thread, never during a step).
 		mutable std::vector<FWaveBand> BandCache;
