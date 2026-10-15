@@ -121,10 +121,55 @@ def with_curvature(mat, wpo, x, y):
 
 
 # ---------------------------------------------------------------- water
+# W3, sea state by direction (SeaState.h, docs/water-3): how much of each wave train there is at a point. The atlas
+# (AWaterSurface::UploadSeaMap) is seven tiles side by side, each Cols x Rows texels of RGBA half floats: tile t's channel
+# c scales component 4t + c (the long waves, as the WaveAmp vectors pack them), tile 6's R the short waves (the rest of
+# the components and the FFT detail). SeaRect: origin north, east (m), cell (m), rows; SeaP: cols, atlas width, height,
+# 1 when bound (else every ratio is 1). The index is clamped inside a tile, as FSeaMap::Sample clamps at the edge, so
+# the bilinear filter never reads the next tile. Mirrors FSeaMap::Sample.
+SEA_ATLAS = """
+float2 seaI = clamp(float2((p.x - SeaRect.x) / SeaRect.z, (p.y - SeaRect.y) / SeaRect.z), 0.0, float2(SeaRect.w - 1.0, SeaP.x - 1.0));
+float2 seaUV = float2(seaI.y + 0.5, seaI.x + 0.5) / SeaP.yz;
+float seaTile = SeaP.x / SeaP.y;
+float4 S0 = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV, 0), SeaP.w);
+float4 S1 = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV + float2(seaTile, 0.0), 0), SeaP.w);
+float4 S2 = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV + float2(2.0 * seaTile, 0.0), 0), SeaP.w);
+float4 S3 = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV + float2(3.0 * seaTile, 0.0), 0), SeaP.w);
+float4 S4 = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV + float2(4.0 * seaTile, 0.0), 0), SeaP.w);
+float4 S5 = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV + float2(5.0 * seaTile, 0.0), 0), SeaP.w);
+float SShort = lerp(1.0, Sea.SampleLevel(SeaSampler, seaUV + float2(6.0 * seaTile, 0.0), 0).r, SeaP.w);
+"""
+
+# The short scale alone (the pixels' FFT detail).
+SEA_SHORT = """
+float2 seaI = clamp(float2((p.x - SeaRect.x) / SeaRect.z, (p.y - SeaRect.y) / SeaRect.z), 0.0, float2(SeaRect.w - 1.0, SeaP.x - 1.0));
+float SShort = lerp(1.0, Sea.SampleLevel(SeaSampler, float2(seaI.y + 0.5 + 6.0 * SeaP.x, seaI.x + 0.5) / SeaP.yz, 0).r, SeaP.w);
+"""
+
+
+def sea_amps(n):
+    """The amplitude vectors scaled by the sea map: A<i>s."""
+    return "\n".join(f"float4 A{i}s = A{i} * " + (f"S{i}" if i < 6 else "SShort") + ";" for i in range(n // 4))
+
+
+def sea_params(mat, x, y):
+    """The sea atlas and its rectangles (unbound: SeaP.w = 0, every ratio 1)."""
+    linear = linear_default()
+    t = node(mat, unreal.MaterialExpressionTextureObjectParameter, x, y, parameter_name="SeaMap", texture=linear,
+             sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    return t, vector(mat, "SeaRect", (0, 0, 50, 1), x, y + 150), vector(mat, "SeaParams", (1, 7, 1, 0), x, y + 250)
+
+
+def connect_sea(sea, c):
+    connect(sea[0], "", c, "Sea")
+    connect(sea[1], "RGBA", c, "SeaRect")
+    connect(sea[2], "RGBA", c, "SeaP")
+
+
 def wave_terms(kind):
     lines = []
     for i in range(NUM_WAVES):
-        amp = f"A{i // 4}.{'xyzw'[i % 4]}"
+        amp = f"A{i // 4}s.{'xyzw'[i % 4]}"
         arg = f"W{i}.x * p.x + W{i}.y * p.y - W{i}.z * T + W{i}.w"
         # Components with no energy in the current sea are skipped (a uniform branch: cheap on the GPU).
         if kind == "height":
@@ -139,7 +184,7 @@ float3 p = P * 0.01;
 float3 cam = Cam * 0.01;
 float fade = saturate(1.0 - distance(p.xy, cam.xy) / Fade);
 float h = 0.0;
-""" + wave_terms("height") + """
+""" + SEA_ATLAS + sea_amps(NUM_WAVES) + wave_terms("height") + """
 float ho = 0.0;
 float om = 0.0;
 [branch] if (OceanP.z > 0.0)
@@ -165,6 +210,7 @@ float3 cam = Cam * 0.01;
 float dist = distance(p.xy, cam.xy);
 float fade = saturate(1.0 - dist / Fade);
 float h = 0.0, sx = 0.0, sy = 0.0;
+""" + SEA_ATLAS + sea_amps(NUM_WAVES) + """
 [branch] if (fade > 0.0)
 {
 """ + wave_terms("normal") + """
@@ -272,7 +318,7 @@ def build_water():
     amps = [vector(mat, f"WaveAmp{i:02d}", (0, 0, 0, 0), -1200, -2000 + i * 60) for i in range(NUM_WAVES // 4)]
 
     common = ["P", "Cam", "T", "Fade"] + [f"W{i}" for i in range(NUM_WAVES)] + [f"A{i}" for i in range(NUM_WAVES // 4)] \
-        + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect"]
+        + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "Sea", "SeaRect", "SeaP"]
     linear = linear_default()
     ocean_a = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 1300, parameter_name="OceanA", texture=linear,
                    sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
@@ -283,6 +329,7 @@ def build_water():
     # x, y: tile sizes of the two cascades (m); z: 1 on the open sea, 0 elsewhere; w: fade distance (m).
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1600, 1750)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1600, 1850)
+    sea = sea_params(mat, -1600, 2200)
     wpo = custom(mat, WPO_CODE, common, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, -400)
 
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
@@ -317,6 +364,7 @@ def build_water():
         connect(ocean_mask, "", c, "OceanMask")
         connect(ocean_p, "RGBA", c, "OceanP")
         connect(ocean_rect, "RGBA", c, "OceanMaskRect")
+        connect_sea(sea, c)
     connect(gust_tex, "", shade, "Gust")
     connect(wake_tex, "", shade, "Wake")
     connect(gust_rect, "RGBA", shade, "GustRect")
@@ -909,20 +957,37 @@ for (int i = 1; i <= 8; i++)
 }
 batten *= Battens;
 float mark = 0.0;
+float through = 0.0;
 float3 ink = float3(0.0, 0.0, 0.0);
 if (Marks > 0.5)
 {
-    float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
     // Graphics G3: the number is SailDigits digits of SailNum, each from the atlas's digit strip (bottom half: ten cells).
+    // Both sides carry the insignia and the number, each reading right from its own side (before, the starboard side
+    // read mirrored): the starboard set is looked up mirrored along the chord, the port set's number a row below it (the
+    // class rule, so the two don't show through each other; the insignia are back to back). Face is +1 on the starboard
+    // face. Set 0 is this face's (its ink), set 1 the other side's (only its shadow against the light).
     float nd = max(SailDigits, 1.0);
     float bw = min(0.58, 0.145 * nd);
-    float2 r1 = (UV1 - float2(0.53 - 0.5 * bw, 0.62)) / float2(bw, 0.12);
-    if (Marks < 1.5 && all(r0 >= 0.0) && all(r0 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r0.x, 0.5 - r0.y * 0.5), 0); mark = t.a; ink = t.rgb; }
-    if (all(r1 >= 0.0) && all(r1 <= 0.999))
+    for (int s = 0; s < 2; s++)
     {
-        float i = floor(r1.x * nd);
-        float d = fmod(floor(SailNum / pow(10.0, nd - 1.0 - i) + 0.01), 10.0);
-        float4 t = Tex.SampleLevel(TexSampler, float2((d + frac(r1.x * nd)) / 10.0, 1.0 - r1.y * 0.5), 0); mark = t.a; ink = t.rgb;
+        bool stbd = (s == 0) == (Face > 0.0);
+        float a = 0.0;
+        float3 c = float3(0.0, 0.0, 0.0);
+        float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
+        float2 r1 = (UV1 - float2(0.53 - 0.5 * bw, stbd ? 0.62 : 0.48)) / float2(bw, 0.12);
+        if (Marks < 1.5 && all(r0 >= 0.0) && all(r0 <= 1.0))
+        {
+            float4 t = Tex.SampleLevel(TexSampler, float2(stbd ? 1.0 - r0.x : r0.x, 0.5 - r0.y * 0.5), 0); a = t.a; c = t.rgb;
+        }
+        if (all(r1 >= 0.0) && all(r1 <= 0.999))
+        {
+            float x = stbd ? 0.999 - r1.x : r1.x;
+            float i = floor(x * nd);
+            float d = fmod(floor(SailNum / pow(10.0, nd - 1.0 - i) + 0.01), 10.0);
+            float4 t = Tex.SampleLevel(TexSampler, float2((d + frac(x * nd)) / 10.0, 1.0 - r1.y * 0.5), 0); a = t.a; c = t.rgb;
+        }
+        if (s == 0) { mark = a; ink = c; }
+        else through = a;
     }
 }
 // A faint weave and the panels' slight tone differences.
@@ -968,7 +1033,7 @@ cloth *= 1.0 - 0.35 * speck * whiteish;
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through));
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1030,11 +1095,13 @@ def build_sail_cloth():
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
+    face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
-                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits")):
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -1080,7 +1147,7 @@ def long_wave_terms():
     Straight-line code (no branches): the vertex shader runs it for every ring vertex."""
     lines = []
     for i in range(NUM_LONG):
-        amp = f"A{i // 4}.{'xyzw'[i % 4]}"
+        amp = f"A{i // 4}s.{'xyzw'[i % 4]}"
         w = f"W{i}"
         arg = f"{w}.x * p.x + {w}.y * p.y - {w}.z * T + {w}.w"
         lines.append(f"{{ float s, c; sincos({arg}, s, c); float k = length({w}.xy); float2 kd = {w}.xy / k; h += {amp} * s; d += Chop * {amp} * kd * c; "
@@ -1100,7 +1167,7 @@ float spacing = max(0.5, dist / 64.0);
 float h = 0.0;
 float2 d = float2(0.0, 0.0);
 float lsx = 0.0, lsy = 0.0, ljxx = 1.0, ljyy = 1.0, ljxy = 0.0;
-""" + long_wave_terms() + """
+""" + SEA_ATLAS + sea_amps(NUM_LONG) + long_wave_terms() + """
 h *= fade; d *= fade;
 lsx *= fade; lsy *= fade;
 ljxx = lerp(1.0, ljxx, fade); ljyy = lerp(1.0, ljyy, fade); ljxy *= fade;
@@ -1109,8 +1176,8 @@ float df = saturate(1.0 - dist / DetailP.z);
 [branch] if (df > 0.0)
 {
     float4 da = DetailA.SampleLevel(DetailASampler, float2(p.y, p.x) / DetailP.x + 0.5 / 128.0, 0);
-    h += da.r * df;
-    d += da.gb * df;
+    h += da.r * df * SShort;
+    d += da.gb * df * SShort;
 }
 // The water the boats push around (FWakeGrid).
 float2 wg = (p.xy - WakeGridRect.xy) / WakeGridRect.z;
@@ -1200,9 +1267,12 @@ float shoal = saturate(1.0 - sd / 2.0) * saturate(sd / 0.1);
 float2 duv = float2(p.y, p.x) / DetailP.x + 0.5 / 128.0;
 float4 da = Texture2DSample(DetailA, DetailASampler, duv);
 float4 db = Texture2DSample(DetailB, DetailBSampler, duv);
-sx += db.r * calm; sy += db.g * calm;
-float jd = lerp(1.0, da.a, calm);
-float slopeVar = (max(db.b - db.r * db.r, 0.0) + max(db.a - db.g * db.g, 0.0)) * calm * calm;
+// W3: the chop as its fetch grew it here (the ripples below are the local wind's).
+""" + SEA_SHORT + """
+float chopK = calm * SShort;
+sx += db.r * chopK; sy += db.g * chopK;
+float jd = lerp(1.0, da.a, min(chopK, 2.0));
+float slopeVar = (max(db.b - db.r * db.r, 0.0) + max(db.a - db.g * db.g, 0.0)) * chopK * chopK;
 if (DetailP.w > 0.0)
 {
     // W2: the ripples face the local wind, not the sea's. The ripple tile (its spectrum faces the sea's wind) is sampled
@@ -1396,8 +1466,10 @@ def build_water_v4():
     wake_rect = vector(mat, "WakeGridRect", (0, 0, 25.6, 128), -1800, 2700)
     # Shore map (water depth, m): x0, y0, size (m), w = 1 when bound.
     shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
+    sea = sea_params(mat, -2000, 2400)
     common = ["P", "Cam", "T", "Fade", "Chop"] + [f"W{i}" for i in range(NUM_LONG)] + [f"A{i}" for i in range(NUM_LONG // 4)] \
-        + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect"]
+        + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect",
+           "Sea", "SeaRect", "SeaP"]
     wpo = custom(mat, V4_WPO, common + ["HullClipA", "HullClipB", "HullClipC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
     # The player's hull (AWaterSurface): A (x, y m, cos, sin heading), B (bow x, stern x, widest x, half beam), C (aft
@@ -1416,7 +1488,7 @@ def build_water_v4():
     wind = vector(mat, "WindParams", (1, 0, 5, 0), -1800, 900)
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect"]
+    shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
@@ -1445,6 +1517,7 @@ def build_water_v4():
         connect(ocean_rect, "RGBA", c, "OceanMaskRect")
         connect(detail_p, "RGBA", c, "DetailP")
         connect(wake_rect, "RGBA", c, "WakeGridRect")
+        connect_sea(sea, c)
     connect(tx["DetailB"], "", shade, "DetailB")
     connect(tx["RippleB"], "", shade, "RippleB")
     connect(gust_tex, "", shade, "Gust")

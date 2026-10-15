@@ -72,6 +72,18 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 		Ocean = MakeShared<FOcean>();
 		Waves.SetOcean(std::shared_ptr<FOcean>(Ocean.Get(), [Keep = Ocean](FOcean*) {}));
 	}
+	// W3: the fetch every way at every point, and the water's depth (about 50 ms). The components' wavenumbers follow the
+	// world's median depth (shallow-water dispersion) before anything reads them.
+	if (Lake.IsLoaded() && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoSeaMap")))
+	{
+		const double Start = FPlatformTime::Seconds();
+		TSharedPtr<Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch = MakeShared<Sailing::FSeaFetch, ESPMode::ThreadSafe>();
+		Fetch->Build(Lake.Terrain);
+		SeaFetch = Fetch;
+		Waves.SetDepth(Fetch->GetMedianDepth());
+		UE_LOG(LogSailing, Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
+			Fetch->GetRows(), Fetch->GetCols(), Fetch->GetCell(), Fetch->GetMedianDepth(), (FPlatformTime::Seconds() - Start) * 1000.0);
+	}
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWeather="), Value))
 	{
 		for (int32 I = 0; I < int32(EWeatherPreset::Count); ++I)
@@ -526,9 +538,58 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		if (Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5) WaveParams.FetchMeters = 200.0;
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
+	UpdateSeaMap(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	Waves.SetWind(WaveParams);
 	// Ripples and chop follow a puff within seconds, the longest lake waves over minutes (FWaveField::GrowthSeconds).
 	Waves.Update(DeltaSeconds);
+}
+
+void ASailingGameMode::UpdateSeaMap(double Knots, double FromDegrees)
+{
+	if (!SeaFetch) return;
+	if (bSeaMapBuilding && PendingSeaMap.IsReady())
+	{
+		Waves.SetSeaMap(PendingSeaMap.Get());
+		bSeaMapBuilding = false;
+	}
+	// The map's ratios depend on the wind's speed (the growth laws' spectrum against fetch) and, through the components'
+	// fetch directions pulled toward it, its direction. The first one is built here (the start snaps to it).
+	const bool bFirst = Waves.GetSeaMap() == nullptr && !bSeaMapBuilding;
+	const bool bStale = FMath::Abs(Knots - SeaMapKnots) > 0.05 * FMath::Max(SeaMapKnots, 2.0)
+		|| FMath::Abs(Sailing::WrapAngle((FromDegrees - SeaMapFrom) * kDegToRad)) > 11.25 * kDegToRad;
+	if (bSeaMapBuilding || (!bFirst && !bStale)) return;
+	SeaMapKnots = Knots;
+	SeaMapFrom = FromDegrees;
+	// The open sea's mask, copied: the FFT ocean carries the wind sea there and the chop keeps a 200 m fetch.
+	TSharedPtr<FOcean::FMask, ESPMode::ThreadSafe> Mask;
+	if (Ocean && Ocean->GetMask().Rows > 0) Mask = MakeShared<FOcean::FMask, ESPMode::ThreadSafe>(Ocean->GetMask());
+	TArray<FWaveComponent> Components(Waves.GetComponents(), kWaveComponents);
+	auto Build = [Fetch = SeaFetch, Mask, Components = MoveTemp(Components), Knots, FromDegrees]() -> std::shared_ptr<const Sailing::FSeaMap>
+	{
+		const double Start = FPlatformTime::Seconds();
+		std::function<double(double, double)> OpenSea;
+		if (Mask)
+		{
+			OpenSea = [Mask](double X, double Y)
+			{
+				// Nearest cell is enough for a 0.5 threshold; beyond the charts is open sea (FOcean::MaskAt).
+				const int R = FMath::RoundToInt((X - Mask->X0) / Mask->Cell), C = FMath::RoundToInt((Y - Mask->Y0) / Mask->Cell);
+				if (R < 0 || C < 0 || R >= Mask->Rows || C >= Mask->Cols) return 1.0;
+				return double(Mask->Values[size_t(R) * Mask->Cols + C]);
+			};
+		}
+		auto Map = std::make_shared<Sailing::FSeaMap>();
+		Map->Build(*Fetch, Components.GetData(), Knots * kKnot, FromDegrees * kDegToRad + kPi, true, Sailing::kSeaTowardWind, OpenSea);
+		UE_LOG(LogSailing, Verbose, TEXT("Sea map for %.1f kn from %.0f built in %.0f ms"), Knots, FromDegrees, (FPlatformTime::Seconds() - Start) * 1000.0);
+		return Map;
+	};
+	if (bFirst)
+	{
+		Waves.SetSeaMap(Build());
+		return;
+	}
+	bSeaMapBuilding = true;
+	PendingSeaMap = Async(EAsyncExecution::ThreadPool, MoveTemp(Build));
 }
 
 void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)

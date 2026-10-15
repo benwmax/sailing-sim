@@ -572,8 +572,10 @@ namespace Sailing
 					const Vec3 Fwd = Q.Forward();
 					const double HullBeam = 2.0 * Hull.MaxHalfBeam;
 					double Sum = 0.0;
-					// The ocean's bins only as far as its mask lets the open sea in where she is (none in a bay).
-					const std::vector<FWaveBand>& SeaBands = Waves->Bands();
+					// The ocean's bins only as far as its mask lets the open sea in where she is (none in a bay). W3: the
+					// lake's own bands as the sea map has them where she is (a lee shore's short chop, a shoal's TMA).
+					if (Waves->GetSeaMap()) Waves->BandsAt(State.Position.X, State.Position.Y, LocalSeaBands);
+					const std::vector<FWaveBand>& SeaBands = Waves->GetSeaMap() ? LocalSeaBands : Waves->Bands();
 					const size_t OceanFrom = Waves->OceanBandStart();
 					const double OceanShare = OceanFrom < SeaBands.size() ? Waves->OceanShareAt(State.Position.X, State.Position.Y) : 0.0;
 					for (size_t BandIndex = 0; BandIndex < SeaBands.size(); ++BandIndex)
