@@ -166,10 +166,12 @@ The commands, from `run-python.ps1` (all with the project path and `-run=pythons
 | `import_boats.py fleet` | `os._exit(0)` | the same plus `-nocrashreports` | crashed on exit; the crash reporter still opened (the flag didn't stop it); a zombie |
 | `import_j22_hero.py` (first version) | `os._exit(0)` | the same | crashed on exit; zombie after `Stop-Process` |
 | `import_j22_hero.py` (later) | `os._exit(0)` | the same, crash reporter closed within 3 s by a loop | crashed on exit; the editor then hung, and stopping it left a zombie |
+| `import_j22_hero.py` (Oct 15, called directly) | nothing (returns) | `-unattended -NoCrashReporter -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput` | **exited cleanly**, code 0 in 45 s, no crash reporter |
 
-So on this PC `os._exit(0)` itself is what crashes the editor on the way out. On the Mac it exists to dodge a Python
-shutdown crash after big bakes. `import_j22_hero.py` now leaves the commandlet to exit by itself. That version hasn't
-run yet, so whether it exits cleanly is the next thing to record here. What to try, in order:
+So on this PC `os._exit(0)` itself is what crashes the editor on the way out (on the Mac it exists to dodge a Python
+shutdown crash after big bakes). Without it, and with `-NoCrashReporter`, the hero import exited cleanly. Whether the
+big imports (`import_boats.py`, `import_world.py`) also exit cleanly without `os._exit` on Windows is still to be
+tried. What to try, in order:
 
 1. No `os._exit` (let `-run=pythonscript` return), and compare.
 2. `-NoCrashReporter` in place of `-nocrashreports`, to keep `CrashReportClientEditor` from opening at all.

@@ -163,7 +163,11 @@ def main():
         origin = meta["origins"][name]
         n = 0
         for sname, p in meta["sockets"].items():
-            if meta["owner"][sname] != name:
+            # The game hangs the rudder from the hull's RudderPivot (BuildModelVisuals); the hero lists it on the rudder,
+            # so it goes on the hull too. Socket positions in the JSON are in the boat's frame, so relative to the hull's
+            # origin it is the same point.
+            on_hull_too = sname == "RudderPivot" and name == "SM_J22H_Hull"
+            if meta["owner"][sname] != name and not on_hull_too:
                 continue
             sock = unreal.StaticMeshSocket(mesh)
             sock.set_editor_property("socket_name", sname)
