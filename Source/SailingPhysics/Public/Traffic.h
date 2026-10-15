@@ -158,6 +158,8 @@ namespace Sailing
 		void SetTime(double InTime) { Time = InTime; NextDecision = InTime; }
 		double GetTime() const { return Time; }
 		double WindFrom() const;
+		/** W1: where the wind at a place comes from now (rad): the puffs and shifts a sailor sees there. */
+		double LocalWindFrom(double X, double Y) const;
 
 		/** Racing: the race the AI racers follow (owned by the caller). */
 		void SetRace(FRaceRunner* InRace) { Race = InRace; }
@@ -170,6 +172,8 @@ namespace Sailing
 		void Navigate(FTrafficVessel& V);
 		void Apply(FTrafficVessel& V, double Dt);
 		double SailableHeading(const FTrafficVessel& V, double Heading, bool bKeepTack) const;
+		/** W1: tack upwind on a header, or for clearly more pressure on the other tack. */
+		bool WantsShiftTack(const FTrafficVessel& V, double Target) const;
 		double ChooseAvoidance(const FTrafficVessel& V, const FVesselSnapshot& Own, const FVesselSnapshot& Other, double Safe, bool bStarboardOnly, bool& bOutSlow,
 			const std::vector<std::pair<FVesselSnapshot, double>>& Nearby) const;
 		void DetectCollisions();

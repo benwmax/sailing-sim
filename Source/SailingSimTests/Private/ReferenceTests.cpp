@@ -147,9 +147,7 @@ bool FReferenceChecksTest::RunTest(const FString& Parameters)
 {
 	// Open items on docs/phase-8/fix-list.md, with the reason each is still open.
 	const TCHAR* KnownGaps[] = {
-		// The full 30.94 m^2 spinnaker (Visual V3) brought the steady 20 kn check into range; with it she surfs to about
-		// 12.1 kn in the gusts to 25, a shade over the 12 kn bursts the GPS clip shows (still under the 16 kn record).
-		TEXT("J/22 spinnaker run, 20 kn gusting 25: peak"),
+		// (W1: the J/22's gusty spinnaker run, a known gap since Visual V3 at 12.1 kn, is back in range in the new puffs.)
 		TEXT("Hobie 16 lap time / ILCA, DPN4 12+ kn"),   // steady laps leave out tacking and gybing losses, largest for cats (fix list 10)
 	};
 	int32 Failures = 0;

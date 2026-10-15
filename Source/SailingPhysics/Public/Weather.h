@@ -59,12 +59,14 @@ namespace Sailing
 	{
 	public:
 		void Configure(EWeatherPreset Preset, uint32_t Seed, double StartHour, double BoatX = 0.0, double BoatY = 0.0);
+		/** W1: the month and the water (lake, or the bay and the Gulf) for the wind's calibration and the stability. */
+		void SetClimate(int InMonth, bool bInCoast) { Month = InMonth; bCoast = bInCoast; }
 
 		/** Weather at T seconds after Configure. */
 		FWeatherState Evaluate(double T) const;
 
 		/** Applies the state to a wind field without making gust patterns jump. */
-		static void ApplyToWind(const FWeatherState& State, FWindField& Wind, double T);
+		static void ApplyToWind(const FWeatherState& State, FWindField& Wind, double T, double AnchorX = 0.0, double AnchorY = 0.0);
 
 		const std::vector<FLightningStrike>& GetStrikes() const { return Strikes; }
 		EWeatherPreset GetPreset() const { return Preset; }
@@ -84,6 +86,8 @@ namespace Sailing
 		EWeatherPreset RandomBase = EWeatherPreset::AfternoonBreeze;
 		uint32_t Seed = 1;
 		double StartHour = 15.0;
+		int Month = 6;
+		bool bCoast = false;
 		double OriginX = 0.0, OriginY = 0.0;
 		double RandomSpeedScale = 1.0, RandomDirectionOffset = 0.0;
 		std::vector<FLightningStrike> Strikes;

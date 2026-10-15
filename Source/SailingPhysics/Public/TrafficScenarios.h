@@ -38,10 +38,12 @@ namespace Sailing
 		std::vector<std::string> Signals;
 		int Collisions = 0;
 		int AiCausedCollisions = 0;
+		int Tacks = 0;                 // tacks and gybes by the whole fleet
 		double RaceSeconds = 0.0;
 		bool bOver = false;
 	};
 
-	/** Boats J/22s race a windward-leeward course (BeatMeters, Laps) in 12 knots, starting from a minute before the gun. */
-	SAILINGPHYSICS_API FRaceScenarioResult RunAiRace(int Boats, int Laps, double BeatMeters, unsigned Seed = 3);
+	/** Boats J/22s race a windward-leeward course (BeatMeters, Laps) in 12 knots, starting from a minute before the gun.
+	 *  W1: bShifty gives them an afternoon breeze's puffs and shifts (the station calibration for July at 15:00). */
+	SAILINGPHYSICS_API FRaceScenarioResult RunAiRace(int Boats, int Laps, double BeatMeters, unsigned Seed = 3, bool bShifty = false);
 }

@@ -237,23 +237,40 @@ bool FSailingStormTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingVisibleGustsTest, "SailingSim.Weather.GustsVisibleBeforeTheyArrive", Flags)
 bool FSailingVisibleGustsTest::RunTest(const FString& Parameters)
 {
-	// Puffs: the roughness the water shows 300 m upwind now is what the boat feels when that air arrives.
+	// W1: puffs are seen on the water before they arrive. A puff 400 m up its track (it drifts at the wind aloft, a few
+	// degrees veered) is the puff the boat feels when it gets there; the water's roughness there now foretells the
+	// boat's wind then (the fine turbulence moves at the surface wind, so not exactly).
 	FWindParams WP;
 	WP.SpeedKnots = 12.0;
 	WP.FromDegrees = 0.0;
-	WP.GustIntensity = 0.3;
+	WP.GustIntensity = 0.12;
+	WP.PuffIntensity = 0.1;
 	WP.Seed = 5;
 	const FWindField Gusty(WP);
-	const double U = 12.0 * kKnot;
-	double MaxError = 0.0;
-	for (int32 I = 0; I < 50; ++I)
+	const Vec3 Drift = Gusty.PuffDrift();
+	const double Vp = Drift.LengthXY();
+	const Vec3 Ahead = Drift / Vp * -400.0; // up the puffs' track
+	double PuffError = 0.0, SA = 0.0, SB = 0.0, SAA = 0.0, SBB = 0.0, SAB = 0.0;
+	const int32 N = 300;
+	for (int32 I = 0; I < N; ++I)
 	{
-		const double T = 10.0 + I * 3.0;
-		const double Upwind = Gusty.SurfaceRoughnessAt(300.0, 0.0, T);
-		const double Later = Gusty.SurfaceRoughnessAt(0.0, 0.0, T + 300.0 / U);
-		MaxError = FMath::Max(MaxError, FMath::Abs(Upwind - Later));
+		const double T = 60.0 + I * 7.0;
+		double F0, S0, F1, S1;
+		Gusty.PuffAt(Ahead.X, Ahead.Y, T, F0, S0);
+		Gusty.PuffAt(0.0, 0.0, T + 400.0 / Vp, F1, S1);
+		PuffError += FMath::Abs(F0 - F1) / N;
+		// What the eye takes in: the roughness over a patch of water 150 m across up there now; what the boat feels: her
+		// wind over the 20 s it takes to cross it.
+		double A = 0.0, B = 0.0;
+		for (int32 K = -2; K <= 2; ++K) for (int32 L = -2; L <= 2; ++L) A += Gusty.SurfaceRoughnessAt(Ahead.X + K * 35.0, Ahead.Y + L * 35.0, T) / 25.0;
+		for (int32 K = -10; K <= 10; ++K) B += Gusty.SurfaceRoughnessAt(0.0, 0.0, T + 400.0 / Vp + K) / 21.0;
+		SA += A; SB += B; SAA += A * A; SBB += B * B; SAB += A * B;
 	}
-	TestTrue(TEXT("A puff seen 300 m upwind reaches the boat about 300 m / wind speed later"), MaxError < 0.02);
+	const double Cov = SAB / N - SA * SB / (N * N), Corr = Cov / FMath::Sqrt((SAA / N - SA * SA / (N * N)) * (SBB / N - SB * SB / (N * N)));
+	AddInfo(FString::Printf(TEXT("A puff 400 m up its track arrives %.0f s later within %.3f of its strength on average; the water there now (a 150 m patch) and the wind here then (20 s) correlate %.2f"),
+		400.0 / Vp, PuffError, Corr));
+	TestTrue(TEXT("A puff seen 400 m upwind reaches the boat (a few land or fade on the way)"), PuffError < 0.03);
+	TestTrue(TEXT("The rough water upwind foretells the wind"), Corr > 0.5);
 
 	// The storm's gust front shows as a band of rough water closing in before the wind at the boat changes.
 	FWeatherSystem Weather;

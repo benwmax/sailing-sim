@@ -110,6 +110,17 @@ namespace Sailing
 		return false;
 	}
 
+	void FLakeTerrain::InitSyntheticTrees(int InRows, int InCols, double InCell, double InOriginX, double InOriginY, const std::vector<uint8_t>& Density)
+	{
+		TreeRows = InRows;
+		TreeCols = InCols;
+		TreeCell = InCell;
+		TreeOriginX = InOriginX;
+		TreeOriginY = InOriginY;
+		Trees = Density;
+		Trees.resize(size_t(TreeRows) * TreeCols, 0);
+	}
+
 	void FLakeTerrain::InitSynthetic(int InRows, int InCols, double InCell, double InOriginX, double InOriginY, const std::vector<float>& InHeights)
 	{
 		Rows = InRows;
@@ -165,16 +176,52 @@ namespace Sailing
 		return MaxDistance;
 	}
 
-	void FShelterMap::Build(const FLakeTerrain& Terrain, double InFromRadians, double InCell)
+	double FShelterMap::LeeDeficit(double Ratio)
+	{
+		// Shelterbelt and escarpment wakes: deepest within about 4 heights, still a quarter down at 20, gone by 30.
+		return 0.62 * (1.0 - SmoothStep(4.0, 30.0, Ratio));
+	}
+
+	double FShelterMap::OpenWaterBuild(double FetchMeters)
+	{
+		// The internal boundary layer from a land-water roughness step: the 10 m wind climbs from about 80 % of the
+		// open-water value at the shore with an e-folding fetch of 800 m (lake and coastal mast studies).
+		return 0.8 + 0.2 * (1.0 - std::exp(-std::max(FetchMeters, 0.0) / 800.0));
+	}
+
+	void FShelterMap::Build(const FLakeTerrain& Terrain, double InFromRadians, double InCell, const std::vector<FShelterObstacle>* Obstacles)
 	{
 		FromRadians = InFromRadians;
 		Cell = InCell;
-		if (!Terrain.IsValid()) { Rows = Cols = 0; Factor.clear(); return; }
+		if (!Terrain.IsValid()) { Rows = Cols = 0; Lee.clear(); Building.clear(); return; }
 		OriginX = Terrain.GetOriginX();
 		OriginY = Terrain.GetOriginY();
 		Rows = int(Terrain.GetRows() * Terrain.GetCell() / Cell) + 1;
 		Cols = int(Terrain.GetCols() * Terrain.GetCell() / Cell) + 1;
-		Factor.assign(size_t(Rows) * Cols, 1.0f);
+		Lee.assign(size_t(Rows) * Cols, 1.0f);
+		Building.assign(size_t(Rows) * Cols, 1.0f);
+		// Houses (and anything else) rasterised to the march's resolution: the highest top in each 20 m cell.
+		constexpr double Step = 20.0;
+		const int HRows = int(Rows * Cell / Step) + 2, HCols = int(Cols * Cell / Step) + 2;
+		std::vector<float> Extra;
+		if (Obstacles && !Obstacles->empty())
+		{
+			Extra.assign(size_t(HRows) * HCols, 0.0f);
+			for (const FShelterObstacle& O : *Obstacles)
+			{
+				const int R0 = int(std::floor((O.X - O.Radius - OriginX) / Step)), R1 = int(std::floor((O.X + O.Radius - OriginX) / Step));
+				const int C0 = int(std::floor((O.Y - O.Radius - OriginY) / Step)), C1 = int(std::floor((O.Y + O.Radius - OriginY) / Step));
+				for (int R = std::max(R0, 0); R <= std::min(R1, HRows - 1); ++R)
+					for (int C = std::max(C0, 0); C <= std::min(C1, HCols - 1); ++C)
+						Extra[size_t(R) * HCols + C] = std::max(Extra[size_t(R) * HCols + C], float(O.Top));
+			}
+		}
+		auto ExtraAt = [&](double X, double Y)
+		{
+			if (Extra.empty()) return 0.0;
+			const int R = int(std::floor((X - OriginX) / Step)), C = int(std::floor((Y - OriginY) / Step));
+			return R < 0 || C < 0 || R >= HRows || C >= HCols ? 0.0 : double(Extra[size_t(R) * HCols + C]);
+		};
 		const double DX = std::cos(FromRadians), DY = std::sin(FromRadians);
 		for (int R = 0; R < Rows; ++R)
 		{
@@ -182,29 +229,48 @@ namespace Sailing
 			{
 				const double X = OriginX + R * Cell, Y = OriginY + C * Cell;
 				if (Terrain.HeightAt(X, Y) > 0.0) continue; // only water matters
-				double Reduction = 0.0;
-				for (double S = 20.0; S <= 700.0; S += 20.0)
+				// Upwind: the lee of anything within 30 heights (a 30 m bluff with its trees reaches 900 m), and the first land.
+				double Reduction = 0.0, Fetch = -1.0;
+				const double MaxX = OriginX + Terrain.GetRows() * Terrain.GetCell(), MaxY = OriginY + Terrain.GetCols() * Terrain.GetCell();
+				for (double S = Step; S <= 3000.0; S += (S < 1000.0 ? Step : 2.0 * Step))
 				{
 					const double PX = X + DX * S, PY = Y + DY * S;
-					const double Top = std::max(Terrain.HeightAt(PX, PY), 0.0) + (Terrain.HeightAt(PX, PY) > 0.0 ? Terrain.CanopyAt(PX, PY) : 0.0);
+					// Past the edge of the bake: nothing more is known (its "high land" is a stand-in, not a hill).
+					if (PX < OriginX || PY < OriginY || PX > MaxX || PY > MaxY)
+					{
+						if (Fetch < 0.0) Fetch = S;
+						break;
+					}
+					const double Ground = Terrain.HeightAt(PX, PY);
+					if (Ground > 0.0 && Fetch < 0.0) Fetch = S;
+					if (S > 1000.0)
+					{
+						if (Fetch >= 0.0) break;
+						continue;
+					}
+					const double Top = std::max({ Ground, 0.0, ExtraAt(PX, PY) }) + (Ground > 0.0 ? Terrain.CanopyAt(PX, PY) : 0.0);
 					if (Top < 1.0) continue;
-					// Wake behind an obstacle of height Top: strongest within a few heights, recovered by about 25 heights.
-					const double Ratio = S / Top;
-					Reduction = std::max(Reduction, 0.65 * (1.0 - SmoothStep(2.0, 25.0, Ratio)));
+					Reduction = std::max(Reduction, LeeDeficit(S / Top));
 				}
-				Factor[size_t(R) * Cols + C] = float(1.0 - Reduction);
+				Lee[size_t(R) * Cols + C] = float(1.0 - Reduction);
+				Building[size_t(R) * Cols + C] = float(OpenWaterBuild(Fetch < 0.0 ? 1e9 : Fetch));
 			}
 		}
 	}
 
-	double FShelterMap::FactorAt(double X, double Y) const
+	double FShelterMap::Sample(const std::vector<float>& Grid, double X, double Y) const
 	{
 		if (Rows == 0) return 1.0;
 		const double R = (X - OriginX) / Cell, C = (Y - OriginY) / Cell;
 		const int R0 = int(std::floor(R)), C0 = int(std::floor(C));
 		if (R0 < 0 || C0 < 0 || R0 + 1 >= Rows || C0 + 1 >= Cols) return 1.0;
 		const double FR = R - R0, FC = C - C0;
-		auto F = [&](int RR, int CC) { return double(Factor[size_t(RR) * Cols + CC]); };
+		auto F = [&](int RR, int CC) { return double(Grid[size_t(RR) * Cols + CC]); };
 		return Lerp(Lerp(F(R0, C0), F(R0, C0 + 1), FC), Lerp(F(R0 + 1, C0), F(R0 + 1, C0 + 1), FC), FR);
+	}
+
+	double FShelterMap::FactorAt(double X, double Y) const
+	{
+		return LeeAt(X, Y) * BuildAt(X, Y);
 	}
 }

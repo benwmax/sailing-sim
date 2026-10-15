@@ -1,4 +1,5 @@
 #include "Weather.h"
+#include "WindClimate.h"
 
 namespace Sailing
 {
@@ -174,6 +175,8 @@ namespace Sailing
 		const double Day = Diurnal(W.HourOfDay);
 
 		EWeatherPreset P = Preset == EWeatherPreset::RandomDay ? RandomBase : Preset;
+		// W1: the preset scales the calibrated gustiness (WindClimate.h) and nudges the stability and the mixed layer.
+		double Gustiness = 1.0, Overcast = 0.0, AirOffset = 0.0, Layer = 1.0;
 		const double SpeedScale = Preset == EWeatherPreset::RandomDay ? RandomSpeedScale : 1.0;
 		const double DirOffset = Preset == EWeatherPreset::RandomDay ? RandomDirectionOffset : 0.0;
 
@@ -182,9 +185,11 @@ namespace Sailing
 		case EWeatherPreset::CalmMorning:
 			W.Wind.SpeedKnots = 6.0 * Day;
 			W.Wind.FromDegrees = 150.0;
-			W.Wind.GustIntensity = 0.35;
+			// W1: light air is the gustiest and shiftiest relative to its speed (1.75 x the calibrated breeze).
+			Gustiness = 1.75;
 			W.Wind.ShiftDegrees = 20.0;
-			W.Wind.GustLengthMeters = 180.0;
+			W.Wind.ShiftPeriodSeconds = 240.0;
+			W.Wind.PersistentShiftDegrees = 15.0;
 			W.CloudCover = 0.1;
 			W.CloudTopKm = 2.0;
 			W.VisibilityKm = 12.0;
@@ -193,8 +198,9 @@ namespace Sailing
 		case EWeatherPreset::AfternoonBreeze:
 			W.Wind.SpeedKnots = 13.0 * Day;
 			W.Wind.FromDegrees = 180.0;
-			W.Wind.GustIntensity = 0.2;
 			W.Wind.ShiftDegrees = 8.0;
+			W.Wind.ShiftPeriodSeconds = 420.0;
+			W.Wind.PersistentShiftDegrees = 8.0; // the afternoon breeze veering as it fills
 			W.CloudCover = 0.3;
 			W.CloudTopKm = 3.0;
 			W.VisibilityKm = 25.0;
@@ -203,8 +209,11 @@ namespace Sailing
 		case EWeatherPreset::Overcast:
 			W.Wind.SpeedKnots = 10.0;
 			W.Wind.FromDegrees = 0.0;
-			W.Wind.GustIntensity = 0.12;
+			Gustiness = 0.6;
+			Overcast = 0.8;
 			W.Wind.ShiftDegrees = 5.0;
+			W.Wind.ShiftPeriodSeconds = 600.0;
+			W.Wind.PersistentShiftDegrees = 5.0;
 			W.CloudCover = 0.95;
 			W.CloudTopKm = 2.5;
 			W.CloudDarkness = 0.35;
@@ -214,8 +223,12 @@ namespace Sailing
 		case EWeatherPreset::Rain:
 			W.Wind.SpeedKnots = 14.0;
 			W.Wind.FromDegrees = 45.0;
-			W.Wind.GustIntensity = 0.25;
+			Gustiness = 1.25;
+			Overcast = 0.9;
+			AirOffset = -3.0; // rain-cooled air
 			W.Wind.ShiftDegrees = 10.0;
+			W.Wind.ShiftPeriodSeconds = 300.0;
+			W.Wind.PersistentShiftDegrees = 6.0;
 			W.CloudCover = 1.0;
 			W.CloudTopKm = 4.0;
 			W.CloudDarkness = 0.5;
@@ -229,7 +242,10 @@ namespace Sailing
 			const double After = SmoothStep(kOutflowDecays, kClear, T);
 			W.Wind.SpeedKnots = Lerp(10.0, 7.0, After);
 			W.Wind.FromDegrees = Lerp(180.0, 320.0, After);
-			W.Wind.GustIntensity = Lerp(0.15, 0.25, After);
+			// Hot and deep before; the cold outflow over the warm water after (gusty, shifty, shallow).
+			Gustiness = Lerp(0.75, 1.25, After);
+			AirOffset = Lerp(2.0, -6.0, SmoothStep(kFrontArrives - 20.0, kRainStarts, T));
+			Layer = Lerp(1.3, 0.6, After);
 			W.Wind.ShiftDegrees = 8.0;
 			W.FetchMeters = 5000.0;
 
@@ -269,15 +285,24 @@ namespace Sailing
 			break;
 		}
 
+		// W1: gust factor and puff timing from the station calibration for the month, hour and water; stability from the
+		// air over the water (cloud keeps the air near its daily mean); the convective layer the puffs come down from.
+		const double Air = Lerp(ClimateAirC(Month, W.HourOfDay, bCoast), 0.5 * (ClimateAirC(Month, 6.5, bCoast) + ClimateAirC(Month, 15.5, bCoast)), Overcast);
+		W.Wind.GustIntensity = Gustiness * GustIntensityForFactor(ClimateGustFactor(Month, W.HourOfDay, bCoast));
+		W.Wind.PuffIntensity = Gustiness * ClimatePuffStrength(Month, W.HourOfDay, bCoast);
+		W.Wind.AirMinusWaterC = Air + AirOffset - ClimateWaterC(Month, bCoast);
+		W.Wind.MixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast) * Layer * (1.0 - 0.5 * Overcast);
+		W.Wind.PuffIntervalSeconds = 60.0 * ClimatePuffMinutes(Month, W.HourOfDay, bCoast);
+
 		FillSky(P, T, W);
 		W.Wind.SpeedKnots *= SpeedScale;
 		W.Wind.FromDegrees = std::fmod(W.Wind.FromDegrees + DirOffset + 360.0, 360.0);
 		return W;
 	}
 
-	void FWeatherSystem::ApplyToWind(const FWeatherState& State, FWindField& Wind, double T)
+	void FWeatherSystem::ApplyToWind(const FWeatherState& State, FWindField& Wind, double T, double AnchorX, double AnchorY)
 	{
-		Wind.SetParamsAt(State.Wind, T);
+		Wind.SetParamsAt(State.Wind, T, AnchorX, AnchorY);
 		Wind.SetFront(State.Front);
 	}
 }
