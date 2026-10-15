@@ -76,3 +76,11 @@ At the points, wind from the north and from the south at 14 kn (`points.csv` has
 
 The Galveston cases are still running (about a day at 16 threads). This section and the bay's figure follow when
 they finish.
+
+**The grid this bake uses is the old one.** The bathymetry was taken from main before Galveston 2 (#42, main
+17a7da78). Since #42 the game's Galveston grid reaches south to 29.19 N, with the Seawall, both jetties, the piers and
+the groins. The bake in flight keeps the old southern boundary, so its results near Bolivar Roads and the entrance,
+and any case whose waves come from the south, don't see the new coast. **Planned re-run:** take the height grid from
+main at or after 17a7da78 and rerun only the cases where the southern boundary matters. Those are wind from 112.5 to
+202.5 deg (south-east round to south-south-west) at every speed, about 49 of the 112. They run in a separate work
+folder, and the points near the entrance (Bolivar Roads, Texas City Dike) are compared against both bakes.
