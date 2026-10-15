@@ -1035,7 +1035,7 @@ void ASailingHUD::DrawWeather(const ASailboatPawn& Boat)
 	DrawRect(Panel, X * UIScale, Y * UIScale, 290.f * UIScale, 100.f * UIScale);
 	const int32 Hour = int32(W.HourOfDay), Minute = int32(FMath::Fmod(W.HourOfDay, 1.0) * 60.0);
 	Text(FString::Printf(TEXT("%hs  %02d:%02d"), WeatherPresetName(GM->GetWeather().GetPreset()), Hour, Minute), X + 10.f, Y + 8.f, FLinearColor::White, 0.9f);
-	Text(FString::Printf(TEXT("Wind %.0f kn  waves %.2f m"), T.TrueWindSpeed / kKnot, GM->GetWaves().SignificantHeight()), X + 10.f, Y + 32.f, Dim, 0.85f);
+	Text(FString::Printf(TEXT("Wind %.0f kn  waves %.2f m"), T.TrueWindSpeed / kKnot, GM->GetWaves().SignificantHeightAt(Boat.GetBoatModel().OriginPosition().X, Boat.GetBoatModel().OriginPosition().Y)), X + 10.f, Y + 32.f, Dim, 0.85f);
 	Text(FString::Printf(TEXT("Visibility %.0f km%s"), W.VisibilityKm, W.Rain > 0.05 ? TEXT("  rain") : TEXT("")), X + 10.f, Y + 54.f, Dim, 0.85f);
 	if (W.Storm != EStormPhase::None)
 	{

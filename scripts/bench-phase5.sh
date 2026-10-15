@@ -6,7 +6,7 @@ source "$(dirname "$0")/env.sh"
 SECONDS_PER_RUN="${1:-12}"
 OUT="$ARTIFACTS/phase5-bench.csv"
 mkdir -p "$REPO_ROOT/docs/phase-5"
-COMMON="-SailingWorld=1 -SailingQuality=Medium -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60"
+COMMON="-SailingWorld=1 -SailingQuality=Medium -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60 ${EXTRA_ARGS:-}"   # EXTRA_ARGS: e.g. -SailingNoOcean to compare
 VIEWS=(
 	"coast-day|-SailingLaunch=1 -SailingHour=11 -SailingCamYaw=250 -SailingCamPitch=-10"
 	"coast-bay|-SailingLaunch=2 -SailingHour=15 -SailingCamYaw=200 -SailingCamPitch=-8 -SailingCamDist=30"

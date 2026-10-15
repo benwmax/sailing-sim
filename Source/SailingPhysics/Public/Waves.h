@@ -85,6 +85,8 @@ namespace Sailing
 
 		/** Significant wave height (4 x standard deviation of the surface) of the current amplitudes, m. */
 		double SignificantHeight() const;
+		/** The same where the sea is at a point: the ocean's part only as far as its mask lets it in (gulf-swell). */
+		double SignificantHeightAt(double X, double Y) const;
 		/** Energy-weighted mean wave period (Tm01), s. */
 		double MeanPeriod() const;
 		/** Direction the waves travel toward (energy-weighted mean), radians in the XY plane. */
@@ -104,6 +106,10 @@ namespace Sailing
 		const FWaveComponent* GetComponents() const { return Components; }
 		/** The sea's spectrum in bands (the lake components one by one, the ocean in wavelength bins), for added resistance. */
 		const std::vector<FWaveBand>& Bands() const;
+		/** Where the ocean's bins start in Bands() (after the lake components; its size without an ocean). Read after Bands(). */
+		size_t OceanBandStart() const { return BandOceanStart; }
+		/** The ocean's share of its energy at a point (FOcean's mask squared; 0 without an ocean). */
+		double OceanShareAt(double X, double Y) const;
 
 		/** Open sea: an FFT ocean (wind sea and swell) added to everything this field reports. */
 		void SetOcean(std::shared_ptr<FOcean> InOcean) { Ocean = std::move(InOcean); bBandsDirty = true; }
@@ -124,6 +130,7 @@ namespace Sailing
 		mutable std::vector<FWaveBand> BandCache;
 		mutable bool bBandsDirty = true;
 		mutable uint64_t BandOceanGeneration = ~0ull;
+		mutable size_t BandOceanStart = 0;
 		struct FLock { std::mutex M; FLock() = default; FLock(const FLock&) {} FLock& operator=(const FLock&) { return *this; } };
 		mutable FLock BandLock;
 	};

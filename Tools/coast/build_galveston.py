@@ -52,7 +52,7 @@ REGIONS = {
         "center": (29.5446, -95.0193),             # Kemah, at the Clear Lake channel
         "bbox": (-95.115, 29.19, -94.665, 29.625),   # lon_min, lat_min, lon_max, lat_max (G2b: south to take the Gulf front)
         "datum_station": "8771450", "stations": ("8771450", "8771341", "8771013", "8770613", "8771486"),
-        "current": True, "reference": True, "ocean": False,
+        "current": True, "reference": True, "ocean": True,   # gulf-swell: FOcean on the Gulf front, masked out of the bay
         "check": (("Kemah, Clear Lake channel", 29.5440, -95.0150), ("Texas City Dike", 29.3880, -94.8800), ("Eagle Point", 29.4810, -94.9170)),
         "launch": (("Clear Lake, off the yacht clubs", 29.5560, -95.0560, 90.0), ("Kemah channel, outbound", 29.5418, -95.0080, 110.0),
                    ("Galveston Bay, off Clear Lake", 29.5250, -94.9700, 130.0), ("Red Fish Bar", 29.4950, -94.8750, 180.0),

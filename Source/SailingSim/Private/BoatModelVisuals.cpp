@@ -371,7 +371,7 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 	// The hull is wet up to the highest recent water around it and dries back down at about 3 cm a minute.
 	const double WaterHere = WaterSurfaceZ + GM->GetWaves().Height(O.X, O.Y, S.Time) * CmPerMeter;
 	WetLineZ = FMath::Max(WetLineZ - DeltaSeconds * 0.05, WaterHere);
-	const double Hs = GM->GetWaves().SignificantHeight();
+	const double Hs = GM->GetWaves().SignificantHeightAt(O.X, O.Y);
 	const float Knots = float(T.SpeedThroughWater / 0.514444);
 	// Splash band: the bow wave and the chop climb the topsides with speed and sea.
 	const float Band = 4.f + float(Hs) * 45.f + FMath::Clamp(Knots - 3.f, 0.f, 6.f) * 2.5f;
