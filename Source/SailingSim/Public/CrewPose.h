@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 
-class UPoseableMeshComponent;
 namespace Sailing { struct FBoatConfig; }
 
 /**
@@ -106,11 +105,6 @@ struct SAILINGSIM_API FCrewHands
 	float Grip[2] = { 0.3f, 0.3f };
 	const FCrewGround* Ground = nullptr;                    // plant the feet on the boat (FCrewGround)
 };
-
-/** Poses the skeleton: forward kinematics from the reference pose with the joint rotations (missing joints rest). With
- *  a rig, the sailor's joints are carried to its skeleton first; with hands, the arms reach and the fingers curl. */
-SAILINGSIM_API void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig = nullptr,
-	const FCrewHands* Hands = nullptr);
 
 /** Component-space joint positions of the reference skeleton posed with the rotations (cm): for the tests. */
 SAILINGSIM_API void CrewPosedJoints(const class USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& OutPositions,

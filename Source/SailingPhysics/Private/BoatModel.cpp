@@ -855,7 +855,14 @@ namespace Sailing
 
 		const Vec3& W = State.AngularVelocity;
 		const Vec3 Gyro = W.Cross(Inertia.Mul(W));
-		State.AngularVelocity += (TorqueTotalBody - Gyro).Div(EffectiveInertia) * Dt;
+		const Vec3 AngularAccel = (TorqueTotalBody - Gyro).Div(EffectiveInertia);
+		State.AngularVelocity += AngularAccel * Dt;
+		{
+			// Crew C1: the accelerations the crew feel against gravity, smoothed over 25 ms.
+			const double K = std::min(1.0, Dt / 0.025);
+			Telemetry.AccelBody += (AccelBody - Telemetry.AccelBody) * K;
+			Telemetry.AngularAccelBody += (AngularAccel - Telemetry.AngularAccelBody) * K;
+		}
 
 		State.Position += State.Velocity * Dt;
 		const Vec3& W2 = State.AngularVelocity;
