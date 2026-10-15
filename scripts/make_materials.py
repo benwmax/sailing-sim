@@ -1165,10 +1165,17 @@ float4 wFar = WindFar.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0);
 float2 eN = abs(p.xy - GustRect.xy) / (0.5 * GustRect.z);
 float2 eF = abs(p.xy - WindFarRect.xy) / (0.5 * WindFarRect.z);
 float4 wMean = float4(WindP.z / 20.0, 0.5 + 0.5 * WindP.x, 0.5 + 0.5 * WindP.y, WindP.z / 20.0);
-float4 wMap = lerp(lerp(wMean, wFar, 1.0 - smoothstep(0.75, 0.95, max(eF.x, eF.y))), wNear, 1.0 - smoothstep(0.72, 0.92, max(eN.x, eN.y)));
+float4 wFarMean = lerp(wMean, wFar, 1.0 - smoothstep(0.75, 0.95, max(eF.x, eF.y)));
+// (The roughness and direction hand off over the near map's outer half: over its outer 20% the two maps' different
+// readings of the wind drew the map's square edge 1.6 km out as a line in the glint, seen from 300 m.)
+float4 wMap = lerp(wFarMean, wNear, 1.0 - smoothstep(0.5, 0.95, max(eN.x, eN.y)));
 float rough = wMap.r * 2.5;
 float2 ldir = normalize(wMap.gb * 2.0 - 1.0 + float2(1e-4, 0.0));
-float slowMs = wMap.a * 20.0;
+// W2 follow-up (Mac gate, 7 kn from 300 m): the slow wind that switches slicks and windrows on hands over from the near
+// map to the far one over most of the near map's half-width, not its outer 20%. The two levels read the wind differently
+// (the full wind against the readable one), and at 7 kn the slow wind sits on the slick threshold, so a hand-off over
+// 300 m drew the slicks starting along a sharp line 1.2-1.5 km out.
+float slowMs = lerp(wFarMean.a, wNear.a, 1.0 - smoothstep(0.3, 0.92, max(eN.x, eN.y))) * 20.0;
 float2 guv = p.xy / GustRect.z;
 float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
 float calm = saturate(0.25 + 0.75 * gustRatio);
@@ -1301,13 +1308,32 @@ float glass = (1.0 - smoothstep(1.5, 3.0, rough * 8.0)) * (1.0 - Dark);
 float2 sw = normalize(WindSlow.xy + float2(1e-4, 0.0));
 float2 sn = float2(-sw.y, sw.x);
 float across = dot(p.xy, sn), along = dot(p.xy, sw);
-float band = sin(across / 37.0 + 1.7 * sin(along / 260.0) + 0.8 * sin(across / 113.0)) * sin(across / 59.0 + 0.6 * sin(along / 410.0 + 1.3));
-float slick = smoothstep(0.3, 0.6, band) * (1.0 - smoothstep(3.5, 6.0, slowMs)) * (1.0 - glass);
+// W2 follow-up (Mac gate still, 7 kn from 300 m; PC pre-screen): slicks as they look from the air: long filaments along
+// the wind that meander, part and rejoin, a few to tens of metres across, a hundred or more apart, patchy. Bands cut from
+// a lattice read as ruled lines in perspective however they are hashed, so: the ridge of a value noise stretched along
+// the wind (900 m along, 160 m across), its domain warped by a coarser one so the filaments bend; the ridge's threshold
+// wanders (wider and thinner filaments) and a third, slower noise leaves about half the water without any. Faded out
+// where a filament would be under a few pixels.
+#define SLK_H(c) frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453)
+#define SLK_VN(q_) lerp(lerp(SLK_H(floor(q_)), SLK_H(floor(q_) + float2(1, 0)), smoothstep(0.0, 1.0, frac(q_).x)), lerp(SLK_H(floor(q_) + float2(0, 1)), SLK_H(floor(q_) + float2(1, 1)), smoothstep(0.0, 1.0, frac(q_).x)), smoothstep(0.0, 1.0, frac(q_).y))
+float2 sq0 = float2(along / 900.0, across / 160.0);
+float2 sw1 = sq0 * float2(0.6, 0.45) + 11.3, sw2 = sq0 * float2(0.5, 0.4) + 3.7;
+float2 sq = sq0 + float2(0.35, 0.9) * (float2(SLK_VN(sw1), SLK_VN(sw2)) - 0.5);
+float2 sq2 = sq * float2(2.1, 1.9) + 5.1, sq3 = sq * 0.7 + 21.0, sq4 = sq * float2(0.25, 0.3) + 7.9;
+float sN = 0.65 * SLK_VN(sq) + 0.35 * SLK_VN(sq2);
+float ridge = 1.0 - abs(2.0 * sN - 1.0);
+float sEdge = lerp(0.8, 0.93, SLK_VN(sq3));
+float band = smoothstep(sEdge, sEdge + 0.05, ridge) * smoothstep(0.38, 0.62, SLK_VN(sq4));
+float slick = band * (1.0 - smoothstep(3.5, 6.0, slowMs)) * (1.0 - glass) * saturate(1.0 - fwidth(sq.y) * 10.0);
 // W2: windrows (Langmuir circulation) from about 3 m/s: thin lines of foam and smoother water along the wind, a few to
-// 20 m apart (here 14 m, wandering), broken into dashes; faded out before they alias.
-float wx = across / 14.0 + 0.35 * sin(along / 90.0) + 0.2 * sin(across / 47.0);
-float wdash = 0.5 + 0.5 * sin(along / 4.3 + floor(wx) * 2.3 + 1.7 * sin(along / 17.0 + floor(wx)));
-float wline = (1.0 - smoothstep(0.008, 0.025, abs(frac(wx) - 0.5))) * smoothstep(0.35, 0.8, wdash);
+// 20 m apart (here about 14 m: each row's spacing jittered, the rows bending), broken into dashes, some rows faint or
+// missing; faded out before they alias.
+float wx = across / 14.0 + 0.35 * sin(along / 90.0) + 0.2 * sin(across / 47.0) + 0.5 * sin(along / 230.0 + across / 170.0);
+float wk = floor(wx);
+float wh = frac(sin(wk * 12.9898 + 3.7) * 43758.5453), wh2 = frac(sin(wk * 78.233 + 1.9) * 24634.6345);
+float wdash = 0.5 + 0.5 * sin(along / lerp(3.5, 6.5, wh) + wk * 2.3 + 1.7 * sin(along / 17.0 + wk));
+float ww = lerp(0.6, 1.8, wh2);   // each row its own width
+float wline = (1.0 - smoothstep(0.008 * ww, 0.025 * ww, abs(frac(wx) - (0.35 + 0.3 * wh)))) * smoothstep(0.35, 0.8, wdash) * lerp(0.3, 1.0, step(0.25, wh));
 float wrow = wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 260.0) * saturate(1.0 - fwidth(wx) * 8.0);
 float smoothing = max(glass, max(0.65 * slick, 0.5 * wrow));
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
@@ -2826,9 +2852,88 @@ WORLD_LIBRARY = {
 ONLY = [n for n in os.environ.get("MATERIALS_ONLY", "").split(",") if n]
 
 
+def builder_hashes():
+    """Each build_* passed to build(): a hash of its code and of every top-level function and constant it reaches (line
+    numbers and comments don't count), so a change anywhere a material comes from changes its hash."""
+    import ast
+    import hashlib
+    with open(os.path.abspath(__file__), encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    nodes, uses = {}, {}
+    for node in tree.body:
+        names = [node.name] if isinstance(node, (ast.FunctionDef, ast.ClassDef)) else \
+            [t.id for t in getattr(node, "targets", [getattr(node, "target", None)]) if isinstance(t, ast.Name)]
+        for n in names:
+            nodes[n] = ast.dump(node, include_attributes=False)
+            uses[n] = {x.id for x in ast.walk(node) if isinstance(x, ast.Name)}
+    builders = [c.args[0].id for c in ast.walk(tree) if isinstance(c, ast.Call) and getattr(c.func, "id", "") == "build"
+                and c.args and isinstance(c.args[0], ast.Name)]
+    out = {}
+    for b in builders:
+        seen, todo = set(), [b]
+        while todo:
+            n = todo.pop()
+            if n in seen or n not in nodes:
+                continue
+            seen.add(n)
+            todo.extend(uses[n])
+        out[b] = hashlib.sha1("".join(nodes[n] for n in sorted(seen)).encode()).hexdigest()
+    return out
+
+
+# MATERIALS_AUTO=1 (scripts/windows/run-python.ps1 sets it; FULL=1 there turns it off): only the builders whose hash
+# differs from the last run's (Saved/MaterialsBuilt.json, per checkout), so one material change rebuilds one material.
+# Everything is rebuilt when there's no stamp yet (a fresh clone) or when the assets this script writes changed since
+# its last run some other way (a git checkout, merge or reset of Content: their names, sizes and times are stamped).
+# Inputs outside this file (the fabric scans, the cloud noise) aren't hashed: run with FULL=1 after changing them.
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STAMP = os.path.join(REPO_DIR, "Saved", "MaterialsBuilt.json")
+OUTPUT_DIRS = ("Materials", "Boats", "Boats/Materials", "World", "Crew/Fabric")   # where the builders save (top level)
+
+
+def outputs_digest():
+    import hashlib
+    h = hashlib.sha1()
+    for d in OUTPUT_DIRS:
+        folder = os.path.join(REPO_DIR, "Content", d)
+        for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+            if name.endswith(".uasset"):
+                st = os.stat(os.path.join(folder, name))
+                h.update(f"{d}/{name} {st.st_size} {st.st_mtime_ns}\n".encode())
+    return h.hexdigest()
+
+
+HASHES = builder_hashes()   # every run stamps what it built (a full run too), so the next auto run starts from it
+if os.environ.get("MATERIALS_AUTO") == "1" and not ONLY and os.path.exists(STAMP):
+    import json
+    with open(STAMP) as f:
+        _last = json.load(f)
+    if _last.get("_outputs") != outputs_digest():
+        unreal.log("Materials: the assets changed outside this script since its last run: rebuilding all")
+    else:
+        ONLY = [b for b, h in HASHES.items() if _last.get(b) != h] or ["(none)"]
+        unreal.log(f"Materials: changed since the last build: {', '.join(ONLY)}")
+BUILT = []
+
+
 def build(fn):
     if not ONLY or fn.__name__ in ONLY:
         fn()
+        BUILT.append(fn.__name__)
+
+
+def write_stamp():
+    """Records the hashes of what this run built (and keeps the rest) and the assets as it leaves them."""
+    import json
+    last = {}
+    if os.path.exists(STAMP):
+        with open(STAMP) as f:
+            last = json.load(f)
+    last.update({b: HASHES[b] for b in BUILT if b in HASHES})
+    last["_outputs"] = outputs_digest()
+    os.makedirs(os.path.dirname(STAMP), exist_ok=True)
+    with open(STAMP, "w") as f:
+        json.dump(last, f, indent=1, sort_keys=True)
 
 
 build(build_water)
@@ -2989,4 +3094,5 @@ build(build_boat_library)
 build(build_crew_fabric)
 build(build_sail_cloth)
 build(build_telltale)
-unreal.log("Materials built")
+write_stamp()
+unreal.log(f"Materials built: {len(BUILT)} builders")
