@@ -882,19 +882,14 @@ def build_registration():
     """State registration on both bows (style: TX 7295 EC for the lesson boat) with the validation sticker,
     projected onto the hull. Texas wants 3 in block letters, the sticker within 6 in of the number."""
     out = []
-    font = None
-    for f in ("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", "/Library/Fonts/Arial Bold.ttf", "C:/Windows/Fonts/arialbd.ttf"):
-        if os.path.exists(f):
-            font = bpy.data.fonts.load(f)
-            break
+    font = bpy.data.fonts.load(M.FONT)
     for side in (1, -1):
         cu = bpy.data.curves.new(f"Reg_{side}", "FONT")
         cu.body = STYLE["hull"]["registration"]
         cu.size = 0.11
         cu.extrude = 0.0006
         cu.align_x = "CENTER"
-        if font:
-            cu.font = font
+        cu.font = font
         ob = link(bpy.data.objects.new(f"Reg_{side}", cu))
         ob.data.materials.append(MAT["DecalBlack"])
         x = 1.85
