@@ -2857,16 +2857,36 @@ def builder_hashes():
 
 # MATERIALS_AUTO=1 (scripts/windows/run-python.ps1 sets it; FULL=1 there turns it off): only the builders whose hash
 # differs from the last run's (Saved/MaterialsBuilt.json, per checkout), so one material change rebuilds one material.
-# No stamp yet (a fresh clone, or the assets came from git) means everything. Inputs outside this file (the fabric
-# scans, the cloud noise) aren't hashed: run with FULL=1 after changing them.
-STAMP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Saved", "MaterialsBuilt.json")
-HASHES = builder_hashes() if os.environ.get("MATERIALS_AUTO") == "1" or os.path.exists(STAMP) else {}
+# Everything is rebuilt when there's no stamp yet (a fresh clone) or when the assets this script writes changed since
+# its last run some other way (a git checkout, merge or reset of Content: their names, sizes and times are stamped).
+# Inputs outside this file (the fabric scans, the cloud noise) aren't hashed: run with FULL=1 after changing them.
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STAMP = os.path.join(REPO_DIR, "Saved", "MaterialsBuilt.json")
+OUTPUT_DIRS = ("Materials", "Boats", "Boats/Materials", "World", "Crew/Fabric")   # where the builders save (top level)
+
+
+def outputs_digest():
+    import hashlib
+    h = hashlib.sha1()
+    for d in OUTPUT_DIRS:
+        folder = os.path.join(REPO_DIR, "Content", d)
+        for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+            if name.endswith(".uasset"):
+                st = os.stat(os.path.join(folder, name))
+                h.update(f"{d}/{name} {st.st_size} {st.st_mtime_ns}\n".encode())
+    return h.hexdigest()
+
+
+HASHES = builder_hashes()   # every run stamps what it built (a full run too), so the next auto run starts from it
 if os.environ.get("MATERIALS_AUTO") == "1" and not ONLY and os.path.exists(STAMP):
     import json
     with open(STAMP) as f:
         _last = json.load(f)
-    ONLY = [b for b, h in HASHES.items() if _last.get(b) != h] or ["(none)"]
-    unreal.log(f"Materials: changed since the last build: {', '.join(ONLY)}")
+    if _last.get("_outputs") != outputs_digest():
+        unreal.log("Materials: the assets changed outside this script since its last run: rebuilding all")
+    else:
+        ONLY = [b for b, h in HASHES.items() if _last.get(b) != h] or ["(none)"]
+        unreal.log(f"Materials: changed since the last build: {', '.join(ONLY)}")
 BUILT = []
 
 
@@ -2877,15 +2897,14 @@ def build(fn):
 
 
 def write_stamp():
-    """Records the hashes of what this run built (and keeps the rest), for MATERIALS_AUTO's next run."""
-    if not HASHES:
-        return
+    """Records the hashes of what this run built (and keeps the rest) and the assets as it leaves them."""
     import json
     last = {}
     if os.path.exists(STAMP):
         with open(STAMP) as f:
             last = json.load(f)
     last.update({b: HASHES[b] for b in BUILT if b in HASHES})
+    last["_outputs"] = outputs_digest()
     os.makedirs(os.path.dirname(STAMP), exist_ok=True)
     with open(STAMP, "w") as f:
         json.dump(last, f, indent=1, sort_keys=True)
