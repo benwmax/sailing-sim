@@ -1,0 +1,3 @@
+scene,preset,args,description
+mp-galv-clearlake,Drone,"-SailingWorld=Galveston -SailingLaunch=0 -SailingTraffic=1 -SailingWeather=CalmMorning -SailingHour=9.5 -SailingWind=6 -SailingTWA=60 -SailingHoldTWA=60 -SailingCamWorld=-120,-120,25,45,-12 -SailingQuality=High","Galveston, Clear Lake off the yacht clubs, morning"
+mp-galv-clearlake-row,Drone,"-SailingWorld=Galveston -SailingLaunch=0 -SailingTraffic=1 -SailingWeather=CalmMorning -SailingHour=9.5 -SailingWind=6 -SailingTWA=60 -SailingHoldTWA=60 -SailingCamWorld=-405,-20,12,48,-9 -SailingQuality=High","Galveston, Clear Lake: a row of moored power boats from 100 m"
