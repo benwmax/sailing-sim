@@ -1,6 +1,8 @@
 #include "Misc/AutomationTest.h"
 #include "SailSession.h"
 #include "SailingSettings.h"
+#include "BoatModel.h"
+#include "Misc/ConfigCacheIni.h"
 #include "UI/SailCatalog.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailHud.h"
@@ -106,3 +108,43 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	S->Save();
 	return true;
 }
+// Bench-fix: a measuring run (bench, capture, shot, demo, drill, automation) ignores the player's saved session. With
+// Galveston, the Lagoon 42 and a far launch spot in the settings (as GameUserSettings.ini would load them), the run's
+// defaults are the J/22 at Rush Creek on Lake Ray Hubbard, and saving writes nothing to the player's ini.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIMeasuringIgnoresSaveTest, "SailingSim.UI.MeasuringIgnoresSave", UIFlags)
+bool FSailingUIMeasuringIgnoresSaveTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	const int32 W0 = S->World, L0 = S->LaunchSpot, B0 = S->BoatType, T0 = S->TrafficLevel;
+	const ESailingWeather P0 = S->WeatherPreset;
+	const float H0 = S->StartHour;
+	const ESailingQuality Q0 = S->Quality;
+	const ESailingDifficulty D0 = S->Difficulty;
+	const bool bLearn0 = S->bLearningMode;
+	TestTrue(TEXT("An automation run ignores the saved choices"), USailingSettings::IgnoresSavedChoices());
+
+	// The player's last session: Galveston, the Lagoon 42 from the third spot, busy traffic, realistic.
+	FSailSessionConfig Saved = USailSessionSubsystem::MakeDefault();
+	Saved.World = 1; Saved.LaunchSpot = 2; Saved.Boat = int32(Sailing::EBoatType::Lagoon42); Saved.Traffic = 2; Saved.bEasy = false;
+	const FString Section = USailingSettings::StaticClass()->GetPathName();
+	int32 IniWorld = -100;
+	const bool bHadIniWorld = GConfig->GetInt(*Section, TEXT("World"), IniWorld, GGameUserSettingsIni);
+	USailSessionSubsystem::ApplyToSettings(Saved);   // saves, which a measuring run must not
+	int32 IniAfter = -100;
+	const bool bHasIniAfter = GConfig->GetInt(*Section, TEXT("World"), IniAfter, GGameUserSettingsIni);
+	TestTrue(TEXT("Applying a session in a measuring run leaves the ini alone"), bHadIniWorld == bHasIniAfter && IniWorld == IniAfter);
+	TestEqual(TEXT("The saved world is in memory"), S->World, 1);
+
+	USailingSettings::RestoreClassDefaults();
+	TestEqual(TEXT("Run defaults: Lake Ray Hubbard"), S->World, 0);
+	TestEqual(TEXT("Run defaults: Rush Creek (spot 0)"), S->LaunchSpot, 0);
+	TestEqual(TEXT("Run defaults: the J/22"), S->BoatType, int32(Sailing::EBoatType::J22));
+	TestEqual(TEXT("Run defaults: light traffic"), S->TrafficLevel, 1);
+	TestTrue(TEXT("Run defaults: the afternoon breeze"), S->WeatherPreset == ESailingWeather::AfternoonBreeze);
+	TestEqual(TEXT("Run defaults: the boat name match still picks from there"), USailingSettings::MatchBoatName(TEXT("J22")), S->BoatType);
+
+	S->World = W0; S->LaunchSpot = L0; S->BoatType = B0; S->TrafficLevel = T0; S->WeatherPreset = P0; S->StartHour = H0; S->Quality = Q0;
+	S->Difficulty = D0; S->bLearningMode = bLearn0;
+	return true;
+}
+

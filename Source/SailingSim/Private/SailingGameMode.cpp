@@ -53,6 +53,9 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
+	// Bench-fix: bench, capture, shot, demo, drill and automation runs start from the class defaults (the J/22 at Rush
+	// Creek), not the player's saved choices; the ini is left as it is.
+	USailingSettings::UseRunDefaults();
 	// Command-line overrides (benchmarks, recordings) are applied to settings for this run only.
 	USailingSettings* Settings = USailingSettings::Get();
 	FString Value;

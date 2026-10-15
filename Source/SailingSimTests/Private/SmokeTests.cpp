@@ -12,6 +12,8 @@
 #include "Components/VolumetricCloudComponent.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
+#include "SailingSettings.h"
+#include "BoatModel.h"
 #include "ProceduralMeshComponent.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -109,6 +111,23 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 	World->EndPlay(EEndPlayReason::Quit);
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+// Bench-fix: -SailingBoat=<prefix> ignores case, spaces and slashes, so the bench scripts' J22 sails the J/22.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBoatNameMatchTest, "SailingSim.Smoke.BoatNameMatch", SmokeTestFlags)
+bool FSailingBoatNameMatchTest::RunTest(const FString&)
+{
+	const int32 J22 = int32(Sailing::EBoatType::J22);
+	TestEqual(TEXT("J22 is the J/22"), USailingSettings::MatchBoatName(TEXT("J22")), J22);
+	TestEqual(TEXT("j/22 is the J/22"), USailingSettings::MatchBoatName(TEXT("j/22")), J22);
+	TestEqual(TEXT("J/22 is the J/22"), USailingSettings::MatchBoatName(TEXT("J/22")), J22);
+	TestEqual(TEXT("J matches the J/22 by prefix"), USailingSettings::MatchBoatName(TEXT("J")), J22);
+	TestEqual(TEXT("J24 matches nothing"), USailingSettings::MatchBoatName(TEXT("J24")), -1);
+	TestEqual(TEXT("An empty name matches nothing"), USailingSettings::MatchBoatName(TEXT("")), -1);
+	TestEqual(TEXT("hobie prefix"), USailingSettings::MatchBoatName(TEXT("hobie")), int32(Sailing::EBoatType::Hobie16));
+	TestEqual(TEXT("Catalina 30 with its space"), USailingSettings::MatchBoatName(TEXT("Catalina 30")), int32(Sailing::EBoatType::Catalina30));
+	TestEqual(TEXT("Lagoon"), USailingSettings::MatchBoatName(TEXT("Lagoon")), int32(Sailing::EBoatType::Lagoon42));
 	return true;
 }
 

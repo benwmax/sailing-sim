@@ -118,7 +118,7 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;
 	Save->Last = Active;
-	Save->SaveConfig();
+	if (!USailingSettings::IgnoresSavedChoices()) Save->SaveConfig();   // a measuring run keeps the player's Continue
 	ApplyToSettings(Active);
 	if (WorldContext)
 	{

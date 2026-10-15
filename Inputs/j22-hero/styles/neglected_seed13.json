@@ -1,0 +1,79 @@
+{
+ "seed": 13,
+ "preset": "neglected",
+ "wear": 0.92,
+ "care": 0.08,
+ "hull": {
+  "gelcoat_hex": "#F3EFE3",
+  "streaks": 0.983,
+  "chalk": 0.84,
+  "scum": 1.0,
+  "scum_height_m": 0.07,
+  "edge_chips": 0.671,
+  "fender_marks": [
+   1.28
+  ],
+  "repairs": [
+   {
+    "x": -2.24,
+    "z": 0.36,
+    "w": 0.09,
+    "h": 0.05,
+    "tint": -0.01
+   }
+  ],
+  "bottom_hex": "#9A9C97",
+  "bottom_slime": 0.872,
+  "boot_stripe_hex": "#2E4F8A",
+  "registration": "TX 3403 EC",
+  "sticker_hex": "#C9A227"
+ },
+ "deck": {
+  "nonskid_hex": "#DCCDAB",
+  "grime": 0.997,
+  "wear_paths": 1.0,
+  "stains": 2
+ },
+ "teak": {
+  "state": "silvered",
+  "wear": 0.885
+ },
+ "varnish": {
+  "gloss": 0.027,
+  "peel": 0.926
+ },
+ "metal": {
+  "anodise_wear": 0.932,
+  "tea_stain": 0.962
+ },
+ "ropes": {
+  "jib_sheet_port": "white_blue",
+  "jib_sheet_stbd": "white_blue",
+  "mainsheet": "grey_red",
+  "halyards": "blue_white",
+  "vang": "red_white",
+  "backstay": "red_white",
+  "fade": 0.976
+ },
+ "sails": {
+  "cloth": "white_dacron",
+  "age": 0.948,
+  "stains": 4,
+  "patches": 3,
+  "number": "USA 1136",
+  "maker": [
+   "GULFLINE",
+   "#0E6E6E"
+  ],
+  "insignia_hex": "#1F4E9A",
+  "number_hex": "#111111",
+  "base_hex": "#F2EFE6"
+ },
+ "details": {
+  "windex": true,
+  "rig_tape_hex": "#F2F2F0",
+  "telltales": true,
+  "coiled_tails": true,
+  "outboard": true
+ }
+}

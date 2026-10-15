@@ -89,6 +89,18 @@ namespace
 ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) const
 {
 	FBoatModelMeshes M;
+	// Boats 10: -SailingJ22Hero draws the script-built hero J/22 (Inputs/j22-hero, imported to /Game/Boats/J22Hero by
+	// scripts/import_j22_hero.py) in the J/22's place, with the same sockets, for side-by-side stills.
+	if (Type == EBoatType::J22 && FParse::Param(FCommandLine::Get(), TEXT("SailingJ22Hero")))
+	{
+		auto LoadHero = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/J22Hero/SM_J22H_%s.SM_J22H_%s"), Part, Part)); };
+		M.Hull = LoadHero(TEXT("Hull"));
+		M.Mast = LoadHero(TEXT("Mast"));
+		M.Boom = LoadHero(TEXT("Boom"));
+		M.Rudder = LoadHero(TEXT("Rudder"));
+		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
+		M = FBoatModelMeshes();
+	}
 	if (Type == EBoatType::J22 && J22HullMesh && J22MastMesh && J22BoomMesh && J22RudderMesh)
 	{
 		M.Hull = J22HullMesh;
