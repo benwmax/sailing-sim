@@ -106,6 +106,14 @@ bool FVisualCrewCaptureTest::RunTest(const FString& Parameters)
 					*Want[TEXT("pelvis")].ToCompactString(), *Sailor->GetRefSkeleton().GetBoneName(0).ToString()));
 				TestTrue(FString::Printf(TEXT("%s: the pelvis where the stance puts it (%.1f cm off)"), C.Spec, Off), Off < 3.0);
 			}
+			// A body solve's heading is the camera's: leveled, the clip's hips face as the rest pose's do at its start.
+			UAnimSequence* Leveled = UCrewCaptureLibrary::RetargetClip(Solved, Body, Body, 0.f, 0.f, 30, FString(), true);
+			if (TestNotNull(FString::Printf(TEXT("%s: leveled"), C.Spec), Leveled))
+			{
+				const float Before = FMath::RadiansToDegrees(UCrewCaptureLibrary::HeadingToRest(Solved, Body, 0.0).GetAngle());
+				const float After = FMath::RadiansToDegrees(UCrewCaptureLibrary::HeadingToRest(Leveled, Body, 0.0).GetAngle());
+				TestTrue(FString::Printf(TEXT("%s: leveled heading %.1f deg from the rest's (was %.1f)"), C.Spec, After, Before), After < 2.f);
+			}
 		}
 	}
 

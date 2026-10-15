@@ -40,7 +40,7 @@ Write-Host "Unreal: $UERoot"
 $Gpu = (Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name) -join ', '
 if ($Gpu) { Write-Host "GPU: $Gpu" }
 if ($RepoRoot.Length -gt 40) {
-	Write-Host "The repo path is long ($RepoRoot). Unreal's intermediate paths can pass Windows' 260-character limit; C:\dev\sailing-sim is safer." -ForegroundColor Yellow
+	Write-Host "The repo path is long ($RepoRoot). Unreal's intermediate paths can pass Windows' 260-character limit; D:\dev\sailing-sim is safer." -ForegroundColor Yellow
 }
 
 Step 'Pulling Git LFS content'

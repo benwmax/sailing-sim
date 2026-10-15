@@ -94,8 +94,9 @@ namespace
 			if (!Local.Equals(FQuat::Identity, 1e-6)) Joints.Add(TRef.GetBoneName(B), Local);
 		}
 		CrewSolver::Solve(TRef, Tgt.Rig.RestCS, Joints, OutCS);
-		// The pelvis carries the body's move; the root stays where it is (on the cockpit sole).
-		const bool bRootBone = TRef.GetBoneName(0) == FName(TEXT("root"));
+		// The pelvis carries the body's move; the root stays where it is (on the cockpit sole), whatever it's called (the
+		// MetaHuman's "root", SK_Sailor's armature "sailor"), unless the root is the pelvis itself.
+		const bool bRootBone = TRef.GetBoneName(0) != FName(TEXT("pelvis"));
 		const FVector Move = F.RotateVector(PelvisMove);
 		for (int32 B = bRootBone ? 1 : 0; B < N; ++B) OutCS[B].AddToTranslation(Move);
 	}
@@ -190,16 +191,43 @@ void UCrewCaptureLibrary::EvaluateClip(const UAnimSequence* Seq, const USkeletal
 	}
 }
 
+FQuat UCrewCaptureLibrary::HeadingToRest(const UAnimSequence* Seq, const USkeletalMesh* Mesh, double Seconds)
+{
+	if (!Seq || !Mesh) return FQuat::Identity;
+	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+	const int32 L = Ref.FindBoneIndex(TEXT("thigh_l")), R = Ref.FindBoneIndex(TEXT("thigh_r"));
+	if (L == INDEX_NONE || R == INDEX_NONE) return FQuat::Identity;
+	TArray<FTransform> CS, Rest;
+	EvaluateClip(Seq, Mesh, Seconds, CS);
+	CrewSolver::RestPose(Ref, Rest);
+	// The hip axis: level with the floor whether the sailor sits, stands or leans forward over it.
+	const FVector Now = FVector(CS[R].GetLocation() - CS[L].GetLocation()).GetSafeNormal2D();
+	const FVector Want = FVector(Rest[R].GetLocation() - Rest[L].GetLocation()).GetSafeNormal2D();
+	if (Now.IsNearlyZero() || Want.IsNearlyZero()) return FQuat::Identity;
+	return FQuat(FVector::UpVector, FMath::Atan2(FVector::CrossProduct(Now, Want).Z, FVector::DotProduct(Now, Want)));
+}
+
 UAnimSequence* UCrewCaptureLibrary::RetargetClip(UAnimSequence* Source, USkeletalMesh* SourceMesh, USkeletalMesh* TargetMesh, float StartSeconds,
-	float EndSeconds, int32 Fps, const FString& AssetPath)
+	float EndSeconds, int32 Fps, const FString& AssetPath, bool bLevelHeading)
 {
 	if (!Source || !SourceMesh || !TargetMesh || Fps <= 0) return nullptr;
 	const FSkel Src = MakeSkel(SourceMesh), Tgt = MakeSkel(TargetMesh);
+	const int32 SrcPelvis = SourceMesh->GetRefSkeleton().FindBoneIndex(TEXT("pelvis"));
+	// Leveling: the heading turn, about a vertical through the pelvis at the clip's start, then that pelvis moved onto the
+	// rest pose's. A solve's performer sits wherever and however high the camera saw them; the clip starts on the seat,
+	// which the crew's stances hold at the rest pelvis (so hiking out or standing to cross move from there).
+	FTransform Level = FTransform::Identity;
+	if (bLevelHeading && SrcPelvis != INDEX_NONE)
+	{
+		TArray<FTransform> CS0;
+		EvaluateClip(Source, SourceMesh, 0.0, CS0);
+		const FVector Start = CS0[SrcPelvis].GetLocation(), Rest = Src.Rig.RestCS[SrcPelvis].GetLocation();
+		Level = FTransform(-Start) * FTransform(HeadingToRest(Source, SourceMesh, 0.0)) * FTransform(Rest);
+	}
 	const double Length = ClipSeconds(Source);
 	const double T0 = FMath::Clamp(double(StartSeconds), 0.0, Length);
 	const double T1 = EndSeconds > 0.f ? FMath::Clamp(double(EndSeconds), T0, Length) : Length;
 	const int32 Keys = FMath::Max(2, FMath::RoundToInt((T1 - T0) * Fps) + 1);
-	const int32 SrcPelvis = SourceMesh->GetRefSkeleton().FindBoneIndex(TEXT("pelvis"));
 	const double Scale = Src.Rig.Pelvis.Z > 1.0 && Tgt.Rig.Pelvis.Z > 1.0 ? Tgt.Rig.Pelvis.Z / Src.Rig.Pelvis.Z : 1.0;
 	TArray<TArray<FTransform>> Frames;
 	Frames.SetNum(Keys);
@@ -208,6 +236,7 @@ UAnimSequence* UCrewCaptureLibrary::RetargetClip(UAnimSequence* Source, USkeleta
 	for (int32 I = 0; I < Keys; ++I)
 	{
 		EvaluateClip(Source, SourceMesh, T0 + (T1 - T0) * I / (Keys - 1), CS);
+		if (bLevelHeading) for (FTransform& T : CS) T = T * Level;
 		TurnsOf(Src, CS, Turns);
 		FVector Move = FVector::ZeroVector;
 		if (SrcPelvis != INDEX_NONE) Move = Src.Rig.Frame.Inverse().RotateVector(CS[SrcPelvis].GetLocation() - Src.Rig.RestCS[SrcPelvis].GetLocation()) * Scale;
