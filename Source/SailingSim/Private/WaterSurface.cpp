@@ -502,7 +502,8 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		GustTimer = 0.1f;
 	}
 	TreeScanTimer -= DeltaSeconds;
-	if (TreeScanTimer <= 0.f)
+	static const bool bNoTreeWind = FParse::Param(FCommandLine::Get(), TEXT("SailingNoTreeWind")); // measuring: trees on the global wind
+	if (TreeScanTimer <= 0.f && !bNoTreeWind)
 	{
 		BindTreeWind();
 		TreeScanTimer = 3.f;
