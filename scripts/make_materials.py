@@ -1966,11 +1966,22 @@ TREE_WIND_CODE = """
 float3 inst = ObjPos * 0.01;
 float phase = dot(inst.xy, float2(0.0131, 0.0173));
 float speed = Wind.z * (1.0 + 0.5 * Wind.w);
+float2 wdir = Wind.xy;
+// W2: each tree reads the wind where it stands, from the water's far wind map (AWaterSurface binds it when the trees are
+// in the world: WindFarRect.w = 1): the puffs crossing the shore, the lee, the shifts; the camera's wind beyond the map.
+[branch] if (WindFarRect.w > 0.5)
+{
+    float2 e = abs(inst.xy - WindFarRect.xy) / (0.5 * WindFarRect.z);
+    float a = 1.0 - smoothstep(0.75, 0.95, max(e.x, e.y));
+    float4 w = WindFar.SampleLevel(WindFarSampler, inst.xy / WindFarRect.z, 0);
+    wdir = normalize(lerp(Wind.xy, w.gb * 2.0 - 1.0, a) + float2(1e-4, 0.0));
+    speed = lerp(speed, w.r * 20.0, a);
+}
 float s = VC.r;
 float lean = speed * speed * 0.0022;
 float osc = 0.6 * sin(T * (0.9 + 0.25 * sin(phase)) + phase) + 0.3 * sin(T * 2.3 + phase * 1.7);
 float sway = lean * (0.75 + 0.35 * osc) * s;
-float3 off = float3(Wind.xy * sway, -0.25 * sway * s);
+float3 off = float3(wdir * sway, -0.25 * sway * s);
 float flutter = Leaf * saturate(speed * 0.12) * 0.035;
 off += float3(sin(T * 9.0 + VC.g * 40.0), cos(T * 7.3 + VC.g * 31.0), sin(T * 8.1 + VC.g * 17.0)) * flutter;
 return off * 100.0;
@@ -2022,7 +2033,12 @@ def tree_wind(mat, leaf, x=-1200, y=600):
     obj = node(mat, unreal.MaterialExpressionObjectPositionWS, x, y + 200)
     t = node(mat, unreal.MaterialExpressionTime, x, y + 300)
     lf = node(mat, unreal.MaterialExpressionConstant, x, y + 400, r=1.0 if leaf else 0.0)
-    c = custom(mat, TREE_WIND_CODE, ["VC", "ObjPos", "Wind", "T", "Leaf"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, x + 400, y)
+    white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
+    far_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, x, y + 500, parameter_name="WindFar", texture=white)
+    far_rect = vector(mat, "WindFarRect", (0, 0, 16000, 0), x, y + 600)
+    c = custom(mat, TREE_WIND_CODE, ["VC", "ObjPos", "Wind", "T", "Leaf", "WindFar", "WindFarRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, x + 400, y)
+    connect(far_tex, "", c, "WindFar")
+    connect(far_rect, "RGBA", c, "WindFarRect")
     connect(vc, "", c, "VC")
     connect(obj, "", c, "ObjPos")
     connect(wind, "", c, "Wind")

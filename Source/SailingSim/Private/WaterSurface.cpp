@@ -24,6 +24,9 @@
 #include "Waves.h"
 #include "Wind.h"
 #include "HAL/IConsoleManager.h"
+#include "EngineUtils.h"
+#include "LakeTerrainActor.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 using namespace Sailing;
 
@@ -497,6 +500,12 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	{
 		UpdateGustMap();
 		GustTimer = 0.1f;
+	}
+	TreeScanTimer -= DeltaSeconds;
+	if (TreeScanTimer <= 0.f)
+	{
+		BindTreeWind();
+		TreeScanTimer = 3.f;
 	}
 	WakeTimer -= DeltaSeconds;
 	if (WakeTimer <= 0.f)
@@ -1085,6 +1094,10 @@ void AWaterSurface::UpdateMaterial()
 	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(NearWind.Center.X, NearWind.Center.Y, NearWind.SizeM, 1.f));
 	WaterMaterial->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
 	WaterMaterial->SetVectorParameterValue(TEXT("WindSlow"), FLinearColor(WindrowDir.X, WindrowDir.Y, 0.f, 0.f));
+	for (const TPair<TObjectPtr<UMaterialInterface>, TObjectPtr<UMaterialInstanceDynamic>>& Tree : TreeWindMids)
+	{
+		if (Tree.Value) Tree.Value->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
+	}
 	static const bool bPolarizedArg = FParse::Param(FCommandLine::Get(), TEXT("SailingPolarized"));
 	WaterMaterial->SetScalarParameterValue(TEXT("Polarized"), (GPolarized != 0 || bPolarizedArg) ? 1.f : 0.f);
 	WaterMaterial->SetVectorParameterValue(TEXT("WakeRect"), FLinearColor(WakeCenter.X, WakeCenter.Y, kWakeSizeM, 0.f));
@@ -1160,6 +1173,35 @@ void AWaterSurface::UpdateGustMap()
 }
 
 double AWaterSurface::WindMapCpuSeconds = 0.0;
+
+void AWaterSurface::BindTreeWind()
+{
+	if (!WindFarMap) return;
+	for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
+	{
+		TArray<UInstancedStaticMeshComponent*> Comps;
+		It->GetComponents(Comps);
+		for (UInstancedStaticMeshComponent* Comp : Comps)
+		{
+			for (int32 I = 0; I < Comp->GetNumMaterials(); ++I)
+			{
+				UMaterialInterface* M = Comp->GetMaterial(I);
+				if (!M || Cast<UMaterialInstanceDynamic>(M)) continue;
+				const UMaterial* Base = M->GetBaseMaterial();
+				if (!Base || !Base->GetName().StartsWith(TEXT("M_Tree"))) continue;
+				TObjectPtr<UMaterialInstanceDynamic>& Mid = TreeWindMids.FindOrAdd(M);
+				if (!Mid)
+				{
+					Mid = UMaterialInstanceDynamic::Create(M, this);
+					Mid->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
+					Mid->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
+					UE_LOG(LogSailing, Display, TEXT("Water: trees read the local wind (%s)"), *M->GetName());
+				}
+				Comp->SetMaterial(I, Mid);
+			}
+		}
+	}
+}
 
 void AWaterSurface::UpdateWindLevel(FWindLevel& Level, bool bNear, double T)
 {

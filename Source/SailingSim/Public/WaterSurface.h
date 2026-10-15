@@ -198,6 +198,11 @@ private:
 	bool bWindrowDirSet = false;
 	double LastWindrowTime = 0.0;
 	void UpdateWindLevel(FWindLevel& Level, bool bNear, double T);
+	/** W2: the trees read the far wind map: their materials (M_Tree*) on the terrain's instanced components are swapped
+	 *  for one dynamic instance per material, bound to the map (rescanned every few seconds as trees are placed). */
+	void BindTreeWind();
+	UPROPERTY(Transient) TMap<TObjectPtr<UMaterialInterface>, TObjectPtr<UMaterialInstanceDynamic>> TreeWindMids;
+	float TreeScanTimer = 0.f;
 	TArray<uint8> WakePixels;
 	FVector2D WakeCenter = FVector2D::ZeroVector;
 
