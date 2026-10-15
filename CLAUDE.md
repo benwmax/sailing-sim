@@ -15,7 +15,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    M_WaterV4 (Medium and High) draws exactly the first 24 (`AWaterSurface::LongComponents`, under `SplitHz`, the edge of
    FWaveField's eighth band) and the rest from `FWaveDetail`; `SailingSim.Visual.WaveMatch` mirrors its vertex formula.
 4. `scripts/package-mac.sh [Development|Shipping]` runs RunUAT BuildCookRun (`-build -cook -stage -pak -iostore -package -archive`)
-   to `Packaged/Mac/SailingSim.app`. About 2 min. Log: `Artifacts/package.log`. Keep `-package`: on Mac it is the step that copies
+   to `Packaged/Mac/SailingSim.app`. About 1.5 min (the cook is incremental and the game build is skipped when the code
+   is unchanged; `FULL=1` recooks and rebuilds everything, 2.3 min: docs/bench-fast). Log: `Artifacts/package.log`. Keep `-package`: on Mac it is the step that copies
    the cooked data into the .app; without it the app crashes at startup looking for the .uproject. Never archive into `Build/`:
    that is Unreal's own platform folder.
 5. `scripts/bench-mac.sh [seconds]` launches the packaged app windowed via `open` with `-SailingBench=<s>`: 3 s warm-up,

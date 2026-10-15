@@ -5,22 +5,33 @@
 # The cook is incremental (docs/bench-fast): the cooked output in Saved/Cooked/Mac (a Zen store) is kept between runs and
 # only packages whose dependencies changed (the package, its classes' schemas, referenced config and packages) are
 # cooked again. FULL=1 deletes it and recooks everything, as every package did before.
+# The game target is built only when the code changed since the last package (Source, Config, Plugins, the .uproject:
+# Artifacts/package-code.hash): UnrealBuildTool rewrites its shared-PCH response files on every run with this installed
+# engine and recompiles 32 files (about 30 s) even when nothing changed. FULL=1 builds too.
 source "$(dirname "$0")/env.sh"
 CONFIG="${1:-Development}"
 OUT="$REPO_ROOT/Packaged"
 COOK=(-cookincremental)
 # Without the flag the cook is full: Editor.ini CookIncrementalDefaultIncremental=false.
 if [[ "${FULL:-0}" == 1 ]]; then COOK=(); fi
+CODE_HASH="$(cd "$REPO_ROOT" && inputs_hash Source SailingSim.uproject Config Plugins)-$CONFIG"
+CODE_STAMP="$ARTIFACTS/package-code.hash"
+BUILD=(-build)
+if [[ "${FULL:-0}" != 1 && "$(cat "$CODE_STAMP" 2>/dev/null)" == "$CODE_HASH" && -d "$REPO_ROOT/Binaries/Mac/SailingSim.app" ]]; then
+	BUILD=()
+	echo "Code unchanged since the last package: skipping the build"
+fi
 
 START=$(date +%s)
 "$RUNUAT" BuildCookRun \
 	-project="$PROJECT" -noP4 -utf8output -unattended \
 	-platform=Mac -clientconfig="$CONFIG" \
-	-build -cook ${COOK[@]+"${COOK[@]}"} -stage -pak -iostore -package -archive -archivedirectory="$OUT" \
+	${BUILD[@]+"${BUILD[@]}"} -cook ${COOK[@]+"${COOK[@]}"} -stage -pak -iostore -package -archive -archivedirectory="$OUT" \
 	2>&1 | tee "$ARTIFACTS/package.log"
 STATUS=${PIPESTATUS[0]}
 if [[ $STATUS -eq 0 ]]; then
-	echo "Packaged app(s) in $(( $(date +%s) - START )) s ($(grep -m1 -oE '(FULL|INCREMENTAL) COOK' "$ARTIFACTS/package.log" || echo 'cook mode not logged')):"
+	echo "$CODE_HASH" > "$CODE_STAMP"
+	echo "Packaged app(s) in $(( $(date +%s) - START )) s ($(grep -m1 -oE '(FULL|INCREMENTAL) COOK:' "$ARTIFACTS/package.log" || echo 'cook mode not logged')):"
 	find "$OUT" -maxdepth 3 -name "*.app" -print
 fi
 exit $STATUS
