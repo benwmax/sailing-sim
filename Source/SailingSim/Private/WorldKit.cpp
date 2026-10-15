@@ -361,10 +361,72 @@ void BuildShoreGeometry(const FLakeData& Lake, FKitGeometry& G)
 		const float Z = Deck.Deck, Under = Z - 0.35f;
 		const TArray<int32> Ids = KitTriangulate(Pts);
 		FKitSection& Top = G[EKitLook::Decking];
-		for (int32 I = 0; I + 2 < Ids.Num(); I += 3)
+		// Round 10: a deck high over the water (the Pleasure Pier's stands 10 m up) is seen from below from a boat: its underside
+		// (at the fascia's foot) and a pile bent every 6 m under it, not only round the edge (from the water it read as a
+		// lattice of posts with the sky through it).
+		const bool bHigh = Z > 2.5f;
+		FKitSection& Bottom = G[EKitLook::Pilings];
+		// Round 10: the ear clipping gives up part-way round a ragged lidar outline (the Pleasure Pier's 235 points: most of
+		// its deck was missing). Where it covers less than 97 % of the outline, the deck is filled in 2 m cells instead.
+		double Covered = 0.0, Outlined = 0.0;
+		for (int32 I = 0; I + 2 < Ids.Num(); I += 3) Covered += 0.5 * FMath::Abs(FVector2D::CrossProduct(Pts[Ids[I + 1]] - Pts[Ids[I]], Pts[Ids[I + 2]] - Pts[Ids[I]]));
+		for (int32 I = 0; I < Pts.Num(); ++I) Outlined += 0.5 * FVector2D::CrossProduct(Pts[I], Pts[(I + 1) % Pts.Num()]);
+		auto Inside = [&Pts](double X, double Y)
+		{
+			bool bIn = false;
+			for (int32 I = 0, J = Pts.Num() - 1; I < Pts.Num(); J = I++)
+			{
+				if ((Pts[I].Y > Y) != (Pts[J].Y > Y) && X < Pts[J].X + (Pts[I].X - Pts[J].X) * (Y - Pts[J].Y) / (Pts[I].Y - Pts[J].Y)) bIn = !bIn;
+			}
+			return bIn;
+		};
+		const bool bFill = Covered < 0.97 * FMath::Abs(Outlined);
+		for (int32 I = 0; I + 2 < Ids.Num() && !bFill; I += 3)
 		{
 			const FVector2D A = Pts[Ids[I]], B = Pts[Ids[I + 1]], C = Pts[Ids[I + 2]];
 			Top.Tri(FVector(A.X, A.Y, Z), FVector(B.X, B.Y, Z), FVector(C.X, C.Y, Z), FVector2D(A.Y, A.X), FVector2D(B.Y, B.X), FVector2D(C.Y, C.X));
+			if (!bHigh) continue;
+			// (Both windings: the triangulation's is not known here.)
+			Bottom.Tri(FVector(A.X, A.Y, Under), FVector(C.X, C.Y, Under), FVector(B.X, B.Y, Under), FVector2D(A.Y, A.X), FVector2D(C.Y, C.X), FVector2D(B.Y, B.X));
+			Bottom.Tri(FVector(A.X, A.Y, Under), FVector(B.X, B.Y, Under), FVector(C.X, C.Y, Under), FVector2D(A.Y, A.X), FVector2D(B.Y, B.X), FVector2D(C.Y, C.X));
+		}
+		if (bFill)
+		{
+			FBox2D Box(ForceInit);
+			for (const FVector2D& P : Pts) Box += P;
+			constexpr double Cell = 2.0;
+			for (double X = FMath::FloorToDouble(Box.Min.X / Cell) * Cell; X < Box.Max.X; X += Cell)
+			{
+				for (double Y = FMath::FloorToDouble(Box.Min.Y / Cell) * Cell; Y < Box.Max.Y; Y += Cell)
+				{
+					if (!Inside(X + 0.5 * Cell, Y + 0.5 * Cell)) continue;
+					const FVector A(X, Y, Z), B(X + Cell, Y, Z), C(X + Cell, Y + Cell, Z), D(X, Y + Cell, Z);
+					for (const bool bUp : { true, false })
+					{
+						if (!bUp && !bHigh) continue;
+						FKitSection& S = bUp ? G[EKitLook::Decking] : Bottom;
+						const FVector Dz(0.0, 0.0, bUp ? 0.0 : Under - Z);
+						S.Tri(A + Dz, B + Dz, C + Dz, FVector2D(Y, X), FVector2D(Y, X + Cell), FVector2D(Y + Cell, X + Cell));
+						S.Tri(A + Dz, C + Dz, B + Dz, FVector2D(Y, X), FVector2D(Y + Cell, X + Cell), FVector2D(Y, X + Cell));
+						S.Tri(A + Dz, C + Dz, D + Dz, FVector2D(Y, X), FVector2D(Y + Cell, X + Cell), FVector2D(Y + Cell, X));
+						S.Tri(A + Dz, D + Dz, C + Dz, FVector2D(Y, X), FVector2D(Y + Cell, X), FVector2D(Y + Cell, X + Cell));
+					}
+				}
+			}
+		}
+		if (bHigh)
+		{
+			FBox2D Box(ForceInit);
+			for (const FVector2D& P : Pts) Box += P;
+			for (double X = FMath::CeilToDouble(Box.Min.X / 6.0) * 6.0; X < Box.Max.X; X += 6.0)
+			{
+				for (double Y = FMath::CeilToDouble(Box.Min.Y / 6.0) * 6.0; Y < Box.Max.Y; Y += 6.0)
+				{
+					if (!Inside(X, Y)) continue;
+					const double Bed = FMath::Min(Lake.Terrain.HeightAt(X, Y), 0.0) - 0.5;
+					G[EKitLook::Pilings].Cylinder(FVector(X, Y, Bed), 0.25f, float(Under - Bed), 8);
+				}
+			}
 		}
 		FKitSection& Rim = G[EKitLook::Decking];
 		FKitSection& Piles = G[EKitLook::Pilings];

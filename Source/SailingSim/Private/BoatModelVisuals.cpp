@@ -319,18 +319,38 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// In the helm's hand, else lying back along the tiller.
 		const FVector Stock = Has(ModelRudder, TEXT("RudderStock")) ? RigPoint(ModelRudder, TEXT("RudderStock"))
 			: BoatRoot->GetComponentTransform().InverseTransformPosition(ModelRudder->GetComponentLocation()) + FVector(0.f, 0.f, End.Z);
-		const FVector Grip = Hand && FVector::Dist(*Hand, End) < 140.f ? *Hand
+		FVector Grip = Hand && FVector::Dist(*Hand, End) < 140.f ? *Hand
 			: End + (Stock - End).GetSafeNormal() * 85.f + FVector(0.f, 3.5f, -2.f);
+		// Round 10: a dinghy's extension runs on a hand's width past the dagger grip.
+		const EBoatType Type = Boat.GetConfig().Type;
+		if (HelmGripCm && (Type == EBoatType::ILCA7 || Type == EBoatType::Sunfish)) Grip += (Grip - End).GetSafeNormal() * 12.f;
 		Wires.Add({ End + FVector(0.f, 0.f, 4.5f), Grip, 1.1f, 0.f });
 	}
 
 	// Mainsheet: a 4:1 tackle between the boom bail and the traveler car; taut when the main is drawing. Graphics G8: its
 	// tail from the car to the helm's hand.
 	MainsheetCarCm = Car;
-	// (Always drawn, so the rig mesh keeps its vertex count: with no hand on it, a short tail onto the cockpit sole.)
-	Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), 0.4f, MainGripCm ? 0.01f : 0.04f });
 	const FVector BoomBlock = RigPoint(ModelBoom, TEXT("Boom_Mainsheet"));
 	const float MainSlack = FMath::Lerp(0.015f, 0.f, Loaded);
+	// Round 10: the ILCA's sheet leads on from the boom's end block forward under the boom to a block over the front of the
+	// cockpit and down to the ratchet block on its floor, and the tail comes up from there to the hand (it had run from the
+	// transom to a hand out of reach). Elsewhere the tail comes off the traveler car.
+	FCrewCockpitWell Well;
+	if (Boat.GetConfig().Type == EBoatType::ILCA7 && CrewCockpitWell(Boat.GetConfig(), Well))
+	{
+		const FVector Ratchet = FVector(Well.X1 - 0.12, 0.0, Well.SoleZ + 0.07) * CmPerMeter;
+		const FVector SheetLocal = ModelBoom->GetSocketTransform(TEXT("Boom_Mainsheet"), RTS_Component).GetLocation();
+		const double Along = FMath::Clamp((Boat.GetConfig().MainLuffX - Ratchet.X / CmPerMeter) * CmPerMeter / FMath::Max(FMath::Abs(SheetLocal.X), 1.0), 0.1, 1.0);
+		const FVector MidBlock = BoatRoot->GetComponentTransform().InverseTransformPosition(ModelBoom->GetComponentTransform().TransformPosition(SheetLocal * Along));
+		Ropes.Add({ BoomBlock, MidBlock, 0.4f, 0.f });
+		Ropes.Add({ MidBlock, Ratchet, 0.4f, MainSlack });
+		Ropes.Add({ Ratchet, MainGripCm ? *MainGripCm : Ratchet + FVector(-30.f, 8.f, -4.f), 0.4f, MainGripCm ? 0.01f : 0.03f });
+	}
+	else
+	{
+		// (Always drawn, so the rig mesh keeps its vertex count: with no hand on it, a short tail onto the cockpit sole.)
+		Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), 0.4f, MainGripCm ? 0.01f : 0.04f });
+	}
 	for (int32 K = 0; K < 4; ++K)
 	{
 		const FVector Off(0.f, (K - 1.5f) * 1.2f, 0.f);
@@ -406,8 +426,20 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 	const FBoatConfig& Cfg = Boat.GetConfig();
 	const int32 N = Crew.Num();
-	const double Rate = DeltaSeconds > 1e-4f ? (S.CrewOffset - PrevCrewOffset) / DeltaSeconds : 0.0;
+	double Rate = DeltaSeconds > 1e-4f ? (S.CrewOffset - PrevCrewOffset) / DeltaSeconds : 0.0;
 	PrevCrewOffset = S.CrewOffset;
+	// Round 10: a dinghy sailor's figure follows the crew model's offset through a critically damped spring (settled in about
+	// 0.6 s). The auto-trim moves them in and out at up to 2.5 m/s with every roll (it holds her flat that way, and capsizes
+	// on the heavy-air reach if it is slowed), which on the figure read as a body jerked to and fro across the boat.
+	const bool bDinghyCrew = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
+	double ShownOffset = S.CrewOffset;
+	if (bDinghyCrew)
+	{
+		if (!bShownCrewOffset || T.bCapsized) { ShownCrewOffset = float(S.CrewOffset); ShownCrewOffsetV = 0.f; bShownCrewOffset = true; }
+		CrewSpring(ShownCrewOffset, ShownCrewOffsetV, float(S.CrewOffset), 9.f, DeltaSeconds);
+		ShownOffset = ShownCrewOffset;
+		Rate = ShownCrewOffsetV;
+	}
 	const double BoomRate = DeltaSeconds > 1e-4f ? (S.BoomAngle - PrevBoomAngle) / DeltaSeconds : 0.0;
 	PrevBoomAngle = S.BoomAngle;
 	// Graphics G8: what the hands hold (round 8: open hands in the air read as a mannequin). The helm has the tiller
@@ -466,8 +498,9 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		FCrewPlaceInput Place;
 		Place.Config = &Cfg;
 		Place.Index = I;
-		Place.CrewOffset = S.CrewOffset;
+		Place.CrewOffset = ShownOffset;
 		Place.CrewOffsetZ = S.CrewOffsetZ;
+		Place.CrewOffsetX = S.CrewOffsetX;
 		Place.WindwardSide = S.WindwardSide;
 		Place.OffsetRate = Rate;
 		Place.bRighting = T.bCapsized && Controls.bRighting;
@@ -543,7 +576,17 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
 			const FVector Toward = FRotator(0.f, F.Yaw, 0.f).Vector();
-			if (bHelm && bTiller)
+			if (bHelm && bTiller && P.Stance == ECrewStance::DinghyHike)
+			{
+				// Round 10: a dinghy sailor holds the extension across the body, the aft hand in front of the chest (the dagger
+				// grip), and the mainsheet coming up from its ratchet block in the forward hand just ahead of it (the ILCA's
+				// hands had been held out to the sides: the hip-height grip and the keelboat's traveler car were out of reach).
+				const FVector Chest = 0.5 * (Shoulder[0] + Shoulder[1]);
+				// (A hand's width apart along the boat: together they read as folded arms.)
+				if (Hold(Aft, Chest + Toward * 28.0 + FVector(-16.0, 0.0, -36.0), HelmGripCm)) Tension[Aft] = HelmLoad;
+				if (Hold(1 - Aft, Chest + Toward * 32.0 + FVector(18.0, 0.0, -24.0), MainGripCm)) Tension[1 - Aft] = 0.6f * SheetLoad;
+			}
+			else if (bHelm && bTiller)
 			{
 				// The extension (about 90 cm) from the tiller's end up to the aft hand, held low beside the hip.
 				const FVector ToShoulder = Shoulder[Aft] + FVector(0.f, 0.f, -32.f) - TillerEnd;

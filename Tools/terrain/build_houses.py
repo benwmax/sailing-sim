@@ -16,6 +16,7 @@ Output: Content/TerrainData/<World>.houses (little endian):
     uint8 roof colour r, g, b (sRGB), flags (1 lidar roof, 2 commercial)
     rects x { float32 north, east, half length, half width, yaw (deg, X north toward Y east) }  (length along yaw)
 """
+import base64
 import gzip
 import json
 import math
@@ -106,7 +107,7 @@ def build(world):
     if extra and os.path.exists(extra):
         fc["features"] += json.load(gzip.open(extra))["features"]
     out = []
-    stats = {"rects": 0, "multi": 0, "full": 0, "lidar": 0}
+    stats = {"rects": 0, "multi": 0, "full": 0, "lidar": 0, "tall": 0}
     for f in fc["features"]:
         p = f["properties"]
         geom = f["geometry"]
@@ -150,11 +151,30 @@ def build(world):
             else:
                 storeys = int(floors) if floors else (2 if (poly.area > 180.0 and hash01(p["id"], 2) < 0.3) else 1)
                 eave = 2.9 * storeys + 0.2
+        # Round 10 (the Seawall's hotels and condos read as odd): the lidar eave fit on a tall block often takes a podium,
+        # an annex or a parapet's shadow (a 32 m block with a 5.9 m eave got a 5.9 m box under a huge roof). The roof grid's
+        # median (decimetres above the ground, 25.5 m at most) is the block's own height, with OSM's levels at 3 m a floor
+        # under it; from four storeys a block gets a flat roof unless the lidar fitted a real pitched one (Hotel Galvez).
+        if h and h >= 10.0:
+            body = eave
+            grid = p.get("roof_grid")
+            if grid:
+                a = np.frombuffer(base64.b64decode(grid["b64"]), dtype=np.uint8)
+                nz = a[a > 0] / 10.0
+                if len(nz) >= 8:
+                    med = float(np.median(nz))
+                    body = h - 1.0 if med >= 25.4 else max(body, min(med, h))
+            if floors:
+                body = max(body, min(3.0 * float(floors), h))
+            if body >= 11.0 and (rt not in ("gable", "hip") or h - body < 2.0):
+                rt, roof = "flat", 0
+            eave = body
+            stats["tall"] += body >= 11.0
         eave = float(np.clip(eave, 2.4, 60.0))
         pitch = p.get("pitch_deg")
         pitch = float(np.clip(pitch, 12.0, 40.0)) if pitch else 24.0
         ridge = float(h) if h and h > eave else 0.0
-        storeys = int(np.clip(round((eave - 0.3) / 2.9), 1, 20))
+        storeys = int(np.clip(round((eave - 0.3) / 2.9), 1, 40))
         rc = p.get("roof_colour") or "#606060"
         rgb = tuple(int(rc[i:i + 2], 16) for i in (1, 3, 5))
         z = p.get("ground_z_navd88")
@@ -180,7 +200,7 @@ def build(world):
         fh.write(b"HOUS" + struct.pack("<II", 1, len(out)))
         fh.writelines(out)
     print(f"Houses: {world} {len(out)} ({stats['full']} full detail, {stats['multi']} multi-wing, {stats['rects']} rectangles,"
-          f" {stats['lidar']} lidar roofs) -> {os.path.getsize(path) / 1e6:.1f} MB")
+          f" {stats['lidar']} lidar roofs, {stats['tall']} of four storeys or more) -> {os.path.getsize(path) / 1e6:.1f} MB")
 
 
 if __name__ == "__main__":
