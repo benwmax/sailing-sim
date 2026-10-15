@@ -2,6 +2,7 @@
 
 #include "SailingPhysicsApi.h"
 #include "SailingMath.h"
+#include "Storm.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -43,11 +44,13 @@ namespace Sailing
 	 * A thunderstorm outflow (gust front): a line moving across the water. Behind it the wind blows from the
 	 * storm, much harder and gustier. It is the same field the sails feel, so it shows on the water (cat's paws,
 	 * a dark line) before it reaches the boat.
+	 * W5b: behind the line lies the storm's cold pool, a density current (FColdPool: its depth and temperature drop set the
+	 * front's speed and the outflow), and in the rain core a microburst (FMicroburst, Vicroy) drifting with the front.
 	 */
 	struct SAILINGPHYSICS_API FGustFront
 	{
 		bool bActive = false;
-		double StartX = 0.0, StartY = 0.0; // a point on the front line at StartTime (world, m)
+		double StartX = 0.0, StartY = 0.0; // a point on the front line at StartTime (world, m); the storm's axis passes it
 		double MoveDegrees = 0.0;          // direction the front travels toward (same angle convention as headings)
 		double SpeedMs = 12.0;             // how fast the front moves
 		double StartTime = 0.0;            // s
@@ -57,9 +60,23 @@ namespace Sailing
 		double LeadingEdgeMeters = 120.0;  // width of the transition; the strongest gusts sit just behind the edge
 		double DecayStartTime = 1e9;       // s, outflow begins to weaken
 		double DecaySeconds = 120.0;
+		// W5b: the cold pool and the microburst.
+		double ColdPoolDeltaC = 0.0;       // air temperature drop behind the front (C; observed 3 to 8, up to 12)
+		double ColdPoolDepthM = 1000.0;
+		FMicroburst Burst;                 // PeakOutflowMs 0 = none
+		double BurstBehindM = 1500.0;      // its centre, this far behind the front on the storm's axis (in the rain core)
+		double BurstStartTime = 0.0, BurstGrowSeconds = 120.0, BurstHoldSeconds = 300.0, BurstDecaySeconds = 300.0;
 
 		/** Signed distance from a point to the front line (m): positive = still ahead of the front (old wind). */
 		double DistanceAhead(double X, double Y, double T) const;
+		/** Distance along the front line from the storm's axis (m; positive to the right of its track). */
+		double AlongFront(double X, double Y) const;
+		/** How far a point is into the cold pool: 0 ahead of the front, 1 well behind it (times the outflow's decay). */
+		double Behind(double X, double Y, double T) const;
+		/** Air temperature drop at a point (C, positive = colder). */
+		double TemperatureDropAt(double X, double Y, double T) const;
+		/** The microburst's air velocity at a point (world, m/s; Z up), its strength through its life included. */
+		Vec3 BurstAt(double X, double Y, double Z, double T) const;
 	};
 
 	/**

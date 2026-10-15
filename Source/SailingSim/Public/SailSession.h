@@ -30,6 +30,7 @@ struct FSailConditions
 	UPROPERTY(config) float AirTempF = 74.f;
 	UPROPERTY(config) float LakeLevelFt = 0.f;      // Ray Hubbard: relative to the 435.5 ft pool
 	UPROPERTY(config) FName PresetId = TEXT("Lesson");
+	UPROPERTY(config) FString RealDay;              // W5b: a baked real day (YYYY-MM-DD), Lake Ray Hubbard only; empty = none
 };
 
 USTRUCT(BlueprintType)

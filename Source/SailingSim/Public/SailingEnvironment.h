@@ -65,6 +65,8 @@ private:
 	void ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness);
 	void UpdateClouds(float DeltaSeconds);
 	void UpdateRain(const FVector& CameraPos);
+	/** W5b: the storm's rain curtains and rain foot from afar, where the rain field (FStormRain or the radar) says it rains. */
+	void UpdateRainCurtains(const FVector& CameraPos, float DeltaSeconds);
 	void UpdateLightning(float DeltaSeconds, const FVector& CameraPos);
 	void BuildBolt(const FVector& Ground, float CloudBaseCm);
 	/** Visual V5 (Medium and High): paints the weather map on a worker every couple of seconds and drives M_CloudLayers. */
@@ -109,6 +111,11 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainNear;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainFar;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainMaterial;
+	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<class UInstancedStaticMeshComponent> RainCurtains;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainCurtainMaterial;
+	struct FRainCurtain { double X = 0.0, Y = 0.0, Rate = 0.0, Seed = 0.0; };
+	TArray<FRainCurtain> Curtains;
+	float CurtainClock = 0.f;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UProceduralMeshComponent> Bolt;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> BoltMaterial;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UDirectionalLightComponent> FlashLight;

@@ -172,6 +172,44 @@ namespace Sailing
 		return Along - SpeedMs * (T - StartTime);
 	}
 
+	double FGustFront::AlongFront(double X, double Y) const
+	{
+		const double A = MoveDegrees * kDegToRad;
+		return -(X - StartX) * std::sin(A) + (Y - StartY) * std::cos(A);
+	}
+
+	double FGustFront::Behind(double X, double Y, double T) const
+	{
+		if (!bActive || T < StartTime) return 0.0;
+		const double W = SmoothStep(LeadingEdgeMeters, -LeadingEdgeMeters, DistanceAhead(X, Y, T));
+		return W * (1.0 - SmoothStep(DecayStartTime, DecayStartTime + DecaySeconds, T));
+	}
+
+	double FGustFront::TemperatureDropAt(double X, double Y, double T) const
+	{
+		if (!bActive || T < StartTime || ColdPoolDeltaC <= 0.0) return 0.0;
+		// The cold air arrives with the wind shift and stays: the pool lingers long after its outflow has eased (it warms
+		// back over the following hour or so).
+		const double In = SmoothStep(LeadingEdgeMeters, -2.0 * LeadingEdgeMeters, DistanceAhead(X, Y, T));
+		return ColdPoolDeltaC * In * (1.0 - 0.6 * SmoothStep(DecayStartTime, DecayStartTime + 3600.0, T));
+	}
+
+	Vec3 FGustFront::BurstAt(double X, double Y, double Z, double T) const
+	{
+		if (!bActive || Burst.PeakOutflowMs <= 0.0 || T < BurstStartTime) return Vec3();
+		const double Age = T - BurstStartTime;
+		const double Life = SmoothStep(0.0, BurstGrowSeconds, Age) * (1.0 - SmoothStep(BurstGrowSeconds + BurstHoldSeconds,
+			BurstGrowSeconds + BurstHoldSeconds + BurstDecaySeconds, Age));
+		if (Life <= 0.0) return Vec3();
+		// The centre rides in the rain core on the storm's axis, a fixed distance behind the front.
+		const double A = MoveDegrees * kDegToRad;
+		const double Travel = SpeedMs * (T - StartTime) - BurstBehindM;
+		const double CX = StartX + std::cos(A) * Travel, CY = StartY + std::sin(A) * Travel;
+		double U, V, W;
+		Burst.At(X - CX, Y - CY, Z, U, V, W);
+		return Vec3(U, V, W) * Life;
+	}
+
 	void FWindField::SetParamsAt(const FWindParams& InParams, double T, double AnchorX, double AnchorY)
 	{
 		const FDriftFrame OldPuffs = Puffs, OldAir = Air;
@@ -499,11 +537,11 @@ namespace Sailing
 		if (Front.bActive && TimeSeconds >= Front.StartTime)
 		{
 			const double Ahead = Front.DistanceAhead(WorldPos.X, WorldPos.Y, TimeSeconds);
-			const double W = SmoothStep(Front.LeadingEdgeMeters, -Front.LeadingEdgeMeters, Ahead);
-			if (W > 0.0)
+			const double Blend = Front.Behind(WorldPos.X, WorldPos.Y, TimeSeconds);
+			if (Blend > 0.0)
 			{
-				const double Decay = 1.0 - SmoothStep(Front.DecayStartTime, Front.DecayStartTime + Front.DecaySeconds, TimeSeconds);
-				// Outflow: from the storm, strongest just behind the leading edge, with its own fast, violent gusts.
+				// Outflow: the cold pool spreading from the storm, strongest just behind its head, with its own fast,
+				// violent gusts; and near the rain core the microburst's outflow on top.
 				const double OutFrom = Front.OutflowFromDegrees * kDegToRad;
 				const Vec3 OutDir(-std::cos(OutFrom), -std::sin(OutFrom), 0.0);
 				const double Profile = std::log(std::max(WorldPos.Z, 0.05) / Params.RoughnessLength) / std::log(10.0 / Params.RoughnessLength);
@@ -513,9 +551,10 @@ namespace Sailing
 				const double* P = &Phases[4];
 				const double Noise = 0.45 * std::sin(S2 + P[0]) + 0.30 * std::sin(S2 * 2.137 + P[1]) + 0.15 * std::sin(S2 * 3.613 + P[2]) + 0.10 * std::sin(S2 * 5.271 + P[3]);
 				const double Gust2 = std::max(0.3, 1.0 + Front.OutflowGustIntensity * 1.6 * Noise);
-				const Vec3 Outflow = OutDir * (Front.OutflowKnots * kKnot * Profile * EdgeBoost * Gust2);
-				const double Blend = W * Decay;
-				Wind = Wind * (1.0 - Blend) + Outflow * Blend;
+				Vec3 Outflow = OutDir * (Front.OutflowKnots * kKnot * Profile * EdgeBoost);
+				const Vec3 Burst = Front.BurstAt(WorldPos.X, WorldPos.Y, WorldPos.Z, TimeSeconds);
+				Outflow += Vec3(Burst.X, Burst.Y, 0.0);
+				Wind = Wind * (1.0 - Blend) + Outflow * (Gust2 * Blend);
 			}
 		}
 		return Wind;
@@ -529,11 +568,12 @@ namespace Sailing
 	double FWindField::MeanSurfaceRoughnessAt(double X, double Y, double TimeSeconds) const
 	{
 		double Speed = MeanSpeed10;
-		if (Front.bActive && TimeSeconds >= Front.StartTime)
+		if (const double W = Front.Behind(X, Y, TimeSeconds); W > 0.0)
 		{
-			const double W = SmoothStep(Front.LeadingEdgeMeters, -Front.LeadingEdgeMeters, Front.DistanceAhead(X, Y, TimeSeconds));
-			const double Decay = 1.0 - SmoothStep(Front.DecayStartTime, Front.DecayStartTime + Front.DecaySeconds, TimeSeconds);
-			Speed += (Front.OutflowKnots * kKnot - Speed) * W * Decay;
+			const double From = Front.OutflowFromDegrees * kDegToRad;
+			const Vec3 Burst = Front.BurstAt(X, Y, 10.0, TimeSeconds);
+			const double Out = Vec3(-std::cos(From) * Front.OutflowKnots * kKnot + Burst.X, -std::sin(From) * Front.OutflowKnots * kKnot + Burst.Y, 0.0).LengthXY();
+			Speed += (Out - Speed) * W;
 		}
 		return Speed / 8.0;
 	}

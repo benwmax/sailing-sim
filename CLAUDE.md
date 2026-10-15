@@ -343,6 +343,17 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FShelterMap` = lee (terrain, canopy, houses, gone by 30 heights) x open-water build. AI reads `ReadableAt` (no fine
   turbulence) and tacks on headers. `Tools/wind/plot_field.sh` maps the field; `scripts/traffic.sh 98` races steady and
   shifty.
+- Storms and real days (W5b, `docs/w5b/`): `Storm.h` holds `FMicroburst` (Vicroy 1991, NASA TM-104053), `FColdPool` (front
+  speed 0.75 sqrt(g h dT/T) + 0.6 x the ambient wind along the track) and `FStormRain` (rain rate along the front's track,
+  the rain foot slanting forward at the water). `FGustFront` carries the cold pool and burst; keep `DistanceAhead`'s
+  meaning (the cloud material follows it). The game mode shifts `Front.StartTime`, `DecayStartTime`, `BurstStartTime` and
+  `DayStartHour` onto the sim clock, and makes `WeatherState.Rain` the boat's local rain (`RainAt`). Rain curtains:
+  `ASailingEnvironment::UpdateRainCurtains` + `M_RainCurtain` (`-SailingNoRainCurtains` compares). Real days:
+  `FWeatherDay` (`WeatherDay.h`) loads `Content/TerrainData/Weather/<date>.wxday` (text header, then radar bytes);
+  `FWeatherSystem::ConfigureDay` runs it, the preset's storm timeline shifted to the real arrival and stretched by
+  `FStormSpec::TimeScale`. Bake with `Tools/weather/fetch_day.py <date> [--storm HH:MM-HH:MM]` then `bake_day.py`
+  (`Tools/weather/requirements.txt`: eccodes); `plot_days.py` redraws the README's plots. `-SailingDay=YYYY-MM-DD` or the
+  Conditions screen's Real day row (lake only). HRRR's grid doesn't resolve the lake: water temperature is W1's normal.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
