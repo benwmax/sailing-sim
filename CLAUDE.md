@@ -110,6 +110,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Graphics G8 added the PC's own loop: `run-python.ps1 <script.py> [-Only fn,...]` (editor Python, e.g. make_materials.py),
    `run-game.ps1` (uncooked), `capture-scenes-win.ps1` (scene CSV on the packaged game). `M_WorldSurface` patterns 9
    (wood pilings) and 10 (dock boxes) are new and output a normal; keep `KitLook()` in step.
+   Crew C2 on the PC: `capture-solve.ps1 [-TestClip tack_port]` runs the MetaHuman body solve (`Tools/capture/solve_clips.py`,
+   full editor via `-ExecutePythonScript`) and `capture_clips.py`; see `docs/crew-2/README.md`. Editor scripts end by
+   returning, never `os._exit` (it leaves zombie editors on Windows: `docs/windows/README.md`).
 
 ## Conventions
 

@@ -27,10 +27,17 @@ class SAILINGSIM_API UCrewCaptureLibrary : public UBlueprintFunctionLibrary
 public:
 	/** Retargets Source (an animation for SourceMesh's skeleton) to TargetMesh's skeleton, from StartSeconds to EndSeconds
 	 *  (EndSeconds <= 0: to the end), resampled at Fps. AssetPath "/Game/..." creates the asset there (unsaved); empty
-	 *  makes a transient one. Same skeleton: a trimmed copy. */
+	 *  makes a transient one. Same skeleton: a trimmed copy. bLevelHeading turns the whole clip about the vertical so the
+	 *  hips face as the rest pose's do at the source's first frame, and slides it so the pelvis starts over the rest
+	 *  pose's: a body solve gives the heading and place in the camera's frame (the README films from 30-45 deg off
+	 *  square), and every clip starts sitting still on the seat, facing forward. */
 	UFUNCTION(BlueprintCallable, Category = "Sailing|Crew")
 	static UAnimSequence* RetargetClip(UAnimSequence* Source, USkeletalMesh* SourceMesh, USkeletalMesh* TargetMesh, float StartSeconds,
-		float EndSeconds, int32 Fps, const FString& AssetPath);
+		float EndSeconds, int32 Fps, const FString& AssetPath, bool bLevelHeading = false);
+
+	/** The turn about the vertical (component Z) that brings Mesh's hip axis (thigh_l to thigh_r) at Seq's Seconds onto
+	 *  its rest pose's; identity without both thighs. */
+	static FQuat HeadingToRest(const UAnimSequence* Seq, const USkeletalMesh* Mesh, double Seconds);
 
 	/** A synthetic clip on Mesh's skeleton from the crew's own stances (CrewJointRotations), to test the pipeline before
 	 *  any filmed clip exists: Spec is "Stance[:hike]=seconds,..." (e.g. "Helm=3,Crossing=2,Helm:1=3"), each stance
