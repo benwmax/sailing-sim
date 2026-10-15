@@ -148,3 +148,67 @@ Both read normally (97 and 54) in every other run.
 - `view_wall_s`: in a list, the view's time from load to result.
 
 Each view also brings the game's window to the front when its window starts.
+
+## Packaging: incremental cook, and no rebuild when the code is unchanged
+
+`scripts/package-mac.sh` now keeps the cooked output (`Saved/Cooked/Mac`, a Zen store) between runs and passes
+`-cookincremental`. UE 5.8's incremental cook checks each package's dependencies (the package, its classes' schemas,
+the config it reads, the packages it references) and re-cooks only those that changed. Until now every package deleted
+the store and cooked all 4,142 packages, because `CookIncrementalDefaultIncremental=false` is the engine default.
+`FULL=1 scripts/package-mac.sh` restores that: it deletes the store, recooks everything and rebuilds the game.
+
+The cook turned out to be a small part of a package. With the DDC warm, a full cook of this project is 25 s; most of a
+package is elsewhere. With this installed engine, the build step recompiled 32 files of the game target on every run,
+about 30 s, even when nothing had changed. UnrealBuildTool regenerates the target's makefile every time (this engine
+has no `ISPC/bin/Mac/ispc`, which UBT lists as a dependency of every target) and rewrites its shared-PCH response files
+with a different set of engine `UHT` include paths each time, so the PCHs and everything after them count as outdated.
+I tried a stub ispc in the engine: it stops the "ispc deleted" message but not the response-file churn, so I removed it.
+The script now skips the game build (no `-build`) when `Source`, `Config`, `Plugins` and the `.uproject` hash the same
+as at the last successful package (`Artifacts/package-code.hash`; `inputs_hash` moved to `env.sh` and is shared with
+`gate.sh`). After a code change it builds as before.
+
+Measured on Bean's M5 Pro, Oct 15 2026, same tree:
+
+| Package | Wall time | Build step | Cook step | Packages cooked |
+|---|---|---|---|---|
+| Full (`FULL=1`, as every package before) | 136-138 s | 31 s, 32 compiles | 25.6 s | 4,142 |
+| Incremental, nothing changed (code unchanged: build skipped) | **87 s** | none | 10.5 s | 1 |
+| Incremental after a change to a game-module .cpp | 126-128 s | 33 s | 15.6 s | 1 |
+| Incremental, nothing changed, before the build skip | 110-132 s | 31-33 s | 15.5-24.8 s | 1 |
+
+So the incremental cook saves 10-15 s, and skipping the unchanged build saves about 30 s more. A package where only
+`Content` changed (a material, a bake, a model) now takes about 90 s instead of 137 s. A package after a code change is
+about 10 s faster. In both, about 55 s remains in staging, IoStore (19 s to compress the 3.3 GB container) and the
+archive copy.
+
+**Same game.** The incremental package's containers are byte-identical to the full package's (SHA-256 of
+`SailingSim-Mac.ucas`, `.utoc`, `.pak`, `global.ucas`, `global.utoc`). The packaged game starts and benches the same.
+Here are the clouds scope's views, one launch each, 12 s windows, on a full package and on an incremental one after a
+code change and its revert:
+
+| View | Tier | Full fps | Incremental fps | Difference |
+|---|---|---|---|---|
+| beam8 | Medium | 90.2 | 90.0 | -0.2 |
+| beam8 | High | 55.0 | 54.8 | -0.2 |
+| beat15 | Medium | 86.5 | 86.1 | -0.4 |
+| beat15 | High | 50.9 | 51.0 | +0.1 |
+| storm | Medium | 72.0 | 72.0 | +0.0 |
+| storm | High | 50.2 | 50.7 | +0.5 |
+| coast-day | Medium | 82.8 | 81.4 | -1.4 |
+| coast-day | High | 47.7 | 47.0 | -0.7 |
+| gulf-sea | Medium | 106.0 | 105.2 | -0.8 |
+| gulf-sea | High | 61.2 | 57.5 | -3.7 |
+| helm-eye | Medium | 81.1 | 80.6 | -0.5 |
+| helm-eye | High | 47.1 | 44.8 | -2.3 |
+| slip | Medium | 79.1 | 77.1 | -2.0 |
+| slip | High | 46.9 | 47.2 | +0.3 |
+| bridge | Medium | 98.7 | 98.5 | -0.2 |
+| bridge | High | 55.1 | 53.5 | -1.6 |
+
+The files are identical, so the differences are run-to-run noise. The full run went last and was a little faster on
+a few High views. An earlier incremental run of the same content (`visual-bench-cook-inc0.csv`) gave helm-eye High 45.1
+and gulf-sea High 57.7. Today's PR #53 gate gave helm-eye High 46.2 and 45.7 on the same views a few hours apart. The
+CSVs are `Artifacts/visual-bench-cook-{full,inc,inc0}.csv`.
+
+When to use `FULL=1`: after an engine update, if a cook warning mentions stale or invalidated packages, or for a
+release build.
