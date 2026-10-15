@@ -354,6 +354,15 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FStormSpec::TimeScale`. Bake with `Tools/weather/fetch_day.py <date> [--storm HH:MM-HH:MM]` then `bake_day.py`
   (`Tools/weather/requirements.txt`: eccodes); `plot_days.py` redraws the README's plots. `-SailingDay=YYYY-MM-DD` or the
   Conditions screen's Real day row (lake only). HRRR's grid doesn't resolve the lake: water temperature is W1's normal.
+- Crew motion (C1, `docs/crew-1/`): each sailor is a `USkeletalMeshComponent` with `UCrewAnimInstance`, whose proxy runs
+  `FAnimNode_CrewMotion` on the animation workers (`CrewAnimInstance.h`); the logic is `CrewMotion.h` (plain, for the tests):
+  `CrewPlacement` (stance and place, shared with the tests; tacks timed to the boom: crossing low in the middle, facing
+  forward), `FCrewBalance` (felt gravity `g - (a + alpha x r + omega x (omega x r))` at the seat after a 0.1-0.3 s lag,
+  exact critically damped springs), `CrewMotionPose` (stance, trunk lean, breathing, slam give, brace, then the feet and
+  hands IK from `CrewSolver.h`, then the head levelled and turned to the gaze). The physics exports `FBoatTelemetry::AccelBody`
+  and `AngularAccelBody`. Attach points use the `J22H_sockets.json` names; without sockets `CrewDerivedAttachPoints` builds
+  them from the geometry. AI crew tick at 15 Hz. The pawn hands each node `FCrewMotionInput` in `UpdateCrewFigures` (the
+  mesh ticks after the pawn). Args: `-SailingCrewStill`, `-SailingDebugCrew`, `-SailingShotCrew=<name>`.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a

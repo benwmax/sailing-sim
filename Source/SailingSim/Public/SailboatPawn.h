@@ -326,8 +326,18 @@ private:
 	UPROPERTY() TObjectPtr<UMaterialInterface> RopeMaterial;
 	UPROPERTY() TObjectPtr<class USkeletalMesh> SailorMesh;
 	UPROPERTY() TMap<FName, TObjectPtr<UMaterialInterface>> CrewMaterials; // slot name -> MI_Boat_Crew<slot>
-	// Visual V3: the crew's posed state, blended toward each frame's stance (CrewPose.h).
-	struct FCrewFigure { TMap<FName, FQuat> Joints; FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; int32 Rig = -1; };
+	// Visual V3: the crew's place, blended over each change of stance (CrewPose.h). Crew C1: the joints are posed by each
+	// sailor's animation node (CrewAnimInstance.h); the game thread keeps where they sit and the stance transitions.
+	struct FCrewFigure
+	{
+		FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; int32 Rig = -1;
+		ECrewStance Stance = ECrewStance::Cockpit; int32 Transition = 0; float TransitionS = 1.f, TransitionSeconds = 0.6f;
+		FVector FromLocation = FVector::ZeroVector; float FromYaw = 0.f, FromRoll = 0.f;
+	};
+	TSharedPtr<const Sailing::FBoatConfig> CrewConfig; // the boat the crew stand on, shared with their animation (read on workers)
+	double PrevBoomAngle = 0.0;
+	FVector GazeBoatCm = FVector::ZeroVector; double NextGazeSearch = 0.0; // another boat in view (the player's crew glance at it)
+	class USkeletalMeshComponent* NewCrewBody(class USkeletalMesh* Mesh, int32 Rig);
 	// Visual V7: the MetaHuman crew on the player's boat on Medium and High (SK_Sailor elsewhere): per role the body,
 	// face and outfit meshes (MetaCrewMeshes, 3 per role) and the rig that carries SK_Sailor's poses to them.
 	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMesh>> MetaCrewMeshes;
@@ -336,11 +346,11 @@ private:
 	TArray<FCrewRig> MetaCrewRigs;
 	FBoatLivery Livery; // Graphics G3: this boat's colours, wear and sail number
 	bool LoadMetaCrew();
-	class UPoseableMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);
+	class USkeletalMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);
 public:
 	/** Whether the crew are MetaHumans (for the tests and the bench). */
 	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
-	const TArray<TObjectPtr<class UPoseableMeshComponent>>& GetCrewMeshes() const { return Crew; }
+	const TArray<TObjectPtr<class USkeletalMeshComponent>>& GetCrewMeshes() const { return Crew; }
 	const FBoatLivery& GetLivery() const { return Livery; }
 private:
 	TArray<FCrewFigure> CrewFigures;
@@ -416,7 +426,7 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> RudderPivots;  // one per rudder
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
-	UPROPERTY(Transient) TArray<TObjectPtr<class UPoseableMeshComponent>> Crew;
+	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMeshComponent>> Crew;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibTelltales;  // windward/leeward pairs at three heights
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> LeechTelltales; // main leech, three heights
 
