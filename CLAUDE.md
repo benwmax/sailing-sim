@@ -317,6 +317,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   inferred `floating` walkways, `MooredBoats` drawn by `ACoastMarinasActor` via `SpawnBerthedBoats`), then
   `scripts/bake-shore.sh GalvestonBay`; `-SailingNoPiers`, `-SailingPiersSkip=decks,riprap,walkways,boats` compare.
   `FKitGeometry::SplitTiles` walks four vertices at a time: add triangles with `FKitSection::Tri` (a degenerate quad).
+- Galveston 2 (`docs/galveston-2/`): the bay grid reaches 29.19 N (sim north -39,240) for the Gulf front pack
+  (`Inputs/g2/gulf-front`), which `build_piers.py`, `build_houses.py` and `build_crowns.py` read beside the bay's. Moored
+  boats need water deeper than their draft at MLLW (a marina basin: wet at MLLW); `SailingSim.Coast.MooredBoatsAfloat`.
 - Crew (Graphics G8, `docs/graphics-8-crew/`): `FCrewHands` (`CrewPose.h`) puts the hands after the stance: Reach (two-bone
   IK from the shoulder, keeping the stance's elbow plane; the target is where the palm closes), Knee, and finger curl about
   axes from each rig's palm (`FCrewRig::CurlAxis`). `UpdateCrewFigures` gives the helm the tiller extension
@@ -333,6 +336,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   (`AWaterSurface::WhitecapScaleFor`: lake 0.4, bay 0.7, Gulf 1). M_WaterV4's cap threshold is mirrored by
   `AWaterSurface::WhitecapThreshold` (keep `CapSlope` in step with make_materials.py). `FWaveField::Update(Dt)` grows each
   band over `GrowthSeconds` (8 T^2, 5..300 s).
+- W3 prep (`docs/w3-prep/`): the growth laws take the adjusted wind U_A = 0.71 U^1.23 (`FWaveField::AdjustedWindSpeed`),
+  steepened by (U / 18 kn)^0.43 above 18 kn to follow the SWAN bake (`GrowthStressWind`, `docs/physics-gaps/`);
+  the lake's sea grows on `FLakeTerrain::EffectiveFetch` (Saville, nine rays over +/-45 deg; cached in the game mode).
+  Polar, scenario and reference runs set `FWaveParams::bCalibrationSea` (the old law in U, the sea the fleet was
+  calibrated in). `FShelterMap` builds the open-water speed-up and `GustAt` (gusts easing with fetch, W6's LES) from
+  the same march; `FWindField::GustScaleAt` scales every fluctuation by it (1 without a map).
 - Wind (W1, `docs/w1/`): `FWindField` is three seeded layers, each a function of place and time in a frame drifting with
   the air (`FDriftFrame`; `SetParamsAt` re-anchors at the boat when the wind turns): convective puffs (lattice along the
   surface wind, drifting with the wind aloft; since the W1 follow-up, kilometre cells from 12 seeded waves 2 to 5 km
@@ -354,11 +363,25 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FStormSpec::TimeScale`. Bake with `Tools/weather/fetch_day.py <date> [--storm HH:MM-HH:MM]` then `bake_day.py`
   (`Tools/weather/requirements.txt`: eccodes); `plot_days.py` redraws the README's plots. `-SailingDay=YYYY-MM-DD` or the
   Conditions screen's Real day row (lake only). HRRR's grid doesn't resolve the lake: water temperature is W1's normal.
+- Crew motion (C1, `docs/crew-1/`): each sailor is a `USkeletalMeshComponent` with `UCrewAnimInstance`, whose proxy runs
+  `FAnimNode_CrewMotion` on the animation workers (`CrewAnimInstance.h`); the logic is `CrewMotion.h` (plain, for the tests):
+  `CrewPlacement` (stance and place, shared with the tests; tacks timed to the boom: crossing low in the middle, facing
+  forward), `FCrewBalance` (felt gravity `g - (a + alpha x r + omega x (omega x r))` at the seat after a 0.1-0.3 s lag,
+  exact critically damped springs), `CrewMotionPose` (stance, trunk lean, breathing, slam give, brace, then the feet and
+  hands IK from `CrewSolver.h`, then the head levelled and turned to the gaze). The physics exports `FBoatTelemetry::AccelBody`
+  and `AngularAccelBody`. Attach points use the `J22H_sockets.json` names; without sockets `CrewDerivedAttachPoints` builds
+  them from the geometry. AI crew tick at 15 Hz. The pawn hands each node `FCrewMotionInput` in `UpdateCrewFigures` (the
+  mesh ticks after the pawn). Args: `-SailingCrewStill`, `-SailingDebugCrew`, `-SailingShotCrew=<name>`.
+- Gulf swell (`docs/gulf-swell/`): Galveston is an ocean world too (`"ocean": true`); `FOcean::BuildMask` is the share of
+  the swell's +/-45 deg spread reaching a point in straight lines from the chart's deep (4 m+) edge, land on the 100 m grid
+  from any 10 m node above water; the boat's added resistance and `SignificantHeightAt` follow the mask (mask^2 energy).
+  `scripts/ocean-mask.sh [World]` maps it standalone; `-SailingNoOcean` compares; `SailingSim.Coast.GalvestonSwell`.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
-  dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`). Reference-check peaks are
-  GPS-like one-second means.
+  dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
+  on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly
+  moves. Reference-check peaks are GPS-like one-second means.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
@@ -372,6 +395,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 - Binary assets go through Git LFS (`.gitattributes`). Prefer generating content from scripts so diffs stay reviewable.
 - Warnings are errors in this toolchain (for example `-Wunreachable-code-loop-increment`); `TestEqual` needs matching
   double/float argument types.
+- MSVC portability (the PC builds main on Windows): in a dllexport class declare one `static constexpr` per statement
+  (`static constexpr double C1 = 1; static constexpr double C2 = 2;`, never comma-separated: C2487); no file-scope names
+  that shadow engine template parameters (`Flags`); shadowing warnings C4458/C4459 are errors there.
 
 ## Git
 

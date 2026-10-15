@@ -283,6 +283,11 @@ namespace Sailing
 		FSailStripState SpinStrips[kMaxSailStrips];
 		int NumMainStrips = 0, NumJibStrips = 0, NumSpinStrips = 0;
 		Vec3 MastheadWindBody;        // apparent wind at the masthead, body frame (air velocity)
+		// Crew C1: what the crew feel. The centre of gravity's acceleration (at rest afloat it reads zero) and the
+		// angular acceleration, both body frame, each a 25 ms mean so one contact step does not spike them; the turn
+		// rate is FBoatState::AngularVelocity.
+		Vec3 AccelBody;               // m/s^2
+		Vec3 AngularAccelBody;        // rad/s^2
 	};
 
 	/**

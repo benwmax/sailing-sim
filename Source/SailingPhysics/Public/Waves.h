@@ -37,6 +37,12 @@ namespace Sailing
 		double WindSpeedKnots = 10.0;    // at 10 m
 		double WindFromDegrees = 0.0;    // same convention as FWindParams
 		double FetchMeters = 4000.0;     // open water upwind (Lake Ray Roberts: roughly 2 to 10 km depending on direction)
+		/**
+		 * The sea the fleet's polars and reference checks were calibrated in: the growth laws in the 10 m wind U, as before
+		 * W3's adjusted wind. Their runs keep it so a change of growth law doesn't move every boat's calibration; the game's
+		 * waters grow on U_A.
+		 */
+		bool bCalibrationSea = false;
 		uint32_t Seed = 1;
 	};
 
@@ -79,18 +85,31 @@ namespace Sailing
 
 		/** Significant wave height (4 x standard deviation of the surface) of the current amplitudes, m. */
 		double SignificantHeight() const;
+		/** The same where the sea is at a point: the ocean's part only as far as its mask lets it in (gulf-swell). */
+		double SignificantHeightAt(double X, double Y) const;
 		/** Energy-weighted mean wave period (Tm01), s. */
 		double MeanPeriod() const;
 		/** Direction the waves travel toward (energy-weighted mean), radians in the XY plane. */
 		double MeanDirection() const;
 
-		/** Fetch-limited growth law targets. */
+		/** Fetch-limited growth law targets (SPM forms in GrowthStressWind: U_A, steepened above 18 kn; the period from that Hs by Toba's 3/2 law in U_A). */
 		static double TargetSignificantHeight(double WindMs, double FetchMeters);
 		static double TargetPeakPeriod(double WindMs, double FetchMeters);
+		/** The growth laws' wind-stress factor U_A = 0.71 U^1.23 (m/s in, m/s out). */
+		static double AdjustedWindSpeed(double WindMs);
+		/** The wind the targets grow the sea in: U_A, times (U / 18 kn)^0.43 above 18 kn (m/s in, m/s out). */
+		static double GrowthStressWind(double WindMs);
+		/** The SPM laws in whatever wind is given (TargetSignificantHeight is this in U_A). */
+		static double GrowthLawHeight(double StressWindMs, double FetchMeters);
+		static double GrowthLawPeriod(double StressWindMs, double FetchMeters);
 
 		const FWaveComponent* GetComponents() const { return Components; }
 		/** The sea's spectrum in bands (the lake components one by one, the ocean in wavelength bins), for added resistance. */
 		const std::vector<FWaveBand>& Bands() const;
+		/** Where the ocean's bins start in Bands() (after the lake components; its size without an ocean). Read after Bands(). */
+		size_t OceanBandStart() const { return BandOceanStart; }
+		/** The ocean's share of its energy at a point (FOcean's mask squared; 0 without an ocean). */
+		double OceanShareAt(double X, double Y) const;
 
 		/** Open sea: an FFT ocean (wind sea and swell) added to everything this field reports. */
 		void SetOcean(std::shared_ptr<FOcean> InOcean) { Ocean = std::move(InOcean); bBandsDirty = true; }
@@ -111,6 +130,7 @@ namespace Sailing
 		mutable std::vector<FWaveBand> BandCache;
 		mutable bool bBandsDirty = true;
 		mutable uint64_t BandOceanGeneration = ~0ull;
+		mutable size_t BandOceanStart = 0;
 		struct FLock { std::mutex M; FLock() = default; FLock(const FLock&) {} FLock& operator=(const FLock&) { return *this; } };
 		mutable FLock BandLock;
 	};

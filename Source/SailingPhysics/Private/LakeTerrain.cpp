@@ -176,6 +176,22 @@ namespace Sailing
 		return MaxDistance;
 	}
 
+	double FLakeTerrain::EffectiveFetch(double X, double Y, double FromRadians, double MaxDistance) const
+	{
+		// SWAN over Ray Hubbard (W3): at Rush Creek in a northerly the single ray finds 135 m and 4 cm of chop where SWAN
+		// has 13 cm, grown down the lake and arriving at an angle. Saville's effective fetch (Saville, McClendon and Cochran
+		// 1962; the Shore Protection Manual's method): rays every 11.25 deg to +/-45 deg, sum(F cos^2 a) / sum(cos a), the
+		// wind's stress along each ray (cos a) times its waves' share toward the point (cos a).
+		double Sum = 0.0, Weights = 0.0;
+		for (int K = -4; K <= 4; ++K)
+		{
+			const double A = K * (kPi / 16.0), W = std::cos(A);
+			Sum += W * W * FetchToward(X, Y, FromRadians + A, MaxDistance);
+			Weights += W;
+		}
+		return Sum / Weights;
+	}
+
 	double FShelterMap::LeeDeficit(double Ratio)
 	{
 		// Shelterbelt and escarpment wakes: deepest within about 4 heights, still a quarter down at 20, gone by 30.
@@ -184,22 +200,42 @@ namespace Sailing
 
 	double FShelterMap::OpenWaterBuild(double FetchMeters)
 	{
-		// The internal boundary layer from a land-water roughness step: the 10 m wind climbs from about 80 % of the
-		// open-water value at the shore with an e-folding fetch of 800 m (lake and coastal mast studies).
-		return 0.8 + 0.2 * (1.0 - std::exp(-std::max(FetchMeters, 0.0) / 800.0));
+		// The internal boundary layer from a land-water roughness step. W6's LES of Ray Hubbard's outline (a hot afternoon,
+		// docs/water-6/les-pilot.md): over the water downwind of the first shore the 12.5 m wind is 1.07 of the land's mean
+		// within 250 m, 1.11 at 250-500 m and 1.13 from 0.5 to 2 km. As a fraction of that open-water value: 0.91 at the
+		// shore, 97% by 250 m, full by about a kilometre (e-folding 230 m). (The LES eases to 1.06 beyond 4 km, where its
+		// periodic tile feeds the far shore's land back in: not modelled.)
+		return 1.0 - 0.09 * std::exp(-std::max(FetchMeters, 0.0) / 230.0);
+	}
+
+	double FShelterMap::OpenWaterGust(double FetchMeters)
+	{
+		// The same LES: gust intensity (std / mean at a point) 0.15 within a kilometre of the upwind shore, 0.14 at 1-2 km,
+		// 0.13 at 2-4 km and 0.11 beyond (0.18 over the land beside it): the land's eddies decay over the smooth, unheated
+		// water. The stations that calibrate the gusts (WindClimate.h) are on land at the shore, so they are the 1 here.
+		// Through the bands' centres, flat beyond (the 4-10 km band's 0.11 taken at 7 km).
+		constexpr double F[] = { 750.0, 1500.0, 3000.0, 7000.0 }, G[] = { 0.15, 0.14, 0.13, 0.11 };
+		if (FetchMeters <= F[0]) return 1.0;
+		for (int I = 1; I < 4; ++I)
+		{
+			if (FetchMeters <= F[I]) return Lerp(G[I - 1], G[I], (FetchMeters - F[I - 1]) / (F[I] - F[I - 1])) / G[0];
+		}
+		return G[3] / G[0];
 	}
 
 	void FShelterMap::Build(const FLakeTerrain& Terrain, double InFromRadians, double InCell, const std::vector<FShelterObstacle>* Obstacles)
 	{
 		FromRadians = InFromRadians;
 		Cell = InCell;
-		if (!Terrain.IsValid()) { Rows = Cols = 0; Lee.clear(); Building.clear(); return; }
+		if (!Terrain.IsValid()) { Rows = Cols = 0; Lee.clear(); Building.clear(); Gust.clear(); return; }
 		OriginX = Terrain.GetOriginX();
 		OriginY = Terrain.GetOriginY();
 		Rows = int(Terrain.GetRows() * Terrain.GetCell() / Cell) + 1;
 		Cols = int(Terrain.GetCols() * Terrain.GetCell() / Cell) + 1;
 		Lee.assign(size_t(Rows) * Cols, 1.0f);
 		Building.assign(size_t(Rows) * Cols, 1.0f);
+		Gust.assign(size_t(Rows) * Cols, 1.0f);
+		constexpr double kMaxFetch = 7000.0;
 		// Houses (and anything else) rasterised to the march's resolution: the highest top in each 20 m cell.
 		constexpr double Step = 20.0;
 		const int HRows = int(Rows * Cell / Step) + 2, HCols = int(Cols * Cell / Step) + 2;
@@ -229,10 +265,11 @@ namespace Sailing
 			{
 				const double X = OriginX + R * Cell, Y = OriginY + C * Cell;
 				if (Terrain.HeightAt(X, Y) > 0.0) continue; // only water matters
-				// Upwind: the lee of anything within 30 heights (a 30 m bluff with its trees reaches 900 m), and the first land.
+				// Upwind: the lee of anything within 30 heights (a 30 m bluff with its trees reaches 900 m), and the first land
+				// (to 7 km: the gusts ease that far out).
 				double Reduction = 0.0, Fetch = -1.0;
 				const double MaxX = OriginX + Terrain.GetRows() * Terrain.GetCell(), MaxY = OriginY + Terrain.GetCols() * Terrain.GetCell();
-				for (double S = Step; S <= 3000.0; S += (S < 1000.0 ? Step : 2.0 * Step))
+				for (double S = Step; S <= kMaxFetch; S += (S < 1000.0 ? Step : 2.0 * Step))
 				{
 					const double PX = X + DX * S, PY = Y + DY * S;
 					// Past the edge of the bake: nothing more is known (its "high land" is a stand-in, not a hill).
@@ -254,6 +291,7 @@ namespace Sailing
 				}
 				Lee[size_t(R) * Cols + C] = float(1.0 - Reduction);
 				Building[size_t(R) * Cols + C] = float(OpenWaterBuild(Fetch < 0.0 ? 1e9 : Fetch));
+				Gust[size_t(R) * Cols + C] = float(OpenWaterGust(Fetch < 0.0 ? 1e9 : Fetch));
 			}
 		}
 	}

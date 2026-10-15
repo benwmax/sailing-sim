@@ -1,0 +1,4 @@
+scene,preset,args,description
+gs-pier,Drone,"-SailingWorld=Galveston -SailingStartAt=-28900,22470,240 -SailingWeather=AfternoonBreeze -SailingHour=11 -SailingWind=12 -SailingTWA=100 -SailingHoldTWA=100 -SailingCamWorld=-100,50,3,334,-1 -SailingQuality=High","Galveston, the Gulf front: a J/22 off the Pleasure Pier and the Seawall"
+gs-dusk,Drone,"-SailingWorld=Galveston -SailingStartAt=-31550,18900,60 -SailingDate=2026-10-14 -SailingHour=18.9 -SailingWeather=CalmMorning -SailingWind=6 -SailingTWA=80 -SailingHoldTWA=80 -SailingLightsOn -SailingCamWorld=-150,-100,3,15,0 -SailingQuality=High","Galveston, off the 61st St pier and the Seawall at dusk"
+gs-jetties,Chase,-SailingWorld=Galveston -SailingLaunch=5 -SailingWeather=AfternoonBreeze -SailingHour=12 -SailingWind=14 -SailingTWA=70 -SailingHoldTWA=70 -SailingQuality=High,"Galveston, Bolivar Roads, outbound toward the jetties"

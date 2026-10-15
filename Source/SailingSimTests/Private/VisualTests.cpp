@@ -10,6 +10,7 @@
 #include "AutoTrim.h"
 #include "SailCloth.h"
 #include "CrewPose.h"
+#include "CrewMotion.h"
 #include "SailingSim.h"
 #include "BoatLivery.h"
 #include "Engine/SkeletalMesh.h"
@@ -756,34 +757,28 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	{
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FBoatModel Model(Cfg);
-		const FHullShape& Hull = Cfg.Hulls[0];
-		const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
 		const int32 N = Cfg.CrewCount;
 		for (int32 I = 0; I < N; ++I)
 		{
 			const bool bHelm = I == N - 1;
-			const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I);
-			const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
-			const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
 			for (const float Side : { 1.f, -1.f })
 			{
 				for (const float HikeIn : { 0.f, 0.5f, 1.f })
 				{
 					const double Out = Cfg.CrewSitOut * 0.8 + HikeIn * FMath::Max(Cfg.CrewHikeOut, 0.1);
-					FCrewPoseParams P;
-					P.Side = Side;
-					P.Hike = HikeIn;
-					FVector Pelvis;
-					float Roll = 0.f;
-					if (Cfg.bTrapeze && !bHelm && Out > Rail) { P.Stance = ECrewStance::Trapeze; Pelvis = FVector(X, Side * (Rail + 0.8), Sheer + 0.35); Roll = 72.f * Side; }
-					else if (bDinghy) { P.Stance = ECrewStance::DinghyHike; Pelvis = FVector(X, Side * (Rail - 0.04), Sheer + 0.06); }
-					else if (bHelm) { P.Stance = ECrewStance::Helm; Pelvis = FVector(X, Side * FMath::Max(Rail - 0.18, 0.3), Sheer + 0.07); }
-					else if (Out > 0.55 * Rail) { P.Stance = ECrewStance::RailHike; Pelvis = FVector(X, Side * (Rail - 0.02), Sheer + 0.07); }
-					else { P.Stance = ECrewStance::Cockpit; Pelvis = FVector(X, Side * FMath::Clamp(Out, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10); }
+					// Crew C1: placed by the pawn's own CrewPlacement (it was copied here before).
+					FCrewPlaceInput Place;
+					Place.Config = &Cfg;
+					Place.Index = I;
+					Place.CrewOffset = Side * Out;
+					Place.WindwardSide = Side > 0.f ? 1 : -1;
+					FCrewPlacement Pl;
+					CrewPlacement(Place, Pl);
+					const FCrewPoseParams& P = Pl.Params;
+					const FVector Pelvis = Pl.Pelvis;
 					TMap<FName, FQuat> Joints;
 					CrewJointRotations(P, Joints);
-					const float Yaw = CrewFacingYaw(P);
-					const FQuat Facing(FRotator(0.f, Yaw, Roll));
+					const FQuat Facing(FRotator(0.f, Pl.Yaw, Pl.Roll));
 					const bool bInPlan = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::DinghyHike;
 					for (const FBody& B : Bodies)
 					{

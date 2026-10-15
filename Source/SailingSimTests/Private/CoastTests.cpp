@@ -3,6 +3,9 @@
 #include "FixedStepper.h"
 #include "Chart.h"
 #include "LakeData.h"
+#include "CoastMarinasActor.h"
+#include "MarinaActor.h"
+#include "Engine/StaticMesh.h"
 #include "WorldKit.h"
 #include "Lights.h"
 #include "Navigation.h"
@@ -458,3 +461,142 @@ bool FCoastPiersTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The triangle faces up"), T.N[0].Z > 0.99);
 	return true;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+/**
+ * Galveston 2: every moored boat floats at the lowest normal tide. At MLLW (the chart datum) there is water under her,
+ * deeper than her draft unless she lies in a marina basin; the boats the 10 m grid puts on land, the flats or the lawn
+ * are left out by the bake (Tools/coast/build_piers.py).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoastMooredBoatsAfloatTest, "SailingSim.Coast.MooredBoatsAfloat", Flags)
+bool FCoastMooredBoatsAfloatTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Galveston();
+	if (!TestTrue(TEXT("Galveston loads"), Lake.IsLoaded())) return false;
+	int32 OnLand = 0, Aground = 0, InMarina = 0, Gulf = 0;
+	for (const FMooredBoat& B : Lake.MooredBoats)
+	{
+		const double Ground = Lake.Terrain.HeightAt(B.Center.X, B.Center.Y);
+		// The bake's draft from length: keelboats 0.3 + 0.13 L, power boats 0.2 + 0.07 L.
+		const double Draft = B.bMast ? 0.3 + 0.13 * B.Length : 0.2 + 0.07 * B.Length;
+		if (Ground > 0.0 && OnLand++ < 3) AddInfo(FString::Printf(TEXT("On land at MLLW: %.0f, %.0f (%.2f m)"), B.Center.X, B.Center.Y, Ground));
+		if (Ground > -Draft && B.Marina == INDEX_NONE && Aground++ < 3) AddInfo(FString::Printf(TEXT("Aground: %.0f, %.0f (%.2f m under a %.1f m draft)"), B.Center.X, B.Center.Y, -Ground, Draft));
+		InMarina += B.Marina != INDEX_NONE;
+		Gulf += B.Center.X < -27600.0;
+	}
+	AddInfo(FString::Printf(TEXT("%d moored boats, %d in marinas, %d south of the old grid edge"), Lake.MooredBoats.Num(), InMarina, Gulf));
+	TestTrue(TEXT("Moored boats are there"), Lake.MooredBoats.Num() > 800);
+	TestEqual(TEXT("No moored boat on land at MLLW"), OnLand, 0);
+	TestEqual(TEXT("None aground outside a marina"), Aground, 0);
+	TestTrue(TEXT("The island's own marinas and canals have boats (south of the old edge)"), Gulf > 50);
+	return true;
+}
+
+/**
+ * Mac polish: the coast's moored power boats are drawn as a class that fits their measured length (the lidar's 5 to 39 m),
+ * not the trawler yacht scaled; the painted hulls are mostly white; every class's model is imported.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoastMooredPowerClassesTest, "SailingSim.Coast.MooredPowerClasses", Flags)
+bool FCoastMooredPowerClassesTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Galveston();
+	if (!TestTrue(TEXT("Galveston loads"), Lake.IsLoaded())) return false;
+	TArray<FBerthedBoat> Placed;
+	ACoastMarinasActor::PlaceBoats(Lake, Placed);
+	if (!TestEqual(TEXT("One neighbour per moored boat"), Placed.Num(), Lake.MooredBoats.Num())) return false;
+	TMap<uint8, int32> PerClass;
+	int32 Power = 0, Fits = 0, White = 0, Painted = 0;
+	TSet<uint32> Colours;
+	for (int32 I = 0; I < Placed.Num(); ++I)
+	{
+		const FBerthedBoat& B = Placed[I];
+		if (Lake.MooredBoats[I].bMast) continue;
+		TestTrue(TEXT("A power boat is drawn as a power class"), FBerthedBoat::IsPower(B.Type));
+		++Power;
+		++PerClass.FindOrAdd(B.Type);
+		Fits += FMath::Abs(B.Scale - 1.f) < 0.25f;
+		if (FBerthedBoat::IsPainted(B.Type))
+		{
+			const FLinearColor C = FBerthedBoat::PowerHullColour(uint32(I) * 7919u + 1u);
+			++Painted;
+			White += C.R > 0.7f && C.B > 0.7f;
+			Colours.Add(GetTypeHash(C.ToFColor(false)));
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d power boats: runabout %d, express %d, trawler %d, sportfisher %d, motor yacht %d; %d within 25%% of their length"), Power,
+		PerClass.FindRef(FBerthedBoat::PowerBoat), PerClass.FindRef(FBerthedBoat::PowerExpress), PerClass.FindRef(FBerthedBoat::PowerYacht),
+		PerClass.FindRef(FBerthedBoat::PowerSport), PerClass.FindRef(FBerthedBoat::PowerMotorYacht), Fits));
+	TestTrue(TEXT("Power boats are there"), Power > 300);
+	TestEqual(TEXT("All five classes appear"), PerClass.Num(), 5);
+	// The trawler yacht scaled from 11 m fitted 48% of them within 25%.
+	TestTrue(TEXT("Nine in ten are drawn within 25% of their measured length"), Fits > 0.9 * Power);
+	TestTrue(TEXT("Most painted hulls are white"), White > 0.55 * Painted && White < 0.8 * Painted);
+	TestTrue(TEXT("... and the rest come in several colours"), Colours.Num() >= 5);
+	for (const TCHAR* Name : { TEXT("Runabout"), TEXT("Committee"), TEXT("Express"), TEXT("Sportfish"), TEXT("MotorYacht") })
+	{
+		TestNotNull(*FString::Printf(TEXT("SM_Vessel_%s is imported"), Name),
+			LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Vessels/SM_Vessel_%s.SM_Vessel_%s"), Name, Name)));
+	}
+	return true;
+}
+
+/**
+ * Galveston 2: the Gulf front (Inputs/g2/gulf-front): the bay grid reaches south past the Seawall into the Gulf, with
+ * the whole Seawall, both jetties out to their head lights, the three named piers on their lidar decks and the groins.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoastGulfFrontTest, "SailingSim.Coast.GulfFront", Flags)
+bool FCoastGulfFrontTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Galveston();
+	if (!TestTrue(TEXT("Galveston loads"), Lake.IsLoaded())) return false;
+	const FLakeTerrain& T = Lake.Terrain;
+	AddInfo(FString::Printf(TEXT("Grid north %.0f to %.0f m"), T.GetOriginX(), T.GetOriginX() + T.GetRows() * T.GetCell()));
+	TestTrue(TEXT("The grid reaches south of the 90th Street pier"), T.GetOriginX() < -38000.0);
+	// Off the Pleasure Pier: open Gulf 1 km out, the island 600 m behind the Seawall.
+	TestTrue(TEXT("Gulf water off the Pleasure Pier"), T.HeightAt(-29600.0, 22600.0) < -3.0);
+	TestTrue(TEXT("Galveston Island behind the Seawall"), T.HeightAt(-28100.0, 22000.0) > 1.0);
+
+	auto Length = [](const TArray<FVector2D>& P) { double L = 0.0; for (int32 I = 1; I < P.Num(); ++I) L += FVector2D::Distance(P[I - 1], P[I]); return L; };
+	double Seawall = 0.0, Jetty = 0.0;
+	int32 Groins = 0;
+	FVector2D NorthHead(-22070.63, 33127.55), SouthHead(-23998.8, 32082.08);
+	double NorthGap = 1e9, SouthGap = 1e9;
+	for (const FLakeDock& D : Lake.Docks)
+	{
+		if (D.Kind == TEXT("seawall")) Seawall = FMath::Max(Seawall, Length(D.Points));
+		if (D.Kind == TEXT("breakwater") && D.Width > 0.f && D.Points.Num() > 1)
+		{
+			Jetty = FMath::Max(Jetty, Length(D.Points));
+			for (const FVector2D& P : { D.Points[0], D.Points.Last() })
+			{
+				NorthGap = FMath::Min(NorthGap, FVector2D::Distance(P, NorthHead));
+				SouthGap = FMath::Min(SouthGap, FVector2D::Distance(P, SouthHead));
+			}
+		}
+		if (D.Kind == TEXT("groin") && D.Points.Num() > 1 && D.Points[0].X < -27600.0) ++Groins;
+	}
+	AddInfo(FString::Printf(TEXT("Seawall %.0f m, longest jetty %.0f m, %d Gulf groins; jetty ends %.0f m and %.0f m from Lights 6A and 5A"), Seawall, Jetty, Groins, NorthGap, SouthGap));
+	TestTrue(TEXT("The whole Seawall (10,959 m)"), Seawall > 10500.0);
+	TestTrue(TEXT("The North Jetty to its head (5,980 m)"), Jetty > 5900.0);
+	TestTrue(TEXT("A jetty ends at North Jetty Light 6A"), NorthGap < 30.0);
+	TestTrue(TEXT("A jetty ends at South Jetty Light 5A"), SouthGap < 30.0);
+	TestTrue(TEXT("The Gulf groins (15 lidar, more charted)"), Groins >= 15);
+
+	struct FPier { const TCHAR* Name; FVector2D At; float Deck; };
+	const FPier Piers[] = { { TEXT("Pleasure Pier"), FVector2D(-28630.64, 22304.28), 10.05f }, { TEXT("61st Street pier"), FVector2D(-31005.78, 18878.34), 4.8f },
+		{ TEXT("90th Street pier"), FVector2D(-32654.62, 16192.74), 5.21f } };
+	for (const FPier& P : Piers)
+	{
+		bool bFound = false;
+		for (const FLakeDeck& D : Lake.Decks)
+		{
+			FVector2D C = FVector2D::ZeroVector;
+			for (const FVector2D& V : D.Outline) C += V;
+			C /= FMath::Max(D.Outline.Num(), 1);
+			bFound |= FVector2D::Distance(C, P.At) < 60.0 && FMath::Abs(D.Deck - P.Deck) < 0.05f;
+		}
+		TestTrue(*FString::Printf(TEXT("%s on its lidar deck (%.2f m)"), P.Name, P.Deck), bFound);
+	}
+	return true;
+}
+#endif

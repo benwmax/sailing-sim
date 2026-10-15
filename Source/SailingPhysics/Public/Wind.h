@@ -182,6 +182,11 @@ namespace Sailing
 
 		/** The puff layer alone at a point: its speed factor (1 = none) and shift (rad). For the tests and the README. */
 		void PuffAt(double X, double Y, double TimeSeconds, double& OutFactor, double& OutShift) const;
+		/**
+		 * W3: how strong the gusts are here relative to the field's (the stations', at the shore): they ease with fetch
+		 * from the upwind shore (FShelterMap::GustAt, W6's LES over the lake). 1 without a shelter map.
+		 */
+		double GustScaleAt(double X, double Y) const;
 		/** Where the puffs drift (m/s, world) and the frames' current state. */
 		Vec3 PuffDrift() const { return Vec3(Puffs.VX, Puffs.VY, 0.0); }
 		/** Derived sizes (m) and shares, for the README and tests. */

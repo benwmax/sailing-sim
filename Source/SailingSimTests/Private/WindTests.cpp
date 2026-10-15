@@ -300,7 +300,8 @@ bool FWindShelterBandTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Still sheltered 10 heights downwind"), LeeAtHeights(10) < 0.6);
 	TestTrue(TEXT("Mostly recovered by 20 heights"), LeeAtHeights(20) > 0.65 && LeeAtHeights(20) < 0.92);
 	TestTrue(TEXT("Gone by 30 heights"), LeeAtHeights(32) > 0.98);
-	TestTrue(TEXT("The wind builds over open water"), Shelter.BuildAt(1160.0, 100.0) < 0.85 && Shelter.BuildAt(20.0, 100.0) > 0.94);
+	// W6's LES: 0.91 of the open-water wind at the shore, full by about a kilometre.
+	TestTrue(TEXT("The wind builds over open water"), Shelter.BuildAt(1160.0, 100.0) < 0.94 && Shelter.BuildAt(20.0, 100.0) > 0.99);
 	TestEqual(TEXT("Factor is lee times build"), Shelter.FactorAt(800.0, 100.0), Shelter.LeeAt(800.0, 100.0) * Shelter.BuildAt(800.0, 100.0), 1e-9);
 
 	// Without the trees a 1 m bank hardly shelters; a row of 9 m houses on it does.

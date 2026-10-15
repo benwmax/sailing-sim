@@ -46,20 +46,68 @@ namespace Sailing
 		for (double& A : TargetAmplitude) A = 0.0;
 	}
 
+	double FWaveField::AdjustedWindSpeed(double WindMs)
+	{
+		// The wind-stress factor of the fetch-limited growth laws: U_A = 0.71 U^1.23 (U the 10 m wind in m/s). Stress on
+		// the water grows faster than the speed (the drag coefficient rises with the wind), so the same laws written in U_A
+		// grow a strong wind's sea faster than in U. Shore Protection Manual (1984) eq. 3-28, the form the Coastal
+		// Engineering Manual (EM 1110-2-1100, Part II-2) discusses and keeps for these SPM growth curves. W3's SWAN bake of
+		// Ray Hubbard: with U the lake's median Hs was 16% low at 18 kn, 35% at 22 and 61% at 28 (docs/w3-prep).
+		return WindMs > 0.0 ? 0.71 * std::pow(WindMs, 1.23) : 0.0;
+	}
+
+	double FWaveField::GrowthStressWind(double WindMs)
+	{
+		// Physics gaps: past 18 kn the lake's sea grows faster than U_A gives. In W3's SWAN bake of Ray Hubbard the median
+		// Hs goes as U^1.2 from 5 to 14 kn (U_A's own 1.23) but as U^1.68 from 18 to 22 kn and U^1.66 from 22 to 28, and in
+		// U_A the game was 9% low at 22 kn and 18% at 28. It isn't the fetch: the shortfall grows with the wind alike over
+		// the lake's short and long fetches (SWAN / game rose 1.50 times at the 10th percentile, 1.49 at the median and 1.65
+		// at the 90th from 14 to 28 kn), none of it sits at the 15 km cap, and full development (gF/U_A^2 = 2.3e4) is far
+		// off. It's the young, strongly forced end of the growth law: at 28 kn the lake's median effective fetch (1.6 km) is
+		// gF/U_A^2 = 45, against 250 at 14 kn, and SWAN's wind input there (Yan 1987, used with the Westhuysen whitecapping
+		// the bake ran) grows with (u*/c)^2, faster than the SPM's power law fitted to older seas. So above 18 kn the stress
+		// wind steepens by (U / 18 kn)^0.43, which makes Hs go as U^1.66 there, as SWAN's does (docs/physics-gaps). It is
+		// continuous at 18 kn and leaves everything below it, the reference checks' 15 kn included, as it was.
+		constexpr double KneeMs = 18.0 * kKnot;
+		return AdjustedWindSpeed(WindMs) * (WindMs > KneeMs ? std::pow(WindMs / KneeMs, 0.43) : 1.0);
+	}
+
+	double FWaveField::GrowthLawHeight(double StressWindMs, double FetchMeters)
+	{
+		const double U2 = StressWindMs * StressWindMs;
+		if (U2 <= 0.0) return 0.0;
+		const double Dimensionless = std::min(0.0016 * std::sqrt(kGravity * FetchMeters / U2), 0.243);
+		return Dimensionless * U2 / kGravity;
+	}
+
+	double FWaveField::GrowthLawPeriod(double StressWindMs, double FetchMeters)
+	{
+		const double U2 = StressWindMs * StressWindMs;
+		if (U2 <= 0.0) return 1.0;
+		const double Dimensionless = std::min(0.286 * std::cbrt(kGravity * FetchMeters / U2), 8.13);
+		return std::max(Dimensionless * StressWindMs / kGravity, 0.6);
+	}
+
 	double FWaveField::TargetSignificantHeight(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 0.0;
-		const double U2 = WindMs * WindMs;
-		const double Dimensionless = std::min(0.0016 * std::sqrt(kGravity * FetchMeters / U2), 0.243);
-		return Dimensionless * U2 / kGravity;
+		return GrowthLawHeight(GrowthStressWind(WindMs), FetchMeters);
 	}
 
 	double FWaveField::TargetPeakPeriod(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 1.0;
-		const double U2 = WindMs * WindMs;
-		const double Dimensionless = std::min(0.286 * std::cbrt(kGravity * FetchMeters / U2), 8.13);
-		return std::max(Dimensionless * WindMs / kGravity, 0.6);
+		// Mac polish: the period of the steepened sea follows Toba's 3/2 law in U_A, not the stress wind. GrowthStressWind
+		// stands in for SWAN's faster growth of a young sea above 18 kn, but the air's stress on the water is still U_A's:
+		// the extra height comes from the sea being further along its growth (older, in effect a longer fetch), not from a
+		// stronger wind. The SPM pair is Toba's law, Hs ~ U_A^(1/2) Tp^(3/2) (Hs ~ U_A F^(1/2), Tp ~ U_A^(1/3) F^(1/3)), so
+		// at the same U_A the period goes as Hs^(2/3): (U / 18 kn)^0.29 above 18 kn where the stress wind gave its cube
+		// root, (U / 18 kn)^0.14. SWAN's lake medians follow Toba within 3% from 18 to 28 kn (Hs x2.09, Tp x1.41 against
+		// x1.37 from the law), and the game's periods there were 7% short at 22 kn and 11% at 28 (docs/mac-polish).
+		const double Ua = AdjustedWindSpeed(WindMs);
+		const double HsA = GrowthLawHeight(Ua, FetchMeters);
+		const double Older = HsA > 0.0 ? TargetSignificantHeight(WindMs, FetchMeters) / HsA : 1.0;
+		return GrowthLawPeriod(Ua, FetchMeters) * std::pow(Older, 2.0 / 3.0);
 	}
 
 	void FWaveField::SetWind(const FWaveParams& InParams)
@@ -73,8 +121,9 @@ namespace Sailing
 	void FWaveField::ComputeTargetAmplitudes()
 	{
 		const double U = Params.WindSpeedKnots * kKnot;
-		const double Hs = TargetSignificantHeight(U, Params.FetchMeters);
-		const double Tp = TargetPeakPeriod(U, Params.FetchMeters);
+		const bool bCalm = U < 0.5;
+		const double Hs = bCalm ? 0.0 : Params.bCalibrationSea ? GrowthLawHeight(U, Params.FetchMeters) : TargetSignificantHeight(U, Params.FetchMeters);
+		const double Tp = bCalm ? 1.0 : Params.bCalibrationSea ? GrowthLawPeriod(U, Params.FetchMeters) : TargetPeakPeriod(U, Params.FetchMeters);
 		const double Fp = 1.0 / Tp;
 		// Waves travel downwind.
 		const double TravelDir = Params.WindFromDegrees * kDegToRad + kPi;
@@ -189,6 +238,21 @@ namespace Sailing
 		return 4.0 * std::sqrt(Variance);
 	}
 
+	double FWaveField::SignificantHeightAt(double X, double Y) const
+	{
+		double Variance = 0.0;
+		for (const FWaveComponent& C : Components) Variance += 0.5 * C.Amplitude * C.Amplitude;
+		if (Ocean) Variance += OceanShareAt(X, Y) * Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
+		return 4.0 * std::sqrt(Variance);
+	}
+
+	double FWaveField::OceanShareAt(double X, double Y) const
+	{
+		if (!Ocean) return 0.0;
+		const double M = Ocean->MaskAt(X, Y);
+		return M * M;
+	}
+
 	double FWaveField::MeanDirection() const
 	{
 		double X = 0.0, Y = 0.0;
@@ -246,6 +310,7 @@ namespace Sailing
 			B.Direction = std::atan2(C.Ky, C.Kx);
 			BandCache.push_back(B);
 		}
+		BandOceanStart = BandCache.size();
 		if (Ocean) BandCache.insert(BandCache.end(), Ocean->Bands().begin(), Ocean->Bands().end());
 		return BandCache;
 	}

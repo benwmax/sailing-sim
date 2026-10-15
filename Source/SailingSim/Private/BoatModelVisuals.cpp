@@ -7,6 +7,15 @@
 // wind (its material's world position offset; the rig points on it follow the same curve), the traveler car moves
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
+#include "CrewAnimInstance.h"
+#include "CrewMotion.h"
+#include "EngineUtils.h"
+#include "TrafficManager.h"
+#include "Race.h"
+#include "Traffic.h"
+#include "UnrealClient.h"
+#include "Misc/Paths.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "BoatLivery.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
@@ -17,7 +26,6 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "ProceduralMeshComponent.h"
-#include "Components/PoseableMeshComponent.h"
 #include "CrewPose.h"
 
 using namespace Sailing;
@@ -291,8 +299,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		if (!Crew.IsValidIndex(I) || !Crew[I] || !Crew[I]->IsVisible()) return {};
 		const FTransform& Root = BoatRoot->GetComponentTransform();
-		const FVector L = Root.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("hand_l"), EBoneSpaces::WorldSpace));
-		const FVector R = Root.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("hand_r"), EBoneSpaces::WorldSpace));
+		const FVector L = Root.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("hand_l"), EBoneSpaces::WorldSpace));
+		const FVector R = Root.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("hand_r"), EBoneSpaces::WorldSpace));
 		return FVector::DistSquared(L, To) < FVector::DistSquared(R, To) ? L : R;
 	};
 	const int32 NumCrew = Crew.Num();
@@ -375,7 +383,7 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 	// The hull is wet up to the highest recent water around it and dries back down at about 3 cm a minute.
 	const double WaterHere = WaterSurfaceZ + GM->GetWaves().Height(O.X, O.Y, S.Time) * CmPerMeter;
 	WetLineZ = FMath::Max(WetLineZ - DeltaSeconds * 0.05, WaterHere);
-	const double Hs = GM->GetWaves().SignificantHeight();
+	const double Hs = GM->GetWaves().SignificantHeightAt(O.X, O.Y);
 	const float Knots = float(T.SpeedThroughWater / 0.514444);
 	// Splash band: the bow wave and the chop climb the topsides with speed and sea.
 	const float Band = 4.f + float(Hs) * 45.f + FMath::Clamp(Knots - 3.f, 0.f, 6.f) * 2.5f;
@@ -390,19 +398,18 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 
 void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 {
-	// Visual V3: each sailor's stance and place from the physics crew model (CrewPose.h), blended over a fraction of a
-	// second so a tack or a hike reads as movement, not a cut.
+	// Visual V3: each sailor's stance and place from the physics crew model (CrewPose.h). Crew C1: placed here
+	// (CrewPlacement, shared with the tests) with a minimum-jerk move on each change of stance; the joints are posed by each
+	// sailor's animation node on the animation threads (CrewMotion.h: the stance, the reaction to the boat's motion,
+	// breathing, the feet, hands and head). This hands each node its frame.
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 	const FBoatConfig& Cfg = Boat.GetConfig();
-	const FHullShape& Hull = Cfg.Hulls[0];
 	const int32 N = Crew.Num();
 	const double Rate = DeltaSeconds > 1e-4f ? (S.CrewOffset - PrevCrewOffset) / DeltaSeconds : 0.0;
 	PrevCrewOffset = S.CrewOffset;
-	const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
-	const float Side = S.CrewOffset != 0.0 ? float(FMath::Sign(S.CrewOffset)) : float(S.WindwardSide);
-	const double Out = FMath::Abs(S.CrewOffset);
-	const float Blend = 1.f - FMath::Exp(-DeltaSeconds * 7.f);
+	const double BoomRate = DeltaSeconds > 1e-4f ? (S.BoomAngle - PrevBoomAngle) / DeltaSeconds : 0.0;
+	PrevBoomAngle = S.BoomAngle;
 	// Graphics G8: what the hands hold (round 8: open hands in the air read as a mannequin). The helm has the tiller
 	// extension in the aft hand and the mainsheet in the other, the trimmer the working jib sheet's tail; the rest rest
 	// their hands on their knees.
@@ -414,79 +421,97 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 	const bool bJibTail = Cfg.HasJib() && ModelHull && ModelHull->DoesSocketExist(TEXT("JibTailer_S"));
 	const FVector Tailer = bJibTail ? RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P")) : FVector::ZeroVector;
 	const FTransform& RootTM = BoatRoot->GetComponentTransform();
+	auto Has = [](const UStaticMeshComponent* Part, const TCHAR* Socket) { return Part && Part->DoesSocketExist(Socket); };
+
+	// Crew C1: the boat's motion (boat frame) for each sailor's felt gravity.
+	FCrewBoatMotion Motion;
+	Motion.Gravity = RootTM.InverseTransformVectorNoScale(FVector(0.0, 0.0, -9.81));
+	Motion.Accel = FVector(T.AccelBody.X, T.AccelBody.Y, T.AccelBody.Z);
+	Motion.Omega = FVector(S.AngularVelocity.X, S.AngularVelocity.Y, S.AngularVelocity.Z);
+	Motion.Alpha = FVector(T.AngularAccelBody.X, T.AngularAccelBody.Y, T.AngularAccelBody.Z);
+	const FVector CG(Boat.GetCenterOfGravity().X, Boat.GetCenterOfGravity().Y, Boat.GetCenterOfGravity().Z);
+	// What they look at (boat frame, cm): the jib's luff telltales, the water upwind for the next puff, ahead, and the next
+	// mark or another boat close by (the player's crew; looked for once a second).
+	const FVector Telltale = Has(ModelHull, TEXT("ForestayTack")) && Has(ModelMast, TEXT("Hounds"))
+		? FMath::Lerp(RigPoint(ModelHull, TEXT("ForestayTack")), RigPoint(ModelMast, TEXT("Hounds")), 0.3f) + FVector(-35.f, 0.f, 0.f)
+		: FVector(Cfg.MastX * CmPerMeter + 60.0, 0.0, 250.0);
+	const FVector Upwind = FVector(FMath::Cos(T.TrueWindAngle), FMath::Sin(T.TrueWindAngle), 0.0) * 3500.0;
+	const FVector Ahead(2500.0, 0.0, 80.0);
+	if (!bTrafficBoat && S.Time >= NextGazeSearch)
+	{
+		NextGazeSearch = S.Time + 1.0;
+		GazeBoatCm = FVector::ZeroVector;
+		double Best = FMath::Square(250.0 * CmPerMeter);
+		for (TActorIterator<ASailboatPawn> It(GetWorld()); It; ++It)
+		{
+			if (*It == this || It->bGhost) continue;
+			const double D2 = FVector::DistSquared(It->GetActorLocation(), GetActorLocation());
+			if (D2 < Best) { Best = D2; GazeBoatCm = RootTM.InverseTransformPosition(It->GetActorLocation() + FVector(0.0, 0.0, 150.0)); }
+		}
+		// Racing: the next mark before any boat (map metres are the physics frame's).
+		const ATrafficManager* TM = ATrafficManager::Find(GetWorld());
+		const FRaceRunner* Race = TM ? TM->GetRace() : nullptr;
+		const FRaceEntry* Me = Race ? Race->FindEntry(FTrafficSim::PlayerId) : nullptr;
+		if (Me && Me->bStarted && Me->NextMark < int32(Race->Course.Marks.size()))
+		{
+			const FRaceMark& M = Race->Course.Marks[Me->NextMark];
+			const Vec3 O = Boat.OriginPosition();
+			GazeBoatCm = RootTM.InverseTransformPosition(RootTM.GetLocation() + FVector(M.X - O.X, M.Y - O.Y, 0.0) * CmPerMeter);
+		}
+	}
+	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return float(X & 0xffffff) / float(0x1000000); };
+
 	for (int32 I = 0; I < N && I < CrewFigures.Num(); ++I)
 	{
-		const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I);
-		const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
-		const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
-		const bool bHelm = I == N - 1;
-		FCrewPoseParams P;
-		P.Side = Side;
-		P.Hike = float(FMath::Clamp((Out - Cfg.CrewSitOut * 0.8) / FMath::Max(Cfg.CrewHikeOut, 0.1), 0.0, 1.0));
-		FVector Pelvis;
-		float Roll = 0.f;
-		if (T.bCapsized && Controls.bRighting)
-		{
-			P.Stance = ECrewStance::Righting;
-			Pelvis = FVector(X, S.CrewOffset, Sheer + 0.45 + S.CrewOffsetZ);
-		}
-		else if (Cfg.bTrapeze && !bHelm && Out > Rail)
-		{
-			// On the wire: feet on the rail, body out over the water.
-			P.Stance = ECrewStance::Trapeze;
-			Pelvis = FVector(X, Side * (Rail + 0.8), Sheer + 0.35);
-			Roll = 72.f * Side;
-		}
-		else if (FMath::Abs(Rate) > 0.6)
-		{
-			P.Stance = ECrewStance::Crossing;
-			P.Side = -float(FMath::Sign(Rate)); // facing the side they are heading for
-			Pelvis = FVector(X, S.CrewOffset, Sheer + (bDinghy ? 0.25 : 0.05));
-		}
-		else if (bDinghy)
-		{
-			P.Stance = ECrewStance::DinghyHike;
-			Pelvis = FVector(X, Side * (Rail - 0.04), Sheer + 0.06);
-		}
-		else if (bHelm)
-		{
-			P.Stance = ECrewStance::Helm;
-			Pelvis = FVector(X, Side * FMath::Max(Rail - 0.18, 0.3), Sheer + 0.07);
-		}
-		else if (Out > 0.55 * Rail)
-		{
-			P.Stance = ECrewStance::RailHike;
-			Pelvis = FVector(X, Side * (Rail - 0.02), Sheer + 0.07);
-		}
-		else
-		{
-			// Light air or downwind: on the cockpit seat (to leeward if the crew model put them there).
-			P.Stance = ECrewStance::Cockpit;
-			Pelvis = FVector(X, Side * FMath::Clamp(Out, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
-		}
-		TMap<FName, FQuat> Target;
-		CrewJointRotations(P, Target);
+		FCrewPlaceInput Place;
+		Place.Config = &Cfg;
+		Place.Index = I;
+		Place.CrewOffset = S.CrewOffset;
+		Place.CrewOffsetZ = S.CrewOffsetZ;
+		Place.WindwardSide = S.WindwardSide;
+		Place.OffsetRate = Rate;
+		Place.bRighting = T.bCapsized && Controls.bRighting;
+		Place.BoomAngle = S.BoomAngle;
+		Place.BoomRate = BoomRate;
+		Place.TrueWindAngle = T.TrueWindAngle;
+		Place.TurnRate = S.AngularVelocity.Z;
+		FCrewPlacement Pl;
+		CrewPlacement(Place, Pl);
+		const FCrewPoseParams& P = Pl.Params;
+		const bool bHelm = Pl.bHelm;
 		FCrewFigure& F = CrewFigures[I];
 		const FCrewRig* Rig = MetaCrewRigs.IsValidIndex(F.Rig) ? &MetaCrewRigs[F.Rig] : nullptr;
-		const float Yaw = CrewFacingYaw(P);
 		// The sailor's pelvis is 93 cm above the feet; a MetaHuman's is where its skeleton has it, turned with the figure.
-		const FVector Location = Rig ? Pelvis * CmPerMeter - (FQuat(FRotator(0.f, Yaw, Roll)) * Rig->Frame.Inverse()).RotateVector(Rig->Pelvis)
-			: Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f);
+		const FVector Location = Rig ? Pl.Pelvis * CmPerMeter - (FQuat(FRotator(0.f, Pl.Yaw, Pl.Roll)) * Rig->Frame.Inverse()).RotateVector(Rig->Pelvis)
+			: Pl.Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f);
 		if (!F.bStarted)
 		{
-			F.Joints = Target;
-			F.Location = Location;
-			F.Yaw = Yaw;
-			F.Roll = Roll;
+			F.Location = F.FromLocation = Location;
+			F.Yaw = F.FromYaw = Pl.Yaw;
+			F.Roll = F.FromRoll = Pl.Roll;
+			F.Stance = P.Stance;
+			F.TransitionS = 1.f;
 			F.bStarted = true;
 		}
 		else
 		{
-			for (TPair<FName, FQuat>& J : F.Joints) J.Value = FQuat::Slerp(J.Value, Target.Contains(J.Key) ? Target[J.Key] : FQuat::Identity, Blend);
-			for (const TPair<FName, FQuat>& J : Target) if (!F.Joints.Contains(J.Key)) F.Joints.Add(J.Key, FQuat::Slerp(FQuat::Identity, J.Value, Blend));
-			F.Location = FMath::Lerp(F.Location, Location, Blend);
-			F.Yaw = F.Yaw + FMath::FindDeltaAngleDegrees(F.Yaw, Yaw) * Blend;
-			F.Roll = FMath::Lerp(F.Roll, Roll, Blend);
+			// Crew C1: a change of stance moves by minimum jerk over its own time (not a fixed 7/s blend); between changes
+			// the figure follows its place (the crew model's own motion is smooth).
+			if (P.Stance != F.Stance)
+			{
+				F.TransitionSeconds = CrewTransitionSeconds(F.Stance, P.Stance);
+				F.FromLocation = F.Location;
+				F.FromYaw = F.Yaw;
+				F.FromRoll = F.Roll;
+				F.TransitionS = 0.f;
+				F.Stance = P.Stance;
+				++F.Transition;
+			}
+			F.TransitionS = FMath::Min(1.f, F.TransitionS + DeltaSeconds / FMath::Max(F.TransitionSeconds, 0.05f));
+			const float W = CrewMinJerk(F.TransitionS);
+			F.Location = FMath::Lerp(F.FromLocation, Location, W);
+			F.Yaw = F.FromYaw + FMath::FindDeltaAngleDegrees(F.FromYaw, Pl.Yaw) * W;
+			F.Roll = FMath::Lerp(F.FromRoll, Pl.Roll, W);
 		}
 		const FQuat Facing(FRotator(0.f, F.Yaw, 0.f) + FRotator(0.f, 0.f, F.Roll));
 		const FQuat CompRot = Rig ? Facing * Rig->Frame.Inverse() : Facing;
@@ -494,10 +519,11 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 
 		// The hands: targets in the boat frame from the shoulders as last posed, then into the figure's own frame.
 		FCrewHands Hands;
+		float Tension[2] = { 0.f, 0.f };
 		const FTransform CompTM(CompRot, F.Location);
 		const FVector Shoulder[2] = {
-			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("upperarm_l"), EBoneSpaces::WorldSpace)),
-			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocationByName(TEXT("upperarm_r"), EBoneSpaces::WorldSpace)) };
+			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("upperarm_l"), EBoneSpaces::WorldSpace)),
+			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("upperarm_r"), EBoneSpaces::WorldSpace)) };
 		constexpr double Reach = 60.0; // shoulder to palm, cm
 		auto Hold = [&](int32 Hand, const FVector& At, TOptional<FVector>& Grip)
 		{
@@ -508,24 +534,27 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			Grip = At;
 			return true;
 		};
+		// Crew C1: how hard each line pulls (the arms take it): the helm force at the tiller, the sails' load on the sheets.
+		const float HelmLoad = float(FMath::Clamp(FMath::Abs(T.HelmForce) / 120.0, 0.0, 1.0));
+		const float SheetLoad = float(FMath::Clamp(FMath::Sqrt(FMath::Square(T.DriveForce) + FMath::Square(T.HeelingForce)) / 2500.0, 0.0, 1.0));
 		const bool bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::DinghyHike || P.Stance == ECrewStance::Cockpit
 			|| P.Stance == ECrewStance::RailHike;
 		if (bSeated && !bTrafficBoat)
 		{
 			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
-			const FVector Ahead = FRotator(0.f, F.Yaw, 0.f).Vector();
+			const FVector Toward = FRotator(0.f, F.Yaw, 0.f).Vector();
 			if (bHelm && bTiller)
 			{
 				// The extension (about 90 cm) from the tiller's end up to the aft hand, held low beside the hip.
 				const FVector ToShoulder = Shoulder[Aft] + FVector(0.f, 0.f, -32.f) - TillerEnd;
 				const double Len = FMath::Min(90.0, ToShoulder.Size() - 25.0);
-				if (Len > 20.0) Hold(Aft, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm);
+				if (Len > 20.0 && Hold(Aft, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm)) Tension[Aft] = HelmLoad;
 				// The mainsheet's tail from its block on the car, held out in front at lap height.
 				if (!MainsheetCarCm.IsZero())
 				{
 					const int32 Fwd = 1 - Aft;
-					const FVector At = Shoulder[Fwd] + (MainsheetCarCm - Shoulder[Fwd]).GetSafeNormal() * 8.0 + Ahead * 30.0 + FVector(0.f, 0.f, -36.f);
-					Hold(Fwd, At, MainGripCm);
+					const FVector At = Shoulder[Fwd] + (MainsheetCarCm - Shoulder[Fwd]).GetSafeNormal() * 8.0 + Toward * 30.0 + FVector(0.f, 0.f, -36.f);
+					if (Hold(Fwd, At, MainGripCm)) Tension[Fwd] = 0.6f * SheetLoad;
 				}
 			}
 			else if (!bHelm && bJibTail && I == N - 2)
@@ -533,26 +562,67 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 				// The trimmer: the working sheet's tail a forearm's length off its self-tailer.
 				const int32 Near = FVector::DistSquared(Shoulder[0], Tailer) < FVector::DistSquared(Shoulder[1], Tailer) ? 0 : 1;
 				const FVector ToShoulder = Shoulder[Near] - Tailer;
-				Hold(Near, Tailer + ToShoulder.GetSafeNormal() * FMath::Clamp(ToShoulder.Size() - 40.0, 25.0, 55.0), JibGripCm);
+				if (Hold(Near, Tailer + ToShoulder.GetSafeNormal() * FMath::Clamp(ToShoulder.Size() - 40.0, 25.0, 55.0), JibGripCm)) Tension[Near] = 0.4f * SheetLoad;
 			}
 			for (int32 Hand = 0; Hand < 2; ++Hand)
 			{
 				if (Hands.Mode[Hand] == FCrewHands::EMode::Free && P.Stance != ECrewStance::DinghyHike) Hands.Mode[Hand] = FCrewHands::EMode::Knee;
 			}
 		}
-		// Crew pose fix: the feet stand on the deck, the seats or the sole, never inside the boat (CrewPose.h).
-		FCrewGround Ground;
-		Ground.Config = &Cfg;
-		Ground.HullDepth = Boat.HullDepth();
-		Ground.ToBoat = CompTM;
-		Hands.Ground = &Ground;
-		ApplyCrewPose(Crew[I], F.Joints, Rig, &Hands);
+
+		// Crew C1: the frame for this sailor's animation node.
+		UCrewAnimInstance* Anim = Cast<UCrewAnimInstance>(Crew[I]->GetAnimInstance());
+		if (!Anim) continue;
+		FCrewMotionInput In;
+		In.Params = P;
+		In.Transition = F.Transition;
+		In.TransitionSeconds = F.TransitionSeconds;
+		In.Duck = Pl.Duck;
+		In.ToBoat = CompTM;
+		In.Motion = Motion;
+		In.SeatFromCG = Pl.Pelvis - CG;
+		In.Hands = Hands;
+		In.Tension[0] = Tension[0];
+		In.Tension[1] = Tension[1];
+		In.Time = float(S.Time);
+		In.Seed = uint32(I) * 977u + (bTrafficBoat ? GetUniqueID() : 0u);
+		In.bReact = !FParse::Param(FCommandLine::Get(), TEXT("SailingCrewStill"));
+		// The handholds and braces: the model's sockets (J22H_sockets.json names) where it has them, else from the geometry.
+		CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
+		for (int32 Sd = 0; Sd < 2; ++Sd)
+		{
+			const TCHAR* Sx = Sd == 0 ? TEXT("_S") : TEXT("_P");
+			auto Socket = [&](const TCHAR* Name, FVector& Out) { const FString Full = FString(Name) + Sx; if (Has(ModelHull, *Full)) Out = RigPoint(ModelHull, FName(*Full)); };
+			Socket(TEXT("HandholdCabin"), In.Attach.HandholdCabin[Sd]);
+			Socket(TEXT("HandholdCoaming"), In.Attach.HandholdCoaming[Sd]);
+			Socket(TEXT("Seat"), In.Attach.Seat[Sd]);
+			Socket(TEXT("FootBrace"), In.Attach.FootBrace[Sd]);
+			Socket(TEXT("SideDeck"), In.Attach.SideDeck[Sd]);
+		}
+		// Glances of a couple of seconds: the helm and trimmer mostly at the telltales, the bow ahead and upwind.
+		const float Slot = FMath::FloorToFloat((float(S.Time) + 1.7f * I) / 2.4f);
+		const float R = Hash(In.Seed * 131u + uint32(int32(Slot)));
+		const bool bOther = !GazeBoatCm.IsZero();
+		if (P.Stance == ECrewStance::Crossing) In.Gaze = Ahead;
+		else if (bHelm || I == N - 2) In.Gaze = R < 0.5f ? Telltale : R < 0.72f ? Upwind : R < 0.9f || !bOther ? Ahead : GazeBoatCm;
+		else In.Gaze = R < 0.4f ? Ahead : R < 0.75f || !bOther ? Upwind : GazeBoatCm;
+		Anim->SetMotionInput(In);
+		// Stills of a tack: -SailingShotCrew=<name> saves Saved/Bench/<name>.png once the helm is crouched under the boom.
+		static bool bCrewShot = false;
+		FString CrewShot;
+		if (!bCrewShot && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(FCommandLine::Get(), TEXT("SailingShotCrew="), CrewShot))
+		{
+			bCrewShot = true;
+			FScreenshotRequest::RequestScreenshot(FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *CrewShot)), false, false);
+		}
 		static double LastDebug = 0.0;
 		if (FParse::Param(FCommandLine::Get(), TEXT("SailingDebugCrew")) && S.Time - LastDebug > 1.0 && !bTrafficBoat)
 		{
 			if (I == N - 1) LastDebug = S.Time;
-			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d: shoulders %s / %s, tiller %d %s, car %s, modes %d %d"), I, int32(P.Stance), *Shoulder[0].ToString(), *Shoulder[1].ToString(),
-				int32(bTiller), *TillerEnd.ToString(), *MainsheetCarCm.ToString(), int32(Hands.Mode[0]), int32(Hands.Mode[1]));
+			const FCrewMotionReport& Rep = Anim->GetReport();
+			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d duck %.2f: modes %d %d, felt %s, tip %.2f%s, head %.1f deg; accel %s omega %s alpha %s"), I, int32(P.Stance), Pl.Duck,
+				int32(Hands.Mode[0]), int32(Hands.Mode[1]), *Rep.Felt.ToString(), Rep.TipRatio, Rep.bBracing ? TEXT(" bracing") : TEXT(""), Rep.HeadTiltDeg,
+				*Motion.Accel.ToString(), *Motion.Omega.ToString(), *Motion.Alpha.ToString());
 		}
 	}
 }

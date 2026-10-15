@@ -41,7 +41,7 @@
 #include "HAL/IConsoleManager.h"
 #include "Misc/FileHelper.h"
 #include "Materials/MaterialParameterCollection.h"
-#include "Components/PoseableMeshComponent.h"
+#include "CrewAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 
@@ -507,6 +507,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 
 	// Crew (Visual V3): posed sailors in foul-weather jackets of their own colours (CrewPose.h).
 	CrewFigures.Reset();
+	CrewConfig.Reset(); // a copy of this config for the crew's animation (NewCrewBody)
 	CrewGrooms.Reset();
 	static const FLinearColor Jackets[] = { FLinearColor(0.45f, 0.03f, 0.03f), FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.55f, 0.42f, 0.02f), FLinearColor(0.12f, 0.13f, 0.14f) };
 	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
@@ -516,7 +517,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
 	{
 		const int32 CrewRole = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
-		if (UPoseableMeshComponent* Figure = AddMetaHumanFigure(CrewRole, I))
+		if (USkeletalMeshComponent* Figure = AddMetaHumanFigure(CrewRole, I))
 		{
 			Crew.Add(Figure);
 			CrewFigures.AddDefaulted_GetRef().Rig = CrewRole;
@@ -524,11 +525,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 	for (int32 I = 0; I < C.CrewCount && SailorMesh && !bMeta; ++I)
 	{
-		UPoseableMeshComponent* Figure = NewObject<UPoseableMeshComponent>(this);
-		Figure->SetupAttachment(BoatRoot);
-		Figure->SetSkinnedAssetAndUpdate(SailorMesh);
-		Figure->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		Figure->RegisterComponent();
+		USkeletalMeshComponent* Figure = NewCrewBody(SailorMesh, -1);
 		for (const TPair<FName, TObjectPtr<UMaterialInterface>>& M : CrewMaterials) Figure->SetMaterialByName(M.Key, M.Value);
 		const int32 JacketSlot = Figure->GetMaterialIndex(TEXT("Jacket"));
 		if (JacketSlot >= 0)
@@ -1191,7 +1188,7 @@ FLogEntry ASailboatPawn::MakeLogEntry(const TCHAR* Kind, const FString& Remarks)
 		E.HeadingMagnetic = SailingNav::TrueToMagnetic(GetHeadingTrueDeg(), GM->GetLake().VariationDeg);
 		E.WindFromDeg = SailingNav::NormalizeDeg(GM->GetWeatherState().Wind.FromDegrees);
 		E.WindKnots = T.TrueWindSpeed / kKnot;
-		E.SeaMeters = GM->GetWaves().SignificantHeight();
+		E.SeaMeters = GM->GetWaves().SignificantHeightAt(Boat.OriginPosition().X, Boat.OriginPosition().Y);
 	}
 	const Vec3 V = Boat.GetState().Velocity;
 	E.SpeedKnots = FMath::Sqrt(V.X * V.X + V.Y * V.Y) / kKnot;
@@ -3112,15 +3109,36 @@ bool ASailboatPawn::LoadMetaCrew()
 	return true;
 }
 
-UPoseableMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 Index)
+USkeletalMeshComponent* ASailboatPawn::NewCrewBody(USkeletalMesh* Mesh, int32 Rig)
+{
+	// Crew C1: posed by its own animation node on the animation worker threads (CrewAnimInstance.h).
+	if (!CrewConfig) CrewConfig = MakeShared<const FBoatConfig>(Boat.GetConfig());
+	USkeletalMeshComponent* Body = NewObject<USkeletalMeshComponent>(this);
+	Body->SetupAttachment(BoatRoot);
+	Body->SetSkeletalMesh(Mesh);
+	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Body->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	Body->SetAnimInstanceClass(UCrewAnimInstance::StaticClass());
+	if (bTrafficBoat)
+	{
+		// AI boats' crew react too, at 15 Hz, and only while someone can see them.
+		Body->SetComponentTickInterval(1.f / 15.f);
+		Body->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	}
+	Body->PrimaryComponentTick.AddPrerequisite(this, PrimaryActorTick); // the pawn hands it the frame's input first
+	Body->RegisterComponent();
+	if (UCrewAnimInstance* Anim = Cast<UCrewAnimInstance>(Body->GetAnimInstance()))
+	{
+		Anim->Setup(MetaCrewRigs.IsValidIndex(Rig) ? MakeShared<const FCrewRig>(MetaCrewRigs[Rig]) : TSharedPtr<const FCrewRig>(), CrewConfig, Boat.HullDepth());
+	}
+	return Body;
+}
+
+USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 Index)
 {
 	USkeletalMesh* BodyMesh = MetaCrewMeshes[3 * CrewRole];
 	const FCrewRig& Rig = MetaCrewRigs[CrewRole];
-	UPoseableMeshComponent* Body = NewObject<UPoseableMeshComponent>(this);
-	Body->SetupAttachment(BoatRoot);
-	Body->SetSkinnedAssetAndUpdate(BodyMesh);
-	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Body->RegisterComponent();
+	USkeletalMeshComponent* Body = NewCrewBody(BodyMesh, CrewRole);
 	BoatParts.Add(Body);
 	// The face and the clothes follow the body's bones (the face's own joints rest: no expressions).
 	USkeletalMeshComponent* FacePart = nullptr;

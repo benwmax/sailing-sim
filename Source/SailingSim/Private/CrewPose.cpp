@@ -1,9 +1,9 @@
 #include "CrewPose.h"
+#include "CrewSolver.h"
 #include "BoatModel.h"
 #include "GroomAsset.h"
 #include "GroomBindingAsset.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-#include "Components/PoseableMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "ReferenceSkeleton.h"
 
@@ -129,7 +129,7 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 	}
 }
 
-namespace
+namespace CrewSolver
 {
 	/** The reference pose in component space. */
 	void RestPose(const FReferenceSkeleton& Ref, TArray<FTransform>& Out)
@@ -146,7 +146,7 @@ namespace
 	/** Component-space posed transforms from a rest pose: D(bone) = D(parent) * R(bone); rotation D * rest;
 	 *  position = parent's posed position + D(parent) * (rest offset from the parent). */
 	void Solve(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, const TMap<FName, FQuat>& Joints, TArray<FTransform>& OutCS,
-		TArray<FQuat>* OutD = nullptr)
+		TArray<FQuat>* OutD)
 	{
 		const int32 N = Ref.GetNum();
 		TArray<FQuat> Local;
@@ -185,7 +185,7 @@ namespace
 		}
 	}
 
-	const TCHAR* const Fingers[] = { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky"), TEXT("thumb") };
+	const TCHAR* const FingerNames[5] = { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky"), TEXT("thumb") };
 
 	/** Graphics G8: two-bone IK for one arm toward a wrist target (component space). The elbow stays in the plane the
 	 *  stance put it in; the shoulder and elbow rotations are written back into the joint map. */
@@ -280,60 +280,47 @@ namespace
 		return bMoved;
 	}
 
-	void Pose(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, TArray<FTransform>& CS,
-		const FCrewHands* Hands = nullptr)
+	void CurlFingers(const FCrewRig& Rig, const FCrewHands& Hands, TMap<FName, FQuat>& Carried)
 	{
-		TArray<FTransform> Rest;
-		const bool bRig = Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum();
-		if (!bRig) RestPose(Ref, Rest);
-		const TArray<FTransform>& RestCS = bRig ? Rig->RestCS : Rest;
-		TMap<FName, FQuat> Carried;
-		if (bRig) Carry(*Rig, Joints, Carried);
-		else Carried = Joints;
-		if (!Hands)
-		{
-			Solve(Ref, RestCS, Carried, CS);
-			return;
-		}
 		// The fingers curl (a relaxed hand, or closed round a line): the base joint most, the tip least; the thumb less.
-		if (bRig)
+		for (int32 Side = 0; Side < 2; ++Side)
 		{
-			for (int32 Side = 0; Side < 2; ++Side)
+			const float G = FMath::Clamp(Hands.Grip[Side], 0.f, 1.f);
+			for (const TCHAR* Finger : FingerNames)
 			{
-				const float G = FMath::Clamp(Hands->Grip[Side], 0.f, 1.f);
-				for (const TCHAR* Finger : Fingers)
+				const bool bThumb = Finger[0] == TEXT('t');
+				const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 45.f : 95.f, bThumb ? 40.f : 62.f };
+				for (int32 K = 1; K <= 3; ++K)
 				{
-					const bool bThumb = Finger[0] == TEXT('t');
-					const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 45.f : 95.f, bThumb ? 40.f : 62.f };
-					for (int32 K = 1; K <= 3; ++K)
-					{
-						const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
-						if (const FVector* Axis = Rig->CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
-					}
+					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
+					if (const FVector* Axis = Rig.CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
 				}
 			}
 		}
-		TArray<FQuat> D;
-		Solve(Ref, RestCS, Carried, CS, &D);
-		// Crew pose fix: the feet first (the hands' Knee mode rests on the knees where they end up).
-		if (Hands->Ground && Hands->Ground->Config)
+	}
+
+	void PlantAllFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FQuat& Frame,
+		const FCrewGround& Ground, TMap<FName, FQuat>& Carried)
+	{
+		for (int32 Pass = 0; Pass < 2; ++Pass)
 		{
-			const FQuat Frame = bRig ? Rig->Frame : FQuat::Identity;
-			for (int32 Pass = 0; Pass < 2; ++Pass)
-			{
-				if (!PlantFeet(Ref, RestCS, CS, D, Frame, *Hands->Ground, Carried)) break;
-				Solve(Ref, RestCS, Carried, CS, &D);
-			}
+			if (!PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) break;
+			Solve(Ref, RestCS, Carried, CS, &D);
 		}
+	}
+
+	bool PlaceHands(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
+		TMap<FName, FQuat>& Carried)
+	{
 		bool bMoved = false;
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
-			if (Hands->Mode[Side] == FCrewHands::EMode::Free) continue;
+			if (Hands.Mode[Side] == FCrewHands::EMode::Free) continue;
 			const TCHAR* Sx = Side == 0 ? TEXT("l") : TEXT("r");
 			const int32 Hand = Ref.FindBoneIndex(Side == 0 ? TEXT("hand_l") : TEXT("hand_r"));
 			if (Hand == INDEX_NONE) continue;
-			FVector Target = Hands->Target[Side];
-			if (Hands->Mode[Side] == FCrewHands::EMode::Knee)
+			FVector Target = Hands.Target[Side];
+			if (Hands.Mode[Side] == FCrewHands::EMode::Knee)
 			{
 				// The palm on top of the knee, the wrist a hand's length back toward the hip.
 				const int32 Calf = Ref.FindBoneIndex(*FString::Printf(TEXT("calf_%s"), Sx));
@@ -354,7 +341,30 @@ namespace
 				Solve(Ref, RestCS, Carried, CS, &D);
 			}
 		}
-		if (bMoved) Solve(Ref, RestCS, Carried, CS);
+		return bMoved;
+	}
+
+	void Pose(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, TArray<FTransform>& CS,
+		const FCrewHands* Hands)
+	{
+		TArray<FTransform> Rest;
+		const bool bRig = Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum();
+		if (!bRig) RestPose(Ref, Rest);
+		const TArray<FTransform>& RestCS = bRig ? Rig->RestCS : Rest;
+		TMap<FName, FQuat> Carried;
+		if (bRig) Carry(*Rig, Joints, Carried);
+		else Carried = Joints;
+		if (!Hands)
+		{
+			Solve(Ref, RestCS, Carried, CS);
+			return;
+		}
+		if (bRig) CurlFingers(*Rig, *Hands, Carried);
+		TArray<FQuat> D;
+		Solve(Ref, RestCS, Carried, CS, &D);
+		// Crew pose fix: the feet first (the hands' Knee mode rests on the knees where they end up).
+		if (Hands->Ground && Hands->Ground->Config) PlantAllFeet(Ref, RestCS, CS, D, bRig ? Rig->Frame : FQuat::Identity, *Hands->Ground, Carried);
+		if (PlaceHands(Ref, RestCS, CS, D, *Hands, Carried)) Solve(Ref, RestCS, Carried, CS);
 	}
 }
 
@@ -402,7 +412,7 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 	if (!Mesh) return;
 	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
 	TArray<FTransform> Rest;
-	RestPose(Ref, Rest);
+	CrewSolver::RestPose(Ref, Rest);
 	auto At = [&](const TCHAR* Name) -> FVector
 	{
 		const int32 B = Ref.FindBoneIndex(Name);
@@ -438,7 +448,7 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 		Fix.Add(Upper, CU);
 		Fix.Add(Lower, CL);
 	}
-	Solve(Ref, Rest, Fix, Rig.RestCS);
+	CrewSolver::Solve(Ref, Rest, Fix, Rig.RestCS);
 	// Graphics G8: the fingers' curl axes. The palm faces the side the resting fingers already bend toward (the middle
 	// finger's tip off the line of its first two joints), else the thumb's side; each joint curls about (bone x palm).
 	auto RestAt = [&](const FString& Name) -> TOptional<FVector>
@@ -458,7 +468,7 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 		const FVector Bend = (*M3 - *M2) - Line.GetSafeNormal() * FVector::DotProduct(*M3 - *M2, Line.GetSafeNormal());
 		const double Sign = Bend.Size() > 0.05 ? FVector::DotProduct(Bend, Palm) : (T3 ? FVector::DotProduct(*T3 - *Hand, Palm) : 1.0);
 		if (Sign < 0.0) Palm = -Palm;
-		for (const TCHAR* Finger : Fingers)
+		for (const TCHAR* Finger : CrewSolver::FingerNames)
 		{
 			for (int32 K = 1; K <= 3; ++K)
 			{
@@ -483,36 +493,13 @@ FTransform FCrewRig::Rest(const USkeletalMesh* Mesh, FName Bone) const
 	return B == INDEX_NONE || !RestCS.IsValidIndex(B) ? FTransform::Identity : RestCS[B];
 }
 
-void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, const FCrewHands* Hands)
-{
-	if (!Mesh || !Mesh->GetSkinnedAsset()) return;
-	const FReferenceSkeleton& Ref = Mesh->GetSkinnedAsset()->GetRefSkeleton();
-	TArray<FTransform> CS;
-	Pose(Ref, Joints, Rig, CS, Hands);
-	// Perf 1: SetBoneTransformByName in component space rebuilds the whole pose to find each bone's parent (quadratic in
-	// the bones: 1.9 ms a frame for three MetaHumans on the Mac). Every bone is posed here, so write the local transforms
-	// straight from the component-space ones (the array is the component's own; GetBoneSpaceTransforms is its getter).
-	TArray<FTransform>& Local = const_cast<TArray<FTransform>&>(Mesh->GetBoneSpaceTransforms());
-	if (Local.Num() != CS.Num())
-	{
-		for (int32 B = 0; B < CS.Num(); ++B) Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
-		return;
-	}
-	for (int32 B = 0; B < CS.Num(); ++B)
-	{
-		const int32 Parent = Ref.GetParentIndex(B);
-		Local[B] = Parent >= 0 ? CS[B].GetRelativeTransform(CS[Parent]) : CS[B];
-	}
-	Mesh->MarkRefreshTransformDirty();
-}
-
 void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out, const FCrewRig* Rig, const FCrewHands* Hands)
 {
 	Out.Reset();
 	if (!Mesh) return;
 	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
 	TArray<FTransform> CS;
-	Pose(Ref, Joints, Rig, CS, Hands);
+	CrewSolver::Pose(Ref, Joints, Rig, CS, Hands);
 	for (int32 B = 0; B < CS.Num(); ++B) Out.Add(Ref.GetBoneName(B), CS[B].GetLocation());
 }
 
@@ -524,9 +511,9 @@ void CrewFootPoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints,
 	TArray<FTransform> Rest, CS;
 	const bool bRig = Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum();
 	if (bRig) Rest = Rig->RestCS;
-	else RestPose(Ref, Rest);
-	Pose(Ref, Joints, Rig, CS, Hands);
-	for (int32 S = 0; S < 2; ++S) SolePoints(Ref, Rest, CS, bRig ? Rig->Frame : FQuat::Identity, S, Out[S]);
+	else CrewSolver::RestPose(Ref, Rest);
+	CrewSolver::Pose(Ref, Joints, Rig, CS, Hands);
+	for (int32 S = 0; S < 2; ++S) CrewSolver::SolePoints(Ref, Rest, CS, bRig ? Rig->Frame : FQuat::Identity, S, Out[S]);
 }
 
 bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W)

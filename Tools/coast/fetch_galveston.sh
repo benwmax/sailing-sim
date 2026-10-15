@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RAW="$ROOT/Data/GalvestonBay/raw"
 OVERPASS="$ROOT/Tools/terrain/overpass.sh"
-B="29.29,-95.12,29.63,-94.66"   # south, west, north, east
+B="29.18,-95.12,29.63,-94.66"   # south, west, north, east (Galveston 2: south past the Seawall to the Gulf front)
 API="https://api.tidesandcurrents.noaa.gov"
 mkdir -p "$RAW/enc" "$RAW/tides" && cd "$RAW"
 
@@ -21,7 +21,7 @@ done
 
 # USGS 3DEP 1/3 arc-second DEM (NAVD88) through the National Map export service; the bake reads the real extent
 # from the GeoTIFF tags.
-curl -sS -m 900 -o dem_3dep.tif "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-95.12,29.29,-94.66,29.63&bboxSR=4326&imageSR=4326&size=3000,2220&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_BilinearInterpolation&f=image"
+curl -sS -m 900 -o dem_3dep.tif "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-95.12,29.18,-94.66,29.63&bboxSR=4326&imageSR=4326&size=3000,2935&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_BilinearInterpolation&f=image"
 
 # NOAA CO-OPS: harmonic constituents, datums and station metadata for the five tide stations; NOAA's own
 # predictions (high/low and 6-minute) as the test reference.
@@ -49,7 +49,7 @@ curl -sS -m 60 -o tides/curpred6_ACT8856_month.json "$API/api/prod/datagetter?pr
 sleep 10
 "$OVERPASS" "[out:json][timeout:250];(way[\"landuse\"=\"forest\"]($B);way[\"natural\"~\"wood|wetland|scrub\"]($B);relation[\"natural\"=\"wood\"]($B);way[\"leisure\"~\"park|nature_reserve\"]($B);way[\"landuse\"~\"residential|commercial|industrial|grass|meadow|farmland\"]($B););out geom tags;" landuse_osm.json
 I=0
-for T in "29.29,-95.12,29.46,-94.89" "29.29,-94.89,29.46,-94.66" "29.46,-95.12,29.63,-94.89" "29.46,-94.89,29.63,-94.66"; do
+for T in "29.18,-95.12,29.29,-94.66" "29.29,-95.12,29.46,-94.89" "29.29,-94.89,29.46,-94.66" "29.46,-95.12,29.63,-94.89" "29.46,-94.89,29.63,-94.66"; do
 	sleep 10
 	"$OVERPASS" "[out:json][timeout:280];way[\"building\"]($T);out geom;" "buildings_osm_$I.json"
 	I=$((I + 1))

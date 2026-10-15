@@ -12,6 +12,7 @@ namespace Sailing
 		FWaveParams WaveParams;
 		WaveParams.WindSpeedKnots = TrueWindKnots;
 		WaveParams.FetchMeters = kPolarFetchMeters;
+		WaveParams.bCalibrationSea = true;
 		Waves.SetWind(WaveParams);
 		Waves.SnapToTarget();
 
