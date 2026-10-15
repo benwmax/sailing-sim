@@ -96,6 +96,7 @@ private:
 	/** Graphics G5: the haze's light relative to a clear midday (the metered exposure's light), and the sun's elevation. */
 	float HazeLight = 1.f;
 	float SunElevationDeg = 45.f;
+	FVector SunDirection = FVector(0.0, 0.0, 1.0); // toward the sun (map frame), for the storm's own shade (rain curtains)
 public:
 	float GetNightAmount() const { return NightAmount; }
 private:
@@ -113,7 +114,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainMaterial;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<class UInstancedStaticMeshComponent> RainCurtains;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainCurtainMaterial;
-	struct FRainCurtain { double X = 0.0, Y = 0.0, Rate = 0.0, Seed = 0.0; };
+	struct FRainCurtain { double X = 0.0, Y = 0.0, Rate = 0.0, Seed = 0.0, Shade = 1.0; };
 	TArray<FRainCurtain> Curtains;
 	float CurtainClock = 0.f;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UProceduralMeshComponent> Bolt;

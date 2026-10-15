@@ -138,6 +138,11 @@ How to use it:
   cloud noise (inputs outside the script), or when in doubt. It rebuilds everything by itself when the material assets
   changed some other way (a git checkout or merge) since its last run.
 
+The Mac once saw its incremental package hang at "Reading oplog from Zen" (the cook's own Zen server exited before
+staging) and now starts a persistent Zen server first. None of about a dozen Windows packages on Oct 15 2026, incremental
+or full, hung there, so `package-win.ps1` has no such guard. Add one (start `zenserver` before RunUAT, stop it after) if
+it ever does.
+
 What a studio does that doesn't apply here: a build farm or distributed shader compiling (one PC; UBA already uses its
 16 threads); a shared cloud DDC with the Mac (the Mac's Metal shaders and the PC's DX12 ones share nothing, and the
 meshes' derived data is per platform too); `-snapshot` cooks from a build server (there is none to publish them).
