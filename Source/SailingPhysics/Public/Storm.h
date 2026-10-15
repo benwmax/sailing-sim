@@ -15,7 +15,9 @@ namespace Sailing
 	 */
 	struct SAILINGPHYSICS_API FMicroburst
 	{
-		static constexpr double C1 = -0.22, C2 = -2.75;
+		// One per line: MSVC rejects a second declarator in a static constexpr member of a dllexport class (C2487).
+		static constexpr double C1 = -0.22;
+		static constexpr double C2 = -2.75;
 		double PeakRadiusM = 1200.0; // rp: radius of the strongest outflow (Fujita: a microburst is under 4 km across)
 		double PeakHeightM = 50.0;   // zm: height of the strongest outflow (JAWS: 30 to 100 m)
 		double PeakOutflowMs = 20.0; // um
