@@ -464,9 +464,17 @@ def build_rain_curtain():
     c = custom(mat, RAIN_CURTAIN_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
     for name, n in inputs.items():
         connect(n, "", c, name)
-    color = vector(mat, "RainColor", (0.62, 0.64, 0.68, 1), -500, 0)
+    color = vector(mat, "RainColor", (0.62, 0.64, 0.68, 1), -700, 0)
+    # Storm sky fix: the curtain's share of the sun through the deck above it (per instance, 4th float); the sky light
+    # under a storm deck is a fifth of the open sky's, so a curtain in full shade is about that dark.
+    shade = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 700, data_index=3, const_default_value=1.0)
+    lit = node(mat, unreal.MaterialExpressionLinearInterpolate, -500, 0, const_a=0.2, const_b=1.0)
+    connect(shade, "", lit, "Alpha")
+    tinted = node(mat, unreal.MaterialExpressionMultiply, -350, 0)
+    connect(color, "", tinted, "A")
+    connect(lit, "", tinted, "B")
     rough = node(mat, unreal.MaterialExpressionConstant, -500, 450, r=1.0)
-    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(tinted, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_OPACITY)
     MEL.connect_material_property(curvature(mat, -500, 650), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -1684,7 +1692,10 @@ AO = 1.0;
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
     // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
     float wet = saturate(dSm / max(d, 1e-3)) * (1.0 - smoothstep(3000.0, 4500.0, alt));
-    Albedo = lerp(float3(0.96, 0.96, 0.96), float3(0.74, 0.76, 0.8), wet * FrontB.w);
+    // Storm sky fix (Oct 15 2026, docs/storm-prescreen): the storm's own cloud is dark wherever the viewer stands. It was
+    // darkened by the camera's cloud darkness (FrontB.w), so a storm seen from the sunshine ahead of its front (blind-test
+    // game-04: a sunlit boat against what should be a dark storm sky) kept a white, pale-grey wall. Slate, a little blue.
+    Albedo = lerp(float3(0.96, 0.96, 0.96), float3(0.19, 0.21, 0.26), wet);
     // The storm's base sits in deep shadow.
     // Graphics G8 ("clouds look like a cartoon"): fair cumulus sits on flat, grey bases in its own shade, the sunlit
     // domes white above them; at 0.75 the whole cloud read as one evenly white, painted shape.
@@ -1695,12 +1706,12 @@ AO = 1.0;
     float depthIn = saturate(shapeCu * 1.4);
     float under = 1.0 - smoothstep(0.0, 0.5, saturate(hCu));
     float aoCu = 1.0 - 0.12 * depthIn - under * lerp(0.15, 0.5, saturate(cuTop)) * (0.4 + 0.6 * depthIn);
-    AO = lerp(1.0, 0.3, wet * saturate(1.0 - alt / 4000.0)) * lerp(1.0, aoCu, saturate(min(dCu * Ext.x, cV) / max(d, 1e-3)));
+    AO = lerp(1.0, 0.2, wet * saturate(1.0 - alt / 4000.0)) * lerp(1.0, aoCu, saturate(min(dCu * Ext.x, cV) / max(d, 1e-3)));
     // The shelf (Graphics G1): its base in its own shadow, its face brighter as it rises.
     // Its front faces the clear sky behind the observer and reads lighter than the underside (the lip's pale roll over a
     // dark base): both over hundreds of metres, which the march resolves.
     float front = 1.0 - smoothstep(150.0, 450.0, SHELF_LEAD - D);
-    AO *= lerp(1.0, lerp(0.35, 1.25, shelfH) * lerp(1.0, 1.6, front * smoothstep(0.15, 0.5, shelfH)), shelf);
+    AO *= lerp(1.0, lerp(0.35, 1.25, shelfH) * lerp(1.0, 1.2, front * smoothstep(0.15, 0.5, shelfH)), shelf);
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
     Emit = float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;

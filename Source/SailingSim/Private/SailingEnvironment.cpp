@@ -94,7 +94,7 @@ ASailingEnvironment::ASailingEnvironment()
 	RainCurtains->SetMaterial(0, Curtain.Object);
 	RainCurtains->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RainCurtains->SetCastShadow(false);
-	RainCurtains->NumCustomDataFloats = 3;
+	RainCurtains->NumCustomDataFloats = 4;
 	RainCurtains->bVisibleInRayTracing = false;
 	RainCurtains->SetAffectDistanceFieldLighting(false);
 	RainCurtains->bAffectDynamicIndirectLighting = false;
@@ -381,6 +381,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	const float Night = 1.f - FMath::SmoothStep(-12.f, -2.f, float(Elevation));
 	NightAmount = Night;
 	SunElevationDeg = float(Elevation);
+	SunDirection = FVector(FMath::Cos(Elevation * kDegToRad) * FMath::Cos(Azimuth * kDegToRad), FMath::Cos(Elevation * kDegToRad) * FMath::Sin(Azimuth * kDegToRad), FMath::Sin(Elevation * kDegToRad));
 	const float NightFloorEV = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
 	const bool bPhysicalCamera = UsesPhysicalCamera(USailingSettings::Get()->Quality);
 	if (PostProcess && !bPhysicalCamera && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
@@ -681,6 +682,14 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 			}
 			Scored.Sort([](const TPair<double, FRainCurtain>& A, const TPair<double, FRainCurtain>& B) { return A.Key > B.Key; });
 			for (int32 K = 0; K < FMath::Min(MaxCurtains, Scored.Num()); ++K) Curtains.Add(Scored[K].Value);
+			// Storm sky fix: each curtain is lit by what reaches it through the deck above it (toward the sun), not by the
+			// open sky's light: under the shelf and core a veil read as a pale grey wall, lighter than the sea (game-04).
+			const FGustFront& F = W.Front;
+			for (FRainCurtain& C : Curtains)
+			{
+				C.Shade = SunDirection.Z > 0.0 ? LastWeatherMap.SunTransmittance(W.Sky, F, F.SpeedMs * (Now - F.StartTime), GM->GetWeatherTime(),
+					C.X, C.Y, SunDirection.X, SunDirection.Y, SunDirection.Z) : 1.0;
+			}
 		}
 		if (RainCurtainMaterial)
 		{
@@ -724,6 +733,8 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		RainCurtains->SetCustomDataValue(2 * K + 1, 0, float(Amount * FMath::SmoothStep(15.0, 60.0, C.Rate)), false);
 		RainCurtains->SetCustomDataValue(2 * K + 1, 1, 1.f, false);
 		RainCurtains->SetCustomDataValue(2 * K + 1, 2, float(C.Seed), false);
+		RainCurtains->SetCustomDataValue(2 * K, 3, float(C.Shade), false);
+		RainCurtains->SetCustomDataValue(2 * K + 1, 3, float(C.Shade), false);
 	}
 	RainCurtains->MarkRenderStateDirty();
 }
