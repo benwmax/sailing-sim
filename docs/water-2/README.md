@@ -16,7 +16,8 @@ benched on Bean's PC (RTX 4090, i9-9900K) on Oct 15 2026.
 - **Ripples turned to the local wind.** The ripple tile is sampled in two frames rotated in 15° bins and blended, with
   the slopes turned back, so there's no seam when the wind turns. Cap streaks run along the local wind.
 - **Glassy lulls** where the local wind is under 1.5–3 m/s (`glass` in `M_WaterV4`, now from the map, not the boat).
-- **Slicks** are smooth bands along the slow wind, fading out between 3.5 and 6 m/s.
+- **Slicks** are smooth, meandering filaments along the slow wind (see the follow-up below), fading out between 3.5
+  and 6 m/s.
   **Windrows** appear from 3 m/s: dashed lines along the wind about 14 m apart, with faint foam lace, fading by 260 m.
   Their direction is smoothed over 120 s, so they realign over minutes after a shift.
 - **Whitecaps cluster in puffs.** The lake's cap threshold now scales with the wind:
@@ -47,6 +48,31 @@ benched on Bean's PC (RTX 4090, i9-9900K) on Oct 15 2026.
 
 The polarized pair barely differs from this camera. The cut is strongest looking down-sun at about 37° below the
 horizon; a better pair would face the sun. The 36 bench views are in `bench/` (JPEG).
+
+## Follow-up: slicks from the air (Mac gate, Oct 15 2026)
+
+The Mac's gate still at 7 kn from 300 m (`mac/slick-bands-7kn-high.png`) showed the slicks as ruled white bands that
+started along a sharp line 1.2-1.5 km out. Reproduced on the PC (uncooked, High and Ultra: the Lake, 12:00, the boat on
+a beam reach, the camera 300 m back at -30 deg), then:
+
+- **Slicks are filaments now.** A ridged value noise stretched along the wind (900 m along, 160 m across), its domain
+  warped by a coarser one, so the smooth streaks meander, part and rejoin; the ridge's threshold wanders (wider and
+  thinner streaks) and a slower noise leaves about half the water without any. A first try, bands cut from a lattice with
+  hashed spacing, width and gaps, still read as ruled lines in perspective (thinner, but straight and parallel).
+- **Windrows** have each row's spacing, width and strength from a hash of the row, and bend.
+- **The near/far hand-off:** the slow wind hands over from the near map to the far one across most of the near map's
+  half-width (it sat on the slick threshold at 7 kn, so a short hand-off drew the slicks starting along a line), and the
+  roughness and direction across its outer half (their outer-20% hand-off drew the near map's square edge, 1.6 km out,
+  as a line in the glint).
+
+| | |
+|---|---|
+| ![7 kn](slicks-7kn-300m-high.png) 7 kn from 300 m, High (the Mac's view) | ![5 kn](slicks-5kn-300m-high.png) 5 kn from 300 m, High: glassy, slicks in the middle distance |
+
+Cost on the PC (packaged, back to back with main, 4 water views and the 300 m view on High and Ultra): the water GPU
+slice 0.40 ms against main's 0.38 ms (median of 10; single pairs vary by ±0.2 ms), the wind map's CPU time unchanged
+(0.58-0.73 ms on High, 0.94-1.16 on Ultra, both). The slick noise is about 24 hashes per water pixel; on the Mac,
+whose High pays about 7x the PC's for the clouds, expect it in the water slice. `SailingSim.Visual.Whitecaps` passes.
 
 ## Cost
 
