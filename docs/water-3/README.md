@@ -108,4 +108,33 @@ causeways, the coves and the far shore each show their own sea, and so do the AI
 
 ## Cost
 
-PENDING: bench (gate --scope water, then --scope all).
+`scripts/gate.sh --scope water`, then `--scope all` (every view, Low, Medium and High) on main 7ed9d446 plus W3, against
+the gate of #55 and #57 (the same views before W3). 139 tests passed, and every view is over the gates (Medium 60, High 45).
+
+| Tier | Median fps change | GPU (median) | Water slice (median, range) |
+|---|---|---|---|
+| Low | -0.6 | +0.07 ms | not split out on Low |
+| Medium | -1.4 | +0.22 ms | +0.16 ms (-0.10 to +0.41) |
+| High | -0.6 | +0.25 ms | +0.27 ms (+0.13 to +0.44) |
+
+The cost is the atlas in M_WaterV4's vertex code: seven taps a vertex, in every pass the water's vertices run. The
+tightest view is helm-eye High at 45.6 (46.5 before). The water's CPU time didn't move: the fetch map is built once at
+load (40-60 ms), the sea map on a worker (about 25 ms when the wind shifts), and the atlas is packed on a worker.
+
+| View | Low | Medium | High |
+|---|---|---|---|
+| beam8 | 102.3 (-1.3) | 87.8 (-1.7) | 53.9 (-0.8) |
+| beat15 | 106.7 (-0.8) | 83.8 (-1.9) | 50.1 (-0.4) |
+| storm | 111.1 (+0.2) | 70.2 (-1.5) | 49.8 (-0.7) |
+| marina | 102.3 (-1.3) | 86.3 (-1.3) | 50.4 (+0.8) |
+| coast-day | 104.9 (-0.2) | 80.7 (-1.4) | 47.2 (-0.2) |
+| coast-night | 96.9 (-1.0) | 98.4 (-1.4) | 50.2 (+0.5) |
+| gulf-sea | 118.9 (-0.1) | 103.2 (-2.0) | 59.8 (-0.8) |
+| helm-eye | 101.0 (-1.0) | 79.4 (-1.8) | 45.6 (-0.9) |
+| slip | 97.6 (-0.5) | 77.0 (-1.0) | 47.2 (-0.3) |
+| bridge | 117.8 (-0.3) | 96.2 (-1.9) | 54.0 (-0.9) |
+| crew | 111.9 (-1.1) | 70.7 (-1.1) | 47.5 (-0.2) |
+| marina-night | 88.9 (-0.3) | 81.7 (-1.0) | 52.5 (-0.8) |
+
+If High needs the time back, the seven tiles could become a texture array (the same texel in each slice, not seven
+places in one wide texture) or 8-bit (every ratio is between 0 and 1).
