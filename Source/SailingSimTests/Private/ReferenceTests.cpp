@@ -29,7 +29,7 @@ bool FReferenceCaptureTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Shore tele"), ParseCapturePreset(TEXT("shore")), ECapturePreset::ShoreTele);
 	TestEqual(TEXT("Unknown names do nothing"), ParseCapturePreset(TEXT("fisheye")), ECapturePreset::None);
 	TestEqual(TEXT("Phone main camera 70 deg"), CapturePresetInfo(ECapturePreset::HelmEye).HFovDeg, 70.f);
-	TestEqual(TEXT("GoPro wide 118 deg"), CapturePresetInfo(ECapturePreset::ActionCam).HFovDeg, 118.f);
+	TestEqual(TEXT("GoPro wide 118 deg (rendered at 125, the lens keeps the corners)"), CapturePresetInfo(ECapturePreset::ActionCam).HFovDeg, 125.f);
 	TestTrue(TEXT("Only the action cam is distorted"), CapturePresetInfo(ECapturePreset::ActionCam).bBarrel && !CapturePresetInfo(ECapturePreset::Chase).bBarrel);
 
 	// Onboard mounts land on the boat: inside the hull's length, within its beam, above the deck, for every boat.
