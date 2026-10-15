@@ -23,7 +23,7 @@ using namespace Sailing;
 
 namespace
 {
-	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter;
+	constexpr EAutomationTestFlags PerfFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter;
 
 	/** A gusty breeze over a lake chop with the Gulf's FFT sea on top (so the shared wave caches are exercised). */
 	struct FSea
@@ -106,7 +106,7 @@ namespace
 	};
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTaskStepTest, "SailingSim.Physics.TaskStep", Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTaskStepTest, "SailingSim.Physics.TaskStep", PerfFlags)
 bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 {
 	for (const bool bSimple : { false, true })
@@ -169,7 +169,7 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingParallelBoatsTest, "SailingSim.Physics.ParallelBoatsShareTheSea", Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingParallelBoatsTest, "SailingSim.Physics.ParallelBoatsShareTheSea", PerfFlags)
 bool FSailingParallelBoatsTest::RunTest(const FString& Parameters)
 {
 	// Four boats stepping at once on one wind and sea (the FFT grid cache and the band list shared) end exactly where
@@ -199,7 +199,7 @@ bool FSailingParallelBoatsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTrafficParallelStepTest, "SailingSim.Traffic.ParallelStep", Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTrafficParallelStepTest, "SailingSim.Traffic.ParallelStep", PerfFlags)
 bool FTrafficParallelStepTest::RunTest(const FString& Parameters)
 {
 	// The AI fleet stepped with ParallelFor sails exactly as stepped in order.
@@ -246,7 +246,7 @@ bool FTrafficParallelStepTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingAsyncPawnTest, "SailingSim.Smoke.AsyncPhysicsMatchesSync", Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingAsyncPawnTest, "SailingSim.Smoke.AsyncPhysicsMatchesSync", PerfFlags)
 bool FSailingAsyncPawnTest::RunTest(const FString& Parameters)
 {
 	// The pawn in a world ticked frame by frame, its steps inline and then on the task with the join tick: the same boat,
