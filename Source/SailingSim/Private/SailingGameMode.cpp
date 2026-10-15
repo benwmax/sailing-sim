@@ -490,10 +490,25 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	FWaveParams WaveParams;
 	WaveParams.WindSpeedKnots = WeatherState.Wind.SpeedKnots;
 	WaveParams.WindFromDegrees = WeatherState.Wind.FromDegrees;
-	// On the lake, fetch is the open water upwind of the boat, to the real shore.
-	WaveParams.FetchMeters = Lake.IsLoaded()
-		? FMath::Clamp(Lake.Terrain.FetchToward(BoatPos.X, BoatPos.Y, WeatherState.Wind.FromDegrees * kDegToRad), 200.0, 15000.0)
-		: WeatherState.FetchMeters;
+	// On the lake, fetch is the open water upwind of the boat, to the real shore: W3's effective fetch over +/-45 deg of
+	// the wind (the chop at a lee shore grows along the lake too).
+	if (Lake.IsLoaded())
+	{
+		const double From = WeatherState.Wind.FromDegrees * kDegToRad;
+		if (FMath::Square(BoatPos.X - FetchCacheX) + FMath::Square(BoatPos.Y - FetchCacheY) > 25.0 * 25.0
+			|| FMath::Abs(Sailing::WrapAngle(From - FetchCacheFrom)) > 2.0 * kDegToRad)
+		{
+			FetchCacheX = BoatPos.X;
+			FetchCacheY = BoatPos.Y;
+			FetchCacheFrom = From;
+			FetchCacheMeters = FMath::Clamp(Lake.Terrain.EffectiveFetch(BoatPos.X, BoatPos.Y, From), 200.0, 15000.0);
+		}
+		WaveParams.FetchMeters = FetchCacheMeters;
+	}
+	else
+	{
+		WaveParams.FetchMeters = WeatherState.FetchMeters;
+	}
 	UpdateShelter();
 	if (WeatherState.Front.bActive && WeatherState.Front.DistanceAhead(BoatPos.X, BoatPos.Y, Now) < 0.0 && Now < WeatherState.Front.DecayStartTime)
 	{

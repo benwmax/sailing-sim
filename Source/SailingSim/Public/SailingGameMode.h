@@ -109,6 +109,8 @@ private:
 	TSharedPtr<Sailing::FShelterMap> Shelter;
 	TFuture<TSharedPtr<Sailing::FShelterMap>> PendingShelter;
 	bool bShelterBuilding = false;
+	// W3: the effective fetch at the boat (nine marches), recomputed when she has moved 25 m or the wind turned 2 deg.
+	double FetchCacheX = 1e18, FetchCacheY = 1e18, FetchCacheFrom = 1e18, FetchCacheMeters = 4000.0;
 	std::vector<Sailing::FShelterObstacle> ShelterObstacles; // W1: the houses, for the lee map
 	void UpdateShelter();
 	void UpdateResolutionGovernor(float DeltaSeconds);

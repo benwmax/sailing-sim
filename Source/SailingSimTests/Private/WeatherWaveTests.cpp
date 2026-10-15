@@ -29,12 +29,12 @@ namespace
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveHeightTest, "SailingSim.Water.FetchLimitedChop", Flags)
 bool FSailingWaveHeightTest::RunTest(const FString& Parameters)
 {
-	// Fetch-limited growth law: 10 kn over 5 km gives about 0.19 m, 20 kn about 0.37 m.
+	// Fetch-limited growth law in the adjusted wind (W3): 10 kn over 5 km gives about 0.19 m, 20 kn about 0.43 m.
 	const double Hs10 = FWaveField::TargetSignificantHeight(10.0 * kKnot, 5000.0);
 	const double Hs20 = FWaveField::TargetSignificantHeight(20.0 * kKnot, 5000.0);
 	AddInfo(FString::Printf(TEXT("Hs: %.2f m at 10 kn, %.2f m at 20 kn over 5 km; Tp %.1f s / %.1f s"), Hs10, Hs20,
 		FWaveField::TargetPeakPeriod(10.0 * kKnot, 5000.0), FWaveField::TargetPeakPeriod(20.0 * kKnot, 5000.0)));
-	TestEqual(TEXT("Hs at 10 kn, 5 km"), Hs10, 0.186, 0.01);
+	TestEqual(TEXT("Hs at 10 kn, 5 km"), Hs10, 0.192, 0.01);
 	TestTrue(TEXT("Waves grow with wind"), Hs20 > 1.8 * Hs10);
 	TestTrue(TEXT("Waves grow with fetch"), FWaveField::TargetSignificantHeight(10.0 * kKnot, 10000.0) > Hs10);
 	TestEqual(TEXT("Calm water stays calm"), FWaveField::TargetSignificantHeight(0.2, 5000.0), 0.0, 1e-9);
@@ -92,7 +92,8 @@ bool FSailingWaveBandGrowthTest::RunTest(const FString& Parameters)
 	Waves.SetWind(P);
 	constexpr double Dt = 1.0 / 60.0;
 	double ShortT90 = -1.0, LongT90 = -1.0;
-	for (int32 I = 1; I <= 1200 * 60; ++I)
+	// Long enough for the slowest band (300 s) to settle to 1e-6: since W3's adjusted wind the 18 kn sea reaches it.
+	for (int32 I = 1; I <= 5000 * 60; ++I)
 	{
 		Waves.Update(Dt);
 		const double T = I * Dt;
