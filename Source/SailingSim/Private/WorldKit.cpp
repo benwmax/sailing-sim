@@ -18,9 +18,9 @@ const FKitLookDesc& KitLook(EKitLook Look)
 	static const FKitLookDesc Looks[int32(EKitLook::Count)] = {
 		{ TEXT("Decking"), FLinearColor(0.42f, 0.40f, 0.36f), 0.85f, 1.f, 0.f, 0.f },   // weathered composite decking
 		{ TEXT("Floats"), FLinearColor(0.05f, 0.05f, 0.05f), 0.6f, 0.f, 0.f, 0.f },     // black polyethylene floats
-		{ TEXT("Pilings"), FLinearColor(0.32f, 0.27f, 0.21f), 0.9f, 4.f, 0.f, 0.f },    // treated pine pilings
+		{ TEXT("Pilings"), FLinearColor(0.32f, 0.27f, 0.21f), 0.9f, 9.f, 0.f, 0.f },    // treated pine pilings (G8: wood, pattern 9)
 		{ TEXT("Metal"), FLinearColor(0.75f, 0.76f, 0.78f), 0.3f, 0.f, 0.f, 1.f },      // galvanized cleats and caps
-		{ TEXT("White"), FLinearColor(0.85f, 0.86f, 0.84f), 0.45f, 0.f, 0.f, 0.f },     // dock boxes, pedestals
+		{ TEXT("White"), FLinearColor(0.85f, 0.86f, 0.84f), 0.45f, 10.f, 0.f, 0.f },    // dock boxes, pedestals (G8: weathered, pattern 10)
 		{ TEXT("Siding"), FLinearColor(0.78f, 0.74f, 0.64f), 0.75f, 3.f, 1.f, 0.f },    // lap siding with windows
 		{ TEXT("Roof"), FLinearColor(0.20f, 0.20f, 0.21f), 0.8f, 2.f, 0.f, 0.f },       // asphalt shingles
 		{ TEXT("Concrete"), FLinearColor(0.62f, 0.60f, 0.56f), 0.85f, 4.f, 0.f, 0.f },  // concrete

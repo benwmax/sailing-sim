@@ -207,7 +207,7 @@ float localKnots = rough * 15.56;
 float capsLevel = saturate((localKnots - 7.0) / 15.0);
 // Wind sets how much of the water is breaking (about 1% at Force 3, 5% at Force 4, 20% at Force 6); each cap is
 // bright white. Caps are short along the wind and long across it, drift downwind, and sit on the crests.
-float cover = 0.2 * pow(capsLevel, 1.5);
+float cover = 0.2 * pow(capsLevel, 1.5) * WindP.w; // W0: the water body's share of the sea's caps (fresh water 0.4)
 float2 q = float2(dot(p.xy, d), dot(p.xy, n));
 float n1 = 0.5 + 0.5 * sin(q.x * 1.3 - T * 1.6 + sin(q.y * 0.5) * 2.0);
 float n2 = 0.5 + 0.5 * sin(q.y * 0.45 + sin(q.x * 0.7 + T * 0.4) * 2.0);
@@ -228,7 +228,8 @@ wake *= breakup;
 Foam = saturate(caps + wake);
 // Debug view (DebugGust > 0): show the cat's-paw map as foam.
 Foam = DebugGust > 1.5 ? frac(guv.x * 8.0) * step(0.5, frac(guv.y * 8.0)) : lerp(Foam, saturate(rough / 2.5), saturate(DebugGust));
-// Sailors read puffs relative to the wind around them: compare local wind with the mean wind at the boat.
+// Sailors read puffs relative to the wind around them: compare local wind with the lake's mean wind (W0: not the wind at
+// the boat, which turned the whole lake into a lull whenever she sat in a puff).
 float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Ruffled water reflects less of the bright sky: cat's paws read as dark patches, the gust front as a dark line.
@@ -575,6 +576,27 @@ float runLen = 20.0 + 60.0 * frac(lane * 7.3);
 float top = 60.0 + 40.0 * frac(lane * 3.1);
 float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.93, lane) * thin * saturate((zcm - (top - runLen)) / runLen) * step(zcm, top);
 col = lerp(col, float3(0.30, 0.13, 0.05), 0.5 * rust);
+// Graphics G8 (round 8: "the boat is not detailed enough/looks flat"): what a real hull carries that a clean one doesn't.
+// Black streaks: grey runs washed down the topsides from the toe rail and the stanchion bases by rain, many and faint,
+// each its own width and length, strongest just under the sheer and fading toward the waterline.
+float sx = LP.x / 6.0 + LP.y / 37.0;
+float sh = frac(sin(floor(sx) * 57.31) * 4375.5), sh2 = frac(sin(floor(sx) * 13.7 + 3.0) * 4375.5);
+float sw = exp(-pow((frac(sx) - 0.5) * (5.0 + 10.0 * sh2), 2.0));
+float sLen = 25.0 + 70.0 * sh;
+float sTop = 55.0 + 70.0 * sh2;
+float blk = IsHull * step(abs(n.z), 0.75) * step(0.45, sh) * sw * saturate((zcm - (sTop - sLen)) / sLen) * smoothstep(sTop + 15.0, sTop - 5.0, zcm);
+col = lerp(col, col * float3(0.62, 0.61, 0.58), saturate(blk * (0.25 + 0.9 * wear.y)));
+// Large, faint tone differences across a hull or deck (gelcoat batches, sun on one side, old repairs): plus or minus 3%.
+float2 tp = LP.xz / 160.0;
+float2 ti = floor(tp), tf = smoothstep(0.0, 1.0, frac(tp));
+float t00 = frac(sin(dot(ti, float2(12.99, 78.23))) * 43758.5), t10 = frac(sin(dot(ti + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float t01 = frac(sin(dot(ti + float2(0, 1), float2(12.99, 78.23))) * 43758.5), t11 = frac(sin(dot(ti + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float tone = lerp(lerp(t00, t10, tf.x), lerp(t01, t11, tf.x), tf.y);
+col *= 1.0 + gel * 0.06 * (tone - 0.5);
+// Fairness: a laid-up hull is never quite flat. Long, shallow undulations (print-through over the bulkheads and the
+// core) bend the clear coat's reflections of the sky and the shore the way they wobble along a real hull.
+float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * sin(LP.x * 0.113 + LP.z * 0.05);
+grad += LX * (0.018 * gel * (1.0 - up) * fair);
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
@@ -1032,8 +1054,9 @@ float fade = saturate(1.0 - dist / Fade);
 // The long waves, from the vertices (V4_WPO).
 float sx = LongN.x, sy = LongN.y;
 float J = LongN.z;
-// Cat's paws: the wind's surface roughness map (local wind relative to 15 kn). In a lee (the shelter map, a puff's
-// edge) the short waves and ripples the local wind raises are smaller.
+// Cat's paws: the wind's surface roughness map (local wind relative to 15 kn), against the sea's mean wind (WindP.z, what
+// the drawn waves were grown for). In a lee (the shelter map, a puff's edge) the short waves and ripples the local wind
+// raises are smaller.
 float2 guv = (p.xy - GustRect.xy) / GustRect.z + 0.5;
 float rough = Gust.SampleLevel(GustSampler, guv, 0).r * 2.5;
 float gustRatio = (rough * 8.0) / max(WindP.z, 1.0);
@@ -1109,15 +1132,19 @@ sx *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2); sy *= (1.0 + 0.6 * shoal) 
 float Jt = J * jd - 0.25 * shoal;
 // Lacy, broken foam rather than flat patches: two crossed wavy bands at foam-bubble scale.
 float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
-float crest = saturate((FoamThreshold - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
+// W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
+// thin in lulls) times the water body's share (WindP.w: fresh water 0.4); AWaterSurface::WhitecapThreshold mirrors it.
+float capGain = WindP.w * pow(clamp(gustRatio, 0.05, 4.0), 3.41);
+float capThr = clamp(FoamThreshold + 0.045 * log(max(capGain, 1e-4)), 0.3, 0.85);
+float crest = saturate((capThr - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
 float2 wd = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 wn = float2(-wd.y, wd.x);
 float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
-float residue = saturate((FoamThreshold + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
+float residue = saturate((capThr + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
 float caps = max(crest, residue) * fade;
 // Far off whitecaps are sub-pixel: their average whiteness, from the same law.
 float knots = rough * 15.56;
-float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41); // Monahan's coverage, with the foam it leaves
+float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41) * WindP.w; // Monahan's coverage, with the foam it leaves
 caps = lerp(caps, saturate(farCover), far);
 // Foam the boats make.
 float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
@@ -1366,7 +1393,9 @@ AO = 1.0;
     // in the same sample count (steps of 600 m at 50 km), where noise filtered at 160 m aliased into grain.
     float foot = max(distance(p, Cam * 0.01) * 0.0022, max(160.0, stepM * 0.85));
     float shapeMip = clamp(log2(foot / 31.0), 0.0, 6.0);        // shape texel: 4 km / 128
-    float detailMip = clamp(log2(foot / 10.4), 0.0, 5.0);       // detail texel: 667 m / 64
+    // Graphics G8 (round 8: "the clouds have noise"): one mip coarser. Edge erosion finer than the step frosted every
+    // cloud's outline with salt-white speckle where jittered samples landed either side of a fine billow.
+    float detailMip = clamp(log2(foot / 10.4) + 1.0, 0.0, 5.0);   // detail texel: 667 m / 64
     float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
     float3 qw = q + float3(cw * 1.3, 0.0) + float3(0.0, 0.0, 0.2 * cw.x);
     // Vertically the shape varies 2.4 times faster than across (a cloud is a few hundred metres to 2 km deep): at one rate a
@@ -1386,8 +1415,11 @@ AO = 1.0;
     // rather than the map's footprint extruded; coverage narrows toward the top.
     float covCu = saturate(cu * (1.0 - 0.45 * saturate(hCu)));
     float shapeCu = saturate((base - (1.0 - covCu)) / max(covCu, 0.08)) * step(0.001, covCu);
-    float ero = lerp(hf, 1.0 - hf, saturate(hCu * 3.0)) * 0.4;
-    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * 2.2) * 1.6;
+    // Graphics G8: eroded by the detail's coarse octaves (the 16- and 32-cell ones speckled the edges), and a crisper
+    // ramp from edge to body: fair cumulus has a hard, sunlit outline, not a feathered, painted one.
+    float hfCu = dt.r * 0.8 + dt.g * 0.2;
+    float ero = lerp(hfCu, 1.0 - hfCu, saturate(hCu * 3.0)) * 0.4;
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * 2.8) * 1.6;
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
@@ -1416,8 +1448,10 @@ AO = 1.0;
     // cloud closes over two or three steps and the march averages its light; thick cloud stays opaque. The storm and rain
     // are capped by the longer of the view and shadow steps (their light came through 400 m shadow steps that were
     // all-or-nothing); fair cumulus only by the view step, so its sunlit tops keep their shaded bases.
-    float cV = Tracer.y > 0.0 ? 2.0 * MaxStepDepth / (stepM * Density) : 1e6;   // cumulus: twice the storm's
-    float cS = Tracer.y > 0.0 ? MaxStepDepth / (capStepM * Density) : 1e6;
+    float cV = Tracer.y > 0.0 ? 1.5 * MaxStepDepth / (stepM * Density) : 1e6;   // cumulus: 1.5 times the storm's (G8: was 2, its skin frosted)
+    // Graphics G8 (round 8: "the clouds have noise"): storm and rain at 0.6 of it. Measured on game-08 (-SailingCloudStepDepth):
+    // 0.6 smoothed the storm's grain and kept its dark mass, 0.4 washed it grey; more view samples (160) didn't help.
+    float cS = Tracer.y > 0.0 ? 0.6 * MaxStepDepth / (capStepM * Density) : 1e6;
     // A stratus deck is flat and even (little for the jitter to catch): three times the storm's by the view step, so an
     // overcast stays thick and grey (capped by the shadow step it thinned to an optical depth under 2 and went beige).
     float cT = Tracer.y > 0.0 ? 3.0 * MaxStepDepth / (stepM * Density) : 1e6;
@@ -1428,7 +1462,9 @@ AO = 1.0;
     float rainy = saturate(dRain / max(d, 1e-3)) * (1.0 - wet);
     Albedo = lerp(lerp(float3(0.96, 0.96, 0.96), float3(0.74, 0.76, 0.8), wet * FrontB.w), float3(0.95, 0.95, 0.96), rainy);
     // The storm's base sits in deep shadow; the rain under it is lit from the sides and reads lighter grey.
-    AO = lerp(lerp(1.0, 0.3, wet * saturate(1.0 - alt / 4000.0)), 0.9, rainy) * lerp(0.75, 1.0, saturate(hCu));
+    // Graphics G8 ("clouds look like a cartoon"): fair cumulus sits on flat, grey bases in its own shade, the sunlit
+    // domes white above them; at 0.75 the whole cloud read as one evenly white, painted shape.
+    AO = lerp(lerp(1.0, 0.3, wet * saturate(1.0 - alt / 4000.0)), 0.9, rainy) * lerp(lerp(0.75, 1.0, saturate(hCu)), lerp(0.5, 1.0, smoothstep(0.0, 0.45, saturate(hCu))), saturate(min(dCu * Ext.x, cV) / max(d, 1e-3)));
     // The shelf (Graphics G1): its base in its own shadow, its face brighter as it rises.
     // Its front faces the clear sky behind the observer and reads lighter than the underside (the lip's pale roll over a
     // dark base): both over hundreds of metres, which the march resolves.
@@ -1829,7 +1865,8 @@ def build_trees_materials():
     """M_TreeLeaves / M_TreeBark (Visual V6): leaf cards cut from the atlas (two-sided foliage, lit through), bark, wind."""
     import os as _os
     atlas_src = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "Artifacts", "models", "world", "T_LeafAtlas.png")
-    atlas = import_texture(atlas_src, WORLD_FOLDER)
+    # The PC has no venv to draw the atlas (make-content.sh does): keep the imported one when there is no fresh PNG.
+    atlas = import_texture(atlas_src, WORLD_FOLDER) if _os.path.exists(atlas_src) else unreal.load_asset(f"{WORLD_FOLDER}/T_LeafAtlas")
     leaves = world_material("M_TreeLeaves")
     leaves.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
     leaves.set_editor_property("two_sided", True)
@@ -1869,13 +1906,26 @@ float3 p = WP * 0.01;
 float n = frac(sin(dot(floor(p * 1.7), float3(12.9898, 78.233, 37.719))) * 43758.5453);
 float m = 0.5 + 0.5 * sin(p.x * 2.1 + sin(p.y * 1.7) * 2.0) * sin(p.y * 2.3 + p.z * 1.9);
 float3 c = lerp(float3(0.045, 0.085, 0.03), float3(0.10, 0.16, 0.06), m * 0.6 + n * 0.4);
-// Graphics G6: a near tree's core (vertex alpha 0) is the crown's shaded inside, seen only through gaps in the cards.
-return c * lerp(0.85, 1.15, VC.b) * lerp(0.55, 1.0, VA);
+// Graphics G8 (round 8: "trees are too round"): the blobs were lit as the smooth spheres they are, a bright top shading
+// round to a dark underside. A crown is leaf clumps facing every way: the normal is the facet's (position derivatives:
+// VertexNormalWS isn't world space on Nanite instances here) bent hard toward a clump field of two scales, and the
+// clumps' hollows darker. A near tree's core (vertex alpha 0) is its deep inside, darker still and lit mostly by the
+// clump field, so it reads as shade between the cards rather than a ball behind them.
+float3 gn = normalize(cross(ddy(p), ddx(p)));
+gn = dot(gn, V) < 0.0 ? -gn : gn;
+float3 j = sin(p * float3(5.3, 4.7, 6.1) + sin(p.yzx * 3.1) * 1.7) + 0.6 * sin(p.zxy * float3(13.1, 11.7, 12.3) + sin(p * 7.3) * 1.3);
+float hollow = saturate(0.5 + 0.35 * (j.x + j.y + j.z) / 2.4);
+Nrm = normalize(lerp(gn, normalize(j + float3(0.0, 0.0, 0.9)), lerp(0.85, 0.6, VA)));
+return c * lerp(0.85, 1.15, VC.b) * lerp(0.32, 1.0, VA) * lerp(0.6, 1.1, hollow);
 """
-    cc = custom(crown, code, ["WP", "VC", "VA"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0)
+    cc = custom(crown, code, ["WP", "VC", "VA", "V"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0,
+                extra_outputs=[("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
     connect(wp, "", cc, "WP")
     connect(vc2, "", cc, "VC")
     connect(vc2, "A", cc, "VA")
+    connect(node(crown, unreal.MaterialExpressionCameraVectorWS, -900, 300), "", cc, "V")
+    crown.set_editor_property("tangent_space_normal", False)
+    MEL.connect_material_property(cc, "Nrm", unreal.MaterialProperty.MP_NORMAL)
     rr = node(crown, unreal.MaterialExpressionConstant, -300, 200, r=0.75)
     MEL.connect_material_property(cc, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rr, "", unreal.MaterialProperty.MP_ROUGHNESS)
@@ -1917,15 +1967,88 @@ float2 i0 = floor(p), f0 = smoothstep(0.0, 1.0, frac(p));
 float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(i0 + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
 float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
 float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
+float3 bump = float3(0, 0, 0);  // tangent-space slope (x along U, y along V) from the patterns that have relief
 if (Pattern > 0.5 && Pattern < 1.5)
 {
-    // 14 cm boards with 1 cm gaps, each board its own grey.
-    float board = floor(uv.y / 0.15);
-    float gap = step(0.93, frac(uv.y / 0.15));
+    // Graphics G8 (round 8: "the pier elements lack textures and details"): weathered wooden decking. 14 cm boards with
+    // 1 cm gaps, cut to lengths with staggered butt joints; each board its own silver-grey to brown; grain lines that
+    // wander, checks (drying splits) along it, knots, rows of screws over the joists every 40 cm, dirt in the gaps and
+    // at the ends, and relief at the gaps.
+    float vb = uv.y / 0.15;
+    float board = floor(vb), fv = frac(vb);
     float b = frac(sin(board * 91.7) * 4375.5);
-    float grain = 0.5 + 0.5 * sin(uv.x * 40.0 + b * 30.0 + sin(uv.x * 3.0 + board) * 2.0);
-    c *= (0.82 + 0.25 * b) * (0.93 + 0.07 * grain);
-    c = lerp(c, c * 0.25, gap);
+    float len = 2.4 + 1.2 * frac(b * 7.1);
+    float ux = uv.x / len + b * 3.7;
+    float piece = floor(ux), fu = frac(ux);
+    float pb = frac(sin(board * 91.7 + piece * 37.3) * 4375.5);
+    float gap = smoothstep(0.915, 0.935, fv);
+    float buttMask = 1.0 - smoothstep(0.0, 0.004 / len, min(fu, 1.0 - fu));
+    // Grain: fine lines along the board, bent by a slow wobble, and a few darker late-wood lines.
+    float wob = sin(uv.x * 1.3 + pb * 20.0) * 0.35 + sin(uv.x * 4.1 + pb * 7.0) * 0.08;
+    float g1 = sin((fv + wob) * 62.8 + pb * 11.0);
+    float g2 = sin((fv + wob * 1.7) * 151.0 + pb * 5.0);
+    float grain = 0.5 + 0.3 * g1 + 0.2 * g2;
+    float late = smoothstep(0.82, 0.98, abs(sin((fv + wob) * 25.1 + pb * 3.0)));
+    // Checks: thin dark splits along the grain, a few per board, of their own length.
+    float ck = frac(sin(floor(uv.x / 0.7 + pb * 5.0) * 17.1 + board * 3.3) * 4375.5);
+    float ckLine = exp(-pow((fv - (0.2 + 0.6 * frac(ck * 13.0))) * 140.0, 2.0)) * step(0.55, ck) * smoothstep(0.0, 0.3, frac(uv.x / 0.7 + pb * 5.0)) * (1.0 - smoothstep(0.6, 0.9, frac(uv.x / 0.7 + pb * 5.0)));
+    // Knots: dark ovals stretched along the grain.
+    float2 kq = float2(uv.x / 0.55, fv);
+    float kh = frac(sin(floor(kq.x) * 61.7 + board * 12.9) * 4375.5);
+    float knot = step(0.8, kh) * (1.0 - smoothstep(0.03, 0.09, length((float2(frac(kq.x) - 0.5, (fv - 0.25 - 0.5 * frac(kh * 9.0)) * 3.0)) * float2(0.55, 0.25))));
+    // Screws over the joists: pairs across each board, 40 cm apart along it.
+    float jx = frac(uv.x / 0.4);
+    float scr = (1.0 - smoothstep(0.004, 0.009, length(float2((jx - 0.5) * 0.4, (abs(fv - 0.45) - 0.27) * 0.15))));
+    // The colour: weathered cedar and pine go silver; some boards are newer (browner), some darker with mildew.
+    float3 silver = float3(0.50, 0.48, 0.44), brown = float3(0.46, 0.33, 0.21), dark = float3(0.27, 0.25, 0.22);
+    float3 wood = lerp(silver, brown, saturate(pb * 1.6 - 0.9));
+    wood = lerp(wood, dark, saturate(blot - 0.55) * 0.9 + 0.25 * step(0.85, pb));
+    wood *= 0.88 + 0.16 * grain - 0.14 * late;
+    wood *= (c / max(dot(Color.rgb, float3(0.3, 0.59, 0.11)), 0.05)) * 0.45 + 0.55;
+    wood = lerp(wood, wood * 0.35, saturate(ckLine * 0.9 + knot * 0.7));
+    wood = lerp(wood, float3(0.12, 0.12, 0.12), scr * 0.8);
+    // Dirt and wet rot creep in from the gaps and the board ends.
+    float edgeDirt = saturate(1.0 - min(fv, 1.0 - fv) / 0.12) * 0.25 + buttMask * 0.5;
+    c = lerp(wood * (1.0 - 0.3 * edgeDirt), float3(0.04, 0.035, 0.03), max(gap, buttMask));
+    r = saturate(r + 0.08 * (1.0 - grain) + 0.1 * gap);
+    // Relief: boards cupped a little, eased edges, the grain raised by the weather.
+    float cup = (fv - 0.45) * 0.25;
+    float ease = smoothstep(0.78, 0.86, fv) - (1.0 - smoothstep(0.0, 0.05, fv));
+    bump = float3(0.02 * g2 * 0.3, -cup - 0.6 * ease + 0.05 * g1 + 0.3 * ckLine, 0);
+}
+else if (Pattern > 8.5 && Pattern < 9.5)
+{
+    // Graphics G8: treated pine and creosoted pilings (U around in metres, V up from the base): long vertical grain and
+    // drying cracks, the wood going grey above, dark and stained in the tide/wave band, green-black algae and mud below.
+    float a = uv.x, z = WP.z * 0.01;
+    float colH = frac(sin(floor(a / 0.9 + 0.5) * 7.3 + floor(WP.x * 0.005) * 1.7 + floor(WP.y * 0.005) * 3.1) * 4375.5);
+    float wob = sin(z * 0.9 + colH * 20.0) * 0.04;
+    float grain = 0.5 + 0.3 * sin((a + wob) * 140.0 + colH * 9.0) + 0.2 * sin((a + wob * 2.0) * 330.0);
+    float crack = exp(-pow((frac((a + wob) * 6.3 + colH) - 0.5) * 30.0, 2.0)) * step(0.35, frac(colH * 5.3 + floor((a + wob) * 6.3) * 0.37));
+    crack *= 0.6 + 0.4 * sin(z * 2.3 + colH * 9.0);
+    // Silver-grey where the sun and rain have had it, the treated brown showing through in places.
+    float3 wood = lerp(float3(0.40, 0.38, 0.34), float3(0.33, 0.24, 0.15), colH * 0.6 * (0.6 + 0.4 * blot));
+    wood *= 0.72 + 0.42 * grain;
+    wood = lerp(wood, float3(0.05, 0.045, 0.04), crack * 0.85);
+    float wet = 1.0 - smoothstep(0.2, 0.7, z);         // the splash band above the water
+    float under = 1.0 - smoothstep(-0.3, 0.05, z);     // below the water line: algae and mud
+    wood = lerp(wood, wood * float3(0.55, 0.52, 0.48), wet * 0.7);
+    wood = lerp(wood, float3(0.07, 0.085, 0.05) * (0.8 + 0.4 * blot), under * 0.9);
+    c = wood;
+    r = lerp(r, 0.55, wet * 0.6);
+    bump = float3(0.25 * crack + 0.04 * sin((a + wob) * 140.0), 0, 0);
+}
+else if (Pattern > 9.5 && Pattern < 10.5)
+{
+    // Graphics G8: dock boxes and power pedestals (moulded white polyethylene and fibreglass): chalky, yellowed, with
+    // grime collecting low down and green-grey mildew at the base, scuffed corners, and dark streaks run down from the lid.
+    float lane = floor(uv.x / 0.09);
+    float hl = frac(sin(lane * 41.3) * 4375.5);
+    float runs = step(0.6, hl) * exp(-pow((frac(uv.x / 0.09) - 0.5) * 6.0, 2.0)) * saturate(uv.y / 0.6);
+    c *= float3(0.95, 0.92, 0.84) * (0.86 + 0.2 * blot);
+    c = lerp(c, c * float3(0.5, 0.52, 0.45), saturate(1.0 - uv.y / 0.3) * 0.75);
+    c = lerp(c, c * 0.6, runs * 0.7);
+    r = saturate(r + 0.2 * blot);
 }
 else if (Pattern > 1.5 && Pattern < 2.5)
 {
@@ -2025,6 +2148,7 @@ if (Pattern > 2.5 && Pattern < 3.5)
     Emit = float3(1.0, 0.72, 0.42) * 6.0 * win * lit * Night;
 }
 Emit += c * Glow * Night;
+Nrm = normalize(float3(-bump.x, -bump.y, 1.0));
 return c;
 """
 
@@ -2043,8 +2167,9 @@ def build_world_surface():
     night.set_editor_property("collection", world_collection())
     night.set_editor_property("parameter_name", "Night")
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
-               extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
+               extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 800), "", c, "WP")
     connect(glow, "", c, "Glow")
     connect(night, "", c, "Night")
     connect(uv, "", c, "UV")
@@ -2055,6 +2180,7 @@ def build_world_surface():
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(c, "Nrm", unreal.MaterialProperty.MP_NORMAL)
     MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
@@ -2293,6 +2419,16 @@ else if (code < 3.5)
     // Window glass: dark, glossy; some lit at night (warm), by window.
     c = float3(0.018, 0.02, 0.024);
     r = 0.04;
+    // Graphics G8 (round 8: "buildings ... not detailed"): white vinyl frames and muntins (sashes 0.9 m wide, a meeting
+    // rail at 0.75 m), blinds half drawn in some, and the sky's brighter reflection in the upper panes.
+    float fu = frac(u / 0.9), fv2 = frac(v / 1.5);
+    float frame = max(1.0 - smoothstep(0.03, 0.05, min(fu, 1.0 - fu)), 1.0 - smoothstep(0.03, 0.05, min(fv2, 1.0 - fv2)));
+    frame = max(frame, 1.0 - smoothstep(0.015, 0.03, abs(fv2 - 0.5)));
+    float blind = step(0.5, frac(sin(floor(u / 0.9) * 13.7 + floor(v / 1.5) * 7.9 + WP.x * 0.0001) * 4375.5)) * step(1.0 - 0.6 * frac(sin(floor(u / 0.9) * 3.1) * 437.5), fv2);
+    c = lerp(c, float3(0.42, 0.40, 0.36), blind * 0.6);
+    c += float3(0.03, 0.04, 0.05) * smoothstep(0.3, 1.0, fv2);
+    c = lerp(c, float3(0.80, 0.80, 0.77), frame);
+    r = lerp(r, 0.5, frame);
     float lit = step(0.55, frac(sin(dot(floor(WP.xy / 150.0), float2(37.7, 11.3)) + floor(WP.z / 290.0) * 7.1) * 4375.5));
     e = float3(1.0, 0.7, 0.4) * 1.5 * lit * smoothstep(0.4, 0.95, Night);   // G6: lights on at dusk, not in a storm's gloom
 }
@@ -2317,13 +2453,23 @@ if (painted > 0.5 && code < 2.5)
     float wu = frac(u / 3.2 + seed);
     float wv = frac(v / 2.9);
     float win = step(0.25, wu) * step(wu, 0.6) * step(0.3, wv) * step(wv, 0.76) * step(floor(v / 2.9) * 2.9 + 2.3, eave) * step(0.4, v);
-    c = lerp(c, float3(0.03, 0.035, 0.04), win);
+    // Graphics G8: a white frame round each painted window, a muntin across, the sky in the top half.
+    float wf = step(0.23, wu) * step(wu, 0.62) * step(0.28, wv) * step(wv, 0.78) * step(floor(v / 2.9) * 2.9 + 2.3, eave) * step(0.4, v);
+    float mun = (1.0 - smoothstep(0.004, 0.008, abs(wu - 0.425))) + (1.0 - smoothstep(0.006, 0.012, abs(wv - 0.53)));
+    c = lerp(c, float3(0.80, 0.80, 0.77), saturate(wf - win + saturate(mun) * win));
+    c = lerp(c, float3(0.03, 0.035, 0.04) + float3(0.03, 0.04, 0.05) * smoothstep(0.53, 0.76, wv), win * (1.0 - saturate(mun)));
     r = lerp(r, 0.05, win);
     float lit = step(0.55, frac(sin(floor(u / 3.2 + seed) * 37.7 + floor(v / 2.9) * 11.3 + seed * 91.0) * 4375.5));
     e += float3(1.0, 0.7, 0.4) * 1.8 * win * lit * smoothstep(0.4, 0.95, Night);
 }
 // Weathering: splash-back near the ground, a little grime under the eaves.
 c *= lerp(0.78, 1.0, saturate(v / 0.5)) * lerp(1.0, 0.9, saturate((v - eave + 0.6) / 0.6) * step(code, 2.5));
+// Graphics G8: the soffit's shadow band and a white fascia line at the eave, and a downspout at each end of a wall run
+// (every 9 m along it), on walls.
+float wallish = step(code, 2.5);
+c = lerp(c, c * 0.55, wallish * saturate(1.0 - abs(v - eave + 0.18) / 0.18) * step(v, eave));
+float spout = (1.0 - smoothstep(0.03, 0.045, abs(frac(u / 9.0 + seed * 0.37) - 0.5) * 9.0)) * step(v, eave) * wallish;
+c = lerp(c, float3(0.78, 0.78, 0.75), spout);
 Emit = e;
 Out = r;
 return c;
@@ -2343,6 +2489,15 @@ if (code < 0.5)
     c *= (0.8 + 0.3 * b) * (1.0 - 0.3 * step(0.9, frac(v / 0.14)));
     // Streaks and weathering over the whole roof (tens of metres): no two roofs alike.
     c *= 0.9 + 0.12 * frac(sin(floor(u / 3.0) * 12.7 + Tag.x * 47.0) * 4375.5);
+    // Graphics G8: granule speckle on every tab, black algae streaks (Gloeocapsa) running down from the ridge on the
+    // shaded slopes, darker at the eave's drip edge, and patchy replacement shingles.
+    c *= 0.9 + 0.2 * frac(sin(dot(floor(float2(u, v) * 40.0), float2(12.9, 78.2))) * 43758.5);
+    float lane = frac(sin(floor(u / 0.7) * 41.3 + Tag.x * 13.0) * 4375.5);
+    float algae = step(0.55, lane) * exp(-pow((frac(u / 0.7) - 0.5) * (3.0 + 4.0 * lane), 2.0)) * saturate(1.0 - v / (3.0 + 5.0 * lane) + 0.6);
+    c = lerp(c, c * float3(0.45, 0.47, 0.45), algae * 0.6);
+    c *= lerp(0.75, 1.0, saturate(v / 0.25));
+    float patch = step(0.93, frac(sin(floor(u / 1.0) * 7.7 + floor(v / 0.7) * 19.3 + Tag.x * 3.0) * 4375.5));
+    c = lerp(c, c * 1.25, patch);
 }
 else if (code < 1.5)
 {
@@ -2400,9 +2555,9 @@ WORLD_LIBRARY = {
     "Rock": ((0.52, 0.49, 0.43), 0.9, 4.0, 0.0, 0.0),
     "Decking": ((0.42, 0.40, 0.36), 0.85, 1.0, 0.0, 0.0),
     "Floats": ((0.05, 0.05, 0.05), 0.6, 0.0, 0.0, 0.0),
-    "Pilings": ((0.32, 0.27, 0.21), 0.9, 4.0, 0.0, 0.0),
+    "Pilings": ((0.32, 0.27, 0.21), 0.9, 9.0, 0.0, 0.0),    # Graphics G8: wood (pattern 9), was concrete
     "Metal": ((0.75, 0.76, 0.78), 0.3, 0.0, 0.0, 1.0),
-    "White": ((0.85, 0.86, 0.84), 0.45, 0.0, 0.0, 0.0),
+    "White": ((0.85, 0.86, 0.84), 0.45, 10.0, 0.0, 0.0),   # Graphics G8: weathered dock boxes (pattern 10)
     "Siding": ((0.78, 0.74, 0.64), 0.75, 3.0, 1.0, 0.0),
     "Roof": ((0.20, 0.20, 0.21), 0.8, 2.0, 0.0, 0.0),
     "Concrete": ((0.62, 0.60, 0.56), 0.85, 4.0, 0.0, 0.0),

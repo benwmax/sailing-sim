@@ -114,13 +114,24 @@ namespace Sailing
 		for (double& A : TargetAmplitude) A *= Scale;
 	}
 
-	void FWaveField::Update(double Dt, double ResponseSeconds)
+	double FWaveField::GrowthSeconds(double PeriodSeconds)
 	{
-		const double T = Clamp(Dt / std::max(ResponseSeconds, 1e-3), 0.0, 1.0);
-		for (int I = 0; I < kWaveComponents; ++I)
+		return Clamp(8.0 * PeriodSeconds * PeriodSeconds, 5.0, 300.0);
+	}
+
+	void FWaveField::Update(double Dt)
+	{
+		for (int B = 0; B < kWaveBands; ++B)
 		{
-			Components[I].Amplitude += (TargetAmplitude[I] - Components[I].Amplitude) * T;
+			// Exponential approach, exact for any step.
+			const double T = 1.0 - std::exp(-std::max(Dt, 0.0) / GrowthSeconds(1.0 / BandFrequency[B]));
+			for (int D = 0; D < kWaveDirectionsPerBand; ++D)
+			{
+				const int I = B * kWaveDirectionsPerBand + D;
+				Components[I].Amplitude += (TargetAmplitude[I] - Components[I].Amplitude) * T;
+			}
 		}
+		bBandsDirty = true;
 	}
 
 	void FWaveField::SnapToTarget()
@@ -129,6 +140,7 @@ namespace Sailing
 		{
 			Components[I].Amplitude = TargetAmplitude[I];
 		}
+		bBandsDirty = true;
 	}
 
 	double FWaveField::Height(double X, double Y, double T) const
@@ -218,6 +230,11 @@ namespace Sailing
 
 	const std::vector<FWaveBand>& FWaveField::Bands() const
 	{
+		std::lock_guard<std::mutex> Lock(BandLock.M);
+		const uint64_t OceanGeneration = Ocean ? Ocean->GetGeneration() : ~1ull;
+		if (!bBandsDirty && OceanGeneration == BandOceanGeneration) return BandCache;
+		bBandsDirty = false;
+		BandOceanGeneration = OceanGeneration;
 		BandCache.clear();
 		for (const FWaveComponent& C : Components)
 		{

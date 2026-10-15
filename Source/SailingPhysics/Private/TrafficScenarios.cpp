@@ -3,6 +3,7 @@
 #include "Traffic.h"
 #include "Race.h"
 #include "Wind.h"
+#include "WindClimate.h"
 #include <algorithm>
 #include <cmath>
 #include <random>
@@ -242,10 +243,23 @@ namespace Sailing
 		return Out;
 	}
 
-	FRaceScenarioResult RunAiRace(int Boats, int Laps, double BeatMeters, unsigned Seed)
+	FRaceScenarioResult RunAiRace(int Boats, int Laps, double BeatMeters, unsigned Seed, bool bShifty)
 	{
 		FRaceScenarioResult Out;
-		const FWindField Wind = ScenarioWind();
+		FWindField Wind = ScenarioWind();
+		if (bShifty)
+		{
+			FWindParams P = Wind.GetParams();
+			P.GustIntensity = GustIntensityForFactor(ClimateGustFactor(7, 15.0, false));
+			P.PuffIntensity = ClimatePuffStrength(7, 15.0, false);
+			P.ShiftDegrees = 8.0;
+			P.ShiftPeriodSeconds = 420.0;
+			P.PersistentShiftDegrees = 8.0;
+			P.MixedLayerMeters = ClimateMixedLayerM(7, 15.0, false);
+			P.AirMinusWaterC = ClimateAirC(7, 15.0, false) - ClimateWaterC(7, false);
+			P.Seed = Seed;
+			Wind.SetParams(P);
+		}
 		FTrafficSim Sim;
 		Sim.SetWorld(&Wind, nullptr, nullptr);
 		FRaceRunner Race;
@@ -265,9 +279,13 @@ namespace Sailing
 		Race.Begin(0.0, 60.0);
 		std::vector<bool> Ocs(Race.Entries.size(), false);
 		bool bStartSeen = false;
+		std::vector<int> Sides;
 		while (!Race.IsOver() && Sim.GetTime() < Race.StartTime() + Race.TimeLimit + 10.0)
 		{
 			Sim.Step(1.0 / 30.0);
+			const std::vector<FTrafficVessel>& Fleet = Sim.GetVessels();
+			if (Sides.size() != Fleet.size()) { Sides.clear(); for (const FTrafficVessel& V : Fleet) Sides.push_back(V.Side); }
+			for (size_t I = 0; I < Fleet.size(); ++I) { Out.Tacks += Sim.GetTime() > Race.StartTime() && Fleet[I].Side != Sides[I]; Sides[I] = Fleet[I].Side; }
 			if (!bStartSeen && Sim.GetTime() > Race.StartTime() + 0.5)
 			{
 				bStartSeen = true;

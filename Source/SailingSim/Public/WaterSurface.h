@@ -56,6 +56,15 @@ public:
 	static constexpr float Choppiness = 1.5f;
 	static constexpr double SplitHz = 0.65727;
 	static constexpr int32 LongComponents = 24;
+	/** W0: whitecap coverage against the open sea's (Monahan) by water body. Fresh water foams less (smaller, shorter-lived
+	 *  bubbles: about 0.4 of the sea's coverage on the lake), the brackish bay about 0.7, the Gulf the full law. */
+	static float WhitecapScaleFor(int32 World);
+	/** W0: the folding threshold M_WaterV4 uses at a pixel: FoamThreshold shifted so coverage scales by the body's scale
+	 *  times Monahan's (U_local / U_mean)^3.41, caps cluster in puffs and thin in lulls. CapSlope is the threshold shift
+	 *  per e-fold of coverage, measured on the drawn waves (SailingSim.Visual.Whitecaps). Mirrored in make_materials.py. */
+	static constexpr float FoamThreshold = 0.6f;
+	static constexpr float CapSlope = 0.045f;
+	static float WhitecapThreshold(float LocalOverMean, float WaterScale);
 	/** Game-thread time spent on the water each frame (the FFT blend and upload, the wake grid), summed: bench.json. */
 	static double WaterCpuSeconds;
 
@@ -119,6 +128,17 @@ private:
 	FDetailFramePtr FramePrev, FrameNext;
 	TFuture<FDetailFramePtr> PendingFrame;
 	bool bFramePending = false;
+	// Perf 1 fix 5: the detail maps' blend, mips and half-float packing run on a worker for the next frame's time; the
+	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
+	struct FDetailUpload
+	{
+		TArray<uint8*> A, B, Ripple; // half-float RGBA mips, new[] blocks
+		int32 N = 0, RippleN = 0;
+		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : Ripple) delete[] P; }
+	};
+	using FDetailUploadPtr = TSharedPtr<FDetailUpload, ESPMode::ThreadSafe>;
+	TFuture<FDetailUploadPtr> PendingUpload;
+	bool bUploadPending = false;
 	FWakeGrid Wake;  // stepped on a worker: touched by the game thread only while no step is pending
 	struct FWakeFrame { TArray<float> Pixels; FVector2D Origin = FVector2D::ZeroVector; int32 N = 0; float Cell = 0.f; };
 	TFuture<FWakeFrame> PendingWake;

@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "PerfScopes.h"
 #include "SailSession.h"
 #include "PowerVesselActor.h"
 #include "SailboatPawn.h"
@@ -13,6 +14,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Async/ParallelFor.h"
 
 using namespace Sailing;
 
@@ -57,8 +59,11 @@ void ATrafficManager::BeginPlay()
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return;
 	const FLakeData& Lake = GM->GetLake();
+	// Perf 1: the AI sailboats step in parallel, so the current reads the clock taken on the game thread (it is the same
+	// for the whole frame's steps: the player's boat, whose time it is, has already stepped).
 	Sim.SetWorld(&GM->GetWind(), &GM->GetWaves(), Lake.IsLoaded() ? &Lake.Terrain : nullptr,
-		[GM](double X, double Y) { return GM->GetCurrentAt(X, Y); });
+		[this, GM](double X, double Y) { const FLakeData& L = GM->GetLake(); return L.IsTidal() ? L.Tides.CurrentAt(X, Y, UnixNow) : Sailing::Vec3(); });
+	Sim.ParallelFor = [](int Count, const std::function<void(int)>& Body) { ::ParallelFor(Count, [&Body](int32 I) { Body(I); }); };
 	Sim.SetTime(GM->GetSimTime());
 }
 
@@ -396,6 +401,7 @@ void ATrafficManager::UpdateHorns(double Now)
 void ATrafficManager::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Traffic);
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	ASailboatPawn* Player = PC ? Cast<ASailboatPawn>(PC->GetPawn()) : nullptr;
@@ -415,12 +421,20 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		}
 	}
 
+	// Perf 1 fix 6: no traffic, no race and no horn sounding: keep the clock and skip the rest (0.9 ms on the PC).
+	if (Sim.GetVessels().empty() && !bRace && Blasts.IsEmpty())
+	{
+		Sim.SetTime(GM->GetSimTime());
+		Player->GetMutableBoatModel().SetMovingObstacles({});
+		return;
+	}
+	UnixNow = GM->GetUnixTime();
 	const FVesselSnapshot Me = PlayerSnapshot();
 	Sim.SetPlayer(Me, Player->GetBoatModel().GetConfig().Beam, true);
 	// Run the traffic on the game's clock (the boat's physics time), a frame at a time.
 	const double Lag = GM->GetSimTime() - Sim.GetTime();
 	if (Lag > 2.0) Sim.SetTime(GM->GetSimTime() - 0.1); // after a pause or a reset: catch up rather than fast-forward
-	Sim.Step(FMath::Clamp(GM->GetSimTime() - Sim.GetTime(), 0.0, 0.25));
+	{ SAILING_PERF_SCOPE(TrafficStep); Sim.Step(FMath::Clamp(GM->GetSimTime() - Sim.GetTime(), 0.0, 0.25)); }
 	// Other hulls near the player's boat, for her contact physics.
 	Player->GetMutableBoatModel().SetMovingObstacles(Sim.HullsNear(Me.X, Me.Y, 80.0, FTrafficSim::PlayerId));
 

@@ -37,7 +37,9 @@ void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& 
 	}
 	else
 	{
-		Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(), TArray<FColor>(), Tangents);
+		// Perf 1 fix 3: the section is updated in place (same topology); the UVs never change after it was made, so only
+		// positions, normals and tangents go across.
+		Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), Tangents);
 	}
 }
 

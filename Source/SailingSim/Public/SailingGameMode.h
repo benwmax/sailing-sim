@@ -6,6 +6,7 @@
 #include "Ocean.h"
 #include "Weather.h"
 #include "Wind.h"
+#include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
 #include "Async/Future.h"
@@ -101,6 +102,7 @@ private:
 	TSharedPtr<Sailing::FShelterMap> Shelter;
 	TFuture<TSharedPtr<Sailing::FShelterMap>> PendingShelter;
 	bool bShelterBuilding = false;
+	std::vector<Sailing::FShelterObstacle> ShelterObstacles; // W1: the houses, for the lee map
 	void UpdateShelter();
 	void UpdateResolutionGovernor(float DeltaSeconds);
 	float GovernorMs = 16.f, GovernorClock = 0.f;
@@ -139,5 +141,10 @@ private:
 	FString GpuSlicesJson;
 	double ClothSecondsAtStart = -1.0;
 	double WaterSecondsAtStart = -1.0;
+	// Perf 1: stat unit's thread times over the measured window, and the game thread's slices at its start.
+	SailingPerf::FThreadTimes ThreadTimes;
+	double SlicesAtStart[int32(SailingPerf::ESlice::Count)] = {};
+	double SlicesAtEnd[int32(SailingPerf::ESlice::Count)] = {};
+	bool bSlicesStarted = false;
 	void FinishGpuSlices();
 };

@@ -57,6 +57,65 @@ bool FSailingWaveHeightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * W0: each band of the lake sea follows the wind at its own pace (FWaveField::GrowthSeconds, tau = 8 T^2 clamped to
+ * 5..300 s). After a step from 6 to 18 kn the 0.5 s ripples reach 90% of their new amplitude long before the 4 s waves,
+ * and the steady state is the same sea as before (the targets are unchanged; only the approach is per band).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveBandGrowthTest, "SailingSim.Physics.WaveBandGrowth", Flags)
+bool FSailingWaveBandGrowthTest::RunTest(const FString& Parameters)
+{
+	FWaveField Waves = MakeWaves(6.0, 0.0, 5000.0);
+	const FWaveField Target = MakeWaves(18.0, 0.0, 5000.0);
+	auto BandNear = [&Waves](double Period)
+	{
+		int32 Best = 0;
+		for (int32 B = 1; B < kWaveBands; ++B)
+		{
+			if (FMath::Abs(Waves.BandPeriod(B) - Period) < FMath::Abs(Waves.BandPeriod(Best) - Period)) Best = B;
+		}
+		return Best;
+	};
+	auto BandRms = [](const FWaveField& W, int32 B)
+	{
+		double E = 0.0;
+		for (int32 D = 0; D < kWaveDirectionsPerBand; ++D) E += FMath::Square(W.GetComponents()[B * kWaveDirectionsPerBand + D].Amplitude);
+		return FMath::Sqrt(E);
+	};
+	const int32 Short = BandNear(0.5), Long = BandNear(4.0);
+	const double Short0 = BandRms(Waves, Short), Short1 = BandRms(Target, Short);
+	const double Long0 = BandRms(Waves, Long), Long1 = BandRms(Target, Long);
+	TestTrue(TEXT("Both bands grow with the wind"), Short1 > Short0 * 1.05 && Long1 > Long0 * 1.05);
+
+	FWaveParams P = Waves.GetParams();
+	P.WindSpeedKnots = 18.0;
+	Waves.SetWind(P);
+	constexpr double Dt = 1.0 / 60.0;
+	double ShortT90 = -1.0, LongT90 = -1.0;
+	for (int32 I = 1; I <= 1200 * 60; ++I)
+	{
+		Waves.Update(Dt);
+		const double T = I * Dt;
+		if (ShortT90 < 0.0 && (BandRms(Waves, Short) - Short0) >= 0.9 * (Short1 - Short0)) ShortT90 = T;
+		if (LongT90 < 0.0 && (BandRms(Waves, Long) - Long0) >= 0.9 * (Long1 - Long0)) LongT90 = T;
+	}
+	double MaxDiff = 0.0, MaxAmp = 0.0;
+	for (int32 I = 0; I < kWaveComponents; ++I)
+	{
+		MaxDiff = FMath::Max(MaxDiff, FMath::Abs(Waves.GetComponents()[I].Amplitude - Target.GetComponents()[I].Amplitude));
+		MaxAmp = FMath::Max(MaxAmp, Target.GetComponents()[I].Amplitude);
+	}
+	AddInfo(FString::Printf(TEXT("Band %.2f s (tau %.0f s) reached 90%% in %.1f s, band %.2f s (tau %.0f s) in %.1f s; Hs %.3f m vs %.3f m snapped"),
+		Waves.BandPeriod(Short), FWaveField::GrowthSeconds(Waves.BandPeriod(Short)), ShortT90, Waves.BandPeriod(Long),
+		FWaveField::GrowthSeconds(Waves.BandPeriod(Long)), LongT90, Waves.SignificantHeight(), Target.SignificantHeight()));
+	TestTrue(TEXT("The ripples reach 90% within half a minute"), ShortT90 > 0.0 && ShortT90 < 30.0);
+	TestTrue(TEXT("The 4 s waves take minutes"), LongT90 > 120.0);
+	TestTrue(TEXT("The ripples get there long before the 4 s waves (5x sooner)"), ShortT90 > 0.0 && LongT90 > 5.0 * ShortT90);
+	TestTrue(TEXT("Steady state equals the snapped sea"), MaxDiff < 1e-6 * FMath::Max(MaxAmp, 1e-3));
+	TestTrue(TEXT("Growth times clamp to 5..300 s"), FWaveField::GrowthSeconds(0.1) == 5.0 && FWaveField::GrowthSeconds(20.0) == 300.0);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveDirectionTest, "SailingSim.Water.FollowsTheWind", Flags)
 bool FSailingWaveDirectionTest::RunTest(const FString& Parameters)
 {
@@ -178,23 +237,40 @@ bool FSailingStormTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingVisibleGustsTest, "SailingSim.Weather.GustsVisibleBeforeTheyArrive", Flags)
 bool FSailingVisibleGustsTest::RunTest(const FString& Parameters)
 {
-	// Puffs: the roughness the water shows 300 m upwind now is what the boat feels when that air arrives.
+	// W1: puffs are seen on the water before they arrive. A puff 400 m up its track (it drifts at the wind aloft, a few
+	// degrees veered) is the puff the boat feels when it gets there; the water's roughness there now foretells the
+	// boat's wind then (the fine turbulence moves at the surface wind, so not exactly).
 	FWindParams WP;
 	WP.SpeedKnots = 12.0;
 	WP.FromDegrees = 0.0;
-	WP.GustIntensity = 0.3;
+	WP.GustIntensity = 0.12;
+	WP.PuffIntensity = 0.1;
 	WP.Seed = 5;
 	const FWindField Gusty(WP);
-	const double U = 12.0 * kKnot;
-	double MaxError = 0.0;
-	for (int32 I = 0; I < 50; ++I)
+	const Vec3 Drift = Gusty.PuffDrift();
+	const double Vp = Drift.LengthXY();
+	const Vec3 Ahead = Drift / Vp * -400.0; // up the puffs' track
+	double PuffError = 0.0, SA = 0.0, SB = 0.0, SAA = 0.0, SBB = 0.0, SAB = 0.0;
+	const int32 N = 300;
+	for (int32 I = 0; I < N; ++I)
 	{
-		const double T = 10.0 + I * 3.0;
-		const double Upwind = Gusty.SurfaceRoughnessAt(300.0, 0.0, T);
-		const double Later = Gusty.SurfaceRoughnessAt(0.0, 0.0, T + 300.0 / U);
-		MaxError = FMath::Max(MaxError, FMath::Abs(Upwind - Later));
+		const double T = 60.0 + I * 7.0;
+		double F0, S0, F1, S1;
+		Gusty.PuffAt(Ahead.X, Ahead.Y, T, F0, S0);
+		Gusty.PuffAt(0.0, 0.0, T + 400.0 / Vp, F1, S1);
+		PuffError += FMath::Abs(F0 - F1) / N;
+		// What the eye takes in: the roughness over a patch of water 150 m across up there now; what the boat feels: her
+		// wind over the 20 s it takes to cross it.
+		double A = 0.0, B = 0.0;
+		for (int32 K = -2; K <= 2; ++K) for (int32 L = -2; L <= 2; ++L) A += Gusty.SurfaceRoughnessAt(Ahead.X + K * 35.0, Ahead.Y + L * 35.0, T) / 25.0;
+		for (int32 K = -10; K <= 10; ++K) B += Gusty.SurfaceRoughnessAt(0.0, 0.0, T + 400.0 / Vp + K) / 21.0;
+		SA += A; SB += B; SAA += A * A; SBB += B * B; SAB += A * B;
 	}
-	TestTrue(TEXT("A puff seen 300 m upwind reaches the boat about 300 m / wind speed later"), MaxError < 0.02);
+	const double Cov = SAB / N - SA * SB / (N * N), Corr = Cov / FMath::Sqrt((SAA / N - SA * SA / (N * N)) * (SBB / N - SB * SB / (N * N)));
+	AddInfo(FString::Printf(TEXT("A puff 400 m up its track arrives %.0f s later within %.3f of its strength on average; the water there now (a 150 m patch) and the wind here then (20 s) correlate %.2f"),
+		400.0 / Vp, PuffError, Corr));
+	TestTrue(TEXT("A puff seen 400 m upwind reaches the boat (a few land or fade on the way)"), PuffError < 0.03);
+	TestTrue(TEXT("The rough water upwind foretells the wind"), Corr > 0.5);
 
 	// The storm's gust front shows as a band of rough water closing in before the wind at the boat changes.
 	FWeatherSystem Weather;

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 class UPoseableMeshComponent;
+namespace Sailing { struct FBoatConfig; }
 
 /**
  * Visual V3: the crew's poses (SK_Sailor, Tools/blender/build_crew.py), from the physics crew model.
@@ -69,12 +70,41 @@ SAILINGSIM_API void BuildCrewRig(const class USkeletalMesh* Mesh, FCrewRig& Out)
  * from the shoulder, keeping the stance's elbow plane; Knee rests it on that side's knee. Grip curls the fingers (rigs
  * with finger bones): 0 open, about 0.3 relaxed, 1 closed round a line.
  */
+/**
+ * Crew pose fix (round 8/9: the helm's foot came out through the J/22's topsides): what the crew stand on. The boat's
+ * deck in its own frame (m): the side decks at the sheer, the cockpit well's seats and sole (from the Blender builds:
+ * Tools/blender/build_j22.py, build_fleet.py SPECS), and the solid boat under them. With a ground, a foot the stance
+ * would put inside the boat is planted on the floor above it (or brought inboard into the well) by two-bone IK on the
+ * leg, keeping the stance's knee plane.
+ */
+struct SAILINGSIM_API FCrewGround
+{
+	const Sailing::FBoatConfig* Config = nullptr;
+	double HullDepth = 0.25;    // m, FBoatModel::HullDepth
+	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
+};
+
+/** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */
+struct SAILINGSIM_API FCrewCockpitWell
+{
+	double X0 = 0.0, X1 = 0.0;   // aft and forward ends
+	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
+	double HalfWidth = 0.0;
+	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+};
+SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out);
+/** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */
+SAILINGSIM_API double CrewFloorZ(const Sailing::FBoatConfig& Config, double X, double Y);
+/** Is a point (m, boat frame) inside the solid boat: under the deck, inside the topsides, not in the cockpit well? */
+SAILINGSIM_API bool CrewInsideBoat(const Sailing::FBoatConfig& Config, double HullDepth, const FVector& P);
+
 struct SAILINGSIM_API FCrewHands
 {
 	enum class EMode : uint8 { Free, Reach, Knee };
 	EMode Mode[2] = { EMode::Free, EMode::Free };          // [0] left, [1] right
 	FVector Target[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	float Grip[2] = { 0.3f, 0.3f };
+	const FCrewGround* Ground = nullptr;                    // plant the feet on the boat (FCrewGround)
 };
 
 /** Poses the skeleton: forward kinematics from the reference pose with the joint rotations (missing joints rest). With
@@ -85,3 +115,8 @@ SAILINGSIM_API void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName
 /** Component-space joint positions of the reference skeleton posed with the rotations (cm): for the tests. */
 SAILINGSIM_API void CrewPosedJoints(const class USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& OutPositions,
 	const FCrewRig* Rig = nullptr, const FCrewHands* Hands = nullptr);
+
+/** Where each shoe's sole meets the ground, posed (component space, cm): [side 0 left, 1 right][0 heel, 1 toe]. From
+ *  the rest pose (the sole a centimetre above the ground under the ankle, the toe past the ball) carried by the foot. */
+SAILINGSIM_API void CrewFootPoints(const class USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, FVector Out[2][2], const FCrewRig* Rig = nullptr,
+	const FCrewHands* Hands = nullptr);

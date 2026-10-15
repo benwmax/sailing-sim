@@ -8,4 +8,4 @@ OUT="$REPO_ROOT/Artifacts/polar-sweep"
 mkdir -p "$REPO_ROOT/Artifacts"
 SOURCES=$(ls "$SRC"/Private/*.cpp | grep -v SailingPhysicsModule.cpp)
 clang++ -std=c++17 -O2 -Wall -Wextra -Werror -Wshadow -I"$SRC/Public" $SOURCES "$REPO_ROOT/Tools/PolarSweep/main.cpp" -o "$OUT"
-"$OUT" "$@"
+cd "$REPO_ROOT" && "$OUT" "$@"

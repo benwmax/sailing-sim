@@ -69,6 +69,10 @@ private:
 	TArray<FChunk> Chunks;
 	int32 ChunkRows = 0, ChunkCols = 0;
 	int32 Pending = 0;
+	// Perf 1 fix 7: where and when the chunks' detail was last chosen, and how many are building.
+	FVector2D LodCamera = FVector2D(1e12, 1e12);
+	double LodTime = -1e30;
+	int32 Building = 0;
 	float TreeFraction = 1.f;
 	bool bTreesPlaced = false;
 

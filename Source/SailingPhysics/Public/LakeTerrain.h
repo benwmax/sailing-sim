@@ -32,6 +32,8 @@ namespace Sailing
 		bool HasDetailIn(double MinX, double MinY, double MaxX, double MaxY) const;
 		/** Builds a synthetic grid (tests). */
 		void InitSynthetic(int Rows, int Cols, double Cell, double OriginX, double OriginY, const std::vector<float>& Heights);
+		/** Synthetic tree density (0..255, 255 = 12 m canopy) on its own grid (tests). */
+		void InitSyntheticTrees(int Rows, int Cols, double Cell, double OriginX, double OriginY, const std::vector<uint8_t>& Density);
 
 		bool IsValid() const { return Rows > 0; }
 
@@ -79,18 +81,40 @@ namespace Sailing
 	 * wind. Behind an obstacle of height H the wind recovers over roughly 20-30 H, gustier on the way.
 	 * Precomputed on a coarse grid for one wind direction (recompute when the wind swings).
 	 */
+	/** W1: something on the shore that blocks the wind besides the terrain and its tree canopy (a house, a building). */
+	struct FShelterObstacle
+	{
+		double X = 0.0, Y = 0.0;   // centre (m)
+		double Radius = 5.0;       // plan half-size (m)
+		double Top = 0.0;          // height of its top above the water (m)
+	};
+
+	/**
+	 * The shore's effect on the wind over the water, for one wind direction: the lee of the terrain, its trees and houses
+	 * (a deficit that is deepest within a few heights and has recovered by about 30 heights downwind, W1's analytic
+	 * band), times the wind building over open water from the upwind shore (an internal boundary layer: about 80 % at the
+	 * shore, 95 % after 1.3 km, full beyond 3 km).
+	 */
 	class SAILINGPHYSICS_API FShelterMap
 	{
 	public:
-		void Build(const FLakeTerrain& Terrain, double FromRadians, double Cell = 40.0);
-		/** 1 = full wind, about 0.3 right behind a wooded bluff. */
+		void Build(const FLakeTerrain& Terrain, double FromRadians, double Cell = 40.0, const std::vector<FShelterObstacle>* Obstacles = nullptr);
+		/** 1 = full wind, about 0.3 right behind a wooded bluff, a little under 1 close downwind of any shore. */
 		double FactorAt(double X, double Y) const;
+		/** The two parts: lee (1 = none) and the open-water building (1 = full fetch). */
+		double LeeAt(double X, double Y) const { return Sample(Lee, X, Y); }
+		double BuildAt(double X, double Y) const { return Sample(Building, X, Y); }
 		double GetFromRadians() const { return FromRadians; }
 		bool IsValid() const { return Rows > 0; }
 
+		/** The lee deficit behind an obstacle at Ratio = distance / height (0 = none). */
+		static double LeeDeficit(double Ratio);
+		/** The wind over the water at a fetch from the upwind shore, as a fraction of the open-water wind. */
+		static double OpenWaterBuild(double FetchMeters);
+
 	private:
+		double Sample(const std::vector<float>& Grid, double X, double Y) const;
 		int Rows = 0, Cols = 0;
 		double Cell = 40.0, OriginX = 0.0, OriginY = 0.0, FromRadians = 0.0;
-		std::vector<float> Factor;
-	};
-}
+		std::vector<float> Lee, Building;
+	};}

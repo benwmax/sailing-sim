@@ -1,4 +1,5 @@
 #include "CrewPose.h"
+#include "BoatModel.h"
 #include "GroomAsset.h"
 #include "GroomBindingAsset.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -215,6 +216,70 @@ namespace
 		Joints.Add(Ref.GetBoneName(Lower), DU.Inverse() * DL);
 	}
 
+	/** A posed foot's heel and toe on the sole (component space): in the rest pose's character frame the heel 4 cm
+	 *  behind the ankle, the toe 5 cm past the ball (SK_Sailor has no ball: its foot bone runs 17 cm to the toe), both a
+	 *  centimetre above the ground, carried by the foot bone. */
+	bool SolePoints(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const FQuat& Frame, int32 Side, FVector Out[2])
+	{
+		const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
+		if (Foot == INDEX_NONE) return false;
+		const int32 Ball = Ref.FindBoneIndex(Side == 0 ? TEXT("ball_l") : TEXT("ball_r"));
+		const FVector Ankle = Frame.UnrotateVector(Rest[Foot].GetLocation());
+		const double ToeX = Ball != INDEX_NONE ? Frame.UnrotateVector(Rest[Ball].GetLocation()).X + 5.0 : Ankle.X + 17.0;
+		const FVector Sole[2] = { FVector(Ankle.X - 4.0, Ankle.Y, 1.0), FVector(ToeX, Ankle.Y, 1.0) };
+		const FQuat D = CS[Foot].GetRotation() * Rest[Foot].GetRotation().Inverse();
+		for (int32 K = 0; K < 2; ++K) Out[K] = CS[Foot].GetLocation() + D.RotateVector(Frame.RotateVector(Sole[K]) - Rest[Foot].GetLocation());
+		return true;
+	}
+
+	/** Crew pose fix: each foot the stance put inside the boat goes onto the floor above it, or, off the deck's plan
+	 *  (through the topsides), inboard to the well (or the deck) first; the leg reaches it by two-bone IK. */
+	bool PlantFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
+		const FCrewGround& G, TMap<FName, FQuat>& Joints)
+	{
+		using namespace Sailing;
+		const FBoatConfig& C = *G.Config;
+		constexpr double M = 0.01; // cm to m
+		bool bMoved = false;
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			FVector Sole[2];
+			if (!SolePoints(Ref, Rest, CS, Frame, Side, Sole)) continue;
+			const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
+			FVector B[2] = { G.ToBoat.TransformPosition(Sole[0]) * M, G.ToBoat.TransformPosition(Sole[1]) * M };
+			auto Inside = [&](const FVector& P) { return CrewInsideBoat(C, G.HullDepth, P + FVector(0.0, 0.0, 0.015)); };
+			if (!Inside(B[0]) && !Inside(B[1])) continue;
+			FVector Shift = FVector::ZeroVector;
+			const FVector Mid = 0.5 * (B[0] + B[1]);
+			const double Off = -1e8;
+			// Off the deck's plan (through the topsides), or under the side deck beside the well: bring it inboard, into the
+			// well where there is one alongside, else onto the nearest hull's deck, 8 cm in from the edge.
+			const bool bOffPlan = CrewFloorZ(C, B[0].X, B[0].Y) < Off || CrewFloorZ(C, B[1].X, B[1].Y) < Off;
+			int32 Near = 0;
+			for (int32 K = 1; K < int32(C.Hulls.size()); ++K)
+			{
+				if (FMath::Abs(Mid.Y - C.Hulls[K].CenterY) < FMath::Abs(Mid.Y - C.Hulls[Near].CenterY)) Near = K;
+			}
+			const FHullShape& H = C.Hulls[Near];
+			FCrewCockpitWell W;
+			const bool bWell = Near == 0 && CrewCockpitWell(C, W) && Mid.X > W.X0 && Mid.X < W.X1;
+			const double Limit = (bWell ? (W.SideDeck > 0.0 ? H.DeckHalfBeam(Mid.X) - W.SideDeck : W.HalfWidth) : H.DeckHalfBeam(Mid.X)) - 0.08;
+			const double Y = FMath::Max(FMath::Abs(B[0].Y - H.CenterY), FMath::Abs(B[1].Y - H.CenterY));
+			if (Y > Limit && (bOffPlan || bWell))
+			{
+				Shift.Y = (Mid.Y >= H.CenterY ? -1.0 : 1.0) * (Y - Limit);
+			}
+			for (FVector& P : B) P += Shift;
+			const double Floor = FMath::Max(CrewFloorZ(C, B[0].X, B[0].Y), CrewFloorZ(C, B[1].X, B[1].Y));
+			if (Floor < Off) continue;
+			Shift.Z = Floor + 0.005 - FMath::Min(B[0].Z, B[1].Z);
+			const FVector Target = G.ToBoat.InverseTransformPosition(G.ToBoat.TransformPosition(CS[Foot].GetLocation()) + Shift / M);
+			ReachArm(Ref, CS, D, Foot, Target, Joints);
+			bMoved = true;
+		}
+		return bMoved;
+	}
+
 	void Pose(const FReferenceSkeleton& Ref, const TMap<FName, FQuat>& Joints, const FCrewRig* Rig, TArray<FTransform>& CS,
 		const FCrewHands* Hands = nullptr)
 	{
@@ -250,6 +315,16 @@ namespace
 		}
 		TArray<FQuat> D;
 		Solve(Ref, RestCS, Carried, CS, &D);
+		// Crew pose fix: the feet first (the hands' Knee mode rests on the knees where they end up).
+		if (Hands->Ground && Hands->Ground->Config)
+		{
+			const FQuat Frame = bRig ? Rig->Frame : FQuat::Identity;
+			for (int32 Pass = 0; Pass < 2; ++Pass)
+			{
+				if (!PlantFeet(Ref, RestCS, CS, D, Frame, *Hands->Ground, Carried)) break;
+				Solve(Ref, RestCS, Carried, CS, &D);
+			}
+		}
 		bool bMoved = false;
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
@@ -414,10 +489,21 @@ void ApplyCrewPose(UPoseableMeshComponent* Mesh, const TMap<FName, FQuat>& Joint
 	const FReferenceSkeleton& Ref = Mesh->GetSkinnedAsset()->GetRefSkeleton();
 	TArray<FTransform> CS;
 	Pose(Ref, Joints, Rig, CS, Hands);
+	// Perf 1: SetBoneTransformByName in component space rebuilds the whole pose to find each bone's parent (quadratic in
+	// the bones: 1.9 ms a frame for three MetaHumans on the Mac). Every bone is posed here, so write the local transforms
+	// straight from the component-space ones (the array is the component's own; GetBoneSpaceTransforms is its getter).
+	TArray<FTransform>& Local = const_cast<TArray<FTransform>&>(Mesh->GetBoneSpaceTransforms());
+	if (Local.Num() != CS.Num())
+	{
+		for (int32 B = 0; B < CS.Num(); ++B) Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
+		return;
+	}
 	for (int32 B = 0; B < CS.Num(); ++B)
 	{
-		Mesh->SetBoneTransformByName(Ref.GetBoneName(B), CS[B], EBoneSpaces::ComponentSpace);
+		const int32 Parent = Ref.GetParentIndex(B);
+		Local[B] = Parent >= 0 ? CS[B].GetRelativeTransform(CS[Parent]) : CS[B];
 	}
+	Mesh->MarkRefreshTransformDirty();
 }
 
 void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, TMap<FName, FVector>& Out, const FCrewRig* Rig, const FCrewHands* Hands)
@@ -428,4 +514,91 @@ void CrewPosedJoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints
 	TArray<FTransform> CS;
 	Pose(Ref, Joints, Rig, CS, Hands);
 	for (int32 B = 0; B < CS.Num(); ++B) Out.Add(Ref.GetBoneName(B), CS[B].GetLocation());
+}
+
+void CrewFootPoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints, FVector Out[2][2], const FCrewRig* Rig, const FCrewHands* Hands)
+{
+	for (int32 S = 0; S < 2; ++S) Out[S][0] = Out[S][1] = FVector::ZeroVector;
+	if (!Mesh) return;
+	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+	TArray<FTransform> Rest, CS;
+	const bool bRig = Rig && Rig->bValid && Rig->RestCS.Num() == Ref.GetNum();
+	if (bRig) Rest = Rig->RestCS;
+	else RestPose(Ref, Rest);
+	Pose(Ref, Joints, Rig, CS, Hands);
+	for (int32 S = 0; S < 2; ++S) SolePoints(Ref, Rest, CS, bRig ? Rig->Frame : FQuat::Identity, S, Out[S]);
+}
+
+bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W)
+{
+	using Sailing::EBoatType;
+	W = FCrewCockpitWell();
+	const Sailing::FHullShape& H = C.Hulls[0];
+	// build_fleet.py cockpit(): (aft, forward, half width, depth below the deck); seats along both sides when deeper than 0.3 m.
+	auto Fleet = [&](double X0, double X1, double Half, double Depth)
+	{
+		W.X0 = X0; W.X1 = X1; W.HalfWidth = Half;
+		W.SoleZ = H.SheerHeight(0.5 * (X0 + X1)) - Depth;
+		if (Depth > 0.3) { W.SeatW = 0.34 * FMath::Min(1.0, Half / 0.6); W.SeatZ = W.SoleZ + Depth - 0.14; }
+		return true;
+	};
+	switch (C.Type)
+	{
+	case EBoatType::J22:
+		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
+		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
+		return true;
+	case EBoatType::Sunfish: return Fleet(-1.18, -0.52, 0.29, 0.20);
+	case EBoatType::ILCA7: return Fleet(-1.62, -0.22, 0.31, 0.22);
+	case EBoatType::Catalina22: return Fleet(-3.05, -0.78, 0.63, 0.42);
+	case EBoatType::Catalina30: return Fleet(-4.05, -1.32, 0.82, 0.5);
+	case EBoatType::Corsair880: return Fleet(-3.75, -0.95, 0.62, 0.45);
+	default: return false;
+	}
+}
+
+namespace
+{
+	/** Is (X, |y|) inside the main hull's cockpit well, and its floor there. */
+	bool InWell(const Sailing::FBoatConfig& C, const FCrewCockpitWell& W, double X, double Y, double& Floor)
+	{
+		if (X <= W.X0 || X >= W.X1) return false;
+		const double Half = W.SideDeck > 0.0 ? C.Hulls[0].DeckHalfBeam(X) - W.SideDeck : W.HalfWidth;
+		if (Y >= Half) return false;
+		Floor = W.SeatZ > 0.0 && Y > Half - W.SeatW ? W.SeatZ : W.SoleZ;
+		return true;
+	}
+}
+
+double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y)
+{
+	FCrewCockpitWell W;
+	const bool bWell = CrewCockpitWell(C, W);
+	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
+	{
+		const Sailing::FHullShape& H = C.Hulls[K];
+		const double Yh = FMath::Abs(Y - H.CenterY);
+		if (X < H.SternX || X > H.BowX || Yh >= H.DeckHalfBeam(X)) continue;
+		double Floor = 0.0;
+		if (K == 0 && bWell && InWell(C, W, X, Yh, Floor)) return Floor;
+		return H.SheerHeight(X);
+	}
+	return -1e9;
+}
+
+bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P)
+{
+	FCrewCockpitWell W;
+	const bool bWell = CrewCockpitWell(C, W);
+	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
+	{
+		const Sailing::FHullShape& H = C.Hulls[K];
+		const double Y = FMath::Abs(P.Y - H.CenterY);
+		if (P.X < H.SternX || P.X > H.BowX || Y >= H.DeckHalfBeam(P.X) || P.Z >= H.SheerHeight(P.X)) continue;
+		if (P.Z <= H.BottomZ(P.X, Y, HullDepth)) continue;
+		double Floor = 0.0;
+		if (K == 0 && bWell && InWell(C, W, P.X, Y, Floor) && P.Z >= Floor) continue;
+		return true;
+	}
+	return false;
 }

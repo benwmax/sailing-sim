@@ -38,15 +38,20 @@ bool FSailingFixedStepperTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingDeterminismTest, "SailingSim.Physics.DeterministicAndFrameRateIndependent", PhysicsTestFlags)
 bool FSailingDeterminismTest::RunTest(const FString& Parameters)
 {
-	// Same seeded gusty wind, same controls, rendered at 30 fps and 144 fps: identical boat.
+	// Same seeded W1 wind (puffs, fine turbulence, shifts, an unstable afternoon), same controls, rendered at 30 fps and
+	// 120 fps with the weather re-applied every frame as the game does: identical boat.
 	auto Simulate = [](double Fps)
 	{
 		FWindParams WP;
 		WP.SpeedKnots = 12.0;
-		WP.GustIntensity = 0.25;
+		WP.GustIntensity = 0.14;
+		WP.PuffIntensity = 0.1;
 		WP.ShiftDegrees = 8.0;
+		WP.PersistentShiftDegrees = 6.0;
+		WP.AirMinusWaterC = -3.0;
+		WP.MixedLayerMeters = 1500.0;
 		WP.Seed = 42;
-		const FWindField Wind(WP);
+		FWindField Wind(WP);
 		FBoatModel Boat;
 		Boat.Reset(0.0, 0.0, -50.0 * kDegToRad, 2.0);
 		FFixedStepper Stepper;
@@ -56,6 +61,7 @@ bool FSailingDeterminismTest::RunTest(const FString& Parameters)
 		Controls.Tiller = 0.1;
 		for (int32 F = 0; F < FMath::RoundToInt(10.0 * Fps); ++F)
 		{
+			Wind.SetParamsAt(WP, F / Fps, Boat.GetState().Position.X, Boat.GetState().Position.Y);
 			const int32 Steps = Stepper.Advance(1.0 / Fps);
 			for (int32 S = 0; S < Steps; ++S) Boat.Step(PhysicsDt, Controls, Wind);
 		}
@@ -83,31 +89,65 @@ bool FSailingWindTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Less wind near the water (log profile)"), Steady.VelocityAt(Vec3(0, 0, 2), 0.0).Length() < 0.9 * At10.Length());
 	TestTrue(TEXT("More wind aloft"), Steady.VelocityAt(Vec3(0, 0, 20), 0.0).Length() > At10.Length());
 
+	// W1: stability bends the profile. Warm air over cool water: more wind aloft for the same 10 m wind; cold over warm
+	// (well mixed): less.
+	FWindParams Warm = WP, Cold = WP;
+	Warm.AirMinusWaterC = 4.0;
+	Cold.AirMinusWaterC = -6.0;
+	const double Neutral20 = Steady.MeanSpeedAtHeight(20.0) / Steady.MeanSpeedAtHeight(10.0);
+	const double Warm20 = FWindField(Warm).MeanSpeedAtHeight(20.0) / FWindField(Warm).MeanSpeedAtHeight(10.0);
+	const double Cold20 = FWindField(Cold).MeanSpeedAtHeight(20.0) / FWindField(Cold).MeanSpeedAtHeight(10.0);
+	AddInfo(FString::Printf(TEXT("20 m over 10 m: neutral %.3f, warm over cool %.3f, cold over warm %.3f"), Neutral20, Warm20, Cold20));
+	TestTrue(TEXT("Stable air: steeper profile"), Warm20 > Neutral20 + 0.01);
+	TestTrue(TEXT("Unstable air: flatter profile"), Cold20 < Neutral20 - 0.005);
+	TestEqual(TEXT("10 m speed is the reference whatever the stability"), FWindField(Warm).MeanSpeedAtHeight(10.0) / kKnot, 10.0, 1e-9);
+
 	WP.GustIntensity = 0.25;
 	WP.ShiftDegrees = 10.0;
 	WP.Seed = 7;
 	const FWindField Gusty(WP);
 	const FWindField Same(WP);
 	double Sum = 0.0, Min = 1e9, Max = 0.0, MaxShift = 0.0;
+	int32 N = 0;
+	// Over the water at one time (the field's spatial mean is the mean wind), and in time at a point.
+	for (int32 I = 0; I < 60; ++I)
+	{
+		for (int32 J = 0; J < 60; ++J)
+		{
+			const double G = Gusty.GustFactorAt(Vec3(I * 97.0, J * 113.0, 10), 500.0 + 3.0 * J);
+			Sum += G; ++N;
+			Min = FMath::Min(Min, G); Max = FMath::Max(Max, G);
+		}
+	}
 	for (int32 I = 0; I < 2000; ++I)
 	{
 		const double T = I * 0.5;
-		const double G = Gusty.GustFactorAt(Vec3(0, 0, 10), T);
-		Sum += G; Min = FMath::Min(Min, G); Max = FMath::Max(Max, G);
 		MaxShift = FMath::Max(MaxShift, FMath::Abs(Gusty.ShiftAt(Vec3(0, 0, 10), T)));
 		if (I % 100 == 0)
 		{
 			TestEqual(TEXT("Same seed gives the same wind"), Gusty.VelocityAt(Vec3(5, 3, 6), T).X, Same.VelocityAt(Vec3(5, 3, 6), T).X, 1e-12);
 		}
 	}
-	TestEqual(TEXT("Gusts average out to the mean speed"), Sum / 2000.0, 1.0, 0.05);
-	TestTrue(TEXT("Gusts and lulls of about +/-25%"), Max > 1.15 && Min < 0.85);
-	TestTrue(TEXT("Shifts of the requested size"), MaxShift * kRadToDeg > 5.0 && MaxShift * kRadToDeg < 20.0);
+	AddInfo(FString::Printf(TEXT("Gust factor over the water: mean %.3f, %.2f to %.2f; largest shift at a point %.1f deg"), Sum / N, Min, Max, MaxShift * kRadToDeg));
+	TestEqual(TEXT("Gusts average out to the mean speed"), Sum / N, 1.0, 0.03);
+	TestTrue(TEXT("Gusts and lulls of about +/-25%"), Max > 1.25 && Min < 0.8);
+	TestTrue(TEXT("Shifts: the slow ones plus the puffs' veer and fan"), MaxShift * kRadToDeg > 10.0 && MaxShift * kRadToDeg < 60.0);
 
-	// A gust upwind arrives here later: the field is advected downwind at the mean speed.
+	// Frozen flow: the fine turbulence drifts downwind at the mean speed (puffs off), so a gust upwind arrives here later.
+	FWindParams Fine = WP;
+	Fine.PuffIntensity = 0.0;
+	const FWindField FineOnly(Fine);
 	const double Speed = 10.0 * kKnot;
 	const Vec3 Upwind(0.0, 100.0, 10.0); // wind from +Y
-	TestEqual(TEXT("Gust patches drift downwind"), Gusty.GustFactorAt(Upwind, 0.0), Gusty.GustFactorAt(Vec3(0, 0, 10), 100.0 / Speed), 1e-9);
+	TestEqual(TEXT("Fine turbulence drifts downwind with the air"), FineOnly.GustFactorAt(Upwind, 0.0), FineOnly.GustFactorAt(Vec3(0, 0, 10), 100.0 / Speed), 1e-9);
+	TestTrue(TEXT("It is there to drift"), FMath::Abs(FineOnly.GustFactorAt(Upwind, 0.0) - FineOnly.GustFactorAt(Vec3(0, 0, 10), 0.0)) > 1e-4);
+	// The puffs drift faster, at the wind aloft, and a little veered.
+	const Vec3 Drift = Gusty.PuffDrift();
+	const double Aloft = Drift.LengthXY() / Speed;
+	const double Veer = WrapAngle(std::atan2(Drift.Y, Drift.X) - std::atan2(-1.0, 0.0)) * kRadToDeg;
+	AddInfo(FString::Printf(TEXT("Puffs drift at %.2f x the 10 m wind, %.1f deg veered"), Aloft, Veer));
+	TestTrue(TEXT("Puffs drift faster than the surface wind"), Aloft > 1.1 && Aloft < 1.7);
+	TestTrue(TEXT("... a few degrees to its right"), Veer > 3.0 && Veer < 15.0);
 	return true;
 }
 

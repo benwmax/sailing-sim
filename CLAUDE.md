@@ -107,6 +107,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `bench-visual.sh`). `scripts/pack-metahumans.sh` zips the git-ignored crew on the Mac for the PC. Setup and what is
    untested: `docs/windows/README.md`. Keep new code MSVC-clean too, and run batch files through `cmd /s /c` (see
    `Invoke-Tool` in `scripts/windows/env.ps1`).
+   Graphics G8 added the PC's own loop: `run-python.ps1 <script.py> [-Only fn,...]` (editor Python, e.g. make_materials.py),
+   `run-game.ps1` (uncooked), `capture-scenes-win.ps1` (scene CSV on the packaged game). `M_WorldSurface` patterns 9
+   (wood pilings) and 10 (dock boxes) are new and output a normal; keep `KitLook()` in step.
 
 ## Conventions
 
@@ -325,6 +328,20 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   failed). `scripts/tune_crew_skin.py` turns on the faces' micro skin detail and pores (run by `make-crew-clothes.sh`
   after a MetaHuman rebuild). `scripts/pack-metahumans.sh` zips the git-ignored crew for the PC. Hide outfit sections by
   the asset's slot materials, never the component's (they are MIDs by then).
+- Water W0 (`docs/w0/`): the cat's-paw map fades to `FWindField::MeanSurfaceRoughnessAt` over its outer 20% (no edge
+  streaks); `WindParams` z is the sea's mean wind (puffs and caps read against it), w the water body's whitecap scale
+  (`AWaterSurface::WhitecapScaleFor`: lake 0.4, bay 0.7, Gulf 1). M_WaterV4's cap threshold is mirrored by
+  `AWaterSurface::WhitecapThreshold` (keep `CapSlope` in step with make_materials.py). `FWaveField::Update(Dt)` grows each
+  band over `GrowthSeconds` (8 T^2, 5..300 s).
+- Wind (W1, `docs/w1/`): `FWindField` is three seeded layers, each a function of place and time in a frame drifting with
+  the air (`FDriftFrame`; `SetParamsAt` re-anchors at the boat when the wind turns): convective puffs (lattice along the
+  surface wind, drifting with the wind aloft), the Mann tile `Content/TerrainData/Wind.mann` (`Tools/wind/
+  make_mann_slice.py`, loaded by the SailingPhysics module; standalone tools load it from the repo root), slow shifts.
+  `WindClimate.h` holds the station calibration (`Tools/wind/fetch_wind.sh`, `fit_gusts.py`) and the stability inputs;
+  the weather sets `GustIntensity` (fine, via `GustIntensityForFactor`) and `PuffIntensity` from it (`SetClimate`).
+  `FShelterMap` = lee (terrain, canopy, houses, gone by 30 heights) x open-water build. AI reads `ReadableAt` (no fine
+  turbulence) and tacks on headers. `Tools/wind/plot_field.sh` maps the field; `scripts/traffic.sh 98` races steady and
+  shifty.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and

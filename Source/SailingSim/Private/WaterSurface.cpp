@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "PerfScopes.h"
 #include "Ocean.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -132,25 +133,16 @@ namespace
 		return Tex;
 	}
 
-	void UploadHalfsMip(UTexture2D* Tex, int32 MipIndex, const TArray<float>& Values, int32 Width, int32 Height)
+	/** Level 0 (RGBA floats) and its box-filtered mips, packed to half floats: one new[] block per mip, which
+	 *  UploadPackedMips hands to the render thread (Perf 1: built on a worker). */
+	void PackMips(TArray<float> Level, int32 Size, TArray<uint8*>& Out)
 	{
-		uint8* Bytes = new uint8[Values.Num() * sizeof(FFloat16)];
-		FFloat16* Halfs = reinterpret_cast<FFloat16*>(Bytes);
-		for (int32 I = 0; I < Values.Num(); ++I) Halfs[I] = FFloat16(Values[I]);
-		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, Height);
-		Tex->UpdateTextureRegions(MipIndex, 1, Region, Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Bytes, [](uint8* Data, const FUpdateTextureRegion2D* R)
+		for (int32 S = Size;;)
 		{
-			delete[] Data;
-			delete R;
-		});
-	}
-
-	/** Uploads level 0 (RGBA floats) and its box-filtered mips. */
-	void UploadFloatsWithMips(UTexture2D* Tex, TArray<float> Level, int32 Size)
-	{
-		for (int32 Mip = 0, S = Size;; ++Mip)
-		{
-			UploadHalfsMip(Tex, Mip, Level, S, S);
+			uint8* Bytes = new uint8[Level.Num() * sizeof(FFloat16)];
+			FFloat16* Halfs = reinterpret_cast<FFloat16*>(Bytes);
+			for (int32 I = 0; I < Level.Num(); ++I) Halfs[I] = FFloat16(Level[I]);
+			Out.Add(Bytes);
 			if (S == 1) break;
 			const int32 Half = S / 2;
 			TArray<float> Next;
@@ -169,6 +161,21 @@ namespace
 			Level = MoveTemp(Next);
 			S = Half;
 		}
+	}
+
+	/** Enqueues the packed mips' upload (the render thread frees each block when done). */
+	void UploadPackedMips(UTexture2D* Tex, TArray<uint8*>& Mips, int32 Size)
+	{
+		for (int32 Mip = 0, S = Size; Mip < Mips.Num(); ++Mip, S = FMath::Max(1, S / 2))
+		{
+			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, S, S);
+			Tex->UpdateTextureRegions(Mip, 1, Region, S * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Mips[Mip], [](uint8* Data, const FUpdateTextureRegion2D* R)
+			{
+				delete[] Data;
+				delete R;
+			});
+		}
+		Mips.Reset();
 	}
 
 	void Upload(UTexture2D* Tex, const TArray<uint8>& Pixels, int32 Size)
@@ -322,6 +329,22 @@ void AWaterSurface::CreateWaterMaterial()
 	UE_LOG(LogSailing, Display, TEXT("Water: tier %d, %s"), Tier, *Parent->GetName());
 }
 
+float AWaterSurface::WhitecapScaleFor(int32 World)
+{
+	switch (World)
+	{
+	case 1: return 0.7f; // Galveston Bay: brackish
+	case 2: return 1.f;  // the Gulf: sea water, Monahan's law as measured
+	default: return 0.4f; // fresh water: bubbles coalesce and burst sooner, so caps are fewer and fade faster
+	}
+}
+
+float AWaterSurface::WhitecapThreshold(float LocalOverMean, float WaterScale)
+{
+	const float Gain = WaterScale * FMath::Pow(FMath::Clamp(LocalOverMean, 0.05f, 4.f), 3.41f);
+	return FMath::Clamp(FoamThreshold + CapSlope * FMath::Loge(FMath::Max(Gain, 1e-4f)), 0.3f, 0.85f);
+}
+
 void AWaterSurface::SetRingCount(int32 Count)
 {
 	RingCount = FMath::Clamp(Count, 2, 7);
@@ -400,6 +423,7 @@ void AWaterSurface::SetBoatForWake(const FVector2D& PositionM, float HeadingRad,
 void AWaterSurface::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SAILING_PERF_SCOPE(Water);
 
 	// Rings follow the camera, each snapped to twice its spacing so vertices don't swim.
 	FVector CamPos = GetActorLocation();
@@ -432,7 +456,7 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	UpdateOcean();
 	if (bV4)
 	{
-		UpdateDetail();
+		{ SAILING_PERF_SCOPE(WaterUploads); UpdateDetail(); }
 		UpdateWakeGrid(DeltaSeconds);
 		UpdateShoreMap();
 		if (Tier >= 2) UpdateSpray(DeltaSeconds);
@@ -514,50 +538,77 @@ void AWaterSurface::UpdateDetail()
 		Launch(FrameNext->Time + kDetailStep);
 	}
 
-	// Blend the two frames to this instant and upload: A = height, displacement, Jacobian; B = slopes and their squares.
-	const float W = float(FMath::Clamp((T - FramePrev->Time) / kDetailStep, 0.0, 1.0));
-	auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
+	// Perf 1 fix 5: hand last frame's blend (made on a worker for this frame's time) to the render thread, then start the
+	// next one. A worker still busy (a long hitch) keeps what is drawn.
+	if (bUploadPending && PendingUpload.IsReady())
 	{
-		const FWaveDetail::FGrid& A = FramePrev->Chop;
-		const FWaveDetail::FGrid& B = FrameNext->Chop;
-		const int32 NN = A.N * A.N;
-		TArray<float> PixA, PixB;
-		PixA.SetNumUninitialized(NN * 4);
-		PixB.SetNumUninitialized(NN * 4);
-		for (int32 I = 0; I < NN; ++I)
+		bUploadPending = false;
+		if (const FDetailUploadPtr Done = PendingUpload.Get())
 		{
-			PixA[4 * I + 0] = Blend(A.H, B.H, I);
-			PixA[4 * I + 1] = Blend(A.Dx, B.Dx, I);
-			PixA[4 * I + 2] = Blend(A.Dy, B.Dy, I);
-			PixA[4 * I + 3] = Blend(A.J, B.J, I);
-			// Slopes and their squares (LEAN mapping: a mip's mean square minus its squared mean is the slope variance
-			// it averaged away, which the material turns into roughness).
-			const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
-			PixB[4 * I + 0] = Sx;
-			PixB[4 * I + 1] = Sy;
-			PixB[4 * I + 2] = Sx * Sx;
-			PixB[4 * I + 3] = Sy * Sy;
+			UploadPackedMips(DetailAMap, Done->A, Done->N);
+			UploadPackedMips(DetailBMap, Done->B, Done->N);
+			if (Done->RippleN > 0) UploadPackedMips(RippleBMap, Done->Ripple, Done->RippleN);
 		}
-		UploadFloatsWithMips(DetailAMap, MoveTemp(PixA), A.N);
-		UploadFloatsWithMips(DetailBMap, MoveTemp(PixB), A.N);
 	}
-	if (FramePrev->Ripple.N > 0 && FrameNext->Ripple.N == FramePrev->Ripple.N)
+	if (bUploadPending) return;
+
+	// Blend the two frames to the next frame's instant (this one plus this frame's length): A = height, displacement,
+	// Jacobian; B = slopes and their squares.
+	const double Ahead = T + FMath::Clamp(double(GetWorld()->GetDeltaSeconds()), 0.0, kDetailStep);
+	const float W = float(FMath::Clamp((Ahead - FramePrev->Time) / kDetailStep, 0.0, 1.0));
+	const FDetailFramePtr Prev = FramePrev, Next = FrameNext;
+	const bool bRipple = Prev->Ripple.N > 0 && Next->Ripple.N == Prev->Ripple.N;
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple]() -> FDetailUploadPtr
 	{
-		const FWaveDetail::FGrid& A = FramePrev->Ripple;
-		const FWaveDetail::FGrid& B = FrameNext->Ripple;
-		const int32 NN = A.N * A.N;
-		TArray<float> Pix;
-		Pix.SetNumUninitialized(NN * 4);
-		for (int32 I = 0; I < NN; ++I)
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
+		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
+		FDetailUploadPtr Out = MakeShared<FDetailUpload, ESPMode::ThreadSafe>();
 		{
-			const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
-			Pix[4 * I + 0] = Sx;
-			Pix[4 * I + 1] = Sy;
-			Pix[4 * I + 2] = Sx * Sx;
-			Pix[4 * I + 3] = Sy * Sy;
+			const FWaveDetail::FGrid& A = Prev->Chop;
+			const FWaveDetail::FGrid& B = Next->Chop;
+			const int32 NN = A.N * A.N;
+			TArray<float> PixA, PixB;
+			PixA.SetNumUninitialized(NN * 4);
+			PixB.SetNumUninitialized(NN * 4);
+			for (int32 I = 0; I < NN; ++I)
+			{
+				PixA[4 * I + 0] = Blend(A.H, B.H, I);
+				PixA[4 * I + 1] = Blend(A.Dx, B.Dx, I);
+				PixA[4 * I + 2] = Blend(A.Dy, B.Dy, I);
+				PixA[4 * I + 3] = Blend(A.J, B.J, I);
+				// Slopes and their squares (LEAN mapping: a mip's mean square minus its squared mean is the slope variance
+				// it averaged away, which the material turns into roughness).
+				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
+				PixB[4 * I + 0] = Sx;
+				PixB[4 * I + 1] = Sy;
+				PixB[4 * I + 2] = Sx * Sx;
+				PixB[4 * I + 3] = Sy * Sy;
+			}
+			Out->N = A.N;
+			PackMips(MoveTemp(PixA), A.N, Out->A);
+			PackMips(MoveTemp(PixB), A.N, Out->B);
 		}
-		UploadFloatsWithMips(RippleBMap, MoveTemp(Pix), A.N);
-	}
+		if (bRipple)
+		{
+			const FWaveDetail::FGrid& A = Prev->Ripple;
+			const FWaveDetail::FGrid& B = Next->Ripple;
+			const int32 NN = A.N * A.N;
+			TArray<float> Pix;
+			Pix.SetNumUninitialized(NN * 4);
+			for (int32 I = 0; I < NN; ++I)
+			{
+				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
+				Pix[4 * I + 0] = Sx;
+				Pix[4 * I + 1] = Sy;
+				Pix[4 * I + 2] = Sx * Sx;
+				Pix[4 * I + 3] = Sy * Sy;
+			}
+			Out->RippleN = A.N;
+			PackMips(MoveTemp(Pix), A.N, Out->Ripple);
+		}
+		return Out;
+	});
+	bUploadPending = true;
 }
 
 void AWaterSurface::UpdateHullClip()
@@ -888,6 +939,7 @@ void AWaterSurface::WaitForWorkers()
 	if (bShorePending) { PendingShore.Wait(); bShorePending = false; }
 	if (bWakePending) { PendingWake.Wait(); bWakePending = false; }
 	if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
+	if (bUploadPending) { PendingUpload.Wait(); bUploadPending = false; }
 }
 
 void AWaterSurface::EndPlay(const EEndPlayReason::Type Reason)
@@ -982,10 +1034,12 @@ void AWaterSurface::UpdateMaterial()
 	{
 		const FWindParams& P = Wind->GetParams();
 		const float From = FMath::DegreesToRadians(P.FromDegrees);
-		const float Knots = Wind->VelocityAt(Vec3(BoatPos.X, BoatPos.Y, 10.0), GetSimTime()).LengthXY() / kKnot;
-		// Whitecaps by the Beaufort scale: scattered from 7-10 kn, numerous by 11-16, everywhere from 22 (as in M_Water).
-		const float Caps = FMath::Pow(FMath::Clamp((Knots - 7.f) / 15.f, 0.f, 1.f), 1.2f);
-		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), Knots * kKnot, Caps));
+		// W0: the sea's mean wind (what the drawn waves were grown for), not the wind at the boat: cat's paws darken and
+		// whitecaps gather against it, so a puff at the boat no longer turns the whole lake to a lull. W is the water
+		// body's whitecap scale.
+		const float MeanMs = float(Waves->GetParams().WindSpeedKnots * kKnot);
+		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
+			WhitecapScaleFor(USailingSettings::Get()->World)));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -1011,7 +1065,16 @@ void AWaterSurface::UpdateGustMap()
 			// Texel centers; the material maps UV (0..1) across GustRect.
 			const double WX = Center.X + (X + 0.5 - kGustRes * 0.5) * Texel;
 			const double WY = Center.Y + (Y + 0.5 - kGustRes * 0.5) * Texel;
-			const double R = Wind->SurfaceRoughnessAt(WX, WY, T);
+			double R = Wind->SurfaceRoughnessAt(WX, WY, T);
+			// W0: the map ends 800 m out and the sampler clamps, so its border texels would streak across the far
+			// water. Over the outer 20% of the radius it fades to the mean wind (gusts and lees average out at that
+			// range anyway); every border texel is the mean, and so is the water beyond it.
+			const double Radius = FVector2D(X + 0.5 - kGustRes * 0.5, Y + 0.5 - kGustRes * 0.5).Size() / (kGustRes * 0.5);
+			const double Edge = FMath::SmoothStep(0.78, 0.97, Radius);
+			if (Edge > 0.0)
+			{
+				R += (Wind->MeanSurfaceRoughnessAt(WX, WY, T) - R) * Edge;
+			}
 			const uint8 V = EncodeSrgb(float(R / 2.5));
 			// Texture rows run along +V; the material uses u = world X, v = world Y.
 			uint8* Px = &GustPixels[(Y * kGustRes + X) * 4];

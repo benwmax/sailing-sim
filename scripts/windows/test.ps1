@@ -18,7 +18,19 @@ $P = Start-Process -FilePath $EditorCmd -ArgumentList $ArgLine -NoNewWindow -Pas
 $null = $P.Handle
 $P.WaitForExit()
 $EditorExit = $P.ExitCode
-if (Test-Path "$Log.stderr") { Get-Content "$Log.stderr" | Add-Content $Log; Remove-Item -Force "$Log.stderr" }
+# The editor's child processes (shader workers) can hold the redirected stderr open a moment after it exits: retry, and
+# never fail the run over the leftover file.
+if (Test-Path "$Log.stderr") {
+	$Copied = $false
+	foreach ($Try in 1..10) {
+		try {
+			if (-not $Copied) { Get-Content "$Log.stderr" -ErrorAction Stop | Add-Content $Log; $Copied = $true }
+			Remove-Item -Force "$Log.stderr" -ErrorAction Stop
+			break
+		}
+		catch { Start-Sleep -Seconds 2 }
+	}
+}
 
 $Index = Join-Path $ReportDir 'index.json'
 if (-not (Test-Path $Index)) {

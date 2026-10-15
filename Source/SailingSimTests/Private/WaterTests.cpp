@@ -242,12 +242,17 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 /**
  * Whitecaps from the drawn waves: the share of the surface where the crests fold (the Jacobian under the material's
  * FoamThreshold) against Monahan's whitecap coverage law W = 3.84e-6 U^3.41 (U at 10 m, m/s). The Beaufort scale is
- * the check: almost none at 6 kn, within a factor of three of the law from 10 kn up.
+ * the check: almost none at 6 kn, within a factor of three of the law from 10 kn up. W0: the material moves the
+ * threshold by the local wind against the mean and by the water body (AWaterSurface::WhitecapThreshold): the lake gets
+ * 0.4 of the law and the bay 0.7 at the mean wind, and a puff of 1.3x the mean caps more than the mean, a lull of 0.7x less.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapsTest, "SailingSim.Visual.Whitecaps", WaterFlags)
 bool FWaterWhitecapsTest::RunTest(const FString&)
 {
-	constexpr double Threshold = 0.6; // M_WaterV4's FoamThreshold
+	constexpr double Threshold = AWaterSurface::FoamThreshold;
+	const float Lake = AWaterSurface::WhitecapScaleFor(0), Bay = AWaterSurface::WhitecapScaleFor(1), Sea = AWaterSurface::WhitecapScaleFor(2);
+	TestTrue(TEXT("The Gulf keeps the sea's law"), Sea == 1.f);
+	TestTrue(TEXT("At the mean wind the sea's threshold is the calibrated one"), FMath::IsNearlyEqual(AWaterSurface::WhitecapThreshold(1.f, Sea), float(Threshold)));
 	for (const double Knots : { 6.0, 10.0, 14.0, 20.0, 25.0 })
 	{
 		FWaveField Waves(1);
@@ -260,27 +265,53 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
 		std::mt19937 Rng(11);
 		std::uniform_real_distribution<double> U(0.0, 300.0);
-		int32 Folded = 0, Count = 0;
+		TArray<double> Js;
 		for (const double T : { 5.0, 23.0, 61.0, 97.0 })
 		{
 			FWaveDetail::FGrid Grid;
 			Detail.Evaluate(0, T, Grid);
 			for (int32 I = 0; I < 10000; ++I)
 			{
-				Folded += RenderedVertex(Waves, &Grid, U(Rng), U(Rng), T, AWaterSurface::Choppiness).J < Threshold;
-				++Count;
+				Js.Add(RenderedVertex(Waves, &Grid, U(Rng), U(Rng), T, AWaterSurface::Choppiness).J);
 			}
 		}
-		const double Coverage = double(Folded) / Count;
+		auto CoverageAt = [&Js](double Thr)
+		{
+			int32 Folded = 0;
+			for (const double J : Js) Folded += J < Thr;
+			return double(Folded) / Js.Num();
+		};
+		const double Coverage = CoverageAt(Threshold);
 		const double Monahan = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41);
-		AddInfo(FString::Printf(TEXT("%2.0f kn: whitecaps %.2f%% of the surface, Monahan %.2f%%"), Knots, 100.0 * Coverage, 100.0 * Monahan));
+		const double LakeMean = CoverageAt(AWaterSurface::WhitecapThreshold(1.f, Lake));
+		const double LakePuff = CoverageAt(AWaterSurface::WhitecapThreshold(1.3f, Lake));
+		const double LakeLull = CoverageAt(AWaterSurface::WhitecapThreshold(0.7f, Lake));
+		const double BayMean = CoverageAt(AWaterSurface::WhitecapThreshold(1.f, Bay));
+		// The threshold shift per e-fold of coverage on these waves: 0.034 at 10 kn to 0.069 at 25 kn; CapSlope is 0.045.
+		const double Lo = CoverageAt(Threshold - 0.05), Hi = CoverageAt(Threshold + 0.05);
+		const double Slope = Lo > 0.0 && Hi > Lo ? 0.1 / FMath::Loge(Hi / Lo) : 0.0;
+		AddInfo(FString::Printf(TEXT("%2.0f kn: whitecaps %.2f%% of the surface, Monahan %.2f%%; lake %.2f%% (puff 1.3x %.2f%%, lull 0.7x %.2f%%), "
+			"bay %.2f%%; threshold per e-fold %.3f"), Knots, 100.0 * Coverage, 100.0 * Monahan, 100.0 * LakeMean, 100.0 * LakePuff,
+			100.0 * LakeLull, 100.0 * BayMean, Slope));
 		if (Knots < 7.0)
 		{
 			TestTrue(TEXT("Almost no whitecaps at 6 kn (Beaufort 2: crests do not break)"), Coverage < 3e-4);
+			TestTrue(TEXT("Almost none on the lake at 6 kn either"), LakeMean < 3e-4);
 		}
 		else
 		{
 			TestTrue(FString::Printf(TEXT("%.0f kn: whitecap coverage within a factor of three of Monahan's"), Knots), Coverage > Monahan / 3.0 && Coverage < 3.0 * Monahan);
+			TestTrue(FString::Printf(TEXT("%.0f kn: fresh water within a factor of three of 0.4 Monahan"), Knots), LakeMean > Lake * Monahan / 3.0 && LakeMean < 3.0 * Lake * Monahan);
+			TestTrue(FString::Printf(TEXT("%.0f kn: the bay within a factor of three of 0.7 Monahan"), Knots), BayMean > Bay * Monahan / 3.0 && BayMean < 3.0 * Bay * Monahan);
+			TestTrue(FString::Printf(TEXT("%.0f kn: the lake caps less than the sea"), Knots), LakeMean < Coverage);
+			TestTrue(FString::Printf(TEXT("%.0f kn: a puff (1.3x the mean) caps more than the mean"), Knots), LakePuff > LakeMean);
+			TestTrue(FString::Printf(TEXT("%.0f kn: a lull (0.7x the mean) caps less than the mean"), Knots), LakeLull < LakeMean);
+			if (Knots >= 10.0)
+			{
+				// Monahan's ratio for a 1.3x puff is 1.3^3.41 = 2.45; on the drawn waves within a factor of two of it.
+				const double PuffRatio = LakePuff / FMath::Max(LakeMean, 1e-9);
+				TestTrue(FString::Printf(TEXT("%.0f kn: puff/mean %.2f near Monahan's 2.45"), Knots, PuffRatio), PuffRatio > 1.25 && PuffRatio < 4.9);
+			}
 		}
 	}
 	return true;

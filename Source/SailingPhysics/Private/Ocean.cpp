@@ -77,6 +77,8 @@ namespace Sailing
 	{
 		Params = InParams;
 		for (auto& C : Cache) for (FGrid& Grid : C) Grid.Time = -1e30;
+		for (auto& C : CacheTime) for (std::atomic<double>& Time : C) Time.store(-1e30);
+		++Generation;
 		// Wind sea: fully developed (Pierson-Moskowitz) for the wind, scaled by how developed it is.
 		const double U = std::max(Params.WindMs, 0.5);
 		const double HsWindTarget = 0.21 * U * U / G * Clamp(Params.WindSeaFraction, 0.0, 1.0);
@@ -173,9 +175,13 @@ namespace Sailing
 
 	const FOcean::FGrid& FOcean::Evaluate(int C, double T) const
 	{
-		for (const FGrid& Grid : Cache[C]) if (Grid.Time == T) return Grid;
-		FGrid& Grid = Cache[C][CacheNext[C]];
-		CacheNext[C] = (CacheNext[C] + 1) % CacheSize;
+		for (int S = 0; S < CacheSize; ++S) if (CacheTime[C][S].load(std::memory_order_acquire) == T) return Cache[C][S];
+		std::lock_guard<std::mutex> Lock(CacheLock);
+		for (int S = 0; S < CacheSize; ++S) if (CacheTime[C][S].load(std::memory_order_relaxed) == T) return Cache[C][S]; // made meanwhile
+		const int Slot = CacheNext[C];
+		CacheNext[C] = (Slot + 1) % CacheSize;
+		CacheTime[C][Slot].store(-1e30, std::memory_order_relaxed);
+		FGrid& Grid = Cache[C][Slot];
 		Grid.Time = T;
 		const size_t Count = size_t(N) * N;
 		for (size_t I = 0; I < Count; ++I)
@@ -194,6 +200,7 @@ namespace Sailing
 			Out[K]->resize(Count);
 			for (size_t I = 0; I < Count; ++I) (*Out[K])[I] = float(Work[K][I].real());
 		}
+		CacheTime[C][Slot].store(T, std::memory_order_release);
 		return Grid;
 	}
 

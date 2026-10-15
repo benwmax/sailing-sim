@@ -3,6 +3,8 @@
 #include "SailingPhysicsApi.h"
 #include "SailingMath.h"
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace Sailing
 {
@@ -11,10 +13,23 @@ namespace Sailing
 		double SpeedKnots = 10.0;        // true wind speed at the 10 m reference height (how polars quote it)
 		double FromDegrees = 0.0;        // direction the wind blows FROM, in the world XY plane (0 = from +X)
 		double RoughnessLength = 0.0002; // m, open water, for the log height profile
-		double GustIntensity = 0.0;      // gust/lull amplitude as a fraction of mean speed (0.15 to 0.3 is a typical lake day)
-		double ShiftDegrees = 0.0;       // typical size of oscillating shifts
-		double GustLengthMeters = 250.0; // spacing of gust patches, which drift downwind at the mean speed
-		double ShiftPeriodSeconds = 90.0;
+		/**
+		 * Gustiness at 10 m as a fraction of the mean speed. With PuffIntensity unset (< 0) it is the whole field's standard
+		 * deviation, split between the convective puffs and the fine (Mann) turbulence by the stability. With PuffIntensity
+		 * set (the weather, from the station calibration in WindClimate.h) it is the fine turbulence's alone: the 5-second
+		 * gusts and the gust factor.
+		 */
+		double GustIntensity = 0.0;
+		double PuffIntensity = -1.0;     // the puffs: spread of the 2-minute mean around the half-hour mean (stations' measure)
+		double ShiftDegrees = 0.0;       // typical size of the slow oscillating shifts
+		double ShiftPeriodSeconds = 300.0; // their period as they pass a fixed point
+		double PersistentShiftDegrees = 0.0; // a slow persistent swing (veer + / back -) over about half an hour
+		// W1: the day's air (convective puffs, stability).
+		double AirMinusWaterC = 0.0;     // air minus water temperature: < 0 cold over warm (gusty, shifty), > 0 steady
+		double MixedLayerMeters = 1000.0; // depth of the convective boundary layer: puffs are about 0.6 of it across
+		double PuffIntervalSeconds = 240.0; // typical time between puffs at a point (station calibration)
+		double PuffVeerDegrees = 7.0;    // a puff veers by about this; lulls back
+		double PuffFanDegrees = 20.0;    // across a puff the wind turns this much outward on each side
 		uint32_t Seed = 1;               // the same seed always gives the same gusts and shifts
 	};
 
@@ -42,9 +57,57 @@ namespace Sailing
 	};
 
 	/**
-	 * True wind field: mean speed and direction, logarithmic height gradient, and seeded gusts, lulls and
-	 * shifts. Gust patches are frozen in the flow and advected downwind, so they reach a boat from upwind
-	 * the way they do on the water.
+	 * W1: the fine turbulence texture, a horizontal slice of a Mann (1994) box (Tools/wind/make_mann_slice.py,
+	 * Content/TerrainData/Wind.mann): along-wind u and cross-wind v, u at unit standard deviation, periodic.
+	 * Shared by every wind field once loaded; without it the fine layer is a cheap stand-in (and says so).
+	 */
+	struct SAILINGPHYSICS_API FTurbulenceTile
+	{
+		int Nx = 0, Ny = 0;
+		double Dx = 2.0, LengthScale = 30.0, Gamma = 3.9, VRatio = 0.75;
+		std::vector<float> U, V;
+
+		bool IsValid() const { return Nx > 0 && Ny > 0; }
+		/** Bilinear, wrapping; X along the wind, Y across (m). */
+		void Sample(double X, double Y, double& OutU, double& OutV) const;
+
+		/** Loads the shared tile from a .mann file; false (and the stand-in stays) if it is missing or malformed. */
+		static bool LoadShared(const std::string& Path);
+		/** Same from bytes already read (Unreal reads the staged file). */
+		static bool LoadSharedFromMemory(const uint8_t* Data, size_t Size);
+		static const FTurbulenceTile* Shared();
+	};
+
+	/** A pattern frame drifting with the air: origin, axis (the direction it drifts along) and drift velocity. */
+	struct FDriftFrame
+	{
+		double OX = 0.0, OY = 0.0;   // origin at T0 (world, m)
+		double T0 = 0.0;
+		double Angle = 0.0;          // axis heading (rad, from +X toward +Y)
+		double VX = 0.0, VY = 0.0;   // drift (m/s)
+		double C = 1.0, S = 0.0;     // cos and sin of Angle
+
+		void Local(double X, double Y, double T, double& Along, double& Across) const
+		{
+			const double DX = X - (OX + VX * (T - T0)), DY = Y - (OY + VY * (T - T0));
+			Along = DX * C + DY * S;
+			Across = -DX * S + DY * C;
+		}
+		/** New axis and drift from time T, the pattern kept still at the anchor (it turns about the boat, not the map origin). */
+		void Reanchor(double T, double AnchorX, double AnchorY, double NewAngle, double NewVX, double NewVY);
+	};
+
+	/**
+	 * True wind field: mean speed and direction with a stability-corrected log profile, and three seeded layers that are
+	 * functions of place and time only (the same at any frame rate), each in its own frame drifting with the air:
+	 *  - convective puffs (W1): cells 0.3 to 3 km across from the mixed-layer depth, drifting at the wind aloft (faster,
+	 *    a few degrees veered); streets along the wind in a breeze, open cells in light air. Each lands, grows for 20 to
+	 *    40 s, drifts, fades. Inside one the wind veers (PuffVeerDegrees) and fans out to both sides (PuffFanDegrees);
+	 *    between them it is lighter and backed.
+	 *  - fine turbulence under 200 m: the Mann tile as frozen flow at the mean wind.
+	 *  - slow oscillating and persistent shifts.
+	 * Stability (air minus water temperature) sets the share and size of the puffs and the height profile. Shore lee and
+	 * the building of the wind over open water come from the shelter map; a gust front blends over everything.
 	 */
 	class SAILINGPHYSICS_API FWindField
 	{
@@ -52,10 +115,10 @@ namespace Sailing
 		explicit FWindField(const FWindParams& InParams = FWindParams());
 
 		/**
-		 * Changes speed, direction, gusts or shifts at time T without making the gust pattern jump: the pattern's
-		 * travelled distance is carried over. Use this when the weather changes the wind during play.
+		 * Changes speed, direction, gusts or shifts at time T without making the patterns jump: they keep drifting from
+		 * where they were, and a change of direction turns them about the anchor (the boat), not the map origin.
 		 */
-		void SetParamsAt(const FWindParams& InParams, double T);
+		void SetParamsAt(const FWindParams& InParams, double T, double AnchorX = 0.0, double AnchorY = 0.0);
 
 		void SetFront(const FGustFront& InFront) { Front = InFront; }
 		/** Lee of land and trees (optional): slows and roughens the wind near the shore. */
@@ -67,34 +130,63 @@ namespace Sailing
 		 * and the gust front are this value on the water. Same source as the sails' wind.
 		 */
 		double SurfaceRoughnessAt(double X, double Y, double TimeSeconds) const;
+		/**
+		 * The same scale for the mean wind alone (no gusts, lulls or lee; a gust front's outflow where it has passed):
+		 * what the water looks like on average there, the value the cat's-paw map fades to at its edge.
+		 */
+		double MeanSurfaceRoughnessAt(double X, double Y, double TimeSeconds) const;
 
 		/** Air velocity (where the air is going, m/s) at a world position and time. */
 		Vec3 VelocityAt(const Vec3& WorldPos, double TimeSeconds) const;
 
-		/** Mean speed at a height, before gusts. */
+		/** Mean speed at a height, before gusts (the stability-corrected profile through the 10 m speed). */
 		double MeanSpeedAtHeight(double HeightMeters) const;
 
-		/** Gust factor (1 = mean) at a world position and time. */
+		/** Gust factor (1 = mean) at a world position and time: puffs and fine turbulence, before any lee. */
 		double GustFactorAt(const Vec3& WorldPos, double TimeSeconds) const;
 
-		/** Direction shift (radians, positive = veer toward +Y) at a time. */
+		/** Direction shift (radians, positive = veer toward +Y) at a place and time: puffs, turbulence and shifts. */
 		double ShiftAt(const Vec3& WorldPos, double TimeSeconds) const;
+
+		/**
+		 * What a sailor reads on the water at a place: where the wind comes from (rad, with the puffs' veer and fan and the
+		 * slow shifts, not the seconds-long turbulence) and its strength relative to the mean (the puffs, the lee).
+		 */
+		void ReadableAt(double X, double Y, double TimeSeconds, double& OutFromRadians, double& OutFactor) const;
+
+		/** The puff layer alone at a point: its speed factor (1 = none) and shift (rad). For the tests and the README. */
+		void PuffAt(double X, double Y, double TimeSeconds, double& OutFactor, double& OutShift) const;
+		/** Where the puffs drift (m/s, world) and the frames' current state. */
+		Vec3 PuffDrift() const { return Vec3(Puffs.VX, Puffs.VY, 0.0); }
+		/** Derived sizes (m) and shares, for the README and tests. */
+		struct FDerived
+		{
+			double PuffAcross = 0.0, PuffAlong = 0.0, SpacingAcross = 0.0, SpacingAlong = 0.0, Streets = 0.0;
+			double PuffSigma = 0.0, FineSigma = 0.0, PuffAmplitude = 0.0, ZetaAt10 = 0.0, AloftRatio = 1.25, Lifetime = 600.0;
+		bool bGusty = false;
+		};
+		const FDerived& GetDerived() const { return D; }
 
 		const FWindParams& GetParams() const { return Params; }
 		void SetParams(const FWindParams& InParams);
 
 	private:
-		double Noise(double S, int Octave) const;
+		void Derive();
+		double Profile(double HeightMeters) const;
+		double PuffField(double Along, double Across, double T, double& Fan) const;
+		void Fine(double X, double Y, double T, double& DU, double& DV) const;
+		double Slow(double Along, double Across, double T) const;
 
 		FWindParams Params;
-		double Phases[8];
+		FDerived D;
+		double Phases[12];
 		double MeanSpeed10 = 0.0; // m/s
 		Vec3 DownwindDir;         // unit vector the air travels along
-		double AdvectionOffset = 0.0; // m the gust pattern had travelled at AdvectionTime
-		double AdvectionTime = 0.0;
+		double PuffMean = 0.0;    // spatial mean of the raw puff field (subtracted so the gusts average to 1)
+		double ProfileNorm = 1.0; // the profile's value at 10 m (divided out)
+		double ObukhovL = 1e9;    // m (stable > 0, unstable < 0)
+		FDriftFrame Puffs, Air;   // puffs drift at the wind aloft; fine turbulence and shifts at the mean wind
 		FGustFront Front;
 		const class FShelterMap* Shelter = nullptr;
-
-		double Advected(double TimeSeconds) const { return AdvectionOffset + MeanSpeed10 * (TimeSeconds - AdvectionTime); }
 	};
 }

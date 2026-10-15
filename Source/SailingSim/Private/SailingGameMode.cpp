@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
 #include "SailingSim.h"
@@ -231,11 +232,26 @@ void ASailingGameMode::UpdateShelter()
 	{
 		bShelterBuilding = true;
 		const Sailing::FLakeTerrain* Terrain = &Lake.Terrain;
-		PendingShelter = Async(EAsyncExecution::ThreadPool, [Terrain, From]()
+		// W1: houses shelter the water too (their ridge above the water, their wings' extent).
+		if (ShelterObstacles.empty())
+		{
+			for (const FLakeHouse& H : Lake.Houses)
+			{
+				Sailing::FShelterObstacle O;
+				O.X = H.X;
+				O.Y = H.Y;
+				O.Top = FMath::Max(Lake.Terrain.HeightAt(H.X, H.Y), 0.15) + FMath::Max(H.Ridge, H.Eave);
+				O.Radius = 4.0;
+				for (const FLakeHouse::FWing& W : H.Wings) O.Radius = FMath::Max(O.Radius, double(FMath::Max(W.HalfLength, W.HalfWidth)) + FVector2D(W.X - H.X, W.Y - H.Y).Size());
+				ShelterObstacles.push_back(O);
+			}
+		}
+		const std::vector<Sailing::FShelterObstacle>* Obstacles = &ShelterObstacles;
+		PendingShelter = Async(EAsyncExecution::ThreadPool, [Terrain, From, Obstacles]()
 		{
 			const double Start = FPlatformTime::Seconds();
 			TSharedPtr<Sailing::FShelterMap> Map = MakeShared<Sailing::FShelterMap>();
-			Map->Build(*Terrain, From);
+			Map->Build(*Terrain, From, 40.0, Obstacles);
 			UE_LOG(LogSailing, Display, TEXT("Shelter map for wind from %.0f built in %.0f ms"), FMath::RadiansToDegrees(From), (FPlatformTime::Seconds() - Start) * 1000.0);
 			return Map;
 		});
@@ -289,6 +305,8 @@ void ASailingGameMode::ApplyWeatherSettings()
 	}
 	UtcOffsetHours = FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
 	DayOfYear = Date.GetDayOfYear();
+	// W1: the wind's calibration and stability follow the month and the water (the lake, or the bay and the Gulf).
+	Weather.SetClimate(Date.GetMonth(), Settings->World != 0);
 	ClockBase = GetSimTime() - WeatherOffset;
 	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (double(Settings->StartHour) - UtcOffsetHours) * 3600.0;
 
@@ -385,18 +403,25 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		FParse::Value(FCommandLine::Get(), TEXT("SailingGust="), GustOverride);
 	}
 	if (!FMath::IsNaN(WindFromOverride)) WeatherState.Wind.FromDegrees = WindFromOverride;
-	if (!FMath::IsNaN(GustOverride)) WeatherState.Wind.GustIntensity = GustOverride;
+	if (!FMath::IsNaN(GustOverride))
+	{
+		// The override is the gusts over the mean (a gust factor less one): the fine turbulence for that factor, the puffs
+		// scaled with it (W1).
+		const double Fine = Sailing::GustIntensityForFactor(1.0 + GustOverride);
+		const double Scale = WeatherState.Wind.GustIntensity > 1e-6 ? Fine / WeatherState.Wind.GustIntensity : 1.0;
+		WeatherState.Wind.GustIntensity = Fine;
+		WeatherState.Wind.PuffIntensity = WeatherState.Wind.PuffIntensity >= 0.0 ? WeatherState.Wind.PuffIntensity * FMath::Min(Scale, 3.0) : -1.0;
+	}
 	if (bEasy)
 	{
 		WeatherState.Wind.GustIntensity *= 0.5;
+		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= 0.5;
 		WeatherState.Wind.ShiftDegrees *= 0.5;
+		WeatherState.Wind.PersistentShiftDegrees *= 0.5;
 	}
 	// The weather's own clock starts at zero; the wind field runs on simulation time.
 	WeatherState.Front.StartTime += WeatherStartTime;
 	WeatherState.Front.DecayStartTime += WeatherStartTime;
-	FWeatherSystem::ApplyToWind(WeatherState, Wind, Now);
-
-	// The sea follows the mean wind at the boat (including a gust front's outflow once it has passed).
 	Vec3 BoatPos;
 	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
@@ -405,6 +430,10 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 			BoatPos = Boat->GetBoatModel().OriginPosition();
 		}
 	}
+	// W1: the wind's patterns drift around the boat; a change of direction turns them about her, not the map origin.
+	FWeatherSystem::ApplyToWind(WeatherState, Wind, Now, BoatPos.X, BoatPos.Y);
+
+	// The sea follows the mean wind at the boat (including a gust front's outflow once it has passed).
 	FWaveParams WaveParams;
 	WaveParams.WindSpeedKnots = WeatherState.Wind.SpeedKnots;
 	WaveParams.WindFromDegrees = WeatherState.Wind.FromDegrees;
@@ -425,8 +454,8 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
 	Waves.SetWind(WaveParams);
-	// Short-fetch chop builds within a minute or two.
-	Waves.Update(DeltaSeconds, 40.0);
+	// Ripples and chop follow a puff within seconds, the longest lake waves over minutes (FWaveField::GrowthSeconds).
+	Waves.Update(DeltaSeconds);
 }
 
 void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)
@@ -562,6 +591,10 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
+		if (!bSlicesStarted) { bSlicesStarted = true; FMemory::Memcpy(SlicesAtStart, SailingPerf::GSliceSeconds, sizeof(SlicesAtStart)); }
+		// (The thread times read here are the previous frame's, all of them inside the window but the first.)
+		ThreadTimes.Sample();
+		FMemory::Memcpy(SlicesAtEnd, SailingPerf::GSliceSeconds, sizeof(SlicesAtEnd));
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
 	}
@@ -668,6 +701,11 @@ void ASailingGameMode::FinishBenchmark()
 	if (N > 0 && WaterSecondsAtStart >= 0.0)
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
+	}
+	// Perf 1: the threads' own times (game thread without its waits) and the game thread's named slices.
+	if (const FString Threads = ThreadTimes.JsonFields(); !Threads.IsEmpty())
+	{
+		Summary = Summary.LeftChop(1) + TEXT(",") + Threads + TEXT(",\"gt\":") + SailingPerf::SlicesJson(SlicesAtStart, SlicesAtEnd, N) + TEXT("}");
 	}
 	if (!GpuSlicesJson.IsEmpty())
 	{
