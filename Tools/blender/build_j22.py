@@ -688,7 +688,7 @@ for k in range(9):
     z = 0.28 + (-0.92 - 0.28) * t
     chord = 0.42 + (0.28 - 0.42) * t ** 1.5
     blade.append((z, STOCK_X + 0.03, chord))
-foil(rudder, blade, "Antifouling", 0.11)
+foil(rudder, blade, "Topsides", 0.11)  # round 11: white gelcoat (J/22s are dry-sailed; a dark blade read as a grey slab)
 box(rudder, (STOCK_X - 0.06, 0, 0.5), (0.2, 0.05, 0.46), "Topsides")       # rudder head cheeks
 TILLER_Z0 = sheer(STERN) + 0.1
 tiller = [(STOCK_X - 0.02, 0, TILLER_Z0)]

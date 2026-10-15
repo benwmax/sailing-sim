@@ -12,7 +12,8 @@ namespace
 	{
 		{ TEXT("None"), 90.f, false, false, 0.f },
 		{ TEXT("HelmEye"), 70.f, true, false, 0.f },
-		{ TEXT("ActionCam"), 118.f, true, true, 0.f },
+		// Rendered at 125 deg: M_LensDistortion keeps the 4:3 frame's corners, so the side edges' middles land at 118.
+		{ TEXT("ActionCam"), 125.f, true, true, 0.f },
 		{ TEXT("Chase"), 50.f, false, false, NAN },
 		{ TEXT("Drone"), 80.f, false, false, NAN },
 		{ TEXT("ShoreTele"), 15.f, false, false, NAN },

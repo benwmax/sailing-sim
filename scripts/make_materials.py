@@ -629,7 +629,9 @@ return col;
 def build_lens_distortion():
     """M_LensDistortion: barrel distortion for the action-cam reference preset (a GoPro's wide lens). The image is
     rendered rectilinear at the camera's full field of view; this pulls the middle in so straight lines bow outward
-    the way they do in action-cam footage, keeping the edges (and so the field of view) where they were."""
+    the way they do in action-cam footage. Round 11: normalised at the frame's corners, not its side edges, so no pixel
+    samples outside the rendered frame (the clamp smeared the side edges into streaks); the preset renders wider
+    (ReferenceCapture.cpp) so the middle of each side edge still sees 118 deg."""
     mat = new_material("M_LensDistortion")
     mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_POST_PROCESS)
     mat.set_editor_property("blendable_location", unreal.BlendableLocation.BL_SCENE_COLOR_AFTER_TONEMAPPING)
@@ -638,7 +640,8 @@ def build_lens_distortion():
 float2 uv = GetViewportUV(Parameters);
 float aspect = View.ViewSizeAndInvSize.x * View.ViewSizeAndInvSize.w;
 float2 d = (uv - 0.5) * 2.0 * float2(1.0, 1.0 / aspect);
-float s = (1.0 + K * dot(d, d)) / (1.0 + K);
+float rc = 1.0 + 1.0 / (aspect * aspect);
+float s = (1.0 + K * dot(d, d)) / (1.0 + K * rc);
 return 0.5 + d * s * 0.5 * float2(1.0, aspect);
 """
     c = custom(mat, code, ["K"], unreal.CustomMaterialOutputType.CMOT_FLOAT2, -600, 0)
