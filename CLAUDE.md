@@ -333,6 +333,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   (`AWaterSurface::WhitecapScaleFor`: lake 0.4, bay 0.7, Gulf 1). M_WaterV4's cap threshold is mirrored by
   `AWaterSurface::WhitecapThreshold` (keep `CapSlope` in step with make_materials.py). `FWaveField::Update(Dt)` grows each
   band over `GrowthSeconds` (8 T^2, 5..300 s).
+- W3 prep (`docs/w3-prep/`): the growth laws take the adjusted wind U_A = 0.71 U^1.23 (`FWaveField::AdjustedWindSpeed`);
+  the lake's sea grows on `FLakeTerrain::EffectiveFetch` (Saville, nine rays over +/-45 deg; cached in the game mode).
+  Polar, scenario and reference runs set `FWaveParams::bCalibrationSea` (the old law in U, the sea the fleet was
+  calibrated in). `FShelterMap` builds the open-water speed-up and `GustAt` (gusts easing with fetch, W6's LES) from
+  the same march; `FWindField::GustScaleAt` scales every fluctuation by it (1 without a map).
 - Wind (W1, `docs/w1/`): `FWindField` is three seeded layers, each a function of place and time in a frame drifting with
   the air (`FDriftFrame`; `SetParamsAt` re-anchors at the boat when the wind turns): convective puffs (lattice along the
   surface wind, drifting with the wind aloft; since the W1 follow-up, kilometre cells from 12 seeded waves 2 to 5 km
