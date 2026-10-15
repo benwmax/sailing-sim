@@ -12,11 +12,11 @@ Audited on Oct 15 2026 against main 7149d537 and the local builds on Bean's Mac.
 
 No asset in the repo or the builds is under a non-commercial, research-only or no-derivatives licence. No NC Commons
 photo, no LAFAN1, Bandai, AMASS or CMU motion, and no Mixamo or Fab content was found. Nine things need attention.
-Five are actions before release:
+Five are actions before release (item 1 is now fixed):
 
 | # | What | Problem | Recommended fix |
 |---|---|---|---|
-| 1 | `Content/Materials/T_SailMarks` (`scripts/make_sail_marks.py`) and the J22Hero sail lettering (`Inputs/j22-hero`) | The glyphs are rasterized from Apple's bundled Arial Bold Italic, Arial Bold and Helvetica (or Arial on Windows). Monotype's and Apple's licences cover use on that machine. Shipping images of the glyphs is commonly accepted, but it is unclear. | Switch both scripts to an OFL font already in the repo (Saira Condensed Bold), or bundle Liberation Sans (OFL). Then re-run `make_sail_marks.py` and the J22Hero bake. This takes about an hour and removes the question. |
+| 1 | `Content/Materials/T_SailMarks` (`scripts/make_sail_marks.py`) and the J22Hero sail and bow lettering (`Inputs/j22-hero`) | Were rasterized from Apple's bundled Arial and Helvetica (or Arial/Liberation on other machines). | **Fixed (Oct 15 2026, sail-font):** both now draw from Saira Condensed Bold (OFL, `Content/UI/Fonts`); the insignia is sheared for its slant, the bow registration widened 1.3x to block proportions. The atlas and the hero (sail textures, hull bake, FBX) were regenerated and reimported. |
 | 2 | The J/22 sail insignia (red "J" + "/22") and the class and brand names (J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) | These are trademarks, not copyright licences. Naming the boats descriptively is normally fine. A maker's logo drawn on the sails, or the names in store art, can need permission. | Ask J/Boats (and the others named in store text) for permission, or replace the drawn insignia with a generic class mark. This needs a lawyer's view before release, not a code change. |
 | 3 | "ASA 101" (drills, quiz) | This is a trademark of the American Sailing Association. The quiz is our own text: no question copies the Study Kit. | Use the name only descriptively ("prepares you for the ASA 101 exam"), with no logo, and no endorsement claim without the ASA's agreement. |
 | 4 | "Larus atricilla.ogg" by Tony Phillips (`Content/Audio/Pack/Birds/laughing_gull_01`) | This is CC BY 3.0, which is commercial-OK with attribution. The game shows no credit: the settings text only points at a repo path (`SailFrontEnd.cpp:1090`). | Add a credits screen (or a Settings > About page) that lists it with the OSM/Overture line and the Unreal notice. |

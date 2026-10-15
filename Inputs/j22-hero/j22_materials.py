@@ -10,6 +10,10 @@ import os
 import bpy
 
 TEX_DIR = os.environ.get("J22H_TEX", "/tmp/j22/hero/out/textures")
+# Lettering (sail numbers, insignia, sailmaker, the bow registration): Saira Condensed Bold, SIL OFL 1.1, staged with the
+# game's UI fonts. Never a system font: the glyphs ship as images and meshes (docs/licences/README.md item 1).
+FONT = os.environ.get("J22H_FONT", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Content", "UI",
+                                                "Fonts", "SairaCondensed-Bold.ttf"))
 
 
 def _new(name):
@@ -421,12 +425,7 @@ def acrylic(name):
 
 def _font(px):
     from PIL import ImageFont
-    for f in ("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", "/Library/Fonts/Arial Bold.ttf", "C:/Windows/Fonts/arialbd.ttf"):
-        try:
-            return ImageFont.truetype(f, px)
-        except OSError:
-            continue
-    return ImageFont.load_default()
+    return ImageFont.truetype(FONT, px)
 
 
 def draw_sail_textures(st, kind, out_dir, size=(2048, 4096)):
