@@ -372,6 +372,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   and `AngularAccelBody`. Attach points use the `J22H_sockets.json` names; without sockets `CrewDerivedAttachPoints` builds
   them from the geometry. AI crew tick at 15 Hz. The pawn hands each node `FCrewMotionInput` in `UpdateCrewFigures` (the
   mesh ticks after the pawn). Args: `-SailingCrewStill`, `-SailingDebugCrew`, `-SailingShotCrew=<name>`.
+- Crew capture (C2, `docs/crew-2/`): MetaHuman Animator's markerless body solve (a Fab plugin, Windows) exports to
+  `/Game/Crew/Capture/Solved/<clip>`; `Tools/capture/capture_clips.py` reads `Tools/capture/clips.csv` and saves
+  `/Game/Crew/Capture/{Sailor,MetaHuman}/A_<label>` through `UCrewCaptureLibrary` (`CrewCapture.h`: each bone's
+  component-space turn from the FCrewRig T-pose, carried between frames and onto the matching bones; the pelvis moves,
+  the root stays). `CAPTURE_SYNTHETIC=1` makes stand-ins from the stances. `Content/Crew/Capture` is git-ignored.
+  SK_Sailor's root bone is the armature ("Sailor") and carries the export scale: write each key's real scale.
 - Gulf swell (`docs/gulf-swell/`): Galveston is an ocean world too (`"ocean": true`); `FOcean::BuildMask` is the share of
   the swell's +/-45 deg spread reaching a point in straight lines from the chart's deep (4 m+) edge, land on the 100 m grid
   from any 10 m node above water; the boat's added resistance and `SignificantHeightAt` follow the mask (mask^2 energy).
