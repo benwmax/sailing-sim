@@ -896,6 +896,7 @@ def build_registration():
         y, _ = section(x, 0.88)
         ob.location = (x, side * (y + 0.03), 0.45)
         ob.rotation_euler = (math.radians(90), 0, math.radians(180) if side > 0 else 0)
+        ob.scale = (1.3, 1, 1)   # Saira Condensed widened to block-letter proportions (bakes legibly at 2048)
         ob = to_mesh(ob)
         _project(ob, side, side * (y + 0.03))
         out.append(ob)
