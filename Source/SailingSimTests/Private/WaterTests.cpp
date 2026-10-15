@@ -283,11 +283,11 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		};
 		const double Coverage = CoverageAt(Threshold);
 		const double Monahan = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41);
-		const double LakeMean = CoverageAt(AWaterSurface::WhitecapThreshold(1.f, Lake));
-		const double LakePuff = CoverageAt(AWaterSurface::WhitecapThreshold(1.3f, Lake));
-		const double LakeLull = CoverageAt(AWaterSurface::WhitecapThreshold(0.7f, Lake));
-		const double BayMean = CoverageAt(AWaterSurface::WhitecapThreshold(1.f, Bay));
-		// The threshold shift per e-fold of coverage on these waves: 0.034 at 10 kn to 0.069 at 25 kn; CapSlope is 0.045.
+		const double LakeMean = CoverageAt(AWaterSurface::WhitecapThreshold(1.f, Lake, float(Knots)));
+		const double LakePuff = CoverageAt(AWaterSurface::WhitecapThreshold(1.3f, Lake, float(Knots)));
+		const double LakeLull = CoverageAt(AWaterSurface::WhitecapThreshold(0.7f, Lake, float(Knots)));
+		const double BayMean = CoverageAt(AWaterSurface::WhitecapThreshold(1.f, Bay, float(Knots)));
+		// The threshold shift per e-fold of coverage on these waves: 0.034 at 10 kn to 0.069 at 25 kn (AWaterSurface::CapSlopeAt).
 		const double Lo = CoverageAt(Threshold - 0.05), Hi = CoverageAt(Threshold + 0.05);
 		const double Slope = Lo > 0.0 && Hi > Lo ? 0.1 / FMath::Loge(Hi / Lo) : 0.0;
 		AddInfo(FString::Printf(TEXT("%2.0f kn: whitecaps %.2f%% of the surface, Monahan %.2f%%; lake %.2f%% (puff 1.3x %.2f%%, lull 0.7x %.2f%%), "
@@ -301,14 +301,10 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		else
 		{
 			TestTrue(FString::Printf(TEXT("%.0f kn: whitecap coverage within a factor of three of Monahan's"), Knots), Coverage > Monahan / 3.0 && Coverage < 3.0 * Monahan);
-			// Physics gaps: above 18 kn the sea now grows as SWAN's does (FWaveField::GrowthStressWind), steeper than the sea
-			// the cap threshold was set on in W0, and at 20 and 25 kn the lake caps 3.3 and 3.6 times 0.4 Monahan. Retuning
-			// the threshold (FoamThreshold, WhitecapScaleFor, CapSlope in make_materials.py) belongs to the water work (W2),
-			// so there the lake's band is a known gap, reported as a warning.
+			// W2: the threshold's slope follows the wind (AWaterSurface::CapSlopeAt), so the lake holds its share in a strong
+			// breeze too (it capped 3.3 and 3.6 times 0.4 Monahan at 20 and 25 kn with a fixed slope).
 			const bool bLakeInBand = LakeMean > Lake * Monahan / 3.0 && LakeMean < 3.0 * Lake * Monahan;
-			if (Knots < 18.0) TestTrue(FString::Printf(TEXT("%.0f kn: fresh water within a factor of three of 0.4 Monahan"), Knots), bLakeInBand);
-			else if (!bLakeInBand) AddWarning(FString::Printf(TEXT("Known gap: %.0f kn: the lake caps %.1f times 0.4 Monahan (the threshold predates the SWAN-matched sea)"),
-				Knots, LakeMean / (Lake * Monahan)));
+			TestTrue(FString::Printf(TEXT("%.0f kn: fresh water within a factor of three of 0.4 Monahan (%.1f times)"), Knots, LakeMean / (Lake * Monahan)), bLakeInBand);
 			TestTrue(FString::Printf(TEXT("%.0f kn: the bay within a factor of three of 0.7 Monahan"), Knots), BayMean > Bay * Monahan / 3.0 && BayMean < 3.0 * Bay * Monahan);
 			TestTrue(FString::Printf(TEXT("%.0f kn: the lake caps less than the sea"), Knots), LakeMean < Coverage);
 			TestTrue(FString::Printf(TEXT("%.0f kn: a puff (1.3x the mean) caps more than the mean"), Knots), LakePuff > LakeMean);

@@ -23,13 +23,23 @@
 #include "Misc/Paths.h"
 #include "Waves.h"
 #include "Wind.h"
+#include "HAL/IConsoleManager.h"
+#include "EngineUtils.h"
+#include "LakeTerrainActor.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 using namespace Sailing;
 
 namespace
 {
-	constexpr int32 kGustRes = 64;
-	constexpr float kGustSizeM = 1600.f;
+	// W2: the two-level wind map (was one 64 x 64 map over 1.6 km): near 256 x 256 over 3.2 km (12.5 m texels; 512 on
+	// Ultra), far 128 x 128 over 16 km (125 m). Each texel's roughness rises over kRiseSeconds and settles over
+	// kFallSeconds (the water ruffles within seconds of a puff and smooths over ten); the slow speed (slicks, windrows)
+	// follows over kSlowSeconds.
+	constexpr float kNearSizeM = 3200.f;
+	constexpr float kFarSizeM = 16000.f;
+	constexpr int32 kFarRes = 128;
+	constexpr double kRiseSeconds = 2.0, kFallSeconds = 10.0, kSlowSeconds = 30.0, kWindrowSeconds = 120.0;
 	constexpr int32 kWakeRes = 128;
 	constexpr float kWakeSizeM = 64.f;
 	constexpr int32 kRingQuads = 128;     // quads across each ring
@@ -67,6 +77,18 @@ namespace
 		Tex->Filter = TF_Bilinear;
 		Tex->AddressX = TA_Clamp;
 		Tex->AddressY = TA_Clamp;
+		Tex->UpdateResource();
+		return Tex;
+	}
+
+	/** W2: a wind map stored wrap-around (a texel at world index i lives at i mod Res): the sampler wraps too. */
+	UTexture2D* MakeWrapMap(int32 Size)
+	{
+		UTexture2D* Tex = UTexture2D::CreateTransient(Size, Size, PF_B8G8R8A8);
+		Tex->SRGB = true; // the material's Color sampler; RGB are gamma-encoded on the CPU, alpha stays linear
+		Tex->Filter = TF_Bilinear;
+		Tex->AddressX = TA_Wrap;
+		Tex->AddressY = TA_Wrap;
 		Tex->UpdateResource();
 		return Tex;
 	}
@@ -194,6 +216,15 @@ namespace
 
 double AWaterSurface::WaterCpuSeconds = 0.0;
 
+namespace
+{
+	// W2: polarized sunglasses on the water (they cut the sky's glare, so puffs, lulls and slicks stand out):
+	// -SailingPolarized, or the console's sailing.Polarized 1.
+	int32 GPolarized = 0;
+	FAutoConsoleVariableRef CVarPolarized(TEXT("sailing.Polarized"), GPolarized,
+		TEXT("Polarized sunglasses on the water (1 on, 0 off): the sky's glare cut near Brewster's angle."));
+}
+
 AWaterSurface::AWaterSurface()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -244,9 +275,23 @@ void AWaterSurface::BeginPlay()
 {
 	Super::BeginPlay();
 	FarPlane->SetRelativeScale3D(FVector(FarPlaneSizeMeters, FarPlaneSizeMeters, 1.f));
-	GustMap = MakeMap(kGustRes);
+	// W2: the near wind map is 512 x 512 on Ultra, 256 x 256 otherwise; each tick refreshes one strip of rows (every
+	// texel each 0.8 s).
+	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+	NearWind.Res = bUltra ? 512 : 256;
+	NearWind.Strips = bUltra ? 16 : 8;
+	NearWind.SizeM = kNearSizeM;
+	FarWind.Res = kFarRes;
+	FarWind.Strips = 8;
+	FarWind.SizeM = kFarSizeM;
+	for (FWindLevel* L : { &NearWind, &FarWind })
+	{
+		L->Texels.SetNum(L->Res * L->Res);
+		L->Pixels.SetNumZeroed(L->Res * L->Res * 4);
+	}
+	GustMap = MakeWrapMap(NearWind.Res);
+	WindFarMap = MakeWrapMap(FarWind.Res);
 	WakeMap = MakeMap(kWakeRes);
-	GustPixels.SetNumZeroed(kGustRes * kGustRes * 4);
 	WakePixels.SetNumZeroed(kWakeRes * kWakeRes * 4);
 	CreateWaterMaterial();
 	BuildRings();
@@ -280,12 +325,13 @@ void AWaterSurface::CreateWaterMaterial()
 	FParse::Value(FCommandLine::Get(), TEXT("SailingDebugGust="), DebugGust);
 	WaterMaterial->SetScalarParameterValue(TEXT("DebugGust"), DebugGust);
 	WaterMaterial->SetTextureParameterValue(TEXT("GustMap"), GustMap);
+	WaterMaterial->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
 	WaterMaterial->SetTextureParameterValue(TEXT("WakeMap"), WakeMap);
 	if (OceanMaps.Num() == 2)
 	{
 		WaterMaterial->SetTextureParameterValue(TEXT("OceanA"), OceanMaps[0]);
 		WaterMaterial->SetTextureParameterValue(TEXT("OceanB"), OceanMaps[1]);
-		WaterMaterial->SetVectorParameterValue(TEXT("WaterColor"), FLinearColor(0.012f, 0.05f, 0.06f));
+		WaterMaterial->SetVectorParameterValue(TEXT("OceanColor"), FLinearColor(0.012f, 0.05f, 0.06f)); // W2: blended by the swell mask
 	}
 	UploadedMask = nullptr; // binds the mask again on the next ocean update
 	OceanMaskMap = nullptr;
@@ -322,6 +368,11 @@ void AWaterSurface::CreateWaterMaterial()
 		const FWaterBody Body = WaterBodyFor(USailingSettings::Get()->World);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterAlbedo"), Body.Albedo);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterExtinction"), Body.Extinction);
+		// W2 (the gulf-swell handoff): where the swell mask lets the open sea in, the Gulf's body (the material blends by
+		// the mask; in the Gulf world both are the Gulf's, on the lake there is no mask).
+		const FWaterBody Sea = WaterBodyFor(2);
+		WaterMaterial->SetVectorParameterValue(TEXT("WaterAlbedoSea"), Sea.Albedo);
+		WaterMaterial->SetVectorParameterValue(TEXT("WaterExtinctionSea"), Sea.Extinction);
 		Detail.Reset(); // reconfigures (the ripples come and go with the tier)
 		FramePrev.Reset();
 		FrameNext.Reset();
@@ -339,10 +390,15 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	}
 }
 
-float AWaterSurface::WhitecapThreshold(float LocalOverMean, float WaterScale)
+float AWaterSurface::CapSlopeAt(float MeanKnots)
+{
+	return 0.034f * FMath::Pow(FMath::Clamp(MeanKnots, 4.f, 40.f) / 10.f, 0.773f);
+}
+
+float AWaterSurface::WhitecapThreshold(float LocalOverMean, float WaterScale, float MeanKnots)
 {
 	const float Gain = WaterScale * FMath::Pow(FMath::Clamp(LocalOverMean, 0.05f, 4.f), 3.41f);
-	return FMath::Clamp(FoamThreshold + CapSlope * FMath::Loge(FMath::Max(Gain, 1e-4f)), 0.3f, 0.85f);
+	return FMath::Clamp(FoamThreshold + CapSlopeAt(MeanKnots) * FMath::Loge(FMath::Max(Gain, 1e-4f)), 0.3f, 0.85f);
 }
 
 void AWaterSurface::SetRingCount(int32 Count)
@@ -444,6 +500,13 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	{
 		UpdateGustMap();
 		GustTimer = 0.1f;
+	}
+	TreeScanTimer -= DeltaSeconds;
+	static const bool bNoTreeWind = FParse::Param(FCommandLine::Get(), TEXT("SailingNoTreeWind")); // measuring: trees on the global wind
+	if (TreeScanTimer <= 0.f && !bNoTreeWind)
+	{
+		BindTreeWind();
+		TreeScanTimer = 3.f;
 	}
 	WakeTimer -= DeltaSeconds;
 	if (WakeTimer <= 0.f)
@@ -965,7 +1028,7 @@ void AWaterSurface::UpdateOcean()
 		WaterMaterial->SetTextureParameterValue(TEXT("OceanA"), OceanMaps[0]);
 		WaterMaterial->SetTextureParameterValue(TEXT("OceanB"), OceanMaps[1]);
 		// Open Gulf water: bluer and clearer than the bay.
-		WaterMaterial->SetVectorParameterValue(TEXT("WaterColor"), FLinearColor(0.012f, 0.05f, 0.06f));
+		WaterMaterial->SetVectorParameterValue(TEXT("OceanColor"), FLinearColor(0.012f, 0.05f, 0.06f)); // W2: blended by the swell mask
 	}
 	// The grids at the frame's time, blended between the ocean's 30 Hz evaluations exactly as the physics does.
 	const double T = GetSimTime();
@@ -1027,7 +1090,17 @@ void AWaterSurface::UpdateMaterial()
 			FLinearColor(C[4 * I].Amplitude, C[4 * I + 1].Amplitude, C[4 * I + 2].Amplitude, C[4 * I + 3].Amplitude));
 	}
 	WaterMaterial->SetScalarParameterValue(TEXT("WaveTime"), float(GetSimTime()));
-	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(GustCenter.X, GustCenter.Y, kGustSizeM, 0.f));
+	// W2: the near and far wind maps (centre, size; both wrap-around, sampled at world position / size) and the
+	// windrows' slow downwind direction.
+	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(NearWind.Center.X, NearWind.Center.Y, NearWind.SizeM, 1.f));
+	WaterMaterial->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
+	WaterMaterial->SetVectorParameterValue(TEXT("WindSlow"), FLinearColor(WindrowDir.X, WindrowDir.Y, 0.f, 0.f));
+	for (const TPair<TObjectPtr<UMaterialInterface>, TObjectPtr<UMaterialInstanceDynamic>>& Tree : TreeWindMids)
+	{
+		if (Tree.Value) Tree.Value->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
+	}
+	static const bool bPolarizedArg = FParse::Param(FCommandLine::Get(), TEXT("SailingPolarized"));
+	WaterMaterial->SetScalarParameterValue(TEXT("Polarized"), (GPolarized != 0 || bPolarizedArg) ? 1.f : 0.f);
 	WaterMaterial->SetVectorParameterValue(TEXT("WakeRect"), FLinearColor(WakeCenter.X, WakeCenter.Y, kWakeSizeM, 0.f));
 
 	if (const FWindField* Wind = GetWind())
@@ -1050,52 +1123,159 @@ void AWaterSurface::UpdateMaterial()
 void AWaterSurface::UpdateGustMap()
 {
 	const FWindField* Wind = GetWind();
-	if (!Wind || !GustMap)
+	if (!Wind || !GustMap || !WindFarMap)
 	{
 		return;
 	}
-	const float Texel = kGustSizeM / kGustRes;
-	GustCenter = FVector2D(FMath::GridSnap(BoatPos.X, Texel), FMath::GridSnap(BoatPos.Y, Texel));
+	const double Start = FPlatformTime::Seconds();
 	const double T = GetSimTime();
-	const FVector2D Center = GustCenter;
-	ParallelFor(kGustRes, [&](int32 Y)
-	{
-		for (int32 X = 0; X < kGustRes; ++X)
-		{
-			// Texel centers; the material maps UV (0..1) across GustRect.
-			const double WX = Center.X + (X + 0.5 - kGustRes * 0.5) * Texel;
-			const double WY = Center.Y + (Y + 0.5 - kGustRes * 0.5) * Texel;
-			double R = Wind->SurfaceRoughnessAt(WX, WY, T);
-			// W0: the map ends 800 m out and the sampler clamps, so its border texels would streak across the far
-			// water. Over the outer 20% of the radius it fades to the mean wind (gusts and lees average out at that
-			// range anyway); every border texel is the mean, and so is the water beyond it.
-			const double Radius = FVector2D(X + 0.5 - kGustRes * 0.5, Y + 0.5 - kGustRes * 0.5).Size() / (kGustRes * 0.5);
-			const double Edge = FMath::SmoothStep(0.78, 0.97, Radius);
-			if (Edge > 0.0)
-			{
-				R += (Wind->MeanSurfaceRoughnessAt(WX, WY, T) - R) * Edge;
-			}
-			const uint8 V = EncodeSrgb(float(R / 2.5));
-			// Texture rows run along +V; the material uses u = world X, v = world Y.
-			uint8* Px = &GustPixels[(Y * kGustRes + X) * 4];
-			Px[0] = V; Px[1] = V; Px[2] = V; Px[3] = 255; // B, G, R, A
-		}
-	});
-	Upload(GustMap, GustPixels, kGustRes);
+	UpdateWindLevel(NearWind, true, T);
+	UpdateWindLevel(FarWind, false, T);
+	GustCenter = NearWind.Center;
 
-	// -SailingDumpGust: write the cat's-paw map as a PGM image once, to check what the water is shown.
+	// The windrows' direction: the readable wind at the boat, smoothed over minutes (they realign slowly after a shift).
+	double From = 0.0, Factor = 1.0;
+	Wind->ReadableAt(BoatPos.X, BoatPos.Y, T, From, Factor);
+	const FVector2D Down(-FMath::Cos(From), -FMath::Sin(From));
+	if (!bWindrowDirSet)
+	{
+		WindrowDir = Down;
+		bWindrowDirSet = true;
+	}
+	else
+	{
+		const double A = 1.0 - FMath::Exp(-FMath::Max(T - LastWindrowTime, 0.0) / kWindrowSeconds);
+		const FVector2D Blend = WindrowDir + (Down - WindrowDir) * A;
+		WindrowDir = Blend.IsNearlyZero() ? Down : Blend.GetSafeNormal();
+	}
+	LastWindrowTime = T;
+	WindMapCpuSeconds += FPlatformTime::Seconds() - Start;
+
+	// -SailingDumpGust: write the near map's roughness around the boat once as a PGM image, to check what the water shows.
 	static bool bDumped = false;
 	if (!bDumped && T > 4.0 && FParse::Param(FCommandLine::Get(), TEXT("SailingDumpGust")))
 	{
 		bDumped = true;
-		FString Pgm = FString::Printf(TEXT("P2\n%d %d\n255\n"), kGustRes, kGustRes);
-		for (int32 Y = kGustRes - 1; Y >= 0; --Y)
+		const int32 Res = NearWind.Res;
+		const double Texel = NearWind.SizeM / Res;
+		const int32 I0 = FMath::RoundToInt(NearWind.Center.X / Texel) - Res / 2, J0 = FMath::RoundToInt(NearWind.Center.Y / Texel) - Res / 2;
+		FString Pgm = FString::Printf(TEXT("P2\n%d %d\n255\n"), Res, Res);
+		for (int32 R = Res - 1; R >= 0; --R)
 		{
-			for (int32 X = 0; X < kGustRes; ++X) Pgm += FString::Printf(TEXT("%d "), GustPixels[(Y * kGustRes + X) * 4]);
+			for (int32 C = 0; C < Res; ++C)
+			{
+				const int32 Slot = (((J0 + R) % Res + Res) % Res) * Res + ((I0 + C) % Res + Res) % Res;
+				Pgm += FString::Printf(TEXT("%d "), FMath::Clamp(FMath::RoundToInt(NearWind.Texels[Slot].Rough / 20.f * 255.f), 0, 255));
+			}
 			Pgm += TEXT("\n");
 		}
 		FFileHelper::SaveStringToFile(Pgm, *(FPaths::ProjectSavedDir() / TEXT("Bench/gust.pgm")));
 	}
+}
+
+double AWaterSurface::WindMapCpuSeconds = 0.0;
+
+void AWaterSurface::BindTreeWind()
+{
+	if (!WindFarMap) return;
+	for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
+	{
+		TArray<UInstancedStaticMeshComponent*> Comps;
+		It->GetComponents(Comps);
+		for (UInstancedStaticMeshComponent* Comp : Comps)
+		{
+			for (int32 I = 0; I < Comp->GetNumMaterials(); ++I)
+			{
+				UMaterialInterface* M = Comp->GetMaterial(I);
+				if (!M || Cast<UMaterialInstanceDynamic>(M)) continue;
+				const UMaterial* Base = M->GetBaseMaterial();
+				if (!Base || !Base->GetName().StartsWith(TEXT("M_Tree"))) continue;
+				TObjectPtr<UMaterialInstanceDynamic>& Mid = TreeWindMids.FindOrAdd(M);
+				if (!Mid)
+				{
+					Mid = UMaterialInstanceDynamic::Create(M, this);
+					Mid->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
+					Mid->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
+					UE_LOG(LogSailing, Display, TEXT("Water: trees read the local wind (%s)"), *M->GetName());
+				}
+				Comp->SetMaterial(I, Mid);
+			}
+		}
+	}
+}
+
+void AWaterSurface::UpdateWindLevel(FWindLevel& Level, bool bNear, double T)
+{
+	const FWindField* Wind = GetWind();
+	const int32 Res = Level.Res;
+	const double Texel = Level.SizeM / Res;
+	const FVector2D Center(FMath::GridSnap(BoatPos.X, Texel), FMath::GridSnap(BoatPos.Y, Texel));
+	// A jump of more than a quarter of the map (the start, a teleport) refreshes it all at once; otherwise one strip.
+	const bool bAll = !Level.bStarted || FVector2D::Distance(Center, Level.Center) > 0.25 * Level.SizeM;
+	Level.bStarted = true;
+	Level.Center = Center;
+	// World index of the window's first texel along X (u) and Y (v): the window is Res texels centred on the boat.
+	const int32 I0 = FMath::RoundToInt(Center.X / Texel) - Res / 2, J0 = FMath::RoundToInt(Center.Y / Texel) - Res / 2;
+	const int32 Rows = Res / Level.Strips;
+	const int32 RowStart = bAll ? 0 : Level.NextStrip * Rows;
+	const int32 RowCount = bAll ? Res : Rows;
+	Level.NextStrip = (Level.NextStrip + 1) % Level.Strips;
+	ParallelFor(RowCount, [&](int32 K)
+	{
+		const int32 IY = J0 + RowStart + K;
+		const int32 SlotY = (IY % Res + Res) % Res;
+		for (int32 C = 0; C < Res; ++C)
+		{
+			const int32 IX = I0 + C;
+			const int32 SlotX = (IX % Res + Res) % Res;
+			const double WX = (IX + 0.5) * Texel, WY = (IY + 0.5) * Texel;
+			double Speed, DX, DY;
+			if (bNear)
+			{
+				// The full wind at 10 m: puffs, cells, fine turbulence, shifts, lee, the gust front.
+				const Vec3 V = Wind->VelocityAt(Vec3(WX, WY, 10.0), T);
+				Speed = FMath::Sqrt(V.X * V.X + V.Y * V.Y);
+				DX = Speed > 1e-3 ? V.X / Speed : 1.0;
+				DY = Speed > 1e-3 ? V.Y / Speed : 0.0;
+			}
+			else
+			{
+				// Far off only what reads at that range: the puffs and slow shifts, the lee, the front's outflow.
+				double From = 0.0, Factor = 1.0;
+				Wind->ReadableAt(WX, WY, T, From, Factor);
+				Speed = Wind->MeanSurfaceRoughnessAt(WX, WY, T) * 8.0 * Factor;
+				DX = -FMath::Cos(From);
+				DY = -FMath::Sin(From);
+			}
+			FWindTexel& X = Level.Texels[SlotY * Res + SlotX];
+			if (X.IX != IX || X.IY != IY)
+			{
+				// Newly in view: it starts settled.
+				X.IX = IX;
+				X.IY = IY;
+				X.Rough = float(Speed);
+				X.Slow = float(Speed);
+			}
+			else
+			{
+				const double Dt = FMath::Max(T - X.T, 0.0);
+				const double Tau = Speed > X.Rough ? kRiseSeconds : kFallSeconds;
+				X.Rough += float((Speed - X.Rough) * (1.0 - FMath::Exp(-Dt / Tau)));
+				X.Slow += float((Speed - X.Slow) * (1.0 - FMath::Exp(-Dt / kSlowSeconds)));
+			}
+			X.T = T;
+			X.DirX = float(DX);
+			X.DirY = float(DY);
+			// BGRA: R the roughness the water shows (speed / 20 m/s, so 2.5 x it is the old speed / 8 scale), G and B the
+			// local downwind direction (X, Y), A (linear in an sRGB texture) the slow speed / 20 m/s.
+			uint8* Px = &Level.Pixels[(SlotY * Res + SlotX) * 4];
+			Px[0] = EncodeSrgb(0.5f + 0.5f * X.DirY);
+			Px[1] = EncodeSrgb(0.5f + 0.5f * X.DirX);
+			Px[2] = EncodeSrgb(FMath::Clamp(X.Rough / 20.f, 0.f, 1.f));
+			Px[3] = uint8(FMath::Clamp(FMath::RoundToInt(X.Slow / 20.f * 255.f), 0, 255));
+		}
+	});
+	Upload(bNear ? GustMap.Get() : WindFarMap.Get(), Level.Pixels, Res);
 }
 
 void AWaterSurface::UpdateWakeMap(float DeltaSeconds)
