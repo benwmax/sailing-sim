@@ -110,6 +110,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Graphics G8 added the PC's own loop: `run-python.ps1 <script.py> [-Only fn,...]` (editor Python, e.g. make_materials.py),
    `run-game.ps1` (uncooked), `capture-scenes-win.ps1` (scene CSV on the packaged game). `M_WorldSurface` patterns 9
    (wood pilings) and 10 (dock boxes) are new and output a normal; keep `KitLook()` in step.
+   Crew C2 on the PC: `capture-solve.ps1 [-TestClip tack_port]` runs the MetaHuman body solve (`Tools/capture/solve_clips.py`,
+   full editor via `-ExecutePythonScript`) and `capture_clips.py`; see `docs/crew-2/README.md`. Editor scripts end by
+   returning, never `os._exit` (it leaves zombie editors on Windows: `docs/windows/README.md`).
 
 20. The gate (bench-fast, `docs/bench-fast/`): `scripts/gate.sh --scope clouds|water|boats|crew|world|night|ui|all
    [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed
@@ -120,6 +123,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Saved/Bench>`), opt-in because the RHI thread can slow from view to view within one process (re-run alone
    by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
    Command-line values cached in statics must use `SailingArgs::FCachedFlag`/`FOnce` (re-read when a list swaps it).
+
+21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
+   no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`
+   (path glob, source, licence, commercial, conditions); `scripts/licence-check.sh` fails otherwise. Credit what the
+   licence asks for in `CREDITS.md`. MetaHuman sources and exports are never redistributed outside the cooked game.
 
 ## Conventions
 

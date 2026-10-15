@@ -27,6 +27,7 @@ SOLVED = "/Game/Crew/Capture/Solved"
 SYNTHETIC_DIR = "/Game/Crew/Capture/Synthetic"
 OUT_SAILOR = "/Game/Crew/Capture/Sailor"
 OUT_MH = "/Game/Crew/Capture/MetaHuman"
+PERFORMER = "/MetaHumanBodyTracker/SKM_Body"  # the body solve's performer mesh (Windows, the Fab plugin)
 SYNTHETIC = os.environ.get("CAPTURE_SYNTHETIC") == "1"
 FPS = int(os.environ.get("CAPTURE_FPS", "30"))
 
@@ -58,8 +59,18 @@ def main():
                 unreal.log(f"Capture: {clip}: no solve at {SOLVED}/{clip} yet, skipped")
                 skipped += 1
                 continue
-            outs = [(LIB.retarget_clip(src, body, sailor, start, end, FPS, f"{OUT_SAILOR}/A_{label}"), "SK_Sailor"),
-                    (LIB.retarget_clip(src, body, body, start, end, FPS, f"{OUT_MH}/A_{label}"), "MetaHuman")]
+            # A body solve (solve_clips.py) is on the plugin's performer skeleton: its rotations are relative to that
+            # skeleton's rest pose, so it's read through the performer's own mesh, not the helm's.
+            # Its heading is the camera's, so it's leveled to face forward at the clip's start (RetargetClip).
+            src_mesh, solve = body, False
+            if src.get_editor_property("skeleton") != body.get_editor_property("skeleton"):
+                solve = True
+                src_mesh = unreal.load_asset(PERFORMER)  # (does_asset_exist doesn't see the plugin's content)
+                if src_mesh is None:
+                    unreal.log_error(f"Capture: {clip}: the solve is on another skeleton and {PERFORMER} isn't loaded")
+                    continue
+            outs = [(LIB.retarget_clip(src, src_mesh, sailor, start, end, FPS, f"{OUT_SAILOR}/A_{label}", solve), "SK_Sailor"),
+                    (LIB.retarget_clip(src, src_mesh, body, start, end, FPS, f"{OUT_MH}/A_{label}", solve), "MetaHuman")]
             for anim, what in outs:
                 if anim is None:
                     unreal.log_error(f"Capture: {clip}: the retarget to {what} failed")
