@@ -1,0 +1,326 @@
+{
+ "sockets": {
+  "MastStep": [
+   99.25,
+   -0.0,
+   94.85
+  ],
+  "ChainplateUpper_S": [
+   98.0,
+   101.24,
+   69.69
+  ],
+  "ChainplateLower_S": [
+   82.0,
+   104.08,
+   69.41
+  ],
+  "JibWinch_S": [
+   -83.0,
+   109.45,
+   74.83
+  ],
+  "JibTailer_S": [
+   -83.0,
+   109.45,
+   78.83
+  ],
+  "JibLead_S": [
+   53.0,
+   102.12,
+   69.41
+  ],
+  "SpreaderTip_S": [
+   73.64,
+   72.1,
+   463.92
+  ],
+  "ChainplateUpper_P": [
+   98.0,
+   -101.24,
+   69.69
+  ],
+  "ChainplateLower_P": [
+   82.0,
+   -104.08,
+   69.41
+  ],
+  "JibWinch_P": [
+   -83.0,
+   -109.45,
+   74.83
+  ],
+  "JibTailer_P": [
+   -83.0,
+   -109.45,
+   78.83
+  ],
+  "JibLead_P": [
+   53.0,
+   -102.12,
+   69.41
+  ],
+  "SpreaderTip_P": [
+   73.64,
+   -72.1,
+   463.92
+  ],
+  "ForestayTack": [
+   338.0,
+   -0.0,
+   84.97
+  ],
+  "BackstayPlate": [
+   -335.0,
+   -0.0,
+   65.96
+  ],
+  "BowCleat": [
+   270.0,
+   -0.0,
+   84.94
+  ],
+  "Traveler_C": [
+   -195.0,
+   -0.0,
+   18.0
+  ],
+  "Traveler_S": [
+   -195.0,
+   33.0,
+   18.0
+  ],
+  "Traveler_P": [
+   -195.0,
+   -33.0,
+   18.0
+  ],
+  "LazySheetVia": [
+   64.25,
+   -0.0,
+   104.54
+  ],
+  "Hounds": [
+   102.83,
+   -0.0,
+   783.0
+  ],
+  "LowerTang": [
+   99.12,
+   -0.0,
+   455.0
+  ],
+  "MastheadAft": [
+   78.5,
+   -0.0,
+   921.25
+  ],
+  "MastBase": [
+   94.0,
+   -0.0,
+   104.86
+  ],
+  "Boom_Vang": [
+   20.0,
+   -0.0,
+   141.85
+  ],
+  "Boom_Mainsheet": [
+   -159.02,
+   -0.0,
+   135.0
+  ],
+  "Boom_Clew": [
+   -180.02,
+   -0.0,
+   149.2
+  ],
+  "TillerEnd": [
+   -215.74,
+   -0.0,
+   84.59
+  ],
+  "RudderStock": [
+   -346.0,
+   -0.0,
+   70.41
+  ],
+  "RudderPivot": [
+   -346.0,
+   -0.0,
+   0.0
+  ],
+  "TillerExtTip": [
+   -318.15,
+   -0.0,
+   81.75
+  ],
+  "TillerExtUJ": [
+   -216.0,
+   -0.0,
+   87.0
+  ],
+  "MainsheetCam": [
+   -197.6,
+   -9.0,
+   22.0
+  ],
+  "JibCam0_S": [
+   -105.6,
+   91.74,
+   57.11
+  ],
+  "JibCam1_S": [
+   -155.6,
+   89.06,
+   57.3
+  ],
+  "HandholdCabin_S": [
+   18.5,
+   46.0,
+   102.21
+  ],
+  "HandholdCoaming_S": [
+   -171.64,
+   91.95,
+   69.27
+  ],
+  "JibCam0_P": [
+   -105.6,
+   -91.74,
+   57.11
+  ],
+  "JibCam1_P": [
+   -155.6,
+   -89.06,
+   57.3
+  ],
+  "HandholdCabin_P": [
+   18.5,
+   -46.0,
+   102.21
+  ],
+  "HandholdCoaming_P": [
+   -171.64,
+   -91.95,
+   69.27
+  ],
+  "CockpitSole": [
+   -173.0,
+   -0.0,
+   13.6
+  ],
+  "Seat_S": [
+   -173.0,
+   44.0,
+   40.0
+  ],
+  "FootBrace_S": [
+   -173.0,
+   41.0,
+   34.2
+  ],
+  "SideDeck_S": [
+   -173.0,
+   115.11,
+   62.7
+  ],
+  "Seat_P": [
+   -173.0,
+   -44.0,
+   40.0
+  ],
+  "FootBrace_P": [
+   -173.0,
+   -41.0,
+   34.2
+  ],
+  "SideDeck_P": [
+   -173.0,
+   -115.11,
+   62.7
+  ],
+  "Boom_LowOverCockpit": [
+   -173.0,
+   -0.0,
+   141.62
+  ]
+ },
+ "owner": {
+  "MastStep": "SM_J22H_Hull",
+  "ChainplateUpper_S": "SM_J22H_Hull",
+  "ChainplateLower_S": "SM_J22H_Hull",
+  "JibWinch_S": "SM_J22H_Hull",
+  "JibTailer_S": "SM_J22H_Hull",
+  "JibLead_S": "SM_J22H_Hull",
+  "SpreaderTip_S": "SM_J22H_Mast",
+  "ChainplateUpper_P": "SM_J22H_Hull",
+  "ChainplateLower_P": "SM_J22H_Hull",
+  "JibWinch_P": "SM_J22H_Hull",
+  "JibTailer_P": "SM_J22H_Hull",
+  "JibLead_P": "SM_J22H_Hull",
+  "SpreaderTip_P": "SM_J22H_Mast",
+  "ForestayTack": "SM_J22H_Hull",
+  "BackstayPlate": "SM_J22H_Hull",
+  "BowCleat": "SM_J22H_Hull",
+  "Traveler_C": "SM_J22H_Hull",
+  "Traveler_S": "SM_J22H_Hull",
+  "Traveler_P": "SM_J22H_Hull",
+  "LazySheetVia": "SM_J22H_Hull",
+  "Hounds": "SM_J22H_Mast",
+  "LowerTang": "SM_J22H_Mast",
+  "MastheadAft": "SM_J22H_Mast",
+  "MastBase": "SM_J22H_Mast",
+  "Boom_Vang": "SM_J22H_Boom",
+  "Boom_Mainsheet": "SM_J22H_Boom",
+  "Boom_Clew": "SM_J22H_Boom",
+  "TillerEnd": "SM_J22H_Rudder",
+  "RudderStock": "SM_J22H_Rudder",
+  "RudderPivot": "SM_J22H_Rudder",
+  "TillerExtTip": "SM_J22H_Rudder",
+  "TillerExtUJ": "SM_J22H_Rudder",
+  "MainsheetCam": "SM_J22H_Hull",
+  "JibCam0_S": "SM_J22H_Hull",
+  "JibCam1_S": "SM_J22H_Hull",
+  "HandholdCabin_S": "SM_J22H_Hull",
+  "HandholdCoaming_S": "SM_J22H_Hull",
+  "JibCam0_P": "SM_J22H_Hull",
+  "JibCam1_P": "SM_J22H_Hull",
+  "HandholdCabin_P": "SM_J22H_Hull",
+  "HandholdCoaming_P": "SM_J22H_Hull",
+  "CockpitSole": "SM_J22H_Hull",
+  "Seat_S": "SM_J22H_Hull",
+  "FootBrace_S": "SM_J22H_Hull",
+  "SideDeck_S": "SM_J22H_Hull",
+  "Seat_P": "SM_J22H_Hull",
+  "FootBrace_P": "SM_J22H_Hull",
+  "SideDeck_P": "SM_J22H_Hull",
+  "Boom_LowOverCockpit": "SM_J22H_Boom"
+ },
+ "origins": {
+  "SM_J22H_Hull": [
+   0.0,
+   -0.0,
+   0.0
+  ],
+  "SM_J22H_Mast": [
+   99.25,
+   -0.0,
+   94.85
+  ],
+  "SM_J22H_Boom": [
+   91.58,
+   -0.0,
+   145.0
+  ],
+  "SM_J22H_Rudder": [
+   -346.0,
+   -0.0,
+   0.0
+  ]
+ },
+ "live": {
+  "ropes": "FRigLine (BoatModelVisuals.cpp) from these sockets",
+  "sails": "FSailCloth; hero sail maps on UV1"
+ }
+}

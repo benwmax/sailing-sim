@@ -1,0 +1,72 @@
+{
+ "seed": 22,
+ "preset": "race",
+ "wear": 0.25,
+ "care": 0.9,
+ "hull": {
+  "gelcoat_hex": "#F2EFE6",
+  "streaks": 0.0,
+  "chalk": 0.0,
+  "scum": 0.195,
+  "scum_height_m": 0.036,
+  "edge_chips": 0.109,
+  "fender_marks": [
+   1.31,
+   0.97
+  ],
+  "repairs": [],
+  "bottom_hex": "#8E918F",
+  "bottom_slime": 0.0,
+  "boot_stripe_hex": "#1C2A44",
+  "registration": "TX 8045 LK",
+  "sticker_hex": "#2F7D3A"
+ },
+ "deck": {
+  "nonskid_hex": "#D7C9A7",
+  "grime": 0.0,
+  "wear_paths": 0.193,
+  "stains": 1
+ },
+ "teak": {
+  "state": "oiled",
+  "wear": 0.173
+ },
+ "varnish": {
+  "gloss": 0.822,
+  "peel": 0.031
+ },
+ "metal": {
+  "anodise_wear": 0.305,
+  "tea_stain": 0.141
+ },
+ "ropes": {
+  "jib_sheet_port": "white_blue",
+  "jib_sheet_stbd": "white_blue",
+  "mainsheet": "white_red",
+  "halyards": "white_red",
+  "vang": "black_white",
+  "backstay": "red_white",
+  "fade": 0.0
+ },
+ "sails": {
+  "cloth": "grey_laminate",
+  "age": 0.194,
+  "stains": 2,
+  "patches": 0,
+  "number": "USA 573",
+  "maker": [
+   "PRAIRIE WIND",
+   "#4A5A1E"
+  ],
+  "insignia_hex": "#1F4E9A",
+  "number_hex": "#1C2A44",
+  "base_hex": "#8B8D8C"
+ },
+ "details": {
+  "windex": true,
+  "rig_tape_hex": "#F2F2F0",
+  "telltales": true,
+  "coiled_tails": true,
+  "outboard": true
+ }
+}

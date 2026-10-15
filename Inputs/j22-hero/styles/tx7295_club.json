@@ -1,0 +1,84 @@
+{
+ "seed": 7295,
+ "preset": "club",
+ "wear": 0.65,
+ "care": 0.35,
+ "hull": {
+  "gelcoat_hex": "#F3EFE5",
+  "streaks": 0.55,
+  "chalk": 0.393,
+  "scum": 0.477,
+  "scum_height_m": 0.065,
+  "edge_chips": 0.591,
+  "fender_marks": [],
+  "repairs": [
+   {
+    "x": 1.54,
+    "z": 0.44,
+    "w": 0.12,
+    "h": 0.07,
+    "tint": 0.014
+   },
+   {
+    "x": -1.19,
+    "z": 0.27,
+    "w": 0.2,
+    "h": 0.05,
+    "tint": -0.01
+   }
+  ],
+  "bottom_hex": "#9A9C97",
+  "bottom_slime": 0.303,
+  "boot_stripe_hex": null,
+  "registration": "TX 7295 EC",
+  "sticker_hex": "#2F7D3A"
+ },
+ "deck": {
+  "nonskid_hex": "#DECFAD",
+  "grime": 0.492,
+  "wear_paths": 0.539,
+  "stains": 2
+ },
+ "teak": {
+  "state": "silvered",
+  "wear": 0.63
+ },
+ "varnish": {
+  "gloss": 0.4,
+  "peel": 0.389
+ },
+ "metal": {
+  "anodise_wear": 0.659,
+  "tea_stain": 0.337
+ },
+ "ropes": {
+  "jib_sheet_port": "white_red",
+  "jib_sheet_stbd": "white_green",
+  "mainsheet": "white_red",
+  "halyards": "white_blue",
+  "vang": "red_white",
+  "backstay": "white_red",
+  "fade": 0.417
+ },
+ "sails": {
+  "cloth": "white_dacron",
+  "age": 0.75,
+  "stains": 0,
+  "patches": 1,
+  "number": "USA 1234",
+  "maker": [
+   "GULFLINE",
+   "#0E6E6E"
+  ],
+  "insignia_hex": "#1F4E9A",
+  "number_hex": "#111111",
+  "base_hex": "#F2EFE6"
+ },
+ "details": {
+  "windex": true,
+  "rig_tape_hex": "#F2F2F0",
+  "telltales": true,
+  "coiled_tails": true,
+  "outboard": true
+ }
+}
