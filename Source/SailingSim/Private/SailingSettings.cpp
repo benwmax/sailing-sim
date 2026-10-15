@@ -1,4 +1,5 @@
 #include "SailingSettings.h"
+#include "BoatModel.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
@@ -10,6 +11,68 @@ USailingSettings::USailingSettings()
 	// still wins. The editor (and so the tests) keeps Medium, as on the Mac.
 	Quality = ESailingQuality::Ultra;
 #endif
+	// The class defaults, before GameUserSettings.ini is loaded over them: what a measuring run sails with.
+	if (HasAnyFlags(RF_ClassDefaultObject)) SnapshotClassDefaults();
+}
+
+namespace
+{
+	TArray<TPair<const FProperty*, FString>>& ClassDefaultValues()
+	{
+		static TArray<TPair<const FProperty*, FString>> Values;
+		return Values;
+	}
+}
+
+void USailingSettings::SnapshotClassDefaults()
+{
+	TArray<TPair<const FProperty*, FString>>& Values = ClassDefaultValues();
+	Values.Reset();
+	for (TFieldIterator<FProperty> It(GetClass()); It; ++It)
+	{
+		if (!It->HasAnyPropertyFlags(CPF_Config)) continue;
+		FString Text;
+		It->ExportText_InContainer(0, Text, this, this, nullptr, PPF_None);
+		Values.Emplace(*It, Text);
+	}
+}
+
+bool USailingSettings::IgnoresSavedChoices()
+{
+	static const bool bArgs = []()
+	{
+		const TCHAR* Cmd = FCommandLine::Get();
+		return FCString::Strifind(Cmd, TEXT("SailingBench=")) || FCString::Strifind(Cmd, TEXT("SailingCapture="))
+			|| FCString::Strifind(Cmd, TEXT("SailingShot=")) || FCString::Strifind(Cmd, TEXT("SailingDrill="))
+			|| FParse::Param(Cmd, TEXT("SailingDemo"));
+	}();
+	return bArgs || GIsAutomationTesting;
+}
+
+void USailingSettings::UseRunDefaults()
+{
+	static bool bDone = false;
+	if (bDone || !IgnoresSavedChoices()) return;
+	bDone = true;
+	RestoreClassDefaults();
+}
+
+void USailingSettings::RestoreClassDefaults()
+{
+	USailingSettings* S = Get();
+	for (const TPair<const FProperty*, FString>& V : ClassDefaultValues()) V.Key->ImportText_InContainer(*V.Value, S, S, PPF_None);
+}
+
+int32 USailingSettings::MatchBoatName(const FString& Prefix)
+{
+	auto Bare = [](FString Name) { return Name.Replace(TEXT(" "), TEXT("")).Replace(TEXT("/"), TEXT("")); };
+	const FString Want = Bare(Prefix);
+	if (Want.IsEmpty()) return -1;
+	for (int32 I = 0; I < int32(Sailing::EBoatType::Count); ++I)
+	{
+		if (Bare(UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(I)))).StartsWith(Want, ESearchCase::IgnoreCase)) return I;
+	}
+	return -1;
 }
 
 bool USailingSettings::IsMeasuring()

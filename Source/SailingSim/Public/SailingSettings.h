@@ -157,6 +157,18 @@ public:
 	void ApplyDisplay() const;
 	/** A benchmark or capture run (-SailingBench): it measures the tiers as they are, not the player's display rows. */
 	static bool IsMeasuring();
+	/**
+	 * Bench, capture, shot, demo, drill and automation runs: the player's saved choices (GameUserSettings.ini) are
+	 * neither used nor written. Such a run takes the class defaults (the J/22 at Rush Creek, Lake Ray Hubbard) plus its
+	 * own command line.
+	 */
+	static bool IgnoresSavedChoices();
+	/** Puts every saved choice back to the class default for this run, once per process; nothing is saved. */
+	static void UseRunDefaults();
+	/** Sets every config property of the settings back to its class default (in memory only). */
+	static void RestoreClassDefaults();
+	/** -SailingBoat=<prefix>: the fleet boat whose name starts with it, ignoring case, spaces and slashes (J22 is the J/22); -1 if none. */
+	static int32 MatchBoatName(const FString& Prefix);
 	/** The player's fixed resolution percentage, or 0 (the tier's own; always 0 when measuring). */
 	int32 FixedResolutionScale() const { return IsMeasuring() ? 0 : ResolutionScale; }
 
@@ -164,7 +176,11 @@ public:
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
 
 	static USailingSettings* Get() { return GetMutableDefault<USailingSettings>(); }
-	void Save() { SaveConfig(); }
+	/** Writes the player's choices to GameUserSettings.ini (never in a run that ignores them). */
+	void Save() { if (!IgnoresSavedChoices()) SaveConfig(); }
+
+private:
+	void SnapshotClassDefaults();
 };
 
 /** One key bound to one action. Scale -1 reverses an axis (for example A steers left, D right). */

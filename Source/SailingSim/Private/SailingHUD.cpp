@@ -80,9 +80,7 @@ ASailingHUD::ASailingHUD()
 bool ASailingHUD::UsesFrontEnd() const
 {
 	using namespace SailingHUDLocal;
-	static const bool bOff = GIsAutomationTesting || FParse::Param(FCommandLine::Get(), TEXT("SailingNoFrontEnd")) || FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"))
-		|| FCommandLine::Get() && (FString(FCommandLine::Get()).Contains(TEXT("SailingBench=")) || FString(FCommandLine::Get()).Contains(TEXT("SailingCapture="))
-			|| FString(FCommandLine::Get()).Contains(TEXT("SailingShot=")) || FString(FCommandLine::Get()).Contains(TEXT("SailingDrill=")))
+	const bool bOff = USailingSettings::IgnoresSavedChoices() || FParse::Param(FCommandLine::Get(), TEXT("SailingNoFrontEnd"))
 		|| FParse::Param(FCommandLine::Get(), TEXT("SailingMenu")) || IsRunningCommandlet();
 	FString Forced;   // -SailingFrontEnd=<screen> forces it (screenshots of the menus)
 	return !bOff || FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Forced);
