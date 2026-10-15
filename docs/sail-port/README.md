@@ -18,3 +18,21 @@ J/22's sails are the same `FSailCloth` meshes, and its numbers aren't baked anyw
 
 The top row is lit from the morning sun, so the port side is front-lit and starboard is against the light (the port number
 shows through). The bottom row is the evening, the other way round.
+
+## Gate
+
+`scripts/gate.sh --scope boats` against the sail-font gate (main with #60): 136 tests passed, every view over 60/45. The
+sail code now does a second lookup for the other side's set (two texture taps where there was one).
+
+| View | Medium fps | vs before | High fps | vs before |
+|---|---|---|---|---|
+| beam8 | 88.4 | -2.0 | 54.6 | -0.4 |
+| beat15 | 85.1 | -1.0 | 50.3 | -0.7 |
+| marina | 88.0 | -2.1 | 51.0 | +0.7 |
+| crew | 71.2 | -0.3 | 48.0 | +0.5 |
+| helm-eye | 79.6 | -1.2 | 46.4 | -0.7 |
+| slip | 78.2 | -0.3 | 47.6 | +0.7 |
+| coast-day | 81.3 | -0.9 | 47.2 | -0.5 |
+
+The Medium drops run up to 2 fps (0.25 ms), on views where the sail is a small part of the frame. They are most likely run
+to run noise, since High doesn't move.
