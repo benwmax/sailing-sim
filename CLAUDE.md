@@ -372,6 +372,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 - Binary assets go through Git LFS (`.gitattributes`). Prefer generating content from scripts so diffs stay reviewable.
 - Warnings are errors in this toolchain (for example `-Wunreachable-code-loop-increment`); `TestEqual` needs matching
   double/float argument types.
+- MSVC portability (the PC builds main on Windows): in a dllexport class declare one `static constexpr` per statement
+  (`static constexpr double C1 = 1; static constexpr double C2 = 2;`, never comma-separated: C2487); no file-scope names
+  that shadow engine template parameters (`Flags`); shadowing warnings C4458/C4459 are errors there.
 
 ## Git
 
