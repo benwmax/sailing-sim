@@ -1,0 +1,3 @@
+scene,preset,args,description
+r10-lake-laser,Chase,-SailingWorld=Lake -SailingLaunch=1 -SailingBoat=ILCA -SailingWeather=AfternoonBreeze -SailingHour=14 -SailingWind=16 -SailingGust=0.15 -SailingTWA=110 -SailingHoldTWA=110 -SailingQuality=High,"Lake, ILCA on a broad reach in a gusty 16 kn"
+r10-gulf-pier,Drone,"-SailingWorld=Galveston -SailingStartAt=-28900,22470,240 -SailingWeather=AfternoonBreeze -SailingHour=11 -SailingWind=12 -SailingTWA=100 -SailingHoldTWA=100 -SailingCamWorld=-100,50,3,334,-1 -SailingQuality=High","Galveston, the Gulf front: a J/22 off the Pleasure Pier and the Seawall"
