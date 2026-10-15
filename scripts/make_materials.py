@@ -725,6 +725,7 @@ def build_boat_surface(name, bend):
     mat = ASSETS.create_asset(name, BOAT_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("used_with_skeletal_mesh", True)  # the crew (Visual V3) wear these materials too
     mat.set_editor_property("used_with_instanced_static_meshes", True)  # the boats berthed in the marina (Visual V6)
+    mat.set_editor_property("used_with_nanite", True)  # the Nanite boat models (the J/22 hero, the fleet, the berthed boats)
     # Two-sided (Visual V7): the generated cockpits, cabins, dodgers and nets are open shells whose faces aren't all
     # wound outward; culled, a cockpit sole showed the water under the boat. The hull's outside never shows its back.
     mat.set_editor_property("two_sided", True)
