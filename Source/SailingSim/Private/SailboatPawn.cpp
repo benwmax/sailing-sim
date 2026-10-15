@@ -540,6 +540,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Crew.Add(Figure);
 		CrewFigures.AddDefaulted();
 	}
+	// Crew C5: falls (Physics Control on the MetaHumans; Ultra, or -SailingCrewFalls=1).
+	SetupCrewFalls();
 
 	// Sails as cloth (Visual V3); the telltales are ribbons drawn from it (the old cube telltales stay hidden).
 	MainCloth.Init(C.Main, ESailKind::Main);
@@ -2080,7 +2082,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
 	const FBoatConfig& Cfg = Boat.GetConfig();
-	{ SAILING_PERF_SCOPE(Crew); UpdateCrewFigures(DeltaSeconds); UpdateCrewGroomLOD(); }
+	{ SAILING_PERF_SCOPE(Crew); UpdateCrewFigures(DeltaSeconds); UpdateCrewFalls(DeltaSeconds); UpdateCrewGroomLOD(); }
 
 	if (ModelHull)
 	{

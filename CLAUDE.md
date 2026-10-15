@@ -402,6 +402,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   and `AngularAccelBody`. Attach points use the `J22H_sockets.json` names; without sockets `CrewDerivedAttachPoints` builds
   them from the geometry. AI crew tick at 15 Hz. The pawn hands each node `FCrewMotionInput` in `UpdateCrewFigures` (the
   mesh ticks after the pawn). Args: `-SailingCrewStill`, `-SailingDebugCrew`, `-SailingShotCrew=<name>`.
+- Crew falls (C5, `docs/crew-5/`): `FCrewFalls` (`CrewFalls.h`, plain logic) throws the crew past 55 deg of heel,
+  capsized or over 1 g, and brings them back once the boat is steady; `CrewFallsVisuals.cpp` makes the MetaHuman bodies
+  active ragdolls with the Physics Control plugin (`CrewControl`; world-space controls relative to `CrewDeck`, a
+  kinematic box under the sheer), with buoyancy from `FWaveField::Height`. Posed, their bodies have no collision and the
+  controls don't tick (`SetCrewPhysicsActive`): keep it that way, it cost 1.6 ms otherwise. Ultra by default;
+  `-SailingCrewFalls=0|1`, `-SailingKnockdownAt=<s>[,<deg>]`. Test: `SailingSim.Visual.CrewFalls`.
 - Crew capture (C2, `docs/crew-2/`): MetaHuman Animator's markerless body solve (a Fab plugin, Windows) exports to
   `/Game/Crew/Capture/Solved/<clip>`; `Tools/capture/capture_clips.py` reads `Tools/capture/clips.csv` and saves
   `/Game/Crew/Capture/{Sailor,MetaHuman}/A_<label>` through `UCrewCaptureLibrary` (`CrewCapture.h`: each bone's
