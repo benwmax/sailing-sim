@@ -45,6 +45,11 @@ namespace Sailing
 		double CanopyAt(double X, double Y) const;
 		/** Open water distance (m) from a point toward where the wind comes from, until land; capped at MaxDistance. */
 		double FetchToward(double X, double Y, double FromRadians, double MaxDistance = 15000.0) const;
+		/**
+		 * W3: the fetch the sea grows on, Saville's cosine-weighted mean of FetchToward over +/-45 deg of the wind (nine rays):
+		 * waves arrive from a spread of directions, so a spot sheltered dead upwind still sees chop grown along the lake.
+		 */
+		double EffectiveFetch(double X, double Y, double FromRadians, double MaxDistance = 15000.0) const;
 
 		int GetRows() const { return Rows; }
 		int GetCols() const { return Cols; }
@@ -92,8 +97,8 @@ namespace Sailing
 	/**
 	 * The shore's effect on the wind over the water, for one wind direction: the lee of the terrain, its trees and houses
 	 * (a deficit that is deepest within a few heights and has recovered by about 30 heights downwind, W1's analytic
-	 * band), times the wind building over open water from the upwind shore (an internal boundary layer: about 80 % at the
-	 * shore, 95 % after 1.3 km, full beyond 3 km).
+	 * band), times the wind building over open water from the upwind shore (an internal boundary layer: 91 % at the
+	 * shore, 97 % after 250 m, full by a kilometre; W6's LES), and the gusts easing over open water (GustAt).
 	 */
 	class SAILINGPHYSICS_API FShelterMap
 	{
@@ -104,6 +109,8 @@ namespace Sailing
 		/** The two parts: lee (1 = none) and the open-water building (1 = full fetch). */
 		double LeeAt(double X, double Y) const { return Sample(Lee, X, Y); }
 		double BuildAt(double X, double Y) const { return Sample(Building, X, Y); }
+		/** W3: the gusts' strength over the water as a fraction of the shore's (1 at the upwind shore, 0.73 beyond 7 km). */
+		double GustAt(double X, double Y) const { return Sample(Gust, X, Y); }
 		double GetFromRadians() const { return FromRadians; }
 		bool IsValid() const { return Rows > 0; }
 
@@ -111,10 +118,12 @@ namespace Sailing
 		static double LeeDeficit(double Ratio);
 		/** The wind over the water at a fetch from the upwind shore, as a fraction of the open-water wind. */
 		static double OpenWaterBuild(double FetchMeters);
+		/** The gust intensity over the water at a fetch from the upwind shore, as a fraction of the shore's. */
+		static double OpenWaterGust(double FetchMeters);
 
 	private:
 		double Sample(const std::vector<float>& Grid, double X, double Y) const;
 		int Rows = 0, Cols = 0;
 		double Cell = 40.0, OriginX = 0.0, OriginY = 0.0, FromRadians = 0.0;
-		std::vector<float> Lee, Building;
+		std::vector<float> Lee, Building, Gust;
 	};}

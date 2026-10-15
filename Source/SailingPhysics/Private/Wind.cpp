@@ -451,12 +451,19 @@ namespace Sailing
 		const double N = CellField(Along, Across, T);
 		// The small puffs are stronger in the big gust patches, weaker in the lulls; their direction is their own.
 		const double Mod = D.CellSigma > 0.0 ? Clamp(1.0 + kCellModulation * N, 0.2, 1.8) : 1.0;
-		OutFactor = 1.0 + D.CellSigma * N + D.PuffAmplitude * Mod * (P - PuffMean);
+		// W3: over open water, far from the upwind shore, all of it is weaker (GustScaleAt).
+		const double Over = GustScaleAt(X, Y);
+		OutFactor = 1.0 + Over * (D.CellSigma * N + D.PuffAmplitude * Mod * (P - PuffMean));
 		// Veer and fan scale with how strong the puffs are (a whisper of a puff hardly turns the wind); a big gust patch
 		// veers a little as a whole, a lull backs.
 		const double Scale = std::min(1.0, D.PuffAmplitude / 0.2), CellScale = std::min(1.0, D.CellSigma / 0.06);
-		OutShift = (Scale * (Params.PuffVeerDegrees * (P - PuffMean) / std::max(1.0 - PuffMean, 0.3) + Params.PuffFanDegrees * Fan)
+		OutShift = Over * (Scale * (Params.PuffVeerDegrees * (P - PuffMean) / std::max(1.0 - PuffMean, 0.3) + Params.PuffFanDegrees * Fan)
 			+ CellScale * kCellVeer * Params.PuffVeerDegrees * N) * kDegToRad;
+	}
+
+	double FWindField::GustScaleAt(double X, double Y) const
+	{
+		return Shelter ? Shelter->GustAt(X, Y) : 1.0;
 	}
 
 	void FWindField::ReadableAt(double X, double Y, double T, double& OutFromRadians, double& OutFactor) const
@@ -482,7 +489,7 @@ namespace Sailing
 		double Factor, Shift, DU, DV;
 		PuffAt(WorldPos.X, WorldPos.Y, TimeSeconds, Factor, Shift);
 		Fine(WorldPos.X, WorldPos.Y, TimeSeconds, DU, DV);
-		return std::max(0.2, Factor + D.FineSigma * DU);
+		return std::max(0.2, Factor + GustScaleAt(WorldPos.X, WorldPos.Y) * D.FineSigma * DU);
 	}
 
 	double FWindField::ShiftAt(const Vec3& WorldPos, double TimeSeconds) const
@@ -495,8 +502,9 @@ namespace Sailing
 			double Factor, PuffShift, DU, DV;
 			PuffAt(WorldPos.X, WorldPos.Y, TimeSeconds, Factor, PuffShift);
 			Fine(WorldPos.X, WorldPos.Y, TimeSeconds, DU, DV);
-			const double G = std::max(0.2, Factor + D.FineSigma * DU);
-			Shift += PuffShift + std::atan(D.FineSigma * DV / G);
+			const double Sigma = GustScaleAt(WorldPos.X, WorldPos.Y) * D.FineSigma;
+			const double G = std::max(0.2, Factor + Sigma * DU);
+			Shift += PuffShift + std::atan(Sigma * DV / G);
 		}
 		return Shift;
 	}
@@ -515,8 +523,9 @@ namespace Sailing
 		{
 			double PuffShift;
 			PuffAt(WorldPos.X, WorldPos.Y, TimeSeconds, Gust, PuffShift);
-			Gust = std::max(0.2, Gust + D.FineSigma * DU);
-			Shift += PuffShift + std::atan(D.FineSigma * DV / Gust);
+			const double Sigma = GustScaleAt(WorldPos.X, WorldPos.Y) * D.FineSigma;
+			Gust = std::max(0.2, Gust + Sigma * DU);
+			Shift += PuffShift + std::atan(Sigma * DV / Gust);
 		}
 		const double Speed = MeanSpeedAtHeight(WorldPos.Z) * Gust;
 		const double C = std::cos(Shift), S = std::sin(Shift);

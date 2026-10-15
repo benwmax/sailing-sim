@@ -28,6 +28,7 @@ namespace Sailing
 			FWaveParams WaveParams;
 			WaveParams.WindSpeedKnots = Tws;
 			WaveParams.FetchMeters = Fetch;
+			WaveParams.bCalibrationSea = true;
 			Waves.SetWind(WaveParams);
 			Waves.SnapToTarget();
 
@@ -192,6 +193,7 @@ namespace Sailing
 		FWaveParams WaveParams;
 		WaveParams.WindSpeedKnots = TrueWindKnots;
 		WaveParams.FetchMeters = kPolarFetchMeters;
+		WaveParams.bCalibrationSea = true;
 		Waves.SetWind(WaveParams);
 		Waves.SnapToTarget();
 		FBoatModel Boat(Config);
@@ -215,6 +217,7 @@ namespace Sailing
 		FWaveParams WaveParams;
 		WaveParams.WindSpeedKnots = TrueWindKnots;
 		WaveParams.FetchMeters = kPolarFetchMeters;
+		WaveParams.bCalibrationSea = true;
 		Waves.SetWind(WaveParams);
 		Waves.SnapToTarget();
 		FBoatModel Boat(Config);

@@ -368,9 +368,9 @@ bool FSailingShelterTest::RunTest(const FString& Parameters)
 		Near * 100, Mid * 100, Far * 100, Shelter.LeeAt(50.0, 100.0) * 100, Shelter.BuildAt(50.0, 100.0) * 100));
 	TestTrue(TEXT("Sheltered right under the bluff"), Near < 0.5);
 	TestTrue(TEXT("Recovering with distance"), Mid > Near && Far > Mid);
-	// W1: the lee has gone 35 heights downwind; what is left is the wind still building over 550 m of open water.
+	// W1: the lee has gone 35 heights downwind; W3 (W6's LES): by 550 m of open water the wind has all but built.
 	TestTrue(TEXT("No lee 35+ heights downwind"), Shelter.LeeAt(50.0, 100.0) > 0.98);
-	TestTrue(TEXT("... the wind still building from the shore"), Far > 0.85 && Far < 0.95);
+	TestTrue(TEXT("... the wind built from the shore"), Far > 0.97 && Far < 1.0);
 
 	FWindParams P;
 	P.SpeedKnots = 12.0;

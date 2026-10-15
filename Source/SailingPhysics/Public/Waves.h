@@ -37,6 +37,12 @@ namespace Sailing
 		double WindSpeedKnots = 10.0;    // at 10 m
 		double WindFromDegrees = 0.0;    // same convention as FWindParams
 		double FetchMeters = 4000.0;     // open water upwind (Lake Ray Roberts: roughly 2 to 10 km depending on direction)
+		/**
+		 * The sea the fleet's polars and reference checks were calibrated in: the growth laws in the 10 m wind U, as before
+		 * W3's adjusted wind. Their runs keep it so a change of growth law doesn't move every boat's calibration; the game's
+		 * waters grow on U_A.
+		 */
+		bool bCalibrationSea = false;
 		uint32_t Seed = 1;
 	};
 
@@ -84,9 +90,14 @@ namespace Sailing
 		/** Direction the waves travel toward (energy-weighted mean), radians in the XY plane. */
 		double MeanDirection() const;
 
-		/** Fetch-limited growth law targets. */
+		/** Fetch-limited growth law targets (SPM forms in the adjusted wind speed U_A). */
 		static double TargetSignificantHeight(double WindMs, double FetchMeters);
 		static double TargetPeakPeriod(double WindMs, double FetchMeters);
+		/** The growth laws' wind-stress factor U_A = 0.71 U^1.23 (m/s in, m/s out). */
+		static double AdjustedWindSpeed(double WindMs);
+		/** The SPM laws in whatever wind is given (TargetSignificantHeight is this in U_A). */
+		static double GrowthLawHeight(double StressWindMs, double FetchMeters);
+		static double GrowthLawPeriod(double StressWindMs, double FetchMeters);
 
 		const FWaveComponent* GetComponents() const { return Components; }
 		/** The sea's spectrum in bands (the lake components one by one, the ocean in wavelength bins), for added resistance. */
