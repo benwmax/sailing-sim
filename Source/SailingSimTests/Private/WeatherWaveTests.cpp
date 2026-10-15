@@ -221,9 +221,12 @@ bool FSailingStormTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Phases play in order: building, gust front, rain, clearing, clear"), Order == Expected);
 	TestTrue(TEXT("Light before the storm"), SpeedBefore < 15.0);
 	TestTrue(TEXT("Gust front arrives on schedule"), FMath::Abs(FrontAtBoat - FWeatherSystem::kFrontArrives) < 30.0);
-	TestTrue(TEXT("Outflow 25 to 35 kn gusts"), MaxGustKnots >= 25.0 && MaxGustKnots <= 40.0 && MeanAfter > 18.0);
+	// W5b: the outflow is the cold pool's density current (1.2 x the front's speed) and a moderate microburst: a strong
+	// storm's gusts (Love Field 41 kn on the replayed 11 June 2023 storm), short of the severe 50 kn.
+	TestTrue(TEXT("Outflow gusts 30 to 50 kn"), MaxGustKnots >= 30.0 && MaxGustKnots <= 50.0 && MeanAfter > 18.0);
 	TestTrue(TEXT("Sharp wind shift with the front"), FMath::Abs(WrapAngle(DirAfter - DirBefore)) > 60.0 * kDegToRad);
-	TestTrue(TEXT("The rain comes after the gust front"), RainStart > FrontAtBoat + 30.0);
+	// (W5b: the rain foot reaches the water a few hundred metres behind the front: half a minute later at this speed.)
+	TestTrue(TEXT("The rain comes after the gust front"), RainStart > FrontAtBoat + 15.0);
 	TestTrue(TEXT("Visibility drops in the downpour"), MinVis < 3.0);
 	TestTrue(TEXT("It clears: no rain, light sky at the end"), End.Rain < 0.01 && End.CloudDarkness < 0.3);
 

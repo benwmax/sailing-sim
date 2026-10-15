@@ -6,6 +6,7 @@
   pixel shader adds per-pixel wave normals, wind ripples from the cat's-paw map (the wind field's surface
   roughness), rain ripples, whitecaps and wake foam.
 - M_Rain: translucent falling streaks for cylinders around the camera.
+- M_RainCurtain (W5b): a storm's rain curtains and rain foot seen from afar, instanced cards facing the camera.
 - M_Emissive: unlit glow (lightning).
 - M_Sail: two-sided lit cloth.
 - M_BoatSurface, M_BoatMast and the MI_Boat_* library (Visual V2): gelcoat with clear coat, antifouling, non-skid,
@@ -377,6 +378,66 @@ def build_rain():
     connect(op, "", em, "B")
     MEL.connect_material_property(em, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+# ---------------------------------------------------------------- rain curtains (W5b)
+RAIN_CURTAIN_CODE = """
+// W5b: a storm's rain seen from afar: vertical cards facing the camera (ASailingEnvironment::UpdateRainCurtains), placed
+// where the rain field (FStormRain, or a real day's radar) says it rains. Per instance: amount, foot, seed. Curtains are
+// veils of falling rain from the cloud base to the water; feet are the spray and mist the downdraft throws up off the
+// water ahead of them (the rain foot).
+float alt = WP.z / 100.0;   // m above the water
+// The rain slants a little across the card as it falls through the shear (the veils lean).
+float u = UV.x + 0.12 * (1.0 - saturate(alt / max(Base, 1.0))) * (Seed - 0.5);
+float edge = smoothstep(0.0, 0.3, u) * smoothstep(1.0, 0.7, u);
+float x = u * 9.0 + Seed * 17.0;
+float a;
+if (Foot < 0.5)
+{
+    // Veils: soft streaks a few hundred metres apart, slowly changing, finer striations in them (what reads as falling
+    // rain from a distance), the fall a faint ripple running down; a little denser toward the water.
+    float veil = 0.55 + 0.45 * sin(x * 2.1 + sin(x * 0.7 + T * 0.05)) * sin(x * 0.37 + 1.3);
+    float striae = 0.8 + 0.2 * sin(u * 170.0 + Seed * 40.0) * sin(u * 61.0 + 2.0);
+    float fall = 0.85 + 0.15 * sin(alt * 0.02 + T * 3.0 + x);
+    float top = 1.0 - smoothstep(Base * 0.7, Base, alt);
+    float low = 1.0 + 0.3 * exp(-max(alt, 0.0) / 150.0);
+    a = Amount * 0.6 * veil * striae * fall * top * low * edge;
+}
+else
+{
+    // The foot: densest on the water, billowing outward.
+    float low = exp(-max(alt, 0.0) / 55.0);
+    float billow = 0.7 + 0.3 * sin(u * 23.0 + T * 0.4 + Seed * 9.0) * sin(u * 7.0 - T * 0.3);
+    a = Amount * 0.55 * low * billow * edge;
+}
+return saturate(a);
+"""
+
+
+def build_rain_curtain():
+    """M_RainCurtain (W5b): lit translucent veils of rain and their foot, instanced, on the curved water."""
+    mat = new_material("M_RainCurtain")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    inputs = {"UV": node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0),
+              "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 100),
+              "T": node(mat, unreal.MaterialExpressionTime, -900, 200),
+              "Base": scalar(mat, "RainBase", 750.0, -900, 300)}
+    for k, (name, y) in enumerate((("Amount", 400), ("Foot", 500), ("Seed", 600))):
+        inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    c = custom(mat, RAIN_CURTAIN_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
+    for name, n in inputs.items():
+        connect(n, "", c, name)
+    color = vector(mat, "RainColor", (0.62, 0.64, 0.68, 1), -500, 0)
+    rough = node(mat, unreal.MaterialExpressionConstant, -500, 450, r=1.0)
+    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.connect_material_property(curvature(mat, -500, 650), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -2624,6 +2685,7 @@ build(build_house_materials)
 build(build_house_kit_materials)
 build(build_terrain)
 build(build_rain)
+build(build_rain_curtain)
 build(build_emissive)
 build(build_sail)
 build(build_ghost)

@@ -687,7 +687,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	FSailConditions* C = &Pending.Conditions;
-	auto Touch = [this]() { Pending.Conditions.PresetId = NAME_None; };
+	auto Touch = [this]() { Pending.Conditions.PresetId = NAME_None; Pending.Conditions.RealDay.Empty(); };
 	const bool bGalveston = Pending.World == 1;
 	TSharedRef<SHorizontalBox> Presets = SNew(SHorizontalBox);
 	for (const FSailPreset& P : USailSessionSubsystem::Presets())
@@ -708,6 +708,33 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 		];
 		Presets->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)[ B ];
 		if (!E.Focus.IsValid()) E.Focus = B;
+	}
+	// W5b: real days (HRRR timeline, radar replay of a storm), Lake Ray Hubbard only. Choosing one sets its date and start;
+	// the wind, gusts and sky are the day's own (touching them leaves the real day).
+	TSharedRef<SHorizontalBox> Days = SNew(SHorizontalBox);
+	Days->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(TEXT("Real day"), EType::Label, Muted) ];
+	for (const SailCatalog::FRealDay& D : SailCatalog::RealDays())
+	{
+		const bool bOk = Pending.World == 0;
+		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOk)
+			.IsSelected_Lambda([this, Date = D.Date]() { return Pending.Conditions.RealDay == Date; })
+			.OnClicked_Lambda([this, D, bInGame]()
+			{
+				if (Pending.Conditions.RealDay == D.Date && !bInGame) { Push(ESailScreen::Mode); return; }
+				FSailConditions& K = Pending.Conditions;
+				K.RealDay = D.Date;
+				K.PresetId = NAME_None;
+				K.LocalHour = FMath::Clamp(D.StartHour, 5.f, 22.f);
+				K.Month = D.Month;
+				K.Day = D.Day;
+				K.Sky = D.bStorm ? ESailSky::Storms : ESailSky::Fair;
+			})
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(D.Title, EType::Ui, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? D.Summary : FString(TEXT("Lake Ray Hubbard only")), EType::Small, Muted) ]
+		];
+		Days->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)[ B ];
 	}
 	auto Kn = [](float V) { return FString::Printf(TEXT("%.0f kn"), V); };
 	TSharedRef<SWidget> Dial = SNew(SWindDial).Degrees_Lambda([C]() { return C->WindFromDeg; }).OnChanged_Lambda([C, Touch](float D) { C->WindFromDeg = D; Touch(); });
@@ -737,7 +764,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 	TSharedRef<SVerticalBox> Right = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
 			[ SNew(SSailSlider).Label(TEXT("Time of day")).Min(5.f).Max(22.f).Step(0.25f).Value_Lambda([C]() { return C->LocalHour; })
-				.ValueText_Lambda([C]() { return SailCatalog::ClockText(C->LocalHour); }).OnChanged_Lambda([C, Touch](float V) { C->LocalHour = V; Touch(); }) ]
+				.ValueText_Lambda([C]() { return SailCatalog::ClockText(C->LocalHour); }).OnChanged_Lambda([C](float V) { C->LocalHour = V; C->PresetId = NAME_None; }) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
 			[ SNew(SSailSlider).Label(TEXT("Date")).Min(1.f).Max(12.f).Step(1.f).Value_Lambda([C]() { return float(C->Month); })
 				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%s %d"), *SailCatalog::MonthName(C->Month), C->Day); })
@@ -772,7 +799,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 	Right->AddSlot().AutoHeight()[ Next ];
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(bInGame ? TEXT("Paused") : TEXT("Weather and time"), bInGame ? TEXT("Change conditions") : TEXT("Set the conditions"), bInGame ? 0 : 4) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 24.f, 0.f, 14.f)[ Presets ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 24.f, 0.f, 10.f)[ Presets ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)[ Days ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)

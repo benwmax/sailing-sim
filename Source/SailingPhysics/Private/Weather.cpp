@@ -1,4 +1,5 @@
 #include "Weather.h"
+#include "Storm.h"
 #include "WindClimate.h"
 
 namespace Sailing
@@ -34,8 +35,16 @@ namespace Sailing
 	{
 		// Thunderstorm geometry: the cell comes from the west-northwest and moves east-southeast.
 		constexpr double kStormFromDeg = 290.0;
-		constexpr double kFrontSpeed = 12.0;       // m/s (about 23 kn), typical outflow boundary
 		constexpr double kCellBehindFront = 3000.0; // m, rain core trails the gust front
+		// W5b: the cold pool of a strong North Texas summer storm (Charba 1974, Engerer et al. 2008: 3 to 8 C colder, a
+		// kilometre or so deep) under a hot afternoon, and the warm 10 kn southerly ahead of it.
+		constexpr double kColdPoolDeltaC = 6.0;
+		constexpr double kColdPoolDepthM = 1400.0;
+		constexpr double kStormAirC = 33.0;
+		constexpr double kAheadKnots = 10.0, kAheadFromDeg = 180.0;
+		// The microburst in the core: a moderate wet one, its outflow peaking at 10 m/s 50 m up on a ring 1.2 km across (JAWS
+		// microbursts: 10 to 25 m/s; at 10 m about 5 m/s on top of the cold pool's own flow, whose gusts already reach the
+		// 1.5 times the front's speed Goff 1976 measured), bursting as the front nears the start and lasting ten minutes.
 
 		/** Diurnal cycle of a southern lake: calm mornings, building afternoon breeze, easing at dusk. */
 		double Diurnal(double Hour)
@@ -49,6 +58,26 @@ namespace Sailing
 			return S;
 		}
 		double Rand01(uint32_t& S) { S = Hash(S + 0x9e3779b9U); return (S % 1000000u) / 1000000.0; }
+
+		/** The thunderstorm's sky at storm time Ts (the preset's timeline), blended over the day's sky by Weight (1 = all). */
+		void StormSky(FCloudSky& S, double Ts, double Weight)
+		{
+			FCloudLayer& Cu = S[ECloudLayer::Cumulus];
+			FCloudLayer& St = S[ECloudLayer::Stratus];
+			FCloudLayer& Ci = S[ECloudLayer::Cirrus];
+			FCloudLayer& Sm = S[ECloudLayer::Storm];
+			const double Build = SmoothStep(0.0, FWeatherSystem::kFrontArrives, Ts);
+			const double Clearing = SmoothStep(FWeatherSystem::kClearingStarts, FWeatherSystem::kClear, Ts);
+			Cu.Coverage = Lerp(Cu.Coverage, Lerp(0.3, 0.15, Build) * (1.0 - Clearing) + 0.3 * Clearing, Weight);
+			Cu.TopKm = Lerp(Cu.TopKm, Cu.BaseKm + 2.5, Weight);
+			Ci.Coverage = Lerp(Ci.Coverage, 0.5 * Build * (1.0 - Clearing) + 0.2 * Clearing, Weight);
+			Sm.Coverage = Lerp(Sm.Coverage, Lerp(0.35, 1.0, Build) * (1.0 - Clearing), Weight);
+			Sm.BaseKm = 0.03; // the rain shafts under the core reach the water (the shelf's base is FStormShape::ShelfBaseM)
+			Sm.TopKm = FStormShape::CoreTopM / 1000.0;
+			St.Coverage = Lerp(St.Coverage, 0.5 * SmoothStep(FWeatherSystem::kRainStarts, FWeatherSystem::kClearingStarts, Ts) * (1.0 - Clearing) + 0.25 * Clearing, Weight);
+			if (Weight > 0.5) { St.BaseKm = 0.7; St.TopKm = 2.0; }
+			S.Haze = Lerp(S.Haze, Lerp(0.6, 0.25, Clearing), Weight);
+		}
 
 		/**
 		 * Visual V5: the cloud layers for a preset (reference: North Texas summer climatology). Fair-weather cumulus grows
@@ -64,7 +93,6 @@ namespace Sailing
 			FCloudLayer& Cu = S[ECloudLayer::Cumulus];
 			FCloudLayer& St = S[ECloudLayer::Stratus];
 			FCloudLayer& Ci = S[ECloudLayer::Cirrus];
-			FCloudLayer& Sm = S[ECloudLayer::Storm];
 			Ci.BaseKm = 8.5; Ci.TopKm = 10.0; Ci.Density = 0.25;
 			St.BaseKm = 0.9; St.TopKm = 1.6; St.Density = 0.8;
 			const double Afternoon = SmoothStep(10.5, 15.0, H) * (1.0 - 0.6 * SmoothStep(18.5, 20.5, H));
@@ -94,20 +122,8 @@ namespace Sailing
 				S.Haze = 0.85;
 				break;
 			case EWeatherPreset::Thunderstorm:
-			{
-				const double Build = SmoothStep(0.0, FWeatherSystem::kFrontArrives, T);
-				const double Clearing = SmoothStep(FWeatherSystem::kClearingStarts, FWeatherSystem::kClear, T);
-				Cu.Coverage = Lerp(0.3, 0.15, Build) * (1.0 - Clearing) + 0.3 * Clearing;
-				Cu.TopKm = Cu.BaseKm + 2.5;
-				Ci.Coverage = 0.5 * Build * (1.0 - Clearing) + 0.2 * Clearing;
-				Sm.Coverage = Lerp(0.35, 1.0, Build) * (1.0 - Clearing);
-				Sm.BaseKm = 0.03; // the rain shafts under the core reach the water (the shelf's base is FStormShape::ShelfBaseM)
-				Sm.TopKm = FStormShape::CoreTopM / 1000.0;
-				St.Coverage = 0.5 * SmoothStep(FWeatherSystem::kRainStarts, FWeatherSystem::kClearingStarts, T) * (1.0 - Clearing) + 0.25 * Clearing;
-				St.BaseKm = 0.7; St.TopKm = 2.0;
-				S.Haze = Lerp(0.6, 0.25, Clearing);
+				StormSky(S, T, 1.0);
 				break;
-			}
 			default:
 				break;
 			}
@@ -117,6 +133,14 @@ namespace Sailing
 			S.DriftX = -std::cos(From) * Aloft;
 			S.DriftY = -std::sin(From) * Aloft;
 		}
+	}
+
+	double FWeatherSystem::StormFrontSpeed()
+	{
+		const double Move = (kStormFromDeg + 180.0) * kDegToRad, Ahead = kAheadFromDeg * kDegToRad;
+		// The ambient wind's component along the track (it blows toward Ahead + 180 deg).
+		const double Along = kAheadKnots * kKnot * (-std::cos(Ahead) * std::cos(Move) - std::sin(Ahead) * std::sin(Move));
+		return FColdPool::FrontSpeed(kColdPoolDeltaC, kColdPoolDepthM, kStormAirC, Along);
 	}
 
 	void FWeatherSystem::Configure(EWeatherPreset InPreset, uint32_t InSeed, double InStartHour, double BoatX, double BoatY)
@@ -137,26 +161,148 @@ namespace Sailing
 			RandomDirectionOffset = (Rand01(S) - 0.5) * 80.0;
 		}
 
-		if (Preset == EWeatherPreset::Thunderstorm)
+		Day.reset();
+		if (Preset == EWeatherPreset::Thunderstorm) MakeStrikes(S, 0.0, (kStormFromDeg + 180.0), StormFrontSpeed());
+	}
+
+	void FWeatherSystem::MakeStrikes(uint32_t& S, double Shift, double MoveDegrees, double Speed)
+	{
+		// Lightning around the storm cell, rarer at first, most frequent as the core passes, then fading.
+		const double Move = MoveDegrees * kDegToRad;
+		double T = 30.0;
+		while (T < kClearingStarts + 40.0)
 		{
-			// Lightning around the storm cell, rarer at first, most frequent as the core passes, then fading.
-			const double Move = (kStormFromDeg + 180.0) * kDegToRad;
-			double T = 30.0;
-			while (T < kClearingStarts + 40.0)
+			const double Intensity = SmoothStep(20.0, kFrontArrives, T) * (1.0 - SmoothStep(kClearingStarts - 60.0, kClearingStarts + 40.0, T));
+			T += 6.0 + 30.0 * (1.0 - Intensity) * Rand01(S) + 8.0 * Rand01(S);
+			const double CellAlong = Speed * (T - kFrontArrives) - kCellBehindFront;
+			FLightningStrike Strike;
+			Strike.Time = T + Shift;
+			const double Lateral = (Rand01(S) - 0.5) * 5000.0;
+			const double Along = CellAlong + (Rand01(S) - 0.5) * 3000.0;
+			Strike.X = OriginX + std::cos(Move) * Along - std::sin(Move) * Lateral;
+			Strike.Y = OriginY + std::sin(Move) * Along + std::cos(Move) * Lateral;
+			Strike.bCloudToGround = Rand01(S) < 0.6;
+			Strikes.push_back(Strike);
+		}
+	}
+
+	void FWeatherSystem::ConfigureDay(std::shared_ptr<const FWeatherDay> InDay, uint32_t InSeed, double InStartHour, double BoatX, double BoatY)
+	{
+		Configure(EWeatherPreset::AfternoonBreeze, InSeed, InStartHour, BoatX, BoatY);
+		Day = std::move(InDay);
+		if (!Day || !Day->IsValid())
+		{
+			Day.reset();
+			return;
+		}
+		Month = Day->Month();
+		bCoast = false;
+		if (Day->bStorm)
+		{
+			// The replay is anchored at the start: the front reaches it when it reached the lake that day.
+			DaySpec.MoveDegrees = Day->StormMoveDegrees;
+			DaySpec.SpeedMs = Day->StormSpeedMs;
+			DaySpec.ColdPoolDeltaC = Day->ColdPoolDeltaC;
+			DaySpec.ColdPoolDepthM = Day->ColdPoolDepthM;
+			DaySpec.BurstPeakMs = Day->BurstPeakMs;
+			DaySpec.TimeScale = Day->StormTimeScale;
+			DayShift = (Day->StormArrivalHour - StartHour) * 3600.0 - kFrontArrives;
+			uint32_t S = Seed ^ 0x5bd1e995u;
+			MakeStrikes(S, DayShift, DaySpec.MoveDegrees, DaySpec.SpeedMs);
+		}
+	}
+
+	FWeatherState FWeatherSystem::EvaluateDay(double T) const
+	{
+		FWeatherState W;
+		W.HourOfDay = StartHour + T / 3600.0;
+		W.Wind.Seed = Seed;
+		W.Day = Day;
+		W.DayStartHour = StartHour;
+		W.RadarOffsetX = OriginX;
+		W.RadarOffsetY = OriginY;
+		const FWeatherHour H = Day->At(W.HourOfDay);
+		W.Wind.SpeedKnots = std::max(H.WindKnots, 0.0);
+		W.Wind.FromDegrees = H.FromDegrees;
+		// The hourly analyses turn the wind through the day themselves; light air wanders more.
+		W.Wind.ShiftDegrees = Lerp(18.0, 8.0, SmoothStep(4.0, 10.0, H.WindKnots));
+		W.Wind.ShiftPeriodSeconds = 300.0;
+		// Gusts: the stations' calibration for the month and hour, scaled by the model's own gustiness that day (HRRR's
+		// surface gust is typically 1.7 times its mean wind).
+		const double Gustiness = Clamp(H.GustKnots / std::max(H.WindKnots, 2.0) / 1.7, 0.6, 1.6);
+		W.Wind.GustIntensity = Gustiness * GustIntensityForFactor(ClimateGustFactor(Month, W.HourOfDay, false));
+		W.Wind.PuffIntensity = Gustiness * ClimatePuffStrength(Month, W.HourOfDay, false);
+		const double Water = H.WaterC > -50.0 ? H.WaterC : ClimateWaterC(Month, false);
+		W.AirC = H.AirC;
+		W.Wind.AirMinusWaterC = H.AirC - Water;
+		W.Wind.MixedLayerMeters = Clamp(H.MixedLayerM, 100.0, 4000.0);
+		W.Wind.PuffIntervalSeconds = 60.0 * ClimatePuffMinutes(Month, W.HourOfDay, false);
+		W.FetchMeters = 5000.0;
+
+		// Clouds by layer (random overlap), rain and visibility from the analysis.
+		W.CloudCover = 1.0 - (1.0 - H.CloudLow) * (1.0 - H.CloudMid) * (1.0 - H.CloudHigh);
+		W.CloudTopKm = H.CapeJkg > 1000.0 && H.CloudLow > 0.3 ? 8.0 : 3.0;
+		W.Rain = FStormRain::Amount(H.RainMmPerHour);
+		W.CloudDarkness = Clamp(0.5 * H.CloudLow + 0.3 * H.CloudMid + 0.4 * W.Rain, 0.0, 0.9);
+		W.VisibilityKm = Clamp(H.VisibilityKm, 0.5, 25.0);
+		FCloudSky& S = W.Sky;
+		FCloudLayer& Cu = S[ECloudLayer::Cumulus];
+		FCloudLayer& St = S[ECloudLayer::Stratus];
+		FCloudLayer& Ci = S[ECloudLayer::Cirrus];
+		Ci.BaseKm = 8.5; Ci.TopKm = 10.0; Ci.Density = 0.25;
+		Ci.Coverage = H.CloudHigh;
+		const double BaseKm = Clamp(H.CloudBaseM / 1000.0, 0.3, 3.0);
+		// Low cloud on an unstable day is cumulus (its tops from the instability); otherwise a stratus deck.
+		if (H.CapeJkg > 100.0 && H.CloudLow < 0.8)
+		{
+			Cu.Coverage = H.CloudLow;
+			Cu.BaseKm = BaseKm;
+			Cu.TopKm = BaseKm + Clamp(0.6 + H.CapeJkg / 2000.0, 0.6, 3.0);
+		}
+		else
+		{
+			St.Coverage = H.CloudLow;
+			St.BaseKm = BaseKm;
+			St.TopKm = BaseKm + 0.8;
+			St.Density = 0.8 + 0.4 * W.Rain;
+		}
+		// A middle deck (altostratus) where there is no low one over it.
+		if (H.CloudMid > St.Coverage)
+		{
+			St.Coverage = H.CloudMid;
+			St.BaseKm = 3.0;
+			St.TopKm = 4.5;
+		}
+		// Haze from the humidity: a muggy Texas morning is milky, a dry norther crisp.
+		S.Haze = Clamp((H.DewC - 2.0) / 20.0, 0.1, 0.85);
+		const double From = (W.Wind.FromDegrees + 15.0) * kDegToRad;
+		const double Aloft = std::max(4.0, 2.0 * W.Wind.SpeedKnots * kKnot);
+		S.DriftX = -std::cos(From) * Aloft;
+		S.DriftY = -std::sin(From) * Aloft;
+
+		// The storm, in its window: an hour before its front reaches the start until it has passed.
+		if (Day->bStorm)
+		{
+			const double Scale = std::max(DaySpec.TimeScale, 1.0);
+			const double Raw = T - DayShift;
+			const double Ts = Raw <= kFrontArrives ? Raw : kFrontArrives + (Raw - kFrontArrives) / Scale;
+			if (Ts > -3600.0 && Ts < kClear + 900.0)
 			{
-				const double Intensity = SmoothStep(20.0, kFrontArrives, T) * (1.0 - SmoothStep(kClearingStarts - 60.0, kClearingStarts + 40.0, T));
-				T += 6.0 + 30.0 * (1.0 - Intensity) * Rand01(S) + 8.0 * Rand01(S);
-				const double CellAlong = kFrontSpeed * (T - kFrontArrives) - kCellBehindFront;
-				FLightningStrike Strike;
-				Strike.Time = T;
-				const double Lateral = (Rand01(S) - 0.5) * 5000.0;
-				const double Along = CellAlong + (Rand01(S) - 0.5) * 3000.0;
-				Strike.X = OriginX + std::cos(Move) * Along - std::sin(Move) * Lateral;
-				Strike.Y = OriginY + std::sin(Move) * Along + std::cos(Move) * Lateral;
-				Strike.bCloudToGround = Rand01(S) < 0.6;
-				Strikes.push_back(Strike);
+				StormSky(S, Ts, SmoothStep(-3600.0, -1200.0, Ts) * (1.0 - SmoothStep(kClear, kClear + 900.0, Ts)));
+				ApplyStorm(W, T, DayShift, DaySpec, OriginX, OriginY);
+				W.Wind.AirMinusWaterC -= W.Front.TemperatureDropAt(OriginX, OriginY, T);
 			}
 		}
+		// Where the radar has frames, it says where it rains (moved with the start like the front).
+		if (Day->HasRadar() && W.HourOfDay >= Day->RadarHours.front() && W.HourOfDay <= Day->RadarHours.back())
+		{
+			W.bStormRain = true;
+			if (W.StormRainScale <= 0.0) W.StormRainScale = 1.0;
+			W.Rain = W.RainAt(OriginX, OriginY, T);
+			W.VisibilityKm = std::min(W.VisibilityKm, Lerp(25.0, 1.5, W.Rain));
+			W.CloudDarkness = std::max(W.CloudDarkness, 0.85 * W.Rain);
+		}
+		return W;
 	}
 
 	double FWeatherSystem::ThunderDelaySeconds(const FLightningStrike& Strike, double ListenerX, double ListenerY)
@@ -169,10 +315,11 @@ namespace Sailing
 
 	FWeatherState FWeatherSystem::Evaluate(double T) const
 	{
+		if (Day) return EvaluateDay(T);
 		FWeatherState W;
 		W.HourOfDay = StartHour + T / 3600.0;
 		W.Wind.Seed = Seed;
-		const double Day = Diurnal(W.HourOfDay);
+		const double Daily = Diurnal(W.HourOfDay);
 
 		EWeatherPreset P = Preset == EWeatherPreset::RandomDay ? RandomBase : Preset;
 		// W1: the preset scales the calibrated gustiness (WindClimate.h) and nudges the stability and the mixed layer.
@@ -183,7 +330,7 @@ namespace Sailing
 		switch (P)
 		{
 		case EWeatherPreset::CalmMorning:
-			W.Wind.SpeedKnots = 6.0 * Day;
+			W.Wind.SpeedKnots = 6.0 * Daily;
 			W.Wind.FromDegrees = 150.0;
 			// W1: light air is the gustiest and shiftiest relative to its speed (1.75 x the calibrated breeze).
 			Gustiness = 1.75;
@@ -196,7 +343,7 @@ namespace Sailing
 			W.FetchMeters = 3000.0;
 			break;
 		case EWeatherPreset::AfternoonBreeze:
-			W.Wind.SpeedKnots = 13.0 * Day;
+			W.Wind.SpeedKnots = 13.0 * Daily;
 			W.Wind.FromDegrees = 180.0;
 			W.Wind.ShiftDegrees = 8.0;
 			W.Wind.ShiftPeriodSeconds = 420.0;
@@ -240,45 +387,22 @@ namespace Sailing
 		{
 			// Before: a warm, light southerly. After: a light northwesterly as the cool outflow settles.
 			const double After = SmoothStep(kOutflowDecays, kClear, T);
-			W.Wind.SpeedKnots = Lerp(10.0, 7.0, After);
-			W.Wind.FromDegrees = Lerp(180.0, 320.0, After);
+			W.Wind.SpeedKnots = Lerp(kAheadKnots, 7.0, After);
+			W.Wind.FromDegrees = Lerp(kAheadFromDeg, 320.0, After);
 			// Hot and deep before; the cold outflow over the warm water after (gusty, shifty, shallow).
 			Gustiness = Lerp(0.75, 1.25, After);
-			AirOffset = Lerp(2.0, -6.0, SmoothStep(kFrontArrives - 20.0, kRainStarts, T));
+			AirOffset = Lerp(2.0, 2.0 - kColdPoolDeltaC - 2.0, SmoothStep(kFrontArrives - 20.0, kRainStarts, T));
 			Layer = Lerp(1.3, 0.6, After);
 			W.Wind.ShiftDegrees = 8.0;
 			W.FetchMeters = 5000.0;
 
-			const double Move = kStormFromDeg + 180.0;
-			W.Front.bActive = true;
-			W.Front.MoveDegrees = Move;
-			W.Front.SpeedMs = kFrontSpeed;
-			W.Front.StartTime = 0.0;
-			W.Front.StartX = OriginX - std::cos(Move * kDegToRad) * kFrontSpeed * kFrontArrives;
-			W.Front.StartY = OriginY - std::sin(Move * kDegToRad) * kFrontSpeed * kFrontArrives;
-			W.Front.OutflowKnots = 24.0;
-			W.Front.OutflowFromDegrees = kStormFromDeg;
-			W.Front.OutflowGustIntensity = 0.2;
-			W.Front.DecayStartTime = kOutflowDecays;
-			W.Front.DecaySeconds = 120.0;
-
-			const double Build = SmoothStep(0.0, kFrontArrives, T);
-			const double Clearing = SmoothStep(kClearingStarts, kClear, T);
-			W.CloudCover = Lerp(Lerp(0.35, 0.95, Build), 0.4, Clearing);
-			W.CloudTopKm = Lerp(Lerp(4.0, 12.0, Build), 6.0, Clearing);
-			W.CloudDarkness = Lerp(Lerp(0.1, 0.85, Build), 0.15, Clearing);
-			W.Rain = SmoothStep(kRainStarts, kRainStarts + 40.0, T) * (1.0 - SmoothStep(kOutflowDecays - 40.0, kClearingStarts, T));
-			const double FrontHere = SmoothStep(kFrontArrives - 30.0, kFrontArrives + 20.0, T);
-			W.VisibilityKm = Lerp(Lerp(25.0, 10.0, FrontHere), 1.5, W.Rain);
-			W.VisibilityKm = Lerp(W.VisibilityKm, 20.0, Clearing);
-
-			if (T < kFrontArrives - 20.0) W.Storm = EStormPhase::Building;
-			else if (T < kRainStarts) W.Storm = EStormPhase::GustFront;
-			else if (T < kClearingStarts) W.Storm = EStormPhase::Rain;
-			else if (T < kClear) W.Storm = EStormPhase::Clearing;
-			else W.Storm = EStormPhase::Clear;
-			W.StormDirectionDeg = kStormFromDeg;
-			W.StormDistanceKm = (kFrontSpeed * (kFrontArrives - T) + kCellBehindFront) / 1000.0;
+			FStormSpec Spec;
+			Spec.MoveDegrees = kStormFromDeg + 180.0;
+			Spec.SpeedMs = StormFrontSpeed();
+			Spec.ColdPoolDeltaC = kColdPoolDeltaC;
+			Spec.ColdPoolDepthM = kColdPoolDepthM;
+			Spec.BurstPeakMs = 10.0;
+			ApplyStorm(W, T, 0.0, Spec, OriginX, OriginY);
 			break;
 		}
 		default:
@@ -291,6 +415,7 @@ namespace Sailing
 		W.Wind.GustIntensity = Gustiness * GustIntensityForFactor(ClimateGustFactor(Month, W.HourOfDay, bCoast));
 		W.Wind.PuffIntensity = Gustiness * ClimatePuffStrength(Month, W.HourOfDay, bCoast);
 		W.Wind.AirMinusWaterC = Air + AirOffset - ClimateWaterC(Month, bCoast);
+		W.AirC = P == EWeatherPreset::Thunderstorm ? kStormAirC : Air;
 		W.Wind.MixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast) * Layer * (1.0 - 0.5 * Overcast);
 		W.Wind.PuffIntervalSeconds = 60.0 * ClimatePuffMinutes(Month, W.HourOfDay, bCoast);
 
@@ -298,6 +423,80 @@ namespace Sailing
 		W.Wind.SpeedKnots *= SpeedScale;
 		W.Wind.FromDegrees = std::fmod(W.Wind.FromDegrees + DirOffset + 360.0, 360.0);
 		return W;
+	}
+
+	void FWeatherSystem::ApplyStorm(FWeatherState& W, double T, double Shift, const FStormSpec& Spec, double OX, double OY)
+	{
+		// Storm time: the preset's timeline (the front reaches the start at kFrontArrives), shifted on a real day and
+		// stretched after the front to the real storm's length.
+		const double Scale = std::max(Spec.TimeScale, 1.0);
+		const double Ts = T - Shift <= kFrontArrives ? T - Shift : kFrontArrives + (T - Shift - kFrontArrives) / Scale;
+		const double Move = Spec.MoveDegrees, Speed = Spec.SpeedMs;
+		W.Front.bActive = true;
+		W.Front.MoveDegrees = Move;
+		W.Front.SpeedMs = Speed;
+		W.Front.StartTime = Shift;
+		W.Front.StartX = OX - std::cos(Move * kDegToRad) * Speed * kFrontArrives;
+		W.Front.StartY = OY - std::sin(Move * kDegToRad) * Speed * kFrontArrives;
+		// W5b: the cold pool's own flow behind the head, and the microburst in the core.
+		W.Front.OutflowKnots = FColdPool::kOutflowRatio * Speed / kKnot;
+		W.Front.ColdPoolDeltaC = Spec.ColdPoolDeltaC;
+		W.Front.ColdPoolDepthM = Spec.ColdPoolDepthM;
+		W.Front.Burst.PeakOutflowMs = Spec.BurstPeakMs;
+		W.Front.Burst.PeakRadiusM = 1200.0;
+		W.Front.Burst.PeakHeightM = 50.0;
+		W.Front.BurstBehindM = 1500.0;
+		W.Front.BurstStartTime = Shift + kFrontArrives - 60.0;
+		W.Front.BurstHoldSeconds = 240.0 * std::min(Scale, 2.5);
+		W.Front.OutflowFromDegrees = std::fmod(Move + 180.0, 360.0);
+		W.Front.OutflowGustIntensity = 0.2;
+		W.Front.DecayStartTime = Shift + kFrontArrives + (kOutflowDecays - kFrontArrives) * Scale;
+		W.Front.DecaySeconds = 120.0 * Scale;
+
+		const double Build = SmoothStep(0.0, kFrontArrives, Ts);
+		const double Clearing = SmoothStep(kClearingStarts, kClear, Ts);
+		W.CloudCover = std::max(W.CloudCover, Lerp(Lerp(0.35, 0.95, Build), 0.4, Clearing));
+		W.CloudTopKm = std::max(W.CloudTopKm, Lerp(Lerp(4.0, 12.0, Build), 6.0, Clearing));
+		W.CloudDarkness = std::max(W.CloudDarkness, Lerp(Lerp(0.1, 0.85, Build), 0.15, Clearing));
+		// W5b: rain from the core's position (FStormRain, or the radar on a real day), easing as the storm dies; W.Rain is
+		// what falls at the start.
+		W.bStormRain = true;
+		W.StormRainScale = 1.0 - SmoothStep(kOutflowDecays - 40.0, kClearingStarts, Ts);
+		W.Rain = W.RainAt(OX, OY, T);
+		const double FrontHere = SmoothStep(kFrontArrives - 30.0, kFrontArrives + 20.0, Ts);
+		const double Visibility = Lerp(Lerp(Lerp(25.0, 10.0, FrontHere), 1.5, W.Rain), 20.0, Clearing);
+		W.VisibilityKm = std::min(W.VisibilityKm, Visibility);
+
+		if (Ts < kFrontArrives - 20.0) W.Storm = EStormPhase::Building;
+		else if (Ts < kRainStarts) W.Storm = EStormPhase::GustFront;
+		else if (Ts < kClearingStarts) W.Storm = EStormPhase::Rain;
+		else if (Ts < kClear) W.Storm = EStormPhase::Clearing;
+		else W.Storm = EStormPhase::Clear;
+		W.StormDirectionDeg = std::fmod(Move + 180.0, 360.0);
+		W.StormDistanceKm = (Speed * (kFrontArrives - Ts) + kCellBehindFront) / 1000.0;
+	}
+
+	double FWeatherState::RainRateAt(double X, double Y, double Z, double FrontTime) const
+	{
+		if (!bStormRain) return Rain >= 1.0 ? 50.0 : 50.0 * Rain * Rain; // the inverse of FStormRain::Amount
+		// A real day's storm rains where the radar saw rain, moved with the start like the front.
+		if (Day && Day->HasRadar())
+		{
+			const double R = Day->RadarRate(X - RadarOffsetX, Y - RadarOffsetY, DayStartHour + FrontTime / 3600.0);
+			if (R >= 0.0) return R;
+		}
+		if (!Front.bActive || StormRainScale <= 0.0) return 0.0;
+		return FStormRain::RateAt(Front.DistanceAhead(X, Y, FrontTime), Z, Front.AlongFront(X, Y)) * StormRainScale;
+	}
+
+	double FWeatherState::RainAt(double X, double Y, double FrontTime) const
+	{
+		return bStormRain ? FStormRain::Amount(RainRateAt(X, Y, 0.0, FrontTime)) : Rain;
+	}
+
+	double FWeatherState::AirTempAt(double X, double Y, double FrontTime) const
+	{
+		return AirC - Front.TemperatureDropAt(X, Y, FrontTime);
 	}
 
 	void FWeatherSystem::ApplyToWind(const FWeatherState& State, FWindField& Wind, double T, double AnchorX, double AnchorY)

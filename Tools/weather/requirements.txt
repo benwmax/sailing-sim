@@ -1,0 +1,5 @@
+# W5b: Tools/weather (HRRR and MRMS GRIB2 decoding). Install into the tools venv:
+#   Tools/venv/bin/pip install -r Tools/weather/requirements.txt
+eccodes>=2.37
+numpy
+matplotlib

@@ -1,10 +1,14 @@
 #include "UI/SailCatalog.h"
+#include "SailSession.h"
 #include "BoatModel.h"
 #include "PolarReference.h"
 #include "SailingEnvironment.h"
 #include "LakeData.h"
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
+#include "WeatherDay.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -221,4 +225,36 @@ namespace SailCatalog
 		S += FString::Printf(TEXT("Sunset %s."), *ClockText(SunsetHour(Month, Day, WorldIndex)));
 		return S;
 	}
+}
+
+const TArray<SailCatalog::FRealDay>& SailCatalog::RealDays()
+{
+	// Plain data read once (no UObjects): every baked day, oldest first, with a summary from its own timeline.
+	static TArray<FRealDay> Days = []
+	{
+		TArray<FRealDay> Out;
+		const FString Dir = FPaths::ProjectContentDir() / TEXT("TerrainData") / TEXT("Weather");
+		TArray<FString> Files;
+		IFileManager::Get().FindFiles(Files, *(Dir / TEXT("*.wxday")), true, false);
+		Files.Sort();
+		for (const FString& F : Files)
+		{
+			TArray<uint8> Bytes;
+			Sailing::FWeatherDay Day;
+			if (!FFileHelper::LoadFileToArray(Bytes, *(Dir / F), FILEREAD_Silent) || !Day.LoadFromMemory(Bytes.GetData(), size_t(Bytes.Num()))) continue;
+			FRealDay R;
+			R.Date = UTF8_TO_TCHAR(Day.Date.c_str());
+			R.Title = UTF8_TO_TCHAR(Day.Title.c_str());
+			R.StartHour = float(Day.StartHour);
+			R.Month = Day.Month();
+			R.Day = Day.DayOfMonth();
+			R.bStorm = Day.bStorm;
+			const Sailing::FWeatherHour H = Day.At(Day.StartHour);
+			R.Summary = FString::Printf(TEXT("%s · %.0f kn %s · %s"), *R.Date, H.WindKnots,
+				*USailSessionSubsystem::CompassPoint(float(H.FromDegrees)), *ClockText(R.StartHour));
+			Out.Add(R);
+		}
+		return Out;
+	}();
+	return Days;
 }
