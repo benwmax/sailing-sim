@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include <algorithm>
 #include "BoatModel.h"
 #include "PolarReference.h"
 #include "ReferenceChecks.h"
@@ -149,9 +150,10 @@ bool FReferenceChecksTest::RunTest(const FString& Parameters)
 	const TCHAR* KnownGaps[] = {
 		// (W1: the J/22's gusty spinnaker run, a known gap since Visual V3 at 12.1 kn, is back in range in the new puffs.)
 		// W1 follow-up: the ILCA now holds a steady 22 kn reach (sheet in the hand, sitting back on the plane), but W1's
-		// biggest puffs (25-27 kn on a 16 kn day) drive her past 16 kn, where the planing drag is uncalibrated (the
-		// residuary table is flat above Froude 1.3); she overruns the waves, buries the bow and the rudder comes out. (On
-		// this seed she stays up; on two of 16 runs over 100 to 130 degrees she does not.)
+		// biggest puffs (25-27 kn on a 16 kn day, this seed) drive her past 16 kn; she overruns the waves, buries the bow
+		// and the rudder comes out. Laser planing drag: the residuary now climbs above Froude 1.3 (Fleet.cpp), which keeps
+		// every other run of 64 under 16 kn, but this one still surges to 16.45 kn before going over (it stayed up, just,
+		// at 57 deg with the flat table). What is left is handling in a big puff, not drag.
 		TEXT("ILCA 7 broad reach, 16 kn gusting 22: peak"),
 		TEXT("ILCA 7 broad reach, 16 kn gusting 22: heel at most"),
 		TEXT("Hobie 16 lap time / ILCA, DPN4 12+ kn"),   // steady laps leave out tacking and gybing losses, largest for cats (fix list 10)
@@ -191,6 +193,28 @@ bool FMoonPhaseTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("Full moon down at noon (%.0f deg)"), El), El < 0.0);
 	ASailingEnvironment::MoonPosition(13.3, 276, AgeNew, 32.82, -96.50, -5.0, El, Az);
 	TestTrue(FString::Printf(TEXT("New moon up at midday (%.0f deg)"), El), El > 40.0);
+	return true;
+}
+
+// Laser planing drag: above Froude 1.3 the ILCA's residuary climbs again (Fleet.cpp), so on a steady 22 kn broad reach,
+// anywhere from 100 to 130 degrees, her best one-second speed stays under the 16 kn ceiling of her published top speeds,
+// she stays up, and the drag below Froude 1.3 is the shared dinghy table's.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingLaserPlaningDragTest, "SailingSim.Physics.LaserPlaningDrag", RefFlags)
+bool FSailingLaserPlaningDragTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig Ilca = FBoatConfig::Make(EBoatType::ILCA7);
+	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
+	TestTrue(TEXT("The ILCA's table is the shared dinghy table up to Froude 1.3"),
+		Ilca.Residuary.size() > Sunfish.Residuary.size() && std::equal(Sunfish.Residuary.begin(), Sunfish.Residuary.end(), Ilca.Residuary.begin()));
+	TestTrue(TEXT("... and climbs past it"), Ilca.Residuary.back().first > 1.3 && Ilca.Residuary.back().second > 2.0 * Sunfish.Residuary.back().second);
+	for (const double Twa : { 100.0, 110.0, 120.0, 130.0 })
+	{
+		const FSpeedRun R = SpeedRun(Ilca, 22.0, Twa, false, 0.0, 13000.0, 180.0);
+		AddInfo(FString::Printf(TEXT("ILCA, 22 kn at %.0f deg: peak %.2f kn, mean %.2f, tilt at most %.0f deg"), Twa, R.PeakKnots, R.MeanKnots, R.MaxTiltDeg));
+		TestTrue(FString::Printf(TEXT("%.0f deg: peak under 16 kn (%.2f)"), Twa, R.PeakKnots), R.PeakKnots <= 16.0);
+		TestTrue(FString::Printf(TEXT("%.0f deg: she stays up (%.0f deg)"), Twa, R.MaxTiltDeg), R.MaxTiltDeg < 70.0);
+	}
 	return true;
 }
 

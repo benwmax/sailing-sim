@@ -117,7 +117,18 @@ namespace Sailing
 			H.PlaningLift = 0.010;
 			C.Hulls = { H };
 			C.LengthOverall = 4.23; C.WaterlineLength = 3.81; C.Beam = 1.37; C.WaterlineBeam = 1.1; C.Draft = 0.79;
+			// Above Froude 1.3 (15.4 kn on her 3.81 m waterline) the shared table is flat, and the ILCA ran on to 16.2 kn in a
+			// steady 22 kn and 16.8 in W1's puffs, past her published top speeds of about 15 to 17 kn (GPS peaks in a big
+			// gust; the reference checks' ceiling is 16). She is a semi-planing hull, not a skimmer: the fine bow and rounded
+			// bilges stay wet, whisker spray and the spray root grow with speed, and in a lake chop she drives the bow into the
+			// next wave. So her residuary climbs again past the hump: +46 % by Fn 1.4 (16.6 kn), 2.4x by 1.5 (17.8 kn), 5x by
+			// 1.7. With the friction (about 0.15 of her weight at 16.6 kn) her drag is about a fifth of her weight at 15.4 kn
+			// and a quarter at 16.6. Over 64 three-minute runs (100 to 130 deg, eight gust seeds, steady 22 kn and 16 gusting
+			// 22) no upright run passes 16 kn (nine did), the steady peak drops from 16.2 to 15.8 kn and none capsizes.
+			// W1's 25 to 27 kn puffs (seed 3) still drive her past 16 kn just before she buries the bow and goes over: that
+			// is handling in big puffs, not drag (a steeper wall only turns more runs over).
 			C.Residuary = kPlaningDinghy;
+			C.Residuary.insert(C.Residuary.end(), { { 1.4, 0.12 }, { 1.5, 0.20 }, { 1.7, 0.40 } });
 			C.WettedAreaCoef = 2.75; C.HullLateralArea = 0.10; C.MunkAddedMass = 40.0; C.YawDampingLinear = 60.0;
 			C.Foils = { Foil(EFoilRole::Board, Vec3(0.40, 0.0, -0.45), 0.24, 0.341, 4.0, 14.0), Foil(EFoilRole::Rudder, Vec3(-2.22, 0.0, -0.33), 0.10, 0.203, 4.0, 14.0) };
 			C.Foils[0].bRetractable = true;
