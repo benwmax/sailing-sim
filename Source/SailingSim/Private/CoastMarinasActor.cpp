@@ -18,21 +18,37 @@ void ACoastMarinasActor::PlaceBoats(const FLakeData& Lake, TArray<FBerthedBoat>&
 {
 	using namespace Sailing;
 	// Lengths overall of the berthed models (FBoatConfig::Make): J/22 6.86 m, Catalina 22 6.71, Catalina 30 9.14; the
-	// runabout is 6.4 m and the trawler yacht 11 m (build_vessels.py).
+	// runabout is 6.4 m and the trawler yacht 11 m (build_vessels.py). Mac polish: the lidar's power boats run 5 to 39 m
+	// (median 12) and every one over 9.5 m was the trawler yacht scaled; now each length has its own class, scaled from
+	// the nearest model: under 8 m the runabout, 8-12 m the 10.4 m express cruiser (a fifth of the 9.5 m and over trawler
+	// yachts), 12-16 m the 14 m sportfisherman (a third of those over 13.5 m motor yachts), 16 m and over the 18 m motor
+	// yacht.
 	for (const FMooredBoat& M : Lake.MooredBoats)
 	{
 		FBerthedBoat B;
 		B.Center = M.Center;
 		B.HeadingDeg = M.HeadingDeg;
-		const uint32 H = uint32(M.Center.X * 13.0 + M.Center.Y * 7.0) * 2654435761u;
+		// Through int32: a negative double converted straight to uint32 is undefined (0 on arm64), which gave every boat
+		// south-west of the origin the same hash (Mac polish).
+		const uint32 H = uint32(int32(M.Center.X * 13.0 + M.Center.Y * 7.0)) * 2654435761u;
 		float Model = 0.f;
 		if (M.bMast)
 		{
 			if (M.Length < 7.8f) { B.Type = (H >> 7) & 1 ? uint8(EBoatType::J22) : uint8(EBoatType::Catalina22); Model = B.Type == uint8(EBoatType::J22) ? 6.86f : 6.71f; }
 			else { B.Type = uint8(EBoatType::Catalina30); Model = 9.14f; }
 		}
-		else if (M.Length < 9.5f) { B.Type = FBerthedBoat::PowerBoat; Model = 6.4f; }
-		else { B.Type = FBerthedBoat::PowerYacht; Model = 11.f; }
+		else if (M.Length < 8.f) { B.Type = FBerthedBoat::PowerBoat; Model = 6.4f; }
+		else if (M.Length < 12.f)
+		{
+			if (M.Length >= 9.5f && (H >> 9) % 5 == 0) { B.Type = FBerthedBoat::PowerYacht; Model = 11.f; }
+			else { B.Type = FBerthedBoat::PowerExpress; Model = 10.4f; }
+		}
+		else if (M.Length < 16.f)
+		{
+			if (M.Length >= 13.5f && (H >> 9) % 3 == 0) { B.Type = FBerthedBoat::PowerMotorYacht; Model = 18.f; }
+			else { B.Type = FBerthedBoat::PowerSport; Model = 14.f; }
+		}
+		else { B.Type = FBerthedBoat::PowerMotorYacht; Model = 18.f; }
 		B.Scale = FMath::Clamp(M.Length / Model, 0.75f, 1.6f);
 		Out.Add(B);
 	}

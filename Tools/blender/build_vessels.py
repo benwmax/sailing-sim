@@ -5,7 +5,10 @@ barges and the ship, with a bulb), deck, superstructure and fittings, at the siz
 navigation lights use (APowerVesselActor). Origin amidships on the waterline, X forward, Z up, metres.
   SM_Vessel_Runabout   21 ft center console with its outboard and the all-round light pole aft
   SM_Vessel_Shrimper   70 ft Gulf shrimp trawler: wheelhouse forward, mast, outrigger booms swung out, try net
-  SM_Vessel_Committee  36 ft trawler yacht (the race committee boat)
+  SM_Vessel_Committee  36 ft trawler yacht (the race committee boat; also moored in the coast's marinas)
+  SM_Vessel_Express    34 ft express cruiser (Mac polish: moored power boats 8-12 m, hull colour per instance)
+  SM_Vessel_Sportfish  46 ft sportfisherman with flybridge, tower and outriggers (moored, 12-16 m)
+  SM_Vessel_MotorYacht 60 ft flybridge motor yacht (moored, 16 m and over)
   SM_Vessel_Towboat    85 ft river towboat with push knees and a three-deck house
   SM_Barge_Hopper      a jumbo hopper barge (one hull; the tow is two of them)
   SM_Vessel_Container  a 230 m feeder container ship: bulbous bow, flare, house and funnel aft, hatch coamings
@@ -86,8 +89,10 @@ class Part:
         self.face(list(reversed(ring)), slot)
 
     def hull(self, L, B, sheer_aft, sheer_bow, T, kind, top="Gelcoat", bottom="Antifouling", boot=0.05, transom=0.85,
-             stations=28, rows=10, bow_rise=0.85, bulb=False):
-        """A closed hull from stations: deck edge at the sheer, keel at -T, sections by kind ('v', 'round', 'box')."""
+             stations=28, rows=10, bow_rise=0.85, bulb=False, stripe=None):
+        """A closed hull from stations: deck edge at the sheer, keel at -T, sections by kind ('v', 'round', 'box').
+        stripe (z0, z1, slot): a band of the topsides in another slot (a boot stripe above the bottom paint)."""
+        self.shape = (L, B, sheer_aft, sheer_bow, transom, kind)
         grid = []
         for i in range(stations + 1):
             u = i / stations                          # 0 transom .. 1 stem
@@ -127,7 +132,8 @@ class Part:
                     if s < 0:
                         q = tuple(reversed(q))
                     zc = (grid[i][j][2] + grid[i][j + 1][2]) / 2
-                    self.face(q, bottom if zc < boot else top)
+                    band = stripe and stripe[0] <= zc < stripe[1]
+                    self.face(q, bottom if zc < boot else (stripe[2] if band else top))
         # Deck and transom.
         P, S = sides
         for i in range(stations):
@@ -150,6 +156,62 @@ class Part:
                 self.face((back, ring[-1][k], ring[-1][k2]), bottom)
                 for a in range(len(ring) - 1):
                     self.face((ring[a][k], ring[a][k2], ring[a + 1][k2], ring[a + 1][k]), bottom)
+
+    def edge(self, x):
+        """Half beam and sheer height of the last hull() at x (the deck edge, before the topsides' flare)."""
+        L, B, sheer_aft, sheer_bow, transom, kind = self.shape
+        u = min(max((x + L / 2) / L, 0.0), 1.0)
+        if u < 0.55:
+            half = B / 2 * (transom + (1 - transom) * math.sin(min(u / 0.55, 1) * math.pi / 2))
+        else:
+            half = B / 2 * max(0.0, 1 - ((u - 0.55) / 0.45) ** (2.4 if kind == "box" else 1.7))
+        return max(half, 0.02), sheer_aft + (sheer_bow - sheer_aft) * u ** 2.2
+
+    def prism(self, plan0, plan1, z0, z1, slot):
+        """Mac polish: a deckhouse layer lofted between two plans (starboard halves aft to fore, mirrored to port, the same
+        count each): the sides lean in and the front rakes where the upper plan is smaller, as a cruiser's house does."""
+        def ring(plan, z):
+            pts = [(x, y) for x, y in plan] + [(x, -y) for x, y in reversed(plan)]
+            return [self.bm.verts.new((x, y, z)) for x, y in pts]
+        r0, r1 = ring(plan0, z0), ring(plan1, z1)
+        n = len(r0)
+        for k in range(n):
+            k2 = (k + 1) % n
+            self.face((r0[k], r0[k2], r1[k2], r1[k]), slot)
+        self.face(list(reversed(r0)), slot)
+        self.face(r1, slot)
+
+    def deckhouse(self, plans, zs, slots):
+        """Stacked prisms: plans[i] -> plans[i + 1] between zs[i] and zs[i + 1] in slots[i] (a house, its window band, a roof)."""
+        for k, slot in enumerate(slots):
+            self.prism(plans[k], plans[k + 1], zs[k], zs[k + 1], slot)
+
+    def rail(self, x0, x1, h=0.6, inset=0.08, post=1.0, slot="Steel", r=0.016):
+        """Stanchions on the deck edge from x0 forward to x1 and a top rail round the bow (both sides meet at the stem)."""
+        n = max(2, int((x1 - x0) / post))
+        top = {1: [], -1: []}
+        for k in range(n + 1):
+            x = x0 + (x1 - x0) * k / n
+            half, sheer = self.edge(x)
+            for sd in (1, -1):
+                y = sd * max(half - inset, 0.0)
+                self.tube((x, y, sheer), (x, y, sheer + h), r, slot, 6)
+                top[sd].append((x, y, sheer + h))
+        for sd in (1, -1):
+            for a, b in zip(top[sd], top[sd][1:]):
+                self.tube(a, b, r, slot, 6)
+
+    def rubrail(self, slot="Trim", r=0.035, n=24):
+        """A rubbing strake round the sheer, both sides."""
+        L = self.shape[0]
+        for sd in (1, -1):
+            pts = []
+            for k in range(n + 1):
+                x = -L / 2 + L * k / n
+                half, sheer = self.edge(x)
+                pts.append((x, sd * (half * (1 + 0.06 * k / n) + r * 0.5), sheer - 0.04))
+            for a, b in zip(pts, pts[1:]):
+                self.tube(a, b, r, slot, 6)
 
     def export(self):
         bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts[:], dist=0.0005)
@@ -197,16 +259,27 @@ def trawler(name, L, B, mast_x, mast_h, committee=False):
     p = Part(name)
     p.hull(L, B, 1.5 if not committee else 1.3, 2.6 if not committee else 2.0, 1.9 if not committee else 1.1, "round",
            top="Gelcoat" if committee else "TrimGreen", bottom="Antifouling", boot=0.15, transom=0.8)
-    # Bulwark rail and the white house.
-    hx = L * 0.18
-    p.box((hx, 0.0, 2.6 + (0.5 if committee else 0.0)), (L * 0.11, B * 0.3, 1.1), "Gelcoat")
-    p.box((hx + L * 0.09, 0.0, 3.25 + (0.5 if committee else 0.0)), (0.05, B * 0.28, 0.35), "Glass")
-    for s in (1, -1):
-        p.box((hx, s * B * 0.3, 3.25 + (0.5 if committee else 0.0)), (L * 0.08, 0.04, 0.3), "Glass")
-    p.box((hx - 0.2, 0.0, 3.8 + (0.5 if committee else 0.0)), (L * 0.13, B * 0.33, 0.08), "Gelcoat")
+    # The white house (Mac polish: lofted, its sides leaning in, the wheelhouse windows a raked band all round, the roof
+    # overhanging; it was three boxes). Same heights as before: the traffic's lights sit on them (APowerVesselActor).
+    hx, lift = L * 0.18, (0.5 if committee else 0.0)
+    a, f, w = hx - L * 0.11, hx + L * 0.11, B * 0.3
+    p.deckhouse([[(a, w), (f - L * 0.05, w), (f, w * 0.7)],
+                 [(a, w * 0.96), (f - L * 0.05, w * 0.96), (f - 0.1, w * 0.66)],
+                 [(a, w * 0.92), (f - L * 0.06, w * 0.9), (f - 0.45, w * 0.6)],
+                 [(a - 0.5, w * 1.08), (f - L * 0.05, w * 1.05), (f - 0.2, w * 0.75)],
+                 [(a - 0.5, w * 1.08), (f - L * 0.05, w * 1.05), (f - 0.2, w * 0.75)]],
+                [1.5, 2.95 + lift, 3.7 + lift, 3.72 + lift, 3.88 + lift], ["Gelcoat", "Glass", "Gelcoat", "Gelcoat"])
     p.tube((mast_x, 0.0, 1.6), (mast_x, 0.0, 1.6 + mast_h), 0.12 if not committee else 0.06, "Steel")
     if committee:
-        p.box((-L * 0.15, 0.0, 2.2), (L * 0.12, B * 0.28, 0.6), "Gelcoat")      # flybridge
+        # The saloon aft of the wheelhouse, lower, with its own window band, and the cockpit's coaming; a bow rail.
+        sa, sf, sw = -L * 0.3, hx - L * 0.11, B * 0.36
+        p.deckhouse([[(sa, sw), (sf, sw)], [(sa, sw * 0.97), (sf, sw * 0.97)], [(sa + 0.1, sw * 0.93), (sf, sw * 0.93)],
+                     [(sa - 0.6, sw * 1.02), (sf, sw * 1.02)], [(sa - 0.6, sw * 1.02), (sf, sw * 1.02)]],
+                    [1.3, 2.2, 2.75, 2.77, 2.9], ["Gelcoat", "Glass", "Gelcoat", "Gelcoat"])
+        for sd in (1, -1):
+            p.tube((sa - 0.55, sd * sw, 1.4), (sa - 0.55, sd * sw, 2.77), 0.04, "Steel", 6)
+        p.rail(L * 0.12, L * 0.48, 0.65)
+        p.rubrail()
         p.tube((L * 0.4, 0.0, 2.0), (L * 0.4, 0.0, 4.0), 0.03, "Steel")
         p.export()
         return
@@ -219,6 +292,116 @@ def trawler(name, L, B, mast_x, mast_h, committee=False):
         p.box((-12.5, s * 9.6, -0.2), (0.9, 0.08, 0.5), "Dark")                  # trawl door at the surface
         p.cone((-13.0, s * 9.0, -0.6), (-24.0, s * 6.0, -1.5), 1.2, "Net")      # the net's bag
     p.box((-L * 0.3, 0.0, 2.1), (1.2, 1.0, 0.5), "Dark")                         # winch
+    p.export()
+
+
+def express():
+    """Mac polish: a 34 ft express cruiser, the commonest bigger power boat in the coast's marinas: a deep-V hull painted
+    per instance (Paint: M_VehiclePaint), a boot stripe, a low cabin trunk under the foredeck, a raked wrap-round
+    windscreen, a hardtop over the helm on posts, cockpit seats, a swim platform and a bow rail."""
+    p = Part("SM_Vessel_Express")
+    L, B = 10.4, 3.4
+    p.hull(L, B, 1.0, 1.4, 0.75, "v", top="Paint", bottom="Antifouling", boot=0.05, transom=0.95, bow_rise=0.72, stripe=(0.05, 0.16, "Dark"))
+    p.rubrail()
+    p.box((-L / 2 - 0.42, 0.0, 0.32), (0.45, 1.5, 0.05), "Deck")                 # swim platform
+    p.deckhouse([[(-0.9, 1.55), (1.0, 1.55), (2.6, 1.15), (3.7, 0.4)],          # the cabin trunk, raking up to the screen
+                 [(-0.8, 1.48), (1.0, 1.46), (2.5, 1.02), (3.4, 0.3)],
+                 [(-0.6, 1.42), (-0.2, 1.38), (0.3, 1.05), (0.6, 0.45)],        # windscreen, swept back
+                 [(-0.6, 1.42), (-0.2, 1.38), (0.3, 1.05), (0.6, 0.45)]],
+                [1.05, 1.55, 2.05, 2.08], ["Gelcoat", "Glass", "Gelcoat"])
+    p.deckhouse([[(-2.8, 1.4), (-0.3, 1.45), (0.3, 1.25), (0.55, 0.6)],          # hardtop
+                 [(-2.8, 1.4), (-0.3, 1.45), (0.3, 1.25), (0.55, 0.6)]], [2.3, 2.38], ["Gelcoat"])
+    for sd in (1, -1):
+        p.tube((-2.6, sd * 1.3, 1.05), (-2.6, sd * 1.3, 2.3), 0.04, "Steel", 8)
+        p.tube((-0.4, sd * 1.4, 2.05), (-0.5, sd * 1.4, 2.3), 0.04, "Steel", 8)
+    p.box((-1.2, 0.0, 2.45), (0.25, 0.25, 0.07), "Gelcoat")                       # radar dome
+    p.box((-3.9, 0.0, 1.28), (0.4, 1.35, 0.22), "Cushion")                        # transom seat
+    p.box((-1.0, 0.65, 1.32), (0.3, 0.3, 0.27), "Cushion")                        # helm seat
+    p.box((2.6, 0.0, 1.43), (0.6, 0.65, 0.05), "Cushion")                         # sun pad
+    p.box((4.9, 0.0, 1.42), (0.25, 0.06, 0.05), "Steel")                         # anchor on the pulpit
+    p.rail(1.6, 5.0, 0.55)
+    p.export()
+
+
+def sportfish():
+    """Mac polish: a 46 ft sportfisherman: high flared bow, the house with its dark window band, a flybridge with helm and
+    hardtop, a tuna tower, outriggers stowed upright, the fighting chair in a big cockpit, hull paint per instance."""
+    p = Part("SM_Vessel_Sportfish")
+    L, B = 14.0, 4.8
+    p.hull(L, B, 1.35, 2.3, 1.0, "v", top="Paint", bottom="Antifouling", boot=0.08, transom=0.97, bow_rise=0.7, stripe=(0.08, 0.2, "Dark"))
+    p.rubrail()
+    p.box((-L / 2 - 0.3, 0.0, 0.45), (0.32, 1.9, 0.05), "Deck")
+    p.deckhouse([[(-1.8, 2.25), (1.5, 2.25), (3.4, 1.65), (4.4, 0.6)],
+                 [(-1.8, 2.18), (1.5, 2.15), (3.3, 1.5), (4.1, 0.5)],
+                 [(-1.8, 2.1), (1.4, 2.06), (2.9, 1.3), (3.5, 0.45)],
+                 [(-3.3, 2.2), (1.4, 2.12), (3.0, 1.4), (3.6, 0.5)],
+                 [(-3.3, 2.2), (1.4, 2.12), (3.0, 1.4), (3.6, 0.5)]],
+                [1.45, 2.55, 3.1, 3.12, 3.27], ["Gelcoat", "Glass", "Gelcoat", "Gelcoat"])
+    for sd in (1, -1):
+        p.tube((-3.2, sd * 2.05, 1.4), (-3.2, sd * 2.05, 3.12), 0.05, "Steel", 8)
+        p.box((-1.0, sd * 2.1, 3.47), (2.3, 0.04, 0.2), "Gelcoat")               # flybridge coaming
+    p.box((0.9, 0.0, 3.65), (0.45, 1.0, 0.38), "Gelcoat")                         # flybridge helm
+    p.box((0.95, 0.0, 4.05), (0.04, 0.9, 0.12), "Glass")
+    for y in (-0.6, 0.0, 0.6):
+        p.box((-0.2, y, 3.55), (0.28, 0.25, 0.28), "Cushion")
+    p.box((0.0, 0.0, 5.05), (1.7, 1.9, 0.05), "Gelcoat")                          # hardtop
+    tower = []
+    for sx in (-1.5, 1.5):
+        for sd in (1, -1):
+            p.tube((sx, sd * 1.75, 3.27), (sx * 0.95, sd * 1.7, 5.0), 0.04, "Steel", 6)
+            p.tube((sx * 0.95, sd * 1.7, 5.1), (sx * 0.5, sd * 0.8, 7.2), 0.035, "Steel", 6)
+            tower.append((sx * 0.5, sd * 0.8, 7.2))
+    p.box((0.0, 0.0, 7.25), (0.8, 0.85, 0.04), "Gelcoat")                         # tower top
+    for sd in (1, -1):
+        p.tube((0.6, sd * 1.75, 5.1), (-2.5, sd * 2.3, 12.5), 0.03, "Steel", 6)   # outrigger, stowed
+    p.tube((-5.0, 0.0, 1.4), (-5.0, 0.0, 1.85), 0.08, "Steel", 8)                 # fighting chair
+    p.box((-5.0, 0.0, 1.98), (0.35, 0.33, 0.12), "Cushion")
+    p.box((-4.75, 0.0, 2.3), (0.08, 0.33, 0.3), "Cushion")
+    p.box((-6.65, 0.0, 1.47), (0.08, 1.9, 0.12), "Gelcoat")                       # transom cap
+    p.rail(3.2, 6.9, 0.6)
+    p.export()
+
+
+def motor_yacht():
+    """Mac polish: a 60 ft flybridge motor yacht, the big boats at the end of the coast's docks: two decks of house with
+    long raked window bands, the aft deck under the saloon roof, the flybridge's hardtop and radar arch, hull windows,
+    a swim platform, a bow rail and paint per instance."""
+    p = Part("SM_Vessel_MotorYacht")
+    L, B = 18.0, 5.2
+    p.hull(L, B, 1.6, 2.55, 1.25, "v", top="Paint", bottom="Antifouling", boot=0.1, transom=0.95, bow_rise=0.72, stripe=(0.1, 0.24, "Dark"))
+    p.rubrail()
+    p.box((-L / 2 - 0.65, 0.0, 0.55), (0.7, 2.3, 0.07), "Deck")
+    for x in (-1.5, 0.6, 2.7):                                                     # hull windows
+        half, sheer = p.edge(x)
+        for sd in (1, -1):
+            p.box((x, sd * (half * 1.04 + 0.01), sheer - 0.75), (0.9, 0.04, 0.13), "Glass")
+    p.deckhouse([[(-6.2, 2.45), (2.0, 2.45), (4.6, 1.8), (6.1, 0.7)],             # main deck house
+                 [(-6.2, 2.4), (2.0, 2.38), (4.5, 1.7), (5.8, 0.6)],
+                 [(-6.2, 2.33), (1.8, 2.3), (4.0, 1.5), (5.0, 0.55)],
+                 [(-8.4, 2.45), (1.8, 2.38), (4.1, 1.6), (5.1, 0.6)],
+                 [(-8.4, 2.45), (1.8, 2.38), (4.1, 1.6), (5.1, 0.6)]],
+                [1.75, 2.6, 3.35, 3.37, 3.52], ["Gelcoat", "Glass", "Gelcoat", "Gelcoat"])
+    for sd in (1, -1):
+        p.tube((-8.2, sd * 2.3, 1.7), (-8.2, sd * 2.3, 3.37), 0.06, "Steel", 8)
+        p.box((-7.3, sd * 2.4, 2.05), (1.05, 0.04, 0.4), "Gelcoat")              # aft deck bulwark
+    p.deckhouse([[(-2.6, 1.95), (1.5, 1.95), (3.0, 1.45), (3.7, 0.6)],            # flybridge house
+                 [(-2.6, 1.9), (1.5, 1.88), (2.9, 1.35), (3.5, 0.55)],
+                 [(-2.6, 1.85), (1.3, 1.8), (2.5, 1.2), (3.0, 0.5)],
+                 [(-5.8, 2.05), (1.3, 1.9), (2.6, 1.3), (3.1, 0.55)],
+                 [(-5.8, 2.05), (1.3, 1.9), (2.6, 1.3), (3.1, 0.55)]],
+                [3.5, 4.2, 4.75, 4.77, 4.9], ["Gelcoat", "Glass", "Gelcoat", "Gelcoat"])
+    for sd in (1, -1):
+        p.tube((-5.6, sd * 1.9, 3.52), (-5.6, sd * 1.9, 4.77), 0.05, "Steel", 8)
+        p.box((-4.2, sd * 2.2, 3.75), (1.6, 0.04, 0.25), "Gelcoat")              # flybridge coaming
+        p.tube((-1.0, sd * 1.5, 4.9), (-2.0, sd * 1.1, 6.6), 0.09, "Gelcoat", 8)  # radar arch
+    p.tube((-2.0, -1.1, 6.6), (-2.0, 1.1, 6.6), 0.09, "Gelcoat", 8)
+    p.box((-1.9, 0.0, 6.78), (0.35, 0.35, 0.1), "Gelcoat")                        # radome
+    p.box((-2.2, 0.0, 6.75), (0.08, 1.0, 0.04), "Funnel")                         # open-array radar
+    for y in (-1.2, -0.4, 0.4, 1.2):
+        p.box((-4.2, y, 3.82), (0.4, 0.3, 0.28), "Cushion")
+    p.box((-7.2, 0.0, 1.85), (0.6, 0.8, 0.25), "Cushion")                         # aft deck settee
+    p.rail(3.0, 8.9, 0.75)
+    p.box((8.6, 0.0, 2.6), (0.3, 0.08, 0.06), "Steel")
     p.export()
 
 
@@ -394,5 +577,8 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 runabout()
 trawler("SM_Vessel_Shrimper", 21.0, 6.5, 0.42, 11.0)
 trawler("SM_Vessel_Committee", 11.0, 3.8, 0.0, 6.0, committee=True)
+express()
+sportfish()
+motor_yacht()
 towboat()
 ship()

@@ -3,6 +3,9 @@
 #include "FixedStepper.h"
 #include "Chart.h"
 #include "LakeData.h"
+#include "CoastMarinasActor.h"
+#include "MarinaActor.h"
+#include "Engine/StaticMesh.h"
 #include "WorldKit.h"
 #include "Lights.h"
 #include "Navigation.h"
@@ -486,6 +489,54 @@ bool FCoastMooredBoatsAfloatTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("No moored boat on land at MLLW"), OnLand, 0);
 	TestEqual(TEXT("None aground outside a marina"), Aground, 0);
 	TestTrue(TEXT("The island's own marinas and canals have boats (south of the old edge)"), Gulf > 50);
+	return true;
+}
+
+/**
+ * Mac polish: the coast's moored power boats are drawn as a class that fits their measured length (the lidar's 5 to 39 m),
+ * not the trawler yacht scaled; the painted hulls are mostly white; every class's model is imported.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoastMooredPowerClassesTest, "SailingSim.Coast.MooredPowerClasses", Flags)
+bool FCoastMooredPowerClassesTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Galveston();
+	if (!TestTrue(TEXT("Galveston loads"), Lake.IsLoaded())) return false;
+	TArray<FBerthedBoat> Placed;
+	ACoastMarinasActor::PlaceBoats(Lake, Placed);
+	if (!TestEqual(TEXT("One neighbour per moored boat"), Placed.Num(), Lake.MooredBoats.Num())) return false;
+	TMap<uint8, int32> PerClass;
+	int32 Power = 0, Fits = 0, White = 0, Painted = 0;
+	TSet<uint32> Colours;
+	for (int32 I = 0; I < Placed.Num(); ++I)
+	{
+		const FBerthedBoat& B = Placed[I];
+		if (Lake.MooredBoats[I].bMast) continue;
+		TestTrue(TEXT("A power boat is drawn as a power class"), FBerthedBoat::IsPower(B.Type));
+		++Power;
+		++PerClass.FindOrAdd(B.Type);
+		Fits += FMath::Abs(B.Scale - 1.f) < 0.25f;
+		if (FBerthedBoat::IsPainted(B.Type))
+		{
+			const FLinearColor C = FBerthedBoat::PowerHullColour(uint32(I) * 7919u + 1u);
+			++Painted;
+			White += C.R > 0.7f && C.B > 0.7f;
+			Colours.Add(GetTypeHash(C.ToFColor(false)));
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d power boats: runabout %d, express %d, trawler %d, sportfisher %d, motor yacht %d; %d within 25%% of their length"), Power,
+		PerClass.FindRef(FBerthedBoat::PowerBoat), PerClass.FindRef(FBerthedBoat::PowerExpress), PerClass.FindRef(FBerthedBoat::PowerYacht),
+		PerClass.FindRef(FBerthedBoat::PowerSport), PerClass.FindRef(FBerthedBoat::PowerMotorYacht), Fits));
+	TestTrue(TEXT("Power boats are there"), Power > 300);
+	TestEqual(TEXT("All five classes appear"), PerClass.Num(), 5);
+	// The trawler yacht scaled from 11 m fitted 48% of them within 25%.
+	TestTrue(TEXT("Nine in ten are drawn within 25% of their measured length"), Fits > 0.9 * Power);
+	TestTrue(TEXT("Most painted hulls are white"), White > 0.55 * Painted && White < 0.8 * Painted);
+	TestTrue(TEXT("... and the rest come in several colours"), Colours.Num() >= 5);
+	for (const TCHAR* Name : { TEXT("Runabout"), TEXT("Committee"), TEXT("Express"), TEXT("Sportfish"), TEXT("MotorYacht") })
+	{
+		TestNotNull(*FString::Printf(TEXT("SM_Vessel_%s is imported"), Name),
+			LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Vessels/SM_Vessel_%s.SM_Vessel_%s"), Name, Name)));
+	}
 	return true;
 }
 

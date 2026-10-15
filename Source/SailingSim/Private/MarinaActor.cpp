@@ -48,6 +48,23 @@ namespace
 	}
 }
 
+FLinearColor FBerthedBoat::PowerHullColour(uint32 Seed)
+{
+	// Mac polish: a marina's power boats are mostly white; the painted hulls are navy and dark blue, then ivory, greys,
+	// black and the odd sea green (shares out of 100).
+	struct FPaint { uint32 Share; FLinearColor Colour; };
+	static const FPaint Paints[] = { { 66, FLinearColor(0.80f, 0.80f, 0.78f) }, { 8, FLinearColor(0.75f, 0.71f, 0.60f) },
+		{ 9, FLinearColor(0.015f, 0.03f, 0.09f) }, { 5, FLinearColor(0.03f, 0.09f, 0.26f) }, { 5, FLinearColor(0.42f, 0.44f, 0.45f) },
+		{ 4, FLinearColor(0.02f, 0.02f, 0.022f) }, { 3, FLinearColor(0.30f, 0.50f, 0.45f) } };
+	uint32 Pick = MHash(Seed * 2246822519u + 3u) % 100u;
+	for (const FPaint& P : Paints)
+	{
+		if (Pick < P.Share) return P.Colour;
+		Pick -= P.Share;
+	}
+	return Paints[0].Colour;
+}
+
 void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBerthedBoat> Placed, float CullScale, EComponentMobility::Type Mobility,
 	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out)
 {
@@ -65,10 +82,13 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 		if (!MeshesByClass.Contains(P.Type))
 		{
 			TArray<UStaticMesh*> M;
-			if (P.Type == FBerthedBoat::PowerBoat || P.Type == FBerthedBoat::PowerYacht)
+			if (FBerthedBoat::IsPower(P.Type))
 			{
-				M.Add(P.Type == FBerthedBoat::PowerBoat ? LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Vessels/SM_Vessel_Runabout.SM_Vessel_Runabout"))
-					: LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Vessels/SM_Vessel_Committee.SM_Vessel_Committee")));
+				// The vessel kit's models (build_vessels.py), one per class; Mac polish added the express cruiser, the
+				// sportfisherman and the motor yacht.
+				const TCHAR* Name = P.Type == FBerthedBoat::PowerBoat ? TEXT("Runabout") : P.Type == FBerthedBoat::PowerYacht ? TEXT("Committee")
+					: P.Type == FBerthedBoat::PowerExpress ? TEXT("Express") : P.Type == FBerthedBoat::PowerSport ? TEXT("Sportfish") : TEXT("MotorYacht");
+				M.Add(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Vessels/SM_Vessel_%s.SM_Vessel_%s"), Name, Name)));
 				M.SetNum(UE_ARRAY_COUNT(Parts));
 			}
 			else
@@ -81,11 +101,14 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 		}
 		const TArray<UStaticMesh*>& M = MeshesByClass[P.Type];
 		if (!M[0]) continue;
-		const uint32 H = uint32(P.Center.X * 13.0 + P.Center.Y * 7.0);
+		// Through int32 (Mac polish): straight to uint32, every neighbour south-west of the origin hashed to 0 on arm64 and
+		// they all wore the same dress, livery and paint.
+		const uint32 H = uint32(int32(P.Center.X * 13.0 + P.Center.Y * 7.0));
 		const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0, FVector(P.Scale));
-		if (P.Type == FBerthedBoat::PowerBoat || P.Type == FBerthedBoat::PowerYacht)
+		if (FBerthedBoat::IsPower(P.Type))
 		{
 			PerClass[P.Type][0].Add(Boat);
+			if (FBerthedBoat::IsPainted(P.Type)) Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 			continue;
 		}
 		const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(P.Type));
@@ -121,8 +144,10 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
 			// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
 			if (K >= 2) C->SetCastShadow(false);
-			const bool bLivery = K == 0 && KV.Key != FBerthedBoat::PowerBoat && KV.Key != FBerthedBoat::PowerYacht;
+			const bool bLivery = K == 0 && !FBerthedBoat::IsPower(KV.Key);
+			const bool bPaint = K == 0 && FBerthedBoat::IsPainted(KV.Key);
 			if (bLivery) C->NumCustomDataFloats = 7;
+			if (bPaint) C->NumCustomDataFloats = 3;
 			C->RegisterComponent();
 			C->AddInstances(KV.Value[K], false, true);
 			if (bLivery)
@@ -133,6 +158,17 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 					const FBoatLivery L = SampleBoatLivery(int32(KV.Key), S[I]);
 					const float D[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
 					C->SetCustomData(I, TArrayView<const float>(D, 7), false);
+				}
+				C->MarkRenderStateDirty();
+			}
+			if (bPaint)
+			{
+				const TArray<uint32>& S = Seeds[KV.Key];
+				for (int32 I = 0; I < S.Num(); ++I)
+				{
+					const FLinearColor Paint = FBerthedBoat::PowerHullColour(S[I]);
+					const float D[3] = { Paint.R, Paint.G, Paint.B };
+					C->SetCustomData(I, TArrayView<const float>(D, 3), false);
 				}
 				C->MarkRenderStateDirty();
 			}
