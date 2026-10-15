@@ -68,7 +68,7 @@ void ANightLightsActor::BeginPlay()
 		L->SetupAttachment(RootComponent);
 		L->SetIntensityUnits(ELightUnits::Lumens);
 		L->SetCastShadows(bHigh);         // shadowed through MegaLights on High
-		L->SetSourceRadius(0.15f * CmPerMeter);
+		L->SetSourceRadius(float(0.15 * CmPerMeter));
 		L->SetVisibility(false);
 		L->RegisterComponent();
 		Pool.Add(L);

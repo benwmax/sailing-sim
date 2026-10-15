@@ -94,7 +94,10 @@ Each mirrors a Mac script and writes the same logs to `Artifacts\`. Run from the
 | --- | --- | --- |
 | `scripts\windows\build.ps1 [-Config DebugGame]` | `scripts/build.sh` | Compiles the editor target. Log `Artifacts\build.log` |
 | `scripts\windows\test.ps1 [-Filter SailingSim.Physics]` | `scripts/test.sh` | Automation tests headless; report `Artifacts\TestReport\index.json`, log `Artifacts\test.log`. Build first |
-| `scripts\windows\package-win.ps1 [-Config Shipping]` | `scripts/package-mac.sh` | BuildCookRun `-platform=Win64` to `Packaged\Windows\`. Log `Artifacts\package.log` |
+| `scripts\windows\package-win.ps1 [-Config Shipping] [-Full]` | `scripts/package-mac.sh` | BuildCookRun `-platform=Win64` to `Packaged\Windows\`, cooking incrementally (`-Full` cooks everything). Log `Artifacts\package.log` |
+| `scripts\windows\gate.ps1 -Scope clouds\|water\|boats\|crew\|world\|night\|ui\|all [-Baseline csv] [-Merge a,b]` | `scripts/gate.sh` | The gate: build, tests and package only when their inputs changed (`Artifacts\gate\`), then the scope's views on High and Ultra |
+| `scripts\windows\prescreen-stills.ps1 -Label x [-View storm,beam8] [-Compare main]` | `scripts/run-game.sh` | Stills of the bench views from the uncooked editor binary, no package; `-Compare` puts another label's still beside each |
+| `scripts\windows\run-python.ps1 make_materials.py [-Full]` | `scripts/make-content.sh` | Rebuilds only the materials whose code changed since its last run here; `-Full` all of them |
 | `scripts\windows\bench-win.ps1 [-Seconds 20] [-Quality Ultra] [-Demo] [-GameArgs "..."]` | `scripts/bench-mac.sh` | Runs the packaged game, prints fps and GPU slices, copies `bench.json` and the screenshot to `Artifacts\` |
 | `scripts\windows\bench-visual-win.ps1 [-Tiers High,Ultra]` | `scripts/bench-visual.sh` | The twelve visual views per tier, CSV in `Artifacts\` |
 
@@ -104,10 +107,46 @@ work the same way through `-GameArgs`. To play, run `Packaged\Windows\SailingSim
 The other `scripts/*.sh` (content generation, Blender models, MetaHumans, phase benches) stay Mac-only; the content
 they make is already committed. `polar.sh` and `traffic.sh` can run under Git Bash with LLVM's clang on the path.
 
+## Build times
+
+Measured on the PC (i9-9900K, RTX 4090, D:\ NVMe, Unreal's DDC on `D:\UnrealDDC`) on Oct 15 2026, after main 7149d537,
+one run each (a second run of the same step came within 5%). Before = the scripts as they were; after = build-fast.
+
+| Step | Before | After | What changed |
+| --- | --- | --- | --- |
+| Package, nothing changed | 186 s (cook 80, stage 62) | 62-66 s (cook 26-29, stage 29) | incremental cook: the Zen store keeps the last cook (`-cookincremental`) |
+| Package, full cook (`-Full`) | 186 s (cook 80) | 126-129 s (cook 59) | no SM5 shaders (6,033 of them: 1,365 material, 4,668 global) |
+| One water material changed, shaders compiled: materials + package | 30 s + 186 s = 216 s | 12 s + 68 s = 80 s | `make_materials.py` rebuilt 1 builder of 23 (`build_water_v4`) instead of resaving 116 assets; the cook cooked 2 packages of 4,149 instead of 3,037 |
+| Gate on an unchanged tree: build and package before the bench | 4 s + 186 s every time (no gate on the PC) | 0 s | `gate.ps1` skips both by content hash, as `gate.sh` does; the `ui` scope's bench (4 views x 2 tiers) is 202 s |
+| A visual pre-screen after a material change (one view, High and Ultra) | package 68 s + two bench runs 50 s = 118 s | 97 s (185 s the first time: the editor compiles its Ultra shaders once) | `prescreen-stills.ps1`: uncooked stills, no package; most useful when the change would recook a lot |
+| SWAN wave bake (WSL) | one case at a time on one core (20-50 min a case; 15 of 16 threads idle) | four cases at once | `Tools/water/swan_bake.py run --jobs N` (w3 branch); numbers in `docs/water-3/swan-bake.md` |
+
+The first package on a new checkout is still long: 2,199 s on `D:\dev\sailing-sim` (cook 2,072 s), almost all of it
+derived data (Nanite meshes, distance fields, mesh cards) built once into the DDC; the next full cook was 186 s.
+
+Checked: the incremental and the full package of the same tree bench the same (GPU ms per frame on beam8, storm and
+helm-eye, High and Ultra, within 0.4 ms; the fps moved more between runs, because the PC is held by its render thread,
+about 15-18 ms a frame, not the 4090: compare GPU ms on this PC, fps on the Mac).
+
+How to use it:
+
+- `scripts\windows\gate.ps1 -Scope water -Baseline Artifacts\visual-bench-gate-water-main.csv` before a PR (the Mac's
+  scopes; on the PC its tiers are High and Ultra). `-Merge a,b` gates a batch of branches in one build and package.
+- `scripts\windows\prescreen-stills.ps1 -Label main -View storm` on main, then `-Label mine -Compare main` on the branch:
+  stills side by side in a minute or two, before any package.
+- `scripts\windows\run-python.ps1 make_materials.py` rebuilds what changed; `-Full` after changing a fabric scan or the
+  cloud noise (inputs outside the script), or when in doubt. It rebuilds everything by itself when the material assets
+  changed some other way (a git checkout or merge) since its last run.
+
+What a studio does that doesn't apply here: a build farm or distributed shader compiling (one PC; UBA already uses its
+16 threads); a shared cloud DDC with the Mac (the Mac's Metal shaders and the PC's DX12 ones share nothing, and the
+meshes' derived data is per platform too); `-snapshot` cooks from a build server (there is none to publish them).
+
 ## Settings that differ on Windows
 
-- Graphics: DirectX 12 with the SM6 shader platform only (`Config/DefaultEngine.ini`, WindowsTargetSettings; this
-  was already set and is unchanged). There is no DirectX 11 fallback.
+- Graphics: DirectX 12 with the SM6 shader platform only (`Config/DefaultEngine.ini`, WindowsTargetSettings). There is
+  no DirectX 11 fallback, and since build-fast no SM5 shaders are cooked either (`Config/Windows/WindowsEngine.ini`
+  removes the engine's default D3D11 entry, which had kept a whole SM5 set in every cook).
 - Quality: the packaged PC game starts on **Ultra** (TSR at native, half-resolution clouds with the most samples,
   Epic scalability, no resolution governor). A tier picked in Settings is saved and wins. The editor and the tests keep
   Medium, as on the Mac (`USailingSettings` constructor).
