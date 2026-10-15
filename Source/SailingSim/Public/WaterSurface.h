@@ -64,9 +64,15 @@ public:
 	 *  per e-fold of coverage, measured on the drawn waves (SailingSim.Visual.Whitecaps). Mirrored in make_materials.py. */
 	static constexpr float FoamThreshold = 0.6f;
 	static constexpr float CapSlope = 0.045f;
-	static float WhitecapThreshold(float LocalOverMean, float WaterScale);
+	/** W2: the threshold shift per e-fold grows with the wind (measured on the drawn waves: 0.034 at 10 kn, 0.069 at
+	 *  25 kn), so a fixed CapSlope under-applied the lake's and the lulls' scale in a strong breeze (the lake capped 3.3
+	 *  to 3.6 times its share at 20 and 25 kn). CapSlope is this at about 14 kn. Mirrored in make_materials.py. */
+	static float CapSlopeAt(float MeanKnots);
+	static float WhitecapThreshold(float LocalOverMean, float WaterScale, float MeanKnots = 14.f);
 	/** Game-thread time spent on the water each frame (the FFT blend and upload, the wake grid), summed: bench.json. */
 	static double WaterCpuSeconds;
+	/** W2: game-thread time spent on the two-level wind map (bench.json windmap_cpu_ms). */
+	static double WindMapCpuSeconds;
 
 	/** Records the boat's stern/bow positions for wake foam (world meters), called by the boat each frame. */
 	void SetBoatForWake(const FVector2D& PositionM, float HeadingRad, float SpeedMs, float HeelRad);
@@ -104,6 +110,8 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Water") TObjectPtr<UStaticMeshComponent> FarPlane;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WaterMaterial;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> GustMap;
+	/** W2: the far wind map (16 km). GustMap is the near one (3.2 km). */
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> WindFarMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeMap;
 	UPROPERTY(Transient) TArray<TObjectPtr<UTexture2D>> OceanMaps;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> OceanMaskMap;
@@ -167,7 +175,34 @@ private:
 	FVector2D GustCenter = FVector2D::ZeroVector;
 	float GustTimer = 0.f;
 	float WakeTimer = 0.f;
-	TArray<uint8> GustPixels;
+	/**
+	 * W2: the two-level wind map. Each level is a square of texels fixed to the world and stored wrap-around (a texel
+	 * at world index i lives at i mod Res, the texture wraps), so as the boat moves only the texels coming into view
+	 * are new. Per texel: the roughness the water shows (rising in seconds, settling over ten), the local wind's
+	 * direction, and a slow speed (half a minute) for slicks and windrows. The near level is updated in strips of rows
+	 * from the full wind (VelocityAt); the far level from what a sailor reads (ReadableAt).
+	 */
+	struct FWindTexel { int32 IX = INT32_MIN, IY = INT32_MIN; float Rough = 0.f, Slow = 0.f, DirX = 1.f, DirY = 0.f; double T = 0.0; };
+	struct FWindLevel
+	{
+		int32 Res = 0, Strips = 1, NextStrip = 0;
+		float SizeM = 0.f;
+		bool bStarted = false;
+		FVector2D Center = FVector2D::ZeroVector;
+		TArray<FWindTexel> Texels;
+		TArray<uint8> Pixels;
+	};
+	FWindLevel NearWind, FarWind;
+	/** W2: the wind's direction smoothed over minutes, which the windrows follow (they realign slowly after a shift). */
+	FVector2D WindrowDir = FVector2D(1.0, 0.0);
+	bool bWindrowDirSet = false;
+	double LastWindrowTime = 0.0;
+	void UpdateWindLevel(FWindLevel& Level, bool bNear, double T);
+	/** W2: the trees read the far wind map: their materials (M_Tree*) on the terrain's instanced components are swapped
+	 *  for one dynamic instance per material, bound to the map (rescanned every few seconds as trees are placed). */
+	void BindTreeWind();
+	UPROPERTY(Transient) TMap<TObjectPtr<UMaterialInterface>, TObjectPtr<UMaterialInstanceDynamic>> TreeWindMids;
+	float TreeScanTimer = 0.f;
 	TArray<uint8> WakePixels;
 	FVector2D WakeCenter = FVector2D::ZeroVector;
 

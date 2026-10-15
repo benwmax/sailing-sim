@@ -663,6 +663,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
+		if (WindMapSecondsAtStart < 0.0) WindMapSecondsAtStart = AWaterSurface::WindMapCpuSeconds;
 		if (!bSlicesStarted) { bSlicesStarted = true; FMemory::Memcpy(SlicesAtStart, SailingPerf::GSliceSeconds, sizeof(SlicesAtStart)); }
 		// (The thread times read here are the previous frame's, all of them inside the window but the first.)
 		ThreadTimes.Sample();
@@ -773,6 +774,7 @@ void ASailingGameMode::FinishBenchmark()
 	if (N > 0 && WaterSecondsAtStart >= 0.0)
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"windmap_cpu_ms\":%.3f}"), (AWaterSurface::WindMapCpuSeconds - WindMapSecondsAtStart) * 1000.0 / N);
 	}
 	// Perf 1: the threads' own times (game thread without its waits) and the game thread's named slices.
 	if (const FString Threads = ThreadTimes.JsonFields(); !Threads.IsEmpty())

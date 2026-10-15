@@ -55,6 +55,7 @@ def hero_material(defaults):
         unreal.EditorAssetLibrary.delete_asset(path)
     mat = ASSETS.create_asset("M_J22HeroSurface", DEST, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("two_sided", True)   # like M_BoatSurface: the generated shells aren't all wound outward
+    mat.set_editor_property("used_with_nanite", True)  # the hero meshes are Nanite
     samplers = {}
     for i, (pname, stype) in enumerate((("BaseColor", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR),
                                          ("Roughness", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE),
