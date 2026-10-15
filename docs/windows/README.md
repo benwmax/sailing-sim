@@ -142,3 +142,41 @@ Run on the PC (Windows 11, RTX 4090, Visual Studio Community, Unreal 5.8.3, `C:\
 
 Not yet run: the full test pass after the crew-test change, the twelve-view `-Visual` bench, a Shipping package, the
 MetaHuman zip round trip (strand hair has not been seen on the NVIDIA GPU), and 4K.
+
+## Editor scripts that hang on exit (the "zombie" UnrealEditor-Cmd)
+
+Seen three times on Oct 14-15 2026, each after an editor Python import run through `scripts\windows\run-python.ps1`.
+Each script ran to completion (its last log line printed), and the editor then crashed while exiting, with a
+callstack through `python311.dll` and `UnrealEditor-PythonScriptPlugin.dll` and `CrashReportClientEditor` opening.
+Stopping `UnrealEditor-Cmd` while the crash reporter was up (`Stop-Process -Force` or `taskkill /F /T`) left it in the
+process list with one thread and about 1,300 handles, and `taskkill` then reported "no running instance of the task".
+Those processes kept their files open until a reboot:
+
+- `Content\Materials\M_CloudLayers.uasset` and `Content\Boats\Materials\M_BoatSurface.uasset` (a `git merge` couldn't
+  replace them: "unable to unlink ... Invalid argument");
+- `Content\Boats\J22Hero\M_BoatHero.uasset` (a reimport couldn't delete it: error 32);
+- `Binaries\Win64\UnrealEditor-SailingPhysics.dll` and `UnrealEditor-SailingSimTests.dll` (the editor build failed to
+  link: LNK1104).
+
+The commands, from `run-python.ps1` (all with the project path and `-run=pythonscript`):
+
+| Script | Ends with | Extra flags | Result |
+|---|---|---|---|
+| `import_boats.py gearonly` | `os._exit(0)` | `-unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput` | crashed on exit; the crash reporter waited until it was killed |
+| `import_boats.py fleet` | `os._exit(0)` | the same plus `-nocrashreports` | crashed on exit; the crash reporter still opened (the flag didn't stop it); a zombie |
+| `import_j22_hero.py` (first version) | `os._exit(0)` | the same | crashed on exit; zombie after `Stop-Process` |
+| `import_j22_hero.py` (later) | `os._exit(0)` | the same, crash reporter closed within 3 s by a loop | crashed on exit; the editor then hung, and stopping it left a zombie |
+| `import_j22_hero.py` (Oct 15, called directly) | nothing (returns) | `-unattended -NoCrashReporter -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput` | **exited cleanly**, code 0 in 45 s, no crash reporter |
+
+So on this PC `os._exit(0)` itself is what crashes the editor on the way out (on the Mac it exists to dodge a Python
+shutdown crash after big bakes). Without it, and with `-NoCrashReporter`, the hero import exited cleanly. Whether the
+big imports (`import_boats.py`, `import_world.py`) also exit cleanly without `os._exit` on Windows is still to be
+tried. What to try, in order:
+
+1. No `os._exit` (let `-run=pythonscript` return), and compare.
+2. `-NoCrashReporter` in place of `-nocrashreports`, to keep `CrashReportClientEditor` from opening at all.
+3. If an editor still hangs, don't kill it while the crash reporter is up. Close the crash reporter first, wait for the
+   editor to end, and record the exact command and log tail here.
+
+If a zombie does appear, only a restart frees its files. Work that doesn't build or import (docs, the WSL jobs) can go
+on meanwhile.
