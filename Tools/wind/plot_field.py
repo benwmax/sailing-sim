@@ -28,6 +28,6 @@ for ax, f, s, title in ((axes[0], pf, ps, "Puffs: speed factor, wind direction (
     ax.set_xlabel("east (m)")
     ax.set_ylabel("north (m)")
     fig.colorbar(im, ax=ax, shrink=0.8, label="speed / mean")
-fig.suptitle("W1 wind field, 4 km square, wind from the south (" + head + ")", fontsize=10)
+fig.suptitle(f"W1 wind field, {(xs[-1] - xs[0]) / 1000:.0f} km square, wind from the south (" + head + ")", fontsize=10)
 fig.savefig(out, dpi=110)
 print("wrote", out)

@@ -335,7 +335,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   band over `GrowthSeconds` (8 T^2, 5..300 s).
 - Wind (W1, `docs/w1/`): `FWindField` is three seeded layers, each a function of place and time in a frame drifting with
   the air (`FDriftFrame`; `SetParamsAt` re-anchors at the boat when the wind turns): convective puffs (lattice along the
-  surface wind, drifting with the wind aloft), the Mann tile `Content/TerrainData/Wind.mann` (`Tools/wind/
+  surface wind, drifting with the wind aloft; since the W1 follow-up, kilometre cells from 12 seeded waves 2 to 5 km
+  long carry `CellShare` of their variance and scale the streak puffs inside them), the Mann tile `Content/TerrainData/Wind.mann` (`Tools/wind/
   make_mann_slice.py`, loaded by the SailingPhysics module; standalone tools load it from the repo root), slow shifts.
   `WindClimate.h` holds the station calibration (`Tools/wind/fetch_wind.sh`, `fit_gusts.py`) and the stability inputs;
   the weather sets `GustIntensity` (fine, via `GustIntensityForFactor`) and `PuffIntensity` from it (`SetClimate`).
@@ -344,6 +345,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   shifty.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
+- Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
+  dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`). Reference-check peaks are
+  GPS-like one-second means.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

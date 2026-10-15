@@ -12,7 +12,7 @@ namespace Sailing
 {
 	namespace
 	{
-		struct FRunResult { double MeanKnots = 0.0, PeakKnots = 0.0, MeanHeelDeg = 0.0, MeanTwaDeg = 0.0, MeanLeewayDeg = 0.0; };
+		struct FRunResult { double MeanKnots = 0.0, PeakKnots = 0.0, MeanHeelDeg = 0.0, MeanTwaDeg = 0.0, MeanLeewayDeg = 0.0, MaxTiltDeg = 0.0; };
 
 		/** The polar's way of sailing a point (autopilot, auto-trim, crew already hiking), with reefs, gusts and a fetch. */
 		FRunResult SteadyRun(const FBoatConfig& Config, double Tws, double Twa, bool bSpinnaker, int Reefs, double Settle, double Average,
@@ -47,6 +47,10 @@ namespace Sailing
 			C.Reef = Reefs;
 			FRunResult R;
 			const int SettleSteps = int(Settle * PhysicsHz), AverageSteps = int(Average * PhysicsHz);
+			// Peaks as a GPS logs them: the best one-second mean (a single physics step catches every wave's orbital surge).
+			const int Window = int(PhysicsHz);
+			std::vector<double> Last(Window, 0.0);
+			double WindowSum = 0.0;
 			for (int I = 0; I < SettleSteps + AverageSteps; ++I)
 			{
 				C = Trim.Update(Boat, C, PhysicsDt);
@@ -57,10 +61,14 @@ namespace Sailing
 				{
 					const FBoatTelemetry& T = Boat.GetTelemetry();
 					R.MeanKnots += T.BoatSpeed / kKnot;
-					R.PeakKnots = std::max(R.PeakKnots, T.BoatSpeed / kKnot);
+					const int K = (I - SettleSteps) % Window;
+					WindowSum += T.BoatSpeed / kKnot - Last[K];
+					Last[K] = T.BoatSpeed / kKnot;
+					if (I - SettleSteps >= Window - 1) R.PeakKnots = std::max(R.PeakKnots, WindowSum / Window);
 					R.MeanHeelDeg += std::fabs(T.Heel) * kRadToDeg;
 					R.MeanTwaDeg += std::fabs(T.TrueWindAngle) * kRadToDeg;
 					R.MeanLeewayDeg += std::fabs(T.Leeway) * kRadToDeg;
+					R.MaxTiltDeg = std::max(R.MaxTiltDeg, Boat.GetState().Orientation.Tilt() * kRadToDeg);
 				}
 			}
 			R.MeanKnots /= AverageSteps;
@@ -239,7 +247,7 @@ namespace Sailing
 	FSpeedRun SpeedRun(const FBoatConfig& Config, double TrueWindKnots, double TwaDeg, bool bSpinnaker, double GustIntensity, double FetchMeters, double Seconds, int Reefs)
 	{
 		const FRunResult R = SteadyRun(Config, TrueWindKnots, TwaDeg, bSpinnaker, Reefs, 30.0, Seconds, GustIntensity, FetchMeters, 3);
-		return { R.PeakKnots, R.MeanKnots };
+		return { R.PeakKnots, R.MeanKnots, R.MaxTiltDeg };
 	}
 
 	std::vector<FReferenceCheck> RunReferenceChecks(bool bQuick)
@@ -320,15 +328,23 @@ namespace Sailing
 		{
 			const FRunResult Steady = SteadyRun(J22, 20.0, 135.0, true, 0, 40.0, 20.0);
 			Out.push_back(Check("Top speed", "J/22 spinnaker 135 deg, 20 kn steady", Steady.MeanKnots, 9.40 * 0.92, 9.40 * 1.08, "kn", "ORC J/22 certificate: 9.40 kn (tolerance 8%)"));
-			const FSpeedRun A = SpeedRun(J22, 20.0, 135.0, true, 0.2, 13000.0, 180.0);
+			// (Gust intensity 0.10 puts the 99th percentile of the one-second wind at 25 kn on a 20 kn day in W1's field with its
+			// kilometre cells; 0.2 took it to 31.)
+			const FSpeedRun A = SpeedRun(J22, 20.0, 135.0, true, 0.10, 13000.0, 180.0);
 			Out.push_back(Check("Top speed", "J/22 spinnaker run, 20 kn gusting 25: peak", A.PeakKnots, 8.0, 12.0, "kn", "Bursts of about 9-12 kn on waves (J/22 GPS 9.7 kn peak in just under 20 kn; method target)"));
 			const FSpeedRun B = SpeedRun(J22, 30.0, 150.0, false, 0.2, 13000.0, 180.0, 1);
 			Out.push_back(Check("Top speed", "J/22 running, 30 kn, reefed: peak", B.PeakKnots, 9.0, 16.0, "kn", "Geronimo J/22, 30+ kn: 'around 14 or 15 knots'; 16 kn record"));
-			// W1: in the new field's puffs (to about 22 kn on a 16 kn day) the autopilot and auto-trim cannot carry a Laser on a
-			// broad reach in a steady 22 kn any more than in a gusty one (they capsize her there in steady wind too: main
-			// passed only because its first 30 s fell in a lull); the GPS figure is a big gust's, so sail the gusty day.
-			const FSpeedRun L = SpeedRun(FBoatConfig::Make(EBoatType::ILCA7), 16.0, 120.0, false, 0.25, 13000.0, 180.0);
-			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 16 kn gusting 22: peak", L.PeakKnots, 10.0, 16.0, "kn", "ILCA about 15 kn GPS in a big gust"));
+			// The ILCA's top speed in a big gust, both ways: a steady 22 kn, and a 16 kn day gusting to about 22 in W1's puffs.
+			// The sailor (auto-trim) dumps the sheet in the hand, sheets in against a roll to windward and sits back on the
+			// plane, and must stay upright for the whole three minutes (a capsized run's peak means nothing).
+			const FBoatConfig Ilca = FBoatConfig::Make(EBoatType::ILCA7);
+			const FSpeedRun L = SpeedRun(Ilca, 22.0, 110.0, false, 0.0, 13000.0, 180.0);
+			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 22 kn: peak", L.PeakKnots, 10.0, 16.0, "kn", "ILCA about 15 kn GPS in a big gust"));
+			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 22 kn: heel at most", L.MaxTiltDeg, 0.0, 70.0, "deg", "A good sailor keeps her up on a heavy-air reach (past 70 deg the model counts a capsize)"));
+			// (Gust intensity 0.14 puts the 99th percentile of the one-second wind at 22 kn on a 16 kn day; 0.25 took it to 27.)
+			const FSpeedRun G = SpeedRun(Ilca, 16.0, 110.0, false, 0.14, 13000.0, 180.0);
+			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 16 kn gusting 22: peak", G.PeakKnots, 10.0, 16.0, "kn", "ILCA about 15 kn GPS in a big gust"));
+			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 16 kn gusting 22: heel at most", G.MaxTiltDeg, 0.0, 70.0, "deg", "A good sailor keeps her up on a heavy-air reach (past 70 deg the model counts a capsize)"));
 		}
 
 		// Portsmouth: lap time on a windward-leeward course relative to the ILCA, by wind band (US Sailing D-PN, no spinnakers).

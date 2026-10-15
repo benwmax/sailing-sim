@@ -8,8 +8,9 @@ The calibration comes from free station data.
 ![The puff field and the whole field, 4 km square](puff-map.png)
 
 `Tools/wind/plot_field.sh 7 15 12`: Lake Ray Hubbard, July, 15:00, 12 kn from the south. North is up and the arrows
-show where the air goes. In the left panel, a 1.5 km puff blows about 45 % over the mean and is veered 8°. Its east
-side fans further right and its west side to the left. The right panel adds the fine turbulence and the slow shifts.
+show where the air goes. In the left panel each puff is veered and its east side fans further right, its west side to
+the left (since the follow-up below, the puffs are 550 m streaks inside kilometre cells; W1 had 1.5 km puffs, about 45 %
+over the mean). The right panel adds the fine turbulence and the slow shifts.
 
 ## The field (`Wind.h`, `Wind.cpp`)
 
@@ -182,3 +183,57 @@ water. The fanning is in the direction field, not in the roughness map, so the m
 - Easy mode halves both intensities and the shifts.
 - `scripts/polar.sh`, `traffic.sh` and `reference-checks.sh` now run their binaries from the repository root, so the
   standalone tools find the Mann tile.
+
+## Follow-ups: kilometre cells, Laser heavy-air handling
+
+**Kilometre cells.** The PC's first LES (a North Texas summer afternoon, `docs/water-6/les-pilot.md` on `w6-les-pilot`)
+put most of the gust energy in lulls and puffs 2 to 5 km across, with the 250 to 500 m streaks inside them. The field
+now has that layer:
+
+![The field over 12 km: kilometre lulls and gust patches, streak puffs inside them](puff-map-cells.png)
+
+`Tools/wind/plot_field.sh 7 15 12 6000 docs/w1/puff-map-cells.png`: the same July afternoon over a 12 km square.
+
+- **Cells:** 12 seeded waves with wavelengths spread evenly (in log) over 1 to 2.5 mixed-layer depths, held to 2 to 5 km,
+  in all directions (stretched along a breeze like the streets). The sum is band-limited by construction, which value
+  noise is not: interpolated lattice noise put half its variance beyond 8 km. Each wave's phase drifts, so the pattern
+  re-forms in 20 to 40 min. The cells sit in the puffs' frame, drifting with the wind aloft.
+- **Share:** `CellShare` (0.65, the LES's "about two thirds") of the puffs' variance; 0 gives the W1 field. The stations'
+  2-minute spread splits between the cells and the puffs, and each converts to its own field spread by how much of it a
+  2-minute mean keeps (`kCellSlowRms` 0.80, `kPuffSlowRms` 0.83).
+- **Puffs inside them:** with cells on, the puffs are the streaks: a quarter of the mixed layer across (0.3 to 1 km), and
+  they are scaled by 1 + 0.6 n inside the cells (n the cell field, unit spread; held to 0.2 to 1.8). A big gust patch
+  veers by 0.15 × `PuffVeerDegrees` per unit, and a lull backs.
+- **Calibration kept:** the gust factor's slope on the fine turbulence went from 1.50 to 1.58 (the streaks pass within a
+  minute). Gust factor, field and stations, now: July afternoon 1.184 / 1.180, January morning 1.188 / 1.188, April bay
+  1.175 / 1.176. Puffs every 6 to 8 min (stations 6 to 7).
+- **Test:** `SailingSim.Physics.WindPuffsAtTwoScales`: along the wind, the puff layer's variance is 62 % at 2 to 8 km
+  wavelengths and 12 % at 250 m to 1 km (the W1 field: 68 % and 0 %).
+
+**Laser heavy-air handling.** The autopilot and auto-trim capsized the ILCA 7 on a 22 kn broad reach in steady wind.
+The traces showed four faults: the trimmer sheeted *in* as she rounded up (the apparent wind came forward); a late,
+slow ease with the sailor still fully hiked whipped her over to windward; the eased main then death-rolled her on the
+bear-away; and at 13 to 14 kn she overruns the 10-knot lake waves, buries the bow 12 to 17°, the rudder comes out and
+she spins out. A dinghy sailor fixes these with the sheet in the hand and their weight. Dinghy-only knobs
+(`DinghyEasePerHeelDeg`, `DinghySheetRate`, `CrewAftRange`, 0 for the keelboats, so the J/22 polar is untouched):
+
+- dump 2° of boom per degree of heel past the limit (and of the roll toward it) at once, at 2.5 sheet travel per second;
+- never trim in while still overpowered, and after a dump trim back on at 0.25 per second, not in step with the roll;
+- sheet in hard (never ease) as she rolls to windward;
+- come in off the hike twice as fast;
+- slide aft as she gets on the plane (Froude 0.5 to 0.9), up to 0.5 m: a new fore-and-aft crew position in the model
+  (`FBoatControls::CrewAft`, `FBoatState::CrewOffsetX`).
+
+Steering under the heel (bear away past the limit, luff on a windward roll) was tried and made the gusty runs worse, so
+it was left out. Over 16 runs each (100 to 130°, four wave seeds), main capsized 12 in a steady 22 kn and 11 at 16 kn
+gusting 22; this branch capsizes 1 and 2. `scripts/polar.sh --quick` is 0 of 39 out; the ILCA's own polar is 0 of 15
+(worst 12.7 %, was 12.0 %).
+
+The reference checks now measure top speed the way GPS does (the best one-second mean, not one 120 Hz step) and require
+the boat to stay up (under 70° of heel, where the model counts a capsize). "ILCA 7 broad reach, 22 kn" is back (steady
+wind, 15.5 kn peak). "16 kn gusting 22" now uses gust intensity 0.14, which is what puts the 99th percentile of the
+one-second wind at 22 kn; 0.25 put it at 27 (and the J/22's "20 kn gusting 25" run likewise went from 0.2 to 0.10:
+with the cells, 0.2 meant gusts to 31 kn and a 12.2 kn peak against the 12 kn cap; at 0.10 it peaks at 11.5). The
+Laser's gusty check stays a known gap: W1's biggest puffs (25 to 27 kn) drive her
+past 16 kn, where the planing drag is uncalibrated (the residuary table is flat above Froude 1.3). She buries the bow and
+the rudder comes out.

@@ -32,7 +32,8 @@ namespace Sailing
 		const double Excess = Heel + 0.3 * HeelRate - Set.HeelLimitDeg * Cfg.TrimHeelLimitDeg / 22.0;
 		const double EaseRate = 0.6 * std::sqrt(22.0 / Cfg.TrimHeelLimitDeg);
 		// Ease as the boat heels past the limit; trim back in slowly, or at once if it starts to heel to windward.
-		const double Recover = Heel < 0.0 ? std::min(-2.0, Heel * 3.0) : -2.0;
+		// (A dinghy sailor, dumping the sheet in the hand as she heels, keeps less of it out afterwards.)
+		const double Recover = (Heel < 0.0 ? std::min(-2.0, Heel * 3.0) : -2.0) * (Cfg.DinghyEasePerHeelDeg > 0.0 ? 4.0 : 1.0);
 		MainEase = Clamp(MainEase + (Excess > 0.0 ? Excess * EaseRate : Recover) * kDegToRad * Dt, 0.0, Cfg.TrimMaxEaseDeg * kDegToRad);
 
 		const double TwsKnots = T.TrueWindSpeed / kKnot;
@@ -42,15 +43,28 @@ namespace Sailing
 		const double Reach = SmoothStep(55.0, 85.0, Twa);
 
 		const double Rate = 0.8 * Dt; // sheets move at most 0.8 of full travel per second
+		// A dinghy sailor sails her flat with the sheet in the hand: dumps it as soon as she heels past the limit (or starts
+		// to roll toward it), and never trims in while she is still overpowered, even if the apparent wind comes forward.
+		const bool bDinghy = Cfg.DinghyEasePerHeelDeg > 0.0;
+		// Rolling to windward (a death roll starts so on a reach or a run) the sailor sheets in hard instead: it loads the
+		// sail to leeward again.
+		const double Windward = bDinghy ? std::max(-(Heel + 0.3 * HeelRate) - 3.0, 0.0) : 0.0;
+		const double Dump = bDinghy ? (std::max(Excess, 0.0) - Windward) * Cfg.DinghyEasePerHeelDeg * kDegToRad : 0.0;
+		const bool bOverpowered = bDinghy && Excess > -3.0;
+		// After a dump she trims back on smoothly, not in step with the roll (sheet and body pumping together rock her over).
+		constexpr double TrimInRate = 0.25;
 		if (Set.bTrimMain && T.NumMainStrips > 0)
 		{
-			const double Foot = FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide) + MainEase;
+			const double Foot = FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide) + MainEase + Dump;
 			// Traveler carries the boom toward the centerline upwind; the sheet does the rest.
 			const double Range = Cfg.TravelerRangeDeg * kDegToRad;
 			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0);
 			const double Sheet = Clamp((Foot - Clamp(Traveler, -1.0, 1.0) * Range) / (Cfg.MainMaxEaseDeg * kDegToRad), 0.0, 1.0);
 			Out.Traveler = MoveToward(Current.Traveler, Clamp(Traveler, -1.0, 1.0), Rate * 2.0);
-			Out.MainSheet = MoveToward(Current.MainSheet, Sheet, Rate);
+			if (Windward > 0.0) Out.MainSheet = MoveToward(Current.MainSheet, std::min(Sheet, Current.MainSheet), Cfg.DinghySheetRate * Dt);
+			else if (bOverpowered) Out.MainSheet = MoveToward(Current.MainSheet, std::max(Sheet, Current.MainSheet), Cfg.DinghySheetRate * Dt);
+			else if (bDinghy && MainEase > kDegToRad) Out.MainSheet = MoveToward(Current.MainSheet, Sheet, (Sheet > Current.MainSheet ? Cfg.DinghySheetRate : TrimInRate) * Dt);
+			else Out.MainSheet = MoveToward(Current.MainSheet, Sheet, Rate);
 		}
 		if (Set.bTrimJib && T.NumJibStrips > 0)
 		{
@@ -78,7 +92,12 @@ namespace Sailing
 		if (Set.bHike)
 		{
 			// Hike out as the boat heels; in light air or running, move in (or to leeward) to keep a little leeward heel.
-			const double HikeRate = 0.8 * std::max(1.0, Cfg.CrewMoveSpeed / 1.6); // a dinghy sailor moves quicker than keelboat crew
+			double HikeRate = 0.8 * std::max(1.0, Cfg.CrewMoveSpeed / 1.6); // a dinghy sailor moves quicker than keelboat crew
+			// ... and comes in off the hike at once when the sheet goes out, or she rolls to windward over the sailor.
+			if (bDinghy) HikeRate *= 2.0;
+			// A dinghy sailor slides back as she gets onto the plane: the bow stays up when she runs into the wave ahead and
+			// the rudder stays in the water.
+			if (Cfg.CrewAftRange > 0.0) Out.CrewAft = MoveToward(Current.CrewAft, Clamp((T.Froude - 0.5) / 0.4, 0.0, 1.0), Dt);
 			Out.Hike = Clamp(Current.Hike + Clamp((Heel - 4.0 + 0.8 * HeelRate) / 4.0, -1.0, 1.0) * HikeRate * Dt, -1.0, 1.0);
 		}
 		return Out;

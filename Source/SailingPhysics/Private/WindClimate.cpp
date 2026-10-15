@@ -120,7 +120,7 @@ namespace Sailing
 	{
 		// FWindField's gust factor rises with its fine turbulence as GF = 1 + kPeak * GI, measured with MeasureGustStats
 		// over the presets' conditions (SailingSim.Physics.WindPuffStatistics keeps it honest).
-		constexpr double kPeak = 1.50;
+		constexpr double kPeak = 1.58; // 1.50 before the kilometre cells (W1 follow-up): the streaks inside them pass within a minute
 		return std::max(GustFactor - 1.0, 0.0) / kPeak;
 	}
 

@@ -102,9 +102,12 @@ namespace Sailing
 			// 7.06 m^2 una rig on an unstayed two-piece mast. One sailor, 82 kg ideal, hiking.
 			FBoatConfig C;
 			C.Type = EBoatType::ILCA7; C.TrimHeelLimitDeg = 8.0; C.TrimMaxEaseDeg = 60.0; C.Name = "ILCA 7 (Laser)";
+			// Sailed flat with the mainsheet in the hand (a sailor dumps a metre of sheet in half a second), sitting back on
+			// the plane: the heavy-air reach without a capsize.
+			C.DinghyEasePerHeelDeg = 2.0; C.DinghySheetRate = 2.5;
 			C.HullRigMass = 80.0; C.HullRigCG = Vec3(-0.05, 0.0, 0.42);
 			C.BallastMass = 0.0; C.BallastCG = Vec3();
-			C.CrewMass = 82.0; C.CrewCG = Vec3(-0.9, 0.0, 0.45); C.CrewCount = 1;
+			C.CrewMass = 82.0; C.CrewCG = Vec3(-0.9, 0.0, 0.45); C.CrewCount = 1; C.CrewAftRange = 0.5;
 			C.CrewSitOut = 0.55; C.CrewHikeOut = 0.55; C.CrewMoveSpeed = 2.5; C.RightingLever = 1.1;
 			C.RadiiOfGyration = Vec3(0.60, 1.10, 1.10);
 			FHullShape H;

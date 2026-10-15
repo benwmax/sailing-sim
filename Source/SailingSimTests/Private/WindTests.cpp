@@ -1,5 +1,5 @@
-// W1: Wind 2.0. The puffs against the stations they were calibrated on, the puffs' veer and fan, the same field at any
-// frame rate, and the shore's lee band (docs/w1/README.md).
+// W1: Wind 2.0. The puffs against the stations they were calibrated on, the puffs at two scales, the puffs' veer and fan,
+// the same field at any frame rate, and the shore's lee band (docs/w1/README.md).
 #include "Misc/AutomationTest.h"
 #include "LakeTerrain.h"
 #include "Weather.h"
@@ -62,6 +62,71 @@ bool FWindPuffStatisticsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Streets of puffs along a breeze"), Breeze.GetDerived().PuffAlong > 1.8 * Breeze.GetDerived().PuffAcross);
 	TestTrue(TEXT("Round open cells in light air"), FMath::Abs(Light.GetDerived().PuffAlong / Light.GetDerived().PuffAcross - 1.0) < 0.1);
 	TestTrue(TEXT("Puffs 0.3 to 3 km across"), Breeze.GetDerived().PuffAcross >= 300.0 && Light.GetDerived().PuffAcross <= 3000.0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWindTwoScalesTest, "SailingSim.Physics.WindPuffsAtTwoScales", WindTestFlags)
+bool FWindTwoScalesTest::RunTest(const FString& Parameters)
+{
+	// The W6 LES pilot (a North Texas summer afternoon) puts most of the gust energy in lulls and puffs 2 to 5 km across,
+	// with 250 to 500 m streaks inside them. The puff layer's spectrum along the wind must have both: the kilometre cells
+	// and the streaks, where the W1 field (CellShare 0) had one scale.
+	auto Bands = [](const FWindField& Wind, double& Kilometre, double& Streaks)
+	{
+		const int32 N = 1600;
+		const double Step = 25.0; // 40 km lines
+		double Total = 0.0;
+		Kilometre = Streaks = 0.0;
+		for (int32 Line = 0; Line < 8; ++Line)
+		{
+			TArray<double> S;
+			S.SetNum(N);
+			double Mean = 0.0;
+			for (int32 I = 0; I < N; ++I)
+			{
+				double F, Shift;
+				Wind.PuffAt(-I * Step, Line * 3100.0, 1800.0 + Line * 900.0, F, Shift);
+				S[I] = F;
+				Mean += F / N;
+			}
+			for (double& V : S) { V -= Mean; Total += V * V / N; }
+			for (int32 K = 1; K < N / 2; ++K)
+			{
+				const double Lambda = N * Step / K;
+				const bool bKm = Lambda >= 2000.0 && Lambda <= 8000.0, bStreak = Lambda >= 250.0 && Lambda < 1000.0;
+				if (!bKm && !bStreak) continue;
+				double Re = 0.0, Im = 0.0;
+				for (int32 I = 0; I < N; ++I)
+				{
+					const double A = 2.0 * kPi * K * I / N;
+					Re += S[I] * std::cos(A);
+					Im += S[I] * std::sin(A);
+				}
+				(bKm ? Kilometre : Streaks) += 2.0 * (Re * Re + Im * Im) / (double(N) * N);
+			}
+		}
+		Kilometre /= Total;
+		Streaks /= Total;
+	};
+	FWeatherSystem Weather;
+	Weather.Configure(EWeatherPreset::AfternoonBreeze, 5, 15.0);
+	Weather.SetClimate(7, false);
+	FWeatherState S = Weather.Evaluate(0.0);
+	S.Wind.SpeedKnots = 12.0;
+	const FWindField Wind(S.Wind);
+	double Km, Streaks;
+	Bands(Wind, Km, Streaks);
+	S.Wind.CellShare = 0.0;
+	const FWindField OneScale(S.Wind);
+	double Km1, Streaks1;
+	Bands(OneScale, Km1, Streaks1);
+	const FWindField::FDerived& D = Wind.GetDerived();
+	AddInfo(FString::Printf(TEXT("July afternoon (mixed layer %.0f m): cells %.1f to %.1f km waves, puffs %.0f m; puff variance at 2-8 km %.0f%%, at 250-1000 m %.0f%% (one scale: %.0f%%, %.0f%%)"),
+		S.Wind.MixedLayerMeters, D.CellWaveMin / 1000.0, D.CellWaveMax / 1000.0, D.PuffAcross, Km * 100.0, Streaks * 100.0, Km1 * 100.0, Streaks1 * 100.0));
+	TestTrue(TEXT("Cells within 2 to 5 km"), D.CellWaveMin >= 2000.0 && D.CellWaveMax <= 5000.0);
+	TestTrue(TEXT("Most of the puffs' energy at kilometres"), Km > 0.45);
+	TestTrue(TEXT("Streaks inside them"), Streaks > 0.08 && D.PuffAcross <= 1000.0);
+	TestTrue(TEXT("The one-scale field had no streaks"), Streaks1 < 0.03);
 	return true;
 }
 
