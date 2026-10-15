@@ -1,0 +1,9 @@
+view,quality,ocean,avg_fps,p99_ms,water_ms,water_cpu_ms
+pier,Medium,on,89.1,11.7,1.6,0.087
+pier,Medium,off,90.0,11.69,1.54,0.073
+pier,High,on,49.9,21.43,1.85,0.359
+pier,High,off,49.6,21.38,1.74,0.389
+pier,Medium,on,89.0,11.88,1.61,0.086
+pier,Medium,off,89.7,11.68,1.54,0.072
+pier,High,on,50.2,21.18,1.82,0.37
+pier,High,off,49.6,21.29,1.73,0.392

@@ -238,6 +238,21 @@ namespace Sailing
 		return 4.0 * std::sqrt(Variance);
 	}
 
+	double FWaveField::SignificantHeightAt(double X, double Y) const
+	{
+		double Variance = 0.0;
+		for (const FWaveComponent& C : Components) Variance += 0.5 * C.Amplitude * C.Amplitude;
+		if (Ocean) Variance += OceanShareAt(X, Y) * Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
+		return 4.0 * std::sqrt(Variance);
+	}
+
+	double FWaveField::OceanShareAt(double X, double Y) const
+	{
+		if (!Ocean) return 0.0;
+		const double M = Ocean->MaskAt(X, Y);
+		return M * M;
+	}
+
 	double FWaveField::MeanDirection() const
 	{
 		double X = 0.0, Y = 0.0;
@@ -295,6 +310,7 @@ namespace Sailing
 			B.Direction = std::atan2(C.Ky, C.Kx);
 			BandCache.push_back(B);
 		}
+		BandOceanStart = BandCache.size();
 		if (Ocean) BandCache.insert(BandCache.end(), Ocean->Bands().begin(), Ocean->Bands().end());
 		return BandCache;
 	}

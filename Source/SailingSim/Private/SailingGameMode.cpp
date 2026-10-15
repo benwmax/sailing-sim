@@ -63,7 +63,8 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			: ((Value.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Value == TEXT("1")) ? 1 : 0);
 	}
 	Lake.Load(FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
-	if (Lake.bOcean)
+	// gulf-swell: Galveston carries the Gulf's ocean too (masked out of the bay); -SailingNoOcean compares without it.
+	if (Lake.bOcean && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoOcean")))
 	{
 		Ocean = MakeShared<FOcean>();
 		Waves.SetOcean(std::shared_ptr<FOcean>(Ocean.Get(), [Keep = Ocean](FOcean*) {}));

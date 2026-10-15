@@ -1188,7 +1188,7 @@ FLogEntry ASailboatPawn::MakeLogEntry(const TCHAR* Kind, const FString& Remarks)
 		E.HeadingMagnetic = SailingNav::TrueToMagnetic(GetHeadingTrueDeg(), GM->GetLake().VariationDeg);
 		E.WindFromDeg = SailingNav::NormalizeDeg(GM->GetWeatherState().Wind.FromDegrees);
 		E.WindKnots = T.TrueWindSpeed / kKnot;
-		E.SeaMeters = GM->GetWaves().SignificantHeight();
+		E.SeaMeters = GM->GetWaves().SignificantHeightAt(Boat.OriginPosition().X, Boat.OriginPosition().Y);
 	}
 	const Vec3 V = Boat.GetState().Velocity;
 	E.SpeedKnots = FMath::Sqrt(V.X * V.X + V.Y * V.Y) / kKnot;

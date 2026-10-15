@@ -220,38 +220,101 @@ namespace Sailing
 		Mask.Rows = int(Terrain.GetRows() * Terrain.GetCell() / Cell) + 1;
 		Mask.Cols = int(Terrain.GetCols() * Terrain.GetCell() / Cell) + 1;
 		Mask.Values.assign(size_t(Mask.Rows) * Mask.Cols, 0.0f);
-		// Exposure on a coarser grid (fetch is slow to find and changes slowly), depth on the fine one.
-		const int Step = 4;
-		const int ER = Mask.Rows / Step + 2, EC = Mask.Cols / Step + 2;
-		std::vector<float> Exposure(size_t(ER) * EC, 0.0f);
+		const int Rows = Mask.Rows, Cols = Mask.Cols;
+
+		// Land on the mask grid: a cell is land if any terrain node in it is above the water, so a seawall or a jetty a
+		// node or two wide still stops the swell.
+		std::vector<uint8_t> Land(size_t(Rows) * Cols, 0);
+		const int PerCell = std::max(1, int(std::lround(Cell / Terrain.GetCell())));
+		for (int R = 0; R < Rows; ++R)
+			for (int C = 0; C < Cols; ++C)
+			{
+				bool bLand = false;
+				for (int I = 0; I < PerCell && !bLand; ++I)
+					for (int J = 0; J < PerCell && !bLand; ++J)
+						bLand = Terrain.NodeHeight(R * PerCell + I - PerCell / 2, C * PerCell + J - PerCell / 2) > 0.0;
+				Land[size_t(R) * Cols + C] = bLand ? 1 : 0;
+			}
+
+		// Gulf swell: exposure is the share of the swell's directional spread that reaches a point from the open sea in
+		// straight lines. Rays run toward where it comes from over +/-45 deg (cos^2 weights: the narrow swell widened by
+		// refraction and diffraction at a gap); a ray is open if it leaves the charts over deep water (the Gulf: a bay
+		// cut by the chart's edge is shallow) and shut by any land on the way. Behind a barrier every ray is shut; in an
+		// inlet only those through the gap are open, a share that falls with the distance from it. The height follows
+		// the square root of the energy share.
+		constexpr int NumRays = 19;
+		constexpr double Spread = 45.0 * kDegToRad, OpenDepth = 4.0;
+		double RayDX[NumRays], RayDY[NumRays], RayW[NumRays], WSum = 0.0;
+		for (int K = 0; K < NumRays; ++K)
+		{
+			const double A = -Spread + 2.0 * Spread * K / (NumRays - 1);
+			RayDX[K] = std::cos(Params.SwellFromRad + A);
+			RayDY[K] = std::sin(Params.SwellFromRad + A);
+			RayW[K] = std::cos(0.5 * kPi * A / Spread) * std::cos(0.5 * kPi * A / Spread);
+			WSum += RayW[K];
+		}
+		auto IsLand = [&](int R, int C) { return Land[size_t(R) * Cols + C] != 0; };
+		// Exposure on a coarser grid (rays are slow to march and the share changes slowly), depth on the fine one.
+		const int Step = 2;
+		const int ER = (Rows - 1) / Step + 2, EC = (Cols - 1) / Step + 2;
+		std::vector<float> Exposure(size_t(ER) * EC, -1.0f);
 		for (int R = 0; R < ER; ++R)
 			for (int C = 0; C < EC; ++C)
 			{
-				const double X = Mask.X0 + R * Step * Cell, Y = Mask.Y0 + C * Step * Cell;
-				// Open water toward the swell: march until land; leaving the charted area is the open Gulf.
-				double Fetch = 20000.0;
-				const double DX = std::cos(Params.SwellFromRad), DY = std::sin(Params.SwellFromRad);
-				const double XMax = Mask.X0 + Terrain.GetRows() * Terrain.GetCell(), YMax = Mask.Y0 + Terrain.GetCols() * Terrain.GetCell();
-				for (double D = 0.0; D < 20000.0; D += 100.0)
+				const int FR = std::min(R * Step, Rows - 1), FC = std::min(C * Step, Cols - 1);
+				if (IsLand(FR, FC)) continue;   // filled from the water around it below
+				double Open = 0.0;
+				for (int K = 0; K < NumRays; ++K)
 				{
-					const double PX = X + DX * D, PY = Y + DY * D;
-					if (PX < Mask.X0 || PY < Mask.Y0 || PX > XMax || PY > YMax) break;
-					if (Terrain.HeightAt(PX, PY) > 0.0) { Fetch = D; break; }
+					double PR = FR, PC = FC;
+					for (;;)
+					{
+						PR += RayDX[K];
+						PC += RayDY[K];
+						const int IR = int(std::lround(PR)), IC = int(std::lround(PC));
+						if (IR < 0 || IC < 0 || IR >= Rows || IC >= Cols)
+						{
+							const int LR = std::clamp(IR, 0, Rows - 1), LC = std::clamp(IC, 0, Cols - 1);
+							if (Terrain.DepthAt(Mask.X0 + LR * Cell, Mask.Y0 + LC * Cell) >= OpenDepth) Open += RayW[K];
+							break;
+						}
+						if (IsLand(IR, IC)) break;
+					}
 				}
-				Exposure[size_t(R) * EC + C] = float(SmoothStep(3000.0, 12000.0, Fetch));
+				Exposure[size_t(R) * EC + C] = float(std::sqrt(Open / WSum));
+			}
+		// Coarse nodes on land take the mean of the water nodes beside them, so the sea reaches the beach (the depth limit
+		// takes it down there) instead of fading out a coarse cell short of it.
+		std::vector<float> Filled = Exposure;
+		for (int R = 0; R < ER; ++R)
+			for (int C = 0; C < EC; ++C)
+			{
+				if (Exposure[size_t(R) * EC + C] >= 0.0f) continue;
+				double Sum = 0.0;
+				int Count = 0;
+				for (int DR = -1; DR <= 1; ++DR)
+					for (int DC = -1; DC <= 1; ++DC)
+					{
+						const int NR = R + DR, NC = C + DC;
+						if (NR < 0 || NC < 0 || NR >= ER || NC >= EC) continue;
+						const float V = Exposure[size_t(NR) * EC + NC];
+						if (V >= 0.0f) { Sum += V; ++Count; }
+					}
+				Filled[size_t(R) * EC + C] = Count > 0 ? float(Sum / Count) : 0.0f;
 			}
 		const double Hs = std::max(HsTotal, 0.1);
-		for (int R = 0; R < Mask.Rows; ++R)
-			for (int C = 0; C < Mask.Cols; ++C)
+		for (int R = 0; R < Rows; ++R)
+			for (int C = 0; C < Cols; ++C)
 			{
 				const double FR = double(R) / Step, FC = double(C) / Step;
 				const int R0 = std::min(int(FR), ER - 2), C0 = std::min(int(FC), EC - 2);
 				const double TR = FR - R0, TC = FC - C0;
-				const double E = (1 - TR) * ((1 - TC) * Exposure[size_t(R0) * EC + C0] + TC * Exposure[size_t(R0) * EC + C0 + 1])
-					+ TR * ((1 - TC) * Exposure[size_t(R0 + 1) * EC + C0] + TC * Exposure[size_t(R0 + 1) * EC + C0 + 1]);
+				const double E = (1 - TR) * ((1 - TC) * Filled[size_t(R0) * EC + C0] + TC * Filled[size_t(R0) * EC + C0 + 1])
+					+ TR * ((1 - TC) * Filled[size_t(R0 + 1) * EC + C0] + TC * Filled[size_t(R0 + 1) * EC + C0 + 1]);
+				// Depth limit: waves break at a height of about 0.6 times the depth, so they die away across the shoals.
 				const double Depth = Terrain.DepthAt(Mask.X0 + R * Cell, Mask.Y0 + C * Cell);
 				const double Limit = Clamp(Depth / (1.6 * Hs), 0.0, 1.0);
-				Mask.Values[size_t(R) * Mask.Cols + C] = float(E * Limit);
+				Mask.Values[size_t(R) * Cols + C] = float(E * Limit);
 			}
 	}
 

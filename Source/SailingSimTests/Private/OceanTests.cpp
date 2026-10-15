@@ -82,9 +82,82 @@ bool FOceanSpectrumTest::RunTest(const FString& Parameters)
 		const double Offshore = Ocean.MaskAt(-31000.0, -5000.0), WestBay = Ocean.MaskAt(-12000.0, -25000.0), Inside = Ocean.MaskAt(3000.0, -6000.0);
 		AddInfo(FString::Printf(TEXT("Mask: offshore %.2f, inside Bolivar Roads %.2f, West Bay %.2f"), Offshore, Inside, WestBay));
 		TestTrue(TEXT("Full sea offshore"), Offshore > 0.95);
-		TestTrue(TEXT("No swell in West Bay or inside the entrance"), WestBay < 0.05 && Inside < 0.1);
+		// gulf-swell: the swell reaches through the entrance by the part of its spread the gap lets in.
+		TestTrue(TEXT("No swell in West Bay, a reduced one inside the entrance"), WestBay < 0.05 && Inside < 0.6);
 		TestTrue(TEXT("Gulf passage is an ocean area with a passage plan"), Gulf.bOcean && Gulf.Passage.Num() >= 4);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGalvestonSwellTest, "SailingSim.Coast.GalvestonSwell", Flags)
+bool FGalvestonSwellTest::RunTest(const FString& Parameters)
+{
+	// gulf-swell: the Galveston world carries the Gulf's ocean. Its mask is the open sea off the Seawall, falls through
+	// Bolivar Roads into the bay (only the part of the swell's spread the jetties' gap lets in) and is nothing in Clear
+	// Lake; the boat feels it only where the mask lets it in.
+	FLakeData Bay;
+	if (!TestTrue(TEXT("Galveston Bay loads"), Bay.Load(FLakeData::DefaultDirectory(), TEXT("GalvestonBay")))) return false;
+	TestTrue(TEXT("Galveston Bay is an ocean area (the Gulf front)"), Bay.bOcean);
+	FOceanParams Fair = GulfSea(0.9);   // the game's fair-weather swell (ASailingGameMode::UpdateOcean)
+	std::shared_ptr<FOcean> Ocean = std::make_shared<FOcean>();
+	Ocean->Configure(Fair);
+	const double BuildStart = FPlatformTime::Seconds();
+	Ocean->BuildMask(Bay.Terrain);
+	const double BuildMs = (FPlatformTime::Seconds() - BuildStart) * 1000.0;
+	struct FPoint { const TCHAR* Name; double X, Y; };
+	const FPoint Seawall = { TEXT("1 km off the Seawall"), -29700.0, 23000.0 }, Pier = { TEXT("Pleasure Pier end"), -29000.0, 22350.0 },
+		Mouth = { TEXT("between the jetty heads"), -24800.0, 31500.0 }, Roads = { TEXT("Bolivar Roads"), -20990.0, 24210.0 },
+		Dike = { TEXT("Texas City Dike"), -16020.0, 15460.0 }, ClearLake = { TEXT("Clear Lake"), 430.0, -4410.0 };
+	for (const FPoint& Pt : { Seawall, Pier, Mouth, Roads, Dike, ClearLake })
+	{
+		AddInfo(FString::Printf(TEXT("%s: mask %.2f"), Pt.Name, Ocean->MaskAt(Pt.X, Pt.Y)));
+	}
+	AddInfo(FString::Printf(TEXT("Mask built in %.0f ms"), BuildMs));
+	TestTrue(TEXT("Full sea off the Seawall"), Ocean->MaskAt(Seawall.X, Seawall.Y) > 0.95);
+	TestTrue(TEXT("Full sea at the Pleasure Pier"), Ocean->MaskAt(Pier.X, Pier.Y) > 0.9);
+	TestTrue(TEXT("Full sea between the jetty heads"), Ocean->MaskAt(Mouth.X, Mouth.Y) > 0.9);
+	TestTrue(TEXT("Falls inside Bolivar Roads (some, but well under the open sea)"), Ocean->MaskAt(Roads.X, Roads.Y) > 0.05 && Ocean->MaskAt(Roads.X, Roads.Y) < 0.6);
+	TestTrue(TEXT("Next to nothing at the Texas City Dike"), Ocean->MaskAt(Dike.X, Dike.Y) < 0.1);
+	TestEqual(TEXT("None in Clear Lake"), Ocean->MaskAt(ClearLake.X, ClearLake.Y), 0.0);
+	TestTrue(TEXT("Mask builds fast enough for the game thread (under 0.5 s)"), BuildMs < 500.0);
+
+	// Felt where it reaches: the sea height and the added resistance follow the mask.
+	FWaveField Waves(3);
+	Waves.SetOcean(Ocean);
+	const double Chop = FWaveField(3).SignificantHeight();
+	TestTrue(TEXT("Clear Lake's sea is the chop alone"), FMath::Abs(Waves.SignificantHeightAt(ClearLake.X, ClearLake.Y) - Chop) < 1e-9);
+	TestTrue(TEXT("Off the Seawall the sea carries the swell"), Waves.SignificantHeightAt(Seawall.X, Seawall.Y) > 0.95 * Ocean->SignificantHeight());
+	auto Sail = [&](const FPoint& At, bool bOcean)
+	{
+		FWindParams P;
+		P.SpeedKnots = 12.0;
+		P.FromDegrees = 140.0;   // close-hauled (TWA 50) heading east
+		const FWindField Wind(P);
+		FWaveField Sea(3);
+		if (bOcean) Sea.SetOcean(Ocean);
+		FBoatModel Boat;
+		Boat.Reset(At.X, At.Y, 90.0 * kDegToRad, 3.0);
+		FBoatControls C;
+		FAutoTrim Trim;
+		FAutopilot Pilot;
+		Pilot.TargetTWADeg = 50.0;
+		double Speed = 0.0;
+		int32 N = 0;
+		for (int32 I = 0; I < int32(90.0 * PhysicsHz); ++I)
+		{
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Pilot.Update(Boat);
+			Boat.Step(PhysicsDt, C, Wind, &Sea);
+			if (I > int32(45.0 * PhysicsHz)) { Speed += Boat.GetTelemetry().BoatSpeed; ++N; }
+		}
+		return Speed / N / kKnot;
+	};
+	const double LakeFlat = Sail(ClearLake, false), LakeOcean = Sail(ClearLake, true);
+	const double GulfFlat = Sail(Seawall, false), GulfOcean = Sail(Seawall, true);
+	AddInfo(FString::Printf(TEXT("Close-hauled: Clear Lake %.2f kn without the ocean, %.2f with; off the Seawall %.2f without, %.2f with"),
+		LakeFlat, LakeOcean, GulfFlat, GulfOcean));
+	TestTrue(TEXT("In Clear Lake the ocean changes nothing"), FMath::Abs(LakeOcean - LakeFlat) < 1e-6);
+	TestTrue(TEXT("Off the Seawall the swell slows her upwind"), GulfOcean < 0.97 * GulfFlat);
 	return true;
 }
 

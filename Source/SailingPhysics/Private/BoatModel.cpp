@@ -572,8 +572,14 @@ namespace Sailing
 					const Vec3 Fwd = Q.Forward();
 					const double HullBeam = 2.0 * Hull.MaxHalfBeam;
 					double Sum = 0.0;
-					for (const FWaveBand& Band : Waves->Bands())
+					// The ocean's bins only as far as its mask lets the open sea in where she is (none in a bay).
+					const std::vector<FWaveBand>& SeaBands = Waves->Bands();
+					const size_t OceanFrom = Waves->OceanBandStart();
+					const double OceanShare = OceanFrom < SeaBands.size() ? Waves->OceanShareAt(State.Position.X, State.Position.Y) : 0.0;
+					for (size_t BandIndex = 0; BandIndex < SeaBands.size(); ++BandIndex)
 					{
+						const FWaveBand& Band = SeaBands[BandIndex];
+						const double BandShare = BandIndex >= OceanFrom ? OceanShare : 1.0;
 						const double IntoWaves = -(std::cos(Band.Direction) * Fwd.X + std::sin(Band.Direction) * Fwd.Y);
 						const double Ratio = Band.Wavelength / Lwl;
 						const double PeakEnd = 1.2 + 1.0 * Froude * std::max(IntoWaves, 0.0);
@@ -581,7 +587,7 @@ namespace Sailing
 						double Response = R4 / (0.25 + R4);
 						if (Ratio > PeakEnd) Response *= 1.0 / (1.0 + (Ratio - PeakEnd) * (Ratio - PeakEnd) / 0.64);
 						// (Hs/2)^2 of a band is four times its variance.
-						Sum += Response * 4.0 * Band.Variance * (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25;
+						Sum += Response * 4.0 * Band.Variance * BandShare * (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25;
 					}
 					WaveResistance = C.AddedResistanceCoef * kWaterDensity * kGravity * Sum * HullBeam * HullBeam / Lwl
 						* Clamp(V / 2.0, 0.0, C.AddedResistanceSpeedCap) * Clamp(Vol / std::max(DesignHullVolume[H], 1e-3), 0.0, 1.0);
