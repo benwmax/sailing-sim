@@ -13,10 +13,20 @@ struct FKitGeometry;
 namespace Sailing { class FLakeTerrain; }
 
 /** Graphics G7: a neighbour boat in her berth: the marina's slips, the coast's moored boats (Type: Sailing::EBoatType, or
- *  PowerBoat for the runabout, PowerYacht for the trawler yacht; Scale to her measured length). */
+ *  PowerBoat for the runabout, PowerYacht for the trawler yacht; Mac polish: PowerExpress, PowerSport and PowerMotorYacht,
+ *  hull paint per instance; Scale to her measured length). */
 struct FBerthedBoat
 {
-	static constexpr uint8 PowerBoat = 255, PowerYacht = 254;
+	static constexpr uint8 PowerBoat = 255;
+	static constexpr uint8 PowerYacht = 254;
+	static constexpr uint8 PowerExpress = 253;
+	static constexpr uint8 PowerSport = 252;
+	static constexpr uint8 PowerMotorYacht = 251;
+	static bool IsPower(uint8 Type) { return Type >= PowerMotorYacht; }
+	/** Whether the class's hull is painted per instance (M_VehiclePaint: custom data 0..2). */
+	static bool IsPainted(uint8 Type) { return Type >= PowerMotorYacht && Type <= PowerExpress; }
+	/** A painted hull's colour (linear): mostly white gelcoat, then the dark blues, ivory, greys and the odd green. */
+	static SAILINGSIM_API FLinearColor PowerHullColour(uint32 Seed);
 	FVector2D Center = FVector2D::ZeroVector;
 	float HeadingDeg = 0.f;
 	uint8 Type = 0;
