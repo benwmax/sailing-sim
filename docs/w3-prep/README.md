@@ -111,7 +111,7 @@ sailed in, and sails a little slower for it. The J/22 is about 5% slower on a 15
   band settles, now that the 18 kn sea reaches it), `Physics.WindShelterBand` and `Lake.WindShadowAndFetch` (the
   open-water build).
 - `scripts/package-mac.sh`: succeeded.
-- bench-visual, Medium and High: packaged, 12 s per view (`bench-visual.csv`, High screenshots in `bench/`). Every view holds Medium 60 and High 45.
+- bench-visual, Medium and High: packaged, 12 s per view (`bench-visual.csv`, screenshots in `bench/`). Every view holds Medium 60 and High 45.
 
 | View | Medium fps | p99 | High fps | p99 |
 |---|---|---|---|---|
