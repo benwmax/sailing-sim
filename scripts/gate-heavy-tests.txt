@@ -1,0 +1,7 @@
+# Bench-fast: tests that take 20 s or more (600 of the suite's 655 s on the M5 Pro, Oct 2026). scripts/gate.sh runs
+# them only when their inputs changed since they last passed (gate.sh HEAVY_INPUTS); a line is a test name prefix.
+SailingSim.Coast.LongPassageStable
+SailingSim.Fleet.Polar.
+SailingSim.Physics.ReferenceChecks
+SailingSim.Physics.PolarGate
+SailingSim.Race.AiFleetRace
