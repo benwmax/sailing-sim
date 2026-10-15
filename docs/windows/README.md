@@ -27,8 +27,8 @@ Use a short path. Unreal's intermediate paths are long, and Windows still trips 
 ```bat
 git config --global core.longpaths true
 git lfs install
-git clone https://github.com/benwmax/sailing-sim C:\dev\sailing-sim
-cd C:\dev\sailing-sim
+git clone https://github.com/benwmax/sailing-sim D:\dev\sailing-sim
+cd D:\dev\sailing-sim
 git lfs pull
 ```
 
@@ -131,7 +131,7 @@ they make is already committed. `polar.sh` and `traffic.sh` can run under Git Ba
 
 ## What has been run, and what has not
 
-Run on the PC (Windows 11, RTX 4090, Visual Studio Community, Unreal 5.8.3, `C:\dev\sailing-sim`):
+Run on the PC (Windows 11, RTX 4090, Visual Studio Community, Unreal 5.8.3, then `C:\dev\sailing-sim`; the checkouts moved to `D:\dev` on Oct 15 2026):
 
 - Editor build (after renaming locals that MSVC rejects as shadowing, C4458/C4459).
 - Automation tests: 91 of 92 passed; the one failure was `SailingSim.Visual.MetaHumanCrew` because the crew is
@@ -178,5 +178,28 @@ tried. What to try, in order:
 3. If an editor still hangs, don't kill it while the crash reporter is up. Close the crash reporter first, wait for the
    editor to end, and record the exact command and log tail here.
 
+Oct 15 2026 again, after the move to `D:\dev`: a short probe ending in `os._exit(0)` (with `-nocrashreports`) hung in an
+ensure at shutdown (`LocalizableMessageProcessor.h`, `Registrations.Num() == 0`); `Stop-Process` after ten minutes left
+a fourth zombie holding `D:\dev\sailing-sim\Binaries\Win64\UnrealEditor-Sailing*.dll`. Since then `run-python.ps1`
+passes `-NoCrashReporter`, and every script that returns normally (`capture_clips.py`, `make_test_footage.py stage`,
+`solve_clips.py`, a dozen probes) exited cleanly.
+
 If a zombie does appear, only a restart frees its files. Work that doesn't build or import (docs, the WSL jobs) can go
-on meanwhile.
+on meanwhile. A zombie's module DLLs can still be renamed out of the way (a mapped image allows a rename), and the build
+then links new ones:
+
+```powershell
+Get-ChildItem Binaries\Win64\UnrealEditor-Sailing*.dll, Binaries\Win64\UnrealEditor-Sailing*.pdb | ForEach-Object { Rename-Item $_.FullName "$($_.Name).zombie" }
+```
+
+Delete the `.zombie` files after the restart. A moved or copied checkout needs its UBT makefiles deleted
+(`Intermediate\Build\Win64\x64\SailingSim*\Development\Makefile.bin`): the copy from `C:\dev` kept the old paths and its
+first build tried to link into `C:\dev\sailing-sim\Binaries`.
+
+## Editor scripts that need the full editor
+
+`-ExecutePythonScript="<script> <args>"` on `UnrealEditor.exe` runs a script in a full editor (GPU, PIE, Movie Render
+Queue) and quits on the next tick after it returns. A script that waits on something (an MRQ render) calls
+`unreal.EditorPythonScripting.set_keep_python_script_alive(True)` and sets it back to `False` when done
+(`make_test_footage.py render`). The MetaHuman body solve needs this route too (`solve_clips.py`): a commandlet has no
+RHI, so the performance won't start.
