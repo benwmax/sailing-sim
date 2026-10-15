@@ -1667,7 +1667,7 @@ AO = 1.0;
     // off) and underneath; the fine detail only underneath, so the shelf's face reads as broad smooth tiers over a torn
     // base (round 10: the storm's mass was frosted all through).
     float edgeS = max(saturate((1.0 - storm) * 2.5), nearBase);
-    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * lip) * lerp(0.25, 1.0, edgeS) - (1.0 - n2) * 0.35 * nearBase * (1.0 - lip)) * 1.6);
+    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * max(lip, 0.85 * shelf * (1.0 - nearBase))) * lerp(0.25, 1.0, edgeS) - (1.0 - n2) * 0.35 * nearBase * (1.0 - lip)) * 1.6);
     // Graphics G6: each layer's extinction relative to the full CloudDensity (Ext: cumulus, stratus, storm; w, the rains, unused since W5a). The grain
     // in the storm skies was optical depth per march step: at 0.1 /m over a 190 m step every ray went opaque inside one
     // step, so each pixel was lit at whatever depth its jittered sample landed (bright skin or dark interior). A storm's
@@ -1691,7 +1691,12 @@ AO = 1.0;
     d = max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cT)), max(dCi, min(dSm * Ext.z, cS)));
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
     // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
-    float wet = saturate(dSm / max(d, 1e-3)) * (1.0 - smoothstep(3000.0, 4500.0, alt));
+    // The fade sits under the anvil (ANVIL_BASE 4.8 km): from 3 km the shelf's upper tiers and the core's flanks read as pale ice.
+    // Wet by the storm's own density, not only its share of d: where the stratus deck runs into the storm it took the
+    // larger share and the storm's mass came out white (game-08's pale band over the shelf).
+    // Cloud inside the storm's extent (the map's w.a), cumulus and stratus too, sits in the deck's shade: lit white, the
+    // fair cells under it made game-08's pale band in front of the shelf.
+    float wet = saturate(max(max(dSm / max(d, 1e-3), dSm * 2.0), max(storm * 3.0, w.a * 2.0))) * (1.0 - smoothstep(4500.0, 5500.0, alt));
     // Storm sky fix (Oct 15 2026, docs/storm-prescreen): the storm's own cloud is dark wherever the viewer stands. It was
     // darkened by the camera's cloud darkness (FrontB.w), so a storm seen from the sunshine ahead of its front (blind-test
     // game-04: a sunlit boat against what should be a dark storm sky) kept a white, pale-grey wall. Slate, a little blue.
@@ -1711,7 +1716,7 @@ AO = 1.0;
     // Its front faces the clear sky behind the observer and reads lighter than the underside (the lip's pale roll over a
     // dark base): both over hundreds of metres, which the march resolves.
     float front = 1.0 - smoothstep(150.0, 450.0, SHELF_LEAD - D);
-    AO *= lerp(1.0, lerp(0.35, 1.25, shelfH) * lerp(1.0, 1.2, front * smoothstep(0.15, 0.5, shelfH)), shelf);
+    AO *= lerp(1.0, lerp(0.35, 0.8, shelfH) * lerp(1.0, 1.1, front * smoothstep(0.15, 0.5, shelfH)), shelf);
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
     Emit = float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;

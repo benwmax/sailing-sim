@@ -34,7 +34,39 @@ The pictures barely move:
 
 Reverted: it doesn't earn a gate.
 
-## Where the fix is (a scoped change, cost-neutral on Mac High)
+## What it really was (storm-sky-fix)
+
+The first try's diagnosis above was wrong on game-04. Turning the rain curtains off (`-SailingNoRainCurtains`) and the
+fog off (`r.Fog 0`, `r.VolumetricFog 0`) left the pale wall where it was. Tinting the layers (`SAILING_DEBUG_LAYERS`)
+showed it was the storm layer's own volumetric cloud. Its dark albedo was multiplied by the camera's cloud darkness
+(`FrontB.w`), so it only applied with the boat already under the deck. Seen from the sunshine ahead of the front, the
+storm stayed white.
+
+The fix is constants and one per-sample term in `CLOUD_CODE`, plus the curtains' shade. No new samples, no new textures:
+
+1. **The storm's cloud is dark wherever the viewer stands.** Albedo `lerp(0.96, (0.19, 0.21, 0.26), wet)`, a blue slate,
+   without the `FrontB.w` factor. The low-altitude occlusion floor goes from 0.3 to 0.2.
+2. **What counts as wet.** It's the storm's share of the density, or its own density (`dSm * 2`), or the storm's structure
+   (`storm * 3`), or the map's storm extent (`w.a * 2`), faded out at 4.5-5.5 km under the anvil (it was 3-4.5 km). Before,
+   it was only the share, so any stratus or cumulus inside the storm took the larger share and came out sunlit white.
+3. **Rain curtains in the deck's shadow.** Each curtain's colour is multiplied by `lerp(0.2, 1, Shade)`, where `Shade` is
+   `FWeatherMap::SunTransmittance` from the curtain toward the sun. It's computed on the game thread with the curtain
+   selection, twice a second for up to 32 curtains (16 on Low), and sent as per-instance custom data 3.
+4. **The shelf's face.** The billow erosion is cut by 0.85 over the shelf above its base (it was only cut at the lip), and
+   the face brightens to 0.8 instead of 1.25 (front boost 1.1, was 1.6).
+
+Not done: scaling the clouds' sun term (`CloudScatteredLuminanceScale`) by the storm's coverage. With the albedo
+fixed it wasn't needed for these views.
+
+**game-08's pale band** (the grey towers across the middle of the frame) isn't the shelf. Zeroing the material's albedo
+removes it, but none of the storm terms (`dSm`, `storm`, `w.a`) reach it, and neither a higher step depth
+(`-SailingCloudStepDepth=2.5`) nor three times the storm's extinction (`-SailingCloudLayerExt=1,1,3,1`) hides it. These
+are fair cumulus outside the storm's painted extent, so they aren't seen through the deck, and they're lit by the sun
+beside the storm. The cumulus that were inside the extent (the puffs under the deck, top left) are now in its shade. If
+game-08 should show no sunlit towers at all, that's a weather-map change (fade cumulus coverage near the front), not a
+shading one.
+
+## Where the fix is (as first proposed, before the diagnosis above)
 
 1. **Rain curtains and fog under the deck:** darken their in-scattering by the deck's shadow (`FWeatherMap::
    SunTransmittance` toward the sun) instead of the open-sky light. That is where game-04's pale wall comes from.
