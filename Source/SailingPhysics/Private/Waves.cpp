@@ -97,7 +97,17 @@ namespace Sailing
 	double FWaveField::TargetPeakPeriod(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 1.0;
-		return GrowthLawPeriod(GrowthStressWind(WindMs), FetchMeters);
+		// Mac polish: the period of the steepened sea follows Toba's 3/2 law in U_A, not the stress wind. GrowthStressWind
+		// stands in for SWAN's faster growth of a young sea above 18 kn, but the air's stress on the water is still U_A's:
+		// the extra height comes from the sea being further along its growth (older, in effect a longer fetch), not from a
+		// stronger wind. The SPM pair is Toba's law, Hs ~ U_A^(1/2) Tp^(3/2) (Hs ~ U_A F^(1/2), Tp ~ U_A^(1/3) F^(1/3)), so
+		// at the same U_A the period goes as Hs^(2/3): (U / 18 kn)^0.29 above 18 kn where the stress wind gave its cube
+		// root, (U / 18 kn)^0.14. SWAN's lake medians follow Toba within 3% from 18 to 28 kn (Hs x2.09, Tp x1.41 against
+		// x1.37 from the law), and the game's periods there were 7% short at 22 kn and 11% at 28 (docs/mac-polish).
+		const double Ua = AdjustedWindSpeed(WindMs);
+		const double HsA = GrowthLawHeight(Ua, FetchMeters);
+		const double Older = HsA > 0.0 ? TargetSignificantHeight(WindMs, FetchMeters) / HsA : 1.0;
+		return GrowthLawPeriod(Ua, FetchMeters) * std::pow(Older, 2.0 / 3.0);
 	}
 
 	void FWaveField::SetWind(const FWaveParams& InParams)

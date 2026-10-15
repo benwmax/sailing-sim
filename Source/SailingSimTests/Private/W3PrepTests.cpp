@@ -61,24 +61,42 @@ bool FSailingWaveGrowthSwanTest::RunTest(const FString& Parameters)
 
 	// SWAN's lake medians (docs/water-3/swan-compare.csv, the median over directions); 10 kn between 8 and 11 kn on the
 	// growth's own power (Hs ~ U^1.2 between them).
-	struct FCase { double Knots, Swan, Tolerance; };
+	// Mac polish: SWAN's median peak period, the bake's SWAN / game period ratio times the period of the game it compared
+	// against (scripts/wave-check.sh); none at 10 kn, which the bake didn't run.
+	struct FCase { double Knots, Swan, Tolerance, SwanTp; };
 	const double Swan10 = 0.084 * FMath::Pow(10.0 / 8.0, FMath::Loge(0.123 / 0.084) / FMath::Loge(11.0 / 8.0));
-	const FCase Cases[] = { { 5.0, 0.047, 0.10 }, { 8.0, 0.084, 0.10 }, { 10.0, Swan10, 0.10 }, { 11.0, 0.123, 0.10 }, { 14.0, 0.164, 0.10 },
-		{ 18.0, 0.232, 0.10 }, { 22.0, 0.325, 0.10 }, { 28.0, 0.485, 0.10 } };
+	const FCase Cases[] = { { 5.0, 0.047, 0.10, 0.91 }, { 8.0, 0.084, 0.10, 1.14 }, { 10.0, Swan10, 0.10, 0.0 }, { 11.0, 0.123, 0.10, 1.33 },
+		{ 14.0, 0.164, 0.10, 1.49 }, { 18.0, 0.232, 0.10, 1.70 }, { 22.0, 0.325, 0.10, 1.99 }, { 28.0, 0.485, 0.10, 2.38 } };
 	for (const FCase& Case : Cases)
 	{
-		std::vector<double> PerDirection;
+		std::vector<double> PerDirection, TpPerDirection;
 		for (int D = 0; D < 16; ++D)
 		{
-			std::vector<double> Hs;
-			for (double F : Fetch[D]) Hs.push_back(FWaveField::TargetSignificantHeight(Case.Knots * kKnot, F));
+			std::vector<double> Hs, Tp;
+			for (double F : Fetch[D])
+			{
+				Hs.push_back(FWaveField::TargetSignificantHeight(Case.Knots * kKnot, F));
+				Tp.push_back(FWaveField::TargetPeakPeriod(Case.Knots * kKnot, F));
+			}
 			PerDirection.push_back(Median(Hs));
+			TpPerDirection.push_back(Median(Tp));
 		}
-		const double Game = Median(PerDirection);
-		AddInfo(FString::Printf(TEXT("%.0f kn: game %.3f m, SWAN %.3f m (%+.0f%%)"), Case.Knots, Game, Case.Swan, 100.0 * (Game / Case.Swan - 1.0)));
+		const double Game = Median(PerDirection), GameTp = Median(TpPerDirection);
+		AddInfo(FString::Printf(TEXT("%.0f kn: game %.3f m, SWAN %.3f m (%+.0f%%); Tp %.2f s"), Case.Knots, Game, Case.Swan, 100.0 * (Game / Case.Swan - 1.0), GameTp));
 		TestTrue(*FString::Printf(TEXT("Lake median Hs at %.0f kn within %.0f%% of SWAN"), Case.Knots, 100.0 * Case.Tolerance),
 			FMath::Abs(Game / Case.Swan - 1.0) < Case.Tolerance);
+		if (Case.SwanTp > 0.0)
+		{
+			// (Before the Toba period, 22 kn was 7% short and 28 kn 11%.)
+			TestTrue(*FString::Printf(TEXT("Lake median Tp at %.0f kn within 10%% of SWAN's %.2f s"), Case.Knots, Case.SwanTp),
+				FMath::Abs(GameTp / Case.SwanTp - 1.0) < 0.10);
+		}
 	}
+	// The period follows Toba's 3/2 law in U_A from the steepened height: at 28 kn (Hs / Hs in U_A)^(2/3) = (28 / 18)^0.287.
+	const double Ua28 = FWaveField::AdjustedWindSpeed(28.0 * kKnot);
+	TestEqual(TEXT("Tp at 28 kn over 2 km is Toba's from the steepened Hs"), FWaveField::TargetPeakPeriod(28.0 * kKnot, 2000.0) / FWaveField::GrowthLawPeriod(Ua28, 2000.0),
+		FMath::Pow(28.0 / 18.0, 0.43 * 2.0 / 3.0), 1e-9);
+	TestEqual(TEXT("... and U_A's own up to 18 kn"), FWaveField::TargetPeakPeriod(15.0 * kKnot, 2000.0), FWaveField::GrowthLawPeriod(FWaveField::AdjustedWindSpeed(15.0 * kKnot), 2000.0), 1e-12);
 	// (W3 prep left 28 kn 18% low, held at 20%; with the steepened stress wind every speed is inside 10%.)
 	return true;
 }
