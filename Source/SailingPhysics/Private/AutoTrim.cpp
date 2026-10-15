@@ -2,6 +2,16 @@
 
 namespace Sailing
 {
+	namespace
+	{
+		// A dinghy sailor's answer to a puff (FAutoTrim::Update): felt a reaction time late, eased past a threshold.
+		constexpr double PuffReactionSeconds = 0.4;
+		constexpr double PuffSetUpSeconds = 30.0;  // the wind she is set up for: the last half minute's
+		constexpr double PuffFromRatio = 1.2;      // a puff a fifth over it starts the ease ...
+		constexpr double PuffFullRatio = 1.35;     // ... and this far over gets all of it
+		constexpr double PuffEaseDeg = 20.0;
+	}
+
 	FBoatControls FAutoTrim::Update(const FBoatModel& Boat, const FBoatControls& Current, double Dt)
 	{
 		const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -49,8 +59,26 @@ namespace Sailing
 		// Rolling to windward (a death roll starts so on a reach or a run) the sailor sheets in hard instead: it loads the
 		// sail to leeward again.
 		const double Windward = bDinghy ? std::max(-(Heel + 0.3 * HeelRate) - 3.0, 0.0) : 0.0;
-		const double Dump = bDinghy ? (std::max(Excess, 0.0) - Windward) * Cfg.DinghyEasePerHeelDeg * kDegToRad : 0.0;
-		const bool bOverpowered = bDinghy && Excess > -3.0;
+		double Dump = bDinghy ? (std::max(Excess, 0.0) - Windward) * Cfg.DinghyEasePerHeelDeg * kDegToRad : 0.0;
+		// Hiked flat in a big puff on a reach the heel hardly moves: the power goes into speed and a bow-down trim, and she
+		// buries the bow and rounds up with the rudder at its stall angle (W1's 25-29 kn puffs on a 16 kn day). A dinghy
+		// sailor answers the puff itself, not only the heel: feels it a reaction time late (0.4 s, a choice of how much to
+		// ease; human simple reactions are about 0.2-0.3 s, choice reactions 0.4-0.5 s), eases the sheet in proportion to how
+		// far it is over the wind she is set up for, and doesn't trim in again until it has passed. Not while she is upright
+		// or rolling to windward over the hiked sailor: easing then starts the windward roll. (Dumping on the helm's pull as
+		// well was tried: she slows, rolls to windward and nose-dives into the next wave.)
+		double PuffEase = 0.0;
+		if (bDinghy)
+		{
+			if (FeltWind <= 0.0) FeltWind = SetUpWind = T.TrueWindSpeed;
+			FeltWind += (T.TrueWindSpeed - FeltWind) * std::min(Dt / PuffReactionSeconds, 1.0);
+			SetUpWind += (FeltWind - SetUpWind) * std::min(Dt / PuffSetUpSeconds, 1.0);
+			const double Puff = Clamp((FeltWind / std::max(SetUpWind, 1.0) - PuffFromRatio) / (PuffFullRatio - PuffFromRatio), 0.0, 1.0);
+			const double Leeward = SmoothStep(0.0, 6.0, Heel + 0.3 * HeelRate);
+			PuffEase = PuffEaseDeg * Puff * Leeward * kDegToRad;
+			Dump += PuffEase;
+		}
+		const bool bOverpowered = bDinghy && (Excess > -3.0 || PuffEase > kDegToRad);
 		// After a dump she trims back on smoothly, not in step with the roll (sheet and body pumping together rock her over).
 		constexpr double TrimInRate = 0.25;
 		if (Set.bTrimMain && T.NumMainStrips > 0)

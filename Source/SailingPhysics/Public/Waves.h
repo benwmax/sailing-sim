@@ -90,11 +90,13 @@ namespace Sailing
 		/** Direction the waves travel toward (energy-weighted mean), radians in the XY plane. */
 		double MeanDirection() const;
 
-		/** Fetch-limited growth law targets (SPM forms in the adjusted wind speed U_A). */
+		/** Fetch-limited growth law targets (SPM forms in GrowthStressWind: U_A, steepened above 18 kn). */
 		static double TargetSignificantHeight(double WindMs, double FetchMeters);
 		static double TargetPeakPeriod(double WindMs, double FetchMeters);
 		/** The growth laws' wind-stress factor U_A = 0.71 U^1.23 (m/s in, m/s out). */
 		static double AdjustedWindSpeed(double WindMs);
+		/** The wind the targets grow the sea in: U_A, times (U / 18 kn)^0.43 above 18 kn (m/s in, m/s out). */
+		static double GrowthStressWind(double WindMs);
 		/** The SPM laws in whatever wind is given (TargetSignificantHeight is this in U_A). */
 		static double GrowthLawHeight(double StressWindMs, double FetchMeters);
 		static double GrowthLawPeriod(double StressWindMs, double FetchMeters);

@@ -56,6 +56,22 @@ namespace Sailing
 		return WindMs > 0.0 ? 0.71 * std::pow(WindMs, 1.23) : 0.0;
 	}
 
+	double FWaveField::GrowthStressWind(double WindMs)
+	{
+		// Physics gaps: past 18 kn the lake's sea grows faster than U_A gives. In W3's SWAN bake of Ray Hubbard the median
+		// Hs goes as U^1.2 from 5 to 14 kn (U_A's own 1.23) but as U^1.68 from 18 to 22 kn and U^1.66 from 22 to 28, and in
+		// U_A the game was 9% low at 22 kn and 18% at 28. It isn't the fetch: the shortfall grows with the wind alike over
+		// the lake's short and long fetches (SWAN / game rose 1.50 times at the 10th percentile, 1.49 at the median and 1.65
+		// at the 90th from 14 to 28 kn), none of it sits at the 15 km cap, and full development (gF/U_A^2 = 2.3e4) is far
+		// off. It's the young, strongly forced end of the growth law: at 28 kn the lake's median effective fetch (1.6 km) is
+		// gF/U_A^2 = 45, against 250 at 14 kn, and SWAN's wind input there (Yan 1987, used with the Westhuysen whitecapping
+		// the bake ran) grows with (u*/c)^2, faster than the SPM's power law fitted to older seas. So above 18 kn the stress
+		// wind steepens by (U / 18 kn)^0.43, which makes Hs go as U^1.66 there, as SWAN's does (docs/physics-gaps). It is
+		// continuous at 18 kn and leaves everything below it, the reference checks' 15 kn included, as it was.
+		constexpr double KneeMs = 18.0 * kKnot;
+		return AdjustedWindSpeed(WindMs) * (WindMs > KneeMs ? std::pow(WindMs / KneeMs, 0.43) : 1.0);
+	}
+
 	double FWaveField::GrowthLawHeight(double StressWindMs, double FetchMeters)
 	{
 		const double U2 = StressWindMs * StressWindMs;
@@ -75,13 +91,13 @@ namespace Sailing
 	double FWaveField::TargetSignificantHeight(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 0.0;
-		return GrowthLawHeight(AdjustedWindSpeed(WindMs), FetchMeters);
+		return GrowthLawHeight(GrowthStressWind(WindMs), FetchMeters);
 	}
 
 	double FWaveField::TargetPeakPeriod(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 1.0;
-		return GrowthLawPeriod(AdjustedWindSpeed(WindMs), FetchMeters);
+		return GrowthLawPeriod(GrowthStressWind(WindMs), FetchMeters);
 	}
 
 	void FWaveField::SetWind(const FWaveParams& InParams)

@@ -53,11 +53,18 @@ bool FSailingWaveGrowthSwanTest::RunTest(const FString& Parameters)
 	for (int D = 0; D < 16; ++D)
 		for (const FVector2D& C : Cells) Fetch[D].push_back(GameFetch(T, C.X, C.Y, D * 22.5 * kDegToRad));
 
+	// Physics gaps: above 18 kn the targets grow in U_A steepened by (U / 18 kn)^0.43, continuous at 18 kn.
+	TestEqual(TEXT("The stress wind is U_A up to 18 kn"), FWaveField::GrowthStressWind(17.9 * kKnot), FWaveField::AdjustedWindSpeed(17.9 * kKnot), 1e-12);
+	TestEqual(TEXT("... continuous at 18 kn"), FWaveField::GrowthStressWind(18.0001 * kKnot), FWaveField::AdjustedWindSpeed(18.0001 * kKnot), 1e-4);
+	TestEqual(TEXT("... and (U / 18 kn)^0.43 over it at 28 kn"), FWaveField::GrowthStressWind(28.0 * kKnot) / FWaveField::AdjustedWindSpeed(28.0 * kKnot),
+		FMath::Pow(28.0 / 18.0, 0.43), 1e-9);
+
 	// SWAN's lake medians (docs/water-3/swan-compare.csv, the median over directions); 10 kn between 8 and 11 kn on the
 	// growth's own power (Hs ~ U^1.2 between them).
 	struct FCase { double Knots, Swan, Tolerance; };
 	const double Swan10 = 0.084 * FMath::Pow(10.0 / 8.0, FMath::Loge(0.123 / 0.084) / FMath::Loge(11.0 / 8.0));
-	const FCase Cases[] = { { 10.0, Swan10, 0.10 }, { 18.0, 0.232, 0.10 }, { 22.0, 0.325, 0.10 }, { 28.0, 0.485, 0.20 } };
+	const FCase Cases[] = { { 5.0, 0.047, 0.10 }, { 8.0, 0.084, 0.10 }, { 10.0, Swan10, 0.10 }, { 11.0, 0.123, 0.10 }, { 14.0, 0.164, 0.10 },
+		{ 18.0, 0.232, 0.10 }, { 22.0, 0.325, 0.10 }, { 28.0, 0.485, 0.10 } };
 	for (const FCase& Case : Cases)
 	{
 		std::vector<double> PerDirection;
@@ -72,7 +79,7 @@ bool FSailingWaveGrowthSwanTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("Lake median Hs at %.0f kn within %.0f%% of SWAN"), Case.Knots, 100.0 * Case.Tolerance),
 			FMath::Abs(Game / Case.Swan - 1.0) < Case.Tolerance);
 	}
-	// Known gap: at 28 kn SWAN is still about 18% higher (U_A gives 1.31 of the 1.61 the bake found). Held at 20%.
+	// (W3 prep left 28 kn 18% low, held at 20%; with the steepened stress wind every speed is inside 10%.)
 	return true;
 }
 
