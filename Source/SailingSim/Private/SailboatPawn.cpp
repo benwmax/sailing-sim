@@ -715,15 +715,10 @@ void ASailboatPawn::BeginPlay()
 	FString BoatArg;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBoat="), BoatArg))
 	{
-		// -SailingBoat=Hobie (the first letters of a fleet boat's name, any case), for this run only.
-		for (int32 I = 0; I < int32(EBoatType::Count); ++I)
-		{
-			if (FString(BoatTypeName(EBoatType(I))).Replace(TEXT(" "), TEXT("")).StartsWith(BoatArg.Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase))
-			{
-				USailingSettings::Get()->BoatType = I;
-				break;
-			}
-		}
+		// -SailingBoat=Hobie (the first letters of a fleet boat's name, any case; J22 is the J/22), for this run only.
+		const int32 Match = USailingSettings::MatchBoatName(BoatArg);
+		if (Match >= 0) USailingSettings::Get()->BoatType = Match;
+		else UE_LOG(LogSailing, Warning, TEXT("-SailingBoat=%s matches no boat; sailing the %s"), *BoatArg, UTF8_TO_TCHAR(BoatTypeName(EBoatType(USailingSettings::Get()->BoatType))));
 	}
 	SetBoat(USailingSettings::Get()->BoatType);
 
@@ -978,7 +973,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		{
 			USailSessionSave* Save = USailSessionSave::Get();
 			const int32 Index = int32(DrillRunner.GetDrill()) - 1;
-			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); Save->SaveConfig(); }
+			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); if (!USailingSettings::IgnoresSavedChoices()) Save->SaveConfig(); }
 		}
 	}
 	UpdateDrillVisuals();
@@ -1311,7 +1306,7 @@ void ASailboatPawn::AssignKey(int32 Row, const FKey& Key)
 	{
 		if (B.Action == Target.Action && (B.Scale < 0.f) == Target.bNegative && B.Key == Old) { B.Key = Key; break; }
 	}
-	Settings->SaveConfig();
+	if (!USailingSettings::IgnoresSavedChoices()) Settings->SaveConfig();
 	RebuildMappings();
 	BuildKeyRows();
 	KeysMessage = Swapped.IsEmpty() ? FString::Printf(TEXT("%s: %s"), *Target.Label, *Key.GetDisplayName().ToString())

@@ -25,6 +25,9 @@ SHOT="${SHOT:-screenshot}"
 rm -rf "$LOG" "$BENCH_DIR/bench.json" "$BENCH_DIR/$SHOT.png" "$BENCH_DIR/$SHOT.camera.json" "$BENCH_DIR/$SHOT.telemetry.csv" "$BENCH_DIR/rec"
 EXTRA=(-SailingShot="$SHOT")
 [[ -n "${ARGS:-}" ]] && read -r -a ARGV <<< "$ARGS" && EXTRA+=("${ARGV[@]}")
+# The J/22 at the lake unless the run says otherwise (the game also ignores the player's saved boat and world here).
+[[ " ${EXTRA[*]} " == *" -SailingBoat="* ]] || EXTRA+=(-SailingBoat=J22)
+[[ " ${EXTRA[*]} " == *" -SailingWorld="* ]] || EXTRA+=(-SailingWorld=Lake)
 [[ -n "${RECORD_INTERVAL:-}" ]] && EXTRA+=(-SailingRecordInterval="$RECORD_INTERVAL")
 [[ "${DEMO:-0}" == "1" ]] && EXTRA+=(-SailingDemo)
 [[ -n "${RECORD:-}" ]] && EXTRA+=(-SailingRecord="$RECORD")
