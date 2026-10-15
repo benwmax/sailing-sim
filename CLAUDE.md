@@ -361,6 +361,17 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   Polar, scenario and reference runs set `FWaveParams::bCalibrationSea` (the old law in U, the sea the fleet was
   calibrated in). `FShelterMap` builds the open-water speed-up and `GustAt` (gusts easing with fetch, W6's LES) from
   the same march; `FWindField::GustScaleAt` scales every fluctuation by it (1 without a map).
+- Sea state by direction (W3, `docs/water-3/`): `FSeaFetch` (`SeaState.h`) is Saville's effective fetch for 16 wave
+  directions on a 50 m grid (100 m bay, 200 m Gulf) plus depth, marched at load (~50 ms); `FSeaMap` holds, for the mean
+  wind, a ratio per long component (its band's growth-law amplitude at its fetch / at the 15 km reference, times sqrt
+  TMA) and one short-wave scale, rebuilt on a worker by the game mode (5% speed, 11.25 deg). A component's fetch is read
+  along its direction pulled `kSeaTowardWind` (0.75) toward the wind. With a map, `FWaveField` grows toward the 15 km sea
+  and `Height`/`Sample`/`SignificantHeightAt`/`BandsAt` scale by the map (boats' added resistance at their own position);
+  without one (polars, references, `-SailingNoSeaMap`) nothing changes. `SetDepth` puts the components on omega^2 =
+  g k tanh(kh) at the world's median depth before the renderer caches them. The atlas (`AWaterSurface::UpdateSeaMap`,
+  packed on a worker) is seven RGBA half tiles: tile t channel c scales component 4t+c, tile 6 R the short waves;
+  `SEA_ATLAS` in make_materials.py mirrors `FSeaMap::Sample` (keep them in step). `scripts/wave-check.sh --map` checks
+  against SWAN (w3-swan-bake).
 - Wind (W1, `docs/w1/`): `FWindField` is three seeded layers, each a function of place and time in a frame drifting with
   the air (`FDriftFrame`; `SetParamsAt` re-anchors at the boat when the wind turns): convective puffs (lattice along the
   surface wind, drifting with the wind aloft; since the W1 follow-up, kilometre cells from 12 seeded waves 2 to 5 km

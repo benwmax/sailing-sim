@@ -1,5 +1,6 @@
 #include "Waves.h"
 #include "Ocean.h"
+#include "SeaState.h"
 
 namespace Sailing
 {
@@ -7,6 +8,61 @@ namespace Sailing
 	{
 		constexpr double kMinFrequency = 0.18; // Hz (wavelength about 48 m)
 		constexpr double kMaxFrequency = 2.4;  // Hz (about 0.27 m)
+	}
+
+	double FWaveField::BandCentreHz(int B)
+	{
+		const double Ratio = std::pow(kMaxFrequency / kMinFrequency, 1.0 / kWaveBands);
+		const double F0 = kMinFrequency * std::pow(Ratio, B);
+		return std::sqrt(F0 * F0 * Ratio);
+	}
+
+	double FWaveField::BandWidthHz(int B)
+	{
+		const double Ratio = std::pow(kMaxFrequency / kMinFrequency, 1.0 / kWaveBands);
+		const double F0 = kMinFrequency * std::pow(Ratio, B);
+		return F0 * Ratio - F0;
+	}
+
+	namespace
+	{
+		/** The JONSWAP shape of ComputeTargetAmplitudes (gamma 3.3), unscaled. */
+		double JonswapShape(double F, double Fp)
+		{
+			const double Sigma = F <= Fp ? 0.07 : 0.09;
+			const double R = std::exp(-(F - Fp) * (F - Fp) / (2.0 * Sigma * Sigma * Fp * Fp));
+			return std::pow(F, -5.0) * std::exp(-1.25 * std::pow(Fp / F, 4.0)) * std::pow(3.3, R);
+		}
+
+		/** Wavenumber of angular frequency Omega in depth H (omega^2 = g k tanh(k h)); deep water when H <= 0. */
+		double WavenumberFor(double Omega, double H)
+		{
+			const double Deep = Omega * Omega / kGravity;
+			if (H <= 0.0) return Deep;
+			// Newton from the deep (or the shallow, whichever is longer) wavenumber; it converges in a few steps.
+			double K = std::max(Deep, Omega / std::sqrt(kGravity * H));
+			for (int I = 0; I < 30; ++I)
+			{
+				const double T = std::tanh(K * H);
+				const double F = kGravity * K * T - Omega * Omega;
+				const double D = kGravity * (T + K * H * (1.0 - T * T));
+				const double Next = K - F / D;
+				if (std::fabs(Next - K) < 1e-12 * K) { K = Next; break; }
+				K = Next;
+			}
+			return K;
+		}
+	}
+
+	double FWaveField::BandAmplitudeFactor(int Band, double WindMs, double FetchMeters)
+	{
+		if (WindMs < 0.5) return 0.0;
+		const double Hs = TargetSignificantHeight(WindMs, FetchMeters);
+		const double Fp = 1.0 / TargetPeakPeriod(WindMs, FetchMeters);
+		double Variance = 0.0;
+		for (int B = 0; B < kWaveBands; ++B) Variance += JonswapShape(BandCentreHz(B), Fp) * BandWidthHz(B);
+		const double Scale = Variance > 1e-12 ? (Hs / 4.0) / std::sqrt(Variance) : 0.0;
+		return Scale * std::sqrt(2.0 * JonswapShape(BandCentreHz(Band), Fp) * BandWidthHz(Band));
 	}
 
 	FWaveField::FWaveField(uint32_t Seed)
@@ -122,19 +178,15 @@ namespace Sailing
 	{
 		const double U = Params.WindSpeedKnots * kKnot;
 		const bool bCalm = U < 0.5;
-		const double Hs = bCalm ? 0.0 : Params.bCalibrationSea ? GrowthLawHeight(U, Params.FetchMeters) : TargetSignificantHeight(U, Params.FetchMeters);
-		const double Tp = bCalm ? 1.0 : Params.bCalibrationSea ? GrowthLawPeriod(U, Params.FetchMeters) : TargetPeakPeriod(U, Params.FetchMeters);
+		const double Fetch = ReferenceFetch();
+		const double Hs = bCalm ? 0.0 : Params.bCalibrationSea ? GrowthLawHeight(U, Fetch) : TargetSignificantHeight(U, Fetch);
+		const double Tp = bCalm ? 1.0 : Params.bCalibrationSea ? GrowthLawPeriod(U, Fetch) : TargetPeakPeriod(U, Fetch);
 		const double Fp = 1.0 / Tp;
 		// Waves travel downwind.
 		const double TravelDir = Params.WindFromDegrees * kDegToRad + kPi;
 
 		// JONSWAP shape (gamma 3.3), scaled afterwards so the discrete sum has exactly the target Hs.
-		auto Jonswap = [Fp](double F)
-		{
-			const double Sigma = F <= Fp ? 0.07 : 0.09;
-			const double R = std::exp(-(F - Fp) * (F - Fp) / (2.0 * Sigma * Sigma * Fp * Fp));
-			return std::pow(F, -5.0) * std::exp(-1.25 * std::pow(Fp / F, 4.0)) * std::pow(3.3, R);
-		};
+		auto Jonswap = [Fp](double F) { return JonswapShape(F, Fp); };
 
 		double Variance = 0.0;
 		for (int B = 0; B < kWaveBands; ++B)
@@ -192,14 +244,49 @@ namespace Sailing
 		bBandsDirty = true;
 	}
 
+	void FWaveField::SetSeaMap(std::shared_ptr<const FSeaMap> InMap)
+	{
+		SeaMap = std::move(InMap);
+		++SeaMapGeneration;
+		ComputeTargetAmplitudes();
+		bBandsDirty = true;
+	}
+
+	double FWaveField::ReferenceFetch() const
+	{
+		return SeaMap ? SeaMap->GetReferenceFetch() : Params.FetchMeters;
+	}
+
+	void FWaveField::SeaRatiosAt(double X, double Y, float* Out) const
+	{
+		if (SeaMap) SeaMap->Sample(X, Y, Out);
+		else for (int I = 0; I < kSeaChannels; ++I) Out[I] = 1.f;
+	}
+
+	void FWaveField::SetDepth(double DepthMeters)
+	{
+		Depth = std::max(DepthMeters, 0.0);
+		for (FWaveComponent& C : Components)
+		{
+			const double Dir = std::atan2(C.Ky, C.Kx);
+			const double K = WavenumberFor(C.Omega, Depth);
+			C.Kx = K * std::cos(Dir);
+			C.Ky = K * std::sin(Dir);
+		}
+		bBandsDirty = true;
+	}
+
 	double FWaveField::Height(double X, double Y, double T) const
 	{
+		float Ratio[kSeaChannels];
+		SeaRatiosAt(X, Y, Ratio);
 		double H = 0.0;
-		for (const FWaveComponent& C : Components)
+		for (int I = 0; I < kWaveComponents; ++I)
 		{
+			const FWaveComponent& C = Components[I];
 			if (C.Amplitude > 1e-6)
 			{
-				H += C.Amplitude * std::sin(C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase);
+				H += C.Amplitude * Ratio[std::min(I, kSeaLongComponents)] * std::sin(C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase);
 			}
 		}
 		if (Ocean) H += Ocean->Height(X, Y, T);
@@ -209,15 +296,20 @@ namespace Sailing
 	void FWaveField::Sample(double X, double Y, double T, double& OutHeight, double& OutVerticalVelocity, double& OutSlopeX, double& OutSlopeY) const
 	{
 		OutHeight = OutVerticalVelocity = OutSlopeX = OutSlopeY = 0.0;
-		for (const FWaveComponent& C : Components)
+		float Ratio[kSeaChannels];
+		SeaRatiosAt(X, Y, Ratio);
+		for (int I = 0; I < kWaveComponents; ++I)
 		{
+			const FWaveComponent& C = Components[I];
 			if (C.Amplitude <= 1e-6) continue;
+			// (The map varies over tens of metres; its own slope is left out, as the shader leaves it.)
+			const double A = C.Amplitude * Ratio[std::min(I, kSeaLongComponents)];
 			const double Arg = C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase;
 			const double S = std::sin(Arg), Co = std::cos(Arg);
-			OutHeight += C.Amplitude * S;
-			OutVerticalVelocity += -C.Amplitude * C.Omega * Co;
-			OutSlopeX += C.Amplitude * C.Kx * Co;
-			OutSlopeY += C.Amplitude * C.Ky * Co;
+			OutHeight += A * S;
+			OutVerticalVelocity += -A * C.Omega * Co;
+			OutSlopeX += A * C.Kx * Co;
+			OutSlopeY += A * C.Ky * Co;
 		}
 		if (Ocean)
 		{
@@ -240,8 +332,14 @@ namespace Sailing
 
 	double FWaveField::SignificantHeightAt(double X, double Y) const
 	{
+		float Ratio[kSeaChannels];
+		SeaRatiosAt(X, Y, Ratio);
 		double Variance = 0.0;
-		for (const FWaveComponent& C : Components) Variance += 0.5 * C.Amplitude * C.Amplitude;
+		for (int I = 0; I < kWaveComponents; ++I)
+		{
+			const double A = Components[I].Amplitude * Ratio[std::min(I, kSeaLongComponents)];
+			Variance += 0.5 * A * A;
+		}
 		if (Ocean) Variance += OceanShareAt(X, Y) * Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
 		return 4.0 * std::sqrt(Variance);
 	}
@@ -300,9 +398,12 @@ namespace Sailing
 		bBandsDirty = false;
 		BandOceanGeneration = OceanGeneration;
 		BandCache.clear();
-		for (const FWaveComponent& C : Components)
+		BandComponent.clear();
+		for (int I = 0; I < kWaveComponents; ++I)
 		{
+			const FWaveComponent& C = Components[I];
 			if (C.Amplitude <= 1e-6) continue;
+			BandComponent.push_back(I);
 			FWaveBand B;
 			const double K = std::sqrt(C.Kx * C.Kx + C.Ky * C.Ky);
 			B.Wavelength = 2.0 * kPi / std::max(K, 1e-6);
@@ -313,5 +414,19 @@ namespace Sailing
 		BandOceanStart = BandCache.size();
 		if (Ocean) BandCache.insert(BandCache.end(), Ocean->Bands().begin(), Ocean->Bands().end());
 		return BandCache;
+	}
+
+	void FWaveField::BandsAt(double X, double Y, std::vector<FWaveBand>& Out) const
+	{
+		Out = Bands();
+		if (!SeaMap) return;
+		float Ratio[kSeaChannels];
+		SeaMap->Sample(X, Y, Ratio);
+		std::lock_guard<std::mutex> Lock(BandLock.M);
+		for (size_t I = 0; I < BandComponent.size() && I < Out.size(); ++I)
+		{
+			const double R = Ratio[std::min(BandComponent[I], kSeaLongComponents)];
+			Out[I].Variance *= R * R;
+		}
 	}
 }
