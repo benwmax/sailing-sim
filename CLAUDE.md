@@ -317,6 +317,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   inferred `floating` walkways, `MooredBoats` drawn by `ACoastMarinasActor` via `SpawnBerthedBoats`), then
   `scripts/bake-shore.sh GalvestonBay`; `-SailingNoPiers`, `-SailingPiersSkip=decks,riprap,walkways,boats` compare.
   `FKitGeometry::SplitTiles` walks four vertices at a time: add triangles with `FKitSection::Tri` (a degenerate quad).
+- Galveston 2 (`docs/galveston-2/`): the bay grid reaches 29.19 N (sim north -39,240) for the Gulf front pack
+  (`Inputs/g2/gulf-front`), which `build_piers.py`, `build_houses.py` and `build_crowns.py` read beside the bay's. Moored
+  boats need water deeper than their draft at MLLW (a marina basin: wet at MLLW); `SailingSim.Coast.MooredBoatsAfloat`.
 - Crew (Graphics G8, `docs/graphics-8-crew/`): `FCrewHands` (`CrewPose.h`) puts the hands after the stance: Reach (two-bone
   IK from the shoulder, keeping the stance's elbow plane; the target is where the palm closes), Knee, and finger curl about
   axes from each rig's palm (`FCrewRig::CurlAxis`). `UpdateCrewFigures` gives the helm the tiller extension
