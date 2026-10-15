@@ -901,20 +901,37 @@ for (int i = 1; i <= 8; i++)
 }
 batten *= Battens;
 float mark = 0.0;
+float through = 0.0;
 float3 ink = float3(0.0, 0.0, 0.0);
 if (Marks > 0.5)
 {
-    float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
     // Graphics G3: the number is SailDigits digits of SailNum, each from the atlas's digit strip (bottom half: ten cells).
+    // Both sides carry the insignia and the number, each reading right from its own side (before, the starboard side
+    // read mirrored): the starboard set is looked up mirrored along the chord, the port set's number a row below it (the
+    // class rule, so the two don't show through each other; the insignia are back to back). Face is +1 on the starboard
+    // face. Set 0 is this face's (its ink), set 1 the other side's (only its shadow against the light).
     float nd = max(SailDigits, 1.0);
     float bw = min(0.58, 0.145 * nd);
-    float2 r1 = (UV1 - float2(0.53 - 0.5 * bw, 0.62)) / float2(bw, 0.12);
-    if (Marks < 1.5 && all(r0 >= 0.0) && all(r0 <= 1.0)) { float4 t = Tex.SampleLevel(TexSampler, float2(r0.x, 0.5 - r0.y * 0.5), 0); mark = t.a; ink = t.rgb; }
-    if (all(r1 >= 0.0) && all(r1 <= 0.999))
+    for (int s = 0; s < 2; s++)
     {
-        float i = floor(r1.x * nd);
-        float d = fmod(floor(SailNum / pow(10.0, nd - 1.0 - i) + 0.01), 10.0);
-        float4 t = Tex.SampleLevel(TexSampler, float2((d + frac(r1.x * nd)) / 10.0, 1.0 - r1.y * 0.5), 0); mark = t.a; ink = t.rgb;
+        bool stbd = (s == 0) == (Face > 0.0);
+        float a = 0.0;
+        float3 c = float3(0.0, 0.0, 0.0);
+        float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
+        float2 r1 = (UV1 - float2(0.53 - 0.5 * bw, stbd ? 0.62 : 0.48)) / float2(bw, 0.12);
+        if (Marks < 1.5 && all(r0 >= 0.0) && all(r0 <= 1.0))
+        {
+            float4 t = Tex.SampleLevel(TexSampler, float2(stbd ? 1.0 - r0.x : r0.x, 0.5 - r0.y * 0.5), 0); a = t.a; c = t.rgb;
+        }
+        if (all(r1 >= 0.0) && all(r1 <= 0.999))
+        {
+            float x = stbd ? 0.999 - r1.x : r1.x;
+            float i = floor(x * nd);
+            float d = fmod(floor(SailNum / pow(10.0, nd - 1.0 - i) + 0.01), 10.0);
+            float4 t = Tex.SampleLevel(TexSampler, float2((d + frac(x * nd)) / 10.0, 1.0 - r1.y * 0.5), 0); a = t.a; c = t.rgb;
+        }
+        if (s == 0) { mark = a; ink = c; }
+        else through = a;
     }
 }
 // A faint weave and the panels' slight tone differences.
@@ -960,7 +977,7 @@ cloth *= 1.0 - 0.35 * speck * whiteish;
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark);
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through));
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1022,11 +1039,13 @@ def build_sail_cloth():
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
+    face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
-                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits")):
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
