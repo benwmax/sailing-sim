@@ -2826,9 +2826,69 @@ WORLD_LIBRARY = {
 ONLY = [n for n in os.environ.get("MATERIALS_ONLY", "").split(",") if n]
 
 
+def builder_hashes():
+    """Each build_* passed to build(): a hash of its code and of every top-level function and constant it reaches (line
+    numbers and comments don't count), so a change anywhere a material comes from changes its hash."""
+    import ast
+    import hashlib
+    with open(os.path.abspath(__file__), encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    nodes, uses = {}, {}
+    for node in tree.body:
+        names = [node.name] if isinstance(node, (ast.FunctionDef, ast.ClassDef)) else \
+            [t.id for t in getattr(node, "targets", [getattr(node, "target", None)]) if isinstance(t, ast.Name)]
+        for n in names:
+            nodes[n] = ast.dump(node, include_attributes=False)
+            uses[n] = {x.id for x in ast.walk(node) if isinstance(x, ast.Name)}
+    builders = [c.args[0].id for c in ast.walk(tree) if isinstance(c, ast.Call) and getattr(c.func, "id", "") == "build"
+                and c.args and isinstance(c.args[0], ast.Name)]
+    out = {}
+    for b in builders:
+        seen, todo = set(), [b]
+        while todo:
+            n = todo.pop()
+            if n in seen or n not in nodes:
+                continue
+            seen.add(n)
+            todo.extend(uses[n])
+        out[b] = hashlib.sha1("".join(nodes[n] for n in sorted(seen)).encode()).hexdigest()
+    return out
+
+
+# MATERIALS_AUTO=1 (scripts/windows/run-python.ps1 sets it; FULL=1 there turns it off): only the builders whose hash
+# differs from the last run's (Saved/MaterialsBuilt.json, per checkout), so one material change rebuilds one material.
+# No stamp yet (a fresh clone, or the assets came from git) means everything. Inputs outside this file (the fabric
+# scans, the cloud noise) aren't hashed: run with FULL=1 after changing them.
+STAMP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Saved", "MaterialsBuilt.json")
+HASHES = builder_hashes() if os.environ.get("MATERIALS_AUTO") == "1" or os.path.exists(STAMP) else {}
+if os.environ.get("MATERIALS_AUTO") == "1" and not ONLY and os.path.exists(STAMP):
+    import json
+    with open(STAMP) as f:
+        _last = json.load(f)
+    ONLY = [b for b, h in HASHES.items() if _last.get(b) != h] or ["(none)"]
+    unreal.log(f"Materials: changed since the last build: {', '.join(ONLY)}")
+BUILT = []
+
+
 def build(fn):
     if not ONLY or fn.__name__ in ONLY:
         fn()
+        BUILT.append(fn.__name__)
+
+
+def write_stamp():
+    """Records the hashes of what this run built (and keeps the rest), for MATERIALS_AUTO's next run."""
+    if not HASHES:
+        return
+    import json
+    last = {}
+    if os.path.exists(STAMP):
+        with open(STAMP) as f:
+            last = json.load(f)
+    last.update({b: HASHES[b] for b in BUILT if b in HASHES})
+    os.makedirs(os.path.dirname(STAMP), exist_ok=True)
+    with open(STAMP, "w") as f:
+        json.dump(last, f, indent=1, sort_keys=True)
 
 
 build(build_water)
@@ -2989,4 +3049,5 @@ build(build_boat_library)
 build(build_crew_fabric)
 build(build_sail_cloth)
 build(build_telltale)
-unreal.log("Materials built")
+write_stamp()
+unreal.log(f"Materials built: {len(BUILT)} builders")
