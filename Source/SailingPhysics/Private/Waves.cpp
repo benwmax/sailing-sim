@@ -46,20 +46,42 @@ namespace Sailing
 		for (double& A : TargetAmplitude) A = 0.0;
 	}
 
+	double FWaveField::AdjustedWindSpeed(double WindMs)
+	{
+		// The wind-stress factor of the fetch-limited growth laws: U_A = 0.71 U^1.23 (U the 10 m wind in m/s). Stress on
+		// the water grows faster than the speed (the drag coefficient rises with the wind), so the same laws written in U_A
+		// grow a strong wind's sea faster than in U. Shore Protection Manual (1984) eq. 3-28, the form the Coastal
+		// Engineering Manual (EM 1110-2-1100, Part II-2) discusses and keeps for these SPM growth curves. W3's SWAN bake of
+		// Ray Hubbard: with U the lake's median Hs was 16% low at 18 kn, 35% at 22 and 61% at 28 (docs/w3-prep).
+		return WindMs > 0.0 ? 0.71 * std::pow(WindMs, 1.23) : 0.0;
+	}
+
+	double FWaveField::GrowthLawHeight(double StressWindMs, double FetchMeters)
+	{
+		const double U2 = StressWindMs * StressWindMs;
+		if (U2 <= 0.0) return 0.0;
+		const double Dimensionless = std::min(0.0016 * std::sqrt(kGravity * FetchMeters / U2), 0.243);
+		return Dimensionless * U2 / kGravity;
+	}
+
+	double FWaveField::GrowthLawPeriod(double StressWindMs, double FetchMeters)
+	{
+		const double U2 = StressWindMs * StressWindMs;
+		if (U2 <= 0.0) return 1.0;
+		const double Dimensionless = std::min(0.286 * std::cbrt(kGravity * FetchMeters / U2), 8.13);
+		return std::max(Dimensionless * StressWindMs / kGravity, 0.6);
+	}
+
 	double FWaveField::TargetSignificantHeight(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 0.0;
-		const double U2 = WindMs * WindMs;
-		const double Dimensionless = std::min(0.0016 * std::sqrt(kGravity * FetchMeters / U2), 0.243);
-		return Dimensionless * U2 / kGravity;
+		return GrowthLawHeight(AdjustedWindSpeed(WindMs), FetchMeters);
 	}
 
 	double FWaveField::TargetPeakPeriod(double WindMs, double FetchMeters)
 	{
 		if (WindMs < 0.5) return 1.0;
-		const double U2 = WindMs * WindMs;
-		const double Dimensionless = std::min(0.286 * std::cbrt(kGravity * FetchMeters / U2), 8.13);
-		return std::max(Dimensionless * WindMs / kGravity, 0.6);
+		return GrowthLawPeriod(AdjustedWindSpeed(WindMs), FetchMeters);
 	}
 
 	void FWaveField::SetWind(const FWaveParams& InParams)
@@ -73,8 +95,9 @@ namespace Sailing
 	void FWaveField::ComputeTargetAmplitudes()
 	{
 		const double U = Params.WindSpeedKnots * kKnot;
-		const double Hs = TargetSignificantHeight(U, Params.FetchMeters);
-		const double Tp = TargetPeakPeriod(U, Params.FetchMeters);
+		const bool bCalm = U < 0.5;
+		const double Hs = bCalm ? 0.0 : Params.bCalibrationSea ? GrowthLawHeight(U, Params.FetchMeters) : TargetSignificantHeight(U, Params.FetchMeters);
+		const double Tp = bCalm ? 1.0 : Params.bCalibrationSea ? GrowthLawPeriod(U, Params.FetchMeters) : TargetPeakPeriod(U, Params.FetchMeters);
 		const double Fp = 1.0 / Tp;
 		// Waves travel downwind.
 		const double TravelDir = Params.WindFromDegrees * kDegToRad + kPi;
