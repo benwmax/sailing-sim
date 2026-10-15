@@ -95,7 +95,7 @@ ending at their head lights, the Gulf groins, and the three named piers on their
 | ghost | 89.0 | 12.34 ms |
 
 - bench-visual, Medium and High (`bench-visual.csv`, screenshots in `bench/`). Every view holds Medium 60 and High 45. The
-  coast views on High are 1.5-4 fps lower than on main's run the same evening: coast-day goes from 51.3 to 49.4 and
+  coast views on High are 1.5-4 fps lower than in the W3 prep run a few hours earlier (no Gulf front): coast-day goes from 51.3 to 49.4 and
   coast-night from 55.9 to 51.5, because of the island's houses, trees and piers.
 
 | View | Medium fps | p99 | High fps | p99 |
