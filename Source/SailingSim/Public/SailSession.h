@@ -90,6 +90,8 @@ public:
 
 	/** Starts a session: saves it for Continue, applies the settings it overrides, and reloads the map. */
 	void StartSession(const FSailSessionConfig& Config, UObject* WorldContext);
+	/** Bench-fast: back to a new process's state (no session, nothing pending, no UI script); a bench list's next view. */
+	void ResetForRun();
 	/** Writes a session's choices into the persistent settings (world, spot, boat, difficulty, traffic...). */
 	static void ApplyToSettings(const FSailSessionConfig& Config);
 	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy. */

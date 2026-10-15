@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "SailingHUD.h"
 #include "UI/SailHud.h"
@@ -1018,10 +1019,10 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	// -SailingWatchAt=<s> starts watching it.
 	{
 		static float GhostAt = -1.f, WatchAt = -1.f;
-		static bool bParsed = false;
-		if (!bParsed)
+		static SailingArgs::FOnce Parsed;
+		if (Parsed.Take())
 		{
-			bParsed = true;
+			GhostAt = WatchAt = -1.f;
 			FParse::Value(FCommandLine::Get(), TEXT("SailingGhostAt="), GhostAt);
 			FParse::Value(FCommandLine::Get(), TEXT("SailingWatchAt="), WatchAt);
 		}

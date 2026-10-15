@@ -139,6 +139,10 @@ public:
 private:
 
 	float BenchSeconds = 0.f;
+	float BenchWarmup = 3.f;
+	bool bBenchTrace = false;
+	int32 ForegroundFrames = 0;
+	TArray<TPair<float, float>> TraceTimes;   // -SailingBenchTrace: (time since start, frame ms)
 	float RecordSeconds = 0.f;
 	float RecordInterval = 0.1f;
 	float NextFrameTime = 0.f;

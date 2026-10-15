@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "BenchRunner.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
@@ -8,6 +9,9 @@
 #include "SailingSettings.h"
 #include "WaterSurface.h"
 #include "DynamicRHI.h"
+#include "HAL/PlatformApplicationMisc.h"
+#include "Engine/GameViewportClient.h"
+#include "Widgets/SWindow.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "EngineUtils.h"
@@ -36,10 +40,6 @@
 
 using namespace Sailing;
 
-namespace
-{
-	constexpr float BenchWarmupSeconds = 3.f;
-}
 
 ASailingGameMode::ASailingGameMode()
 {
@@ -171,7 +171,8 @@ const FChartData& ASailingGameMode::GetChart() const
 
 bool ASailingGameMode::IsDark() const
 {
-	static const bool bForceOn = FParse::Param(FCommandLine::Get(), TEXT("SailingLightsOn")); // screenshots, debugging
+	static SailingArgs::FCachedFlag LightsOnArg(TEXT("SailingLightsOn")); // screenshots, debugging
+	const bool bForceOn = LightsOnArg.Get();
 	double Elevation = 0.0, Azimuth = 0.0;
 	ASailingEnvironment::SunPosition(WeatherState.HourOfDay, DayOfYear, Lake.Latitude, Lake.Longitude, UtcOffsetHours, Elevation, Azimuth);
 	return bForceOn || Elevation < -1.0 || WeatherState.VisibilityKm < 2.0;
@@ -596,14 +597,23 @@ void ASailingGameMode::StartPlay()
 
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
-		UE_LOG(LogSailing, Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmupSeconds);
+		// Bench-fast: -SailingBenchWarmup=<s> (3 by default); -SailingBenchTrace keeps every frame from the start
+		// (Saved/Bench/<shot>.frames.csv) to see where the frames settle.
+		FParse::Value(FCommandLine::Get(), TEXT("SailingBenchWarmup="), BenchWarmup);
+		bBenchTrace = FParse::Param(FCommandLine::Get(), TEXT("SailingBenchTrace"));
+		UE_LOG(LogSailing, Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmup);
 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
 		FParse::Value(FCommandLine::Get(), TEXT("SailingRecord="), RecordSeconds);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingRecordInterval="), RecordInterval);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), ShotName);
-		NextFrameTime = BenchWarmupSeconds;
+		NextFrameTime = BenchWarmup;
 		// Graphics G4: a bench of the pause menu still ends (and takes its screenshot) while the game is paused.
 		SetTickableWhenPaused(true);
+		// Bench-fast: macOS throttles a window it hides. A single run is brought to the front by `open`; a bench list
+		// keeps one window for many views, so each view brings it forward again (bench.json "foreground" says if it
+		// stayed there).
+		FPlatformApplicationMisc::ActivateApplication();
+		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->GetWindow().IsValid()) GEngine->GameViewport->GetWindow()->BringToFront(true);
 	}
 }
 
@@ -613,8 +623,14 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	// Creek: a hundred berthed boats, leaf-card trees and Lumen's reflections of them), the resolution steps down, at most
 	// to 82% (TAA upsamples it back), and climbs back when there is headroom. Not in the capture mode (comparable stills)
 	// or when -SailingScreenPct fixes it.
-	static const bool bFixed = FParse::Param(FCommandLine::Get(), TEXT("SailingScreenPct")) || FCommandLine::Get() && FCString::Strifind(FCommandLine::Get(), TEXT("SailingScreenPct=")) != nullptr
+	static uint32 FixedGen = MAX_uint32;
+	static bool bFixed = false;
+	if (FixedGen != SailingArgs::Generation())
+	{
+		FixedGen = SailingArgs::Generation();
+		bFixed = FParse::Param(FCommandLine::Get(), TEXT("SailingScreenPct")) || FCommandLine::Get() && FCString::Strifind(FCommandLine::Get(), TEXT("SailingScreenPct=")) != nullptr
 		|| FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")) != nullptr;
+	}
 	if (USailingSettings::Get()->FixedResolutionScale() > 0) return;   // the player fixed it
 	if (bFixed || USailingSettings::Get()->Quality != ESailingQuality::High || DeltaSeconds <= 0.f || DeltaSeconds > 0.25f) return;
 	GovernorMs += (DeltaSeconds * 1000.f - GovernorMs) * FMath::Clamp(DeltaSeconds / 0.5f, 0.f, 1.f);
@@ -653,13 +669,14 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 #if WITH_EDITOR
 	// Graphics G6: uncooked runs (run-game.sh, capture-scenes.sh) compile shaders on demand and draw a material's default
 	// until it is ready: a still once showed a storm sky with no clouds. Finish the compiling before the measured window.
-	if (Elapsed < BenchWarmupSeconds && GShaderCompilingManager && GShaderCompilingManager->GetNumRemainingJobs() > 0)
+	if (Elapsed < BenchWarmup && GShaderCompilingManager && GShaderCompilingManager->GetNumRemainingJobs() > 0)
 	{
 		GShaderCompilingManager->FinishAllCompilation();
 	}
 #endif
 	Elapsed += DeltaSeconds;
-	if (Elapsed > BenchWarmupSeconds && Elapsed <= BenchWarmupSeconds + BenchSeconds)
+	if (bBenchTrace) TraceTimes.Emplace(Elapsed, static_cast<float>(FApp::GetDeltaTime() * 1000.0));
+	if (Elapsed > BenchWarmup && Elapsed <= BenchWarmup + BenchSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
@@ -670,9 +687,10 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		FMemory::Memcpy(SlicesAtEnd, SailingPerf::GSliceSeconds, sizeof(SlicesAtEnd));
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
+		ForegroundFrames += FPlatformApplicationMisc::IsThisApplicationForeground() ? 1 : 0;
 	}
 
-	if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmupSeconds + RecordSeconds)
+	if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmup + RecordSeconds)
 	{
 		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
 		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
@@ -680,14 +698,14 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	}
 
 	// -SailingProfileGPU: dump one frame's GPU timings to the log (for tuning quality tiers).
-	static bool bProfiled = false;
-	if (!bProfiled && Elapsed > BenchWarmupSeconds + 3.f && FParse::Param(FCommandLine::Get(), TEXT("SailingProfileGPU")))
+	static SailingArgs::FOnce Profiled;
+	if (!Profiled.Taken() && Elapsed > BenchWarmup + 3.f && FParse::Param(FCommandLine::Get(), TEXT("SailingProfileGPU")))
 	{
-		bProfiled = true;
+		Profiled.Take();
 		GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
 	}
 
-	const float End = BenchWarmupSeconds + BenchSeconds;
+	const float End = BenchWarmup + BenchSeconds;
 	if (!bScreenshotRequested && Elapsed > End - 1.f)
 	{
 		const FString ShotPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *ShotName));
@@ -696,7 +714,8 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	}
 	// Visual V1: after the measured window, profile three frames on the GPU (their frame times are not counted) and
 	// sum their passes into the plan's budget slices. -SailingNoGpuSlices skips it.
-	static const bool bGpuSlices = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoGpuSlices"));
+	static SailingArgs::FCachedFlag NoGpuSlicesArg(TEXT("SailingNoGpuSlices"));
+	const bool bGpuSlices = !NoGpuSlicesArg.Get();
 	const float ProfileTimes[] = { 0.3f, 0.9f, 1.5f };
 	if (bGpuSlices && Elapsed > End && Elapsed <= End + 2.4f)
 	{
@@ -787,9 +806,29 @@ void ASailingGameMode::FinishBenchmark()
 	}
 	// Visual V7: the render resolution at the end of the window (High's governor may have lowered it).
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"render_pct\":%.0f}"), GetRenderScale());
+	// Bench-fast: the share of the window's frames with the game in front (below 1, the view may have been throttled).
+	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"foreground\":%.3f}"), N > 0 ? double(ForegroundFrames) / N : 0.0);
+	// Bench-fast: the process's memory at the end of the window (a bench list runs many views in one process).
+	const FPlatformMemoryStats Mem = FPlatformMemory::GetStats();
+	FTextureMemoryStats TexMem;
+	RHIGetTextureMemoryStats(TexMem);
+	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"mem_used_mb\":%.0f,\"mem_peak_mb\":%.0f,\"tex_mem_mb\":%.0f}"),
+		Mem.UsedPhysical / 1048576.0, Mem.PeakUsedPhysical / 1048576.0, TexMem.StreamingMemorySize / 1048576.0 + TexMem.NonStreamingMemorySize / 1048576.0);
 
 	UE_LOG(LogSailing, Display, TEXT("SailingBench result: %s"), *Summary);
 	FFileHelper::SaveStringToFile(Summary, *(FPaths::ProjectSavedDir() / TEXT("Bench/bench.json")));
+	if (bBenchTrace)
+	{
+		FString Csv = TEXT("t_s,frame_ms\n");
+		for (const TPair<float, float>& F : TraceTimes) Csv += FString::Printf(TEXT("%.4f,%.3f\n"), F.Key, F.Value);
+		FFileHelper::SaveStringToFile(Csv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.frames.csv"), *ShotName)));
+	}
 
+	// Bench-fast: in a bench list the runner saves the view's result and loads the next view.
+	if (USailingBenchRunner* Runner = USailingBenchRunner::Get(this))
+	{
+		Runner->ViewFinished(Summary, this);
+		return;
+	}
 	FPlatformMisc::RequestExit(false, TEXT("SailingBench finished"));
 }
