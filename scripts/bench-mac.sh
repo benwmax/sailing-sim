@@ -7,6 +7,8 @@
 # ARGS="..." passes extra game arguments (weather, hour, wind, TWA, quality); SHOT=<name> names the screenshot.
 # Needs an unlocked, logged-in desktop: it opens a window. Launched through LaunchServices
 # (`open`), because a game started straight from a non-GUI shell stalls at window creation.
+# Bench-fast (docs/bench-fast): LIST=<file> runs every `name|args` line of the file as a view in this one launch (ARGS
+# then holds what they share, such as -SailingQuality); each view leaves Artifacts/<name>.bench.json and <name>.png.
 source "$(dirname "$0")/env.sh"
 SECONDS_TO_MEASURE="${1:-20}"
 RES_X="${2:-1920}"
@@ -23,11 +25,31 @@ LOG="$CONTAINER/Logs/SailingSim/SailingSim.log"
 BENCH_DIR="$CONTAINER/Application Support/Epic/SailingSim/Saved/Bench"
 SHOT="${SHOT:-screenshot}"
 rm -rf "$LOG" "$BENCH_DIR/bench.json" "$BENCH_DIR/$SHOT.png" "$BENCH_DIR/$SHOT.camera.json" "$BENCH_DIR/$SHOT.telemetry.csv" "$BENCH_DIR/rec"
-EXTRA=(-SailingShot="$SHOT")
+EXTRA=()
+NAMES=()
+if [[ -n "${LIST:-}" ]]; then
+	# One view per line; each gets the single run's defaults (the J/22 at the lake) unless it names its own.
+	mkdir -p "$BENCH_DIR"
+	: > "$BENCH_DIR/list.txt"
+	while IFS= read -r LINE; do
+		[[ -z "${LINE// }" || "$LINE" == \#* ]] && continue
+		NAME="${LINE%%|*}"; VARGS=""; [[ "$LINE" == *"|"* ]] && VARGS="${LINE#*|}"
+		[[ " $VARGS " == *" -SailingBoat="* ]] || VARGS+=" -SailingBoat=J22"
+		[[ " $VARGS " == *" -SailingWorld="* ]] || VARGS+=" -SailingWorld=Lake"
+		echo "$NAME|$VARGS" >> "$BENCH_DIR/list.txt"
+		NAMES+=("$NAME")
+		rm -f "$BENCH_DIR/$NAME.png" "$BENCH_DIR/$NAME.bench.json" "$BENCH_DIR/$NAME.frames.csv" "$ARTIFACTS/$NAME.bench.json"
+	done < "$LIST"
+	EXTRA+=(-SailingBenchList=list.txt)
+else
+	EXTRA+=(-SailingShot="$SHOT")
+fi
 [[ -n "${ARGS:-}" ]] && read -r -a ARGV <<< "$ARGS" && EXTRA+=("${ARGV[@]}")
-# The J/22 at the lake unless the run says otherwise (the game also ignores the player's saved boat and world here).
-[[ " ${EXTRA[*]} " == *" -SailingBoat="* ]] || EXTRA+=(-SailingBoat=J22)
-[[ " ${EXTRA[*]} " == *" -SailingWorld="* ]] || EXTRA+=(-SailingWorld=Lake)
+if [[ -z "${LIST:-}" ]]; then
+	# The J/22 at the lake unless the run says otherwise (the game also ignores the player's saved boat and world here).
+	[[ " ${EXTRA[*]} " == *" -SailingBoat="* ]] || EXTRA+=(-SailingBoat=J22)
+	[[ " ${EXTRA[*]} " == *" -SailingWorld="* ]] || EXTRA+=(-SailingWorld=Lake)
+fi
 [[ -n "${RECORD_INTERVAL:-}" ]] && EXTRA+=(-SailingRecordInterval="$RECORD_INTERVAL")
 [[ "${DEMO:-0}" == "1" ]] && EXTRA+=(-SailingDemo)
 [[ -n "${RECORD:-}" ]] && EXTRA+=(-SailingRecord="$RECORD")
@@ -36,6 +58,7 @@ open -n -W -a "$APP" --args -SailingBench="$SECONDS_TO_MEASURE" -windowed -ResX=
 OPEN_PID=$!
 # Warm-up + measurement + generous startup allowance; kill the game if it hangs.
 DEADLINE=$((SECONDS_TO_MEASURE + ${RECORD:-0} + 120))
+[[ ${#NAMES[@]} -gt 0 ]] && DEADLINE=$(( ${#NAMES[@]} * (SECONDS_TO_MEASURE + 60) + 120 ))
 for ((i = 0; i < DEADLINE; i++)); do
 	kill -0 "$OPEN_PID" 2>/dev/null || break
 	sleep 1
@@ -47,6 +70,19 @@ fi
 wait "$OPEN_PID" 2>/dev/null || true
 
 [[ -f "$LOG" ]] && cp "$LOG" "$ARTIFACTS/bench.log"
+if [[ ${#NAMES[@]} -gt 0 ]]; then
+	DONE=0
+	for NAME in "${NAMES[@]}"; do
+		[[ -f "$BENCH_DIR/$NAME.bench.json" ]] || { echo "No result for $NAME" >&2; continue; }
+		cp "$BENCH_DIR/$NAME.bench.json" "$ARTIFACTS/$NAME.bench.json"
+		cp "$BENCH_DIR/$NAME.png" "$ARTIFACTS/$NAME.png" 2>/dev/null || true
+		[[ -f "$BENCH_DIR/$NAME.frames.csv" ]] && cp "$BENCH_DIR/$NAME.frames.csv" "$ARTIFACTS/$NAME.frames.csv"
+		echo "$NAME: $(cat "$BENCH_DIR/$NAME.bench.json")"
+		DONE=$((DONE + 1))
+	done
+	echo "Bench list: $DONE of ${#NAMES[@]} views"
+	[[ $DONE -eq ${#NAMES[@]} ]] && exit 0 || exit 1
+fi
 if [[ ! -f "$BENCH_DIR/bench.json" ]]; then
 	echo "No bench result; see $ARTIFACTS/bench.log" >&2
 	exit 1

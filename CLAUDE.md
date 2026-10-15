@@ -111,6 +111,16 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `run-game.ps1` (uncooked), `capture-scenes-win.ps1` (scene CSV on the packaged game). `M_WorldSurface` patterns 9
    (wood pilings) and 10 (dock boxes) are new and output a normal; keep `KitLook()` in step.
 
+20. The gate (bench-fast, `docs/bench-fast/`): `scripts/gate.sh --scope clouds|water|boats|crew|world|night|ui|all
+   [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed
+   (`Artifacts/gate/`), runs the heavy physics tests (`scripts/gate-heavy-tests.txt`) only when the physics, tests or
+   terrain changed, then benches the scope's views on Medium and High (helm-eye, slip and coast-day always) and checks
+   60/45. `--scope all` is the full sweep: daily and before every blind round. `bench-visual.sh` takes `ONLY=a,b` and
+   `BENCH_EXTRA=`; `FAST=1` runs several views per launch (`USailingBenchRunner`, `-SailingBenchList=<file in
+   Saved/Bench>`), opt-in because the RHI thread can slow from view to view within one process (re-run alone
+   by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
+   Command-line values cached in statics must use `SailingArgs::FCachedFlag`/`FOnce` (re-read when a list swaps it).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in

@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "Ocean.h"
 #include "SailingSim.h"
@@ -502,7 +503,8 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		GustTimer = 0.1f;
 	}
 	TreeScanTimer -= DeltaSeconds;
-	static const bool bNoTreeWind = FParse::Param(FCommandLine::Get(), TEXT("SailingNoTreeWind")); // measuring: trees on the global wind
+	static SailingArgs::FCachedFlag NoTreeWindArg(TEXT("SailingNoTreeWind")); // measuring: trees on the global wind
+	const bool bNoTreeWind = NoTreeWindArg.Get();
 	if (TreeScanTimer <= 0.f && !bNoTreeWind)
 	{
 		BindTreeWind();
@@ -1099,7 +1101,8 @@ void AWaterSurface::UpdateMaterial()
 	{
 		if (Tree.Value) Tree.Value->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
 	}
-	static const bool bPolarizedArg = FParse::Param(FCommandLine::Get(), TEXT("SailingPolarized"));
+	static SailingArgs::FCachedFlag PolarizedArg(TEXT("SailingPolarized"));
+	const bool bPolarizedArg = PolarizedArg.Get();
 	WaterMaterial->SetScalarParameterValue(TEXT("Polarized"), (GPolarized != 0 || bPolarizedArg) ? 1.f : 0.f);
 	WaterMaterial->SetVectorParameterValue(TEXT("WakeRect"), FLinearColor(WakeCenter.X, WakeCenter.Y, kWakeSizeM, 0.f));
 
@@ -1152,10 +1155,10 @@ void AWaterSurface::UpdateGustMap()
 	WindMapCpuSeconds += FPlatformTime::Seconds() - Start;
 
 	// -SailingDumpGust: write the near map's roughness around the boat once as a PGM image, to check what the water shows.
-	static bool bDumped = false;
-	if (!bDumped && T > 4.0 && FParse::Param(FCommandLine::Get(), TEXT("SailingDumpGust")))
+	static SailingArgs::FOnce Dumped;
+	if (!Dumped.Taken() && T > 4.0 && FParse::Param(FCommandLine::Get(), TEXT("SailingDumpGust")))
 	{
-		bDumped = true;
+		Dumped.Take();
 		const int32 Res = NearWind.Res;
 		const double Texel = NearWind.SizeM / Res;
 		const int32 I0 = FMath::RoundToInt(NearWind.Center.X / Texel) - Res / 2, J0 = FMath::RoundToInt(NearWind.Center.Y / Texel) - Res / 2;
