@@ -57,6 +57,9 @@ namespace Sailing
 		/** The same, for a direction between bins (linear in angle), at the nearest cell. Tests and tools. */
 		double FetchToward(double X, double Y, double TravelRadians) const;
 
+		/** Passes of a 3 x 3 mean over the water after the march (Soften): 2 at 50 m blurs the shadows' edges over ~150 m. */
+		int SoftenPasses = 2;
+		void Soften(int Passes);
 		/** One direction's fetch (no Saville spread) on a grid of MarchCell, as the cells' distance to land toward From. */
 		static void March(const std::vector<uint8_t>& Water, int Rows, int Cols, double MarchCell, double FromRadians,
 			double MaxFetch, std::vector<float>& Out);

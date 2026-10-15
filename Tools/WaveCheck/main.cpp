@@ -194,6 +194,25 @@ int main(int Argc, char** Argv)
 		std::printf("%d,%.3f,%.3f,%+.1f%%,%.2f,%.2f\n", Kn, Sh, Gh, 100.0 * (Gh / Sh - 1.0), Ratio[1], Ratio[14]);
 	}
 
+	// The sea over the lake at 14 kn from the north and from the south (Artifacts/sea-map-14kn-<from>.csv: Hs per map
+	// cell, rows north), for docs/water-3's figure.
+	for (const int From : { 0, 180 })
+	{
+		std::shared_ptr<FSeaMap> Map;
+		const auto W = FieldFor(14, From, Map);
+		std::ofstream G("Artifacts/sea-map-14kn-" + std::to_string(From) + ".csv");
+		for (int R = 0; R < Fetch.GetRows(); ++R)
+		{
+			for (int C = 0; C < Fetch.GetCols(); ++C)
+			{
+				double CH = 0.0, CP = 0.0;
+				if (Fetch.DepthAt(R, C) > 0.0) SeaAt(*W, Fetch.GetOriginX() + R * Fetch.GetCell(), Fetch.GetOriginY() + C * Fetch.GetCell(), CH, CP);
+				G << (C ? "," : "") << CH;
+			}
+			G << '\n';
+		}
+	}
+
 	// The points: SWAN against the map and against the old ray (points.csv's game columns).
 	std::ifstream Pc(Argv[3]);
 	std::ofstream Out(Argv[4]);

@@ -125,6 +125,42 @@ namespace Sailing
 				}
 			}
 		}
+		Soften(SoftenPasses);
+	}
+
+	void FSeaFetch::Soften(int Passes)
+	{
+		// A 3 x 3 mean over the water cells, per bin: the march's shadows behind points have knife edges (each of the 32
+		// rays casts its own), where real waves spread round a point (diffraction, the spectrum's spread of directions).
+		std::vector<float> Next(Fetch.size());
+		for (int P = 0; P < Passes; ++P)
+		{
+			for (int R = 0; R < Rows; ++R)
+			{
+				for (int C = 0; C < Cols; ++C)
+				{
+					for (int B = 0; B < kSeaBins; ++B)
+					{
+						const size_t I = (size_t(R) * Cols + C) * kSeaBins + B;
+						if (Depth[size_t(R) * Cols + C] <= 0.f) { Next[I] = Fetch[I]; continue; }
+						double Sum = 0.0;
+						int N = 0;
+						for (int DR = -1; DR <= 1; ++DR)
+						{
+							for (int DC = -1; DC <= 1; ++DC)
+							{
+								const int RR = R + DR, CC = C + DC;
+								if (RR < 0 || CC < 0 || RR >= Rows || CC >= Cols || Depth[size_t(RR) * Cols + CC] <= 0.f) continue;
+								Sum += Fetch[(size_t(RR) * Cols + CC) * kSeaBins + B];
+								++N;
+							}
+						}
+						Next[I] = float(Sum / N);
+					}
+				}
+			}
+			Fetch.swap(Next);
+		}
 	}
 
 	double FSeaFetch::FetchToward(double X, double Y, double TravelRadians) const
