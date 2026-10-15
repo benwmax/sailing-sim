@@ -85,10 +85,32 @@ namespace Sailing
 			std::vector<double> Sorted = V;
 			const size_t K = std::min(Count - 1, size_t((1.0 - Coverage) * double(Count)));
 			std::nth_element(Sorted.begin(), Sorted.begin() + K, Sorted.end());
-			const double Edge = Sorted[K];
+			double Edge = Sorted[K];
 			const double Soft = SoftStd * Std;
+			// W5a: the quantile edge gives the coverage's mean only for a field symmetric about it; the cumulus cells are
+			// skewed (a few tall peaks), so solve for the edge whose mean presence is the coverage (presence falls as the
+			// edge rises).
+			auto MeanAt = [&](double E)
+			{
+				double Sum = 0.0;
+				for (size_t I = 0; I < Count; I += 7) Sum += Clamp(0.5 + (V[I] - E) / (2.0 * Soft), 0.0, 1.0);
+				return Sum / double((Count + 6) / 7);
+			};
+			double Lo = Edge - 4.0 * Soft, Hi = Edge + 4.0 * Soft;
+			for (int It = 0; It < 24; ++It)
+			{
+				const double Mid = 0.5 * (Lo + Hi);
+				(MeanAt(Mid) > Coverage ? Lo : Hi) = Mid;
+			}
+			Edge = 0.5 * (Lo + Hi);
 			for (size_t I = 0; I < Count; ++I) Out[I * 4 + Channel] = float(Clamp(0.5 + (V[I] - Edge) / (2.0 * Soft), 0.0, 1.0));
 		}
+	}
+
+	double FStormShape::TierX(double X)
+	{
+		const double A = 1.0 - Smooth(2.0 * ShelfTierM, 3.0 * ShelfTierM, X);
+		return X - A * ShelfTierM / (2.0 * kPi) * std::sin(2.0 * kPi * X / ShelfTierM);
 	}
 
 	double FStormShape::Density(double D, double Alt, double Mask, double Build)
@@ -100,7 +122,7 @@ namespace Sailing
 		if (X >= 0.0 && X <= ShelfDepthM)
 		{
 			const double Base = ShelfBaseM - 120.0 * Smooth(0.0, 800.0, X);
-			const double Top = Base + ShelfLipM + X * ShelfSlope;
+			const double Top = Base + ShelfLipM + TierX(X) * ShelfSlope;
 			const double In = Smooth(Base, Base + 25.0, Alt) * (1.0 - Smooth(Top - 150.0, Top, Alt));
 			Dens = std::max(Dens, 1.0 * In * (1.0 - Smooth(ShelfDepthM - 600.0, ShelfDepthM, X)));
 		}
@@ -133,6 +155,42 @@ namespace Sailing
 		// Cloud streets form in a steady wind aloft (about 4 m/s and up).
 		const double Streets = Clamp((DriftLen - 3.0) / 5.0, 0.0, 1.0);
 
+		// W5a: cumulus come in all sizes, not one. Real fields follow a power law (many small, few large: number density
+		// n(D) ~ D^-2.5, so each size class below has about 2.4 times the clouds of the next larger one). Each class is a
+		// jittered lattice of seeded cells in the drifting frame, spacing growing as r^0.75; a cell's peak grows with its
+		// size (r^0.6, as a big cell builds taller), so after the coverage threshold the small ones are low, thin puffs
+		// and the big ones reach the full height. Their outlines are lumpy at their own scale.
+		struct FCuClass { double Radius, Spacing; uint32_t Seed; };
+		static constexpr FCuClass Classes[] = { { 2000.0, 7000.0, 71u }, { 1100.0, 4500.0, 73u }, { 600.0, 2900.0, 79u }, { 330.0, 1850.0, 83u } };
+		auto CellField = [&](double Ac, double Bc, double Stretch)
+		{
+			double V = 0.0;
+			for (const FCuClass& K : Classes)
+			{
+				const double Gx = Ac / (K.Spacing * Stretch), Gy = Bc / K.Spacing;
+				const int32_t Ix = int32_t(std::floor(Gx)), Iy = int32_t(std::floor(Gy));
+				for (int32_t Dx = -1; Dx <= 1; ++Dx)
+				{
+					for (int32_t Dy = -1; Dy <= 1; ++Dy)
+					{
+						const uint32_t H = Hash2(Ix + Dx, Iy + Dy, K.Seed);
+						if ((H & 0xff) > 217) continue;   // about 15% of the lattice is empty sky
+						const double Jx = ((H >> 8) & 0xff) / 255.0, Jy = ((H >> 16) & 0xff) / 255.0;
+						const double R = K.Radius * (0.75 + 0.5 * ((H >> 24) & 0xff) / 255.0);
+						const double Cx = (Ix + Dx + 0.15 + 0.7 * Jx) * K.Spacing * Stretch, Cy = (Iy + Dy + 0.15 + 0.7 * Jy) * K.Spacing;
+						const double Ex = (Ac - Cx) / (R * Stretch), Ey = (Bc - Cy) / R;
+						double E2 = Ex * Ex + Ey * Ey;
+						if (E2 >= 2.0) continue;
+						E2 *= 1.0 + 0.8 * (Fbm(Ac / (0.7 * R), Bc / (0.7 * R), K.Seed + 7u, 3) - 0.5);
+						if (E2 >= 1.0) continue;
+						const double Bump = (1.0 - E2) * (1.0 - E2);
+						V = std::max(V, Bump * std::pow(R / 2000.0, 0.6));
+					}
+				}
+			}
+			return V;
+		};
+
 		std::vector<double> Cu(Count), St(Count), Ci(Count);
 		std::vector<double> Land(Count, 0.5);
 		if (LandFraction)
@@ -149,12 +207,13 @@ namespace Sailing
 			{
 				const size_t I = size_t(R) * N + C;
 				const double X = X0 + (R + 0.5) * Cell, Y = Y0 + (C + 0.5) * Cell;
-				// Cumulus: cells a kilometre or two across, more and bigger over the land (heated in the afternoon); with a
-				// wind aloft they line up in streets along it, 3 to 4 km apart (Graphics G1).
+				// Cumulus: cells from a few hundred metres to 4 km across (W5a, above), more and bigger over the land (heated
+				// in the afternoon); with a wind aloft they line up in streets along it, 3 to 4 km apart (Graphics G1). A little
+				// of the old noise keeps the field from being only round cells.
 				const double Ac = X * Ux + Y * Uy, Bc = -X * Uy + Y * Ux;
 				const double Stretch = 1.0 + 0.4 * Streets;
-				Cu[I] = Fbm(Ac / (2000.0 * Stretch), Bc / 2000.0, 11u, 5) + 0.28 * (Land[I] - LandMean)
-					+ 0.06 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2));
+				Cu[I] = CellField(Ac, Bc, Stretch) + 0.25 * (Fbm(Ac / (2000.0 * Stretch), Bc / 2000.0, 11u, 4) - 0.5)
+					+ 0.4 * (Land[I] - LandMean) + 0.09 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2));
 				// Stratus: broad, gently varied.
 				St[I] = Fbm(X / 9000.0, Y / 9000.0, 23u, 3);
 				// Cirrus: streaks drawn out along the wind aloft.

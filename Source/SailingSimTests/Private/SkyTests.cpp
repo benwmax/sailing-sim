@@ -281,6 +281,41 @@ bool FSkyCloudNoiseTest::RunTest(const FString&)
 	const double MapRepeat = MaxAutocorrelation(Row, 48, 400);   // 3 to 25 km
 	AddInfo(FString::Printf(TEXT("Weather map cumulus autocorrelation, 3-25 km: %.2f"), MapRepeat));
 	TestTrue(TEXT("The weather map's cumulus doesn't repeat"), MapRepeat < 0.5);
+
+	// W5a: the cumulus come in many sizes (a power law: many small, few large), not one. Count the clouds (presence over
+	// half, 4-connected) by area.
+	{
+		const int32 N = FWeatherMap::N;
+		const double CellKm2 = FMath::Square(FWeatherMap::SizeMeters / N / 1000.0);
+		TArray<uint8> Seen;
+		Seen.SetNumZeroed(N * N);
+		TArray<int32> Stack;
+		int32 Small = 0, Mid = 0, Large = 0;
+		for (int32 Start = 0; Start < N * N; ++Start)
+		{
+			if (Seen[Start] || Map.Pixels()[size_t(Start) * 4] < 0.5f) continue;
+			int32 Area = 0;
+			Stack.Reset();
+			Stack.Add(Start);
+			Seen[Start] = 1;
+			while (Stack.Num())
+			{
+				const int32 I = Stack.Pop(EAllowShrinking::No);
+				++Area;
+				const int32 PixR = I / N, PixC = I % N;
+				const int32 Next[4] = { PixR > 0 ? I - N : -1, PixR < N - 1 ? I + N : -1, PixC > 0 ? I - 1 : -1, PixC < N - 1 ? I + 1 : -1 };
+				for (const int32 J : Next)
+				{
+					if (J >= 0 && !Seen[J] && Map.Pixels()[size_t(J) * 4] >= 0.5f) { Seen[J] = 1; Stack.Add(J); }
+				}
+			}
+			const double Km2 = Area * CellKm2;
+			if (Km2 < 0.05) continue;                // a few texels: noise, not a cloud
+			(Km2 < 1.0 ? Small : (Km2 < 4.0 ? Mid : Large)) += 1;
+		}
+		AddInfo(FString::Printf(TEXT("Cumulus by size: %d under 1 km^2, %d of 1-4 km^2, %d over 4 km^2"), Small, Mid, Large));
+		TestTrue(TEXT("Cumulus in many sizes: small ones outnumber mid-sized ones, which outnumber large ones"), Small > Mid && Mid > Large && Large > 0);
+	}
 	return true;
 }
 #endif
