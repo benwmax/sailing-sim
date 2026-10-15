@@ -21,6 +21,7 @@ struct SAILINGSIM_API FCrewPlaceInput
 	int32 Index = 0;               // figure index; the helm is the last
 	double CrewOffset = 0.0;       // m, FBoatState::CrewOffset (+ starboard)
 	double CrewOffsetZ = 0.0;
+	double CrewOffsetX = 0.0;      // m, FBoatState::CrewOffsetX (+ forward: a dinghy sailor slides aft on the plane)
 	int32 WindwardSide = 1;
 	double OffsetRate = 0.0;       // m/s, how fast the crew model is moving them across
 	bool bRighting = false;        // capsized and righting

@@ -86,6 +86,16 @@ namespace
 	}
 
 	struct FWallRun { FVector2D P0, P1, Out; int32 Wing; };
+
+	bool InOutline(const TArray<FVector2D>& Pts, const FVector2D& P)
+	{
+		bool bIn = false;
+		for (int32 I = 0, J = Pts.Num() - 1; I < Pts.Num(); J = I++)
+		{
+			if ((Pts[I].Y > P.Y) != (Pts[J].Y > P.Y) && P.X < Pts[J].X + (Pts[I].X - Pts[J].X) * (P.Y - Pts[J].Y) / (Pts[I].Y - Pts[J].Y)) bIn = !bIn;
+		}
+		return bIn;
+	}
 }
 
 void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int32>>& Out)
@@ -119,12 +129,51 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 		FLinearColor(0.45f, 0.50f, 0.52f), FLinearColor(0.60f, 0.52f, 0.40f), FLinearColor(0.55f, 0.56f, 0.50f), FLinearColor(0.36f, 0.40f, 0.42f) };
 	static const FLinearColor Doors[] = { FLinearColor(0.85f, 0.85f, 0.82f), FLinearColor(0.04f, 0.04f, 0.045f), FLinearColor(0.30f, 0.17f, 0.08f),
 		FLinearColor(0.06f, 0.10f, 0.20f), FLinearColor(0.35f, 0.05f, 0.04f), FLinearColor(0.20f, 0.24f, 0.18f) };
+	// Round 10: the Gulf coast's stucco is paler and warmer, with the beachfront's pastels (the Seawall's blocks had North
+	// Texas brick and greys).
+	static const FLinearColor Coast[] = { FLinearColor(0.80f, 0.78f, 0.72f), FLinearColor(0.74f, 0.68f, 0.56f), FLinearColor(0.82f, 0.80f, 0.76f),
+		FLinearColor(0.72f, 0.56f, 0.46f), FLinearColor(0.58f, 0.68f, 0.66f), FLinearColor(0.78f, 0.72f, 0.52f), FLinearColor(0.66f, 0.64f, 0.60f),
+		FLinearColor(0.56f, 0.62f, 0.70f) };
+	const bool bCoast = Lake.bOcean;
+	// Round 10: decks on piles under these footprints (Lake.Decks, the same outlines the shore bake draws). The Pleasure Pier's
+	// restaurant and shops stood in the Gulf from the water up, inside the pier's piles: they stand on its deck now.
+	FBox2D Area(ForceInit);
+	for (const int32 K : Indices) Area += FVector2D(Lake.Houses[K].X, Lake.Houses[K].Y);
+	Area = Area.ExpandBy(5.0);
+	TArray<const FLakeDeck*> NearDecks;
+	for (const FLakeDeck& D : Lake.Decks)
+	{
+		if (D.Outline.Num() < 3) continue;
+		FBox2D B(ForceInit);
+		for (const FVector2D& P : D.Outline) B += P;
+		if (B.Intersect(Area)) NearDecks.Add(&D);
+	}
 	for (const int32 K : Indices)
 	{
 		const FLakeHouse& H = Lake.Houses[K];
 		const bool bFull = H.bFullDetail;
-		const double G = FMath::Max(double(Terr.HeightAt(H.X, H.Y)), 0.15);   // the terrain the player sees, never under the water line
-		const double E = G + H.Eave;
+		double G = FMath::Max(double(Terr.HeightAt(H.X, H.Y)), 0.15);   // the terrain the player sees, never under the water line
+		double EaveH = H.Eave;
+		int32 Storeys = H.Storeys;
+		const FLakeDeck* OnDeck = nullptr;
+		for (const FLakeDeck* D : NearDecks)
+		{
+			if (D->Deck > G + 1.5 && (!OnDeck || D->Deck > OnDeck->Deck) && InOutline(D->Outline, FVector2D(H.X, H.Y))) OnDeck = D;
+		}
+		if (OnDeck)
+		{
+			// The lidar's eave and roof top were measured from the ground under the pier (the water): from the deck, a storey
+			// at least.
+			const double Top = H.Ground > -900.0 ? H.Ground + H.Eave : OnDeck->Deck + 3.5;
+			G = OnDeck->Deck;
+			EaveH = FMath::Clamp(Top - G, 3.0, 12.0);
+			Storeys = FMath::Clamp(FMath::RoundToInt((EaveH - 0.3) / 2.9), 1, 4);
+		}
+		const double E = G + EaveH;
+		// Round 10: four storeys and up (the Seawall's hotels and condos): windows on every storey, painted on (the full-detail
+		// windows stopped at the third), and balconies along the side facing the water on most.
+		const bool bTall = Storeys >= 4;
+		const bool bBalconies = Hash01(K, 30) < 0.7f;
 		TArray<FWingFrame, TInlineAllocator<4>> Wings;
 		double Base = G;
 		for (const FLakeHouse::FWing& W : H.Wings)
@@ -138,13 +187,15 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 			}
 			Wings.Add(F);
 		}
-		Base -= 0.4;
+		Base = OnDeck ? G - 0.35 : Base - 0.4;
 		// Finish and colours.
 		const float Pick = Hash01(K, 1);
-		const uint8 Code = H.bCommercial ? (Pick < 0.5f ? Stucco : Brick) : (Pick < 0.5f ? Brick : (Pick < 0.78f ? Siding : Stucco));
-		const FLinearColor WallCol = Code == Brick ? Bricks[HouseHash(K, 2) % UE_ARRAY_COUNT(Bricks)] : Lights[HouseHash(K, 3) % UE_ARRAY_COUNT(Lights)];
+		uint8 Code = H.bCommercial ? (Pick < 0.5f ? Stucco : Brick) : (Pick < 0.5f ? Brick : (Pick < 0.78f ? Siding : Stucco));
+		if (bCoast && (bTall || OnDeck)) Code = Pick < 0.85f ? Stucco : Brick;
+		const FLinearColor WallCol = Code == Brick ? Bricks[HouseHash(K, 2) % UE_ARRAY_COUNT(Bricks)]
+			: (bCoast ? Coast[HouseHash(K, 3) % UE_ARRAY_COUNT(Coast)] : Lights[HouseHash(K, 3) % UE_ARRAY_COUNT(Lights)]);
 		const float Seed = Hash01(K, 4);
-		const FVector2D WallTag(H.Eave, Seed + (bFull && !H.bCommercial ? 0.0 : 2.0));   // Tag.y >= 2: painted windows
+		const FVector2D WallTag(EaveH, Seed + (bFull && !H.bCommercial && !bTall ? 0.0 : 2.0));   // Tag.y >= 2: painted windows
 		// NAIP's roof colours are bright (haze, no calibration): about 0.6 of them in linear reflectance.
 		const FLinearColor Naip = FLinearColor::FromSRGBColor(H.RoofColor);
 		const FLinearColor RoofCol = FLinearColor(Naip.R * 0.6f, Naip.G * 0.6f, Naip.B * 0.6f);
@@ -191,8 +242,8 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 			if (H.Roof == FLakeHouse::Flat)
 			{
 				RoofPlane(Roof, A, B, C, D);
-				// A parapet on commercial blocks, a lip on the rest.
-				const double Par = H.bCommercial ? 0.7 : 0.25;
+				// A parapet on commercial and tall blocks, a lip on the rest.
+				const double Par = H.bCommercial || bTall ? 0.7 : 0.25;
 				const FVector2D Cn[4] = { FVector2D(A), FVector2D(B), FVector2D(C), FVector2D(D) };
 				const FVector2D Outs[4] = { -F.V, F.U, F.V, -F.U };
 				for (int32 S = 0; S < 4; ++S)
@@ -203,7 +254,7 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 						{ 0, 0 }, { 1, 0 }, { 1, 0.2 }, { 0, 0.2 });
 				}
 				// Rooftop units on the big ones.
-				if (H.bCommercial && Wi == 0 && F.HL > 8.0 && F.HW > 5.0)
+				if ((H.bCommercial || bTall) && Wi == 0 && F.HL > 8.0 && F.HW > 5.0)
 				{
 					const int32 Units = 1 + int32(HouseHash(K, 9) % 3);
 					for (int32 Un = 0; Un < Units; ++Un)
@@ -297,7 +348,7 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 		}
 		// Openings on the outside walls: front door and garage on the street side of the main wing, windows elsewhere.
 		const FColor TrimCol = FColor::White;
-		bool bDoor = false, bGarage = H.bCommercial || Wings[0].HL < 7.0;
+		bool bDoor = false, bGarage = H.bCommercial || bTall || OnDeck || Wings[0].HL < 7.0;
 		for (int32 Ri = 0; Ri < Runs.Num(); ++Ri)
 		{
 			const FWallRun& Run = Runs[Ri];
@@ -349,7 +400,7 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 			const double Wd = 0.9 + 0.5 * Hash01(K, 14);
 			const double Ht = 1.3 + 0.25 * Hash01(K, 15);
 			const int32 Count = FMath::Max(0, int32((L - 1.6) / 3.2));
-			for (int32 St = 0; St < H.Storeys && St < 3; ++St)
+			for (int32 St = 0; St < Storeys && St < 3 && !bTall; ++St)
 			{
 				const double Z0 = G + 0.95 + 2.9 * St, Z1 = Z0 + Ht;
 				if (Z1 > E - 0.3) break;
@@ -376,6 +427,29 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 					WallQuad(Trim, S0 + SF, S1 + SF, Z0 - 0.06, Z0, N, 0.0, Z0);
 					FacedQuad(Trim, FVector(S0, Z0), FVector(S1, Z0), FVector(S1 + SF, Z0), FVector(S0 + SF, Z0), FVector::UpVector, { 0, 0 }, { Wd, 0 }, { Wd, 0.09 }, { 0, 0.09 });
 					FacedQuad(Trim, FVector(S0, Z0 - 0.06), FVector(S1, Z0 - 0.06), FVector(S1 + SF, Z0 - 0.06), FVector(S0 + SF, Z0 - 0.06), -FVector::UpVector, { 0, 0 }, { Wd, 0 }, { Wd, 0.09 }, { 0, 0.09 });
+				}
+			}
+			// Round 10: a tall block's balconies on the side facing the water: a slab a storey, glazed doors behind, a glass
+			// balustrade on a rail, and a fin between the units every 7 m or so.
+			if (bTall && bBalconies && FVector2D::DotProduct(N, -Street) > 0.6 && L > 6.0)
+			{
+				const int32 Units = FMath::Max(1, FMath::RoundToInt((L - 0.6) / 7.0));
+				for (int32 St = 1; St < Storeys; ++St)
+				{
+					const double Z = G + 2.9 * St;
+					if (Z + 2.6 > E) break;
+					auto Clear = [&](double U) { return Outside(U); };
+					if (!Clear(0.5 * L)) continue;
+					Relief(Conc, Run.P0, T, N, 0.3, L - 0.3, Z - 0.2, Z, 1.4);
+					Wall.Paint = FColor(30, 32, 34, Glass);
+					WallQuad(Wall, Run.P0 + T * 0.4 + N * 0.03, Run.P0 + T * (L - 0.4) + N * 0.03, Z, Z + 2.4, N, 0.0, Z);
+					WallQuad(Wall, Run.P0 + T * 0.35 + N * 1.36, Run.P0 + T * (L - 0.35) + N * 1.36, Z, Z + 1.0, N, 0.0, Z);
+					Relief(Met, Run.P0 + N * 1.33, T, N, 0.3, L - 0.3, Z + 1.0, Z + 1.06, 0.06);
+					for (int32 Un = 0; Un <= Units; ++Un)
+					{
+						const double U = 0.3 + (L - 0.6) * Un / Units;
+						Relief(Conc, Run.P0, T, N, U - 0.1, U + 0.1, Z, Z + 2.7, 1.4);
+					}
 				}
 			}
 			Wall.Paint = Srgb(WallCol); Wall.Paint.A = Code;

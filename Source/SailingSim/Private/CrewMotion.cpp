@@ -166,7 +166,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
 	const float Side = In.CrewOffset != 0.0 ? float(FMath::Sign(In.CrewOffset)) : float(In.WindwardSide);
 	const double Off = FMath::Abs(In.CrewOffset);
-	const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I);
+	const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I) + In.CrewOffsetX;
 	const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
 	const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
 	FCrewPoseParams& P = Out.Params;
@@ -175,6 +175,19 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	Out.Duck = 0.f;
 	P.Side = Side;
 	P.Hike = float(FMath::Clamp((Off - Cfg.CrewSitOut * 0.8) / FMath::Max(Cfg.CrewHikeOut, 0.1), 0.0, 1.0));
+	// Round 10: a dinghy sailor sits on the side deck, at its edge from about the sit-out offset, and leans out from there:
+	// how far they lean is how far the crew model has them past the edge, up to fully hiked (sit-out plus hike-out). Inboard
+	// of the edge they slide in along the side deck (the ILCA sailor read as sitting in the cockpit: the hike was measured
+	// from 80 % of the sit-out, a bolt-upright sailor at the edge).
+	FCrewCockpitWell Well;
+	const bool bWell = bDinghy && !Cfg.bMultihull && CrewCockpitWell(Cfg, Well);
+	const double Edge = Rail - 0.04;
+	const double Inner = bWell ? FMath::Min(Well.HalfWidth + 0.14, Edge) : Edge;
+	if (bDinghy)
+	{
+		const double From = Edge - 0.06, Full = Cfg.CrewSitOut + Cfg.CrewHikeOut;
+		P.Hike = float(FMath::Clamp((Off - From) / FMath::Max(Full - From, 0.1), 0.0, 1.0));
+	}
 	// Crew C1: a tack or gybe is timed to the boom. Turning through the eye of the wind (or the boom swinging across dead
 	// downwind) the crew go over as it comes across the cockpit, crouched under it the closer it is to the centreline,
 	// facing forward; or whenever the crew model is moving them across.
@@ -186,7 +199,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	const bool bGybing = Twa > 150.0 && FMath::Abs(In.BoomRate) > 0.3 && BoomDeg < 45.0;
 	// (Hiking in or out moves the crew model as fast as a tack does: only a move through the middle of the boat is a crossing.)
 	const bool bCrossing = (bUnderBoom && (bTacking || bGybing)) || ((bTacking || bGybing) && FMath::Abs(In.OffsetRate) > 0.3)
-		|| (FMath::Abs(In.OffsetRate) > 0.6 && Off < 0.8 * Cfg.CrewSitOut);
+		|| (FMath::Abs(In.OffsetRate) > 0.6 && Off < (bDinghy ? FMath::Min(0.2, 0.8 * Cfg.CrewSitOut) : 0.8 * Cfg.CrewSitOut));
 	if (In.bRighting)
 	{
 		P.Stance = ECrewStance::Righting;
@@ -219,7 +232,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	else if (bDinghy)
 	{
 		P.Stance = ECrewStance::DinghyHike;
-		Out.Pelvis = FVector(X, Side * (Rail - 0.04), Sheer + 0.06);
+		Out.Pelvis = FVector(X, Side * FMath::Clamp(Off + 0.06, Inner, Edge), Sheer + 0.06);
 	}
 	else if (Out.bHelm)
 	{

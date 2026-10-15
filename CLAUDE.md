@@ -358,6 +358,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   is step-relative and stops binding); noise footprint floor 110 m (50 brought the frosting back). Cumulus are darkened
   by depth into the cell and its build, not altitude. The shelf face climbs in tiers (`FStormShape::TierX`, `ShelfTierM`,
   mirrored as `SHELF_TIER`). No rain density in `CLOUD_CODE`: `M_RainCurtain` draws it.
+- Wind on the water (W2, `docs/water-2/`): `AWaterSurface` keeps two wrap-around wind maps (near 256^2 over 3.2 km,
+  512^2 on Ultra; far 128^2 over 16 km; texel i at i mod Res, refreshed in strips): RGB = roughness, local direction
+  (sRGB), A = slow wind (linear). `W2_WIND` in make_materials.py is the shared HLSL both water materials read (ripples
+  turned to the local wind, glass, slicks, windrows); the trees bind the far map (`BindTreeWind`, `-SailingNoTreeWind`).
+  Polarized glasses: `sailing.Polarized` or `-SailingPolarized`. bench.json has `windmap_cpu_ms`.
 - Storms and real days (W5b, `docs/w5b/`): `Storm.h` holds `FMicroburst` (Vicroy 1991, NASA TM-104053), `FColdPool` (front
   speed 0.75 sqrt(g h dT/T) + 0.6 x the ambient wind along the track) and `FStormRain` (rain rate along the front's track,
   the rain foot slanting forward at the water). `FGustFront` carries the cold pool and burst; keep `DistanceAhead`'s
