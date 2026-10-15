@@ -1,0 +1,65 @@
+{
+ "times_s": [
+  7200,
+  10800
+ ],
+ "frames": 61,
+ "speed_12m_mean_kn": 10.66073998212176,
+ "gust_intensity_spatial": 0.1813677967882286,
+ "gust_intensity_point": 0.16096623271261887,
+ "gust_factor_p99_point": 1.3608298185080958,
+ "direction_std_deg_point": 9.83392735445511,
+ "speed_corr_length_m": 175.0,
+ "w225_corr_length_m": 150.0,
+ "shift_period_s": 1680.0,
+ "mixed_layer_m": 1862.5,
+ "lake_fraction": 0.3316,
+ "speed_water_kn": 11.369013541568957,
+ "speed_land_kn": 10.309358306010578,
+ "gust_intensity_water": 0.1314575329852355,
+ "gust_intensity_land": 0.1756057970896391,
+ "downwind_of_shore": [
+  {
+   "from_m": 0,
+   "to_m": 250,
+   "cells": 5336,
+   "speed_ratio_to_land": 1.0725153593120438,
+   "gust_intensity": 0.14964579109825904
+  },
+  {
+   "from_m": 250,
+   "to_m": 500,
+   "cells": 4133,
+   "speed_ratio_to_land": 1.1073742771484198,
+   "gust_intensity": 0.14878134533334988
+  },
+  {
+   "from_m": 500,
+   "to_m": 1000,
+   "cells": 6791,
+   "speed_ratio_to_land": 1.1290366680102193,
+   "gust_intensity": 0.14617431922447388
+  },
+  {
+   "from_m": 1000,
+   "to_m": 2000,
+   "cells": 10844,
+   "speed_ratio_to_land": 1.1324842625210259,
+   "gust_intensity": 0.13858194862160753
+  },
+  {
+   "from_m": 2000,
+   "to_m": 4000,
+   "cells": 13314,
+   "speed_ratio_to_land": 1.1121027123231682,
+   "gust_intensity": 0.1279672073698751
+  },
+  {
+   "from_m": 4000,
+   "to_m": 10000,
+   "cells": 12638,
+   "speed_ratio_to_land": 1.064662019824623,
+   "gust_intensity": 0.10776861662232771
+  }
+ ]
+}

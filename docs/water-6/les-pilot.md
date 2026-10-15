@@ -55,6 +55,52 @@ From the last hour (61 frames, 2-3 h), at 12.5 m (`les-pilot.json`):
    outline as a surface patch (flux and z0 maps) is the next run. The land's flux pattern (fields, town) and the
    lake breeze also aren't modelled.
 
+## Follow-up: the same afternoon over Lake Ray Hubbard
+
+`Tools/les/ntxlake.ini` and `ntxlake_input.py` take the surface from the game's own height grid: a 10 x 10 km window
+round Rush Creek (north -4.7 to +5.3 km, east -5 to +5 km), averaged to 25 m. The lake has no sensible heat flux and
+water's roughness (z0m 2e-4 m), the land 250 W/m2 and 0.05 m. The lake covers 33% of the tile, so the domain-mean flux
+is 167 W/m2. The atmosphere and wind are the pilot's (`les-pilot-lake.json`).
+
+| Quantity at 12.5 m | Uniform land (pilot) | With the lake: all | over the water | over the land |
+|---|---|---|---|---|
+| Mean wind | 9.0 kn | 10.7 kn | 11.4 kn | 10.3 kn |
+| Gust intensity (std/mean at a point) | 0.29 | 0.16 | 0.13 | 0.18 |
+| Direction std at a point | 19 deg | 10 deg | | |
+| Speed correlation length | 300 m | 175 m | | |
+| Mixed layer at 3 h | 1.9 km | 1.86 km | | |
+
+Downwind of the shore the wind crosses first (from the south), over the water:
+
+| Distance over water | Speed / land mean | Gust intensity |
+|---|---|---|
+| 0-250 m | 1.07 | 0.15 |
+| 250-500 m | 1.11 | 0.15 |
+| 0.5-1 km | 1.13 | 0.15 |
+| 1-2 km | 1.13 | 0.14 |
+| 2-4 km | 1.11 | 0.13 |
+| 4-10 km | 1.06 | 0.11 |
+
+![Wind speed at 12.5 m over the lake](speed-12m-lake.png)
+
+What it adds for the game:
+
+1. **Over the water the wind is steadier than over the land round it.** Gust intensity is 0.13 over the lake (0.18
+   over the land, 0.29 with all land). It falls from 0.15 near the upwind shore to 0.11 after 4 km of open water. The
+   game's lake days should sit at the low end of `GustIntensity` (0.15) and ease with distance from the upwind shore.
+   The game already marches that fetch for the waves (`FLakeTerrain::FetchToward`), so the same distance could scale
+   the gusts.
+2. **The wind picks up over the water.** It is 7% stronger within 250 m of the shore and 13% stronger by 1-2 km, as the
+   smoother surface lets the air speed up. The game's wind is uniform in strength across land and water. A fetch-based
+   factor, rising from 1 at the shore to about 1.1 over 1 km, matches this.
+3. **The kilometre-scale lulls weaken over the lake.** Without heating from below the water damps the convective
+   cells, so their patches don't reach the surface as strongly (correlation 175 m, against 300 m over land). Most of
+   the gust structure over the water arrives from the upwind land. So the kilometre octave proposed above belongs over
+   land and near the upwind shore, fading out over open water.
+4. **Caveats.** The tile is periodic, so the lake's outline wraps at the tile edges and the land north of the window
+   feeds the south shore. The lake is a uniform cool patch (in summer the water is warm and the real flux is a little
+   above zero). There is no lake breeze: its pressure-driven circulation needs a larger domain and more time.
+
 ## Reproducing it
 
 ```

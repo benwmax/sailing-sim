@@ -2,7 +2,7 @@
 field (FWindField: GustIntensity, GustLengthMeters, ShiftDegrees, ShiftPeriodSeconds). Reads MicroHH's xy
 cross-sections (12.5, 62.5 and 212.5 m, every 60 s) over the saved last hour and the statistics file.
 Writes docs/water-6/les-pilot.json (the numbers) and the figures docs/water-6/speed-12m.png, w-225m.png,
-spectrum.png. Usage (WSL): python3 Tools/les/analyse_pilot.py [work dir, default /root/les-runs/ntxcbl]"""
+spectrum.png. Usage (WSL): python3 Tools/les/analyse_pilot.py [work dir, default /root/les-runs/ntxcbl] [tag, e.g. -lake]"""
 import glob
 import json
 import os
@@ -44,7 +44,7 @@ def corr_length(a):
     return float(below[0] * DX) if len(below) else float("nan")
 
 
-def main(work):
+def main(work, tag=""):
     os.makedirs(DOCS, exist_ok=True)
     ts = [t for t in times(work) if t >= 7200]
     if not ts:
@@ -83,7 +83,7 @@ def main(work):
     # Mixed-layer height: where the mean potential temperature gradient peaks (statistics over the last hour).
     try:
         import netCDF4 as nc
-        st = sorted(glob.glob(os.path.join(work, "ntxcbl.default.*.nc")))
+        st = sorted(glob.glob(os.path.join(work, "*.default.*.nc")))
         ds = nc.Dataset(st[-1])
         z = ds["z"][:]
         th = ds.groups["thermo"]["th"][:] if "thermo" in ds.groups else ds.groups["default"]["th"][:]
@@ -93,24 +93,53 @@ def main(work):
     except Exception as e:   # noqa: BLE001 - the numbers above stand without it
         out["mixed_layer_m"] = None
         out["mixed_layer_note"] = str(e)
-    json.dump(out, open(os.path.join(DOCS, "les-pilot.json"), "w"), indent=1)
+    mask_file = os.path.join(work, "lake_mask.npy")
+    lake = np.load(mask_file) if os.path.exists(mask_file) else None
+    if lake is not None:
+        out.update(lake_stats(spd, lake))
+    json.dump(out, open(os.path.join(DOCS, f"les-pilot{tag}.json"), "w"), indent=1)
     print(json.dumps(out, indent=1))
-    figures(work, ts[-1], spd[-1])
+    figures(work, ts[-1], spd[-1], tag, lake)
 
 
-def figures(work, t, s):
+def lake_stats(spd, lake):
+    """Over the water against over the land (12.5 m), and how the wind over the lake changes with distance from the
+    upwind (south) shore, which the wind crosses first (13 kn geostrophic from the south)."""
+    mean = spd.mean(axis=0)
+    gi = spd.std(axis=0) / mean
+    out = {"lake_fraction": float(lake.mean()),
+           "speed_water_kn": float(mean[lake].mean() / KN), "speed_land_kn": float(mean[~lake].mean() / KN),
+           "gust_intensity_water": float(gi[lake].mean()), "gust_intensity_land": float(gi[~lake].mean())}
+    # Distance over water from the shore to the south (rows run north), per lake cell.
+    dist = np.zeros(lake.shape)
+    for j in range(1, N):
+        dist[j] = np.where(lake[j], np.where(lake[j - 1], dist[j - 1] + DX, DX), 0.0)
+    bins = [0, 250, 500, 1000, 2000, 4000, 10000]
+    prof = []
+    for a, b in zip(bins, bins[1:]):
+        m = lake & (dist > a) & (dist <= b)
+        if m.sum() > 50:
+            prof.append({"from_m": a, "to_m": b, "cells": int(m.sum()), "speed_ratio_to_land": float(mean[m].mean() / mean[~lake].mean()),
+                         "gust_intensity": float(gi[m].mean())})
+    out["downwind_of_shore"] = prof
+    return out
+
+
+def figures(work, t, s, tag="", lake=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     ext = [0, L / 1000, 0, L / 1000]
     fig, ax = plt.subplots(figsize=(6.5, 5.5), dpi=110)
     im = ax.imshow(s / KN, origin="lower", extent=ext, cmap="viridis")
+    if lake is not None:
+        ax.contour(lake.astype(float), levels=[0.5], colors="w", linewidths=0.6, extent=ext, origin="lower")
     ax.set_title(f"Wind speed at 12.5 m, t = {t / 3600:.2f} h (kn)\n13 kn geostrophic from the south, 250 W/m2")
     ax.set_xlabel("east (km)")
     ax.set_ylabel("north (km)")
     fig.colorbar(im, ax=ax, shrink=0.8)
     fig.tight_layout()
-    fig.savefig(os.path.join(DOCS, "speed-12m.png"))
+    fig.savefig(os.path.join(DOCS, f"speed-12m{tag}.png"))
     plt.close(fig)
     w = read(work, "w", 9, t)
     if w is not None:
@@ -121,7 +150,7 @@ def figures(work, t, s):
         ax.set_ylabel("north (km)")
         fig.colorbar(im, ax=ax, shrink=0.8)
         fig.tight_layout()
-        fig.savefig(os.path.join(DOCS, "w-225m.png"))
+        fig.savefig(os.path.join(DOCS, f"w-225m{tag}.png"))
         plt.close(fig)
     # The 1-D spectrum of the speed along the mean wind (north), averaged over columns.
     a = s - s.mean(axis=0)
@@ -135,9 +164,10 @@ def figures(work, t, s):
     ax.axvline(250, color="r", lw=0.8, ls="--")
     ax.text(260, p[1:].max() * 0.5, "game: 250 m", color="r", fontsize=8)
     fig.tight_layout()
-    fig.savefig(os.path.join(DOCS, "spectrum.png"))
+    fig.savefig(os.path.join(DOCS, f"spectrum{tag}.png"))
     plt.close(fig)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "/root/les-runs/ntxcbl")
+    # analyse_pilot.py [work dir] [tag]: the lake run writes les-pilot-lake.json and <figure>-lake.png.
+    main(sys.argv[1] if len(sys.argv) > 1 else "/root/les-runs/ntxcbl", sys.argv[2] if len(sys.argv) > 2 else "")
