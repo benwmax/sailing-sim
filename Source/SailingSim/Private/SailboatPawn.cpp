@@ -658,6 +658,20 @@ void ASailboatPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Boat detail pass: braided rope and 1x19 wire for the live rig lines (scripts/import_boat_detail.py), when imported;
+	// otherwise the flat MI_Boat_Rope / MI_Boat_Stainless stay. -SailingFlatRope compares.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingFlatRope")))
+	{
+		if (UMaterialInterface* R = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, TEXT("/Game/Boats/Rope/M_RigRope.M_RigRope"), nullptr, LOAD_NoWarn | LOAD_Quiet)))
+		{
+			RopeMaterial = R;
+		}
+		if (UMaterialInterface* W = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, TEXT("/Game/Boats/Rope/M_RigWire.M_RigWire"), nullptr, LOAD_NoWarn | LOAD_Quiet)))
+		{
+			WireMaterial = W;
+		}
+	}
+
 	if (TActorIterator<AWaterSurface> It(GetWorld()); It)
 	{
 		Water = *It;

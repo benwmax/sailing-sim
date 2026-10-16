@@ -187,8 +187,22 @@ def gelcoat_hull(st):
     fade = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
     fade.inputs[1].default_value, fade.inputs[2].default_value = 0.10, 0.62
     _l(nt, z, fade.inputs[0])
+    # streaks cluster (lesson photo IMG_9224: broad faint runs, not an even comb) and run hardest under the deck
+    # fittings that shed dirty water: chainplates at the mast, jib-lead tracks, the stern cleats and scuppers
+    cvec, _ = _coords(nt, scale=(1.0, 0.0, 0.0))
+    cluster = _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", _noise4(nt, cvec, 1.6, W + 21, 2, 0.5), 0.35, True), 2.4, True)
+    st_ = _math(nt, "MULTIPLY", st_, _math(nt, "ADD", 0.25, _math(nt, "MULTIPLY", cluster, 0.75)))
+    for i, (sx, sw) in enumerate(((1.0, 0.10), (-0.15, 0.14), (-2.95, 0.10), (-2.2, 0.08))):
+        src = _band(nt, x, sx - sw, sx + sw, sw * 0.6)
+        run = _math(nt, "GREATER_THAN", _noise4(nt, svec, 1.6, W + 30 + i, 2, 0.5), 0.45)
+        st_ = _math(nt, "MAXIMUM", st_, _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", src, run), 0.9))
     streak = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", st_, fade.outputs[0]), 0.25 + 0.5 * h["streaks"], True)
     c = _mix(nt, streak, base, _rgb("#A8A293"))
+    # a grey wash just under the hull-deck joint where the toe rail drips
+    lip = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
+    lip.inputs[1].default_value, lip.inputs[2].default_value = 0.42, 0.66
+    _l(nt, z, lip.inputs[0])
+    c = _mix(nt, _math(nt, "MULTIPLY", lip.outputs[0], 0.10 + 0.25 * h["streaks"]), c, _rgb("#B4AE9F"))
     var = _noise4(nt, vec, 3.0, W + 3, 3, 0.5)
     c = _mix(nt, _math(nt, "MULTIPLY", var, 0.10 + 0.25 * h["chalk"]), c, _rgb("#DCD7CA"))
     for i, r in enumerate(h["repairs"]):
@@ -221,6 +235,7 @@ def gelcoat_hull(st):
     bsdf.inputs["Coat Roughness"].default_value = 0.12
     _bump(nt, bsdf, _math(nt, "ADD", _noise(nt, vec, 1.2, 2, 0.4), _math(nt, "MULTIPLY", chips, -0.2)), 0.05, 0.01)
     m.diffuse_color = base
+    m["detail"] = "gelcoat"
     return m
 
 
@@ -285,6 +300,7 @@ def deck_mould(st, name="Gelcoat", windows=False):
     _l(nt, rough, bsdf.inputs["Roughness"])
     _bump(nt, bsdf, height, 0.6, 0.0015)
     m.diffuse_color = _rgb("#E8E4D8")
+    m["detail"] = "nonskid_normal"
     return m
 
 
@@ -323,6 +339,7 @@ def teak(st, name, varnish=False):
         _l(nt, _math(nt, "ADD", 0.62 if state == "silvered" else 0.45, _math(nt, "MULTIPLY", fine, 0.25)), bsdf.inputs["Roughness"])
         _bump(nt, bsdf, _math(nt, "ADD", _math(nt, "MULTIPLY", grain, 0.5), fine), 0.12 + 0.18 * st["teak"]["wear"], 0.0015)
     m.diffuse_color = _rgb("#8C8478" if not varnish else "#9A5A2A")
+    m["detail"] = "teak" if not varnish else ""
     return m
 
 
@@ -558,20 +575,22 @@ def draw_sail_textures(st, kind, out_dir, size=(2048, 4096)):
 
 def build_all(st):
     from j22_style import rope_pair
+    from j22_rope import rope_material, wire_material
     os.makedirs(TEX_DIR, exist_ok=True)
     lam = st["sails"]["cloth"] == "grey_laminate"
     fade = st["ropes"]["fade"]
+    dirt = min(1.0, st["wear"] * (1.2 - st["care"]))
     mats = {
         "Gelcoat": deck_mould(st, "Gelcoat"),
         "GelcoatHull": gelcoat_hull(st),
-        "CabinGelcoat": deck_mould(st, "CabinGelcoat", windows=True),
+        "CabinGelcoat": deck_mould(st, "CabinGelcoat"),      # real portlights since the interior pass
         "TeakWeathered": teak(st, "TeakWeathered"),
         "TeakVarnish": teak(st, "TeakVarnish", varnish=True),
         "Aluminium": anodised(st),
         "CastAlu": anodised(st, "CastAlu", "#B7BABD"),
         "Chrome": stainless(st, "Chrome", "#E4E6E8", 0.10),
         "Stainless": stainless(st),
-        "Wire": stainless(st, "Wire", "#B9BCBF", 0.28),
+        "Wire": wire_material("Wire", st["metal"]["tea_stain"] * 0.5),
         "Bronze": simple("Bronze", "#9C7B4A", 0.35, 1.0),
         "BlackPlastic": simple("BlackPlastic", "#151515", 0.45),
         "CamBase": simple("CamBase", "#2A2B2D", 0.5),
@@ -589,12 +608,14 @@ def build_all(st):
         "TelltaleRed": simple("TelltaleRed", "#C0261C", 0.6),
         "TelltaleGreen": simple("TelltaleGreen", "#1F8A3A", 0.6),
         "Sticker": simple("Sticker", st["hull"]["sticker_hex"], 0.3),
-        "RopeJibPort": rope(st, "RopeJibPort", rope_pair(st, "jib_sheet_port"), fade),
-        "RopeJibStbd": rope(st, "RopeJibStbd", rope_pair(st, "jib_sheet_stbd"), fade),
-        "RopeMain": rope(st, "RopeMain", rope_pair(st, "mainsheet"), fade),
-        "RopeHalyard": rope(st, "RopeHalyard", rope_pair(st, "halyards"), fade),
-        "RopeVang": rope(st, "RopeVang", rope_pair(st, "vang"), fade),
-        "RopeBackstay": rope(st, "RopeBackstay", rope_pair(st, "backstay"), fade),
+        # braided lines: Tools/rope textures with true arc-length UVs (j22_rope.rope_uv runs at the end of the build)
+        "RopeJibPort": rope_material("RopeJibPort", st["ropes"]["jib_sheet_port"], fade, dirt, seed=st["seed"] + 1),
+        "RopeJibStbd": rope_material("RopeJibStbd", st["ropes"]["jib_sheet_stbd"], fade, dirt, seed=st["seed"] + 2),
+        "RopeMain": rope_material("RopeMain", st["ropes"]["mainsheet"], fade, dirt, seed=st["seed"] + 3),
+        "RopeHalyard": rope_material("RopeHalyard", st["ropes"]["halyards"], fade * 0.6, dirt * 0.5, seed=st["seed"] + 4),
+        "RopeVang": rope_material("RopeVang", st["ropes"]["vang"], fade, dirt, seed=st["seed"] + 5),
+        "RopeBackstay": rope_material("RopeBackstay", st["ropes"]["backstay"], fade, dirt * 0.6, seed=st["seed"] + 6),
+        "RopeMooring": rope_material("RopeMooring", "blue_solid", fade * 1.2, dirt * 1.3, kind="Braid16", seed=st["seed"] + 7),
     }
     # aliases used by older call sites
     mats["RopeRedWhite"] = mats["RopeMain"]
@@ -613,7 +634,8 @@ def build_all(st):
     for role, key in (("jib_sheet_port", "RopeJibPort"), ("jib_sheet_stbd", "RopeJibStbd"), ("mainsheet", "RopeMain"),
                       ("halyards", "RopeHalyard"), ("vang", "RopeVang"), ("backstay", "RopeBackstay")):
         a, b = rope_pair(st, role)
-        flat[key] = _mixhex(a, b, 0.3)
+        flat[key] = _mixhex(a, b, 0.2)
+    flat["RopeMooring"] = _rgb("#22468F")
     for k, c in flat.items():
         mats[k].diffuse_color = (c[0], c[1], c[2], 1.0)
     mc, mh = draw_sail_textures(st, "main", TEX_DIR)

@@ -429,6 +429,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   the swell's +/-45 deg spread reaching a point in straight lines from the chart's deep (4 m+) edge, land on the 100 m grid
   from any 10 m node above water; the boat's added resistance and `SignificantHeightAt` follow the mask (mask^2 energy).
   `scripts/ocean-mask.sh [World]` maps it standalone; `-SailingNoOcean` compares; `SailingSim.Coast.GalvestonSwell`.
+- Boat detail (boats 11, `docs/boats-11/`): the live rig lines carry UV0 (U = arc length over 5 diameters, 11 for wire;
+  a seam column), tangents and a vertex colour whose red is the line's look (`RopeLook` in `BoatModelVisuals.cpp`, a
+  column of `T_RopeColourways`, `Inputs/rope/colourways.json` order). `scripts/import_boat_detail.py` builds
+  `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
+  `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
+  materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
