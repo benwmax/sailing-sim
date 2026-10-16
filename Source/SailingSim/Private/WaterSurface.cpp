@@ -238,7 +238,6 @@ AWaterSurface::AWaterSurface()
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMesh(TEXT("/Engine/BasicShapes/Plane.Plane"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Water(TEXT("/Game/Materials/M_Water.M_Water"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WaterV4(TEXT("/Game/Materials/M_WaterV4.M_WaterV4"));
 	ClassicMaterial = Water.Object;
@@ -248,15 +247,11 @@ AWaterSurface::AWaterSurface()
 	DropletMesh = Sphere.Object;
 	SprayMaterial = SprayMat.Object;
 
-	FarPlane = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FarPlane"));
+	// The far water past the rings, out to the horizon: built with the rings (BuildRings).
+	FarPlane = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("FarPlane"));
 	FarPlane->SetupAttachment(RootComponent);
-	FarPlane->SetStaticMesh(PlaneMesh.Object);
-	FarPlane->SetMaterial(0, Water.Object);
 	FarPlane->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	FarPlane->SetCastShadow(false);
-	// Just below the rings: hidden under them up close, the horizon beyond them.
-	FarPlane->SetRelativeLocation(FVector(0.f, 0.f, -6.f));
-	FarPlane->SetRelativeScale3D(FVector(FarPlaneSizeMeters, FarPlaneSizeMeters, 1.f));
 }
 
 const FWaveField* AWaterSurface::GetWaves() const
@@ -280,7 +275,6 @@ double AWaterSurface::GetSimTime() const
 void AWaterSurface::BeginPlay()
 {
 	Super::BeginPlay();
-	FarPlane->SetRelativeScale3D(FVector(FarPlaneSizeMeters, FarPlaneSizeMeters, 1.f));
 	// W2: the near wind map is 512 x 512 on Ultra, 256 x 256 otherwise; each tick refreshes one strip of rows (every
 	// texel each 0.8 s).
 	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
@@ -545,6 +539,79 @@ void AWaterSurface::BuildRings()
 		Rings.Add(Ring);
 		RingSpacing.Add(Spacing);
 	}
+
+	// The far water starts one outer-ring cell inside the outer ring (the rings overlap the same way) and follows its snap.
+	// It used to be the engine's plane scaled to 40 km: one quad whose corners, 20 to 28 km out, carried the curvature's 27
+	// to 53 m drop across the whole quad, so past the rings the water lay tens of metres down and the shallow bay bed
+	// showed above it (docs/water-8/edge-mac).
+	TArray<FVector> Verts;
+	TArray<int32> Tris;
+	BuildFarGrid(FarGridInnerHalfMeters(RingCount), 0.5f * FarPlaneSizeMeters, FarGridPerSide, Verts, Tris);
+	TArray<FVector> Normals;
+	Normals.Init(FVector::UpVector, Verts.Num());
+	TArray<FProcMeshTangent> Tangents;
+	Tangents.Init(FProcMeshTangent(FVector(1.0, 0.0, 0.0), false), Verts.Num());
+	FarPlane->ClearAllMeshSections();
+	FarPlane->CreateMeshSection_LinearColor(0, Verts, Tris, Normals, {}, {}, Tangents, false);
+	if (WaterMaterial) FarPlane->SetMaterial(0, WaterMaterial);
+}
+
+float AWaterSurface::FarGridInnerHalfMeters(int32 InRingCount)
+{
+	const float OuterSpacing = kFinestSpacingM * float(1 << (FMath::Max(InRingCount, 1) - 1));
+	return (0.5f * float(kRingQuads) - 1.f) * OuterSpacing;
+}
+
+void AWaterSurface::BuildFarGrid(float InnerHalfM, float OuterHalfM, int32 PerSide, TArray<FVector>& OutVerts, TArray<int32>& OutTris)
+{
+	OutVerts.Reset();
+	OutTris.Reset();
+	PerSide = FMath::Max(PerSide, 4);
+	const int32 Around = 4 * PerSide;
+	// Squares growing by one cell (2 r / PerSide) each step, so the cells stay about square and their size grows with the
+	// distance, as the rings' does; the last square is the far edge.
+	TArray<float> Halves;
+	for (float R = InnerHalfM; ; R *= 1.f + 2.f / float(PerSide))
+	{
+		if (R >= OuterHalfM * (1.f - 1.f / float(PerSide)))
+		{
+			Halves.Add(OuterHalfM);
+			break;
+		}
+		Halves.Add(R);
+	}
+	OutVerts.Reserve(Halves.Num() * Around);
+	for (const float R : Halves)
+	{
+		for (int32 P = 0; P < Around; ++P)
+		{
+			// Around the square from its (-, -) corner.
+			const float U = -1.f + 2.f * float(P % PerSide) / float(PerSide);
+			const int32 Side = P / PerSide;
+			const FVector2D Q = Side == 0 ? FVector2D(U, -1.f) : Side == 1 ? FVector2D(1.f, U) : Side == 2 ? FVector2D(-U, 1.f) : FVector2D(-1.f, -U);
+			OutVerts.Add(FVector(Q.X * R, Q.Y * R, 0.f) * CmPerMeter);
+		}
+	}
+	OutTris.Reserve((Halves.Num() - 1) * Around * 6);
+	for (int32 K = 0; K + 1 < Halves.Num(); ++K)
+	{
+		for (int32 P = 0; P < Around; ++P)
+		{
+			const int32 A = K * Around + P, B = K * Around + (P + 1) % Around, C = A + Around, D = B + Around;
+			// Split along the shorter diagonal (at the corners the other one is half again as long, and the curvature's
+			// interpolation error grows as its square).
+			const bool bAD = FVector::DistSquared(OutVerts[A], OutVerts[D]) < FVector::DistSquared(OutVerts[B], OutVerts[C]);
+			const FIntVector Split[2] = { bAD ? FIntVector(A, B, D) : FIntVector(A, B, C), bAD ? FIntVector(A, D, C) : FIntVector(B, D, C) };
+			for (const FIntVector& T : Split)
+			{
+				// Wound as the rings' triangles are ((b - a) x (c - a) points down).
+				const bool bDown = FVector::CrossProduct(OutVerts[T.Y] - OutVerts[T.X], OutVerts[T.Z] - OutVerts[T.X]).Z < 0.0;
+				OutTris.Add(T.X);
+				OutTris.Add(bDown ? T.Y : T.Z);
+				OutTris.Add(bDown ? T.Z : T.Y);
+			}
+		}
+	}
 }
 
 void AWaterSurface::SetBoatForWake(const FVector2D& PositionM, float HeadingRad, float SpeedMs, float HeelRad)
@@ -571,7 +638,11 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		const float Snap = 2.f * RingSpacing[I] * CmPerMeter;
 		Rings[I]->SetWorldLocation(FVector(FMath::GridSnap(CamPos.X, Snap), FMath::GridSnap(CamPos.Y, Snap), GetActorLocation().Z));
 	}
-	FarPlane->SetWorldLocation(FVector(CamPos.X, CamPos.Y, GetActorLocation().Z - 6.f));
+	// The far grid on the outer ring's snap, 10 cm down so the ring wins where they overlap.
+	if (Rings.Num() > 0)
+	{
+		FarPlane->SetWorldLocation(Rings.Last()->GetComponentLocation() - FVector(0.f, 0.f, 10.f));
+	}
 	UpdateHullClip();
 
 	GustTimer -= DeltaSeconds;

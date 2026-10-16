@@ -40,7 +40,7 @@ public:
 	/** Still-water height in centimeters (world Z). */
 	float GetSurfaceZ() const { return GetActorLocation().Z; }
 
-	/** Number of mesh rings (quality tier): 4 on Low, 5 on Medium and High (past about 500 m the far plane carries the horizon). */
+	/** Number of mesh rings (quality tier): 4 on Low, 5 on Medium and High (past about 500 m the far grid carries the horizon). */
 	void SetRingCount(int32 Count);
 
 	/** Quality tier: 0 Low (M_Water), 1 Medium (M_WaterV4: FFT chop and the wake grid), 2 High (adds the ripples and
@@ -108,6 +108,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Water")
 	float FarPlaneSizeMeters = 40000.f;
 
+	/** The far water past the rings (docs/water-8/edge-mac): square rings of cells that grow with the distance as the
+	 *  rings' do (PerSide cells along each side, each square one cell larger than the last), from InnerHalfM to
+	 *  OuterHalfM, in centimetres about the centre. Per-vertex curvature (d^2 / 2R) then stays within about 1.2 cm of the
+	 *  true drop out to the edge (SailingSim.Visual.FarWaterCurvature); one 40 km quad lay 25 to 50 m down. */
+	static void BuildFarGrid(float InnerHalfM, float OuterHalfM, int32 PerSide, TArray<FVector>& OutVerts, TArray<int32>& OutTris);
+	/** Where the far grid starts for a ring count: one outer-ring cell inside the outer ring's edge. */
+	static float FarGridInnerHalfMeters(int32 InRingCount);
+	static constexpr int32 FarGridPerSide = 64;
+
 private:
 	void BuildRings();
 	void UpdateMaterial();
@@ -135,7 +144,7 @@ private:
 	double GetSimTime() const;
 
 	UPROPERTY(Transient) TArray<TObjectPtr<UProceduralMeshComponent>> Rings;
-	UPROPERTY(VisibleAnywhere, Category = "Water") TObjectPtr<UStaticMeshComponent> FarPlane;
+	UPROPERTY(VisibleAnywhere, Category = "Water") TObjectPtr<UProceduralMeshComponent> FarPlane;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WaterMaterial;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> GustMap;
 	/** W2: the far wind map (16 km). GustMap is the near one (3.2 km). */
