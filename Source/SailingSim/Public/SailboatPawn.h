@@ -198,7 +198,8 @@ private:
 	void BuildHullMesh();
 	// Visual V2: modelled boats (the J/22 first; BoatModelVisuals.cpp). A class with a model uses its hull, mast, boom
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; };
+	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom).
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; bool bOwnOutboard = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
