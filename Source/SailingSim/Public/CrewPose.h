@@ -81,6 +81,7 @@ struct SAILINGSIM_API FCrewGround
 	const Sailing::FBoatConfig* Config = nullptr;
 	double HullDepth = 0.25;    // m, FBoatModel::HullDepth
 	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
+	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */
@@ -90,6 +91,9 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
 	double HalfWidth = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+	// Round 12: a traveler bridge across the well between the seats (the J/22's, build_j22.py TRAV_X), solid from the sole
+	// to its top; BridgeHalfX 0 for none.
+	double BridgeX = 0.0, BridgeHalfX = 0.0, BridgeZ = 0.0;
 };
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out);
 /** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */
@@ -103,6 +107,9 @@ struct SAILINGSIM_API FCrewHands
 	EMode Mode[2] = { EMode::Free, EMode::Free };          // [0] left, [1] right
 	FVector Target[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	float Grip[2] = { 0.3f, 0.3f };
+	// Round 12: for Reach, the line or bar through the palm (component space; the tiller extension, a sheet's tail, a
+	// handrail): the wrist turns so it runs across the palm, knuckle to knuckle. Zero leaves the wrist as the stance has it.
+	FVector Along[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	const FCrewGround* Ground = nullptr;                    // plant the feet on the boat (FCrewGround)
 };
 

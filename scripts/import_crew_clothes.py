@@ -20,6 +20,33 @@ def log(m):
 SHOE_SLOTS = {"Upper": "/Game/Crew/Fabric/MI_Crew_ShoeLeather", "Sole": "/Game/Boats/Materials/MI_Boat_CrewSole", "Lace": "/Game/Boats/Materials/MI_Boat_CrewLace"}
 
 
+ARM_BONES = ("upperarm", "lowerarm", "hand", "thumb", "index", "middle", "ring", "pinky")
+
+
+def keep_arms_off(mesh):
+    """Round 11 ("person looks like a doll"): the vest's armhole tore in seated poses. Closest-point weights from the
+    T-shirt give the armhole's edge the sleeve's upper-arm weights, so the edge swung with the arm while the polo under it
+    didn't. A life jacket doesn't follow the arm: every arm bone's weight goes to the clavicle on the same side."""
+    bw = unreal.GeometryScript_BoneWeights
+    names = {b.index: str(b.name) for b in bw.get_all_bones_info(mesh)[1]}
+    clav = {n[-1]: i for i, n in names.items() if n in ("clavicle_l", "clavicle_r")}
+    to = {i: clav[n[-1]] for i, n in names.items() if n.startswith(ARM_BONES) and n[-2:] in ("_l", "_r") and n[-1] in clav}
+    moved = 0
+    queries = unreal.GeometryScript_MeshQueries
+    count = queries.get_num_vertex_i_ds(mesh) if hasattr(queries, "get_num_vertex_i_ds") else queries.get_vertex_count(mesh)
+    for v in range(count):   # (ids past a gap report no weights)
+        _, weights, ok = bw.get_vertex_bone_weights(mesh, v)
+        if not ok or not any(w.bone_index in to for w in weights):
+            continue
+        merged = {}
+        for w in weights:
+            i = to.get(w.bone_index, w.bone_index)
+            merged[i] = merged.get(i, 0.0) + w.weight
+        bw.set_vertex_bone_weights(mesh, v, [unreal.GeometryScriptBoneWeight(bone_index=i, weight=x) for i, x in merged.items()])
+        moved += 1
+    return moved
+
+
 def make(role, piece, fbx, source_mesh, slots):
     """The garment's FBX as a static mesh, the source's skin weights on it, a skeletal mesh on its skeleton."""
     folder = f"/Game/Crew/MetaHumans/{role}/Clothing"
@@ -55,6 +82,8 @@ def make(role, piece, fbx, source_mesh, slots):
     t.transfer_method = unreal.TransferBoneWeightsMethod.CLOSEST_POINT_ON_SURFACE
     t.output_target_mesh_bones = unreal.OutputTargetMeshBones.SOURCE_BONES
     unreal.GeometryScript_BoneWeights.transfer_bone_weights_from_mesh(donor, garment, t)
+    if piece == "Vest":
+        log(f"{role} Vest: arm weights moved to the clavicles on {keep_arms_off(garment)} vertices")
     c = unreal.GeometryScriptCreateNewSkeletalMeshAssetOptions()
     c.use_mesh_bone_proportions = True
     c.enable_recompute_tangents = True

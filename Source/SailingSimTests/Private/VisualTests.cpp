@@ -722,6 +722,21 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		const FVector Palm = Held[TEXT("hand_r")] + (Held[TEXT("middle_01_r")] - Held[TEXT("hand_r")]) * 0.75;
 		TestTrue(FString::Printf(TEXT("%s: the palm closes %.1f cm from the reach target"), MetaHumanRoleName(Role), FVector::Dist(Palm, Reach.Target[1])),
 			FVector::Dist(Palm, Reach.Target[1]) < 4.f);
+		// Round 12: holding a line (the tiller extension here, rising aft and inboard to the hand), it runs across the
+		// palm, knuckle to knuckle, and the palm still closes on the target.
+		FCrewHands Line = Reach;
+		Line.Along[1] = Rig.Frame.RotateVector(FVector(0.6f, -0.7f, 0.4f).GetSafeNormal());
+		TMap<FName, FVector> Gripped;
+		CrewPosedJoints(Body, Joints, Gripped, &Rig, &Line);
+		const FVector Across = (Gripped[TEXT("index_01_r")] - Gripped[TEXT("pinky_01_r")]).GetSafeNormal();
+		const float Off = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FMath::Abs(FVector::DotProduct(Across, Line.Along[1])), 0.0, 1.0)));
+		const float Before = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FMath::Abs(FVector::DotProduct(
+			(Held[TEXT("index_01_r")] - Held[TEXT("pinky_01_r")]).GetSafeNormal(), Line.Along[1])), 0.0, 1.0)));
+		TestTrue(FString::Printf(TEXT("%s: the extension runs across the palm (%.0f deg off the knuckles, %.0f before)"), MetaHumanRoleName(Role), Off, Before),
+			Off < 20.f || Off < Before - 40.f);
+		const FVector GripPalm = Gripped[TEXT("hand_r")] + (Gripped[TEXT("middle_01_r")] - Gripped[TEXT("hand_r")]) * 0.75;
+		TestTrue(FString::Printf(TEXT("%s: gripping, the palm closes %.1f cm from the target"), MetaHumanRoleName(Role), FVector::Dist(GripPalm, Line.Target[1])),
+			FVector::Dist(GripPalm, Line.Target[1]) < 5.f);
 	}
 	return true;
 }
@@ -736,6 +751,13 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	using namespace Sailing;
 	const USkeletalMesh* Sailor = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
 	if (!TestNotNull(TEXT("SK_Sailor"), Sailor)) return false;
+	// Round 12: the J/22's traveler bridge (build_j22.py TRAV_X) is a floor, solid down to the sole.
+	{
+		const FBoatConfig J22;
+		TestEqual(TEXT("J/22: the traveler bridge is the floor over it"), CrewFloorZ(J22, -1.75, 0.0), 0.485, 1e-6);
+		TestTrue(TEXT("J/22: under the traveler bridge is solid"), CrewInsideBoat(J22, FBoatModel(J22).HullDepth(), FVector(-1.75, 0.0, 0.40)));
+		TestEqual(TEXT("J/22: aft of the bridge the floor is the sole"), CrewFloorZ(J22, -2.0, 0.0), 0.30, 1e-6);
+	}
 	struct FBody { const USkeletalMesh* Mesh; FCrewRig Rig; FString Name; };
 	TArray<FBody> Bodies;
 	Bodies.Add({ Sailor, FCrewRig(), TEXT("SK_Sailor") });
@@ -796,10 +818,26 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.Config = &Cfg;
 						Ground.HullDepth = Model.HullDepth();
 						Ground.ToBoat = FTransform(CompRot, Location);
+						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						FCrewHands Hands;
 						Hands.Ground = &Ground;
 						FVector Feet[2][2];
 						CrewFootPoints(B.Mesh, Joints, Feet, bRig ? &B.Rig : nullptr, &Hands);
+						for (int32 S = 0; S < 2; ++S)
+						{
+							// Round 12: on the J/22 (the round 12 close-ups), a seated foot standing on one floor level lies flat
+							// on it, not heel down and toe in the air. (Across a seat's edge or the bridge deck it stays as planted.)
+							if (!Ground.bSeated) continue;
+							const FVector Heel = (Location + CompRot.RotateVector(Feet[S][0])) / CmPerMeter;
+							const FVector Toe = (Location + CompRot.RotateVector(Feet[S][1])) / CmPerMeter;
+							const double FloorZ = CrewFloorZ(Cfg, Heel.X, Heel.Y);
+							if (FloorZ < -1e8 || FMath::Abs(CrewFloorZ(Cfg, Toe.X, Toe.Y) - FloorZ) > 0.01 || FMath::Min(Heel.Z, Toe.Z) - FloorZ > 0.02) continue;
+							if (FMath::Abs(Heel.Z - Toe.Z) > 0.04)
+							{
+								AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot stands on the floor tilted: heel %.2f m, toe %.2f m"),
+									ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn, S == 0 ? TEXT("left") : TEXT("right"), Heel.Z, Toe.Z));
+							}
+						}
 						for (int32 S = 0; S < 2; ++S)
 						{
 							for (int32 K = 0; K < 2; ++K)

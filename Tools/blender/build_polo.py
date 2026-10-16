@@ -134,6 +134,17 @@ for v in bm.verts:
         s = (p - c).length
         if s < 0.14:
             d += 0.003 * (1 - s / 0.14) * math.sin(math.atan2(p.y - c.y, p.z - c.z) * 6.0)
+        # Round 11 ("the polo is too clean"): every seated sailor has the arms forward, which pulls the sleeve head into
+        # diagonal creases from the shoulder seam round toward the armpit, deepest at the front (where the vest leaves
+        # the shirt in view).
+        if s < 0.2:
+            axis = Vector((math.copysign(1.0, c.x), 0.0, -0.35)).normalized()
+            q = p - c
+            along = q.dot(axis)
+            rad = q - axis * along
+            theta = math.atan2(rad.dot(Vector((0.0, FRONT, 0.0))), rad.z)
+            front = 0.45 + 0.55 * max(0.0, FRONT * n.y)
+            d += 0.0032 * (1 - s / 0.2) * front * math.sin(3.0 * theta - along * 2 * math.pi / 0.07 + 1.5 * noise.noise(p * 6.0))
     v.co = p + n * max(d, -0.0015)
 bm.normal_update()
 
@@ -177,7 +188,14 @@ for k in range(NA):
     point = max(0.0, 1.0 - (ang - 6.0) / 30.0)   # the collar's points
     base.append(bm.verts.new(p - r * 0.002 + Vector((0, 0, -0.006))))
     stand.append(bm.verts.new(p + Vector((0, 0, 0.024)) + r * 0.004))
-    leaf.append(bm.verts.new(p + r * (0.048 + 0.012 * point) + Vector((0, 0, -0.006 - 0.032 * point))))
+    # Round 11: the points lie down on the shirt and, below the vest's neckline (2.2 cm of foam, from about 3.5 cm under
+    # the collar seam), on the vest; before they stood off the neck. Each leaf vertex is laid on the shirt at its offset.
+    lp = p + r * (0.044 + 0.006 * point) + Vector((0, 0, -0.008 - 0.036 * point))
+    hit = tree.find_nearest(lp)
+    if hit[0] is not None:
+        on_vest = max(0.0, min(1.0, (cen.z - 0.025 - lp.z) / 0.015))
+        lp = hit[0] + hit[1].normalized() * (0.003 + 0.024 * on_vest)
+    leaf.append(bm.verts.new(lp))
 n = NA
 for k in range(NA):
     a, b = k, (k + 1) % NA
