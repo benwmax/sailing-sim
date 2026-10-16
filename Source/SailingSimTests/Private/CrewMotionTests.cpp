@@ -4,6 +4,7 @@
 #include "Wind.h"
 #include "CrewPose.h"
 #include "CrewMotion.h"
+#include "CrewClips.h"
 #include "CrewAnimInstance.h"
 #include "SailboatPawn.h"
 #include "WaterSurface.h"
@@ -340,6 +341,244 @@ bool FVisualCrewMotionFeetTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("%d heel and toe points checked; %d sailors braced, %d placements ducked under the boom"), Checked, Braced, Ducked));
 	TestTrue(TEXT("Someone braces in the knockdown"), Braced > 0);
 	TestTrue(TEXT("Someone ducks under the boom"), Ducked > 0);
+	return true;
+}
+
+// Crew C1b: the idle clips stay within what the stances allow. Every baked frame, either way round, keeps each joint within
+// its limit and every weight shift the bake marked leans the way it says. Then on SK_Sailor (and the MetaHumans) in each
+// idling stance, through chop and a change of heel, the clip layer keeps each joint within its limit and moves the limbs
+// only a little from where the same sailor without clips has them: the feet stay planted.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClipLimitsTest, "SailingSim.Visual.CrewClipLimits", CrewMotionFlags)
+bool FVisualCrewClipLimitsTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	TestTrue(TEXT("There are clips"), CrewClips::Num() >= 6);
+	int32 Frames = 0, Onsets = 0, OnsetsRight = 0;
+	for (int32 C = 0; C < CrewClips::Num(); ++C)
+	{
+		const FCrewClipInfo& Info = CrewClips::Info(C);
+		for (const bool bMirror : { false, true })
+		{
+			float WorstRatio = 0.f, WorstGaze = 0.f;
+			for (float T = 0.f; T <= CrewClips::Duration(C); T += 1.f / 30.f)
+			{
+				FVector J[CrewClips::MaxJoints];
+				float Yaw, Pitch;
+				CrewClips::Sample(C, T, bMirror, J, Yaw, Pitch);
+				for (int32 K = 0; K < CrewClips::NumJoints(); ++K)
+				{
+					WorstRatio = FMath::Max(WorstRatio, float(FMath::RadiansToDegrees(J[K].Size())) / CrewClips::LimitDeg(K));
+				}
+				WorstGaze = FMath::Max(WorstGaze, FMath::Max(FMath::Abs(Yaw) / CrewClips::GazeLimitDeg(0), FMath::Abs(Pitch) / CrewClips::GazeLimitDeg(1)));
+				++Frames;
+			}
+			TestTrue(FString::Printf(TEXT("%s (%s)%s: every joint within its limit (worst %.2f of it), the gaze too (%.2f)"), Info.Label, Info.Trial,
+				bMirror ? TEXT(" mirrored") : TEXT(""), WorstRatio, WorstGaze), WorstRatio <= 1.001f && WorstGaze <= 1.001f);
+			for (int32 K = 0; K < Info.OnsetCount; ++K)
+			{
+				const FCrewClipOnset& O = CrewClips::Onset(Info.OnsetBegin + K);
+				FVector A[CrewClips::MaxJoints], B[CrewClips::MaxJoints];
+				float Y, P;
+				const float T0 = O.Frame / CrewClips::Rate();
+				CrewClips::Sample(C, T0, bMirror, A, Y, P);
+				CrewClips::Sample(C, FMath::Min(T0 + 1.f, CrewClips::Duration(C)), bMirror, B, Y, P);
+				const float Move = CrewClips::TrunkLean(B, O.Axis) - CrewClips::TrunkLean(A, O.Axis);
+				++Onsets;
+				OnsetsRight += Move * O.Direction * (bMirror && O.Axis == 0 ? -1 : 1) > 0.f ? 1 : 0;
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d clip frames checked; %d of %d weight-shift onsets lean the marked way within a second"), Frames, OnsetsRight, Onsets));
+	TestTrue(TEXT("There are weight-shift onsets"), Onsets > 20);
+	TestTrue(TEXT("Nearly every onset leans the way it is marked (95 %)"), OnsetsRight >= FMath::CeilToInt(0.95 * Onsets));
+
+	TArray<FCrewBody> Bodies;
+	CrewBodies(*this, Bodies);
+	if (!TestTrue(TEXT("SK_Sailor loads"), Bodies.Num() > 0)) return false;
+	struct FLimb { const TCHAR* Names[2]; float MaxCm; const TCHAR* What; };
+	// How far a limb may move from the clipless pose: the trunk's turns (pelvis, spine and chest, as far as a seated sailor
+	// takes them) carry the head and shoulders a few centimetres; a free hand adds its own arm's turns.
+	const FLimb Limbs[] = { { { TEXT("head"), TEXT("head") }, 14.f, TEXT("head") }, { { TEXT("hand_l"), TEXT("hand_l") }, 30.f, TEXT("left hand") },
+		{ { TEXT("hand_r"), TEXT("hand_r") }, 30.f, TEXT("right hand") }, { { TEXT("forearm_l"), TEXT("lowerarm_l") }, 20.f, TEXT("left elbow") },
+		{ { TEXT("forearm_r"), TEXT("lowerarm_r") }, 20.f, TEXT("right elbow") }, { { TEXT("foot_l"), TEXT("foot_l") }, 3.f, TEXT("left foot") },
+		{ { TEXT("foot_r"), TEXT("foot_r") }, 3.f, TEXT("right foot") } };
+	int32 Cases = 0;
+	for (const EBoatType Type : { EBoatType::J22, EBoatType::ILCA7 })
+	{
+		const FBoatConfig Cfg = FBoatConfig::Make(Type);
+		const FBoatModel Model(Cfg);
+		const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
+		const int32 N = Cfg.CrewCount;
+		for (int32 I = 0; I < N; ++I)
+		{
+			for (const double Out : { 0.3, Cfg.CrewSitOut * 0.8, Cfg.CrewSitOut + Cfg.CrewHikeOut })
+			{
+				for (const double Side : { 1.0, -1.0 })
+				{
+					FCrewPlaceInput Place;
+					Place.Config = &Cfg;
+					Place.Index = I;
+					Place.CrewOffset = Side * Out;
+					Place.WindwardSide = int32(Side);
+					FCrewPlacement Pl;
+					CrewPlacement(Place, Pl);
+					if (CrewClipStanceWeight(Pl.Params.Stance, Pl.Params.Hike) <= 0.f) continue;
+					for (const FCrewBody& Body : Bodies)
+					{
+						const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
+						if (Rig && Body.Name != MetaHumanRoleName(I == N - 1 ? 0 : (I == N - 2 ? 1 : 2))) continue;
+						const FReferenceSkeleton& Ref = Body.Mesh->GetRefSkeleton();
+						FCrewMotionState On, Off;
+						FCrewMotionInput In;
+						In.Params = Pl.Params;
+						In.ToBoat = FigureFrame(Pl, Rig);
+						In.SeatFromCG = Pl.Pelvis - CG;
+						In.Gaze = FVector(2500.0, 0.0, 80.0);
+						In.Seed = uint32(I) * 977u + uint32(Cases);
+						FCrewMotionInput InOff = In;
+						InOff.bClips = false;
+						TArray<FTransform> CSOn, CSOff;
+						float Worst[UE_ARRAY_COUNT(Limbs)] = {};
+						float WorstJoint = 0.f, MaxWeight = 0.f;
+						for (int32 K = 0; K < 20 * 30; ++K)
+						{
+							const double T = K / 30.0;
+							// Chop, and a puff heeling the boat 12 degrees more over 3 s at 8 s.
+							const double Heel = -Side * (5.0 + 12.0 * FMath::Clamp((T - 8.0) / 3.0, 0.0, 1.0));
+							In.Motion = InOff.Motion = Chop(T, Heel, 0.5);
+							In.Time = InOff.Time = float(T);
+							CrewMotionUpdate(On, In, 1.f / 30.f);
+							CrewMotionUpdate(Off, InOff, 1.f / 30.f);
+							for (int32 J = 0; J < CrewClips::NumJoints(); ++J)
+							{
+								WorstJoint = FMath::Max(WorstJoint, float(FMath::RadiansToDegrees(On.Clip.Joints[J].Size())) / CrewClips::LimitDeg(J));
+							}
+							MaxWeight = FMath::Max(MaxWeight, On.Clip.Weight);
+							if (K % 5 != 4) continue;
+							CrewMotionPose(Ref, Rig, &Cfg, Model.HullDepth(), On, In, CSOn);
+							CrewMotionPose(Ref, Rig, &Cfg, Model.HullDepth(), Off, InOff, CSOff);
+							for (int32 L = 0; L < UE_ARRAY_COUNT(Limbs); ++L)
+							{
+								const int32 B = Ref.FindBoneIndex(Limbs[L].Names[Rig ? 1 : 0]);
+								if (B != INDEX_NONE) Worst[L] = FMath::Max(Worst[L], float(FVector::Dist(CSOn[B].GetLocation(), CSOff[B].GetLocation())));
+							}
+						}
+						++Cases;
+						const FString Case = FString::Printf(TEXT("%s, %s crew %d (stance %d, hike %.1f, side %+.0f)"), ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *Body.Name, I,
+							int32(Pl.Params.Stance), Pl.Params.Hike, Side);
+						TestTrue(Case + FString::Printf(TEXT(": the clips play (weight %.2f)"), MaxWeight), MaxWeight > 0.25f);
+						TestTrue(Case + FString::Printf(TEXT(": every joint within its limit (worst %.3f of it)"), WorstJoint), WorstJoint <= 1.0001f);
+						FString Moves;
+						for (int32 L = 0; L < UE_ARRAY_COUNT(Limbs); ++L)
+						{
+							Moves += FString::Printf(TEXT(" %s %.1f"), Limbs[L].What, Worst[L]);
+							TestTrue(Case + FString::Printf(TEXT(": the %s moves %.1f cm at most (within %.0f)"), Limbs[L].What, Worst[L], Limbs[L].MaxCm), Worst[L] <= Limbs[L].MaxCm);
+						}
+						AddInfo(Case + TEXT(": cm from the clipless pose:") + Moves);
+					}
+				}
+			}
+		}
+	}
+	TestTrue(TEXT("Idling stances checked"), Cases >= 8);
+	return true;
+}
+
+// Crew C1b: the clip goes quiet for a tack. Idling on the rail, the crew start across: within a fifth of a second the clip
+// lets go and it stays off through the crossing and the settle onto the new rail, then comes back. And a puff that heels
+// the boat starts a weight shift against it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClipTackTest, "SailingSim.Visual.CrewClipTack", CrewMotionFlags)
+bool FVisualCrewClipTackTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	for (uint32 Seed = 0; Seed < 6; ++Seed)
+	{
+		FCrewMotionState S;
+		FCrewMotionInput In;
+		In.Params.Stance = ECrewStance::RailHike;
+		In.Params.Side = 1.f;
+		In.Seed = Seed * 977u;
+		const float Dt = 1.f / 60.f;
+		float Before = 0.f, QuietBy = 0.f, LoudCrossing = 0.f, After = 0.f, Rest = 0.f;
+		for (int32 K = 0; K < 16 * 60; ++K)
+		{
+			const float T = K * Dt;
+			// Idle 6 s; the tack: across for 1.5 s (crouched, ducking), then onto the other rail.
+			if (K == 6 * 60) { In.Params.Stance = ECrewStance::Crossing; In.Params.Side = -1.f; In.Transition++; In.TransitionSeconds = 0.45f; }
+			if (T >= 6.f && T < 7.5f) In.Duck = 0.5f;
+			if (K == FMath::RoundToInt(7.5f * 60)) { In.Params.Stance = ECrewStance::RailHike; In.Duck = 0.f; In.Transition++; In.TransitionSeconds = 0.6f; }
+			In.Motion = Chop(T, 10.0 * In.Params.Side, 0.4);
+			In.Time = T;
+			CrewMotionUpdate(S, In, Dt);
+			float Joint = 0.f;
+			for (int32 J = 0; J < CrewClips::NumJoints(); ++J) Joint = FMath::Max(Joint, float(FMath::RadiansToDegrees(S.Clip.Joints[J].Size())));
+			Joint = FMath::Max(Joint, FMath::Max(FMath::Abs(S.Clip.GazeYaw), FMath::Abs(S.Clip.GazePitch)));
+			if (T > 4.f && T < 6.f) Before = FMath::Max(Before, S.Clip.Weight);
+			if (T >= 6.2f && T < 8.1f) LoudCrossing = FMath::Max(LoudCrossing, Joint), QuietBy = FMath::Max(QuietBy, S.Clip.Weight);
+			if (T > 12.f) After = FMath::Max(After, S.Clip.Weight);
+			Rest = S.Clip.Weight;
+		}
+		const FString Case = FString::Printf(TEXT("Seed %u"), Seed);
+		TestTrue(Case + FString::Printf(TEXT(": idling before the tack (weight %.2f)"), Before), Before > 0.8f);
+		TestTrue(Case + FString::Printf(TEXT(": quiet from 0.2 s into the tack to the new rail (weight %.4f, largest turn %.3f deg)"), QuietBy, LoudCrossing),
+			QuietBy < 1e-3f && LoudCrossing < 0.01f);
+		TestTrue(Case + FString::Printf(TEXT(": idling again after (weight %.2f)"), After), After > 0.8f && Rest > 0.8f);
+	}
+
+	// A puff: the heel grows 12 degrees over 3 s. The sailor starts a weight shift against it, and the clip's trunk leans
+	// that way: on the cockpit seat facing inboard the heel tips them back or forward (they lean to windward), at the helm
+	// facing forward it tips them sideways.
+	int32 Shifted = 0, Leaned = 0, Seeds = 0;
+	for (const ECrewStance Stance : { ECrewStance::Cockpit, ECrewStance::Helm })
+	{
+		for (uint32 Seed = 0; Seed < 8; ++Seed)
+		{
+			for (const double Sign : { 1.0, -1.0 })
+			{
+				FCrewMotionState S;
+				FCrewMotionInput In;
+				In.Params.Stance = Stance;
+				In.Params.Side = 1.f;
+				In.Seed = Seed * 31u + 7u;
+				const float Dt = 1.f / 60.f;
+				float RollBefore = 0.f, PitchBefore = 0.f, LeanAt = 0.f, LeanLater = 0.f;
+				int32 TriggerK = -1;
+				for (int32 K = 0; K < 14 * 60; ++K)
+				{
+					const float T = K * Dt;
+					const double Heel = Sign * (4.0 + 12.0 * FMath::Clamp((T - 8.0) / 3.0, 0.0, 1.0));
+					In.Motion = FCrewBoatMotion();
+					In.Motion.Gravity = FQuat(FRotator(0.0, 0.0, Heel)).UnrotateVector(FVector(0.0, 0.0, -9.81));
+					In.Time = T;
+					const int32 Was = S.Clip.HeelShifts;
+					CrewMotionUpdate(S, In, Dt);
+					if (FMath::IsNearlyEqual(T, 7.9f, 0.5f * Dt)) RollBefore = S.Balance.Roll, PitchBefore = S.Balance.Pitch;
+					if (T > 8.f && S.Clip.HeelShifts > Was && TriggerK < 0) TriggerK = K, LeanAt = S.Clip.Lean[S.Clip.LastShiftAxis];
+					if (TriggerK >= 0 && K == TriggerK + 60) LeanLater = S.Clip.Lean[S.Clip.LastShiftAxis];
+				}
+				++Seeds;
+				// The way they tip most, and against it.
+				const float DRoll = S.Balance.Roll - RollBefore, DPitch = S.Balance.Pitch - PitchBefore;
+				const int32 Axis = FMath::Abs(DPitch) > FMath::Abs(DRoll) ? 1 : 0;
+				const int32 Want = -int32(FMath::Sign(Axis == 1 ? DPitch : DRoll));
+				if (TriggerK >= 0 && S.Clip.LastShiftDirection == Want && S.Clip.LastShiftAxis == Axis)
+				{
+					++Shifted;
+					Leaned += (LeanLater - LeanAt) * Want > 0.f ? 1 : 0;
+				}
+				else if (TriggerK < 0 && S.Clip.Lean[Axis] * Want > 0.f)
+				{
+					++Shifted; // already leaning that way: nothing to start
+					++Leaned;
+				}
+				AddInfo(FString::Printf(TEXT("Stance %d, seed %u, heel %+.0f: %s; the clip's lean %.1f -> %.1f deg a second later (want %+d on axis %d)"), int32(Stance), Seed, Sign,
+					TriggerK >= 0 ? *FString::Printf(TEXT("shift at %.2f s toward %+d on axis %d"), TriggerK * Dt, S.Clip.LastShiftDirection, S.Clip.LastShiftAxis) : TEXT("no shift"),
+					LeanAt, LeanLater, Want, Axis));
+			}
+		}
+	}
+	TestTrue(FString::Printf(TEXT("A change of heel starts a weight shift against it (%d of %d)"), Shifted, Seeds), Shifted == Seeds);
+	TestTrue(FString::Printf(TEXT("... and the trunk leans that way within a second (%d of %d)"), Leaned, Shifted), Leaned >= FMath::CeilToInt(0.75 * Shifted));
 	return true;
 }
 
