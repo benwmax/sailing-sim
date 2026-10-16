@@ -157,6 +157,21 @@ void ASailingEnvironment::SunPosition(double ClockHour, double DayOfYear, double
 	OutAzimuth = std::fmod(Az * kRadToDeg + 180.0 + 360.0, 360.0);
 }
 
+namespace
+{
+	// Perf 2: a directional light's virtual shadow map cache is keyed on its direction, so a sun turned a little every tick
+	// threw the whole cache away every frame (4.6 ms of shadow depths on High at the helm's eye, the same with the cache
+	// off). The lights move in 0.05 deg steps instead: about one step every 12 s at the sun's rate, a 1 cm shift of the
+	// masthead's shadow; each step re-renders the shadow pages once.
+	constexpr double kLightStepDeg = 0.05;
+
+	bool LightTurned(const FRotator& Current, const FRotator& Want)
+	{
+		const double CosStep = FMath::Cos(FMath::DegreesToRadians(kLightStepDeg));
+		return FVector::DotProduct(Current.Vector(), Want.Vector()) < CosStep;
+	}
+}
+
 void ASailingEnvironment::FindSceneActors()
 {
 	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
@@ -463,7 +478,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		const float Lit = 0.15f + 0.85f * float(MoonIllumination(Age)) * Up;
 		// The light keeps the moon's bearing but stays at least 25 deg up: the clouds' shadow rays toward a light near
 		// the horizon cost several ms a frame (as with a low sun), and a low moon's light is dim anyway (Up above).
-		MoonLight->SetWorldRotation(FRotator(-FMath::Max(MoonEl, 25.0), MoonAz + 180.0, 0.0));
+		const FRotator MoonRot(-FMath::Max(MoonEl, 25.0), MoonAz + 180.0, 0.0);
+		if (LightTurned(MoonLight->GetComponentRotation(), MoonRot)) MoonLight->SetWorldRotation(MoonRot);
 		MoonLight->SetIntensity(bNoMoon ? 0.f : SunIntensity * 0.0015f * Night * Lit);
 		MoonLight->SetVisibility(!bNoMoon && Night > 0.f);
 	}
@@ -479,16 +495,24 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		// The light travels from the sun toward the ground.
 		// Below the horizon the light stays just under it (the sky keeps its twilight glow) and fades out with the night.
-		Sun->SetActorRotation(FRotator(-FMath::Max(Elevation, -4.0), Azimuth + 180.0, 0.0));
+		const FRotator SunRot(-FMath::Max(Elevation, -4.0), Azimuth + 180.0, 0.0);
+		if (LightTurned(Sun->GetActorRotation(), SunRot)) Sun->SetActorRotation(SunRot);
 		// The sky atmosphere is lit by this light too, so keep enough intensity for a grey storm sky and take the
 		// direct light off the scene with the diffuse and specular scales instead (no glitter, no hard shadows).
 		const float Intensity = FMath::Max(CloudShade, 0.35f);
 		ULightComponent* SunComp = Sun->GetLightComponent();
 		SunComp->SetIntensity(SunIntensity * Intensity * FMath::Lerp(1.f, 0.002f, Night));
-		SunComp->SetDiffuseScale(CloudShade / Intensity);
+		// Perf 2: the diffuse and specular scales rebuild the light (MarkRenderStateDirty), and a rebuilt light starts its
+		// virtual shadow map cache afresh: under a storm deck, where they follow the cloud shade, that was every frame.
+		// They step by 0.04 instead (each step one ordinary uncached frame); in sunshine they sit at 1 as before.
+		const float Direct = FMath::Clamp(CloudShade / Intensity, 0.f, 1.f);
+		if (FMath::Abs(SunComp->DiffuseScale - Direct) > 0.04f || (Direct >= 1.f && SunComp->DiffuseScale < 1.f))
+		{
+			SunComp->SetDiffuseScale(Direct);
+			SunComp->SetSpecularScale(FMath::Square(Direct));
+		}
 		// The haze and rain under a storm deck aren't sunlit: no glowing white fog (volumetric fog has no cloud shadow).
 		SunComp->SetVolumetricScatteringIntensity(FMath::Clamp(CloudShade * 1.2f, 0.05f, 1.f));
-		SunComp->SetSpecularScale(FMath::Square(CloudShade / Intensity));
 		// Once the sun is down it casts no shadows, and the clouds' shadow rays toward it (which run the whole layer
 		// when the light skims the horizon: night ran at two-thirds of day's frame rate) get only a few samples.
 		const bool bShadows = Elevation > 2.0; // shadows from a sun within 2 degrees of the horizon are too long to see
@@ -510,7 +534,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			// so they are lit by the undimmed sun: the scene's light is cut for the deck's shadow, the clouds' is not.
 			// That is what gives a storm its form: a lit shelf face and anvil top over a dark base.
 			const float CloudLight = bLayeredClouds ? FMath::Clamp(1.f / FMath::Max(Intensity, 0.05f), 1.f, 4.f) : 1.f;
-			if (!Dir->CloudScatteredLuminanceScale.Equals(FLinearColor(CloudLight, CloudLight, CloudLight), 0.01f))
+			// In 3% steps (perf-2): this rebuilds the light too, and its shadow cache with it.
+			if (!Dir->CloudScatteredLuminanceScale.Equals(FLinearColor(CloudLight, CloudLight, CloudLight), 0.03f * CloudLight))
 			{
 				Dir->CloudScatteredLuminanceScale = FLinearColor(CloudLight, CloudLight, CloudLight);
 				Dir->MarkRenderStateDirty();

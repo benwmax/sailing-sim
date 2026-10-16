@@ -1,0 +1,332 @@
+{
+ "boat": "J22",
+ "about": "J/22 deck layout for the kit, from the class layout and Bean's lesson photos (TX 7295 EC, Oct 2026). Positions use the hero model's sockets (Inputs/j22-hero/J22H_sockets.json) where one exists; the rest are Blender metres (X forward, Y port, Z up) snapped onto the moulding. Starboard entries mirror to port.",
+ "hull_fbx": "Inputs/j22-hero/fbx/SM_J22H_Hull.fbx",
+ "sockets": "Inputs/j22-hero/J22H_sockets.json",
+ "keep_hull_slots": [
+  "J22H_Hull",
+  "J22H_DeckMould",
+  "RubRail",
+  "J22H_Teak",
+  "Gelcoat"
+ ],
+ "parts": [
+  {
+   "kit": "Stemhead",
+   "at": "ForestayTack",
+   "offset": [
+    -0.03,
+    0,
+    0
+   ]
+  },
+  {
+   "kit": "HornCleat",
+   "id": "BowCleat",
+   "at": "BowCleat",
+   "opts": {
+    "length": 0.15
+   }
+  },
+  {
+   "kit": "MastStep",
+   "at": "MastBase"
+  },
+  {
+   "kit": "HatchFwd",
+   "pos": [
+    1.42,
+    0,
+    1.3
+   ],
+   "opts": {
+    "w": 0.46,
+    "d": 0.46
+   }
+  },
+  {
+   "kit": "VentMushroom",
+   "pos": [
+    1.86,
+    0,
+    1.3
+   ]
+  },
+  {
+   "kit": "HandrailTeak",
+   "at": "HandholdCabin_S",
+   "mirror": true,
+   "opts": {
+    "length": 0.9,
+    "loops": 4
+   }
+  },
+  {
+   "kit": "Chainplate",
+   "at": "ChainplateUpper_S",
+   "mirror": true
+  },
+  {
+   "kit": "Chainplate",
+   "id": "ChainplateLower",
+   "at": "ChainplateLower_S",
+   "mirror": true
+  },
+  {
+   "kit": "JibTrack",
+   "at": "JibLead_S",
+   "mirror": true,
+   "opts": {
+    "length": 0.6
+   }
+  },
+  {
+   "kit": "Winch16",
+   "mirror": true,
+   "pos": [
+    -0.42,
+    -0.47,
+    1.4
+   ],
+   "note": "Cabin-top aft corner, as in IMG_9224 (the hero model has the winch on the coaming: the photo match caught it)"
+  },
+  {
+   "kit": "CamRiser",
+   "id": "JibRiser0",
+   "at": "JibCam0_S",
+   "mirror": true,
+   "yaw": 180
+  },
+  {
+   "kit": "CamCleat",
+   "id": "JibCam0",
+   "on": {
+    "part": "JibRiser0",
+    "socket": "Top",
+    "attach": "Line"
+   },
+   "mirror": true,
+   "x": [
+    -1,
+    0,
+    0
+   ]
+  },
+  {
+   "kit": "HandlePocket",
+   "pos": [
+    -1.3,
+    -0.62,
+    0.52
+   ],
+   "z": [
+    0,
+    1,
+    0.15
+   ],
+   "x": [
+    1,
+    0,
+    0
+   ],
+   "snap_dir": [
+    0,
+    -1,
+    0
+   ],
+   "mirror": false
+  },
+  {
+   "kit": "Traveler",
+   "at": "Traveler_C",
+   "yaw": 90,
+   "opts": {
+    "length": 0.8
+   }
+  },
+  {
+   "kit": "DeckPlate",
+   "pos": [
+    -1.25,
+    0,
+    0.3
+   ]
+  },
+  {
+   "kit": "HornCleat",
+   "id": "SternCleat",
+   "pos": [
+    -3.05,
+    -0.92,
+    0.8
+   ],
+   "mirror": true,
+   "yaw": 25,
+   "opts": {
+    "length": 0.13
+   }
+  },
+  {
+   "kit": "Gudgeon",
+   "id": "GudgeonUpper",
+   "pos": [
+    -3.7,
+    0,
+    0.42
+   ],
+   "x": [
+    -1,
+    0,
+    0
+   ],
+   "z": [
+    0,
+    0,
+    1
+   ],
+   "snap_dir": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "kit": "Gudgeon",
+   "id": "GudgeonLower",
+   "pos": [
+    -3.7,
+    0,
+    0.05
+   ],
+   "x": [
+    -1,
+    0,
+    0
+   ],
+   "z": [
+    0,
+    0,
+    1
+   ],
+   "snap_dir": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "kit": "Scupper",
+   "pos": [
+    -3.7,
+    -0.18,
+    0.22
+   ],
+   "z": [
+    -1,
+    0,
+    0
+   ],
+   "x": [
+    0,
+    0,
+    1
+   ],
+   "snap_dir": [
+    1,
+    0,
+    0
+   ],
+   "mirror": true
+  },
+  {
+   "kit": "OutboardBracket",
+   "id": "Bracket",
+   "pos": [
+    -3.7,
+    0.55,
+    0.4
+   ],
+   "x": [
+    1,
+    0,
+    0
+   ],
+   "z": [
+    0,
+    0,
+    1
+   ],
+   "snap_dir": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "kit": "Outboard35",
+   "on": {
+    "part": "Bracket",
+    "socket": "Clamp",
+    "attach": "Clamp"
+   },
+   "x": [
+    1,
+    0,
+    0
+   ],
+   "z": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "kit": "Tiller",
+   "at": "RudderStock",
+   "offset": [
+    0,
+    0,
+    0.08
+   ],
+   "x": [
+    -1,
+    0,
+    0
+   ],
+   "snap": false
+  },
+  {
+   "kit": "TillerExtension",
+   "at": "TillerExtUJ",
+   "x": [
+    -1,
+    0,
+    0
+   ],
+   "snap": false
+  },
+  {
+   "kit": "BowEye",
+   "pos": [
+    3.6,
+    0,
+    0.35
+   ],
+   "z": [
+    1,
+    0,
+    -0.15
+   ],
+   "x": [
+    0,
+    0,
+    1
+   ],
+   "snap_dir": [
+    -1,
+    0,
+    0
+   ]
+  }
+ ]
+}

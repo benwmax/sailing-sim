@@ -2948,7 +2948,9 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		{
 			for (UPrimitiveComponent* Figure : Crew)
 			{
-				if (Figure) Figure->SetVisibility(FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter);
+				// With the figure's children (face, clothes, gear, hair), as the cockpit view hides the helm: the strand hair
+				// round the camera alone cost 1.1 ms of GPU on High (perf-2).
+				if (Figure) Figure->SetVisibility(FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
 			}
 		}
 	}

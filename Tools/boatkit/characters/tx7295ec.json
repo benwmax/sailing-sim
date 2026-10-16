@@ -1,0 +1,19 @@
+{
+ "id": "TX7295EC",
+ "class": "J22",
+ "registration": "TX 7295 EC",
+ "seed": 7295,
+ "story": "North Texas Sailing School lesson boat at Rush Creek Yacht Club: dry-sailed on a drive-on lift, sailed by students most weekends, cleaned but not pampered.",
+ "age_years": 35,
+ "use": "school",
+ "care": "club",
+ "wear": {"edge_scuff": 0.6, "nonskid_grime": 0.65, "uv_fade": 0.5, "waterline_scum": 0.7, "teak_silver": 0.8, "metal_oxide": 0.35},
+ "colours": {"jib_sheets": "red-white", "spinnaker_sheets": "red-white", "dock_lines": "blue", "outboard_cowl": "Deck"},
+ "touches": [
+  {"touch": "CoiledLine", "pos": [-1.55, 0.10, 0.4], "yaw_jitter": 180},
+  {"touch": "WinchHandleStowed", "part": "HandlePocket", "socket": "Mouth", "snap": false, "follow_part": true, "yaw_jitter": 0},
+  {"touch": "TillerBungee", "part": "Tiller", "socket": "Hand", "snap": false, "follow_part": true, "yaw_jitter": 0, "offset": [0, 0, -0.01]},
+  {"touch": "WaterBottle", "pos": [-2.45, -0.30, 0.4], "yaw_jitter": 60}
+ ],
+ "sources": "Bean's lesson photos IMG_9224, IMG_9272, 1000032829 (project files, not in the repo: they show faces)."
+}
