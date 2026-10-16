@@ -48,3 +48,33 @@ winch over the aft corner and stops in mid-air beside the cabin's aft face, abou
 The fallback was written for the coaming winches. On the cabin top it should lie on the cabin top (forward or
 inboard of the winch, Z about the socket height) or drop to the cockpit sole. Better still, the trimmer should tail
 across from the windward side, as J/22 crews do when hiking.
+
+## PR #83 on the Mac: the tail on the cabin top (pass)
+
+PR head 93a60b01 merged with main 0cba4771 (clean; merge commit 5db9c611). The PC's re-imported `SM_J22H_Hull` was
+used as committed (no local re-import). Tests: J22Mesh, J22HeroMesh, FleetMesh, MetaHumanCrew, J22RigPosition,
+PolarGate pass; `gate.sh --scope boats` passes (135/135 tests; every view within 0.6 fps of the #78 table above, so no A/B):
+
+| View | Medium fps | High fps |
+| --- | --- | --- |
+| beam8 | 90.5 | 60.6 |
+| beat15 | 86.1 | 55.3 |
+| marina | 96.2 | 62.1 |
+| coast-day | 83.9 | 53.9 |
+| helm-eye | 88.4 | 55.0 |
+| slip | 82.5 | 52.0 |
+| crew | 70.8 | 51.4 |
+
+Stills (`run-game.sh`, High, `-SailingJ22Hero`, TWA 45 wind from starboard, so the jib and its red working sheet are to
+port; `-SailingCamTarget=-0.2,-0.55,1.0` on the port winch):
+
+- 12 kn, crew hiking to starboard, tail unheld: `pr83_lee_top` (from above), `pr83_lee_b` (from the port quarter),
+  `pr83_lee_a` (from forward). The tail leaves the self-tailer and runs forward and inboard, lying on the cabin top
+  just inboard of the jib track. It no longer reaches the trunk's aft edge, nothing hangs in the air beside the cabin's
+  aft face, and it is clear of the coaming. Compare `tail_floating_crop` above.
+- Windward side, 12 kn: `pr83_wind_a`. Only the lazy (green) sheet runs to the starboard winch, as before; no tail is
+  drawn there (the tail is the working side's only). `pr83_cockpit` (`-SailingCockpit`) looks over the starboard winch:
+  nothing changed there.
+- Held: at 4 kn the crew sit to leeward and the tail runs aft from the winch into the trimmer's hand (`pr83_held4_top`);
+  at 7 kn the trimmer sits in the cockpit and the tail drops from the winch over the coaming to the hand
+  (`pr83_held7_b`). Same as before the change: the rest point is only used when no hand is in reach.

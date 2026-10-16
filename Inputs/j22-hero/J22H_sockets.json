@@ -30,6 +30,11 @@
    62.13,
    100.55
   ],
+  "JibTailRest_S": [
+   -17.76,
+   54.29,
+   98.04
+  ],
   "SpreaderTip_S": [
    38.64,
    72.1,
@@ -59,6 +64,11 @@
    16.12,
    -62.13,
    100.55
+  ],
+  "JibTailRest_P": [
+   -17.76,
+   -54.29,
+   98.04
   ],
   "SpreaderTip_P": [
    38.64,
@@ -253,12 +263,14 @@
   "JibWinch_S": "SM_J22H_Hull",
   "JibTailer_S": "SM_J22H_Hull",
   "JibLead_S": "SM_J22H_Hull",
+  "JibTailRest_S": "SM_J22H_Hull",
   "SpreaderTip_S": "SM_J22H_Mast",
   "ChainplateUpper_P": "SM_J22H_Hull",
   "ChainplateLower_P": "SM_J22H_Hull",
   "JibWinch_P": "SM_J22H_Hull",
   "JibTailer_P": "SM_J22H_Hull",
   "JibLead_P": "SM_J22H_Hull",
+  "JibTailRest_P": "SM_J22H_Hull",
   "SpreaderTip_P": "SM_J22H_Mast",
   "ForestayTack": "SM_J22H_Hull",
   "BackstayPlate": "SM_J22H_Hull",
