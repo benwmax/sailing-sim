@@ -4,10 +4,20 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-#include <strings.h>
+#include <cctype>
 #include "FixedStepper.h"
 
 using namespace Sailing;
+
+// Case-insensitive prefix match (strncasecmp is POSIX only; the PC builds this with MSVC).
+static bool StartsWithNoCase(const char* Name, const char* Prefix)
+{
+	for (; *Prefix; ++Name, ++Prefix)
+	{
+		if (*Name == '\0' || std::tolower(static_cast<unsigned char>(*Name)) != std::tolower(static_cast<unsigned char>(*Prefix))) return false;
+	}
+	return true;
+}
 
 int main(int Argc, char** Argv)
 {
@@ -17,7 +27,7 @@ int main(int Argc, char** Argv)
 	{
 		for (int I = 0; I < int(EBoatType::Count); ++I)
 		{
-			if (strncasecmp(BoatTypeName(EBoatType(I)), Argv[2], std::strlen(Argv[2])) == 0) Type = EBoatType(I);
+			if (StartsWithNoCase(BoatTypeName(EBoatType(I)), Argv[2])) Type = EBoatType(I);
 		}
 		Argv += 2;
 		Argc -= 2;
