@@ -45,3 +45,4 @@ Content/Developers/*,(empty),generated,,,yes,,
 "[tool] system zlib (Tools/WaveCheck, standalone tools)",zlib,third-party,system,zlib licence,yes,,tools only
 [code] Source/,"All C++ (no vendored third-party code; FFT, ocean, waves, rules are our own after published methods)",generated,this project,own work,yes,,the game
 "[trademark] J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish, ASA 101","Class and brand names, the J/22 sail insignia",third-party,the owners,trademarks (not a copyright licence),conditions,names used descriptively are usually fine; logos/insignia on sails and boat names in store listings need the owners' permission or generic replacements (README),"boats, sails, learning"
+Content/Look/*,Cinematic look: colour-grade LUT and bloom kernel (Tools/look/make_grade_lut.py, make_bloom_kernel.py),generated,this project,CC0 (own work),yes,,cinematic look post-process

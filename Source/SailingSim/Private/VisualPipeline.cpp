@@ -1,4 +1,6 @@
 #include "VisualPipeline.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 namespace
 {
@@ -78,6 +80,20 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 bool UsesPhysicalCamera(ESailingQuality Quality)
 {
 	return Quality != ESailingQuality::Low;
+}
+
+bool UsesCinematicLook(ESailingQuality Quality, bool bSettingOn, bool bPhotoMode, bool bCaptureMode)
+{
+	if (Quality == ESailingQuality::Low)
+	{
+		return false;
+	}
+	int32 Arg = -1;
+	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCinematic="), Arg))
+	{
+		return Arg != 0;
+	}
+	return !bCaptureMode && (bSettingOn || bPhotoMode);
 }
 
 double SceneIlluminanceLux(double SunElevationDeg, double CloudShade, double CloudDarkness, double MoonElevationDeg, double MoonLit)
