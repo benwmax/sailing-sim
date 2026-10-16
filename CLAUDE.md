@@ -355,6 +355,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   (`AWaterSurface::WhitecapScaleFor`: lake 0.4, bay 0.7, Gulf 1). M_WaterV4's cap threshold is mirrored by
   `AWaterSurface::WhitecapThreshold` (keep `CapSlope` in step with make_materials.py). `FWaveField::Update(Dt)` grows each
   band over `GrowthSeconds` (8 T^2, 5..300 s).
+- Whitecaps (W8, `docs/water-8/whitecaps/`): caps fold on `FWaveDetail::JCap` (the chop's displacement blurred over
+  `CapBlurTexels`, about 1 m caps; DetailA.a carries it), at a threshold the renderer solves each detail frame on the sea
+  it draws (`FWaveDetail::CapThreshold`: long trains with the sea map at the camera and the mesh's fade at four vertex
+  spacings, times the chop, `DrawnFoldScale`), to Monahan x `WhitecapScaleFor`; `FoamThresholdAt`/`CapSlopeAt` are the
+  fallback and what `SailingSim.Visual.Whitecaps` holds. Far pixels read the fold table `DetailC` (mips average cover).
+  `-SailingDebugFoam[=2|3]` draws the caps alone for counting; `-SailingDebugCaps` logs the solved thresholds.
 - W3 prep (`docs/w3-prep/`): the growth laws take the adjusted wind U_A = 0.71 U^1.23 (`FWaveField::AdjustedWindSpeed`),
   steepened by (U / 18 kn)^0.43 above 18 kn to follow the SWAN bake (`GrowthStressWind`, `docs/physics-gaps/`);
   the lake's sea grows on `FLakeTerrain::EffectiveFetch` (Saville, nine rays over +/-45 deg; cached in the game mode).
@@ -388,6 +394,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   is step-relative and stops binding); noise footprint floor 110 m (50 brought the frosting back). Cumulus are darkened
   by depth into the cell and its build, not altitude. The shelf face climbs in tiers (`FStormShape::TierX`, `ShelfTierM`,
   mirrored as `SHELF_TIER`). No rain density in `CLOUD_CODE`: `M_RainCurtain` draws it.
+- Storm from the sunshine (W8, `docs/water-8/storm/`): the storm's gloom (`CloudDarkness`, `CloudCover`, visibility) is the
+  boat's, from its distance ahead of the front (`FWeatherState::LocalizeStorm`, `FStormShape::Overhead`), not the clock;
+  the anvil thins as the square of its reach and its ice dims the sun a third as much (`AnvilIceExtinction`); fair cumulus
+  fade near the front (`CumulusFade`). The shelf's sloping face is lit by emission proportional to extinction (`SunLum`,
+  `SunDir` from `UpdateSun`; the engine's cloud emission is luminance per metre) with its scattering cut: scattered light
+  on a storm's skin is what the jittered march turns into grain. `-SailingNoLightning` for compared stills.
 - Wind on the water (W2, `docs/water-2/`): `AWaterSurface` keeps two wrap-around wind maps (near 256^2 over 3.2 km,
   512^2 on Ultra; far 128^2 over 16 km; texel i at i mod Res, refreshed in strips): RGB = roughness, local direction
   (sRGB), A = slow wind (linear). `W2_WIND` in make_materials.py is the shared HLSL both water materials read (ripples

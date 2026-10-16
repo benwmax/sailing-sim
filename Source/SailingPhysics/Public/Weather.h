@@ -63,6 +63,10 @@ namespace Sailing
 		bool bStormRain = false;
 		double StormRainScale = 0.0; // the storm's rain through its life (0..1)
 		double AirC = 30.0;          // air temperature at the start before any cold pool (C)
+		// W8: a storm's darkness, cover and visibility are the place's (how close the front is), not the timeline's: the
+		// day's values under it, the storm's build and clearing, kept so LocalizeStorm can redo them at the camera.
+		double StormBuild = 0.0, StormClearing = 0.0;
+		double BaseCloudCover = 0.0, BaseCloudDarkness = 0.0, BaseVisibilityKm = 25.0;
 		// W5b: on a real day, the day itself (its radar), the local hour at weather time 0 and where the replay is anchored.
 		std::shared_ptr<const FWeatherDay> Day;
 		double DayStartHour = 0.0, RadarOffsetX = 0.0, RadarOffsetY = 0.0;
@@ -73,6 +77,9 @@ namespace Sailing
 		SAILINGPHYSICS_API double RainRateAt(double X, double Y, double Z, double FrontTime) const;
 		/** Air temperature (C) at a point: the day's, less the storm's cold pool there. */
 		SAILINGPHYSICS_API double AirTempAt(double X, double Y, double FrontTime) const;
+		/** W8: sets CloudCover, CloudDarkness and VisibilityKm for a storm as seen from a point (from how far ahead of
+		 *  the gust front it is: sunshine until the shelf is close, FStormShape::Overhead). No-op without a storm. */
+		SAILINGPHYSICS_API void LocalizeStorm(double X, double Y, double FrontTime);
 	};
 
 	/**

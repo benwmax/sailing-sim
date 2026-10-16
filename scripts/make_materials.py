@@ -1357,20 +1357,71 @@ float Jt = J * jd - 0.25 * shoal;
 float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
 // W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
 // thin in lulls) times the water body's share (WindP.w: fresh water 0.4); AWaterSurface::WhitecapThreshold mirrors it.
-float capGain = WindP.w * pow(clamp(gustRatio, 0.05, 4.0), 3.41);
-// W2: the shift per e-fold grows with the wind (AWaterSurface::CapSlopeAt: 0.034 at 10 kn, 0.069 at 25 kn).
-float capSlope = 0.034 * pow(clamp(WindP.z / 0.5144 / 10.0, 0.4, 4.0), 0.773);
-float capThr = clamp(FoamThreshold + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
-float crest = saturate((capThr - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
+// W8: the threshold is solved on the sea being drawn (CapCal: the threshold that caps Monahan's cover for the mean wind
+// times the body's share, and its shift per e-fold; AWaterSurface, FWaveDetail::CapThreshold): fitted to one sea, it
+// capped the lake's shorter-fetch sea at a fraction of its share. Until the first solve, the fit on the test's sea
+// (AWaterSurface::FoamThresholdAt, CapSlopeAt). The FoamThreshold parameter is an offset from its default 0.6.
+float meanKn = clamp(WindP.z / 0.5144, 4.0, 40.0);
+bool solved = CapCal.y > 0.0;
+float capGain = (solved ? 1.0 : WindP.w) * pow(clamp(gustRatio, 0.05, 4.0), 3.41);
+float capSlope = solved ? CapCal.y : 0.018 * pow(meanKn / 10.0, 1.25);
+// By the mesh's vertex spacing here (V4_WPO: max(0.5, dist / 64)): the long waves' fold fades with it.
+float spK = clamp(log2(max(dist / 64.0, 0.5) / 0.5), 0.0, 3.0);
+float capSolved = spK < 1.0 ? lerp(CapCal.x, CapCalFar.x, spK) : (spK < 2.0 ? lerp(CapCalFar.x, CapCalFar.y, spK - 1.0) : lerp(CapCalFar.y, CapCalFar.z, spK - 2.0));
+float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10.0) / 5.0) - 0.03 * max(10.0 - meanKn, 0.0);
+float capThr = clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
 float2 wd = ldir; // W2: the foam streaks lie along the local wind
 float2 wn = float2(-wd.y, wd.x);
 float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
-float residue = saturate((capThr + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
-float caps = max(crest, residue) * fade;
-// Far off whitecaps are sub-pixel: their average whiteness, from the same law.
-float knots = rough * 15.56;
-float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41) * WindP.w; // Monahan's coverage, with the foam it leaves
-caps = lerp(caps, saturate(farCover), far);
+// W8 (docs/water-8/whitecaps): what the camera sees is the cover the test measures. A mip of the chop's Jacobian averages
+// toward 1 (flat water), so thresholding it lost every cap from about 40 m out (a 2 m eye's pixel spans several chop
+// texels there), and the far fill only began at 150 m: the round 11 lake at 20 kn showed almost no caps while its grid
+// measured twice the target. Past the first texels the cover comes from the fold table (DetailC: per texel, how folded
+// it is against four thresholds, AWaterSurface::CapTableEntry), whose mips average cover, read at this pixel's threshold
+// (AWaterSurface::CapCover). The lace and streak patterns fade to their means before they alias, and the caps no
+// longer fade with the long waves (WaveFadeMeters): whitecaps show to the horizon.
+float foot = length(fwidth(p.xy));                 // m a pixel spans (its long axis)
+// The mip the sampler reads: its short axis, or a sixteenth of its long one (16x anisotropic filtering). Grazing views
+// keep a sharp texture far out, and the caps stay discrete there.
+float2 fdx = ddx(p.xy), fdy = ddy(p.xy);
+float footMip = max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 16.0);
+float useTable = smoothstep(1.0, 2.5, footMip * 128.0 / DetailP.x);
+float patFade = smoothstep(0.08, 0.3, foot);
+float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
+float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
+// The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
+float kC = max(min(chopK, 2.0), 1e-3);
+float tC = 1.0 - (1.0 - (capThr + 0.25 * shoal) / max(J, 0.05)) / kC;
+float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoal) / max(J, 0.05)) / kC;
+float crest, residue;
+[branch] if (useTable > 0.0)
+{
+float4 ct = Texture2DSample(DetailC, DetailCSampler, duv);
+float4 lct = log(max(ct, 1e-6));   // cover is about exponential in the threshold: interpolate it in log
+// (A single texel's cover is a step in the threshold, a coarse mip's about exponential: linear at mip 0, in log from mip
+// 3, as AWaterSurface::CapCover.)
+float capMip = saturate(log2(max(footMip * 128.0 / DetailP.x, 1.0)) / 3.0);
+// The table's thresholds: CapT.x + k CapT.y, k = 0..3 (AWaterSurface::CapTable: centred on the mean wind's threshold).
+#define W8_U(t_) (((t_) - CapT.x) / CapT.y)
+#define W8_SEL(v_, t_) (W8_U(t_) < 1.0 ? v_.r : (W8_U(t_) < 2.0 ? v_.g : v_.b))
+#define W8_SEL2(v_, t_) (W8_U(t_) < 1.0 ? v_.g : (W8_U(t_) < 2.0 ? v_.b : v_.a))
+#define W8_W(t_) saturate(W8_U(t_) - clamp(floor(W8_U(t_)), 0.0, 2.0))
+#define W8_CAPCOVER(t_) (lerp(lerp(W8_SEL(ct, t_), W8_SEL2(ct, t_), W8_W(t_)), exp(lerp(W8_SEL(lct, t_), W8_SEL2(lct, t_), W8_W(t_))) * step(1.5e-6, W8_SEL2(ct, t_)), capMip) * (W8_U(t_) < 0.0 ? exp(W8_U(t_) * CapT.y / max(capSlope, 0.02)) : 1.0))
+// Near, the fold itself (a ramp 0.05 wide centred on the threshold, as the table's entries: AWaterSurface::CapRamp).
+// The lace breaks a cap up but keeps most of it white (mean 0.92; was 0.62 with a floor of 0.35): the white area is the
+// folded area SailingSim.Visual.Whitecaps holds to Monahan.
+crest = lerp(saturate((capThr - Jt) / 0.05 + 0.5), W8_CAPCOVER(tC), useTable);
+residue = lerp(saturate((capThr + 0.08 - Jt) / 0.08 + 0.5), W8_CAPCOVER(tR), useTable);
+}
+else
+{
+// (Near, the fold alone: the table's branch never runs, so nothing of it can leak into the blend.)
+crest = saturate((capThr - Jt) / 0.05 + 0.5);
+residue = saturate((capThr + 0.08 - Jt) / 0.08 + 0.5);
+}
+crest *= saturate(0.8 + 1.3 * laceE);
+residue *= patternE * 0.25;
+float caps = max(crest, residue);
 // Foam the boats make.
 float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
@@ -1438,6 +1489,19 @@ float inc = acos(saturate(vdir.z));
 Spec = 0.5 * (1.0 - 0.8 * Polarized * exp(-pow((inc - 0.93) / 0.42, 2.0)));
 OceanShare = om;
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
+// W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
+// the probability of its whitecap cover (a fixed hash of the pixel, so the temporal AA keeps it binary); the water is
+// black (no reflection, albedo cut through Dark), flat.
+[branch] if (DebugFoam > 0.0)
+{
+    float hsh = frac(sin(dot(floor(Parameters.SvPosition.xy), float2(12.9898, 78.233))) * 43758.5453);
+    // 1: the whitecaps (crests and their residue); 2: the crests alone; 3: where the fold is under the threshold.
+    Foam = DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps);
+    Spec = 0.0;
+    Dark = 1.0 / 0.35;
+    Rough = 1.0;
+    return float3(0.0, 0.0, 1.0);
+}
 return normalize(float3(-sx, -sy, 1.0));
 """
 
@@ -1461,7 +1525,7 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
@@ -1493,13 +1557,14 @@ def build_water_v4():
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1)])
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
     connect(polarized, "", shade, "Polarized")
+    connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
     for c in (wpo,):
         connect(chop, "", c, "Chop")
         for i, w in enumerate(waves[:NUM_LONG]):
@@ -1522,6 +1587,10 @@ def build_water_v4():
         connect(wake_rect, "RGBA", c, "WakeGridRect")
         connect_sea(sea, c)
     connect(tx["DetailB"], "", shade, "DetailB")
+    connect(tx["DetailC"], "", shade, "DetailC")
+    connect(vector(mat, "CapTable", (0.5, 0.05, 0, 0), -2000, 1200), "RGBA", shade, "CapT")
+    connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
+    connect(vector(mat, "CapCalibFar", (0, 0, 0, 0), -2000, 1400), "RGBA", shade, "CapCalFar")
     connect(tx["RippleB"], "", shade, "RippleB")
     connect(gust_tex, "", shade, "Gust")
     connect(gust_rect, "RGBA", shade, "GustRect")
@@ -1585,7 +1654,9 @@ def build_water_v4():
 # ---------------------------------------------------------------- sky, Visual V5
 # FStormShape (CloudSky.h): keep these in step with the C++ (SailingSim.Visual.ShelfCloud checks the C++).
 STORM = dict(ShelfLeadM=250.0, ShelfBaseM=520.0, ShelfLipM=180.0, ShelfSlope=0.85, ShelfDepthM=3500.0, ShelfTierM=700.0, CoreBehindM=700.0,
-             CoreBaseM=750.0, CoreTopM=6500.0, AnvilBaseM=4800.0, AnvilAheadM=9000.0)
+             CoreBaseM=750.0, CoreTopM=6500.0, AnvilBaseM=4800.0, AnvilAheadM=9000.0,
+             # W8 (storm from the sunshine): cumulus fade near the front; the shelf's crisp edge and lit rolled face.
+             CumulusFadeFarM=5000.0, CumulusFadeNearM=1500.0, ShelfEdgeM=60.0, ShelfFaceM=450.0)
 
 # Graphics G6: extinction of cumulus, stratus, storm and rain relative to CloudDensity (-SailingCloudLayerExt overrides).
 CLOUD_EXT = (1.0, 1.0, 1.0, 1.0)
@@ -1623,7 +1694,7 @@ D += 300.0 * sin(L / 2300.0) + 150.0 * sin(L / 900.0);
 // Graphics G1: the storm's walls bulge in and out by a few hundred metres (a straight-sided core read as a block from afar).
 float2 sw = Curl.SampleLevel(CurlSampler, (p.xy - Drift.xy) * 0.00035, 0).rg * 2.0 - 1.0;
 D += 600.0 * sw.x + 250.0 * sw.y * sin(alt * 0.0012);
-float storm = 0.0, shelf = 0.0, shelfH = 0.0;
+float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6;
 [branch] if (FrontB.y > 0.0 && w.a > 0.0)
 {
     float x = SHELF_LEAD - D;
@@ -1635,7 +1706,9 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0;
         float tierA = 1.0 - smoothstep(2.0 * SHELF_TIER, 3.0 * SHELF_TIER, x);
         float xt = x - tierA * SHELF_TIER / 6.2831853 * sin(6.2831853 * x / SHELF_TIER);
         float top = base + SHELF_LIP + xt * SHELF_SLOPE;
-        shelf = 1.0 * smoothstep(base, base + 25.0, alt) * (1.0 - smoothstep(top - 150.0, top, alt)) * (1.0 - smoothstep(SHELF_DEPTH - 600.0, SHELF_DEPTH, x));
+        // W8: a crisp leading edge (the arcus), full density SHELF_EDGE behind the lip (FStormShape::Density).
+        shelfX = x;
+        shelf = smoothstep(0.0, SHELF_EDGE, x) * smoothstep(base, base + 25.0, alt) * (1.0 - smoothstep(top - 150.0, top, alt)) * (1.0 - smoothstep(SHELF_DEPTH - 600.0, SHELF_DEPTH, x));
         // Graphics G1: no tiers in the density: anything finer than the march step (about 190 m) aliased into grain
         // (the V5 bands too). The face is shaded smoothly instead: dark at the base, brighter up the face.
         shelfH = saturate((alt - base) / max(top - base, 1.0));
@@ -1649,14 +1722,18 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0;
         float ahead = saturate(1.0 - max(D, 0.0) / ANVIL_AHEAD);
         float lower = ANVIL_BASE + (1.0 - ahead) * 2000.0;
         // The anvil is thin ice cloud: a light veil overhead, not a second dark lid (it hid the shelf's edge, Graphics G1).
-        storm = max(storm, 0.12 * ahead * FrontB.z * smoothstep(lower, lower + 400.0, alt) * (1.0 - smoothstep(CORE_TOP - 800.0, CORE_TOP, alt)));
+        // W8: thinning as the square of what is left ahead (FStormShape::AnvilDensity): the sun reaches the water under it.
+        storm = max(storm, 0.12 * ahead * ahead * FrontB.z * smoothstep(lower, lower + 400.0, alt) * (1.0 - smoothstep(CORE_TOP - 800.0, CORE_TOP, alt)));
     }
     // W5a: no rain here. The rain under the core (and a real day's radar rain) is drawn by M_RainCurtain (W5b,
     // ASailingEnvironment::UpdateRainCurtains), so the march no longer fills the air below the cloud base.
     storm *= w.a;
     shelf *= w.a;
 }
-float cu = w.r * pCu * Cu.w;
+// W8: the fair cumulus fade out near the front and under the storm (FStormShape::CumulusFade): inside the deck's shade
+// they were flat grey towers (round 11). nearF: how near the front this is (the deck's shade on the cloud's colour).
+float nearF = FrontB.y > 0.0 ? (1.0 - smoothstep(CU_FADE_NEAR, CU_FADE_FAR, D)) * smoothstep(-CORE_BEHIND - 20000.0, -CORE_BEHIND - 14000.0, D) : 0.0;
+float cu = w.r * pCu * Cu.w * (1.0 - w.a * saturate(FrontB.z) * nearF);
 float st = w.g * pSt * St.w;
 float ci = w.b * pCi * Ci.w;
 // Conservative density: what the noise can at most leave (lets the tracer skip empty sky quickly).
@@ -1732,18 +1809,29 @@ AO = 1.0;
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
 
-    // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
-    float nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
-    // Storm cloud uses the coarser shape octaves (a big dense mass at 100-200 m steps speckled with the fine ones); the
-    // shelf's face is smooth, its base and the core's ragged.
-    float nS = saturate(lerp(sh.g * 1.25 - 0.1, base, 0.5));   // the billows too: a tower's cauliflower sides
-    // The lip (the shelf's first few hundred metres) keeps a clean edge.
-    float lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
-    // W5a: the storm's interior is smooth: the billow erosion bites only near its outline (where the built density ramps
-    // off) and underneath; the fine detail only underneath, so the shelf's face reads as broad smooth tiers over a torn
-    // base (round 10: the storm's mass was frosted all through).
-    float edgeS = max(saturate((1.0 - storm) * 2.5), nearBase);
-    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * max(lip, 0.85 * shelf * (1.0 - nearBase))) * lerp(0.25, 1.0, edgeS) - (1.0 - n2) * 0.35 * nearBase * (1.0 - lip)) * 1.6);
+    // W8: all of the storm's own shaping under one branch (fair-weather samples skip it: Mac gate, helm-eye High).
+    float nearBase = 0.0, lip = 0.0, faceS = 0.0, dSm = 0.0, nS = 0.5;
+    [branch] if (storm > 0.0)
+    {
+        // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
+        nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
+        // Storm cloud uses the coarser shape octaves (a big dense mass at 100-200 m steps speckled with the fine ones); the
+        // shelf's face is smooth, its base and the core's ragged.
+        nS = saturate(lerp(sh.g * 1.25 - 0.1, base, 0.5));   // the billows too: a tower's cauliflower sides
+        // The lip (the shelf's first few hundred metres) keeps a clean edge.
+        lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
+        // W5a: the storm's interior is smooth: the billow erosion bites only near its outline (where the built density ramps
+        // off) and underneath; the fine detail only underneath, so the shelf's face reads as broad smooth tiers over a torn
+        // base (round 10: the storm's mass was frosted all through).
+        float edgeS = max(saturate((1.0 - storm) * 2.5), nearBase);
+        // W8: under the shelf the torn base takes the coarse billows only (nS), never the fine detail: the detail varied
+        // faster than the march step there and frosted the base with speckle (round 11's bay storm). The core keeps it.
+        float torn = lerp(1.0 - n2, 1.0 - nS, saturate(shelf * 2.0));
+        // W8: the shelf's sloping face above its base (FStormShape::ShelfShade) is a smooth, sunlit surface, the rolled lip
+        // (SHELF_FACE deep behind the leading edge) brightest: almost no erosion there, so its edge is a clean arc, not froth.
+        [branch] if (shelf > 0.0) faceS = smoothstep(0.08, 0.35, shelfH) * lerp(0.6, 1.0, 1.0 - smoothstep(0.33 * SHELF_FACE, SHELF_FACE, shelfX));
+        dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * max(lip, 0.85 * shelf * (1.0 - nearBase))) * lerp(0.25, 1.0, edgeS) * (1.0 - 0.85 * faceS * shelf) - torn * 0.35 * nearBase * (1.0 - lip)) * 1.6);
+    }
     // Graphics G6: each layer's extinction relative to the full CloudDensity (Ext: cumulus, stratus, storm; w, the rains, unused since W5a). The grain
     // in the storm skies was optical depth per march step: at 0.1 /m over a 190 m step every ray went opaque inside one
     // step, so each pixel was lit at whatever depth its jittered sample landed (bright skin or dark interior). A storm's
@@ -1764,6 +1852,8 @@ AO = 1.0;
     // A stratus deck is flat and even (little for the jitter to catch): three times the storm's by the view step, so an
     // overcast stays thick and grey (capped by the shadow step it thinned to an optical depth under 2 and went beige).
     float cT = Tracer.y > 0.0 ? 3.0 * MaxStepDepth / (stepM * Density) : 1e6;
+    // W8: the shelf's rolled front face (FStormShape::ShelfShade), lit and pale below.
+    float face = faceS * shelf;
     d = max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cT)), max(dCi, min(dSm * Ext.z, cS)));
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
     // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
@@ -1772,7 +1862,8 @@ AO = 1.0;
     // larger share and the storm's mass came out white (game-08's pale band over the shelf).
     // Cloud inside the storm's extent (the map's w.a), cumulus and stratus too, sits in the deck's shade: lit white, the
     // fair cells under it made game-08's pale band in front of the shelf.
-    float wet = saturate(max(max(dSm / max(d, 1e-3), dSm * 2.0), max(storm * 3.0, w.a * 2.0))) * (1.0 - smoothstep(4500.0, 5500.0, alt));
+    // W8: only near the front (nearF): far ahead, fair cells in the storm's lateral extent stay sunlit white.
+    float wet = saturate(max(max(dSm / max(d, 1e-3), dSm * 2.0), max(storm * 3.0, w.a * 2.0 * nearF))) * (1.0 - smoothstep(4500.0, 5500.0, alt));
     // Storm sky fix (Oct 15 2026, docs/storm-prescreen): the storm's own cloud is dark wherever the viewer stands. It was
     // darkened by the camera's cloud darkness (FrontB.w), so a storm seen from the sunshine ahead of its front (blind-test
     // game-04: a sunlit boat against what should be a dark storm sky) kept a white, pale-grey wall. Slate, a little blue.
@@ -1791,11 +1882,31 @@ AO = 1.0;
     // The shelf (Graphics G1): its base in its own shadow, its face brighter as it rises.
     // Its front faces the clear sky behind the observer and reads lighter than the underside (the lip's pale roll over a
     // dark base): both over hundreds of metres, which the march resolves.
-    float front = 1.0 - smoothstep(150.0, 450.0, SHELF_LEAD - D);
-    AO *= lerp(1.0, lerp(0.35, 0.8, shelfH) * lerp(1.0, 1.1, front * smoothstep(0.15, 0.5, shelfH)), shelf);
+    // W8: the rolled front face (SHELF_FACE deep, above the base) is pale and lit, the underside behind it dark slate
+    // (FStormShape::ShelfShade, SailingSim.Visual.ShelfCloud).
+    AO *= lerp(1.0, lerp(0.25, 0.8, shelfH), shelf);
+    // Its sunlit face glows by emission, not by the march's scattering: the scattered light jumps between the lit skin
+    // and the dark interior from one jittered sample to the next (the grain), while light emitted in proportion to the
+    // extinction (here d * Density, per metre) integrates to the same radiance wherever the ray closes. SunLum: the sun's
+    // luminance on a white diffuser (rgb), w the sun's direction's elevation sine; SunDir its direction (map frame).
+    // The face looks along the front's travel and leans back up its slope; wrapped Lambert, pale grey (0.5: with the
+    // march's own scattering on top, 0.7 clipped to white).
+    // (Only where there is shelf: fair-weather samples skip it, Mac gate helm-eye High.)
+    [branch] if (face > 0.0)
+    {
+    float3 faceN = normalize(float3(FrontA.zw, 0.75));
+    float faceLit = saturate(0.25 + 0.75 * dot(faceN, SunDir.xyz));
+    // Structure, all of it at the march's scale or coarser (the G1 rule): the tiers' risers (steep, facing out) lit
+    // brighter than their ledges, the coarse billows (nS, filtered at the step), and the face dimming back into the storm
+    // as the deck above shades it.
+    float riser = 0.5 - 0.5 * cos(6.2831853 * shelfX / SHELF_TIER) * (1.0 - smoothstep(2.0 * SHELF_TIER, 3.0 * SHELF_TIER, shelfX));
+    float faceTone = lerp(0.75, 1.1, riser) * lerp(0.7, 1.15, nS) * lerp(1.0, 0.3, smoothstep(SHELF_FACE, 1800.0, shelfX)) * lerp(0.8, 1.2, shelfH);
+    Emit += SunLum.rgb * (FACE_PALE * faceLit * faceTone) * face * d * Density;
+    Albedo *= 1.0 - FACE_SCATTER_CUT * face;
+    }
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
-    Emit = float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
+    Emit += float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
 }
 return d * Density;
 """
@@ -1807,10 +1918,13 @@ def cloud_code():
     if os.environ.get("SAILING_DEBUG_LAYERS"):
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
+    import os as _os
+    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
-                 ("ANVIL_AHEAD", STORM["AnvilAheadM"])):
+                 ("ANVIL_AHEAD", STORM["AnvilAheadM"]), ("CU_FADE_FAR", STORM["CumulusFadeFarM"]),
+                 ("CU_FADE_NEAR", STORM["CumulusFadeNearM"]), ("SHELF_EDGE", STORM["ShelfEdgeM"]), ("SHELF_FACE", STORM["ShelfFaceM"])):
         c = c.replace(k, repr(float(v)))
     return c
 
@@ -1833,10 +1947,11 @@ def build_cloud_layers():
     vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
-        ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0))))}
+        ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
+        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -1845,7 +1960,8 @@ def build_cloud_layers():
     for n, t in tex.items():
         connect(t, "", c, n)
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
-                   ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow")):
+                   ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow"),
+                   ("SunLum", "SunLum"), ("SunDir", "SunDir")):
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
     connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 1400), "", c, "MaxStepDepth")

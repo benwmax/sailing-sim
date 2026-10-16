@@ -455,17 +455,19 @@ namespace Sailing
 
 		const double Build = SmoothStep(0.0, kFrontArrives, Ts);
 		const double Clearing = SmoothStep(kClearingStarts, kClear, Ts);
-		W.CloudCover = std::max(W.CloudCover, Lerp(Lerp(0.35, 0.95, Build), 0.4, Clearing));
 		W.CloudTopKm = std::max(W.CloudTopKm, Lerp(Lerp(4.0, 12.0, Build), 6.0, Clearing));
-		W.CloudDarkness = std::max(W.CloudDarkness, Lerp(Lerp(0.1, 0.85, Build), 0.15, Clearing));
+		W.StormBuild = Build;
+		W.StormClearing = Clearing;
+		W.BaseCloudCover = W.CloudCover;
+		W.BaseCloudDarkness = W.CloudDarkness;
+		W.BaseVisibilityKm = W.VisibilityKm;
 		// W5b: rain from the core's position (FStormRain, or the radar on a real day), easing as the storm dies; W.Rain is
 		// what falls at the start.
 		W.bStormRain = true;
 		W.StormRainScale = 1.0 - SmoothStep(kOutflowDecays - 40.0, kClearingStarts, Ts);
 		W.Rain = W.RainAt(OX, OY, T);
-		const double FrontHere = SmoothStep(kFrontArrives - 30.0, kFrontArrives + 20.0, Ts);
-		const double Visibility = Lerp(Lerp(Lerp(25.0, 10.0, FrontHere), 1.5, W.Rain), 20.0, Clearing);
-		W.VisibilityKm = std::min(W.VisibilityKm, Visibility);
+		// W8: darkness, cover and visibility at the start from the front's distance (the game redoes them at the camera).
+		W.LocalizeStorm(OX, OY, T);
 
 		if (Ts < kFrontArrives - 20.0) W.Storm = EStormPhase::Building;
 		else if (Ts < kRainStarts) W.Storm = EStormPhase::GustFront;
@@ -492,6 +494,24 @@ namespace Sailing
 	double FWeatherState::RainAt(double X, double Y, double FrontTime) const
 	{
 		return bStormRain ? FStormRain::Amount(RainRateAt(X, Y, 0.0, FrontTime)) : Rain;
+	}
+
+	void FWeatherState::LocalizeStorm(double X, double Y, double FrontTime)
+	{
+		if (!Front.bActive || !bStormRain) return;
+		// W8: the storm's gloom comes with its shelf, not with its timeline: ahead of the front the sun shines (the direct
+		// light is FWeatherMap::SunTransmittance's), and the sky darkens as the shelf covers more of it overhead. Before
+		// W8 this followed the clock at the start, so a front 7 km off (-SailingStormDelay) already had the boat in gloom.
+		const double D = Front.DistanceAhead(X, Y, FrontTime);
+		const double Over = StormBuild * FStormShape::Overhead(D);
+		CloudCover = std::max(BaseCloudCover, Lerp(Lerp(0.35, 0.95, Over), 0.4, StormClearing));
+		CloudDarkness = std::max(BaseCloudDarkness, Lerp(Lerp(0.1, 0.85, Over), 0.15, StormClearing));
+		// The air thickens as the front's dust and spray arrive (about 30 s before it to 20 s after, at its speed).
+		const double FrontHere = 1.0 - SmoothStep(-20.0 * Front.SpeedMs, 30.0 * Front.SpeedMs, D);
+		const double Visibility = Lerp(Lerp(Lerp(25.0, 10.0, FrontHere), 1.5, Rain), 20.0, StormClearing);
+		VisibilityKm = std::min(BaseVisibilityKm, Visibility);
+		// Under the rain (the core, or a real day's radar) it is dark whatever the shelf is doing.
+		CloudDarkness = std::max(CloudDarkness, 0.85 * Rain);
 	}
 
 	double FWeatherState::AirTempAt(double X, double Y, double FrontTime) const
