@@ -291,7 +291,7 @@ def deck_mould(st, name="Gelcoat", windows=False):
         side.inputs[1].default_value, side.inputs[2].default_value = 0.35, 0.55
         _l(nt, _math(nt, "ABSOLUTE", ny), side.inputs[0])
         zb = _band(nt, z, 0.745, 0.835, 0.003)
-        fwd = _math(nt, "SUBTRACT", 1.42, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", z, 0.745), 3.0))
+        fwd = _math(nt, "SUBTRACT", 1.10, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", z, 0.745), 3.0))
         xb = _math(nt, "MULTIPLY", _math(nt, "GREATER_THAN", x, -0.30), _math(nt, "LESS_THAN", x, fwd))
         win = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", side.outputs[0], zb), xb)
         c = _mix(nt, win, c, _rgb("#141619"))
