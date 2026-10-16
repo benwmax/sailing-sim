@@ -38,6 +38,11 @@ SAILINGSIM_API TArray<FQualityCVar> QualityCVars(ESailingQuality Quality);
 /** Medium and High use the physical camera and the V1 look; Low keeps the Phase 8 exposure and post. */
 SAILINGSIM_API bool UsesPhysicalCamera(ESailingQuality Quality);
 
+/** Graphics G8: whether the cinematic look applies (Medium and above): -SailingCinematic=0|1 decides when given,
+ *  otherwise the Settings toggle or photo mode. Capture mode stays neutral unless asked: its stills are compared with
+ *  real photographs. */
+SAILINGSIM_API bool UsesCinematicLook(ESailingQuality Quality, bool bSettingOn, bool bPhotoMode, bool bCaptureMode);
+
 /** Horizontal illuminance at the water (real lux) from the sun (elevation deg, cloud shade of its direct light 0..1,
  *  cloud darkness 0..1) and the moon (elevation deg, lit fraction 0..1). Twilight follows the civil and nautical
  *  curve below the horizon; a starlit floor of 0.001 lux. */

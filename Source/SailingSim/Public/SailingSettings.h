@@ -120,6 +120,11 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Graphics")
 	int32 FrameCap = 0;
 
+	/** Graphics G8 cinematic look (docs/graphics-8/cinematic): the grade, bloom and glitter of a photograph rather than
+	 *  the metered neutral look. Photo mode always uses it; -SailingCinematic=0|1 overrides. Medium and above. */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	bool bCinematicLook = false;
+
 	/** HUD scale around its anchors, percent (85..130). */
 	UPROPERTY(config, EditAnywhere, Category = "Display")
 	int32 HudScale = 100;

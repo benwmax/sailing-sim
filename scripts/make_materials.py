@@ -1481,7 +1481,10 @@ float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);
 // like a calm (round 7's race start) and the far lake from the drone read as a glossy sheet. A little over half of it
 // (the resolved slopes carry the rest), none on glassy water.
 float cm = 0.003 + 0.00512 * rough * 8.0;
-alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing));
+alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing) * (1.0 - 0.4 * Glitter));
+// Graphics G8 cinematic look (AWaterSurface: Glitter, High and Ultra): a sharper lobe toward the sun, so the glitter
+// path breaks into the dense sparkle of a sunset photo instead of a soft sheen. Only the unresolved floor is cut: the
+// resolved slopes and their mip variance (LEAN) still set its width.
 // W2: polarized sunglasses (AWaterSurface: -SailingPolarized, sailing.Polarized): they cut the sky's glare most near
 // Brewster's angle (53 degrees from the vertical), so the water's own texture (puffs, lulls, slicks) stands out.
 float3 vdir = normalize(cam - p);
@@ -1557,13 +1560,14 @@ def build_water_v4():
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1)])
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
     connect(polarized, "", shade, "Polarized")
+    connect(scalar(mat, "Glitter", 0.0, -2000, 1050), "", shade, "Glitter")
     connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
     for c in (wpo,):
         connect(chop, "", c, "Chop")
