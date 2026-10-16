@@ -296,7 +296,7 @@ namespace CrewSolver
 			for (const TCHAR* Finger : FingerNames)
 			{
 				const bool bThumb = Finger[0] == TEXT('t');
-				const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 45.f : 95.f, bThumb ? 40.f : 62.f };
+				const float Deg[3] = { bThumb ? 38.f : 72.f, bThumb ? 58.f : 95.f, bThumb ? 50.f : 62.f }; // round 12: the thumb had stood up off a held line
 				for (int32 K = 1; K <= 3; ++K)
 				{
 					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
@@ -306,6 +306,48 @@ namespace CrewSolver
 		}
 	}
 
+	/** Round 12: each seated foot standing on the floor lies flat on it. The leg's IK carries the foot with the calf, so
+	 *  a leg reaching down or forward to the floor had planted the heel with the toe up in the air ("body parts not
+	 *  positioned realistically"). The ankle turns the sole parallel to the floor, within 45 degrees, only where heel and
+	 *  toe are over one level before and after the turn (a foot across a seat's edge or the bridge deck stays as planted:
+	 *  turned flat there, the toe went into the deck). The turn fades out from 2 to 5 cm over the floor, so a foot the
+	 *  idle clips move does not snap. */
+	bool LevelFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
+		const FCrewGround& G, TMap<FName, FQuat>& Joints)
+	{
+		constexpr double M = 0.01; // cm to m
+		bool bMoved = false;
+		const FQuat BoatRot = G.ToBoat.GetRotation();
+		const Sailing::FBoatConfig& C = *G.Config;
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			FVector Sole[2];
+			if (!SolePoints(Ref, Rest, CS, Frame, Side, Sole)) continue;
+			const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
+			const int32 Calf = Ref.GetParentIndex(Foot);
+			if (Calf == INDEX_NONE) continue;
+			const FVector Ankle = G.ToBoat.TransformPosition(CS[Foot].GetLocation()) * M;
+			const FVector Heel = G.ToBoat.TransformPosition(Sole[0]) * M, Toe = G.ToBoat.TransformPosition(Sole[1]) * M;
+			const double Floor = CrewFloorZ(C, Heel.X, Heel.Y);
+			if (Floor < -1e8 || FMath::Abs(CrewFloorZ(C, Toe.X, Toe.Y) - Floor) > 0.01) continue;
+			const double Gap = FMath::Min(Heel.Z, Toe.Z) - Floor;
+			const double Weight = FMath::Clamp((0.05 - Gap) / 0.03, 0.0, 1.0);
+			if (Weight <= 0.0) continue; // not standing on it
+			const FVector SoleDir = Toe - Heel;
+			const FVector SoleFlat(SoleDir.X, SoleDir.Y, 0.0);
+			if (SoleFlat.SizeSquared() < 1e-4 || FMath::Abs(SoleDir.Z) < 0.01) continue;
+			FQuat FootTurn = FQuat::FindBetweenVectors(SoleDir, SoleFlat);
+			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(45.0);
+			FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, Weight * FMath::Min(1.0, MaxRad / FMath::Max(TurnRad, 1e-6)));
+			const FVector NewHeel = Ankle + FootTurn.RotateVector(Heel - Ankle), NewToe = Ankle + FootTurn.RotateVector(Toe - Ankle);
+			if (FMath::Abs(CrewFloorZ(C, NewHeel.X, NewHeel.Y) - Floor) > 0.01 || FMath::Abs(CrewFloorZ(C, NewToe.X, NewToe.Y) - Floor) > 0.01) continue;
+			const FQuat TurnCS = BoatRot.Inverse() * FootTurn * BoatRot;
+			Joints.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * TurnCS * D[Foot]);
+			bMoved = true;
+		}
+		return bMoved;
+	}
+
 	void PlantAllFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& Ground, TMap<FName, FQuat>& Carried)
 	{
@@ -313,6 +355,16 @@ namespace CrewSolver
 		{
 			if (!PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) break;
 			Solve(Ref, RestCS, Carried, CS, &D);
+		}
+		// Seated, flat on the floor, then onto it again (turning about the ankle lifts the heel or the toe a little).
+		if (Ground.bSeated && LevelFeet(Ref, RestCS, CS, D, Frame, Ground, Carried))
+		{
+			Solve(Ref, RestCS, Carried, CS, &D);
+			for (int32 Pass = 0; Pass < 2; ++Pass)
+			{
+				if (!PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) break;
+				Solve(Ref, RestCS, Carried, CS, &D);
+			}
 		}
 	}
 
@@ -341,8 +393,28 @@ namespace CrewSolver
 			}
 			// Reach: the target is where the palm closes (the middle knuckle less a little), so the wrist stops short of it.
 			const int32 Knuckle = Ref.FindBoneIndex(*FString::Printf(TEXT("middle_01_%s"), Sx));
+			// Round 12: the line runs across the palm from the index knuckle to the little finger's (before, the wrist kept
+			// the stance's turn and the closed fingers met the tiller extension end on, an open hand beside it).
+			const int32 IndexK = Ref.FindBoneIndex(*FString::Printf(TEXT("index_01_%s"), Sx));
+			const int32 PinkyK = Ref.FindBoneIndex(*FString::Printf(TEXT("pinky_01_%s"), Sx));
+			const int32 Forearm = Ref.GetParentIndex(Hand);
+			const bool bAlong = !Hands.Along[Side].IsNearlyZero() && IndexK != INDEX_NONE && PinkyK != INDEX_NONE && Forearm != INDEX_NONE;
+			// (Turned first, then reached: the wrist ends where the palm closes on the target, the line within a few degrees
+			// of across it as the second reach turns the forearm.)
 			for (int32 Pass = 0; Pass < 2; ++Pass)
 			{
+				if (bAlong)
+				{
+					const FVector Across = (CS[IndexK].GetLocation() - CS[PinkyK].GetLocation()).GetSafeNormal();
+					FVector Line = Hands.Along[Side].GetSafeNormal();
+					if (FVector::DotProduct(Across, Line) < 0.0) Line = -Line;
+					FQuat PalmTurn = FQuat::FindBetweenNormals(Across, Line);
+					// Within the wrist's range.
+					const double TurnRad = PalmTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(55.0);
+					if (TurnRad > MaxRad) PalmTurn = FQuat::Slerp(FQuat::Identity, PalmTurn, MaxRad / TurnRad);
+					Carried.Add(Ref.GetBoneName(Hand), D[Forearm].Inverse() * PalmTurn * D[Hand]);
+					Solve(Ref, RestCS, Carried, CS, &D);
+				}
 				const FVector Palm = Knuckle == INDEX_NONE ? FVector::ZeroVector : (CS[Knuckle].GetLocation() - CS[Hand].GetLocation()) * 0.75;
 				ReachArm(Ref, CS, D, Hand, Target - Palm, Carried);
 				Solve(Ref, RestCS, Carried, CS, &D);

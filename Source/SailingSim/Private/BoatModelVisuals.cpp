@@ -621,12 +621,14 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("upperarm_l"), EBoneSpaces::WorldSpace)),
 			RootTM.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("upperarm_r"), EBoneSpaces::WorldSpace)) };
 		constexpr double Reach = 60.0; // shoulder to palm, cm
-		auto Hold = [&](int32 Hand, const FVector& At, TOptional<FVector>& Grip)
+		// (From: where the held line comes from, so it runs across the palm; zero for none.)
+		auto Hold = [&](int32 Hand, const FVector& At, TOptional<FVector>& Grip, const FVector& From)
 		{
 			if (FVector::Dist(At, Shoulder[Hand]) > Reach * 1.05) return false;
 			Hands.Mode[Hand] = FCrewHands::EMode::Reach;
 			Hands.Target[Hand] = CompTM.InverseTransformPosition(At);
 			Hands.Grip[Hand] = 0.85f;
+			if (!From.IsZero()) Hands.Along[Hand] = CompTM.InverseTransformVectorNoScale((At - From).GetSafeNormal());
 			Grip = At;
 			return true;
 		};
@@ -646,21 +648,21 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 				// hands had been held out to the sides: the hip-height grip and the keelboat's traveler car were out of reach).
 				const FVector Chest = 0.5 * (Shoulder[0] + Shoulder[1]);
 				// (A hand's width apart along the boat: together they read as folded arms.)
-				if (Hold(Aft, Chest + Toward * 28.0 + FVector(-16.0, 0.0, -36.0), HelmGripCm)) Tension[Aft] = HelmLoad;
-				if (Hold(1 - Aft, Chest + Toward * 32.0 + FVector(18.0, 0.0, -24.0), MainGripCm)) Tension[1 - Aft] = 0.6f * SheetLoad;
+				if (Hold(Aft, Chest + Toward * 28.0 + FVector(-16.0, 0.0, -36.0), HelmGripCm, TillerEnd)) Tension[Aft] = HelmLoad;
+				if (Hold(1 - Aft, Chest + Toward * 32.0 + FVector(18.0, 0.0, -24.0), MainGripCm, FVector::ZeroVector)) Tension[1 - Aft] = 0.6f * SheetLoad;
 			}
 			else if (bHelm && bTiller)
 			{
 				// The extension (about 90 cm) from the tiller's end up to the aft hand, held low beside the hip.
 				const FVector ToShoulder = Shoulder[Aft] + FVector(0.f, 0.f, -32.f) - TillerEnd;
 				const double Len = FMath::Min(90.0, ToShoulder.Size() - 25.0);
-				if (Len > 20.0 && Hold(Aft, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm)) Tension[Aft] = HelmLoad;
+				if (Len > 20.0 && Hold(Aft, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm, TillerEnd)) Tension[Aft] = HelmLoad;
 				// The mainsheet's tail from its block on the car, held out in front at lap height.
 				if (!MainsheetCarCm.IsZero())
 				{
 					const int32 Fwd = 1 - Aft;
 					const FVector At = Shoulder[Fwd] + (MainsheetCarCm - Shoulder[Fwd]).GetSafeNormal() * 8.0 + Toward * 30.0 + FVector(0.f, 0.f, -36.f);
-					if (Hold(Fwd, At, MainGripCm)) Tension[Fwd] = 0.6f * SheetLoad;
+					if (Hold(Fwd, At, MainGripCm, MainsheetCarCm)) Tension[Fwd] = 0.6f * SheetLoad;
 				}
 			}
 			else if (!bHelm && bJibTail && I == N - 2)
@@ -668,7 +670,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 				// The trimmer: the working sheet's tail a forearm's length off its self-tailer.
 				const int32 Near = FVector::DistSquared(Shoulder[0], Tailer) < FVector::DistSquared(Shoulder[1], Tailer) ? 0 : 1;
 				const FVector ToShoulder = Shoulder[Near] - Tailer;
-				if (Hold(Near, Tailer + ToShoulder.GetSafeNormal() * FMath::Clamp(ToShoulder.Size() - 40.0, 25.0, 55.0), JibGripCm)) Tension[Near] = 0.4f * SheetLoad;
+				if (Hold(Near, Tailer + ToShoulder.GetSafeNormal() * FMath::Clamp(ToShoulder.Size() - 40.0, 25.0, 55.0), JibGripCm, Tailer)) Tension[Near] = 0.4f * SheetLoad;
 			}
 			for (int32 Hand = 0; Hand < 2; ++Hand)
 			{

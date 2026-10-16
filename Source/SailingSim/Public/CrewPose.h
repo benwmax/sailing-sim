@@ -81,6 +81,7 @@ struct SAILINGSIM_API FCrewGround
 	const Sailing::FBoatConfig* Config = nullptr;
 	double HullDepth = 0.25;    // m, FBoatModel::HullDepth
 	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
+	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */
@@ -103,6 +104,9 @@ struct SAILINGSIM_API FCrewHands
 	EMode Mode[2] = { EMode::Free, EMode::Free };          // [0] left, [1] right
 	FVector Target[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	float Grip[2] = { 0.3f, 0.3f };
+	// Round 12: for Reach, the line or bar through the palm (component space; the tiller extension, a sheet's tail, a
+	// handrail): the wrist turns so it runs across the palm, knuckle to knuckle. Zero leaves the wrist as the stance has it.
+	FVector Along[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	const FCrewGround* Ground = nullptr;                    // plant the feet on the boat (FCrewGround)
 };
 

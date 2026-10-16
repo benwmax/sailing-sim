@@ -176,6 +176,12 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// 0.36 m apart and their shoulders overlapped on the rail (docs/crew-pose/mac).
 		X = FMath::Clamp(X - (I > 0 ? 0.1 : 0.0), KeelWell.X0 + 0.3, KeelWell.X1 - 0.12);
 	}
+	// Round 12: the J/22's helm sits aft of the traveler, about level with the tiller's end. At x -1.75 they sat forward
+	// of the traveler against the trimmer, the three crew bunched by the cabin with the after half of the cockpit empty.
+	if (Cfg.Type == EBoatType::J22 && I == N - 1 && CrewCockpitWell(Cfg, KeelWell))
+	{
+		X = FMath::Clamp(FMath::Min(X, Hull.SternX + Cfg.TillerLength + 0.15), KeelWell.X0 + 0.35, KeelWell.X1 - 0.12);
+	}
 	const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
 	const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
 	FCrewPoseParams& P = Out.Params;
@@ -491,6 +497,8 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		Ground.Config = Config;
 		Ground.HullDepth = HullDepth;
 		Ground.ToBoat = ToBoat;
+		const ECrewStance St = In.Params.Stance;
+		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike;
 		CrewSolver::PlantAllFeet(Ref, RestCS, CS, D, Frame, Ground, Carried);
 	}
 	if (bBrace)
@@ -508,7 +516,14 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 				{
 					const FVector At = ToBoat.InverseTransformPosition(Set[K]);
 					const double Dist = FVector::Dist(At, Shoulder);
-					if (Dist < Best) { Best = Dist; Hands.Mode[H] = FCrewHands::EMode::Reach; Hands.Target[H] = At; Hands.Grip[H] = 0.95f; }
+					if (Dist < Best)
+					{
+						Best = Dist;
+						Hands.Mode[H] = FCrewHands::EMode::Reach;
+						Hands.Target[H] = At;
+						Hands.Grip[H] = 0.95f;
+						Hands.Along[H] = ToBoat.InverseTransformVectorNoScale(FVector::ForwardVector); // the rails run fore and aft
+					}
 				}
 			}
 		}
