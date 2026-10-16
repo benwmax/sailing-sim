@@ -4,6 +4,7 @@
 #include "SailingMath.h"
 #include "Storm.h"
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,13 @@ namespace Sailing
 		double AirMinusWaterC = 0.0;     // air minus water temperature: < 0 cold over warm (gusty, shifty), > 0 steady
 		double MixedLayerMeters = 1000.0; // depth of the convective boundary layer: puffs are about 0.6 of it across
 		double PuffIntervalSeconds = 240.0; // typical time between puffs at a point (station calibration)
+		/**
+		 * The air the station calibration (PuffIntensity) was measured in: the month and hour's normal air minus water and
+		 * mixed layer. The stations' spread already carries the season's stability, so the puffs scale only by how far the
+		 * day's air departs from it (a front's cold air, a real day). Unset (NaN): by the stability alone, as before.
+		 */
+		double ClimateAirMinusWaterC = std::numeric_limits<double>::quiet_NaN();
+		double ClimateMixedLayerMeters = 1000.0;
 		double PuffVeerDegrees = 7.0;    // a puff veers by about this; lulls back
 		double PuffFanDegrees = 20.0;    // across a puff the wind turns this much outward on each side
 		/**

@@ -236,6 +236,8 @@ namespace Sailing
 		W.AirC = H.AirC;
 		W.Wind.AirMinusWaterC = H.AirC - Water;
 		W.Wind.MixedLayerMeters = Clamp(H.MixedLayerM, 100.0, 4000.0);
+		W.Wind.ClimateAirMinusWaterC = ClimateAirC(Month, W.HourOfDay, false) - ClimateWaterC(Month, false);
+		W.Wind.ClimateMixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, false);
 		W.Wind.PuffIntervalSeconds = 60.0 * ClimatePuffMinutes(Month, W.HourOfDay, false);
 		W.FetchMeters = 5000.0;
 
@@ -417,6 +419,8 @@ namespace Sailing
 		W.Wind.AirMinusWaterC = Air + AirOffset - ClimateWaterC(Month, bCoast);
 		W.AirC = P == EWeatherPreset::Thunderstorm ? kStormAirC : Air;
 		W.Wind.MixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast) * Layer * (1.0 - 0.5 * Overcast);
+		W.Wind.ClimateAirMinusWaterC = ClimateAirC(Month, W.HourOfDay, bCoast) - ClimateWaterC(Month, bCoast);
+		W.Wind.ClimateMixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast);
 		W.Wind.PuffIntervalSeconds = 60.0 * ClimatePuffMinutes(Month, W.HourOfDay, bCoast);
 
 		FillSky(P, T, W);
