@@ -1,4 +1,5 @@
 #include "TrafficScenarios.h"
+#include "PortableRandom.h"
 #include <cstdio>
 #include "Traffic.h"
 #include "Race.h"
@@ -6,7 +7,6 @@
 #include "WindClimate.h"
 #include <algorithm>
 #include <cmath>
-#include <random>
 
 namespace Sailing
 {
@@ -147,18 +147,18 @@ namespace Sailing
 			const FWindField Wind = ScenarioWind();
 			FTrafficSim Sim;
 			Sim.SetWorld(&Wind, nullptr, nullptr);
-			std::mt19937 Rng(11);
-			std::uniform_real_distribution<double> U(-900.0, 900.0);
-			auto Loop = [&](int N) { std::vector<std::pair<double, double>> R; for (int I = 0; I < N; ++I) R.push_back({ U(Rng), U(Rng) }); return R; };
+			FPortableRandom Rng(11);
+			auto U = [&Rng]() { return Rng.Uniform(-900.0, 900.0); };
+			auto Loop = [&](int N) { std::vector<std::pair<double, double>> R; for (int I = 0; I < N; ++I) R.push_back({ U(), U() }); return R; };
 			for (int I = 0; I < 6; ++I)
 			{
 				const auto R = Loop(4);
-				Sim.AddSailboat(EBoatType::J22, R.back().first, R.back().second, U(Rng) / 300.0, R, "J/22 " + std::to_string(I + 1));
+				Sim.AddSailboat(EBoatType::J22, R.back().first, R.back().second, U() / 300.0, R, "J/22 " + std::to_string(I + 1));
 			}
 			for (int I = 0; I < 3; ++I)
 			{
 				const auto R = Loop(5);
-				Sim.AddPower(ETrafficKind::Powerboat, R.back().first, R.back().second, U(Rng) / 300.0, R, "Runabout " + std::to_string(I + 1));
+				Sim.AddPower(ETrafficKind::Powerboat, R.back().first, R.back().second, U() / 300.0, R, "Runabout " + std::to_string(I + 1));
 			}
 			const auto R = Loop(3);
 			Sim.AddPower(ETrafficKind::Trawler, R.back().first, R.back().second, 0.0, R, "Trawler");
@@ -265,12 +265,12 @@ namespace Sailing
 		FRaceRunner Race;
 		Race.Course = FRaceCourse::WindwardLeeward(0.0, 0.0, 0.0, BeatMeters, 120.0, Laps);
 		Race.TimeLimit = 3600.0;
-		std::mt19937 Rng(Seed);
-		std::uniform_real_distribution<double> U(-1.0, 1.0);
+		FPortableRandom Rng(Seed);
+		auto U = [&Rng]() { return Rng.Uniform(-1.0, 1.0); };
 		for (int I = 0; I < Boats; ++I)
 		{
 			// Spread out below the line, reaching, 45 m apart as the game lays them out (with some jitter).
-			const double X = -160.0 - 30.0 * (I % 2) + 10.0 * U(Rng), Y = (I - 0.5 * (Boats - 1)) * 45.0 + 8.0 * U(Rng);
+			const double X = -160.0 - 30.0 * (I % 2) + 10.0 * U(), Y = (I - 0.5 * (Boats - 1)) * 45.0 + 8.0 * U();
 			const int Id = Sim.AddSailboat(EBoatType::J22, X, Y, 90.0 * kDeg, {}, "J/22 " + std::to_string(I + 1));
 			FTrafficVessel* V = Sim.Find(Id);
 			V->RaceEntry = Race.AddEntry(Id, V->Name);

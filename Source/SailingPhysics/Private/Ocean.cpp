@@ -1,9 +1,9 @@
 #include "Ocean.h"
+#include "PortableRandom.h"
 #include "SailingMath.h"
 #include "LakeTerrain.h"
 #include <algorithm>
 #include <cmath>
-#include <random>
 
 namespace Sailing
 {
@@ -87,8 +87,7 @@ namespace Sailing
 		const double WindTo = Params.WindFromRad + kPi, SwellTo = Params.SwellFromRad + kPi;
 		// The long cascade carries wavelengths of 30 m and up (four or more grid cells per wave), the short one the rest.
 		const double KSplit = 2.0 * kPi / 30.0;
-		std::mt19937 Rng(Params.Seed);
-		std::uniform_real_distribution<double> Phase(0.0, 2.0 * kPi);
+		FPortableRandom Rng(Params.Seed);
 		// Unnormalized energies per mode for each component, then scaled so each has its significant height.
 		struct FRaw { int Cascade, Index; double Wind, Swell; };
 		std::vector<FRaw> Raw;
@@ -105,7 +104,7 @@ namespace Sailing
 					FMode& M = Modes[C][size_t(I) * N + J];
 					M.Kx = MI * Dk;
 					M.Ky = MJ * Dk;
-					M.Phase = Phase(Rng);
+					M.Phase = Rng.Uniform(0.0, 2.0 * kPi);
 					const double K = std::hypot(M.Kx, M.Ky);
 					if (K < 1e-9) continue;
 					M.Omega = std::sqrt(G * K);

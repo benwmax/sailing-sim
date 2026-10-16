@@ -9,7 +9,7 @@
 #include "WaveDetail.h"
 #include "Waves.h"
 #include <algorithm>
-#include <random>
+#include "PortableRandom.h"
 
 using namespace Sailing;
 
@@ -206,8 +206,8 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 		for (int32 I = 0; I < kWaveComponents; ++I) Matching += (Waves.GetComponents()[I].Omega < 2.0 * UE_DOUBLE_PI * AWaterSurface::SplitHz) == (I < AWaterSurface::LongComponents);
 		TestEqual(TEXT("The long trains are the first eight bands"), Matching, kWaveComponents);
 
-		std::mt19937 Rng(7);
-		std::uniform_real_distribution<double> U(-400.0, 400.0);
+		Sailing::FPortableRandom Rng(7);
+		auto U = [&Rng]() { return Rng.Uniform(-400.0, 400.0); };
 		double ExactErr = 0.0, LongDiff2 = 0.0, Diff2 = 0.0, Phys2 = 0.0, Drawn2 = 0.0, LongVar = 0.0;
 		int32 Count = 0;
 		for (const double T : { 10.0, 37.3, 81.9 })
@@ -216,7 +216,7 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 			Detail.Evaluate(0, T, Grid);
 			for (int32 I = 0; I < 1500; ++I)
 			{
-				const double X = U(Rng), Y = U(Rng);
+				const double X = U(), Y = U();
 				const double Phys = Waves.Height(X, Y, T);
 				const double Long = LongHeight(Waves, X, Y, T);
 				ExactErr = FMath::Max(ExactErr, FMath::Abs(RenderedHeightAt(Waves, nullptr, X, Y, T, 0.0) - Long));
@@ -389,8 +389,8 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		Waves.SnapToTarget();
 		FWaveDetail Detail;
 		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
-		std::mt19937 Rng(11);
-		std::uniform_real_distribution<double> U(0.0, 300.0);
+		Sailing::FPortableRandom Rng(11);
+		auto U = [&Rng]() { return Rng.Uniform(0.0, 300.0); };
 		TArray<double> Js;
 		for (const double T : { 5.0, 23.0, 61.0, 97.0 })
 		{
@@ -398,7 +398,7 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 			Detail.Evaluate(0, T, Grid);
 			for (int32 I = 0; I < 10000; ++I)
 			{
-				Js.Add(RenderedVertex(Waves, &Grid, U(Rng), U(Rng), T, AWaterSurface::Choppiness).J);
+				Js.Add(RenderedVertex(Waves, &Grid, U(), U(), T, AWaterSurface::Choppiness).J);
 			}
 		}
 		auto CoverageAt = [&Js](double Thr)
