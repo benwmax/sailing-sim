@@ -113,6 +113,9 @@ void ABridgesActor::BeginPlay()
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			C->SetCullDistances(0, (bCoast ? 1500.f : 4000.f) * 100.f);
 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+			// Perf 2: out of the ray-tracing scene, like the trees and reeds: Galveston's 324,000 boulders were gathered into
+			// it every frame (5 fps of render thread on High, coast-day). Lumen's screen traces still see them.
+			C->bVisibleInRayTracing = false;
 			C->RegisterComponent();
 			C->AddInstances(RockX[K], false, true);
 			Tiled.Add(C);

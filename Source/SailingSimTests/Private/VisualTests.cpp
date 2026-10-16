@@ -858,5 +858,8 @@ bool FVisualLiveryTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("J/22 white share %.3f near 0.60"), White / 4000.f), FMath::Abs(White / 4000.f - 0.60f) < 0.03f);
 	TestTrue(FString::Printf(TEXT("J/22 navy share %.3f near 0.06"), Navy / 4000.f), FMath::Abs(Navy / 4000.f - 0.06f) < 0.02f);
 	TestFalse(TEXT("J/22 has a sail number"), SampleBoatLivery(0, 77).SailNumber.IsEmpty());
+	// The player's boat (seed 0) is 1288, or keeps its last digits inside the class's range (the ILCA read "100000").
+	TestEqual(TEXT("player's J/22 number"), SampleBoatLivery(0, 0).SailNumber, FString(TEXT("USA 1288")));
+	TestEqual(TEXT("player's ILCA number"), SampleBoatLivery(2, 0).SailNumber, FString(TEXT("161288")));
 	return true;
 }

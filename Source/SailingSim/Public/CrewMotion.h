@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "CrewPose.h"
+#include "CrewClips.h"
 
 namespace Sailing { struct FBoatConfig; }
 struct FReferenceSkeleton;
@@ -119,6 +120,7 @@ struct SAILINGSIM_API FCrewMotionInput
 	float Time = 0.f;                       // s, the game clock (breathing and sway)
 	uint32 Seed = 0;
 	bool bReact = true;                     // the reaction layer (off: the stance alone, as before C1)
+	bool bClips = true;                     // C1b: the motion-capture idles under it (CrewClips.h)
 };
 
 /** What the posing found, for the tests and the debug log. */
@@ -128,12 +130,15 @@ struct SAILINGSIM_API FCrewMotionReport
 	float TipRatio = 0.f;                   // felt tilt's tangent over the tipping limit's
 	float HeadTiltDeg = 0.f;                // the head's up from the world's up
 	FVector Felt = FVector::ZeroVector;     // felt gravity, the sailor's frame
+	float ClipWeight = 0.f;                 // C1b: how much of the idle clip is playing
+	int32 Clip = -1;
 };
 
 /** One sailor's motion state, kept between frames (owned by the animation node). */
 struct SAILINGSIM_API FCrewMotionState
 {
 	FCrewBalance Balance;
+	FCrewClipState Clip;                    // C1b
 	TMap<FName, FQuat> Current, From;       // the stance joints as blended, and where the last transition started
 	int32 Transition = -1;
 	float TransitionS = 1.f;

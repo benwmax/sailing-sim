@@ -16,6 +16,22 @@ int32 NumLiverySchemes(int32 BoatType)
 	return BoatType >= 0 && BoatType < int32(UE_ARRAY_COUNT(LiveryClasses)) ? LiveryClasses[BoatType].NumSchemes : 0;
 }
 
+/**
+ * The player's boat is 1288 where the class's numbers reach it; elsewhere the number in range nearest the middle that
+ * keeps the most of its last digits (ILCA 161288, Corsair 188, Lagoon 288). Clamping read "100000" on the ILCA.
+ */
+static int32 PlayerSailNumber(int32 Lo, int32 Hi)
+{
+	if (1288 >= Lo && 1288 <= Hi) return 1288;
+	const int32 Mid = Lo + (Hi - Lo) / 2;
+	for (int32 M = 10000; M >= 10; M /= 10)
+	{
+		const int32 Num = Mid / M * M + 1288 % M;
+		if (Num >= Lo && Num <= Hi) return Num;
+	}
+	return Mid;
+}
+
 FBoatLivery SampleBoatLivery(int32 BoatType, uint32 Seed)
 {
 	FBoatLivery L;
@@ -63,7 +79,7 @@ FBoatLivery SampleBoatLivery(int32 BoatType, uint32 Seed)
 	const FLiveryNumbers& N = *C.Numbers;
 	if (N.bRequired || R.Next() < N.Probability)
 	{
-		const int32 Num = Seed == 0 ? FMath::Clamp(1288, N.Lo, N.Hi) : N.Lo + int32(R.Next() * float(N.Hi - N.Lo));
+		const int32 Num = Seed == 0 ? PlayerSailNumber(N.Lo, N.Hi) : N.Lo + int32(R.Next() * float(N.Hi - N.Lo));
 		FString Fmt(N.Format);
 		const FString Digits = Fmt.Contains(TEXT("{n6}")) ? FString::Printf(TEXT("%06d"), Num) : FString::FromInt(Num);
 		L.SailNumber = Fmt.Replace(TEXT("{n6}"), *Digits).Replace(TEXT("{n}"), *Digits);
