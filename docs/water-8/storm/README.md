@@ -69,3 +69,20 @@ and the lit face 8.7 times the underside (`FStormShape::ShelfShade`, mirrored in
   the face meets the core, keeps some streaky scattering.
 - Lightning lights the water a uniform white for a frame or two (seen in two of the old stills). It reads as a flash,
   but the water should keep its waves.
+
+## Gate
+
+`scripts/gate.sh --scope clouds` passes (141 tests, then 129 on the reruns). The first run had helm-eye High at 44.6:
+the new storm terms ran on every cloud sample. They now sit under one branch on the storm's density. A/B on the same
+package, helm-eye High: main's material 46.7 fps (clouds 3.74 ms), this one 46.0 (3.93-3.98 ms over three runs).
+
+| view | Medium fps | High fps |
+|---|---|---|
+| beam8 | 85.6 | 53.5 |
+| beat15 | 82.9 | 50.1 |
+| storm | 68.8 | 45.4 |
+| coast-day | 80.0 | 46.9 |
+| gulf-sea | 102.4 | 59.4 |
+| helm-eye | 78.0 | 45.7 |
+| slip | 76.5 | 47.2 |
+| bridge | 95.6 | 53.8 |

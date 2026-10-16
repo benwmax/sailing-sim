@@ -1740,25 +1740,29 @@ AO = 1.0;
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
 
-    // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
-    float nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
-    // Storm cloud uses the coarser shape octaves (a big dense mass at 100-200 m steps speckled with the fine ones); the
-    // shelf's face is smooth, its base and the core's ragged.
-    float nS = saturate(lerp(sh.g * 1.25 - 0.1, base, 0.5));   // the billows too: a tower's cauliflower sides
-    // The lip (the shelf's first few hundred metres) keeps a clean edge.
-    float lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
-    // W5a: the storm's interior is smooth: the billow erosion bites only near its outline (where the built density ramps
-    // off) and underneath; the fine detail only underneath, so the shelf's face reads as broad smooth tiers over a torn
-    // base (round 10: the storm's mass was frosted all through).
-    float edgeS = max(saturate((1.0 - storm) * 2.5), nearBase);
-    // W8: under the shelf the torn base takes the coarse billows only (nS), never the fine detail: the detail varied
-    // faster than the march step there and frosted the base with speckle (round 11's bay storm). The core keeps it.
-    float torn = lerp(1.0 - n2, 1.0 - nS, saturate(shelf * 2.0));
-    // W8: the shelf's sloping face above its base (FStormShape::ShelfShade) is a smooth, sunlit surface, the rolled lip
-    // (SHELF_FACE deep behind the leading edge) brightest: almost no erosion there, so its edge is a clean arc, not froth.
-    float lipFace = 1.0 - smoothstep(0.33 * SHELF_FACE, SHELF_FACE, shelfX);
-    float faceS = smoothstep(0.08, 0.35, shelfH) * lerp(0.6, 1.0, lipFace);
-    float dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * max(lip, 0.85 * shelf * (1.0 - nearBase))) * lerp(0.25, 1.0, edgeS) * (1.0 - 0.85 * faceS * shelf) - torn * 0.35 * nearBase * (1.0 - lip)) * 1.6);
+    // W8: all of the storm's own shaping under one branch (fair-weather samples skip it: Mac gate, helm-eye High).
+    float nearBase = 0.0, lip = 0.0, faceS = 0.0, dSm = 0.0, nS = 0.5;
+    [branch] if (storm > 0.0)
+    {
+        // The storm's base is turbulent: lumpy, sagging, torn (strong small-scale erosion in its lowest few hundred metres).
+        nearBase = 1.0 - smoothstep(CORE_BASE, CORE_BASE + 500.0, alt);
+        // Storm cloud uses the coarser shape octaves (a big dense mass at 100-200 m steps speckled with the fine ones); the
+        // shelf's face is smooth, its base and the core's ragged.
+        nS = saturate(lerp(sh.g * 1.25 - 0.1, base, 0.5));   // the billows too: a tower's cauliflower sides
+        // The lip (the shelf's first few hundred metres) keeps a clean edge.
+        lip = shelf * (1.0 - smoothstep(0.0, 500.0, SHELF_LEAD - D));
+        // W5a: the storm's interior is smooth: the billow erosion bites only near its outline (where the built density ramps
+        // off) and underneath; the fine detail only underneath, so the shelf's face reads as broad smooth tiers over a torn
+        // base (round 10: the storm's mass was frosted all through).
+        float edgeS = max(saturate((1.0 - storm) * 2.5), nearBase);
+        // W8: under the shelf the torn base takes the coarse billows only (nS), never the fine detail: the detail varied
+        // faster than the march step there and frosted the base with speckle (round 11's bay storm). The core keeps it.
+        float torn = lerp(1.0 - n2, 1.0 - nS, saturate(shelf * 2.0));
+        // W8: the shelf's sloping face above its base (FStormShape::ShelfShade) is a smooth, sunlit surface, the rolled lip
+        // (SHELF_FACE deep behind the leading edge) brightest: almost no erosion there, so its edge is a clean arc, not froth.
+        [branch] if (shelf > 0.0) faceS = smoothstep(0.08, 0.35, shelfH) * lerp(0.6, 1.0, 1.0 - smoothstep(0.33 * SHELF_FACE, SHELF_FACE, shelfX));
+        dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * max(lip, 0.85 * shelf * (1.0 - nearBase))) * lerp(0.25, 1.0, edgeS) * (1.0 - 0.85 * faceS * shelf) - torn * 0.35 * nearBase * (1.0 - lip)) * 1.6);
+    }
     // Graphics G6: each layer's extinction relative to the full CloudDensity (Ext: cumulus, stratus, storm; w, the rains, unused since W5a). The grain
     // in the storm skies was optical depth per march step: at 0.1 /m over a 190 m step every ray went opaque inside one
     // step, so each pixel was lit at whatever depth its jittered sample landed (bright skin or dark interior). A storm's
@@ -1818,6 +1822,9 @@ AO = 1.0;
     // luminance on a white diffuser (rgb), w the sun's direction's elevation sine; SunDir its direction (map frame).
     // The face looks along the front's travel and leans back up its slope; wrapped Lambert, pale grey (0.5: with the
     // march's own scattering on top, 0.7 clipped to white).
+    // (Only where there is shelf: fair-weather samples skip it, Mac gate helm-eye High.)
+    [branch] if (face > 0.0)
+    {
     float3 faceN = normalize(float3(FrontA.zw, 0.75));
     float faceLit = saturate(0.25 + 0.75 * dot(faceN, SunDir.xyz));
     // Structure, all of it at the march's scale or coarser (the G1 rule): the tiers' risers (steep, facing out) lit
@@ -1827,6 +1834,7 @@ AO = 1.0;
     float faceTone = lerp(0.75, 1.1, riser) * lerp(0.7, 1.15, nS) * lerp(1.0, 0.3, smoothstep(SHELF_FACE, 1800.0, shelfX)) * lerp(0.8, 1.2, shelfH);
     Emit += SunLum.rgb * (FACE_PALE * faceLit * faceTone) * face * d * Density;
     Albedo *= 1.0 - FACE_SCATTER_CUT * face;
+    }
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
     Emit += float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
