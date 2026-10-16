@@ -106,7 +106,7 @@ namespace
 				Out.Verts.Add(C + N * L.RadiusCm);
 				Out.Normals.Add(N);
 				Out.UV0.Add(FVector2D(Arc / Lay, float(K) / kLineSides));
-				Out.Colors.Add(Look);
+				if (bTris) Out.Colors.Add(Look); // the look never changes: sent once, at build (an update skips an empty stream)
 				Out.Tangents.Add(FProcMeshTangent(Along, false));
 			}
 		}
@@ -420,6 +420,11 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		const TArray<FRigLine>& Lines = Section == 0 ? Wires : Ropes;
 		FTubeStreams Out;
+		// Reserved up front, and no colours after the build: the per-frame update converted every vertex's linear colour
+		// to sRGB and doubled the rig lines' game-thread time (0.65 -> 1.4 ms on the PC).
+		const int32 NumVerts = Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
+		Out.Verts.Reserve(NumVerts); Out.Normals.Reserve(NumVerts); Out.UV0.Reserve(NumVerts); Out.Tangents.Reserve(NumVerts);
+		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
 		for (const FRigLine& L : Lines)
 		{
 			AppendTube(L, Down, Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
