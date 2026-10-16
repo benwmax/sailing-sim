@@ -163,6 +163,11 @@ namespace Sailing
 			C.LengthOverall = 6.55; C.WaterlineLength = 5.89; C.Beam = 2.34; C.WaterlineBeam = 1.95; C.Draft = 1.52;
 			C.Foils = { Foil(EFoilRole::Keel, Vec3(0.40, 0.0, -0.95), 0.60, 0.61, 3.0, 15.0), Foil(EFoilRole::Rudder, Vec3(-3.35, 0.0, -0.40), 0.25, 0.305, 3.0, 14.0) };
 			C.Foils[0].bRetractable = true; // swing keel, cranked up for the trailer or shallows
+			// W8 (Portsmouth): the swing keel is a cast-iron plate with blunt edges (Hoerner: Cd0 0.02-0.03 for a plate,
+			// against 0.009 for a faired fin) hanging from an open trunk slot. Profile drag grows as V^2, like friction, so
+			// it weighs most in light air, before wave drag takes over: at 0.009 she lapped 11 % under the D-PN 4-7 kn
+			// band (96.3) while matching the ORC VPP, which models a faired keel and race trim.
+			C.Foils[0].Params.ProfileDrag = 0.03;
 			C.MunkAddedMass = 260.0; C.HelmStiffness = 600.0;
 			C.MastX = 0.86; C.MastheadZ = 8.84; C.BoomZ = 1.45; C.MastDiameter = 0.09;
 			SetMain(C, 1.45, 7.85, 2.94, 0.25, 0.08, 0.82, 0.82, 9.42, 3.6, 4.2, 0.12);
@@ -219,7 +224,12 @@ namespace Sailing
 			// Hobie 16: LOA 16 ft 7 in, beam 7 ft 11 in, 320 lb rigged, no boards (the asymmetric hulls give the lift),
 			// main 13.77 m^2 + jib 5.12 m^2 on a rotating 26 ft 6 in mast, two crew on double trapeze.
 			FBoatConfig C;
-			C.Type = EBoatType::Hobie16; C.AddedResistanceCoef = 4.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.7; C.TrimMaxEaseDeg = 45.0; C.Name = "Hobie 16"; C.bMultihull = true;
+			// W8 (Portsmouth): a beach cat pitches and slams into chop far more than the J/22 (low, fine bows on 320 lb, two
+			// crew aft on the wire), and most in a breeze, when the lake's chop is up and she is going fast into it. At 4 she
+			// sailed upwind 13 % over the Hotline polar at 10 kn and lapped 14 % under the D-PN 12+ band (71.3); at 9 the
+			// added resistance (Hs^2 and speed: strongest upwind in a breeze) puts 10 kn upwind within 4 % of the polar and
+			// both D-PN bands near their middles, leaving the light-air band where it was.
+			C.Type = EBoatType::Hobie16; C.AddedResistanceCoef = 9.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.7; C.TrimMaxEaseDeg = 45.0; C.Name = "Hobie 16"; C.bMultihull = true;
 			C.HullRigMass = 145.0; C.HullRigCG = Vec3(0.0, 0.0, 0.75);
 			C.BallastMass = 0.0; C.BallastCG = Vec3();
 			C.CrewMass = 150.0; C.CrewCG = Vec3(-0.7, 0.0, 0.60); C.CrewCount = 2;
