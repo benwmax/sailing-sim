@@ -54,6 +54,15 @@ namespace Sailing
 		 *  the displacement box-blurred over 2 texels (0.36 m) either way the same cover comes in 64 caps about 1 m
 		 *  across, the size of a 20 kn reservoir's whitecaps. */
 		static constexpr int CapBlurTexels = 2;
+		/** The whitecaps' size by wind (docs/water-8/capshape-mac): with the blur fixed at W8's 0.36 m, 12 kn caps came
+		 *  out as long as 20 kn ones (2-3 m along the wind at every wind). Monahan's cover falls 5.8x from 20 to 12 kn
+		 *  (U^3.41); real caps get both rarer and smaller as the breakers slow with the wind (Phillips 1985's breaking
+		 *  crests travel at speeds that scale with the wind: Melville and Matusov 2002). Splitting the fall evenly in log
+		 *  between the caps' number and their area gives a cap length, and so the blur that sets it, as U^(3.41 / 4) =
+		 *  U^0.85 under 20 kn, from W8's 20 kn fit (CapBlurTexels on the chop's 0.18 m texels) down to one texel; held
+		 *  from 20 kn up (the fold table and CapSlopeAt are fitted on it: a 0.43 m blur at 25 kn read the table's mip 1
+		 *  30-60 % over the grid). */
+		static double CapBlurMeters(double WindMs);
 
 		void Configure(const FWaveDetailParams& Params, const std::vector<FCascadeSpec>& Cascades);
 		const FWaveDetailParams& GetParams() const { return Params; }

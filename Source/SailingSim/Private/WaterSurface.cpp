@@ -401,6 +401,11 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	}
 }
 
+float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
+{
+	return FMath::Clamp(0.94f - 0.0075f * (MeanKnots - 12.f), 0.85f, 0.94f);
+}
+
 float AWaterSurface::WhitecapOnset(float MeanKnots)
 {
 	constexpr float OnsetMs = 3.7f, FullMs = 12.f * float(kKnot);
@@ -411,8 +416,11 @@ float AWaterSurface::WhitecapOnset(float MeanKnots)
 float AWaterSurface::FoamThresholdAt(float MeanKnots)
 {
 	// Under 10 kn the crests stop breaking (Beaufort 2-3): the threshold falls 0.03 a knot instead of rising on.
+	// Whitecap mask (docs/water-8/capshape-mac): the cap blur shrinks with the wind (FWaveDetail::CapBlurMeters), and the
+	// finer blur folds deeper: 0.042 lower at 10 kn (3.9x Monahan at the old threshold), easing out by 16 kn.
 	const float K = FMath::Clamp(MeanKnots, 4.f, 40.f);
-	return 0.63f + 0.083f * FMath::Exp(-(FMath::Max(K, 10.f) - 10.f) / 5.f) - 0.03f * FMath::Max(10.f - K, 0.f);
+	return 0.63f + 0.083f * FMath::Exp(-(FMath::Max(K, 10.f) - 10.f) / 5.f) - 0.042f * FMath::Exp(-(FMath::Max(K, 10.f) - 10.f) / 2.f)
+		- 0.03f * FMath::Max(10.f - K, 0.f);
 }
 
 float AWaterSurface::CapSlopeAt(float MeanKnots)
@@ -710,7 +718,8 @@ void AWaterSurface::UpdateDetail()
 		for (int32 I = 0; I < kSeaLongComponents && I < Long.Num(); ++I) Long[I].Amplitude *= Ratio[I];
 		CapShort = Ratio[kSeaLongComponents];
 	}
-	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, CapTarget, CapTime, CapShort, Long = MoveTemp(Long)]() -> FDetailUploadPtr
+	const float FoldScale = DrawnFoldScaleAt(float(Waves->GetParams().WindSpeedKnots));
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long)]() -> FDetailUploadPtr
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
 		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
@@ -744,7 +753,7 @@ void AWaterSurface::UpdateDetail()
 						// The long trains sampled over about 170 m (the chop's 23 m tile holds about one of their wavelengths, so a
 						// frame's sample sat on whatever crests crossed it), the chop at its own texel.
 						const double Jt = FWaveDetail::LongJacobian(Long.GetData(), Long.Num(), OmegaMax, Choppiness, R * Cell * 7.31, Cc * Cell * 7.37, CapTime, Spacing, Fade) * Chop;
-						Samples.push_back(float(1.0 - DrawnFoldScale * (1.0 - Jt)));
+						Samples.push_back(float(1.0 - FoldScale * (1.0 - Jt)));
 					}
 				double Slope = 0.0;
 				FWaveDetail::CapThreshold(MoveTemp(Samples), CapTarget, CapThr[K], Slope);
