@@ -329,7 +329,18 @@ namespace Sailing
 			// Stable air over the water damps them, unless the land around is convecting deep (a hot afternoon on a small
 			// lake: the puffs come down from the mixed layer overhead whatever the water does). The stations' spread splits
 			// between the cells and the puffs; each converts to the field's own spread by how much of it a 2-minute mean keeps.
-			const double Slow = Params.PuffIntensity * (1.0 + 0.4 * Unstable - 0.4 * Stable * (1.0 - SmoothStep(800.0, 2000.0, Params.MixedLayerMeters)));
+			// W7 gap 4: relative to the air the calibration was measured in, when the weather gives it (the month and hour's
+			// own stability is already in the stations' spread: scaling by it again put January mornings 25 % high and the
+			// bay's April midday 19 % low).
+			auto PuffStability = [&](double AirMinusWater, double MixedLayer)
+			{
+				const double R = kGravity * 10.0 * AirMinusWater / (288.0 * U * U);
+				const double Z = R < 0.0 ? std::max(10.0 * R, -2.0) : R > 0.0 ? std::min(10.0 * R / std::max(1.0 - 5.0 * R, 0.25), 1.0) : 0.0;
+				const double Un = Clamp(-Z / 0.5, 0.0, 1.0), St = Clamp(Z / 0.3, 0.0, 1.0);
+				return 1.0 + 0.4 * Un - 0.4 * St * (1.0 - SmoothStep(800.0, 2000.0, MixedLayer));
+			};
+			const double Reference = std::isnan(Params.ClimateAirMinusWaterC) ? 1.0 : PuffStability(Params.ClimateAirMinusWaterC, Params.ClimateMixedLayerMeters);
+			const double Slow = Params.PuffIntensity * PuffStability(Params.AirMinusWaterC, Params.MixedLayerMeters) / Reference;
 			PuffTarget = Slow * std::sqrt(1.0 - CellShare) / kPuffSlowRms;
 			CellTarget = Slow * std::sqrt(CellShare) / kCellSlowRms;
 			D.FineSigma = GI;
