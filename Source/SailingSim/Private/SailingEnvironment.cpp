@@ -502,10 +502,17 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		const float Intensity = FMath::Max(CloudShade, 0.35f);
 		ULightComponent* SunComp = Sun->GetLightComponent();
 		SunComp->SetIntensity(SunIntensity * Intensity * FMath::Lerp(1.f, 0.002f, Night));
-		SunComp->SetDiffuseScale(CloudShade / Intensity);
+		// Perf 2: the diffuse and specular scales rebuild the light (MarkRenderStateDirty), and a rebuilt light starts its
+		// virtual shadow map cache afresh: under a storm deck, where they follow the cloud shade, that was every frame.
+		// They step by 0.04 instead (each step one ordinary uncached frame); in sunshine they sit at 1 as before.
+		const float Direct = FMath::Clamp(CloudShade / Intensity, 0.f, 1.f);
+		if (FMath::Abs(SunComp->DiffuseScale - Direct) > 0.04f || (Direct >= 1.f && SunComp->DiffuseScale < 1.f))
+		{
+			SunComp->SetDiffuseScale(Direct);
+			SunComp->SetSpecularScale(FMath::Square(Direct));
+		}
 		// The haze and rain under a storm deck aren't sunlit: no glowing white fog (volumetric fog has no cloud shadow).
 		SunComp->SetVolumetricScatteringIntensity(FMath::Clamp(CloudShade * 1.2f, 0.05f, 1.f));
-		SunComp->SetSpecularScale(FMath::Square(CloudShade / Intensity));
 		// Once the sun is down it casts no shadows, and the clouds' shadow rays toward it (which run the whole layer
 		// when the light skims the horizon: night ran at two-thirds of day's frame rate) get only a few samples.
 		const bool bShadows = Elevation > 2.0; // shadows from a sun within 2 degrees of the horizon are too long to see
@@ -527,7 +534,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			// so they are lit by the undimmed sun: the scene's light is cut for the deck's shadow, the clouds' is not.
 			// That is what gives a storm its form: a lit shelf face and anvil top over a dark base.
 			const float CloudLight = bLayeredClouds ? FMath::Clamp(1.f / FMath::Max(Intensity, 0.05f), 1.f, 4.f) : 1.f;
-			if (!Dir->CloudScatteredLuminanceScale.Equals(FLinearColor(CloudLight, CloudLight, CloudLight), 0.01f))
+			// In 3% steps (perf-2): this rebuilds the light too, and its shadow cache with it.
+			if (!Dir->CloudScatteredLuminanceScale.Equals(FLinearColor(CloudLight, CloudLight, CloudLight), 0.03f * CloudLight))
 			{
 				Dir->CloudScatteredLuminanceScale = FLinearColor(CloudLight, CloudLight, CloudLight);
 				Dir->MarkRenderStateDirty();

@@ -53,6 +53,8 @@ private:
 		bool bFloating = true;
 		FVector Position;    // relative to its root, cm
 		double Phase = 0.0;  // s, so lights with the same character don't flash in step
+		double ShownSize = -1.0; // the instance as last drawn (cm scale, relative position)
+		FVector ShownAt = FVector::ZeroVector;
 	};
 	TArray<FLightInstance> Lights;
 
