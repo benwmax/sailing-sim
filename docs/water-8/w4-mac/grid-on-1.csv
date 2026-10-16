@@ -1,0 +1,2 @@
+view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms,game_ms,game_p99_ms,render_ms,rhi_ms,gpu_frame_ms
+slip,High,51.5,20.69,17.99,7.75,3.7,2.43,2.84,0.0,0.81,0.45,0.021,0.22,2.9,5.23,19.12,3.08,18.66

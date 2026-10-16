@@ -427,6 +427,11 @@ float AWaterSurface::WhitecapOnset(float MeanKnots)
 	return U * U * U;
 }
 
+float AWaterSurface::ShoalFoldScale(float MeanKnots)
+{
+	return FMath::SmoothStep(3.7f, 8.2f, MeanKnots * float(kKnot));
+}
+
 float AWaterSurface::FoamThresholdAt(float MeanKnots)
 {
 	// Under 10 kn the crests stop breaking (Beaufort 2-3): the threshold falls 0.03 a knot instead of rising on.
@@ -780,6 +785,7 @@ void AWaterSurface::UpdateDetail()
 					UE_LOG(LogSailing, Display, TEXT("Caps: thresholds %.3f %.3f %.3f %.3f, slope %.3f"), CapThrSmooth[0], CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], CapSlopeSmooth);
 			}
 			if (Done->RippleN > 0) UploadPackedMips(RippleBMap, Done->Ripple, Done->RippleN);
+			UpdateFoamGrid(Done);
 		}
 	}
 	if (bUploadPending) return;
@@ -877,6 +883,10 @@ void AWaterSurface::UpdateDetail()
 			Out->CapStep = CapStep;
 			for (int32 K = 0; K < 4; ++K) Out->CapThr[K] = float(CapThr[K]);
 			Out->CapSlope = float(CapSlope);
+			Out->JCap = JCap; // W4: the foam grid reads the caps from it
+			Out->Tile = float(A.Tile);
+			Out->CapShort = CapShort;
+			Out->FoldScale = FoldScale;
 		}
 		if (bRipple)
 		{
@@ -931,9 +941,14 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 	if (bWakePending)
 	{
 		if (!PendingWake.IsReady()) return;
-		const FWakeFrame Done = PendingWake.Get();
+		FWakeFrame Done = PendingWake.Consume();
 		bWakePending = false;
 		UploadFloats(WakeGridMap, Done.Pixels, Done.N, Done.N, 2);
+		// W4: keep its foam channel for the foam grid.
+		WakeFoamN = Done.N;
+		WakeFoamOrigin = Done.Origin;
+		WakeFoamCell = Done.Cell;
+		WakeFoamPixels = MakeShared<const TArray<float>, ESPMode::ThreadSafe>(MoveTemp(Done.Pixels));
 		WaterMaterial->SetVectorParameterValue(TEXT("WakeGridRect"), FLinearColor(float(Done.Origin.X), float(Done.Origin.Y), Done.N * Done.Cell, float(Done.N)));
 	}
 
@@ -1232,6 +1247,7 @@ void AWaterSurface::WaitForWorkers()
 	if (bWakePending) { PendingWake.Wait(); bWakePending = false; }
 	if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
 	if (bUploadPending) { PendingUpload.Wait(); bUploadPending = false; }
+	if (bFoamPending) { PendingFoam.Wait(); bFoamPending = false; }
 }
 
 void AWaterSurface::EndPlay(const EEndPlayReason::Type Reason)
@@ -1686,4 +1702,117 @@ void AWaterSurface::UpdateWakeMap(float DeltaSeconds)
 		Px[0] = V; Px[1] = V; Px[2] = V; Px[3] = 255;
 	}
 	Upload(WakeMap, WakePixels, kWakeRes);
+}
+
+void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
+{
+	// W4 (docs/water-4). Upload the last step if it is done; then step again from this detail frame.
+	if (bFoamPending && PendingFoam.IsReady())
+	{
+		FFoamFrame Frame = PendingFoam.Consume();
+		bFoamPending = false;
+		if (Frame.N > 0 && WaterMaterial)
+		{
+			if (!FoamGridMap || FoamGridMap->GetSizeX() != Frame.N)
+			{
+				FoamGridMap = MakeFloatMap(Frame.N, Frame.N, PF_R32_FLOAT, false);
+				WaterMaterial->SetTextureParameterValue(TEXT("FoamGrid"), FoamGridMap);
+			}
+			UploadFloats(FoamGridMap, Frame.Pixels, Frame.N, Frame.N, 1);
+			WaterMaterial->SetVectorParameterValue(TEXT("FoamGridRect"), FLinearColor(Frame.X0, Frame.Y0, Frame.Size, 1.f));
+		}
+	}
+	static SailingArgs::FCachedFlag NoFoamGridArg(TEXT("SailingNoFoamGrid"));
+	if (NoFoamGridArg.Get() || Tier < 1)
+	{
+		if (WaterMaterial) WaterMaterial->SetVectorParameterValue(TEXT("FoamGridRect"), FLinearColor(0.f, 0.f, 64.f, 0.f));
+		return;
+	}
+	if (bFoamPending || !Done || Done->JCap.empty() || Done->N <= 0) return;
+	if (!FoamState) FoamState = MakeShared<FFoamGrid, ESPMode::ThreadSafe>();
+	const FVector CamCm = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
+	const FVector2D Cam(CamCm.X / CmPerMeter, CamCm.Y / CmPerMeter);
+	const double T = GetSimTime();
+	FVector2D Drift = FVector2D::ZeroVector;
+	if (const FWindField* Wind = GetWind())
+	{
+		// Foam drifts with the surface: the wind drift is about 3% of the wind speed (Wu 1975), plus the Stokes drift the
+		// small waves add; 3.5% here.
+		const Vec3 V = Wind->VelocityAt(Vec3(Cam.X, Cam.Y, 10.0), T);
+		Drift = FVector2D(V.X, V.Y) * 0.035;
+	}
+	TSharedPtr<FFoamGrid, ESPMode::ThreadSafe> G = FoamState;
+	const FDetailUploadPtr D = Done;
+	const float Thr = Done->CapThr[0];
+	bFoamPending = true;
+	TSharedPtr<const TArray<float>, ESPMode::ThreadSafe> WakeF = WakeFoamPixels;
+	const FVector2D WakeO = WakeFoamOrigin;
+	const float WakeC = WakeFoamCell;
+	const int32 WakeN = WakeFoamN;
+	PendingFoam = Async(EAsyncExecution::ThreadPool, [G, D, Cam, T, Drift, Thr, WakeF, WakeO, WakeC, WakeN]() -> FFoamFrame
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterFoamGrid);
+		FFoamGrid& F = *G;
+		const int32 N = F.N;
+		if (F.F.Num() != N * N) F.F.Init(0.f, N * N);
+		const double Dt = F.LastTime < 0.0 ? 0.0 : FMath::Clamp(T - F.LastTime, 0.0, 0.25);
+		F.LastTime = T;
+		// Recentre on the camera in whole cells (the foam stays put in the world).
+		const int32 NX = FMath::FloorToInt(Cam.X / F.Cell) - N / 2, NY = FMath::FloorToInt(Cam.Y / F.Cell) - N / 2;
+		const int32 SX = NX - F.OX, SY = NY - F.OY;
+		TArray<float> Next;
+		Next.Init(0.f, N * N);
+		// Residual foam fades with an e-folding time of about 4 s (Monahan and Lu 1990: stage-B whitecaps; Callaghan,
+		// de Leeuw, Cohen and O'Dowd 2008 give 2-6 s from video, longer for bigger breakers).
+		const float Keep = float(FMath::Exp(-Dt / 4.0));
+		// Moved with the drift (semi-Lagrangian: each cell takes the foam from upwind, bilinear): a cap's patch trails off
+		// downwind as it fades, and M_WaterV4 draws it through the streak pattern along the wind.
+		const float BX = float(-Drift.X * Dt / F.Cell), BY = float(-Drift.Y * Dt / F.Cell);
+		auto Old = [&F, N](int32 R, int32 C) { return (R >= 0 && R < N && C >= 0 && C < N) ? F.F[R * N + C] : 0.f; };
+		for (int32 R = 0; R < N; ++R)
+			for (int32 C = 0; C < N; ++C)
+			{
+				const float SR = float(R + SX) + BX, SC = float(C + SY) + BY;
+				const int32 R0 = FMath::FloorToInt(SR), C0 = FMath::FloorToInt(SC);
+				const float FR = SR - R0, FC = SC - C0;
+				const float V = FMath::Lerp(FMath::Lerp(Old(R0, C0), Old(R0, C0 + 1), FC), FMath::Lerp(Old(R0 + 1, C0), Old(R0 + 1, C0 + 1), FC), FR);
+				Next[R * N + C] = V * Keep;
+			}
+		F.OX = NX;
+		F.OY = NY;
+		// The caps feed it: the whitecap Jacobian of the chop (as M_WaterV4's jd, with the drawn fold scale) against the
+		// nearest solved threshold, the long trains' fold left out (they fold in tens of metres, the grid holds 64).
+		const int32 DN = D->N;
+		const float Tile = D->Tile;
+		const float Ks = FMath::Min(D->CapShort, 2.f);
+		for (int32 R = 0; R < N; ++R)
+		{
+			const double X = (F.OX + R + 0.5) * F.Cell;
+			const int32 DR = ((FMath::FloorToInt(float(X / Tile * DN)) % DN) + DN) % DN;
+			for (int32 C = 0; C < N; ++C)
+			{
+				const double Y = (F.OY + C + 0.5) * F.Cell;
+				const int32 DC = ((FMath::FloorToInt(float(Y / Tile * DN)) % DN) + DN) % DN;
+				const float Jd = 1.f - Ks * (1.f - D->JCap[DR * DN + DC]);
+				const float Jt = 1.f - D->FoldScale * (1.f - Jd);
+				float Src = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
+				// The boats' wash (the wake grid's foam, as M_WaterV4's wakeBreak without its bubble pattern).
+				if (WakeN > 0 && WakeF)
+				{
+					const int32 WR = FMath::FloorToInt(float((X - WakeO.X) / WakeC)), WC = FMath::FloorToInt(float((Y - WakeO.Y) / WakeC));
+					if (WR >= 0 && WR < WakeN && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp((*WakeF)[2 * (WR * WakeN + WC) + 1] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
+				}
+				float& V = Next[R * N + C];
+				V = FMath::Max(V, Src);
+			}
+		}
+		F.F = Next;
+		FFoamFrame Out;
+		Out.Pixels = MoveTemp(Next);
+		Out.N = N;
+		Out.X0 = float(F.OX * F.Cell);
+		Out.Y0 = float(F.OY * F.Cell);
+		Out.Size = N * F.Cell;
+		return Out;
+	});
 }
