@@ -46,9 +46,14 @@ class SAILINGSIM_API FSailCloth
 public:
 	static constexpr int32 Rows = 25;
 	static constexpr int32 Cols = 16;
+	/** A vertex further than this from its target means the cloth ran away; Step starts it again from the target. */
+	static constexpr float kRunawayCm = 600.f;
 
 	/** Sets up the planform for a sail (rebuilt when the boat changes or the main is reefed). */
 	void Init(const Sailing::FSailGeometry& Geo, ESailKind Kind);
+
+	/** Forgets the cloth's motion: the next Step starts again from the target shape (the boat was reset or moved). */
+	void Reset() { bStarted = false; Accumulator = 0.f; }
 
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
