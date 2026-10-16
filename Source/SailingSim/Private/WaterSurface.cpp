@@ -870,15 +870,14 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 	if (bWakePending)
 	{
 		if (!PendingWake.IsReady()) return;
-		const FWakeFrame Done = PendingWake.Get();
+		FWakeFrame Done = PendingWake.Consume();
 		bWakePending = false;
 		UploadFloats(WakeGridMap, Done.Pixels, Done.N, Done.N, 2);
 		// W4: keep its foam channel for the foam grid.
 		WakeFoamN = Done.N;
 		WakeFoamOrigin = Done.Origin;
 		WakeFoamCell = Done.Cell;
-		WakeFoamCopy.SetNumUninitialized(Done.N * Done.N);
-		for (int32 I = 0; I < Done.N * Done.N; ++I) WakeFoamCopy[I] = Done.Pixels[2 * I + 1];
+		WakeFoamPixels = MakeShared<const TArray<float>, ESPMode::ThreadSafe>(MoveTemp(Done.Pixels));
 		WaterMaterial->SetVectorParameterValue(TEXT("WakeGridRect"), FLinearColor(float(Done.Origin.X), float(Done.Origin.Y), Done.N * Done.Cell, float(Done.N)));
 	}
 
@@ -1639,13 +1638,16 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	// W4 (docs/water-4). Upload the last step if it is done; then step again from this detail frame.
 	if (bFoamPending && PendingFoam.IsReady())
 	{
-		FFoamFrame Frame = PendingFoam.Get();
+		FFoamFrame Frame = PendingFoam.Consume();
 		bFoamPending = false;
 		if (Frame.N > 0 && WaterMaterial)
 		{
-			if (!FoamGridMap || FoamGridMap->GetSizeX() != Frame.N) FoamGridMap = MakeFloatMap(Frame.N, Frame.N, PF_R32_FLOAT, false);
+			if (!FoamGridMap || FoamGridMap->GetSizeX() != Frame.N)
+			{
+				FoamGridMap = MakeFloatMap(Frame.N, Frame.N, PF_R32_FLOAT, false);
+				WaterMaterial->SetTextureParameterValue(TEXT("FoamGrid"), FoamGridMap);
+			}
 			UploadFloats(FoamGridMap, Frame.Pixels, Frame.N, Frame.N, 1);
-			WaterMaterial->SetTextureParameterValue(TEXT("FoamGrid"), FoamGridMap);
 			WaterMaterial->SetVectorParameterValue(TEXT("FoamGridRect"), FLinearColor(Frame.X0, Frame.Y0, Frame.Size, 1.f));
 		}
 	}
@@ -1672,11 +1674,11 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	const FDetailUploadPtr D = Done;
 	const float Thr = Done->CapThr[0];
 	bFoamPending = true;
-	TArray<float> WakeF = WakeFoamCopy;
+	TSharedPtr<const TArray<float>, ESPMode::ThreadSafe> WakeF = WakeFoamPixels;
 	const FVector2D WakeO = WakeFoamOrigin;
 	const float WakeC = WakeFoamCell;
 	const int32 WakeN = WakeFoamN;
-	PendingFoam = Async(EAsyncExecution::ThreadPool, [G, D, Cam, T, Drift, Thr, WakeF = MoveTemp(WakeF), WakeO, WakeC, WakeN]() -> FFoamFrame
+	PendingFoam = Async(EAsyncExecution::ThreadPool, [G, D, Cam, T, Drift, Thr, WakeF, WakeO, WakeC, WakeN]() -> FFoamFrame
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterFoamGrid);
 		FFoamGrid& F = *G;
@@ -1724,10 +1726,10 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 				const float Jt = 1.f - D->FoldScale * (1.f - Jd);
 				float Src = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
 				// The boats' wash (the wake grid's foam, as M_WaterV4's wakeBreak without its bubble pattern).
-				if (WakeN > 0)
+				if (WakeN > 0 && WakeF)
 				{
 					const int32 WR = FMath::FloorToInt(float((X - WakeO.X) / WakeC)), WC = FMath::FloorToInt(float((Y - WakeO.Y) / WakeC));
-					if (WR >= 0 && WR < WakeN && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp(WakeF[WR * WakeN + WC] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
+					if (WR >= 0 && WR < WakeN && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp((*WakeF)[2 * (WR * WakeN + WC) + 1] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
 				}
 				float& V = Next[R * N + C];
 				V = FMath::Max(V, Src);

@@ -224,7 +224,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> FoamGridMap;
 	void UpdateFoamGrid(const FDetailUploadPtr& Done);
 	// The wake grid's foam (its second channel) as last uploaded, for the foam grid: the boats' wash lingers and drifts too.
-	TArray<float> WakeFoamCopy;
+	TSharedPtr<const TArray<float>, ESPMode::ThreadSafe> WakeFoamPixels; // the last wake frame (two channels; foam is the second)
 	FVector2D WakeFoamOrigin = FVector2D::ZeroVector;
 	float WakeFoamCell = 0.25f;
 	int32 WakeFoamN = 0;
