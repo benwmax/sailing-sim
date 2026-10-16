@@ -362,10 +362,13 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	const int32 NumCrew = Crew.Num();
 	if (Boat.GetConfig().HasJib() && NumCrew >= 2 && Has(ModelHull, TEXT("JibTailer_S")))
 	{
-		// (Always drawn, so the rig mesh keeps its vertex count: with no hand in reach, down onto the seat.)
+		// (Always drawn, so the rig mesh keeps its vertex count: with no hand in reach, down onto where the model lays it,
+		// JibTailRest (the hero's cabin top, forward and inboard of its winch), else onto the seat behind the winch.)
 		const FVector Tailer = RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P"));
 		const TOptional<FVector> Hand = JibGripCm ? JibGripCm : HandNear(NumCrew - 2, Tailer);
-		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
+		const TCHAR* Rest = S.JibSide > 0 ? TEXT("JibTailRest_S") : TEXT("JibTailRest_P");
+		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand
+			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
 		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
 	}
 	FVector End;
