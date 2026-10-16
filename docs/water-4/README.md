@@ -27,4 +27,5 @@ new texture.
 
 - Foam persistence and streaks: a worker foam grid round the camera, fed by the caps, decaying with Monahan's residue
   timescale and drawn along the wind.
-- The marina's white water by the docks: check whether it is cap foam or the lapping/shoreline term.
+- Wake foam that lingers (from #84): feed the boats' wake foam into the grid.
+- Cost on Mac High: one texture fetch and a few ALU (the PC water gate is running).

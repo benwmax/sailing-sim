@@ -1265,6 +1265,11 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
 float sd = 100.0;
 [branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0)) sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
 float shoal = saturate(1.0 - sd / 2.0) * saturate(sd / 0.1);
+// W4: shoaling waves break where they are high for the depth (McCowan: H over about 0.78 d), not wherever the bed is near:
+// the marina's shallow slips folded into "caps" at 6 kn (white water round the docks in the slip view). The fold the shoal adds
+// comes in with the wind, over the same 7.2-16 kn as the whitecaps' onset (#76), when the lake's sea is high enough to break
+// in a metre or two of water.
+float shoalBreak = shoal * smoothstep(3.7, 8.2, WindP.z);
 // Short waves and ripples: slopes for the normals, the Jacobian for the foam. Mip-mapped and filtered by the hardware
 // (anisotropic at grazing angles), so they never sparkle in the distance; the slope variance a mip averages away (the
 // textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
@@ -1353,7 +1358,7 @@ float om = 0.0;
 // streaks along the wind, and breaks up as it fades.
 // Shoaling waves steepen; in the last half metre they die on the beach.
 sx *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2); sy *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2);
-float Jt = J * jd - 0.25 * shoal;
+float Jt = J * jd - 0.25 * shoalBreak;
 // Lacy, broken foam rather than flat patches: two crossed wavy bands at foam-bubble scale.
 float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
 // W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
@@ -1392,8 +1397,8 @@ float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness
 float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
 float kC = max(min(chopK, 2.0), 1e-3);
-float tC = 1.0 - (1.0 - (capThr + 0.25 * shoal) / max(J, 0.05)) / kC;
-float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoal) / max(J, 0.05)) / kC;
+float tC = 1.0 - (1.0 - (capThr + 0.25 * shoalBreak) / max(J, 0.05)) / kC;
+float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoalBreak) / max(J, 0.05)) / kC;
 float crest, residue;
 [branch] if (useTable > 0.0)
 {
