@@ -64,6 +64,11 @@ public:
 	 *  L23609) put the onset of breaking at 3.7 m/s with cover growing as the cube of the wind above it. 1 from 12 kn,
 	 *  ((U - 3.7) / (U12 - 3.7))^3 under it (0.2 at 10 kn), 0 under 7.2 kn. */
 	static float WhitecapOnset(float MeanKnots);
+	/** W4: the share of the shoaling term's fold (M_WaterV4's shoalBreak: Jt = J jd - 0.25 shoal x this) for the mean wind.
+	 *  Waves break on the bed where they are high for the depth (McCowan: H over about 0.78 d); the lake's light-air chop is
+	 *  centimetres in a metre or two, so a shallow slip folded into caps at 6 kn. A smoothstep over 3.7-8.2 m/s (7.2-16 kn),
+	 *  the whitecaps' own onset (Callaghan et al. 2008). Keep in step with make_materials.py. */
+	static float ShoalFoldScale(float MeanKnots);
 	/** W0: the folding threshold M_WaterV4 uses at a pixel: FoamThreshold shifted so coverage scales by the body's scale
 	 *  times Monahan's (U_local / U_mean)^3.41, caps cluster in puffs and thin in lulls. CapSlope is the threshold shift
 	 *  per e-fold of coverage, measured on the drawn waves (SailingSim.Visual.Whitecaps). Mirrored in make_materials.py. */
@@ -203,9 +208,35 @@ private:
 		// W8: the thresholds that cap Monahan's share of this sea as the mesh draws it at vertex spacings CapSpacing[k]
 		// (the long waves' fold fades with the spacing), and the slope at the nearest.
 		float CapThr[4] = { 0.f, 0.f, 0.f, 0.f }, CapSlope = 0.f;
+		// W4: the blended whitecap Jacobian and what the foam grid needs to read it (tile, chop scale, fold scale).
+		std::vector<float> JCap;
+		float Tile = 23.f, CapShort = 1.f, FoldScale = 1.f;
 		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : C) delete[] P; for (uint8* P : Ripple) delete[] P; }
 	};
 	using FDetailUploadPtr = TSharedPtr<FDetailUpload, ESPMode::ThreadSafe>;
+	/** W4 (docs/water-4): the foam the caps leave, on a 64 m grid round the camera (256 cells of 0.25 m), stepped on a
+	 *  worker with each detail frame: fed by the caps (the whitecap Jacobian against the solved threshold), decaying on
+	 *  Monahan's residual-whitecap timescale and drifting downwind. M_WaterV4 draws what outlives the cap as thin streaked
+	 *  residue. Medium and above; -SailingNoFoamGrid turns it off. */
+	struct FFoamGrid
+	{
+		int32 N = 256;
+		float Cell = 0.25f;
+		int32 OX = 0, OY = 0;          // the grid's first cell, in whole cells of the world (x north, y east)
+		TArray<float> F;               // foam, row = x, column = y
+		double LastTime = -1.0;
+	};
+	TSharedPtr<FFoamGrid, ESPMode::ThreadSafe> FoamState;
+	struct FFoamFrame { TArray<float> Pixels; float X0 = 0.f, Y0 = 0.f, Size = 0.f; int32 N = 0; };
+	TFuture<FFoamFrame> PendingFoam;
+	bool bFoamPending = false;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> FoamGridMap;
+	void UpdateFoamGrid(const FDetailUploadPtr& Done);
+	// The wake grid's foam (its second channel) as last uploaded, for the foam grid: the boats' wash lingers and drifts too.
+	TSharedPtr<const TArray<float>, ESPMode::ThreadSafe> WakeFoamPixels; // the last wake frame (two channels; foam is the second)
+	FVector2D WakeFoamOrigin = FVector2D::ZeroVector;
+	float WakeFoamCell = 0.25f;
+	int32 WakeFoamN = 0;
 	TFuture<FDetailUploadPtr> PendingUpload;
 	bool bUploadPending = false;
 	FWakeGrid Wake;  // stepped on a worker: touched by the game thread only while no step is pending

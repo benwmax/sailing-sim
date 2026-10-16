@@ -1252,6 +1252,7 @@ return float3(d.x * 100.0, d.y * 100.0, (h + ho - 2.0 * hin) * 100.0);
 """
 
 V4_SHADE = """
+FoamTone = 1.0;
 float3 p = P * 0.01;
 float3 cam = Cam * 0.01;
 float dist = distance(p.xy, cam.xy);
@@ -1292,6 +1293,11 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
 float sd = 100.0;
 [branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0)) sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
 float shoal = saturate(1.0 - sd / 2.0) * saturate(sd / 0.1);
+// W4: shoaling waves break where they are high for the depth (McCowan: H over about 0.78 d), not wherever the bed is near:
+// the marina's shallow slips folded into "caps" at 6 kn (white water round the docks in the slip view). The fold the shoal adds
+// comes in with the wind, over the same 7.2-16 kn as the whitecaps' onset (#76), when the lake's sea is high enough to break
+// in a metre or two of water.
+float shoalBreak = shoal * smoothstep(3.7, 8.2, WindP.z);
 // Short waves and ripples: slopes for the normals, the Jacobian for the foam. Mip-mapped and filtered by the hardware
 // (anisotropic at grazing angles), so they never sparkle in the distance; the slope variance a mip averages away (the
 // textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
@@ -1380,7 +1386,7 @@ float om = 0.0;
 // streaks along the wind, and breaks up as it fades.
 // Shoaling waves steepen; in the last half metre they die on the beach.
 sx *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2); sy *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2);
-float Jt = J * jd - 0.25 * shoal;
+float Jt = J * jd - 0.25 * shoalBreak;
 // Lacy, broken foam rather than flat patches: two crossed wavy bands at foam-bubble scale.
 float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
 // W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
@@ -1419,8 +1425,8 @@ float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness
 float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
 float kC = max(min(chopK, 2.0), 1e-3);
-float tC = 1.0 - (1.0 - (capThr + 0.25 * shoal) / max(J, 0.05)) / kC;
-float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoal) / max(J, 0.05)) / kC;
+float tC = 1.0 - (1.0 - (capThr + 0.25 * shoalBreak) / max(J, 0.05)) / kC;
+float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoalBreak) / max(J, 0.05)) / kC;
 float crest, residue;
 [branch] if (useTable > 0.0)
 {
@@ -1457,7 +1463,35 @@ float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
 float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
 // Heavy rain: splashes and mist grey the surface.
-Foam = saturate(max(caps + wakeBreak, 0.85 * lap) + 0.10 * Rain);
+// W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
+// measure; it is not touched here). Drawn straight as opacity over albedo 0.85, a cap at 0.3-0.5 cover read nearly as
+// white as a solid one, flat to its edge: the decal look. Real foam isn't one white: an active crest is dense bubbly white
+// (reflectance about 0.5-0.6, Frouin, Schwindling and Deschamps 1996), the residue it leaves is thin and dimmer (about
+// half; Koepke 1984's effective whitecap albedo is 0.22 across both), and both break into cells. So:
+// - FoamTone scales the foam's white: 1 on an active crest, 0.5 on residue, broken by bubble cells (0.7-1);
+// - the opacity follows cover to the power 1.5, so a pixel half covered is a third opaque and only the dense core of a cap
+//   is solid white; its edge thins out instead of stopping.
+float fresh = saturate(crest / max(caps, 1e-3));
+float cells = (0.5 + 0.5 * sin(p.x * 23.7 + sin(p.y * 19.1) * 2.3)) * (0.5 + 0.5 * sin(p.y * 21.3 + sin(p.x * 17.9 + T * 0.6) * 2.7));
+float cellsE = lerp(cells, 0.25, patFade);
+FoamTone = lerp(0.5, 1.0, fresh) * lerp(0.7, 1.0, saturate(cellsE * 2.0));
+FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps * 4.0)));   // boats' wash: fresh foam
+// A cap's interior isn't solid either: bubble cells and the gaps between them (opacity 0.4-1 by cell), and its edge feathers
+// over a wider fold ramp (0.15 of J against the mask's 0.05) so the outline thins out instead of stopping.
+float soft = saturate((capThr - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
+// W4 step 2: the foam a cap leaves behind (AWaterSurface's foam grid, FoamGridRect: x0, y0, size m, on). It decays on
+// Monahan's residual-whitecap timescale and drifts downwind on the worker, so a cap that has stopped breaking leaves a
+// thinning, streaked patch instead of vanishing. Drawn thin and lacy along the wind, at the residue's tone.
+float persist = 0.0;
+float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
+[branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
+    persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
+float trail = saturate(persist - max(caps, wakeBreak));   // what outlives the cap or the boat's wash
+float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(streak * lace, 0.5, patFade)));
+float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
+FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
+capsDrawn = max(capsDrawn, trailDrawn);
+Foam = saturate(max(capsDrawn + wakeBreak, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
 // mirror (a lull on a light day, the lake at dawn); a puff ruffles it again within seconds (the map's roughness rises in
@@ -1527,7 +1561,8 @@ Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 {
     float hsh = frac(sin(dot(floor(Parameters.SvPosition.xy), float2(12.9898, 78.233))) * 43758.5453);
     // 1: the whitecaps (crests and their residue); 2: the crests alone; 3: where the fold is under the threshold.
-    Foam = DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps);
+    Foam = DebugFoam > 3.5 ? persist : (DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps));   // 4: the W4 foam grid
+    FoamTone = 1.0;
     Spec = 0.0;
     Dark = 1.0 / 0.35;
     Rough = 1.0;
@@ -1556,7 +1591,7 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
@@ -1588,9 +1623,9 @@ def build_water_v4():
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
-                   extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1)])
+                   extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
@@ -1620,6 +1655,8 @@ def build_water_v4():
         connect_sea(sea, c)
     connect(tx["DetailB"], "", shade, "DetailB")
     connect(tx["DetailC"], "", shade, "DetailC")
+    connect(tx["FoamGrid"], "", shade, "FoamGrid")  # W4: the foam the caps leave (AWaterSurface's foam grid)
+    connect(vector(mat, "FoamGridRect", (0, 0, 64, 0), -2000, 1500), "RGBA", shade, "FoamGridRect")
     connect(vector(mat, "CapTable", (0.5, 0.05, 0, 0), -2000, 1200), "RGBA", shade, "CapT")
     connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
     connect(vector(mat, "CapCalibFar", (0, 0, 0, 0), -2000, 1400), "RGBA", shade, "CapCalFar")
@@ -1669,7 +1706,10 @@ def build_water_v4():
     connect(albedo, "", albedo_dark, "A")
     connect(dark_scale, "", albedo_dark, "B")
     slw = node(mat, unreal.MaterialExpressionSubstrateSingleLayerWaterBSDF, 200, 600)
-    connect(foam_col, "", slw, "BaseColor")
+    foam_tinted = node(mat, unreal.MaterialExpressionMultiply, -100, 1200)  # W4: FoamTone (active crest 1, residue 0.5)
+    connect(foam_col, "", foam_tinted, "A")
+    connect(shade, "FoamTone", foam_tinted, "B")
+    connect(foam_tinted, "", slw, "BaseColor")
     connect(rough_mix, "", slw, "Roughness")
     connect(shade, "Spec", slw, "Specular")
     connect(to_tangent, "", slw, "Normal")

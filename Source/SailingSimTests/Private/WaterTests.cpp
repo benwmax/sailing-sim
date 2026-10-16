@@ -460,6 +460,11 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 	const float At10 = AWaterSurface::WhitecapOnset(10.f);
 	TestTrue(FString::Printf(TEXT("A fifth of the law at 10 kn (%.3f)"), At10), At10 > 0.15f && At10 < 0.25f);
 	TestTrue(TEXT("Rising with the wind"), AWaterSurface::WhitecapOnset(9.f) < At10 && At10 < AWaterSurface::WhitecapOnset(11.f));
+	// W4: a shallow cell (shoal 1, M_WaterV4's shoalBreak) adds no fold at 6 kn, so it can't cap there (the marina's white
+	// water); the full fold by 16 kn.
+	TestEqual(TEXT("No shoal fold at 6 kn"), AWaterSurface::ShoalFoldScale(6.f), 0.f);
+	TestEqual(TEXT("The full shoal fold at 16 kn"), AWaterSurface::ShoalFoldScale(16.f), 1.f);
+	TestEqual(TEXT("A shallow cell at 6 kn: no cap (no onset, no shoal fold)"), AWaterSurface::WhitecapOnset(6.f) + 0.25f * AWaterSurface::ShoalFoldScale(6.f), 0.f);
 
 	const double Knots = 10.0;
 	FWaveField Waves(1);
