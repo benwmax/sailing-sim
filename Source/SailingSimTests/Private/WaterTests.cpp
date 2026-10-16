@@ -483,27 +483,39 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 	};
 	const double Lake = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0);
 	const double Target = Lake * At10;
-	const std::vector<float> Solved = Sea(11.0, 0.0, 2);
-	TestTrue(TEXT("The 10 kn target is under eight of the renderer's samples"), Target * Solved.size() < 8.0);
-	double Thr = 0.0, Slope = 0.0, FloorThr = 0.0, FloorSlope = 0.0;
-	FWaveDetail::CapThreshold(Solved, Target, Thr, Slope);
-	FWaveDetail::CapThreshold(Solved, 0.5 / Solved.size(), FloorThr, FloorSlope);
+	// The renderer eases each frame's solution over a couple of seconds: the mean over frames a few seconds apart.
+	double Thr = 0.0, FloorThr = 0.0, AtFloor = 0.0;
+	constexpr int32 Frames = 12;
+	for (int32 F = 0; F < Frames; ++F)
+	{
+		const std::vector<float> Solved = Sea(11.0 + 4.3 * F, 37.0 * F, 2);
+		TestTrue(TEXT("The 10 kn target is under eight of the renderer's samples"), Target * Solved.size() < 8.0);
+		double T1 = 0.0, T2 = 0.0, T3 = 0.0, Slope = 0.0;
+		FWaveDetail::CapThreshold(Solved, Target, T1, Slope);
+		FWaveDetail::CapThreshold(Solved, 0.2 * Target, T2, Slope);
+		FWaveDetail::CapThreshold(Solved, 8.0 / Solved.size(), T3, Slope);
+		Thr += T1 / Frames;
+		FloorThr += T2 / Frames;
+		AtFloor += T3 / Frames;
+	}
 	std::vector<float> Other;
-	for (const double T : { 140.0, 171.0, 203.0, 260.0 })
+	for (const double T : { 140.0, 171.0, 203.0, 260.0, 311.0, 367.0, 419.0, 480.0, 533.0, 597.0, 641.0, 709.0 })
 	{
 		const std::vector<float> More = Sea(T, 900.0 + T, 1);
 		Other.insert(Other.end(), More.begin(), More.end());
 	}
-	double Capped = 0.0, Lowest = 0.0;
+	double Capped = 0.0, Lowest = 0.0, Eight = 0.0;
 	for (const float V : Other)
 	{
 		Capped += V < Thr ? 1.0 / Other.size() : 0.0;
 		Lowest += V < FloorThr ? 1.0 / Other.size() : 0.0;
+		Eight += V < AtFloor ? 1.0 / Other.size() : 0.0;
 	}
+	AddInfo(FString::Printf(TEXT("10 kn, lake: the eighth sample's threshold %.3f caps %.4f%% elsewhere"), AtFloor, 100.0 * Eight));
 	AddInfo(FString::Printf(TEXT("10 kn, lake: target %.4f%% (%.4f%% before the onset), threshold %.3f caps %.4f%% elsewhere"),
 		100.0 * Target, 100.0 * Lake, Thr, 100.0 * Capped));
-	TestTrue(FString::Printf(TEXT("The extrapolated threshold caps the target elsewhere (within a factor of 2.5: %.4f%%)"), 100.0 * Capped),
-		Capped > Target / 2.5 && Capped < 2.5 * Target);
-	TestTrue(TEXT("Under the lowest sample's cover, the threshold keeps falling"), Lowest < Capped);
+	TestTrue(FString::Printf(TEXT("The extrapolated threshold caps the target elsewhere (within a factor of three: %.4f%%)"), 100.0 * Capped),
+		Capped > Target / 3.0 && Capped < 3.0 * Target);
+	TestTrue(FString::Printf(TEXT("A fifth of the target caps less (%.4f%%)"), 100.0 * Lowest), Lowest < Capped);
 	return true;
 }

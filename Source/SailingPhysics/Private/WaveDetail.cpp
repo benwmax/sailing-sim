@@ -269,6 +269,15 @@ namespace Sailing
 		return Jxx * Jyy - Jxy * Jxy;
 	}
 
+	/** The standard normal's quantile for a lower-tail share P under 0.024 (Acklam's rational approximation, 1e-9). */
+	static double NormalTailQuantile(double P)
+	{
+		const double Q = std::sqrt(-2.0 * std::log(std::max(P, 1e-300)));
+		return (((((-7.784894002430293e-03 * Q - 3.223964580411365e-01) * Q - 2.400758277161838e+00) * Q - 2.549732539343734e+00) * Q
+			+ 4.374664141464968e+00) * Q + 2.938163982698783e+00)
+			/ ((((7.784695709041462e-03 * Q + 3.224671290700398e-01) * Q + 2.445134137142996e+00) * Q + 3.754408661907416e+00) * Q + 1.0);
+	}
+
 	void FWaveDetail::CapThreshold(std::vector<float> Samples, double Target, double& OutThreshold, double& OutSlope)
 	{
 		if (Samples.empty() || Target <= 0.0) { OutThreshold = 0.0; OutSlope = 0.02; return; }
@@ -280,13 +289,16 @@ namespace Sailing
 			return double(Samples[K]);
 		};
 		// Under eight samples the quantile is the lowest few samples, which floors the cover near 1/N (the light-air
-		// flecks): fit the tail's e-fold from eight samples to e times that and extrapolate below it.
+		// flecks): extrapolate down the tail, linear in the normal quantile (the fold's tail falls faster than an
+		// exponential: an e-fold slope fitted above the floor capped a fifth of the target).
 		const double Floor = 8.0 / double(N);
-		if (Target < Floor)
+		if (Target < Floor && Floor < 0.008)
 		{
-			const double At = Quantile(Floor), Up = Quantile(std::min(2.718281828 * Floor, 1.0));
-			OutSlope = std::max(Up - At, 0.002);
-			OutThreshold = At - OutSlope * std::log(Floor / Target);
+			const double Up = 2.718281828 * Floor;
+			const double At = Quantile(Floor), AtUp = Quantile(Up);
+			OutSlope = std::max(AtUp - At, 0.002);
+			const double Zt = NormalTailQuantile(Target), Zf = NormalTailQuantile(Floor), Zu = NormalTailQuantile(Up);
+			OutThreshold = At - std::max(AtUp - At, 0.0) * (Zf - Zt) / std::max(Zu - Zf, 1e-6);
 			return;
 		}
 		OutThreshold = Quantile(Target);
