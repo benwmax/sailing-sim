@@ -1446,7 +1446,18 @@ FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps 
 // A cap's interior isn't solid either: bubble cells and the gaps between them (opacity 0.4-1 by cell), and its edge feathers
 // over a wider fold ramp (0.15 of J against the mask's 0.05) so the outline thins out instead of stopping.
 float soft = saturate((capThr - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
+// W4 step 2: the foam a cap leaves behind (AWaterSurface's foam grid, FoamGridRect: x0, y0, size m, on). It decays on
+// Monahan's residual-whitecap timescale and drifts downwind on the worker, so a cap that has stopped breaking leaves a
+// thinning, streaked patch instead of vanishing. Drawn thin and lacy along the wind, at the residue's tone.
+float persist = 0.0;
+float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
+[branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
+    persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
+float trail = saturate(persist - caps);
+float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(streak * lace, 0.5, patFade)));
 float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
+FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
+capsDrawn = max(capsDrawn, trailDrawn);
 Foam = saturate(max(capsDrawn + wakeBreak, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
@@ -1517,7 +1528,7 @@ Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 {
     float hsh = frac(sin(dot(floor(Parameters.SvPosition.xy), float2(12.9898, 78.233))) * 43758.5453);
     // 1: the whitecaps (crests and their residue); 2: the crests alone; 3: where the fold is under the threshold.
-    Foam = DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps);
+    Foam = DebugFoam > 3.5 ? persist : (DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps));   // 4: the W4 foam grid
     FoamTone = 1.0;
     Spec = 0.0;
     Dark = 1.0 / 0.35;
@@ -1547,7 +1558,7 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
@@ -1579,7 +1590,7 @@ def build_water_v4():
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
     connect(far_tex, "", shade, "WindFar")
@@ -1611,6 +1622,8 @@ def build_water_v4():
         connect_sea(sea, c)
     connect(tx["DetailB"], "", shade, "DetailB")
     connect(tx["DetailC"], "", shade, "DetailC")
+    connect(tx["FoamGrid"], "", shade, "FoamGrid")  # W4: the foam the caps leave (AWaterSurface's foam grid)
+    connect(vector(mat, "FoamGridRect", (0, 0, 64, 0), -2000, 1500), "RGBA", shade, "FoamGridRect")
     connect(vector(mat, "CapTable", (0.5, 0.05, 0, 0), -2000, 1200), "RGBA", shade, "CapT")
     connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
     connect(vector(mat, "CapCalibFar", (0, 0, 0, 0), -2000, 1400), "RGBA", shade, "CapCalFar")
