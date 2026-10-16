@@ -722,6 +722,21 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		const FVector Palm = Held[TEXT("hand_r")] + (Held[TEXT("middle_01_r")] - Held[TEXT("hand_r")]) * 0.75;
 		TestTrue(FString::Printf(TEXT("%s: the palm closes %.1f cm from the reach target"), MetaHumanRoleName(Role), FVector::Dist(Palm, Reach.Target[1])),
 			FVector::Dist(Palm, Reach.Target[1]) < 4.f);
+		// Round 12: holding a line (the tiller extension here, rising aft and inboard to the hand), it runs across the
+		// palm, knuckle to knuckle, and the palm still closes on the target.
+		FCrewHands Line = Reach;
+		Line.Along[1] = Rig.Frame.RotateVector(FVector(0.6f, -0.7f, 0.4f).GetSafeNormal());
+		TMap<FName, FVector> Gripped;
+		CrewPosedJoints(Body, Joints, Gripped, &Rig, &Line);
+		const FVector Across = (Gripped[TEXT("index_01_r")] - Gripped[TEXT("pinky_01_r")]).GetSafeNormal();
+		const float Off = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FMath::Abs(FVector::DotProduct(Across, Line.Along[1])), 0.0, 1.0)));
+		const float Before = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FMath::Abs(FVector::DotProduct(
+			(Held[TEXT("index_01_r")] - Held[TEXT("pinky_01_r")]).GetSafeNormal(), Line.Along[1])), 0.0, 1.0)));
+		TestTrue(FString::Printf(TEXT("%s: the extension runs across the palm (%.0f deg off the knuckles, %.0f before)"), MetaHumanRoleName(Role), Off, Before),
+			Off < 20.f || Off < Before - 40.f);
+		const FVector GripPalm = Gripped[TEXT("hand_r")] + (Gripped[TEXT("middle_01_r")] - Gripped[TEXT("hand_r")]) * 0.75;
+		TestTrue(FString::Printf(TEXT("%s: gripping, the palm closes %.1f cm from the target"), MetaHumanRoleName(Role), FVector::Dist(GripPalm, Line.Target[1])),
+			FVector::Dist(GripPalm, Line.Target[1]) < 5.f);
 	}
 	return true;
 }
@@ -796,10 +811,30 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.Config = &Cfg;
 						Ground.HullDepth = Model.HullDepth();
 						Ground.ToBoat = FTransform(CompRot, Location);
+						Ground.bSeated = bInPlan; // as CrewMotionPose sets it
 						FCrewHands Hands;
 						Hands.Ground = &Ground;
 						FVector Feet[2][2];
 						CrewFootPoints(B.Mesh, Joints, Feet, bRig ? &B.Rig : nullptr, &Hands);
+						for (int32 S = 0; S < 2; ++S)
+						{
+							// Round 12: seated, a foot standing on the floor lies flat on it (not the heel down and the toe in the air),
+							// and on the J/22 a seated sailor's foot is on the floor, not hanging a few centimetres over it.
+							const FVector Heel = (Location + CompRot.RotateVector(Feet[S][0])) / CmPerMeter;
+							const FVector Toe = (Location + CompRot.RotateVector(Feet[S][1])) / CmPerMeter;
+							const double FloorZ = FMath::Max(CrewFloorZ(Cfg, Heel.X, Heel.Y), CrewFloorZ(Cfg, Toe.X, Toe.Y));
+							const double Gap = FMath::Min(Heel.Z, Toe.Z) - FloorZ;
+							const FString Foot = FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot"), ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)),
+								*B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn, S == 0 ? TEXT("left") : TEXT("right"));
+							if (bInPlan && FloorZ > -1e8 && Gap < 0.03 && FMath::Abs(Heel.Z - Toe.Z) > 0.04)
+							{
+								AddError(FString::Printf(TEXT("%s stands on the floor tilted: heel %.2f m, toe %.2f m"), *Foot, Heel.Z, Toe.Z));
+							}
+							if (bInPlan && Cfg.Type == EBoatType::J22 && FloorZ > -1e8 && Gap > 0.025 && Gap < 0.14)
+							{
+								AddError(FString::Printf(TEXT("%s hangs %.0f cm over the floor"), *Foot, Gap * 100.0));
+							}
+						}
 						for (int32 S = 0; S < 2; ++S)
 						{
 							for (int32 K = 0; K < 2; ++K)
