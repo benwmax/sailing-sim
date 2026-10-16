@@ -1,0 +1,88 @@
+{
+ "rope_uv_scale": "U = arc length / (5 x diameter) for Braid24 and Braid16, V = angle / 2pi; wire: U = arc length / (11 x d)",
+ "masks": {
+  "fleck": "G",
+  "spiral": "B",
+  "mix": "A",
+  "cavity": "R"
+ },
+ "colourways": [
+  {
+   "name": "white_red_fleck",
+   "base": "#ECEAE2",
+   "tracer": "#B5231C",
+   "pattern": "fleck",
+   "use": "mainsheet, backstay bridle, spinnaker sheets"
+  },
+  {
+   "name": "red_white_fleck",
+   "base": "#B01F1A",
+   "tracer": "#EAE8E0",
+   "pattern": "fleck",
+   "use": "port jib sheet"
+  },
+  {
+   "name": "green_white_fleck",
+   "base": "#1E5E33",
+   "tracer": "#E6E6DE",
+   "pattern": "fleck",
+   "use": "starboard jib sheet"
+  },
+  {
+   "name": "white_green_fleck",
+   "base": "#ECEAE2",
+   "tracer": "#1E6A34",
+   "pattern": "fleck",
+   "use": "jib sheets (white pairs)"
+  },
+  {
+   "name": "white_blue_fleck",
+   "base": "#ECEAE2",
+   "tracer": "#1D3F8F",
+   "pattern": "fleck",
+   "use": "halyards"
+  },
+  {
+   "name": "blue_white_mix",
+   "base": "#1D3F8F",
+   "tracer": "#E8E8E2",
+   "pattern": "mix",
+   "use": "vang, cunningham"
+  },
+  {
+   "name": "black_white_fleck",
+   "base": "#1B1B1B",
+   "tracer": "#D6D6D0",
+   "pattern": "fleck",
+   "use": "mainsheet (race boats)"
+  },
+  {
+   "name": "blue_solid",
+   "base": "#22468F",
+   "tracer": "#1A3570",
+   "pattern": "spiral",
+   "use": "mooring and dock lines"
+  },
+  {
+   "name": "white_spiral_red",
+   "base": "#ECEAE2",
+   "tracer": "#B5231C",
+   "pattern": "spiral",
+   "use": "outhaul, reef lines"
+  },
+  {
+   "name": "grey_red_fleck",
+   "base": "#9C9C98",
+   "tracer": "#B5231C",
+   "pattern": "fleck",
+   "use": "mainsheet (older boats)"
+  },
+  {
+   "name": "yellow_black_fleck",
+   "base": "#D6B01F",
+   "tracer": "#1A1A1A",
+   "pattern": "fleck",
+   "use": "jib halyard, control lines"
+  }
+ ]
+}

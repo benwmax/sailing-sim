@@ -6,6 +6,8 @@ Content/Audio/Pack/Weather/*rain_on_roof*,Rain on a veranda and t.ogg,third-part
 Audio/Samples/*,"Recorded-sample slot (README and CREDITS only, no samples yet)",generated,this project,own work,yes,new samples must be CC0/PD/CC BY and get a row here,
 Content/Boats/*,"Boat meshes, liveries and materials (Tools/blender/build_*.py, scripts/import_boats.py, Inputs/j22-hero)",generated,this project; dimensions from class rules and builders' published particulars,own work,yes,class names and insignia are trademarks: see README,all boats
 Content/Boats/J22Hero/*,J/22 hero model and baked textures (Inputs/j22-hero); sail and bow lettering from Saira Condensed Bold (Content/UI/Fonts),generated,this project,own work; glyphs from an OFL font,yes,,player's J/22
+Content/Boats/Rope/*,"Braided rope, 1x19 wire textures and the colourway table (Tools/rope/make_rope_textures.py, Inputs/rope); M_RigRope, M_RigWire (scripts/import_boat_detail.py)",generated,this project (computed from the braid geometry; no photos),own work,yes,,live rig lines on every boat
+Content/Boats/Detail/*,"Close-up non-skid, gelcoat, weathered teak and canvas detail textures (Tools/boats/make_detail_textures.py, Inputs/boat-detail)",generated,this project (numpy; no photos),own work,yes,,hero boat surfaces
 Content/Crew/SK_Sailor*,Sailor body (Tools/blender/build_crew.py),generated,this project,own work,yes,,"AI crew, Low tier"
 Content/Crew/Gear/*,Life jacket and cap (Tools/blender/build_crew_gear.py),generated,this project,own work,yes,,crew
 Content/Crew/Fabric/*,"Fabric scans Fabric036, Fabric048, Fabric070, Leather038 and M_CrewFabric",third-party,https://ambientcg.com (Tools/fabrics/fetch_fabrics.sh),CC0 1.0,yes,,crew clothing

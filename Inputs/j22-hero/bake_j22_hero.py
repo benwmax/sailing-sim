@@ -55,6 +55,9 @@ def _top(name, dz=0.0):
 
 def _curve_end(name, highest=True):
     o = bpy.data.objects[name]
+    if o.type == "MESH":       # lines are meshes since the rope pass (arc-length UVs): use the tube's end rings
+        pts = [o.matrix_world @ v.co for v in o.data.vertices]
+        return max(pts, key=lambda v: v.z) if highest else min(pts, key=lambda v: v.z)
     pts = [o.matrix_world @ p.co.xyz for sp in o.data.splines for p in (list(sp.points) + list(sp.bezier_points))]
     return max(pts, key=lambda v: v.z) if highest else min(pts, key=lambda v: v.z)
 
@@ -171,7 +174,8 @@ def owner(n):
     return "SM_J22H_Hull"
 
 
-PIVOTS = {"SM_J22H_Hull": Vector((0, 0, 0)), "SM_J22H_Mast": Vector((mast_x, 0, mast_lo.z)),
+PIVOTS = {"SM_J22H_Hull": Vector((0, 0, 0)), "SM_J22H_Interior": Vector((0, 0, 0)), "SM_J22H_Glass": Vector((0, 0, 0)),
+          "SM_J22H_Mast": Vector((mast_x, 0, mast_lo.z)),
           "SM_J22H_Boom": Vector((GOOSE.x, 0, GOOSE.z)), "SM_J22H_Rudder": Vector((stock_x, 0, 0))}
 
 # which game part each built object belongs to; None = live in the game (ropes, wires, sails, vang) or loose dressing
@@ -181,9 +185,17 @@ BOOM_PARTS = ("Boom", "BoomEnd", "MainBail", "MainsheetHigh", "Gooseneck_boomcap
               "Gooseneck_cunnhook", "Gooseneck_reefhook")
 
 
+GLASS_MATS = ("PortlightAcrylic", "HatchAcrylic", "WaterBilge")
+
+
 def game_part(o):
     n = o.name
     cols = {c.name for c in o.users_collection}
+    mats = {sl.material.name for sl in o.material_slots if sl.material}
+    if mats and mats <= set(GLASS_MATS):
+        return "SM_J22H_Glass"                    # translucent: not Nanite, its own part
+    if "Interior" in cols:
+        return "SM_J22H_Interior"
     if "Sails" in cols or n.startswith(ROPE_LIKE) or "Rigging" in cols:
         return None
     if n.startswith("Gudgeon"):                       # transom fittings stay put while the rudder turns
@@ -254,6 +266,50 @@ def unwrap(ob):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
+def uv_metres(ob):
+    """Metres per UV unit over the whole group (Smart UV Project keeps the islands at one scale): the close-up detail
+    textures tile at UV x this / their tile size."""
+    me = ob.data
+    uv = me.uv_layers.active.data
+    a3 = auv = 0.0
+    for p in me.polygons:
+        a3 += p.area
+        pts = [uv[i].uv for i in p.loop_indices]
+        auv += abs(sum(pts[i].x * pts[(i + 1) % len(pts)].y - pts[(i + 1) % len(pts)].x * pts[i].y for i in range(len(pts)))) / 2
+    return (a3 / auv) ** 0.5 if auv > 0 else 0.0
+
+
+def detail_emission(mat):
+    """A temporary emission output with the detail mask: R non-skid (flat faces of a non-skid material), G teak,
+    B smooth gelcoat (j22_materials tags each material with m["detail"])."""
+    kind = mat.get("detail", "")
+    nt = mat.node_tree
+    em = nt.nodes.new("ShaderNodeEmission")
+    comb = nt.nodes.new("ShaderNodeCombineColor")
+    if kind == "nonskid_normal":
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(geo.outputs["Normal"], sep.inputs[0])
+        mr = nt.nodes.new("ShaderNodeMapRange")
+        mr.interpolation_type = "SMOOTHSTEP"
+        mr.inputs[1].default_value, mr.inputs[2].default_value = 0.84, 0.93
+        nt.links.new(sep.outputs["Z"], mr.inputs[0])
+        inv = nt.nodes.new("ShaderNodeMath")
+        inv.operation = "SUBTRACT"
+        inv.inputs[0].default_value = 1.0
+        nt.links.new(mr.outputs[0], inv.inputs[1])
+        nt.links.new(mr.outputs[0], comb.inputs[0])
+        nt.links.new(inv.outputs[0], comb.inputs[2])
+    else:
+        comb.inputs[1].default_value = 1.0 if kind == "teak" else 0.0
+        comb.inputs[2].default_value = 1.0 if kind == "gelcoat" else 0.0
+    nt.links.new(comb.outputs[0], em.inputs["Color"])
+    out = next(n for n in nt.nodes if n.type == "OUTPUT_MATERIAL")
+    old = out.inputs["Surface"].links[0].from_socket if out.inputs["Surface"].links else None
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return lambda: (nt.links.new(old, out.inputs["Surface"]) if old else None, [nt.nodes.remove(n) for n in (em, comb)])
+
+
 def bake_group(name, ob, res):
     """Bake every material on ob into one set of maps, then give ob a single material that uses them."""
     unwrap(ob)
@@ -286,6 +342,27 @@ def bake_group(name, ob, res):
         for nt, n in nodes:
             nt.nodes.remove(n)
         maps[kind] = img
+    # the detail mask (X): emission bake of each material's detail tag
+    img = bpy.data.images.new(f"T_J22H_{name}_X", res // 2, res // 2, alpha=False, float_buffer=False)
+    img.colorspace_settings.name = "Non-Color"
+    restore, nodes = [], []
+    for slot in {sl.material for sl in ob.material_slots}:
+        restore.append(detail_emission(slot))
+        n = slot.node_tree.nodes.new("ShaderNodeTexImage")
+        n.image = img
+        slot.node_tree.nodes.active = n
+        nodes.append((slot.node_tree, n))
+    select([ob])
+    bpy.ops.object.bake(type="EMIT", use_clear=True, margin=12)
+    img.filepath_raw = os.path.join(TEX, img.name + ".png")
+    img.file_format = "PNG"
+    img.save()
+    for r in restore:
+        r()
+    for nt_, n in nodes:
+        nt_.nodes.remove(n)
+    maps["X"] = img
+    scale = uv_metres(ob)
     m = bpy.data.materials.new(f"J22H_{name}")
     m.use_nodes = True
     nt = m.node_tree
@@ -300,7 +377,9 @@ def bake_group(name, ob, res):
     nt.links.new(nm.outputs[0], b.inputs["Normal"])
     ob.data.materials.clear()
     ob.data.materials.append(m)
-    return {k: os.path.basename(v.filepath_raw) for k, v in maps.items()}
+    out = {k: os.path.basename(v.filepath_raw) for k, v in maps.items()}
+    out["uv_m"] = round(scale, 4)
+    return out
 
 
 report = {"groups": {}, "flat_materials": {}}
@@ -310,10 +389,13 @@ GROUPS = {
     "DeckMould": ["Deck", "Cockpit", "Cabin"],
     "Rudder": ["Rudder"],
     "Teak": names("ToeRail_") + names("CoamingCap_") + names("Handrail_") + ["DropBoard"],
+    # below decks: everything in the Interior collection except the glass (portlights, bilge water)
+    "Interior": [o.name for o in bpy.data.objects if "Interior" in {c.name for c in o.users_collection}
+                 and o.type in ("MESH", "CURVE") and GAME.get(o.name) == "SM_J22H_Interior" and o.name != "DropBoard"],
 }
 for g, members in GROUPS.items():
     ob = join(f"SM_J22H_{g}", members)
-    res = RES if g in ("Hull", "DeckMould") else RES // 2
+    res = RES if g in ("Hull", "DeckMould") else RES // 2   # Interior and the small groups at half size
     report["groups"][g] = bake_group(g, ob, res)
     print("baked", g, res)
 
@@ -347,7 +429,7 @@ for m in bpy.data.materials:
 # Tools/blender/build_j22.py, so scripts/import_boats.py imports them as tag "J22H". Ropes, wires, sails and the vang
 # stay out: the game draws them live. SM_J22H_RiggingStill holds them as built, for cinematics and stills only.
 GROUP_OWNER = {"SM_J22H_Hull": "SM_J22H_Hull", "SM_J22H_DeckMould": "SM_J22H_Hull", "SM_J22H_Teak": "SM_J22H_Hull",
-               "SM_J22H_Rudder": "SM_J22H_Rudder"}
+               "SM_J22H_Rudder": "SM_J22H_Rudder", "SM_J22H_Interior": "SM_J22H_Interior"}
 members = {k: [] for k in PIVOTS}
 still, sails = [], []
 for o in list(bpy.data.objects):

@@ -32,6 +32,7 @@ ROPE_COLOURS = {
     "white_red": ("#EDEBE4", "#B3201B"), "white_green": ("#EDEBE4", "#1F6A34"), "white_blue": ("#EDEBE4", "#1D3F8F"),
     "blue_white": ("#1D3F8F", "#E8E8E8"), "red_white": ("#B3201B", "#EDEBE4"), "black_white": ("#1A1A1A", "#D8D8D8"),
     "grey_red": ("#9A9A96", "#B3201B"), "yellow_black": ("#D7B21E", "#1A1A1A"),
+    "green_white": ("#1E5E33", "#E6E6DE"),
 }
 
 
@@ -106,6 +107,20 @@ def make_style(seed=0, preset="club", boat=None, overrides=None):
             "outboard": True,
         },
     }
+    # below decks (j22_interior): what a boat like this carries
+    s["interior"] = {
+        "cushions": rng.random() < 0.3 + 0.6 * care,
+        "bench_cushions": rng.random() < 0.5 * care,
+        "cushion_hex": rng.choice(["#1F2D4A", "#2A3F6B", "#3B3F45", "#6B5B45"]),
+        "sail_bag": rng.random() < 0.8,
+        "sailbag_hex": rng.choice(["#2457A6", "#1E1E1E", "#B22A22", "#E3E1DA"]),
+        "spare_pfds": rng.randint(0, 3) if preset in ("club", "neglected") else rng.randint(0, 1),
+        "paddle": rng.random() < 0.7,
+        "bucket": rng.random() < 0.6,
+        "extinguisher": rng.random() < 0.85,
+        "anchor": rng.random() < (0.8 if preset != "race" else 0.3),
+        "drop_board_stowed": True,
+    }
     # matched or port/starboard coloured jib sheets
     s["ropes"]["jib_sheet_stbd"] = s["ropes"]["jib_sheet_port"] if rng.random() < 0.6 else "white_green"
     s["sails"]["base_hex"] = "#F2EFE6" if s["sails"]["cloth"] == "white_dacron" else "#8B8D8C"
@@ -124,12 +139,18 @@ def rope_pair(style, role):
     return ROPE_COLOURS[style["ropes"][role]]
 
 
-# TX 7295 EC as photographed at Rush Creek in October 2026: a club boat with red/white and green/white jib sheets,
+# TX 7295 EC as photographed at Rush Creek in October 2026: a club boat with red (white fleck) and green (white fleck)
+# jib sheets (IMG_9272: solid colour with white tracers, red to port and green to starboard by convention),
 # a red/white backstay bridle, silvered teak, a varnished tiller, white sails (Bean: grey or white), grey bottom.
 TX7295 = {
     "hull.registration": "TX 7295 EC", "hull.boot_stripe_hex": None, "hull.sticker_hex": "#2F7D3A",
-    "ropes.jib_sheet_port": "white_red", "ropes.jib_sheet_stbd": "white_green", "ropes.backstay": "white_red",
-    "ropes.mainsheet": "white_red", "teak.state": "silvered", "sails.cloth": "white_dacron", "sails.base_hex": "#F2EFE6",
+    "ropes.jib_sheet_port": "red_white", "ropes.jib_sheet_stbd": "green_white", "ropes.backstay": "white_red",
+    "ropes.mainsheet": "white_red", "teak.state": "silvered",
+    "deck.nonskid_hex": "#CDC5AE",  # IMG_9224/9272: grey-beige under overcast, not tan "sails.cloth": "white_dacron", "sails.base_hex": "#F2EFE6",
+    # a school boat: V-berth cushions, the sail bag, two spare school vests, paddle, bucket, extinguisher, anchor
+    "interior.cushions": True, "interior.bench_cushions": False, "interior.cushion_hex": "#1F2D4A",
+    "interior.sail_bag": True, "interior.sailbag_hex": "#2457A6", "interior.spare_pfds": 2, "interior.paddle": True,
+    "interior.bucket": True, "interior.extinguisher": True, "interior.anchor": True,
 }
 
 
