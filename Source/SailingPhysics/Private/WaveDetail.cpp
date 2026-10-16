@@ -184,6 +184,40 @@ namespace Sailing
 			const double Jxx = 1.0 - L * Cc[Idx].imag(), Jyy = 1.0 - L * D[Idx].real(), Jxy = -L * D[Idx].imag();
 			Out.J[Idx] = float(Jxx * Jyy - Jxy * Jxy);
 		}
+		// W8: the whitecaps' Jacobian, from the displacement box-blurred (periodic, separable) over CapBlurTexels either
+		// way, by central differences.
+		const int Rb = CapBlurTexels;
+		auto Blur = [N, Rb](const std::vector<float>& V)
+		{
+			std::vector<float> A(V.size()), B(V.size());
+			const float Norm = 1.f / float(2 * Rb + 1);
+			for (int R = 0; R < N; ++R)
+				for (int Col = 0; Col < N; ++Col)
+				{
+					float Sum = 0.f;
+					for (int K = -Rb; K <= Rb; ++K) Sum += V[size_t(R) * N + (Col + K + N) % N];
+					A[size_t(R) * N + Col] = Sum * Norm;
+				}
+			for (int R = 0; R < N; ++R)
+				for (int Col = 0; Col < N; ++Col)
+				{
+					float Sum = 0.f;
+					for (int K = -Rb; K <= Rb; ++K) Sum += A[size_t((R + K + N) % N) * N + Col];
+					B[size_t(R) * N + Col] = Sum * Norm;
+				}
+			return B;
+		};
+		const std::vector<float> Bx = Blur(Out.Dx), By = Blur(Out.Dy);
+		Out.JCap.resize(NN);
+		const double H2 = 2.0 * C.Spec.Tile / N;
+		auto At = [N](const std::vector<float>& V, int Row, int Col) { return double(V[size_t((Row + N) % N) * N + (Col + N) % N]); };
+		for (int R = 0; R < N; ++R)
+			for (int Cl = 0; Cl < N; ++Cl)
+			{
+				const double Xx = (At(Bx, R + 1, Cl) - At(Bx, R - 1, Cl)) / H2, Xy = (At(Bx, R, Cl + 1) - At(Bx, R, Cl - 1)) / H2;
+				const double Yx = (At(By, R + 1, Cl) - At(By, R - 1, Cl)) / H2, Yy = (At(By, R, Cl + 1) - At(By, R, Cl - 1)) / H2;
+				Out.JCap[size_t(R) * N + Cl] = float((1.0 + Xx) * (1.0 + Yy) - Xy * Yx);
+			}
 	}
 
 	void FWaveDetail::Sample(const FGrid& G, double X, double Y, double& OutH, double& OutDx, double& OutDy, double& OutJ)
@@ -202,5 +236,53 @@ namespace Sailing
 		OutDx = Bi(G.Dx);
 		OutDy = Bi(G.Dy);
 		OutJ = Bi(G.J);
+	}
+
+	double FWaveDetail::SampleCapJ(const FGrid& G, double X, double Y)
+	{
+		const int N = G.N;
+		const double Cell = G.Tile / N;
+		const double U = X / Cell, W = Y / Cell;
+		const double FU = std::floor(U), FW = std::floor(W);
+		const double TU = U - FU, TW = W - FW;
+		const int U0 = ((int(FU) % N) + N) % N, W0 = ((int(FW) % N) + N) % N, U1 = (U0 + 1) % N, W1 = (W0 + 1) % N;
+		const std::vector<float>& V = G.JCap;
+		return (1.0 - TU) * ((1.0 - TW) * V[U0 * N + W0] + TW * V[U0 * N + W1]) + TU * ((1.0 - TW) * V[U1 * N + W0] + TW * V[U1 * N + W1]);
+	}
+
+	double FWaveDetail::LongJacobian(const FWaveComponent* Components, int Count, double OmegaMax, double Chop, double X, double Y, double T,
+		double Spacing, double Fade)
+	{
+		double Jxx = 1.0, Jyy = 1.0, Jxy = 0.0;
+		for (int I = 0; I < Count; ++I)
+		{
+			const FWaveComponent& W = Components[I];
+			if (W.Amplitude <= 1e-5 || W.Omega >= OmegaMax) continue;
+			const double K = std::sqrt(W.Kx * W.Kx + W.Ky * W.Ky);
+			// make_materials.py long_wave_terms: saturate(2 pi / (k spacing) / 4 - 1).
+			const double Keep = Spacing > 0.0 ? Clamp(6.2832 / (K * Spacing) / 4.0 - 1.0, 0.0, 1.0) : 1.0;
+			const double S = std::sin(W.Kx * X + W.Ky * Y - W.Omega * T + W.Phase) * Chop * W.Amplitude * Keep * Fade / K;
+			Jxx -= W.Kx * W.Kx * S;
+			Jyy -= W.Ky * W.Ky * S;
+			Jxy -= W.Kx * W.Ky * S;
+		}
+		return Jxx * Jyy - Jxy * Jxy;
+	}
+
+	void FWaveDetail::CapThreshold(std::vector<float> Samples, double Target, double& OutThreshold, double& OutSlope)
+	{
+		if (Samples.empty() || Target <= 0.0) { OutThreshold = 0.0; OutSlope = 0.02; return; }
+		const size_t N = Samples.size();
+		auto Quantile = [&](double Q)
+		{
+			const size_t K = std::min(N - 1, size_t(std::max(Q, 0.0) * double(N)));
+			std::nth_element(Samples.begin(), Samples.begin() + K, Samples.end());
+			return double(Samples[K]);
+		};
+		OutThreshold = Quantile(Target);
+		// The shift per e-fold of cover under the target (at least eight samples down the tail).
+		const double LoShare = std::max(Target / 2.718281828, std::min(8.0 / double(N), 0.5 * Target));
+		const double Lo = Quantile(LoShare);
+		OutSlope = std::max(OutThreshold - Lo, 0.002) / std::log(Target / LoShare);
 	}
 }

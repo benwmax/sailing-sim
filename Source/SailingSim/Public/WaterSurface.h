@@ -62,13 +62,30 @@ public:
 	/** W0: the folding threshold M_WaterV4 uses at a pixel: FoamThreshold shifted so coverage scales by the body's scale
 	 *  times Monahan's (U_local / U_mean)^3.41, caps cluster in puffs and thin in lulls. CapSlope is the threshold shift
 	 *  per e-fold of coverage, measured on the drawn waves (SailingSim.Visual.Whitecaps). Mirrored in make_materials.py. */
-	static constexpr float FoamThreshold = 0.6f;
-	static constexpr float CapSlope = 0.045f;
+	static float FoamThresholdAt(float MeanKnots);
 	/** W2: the threshold shift per e-fold grows with the wind (measured on the drawn waves: 0.034 at 10 kn, 0.069 at
 	 *  25 kn), so a fixed CapSlope under-applied the lake's and the lulls' scale in a strong breeze (the lake capped 3.3
-	 *  to 3.6 times its share at 20 and 25 kn). CapSlope is this at about 14 kn. Mirrored in make_materials.py. */
+	 *  to 3.6 times its share at 20 and 25 kn). Mirrored in make_materials.py.
+	 *  W8: both refit for the whitecaps' Jacobian (FWaveDetail::CapBlurTexels), which folds less in light air: the sea's
+	 *  threshold for Monahan's cover is 0.713 at 10 kn, 0.676 at 14, 0.638 at 20, 0.63 above, falling 0.03 a knot under 10 kn where crests stop breaking (FoamThresholdAt), and the
+	 *  shift per e-fold 0.018 at 10 kn to 0.072 at 30 (CapSlopeAt). */
 	static float CapSlopeAt(float MeanKnots);
 	static float WhitecapThreshold(float LocalOverMean, float WaterScale, float MeanKnots = 14.f);
+	/** W8: the fold table (DetailC): per texel of the chop, how folded it is against four thresholds First + k Step
+	 *  (a ramp CapRamp wide centred on each). Its mips average cover, where a mip of the Jacobian averages toward 1 (flat)
+	 *  and lost every cap past about 40 m from a low camera. CapTable centres the four on the mean wind's threshold, one
+	 *  e-fold of cover (CapSlopeAt) apart: the mean reads at an entry, puffs and lulls between. A coarse mip's cover is
+	 *  about exponential in the threshold, a single texel's a step: CapCover interpolates in log from mip CapLogMip,
+	 *  linearly at mip 0, as M_WaterV4 does. */
+	static constexpr float CapRamp = 0.05f;
+	/** W8: the drawn surface folds a little less deeply than its CPU copy: on the 20 kn lake the screen's share of
+	 *  Jt under 0.7 and 0.8 (-SailingDebugFoam=17, 18) matched the CPU's samples with their deviation from 1 scaled by
+	 *  0.85 at both (the texture's bilinear filter and the vertex interpolation of the long trains' fold, not isolated). */
+	static constexpr float DrawnFoldScale = 0.85f;
+	static constexpr float CapLogMip = 3.f;
+	static void CapTable(float MeanKnots, float WaterScale, float& OutFirst, float& OutStep);
+	static float CapTableEntry(float J, int32 K, float First, float Step);
+	static float CapCover(const float Table[4], float Threshold, float MeanKnots, float Mip, float First, float Step);
 	/** Game-thread time spent on the water each frame (the FFT blend and upload, the wake grid), summed: bench.json. */
 	static double WaterCpuSeconds;
 	/** W2: game-thread time spent on the two-level wind map (bench.json windmap_cpu_ms). */
@@ -119,6 +136,9 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> DetailedMaterial;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailAMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailBMap;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailCMap;
+	/** W8: the whitecap threshold solved on the drawn sea (FWaveDetail::CapThreshold), smoothed over a couple of seconds. */
+	float CapThrSmooth[4] = { 0.f, 0.f, 0.f, 0.f }, CapSlopeSmooth = 0.f;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> RippleBMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeGridMap;
 	/** W3: the sea map's atlas (SeaState.h): seven tiles of RGBA half floats, re-uploaded when the field gets a new map. */
@@ -149,9 +169,13 @@ private:
 	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
 	struct FDetailUpload
 	{
-		TArray<uint8*> A, B, Ripple; // half-float RGBA mips, new[] blocks
+		TArray<uint8*> A, B, C, Ripple; // half-float RGBA mips, new[] blocks
 		int32 N = 0, RippleN = 0;
-		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : Ripple) delete[] P; }
+		float CapFirst = 0.5f, CapStep = 0.05f; // the fold table's thresholds (CapTable)
+		// W8: the thresholds that cap Monahan's share of this sea as the mesh draws it at vertex spacings CapSpacing[k]
+		// (the long waves' fold fades with the spacing), and the slope at the nearest.
+		float CapThr[4] = { 0.f, 0.f, 0.f, 0.f }, CapSlope = 0.f;
+		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : C) delete[] P; for (uint8* P : Ripple) delete[] P; }
 	};
 	using FDetailUploadPtr = TSharedPtr<FDetailUpload, ESPMode::ThreadSafe>;
 	TFuture<FDetailUploadPtr> PendingUpload;

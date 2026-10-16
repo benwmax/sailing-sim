@@ -1357,20 +1357,71 @@ float Jt = J * jd - 0.25 * shoal;
 float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
 // W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
 // thin in lulls) times the water body's share (WindP.w: fresh water 0.4); AWaterSurface::WhitecapThreshold mirrors it.
-float capGain = WindP.w * pow(clamp(gustRatio, 0.05, 4.0), 3.41);
-// W2: the shift per e-fold grows with the wind (AWaterSurface::CapSlopeAt: 0.034 at 10 kn, 0.069 at 25 kn).
-float capSlope = 0.034 * pow(clamp(WindP.z / 0.5144 / 10.0, 0.4, 4.0), 0.773);
-float capThr = clamp(FoamThreshold + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
-float crest = saturate((capThr - Jt) / 0.05) * saturate(0.35 + 1.3 * lace);
+// W8: the threshold is solved on the sea being drawn (CapCal: the threshold that caps Monahan's cover for the mean wind
+// times the body's share, and its shift per e-fold; AWaterSurface, FWaveDetail::CapThreshold): fitted to one sea, it
+// capped the lake's shorter-fetch sea at a fraction of its share. Until the first solve, the fit on the test's sea
+// (AWaterSurface::FoamThresholdAt, CapSlopeAt). The FoamThreshold parameter is an offset from its default 0.6.
+float meanKn = clamp(WindP.z / 0.5144, 4.0, 40.0);
+bool solved = CapCal.y > 0.0;
+float capGain = (solved ? 1.0 : WindP.w) * pow(clamp(gustRatio, 0.05, 4.0), 3.41);
+float capSlope = solved ? CapCal.y : 0.018 * pow(meanKn / 10.0, 1.25);
+// By the mesh's vertex spacing here (V4_WPO: max(0.5, dist / 64)): the long waves' fold fades with it.
+float spK = clamp(log2(max(dist / 64.0, 0.5) / 0.5), 0.0, 3.0);
+float capSolved = spK < 1.0 ? lerp(CapCal.x, CapCalFar.x, spK) : (spK < 2.0 ? lerp(CapCalFar.x, CapCalFar.y, spK - 1.0) : lerp(CapCalFar.y, CapCalFar.z, spK - 2.0));
+float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10.0) / 5.0) - 0.03 * max(10.0 - meanKn, 0.0);
+float capThr = clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
 float2 wd = ldir; // W2: the foam streaks lie along the local wind
 float2 wn = float2(-wd.y, wd.x);
 float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
-float residue = saturate((capThr + 0.08 - Jt) / 0.08) * smoothstep(0.55, 0.95, streak * lace) * 0.25;
-float caps = max(crest, residue) * fade;
-// Far off whitecaps are sub-pixel: their average whiteness, from the same law.
-float knots = rough * 15.56;
-float farCover = 3.0 * 3.84e-6 * pow(max(knots * 0.5144, 0.0), 3.41) * WindP.w; // Monahan's coverage, with the foam it leaves
-caps = lerp(caps, saturate(farCover), far);
+// W8 (docs/water-8/whitecaps): what the camera sees is the cover the test measures. A mip of the chop's Jacobian averages
+// toward 1 (flat water), so thresholding it lost every cap from about 40 m out (a 2 m eye's pixel spans several chop
+// texels there), and the far fill only began at 150 m: the round 11 lake at 20 kn showed almost no caps while its grid
+// measured twice the target. Past the first texels the cover comes from the fold table (DetailC: per texel, how folded
+// it is against four thresholds, AWaterSurface::CapTableEntry), whose mips average cover, read at this pixel's threshold
+// (AWaterSurface::CapCover). The lace and streak patterns fade to their means before they alias, and the caps no
+// longer fade with the long waves (WaveFadeMeters): whitecaps show to the horizon.
+float foot = length(fwidth(p.xy));                 // m a pixel spans (its long axis)
+// The mip the sampler reads: its short axis, or a sixteenth of its long one (16x anisotropic filtering). Grazing views
+// keep a sharp texture far out, and the caps stay discrete there.
+float2 fdx = ddx(p.xy), fdy = ddy(p.xy);
+float footMip = max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 16.0);
+float useTable = smoothstep(1.0, 2.5, footMip * 128.0 / DetailP.x);
+float patFade = smoothstep(0.08, 0.3, foot);
+float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
+float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
+// The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
+float kC = max(min(chopK, 2.0), 1e-3);
+float tC = 1.0 - (1.0 - (capThr + 0.25 * shoal) / max(J, 0.05)) / kC;
+float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoal) / max(J, 0.05)) / kC;
+float crest, residue;
+[branch] if (useTable > 0.0)
+{
+float4 ct = Texture2DSample(DetailC, DetailCSampler, duv);
+float4 lct = log(max(ct, 1e-6));   // cover is about exponential in the threshold: interpolate it in log
+// (A single texel's cover is a step in the threshold, a coarse mip's about exponential: linear at mip 0, in log from mip
+// 3, as AWaterSurface::CapCover.)
+float capMip = saturate(log2(max(footMip * 128.0 / DetailP.x, 1.0)) / 3.0);
+// The table's thresholds: CapT.x + k CapT.y, k = 0..3 (AWaterSurface::CapTable: centred on the mean wind's threshold).
+#define W8_U(t_) (((t_) - CapT.x) / CapT.y)
+#define W8_SEL(v_, t_) (W8_U(t_) < 1.0 ? v_.r : (W8_U(t_) < 2.0 ? v_.g : v_.b))
+#define W8_SEL2(v_, t_) (W8_U(t_) < 1.0 ? v_.g : (W8_U(t_) < 2.0 ? v_.b : v_.a))
+#define W8_W(t_) saturate(W8_U(t_) - clamp(floor(W8_U(t_)), 0.0, 2.0))
+#define W8_CAPCOVER(t_) (lerp(lerp(W8_SEL(ct, t_), W8_SEL2(ct, t_), W8_W(t_)), exp(lerp(W8_SEL(lct, t_), W8_SEL2(lct, t_), W8_W(t_))) * step(1.5e-6, W8_SEL2(ct, t_)), capMip) * (W8_U(t_) < 0.0 ? exp(W8_U(t_) * CapT.y / max(capSlope, 0.02)) : 1.0))
+// Near, the fold itself (a ramp 0.05 wide centred on the threshold, as the table's entries: AWaterSurface::CapRamp).
+// The lace breaks a cap up but keeps most of it white (mean 0.92; was 0.62 with a floor of 0.35): the white area is the
+// folded area SailingSim.Visual.Whitecaps holds to Monahan.
+crest = lerp(saturate((capThr - Jt) / 0.05 + 0.5), W8_CAPCOVER(tC), useTable);
+residue = lerp(saturate((capThr + 0.08 - Jt) / 0.08 + 0.5), W8_CAPCOVER(tR), useTable);
+}
+else
+{
+// (Near, the fold alone: the table's branch never runs, so nothing of it can leak into the blend.)
+crest = saturate((capThr - Jt) / 0.05 + 0.5);
+residue = saturate((capThr + 0.08 - Jt) / 0.08 + 0.5);
+}
+crest *= saturate(0.8 + 1.3 * laceE);
+residue *= patternE * 0.25;
+float caps = max(crest, residue);
 // Foam the boats make.
 float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
@@ -1438,6 +1489,19 @@ float inc = acos(saturate(vdir.z));
 Spec = 0.5 * (1.0 - 0.8 * Polarized * exp(-pow((inc - 0.93) / 0.42, 2.0)));
 OceanShare = om;
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
+// W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
+// the probability of its whitecap cover (a fixed hash of the pixel, so the temporal AA keeps it binary); the water is
+// black (no reflection, albedo cut through Dark), flat.
+[branch] if (DebugFoam > 0.0)
+{
+    float hsh = frac(sin(dot(floor(Parameters.SvPosition.xy), float2(12.9898, 78.233))) * 43758.5453);
+    // 1: the whitecaps (crests and their residue); 2: the crests alone; 3: where the fold is under the threshold.
+    Foam = DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps);
+    Spec = 0.0;
+    Dark = 1.0 / 0.35;
+    Rough = 1.0;
+    return float3(0.0, 0.0, 1.0);
+}
 return normalize(float3(-sx, -sy, 1.0));
 """
 
@@ -1461,7 +1525,7 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
@@ -1493,13 +1557,14 @@ def build_water_v4():
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1)])
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
     connect(polarized, "", shade, "Polarized")
+    connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
     for c in (wpo,):
         connect(chop, "", c, "Chop")
         for i, w in enumerate(waves[:NUM_LONG]):
@@ -1522,6 +1587,10 @@ def build_water_v4():
         connect(wake_rect, "RGBA", c, "WakeGridRect")
         connect_sea(sea, c)
     connect(tx["DetailB"], "", shade, "DetailB")
+    connect(tx["DetailC"], "", shade, "DetailC")
+    connect(vector(mat, "CapTable", (0.5, 0.05, 0, 0), -2000, 1200), "RGBA", shade, "CapT")
+    connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
+    connect(vector(mat, "CapCalibFar", (0, 0, 0, 0), -2000, 1400), "RGBA", shade, "CapCalFar")
     connect(tx["RippleB"], "", shade, "RippleB")
     connect(gust_tex, "", shade, "Gust")
     connect(gust_rect, "RGBA", shade, "GustRect")
