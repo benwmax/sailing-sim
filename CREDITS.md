@@ -59,6 +59,9 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
   US5FPODA-DB, US5TXTDB-DF and US5TXTEC-EE (charts.noaa.gov; public domain), including offshore platforms as
   landmarks; tides from CO-OPS stations 8771510, 8771341, 8771972 and 8772447 (public domain). No land DEM is used
   for the open coast (land is flat above mean high water).
+- Crew idles (Crew C1b): motion capture from the CMU Graphics Lab Motion Capture Database, trials 13_04, 82_05,
+  114_05, 137_28, 139_01, 139_02, 140_06 and 140_07, baked into small joint motions in the game's code. The data used
+  in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.
 - Ocean waves: Tessendorf (2001) "Simulating Ocean Water"; JONSWAP spectrum (Hasselmann et al. 1973); added
   resistance in waves after Gerritsma and Beukelman (1972). Methods only; no code reproduced.
 

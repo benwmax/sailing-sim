@@ -341,11 +341,31 @@ void CrewMotionUpdate(FCrewMotionState& S, const FCrewMotionInput& In, float Dt)
 	if (HalfAcross <= 0.0) S.bBracing = false;
 	S.Report.bBracing = S.bBracing;
 
+	// Crew C1b: the idle clips, quiet while the sailor moves (a crossing, a change of seat), braces or ducks.
+	FCrewClipInput Clip;
+	Clip.Stance = In.Params.Stance;
+	Clip.Hike = In.Params.Hike;
+	Clip.bQuiet = !In.bReact || !In.bClips || S.TransitionS < 1.f || S.bBracing || In.Duck > 0.f;
+	Clip.Roll = S.Balance.Roll;
+	Clip.Pitch = S.Balance.Pitch;
+	Clip.Seed = Seed;
+	CrewClipStep(S.Clip, Clip, Dt);
+	S.Report.ClipWeight = S.Clip.Weight;
+	S.Report.Clip = S.Clip.Cur.Clip;
+
 	// The gaze: their eyes go to the target, the head follows in a few tenths of a second.
 	// (From about where the head is: 1.5 m over the figure's origin, which is under its pelvis at standing height.)
 	const FVector Eyes = In.ToBoat.TransformPosition(FVector(0.0, 0.0, 150.0));
 	FVector Want = In.Gaze.IsNearlyZero() ? FRotator(0.f, CrewFacingYaw(In.Params), 0.f).Vector() : (In.Gaze - Eyes).GetSafeNormal();
 	if (Want.IsNearlyZero()) Want = FVector::ForwardVector;
+	// The clip's own glances about it (the head and neck as captured).
+	if (S.Clip.Weight > 0.f)
+	{
+		FRotator Look = Want.Rotation();
+		Look.Yaw += S.Clip.GazeYaw;
+		Look.Pitch += S.Clip.GazePitch;
+		Want = Look.Vector();
+	}
 	if (!S.bStarted) S.GazeDir = Want;
 	for (int32 K = 0; K < 3; ++K)
 	{
@@ -371,6 +391,16 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 	TMap<FName, FQuat> Joints = S.Current;
 	if (In.bReact)
 	{
+		// Crew C1b: the idle clip about the stance, first, so the reaction layer stays on top of it.
+		if (S.Clip.Weight > 0.f)
+		{
+			for (int32 J = 0; J < CrewClips::NumJoints(); ++J)
+			{
+				const FVector& V = S.Clip.Joints[J];
+				const double A = V.Size();
+				if (A > 1e-6) PreMultiply(Joints, CrewClips::JointName(J), FQuat(V / A, A));
+			}
+		}
 		const FCrewBalance& B = S.Balance;
 		// Lean the trunk toward the felt "up" (pelvis, spine and chest share it); the head is levelled below. Not on the
 		// wire or righting, where the body hangs from a line.

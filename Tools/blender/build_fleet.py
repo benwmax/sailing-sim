@@ -403,6 +403,7 @@ def lifelines(H, x_from, x_to):
         posts = [(x, H.cy + side * (H.sharp_half_beam(x) - 0.05), H.deck_z(x, H.cy + side * (H.sharp_half_beam(x) - 0.05))) for x in xs]
         for (x, y, z) in posts:
             tube(hull, [(x, y, z), (x, y, z + hgt)], 0.012, "Stainless", 6)
+            box(hull, (x, y, z + 0.02), (0.07, 0.05, 0.04), "Stainless")              # boats 11: stanchion base
         for f in (0.5, 1.0):
             tube(hull, [(x, y, z + hgt * f) for (x, y, z) in posts], 0.0035, "Stainless", 4)
     bow = H.h["bow_x"]
@@ -459,6 +460,52 @@ def keelboat_deck_detail(H, top, half, cb, mast_x, st, bw):
             tube(hull, ring, 0.005, "Rope", 4, cap=False)
 
 
+def keelboat_cockpit_detail(H, ck, cb, top, half, st, bw):
+    """Boats 11: the cockpit, foredeck and stern fittings of a cruising keelboat, from Catalina 22 and 30 photos: seat
+    locker lids with hasps, cockpit drains, jib-sheet horn cleats behind the winches, slide-hatch rails, an anchor
+    locker hatch and a bow roller, running lights on the pulpit and pushpit, and on the Catalina 30 a binnacle compass
+    and a stern ladder."""
+    x0, x1, w, depth = ck
+    sole_z = lambda x: H.deck_z(x, H.cy + w) - depth
+    seat_w = 0.34 * min(1.0, w / 0.6)
+    seat_top = lambda x: sole_z(x) + depth - 0.14
+    for side in ((1, -1) if TAG == "Catalina30" else (-1,)):
+        lx0, lx1 = x0 + 0.35, x0 + 0.35 + min(0.9, (x1 - x0) * 0.4)
+        yc = H.cy + side * (w - seat_w / 2)
+        zc = seat_top(0.5 * (lx0 + lx1)) + 0.003
+        box(hull, (0.5 * (lx0 + lx1), yc, zc), (lx1 - lx0, seat_w - 0.06, 0.008), "Deck")              # lid
+        box(hull, (lx0 + 0.02, yc, zc + 0.008), (0.03, seat_w - 0.1, 0.012), "Stainless")              # hinge line
+        box(hull, (lx1 - 0.03, H.cy + side * (w - seat_w + 0.04), zc + 0.01), (0.05, 0.03, 0.015), "BlackPlastic")  # hasp
+    for side in (1, -1):
+        tube(hull, [(x0 + 0.08, side * (w - 0.08), sole_z(x0) + 0.001), (x0 + 0.08, side * (w - 0.08), sole_z(x0) + 0.006)], 0.03, "BlackPlastic", 10)
+        wx = SPEC["winch_x"]
+        y = side * (w + 0.13)
+        cleat(wx - 0.28, y, H.deck_z(wx - 0.28, y), 0.0, 0.15)
+    # slide-hatch rails either side of the companionway hatch
+    for side in (1, -1):
+        tube(hull, [(cb[0] + 0.02, side * 0.34, top(cb[0] + 0.05) + 0.012), (cb[0] + 0.9, side * 0.34, top(cb[0] + 0.9) + 0.012)], 0.012, "Wood", 6)
+    # foredeck: anchor locker lid and a bow roller at the stem
+    ax = bw - 0.75
+    box(hull, (ax, 0, H.deck_z(ax, 0) + 0.006), (0.42, 0.5, 0.014), "Deck")
+    box(hull, (ax - 0.2, 0, H.deck_z(ax - 0.2, 0) + 0.016), (0.03, 0.4, 0.015), "Stainless")
+    if TAG != "Corsair880":                    # the Corsair's bowsprit takes the stem
+        box(hull, (bw - 0.22, 0, H.deck_z(bw - 0.22, 0) + 0.03), (0.3, 0.07, 0.05), "Stainless")
+        tube(hull, [(bw - 0.12, -0.03, H.deck_z(bw - 0.12, 0) + 0.05), (bw - 0.12, 0.03, H.deck_z(bw - 0.12, 0) + 0.05)], 0.025, "BlackPlastic", 10)
+    # running lights: a bicolour on the pulpit, a white stern light on the pushpit
+    hgt = 0.6 if H.h["sheer_z"] < 0.9 else 0.68
+    box(hull, (bw - 0.35, 0, H.deck_z(bw - 0.35, 0) + hgt + 0.03), (0.07, 0.09, 0.05), "BlackPlastic")
+    box(hull, (st + 0.06, 0, H.deck_z(st, 0) + hgt + 0.03), (0.05, 0.06, 0.05), "BlackPlastic")
+    if TAG == "Catalina30":
+        wxp = SPEC["wheel"]
+        sz = H.deck_z(wxp, w) - depth + 1.06
+        tube(hull, [(wxp, 0, sz), (wxp, 0, sz + 0.07)], 0.08, "BlackPlastic", 16)                      # compass
+        for k in range(4):                                                                           # stern ladder
+            z = H.sheer(st) - 0.15 - 0.22 * k
+            tube(hull, [(st - 0.03, -0.17, z), (st - 0.03, 0.17, z)], 0.012, "Stainless", 6)
+        for y in (-0.17, 0.17):
+            tube(hull, [(st - 0.03, y, H.sheer(st)), (st - 0.03, y, H.sheer(st) - 0.8)], 0.012, "Stainless", 6)
+
+
 def winch(x, y, z, r=0.055):
     tube(hull, [(x, y, z), (x, y, z + 0.11)], r, "Stainless", 14)
     tube(hull, [(x, y, z + 0.11), (x, y, z + 0.13)], r * 0.6, "BlackPlastic", 10)
@@ -480,6 +527,196 @@ def board(Hh, f, deepest):
     if f["role"] == "keel" and SPEC["paint"] and deepest < -1.2:
         # A bulb on the deeper fins (the Catalina 30's lead), faired into the tip.
         tube(hull, [(le - 0.05, cy, deepest + 0.08), (le - chord * 1.05, cy, deepest + 0.1)], 0.09, "Keel", 12)
+
+
+def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
+    """Boats 11: what a Sunfish or ILCA carries on deck that the clean model left out, from class photos. The board
+    standing in its trunk with a grip, the self-bailer and drain in the well, the mainsheet's ratchet block and its
+    blocks on the traveler, deck control lines to cam cleats, a bow handle and the transom drain plug; the Sunfish's
+    V splash guard and halyard cleat, the ILCA's control lines and the shock cord on its hiking strap."""
+    x0, x1, w, depth = ck
+    sole = lambda x: H.deck_z(x, 0) - depth
+    bx, chord = f["center"][0], f["chord"]
+    dz = H.deck_z(bx, 0)
+    # the daggerboard (Sunfish: varnished wood; ILCA: white plastic centreboard) a hand's width proud, with a grip
+    board_slot = "Wood" if TAG == "Sunfish" else "Deck"
+    box(hull, (bx, 0, dz + 0.06), (chord * 0.92, 0.018, 0.12), board_slot)
+    box(hull, (bx - chord * 0.25, 0, dz + 0.135), (0.10, 0.03, 0.03), "BlackPlastic")
+    # well: auto-bailer and drain plug in the sole, a non-skid pad is the sole's own slot already
+    xb = x0 + 0.18
+    box(hull, (xb, 0.0, sole(xb) + 0.006), (0.12, 0.07, 0.012), "BlackPlastic")
+    tube(hull, [(xb + 0.2, 0.12, sole(xb + 0.2)), (xb + 0.2, 0.12, sole(xb + 0.2) + 0.008)], 0.02, "BlackPlastic", 10)
+    # mainsheet: blocks on the traveler bridle, a swivel ratchet block in the well (ILCA) or on the aft deck (Sunfish)
+    tx, tz, tw = traveler
+    box(hull, (tx, 0.0, tz + 0.03), (0.05, 0.03, 0.05), "BlackPlastic")
+    if TAG == "ILCA7":
+        rx, rz = 0.5 * (x0 + x1), sole(0.5 * (x0 + x1))
+        tube(hull, [(rx, 0, rz), (rx, 0, rz + 0.12)], 0.012, "Stainless", 8)
+        box(hull, (rx, 0, rz + 0.16), (0.08, 0.03, 0.08), "BlackPlastic")
+    else:
+        rx = x0 - 0.06
+        box(hull, (rx, 0, H.deck_z(rx, 0) + 0.035), (0.06, 0.03, 0.07), "BlackPlastic")
+    # deck control lines to cam cleats either side of the well's forward end (ILCA: cunningham, outhaul, vang;
+    # Sunfish: the halyard to a horn cleat and the sail's bow line)
+    if TAG == "ILCA7":
+        for side in (1, -1):
+            for k in range(3):
+                cx, cy = x1 + 0.06, side * (0.09 + 0.05 * k)
+                box(hull, (cx, cy, H.deck_z(cx, cy) + 0.012), (0.06, 0.035, 0.024), "BlackPlastic")
+                line = [(mast_x - 0.08, side * 0.03, mast_step_z + 0.02), (bx + 0.25, side * (0.05 + 0.02 * k), H.deck_z(bx + 0.25, 0) + 0.012),
+                        (cx + 0.03, cy, H.deck_z(cx, cy) + 0.02)]
+                tube(hull, line, 0.003, "Rope", 4, cap=False)
+        # shock cord from the transom holding the hiking strap up off the sole
+        tube(hull, [(x0 + 0.1, 0, sole(x0) + 0.07), (x0 - 0.25, 0, H.deck_z(x0 - 0.25, 0) + 0.005)], 0.003, "BlackPlastic", 4, cap=False)
+    else:
+        # V splash guard ahead of the well, white moulding
+        sx = x1 + 0.10
+        for side in (1, -1):
+            a = (sx + 0.22, 0.0)
+            b = (sx, side * (w + 0.06))
+            n = 8
+            for k in range(n):
+                t0, t1 = k / n, (k + 1) / n
+                pa = (a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0)
+                pb = (a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1)
+                za, zb = H.deck_z(pa[0], pa[1]), H.deck_z(pb[0], pb[1])
+                q = [(pa[0], pa[1], za), (pb[0], pb[1], zb), (pb[0], pb[1], zb + 0.075 - 0.025 * t1), (pa[0], pa[1], za + 0.075 - 0.025 * t0)]
+                hull.face(q if side > 0 else list(reversed(q)), "Deck")
+                hull.face(list(reversed(q)) if side > 0 else q, "Deck")
+        cleat(x1 + 0.05, -0.18, H.deck_z(x1 + 0.05, -0.18), 0.0, 0.12)
+        line = [(mast_x - 0.05, -0.03, mast_step_z + 0.04), (x1 + 0.4, -0.12, H.deck_z(x1 + 0.4, -0.12) + 0.01), (x1 + 0.08, -0.18, H.deck_z(x1 + 0.08, -0.18) + 0.045)]
+        tube(hull, line, 0.003, "Rope", 4, cap=False)
+    # bow handle (inside the stem so LOA is untouched) and the transom drain plug
+    bwx = H.h["bow_x"] - 0.22
+    tube(hull, [(bwx - 0.06, 0, H.deck_z(bwx - 0.06, 0)), (bwx - 0.03, 0, H.deck_z(bwx, 0) + 0.04),
+                (bwx + 0.05, 0, H.deck_z(bwx, 0) + 0.04), (bwx + 0.08, 0, H.deck_z(bwx + 0.08, 0))], 0.007, "Stainless", 6, cap=False)
+    st = H.h["stern_x"]
+    tube(hull, [(st + 0.004, 0.0, H.sheer(st) - 0.06), (st - 0.006, 0.0, H.sheer(st) - 0.06)], 0.014, "BlackPlastic", 8)
+
+
+def hobie_detail(fb, rb, bz, inner, traveler):
+    """Boats 11: a Hobie 16's fittings from class photos. The trampoline laced to the beams with shock cord, the dolphin
+    striker under the front beam with its wire to the beam ends, the mast ball on its step, the mainsheet car on the
+    rear beam, jib cars on short tracks on the tramp, gudgeons and rudder castings on each transom, shroud adjusters at
+    the chainplates, inspection ports and drain plugs on each hull."""
+    # lacing: a zigzag of shock cord between each beam and the trampoline's hemmed edge
+    for bx, ex in ((fb, fb - 0.05), (rb, rb + 0.05)):
+        w = inner(bx) - 0.06
+        n = int(2 * w / 0.09)
+        zig = [(bx if k % 2 == 0 else ex, -w + 2 * w * k / n, bz + 0.035) for k in range(n + 1)]
+        tube(hull, zig, 0.003, "Rope", 4, cap=False)
+    # dolphin striker: a strut under the front beam's middle and its wire to the beam ends at the hulls
+    sz = bz - 0.32
+    tube(hull, [(fb, 0, bz - 0.045), (fb, 0, sz)], 0.014, "Aluminium", 8)
+    for side in (1, -1):
+        tube(hull, [(fb, 0, sz), (fb, side * (inner(fb) - 0.02), bz - 0.03)], 0.003, "Stainless", 4, cap=False)
+    # the mast ball on its step
+    tube(hull, [(fb, 0, bz + 0.06), (fb, 0, bz + 0.1)], 0.035, "BlackPlastic", 12)
+    # mainsheet traveler car and its block on the rear beam
+    box(hull, (rb + 0.02, 0, bz + 0.075), (0.09, 0.07, 0.04), "BlackPlastic")
+    box(hull, (rb + 0.02, 0, bz + 0.13), (0.05, 0.03, 0.07), "BlackPlastic")
+    for side in (1, -1):
+        box(hull, (rb + 0.02, side * traveler[2], bz + 0.065), (0.04, 0.04, 0.03), "BlackPlastic")    # end stops
+    for Hh, side in ((HS[1], 1), (HS[0], -1)):
+        # jib car on a short track at the lead, laid on the tramp
+        lx, ly = rb + 0.9, Hh.cy - side * 0.25
+        box(hull, (lx, ly, bz + 0.04), (0.45, 0.03, 0.012), "Aluminium")
+        box(hull, (lx, ly, bz + 0.065), (0.07, 0.04, 0.04), "BlackPlastic")
+        # shroud adjuster: a stainless plate rising from the chainplate at the hull's outer sheer
+        cx = mast_x - 0.05
+        cy = Hh.cy + side * (Hh.sharp_half_beam(cx) - 0.03)
+        box(hull, (cx, cy, Hh.sheer(cx) + 0.07), (0.03, 0.006, 0.14), "Stainless")
+        # inspection ports fore and aft of the beams, drain plug on the transom
+        for px in (fb + 0.7, rb - 0.45):
+            pz = Hh.deck_z(px, Hh.cy)
+            tube(hull, [(px, Hh.cy, pz - 0.002), (px, Hh.cy, pz + 0.008)], 0.065, "BlackPlastic", 14)
+        st = Hh.h["stern_x"]
+        tube(hull, [(st + 0.004, Hh.cy, Hh.sheer(st) - 0.08), (st - 0.006, Hh.cy, Hh.sheer(st) - 0.08)], 0.012, "BlackPlastic", 8)
+        # the rudder casting's gudgeons on the transom
+        for gz in (Hh.sheer(st) - 0.04, Hh.sheer(st) - 0.24):
+            box(hull, (st + 0.015, Hh.cy, gz), (0.03, 0.06, 0.03), "Stainless")
+
+
+def corsair_detail(ck, cb, top, half, st, bw):
+    """Boats 11: the Corsair 880's own fittings from class photos, besides the keelboat set it shares: the folding akas'
+    hinge castings at the main hull and the floats, net lacing along the hull and float edges, and float deck hatches
+    with a bow eye on each float."""
+    for ax in SPEC["akas"]:
+        for Hh in HS[1:]:
+            side = 1 if Hh.cy > 0 else -1
+            y0 = side * (MAIN.sharp_half_beam(ax) - 0.1)
+            box(hull, (ax, y0, MAIN.deck_z(ax, y0) - 0.02), (0.26, 0.16, 0.1), "Aluminium")             # fold hinge
+            y1 = Hh.cy - side * (Hh.sharp_half_beam(ax) - 0.15)
+            box(hull, (ax, y1, Hh.deck_z(ax, Hh.cy) + 0.02), (0.24, 0.14, 0.08), "Aluminium")             # float socket
+    a0, a1 = SPEC["akas"]
+    for Hh in HS[1:]:
+        side = 1 if Hh.cy > 0 else -1
+        for edge in ("main", "float"):
+            pts = []
+            xs = stations(a1 + 0.1, a0 - 0.1, 24)
+            for k, x in enumerate(xs):
+                if edge == "main":
+                    y = side * (MAIN.sharp_half_beam(x) - 0.05)
+                    z = MAIN.deck_z(x, y) - 0.02
+                    d = side * (0.06 if k % 2 else 0.0)
+                else:
+                    y = Hh.cy - side * (Hh.sharp_half_beam(x) - 0.1)
+                    z = Hh.deck_z(x, Hh.cy) - 0.03
+                    d = -side * (0.06 if k % 2 else 0.0)
+                pts.append((x, y + d, z + (0.01 if k % 2 else 0.0)))
+            tube(hull, pts, 0.003, "Rope", 4, cap=False)
+        for hx in (a0 + 0.6, a1 - 0.5):
+            box(hull, (hx, Hh.cy, Hh.deck_z(hx, Hh.cy) + 0.008), (0.42, 0.32, 0.016), "CabinWindow")    # float hatch
+        fbx = Hh.h["bow_x"] - 0.12
+        tube(hull, [(fbx, Hh.cy, Hh.deck_z(fbx, Hh.cy)), (fbx, Hh.cy, Hh.deck_z(fbx, Hh.cy) + 0.04)], 0.012, "Stainless", 6)
+
+
+def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
+    """Boats 11: the Lagoon 42's fittings from builder and charter photos. Long hull windows on each hull's outer side,
+    mullions on the saloon glazing, the helm station on the aft bulkhead's starboard side (wheel, pod and seat), a
+    cockpit table, solar panels on the bimini, flush deck hatches and mooring cleats on each hull, and the anchor
+    windlass and bow roller on the forward crossbeam."""
+    for Hh, side in ((HS[1], 1), (HS[0], -1)):
+        # hull windows: three long dark panes along the outer topsides, under the sheer
+        for (wx0, wx1) in ((1.6, 3.3), (-0.9, 1.2), (-3.4, -1.3)):
+            rows = []
+            for x in stations(wx0, wx1, 8):
+                zt, zb = Hh.sheer(x) - 0.28, Hh.sheer(x) - 0.48
+                rows.append([(x, Hh.cy + side * (Hh.half_beam(x, z) + 0.004), z) for z in (zb, zt)])
+            hull.grid(rows, "CabinWindow", flip=side < 0)
+        # flush hatches on the foredeck and a cleat at the bow and quarter
+        for hx in (b1 + 0.6, b1 + 1.8):
+            box(hull, (hx, Hh.cy, Hh.deck_z(hx, Hh.cy) + 0.008), (0.55, 0.55, 0.016), "CabinWindow")
+        for cx in (Hh.h["bow_x"] - 0.7, Hh.h["stern_x"] + 0.45):
+            cy = Hh.cy + side * (Hh.sharp_half_beam(cx) - 0.15)
+            cleat(cx, cy, Hh.deck_z(cx, cy), 0.0, 0.3)
+    # saloon mullions: dark frames between the side panes
+    for side in (1, -1):
+        for x in stations(s0 + 0.4, s1 - 0.5, 4):
+            tube(hull, [(x, side * (sw + 0.008), dz + 0.55), (x, side * (sw + 0.008), roof - 0.15)], 0.02, "BlackPlastic", 4)
+    # helm station: a raised pod and wheel facing aft on the starboard side of the aft bulkhead, the helm seat behind
+    hx, hy, hz = s0 - 0.35, sw - 0.35, dz + 1.0
+    box(hull, (s0 - 0.12, hy, hz - 0.1), (0.25, 0.5, 0.35), "Topsides")
+    box(hull, (s0 - 0.25, hy, hz + 0.1), (0.05, 0.35, 0.15), "BlackPlastic")                  # instruments
+    r = 0.36
+    rim = [(hx, hy + r * math.cos(2 * math.pi * k / 24), hz + r * math.sin(2 * math.pi * k / 24)) for k in range(25)]
+    tube(hull, rim, 0.014, "Stainless", 8, cap=False)
+    for k in range(5):
+        a = 2 * math.pi * k / 5
+        tube(hull, [(hx, hy, hz), (hx, hy + r * math.cos(a), hz + r * math.sin(a))], 0.008, "Stainless", 6)
+    tube(hull, [(hx, hy, hz), (s0 - 0.25, hy, hz)], 0.025, "Stainless", 8)
+    box(hull, (hx - 0.5, hy, dz + 0.45), (0.45, 0.6, 0.08), "SailCover")                      # helm seat cushion
+    box(hull, (hx - 0.5, hy, dz + 0.2), (0.4, 0.55, 0.4), "Topsides")
+    # cockpit table between the bimini legs
+    tx = 0.5 * (s0 + b0 + 0.4)
+    tube(hull, [(tx, 0, dz), (tx, 0, dz + 0.68)], 0.04, "Stainless", 10)
+    box(hull, (tx, 0, dz + 0.71), (0.75, 1.1, 0.04), "Wood")
+    # solar panels on the bimini
+    for y in (-0.62, 0.62):
+        box(hull, (0.5 * (b0 + 0.3 + s0), y, roof + 0.08), (1.1, 1.0, 0.03), "CabinWindow")
+    # windlass and bow roller on the forward crossbeam
+    box(hull, (b1 + 0.9, 0, dz + 0.1), (0.22, 0.25, 0.14), "Stainless")
+    tube(hull, [(b1 + 0.9, -0.16, dz + 0.12), (b1 + 0.9, 0.16, dz + 0.12)], 0.05, "BlackPlastic", 12)
 
 
 # ---------------------------------------------------------------- the boat
@@ -514,6 +751,7 @@ if TAG in ("Sunfish", "ILCA7"):
     tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.006, "Rubrail", 6)  # the traveler rope
     for side in (1, -1):
         box(hull, (traveler[0], side * traveler[2], traveler[1] - 0.005), (0.05, 0.03, 0.02), "Stainless")
+    dinghy_detail(MAIN, ck, boards[0], mast_x, mast_step_z, traveler)
 
 elif TAG in ("Catalina22", "Catalina30"):
     ck, cb = SPEC["cockpit"], SPEC["cabin"]
@@ -524,6 +762,7 @@ elif TAG in ("Catalina22", "Catalina30"):
     st, bw = MAIN.h["stern_x"], MAIN.h["bow_x"]
     lifelines(MAIN, st + 0.25, bw - 0.95)
     keelboat_deck_detail(MAIN, top, half, cb, mast_x, st, bw)
+    keelboat_cockpit_detail(MAIN, ck, cb, top, half, st, bw)
     traveler = (ck[0] + (0.35 if TAG == "Catalina22" else 0.6), MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.12)
     tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
     wx = SPEC["winch_x"]
@@ -597,6 +836,7 @@ elif TAG == "Hobie16":
     socket("LazySheetVia", (fb - 0.6, 0, bz + 0.1))
     traveler = (rb, bz + 0.05, inner(rb) - 0.05)
     tube(hull, [(rb + 0.02, -traveler[2], bz + 0.05), (rb + 0.02, traveler[2], bz + 0.05)], 0.012, "Aluminium", 8)
+    hobie_detail(fb, rb, bz, inner, traveler)
 
 elif TAG == "Corsair880":
     ck, cb = SPEC["cockpit"], SPEC["cabin"]
@@ -641,6 +881,9 @@ elif TAG == "Corsair880":
         socket(f"ChainplateUpper_{tag}", (mast_x - 0.3, Hh.cy, Hh.deck_z(mast_x - 0.3, Hh.cy)))
         socket(f"ChainplateLower_{tag}", (mast_x - 0.2, side * (MAIN.sharp_half_beam(mast_x) - 0.08), MAIN.deck_z(mast_x, side * 0.5)))
     socket("LazySheetVia", (mast_x + 0.6, 0, top(mast_x + 0.6) + 0.05))
+    keelboat_deck_detail(MAIN, top, half, cb, mast_x, st, bw)
+    keelboat_cockpit_detail(MAIN, ck, cb, top, half, st, bw)
+    corsair_detail(ck, cb, top, half, st, bw)
     if SPEC.get("outboard"):
         e = CFG["engines"][0]["position"]
         tz = MAIN.deck_z(st, 0)
@@ -696,6 +939,7 @@ elif TAG == "Lagoon42":
     socket("LazySheetVia", (s1 - 0.4, 0, roof + 0.1))
     traveler = (s0 + 0.2, roof + 0.1, sw - 0.3)
     tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.02, "Aluminium", 8)
+    lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof)
 
 # Common sockets on the hull.
 socket("MastStep", (mast_x, 0, mast_step_z))

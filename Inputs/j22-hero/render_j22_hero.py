@@ -103,6 +103,33 @@ def water(on, rough=True):
         b.inputs["IOR"].default_value = 1.333
         b.inputs["Transmission Weight"].default_value = 0.0
         m.diffuse_color = (0.02, 0.04, 0.03, 1)
+        # cabin views: the sole sits below the waterline, so the plane would flood the cabin. A footprint inside the
+        # hull's waterline turns transparent when the view asks for it (DryCabin = 1)
+        nt = m.node_tree
+        out = nt.nodes["Material Output"]
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(geo.outputs["Position"], sep.inputs[0])
+        def mth(op, a, b):
+            n = nt.nodes.new("ShaderNodeMath")
+            n.operation = op
+            for i, v in enumerate((a, b)):
+                if isinstance(v, float):
+                    n.inputs[i].default_value = v
+                else:
+                    nt.links.new(v, n.inputs[i])
+            return n.outputs[0]
+        ex = mth("DIVIDE", mth("SUBTRACT", sep.outputs[0], 0.25), 2.1)
+        ey = mth("DIVIDE", sep.outputs[1], 0.80)
+        inside = mth("LESS_THAN", mth("ADD", mth("MULTIPLY", ex, ex), mth("MULTIPLY", ey, ey)), 1.0)
+        dry = nt.nodes.new("ShaderNodeValue")
+        dry.name = "DryCabin"
+        dry.outputs[0].default_value = 0.0
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(mth("MULTIPLY", inside, dry.outputs[0]), mix.inputs[0])
+        nt.links.new(b.outputs[0], mix.inputs[1])
+        nt.links.new(nt.nodes.new("ShaderNodeBsdfTransparent").outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], out.inputs["Surface"])
         w.data.materials.append(m)
     w.hide_render = False
 
@@ -161,6 +188,15 @@ VIEWS = {
                        pos=(-0.1, 1.7, 1.35), tgt=(0.6, 0.8, 0.9), lens=38),
     "cu_cleats": dict(sky="sun", water=True, sails=True, heel=0, lift=0.0,
                       pos=(-0.55, 0.25, 1.1), tgt=(-1.3, -0.9, 0.5), lens=28),
+    # below decks (interior pass): down the companionway, from the step looking forward, the keel bolts
+    "cabin_companionway": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
+                               pos=(-1.45, 0.05, 1.05), tgt=(0.9, -0.05, 0.15), lens=20),
+    "cabin_forward": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0, ev=3.0,
+                          pos=(-0.30, -0.12, 0.62), tgt=(2.2, 0.08, 0.30), lens=14),
+    "cabin_sump": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0, ev=3.0,
+                       pos=(0.20, -0.30, 0.55), tgt=(0.68, 0.02, -0.14), lens=22),
+    "cabin_aft": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0, ev=3.0,
+                      pos=(1.30, 0.10, 0.62), tgt=(-0.6, -0.05, 0.25), lens=14),
     "cu_transom": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
                        pos=(-5.2, 1.9, 1.25), tgt=(-3.3, 0.3, 0.5), lens=32),
 }
@@ -169,10 +205,13 @@ for name, v in VIEWS.items():
         continue
     set_sky(v["sky"])
     water(v["water"])
+    if bpy.data.materials.get("LakeWater"):
+        bpy.data.materials["LakeWater"].node_tree.nodes["DryCabin"].outputs[0].default_value = 1.0 if name.startswith("cabin_") else 0.0
     show_sails(v["sails"])
     pivot.rotation_euler = (math.radians(v["heel"]), 0, 0)
     pivot.location = (0, 0, v["lift"])
     look(cam, v["pos"], v["tgt"], v["lens"])
+    sc.view_settings.exposure = -0.9 + v.get("ev", 0.0)
     sc.render.filepath = os.path.join(OUT, f"j22h_{name}.png")
     bpy.ops.render.render(write_still=True)
     print("rendered", name)

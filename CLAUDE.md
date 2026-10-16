@@ -432,6 +432,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   and `AngularAccelBody`. Attach points use the `J22H_sockets.json` names; without sockets `CrewDerivedAttachPoints` builds
   them from the geometry. AI crew tick at 15 Hz. The pawn hands each node `FCrewMotionInput` in `UpdateCrewFigures` (the
   mesh ticks after the pawn). Args: `-SailingCrewStill`, `-SailingDebugCrew`, `-SailingShotCrew=<name>`.
+- Crew idles (C1b, `docs/crew-3/`): `CrewClips.h` plays CMU motion capture (`Tools/crew/clips.csv`, fetched by
+  `Tools/crew/fetch_cmu.sh` into git-ignored `Data/CMU/raw`, baked by `Tools/venv/bin/python Tools/crew/bake_idles.py` into
+  `CrewClipData.inl`: edit the CSV or the script, never the .inl) as joint motion about the stance, pre-multiplied before
+  the reaction layer; head and neck become a gaze offset. Per-joint limits live in the bake (`JOINTS`) and are held by
+  `SailingSim.Visual.CrewClipLimits`; the layer goes quiet for crossings, seat changes, bracing and ducking
+  (`SailingSim.Visual.CrewClipTack`) and starts a clip's weight-shift onset against the heel's slow trend.
+  `-SailingNoCrewClips` compares. CMU terms: in a sold product yes, resold as data no.
 - Crew falls (C5, `docs/crew-5/`): `FCrewFalls` (`CrewFalls.h`, plain logic) throws the crew past 55 deg of heel,
   capsized or over 1 g, and brings them back once the boat is steady; `CrewFallsVisuals.cpp` makes the MetaHuman bodies
   active ragdolls with the Physics Control plugin (`CrewControl`; world-space controls relative to `CrewDeck`, a
@@ -448,6 +455,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   the swell's +/-45 deg spread reaching a point in straight lines from the chart's deep (4 m+) edge, land on the 100 m grid
   from any 10 m node above water; the boat's added resistance and `SignificantHeightAt` follow the mask (mask^2 energy).
   `scripts/ocean-mask.sh [World]` maps it standalone; `-SailingNoOcean` compares; `SailingSim.Coast.GalvestonSwell`.
+- Boat detail (boats 11, `docs/boats-11/`): the live rig lines carry UV0 (U = arc length over 5 diameters, 11 for wire;
+  a seam column), tangents and a vertex colour whose red is the line's look (`RopeLook` in `BoatModelVisuals.cpp`, a
+  column of `T_RopeColourways`, `Inputs/rope/colourways.json` order). `scripts/import_boat_detail.py` builds
+  `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
+  `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
+  materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
 - Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
   `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a

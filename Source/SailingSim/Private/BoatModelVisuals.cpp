@@ -33,15 +33,28 @@ using namespace Sailing;
 
 namespace
 {
-	constexpr int32 kLineSides = 6;
+	constexpr int32 kLineSides = 8;
 	constexpr int32 kLineSegments = 10;
 
-	/** One drawn line: from A to B (boat frame, cm), its radius, and its slack (extra length as a fraction). */
+	/** Boat detail pass: which colourway a rope wears, the row of T_RopeColourways (Inputs/rope/colourways.json order).
+	 *  M_RigRope reads it from the vertex colour's red channel; wires use kLookPlain for a smooth tube (the tiller
+	 *  extension) and 0 for 1x19 strand. */
+	namespace RopeLook
+	{
+		constexpr uint8 Mainsheet = 0;      // white with red flecks (TX 7295 EC, Bean's lesson photos)
+		constexpr uint8 JibPort = 1;        // red with white flecks
+		constexpr uint8 JibStbd = 2;        // green with white flecks
+		constexpr uint8 Vang = 5;           // blue/white mix
+		constexpr uint8 Plain = 255;
+	}
+
+	/** One drawn line: from A to B (boat frame, cm), its radius, its slack (extra length as a fraction) and its look. */
 	struct FRigLine
 	{
 		FVector A, B;
 		float RadiusCm;
 		float Slack;
+		uint8 Look = 0;
 	};
 
 	/** Mid-span sag of a line of length L with a small extra length fraction e: a parabola with e = 8/3 (s/L)^2. */
@@ -50,7 +63,19 @@ namespace
 		return LengthCm * FMath::Sqrt(FMath::Max(Slack, 0.f) * 3.f / 8.f);
 	}
 
-	void AppendTube(const FRigLine& L, const FVector& Down, TArray<FVector>& Verts, TArray<FVector>& Normals, TArray<int32>* Tris)
+	/** The tube's streams. UV0: U = arc length over one lay of the cover (5 diameters for braid, 11 for 1x19 wire), V once
+	 *  round, with a seam column so V runs 0..1; the tangent runs along the line (the braid's normal map is in that frame);
+	 *  the vertex colour's red is the look (RopeLook). */
+	struct FTubeStreams
+	{
+		TArray<FVector> Verts, Normals;
+		TArray<FVector2D> UV0;
+		TArray<FLinearColor> Colors;
+		TArray<FProcMeshTangent> Tangents;
+		TArray<int32> Tris;
+	};
+
+	void AppendTube(const FRigLine& L, const FVector& Down, float LayDiameters, FTubeStreams& Out, bool bTris)
 	{
 		const FVector D = L.B - L.A;
 		const float Len = D.Size();
@@ -61,27 +86,39 @@ namespace
 		const FVector Ref = FMath::Abs(Dir.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector;
 		const FVector U = FVector::CrossProduct(Dir, Ref).GetSafeNormal();
 		const FVector W = FVector::CrossProduct(Dir, U);
-		const int32 Base = Verts.Num();
+		const int32 Base = Out.Verts.Num();
+		const float Lay = FMath::Max(LayDiameters * 2.f * L.RadiusCm, 0.01f);
+		const FLinearColor Look(float(L.Look) / 255.f, 0.f, 0.f, 1.f);
+		float Arc = 0.f;
+		FVector Prev = L.A;
 		for (int32 I = 0; I <= kLineSegments; ++I)
 		{
 			const float T = float(I) / kLineSegments;
 			const FVector C = L.A + D * T + Sag * (4.f * T * (1.f - T));
-			for (int32 K = 0; K < kLineSides; ++K)
+			Arc += FVector::Dist(C, Prev);
+			Prev = C;
+			// Along the sagged curve: the parabola's derivative.
+			const FVector Along = (D + Sag * (4.f - 8.f * T)).GetSafeNormal();
+			for (int32 K = 0; K <= kLineSides; ++K)
 			{
 				const float A = 2.f * PI * K / kLineSides;
 				const FVector N = U * FMath::Cos(A) + W * FMath::Sin(A);
-				Verts.Add(C + N * L.RadiusCm);
-				Normals.Add(N);
+				Out.Verts.Add(C + N * L.RadiusCm);
+				Out.Normals.Add(N);
+				Out.UV0.Add(FVector2D(Arc / Lay, float(K) / kLineSides));
+				if (bTris) Out.Colors.Add(Look); // the look never changes: sent once, at build (an update skips an empty stream)
+				Out.Tangents.Add(FProcMeshTangent(Along, false));
 			}
 		}
-		if (!Tris) return;
+		if (!bTris) return;
+		constexpr int32 Ring = kLineSides + 1;
 		for (int32 I = 0; I < kLineSegments; ++I)
 		{
 			for (int32 K = 0; K < kLineSides; ++K)
 			{
-				const int32 A0 = Base + I * kLineSides + K, A1 = Base + I * kLineSides + (K + 1) % kLineSides;
-				const int32 B0 = A0 + kLineSides, B1 = A1 + kLineSides;
-				Tris->Append({ A0, B0, B1, A0, B1, A1 });
+				const int32 A0 = Base + I * Ring + K, A1 = A0 + 1;
+				const int32 B0 = A0 + Ring, B1 = A1 + Ring;
+				Out.Tris.Append({ A0, B0, B1, A0, B1, A1 });
 			}
 		}
 	}
@@ -99,6 +136,10 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.Mast = LoadHero(TEXT("Mast"));
 		M.Boom = LoadHero(TEXT("Boom"));
 		M.Rudder = LoadHero(TEXT("Rudder"));
+		// Boat detail pass: the cabin below decks (optional: older imports have none).
+		M.Interior = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Interior.SM_J22H_Interior"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		// and its glass: the smoked portlights and fore hatch over the cabin, and the bilge water (translucent, M_J22HeroGlass).
+		M.Glass = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Glass.SM_J22H_Glass"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
 		M = FBoatModelMeshes();
 	}
@@ -152,6 +193,19 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 				: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove
 				: Name == TEXT("Teak") ? (L.bTeak ? &L.Teak : &L.Deck) : nullptr;   // Graphics G6: the toe rails
 			if (Col) Mid->SetVectorParameterValue(TEXT("Color"), *Col);
+		}
+	}
+	// Boat detail pass: the cabin interior, same pivot as the hull; only on the player's boat (it shows through the
+	// companionway and portlights, never from an AI boat's distance).
+	if (Model.Interior && !bTrafficBoat && !bGhost)
+	{
+		AddModelPart(Model.Interior, BoatRoot, FVector::ZeroVector);
+		// Without the glass the portlights are open holes that show the lit cabin. It casts no shadow: the panes are
+		// smoked, not opaque, and the interior's own shading already darkens the cabin.
+		if (Model.Glass)
+		{
+			UStaticMeshComponent* GlassPart = AddModelPart(Model.Glass, BoatRoot, FVector::ZeroVector);
+			GlassPart->SetCastShadow(false);
 		}
 	}
 	ModelMast = AddModelPart(Model.Mast, BoatRoot, ModelHull->GetSocketTransform(TEXT("MastStep"), RTS_Component).GetLocation());
@@ -278,19 +332,20 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		for (const TCHAR* Tag : { TEXT("S"), TEXT("P") })
 		{
 			const bool bWorking = (Tag[0] == TEXT('S')) == (S.JibSide > 0);
+			const uint8 Look = Tag[0] == TEXT('S') ? RopeLook::JibStbd : RopeLook::JibPort;
 			const FVector Lead = RigPoint(ModelHull, *FString::Printf(TEXT("JibLead_%s"), Tag));
 			const FVector Winch = RigPoint(ModelHull, *FString::Printf(TEXT("JibWinch_%s"), Tag));
 			if (bWorking)
 			{
-				Ropes.Add({ JibClewCm, Lead, 0.45f, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded) });
+				Ropes.Add({ JibClewCm, Lead, 0.45f, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded), Look });
 			}
 			else
 			{
 				const FVector Via = RigPoint(ModelHull, TEXT("LazySheetVia"));
-				Ropes.Add({ JibClewCm, Via, 0.45f, 0.03f });
-				Ropes.Add({ Via, Lead, 0.45f, 0.05f });
+				Ropes.Add({ JibClewCm, Via, 0.45f, 0.03f, Look });
+				Ropes.Add({ Via, Lead, 0.45f, 0.05f, Look });
 			}
-			Ropes.Add({ Lead, Winch, 0.45f, bWorking ? 0.f : 0.02f });
+			Ropes.Add({ Lead, Winch, 0.45f, bWorking ? 0.f : 0.02f, Look });
 		}
 	}
 
@@ -311,7 +366,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const FVector Tailer = RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P"));
 		const TOptional<FVector> Hand = JibGripCm ? JibGripCm : HandNear(NumCrew - 2, Tailer);
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
-		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f });
+		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
 	}
 	FVector End;
 	if (TillerEndCm(End))
@@ -325,7 +380,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// Round 10: a dinghy's extension runs on a hand's width past the dagger grip.
 		const EBoatType Type = Boat.GetConfig().Type;
 		if (HelmGripCm && (Type == EBoatType::ILCA7 || Type == EBoatType::Sunfish)) Grip += (Grip - End).GetSafeNormal() * 12.f;
-		Wires.Add({ End + FVector(0.f, 0.f, 4.5f), Grip, 1.1f, 0.f });
+		Wires.Add({ End + FVector(0.f, 0.f, 4.5f), Grip, 1.1f, 0.f, RopeLook::Plain });
 	}
 
 	// Mainsheet: a 4:1 tackle between the boom bail and the traveler car; taut when the main is drawing. Graphics G8: its
@@ -364,7 +419,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		for (int32 K = 0; K < 3; ++K)
 		{
 			const FVector Off(0.f, (K - 1.f) * 1.0f, 0.f);
-			Ropes.Add({ VangBoom + Off, VangMast + Off, 0.3f, 0.02f * (1.f - float(Controls.Vang)) });
+			Ropes.Add({ VangBoom + Off, VangMast + Off, 0.3f, 0.02f * (1.f - float(Controls.Vang)), RopeLook::Vang });
 		}
 	}
 
@@ -373,20 +428,24 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	for (int32 Section = 0; Section < 2; ++Section)
 	{
 		const TArray<FRigLine>& Lines = Section == 0 ? Wires : Ropes;
-		TArray<FVector> Verts, Normals;
-		TArray<int32> Tris;
+		FTubeStreams Out;
+		// Reserved up front, and no colours after the build: the per-frame update converted every vertex's linear colour
+		// to sRGB and doubled the rig lines' game-thread time (0.65 -> 1.4 ms on the PC).
+		const int32 NumVerts = Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
+		Out.Verts.Reserve(NumVerts); Out.Normals.Reserve(NumVerts); Out.UV0.Reserve(NumVerts); Out.Tangents.Reserve(NumVerts);
+		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
 		for (const FRigLine& L : Lines)
 		{
-			AppendTube(L, Down, Verts, Normals, bRigLinesBuilt ? nullptr : &Tris);
+			AppendTube(L, Down, Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
 		}
 		if (!bRigLinesBuilt)
 		{
-			RigLines->CreateMeshSection_LinearColor(Section, Verts, Tris, Normals, {}, {}, {}, false);
+			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 			RigLines->SetMaterial(Section, Section == 0 ? WireMaterial.Get() : RopeMaterial.Get());
 		}
 		else
 		{
-			RigLines->UpdateMeshSection_LinearColor(Section, Verts, Normals, {}, {}, {});
+			RigLines->UpdateMeshSection_LinearColor(Section, Out.Verts, Out.Normals, Out.UV0, Out.Colors, Out.Tangents);
 		}
 	}
 	bRigLinesBuilt = true;
@@ -631,6 +690,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		In.Time = float(S.Time);
 		In.Seed = uint32(I) * 977u + (bTrafficBoat ? GetUniqueID() : 0u);
 		In.bReact = !FParse::Param(FCommandLine::Get(), TEXT("SailingCrewStill"));
+		In.bClips = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoCrewClips"));
 		// The handholds and braces: the model's sockets (J22H_sockets.json names) where it has them, else from the geometry.
 		CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
 		for (int32 Sd = 0; Sd < 2; ++Sd)
@@ -664,8 +724,9 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			if (I == N - 1) LastDebug = S.Time;
 			const FCrewMotionReport& Rep = Anim->GetReport();
-			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d duck %.2f: modes %d %d, felt %s, tip %.2f%s, head %.1f deg; accel %s omega %s alpha %s"), I, int32(P.Stance), Pl.Duck,
+			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d duck %.2f: modes %d %d, felt %s, tip %.2f%s, head %.1f deg, clip %s %.2f; accel %s omega %s alpha %s"), I, int32(P.Stance), Pl.Duck,
 				int32(Hands.Mode[0]), int32(Hands.Mode[1]), *Rep.Felt.ToString(), Rep.TipRatio, Rep.bBracing ? TEXT(" bracing") : TEXT(""), Rep.HeadTiltDeg,
+				Rep.Clip >= 0 ? CrewClips::Info(Rep.Clip).Label : TEXT("-"), Rep.ClipWeight,
 				*Motion.Accel.ToString(), *Motion.Omega.ToString(), *Motion.Alpha.ToString());
 		}
 	}

@@ -400,6 +400,13 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	}
 }
 
+float AWaterSurface::WhitecapOnset(float MeanKnots)
+{
+	constexpr float OnsetMs = 3.7f, FullMs = 12.f * float(kKnot);
+	const float U = FMath::Clamp((MeanKnots * float(kKnot) - OnsetMs) / (FullMs - OnsetMs), 0.f, 1.f);
+	return U * U * U;
+}
+
 float AWaterSurface::FoamThresholdAt(float MeanKnots)
 {
 	// Under 10 kn the crests stop breaking (Beaufort 2-3): the threshold falls 0.03 a knot instead of rising on.
@@ -684,9 +691,11 @@ void AWaterSurface::UpdateDetail()
 	const FDetailFramePtr Prev = FramePrev, Next = FrameNext;
 	const bool bRipple = Prev->Ripple.N > 0 && Next->Ripple.N == Prev->Ripple.N;
 	// W8: Monahan's whitecap cover for the sea's mean wind times the water body's share: the renderer solves the fold
-	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there).
+	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there). Below 12 kn
+	// only the share that breaks (WhitecapOnset); never quite zero, so the threshold is extrapolated below every sample.
 	const double MeanMs = Waves->GetParams().WindSpeedKnots * kKnot;
-	const double CapTarget = 3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleFor(USailingSettings::Get()->World);
+	const double CapTarget = FMath::Max(3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleFor(USailingSettings::Get()->World)
+		* WhitecapOnset(float(Waves->GetParams().WindSpeedKnots)), 1e-7);
 	const double CapTime = Ahead;
 	TArray<FWaveComponent> Long(Waves->GetComponents(), kWaveComponents);
 	// As M_WaterV4 draws them around the camera: each long train scaled by the sea map's ratio there (W3), the chop by

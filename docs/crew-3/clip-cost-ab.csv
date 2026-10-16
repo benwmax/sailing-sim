@@ -1,0 +1,9 @@
+run,view,quality,avg_fps,game_ms,render_ms,crew_slice_ms
+clips-off-1,helm-eye,High,53.4,2.65,18.38,0.061
+clips-off-1,slip,High,51.5,2.75,19.09,0.062
+clips-on-1,helm-eye,High,53.5,2.65,18.36,0.062
+clips-on-1,slip,High,51.5,2.76,19.11,0.063
+clips-off-2,helm-eye,High,53.4,2.65,18.38,0.061
+clips-off-2,slip,High,51.5,2.76,19.09,0.062
+clips-on-2,helm-eye,High,53.5,2.65,18.35,0.062
+clips-on-2,slip,High,51.7,2.75,19.04,0.061
