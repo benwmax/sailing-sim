@@ -296,11 +296,17 @@ namespace CrewSolver
 			for (const TCHAR* Finger : FingerNames)
 			{
 				const bool bThumb = Finger[0] == TEXT('t');
-				const float Deg[3] = { bThumb ? 38.f : 72.f, bThumb ? 58.f : 95.f, bThumb ? 50.f : 62.f }; // round 12: the thumb had stood up off a held line
+				const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 58.f : 95.f, bThumb ? 50.f : 62.f };
 				for (int32 K = 1; K <= 3; ++K)
 				{
 					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
-					if (const FVector* Axis = Rig.CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
+					const FVector* Axis = Rig.CurlAxis.Find(Bone);
+					if (!Axis) continue;
+					FQuat JointTurn(*Axis, FMath::DegreesToRadians(G * Deg[K - 1]));
+					// Round 12: the thumb's base also swings across the palm toward the fingers, so a closed hand's thumb wraps
+					// over the line instead of standing up off it.
+					if (bThumb && K == 1 && !Rig.ThumbSwing[Side].IsNearlyZero()) JointTurn = FQuat(Rig.ThumbSwing[Side], FMath::DegreesToRadians(G * 40.f)) * JointTurn;
+					Carried.Add(Bone, JointTurn);
 				}
 			}
 		}
@@ -308,10 +314,10 @@ namespace CrewSolver
 
 	/** Round 12: each seated foot standing on the floor lies flat on it. The leg's IK carries the foot with the calf, so
 	 *  a leg reaching down or forward to the floor had planted the heel with the toe up in the air ("body parts not
-	 *  positioned realistically"). The ankle turns the sole parallel to the floor, within 45 degrees, only where heel and
-	 *  toe are over one level before and after the turn (a foot across a seat's edge or the bridge deck stays as planted:
-	 *  turned flat there, the toe went into the deck). The turn fades out from 2 to 5 cm over the floor, so a foot the
-	 *  idle clips move does not snap. */
+	 *  positioned realistically"). The ankle turns the sole parallel to the floor, within 45 degrees, unless the turn
+	 *  would put the heel or toe into the floor under it (across the bridge deck's edge it did). A foot resting on a
+	 *  step's edge (the traveler bridge) levels with its other end over the lower floor. The turn fades out from 2 to 5 cm
+	 *  over the higher floor, so a foot the idle clips move does not snap. */
 	bool LevelFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& G, TMap<FName, FQuat>& Joints)
 	{
@@ -328,8 +334,9 @@ namespace CrewSolver
 			if (Calf == INDEX_NONE) continue;
 			const FVector Ankle = G.ToBoat.TransformPosition(CS[Foot].GetLocation()) * M;
 			const FVector Heel = G.ToBoat.TransformPosition(Sole[0]) * M, Toe = G.ToBoat.TransformPosition(Sole[1]) * M;
-			const double Floor = CrewFloorZ(C, Heel.X, Heel.Y);
-			if (Floor < -1e8 || FMath::Abs(CrewFloorZ(C, Toe.X, Toe.Y) - Floor) > 0.01) continue;
+			const double HeelFloor = CrewFloorZ(C, Heel.X, Heel.Y), ToeFloor = CrewFloorZ(C, Toe.X, Toe.Y);
+			if (HeelFloor < -1e8 || ToeFloor < -1e8) continue;
+			const double Floor = FMath::Max(HeelFloor, ToeFloor);
 			const double Gap = FMath::Min(Heel.Z, Toe.Z) - Floor;
 			const double Weight = FMath::Clamp((0.05 - Gap) / 0.03, 0.0, 1.0);
 			if (Weight <= 0.0) continue; // not standing on it
@@ -340,7 +347,9 @@ namespace CrewSolver
 			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(45.0);
 			FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, Weight * FMath::Min(1.0, MaxRad / FMath::Max(TurnRad, 1e-6)));
 			const FVector NewHeel = Ankle + FootTurn.RotateVector(Heel - Ankle), NewToe = Ankle + FootTurn.RotateVector(Toe - Ankle);
-			if (FMath::Abs(CrewFloorZ(C, NewHeel.X, NewHeel.Y) - Floor) > 0.01 || FMath::Abs(CrewFloorZ(C, NewToe.X, NewToe.Y) - Floor) > 0.01) continue;
+			// Never into what is under it (a toe turned down over the bridge deck went into it): resting on a step's edge, the
+			// other end may overhang the lower floor.
+			if (NewHeel.Z < CrewFloorZ(C, NewHeel.X, NewHeel.Y) - 0.005 || NewToe.Z < CrewFloorZ(C, NewToe.X, NewToe.Y) - 0.005) continue;
 			const FQuat TurnCS = BoatRot.Inverse() * FootTurn * BoatRot;
 			Joints.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * TurnCS * D[Foot]);
 			bMoved = true;
@@ -550,6 +559,13 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 		const FVector Bend = (*M3 - *M2) - Line.GetSafeNormal() * FVector::DotProduct(*M3 - *M2, Line.GetSafeNormal());
 		const double Sign = Bend.Size() > 0.05 ? FVector::DotProduct(Bend, Palm) : (T3 ? FVector::DotProduct(*T3 - *Hand, Palm) : 1.0);
 		if (Sign < 0.0) Palm = -Palm;
+		// Round 12: the thumb swings about the palm's normal, the way that turns it toward the middle finger.
+		const TOptional<FVector> T1 = RestAt(FString::Printf(TEXT("thumb_01_%s"), Sx)), T2 = RestAt(FString::Printf(TEXT("thumb_02_%s"), Sx));
+		if (T1 && T2)
+		{
+			const double ThumbToward = FVector::DotProduct(Palm, FVector::CrossProduct(*T2 - *T1, *M1 - *Hand));
+			Rig.ThumbSwing[Sx[0] == TEXT('l') ? 0 : 1] = ThumbToward >= 0.0 ? Palm : -Palm;
+		}
 		for (const TCHAR* Finger : CrewSolver::FingerNames)
 		{
 			for (int32 K = 1; K <= 3; ++K)
@@ -616,6 +632,8 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W)
 	case EBoatType::J22:
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
 		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
+		// The traveler's bridge: 16 cm fore and aft at TRAV_X, its top 1.5 cm over the seats.
+		W.BridgeX = -1.75; W.BridgeHalfX = 0.08; W.BridgeZ = 0.485;
 		return true;
 	case EBoatType::Sunfish: return Fleet(-1.18, -0.52, 0.29, 0.20);
 	case EBoatType::ILCA7: return Fleet(-1.62, -0.22, 0.31, 0.22);
@@ -635,6 +653,8 @@ namespace
 		const double Half = W.SideDeck > 0.0 ? C.Hulls[0].DeckHalfBeam(X) - W.SideDeck : W.HalfWidth;
 		if (Y >= Half) return false;
 		Floor = W.SeatZ > 0.0 && Y > Half - W.SeatW ? W.SeatZ : W.SoleZ;
+		// Round 12: the helm's forward foot had sunk into the J/22's traveler bridge (this didn't know it was there).
+		if (W.BridgeHalfX > 0.0 && FMath::Abs(X - W.BridgeX) < W.BridgeHalfX && Y <= Half - W.SeatW) Floor = W.BridgeZ;
 		return true;
 	}
 }

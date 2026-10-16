@@ -96,3 +96,20 @@ and nothing from them is in the repo.
 The lowering is gone. Levelling now needs heel and toe over one level, before and after the turn, and fades out from 2 to
 5 cm over the floor. The thumb wraps further. The helm's foot on the traveler bridge is left as it is: it rests on top of
 the bridge, and J/22 helms do brace a foot there.
+
+## Follow-up: the traveler bridge and the thumb
+
+The Mac's gate on #94 found two leftovers.
+
+- **The helm's forward shoe on the traveler bridge.** The heel sat on the bridge's edge with the toe raised.
+  `CrewFloorZ` and `CrewInsideBoat` now know the J/22's bridge (`FCrewCockpitWell::BridgeX/BridgeHalfX/BridgeZ`: x -1.75
+  ± 0.08 between the seats, top 0.485 m, solid down to the sole, from `build_j22.py`). A foot sunk into it is planted on
+  top. `LevelFeet` now accepts a foot resting across a step's edge, with its other end over the lower floor, so long as
+  the turn puts neither the heel nor the toe into what is under it. That was the toe-into-deck case from the first Mac
+  run. The `-SailingJ22Hero` model has its traveler on the floor at x -1.95 instead, and nothing there knows about it yet.
+- **The thumb stood straight up off the extension.** The curl (now 25/58/50 deg again) turned the thumb's base toward the
+  palm's normal, which lifts it off the palm. The base now also swings 40 deg across the palm toward the fingers (about
+  the palm's normal, `FCrewRig::ThumbSwing`), so the closed thumb wraps over the line.
+
+Tests: `Visual.CrewFeet` checks the bridge as a floor that is solid underneath. `Visual.MetaHumanCrew` checks that a
+closed thumb's tip comes at least 1 cm nearer the index finger's middle joint.

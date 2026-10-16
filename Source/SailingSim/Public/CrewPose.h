@@ -46,6 +46,9 @@ struct SAILINGSIM_API FCrewRig
 	FVector Pelvis = FVector::ZeroVector;       // T-posed rest pelvis (cm, component space)
 	// Graphics G8: per finger bone, the component-space axis (rest pose) a positive turn about which curls it toward the palm.
 	TMap<FName, FVector> CurlAxis;
+	// Round 12: per hand ([0] left), the axis a positive turn about which swings the thumb across the palm toward the fingers
+	// (the curl alone lifted it straight up off a held line).
+	FVector ThumbSwing[2] = { FVector::ZeroVector, FVector::ZeroVector };
 
 	/** The rest transform of a bone (component space, T-posed); identity if it has none. */
 	FTransform Rest(const class USkeletalMesh* Mesh, FName Bone) const;
@@ -91,6 +94,9 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
 	double HalfWidth = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+	// Round 12: a traveler bridge across the well between the seats (the J/22's, build_j22.py TRAV_X), solid from the sole
+	// to its top; BridgeHalfX 0 for none.
+	double BridgeX = 0.0, BridgeHalfX = 0.0, BridgeZ = 0.0;
 };
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out);
 /** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */
