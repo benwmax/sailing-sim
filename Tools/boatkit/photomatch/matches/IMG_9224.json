@@ -1,0 +1,47 @@
+{
+ "photo": "IMG_9224.jpg",
+ "about": "TX 7295 EC on its lift at Rush Creek, from the dock off the starboard bow quarter (Bean, Oct 4 2026). Points picked by eye at full resolution; the photo itself stays in the project files (it shows a person at the edge).",
+ "size": [
+  5712,
+  4284
+ ],
+ "lens_35mm_equiv": 24,
+ "points": [
+  {
+   "name": "StemTop",
+   "px": [
+    4582,
+    2690
+   ]
+  },
+  {
+   "name": "ForestayTack",
+   "px": [
+    4470,
+    2575
+   ]
+  },
+  {
+   "name": "MastBase",
+   "px": [
+    2372,
+    2245
+   ],
+   "solve": false
+  },
+  {
+   "name": "ChainplateMid_S",
+   "px": [
+    1662,
+    2548
+   ]
+  },
+  {
+   "name": "TransomTopS",
+   "px": [
+    885,
+    2470
+   ]
+  }
+ ]
+}
