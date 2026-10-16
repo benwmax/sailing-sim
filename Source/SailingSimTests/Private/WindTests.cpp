@@ -38,6 +38,10 @@ bool FWindPuffStatisticsTest::RunTest(const FString& Parameters)
 			C.Name, S.Wind.AirMinusWaterC, S.Wind.MixedLayerMeters, G.GustFactor, WantGust, G.SlowRms, WantSlow, G.PuffMinutes, WantMinutes, G.MeanFactor));
 		TestTrue(FString::Printf(TEXT("%s: gust factor within 0.03 of the stations'"), C.Name), FMath::Abs(G.GustFactor - WantGust) < 0.03);
 		TestTrue(FString::Printf(TEXT("%s: puff strength within a factor 1.6 of the stations'"), C.Name), G.SlowRms > WantSlow / 1.6 && G.SlowRms < WantSlow * 1.6);
+		// W7 gap 4: the stability scales the puffs relative to the month and hour's normal air (FWindParams::
+		// ClimateAirMinusWaterC), so each case's 2-minute spread is the stations' (it was 25 % high on the January morning
+		// and 19 % low on the bay's April midday).
+		TestTrue(FString::Printf(TEXT("%s: 2-minute spread within 10 %% of the stations' (%.3f against %.3f)"), C.Name, G.SlowRms, WantSlow), FMath::Abs(G.SlowRms / WantSlow - 1.0) < 0.1);
 		TestTrue(FString::Printf(TEXT("%s: puffs every 4 to 14 minutes"), C.Name), G.PuffMinutes >= 4.0 && G.PuffMinutes <= 14.0);
 		TestEqual(FString::Printf(TEXT("%s: the mean is the mean"), C.Name), G.MeanFactor, 1.0, 0.05);
 	}
@@ -53,6 +57,20 @@ bool FWindPuffStatisticsTest::RunTest(const FString& Parameters)
 	const FWindField Warm(P);
 	AddInfo(FString::Printf(TEXT("Puff amplitude: cold over warm %.2f, warm over cool %.2f"), Cold.GetDerived().PuffAmplitude, Warm.GetDerived().PuffAmplitude));
 	TestTrue(TEXT("Unstable air is puffier"), Cold.GetDerived().PuffAmplitude > 1.3 * Warm.GetDerived().PuffAmplitude);
+	// Against the climate's own air, only the day's departure from it counts: a normal day keeps the calibrated puffs,
+	// a front's cold air over the same water makes them bigger.
+	P.ClimateAirMinusWaterC = 4.0;
+	P.ClimateMixedLayerMeters = 1200.0;
+	const FWindField Normal(P);
+	P.AirMinusWaterC = -5.0;
+	const FWindField Front(P);
+	FWindParams Plain = P;
+	Plain.ClimateAirMinusWaterC = std::numeric_limits<double>::quiet_NaN();
+	Plain.AirMinusWaterC = 0.0;
+	const FWindField Neutral(Plain);
+	// (within 2 %: the cells' share and the fine turbulence still read the day's own stability)
+	TestEqual(TEXT("The climate's own air keeps the calibrated puffs"), Normal.GetDerived().PuffAmplitude, Neutral.GetDerived().PuffAmplitude, 0.02 * Neutral.GetDerived().PuffAmplitude);
+	TestTrue(TEXT("A front's cold air over the same water is puffier"), Front.GetDerived().PuffAmplitude > 1.3 * Normal.GetDerived().PuffAmplitude);
 	// Streets in a breeze, open cells in light air.
 	P.AirMinusWaterC = 0.0;
 	P.SpeedKnots = 18.0;
