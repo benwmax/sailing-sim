@@ -296,17 +296,11 @@ namespace CrewSolver
 			for (const TCHAR* Finger : FingerNames)
 			{
 				const bool bThumb = Finger[0] == TEXT('t');
-				const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 58.f : 95.f, bThumb ? 50.f : 62.f };
+				const float Deg[3] = { bThumb ? 38.f : 72.f, bThumb ? 58.f : 95.f, bThumb ? 50.f : 62.f }; // round 12: the thumb had stood up off a held line
 				for (int32 K = 1; K <= 3; ++K)
 				{
 					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
-					const FVector* Axis = Rig.CurlAxis.Find(Bone);
-					if (!Axis) continue;
-					FQuat JointTurn(*Axis, FMath::DegreesToRadians(G * Deg[K - 1]));
-					// Round 12: the thumb's base also swings across the palm toward the fingers, so a closed hand's thumb wraps
-					// over the line instead of standing up off it.
-					if (bThumb && K == 1 && !Rig.ThumbSwing[Side].IsNearlyZero()) JointTurn = FQuat(Rig.ThumbSwing[Side], FMath::DegreesToRadians(G * 40.f)) * JointTurn;
-					Carried.Add(Bone, JointTurn);
+					if (const FVector* Axis = Rig.CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
 				}
 			}
 		}
@@ -566,13 +560,6 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 		const FVector Bend = (*M3 - *M2) - Line.GetSafeNormal() * FVector::DotProduct(*M3 - *M2, Line.GetSafeNormal());
 		const double Sign = Bend.Size() > 0.05 ? FVector::DotProduct(Bend, Palm) : (T3 ? FVector::DotProduct(*T3 - *Hand, Palm) : 1.0);
 		if (Sign < 0.0) Palm = -Palm;
-		// Round 12: the thumb swings about the palm's normal, the way that turns it toward the middle finger.
-		const TOptional<FVector> T1 = RestAt(FString::Printf(TEXT("thumb_01_%s"), Sx)), T2 = RestAt(FString::Printf(TEXT("thumb_02_%s"), Sx));
-		if (T1 && T2)
-		{
-			const double ThumbToward = FVector::DotProduct(Palm, FVector::CrossProduct(*T2 - *T1, *M1 - *Hand));
-			Rig.ThumbSwing[Sx[0] == TEXT('l') ? 0 : 1] = ThumbToward >= 0.0 ? Palm : -Palm;
-		}
 		for (const TCHAR* Finger : CrewSolver::FingerNames)
 		{
 			for (int32 K = 1; K <= 3; ++K)
@@ -586,34 +573,6 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 				if (!Axis.IsNearlyZero()) Rig.CurlAxis.Add(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Sx), Axis);
 			}
 		}
-	}
-	// Round 12: the thumb swings the way (about the palm's normal, or not at all) that brings its tip nearest the index
-	// finger in a fist, tried on this skeleton: the guess from the rest pose alone barely moved it on some hands.
-	FCrewHands Fist;
-	Fist.Grip[0] = Fist.Grip[1] = 1.f;
-	for (int32 Side = 0; Side < 2; ++Side)
-	{
-		const TCHAR* Sx = Side == 0 ? TEXT("l") : TEXT("r");
-		const int32 Tip = Ref.FindBoneIndex(*FString::Printf(TEXT("thumb_03_%s"), Sx)), Knuckle = Ref.FindBoneIndex(*FString::Printf(TEXT("index_02_%s"), Sx));
-		const FVector Swing = Rig.ThumbSwing[Side];
-		if (Tip == INDEX_NONE || Knuckle == INDEX_NONE || Swing.IsNearlyZero()) continue;
-		double Nearest = TNumericLimits<double>::Max();
-		FVector NearestSwing = FVector::ZeroVector;
-		for (const FVector& Try : { FVector::ZeroVector, Swing, -Swing })
-		{
-			Rig.ThumbSwing[Side] = Try;
-			TMap<FName, FQuat> Curled;
-			CrewSolver::CurlFingers(Rig, Fist, Curled);
-			TArray<FTransform> Posed;
-			CrewSolver::Solve(Ref, Rig.RestCS, Curled, Posed);
-			const double Gap = FVector::Dist(Posed[Tip].GetLocation(), Posed[Knuckle].GetLocation());
-			if (Gap < Nearest - 0.1)
-			{
-				Nearest = Gap;
-				NearestSwing = Try;
-			}
-		}
-		Rig.ThumbSwing[Side] = NearestSwing;
 	}
 	const int32 P = Ref.FindBoneIndex(TEXT("pelvis"));
 	Rig.Pelvis = P == INDEX_NONE ? FVector::ZeroVector : Rig.RestCS[P].GetLocation();

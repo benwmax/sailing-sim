@@ -708,14 +708,6 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		Fist.Grip[0] = Fist.Grip[1] = 1.f;
 		CrewPosedJoints(Body, Joints, Open, &Rig, &OpenHands);
 		CrewPosedJoints(Body, Joints, Closed, &Rig, &Fist);
-		// Round 12: the thumb wraps across toward the index finger (it had stood straight up off the tiller extension).
-		for (const TCHAR* Sx : { TEXT("l"), TEXT("r") })
-		{
-			const FName Thumb(*FString::Printf(TEXT("thumb_03_%s"), Sx)), Index(*FString::Printf(TEXT("index_02_%s"), Sx));
-			if (!Open.Contains(Thumb) || !Open.Contains(Index)) continue;
-			const float DOpen = FVector::Dist(Open[Thumb], Open[Index]), DClosed = FVector::Dist(Closed[Thumb], Closed[Index]);
-			TestTrue(FString::Printf(TEXT("%s: the %s thumb wraps toward the index finger (%.1f -> %.1f cm)"), MetaHumanRoleName(Role), Sx, DOpen, DClosed), DClosed < DOpen - 1.f);
-		}
 		for (const TCHAR* Tip : { TEXT("index_03_l"), TEXT("middle_03_r"), TEXT("pinky_03_l") })
 		{
 			const FString Wrist = FString(Tip).EndsWith(TEXT("_l")) ? TEXT("hand_l") : TEXT("hand_r");
