@@ -226,6 +226,35 @@ bool FSailingJ22RigTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingJ22KeelContactTest, "SailingSim.Physics.J22KeelContact", PhysicsTestFlags)
+bool FSailingJ22KeelContactTest::RunTest(const FString& Parameters)
+{
+	// Boat kit phase 3: the J/22 touches bottom under the drawn fin (the class keel template's foot, x -0.49 to +0.11 at
+	// full draft), not under the keel's Center, which is a balance knob 45 cm further forward. The other boats' feet
+	// stay under their foil centres.
+	Sailing::FBoatModel Boat;
+	const Sailing::FBoatConfig& C = Boat.GetConfig();
+	const Sailing::FFoilDef* Keel = nullptr;
+	for (const Sailing::FFoilDef& F : C.Foils) if (F.Role == Sailing::EFoilRole::Keel) Keel = &F;
+	if (!TestNotNull(TEXT("The J/22 has a keel"), Keel)) return false;
+	double MinX = 100.0, MaxX = -100.0, FootZ = 0.0;
+	for (const Sailing::Vec3& P : Boat.GetBottomPoints())
+	{
+		if (P.Z > -C.Draft + 0.01) continue; // only the keel's foot reaches full draft
+		MinX = FMath::Min(MinX, P.X); MaxX = FMath::Max(MaxX, P.X); FootZ = P.Z;
+	}
+	AddInfo(FString::Printf(TEXT("Keel foot x %.2f to %.2f m at z %.2f m; keel Center x %.2f m"), MinX, MaxX, FootZ, Keel->Params.Center.X));
+	TestTrue(TEXT("Foot trailing edge at x -0.49 m"), FMath::Abs(MinX + 0.49) < 0.01);
+	TestTrue(TEXT("Foot leading edge at x 0.11 m"), FMath::Abs(MaxX - 0.11) < 0.01);
+	TestTrue(TEXT("Foot at full draft"), FMath::Abs(FootZ + C.Draft) < 0.01);
+	TestTrue(TEXT("The balance knob is not where the boat touches bottom"), Keel->Params.Center.X > MaxX + 0.3);
+
+	Sailing::FBoatModel Cat(Sailing::FBoatConfig::Make(Sailing::EBoatType::Catalina22));
+	for (const Sailing::FFoilDef& F : Cat.GetConfig().Foils)
+		TestFalse(TEXT("Other boats keep their feet under the foil centre"), F.HasContactFootprint());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHelmTest, "SailingSim.Physics.LeewayAndWeatherHelm", PhysicsTestFlags)
 bool FSailingHelmTest::RunTest(const FString& Parameters)
 {
