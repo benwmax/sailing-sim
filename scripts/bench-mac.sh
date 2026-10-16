@@ -4,6 +4,7 @@
 # Usage: scripts/bench-mac.sh [seconds] [width] [height]   (default 20 s at 1920x1080, windowed)
 # Environment: DEMO=1 lets the autopilot sail and tack (-SailingDemo); RECORD=<s> also saves frames and
 # builds Artifacts/recording.gif (needs python3 with Pillow); RECORD_INTERVAL=<s> between frames (0.1);
+# APP=<path> benches another packaged app (Shipping archives as Packaged/Mac/SailingSim-Mac-Shipping.app);
 # ARGS="..." passes extra game arguments (weather, hour, wind, TWA, quality); SHOT=<name> names the screenshot.
 # Needs an unlocked, logged-in desktop: it opens a window. Launched through LaunchServices
 # (`open`), because a game started straight from a non-GUI shell stalls at window creation.
@@ -13,7 +14,7 @@ source "$(dirname "$0")/env.sh"
 SECONDS_TO_MEASURE="${1:-20}"
 RES_X="${2:-1920}"
 RES_Y="${3:-1080}"
-APP="$REPO_ROOT/Packaged/Mac/SailingSim.app"
+APP="${APP:-$REPO_ROOT/Packaged/Mac/SailingSim.app}"
 if [[ ! -d "$APP" ]]; then
 	echo "No packaged app at $APP; run scripts/package-mac.sh first" >&2
 	exit 1
