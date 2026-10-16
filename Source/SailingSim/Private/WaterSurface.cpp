@@ -546,7 +546,9 @@ void AWaterSurface::BuildRings()
 	// showed above it (docs/water-8/edge-mac).
 	TArray<FVector> Verts;
 	TArray<int32> Tris;
-	BuildFarGrid(FarGridInnerHalfMeters(RingCount), 0.5f * FarPlaneSizeMeters, FarGridPerSide, Verts, Tris);
+	int32 PerSide = FarGridPerSide;
+	FParse::Value(FCommandLine::Get(), TEXT("SailingFarGrid="), PerSide); // measuring
+	BuildFarGrid(FarGridInnerHalfMeters(RingCount), 0.5f * FarPlaneSizeMeters, PerSide, Verts, Tris);
 	TArray<FVector> Normals;
 	Normals.Init(FVector::UpVector, Verts.Num());
 	TArray<FProcMeshTangent> Tangents;
@@ -568,17 +570,15 @@ void AWaterSurface::BuildFarGrid(float InnerHalfM, float OuterHalfM, int32 PerSi
 	OutTris.Reset();
 	PerSide = FMath::Max(PerSide, 4);
 	const int32 Around = 4 * PerSide;
-	// Squares growing by one cell (2 r / PerSide) each step, so the cells stay about square and their size grows with the
-	// distance, as the rings' does; the last square is the far edge.
+	// Squares growing by about one cell (2 r / PerSide) each step, evenly in log distance so the last lands on the far
+	// edge: the cells stay about square and grow with the distance, as the rings' do. The curvature's interpolation error
+	// goes as the cell's size squared over 4R (2.5 cm at PerSide 44, 1.2 at 64), and the grid's cost with its vertices.
+	const int32 Steps = FMath::Max(1, FMath::CeilToInt(FMath::Loge(OuterHalfM / InnerHalfM) / FMath::Loge(1.f + 2.f / float(PerSide))));
+	const double Ratio = FMath::Pow(double(OuterHalfM) / double(InnerHalfM), 1.0 / double(Steps));
 	TArray<float> Halves;
-	for (float R = InnerHalfM; ; R *= 1.f + 2.f / float(PerSide))
+	for (int32 K = 0; K <= Steps; ++K)
 	{
-		if (R >= OuterHalfM * (1.f - 1.f / float(PerSide)))
-		{
-			Halves.Add(OuterHalfM);
-			break;
-		}
-		Halves.Add(R);
+		Halves.Add(K == Steps ? OuterHalfM : float(InnerHalfM * FMath::Pow(Ratio, double(K))));
 	}
 	OutVerts.Reserve(Halves.Num() * Around);
 	for (const float R : Halves)

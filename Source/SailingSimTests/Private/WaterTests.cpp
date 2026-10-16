@@ -691,8 +691,8 @@ bool FWaterFarGridTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Starts inside the outer ring (one ring cell of overlap)"), FMath::IsNearlyEqual(MinR, double(Inner), 1.0)
 			&& Inner < 64.f * 0.5f * float(1 << (Rings - 1)));
 		TestTrue(TEXT("Reaches 20 km"), FMath::IsNearlyEqual(MaxR, double(Outer), 1.0));
-		TestTrue(TEXT("Curvature within 2 cm of the true drop everywhere"), WorstErr < 0.02);
-		TestTrue(TEXT("Under 45,000 vertices (two to three rings)"), Verts.Num() < 45000);
+		TestTrue(TEXT("Curvature within 3 cm of the true drop everywhere"), WorstErr < 0.03);
+		TestTrue(TEXT("Under 25,000 vertices (the five rings have 83,000)"), Verts.Num() < 25000);
 	}
 	// What the old far plane did: one quad 40 km across, its centre 27 m above the true drop at 20 km.
 	TestTrue(TEXT("The single 40 km quad was metres out (for the record)"), FMath::Abs(Drop(FVector2D(20000.0, 20000.0)) / 2.0 - Drop(FVector2D(0.0, 0.0))) > 10.0);

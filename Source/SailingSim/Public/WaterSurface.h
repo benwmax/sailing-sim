@@ -110,12 +110,12 @@ public:
 
 	/** The far water past the rings (docs/water-8/edge-mac): square rings of cells that grow with the distance as the
 	 *  rings' do (PerSide cells along each side, each square one cell larger than the last), from InnerHalfM to
-	 *  OuterHalfM, in centimetres about the centre. Per-vertex curvature (d^2 / 2R) then stays within about 1.2 cm of the
+	 *  OuterHalfM, in centimetres about the centre. Per-vertex curvature (d^2 / 2R) then stays within about 2.5 cm of the
 	 *  true drop out to the edge (SailingSim.Visual.FarWaterCurvature); one 40 km quad lay 25 to 50 m down. */
 	static void BuildFarGrid(float InnerHalfM, float OuterHalfM, int32 PerSide, TArray<FVector>& OutVerts, TArray<int32>& OutTris);
 	/** Where the far grid starts for a ring count: one outer-ring cell inside the outer ring's edge. */
 	static float FarGridInnerHalfMeters(int32 InRingCount);
-	static constexpr int32 FarGridPerSide = 64;
+	static constexpr int32 FarGridPerSide = 44;
 
 private:
 	void BuildRings();
