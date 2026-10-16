@@ -3,6 +3,7 @@
 #include "HAL/PlatformFileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "SailingSim.h"
 #include "WakeGrid.h"
 #include "WaterSurface.h"
 #include "WaveDetail.h"
@@ -639,5 +640,61 @@ bool FWaterWhitecapSizeTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("12 kn caps are smaller than 20 kn ones (%.2f against %.2f m^2)"), Area[0], Area[2]), Area[0] < 0.7 * Area[2]);
 	TestTrue(TEXT("16 kn caps in between"), Area[0] < Area[1] && Area[1] < Area[2]);
 	TestTrue(FString::Printf(TEXT("and rarer (%.2f against %.2f a tile)"), Count[0], Count[2]), Count[0] < Count[1] && Count[1] < Count[2]);
+	return true;
+}
+
+/**
+ * The water edge (docs/water-8/edge-mac): past the rings the far water is a grid whose cells grow with the distance, so the
+ * earth's curvature (d^2 / 2R, added per vertex by the materials' CURVATURE_CODE and interpolated across each triangle)
+ * stays within a few centimetres of the true drop out to 20 km. The old far plane (one 40 km quad) lay 25 to 50 m down
+ * just past the rings, and the shallow bay bed showed above it. Also: the grid starts inside the outer ring and ends at
+ * the far edge, with no gaps.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterFarGridTest, "SailingSim.Visual.FarWaterCurvature", WaterFlags)
+bool FWaterFarGridTest::RunTest(const FString& Parameters)
+{
+	constexpr double R = 7.433e6; // CURVATURE_CODE: 7/6 of the earth's radius (m)
+	auto Drop = [&](const FVector2D& P) { return P.SizeSquared() / (2.0 * R); };
+	for (const int32 Rings : { 3, 5, 7 })
+	{
+		const float Inner = AWaterSurface::FarGridInnerHalfMeters(Rings);
+		const float Outer = 20000.f;
+		TArray<FVector> Verts;
+		TArray<int32> Tris;
+		AWaterSurface::BuildFarGrid(Inner, Outer, AWaterSurface::FarGridPerSide, Verts, Tris);
+		double WorstErr = 0.0, WorstAt = 0.0, WorstFar = 0.0, MinR = 1e9, MaxR = 0.0;
+		int32 Down = 0;
+		for (int32 T = 0; T + 2 < Tris.Num(); T += 3)
+		{
+			const FVector2D A(Verts[Tris[T]] / Sailing::CmPerMeter), B(Verts[Tris[T + 1]] / Sailing::CmPerMeter), C(Verts[Tris[T + 2]] / Sailing::CmPerMeter);
+			Down += FVector2D::CrossProduct(B - A, C - A) < 0.0 ? 1 : 0;
+			for (const FVector2D& V : { A, B, C })
+			{
+				MinR = FMath::Min(MinR, FMath::Max(FMath::Abs(V.X), FMath::Abs(V.Y)));
+				MaxR = FMath::Max(MaxR, FMath::Max(FMath::Abs(V.X), FMath::Abs(V.Y)));
+			}
+			// The interpolated drop against the true one at the edge midpoints and the centroid (a quadratic's largest
+			// interpolation error over a triangle lies on its longest edge's midpoint).
+			const double DA = Drop(A), DB = Drop(B), DC = Drop(C);
+			const TPair<FVector2D, double> Probes[] = { { (A + B) / 2, (DA + DB) / 2 }, { (B + C) / 2, (DB + DC) / 2 },
+				{ (A + C) / 2, (DA + DC) / 2 }, { (A + B + C) / 3, (DA + DB + DC) / 3 } };
+			for (const TPair<FVector2D, double>& Pr : Probes)
+			{
+				const double Err = FMath::Abs(Pr.Value - Drop(Pr.Key));
+				if (Err > WorstErr) { WorstErr = Err; WorstAt = Pr.Key.Size(); }
+				if (Pr.Key.Size() > 19000.0) WorstFar = FMath::Max(WorstFar, Err);
+			}
+		}
+		AddInfo(FString::Printf(TEXT("%d rings: far grid from %.0f m to %.0f m, %d vertices, %d triangles; worst curvature error %.1f cm at %.1f km, %.1f cm past 19 km"),
+			Rings, MinR, MaxR, Verts.Num(), Tris.Num() / 3, WorstErr * 100.0, WorstAt / 1000.0, WorstFar * 100.0));
+		TestTrue(TEXT("Every triangle wound as the rings' (facing up in Unreal's convention)"), Down == Tris.Num() / 3);
+		TestTrue(TEXT("Starts inside the outer ring (one ring cell of overlap)"), FMath::IsNearlyEqual(MinR, double(Inner), 1.0)
+			&& Inner < 64.f * 0.5f * float(1 << (Rings - 1)));
+		TestTrue(TEXT("Reaches 20 km"), FMath::IsNearlyEqual(MaxR, double(Outer), 1.0));
+		TestTrue(TEXT("Curvature within 3 cm of the true drop everywhere"), WorstErr < 0.03);
+		TestTrue(TEXT("Under 25,000 vertices (the five rings have 83,000)"), Verts.Num() < 25000);
+	}
+	// What the old far plane did: one quad 40 km across, its centre 27 m above the true drop at 20 km.
+	TestTrue(TEXT("The single 40 km quad was metres out (for the record)"), FMath::Abs(Drop(FVector2D(20000.0, 20000.0)) / 2.0 - Drop(FVector2D(0.0, 0.0))) > 10.0);
 	return true;
 }
