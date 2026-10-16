@@ -64,6 +64,21 @@ namespace Sailing
 		                                             // and a shallower layer keeps the tracer's samples dense
 		static constexpr double AnvilBaseM = 4800.0;
 		static constexpr double AnvilAheadM = 9000.0;
+		// W8 (storm from the sunshine): the anvil thins as the square of its distance ahead (a thin ice veil far out), and
+		// ice (crystals tens of microns across) dims the sun a third as much as the water cloud at the same density
+		// (extinction 3 IWC / 2 rho r: about 3e-3 /m for 0.1 g/m^3 at 50 um, against 1e-2 for the deck), so the sun reaches
+		// the water under the forward anvil until the shelf and the core are close.
+		static constexpr double AnvilIceExtinction = 0.3;
+		// The sky's gloom (CloudDarkness) builds as the shelf covers it overhead: none 3 km ahead, all 300 m behind the front.
+		static constexpr double OverheadFarM = 3000.0;
+		static constexpr double OverheadNearM = -300.0;
+		// Cumulus ahead of the front fade from 5 km out and are gone 1.5 km out (towers flat grey in the deck's shade).
+		static constexpr double CumulusFadeFarM = 5000.0;
+		static constexpr double CumulusFadeNearM = 1500.0;
+		// The shelf's leading edge is crisp (the arcus): density rises from nothing to full in this many metres back.
+		static constexpr double ShelfEdgeM = 60.0;
+		// Its rolled front face, this deep behind the lip, is lit and pale; the underside behind it dark.
+		static constexpr double ShelfFaceM = 450.0;
 
 		/** Storm cloud density (0..1, before noise) at a distance ahead of the front and an altitude (m). Mask is the
 		 *  storm's lateral extent along the front (the weather map's storm channel), Build its growth (0..1). */
@@ -72,6 +87,15 @@ namespace Sailing
 		static double TierX(double X);
 		/** Where the shelf cloud's leading edge is (m ahead of the front). */
 		static double LeadingEdgeAhead() { return ShelfLeadM; }
+		/** W8: the anvil's density alone (thin ice cloud, part of Density). */
+		static double AnvilDensity(double DistanceAheadM, double AltitudeM, double Build);
+		/** W8: how much of the storm's gloom is overhead at a point D metres ahead of the front (0..1). */
+		static double Overhead(double DistanceAheadM);
+		/** W8: what is left of the fair cumulus (0..1) D metres ahead of the front (gone near and under the storm). */
+		static double CumulusFade(double DistanceAheadM, double Build);
+		/** W8: the shelf's shading as the material draws it (albedo times occlusion, 0..1): X metres behind the lip, H the
+		 *  height up its face (0 base .. 1 top). The rolled front face is pale, the underside dark. */
+		static double ShelfShade(double X, double H);
 	};
 
 	/**

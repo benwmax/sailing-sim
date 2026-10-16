@@ -388,6 +388,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   is step-relative and stops binding); noise footprint floor 110 m (50 brought the frosting back). Cumulus are darkened
   by depth into the cell and its build, not altitude. The shelf face climbs in tiers (`FStormShape::TierX`, `ShelfTierM`,
   mirrored as `SHELF_TIER`). No rain density in `CLOUD_CODE`: `M_RainCurtain` draws it.
+- Storm from the sunshine (W8, `docs/water-8/storm/`): the storm's gloom (`CloudDarkness`, `CloudCover`, visibility) is the
+  boat's, from its distance ahead of the front (`FWeatherState::LocalizeStorm`, `FStormShape::Overhead`), not the clock;
+  the anvil thins as the square of its reach and its ice dims the sun a third as much (`AnvilIceExtinction`); fair cumulus
+  fade near the front (`CumulusFade`). The shelf's sloping face is lit by emission proportional to extinction (`SunLum`,
+  `SunDir` from `UpdateSun`; the engine's cloud emission is luminance per metre) with its scattering cut: scattered light
+  on a storm's skin is what the jittered march turns into grain. `-SailingNoLightning` for compared stills.
 - Wind on the water (W2, `docs/water-2/`): `AWaterSurface` keeps two wrap-around wind maps (near 256^2 over 3.2 km,
   512^2 on Ultra; far 128^2 over 16 km; texel i at i mod Res, refreshed in strips): RGB = roughness, local direction
   (sRGB), A = slow wind (linear). `W2_WIND` in make_materials.py is the shared HLSL both water materials read (ripples

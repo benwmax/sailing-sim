@@ -119,6 +119,69 @@ bool FSkyShelfCloudTest::RunTest(const FString&)
 	TestTrue(TEXT("The shelf cloud arrives with the front (within 30 s)"), ShelfAt > 0.0 && FMath::Abs(FrontAt - ShelfAt) <= 30.0);
 	TestTrue(TEXT("The shelf is low (under 600 m)"), LowestShelf < 600.0);
 	TestTrue(TEXT("The rain core follows the front"), CoreAt > FrontAt);
+
+	// W8: the leading edge is crisp (the arcus): at the lip's middle the density goes from nothing to full within 100 m.
+	const double Lead = FStormShape::ShelfLeadM;
+	auto Thickest = [](double D) { double M = 0.0; for (double Alt = 300.0; Alt <= 900.0; Alt += 5.0) M = FMath::Max(M, FStormShape::Density(D, Alt, 1.0, 1.0)); return M; };
+	const double Outside = Thickest(Lead + 5.0), Inside = Thickest(Lead - 100.0);
+	// And the rolled front face is lit and pale over a dark slate underside (as M_CloudLayers shades it).
+	const double Face = FStormShape::ShelfShade(150.0, 0.6), Under = FStormShape::ShelfShade(1500.0, 0.05);
+	AddInfo(FString::Printf(TEXT("Shelf edge: density %.2f just ahead of the lip, %.2f 100 m behind it; face shade %.2f, underside %.2f (%.1fx)"),
+		Outside, Inside, Face, Under, Face / FMath::Max(Under, 1e-6)));
+	TestTrue(TEXT("Nothing ahead of the lip"), Outside < 0.05);
+	TestTrue(TEXT("Full density within 100 m of the lip (a crisp edge)"), Inside > 0.9);
+	TestTrue(TEXT("The shelf's front face is at least three times as bright as its underside"), Face > 3.0 * Under);
+	return true;
+}
+
+/**
+ * W8 (storm from the sunshine): ahead of the front the boat is in the sun until the shelf is close. The anvil spreading
+ * ahead is a thin ice veil (FStormShape::AnvilDensity, AnvilIceExtinction), so the direct sun (FWeatherMap::
+ * SunTransmittance) reaches the water 4 km and more ahead of the front with the sun 70 deg off the storm's track, and is
+ * cut once the shelf and the core are overhead; the sky's gloom (FWeatherState::LocalizeStorm) follows the shelf, not the
+ * clock. Fair cumulus fade out near the front (FStormShape::CumulusFade).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyStormSunshineTest, "SailingSim.Visual.StormSunshine", SkyFlags)
+bool FSkyStormSunshineTest::RunTest(const FString&)
+{
+	FWeatherSystem Weather;
+	Weather.Configure(EWeatherPreset::Thunderstorm, 3, 15.0, 0.0, 0.0);
+	const double T = FWeatherSystem::kFrontArrives;   // full build; the front is over the start
+	FWeatherState S = Weather.Evaluate(T);
+	const FGustFront& F = S.Front;
+	if (!TestTrue(TEXT("The storm is on"), F.bActive)) return false;
+	// The storm's shade alone (a fair cumulus cell's shadow can fall anywhere ahead).
+	S.Sky[ECloudLayer::Cumulus].Coverage = 0.0;
+	FWeatherMap Map;
+	Map.Paint(S.Sky, F, 0.0, 0.0, T);
+	const double Move = F.MoveDegrees * kDegToRad;
+	const double Mx = FMath::Cos(Move), My = FMath::Sin(Move);
+	// The round's stills: 15:00 on Oct 15, the sun at 41 deg from 218 (72 deg off the storm's 290).
+	const double E = 41.0 * kDegToRad, A = 218.0 * kDegToRad;
+	const double Sx = FMath::Cos(E) * FMath::Cos(A), Sy = FMath::Cos(E) * FMath::Sin(A), Sz = FMath::Sin(E);
+	const double Travel = F.SpeedMs * (T - F.StartTime);
+	FString Line;
+	double SunFar = 1.0, SunUnder = 0.0, GloomFar = 0.0, GloomUnder = 1.0;
+	for (double D : { 8000.0, 6000.0, 4000.0, 3000.0, 2000.0, 1000.0, 0.0, -1000.0 })
+	{
+		const double X = D * Mx, Y = D * My;
+		const double Sun = Map.SunTransmittance(S.Sky, F, Travel, T, X, Y, Sx, Sy, Sz);
+		FWeatherState L = S;
+		L.Rain = L.RainAt(X, Y, T);
+		L.LocalizeStorm(X, Y, T);
+		Line += FString::Printf(TEXT(" %.0f km: sun %.2f gloom %.2f;"), D / 1000.0, Sun, L.CloudDarkness);
+		if (D >= 4000.0) { SunFar = FMath::Min(SunFar, Sun); }
+		if (D >= 3000.0) { GloomFar = FMath::Max(GloomFar, L.CloudDarkness); }
+		if (D <= 0.0) { SunUnder = FMath::Max(SunUnder, Sun); GloomUnder = FMath::Min(GloomUnder, L.CloudDarkness); }
+	}
+	AddInfo(TEXT("Ahead of the front:") + Line);
+	TestTrue(TEXT("The sun reaches the water 4 km and more ahead of the front (over 0.7)"), SunFar > 0.7);
+	TestTrue(TEXT("Under the shelf and the core the sun is cut (under 0.3)"), SunUnder < 0.3);
+	TestTrue(TEXT("No storm gloom 3 km and more ahead (darkness 0.2 or less)"), GloomFar <= 0.2);
+	TestTrue(TEXT("Storm gloom under the front (darkness 0.8 or more)"), GloomUnder >= 0.8);
+	// Cumulus: full 6 km ahead, gone from 1.5 km ahead to well behind the front.
+	TestTrue(TEXT("Cumulus far ahead stay"), FStormShape::CumulusFade(6000.0, 1.0) > 0.99);
+	TestTrue(TEXT("Cumulus near the front are gone"), FStormShape::CumulusFade(1000.0, 1.0) < 0.01 && FStormShape::CumulusFade(-5000.0, 1.0) < 0.01);
 	return true;
 }
 
