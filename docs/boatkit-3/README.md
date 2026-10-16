@@ -51,7 +51,7 @@ python3 Tools/boatkit/photomatch/profile_match.py Tools/boatkit/photomatch/match
 ## Not changed, and why
 
 - **The physics keel.** `FBoatConfig`'s keel `Center` stays at x +0.45: it is a balance knob the polar was tuned with,
-  and the drawn fin's centre of area is now near x 0. The grounding contact points no longer depend on it: #88 gives
+  and the drawn fin's centre of area is now near x 0. The grounding contact points no longer depend on it: #88 (merged) gives
   `FBoatModel::BuildContactPoints` the class fin's bottom chord (x -0.49 to +0.11) as the J/22's keel footprint.
 - **The mast.** The class's mast rule puts the mast's front face at x +0.825 and the forestay tack at about 3.50, 17.5 cm
   forward of phase 2's 0.65 (which came from J = 8.8 ft measured to a tack at x 3.38). The sim thread confirmed the
