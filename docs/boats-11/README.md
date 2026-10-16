@@ -1,4 +1,4 @@
-# Boats 11: J/22 detail pass (rope, cabin, wear)
+# Boats 11: boat detail pass (rope, J/22 cabin, wear, fleet fittings)
 
 Bean asked (Oct 15 2026) whether the boats could get much more detail from the reference photos: accurate textures,
 wear and tear, sheets that look like rope, cabin interiors. This is the J/22 pass, built entirely by script in the
@@ -32,6 +32,21 @@ cloud from his lesson photos of TX 7295 EC. Nothing here has been run in Unreal 
   moulded non-skid (2.5 mm pyramids), gelcoat orange peel and buffing scratches, weathered teak (eroded early wood,
   checks) and canvas (`Inputs/boat-detail/`). The bake now writes `T_J22H_<group>_X` (R non-skid, G teak, B gelcoat)
   and each group's metres per UV unit; `M_J22HeroSurface` lays the detail on within 1.5 to 6 m and fades it out.
+- **The other seven boats** (`Tools/blender/build_fleet.py`, from class photos; every added part sits inside the hulls'
+  plan, so `SailingSim.Visual.FleetMesh` is unchanged):
+  - Sunfish and ILCA (`dinghy_detail`): the board standing in its trunk with a grip, bailer and drain in the well,
+    traveler and ratchet blocks, bow handle, transom drain plug; the ILCA's control lines to three cam cleats a side and
+    the hiking-strap shock cord; the Sunfish's V splash guard, halyard and horn cleat.
+  - Catalina 22 and 30 (`keelboat_cockpit_detail`, also the Corsair): seat locker lids with hinge and hasp, cockpit
+    drains, jib-sheet horn cleats, slide-hatch rails, anchor locker and bow roller, bicolour and stern lights, stanchion
+    bases on every lifeline post; the C30's binnacle compass and stern ladder.
+  - Hobie 16 (`hobie_detail`): trampoline lacing to both beams, dolphin striker and its wire, mast ball, traveler car
+    and stops, jib cars on tracks, shroud adjusters, inspection ports, transom gudgeons and drain plugs.
+  - Corsair 880 (`corsair_detail` plus the keelboat deck set): toe rail, halyards to clutches, aka fold hinges and float
+    sockets, net lacing along hull and floats, float hatches and bow eyes.
+  - Lagoon 42 (`lagoon_detail`): long hull windows, saloon mullions, the helm station (pod, wheel, instruments, seat),
+    cockpit table, bimini solar panels, flush hatches, cleats, windlass and bow roller.
+  Rebuild with `scripts/make-boat-models.sh` (or `build_fleet.py` alone, then `import_boats.py fleet`).
 
 ## To run (Mac or PC, in order)
 
@@ -40,7 +55,8 @@ cloud from his lesson photos of TX 7295 EC. Nothing here has been run in Unreal 
 3. `scripts/import_j22_hero.py` (hero parts, now with `Interior` and `Glass`, the detail masks and `M_J22HeroGlass`).
 4. Look: `-SailingJ22Hero -SailingCockpit` at the slip, and a close sheet with `-SailingCamTarget`. Compare with
    `-SailingFlatRope`.
-5. Gate: `scripts/gate.sh --scope boats` (Medium 60, High 45). Expected costs: 8-sided rope tubes with a UV seam (about 50% more
+5. `scripts/make-boat-models.sh` for the fleet fittings (Blender), then look at each class with `-SailingBoat=<name>`.
+6. Gate: `scripts/gate.sh --scope boats` (Medium 60, High 45). Expected costs: 8-sided rope tubes with a UV seam (about 50% more
    rope vertices), one extra texture fetch per rope pixel, the interior (Nanite, mostly hidden) and the glass
    (translucent, three small panes).
 
@@ -49,8 +65,8 @@ cloud from his lesson photos of TX 7295 EC. Nothing here has been run in Unreal 
 - Untested in Unreal: the HLSL in `import_boat_detail.py` and `import_j22_hero.py` is syntax-checked only.
 - The interior layout follows typical J/22 cabins, not a measurement of TX 7295 EC; a phone video of its cabin would
   settle berth heights, the sole and locker openings.
-- The other seven boats come next in catalogue order. Their live rope already gets the braid (FRigLine is shared);
-  interiors and photo-based wear for the keelboats go through `Tools/blender/build_fleet.py` and `build_berthed.py`.
+- Fleet interiors (Catalina 30, Corsair, Lagoon) and photo-matched wear for the other boats are not done; their live
+  rope already gets the braid (FRigLine is shared). `build_berthed.py` (marina dress) is unchanged.
 
 ## Licences
 
