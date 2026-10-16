@@ -4,10 +4,11 @@ Between reactions the crew used to hold the stance exactly, apart from C1's brea
 small motions of real people under the reaction layer: weight shifts, waits, a look round, seated idles. The stance stays
 the base pose. The clip only moves the sailor about it, and heel, puff, slam, bracing and tack moves stay on top.
 
-![The helm, trimmer and bow idling on the rail (High)](idle.gif)
+![The helm, trimmer and bow idling on the rail (High, 14 s at 5 frames a second)](idle.gif)
 
-Top row: the clips. Bottom row: the same run with `-SailingNoCrewClips` (stance plus the C1 reaction layer). The heads,
-shoulders and trunks shift between frames in the top row. In the bottom row only the boat's motion moves them.
+In the stills below, the top row has the clips. The bottom row is the same run with `-SailingNoCrewClips` (the stance
+and the C1 reaction layer). In the top row the heads, shoulders and trunks shift between frames. In the bottom row
+only the boat's motion moves them.
 
 ![Stills 2.4 s apart](idle-strip.jpg)
 
