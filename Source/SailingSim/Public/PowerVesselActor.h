@@ -57,4 +57,15 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> EmissiveMaterial;
 	Sailing::ETrafficKind Kind = Sailing::ETrafficKind::Powerboat;
+
+	/** Graphics G8 Ultra showcase: her exhaust. A ship's, a towboat's or a shrimper's black diesel smoke from the stack, a
+	 *  runabout's pale haze low at the stern: soft puffs (M_Smoke) emitted with the throttle, carried by the wind at the
+	 *  stack (FWindField) and the vessel's own motion, rising, spreading and fading. Ultra only, within 3 km of the camera. */
+	void UpdateExhaust(const Sailing::FTrafficVessel& Vessel, const FVector& Observer, float Time);
+	struct FPuff { FVector P, V; float Age = 0.f, Life = 1.f, Size0 = 1.f, Size1 = 4.f, Shade = 0.1f, Alpha = 0.5f; };
+	TArray<FPuff> Puffs;
+	float LastExhaustTime = -1.f, EmitDebt = 0.f;
+	FRandomStream ExhaustRng;
+	UPROPERTY(Transient) TObjectPtr<class UInstancedStaticMeshComponent> Exhaust;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> SmokeMaterial;
 };

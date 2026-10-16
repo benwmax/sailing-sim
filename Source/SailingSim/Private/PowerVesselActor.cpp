@@ -3,6 +3,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "SailingSettings.h"
+#include "SailingGameMode.h"
+#include "BenchRunner.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "SailingAudio.h"
 #include "Components/AudioComponent.h"
 #include "Engine/StaticMesh.h"
@@ -34,12 +38,16 @@ APowerVesselActor::APowerVesselActor()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Basic(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Emissive(TEXT("/Game/Materials/M_Emissive.M_Emissive"));
+	// Found here so the cook includes it: nothing else references M_Smoke, and a path-only LoadObject finds no package in
+	// the packaged game. Each actor copies it from the class default, so it survives the front end's cast-off reload.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Smoke(TEXT("/Game/Materials/M_Smoke.M_Smoke"));
 	Cube = CubeMesh.Object;
 	Cylinder = CylinderMesh.Object;
 	Cone = ConeMesh.Object;
 	Sphere = SphereMesh.Object;
 	ShapeMaterial = Basic.Object;
 	EmissiveMaterial = Emissive.Object;
+	SmokeMaterial = Smoke.Object;
 }
 
 UStaticMeshComponent* APowerVesselActor::Part(UStaticMesh* Mesh, const FVector& LocationM, const FVector& SizeM, const FLinearColor& Color, const FRotator& Rotation)
@@ -332,4 +340,101 @@ void APowerVesselActor::UpdateFrom(const FTrafficVessel& V, bool bDark, const FV
 		if (bOn) L.Mesh->SetRelativeScale3D(FVector(FMath::Max(0.25f, Dist * 0.0025f)));
 	}
 	for (UStaticMeshComponent* Shape : DayShapes) Shape->SetVisibility(!bDark);
+	UpdateExhaust(V, Observer, Time);
+}
+
+void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Observer, float Time)
+{
+	static SailingArgs::FCachedFlag NoExhaustArg(TEXT("SailingNoExhaust"));
+	if (USailingSettings::Get()->Quality != ESailingQuality::Ultra || Kind == ETrafficKind::Committee || Kind == ETrafficKind::Sailboat || NoExhaustArg.Get()) return;
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	if (!GM) return;
+	const float Dt = LastExhaustTime < 0.f ? 0.f : FMath::Clamp(Time - LastExhaustTime, 0.f, 0.1f);
+	LastExhaustTime = Time;
+	const float DistM = float(FVector::Dist(Observer, GetActorLocation())) / 100.f;
+	if (DistM > 3000.f && Puffs.Num() == 0) return;
+	constexpr int32 kMaxPuffs = 64;
+	if (!Exhaust)
+	{
+		if (!SmokeMaterial) SmokeMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Smoke.M_Smoke"), nullptr, LOAD_Quiet | LOAD_NoWarn);
+		if (!SmokeMaterial) return;
+		Exhaust = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Exhaust"));
+		Exhaust->SetupAttachment(Root);
+		Exhaust->SetStaticMesh(Sphere);
+		Exhaust->SetMaterial(0, SmokeMaterial);
+		Exhaust->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Exhaust->SetCastShadow(false);
+		Exhaust->SetUsingAbsoluteLocation(true);
+		Exhaust->SetUsingAbsoluteRotation(true);
+		Exhaust->SetUsingAbsoluteScale(true);
+		Exhaust->NumCustomDataFloats = 2;
+		Exhaust->RegisterComponent();
+		TArray<FTransform> Hidden;
+		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kMaxPuffs);
+		Exhaust->AddInstances(Hidden, false, true);
+		ExhaustRng.Initialize(int32(V.Snapshot().Id) * 7919 + 13);
+		UE_LOG(LogTemp, Display, TEXT("Exhaust: %s %d at %.0f, %.0f m"), ANSI_TO_TCHAR(TrafficKindName(Kind)), int32(V.Snapshot().Id), GetActorLocation().X / 100.0, GetActorLocation().Y / 100.0);
+	}
+	// Where the exhaust leaves her and what it looks like, by kind (stack positions read off the Blender vessels).
+	const double L = V.Power.Type.Length;
+	FVector StackM(0.0);
+	float Shade = 0.08f, Alpha = 0.5f, Rate = 4.f, Size0 = 2.f, Size1 = 12.f, Life = 10.f, Rise = 2.f;
+	switch (Kind)
+	{
+	case ETrafficKind::Ship:      StackM = FVector(-0.38 * L, 0.0, FMath::Max(0.12 * L, 8.0)); Shade = 0.05f; Alpha = 0.55f; Rate = 5.f; Size0 = 3.f; Size1 = 22.f; Life = 16.f; Rise = 3.f; break;
+	case ETrafficKind::TugAndTow: StackM = FVector(-0.15 * L, 0.0, 7.0); Shade = 0.06f; Alpha = 0.5f; Rate = 5.f; Size0 = 1.5f; Size1 = 12.f; Life = 12.f; Rise = 2.5f; break;
+	case ETrafficKind::Trawler:   StackM = FVector(0.05 * L, 0.0, 5.5); Shade = 0.08f; Alpha = 0.45f; Rate = 4.f; Size0 = 1.f; Size1 = 9.f; Life = 10.f; Rise = 2.f; break;
+	default:                      StackM = FVector(-0.5 * L, 0.0, 0.4); Shade = 0.6f; Alpha = 0.12f; Rate = 6.f; Size0 = 0.4f; Size1 = 3.f; Life = 3.f; Rise = 0.3f; break; // a runabout's blue-grey haze
+	}
+	const FVesselSnapshot S = V.Snapshot();
+	const FVector Vel(S.VX, S.VY, 0.0);
+	const float Throttle = FMath::Clamp(float(Vel.Size() / FMath::Max(V.Power.Type.CruiseKnots * 0.514444, 1.0)), 0.f, 1.f);
+	const FVector Stack = GetActorTransform().TransformPosition(StackM * 100.0) / 100.0;
+	const Vec3 W = GM->GetWind().VelocityAt(Vec3(Stack.X, Stack.Y, FMath::Max(Stack.Z, 2.0)), GM->GetSimTime());
+	const FVector Wind(W.X, W.Y, 0.0);
+	if (DistM <= 3000.f)
+	{
+		EmitDebt += Rate * (0.3f + 0.7f * Throttle) * Dt;
+		while (EmitDebt >= 1.f && Puffs.Num() < kMaxPuffs)
+		{
+			EmitDebt -= 1.f;
+			FPuff P;
+			P.P = Stack + FVector(ExhaustRng.FRandRange(-0.3f, 0.3f), ExhaustRng.FRandRange(-0.3f, 0.3f), 0.f) * Size0;
+			P.V = Vel + FVector(0, 0, Rise * ExhaustRng.FRandRange(0.7f, 1.3f));
+			P.Life = Life * ExhaustRng.FRandRange(0.8f, 1.2f);
+			P.Size0 = Size0; P.Size1 = Size1 * ExhaustRng.FRandRange(0.8f, 1.2f); P.Shade = Shade; P.Alpha = Alpha;
+			Puffs.Add(P);
+		}
+		EmitDebt = FMath::Min(EmitDebt, 1.f);
+	}
+	// Each puff leaves the stack at her speed and settles to the wind's within a couple of seconds; its rise decays.
+	for (int32 I = Puffs.Num() - 1; I >= 0; --I)
+	{
+		FPuff& P = Puffs[I];
+		P.V.X += (Wind.X - P.V.X) * 0.6f * Dt;
+		P.V.Y += (Wind.Y - P.V.Y) * 0.6f * Dt;
+		P.V.Z *= FMath::Max(0.f, 1.f - 0.25f * Dt);
+		P.P += P.V * Dt;
+		P.Age += Dt;
+		if (P.Age >= P.Life) Puffs.RemoveAtSwap(I);
+	}
+	TArray<FTransform> Xf;
+	Xf.SetNumUninitialized(kMaxPuffs);
+	for (int32 I = 0; I < kMaxPuffs; ++I)
+	{
+		if (I < Puffs.Num())
+		{
+			const FPuff& P = Puffs[I];
+			const float A = P.Age / P.Life;
+			const float Size = FMath::Lerp(P.Size0, P.Size1, FMath::Sqrt(A)); // spreads fast, then slowly
+			Xf[I] = FTransform(FQuat::Identity, P.P * 100.0, FVector(Size));
+			Exhaust->SetCustomDataValue(I, 0, P.Shade, false);
+			Exhaust->SetCustomDataValue(I, 1, P.Alpha * FMath::SmoothStep(0.f, 0.08f, A) * FMath::Square(1.f - A), false);
+		}
+		else
+		{
+			Xf[I] = FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector);
+		}
+	}
+	Exhaust->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
 }

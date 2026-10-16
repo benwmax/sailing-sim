@@ -6,6 +6,7 @@
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "SailingSim.h"
+#include "Kismet/GameplayStatics.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -124,6 +125,14 @@ int32 ATrafficManager::AddPower(ETrafficKind Kind, double X, double Y, double He
 	{
 		Actor->Build(Kind);
 		PowerActors.Add(Id, Actor);
+		// -SailingNearShip=<m>: the player is moved this far abeam of the first ship, on her heading (measuring stills).
+		double NearM = 0.0;
+		ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		if (Kind == ETrafficKind::Ship && GM && !GM->NearShipStart && FParse::Value(FCommandLine::Get(), TEXT("SailingNearShip="), NearM) && NearM > 0.0)
+		{
+			GM->NearShipStart = FLaunchSpot{ TEXT("Near ship"), X - NearM * FMath::Sin(Heading), Y + NearM * FMath::Cos(Heading), FMath::RadiansToDegrees(Heading) };
+			if (ASailboatPawn* Player = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0))) Player->ResetBoat();
+		}
 	}
 	return Id;
 }
