@@ -24,8 +24,8 @@ from PIL import Image
 
 N = 16
 LIFT = 0.025
-SHADOW_TINT = np.array([-0.012, 0.004, 0.022])      # added at full shadow
-HIGHLIGHT_TINT = np.array([0.030, 0.010, -0.028])   # added at full highlight
+SHADOW_TINT = np.array([-0.020, 0.006, 0.036])      # added at full shadow
+HIGHLIGHT_TINT = np.array([0.048, 0.016, -0.045])   # added at full highlight
 SPLIT = 0.45                                        # luminance where shadows hand over to highlights
 CONTRAST = 0.10
 SAT_SHADOW = 0.90

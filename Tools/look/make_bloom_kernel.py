@@ -6,7 +6,8 @@
 A lens's point spread, as one image: a bright core, the glare's 1/r^2 skirt (veiling glare from the glass and the
 sensor), a faint six-pointed star from a hexagonal aperture, and a faint horizontal streak (the anamorphic flare of
 the reference frames). 16-bit grey PNG, centred; Unreal normalises the kernel's energy, so only the shape matters.
-Each term's weight is a named constant below.
+Each term's weight is a named constant below. The kernel's energy is normalised, so what counts is each term's share:
+with the skirt at 0.02 the core kept 31% and the Ultra frame washed out (docs/graphics-8/cinematic); now it keeps 84%.
 """
 import argparse
 import os
@@ -16,11 +17,11 @@ from PIL import Image
 
 CORE = 1.0          # the core, a Gaussian a few texels wide
 CORE_SIGMA = 1.5
-GLARE = 0.02        # the skirt: GLARE / (1 + (r / GLARE_R)^2)
+GLARE = 0.0015      # the skirt: GLARE / (1 + (r / GLARE_R)^2)
 GLARE_R = 6.0
-STAR = 0.004        # six spikes, falling off as 1/r
+STAR = 0.0004       # six spikes, falling off as 1/r
 STAR_WIDTH = 0.6
-STREAK = 0.006      # horizontal streak, falling off along x, a texel or two tall
+STREAK = 0.0012     # horizontal streak, falling off along x, a texel or two tall
 STREAK_LEN = 0.35   # fraction of the half-size where the streak has fallen to 1/e
 
 

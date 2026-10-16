@@ -426,9 +426,9 @@ void ASailingEnvironment::ApplyCinematicLook(FPostProcessSettings& PP, double Cl
 		PP.BloomConvolutionTexture = BloomKernel; // null: the engine's default kernel
 		PP.bOverride_BloomConvolutionTexture = BloomKernel != nullptr;
 		PP.BloomConvolutionSize = 1.f;
-		PP.BloomIntensity = 1.f;
-		PP.LensFlareIntensity = 0.5f;
-		PP.LensFlareBokehSize = 3.f;
+		PP.BloomIntensity = 0.5f;
+		PP.LensFlareIntensity = 0.12f;   // 0.25 with a 3-wide bokeh drew a halo disc round the sun (Galveston dusk)
+		PP.LensFlareBokehSize = 1.2f;
 		PP.LensFlareThreshold = 6.f;
 	}
 	else
