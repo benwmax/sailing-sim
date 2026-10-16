@@ -186,8 +186,8 @@ namespace Sailing
 		}
 		// W8: the whitecaps' Jacobian, from the displacement box-blurred (periodic, separable) over CapBlurTexels either
 		// way, by central differences.
-		const int Rb = CapBlurTexels;
-		auto Blur = [N, Rb](const std::vector<float>& V)
+		static constexpr int Rb = CapBlurTexels;
+		auto Blur = [N](const std::vector<float>& V)
 		{
 			std::vector<float> A(V.size()), B(V.size());
 			const float Norm = 1.f / float(2 * Rb + 1);
