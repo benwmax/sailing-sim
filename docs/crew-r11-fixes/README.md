@@ -39,3 +39,13 @@ The polos, vests and shoes are git-ignored with the MetaHumans, so this change c
 material. After it merges, the Mac reruns `scripts/make-crew-clothes.sh` (the export, Blender and import steps), then
 `scripts/pack-metahumans.sh` for the PC. Tests: `SailingSim.Visual` 32/32 on the PC, including MetaHumanCrew and the
 crew pose, feet, clip and falls tests.
+
+## Mac check
+
+Merged with main af8de58c and rebuilt the clothes on the Mac (`make-crew-clothes.sh`: about 5,000 vest vertices a role
+moved to the clavicles, three strap tails a vest). Full suite 149/149; `gate.sh --scope crew` passes (Medium 72.6 to
+88.7 fps, High 52.4 to 55.6). The helm on High from forward and outboard, 10 kn beat (`run-game.sh 12 -SailingQuality=High
+-SailingWind=10 -SailingTWA=45 -SailingHoldTWA=45 -SailingHour=15 -SailingNoHud -SailingCamTarget=-2.1,0.9,1.15
+-SailingCamDist=1.6 -SailingCamYaw=140 -SailingCamPitch=-10`):
+
+![Helm on the Mac, High](mac-helm-vest.jpg)
