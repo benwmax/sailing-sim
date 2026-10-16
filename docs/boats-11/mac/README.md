@@ -31,3 +31,14 @@ sails close in frame. 7 fps of headroom remains.
   `ModelMeshesFor` (`BoatModelVisuals.cpp`) loads only `Interior` and `FBoatModelMeshes` has no glass slot, so the
   portlights are open slots: the cabin and the crew's legs show through them in full light, not through smoked acrylic.
   Fix: load `SM_J22H_Glass` like the interior and add it as a part (player's boat only).
+
+## Glass (ee94b408)
+
+The editor build is clean, and `SailingSim.Visual.J22Mesh` and `FleetMesh` pass. `SM_J22H_Glass` now draws on the
+player's boat. From outside, the portlight reads as dark smoked acrylic (`j22-hero-glass-portlight.jpg`). Before this
+commit it was a clear slot. From inside the cabin, the panes tint the sky blue-grey (`j22-hero-glass-from-cabin.jpg`).
+The cabin doesn't glow through, so the 0.8 opacity in `import_j22_hero.py` stays as it is. The cockpit view
+(`-SailingCockpit`) shows no change.
+
+Packaged on High, against this branch's earlier numbers: helm-eye 54.3 fps (53.2 before), slip 51.5 fps (51.8 before).
+The difference is within noise.
