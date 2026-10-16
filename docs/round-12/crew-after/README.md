@@ -4,6 +4,8 @@ Captured from this branch merged with main 13bd81d6, uncooked (`run-game.sh`), H
 `SCENES=docs/round-12/game/scenes.csv OUT=docs/round-12/crew-after scripts/capture-scenes.sh 14`.
 Compare with the before stills in `../crew/`.
 
+Recaptured Oct 16 on 71671047 merged with main 88a5cee0: 149/149 tests, crew gate passes (stills replace the 5e1aa53b ones; the helm's forward shoe still rests on the traveler bridge and the thumb still stands straight up).
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
