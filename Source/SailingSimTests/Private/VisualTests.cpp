@@ -820,15 +820,15 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						{
 							// Round 12: on the J/22 (the round 12 close-ups), a seated foot standing on one floor level lies flat
 							// on it, not heel down and toe in the air. (Across a seat's edge or the bridge deck it stays as planted.)
-							if (!Ground.bSeated || Cfg.Type != EBoatType::J22) continue;
+							if (!Ground.bSeated) continue;
 							const FVector Heel = (Location + CompRot.RotateVector(Feet[S][0])) / CmPerMeter;
 							const FVector Toe = (Location + CompRot.RotateVector(Feet[S][1])) / CmPerMeter;
 							const double FloorZ = CrewFloorZ(Cfg, Heel.X, Heel.Y);
 							if (FloorZ < -1e8 || FMath::Abs(CrewFloorZ(Cfg, Toe.X, Toe.Y) - FloorZ) > 0.01 || FMath::Min(Heel.Z, Toe.Z) - FloorZ > 0.02) continue;
 							if (FMath::Abs(Heel.Z - Toe.Z) > 0.04)
 							{
-								AddError(FString::Printf(TEXT("J/22, %s crew %d (stance %d, %s tack, hike %.1f): %s foot stands on the floor tilted: heel %.2f m, toe %.2f m"),
-									*B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn, S == 0 ? TEXT("left") : TEXT("right"), Heel.Z, Toe.Z));
+								AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot stands on the floor tilted: heel %.2f m, toe %.2f m"),
+									ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn, S == 0 ? TEXT("left") : TEXT("right"), Heel.Z, Toe.Z));
 							}
 						}
 						for (int32 S = 0; S < 2; ++S)
