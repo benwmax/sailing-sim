@@ -336,6 +336,7 @@ namespace CrewSolver
 			const FVector Heel = G.ToBoat.TransformPosition(Sole[0]) * M, Toe = G.ToBoat.TransformPosition(Sole[1]) * M;
 			const double HeelFloor = CrewFloorZ(C, Heel.X, Heel.Y), ToeFloor = CrewFloorZ(C, Toe.X, Toe.Y);
 			if (HeelFloor < -1e8 || ToeFloor < -1e8) continue;
+			const bool bOneLevel = FMath::Abs(ToeFloor - HeelFloor) <= 0.01;
 			const double Floor = FMath::Max(HeelFloor, ToeFloor);
 			const double Gap = FMath::Min(Heel.Z, Toe.Z) - Floor;
 			const double Weight = FMath::Clamp((0.05 - Gap) / 0.03, 0.0, 1.0);
@@ -347,9 +348,15 @@ namespace CrewSolver
 			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(45.0);
 			FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, Weight * FMath::Min(1.0, MaxRad / FMath::Max(TurnRad, 1e-6)));
 			const FVector NewHeel = Ankle + FootTurn.RotateVector(Heel - Ankle), NewToe = Ankle + FootTurn.RotateVector(Toe - Ankle);
-			// Never into what is under it (a toe turned down over the bridge deck went into it): resting on a step's edge, the
-			// other end may overhang the lower floor.
-			if (NewHeel.Z < CrewFloorZ(C, NewHeel.X, NewHeel.Y) - 0.005 || NewToe.Z < CrewFloorZ(C, NewToe.X, NewToe.Y) - 0.005) continue;
+			const double NewHeelFloor = CrewFloorZ(C, NewHeel.X, NewHeel.Y), NewToeFloor = CrewFloorZ(C, NewToe.X, NewToe.Y);
+			if (bOneLevel)
+			{
+				// On one level the foot stays over it (the planting after lifts a heel or toe the turn dipped a little).
+				if (FMath::Abs(NewHeelFloor - HeelFloor) > 0.01 || FMath::Abs(NewToeFloor - HeelFloor) > 0.01) continue;
+			}
+			// Across a step's edge (the traveler bridge) the other end may overhang the lower floor, but never go into what
+			// is under it (a toe turned down over the bridge deck went into it).
+			else if (NewHeel.Z < NewHeelFloor - 0.005 || NewToe.Z < NewToeFloor - 0.005) continue;
 			const FQuat TurnCS = BoatRot.Inverse() * FootTurn * BoatRot;
 			Joints.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * TurnCS * D[Foot]);
 			bMoved = true;
@@ -579,6 +586,34 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 				if (!Axis.IsNearlyZero()) Rig.CurlAxis.Add(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Sx), Axis);
 			}
 		}
+	}
+	// Round 12: the thumb swings the way (about the palm's normal, or not at all) that brings its tip nearest the index
+	// finger in a fist, tried on this skeleton: the guess from the rest pose alone barely moved it on some hands.
+	FCrewHands Fist;
+	Fist.Grip[0] = Fist.Grip[1] = 1.f;
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		const TCHAR* Sx = Side == 0 ? TEXT("l") : TEXT("r");
+		const int32 Tip = Ref.FindBoneIndex(*FString::Printf(TEXT("thumb_03_%s"), Sx)), Knuckle = Ref.FindBoneIndex(*FString::Printf(TEXT("index_02_%s"), Sx));
+		const FVector Swing = Rig.ThumbSwing[Side];
+		if (Tip == INDEX_NONE || Knuckle == INDEX_NONE || Swing.IsNearlyZero()) continue;
+		double Nearest = TNumericLimits<double>::Max();
+		FVector NearestSwing = FVector::ZeroVector;
+		for (const FVector& Try : { FVector::ZeroVector, Swing, -Swing })
+		{
+			Rig.ThumbSwing[Side] = Try;
+			TMap<FName, FQuat> Curled;
+			CrewSolver::CurlFingers(Rig, Fist, Curled);
+			TArray<FTransform> Posed;
+			CrewSolver::Solve(Ref, Rig.RestCS, Curled, Posed);
+			const double Gap = FVector::Dist(Posed[Tip].GetLocation(), Posed[Knuckle].GetLocation());
+			if (Gap < Nearest - 0.1)
+			{
+				Nearest = Gap;
+				NearestSwing = Try;
+			}
+		}
+		Rig.ThumbSwing[Side] = NearestSwing;
 	}
 	const int32 P = Ref.FindBoneIndex(TEXT("pelvis"));
 	Rig.Pelvis = P == INDEX_NONE ? FVector::ZeroVector : Rig.RestCS[P].GetLocation();
