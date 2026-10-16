@@ -4,6 +4,7 @@ The optimized build cuts the body away under the clothes, so Tools/blender/build
 T-shirt (already fitted to that body). Run by
 scripts/make-crew-clothes.sh (the full editor: the FBX exporter needs the mesh render data)."""
 import os
+import sys
 import unreal
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Artifacts", "crew")
@@ -27,4 +28,7 @@ for role in ("Helm", "Trimmer", "Bow"):
         task.options = opts
         ok = unreal.Exporter.run_asset_export_task(task)
         unreal.log(f"Crew bodies: {role} {name} {'exported' if ok else 'FAILED'} ({type(mesh).__name__})")
-os._exit(0)
+# The Mac runs this in the full editor (-ExecCmds), which only quits this way; on Windows it leaves a zombie editor
+# holding the asset locks (docs/windows/README.md), and run-python.ps1's commandlet returns by itself.
+if sys.platform != "win32":
+    os._exit(0)

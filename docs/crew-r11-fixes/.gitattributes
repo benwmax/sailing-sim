@@ -1,0 +1,3 @@
+# Plain git blobs, not LFS: small JPEGs (under 300 KB) for the review page.
+*.jpg -filter -diff -merge binary
+*.png -filter -diff -merge binary
