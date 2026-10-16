@@ -51,6 +51,9 @@ namespace
 	constexpr double kDetailStep = 1.0 / 30.0;  // FFT short waves: evaluated at 30 Hz, blended between
 	constexpr float kDetailFadeM = 300.f;       // distance they fade over (past it their slopes become roughness)
 	constexpr int32 kMaxDroplets = 600;
+	// Graphics G8 Ultra showcase: two and a half times the bow spray on Ultra (the 4090 has the room; still CPU droplets in
+	// the same ISM, so High's look and cost don't move).
+	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1500 : kMaxDroplets; }
 	constexpr int32 kShoreRes = 512;            // shore map: 512 m around the boat at 1 m
 	constexpr float kShoreCellM = 1.f;
 
@@ -300,10 +303,25 @@ void AWaterSurface::BeginPlay()
 	BuildRings();
 }
 
+FWaveDetail::FCascadeSpec AWaterSurface::DrawnChop() const
+{
+	FWaveDetail::FCascadeSpec S = FWaveDetail::ChopCascade();
+	if (bUltraDetail) { S.N *= 2; S.Tile *= 2.0; }
+	return S;
+}
+
+FWaveDetail::FCascadeSpec AWaterSurface::DrawnRipple() const
+{
+	FWaveDetail::FCascadeSpec S = FWaveDetail::RippleCascade();
+	if (bUltraDetail) { S.N *= 2; S.Tile *= 2.0; }
+	return S;
+}
+
 void AWaterSurface::SetQualityTier(int32 InTier)
 {
 	const int32 Clamped = FMath::Clamp(InTier, 0, 2);
-	if (Clamped == Tier && (WaterMaterial || !HasActorBegunPlay())) return;
+	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(FCommandLine::Get(), TEXT("SailingUltraDetail")); // as CreateWaterMaterial sets bUltraDetail
+	if (Clamped == Tier && bUltra == bUltraDetail && (WaterMaterial || !HasActorBegunPlay())) return;
 	Tier = Clamped;
 	if (HasActorBegunPlay())
 	{
@@ -347,8 +365,9 @@ void AWaterSurface::CreateWaterMaterial()
 
 	if (bV4)
 	{
-		const FWaveDetail::FCascadeSpec Chop = FWaveDetail::ChopCascade(), Ripple = FWaveDetail::RippleCascade();
-		if (!DetailAMap)
+		bUltraDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(FCommandLine::Get(), TEXT("SailingUltraDetail"));
+		const FWaveDetail::FCascadeSpec Chop = DrawnChop(), Ripple = DrawnRipple();
+		if (!DetailAMap || DetailAMap->GetSizeX() != Chop.N || RippleBMap->GetSizeX() != Ripple.N)
 		{
 			DetailAMap = MakeFloatMapMips(Chop.N);
 			DetailBMap = MakeFloatMapMips(Chop.N);
@@ -356,7 +375,8 @@ void AWaterSurface::CreateWaterMaterial()
 			RippleBMap = MakeFloatMapMips(Ripple.N);
 		}
 		// The wake grid: 38 m around the boat on Medium (128 cells of 0.3 m), 64 m on High (256 of 0.25 m).
-		const int32 WakeN = Tier >= 2 ? 256 : 128;
+		// Graphics G8 Ultra showcase: 128 m (512 of 0.25 m), so a wake trails four boat lengths further before the grid's edge.
+		const int32 WakeN = bUltraDetail ? 512 : Tier >= 2 ? 256 : 128;
 		if (Wake.Size() != WakeN)
 		{
 			WaitForWorkers();
@@ -613,14 +633,14 @@ void AWaterSurface::UpdateDetail()
 	// Reconfigure when the sea changes (same seed: the same random field, rescaled and turned); the development in
 	// between is an amplitude scale on the evaluation.
 	const FWaveDetailParams& Q = DetailConfigured;
-	const bool bReconfigure = !Detail || FMath::Abs(P.WindMs - Q.WindMs) > 0.25 || FMath::Abs(FMath::FindDeltaAngleRadians(P.TravelDirRad, Q.TravelDirRad)) > 0.05
+	const bool bReconfigure = !Detail || Detail->Spec(0).N != DrawnChop().N || FMath::Abs(P.WindMs - Q.WindMs) > 0.25 || FMath::Abs(FMath::FindDeltaAngleRadians(P.TravelDirRad, Q.TravelDirRad)) > 0.05
 		|| FMath::Abs(P.FetchMeters / Q.FetchMeters - 1.0) > 0.1 || FMath::Abs(P.Development / Q.Development - 1.0) > 0.3;
 	if (bReconfigure)
 	{
 		if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
 		TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> New = MakeShared<FWaveDetail, ESPMode::ThreadSafe>();
-		std::vector<FWaveDetail::FCascadeSpec> Specs = { FWaveDetail::ChopCascade() };
-		if (Tier >= 2) Specs.push_back(FWaveDetail::RippleCascade());
+		std::vector<FWaveDetail::FCascadeSpec> Specs = { DrawnChop() };
+		if (Tier >= 2) Specs.push_back(DrawnRipple());
 		New->Configure(P, Specs);
 		Detail = New;
 		DetailConfigured = P;
@@ -1013,7 +1033,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		Spray->SetUsingAbsoluteRotation(true);
 		Spray->RegisterComponent();
 		TArray<FTransform> Hidden;
-		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kMaxDroplets);
+		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), MaxDroplets());
 		Spray->AddInstances(Hidden, false, true);
 	}
 	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
@@ -1024,7 +1044,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	const FVector WindAt2m(WindV.X, WindV.Y, 0.0);
 	auto Emit = [&](const FVector& P, const FVector& V, float Size)
 	{
-		if (Droplets.Num() >= kMaxDroplets) return;
+		if (Droplets.Num() >= Spray->GetInstanceCount()) return;
 		FDroplet D;
 		D.P = P;
 		D.V = V;
@@ -1052,7 +1072,8 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		const double Closing = Vz - BowV.Z; // water rising past the bow, or the bow plunging into it
 		const double Speed = FVector2D(BowV.X, BowV.Y).Size();
 		if (Bow.Z > H + 0.15 || Closing < 0.45 || Speed < 1.5) continue;
-		const int32 Count = FMath::Clamp(FMath::RoundToInt(Dt * 900.f * float(Closing - 0.45) * FMath::Min(float(Speed) / 3.f, 1.5f)), 0, 40);
+		const float Dense = float(MaxDroplets()) / float(kMaxDroplets); // Ultra: a fuller sheet, the same shape
+		const int32 Count = FMath::Clamp(FMath::RoundToInt(Dense * Dt * 900.f * float(Closing - 0.45) * FMath::Min(float(Speed) / 3.f, 1.5f)), 0, FMath::RoundToInt(40.f * Dense));
 		const FVector Fwd = FVector(BowV.X, BowV.Y, 0.0).GetSafeNormal();
 		const FVector Side(-Fwd.Y, Fwd.X, 0.0);
 		for (int32 I = 0; I < Count; ++I)
@@ -1115,9 +1136,10 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		if (D.Age > D.Life || D.P.Z < Waves->Height(D.P.X, D.P.Y, T) - 0.05) Droplets.RemoveAtSwap(I);
 	}
 	TArray<FTransform> Xf;
-	Xf.SetNumUninitialized(kMaxDroplets);
+	const int32 Pool = Spray->GetInstanceCount();
+	Xf.SetNumUninitialized(Pool);
 	const double Z0 = GetActorLocation().Z;
-	for (int32 I = 0; I < kMaxDroplets; ++I)
+	for (int32 I = 0; I < Pool; ++I)
 	{
 		if (I < Droplets.Num())
 		{

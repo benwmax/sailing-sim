@@ -141,6 +141,10 @@ namespace Sailing
 		Keel.Params.StallAngleDeg = 16.0;
 		Keel.Params.ProfileDrag = 0.008;
 		Keel.VentStartDeg = 60.0; Keel.VentEndDeg = 85.0; Keel.VentDepth = 0.9;
+		// The fin's foot, from the class keel template (boat kit phase 3): at MPC the trailing edge is 3.00 to 3.03 m
+		// forward of the hull datum and the chord 0.59 to 0.62 m, which in this frame runs from x -0.49 to +0.11. The
+		// boat touches bottom there, not under the balance knob above.
+		Keel.ContactLeadingX = 0.11; Keel.ContactTrailingX = -0.49;
 		Foils.push_back(Keel);
 
 		// Transom-hung rudder.
@@ -299,8 +303,10 @@ namespace Sailing
 			if (F.Role == EFoilRole::HullLateral) continue;
 			const double TipZ = std::max(F.Params.Center.Z - 0.5 * F.Span(), -Config.Draft);
 			const double Half = 0.4 * F.Params.Chord;
-			BottomPoints.push_back(Vec3(F.Params.Center.X + Half, F.Params.Center.Y, TipZ));
-			BottomPoints.push_back(Vec3(F.Params.Center.X - Half, F.Params.Center.Y, TipZ));
+			const double LeadX = F.HasContactFootprint() ? F.ContactLeadingX : F.Params.Center.X + Half;
+			const double TrailX = F.HasContactFootprint() ? F.ContactTrailingX : F.Params.Center.X - Half;
+			BottomPoints.push_back(Vec3(LeadX, F.Params.Center.Y, TipZ));
+			BottomPoints.push_back(Vec3(TrailX, F.Params.Center.Y, TipZ));
 		}
 		for (const FHullShape& H : Config.Hulls)
 		{

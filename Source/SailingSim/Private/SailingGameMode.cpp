@@ -227,6 +227,7 @@ void ASailingGameMode::UpdateTide()
 
 bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 {
+	if (NearShipStart) { Out = *NearShipStart; return true; }
 	// -SailingStartAt=<north m>,<east m>,<heading deg> overrides (tests, screenshots).
 	FString At;
 	if (FParse::Value(FCommandLine::Get(), TEXT("SailingStartAt="), At, false))

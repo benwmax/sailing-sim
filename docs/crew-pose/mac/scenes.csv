@@ -1,0 +1,6 @@
+scene,preset,args,description
+r11-bay-storm,Chase,-SailingWorld=Galveston -SailingLaunch=2 -SailingWeather=Thunderstorm -SailingWeatherTime=30 -SailingStormDelay=600 -SailingWind=14 -SailingHour=15 -SailingTWA=70 -SailingHoldTWA=70 -SailingCaptureAbsolute -SailingCaptureBearing=110 -SailingQuality=High,"Round 11's tell, recaptured: crew on the rail"
+beat12-stbd-helm,HelmEye,-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=13 -SailingWind=12 -SailingTWA=45 -SailingHoldTWA=45 -SailingQuality=High,"12 kn beat, starboard tack, helm's eye"
+beat12-stbd-chase,Chase,-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=13 -SailingWind=12 -SailingTWA=45 -SailingHoldTWA=45 -SailingQuality=High,"12 kn beat, starboard tack, chase"
+beat12-port-helm,HelmEye,-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=13 -SailingWind=12 -SailingTWA=-45 -SailingHoldTWA=-45 -SailingQuality=High,"12 kn beat, port tack, helm's eye"
+beat12-port-chase,Chase,-SailingWorld=Lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=13 -SailingWind=12 -SailingTWA=-45 -SailingHoldTWA=-45 -SailingQuality=High,"12 kn beat, port tack, chase"
