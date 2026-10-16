@@ -59,6 +59,11 @@ public:
 	/** W0: whitecap coverage against the open sea's (Monahan) by water body. Fresh water foams less (smaller, shorter-lived
 	 *  bubbles: about 0.4 of the sea's coverage on the lake), the brackish bay about 0.7, the Gulf the full law. */
 	static float WhitecapScaleFor(int32 World);
+	/** Light air: the share of Monahan's cover that breaks below 12 kn. Monahan's power law is fitted in a breeze and
+	 *  still gives 0.04% on the lake at 10 kn, enough for a few metre-long caps in view; Callaghan et al. (2008, GRL 35,
+	 *  L23609) put the onset of breaking at 3.7 m/s with cover growing as the cube of the wind above it. 1 from 12 kn,
+	 *  ((U - 3.7) / (U12 - 3.7))^3 under it (0.2 at 10 kn), 0 under 7.2 kn. */
+	static float WhitecapOnset(float MeanKnots);
 	/** W0: the folding threshold M_WaterV4 uses at a pixel: FoamThreshold shifted so coverage scales by the body's scale
 	 *  times Monahan's (U_local / U_mean)^3.41, caps cluster in puffs and thin in lulls. CapSlope is the threshold shift
 	 *  per e-fold of coverage, measured on the drawn waves (SailingSim.Visual.Whitecaps). Mirrored in make_materials.py. */
