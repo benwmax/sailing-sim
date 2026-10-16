@@ -59,7 +59,7 @@ def liner(st, name="InteriorLiner", nonskid=False):
     dirt = M._math(nt, "MULTIPLY", dirt, M._math(nt, "ADD", 0.4, M._noise4(nt, vec, 5.0, W + 1, 5, 0.6)))
     k = wear * (1.15 - care)
     c = M._mix(nt, M._math(nt, "MULTIPLY", dirt, 0.9 * k, True), c, M._rgb("#8A7C5E"))
-    # water tracks: vertical streaks hanging under the chainplates (x ~0.8-1.0) and the fore hatch (x ~1.2-1.6)
+    # water tracks: vertical streaks hanging under the chainplates (x ~0.8-1.0, CHAINPLATE_X) and the fore hatch (x ~1.2-1.6)
     svec, _ = M._coords(nt, scale=(40, 40, 1.5))
     streak = M._math(nt, "MULTIPLY", M._math(nt, "SUBTRACT", M._noise4(nt, svec, 1.0, W + 2, 3, 0.4), 0.55, True), 3.0, True)
     near = M._math(nt, "ADD", M._band(nt, x, 0.70, 1.05, 0.08), M._band(nt, x, 1.20, 1.62, 0.06))
@@ -321,7 +321,7 @@ def open_up(H, cabin, deck, cockpit, mats):
         apply_mods(pane)
         out.append(pane)
     # fore hatch: open the trunk top under the acrylic so daylight falls on the V-berth
-    zt_h = H.deck_z(1.42, 0) + 0.30 - 0.06 * (1.42 - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT)
+    zt_h = H.deck_z(1.42, 0) + H.CABIN_H0 - 0.06 * (1.42 - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT)
     bool_op(cabin, box("hatch_cut", 1.25, 1.59, -0.23, 0.23, zt_h - 0.2, zt_h + 0.1), tolerant=False)
     if not cabin.data.polygons:
         raise RuntimeError("J22H interior: the trunk booleans left no faces")
@@ -446,7 +446,7 @@ def build(H, cabin, deck, cockpit, hull):
         objs.append(box(f"BenchVoid_{side}", 0.05, 0.62, side * (BENCH_IN - 0.002) - 0.001, side * (BENCH_IN - 0.002) + 0.001,
                         SOLE_Z + 0.07, BENCH_Z - 0.07, mats["Bilge"]))
         # chainplate knee: a glassed-in plywood knee on the hull side under the chainplates, with the bolts through it
-        xk = H.MAST_X - 0.10
+        xk = H.CHAINPLATE_X
         yk = hull_y(H, xk, 0.45)
         knee = box(f"ChainKnee_{side}", xk - 0.012, xk + 0.012, side * (yk - 0.10), side * yk, BENCH_Z, H.sheer_z(xk) - 0.03,
                    mats["InteriorLiner"], bev=0.008)
@@ -493,7 +493,7 @@ def build(H, cabin, deck, cockpit, hull):
     # companionway step: a teak box on the sole
     objs.append(box("CompStep", xa + 0.02, xa + 0.26, -0.20, 0.20, SOLE_Z, SOLE_Z + 0.24, H.MAT["TeakWeathered"], bev=0.01))
     # mast compression post: aluminium tube from the sole to the headliner under the step (GUESS)
-    zt = H.deck_z(H.MAST_X, 0) + 0.30 - 0.06 * (H.MAST_X - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT) - 0.028
+    zt = H.deck_z(H.MAST_X, 0) + H.CABIN_H0 - 0.06 * (H.MAST_X - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT) - 0.028
     objs.append(cyl("CompressionPost", (H.MAST_X, 0, SOLE_Z), (H.MAST_X, 0, zt), 0.032, H.MAT["Aluminium"], 24))
     objs.append(box("PostFoot", H.MAST_X - 0.06, H.MAST_X + 0.06, -0.06, 0.06, SOLE_Z, SOLE_Z + 0.01, H.MAT["CastAlu"], bev=0.003))
     objs.append(box("PostHead", H.MAST_X - 0.07, H.MAST_X + 0.07, -0.07, 0.07, zt - 0.01, zt, H.MAT["CastAlu"], bev=0.003))

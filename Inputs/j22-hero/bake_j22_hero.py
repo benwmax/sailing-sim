@@ -65,6 +65,12 @@ def _curve_end(name, highest=True):
 SOCKETS = {}
 
 
+def _kit_sock(name, socket):
+    """A boat-kit part's socket (stored as sock_<Name> by build_j22_hero.kit_part) in world space."""
+    o = bpy.data.objects[name]
+    return o.matrix_world @ Vector(o[f"sock_{socket}"])
+
+
 def sock(name, v):
     SOCKETS[name] = [round(v.x * 100, 2), round(-v.y * 100, 2), round(v.z * 100, 2)]
 
@@ -74,11 +80,12 @@ step = _top("MastStep")
 mast_x = (mast_lo.x + mast_hi.x) / 2
 sock("MastStep", Vector((mast_x, 0, mast_lo.z)))
 for tag, side in (("S", -1), ("P", 1)):
-    sock(f"ChainplateUpper_{tag}", _top(f"Chainplate_{side}_strap"))
-    sock(f"ChainplateLower_{tag}", _top(f"ChainplateAft_{side}_strap"))
-    sock(f"JibWinch_{tag}", _top(f"Winch_{side}_top"))
-    sock(f"JibTailer_{tag}", _top(f"Winch_{side}_top", 0.04))
-    sock(f"JibLead_{tag}", _c(f"JibCar_{side}_sheave"))
+    # one plate a side: the upper shroud on its aft hole, the lower on its forward hole (build_j22_hero.py)
+    sock(f"ChainplateUpper_{tag}", _top(f"Chainplate_{side}_strap") - Vector((0.02, 0, 0)))
+    sock(f"ChainplateLower_{tag}", _top(f"Chainplate_{side}_strap") + Vector((0.02, 0, 0)))
+    sock(f"JibWinch_{tag}", _kit_sock(f"Winch_{side}", "Handle"))
+    sock(f"JibTailer_{tag}", _kit_sock(f"Winch_{side}", "Handle") + Vector((0, 0, 0.04)))
+    sock(f"JibLead_{tag}", _kit_sock(f"JibTrack_{side}", "Sheave"))
     sock(f"SpreaderTip_{tag}", _c(f"SprTip_{side}_end"))
 sock("ForestayTack", _c("StemPin_pin"))
 bs = [_c(n) for n in ("BS_eye_1_loop", "BS_eye_-1_loop")]

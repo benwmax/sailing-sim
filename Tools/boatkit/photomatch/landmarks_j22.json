@@ -1,7 +1,7 @@
 {
- "_about": "J/22 points that have no socket, measured on the hero hull (Inputs/j22-hero/fbx/SM_J22H_Hull.fbx) in Blender metres (X forward, Y port, Z up). ChainplateMid_S is between the hero's upper and lower chainplates, where the photos show one plate carrying both shrouds.",
+ "_about": "J/22 points that have no socket, measured on the hero hull (Inputs/j22-hero/fbx/SM_J22H_Hull.fbx) in Blender metres (X forward, Y port, Z up). ChainplateMid_S is the hero's one chainplate a side (both shrouds), abeam of the mast since boat kit phase 2; its x is a GUESS, so as a solve point it pins the camera to the model rather than measuring the plate.",
  "StemTop": [3.45, 0.0, 0.79],
  "TransomTopS": [-3.387, -0.954, 0.645],
  "TransomTopP": [-3.387, 0.954, 0.645],
- "ChainplateMid_S": [0.90, -1.03, 0.695]
+ "ChainplateMid_S": [0.50, -1.027, 0.694]
 }

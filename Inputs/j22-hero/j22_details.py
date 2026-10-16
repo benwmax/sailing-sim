@@ -192,13 +192,15 @@ def turnbuckle(name, base, wire_dir, M, tape_hex_mat="RigTape", length=0.17):
     return objs, sw0 + d * 0.05
 
 
-def chainplate(name, at, M, normal=(0, 0, 1), along=(1, 0, 0)):
+def chainplate(name, at, M, normal=(0, 0, 1), along=(1, 0, 0), span=0.032):
+    """Cover plate and strap through the deck; span is the strap's length along the deck (wider for two shroud holes)."""
     n = Vector(normal).normalized()
     M4 = frame(at, along, n)
-    objs = [lbox(f"{name}_cover", (0, 0, 0.002), (0.07, 0.03, 0.004), M["Stainless"], bev=0.0015),
-            lbox(f"{name}_strap", (0, 0, 0.03), (0.032, 0.0048, 0.055), M["Stainless"], bev=0.002)]
+    c = max(0.07, span + 0.04)
+    objs = [lbox(f"{name}_cover", (0, 0, 0.002), (c, 0.03, 0.004), M["Stainless"], bev=0.0015),
+            lbox(f"{name}_strap", (0, 0, 0.03), (span, 0.0048, 0.055), M["Stainless"], bev=0.002)]
     _place(objs, M4)
-    objs += screws(name, [M4 @ Vector((-0.028, 0, 0.004)), M4 @ Vector((0.028, 0, 0.004))], n, M)
+    objs += screws(name, [M4 @ Vector((-c / 2 + 0.007, 0, 0.004)), M4 @ Vector((c / 2 - 0.007, 0, 0.004))], n, M)
     return objs
 
 

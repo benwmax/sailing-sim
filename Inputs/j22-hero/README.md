@@ -43,7 +43,8 @@ blender -b -P bake_j22_hero.py -- out/j22_hero.blend out --res 4096
 J22H_SOCKETS_ONLY=1 blender -b -P bake_j22_hero.py -- out/j22_hero.blend out   # sockets JSON only, in seconds
 ```
 
-The `j22_*.py` modules must sit next to `build_j22_hero.py`; the rope textures are read from `../rope` (set
+The `j22_*.py` modules must sit next to `build_j22_hero.py`, and the shared boat kit is read from `../../Tools/boatkit`
+(the jib winches are its `Winch16`, placed by `kit_part`; docs/boatkit-2); the rope textures are read from `../rope` (set
 `J22H_ROPE` to move them; `python3 Tools/rope/make_rope_textures.py` rebuilds them). Set `J22H_TEX` to choose where the sail textures go
 (one folder per boat). `python3 j22_style.py --seed 9 --preset neglected` prints a style without Blender, so a fleet
 can be planned first and the same JSON reused for the other classes (only the defaults are J/22 specific). Set `J22H_SAMPLES` and `J22H_RES` to change render quality.
@@ -76,8 +77,9 @@ Ropes and sails must move like rope and cloth, so the game parts carry no frozen
 ## What is guessed
 
 Marked `GUESS` in the script: cabin trunk length, height and window outline; cockpit seat and floor heights; keel
-and rudder plan forms; spreader height and hounds; boom length; outboard size; fitting sizes (from typical small-boat
-hardware, not measured). The bottom is grey (Bean). A later walk-around with a tape and phone LiDAR would replace
+and rudder plan forms; spreader height and hounds; boom length; outboard size; the chainplate's fore-and-aft place;
+fitting sizes (from typical small-boat hardware, not measured). The mast stands at the class's J (8.8 ft from the
+forestay tack to its front face, x = 0.65 m since boat kit phase 2, with the physics' `MastX`), not a guess. The bottom is grey (Bean). A later walk-around with a tape and phone LiDAR would replace
 the guesses; there is no shoot planned for now.
 
 ## Known gaps
