@@ -157,6 +157,21 @@ void ASailingEnvironment::SunPosition(double ClockHour, double DayOfYear, double
 	OutAzimuth = std::fmod(Az * kRadToDeg + 180.0 + 360.0, 360.0);
 }
 
+namespace
+{
+	// Perf 2: a directional light's virtual shadow map cache is keyed on its direction, so a sun turned a little every tick
+	// threw the whole cache away every frame (4.6 ms of shadow depths on High at the helm's eye, the same with the cache
+	// off). The lights move in 0.05 deg steps instead: about one step every 12 s at the sun's rate, a 1 cm shift of the
+	// masthead's shadow; each step re-renders the shadow pages once.
+	constexpr double kLightStepDeg = 0.05;
+
+	bool LightTurned(const FRotator& Current, const FRotator& Want)
+	{
+		const double CosStep = FMath::Cos(FMath::DegreesToRadians(kLightStepDeg));
+		return FVector::DotProduct(Current.Vector(), Want.Vector()) < CosStep;
+	}
+}
+
 void ASailingEnvironment::FindSceneActors()
 {
 	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
@@ -463,7 +478,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		const float Lit = 0.15f + 0.85f * float(MoonIllumination(Age)) * Up;
 		// The light keeps the moon's bearing but stays at least 25 deg up: the clouds' shadow rays toward a light near
 		// the horizon cost several ms a frame (as with a low sun), and a low moon's light is dim anyway (Up above).
-		MoonLight->SetWorldRotation(FRotator(-FMath::Max(MoonEl, 25.0), MoonAz + 180.0, 0.0));
+		const FRotator MoonRot(-FMath::Max(MoonEl, 25.0), MoonAz + 180.0, 0.0);
+		if (LightTurned(MoonLight->GetComponentRotation(), MoonRot)) MoonLight->SetWorldRotation(MoonRot);
 		MoonLight->SetIntensity(bNoMoon ? 0.f : SunIntensity * 0.0015f * Night * Lit);
 		MoonLight->SetVisibility(!bNoMoon && Night > 0.f);
 	}
@@ -479,7 +495,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		// The light travels from the sun toward the ground.
 		// Below the horizon the light stays just under it (the sky keeps its twilight glow) and fades out with the night.
-		Sun->SetActorRotation(FRotator(-FMath::Max(Elevation, -4.0), Azimuth + 180.0, 0.0));
+		const FRotator SunRot(-FMath::Max(Elevation, -4.0), Azimuth + 180.0, 0.0);
+		if (LightTurned(Sun->GetActorRotation(), SunRot)) Sun->SetActorRotation(SunRot);
 		// The sky atmosphere is lit by this light too, so keep enough intensity for a grey storm sky and take the
 		// direct light off the scene with the diffuse and specular scales instead (no glitter, no hard shadows).
 		const float Intensity = FMath::Max(CloudShade, 0.35f);
