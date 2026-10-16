@@ -38,12 +38,16 @@ APowerVesselActor::APowerVesselActor()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Basic(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Emissive(TEXT("/Game/Materials/M_Emissive.M_Emissive"));
+	// Found here so the cook includes it: nothing else references M_Smoke, and a path-only LoadObject finds no package in
+	// the packaged game. Each actor copies it from the class default, so it survives the front end's cast-off reload.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Smoke(TEXT("/Game/Materials/M_Smoke.M_Smoke"));
 	Cube = CubeMesh.Object;
 	Cylinder = CylinderMesh.Object;
 	Cone = ConeMesh.Object;
 	Sphere = SphereMesh.Object;
 	ShapeMaterial = Basic.Object;
 	EmissiveMaterial = Emissive.Object;
+	SmokeMaterial = Smoke.Object;
 }
 
 UStaticMeshComponent* APowerVesselActor::Part(UStaticMesh* Mesh, const FVector& LocationM, const FVector& SizeM, const FLinearColor& Color, const FRotator& Rotation)
@@ -352,7 +356,7 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 	constexpr int32 kMaxPuffs = 64;
 	if (!Exhaust)
 	{
-		SmokeMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Smoke.M_Smoke"), nullptr, LOAD_Quiet | LOAD_NoWarn);
+		if (!SmokeMaterial) SmokeMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Smoke.M_Smoke"), nullptr, LOAD_Quiet | LOAD_NoWarn);
 		if (!SmokeMaterial) return;
 		Exhaust = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Exhaust"));
 		Exhaust->SetupAttachment(Root);
