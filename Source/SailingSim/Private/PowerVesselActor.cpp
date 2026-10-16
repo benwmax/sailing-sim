@@ -369,6 +369,7 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kMaxPuffs);
 		Exhaust->AddInstances(Hidden, false, true);
 		ExhaustRng.Initialize(int32(V.Snapshot().Id) * 7919 + 13);
+		UE_LOG(LogTemp, Display, TEXT("Exhaust: %s %d at %.0f, %.0f m"), ANSI_TO_TCHAR(TrafficKindName(Kind)), int32(V.Snapshot().Id), GetActorLocation().X / 100.0, GetActorLocation().Y / 100.0);
 	}
 	// Where the exhaust leaves her and what it looks like, by kind (stack positions read off the Blender vessels).
 	const double L = V.Power.Type.Length;
