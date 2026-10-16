@@ -81,6 +81,11 @@ namespace Sailing
 		bool bRetractable = false;     // follows the Board control
 		// Ventilation by heel, as a fraction of lift kept: 1 below Start, 1 - Depth past End (degrees).
 		double VentStartDeg = 60.0, VentEndDeg = 85.0, VentDepth = 0.9;
+		// Where the foil's foot touches bottom (body frame x of its bottom chord's leading and trailing edges), when
+		// that is not under Params.Center: the J/22's keel Center is a balance knob, 45 cm ahead of the drawn fin.
+		// Both zero means the foot sits under Params.Center, 0.8 chord wide.
+		double ContactLeadingX = 0.0, ContactTrailingX = 0.0;
+		bool HasContactFootprint() const { return ContactLeadingX != ContactTrailingX; }
 		double Span() const { return Params.Area / std::max(Params.Chord, 1e-3); }
 	};
 
@@ -323,6 +328,8 @@ namespace Sailing
 		double TotalMass() const { return Mass; }
 		const Vec3& GetCenterOfGravity() const { return CenterOfGravity; }
 		double HullDepth() const { return CanoeDepth; }
+		/** Grounding probes (body frame): foil feet and the hulls' keel lines. */
+		const std::vector<Vec3>& GetBottomPoints() const { return BottomPoints; }
 		/** The design (upright, at rest) displaced volume of the canoe bodies (m^3) and its centroid, the centre of
 		 *  buoyancy, in the body frame. The visual models are checked against these (SailingSim.Visual.J22Mesh). */
 		double DesignDisplacedVolume() const { return DesignVolume; }
