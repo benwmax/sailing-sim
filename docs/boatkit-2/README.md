@@ -114,3 +114,12 @@ itself can go through the loop.
   run.
 - A tape measure from the stem fitting's pin to the mast's front face on TX 7295 EC would settle J for this boat. It
   is optional.
+
+## Follow-up: the jib sheet's tail when no hand holds it
+
+On a beat the trimmer hikes to windward, out of reach of the leeward winch, so the tail fell back to a point behind
+and below the self-tailer. That suited the coaming winch; the cabin-top winch is only 13 cm from the trunk's aft edge, so
+the tail ran over the corner and stopped in mid-air (the Mac's stills, `mac/tail_floating_crop.jpg`). The hero now has a
+`JibTailRest_S`/`_P` socket on the cabin top, 25 cm forward and 20 cm inboard of the winch (x -17.8, y 54.3, z 98.0 cm),
+and `BoatModelVisuals.cpp` lays the tail there; the default J/22, with no such socket, keeps the old point on the seat.
+Needs `import_j22_hero.py` (the socket only; no mesh or texture changed).
