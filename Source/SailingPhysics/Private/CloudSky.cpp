@@ -124,20 +124,48 @@ namespace Sailing
 			const double Base = ShelfBaseM - 120.0 * Smooth(0.0, 800.0, X);
 			const double Top = Base + ShelfLipM + TierX(X) * ShelfSlope;
 			const double In = Smooth(Base, Base + 25.0, Alt) * (1.0 - Smooth(Top - 150.0, Top, Alt));
-			Dens = std::max(Dens, 1.0 * In * (1.0 - Smooth(ShelfDepthM - 600.0, ShelfDepthM, X)));
+			Dens = std::max(Dens, Smooth(0.0, ShelfEdgeM, X) * In * (1.0 - Smooth(ShelfDepthM - 600.0, ShelfDepthM, X)));
 		}
 		// Rain core, towering as the storm builds.
 		const double Core = Smooth(-CoreBehindM, -CoreBehindM - 1500.0, D) * (1.0 - Smooth(-CoreBehindM - 14000.0, -CoreBehindM - 20000.0, D));
 		const double CoreTop = CoreBaseM + (CoreTopM - CoreBaseM) * Build;
 		if (Core > 0.0) Dens = std::max(Dens, Core * Smooth(CoreBaseM, CoreBaseM + 200.0, Alt) * (1.0 - Smooth(CoreTop - 1500.0, CoreTop, Alt)));
-		// Anvil, spreading ahead high up and thinning: thin ice cloud (Graphics G1; mirrored in make_materials.py).
-		if (D > -CoreBehindM - 15000.0 && D < AnvilAheadM)
-		{
-			const double Ahead = Clamp(1.0 - std::max(D, 0.0) / AnvilAheadM, 0.0, 1.0);
-			const double Lower = AnvilBaseM + (1.0 - Ahead) * 2000.0;
-			Dens = std::max(Dens, 0.12 * Ahead * Build * Smooth(Lower, Lower + 400.0, Alt) * (1.0 - Smooth(CoreTopM - 800.0, CoreTopM, Alt)));
-		}
+		Dens = std::max(Dens, AnvilDensity(D, Alt, Build));
 		return Dens * Mask;
+	}
+
+	double FStormShape::AnvilDensity(double D, double Alt, double Build)
+	{
+		// Anvil, spreading ahead high up and thinning: thin ice cloud (Graphics G1; mirrored in make_materials.py). W8: as
+		// the square of what is left ahead, a veil far out rather than a lid.
+		if (D <= -CoreBehindM - 15000.0 || D >= AnvilAheadM) return 0.0;
+		const double Ahead = Clamp(1.0 - std::max(D, 0.0) / AnvilAheadM, 0.0, 1.0);
+		const double Lower = AnvilBaseM + (1.0 - Ahead) * 2000.0;
+		return 0.12 * Ahead * Ahead * Build * Smooth(Lower, Lower + 400.0, Alt) * (1.0 - Smooth(CoreTopM - 800.0, CoreTopM, Alt));
+	}
+
+	double FStormShape::Overhead(double D)
+	{
+		return 1.0 - Smooth(OverheadNearM, OverheadFarM, D);
+	}
+
+	double FStormShape::CumulusFade(double D, double Build)
+	{
+		// Gone from 1.5 km ahead back through the core (its far end 14-20 km behind the front's rain).
+		const double Gone = (1.0 - Smooth(CumulusFadeNearM, CumulusFadeFarM, D)) * Smooth(-CoreBehindM - 20000.0, -CoreBehindM - 14000.0, D);
+		return 1.0 - Clamp(Build, 0.0, 1.0) * Gone;
+	}
+
+	double FStormShape::ShelfShade(double X, double H)
+	{
+		// Mirrors CLOUD_CODE: the occlusion climbs the face (dark base, lighter tiers), the rolled front face (the first
+		// ShelfFaceM behind the lip, above its base) pale and lit, the rest slate.
+		const double Face = Smooth(0.08, 0.35, H) * Lerp(0.6, 1.0, 1.0 - Smooth(0.33 * ShelfFaceM, ShelfFaceM, X));
+		// The underside: slate (0.21) in its own occlusion; the face: emitted as a pale (0.5) wrapped-Lambert diffuser lit by
+		// the sun, brighter up the face (M_CloudLayers' Emit), here for a sun square on to it.
+		const double Under = Lerp(0.25, 0.8, H) * 0.21;
+		const double Lit = 0.5 * Lerp(0.8, 1.25, H);
+		return Clamp(Lerp(Under, std::max(Under, Lit), Face), 0.0, 1.0);
 	}
 
 	void FWeatherMap::Paint(const FCloudSky& Sky, const FGustFront& Front, double CenterX, double CenterY, double T)
@@ -274,12 +302,19 @@ namespace Sailing
 				const double H = (Alt / 1000.0 - L.BaseKm) / std::max(L.TopKm - L.BaseKm, 0.05);
 				return H > 0.0 && H < 1.0 ? Sample(Px, Py, Channel) * L.Density : 0.0;
 			};
-			Dens += Profile(Sky[ECloudLayer::Cumulus], 0) * 0.6 + Profile(Sky[ECloudLayer::Stratus], 1);
+			double Cu = Profile(Sky[ECloudLayer::Cumulus], 0) * 0.6;
+			Dens += Profile(Sky[ECloudLayer::Stratus], 1);
 			if (Front.bActive && Sky[ECloudLayer::Storm].Coverage > 0.0)
 			{
 				const double D = (Px - Front.StartX) * Dx + (Py - Front.StartY) * Dy - FrontTravelM;
-				Dens += FStormShape::Density(D, Alt, Sample(Px, Py, 3), Sky[ECloudLayer::Storm].Coverage);
+				const double Build = Sky[ECloudLayer::Storm].Coverage, Mask = Sample(Px, Py, 3);
+				// W8: the anvil's ice dims the sun less than the water cloud (FStormShape::AnvilIceExtinction).
+				const double Anvil = FStormShape::AnvilDensity(D, Alt, Build) * Mask;
+				const double Water = FStormShape::Density(D, Alt, Mask, Build);
+				Dens += Water > Anvil + 1e-9 ? Water : Anvil * FStormShape::AnvilIceExtinction;
+				Cu *= 1.0 - Mask * (1.0 - FStormShape::CumulusFade(D, Build));
 			}
+			Dens += Cu;
 			// An average cloud extinction: 0.02 /m at full density, about half of that left after the noise.
 			Depth += Dens * 0.01 * Step / SunZ;
 		}

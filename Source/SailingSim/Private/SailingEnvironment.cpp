@@ -517,6 +517,18 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			}
 		}
 	}
+	if (CloudMaterial)
+	{
+		// W8: the sun as the shelf cloud's lit face sees it (M_CloudLayers emits it there): the luminance of a white
+		// diffuser in the undimmed sun (the clouds get the undimmed sun, CloudScatteredLuminanceScale), warmer and
+		// dimmer as it nears the horizon (the atmosphere's reddening, roughly).
+		const float Low = 1.f - FMath::SmoothStep(4.f, 25.f, float(Elevation));
+		const FLinearColor Tint = FMath::Lerp(FLinearColor(1.f, 0.97f, 0.93f), FLinearColor(1.f, 0.62f, 0.38f), Low) * (1.f - 0.6f * Low);
+		const float Lum = Elevation > 0.0 ? SunIntensity / PI * (1.f - Night) : 0.f;
+		const double E = Elevation * kDegToRad, A = Azimuth * kDegToRad;
+		CloudMaterial->SetVectorParameterValue(TEXT("SunLum"), FLinearColor(Tint.R * Lum, Tint.G * Lum, Tint.B * Lum, float(FMath::Sin(E))));
+		CloudMaterial->SetVectorParameterValue(TEXT("SunDir"), FLinearColor(float(FMath::Cos(E) * FMath::Cos(A)), float(FMath::Cos(E) * FMath::Sin(A)), float(FMath::Sin(E)), 0.f));
+	}
 	if (SkyLightActor)
 	{
 		// Under a storm's deck the whole sky is darker, not brighter: illuminance under a shelf cloud falls by one to two
@@ -746,9 +758,13 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 	const double T = GM->GetWeatherTime();
 	const FVector2D Listener(CameraPos.X / CmPerMeter, CameraPos.Y / CmPerMeter);
 
+	// W8: -SailingNoLightning for stills compared before and after (a flash lights the water white at random times).
+	static SailingArgs::FCachedFlag NoLightningArg(TEXT("SailingNoLightning"));
+	const bool bNoLightning = NoLightningArg.Get();
 	while (NextStrike < int32(Strikes.size()) && Strikes[NextStrike].Time <= T)
 	{
 		const FLightningStrike& S = Strikes[NextStrike++];
+		if (bNoLightning) continue;
 		const float Distance = FVector2D::Distance(FVector2D(S.X, S.Y), Listener);
 		const float Near = FMath::Clamp(1.f - Distance / 15000.f, 0.f, 1.f);
 		Flash = FMath::Max(Flash, 0.35f + 0.65f * Near);
