@@ -172,7 +172,9 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	FCrewCockpitWell KeelWell;
 	if (!bDinghy && !Cfg.bMultihull && I != N - 1 && CrewCockpitWell(Cfg, KeelWell))
 	{
-		X = FMath::Clamp(X, KeelWell.X0 + 0.3, KeelWell.X1 - 0.12);
+		// The crew between the bow and the helm (the trimmer) sit 0.1 m further aft: with the bow brought back they were
+		// 0.36 m apart and their shoulders overlapped on the rail (docs/crew-pose/mac).
+		X = FMath::Clamp(X - (I > 0 ? 0.1 : 0.0), KeelWell.X0 + 0.3, KeelWell.X1 - 0.12);
 	}
 	const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
 	const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
