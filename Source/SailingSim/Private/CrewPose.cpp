@@ -42,7 +42,7 @@ float CrewFacingYaw(const FCrewPoseParams& P)
 {
 	switch (P.Stance)
 	{
-	case ECrewStance::RailHike: return 90.f * P.Side;          // facing outboard, legs over the side
+	case ECrewStance::RailHike: return -80.f * P.Side;         // inboard, turned a little toward the bow (round 11)
 	case ECrewStance::Helm: return -25.f * P.Side;             // forward, turned a little inboard
 	case ECrewStance::Crossing: return -90.f * P.Side;         // across, toward the new side
 	case ECrewStance::Trapeze: return -10.f * P.Side;          // forward on the rail
@@ -60,14 +60,17 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 	{
 	case ECrewStance::RailHike:
 	{
-		// On the rail facing out: thighs over the deck edge, lower legs hanging down the topsides, leaning out over
-		// the lifeline the harder they hike; hands on the wire and the thighs.
-		Legs(Out, 72.f, 78.f);
-		const float L = 8.f + 32.f * H;
+		// On the windward side deck facing inboard: thighs across the deck, lower legs down into the cockpit well with the
+		// feet on the seat or the sole, leaning back out over the water from the hips the harder they hike; hands on the
+		// knees (the trimmer's on the sheet). Round 11: they had sat facing outboard with their legs hanging down the
+		// topsides, and Bean, who sails J/22s: "people do not hang their legs over a sailboat like that".
+		Legs(Out, 84.f - 8.f * H, 82.f - 22.f * H, 8.f);
+		const float L = -(6.f + 26.f * H);
 		Out.Add(TEXT("spine"), Lean(0.5f * L));
 		Out.Add(TEXT("chest"), Lean(0.5f * L));
-		Out.Add(TEXT("neck"), Lean(-0.6f * L));
-		Arms(Out, 70.f, 40.f, 45.f, 70.f, 40.f, 45.f);
+		// The head stays up and turned toward the bow (the jib and the water ahead).
+		Out.Add(TEXT("neck"), Q(FVector::UpVector, 20.f * P.Side) * Lean(-0.7f * L));
+		Arms(Out, 76.f, 30.f, 55.f, 76.f, 30.f, 55.f);
 		break;
 	}
 	case ECrewStance::Helm:
