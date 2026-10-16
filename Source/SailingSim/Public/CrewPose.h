@@ -81,7 +81,7 @@ struct SAILINGSIM_API FCrewGround
 	const Sailing::FBoatConfig* Config = nullptr;
 	double HullDepth = 0.25;    // m, FBoatModel::HullDepth
 	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
-	bool bSeated = false;       // round 12: sitting, so a foot hanging a little over the floor goes down onto it
+	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */

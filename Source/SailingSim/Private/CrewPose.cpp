@@ -255,8 +255,7 @@ namespace CrewSolver
 			const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
 			FVector B[2] = { G.ToBoat.TransformPosition(Sole[0]) * M, G.ToBoat.TransformPosition(Sole[1]) * M };
 			auto Inside = [&](const FVector& P) { return CrewInsideBoat(C, G.HullDepth, P + FVector(0.0, 0.0, 0.015)); };
-			const bool bInside = Inside(B[0]) || Inside(B[1]);
-			if (!bInside && !G.bSeated) continue;
+			if (!Inside(B[0]) && !Inside(B[1])) continue;
 			FVector Shift = FVector::ZeroVector;
 			const FVector Mid = 0.5 * (B[0] + B[1]);
 			const double Off = -1e8;
@@ -273,17 +272,13 @@ namespace CrewSolver
 			const bool bWell = Near == 0 && CrewCockpitWell(C, W) && Mid.X > W.X0 && Mid.X < W.X1;
 			const double Limit = (bWell ? (W.SideDeck > 0.0 ? H.DeckHalfBeam(Mid.X) - W.SideDeck : W.HalfWidth) : H.DeckHalfBeam(Mid.X)) - 0.08;
 			const double Y = FMath::Max(FMath::Abs(B[0].Y - H.CenterY), FMath::Abs(B[1].Y - H.CenterY));
-			if (bInside && Y > Limit && (bOffPlan || bWell))
+			if (Y > Limit && (bOffPlan || bWell))
 			{
 				Shift.Y = (Mid.Y >= H.CenterY ? -1.0 : 1.0) * (Y - Limit);
 			}
 			for (FVector& P : B) P += Shift;
 			const double Floor = FMath::Max(CrewFloorZ(C, B[0].X, B[0].Y), CrewFloorZ(C, B[1].X, B[1].Y));
 			if (Floor < Off) continue;
-			// Round 12: seated, a foot hanging up to 15 cm over the floor under it goes down onto it (higher, it is meant
-			// to hang: a leg over the edge of a dinghy's deck, a knee drawn up).
-			const double Gap = FMath::Min(B[0].Z, B[1].Z) - Floor;
-			if (!bInside && (Gap < 0.01 || Gap > 0.15)) continue;
 			Shift.Z = Floor + 0.005 - FMath::Min(B[0].Z, B[1].Z);
 			const FVector Target = G.ToBoat.InverseTransformPosition(G.ToBoat.TransformPosition(CS[Foot].GetLocation()) + Shift / M);
 			ReachArm(Ref, CS, D, Foot, Target, Joints);
@@ -301,7 +296,7 @@ namespace CrewSolver
 			for (const TCHAR* Finger : FingerNames)
 			{
 				const bool bThumb = Finger[0] == TEXT('t');
-				const float Deg[3] = { bThumb ? 25.f : 72.f, bThumb ? 45.f : 95.f, bThumb ? 40.f : 62.f };
+				const float Deg[3] = { bThumb ? 38.f : 72.f, bThumb ? 58.f : 95.f, bThumb ? 50.f : 62.f }; // round 12: the thumb had stood up off a held line
 				for (int32 K = 1; K <= 3; ++K)
 				{
 					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
@@ -311,15 +306,19 @@ namespace CrewSolver
 		}
 	}
 
-	/** Round 12: each foot standing on the floor lies flat on it. The leg's IK carries the foot with the calf, so a leg
-	 *  reaching down or forward to the floor had planted the heel with the toe up in the air ("body parts not positioned
-	 *  realistically"). The ankle turns the sole parallel to the floor, within 35 degrees. */
+	/** Round 12: each seated foot standing on the floor lies flat on it. The leg's IK carries the foot with the calf, so
+	 *  a leg reaching down or forward to the floor had planted the heel with the toe up in the air ("body parts not
+	 *  positioned realistically"). The ankle turns the sole parallel to the floor, within 45 degrees, only where heel and
+	 *  toe are over one level before and after the turn (a foot across a seat's edge or the bridge deck stays as planted:
+	 *  turned flat there, the toe went into the deck). The turn fades out from 2 to 5 cm over the floor, so a foot the
+	 *  idle clips move does not snap. */
 	bool LevelFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& G, TMap<FName, FQuat>& Joints)
 	{
 		constexpr double M = 0.01; // cm to m
 		bool bMoved = false;
 		const FQuat BoatRot = G.ToBoat.GetRotation();
+		const Sailing::FBoatConfig& C = *G.Config;
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
 			FVector Sole[2];
@@ -327,15 +326,21 @@ namespace CrewSolver
 			const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
 			const int32 Calf = Ref.GetParentIndex(Foot);
 			if (Calf == INDEX_NONE) continue;
+			const FVector Ankle = G.ToBoat.TransformPosition(CS[Foot].GetLocation()) * M;
 			const FVector Heel = G.ToBoat.TransformPosition(Sole[0]) * M, Toe = G.ToBoat.TransformPosition(Sole[1]) * M;
-			const double Floor = FMath::Max(CrewFloorZ(*G.Config, Heel.X, Heel.Y), CrewFloorZ(*G.Config, Toe.X, Toe.Y));
-			if (Floor < -1e8 || FMath::Min(Heel.Z, Toe.Z) - Floor > 0.03) continue; // not standing on it
+			const double Floor = CrewFloorZ(C, Heel.X, Heel.Y);
+			if (Floor < -1e8 || FMath::Abs(CrewFloorZ(C, Toe.X, Toe.Y) - Floor) > 0.01) continue;
+			const double Gap = FMath::Min(Heel.Z, Toe.Z) - Floor;
+			const double Weight = FMath::Clamp((0.05 - Gap) / 0.03, 0.0, 1.0);
+			if (Weight <= 0.0) continue; // not standing on it
 			const FVector SoleDir = Toe - Heel;
 			const FVector SoleFlat(SoleDir.X, SoleDir.Y, 0.0);
 			if (SoleFlat.SizeSquared() < 1e-4 || FMath::Abs(SoleDir.Z) < 0.01) continue;
 			FQuat FootTurn = FQuat::FindBetweenVectors(SoleDir, SoleFlat);
-			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(35.0);
-			if (TurnRad > MaxRad) FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, MaxRad / TurnRad);
+			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(45.0);
+			FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, Weight * FMath::Min(1.0, MaxRad / FMath::Max(TurnRad, 1e-6)));
+			const FVector NewHeel = Ankle + FootTurn.RotateVector(Heel - Ankle), NewToe = Ankle + FootTurn.RotateVector(Toe - Ankle);
+			if (FMath::Abs(CrewFloorZ(C, NewHeel.X, NewHeel.Y) - Floor) > 0.01 || FMath::Abs(CrewFloorZ(C, NewToe.X, NewToe.Y) - Floor) > 0.01) continue;
 			const FQuat TurnCS = BoatRot.Inverse() * FootTurn * BoatRot;
 			Joints.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * TurnCS * D[Foot]);
 			bMoved = true;
@@ -355,7 +360,11 @@ namespace CrewSolver
 		if (Ground.bSeated && LevelFeet(Ref, RestCS, CS, D, Frame, Ground, Carried))
 		{
 			Solve(Ref, RestCS, Carried, CS, &D);
-			if (PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) Solve(Ref, RestCS, Carried, CS, &D);
+			for (int32 Pass = 0; Pass < 2; ++Pass)
+			{
+				if (!PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) break;
+				Solve(Ref, RestCS, Carried, CS, &D);
+			}
 		}
 	}
 

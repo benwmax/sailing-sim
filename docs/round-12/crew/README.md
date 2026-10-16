@@ -37,8 +37,8 @@ only changes how the existing crew system places and poses the crew. It needs no
 
 | Where | Before | After |
 | --- | --- | --- |
-| `CrewPose.cpp` `LevelFeet` (in `PlantAllFeet`) | A planted foot kept the calf's angle: heel down, toe up | A seated sailor's foot on the floor turns at the ankle (up to 35 deg) until the sole lies flat, then is planted again |
-| `CrewPose.cpp` `PlantFeet` | Only feet inside the boat moved | Seated (`FCrewGround::bSeated`: Helm, Cockpit, RailHike, DinghyHike), a foot hanging 1 to 15 cm over the floor goes down onto it. Higher than that it is meant to hang |
+| `CrewPose.cpp` `LevelFeet` (in `PlantAllFeet`) | A planted foot kept the calf's angle: heel down, toe up | A seated sailor's foot (`FCrewGround::bSeated`: Helm, Cockpit, RailHike; not hiking under a dinghy's straps) standing on one floor level turns at the ankle (up to 45 deg, fading out 2 to 5 cm over the floor) until the sole lies flat, then is planted again. A foot across a seat's edge or the bridge deck stays as planted |
+| `CrewPose.cpp` `CurlFingers` | The thumb curled 25/45/40 deg and stood up off a held line | 38/58/50 deg |
 | `CrewPose.cpp` `PlaceHands`, `FCrewHands::Along` | The wrist kept the stance's turn | The hand turns (up to 55 deg) so the held line runs across the palm, index knuckle to little finger, and then reaches. The palm still closes on the target |
 | `BoatModelVisuals.cpp` | | The tiller extension (from `TillerEnd`), the mainsheet tail (from the car) and the jib tail (from the self-tailer) pass their direction to the hand |
 | `CrewMotion.cpp` bracing | | A bracing hand on the coaming or the cabin-top handrail holds it fore and aft |
@@ -46,8 +46,8 @@ only changes how the existing crew system places and poses the crew. It needs no
 
 Tests:
 
-- `SailingSim.Visual.CrewFeet`: every boat, both tacks, sitting up and hiked. A seated foot standing on the floor has
-  heel and toe within 4 cm of each other. On the J/22 no seated foot hangs 2.5 to 14 cm over the floor.
+- `SailingSim.Visual.CrewFeet`: every boat, both tacks, sitting up and hiked. A seated foot standing on one floor level has
+  heel and toe within 4 cm of each other on the J/22.
 - `SailingSim.Visual.MetaHumanCrew` (where the MetaHumans are installed): holding a line, the knuckles run along it
   (within 20 deg, or 40 deg better than before), and the palm still closes within 5 cm of the target.
 
@@ -83,3 +83,16 @@ adds these, ranked:
 
 Constraints held: free, commercial-OK sources only, no filming. Bean's lesson photos were only looked at for reference,
 and nothing from them is in the repo.
+
+## Mac run 1 (5e1aa53b, `../crew-after/`) and the fix
+
+145 of 149 tests passed. Two things broke the other four:
+
+- `LevelFeet` levelled against the higher of the two floors under the heel and toe. Across a level change (the bridge deck
+  forward of the well, a seat's edge) it put the toe into the deck.
+- A first version also lowered seated feet hanging 1 to 15 cm over the floor. That made hiked feet jump as the clips moved
+  them (CrewClipLimits) and pulled a knee below its hip (Smoke.CrewAnimation).
+
+The lowering is gone. Levelling now needs heel and toe over one level, before and after the turn, and fades out from 2 to
+5 cm over the floor. The thumb wraps further. The helm's foot on the traveler bridge is left as it is: it rests on top of
+the bridge, and J/22 helms do brace a foot there.
