@@ -113,3 +113,12 @@ The Mac's gate on #94 found two leftovers.
 
 Tests: `Visual.CrewFeet` checks the bridge as a floor that is solid underneath. `Visual.MetaHumanCrew` checks that a
 closed thumb's tip comes at least 1 cm nearer the index finger's middle joint.
+
+Mac run on #97 (147 of 149) and the fix:
+
+- `Visual.CrewFeet` failed on the Corsair 880's helm (heel 0.60 m, toe 0.67 m): the new no-penetration rule had also replaced
+  #94's rule for a foot on one level, and turned flat there the heel or toe dips a few millimetres, so the turn was refused.
+  A foot over one level is levelled as in #94 again; the no-penetration rule only applies across a step's edge.
+- `Visual.MetaHumanCrew`: the thumb's swing barely moved its tip (6.1 to 6.0 cm), and on some hands the wrong way. The rig
+  now tries the swing both ways about the palm's normal, and none, on each skeleton's fist, and keeps whichever brings the
+  tip nearest the index finger.
