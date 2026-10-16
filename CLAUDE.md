@@ -130,6 +130,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    (path glob, source, licence, commercial, conditions); `scripts/licence-check.sh` fails otherwise. Credit what the
    licence asks for in `CREDITS.md`. MetaHuman sources and exports are never redistributed outside the cooked game.
 
+22. Boat kit (`Tools/boatkit/`, `docs/boatkit-1/`): shared hero fittings placed on each boat from
+   `Tools/boatkit/layouts/<boat>.json`, plus per-boat character sheets (`characters/`, owner touches by seed).
+   `scripts/make-boatkit.sh [--render]` builds the kit and dresses every boat (Blender or the `bpy` module, no Unreal).
+   Photo match loop: `photomatch/solve_camera.py` solves a photo's camera from picked points, `dress_boat.py --camera
+   --photo` renders from it and writes a compare image. Photos with people never enter the repo; only the picked
+   pixel numbers do. Not imported into the game yet (phase 2, after PR #67).
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in

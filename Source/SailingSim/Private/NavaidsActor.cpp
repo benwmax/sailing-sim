@@ -289,8 +289,10 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM || !bBuilt) return;
-	// Fixed structures stand on the bottom: they move with the tide's offset like the terrain.
-	FixedRoot->SetRelativeLocation(FVector(0, 0, -GM->GetTideHeight() * CmPerMeter));
+	// Fixed structures stand on the bottom: they move with the tide's offset like the terrain, in its 2 cm steps (perf-2:
+	// moved every frame, every mark in the bay re-rendered its virtual shadow pages every frame).
+	const FVector FixedAt(0.0, 0.0, -FMath::RoundToDouble(GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter);
+	if (!FixedRoot->GetRelativeLocation().Equals(FixedAt, 0.1)) FixedRoot->SetRelativeLocation(FixedAt);
 
 	// Lights come on after sunset (a photocell) or when visibility closes in.
 	const bool bDark = GM->IsDark();
@@ -298,9 +300,10 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation();
 
 	// Buoys ride the waves: heave with the surface and tilt with its slope (a float this size follows the long waves
-	// and only partly the chop). Only those within 3 km move; the rest keep their last pose.
+	// and only partly the chop). Only those within 3 km move; the rest keep their last pose. Perf 2: each instance goes
+	// up as a delta (UpdateInstanceTransform queues it); rebuilding the whole component each frame (MarkRenderStateDirty)
+	// invalidated the shadow pages over all its buoys.
 	const double T = GM->GetSimTime();
-	TSet<UInstancedStaticMeshComponent*> Bobbed;
 	TArray<double> Heave;
 	Heave.SetNumZeroed(Buoys.Num());
 	for (int32 I = 0; I < Buoys.Num(); ++I)
@@ -314,14 +317,11 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 		Heave[I] = H;
 		const FRotator Tilt(float(-FMath::RadiansToDegrees(FMath::Atan(Hx)) * 0.6), B.Yaw, float(FMath::RadiansToDegrees(FMath::Atan(Hy)) * 0.6));
 		B.Ism->UpdateInstanceTransform(B.Instance, FTransform(Tilt, FVector(B.X, B.Y, H - 0.05) * CmPerMeter), false, false, true);
-		Bobbed.Add(B.Ism);
 	}
-	for (UInstancedStaticMeshComponent* Ism : Bobbed) Ism->MarkRenderStateDirty();
 	const double Now = GM->GetUnixTime();
 	const TArray<FNavaid>& Navaids = GM->GetLake().Navaids;
 	LitCount = 0;
-	TSet<UInstancedStaticMeshComponent*> Dirty;
-	for (const FLightInstance& L : Lights)
+	for (FLightInstance& L : Lights)
 	{
 		const FNavaid& N = Navaids[L.Navaid];
 		const FVector World = (L.bFloating ? FloatingRoot : FixedRoot)->GetComponentTransform().TransformPosition(L.Position);
@@ -333,11 +333,15 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 		UInstancedStaticMeshComponent* Ism = LightMeshes[L.Colour];
 		const int32* Buoy = LightBuoy.Find(int32(&L - Lights.GetData()));
 		const FVector At = L.Position + FVector(0.0, 0.0, Buoy ? Heave[*Buoy] * CmPerMeter : 0.0);
-		Ism->UpdateInstanceTransform(L.Instance, FTransform(FQuat::Identity, At, FVector(Size)), false, false, true);
-		Dirty.Add(Ism);
+		// Only lights that changed (by day, none).
+		if (Size != L.ShownSize || (Size > 0.0 && !At.Equals(L.ShownAt, 0.5)))
+		{
+			Ism->UpdateInstanceTransform(L.Instance, FTransform(FQuat::Identity, At, FVector(Size)), false, false, true);
+			L.ShownSize = Size;
+			L.ShownAt = At;
+		}
 		LitCount += bOn;
 	}
-	for (UInstancedStaticMeshComponent* Ism : Dirty) Ism->MarkRenderStateDirty();
 	static double NextLog = 0.0;
 	if (GetWorld()->GetTimeSeconds() > NextLog)
 	{
