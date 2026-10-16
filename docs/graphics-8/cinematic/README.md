@@ -65,7 +65,21 @@ round the sun at Galveston dusk; it's gone in `lake-dusk.jpg`.
 
 ## Cost
 
-BENCH
+PC packaged game, main 1e4da4fb merged, two 10 s runs each, means. `-SailingCinematic=0` against `=1`:
+
+| View | Tier | GPU ms natural | GPU ms cinematic | post slice natural | post slice cinematic |
+|---|---|---|---|---|---|
+| helm-eye | High | 4.61 | 4.77 | 0.23 | 0.24 |
+| helm-eye | Ultra | 6.46 | 6.90 | 0.69 | 0.80 |
+| coast-day | High | 4.82 | 4.83 | 0.28 | 0.29 |
+| coast-day | Ultra | 6.71 | 6.75 | 0.78 | 0.84 |
+| lake-dusk | High | 3.21 | 3.28 | 0.23 | 0.24 |
+| lake-dusk | Ultra | 4.81 | 4.89 | 0.71 | 0.80 |
+
+On High the post slice grows 0.01-0.02 ms (the LUT, grain and vignette in the tonemapper; the wider Gaussian bloom).
+The totals move within run-to-run noise. On Ultra the FFT bloom and the flare add about 0.08-0.1 ms to the post slice.
+The natural look is unchanged by construction. `gate.ps1 -Scope water` (145/145 tests) and `-Scope clouds` pass on
+High and Ultra.
 
 ## Licences
 
