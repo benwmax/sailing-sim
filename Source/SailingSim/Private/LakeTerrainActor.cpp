@@ -703,7 +703,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		I->SetStaticMesh(Mesh);
 		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		I->SetCullDistances(0, 8000 * 100);
-		I->NumCustomDataFloats = 10;
+		I->NumCustomDataFloats = FWearSeed::TotalFloats;  // paint 0-9, then the wear seed (Environment E1)
 		I->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		I->RegisterComponent();
 		Ism.Add(I);
@@ -739,15 +739,25 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		BuildingMeshes.Add(I);
 		return I;
 	};
-	for (const FNearKind& K : NearKinds) NearIsm.Add(MakeIsm(FString(TEXT("SM_HouseNear_")) + K.Name, 10, 6000.f));
+	for (const FNearKind& K : NearKinds) NearIsm.Add(MakeIsm(FString(TEXT("SM_HouseNear_")) + K.Name, FWearSeed::TotalFloats, 6000.f));
 	const bool bNear = !NearIsm.Contains(nullptr);
 	if (bNear)
 	{
-		DockIsm[0] = MakeIsm(TEXT("SM_HouseNear_Dock"), 0, 3000.f);
-		DockIsm[1] = MakeIsm(TEXT("SM_HouseNear_Boathouse"), 0, 3000.f);
+		DockIsm[0] = MakeIsm(TEXT("SM_HouseNear_Dock"), FWearSeed::TotalFloats, 3000.f);
+		DockIsm[1] = MakeIsm(TEXT("SM_HouseNear_Boathouse"), FWearSeed::TotalFloats, 3000.f);
 	}
 	TArray<FTransform> NearX[NumNear], DockX[2];
-	TArray<float> NearD[NumNear];
+	TArray<float> NearD[NumNear], DockD[2];
+	// Environment E1: every house and private dock carries its wear seed after its own floats (FWearSeed::Slot).
+	const EWearSite Site = WearSiteFor(Lake);
+	constexpr int32 Stride = FWearSeed::TotalFloats;
+	static_assert(FWearSeed::Slot == 10, "the houses' paint fills slots 0-9");
+	auto AppendWear = [](TArray<float>& D, const FWearSeed& W)
+	{
+		const int32 At = D.Num();
+		D.AddZeroed(FWearSeed::NumFloats);
+		W.Write(&D[At]);
+	};
 	TArray<FVector2D> Docks;
 	const FLakeTerrain& Terr = Lake.Terrain;
 	// The nearest open water within 400 m: rings every 25 m, 16 directions.
@@ -808,6 +818,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 			{
 				NearX[Best].Add(FTransform(FRotator(0, Yaw, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(Sx, Sy, 1.f)));
 				NearD[Best].Append({ Wall.R, Wall.G, Wall.B, float(Pat) + 10.f, Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+				AppendWear(NearD[Best], FWearSeed::Make(FWearSeed::IdAt(FVector2D(B.X, B.Y)), Site, EWearWater::Dry, Yaw));
 			}
 			// A private dock for the lakefront houses: from the bank toward the water, a few metres clear of the next.
 			if (WaterM <= 75.0 && ((H >> 24) % 10) < 6)
@@ -823,7 +834,10 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 				{
 					Docks.Add(Shore);
 					const int32 Which = ((H >> 28) % 4) == 0 ? 1 : 0;
-					DockX[Which].Add(FTransform(FRotator(0, FMath::RadiansToDegrees(FMath::Atan2(WaterDir.Y, WaterDir.X)), 0), FVector(Shore.X, Shore.Y, 0.0) * CmPerMeter));
+					const float DockYaw = float(FMath::RadiansToDegrees(FMath::Atan2(WaterDir.Y, WaterDir.X)));
+					DockX[Which].Add(FTransform(FRotator(0, DockYaw, 0), FVector(Shore.X, Shore.Y, 0.0) * CmPerMeter));
+					DockD[Which].AddZeroed(FWearSeed::Slot);
+					AppendWear(DockD[Which], FWearSeed::Make(FWearSeed::IdAt(Shore), Site, EWearWater::Fixed, DockYaw));
 				}
 			}
 			continue;
@@ -831,22 +845,29 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		if (bKitHouses) continue;
 		X[Kind].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground) * CmPerMeter, FVector(B.Length, B.Width, Height)));
 		D[Kind].Append({ Wall.R, Wall.G, Wall.B, float(Pat), Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
+		AppendWear(D[Kind], FWearSeed::Make(FWearSeed::IdAt(FVector2D(B.X, B.Y)), Site, EWearWater::Dry, float(B.YawDeg)));
 	}
 	for (int32 K = 0; K < 3; ++K)
 	{
 		Ism[K]->AddInstances(X[K], false, true);
-		for (int32 I = 0; I < X[K].Num(); ++I) Ism[K]->SetCustomData(I, TArrayView<const float>(&D[K][10 * I], 10), false);
+		for (int32 I = 0; I < X[K].Num(); ++I) Ism[K]->SetCustomData(I, TArrayView<const float>(&D[K][Stride * I], Stride), false);
 		Ism[K]->MarkRenderStateDirty();
 	}
 	int32 NearCount = 0;
 	for (int32 N = 0; N < NumNear && bNear; ++N)
 	{
 		NearIsm[N]->AddInstances(NearX[N], false, true);
-		for (int32 I = 0; I < NearX[N].Num(); ++I) NearIsm[N]->SetCustomData(I, TArrayView<const float>(&NearD[N][10 * I], 10), false);
+		for (int32 I = 0; I < NearX[N].Num(); ++I) NearIsm[N]->SetCustomData(I, TArrayView<const float>(&NearD[N][Stride * I], Stride), false);
 		NearIsm[N]->MarkRenderStateDirty();
 		NearCount += NearX[N].Num();
 	}
-	for (int32 Which = 0; Which < 2; ++Which) if (DockIsm[Which]) DockIsm[Which]->AddInstances(DockX[Which], false, true);
+	for (int32 Which = 0; Which < 2; ++Which)
+	{
+		if (!DockIsm[Which]) continue;
+		DockIsm[Which]->AddInstances(DockX[Which], false, true);
+		for (int32 I = 0; I < DockX[Which].Num(); ++I) DockIsm[Which]->SetCustomData(I, TArrayView<const float>(&DockD[Which][Stride * I], Stride), false);
+		DockIsm[Which]->MarkRenderStateDirty();
+	}
 	UE_LOG(LogSailing, Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks; %d near the water modelled, %d private docks"),
 		X[0].Num(), X[1].Num(), X[2].Num(), NearCount, DockX[0].Num() + DockX[1].Num());
 	return true;

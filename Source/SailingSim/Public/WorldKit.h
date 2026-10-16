@@ -78,6 +78,39 @@ struct SAILINGSIM_API FKitGeometry
 };
 
 struct FLakeData;
+
+/** Environment E1 (docs/environment-1): what every placed structure carries so the materials can age it, the same on the
+ *  Mac and the PC: drawn from a hash of the structure's id, never from a random stream (adding a slip or a house elsewhere
+ *  changes nothing here). Written to per-instance custom data from Slot on the marina's berthed boats (club and coast),
+ *  the houses and their private docks; the slots below Slot stay each instance's own (the boats' livery 0-6, the houses'
+ *  paint 0-9). */
+enum class EWearSite : uint8 { Lake, Bay, Gulf };
+/** Where a structure meets the water: not at all (houses), riding it (floats, boats), or fixed while it rises and falls. */
+enum class EWearWater : uint8 { Dry, Floating, Fixed };
+struct SAILINGSIM_API FWearSeed
+{
+	static constexpr int32 Slot = 10;
+	static constexpr int32 NumFloats = 6;
+	static constexpr int32 TotalFloats = Slot + NumFloats;
+
+	float Age = 0.f;       // years, 0-25: silvering, fade, rust, replaced boards
+	float Care = 1.f;      // 0 neglected .. 1 kept
+	float Sun = 0.5f;      // 0 shaded north face .. 1 bleached south-west face
+	float Wet = 0.f;       // metres of stain band above the waterline (0 dry)
+	EWearSite Site = EWearSite::Lake;
+	int32 Variant = 0;     // which set: a slip's cover, a house's or dock's look; Variants values
+
+	static constexpr int32 Variants = 8;
+	/** FacingDeg: the map-frame yaw the structure's main face looks along (0 north, 90 east). Variant < 0 hashes one. */
+	static FWearSeed Make(uint32 Id, EWearSite Site, EWearWater Water, float FacingDeg, int32 Variant = -1);
+	/** A structure's id: its name (slips, rows) or, for unnamed ones, its plan position rounded to 0.25 m. */
+	static uint32 IdOf(const FString& Name);
+	static uint32 IdAt(const FVector2D& PlanM);
+	/** The NumFloats values in slot order: age, care, sun, wet, site, variant. */
+	void Write(float* Dst) const;
+};
+SAILINGSIM_API EWearSite WearSiteFor(const FLakeData& Lake);
+
 struct FLakeBridge;
 struct FLakeDock;
 

@@ -62,7 +62,7 @@ void ACoastMarinasActor::BeginPlay()
 	const FLakeData& Lake = GM->GetLake();
 	TArray<FBerthedBoat> Placed;
 	PlaceBoats(Lake, Placed);
-	SpawnBerthedBoats(this, RootComponent, Placed, 1.f, EComponentMobility::Static, Boats);
+	SpawnBerthedBoats(this, RootComponent, Placed, 1.f, EComponentMobility::Static, Boats, WearSiteFor(Lake));
 	// The floating walkways and fingers: decking on floats, 0.45 m above the water like the club's (AMarinaActor).
 	FKitGeometry G;
 	int32 Count = 0;
