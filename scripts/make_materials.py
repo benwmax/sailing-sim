@@ -1458,7 +1458,7 @@ float persist = 0.0;
 float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 [branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
     persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
-float trail = saturate(persist - caps);
+float trail = saturate(persist - max(caps, wakeBreak));   // what outlives the cap or the boat's wash
 float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(streak * lace, 0.5, patFade)));
 float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
 FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));

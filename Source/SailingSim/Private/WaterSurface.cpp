@@ -413,6 +413,11 @@ float AWaterSurface::WhitecapOnset(float MeanKnots)
 	return U * U * U;
 }
 
+float AWaterSurface::ShoalFoldScale(float MeanKnots)
+{
+	return FMath::SmoothStep(3.7f, 8.2f, MeanKnots * float(kKnot));
+}
+
 float AWaterSurface::FoamThresholdAt(float MeanKnots)
 {
 	// Under 10 kn the crests stop breaking (Beaufort 2-3): the threshold falls 0.03 a knot instead of rising on.
@@ -848,6 +853,12 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 		const FWakeFrame Done = PendingWake.Get();
 		bWakePending = false;
 		UploadFloats(WakeGridMap, Done.Pixels, Done.N, Done.N, 2);
+		// W4: keep its foam channel for the foam grid.
+		WakeFoamN = Done.N;
+		WakeFoamOrigin = Done.Origin;
+		WakeFoamCell = Done.Cell;
+		WakeFoamCopy.SetNumUninitialized(Done.N * Done.N);
+		for (int32 I = 0; I < Done.N * Done.N; ++I) WakeFoamCopy[I] = Done.Pixels[2 * I + 1];
 		WaterMaterial->SetVectorParameterValue(TEXT("WakeGridRect"), FLinearColor(float(Done.Origin.X), float(Done.Origin.Y), Done.N * Done.Cell, float(Done.N)));
 	}
 
@@ -1639,7 +1650,11 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	const FDetailUploadPtr D = Done;
 	const float Thr = Done->CapThr[0];
 	bFoamPending = true;
-	PendingFoam = Async(EAsyncExecution::ThreadPool, [G, D, Cam, T, Drift, Thr]() -> FFoamFrame
+	TArray<float> WakeF = WakeFoamCopy;
+	const FVector2D WakeO = WakeFoamOrigin;
+	const float WakeC = WakeFoamCell;
+	const int32 WakeN = WakeFoamN;
+	PendingFoam = Async(EAsyncExecution::ThreadPool, [G, D, Cam, T, Drift, Thr, WakeF = MoveTemp(WakeF), WakeO, WakeC, WakeN]() -> FFoamFrame
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterFoamGrid);
 		FFoamGrid& F = *G;
@@ -1685,9 +1700,15 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 				const int32 DC = ((FMath::FloorToInt(float(Y / Tile * DN)) % DN) + DN) % DN;
 				const float Jd = 1.f - Ks * (1.f - D->JCap[DR * DN + DC]);
 				const float Jt = 1.f - D->FoldScale * (1.f - Jd);
-				const float Cap = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
+				float Src = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
+				// The boats' wash (the wake grid's foam, as M_WaterV4's wakeBreak without its bubble pattern).
+				if (WakeN > 0)
+				{
+					const int32 WR = FMath::FloorToInt(float((X - WakeO.X) / WakeC)), WC = FMath::FloorToInt(float((Y - WakeO.Y) / WakeC));
+					if (WR >= 0 && WR < WakeN && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp(WakeF[WR * WakeN + WC] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
+				}
 				float& V = Next[R * N + C];
-				V = FMath::Max(V, Cap);
+				V = FMath::Max(V, Src);
 			}
 		}
 		F.F = Next;
