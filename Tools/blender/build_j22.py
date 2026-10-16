@@ -487,17 +487,19 @@ for x, ztop in ((COCKPIT_AFT, None), ):
     e = inner_edge(x)
     hull.grid([[(x, v * e, deck_z(x, v * e)) for v in fv], [(x, v * (e - SEAT_W), SOLE_Z) for v in fv]], "Deck")
 
-# Keel: lead fin, NACA 0012, swept leading edge, from inside the canoe body to the class draft.
-keel_c = [f for f in CFG["foils"] if f["role"] == "keel"][0]
-root_z, tip_z = -keel_line_depth(0.7) + 0.06, -CFG["draft"]
-sweep = math.tan(math.radians(17))
+# Keel: lead fin, NACA 0012, swept leading edge, from inside the canoe body to the class draft. Plan form from the class
+# template (boat kit phase 3, docs/boatkit-3): chord 0.965 m at MPA (216 mm under the hull) and 0.603 m 483 mm lower,
+# trailing edge 2.90 m forward of the transom, drawn as in Inputs/j22-hero/build_j22_hero.py (keel_edges). The physics
+# keel's Center stays where the polar put it (a balance knob, not the drawn fin).
+root_z, tip_z = -keel_line_depth(0.0) + 0.06, -CFG["draft"]
+mpa_z = -keel_line_depth(0.0) - 0.216
 keel = []
 for k in range(9):
     t = k / 8
     z = root_z + (tip_z - root_z) * t
-    le = 1.16 - sweep * (root_z - z)
-    chord = 1.06 + (0.70 - 1.06) * t
-    keel.append((z, le, chord))
+    d = mpa_z - z
+    le, te = 0.465 - 0.708 * d, -0.500 + 0.041 * d
+    keel.append((z, le, le - te))
 foil(hull, keel, "Keel", 0.12)
 
 # Chainplates, stem fitting, backstay plate.

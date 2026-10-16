@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds, cooks, stages and archives a standalone Mac app with RunUAT BuildCookRun.
 # Usage: [FULL=1] scripts/package-mac.sh [Development|Shipping]
-#   Output: Packaged/Mac/SailingSim.app
+#   Output: Packaged/Mac/SailingSim.app (Shipping: Packaged/Mac/SailingSim-Mac-Shipping.app; bench it with APP=)
 # The cook is incremental (docs/bench-fast): the cooked output in Saved/Cooked/Mac (a Zen store) is kept between runs and
 # only packages whose dependencies changed (the package, its classes' schemas, referenced config and packages) are
 # cooked again. FULL=1 deletes it and recooks everything, as every package did before.

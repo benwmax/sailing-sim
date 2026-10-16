@@ -58,9 +58,11 @@ TRANSOM_LOSS = 0.27
 WL_MID, WL_HALF, CANOE_D = -0.06, 2.90, 0.20
 MAST_X = 0.65                               # J 8.8 ft (2.68 m) aft of the forestay tack to the mast's front face (class)
 CHAINPLATE_X = MAST_X - 0.15                # one plate a side carries both shrouds; GUESS: a little aft of the mast (photos)
-CABIN_AFT, CABIN_FWD = -0.55, 1.90          # GUESS: cabin trunk ends, from the bow photo
+CABIN_AFT, CABIN_FWD = -0.55, 1.65          # trunk ends: aft GUESS from the bow photo; the raked face's foot from the
+                                            # broadside photo (1.51-1.63 m, docs/boatkit-3)
 CABIN_H0 = 0.30                             # GUESS: trunk height over the deck at its aft end, on the centreline
 COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
+FWD_HATCH = (0.80, 1.12)                    # fore hatch fore and aft edges
 SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272)
 SEAT_Z, FLOOR_Z = 0.40, 0.13                # GUESS: seat and self-bailing floor heights above the waterline
 SEAT_IN = 0.40                              # seat inboard edge, half-width
@@ -81,9 +83,11 @@ def keel_z(x):
 
 
 def sheer_z(x):
+    """Freeboard 0.79 m at the stem, 0.568 m at the transom (ORC certificate: FF 774, FA 568 mm). Aft of the cabin the
+    sheer runs down nearly straight to the transom, as the broadside photo shows (docs/boatkit-3)."""
     fwd = smooth((x - 0.3) / (BOW - 0.3)) ** 1.3 * 0.17
-    aft = smooth((-1.0 - x) / 2.41) * 0.025
-    return 0.62 + fwd + aft
+    aft = (max(0.0, -0.3 - x) / (-0.3 - STERN)) ** 1.2 * 0.052
+    return 0.62 + fwd - aft
 
 
 def half_beam(x):
@@ -404,9 +408,21 @@ def foil(name, root_le, root_te, tip_le, tip_te, z_root, z_tip, thick=0.12, n=36
     return ob
 
 
+def keel_edges(z):
+    """Keel leading and trailing edge x at height z: the class template (docs/boatkit-3) at MPA, 216 mm under the hull,
+    and MPC, 483 mm lower: chords 0.965 and 0.603 m, trailing edge 2.90 m forward of the transom at MPA. The rule's
+    trailing edge rakes 12 cm forward between them; the broadside photo shows it near plumb, so it rakes 2 cm here."""
+    d = KEEL_MPA_Z - z                              # depth below MPA
+    return 0.465 - 0.708 * d, -0.500 + 0.041 * d
+
+
+KEEL_MPA_Z = keel_z(0.0) - 0.216
+
+
 def build_keel():
-    # GUESS on the plan form: chord 0.86 m at the root, 0.58 m at the tip, swept leading edge, area ~0.83 m^2
-    k = foil("Keel", 1.15, 0.29, 0.93, 0.35, keel_z(0.7) + 0.05, -1.16, thick=0.12, mat=MAT["KeelLead"])
+    z_root, z_tip = keel_z(0.0) + 0.05, -1.16
+    (rl, rt), (tl, tt) = keel_edges(z_root), keel_edges(z_tip)
+    k = foil("Keel", rl, rt, tl, tt, z_root, z_tip, thick=0.12, mat=MAT["KeelLead"])
     return k
 
 
@@ -571,9 +587,10 @@ def build_hardware():
     parts += D.clevis("StemPin", (sx, 0, sheer_z(sx) + 0.06), (0, 1, 0), MAT, 0.02, 0.003)
     parts += D.screws("StemS", [(sx + dx, 0, deck_z(sx + dx, 0) + 0.001) for dx in (-0.05, 0.05)], (0, 0, 1), MAT)
     parts += cleat("BowCleat", (2.70, 0, deck_z(2.70, 0)), along_x=True, size=0.15)
-    # foredeck hatch (GUESS: on the cabin top forward of the mast)
-    hx0, hx1 = 1.22, 1.62
-    zt = deck_z(1.42, 0) + CABIN_H0 - 0.06 * (1.42 - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+    # fore hatch (GUESS on its size): on the flat of the cabin top between the mast step and the raked face
+    hx0, hx1 = FWD_HATCH
+    hxc = 0.5 * (hx0 + hx1)
+    zt = deck_z(hxc, 0) + CABIN_H0 - 0.06 * (hxc - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     parts.append(box("FwdHatch", hx0, hx1, -0.26, 0.26, zt - 0.02, zt + 0.035, MAT["HatchAcrylic"], bev=0.015))
     parts.append(box("FwdHatchFrame", hx0 - 0.02, hx1 + 0.02, -0.28, 0.28, zt - 0.03, zt + 0.02, MAT["Aluminium"], bev=0.008))
     # sliding companionway hatch and its rails
