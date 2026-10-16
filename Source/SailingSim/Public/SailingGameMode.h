@@ -40,6 +40,9 @@ public:
 	const FLakeData& GetLake() const { return Lake; }
 	/** Where the boat is launched (from the settings' launch spot); false on open water. */
 	bool GetLaunchSpot(FLaunchSpot& Out) const;
+	/** Measuring (-SailingNearShip=<m>): ATrafficManager puts the player this far abeam of the first ship it spawns, so a still
+	 *  can frame her exhaust (the ships' spawn varies run to run); GetLaunchSpot returns it once set. */
+	TOptional<FLaunchSpot> NearShipStart;
 	/** The area's data files by setting: "RayHubbard" or "GalvestonBay". */
 	static const TCHAR* WorldFileName(int32 World);
 	static const TCHAR* WorldDisplayName(int32 World);
