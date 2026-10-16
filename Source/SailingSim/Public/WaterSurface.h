@@ -72,7 +72,7 @@ public:
 	 *  25 kn), so a fixed CapSlope under-applied the lake's and the lulls' scale in a strong breeze (the lake capped 3.3
 	 *  to 3.6 times its share at 20 and 25 kn). Mirrored in make_materials.py.
 	 *  W8: both refit for the whitecaps' Jacobian (FWaveDetail::CapBlurTexels), which folds less in light air: the sea's
-	 *  threshold for Monahan's cover is 0.713 at 10 kn, 0.676 at 14, 0.638 at 20, 0.63 above, falling 0.03 a knot under 10 kn where crests stop breaking (FoamThresholdAt), and the
+	 *  threshold for Monahan's cover is 0.671 at 10 kn (0.713 before the whitecap mask's finer light-air blur), 0.662 at 14, 0.641 at 20, 0.63 above, falling 0.03 a knot under 10 kn where crests stop breaking (FoamThresholdAt), and the
 	 *  shift per e-fold 0.018 at 10 kn to 0.072 at 30 (CapSlopeAt). */
 	static float CapSlopeAt(float MeanKnots);
 	static float WhitecapThreshold(float LocalOverMean, float WaterScale, float MeanKnots = 14.f);
@@ -85,8 +85,14 @@ public:
 	static constexpr float CapRamp = 0.05f;
 	/** W8: the drawn surface folds a little less deeply than its CPU copy: on the 20 kn lake the screen's share of
 	 *  Jt under 0.7 and 0.8 (-SailingDebugFoam=17, 18) matched the CPU's samples with their deviation from 1 scaled by
-	 *  0.85 at both (the texture's bilinear filter and the vertex interpolation of the long trains' fold, not isolated). */
-	static constexpr float DrawnFoldScale = 0.85f;
+	 *  0.85 at both (the texture's bilinear filter and the vertex interpolation of the long trains' fold, not isolated).
+	 *  Whitecap mask (docs/water-8/capshape-mac): fitted at 20 kn only, it let the drawn fold overshoot its CPU copy more
+	 *  as the wind fell (hard-fold cover 1.55x the lake's target at 20 kn, 2.4x at 16, 3.3x at 12: Monahan's cover falls
+	 *  5.8x from 20 to 12 kn, the drawn 2.7x). Each wind's excess over its solved slope gives the scale that lands it:
+	 *  0.88 at 20 kn, 0.915 at 16, 0.94 at 12, linear in the wind, held below 12 kn (Callaghan's onset sets the target
+	 *  there) and not under W8's 0.85. Likely the long trains, which lose depth to the mesh's interpolation where the
+	 *  chop's blurred fold hardly loses any to the texture filter, carry more of the fold as the wind rises. */
+	static float DrawnFoldScaleAt(float MeanKnots);
 	static constexpr float CapLogMip = 3.f;
 	static void CapTable(float MeanKnots, float WaterScale, float& OutFirst, float& OutStep);
 	static float CapTableEntry(float J, int32 K, float First, float Step);

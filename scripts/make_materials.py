@@ -1396,7 +1396,7 @@ float capSlope = solved ? CapCal.y : 0.018 * pow(meanKn / 10.0, 1.25);
 // By the mesh's vertex spacing here (V4_WPO: max(0.5, dist / 64)): the long waves' fold fades with it.
 float spK = clamp(log2(max(dist / 64.0, 0.5) / 0.5), 0.0, 3.0);
 float capSolved = spK < 1.0 ? lerp(CapCal.x, CapCalFar.x, spK) : (spK < 2.0 ? lerp(CapCalFar.x, CapCalFar.y, spK - 1.0) : lerp(CapCalFar.y, CapCalFar.z, spK - 2.0));
-float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10.0) / 5.0) - 0.03 * max(10.0 - meanKn, 0.0);
+float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10.0) / 5.0) - 0.042 * exp(-(max(meanKn, 10.0) - 10.0) / 2.0) - 0.03 * max(10.0 - meanKn, 0.0);
 float capThr = clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
 float2 wd = ldir; // W2: the foam streaks lie along the local wind
 float2 wn = float2(-wd.y, wd.x);
