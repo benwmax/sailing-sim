@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "PolarReference.h"
+#include "WorldClock.h"
 #include "Scenarios.h"
 #include "Wind.h"
 
@@ -395,6 +396,34 @@ bool FSailingCalmStaysPutTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("After a minute: %.3f m/s, heel %.1f to %.1f deg"), Speed, FMath::RadiansToDegrees(MinHeel), FMath::RadiansToDegrees(MaxHeel)));
 	TestTrue(TEXT("Lies still (under 0.05 m/s)"), Speed < 0.05);
 	TestTrue(TEXT("Does not rock (heel swings under 1 deg)"), Swing < 1.0);
+	return true;
+}
+
+// Online readiness (rule 3): the world clock moves in whole physics steps whatever the frame times, so boats that step
+// until they reach it all land on the same instant.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWorldClockTest, "SailingSim.Physics.WorldClock", PhysicsTestFlags)
+bool FSailingWorldClockTest::RunTest(const FString& Parameters)
+{
+	FWorldClock Clock;
+	FBoatModel A, B;
+	const double Frames[] = { 1.0 / 60.0, 1.0 / 144.0, 1.0 / 30.0, 0.021, 1.0 / 90.0 };
+	for (int32 I = 0; I < 600; ++I)
+	{
+		Clock.Advance(Frames[I % UE_ARRAY_COUNT(Frames)]);
+		// Two boats catch up with it, one every frame and one every third frame (as a held or slow boat would).
+		for (FBoatModel* Boat : { &A, &B })
+		{
+			if (Boat == &B && I % 3 != 2) continue;
+			const int32 Steps = FMath::RoundToInt32((Clock.GetTime() - Boat->GetState().Time) / PhysicsDt);
+			FWindField Wind;
+			for (int32 S = 0; S < Steps; ++S) Boat->Step(PhysicsDt, FBoatControls(), Wind);
+		}
+	}
+	TestEqual(TEXT("The clock is a whole number of steps"), Clock.GetTime(), double(Clock.GetSteps()) * PhysicsDt, 1e-9);
+	TestEqual(TEXT("A boat stepping every frame is on the clock"), A.GetState().Time, Clock.GetTime(), 1e-6);
+	TestEqual(TEXT("A boat stepping every third frame is on the clock"), B.GetState().Time, Clock.GetTime(), 1e-6);
+	Clock.SetTime(1000.0);
+	TestEqual(TEXT("SetTime puts the clock there"), Clock.GetTime(), 1000.0);
 	return true;
 }
 

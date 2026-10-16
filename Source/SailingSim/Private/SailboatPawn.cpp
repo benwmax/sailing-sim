@@ -933,8 +933,22 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		const Vec3 O = Boat.OriginPosition();
 		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
 	}
-	// Graphics G4: the front end and the loading screen hold the boat where it is (the world keeps moving behind them).
-	const int32 Steps = bHeldByUI && !bTrafficBoat ? 0 : Stepper.Advance(DeltaSeconds);
+	// Online readiness (rule 3): the boat steps until it reaches the world clock, so every boat (and a second player's)
+	// is on the same instant. Graphics G4: the front end and the loading screen hold the boat where it is while the world
+	// keeps moving: its time is carried along with the clock instead. A boat more than a second off the clock (spawned,
+	// reset or held) joins it where it is. Without a game mode (a bare test world) the boat keeps its own steps.
+	int32 Steps = 0;
+	if (ASailingGameMode* ClockMode = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		ClockMode->AdvanceClock(DeltaSeconds);
+		const double Behind = ClockMode->GetSimTime() - Boat.GetState().Time;
+		if ((bHeldByUI && !bTrafficBoat) || FMath::Abs(Behind) > 1.0) Boat.GetMutableState().Time = ClockMode->GetSimTime();
+		else Steps = FMath::Clamp(FMath::RoundToInt32(Behind / Stepper.GetStepDt()), 0, 12);
+	}
+	else if (!(bHeldByUI && !bTrafficBoat))
+	{
+		Steps = Stepper.Advance(DeltaSeconds);
+	}
 	// Perf 1: the steps run on a task when they can (BoatPhysicsTask.h); the join tick (TG_PostPhysics) does the rest.
 	FBoatStepJob Job;
 	Job.Boat = &Boat;
