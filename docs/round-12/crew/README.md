@@ -121,3 +121,12 @@ Mac run on #97 (147 of 149) and the fix:
   A foot over one level is levelled as in #94 again; the no-penetration rule only applies across a step's edge.
 - `Visual.MetaHumanCrew`: the thumb's swing barely moved its tip on any hand, either way (148 of 149 on the second run), so
   the thumb half came out of this PR (above).
+
+## Follow-up 2: the thumb
+
+The swing about the palm's normal (#97, taken out) moved a closed thumb's tip by 0 to 3 mm on every MetaHuman: their
+thumb lies close to that normal, so the turn spun it about itself. `BuildCrewRig` now closes each skeleton's fist and
+turns the thumb's base straight toward the index finger's middle joint, 40 deg at most (`FCrewRig::ThumbWrap`, scaled by
+the grip in `CurlFingers`). `Visual.MetaHumanCrew` logs each hand's wrap angle and tip distance and checks the closed tip
+comes at least 1 cm nearer the index finger. Recapture `r12-j22-mainsheet` to see it; if the thumb now goes into the
+index finger, lower the 40 deg cap.

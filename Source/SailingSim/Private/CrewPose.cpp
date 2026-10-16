@@ -300,7 +300,10 @@ namespace CrewSolver
 				for (int32 K = 1; K <= 3; ++K)
 				{
 					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
-					if (const FVector* Axis = Rig.CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
+					const FVector* Axis = Rig.CurlAxis.Find(Bone);
+					if (!Axis) continue;
+					const FQuat JointTurn(*Axis, FMath::DegreesToRadians(G * Deg[K - 1]));
+					Carried.Add(Bone, bThumb && K == 1 ? FQuat::Slerp(FQuat::Identity, Rig.ThumbWrap[Side], G) * JointTurn : JointTurn);
 				}
 			}
 		}
@@ -573,6 +576,28 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 				if (!Axis.IsNearlyZero()) Rig.CurlAxis.Add(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Sx), Axis);
 			}
 		}
+	}
+	// Round 12: a closed thumb stood straight up off the line. Close the fist on this skeleton, then turn the thumb's base
+	// (40 deg at most) so its tip points at the index finger's middle joint, where a thumb lies in a fist. A swing about
+	// the palm's normal had moved the tip only millimetres on the MetaHumans (their thumb lies close to that normal).
+	FCrewHands Fist;
+	Fist.Grip[0] = Fist.Grip[1] = 1.f;
+	TMap<FName, FQuat> Curled;
+	CrewSolver::CurlFingers(Rig, Fist, Curled);
+	TArray<FTransform> Fisted;
+	CrewSolver::Solve(Ref, Rig.RestCS, Curled, Fisted);
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		const TCHAR* Sx = Side == 0 ? TEXT("l") : TEXT("r");
+		const int32 ThumbBase = Ref.FindBoneIndex(*FString::Printf(TEXT("thumb_01_%s"), Sx)), ThumbTip = Ref.FindBoneIndex(*FString::Printf(TEXT("thumb_03_%s"), Sx)),
+			IndexMid = Ref.FindBoneIndex(*FString::Printf(TEXT("index_02_%s"), Sx));
+		if (ThumbBase == INDEX_NONE || ThumbTip == INDEX_NONE || IndexMid == INDEX_NONE) continue;
+		const FVector Pivot = Fisted[ThumbBase].GetLocation();
+		const FVector ToTip = Fisted[ThumbTip].GetLocation() - Pivot, ToIndex = Fisted[IndexMid].GetLocation() - Pivot;
+		const FVector WrapAxis = FVector::CrossProduct(ToTip, ToIndex).GetSafeNormal();
+		if (WrapAxis.IsNearlyZero()) continue;
+		const double WrapRad = FMath::Min(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToTip.GetSafeNormal(), ToIndex.GetSafeNormal()), -1.0, 1.0)), FMath::DegreesToRadians(40.0));
+		Rig.ThumbWrap[Side] = FQuat(WrapAxis, WrapRad);
 	}
 	const int32 P = Ref.FindBoneIndex(TEXT("pelvis"));
 	Rig.Pelvis = P == INDEX_NONE ? FVector::ZeroVector : Rig.RestCS[P].GetLocation();
