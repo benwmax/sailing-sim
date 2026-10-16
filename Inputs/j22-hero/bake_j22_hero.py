@@ -65,6 +65,15 @@ def _curve_end(name, highest=True):
 SOCKETS = {}
 
 
+def _on(v, name, lift=0.0):
+    """v dropped straight down onto the object's surface, plus lift."""
+    o = bpy.data.objects[name]
+    inv = o.matrix_world.inverted()
+    ok, hit, _, _ = o.ray_cast(inv @ Vector((v.x, v.y, v.z + 1.0)), (inv.to_3x3() @ Vector((0, 0, -1))).normalized())
+    assert ok, f"no {name} under {v}"
+    return o.matrix_world @ hit + Vector((0, 0, lift))
+
+
 def _kit_sock(name, socket):
     """A boat-kit part's socket (stored as sock_<Name> by build_j22_hero.kit_part) in world space."""
     o = bpy.data.objects[name]
@@ -86,6 +95,9 @@ for tag, side in (("S", -1), ("P", 1)):
     sock(f"JibWinch_{tag}", _kit_sock(f"Winch_{side}", "Handle"))
     sock(f"JibTailer_{tag}", _kit_sock(f"Winch_{side}", "Handle") + Vector((0, 0, 0.04)))
     sock(f"JibLead_{tag}", _kit_sock(f"JibTrack_{side}", "Sheave"))
+    # where the tail lies when no hand holds it: on the cabin top, forward and inboard of the winch (the winch sits 13 cm
+    # from the trunk's aft edge, so the old fallback behind it hung in the air)
+    sock(f"JibTailRest_{tag}", _on(_kit_sock(f"Winch_{side}", "Handle") + Vector((0.25, -side * 0.20, 0)), "Cabin", 0.008))
     sock(f"SpreaderTip_{tag}", _c(f"SprTip_{side}_end"))
 sock("ForestayTack", _c("StemPin_pin"))
 bs = [_c(n) for n in ("BS_eye_1_loop", "BS_eye_-1_loop")]

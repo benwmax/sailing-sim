@@ -169,6 +169,14 @@ private:
 
 	int32 Tier = 2;
 	bool bV4 = false;
+	/** Graphics G8 Ultra showcase: the drawn detail on Ultra tiles twice as far at the same texel (chop 256^2 over 46 m,
+	 *  ripples 128^2 over 6.2 m), so the pattern repeats a quarter as often; the wavelength bands, the caps' blur in metres
+	 *  and the physics (which never reads this FFT) are unchanged. Opt-in (-SailingUltraDetail): the 4x FFT, cap solve and
+	 *  mip packing outran the 30 Hz worker budget and the game thread waited for them (9.8 ms water CPU, Ultra 44 fps at
+	 *  1440p against 70 without; docs/graphics-8/ultra). Needs a non-blocking detail pipeline first. */
+	bool bUltraDetail = false;
+	Sailing::FWaveDetail::FCascadeSpec DrawnChop() const;
+	Sailing::FWaveDetail::FCascadeSpec DrawnRipple() const;
 	struct FDetailFrame
 	{
 		const Sailing::FWaveDetail* Source = nullptr;
