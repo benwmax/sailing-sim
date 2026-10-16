@@ -26,14 +26,14 @@
    "R": "T_J22H_Teak_R.png",
    "N": "T_J22H_Teak_N.png",
    "X": "T_J22H_Teak_X.png",
-   "uv_m": 6.9903
+   "uv_m": 6.9919
   },
   "Interior": {
    "D": "T_J22H_Interior_D.png",
    "R": "T_J22H_Interior_R.png",
    "N": "T_J22H_Interior_N.png",
    "X": "T_J22H_Interior_X.png",
-   "uv_m": 8.063
+   "uv_m": 8.043
   }
  },
  "flat_materials": {
@@ -389,5 +389,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 18889636
+ "glb_bytes": 18643784
 }

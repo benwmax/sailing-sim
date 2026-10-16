@@ -58,9 +58,9 @@ Sockets the game reads that moved (Unreal cm, Y to starboard):
 | Socket | Before | After |
 | --- | --- | --- |
 | `MastStep` | 99.3, 0, 94.9 | 64.3, 0, 94.8 |
-| `JibWinch_S` | -83.0, 109.5, 74.8 | -43, 74, about 107 |
-| `JibLead_S` | 53.0, 102.1, 69.4 | about 16, 62, about 105 |
-| `ChainplateUpper_S` / `Lower_S` | 98 / 82, about 102 | 48 / 52, about 102 |
+| `JibWinch_S` | -83.0, 109.5, 74.8 | -42.8, 74.3, 106.9 |
+| `JibLead_S` | 53.0, 102.1, 69.4 | 16.1, 62.1, 100.6 |
+| `ChainplateUpper_S` / `Lower_S` | 98.0 / 82.0, 101.2 / 104.1, 69.7 / 69.4 | 48.0 / 52.0, 108.6, 68.6 |
 | Every mast socket (`Hounds`, `LowerTang`, `SpreaderTip_*`, `MastheadAft`, `MastBase`) | | 35 cm aft |
 
 The exact values are in `Inputs/j22-hero/J22H_sockets.json`.
