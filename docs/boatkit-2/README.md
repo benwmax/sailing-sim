@@ -33,6 +33,16 @@ Standalone checks (clang in the cloud, the same sources as `scripts/polar.sh` an
 
 With only the rig moved (keel left at 0.70), the helm grew to 1.5 / 2.3 / 2.8 deg.
 
+The keel's `Center` at 0.45 is a balance knob, not where the keel is. The modelled fin did not move: `build_j22.py`
+draws its root leading edge at x 1.16 with 17 deg of sweep, so its quarter-chord runs from about x 0.9 at the root to
+0.7 at the tip, 25 to 45 cm forward of 0.45. The knob is making up for something else, most likely the sails' centre
+of effort sitting too far aft or the hull's lateral resistance. The next calibration pass should look there and bring
+`Center` back toward the drawn keel.
+
+Only J changed in the rig. The physics still has I 26.0, P 25.0 and E 9.75 ft against the class's 24.8, 26.1 and 9.0
+(mast height and boom length). They are tied to the polar calibration, so correcting them needs its own polar and
+reference-check run; it is listed under "Not done yet".
+
 ## Deck layout from a closer look at the dock photo
 
 At full resolution, IMG_9224 shows the cabin top clearly:
@@ -99,5 +109,8 @@ itself can go through the loop.
   better-conditioned photo matches, comes next. The keel stays where it was drawn.
 - The other 29 kit parts still only dress the cloud renders (`dress_boat.py`). Owner touches and wear (phase 3) are not
   in the game yet.
+- The physics rig's I, P and E (mast height, mainsail hoist, boom) still differ from the class figures (see above), and
+  the keel's `Center` compensates rather than sits on the drawn fin. Both need a calibration pass with its own polar
+  run.
 - A tape measure from the stem fitting's pin to the mast's front face on TX 7295 EC would settle J for this boat. It
   is optional.
