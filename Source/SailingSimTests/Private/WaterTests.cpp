@@ -443,3 +443,67 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+/**
+ * Light air (the PC's 10 kn stills showed metre-long caps): below 12 kn only WhitecapOnset's share of Monahan's cover
+ * breaks, and FWaveDetail::CapThreshold reaches a target under eight of its samples by extrapolating down the tail
+ * (the quantile floored the cover at the lowest sample's, about 1/N, whatever the target).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapOnsetTest, "SailingSim.Visual.WhitecapOnset", WaterFlags)
+bool FWaterWhitecapOnsetTest::RunTest(const FString&)
+{
+	TestEqual(TEXT("The full law from 12 kn"), AWaterSurface::WhitecapOnset(12.f), 1.f);
+	TestEqual(TEXT("The full law at 20 kn"), AWaterSurface::WhitecapOnset(20.f), 1.f);
+	TestEqual(TEXT("Nothing breaks under 7 kn"), AWaterSurface::WhitecapOnset(7.f), 0.f);
+	const float At10 = AWaterSurface::WhitecapOnset(10.f);
+	TestTrue(FString::Printf(TEXT("A fifth of the law at 10 kn (%.3f)"), At10), At10 > 0.15f && At10 < 0.25f);
+	TestTrue(TEXT("Rising with the wind"), AWaterSurface::WhitecapOnset(9.f) < At10 && At10 < AWaterSurface::WhitecapOnset(11.f));
+
+	const double Knots = 10.0;
+	FWaveField Waves(1);
+	FWaveParams WP;
+	WP.WindSpeedKnots = Knots;
+	WP.FetchMeters = 8000.0;
+	Waves.SetWind(WP);
+	Waves.SnapToTarget();
+	FWaveDetail Detail;
+	Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
+	const double OmegaMax = 2.0 * UE_DOUBLE_PI * AWaterSurface::SplitHz;
+	// As the renderer samples it: every other texel of one frame.
+	auto Sea = [&](double T, double X0, int32 Stride)
+	{
+		FWaveDetail::FGrid Grid;
+		Detail.Evaluate(0, T, Grid);
+		std::vector<float> Out;
+		for (int32 R = 0; R < Grid.N; R += Stride)
+			for (int32 C = 0; C < Grid.N; C += Stride)
+				Out.push_back(float(FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
+					X0 + R * 1.31, C * 1.37, T, 0.5) * Grid.JCap[R * Grid.N + C]));
+		return Out;
+	};
+	const double Lake = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0);
+	const double Target = Lake * At10;
+	const std::vector<float> Solved = Sea(11.0, 0.0, 2);
+	TestTrue(TEXT("The 10 kn target is under eight of the renderer's samples"), Target * Solved.size() < 8.0);
+	double Thr = 0.0, Slope = 0.0, FloorThr = 0.0, FloorSlope = 0.0;
+	FWaveDetail::CapThreshold(Solved, Target, Thr, Slope);
+	FWaveDetail::CapThreshold(Solved, 0.5 / Solved.size(), FloorThr, FloorSlope);
+	std::vector<float> Other;
+	for (const double T : { 140.0, 171.0, 203.0, 260.0 })
+	{
+		const std::vector<float> More = Sea(T, 900.0 + T, 1);
+		Other.insert(Other.end(), More.begin(), More.end());
+	}
+	double Capped = 0.0, Lowest = 0.0;
+	for (const float V : Other)
+	{
+		Capped += V < Thr ? 1.0 / Other.size() : 0.0;
+		Lowest += V < FloorThr ? 1.0 / Other.size() : 0.0;
+	}
+	AddInfo(FString::Printf(TEXT("10 kn, lake: target %.4f%% (%.4f%% before the onset), threshold %.3f caps %.4f%% elsewhere"),
+		100.0 * Target, 100.0 * Lake, Thr, 100.0 * Capped));
+	TestTrue(FString::Printf(TEXT("The extrapolated threshold caps the target elsewhere (within a factor of 2.5: %.4f%%)"), 100.0 * Capped),
+		Capped > Target / 2.5 && Capped < 2.5 * Target);
+	TestTrue(TEXT("Under the lowest sample's cover, the threshold keeps falling"), Lowest < Capped);
+	return true;
+}

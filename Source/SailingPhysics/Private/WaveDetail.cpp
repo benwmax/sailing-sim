@@ -279,9 +279,19 @@ namespace Sailing
 			std::nth_element(Samples.begin(), Samples.begin() + K, Samples.end());
 			return double(Samples[K]);
 		};
+		// Under eight samples the quantile is the lowest few samples, which floors the cover near 1/N (the light-air
+		// flecks): fit the tail's e-fold from eight samples to e times that and extrapolate below it.
+		const double Floor = 8.0 / double(N);
+		if (Target < Floor)
+		{
+			const double At = Quantile(Floor), Up = Quantile(std::min(2.718281828 * Floor, 1.0));
+			OutSlope = std::max(Up - At, 0.002);
+			OutThreshold = At - OutSlope * std::log(Floor / Target);
+			return;
+		}
 		OutThreshold = Quantile(Target);
 		// The shift per e-fold of cover under the target (at least eight samples down the tail).
-		const double LoShare = std::max(Target / 2.718281828, std::min(8.0 / double(N), 0.5 * Target));
+		const double LoShare = std::max(Target / 2.718281828, std::min(Floor, 0.5 * Target));
 		const double Lo = Quantile(LoShare);
 		OutSlope = std::max(OutThreshold - Lo, 0.002) / std::log(Target / LoShare);
 	}

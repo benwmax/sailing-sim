@@ -79,6 +79,7 @@ namespace Sailing
 		 * whitecap Jacobian (long times chop), and the threshold's shift per e-fold of cover there. The renderer solves it
 		 * on the sea it draws: a threshold fitted on one sea (the test's 8 km fetch) capped the lake's shorter-fetch sea at a
 		 * fraction of its share, so 20 kn showed three caps in a view where Monahan's fresh-water share gives dozens.
+		 * A target under eight samples is extrapolated down the tail (the quantile floored light air's cover at 1/N).
 		 */
 		static void CapThreshold(std::vector<float> Samples, double Target, double& OutThreshold, double& OutSlope);
 
