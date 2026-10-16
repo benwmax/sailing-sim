@@ -1,0 +1,18 @@
+{
+ "id": "TX7297EC",
+ "class": "J22",
+ "registration": "TX 7297 EC",
+ "seed": 7297,
+ "story": "The school's second J/22, in the next slip: same use, a little more tired, blue fender always on deck.",
+ "age_years": 37,
+ "use": "school",
+ "care": "club",
+ "wear": {"edge_scuff": 0.7, "nonskid_grime": 0.75, "uv_fade": 0.6, "waterline_scum": 0.75, "teak_silver": 0.9, "metal_oxide": 0.4},
+ "colours": {"jib_sheets": "green-white", "dock_lines": "blue", "outboard_cowl": "Deck"},
+ "touches": [
+  {"touch": "FenderPair", "pos": [0.35, -0.95, 0.8], "yaw": 0, "yaw_jitter": 8},
+  {"touch": "Cooler", "pos": [-1.75, 0.0, 0.4], "yaw": 90, "yaw_jitter": 15},
+  {"touch": "CoiledLine", "pos": [2.30, 0.0, 1.2], "yaw_jitter": 180}
+ ],
+ "sources": "Bean's lesson photo IMG_9224 (the second boat in the next slip)."
+}

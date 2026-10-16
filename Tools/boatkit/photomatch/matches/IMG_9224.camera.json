@@ -1,0 +1,36 @@
+{
+ "location": [
+  4.767645427742787,
+  -2.486827426179936,
+  0.7971478216491761
+ ],
+ "rotation_quaternion": [
+  0.5887712224021338,
+  0.6780467495794922,
+  0.3032921420763511,
+  0.31877096732688986
+ ],
+ "lens_mm": 24.0,
+ "sensor_width_mm": 36.0,
+ "resolution": [
+  5712,
+  4284
+ ],
+ "photo": "IMG_9224.jpg",
+ "residual_px": {
+  "StemTop": 12.1,
+  "ForestayTack": 12.6,
+  "ChainplateMid_S": 1.4,
+  "TransomTopS": 0.8
+ },
+ "rms_px": 8.8,
+ "checks_px": {
+  "MastBase": {
+   "error_px": 183.8,
+   "model_px": [
+    2546,
+    2304
+   ]
+  }
+ }
+}
