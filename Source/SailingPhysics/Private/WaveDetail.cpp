@@ -184,18 +184,22 @@ namespace Sailing
 			const double Jxx = 1.0 - L * Cc[Idx].imag(), Jyy = 1.0 - L * D[Idx].real(), Jxy = -L * D[Idx].imag();
 			Out.J[Idx] = float(Jxx * Jyy - Jxy * Jxy);
 		}
-		// W8: the whitecaps' Jacobian, from the displacement box-blurred (periodic, separable) over CapBlurTexels either
-		// way, by central differences.
-		static constexpr int Rb = CapBlurTexels;
-		auto Blur = [N](const std::vector<float>& V)
+		// W8: the whitecaps' Jacobian, from the displacement box-blurred (periodic, separable) over CapBlurMeters either
+		// way, by central differences. The box's radius is fractional (its end taps weighted by the fraction), so the caps
+		// grow smoothly with the wind.
+		const double Rm = CapBlurMeters(Params.WindMs) / (C.Spec.Tile / N);
+		const int Rb = int(std::floor(Rm));
+		const float Edge = float(Rm - Rb);
+		auto Blur = [N, Rb, Edge](const std::vector<float>& V)
 		{
 			std::vector<float> A(V.size()), B(V.size());
-			const float Norm = 1.f / float(2 * Rb + 1);
+			const float Norm = 1.f / (float(2 * Rb + 1) + 2.f * Edge);
 			for (int R = 0; R < N; ++R)
 				for (int Col = 0; Col < N; ++Col)
 				{
 					float Sum = 0.f;
 					for (int K = -Rb; K <= Rb; ++K) Sum += V[size_t(R) * N + (Col + K + N) % N];
+					Sum += Edge * (V[size_t(R) * N + (Col - Rb - 1 + N) % N] + V[size_t(R) * N + (Col + Rb + 1) % N]);
 					A[size_t(R) * N + Col] = Sum * Norm;
 				}
 			for (int R = 0; R < N; ++R)
@@ -203,6 +207,7 @@ namespace Sailing
 				{
 					float Sum = 0.f;
 					for (int K = -Rb; K <= Rb; ++K) Sum += A[size_t((R + K + N) % N) * N + Col];
+					Sum += Edge * (A[size_t((R - Rb - 1 + N) % N) * N + Col] + A[size_t((R + Rb + 1) % N) * N + Col]);
 					B[size_t(R) * N + Col] = Sum * Norm;
 				}
 			return B;
@@ -218,6 +223,12 @@ namespace Sailing
 				const double Yx = (At(By, R + 1, Cl) - At(By, R - 1, Cl)) / H2, Yy = (At(By, R, Cl + 1) - At(By, R, Cl - 1)) / H2;
 				Out.JCap[size_t(R) * N + Cl] = float((1.0 + Xx) * (1.0 + Yy) - Xy * Yx);
 			}
+	}
+
+	double FWaveDetail::CapBlurMeters(double WindMs)
+	{
+		const double At20 = CapBlurTexels * ChopCascade().Tile / ChopCascade().N;
+		return Clamp(At20 * std::pow(std::max(WindMs, 0.0) / (20.0 * 1852.0 / 3600.0), 3.41 / 4.0), 0.18, At20);
 	}
 
 	void FWaveDetail::Sample(const FGrid& G, double X, double Y, double& OutH, double& OutDx, double& OutDy, double& OutJ)

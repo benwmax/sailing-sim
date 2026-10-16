@@ -250,7 +250,8 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapsSeenTest, "SailingSim.Visual.WhitecapsSeen", WaterFlags)
 bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 {
-	for (const double Knots : { 14.0, 20.0, 25.0 })
+	// Whitecap mask (docs/water-8/capshape-mac): 12 and 16 kn too, where the drawn cover had drifted from its CPU copy.
+	for (const double Knots : { 12.0, 14.0, 16.0, 20.0, 25.0 })
 	{
 		FWaveField Waves(1);
 		FWaveParams WP;
@@ -376,7 +377,7 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 	const float Lake = AWaterSurface::WhitecapScaleFor(0), Bay = AWaterSurface::WhitecapScaleFor(1), Sea = AWaterSurface::WhitecapScaleFor(2);
 	TestTrue(TEXT("The Gulf keeps the sea's law"), Sea == 1.f);
 	TestTrue(TEXT("At the mean wind the sea's threshold is the calibrated one"), FMath::IsNearlyEqual(AWaterSurface::WhitecapThreshold(1.f, Sea), AWaterSurface::FoamThresholdAt(14.f)));
-	for (const double Knots : { 6.0, 10.0, 14.0, 20.0, 25.0 })
+	for (const double Knots : { 6.0, 10.0, 12.0, 14.0, 16.0, 20.0, 25.0 })
 	{
 		const double Threshold = AWaterSurface::FoamThresholdAt(float(Knots));
 		FWaveField Waves(1);
@@ -517,5 +518,126 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("The extrapolated threshold caps the target elsewhere (within a factor of three: %.4f%%)"), 100.0 * Capped),
 		Capped > Target / 3.0 && Capped < 3.0 * Target);
 	TestTrue(FString::Printf(TEXT("A fifth of the target caps less (%.4f%%)"), 100.0 * Lowest), Lowest < Capped);
+
+	// Whitecap mask (docs/water-8/capshape-mac): the full law from 12 kn, the threshold solved as the renderer solves it
+	// (its samples scaled by the drawn fold) capping the target on other water at 12 and 16 kn as at 20.
+	for (const double K : { 12.0, 16.0, 20.0 })
+	{
+		FWaveField W2(1);
+		FWaveParams P2;
+		P2.WindSpeedKnots = K;
+		P2.FetchMeters = 8000.0;
+		W2.SetWind(P2);
+		W2.SnapToTarget();
+		FWaveDetail D2;
+		D2.Configure(DetailFor(K, P2.FetchMeters, P2.WindFromDegrees), { FWaveDetail::ChopCascade() });
+		const float Fold = AWaterSurface::DrawnFoldScaleAt(float(K));
+		auto Drawn = [&](double T, double X0)
+		{
+			FWaveDetail::FGrid Grid;
+			D2.Evaluate(0, T, Grid);
+			std::vector<float> Out;
+			for (int32 R = 0; R < Grid.N; R += 2)
+				for (int32 C = 0; C < Grid.N; C += 2)
+					Out.push_back(float(1.0 - Fold * (1.0 - FWaveDetail::LongJacobian(W2.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
+						X0 + R * 1.31, C * 1.37, T, 0.5) * Grid.JCap[R * Grid.N + C])));
+			return Out;
+		};
+		const double Tgt = 3.84e-6 * FMath::Pow(K * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0) * AWaterSurface::WhitecapOnset(float(K));
+		double KThr = 0.0;
+		for (int32 F = 0; F < Frames; ++F)
+		{
+			double T1 = 0.0, Slope = 0.0;
+			FWaveDetail::CapThreshold(Drawn(11.0 + 4.3 * F, 37.0 * F), Tgt, T1, Slope);
+			KThr += T1 / Frames;
+		}
+		double KCapped = 0.0;
+		size_t KCount = 0;
+		for (const double T : { 140.0, 203.0, 311.0, 419.0, 533.0, 641.0 })
+		{
+			const std::vector<float> More = Drawn(T, 900.0 + T);
+			for (const float V : More) KCapped += V < KThr ? 1.0 : 0.0;
+			KCount += More.size();
+		}
+		KCapped /= double(KCount);
+		AddInfo(FString::Printf(TEXT("%2.0f kn, lake: drawn fold x%.3f, target %.3f%%, threshold %.3f caps %.3f%% elsewhere"), K, Fold, 100.0 * Tgt, KThr, 100.0 * KCapped));
+		TestTrue(FString::Printf(TEXT("%.0f kn: the full law (no onset share)"), K), AWaterSurface::WhitecapOnset(float(K)) == 1.f);
+		TestTrue(FString::Printf(TEXT("%.0f kn: the solved threshold caps the target elsewhere (within 35%%: %.3f%%)"), K, 100.0 * KCapped),
+			KCapped > 0.65 * Tgt && KCapped < 1.35 * Tgt);
+	}
+	// The drawn fold's scale by wind: W8's 0.85 at its 20 kn fit and above, deeper as the wind falls, held under 12 kn.
+	TestTrue(TEXT("The drawn fold scale rises as the wind falls"), AWaterSurface::DrawnFoldScaleAt(20.f) < AWaterSurface::DrawnFoldScaleAt(16.f)
+		&& AWaterSurface::DrawnFoldScaleAt(16.f) < AWaterSurface::DrawnFoldScaleAt(12.f));
+	TestTrue(TEXT("Held below 12 kn"), AWaterSurface::DrawnFoldScaleAt(8.f) == AWaterSurface::DrawnFoldScaleAt(12.f));
+	TestTrue(TEXT("Never under W8's 0.85"), AWaterSurface::DrawnFoldScaleAt(30.f) == 0.85f);
+	return true;
+}
+
+/**
+ * Whitecap size by wind (docs/water-8/capshape-mac): with the cap blur fixed at W8's 0.36 m, 12 kn caps came out as long
+ * as 20 kn ones. The blur (FWaveDetail::CapBlurMeters) follows the wind as U^0.85 up to W8's 20 kn fit, so at each
+ * wind's own share of Monahan's cover the caps are both smaller and rarer in lighter air.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapSizeTest, "SailingSim.Visual.WhitecapSize", WaterFlags)
+bool FWaterWhitecapSizeTest::RunTest(const FString&)
+{
+	const double At20 = FWaveDetail::CapBlurMeters(20.0 * kKnot);
+	TestTrue(FString::Printf(TEXT("W8's 0.36 m at 20 kn (%.3f m)"), At20), FMath::IsNearlyEqual(At20, 2.0 * 23.0 / 128.0, 1e-6));
+	TestTrue(TEXT("The blur grows with the wind"), FWaveDetail::CapBlurMeters(12.0 * kKnot) < FWaveDetail::CapBlurMeters(16.0 * kKnot)
+		&& FWaveDetail::CapBlurMeters(16.0 * kKnot) < At20);
+	double Area[3] = {}, Count[3] = {};
+	int32 Index = 0;
+	for (const double Knots : { 12.0, 16.0, 20.0 })
+	{
+		FWaveDetail Detail;
+		Detail.Configure(DetailFor(Knots, 8000.0, 0.0), { FWaveDetail::ChopCascade() });
+		// The chop's own fold at the lake's share of Monahan's cover for this wind (the long trains only move where it
+		// lands), as connected caps (8-neighbours, periodic).
+		const double Share = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0);
+		std::vector<FWaveDetail::FGrid> Grids;
+		std::vector<float> All;
+		for (int32 F = 0; F < 24; ++F)
+		{
+			Grids.emplace_back();
+			Detail.Evaluate(0, 5.0 + 7.3 * F, Grids.back());
+			All.insert(All.end(), Grids.back().JCap.begin(), Grids.back().JCap.end());
+		}
+		std::nth_element(All.begin(), All.begin() + size_t(Share * All.size()), All.end());
+		const float Thr = All[size_t(Share * All.size())];
+		double Cells = 0.0, Caps = 0.0;
+		for (const FWaveDetail::FGrid& Grid : Grids)
+		{
+			const int32 N = Grid.N;
+			std::vector<uint8> Seen(size_t(N) * N, 0);
+			for (int32 I = 0; I < N * N; ++I)
+			{
+				if (Seen[I] || Grid.JCap[I] >= Thr) continue;
+				Caps += 1.0;
+				std::vector<int32> Stack{ I };
+				Seen[I] = 1;
+				while (!Stack.empty())
+				{
+					const int32 C = Stack.back();
+					Stack.pop_back();
+					Cells += 1.0;
+					for (int32 Dr = -1; Dr <= 1; ++Dr)
+						for (int32 Dc = -1; Dc <= 1; ++Dc)
+						{
+							const int32 Nb = ((C / N + Dr + N) % N) * N + (C % N + Dc + N) % N;
+							if (!Seen[Nb] && Grid.JCap[Nb] < Thr) { Seen[Nb] = 1; Stack.push_back(Nb); }
+						}
+				}
+			}
+		}
+		const double Cell = 23.0 / 128.0;
+		Area[Index] = Cells / FMath::Max(Caps, 1.0) * Cell * Cell;
+		Count[Index] = Caps / Grids.size();
+		AddInfo(FString::Printf(TEXT("%2.0f kn: blur %.2f m, the lake's cover (%.3f%%): %.2f caps a 23 m tile, %.2f m^2 each"), Knots,
+			FWaveDetail::CapBlurMeters(Knots * kKnot), 100.0 * Share, Count[Index], Area[Index]));
+		++Index;
+	}
+	TestTrue(FString::Printf(TEXT("12 kn caps are smaller than 20 kn ones (%.2f against %.2f m^2)"), Area[0], Area[2]), Area[0] < 0.7 * Area[2]);
+	TestTrue(TEXT("16 kn caps in between"), Area[0] < Area[1] && Area[1] < Area[2]);
+	TestTrue(FString::Printf(TEXT("and rarer (%.2f against %.2f a tile)"), Count[0], Count[2]), Count[0] < Count[1] && Count[1] < Count[2]);
 	return true;
 }
