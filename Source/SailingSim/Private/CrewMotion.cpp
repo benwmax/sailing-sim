@@ -166,7 +166,14 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
 	const float Side = In.CrewOffset != 0.0 ? float(FMath::Sign(In.CrewOffset)) : float(In.WindwardSide);
 	const double Off = FMath::Abs(In.CrewOffset);
-	const double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I) + In.CrewOffsetX;
+	double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I) + In.CrewOffsetX;
+	// Round 11: a keelboat's crew sit beside the cockpit well with their feet in it, so the forward sailor (the J/22's bow,
+	// at x -0.65, was beside the cabin trunk, 7 cm forward of the well) comes back to its forward end.
+	FCrewCockpitWell KeelWell;
+	if (!bDinghy && !Cfg.bMultihull && I != N - 1 && CrewCockpitWell(Cfg, KeelWell))
+	{
+		X = FMath::Clamp(X, KeelWell.X0 + 0.3, KeelWell.X1 - 0.12);
+	}
 	const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
 	const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
 	FCrewPoseParams& P = Out.Params;
@@ -242,7 +249,8 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	else if (Off > 0.55 * Rail)
 	{
 		P.Stance = ECrewStance::RailHike;
-		Out.Pelvis = FVector(X, Side * (Rail - 0.02), Sheer + 0.07);
+		// Sitting on the side deck a hand's width in from the edge, facing inboard (round 11: not on the edge, legs over).
+		Out.Pelvis = FVector(X, Side * (Rail - 0.12), Sheer + 0.07);
 	}
 	else
 	{
