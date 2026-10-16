@@ -51,13 +51,12 @@ python3 Tools/boatkit/photomatch/profile_match.py Tools/boatkit/photomatch/match
 ## Not changed, and why
 
 - **The physics keel.** `FBoatConfig`'s keel `Center` stays at x +0.45: it is a balance knob the polar was tuned with,
-  and the drawn fin's centre of area is now near x 0. Grounding contact points also come from that centre (see
-  `FBoatModel::BuildContactPoints`), so in shallow water the boat touches 0.45 m ahead of where the drawn keel is. Moving
-  it means a polar, `--scenarios` and reference-check run on the sim side.
-- **The mast.** The class's mast rule puts the mast's front face at x +0.825, 17.5 cm forward of phase 2's 0.65 (which
-  came from J = 8.8 ft measured to a forestay tack at x 3.38). Both hold if the forestay tack is a stemhead fitting about
-  5 cm ahead of the stem, as on most J/22s. That move touches `MastX`, the jib's tack and the sail plan, so it waits for
-  a polar run too.
+  and the drawn fin's centre of area is now near x 0. The grounding contact points no longer depend on it: #88 gives
+  `FBoatModel::BuildContactPoints` the class fin's bottom chord (x -0.49 to +0.11) as the J/22's keel footprint.
+- **The mast.** The class's mast rule puts the mast's front face at x +0.825 and the forestay tack at about 3.50, 17.5 cm
+  forward of phase 2's 0.65 (which came from J = 8.8 ft measured to a tack at x 3.38). The sim thread confirmed the
+  reading and moves the mast and the keel `Center` together in one calibration pass after this PR (polar, `--scenarios`,
+  reference checks).
 - **The rudder.** The class numbers for its depth and chord came only from a search snippet, so the blade is as it was.
 - **Plan view and sections.** A broadside says nothing about beam or deck shape. The other Commons photos of J/22s
   (a crane lift, several overheads, the class's category) are the next inputs, solved with `solve_camera.py`.
