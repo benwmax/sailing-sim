@@ -1224,6 +1224,7 @@ return float3(d.x * 100.0, d.y * 100.0, (h + ho - 2.0 * hin) * 100.0);
 """
 
 V4_SHADE = """
+FoamTone = 1.0;
 float3 p = P * 0.01;
 float3 cam = Cam * 0.01;
 float dist = distance(p.xy, cam.xy);
@@ -1429,7 +1430,24 @@ float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
 float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
 // Heavy rain: splashes and mist grey the surface.
-Foam = saturate(max(caps + wakeBreak, 0.85 * lap) + 0.10 * Rain);
+// W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
+// measure; it is not touched here). Drawn straight as opacity over albedo 0.85, a cap at 0.3-0.5 cover read nearly as
+// white as a solid one, flat to its edge: the decal look. Real foam isn't one white: an active crest is dense bubbly white
+// (reflectance about 0.5-0.6, Frouin, Schwindling and Deschamps 1996), the residue it leaves is thin and dimmer (about
+// half; Koepke 1984's effective whitecap albedo is 0.22 across both), and both break into cells. So:
+// - FoamTone scales the foam's white: 1 on an active crest, 0.5 on residue, broken by bubble cells (0.7-1);
+// - the opacity follows cover to the power 1.5, so a pixel half covered is a third opaque and only the dense core of a cap
+//   is solid white; its edge thins out instead of stopping.
+float fresh = saturate(crest / max(caps, 1e-3));
+float cells = (0.5 + 0.5 * sin(p.x * 23.7 + sin(p.y * 19.1) * 2.3)) * (0.5 + 0.5 * sin(p.y * 21.3 + sin(p.x * 17.9 + T * 0.6) * 2.7));
+float cellsE = lerp(cells, 0.25, patFade);
+FoamTone = lerp(0.5, 1.0, fresh) * lerp(0.7, 1.0, saturate(cellsE * 2.0));
+FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps * 4.0)));   // boats' wash: fresh foam
+// A cap's interior isn't solid either: bubble cells and the gaps between them (opacity 0.4-1 by cell), and its edge feathers
+// over a wider fold ramp (0.15 of J against the mask's 0.05) so the outline thins out instead of stopping.
+float soft = saturate((capThr - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
+float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
+Foam = saturate(max(capsDrawn + wakeBreak, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
 // mirror (a lull on a light day, the lake at dawn); a puff ruffles it again within seconds (the map's roughness rises in
@@ -1500,6 +1518,7 @@ Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
     float hsh = frac(sin(dot(floor(Parameters.SvPosition.xy), float2(12.9898, 78.233))) * 43758.5453);
     // 1: the whitecaps (crests and their residue); 2: the crests alone; 3: where the fold is under the threshold.
     Foam = DebugFoam > 2.5 ? step(Jt, capThr) : step(hsh + 1e-4, DebugFoam > 1.5 ? crest : caps);
+    FoamTone = 1.0;
     Spec = 0.0;
     Dark = 1.0 / 0.35;
     Rough = 1.0;
@@ -1562,7 +1581,7 @@ def build_water_v4():
     shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
-                   extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1)])
+                   extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
@@ -1641,7 +1660,10 @@ def build_water_v4():
     connect(albedo, "", albedo_dark, "A")
     connect(dark_scale, "", albedo_dark, "B")
     slw = node(mat, unreal.MaterialExpressionSubstrateSingleLayerWaterBSDF, 200, 600)
-    connect(foam_col, "", slw, "BaseColor")
+    foam_tinted = node(mat, unreal.MaterialExpressionMultiply, -100, 1200)  # W4: FoamTone (active crest 1, residue 0.5)
+    connect(foam_col, "", foam_tinted, "A")
+    connect(shade, "FoamTone", foam_tinted, "B")
+    connect(foam_tinted, "", slw, "BaseColor")
     connect(rough_mix, "", slw, "Roughness")
     connect(shade, "Spec", slw, "Specular")
     connect(to_tangent, "", slw, "Normal")
