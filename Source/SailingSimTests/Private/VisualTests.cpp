@@ -592,9 +592,12 @@ bool FVisualCrewPoseTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Standing: head about 1.6 m up"), Rest[TEXT("head")].Z > 150.f && Rest[TEXT("head")].Z < 165.f);
 	// Character frame: X is the way the sailor faces.
 	Pose(ECrewStance::RailHike, 1.f, J);
-	TestTrue(FString::Printf(TEXT("Hiking on the rail: chest out over the legs (%.0f cm forward of the pelvis)"), J[TEXT("neck")].X - J[TEXT("pelvis")].X),
-		J[TEXT("neck")].X - J[TEXT("pelvis")].X > 15.f);
-	TestTrue(TEXT("Hiking on the rail: lower legs hang down the topsides"), J[TEXT("foot_l")].Z < J[TEXT("calf_l")].Z - 30.f);
+	// Round 11: facing inboard, the knees forward of the hips (over the cockpit), the lower legs down into it, the trunk
+	// leaning back out over the water.
+	TestTrue(FString::Printf(TEXT("Hiking on the rail: leaning back (%.0f cm behind the pelvis)"), J[TEXT("pelvis")].X - J[TEXT("neck")].X),
+		J[TEXT("pelvis")].X - J[TEXT("neck")].X > 15.f);
+	TestTrue(TEXT("Hiking on the rail: knees inboard of the hips"), J[TEXT("calf_l")].X - J[TEXT("thigh_l")].X > 30.f);
+	TestTrue(TEXT("Hiking on the rail: lower legs down into the cockpit"), J[TEXT("foot_l")].Z < J[TEXT("calf_l")].Z - 25.f);
 	Pose(ECrewStance::DinghyHike, 1.f, J);
 	TestTrue(FString::Printf(TEXT("Dinghy hiking: leaning back (%.0f cm behind the pelvis)"), J[TEXT("pelvis")].X - J[TEXT("neck")].X), J[TEXT("pelvis")].X - J[TEXT("neck")].X > 30.f);
 	Pose(ECrewStance::Cockpit, 0.f, J);
@@ -607,7 +610,7 @@ bool FVisualCrewPoseTest::RunTest(const FString& Parameters)
 	FCrewPoseParams Out;
 	Out.Stance = ECrewStance::RailHike;
 	Out.Side = 1.f;
-	TestEqual(TEXT("On the starboard rail the crew face starboard (outboard)"), CrewFacingYaw(Out), 90.f);
+	TestEqual(TEXT("On the starboard rail the crew face port (inboard, turned a little forward)"), CrewFacingYaw(Out), -80.f);
 	Out.Stance = ECrewStance::DinghyHike;
 	TestEqual(TEXT("A dinghy sailor on the starboard side faces port (inboard, turned a little forward)"), CrewFacingYaw(Out), -75.f);
 
@@ -779,7 +782,9 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 					TMap<FName, FQuat> Joints;
 					CrewJointRotations(P, Joints);
 					const FQuat Facing(FRotator(0.f, Pl.Yaw, Pl.Roll));
-					const bool bInPlan = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::DinghyHike;
+					// (Round 11: the rail sitters' feet are in the boat too, never over the side.)
+					const bool bInPlan = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::DinghyHike
+						|| P.Stance == ECrewStance::RailHike;
 					for (const FBody& B : Bodies)
 					{
 						const bool bRig = B.Rig.bValid;
