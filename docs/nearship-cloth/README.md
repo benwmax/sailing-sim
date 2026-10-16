@@ -23,3 +23,15 @@ mechanism, not confirmed against a failure on this machine. The reset really hap
 boat sits 150 m off the container ship's side (camera yaw 90 top, 270 bottom, after build).
 
 ![The boat moved abeam of the first ship](ship-abeam.jpg)
+
+## Mac runs (packaged, High, Apple M5 Pro)
+
+The same flags with `-SailingNearShip=350 -SailingCamYaw=90 -SailingCamPitch=-8`, 25 s each, six runs of each build. Before
+is main e5d87f68; after is this branch with main merged (85ebbac2). `SailingSim.Visual` passed 32/32 on the branch.
+
+![Six runs on main (top two rows) and six on this branch (bottom two rows)](mac-before-after-6x2.jpg)
+
+None of the twelve runs blew out, on main or on the branch. So this setup doesn't reproduce #84's two in six either: here
+the first ship (the tanker) spawns on the first frame, so the reset comes before the cloth has moved. In #84 the reset came
+mid-run, but the arguments of those runs weren't recorded. The branch is safe (no regression in twelve runs), and the fix
+covers the mechanism, but neither machine has confirmed it against a failure.
