@@ -530,6 +530,34 @@ def build_rain_curtain():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_smoke():
+    """M_Smoke (Graphics G8 Ultra showcase): an exhaust puff from APowerVesselActor::UpdateExhaust. Instanced spheres,
+    lit translucent (volumetric, non-directional: cheap, and smoke has no surface to shade), shade and opacity per instance
+    (custom data 0 and 1), the edge softened by the view angle so a puff reads as a blob of smoke, not a ball."""
+    mat = new_material("M_Smoke")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_VOLUMETRIC_NON_DIRECTIONAL)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    shade = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 0, data_index=0, const_default_value=0.1)
+    alpha = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 200, data_index=1, const_default_value=0.5)
+    # Diesel soot is near black and brown-tinted; an outboard's haze a pale blue-grey (shade 0.6).
+    col = node(mat, unreal.MaterialExpressionLinearInterpolate, -600, 0)
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -900, -150, constant=unreal.LinearColor(0.03, 0.028, 0.025, 1)), "", col, "A")
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -900, -80, constant=unreal.LinearColor(0.55, 0.58, 0.62, 1)), "", col, "B")
+    connect(shade, "", col, "Alpha")
+    fres = node(mat, unreal.MaterialExpressionFresnel, -900, 350, exponent=1.5, base_reflect_fraction=0.0)
+    soft = node(mat, unreal.MaterialExpressionOneMinus, -650, 350)
+    connect(fres, "", soft, "")
+    op = node(mat, unreal.MaterialExpressionMultiply, -400, 250)
+    connect(alpha, "", op, "A")
+    connect(soft, "", op, "B")
+    MEL.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(node(mat, unreal.MaterialExpressionConstant, -400, 450, r=1.0), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_emissive():
     mat = new_material("M_Emissive")
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
@@ -3159,6 +3187,7 @@ build(build_house_kit_materials)
 build(build_terrain)
 build(build_rain)
 build(build_rain_curtain)
+build(build_smoke)
 build(build_emissive)
 build(build_sail)
 build(build_ghost)

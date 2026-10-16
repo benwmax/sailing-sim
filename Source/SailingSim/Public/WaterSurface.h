@@ -153,6 +153,12 @@ private:
 
 	int32 Tier = 2;
 	bool bV4 = false;
+	/** Graphics G8 Ultra showcase: the drawn detail on Ultra tiles twice as far at the same texel (chop 256^2 over 46 m,
+	 *  ripples 128^2 over 6.2 m), so the pattern repeats a quarter as often; the wavelength bands, the caps' blur in metres
+	 *  and the physics (which never reads this FFT) are unchanged. Set by CreateWaterMaterial from the quality. */
+	bool bUltraDetail = false;
+	Sailing::FWaveDetail::FCascadeSpec DrawnChop() const;
+	Sailing::FWaveDetail::FCascadeSpec DrawnRipple() const;
 	struct FDetailFrame
 	{
 		const Sailing::FWaveDetail* Source = nullptr;
