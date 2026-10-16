@@ -78,3 +78,20 @@ Before this change, the dress was an independent hash per slip, so about one nei
 - South-west faces bleach more than north-east ones.
 - The band heights by site and water contact.
 - The slot order.
+
+## Cost and gate (the Mac, packaged)
+
+`scripts/gate.sh --scope world` (branch with main 778c56a4 merged) passes: 150/150 tests, every view over Medium 60 and
+High 45 (`world.csv`). High fps: marina 58.2, bridge 61.1, coast-night 57.7, marina-night 50.9, helm-eye 52.6, slip 50.8,
+coast-day 52.8.
+
+Run straight after the gate, the branch came out 0-2 fps under the main bench taken before it (`ab-main`, `ab-branch`), the
+same order effect as `docs/water-8/w4-mac`. Back to back (the branch, then main repackaged, `ab-branch2`, `ab-main2`):
+
+| View | Branch Medium | Main Medium | Branch High | Main High | GPU ms High, branch / main |
+|---|---|---|---|---|---|
+| marina | 92.5 | 94.0 | 60.2 | 61.1 | 14.66 / 14.68 |
+| coast-night | 97.0 | 96.3 | 59.8 | 60.2 | 16.15 / 16.14 |
+| bridge | 99.0 | 98.7 | 63.0 | 63.5 | 14.19 / 14.17 |
+
+About 0 ms: the custom data is written once at spawn.
