@@ -151,14 +151,16 @@ bool FReferenceChecksTest::RunTest(const FString& Parameters)
 		// (W1: the J/22's gusty spinnaker run, a known gap since Visual V3 at 12.1 kn, is back in range in the new puffs.)
 		// (Physics gaps: the ILCA's 16 kn gusting 22 reach, a known gap since W1, holds now that the sailor eases on the puff
 		// itself, not only on the heel: SailingSim.Physics.LaserPuffHandling.)
-		TEXT("Hobie 16 lap time / ILCA, DPN4 12+ kn"),   // steady laps leave out tacking and gybing losses, largest for cats (fix list 10)
+		// (W8: the Hobie 16's 12+ kn lap, a known gap since Phase 8, is in band with her added resistance in chop at 9, and
+		// the Catalina 22's 4-7 kn lap with her plate keel's profile drag: docs/water-8/portsmouth.)
+		nullptr,
 	};
 	int32 Failures = 0;
 	for (const FReferenceCheck& C : RunReferenceChecks(true))
 	{
 		const FString Name(UTF8_TO_TCHAR(C.Name.c_str()));
 		bool bKnown = false;
-		for (const TCHAR* Gap : KnownGaps) bKnown |= Name.Equals(Gap);
+		for (const TCHAR* Gap : KnownGaps) bKnown |= Gap && Name.Equals(Gap);
 		AddInfo(FString::Printf(TEXT("%-10hs %-55s %7.2f %-5hs [%6.2f .. %6.2f] %s"), C.Group.c_str(), *Name, C.Value, C.Unit.c_str(), C.Low, C.High,
 			C.Pass() ? TEXT("ok") : (bKnown ? TEXT("known gap") : TEXT("OUT"))));
 		if (!C.Pass() && !bKnown)
