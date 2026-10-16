@@ -138,6 +138,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.Rudder = LoadHero(TEXT("Rudder"));
 		// Boat detail pass: the cabin below decks (optional: older imports have none).
 		M.Interior = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Interior.SM_J22H_Interior"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		// and its glass: the smoked portlights and fore hatch over the cabin, and the bilge water (translucent, M_J22HeroGlass).
+		M.Glass = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Glass.SM_J22H_Glass"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
 		M = FBoatModelMeshes();
 	}
@@ -198,6 +200,13 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	if (Model.Interior && !bTrafficBoat && !bGhost)
 	{
 		AddModelPart(Model.Interior, BoatRoot, FVector::ZeroVector);
+		// Without the glass the portlights are open holes that show the lit cabin. It casts no shadow: the panes are
+		// smoked, not opaque, and the interior's own shading already darkens the cabin.
+		if (Model.Glass)
+		{
+			UStaticMeshComponent* GlassPart = AddModelPart(Model.Glass, BoatRoot, FVector::ZeroVector);
+			GlassPart->SetCastShadow(false);
+		}
 	}
 	ModelMast = AddModelPart(Model.Mast, BoatRoot, ModelHull->GetSocketTransform(TEXT("MastStep"), RTS_Component).GetLocation());
 	MastBendHeightCm = FMath::Max(Model.Mast->GetBounds().GetBox().Max.Z, 100.f);
