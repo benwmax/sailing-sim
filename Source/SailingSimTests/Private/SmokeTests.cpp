@@ -75,15 +75,30 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 
 	if (bSpawned)
 	{
-		// Visual V2: the J/22 is the modelled boat (white gelcoat), not the procedural hull.
+		// Visual V2: the J/22 is the modelled boat (white gelcoat), not the procedural hull. Since round 12 the player's
+		// J/22 is the hero (SM_J22H_Hull, its topsides a baked texture); -SailingClassicJ22 keeps SM_J22_Hull.
 		const UStaticMeshComponent* ModelHull = nullptr;
-		Boat->ForEachComponent<UStaticMeshComponent>(false, [&](UStaticMeshComponent* C) { if (C->GetStaticMesh() && C->GetStaticMesh()->GetName() == TEXT("SM_J22_Hull")) ModelHull = C; });
+		Boat->ForEachComponent<UStaticMeshComponent>(false, [&](UStaticMeshComponent* C)
+		{
+			const FString Name = C->GetStaticMesh() ? C->GetStaticMesh()->GetName() : FString();
+			if (Name == TEXT("SM_J22H_Hull") || Name == TEXT("SM_J22_Hull")) ModelHull = C;
+		});
 		TestNotNull(TEXT("The J/22 shows its model"), ModelHull);
 		TestEqual(TEXT("The procedural hull is cleared"), Boat->HullMesh->GetNumSections(), 0);
-		const UMaterialInterface* Topsides = ModelHull ? ModelHull->GetMaterial(ModelHull->GetMaterialIndex(TEXT("Topsides"))) : nullptr;
-		FLinearColor HullColor = FLinearColor::Black;
-		TestTrue(TEXT("Topsides have a gelcoat colour"), Topsides && Topsides->GetVectorParameterValue(TEXT("Color"), HullColor));
-		TestTrue(TEXT("White gelcoat topsides"), HullColor.R > 0.6f && HullColor.G > 0.6f && HullColor.B > 0.6f);
+		if (ModelHull && ModelHull->GetStaticMesh()->GetName() == TEXT("SM_J22H_Hull"))
+		{
+			const UMaterialInterface* Topsides = ModelHull->GetMaterial(ModelHull->GetMaterialIndex(TEXT("J22H_Hull")));
+			UTexture* BaseColor = nullptr;
+			TestTrue(TEXT("Topsides have the baked gelcoat"), Topsides && Topsides->GetTextureParameterValue(TEXT("BaseColor"), BaseColor) && BaseColor
+				&& BaseColor->GetName() == TEXT("T_J22H_Hull_D"));
+		}
+		else if (ModelHull)
+		{
+			const UMaterialInterface* Topsides = ModelHull->GetMaterial(ModelHull->GetMaterialIndex(TEXT("Topsides")));
+			FLinearColor HullColor = FLinearColor::Black;
+			TestTrue(TEXT("Topsides have a gelcoat colour"), Topsides && Topsides->GetVectorParameterValue(TEXT("Color"), HullColor));
+			TestTrue(TEXT("White gelcoat topsides"), HullColor.R > 0.6f && HullColor.G > 0.6f && HullColor.B > 0.6f);
+		}
 
 		const FVector Start = Boat->GetActorLocation();
 		TestEqual(TEXT("Boat starts at the water surface"), Start.Z, WaterZ, 2.0);
