@@ -48,6 +48,27 @@ fallback refit and the 20 kn hold, which don't touch 12-20 kn once the threshold
 as many. On the grid (`SailingSim.Visual.WhitecapSize`, the chop at each wind's lake cover): 3.2 caps a 23 m tile of
 0.13 m^2 each at 12 kn, 5.8 of 0.18 m^2 at 16, 9.9 of 0.23 m^2 at 20.
 
+### Gate (`scripts/gate.sh --scope water`, packaged, the Mac)
+
+Pass: 147 tests, every view over Medium 60 and High 45 (`gate-water.csv`).
+
+| View | Medium fps | High fps |
+|---|---|---|
+| beam8 | 88.5 | 59.0 |
+| beat15 | 83.9 | 53.7 |
+| storm | 69.4 | 46.6 |
+| marina | 93.3 | 59.1 |
+| coast-day | 81.8 | 52.7 |
+| gulf-sea | 103.1 | 68.7 |
+| helm-eye | 85.3 | 53.2 |
+| slip | 80.0 | 51.1 |
+| bridge | 98.5 | 62.5 |
+
+Same-session A/B against main (583a9477), each packaged in turn (`ab-main.csv`, `ab-mask.csv`): beam8 88.5 / 88.5 Medium,
+58.8 / 58.8 High; beat15 83.7 / 83.7, 51.8 / 53.9; storm 69.3 / 69.4, 46.7 / 49.8. Flat on Medium, High within its
+run-to-run noise. The mask's GPU code is unchanged once the threshold is solved, and the blur's two extra taps run on the
+detail worker.
+
 ### Tests
 
 - `SailingSim.Visual.WhitecapsSeen`: 12 and 16 kn added (the table's mips and the solved threshold on other water).
