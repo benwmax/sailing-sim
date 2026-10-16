@@ -61,11 +61,13 @@ if ($Parts -contains 'berthed') {
 	}
 }
 if ($NoImport) { exit 0 }
-# import_boats.py: `fleet` (only the fleet), `fleet berthed` (fleet, J22, crew), `fleet gear`, `gearonly`, `j22only`, `dress`.
-$ImportArgs = @()
-if ($Parts -notcontains 'j22' -and $Parts -notcontains 'berthed') { $ImportArgs += 'fleet' }
-if ($Parts -contains 'gear') { $ImportArgs += 'gear' }
-if ($Parts -contains 'berthed') { $ImportArgs += 'dress' }
-if ($Parts.Count -eq 1 -and $Parts[0] -eq 'gear') { $ImportArgs = @('gearonly') }
-& (Join-Path $PSScriptRoot 'run-python.ps1') -Script import_boats.py -ScriptArgs ($ImportArgs -join ' ')
+# import_boats.py, one run per part asked for: `fleet` (the seven fleet boats), `j22only`, `gearonly`, `dress` (the
+# keelboats' berthed dresses). The old single run passed `dress` whenever berthed was asked for, and that branch
+# imports only what its flags name, so `-Parts j22,berthed` (and the default, every part) never re-imported the J/22.
+$Runs = @()
+if ($Parts -contains 'fleet') { $Runs += 'fleet' }
+if ($Parts -contains 'j22') { $Runs += 'j22only' }
+if ($Parts -contains 'gear') { $Runs += 'gearonly' }
+if ($Parts -contains 'berthed') { $Runs += 'dress' }
+foreach ($R in $Runs) { & (Join-Path $PSScriptRoot 'run-python.ps1') -Script import_boats.py -ScriptArgs $R }
 exit $LASTEXITCODE

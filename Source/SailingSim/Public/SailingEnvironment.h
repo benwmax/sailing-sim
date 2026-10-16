@@ -16,6 +16,7 @@ class UMaterialInstanceDynamic;
 class UDirectionalLightComponent;
 class UMaterialInterface;
 class UTexture2D;
+struct FPostProcessSettings;
 class UPointLightComponent;
 
 /**
@@ -63,6 +64,8 @@ private:
 	void FindSceneActors();
 	void UpdateSun(double Hour);
 	void ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness);
+	/** Graphics G8: the cinematic look on top of the V1 look (grade LUT, tone curve, bloom, flare, vignette, grain). */
+	void ApplyCinematicLook(FPostProcessSettings& PP, double CloudDarkness);
 	void UpdateClouds(float DeltaSeconds);
 	void UpdateRain(const FVector& CameraPos);
 	/** W5b: the storm's rain curtains and rain foot from afar, where the rain field (FStormRain or the radar) says it rains. */
@@ -95,6 +98,13 @@ private:
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
 	/** Graphics G5: the haze's light relative to a clear midday (the metered exposure's light), and the sun's elevation. */
 	float HazeLight = 1.f;
+	bool bCinematic = false; // Graphics G8: the cinematic look is on (UsesCinematicLook, re-read each sun update)
+	bool bTriedLookLoad = false; // the cinematic LUT and bloom kernel were looked up (CinematicLUT, BloomKernel)
+	bool bFogDirectionalSaved = false;
+	FVector4f SavedFogDirectional = FVector4f(0.f, 0.f, 0.f, 0.f); // the fog's own directional inscattering (exponent, start)
+	FLinearColor SavedFogDirectionalColor = FLinearColor::Black;
+	UPROPERTY(Transient) TObjectPtr<class UTexture> CinematicLUT;   // /Game/Look/T_CinematicLUT (Tools/look/make_grade_lut.py)
+	UPROPERTY(Transient) TObjectPtr<class UTexture2D> BloomKernel;  // /Game/Look/T_BloomKernel (Ultra convolution bloom)
 	float SunElevationDeg = 45.f;
 	FVector SunDirection = FVector(0.0, 0.0, 1.0); // toward the sun (map frame), for the storm's own shade (rain curtains)
 public:

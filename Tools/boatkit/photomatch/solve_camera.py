@@ -239,7 +239,16 @@ def main():
         if len(X) < 6:
             raise SystemExit(f"{len(X)} points: pick at least 6 off one plane, or give lens_35mm_equiv")
         p, r = solve(X, x, matches["size"])
+    # Points close to one plane (all on the sheer, say) leave the camera's height and distance trading off against each
+    # other: the fit looks good while the camera sits in the wrong place. Flag it by the points' spread off their plane.
+    sv = np.linalg.svd(X - X.mean(0), compute_uv=False)
+    flatness = float(sv[-1] / sv[0])
+    if flatness < 0.08:
+        print(f"Photomatch: WARNING the solve points lie close to one plane (spread {flatness:.3f} of their length): the "
+              "camera's height and distance are poorly fixed. Add points well above or below them (mast fittings, cabin "
+              "top, waterline) before reading heights or depths off this match.")
     cam = blender_camera(p, matches["size"])
+    cam["flatness"] = round(flatness, 3)
     err = np.sqrt((r ** 2).sum(1))
     cam["photo"] = matches["photo"]
     cam["residual_px"] = {n: round(float(e), 1) for n, e in zip(names, err)}

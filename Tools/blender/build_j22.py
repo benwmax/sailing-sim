@@ -502,7 +502,8 @@ foil(hull, keel, "Keel", 0.12)
 
 # Chainplates, stem fitting, backstay plate.
 for side, tag in ((1, "S"), (-1, "P")):
-    for name, x in (("Upper", 0.98), ("Lower", 0.72)):
+    # abeam of the mast and 26 cm aft of it, so they follow the physics' MastX (moved to the class's J, boat kit phase 2)
+    for name, x in (("Upper", RIG["mast_x"] - 0.02), ("Lower", RIG["mast_x"] - 0.28)):
         y = side * (sharp_half_beam(x) - 0.05)
         box(hull, (x, y, deck_z(x, y) + 0.035), (0.06, 0.012, 0.07), "Stainless")
         socket(f"Chainplate{name}_{tag}", (x, y, deck_z(x, y) + 0.07))

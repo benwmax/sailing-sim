@@ -135,7 +135,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `scripts/make-boatkit.sh [--render]` builds the kit and dresses every boat (Blender or the `bpy` module, no Unreal).
    Photo match loop: `photomatch/solve_camera.py` solves a photo's camera from picked points, `dress_boat.py --camera
    --photo` renders from it and writes a compare image. Photos with people never enter the repo; only the picked
-   pixel numbers do. Not imported into the game yet (phase 2, after PR #67).
+   pixel numbers do. Spread solve points in depth (`flatness` under 0.08 warns: points along the sheer leave the camera's
+   height free); `photomatch/match_blend.py` renders any .blend from a solved camera. Phase 2 (`docs/boatkit-2/`): the
+   hero builds kit parts with `kit_part` (`Winch16`, `JibTrack` on the cabin top; sockets kept as `sock_<Name>` props
+   that `bake_j22_hero.py` reads), one chainplate a side, and the J/22's `MastX` is 0.65 (the class J, 8.8 ft) in the
+   physics, the hero and `build_j22.py`: rerun `make-boat-models.sh` after it.
 
 ## Conventions
 

@@ -16,6 +16,7 @@ the game yet.
 | `build_kit.py` | Builds every part, exports `SM_Kit_<Part>.fbx` and `kit.json`, renders the catalogue |
 | `dress_boat.py` | Dresses a boat (hull with its baked fittings stripped, kit, touches), writes `placements.json`, renders |
 | `photomatch/solve_camera.py` | Solves a photo's camera from picked points (DLT + Levenberg-Marquardt, or a fixed lens) |
+| `photomatch/match_blend.py` | Renders any saved .blend (the hero J/22) from a solved camera and writes the compare image |
 | `photomatch/compare.py` | Photo, render, blend and outline overlay in one image |
 
 Run everything with `scripts/make-boatkit.sh [--render]` (Blender or the `bpy` module; about 10 s without renders).
@@ -35,7 +36,10 @@ Run everything with `scripts/make-boatkit.sh [--render]` (Blender or the `bpy` m
    project files or `Data/Reference/raw/` (git-ignored) when it shows people.
 2. `python3 Tools/boatkit/photomatch/solve_camera.py <matches> Inputs/j22-hero/J22H_sockets.json Tools/boatkit/photomatch/landmarks_j22.json`
    Phone photos: set `lens_35mm_equiv` (24 for the iPhone main camera) and four points are enough. Points with
-   `"solve": false` are checks, reported against the solved camera.
+   `"solve": false` are checks, reported against the solved camera. Spread the points in depth: when they lie near one
+   plane (all along the sheer) the camera's height and distance trade off freely and the fit still looks good; the
+   solver warns when `flatness` is under 0.08 (docs/boatkit-2).
 3. `dress_boat.py <layout> <character> <out> --render --camera <photo>.camera.json --photo <photo.jpg>` renders from
-   that camera and writes `compare_<photo>.jpg`.
+   that camera and writes `compare_<photo>.jpg`. For the hero hull itself, `blender -b -P
+   Tools/boatkit/photomatch/match_blend.py -- <model.blend> <photo>.camera.json <photo.jpg> <out>`.
 4. Fix the layout or the hull where the outline and the photo disagree, and run it again.
