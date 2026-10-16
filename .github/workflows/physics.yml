@@ -1,0 +1,87 @@
+name: Physics (standalone)
+
+# Builds Source/SailingPhysics without Unreal, the way scripts/polar.sh, traffic.sh and reference-checks.sh do on
+# the Mac, and runs the three standalone checks: the J/22 polar gate (--quick), the Navigation Rules scenarios and
+# an AI race, and the Phase 8 reference checks (--quick). Clang on Linux mirrors the Mac; MSVC catches the Windows
+# breaks (C4458/C4459 shadowing, C2487 comma-separated static constexpr) before the PC does. No Unreal, no LFS
+# content except the 262 KB Mann tile the standalone tools load from Content/TerrainData/Wind.mann.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Source/SailingPhysics/**"
+      - "Tools/PolarSweep/**"
+      - "Tools/TrafficScenarios/**"
+      - "Tools/ReferenceChecks/**"
+      - "Content/TerrainData/Wind.mann"
+      - ".github/workflows/physics.yml"
+  pull_request:
+    paths:
+      - "Source/SailingPhysics/**"
+      - "Tools/PolarSweep/**"
+      - "Tools/TrafficScenarios/**"
+      - "Tools/ReferenceChecks/**"
+      - "Content/TerrainData/Wind.mann"
+      - ".github/workflows/physics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clang:
+    name: clang (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch the Mann tile
+        run: git lfs pull --include "Content/TerrainData/Wind.mann"
+      - name: Polar gate
+        run: scripts/polar.sh --quick
+      - name: Polar scenarios
+        run: scripts/polar.sh --scenarios
+      - name: Navigation Rules scenarios and race
+        run: scripts/traffic.sh
+      - name: Reference checks
+        run: scripts/reference-checks.sh --quick
+
+  msvc:
+    name: MSVC (Windows)
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch the Mann tile
+        run: git lfs pull --include "Content/TerrainData/Wind.mann"
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Build the three tools
+        shell: cmd
+        run: |
+          setlocal enabledelayedexpansion
+          set SRC=Source\SailingPhysics
+          set FLAGS=/nologo /std:c++17 /O2 /EHsc /permissive- /W4 /WX /wd4100 /wd4127 /wd4244 /wd4267 /wd4305 /wd4324 /wd4702 /I%SRC%\Public /DNOMINMAX
+          set SOURCES=
+          for %%f in (%SRC%\Private\*.cpp) do (
+            if /I not "%%~nxf"=="SailingPhysicsModule.cpp" set SOURCES=!SOURCES! %%f
+          )
+          if not exist Artifacts mkdir Artifacts
+          cl %FLAGS% !SOURCES! Tools\PolarSweep\main.cpp /Fe:Artifacts\polar-sweep.exe /FoArtifacts\ || exit /b 1
+          cl %FLAGS% !SOURCES! Tools\TrafficScenarios\main.cpp /Fe:Artifacts\traffic-scenarios.exe /FoArtifacts\ || exit /b 1
+          cl %FLAGS% !SOURCES! Tools\ReferenceChecks\main.cpp /Fe:Artifacts\reference-checks.exe /FoArtifacts\ || exit /b 1
+      - name: Polar gate
+        shell: cmd
+        run: Artifacts\polar-sweep.exe --quick
+      - name: Navigation Rules scenarios and race
+        shell: cmd
+        run: Artifacts\traffic-scenarios.exe
+      - name: Reference checks
+        shell: cmd
+        run: Artifacts\reference-checks.exe --quick

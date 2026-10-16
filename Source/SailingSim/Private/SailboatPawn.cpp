@@ -867,6 +867,10 @@ void ASailboatPawn::ResetBoat()
 	}
 	TrimAssist.Reset();
 	KeyboardTiller = 0.f;
+	// The sails start again from their shape too: cloth carried over a reset (a new spot, a new tack) can blow out.
+	MainCloth.Reset();
+	JibCloth.Reset();
+	SpinCloth.Reset();
 	ApplyStateToTransform();
 	Plot.Start(GetMapPosition(), Time); // the departure is a known position
 	if (!bTrafficBoat) BeginRun(TEXT("Sail"));
