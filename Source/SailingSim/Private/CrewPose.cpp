@@ -436,6 +436,9 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 		Add(TEXT("neck"), { { TEXT("neck_01"), 0.5f }, { TEXT("neck_02"), 0.5f } });
 		Add(TEXT("forearm_l"), { { TEXT("lowerarm_l"), 1.f } });
 		Add(TEXT("forearm_r"), { { TEXT("lowerarm_r"), 1.f } });
+		// Crew C1b: the idle clips turn the shoulders.
+		Add(TEXT("shoulder_l"), { { TEXT("clavicle_l"), 1.f } });
+		Add(TEXT("shoulder_r"), { { TEXT("clavicle_r"), 1.f } });
 	}
 	// The arms out level (SK_Sailor's T-pose): turn each upper arm to point straight out, then straighten the elbow.
 	TMap<FName, FQuat> Fix;

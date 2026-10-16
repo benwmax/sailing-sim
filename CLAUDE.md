@@ -432,6 +432,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   and `AngularAccelBody`. Attach points use the `J22H_sockets.json` names; without sockets `CrewDerivedAttachPoints` builds
   them from the geometry. AI crew tick at 15 Hz. The pawn hands each node `FCrewMotionInput` in `UpdateCrewFigures` (the
   mesh ticks after the pawn). Args: `-SailingCrewStill`, `-SailingDebugCrew`, `-SailingShotCrew=<name>`.
+- Crew idles (C1b, `docs/crew-3/`): `CrewClips.h` plays CMU motion capture (`Tools/crew/clips.csv`, fetched by
+  `Tools/crew/fetch_cmu.sh` into git-ignored `Data/CMU/raw`, baked by `Tools/venv/bin/python Tools/crew/bake_idles.py` into
+  `CrewClipData.inl`: edit the CSV or the script, never the .inl) as joint motion about the stance, pre-multiplied before
+  the reaction layer; head and neck become a gaze offset. Per-joint limits live in the bake (`JOINTS`) and are held by
+  `SailingSim.Visual.CrewClipLimits`; the layer goes quiet for crossings, seat changes, bracing and ducking
+  (`SailingSim.Visual.CrewClipTack`) and starts a clip's weight-shift onset against the heel's slow trend.
+  `-SailingNoCrewClips` compares. CMU terms: in a sold product yes, resold as data no.
 - Crew falls (C5, `docs/crew-5/`): `FCrewFalls` (`CrewFalls.h`, plain logic) throws the crew past 55 deg of heel,
   capsized or over 1 g, and brings them back once the boat is steady; `CrewFallsVisuals.cpp` makes the MetaHuman bodies
   active ragdolls with the Physics Control plugin (`CrewControl`; world-space controls relative to `CrewDeck`, a

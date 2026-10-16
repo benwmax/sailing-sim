@@ -1,0 +1,10 @@
+label,trial,kind,start_s,end_s,arms,notes
+# CMU Graphics Lab motion capture (mocap.cs.cmu.edu); segments chosen for small, idle motion (no gestures, sitting down or standing up)
+wait,137_28,standing,4,15,1,Normal Wait
+shift,139_02,standing,0,7.8,1,Shifting Weight
+idle,140_06,standing,9,23,1,Idle
+idle2,140_07,standing,5.5,10.3,1,Idle
+look,139_01,standing,5,9,1,Looking Around
+chair,114_05,seated,0,10,1,Sitting in chair
+stool,13_04,seated,33,38,0,sit on stepstool (the chin in the hand: trunk and gaze only)
+ground,82_05,seated,1,12,0,sitting on ground relaxing (trunk and gaze only)

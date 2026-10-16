@@ -681,6 +681,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		In.Time = float(S.Time);
 		In.Seed = uint32(I) * 977u + (bTrafficBoat ? GetUniqueID() : 0u);
 		In.bReact = !FParse::Param(FCommandLine::Get(), TEXT("SailingCrewStill"));
+		In.bClips = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoCrewClips"));
 		// The handholds and braces: the model's sockets (J22H_sockets.json names) where it has them, else from the geometry.
 		CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
 		for (int32 Sd = 0; Sd < 2; ++Sd)
@@ -714,8 +715,9 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			if (I == N - 1) LastDebug = S.Time;
 			const FCrewMotionReport& Rep = Anim->GetReport();
-			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d duck %.2f: modes %d %d, felt %s, tip %.2f%s, head %.1f deg; accel %s omega %s alpha %s"), I, int32(P.Stance), Pl.Duck,
+			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d duck %.2f: modes %d %d, felt %s, tip %.2f%s, head %.1f deg, clip %s %.2f; accel %s omega %s alpha %s"), I, int32(P.Stance), Pl.Duck,
 				int32(Hands.Mode[0]), int32(Hands.Mode[1]), *Rep.Felt.ToString(), Rep.TipRatio, Rep.bBracing ? TEXT(" bracing") : TEXT(""), Rep.HeadTiltDeg,
+				Rep.Clip >= 0 ? CrewClips::Info(Rep.Clip).Label : TEXT("-"), Rep.ClipWeight,
 				*Motion.Accel.ToString(), *Motion.Omega.ToString(), *Motion.Alpha.ToString());
 		}
 	}
