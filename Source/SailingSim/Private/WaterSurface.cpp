@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "SailboatPawn.h"
 #include "SailingSettings.h"
+#include "VisualPipeline.h"
 #include "TrafficManager.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -1304,6 +1305,13 @@ void AWaterSurface::UpdateMaterial()
 	static SailingArgs::FCachedFlag PolarizedArg(TEXT("SailingPolarized"));
 	const bool bPolarizedArg = PolarizedArg.Get();
 	WaterMaterial->SetScalarParameterValue(TEXT("Polarized"), (GPolarized != 0 || bPolarizedArg) ? 1.f : 0.f);
+	{
+		// Graphics G8 cinematic look: a sharper glitter lobe on High and Ultra (M_WaterV4's Glitter; a constant, no cost).
+		const USailingSettings* S = USailingSettings::Get();
+		const ASailboatPawn* Pawn = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+		const bool bGlitter = S->Quality >= ESailingQuality::High && UsesCinematicLook(S->Quality, S->bCinematicLook, Pawn && Pawn->IsPhotoMode(), Pawn && Pawn->IsCaptureMode());
+		WaterMaterial->SetScalarParameterValue(TEXT("Glitter"), bGlitter ? 1.f : 0.f);
+	}
 	WaterMaterial->SetVectorParameterValue(TEXT("WakeRect"), FLinearColor(WakeCenter.X, WakeCenter.Y, kWakeSizeM, 0.f));
 
 	if (const FWindField* Wind = GetWind())

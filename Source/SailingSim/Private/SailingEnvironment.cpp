@@ -2,6 +2,7 @@
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
+#include "SailboatPawn.h"
 #include "Async/Async.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/PointLightComponent.h"
@@ -370,6 +371,7 @@ void ASailingEnvironment::ApplyCameraLook(bool bPhysicalCamera, double CloudDark
 	PP.bOverride_MotionBlurAmount = PP.bOverride_MotionBlurMax = PP.bOverride_FilmGrainIntensity = bPhysicalCamera;
 	if (!bPhysicalCamera)
 	{
+		ApplyCinematicLook(PP, CloudDarkness); // bCinematic is false on Low: clears its overrides
 		return;
 	}
 	PP.WhiteTemp = FMath::Lerp(6900.f, 6500.f, FMath::Clamp(float(CloudDarkness) * 1.5f, 0.f, 1.f));
@@ -382,6 +384,61 @@ void ASailingEnvironment::ApplyCameraLook(bool bPhysicalCamera, double CloudDark
 	PP.MotionBlurAmount = 0.25f;
 	PP.MotionBlurMax = 2.f;
 	PP.FilmGrainIntensity = 0.f;
+	ApplyCinematicLook(PP, CloudDarkness);
+}
+
+void ASailingEnvironment::ApplyCinematicLook(FPostProcessSettings& PP, double CloudDarkness)
+{
+	// Graphics G8 (docs/graphics-8/cinematic): the look of a photograph, on top of the V1 look. Everything here is a
+	// post-process setting or a constant: the sun and its light are not touched (Perf 2 steps the sun so the virtual
+	// shadow map cache survives). The grade is a generated LUT (warm highlights, cool shadows, lifted blacks); the tone
+	// curve a little steeper in the middle; bloom wider and softer (Ultra: an FFT convolution with a generated kernel
+	// that carries a faint horizontal streak); lens flare on Ultra only; vignette and a fine grain on every tier.
+	PP.bOverride_ColorGradingLUT = PP.bOverride_ColorGradingIntensity = bCinematic;
+	PP.bOverride_FilmSlope = PP.bOverride_FilmToe = PP.bOverride_FilmShoulder = bCinematic;
+	PP.bOverride_BloomMethod = PP.bOverride_BloomSizeScale = PP.bOverride_BloomConvolutionTexture = PP.bOverride_BloomConvolutionSize = bCinematic;
+	PP.bOverride_LensFlareBokehSize = PP.bOverride_LensFlareThreshold = bCinematic;
+	if (!bCinematic)
+	{
+		return;
+	}
+	// A member, not a static: the cast-off reload makes a new environment actor, whose textures must load again.
+	if (!bTriedLookLoad)
+	{
+		bTriedLookLoad = true;
+		CinematicLUT = LoadObject<UTexture>(nullptr, TEXT("/Game/Look/T_CinematicLUT.T_CinematicLUT"), nullptr, LOAD_Quiet | LOAD_NoWarn);
+		BloomKernel = LoadObject<UTexture2D>(nullptr, TEXT("/Game/Look/T_BloomKernel.T_BloomKernel"), nullptr, LOAD_Quiet | LOAD_NoWarn);
+	}
+	const float Dark = FMath::Clamp(float(CloudDarkness), 0.f, 1.f);
+	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+	// Under a storm deck the grade fades: gloom is grey, not teal and amber.
+	PP.ColorGradingLUT = CinematicLUT;
+	PP.bOverride_ColorGradingLUT = CinematicLUT != nullptr;
+	PP.ColorGradingIntensity = FMath::Lerp(1.f, 0.4f, Dark);
+	PP.FilmSlope = 0.92f;      // engine 0.88
+	PP.FilmToe = 0.58f;        // engine 0.55: a little deeper shadows before the LUT lifts them
+	PP.FilmShoulder = 0.24f;   // engine 0.26
+	PP.VignetteIntensity = 0.45f;
+	PP.FilmGrainIntensity = 0.06f;
+	if (bUltra)
+	{
+		PP.BloomMethod = EBloomMethod::BM_FFT;
+		PP.BloomConvolutionTexture = BloomKernel; // null: the engine's default kernel
+		PP.bOverride_BloomConvolutionTexture = BloomKernel != nullptr;
+		PP.BloomConvolutionSize = 1.f;
+		PP.BloomIntensity = 0.5f;
+		PP.LensFlareIntensity = 0.12f;   // 0.25 with a 3-wide bokeh drew a halo disc round the sun (Galveston dusk)
+		PP.LensFlareBokehSize = 1.2f;
+		PP.LensFlareThreshold = 6.f;
+	}
+	else
+	{
+		PP.BloomMethod = EBloomMethod::BM_SOG;
+		PP.BloomIntensity = 0.6f;
+		PP.BloomSizeScale = 6.f;   // engine 4: wider, softer
+		PP.bOverride_BloomConvolutionTexture = PP.bOverride_BloomConvolutionSize = false;
+		PP.bOverride_LensFlareBokehSize = PP.bOverride_LensFlareThreshold = false;
+	}
 }
 
 void ASailingEnvironment::UpdateSun(double Hour)
@@ -426,6 +483,10 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	}
 	if (PostProcess)
 	{
+		{
+			const ASailboatPawn* Pawn = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+			bCinematic = UsesCinematicLook(USailingSettings::Get()->Quality, USailingSettings::Get()->bCinematicLook, Pawn && Pawn->IsPhotoMode(), Pawn && Pawn->IsCaptureMode());
+		}
 		ApplyCameraLook(bPhysicalCamera, W.CloudDarkness);
 		if (bPhysicalCamera)
 		{
@@ -1023,6 +1084,28 @@ void ASailingEnvironment::UpdateHaze()
 		// Analytic fog reaches full opacity at the horizon, which hid the low sun's disc completely; real haze lets a few
 		// percent of the disc through, and the disc is thousands of times the sky's brightness.
 		F->SetFogMaxOpacity(FMath::Lerp(0.9f, 1.f, float(W.Rain)));
+	}
+	// Graphics G8 cinematic look: the haze glows toward a low sun (the analytic fog's directional inscattering, a
+	// constant cost), the veil over the far shore in every sunset photo. Off in the natural look and under a deck.
+	// The natural look keeps the fog's own values (kept from the first call and restored).
+	if (!bFogDirectionalSaved)
+	{
+		bFogDirectionalSaved = true;
+		SavedFogDirectional = FVector4f(F->DirectionalInscatteringExponent, F->DirectionalInscatteringStartDistance, 0.f, 0.f);
+		SavedFogDirectionalColor = F->DirectionalInscatteringLuminance;
+	}
+	if (bCinematic)
+	{
+		const float Glow = (1.f - FMath::SmoothStep(4.f, 25.f, SunElevationDeg)) * (1.f - FMath::SmoothStep(0.2f, 0.6f, float(W.CloudDarkness))) * (1.f - NightAmount);
+		F->SetDirectionalInscatteringExponent(6.f);
+		F->SetDirectionalInscatteringStartDistance(800.f * CmPerMeter);
+		F->SetDirectionalInscatteringColor(FLinearColor(1.f, 0.62f, 0.32f) * (0.9f * Glow * HazeLight));
+	}
+	else if (F->DirectionalInscatteringExponent != SavedFogDirectional.X || F->DirectionalInscatteringLuminance != SavedFogDirectionalColor)
+	{
+		F->SetDirectionalInscatteringExponent(SavedFogDirectional.X);
+		F->SetDirectionalInscatteringStartDistance(SavedFogDirectional.Y);
+		F->SetDirectionalInscatteringColor(SavedFogDirectionalColor);
 	}
 	// Volumetric fog: the sun scatters in it, so shafts show through gaps in the cloud (forward-scattering haze).
 	if (!F->bEnableVolumetricFog) F->SetVolumetricFog(true);

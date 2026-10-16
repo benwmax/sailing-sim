@@ -1051,6 +1051,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		Add(SNew(SSailChoice).Label(TEXT("Frame rate cap")).Options({ TEXT("30"), TEXT("45"), TEXT("60"), TEXT("120"), TEXT("Uncapped") })
 			.Index_Lambda([S, IndexOf]() { return IndexOf(Caps, S->FrameCap); })
 			.OnChanged_Lambda([S](int32 I) { S->FrameCap = Caps[I]; S->Save(); S->ApplyDisplay(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Look")).Options({ TEXT("Natural"), TEXT("Cinematic") })
+			.Index_Lambda([S]() { return S->bCinematicLook ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bCinematicLook = I == 1; S->Save(); })
+			.Note(TEXT("Cinematic: a photographic grade (warm highlights, cool shadows), wider bloom and sun glitter. Photo mode always uses it.")));
 		Help = TEXT("Measured on the packaged build, slowest view (docs/graphics-3/bench.csv): Medium 71.6 fps, High 45.3 fps on the M5 Pro. "
 			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor (RTX 4090 PC).\n\nA fixed resolution turns High's governor off.");
 		break;
