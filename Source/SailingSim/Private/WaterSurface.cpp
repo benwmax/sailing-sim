@@ -320,7 +320,7 @@ FWaveDetail::FCascadeSpec AWaterSurface::DrawnRipple() const
 void AWaterSurface::SetQualityTier(int32 InTier)
 {
 	const int32 Clamped = FMath::Clamp(InTier, 0, 2);
-	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicDetail")); // as CreateWaterMaterial sets bUltraDetail
+	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(FCommandLine::Get(), TEXT("SailingUltraDetail")); // as CreateWaterMaterial sets bUltraDetail
 	if (Clamped == Tier && bUltra == bUltraDetail && (WaterMaterial || !HasActorBegunPlay())) return;
 	Tier = Clamped;
 	if (HasActorBegunPlay())
@@ -365,7 +365,7 @@ void AWaterSurface::CreateWaterMaterial()
 
 	if (bV4)
 	{
-		bUltraDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicDetail"));
+		bUltraDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(FCommandLine::Get(), TEXT("SailingUltraDetail"));
 		const FWaveDetail::FCascadeSpec Chop = DrawnChop(), Ripple = DrawnRipple();
 		if (!DetailAMap || DetailAMap->GetSizeX() != Chop.N || RippleBMap->GetSizeX() != Ripple.N)
 		{
