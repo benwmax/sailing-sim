@@ -300,37 +300,57 @@ def build_cockpit():
     return ob
 
 
+def cabin_ring(t, inset=0.0, z_floor=None, top_extra=0.0):
+    """One section of the cabin trunk at fraction t from its aft end. inset > 0 gives the inside of a trunk wall that
+    thick (the cabin's headliner), dropped to z_floor below the deck so it can cut the deck open too."""
+    x = CABIN_AFT + (CABIN_FWD - CABIN_AFT) * t
+    # plan half-width at the deck: inboard edge of the side deck, rounding in to the nose over the last fifth
+    side_line = half_beam(x) - SIDE_DECK - 0.015
+    nose = smooth((t - 0.80) / 0.20)
+    w = max(side_line * math.sqrt(max(1 - nose ** 2.4, 0.0)), 0.0) + 0.02
+    hgt = 0.30 - 0.06 * t                              # GUESS: trunk height above the deck at the centreline
+    front = smooth((t - 0.74) / 0.26)                   # long raked forward face
+    hgt *= (1 - 0.90 * front)
+    zb = deck_z(x, 0) - 0.06
+    zt = deck_z(x, 0) + hgt
+    zs = deck_z(x, min(w, half_beam(x) - 0.05)) + 0.005
+    lean = 0.035 * (1 - front) + 0.02                   # sides lean inboard a few degrees
+    wt = max(w - lean, 0.01)
+    r = 0.035 * (1 - 0.5 * front)                       # corner radius between side and top
+    if inset:
+        w, wt, zt = max(w - inset, 0.005), max(wt - inset, 0.005), zt - inset - top_extra
+        r = max(r - inset * 0.5, 0.008)
+        zb = zs = z_floor if z_floor is not None else zb
+    return [(x, -w - 0.02 * (not inset), zb), (x, -w, zs), (x, -wt + 0.002, zt - r * 1.6), (x, -wt + r * 0.35, zt - r * 0.35),
+            (x, -wt + r * 1.6, zt - 0.002), (x, -wt * 0.5, zt + 0.010), (x, 0, zt + 0.014),
+            (x, wt * 0.5, zt + 0.010), (x, wt - r * 1.6, zt - 0.002), (x, wt - r * 0.35, zt - r * 0.35),
+            (x, wt - 0.002, zt - r * 1.6), (x, w, zs), (x, w + 0.02 * (not inset), zb)]
+
+
+def cabin_top_z(x, y=0.0):
+    """Height of the cabin top's outer surface at (x, y), from the same sections build_cabin lofts."""
+    t = min(max((x - CABIN_AFT) / (CABIN_FWD - CABIN_AFT), 0.0), 1.0)
+    pts = sorted(cabin_ring(t)[2:11], key=lambda p: p[1])
+    y = min(max(y, pts[0][1]), pts[-1][1])
+    for a, b in zip(pts, pts[1:]):
+        if a[1] <= y <= b[1]:
+            f = (y - a[1]) / max(b[1] - a[1], 1e-9)
+            return a[2] + (b[2] - a[2]) * f
+    return pts[len(pts) // 2][2]
+
+
 def build_cabin():
     """Cabin trunk as on TX 7295 EC (dock photo IMG_9224): low and wide, its sides almost upright and standing just
     inboard of the side decks, a flat lightly cambered top with tight corner radii, and a long raked front that runs
     down to the foredeck ahead of the mast."""
     n = 72
     bm = bmesh.new()
-    rings = []
-    for i in range(n + 1):
-        t = i / n
-        x = CABIN_AFT + (CABIN_FWD - CABIN_AFT) * t
-        # plan half-width at the deck: inboard edge of the side deck, rounding in to the nose over the last fifth
-        side_line = half_beam(x) - SIDE_DECK - 0.015
-        nose = smooth((t - 0.80) / 0.20)
-        w = max(side_line * math.sqrt(max(1 - nose ** 2.4, 0.0)), 0.0) + 0.02
-        hgt = 0.30 - 0.06 * t                              # GUESS: trunk height above the deck at the centreline
-        front = smooth((t - 0.74) / 0.26)                   # long raked forward face
-        hgt *= (1 - 0.90 * front)
-        zb = deck_z(x, 0) - 0.06
-        zt = deck_z(x, 0) + hgt
-        zs = deck_z(x, min(w, half_beam(x) - 0.05)) + 0.005
-        lean = 0.035 * (1 - front) + 0.02                   # sides lean inboard a few degrees
-        wt = max(w - lean, 0.01)
-        r = 0.035 * (1 - 0.5 * front)                       # corner radius between side and top
-        ring = [(x, -w - 0.02, zb), (x, -w, zs), (x, -wt + 0.002, zt - r * 1.6), (x, -wt + r * 0.35, zt - r * 0.35),
-                (x, -wt + r * 1.6, zt - 0.002), (x, -wt * 0.5, zt + 0.010), (x, 0, zt + 0.014),
-                (x, wt * 0.5, zt + 0.010), (x, wt - r * 1.6, zt - 0.002), (x, wt - r * 0.35, zt - r * 0.35),
-                (x, wt - 0.002, zt - r * 1.6), (x, w, zs), (x, w + 0.02, zb)]
-        rings.append([bm.verts.new(pt) for pt in ring])
+    rings = [[bm.verts.new(pt) for pt in cabin_ring(i / n)] for i in range(n + 1)]
     for a_, b_ in zip(rings[:-1], rings[1:]):
-        for j in range(len(a_) - 1):
-            bm.faces.new((a_[j], a_[j + 1], b_[j + 1], b_[j]))
+        # the last face is the trunk's bottom, hidden under the deck: it closes the solid so the interior's booleans are clean
+        for j in range(len(a_)):
+            k = (j + 1) % len(a_)
+            bm.faces.new((a_[j], a_[k], b_[k], b_[j]))
     bm.faces.new(rings[0])
     bm.faces.new(list(reversed(rings[-1])))
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
@@ -557,9 +577,12 @@ def build_hardware():
         parts += D.block(f"Turn_{k}", (MAST_X - 0.12, dy, zm + 0.035), (1, 0, 0), (0, 0, -1), MAT, 0.029)
     for side in (1, -1):
         xo = CABIN_AFT + 0.75
-        parts.append(box(f"Organiser_{side}", xo - 0.04, xo + 0.04, side * 0.12 - 0.06, side * 0.12 + 0.06, zm - 0.04, zm - 0.005, MAT["BlackPlastic"], bev=0.006))
+        zo = cabin_top_z(xo, side * 0.12)
+        parts.append(box(f"Organiser_{side}", xo - 0.04, xo + 0.04, side * 0.12 - 0.06, side * 0.12 + 0.06, zo - 0.005, zo + 0.03, MAT["BlackPlastic"], bev=0.006))
         for k in range(3):
-            parts += D.cam_cleat(f"HalCam_{side}_{k}", (CABIN_AFT + 0.25, side * (0.10 + 0.06 * k), zm - 0.048), (0, 0, 1), (-1, 0, 0), MAT)
+            # cam cleats either side of the sliding hatch, just forward of its aft end
+            yc = side * (0.34 + 0.055 * k)
+            parts += D.cam_cleat(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
     # traveler across the cockpit floor (photos IMG_9266/9271) with its car and mainsheet blocks
     xt = -1.95
     parts.append(box("TravelerBar", xt - 0.02, xt + 0.02, -SEAT_IN + 0.02, SEAT_IN - 0.02, FLOOR_Z, FLOOR_Z + 0.03, MAT["Aluminium"], bev=0.005))
@@ -713,11 +736,16 @@ def build_rig():
     # halyards: out of the exit plates, through the turning blocks, aft along the cabin top to the cam cleats
     for k, (side, dy) in enumerate(((1, 0.05), (-1, -0.05), (1, 0.10))):
         z0 = zm + 0.55
-        path = [(MAST_X - 0.01, side * 0.036, z0), (MAST_X - 0.06, dy, zm + 0.05), (MAST_X - 0.20, dy * 1.4, zm + 0.025),
-                (CABIN_AFT + 0.75, side * 0.12, zm - 0.012), (CABIN_AFT + 0.25, dy * 2.2, zm - 0.03)]
-        wires.append(tube(f"Halyard_{k}", DRAPE.line(path, [0.0, 0.0, 0.004, 0.02], 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
-        parts += D.coil(f"HalTail_{k}", (CABIN_AFT + 0.08, dy * 3.2, zm - 0.05), 0.07, 2.2, MAT["RopeHalyard"], r=0.0042,
-                        seed=STYLE["seed"] + k, flat_z=zm - 0.07)
+        yc = side * (0.34 + 0.055 * (k // 2))
+        xo, xc = CABIN_AFT + 0.75, CABIN_AFT + 0.30
+        path = [(MAST_X - 0.01, side * 0.036, z0), (MAST_X - 0.06, dy, zm + 0.05), (MAST_X - 0.20, dy * 1.4, cabin_top_z(MAST_X - 0.20, dy * 1.4) + 0.02),
+                (xo, side * 0.12, cabin_top_z(xo, side * 0.12) + 0.018), (xo - 0.20, yc * 0.85, cabin_top_z(xo - 0.20, yc * 0.85) + 0.012),
+                (xc + 0.03, yc, cabin_top_z(xc, yc) + 0.022)]
+        wires.append(tube(f"Halyard_{k}", DRAPE.line(path, [0.0, 0.0, 0.004, 0.003, 0.002], 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
+        # tails coiled and dropped on the cabin top outboard of the hatch, between the cleats and the aft edge
+        cx, cy = CABIN_AFT + 0.13 + 0.17 * (k // 2), side * 0.44
+        parts += D.coil(f"HalTail_{k}", (cx, cy, 0), 0.05, 2.2, MAT["RopeHalyard"], r=0.0042,
+                        seed=STYLE["seed"] + k, flat_z=cabin_top_z(cx, cy))
     return parts, wires
 
 
@@ -915,10 +943,20 @@ hull = build_hull()
 deck = build_deck()
 cockpit = build_cockpit()
 cabin = build_cabin()
+import types  # noqa: E402
+import j22_interior as INTERIOR  # noqa: E402
+interior = INTERIOR.build(types.SimpleNamespace(**globals()), cabin, deck, cockpit, hull)
 DRAPE = Drape([o for o in (hull, deck, cockpit, cabin) if isinstance(o, bpy.types.Object)])
 keel = build_keel()
 rudder = build_rudder()
 hw = build_hardware()
+if STYLE.get("interior", {}).get("drop_board_stowed", True):
+    # under way the drop board lives below, flat on the port bench, so the companionway shows the cabin
+    db = bpy.data.objects["DropBoard"]
+    hw.remove(db)
+    bpy.data.objects.remove(db, do_unlink=True)
+    interior.append(box("DropBoard", 0.12, 0.60, INTERIOR.BENCH_IN + 0.22, INTERIOR.BENCH_IN + 0.50, INTERIOR.BENCH_Z,
+                        INTERIOR.BENCH_Z + 0.024, MAT["TeakWeathered"], bev=0.004))
 tiller = build_tiller()
 rig, wires = build_rig()
 regs = build_registration()
@@ -933,6 +971,7 @@ groups = {
     "Rig": rig,
     "Rigging": wires + sail_lines,
     "Sails": sails,
+    "Interior": interior,
 }
 for gname, obs in groups.items():
     coll = bpy.data.collections.new(gname)
@@ -944,6 +983,13 @@ for gname, obs in groups.items():
         for c in list(o.users_collection):
             c.objects.unlink(o)
         coll.objects.link(o)
+
+# every braided line gets arc-length UVs so the braid keeps its true size along it (j22_rope)
+import j22_rope as RP  # noqa: E402
+for o in list(SC.objects):
+    if o.type == "CURVE" and o.data.materials and o.data.materials[0] and o.data.materials[0].get("rope_kind"):
+        wire = o.data.materials[0]["rope_kind"] == "Wire1x19"
+        RP.rope_uv(o, 2 * o.data.bevel_depth, 11.0 if wire else 5.0)
 
 vol, cbx, cbz = hull_volume_below()
 tris = 0

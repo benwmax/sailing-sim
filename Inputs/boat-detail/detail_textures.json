@@ -1,0 +1,47 @@
+{
+ "NonSkid": {
+  "tile_m": [
+   0.1,
+   0.1
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   2.0,
+   6.0
+  ]
+ },
+ "Gelcoat": {
+  "tile_m": [
+   0.25,
+   0.25
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   1.5,
+   4.0
+  ]
+ },
+ "TeakWeathered": {
+  "tile_m": [
+   0.3,
+   0.15
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   2.0,
+   6.0
+  ]
+ },
+ "Canvas": {
+  "tile_m": [
+   0.05,
+   0.05
+  ],
+  "normal_strength": 0.8,
+  "fade_m": [
+   1.0,
+   3.0
+  ]
+ },
+ "note": "Tile by UV0 x (metres per UV unit, materials.json detail_uv_scale) / tile_m; mask by the baked detail map T_<Boat>_<Group>_X (R non-skid, G teak, B smooth gelcoat); fade the normal between fade_m[0] and fade_m[1]."
+}
