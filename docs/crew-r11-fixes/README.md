@@ -49,3 +49,9 @@ moved to the clavicles, three strap tails a vest). Full suite 149/149; `gate.sh 
 -SailingCamDist=1.6 -SailingCamYaw=140 -SailingCamPitch=-10`):
 
 ![Helm on the Mac, High](mac-helm-vest.jpg)
+
+Closer, at 0.8 m (`-SailingCamTarget=-2.1,0.9,1.05 -SailingCamDist=0.8 -SailingCamYaw=120 -SailingCamPitch=-5`). The
+armholes are clean on both sides, with no polo showing through. The strap tails don't read as hanging ends from these
+angles: past the buckle the webbing seems to carry on along the strap.
+
+![Helm closer on the Mac, High](mac-helm-tails.jpg)
