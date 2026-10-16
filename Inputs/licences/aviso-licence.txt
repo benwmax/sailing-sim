@@ -1,0 +1,348 @@
+Source: https://www.aviso.altimetry.fr/fileadmin/documents/data/License_Aviso.pdf (fetched 2026-10-16; text by pdftotext -layout)
+
+                                                         Public
+
+
+
+
+                                                                                           AVISO License Agreement — Issue 20
+
+
+
+AVISO License Agreement
+Open License for AVISO Data Products
+ACCEPTED — Issue 20 – August 2026 · Public
+Effective Date: August 10, 2026
+
+Note on legal nature of this license. This license is inspired by the structure and plain-language conditions of Creative
+Commons Attribution 4.0 International (CC-BY 4.0). It is not CC-BY 4.0 itself: CC-BY 4.0 does not permit a licensor to add
+extra conditions (such as a restriction on bulk redistribution), so calling this document "CC-BY 4.0" would misstate the
+rights it grants. This is a distinct license — the AVISO License — that CNES has designed to give users CC-BY-like
+freedoms (use, share, adapt, including for commercial purposes) while retaining one CNES-specific condition on
+bulk/operational redistribution of the original data, described in Section 3.2 below.
+
+
+Preamble
+CNES (Centre National d'Études Spatiales) wants to make AVISO Data Products available for the widest
+possible use, including commercial use, while ensuring that:
+
+    ●    users of the material are properly attributed and their reliance on CNES/AVISO as source is clear;
+    ●    CNES retains the ability to operate AVISO as the reference distribution point for these products,
+         rather than having them re-platformed wholesale by third parties without authorization;
+    ●    CNES's disclaimers of warranty and limitations of liability apply to all uses of the material.
+This license sets out the terms on which CNES licenses AVISO Data Products to the public. These terms
+apply regardless of whether the License is referred to as an "open license" or by any other means.
+
+
+Section 1 – Definitions
+a. AVISO Data Product(s): Products created by the various production systems and entities operating under
+the AVISO umbrella and made available via the AVISO Catalogue.
+
+b. Adapted Material: Material subject to Copyright and Similar Rights that is derived from or based upon
+the Licensed Material, including a Value-Added Product or Derivative Work as defined below.
+
+c. Value-Added Product: A product modified from an AVISO Data Product while retaining the original source
+data structure.
+
+d. Derivative Work: A product derived from AVISO Data Products that does not retain the original
+pixel/data structure.
+
+e. Copyright and Similar Rights: Copyright and/or similar rights closely related to copyright, including
+database rights, without regard to how the rights are labeled or categorized.
+
+f. Effective Technological Measures: Measures that may not be circumvented under applicable law.
+
+g. Exceptions and Limitations: Fair use, fair dealing, and/or any other exception or limitation to Copyright
+and Similar Rights that applies to Your use of the Licensed Material.
+
+h. Licensed Material: The AVISO Data Product(s) to which the Licensor applied this License.
+
+                                                        Page 1 / 7
+                                                     Public
+
+
+
+
+                                                                                   AVISO License Agreement — Issue 20
+
+i. Licensed Rights: The rights granted to You subject to the terms and conditions of this License.
+
+j. Licensor: CNES (Centre National d'Études Spatiales), the sole entity authorized to grant the Licensed
+Rights in AVISO Data Products under this License, acting on behalf of and with the authorization of each
+product's creator(s) referred to in Section 4. CNES's role as Licensor does not, of itself, confer or imply
+ownership of the underlying Intellectual Property Rights, which remain with the respective creator(s) as set
+out in Section 4.
+
+k. Share: To provide material to the public by any means or process that requires permission under the
+Licensed Rights, such as reproduction, public display, distribution, dissemination, communication, or
+importation.
+
+l. Sui Generis Database Rights: Rights resulting from Directive 96/9/EC of the European Parliament and of
+the Council on the legal protection of databases, as amended and/or succeeded, as well as other essentially
+equivalent rights anywhere in the world.
+
+m. Commercial Use: Any activity involving the sale, licensing, or commercial exploitation of Value-Added
+Products or Derivative Works based on AVISO Data Products.
+
+n. Licensee: The individual or entity exercising the Licensed Rights under this License.
+
+
+Section 2 – Scope
+2.1 License Grant
+Subject to the terms and conditions of this License, the Licensor grants You a worldwide, royalty-free, non-
+sublicensable, non-exclusive, irrevocable license to exercise the Licensed Rights in the Licensed Material to:
+
+    ●   A. reproduce and Share the Licensed Material, in whole or in part; and
+    ●   B. produce, reproduce, and Share Adapted Material (Value-Added Products or Derivative Works),
+for any purpose, including commercial purposes, subject to Section 3 (License Conditions), and — for
+certain products only — subject to the non-commercial-use note in Section 3.3 and Annex A.
+
+2.2 Exceptions and Limitations
+For the avoidance of doubt, where Exceptions and Limitations apply to Your use, this License does not
+apply, and You do not need to comply with its terms and conditions.
+
+2.3 Term
+The license granted under Section 2.1 applies for the duration of the Copyright and Similar Rights licensed
+here. However, if You fail to comply with this License, then Your rights under this License terminate
+automatically under Section 6.1. Where Your right to use the Licensed Material has terminated under
+Section 6.1, it reinstates automatically as of the date the violation is cured, provided it is cured within 30
+days of Your discovery of the violation, or as expressly reinstated by the Licensor.
+
+2.4 Media and Formats; Technical Modifications Allowed
+
+
+
+                                                    Page 2 / 7
+                                                      Public
+
+
+
+
+                                                                                      AVISO License Agreement — Issue 20
+
+The Licensor authorizes You to exercise the Licensed Rights in all media and formats whether now known
+or hereafter created, and to make technical modifications necessary to do so, including those necessary to
+circumvent Effective Technological Measures.
+
+2.5 Downstream Recipients
+Every recipient of the Licensed Material automatically receives an offer from the Licensor to exercise the
+Licensed Rights under the terms and conditions of this License. You may not offer or impose any additional
+or different terms or conditions on the Licensed Material if doing so restricts the exercise of the Licensed
+Rights by any recipient, except as necessary to comply with Section 3.2 (Distribution Restriction), which You
+must pass on unmodified to downstream recipients of the original AVISO Data Product.
+
+2.6 No Endorsement
+Nothing in this License constitutes or may be construed as permission to assert or imply that You are, or
+that Your use of the Licensed Material is, connected with, sponsored, endorsed, or granted official status by
+CNES, AVISO, or any AVISO producer/creator.
+
+
+Section 3 – License Conditions
+Your exercise of the Licensed Rights is expressly made subject to the following conditions.
+
+3.1 Attribution
+If You Share the Licensed Material (in whole or in part) or Adapted Material, You must:
+
+    ●   retain, if supplied with the Licensed Material, identification of the creator(s) (the relevant AVISO
+        producer) and CNES as Licensor;
+    ●   provide a citation to the source (product name, producer, DOI where applicable);
+    ●   include a link to this License, or, if impractical, provide the URI or hyperlink to this License;
+    ●   indicate if You modified the Licensed Material and retain an indication of any previous
+        modifications.
+You may satisfy these conditions in any reasonable manner based on the medium, means, and context in
+which You Share the Licensed Material. Where requested by the Licensor, You must remove any of this
+information as reasonably practicable.
+
+3.2 Distribution Restriction (AVISO-Specific Condition)
+You must not Share the Licensed Material, in its original, unmodified form, through any operational
+platform intended for onward mass distribution — including but not limited to a web portal, public API, or
+cloud data infrastructure — without prior written authorization from CNES.
+
+This condition:
+
+    ●   applies only to the original, unmodified Licensed Material as distributed by AVISO — it does not
+        restrict Sharing Adapted Material (Value-Added Products or Derivative Works);
+
+
+
+
+                                                     Page 3 / 7
+                                                    Public
+
+
+
+
+                                                                                   AVISO License Agreement — Issue 20
+
+    ●   does not restrict internal use, copying for backup, or Sharing with a limited/defined set of
+        collaborators for a specific project;
+    ●   does not restrict Sharing of the Licensed Material through scientific publications, figures, or
+        supplementary data accompanying a publication;
+    ●   must be passed on, unmodified, to any downstream recipient of the original Licensed Material
+        (Section 2.5).
+Requests for authorization to re-distribute AVISO Data Products at scale through an operational platform
+should be addressed to aviso@altimetry.fr.
+
+3.3 Note on Non-Commercial-Use Products
+Certain AVISO Data Products are made available under this License for non-commercial use only, as
+identified in Annex A (e.g., current fields derived from the latest released version of the FES ocean tide
+model, and satellite ocean color data products derived using the POLYMER software from HYGEOS). For
+those specific products, the license granted under Section 2.1(A)–(B) excludes Commercial Use; Commercial
+Use of those products requires a separate written agreement (contact aviso@altimetry.fr for more
+information). All other conditions of this License (attribution, distribution restriction) continue to apply to
+those products.
+
+
+Section 4 – Sui Generis Database Rights and Intellectual Property
+Where the Licensed Rights include Sui Generis Database Rights that apply to Your use of the Licensed
+Material, the Licensor waives and/or agrees not to assert any right or authority to forbid You from
+extracting, reusing, reproducing, and sharing all or a substantial portion of the contents of the database,
+subject to Section 3 (License Conditions).
+
+All Intellectual Property Rights in each AVISO Data Product remain the property of its respective creator(s)
+— the relevant AVISO producer(s) — and are protected under French and international law. CNES is the
+sole party authorized to grant the Licensed Rights under this License, acting on behalf of and with the
+authorization of each such creator; this License grants use rights only, and neither the grant of the License
+by CNES nor Your exercise of the Licensed Rights transfers or otherwise affects ownership of any
+Intellectual Property Rights in the Licensed Material. New Intellectual Property Rights arising from Your
+modification of AVISO Data Products (i.e., in Adapted Material that You create) belong to You, without
+prejudice to the creator's rights in the underlying Licensed Material.
+
+
+Section 5 – Disclaimer of Warranties and Limitation of Liability
+Unless otherwise separately undertaken by the Licensor, to the extent possible, the Licensor offers the
+Licensed Material as-is and as-available, and makes no representations or warranties of any kind
+concerning the Licensed Material, whether express, implied, statutory, or other. This includes, without
+limitation, warranties of title, merchantability, fitness for a particular purpose, non-infringement,
+absence of latent or other defects, accuracy, or the presence or absence of errors, whether or not known
+or discoverable.
+
+
+
+                                                   Page 4 / 7
+                                                      Public
+
+
+
+
+                                                                                    AVISO License Agreement — Issue 20
+
+To the extent possible, in no event will the Licensor be liable to You on any legal theory (including,
+without limitation, negligence) or otherwise for any direct, special, indirect, incidental, consequential,
+punitive, exemplary, or other losses, costs, expenses, or damages arising out of this License or use of the
+Licensed Material, even if the Licensor has been advised of the possibility of such losses, costs, expenses,
+or damages.
+
+CNES does not guarantee that AVISO Data Products will be error-free or that access will be uninterrupted.
+
+
+Section 6 – Term and Termination
+6.1 This License applies for the term of the Copyright and Similar Rights licensed here. However, if You fail
+to comply with this License, then Your rights under this License terminate automatically. In case of breach,
+CNES may, in addition to automatic termination: issue warnings, suspend access to AVISO systems, pursue
+legal action for reimbursement of costs, or report violations to law enforcement where applicable.
+
+6.2 Where Your right to use the Licensed Material has terminated under Section 6.1, it reinstates
+automatically as of the date the violation is cured, provided it is cured within 30 days of Your discovery of
+the violation, or upon express reinstatement by the Licensor.
+
+6.3 For the avoidance of doubt, the Licensor may also offer the Licensed Material under separate terms or
+conditions, or stop distributing the Licensed Material at any time; however, doing so will not terminate this
+License for material already lawfully obtained by You.
+
+6.4 Sections 1, 4, 5, 7, and 8 survive termination of this License.
+
+
+Section 7 – Other Terms and Conditions
+7.1 The Licensor shall not be bound by any additional or different terms or conditions communicated by
+You, unless expressly agreed.
+
+7.2 Any arrangements, understandings, or agreements regarding the Licensed Material not stated herein
+are separate from and independent of the terms and conditions of this License.
+
+7.3 Compliance obligations. You must ensure that your staff, students, contractors, and agents comply with
+this License, and must maintain reasonable records of AVISO Data Product usage where distribution is at
+scale, to be provided to CNES upon request.
+
+
+Section 8 – Interpretation
+8.1 For the avoidance of doubt, this License does not, and shall not be interpreted to, reduce, limit, restrict,
+or impose conditions on any use of the Licensed Material that could lawfully be made without permission
+under this License.
+
+8.2 To the extent possible, if any provision of this License is deemed unenforceable, it shall be automatically
+reformed to the minimum extent necessary to make it enforceable. If the provision cannot be reformed, it
+shall be severed from this License without affecting the enforceability of the remaining terms.
+
+
+
+                                                     Page 5 / 7
+                                                    Public
+
+
+
+
+                                                                                  AVISO License Agreement — Issue 20
+
+8.3 No term or condition of this License will be waived, and no failure to comply consented to, unless
+expressly agreed by the Licensor.
+
+8.4 Nothing in this License constitutes or may be interpreted as a limitation upon, or waiver of, any
+privileges and immunities that apply to CNES, or any exemption from legal process.
+
+
+Section 9 – Governing Law
+This License is governed by French law. Disputes arising from or in connection with this License will be
+resolved by the ICC International Court of Arbitration.
+
+
+Section 10 – Point of Contact
+For inquiries regarding this License, authorization requests under Section 3.2, or non-
+commercial/commercial licensing requests under Section 3.3, contact: aviso@altimetry.fr.
+
+The latest version of this License is available at:
+https://www.aviso.altimetry.fr/fileadmin/documents/data/License_Aviso.pdf.
+
+
+
+
+                                                   Page 6 / 7
+                                                           Public
+
+
+
+
+                                                                                             AVISO License Agreement — Issue 20
+
+
+Annex A – Products Requiring the Non-Commercial-Use Note (Section 3.3)
+ Product Level               Product Type                                   Note
+ Auxiliary Products          Currents from the latest released version      Non-commercial use only under this
+                             of the FES ocean tide model (currently         License; Commercial Use requires a
+                             FES2022)                                       separate agreement with CNES and
+                                                                            NOVELTIS.
+ Value-Added Products        Satellite ocean color data products            Non-commercial use only under this
+                             derived using the POLYMER software             License; Commercial Use requires a
+                             from HYGEOS                                    separate agreement with CNES and
+                                                                            HYGEOS.
+
+Note on the FES entry: only the latest released version of the FES tide model carries this restriction. Once a newer
+version is released, the restriction moves to that new version, and the previous version becomes available under the
+standard License terms (including for Commercial Use). The AVISO Catalogue is the authoritative source for which FES
+version is current at any given time.
+
+(All other AVISO Data Products listed in the AVISO Catalogue are licensed under the full terms of Section 2.1(A)–(B),
+including for Commercial Use, subject to Sections 3.1 and 3.2.)
+
+
+
+
+This document supersedes the AVISO License Agreement, Issue 19 – February 2024, for AVISO Data Products
+distributed on or after its effective date (August 10, 2026). It does not alter rights already granted under prior versions
+of the AVISO License for material obtained before that date.
+
+
+
+
+                                                          Page 7 / 7
+

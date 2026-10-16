@@ -1,0 +1,153 @@
+Fetched 2026-10-16 with curl; HTML converted to text (navigation, scripts and styles dropped).
+Note: the URL https://www.gebco.net/data-products/gridded-bathymetry-data/terms-of-use returned 404 on 2026-10-16;
+the GEBCO grid page links its terms of use at the URL below, which is the text fetched here.
+
+==== https://www.gebco.net/data-products/gridded-bathymetry/terms-of-use (fetched 2026-10-16) ====
+
+Terms of use for the GEBCO Grid and derived information products
+
+Scope
+
+- These terms of use apply to The GEBCO Grid and other GEBCO-derived information products.
+
+- For brevity 'The GEBCO Grid' is used throughout and should be interpreted as meaning The GEBCO Grid and other GEBCO-derived information products.
+
+- Bathymetric Data refers to measurements made by various instruments of the ocean depth, associated ocean properties and the supporting metadata.
+
+- Information products are the result of applying algorithms, mathematical techniques, scientific theory and Intellectual Property to data to create useful, derived values.
+
+- As The GEBCO Grid is created by interpolating, applying algorithms and mathematical techniques to bathymetric data, GEBCO considers the GEBCO Grid to be an information product.
+
+- GEBCO does not provide the underlying source bathymetric data when distributing The GEBCO Grid.
+
+Terms of use
+
+The GEBCO Grid is placed in the public domain and may be used free of charge.
+
+Use of the GEBCO Grid indicates that the user accepts the conditions of use and disclaimer information given below.
+
+Users are free to:
+
+- Copy, publish, distribute and transmit The GEBCO Grid.
+
+- Adapt The GEBCO Grid.
+
+- Commercially exploit The GEBCO Grid, by, for example, combining it with other information, or by including it in their own product or application.
+
+Users must:
+
+- Acknowledge the source of The GEBCO Grid. A suitable form of attribution is given in the documentation that accompanies The GEBCO Grid.
+
+- Not use The GEBCO Grid in a way that suggests any official status or that GEBCO, or the IHO or IOC, endorses any particular application of The GEBCO Grid.
+
+- Not mislead others or misrepresent The GEBCO Grid or its source.
+
+Disclaimer
+
+- The GEBCO Grid should NOT be used for navigation or for any other purpose involving safety at sea.
+
+- The GEBCO Grid is made available 'as is'. While every effort has been made to ensure reliability within the limits of present knowledge, the accuracy and completeness of The GEBCO Grid cannot be guaranteed. No responsibility can be accepted by GEBCO, IHO, IOC, or those involved in its creation or publication for any consequential loss, injury or damage arising from its use or for determining the fitness of The GEBCO Grid for any particular use.
+
+- The GEBCO Grid is based on bathymetric data from many different sources of varying quality and coverage.
+
+- As The GEBCO Grid is an information product created by interpolation of measured data, the resolution of The GEBCO Grid may be significantly different to that of the resolution of the underlying measured data.
+
+
+==== https://www.gebco.net/data-products/gridded-bathymetry-data (fetched 2026-10-16) ====
+
+Gridded Bathymetry Data
+
+Global ocean & land terrain models
+
+GEBCO’s current gridded bathymetric data set, the GEBCO_2026 Grid, is a global terrain model for ocean and land, providing elevation data, in meters, on a 15 arc-second interval grid. It is accompanied by a Type Identifier (TID) Grid that gives information on the types of source data that the GEBCO_2026 Grid is based.
+
+This release includes a version of the grid with under-ice topography/bathymetry information for Greenland and Antarctica.
+
+- Download global coverage grids
+
+- Download data for user-defined areas
+
+- Multi-resolution grid product
+
+- Access the GEBCO grid via OPeNDAP
+
+More information about the grid, its terms of use and attribution. Provide feedback, tell us how you are using the grid.
+
+GEBCO releases a new global grid every year, generally in July. Find out more about the grid generation process.
+
+Download global coverage grids
+
+The GEBCO_2026 Grid and TID Grid can be download as global files in netCDF format or a set of 8 tiles (each with an area of 90° x 90°), giving global coverage, in Esri ASCII raster and data GeoTiff formats. The data files are included in a zip file along with the data set documentation.
+
+GEBCO_2026 Grid (ice surface elevation)netCDF (4 Gbytes, 7.0 Gbytes uncompressed)Data GeoTiff (4 Gbytes, 7.2 Gbytes uncompressed)Esri ASCII raster (4.8 Gbytes, 18.2 Gbytes uncompressed)
+GEBCO_2026 Grid (sub-ice topo/bathy)netCDF (4.1 Gbytes, 7.0 Gbytes uncompressed)Data GeoTiff (4.1 Gbytes, 7.2 Gbytes uncompressed)Esri ASCII raster (4.9 Gbytes, 18.2 Gbytes uncompressed)
+GEBCO_2026 TID GridnetCDF (94.4 Mbytes, 3.5 Gbytes uncompressed)Data GeoTiff (91.7 Mbytes, 3.4 Gbytes uncompressed)Esri ASCII raster (120.5 Mbytes, 9.6 Gbytes uncompressed)
+Download data for user-defined areas
+
+Use our application to select and download data in netCDF, Esri ASCII raster and data GeoTiff formats.
+
+Image:
+
+Multi-resolution grids
+
+The global GEBCO grid is currently made available as a global 15 arc-second interval grid. However, in some regions, it is based on data at higher resolutions. To accommodate users who want access to higher resolution gridded bathymetry data, where it exists, a test multi-resolution grid product has been developed. This is now available through the new download application.
+
+Access the GEBCO grid via OPeNDAP
+
+GEBCO’s gridded data sets are now available for direct download from the Natural Environment Research Council's (NERC) Centre for Environmental Data Analysis (CEDA).
+
+Through CEDA, GEBCO’s gridded data sets can also be accessed via OPeNDAP – allowing direct access to the data sets through a number of applications.
+
+To access the GEBCO_2026 Grid via OPeNDAP – navigate to the directory that contains the netCDF data file for the gridded data set that you are interested in, for example, the ice surface elevation version of the grid, and click on the ‘extract subset’ icon to access the OPeNDAP Dataset Access Form and data set URL. The image below illustrates this.
+
+Image:
+
+Data set attribution for GEBCO_2026 Grid
+
+If the data sets are used in a presentation or publication then we ask that you acknowledge the source. This should be of the form:
+GEBCO Bathymetric Compilation Group 2026 (2026). The GEBCO_2026 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals. doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa
+Link: https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa
+
+Terms of use
+
+The GEBCO Grid is placed in the public domain and may be used free of charge. Use of the GEBCO Grid indicates that the user accepts the conditions of use and disclaimer information.
+
+Data set errata and known issues
+
+Although every care is taken during the development of the GEBCO bathymetric grids, errors can occasionally occur, and can be reported to the Seabed 2030 Global Centre (
+
+ gdacc@seabed2030.org
+
+). Known issues can be viewed on our errata pages.
+
+Type Identifier (TID) Grid
+
+The TID grid identifies the type of source data that the corresponding grid cells in the GEBCO Grid are based on. Further information about the TID codes can be found in the accompanying documentation.
+
+Find out more about the TID Grid from our StoryMap. English, Spanish and French language versions are available. 
+
+Image:
+
+Image:
+
+Image:
+
+Note on vertical datum and GEBCO's grids
+
+GEBCO's global elevation models are generated by the assimilation of heterogeneous data types assuming all of them to be referred to mean sea level. However, in some shallow water areas, the grids include data from sources having a vertical datum other than mean sea level. We are working to understand how best to fully assimilate these data.
+
+Provide feedback
+
+To help us improve our products and services, use our form to provide feedback on the GEBCO grid.
+
+Find out more
+
+- About the GEBCO_2026 Grid
+
+- Data contributors
+
+- Historical GEBCO data sets
+
+- Improving GEBCO's grid in shallow water regions
+
+- SRTM15_plus
