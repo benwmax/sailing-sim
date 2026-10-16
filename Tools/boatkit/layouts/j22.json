@@ -64,13 +64,9 @@
   {
    "kit": "Chainplate",
    "at": "ChainplateUpper_S",
-   "mirror": true
-  },
-  {
-   "kit": "Chainplate",
-   "id": "ChainplateLower",
-   "at": "ChainplateLower_S",
-   "mirror": true
+   "offset": [0.02, 0, 0],
+   "mirror": true,
+   "note": "One plate a side carries both shrouds (photos): the hero's upper and lower sockets are its aft and forward holes, 4 cm apart."
   },
   {
    "kit": "JibTrack",
@@ -84,11 +80,11 @@
    "kit": "Winch16",
    "mirror": true,
    "pos": [
-    -0.42,
-    -0.47,
+    -0.43,
+    -0.74,
     1.4
    ],
-   "note": "Cabin-top aft corner, as in IMG_9224 (the hero model has the winch on the coaming: the photo match caught it)"
+   "note": "Cabin-top aft outboard corner, as in IMG_9224 and IMG_9272 (the hero carries the same kit winch there since boat kit phase 2)"
   },
   {
    "kit": "CamRiser",

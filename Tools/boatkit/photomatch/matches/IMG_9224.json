@@ -1,6 +1,6 @@
 {
  "photo": "IMG_9224.jpg",
- "about": "TX 7295 EC on its lift at Rush Creek, from the dock off the starboard bow quarter (Bean, Oct 4 2026). Points picked by eye at full resolution; the photo itself stays in the project files (it shows a person at the edge).",
+ "about": "TX 7295 EC on its lift at Rush Creek, from the dock off the starboard bow quarter (Bean, Oct 4 2026). Points picked by eye at full resolution; the photo itself stays in the project files (it shows a person at the edge). The four solve points lie near one plane along the sheer (flatness 0.008), so the camera's height and distance are poorly fixed and the MastBase check moves with the guessed chainplate (128 px with it at x 0.50): add points off the sheer before reading the mast or cabin from this match (docs/boatkit-2).",
  "size": [
   5712,
   4284

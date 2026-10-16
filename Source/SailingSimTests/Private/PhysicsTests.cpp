@@ -208,6 +208,24 @@ bool FSailingPolarTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingJ22RigTest, "SailingSim.Physics.J22RigPosition", PhysicsTestFlags)
+bool FSailingJ22RigTest::RunTest(const FString& Parameters)
+{
+	// Boat kit phase 2: the J/22's mast stands where the class puts it, J = 8.8 ft (2.68 m) from the forestay tack to
+	// the mast's front face, and both sails hang off it: the jib's tack at the stem, the main's luff on the mast's aft face.
+	// The hero model's MastStep socket (Inputs/j22-hero) follows MastX.
+	const Sailing::FBoatConfig C = Sailing::FBoatConfig::J22();
+	const Sailing::FSailStripGeometry& J0 = C.Jib.Strips[0];
+	const Sailing::FSailStripGeometry& J1 = C.Jib.Strips[1];
+	const double Tack = J0.LuffX - 0.5 * (J1.LuffX - J0.LuffX);   // the luff carried down to the foot
+	const double J = Tack - (C.MastX + 0.5 * C.MastDiameter);
+	TestTrue(FString::Printf(TEXT("J %.3f m within 4 cm of the class's 2.682 m"), J), FMath::Abs(J - 2.682) < 0.04);
+	const double MainLuff = C.Main.Strips[0].LuffX;
+	TestTrue(FString::Printf(TEXT("Main luff %.3f m on the mast's aft face %.3f m"), MainLuff, C.MastX - 0.5 * C.MastDiameter),
+		FMath::Abs(MainLuff - (C.MastX - 0.5 * C.MastDiameter)) < 0.03);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHelmTest, "SailingSim.Physics.LeewayAndWeatherHelm", PhysicsTestFlags)
 bool FSailingHelmTest::RunTest(const FString& Parameters)
 {

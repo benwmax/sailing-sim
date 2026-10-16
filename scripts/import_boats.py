@@ -161,14 +161,17 @@ if "dress" in sys.argv or "gearonly" in sys.argv or "j22only" in sys.argv:
     if "j22only" in sys.argv:
         import_boat("J22", "/Game/Boats/J22")
     unreal.log("Import done")
-    os._exit(0)
-if not only_fleet or "berthed" in sys.argv:
-    import_boat("J22", "/Game/Boats/J22")
-    import_crew()
-if not only_fleet or "gear" in sys.argv:
-    import_gear()
-for tag in FLEET:
-    if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
-        import_boat(tag, f"/Game/Boats/{tag}")
-unreal.log("Import done")
-os._exit(0)
+    if sys.platform != "win32":  # on Windows os._exit crashes the editor on the way out and leaves it hung (docs/windows)
+        os._exit(0)
+else:
+    if not only_fleet or "berthed" in sys.argv:
+        import_boat("J22", "/Game/Boats/J22")
+        import_crew()
+    if not only_fleet or "gear" in sys.argv:
+        import_gear()
+    for tag in FLEET:
+        if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
+            import_boat(tag, f"/Game/Boats/{tag}")
+    unreal.log("Import done")
+    if sys.platform != "win32":  # see above: on Windows let -run=pythonscript return
+        os._exit(0)

@@ -131,7 +131,10 @@ namespace Sailing
 		// Fin keel, 3 ft 10 in draft. The canoe body's own side force is folded into the keel's area.
 		FFoilDef Keel;
 		Keel.Role = EFoilRole::Keel;
-		Keel.Params.Center = Vec3(0.70, 0.0, -0.70); // swept fin, leading edge under the mast
+		// Swept fin. Its centre (the keel and canoe body's centre of lateral resistance, a balance knob) moved aft with the
+		// sails when the mast went to its class position (boat kit phase 2: 0.70 -> 0.45), which holds the Phase 8 helm:
+		// upwind rudder angles within 0.1 deg of before.
+		Keel.Params.Center = Vec3(0.45, 0.0, -0.70);
 		Keel.Params.Area = 0.95;
 		Keel.Params.Chord = 0.80;
 		Keel.Params.EffectiveAspectRatio = 3.0;
@@ -152,14 +155,18 @@ namespace Sailing
 		Rudder.VentStartDeg = 30.0; Rudder.VentEndDeg = 55.0; Rudder.VentDepth = 0.8; // ventilation
 		Foils.push_back(Rudder);
 
-		// Fractional sloop: P 25.0 ft, E 9.75 ft, I 26.0 ft, J 8.0 ft. 223 sq ft (20.7 m^2) main + 100% jib.
+		// Fractional sloop: P 25.0 ft, E 9.75 ft, I 26.0 ft, J 8.8 ft. 223 sq ft (20.7 m^2) main + 100% jib.
+		// The class's J is 8.8 ft (2.68 m, keelindex and Good Old Boat) from the forestay tack to the mast's front face,
+		// so the mast stands at x 0.65 and the main's luff on its aft face (boat kit phase 2; the mast was at 1.0, 35 cm
+		// forward of the real one, which the dock photo match had pointed to as well).
+		MastX = 0.65; MainLuffX = 0.60; MainLuffXHead = 0.60;
 		Main.NumStrips = 4;
 		BuildMain(0);
 		Main.LiftSlope = 3.65;
 		Main.InducedAspectRatio = 4.5;
 		Main.BaseCamber = 0.12;
 
-		BuildSail(Jib, 4, 0.75, 8.25, 2.75, 0.12, 0.0, 3.40, 1.20, 9.2);
+		BuildSail(Jib, 4, 0.75, 8.25, 2.75, 0.12, 0.0, 3.40, 0.85, 9.2);
 		Jib.LiftSlope = 4.1;
 		Jib.InducedAspectRatio = 4.5;
 		Jib.BaseCamber = 0.13;

@@ -4,9 +4,11 @@
 
 Frame: Blender's, X forward, Y to port, Z up, metres, origin on the design waterline amidships (the game's body frame
 with Y flipped, as in build_j22.py). Principal dimensions follow the class and the game's physics export: LOA 6.86 m,
-beam 2.44 m, draft 1.16 m, mast at x = 1.0, I = 7.56 m. Deck layout and hardware follow Bean's lesson photos of
+beam 2.44 m, draft 1.16 m, I = 7.56 m, mast at x = 0.65 (the class's J of 8.8 ft back from the forestay tack;
+the dock photo match pointed the same way, docs/boatkit-2). Deck layout and hardware follow Bean's lesson photos of
 TX 7295 EC (Rush Creek, Oct 2026): open bow with no pulpits or lifelines, teak toe rails and coaming caps, cam
-cleats with fairleads on the coaming faces, winches at the forward end of the coamings, traveler on the cockpit
+cleats with fairleads on the coaming faces, jib tracks and winches on the cabin top (inboard leads; the boat kit's
+JibTrack and Winch16, Tools/boatkit), one chainplate a side carrying both shrouds, traveler on the cockpit
 floor, transom-hung rudder, varnished tiller with extension, outboard bracket on the port quarter, split backstay.
 Dimensions that the photos and published numbers do not fix are marked GUESS and are what the club measurements
 will replace.
@@ -32,6 +34,8 @@ import j22_materials as M  # noqa: E402
 import j22_details as D
 from j22_fabric import Drape, Wrinkles  # noqa: E402
 from j22_style import TX7295, make_style  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "..", "..", "Tools", "boatkit"))
+import bk_parts as KIT  # noqa: E402
 
 # style: --style file.json, or --seed N --preset club|race|new|neglected [--tx7295]
 if "--style" in ARGS:
@@ -52,8 +56,10 @@ BOW, STERN = 3.45, -3.41
 MAX_HB, MAX_HB_X = 1.22, -0.40
 TRANSOM_LOSS = 0.27
 WL_MID, WL_HALF, CANOE_D = -0.06, 2.90, 0.20
-MAST_X = 1.00
+MAST_X = 0.65                               # J 8.8 ft (2.68 m) aft of the forestay tack to the mast's front face (class)
+CHAINPLATE_X = MAST_X - 0.15                # one plate a side carries both shrouds; GUESS: a little aft of the mast (photos)
 CABIN_AFT, CABIN_FWD = -0.55, 1.90          # GUESS: cabin trunk ends, from the bow photo
+CABIN_H0 = 0.30                             # GUESS: trunk height over the deck at its aft end, on the centreline
 COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
 SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272)
 SEAT_Z, FLOOR_Z = 0.40, 0.13                # GUESS: seat and self-bailing floor heights above the waterline
@@ -308,7 +314,7 @@ def cabin_ring(t, inset=0.0, z_floor=None, top_extra=0.0):
     side_line = half_beam(x) - SIDE_DECK - 0.015
     nose = smooth((t - 0.80) / 0.20)
     w = max(side_line * math.sqrt(max(1 - nose ** 2.4, 0.0)), 0.0) + 0.02
-    hgt = 0.30 - 0.06 * t                              # GUESS: trunk height above the deck at the centreline
+    hgt = CABIN_H0 - 0.06 * t                          # trunk height above the deck at the centreline
     front = smooth((t - 0.74) / 0.26)                   # long raked forward face
     hgt *= (1 - 0.90 * front)
     zb = deck_z(x, 0) - 0.06
@@ -477,9 +483,9 @@ def coaming_cap(side):
 
 def handrail(side):
     """Teak grab rail on the cabin top: a bar on loops."""
-    x0, x1 = CABIN_AFT + 0.12, CABIN_AFT + 1.35
+    x0, x1 = CABIN_AFT + 0.26, CABIN_AFT + 1.35          # starts forward of the jib winch on the cabin top's aft corner
     y = side * 0.46
-    zt = lambda x: deck_z(x, 0) + (0.30 - 0.06 * (x - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)) - 0.02  # noqa: E731
+    zt = lambda x: deck_z(x, 0) + (CABIN_H0 - 0.06 * (x - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)) - 0.02  # noqa: E731
     parts = [box(f"HR_bar_{side}", x0, x1, y - 0.016, y + 0.016, zt(x0) + 0.045, zt(x0) + 0.07, MAT["TeakWeathered"], bev=0.006)]
     for i in range(5):
         x = x0 + 0.06 + (x1 - x0 - 0.12) * i / 4
@@ -487,19 +493,34 @@ def handrail(side):
     return join(f"Handrail_{side}", parts)
 
 
-def winch(name, at):
-    """Small two-speed self-tailing-free winch: flanged base with screws, ribbed chrome drum, cap, handle socket."""
-    x, y, z = at
-    parts = [cyl(name + "_base", (x, y, z), (x, y, z + 0.022), 0.066, MAT["CastAlu"], 40, r1=0.058),
-             cyl(name + "_drum", (x, y, z + 0.022), (x, y, z + 0.100), 0.040, MAT["Chrome"], 40, r1=0.036),
-             cyl(name + "_top", (x, y, z + 0.100), (x, y, z + 0.118), 0.046, MAT["CastAlu"], 40, r1=0.041),
-             cyl(name + "_sock", (x, y, z + 0.117), (x, y, z + 0.121), 0.013, MAT["BlackPlastic"], 8)]
-    for k in range(14):                                   # drum ribs that grip the line
-        a = 2 * math.pi * k / 14
-        parts.append(box(f"{name}_rib{k}", -0.002, 0.002, -0.0015, 0.0015, z + 0.03, z + 0.095, MAT["Chrome"]))
-        parts[-1].matrix_world = Matrix.Translation((x, y, 0)) @ Matrix.Rotation(a, 4, "Z") @ Matrix.Translation((0.039, 0, 0))
-    parts += D.screws(name, [(x + 0.055 * math.cos(a), y + 0.055 * math.sin(a), z + 0.004) for a in (0.4, 2.5, 4.6)], (0, 0, 1), MAT)
-    return parts
+KIT_MATS = {"Teak": "TeakWeathered", "Wood": "TeakVarnish", "Deck": "Gelcoat", "CabinWindow": "HatchAcrylic"}
+
+
+def kit_part(name, part, at, yaw=0.0, surface=None, **kw):
+    """A fitting from the shared boat kit (Tools/boatkit/bk_parts.py) placed at `at` (its mounting face, +Z up, +X forward,
+    turned by yaw), its material slots taken over by the hero's materials of the same name. surface(x, y) -> z, when
+    given, sets the height and tilts the part to sit flat on it. The part's sockets are kept as custom properties
+    (sock_<Name>, local metres) for bake_j22_hero.py, and the empties dropped."""
+    ob = KIT.build(part, **kw)
+    ob.name = ob.data.name = name
+    for c in list(ob.children):
+        ob[f"sock_{c.name[len('SOCKET_'):].split('.')[0]}"] = list(c.location)
+        bpy.data.objects.remove(c, do_unlink=True)
+    for slot in ob.material_slots:
+        if slot.material:
+            base = slot.material.name.split(".")[0]
+            slot.material = MAT[KIT_MATS.get(base, base)]
+    rot = Matrix.Rotation(yaw, 4, "Z")
+    if surface:
+        x, y = at[0], at[1]
+        at = (x, y, surface(x, y))
+        h = 0.02
+        n = Vector(((surface(x - h, y) - surface(x + h, y)) / (2 * h), (surface(x, y - h) - surface(x, y + h)) / (2 * h), 1.0)).normalized()
+        fx = (rot.to_3x3() @ Vector((1, 0, 0)))
+        fx = (fx - n * fx.dot(n)).normalized()
+        rot = Matrix((fx, n.cross(fx), n)).transposed().to_4x4()
+    ob.matrix_world = Matrix.Translation(at) @ rot
+    return [ob]
 
 
 def cleat(name, at, along_x=True, size=0.15):
@@ -530,25 +551,14 @@ def build_hardware():
             parts += D.cam_cleat(f"Cam_{side}_{k}", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
             parts += D.block(f"Fair_{side}_{k}", (x + 0.03, side * (yw - 0.03), zc - 0.075), (0, side, 0), (0, side, 1), MAT, 0.029)
             parts += D.padeye(f"FairEye_{side}_{k}", (x + 0.03, side * yw, zc - 0.04), (0, -side, 0), MAT)
-        # winch at the forward end of the coaming (photo IMG_9272)
-        xw = CABIN_AFT - 0.28
-        yw = half_beam(xw) - SIDE_DECK + 0.13
-        parts += winch(f"Winch_{side}", (xw, side * yw, deck_z(xw, yw)))
-        # jib track and car on the side deck
-        x0, x1 = 0.05, 0.85
-        yt = half_beam(0.45) - 0.16
-        parts.append(box(f"JibTrack_{side}", x0, x1, side * yt - 0.013, side * yt + 0.013, deck_z(0.45, yt) - 0.005, deck_z(0.45, yt) + 0.012, MAT["Aluminium"], bev=0.003))
-        parts.append(box(f"JibCarBody_{side}", 0.47, 0.57, side * yt - 0.017, side * yt + 0.017, deck_z(0.45, yt) + 0.012, deck_z(0.45, yt) + 0.03, MAT["CastAlu"], bev=0.006))
-        parts.append(cyl(f"JibCarPlunger_{side}", (0.47, side * yt, deck_z(0.45, yt) + 0.03), (0.47, side * yt, deck_z(0.45, yt) + 0.045), 0.006, MAT["Stainless"], 10))
-        parts += D.block(f"JibCar_{side}", (0.53, side * yt, deck_z(0.45, yt) + 0.06), (0, 1, 0), (0, 0, -1), MAT, 0.040)
-        for k in range(9):                                    # track stop holes
-            xh = x0 + 0.04 + k * 0.09
-            parts.append(cyl(f"JTH_{side}_{k}", (xh, side * yt, deck_z(0.45, yt) + 0.011), (xh, side * yt, deck_z(0.45, yt) + 0.0125), 0.0045, MAT["BlackPlastic"], 10))
-        # chainplates at the mast, on the side deck
-        xc = MAST_X - 0.02
+        # jib winch on the cabin top's aft outboard corner (photos IMG_9224 and IMG_9272, docs/boatkit-2): the kit's size 16
+        parts += kit_part(f"Winch_{side}", "Winch16", (CABIN_AFT + 0.12, side * 0.74), surface=lambda x, y: cabin_top_z(x, y) - 0.002)
+        # jib track and car on the cabin top outboard of the handrail: inboard leads (photo IMG_9224), the kit's T-track
+        parts += kit_part(f"JibTrack_{side}", "JibTrack", (0.15, side * 0.62), surface=lambda x, y: cabin_top_z(x, y) - 0.002, length=0.70)
+        # one chainplate a side on the side deck, upper shroud on its aft hole and lower on its forward one (photos)
+        xc = CHAINPLATE_X
         yc = half_beam(xc) - 0.09
-        parts += D.chainplate(f"Chainplate_{side}", (xc, side * yc, deck_z(xc, yc)), MAT)
-        parts += D.chainplate(f"ChainplateAft_{side}", (xc - 0.16, side * (half_beam(xc - 0.16) - 0.09), deck_z(xc - 0.16, yc)), MAT)
+        parts += D.chainplate(f"Chainplate_{side}", (xc, side * yc, deck_z(xc, yc)), MAT, span=0.072)
         # stern cleats and backstay chainplates at the transom corners
         xs = STERN + 0.20
         ys = half_beam(xs) - 0.14
@@ -563,15 +573,15 @@ def build_hardware():
     parts += cleat("BowCleat", (2.70, 0, deck_z(2.70, 0)), along_x=True, size=0.15)
     # foredeck hatch (GUESS: on the cabin top forward of the mast)
     hx0, hx1 = 1.22, 1.62
-    zt = deck_z(1.42, 0) + 0.30 - 0.06 * (1.42 - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+    zt = deck_z(1.42, 0) + CABIN_H0 - 0.06 * (1.42 - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     parts.append(box("FwdHatch", hx0, hx1, -0.26, 0.26, zt - 0.02, zt + 0.035, MAT["HatchAcrylic"], bev=0.015))
     parts.append(box("FwdHatchFrame", hx0 - 0.02, hx1 + 0.02, -0.28, 0.28, zt - 0.03, zt + 0.02, MAT["Aluminium"], bev=0.008))
     # sliding companionway hatch and its rails
-    za = deck_z(CABIN_AFT, 0) + 0.30
+    za = deck_z(CABIN_AFT, 0) + CABIN_H0
     parts.append(box("SlideHatch", CABIN_AFT - 0.02, CABIN_AFT + 0.62, -0.30, 0.30, za + 0.005, za + 0.035, MAT["Gelcoat"], bev=0.012))
     parts.append(box("DropBoard", CABIN_AFT - 0.012, CABIN_AFT + 0.012, -0.24, 0.24, SEAT_Z + 0.02, za - 0.02, MAT["TeakWeathered"], bev=0.004))
     # mast step, halyard turning blocks, organisers and cam cleats on the cabin top
-    zm = deck_z(MAST_X, 0) + 0.30 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+    zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     parts.append(box("MastStep", MAST_X - 0.10, MAST_X + 0.10, -0.06, 0.06, zm - 0.005, zm + 0.03, MAT["Aluminium"], bev=0.006))
     for k, dy in enumerate((-0.10, -0.05, 0.05, 0.10)):
         parts += D.block(f"Turn_{k}", (MAST_X - 0.12, dy, zm + 0.035), (1, 0, 0), (0, 0, -1), MAT, 0.029)
@@ -664,7 +674,7 @@ def spar(name, p0, p1, w_fa, w_at, mat, taper_top=0.0, n=28):
 
 
 def build_rig():
-    zm = deck_z(MAST_X, 0) + 0.30 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+    zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     mast = spar("Mast", (MAST_X, 0, zm), (MAST_X - 0.02, 0, MAST_TOP), 0.098, 0.068, MAT["Aluminium"], taper_top=0.35)
     parts = [mast]
     rake = lambda z: MAST_X - 0.02 * (z - zm) / (MAST_TOP - zm)  # noqa: E731
@@ -685,14 +695,14 @@ def build_rig():
         parts += D.spreader_tip(f"SprTip_{side}", tip, (tip - root), MAT)
     wires = []
     for side, tip in zip((1, -1), tips):
-        xc = MAST_X - 0.02
+        xc = CHAINPLATE_X - 0.02
         yc = side * (half_beam(xc) - 0.09)
         zc = deck_z(xc, abs(yc)) + 0.055
         up_target = Vector(tip)
         tb, top = D.turnbuckle(f"TB_up_{side}", (xc, yc, zc), up_target - Vector((xc, yc, zc)), MAT)
         parts += tb
         wires.append(tube(f"Upper_{side}", [tuple(top), tuple(tip), (rake(HOUNDS), side * 0.03, HOUNDS - 0.02)], 0.002, MAT["Wire"]))
-        xa = xc - 0.16
+        xa = CHAINPLATE_X + 0.02
         ya = side * (half_beam(xa) - 0.09)
         lo_top = Vector((rake(SPREADER_Z), side * 0.035, SPREADER_Z - 0.05))
         tb, top = D.turnbuckle(f"TB_lo_{side}", (xa, ya, deck_z(xa, abs(ya)) + 0.055), lo_top - Vector((xa, ya, deck_z(xa, abs(ya)) + 0.055)), MAT)
@@ -860,24 +870,27 @@ def build_sails():
         h = 1 - k / 4
         pts = [tuple(jib.point(h, 0.86 + 0.14 * t / 6, off=-0.0025)) for t in range(7)]
         objs.append(tube(f"JibBatten_{k}", pts, 0.003, MAT["SailJib"]))
-    car = Vector((0.53, side * (half_beam(0.45) - 0.16), deck_z(0.45, 1.0) + 0.06))
+    # the cabin-top lead (kit JibTrack's sheave) and the winch drum on the cabin top's aft corner (build_hardware)
+    car = Vector((0.16, side * 0.62, cabin_top_z(0.15, 0.62) + 0.045))
+    drum = Vector((CABIN_AFT + 0.12, side * (0.74 + 0.04), cabin_top_z(CABIN_AFT + 0.12, 0.74) + 0.05))
     xf = -1.05 + 0.03
     yf = half_beam(xf) - SIDE_DECK - 0.025 - 0.03
     zf = (SEAT_Z + deck_z(xf, yf)) / 2 + 0.05 - 0.075
     xc = -1.05
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
-    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))),
+    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))), tuple(drum),
                       (xf + 0.05, side * (yf + 0.01), deck_z(xf, yf) + 0.02), (xf, side * yf, zf + 0.01),
                       (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)],
-                     [0.002, 0.0, 0.02, 0.0, 0.0, 0.0], 0.0045)
+                     [0.002, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0], 0.0045)
     lines.append(tube("JibSheetLee", lee, 0.0045, MAT["RopeJibPort"], smooth_path=True))
     objs += D.coil("JibTailLee", (-1.45, side * (SEAT_IN + 0.18), SEAT_Z), 0.12, 2.6, MAT["RopeJibPort"], seed=STYLE["seed"] + 3, flat_z=SEAT_Z,
                    tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
     # lazy (windward) sheet: slack over the foredeck, round the mast, back to its own car and cleat
-    wcar = Vector((0.53, -side * (half_beam(0.45) - 0.16), deck_z(0.45, 1.0) + 0.06))
-    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar),
+    wcar = Vector((car.x, -car.y, car.z))
+    wdrum = Vector((drum.x, -drum.y, drum.z))
+    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar), tuple(wdrum),
                        (xf + 0.05, -side * (yf + 0.01), deck_z(xf, yf) + 0.02), (xf, -side * yf, zf + 0.01), (xc, -side * (yf + 0.012), zc)],
-                      [0.22, 0.0, 0.03, 0.0, 0.0], 0.0045)
+                      [0.22, 0.0, 0.03, 0.03, 0.0, 0.0], 0.0045)
     lines.append(tube("JibSheetLazy", lazy, 0.0045, MAT["RopeJibStbd"], smooth_path=True))
     objs += D.coil("JibTailLazy", (-1.50, -side * (SEAT_IN + 0.18), SEAT_Z), 0.11, 2.2, MAT["RopeJibStbd"], seed=STYLE["seed"] + 4, flat_z=SEAT_Z,
                    tail=[(-1.2, -side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, -side * (yf + 0.005), zc - 0.03)])
