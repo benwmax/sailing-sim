@@ -327,6 +327,11 @@ void AWaterSurface::CreateWaterMaterial()
 	float DebugGust = 0.f;
 	FParse::Value(FCommandLine::Get(), TEXT("SailingDebugGust="), DebugGust);
 	WaterMaterial->SetScalarParameterValue(TEXT("DebugGust"), DebugGust);
+	// W8: -SailingDebugFoam: M_WaterV4 draws the whitecaps alone (white on black) for counting on a screenshot.
+	// (=2 the crests alone, =3 where the fold is under the threshold; -SailingDebugCaps logs the solved thresholds.)
+	float DebugFoam = FParse::Param(FCommandLine::Get(), TEXT("SailingDebugFoam")) ? 1.f : 0.f;
+	FParse::Value(FCommandLine::Get(), TEXT("SailingDebugFoam="), DebugFoam);
+	WaterMaterial->SetScalarParameterValue(TEXT("DebugFoam"), DebugFoam);
 	WaterMaterial->SetTextureParameterValue(TEXT("GustMap"), GustMap);
 	WaterMaterial->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
 	WaterMaterial->SetTextureParameterValue(TEXT("WakeMap"), WakeMap);
@@ -346,6 +351,7 @@ void AWaterSurface::CreateWaterMaterial()
 		{
 			DetailAMap = MakeFloatMapMips(Chop.N);
 			DetailBMap = MakeFloatMapMips(Chop.N);
+			DetailCMap = MakeFloatMapMips(Chop.N);
 			RippleBMap = MakeFloatMapMips(Ripple.N);
 		}
 		// The wake grid: 38 m around the boat on Medium (128 cells of 0.3 m), 64 m on High (256 of 0.25 m).
@@ -358,6 +364,7 @@ void AWaterSurface::CreateWaterMaterial()
 		}
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailA"), DetailAMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailB"), DetailBMap);
+		WaterMaterial->SetTextureParameterValue(TEXT("DetailC"), DetailCMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("RippleB"), RippleBMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("WakeGrid"), WakeGridMap);
 		if (ShoreMap && bShoreValid)
@@ -393,15 +400,48 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	}
 }
 
+float AWaterSurface::FoamThresholdAt(float MeanKnots)
+{
+	// Under 10 kn the crests stop breaking (Beaufort 2-3): the threshold falls 0.03 a knot instead of rising on.
+	const float K = FMath::Clamp(MeanKnots, 4.f, 40.f);
+	return 0.63f + 0.083f * FMath::Exp(-(FMath::Max(K, 10.f) - 10.f) / 5.f) - 0.03f * FMath::Max(10.f - K, 0.f);
+}
+
 float AWaterSurface::CapSlopeAt(float MeanKnots)
 {
-	return 0.034f * FMath::Pow(FMath::Clamp(MeanKnots, 4.f, 40.f) / 10.f, 0.773f);
+	return 0.018f * FMath::Pow(FMath::Clamp(MeanKnots, 4.f, 40.f) / 10.f, 1.25f);
+}
+
+void AWaterSurface::CapTable(float MeanKnots, float WaterScale, float& OutFirst, float& OutStep)
+{
+	OutStep = FMath::Max(CapSlopeAt(MeanKnots), 0.03f);
+	OutFirst = WhitecapThreshold(1.f, WaterScale, MeanKnots) - 1.5f * OutStep;
+}
+
+float AWaterSurface::CapTableEntry(float J, int32 K, float First, float Step)
+{
+	return FMath::Clamp((First + K * Step - J) / CapRamp + 0.5f, 0.f, 1.f);
+}
+
+float AWaterSurface::CapCover(const float Table[4], float Threshold, float MeanKnots, float Mip, float First, float Step)
+{
+	// Mirrors M_WaterV4: in log between the two entries about the threshold (cover is about exponential in it); under
+	// the first, an e-fold per CapSlopeAt.
+	const float U = (Threshold - First) / Step;
+	const int32 I = FMath::Clamp(FMath::FloorToInt(U), 0, 2);
+	const float Wt = FMath::Clamp(U - I, 0.f, 1.f);
+	const float La = FMath::Loge(FMath::Max(Table[I], 1e-6f)), Lb = FMath::Loge(FMath::Max(Table[I + 1], 1e-6f));
+	const float Lin = FMath::Lerp(Table[I], Table[I + 1], Wt);
+	const float Log = Table[I + 1] > 1.5e-6f ? FMath::Exp(FMath::Lerp(La, Lb, Wt)) : 0.f;
+	float Cover = FMath::Lerp(Lin, Log, FMath::Clamp(Mip / CapLogMip, 0.f, 1.f));
+	if (U < 0.f) Cover *= FMath::Exp(U * Step / FMath::Max(CapSlopeAt(MeanKnots), 0.02f));
+	return Cover;
 }
 
 float AWaterSurface::WhitecapThreshold(float LocalOverMean, float WaterScale, float MeanKnots)
 {
 	const float Gain = WaterScale * FMath::Pow(FMath::Clamp(LocalOverMean, 0.05f, 4.f), 3.41f);
-	return FMath::Clamp(FoamThreshold + CapSlopeAt(MeanKnots) * FMath::Loge(FMath::Max(Gain, 1e-4f)), 0.3f, 0.85f);
+	return FMath::Clamp(FoamThresholdAt(MeanKnots) + CapSlopeAt(MeanKnots) * FMath::Loge(FMath::Max(Gain, 1e-4f)), 0.3f, 0.85f);
 }
 
 void AWaterSurface::SetRingCount(int32 Count)
@@ -617,6 +657,21 @@ void AWaterSurface::UpdateDetail()
 		{
 			UploadPackedMips(DetailAMap, Done->A, Done->N);
 			UploadPackedMips(DetailBMap, Done->B, Done->N);
+			UploadPackedMips(DetailCMap, Done->C, Done->N);
+			WaterMaterial->SetVectorParameterValue(TEXT("CapTable"), FLinearColor(Done->CapFirst, Done->CapStep, 0.f, 0.f));
+			// W8: the threshold for this sea's share of caps, eased (each frame's quantile is of 16k samples).
+			if (Done->CapSlope > 0.f)
+			{
+				const float A = CapSlopeSmooth > 0.f ? 0.08f : 1.f;
+				for (int32 K = 0; K < 4; ++K) CapThrSmooth[K] += A * (Done->CapThr[K] - CapThrSmooth[K]);
+				CapSlopeSmooth += A * (Done->CapSlope - CapSlopeSmooth);
+				WaterMaterial->SetVectorParameterValue(TEXT("CapCalib"), FLinearColor(CapThrSmooth[0], CapSlopeSmooth, 0.f, 0.f));
+				WaterMaterial->SetVectorParameterValue(TEXT("CapCalibFar"), FLinearColor(CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], 0.f));
+				static SailingArgs::FCachedFlag DebugCapsArg(TEXT("SailingDebugCaps"));
+				static int32 Logged = 0;
+				if (DebugCapsArg.Get() && (++Logged % 30) == 0)
+					UE_LOG(LogSailing, Display, TEXT("Caps: thresholds %.3f %.3f %.3f %.3f, slope %.3f"), CapThrSmooth[0], CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], CapSlopeSmooth);
+			}
 			if (Done->RippleN > 0) UploadPackedMips(RippleBMap, Done->Ripple, Done->RippleN);
 		}
 	}
@@ -628,7 +683,24 @@ void AWaterSurface::UpdateDetail()
 	const float W = float(FMath::Clamp((Ahead - FramePrev->Time) / kDetailStep, 0.0, 1.0));
 	const FDetailFramePtr Prev = FramePrev, Next = FrameNext;
 	const bool bRipple = Prev->Ripple.N > 0 && Next->Ripple.N == Prev->Ripple.N;
-	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple]() -> FDetailUploadPtr
+	// W8: Monahan's whitecap cover for the sea's mean wind times the water body's share: the renderer solves the fold
+	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there).
+	const double MeanMs = Waves->GetParams().WindSpeedKnots * kKnot;
+	const double CapTarget = 3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleFor(USailingSettings::Get()->World);
+	const double CapTime = Ahead;
+	TArray<FWaveComponent> Long(Waves->GetComponents(), kWaveComponents);
+	// As M_WaterV4 draws them around the camera: each long train scaled by the sea map's ratio there (W3), the chop by
+	// its short scale.
+	float CapShort = 1.f;
+	if (const FSeaMap* Sea = Waves->GetSeaMap(); Sea && Sea->IsValid())
+	{
+		const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
+		float Ratio[kSeaChannels];
+		Sea->Sample(Cam.X / CmPerMeter, Cam.Y / CmPerMeter, Ratio);
+		for (int32 I = 0; I < kSeaLongComponents && I < Long.Num(); ++I) Long[I].Amplitude *= Ratio[I];
+		CapShort = Ratio[kSeaLongComponents];
+	}
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, CapTarget, CapTime, CapShort, Long = MoveTemp(Long)]() -> FDetailUploadPtr
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
 		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
@@ -637,15 +709,48 @@ void AWaterSurface::UpdateDetail()
 			const FWaveDetail::FGrid& A = Prev->Chop;
 			const FWaveDetail::FGrid& B = Next->Chop;
 			const int32 NN = A.N * A.N;
-			TArray<float> PixA, PixB;
+			TArray<float> PixA, PixB, PixC;
 			PixA.SetNumUninitialized(NN * 4);
 			PixB.SetNumUninitialized(NN * 4);
+			PixC.SetNumUninitialized(NN * 4);
+			// W8: the whitecap Jacobian of the drawn sea (long trains, as the mesh draws them, times the chop's) at every
+			// other grid point, for the thresholds that cap CapTarget of it at four vertex spacings (0.5 m: within 32 m of
+			// the camera; 1, 2, 4 m: about 64, 128, 256 m, M_WaterV4's dist / 64, with its distance fade over 900 m). The
+			// fold table is centred on the nearest.
+			std::vector<float> JCap(NN);
+			for (int32 I = 0; I < NN; ++I) JCap[I] = Blend(A.JCap, B.JCap, I);
+			const double Cell = A.Tile / A.N, OmegaMax = 2.0 * UE_DOUBLE_PI * SplitHz;
+			double CapThr[4] = {}, CapSlope = 0.0;
+			for (int32 K = 0; K < 4; ++K)
+			{
+				const double Spacing = 0.5 * double(1 << K), Fade = FMath::Clamp(1.0 - 64.0 * Spacing / 900.0, 0.0, 1.0);
+				std::vector<float> Samples;
+				Samples.reserve(NN / 4);
+				for (int32 R = 0; R < A.N; R += 2)
+					for (int32 Cc = 0; Cc < A.N; Cc += 2)
+					{
+						const int32 I = R * A.N + Cc;
+						const double Chop = 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - JCap[I]); // the shader's jd
+						// The long trains sampled over about 170 m (the chop's 23 m tile holds about one of their wavelengths, so a
+						// frame's sample sat on whatever crests crossed it), the chop at its own texel.
+						const double Jt = FWaveDetail::LongJacobian(Long.GetData(), Long.Num(), OmegaMax, Choppiness, R * Cell * 7.31, Cc * Cell * 7.37, CapTime, Spacing, Fade) * Chop;
+						Samples.push_back(float(1.0 - DrawnFoldScale * (1.0 - Jt)));
+					}
+				double Slope = 0.0;
+				FWaveDetail::CapThreshold(MoveTemp(Samples), CapTarget, CapThr[K], Slope);
+				if (K == 0) CapSlope = Slope;
+			}
+			// The table holds the chop's own J: centred on the nearest threshold.
+			const float CapStep = FMath::Max(float(CapSlope), 0.03f), CapFirst = float(CapThr[0]) - 1.5f * CapStep;
 			for (int32 I = 0; I < NN; ++I)
 			{
 				PixA[4 * I + 0] = Blend(A.H, B.H, I);
 				PixA[4 * I + 1] = Blend(A.Dx, B.Dx, I);
 				PixA[4 * I + 2] = Blend(A.Dy, B.Dy, I);
-				PixA[4 * I + 3] = Blend(A.J, B.J, I);
+				// W8: the Jacobian the foam reads is the whitecaps' (FWaveDetail::CapBlurTexels: caps on whole crests).
+				PixA[4 * I + 3] = JCap[I];
+				// W8: the fold table (CapTableEntry): its mips are whitecap cover.
+				for (int32 K = 0; K < 4; ++K) PixC[4 * I + K] = CapTableEntry(PixA[4 * I + 3], K, CapFirst, CapStep);
 				// Slopes and their squares (LEAN mapping: a mip's mean square minus its squared mean is the slope variance
 				// it averaged away, which the material turns into roughness).
 				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
@@ -657,6 +762,11 @@ void AWaterSurface::UpdateDetail()
 			Out->N = A.N;
 			PackMips(MoveTemp(PixA), A.N, Out->A);
 			PackMips(MoveTemp(PixB), A.N, Out->B);
+			PackMips(MoveTemp(PixC), A.N, Out->C);
+			Out->CapFirst = CapFirst;
+			Out->CapStep = CapStep;
+			for (int32 K = 0; K < 4; ++K) Out->CapThr[K] = float(CapThr[K]);
+			Out->CapSlope = float(CapSlope);
 		}
 		if (bRipple)
 		{

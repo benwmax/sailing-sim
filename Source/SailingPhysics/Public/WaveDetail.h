@@ -42,12 +42,18 @@ namespace Sailing
 			int N = 0;
 			double Tile = 0.0, Time = 0.0;
 			// N x N, row = X (north) index, column = Y (east): height, choppy displacement, slopes, Jacobian (1 = flat).
-			std::vector<float> H, Dx, Dy, Sx, Sy, J;
+			// W8: JCap, the Jacobian of the displacement low-passed over CapBlurTexels: where the whitecaps form.
+			std::vector<float> H, Dx, Dy, Sx, Sy, J, JCap;
 		};
 
 		/** Default cascades: chop (128^2 over 23 m, 0.4-4 m) and ripples (64^2 over 3.1 m, 0.1-0.4 m). */
 		static FCascadeSpec ChopCascade() { return { 128, 23.0, 0.4, 4.0 }; }
 		static FCascadeSpec RippleCascade() { return { 64, 3.1, 0.1, 0.4 }; }
+		/** W8 (docs/water-8/whitecaps): whitecaps break on whole crests, not on the chop's 20 cm wrinkles. The full
+		 *  Jacobian folded in specks 0.4 m across (463 in 6350 m^2 at the lake's 20 kn cover, read as glints); folded on
+		 *  the displacement box-blurred over 2 texels (0.36 m) either way the same cover comes in 64 caps about 1 m
+		 *  across, the size of a 20 kn reservoir's whitecaps. */
+		static constexpr int CapBlurTexels = 2;
 
 		void Configure(const FWaveDetailParams& Params, const std::vector<FCascadeSpec>& Cascades);
 		const FWaveDetailParams& GetParams() const { return Params; }
@@ -61,6 +67,20 @@ namespace Sailing
 		double Variance(int Cascade) const { return Cascades[Cascade].Variance; }
 		/** Bilinear sample of a grid at a map point (periodic). */
 		static void Sample(const FGrid& G, double X, double Y, double& OutH, double& OutDx, double& OutDy, double& OutJ);
+		/** W8: bilinear sample of the whitecap Jacobian (JCap). */
+		static double SampleCapJ(const FGrid& G, double X, double Y);
+		/** W8: the long waves' Jacobian (the physics' trains under OmegaMax, Gerstner choppiness Chop) at a point, as
+		 *  M_WaterV4's vertex shader has it on a mesh of this Spacing (m): a train shorter than 8 spacings fades out of the
+		 *  fold (fully under 4), and Fade (0..1, the distance fade) scales what is left. */
+		static double LongJacobian(const FWaveComponent* Components, int Count, double OmegaMax, double Chop, double X, double Y, double T,
+			double Spacing = 0.0, double Fade = 1.0);
+		/**
+		 * W8 (docs/water-8/whitecaps): the fold threshold that caps a Target share of the drawn sea, from samples of its
+		 * whitecap Jacobian (long times chop), and the threshold's shift per e-fold of cover there. The renderer solves it
+		 * on the sea it draws: a threshold fitted on one sea (the test's 8 km fetch) capped the lake's shorter-fetch sea at a
+		 * fraction of its share, so 20 kn showed three caps in a view where Monahan's fresh-water share gives dozens.
+		 */
+		static void CapThreshold(std::vector<float> Samples, double Target, double& OutThreshold, double& OutSlope);
 
 		/** The physics' spectral density normalization for this sea (the same JONSWAP scale FWaveField uses), m^2 s. */
 		static double SpectrumAt(double FrequencyHz, double WindMs, double FetchMeters);

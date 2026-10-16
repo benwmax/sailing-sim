@@ -7,6 +7,7 @@
 #include "WaterSurface.h"
 #include "WaveDetail.h"
 #include "Waves.h"
+#include <algorithm>
 #include <random>
 
 using namespace Sailing;
@@ -136,7 +137,7 @@ namespace
 			Out.H += H;
 			Out.Dx += Dx;
 			Out.Dy += Dy;
-			Out.J *= J;
+			Out.J *= FWaveDetail::SampleCapJ(*Detail, X, Y); // W8: the foam reads the whitecaps' Jacobian
 		}
 		return Out;
 	}
@@ -240,6 +241,129 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 }
 
 /**
+ * W8: whitecaps as the camera sees them (docs/water-8/whitecaps). Farther than a few metres a pixel spans several chop
+ * texels, and the GPU reads the texture's mips. A mip of the Jacobian averages toward 1, so thresholding it (M_WaterV4
+ * before W8) lost nearly every cap: the lake at 20 kn measured twice its target here and showed almost none. The fold
+ * table's mips (AWaterSurface::CapTableEntry, read by CapCover as the material does) average the cover itself, so at
+ * every mip level the cover is the grid's own (within 30 %, from mip 1: the table is read from about a texel a pixel).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapsSeenTest, "SailingSim.Visual.WhitecapsSeen", WaterFlags)
+bool FWaterWhitecapsSeenTest::RunTest(const FString&)
+{
+	for (const double Knots : { 14.0, 20.0, 25.0 })
+	{
+		FWaveField Waves(1);
+		FWaveParams WP;
+		WP.WindSpeedKnots = Knots;
+		WP.FetchMeters = 8000.0;
+		Waves.SetWind(WP);
+		Waves.SnapToTarget();
+		FWaveDetail Detail;
+		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
+		// The chop's own whitecap Jacobian, at thresholds that cap 0.2, 0.5 and 1.5 % of it (the long waves only move the
+		// threshold the shader reads it at); the table's entries a slope apart, the threshold between two of them.
+		std::vector<float> All;
+		for (const double T : { 5.0, 23.0, 61.0, 97.0 })
+		{
+			FWaveDetail::FGrid Grid;
+			Detail.Evaluate(0, T, Grid);
+			All.insert(All.end(), Grid.JCap.begin(), Grid.JCap.end());
+		}
+		std::sort(All.begin(), All.end());
+		const float Step = FMath::Max(AWaterSurface::CapSlopeAt(float(Knots)), 0.03f);
+		const float Lake = AWaterSurface::WhitecapScaleFor(0);
+		for (const double Ratio : { 0.002, 0.005, 0.015 })
+		{
+		const float Thr = All[size_t(Ratio * All.size())];
+		const float First = Thr - 1.4f * Step;
+		constexpr int32 Levels = 6;
+		double Hard = 0.0, Table[Levels] = {}, Old[Levels] = {};
+		int32 Frames = 0;
+		for (const double T : { 5.0, 23.0, 61.0, 97.0 })
+		{
+			FWaveDetail::FGrid Grid;
+			Detail.Evaluate(0, T, Grid);
+			int32 N = Grid.N;
+			std::vector<float> J = Grid.JCap;
+			std::vector<float> C(size_t(N) * N * 4);
+			for (size_t I = 0; I < J.size(); ++I)
+			{
+				Hard += J[I] < Thr ? 1.0 / J.size() : 0.0;
+				for (int32 K = 0; K < 4; ++K) C[I * 4 + K] = AWaterSurface::CapTableEntry(J[I], K, First, Step);
+			}
+			for (int32 L = 0; L < Levels; ++L)
+			{
+				double SumT = 0.0, SumO = 0.0;
+				for (size_t I = 0; I < J.size(); ++I)
+				{
+					SumT += AWaterSurface::CapCover(&C[I * 4], Thr, float(Knots), float(L), First, Step);
+					SumO += FMath::Clamp((Thr - J[I]) / 0.05 + 0.5, 0.0, 1.0);
+				}
+				Table[L] += SumT / J.size();
+				Old[L] += SumO / J.size();
+				// The next mip: 2x2 box means (as the texture's mips are built, PackMips).
+				const int32 M = N / 2;
+				std::vector<float> J2(size_t(M) * M), C2(size_t(M) * M * 4);
+				for (int32 R = 0; R < M; ++R)
+					for (int32 Q = 0; Q < M; ++Q)
+					{
+						const size_t A = size_t(2 * R) * N + 2 * Q, B = A + 1, Cc = A + N, D = Cc + 1, O = size_t(R) * M + Q;
+						J2[O] = 0.25f * (J[A] + J[B] + J[Cc] + J[D]);
+						for (int32 K = 0; K < 4; ++K) C2[O * 4 + K] = 0.25f * (C[A * 4 + K] + C[B * 4 + K] + C[Cc * 4 + K] + C[D * 4 + K]);
+					}
+				J = MoveTemp(J2);
+				C = MoveTemp(C2);
+				N = M;
+			}
+			++Frames;
+		}
+		Hard /= Frames;
+		FString Line;
+		for (int32 L = 0; L < Levels; ++L) Line += FString::Printf(TEXT(" mip %d: %.2f%% (J mipped %.2f%%);"), L, 100.0 * Table[L] / Frames, 100.0 * Old[L] / Frames);
+		AddInfo(FString::Printf(TEXT("%2.0f kn, chop capped %.1f%%: the grid %.3f%%;%s"), Knots, 100.0 * Ratio, 100.0 * Hard, *Line));
+		// Mip 0 is drawn from the fold itself (the J mipped column there); the table from about a texel a pixel.
+		for (int32 L = 1; L < Levels; ++L)
+		{
+			const double Seen = Table[L] / Frames;
+			TestTrue(FString::Printf(TEXT("%.0f kn, %.3f: mip %d sees the grid's cover (within 30%%)"), Knots, Ratio, L), Seen > 0.7 * Hard && Seen < 1.3 * Hard);
+		}
+		TestTrue(FString::Printf(TEXT("%.0f kn, %.3f: the fold at mip 0 is the grid's (within 20%%)"), Knots, Ratio), FMath::Abs(Old[0] / Frames - Hard) <= 0.2 * Hard + 1e-5);
+		TestTrue(FString::Printf(TEXT("%.0f kn, %.3f: a mipped Jacobian loses the caps (why the table)"), Knots, Ratio), Old[3] / Frames < 0.3 * Hard);
+		}
+
+		// The renderer solves the threshold on the sea it draws (FWaveDetail::CapThreshold on the long trains' fold, as
+		// the mesh has it, times the chop's): solved on one stretch of time and water, it caps the target on another.
+		const double Target = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * Lake;
+		const double OmegaMax = 2.0 * UE_DOUBLE_PI * AWaterSurface::SplitHz;
+		auto Sea = [&](double T0, double X0)
+		{
+			std::vector<float> Out;
+			for (const double T : { T0, T0 + 7.0, T0 + 19.0 })
+			{
+				FWaveDetail::FGrid Grid;
+				Detail.Evaluate(0, T, Grid);
+				for (int32 I = 0; I < Grid.N * Grid.N; ++I)
+					Out.push_back(float(FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
+						X0 + (I / Grid.N) * 1.31, (I % Grid.N) * 1.37, T, 0.5) * Grid.JCap[I]));
+			}
+			return Out;
+		};
+		double Thr = 0.0, Slope = 0.0;
+		FWaveDetail::CapThreshold(Sea(11.0, 0.0), Target, Thr, Slope);
+		const std::vector<float> Other = Sea(140.0, 900.0);
+		double Capped = 0.0;
+		for (const float V : Other) Capped += V < Thr ? 1.0 / Other.size() : 0.0;
+		AddInfo(FString::Printf(TEXT("%2.0f kn, lake: solved threshold %.3f (slope %.3f per e-fold) caps %.3f%% elsewhere, target %.3f%%"),
+			Knots, Thr, Slope, 100.0 * Capped, 100.0 * Target));
+		TestTrue(FString::Printf(TEXT("%.0f kn: the solved threshold caps the target on other water (within 35%%)"), Knots), Capped > 0.65 * Target && Capped < 1.35 * Target);
+		// The CPU's long-wave fold is the test's (and the material's) at full mesh resolution.
+		const double Exact = RenderedVertex(Waves, nullptr, 3.7, 8.1, 42.0, AWaterSurface::Choppiness).J;
+		TestTrue(TEXT("LongJacobian is the drawn long waves' fold"), FMath::IsNearlyEqual(Exact, FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness, 3.7, 8.1, 42.0), 1e-9));
+	}
+	return true;
+}
+
+/**
  * Whitecaps from the drawn waves: the share of the surface where the crests fold (the Jacobian under the material's
  * FoamThreshold) against Monahan's whitecap coverage law W = 3.84e-6 U^3.41 (U at 10 m, m/s). The Beaufort scale is
  * the check: almost none at 6 kn, within a factor of three of the law from 10 kn up. W0: the material moves the
@@ -249,12 +373,12 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapsTest, "SailingSim.Visual.Whitecaps", WaterFlags)
 bool FWaterWhitecapsTest::RunTest(const FString&)
 {
-	constexpr double Threshold = AWaterSurface::FoamThreshold;
 	const float Lake = AWaterSurface::WhitecapScaleFor(0), Bay = AWaterSurface::WhitecapScaleFor(1), Sea = AWaterSurface::WhitecapScaleFor(2);
 	TestTrue(TEXT("The Gulf keeps the sea's law"), Sea == 1.f);
-	TestTrue(TEXT("At the mean wind the sea's threshold is the calibrated one"), FMath::IsNearlyEqual(AWaterSurface::WhitecapThreshold(1.f, Sea), float(Threshold)));
+	TestTrue(TEXT("At the mean wind the sea's threshold is the calibrated one"), FMath::IsNearlyEqual(AWaterSurface::WhitecapThreshold(1.f, Sea), AWaterSurface::FoamThresholdAt(14.f)));
 	for (const double Knots : { 6.0, 10.0, 14.0, 20.0, 25.0 })
 	{
+		const double Threshold = AWaterSurface::FoamThresholdAt(float(Knots));
 		FWaveField Waves(1);
 		FWaveParams WP;
 		WP.WindSpeedKnots = Knots;
