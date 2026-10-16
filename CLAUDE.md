@@ -140,6 +140,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    hero builds kit parts with `kit_part` (`Winch16`, `JibTrack` on the cabin top; sockets kept as `sock_<Name>` props
    that `bake_j22_hero.py` reads), one chainplate a side, and the J/22's `MastX` is 0.65 (the class J, 8.8 ft) in the
    physics, the hero and `build_j22.py`: rerun `make-boat-models.sh` after it.
+   Phase 3 (`docs/boatkit-3/`): the J/22's keel is the class template in both models (`keel_edges`; the physics keel
+   `Center` stays a balance knob), the hero's aft freeboard is the ORC 0.568 m, its cabin face ends at 1.65.
+   `photomatch/profile_match.py` lays the hero's outline over a broadside photo from two picked points (no camera solve).
 
 ## Conventions
 

@@ -17,6 +17,7 @@ the game yet.
 | `dress_boat.py` | Dresses a boat (hull with its baked fittings stripped, kit, touches), writes `placements.json`, renders |
 | `photomatch/solve_camera.py` | Solves a photo's camera from picked points (DLT + Levenberg-Marquardt, or a fixed lens) |
 | `photomatch/match_blend.py` | Renders any saved .blend (the hero J/22) from a solved camera and writes the compare image |
+| `photomatch/profile_match.py` | Lays the hero's side outline over a square-on broadside photo from two picked points (stem top, transom top) and prints the picked stations in hero metres (`matches/<photo>.profile.json`) |
 | `photomatch/compare.py` | Photo, render, blend and outline overlay in one image |
 
 Run everything with `scripts/make-boatkit.sh [--render]` (Blender or the `bpy` module; about 10 s without renders).

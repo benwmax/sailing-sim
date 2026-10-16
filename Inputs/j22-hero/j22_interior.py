@@ -34,6 +34,7 @@ BENCH_IN = 0.28           # bench fronts, half-width
 VBERTH_Z = 0.30           # GUESS: V-berth top
 VBERTH_AFT = 1.12         # V-berth face
 LINER_T = 0.012
+WIN_FWD = 1.10           # portlights' forward end at their foot, clear of the trunk's rounded nose (j22_materials.py too)
 SKIN = 0.016              # the liner stands this far inside the hull's outer surface (12 mm shell + a gap)
 
 
@@ -298,7 +299,7 @@ def open_up(H, cabin, deck, cockpit, mats):
     out = []
     zb, zt = 0.745, 0.835
     win = []
-    for (x, z) in ((-0.30, zb), (1.42, zb), (1.42 - (zt - zb) * 3.0, zt), (-0.30, zt)):
+    for (x, z) in ((-0.30, zb), (WIN_FWD, zb), (WIN_FWD - (zt - zb) * 3.0, zt), (-0.30, zt)):
         win.append((x, z))
     win = _fillet_closed(win, 0.025)
     cutter = _prism_y("win_cut", win, -1.6, 1.6)
@@ -321,8 +322,10 @@ def open_up(H, cabin, deck, cockpit, mats):
         apply_mods(pane)
         out.append(pane)
     # fore hatch: open the trunk top under the acrylic so daylight falls on the V-berth
-    zt_h = H.deck_z(1.42, 0) + H.CABIN_H0 - 0.06 * (1.42 - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT)
-    bool_op(cabin, box("hatch_cut", 1.25, 1.59, -0.23, 0.23, zt_h - 0.2, zt_h + 0.1), tolerant=False)
+    hx0, hx1 = H.FWD_HATCH
+    hxc = 0.5 * (hx0 + hx1)
+    zt_h = H.deck_z(hxc, 0) + H.CABIN_H0 - 0.06 * (hxc - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT)
+    bool_op(cabin, box("hatch_cut", hx0 + 0.03, hx1 - 0.03, -0.23, 0.23, zt_h - 0.2, zt_h + 0.1), tolerant=False)
     if not cabin.data.polygons:
         raise RuntimeError("J22H interior: the trunk booleans left no faces")
     return out
