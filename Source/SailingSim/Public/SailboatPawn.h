@@ -198,8 +198,9 @@ private:
 	void BuildHullMesh();
 	// Visual V2: modelled boats (the J/22 first; BoatModelVisuals.cpp). A class with a model uses its hull, mast, boom
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
-	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; bool bOwnOutboard = false; };
+	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
+	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
@@ -384,6 +385,7 @@ private:
 	UPROPERTY() TObjectPtr<UMaterialInterface> CarMaterial;
 	UPROPERTY() TObjectPtr<class UMaterialParameterCollection> BoatParameters;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelHull;
+	bool bModelTravelerBridge = true; // FBoatModelMeshes::bTravelerBridge of the model drawn
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelMast;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelBoom;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelRudder;

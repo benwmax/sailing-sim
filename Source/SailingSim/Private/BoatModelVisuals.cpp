@@ -145,6 +145,7 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		// and its glass: the smoked portlights and fore hatch over the cabin, and the bilge water (translucent, M_J22HeroGlass).
 		M.Glass = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Glass.SM_J22H_Glass"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		M.bOwnOutboard = true; // on its bracket on the port quarter (build_j22_hero.py)
+		M.bTravelerBridge = false; // its traveler track lies on the cockpit sole
 		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
 		M = FBoatModelMeshes();
 	}
@@ -702,6 +703,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		In.Seed = uint32(I) * 977u + (bTrafficBoat ? GetUniqueID() : 0u);
 		In.bReact = !FParse::Param(FCommandLine::Get(), TEXT("SailingCrewStill"));
 		In.bClips = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoCrewClips"));
+		In.bTravelerBridge = bModelTravelerBridge;
 		// The handholds and braces: the model's sockets (J22H_sockets.json names) where it has them, else from the geometry.
 		CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
 		for (int32 Sd = 0; Sd < 2; ++Sd)

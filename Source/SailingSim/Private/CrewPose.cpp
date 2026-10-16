@@ -254,14 +254,14 @@ namespace CrewSolver
 			if (!SolePoints(Ref, Rest, CS, Frame, Side, Sole)) continue;
 			const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
 			FVector B[2] = { G.ToBoat.TransformPosition(Sole[0]) * M, G.ToBoat.TransformPosition(Sole[1]) * M };
-			auto Inside = [&](const FVector& P) { return CrewInsideBoat(C, G.HullDepth, P + FVector(0.0, 0.0, 0.015)); };
+			auto Inside = [&](const FVector& P) { return CrewInsideBoat(C, G.HullDepth, P + FVector(0.0, 0.0, 0.015), G.bTravelerBridge); };
 			if (!Inside(B[0]) && !Inside(B[1])) continue;
 			FVector Shift = FVector::ZeroVector;
 			const FVector Mid = 0.5 * (B[0] + B[1]);
 			const double Off = -1e8;
 			// Off the deck's plan (through the topsides), or under the side deck beside the well: bring it inboard, into the
 			// well where there is one alongside, else onto the nearest hull's deck, 8 cm in from the edge.
-			const bool bOffPlan = CrewFloorZ(C, B[0].X, B[0].Y) < Off || CrewFloorZ(C, B[1].X, B[1].Y) < Off;
+			const bool bOffPlan = CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge) < Off || CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge) < Off;
 			int32 Near = 0;
 			for (int32 K = 1; K < int32(C.Hulls.size()); ++K)
 			{
@@ -277,7 +277,7 @@ namespace CrewSolver
 				Shift.Y = (Mid.Y >= H.CenterY ? -1.0 : 1.0) * (Y - Limit);
 			}
 			for (FVector& P : B) P += Shift;
-			const double Floor = FMath::Max(CrewFloorZ(C, B[0].X, B[0].Y), CrewFloorZ(C, B[1].X, B[1].Y));
+			const double Floor = FMath::Max(CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge), CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge));
 			if (Floor < Off) continue;
 			Shift.Z = Floor + 0.005 - FMath::Min(B[0].Z, B[1].Z);
 			const FVector Target = G.ToBoat.InverseTransformPosition(G.ToBoat.TransformPosition(CS[Foot].GetLocation()) + Shift / M);
@@ -328,7 +328,7 @@ namespace CrewSolver
 			if (Calf == INDEX_NONE) continue;
 			const FVector Ankle = G.ToBoat.TransformPosition(CS[Foot].GetLocation()) * M;
 			const FVector Heel = G.ToBoat.TransformPosition(Sole[0]) * M, Toe = G.ToBoat.TransformPosition(Sole[1]) * M;
-			const double HeelFloor = CrewFloorZ(C, Heel.X, Heel.Y), ToeFloor = CrewFloorZ(C, Toe.X, Toe.Y);
+			const double HeelFloor = CrewFloorZ(C, Heel.X, Heel.Y, G.bTravelerBridge), ToeFloor = CrewFloorZ(C, Toe.X, Toe.Y, G.bTravelerBridge);
 			if (HeelFloor < -1e8 || ToeFloor < -1e8) continue;
 			const bool bOneLevel = FMath::Abs(ToeFloor - HeelFloor) <= 0.01;
 			const double Floor = FMath::Max(HeelFloor, ToeFloor);
@@ -342,7 +342,7 @@ namespace CrewSolver
 			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(45.0);
 			FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, Weight * FMath::Min(1.0, MaxRad / FMath::Max(TurnRad, 1e-6)));
 			const FVector NewHeel = Ankle + FootTurn.RotateVector(Heel - Ankle), NewToe = Ankle + FootTurn.RotateVector(Toe - Ankle);
-			const double NewHeelFloor = CrewFloorZ(C, NewHeel.X, NewHeel.Y), NewToeFloor = CrewFloorZ(C, NewToe.X, NewToe.Y);
+			const double NewHeelFloor = CrewFloorZ(C, NewHeel.X, NewHeel.Y, G.bTravelerBridge), NewToeFloor = CrewFloorZ(C, NewToe.X, NewToe.Y, G.bTravelerBridge);
 			if (bOneLevel)
 			{
 				// On one level the foot stays over it (the planting after lifts a heel or toe the turn dipped a little).
@@ -653,10 +653,11 @@ namespace
 	}
 }
 
-double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y)
+double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTravelerBridge)
 {
 	FCrewCockpitWell W;
 	const bool bWell = CrewCockpitWell(C, W);
+	if (!bTravelerBridge) W.BridgeHalfX = 0.0; // the hero J/22: its traveler track lies on the sole
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
 	{
 		const Sailing::FHullShape& H = C.Hulls[K];
@@ -669,10 +670,11 @@ double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y)
 	return -1e9;
 }
 
-bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P)
+bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P, bool bTravelerBridge)
 {
 	FCrewCockpitWell W;
 	const bool bWell = CrewCockpitWell(C, W);
+	if (!bTravelerBridge) W.BridgeHalfX = 0.0;
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
 	{
 		const Sailing::FHullShape& H = C.Hulls[K];

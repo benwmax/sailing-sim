@@ -381,6 +381,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
+	bModelTravelerBridge = Model.bTravelerBridge;
 	if (Model.Hull)
 	{
 		HullMesh->ClearAllMeshSections();
