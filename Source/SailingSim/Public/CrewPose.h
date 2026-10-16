@@ -91,6 +91,9 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
 	double HalfWidth = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+	// Round 12: a traveler bridge across the well between the seats (the J/22's, build_j22.py TRAV_X), solid from the sole
+	// to its top; BridgeHalfX 0 for none.
+	double BridgeX = 0.0, BridgeHalfX = 0.0, BridgeZ = 0.0;
 };
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out);
 /** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */

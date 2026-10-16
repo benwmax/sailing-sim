@@ -96,3 +96,28 @@ and nothing from them is in the repo.
 The lowering is gone. Levelling now needs heel and toe over one level, before and after the turn, and fades out from 2 to
 5 cm over the floor. The thumb wraps further. The helm's foot on the traveler bridge is left as it is: it rests on top of
 the bridge, and J/22 helms do brace a foot there.
+
+## Follow-up: the traveler bridge (the thumb is its own follow-up)
+
+The Mac's gate on #94 found two leftovers.
+
+- **The helm's forward shoe on the traveler bridge.** The heel sat on the bridge's edge with the toe raised.
+  `CrewFloorZ` and `CrewInsideBoat` now know the J/22's bridge (`FCrewCockpitWell::BridgeX/BridgeHalfX/BridgeZ`: x -1.75
+  ± 0.08 between the seats, top 0.485 m, solid down to the sole, from `build_j22.py`). A foot sunk into it is planted on
+  top. `LevelFeet` now accepts a foot resting across a step's edge, with its other end over the lower floor, so long as
+  the turn puts neither the heel nor the toe into what is under it. That was the toe-into-deck case from the first Mac
+  run. The `-SailingJ22Hero` model has its traveler on the floor at x -1.95 instead, and nothing there knows about it yet.
+- **The thumb stood straight up off the extension.** Not fixed here. A 40 deg swing of the thumb's base across the palm
+  (tried both ways about the palm's normal) moved the closed thumb's tip by 0 to 3 mm on every MetaHuman, where it should
+  move several centimetres. So the turn is not reaching the MetaHuman thumb as intended: the bone chain, its names or the
+  rest-pose axes need looking at on the skeleton itself. That is a follow-up PR; this one keeps #94's thumb curl.
+
+Tests: `Visual.CrewFeet` checks the bridge as a floor that is solid underneath.
+
+Mac run on #97 (147 of 149) and the fix:
+
+- `Visual.CrewFeet` failed on the Corsair 880's helm (heel 0.60 m, toe 0.67 m): the new no-penetration rule had also replaced
+  #94's rule for a foot on one level, and turned flat there the heel or toe dips a few millimetres, so the turn was refused.
+  A foot over one level is levelled as in #94 again; the no-penetration rule only applies across a step's edge.
+- `Visual.MetaHumanCrew`: the thumb's swing barely moved its tip on any hand, either way (148 of 149 on the second run), so
+  the thumb half came out of this PR (above).

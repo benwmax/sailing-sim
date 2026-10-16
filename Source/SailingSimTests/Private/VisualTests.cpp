@@ -751,6 +751,13 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	using namespace Sailing;
 	const USkeletalMesh* Sailor = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
 	if (!TestNotNull(TEXT("SK_Sailor"), Sailor)) return false;
+	// Round 12: the J/22's traveler bridge (build_j22.py TRAV_X) is a floor, solid down to the sole.
+	{
+		const FBoatConfig J22;
+		TestEqual(TEXT("J/22: the traveler bridge is the floor over it"), CrewFloorZ(J22, -1.75, 0.0), 0.485, 1e-6);
+		TestTrue(TEXT("J/22: under the traveler bridge is solid"), CrewInsideBoat(J22, FBoatModel(J22).HullDepth(), FVector(-1.75, 0.0, 0.40)));
+		TestEqual(TEXT("J/22: aft of the bridge the floor is the sole"), CrewFloorZ(J22, -2.0, 0.0), 0.30, 1e-6);
+	}
 	struct FBody { const USkeletalMesh* Mesh; FCrewRig Rig; FString Name; };
 	TArray<FBody> Bodies;
 	Bodies.Add({ Sailor, FCrewRig(), TEXT("SK_Sailor") });

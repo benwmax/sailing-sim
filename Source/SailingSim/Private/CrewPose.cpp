@@ -308,10 +308,10 @@ namespace CrewSolver
 
 	/** Round 12: each seated foot standing on the floor lies flat on it. The leg's IK carries the foot with the calf, so
 	 *  a leg reaching down or forward to the floor had planted the heel with the toe up in the air ("body parts not
-	 *  positioned realistically"). The ankle turns the sole parallel to the floor, within 45 degrees, only where heel and
-	 *  toe are over one level before and after the turn (a foot across a seat's edge or the bridge deck stays as planted:
-	 *  turned flat there, the toe went into the deck). The turn fades out from 2 to 5 cm over the floor, so a foot the
-	 *  idle clips move does not snap. */
+	 *  positioned realistically"). The ankle turns the sole parallel to the floor, within 45 degrees, unless the turn
+	 *  would put the heel or toe into the floor under it (across the bridge deck's edge it did). A foot resting on a
+	 *  step's edge (the traveler bridge) levels with its other end over the lower floor. The turn fades out from 2 to 5 cm
+	 *  over the higher floor, so a foot the idle clips move does not snap. */
 	bool LevelFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& G, TMap<FName, FQuat>& Joints)
 	{
@@ -328,8 +328,10 @@ namespace CrewSolver
 			if (Calf == INDEX_NONE) continue;
 			const FVector Ankle = G.ToBoat.TransformPosition(CS[Foot].GetLocation()) * M;
 			const FVector Heel = G.ToBoat.TransformPosition(Sole[0]) * M, Toe = G.ToBoat.TransformPosition(Sole[1]) * M;
-			const double Floor = CrewFloorZ(C, Heel.X, Heel.Y);
-			if (Floor < -1e8 || FMath::Abs(CrewFloorZ(C, Toe.X, Toe.Y) - Floor) > 0.01) continue;
+			const double HeelFloor = CrewFloorZ(C, Heel.X, Heel.Y), ToeFloor = CrewFloorZ(C, Toe.X, Toe.Y);
+			if (HeelFloor < -1e8 || ToeFloor < -1e8) continue;
+			const bool bOneLevel = FMath::Abs(ToeFloor - HeelFloor) <= 0.01;
+			const double Floor = FMath::Max(HeelFloor, ToeFloor);
 			const double Gap = FMath::Min(Heel.Z, Toe.Z) - Floor;
 			const double Weight = FMath::Clamp((0.05 - Gap) / 0.03, 0.0, 1.0);
 			if (Weight <= 0.0) continue; // not standing on it
@@ -340,7 +342,15 @@ namespace CrewSolver
 			const double TurnRad = FootTurn.GetAngle(), MaxRad = FMath::DegreesToRadians(45.0);
 			FootTurn = FQuat::Slerp(FQuat::Identity, FootTurn, Weight * FMath::Min(1.0, MaxRad / FMath::Max(TurnRad, 1e-6)));
 			const FVector NewHeel = Ankle + FootTurn.RotateVector(Heel - Ankle), NewToe = Ankle + FootTurn.RotateVector(Toe - Ankle);
-			if (FMath::Abs(CrewFloorZ(C, NewHeel.X, NewHeel.Y) - Floor) > 0.01 || FMath::Abs(CrewFloorZ(C, NewToe.X, NewToe.Y) - Floor) > 0.01) continue;
+			const double NewHeelFloor = CrewFloorZ(C, NewHeel.X, NewHeel.Y), NewToeFloor = CrewFloorZ(C, NewToe.X, NewToe.Y);
+			if (bOneLevel)
+			{
+				// On one level the foot stays over it (the planting after lifts a heel or toe the turn dipped a little).
+				if (FMath::Abs(NewHeelFloor - HeelFloor) > 0.01 || FMath::Abs(NewToeFloor - HeelFloor) > 0.01) continue;
+			}
+			// Across a step's edge (the traveler bridge) the other end may overhang the lower floor, but never go into what
+			// is under it (a toe turned down over the bridge deck went into it).
+			else if (NewHeel.Z < NewHeelFloor - 0.005 || NewToe.Z < NewToeFloor - 0.005) continue;
 			const FQuat TurnCS = BoatRot.Inverse() * FootTurn * BoatRot;
 			Joints.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * TurnCS * D[Foot]);
 			bMoved = true;
@@ -616,6 +626,8 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W)
 	case EBoatType::J22:
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
 		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
+		// The traveler's bridge: 16 cm fore and aft at TRAV_X, its top 1.5 cm over the seats.
+		W.BridgeX = -1.75; W.BridgeHalfX = 0.08; W.BridgeZ = 0.485;
 		return true;
 	case EBoatType::Sunfish: return Fleet(-1.18, -0.52, 0.29, 0.20);
 	case EBoatType::ILCA7: return Fleet(-1.62, -0.22, 0.31, 0.22);
@@ -635,6 +647,8 @@ namespace
 		const double Half = W.SideDeck > 0.0 ? C.Hulls[0].DeckHalfBeam(X) - W.SideDeck : W.HalfWidth;
 		if (Y >= Half) return false;
 		Floor = W.SeatZ > 0.0 && Y > Half - W.SeatW ? W.SeatZ : W.SoleZ;
+		// Round 12: the helm's forward foot had sunk into the J/22's traveler bridge (this didn't know it was there).
+		if (W.BridgeHalfX > 0.0 && FMath::Abs(X - W.BridgeX) < W.BridgeHalfX && Y <= Half - W.SeatW) Floor = W.BridgeZ;
 		return true;
 	}
 }

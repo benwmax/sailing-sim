@@ -6,6 +6,8 @@ Compare with the before stills in `../crew/`.
 
 Recaptured Oct 16 on 71671047 merged with main 88a5cee0: 149/149 tests, crew gate passes (stills replace the 5e1aa53b ones; the helm's forward shoe still rests on the traveler bridge and the thumb still stands straight up).
 
+Recaptured Oct 16 (mainsheet only) on e2ab89a5 (main af8de58c merged): 148/149 tests (only MetaHumanCrew's thumb-wrap check fails: the thumb tip moves 6.1 -> 6.1..6.3 cm from the index on the helm and bow, 6.0 -> 5.7 on the trimmer), crew gate passes on fps. Light SM_J22 model (no `-SailingJ22Hero`). The helm's forward shoe rests on the traveler bridge; the helm's thumb on the tiller extension still stands straight up, not wrapped.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
