@@ -25,8 +25,12 @@ Raw output in this folder:
    is 2.2x its own fresh-water target at 20 kn, which is inside the test's factor of three. Yet the 20 kn open-lake
    still in round 11 (`docs/round-11/game/r11-lake-beat20.png`) shows almost no caps. So the coverage measured on the
    test's grid isn't what the camera shows. The blind round will say which one the eye agrees with.
-4. **Lake 2-minute spread:** right on the July afternoon. It is 25 % high on the January morning (0.104 against
-   0.083), and the bay's April midday is 19 % low (0.080 against 0.099). The gust factor is within 0.005 in all three.
+4. **Lake 2-minute spread:** closed (Oct 16 2026). The day's stability was scaling the puffs on top of the station
+   calibration, which already carries the season's. The puffs now scale by the day's departure from the month and
+   hour's normal air (`FWindParams::ClimateAirMinusWaterC`, `ClimateMixedLayerMeters`, set by the weather). The January
+   morning went from 0.104 to 0.085 (0.083 at the stations), the bay's April midday from 0.080 to 0.096 (0.099), and
+   July stays 0.113 (0.111). A front's cold air still makes bigger puffs. `SailingSim.Physics.WindPuffStatistics` now
+   holds each case within 10 %.
 5. **Wave period at light wind:** the lake-wide Tp is +8 % at 5 kn. The 24 short components share one scale (W3).
    Heights are within 3 %.
 6. **North lake below the SH-66 causeway:** Hs is 1.38x SWAN. The causeway's openings aren't in the fetch march.
@@ -45,8 +49,8 @@ fetch_wind.sh`). The fits come from `Tools/wind/fit_gusts.py` (`docs/w1/gust-cal
 | Gust factor, lake, January morning | 1.188 | 1.188 (same test) | 0 | ok |
 | Gust factor, bay, April midday | 1.176 | 1.175 (same test) | -0.1 % | ok |
 | 2-minute spread, lake, July afternoon | 0.111 | 0.113 | +2 % | ok |
-| 2-minute spread, lake, January morning | 0.083 | 0.104 | +25 % | gap (4) |
-| 2-minute spread, bay, April midday | 0.099 | 0.080 | -19 % | gap (4) |
+| 2-minute spread, lake, January morning | 0.083 | 0.085 (was 0.104) | +2 % | ok (gap 4 closed) |
+| 2-minute spread, bay, April midday | 0.099 | 0.096 (was 0.080) | -3 % | ok (gap 4 closed) |
 | Minutes between puffs (lake July / Jan, bay April) | 7 / 6 / 6 | 7 / 8 / 6 (same test) | 0 / +2 / 0 min | ok |
 | Puff duration, median (p25-p75) | 2 min (1-4), 41,411 puffs | 2 min (2-3), 942 puffs (`scripts/w7-numbers.sh`) | median equal; game's spread narrower | ok |
 | Puff strength at the peak, median | +13.1 % | +11.2 % (same) | -1.9 points | ok |

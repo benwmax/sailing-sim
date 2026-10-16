@@ -42,6 +42,8 @@ run_single() {
 		DEMO=1 SHOT="$SHOT" ARGS="$EXTRA -SailingQuality=$Q" "$(dirname "$0")/bench-mac.sh" "$SECONDS_PER_RUN" > /dev/null || true
 		[[ -f "$ARTIFACTS/bench.json" ]] && { cp "$ARTIFACTS/bench.json" "$ARTIFACTS/$SHOT.bench.json"; break; }
 	done
+	# A view lost twice is an error row in the CSV, not the end of the sweep (env.sh sets -e).
+	return 0
 }
 for V in "${VIEWS[@]}"; do for Q in "${TIERS[@]}"; do rm -f "$ARTIFACTS/${V%%|*}-$(lower "$Q").bench.json"{,.slowed}; done; done
 if [[ "${FAST:-0}" == "1" ]]; then
