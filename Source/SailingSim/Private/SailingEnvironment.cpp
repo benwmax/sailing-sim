@@ -402,10 +402,10 @@ void ASailingEnvironment::ApplyCinematicLook(FPostProcessSettings& PP, double Cl
 	{
 		return;
 	}
-	static bool bTriedLoad = false;
-	if (!bTriedLoad)
+	// A member, not a static: the cast-off reload makes a new environment actor, whose textures must load again.
+	if (!bTriedLookLoad)
 	{
-		bTriedLoad = true;
+		bTriedLookLoad = true;
 		CinematicLUT = LoadObject<UTexture>(nullptr, TEXT("/Game/Look/T_CinematicLUT.T_CinematicLUT"), nullptr, LOAD_Quiet | LOAD_NoWarn);
 		BloomKernel = LoadObject<UTexture2D>(nullptr, TEXT("/Game/Look/T_BloomKernel.T_BloomKernel"), nullptr, LOAD_Quiet | LOAD_NoWarn);
 	}

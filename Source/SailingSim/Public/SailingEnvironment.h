@@ -99,6 +99,7 @@ private:
 	/** Graphics G5: the haze's light relative to a clear midday (the metered exposure's light), and the sun's elevation. */
 	float HazeLight = 1.f;
 	bool bCinematic = false; // Graphics G8: the cinematic look is on (UsesCinematicLook, re-read each sun update)
+	bool bTriedLookLoad = false; // the cinematic LUT and bloom kernel were looked up (CinematicLUT, BloomKernel)
 	bool bFogDirectionalSaved = false;
 	FVector4f SavedFogDirectional = FVector4f(0.f, 0.f, 0.f, 0.f); // the fog's own directional inscattering (exponent, start)
 	FLinearColor SavedFogDirectionalColor = FLinearColor::Black;
