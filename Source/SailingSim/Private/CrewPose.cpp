@@ -300,7 +300,10 @@ namespace CrewSolver
 				for (int32 K = 1; K <= 3; ++K)
 				{
 					const FName Bone(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Side == 0 ? TEXT("l") : TEXT("r")));
-					if (const FVector* Axis = Rig.CurlAxis.Find(Bone)) Carried.Add(Bone, FQuat(*Axis, FMath::DegreesToRadians(G * Deg[K - 1])));
+					const FVector* Axis = Rig.CurlAxis.Find(Bone);
+					if (!Axis) continue;
+					const FQuat JointTurn(*Axis, FMath::DegreesToRadians(G * Deg[K - 1]));
+					Carried.Add(Bone, bThumb ? FQuat::Slerp(FQuat::Identity, Rig.ThumbTurn[Side][K - 1], G) * JointTurn : JointTurn);
 				}
 			}
 		}
@@ -572,6 +575,44 @@ void BuildCrewRig(const USkeletalMesh* Mesh, FCrewRig& Rig)
 				const FVector Axis = FVector::CrossProduct(Dir, Palm).GetSafeNormal();
 				if (!Axis.IsNearlyZero()) Rig.CurlAxis.Add(*FString::Printf(TEXT("%s_0%d_%s"), Finger, K, Sx), Axis);
 			}
+		}
+	}
+	// Round 12: a closed thumb stood straight up off the line. Close the fist on this skeleton, then turn each thumb joint
+	// in turn, base first (55, 30, 30 deg at most), so the thumb's tip comes down onto the outside of the index finger's
+	// middle bone, where a thumb lies round a stick. A swing about the palm's normal had moved the tip only millimetres on
+	// the MetaHumans (their thumb lies close to that normal), and turning the base alone left it standing above the fist.
+	FCrewHands Fist;
+	Fist.Grip[0] = Fist.Grip[1] = 1.f;
+	const double CapDeg[3] = { 55.0, 30.0, 30.0 };
+	for (int32 K = 0; K < 3; ++K)
+	{
+		TMap<FName, FQuat> Curled;
+		CrewSolver::CurlFingers(Rig, Fist, Curled);
+		TArray<FTransform> Fisted;
+		TArray<FQuat> FistD;
+		CrewSolver::Solve(Ref, Rig.RestCS, Curled, Fisted, &FistD);
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			const TCHAR* Sx = Side == 0 ? TEXT("l") : TEXT("r");
+			auto BoneAt = [&](const TCHAR* Name) { return Ref.FindBoneIndex(*FString::Printf(TEXT("%s_%s"), Name, Sx)); };
+			const int32 T2 = BoneAt(TEXT("thumb_02")), T3 = BoneAt(TEXT("thumb_03")), I2 = BoneAt(TEXT("index_02")), I3 = BoneAt(TEXT("index_03"));
+			const int32 Joint = BoneAt(K == 0 ? TEXT("thumb_01") : K == 1 ? TEXT("thumb_02") : TEXT("thumb_03"));
+			if (T2 == INDEX_NONE || T3 == INDEX_NONE || I2 == INDEX_NONE || I3 == INDEX_NONE || Joint == INDEX_NONE) continue;
+			const int32 Parent = Ref.GetParentIndex(Joint);
+			if (Parent == INDEX_NONE) continue;
+			// The tip is past thumb_03 (its last joint) by about the length of the bone before it.
+			const FVector Tip = Fisted[T3].GetLocation() + (Fisted[T3].GetLocation() - Fisted[T2].GetLocation()) * 0.8;
+			const FVector Phalanx = (Fisted[I2].GetLocation() + Fisted[I3].GetLocation()) * 0.5;
+			const FVector Target = Phalanx + (Tip - Phalanx).GetSafeNormal() * 1.0; // on the finger's skin, not in it
+			const FVector Pivot = Fisted[Joint].GetLocation();
+			const FVector ToTip = Tip - Pivot, ToTarget = Target - Pivot;
+			const FVector TurnAxis = FVector::CrossProduct(ToTip, ToTarget).GetSafeNormal();
+			if (TurnAxis.IsNearlyZero()) continue;
+			const double TurnRad = FMath::Min(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToTip.GetSafeNormal(), ToTarget.GetSafeNormal()), -1.0, 1.0)),
+				FMath::DegreesToRadians(CapDeg[K]));
+			// A component-space turn B of the joint is D[parent]^-1 * B * D[parent] before its own turn.
+			const FQuat& ParentD = FistD[Parent];
+			Rig.ThumbTurn[Side][K] = ParentD.Inverse() * FQuat(TurnAxis, TurnRad) * ParentD * Rig.ThumbTurn[Side][K];
 		}
 	}
 	const int32 P = Ref.FindBoneIndex(TEXT("pelvis"));

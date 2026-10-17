@@ -46,6 +46,9 @@ struct SAILINGSIM_API FCrewRig
 	FVector Pelvis = FVector::ZeroVector;       // T-posed rest pelvis (cm, component space)
 	// Graphics G8: per finger bone, the component-space axis (rest pose) a positive turn about which curls it toward the palm.
 	TMap<FName, FVector> CurlAxis;
+	// Round 12: per hand ([0] left) and thumb joint (01..03), the turn a closed hand adds before the joint's curl, so the
+	// thumb comes down round a held line instead of standing straight up off it.
+	FQuat ThumbTurn[2][3] = { { FQuat::Identity, FQuat::Identity, FQuat::Identity }, { FQuat::Identity, FQuat::Identity, FQuat::Identity } };
 
 	/** The rest transform of a bone (component space, T-posed); identity if it has none. */
 	FTransform Rest(const class USkeletalMesh* Mesh, FName Bone) const;

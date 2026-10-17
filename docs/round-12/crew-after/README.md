@@ -8,6 +8,22 @@ Recaptured Oct 16 on 71671047 merged with main 88a5cee0: 149/149 tests, crew gat
 
 Recaptured Oct 16 (mainsheet only) on e2ab89a5 (main af8de58c merged): 148/149 tests (only MetaHumanCrew's thumb-wrap check fails: the thumb tip moves 6.1 -> 6.1..6.3 cm from the index on the helm and bow, 6.0 -> 5.7 on the trimmer), crew gate passes on fps. Light SM_J22 model (no `-SailingJ22Hero`). The helm's forward shoe rests on the traveler bridge; the helm's thumb on the tiller extension still stands straight up, not wrapped.
 
+Recaptured Oct 16 (mainsheet only) on main dc61bb94 with the hero model: `r12-j22-mainsheet-hero` is the same row plus
+`-SailingJ22Hero` (clothes rebuilt by `scripts/make-crew-clothes.sh`, `SailingSim.Visual` 32/32). The hero's traveler is a
+floor-level track at x -1.95 with no bridge, and the helm's forward shoe floats: it hangs at about the old bridge's height
+over the footwell, toe up, its shadow falling well clear of it on the sole. So the lift comes from the crew's foot logic,
+not the model's bridge, and with `bTravelerBridge` false (#95) that foot should go down to the sole.
+
+Recaptured Oct 17 (mainsheet only) on #100's thumb wrap 30c84520 merged with main 8d5320cb, light SM_J22 model:
+`r12-j22-mainsheet-wrap`. 149/149 tests (MetaHumanCrew: wrap 40 deg on every hand, thumb tip to index_02 6.0-6.1 ->
+2.6-2.9 cm), crew gate passes. The helm's tiller thumb now leans toward the fingers (against `r12-j22-mainsheet`) but
+still stands above the fist rather than wrapping the extension; it does not cut into the index finger.
+
+Recaptured Oct 17 (mainsheet only) on #100's thumb turn 974b1271 (main 8d5320cb in), light SM_J22 model:
+`r12-j22-mainsheet-wrap2`. 149/149 tests (MetaHumanCrew: turns 55/6-8/12-27 deg, thumb tip to index_02 6.0-6.1 ->
+1.1-1.2 cm), crew gate passes. The helm's tiller thumb now folds down over the fist, its tip lying on the outside of the
+index finger just behind the first knuckle; it neither stands up nor pokes into the finger or the extension.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
