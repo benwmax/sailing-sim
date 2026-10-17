@@ -1,0 +1,27 @@
+# heap <pid>: classes that grew between 620 s and 3025 s of the Oct 17 High soak (MB, count)
+delta_mb,delta_count,count_at_3025,class | type
+123.44,385735,486813,AGXG17XFamilyRayTracingGPUBuilder._impl (malloc) | C
+61.72,385735,486813,AGXG17XFamilyRayTracingGPUBuilder | ObjC
+61.72,385735,486813,AGXG17XFamilyComputeContext | ObjC
+49.37,385734,486816,MTLInstanceAccelerationStructureDescriptor | ObjC
+28.80,128578,162272,CAMetalDrawable | ObjC
+12.34,257162,326433,NSMutableArray | ObjC
+9.70,2369,3021,@autoreleasepool content | C
+1.53,31772,65465,IOSurfaceSharedEvent | ObjC
+1.08,22,145,MTLResourceList | ObjC
+0.10,128,21378,AGX::HAL300::Texture | C++
+0.08,128,21378,AGXG17XFamilyTexture | ObjC
+0.07,156,42856,AGXG17XFamilyBuffer | ObjC
+0.05,135,2187,IOGPUMetalPooledResource | ObjC
+0.01,14,122,AGXG17XFamilyCommandBuffer._storage (struct IOGPUMetalCommandBufferStorage) | C
+0.01,15,123,AGXG17XFamilyCommandBuffer | ObjC
+0.01,65,419,IOGPUMetalDeviceShmem | ObjC
+0.01,15,123,AGXG17XFamilyCommandBuffer._impl (malloc) | C
+0.00,57,825,__NSMallocBlock__ | ObjC
+0.00,13,220,__NSExactBlockVariable__ | ObjC
+0.00,7,1854,NSMutableArray (Storage) | C
+0.00,1,7,_NSThreadData | ObjC
+0.00,1,1523,Class.methodCache._buckets (bucket_t) | C
+0.00,11,31,AGXG17XFamilyCommandBuffer._completedDispatchList (struct MTLDispatch) | C
+0.00,2,24337,CFString | ObjC
+0.00,1,5,NSThread | ObjC

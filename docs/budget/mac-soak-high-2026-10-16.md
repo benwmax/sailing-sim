@@ -50,6 +50,8 @@ Shipping soak says otherwise. Unreal's heap grows about twice as fast on High as
 Medium, and system malloc still grows half a gigabyte an hour. Both are well over the ledger's 100 MB/h cap. Next:
 `memreport -full` (or `stat memory` with LLM tags) at 10 and 50 min on a High run to name the heap's tags, and
 `heap -s` on the malloc side.
+Done in `mac-soak-high-2-2026-10-17.md`: Metal ray-tracing builders and drawables kept alive every frame (malloc), and
+RHI command-list execution plus `SceneRender` (Unreal's heap).
 
 ## Files (`docs/budget/soak/`)
 
