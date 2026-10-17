@@ -95,3 +95,34 @@ same order effect as `docs/water-8/w4-mac`. Back to back (the branch, then main 
 | bridge | 99.0 | 98.7 | 63.0 | 63.5 | 14.19 / 14.17 |
 
 About 0 ms: the custom data is written once at spawn.
+
+## The material half (the PC, `make_materials.py`)
+
+`M_BoatSurface` and `M_BoatMast` read slots 12-15 beside the 10-11 that `dirt` already read. A boat with no seed (the player's,
+the AI boats, slot 12 = -1) draws exactly as before.
+
+- **Sun** scales oxidation by 0.6 + 0.8 Sun: a hull facing south-west chalks faster.
+- **Wet** draws a stain band from the waterline up to Wet metres, ragged along the hull. It is stronger with age and weaker
+  with care. On the lake it is green-brown algae. On salt water it is a tan band with a thin line of dried salt at its top.
+- **Site:** salt water also makes rust streaks more frequent and stronger.
+- **Variant** shifts the gelcoat by up to 3% either way.
+
+`M_WorldSurface` reads slots 10-15 on the private docks and boathouses. The baked tiles carry no instance data, so they
+hash a seed per 4 m of world plan with the ranges above, using the Fixed water bands. They take the site from
+`MPC_World.Site`, which `ASailingEnvironment` sets from `WearSiteFor`. Variant shifts each structure's colour by up to 4%.
+
+- **Deck planks** silver within about 4 years, faster in the sun. An old dock that is kept has some replaced boards, which
+  stay brown. A neglected, shaded one goes dark with mildew.
+- **Pilings** carry their stain band up to Wet metres. Below it they are green-black algae on the lake, and a pale, rough
+  crust of barnacles on salt water, thicker with age. They crack more when neglected and silver with age in the sun.
+- **Dock boxes** yellow with age in the sun and green at the base when neglected.
+- **Painted steel** weeps rust from more seams near salt and with age, and fades in the sun.
+- **Concrete** bulkheads and bridge piers carry the water's ring up to Wet metres above the datum, with a pale salt line on
+  salt water. Buildings stand well above the ring.
+
+Checks on the PC (Ultra, D3D12, packaged Development):
+- 152/152 tests.
+- Marina 70.7 fps and slip close 75.7 fps. These are 8 s stills, not a gate.
+
+Stills in `pc/`: `lake-slip-ultra.jpg`, `lake-slip-dock-crop.jpg` and `marina-ultra.jpg`. A close bay still is still to
+come: the bay marina I tried was too shallow at the start point I picked, and the boat ran aground.
