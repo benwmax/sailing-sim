@@ -133,7 +133,9 @@ is marked below. Frame costs are my estimates until each PR measures them.
 
 ## Order and the target
 
-The PC's order after the Kemah towers fix: **C1, T1, C2, T2, T3**, then C3 after v1. The cheap, visible ones come
+The PC's order after the Kemah towers fix: **C1, T1, C2, T2, T3**, then C3 after v1.
+
+**Update Oct 17 20:30 UTC (after Bean's C1 verdict: "still a lot of noise, not wispy enough, too solid"):** C1 merged (#125). Next is a quick reprojection/blend settings test, then C2 moves up right after T1. C2 now also adds wisps: fine curled detail (10 to 50 m) at the edges and bases, which only becomes possible once near clouds take short steps. The cheap, visible ones come
 first, so you'll see changes early.
 
 **Target for the next blind round:** clouds named on 1 frame or fewer (4 now) and trees on none (1 now), at the same
