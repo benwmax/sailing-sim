@@ -1,5 +1,6 @@
 #include "TreePlacement.h"
 #include "LakeTerrain.h"
+#include "PortableRandom.h"
 #include "SailingSim.h"
 
 namespace
@@ -102,4 +103,41 @@ void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown>
 		Out.Add(I);
 	}
 	UE_LOG(LogSailing, Display, TEXT("Trees: %d lidar crowns placed, %d canopy-map trees outside their band"), Out.Num() - Filled, Filled);
+}
+
+FTreeLook TreeLookFor(const FTreeInstance& Tree)
+{
+	// The tree's id: its position to 0.25 m (a crown or canopy-cell tree never moves), hashed.
+	const uint64_t Id = Sailing::HashCombine(uint64_t(int64_t(FMath::RoundToDouble(Tree.Position.X * 4.0))), uint64_t(int64_t(FMath::RoundToDouble(Tree.Position.Y * 4.0))));
+	auto U = [Id](uint64_t K) { return float(double(Sailing::Hash64(Id ^ (K * 0x9E3779B97F4A7C15ull)) >> 11) * (1.0 / 9007199254740992.0)); };
+	FTreeLook L;
+	L.Tint = U(1);
+	// The deciduous trees turn, each its own amount (some early, some hardly); the evergreens keep their green.
+	const bool bDeciduous = Tree.Species == ETreeSpecies::PostOak || Tree.Species == ETreeSpecies::CedarElm;
+	L.Deciduous = bDeciduous ? 0.35f + 0.65f * U(2) : 0.f;
+	L.AutumnHue = Tree.Species == ETreeSpecies::CedarElm ? 0.75f + 0.25f * U(3) : 0.25f * U(3);
+	// A small lean, up to 3 degrees either way (a whole stand standing ruler-straight read as planted).
+	L.LeanPitch = (U(4) * 2.f - 1.f) * 3.f;
+	L.LeanRoll = (U(5) * 2.f - 1.f) * 3.f;
+	return L;
+}
+
+namespace
+{
+	float Ramp(float X, float A, float B) { const float T = FMath::Clamp((X - A) / (B - A), 0.f, 1.f); return T * T * (3.f - 2.f * T); }
+}
+
+float AutumnAmount(int32 DayOfYear)
+{
+	// North Texas: colour from early October to a peak near Thanksgiving (day 329); post oaks keep their brown leaves
+	// through the winter, and the trees leaf out green again by late March.
+	const float D = float((DayOfYear - 1 + 366) % 366 + 1);
+	if (D >= 274.f) return Ramp(D, 274.f, 329.f);
+	return 1.f - Ramp(D, 46.f, 79.f);
+}
+
+float SpringAmount(int32 DayOfYear)
+{
+	const float D = float((DayOfYear - 1 + 366) % 366 + 1);
+	return Ramp(D, 60.f, 95.f) * (1.f - Ramp(D, 110.f, 152.f));
 }

@@ -2387,7 +2387,8 @@ def world_collection():
     scalars = list(mpc.get_editor_property("scalar_parameters"))
     # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
     # Site (E1): the world's wear site, 0 lake / 1 bay / 2 Gulf (WearSiteFor), for the baked tiles that carry no seed.
-    for name in ("Night", "WaterZ", "Site"):
+    # Autumn, Spring (T1): the season on the trees, from the session's date (ASailingEnvironment).
+    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring"):
         if not any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
             n = unreal.CollectionScalarParameter()
             n.set_editor_property("parameter_name", name)
@@ -2444,6 +2445,30 @@ def world_material(name):
     return mat
 
 
+# T1 (round 12, Inputs/clouds-trees/plan.md): each tree's own green and the season, shared by the leaf cards and the opaque
+# crowns. Per instance (LakeTerrainActor, FTreeLook): CD0 its green (0 yellow-green .. 1 blue-green), CD1 how much it
+# turns (0 the evergreens), CD2 its autumn colour (0 russet-brown, the post oaks; 1 yellow, the cedar elms). MPC_World's
+# Autumn and Spring follow the session's date.
+TREE_LOOK = """
+float lumT = dot(c, float3(0.3, 0.59, 0.11));
+c = lerp(c * float3(1.45, 1.35, 0.6), c * float3(0.72, 0.9, 1.15), Tint) * (0.75 + 0.55 * frac(Tint * 7.13));   // dark crowns need the range to read
+c = lerp(c, lumT * float3(1.05, 1.25, 0.45) * 1.4, Spring * Dec * 0.6);
+float3 au = lerp(float3(0.30, 0.15, 0.05), float3(0.55, 0.42, 0.06), Hue) * (lumT * 2.2 + 0.02);
+c = lerp(c, au, saturate(Autumn * Dec * 2.0 - 0.1));   // the early turners show colour by mid-October
+"""
+
+
+def tree_look_inputs(mat, cnode, x, y):
+    """Wires TREE_LOOK's inputs: the instance's three custom floats and MPC_World's season."""
+    for i, (pin, dflt) in enumerate((("Tint", 0.5), ("Dec", 0.0), ("Hue", 0.0))):
+        connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, x, y + 80 * i, data_index=i, const_default_value=dflt), "", cnode, pin)
+    for i, name in enumerate(("Autumn", "Spring")):
+        cp = node(mat, unreal.MaterialExpressionCollectionParameter, x, y + 240 + 80 * i)
+        cp.set_editor_property("collection", world_collection())
+        cp.set_editor_property("parameter_name", name)
+        connect(cp, "", cnode, name)
+
+
 def build_trees_materials():
     """M_TreeLeaves / M_TreeBark (Visual V6): leaf cards cut from the atlas (two-sided foliage, lit through), bark, wind."""
     import os as _os
@@ -2462,16 +2487,21 @@ float3 c = Tex.rgb;
 float t = VC.b;
 c *= lerp(float3(0.82, 0.86, 0.78), float3(1.15, 1.1, 0.9), t);
 c = lerp(c, c * float3(1.15, 1.08, 0.85), VC.r * 0.35);
-return c;
-"""
-    tint = custom(leaves, code, ["Tex", "VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
+""" + TREE_LOOK + "return c;\n"
+    tint = custom(leaves, code, ["Tex", "VC", "Tint", "Dec", "Hue", "Autumn", "Spring"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
     connect(tex, "RGB", tint, "Tex")
     connect(vc, "", tint, "VC")
+    tree_look_inputs(leaves, tint, -800, 400)
     sss = node(leaves, unreal.MaterialExpressionMultiply, -300, 150)
     k = node(leaves, unreal.MaterialExpressionConstant3Vector, -500, 200, constant=unreal.LinearColor(0.55, 0.65, 0.3, 1))
     connect(tint, "", sss, "A")
     connect(k, "", sss, "B")
     rough = node(leaves, unreal.MaterialExpressionConstant, -300, 300, r=0.62)
+    # T1: a crown's inside is in its own shade. The cards' vertex red is how far out they sit (the sunny outside 1); the
+    # sky and Lumen's indirect light reach the inside a third as much (direct sun is the shadow maps').
+    ao = custom(leaves, "return lerp(0.3, 1.0, saturate(VC.r * 1.4));", ["VC"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 400)
+    connect(vc, "", ao, "VC")
+    MEL.connect_material_property(ao, "", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
     MEL.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(sss, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
     MEL.connect_material_property(tex, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
@@ -2499,10 +2529,11 @@ gn = dot(gn, V) < 0.0 ? -gn : gn;
 float3 j = sin(p * float3(5.3, 4.7, 6.1) + sin(p.yzx * 3.1) * 1.7) + 0.6 * sin(p.zxy * float3(13.1, 11.7, 12.3) + sin(p * 7.3) * 1.3);
 float hollow = saturate(0.5 + 0.35 * (j.x + j.y + j.z) / 2.4);
 Nrm = normalize(lerp(gn, normalize(j + float3(0.0, 0.0, 0.9)), lerp(0.85, 0.6, VA)));
-return c * lerp(0.85, 1.15, VC.b) * lerp(0.32, 1.0, VA) * lerp(0.6, 1.1, hollow);
-"""
-    cc = custom(crown, code, ["WP", "VC", "VA", "V"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0,
+c = c * lerp(0.85, 1.15, VC.b) * lerp(0.32, 1.0, VA) * lerp(0.6, 1.1, hollow);
+""" + TREE_LOOK + "return c;\n"
+    cc = custom(crown, code, ["WP", "VC", "VA", "V", "Tint", "Dec", "Hue", "Autumn", "Spring"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 0,
                 extra_outputs=[("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    tree_look_inputs(crown, cc, -900, 500)
     connect(wp, "", cc, "WP")
     connect(vc2, "", cc, "VC")
     connect(vc2, "A", cc, "VA")

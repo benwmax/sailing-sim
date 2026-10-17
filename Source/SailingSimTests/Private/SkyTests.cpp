@@ -381,4 +381,44 @@ bool FSkyCloudNoiseTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+/**
+ * T1 (round 12: "shore trees all the same size and colour"): each tree's look is a pure function of its position (the same
+ * after a regroup, on the Mac and the PC), spread from yellow-green to blue-green; the evergreens never turn; the season
+ * follows the date: green in July, turning by mid-October, at its peak near Thanksgiving, spring's fresh green in April.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldTreeLooksTest, "SailingSim.Visual.TreeLooks", SkyFlags)
+bool FWorldTreeLooksTest::RunTest(const FString&)
+{
+	FTreeInstance Tree;
+	Tree.Position = FVector2D(1234.5, -678.25);
+	Tree.Species = ETreeSpecies::PostOak;
+	const FTreeLook A = TreeLookFor(Tree), B = TreeLookFor(Tree);
+	TestTrue(TEXT("The same tree, the same look"), A.Tint == B.Tint && A.Deciduous == B.Deciduous && A.LeanPitch == B.LeanPitch);
+	double MinTint = 1.0, MaxTint = 0.0, MaxLean = 0.0;
+	int32 Turning = 0;
+	for (int32 I = 0; I < 2000; ++I)
+	{
+		FTreeInstance T;
+		T.Position = FVector2D(37.0 * I, -11.0 * I + 0.25 * (I % 7));
+		T.Species = ETreeSpecies(I % int32(ETreeSpecies::Count));
+		const FTreeLook L = TreeLookFor(T);
+		MinTint = FMath::Min(MinTint, double(L.Tint));
+		MaxTint = FMath::Max(MaxTint, double(L.Tint));
+		MaxLean = FMath::Max(MaxLean, double(FMath::Max(FMath::Abs(L.LeanPitch), FMath::Abs(L.LeanRoll))));
+		const bool bEvergreen = T.Species == ETreeSpecies::LiveOak || T.Species == ETreeSpecies::RedCedar;
+		if (bEvergreen) TestEqual(TEXT("Evergreens never turn"), L.Deciduous, 0.f);
+		else Turning += L.Deciduous > 0.3f;
+	}
+	TestTrue(TEXT("Greens spread across the range"), MinTint < 0.05 && MaxTint > 0.95);
+	TestTrue(TEXT("Leans of a few degrees"), MaxLean > 2.0 && MaxLean <= 3.0);
+	TestEqual(TEXT("Every post oak and cedar elm turns"), Turning, 1000);
+	AddInfo(FString::Printf(TEXT("Autumn: %.2f in July, %.2f on Oct 17, %.2f on Nov 25, %.2f on Jan 10, %.2f on Apr 10; spring %.2f on Apr 5"),
+		AutumnAmount(196), AutumnAmount(290), AutumnAmount(329), AutumnAmount(10), AutumnAmount(100), SpringAmount(95)));
+	TestEqual(TEXT("Green in July"), AutumnAmount(196), 0.f);
+	TestTrue(TEXT("Turning by mid-October"), AutumnAmount(290) > 0.1f && AutumnAmount(290) < 0.5f);
+	TestTrue(TEXT("Peak near Thanksgiving"), AutumnAmount(329) > 0.99f);
+	TestTrue(TEXT("Fresh green in early April, none in October"), SpringAmount(95) > 0.9f && SpringAmount(290) == 0.f);
+	return true;
+}
 #endif
