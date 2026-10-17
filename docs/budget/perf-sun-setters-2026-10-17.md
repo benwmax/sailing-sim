@@ -145,3 +145,5 @@ against 63.7, difference 0.7. The deck's gloom and haze look the same.
 
 Files (`soak/`): `fog-setters-{main,fix}-2026-10-17.{frames-1hz.csv,mem.csv,csv-2min.txt}`, and the unparked probes'
 CSV-profile means by minute, `unmoored-{main,pre110}-2026-10-17.csv-1min.txt`.
+
+The PC's D3D12 soak of the fog steps (main 0059ea12): `perf-fog-setters-pc-2026-10-17.md` (render-thread drift +1.66 to +0.50 ms/h).
