@@ -2653,18 +2653,23 @@ else if (Pattern > 8.5 && Pattern < 9.5)
     // E1: the stain band reaches Wet metres up (the lake's drawdown ring, the bay's tide and splash, the Gulf's surf),
     // ragged around the piling.
     float bandTop = wetM * (0.85 + 0.15 * sin(a * 9.0 + colH * 20.0));
-    float wet = 1.0 - smoothstep(bandTop * 0.45, bandTop, z);
+    float wet = 1.0 - smoothstep(bandTop * 0.7, bandTop, z);   // full up to 70% of the band, then the ragged top
     float under = 1.0 - smoothstep(-0.3, 0.05, z);     // below the water line: algae and mud
-    wood = lerp(wood, wood * float3(0.55, 0.52, 0.48), wet * 0.7);
-    // Below: fresh water grows green-black algae and mud; salt water a crust of barnacles and oysters, pale and rough,
-    // thickest in the low band.
-    float bq = frac(sin(dot(floor(float2(a, z) / 0.035), float2(12.99, 78.23))) * 43758.5);
-    float barn = salt * (1.0 - smoothstep(-0.6, bandTop * 0.4, z)) * step(0.45 - 0.25 * aged, bq) * (0.6 + 0.4 * blot);
+    // The stain: wet wood goes dark green-brown (the first stills read it too faintly against sunlit wood).
+    wood = lerp(wood, wood * float3(0.30, 0.32, 0.25), wet * 0.9);
+    // Below: fresh water grows green-black algae and mud; salt water a crust of barnacles and oysters in the low band:
+    // pale shells with dark gaps between them, 6 cm across (at 3.5 cm and no gaps the crust blurred into plain pale wood
+    // a few metres off, Kemah's pier).
+    float2 bc = float2(a, z) / 0.06;
+    float bq = frac(sin(dot(floor(bc), float2(12.99, 78.23))) * 43758.5);
+    float2 bj = float2(frac(bq * 17.3), frac(bq * 31.7)) - 0.5;   // each shell off-centre and its own size
+    float shell = 1.0 - smoothstep(0.18 + 0.15 * frac(bq * 7.1), 0.30 + 0.18 * frac(bq * 7.1), length(frac(bc) - 0.5 - 0.3 * bj));
+    float barn = salt * (1.0 - smoothstep(bandTop * 0.15, bandTop * 0.3, z)) * step(0.35 - 0.25 * aged, bq) * (0.6 + 0.4 * blot);
     wood = lerp(wood, float3(0.07, 0.085, 0.05) * (0.8 + 0.4 * blot), under * 0.9 * (1.0 - 0.5 * salt));
-    wood = lerp(wood, float3(0.56, 0.54, 0.49) * (0.75 + 0.35 * bq), saturate(barn));
+    wood = lerp(wood, lerp(float3(0.06, 0.06, 0.05), float3(0.40, 0.39, 0.35) * (0.7 + 0.4 * bq), shell), saturate(barn));   // wet grey shells, dark between
     c = wood;
-    r = lerp(lerp(r, 0.55, wet * 0.6), 0.9, saturate(barn));
-    bump = float3(0.25 * crack + 0.04 * sin((a + wob) * 140.0) + 0.3 * barn * (bq - 0.5), 0.3 * barn * (frac(bq * 7.0) - 0.5), 0);
+    r = lerp(lerp(r, 0.75, wet * 0.6), 0.9, saturate(barn));   // damp, not glossy: at 0.55 the vertical faces mirrored the sky
+    bump = float3(0.25 * crack + 0.04 * sin((a + wob) * 140.0) + 0.6 * barn * (frac(bc.x) - 0.5) * shell, 0.6 * barn * (frac(bc.y) - 0.5) * shell, 0);
 }
 else if (Pattern > 9.5 && Pattern < 10.5)
 {

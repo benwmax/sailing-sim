@@ -126,3 +126,16 @@ Checks on the PC (Ultra, D3D12, packaged Development):
 
 Stills in `pc/`: `lake-slip-ultra.jpg`, `lake-slip-dock-crop.jpg` and `marina-ultra.jpg`. A close bay still is still to
 come: the bay marina I tried was too shallow at the start point I picked, and the boat ran aground.
+
+**Follow-up (Oct 17, with round 12's Kemah towers):** at Kemah's pier the first piling bands didn't read. The barnacle
+crust filled exactly the low part of the band where the stain was strongest. Its shells were paler than the wood and
+3.5 cm across, so a few metres off they blurred into plain pale wood, and the stain above them faded out at once.
+A false-colour render confirmed the site, the band height and the height above the water were all right, so the fix
+is in the shading:
+- The stain is full up to 70% of the band and darker green-brown (0.3 of the wood).
+- The crust is confined to the band's lowest quarter: wet grey shells about 6 cm across, each its own size and off-centre,
+  with dark gaps between them.
+- The damp wood's roughness is 0.75, not 0.55.
+
+Stills: `pc/bay-piling-kemah.jpg` and its crop `pc/bay-piling-kemah-crop.jpg`, from the packaged game on Ultra, 1 m above
+the water, 12 m off a Kemah pier at sim (-683, 517).
