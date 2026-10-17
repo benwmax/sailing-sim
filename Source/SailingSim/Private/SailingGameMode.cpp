@@ -671,15 +671,19 @@ void ASailingGameMode::StartPlay()
 		FParse::Value(FCommandLine::Get(), TEXT("SailingRecordInterval="), RecordInterval);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmup;
-		// Soaks: -SailingMemReportAt=<s>,<s>,... runs `memreport -full` at those seconds of the bench clock
-		// (Saved/Profiling/MemReports; docs/budget/mac-soak-2-2026-10-17.md).
-		FString MemReportArg;
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingMemReportAt="), MemReportArg, false))
+		// Soaks: -SailingExecAt=<s>:<cmd>[;<s>:<cmd>...] runs console commands at those seconds of the bench clock, '+' for
+		// spaces (e.g. 600:memreport+-full;600:DumpLLM; docs/budget/mac-soak-high-2-2026-10-17.md).
+		FString ExecArg;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingExecAt="), ExecArg, false))
 		{
 			TArray<FString> Parts;
-			MemReportArg.ParseIntoArray(Parts, TEXT(","));
-			for (const FString& Part : Parts) MemReportTimes.Add(FCString::Atof(*Part));
-			MemReportTimes.Sort();
+			ExecArg.ParseIntoArray(Parts, TEXT(";"));
+			for (const FString& Part : Parts)
+			{
+				FString At, Cmd;
+				if (Part.Split(TEXT(":"), &At, &Cmd)) ExecAt.Emplace(FCString::Atof(*At), Cmd.Replace(TEXT("+"), TEXT(" ")));
+			}
+			ExecAt.StableSort([](const TPair<float, FString>& A, const TPair<float, FString>& B) { return A.Key < B.Key; });
 		}
 		// Graphics G4: a bench of the pause menu still ends (and takes its screenshot) while the game is paused.
 		SetTickableWhenPaused(true);
@@ -773,11 +777,11 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		NextFrameTime += RecordInterval;
 	}
 
-	if (NextMemReport < MemReportTimes.Num() && Elapsed >= MemReportTimes[NextMemReport])
+	while (NextExecAt < ExecAt.Num() && Elapsed >= ExecAt[NextExecAt].Key)
 	{
-		UE_LOG(LogSailing, Display, TEXT("SailingBench: memreport at %.0f s"), Elapsed);
-		GEngine->Exec(GetWorld(), TEXT("memreport -full"));
-		++NextMemReport;
+		UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: %s"), Elapsed, *ExecAt[NextExecAt].Value);
+		GEngine->Exec(GetWorld(), *ExecAt[NextExecAt].Value);
+		++NextExecAt;
 	}
 
 	// -SailingProfileGPU: dump one frame's GPU timings to the log (for tuning quality tiers).
