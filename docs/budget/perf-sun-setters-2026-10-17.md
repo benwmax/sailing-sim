@@ -147,3 +147,42 @@ Files (`soak/`): `fog-setters-{main,fix}-2026-10-17.{frames-1hz.csv,mem.csv,csv-
 CSV-profile means by minute, `unmoored-{main,pre110}-2026-10-17.csv-1min.txt`.
 
 The PC's D3D12 soak of the fog steps (main 0059ea12): `perf-fog-setters-pc-2026-10-17.md` (render-thread drift +1.66 to +0.50 ms/h).
+
+## The parked hour (Mac, main 0059ea12, Oct 17 2026)
+
+One hour parked on the buoy on High, the build packaged at 08:06 from the fog-setters code (the same code as main
+0059ea12), started straight after Perf 4. Same arguments as the 20-minute runs above, except `-csvCaptureFrames=400000`,
+the profile stopped at 3595 s, and no `-ExecCmds=ToggleDrawEvents`:
+
+    SHOT=soak-hour ARGS="-SailingQuality=High -SailingKeepStart -SailingMooring -SailingBenchTrace \
+      -csvCategories=VSM -csvCaptureFrames=400000 -SailingExecAt=3595:CsvProfile+Stop" scripts/bench-mac.sh 3600
+
+bench.json over 3600 s: 54.7 fps, p99 21.37 ms, GPU 17.72 ms, game thread 2.42 ms, RHI thread 3.55 ms.
+
+| 10-min window | fps | p99 ms | GPU ms (CSV) | VSM pages cleared / frame | dynamic pages invalidated / frame | non-Nanite instances drawn |
+|---|---|---|---|---|---|---|
+| 0-10 | 54.7 | 20.59 | 17.73 | 989 | 1130 | 93 |
+| 10-20 | 54.7 | 20.80 | 17.70 | 958 | 1107 | 93 |
+| 20-30 | 54.4 | 22.34 | 17.82 | 990 | 1013 | 95 |
+| 30-40 | 54.9 | 20.30 | 17.64 | 912 | 1063 | 93 |
+| 40-50 | 54.5 | 22.68 | 17.78 | 928 | 974 | 95 |
+| 50-60 | 54.9 | 20.40 | 17.67 | 868 | 991 | 94 |
+
+- **No frame-time drift over the hour.** The per-minute p99 fits to +0.12 ms/h (61 minutes), against +2.0 to +2.8 ms/h
+  read from the 20-minute runs: those were noise, as suspected. The two 22 ms windows are bumps, not a trend; the
+  first and last 10 minutes read 20.59 and 20.40 ms. Only 2 frames over 33.3 ms after the warm-up: 59 ms at 3595 s, when the CSV
+  profile stops, and the 190 ms worst at 3602 s, after the measured hour (the screenshot).
+- **The parked cache never settles.** Parked, the virtual shadow map clears 941 pages a frame over the hour (989 in the
+  first 10 minutes, 868 in the last), against 250 to 430 unparked after the first minute (the Perf 4 probes). The slow
+  fall goes with the dynamic invalidations (1130 to 991). So the parked penalty (about 3 fps, about 1 ms of GPU) holds
+  for the whole hour; it is not a warm-up effect. The caster is still to be named (item 2 of the brief).
+- **RSS grew +3405 MB/h** after 5 min (2365 to 5776 MB), 57 MB a minute, steady. That is 2.6 times the +1290 to
+  +1390 MB/h of every 20-minute parked run today. This run ran without `-ExecCmds=ToggleDrawEvents`, so the Development
+  build's draw events were on, and those leak about 2 GB/h on Metal on their own (`mac-soak-medium-2026-10-16.md`: an
+  encoder-label string autoreleased per encoder on the parallel RHI-translate workers, with no pool; Shipping and Test
+  have draw events off). 1.3 GB/h of the known Metal growth plus 2 GB/h of draw events accounts for it; the longer CSV
+  capture streams to disk (406 MB file, 2.1 KB a frame like the shorter runs) and is not suspected. Lesson repeated:
+  every Development soak on the Mac takes `-ExecCmds=ToggleDrawEvents`.
+
+Files (`soak/`): `parked-hour-2026-10-17.{bench.json,frames-1hz.csv,mem.csv,csv-10min.txt}`. The full CSV profile
+(406 MB) stays in the sandbox (`Saved/Profiling/CSV/Profile(20261017_080655).csv`).
