@@ -259,17 +259,19 @@ namespace CrewSolver
 			if (!Inside(B[0]) && !Inside(B[1]))
 			{
 				// Round 12, the hero J/22: the helm's forward foot hung in the air where the light model's traveler bridge
-				// had caught it. A foot over the well's sole (not a seat) up to 25 cm above it goes down onto it; the reach
+				// had caught it. A foot over one of the well's levels (the sole or a seat, not the bridge or the deck) up to
+				// 25 cm above it goes down onto it; the reach
 				// fades out by 32 cm, so a knee drawn up stays up and an idle clip moving the leg does not make it jump. Only
 				// a sole within 35 deg of level: a foot hanging pointed down would land on its toe with the heel up (the
 				// ankle's 45 deg in LevelFeet can't lay it flat), so it is left hanging.
 				FCrewCockpitWell Well;
-				if (!G.bFeetDown || !CrewCockpitWell(C, Well)) continue;
-				if (FMath::Abs(CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge) - Well.SoleZ) > 0.01
-					|| FMath::Abs(CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge) - Well.SoleZ) > 0.01) continue;
+				if (!G.bFeetDown || !CrewCockpitWell(C, Well, G.bTravelerBridge)) continue;
+				const double FootLevel = CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge);
+				const bool bWellLevel = FMath::Abs(FootLevel - Well.SoleZ) <= 0.01 || (Well.SeatZ > 0.0 && FMath::Abs(FootLevel - Well.SeatZ) <= 0.01);
+				if (!bWellLevel || FMath::Abs(CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge) - FootLevel) > 0.01) continue;
 				const FVector SoleDir = B[1] - B[0];
 				if (FMath::Abs(SoleDir.Z) > FMath::Sin(FMath::DegreesToRadians(35.0)) * SoleDir.Size()) continue;
-				const double Hang = FMath::Min(B[0].Z, B[1].Z) - Well.SoleZ;
+				const double Hang = FMath::Min(B[0].Z, B[1].Z) - FootLevel;
 				const double DownWeight = FMath::Clamp((0.32 - Hang) / 0.07, 0.0, 1.0);
 				if (Hang < 0.01 || DownWeight <= 0.0) continue;
 				const FVector Down(0.0, 0.0, -(Hang - 0.005) * DownWeight);
@@ -291,7 +293,7 @@ namespace CrewSolver
 			}
 			const FHullShape& H = C.Hulls[Near];
 			FCrewCockpitWell W;
-			const bool bWell = Near == 0 && CrewCockpitWell(C, W) && Mid.X > W.X0 && Mid.X < W.X1;
+			const bool bWell = Near == 0 && CrewCockpitWell(C, W, G.bTravelerBridge) && Mid.X > W.X0 && Mid.X < W.X1;
 			const double Limit = (bWell ? (W.SideDeck > 0.0 ? H.DeckHalfBeam(Mid.X) - W.SideDeck : W.HalfWidth) : H.DeckHalfBeam(Mid.X)) - 0.08;
 			const double Y = FMath::Max(FMath::Abs(B[0].Y - H.CenterY), FMath::Abs(B[1].Y - H.CenterY));
 			if (Y > Limit && (bOffPlan || bWell))
@@ -671,7 +673,7 @@ void CrewFootPoints(const USkeletalMesh* Mesh, const TMap<FName, FQuat>& Joints,
 	for (int32 S = 0; S < 2; ++S) CrewSolver::SolePoints(Ref, Rest, CS, bRig ? Rig->Frame : FQuat::Identity, S, Out[S]);
 }
 
-bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W)
+bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bTravelerBridge)
 {
 	using Sailing::EBoatType;
 	W = FCrewCockpitWell();
@@ -687,6 +689,13 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W)
 	switch (C.Type)
 	{
 	case EBoatType::J22:
+		if (!bTravelerBridge)
+		{
+			// The hero (build_j22_hero.py COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_IN; the sole from J22H_sockets.json
+			// CockpitSole): a deeper well, seats inboard to 0.40 m, its traveler track on the sole.
+			W.X0 = -2.92; W.X1 = -0.55; W.SideDeck = 0.25; W.SeatZ = 0.40; W.SeatIn = 0.40; W.SoleZ = 0.136;
+			return true;
+		}
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
 		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
 		// The traveler's bridge: 16 cm fore and aft at TRAV_X, its top 1.5 cm over the seats.
@@ -709,9 +718,10 @@ namespace
 		if (X <= W.X0 || X >= W.X1) return false;
 		const double Half = W.SideDeck > 0.0 ? C.Hulls[0].DeckHalfBeam(X) - W.SideDeck : W.HalfWidth;
 		if (Y >= Half) return false;
-		Floor = W.SeatZ > 0.0 && Y > Half - W.SeatW ? W.SeatZ : W.SoleZ;
+		const double SeatEdge = W.SeatIn > 0.0 ? FMath::Min(W.SeatIn, Half) : Half - W.SeatW;
+		Floor = W.SeatZ > 0.0 && Y > SeatEdge ? W.SeatZ : W.SoleZ;
 		// Round 12: the helm's forward foot had sunk into the J/22's traveler bridge (this didn't know it was there).
-		if (W.BridgeHalfX > 0.0 && FMath::Abs(X - W.BridgeX) < W.BridgeHalfX && Y <= Half - W.SeatW) Floor = W.BridgeZ;
+		if (W.BridgeHalfX > 0.0 && FMath::Abs(X - W.BridgeX) < W.BridgeHalfX && Y <= SeatEdge) Floor = W.BridgeZ;
 		return true;
 	}
 }
@@ -719,8 +729,7 @@ namespace
 double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTravelerBridge)
 {
 	FCrewCockpitWell W;
-	const bool bWell = CrewCockpitWell(C, W);
-	if (!bTravelerBridge) W.BridgeHalfX = 0.0; // the hero J/22: its traveler track lies on the sole
+	const bool bWell = CrewCockpitWell(C, W, bTravelerBridge);
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
 	{
 		const Sailing::FHullShape& H = C.Hulls[K];
@@ -736,8 +745,7 @@ double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTrave
 bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P, bool bTravelerBridge)
 {
 	FCrewCockpitWell W;
-	const bool bWell = CrewCockpitWell(C, W);
-	if (!bTravelerBridge) W.BridgeHalfX = 0.0;
+	const bool bWell = CrewCockpitWell(C, W, bTravelerBridge);
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
 	{
 		const Sailing::FHullShape& H = C.Hulls[K];

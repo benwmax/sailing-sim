@@ -768,8 +768,10 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("J/22: the traveler bridge is the floor over it"), CrewFloorZ(J22, -1.75, 0.0), 0.485, 1e-6);
 		TestTrue(TEXT("J/22: under the traveler bridge is solid"), CrewInsideBoat(J22, FBoatModel(J22).HullDepth(), FVector(-1.75, 0.0, 0.40)));
 		TestEqual(TEXT("J/22: aft of the bridge the floor is the sole"), CrewFloorZ(J22, -2.0, 0.0), 0.30, 1e-6);
-		// The hero (the player's boat since round 12) has its traveler track on the sole: no bridge to stand on.
-		TestEqual(TEXT("Hero J/22: no bridge, the floor is the sole"), CrewFloorZ(J22, -1.75, 0.0, false), 0.30, 1e-6);
+		// The hero (the player's boat since round 12) has its own cockpit (build_j22_hero.py, J22H_sockets.json): a sole at
+		// 0.136 m with the traveler track on it (no bridge), seats at 0.40 m inboard to 0.40 m.
+		TestEqual(TEXT("Hero J/22: no bridge, the floor is the sole"), CrewFloorZ(J22, -1.75, 0.0, false), 0.136, 1e-6);
+		TestEqual(TEXT("Hero J/22: the seat outboard of 0.40 m"), CrewFloorZ(J22, -1.73, 0.44, false), 0.40, 1e-6);
 		TestFalse(TEXT("Hero J/22: over the sole is open"), CrewInsideBoat(J22, FBoatModel(J22).HullDepth(), FVector(-1.75, 0.0, 0.40), false));
 	}
 	struct FBody { const USkeletalMesh* Mesh; FCrewRig Rig; FString Name; };
@@ -856,23 +858,24 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 									ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn, S == 0 ? TEXT("left") : TEXT("right"), Heel.Z, Toe.Z));
 							}
 						}
-						// Round 12, the hero J/22: sitting in the cockpit, no foot hangs in the air over the well's sole (the helm's
-						// forward shoe did, toe up, where the light model's traveler bridge had caught it).
+						// Round 12, the hero J/22: sitting in the cockpit, no foot hangs in the air over the well's sole or a seat
+						// (the helm's forward shoe did, toe up, over the hero's seat). MetaHumans on the J/22 against the hero's plan.
 						FCrewCockpitWell Well;
-						if (Ground.bFeetDown && CrewCockpitWell(Cfg, Well))
+						if (Ground.bFeetDown && CrewCockpitWell(Cfg, Well, bBridge))
 						{
 							for (int32 S = 0; S < 2; ++S)
 							{
 								const FVector Heel = (Location + CompRot.RotateVector(Feet[S][0])) / CmPerMeter;
 								const FVector Toe = (Location + CompRot.RotateVector(Feet[S][1])) / CmPerMeter;
-								const bool bOverSole = FMath::Abs(CrewFloorZ(Cfg, Heel.X, Heel.Y, bBridge) - Well.SoleZ) <= 0.01
-									&& FMath::Abs(CrewFloorZ(Cfg, Toe.X, Toe.Y, bBridge) - Well.SoleZ) <= 0.01;
-								const double Hang = FMath::Min(Heel.Z, Toe.Z) - Well.SoleZ;
+								const double FootLevel = CrewFloorZ(Cfg, Heel.X, Heel.Y, bBridge);
+								const bool bOverSole = (FMath::Abs(FootLevel - Well.SoleZ) <= 0.01 || (Well.SeatZ > 0.0 && FMath::Abs(FootLevel - Well.SeatZ) <= 0.01))
+									&& FMath::Abs(CrewFloorZ(Cfg, Toe.X, Toe.Y, bBridge) - FootLevel) <= 0.01;
+								const double Hang = FMath::Min(Heel.Z, Toe.Z) - FootLevel;
 								// (A foot hanging pointed down, past 35 deg, is left as it is: on the sole it would stand on its toe.)
 								const bool bNearLevel = FMath::Abs(Toe.Z - Heel.Z) <= FMath::Sin(FMath::DegreesToRadians(35.0)) * FVector::Dist(Heel, Toe);
 								if (bOverSole && bNearLevel && Hang > 0.03 && Hang < 0.25)
 								{
-									AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot hangs %.0f cm over the cockpit sole"),
+									AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot hangs %.0f cm over the cockpit floor"),
 										ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn,
 										S == 0 ? TEXT("left") : TEXT("right"), Hang * 100.0));
 								}

@@ -149,3 +149,11 @@ the well are left alone. `Visual.CrewFeet` checks that no such foot hangs 3 to 2
 PC run on #105 (148 of 149): on the Catalina 22 the Cockpit crew's feet hang pointed down; reached down, they stood on
 their toes with the heel 9 to 13 cm up, past what `LevelFeet`'s 45 deg can lay flat. The reach now only takes a sole
 within 35 deg of level (the hero helm's toe-up foot is); a foot hanging pointed down stays as it was on main.
+
+Mac run on #105 (151 of 151, still `crew-after/r12-j22-mainsheet-105.jpg`): the hero helm's forward foot still floated.
+A print showed it 25-31 deg toe-up with its heel at (-1.87, 0.56, 0.48) m, where the crew code still used the light
+model's cockpit (seat 0.47 m, sole 0.30 m). The hero's is different (build_j22_hero.py, J22H_sockets.json): sole 0.136
+m, seats 0.40 m high from 0.40 m out to the coaming, side deck 0.25 m, well from x -2.92 to -0.55. `CrewCockpitWell`
+now returns that plan when `bTravelerBridge` is false (the hero), so the foot is 8 cm over the hero's seat, and the reach
+takes a foot over a seat as well as over the sole. `Visual.CrewFeet` checks the MetaHumans on the J/22 against the
+hero's plan.
