@@ -186,3 +186,24 @@ bench.json over 3600 s: 54.7 fps, p99 21.37 ms, GPU 17.72 ms, game thread 2.42 m
 
 Files (`soak/`): `parked-hour-2026-10-17.{bench.json,frames-1hz.csv,mem.csv,csv-10min.txt}`. The full CSV profile
 (406 MB) stays in the sandbox (`Saved/Profiling/CSV/Profile(20261017_080655).csv`).
+
+### Who keeps the parked cache busy (5-minute probes, High)
+
+The Development package from the #115 gate run (main plus the Shipping guards, which change nothing in Development),
+parked with the hour's arguments for 300 s, one run after another:
+
+| parked, 5 min | fps | p99 ms | GPU ms | VSM pages cleared / frame, by minute | mean | dynamic invalidated |
+|---|---|---|---|---|---|---|
+| `-SailingMooring` | 54.8 | 20.53 | 17.67 | 1040, 976, 966, 994, 995 | 994 | 1146 |
+| + `-SailingCrewStill` | 55.2 | 20.44 | 17.53 | 1045, 978, 966, 992, 997 | 996 | 1144 |
+| + `-SailingNoCrewClips` | 55.4 | 20.34 | 17.48 | 1043, 978, 966, 994, 996 | 995 | 1144 |
+
+**Not the crew.** Stilling the crew or dropping their idle clips leaves the cleared pages the same to within a few pages
+in every minute. The per-minute pattern repeats from run to run, so whatever clears the pages is the deterministic
+parked boat itself: the hull on its mooring and the sails. The 0.2 to 0.6 fps gains are crew CPU and GPU, not shadows.
+There is no argument that lowers the sails (`-SailingMooring` parks head to wind with them up), so that probe was
+skipped. Head to wind, the cloth flogs every frame (`FSailCloth` on High), and the sails are the largest moving casters
+over the cockpit. That is the next suspect. A `-SailingSailsDown` switch (or parking at a TWA where the sails fill) would
+settle it.
+
+Files (`soak/`): `vsm-probe-{parked,crewstill,noclips}-2026-10-17.csv-1min.txt`.
