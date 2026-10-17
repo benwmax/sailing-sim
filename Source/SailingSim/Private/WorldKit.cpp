@@ -13,6 +13,70 @@
 #include "StaticMeshAttributes.h"
 #endif
 
+namespace
+{
+	uint32 WearHash(uint32 X)
+	{
+		X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16;
+		return X;
+	}
+	float WearRand(uint32 Id, uint32 Stream) { return (WearHash(Id ^ WearHash(Stream * 0x9E3779B9u + 0x632BE5ABu)) & 0xFFFFFF) / float(0xFFFFFF); }
+}
+
+uint32 FWearSeed::IdOf(const FString& Name)
+{
+	// FNV-1a over the UTF-16 code units, so the Mac (4-byte TCHAR) and the PC (2-byte) agree.
+	uint32 H = 2166136261u;
+	for (const TCHAR C : Name) { H ^= uint32(C) & 0xFFFFu; H *= 16777619u; }
+	return WearHash(H);
+}
+
+uint32 FWearSeed::IdAt(const FVector2D& PlanM)
+{
+	const int32 QX = FMath::RoundToInt32(PlanM.X * 4.0), QY = FMath::RoundToInt32(PlanM.Y * 4.0);
+	return WearHash(uint32(QX) * 0x8DA6B343u ^ WearHash(uint32(QY) + 0x2545F491u));
+}
+
+FWearSeed FWearSeed::Make(uint32 Id, EWearSite Site, EWearWater Water, float FacingDeg, int32 InVariant)
+{
+	FWearSeed W;
+	W.Site = Site;
+	W.Age = 25.f * WearRand(Id, 1);
+	// Older things are on average less kept, but a well-kept old boat is common.
+	W.Care = FMath::Clamp(0.25f + 0.75f * WearRand(Id, 2) - 0.3f * W.Age / 25.f, 0.f, 1.f);
+	// Texas afternoon sun comes from the south-west: those faces bleach, north faces stay damp and green.
+	const float Face = FMath::Cos(FMath::DegreesToRadians(FacingDeg - 225.f));
+	W.Sun = FMath::Clamp(0.5f + 0.35f * Face + 0.3f * (WearRand(Id, 3) - 0.5f), 0.f, 1.f);
+	// The stain band: a float's rides the water (a few centimetres of scum); a fixed piling's spans the level's range: the
+	// lake's drawdown in dry summers (the "bathtub ring", up to a metre at Ray Hubbard), the bay's tide plus splash, the
+	// Gulf's surf.
+	const float U = WearRand(Id, 4);
+	switch (Water)
+	{
+	case EWearWater::Dry: W.Wet = 0.f; break;
+	case EWearWater::Floating: W.Wet = 0.05f + 0.2f * U; break;
+	case EWearWater::Fixed: W.Wet = Site == EWearSite::Lake ? 0.3f + 0.6f * U : (Site == EWearSite::Bay ? 0.5f + 0.5f * U : 0.9f + 0.7f * U); break;
+	}
+	W.Variant = InVariant >= 0 ? InVariant : int32(WearHash(Id ^ 0x5bd1e995u) % uint32(Variants));
+	return W;
+}
+
+void FWearSeed::Write(float* Dst) const
+{
+	Dst[0] = Age;
+	Dst[1] = Care;
+	Dst[2] = Sun;
+	Dst[3] = Wet;
+	Dst[4] = float(uint8(Site));
+	Dst[5] = float(Variant);
+}
+
+EWearSite WearSiteFor(const FLakeData& Lake)
+{
+	if (Lake.FileName.Contains(TEXT("Gulf"))) return EWearSite::Gulf;
+	return Lake.IsTidal() ? EWearSite::Bay : EWearSite::Lake;
+}
+
 const FKitLookDesc& KitLook(EKitLook Look)
 {
 	static const FKitLookDesc Looks[int32(EKitLook::Count)] = {

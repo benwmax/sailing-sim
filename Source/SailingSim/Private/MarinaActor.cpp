@@ -67,7 +67,7 @@ FLinearColor FBerthedBoat::PowerHullColour(uint32 Seed)
 }
 
 void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBerthedBoat> Placed, float CullScale, EComponentMobility::Type Mobility,
-	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out)
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out, EWearSite Site)
 {
 	// Graphics G6: six berthed dresses per class (build_berthed.py variants: cover colours, flaked mains, a tarp, dodgers,
 	// fenders, gear), one picked per slip, so no two neighbours in a row look alike. Graphics G7: a boat may be scaled to her
@@ -78,6 +78,7 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 	TMap<uint8, TArray<TArray<FTransform>>> PerClass;
 	TMap<uint8, TArray<uint32>> Seeds; // Graphics G3: each neighbour's livery (hull colour and wear, per instance)
 	TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
+	TMap<uint8, TArray<TArray<FWearSeed>>> Wear;  // Environment E1: per part, per instance, beside PerClass
 	for (const FBerthedBoat& P : Placed)
 	{
 		if (!MeshesByClass.Contains(P.Type))
@@ -99,6 +100,7 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			}
 			MeshesByClass.Add(P.Type, M);
 			PerClass.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
+			Wear.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
 		}
 		const TArray<UStaticMesh*>& M = MeshesByClass[P.Type];
 		if (!M[0]) continue;
@@ -106,9 +108,13 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 		// they all wore the same dress, livery and paint.
 		const uint32 H = uint32(int32(P.Center.X * 13.0 + P.Center.Y * 7.0));
 		const FTransform Boat(FRotator(0.f, P.HeadingDeg + (MRand(H) - 0.5f) * 3.f, 0.f), FVector(P.Center.X, P.Center.Y, 0.0) * 100.0, FVector(P.Scale));
+		const uint32 WearId = FWearSeed::IdAt(P.Center);
+		const FWearSeed W = FWearSeed::Make(WearId, Site, EWearWater::Floating, P.HeadingDeg,
+			P.Cover >= 0 ? P.Cover : int32(MHash(WearId) % uint32(FSlipLook::NumCover)));
 		if (FBerthedBoat::IsPower(P.Type))
 		{
 			PerClass[P.Type][0].Add(Boat);
+			Wear[P.Type][0].Add(W);
 			if (FBerthedBoat::IsPainted(P.Type)) Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 			continue;
 		}
@@ -117,10 +123,15 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 		const UStaticMeshSocket* Stock = M[0]->FindSocket(TEXT("RudderPivot"));
 		const FVector Offsets[] = { FVector::ZeroVector, Step ? Step->RelativeLocation : FVector::ZeroVector,
 			FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector };
-		for (int32 K = 0; K < 4; ++K) PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
-		int32 Dress = 4 + int32(MHash(H * 31u + 7u) % NumDress);
+		for (int32 K = 0; K < 4; ++K)
+		{
+			PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
+			Wear[P.Type][K].Add(W);
+		}
+		int32 Dress = 4 + (P.Dress >= 0 ? P.Dress % NumDress : int32(MHash(H * 31u + 7u) % NumDress));
 		if (!M[Dress]) Dress = 4;
 		PerClass[P.Type][Dress].Add(Boat);
+		Wear[P.Type][Dress].Add(W);
 		Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 	}
 	for (const auto& KV : PerClass)
@@ -147,34 +158,73 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			if (K >= 2) C->SetCastShadow(false);
 			const bool bLivery = K == 0 && !FBerthedBoat::IsPower(KV.Key);
 			const bool bPaint = K == 0 && FBerthedBoat::IsPainted(KV.Key);
-			if (bLivery) C->NumCustomDataFloats = 7;
-			if (bPaint) C->NumCustomDataFloats = 3;
+			// Livery 0-6 on a sailing hull, paint 0-2 on a painted power hull, then (Environment E1) her wear seed from
+			// FWearSeed::Slot. A sailing boat's other parts carry it too, with -1 below the slot: M_BoatSurface's "no
+			// livery here" (its custom data defaults). The unpainted power classes' materials read their own defaults, so
+			// they stay without custom data for now.
+			const bool bSail = !FBerthedBoat::IsPower(KV.Key);
+			const bool bWear = bSail || bPaint;
+			if (bWear) C->NumCustomDataFloats = FWearSeed::TotalFloats;
 			C->RegisterComponent();
 			C->AddInstances(KV.Value[K], false, true);
-			if (bLivery)
+			const TArray<FWearSeed>& Ws = Wear[KV.Key][K];
+			for (int32 I = 0; I < Ws.Num() && bWear; ++I)
 			{
-				const TArray<uint32>& S = Seeds[KV.Key];
-				for (int32 I = 0; I < S.Num(); ++I)
+				float D[FWearSeed::TotalFloats];
+				for (int32 J = 0; J < FWearSeed::Slot; ++J) D[J] = bSail ? -1.f : 0.f;
+				if (bLivery)
 				{
-					const FBoatLivery L = SampleBoatLivery(int32(KV.Key), S[I]);
-					const float D[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
-					C->SetCustomData(I, TArrayView<const float>(D, 7), false);
+					const FBoatLivery L = SampleBoatLivery(int32(KV.Key), Seeds[KV.Key][I]);
+					const float Liv[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
+					FMemory::Memcpy(D, Liv, sizeof(Liv));
 				}
-				C->MarkRenderStateDirty();
-			}
-			if (bPaint)
-			{
-				const TArray<uint32>& S = Seeds[KV.Key];
-				for (int32 I = 0; I < S.Num(); ++I)
+				if (bPaint)
 				{
-					const FLinearColor Paint = FBerthedBoat::PowerHullColour(S[I]);
-					const float D[3] = { Paint.R, Paint.G, Paint.B };
-					C->SetCustomData(I, TArrayView<const float>(D, 3), false);
+					const FLinearColor Paint = FBerthedBoat::PowerHullColour(Seeds[KV.Key][I]);
+					D[0] = Paint.R; D[1] = Paint.G; D[2] = Paint.B;
 				}
-				C->MarkRenderStateDirty();
+				Ws[I].Write(D + FWearSeed::Slot);
+				C->SetCustomData(I, TArrayView<const float>(D, FWearSeed::TotalFloats), false);
 			}
+			if (bWear) C->MarkRenderStateDirty();
 			Out.Add(C);
 		}
+	}
+}
+
+bool AreNeighbourSlips(const FMarinaSlip& A, const FMarinaSlip& B)
+{
+	if (A.Row != B.Row) return false;
+	return A.Side == B.Side ? FMath::Abs(A.Index - B.Index) == 1 : A.Index == B.Index;
+}
+
+void AssignSlipLooks(const FMarina& Marina, TArray<FSlipLook>& Out)
+{
+	// Slips run row by row, one side then the other, so the neighbours a slip can have already been given are its
+	// predecessor on its side and the slip across the dock: at most two values to step off, from four or more.
+	Out.SetNum(Marina.Slips.Num());
+	TMultiMap<int32, int32> ByRow;
+	for (int32 I = 0; I < Marina.Slips.Num(); ++I) ByRow.Add(Marina.Slips[I].Row, I);
+	for (int32 I = 0; I < Marina.Slips.Num(); ++I)
+	{
+		const FMarinaSlip& S = Marina.Slips[I];
+		const uint32 Id = FWearSeed::IdOf(S.Id);
+		TArray<int32> Done;
+		ByRow.MultiFind(S.Row, Done);
+		auto Pick = [&](int32 N, uint32 Stream, int32 FSlipLook::* Field)
+		{
+			int32 V = int32(MHash(Id ^ MHash(Stream)) % uint32(N));
+			for (int32 Tries = 0; Tries < N; ++Tries)
+			{
+				const bool bTaken = Done.ContainsByPredicate([&](int32 J) { return J < I && AreNeighbourSlips(S, Marina.Slips[J]) && Out[J].*Field == V; });
+				if (!bTaken) break;
+				V = (V + 1) % N;
+			}
+			Out[I].*Field = V;
+		};
+		Pick(FSlipLook::NumDress, 1u, &FSlipLook::Dress);
+		Pick(FSlipLook::NumClutter, 2u, &FSlipLook::Clutter);
+		Pick(FSlipLook::NumCover, 3u, &FSlipLook::Cover);
 	}
 }
 
@@ -301,10 +351,22 @@ void AMarinaActor::Build(const FMarina& Marina)
 	// cover, halyards, fenders, dock lines). Low keeps the docks but leaves the slips empty.
 	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
+		// Environment E1: each slip's dress and cover are stepped off its neighbours' (AssignSlipLooks).
+		TArray<FSlipLook> Looks;
+		AssignSlipLooks(Marina, Looks);
 		TArray<FBerthedBoat> Placed;
-		for (const FMarinaSlip& Slip : Marina.Slips) if (Slip.bOccupied) Placed.Add({ Slip.Center, Slip.HeadingDeg, Slip.BoatType });
+		for (int32 I = 0; I < Marina.Slips.Num(); ++I)
+		{
+			const FMarinaSlip& Slip = Marina.Slips[I];
+			if (!Slip.bOccupied) continue;
+			FBerthedBoat B{ Slip.Center, Slip.HeadingDeg, Slip.BoatType };
+			B.Dress = Looks[I].Dress;
+			B.Cover = Looks[I].Cover;
+			Placed.Add(B);
+		}
 		for (const FMarinaAlongside& A : Marina.Alongside) Placed.Add({ A.Center, A.HeadingDeg, A.BoatType });
-		SpawnBerthedBoats(this, RootComponent, Placed, 1.f, EComponentMobility::Static, Boats);
+		SpawnBerthedBoats(this, RootComponent, Placed, 1.f, EComponentMobility::Static, Boats,
+			GM && GM->GetLake().IsLoaded() ? WearSiteFor(GM->GetLake()) : EWearSite::Lake);
 	}
 	// Sound: halyards on every dock row (louder with the wind), and a pair of gulls wheeling over the harbour.
 	for (const FMarinaRow& R : Marina.Rows)

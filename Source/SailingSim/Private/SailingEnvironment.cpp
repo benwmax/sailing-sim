@@ -9,6 +9,7 @@
 #include "Engine/Texture2D.h"
 #include "LakeData.h"
 #include "WaterSurface.h"
+#include "WorldKit.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -329,6 +330,8 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		// Graphics G2: the water's height, for the wet band along the shores (M_Terrain).
 		if (!WaterActor.IsValid()) { TActorIterator<AWaterSurface> It(GetWorld()); if (It) WaterActor = *It; }
 		if (WaterActor.IsValid()) UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("WaterZ"), float(WaterActor->GetActorLocation().Z));
+		// E1: the world's wear site (0 lake, 1 bay, 2 Gulf) for M_WorldSurface's baked tiles, which carry no seed of their own.
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Site"), GM->GetLake().IsLoaded() ? float(int32(WearSiteFor(GM->GetLake()))) : 0.f);
 		// Street lamps, lit windows and vehicle lights come on through dusk (and under a storm's darkness).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Night"),
 			FMath::Max(NightAmount, FMath::Clamp(float(W.CloudDarkness) * 1.4f - 0.6f, 0.f, 0.6f)));

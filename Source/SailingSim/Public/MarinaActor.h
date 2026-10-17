@@ -9,12 +9,15 @@ class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
 class UMaterialInterface;
 struct FMarina;
+struct FMarinaSlip;
 struct FKitGeometry;
+enum class EWearSite : uint8;
 namespace Sailing { class FLakeTerrain; }
 
 /** Graphics G7: a neighbour boat in her berth: the marina's slips, the coast's moored boats (Type: Sailing::EBoatType, or
  *  PowerBoat for the runabout, PowerYacht for the trawler yacht; Mac polish: PowerExpress, PowerSport and PowerMotorYacht,
- *  hull paint per instance; Scale to her measured length). */
+ *  hull paint per instance; Scale to her measured length). Environment E1: every part carries her FWearSeed (Site) from
+ *  custom data slot FWearSeed::Slot. */
 struct FBerthedBoat
 {
 	static constexpr uint8 PowerBoat = 255;
@@ -31,11 +34,26 @@ struct FBerthedBoat
 	float HeadingDeg = 0.f;
 	uint8 Type = 0;
 	float Scale = 1.f;
+	/** Environment E1: the berthed dress (0-5) and cover (FSlipLook) picked for her slip; -1 hashes them from her place. */
+	int32 Dress = -1, Cover = -1;
 };
+/** Environment E1: what a slip wears: the boat's berthed dress, the slip's dock clutter set (E2's props) and the cover
+ *  (the wear seed's variant on the boat). No slip shares any of the three with a neighbour (AreNeighbourSlips). */
+struct FSlipLook
+{
+	static constexpr int32 NumDress = 6;
+	static constexpr int32 NumClutter = 4;
+	static constexpr int32 NumCover = 5;
+	int32 Dress = 0, Clutter = 0, Cover = 0;
+};
+/** Side by side along a row (the finger between them), or bow to bow across the row's dock. */
+SAILINGSIM_API bool AreNeighbourSlips(const FMarinaSlip& A, const FMarinaSlip& B);
+/** One look per slip of Marina.Slips, hashed from the slip's id, stepped off any value a neighbour already has. */
+SAILINGSIM_API void AssignSlipLooks(const FMarina& Marina, TArray<FSlipLook>& Out);
 /** Draws berthed boats as instanced meshes on Root: each class's hull (livery per instance), boom, rudder and one of six
  *  berthed dresses (build_berthed.py). CullScale stretches the cull distances (1: the club's 900 m dress, 1.5 km hull). */
 SAILINGSIM_API void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBerthedBoat> Boats, float CullScale, EComponentMobility::Type Mobility,
-	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out);
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Out, EWearSite Site);
 
 /**
  * Visual V6: draws the club's marina from its layout (FMarina, FLakeData::Marina): floating dock rows on their floats,
