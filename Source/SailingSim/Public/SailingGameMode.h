@@ -160,6 +160,8 @@ private:
 	int32 ForegroundFrames = 0;
 	TArray<TPair<float, float>> TraceTimes;   // -SailingBenchTrace: (time since start, frame ms)
 	float RecordSeconds = 0.f;
+	TArray<TPair<float, FString>> ExecAt;   // -SailingExecAt: (seconds, console command)
+	int32 NextExecAt = 0;
 	float RecordInterval = 0.1f;
 	float NextFrameTime = 0.f;
 	int32 FrameIndex = 0;

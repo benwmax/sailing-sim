@@ -735,6 +735,38 @@ rough = lerp(rough, 0.72, ox);
 coat *= 1.0 - 0.85 * ox;
 // Worn, grimy non-skid.
 col = lerp(col, col * 0.78 + 0.02, wear.x * saturate(NonSkid) * 0.7);
+// Round 12 ("lack of texture on surfaces", "no wear and tear"): three octaves of value noise anchored to the boat (37 cm,
+// 9 cm, 2.2 cm) for grime ground into decks and non-skid where feet and water go, and a faint mottle in every gelcoat.
+float vn = 0.0, amp = 0.6, sc = 37.0;
+for (int o = 0; o < 3; ++o)
+{
+    float2 q = (LP.xy + LP.zz * float2(0.6, -0.4)) / sc + o * 17.3;
+    float2 qi = floor(q), qf = frac(q);
+    qf = qf * qf * (3.0 - 2.0 * qf);
+    float a00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+    float a01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+    vn += amp * lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
+    amp *= 0.5;
+    sc /= 4.1;
+}
+vn /= 1.05;
+float deckish = up * (1.0 - Metal) * (1.0 - IsHull) * (1.0 - Grain);
+// How dirty: E1's seeded Age (years) and Care (0 neglected .. 1 tidy): per instance (custom data 10 and 11 on the marina's
+// berthed boats, docs/environment-1) or per boat (the Age and Care parameters; Age -1 = unset), else the livery's
+// oxidation channel.
+float age = CD10 >= 0.0 ? CD10 : Age, care = CD10 >= 0.0 ? CD11 : Care;
+float dirt = age >= 0.0 ? saturate(0.15 + age / 18.0) * (1.0 - 0.65 * saturate(care)) : 0.3 + 0.7 * wear.x;
+float grime = saturate(vn * 1.8 - 0.6) * deckish * dirt * (0.45 + 0.55 * saturate(NonSkid));
+col = lerp(col, col * 0.76 + float3(0.014, 0.011, 0.007), grime);
+rough = lerp(rough, min(rough + 0.18, 0.9), grime);
+coat *= 1.0 - 0.6 * grime;
+col *= 1.0 + 0.05 * (vn - 0.5) * (1.0 - Metal) * (1.0 - Grain);
+// Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
+float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
+float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
+float fleck = saturate(vn * 3.0 - 1.9);
+col = lerp(col, col * lerp(0.72, 1.12, ring) * (1.0 - 0.25 * fleck), Grain);
+rough = lerp(rough, rough * lerp(0.85, 1.25, ring), Grain);
 // The waterline "mustache": a brown band from the waterline up a few centimetres, ragged, strongest forward.
 float scumBand = (1.0 - smoothstep(2.0, 6.0 + 4.0 * streak, zcm)) * smoothstep(-4.0, 0.0, zcm);
 float scum = wear.y * IsHull * scumBand * (0.6 + 0.4 * saturate(LP.x / 300.0 + 0.5));
@@ -824,6 +856,10 @@ def build_boat_surface(name, bend):
     coat_r = scalar(mat, "ClearCoatRoughness", 0.05, -1400, 250)
     nonskid = scalar(mat, "NonSkid", 0.0, -1400, 350)
     porosity = scalar(mat, "Porosity", 0.15, -1400, 450)
+    grain = scalar(mat, "Grain", 0.0, -1600, 450)
+    # E1 (docs/environment-1): the seeded age and care, by name; bound to per-instance custom data when E1 lands.
+    age = scalar(mat, "Age", -1.0, -1600, 550)
+    care = scalar(mat, "Care", 0.5, -1600, 650)
     lp = node(mat, unreal.MaterialExpressionLocalPosition, -1400, 550)
     wp = node(mat, unreal.MaterialExpressionWorldPosition, -1400, 650)
     nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1400, 750)
@@ -842,18 +878,18 @@ def build_boat_surface(name, bend):
         cp.set_editor_property("parameter_name", pname)
         params[pname] = cp
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
-                                "Wear", "IsHull"] + [f"CD{k}" for k in range(7)],
+    c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
+                                "Wear", "IsHull"] + [f"CD{k}" for k in range(7)] + ["CD10", "CD11"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
     connect(scalar(mat, "IsHull", 0.0, -1400, 1550), "", c, "IsHull")
-    for k in range(7):
+    for k in list(range(7)) + [10, 11]:   # E1's seed: 10 age, 11 care (FWearSeed::Slot, docs/environment-1)
         cd = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 1650 + 60 * k)
         cd.set_editor_property("data_index", k)
         cd.set_editor_property("const_default_value", -1.0)
         connect(cd, "", c, f"CD{k}")
-    for src, pin in ((color, "C"), (rough, "R"), (metal, "Metal"), (coat, "Coat"), (nonskid, "NonSkid"), (porosity, "Porosity"), (lp, "LP"),
+    for src, pin in ((color, "C"), (rough, "R"), (metal, "Metal"), (coat, "Coat"), (nonskid, "NonSkid"), (porosity, "Porosity"), (grain, "Grain"), (age, "Age"), (care, "Care"), (lp, "LP"),
                      (wp, "WP"), (nrm, "N"), (axes[0], "LX"), (axes[1], "LY"), (params["WaterZ"], "WaterZ"), (params["WetBand"], "WetBand"),
                      (params["DeckWet"], "DeckWet")):
         connect(src, "RGBA" if src is color else "", c, pin)
@@ -897,7 +933,7 @@ BOAT_LIBRARY = {
     "Antifouling": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.80, 0.0, 0.0, 0.0, 0.60),  # ablative bottom paint
     "Keel": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.75, 0.0, 0.0, 0.0, 0.60),
     "CabinWindow": ("M_BoatSurface", (0.006, 0.008, 0.010), 0.04, 0.0, 1.0, 0.0, 0.0),  # smoked acrylic
-    "Stainless": ("M_BoatSurface", (0.72, 0.72, 0.74), 0.14, 1.0, 0.0, 0.0, 0.0),
+    "Stainless": ("M_BoatSurface", (0.62, 0.62, 0.63), 0.30, 1.0, 0.0, 0.0, 0.0),        # round 12: weathered 316, not chrome
     "Aluminium": ("M_BoatSurface", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),        # clear anodized spars
     "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
     "Wood": ("M_BoatSurface", (0.30, 0.17, 0.07), 0.30, 0.0, 1.0, 0.0, 0.15),           # varnished ash tiller
@@ -954,7 +990,7 @@ def build_boat_library():
         MEL.set_material_instance_parent(mi, parents[parent])
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         for pname, value in (("Roughness", rough), ("Metallic", metal), ("ClearCoat", coat), ("NonSkid", nonskid), ("Porosity", porosity),
-                             ("IsHull", 1.0 if slot == "Topsides" else 0.0)):
+                             ("IsHull", 1.0 if slot == "Topsides" else 0.0), ("Grain", 1.0 if slot in ("Wood", "Teak") else 0.0)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
