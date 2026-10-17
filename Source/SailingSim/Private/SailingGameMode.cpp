@@ -139,19 +139,11 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	}
 }
 
-double ASailingGameMode::GetSimTime() const
+void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
-	if (const UWorld* World = GetWorld())
-	{
-		if (const APlayerController* PC = World->GetFirstPlayerController())
-		{
-			if (const ASailboatPawn* Boat = Cast<ASailboatPawn>(PC->GetPawn()))
-			{
-				return Boat->GetBoatModel().GetState().Time;
-			}
-		}
-	}
-	return OwnClock;
+	if (ClockFrame == GFrameCounter) return;
+	ClockFrame = GFrameCounter;
+	if (!GetWorld()->IsPaused()) Clock.Advance(DeltaSeconds);
 }
 
 const TCHAR* ASailingGameMode::WorldFileName(int32 World)
@@ -719,9 +711,9 @@ float ASailingGameMode::GetRenderScale() const
 void ASailingGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	AdvanceClock(DeltaSeconds);
 	if (!GetWorld()->IsPaused())
 	{
-		OwnClock += DeltaSeconds;
 		UpdateWeather(DeltaSeconds);
 		UpdateTide();
 		UpdateResolutionGovernor(DeltaSeconds);
