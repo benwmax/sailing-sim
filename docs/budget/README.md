@@ -40,3 +40,9 @@ The 2-hour Ultra soak on beat15 (`soak-pc-ultra-beat15.txt`):
 - **p99 drift: 4.2 ms/h, over its 1 ms/h cap.** The median p99 goes from 18.3 ms in the first hour to 19.7 ms in the
   second, and two windows spike (26.8 ms at 70-80 min, 28.1 ms at 100-110 min). fps falls about 1.5 an hour
   (76 to 70.7).
+
+## Perf notes
+
+- `perf-sun-setters-2026-10-17.md` (#110): the sun's scattering and disc setters stepped by 0.04. Parked on High for
+  20 min on the Mac, fps goes from 54.9 to 59.3, p99 drift from +2.8 to -2.0 ms/h, and the virtual shadow map pages
+  redrawn per frame from 974 to about 100.
