@@ -55,8 +55,11 @@ namespace
 	constexpr int32 kSkyCacheSteps = 96;
 	constexpr float kSkyCacheSplitM = 5000.f;
 	constexpr float kSkyCacheFarM = 40000.f;
-	constexpr float kSkyCacheSun = 1.f;       // matched to the live clouds at the seam (lake-towers, 17:00)
-	constexpr float kSkyCacheAmbient = 1.1f;
+	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
+	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
+	// samples, read brighter than High's.
+	constexpr float kSkyCacheSunHigh = 1.35f, kSkyCacheSkyHigh = 1.45f;
+	constexpr float kSkyCacheSunUltra = 1.75f, kSkyCacheSkyUltra = 1.5f;
 }
 ASailingEnvironment::ASailingEnvironment()
 {
@@ -1131,11 +1134,14 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	FLinearColor SunLum;
 	CloudMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("SunLum")), SunLum);
 	// Measuring: -SailingSkyCacheLight=<sun>,<sky> scales the two lighting terms (matching the live clouds at the seam).
-	static float SunScale = kSkyCacheSun, SkyScale = kSkyCacheAmbient;
+	const bool bUltraSky = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+	static float SunScale = 1.f, SkyScale = 1.f;
 	static bool bScales = false;
 	if (!bScales)
 	{
 		bScales = true;
+		SunScale = bUltraSky ? kSkyCacheSunUltra : kSkyCacheSunHigh;
+		SkyScale = bUltraSky ? kSkyCacheSkyUltra : kSkyCacheSkyHigh;
 		FString L, A, B;
 		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCacheLight="), L, false) && L.Split(TEXT(","), &A, &B)) { SunScale = FCString::Atof(*A); SkyScale = FCString::Atof(*B); }
 	}

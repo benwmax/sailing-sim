@@ -2410,11 +2410,12 @@ float cm = dot(dir, MoonDir.xyz);
         float3 s = lerp(CacheOld.SampleLevel(CacheOldSampler, cuv, 0).rgb, CacheNew.SampleLevel(CacheNewSampler, cuv, 0).rgb, CacheP.y);
         // The sun's light on the clouds is the atmosphere's own (SunIll: its illuminance at the clouds' height, reddened
         // through the air as the live clouds see it). The sky light comes from the whole sky and the ground under it,
-        // not the blue patch behind the cloud: the sky's brightness, half of it in the sun's colour (the warm bounce
-        // the live clouds' ground term gives). CacheSun.x and .w scale the two (matched to the live clouds at the seam).
+        // not the blue patch behind the cloud: the sky's brightness, a quarter of it in the sun's colour (the warm bounce
+        // the live clouds' ground term gives; at half, the far clouds read warmer than the live ones). CacheSun.x and .w
+        // scale the two (matched per tier to the live clouds at the seam).
         float skyL = dot(ViewLum, float3(0.3, 0.59, 0.11));
         float sunL = max(dot(SunIll, float3(0.3, 0.59, 0.11)), 1e-4);
-        float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), SunIll / sunL, 0.5);
+        float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), SunIll / sunL, 0.25);
         col = col * s.b + s.r * CacheSun.x * SunIll + s.g * CacheSun.w * amb;
     }
 }
