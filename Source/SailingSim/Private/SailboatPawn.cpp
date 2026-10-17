@@ -2137,7 +2137,17 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		SAILING_PERF_SCOPE(RigLines);
 		UpdateModelRig(DeltaSeconds);
 	}
-	if (bStowed)
+	// Probes: -SailingSailsDown with -SailingMooring strikes the player's sails: no cloth stepped or drawn, while the
+	// physics, boom and hull ride the mooring as before (docs/budget/perf-sun-setters-2026-10-17.md, the parked VSM lead).
+	static SailingArgs::FCachedFlag SailsDownArg(TEXT("SailingSailsDown"));
+	const bool bSailsDown = !bTrafficBoat && !Boat.GetMooringLines().empty() && SailsDownArg.Get();
+	if (bSailsDown)
+	{
+		MainSail->SetVisibility(false);
+		JibSail->SetVisibility(false);
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(false);
+	}
+	if (bStowed || bSailsDown)
 	{
 		SpinSail->SetVisibility(false);
 		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
