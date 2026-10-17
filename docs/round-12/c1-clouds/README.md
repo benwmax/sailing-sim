@@ -72,3 +72,10 @@ means longer rays through clear air between the cells. The Mac measures its own 
 - `SailingSim.Visual.CloudNoise` checks that a fair afternoon's largest cloud is under 15 km^2. It measured 12 km^2:
   single cells are 7 km^2 at most, and two that touch make 12.
 - `SailingSim.Visual`: 33/33 passed.
+
+## Stills (Mac, `mac/`)
+
+The four round 12 cloud cameras on High, uncooked (`scripts/capture-scenes.sh 12`, `SCENES=docs/round-12/game/scenes.csv`),
+same hour, weather and seed: `<scene>-before.jpg` on main e07fdb2a, `<scene>-after.jpg` on this branch, for
+r12-lake-towers, r12-galv-kemah, r12-galv-texascity and r12-storm-shelf. Beside them, four real photos from the G5 blind
+pack (`real-*.jpg`, credits and the plan's real-NN mapping in `mac/credits.md`).
