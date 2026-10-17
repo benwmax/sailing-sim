@@ -671,6 +671,16 @@ void ASailingGameMode::StartPlay()
 		FParse::Value(FCommandLine::Get(), TEXT("SailingRecordInterval="), RecordInterval);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmup;
+		// Soaks: -SailingMemReportAt=<s>,<s>,... runs `memreport -full` at those seconds of the bench clock
+		// (Saved/Profiling/MemReports; docs/budget/mac-soak-2-2026-10-17.md).
+		FString MemReportArg;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingMemReportAt="), MemReportArg, false))
+		{
+			TArray<FString> Parts;
+			MemReportArg.ParseIntoArray(Parts, TEXT(","));
+			for (const FString& Part : Parts) MemReportTimes.Add(FCString::Atof(*Part));
+			MemReportTimes.Sort();
+		}
 		// Graphics G4: a bench of the pause menu still ends (and takes its screenshot) while the game is paused.
 		SetTickableWhenPaused(true);
 		// Bench-fast: macOS throttles a window it hides. A single run is brought to the front by `open`; a bench list
@@ -761,6 +771,13 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
 		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		NextFrameTime += RecordInterval;
+	}
+
+	if (NextMemReport < MemReportTimes.Num() && Elapsed >= MemReportTimes[NextMemReport])
+	{
+		UE_LOG(LogSailing, Display, TEXT("SailingBench: memreport at %.0f s"), Elapsed);
+		GEngine->Exec(GetWorld(), TEXT("memreport -full"));
+		++NextMemReport;
 	}
 
 	// -SailingProfileGPU: dump one frame's GPU timings to the log (for tuning quality tiers).
