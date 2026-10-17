@@ -698,10 +698,13 @@ for z in (0.32, 0.56):
 
 # The outboard on its bracket, where the physics puts the engine (round 12: the game drew a grey box there; the pawn
 # skips that box when the model has an "Outboard" socket).
+# Drawn with the bracket in its raised, sailing position (photo IMG_9273: the cowl stands above the transom and the
+# leg's foot is at the water), 0.30 m above the physics prop, which is where the motor sits lowered to drive.
+BRACKET_UP = 0.30
 for E in CFG.get("engines", []):
     ex, ey, ez = E["position"]
-    outboard(hull, STERN, ey, ez)
-    socket("Outboard", (STERN - 0.33, ey, ez))
+    outboard(hull, STERN, ey, ez + BRACKET_UP)
+    socket("Outboard", (STERN - 0.33, ey, ez + BRACKET_UP))
 
 # Hull graphics: the class mark on each bow.
 def text_mesh(body, size, x, z, side, slot, shear=0.22):
