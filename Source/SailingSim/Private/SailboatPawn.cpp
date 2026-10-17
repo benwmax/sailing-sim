@@ -853,10 +853,24 @@ void ASailboatPawn::ResetBoat()
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa; // recordings and benchmarks start on a set point of sail
 	}
 	Boat.GetMooringLines().clear();
+	// Soaks: -SailingMooring parks the player's boat on a buoy 12 m upwind of the start, head to wind with the sails up,
+	// so the camera stays put (docs/budget/mac-soak-parked-2026-10-17.md).
+	const bool bMooring = !bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingMooring"));
+	if (bMooring) StartYaw = GetWind().GetParams().FromDegrees;
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
-	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), StartSpeedKnots * kKnot);
+	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : StartSpeedKnots * kKnot);
 	Boat.GetMutableState().Time = Time;
+	if (bMooring)
+	{
+		const double Heading = FMath::DegreesToRadians(StartYaw);
+		const double BowX = 0.45 * Boat.GetConfig().LengthOverall;
+		FMooringLine Line;
+		Line.BodyPoint = Vec3(BowX, 0.0, 0.5);
+		Line.Anchor = Vec3(StartLocation.X / CmPerMeter + (BowX + 12.0) * FMath::Cos(Heading), StartLocation.Y / CmPerMeter + (BowX + 12.0) * FMath::Sin(Heading), 0.0);
+		Line.Length = 12.0;
+		Boat.GetMooringLines().push_back(Line);
+	}
 	Controls = FBoatControls();
 	Controls.MainSheet = 0.45;
 	Controls.JibSheet = 0.45;
