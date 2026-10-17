@@ -14,6 +14,11 @@ floor-level track at x -1.95 with no bridge, and the helm's forward shoe floats:
 over the footwell, toe up, its shadow falling well clear of it on the sole. So the lift comes from the crew's foot logic,
 not the model's bridge, and with `bTravelerBridge` false (#95) that foot should go down to the sole.
 
+Recaptured Oct 17 (mainsheet only) on #100's thumb wrap 30c84520 merged with main 8d5320cb, light SM_J22 model:
+`r12-j22-mainsheet-wrap`. 149/149 tests (MetaHumanCrew: wrap 40 deg on every hand, thumb tip to index_02 6.0-6.1 ->
+2.6-2.9 cm), crew gate passes. The helm's tiller thumb now leans toward the fingers (against `r12-j22-mainsheet`) but
+still stands above the fist rather than wrapping the extension; it does not cut into the index finger.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
