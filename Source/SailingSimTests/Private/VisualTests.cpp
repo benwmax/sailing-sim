@@ -714,8 +714,9 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 			const FName Thumb(*FString::Printf(TEXT("thumb_03_%s"), Sx)), Index(*FString::Printf(TEXT("index_02_%s"), Sx));
 			if (!Open.Contains(Thumb) || !Open.Contains(Index)) continue;
 			const float DOpen = FVector::Dist(Open[Thumb], Open[Index]), DClosed = FVector::Dist(Closed[Thumb], Closed[Index]);
-			const FQuat& Wrap = Rig.ThumbWrap[Sx[0] == TEXT('l') ? 0 : 1];
-			AddInfo(FString::Printf(TEXT("%s %s thumb: wrap %.0f deg, tip to index_02 %.1f -> %.1f cm"), MetaHumanRoleName(Role), Sx, FMath::RadiansToDegrees(Wrap.GetAngle()), DOpen, DClosed));
+			const FQuat* Turns = Rig.ThumbTurn[Sx[0] == TEXT('l') ? 0 : 1];
+			AddInfo(FString::Printf(TEXT("%s %s thumb: turns %.0f/%.0f/%.0f deg, thumb_03 to index_02 %.1f -> %.1f cm"), MetaHumanRoleName(Role), Sx,
+				FMath::RadiansToDegrees(Turns[0].GetAngle()), FMath::RadiansToDegrees(Turns[1].GetAngle()), FMath::RadiansToDegrees(Turns[2].GetAngle()), DOpen, DClosed));
 			TestTrue(FString::Printf(TEXT("%s: the %s thumb closes over the index finger (%.1f -> %.1f cm)"), MetaHumanRoleName(Role), Sx, DOpen, DClosed), DClosed < DOpen - 1.f);
 		}
 		for (const TCHAR* Tip : { TEXT("index_03_l"), TEXT("middle_03_r"), TEXT("pinky_03_l") })

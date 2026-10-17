@@ -130,3 +130,9 @@ turns the thumb's base straight toward the index finger's middle joint, 40 deg a
 the grip in `CurlFingers`). `Visual.MetaHumanCrew` logs each hand's wrap angle and tip distance and checks the closed tip
 comes at least 1 cm nearer the index finger. Recapture `r12-j22-mainsheet` to see it; if the thumb now goes into the
 index finger, lower the 40 deg cap.
+
+Mac run 1 on #100 (149 of 149, gate passes): the base's 40 deg wrap brought `thumb_03` from 6.1 to 2.6-2.9 cm of
+`index_02`, and the still shows the thumb leaning toward the fingers but still standing above the fist. `thumb_03` is the
+thumb's last joint, so its tip was still past the finger. Now each thumb joint turns in turn, base first (55, 30, 30 deg at
+most, `FCrewRig::ThumbTurn`), so the estimated tip comes down onto the skin of the index finger's middle bone, 1 cm off
+its centre line.
