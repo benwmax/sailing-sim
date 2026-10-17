@@ -1,12 +1,12 @@
 #pragma once
 
 #include "SailingPhysicsApi.h"
+#include "PortableRandom.h"
 #include "AutoTrim.h"
 #include "BoatModel.h"
 #include "Rules.h"
 #include <functional>
 #include <memory>
-#include <random>
 #include <string>
 #include <vector>
 
@@ -203,9 +203,9 @@ namespace Sailing
 		/** True if the straight line stays in water at least MinDepth deep (checked every 15 m). */
 		SAILINGPHYSICS_API bool ClearPath(const FLakeTerrain& Terrain, double AX, double AY, double BX, double BY, double MinDepth);
 		/** A random point within Radius of a center in water at least MinDepth deep; false if none found. */
-		SAILINGPHYSICS_API bool DeepPoint(const FLakeTerrain& Terrain, std::mt19937& Rng, double CX, double CY, double Radius, double MinDepth, double& OutX, double& OutY);
+		SAILINGPHYSICS_API bool DeepPoint(const FLakeTerrain& Terrain, FPortableRandom& Rng, double CX, double CY, double Radius, double MinDepth, double& OutX, double& OutY);
 		/** A loop of Count waypoints joined by clear legs, starting at (X, Y). */
-		SAILINGPHYSICS_API std::vector<std::pair<double, double>> RandomLoop(const FLakeTerrain& Terrain, std::mt19937& Rng, double X, double Y, double Radius, double MinDepth, int Count);
+		SAILINGPHYSICS_API std::vector<std::pair<double, double>> RandomLoop(const FLakeTerrain& Terrain, FPortableRandom& Rng, double X, double Y, double Radius, double MinDepth, int Count);
 		/**
 		 * The shortest path through water deeper than MinDepth between two points (a 4-connected search on a grid of
 		 * Cell meters, then straightened): how a ship keeps to the dredged channel. Empty if there is none.
