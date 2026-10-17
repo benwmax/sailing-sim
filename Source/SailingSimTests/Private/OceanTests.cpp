@@ -358,6 +358,15 @@ bool FKeyRebindTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Steer to port on Q"), KeyOf(TEXT("Tiller"), true), EKeys::Q);
 		TestEqual(TEXT("Jib ease took A"), KeyOf(TEXT("JibSheet"), false), EKeys::A);
 		TestFalse(TEXT("No such command"), Boat->Rebind(TEXT("Teleport"), false, EKeys::F1));
+		// The gamepad column: the reef to RB (the jib sheet's trim gives it up: the reef had no button to swap back).
+		TestTrue(TEXT("Rebind the reef to RB"), Boat->Rebind(TEXT("Reef"), false, EKeys::Gamepad_RightShoulder));
+		const ASailboatPawn::FKeyRow* Reef = Boat->GetKeyRows().FindByPredicate([](const ASailboatPawn::FKeyRow& R) { return R.Action == TEXT("Reef"); });
+		TestTrue(TEXT("The reef's row shows RB and keeps M"), Reef && Reef->PadKey == EKeys::Gamepad_RightShoulder && Reef->Key == EKeys::M);
+		TestFalse(TEXT("A trigger isn't a button"), Boat->Rebind(TEXT("Reef"), false, EKeys::Gamepad_RightTriggerAxis));
+		Boat->ResetKeys();
+		TestEqual(TEXT("Reset: the board back on J"), KeyOf(TEXT("Board"), false), EKeys::J);
+		const ASailboatPawn::FKeyRow* Jib = Boat->GetKeyRows().FindByPredicate([](const ASailboatPawn::FKeyRow& R) { return R.Action == TEXT("JibSheet") && R.bNegative; });
+		TestTrue(TEXT("Reset: jib trim back on RB"), Jib && Jib->PadKey == EKeys::Gamepad_RightShoulder);
 		Boat->Destroy();
 	}
 	// Leave the player's keys as they were.

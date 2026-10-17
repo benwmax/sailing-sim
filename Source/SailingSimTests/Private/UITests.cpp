@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 #include "SailSession.h"
 #include "SailingSettings.h"
+#include "SailingBindings.h"
 #include "BoatModel.h"
 #include "Misc/ConfigCacheIni.h"
 #include "UI/SailCatalog.h"
@@ -148,3 +149,92 @@ bool FSailingUIMeasuringIgnoresSaveTest::RunTest(const FString&)
 	return true;
 }
 
+
+// Gamepad rebinding: the rules both columns of the Controls screen share (SailingBindings, pure logic on a list). A
+// pad button swaps like a keyboard key, takes a free button off a command that had no old one to give, leaves menu
+// navigation's shared D-pad alone, refuses sticks and triggers, and never takes Menu (the pad's only pause) for nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIGamepadBindingsTest, "SailingSim.UI.GamepadBindings", UIFlags)
+bool FSailingUIGamepadBindingsTest::RunTest(const FString&)
+{
+	using namespace SailingBindings;
+	const TArray<FSailingKeyBinding>& Defaults = GetDefault<USailingInputSettings>()->GetDefaults();
+	TArray<FSailingKeyBinding> L = Defaults;
+	auto PadOf = [&](FName Action, bool bNeg) { return Find(L, Action, bNeg, EColumn::Gamepad); };
+	auto KeyOf = [&](FName Action, bool bNeg) { return Find(L, Action, bNeg, EColumn::Keyboard); };
+
+	// The columns.
+	TestEqual(TEXT("Wing-on-wing's button is X"), PadOf(TEXT("WingOnWing"), false), EKeys::Gamepad_FaceButton_Left);
+	TestEqual(TEXT("Wing-on-wing's key is G"), KeyOf(TEXT("WingOnWing"), false), EKeys::G);
+	TestFalse(TEXT("Steering has no button"), PadOf(TEXT("Tiller"), true).IsValid());
+	TestEqual(TEXT("Steering to port is on the left stick"), FindPadAxis(L, TEXT("Tiller"), true), EKeys::Gamepad_LeftX);
+	TestEqual(TEXT("Trimming the main is the right trigger"), FindPadAxis(L, TEXT("MainSheet"), true), EKeys::Gamepad_RightTriggerAxis);
+	TestEqual(TEXT("Easing the main is the left trigger"), FindPadAxis(L, TEXT("MainSheet"), false), EKeys::Gamepad_LeftTriggerAxis);
+	TestEqual(TEXT("Labels: Y"), PadLabel(EKeys::Gamepad_FaceButton_Top), FString(TEXT("Y")));
+	TestEqual(TEXT("Labels: RB"), PadLabel(EKeys::Gamepad_RightShoulder), FString(TEXT("RB")));
+	TestTrue(TEXT("The D-pad is a button"), IsPadButton(EKeys::Gamepad_DPad_Left));
+	TestFalse(TEXT("A trigger is not"), IsPadButton(EKeys::Gamepad_LeftTrigger));
+	TestFalse(TEXT("A stick direction is not"), IsPadButton(EKeys::Gamepad_LeftStick_Up));
+
+	// A swap: wing-on-wing to A, so the backstay's ease (A) takes X.
+	FAssignResult R = Assign(L, TEXT("WingOnWing"), false, EKeys::Gamepad_FaceButton_Bottom);
+	TestTrue(TEXT("Wing-on-wing to A: changed and swapped"), R.bChanged && R.bSwapped && R.OtherAction == TEXT("Backstay") && R.bOtherNegative);
+	TestEqual(TEXT("Wing-on-wing is on A"), PadOf(TEXT("WingOnWing"), false), EKeys::Gamepad_FaceButton_Bottom);
+	TestEqual(TEXT("Backstay ease took X"), PadOf(TEXT("Backstay"), true), EKeys::Gamepad_FaceButton_Left);
+	TestEqual(TEXT("Wing-on-wing keeps G"), KeyOf(TEXT("WingOnWing"), false), EKeys::G);
+
+	// A command with no button takes one: the board to Y, learning mode had Y and has none now.
+	R = Assign(L, TEXT("Board"), false, EKeys::Gamepad_FaceButton_Top);
+	TestTrue(TEXT("Board to Y"), R.bChanged && R.bSwapped && !R.Old.IsValid());
+	TestEqual(TEXT("Board is on Y"), PadOf(TEXT("Board"), false), EKeys::Gamepad_FaceButton_Top);
+	TestFalse(TEXT("Learning mode has no button now"), PadOf(TEXT("ToggleLearning"), false).IsValid());
+	TestEqual(TEXT("Board keeps J"), KeyOf(TEXT("Board"), false), EKeys::J);
+
+	// The D-pad: menu navigation shares it and is left alone.
+	R = Assign(L, TEXT("Vang"), false, EKeys::Gamepad_DPad_Up);
+	TestTrue(TEXT("Vang on to D-pad up"), R.bChanged && R.OtherAction == TEXT("Hike"));
+	TestEqual(TEXT("Menu up keeps D-pad up"), Find(L, TEXT("MenuUp"), false, EColumn::Gamepad), EKeys::Gamepad_DPad_Up);
+
+	// Refusals: sticks and triggers, a keyboard key's column, Menu with nothing to give back, menu navigation itself.
+	const int32 N = L.Num();
+	TestFalse(TEXT("A trigger can't be bound"), Assign(L, TEXT("Reef"), false, EKeys::Gamepad_LeftTriggerAxis).bChanged);
+	TestFalse(TEXT("A stick can't be bound"), Assign(L, TEXT("Reef"), false, EKeys::Gamepad_LeftStick_Up).bChanged);
+	R = Assign(L, TEXT("Reef"), false, EKeys::Gamepad_Special_Right);
+	TestTrue(TEXT("Menu keeps its button when the reef has none to give"), R.bRefused && !R.bChanged);
+	TestFalse(TEXT("Menu navigation is not a row"), Assign(L, TEXT("MenuUp"), false, EKeys::Gamepad_FaceButton_Left).bChanged);
+	TestEqual(TEXT("Refusals change nothing"), L.Num(), N);
+	TestEqual(TEXT("Menu still on the Menu button"), PadOf(TEXT("Menu"), false), EKeys::Gamepad_Special_Right);
+
+	// The keyboard follows the same rule: the board to K, difficulty takes J.
+	R = Assign(L, TEXT("Board"), false, EKeys::K);
+	TestTrue(TEXT("Board to K swaps"), R.bChanged && R.bSwapped && R.OtherAction == TEXT("ToggleDifficulty"));
+	TestEqual(TEXT("Difficulty took J"), KeyOf(TEXT("ToggleDifficulty"), false), EKeys::J);
+	TestEqual(TEXT("The board's button is untouched"), PadOf(TEXT("Board"), false), EKeys::Gamepad_FaceButton_Top);
+
+	// Round trip through Input.ini: both columns saved, reloaded, then the defaults restored.
+	USailingInputSettings* Settings = GetMutableDefault<USailingInputSettings>();
+	const TArray<FSailingKeyBinding> Saved = Settings->Bindings;
+	Settings->Bindings = L;
+	Settings->SaveConfig();
+	GConfig->Flush(false, GInputIni);
+	TArray<FString> IniLines;
+	GConfig->GetArray(*USailingInputSettings::StaticClass()->GetPathName(), TEXT("Bindings"), IniLines, GInputIni);
+	TestTrue(TEXT("Input.ini has the board on Y"), IniLines.ContainsByPredicate([](const FString& Line) { return Line.Contains(TEXT("Action=\"Board\",Key=Gamepad_FaceButton_Top")); }));
+	Settings->Bindings.Reset();
+	Settings->ReloadConfig();
+	TestEqual(TEXT("Reloaded: as many bindings"), Settings->Bindings.Num(), L.Num());
+	const TArray<FSailingKeyBinding>& Live = Settings->GetBindings();
+	TestEqual(TEXT("Reloaded: board on Y"), Find(Live, TEXT("Board"), false, EColumn::Gamepad), EKeys::Gamepad_FaceButton_Top);
+	TestEqual(TEXT("Reloaded: board on K"), Find(Live, TEXT("Board"), false, EColumn::Keyboard), EKeys::K);
+	TestEqual(TEXT("Reloaded: wing-on-wing on A"), Find(Live, TEXT("WingOnWing"), false, EColumn::Gamepad), EKeys::Gamepad_FaceButton_Bottom);
+	TestEqual(TEXT("Labels read the live pad binding"), Label(TEXT("Board"), false, true), FString(TEXT("Y")));
+	TestEqual(TEXT("Labels read the live key"), Label(TEXT("Board"), false, false), FString(TEXT("K")));
+	TestEqual(TEXT("A command without a button names its stick"), Label(TEXT("Tiller"), false, true), FString(TEXT("Left stick")));
+	TestEqual(TEXT("And without either, its key"), Label(TEXT("Chart"), false, true), FString(TEXT("P")));
+	Settings->Bindings = Settings->GetDefaults();
+	TestEqual(TEXT("Defaults: board has no button"), Find(Settings->GetBindings(), TEXT("Board"), false, EColumn::Gamepad), FKey());
+	TestEqual(TEXT("Defaults: learning mode on Y"), Find(Settings->GetBindings(), TEXT("ToggleLearning"), false, EColumn::Gamepad), EKeys::Gamepad_FaceButton_Top);
+	// Leave the player's bindings as they were.
+	Settings->Bindings = Saved;
+	Settings->SaveConfig();
+	return true;
+}

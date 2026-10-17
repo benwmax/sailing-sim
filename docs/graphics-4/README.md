@@ -57,6 +57,15 @@ flow in reverse, and Continue on the title starts the last session again.
   - Accessibility: text size 100 to 150%.
   - Benchmarks and captures ignore the display rows (cap, resolution, focus pause), so their numbers stay comparable.
 - **Controls**: every key, rebindable. A key another command used swaps over, so nothing is left without one.
+  Gamepad rebinding (after the freeze): each row has a keyboard and a controller column. Enter (A) rebinds the key,
+  Tab (Y) the button (face buttons, bumpers, the D-pad, stick presses, View, Menu); sticks and triggers stay on their
+  axes and show as fixed. Esc or B cancels; the same swap rule holds in both columns (`SailingBindings::Assign`; a
+  command with no button to give back leaves the other without one, and Menu never gives up the pad's pause). Menu
+  navigation keeps the arrows and D-pad. "Restore the defaults" resets both columns; everything saves to Input.ini.
+  The HUD tips, learning text and the controls card (`?`) name the live bindings, the controller's while the pad is in
+  use. Tests: `SailingSim.UI.GamepadBindings`, `SailingSim.Smoke.KeyRebinding`.
+
+  ![Controls with the controller column: X put on the jib ease through -SailingUIScript (Down x4, Y, X)](screens/Controls-gamepad.jpg)
 
 ## The HUD
 

@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "SailboatPawn.h"
 #include "SailingSettings.h"
+#include "SailingBindings.h"
 #include "SailingGameMode.h"
 #include "Weather.h"
 #include "Engine/Canvas.h"
@@ -395,7 +396,7 @@ void ASailingHUD::DrawKeys(const ASailboatPawn& Boat)
 	const float RowH = 24.f;
 	const int32 PerColumn = FMath::Max(1, int32((Canvas->ClipY / UIScale - 200.f) / RowH));
 	const int32 Columns = (Rows.Num() + PerColumn - 1) / PerColumn;
-	const float ColW = 470.f, W = FMath::Max(1, Columns) * ColW + 40.f, H = FMath::Min(Rows.Num(), PerColumn) * RowH + 140.f;
+	const float ColW = 580.f, W = FMath::Max(1, Columns) * ColW + 40.f, H = FMath::Min(Rows.Num(), PerColumn) * RowH + 140.f;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale * 0.5f - H * 0.5f;
 	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.78f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
 	Text(TEXT("Keys"), X + 20.f, Y + 14.f, FLinearColor::White, 1.1f, true);
@@ -406,9 +407,12 @@ void ASailingHUD::DrawKeys(const ASailboatPawn& Boat)
 		if (bSel) DrawRect(FLinearColor(0.3f, 0.5f, 0.8f, 0.5f), (CX - 6.f) * UIScale, (RY - 3.f) * UIScale, (ColW - 20.f) * UIScale, RowH * UIScale);
 		Text(Rows[I].Label, CX, RY, bSel ? FLinearColor::White : Dim, 0.78f);
 		Text(bSel && Boat.IsCapturingKey() ? FString(TEXT("...")) : Rows[I].Key.GetDisplayName().ToString(), CX + 330.f, RY, bSel ? Good : FLinearColor::White, 0.78f);
+		// The controller's button (rebound on the Controls screen), or the stick or trigger that drives the command.
+		const FKey& Pad = Rows[I].PadKey.IsValid() ? Rows[I].PadKey : Rows[I].PadAxis;
+		if (Pad.IsValid()) Text(SailingBindings::PadLabel(Pad), CX + 420.f, RY, Dim, 0.78f);
 	}
 	Text(Boat.GetKeysMessage(), X + 20.f, Y + H - 56.f, Boat.IsCapturingKey() ? Warn : Dim, 0.8f);
-	Text(TEXT("Saved to your Input.ini. Mouse and controller bindings are unchanged."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
+	Text(TEXT("Saved to your Input.ini. Controller buttons are rebound on the Controls screen (pause menu)."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
 }
 
 void ASailingHUD::DrawLogbook(const ASailboatPawn& Boat)
@@ -1141,47 +1145,63 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 {
 	using namespace SailingHUDLocal;
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
-	TArray<TPair<FString, FString>> Lines = {
-		{ TEXT("Steer (tiller)"), TEXT("A / D        Left stick") },
-		{ TEXT("Mainsheet trim / ease"), TEXT("W / S        Right / left trigger") },
-		{ TEXT("Jib sheet trim / ease"), TEXT("E / Q        Right / left bumper") },
-		{ TEXT("Crew hike out / in"), TEXT("F / V        D-pad up / down") },
-		{ TEXT("Wing-on-wing"), TEXT("G            X") },
-		{ TEXT("Back the jib (heave to, irons)"), TEXT("B            Left stick press") },
-		{ TEXT("Dock lines on / off"), TEXT("T            Right stick press") },
-		{ TEXT("Spinnaker up / down (Q/E trims it)"), TEXT("N") },
-		{ TEXT("Take a reef / shake out"), TEXT("M") },
-		{ TEXT("Board or swing keel up / down"), TEXT("J") },
-		{ TEXT("Right a capsized boat"), TEXT("X") },
-		{ TEXT("Engine ahead / astern, neutral"), TEXT("= / -  (PgUp/PgDn), 0") },
-		{ TEXT("Twin engines: pivot"), TEXT("[ / ]") },
+	// Every key and button from the live bindings (Input.ini, the Controls screen), not a fixed layout.
+	auto Kb = [](const TCHAR* Action, bool bNegative) { return SailingBindings::Label(Action, bNegative, false); };
+	auto Pad = [](const TCHAR* Action, bool bNegative)
+	{
+		const TArray<FSailingKeyBinding>& Bindings = GetDefault<USailingInputSettings>()->GetBindings();
+		FKey Key = SailingBindings::Find(Bindings, Action, bNegative, SailingBindings::EColumn::Gamepad);
+		if (!Key.IsValid()) Key = SailingBindings::FindPadAxis(Bindings, Action, bNegative);
+		return Key.IsValid() ? SailingBindings::PadLabel(Key) : FString();
+	};
+	// "minus / plus" for a two-way command, collapsing a stick that does both.
+	auto Join = [](const FString& A, const FString& B) { return A.IsEmpty() || B.IsEmpty() ? A + B : A == B ? A : A + TEXT(" / ") + B; };
+	struct FLine { FString Label, Key, Button; };
+	auto Two = [&](const TCHAR* Label, const TCHAR* Action) { return FLine{ Label, Join(Kb(Action, true), Kb(Action, false)), Join(Pad(Action, true), Pad(Action, false)) }; };
+	auto TwoUp = [&](const TCHAR* Label, const TCHAR* Action) { return FLine{ Label, Join(Kb(Action, false), Kb(Action, true)), Join(Pad(Action, false), Pad(Action, true)) }; };
+	auto One = [&](const TCHAR* Label, const TCHAR* Action) { return FLine{ Label, Kb(Action, false), Pad(Action, false) }; };
+	TArray<FLine> Lines = {
+		Two(TEXT("Steer (tiller)"), TEXT("Tiller")),
+		Two(TEXT("Mainsheet trim / ease"), TEXT("MainSheet")),
+		Two(TEXT("Jib sheet trim / ease"), TEXT("JibSheet")),
+		TwoUp(TEXT("Crew hike out / in"), TEXT("Hike")),
+		One(TEXT("Wing-on-wing"), TEXT("WingOnWing")),
+		One(TEXT("Back the jib (heave to, irons)"), TEXT("BackJib")),
+		One(TEXT("Dock lines on / off"), TEXT("DockLines")),
+		One(TEXT("Spinnaker up / down (the jib sheet trims it)"), TEXT("Spinnaker")),
+		One(TEXT("Take a reef / shake out"), TEXT("Reef")),
+		One(TEXT("Board or swing keel up / down"), TEXT("Board")),
+		One(TEXT("Right a capsized boat"), TEXT("Righting")),
+		FLine{ TEXT("Engine ahead / astern, neutral"), Join(Kb(TEXT("Throttle"), false), Kb(TEXT("Throttle"), true)) + TEXT(", ") + Kb(TEXT("EngineNeutral"), false), Join(Pad(TEXT("Throttle"), false), Pad(TEXT("Throttle"), true)) },
+		Two(TEXT("Twin engines: pivot"), TEXT("ThrottleSplit")),
 	};
 	if (!bSimple)
 	{
-		Lines.Add({ TEXT("Traveler windward / leeward"), TEXT("Z / C        D-pad left / right") });
-		Lines.Add({ TEXT("Vang, cunningham, outhaul"), TEXT("1-2, 3-4, 5-6") });
-		Lines.Add({ TEXT("Backstay ease / on"), TEXT("7 / 8        A / B") });
+		Lines.Add(Two(TEXT("Traveler windward / leeward"), TEXT("Traveler")));
+		Lines.Add(FLine{ TEXT("Vang, cunningham, outhaul"), FString::Printf(TEXT("%s, %s, %s"), *Join(Kb(TEXT("Vang"), true), Kb(TEXT("Vang"), false)), *Join(Kb(TEXT("Cunningham"), true), Kb(TEXT("Cunningham"), false)), *Join(Kb(TEXT("Outhaul"), true), Kb(TEXT("Outhaul"), false))), FString() });
+		Lines.Add(Two(TEXT("Backstay ease / on"), TEXT("Backstay")));
 	}
 	Lines.Append({
-		{ TEXT("Chart, bearing, GPS, clear the plot (coast)"), TEXT("P, U, O, I") },
-		{ TEXT("Ship's log"), TEXT("Y") },
-		{ TEXT("Watch your last run (ghost: Tab > Ghost)"), TEXT(",") },
-		{ TEXT("Photo mode, take a photo"), TEXT("9, Enter") },
-		{ TEXT("Learning mode"), TEXT("L            Y button") },
-		{ TEXT("Difficulty"), TEXT("K") },
-		{ TEXT("Settings (area, races, traffic, weather, keys)"), TEXT("Tab          Menu") },
-		{ TEXT("Instruments"), TEXT("H") },
-		{ TEXT("Reset boat"), TEXT("R") },
-		{ TEXT("Camera"), TEXT("Mouse, wheel  Right stick") },
-		{ TEXT("Close this card"), TEXT("?            View") } });
-	const float W = 700.f, H = 70.f + Lines.Num() * 28.f;
+		FLine{ TEXT("Chart, bearing, GPS, clear the plot (coast)"), FString::Printf(TEXT("%s, %s, %s, %s"), *Kb(TEXT("Chart"), false), *Kb(TEXT("Bearing"), false), *Kb(TEXT("Gps"), false), *Kb(TEXT("ClearPlot"), false)), FString() },
+		One(TEXT("Ship's log"), TEXT("Logbook")),
+		One(TEXT("Watch your last run (ghost: Tab > Ghost)"), TEXT("Replay")),
+		FLine{ TEXT("Photo mode, take a photo"), Kb(TEXT("Photo"), false) + TEXT(", ") + Kb(TEXT("PhotoShot"), false), Join(Pad(TEXT("Photo"), false), Pad(TEXT("PhotoShot"), false)) },
+		One(TEXT("Learning mode"), TEXT("ToggleLearning")),
+		One(TEXT("Difficulty"), TEXT("ToggleDifficulty")),
+		One(TEXT("Settings (area, races, traffic, weather, keys)"), TEXT("Menu")),
+		One(TEXT("Instruments"), TEXT("ToggleHud")),
+		One(TEXT("Reset boat"), TEXT("ResetBoat")),
+		FLine{ TEXT("Camera"), TEXT("Mouse, wheel"), Pad(TEXT("Look"), false) },
+		One(TEXT("Close this card"), TEXT("ControlsCard")) });
+	const float W = 780.f, H = 70.f + Lines.Num() * 28.f;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale * 0.5f - H * 0.5f;
 	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.7f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
 	Text(bSimple ? TEXT("Controls (Simple layout)") : TEXT("Controls (Full layout)"), X + 20.f, Y + 14.f, FLinearColor::White, 1.1f, true);
 	for (int32 I = 0; I < Lines.Num(); ++I)
 	{
-		Text(Lines[I].Key, X + 24.f, Y + 60.f + I * 28.f, Dim);
-		Text(Lines[I].Value, X + 360.f, Y + 60.f + I * 28.f, FLinearColor::White);
+		Text(Lines[I].Label, X + 24.f, Y + 60.f + I * 28.f, Dim);
+		Text(Lines[I].Key, X + 360.f, Y + 60.f + I * 28.f, FLinearColor::White);
+		Text(Lines[I].Button, X + 560.f, Y + 60.f + I * 28.f, FLinearColor::White);
 	}
 }
 

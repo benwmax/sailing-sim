@@ -32,6 +32,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
+#include "SailingBindings.h"
 #include "InputModifiers.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
@@ -1281,11 +1282,13 @@ namespace
 void ASailboatPawn::BuildKeyRows()
 {
 	KeyRows.Reset();
-	// One row per command and direction, showing its first keyboard key (mouse and gamepad stay as they are).
-	for (const FSailingKeyBinding& B : GetDefault<USailingInputSettings>()->GetBindings())
+	// One row per command and direction, showing its first keyboard key and its gamepad button (or the stick or
+	// trigger that drives it: those stay on their axes). Mouse axes are not rows.
+	const TArray<FSailingKeyBinding>& Bindings = GetDefault<USailingInputSettings>()->GetBindings();
+	for (const FSailingKeyBinding& B : Bindings)
 	{
-		if (B.Key.IsGamepadKey() || B.Key.IsMouseButton() || B.Key.IsAxis1D() || B.Key.IsAxis2D()) continue;
-		if (B.Action.ToString().StartsWith(TEXT("Menu")) && B.Action != TEXT("Menu")) continue; // arrow keys stay arrows
+		if (!SailingBindings::IsKeyboardKey(B.Key)) continue;
+		if (!SailingBindings::IsRowAction(B.Action)) continue; // arrow keys stay arrows
 		const bool bNeg = B.Scale < 0.f;
 		if (KeyRows.ContainsByPredicate([&](const FKeyRow& R) { return R.Action == B.Action && R.bNegative == bNeg; })) continue;
 		FKeyRow Row;
@@ -1293,6 +1296,8 @@ void ASailboatPawn::BuildKeyRows()
 		Row.bNegative = bNeg;
 		Row.Label = CommandLabel(B.Action, bNeg);
 		Row.Key = B.Key;
+		Row.PadKey = SailingBindings::Find(Bindings, B.Action, bNeg, SailingBindings::EColumn::Gamepad);
+		Row.PadAxis = SailingBindings::FindPadAxis(Bindings, B.Action, bNeg);
 		KeyRows.Add(Row);
 	}
 }
@@ -1337,31 +1342,45 @@ void ASailboatPawn::PollKeyCapture()
 	}
 }
 
-void ASailboatPawn::AssignKey(int32 Row, const FKey& Key)
+bool ASailboatPawn::AssignKey(int32 Row, const FKey& Key)
 {
+	if (!KeyRows.IsValidIndex(Row)) return false;
 	USailingInputSettings* Settings = GetMutableDefault<USailingInputSettings>();
 	if (Settings->Bindings.Num() == 0) Settings->Bindings = Settings->GetDefaults();
-	FKeyRow& Target = KeyRows[Row];
-	const FKey Old = Target.Key;
-	// If another command had this key, it takes this one's old key (a swap, so nothing is left without a key).
-	FString Swapped;
-	for (FSailingKeyBinding& B : Settings->Bindings)
+	const FKeyRow Target = KeyRows[Row];
+	const FString KeyName = SailingBindings::KeyLabel(Key);
+	// The keyboard key or gamepad button (the column follows the key). If another command had it, it takes this one's
+	// old key (a swap, so nothing is left without a key): SailingBindings::Assign, the same rule for both columns.
+	const SailingBindings::FAssignResult R = SailingBindings::Assign(Settings->Bindings, Target.Action, Target.bNegative, Key);
+	if (R.bRefused)
 	{
-		if (B.Key == Key && !(B.Action == Target.Action && (B.Scale < 0.f) == Target.bNegative))
-		{
-			B.Key = Old;
-			Swapped = CommandLabel(B.Action, B.Scale < 0.f);
-		}
+		KeysMessage = FString::Printf(TEXT("%s stays on %s: it is the only way to pause from the controller"), *KeyName, *CommandLabel(R.OtherAction, false));
+		return false;
 	}
-	for (FSailingKeyBinding& B : Settings->Bindings)
+	if (!R.bChanged)
 	{
-		if (B.Action == Target.Action && (B.Scale < 0.f) == Target.bNegative && B.Key == Old) { B.Key = Key; break; }
+		if (R.Old == Key) KeysMessage = FString::Printf(TEXT("%s: %s"), *Target.Label, *KeyName);
+		else KeysMessage = SailingBindings::IsPadAxis(Key) ? FString(TEXT("Sticks and triggers stay on their axes")) : FString::Printf(TEXT("%s can't be bound here"), *KeyName);
+		return false;
 	}
 	if (!USailingSettings::IgnoresSavedChoices()) Settings->SaveConfig();
 	RebuildMappings();
 	BuildKeyRows();
-	KeysMessage = Swapped.IsEmpty() ? FString::Printf(TEXT("%s: %s"), *Target.Label, *Key.GetDisplayName().ToString())
-		: FString::Printf(TEXT("%s: %s (swapped: %s now %s)"), *CommandLabel(Target.Action, Target.bNegative), *Key.GetDisplayName().ToString(), *Swapped, *Old.GetDisplayName().ToString());
+	const FString Other = CommandLabel(R.OtherAction, R.bOtherNegative);
+	KeysMessage = !R.bSwapped ? FString::Printf(TEXT("%s: %s"), *Target.Label, *KeyName)
+		: R.Old.IsValid() ? FString::Printf(TEXT("%s: %s (swapped: %s now %s)"), *Target.Label, *KeyName, *Other, *SailingBindings::KeyLabel(R.Old))
+		: FString::Printf(TEXT("%s: %s (%s has no button now)"), *Target.Label, *KeyName, *Other);
+	return true;
+}
+
+void ASailboatPawn::ResetKeys()
+{
+	USailingInputSettings* Settings = GetMutableDefault<USailingInputSettings>();
+	Settings->Bindings = Settings->GetDefaults();
+	if (!USailingSettings::IgnoresSavedChoices()) Settings->SaveConfig();
+	RebuildMappings();
+	BuildKeyRows();
+	KeysMessage = TEXT("Keys and buttons back to the defaults");
 }
 
 bool ASailboatPawn::Rebind(FName Action, bool bNegative, const FKey& Key)
@@ -1369,8 +1388,7 @@ bool ASailboatPawn::Rebind(FName Action, bool bNegative, const FKey& Key)
 	BuildKeyRows();
 	const int32 Row = KeyRows.IndexOfByPredicate([&](const FKeyRow& R) { return R.Action == Action && R.bNegative == bNegative; });
 	if (Row == INDEX_NONE) return false;
-	AssignKey(Row, Key);
-	return true;
+	return AssignKey(Row, Key);
 }
 
 void ASailboatPawn::RebuildMappings()
