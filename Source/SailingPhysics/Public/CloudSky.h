@@ -33,6 +33,9 @@ namespace Sailing
 		double Haze = 0.3;
 		/** Wind aloft (m/s, toward +X north / +Y east): the clouds drift with it. */
 		double DriftX = 0.0, DriftY = 0.0;
+		/** C1 (round 12, Inputs/clouds-trees/plan.md): the size of the cumulus cells, 1 = the W5a classes (cells to 2.5 km
+		 *  radius, a building or stormy day), 0.6 = fair weather (the largest about 1.5 km, most a few hundred metres). */
+		double CuCellScale = 0.6;
 
 		const FCloudLayer& operator[](ECloudLayer L) const { return Layers[int(L)]; }
 		FCloudLayer& operator[](ECloudLayer L) { return Layers[int(L)]; }

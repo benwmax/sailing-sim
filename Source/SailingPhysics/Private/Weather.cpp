@@ -70,6 +70,7 @@ namespace Sailing
 			const double Clearing = SmoothStep(FWeatherSystem::kClearingStarts, FWeatherSystem::kClear, Ts);
 			Cu.Coverage = Lerp(Cu.Coverage, Lerp(0.3, 0.15, Build) * (1.0 - Clearing) + 0.3 * Clearing, Weight);
 			Cu.TopKm = Lerp(Cu.TopKm, Cu.BaseKm + 2.5, Weight);
+			S.CuCellScale = Lerp(S.CuCellScale, 1.0, Weight);   // C1: a building day's cells are the big ones
 			Ci.Coverage = Lerp(Ci.Coverage, 0.5 * Build * (1.0 - Clearing) + 0.2 * Clearing, Weight);
 			Sm.Coverage = Lerp(Sm.Coverage, Lerp(0.35, 1.0, Build) * (1.0 - Clearing), Weight);
 			Sm.BaseKm = 0.03; // the rain shafts under the core reach the water (the shelf's base is FStormShape::ShelfBaseM)
@@ -96,8 +97,13 @@ namespace Sailing
 			Ci.BaseKm = 8.5; Ci.TopKm = 10.0; Ci.Density = 0.25;
 			St.BaseKm = 0.9; St.TopKm = 1.6; St.Density = 0.8;
 			const double Afternoon = SmoothStep(10.5, 15.0, H) * (1.0 - 0.6 * SmoothStep(18.5, 20.5, H));
-			Cu.BaseKm = 1.2 + 0.3 * SmoothStep(11.0, 16.0, H);
-			Cu.TopKm = Cu.BaseKm + 0.6 + 0.9 * Afternoon;
+			// C1 (round 12): every cumulus base on a day sits at one height, the lifting condensation level, about 125 m per
+			// degree of spread between the air and its dew point: near 1 km on a humid summer morning, near 2 km on a hot
+			// afternoon over the lake (DFW's July ceilings), lower on the humid coast.
+			Cu.BaseKm = Clamp(0.125 * (W.AirC - W.DewC), 0.5, 2.5);
+			// C1: fair-weather cumulus about as deep as they are wide (0.4 to 1.1 km); at 1.5 km deep the towers stood as
+			// columns filling the low sky. A building day deepens them (StormSky, the real days' instability).
+			Cu.TopKm = Cu.BaseKm + 0.4 + 0.7 * Afternoon;
 			switch (P)
 			{
 			case EWeatherPreset::CalmMorning:
@@ -106,7 +112,9 @@ namespace Sailing
 				S.Haze = 0.75;
 				break;
 			case EWeatherPreset::AfternoonBreeze:
-				Cu.Coverage = 0.06 + 0.29 * Afternoon;
+				// C1 (round 12): scattered at most, about a fifth of the sky by mid-afternoon (real-05: a row of puffs over the
+				// far shore and a lot of blue). At a third, the towers' sides filled the low sky into a deck seen from the water.
+				Cu.Coverage = 0.04 + 0.18 * Afternoon;
 				Ci.Coverage = 0.1;
 				S.Haze = 0.55;
 				break;
@@ -234,6 +242,7 @@ namespace Sailing
 		W.Wind.PuffIntensity = Gustiness * ClimatePuffStrength(Month, W.HourOfDay, false);
 		const double Water = H.WaterC > -50.0 ? H.WaterC : ClimateWaterC(Month, false);
 		W.AirC = H.AirC;
+		W.DewC = H.DewC;
 		W.Wind.AirMinusWaterC = H.AirC - Water;
 		W.Wind.MixedLayerMeters = Clamp(H.MixedLayerM, 100.0, 4000.0);
 		W.Wind.ClimateAirMinusWaterC = ClimateAirC(Month, W.HourOfDay, false) - ClimateWaterC(Month, false);
@@ -260,6 +269,7 @@ namespace Sailing
 			Cu.Coverage = H.CloudLow;
 			Cu.BaseKm = BaseKm;
 			Cu.TopKm = BaseKm + Clamp(0.6 + H.CapeJkg / 2000.0, 0.6, 3.0);
+			S.CuCellScale = Clamp(0.6 + H.CapeJkg / 2500.0, 0.6, 1.0);   // C1: bigger cells as the day builds
 		}
 		else
 		{
@@ -418,6 +428,7 @@ namespace Sailing
 		W.Wind.PuffIntensity = Gustiness * ClimatePuffStrength(Month, W.HourOfDay, bCoast);
 		W.Wind.AirMinusWaterC = Air + AirOffset - ClimateWaterC(Month, bCoast);
 		W.AirC = P == EWeatherPreset::Thunderstorm ? kStormAirC : Air;
+		W.DewC = ClimateDewC(Month, bCoast);
 		W.Wind.MixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast) * Layer * (1.0 - 0.5 * Overcast);
 		W.Wind.ClimateAirMinusWaterC = ClimateAirC(Month, W.HourOfDay, bCoast) - ClimateWaterC(Month, bCoast);
 		W.Wind.ClimateMixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast);

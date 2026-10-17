@@ -1809,8 +1809,12 @@ float hSt = (altKm - St.y) / max(St.z - St.y, 0.05);
 float hCi = (altKm - Ci.y) / max(Ci.z - Ci.y, 0.05);
 // Graphics G1: a cumulus cell's top rises with its presence in the map (domes, taller in the middle of a cell and over
 // the heated land), its base stays flat.
-float cuTop = max(saturate(w.r * 1.25), 0.3);   // W5a: small cells are low puffs, not 150 m pancakes
-float pCu = smoothstep(0.0, 0.07, hCu) * (1.0 - smoothstep(0.3 * cuTop, cuTop, hCu));
+// C1 (round 12): a dome, not a cone. The top rose linearly with the cell's presence, which falls off toward its edge, so
+// every cell came out as a pointed cone; a low power (0.3) keeps the sides steep and the top round.
+float cuTop = max(pow(saturate(w.r * 1.25), 0.3), 0.3);   // W5a: small cells are low puffs, not 150 m pancakes
+// C1: one flat base for every cell (the day's condensation level), softened over its lowest 12%; the top fades over its
+// last quarter only (fading over 70% of the height tapered every tower).
+float pCu = smoothstep(0.0, 0.12, hCu) * (1.0 - smoothstep(0.75 * cuTop, cuTop, hCu));
 float pSt = smoothstep(0.0, 0.12, hSt) * (1.0 - smoothstep(0.7, 1.0, hSt));
 float pCi = smoothstep(0.0, 0.3, hCi) * (1.0 - smoothstep(0.6, 1.0, hCi));
 // Storm structure along the front (D: metres ahead of the outflow).
@@ -1901,10 +1905,13 @@ AO = 1.0;
     float3 qw = q + float3(cw * 1.3, 0.0) + float3(0.0, 0.0, 0.2 * cw.x);
     // Vertically the shape varies 2.4 times faster than across (a cloud is a few hundred metres to 2 km deep): at one rate a
     // lone peak of the noise stood as a thin column under thin cloud.
-    float4 sh = Shape.SampleLevel(ShapeSampler, qw * float3(0.25, 0.25, 0.6), shapeMip);
+    // C1 (round 12: "stacked pancakes, contour lines"): 2 times, not 2.4: squeezed that hard the noise's own layers
+    // stacked into flat plates through every tower (at 1.4 they stood as columns instead).
+    float4 sh = Shape.SampleLevel(ShapeSampler, qw * float3(0.25, 0.25, 0.5), shapeMip);
     float lowFbm = sh.g * 0.5 + sh.b * 0.3 + sh.a * 0.2;     // the 500 m and 250 m octaves carry the billows
-    // Perlin-Worley remapped by the low Worley octaves (Nubis): billows packed into cells, 0..1.
-    float base = saturate((sh.r - (lowFbm - 1.0)) / (2.0 - lowFbm) * 1.9 - 0.75);
+    // Perlin-Worley remapped by the low Worley octaves (Nubis): billows packed into cells, 0..1. C1: a little gentler (at 1.9 the
+    // remap clipped into flat plateaus whose rims read as contour lines; at 1.5 the billows went smooth as balloons).
+    float base = saturate((sh.r - (lowFbm - 1.0)) / (2.0 - lowFbm) * 1.75 - 0.62);
     float3 dq = qw * 1.5 + float3(0.0, 0.0, -0.4 * q.z);
     float3 dt = Detail.SampleLevel(DetailSampler, dq, detailMip).rgb;
     float hf = dt.r * 0.625 + dt.g * 0.25 + dt.b * 0.125;
@@ -1914,24 +1921,29 @@ AO = 1.0;
     // base), then eroded: wispy, torn edges low down, billowed ones higher up.
     // Coverage remap (Nubis): the billow noise's iso-surface is the cloud's outline, so cells are cauliflowered all round
     // rather than the map's footprint extruded; coverage narrows toward the top.
-    float covCu = saturate(cu * (1.0 - 0.45 * saturate(hCu)));
+    // C1: the cumulus height profile (Nubis): full coverage over the flat base and up the sides, narrowing near the top so towers
+    // round off into domes instead of standing as extruded footprints.
+    float covCu = saturate(cu * (1.0 - 0.35 * smoothstep(0.5, 1.0, saturate(hCu / max(cuTop, 0.3)))));
     // W5a: billows scale with the cloud. The weather map's cells come in many sizes (FWeatherMap::Paint) and a small cell
     // never builds past a low presence: it takes billows at twice the frequency, a big tower the full-size ones (the
     // same noise blended, never a warped frequency).
     float baseCu = base;
     [branch] if (covCu > 0.001 && w.r < 0.9)
     {
-        float4 sh2 = Shape.SampleLevel(ShapeSampler, qw * float3(0.5, 0.5, 1.2) + 0.37, min(shapeMip + 1.0, 6.0));
+        float4 sh2 = Shape.SampleLevel(ShapeSampler, qw * float3(0.5, 0.5, 1.0) + 0.37, min(shapeMip + 1.0, 6.0));
         float low2 = sh2.g * 0.5 + sh2.b * 0.3 + sh2.a * 0.2;
-        float base2 = saturate((sh2.r - (low2 - 1.0)) / (2.0 - low2) * 1.9 - 0.75);
+        float base2 = saturate((sh2.r - (low2 - 1.0)) / (2.0 - low2) * 1.75 - 0.62);
         baseCu = lerp(base2, base, smoothstep(0.35, 0.9, w.r));
     }
     float shapeCu = saturate((baseCu - (1.0 - covCu)) / max(covCu, 0.08)) * step(0.001, covCu);
     // Graphics G8: eroded by the detail's coarse octaves (the 16- and 32-cell ones speckled the edges), and a crisper
     // ramp from edge to body: fair cumulus has a hard, sunlit outline, not a feathered, painted one.
     float hfCu = dt.r * 0.8 + dt.g * 0.2;
-    float ero = lerp(hfCu, 1.0 - hfCu, saturate(hCu * 3.0)) * 0.4;
-    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * 2.8) * 1.6;
+    // C1: the billows build upward (Nubis): next to nothing eaten from the base (one flat base for every cell), wispy
+    // erosion just above it, billowed (inverted Worley) higher up where the bubbles rise.
+    float ero = lerp(0.15 * hfCu, 0.55 * (1.0 - hfCu), smoothstep(0.05, 0.45, hCu));
+    // Crisp, sunlit tops and soft bases: the edge-to-body ramp steepens with height.
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * lerp(2.5, 6.0, saturate(hCu * 1.5))) * 1.6;
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
