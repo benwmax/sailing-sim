@@ -85,6 +85,7 @@ struct SAILINGSIM_API FCrewGround
 	double HullDepth = 0.25;    // m, FBoatModel::HullDepth
 	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
 	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
+	bool bTravelerBridge = true; // the drawn model has the cockpit's traveler bridge (the light J/22; the hero's track is on the sole)
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */
@@ -100,9 +101,9 @@ struct SAILINGSIM_API FCrewCockpitWell
 };
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out);
 /** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */
-SAILINGSIM_API double CrewFloorZ(const Sailing::FBoatConfig& Config, double X, double Y);
+SAILINGSIM_API double CrewFloorZ(const Sailing::FBoatConfig& Config, double X, double Y, bool bTravelerBridge = true);
 /** Is a point (m, boat frame) inside the solid boat: under the deck, inside the topsides, not in the cockpit well? */
-SAILINGSIM_API bool CrewInsideBoat(const Sailing::FBoatConfig& Config, double HullDepth, const FVector& P);
+SAILINGSIM_API bool CrewInsideBoat(const Sailing::FBoatConfig& Config, double HullDepth, const FVector& P, bool bTravelerBridge = true);
 
 struct SAILINGSIM_API FCrewHands
 {

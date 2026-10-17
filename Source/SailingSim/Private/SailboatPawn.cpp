@@ -381,6 +381,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
+	bModelTravelerBridge = Model.bTravelerBridge;
 	if (Model.Hull)
 	{
 		HullMesh->ClearAllMeshSections();
@@ -497,10 +498,11 @@ void ASailboatPawn::RebuildBoatVisuals()
 		break;
 	}
 
-	// Outboards hang on the transom (inboards and saildrives are out of sight).
+	// Outboards hang on the transom (inboards and saildrives are out of sight); a model that carries its own draws none
+	// (round 12: the grey box read as a placeholder).
 	for (const FEngineDef& E : C.Engines)
 	{
-		if (E.Position.X < Main.SternX + 0.2)
+		if (E.Position.X < Main.SternX + 0.2 && !(ModelHull && Model.bOwnOutboard))
 		{
 			AddBoatPart(CubeMesh, ToCm(E.Position.X - 0.1, E.Position.Y, E.Position.Z + 0.55), FVector(0.3, 0.25, 1.1) * CmPerMeter, Grey);
 		}

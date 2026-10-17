@@ -127,9 +127,13 @@ namespace
 ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) const
 {
 	FBoatModelMeshes M;
-	// Boats 10: -SailingJ22Hero draws the script-built hero J/22 (Inputs/j22-hero, imported to /Game/Boats/J22Hero by
-	// scripts/import_j22_hero.py) in the J/22's place, with the same sockets, for side-by-side stills.
-	if (Type == EBoatType::J22 && FParse::Param(FCommandLine::Get(), TEXT("SailingJ22Hero")))
+	// Boats 10: the script-built hero J/22 (Inputs/j22-hero, imported to /Game/Boats/J22Hero by scripts/import_j22_hero.py)
+	// in the J/22's place, with the same sockets. Since round 12 it is the player's boat (the blind test caught the older
+	// model's lifelines, grey box outboard and flat surfaces); AI boats and the ghost keep the light model and their
+	// liveries. -SailingClassicJ22 compares with the older model; -SailingJ22Hero puts the hero on AI boats too.
+	const bool bHero = Type == EBoatType::J22 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicJ22"))
+		&& ((!bTrafficBoat && !bGhost) || FParse::Param(FCommandLine::Get(), TEXT("SailingJ22Hero")));
+	if (bHero)
 	{
 		auto LoadHero = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/J22Hero/SM_J22H_%s.SM_J22H_%s"), Part, Part)); };
 		M.Hull = LoadHero(TEXT("Hull"));
@@ -140,6 +144,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.Interior = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Interior.SM_J22H_Interior"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		// and its glass: the smoked portlights and fore hatch over the cabin, and the bilge water (translucent, M_J22HeroGlass).
 		M.Glass = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Glass.SM_J22H_Glass"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		M.bOwnOutboard = true; // on its bracket on the port quarter (build_j22_hero.py)
+		M.bTravelerBridge = false; // its traveler track lies on the cockpit sole
 		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
 		M = FBoatModelMeshes();
 	}
@@ -149,6 +155,7 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.Mast = J22MastMesh;
 		M.Boom = J22BoomMesh;
 		M.Rudder = J22RudderMesh;
+		M.bOwnOutboard = J22HullMesh->FindSocket(TEXT("Outboard")) != nullptr; // build_j22.py draws one since round 12
 		return M;
 	}
 	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class.
@@ -696,6 +703,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		In.Seed = uint32(I) * 977u + (bTrafficBoat ? GetUniqueID() : 0u);
 		In.bReact = !FParse::Param(FCommandLine::Get(), TEXT("SailingCrewStill"));
 		In.bClips = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoCrewClips"));
+		In.bTravelerBridge = bModelTravelerBridge;
 		// The handholds and braces: the model's sockets (J22H_sockets.json names) where it has them, else from the geometry.
 		CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
 		for (int32 Sd = 0; Sd < 2; ++Sd)

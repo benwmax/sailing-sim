@@ -231,7 +231,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   shore tripod).
 - Boat models: below the waterline the J/22 model is the physics hull surface itself (`FHullShape` at the computed canoe
   depth), so a hull shape change in the physics means rerunning `make-boat-models.sh`. `ASailboatPawn::ModelMeshesFor`
-  picks a class's meshes (only the J/22 so far); the rig lines, traveler car, mast bend and wet line are in
+  picks a class's meshes: the player's J/22 is the hero (`/Game/Boats/J22Hero`) since round 12, AI boats and the ghost
+  keep `SM_J22_*` and their liveries (`-SailingClassicJ22` compares, `-SailingJ22Hero` puts the hero on AI boats too); a
+  model that carries its own outboard sets `bOwnOutboard` (no stand-in box); the rig lines, traveler car, mast bend and wet line are in
   `BoatModelVisuals.cpp`. `MI_Boat_*` instances are updated in place, never deleted (the meshes reference them).
   `line` is a reserved word in HLSL custom nodes; Substrate's slab wants a tangent-space normal (the meshes carry
   box-projected UVs for their tangent frame).
