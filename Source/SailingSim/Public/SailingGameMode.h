@@ -162,6 +162,8 @@ private:
 	float RecordSeconds = 0.f;
 	TArray<TPair<float, FString>> ExecAt;   // -SailingExecAt: (seconds, console command)
 	int32 NextExecAt = 0;
+	float NextPosLog = 0.f;   // -SailingBenchTrace: the player's position once a minute (soaks: is the boat parked?)
+	FVector LastPosLog = FVector::ZeroVector;
 	float RecordInterval = 0.1f;
 	float NextFrameTime = 0.f;
 	int32 FrameIndex = 0;
