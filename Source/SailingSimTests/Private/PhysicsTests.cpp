@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "PolarReference.h"
+#include "PortableRandom.h"
 #include "WorldClock.h"
 #include "Scenarios.h"
 #include "Wind.h"
@@ -424,6 +425,52 @@ bool FSailingWorldClockTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("A boat stepping every third frame is on the clock"), B.GetState().Time, Clock.GetTime(), 1e-6);
 	Clock.SetTime(1000.0);
 	TestEqual(TEXT("SetTime puts the clock there"), Clock.GetTime(), 1000.0);
+	return true;
+}
+
+// Online readiness (rule 5): the seeded generator gives the same numbers on every machine. The expected values come from
+// the reference implementation (PCG32 seeded through SplitMix64); a change here changes every seeded sea and fleet.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPortableRandomTest, "SailingSim.Physics.PortableRandom", PhysicsTestFlags)
+bool FSailingPortableRandomTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Hash64(0)"), Hash64(0), uint64(0xE220A8397B1DCDAFull));
+	TestEqual(TEXT("Hash64(12345)"), Hash64(12345), uint64(0x22118258A9D111A0ull));
+	{
+		FPortableRandom R(2026);
+		const uint32 Expected[] = { 1642299111u, 3875955661u, 820045607u, 2198561930u };
+		for (uint32 E : Expected) TestEqual(TEXT("PCG32 sequence (seed 2026)"), R.Next(), E);
+	}
+	{
+		FPortableRandom R(2026);
+		TestEqual(TEXT("Uniform01 is exact"), R.Uniform01(), 0.3823775592964238);
+		TestEqual(TEXT("Uniform01 is exact (second)"), R.Uniform01(), 0.19093174662252244);
+	}
+	{
+		FPortableRandom R(7);
+		const int32 Expected[] = { 9, 3, 2, 6, 9, 7, 8, 7 };
+		for (int32 E : Expected) TestEqual(TEXT("UniformInt(0, 9) sequence (seed 7)"), R.UniformInt(0, 9), E);
+	}
+	// Distributions: bounds, and the moments of 100,000 draws.
+	FPortableRandom R(99);
+	double Sum = 0.0, SumSq = 0.0, Min = 1.0, Max = 0.0;
+	int32 Counts[6] = { 0 };
+	for (int32 I = 0; I < 100000; ++I)
+	{
+		const double U = R.Uniform01();
+		Min = FMath::Min(Min, U);
+		Max = FMath::Max(Max, U);
+		++Counts[R.UniformInt(0, 5)];
+		const double G = R.Gaussian();
+		Sum += G;
+		SumSq += G * G;
+	}
+	TestTrue(TEXT("Uniform01 stays in [0, 1)"), Min >= 0.0 && Max < 1.0);
+	for (int32 C : Counts) TestTrue(TEXT("UniformInt is flat (each of six within 2% of a sixth)"), FMath::Abs(C / 100000.0 - 1.0 / 6.0) < 0.02 / 6.0);
+	TestTrue(TEXT("Gaussian mean near 0"), FMath::Abs(Sum / 100000.0) < 0.01);
+	TestTrue(TEXT("Gaussian variance near 1"), FMath::Abs(SumSq / 100000.0 - 1.0) < 0.02);
+	TestEqual(TEXT("UniformInt with an empty range returns Lo"), R.UniformInt(4, 4), 4);
+	TestEqual(TEXT("Same seed, same string hash"), HashString("J/22 1288"), HashString("J/22 1288"));
+	TestNotEqual(TEXT("Different strings, different hashes"), HashString("J/22 1288"), HashString("J/22 1289"));
 	return true;
 }
 

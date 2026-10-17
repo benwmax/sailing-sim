@@ -104,7 +104,7 @@ int32 ATrafficManager::AddSailboat(EBoatType Type, double X, double Y, double He
 	ASailboatPawn* Pawn = GetWorld()->SpawnActorDeferred<ASailboatPawn>(ASailboatPawn::StaticClass(), FTransform(FVector(X, Y, 0.0) * 100.0), nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (!Pawn) return -1;
 	Pawn->bTrafficBoat = true;
-	Pawn->TrafficHullColor = HullColors[std::uniform_int_distribution<int>(0, UE_ARRAY_COUNT(HullColors) - 1)(Rng)];
+	Pawn->TrafficHullColor = HullColors[Rng.UniformInt(0, UE_ARRAY_COUNT(HullColors) - 1)];
 	Pawn->AutoPossessPlayer = EAutoReceiveInput::Disabled;
 	Pawn->AutoPossessAI = EAutoPossessAI::Disabled;
 	Pawn->FinishSpawning(FTransform(FVector(X, Y, 0.0) * 100.0));
@@ -165,14 +165,14 @@ void ATrafficManager::Populate(int32 Level)
 	const FLakeData& Lake = GM->GetLake();
 	const FLakeTerrain* T = Lake.IsLoaded() ? &Lake.Terrain : nullptr;
 	const FVector2D C = PlayerPosition();
-	std::uniform_real_distribution<double> U(0.0, 1.0);
+	auto U = [this]() { return Rng.Uniform01(); };
 	auto Deep = [&](double Radius, double MinDepth, double& X, double& Y)
 	{
 		for (int32 Try = 0; Try < 20; ++Try)
 		{
 			if (T ? TrafficRoutes::DeepPoint(*T, Rng, C.X, C.Y, Radius, MinDepth, X, Y) : true)
 			{
-				if (!T) { const double R = Radius * FMath::Sqrt(U(Rng)), A = 2.0 * PI * U(Rng); X = C.X + R * FMath::Cos(A); Y = C.Y + R * FMath::Sin(A); }
+				if (!T) { const double R = Radius * FMath::Sqrt(U()), A = 2.0 * PI * U(); X = C.X + R * FMath::Cos(A); Y = C.Y + R * FMath::Sin(A); }
 				if (FVector2D::Distance(FVector2D(X, Y), C) > 250.0) return true;
 			}
 		}
@@ -182,7 +182,7 @@ void ATrafficManager::Populate(int32 Level)
 	{
 		if (T) return TrafficRoutes::RandomLoop(*T, Rng, X, Y, Radius, MinDepth, Count);
 		std::vector<std::pair<double, double>> R;
-		for (int32 I = 0; I < Count; ++I) R.push_back({ C.X + (U(Rng) - 0.5) * 2.0 * Radius, C.Y + (U(Rng) - 0.5) * 2.0 * Radius });
+		for (int32 I = 0; I < Count; ++I) R.push_back({ C.X + (U() - 0.5) * 2.0 * Radius, C.Y + (U() - 0.5) * 2.0 * Radius });
 		R.push_back({ X, Y });
 		return R;
 	};
@@ -190,7 +190,7 @@ void ATrafficManager::Populate(int32 Level)
 
 	const int32 Sails = Level == 1 ? 3 : 6, Powers = Level == 1 ? 2 : 4;
 	const EBoatType Types[] = { EBoatType::J22, EBoatType::Catalina22, EBoatType::Catalina30, EBoatType::Hobie16, EBoatType::J22, EBoatType::Catalina30 };
-	int32 NameIndex = std::uniform_int_distribution<int>(0, UE_ARRAY_COUNT(SailNames) - 1)(Rng);
+	int32 NameIndex = Rng.UniformInt(0, UE_ARRAY_COUNT(SailNames) - 1);
 	for (int32 I = 0; I < Sails; ++I)
 	{
 		const EBoatType Type = Types[I % UE_ARRAY_COUNT(Types)];
@@ -206,7 +206,7 @@ void ATrafficManager::Populate(int32 Level)
 		if (!Deep(2500.0, 1.5, X, Y)) continue;
 		auto Route = Loop(X, Y, 3000.0, 1.5, 5);
 		const int32 Id = AddPower(ETrafficKind::Powerboat, X, Y, HeadingTo(X, Y, Route), Route, PowerNames[I % UE_ARRAY_COUNT(PowerNames)]);
-		if (FTrafficVessel* V = Sim.Find(Id)) V->CruiseFraction = 0.5 + 0.5 * U(Rng);
+		if (FTrafficVessel* V = Sim.Find(Id)) V->CruiseFraction = 0.5 + 0.5 * U();
 	}
 	if (!Lake.IsTidal() || !T) return;
 
@@ -238,7 +238,7 @@ void ATrafficManager::Populate(int32 Level)
 		TArray<int32> Candidates;
 		for (int32 I = 0; I + 1 < int32(Loop2.size()); ++I)
 			if (FVector2D::Distance(FVector2D(Loop2[I].first, Loop2[I].second), C) > MinDist && FVector2D::Distance(FVector2D(Loop2[I].first, Loop2[I].second), C) < MinDist + 8000.0) Candidates.Add(I);
-		return Candidates.Num() ? Candidates[std::uniform_int_distribution<int>(0, Candidates.Num() - 1)(Rng)] : 0;
+		return Candidates.Num() ? Candidates[Rng.UniformInt(0, Candidates.Num() - 1)] : 0;
 	};
 	const int32 Ships = Level == 1 ? 1 : 2;
 	for (int32 I = 0; I < Ships + 1; ++I)
