@@ -329,3 +329,86 @@ a 2 to 4 fps difference is noise.
 Files (`soak/`): `gap-{main1,main2,main3,e63a1,e63a2,e63a3,main4}-2026-10-17.bench.json`, and
 `gap-buckets-2026-10-17.txt` (the render-thread, GPU and VSM columns of the CSV profile, median of three runs per build,
 main minus e63ad57e).
+
+### The parked hull's shadow, tested (Mac, main beca766f, Oct 17 2026)
+
+The brief: keep the moored boat's shadow pages cached while she only bobs. Two experiments sat behind one switch in one
+Development package (`-SailingMooredHold=0|1|2`), so every state ran from the same build in one session, interleaved. A
+small pure-logic hold (`FMooredPoseHold`) anchored the drawn pose while the boat was moored and stayed within 2 cm and
+0.2 deg of it, then took the anchor again from where she was:
+
+- **A (mode 1):** while held, don't move the actor (hull, rig, crew, camera) and don't rebuild the rig lines.
+- **B (mode 2):** keep moving the boat, but make every one of her non-skinned, non-cloth primitives
+  `ShadowCacheInvalidationBehavior::Static` while moored, with one `MarkRenderStateDirty` (one redraw of her shadow) on each
+  re-anchor.
+
+Probes: `-SailingMooredHoldScale=1e6` freezes the anchor (the drawn boat never moves again, or her shadow is never
+redrawn), mode 9 hides the player's boat entirely, `-SailingTerrainRigid` puts the terrain chunks on `Rigid`. Same parked
+High probe as #128 (`-SailingQuality=High -SailingKeepStart -SailingMooring -SailingBenchTrace -csvCategories=VSM
+-csvCaptureFrames=40000 -SailingExecAt=85:CsvProfile+Stop`, `bench-mac.sh 90`). fps, p99, render thread and GPU are from
+bench.json. The rest are CSV-profile means after the first 300 frames. Run order is the table's order, top to bottom.
+
+| parked High, 90 s | fps | p99 ms | RT ms | GPU ms | RT waiting on visibility ms | VSM pages cleared / frame | dynamic invalidated | re-anchors in 90 s |
+|---|---|---|---|---|---|---|---|---|
+| main (hold off) 1 | 49.2 | 23.36 | 20.26 | 19.69 | 15.54 | 879 | 882 | |
+| A 1 | 49.7 | 23.34 | 20.05 | 19.48 | 15.32 | 865 | 882 | 3883 |
+| B 1 | 50.7 | 23.15 | 19.65 | 19.08 | 14.72 | 886 | 877 | 3981 |
+| B, boat's shadow frozen | 51.5 | 22.18 | 19.37 | 18.82 | 14.66 | 886 | 902 | 0 |
+| A, whole boat frozen | 52.3 | 21.46 | 19.06 | 18.53 | 14.50 | 919 | 907 | 0 |
+| A frozen + `r.Shadow.Virtual.Cache.DeformableMeshesInvalidate 0` | 52.3 | 21.57 | 19.07 | 18.54 | 14.71 | 918 | 908 | 0 |
+| main + `DeformableMeshesInvalidate 0` | 50.8 | 22.42 | 19.64 | 19.09 | 15.01 | 885 | 904 | |
+| main + `-SailingNoTreeWind` | 50.7 | 23.48 | 19.66 | 19.09 | 14.99 | 876 | 887 | |
+| player's boat hidden | 50.8 | 22.71 | 19.61 | 19.10 | 15.10 | 920 | 947 | |
+| main, moored in open water (`-SailingStartAt=0,-1500,180`) | 50.3 | 22.20 | 19.83 | 19.35 | 15.03 | **83** | 1016 | |
+| main, sailing (no `-SailingMooring`) | 50.5 | 23.20 | 19.72 | 19.16 | 15.09 | 504 | 817 | |
+| main 2 | 49.2 | 23.54 | 20.24 | 19.68 | 15.57 | 879 | 882 | |
+| A 2 | 49.2 | 23.56 | 20.28 | 19.72 | 15.62 | 880 | 880 | 3830 |
+| B 2 | 50.8 | 23.21 | 19.62 | 19.04 | 14.73 | 891 | 870 | 3987 |
+| B, boat's shadow frozen 2 | 49.8 | 23.53 | 20.04 | 19.47 | 15.24 | 868 | 883 | 0 |
+| main 3 | 49.2 | 23.66 | 20.27 | 19.71 | 13.01 | 878 | 885 | |
+| A, whole boat frozen 2 | 49.2 | 23.22 | 20.26 | 19.71 | 15.55 | 925 | 899 | 0 |
+| main 4 | 49.0 | 23.43 | 20.33 | 19.78 | 15.77 | 874 | 887 | |
+| main 5 | 49.2 | 23.28 | 20.26 | 19.69 | 15.42 | 874 | 887 | |
+| terrain `Rigid` 1 | 49.7 | 23.32 | 20.08 | 19.51 | 15.28 | 866 | 880 | |
+| main 6 | 49.1 | 23.42 | 20.31 | 19.73 | 15.47 | 876 | 886 | |
+| terrain `Rigid` 2 | 50.1 | 23.43 | 19.90 | 19.34 | 14.93 | 861 | 866 | |
+
+**Neither A nor B holds the pages, and the boat isn't the caster.** Nothing ships.
+
+- **She doesn't bob, she sails.** On `-SailingMooring` the J/22 sails round her buoy at about 5 kn with the sails up (the
+  bench screenshot reads 5.1 kn on a beam reach). She moves 3.7 to 4.2 cm and turns 0.22 to 0.25 deg per frame (logged
+  means), so the 2 cm and 0.2 deg hold re-anchors on 43 frames a second out of 50. As a hold, A and B do nothing here.
+- **Freezing the boat outright changes nothing either.** With the anchor never taken again (no transform, rig-line or
+  shadow update for the whole run), with deformable-mesh invalidation off on top, or with the player's boat hidden, the
+  cache still clears 870 to 925 pages a frame. #121's and #124's probes (crew stilled, sails struck) were right that those
+  parts weren't the cause. The inference that the hull was is wrong.
+- **The cleared pages belong to the shore.** Moored the same way 1.5 km off the shore, she clears **83** pages a frame
+  (with the same 1000 dynamic invalidations). Sailing off the start clears 504. The `dirty` and `invalid` visualisations
+  (`r.Shadow.Virtual.Visualize dirty|invalid` with `ShowFlag.VisualizeVirtualShadowMap 1`, below) mark the boat and the
+  club's shore and breakwater to the left. The dynamic invalidations are as many in open water, so something invalidates
+  every frame wherever the camera is. Those pages only cost clearing where shore receivers have them mapped. The casters
+  ruled out: the player's boat, tree sway (the trees are already `Static`, and `-SailingNoTreeWind` changes nothing), the
+  terrain's curvature WPO (`Rigid` chunks: 861 to 866 pages), and the water (it casts no shadow). The marina, bridges and
+  landmarks are `Static` already.
+- **And the pages aren't the frame.** Open water at 83 pages runs 19.35 ms of GPU, against 19.69 to 19.78 at the shore.
+  So the 800 pages are worth 0.3 to 0.4 ms at most. Parked against sailing in this session is 0.5 ms (19.69 against 19.16),
+  not the 3 fps of the earlier cross-session comparison.
+- **B's 0.6 ms is not a win.** Both B runs read 19.04 and 19.08 ms against main's 19.68 to 19.78. But B clears the same
+  pages, and four runs with nothing that could help (main with `DeformableMeshesInvalidate 0`, `-SailingNoTreeWind`, the
+  hidden boat, the first B-frozen) land on the same 19.04 to 19.10. The second B-frozen and the second A-frozen land back at 19.47 and
+  19.71. GPU times on this Mac fall in two clusters about 0.6 ms apart from run to run. Without a mechanism, and under the
+  brief's bar (1 ms of GPU or 2 fps), I didn't ship B.
+
+![VSM "invalid" view, parked](parked-vsm-invalid-2026-10-17.jpg)
+
+*The `invalid` view, parked on High: green pages are invalidated this frame, on the boat and on the shore and breakwater
+to the left.*
+
+**Next, if the parked view is still worth chasing:** name the per-frame invalidator that is everywhere. It gives about
+1000 dynamic invalidations a frame in open water too, so it is not a shore object. The `casters` view showed no tinted
+objects at this camera. A `stat` or Insights capture listing the primitives invalidated per frame (the cache manager's
+`AddInvalidation` callers) is the direct way. The prize is at most about 0.4 ms parked near the shore.
+
+Files (`soak/`): `hullhold-{m0a,m0b,m0c,m0e,m1a,m1b,m2a,m2b,f1,f1b,f2,f2b,h9,open0,sail0,tra,trb}-2026-10-17.bench.json`
+(m0 main, m1 A, m2 B, f frozen, h9 hidden, tr terrain `Rigid`), and `hullhold-csvmeans-2026-10-17.txt` (the VSM, GPU and
+render-thread CSV means of all 22 runs).
