@@ -1091,7 +1091,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	case 2:
 		Add(SNew(SSailSlider).Label(TEXT("Master volume")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->Volume * 100.f; })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->Volume * 100.f); }).OnChanged_Lambda([S](float V) { S->Volume = V / 100.f; S->Save(); }));
-		Help = TEXT("Every sound is synthesised from the wind, water and boat, with a few recorded samples (Audio/Samples/CREDITS.md).");
+		// "Larus atricilla" is CC BY 3.0: the game must credit it (docs/licences, CREDITS.md).
+		Help = TEXT("Every sound is synthesised from the wind, water and boat, with a few recorded samples from Wikimedia Commons: "
+			"\"Larus atricilla\" by Tony Phillips (CC BY 3.0); \"Gull 1\" by avphillips and \"Rain on a veranda\" by ezwa (public domain).");
 		break;
 	case 3:
 		Section(TEXT("Sailing"));
