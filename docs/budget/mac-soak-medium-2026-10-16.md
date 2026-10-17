@@ -52,14 +52,15 @@ A/B, 3 min each on the same package (`soak/mac-medium-2026-10-16.drawevents-ab.c
 So the 3.1 GB/h is a Development-only artefact. A player's Shipping build should grow far less. What remains with draw
 events off is Unreal's own heap at about 0.4 GB/h, which still wants its own soak. The fps fade (84.6 to 77.1) may be
 partly the leak too (the allocator and the pool both get bigger), so the p99 drift is an upper bound until a soak runs
-without draw events.
+without draw events (the High soak below did: the drift stays).
 
 ## What a player's build would grow
 
 Shipping and Test builds don't enable Metal draw events (only Debug and Development turn them on at startup), so the
 3.1 GB/h of this soak is a Development-only artefact. With draw events off, growth doesn't stop. The 1 h High soak with
 `-ExecCmds=ToggleDrawEvents` (`mac-soak-high-2026-10-16.md`) still grows **about 1.4 GB/h** (`footprint`: Unreal's heap
-+0.86 GB/h, system malloc +0.52 GB/h; RSS fit +1.46 GB/h; GPU memory flat), and its p99 doesn't drift (-1.0 ms/h). That
++0.86 GB/h, system malloc +0.52 GB/h; RSS fit +1.46 GB/h; GPU memory flat), and its p99 still drifts +2.0 ms/h after
+warm-up. That
 remaining growth has no known Development-only cause, so expect it in Shipping too, and it is far over the 100 MB/h cap.
 
 ## Files (`docs/budget/soak/`)

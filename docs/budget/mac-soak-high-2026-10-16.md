@@ -21,7 +21,7 @@ build would do. The GPU slices in bench.json still come from `ProfileGPU` after 
 | Whole run (bench.json) | 55.1 fps, p99 21.28 ms, 198,251 frames over 3601 s; GPU 18.62 ms, game 2.44 ms |
 | First 10 min | **55.1 fps, p99 23.41 ms** |
 | Last 10 min | **53.5 fps, p99 21.40 ms** |
-| p99 drift (linear fit of the per-minute p99) | **-1.0 ms/h** (no drift: the first minutes hold the hitches) |
+| p99 drift after the 10 min warm-up | **+2.0 ms/h** (ledger: per-minute samples, `soak_to_ledger.py`); +3.0 ms/h on the raw per-minute p99 (19.5 ms at 10-15 min, 21.7 ms in the last 5). Over the whole run the fit reads -1.0 ms/h only because the first 5 min hold the hitches |
 | Memory growth, `footprint` (10 to 60 min) | **+1385 MB/h**: Unreal's heap (`app-specific tag 2`) 1796 to 2516 MB, +864 MB/h; system malloc (`MALLOC_SMALL`) 322 to 756 MB, +521 MB/h |
 | GPU memory | flat: graphics unmapped 5529 MB throughout, IOAccelerator 1260 to 1267 MB |
 | RSS growth (linear fit after 10 min) | +1455 MB/h (1124 MB at 5 min to 2589 MB at 59 min) |
@@ -42,10 +42,10 @@ the growth above sums the two categories that move.
 | system malloc (`MALLOC_SMALL`) | +2.7 GB/h (`CFString`/`CFData` from the encoder labels) | **+0.52 GB/h** |
 | Unreal's heap (`app-specific tag 2`) | +0.38 GB/h | **+0.86 GB/h** |
 | GPU memory | flat | flat |
-| p99 drift | +1.0 ms/h | -1.0 ms/h |
+| p99 drift after warm-up | +0.7 ms/h (ledger) | **+2.0 ms/h** (ledger) |
 
-Turning draw events off removes most of the malloc growth, and the p99 no longer drifts (the tiers differ, so that part
-is suggestive). What remains is about 1.4 GB/h with no known Development-only cause, so expect it in Shipping until a
+Turning draw events off removes most of the malloc growth. The p99 drift doesn't go away: High still slows by about
+2 ms/h after warm-up, over the 1 ms/h cap, so the fps fade isn't the encoder labels' doing either. What remains is about 1.4 GB/h with no known Development-only cause, so expect it in Shipping until a
 Shipping soak says otherwise. Unreal's heap grows about twice as fast on High as on
 Medium, and system malloc still grows half a gigabyte an hour. Both are well over the ledger's 100 MB/h cap. Next:
 `memreport -full` (or `stat memory` with LLM tags) at 10 and 50 min on a High run to name the heap's tags, and
