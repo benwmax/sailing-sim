@@ -240,7 +240,8 @@ namespace CrewSolver
 	}
 
 	/** Crew pose fix: each foot the stance put inside the boat goes onto the floor above it, or, off the deck's plan
-	 *  (through the topsides), inboard to the well (or the deck) first; the leg reaches it by two-bone IK. */
+	 *  (through the topsides), inboard to the well (or the deck) first; the leg reaches it by two-bone IK. Sitting in a
+	 *  cockpit, a foot hanging over the well's sole goes down onto it. */
 	bool PlantFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& G, TMap<FName, FQuat>& Joints)
 	{
@@ -255,7 +256,24 @@ namespace CrewSolver
 			const int32 Foot = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
 			FVector B[2] = { G.ToBoat.TransformPosition(Sole[0]) * M, G.ToBoat.TransformPosition(Sole[1]) * M };
 			auto Inside = [&](const FVector& P) { return CrewInsideBoat(C, G.HullDepth, P + FVector(0.0, 0.0, 0.015), G.bTravelerBridge); };
-			if (!Inside(B[0]) && !Inside(B[1])) continue;
+			if (!Inside(B[0]) && !Inside(B[1]))
+			{
+				// Round 12, the hero J/22: the helm's forward foot hung in the air where the light model's traveler bridge
+				// had caught it. A foot over the well's sole (not a seat) up to 25 cm above it goes down onto it; the reach
+				// fades out by 32 cm, so a knee drawn up stays up and an idle clip moving the leg does not make it jump.
+				FCrewCockpitWell Well;
+				if (!G.bFeetDown || !CrewCockpitWell(C, Well)) continue;
+				if (FMath::Abs(CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge) - Well.SoleZ) > 0.01
+					|| FMath::Abs(CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge) - Well.SoleZ) > 0.01) continue;
+				const double Hang = FMath::Min(B[0].Z, B[1].Z) - Well.SoleZ;
+				const double DownWeight = FMath::Clamp((0.32 - Hang) / 0.07, 0.0, 1.0);
+				if (Hang < 0.01 || DownWeight <= 0.0) continue;
+				const FVector Down(0.0, 0.0, -(Hang - 0.005) * DownWeight);
+				const FVector Target = G.ToBoat.InverseTransformPosition(G.ToBoat.TransformPosition(CS[Foot].GetLocation()) + Down / M);
+				ReachArm(Ref, CS, D, Foot, Target, Joints);
+				bMoved = true;
+				continue;
+			}
 			FVector Shift = FVector::ZeroVector;
 			const FVector Mid = 0.5 * (B[0] + B[1]);
 			const double Off = -1e8;

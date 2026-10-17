@@ -836,6 +836,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.ToBoat = FTransform(CompRot, Location);
 						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						Ground.bTravelerBridge = bBridge;
+						Ground.bFeetDown = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit;
 						FCrewHands Hands;
 						Hands.Ground = &Ground;
 						FVector Feet[2][2];
@@ -853,6 +854,26 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 							{
 								AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot stands on the floor tilted: heel %.2f m, toe %.2f m"),
 									ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn, S == 0 ? TEXT("left") : TEXT("right"), Heel.Z, Toe.Z));
+							}
+						}
+						// Round 12, the hero J/22: sitting in the cockpit, no foot hangs in the air over the well's sole (the helm's
+						// forward shoe did, toe up, where the light model's traveler bridge had caught it).
+						FCrewCockpitWell Well;
+						if (Ground.bFeetDown && CrewCockpitWell(Cfg, Well))
+						{
+							for (int32 S = 0; S < 2; ++S)
+							{
+								const FVector Heel = (Location + CompRot.RotateVector(Feet[S][0])) / CmPerMeter;
+								const FVector Toe = (Location + CompRot.RotateVector(Feet[S][1])) / CmPerMeter;
+								const bool bOverSole = FMath::Abs(CrewFloorZ(Cfg, Heel.X, Heel.Y, bBridge) - Well.SoleZ) <= 0.01
+									&& FMath::Abs(CrewFloorZ(Cfg, Toe.X, Toe.Y, bBridge) - Well.SoleZ) <= 0.01;
+								const double Hang = FMath::Min(Heel.Z, Toe.Z) - Well.SoleZ;
+								if (bOverSole && Hang > 0.03 && Hang < 0.25)
+								{
+									AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot hangs %.0f cm over the cockpit sole"),
+										ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn,
+										S == 0 ? TEXT("left") : TEXT("right"), Hang * 100.0));
+								}
 							}
 						}
 						for (int32 S = 0; S < 2; ++S)

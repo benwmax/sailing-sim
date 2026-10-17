@@ -86,6 +86,7 @@ struct SAILINGSIM_API FCrewGround
 	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
 	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
 	bool bTravelerBridge = true; // the drawn model has the cockpit's traveler bridge (the light J/22; the hero's track is on the sole)
+	bool bFeetDown = false;     // sitting in a cockpit (Helm, Cockpit): a foot hanging over the well's sole goes down onto it
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */
