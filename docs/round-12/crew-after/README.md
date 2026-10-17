@@ -8,6 +8,12 @@ Recaptured Oct 16 on 71671047 merged with main 88a5cee0: 149/149 tests, crew gat
 
 Recaptured Oct 16 (mainsheet only) on e2ab89a5 (main af8de58c merged): 148/149 tests (only MetaHumanCrew's thumb-wrap check fails: the thumb tip moves 6.1 -> 6.1..6.3 cm from the index on the helm and bow, 6.0 -> 5.7 on the trimmer), crew gate passes on fps. Light SM_J22 model (no `-SailingJ22Hero`). The helm's forward shoe rests on the traveler bridge; the helm's thumb on the tiller extension still stands straight up, not wrapped.
 
+Recaptured Oct 16 (mainsheet only) on main dc61bb94 with the hero model: `r12-j22-mainsheet-hero` is the same row plus
+`-SailingJ22Hero` (clothes rebuilt by `scripts/make-crew-clothes.sh`, `SailingSim.Visual` 32/32). The hero's traveler is a
+floor-level track at x -1.95 with no bridge, and the helm's forward shoe floats: it hangs at about the old bridge's height
+over the footwell, toe up, its shadow falling well clear of it on the sole. So the lift comes from the crew's foot logic,
+not the model's bridge, and with `bTravelerBridge` false (#95) that foot should go down to the sole.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
