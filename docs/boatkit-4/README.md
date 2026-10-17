@@ -28,8 +28,10 @@ materials are shared by every class, so part 2 fixes those too.
 **Geometry** (`build_j22.py`):
 
 - No bow pulpit, stanchions or lifelines, as on the lesson boats.
-- An outboard on a two-position bracket where the physics puts the engine (`FBoatConfig` engine position), with an
-  `Outboard` socket, so the pawn's grey box is skipped (`bOwnOutboard`, part 1).
+- An outboard on a two-position bracket over the physics engine (`FBoatConfig` engine position), with an
+  `Outboard` socket, so the pawn's grey box is skipped (`bOwnOutboard`, part 1). It is drawn with the bracket raised,
+  as the lesson boats sail (`BRACKET_UP` 0.30 m above the physics prop): drawn lowered, the PC's close stills
+  (`light-j22-pc-aft.jpg` on `pc/boatkit-4-still`) showed the cowl at the water, below the transom.
 - Cast fittings instead of plain boxes: rounded blocks (`rbox`) for the chainplates, stem fitting, backstay plate, jib
   car, traveler ends and pintles; horn cleats; rope clutches with a lever; a base pad with bolts under each winch.
 - The tiller is one tube tapering along its length. It was eight capped segments, each a step thinner, and shaded in
