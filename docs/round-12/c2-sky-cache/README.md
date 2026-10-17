@@ -33,9 +33,13 @@ the far band is our own march.
   - **The sun term** uses the atmosphere's own sun illuminance at the clouds' height (`SkyAtmosphereLightIlluminance`),
     reddened as the live clouds see it. With the plain `SunLum` the far clouds came out neutral grey beside warm beige
     live ones.
-  - **The sky term** uses the sky's brightness, half of it in the sun's colour.
-  - Both are scaled 1.0 / 1.1, matched to the live clouds at the seam at lake-towers, 17:00.
-    `-SailingSkyCacheLight=<sun>,<sky>` overrides.
+  - **The sky term** takes its brightness from the sky toward the view and its colour from the scene's sky light
+    (`SkyLightEnvMapSample`, overhead). The sky light reads beige late in the day; as the sun climbs, the colour moves
+    toward the blue sky's.
+  - **The scales,** per tier: High sun 1.45, sky 2.1; Ultra 1.7, 1.2. Ultra's live clouds, with more samples, read
+    brighter. As the sun climbs, both terms ease off: the sun from x1.09 at 25 degrees to x0.86 at 45, the sky from
+    x1.04 to x0.72. These were fitted to the live clouds at two sun heights, lake-towers at 17:00 and Texas City at
+    15:30. `-SailingSkyCacheLight=<sun>,<sky>` overrides the scales.
 - **The live clouds** fade out over 4.5 to 5 km once the first panorama exists (`CacheSplit` in `CLOUD_CODE`), and
   trace only to 5 km from the camera (`TracingMaxDistance`, measured from the point of view).
 - **Storms.** While a storm is in the sky, the cache steps aside and the live clouds take the whole sky back, exactly as
@@ -52,14 +56,32 @@ the far band is our own march.
   show their fuzzy fringe. Texas City shows a few faint step lines inside the largest far cells.
 - **storm-shelf.** The cache is off under the storm, so this one is the same as main. The grain is still there.
 
-## Cost (GPU, 1080p, three ProfileGPU frames after 20 s, cache off / on)
+## How well the far clouds match the live ones
+
+These are cloud pixels in the upper frame, from uncooked runs at High. Mean and 20th percentile are luminance; warmth
+is red minus blue over all cloud pixels; shadow blue is blue minus red in the darkest 30%.
+
+| | Mean | 20th pct | Warmth | Shadow blue |
+|---|---|---|---|---|
+| lake-towers (sun 25 degrees), live | 145 | 106 | 20 | -4 |
+| lake-towers, cache | 139 | 103 | 18 | -10 |
+| Texas City (sun about 45 degrees), live | 149 | 133 | -13 | 21 |
+| Texas City, cache | 168 | 146 | -10 | 19 |
+
+At lake-towers on Ultra the cache read 132 against 136, warmth 17 against 10.
+
+The match is empirical, from two scenes. Texas City still reads about 13% bright, and part of that may be the measure
+itself: the pale haze near the horizon passes the cloud mask. The cache's lighting is its own model, not the engine's,
+so other times of day and other weathers will drift; the scales are where to fix them.
+
+## Cost (GPU, 1080p, three ProfileGPU frames after 20 s, cache off / on, final build)
 
 | View | clouds + fog, ms | GPU frame, ms |
 |---|---|---|
-| lake-towers, High | 0.57 / 0.30 | 4.96 / 4.84 |
-| lake-towers, Ultra | 2.62 / 1.43 | 8.66 / 7.16 |
-| galv-kemah, High | 0.46 / 0.30 | 6.29 / 6.24 |
-| galv-kemah, Ultra | 1.82 / 1.09 | 9.07 / 8.40 |
+| lake-towers, High | 0.57 / 0.29 | 4.99 / 4.89 |
+| lake-towers, Ultra | 2.76 / 1.28 | 8.85 / 7.40 |
+| galv-kemah, High | 0.47 / 0.29 | 6.34 / 6.28 |
+| galv-kemah, Ultra | 1.81 / 1.10 | 9.43 / 8.73 |
 
 The live clouds cost about half, because they march near rays only. The strip draw is about 0.25 ms a frame on the PC
 (the `other` slice). On Ultra the frame is 0.7 to 1.5 ms cheaper; on High it is about even.
@@ -67,6 +89,18 @@ The live clouds cost about half, because they march near rays only. The strip dr
 The Mac's own target is clouds and fog under 3 ms on High; they were 5.0 ms at lake-towers. To be measured there, along
 with the strip's cost on Metal. Two things scale that cost: how many columns are drawn a frame (`kSkyCacheWidth` over 4
 s), and the steps (`kSkyCacheSteps`).
+
+## The settings test before C2 (no PR)
+
+On main, the engine's cloud reconstruction was tried first: the reprojection clamp off, `UvNoiseSampleAcceptanceWeight`
+at 5 instead of 20, and half-resolution tracing. Speckle was measured as the mean difference between each cloud pixel
+and a 2-pixel blur of the image. At lake-towers it read 1.93 on main, 1.89 with the clamp off, 1.94 at weight 5, and
+3.13 at half resolution (the storm-shelf readings went the same way). The grain is the march's own long steps, which
+history can't average on a moving camera, and that is what the cache's short near rays address.
+
+## Tests
+
+155/155 on the PC (the final head with main merged).
 
 ## Not done
 
