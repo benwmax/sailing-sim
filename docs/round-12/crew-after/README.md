@@ -31,6 +31,14 @@ folds over the fist as in `wrap2`. The helm's forward shoe still floats, toe up,
 `r12-j22-mainsheet-hero`, its shadow well clear on the sole: with the bridge gone from `CrewFloorZ` the foot did not come
 down, so its lift comes from elsewhere in the foot placement.
 
+Recaptured Oct 17 (mainsheet only) on #105 94de74d8 (52aef184 with main c12ef2f9 merged): `r12-j22-mainsheet-105`, the
+`hero95` row (plus `-SailingJ22Hero`). 151/151 tests, crew gate passes. The helm's forward shoe still floats, toe up, as in
+`hero95`: the new reach never runs for it. Logged in the game (`-SailingDebugCrew`, a temporary print in `PlantFeet`), that
+foot's heel is at about (-1.87, 0.56, 0.48) m and its toe at (-1.66, 0.53, 0.60), pitched 25-31 deg toe up, and
+`CrewFloorZ` there is 0.47, the seat: the J/22's `CrewCockpitWell` is the light model's plan (`SEAT_W` 0.36 inboard of
+the deck edge less `SIDE_DECK`), so the physics has the heel resting on a seat where the hero has open well over its sole.
+The reach only takes a foot whose floor is the sole, so it skips it.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
