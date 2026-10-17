@@ -725,8 +725,16 @@ float3 col = (IsHull > 0.5 && CD4 >= 0.0) ? float3(CD4, CD5, CD6) : C.rgb;
 float zcm = LP.z;
 float gel = (1.0 - Metal) * saturate(Coat) * (1.0 - saturate(NonSkid));
 float rough = R, coat = Coat;
+// E1 (docs/environment-1): the rest of the berthed boats' wear seed, per instance (custom data 12-15; -1 = none, as on
+// the player's and the AI boats, which keep the look above). Sun 0-1 (a south-west-facing hull bleaches), Wet = metres
+// of stain band above the waterline, Site 0 lake / 1 bay / 2 Gulf, Variant (the boat's cover set).
+bool seeded = CD12 >= 0.0;
+float sunF = seeded ? 0.6 + 0.8 * saturate(CD12) : 1.0;
+float salt = seeded ? step(0.5, CD14) : 0.0;
+// Variant: one gelcoat batch is never quite another's, plus or minus 3%.
+col *= seeded ? 1.0 + gel * 0.03 * (frac(CD15 * 0.618 + 0.31) * 2.0 - 1.0) : 1.0;
 // Oxidation: gelcoat chalks under the Texas sun, decks and tops first: paler, flatter, the clear coat gone.
-float ox = wear.x * gel * (0.55 + 0.45 * up);
+float ox = saturate(wear.x * sunF) * gel * (0.55 + 0.45 * up);
 float lum = dot(col, float3(0.3, 0.59, 0.11));
 // Pale gelcoat goes toward chalk; dark paint (linear polyurethane, slower to chalk) only greys and loses depth.
 float3 chalk = lerp(lerp(float3(lum, lum, lum), float3(0.82, 0.80, 0.74), 0.5) * 1.02, col * 1.25 + lum * 0.35 + 0.01, saturate(1.0 - lum * 2.5));
@@ -786,8 +794,19 @@ float lane = frac(sin(floor(laneX) * 91.7) * 437.5);
 float thin = 1.0 - smoothstep(0.02, 0.10, abs(frac(laneX) - 0.5));
 float runLen = 20.0 + 60.0 * frac(lane * 7.3);
 float top = 60.0 + 40.0 * frac(lane * 3.1);
-float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.93, lane) * thin * saturate((zcm - (top - runLen)) / runLen) * step(zcm, top);
-col = lerp(col, float3(0.30, 0.13, 0.05), 0.5 * rust);
+float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.93 - 0.05 * salt, lane) * thin * saturate((zcm - (top - runLen)) / runLen) * step(zcm, top);
+col = lerp(col, float3(0.30, 0.13, 0.05), 0.5 * rust * (1.0 + 0.6 * salt));
+// E1: the stain band a berthed hull carries above her waterline (Wet metres), heavier on an old, neglected boat: green-brown
+// algae on the lake, a tan band on salt water with a thin crust of dried salt along its top edge.
+float wetCm = seeded ? max(CD13, 0.0) * 100.0 : 0.0;
+float bandTop = wetCm * (0.75 + 0.25 * streak);
+float stainBand = IsHull * step(abs(n.z), 0.8) * smoothstep(-2.0, 1.0, zcm) * (1.0 - smoothstep(bandTop - 3.0, bandTop, zcm)) * step(0.5, wetCm);
+float stainK = stainBand * (age >= 0.0 ? saturate(0.2 + age / 20.0) * (1.0 - 0.7 * saturate(care)) : 0.4) * (0.75 + 0.25 * vn);
+col = lerp(col, lerp(float3(0.16, 0.17, 0.08), float3(0.42, 0.36, 0.24), salt), 0.65 * stainK);
+float crust = salt * IsHull * stainK * exp(-pow((zcm - bandTop + 1.5) / 1.2, 2.0)) * step(0.5, frac(sin(floor(LP.x / 1.5) * 12.7) * 437.5) + 0.3);
+col = lerp(col, float3(0.74, 0.73, 0.69), crust);
+rough = lerp(rough, 0.8, saturate(stainK + crust));
+coat *= 1.0 - 0.7 * saturate(stainK + crust);
 // Graphics G8 (round 8: "the boat is not detailed enough/looks flat"): what a real hull carries that a clean one doesn't.
 // Black streaks: grey runs washed down the topsides from the toe rail and the stanchion bases by rain, many and faint,
 // each its own width and length, strongest just under the sheer and fading toward the waterline.
@@ -879,12 +898,12 @@ def build_boat_surface(name, bend):
         params[pname] = cp
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
-                                "Wear", "IsHull"] + [f"CD{k}" for k in range(7)] + ["CD10", "CD11"],
+                                "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
     connect(scalar(mat, "IsHull", 0.0, -1400, 1550), "", c, "IsHull")
-    for k in list(range(7)) + [10, 11]:   # E1's seed: 10 age, 11 care (FWearSeed::Slot, docs/environment-1)
+    for k in list(range(7)) + list(range(10, 16)):   # E1's seed: 10 age, 11 care, 12 sun, 13 wet, 14 site, 15 variant (FWearSeed, docs/environment-1)
         cd = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 1650 + 60 * k)
         cd.set_editor_property("data_index", k)
         cd.set_editor_property("const_default_value", -1.0)
@@ -2367,7 +2386,8 @@ def world_collection():
     # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
     scalars = list(mpc.get_editor_property("scalar_parameters"))
     # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
-    for name in ("Night", "WaterZ"):
+    # Site (E1): the world's wear site, 0 lake / 1 bay / 2 Gulf (WearSiteFor), for the baked tiles that carry no seed.
+    for name in ("Night", "WaterZ", "Site"):
         if not any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
             n = unreal.CollectionScalarParameter()
             n.set_editor_property("parameter_name", name)
@@ -2531,6 +2551,26 @@ float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(d
 float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
 float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
 float3 bump = float3(0, 0, 0);  // tangent-space slope (x along U, y along V) from the patterns that have relief
+// Environment E1 (docs/environment-1): the structure's seeded wear (FWearSeed), per instance on the private docks and
+// boathouses (custom data 10-15). The baked kit tiles are one mesh per tile with no instance data, so they hash it per
+// 4 m of world plan, with the README's ranges (Fixed water contact) and the world's site from MPC_World.
+float2 wcell = floor(WP.xy / 400.0);
+float wh1 = frac(sin(dot(wcell, float2(12.9898, 78.233))) * 43758.5453);
+float wh2 = frac(sin(dot(wcell, float2(39.346, 11.135))) * 43758.5453);
+float wh3 = frac(sin(dot(wcell, float2(73.156, 52.235))) * 43758.5453);
+bool seeded = CD10 >= 0.0;
+float site = seeded ? CD14 : Site;
+float age = seeded ? CD10 : 25.0 * wh1;
+float care = seeded ? saturate(CD11) : saturate(0.25 + 0.75 * wh2 - 0.3 * age / 25.0);
+float sun = seeded ? saturate(CD12) : 0.5 + 0.3 * (wh3 - 0.5);
+float2 wetRange = site < 0.5 ? float2(0.3, 0.9) : (site < 1.5 ? float2(0.5, 1.0) : float2(0.9, 1.6));
+float wetM = seeded ? max(CD13, 0.0) : lerp(wetRange.x, wetRange.y, frac(wh1 * 7.31));
+float variant = seeded ? CD15 : floor(frac(wh2 * 13.7) * 8.0);
+float salt = step(0.5, site);
+float aged = saturate(age / 25.0);
+float zw = WP.z * 0.01;  // metres above the datum (the pool, or MLLW): fixed structures' bands span the level's range
+// Variant: each structure's own batch of timber or paint, plus or minus 4%.
+c *= 1.0 + 0.04 * (frac(variant * 0.618 + 0.31) * 2.0 - 1.0);
 if (Pattern > 0.5 && Pattern < 1.5)
 {
     // Graphics G8 (round 8: "the pier elements lack textures and details"): weathered wooden decking. 14 cm boards with
@@ -2564,8 +2604,12 @@ if (Pattern > 0.5 && Pattern < 1.5)
     float scr = (1.0 - smoothstep(0.004, 0.009, length(float2((jx - 0.5) * 0.4, (abs(fv - 0.45) - 0.27) * 0.15))));
     // The colour: weathered cedar and pine go silver; some boards are newer (browner), some darker with mildew.
     float3 silver = float3(0.50, 0.48, 0.44), brown = float3(0.46, 0.33, 0.21), dark = float3(0.27, 0.25, 0.22);
-    float3 wood = lerp(silver, brown, saturate(pb * 1.6 - 0.9));
-    wood = lerp(wood, dark, saturate(blot - 0.55) * 0.9 + 0.25 * step(0.85, pb));
+    // E1: timber silvers within a few years, faster facing the sun; an old dock that is kept has had boards replaced
+    // (still brown), a neglected one goes dark with mildew where the sun doesn't reach.
+    float silvering = saturate(age / 4.0) * (0.6 + 0.4 * sun);
+    float replaced = step(1.0 - (0.06 + 0.3 * aged * care), frac(pb * 5.3 + 0.17));
+    float3 wood = lerp(brown, silver, silvering * (1.0 - 0.75 * replaced) * (1.0 - 0.6 * saturate(pb * 1.6 - 0.9)));
+    wood = lerp(wood, dark, saturate(saturate(blot - 0.55) * 0.9 + 0.25 * step(0.85, pb) + 0.45 * (1.0 - sun) * (1.0 - care) * aged));
     wood *= 0.88 + 0.16 * grain - 0.14 * late;
     wood *= (c / max(dot(Color.rgb, float3(0.3, 0.59, 0.11)), 0.05)) * 0.45 + 0.55;
     wood = lerp(wood, wood * 0.35, saturate(ckLine * 0.9 + knot * 0.7));
@@ -2590,16 +2634,25 @@ else if (Pattern > 8.5 && Pattern < 9.5)
     float crack = exp(-pow((frac((a + wob) * 6.3 + colH) - 0.5) * 30.0, 2.0)) * step(0.35, frac(colH * 5.3 + floor((a + wob) * 6.3) * 0.37));
     crack *= 0.6 + 0.4 * sin(z * 2.3 + colH * 9.0);
     // Silver-grey where the sun and rain have had it, the treated brown showing through in places.
-    float3 wood = lerp(float3(0.40, 0.38, 0.34), float3(0.33, 0.24, 0.15), colH * 0.6 * (0.6 + 0.4 * blot));
+    float3 wood = lerp(float3(0.40, 0.38, 0.34), float3(0.33, 0.24, 0.15), colH * 0.6 * (0.6 + 0.4 * blot) * (1.0 - 0.6 * saturate(age / 6.0) * sun));
     wood *= 0.72 + 0.42 * grain;
-    wood = lerp(wood, float3(0.05, 0.045, 0.04), crack * 0.85);
-    float wet = 1.0 - smoothstep(0.2, 0.7, z);         // the splash band above the water
+    crack *= 0.6 + 0.8 * (1.0 - care) * (0.4 + 0.6 * aged);
+    wood = lerp(wood, float3(0.05, 0.045, 0.04), saturate(crack * 0.85));
+    // E1: the stain band reaches Wet metres up (the lake's drawdown ring, the bay's tide and splash, the Gulf's surf),
+    // ragged around the piling.
+    float bandTop = wetM * (0.85 + 0.15 * sin(a * 9.0 + colH * 20.0));
+    float wet = 1.0 - smoothstep(bandTop * 0.45, bandTop, z);
     float under = 1.0 - smoothstep(-0.3, 0.05, z);     // below the water line: algae and mud
     wood = lerp(wood, wood * float3(0.55, 0.52, 0.48), wet * 0.7);
-    wood = lerp(wood, float3(0.07, 0.085, 0.05) * (0.8 + 0.4 * blot), under * 0.9);
+    // Below: fresh water grows green-black algae and mud; salt water a crust of barnacles and oysters, pale and rough,
+    // thickest in the low band.
+    float bq = frac(sin(dot(floor(float2(a, z) / 0.035), float2(12.99, 78.23))) * 43758.5);
+    float barn = salt * (1.0 - smoothstep(-0.6, bandTop * 0.4, z)) * step(0.45 - 0.25 * aged, bq) * (0.6 + 0.4 * blot);
+    wood = lerp(wood, float3(0.07, 0.085, 0.05) * (0.8 + 0.4 * blot), under * 0.9 * (1.0 - 0.5 * salt));
+    wood = lerp(wood, float3(0.56, 0.54, 0.49) * (0.75 + 0.35 * bq), saturate(barn));
     c = wood;
-    r = lerp(r, 0.55, wet * 0.6);
-    bump = float3(0.25 * crack + 0.04 * sin((a + wob) * 140.0), 0, 0);
+    r = lerp(lerp(r, 0.55, wet * 0.6), 0.9, saturate(barn));
+    bump = float3(0.25 * crack + 0.04 * sin((a + wob) * 140.0) + 0.3 * barn * (bq - 0.5), 0.3 * barn * (frac(bq * 7.0) - 0.5), 0);
 }
 else if (Pattern > 9.5 && Pattern < 10.5)
 {
@@ -2608,8 +2661,10 @@ else if (Pattern > 9.5 && Pattern < 10.5)
     float lane = floor(uv.x / 0.09);
     float hl = frac(sin(lane * 41.3) * 4375.5);
     float runs = step(0.6, hl) * exp(-pow((frac(uv.x / 0.09) - 0.5) * 6.0, 2.0)) * saturate(uv.y / 0.6);
+    // E1: polyethylene yellows and chalks with years in the sun; a neglected box greens at the base.
+    c *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.95, 0.82), aged * (0.4 + 0.6 * sun));
     c *= float3(0.95, 0.92, 0.84) * (0.86 + 0.2 * blot);
-    c = lerp(c, c * float3(0.5, 0.52, 0.45), saturate(1.0 - uv.y / 0.3) * 0.75);
+    c = lerp(c, c * float3(0.5, 0.52, 0.45), saturate(saturate(1.0 - uv.y / 0.3) * (0.55 + 0.45 * (1.0 - care))));
     c = lerp(c, c * 0.6, runs * 0.7);
     r = saturate(r + 0.2 * blot);
 }
@@ -2636,15 +2691,22 @@ else if (Pattern > 3.5 && Pattern < 4.5)
     float streak = frac(sin(floor(uv.x * 3.0) * 91.3) * 4375.5) * saturate(1.0 - frac(uv.y * 0.25));
     float form = 1.0 - 0.06 * step(0.97, frac(uv.y / 1.2));
     c *= (0.86 + 0.22 * blot) * (1.0 - 0.12 * streak) * form * (0.97 + 0.06 * n);
+    // E1: bulkheads and bridge piers carry the water's ring up to Wet metres: dark and green on the lake, darker with a
+    // pale salt line at its top on salt water. Buildings stand well above it.
+    float ringTop = wetM * (0.9 + 0.1 * sin(WP.x * 0.013 + WP.y * 0.017));
+    float ringK = (1.0 - smoothstep(ringTop - 0.08, ringTop, zw)) * smoothstep(-1.5, -0.2, zw) * (0.55 + 0.45 * blot) * (0.6 + 0.4 * aged);
+    c = lerp(c, c * lerp(float3(0.55, 0.6, 0.5), float3(0.5, 0.48, 0.45), salt), ringK);
+    c = lerp(c, float3(0.78, 0.77, 0.73), salt * exp(-pow((zw - ringTop + 0.03) / 0.03, 2.0)) * 0.6 * (0.6 + 0.4 * aged));
 }
 else if (Pattern > 4.5 && Pattern < 5.5)
 {
     // Weathered painted steel: blotchy fading, and rust weeping down in streaks from seams.
     float lane = floor(uv.x * 1.5);
     float hl = frac(sin(lane * 91.7) * 4375.5);
-    float weep = step(0.6, hl) * saturate(1.0 - frac(uv.y * 0.35 + hl)) * 0.8;
-    c *= 0.9 + 0.2 * blot;
-    c = lerp(c, float3(0.30, 0.14, 0.06), saturate(weep + 0.25 * saturate(blot - 0.6)) * 0.6);
+    // E1: more seams weep with age and near salt, and the paint fades where it faces the sun.
+    float weep = step(0.6 - 0.2 * salt - 0.2 * aged * (1.0 - care), hl) * saturate(1.0 - frac(uv.y * 0.35 + hl)) * 0.8;
+    c *= (0.9 + 0.2 * blot) * (1.0 + 0.12 * aged * sun);
+    c = lerp(c, float3(0.30, 0.14, 0.06), saturate((weep + 0.25 * saturate(blot - 0.6)) * (0.7 + 0.5 * aged)) * 0.6);
 }
 else if (Pattern > 7.5)
 {
@@ -2730,11 +2792,18 @@ def build_world_surface():
     night.set_editor_property("collection", world_collection())
     night.set_editor_property("parameter_name", "Night")
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site"] + [f"CD{k}" for k in range(10, 16)],
+               unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
                extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
     connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 800), "", c, "WP")
     connect(glow, "", c, "Glow")
     connect(night, "", c, "Night")
+    site = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 900)
+    site.set_editor_property("collection", world_collection())
+    site.set_editor_property("parameter_name", "Site")
+    connect(site, "", c, "Site")
+    for k in range(10, 16):   # E1's wear seed (FWearSeed, docs/environment-1); -1 = none: the baked tiles hash their own
+        connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1100, 1000 + 60 * k, data_index=k, const_default_value=-1.0), "", c, f"CD{k}")
     connect(uv, "", c, "UV")
     connect(color, "RGBA", c, "Color")
     connect(rough, "", c, "Rough")
