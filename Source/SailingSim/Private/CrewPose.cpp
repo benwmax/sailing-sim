@@ -260,11 +260,15 @@ namespace CrewSolver
 			{
 				// Round 12, the hero J/22: the helm's forward foot hung in the air where the light model's traveler bridge
 				// had caught it. A foot over the well's sole (not a seat) up to 25 cm above it goes down onto it; the reach
-				// fades out by 32 cm, so a knee drawn up stays up and an idle clip moving the leg does not make it jump.
+				// fades out by 32 cm, so a knee drawn up stays up and an idle clip moving the leg does not make it jump. Only
+				// a sole within 35 deg of level: a foot hanging pointed down would land on its toe with the heel up (the
+				// ankle's 45 deg in LevelFeet can't lay it flat), so it is left hanging.
 				FCrewCockpitWell Well;
 				if (!G.bFeetDown || !CrewCockpitWell(C, Well)) continue;
 				if (FMath::Abs(CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge) - Well.SoleZ) > 0.01
 					|| FMath::Abs(CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge) - Well.SoleZ) > 0.01) continue;
+				const FVector SoleDir = B[1] - B[0];
+				if (FMath::Abs(SoleDir.Z) > FMath::Sin(FMath::DegreesToRadians(35.0)) * SoleDir.Size()) continue;
 				const double Hang = FMath::Min(B[0].Z, B[1].Z) - Well.SoleZ;
 				const double DownWeight = FMath::Clamp((0.32 - Hang) / 0.07, 0.0, 1.0);
 				if (Hang < 0.01 || DownWeight <= 0.0) continue;

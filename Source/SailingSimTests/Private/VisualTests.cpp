@@ -868,7 +868,9 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 								const bool bOverSole = FMath::Abs(CrewFloorZ(Cfg, Heel.X, Heel.Y, bBridge) - Well.SoleZ) <= 0.01
 									&& FMath::Abs(CrewFloorZ(Cfg, Toe.X, Toe.Y, bBridge) - Well.SoleZ) <= 0.01;
 								const double Hang = FMath::Min(Heel.Z, Toe.Z) - Well.SoleZ;
-								if (bOverSole && Hang > 0.03 && Hang < 0.25)
+								// (A foot hanging pointed down, past 35 deg, is left as it is: on the sole it would stand on its toe.)
+								const bool bNearLevel = FMath::Abs(Toe.Z - Heel.Z) <= FMath::Sin(FMath::DegreesToRadians(35.0)) * FVector::Dist(Heel, Toe);
+								if (bOverSole && bNearLevel && Hang > 0.03 && Hang < 0.25)
 								{
 									AddError(FString::Printf(TEXT("%s, %s crew %d (stance %d, %s tack, hike %.1f): %s foot hangs %.0f cm over the cockpit sole"),
 										ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *B.Name, I, int32(P.Stance), Side > 0.f ? TEXT("starboard") : TEXT("port"), HikeIn,

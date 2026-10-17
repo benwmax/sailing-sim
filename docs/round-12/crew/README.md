@@ -145,3 +145,7 @@ stance puts that foot there, and the planting only ever lifted feet out of the b
 sitting in a cockpit (`FCrewGround::bFeetDown`: Helm and Cockpit), a foot over the well's sole and up to 25 cm above it
 goes down onto it by leg IK, fading out by 32 cm, and is then laid flat as before. Feet over a seat, the bridge or outside
 the well are left alone. `Visual.CrewFeet` checks that no such foot hangs 3 to 25 cm over the sole.
+
+PC run on #105 (148 of 149): on the Catalina 22 the Cockpit crew's feet hang pointed down; reached down, they stood on
+their toes with the heel 9 to 13 cm up, past what `LevelFeet`'s 45 deg can lay flat. The reach now only takes a sole
+within 35 deg of level (the hero helm's toe-up foot is); a foot hanging pointed down stays as it was on main.
