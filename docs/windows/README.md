@@ -126,6 +126,11 @@ A Shipping build saves to `%LOCALAPPDATA%\SailingSim\Saved`, not beside the exec
 `bench.json` are in its `Bench` folder. Shipping writes no log. The package includes CrashReportClient, with no upload
 endpoint (`[CrashReportClient] DataRouterUrl=""` in `DefaultEngine.ini`), so crash reports stay in `Saved\Crashes`.
 
+`[/Script/AndroidFileServerEditor.AndroidFileServerRuntimeSettings] SecurityToken` in `DefaultEngine.ini` is a random
+per-project value that the editor regenerates on start, not a credential to any service. The AndroidFileServer plugin's
+runtime module is built into the Windows game, but all of its code is under `PLATFORM_ANDROID`, so on Windows it does
+nothing and the token is unused (it stays in the staged config like every other `DefaultEngine.ini` value).
+
 Never drive the game by sending keys or mouse clicks to the desktop: the window may not be in front, and the input lands
 in other apps. Use `-SailingUIScript`, which delivers keys through Slate inside the game.
 
