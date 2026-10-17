@@ -24,6 +24,13 @@ Recaptured Oct 17 (mainsheet only) on #100's thumb turn 974b1271 (main 8d5320cb 
 1.1-1.2 cm), crew gate passes. The helm's tiller thumb now folds down over the fist, its tip lying on the outside of the
 index finger just behind the first knuckle; it neither stands up nor pokes into the finger or the extension.
 
+Recaptured Oct 17 (mainsheet only) on #95 030c3d4e (142de9c6 with main d63ab44b merged; hero J/22 the player's default,
+`bTravelerBridge` false): `r12-j22-mainsheet-95` (the plain row) and `r12-j22-mainsheet-hero95` (plus `-SailingJ22Hero`)
+both draw the hero, since the player's boat is the hero now. 149/149 tests, boats gate passes. The helm's tiller thumb
+folds over the fist as in `wrap2`. The helm's forward shoe still floats, toe up, at the same height as in
+`r12-j22-mainsheet-hero`, its shadow well clear on the sole: with the bridge gone from `CrewFloorZ` the foot did not come
+down, so its lift comes from elsewhere in the foot placement.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
