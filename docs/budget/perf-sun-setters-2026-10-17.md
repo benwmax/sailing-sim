@@ -212,3 +212,33 @@ at a TWA where the sails fill and stop flogging. If the cleared pages drop with 
 shadow (a cheaper caster or cached shadow on High); if they stay, it's the hull's motion invalidating its pages.
 
 Files (`soak/`): `vsm-probe-{parked,crewstill,noclips}-2026-10-17.csv-1min.txt`.
+
+### Sails down (`-SailingSailsDown`, main 433b3400 plus the switch)
+
+`-SailingSailsDown` with `-SailingMooring` strikes the player's sails: the main, the jib and their telltales are hidden,
+and the cloth is not stepped. The physics, the boom and the hull's motion on the mooring are unchanged, so the only
+casters taken out are the cloth's. I ran two 5-minute probes, one after the other, on the Development package from this
+branch's `gate.sh --scope boats` run. They used the same arguments as the three probes above (`-SailingQuality=High
+-SailingKeepStart -SailingMooring -SailingBenchTrace -csvCategories=VSM -csvCaptureFrames=40000
+-SailingExecAt=295:CsvProfile+Stop`, `bench-mac.sh 300`). The second run added the switch:
+
+| parked, 5 min | fps | p99 ms | GPU ms | VSM pages cleared / frame, by minute | mean | dynamic invalidated | non-Nanite drawn |
+|---|---|---|---|---|---|---|---|
+| `-SailingMooring` (same build) | 50.7 | 22.11 | 19.13 | 935, 870, 852, 876, 882 | 883 | 1006 | 89.6 |
+| + `-SailingSailsDown` | 51.0 | 22.02 | 19.05 | 939, 873, 856, 880, 889 | 887 | 1008 | 86.2 |
+
+**Not the sails.** With the cloth gone, the virtual shadow map clears the same pages every minute, to within a few
+pages, and invalidates the same dynamic pages. The parked cache is kept busy by the boat itself: the hull and rig
+riding the mooring, the boom, and the crew. The crew were ruled out above. Striking the sails takes three non-Nanite
+instances out of the shadow pages, saves about 0.04 ms of cloth CPU (0.073 to 0.029 ms) and frees 0.3 fps, and that is
+all it changes. The fix to look at next is the hull's shadow. The hull moves a little every frame on the mooring, so the
+pages it covers are invalidated every frame. Two options to try are caching its shadow as if still while it only
+bobs (`ShadowCacheInvalidationBehavior` on the hull components), or parking on a mooring that holds it still.
+
+**This build against #121's.** The same parked baseline on main 433b3400 runs 50.7 fps and 19.1 ms of GPU, against #121's
+54.8 fps and 17.7 ms on the #115 package. It clears about 110 fewer pages a frame (883 against 994). The E1 wear
+(#119) landed in between. These probes don't separate it, so a like-for-like run of main before and after #119 would
+show whether the 1.4 ms is the wear materials.
+
+Files (`soak/`): `vsm-probe-{parked-433b,sailsdown}-2026-10-17.csv-1min.txt` (the CSV profile's means by minute;
+this binner counts the first 3 s warm-up, so its first minute reads a little higher than the earlier files').
