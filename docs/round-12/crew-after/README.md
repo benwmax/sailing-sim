@@ -39,6 +39,15 @@ foot's heel is at about (-1.87, 0.56, 0.48) m and its toe at (-1.66, 0.53, 0.60)
 the deck edge less `SIDE_DECK`), so the physics has the heel resting on a seat where the hero has open well over its sole.
 The reach only takes a foot whose floor is the sole, so it skips it.
 
+Recaptured Oct 17 (mainsheet only) on #105 5b470e85 with main cb80cc34 merged (the hero's own cockpit plan):
+`r12-j22-mainsheet-105b`, the same row and view as `-105`. 151/151 tests (`Smoke.CrewAnimation`, `Visual.CrewClipLimits`,
+`Visual.CrewFeet` pass), crew gate passes. The helm's forward shoe is down now: it lies flat, sole down, on the seat at
+the well's edge, its shadow touching the toe, where in `-105` it stood toe up with its white sole showing and its shadow
+a shoe's length away. The trimmer's near shoe (bottom of the frame) still shows its sole edge. `r12-j22-helm-side-105b`
+(same row, `-SailingCamTarget=-2.0,0,0.5 -SailingCamYaw=270 -SailingCamPitch=-8 -SailingCamDist=3.2`) looks for the
+helm's height: they sit on the windward deck edge with no visible gap under the shorts, so the light model's seat height
+(0.47 against the hero's 0.40) doesn't show from outside the boat.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
