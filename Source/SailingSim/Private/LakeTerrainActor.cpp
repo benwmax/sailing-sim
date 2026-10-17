@@ -510,6 +510,12 @@ void ALakeTerrainActor::PlaceTrees()
 		// T1's lighting-only crowns under the near leaf cards. -SailingNoTreeLight leaves the lighting without trees and
 		// -SailingNoTreeLooks every tree its model's own green, upright (both compare).
 		const bool bTreeLight = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeLight"));
+		// The Mac gate (#126): on High the crowns and proxies in the ray-tracing scene cost Metal's render thread 2 to 3.5 ms
+		// a frame (GPU flat). Only Ultra (the desktop GPU) traces them; below it they are in Lumen's scene and the distance
+		// fields only. -SailingTreeRayTracing=0|1 overrides, for measuring.
+		int32 TreeRT = USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1 : 0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTreeRayTracing="), TreeRT);
+		const bool bTreeRayTracing = bTreeLight && TreeRT != 0;
 		bTreeLooks = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeLooks"));
 		for (int32 Pass = 0; Pass < (bTreeLight ? 4 : 3); ++Pass)
 		{
@@ -537,7 +543,7 @@ void ALakeTerrainActor::PlaceTrees()
 						P->SetCastShadow(false);
 						P->bAffectDynamicIndirectLighting = true;
 						P->bAffectDistanceFieldLighting = true;
-						P->bVisibleInRayTracing = true;
+						P->bVisibleInRayTracing = bTreeRayTracing;
 						P->SetCullDistances(0, (NearTreesM() + 200.0) * 100.0);
 						P->RegisterComponent();
 						TreeProxy.Add(P);
@@ -555,7 +561,7 @@ void ALakeTerrainActor::PlaceTrees()
 					// cards stay out.
 					C->bAffectDynamicIndirectLighting = bTreeLight && Pass >= 1;
 					C->bAffectDistanceFieldLighting = bTreeLight && Pass >= 1;
-					C->bVisibleInRayTracing = bTreeLight && Pass >= 1;
+					C->bVisibleInRayTracing = bTreeRayTracing && Pass >= 1;
 					// T1: each tree's tint, autumn turn and autumn colour (FTreeLook) for M_TreeLeaves / M_TreeCrown (without
 					// them the materials take their defaults: the model's green, no season).
 					C->NumCustomDataFloats = bTreeLooks ? 3 : 0;

@@ -76,3 +76,22 @@ Lumen slice is unchanged within the noise.
 - The leans are a few degrees.
 - The evergreens never turn.
 - The season curve, from July to April.
+
+## The Mac gate's fix: tree ray tracing on Ultra only
+
+On the Mac, High lost 5 to 13 fps with this branch. GPU and the Lumen slice were flat, but Metal's render thread spent
+2 to 3.5 ms more a frame, because the crowns and the hidden proxies were added to the ray-tracing scene (High traces
+Lumen in hardware). Now only Ultra puts them in the ray-tracing scene. Below Ultra they are in Lumen's scene and the
+distance fields only, and the looks are unchanged. `-SailingTreeRayTracing=0|1` overrides, for measuring.
+
+On High, Lumen traces in hardware and so no longer sees the crowns: the darkening is Ultra's. High keeps the leaf cards'
+ambient occlusion (the crowns' shaded insides) and every tree's look.
+
+| D3D12, 1080p, `-SailingNoTreeLight` / on | GPU ms | Render thread ms |
+|---|---|---|
+| slip High | 6.15 / 6.23 | 12.33 / 12.14 |
+| lake-towers High | 5.01 / 5.10 | 12.44 / 12.04 |
+| slip Ultra | 8.79 / 9.05 | 12.70 / 13.68 |
+| lake-towers Ultra | 8.53 / 8.84 | 13.03 / 12.76 |
+
+High now costs under 0.1 ms of GPU, and the render thread is flat (within the run-to-run noise). Ultra is as before.
