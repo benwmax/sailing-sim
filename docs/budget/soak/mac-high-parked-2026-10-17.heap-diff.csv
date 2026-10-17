@@ -1,0 +1,16 @@
+bytes_delta,count_delta,class
+83070080,259594,AGXG17XFamilyRayTracingGPUBuilder._impl (malloc) C AGXMetalG17X
+41535040,259594,AGXG17XFamilyRayTracingGPUBuilder ObjC AGXMetalG17X
+41535040,259594,AGXG17XFamilyComputeContext ObjC AGXMetalG17X
+33227904,259593,MTLInstanceAccelerationStructureDescriptor ObjC Metal
+19383168,86532,CAMetalDrawable ObjC QuartzCore
+8308608,173096,NSMutableArray ObjC CoreFoundation
+6520832,1592,@autoreleasepool content C libobjc.A.dylib
+3266944,423,non-object
+2902272,60464,IOSurfaceSharedEvent ObjC IOSurface
+884736,18,MTLResourceList ObjC Metal
+170240,380,AGXG17XFamilyBuffer ObjC AGXMetalG17X
+98304,128,AGX::HAL300::Texture C++ AGXMetalG17X
+81920,128,AGXG17XFamilyTexture ObjC AGXMetalG17X
+58368,57,AGXG17XFamilyCommandBuffer._storage (struct IOGPUMetalCommandBufferStorage) C AGXMetalG17X
+55552,62,AGXG17XFamilyCommandBuffer ObjC AGXMetalG17X

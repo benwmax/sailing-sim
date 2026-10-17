@@ -769,6 +769,19 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		NextFrameTime += RecordInterval;
 	}
 
+	if (bBenchTrace && Elapsed >= NextPosLog)
+	{
+		const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		if (const APawn* Pawn = PC ? PC->GetPawn() : nullptr)
+		{
+			const FVector Pos = Pawn->GetActorLocation() / CmPerMeter;
+			UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y,
+				NextPosLog > 0.f ? FVector::Dist2D(Pos, LastPosLog) : 0.0);
+			LastPosLog = Pos;
+		}
+		NextPosLog += 60.f;
+	}
+
 	while (NextExecAt < ExecAt.Num() && Elapsed >= ExecAt[NextExecAt].Key)
 	{
 		UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: %s"), Elapsed, *ExecAt[NextExecAt].Value);

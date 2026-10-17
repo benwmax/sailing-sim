@@ -500,6 +500,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		const ECrewStance St = In.Params.Stance;
 		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike;
 		Ground.bTravelerBridge = In.bTravelerBridge;
+		Ground.bFeetDown = St == ECrewStance::Helm || St == ECrewStance::Cockpit;
 		CrewSolver::PlantAllFeet(Ref, RestCS, CS, D, Frame, Ground, Carried);
 	}
 	if (bBrace)

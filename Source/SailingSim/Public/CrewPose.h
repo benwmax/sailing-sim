@@ -85,7 +85,8 @@ struct SAILINGSIM_API FCrewGround
 	double HullDepth = 0.25;    // m, FBoatModel::HullDepth
 	FTransform ToBoat;          // the figure's component frame to the boat frame (cm)
 	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
-	bool bTravelerBridge = true; // the drawn model has the cockpit's traveler bridge (the light J/22; the hero's track is on the sole)
+	bool bTravelerBridge = true; // the drawn model has the cockpit's traveler bridge (the light J/22); false: the hero J/22's own cockpit
+	bool bFeetDown = false;     // sitting in a cockpit (Helm, Cockpit): a foot hanging over the well's sole or a seat goes down onto it
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */
@@ -95,11 +96,13 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
 	double HalfWidth = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+	double SeatIn = 0.0;         // the hero J/22: the seats' inboard edge at this half-width (else the well's edge less SeatW)
 	// Round 12: a traveler bridge across the well between the seats (the J/22's, build_j22.py TRAV_X), solid from the sole
 	// to its top; BridgeHalfX 0 for none.
 	double BridgeX = 0.0, BridgeHalfX = 0.0, BridgeZ = 0.0;
 };
-SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out);
+/** bTravelerBridge false is the hero J/22 (the player's boat): its own cockpit (build_j22_hero.py, J22H_sockets.json), no bridge. */
+SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out, bool bTravelerBridge = true);
 /** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */
 SAILINGSIM_API double CrewFloorZ(const Sailing::FBoatConfig& Config, double X, double Y, bool bTravelerBridge = true);
 /** Is a point (m, boat frame) inside the solid boat: under the deck, inside the topsides, not in the cockpit well? */
