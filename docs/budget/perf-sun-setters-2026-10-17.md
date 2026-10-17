@@ -170,8 +170,8 @@ bench.json over 3600 s: 54.7 fps, p99 21.37 ms, GPU 17.72 ms, game thread 2.42 m
 
 - **No frame-time drift over the hour.** The per-minute p99 fits to +0.12 ms/h (61 minutes), against +2.0 to +2.8 ms/h
   read from the 20-minute runs: those were noise, as suspected. The two 22 ms windows are bumps, not a trend; the
-  first and last 10 minutes read 20.59 and 20.40 ms. Only 2 frames over 33.3 ms after the warm-up (the 190 ms worst is
-  the profile being written at 3595 s).
+  first and last 10 minutes read 20.59 and 20.40 ms. Only 2 frames over 33.3 ms after the warm-up: 59 ms at 3595 s, when the CSV
+  profile stops, and the 190 ms worst at 3602 s, after the measured hour (the screenshot).
 - **The parked cache never settles.** Parked, the virtual shadow map clears 941 pages a frame over the hour (989 in the
   first 10 minutes, 868 in the last), against 250 to 430 unparked after the first minute (the Perf 4 probes). The slow
   fall goes with the dynamic invalidations (1130 to 991). So the parked penalty (about 3 fps, about 1 ms of GPU) holds
