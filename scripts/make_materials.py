@@ -2415,9 +2415,19 @@ float cm = dot(dir, MoonDir.xyz);
         // scale the two (matched per tier to the live clouds at the seam).
         float skyL = dot(ViewLum, float3(0.3, 0.59, 0.11));
         float sunL = max(dot(SunIll, float3(0.3, 0.59, 0.11)), 1e-4);
-        float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), SunIll / sunL, 0.25);
+        // Its colour is the scene's sky light's (SkyEnv: the sky light's cube, sampled overhead and rough): beige late in
+        // the day, blue at noon, as the live clouds' shaded sides are; its brightness stays the sky's toward the view
+        // (what the scales were matched against).
+        float envL = max(dot(SkyEnv, float3(0.3, 0.59, 0.11)), 1e-5);
+        // Fitted to the live clouds at two sun heights (lake-towers, sun 25 degrees: beige shaded sides; Texas City, 45
+        // degrees: blue ones): as the sun climbs, the shaded sides take the blue sky's colour (ViewLum's) more than the
+        // sky light's; and both terms less (the sun x1.09 at 25 degrees to x0.86 at 45, the sky x1.04 to x0.72: the midday
+        // sky is bright, and the cache read 16% brighter than the live clouds there).
+        float hi = saturate((SunDir.z - 0.42) / 0.29);
+        float3 skyCol = lerp(SkyEnv / envL, ViewLum / max(skyL, 1e-5), hi);
+        float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), skyCol, 0.85) * lerp(1.04, 0.72, hi);
         // The live clouds' grey-scale scattering keeps less of the sun's colour than the raw illuminance: 30% toward grey.
-        float3 sunC = lerp(float3(sunL, sunL, sunL), SunIll, 0.7);
+        float3 sunC = lerp(float3(sunL, sunL, sunL), SunIll, 0.7) * lerp(1.09, 0.86, hi);
         col = col * s.b + s.r * CacheSun.x * sunC + s.g * CacheSun.w * amb;
     }
 }
@@ -2447,7 +2457,7 @@ def build_sky_dome():
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
     c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
-                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll"],
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
     for n, t in cache.items():
         connect(t, "", c, n)
@@ -2459,6 +2469,10 @@ def build_sky_dome():
     connect(up, "", at, "B")
     connect(at, "", ill, "World Position")
     connect(ill, "", c, "SunIll")
+    env = node(mat, unreal.MaterialExpressionSkyLightEnvMapSample, -1100, 1900)
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -1400, 1900, constant=unreal.LinearColor(0, 0, 1, 0)), "", env, "Direction")
+    connect(node(mat, unreal.MaterialExpressionConstant, -1400, 2000, r=1.0), "", env, "Roughness")
+    connect(env, "", c, "SkyEnv")
     connect(camvec, "", c, "CamVec")
     connect(campos, "", c, "CamPos")
     connect(view_lum, "", c, "ViewLum")
