@@ -27,8 +27,8 @@ The future copies were the lake's `Untagged` memory: about 98 MB, held for the w
 at 43.5 MB for all 10 min. On main it sits at 141 MB, with one step to 165 MB at 420 s.
 
 This run never came near the lidar shore: the largest terrain chunk was 0.8 MB at both points in both builds, and no 1 m
-chunk (15 to 16 MB in soak 3) was built. Near a wooded shore each of those chunks also held a second copy of about 10 MB
-in `FChunkMesh` form (vertices, normals, colours, indices), and that copy is gone too.
+chunk (15 to 16 MB in soak 3) was built. Near a wooded shore each of those would also have kept a second copy, about 9 MB
+by estimate (88 bytes a vertex in `FChunkMesh` form, about 100k vertices). That copy is gone too.
 
 `scripts/test.sh SailingSim.Lake`: 14/14.
 
