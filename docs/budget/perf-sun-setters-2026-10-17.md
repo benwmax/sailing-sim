@@ -177,10 +177,12 @@ bench.json over 3600 s: 54.7 fps, p99 21.37 ms, GPU 17.72 ms, game thread 2.42 m
   fall goes with the dynamic invalidations (1130 to 991). So the parked penalty (about 3 fps, about 1 ms of GPU) holds
   for the whole hour; it is not a warm-up effect. The caster is still to be named (item 2 of the brief).
 - **RSS grew +3405 MB/h** after 5 min (2365 to 5776 MB), 57 MB a minute, steady. That is 2.6 times the +1290 to
-  +1390 MB/h of every 20-minute parked run today. This run's only differences are the longer CSV capture and no draw
-  events. The CSV profiler streams to disk (406 MB file, 2.1 KB a frame like the shorter runs), so it should not be held
-  in memory, but the growth wasn't separated from it here. A 20-minute run with and without the CSV profile would tell.
-  At this rate a parked High session reaches 8 GB in about 1.7 h.
+  +1390 MB/h of every 20-minute parked run today. This run ran without `-ExecCmds=ToggleDrawEvents`, so the Development
+  build's draw events were on, and those leak about 2 GB/h on Metal on their own (`mac-soak-medium-2026-10-16.md`: an
+  encoder-label string autoreleased per encoder on the parallel RHI-translate workers, with no pool; Shipping and Test
+  have draw events off). 1.3 GB/h of the known Metal growth plus 2 GB/h of draw events accounts for it; the longer CSV
+  capture streams to disk (406 MB file, 2.1 KB a frame like the shorter runs) and is not suspected. Lesson repeated:
+  every Development soak on the Mac takes `-ExecCmds=ToggleDrawEvents`.
 
 Files (`soak/`): `parked-hour-2026-10-17.{bench.json,frames-1hz.csv,mem.csv,csv-10min.txt}`. The full CSV profile
 (406 MB) stays in the sandbox (`Saved/Profiling/CSV/Profile(20261017_080655).csv`).
