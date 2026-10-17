@@ -18,6 +18,11 @@ per-frame page counts.
 
 ## Results
 
+> **Correction (Perf 4, below).** These two runs were not of the same scene. The #110 build (9efbc9b3) branched from
+> a8ce8ed3, before #109 added `-SailingMooring`, so in its run the flag was ignored and the boat was not parked on the
+> buoy, while main cb80cc34 was parked. Rerun like for like, #110 makes no measurable difference on the Mac, parked or
+> not. The gain and the page counts below come from the scene. The PC's D3D12 result (below) was measured separately.
+
 | | main cb80cc34 | #110 | change |
 |---|---|---|---|
 | fps (bench.json, 1200 s) | 54.9 | **59.3** | +4.4 (+8%) |
@@ -81,3 +86,62 @@ longer run, an hour or more, would pin the drift down better than 20 min can.
 `sun-setters-{main,fix}-2026-10-17.frames-1hz.csv` (1 Hz frames), `.mem.csv` (RSS every 60 s), `.csv-2min.txt` (CSV
 profile means in ten 2-minute bins: frame, thread and GPU ms, VSM page and instance counts). The full CSV profiles (146
 MB each) stay in the game's sandbox under `Saved/Profiling/CSV/`.
+
+## The PC on D3D12 (main with #110)
+
+The PC's parked soak confirmed #110 on D3D12: p99 drift 3.8 to 0.79 ms/h, Ultra fps 61 to 80, and `ShadowDepths` draws
+119 and climbing to 80 and flat. A small residual drift is left on the render thread (+1.66 ms/h). That residual is why
+Perf 4 looks at the fog.
+
+## Perf 4: the fog setters (`perf-fog-setters`, Mac, Oct 17 2026)
+
+`ASailingEnvironment::UpdateHaze` set every `UExponentialHeightFogComponent` value every frame. Each setter marks the
+fog's render state dirty when its value changes, and the fog's scene proxy is then rebuilt. The inscattering colour
+follows `HazeLight` (the metered light, new every frame) and the density follows the visibility, so the fog was rebuilt
+every frame. Now density, height falloff, inscattering colour, max opacity, the cinematic glow colour, volumetric
+extinction scale and volumetric distance move in steps of 3% of their value. They snap exactly to their lerp ends (dry,
+full rain) and to zero. The constant setters (albedo, scattering distribution) were already no-ops after the first
+frame.
+
+Both builds are on main d6cf6476 (#110 and #113 merged; #114 is docs only), packaged as Development. Same arguments as
+above, parked on the buoy, 20 min each, one after the other:
+
+| | main d6cf6476 | fog steps | change |
+|---|---|---|---|
+| fps (bench.json, 1200 s) | 55.3 | 55.5 | +0.2, noise |
+| p99 ms | 20.55 | 20.44 | -0.1 |
+| first / last 10 min fps | 55.3 / 55.3 | 55.5 / 55.6 | |
+| first / last 10 min p99 ms | 20.48 / 20.66 | 20.39 / 20.56 | |
+| p99 drift (`soak_stats.py`) | +2.0 ms/h | +2.5 ms/h | both noise over 20 min |
+| GPU ms (CSV mean) | 17.52 | 17.43 | -0.1 |
+| game / render / RHI thread ms | 2.35 / 18.09 / 3.80 | 2.33 / 18.00 / 4.03 | |
+| VSM pages cleared per frame | 973, flat | 973, flat | none |
+| VSM non-Nanite instances drawn | 93 | 93 | |
+| RSS growth after 5 min | +1317 MB/h | +1290 MB/h | soak 3's Metal leak |
+
+**No gain on the Mac.** The fog steps change nothing measurable here. The fog proxy rebuild is cheap on Metal, and on
+this parked scene the per-frame work is elsewhere. The change is still right in principle and costs nothing, so the
+PC's render-thread residual is where it can show (D3D12 re-creates the proxy on the render thread).
+
+**Why this run reads 973 pages and #110's read 100.** Main parked reads 973 pages cleared a frame, the same as the
+pre-#110 parked baseline (974). Two 5-minute probes, unparked, with the #110 run's arguments minus `-SailingMooring`:
+
+| unparked, 5 min | fps | p99 ms | GPU ms | VSM pages cleared per frame, by minute |
+|---|---|---|---|---|
+| main d6cf6476 | 58.3 | 20.02 | 16.58 | 698, 368, 247, 422, 429 |
+| main with 9efbc9b3 reverted | 58.2 | 19.74 | 16.61 | 726, 369, 247, 422, 427 |
+
+With and without the sun steps the unparked runs match frame for frame. So on Metal, #110 changes nothing either, and
+its earlier "974 to 100" came from the scene. Parked on the buoy, the virtual shadow map clears about 970 pages every
+frame and runs about 3 fps slower than unparked. Something about the parked boat (head to wind, sails up, the mooring line)
+keeps the cache from settling. That is a separate lead, not this fix.
+
+**Stills** (High, uncooked, `perf-fog-setters/`, main on the left): helm-eye mean luminance 129.9 against 127.1, mean
+difference 6.5 of 255. That is a cloud shadow crossing the deck between runs: a second run of the fix differs from the
+first by 7.9, and the horizon haze band reads 123.5 (main) against 119.8 and 124.2 (the two fix runs). Storm: 63.5
+against 63.7, difference 0.7. The deck's gloom and haze look the same.
+
+**Tests:** `SailingSim.Visual` 32/32, `SailingSim.Smoke` 16/16.
+
+Files (`soak/`): `fog-setters-{main,fix}-2026-10-17.{frames-1hz.csv,mem.csv,csv-2min.txt}`, and the unparked probes'
+CSV-profile means by minute, `unmoored-{main,pre110}-2026-10-17.csv-1min.txt`.
