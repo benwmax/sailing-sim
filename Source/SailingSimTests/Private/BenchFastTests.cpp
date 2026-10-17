@@ -161,4 +161,26 @@ bool FSailingBenchListCVarsTest::RunTest(const FString&)
 	return true;
 }
 
+// Online readiness: what a Shipping build's -Sailing switches can be. Without -SailingShippingSmoke, nothing; with it,
+// only the release smoke's world, launch, UI script, shot and a bench of at most 60 s.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShippingSmokeArgsTest, "SailingSim.Smoke.ShippingSmokeArgs", BenchFastFlags)
+bool FSailingShippingSmokeArgsTest::RunTest(const FString& Parameters)
+{
+	const FString Off = SailingArgs::ShippingSmokeArgs(TEXT("-SailingWorld=1 -SailingBench=20 -SailingShot=x"));
+	TestTrue(TEXT("Without the flag nothing passes"), Off.IsEmpty());
+	const FString On = SailingArgs::ShippingSmokeArgs(TEXT("-SailingShippingSmoke -SailingWorld=1 -SailingLaunch=2 -SailingShot=ship-bay -SailingBench=600 ")
+		TEXT("-SailingExecAt=10:quit -SailingWind=40 -SailingUIScript=Enter,Down,Enter -SailingDemo -windowed"));
+	TestTrue(TEXT("The world passes"), On.Contains(TEXT("-SailingWorld=1")));
+	TestTrue(TEXT("The launch spot passes"), On.Contains(TEXT("-SailingLaunch=2")));
+	TestTrue(TEXT("The shot passes"), On.Contains(TEXT("-SailingShot=ship-bay")));
+	TestTrue(TEXT("The UI script passes"), On.Contains(TEXT("-SailingUIScript=Enter,Down,Enter")));
+	TestTrue(TEXT("The bench is capped at 60 s"), On.Contains(TEXT("-SailingBench=60")) && !On.Contains(TEXT("600")));
+	TestFalse(TEXT("ExecAt's console commands don't pass"), On.Contains(TEXT("ExecAt")));
+	TestFalse(TEXT("Tuning switches don't pass"), On.Contains(TEXT("SailingWind")));
+	TestFalse(TEXT("The demo doesn't pass"), On.Contains(TEXT("SailingDemo")));
+	TestFalse(TEXT("The flag itself isn't passed on"), On.Contains(TEXT("ShippingSmoke")));
+	TestFalse(TEXT("Engine switches aren't the filter's"), On.Contains(TEXT("windowed")));
+	return true;
+}
+
 #endif

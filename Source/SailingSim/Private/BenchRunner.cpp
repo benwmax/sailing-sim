@@ -32,10 +32,43 @@ namespace SailingArgs
 		GGeneration.fetch_add(1, std::memory_order_acq_rel);
 	}
 
+	FString ShippingSmokeArgs(const TCHAR* CommandLine)
+	{
+		if (!CommandLine || !FParse::Param(CommandLine, TEXT("SailingShippingSmoke"))) return FString();
+		static const TCHAR* Allowed[] = { TEXT("-SailingUIScript="), TEXT("-SailingWorld="), TEXT("-SailingLaunch="), TEXT("-SailingShot="), TEXT("-SailingBench=") };
+		TArray<FString> Tokens;
+		FString(CommandLine).ParseIntoArrayWS(Tokens);
+		FString Out;
+		for (const FString& T : Tokens)
+		{
+			for (const TCHAR* A : Allowed)
+			{
+				if (!T.StartsWith(A, ESearchCase::IgnoreCase)) continue;
+				FString Kept = T;
+				if (FCString::Stricmp(A, TEXT("-SailingBench=")) == 0)
+				{
+					const float Seconds = FMath::Clamp(FCString::Atof(*T.RightChop(FCString::Strlen(A))), 0.f, 60.f);
+					Kept = FString::Printf(TEXT("-SailingBench=%g"), Seconds);
+				}
+				Out += (Out.IsEmpty() ? TEXT("") : TEXT(" ")) + Kept;
+				break;
+			}
+		}
+		return Out;
+	}
+
 	const TCHAR* Dev()
 	{
 #if UE_BUILD_SHIPPING
-		return TEXT("");
+		// Shipping: only the release smoke's switches, and only with -SailingShippingSmoke (read again after a swap).
+		static FString Filtered;
+		static uint32 Gen = MAX_uint32;
+		if (Gen != Generation())
+		{
+			Gen = Generation();
+			Filtered = ShippingSmokeArgs(FCommandLine::Get());
+		}
+		return *Filtered;
 #else
 		return FCommandLine::Get();
 #endif

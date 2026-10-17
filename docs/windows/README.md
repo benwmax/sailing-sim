@@ -107,6 +107,28 @@ work the same way through `-GameArgs`. To play, run `Packaged\Windows\SailingSim
 The other `scripts/*.sh` (content generation, Blender models, MetaHumans, phase benches) stay Mac-only; the content
 they make is already committed. `polar.sh` and `traffic.sh` can run under Git Bash with LLVM's clang on the path.
 
+## Shipping builds and the release smoke
+
+In a Shipping build every `-Sailing` switch is inert (`SailingArgs::Dev()` returns an empty command line), so the bench,
+capture and tuning switches and `-SailingExecAt`'s console commands can't change a shipped game. The one exception is
+the release smoke: with `-SailingShippingSmoke`, only `-SailingUIScript`, `-SailingWorld`, `-SailingLaunch`,
+`-SailingShot` and `-SailingBench` (at most 60 s) pass (`SailingArgs::ShippingSmokeArgs`, tested by
+`SailingSim.Smoke.ShippingSmokeArgs`). Package and load each world:
+
+```
+scripts\windows\package-win.ps1 -Config Shipping
+Packaged\Windows\SailingSim.exe -windowed -SailingShippingSmoke -SailingWorld=0 -SailingLaunch=1 -SailingShot=ship-lake -SailingBench=20
+Packaged\Windows\SailingSim.exe -windowed -SailingShippingSmoke -SailingWorld=1 -SailingLaunch=1 -SailingShot=ship-bay -SailingBench=20
+Packaged\Windows\SailingSim.exe -windowed -SailingShippingSmoke -SailingWorld=Gulf -SailingLaunch=1 -SailingShot=ship-gulf -SailingBench=20
+```
+
+A Shipping build saves to `%LOCALAPPDATA%\SailingSim\Saved`, not beside the executable: the screenshots and
+`bench.json` are in its `Bench` folder. Shipping writes no log. The package includes CrashReportClient, with no upload
+endpoint (`[CrashReportClient] DataRouterUrl=""` in `DefaultEngine.ini`), so crash reports stay in `Saved\Crashes`.
+
+Never drive the game by sending keys or mouse clicks to the desktop: the window may not be in front, and the input lands
+in other apps. Use `-SailingUIScript`, which delivers keys through Slate inside the game.
+
 ## Build times
 
 Measured on the PC (i9-9900K, RTX 4090, D:\ NVMe, Unreal's DDC on `D:\UnrealDDC`) on Oct 15 2026, after main 7149d537,

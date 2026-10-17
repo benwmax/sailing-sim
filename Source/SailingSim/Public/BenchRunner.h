@@ -16,6 +16,11 @@ namespace SailingArgs
 	 *  choices from the front end don't go through it. */
 	SAILINGSIM_API const TCHAR* Dev();
 
+	/** The release smoke's switches out of a command line: empty unless it has -SailingShippingSmoke, then only
+	 *  -SailingUIScript, -SailingWorld, -SailingLaunch, -SailingShot and -SailingBench (at most 60 s) pass. Dev() returns this
+	 *  in Shipping: it lets the release smoke load each world and take a screenshot, and nothing a player can't do. */
+	SAILINGSIM_API FString ShippingSmokeArgs(const TCHAR* CommandLine);
+
 	SAILINGSIM_API uint32 Generation();
 	/** Replaces the command line (FCommandLine::Set) and moves the generation on. */
 	SAILINGSIM_API void SetCommandLine(const FString& CommandLine);
