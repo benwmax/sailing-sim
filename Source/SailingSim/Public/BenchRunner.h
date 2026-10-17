@@ -11,6 +11,11 @@
  */
 namespace SailingArgs
 {
+	/** The command line the -Sailing switches read: the real one in development builds, empty in Shipping, so the bench,
+	 *  capture, test and tuning switches (and -SailingExecAt's console commands) can't change a shipped game. Session
+	 *  choices from the front end don't go through it. */
+	SAILINGSIM_API const TCHAR* Dev();
+
 	SAILINGSIM_API uint32 Generation();
 	/** Replaces the command line (FCommandLine::Set) and moves the generation on. */
 	SAILINGSIM_API void SetCommandLine(const FString& CommandLine);

@@ -1,4 +1,5 @@
 #include "VisualPipeline.h"
+#include "BenchRunner.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 
@@ -89,7 +90,7 @@ bool UsesCinematicLook(ESailingQuality Quality, bool bSettingOn, bool bPhotoMode
 		return false;
 	}
 	int32 Arg = -1;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCinematic="), Arg))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCinematic="), Arg))
 	{
 		return Arg != 0;
 	}

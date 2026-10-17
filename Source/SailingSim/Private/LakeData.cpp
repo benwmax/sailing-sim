@@ -1,4 +1,5 @@
 #include "LakeData.h"
+#include "BenchRunner.h"
 #include "SailingSim.h"
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
@@ -27,7 +28,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	}
 	// Graphics G2: the 1 m lidar shore detail ("SSDZ" + raw size + zlib), where baked. -SailingNoShoreDetail compares.
 	TArray<uint8> DetailBytes;
-	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoShoreDetail")) && FFileHelper::LoadFileToArray(DetailBytes, *(Directory / (Name + TEXT(".detail"))))
+	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingNoShoreDetail")) && FFileHelper::LoadFileToArray(DetailBytes, *(Directory / (Name + TEXT(".detail"))))
 		&& DetailBytes.Num() > 8 && FMemory::Memcmp(DetailBytes.GetData(), "SSDZ", 4) == 0)
 	{
 		uint32 RawSize = 0;
@@ -135,7 +136,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	LoadCoast(*Root, Directory, Name);
 	LoadHouses(Directory / (Name + TEXT(".houses")));
 	LoadCrowns(Directory / (Name + TEXT(".crowns")));
-	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoPiers"))) LoadPiers(Directory / (Name + TEXT(".piers")));
+	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPiers"))) LoadPiers(Directory / (Name + TEXT(".piers")));
 	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
 	{
 		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
@@ -167,7 +168,7 @@ void FLakeData::LoadPiers(const FString& Path)
 	};
 	// -SailingPiersSkip=decks,riprap,walkways,boats leaves layers out (to compare).
 	FString Skip;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingPiersSkip="), Skip, false);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingPiersSkip="), Skip, false);
 	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("decks")))
 	{
 		if (Skip.Contains(TEXT("decks"))) break;

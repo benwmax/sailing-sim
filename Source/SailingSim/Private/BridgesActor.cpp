@@ -1,4 +1,5 @@
 #include "BridgesActor.h"
+#include "BenchRunner.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -42,7 +43,7 @@ void ABridgesActor::BeginPlay()
 	bTidal = Lake.Tides.HeightStations.size() > 0;
 	const EComponentMobility::Type Mobility = bTidal ? EComponentMobility::Movable : EComponentMobility::Static;
 	RootComponent->SetMobility(Mobility);
-	const bool bProcedural = FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralWorld"));
+	const bool bProcedural = FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralWorld"));
 	FKitGeometry All, Shore;
 	BuildBridgeGeometry(Lake, All);
 	BuildShoreGeometry(Lake, Shore);
@@ -131,7 +132,7 @@ void ABridgesActor::BuildTraffic()
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FLakeData& Lake = GM->GetLake();
-	if (FParse::Param(FCommandLine::Get(), TEXT("SailingNoBridgeTraffic"))) return;
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingNoBridgeTraffic"))) return;
 	for (const FLakeBridge& Br : Lake.Bridges)
 	{
 		const float Road = BridgeWidth(Br);

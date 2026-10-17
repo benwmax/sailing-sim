@@ -32,12 +32,21 @@ namespace SailingArgs
 		GGeneration.fetch_add(1, std::memory_order_acq_rel);
 	}
 
+	const TCHAR* Dev()
+	{
+#if UE_BUILD_SHIPPING
+		return TEXT("");
+#else
+		return FCommandLine::Get();
+#endif
+	}
+
 	bool FCachedFlag::Get()
 	{
 		const uint32 Now = Generation();
 		if (Gen != Now)
 		{
-			bValue = FParse::Param(FCommandLine::Get(), Name);
+			bValue = FParse::Param(Dev(), Name);
 			Gen = Now;
 		}
 		return bValue;
@@ -59,7 +68,7 @@ namespace SailingArgs
 
 bool USailingBenchRunner::ShouldCreateSubsystem(UObject* Outer) const
 {
-	return FCString::Strifind(FCommandLine::Get(), TEXT("SailingBenchList=")) != nullptr;
+	return FCString::Strifind(SailingArgs::Dev(), TEXT("SailingBenchList=")) != nullptr;
 }
 
 USailingBenchRunner* USailingBenchRunner::Get(const UObject* WorldContext)
