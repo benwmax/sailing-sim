@@ -63,7 +63,11 @@ z_hem = zmin + 0.05              # the polo shows a little below the vest (and t
 OPEN = 0.011                     # half the gap between the front panels
 # The armhole's outline (half width against height): straight down the side below the armpit, then curving in to the
 # shoulder strap at the neck.
-ARM = [(W * 1.12, zmin - 1.0), (W * 1.12, z_arm - 0.02), (W * 0.99, z_arm + 0.35 * (z_neck - z_arm)), (W * 0.80, z_neck)]
+# Round 11 ("person looks like a doll"): seated, the arm swings forward and the armhole's edge tore into a zigzag; the
+# armhole is 2 cm more open above the armpit (ARMHOLE_OPEN), and the import keeps the arm bones off the vest.
+ARMHOLE_OPEN = 0.02
+ARM = [(W * 1.12, zmin - 1.0), (W * 1.12 - ARMHOLE_OPEN, z_arm - 0.02), (W * 0.99 - ARMHOLE_OPEN, z_arm + 0.35 * (z_neck - z_arm)),
+       (W * 0.80 - ARMHOLE_OPEN, z_neck)]
 print(f"polo: {len(bm.verts)} verts, z {zmin:.3f}..{zmax:.3f}, belly half width {W:.3f}, front {'-Y' if FRONT < 0 else '+Y'}")
 
 
@@ -100,8 +104,8 @@ if OUT_POLO:
     pm.transform(M)
 
     def covered(c):
-        # (6 cm in from the armholes: the vest's sides follow the arm a little more than the shirt does)
-        if c.z > z_neck - MARGIN or c.z < z_hem + MARGIN or abs(c.x) > lim(c.z) - 0.06:
+        # (7 cm in from the armholes, 9 cm in from round 10's: the vest's sides follow the arm a little more than the shirt)
+        if c.z > z_neck - MARGIN or c.z < z_hem + MARGIN or abs(c.x) > lim(c.z) - 0.07:
             return False
         return not (FRONT * c.y > 0 and abs(c.x) < OPEN + MARGIN)
 
@@ -246,6 +250,38 @@ for b in bands:
         uz = n.cross(ux).normalized()
         block(hit[0] + n * (ht + 0.001), (hl, ht, hh), (ux, n, uz), bev)
         n_buckles += 1
+
+
+def tail(x0, z0, length, lean):
+    """Round 11: the strap's loose end out of the buckle's adjuster, hanging down over the foam (a 38 mm ribbon, 2 mm
+    thick, standing a little further off the vest as it falls: webbing is stiff)."""
+    steps = 8
+    rows = []
+    for i in range(steps + 1):
+        t = i / steps
+        x, z = x0 + lean * t, z0 - length * t
+        hit = tree.ray_cast(Vector((x, FRONT * 1.0, z)), Vector((0, -FRONT, 0)), 2.0)
+        if hit[0] is None:
+            break
+        n = hit[1].normalized()
+        across = Vector((0, 0, 1)).cross(n).normalized()
+        c = hit[0] + n * (WEB + 0.002 + 0.012 * t * t)
+        rows.append([c - across * HALF_STRAP - n * 0.001, c + across * HALF_STRAP - n * 0.001, c + across * HALF_STRAP + n * 0.001, c - across * HALF_STRAP + n * 0.001])
+    vs = [[bm.verts.new(p) for p in r] for r in rows]
+    for a, b in zip(vs, vs[1:]):
+        for k in range(4):
+            f = bm.faces.new((a[k], a[(k + 1) % 4], b[(k + 1) % 4], b[k]))
+            f.material_index = STRAPS
+    if vs:
+        for r in (vs[0], vs[-1]):
+            bm.faces.new(r).material_index = STRAPS
+    return len(vs) > 1
+
+
+n_tails = 0
+for i, b in enumerate(bands):
+    # Out of the female buckle's far end, 15 to 20 cm, the lower ones a little longer (drawn tighter round the belly).
+    n_tails += tail(0.026 + 0.018, b - 0.012, 0.15 + 0.025 * (len(bands) - 1 - i), 0.012 + 0.006 * i)
 tree_bm.free()
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
 
@@ -255,7 +291,9 @@ R = W * 1.1
 for f in bm.faces:
     for loop in f.loops:
         c = loop.vert.co
-        loop[uv].uv = (math.atan2(c.x, c.y) * R, c.z)
+        # Round 11: U = 0 at the front's centre whichever way the outfit faces (M_CrewFabric keeps the foam's channels off
+        # the two flat front panels by |U|); the seam is at the back.
+        loop[uv].uv = (math.atan2(c.x, FRONT * c.y) * R, c.z)
 tris = sum(len(f.verts) - 2 for f in bm.faces)
 bm.transform(M.inverted())
 me = bpy.data.meshes.new("Vest")
@@ -274,4 +312,4 @@ bpy.ops.object.select_all(action="DESELECT")
 out.select_set(True)
 bpy.context.view_layer.objects.active = out
 bpy.ops.export_scene.fbx(filepath=OUT, use_selection=True, object_types={"MESH"}, apply_unit_scale=True, mesh_smooth_type="FACE")
-print(f"Vest: {tris} tris, {n_buckles} buckle halves, straps at z {', '.join(f'{b:.3f}' for b in bands)} -> {OUT}")
+print(f"Vest: {tris} tris, {n_buckles} buckle halves, {n_tails} strap tails, straps at z {', '.join(f'{b:.3f}' for b in bands)} -> {OUT}")

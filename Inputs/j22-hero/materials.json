@@ -5,14 +5,14 @@
    "R": "T_J22H_Hull_R.png",
    "N": "T_J22H_Hull_N.png",
    "X": "T_J22H_Hull_X.png",
-   "uv_m": 7.6199
+   "uv_m": 7.1593
   },
   "DeckMould": {
    "D": "T_J22H_DeckMould_D.png",
    "R": "T_J22H_DeckMould_R.png",
    "N": "T_J22H_DeckMould_N.png",
    "X": "T_J22H_DeckMould_X.png",
-   "uv_m": 8.4384
+   "uv_m": 8.9737
   },
   "Rudder": {
    "D": "T_J22H_Rudder_D.png",
@@ -26,14 +26,14 @@
    "R": "T_J22H_Teak_R.png",
    "N": "T_J22H_Teak_N.png",
    "X": "T_J22H_Teak_X.png",
-   "uv_m": 6.9919
+   "uv_m": 6.9933
   },
   "Interior": {
    "D": "T_J22H_Interior_D.png",
    "R": "T_J22H_Interior_R.png",
    "N": "T_J22H_Interior_N.png",
    "X": "T_J22H_Interior_X.png",
-   "uv_m": 8.043
+   "uv_m": 8.4528
   }
  },
  "flat_materials": {
@@ -389,5 +389,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 18643784
+ "glb_bytes": 18471460
 }

@@ -184,7 +184,13 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 		}
 	}
 
-	if (!Drive.bSimulate || !bStarted)
+	// A cloth that has run away from its target (a bad frame's strips, a non-finite vertex) starts again from it.
+	bool bRunaway = Pos.Num() != Target.Num();
+	for (int32 I = 0; I < Pos.Num() && !bRunaway; ++I)
+	{
+		bRunaway = !Pos[I].ContainsNaN() ? FVector::DistSquared(Pos[I], Target[I]) > FMath::Square(kRunawayCm) : true;
+	}
+	if (!Drive.bSimulate || !bStarted || bRunaway)
 	{
 		Pos = Target;
 		Prev = Target;

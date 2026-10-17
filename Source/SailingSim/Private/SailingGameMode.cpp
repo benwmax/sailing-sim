@@ -139,19 +139,11 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	}
 }
 
-double ASailingGameMode::GetSimTime() const
+void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
-	if (const UWorld* World = GetWorld())
-	{
-		if (const APlayerController* PC = World->GetFirstPlayerController())
-		{
-			if (const ASailboatPawn* Boat = Cast<ASailboatPawn>(PC->GetPawn()))
-			{
-				return Boat->GetBoatModel().GetState().Time;
-			}
-		}
-	}
-	return OwnClock;
+	if (ClockFrame == GFrameCounter) return;
+	ClockFrame = GFrameCounter;
+	if (!GetWorld()->IsPaused()) Clock.Advance(DeltaSeconds);
 }
 
 const TCHAR* ASailingGameMode::WorldFileName(int32 World)
@@ -671,6 +663,20 @@ void ASailingGameMode::StartPlay()
 		FParse::Value(FCommandLine::Get(), TEXT("SailingRecordInterval="), RecordInterval);
 		FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmup;
+		// Soaks: -SailingExecAt=<s>:<cmd>[;<s>:<cmd>...] runs console commands at those seconds of the bench clock, '+' for
+		// spaces (e.g. 600:memreport+-full;600:DumpLLM; docs/budget/mac-soak-high-2-2026-10-17.md).
+		FString ExecArg;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SailingExecAt="), ExecArg, false))
+		{
+			TArray<FString> Parts;
+			ExecArg.ParseIntoArray(Parts, TEXT(";"));
+			for (const FString& Part : Parts)
+			{
+				FString At, Cmd;
+				if (Part.Split(TEXT(":"), &At, &Cmd)) ExecAt.Emplace(FCString::Atof(*At), Cmd.Replace(TEXT("+"), TEXT(" ")));
+			}
+			ExecAt.StableSort([](const TPair<float, FString>& A, const TPair<float, FString>& B) { return A.Key < B.Key; });
+		}
 		// Graphics G4: a bench of the pause menu still ends (and takes its screenshot) while the game is paused.
 		SetTickableWhenPaused(true);
 		// Bench-fast: macOS throttles a window it hides. A single run is brought to the front by `open`; a bench list
@@ -719,9 +725,9 @@ float ASailingGameMode::GetRenderScale() const
 void ASailingGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	AdvanceClock(DeltaSeconds);
 	if (!GetWorld()->IsPaused())
 	{
-		OwnClock += DeltaSeconds;
 		UpdateWeather(DeltaSeconds);
 		UpdateTide();
 		UpdateResolutionGovernor(DeltaSeconds);
@@ -761,6 +767,26 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
 		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		NextFrameTime += RecordInterval;
+	}
+
+	if (bBenchTrace && Elapsed >= NextPosLog)
+	{
+		const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		if (const APawn* Pawn = PC ? PC->GetPawn() : nullptr)
+		{
+			const FVector Pos = Pawn->GetActorLocation() / CmPerMeter;
+			UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y,
+				NextPosLog > 0.f ? FVector::Dist2D(Pos, LastPosLog) : 0.0);
+			LastPosLog = Pos;
+		}
+		NextPosLog += 60.f;
+	}
+
+	while (NextExecAt < ExecAt.Num() && Elapsed >= ExecAt[NextExecAt].Key)
+	{
+		UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: %s"), Elapsed, *ExecAt[NextExecAt].Value);
+		GEngine->Exec(GetWorld(), *ExecAt[NextExecAt].Value);
+		++NextExecAt;
 	}
 
 	// -SailingProfileGPU: dump one frame's GPU timings to the log (for tuning quality tiers).

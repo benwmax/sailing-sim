@@ -381,6 +381,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
+	bModelTravelerBridge = Model.bTravelerBridge;
 	if (Model.Hull)
 	{
 		HullMesh->ClearAllMeshSections();
@@ -497,10 +498,11 @@ void ASailboatPawn::RebuildBoatVisuals()
 		break;
 	}
 
-	// Outboards hang on the transom (inboards and saildrives are out of sight).
+	// Outboards hang on the transom (inboards and saildrives are out of sight); a model that carries its own draws none
+	// (round 12: the grey box read as a placeholder).
 	for (const FEngineDef& E : C.Engines)
 	{
-		if (E.Position.X < Main.SternX + 0.2)
+		if (E.Position.X < Main.SternX + 0.2 && !(ModelHull && Model.bOwnOutboard))
 		{
 			AddBoatPart(CubeMesh, ToCm(E.Position.X - 0.1, E.Position.Y, E.Position.Z + 0.55), FVector(0.3, 0.25, 1.1) * CmPerMeter, Grey);
 		}
@@ -851,10 +853,24 @@ void ASailboatPawn::ResetBoat()
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa; // recordings and benchmarks start on a set point of sail
 	}
 	Boat.GetMooringLines().clear();
+	// Soaks: -SailingMooring parks the player's boat on a buoy 12 m upwind of the start, head to wind with the sails up,
+	// so the camera stays put (docs/budget/mac-soak-parked-2026-10-17.md).
+	const bool bMooring = !bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingMooring"));
+	if (bMooring) StartYaw = GetWind().GetParams().FromDegrees;
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
-	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), StartSpeedKnots * kKnot);
+	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : StartSpeedKnots * kKnot);
 	Boat.GetMutableState().Time = Time;
+	if (bMooring)
+	{
+		const double Heading = FMath::DegreesToRadians(StartYaw);
+		const double BowX = 0.45 * Boat.GetConfig().LengthOverall;
+		FMooringLine Line;
+		Line.BodyPoint = Vec3(BowX, 0.0, 0.5);
+		Line.Anchor = Vec3(StartLocation.X / CmPerMeter + (BowX + 12.0) * FMath::Cos(Heading), StartLocation.Y / CmPerMeter + (BowX + 12.0) * FMath::Sin(Heading), 0.0);
+		Line.Length = 12.0;
+		Boat.GetMooringLines().push_back(Line);
+	}
 	Controls = FBoatControls();
 	Controls.MainSheet = 0.45;
 	Controls.JibSheet = 0.45;
@@ -867,6 +883,10 @@ void ASailboatPawn::ResetBoat()
 	}
 	TrimAssist.Reset();
 	KeyboardTiller = 0.f;
+	// The sails start again from their shape too: cloth carried over a reset (a new spot, a new tack) can blow out.
+	MainCloth.Reset();
+	JibCloth.Reset();
+	SpinCloth.Reset();
 	ApplyStateToTransform();
 	Plot.Start(GetMapPosition(), Time); // the departure is a known position
 	if (!bTrafficBoat) BeginRun(TEXT("Sail"));
@@ -929,8 +949,22 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		const Vec3 O = Boat.OriginPosition();
 		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
 	}
-	// Graphics G4: the front end and the loading screen hold the boat where it is (the world keeps moving behind them).
-	const int32 Steps = bHeldByUI && !bTrafficBoat ? 0 : Stepper.Advance(DeltaSeconds);
+	// Online readiness (rule 3): the boat steps until it reaches the world clock, so every boat (and a second player's)
+	// is on the same instant. Graphics G4: the front end and the loading screen hold the boat where it is while the world
+	// keeps moving: its time is carried along with the clock instead. A boat more than a second off the clock (spawned,
+	// reset or held) joins it where it is. Without a game mode (a bare test world) the boat keeps its own steps.
+	int32 Steps = 0;
+	if (ASailingGameMode* ClockMode = GetWorld()->GetAuthGameMode<ASailingGameMode>())
+	{
+		ClockMode->AdvanceClock(DeltaSeconds);
+		const double Behind = ClockMode->GetSimTime() - Boat.GetState().Time;
+		if ((bHeldByUI && !bTrafficBoat) || FMath::Abs(Behind) > 1.0) Boat.GetMutableState().Time = ClockMode->GetSimTime();
+		else Steps = FMath::Clamp(FMath::RoundToInt32(Behind / Stepper.GetStepDt()), 0, 12);
+	}
+	else if (!(bHeldByUI && !bTrafficBoat))
+	{
+		Steps = Stepper.Advance(DeltaSeconds);
+	}
 	// Perf 1: the steps run on a task when they can (BoatPhysicsTask.h); the join tick (TG_PostPhysics) does the rest.
 	FBoatStepJob Job;
 	Job.Boat = &Boat;

@@ -6,7 +6,7 @@ hero's fittings, relative to each part's pivot). Materials:
     normal maps (OpenGL normals: green flipped on import);
   - flat ones (hardware, ropes, gelcoat): MI_J22H_<name> on M_BoatSurface with the values from materials.json;
   - the mast's aluminium: MI_Boat_MastAluminium, so the game's mast bend (M_BoatMast) still works.
-The game draws it with -SailingJ22Hero (ASailboatPawn::ModelMeshesFor). Run in the editor: scripts\\windows\\run-python.ps1
+The game draws it as the player's J/22 (ASailboatPawn::ModelMeshesFor; -SailingClassicJ22 for the older model). Run in the editor: scripts\\windows\\run-python.ps1
 import_j22_hero.py (after a build; make_materials.py's boat library must exist)."""
 import json
 import os

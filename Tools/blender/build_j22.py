@@ -6,9 +6,10 @@ The physics is the source of truth: j22.json comes from Tools/BoatExport (the sa
 and sails). Below the waterline the canoe body is exactly the physics hull surface (FHullShape::BottomZ at the
 computed canoe depth), so the model's centre of buoyancy matches the physics; above it the stem and sheer sharpen
 toward the real boat. Dimensions of the parts a sailor touches (cabin trunk, cockpit, coamings, hatches, winches,
-cleats, traveler, tracks, pulpits, stanchions and lifelines, tiller and extension, keel and transom-hung rudder,
+cleats, traveler, tracks, tiller and extension, keel and transom-hung rudder, outboard on its bracket,
 chainplates, spars) come from the class drawings and photos of the J/22 (LOA 22 ft 6 in, beam 8 ft, draft 3 ft 9 in,
-fractional rig with swept spreaders, deck-stepped mast on the cabin top, traveler across the cockpit).
+fractional rig with swept spreaders, deck-stepped mast on the cabin top, traveler across the cockpit). Like the
+lesson boats at Rush Creek (TX 7295 EC, 7297 EC) she has an open deck: no pulpits, stanchions or lifelines.
 
 Writes <out>/SM_J22_Hull.fbx, SM_J22_Mast.fbx, SM_J22_Boom.fbx, SM_J22_Rudder.fbx and J22_sockets.json (attachment
 points for the rig and lines, in Unreal's frame and centimetres), and prints the model's measures for the log.
@@ -177,8 +178,8 @@ def box(m, c, size, slot, yaw=0.0):
         m.face([p[i] for i in f], slot)
 
 
-def tube(m, path, radius, slot, sides=10, cap=True):
-    """A round tube along a polyline (rails, stanchions, wires, sheets)."""
+def tube(m, path, radius, slot, sides=10, cap=True, radii=None):
+    """A round tube along a polyline (rails, stanchions, wires, sheets); radii, if given, one per point (a taper)."""
     pts = [Vector(p) for p in path]
     rings = []
     for i, p in enumerate(pts):
@@ -186,7 +187,8 @@ def tube(m, path, radius, slot, sides=10, cap=True):
         a = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
         u = t.cross(a).normalized()
         w = t.cross(u).normalized()
-        rings.append([tuple(p + (u * math.cos(2 * math.pi * k / sides) + w * math.sin(2 * math.pi * k / sides)) * radius) for k in range(sides + 1)])
+        r = radii[i] if radii else radius
+        rings.append([tuple(p + (u * math.cos(2 * math.pi * k / sides) + w * math.sin(2 * math.pi * k / sides)) * r) for k in range(sides + 1)])
     m.grid(rings, slot)
     if cap:
         for ring, rev in ((rings[0], True), (rings[-1], False)):
@@ -291,7 +293,8 @@ def winch(m, x, y, z):
 
 def cam_cleat(m, x, y, z, yaw):
     """A cam cleat on its base, with the fairlead ahead of the cams."""
-    box(m, (x, y, z + 0.006), (0.09, 0.05, 0.012), "BlackPlastic", yaw)
+    rbox(m, (x, y, z + 0.006), (0.09, 0.05, 0.012), "BlackPlastic", yaw, r=0.012)
+    bolts(m, [(x - 0.035 * math.cos(yaw), y - 0.035 * math.sin(yaw)), (x + 0.03 * math.cos(yaw), y + 0.03 * math.sin(yaw))], z + 0.012, 0.003)
     cs, sn = math.cos(yaw), math.sin(yaw)
     for s in (1, -1):
         px, py = x - 0.01 * cs - s * 0.014 * sn, y - 0.01 * sn + s * 0.014 * cs
@@ -300,6 +303,114 @@ def cam_cleat(m, x, y, z, yaw):
         disc(m, (px, py), 0.012, z + 0.032, "Aluminium", 10)
     fx, fy = x + 0.04 * cs, y + 0.04 * sn
     tube(m, [(fx - 0.012 * sn + 0.0, fy + 0.012 * cs, z + 0.01), (fx, fy, z + 0.03), (fx + 0.012 * sn, fy - 0.012 * cs, z + 0.01)], 0.003, "Stainless", 6)
+
+
+def rrect(sx, sy, r, n=4):
+    """A rounded rectangle sx by sy (corner radius r) about the origin, counter-clockwise, closed."""
+    r = min(r, 0.5 * sx - 1e-4, 0.5 * sy - 1e-4)
+    pts = []
+    for q, (cx, cy) in enumerate(((1, 1), (-1, 1), (-1, -1), (1, -1))):
+        for k in range(n + 1):
+            a = 0.5 * math.pi * (q + k / n)
+            pts.append((cx * (0.5 * sx - r) + r * math.cos(a), cy * (0.5 * sy - r) + r * math.sin(a)))
+    return pts + [pts[0]]
+
+
+def loft(m, rows, slot, cap_bottom=False):
+    """Closed sections stacked upward: rows of (profile, (cx, cy, z), yaw); the top is capped (and the bottom if asked)."""
+    rings = []
+    for prof, (cx, cy, z), yaw in rows:
+        cs, sn = math.cos(yaw), math.sin(yaw)
+        rings.append([(cx + u * cs - v * sn, cy + u * sn + v * cs, z) for u, v in prof])
+    m.grid(rings, slot, flip=True)
+    m.face(rings[-1][:-1], slot)
+    if cap_bottom:
+        m.face(list(reversed(rings[0][:-1])), slot)
+
+
+def rbox(m, c, size, slot, yaw=0.0, r=None, chamfer=None):
+    """A cast or moulded fitting's block: rounded corners in plan and a rounded-over top edge (round 12: the plain
+    boxes read as placeholders)."""
+    sx, sy, sz = size
+    r = 0.3 * min(sx, sy) if r is None else r
+    ch = min(r, 0.35 * sz) if chamfer is None else chamfer
+    x, y, z = c
+    z0, z1 = z - 0.5 * sz, z + 0.5 * sz
+    rows = [(rrect(sx, sy, r), (x, y, z0), yaw), (rrect(sx, sy, r), (x, y, z1 - ch), yaw)]
+    for k in (1, 2):
+        t = k / 2
+        d = ch * (1 - math.cos(0.5 * math.pi * t))
+        rows.append((rrect(sx - 2 * d, sy - 2 * d, max(r - d, 1e-3)), (x, y, z1 - ch + ch * math.sin(0.5 * math.pi * t)), yaw))
+    loft(m, rows, slot, cap_bottom=True)
+
+
+def bolts(m, pts, z, r=0.0045, slot="Stainless"):
+    """Domed fastener heads."""
+    for x, y in pts:
+        m.grid([ring((x, y), r, z, 8), ring((x, y), 0.7 * r, z + 0.4 * r, 8)], slot, flip=True)
+        disc(m, (x, y), 0.7 * r, z + 0.4 * r, slot, 8)
+
+
+def horn_cleat(m, x, y, z, length, yaw):
+    """A cast horn cleat: two feet on a rounded base and a horn swept up at each end."""
+    cs, sn = math.cos(yaw), math.sin(yaw)
+    rbox(m, (x, y, z + 0.006), (0.45 * length, 0.03, 0.012), "Stainless", yaw)
+    for s in (1, -1):
+        fx, fy = x + s * 0.13 * length * cs, y + s * 0.13 * length * sn
+        rbox(m, (fx, fy, z + 0.022), (0.022, 0.018, 0.026), "Stainless", yaw, r=0.008)
+    horn = []
+    for k in range(11):
+        u = -0.5 + k / 10
+        horn.append((x + u * length * cs, y + u * length * sn, z + 0.034 + 0.012 * (2 * u) ** 2))
+    tube(m, horn, 0.008, "Stainless", 10)
+
+
+def outboard(m, x, y, z):
+    """A 3.5 hp four-stroke on a two-position transom bracket (photo IMG_9273: the lesson boat's on the port quarter):
+    the bracket's side plates and teak pad on the transom, the clamp over the pad, cowl, midsection, leg, gearcase,
+    skeg, a three-blade prop and the tiller arm reaching forward over the transom. x is the transom, z the prop's axis."""
+    xb = x - 0.17                                   # the pad's aft face
+    for s in (1, -1):
+        rbox(m, (x - 0.085, y + s * 0.10, z + 0.62), (0.17, 0.012, 0.05), "Stainless", r=0.005)
+        rbox(m, (x - 0.085, y + s * 0.10, z + 0.48), (0.17, 0.012, 0.04), "Stainless", r=0.005)
+        rbox(m, (x - 0.006, y + s * 0.10, z + 0.55), (0.012, 0.05, 0.26), "Stainless", r=0.005)
+    rbox(m, (xb + 0.015, y, z + 0.55), (0.03, 0.26, 0.20), "Teak", r=0.01)
+    tube(m, [(x - 0.09, y - 0.11, z + 0.55), (x - 0.09, y + 0.11, z + 0.55)], 0.006, "Stainless", 8)   # lock pin
+    xm = xb - 0.16                                  # the leg's axis
+    ell = lambda rx, ry, nose=1.0: [((rx * nose if math.cos(a) > 0 else rx) * math.cos(a), ry * math.sin(a))
+                                     for a in (2 * math.pi * k / 24 for k in range(25))]
+    # clamp bracket and swivel over the pad
+    rbox(m, (xb - 0.02, y, z + 0.58), (0.07, 0.15, 0.16), "BlackPlastic", r=0.02)
+    rbox(m, (xm + 0.07, y, z + 0.60), (0.08, 0.10, 0.16), "BlackPlastic", r=0.025)
+    # leg (a foil, blunt nose forward), cavitation plate, gearcase, skeg
+    loft(m, [(ell(0.05, 0.022, 0.6), (xm, y, z + 0.02), 0.0), (ell(0.055, 0.025, 0.6), (xm, y, z + 0.40), 0.0)], "Aluminium")
+    rbox(m, (xm - 0.04, y, z + 0.10), (0.22, 0.14, 0.008), "Aluminium", r=0.05, chamfer=0.003)
+    tor = [(0.0, 0.0), (0.03, 0.015), (0.06, 0.036), (0.15, 0.042), (0.22, 0.034), (0.24, 0.022)]
+    rings = [[(xm + 0.08 - u, y + rr * math.cos(2 * math.pi * k / 16), z + rr * math.sin(2 * math.pi * k / 16)) for k in range(17)] for u, rr in tor]
+    m.grid(rings, "Aluminium")
+    m.face(list(reversed(rings[-1][:-1])), "Aluminium")
+    loft(m, [(ell(0.06, 0.004), (xm - 0.02, y, z - 0.13), 0.0), (ell(0.07, 0.005), (xm - 0.01, y, z - 0.02), 0.0)], "Aluminium", cap_bottom=True)
+    # propeller: hub and three blades raked a little aft
+    hx = xm + 0.08 - 0.24
+    hub = [(0.0, 0.024), (0.03, 0.024), (0.06, 0.012), (0.07, 0.0)]
+    rings = [[(hx - u, y + rr * math.cos(2 * math.pi * k / 12), z + rr * math.sin(2 * math.pi * k / 12)) for k in range(13)] for u, rr in hub]
+    m.grid(rings, "BlackPlastic")
+    for b in range(3):
+        a0 = 2 * math.pi * b / 3 + 0.3
+        pts = []
+        for rr, da, dx in ((0.022, -0.35, -0.012), (0.07, -0.30, -0.020), (0.10, 0.0, -0.028), (0.07, 0.42, -0.034), (0.022, 0.38, -0.036)):
+            a = a0 + da
+            pts.append((hx + dx, y + rr * math.cos(a), z + rr * math.sin(a)))
+        m.face(pts, "BlackPlastic")
+        m.face(list(reversed(pts)), "BlackPlastic")
+    # midsection (the exhaust housing) and the cowl's lower band and lid
+    loft(m, [(ell(0.09, 0.06), (xm - 0.01, y, z + 0.40), 0.0), (ell(0.10, 0.07), (xm - 0.01, y, z + 0.56), 0.0)], "BlackPlastic")
+    cowl = [(0.0, 0.90), (0.02, 1.0), (0.17, 1.0), (0.24, 0.86), (0.28, 0.55), (0.295, 0.2)]
+    loft(m, [(ell(0.20, 0.145), (xm - 0.03, y, z + 0.56), 0.0)] +
+         [(ell(0.20 * f, 0.145 * f), (xm - 0.03, y, z + 0.585 + h), 0.0) for h, f in cowl], "BlackPlastic", cap_bottom=True)
+    # tiller arm with its twist grip, folded up (sailing, with the motor stopped, it clears the transom)
+    tube(m, [(xm + 0.12, y, z + 0.66), (xm + 0.19, y, z + 0.78), (xm + 0.23, y, z + 0.96)], 0.017, "BlackPlastic", 12)
+    tube(m, [(xm + 0.23, y, z + 0.96), (xm + 0.25, y, z + 1.08)], 0.021, "Rubrail", 12)
 
 
 def block(m, p, axis_y=True, r=0.025, slot="BlackPlastic"):
@@ -487,17 +598,19 @@ for x, ztop in ((COCKPIT_AFT, None), ):
     e = inner_edge(x)
     hull.grid([[(x, v * e, deck_z(x, v * e)) for v in fv], [(x, v * (e - SEAT_W), SOLE_Z) for v in fv]], "Deck")
 
-# Keel: lead fin, NACA 0012, swept leading edge, from inside the canoe body to the class draft.
-keel_c = [f for f in CFG["foils"] if f["role"] == "keel"][0]
-root_z, tip_z = -keel_line_depth(0.7) + 0.06, -CFG["draft"]
-sweep = math.tan(math.radians(17))
+# Keel: lead fin, NACA 0012, swept leading edge, from inside the canoe body to the class draft. Plan form from the class
+# template (boat kit phase 3, docs/boatkit-3): chord 0.965 m at MPA (216 mm under the hull) and 0.603 m 483 mm lower,
+# trailing edge 2.90 m forward of the transom, drawn as in Inputs/j22-hero/build_j22_hero.py (keel_edges). The physics
+# keel's Center stays where the polar put it (a balance knob, not the drawn fin).
+root_z, tip_z = -keel_line_depth(0.0) + 0.06, -CFG["draft"]
+mpa_z = -keel_line_depth(0.0) - 0.216
 keel = []
 for k in range(9):
     t = k / 8
     z = root_z + (tip_z - root_z) * t
-    le = 1.16 - sweep * (root_z - z)
-    chord = 1.06 + (0.70 - 1.06) * t
-    keel.append((z, le, chord))
+    d = mpa_z - z
+    le, te = 0.465 - 0.708 * d, -0.500 + 0.041 * d
+    keel.append((z, le, le - te))
 foil(hull, keel, "Keel", 0.12)
 
 # Chainplates, stem fitting, backstay plate.
@@ -505,50 +618,29 @@ for side, tag in ((1, "S"), (-1, "P")):
     # abeam of the mast and 26 cm aft of it, so they follow the physics' MastX (moved to the class's J, boat kit phase 2)
     for name, x in (("Upper", RIG["mast_x"] - 0.02), ("Lower", RIG["mast_x"] - 0.28)):
         y = side * (sharp_half_beam(x) - 0.05)
-        box(hull, (x, y, deck_z(x, y) + 0.035), (0.06, 0.012, 0.07), "Stainless")
+        rbox(hull, (x, y, deck_z(x, y) + 0.035), (0.06, 0.012, 0.07), "Stainless", r=0.005, chamfer=0.02)
+        rbox(hull, (x, y, deck_z(x, y) + 0.003), (0.09, 0.04, 0.006), "Stainless", r=0.012)
         socket(f"Chainplate{name}_{tag}", (x, y, deck_z(x, y) + 0.07))
 stem_x = BOW - 0.09
-box(hull, (stem_x, 0, deck_z(stem_x, 0) + 0.03), (0.16, 0.05, 0.05), "Stainless")
+rbox(hull, (stem_x, 0, deck_z(stem_x, 0) + 0.012), (0.18, 0.06, 0.012), "Stainless", r=0.02)
+rbox(hull, (stem_x + 0.02, 0, deck_z(stem_x, 0) + 0.04), (0.10, 0.012, 0.05), "Stainless", r=0.005, chamfer=0.018)
+bolts(hull, [(stem_x - 0.06, 0.0), (stem_x - 0.03, 0.0)], deck_z(stem_x, 0) + 0.018)
 socket("ForestayTack", (stem_x + 0.04, 0, deck_z(stem_x, 0) + 0.06))
 socket("BackstayPlate", (STERN + 0.03, 0, sheer(STERN) + 0.04))
-box(hull, (STERN + 0.03, 0, sheer(STERN) + 0.02), (0.05, 0.08, 0.04), "Stainless")
+rbox(hull, (STERN + 0.03, 0, sheer(STERN) + 0.004), (0.07, 0.10, 0.008), "Stainless", r=0.015)
+rbox(hull, (STERN + 0.03, 0, sheer(STERN) + 0.025), (0.04, 0.012, 0.04), "Stainless", r=0.005, chamfer=0.015)
 
-# Pulpits, stanchions and the lifeline.
-RAIL_H = 0.62
-bp_x0 = 2.62
-bow_pulpit = []
-for k in range(13):
-    a = math.pi * k / 12
-    x = bp_x0 + (BOW - 0.12 - bp_x0) * math.sin(a)
-    y = sharp_half_beam(x) - 0.06
-    bow_pulpit.append((x, math.cos(a) * y, deck_z(x, 0) + RAIL_H))
-tube(hull, bow_pulpit, 0.0125, "Stainless")
-for p in (bow_pulpit[0], bow_pulpit[3], bow_pulpit[9], bow_pulpit[12]):
-    tube(hull, [(p[0], p[1], deck_z(p[0], p[1])), p], 0.0125, "Stainless")
-stanchion_x = (1.55, 0.25, -1.05, -2.2)
-for side, tag in ((1, "S"), (-1, "P")):
-    tops = [bow_pulpit[0] if side > 0 else bow_pulpit[12]]
-    for x in stanchion_x:
-        y = side * (sharp_half_beam(x) - 0.05)
-        z0 = deck_z(x, y)
-        tube(hull, [(x, y, z0), (x, y * 1.01, z0 + RAIL_H)], 0.0125, "Stainless")
-        box(hull, (x, y, z0 + 0.01), (0.07, 0.07, 0.02), "Stainless")
-        tops.append((x, y * 1.01, z0 + RAIL_H))
-    # Stern pulpit (split, one per quarter).
-    sp = [(-2.75, side * (sharp_half_beam(-2.75) - 0.05)), (STERN + 0.08, side * (sharp_half_beam(STERN) - 0.06)), (STERN + 0.08, side * 0.32)]
-    sp3 = [(x, y, deck_z(x, y) + RAIL_H) for x, y in sp]
-    tube(hull, sp3, 0.0125, "Stainless")
-    for (x, y), top in zip(sp, sp3):
-        tube(hull, [(x, y, deck_z(x, y)), top], 0.0125, "Stainless")
-    tops.append(sp3[0])
-    tube(hull, tops, 0.003, "Stainless", 6)
+# No pulpits, stanchions or lifelines: the lesson J/22s (TX 7295 EC, 7297 EC; photos IMG_9224, 9272, 9273) sail
+# with an open deck, and the hero model has none either (round 12 caught them, docs/boatkit-4).
 
 # Winches, cam cleats, jib tracks and cars, cleats, the traveler.
 for side, tag in ((1, "S"), (-1, "P")):
     wx = CABIN_AFT - 0.28
     wy = side * (inner_edge(wx) + 0.16)
     wz = deck_z(wx, wy)
-    winch(hull, wx, wy, wz)
+    rbox(hull, (wx, wy, wz + 0.004), (0.20, 0.20, 0.008), "BlackPlastic", r=0.05, chamfer=0.004)
+    bolts(hull, [(wx + 0.088 * math.cos(a), wy + 0.088 * math.sin(a)) for a in (2 * math.pi * k / 5 + 0.3 for k in range(5))], wz + 0.008, 0.004)
+    winch(hull, wx, wy, wz + 0.008)
     socket(f"JibWinch_{tag}", (wx, wy, wz + 0.07))
     socket(f"JibTailer_{tag}", (wx, wy, wz + 0.11))
     cx2 = wx - 0.25
@@ -564,8 +656,11 @@ for side, tag in ((1, "S"), (-1, "P")):
         kx = CABIN_AFT + 0.12
         ky = side * (0.42 + 0.05 * k)
         kz = cabin_top_edge(kx)[1] + 0.035 * (1 - (ky / cabin_top_edge(kx)[0]) ** 2)
-        box(hull, (kx, ky, kz + 0.02), (0.12, 0.04, 0.04), "BlackPlastic")
-        box(hull, (kx - 0.03, ky, kz + 0.045), (0.07, 0.03, 0.012), "Aluminium")
+        # a rope clutch: cast body with the line through it and the lever folded down over the top
+        rbox(hull, (kx, ky, kz + 0.004), (0.13, 0.042, 0.008), "BlackPlastic", r=0.012)
+        rbox(hull, (kx, ky, kz + 0.022), (0.11, 0.036, 0.03), "Aluminium", r=0.012, chamfer=0.012)
+        tube(hull, [(kx - 0.05, ky, kz + 0.04), (kx - 0.01, ky, kz + 0.047), (kx + 0.05, ky, kz + 0.044)], 0.007, "BlackPlastic", 10)
+        bolts(hull, [(kx - 0.058, ky), (kx + 0.058, ky)], kz + 0.008, 0.0035)
         # Its halyard runs forward along the cabin top to the turning block at the mast step.
         hx = RIG["mast_x"] - 0.12
         tube(hull, [(kx + 0.06, ky, kz + 0.02), (0.5 * (kx + hx), side * (0.3 + 0.04 * k), cabin_top_edge(0.5 * (kx + hx))[1] + 0.04), (hx, side * (0.06 + 0.02 * k), cabin_top_edge(hx)[1] + 0.05)],
@@ -576,23 +671,21 @@ for side, tag in ((1, "S"), (-1, "P")):
     ty = side * (sharp_half_beam(0.1) - 0.24)
     tube(hull, [(tx0, ty, deck_z(tx0, ty) + 0.006), (tx1, ty, deck_z(tx1, ty) + 0.006)], 0.008, "Aluminium", 6)
     carx = 0.12
-    box(hull, (carx, ty, deck_z(carx, ty) + 0.02), (0.08, 0.035, 0.03), "Aluminium")
+    rbox(hull, (carx, ty, deck_z(carx, ty) + 0.02), (0.08, 0.035, 0.03), "Aluminium", r=0.01, chamfer=0.01)
     cylinder(hull, (carx, ty - side * 0.0, deck_z(carx, ty) + 0.035), (0, 1, 0), 0.025, 0.02, "BlackPlastic", 16)
     socket(f"JibLead_{tag}", (carx, ty, deck_z(carx, ty) + 0.05))
     # Stern cleats.
     sx2 = STERN + 0.22
     sy2 = side * (sharp_half_beam(sx2) - 0.12)
-    box(hull, (sx2, sy2, deck_z(sx2, sy2) + 0.015), (0.04, 0.03, 0.03), "Stainless")
-    box(hull, (sx2, sy2, deck_z(sx2, sy2) + 0.035), (0.16, 0.025, 0.015), "Stainless")
+    horn_cleat(hull, sx2, sy2, deck_z(sx2, sy2), 0.16, 0.0)
 bx = BOW - 0.45
-box(hull, (bx, 0, deck_z(bx, 0) + 0.015), (0.03, 0.04, 0.03), "Stainless")
-box(hull, (bx, 0, deck_z(bx, 0) + 0.035), (0.025, 0.18, 0.015), "Stainless")
+horn_cleat(hull, bx, 0, deck_z(bx, 0), 0.18, 0.5 * math.pi)
 socket("BowCleat", (bx, 0, deck_z(bx, 0) + 0.04))
 TRAV_X = -1.75
 te = inner_edge(TRAV_X) - SEAT_W
 tube(hull, [(TRAV_X, -te, SEAT_Z + 0.02), (TRAV_X, te, SEAT_Z + 0.02)], 0.012, "Aluminium", 8)
 for side in (1, -1):
-    box(hull, (TRAV_X, side * te, SEAT_Z + 0.01), (0.06, 0.03, 0.04), "Aluminium")
+    rbox(hull, (TRAV_X, side * te, SEAT_Z + 0.02), (0.06, 0.035, 0.04), "Aluminium", r=0.012, chamfer=0.012)
 socket("Traveler_S", (TRAV_X, te - 0.05, SEAT_Z + 0.05))
 socket("Traveler_P", (TRAV_X, -te + 0.05, SEAT_Z + 0.05))
 socket("Traveler_C", (TRAV_X, 0, SEAT_Z + 0.05))
@@ -601,7 +694,17 @@ box(hull, (TRAV_X, 0, SEAT_Z - 0.005), (0.16, 2 * te, 0.03), "Deck")
 
 # Pintles and gudgeons on the transom for the rudder.
 for z in (0.32, 0.56):
-    box(hull, (STERN - 0.02, 0, z), (0.05, 0.06, 0.03), "Stainless")
+    rbox(hull, (STERN - 0.02, 0, z), (0.05, 0.06, 0.03), "Stainless", r=0.012, chamfer=0.008)
+
+# The outboard on its bracket, where the physics puts the engine (round 12: the game drew a grey box there; the pawn
+# skips that box when the model has an "Outboard" socket).
+# Drawn with the bracket in its raised, sailing position (photo IMG_9273: the cowl stands above the transom and the
+# leg's foot is at the water), 0.30 m above the physics prop, which is where the motor sits lowered to drive.
+BRACKET_UP = 0.30
+for E in CFG.get("engines", []):
+    ex, ey, ez = E["position"]
+    outboard(hull, STERN, ey, ez + BRACKET_UP)
+    socket("Outboard", (STERN - 0.33, ey, ez + BRACKET_UP))
 
 # Hull graphics: the class mark on each bow.
 def text_mesh(body, size, x, z, side, slot, shear=0.22):
@@ -696,8 +799,8 @@ tiller = [(STOCK_X - 0.02, 0, TILLER_Z0)]
 for k in range(1, 9):
     t = k / 8
     tiller.append((STOCK_X + RIG["tiller_length"] * t, 0, TILLER_Z0 + 0.1 * t))
-for p0, p1 in zip(tiller[:-1], tiller[1:]):
-    tube(rudder, [p0, p1], 0.022 - 0.008 * ((p0[0] - STOCK_X) / RIG["tiller_length"]), "Wood", 10)
+# one smooth taper (round 12: drawn as eight stepped segments, each capped, it shaded in bands like a repeating texture)
+tube(rudder, tiller, 0.022, "Wood", 16, radii=[0.022 - 0.008 * max(0.0, (p[0] - STOCK_X) / RIG["tiller_length"]) for p in tiller])
 end = tiller[-1]
 cylinder(rudder, (end[0] - 0.01, 0, end[2] + 0.02), (0, 0, 1), 0.012, 0.03, "BlackPlastic", 12)
 # Graphics G6: the tiller extension is drawn by the pawn (BoatModelVisuals.cpp), from here to the helm's hand.
@@ -744,7 +847,10 @@ def clip_below(p, z):
 
 vol, cb = measure(hull_obj, ["Topsides", "Bootstripe", "CoveStripe", "Antifouling"])
 xs = [(hull_obj.matrix_world @ v.co) for v in hull_obj.data.vertices]
-loa = max(v.x for v in xs) - min(v.x for v in xs)
+# length of the hull shell alone, as SailingSim.Visual.J22Mesh measures it (the outboard hangs aft of the transom)
+canoe_slots = {SLOTS.index(n) for n in ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")}
+cx = [(hull_obj.matrix_world @ hull_obj.data.vertices[i].co).x for f in hull_obj.data.polygons if f.material_index in canoe_slots for i in f.vertices]
+loa = max(cx) - min(cx)
 beam = 2 * max(abs(v.y) for v in xs if v.z < sheer(v.x) + 0.02 and v.z > 0.0)
 draft = -min(v.z for v in xs)
 print(f"J22: LOA {loa:.3f} m, beam {beam:.3f} m, draft {draft:.3f} m, canoe volume {vol:.3f} m^3 (physics {CFG['design_volume']:.3f}), "

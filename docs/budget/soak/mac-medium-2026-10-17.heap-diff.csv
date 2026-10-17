@@ -1,0 +1,16 @@
+bytes_delta,count_delta,class
+16352224,73001,CAMetalDrawable ObjC QuartzCore
+7008720,146015,NSMutableArray ObjC CoreFoundation
+1130912,158,non-object
+737280,15,MTLResourceList ObjC Metal
+686256,14297,IOSurfaceSharedEvent ObjC IOSurface
+163840,40,@autoreleasepool content C libobjc.A.dylib
+71040,185,IOGPUMetalPooledResource ObjC IOGPU
+15232,17,AGXG17XFamilyCommandBuffer ObjC AGXMetalG17X
+10880,17,AGXG17XFamilyCommandBuffer._impl (malloc) C AGXMetalG17X
+6880,43,IOGPUMetalDeviceShmem ObjC IOGPU
+1024,0,NSMutableDictionary (Storage) C CoreFoundation
+816,17,__NSMallocBlock__ ObjC libsystem_blocks.dylib
+560,7,__NSExactBlockVariable__ ObjC libsystem_blocks.dylib
+464,13,NSMutableArray (Storage) C CoreFoundation
+288,6,_MTLCommandBufferEncoderInfo ObjC Metal

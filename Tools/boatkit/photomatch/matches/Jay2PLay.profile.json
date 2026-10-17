@@ -1,0 +1,21 @@
+{
+  "about": "Broadside of a J/22 on its trailer, bow left, rudder off. Pixels in the 960 px wide Commons thumbnail (960x640). Picked for boat kit phase 3 (docs/boatkit-3); the photo itself is not in the repo.",
+  "source": "https://commons.wikimedia.org/wiki/File:J-22_sailboat_Jay2PLay_on_trailer.jpg",
+  "author": "Thomas Gutenstein",
+  "licence": "CC BY-SA 3.0",
+  "image_width": 960,
+  "stem_top_px": [117, 279],
+  "stem_top_z": 0.79,
+  "transom_top_px": [923, 302],
+  "points": {
+    "keel_te_root": [578, 395],
+    "keel_te_low": [578, 465],
+    "keel_le_mpa": [463, 418],
+    "keel_le_low": [505, 470],
+    "cabin_face_foot": [346, 286],
+    "cabin_face_top": [380, 266],
+    "sheer_700": [700, 299],
+    "sheer_800": [800, 300],
+    "sheer_900": [900, 300]
+  }
+}

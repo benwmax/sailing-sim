@@ -572,8 +572,16 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			SunComp->SetDiffuseScale(Direct);
 			SunComp->SetSpecularScale(FMath::Square(Direct));
 		}
+		// Perf 3: two more setters rebuild the light the same way (the engine marks its render state dirty whenever the
+		// value changes), and both follow the cloud shade, which the weather map moves a little every frame while the
+		// clouds drift. A rebuilt light starts its virtual shadow map cache afresh, so every frame redrew every caster:
+		// about 4 ms of render thread on the PC's parked soak, climbing as the sun's shadows lengthened (the +2 ms/h
+		// frame-time drift; with the clock frozen the shade stopped moving and the drift went). They step by 0.04 like
+		// the scales above, and snap to their sunshine value exactly.
+		auto Stepped = [](float Current, float Want) { return FMath::Abs(Current - Want) > 0.04f || (Want >= 1.f && Current < 1.f); };
 		// The haze and rain under a storm deck aren't sunlit: no glowing white fog (volumetric fog has no cloud shadow).
-		SunComp->SetVolumetricScatteringIntensity(FMath::Clamp(CloudShade * 1.2f, 0.05f, 1.f));
+		const float Scatter = FMath::Clamp(CloudShade * 1.2f, 0.05f, 1.f);
+		if (Stepped(SunComp->VolumetricScatteringIntensity, Scatter)) SunComp->SetVolumetricScatteringIntensity(Scatter);
 		// Once the sun is down it casts no shadows, and the clouds' shadow rays toward it (which run the whole layer
 		// when the light skims the horizon: night ran at two-thirds of day's frame rate) get only a few samples.
 		const bool bShadows = Elevation > 2.0; // shadows from a sun within 2 degrees of the horizon are too long to see
@@ -590,7 +598,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		if (UDirectionalLightComponent* Dir = Cast<UDirectionalLightComponent>(SunComp))
 		{
 			const float Disk = FMath::Square(CloudShade);
-			Dir->SetAtmosphereSunDiskColorScale(FLinearColor(Disk, Disk, Disk));
+			if (Stepped(Dir->AtmosphereSunDiskColorScale.R, Disk)) Dir->SetAtmosphereSunDiskColorScale(FLinearColor(Disk, Disk, Disk));
 			// Visual V5: the layered clouds shade themselves (their bases are dark because the cloud above shadows them),
 			// so they are lit by the undimmed sun: the scene's light is cut for the deck's shadow, the clouds' is not.
 			// That is what gives a storm its form: a lit shelf face and anvil top over a dark base.

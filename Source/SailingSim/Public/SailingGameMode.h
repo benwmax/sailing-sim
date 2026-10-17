@@ -7,6 +7,7 @@
 #include "Ocean.h"
 #include "Weather.h"
 #include "Wind.h"
+#include "WorldClock.h"
 #include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
@@ -67,8 +68,11 @@ public:
 	/** Whether lights are showing: from sunset to sunrise (sun below the horizon) and in restricted visibility. */
 	bool IsDark() const;
 
-	/** Physics time (s): the boat's clock, which the wind, waves and water material all use. */
-	double GetSimTime() const;
+	/** Physics time (s): the world clock (FWorldClock), which every boat, the wind, waves and water material run on. */
+	double GetSimTime() const { return Clock.GetTime(); }
+	/** Moves the world clock by this frame's time, once a frame: the game mode's tick or the first boat to tick, whichever
+	 *  runs first (boats step until they reach it, so it has to have moved before they do). */
+	void AdvanceClock(float DeltaSeconds);
 	/** Seconds since the current weather started (the storm timeline runs on this). */
 	double GetWeatherTime() const { return GetSimTime() - WeatherStartTime; }
 
@@ -131,7 +135,8 @@ public:
 	float GetRenderScale() const;
 private:
 	double WeatherStartTime = 0.0;
-	double OwnClock = 0.0;
+	Sailing::FWorldClock Clock;
+	uint64 ClockFrame = MAX_uint64;
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;
 	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.
@@ -155,6 +160,10 @@ private:
 	int32 ForegroundFrames = 0;
 	TArray<TPair<float, float>> TraceTimes;   // -SailingBenchTrace: (time since start, frame ms)
 	float RecordSeconds = 0.f;
+	TArray<TPair<float, FString>> ExecAt;   // -SailingExecAt: (seconds, console command)
+	int32 NextExecAt = 0;
+	float NextPosLog = 0.f;   // -SailingBenchTrace: the player's position once a minute (soaks: is the boat parked?)
+	FVector LastPosLog = FVector::ZeroVector;
 	float RecordInterval = 0.1f;
 	float NextFrameTime = 0.f;
 	int32 FrameIndex = 0;

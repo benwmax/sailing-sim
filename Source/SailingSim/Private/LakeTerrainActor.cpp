@@ -409,7 +409,9 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	{
 		if (!Ch.bBuilding || !Ch.Future.IsReady()) continue;
 		if (Uploads++ >= kMaxUploadsPerFrame) break;
-		FChunkMesh M = Ch.Future.Get();
+		// Consume moves the mesh out and frees the future's state: Get() copied it, and the future kept its own copy
+		// until the chunk was rebuilt (a second 16 MB for a 1 m shore chunk; docs/budget/mac-soak-parked-2026-10-17.md).
+		FChunkMesh M = Ch.Future.Consume();
 		Ch.Mesh->ClearAllMeshSections();
 		Ch.Mesh->CreateMeshSection_LinearColor(0, M.Vertices, M.Triangles, M.Normals, {}, M.Colors, {}, false);
 		Ch.Lod = -2 - Ch.Lod;
