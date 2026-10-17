@@ -43,14 +43,22 @@ bool FSkyCloudLayersTest::RunTest(const FString&)
 		AddInfo(Line);
 		TestEqual(*(Name + TEXT(": a storm only in the thunderstorm")), Map.Mean(3) > 0.01, C.Preset == EWeatherPreset::Thunderstorm);
 	}
-	// Summer cumulus: few in the late morning, about a third of the sky mid-afternoon, bases 1.2 to 1.5 km.
+	// Summer cumulus: few in the late morning, about a fifth of the sky mid-afternoon (C1). Their bases at the lifting
+	// condensation level, 125 m per degree of dew-point spread: near 1 km on a June morning, near 2 km mid-afternoon (the weather's default month).
 	FWeatherSystem W;
 	W.Configure(EWeatherPreset::AfternoonBreeze, 7, 10.0);
 	const FCloudLayer Morning = W.Evaluate(0.0).Sky[ECloudLayer::Cumulus];
 	W.Configure(EWeatherPreset::AfternoonBreeze, 7, 15.5);
 	const FCloudLayer Afternoon = W.Evaluate(0.0).Sky[ECloudLayer::Cumulus];
-	TestTrue(TEXT("Cumulus build after noon"), Afternoon.Coverage > 0.3 && Morning.Coverage < 0.12);
-	TestTrue(TEXT("Summer cumulus bases near 1.2 to 1.5 km"), Morning.BaseKm >= 1.15 && Afternoon.BaseKm <= 1.55 && Afternoon.BaseKm > Morning.BaseKm);
+	TestTrue(TEXT("Cumulus build after noon"), Afternoon.Coverage > 0.18 && Morning.Coverage < 0.1);
+	AddInfo(FString::Printf(TEXT("June cumulus bases: %.2f km at 10:00, %.2f km at 15:30"), Morning.BaseKm, Afternoon.BaseKm));
+	TestTrue(TEXT("Summer cumulus bases from the dew-point spread"), Morning.BaseKm >= 0.7 && Morning.BaseKm <= 1.3 && Afternoon.BaseKm >= 1.5 && Afternoon.BaseKm <= 2.3 && Afternoon.BaseKm > Morning.BaseKm);
+	{
+		FWeatherSystem Coast;
+		Coast.SetClimate(6, true);
+		Coast.Configure(EWeatherPreset::AfternoonBreeze, 7, 15.5);
+		TestTrue(TEXT("The humid coast's bases are lower than the lake's"), Coast.Evaluate(0.0).Sky[ECloudLayer::Cumulus].BaseKm < Afternoon.BaseKm - 0.3);
+	}
 	// Low decks under overcast and rain; the storm's base lower than the fair-weather cumulus.
 	W.Configure(EWeatherPreset::Overcast, 7, 13.0);
 	TestTrue(TEXT("Overcast is a low stratus deck"), W.Evaluate(0.0).Sky[ECloudLayer::Stratus].Coverage > 0.9 && W.Evaluate(0.0).Sky[ECloudLayer::Stratus].BaseKm < 1.2);
@@ -354,6 +362,7 @@ bool FSkyCloudNoiseTest::RunTest(const FString&)
 		Seen.SetNumZeroed(N * N);
 		TArray<int32> Stack;
 		int32 Small = 0, Mid = 0, Large = 0;
+		double Largest = 0.0;
 		for (int32 Start = 0; Start < N * N; ++Start)
 		{
 			if (Seen[Start] || Map.Pixels()[size_t(Start) * 4] < 0.5f) continue;
@@ -374,9 +383,13 @@ bool FSkyCloudNoiseTest::RunTest(const FString&)
 			}
 			const double Km2 = Area * CellKm2;
 			if (Km2 < 0.05) continue;                // a few texels: noise, not a cloud
+			Largest = FMath::Max(Largest, Km2);
 			(Km2 < 1.0 ? Small : (Km2 < 4.0 ? Mid : Large)) += 1;
 		}
-		AddInfo(FString::Printf(TEXT("Cumulus by size: %d under 1 km^2, %d of 1-4 km^2, %d over 4 km^2"), Small, Mid, Large));
+		AddInfo(FString::Printf(TEXT("Cumulus by size: %d under 1 km^2, %d of 1-4 km^2, %d over 4 km^2; the largest %.1f km^2"), Small, Mid, Large, Largest));
+		// C1: a fair afternoon's cells stay near 1.5 km in radius (7 km^2 at most); two touching make up to about 12 (the W5a
+		// sizes, to 2.5 km in radius, made single clouds of 20 km^2).
+		TestTrue(TEXT("Fair-weather cumulus stay small (largest under 15 km^2)"), Largest < 15.0);
 		TestTrue(TEXT("Cumulus in many sizes: small ones outnumber mid-sized ones, which outnumber large ones"), Small > Mid && Mid > Large && Large > 0);
 	}
 	return true;
