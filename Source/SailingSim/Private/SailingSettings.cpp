@@ -46,7 +46,7 @@ bool USailingSettings::IgnoresSavedChoices()
 	if (Gen != SailingArgs::Generation())
 	{
 		Gen = SailingArgs::Generation();
-		const TCHAR* Cmd = FCommandLine::Get();
+		const TCHAR* Cmd = SailingArgs::Dev();
 		bArgs = FCString::Strifind(Cmd, TEXT("SailingBench=")) || FCString::Strifind(Cmd, TEXT("SailingCapture="))
 			|| FCString::Strifind(Cmd, TEXT("SailingShot=")) || FCString::Strifind(Cmd, TEXT("SailingDrill="))
 			|| FParse::Param(Cmd, TEXT("SailingDemo"));
@@ -87,7 +87,7 @@ bool USailingSettings::IsMeasuring()
 	if (Gen != SailingArgs::Generation())
 	{
 		Gen = SailingArgs::Generation();
-		bMeasuring = FCString::Strifind(FCommandLine::Get(), TEXT("SailingBench=")) != nullptr;
+		bMeasuring = FCString::Strifind(SailingArgs::Dev(), TEXT("SailingBench=")) != nullptr;
 	}
 	return bMeasuring;
 }

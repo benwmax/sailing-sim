@@ -1,4 +1,5 @@
 #include "MarinaActor.h"
+#include "BenchRunner.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "BoatLivery.h"
 #include "SailingSim.h"
@@ -300,7 +301,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 	TMap<FIntPoint, FKitGeometry> Tiles;
 	All.SplitTiles(UWorldKitLibrary::TileM, Tiles);
 	// Each 40 m tile: the Nanite mesh baked from this same geometry (scripts/make-world-models.sh), or else procedural.
-	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Marina"), Replaced.Num() > 0 || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralWorld")),
+	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Marina"), Replaced.Num() > 0 || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralWorld")),
 		KitMaterial, Tiled);
 
 	// The breakwater: limestone riprap piled along its line (the world kit's six rocks, scaled and turned per piece).

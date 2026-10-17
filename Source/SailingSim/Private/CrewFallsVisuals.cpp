@@ -1,6 +1,7 @@
 // Crew C5: the crew's falls on the player's boat (CrewFalls.h): Physics Control drives each MetaHuman body toward its
 // animated pose; FCrewFalls decides how hard, and when the animation alone poses them again.
 #include "SailboatPawn.h"
+#include "BenchRunner.h"
 #include "SailingSim.h"
 #include "CrewFalls.h"
 #include "SailingSettings.h"
@@ -36,7 +37,7 @@ void ASailboatPawn::SetupCrewFalls()
 	CrewFalls = FCrewFalls();
 	bKnockdownDone = false;
 	FString Knock;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingKnockdownAt="), Knock, false))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingKnockdownAt="), Knock, false))
 	{
 		// -SailingKnockdownAt=<s>[,<deg>]: at that sim time the boat is laid over (the stills' and tests' capsize).
 		FString At, Rate;
@@ -46,7 +47,7 @@ void ASailboatPawn::SetupCrewFalls()
 	}
 	// Ultra by default (the PC first); -SailingCrewFalls=0|1 overrides. Only the MetaHumans have physics assets.
 	int32 Arg = -1;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingCrewFalls="), Arg);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingCrewFalls="), Arg);
 	bCrewFalls = (Arg >= 0 ? Arg != 0 : USailingSettings::Get()->Quality == ESailingQuality::Ultra) && !bTrafficBoat && HasMetaHumanCrew();
 	if (!bCrewFalls) return;
 

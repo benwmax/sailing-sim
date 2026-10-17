@@ -41,7 +41,7 @@ namespace
 		M = []
 		{
 			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 250.0 : 200.0;
-			FParse::Value(FCommandLine::Get(), TEXT("SailingNearTrees="), V);
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingNearTrees="), V);
 			return V;
 		}();
 		return M;
@@ -57,7 +57,7 @@ namespace
 		M = []
 		{
 			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 1000.0 : 600.0;
-			FParse::Value(FCommandLine::Get(), TEXT("SailingMidTrees="), V);
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingMidTrees="), V);
 			return V;
 		}();
 		return M;
@@ -431,7 +431,7 @@ void ALakeTerrainActor::PlaceTrees()
 	const FLakeTerrain& T = Lake->Terrain;
 	TArray<FTreeInstance> Trees;
 	// Graphics G6: the lidar's crowns where the G2 band has them (-SailingClassicTrees compares).
-	if (Lake->Crowns.Num() > 0 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicTrees"))) PlaceCrownTrees(T, Lake->Crowns, TreeFraction, Trees);
+	if (Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees"))) PlaceCrownTrees(T, Lake->Crowns, TreeFraction, Trees);
 	else PlaceTreeInstances(T, TreeFraction, Trees);
 	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
 	if (Lake->Houses.Num() > 0)
@@ -495,7 +495,7 @@ void ALakeTerrainActor::PlaceTrees()
 					// pages (thousands of swaying trees would invalidate the cache every frame).
 					// Graphics G6: the far band casts none (-SailingFarTreeShadows=1 to compare).
 					int32 FarShadows = 0;
-					FParse::Value(FCommandLine::Get(), TEXT("SailingFarTreeShadows="), FarShadows);
+					FParse::Value(SailingArgs::Dev(), TEXT("SailingFarTreeShadows="), FarShadows);
 					C->SetCastShadow(Pass < 2 || FarShadows != 0);
 					C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : (Pass == 1 ? MidTreesM() + 200.0 : 9000.0)) * 100.0);
@@ -570,7 +570,7 @@ void ALakeTerrainActor::PlaceTrees()
 void ALakeTerrainActor::PlaceReeds()
 {
 	const FLakeData* Lake = GetLake();
-	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0 || FParse::Param(FCommandLine::Get(), TEXT("SailingNoReeds"))) return;
+	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0 || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoReeds"))) return;
 	UStaticMesh* Meshes[2] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
 		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")) };
 	if (!Meshes[0] || !Meshes[1]) return;
@@ -673,7 +673,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	if (USailingSettings::Get()->Quality == ESailingQuality::Low) return false;
 	// Graphics G6: the G2 houses (real footprints, lidar eaves and roofs, NAIP roof colours; WorldKit's HouseKit.cpp) replace
 	// the archetypes below where the world has them (-SailingClassicHouses compares). The private docks stay.
-	const bool bKitHouses = Lake.Houses.Num() > 0 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicHouses"));
+	const bool bKitHouses = Lake.Houses.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicHouses"));
 	if (bKitHouses)
 	{
 		TMap<FIntPoint, TArray<int32>> ByTile;

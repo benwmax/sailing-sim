@@ -314,7 +314,7 @@ FWaveDetail::FCascadeSpec AWaterSurface::DrawnRipple() const
 void AWaterSurface::SetQualityTier(int32 InTier)
 {
 	const int32 Clamped = FMath::Clamp(InTier, 0, 2);
-	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(FCommandLine::Get(), TEXT("SailingUltraDetail")); // as CreateWaterMaterial sets bUltraDetail
+	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(SailingArgs::Dev(), TEXT("SailingUltraDetail")); // as CreateWaterMaterial sets bUltraDetail
 	if (Clamped == Tier && bUltra == bUltraDetail && (WaterMaterial || !HasActorBegunPlay())) return;
 	Tier = Clamped;
 	if (HasActorBegunPlay())
@@ -326,7 +326,7 @@ void AWaterSurface::SetQualityTier(int32 InTier)
 void AWaterSurface::CreateWaterMaterial()
 {
 	// -SailingClassicWater: M_Water on every tier (measuring the V4 water's cost).
-	bV4 = Tier >= 1 && DetailedMaterial != nullptr && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicWater"));
+	bV4 = Tier >= 1 && DetailedMaterial != nullptr && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicWater"));
 	UMaterialInterface* Parent = bV4 ? DetailedMaterial.Get() : ClassicMaterial.Get();
 	if (!Parent) return;
 	WaterMaterial = UMaterialInstanceDynamic::Create(Parent, this);
@@ -338,12 +338,12 @@ void AWaterSurface::CreateWaterMaterial()
 	bStaticParamsSet = false;
 	UploadedSeaGeneration = UINT32_MAX; // W3: bind the sea atlas to the new instance
 	float DebugGust = 0.f;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingDebugGust="), DebugGust);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingDebugGust="), DebugGust);
 	WaterMaterial->SetScalarParameterValue(TEXT("DebugGust"), DebugGust);
 	// W8: -SailingDebugFoam: M_WaterV4 draws the whitecaps alone (white on black) for counting on a screenshot.
 	// (=2 the crests alone, =3 where the fold is under the threshold; -SailingDebugCaps logs the solved thresholds.)
-	float DebugFoam = FParse::Param(FCommandLine::Get(), TEXT("SailingDebugFoam")) ? 1.f : 0.f;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingDebugFoam="), DebugFoam);
+	float DebugFoam = FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugFoam")) ? 1.f : 0.f;
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingDebugFoam="), DebugFoam);
 	WaterMaterial->SetScalarParameterValue(TEXT("DebugFoam"), DebugFoam);
 	WaterMaterial->SetTextureParameterValue(TEXT("GustMap"), GustMap);
 	WaterMaterial->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
@@ -359,7 +359,7 @@ void AWaterSurface::CreateWaterMaterial()
 
 	if (bV4)
 	{
-		bUltraDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(FCommandLine::Get(), TEXT("SailingUltraDetail"));
+		bUltraDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(SailingArgs::Dev(), TEXT("SailingUltraDetail"));
 		const FWaveDetail::FCascadeSpec Chop = DrawnChop(), Ripple = DrawnRipple();
 		if (!DetailAMap || DetailAMap->GetSizeX() != Chop.N || RippleBMap->GetSizeX() != Ripple.N)
 		{
@@ -482,7 +482,7 @@ float AWaterSurface::WhitecapThreshold(float LocalOverMean, float WaterScale, fl
 void AWaterSurface::SetRingCount(int32 Count)
 {
 	RingCount = FMath::Clamp(Count, 2, 7);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingWaterRings="), RingCount); // measuring
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingWaterRings="), RingCount); // measuring
 	if (HasActorBegunPlay())
 	{
 		BuildRings();
@@ -552,7 +552,7 @@ void AWaterSurface::BuildRings()
 	TArray<FVector> Verts;
 	TArray<int32> Tris;
 	int32 PerSide = FarGridPerSide;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingFarGrid="), PerSide); // measuring
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingFarGrid="), PerSide); // measuring
 	BuildFarGrid(FarGridInnerHalfMeters(RingCount), 0.5f * FarPlaneSizeMeters, PerSide, Verts, Tris);
 	TArray<FVector> Normals;
 	Normals.Init(FVector::UpVector, Verts.Num());
@@ -1482,7 +1482,7 @@ void AWaterSurface::UpdateGustMap()
 
 	// -SailingDumpGust: write the near map's roughness around the boat once as a PGM image, to check what the water shows.
 	static SailingArgs::FOnce Dumped;
-	if (!Dumped.Taken() && T > 4.0 && FParse::Param(FCommandLine::Get(), TEXT("SailingDumpGust")))
+	if (!Dumped.Taken() && T > 4.0 && FParse::Param(SailingArgs::Dev(), TEXT("SailingDumpGust")))
 	{
 		Dumped.Take();
 		const int32 Res = NearWind.Res;

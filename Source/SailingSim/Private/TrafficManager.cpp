@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "SailSession.h"
 #include "PowerVesselActor.h"
@@ -128,7 +129,7 @@ int32 ATrafficManager::AddPower(ETrafficKind Kind, double X, double Y, double He
 		// -SailingNearShip=<m>: the player is moved this far abeam of the first ship, on her heading (measuring stills).
 		double NearM = 0.0;
 		ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
-		if (Kind == ETrafficKind::Ship && GM && !GM->NearShipStart && FParse::Value(FCommandLine::Get(), TEXT("SailingNearShip="), NearM) && NearM > 0.0)
+		if (Kind == ETrafficKind::Ship && GM && !GM->NearShipStart && FParse::Value(SailingArgs::Dev(), TEXT("SailingNearShip="), NearM) && NearM > 0.0)
 		{
 			GM->NearShipStart = FLaunchSpot{ TEXT("Near ship"), X - NearM * FMath::Sin(Heading), Y + NearM * FMath::Cos(Heading), FMath::RadiansToDegrees(Heading) };
 			if (ASailboatPawn* Player = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0))) Player->ResetBoat();
@@ -245,7 +246,7 @@ void ATrafficManager::Populate(int32 Level)
 	{
 		const bool bTug = I == Ships;
 		// -SailingTrafficNear: ships start close by (screenshots and checks).
-		const int32 Leg = StartAlong(FParse::Param(FCommandLine::Get(), TEXT("SailingTrafficNear")) ? 600.0 : 3000.0);
+		const int32 Leg = StartAlong(FParse::Param(SailingArgs::Dev(), TEXT("SailingTrafficNear")) ? 600.0 : 3000.0);
 		const auto& A = Loop2[Leg];
 		const auto& B = Loop2[Leg + 1];
 		const int32 Id = AddPower(bTug ? ETrafficKind::TugAndTow : ETrafficKind::Ship, A.first, A.second, FMath::Atan2(B.second - A.second, B.first - A.first), Loop2,
@@ -293,9 +294,9 @@ void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
 	// Stills of a club start (Graphics G5): -SailingRaceBoats=<n> fills the line closer, -SailingRaceMixed mixes the club's
 	// keelboats (a PHRF start) instead of one design.
 	int32 BoatsWanted = Boats;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingRaceBoats="), BoatsWanted);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingRaceBoats="), BoatsWanted);
 	Boats = FMath::Clamp(BoatsWanted, 1, 16);
-	const bool bMixed = FParse::Param(FCommandLine::Get(), TEXT("SailingRaceMixed"));
+	const bool bMixed = FParse::Param(SailingArgs::Dev(), TEXT("SailingRaceMixed"));
 	const EBoatType Mixed[] = { EBoatType::Catalina30, EBoatType::J22, EBoatType::Catalina22 };
 	const double Spacing = FMath::Min(45.0, 200.0 / Boats);
 	for (int32 I = 0; I < Boats; ++I)
@@ -422,7 +423,7 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		const bool bFirst = PopulatedLevel < 0;
 		Populate(Level);
 		float RaceIn = 0.f;
-		if (bFirst && FParse::Value(FCommandLine::Get(), TEXT("SailingRace="), RaceIn)) StartRace(5, RaceIn); // recordings and the gate
+		if (bFirst && FParse::Value(SailingArgs::Dev(), TEXT("SailingRace="), RaceIn)) StartRace(5, RaceIn); // recordings and the gate
 		// Graphics G4: a race session from the front end: five AI boats, the five-minute sequence.
 		else if (const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this); bFirst && Session && Session->bHasActive && Session->Active.Mode == ESailMode::Race)
 		{

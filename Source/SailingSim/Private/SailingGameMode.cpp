@@ -59,7 +59,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	// Command-line overrides (benchmarks, recordings) are applied to settings for this run only.
 	USailingSettings* Settings = USailingSettings::Get();
 	FString Value;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWorld="), Value))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value))
 	{
 		// 0 or "Lake", 1 or "Galveston", 2 or "Gulf".
 		Settings->World = (Value.StartsWith(TEXT("Gulf"), ESearchCase::IgnoreCase) || Value == TEXT("2")) ? 2
@@ -67,14 +67,14 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	}
 	Lake.Load(FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
 	// gulf-swell: Galveston carries the Gulf's ocean too (masked out of the bay); -SailingNoOcean compares without it.
-	if (Lake.bOcean && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoOcean")))
+	if (Lake.bOcean && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoOcean")))
 	{
 		Ocean = MakeShared<FOcean>();
 		Waves.SetOcean(std::shared_ptr<FOcean>(Ocean.Get(), [Keep = Ocean](FOcean*) {}));
 	}
 	// W3: the fetch every way at every point, and the water's depth (about 50 ms). The components' wavenumbers follow the
 	// world's median depth (shallow-water dispersion) before anything reads them.
-	if (Lake.IsLoaded() && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoSeaMap")))
+	if (Lake.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoSeaMap")))
 	{
 		const double Start = FPlatformTime::Seconds();
 		TSharedPtr<Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch = MakeShared<Sailing::FSeaFetch, ESPMode::ThreadSafe>();
@@ -84,7 +84,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 		UE_LOG(LogSailing, Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
 			Fetch->GetRows(), Fetch->GetCols(), Fetch->GetCell(), Fetch->GetMedianDepth(), (FPlatformTime::Seconds() - Start) * 1000.0);
 	}
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingWeather="), Value))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWeather="), Value))
 	{
 		for (int32 I = 0; I < int32(EWeatherPreset::Count); ++I)
 		{
@@ -94,12 +94,12 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			}
 		}
 	}
-	bRealDayHour = FParse::Value(FCommandLine::Get(), TEXT("SailingHour="), Settings->StartHour);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingDay="), RealDayDate);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingSeed="), Settings->WeatherSeed);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), WindOverrideKnots);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingLaunch="), Settings->LaunchSpot);
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingLakeLevel="), Value))
+	bRealDayHour = FParse::Value(SailingArgs::Dev(), TEXT("SailingHour="), Settings->StartHour);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingDay="), RealDayDate);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingSeed="), Settings->WeatherSeed);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), WindOverrideKnots);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingLaunch="), Settings->LaunchSpot);
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingLakeLevel="), Value))
 	{
 		Settings->bGaugeLakeLevel = Value.Equals(TEXT("gauge"), ESearchCase::IgnoreCase);
 	}
@@ -120,7 +120,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 		}
 		else if (C.RealDay.IsEmpty())
 		{
-			if (!FParse::Value(FCommandLine::Get(), TEXT("SailingWind="), Value)) WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
+			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
 			WindFromOverride = C.WindFromDeg;
 			GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
 		}
@@ -131,7 +131,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			Lake.Terrain.SetLevelBelowPool(-C.LakeLevelFt * 0.3048);   // above the pool raises the water: the shore drops by as much
 		}
 	}
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingQuality="), Value))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingQuality="), Value))
 	{
 		Settings->Quality = Value.Equals(TEXT("Low"), ESearchCase::IgnoreCase) ? ESailingQuality::Low
 			: (Value.Equals(TEXT("Medium"), ESearchCase::IgnoreCase) ? ESailingQuality::Medium
@@ -222,7 +222,7 @@ bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 	if (NearShipStart) { Out = *NearShipStart; return true; }
 	// -SailingStartAt=<north m>,<east m>,<heading deg> overrides (tests, screenshots).
 	FString At;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingStartAt="), At, false))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingStartAt="), At, false))
 	{
 		TArray<FString> Parts;
 		At.ParseIntoArray(Parts, TEXT(","));
@@ -315,7 +315,7 @@ void ASailingGameMode::ApplyWeatherSettings()
 {
 	const USailingSettings* Settings = USailingSettings::Get();
 	float WeatherOffset = 0.f;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingWeatherTime="), WeatherOffset);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingWeatherTime="), WeatherOffset);
 	WeatherStartTime = GetSimTime() - WeatherOffset;
 	// The storm's timeline is set for the boat's start (the gust front reaches it at kFrontArrives); before Visual V5 it
 	// was the map origin, so a start away from the club met the front a minute or more early.
@@ -325,7 +325,7 @@ void ASailingGameMode::ApplyWeatherSettings()
 	// in sees the storm still kilometres off (the point it reaches at kFrontArrives moved back up its track, toward 290 deg,
 	// where it comes from).
 	double StormDelay = 0.0;
-	FParse::Value(FCommandLine::Get(), TEXT("SailingStormDelay="), StormDelay);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingStormDelay="), StormDelay);
 	const double TrackRad = FMath::DegreesToRadians(290.0);
 	const double Shift = FWeatherSystem::StormFrontSpeed() * StormDelay;
 	// W5b: a real day replaces the preset (its storm, if any, reaches the start when it reached the lake).
@@ -350,7 +350,7 @@ void ASailingGameMode::ApplyWeatherSettings()
 	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
 	FDateTime Date = bSessionDate ? SessionDate : FDateTime::Now();
 	FString DateArg;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDate="), DateArg))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingDate="), DateArg))
 	{
 		TArray<FString> Parts;
 		DateArg.ParseIntoArray(Parts, TEXT("-"));
@@ -383,7 +383,7 @@ void ASailingGameMode::ApplyQualitySettings()
 	Scalability::FQualityLevels Levels = Scalability::GetQualityLevels();
 	Levels.SetFromSingleQualityLevel(QualityScalabilityLevel(Quality));
 	Levels.GlobalIlluminationQuality = QualityGIScalabilityLevel(Quality);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingGI="), Levels.GlobalIlluminationQuality); // measuring
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingGI="), Levels.GlobalIlluminationQuality); // measuring
 	Scalability::SetQualityLevels(Levels);
 	for (const FQualityCVar& C : QualityCVars(Quality))
 	{
@@ -398,17 +398,17 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 	// Measuring (Graphics G1): -SailingCloudMode=<r.VolumetricRenderTarget.Mode> -SailingCloudSamples=<view ray max>.
 	int32 CloudMode = -1, CloudSamples = 0;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudMode="), CloudMode))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudMode="), CloudMode))
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"))) Var->Set(CloudMode, ECVF_SetByCode);
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudSamples="), CloudSamples))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudSamples="), CloudSamples))
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"))) Var->Set(float(CloudSamples), ECVF_SetByCode);
 	// Measuring (Visual V1): -SailingAA=<0 none, 2 TAA, 4 TSR, 5 SMAA> and -SailingScreenPct=<percent> override the tier.
 	int32 AAOverride = -1, PctOverride = -1;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingAA="), AAOverride))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingAA="), AAOverride))
 	{
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->Set(AAOverride, ECVF_SetByCode);
 	}
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingScreenPct="), PctOverride))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingScreenPct="), PctOverride))
 	{
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(PctOverride, ECVF_SetByCode);
 	}
@@ -419,7 +419,7 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 	USailingSettings::Get()->ApplyDisplay();
 	int32 LumenHW = -1;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingLumenHW="), LumenHW))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingLumenHW="), LumenHW))
 	{
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.RayTracing.Enable"))->Set(LumenHW, ECVF_SetByCode);
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing"))->Set(LumenHW, ECVF_SetByCode);
@@ -453,8 +453,8 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	if (!bWindArgsRead)
 	{
 		bWindArgsRead = true;
-		FParse::Value(FCommandLine::Get(), TEXT("SailingWindFrom="), WindFromOverride);
-		FParse::Value(FCommandLine::Get(), TEXT("SailingGust="), GustOverride);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingWindFrom="), WindFromOverride);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), GustOverride);
 	}
 	if (!FMath::IsNaN(WindFromOverride)) WeatherState.Wind.FromDegrees = WindFromOverride;
 	if (!FMath::IsNaN(GustOverride))
@@ -602,7 +602,7 @@ void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)
 	default: P.SwellHs = 0.9; P.SwellTp = 9.0; break;
 	}
 	float SwellArg = 0.f;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingSwell="), SwellArg)) P.SwellHs = SwellArg;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSwell="), SwellArg)) P.SwellHs = SwellArg;
 	P.SwellFromRad = 135.0 * kDegToRad;
 	const FOceanParams& Old = Ocean->GetParams();
 	const bool bChanged = !bOceanConfigured || FMath::Abs(P.WindMs - Old.WindMs) > 0.4 || FMath::Abs(FMath::UnwindRadians(P.WindFromRad - Old.WindFromRad)) > 0.1
@@ -625,7 +625,7 @@ void ASailingGameMode::StartPlay()
 	{
 		GetWorld()->SpawnActor<ANavaidsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
-	if (Lake.Marina.IsLoaded() && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoMarina")))
+	if (Lake.Marina.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoMarina")))
 	{
 		GetWorld()->SpawnActor<AMarinaActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	}
@@ -648,25 +648,25 @@ void ASailingGameMode::StartPlay()
 	}
 	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
 	int32 TrafficArg = 0;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTraffic="), TrafficArg)) USailingSettings::Get()->TrafficLevel = FMath::Clamp(TrafficArg, 0, 2);
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingTraffic="), TrafficArg)) USailingSettings::Get()->TrafficLevel = FMath::Clamp(TrafficArg, 0, 2);
 	GetWorld()->SpawnActor<ATrafficManager>(FVector::ZeroVector, FRotator::ZeroRotator);
 
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
 		// Bench-fast: -SailingBenchWarmup=<s> (3 by default); -SailingBenchTrace keeps every frame from the start
 		// (Saved/Bench/<shot>.frames.csv) to see where the frames settle.
-		FParse::Value(FCommandLine::Get(), TEXT("SailingBenchWarmup="), BenchWarmup);
-		bBenchTrace = FParse::Param(FCommandLine::Get(), TEXT("SailingBenchTrace"));
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingBenchWarmup="), BenchWarmup);
+		bBenchTrace = FParse::Param(SailingArgs::Dev(), TEXT("SailingBenchTrace"));
 		UE_LOG(LogSailing, Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmup);
 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
-		FParse::Value(FCommandLine::Get(), TEXT("SailingRecord="), RecordSeconds);
-		FParse::Value(FCommandLine::Get(), TEXT("SailingRecordInterval="), RecordInterval);
-		FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), ShotName);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecord="), RecordSeconds);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecordInterval="), RecordInterval);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmup;
 		// Soaks: -SailingExecAt=<s>:<cmd>[;<s>:<cmd>...] runs console commands at those seconds of the bench clock, '+' for
 		// spaces (e.g. 600:memreport+-full;600:DumpLLM; docs/budget/mac-soak-high-2-2026-10-17.md).
 		FString ExecArg;
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingExecAt="), ExecArg, false))
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingExecAt="), ExecArg, false))
 		{
 			TArray<FString> Parts;
 			ExecArg.ParseIntoArray(Parts, TEXT(";"));
@@ -700,8 +700,8 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	if (FixedGen != SailingArgs::Generation())
 	{
 		FixedGen = SailingArgs::Generation();
-		bFixed = FParse::Param(FCommandLine::Get(), TEXT("SailingScreenPct")) || FCommandLine::Get() && FCString::Strifind(FCommandLine::Get(), TEXT("SailingScreenPct=")) != nullptr
-		|| FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")) != nullptr;
+		bFixed = FParse::Param(SailingArgs::Dev(), TEXT("SailingScreenPct")) || FCString::Strifind(SailingArgs::Dev(), TEXT("SailingScreenPct=")) != nullptr
+		|| FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCapture=")) != nullptr;
 	}
 	if (USailingSettings::Get()->FixedResolutionScale() > 0) return;   // the player fixed it
 	if (bFixed || USailingSettings::Get()->Quality != ESailingQuality::High || DeltaSeconds <= 0.f || DeltaSeconds > 0.25f) return;
@@ -791,7 +791,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 
 	// -SailingProfileGPU: dump one frame's GPU timings to the log (for tuning quality tiers).
 	static SailingArgs::FOnce Profiled;
-	if (!Profiled.Taken() && Elapsed > BenchWarmup + 3.f && FParse::Param(FCommandLine::Get(), TEXT("SailingProfileGPU")))
+	if (!Profiled.Taken() && Elapsed > BenchWarmup + 3.f && FParse::Param(SailingArgs::Dev(), TEXT("SailingProfileGPU")))
 	{
 		Profiled.Take();
 		GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
