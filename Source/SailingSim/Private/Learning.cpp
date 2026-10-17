@@ -1,5 +1,7 @@
 #include "Learning.h"
 #include "SailingSettings.h"
+#include "SailingBindings.h"
+#include "UI/SailUIStyle.h"
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -60,15 +62,11 @@ namespace LearningLocal
 		// Each token's direction, as SailingSettings.cpp binds them (trim and hauling in are the negative scale).
 		const bool bNegative = Dir == TEXT("trim");
 		if (!Dir.IsEmpty() && Dir != TEXT("trim") && Dir != TEXT("ease") && Dir != TEXT("out")) return false;
-		for (const FSailingKeyBinding& B : GetDefault<USailingInputSettings>()->GetBindings())
-		{
-			if (B.Action == FName(*Action) && (B.Scale < 0.f) == bNegative && !B.Key.IsGamepadKey() && !B.Key.IsMouseButton() && !B.Key.IsAxis1D() && !B.Key.IsAxis2D())
-			{
-				OutName = B.Key.GetDisplayName().ToString();
-				return true;
-			}
-		}
-		return false;
+		// The live binding: the controller's while the player is on the pad, else the keyboard's.
+		const FString Name = SailingBindings::Label(FName(*Action), bNegative, SailUI::UsingGamepad());
+		if (Name == TEXT("?")) return false;
+		OutName = Name;
+		return true;
 	}
 }
 

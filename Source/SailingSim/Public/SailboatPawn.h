@@ -88,14 +88,16 @@ public:
 	bool IsMenuOpen() const { return bMenuOpen; }
 	int32 GetMenuIndex() const { return MenuIndex; }
 	bool IsControlsCardOpen() const { return bControlsCard; }
-	/** The keys screen (Tab > Keys): every command with its keyboard key; Enter rebinds, Backspace restores. */
-	struct FKeyRow { FName Action; bool bNegative = false; FString Label; FKey Key; };
+	/** The keys screen (Tab > Keys): every command with its keyboard key; Enter rebinds, Backspace restores. Each row also
+	 *  carries its gamepad button (PadKey, rebound on the Controls screen) or the stick or trigger that drives it (PadAxis). */
+	struct FKeyRow { FName Action; bool bNegative = false; FString Label; FKey Key; FKey PadKey; FKey PadAxis; };
 	bool IsKeysOpen() const { return bKeysOpen; }
 	const TArray<FKeyRow>& GetKeyRows() const { return KeyRows; }
 	int32 GetKeysIndex() const { return KeysIndex; }
 	bool IsCapturingKey() const { return bCapturingKey; }
 	const FString& GetKeysMessage() const { return KeysMessage; }
-	/** Rebinds a command's keyboard key (as the keys screen does; for tests). Returns false if no such command. */
+	/** Rebinds a command's keyboard key or gamepad button (the column follows the key; as the Controls screen does, and
+	 *  for tests). Returns false if no such command or the key can't be bound there. */
 	bool Rebind(FName Action, bool bNegative, const FKey& Key);
 	/** Menu rows: label and current value, for the HUD. */
 	TArray<TPair<FString, FString>> GetMenuRows() const;
@@ -139,6 +141,8 @@ public:
 	// Graphics G4: the Controls screen rebinds through the same rows the old keys screen used (swaps on a conflict).
 	void UIBuildKeyRows() { BuildKeyRows(); }
 	void UIAssignKey(int32 Row, const FKey& Key) { AssignKey(Row, Key); }
+	/** Both columns back to the defaults (saved to Input.ini). */
+	void ResetKeys();
 	void AddLogEvent(const FString& Remarks);
 	/** The passage plan's next waypoint on the coast (index into the area's plan), or -1. */
 	int32 GetPassageIndex() const { return PassageIndex; }
@@ -253,7 +257,7 @@ private:
 	void UpdateLogbook(float DeltaSeconds);
 	void UpdateGhost(float DeltaSeconds);
 	void BuildKeyRows();
-	void AssignKey(int32 Row, const FKey& Key);
+	bool AssignKey(int32 Row, const FKey& Key);
 	void RebuildMappings();
 	void PollKeyCapture();
 	bool bKeysOpen = false, bCapturingKey = false;

@@ -9,6 +9,7 @@
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
+#include "SailingBindings.h"
 #include "Drills.h"
 #include "Learning.h"
 #include "Engine/Texture2D.h"
@@ -309,23 +310,53 @@ void SSailFrontEnd::FocusCurrent()
 	else FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
 }
 
+FReply SSailFrontEnd::OnPreviewKeyDown(const FGeometry&, const FKeyEvent& E)
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	if (ListeningRow < 0 || Current() != ESailScreen::Controls) return FReply::Unhandled();
+	// Rebinding: the next key goes to the row's column; Esc or B cancels. The keyboard column takes keyboard keys (a
+	// gamepad key cancels), the gamepad column buttons and the D-pad (sticks and triggers stay on their axes).
+	const FKey K = E.GetKey();
+	bool bDone = true;
+	if (K == EKeys::Escape || K == EKeys::Gamepad_FaceButton_Right || K.IsMouseButton()) ControlsMessage = TEXT("Cancelled");
+	else if (bListeningPad && !SailingBindings::IsPadButton(K))
+	{
+		bDone = false;
+		ControlsMessage = SailingBindings::IsPadAxis(K) ? FString(TEXT("Sticks and triggers stay on their axes: press a button or the D-pad (B cancels)"))
+			: FString(TEXT("Press a controller button or the D-pad (Esc or B cancels)"));
+	}
+	else if (!bListeningPad && !SailingBindings::IsKeyboardKey(K)) ControlsMessage = TEXT("Cancelled");
+	else if (ASailboatPawn* P = Pawn())
+	{
+		P->UIAssignKey(ListeningRow, K);
+		ControlsMessage = P->GetKeysMessage();
+	}
+	if (bDone) ListeningRow = -1;
+	Stack.Last() = Build(ESailScreen::Controls);
+	Show(Stack.Last(), true);
+	return FReply::Handled();
+}
+
+void SSailFrontEnd::ListenControls(int32 Row, bool bPad)
+{
+	ListeningRow = Row;
+	bListeningPad = bPad;
+	ControlsMessage = bPad ? TEXT("Press a controller button or the D-pad… (B cancels)") : TEXT("Press a key… (Esc cancels)");
+	Stack.Last() = Build(ESailScreen::Controls);
+	Show(Stack.Last(), true);
+}
+
 FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 {
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	const FKey K = E.GetKey();
-	if (ListeningRow >= 0 && Current() == ESailScreen::Controls)
+	// Controls: Tab or Y rebinds the focused row's gamepad button (Enter or A, the row's click, its keyboard key).
+	if (Current() == ESailScreen::Controls && ListeningRow < 0 && (K == EKeys::Tab || K == EKeys::Gamepad_FaceButton_Top))
 	{
-		// Rebinding: the next key goes to the row; Esc cancels.
-		if (K == EKeys::Escape || K.IsGamepadKey() || K.IsMouseButton()) { ListeningRow = -1; ControlsMessage = TEXT("Cancelled"); }
-		else if (ASailboatPawn* P = Pawn())
-		{
-			P->UIAssignKey(ListeningRow, K);
-			ControlsMessage = P->GetKeysMessage();
-			ListeningRow = -1;
-		}
-		Stack.Last() = Build(ESailScreen::Controls);
-		Show(Stack.Last(), true);
+		const ASailboatPawn* P = Pawn();
+		if (P && FocusedControlRow < P->GetKeyRows().Num()) ListenControls(FocusedControlRow, true);
 		return FReply::Handled();
 	}
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
@@ -1162,35 +1193,64 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 	{
 		P->UIBuildKeyRows();
 		const TArray<ASailboatPawn::FKeyRow>& Keys = P->GetKeyRows();
+		const bool bPadFirst = UsingGamepad();
+		Rows->AddSlot().AutoHeight().Padding(14.f, 0.f, 14.f, 8.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Command"), EType::Label, Muted) ]
+			+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(150.f)[ SailUI::Text(TEXT("Keyboard"), EType::Label, Muted) ] ]
+			+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(170.f)[ SailUI::Text(TEXT("Controller"), EType::Label, Muted) ] ]
+		];
 		for (int32 I = 0; I < Keys.Num(); ++I)
 		{
-			const bool bListening = ListeningRow == I;
+			const bool bListenKey = ListeningRow == I && !bListeningPad, bListenPad = ListeningRow == I && bListeningPad;
+			// The gamepad column: its button, else the stick or trigger that drives it (fixed, dimmed), else a dash.
+			const ASailboatPawn::FKeyRow& Row = Keys[I];
+			const bool bAxis = !Row.PadKey.IsValid() && Row.PadAxis.IsValid();
+			const FString Pad = bListenPad ? FString(TEXT("Press a button…")) : Row.PadKey.IsValid() ? SailingBindings::PadLabel(Row.PadKey)
+				: bAxis ? SailingBindings::PadLabel(Row.PadAxis) + TEXT(" (fixed)") : FString(TEXT("–"));
 			TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f))
-				.OnClicked_Lambda([this, I]() { ListeningRow = I; ControlsMessage = TEXT("Press a key… (Esc cancels)"); Stack.Last() = Build(ESailScreen::Controls); Show(Stack.Last(), true); })
+				.OnClicked_Lambda([this, I]() { ListenControls(I, false); })
+				.OnFocused_Lambda([this, I]() { FocusedControlRow = I; })
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Keys[I].Label, EType::Ui, Fg) ]
-				+ SHorizontalBox::Slot().AutoWidth()[ SailUI::Text(bListening ? FString(TEXT("Press a key…")) : Keys[I].Key.GetDisplayName().ToString(), EType::Value, bListening ? Accent : Fg) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Row.Label, EType::Ui, Fg) ]
+				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(150.f)[ SailUI::Text(bListenKey ? FString(TEXT("Press a key…")) : Row.Key.GetDisplayName().ToString(), EType::Value, bListenKey ? Accent : (bPadFirst ? Muted : Fg)) ] ]
+				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(170.f)[ SailUI::Text(Pad, EType::Value, bListenPad ? Accent : bAxis || !Row.PadKey.IsValid() ? Dim : (bPadFirst ? Fg : Muted)) ] ]
 			];
 			Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ B ];
-			if (!E.Focus.IsValid() || I == ListeningRow) E.Focus = B;
+			if (!E.Focus.IsValid() || I == ListeningRow || (ListeningRow < 0 && I == FocusedControlRow)) E.Focus = B;
 		}
+		Rows->AddSlot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
+		[
+			SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f))
+			.OnClicked_Lambda([this]()
+			{
+				if (ASailboatPawn* RP = Pawn()) { RP->ResetKeys(); ControlsMessage = RP->GetKeysMessage(); }
+				ListeningRow = -1;
+				Stack.Last() = Build(ESailScreen::Controls);
+				Show(Stack.Last(), true);
+			})
+			.OnFocused_Lambda([this, N = Keys.Num()]() { FocusedControlRow = N; })
+			[ SailUI::Text(TEXT("Restore the defaults (keyboard and controller)"), EType::Ui, Fg) ]
+		];
 	}
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Controls"), TEXT("Keys and buttons"), 0) ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Rows ] ]
-			+ SHorizontalBox::Slot().FillWidth(0.38f)
+			+ SHorizontalBox::Slot().FillWidth(0.66f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Rows ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.34f)
 			[
 				PanelBox(SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Select a command, then press the new key. A key that another command used swaps over, so nothing is left without a key."), EType::Body, Muted, true) ]
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Select a command, then press the new key (Enter or A) or controller button (Tab or Y). A key or button that another command used swaps over, so nothing is left without one."), EType::Body, Muted, true) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Sticks and triggers stay on their axes (steering, the mainsheet, the camera) and can't be rebound. B cancels a listen, so B itself is reached by a swap or the defaults."), EType::Body, Muted, true) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(ControlsMessage, EType::Body, Accent, true) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Bindings are saved in Input.ini, so the Mac and the PC can differ. The gamepad keeps its standard layout."), EType::Small, Dim, true) ])
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Bindings are saved in Input.ini, so the Mac and the PC can differ."), EType::Small, Dim, true) ])
 			]
 		];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Rebind")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Rebind key")), Prompt(TEXT("Tab"), TEXT("Y"), TEXT("Rebind button")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
 	return E;
 }
 

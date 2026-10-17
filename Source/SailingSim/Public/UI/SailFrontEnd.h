@@ -29,6 +29,8 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
+	/** Controls: a listening row takes the next key before the focused button sees it (so Enter and A can be bound). */
+	virtual FReply OnPreviewKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 
 	void Push(ESailScreen Screen);
@@ -82,7 +84,11 @@ private:
 	double TransitionStart = 0.0;
 	bool bTransitionForward = true;
 	EActiveTimerReturnType AnimateTransition(double Time, float Delta);
-	// Controls: the row being rebound, listening for the next key.
+	// Controls: the row being rebound, listening for the next key (a keyboard key, or a gamepad button when bListeningPad),
+	// and the row that has focus (Tab or Y rebinds its gamepad button).
 	int32 ListeningRow = -1;
+	bool bListeningPad = false;
+	int32 FocusedControlRow = 0;
+	void ListenControls(int32 Row, bool bPad);
 	FString ControlsMessage;
 };

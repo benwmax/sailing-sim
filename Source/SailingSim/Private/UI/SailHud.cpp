@@ -8,6 +8,7 @@
 #include "SailingGameMode.h"
 #include "SailingHUD.h"
 #include "SailingSettings.h"
+#include "SailingBindings.h"
 #include "SailSession.h"
 #include "Drills.h"
 #include "PolarReference.h"
@@ -262,15 +263,8 @@ namespace SailHudImpl
 		return N ? *N : FString(TEXT("Coach"));
 	}
 
-	FString KeyName(FName Action, bool bNegative)
-	{
-		for (const FSailingKeyBinding& B : GetDefault<USailingInputSettings>()->GetBindings())
-		{
-			if (B.Action == Action && (B.Scale < 0.f) == bNegative && !B.Key.IsGamepadKey() && !B.Key.IsMouseButton() && !B.Key.IsAxis1D() && !B.Key.IsAxis2D())
-				return B.Key.GetDisplayName().ToString();
-		}
-		return TEXT("?");
-	}
+	/** The live key for a tip: the controller's binding while the player is on the pad (SailingBindings::Label). */
+	FString KeyName(FName Action, bool bNegative) { return SailingBindings::Label(Action, bNegative, SailUI::UsingGamepad()); }
 }
 
 void SSailHud::Construct(const FArguments& A)
@@ -645,7 +639,8 @@ void SSailHud::Refresh()
 	// Key hints: up to three, from the situation.
 	TArray<FString> Hints;
 	if (T.bCapsized && Cfg.RightingLever > 0.0) Hints.Add(KeyName(TEXT("Righting"), false) + TEXT("  Right the boat"));
-	Hints.Add(KeyName(TEXT("Tiller"), true) + TEXT(" / ") + KeyName(TEXT("Tiller"), false) + TEXT("  Steer"));
+	const FString SteerPort = KeyName(TEXT("Tiller"), true), SteerStbd = KeyName(TEXT("Tiller"), false);
+	Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
 	if (bTidal) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
 	Hints.Add(KeyName(TEXT("Menu"), false) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
