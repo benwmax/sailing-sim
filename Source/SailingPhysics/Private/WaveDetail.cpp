@@ -1,8 +1,8 @@
 #include "WaveDetail.h"
+#include "PortableRandom.h"
 #include "SailingMath.h"
 #include <algorithm>
 #include <cmath>
-#include <random>
 
 namespace Sailing
 {
@@ -91,8 +91,7 @@ namespace Sailing
 	{
 		Params = InParams;
 		Cascades.clear();
-		std::mt19937 Rng(Params.Seed);
-		std::normal_distribution<double> Gauss(0.0, 1.0);
+		FPortableRandom Rng(Params.Seed);
 		double Fp = 0.0;
 		const double Alpha = SpectrumScale(Params.WindMs, Params.FetchMeters, Fp);
 		for (const FCascadeSpec& S : Specs)
@@ -113,7 +112,7 @@ namespace Sailing
 					Mode.Ky = My * Dk;
 					Mode.K = std::sqrt(Mode.Kx * Mode.Kx + Mode.Ky * Mode.Ky);
 					Mode.Omega = std::sqrt(kGravity * Mode.K);
-					const double Gr = Gauss(Rng), Gi = Gauss(Rng);
+					const double Gr = Rng.Gaussian(), Gi = Rng.Gaussian();
 					if (Mode.K <= 0.0) continue;
 					const double Wavelength = 2.0 * kPi / Mode.K;
 					const double F = Mode.Omega / (2.0 * kPi);
