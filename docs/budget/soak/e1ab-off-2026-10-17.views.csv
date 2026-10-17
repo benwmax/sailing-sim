@@ -1,0 +1,3 @@
+view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms,game_ms,game_p99_ms,render_ms,rhi_ms,gpu_frame_ms
+marina,High,63.3,16.68,15.1,6.41,2.05,2.75,2.69,0.0,0.89,0.31,0.07,0.177,2.52,3.85,15.65,3.23,15.11
+slip,High,52.1,20.39,18.12,7.81,3.93,2.41,2.62,0.0,0.85,0.49,0.029,0.219,2.74,4.97,19.01,3.38,18.52
