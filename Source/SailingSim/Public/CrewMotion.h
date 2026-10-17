@@ -121,6 +121,7 @@ struct SAILINGSIM_API FCrewMotionInput
 	uint32 Seed = 0;
 	bool bReact = true;                     // the reaction layer (off: the stance alone, as before C1)
 	bool bClips = true;                     // C1b: the motion-capture idles under it (CrewClips.h)
+	bool bTravelerBridge = true;            // the drawn model has the cockpit's traveler bridge (FCrewGround)
 };
 
 /** What the posing found, for the tests and the debug log. */
