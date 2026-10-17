@@ -1,0 +1,3 @@
+# Plain git blobs, not LFS: the cloud sessions that render these cannot upload to LFS storage (docs/boats-11 does the same).
+*.jpg -filter -diff -merge binary
+*.png -filter -diff -merge binary
