@@ -34,6 +34,10 @@ foreach ($Name in @($Views.Keys | Where-Object { -not $Picked -or $Picked -conta
 			if (Test-Path $BenchJson) { break }
 		}
 		if (Test-Path $BenchJson) {
+			# The whole bench.json, per view and tier, for scriptsudget-ledger.py (game ms, memory, the boat's physics).
+			$Keep = Join-Path $Artifacts 'bench'
+			New-Item -ItemType Directory -Force -Path $Keep | Out-Null
+			Copy-Item -Force $BenchJson (Join-Path $Keep "$Shot.json")
 			$B = Get-Content -Raw $BenchJson | ConvertFrom-Json
 			$Gpu = ($Keys | ForEach-Object { if ($B.gpu) { $B.gpu.$_ } else { '' } }) -join ','
 			"$Name,$Q,$($B.avg_fps),$($B.p99_ms),$Gpu,$($B.cloth_cpu_ms),$($B.water_cpu_ms)" | Add-Content -Encoding ASCII $Out
