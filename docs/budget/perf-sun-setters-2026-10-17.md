@@ -133,7 +133,7 @@ pre-#110 parked baseline (974). Two 5-minute probes, unparked, with the #110 run
 
 With and without the sun steps the unparked runs match frame for frame. So on Metal, #110 changes nothing either, and
 its earlier "974 to 100" came from the scene. Parked on the buoy, the virtual shadow map clears about 970 pages every
-frame, 2.6 to 3 fps more than unparked. Something about the parked boat (head to wind, sails up, the mooring line)
+frame and runs about 3 fps slower than unparked. Something about the parked boat (head to wind, sails up, the mooring line)
 keeps the cache from settling. That is a separate lead, not this fix.
 
 **Stills** (High, uncooked, `perf-fog-setters/`, main on the left): helm-eye mean luminance 129.9 against 127.1, mean
