@@ -31,6 +31,23 @@ folds over the fist as in `wrap2`. The helm's forward shoe still floats, toe up,
 `r12-j22-mainsheet-hero`, its shadow well clear on the sole: with the bridge gone from `CrewFloorZ` the foot did not come
 down, so its lift comes from elsewhere in the foot placement.
 
+Recaptured Oct 17 (mainsheet only) on #105 ad38089e (52aef184 with main c12ef2f9 merged): `r12-j22-mainsheet-105`, the
+`hero95` row (plus `-SailingJ22Hero`). 151/151 tests, crew gate passes. The helm's forward shoe still floats, toe up, as in
+`hero95`: the new reach never runs for it. Logged in the game (`-SailingDebugCrew`, a temporary print in `PlantFeet`), that
+foot's heel is at about (-1.87, 0.56, 0.48) m and its toe at (-1.66, 0.53, 0.60), pitched 25-31 deg toe up, and
+`CrewFloorZ` there is 0.47, the seat: the J/22's `CrewCockpitWell` is the light model's plan (`SEAT_W` 0.36 inboard of
+the deck edge less `SIDE_DECK`), so the physics has the heel resting on a seat where the hero has open well over its sole.
+The reach only takes a foot whose floor is the sole, so it skips it.
+
+Recaptured Oct 17 (mainsheet only) on #105 5b470e85 with main cb80cc34 merged (the hero's own cockpit plan):
+`r12-j22-mainsheet-105b`, the same row and view as `-105`. 151/151 tests (`Smoke.CrewAnimation`, `Visual.CrewClipLimits`,
+`Visual.CrewFeet` pass), crew gate passes. The helm's forward shoe is down now: it lies flat, sole down, on the seat at
+the well's edge, its shadow touching the toe, where in `-105` it stood toe up with its white sole showing and its shadow
+a shoe's length away. The trimmer's near shoe (bottom of the frame) still shows its sole edge. `r12-j22-helm-side-105b`
+(same row, `-SailingCamTarget=-2.0,0,0.5 -SailingCamYaw=270 -SailingCamPitch=-8 -SailingCamDist=3.2`) looks for the
+helm's height: they sit on the windward deck edge with no visible gap under the shorts, so the light model's seat height
+(0.47 against the hero's 0.40) doesn't show from outside the boat.
+
 ## Tests: 145 of 149, four fail
 
 All four pass on main (149/149 on the same machine the same day). One line from each:
