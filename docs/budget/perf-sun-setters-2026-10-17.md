@@ -206,4 +206,9 @@ skipped. Head to wind, the cloth flogs every frame (`FSailCloth` on High), and t
 over the cockpit. That is the next suspect. A `-SailingSailsDown` switch (or parking at a TWA where the sails fill) would
 settle it.
 
+**Left open.** The caster is the parked boat itself, either the hull riding its mooring or the flogging sails; these
+probes don't separate the two. Two runs would: a `-SailingSailsDown` switch (sails struck, hull still moving), or a park
+at a TWA where the sails fill and stop flogging. If the cleared pages drop with the sails down, the fix is the cloth's
+shadow (a cheaper caster or cached shadow on High); if they stay, it's the hull's motion invalidating its pages.
+
 Files (`soak/`): `vsm-probe-{parked,crewstill,noclips}-2026-10-17.csv-1min.txt`.
