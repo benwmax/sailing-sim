@@ -9,9 +9,18 @@ CREW="$ARTIFACTS/crew"
 mkdir -p "$CREW"
 APP="$UE_ROOT/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor"
 if [[ "${SKIP_EXPORT:-0}" != 1 ]]; then
+	# The export ends the editor with os._exit, which can cut the log before its "Crew bodies" lines, so the FBX files
+	# written after this stamp are the proof of the export (a missing grep match would end the script under pipefail).
+	touch "$CREW/.export-start"
 	"$APP" "$PROJECT" -EnablePlugins=MetaHumanCharacter -ExecCmds="py $REPO_ROOT/scripts/export_crew_bodies.py" -nosplash -NoP4 -stdout \
 		-unattended > "$ARTIFACTS/crew-export.log" 2>&1 || true
-	grep "Crew bodies" "$ARTIFACTS/crew-export.log" | sed 's/.*LogPython: //'
+	for role in Helm Trimmer Bow; do
+		for part in Body Outfit; do
+			fbx="$CREW/${role}_$part.fbx"
+			[[ "$fbx" -nt "$CREW/.export-start" ]] || { echo "Crew bodies: $role $part not exported (see $ARTIFACTS/crew-export.log)"; exit 1; }
+		done
+	done
+	echo "Crew bodies: 6 FBX exported to $CREW"
 fi
 [[ "${EXPORT_ONLY:-0}" == 1 ]] && exit 0
 for role in Helm Trimmer Bow; do
