@@ -242,3 +242,36 @@ show whether the 1.4 ms is the wear materials.
 
 Files (`soak/`): `vsm-probe-{parked-433b,sailsdown}-2026-10-17.csv-1min.txt` (the CSV profile's means by minute;
 this binner counts the first 3 s warm-up, so its first minute reads a little higher than the earlier files').
+
+### E1 wear on and off (Metal, main c903d152)
+
+To settle whether the 1.4 ms above is the E1 wear materials (#119), I ran an A/B on main c903d152. "Off" swaps in
+a52f5b7c's (#121's) versions of the materials it touched: `M_WorldSurface`, `MPC_World`, `M_BoatSurface`,
+`M_BoatMast`, `MI_World_*` and `MI_Boat_*` (87 assets). The code stays main's. The runs went on, off, on in one session,
+each from its own Development package. Each round was the parked High probe (the arguments above, `bench-mac.sh 300`)
+followed by marina and slip on High (`bench-visual.sh 20`, `ONLY=marina,slip`). The assets were restored from main
+afterwards.
+
+| parked, 5 min | fps | p99 ms | GPU ms (whole run) | render thread ms | base pass ms | VSM pages cleared / frame | dynamic invalidated |
+|---|---|---|---|---|---|---|---|
+| on (main) | 50.8 | 22.02 | 19.12 | 19.76 | 6.12 | 884 | 953 |
+| off (a52f5b7c materials) | 50.6 | 22.33 | 19.23 | 19.86 | 6.49 | 904 | 972 |
+| on again | 51.2 | 21.96 | 18.96 | 19.59 | 6.61 | 885 | 951 |
+
+| High, 20 s | marina fps / GPU ms / base ms | slip fps / GPU ms / base ms |
+|---|---|---|
+| on | 62.4 / 14.70 / 6.34 | 52.4 / 18.25 / 8.01 |
+| off | 63.3 / 15.10 / 6.41 | 52.1 / 18.12 / 7.81 |
+| on again | 62.5 / 15.24 / 6.56 | 52.1 / 18.16 / 7.82 |
+
+The base-pass column is the three `ProfileGPU` frames after the measured window, so it moves by 0.3 to 0.5 ms from run to
+run. The whole-run GPU and render-thread means are steadier.
+
+**Not the wear.** With the wear materials out, the parked probe is no faster: 0.1 ms slower on the GPU and the render
+thread, and it clears 20 more pages. Both "on" runs bracket it within 0.2 ms. Marina and slip agree within noise. The
+1.4 ms against #121's run lies elsewhere, between the #115 package and main 433b3400. Parked on High, the frame is
+render-thread bound (render thread 19.6 to 19.9 ms against a GPU mean of 19.0 to 19.2 ms), so a CPU-side change on the
+render thread is the next place to look, not shading.
+
+Files (`soak/`): `e1ab-{on1,off,on2}-2026-10-17.{csv-1min.txt,views.csv,bench.json}` (CSV profile means by minute,
+binned on the run's own frame times; the marina and slip rows; the parked bench.json).
