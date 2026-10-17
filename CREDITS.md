@@ -82,3 +82,53 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Made with Unreal Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc.
 - Boat class and brand names (J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) and ASA 101 are
   trademarks of their owners, used to describe the boats and the course; no endorsement is implied.
+
+## Added by the licence closure (Oct 17 2026, docs/licences)
+
+- The game now credits "Larus atricilla" (Tony Phillips, CC BY 3.0) and the two public-domain Commons recordings on
+  Settings > Sound, and names Overture Maps Foundation beside OpenStreetMap in the in-game map credit.
+- Boat kit photo match (`Tools/boatkit/photomatch/matches`): only picked pixel coordinates are in the repo. The J/22
+  broadside is [J-22 sailboat Jay2PLay on trailer](https://commons.wikimedia.org/wiki/File:J-22_sailboat_Jay2PLay_on_trailer.jpg)
+  by Thomas Gutenstein, CC BY-SA 3.0 (credited as a courtesy; the photo is not copied).
+
+### Reference photos in the repo's docs (not in the game)
+
+The blind-test packs and compare pages under `docs/` hold these Wikimedia Commons photos, cropped and resized ("changes
+were made"). Each set has its own `credits.md` beside it (the blind packs' list does not say which still is which). Licence
+texts: CC0 https://creativecommons.org/publicdomain/zero/1.0/, CC BY and CC BY-SA https://creativecommons.org/licenses/.
+The BY-SA photos stay under their BY-SA licence. In brackets: the `docs/` folders that use each photo.
+
+- [2012년 4월 해군 참모총장배 전국요트대회 (1) (7305393640)](https://commons.wikimedia.org/wiki/File%3A2012%EB%85%84_4%EC%9B%94_%ED%95%B4%EA%B5%B0_%EC%B0%B8%EB%AA%A8%EC%B4%9D%EC%9E%A5%EB%B0%B0_%EC%A0%84%EA%B5%AD%EC%9A%94%ED%8A%B8%EB%8C%80%ED%9A%8C_%281%29_%287305393640%29.jpg) by 대한민국 국군 Republic of Korea Armed Forces, CC BY-SA 2.0 (graphics-5)
+- [A cumulonimbus - Flickr - odako1](https://commons.wikimedia.org/wiki/File%3AA_cumulonimbus_-_Flickr_-_odako1.jpg) by Koichi Oda, CC BY-SA 2.0 (graphics-5, round-12)
+- [A Tormenta](https://commons.wikimedia.org/wiki/File%3AA_Tormenta.jpg) by Fábio Henrique Jacob Stella, CC BY-SA 3.0 (graphics-5, round-12)
+- [Aeolian island (49)](https://commons.wikimedia.org/wiki/File%3AAeolian_island_%2849%29.jpg) by stefan_fotos from Leipzig, Germany, CC BY-SA 2.0 (graphics-5)
+- [Catalina 30 sailboat 8620](https://commons.wikimedia.org/wiki/File:Catalina_30_sailboat_8620.jpg) by Ahunt, CC0 (graphics-3)
+- [Charlton shelf cloud](https://commons.wikimedia.org/wiki/File:Charlton_shelf_cloud.jpg) by Will y theweatherguy473737, CC BY-SA 4.0 (graphics-1, phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Cloud cumulonimbus at baltic sea(1)](https://commons.wikimedia.org/wiki/File:Cloud_cumulonimbus_at_baltic_sea(1).jpg) by Arnold Paul, CC BY-SA 2.5 (graphics-1, phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Glenans Raid Cata 2011 sur l eau 02](https://commons.wikimedia.org/wiki/File:Glenans_Raid_Cata_2011_sur_l_eau_02.jpg) by Matthieu FAURE, CC BY-SA 2.0 (graphics-3)
+- [Harvest Moon Regatta (10601902145)](https://commons.wikimedia.org/wiki/File:Harvest_Moon_Regatta_(10601902145).jpg) by U.S. Army Corps of Engineers from USA, CC BY 2.0 (phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Hobie Cat 16 - Iskar reservoir](https://commons.wikimedia.org/wiki/File:Hobie_Cat_16_-_Iskar_reservoir.jpg) by MrPanyGoff, CC BY-SA 3.0 (graphics-1, phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Inlet on Clear Lake (4491506777)](https://commons.wikimedia.org/wiki/File:Inlet_on_Clear_Lake_(4491506777).jpg) by BFS Man from Webster, TX, USA, CC BY 2.0 (visual-6)
+- [J-24 keelboats racing in the Europameisterschaft 2007 TKO4378](https://commons.wikimedia.org/wiki/File%3AJ-24_keelboats_racing_in_the_Europameisterschaft_2007_TKO4378.jpg) by Jmulrich, CC BY-SA 3.0 (graphics-5)
+- [J22 sailboat 2528](https://commons.wikimedia.org/wiki/File:J22_sailboat_2528.jpg) by Ahunt, CC0 (phase-8, visual-3, visual-4, visual-5, visual-7)
+- [J22 sailboat Cheque Mate 4009](https://commons.wikimedia.org/wiki/File:J22_sailboat_Cheque_Mate_4009.jpg) by Ahunt, CC0 (graphics-3)
+- [J22 sailboat Great White J 4381](https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_4381.jpg) by Ahunt, CC0 (graphics-3, graphics-5)
+- [J22 sailboat Great White J 4430](https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_4430.jpg) by Ahunt, CC0 (graphics-3, graphics-5)
+- [J24 003](https://commons.wikimedia.org/wiki/File%3AJ24_003.jpg) by Johann-Nikolaus Andreae (https://www.flickr.com/photos/jnandreae/), CC BY-SA 2.0 (graphics-5)
+- [J24 096](https://commons.wikimedia.org/wiki/File%3AJ24_096.jpg) by Jmulrich, CC BY-SA 3.0 (graphics-5)
+- [Lake Ray Hubbard fence at sunset](https://commons.wikimedia.org/wiki/File:Lake_Ray_Hubbard_fence_at_sunset.jpg) by Matthew T Rader, CC BY-SA 4.0 (phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Lake Tawakoni September 2015 2](https://commons.wikimedia.org/wiki/File:Lake_Tawakoni_September_2015_2.jpg) by Michael Barera, CC BY-SA 4.0 (graphics-1, graphics-5, round-12, visual-6, visual-7)
+- [Lake Tawakoni September 2015 3](https://commons.wikimedia.org/wiki/File%3ALake_Tawakoni_September_2015_3.jpg) by Michael Barera, CC BY-SA 4.0 (graphics-5, visual-6, visual-7)
+- [Lake Tawakoni State Park Texas 2023](https://commons.wikimedia.org/wiki/File%3ALake_Tawakoni_State_Park_Texas_2023.jpg) by Larry D. Moore, CC BY 4.0 (graphics-5, round-12)
+- [Laser 2000 Nationals Sidmouth 1](https://commons.wikimedia.org/wiki/File:Laser_2000_Nationals_Sidmouth_1.JPG) by Johanning, CC BY-SA 3.0 (phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Laser dinghy on Lake Sevan, Armenia](https://commons.wikimedia.org/wiki/File:Laser_dinghy_on_Lake_Sevan,_Armenia.jpg) by Wowan1978, CC BY-SA 4.0 (phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Maersk Davao - Flickr - pinemikey](https://commons.wikimedia.org/wiki/File:Maersk_Davao_-_Flickr_-_pinemikey.jpg) by Michael Martin from Cypress, Texas, CC BY-SA 2.0 (visual-6)
+- [Mosquito Fleet Berth, Pier 19 Galveston](https://commons.wikimedia.org/wiki/File:Mosquito_Fleet_Berth,_Pier_19_Galveston.jpg) by Jim Evans, CC BY-SA 4.0 (visual-6)
+- [Pacific swells (14311114983)](https://commons.wikimedia.org/wiki/File%3APacific_swells_%2814311114983%29.jpg) by Russ, CC BY 2.0 (graphics-5)
+- [Products tanker Jo Kashi](https://commons.wikimedia.org/wiki/File%3AProducts_tanker_Jo_Kashi.jpg) by Roy Luck, CC BY 2.0 (graphics-5)
+- [Sailboats at Scott’s Landing Marina on Lake Grapevine (10555598923)](https://commons.wikimedia.org/wiki/File:Sailboats_at_Scott%E2%80%99s_Landing_Marina_on_Lake_Grapevine_(10555598923).jpg) by Jonathan Cutrer from San Angelo, United States, CC BY 2.0 (visual-6, visual-7)
+- [Shelf Cloud over Bay](https://commons.wikimedia.org/wiki/File:Shelf_Cloud_over_Bay.jpg) by David Vergel, CC BY-SA 4.0 (graphics-1, phase-8, visual-3, visual-4, visual-5, visual-7)
+- [South Shore Sunset (6245387296)](https://commons.wikimedia.org/wiki/File:South_Shore_Sunset_(6245387296).jpg) by BFS Man from Webster, TX, USA, CC BY 2.0 (visual-6)
+- [Sunfish Potomac River at DCA VA1](https://commons.wikimedia.org/wiki/File:Sunfish_Potomac_River_at_DCA_VA1.jpg) by Acroterion, CC BY-SA 4.0 (phase-8, visual-3, visual-4, visual-5, visual-7)
+- [Sunset lake tawakoni duck cove 2014-07-30](https://commons.wikimedia.org/wiki/File%3ASunset_lake_tawakoni_duck_cove_2014-07-30.jpeg) by Eastcheap, CC BY-SA 4.0 (graphics-5)
+- [Tug and barges on Intracoastal Canal, Bolivar Peninsula, Texas 1219091527](https://commons.wikimedia.org/wiki/File:Tug_and_barges_on_Intracoastal_Canal,_Bolivar_Peninsula,_Texas_1219091527.jpg) by Patrick Feller, CC BY 2.0 (visual-6)

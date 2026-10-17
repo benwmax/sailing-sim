@@ -19,8 +19,8 @@ Five are actions before release (item 1 is now fixed):
 | 1 | `Content/Materials/T_SailMarks` (`scripts/make_sail_marks.py`) and the J22Hero sail and bow lettering (`Inputs/j22-hero`) | Were rasterized from Apple's bundled Arial and Helvetica (or Arial/Liberation on other machines). | **Fixed (Oct 15 2026, sail-font):** both now draw from Saira Condensed Bold (OFL, `Content/UI/Fonts`); the insignia is sheared for its slant, the bow registration widened 1.3x to block proportions. The atlas and the hero (sail textures, hull bake, FBX) were regenerated and reimported. |
 | 2 | The J/22 sail insignia (red "J" + "/22") and the class and brand names (J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) | These are trademarks, not copyright licences. Naming the boats descriptively is normally fine. A maker's logo drawn on the sails, or the names in store art, can need permission. | Ask J/Boats (and the others named in store text) for permission, or replace the drawn insignia with a generic class mark. This needs a lawyer's view before release, not a code change. |
 | 3 | "ASA 101" (drills, quiz) | This is a trademark of the American Sailing Association. The quiz is our own text: no question copies the Study Kit. | Use the name only descriptively ("prepares you for the ASA 101 exam"), with no logo, and no endorsement claim without the ASA's agreement. |
-| 4 | "Larus atricilla.ogg" by Tony Phillips (`Content/Audio/Pack/Birds/laughing_gull_01`) | This is CC BY 3.0, which is commercial-OK with attribution. The game shows no credit: the settings text only points at a repo path (`SailFrontEnd.cpp:1090`). | Add a credits screen (or a Settings > About page) that lists it with the OSM/Overture line and the Unreal notice. |
-| 5 | OpenStreetMap and Overture Maps building footprints (`Content/TerrainData/*.houses`, `.piers`, the shore and marina data, the baked world tiles) | Both are ODbL 1.0, which is commercial-OK. Two conditions: attribution in the game and its documentation, and share-alike on the derived database (the bake files, not the game). The in-game credit names only OSM and USGS (`SailingHUD.cpp:1134`), and Overture was missing from CREDITS.md. | I added Overture to CREDITS.md in this PR. Add "Overture Maps Foundation" to the in-game credit. Keep offering the bake files under ODbL (CREDITS.md says so) and be ready to provide them on request. |
+| 4 | "Larus atricilla.ogg" by Tony Phillips (`Content/Audio/Pack/Birds/laughing_gull_01`) | This is CC BY 3.0, which is commercial-OK with attribution. The game shows no credit: the settings text only points at a repo path (`SailFrontEnd.cpp:1090`). | **Fixed (Oct 17 2026, licence-closure):** Settings > Sound now credits it by title, author and licence, with the two public-domain recordings. A full credits screen (with the Unreal notice) is still worth adding before release. |
+| 5 | OpenStreetMap and Overture Maps building footprints (`Content/TerrainData/*.houses`, `.piers`, the shore and marina data, the baked world tiles) | Both are ODbL 1.0, which is commercial-OK. Two conditions: attribution in the game and its documentation, and share-alike on the derived database (the bake files, not the game). The in-game credit names only OSM and USGS (`SailingHUD.cpp:1134`), and Overture was missing from CREDITS.md. | I added Overture to CREDITS.md in this PR. **Fixed (Oct 17 2026):** the in-game map credit names Overture Maps Foundation too. Keep offering the bake files under ODbL (CREDITS.md says so) and be ready to provide them on request. |
 
 Checks with no change needed now:
 
@@ -54,7 +54,7 @@ tifffile; xarray and eccodes (Apache 2.0); and wetb (GPL v3).
 ## Repo-only material
 
 The blind-test packs and compare pages in `docs/` hold cropped Wikimedia Commons photos under CC0, CC BY and CC BY-SA
-2.0-4.0. Each pack has its `credits.md`. They are never in `Content/`. If the repo or its docs are ever made public,
+2.0-4.0. Each pack has its `credits.md`. They are never in `Content/`. The repo is public now (Oct 2026):
 keep those credits, and the BY-SA images stay BY-SA. Bean's lesson photos (`Data/Reference/raw`) stay git-ignored and
 are never published (faces).
 
@@ -73,3 +73,22 @@ are never published (faces).
 ```bash
 scripts/licence-check.sh
 ```
+
+## Closure (Oct 17 2026, main df0ba7b5)
+
+- `scripts/licence-check.sh` now covers `Inputs/` too (the generators' sources and the sample pack's WAVs) and fails on
+  a malformed row (the `Content/Look` row had an unquoted comma). Rows added for `Inputs/` (audio, j22-hero, rope,
+  boat-detail, look, drills, g2, g3, g4), the docs compare-page photos, the photo-match pixel picks and the game captures.
+- Every Commons photo in `docs/` now has a `credits.md` beside it (new: `docs/graphics-5/compare/real`,
+  `docs/visual-6/compare`, `docs/visual-7/compare`) and all 34 are listed in CREDITS.md.
+- No file in git history ever lived under `Data/Reference`, no image was ever deleted (what is in the tree is all there
+  ever was), and none of the images in `docs/` or `Inputs/` is one of Bean's lesson photos: `Inputs/j22-hero/renders` and
+  `docs/boatkit-*` are Cycles renders and game captures. The photo-match JSON keeps only pixel numbers.
+- Nothing from MetaHuman or Fab is tracked under `Content/` (`git ls-files Content | grep -i -e metahuman -e fab` finds
+  only the ambientCG `Crew/Fabric`).
+
+Open, for Bean: the hero J/22 carries the lesson boat's real registration, TX 7295 EC (hull, renders, docs). It is a
+public registration, not a licence issue, but it ties the game to a real boat and its owner; a made-up number would
+avoid that. Overture's buildings theme mixes OSM, Microsoft and Esri footprints, all ODbL; if Esri Community Maps
+footprints are inside the bake, Overture's attribution guidance may ask for "Esri Community Maps contributors" as well: worth
+a look at their attribution page before release.
