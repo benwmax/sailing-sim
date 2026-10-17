@@ -1062,16 +1062,30 @@ void ASailingEnvironment::UpdateHaze()
 	// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day and 1.5 km a downpour.
 	const float Density = FMath::Clamp(0.03f * (2.f / FMath::Max(float(W.VisibilityKm), 0.3f)), 0.0015f, 0.12f);
 	UExponentialHeightFogComponent* F = Fog->GetComponent();
-	F->SetFogHeightFalloff(FMath::Lerp(0.2f, 0.05f, float(W.Rain)));
+	// Perf 4: each fog setter marks the fog's render state dirty when its value changes, and the engine then rebuilds
+	// the fog's scene proxy. The inscattering colour follows HazeLight (the metered light, new every frame) and the
+	// density the visibility, so the fog was rebuilt every frame. Like the sun's setters (#110) they now move in steps,
+	// 3% of the value here, and snap exactly to a lerp's ends (dry, full rain) and to zero.
+	auto Stepped = [](float Current, float Want, float EndA = -1.f, float EndB = -1.f)
+	{
+		return Current != Want && (Want == EndA || Want == EndB || Want == 0.f || FMath::Abs(Current - Want) > 0.03f * FMath::Abs(Want));
+	};
+	auto SteppedColor = [](const FLinearColor& Current, const FLinearColor& Want)
+	{
+		return Current != Want && !Current.Equals(Want, 0.03f * FMath::Max3(Want.R, Want.G, Want.B));
+	};
+	const float Falloff = FMath::Lerp(0.2f, 0.05f, float(W.Rain));
+	if (Stepped(F->FogHeightFalloff, Falloff, 0.2f, 0.05f)) F->SetFogHeightFalloff(Falloff);
 	if (USailingSettings::Get()->Quality == ESailingQuality::Low)
 	{
-		F->SetFogDensity(Density);
+		if (Stepped(F->FogDensity, Density)) F->SetFogDensity(Density);
 		return;
 	}
 	// Visual V5: humidity haze. A humid Texas summer day is milky; a dry norther is crisp; on the bay and offshore,
 	// sea-salt haze. The haze thickens the visibility's fog near the surface and whitens it.
 	const float Haze = FMath::Clamp(float(W.Sky.Haze) + (World >= 1 ? 0.2f : 0.f), 0.f, 1.f);
-	F->SetFogDensity(Density * FMath::Lerp(0.6f, 1.6f, Haze));
+	const float HazeDensity = Density * FMath::Lerp(0.6f, 1.6f, Haze);
+	if (Stepped(F->FogDensity, HazeDensity)) F->SetFogDensity(HazeDensity);
 	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
 	const FLinearColor Tint = FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze);
 	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
@@ -1079,7 +1093,8 @@ void ASailingEnvironment::UpdateHaze()
 	const bool bClassicHaze = ClassicHazeArg.Get();
 	if (bClassicHaze)
 	{
-		F->SetFogInscatteringColor(Tint * FMath::Lerp(1.f, 0.25f, float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.004f, NightAmount));
+		const FLinearColor Inscatter = Tint * FMath::Lerp(1.f, 0.25f, float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.004f, NightAmount);
+		if (SteppedColor(F->FogInscatteringLuminance, Inscatter)) F->SetFogInscatteringColor(Inscatter);
 	}
 	else
 	{
@@ -1088,10 +1103,12 @@ void ASailingEnvironment::UpdateHaze()
 		const float Warm = 1.f - FMath::SmoothStep(0.f, 12.f, SunElevationDeg);
 		const FLinearColor Sunset(1.25f, 0.82f, 0.55f);
 		const FLinearColor Lit = FMath::Lerp(Tint, Tint * Sunset, Warm * (1.f - NightAmount));
-		F->SetFogInscatteringColor(Lit * FMath::Lerp(1.f, 0.6f, float(W.CloudDarkness)) * HazeLight);
+		const FLinearColor Inscatter = Lit * FMath::Lerp(1.f, 0.6f, float(W.CloudDarkness)) * HazeLight;
+		if (SteppedColor(F->FogInscatteringLuminance, Inscatter)) F->SetFogInscatteringColor(Inscatter);
 		// Analytic fog reaches full opacity at the horizon, which hid the low sun's disc completely; real haze lets a few
 		// percent of the disc through, and the disc is thousands of times the sky's brightness.
-		F->SetFogMaxOpacity(FMath::Lerp(0.9f, 1.f, float(W.Rain)));
+		const float MaxOpacity = FMath::Lerp(0.9f, 1.f, float(W.Rain));
+		if (Stepped(F->FogMaxOpacity, MaxOpacity, 0.9f, 1.f)) F->SetFogMaxOpacity(MaxOpacity);
 	}
 	// Graphics G8 cinematic look: the haze glows toward a low sun (the analytic fog's directional inscattering, a
 	// constant cost), the veil over the far shore in every sunset photo. Off in the natural look and under a deck.
@@ -1107,7 +1124,8 @@ void ASailingEnvironment::UpdateHaze()
 		const float Glow = (1.f - FMath::SmoothStep(4.f, 25.f, SunElevationDeg)) * (1.f - FMath::SmoothStep(0.2f, 0.6f, float(W.CloudDarkness))) * (1.f - NightAmount);
 		F->SetDirectionalInscatteringExponent(6.f);
 		F->SetDirectionalInscatteringStartDistance(800.f * CmPerMeter);
-		F->SetDirectionalInscatteringColor(FLinearColor(1.f, 0.62f, 0.32f) * (0.9f * Glow * HazeLight));
+		const FLinearColor GlowColor = FLinearColor(1.f, 0.62f, 0.32f) * (0.9f * Glow * HazeLight);
+		if (SteppedColor(F->DirectionalInscatteringLuminance, GlowColor)) F->SetDirectionalInscatteringColor(GlowColor);
 	}
 	else if (F->DirectionalInscatteringExponent != SavedFogDirectional.X || F->DirectionalInscatteringLuminance != SavedFogDirectionalColor)
 	{
@@ -1118,9 +1136,11 @@ void ASailingEnvironment::UpdateHaze()
 	// Volumetric fog: the sun scatters in it, so shafts show through gaps in the cloud (forward-scattering haze).
 	if (!F->bEnableVolumetricFog) F->SetVolumetricFog(true);
 	F->SetVolumetricFogScatteringDistribution(0.75f);
-	F->SetVolumetricFogExtinctionScale(FMath::Lerp(0.12f, 0.3f, Haze)); // the volumetric fog reads much thicker than the analytic fog at the same density
+	const float Extinction = FMath::Lerp(0.12f, 0.3f, Haze); // the volumetric fog reads much thicker than the analytic fog at the same density
+	if (Stepped(F->VolumetricFogExtinctionScale, Extinction, 0.12f, 0.3f)) F->SetVolumetricFogExtinctionScale(Extinction);
 	F->SetVolumetricFogAlbedo(FColor(240, 244, 250));
-	F->SetVolumetricFogDistance(FMath::Lerp(3000.f, 1200.f, float(W.Rain)) * CmPerMeter);
+	const float VolumetricDistance = float(FMath::Lerp(3000.f, 1200.f, float(W.Rain)) * CmPerMeter);
+	if (Stepped(F->VolumetricFogDistance, VolumetricDistance, float(3000.f * CmPerMeter), float(1200.f * CmPerMeter))) F->SetVolumetricFogDistance(VolumetricDistance);
 }
 
 void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& MoonTrue, float MoonLuminance, float MoonLit, float Night, double UnixUtc)
