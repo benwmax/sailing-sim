@@ -841,19 +841,18 @@ namespace Sailing
 			return true;
 		}
 
-		bool DeepPoint(const FLakeTerrain& Terrain, std::mt19937& Rng, double CX, double CY, double Radius, double MinDepth, double& OutX, double& OutY)
+		bool DeepPoint(const FLakeTerrain& Terrain, FPortableRandom& Rng, double CX, double CY, double Radius, double MinDepth, double& OutX, double& OutY)
 		{
-			std::uniform_real_distribution<double> U(0.0, 1.0);
 			for (int Try = 0; Try < 400; ++Try)
 			{
-				const double R = Radius * std::sqrt(U(Rng)), A = 2.0 * kPi * U(Rng);
+				const double R = Radius * std::sqrt(Rng.Uniform01()), A = 2.0 * kPi * Rng.Uniform01();
 				const double X = CX + R * std::cos(A), Y = CY + R * std::sin(A);
 				if (Terrain.DepthAt(X, Y) >= MinDepth) { OutX = X; OutY = Y; return true; }
 			}
 			return false;
 		}
 
-		std::vector<std::pair<double, double>> RandomLoop(const FLakeTerrain& Terrain, std::mt19937& Rng, double X, double Y, double Radius, double MinDepth, int Count)
+		std::vector<std::pair<double, double>> RandomLoop(const FLakeTerrain& Terrain, FPortableRandom& Rng, double X, double Y, double Radius, double MinDepth, int Count)
 		{
 			std::vector<std::pair<double, double>> Route;
 			double PX = X, PY = Y;

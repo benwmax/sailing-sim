@@ -5,7 +5,7 @@
 #include "Race.h"
 #include "RulesCoach.h"
 #include "Traffic.h"
-#include <random>
+#include "PortableRandom.h"
 #include "TrafficManager.generated.h"
 
 class ASailboatPawn;
@@ -64,7 +64,7 @@ private:
 	bool bRace = false;
 	bool bRaceLogged = false;
 	int32 CommitteeId = -1;
-	std::mt19937 Rng{ 2026 };
+	Sailing::FPortableRandom Rng{ 2026 };   // online readiness (rule 5): the same traffic from the same seed on every machine
 
 	UPROPERTY(Transient) TMap<int32, TObjectPtr<ASailboatPawn>> SailActors;
 	UPROPERTY(Transient) TMap<int32, TObjectPtr<APowerVesselActor>> PowerActors;

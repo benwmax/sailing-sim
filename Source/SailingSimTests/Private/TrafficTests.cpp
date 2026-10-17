@@ -116,7 +116,7 @@ bool FTrafficGalvestonSoakTest::RunTest(const FString& Parameters)
 	const FWindField Wind(P);
 	FTrafficSim Sim;
 	Sim.SetWorld(&Wind, nullptr, &Lake.Terrain);
-	std::mt19937 Rng(5);
+	Sailing::FPortableRandom Rng(5);
 	const FLaunchSpot& Spot = Lake.LaunchSpots[2];
 	int32 Added = 0;
 	for (int32 I = 0; I < 6; ++I)
