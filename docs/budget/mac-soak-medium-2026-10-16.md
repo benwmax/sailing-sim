@@ -54,6 +54,14 @@ events off is Unreal's own heap at about 0.4 GB/h, which still wants its own soa
 partly the leak too (the allocator and the pool both get bigger), so the p99 drift is an upper bound until a soak runs
 without draw events.
 
+## What a player's build would grow
+
+Shipping and Test builds don't enable Metal draw events (only Debug and Development turn them on at startup), so the
+3.1 GB/h of this soak is a Development-only artefact. With draw events off, growth doesn't stop. The 1 h High soak with
+`-ExecCmds=ToggleDrawEvents` (`mac-soak-high-2026-10-16.md`) still grows **about 1.4 GB/h** (`footprint`: Unreal's heap
++0.86 GB/h, system malloc +0.52 GB/h; RSS fit +1.46 GB/h; GPU memory flat), and its p99 doesn't drift (-1.0 ms/h). That
+remaining growth has no known Development-only cause, so expect it in Shipping too, and it is far over the 100 MB/h cap.
+
 ## Files (`docs/budget/soak/`)
 
 - `mac-medium-2026-10-16.mem.csv`: seconds since process start, RSS MB, every 60 s
@@ -65,8 +73,7 @@ without draw events.
 
 ## Next
 
-- Soak with draw events off, either Development with `-ExecCmds=ToggleDrawEvents` or a Shipping package, to get the
-  ledger's real RAM and p99 drift.
+- Done for High (`mac-soak-high-2026-10-16.md`): 1 h with draw events off. Next is naming the remaining heap growth.
 - In the game, Development runs that don't profile could turn draw events off at startup (benches that read
   `ProfileGPU` slices would turn them back on around the capture), or wrap our RHI work in a pool. The engine fix is an
   autorelease pool in the parallel translate task on Apple platforms.
