@@ -81,10 +81,10 @@ ASailingHUD::ASailingHUD()
 bool ASailingHUD::UsesFrontEnd() const
 {
 	using namespace SailingHUDLocal;
-	const bool bOff = USailingSettings::IgnoresSavedChoices() || FParse::Param(FCommandLine::Get(), TEXT("SailingNoFrontEnd"))
-		|| FParse::Param(FCommandLine::Get(), TEXT("SailingMenu")) || IsRunningCommandlet();
+	const bool bOff = USailingSettings::IgnoresSavedChoices() || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoFrontEnd"))
+		|| FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu")) || IsRunningCommandlet();
 	FString Forced;   // -SailingFrontEnd=<screen> forces it (screenshots of the menus)
-	return !bOff || FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Forced);
+	return !bOff || FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Forced);
 }
 
 void ASailingHUD::BeginPlay()
@@ -102,7 +102,7 @@ void ASailingHUD::BeginPlay()
 	// A session that has just loaded goes to its loading screen, whatever screen the command line asked for first.
 	const bool bLoadingSession = Session && Session->bHasActive && !Session->bStarted && Session->Active.SavedAt > FDateTime::MinValue()
 		&& (FDateTime::Now() - Session->Active.SavedAt).GetTotalMinutes() < 10.0;
-	if (!bLoadingSession && FParse::Value(FCommandLine::Get(), TEXT("SailingFrontEnd="), Screen))
+	if (!bLoadingSession && FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Screen))
 	{
 		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Loading.
 		if (Screen == TEXT("Briefing") || Screen == TEXT("Quiz"))
@@ -168,7 +168,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	{
 		Session->bUIScriptRead = true;
 		FString Script;
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingUIScript="), Script, false)) Script.ParseIntoArray(Session->UIScript, TEXT(","));
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingUIScript="), Script, false)) Script.ParseIntoArray(Session->UIScript, TEXT(","));
 		NextScriptKey = FPlatformTime::Seconds() + 4.0;
 	}
 	if (Session->UIScript.Num() == 0 || FPlatformTime::Seconds() < NextScriptKey) return;

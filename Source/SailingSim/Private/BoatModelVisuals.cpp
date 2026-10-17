@@ -131,8 +131,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	// in the J/22's place, with the same sockets. Since round 12 it is the player's boat (the blind test caught the older
 	// model's lifelines, grey box outboard and flat surfaces); AI boats and the ghost keep the light model and their
 	// liveries. -SailingClassicJ22 compares with the older model; -SailingJ22Hero puts the hero on AI boats too.
-	const bool bHero = Type == EBoatType::J22 && !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicJ22"))
-		&& ((!bTrafficBoat && !bGhost) || FParse::Param(FCommandLine::Get(), TEXT("SailingJ22Hero")));
+	const bool bHero = Type == EBoatType::J22 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicJ22"))
+		&& ((!bTrafficBoat && !bGhost) || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
 	if (bHero)
 	{
 		auto LoadHero = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/J22Hero/SM_J22H_%s.SM_J22H_%s"), Part, Part)); };
@@ -160,7 +160,7 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	}
 	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class.
 	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
-	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(FCommandLine::Get(), TEXT("SailingProceduralBoats"))) return M;
+	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return M;
 	const TCHAR* Tag = BoatTags[int32(Type)];
 	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
 	M.Hull = Load(TEXT("Hull"));
@@ -701,8 +701,8 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		In.Tension[1] = Tension[1];
 		In.Time = float(S.Time);
 		In.Seed = uint32(I) * 977u + (bTrafficBoat ? GetUniqueID() : 0u);
-		In.bReact = !FParse::Param(FCommandLine::Get(), TEXT("SailingCrewStill"));
-		In.bClips = !FParse::Param(FCommandLine::Get(), TEXT("SailingNoCrewClips"));
+		In.bReact = !FParse::Param(SailingArgs::Dev(), TEXT("SailingCrewStill"));
+		In.bClips = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoCrewClips"));
 		In.bTravelerBridge = bModelTravelerBridge;
 		// The handholds and braces: the model's sockets (J22H_sockets.json names) where it has them, else from the geometry.
 		CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
@@ -727,13 +727,13 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// Stills of a tack: -SailingShotCrew=<name> saves Saved/Bench/<name>.png once the helm is crouched under the boom.
 		static SailingArgs::FOnce CrewShotTaken;
 		FString CrewShot;
-		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(FCommandLine::Get(), TEXT("SailingShotCrew="), CrewShot))
+		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(SailingArgs::Dev(), TEXT("SailingShotCrew="), CrewShot))
 		{
 			CrewShotTaken.Take();
 			FScreenshotRequest::RequestScreenshot(FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *CrewShot)), false, false);
 		}
 		static double LastDebug = 0.0;
-		if (FParse::Param(FCommandLine::Get(), TEXT("SailingDebugCrew")) && S.Time - LastDebug > 1.0 && !bTrafficBoat)
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugCrew")) && S.Time - LastDebug > 1.0 && !bTrafficBoat)
 		{
 			if (I == N - 1) LastDebug = S.Time;
 			const FCrewMotionReport& Rep = Anim->GetReport();

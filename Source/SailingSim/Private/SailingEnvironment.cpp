@@ -208,7 +208,7 @@ void ASailingEnvironment::BeginPlay()
 	FindSceneActors();
 	// Visual V5: the layered clouds on Medium and High (-SailingClassicSky keeps the Phase 8 sky, for measuring).
 	bLayeredClouds = USailingSettings::Get()->Quality != ESailingQuality::Low && CloudLayersMaterial && Clouds
-		&& !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicSky"));
+		&& !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicSky"));
 	if (bLayeredClouds)
 	{
 		if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
@@ -224,9 +224,9 @@ void ASailingEnvironment::BeginPlay()
 			// light is actually lost (a cloud's own few kilometres), so far less jitter (the grain) at no cost.
 			CloudComp->SetShadowTracingDistance(4.f);
 			float ShadowKm = 0.f;
-			if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudShadowKm="), ShadowKm)) CloudComp->SetShadowTracingDistance(ShadowKm);
+			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudShadowKm="), ShadowKm)) CloudComp->SetShadowTracingDistance(ShadowKm);
 			FString Scales;
-			if (FParse::Value(FCommandLine::Get(), TEXT("SailingCloudScale="), Scales, false))
+			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudScale="), Scales, false))
 			{
 				FString A, B;
 				if (Scales.Split(TEXT(","), &A, &B))
@@ -247,7 +247,7 @@ void ASailingEnvironment::BeginPlay()
 		// Graphics G6 (measuring): each layer's extinction relative to CloudDensity, -SailingCloudLayerExt=<cu>,<st>,<storm>,<rain>
 		// (the material's LayerExtinction default otherwise).
 		FString LayerExt;
-		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudLayerExt="), LayerExt, false))
+		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudLayerExt="), LayerExt, false))
 		{
 			TArray<FString> Parts;
 			LayerExt.ParseIntoArray(Parts, TEXT(","));
@@ -258,9 +258,9 @@ void ASailingEnvironment::BeginPlay()
 			}
 		}
 		float MaxStepDepth = 0.f; // measuring: -SailingCloudStepDepth=<optical depth> (the material's MaxStepDepth otherwise)
-		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudStepDepth="), MaxStepDepth)) CloudMaterial->SetScalarParameterValue(TEXT("MaxStepDepth"), MaxStepDepth);
+		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudStepDepth="), MaxStepDepth)) CloudMaterial->SetScalarParameterValue(TEXT("MaxStepDepth"), MaxStepDepth);
 		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
-		if (CloudMaterial && FParse::Value(FCommandLine::Get(), TEXT("SailingCloudNoise="), NoisePath))
+		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudNoise="), NoisePath))
 		{
 			if (UTexture* Noise = LoadObject<UTexture>(nullptr, *NoisePath)) CloudMaterial->SetTextureParameterValue(TEXT("Shape"), Noise); // the shape volume (Graphics G1)
 		}
@@ -275,7 +275,7 @@ void ASailingEnvironment::BeginPlay()
 	}
 	// Visual V5 (High, not in the capture mode): water on the lens.
 	if (USailingSettings::Get()->Quality >= ESailingQuality::High && LensWaterMaterial && PostProcess
-		&& !FCString::Strifind(FCommandLine::Get(), TEXT("SailingCapture=")))
+		&& !FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCapture=")))
 	{
 		LensMaterial = UMaterialInstanceDynamic::Create(LensWaterMaterial, this);
 		PostProcess->Settings.WeightedBlendables.Array.Add(FWeightedBlendable(1.f, LensMaterial));
@@ -456,7 +456,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	SunDirection = FVector(FMath::Cos(Elevation * kDegToRad) * FMath::Cos(Azimuth * kDegToRad), FMath::Cos(Elevation * kDegToRad) * FMath::Sin(Azimuth * kDegToRad), FMath::Sin(Elevation * kDegToRad));
 	const float NightFloorEV = FMath::Lerp(-5.f, -3.f, Night); // EV100 floor: no full adaptation to the dark
 	const bool bPhysicalCamera = UsesPhysicalCamera(USailingSettings::Get()->Quality);
-	if (PostProcess && !bPhysicalCamera && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoNightExposure")))
+	if (PostProcess && !bPhysicalCamera && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoNightExposure")))
 	{
 		PostProcess->Settings.bOverride_AutoExposureMinBrightness = true;
 		PostProcess->Settings.AutoExposureMinBrightness = NightFloorEV;

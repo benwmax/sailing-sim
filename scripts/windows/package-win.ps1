@@ -14,7 +14,7 @@ param(
 
 $Cook = if ($Full) { '-cook' } else { '-cook -cookincremental' }
 $ArgLine = "BuildCookRun -project=`"$Project`" -noP4 -utf8output -unattended -platform=Win64 -clientconfig=$Config " +
-	"-build $Cook -stage -pak -iostore -package -archive -archivedirectory=`"$Packaged`""
+	"-build $Cook -stage -pak -iostore -package -archive -crashreporter -archivedirectory=`"$Packaged`""
 $Start = Get-Date
 $Code = Invoke-Tool $RunUAT $ArgLine (Join-Path $Artifacts 'package.log')
 if ($Code -eq 0) {

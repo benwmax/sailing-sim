@@ -258,7 +258,7 @@ void ASailboatPawn::SetBoat(int32 Type)
 	const double Time = Boat.GetState().Time;
 	FBoatConfig Config = FBoatConfig::Make(BoatType);
 	float CrewKg = 0.f;
-	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingCrewKg="), CrewKg) && CrewKg > 0.f)
+	if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingCrewKg="), CrewKg) && CrewKg > 0.f)
 	{
 		Config.CrewMass = CrewKg; // reference captures: the crew weight aboard the boat in the clip
 	}
@@ -377,7 +377,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{
 		uint32 Seed = bTrafficBoat && !bGhost ? GetUniqueID() * 7919u + 1u : 0u;
-		FParse::Value(FCommandLine::Get(), TEXT("SailingLiverySeed="), Seed);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingLiverySeed="), Seed);
 		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
@@ -516,7 +516,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
 	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
 	const bool bMeta = !bTrafficBoat && USailingSettings::Get()->Quality != ESailingQuality::Low
-		&& !FParse::Param(FCommandLine::Get(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
+		&& !FParse::Param(SailingArgs::Dev(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
 	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
 	{
 		const int32 CrewRole = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
@@ -662,7 +662,7 @@ void ASailboatPawn::BeginPlay()
 
 	// Boat detail pass: braided rope and 1x19 wire for the live rig lines (scripts/import_boat_detail.py), when imported;
 	// otherwise the flat MI_Boat_Rope / MI_Boat_Stainless stay. -SailingFlatRope compares.
-	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingFlatRope")))
+	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingFlatRope")))
 	{
 		if (UMaterialInterface* R = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, TEXT("/Game/Boats/Rope/M_RigRope.M_RigRope"), nullptr, LOAD_NoWarn | LOAD_Quiet)))
 		{
@@ -696,7 +696,7 @@ void ASailboatPawn::BeginPlay()
 		}
 	}
 	float StartTwa = 0.f;
-	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
+	if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingTWA="), StartTwa))
 	{
 		// Point the boat so the wind is StartTwa off the starboard bow (TWA = wind from - heading).
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa;
@@ -732,7 +732,7 @@ void ASailboatPawn::BeginPlay()
 		return; // the traffic manager picks her boat and puts her on the water (InitTraffic)
 	}
 	FString BoatArg;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingBoat="), BoatArg))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBoat="), BoatArg))
 	{
 		// -SailingBoat=Hobie (the first letters of a fleet boat's name, any case; J22 is the J/22), for this run only.
 		const int32 Match = USailingSettings::MatchBoatName(BoatArg);
@@ -752,12 +752,12 @@ void ASailboatPawn::BeginPlay()
 	SoundComponent->Play();
 	StartSampleLayer();
 
-	bDemo = FParse::Param(FCommandLine::Get(), TEXT("SailingDemo"));
-	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingCockpit"))) SetCockpitView(true);
+	bDemo = FParse::Param(SailingArgs::Dev(), TEXT("SailingDemo"));
+	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingCockpit"))) SetCockpitView(true);
 	float HoldTwa = 0.f;
 	if (bDemo)
 	{
-		bDemoTacks = !FParse::Value(FCommandLine::Get(), TEXT("SailingHoldTWA="), HoldTwa);
+		bDemoTacks = !FParse::Value(SailingArgs::Dev(), TEXT("SailingHoldTWA="), HoldTwa);
 		// Reset has not stepped the physics yet, so work out the starting tack from the wind and heading.
 		const Vec3 W = GetWind().VelocityAt(Vec3(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, 10.0), Boat.GetState().Time);
 		DemoFirstSign = WrapAngle(std::atan2(-W.Y, -W.X) - FMath::DegreesToRadians(StartYaw)) >= 0.0 ? 1.0 : -1.0;
@@ -767,17 +767,17 @@ void ASailboatPawn::BeginPlay()
 		CameraPitch = -14.f;
 	}
 	// Benchmarks and screenshots: camera angle (degrees) and distance (meters), and a drill to start in.
-	FParse::Value(FCommandLine::Get(), TEXT("SailingCamYaw="), CameraYaw);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingCamPitch="), CameraPitch);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamYaw="), CameraYaw);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamPitch="), CameraPitch);
 	float CamMeters = 0.f;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamDist="), CamMeters))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCamDist="), CamMeters))
 	{
 		CameraDistance = CamMeters * CmPerMeter;
 		CameraBoom->TargetArmLength = CameraDistance;
 	}
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	// Clean stills outside the capture mode (the blind tests' marina views): no HUD, no on-screen engine messages.
-	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingNoHud")))
+	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingNoHud")))
 	{
 		USailingSettings::Get()->bShowHud = false;
 		GAreScreenMessagesEnabled = false;
@@ -785,7 +785,7 @@ void ASailboatPawn::BeginPlay()
 	// Stills of the boat's details (crew, fittings): -SailingCamTarget=<forward>,<starboard>,<up> m in the boat frame is
 	// what the camera turns about, instead of 3 m over the hull's origin.
 	FString CamTarget;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamTarget="), CamTarget, false))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCamTarget="), CamTarget, false))
 	{
 		TArray<FString> P;
 		CamTarget.ParseIntoArray(P, TEXT(","));
@@ -797,14 +797,14 @@ void ASailboatPawn::BeginPlay()
 		}
 	}
 	FString CaptureArg;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingCapture="), CaptureArg))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCapture="), CaptureArg))
 	{
 		CapturePreset = ParseCapturePreset(CaptureArg);
 		SetupCapture();
 		GAreScreenMessagesEnabled = false; // engine warnings (VSM overflow) would be burned into the still
 	}
 	FString DrillArg;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingDrill="), DrillArg))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingDrill="), DrillArg))
 	{
 		for (int32 I = 1; I < int32(ESailingDrill::Count); ++I)
 		{
@@ -822,8 +822,8 @@ void ASailboatPawn::BeginPlay()
 		MenuDrill = ESailingDrill(FMath::Clamp(Session->Active.DrillIndex + 1, 1, int32(ESailingDrill::Count) - 1));
 		StartDrill(MenuDrill);
 	}
-	if (FParse::Param(FCommandLine::Get(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
-	if (FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker(); // start with it up
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker(); // start with it up
 }
 
 void ASailboatPawn::ApplyDifficulty()
@@ -841,21 +841,21 @@ void ASailboatPawn::ResetBoat()
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
 		FLaunchSpot Spot;
-		if (GM->GetLaunchSpot(Spot) && !FParse::Param(FCommandLine::Get(), TEXT("SailingKeepStart")))
+		if (GM->GetLaunchSpot(Spot) && !FParse::Param(SailingArgs::Dev(), TEXT("SailingKeepStart")))
 		{
 			StartLocation = FVector(Spot.X, Spot.Y, 0.0) * CmPerMeter;
 			StartYaw = Spot.HeadingDeg;
 		}
 	}
 	float StartTwa = 0.f;
-	if (FParse::Value(FCommandLine::Get(), TEXT("SailingTWA="), StartTwa))
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingTWA="), StartTwa))
 	{
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa; // recordings and benchmarks start on a set point of sail
 	}
 	Boat.GetMooringLines().clear();
 	// Soaks: -SailingMooring parks the player's boat on a buoy 12 m upwind of the start, head to wind with the sails up,
 	// so the camera stays put (docs/budget/mac-soak-parked-2026-10-17.md).
-	const bool bMooring = !bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingMooring"));
+	const bool bMooring = !bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingMooring"));
 	if (bMooring) StartYaw = GetWind().GetParams().FromDegrees;
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
@@ -875,9 +875,9 @@ void ASailboatPawn::ResetBoat()
 	Controls.MainSheet = 0.45;
 	Controls.JibSheet = 0.45;
 	// -SailingSpinnaker: start with it up, whenever the boat is (re)started.
-	if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
+	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 	int32 ReefArg = 0;
-	if (!bTrafficBoat && FParse::Value(FCommandLine::Get(), TEXT("SailingReef="), ReefArg))
+	if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingReef="), ReefArg))
 	{
 		Controls.Reef = FMath::Clamp(ReefArg, 0, int32(Boat.GetConfig().ReefLuffFraction.size()));
 	}
@@ -1034,7 +1034,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	if (!bChartArgsApplied && Boat.GetState().Time > 2.0 && GameMode)
 	{
 		bChartArgsApplied = true;
-		if (FParse::Param(FCommandLine::Get(), TEXT("SailingPlotFix")))
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingPlotFix")))
 		{
 			// The three nearest charted aids within 3 nm that spread around the horizon.
 			const FVector2D Me = GetMapPosition();
@@ -1054,15 +1054,15 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 			}
 		}
 		double ChartZoom = 0.0;
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingChart="), ChartZoom) && GameMode->GetChart().IsLoaded())
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingChart="), ChartZoom) && GameMode->GetChart().IsLoaded())
 		{
 			SetChartOpen(true);
 			ChartMetersPerPixel = ChartZoom;
 			ChartCenter = GetMapPosition();
 		}
-		if (FParse::Param(FCommandLine::Get(), TEXT("SailingNoGps"))) bShowGps = false;
-		if (FParse::Param(FCommandLine::Get(), TEXT("SailingLogOpen"))) bLogOpen = true;
-		if (FParse::Param(FCommandLine::Get(), TEXT("SailingKeys"))) { BuildKeyRows(); bKeysOpen = true; KeysMessage = TEXT("Up / Down choose, Enter then press the new key, Backspace restores the default, Tab closes"); }
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingNoGps"))) bShowGps = false;
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingLogOpen"))) bLogOpen = true;
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingKeys"))) { BuildKeyRows(); bKeysOpen = true; KeysMessage = TEXT("Up / Down choose, Enter then press the new key, Backspace restores the default, Tab closes"); }
 	}
 
 	// Scripted debrief checks: -SailingGhostAt=<s> resets then sails beside the ghost of the run so far;
@@ -1073,8 +1073,8 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		if (Parsed.Take())
 		{
 			GhostAt = WatchAt = -1.f;
-			FParse::Value(FCommandLine::Get(), TEXT("SailingGhostAt="), GhostAt);
-			FParse::Value(FCommandLine::Get(), TEXT("SailingWatchAt="), WatchAt);
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingGhostAt="), GhostAt);
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingWatchAt="), WatchAt);
 		}
 		if (GhostAt > 0.f && Boat.GetState().Time >= GhostAt)
 		{
@@ -1735,7 +1735,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		}
 		Controls = FBoatControls();
 		Controls.MainSheet = Controls.JibSheet = 0.6;
-		if (!bTrafficBoat && FParse::Param(FCommandLine::Get(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
+		if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 		ApplyStateToTransform();
 	}
 	MaxContactKnots = 0.0;
@@ -2377,7 +2377,7 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 {
 	// Ignore the camera in scripted runs, and clamp single events: capturing the mouse at launch can deliver one huge jump.
 	float BenchSeconds = 0.f;
-	if (bDemo || FParse::Value(FCommandLine::Get(), TEXT("SailingBench="), BenchSeconds))
+	if (bDemo || FParse::Value(SailingArgs::Dev(), TEXT("SailingBench="), BenchSeconds))
 	{
 		return;
 	}
@@ -2910,9 +2910,9 @@ void ASailboatPawn::SetupCapture()
 {
 	if (CapturePreset == ECapturePreset::None || bTrafficBoat) return;
 	const FCapturePresetInfo& Info = CapturePresetInfo(CapturePreset);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingCaptureBearing="), CaptureBearing);
-	FParse::Value(FCommandLine::Get(), TEXT("SailingEV="), CaptureEV);
-	if (!FParse::Value(FCommandLine::Get(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingCaptureBearing="), CaptureBearing);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingEV="), CaptureEV);
+	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
 
 	Camera->SetActive(false);
 	CaptureCamera->SetActive(true);
@@ -2997,7 +2997,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		}
 		// -SailingCaptureAbsolute: the bearing is a compass bearing from the boat (a shore tripod set up where the scene's
 		// reference stood, e.g. looking into an approaching storm), fixed when the stand is set.
-		if (!FMath::IsNaN(CaptureBearing) && !bCaptureBearingResolved && FParse::Param(FCommandLine::Get(), TEXT("SailingCaptureAbsolute")))
+		if (!FMath::IsNaN(CaptureBearing) && !bCaptureBearingResolved && FParse::Param(SailingArgs::Dev(), TEXT("SailingCaptureAbsolute")))
 		{
 			CaptureBearing = FMath::UnwindDegrees(CaptureBearing - float(FMath::RadiansToDegrees(T.Heading)));
 		}
@@ -3023,7 +3023,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		// Measuring the sky: -SailingCamWorld=<north m>,<east m>,<up m>,<heading deg>,<pitch deg> fixes the camera in the
 		// world, relative to the boat's start (the weather's origin).
 		FString CamWorld;
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamWorld="), CamWorld, false))
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCamWorld="), CamWorld, false))
 		{
 			TArray<FString> P;
 			CamWorld.ParseIntoArray(P, TEXT(","));
@@ -3037,7 +3037,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		// -SailingCamVessel=<kind>[,<distance m>,<bearing deg from her bow>]: frame the nearest traffic vessel of that kind
 		// (ETrafficKind: 1 runabout, 2 trawler, 3 tug and tow, 4 ship, 5 committee boat) from the water, for the vessel models.
 		FString CamVessel;
-		if (FParse::Value(FCommandLine::Get(), TEXT("SailingCamVessel="), CamVessel, false))
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCamVessel="), CamVessel, false))
 		{
 			TArray<FString> P;
 			CamVessel.ParseIntoArray(P, TEXT(","));
@@ -3230,7 +3230,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		BoatParts.Add(Part);
 		// Graphics G3: the scripted polo (scripts/make-crew-clothes.sh) over the shorts, in place of the default T-shirt:
 		// the outfit's shirt sections are hidden on every LOD and the polo follows the body like the rest.
-		if (K == 2 && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
+		if (K == 2 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPolo")))
 		{
 			const FString R = MetaHumanRoleName(CrewRole);
 			USkeletalMesh* PoloMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Polo.SKM_%s_Polo"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet);
@@ -3268,7 +3268,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		}
 	}
 	// Graphics G3: deck shoes (scripts/make-crew-clothes.sh, built round each sailor's feet and skinned from them).
-	if (!FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")))
+	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPolo")))
 	{
 		const FString R = MetaHumanRoleName(CrewRole);
 		if (USkeletalMesh* ShoeMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Shoes.SKM_%s_Shoes"), *R, *R, *R), nullptr, LOAD_NoWarn | LOAD_Quiet))
@@ -3287,7 +3287,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		}
 	}
 	// Graphics G3: hair, brows and beard on the face. Strands on High and Ultra; the groom's cards on Medium.
-	if (FacePart && !FParse::Param(FCommandLine::Get(), TEXT("SailingNoGrooms")))
+	if (FacePart && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoGrooms")))
 	{
 		const bool bStrands = USailingSettings::Get()->Quality >= ESailingQuality::High;
 		TArray<TPair<UGroomAsset*, UGroomBindingAsset*>> Grooms;
@@ -3337,7 +3337,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 	// Graphics G6: the life jacket tailored over this sailor's polo (Tools/blender/build_vest.py) and skinned like it, so it
 	// wraps the body as it sits; the rigid one below where it has not been built (or with -SailingNoPolo).
 	const FString VestRole = MetaHumanRoleName(CrewRole);
-	USkeletalMesh* VestMesh = FParse::Param(FCommandLine::Get(), TEXT("SailingNoPolo")) ? nullptr
+	USkeletalMesh* VestMesh = FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPolo")) ? nullptr
 		: LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Vest.SKM_%s_Vest"), *VestRole, *VestRole, *VestRole), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (VestMesh)
 	{
