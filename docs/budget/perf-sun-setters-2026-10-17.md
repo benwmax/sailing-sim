@@ -275,3 +275,57 @@ render thread is the next place to look, not shading.
 
 Files (`soak/`): `e1ab-{on1,off,on2}-2026-10-17.{csv-1min.txt,views.csv,bench.json}` (CSV profile means by minute,
 binned on the run's own frame times; the marina and slip rows; the parked bench.json).
+
+### The parked-High CPU gap, bisected in one session (Mac, main b37178d1, Oct 17 2026)
+
+The sections above compare runs from different sessions: #121's 54.8 fps on the #115 package against 50.7 fps on main
+433b3400. To check whether that 1.4 ms is code, I packaged main (b37178d1) and e63ad57e (#115) one after the other
+(Development, `package-mac.sh`, 2.1 and 2.2 min each, incremental) and ran the parked High probe three times on each in the
+same session, then once more on main to bracket. Same arguments as above, 90 s:
+`-SailingQuality=High -SailingKeepStart -SailingMooring -SailingBenchTrace -csvCategories=VSM -csvCaptureFrames=40000
+-SailingExecAt=85:CsvProfile+Stop`, `bench-mac.sh 90`. Run order is the table's order.
+
+| parked High, 90 s | fps | p99 ms | game ms | render thread ms | GPU ms | RT waiting on visibility ms | VSM pages cleared / frame | dynamic invalidated |
+|---|---|---|---|---|---|---|---|---|
+| main 1 | 51.3 | 22.23 | 2.50 | 19.46 | 18.92 | 14.93 | 913 | 930 |
+| main 2 | 49.4 | 23.36 | 2.73 | 20.20 | 19.64 | 15.39 | 877 | 884 |
+| main 3 | 50.0 | 23.43 | 2.71 | 19.92 | 19.35 | 15.07 | 859 | 868 |
+| e63ad57e 1 | 50.0 | 22.54 | 2.70 | 19.93 | 19.36 | 15.32 | 850 | 945 |
+| e63ad57e 2 | 49.7 | 22.81 | 2.70 | 20.06 | 19.49 | 15.12 | 871 | 976 |
+| e63ad57e 3 | 49.9 | 22.96 | 2.72 | 19.99 | 19.42 | 15.23 | 849 | 946 |
+| main 4 (bracket) | 49.0 | 23.56 | 2.73 | 20.34 | 19.78 | 15.68 | 878 | 885 |
+| **median main 1-3** | **50.0** | 23.36 | 2.71 | **19.92** | **19.35** | 15.07 | 877 | 884 |
+| **median e63ad57e** | **49.9** | 22.81 | 2.70 | **19.99** | **19.42** | 15.23 | 850 | 946 |
+
+(fps, p99, game, render thread and GPU from bench.json; the last three columns are CSV-profile means after the first 300
+frames.)
+
+**There is no gap.** Run in the same session, main and the #115 package are within 0.07 ms on the render thread (main
+faster) and 0.07 ms on the GPU, well inside the 0.3 ms bar, so I stopped the bisect there: 433b3400 and the E1
+custom-data probe were not needed. The 1.4 ms between #121 and the later probes is the Mac's drift between sessions.
+Within this session the drift is about 0.9 ms too: main went from 19.46 ms on the first run to 20.34 ms on the last,
+with e63ad57e's runs in between and on the same trend.
+
+**Parked High is not render-thread bound.** bench.json's render-thread time is the whole frame (19.9 ms of a 19.9 ms
+frame), but 15.1 ms of it is `EventWait/Visibility`: the render thread waiting, not working. Its real work is about
+4.7 ms. Every working bucket (`RenderOther` 1.28, `RenderThreadOther` 0.95, `RDG` 0.55, `RenderLighting` 0.39,
+`InitRenderResource` 0.26, `RenderShadows`, `InitViews_Scene`, `UpdateGPUScene` 0.03, `UpdatePrimitiveTransform` 0.02)
+agrees between the two builds within 0.03 ms. The frame is GPU-paced (GPU 19.4 ms), and the render thread's number in
+bench.json follows the GPU. Read RT against `EventWait/Visibility` before calling a Mac view render-thread bound.
+
+**What did move, and doesn't cost anything.** Main's VSM marks 180 more software Nanite clusters and builds 90 more HZB
+pages a frame (T1's trees are in main, not in e63ad57e). It invalidates 60 fewer dynamic pages. None of it shows in the
+GPU time.
+
+**Proposed fix: none.** The E1 custom data (16 floats on the berthed boats, houses and docks) is written once at build, and
+its components are Static. `AssignSlipLooks` and `SpawnBerthedBoats` run only in `Build`/`BeginPlay`. The one per-tick
+addition, the `Site` MPC scalar in `ASailingEnvironment::Tick`, is the same value every frame, and the MPC skips the
+uniform-buffer update when nothing changes. The parked penalty against sailing is still the hull's dynamic VSM
+invalidation (above), and that stays the thing to work on.
+
+Method note: in every A/B on this Mac, interleave the builds (A B A, or A A A B B B A) in one session. Two sessions apart,
+a 2 to 4 fps difference is noise.
+
+Files (`soak/`): `gap-{main1,main2,main3,e63a1,e63a2,e63a3,main4}-2026-10-17.bench.json`, and
+`gap-buckets-2026-10-17.txt` (the render-thread, GPU and VSM columns of the CSV profile, median of three runs per build,
+main minus e63ad57e).
