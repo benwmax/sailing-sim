@@ -5,6 +5,19 @@
 #include "LandmarksActor.generated.h"
 
 class UInstancedStaticMeshComponent;
+struct FLandmark;
+
+/** One drawn landmark: its index in FLakeData::Landmarks, the model (/Game/World/Landmarks) and its scale. */
+struct FLandmarkPlacement
+{
+	int32 Index = 0;
+	const TCHAR* Mesh = nullptr;
+	double Scale = 1.0;
+	bool bPlatform = false;
+};
+/** Which charted landmarks are drawn, as what. Round 12: one of a kind within 100 m (platforms within 5 m), generic towers
+ *  as a slim 45 m lattice tower, "Water tower" (OpenStreetMap) as the water tower. Pure, for SailingSim.Coast.Landmarks. */
+SAILINGSIM_API TArray<FLandmarkPlacement> LandmarkPlacements(const TArray<FLandmark>& Landmarks);
 
 /**
  * Visual V6: the chart's landmarks standing in the world (Tools/blender/build_landmarks.py): the bay's gas-well platforms,

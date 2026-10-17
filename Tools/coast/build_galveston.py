@@ -376,6 +376,11 @@ for row in features["LNDMRK"]:
     if in_box(c.x, c.y):
         landmarks.append({"x": round(c.x, 1), "y": round(c.y, 1), "name": scalar(row.get("OBJNAM")) or CATLMK.get(int(cat) if cat else 0, "Landmark"), "category": cat,
                           "conspicuous": scalar(row.get("CONVIS")) == 1, "height": scalar(row.get("HEIGHT"))})
+# Round 12: Kemah's water tower (OpenStreetMap man_made=water_tower, 29.5386 N, 95.0280 W) is a landmark from the bay but
+# is not charted; the chart's towers near Kemah are generic towers (CATLMK 17), drawn slim.
+kx, ky = ll2xy(29.5386, -95.0280)
+if in_box(kx, ky):
+    landmarks.append({"x": round(kx, 1), "y": round(ky, 1), "name": "Water tower", "category": "osm", "conspicuous": True, "height": None})
 # Offshore oil and gas platforms: landmarks to take a bearing on (their lights come in with the lights below).
 for row in features["OFSPLF"]:
     g = row["geom_xy"]

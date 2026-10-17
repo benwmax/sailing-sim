@@ -5,6 +5,7 @@
 #include "LakeData.h"
 #include "CoastMarinasActor.h"
 #include "MarinaActor.h"
+#include "LandmarksActor.h"
 #include "Engine/StaticMesh.h"
 #include "WorldKit.h"
 #include "Lights.h"
@@ -600,3 +601,42 @@ bool FCoastGulfFrontTest::RunTest(const FString& Parameters)
 	return true;
 }
 #endif
+
+// Round 12 ("the towers at Kemah"): the chart's generic towers near Kemah are one of a kind within 100 m and drawn as slim
+// lattice towers; the water tower is OpenStreetMap's, about 1.1 km south-west of the origin (29.5386 N, 95.0280 W).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoastLandmarksTest, "SailingSim.Coast.Landmarks", Flags)
+bool FCoastLandmarksTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Galveston();
+	if (!TestTrue(TEXT("Galveston loads"), Lake.IsLoaded())) return false;
+	const TArray<FLandmarkPlacement> Placed = LandmarkPlacements(Lake.Landmarks);
+	int32 WaterTowers = 0, KemahTowers = 0, TooClose = 0;
+	for (int32 A = 0; A < Placed.Num(); ++A)
+	{
+		const FLandmark& LA = Lake.Landmarks[Placed[A].Index];
+		const bool bWater = FCString::Strcmp(Placed[A].Mesh, TEXT("SM_Landmark_WaterTower")) == 0;
+		if (bWater && LA.Name == TEXT("Water tower"))
+		{
+			++WaterTowers;
+			TestTrue(TEXT("Kemah's water tower 1-1.2 km south-west"), LA.X < -500.0 && LA.Y < -700.0 && FMath::Sqrt(LA.X * LA.X + LA.Y * LA.Y) < 1200.0);
+		}
+		if (LA.Name == TEXT("Tower"))
+		{
+			TestEqual(TEXT("A generic tower is the slim lattice tower"), FString(Placed[A].Mesh), FString(TEXT("SM_Landmark_Mast")));
+			if (LA.Height <= 1.0) TestEqual(TEXT("Drawn 45 m tall"), Placed[A].Scale, 0.45);
+			if (FMath::Sqrt(LA.X * LA.X + LA.Y * LA.Y) < 1000.0) ++KemahTowers;
+		}
+		for (int32 B = A + 1; B < Placed.Num(); ++B)
+		{
+			const FLandmark& LB = Lake.Landmarks[Placed[B].Index];
+			if (!Placed[A].bPlatform && Placed[A].Mesh == Placed[B].Mesh && LA.Name.Left(4) == LB.Name.Left(4)
+				&& FVector2D::Distance(FVector2D(LA.X, LA.Y), FVector2D(LB.X, LB.Y)) < 100.0) ++TooClose;
+		}
+	}
+	TestEqual(TEXT("One OpenStreetMap water tower"), WaterTowers, 1);
+	TestEqual(TEXT("No two landmarks of a kind within 100 m"), TooClose, 0);
+	// The chart has six towers (two duplicated) within 600 m of Kemah: one per 100 m cluster.
+	TestTrue(FString::Printf(TEXT("Kemah's generic towers merged (%d drawn)"), KemahTowers), KemahTowers >= 1 && KemahTowers <= 3);
+	AddInfo(FString::Printf(TEXT("%d of %d landmarks drawn"), Placed.Num(), Lake.Landmarks.Num()));
+	return true;
+}
