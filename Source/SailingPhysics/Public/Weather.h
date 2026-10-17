@@ -63,6 +63,7 @@ namespace Sailing
 		bool bStormRain = false;
 		double StormRainScale = 0.0; // the storm's rain through its life (0..1)
 		double AirC = 30.0;          // air temperature at the start before any cold pool (C)
+		double DewC = 20.0;          // C1: dew point (C); the cumulus base is about 125 m per C of AirC - DewC
 		// W8: a storm's darkness, cover and visibility are the place's (how close the front is), not the timeline's: the
 		// day's values under it, the storm's build and clearing, kept so LocalizeStorm can redo them at the camera.
 		double StormBuild = 0.0, StormClearing = 0.0;

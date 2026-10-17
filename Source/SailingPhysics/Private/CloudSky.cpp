@@ -190,11 +190,16 @@ namespace Sailing
 		// and the big ones reach the full height. Their outlines are lumpy at their own scale.
 		struct FCuClass { double Radius, Spacing; uint32_t Seed; };
 		static constexpr FCuClass Classes[] = { { 2000.0, 7000.0, 71u }, { 1100.0, 4500.0, 73u }, { 600.0, 2900.0, 79u }, { 330.0, 1850.0, 83u } };
+		// C1 (round 12: "clouds are huge and close"): on a fair day the classes shrink together (FCloudSky::CuCellScale,
+		// 0.6: the largest cells about 1.5 km in radius, most of them 200 m to 1 km), the lattice with them so the same
+		// share of sky stays cloudy; a building or stormy day keeps the full sizes.
+		const double Scale = Clamp(Sky.CuCellScale, 0.3, 1.0);
 		auto CellField = [&](double Ac, double Bc, double Stretch)
 		{
 			double V = 0.0;
-			for (const FCuClass& K : Classes)
+			for (const FCuClass& Kc : Classes)
 			{
+				const FCuClass K = { Kc.Radius * Scale, Kc.Spacing * Scale, Kc.Seed };
 				const double Gx = Ac / (K.Spacing * Stretch), Gy = Bc / K.Spacing;
 				const int32_t Ix = int32_t(std::floor(Gx)), Iy = int32_t(std::floor(Gy));
 				for (int32_t Dx = -1; Dx <= 1; ++Dx)
@@ -212,7 +217,7 @@ namespace Sailing
 						E2 *= 1.0 + 0.8 * (Fbm(Ac / (0.7 * R), Bc / (0.7 * R), K.Seed + 7u, 3) - 0.5);
 						if (E2 >= 1.0) continue;
 						const double Bump = (1.0 - E2) * (1.0 - E2);
-						V = std::max(V, Bump * std::pow(R / 2000.0, 0.6));
+						V = std::max(V, Bump * std::pow(R / (2000.0 * Scale), 0.6));
 					}
 				}
 			}

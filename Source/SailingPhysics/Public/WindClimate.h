@@ -20,6 +20,8 @@ namespace Sailing
 	SAILINGPHYSICS_API double ClimateWaterC(int Month, bool bCoast);
 	/** Air temperature from the monthly normal highs and lows with the usual daily cycle (C). */
 	SAILINGPHYSICS_API double ClimateAirC(int Month, double Hour, bool bCoast);
+	/** Dew point, monthly mean (C): with the air temperature it sets the cumulus base (about 125 m per C of spread). */
+	SAILINGPHYSICS_API double ClimateDewC(int Month, bool bCoast);
 	/** Depth of the convective boundary layer (m): deep on a summer afternoon over Texas, shallow at night and at sea. */
 	SAILINGPHYSICS_API double ClimateMixedLayerM(int Month, double Hour, bool bCoast);
 

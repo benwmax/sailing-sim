@@ -43,6 +43,9 @@ namespace Sailing
 		constexpr double kDfwLow[12] = { 2.8, 5.0, 9.4, 13.9, 18.9, 22.8, 25.0, 24.4, 20.6, 14.4, 8.3, 3.9 };
 		constexpr double kGlsHigh[12] = { 16.7, 17.8, 21.1, 24.4, 28.3, 31.1, 32.2, 32.8, 30.6, 26.7, 21.7, 17.8 };
 		constexpr double kGlsLow[12] = { 10.0, 11.7, 15.0, 18.9, 22.8, 26.1, 27.2, 27.2, 25.0, 20.6, 15.6, 11.1 };
+		// C1: dew point normals, monthly means (C), rounded from the NCEI normals for DFW and Galveston (Scholes Field).
+		constexpr double kDfwDew[12] = { 0.0, 2.0, 6.0, 11.0, 16.0, 19.5, 20.0, 19.5, 17.0, 11.5, 6.0, 1.5 };
+		constexpr double kGlsDew[12] = { 9.0, 10.5, 13.5, 17.0, 21.0, 23.5, 24.0, 24.0, 22.0, 17.0, 13.0, 10.0 };
 		// Surface water: north Texas reservoirs (TCEQ / TRA profiles at Lavon and Ray Hubbard) and NOAA's Galveston
 		// coastal water temperature guide, monthly means, C.
 		constexpr double kLakeWater[12] = { 10.0, 10.5, 14.0, 19.0, 24.0, 28.5, 30.5, 31.0, 28.5, 23.0, 16.5, 11.5 };
@@ -94,6 +97,11 @@ namespace Sailing
 	double ClimateWaterC(int Month, bool bCoast)
 	{
 		return (bCoast ? kBayWater : kLakeWater)[MonthIndex(Month)];
+	}
+
+	double ClimateDewC(int Month, bool bCoast)
+	{
+		return (bCoast ? kGlsDew : kDfwDew)[MonthIndex(Month)];
 	}
 
 	double ClimateAirC(int Month, double Hour, bool bCoast)
