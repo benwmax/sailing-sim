@@ -42,6 +42,11 @@ the far band is our own march.
     15:30. `-SailingSkyCacheLight=<sun>,<sky>` overrides the scales.
 - **The live clouds** fade out over 4.5 to 5 km once the first panorama exists (`CacheSplit` in `CLOUD_CODE`), and
   trace only to 5 km from the camera (`TracingMaxDistance`, measured from the point of view).
+  Their near rays also keep all their samples now. UE thins samples in proportion on rays shorter than
+  `r.VolumetricCloud.DistanceToSampleMaxCount`, which is 15 km below Ultra, so High's near steps were still about 190 m.
+  While the cache runs, that setting is 5 km, giving steps of about 60 m. It is restored under a storm; Ultra's 3 km stays.
+  At lake-towers on High, the near clouds' grain (the mean difference from a 2-pixel blur, in the top 250 rows)
+  fell from 2.51 to 1.36, and across the frame from 1.96 to 1.48. The GPU frame went from 4.77 to 4.75 ms.
 - **Storms.** While a storm is in the sky, the cache steps aside and the live clouds take the whole sky back, exactly as
   on main. The shelf's lit face is emission in `CLOUD_CODE`, and the deck has a slate albedo; the cache's two lighting
   terms carry neither, and its storm came out as a black-brown deck. A storm cache is follow-up work.
