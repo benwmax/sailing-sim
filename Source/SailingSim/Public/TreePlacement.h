@@ -42,3 +42,22 @@ SAILINGSIM_API void PlaceTreeInstances(const Sailing::FLakeTerrain& Terrain, flo
  * crowns' band (land over about 1 km from the water) the canopy-map placement fills in. Fraction thins both.
  */
 SAILINGSIM_API void PlaceCrownTrees(const Sailing::FLakeTerrain& Terrain, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out);
+
+/**
+ * T1 (round 12, Inputs/clouds-trees/plan.md): each tree's own look, a pure function of its position (the shared portable
+ * hash: the same on the Mac and the PC, and the same tree after a regroup): its green (0 yellow-green .. 1 blue-green),
+ * how much it turns in autumn (0 for the evergreens: live oak, eastern red cedar), its autumn colour (0 russet-brown, the
+ * post oaks; 1 yellow, the cedar elms) and a small lean (degrees). Written to per-instance custom data 0-2.
+ */
+struct FTreeLook
+{
+	float Tint = 0.5f;
+	float Deciduous = 0.f;
+	float AutumnHue = 0.f;
+	float LeanPitch = 0.f, LeanRoll = 0.f;
+};
+SAILINGSIM_API FTreeLook TreeLookFor(const FTreeInstance& Tree);
+/** T1: how far the north Texas autumn has gone on a day of the year (0 green, 1 peak colour near Thanksgiving, back to 0
+ *  as the leaves fall by mid-January), and spring's fresh yellow-green (peak early April, gone by June). */
+SAILINGSIM_API float AutumnAmount(int32 DayOfYear);
+SAILINGSIM_API float SpringAmount(int32 DayOfYear);

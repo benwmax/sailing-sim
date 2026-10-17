@@ -285,10 +285,15 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// crowns beyond; regrouped when the camera has moved a quarter of the near radius.
 	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < FMath::Max(100.0, 0.25 * NearTreesM())) return;
 	TreeCenter = Camera;
-	TArray<TArray<FTransform>> Near, Mid, Far;
+	TArray<TArray<FTransform>> Near, Mid, Far, Proxy;
+	TArray<TArray<float>> NearD, MidD, FarD;   // T1: three custom floats per instance (FTreeLook)
 	Near.SetNum(TreeModels.Num());
 	Mid.SetNum(TreeMid.Num());
 	Far.SetNum(TreeFar.Num());
+	Proxy.SetNum(TreeProxy.Num());
+	NearD.SetNum(TreeModels.Num());
+	MidD.SetNum(TreeMid.Num());
+	FarD.SetNum(TreeFar.Num());
 	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
 	for (const FTreeInstance& I : ModelTrees)
 	{
@@ -308,18 +313,46 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		}
 		// The earth's curvature (as M_Terrain's offset does for the ground): far trees sink with the shore they stand on.
 		const double Drop = CurvatureDrop(FVector2D::Distance(I.Position, Camera));
-		(bNear ? Near : (bMid ? Mid : Far))[Index].Add(FTransform(FRotator(0.f, I.Yaw, 0.f), FVector(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter), FVector(ScaleXY, ScaleXY, Scale)));
+		// T1: each tree's own look and a small lean (FTreeLook, from its position: the same after every regroup).
+		const FTreeLook Look = bTreeLooks ? TreeLookFor(I) : FTreeLook();
+		const FVector At(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter);
+		const FRotator Rot(Look.LeanPitch, I.Yaw, Look.LeanRoll);
+		(bNear ? Near : (bMid ? Mid : Far))[Index].Add(FTransform(Rot, At, FVector(ScaleXY, ScaleXY, Scale)));
+		(bNear ? NearD : (bMid ? MidD : FarD))[Index].Append({ Look.Tint, Look.Deciduous, Look.AutumnHue });
+		// The lighting-only crown under a near tree, sized as the far crown would be for this tree, 85% of it.
+		if (bNear && TreeProxy.IsValidIndex(Index))
+		{
+			UStaticMesh* FarMesh = TreeFar[Index]->GetStaticMesh();
+			const float FarHeight = FarMesh ? FMath::Max(100.f, float(FarMesh->GetBounds().BoxExtent.Z * 2.0)) : MeshHeight;
+			const float K = 0.85f * MeshHeight / FarHeight;
+			Proxy[Index].Add(FTransform(Rot, At, FVector(ScaleXY * K, ScaleXY * K, Scale * K)));
+		}
 	}
+	// T1: the custom data after the instances (one float triple each), one render-state update per component.
+	auto SetLooks = [this](UInstancedStaticMeshComponent* C, const TArray<float>& D)
+	{
+		if (!bTreeLooks) return;
+		for (int32 K = 0; K * 3 + 2 < D.Num(); ++K) C->SetCustomData(K, TArrayView<const float>(&D[K * 3], 3), false);
+		C->MarkRenderStateDirty();
+	};
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{
 		TreeModels[M]->ClearInstances();
 		TreeModels[M]->AddInstances(Near[M], false, true);
+		SetLooks(TreeModels[M], NearD[M]);
 		TreeFar[M]->ClearInstances();
 		TreeFar[M]->AddInstances(Far[M], false, true);
+		SetLooks(TreeFar[M], FarD[M]);
 		if (TreeMid.IsValidIndex(M))
 		{
 			TreeMid[M]->ClearInstances();
 			TreeMid[M]->AddInstances(Mid[M], false, true);
+			SetLooks(TreeMid[M], MidD[M]);
+		}
+		if (TreeProxy.IsValidIndex(M))
+		{
+			TreeProxy[M]->ClearInstances();
+			TreeProxy[M]->AddInstances(Proxy[M], false, true);
 		}
 	}
 }
@@ -473,14 +506,49 @@ void ALakeTerrainActor::PlaceTrees()
 	const bool bModelTrees = USailingSettings::Get()->Quality != ESailingQuality::Low;
 	if (bModelTrees && TreeModels.Num() == 0)
 	{
-		// Passes: leaf cards near, opaque crowns with shadows to MidTreesM, opaque crowns without beyond (Graphics G6).
-		for (int32 Pass = 0; Pass < 3; ++Pass)
+		// Passes: leaf cards near, opaque crowns with shadows to MidTreesM, opaque crowns without beyond (Graphics G6), and
+		// T1's lighting-only crowns under the near leaf cards. -SailingNoTreeLight leaves the lighting without trees and
+		// -SailingNoTreeLooks every tree its model's own green, upright (both compare).
+		const bool bTreeLight = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeLight"));
+		// The Mac gate (#126): on High the crowns and proxies in the ray-tracing scene cost Metal's render thread 2 to 3.5 ms
+		// a frame (GPU flat). Only Ultra (the desktop GPU) traces them; below it they are in Lumen's scene and the distance
+		// fields only. -SailingTreeRayTracing=0|1 overrides, for measuring.
+		int32 TreeRT = USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1 : 0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTreeRayTracing="), TreeRT);
+		const bool bTreeRayTracing = bTreeLight && TreeRT != 0;
+		bTreeLooks = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeLooks"));
+		for (int32 Pass = 0; Pass < (bTreeLight ? 4 : 3); ++Pass)
 		{
 			for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S)
 			{
 				for (int32 V = 0; V < 2; ++V)
 				{
 					const FString Name = FString::Printf(TEXT("SM_%s_%d%s"), SpeciesNames[S], V, Pass >= 1 ? TEXT("_Far") : TEXT(""));
+					if (Pass == 3)
+					{
+						// T1 (round 12: trees "lit evenly, the shoreline looks flat"): Lumen's scene had no trees at all (the leaf
+						// cards cost 10 ms in it), so nothing shaded a crown's inside or the ground under it. These opaque crowns
+						// stand in for the near trees in the lighting only: in ray tracing (Lumen on High and Ultra) and the
+						// distance fields (Medium's software Lumen), never drawn, no shadow (the leaf cards cast that). Lumen takes
+						// only primitives that affect indirect lighting into its scene, ray traced or not, so these do (an opaque
+						// crown's few surface-cache cards, not a leaf card's thousands). A little smaller than the tree, so the
+						// sunny outer leaves stay lit.
+						UInstancedStaticMeshComponent* P = NewObject<UInstancedStaticMeshComponent>(this);
+						P->SetupAttachment(RootComponent);
+						P->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name)));
+						P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						// Hidden, but in the indirect lighting (kept out of the main pass instead, Lumen left them out too).
+						P->SetHiddenInGame(true);
+						P->bAffectIndirectLightingWhileHidden = true;
+						P->SetCastShadow(false);
+						P->bAffectDynamicIndirectLighting = true;
+						P->bAffectDistanceFieldLighting = true;
+						P->bVisibleInRayTracing = bTreeRayTracing;
+						P->SetCullDistances(0, (NearTreesM() + 200.0) * 100.0);
+						P->RegisterComponent();
+						TreeProxy.Add(P);
+						continue;
+					}
 					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
 					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 					C->SetupAttachment(RootComponent);
@@ -488,9 +556,15 @@ void ALakeTerrainActor::PlaceTrees()
 					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 					// Out of Lumen's scene and ray tracing: capturing thousands of leaf cards into Lumen's surface cache
 					// cost 10 ms; the trees still take Lumen's lighting.
-					C->bAffectDynamicIndirectLighting = false;
-					C->bAffectDistanceFieldLighting = false;
-					C->bVisibleInRayTracing = false;
+					// T1: the opaque mid and far crowns are cheap occluders, so the lighting sees them (Lumen's scene: ray tracing
+					// on High and Ultra, distance fields on Medium): their insides and the ground under them darken. The leaf
+					// cards stay out.
+					C->bAffectDynamicIndirectLighting = bTreeLight && Pass >= 1;
+					C->bAffectDistanceFieldLighting = bTreeLight && Pass >= 1;
+					C->bVisibleInRayTracing = bTreeRayTracing && Pass >= 1;
+					// T1: each tree's tint, autumn turn and autumn colour (FTreeLook) for M_TreeLeaves / M_TreeCrown (without
+					// them the materials take their defaults: the model's green, no season).
+					C->NumCustomDataFloats = bTreeLooks ? 3 : 0;
 					// Shadows (virtual shadow maps), cached as if still: the sway never re-renders the trees' shadow
 					// pages (thousands of swaying trees would invalidate the cache every frame).
 					// Graphics G6: the far band casts none (-SailingFarTreeShadows=1 to compare).

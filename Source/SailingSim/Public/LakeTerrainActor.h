@@ -84,6 +84,10 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeMid;    // Graphics G6: opaque crowns that still cast shadows
+	/** T1: the near trees' opaque crowns, drawn for the lighting only (ray tracing and distance fields; not in the main or
+	 *  depth pass, no shadow): Lumen sees a tree there, so its inside and the ground under it darken. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeProxy;
+	bool bTreeLooks = true;
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
 	void UpdateModelTrees(const FVector2D& Camera);
