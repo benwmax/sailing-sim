@@ -26,6 +26,9 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMaterialLibrary.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "Engine/Canvas.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Misc/CommandLine.h"
 #include "HAL/IConsoleManager.h"
@@ -41,6 +44,20 @@ namespace
 	constexpr float kCloudBaseKm = 1.4f;
 }
 
+namespace
+{
+	// C2: the sky cache's panorama: 4096 x 512 half floats over elevations -3 to 33 degrees (a cumulus base at 2 km is
+	// under 22 degrees from 5 km out), 96 steps from 5 km to 40 km, the sky light's share of the dome's view luminance.
+	constexpr int32 kSkyCacheWidth = 4096;
+	constexpr int32 kSkyCacheHeight = 512;
+	constexpr float kSkyCacheElMin = -3.f;
+	constexpr float kSkyCacheElMax = 33.f;
+	constexpr int32 kSkyCacheSteps = 96;
+	constexpr float kSkyCacheSplitM = 5000.f;
+	constexpr float kSkyCacheFarM = 40000.f;
+	constexpr float kSkyCacheSun = 1.f;       // matched to the live clouds at the seam (lake-towers, 17:00)
+	constexpr float kSkyCacheAmbient = 1.1f;
+}
 ASailingEnvironment::ASailingEnvironment()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -52,6 +69,8 @@ ASailingEnvironment::ASailingEnvironment()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Emissive(TEXT("/Game/Materials/M_Emissive.M_Emissive"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CloudLayers(TEXT("/Game/Materials/M_CloudLayers.M_CloudLayers"));
 	CloudLayersMaterial = CloudLayers.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CloudCache(TEXT("/Game/Materials/M_CloudCache.M_CloudCache"));
+	CloudCacheMaterial = CloudCache.Object;
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkyDomeMat(TEXT("/Game/Materials/M_SkyDome.M_SkyDome"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensWater(TEXT("/Game/Materials/M_LensWater.M_LensWater"));
@@ -273,6 +292,27 @@ void ASailingEnvironment::BeginPlay()
 		if (SkyMaterial && WeatherMapTexture) SkyMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
 		// The moon's disc is drawn by the dome (with its phase); the atmosphere's own would be a flat white second sun.
 		MoonLight->SetAtmosphereSunDiskColorScale(FLinearColor::Black);
+		// C2 (Inputs/clouds-trees/plan.md): the sky cache, two panoramas of the far clouds (radiance terms and transmittance,
+		// half floats) the dome cross-fades between; -SailingNoSkyCache keeps every cloud in the live march.
+		bSkyCache = SkyMaterial && CloudMaterial && CloudCacheMaterial && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoSkyCache"));
+		if (bSkyCache)
+		{
+			CacheMaterial = UMaterialInstanceDynamic::Create(CloudCacheMaterial, this);
+			CacheMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
+			for (int32 I = 0; I < 2; ++I)
+			{
+				CacheTargets[I] = UKismetRenderingLibrary::CreateRenderTarget2D(this, kSkyCacheWidth, kSkyCacheHeight, RTF_RGBA16f, FLinearColor(0.f, 0.f, 1.f, 1.f));
+				CacheTargets[I]->AddressX = TA_Wrap;
+				CacheTargets[I]->AddressY = TA_Clamp;
+			}
+			SkyMaterial->SetTextureParameterValue(TEXT("CacheOld"), CacheTargets[0]);
+			SkyMaterial->SetTextureParameterValue(TEXT("CacheNew"), CacheTargets[1]);
+			if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
+			{
+				CacheTraceKm = CloudComp->TracingMaxDistance;
+				CacheTraceMode = uint8(CloudComp->TracingMaxDistanceMode);
+			}
+		}
 	}
 	// Visual V5 (High, not in the capture mode): water on the lens.
 	if (USailingSettings::Get()->Quality >= ESailingQuality::High && LensWaterMaterial && PostProcess
@@ -316,6 +356,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateSun(W.HourOfDay);
 	UpdateClouds(DeltaSeconds);
 	UpdateCloudLayers(CamPos);
+	UpdateSkyCache(CamPos, DeltaSeconds);
 	UpdateHaze();
 	UpdateRain(CamPos);
 	UpdateRainCurtains(CamPos, DeltaSeconds);
@@ -1054,6 +1095,126 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	CloudMaterial->SetVectorParameterValue(TEXT("Flash"), FLinearColor(FlashParams.X, FlashParams.Y, FlashParams.Z, Flash * FlashParams.W));
 	// Extinction per metre at full density: thicker in a storm.
 	CloudMaterial->SetScalarParameterValue(TEXT("CloudDensity"), FMath::Lerp(0.045f, 0.065f, float(W.CloudDarkness)) /* Graphics G1: real cumulus extinction, 0.05-0.1 /m */);
+}
+
+void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSeconds)
+{
+	if (!bSkyCache || !CacheMaterial || !CloudMaterial || !SkyMaterial) return;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM) return;
+	const double Now = GetWorld()->GetTimeSeconds();
+	const FWeatherState& W = GM->GetWeatherState();
+	// Not under a storm (yet): the shelf's lit face is emission in CLOUD_CODE and the deck's slate albedo, which the
+	// cache's two lighting terms don't carry (its storm came out a black-brown deck). While a storm is in the sky the
+	// live clouds take the whole sky back, as they were before the cache; it starts again when the storm has gone.
+	const bool bStorm = W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02;
+	if (bStorm)
+	{
+		if (bCacheReady)
+		{
+			bCacheReady = false;
+			CacheColumn = 0;
+			CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, 0.f));
+			if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
+			{
+				CloudComp->TracingMaxDistanceMode = EVolumetricCloudTracingMaxDistanceMode(CacheTraceMode);
+				CloudComp->SetTracingMaxDistance(CacheTraceKm);
+			}
+		}
+		SkyMaterial->SetVectorParameterValue(TEXT("CacheParams"), FLinearColor(0.f, 1.f, kSkyCacheElMin, kSkyCacheElMax));
+		return;
+	}
+	// The dome cross-fades from the old panorama to the new one over half a second; the next refresh waits for it (it
+	// draws into the old one).
+	const float Blend = float(FMath::Clamp((Now - CacheSwapTime) / 0.5, 0.0, 1.0));
+	SkyMaterial->SetVectorParameterValue(TEXT("CacheParams"), FLinearColor(bCacheReady ? 1.f : 0.f, Blend, kSkyCacheElMin, kSkyCacheElMax));
+	FLinearColor SunLum;
+	CloudMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("SunLum")), SunLum);
+	// Measuring: -SailingSkyCacheLight=<sun>,<sky> scales the two lighting terms (matching the live clouds at the seam).
+	static float SunScale = kSkyCacheSun, SkyScale = kSkyCacheAmbient;
+	static bool bScales = false;
+	if (!bScales)
+	{
+		bScales = true;
+		FString L, A, B;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCacheLight="), L, false) && L.Split(TEXT(","), &A, &B)) { SunScale = FCString::Atof(*A); SkyScale = FCString::Atof(*B); }
+	}
+	SkyMaterial->SetVectorParameterValue(TEXT("CacheSun"), FLinearColor(SunScale, 0.f, 0.f, SkyScale));
+	if (Blend < 1.f) return;
+
+	// A whole panorama every four seconds: a strip of columns a frame (fair-weather cumulus drift a few tens of metres in
+	// that time, nothing at 5 km and beyond).
+	const double Refresh = 4.0;
+	if (CacheColumn == 0)
+	{
+		// One camera and one set of cloud parameters for the whole panorama, so its strips agree.
+		CacheRefreshStart = Now;
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheCam"), FLinearColor(float(CameraPos.X), float(CameraPos.Y), float(CameraPos.Z), 0.f));
+		static const TCHAR* Vectors[] = { TEXT("WeatherRect"), TEXT("LayerCumulus"), TEXT("LayerStratus"), TEXT("LayerCirrus"), TEXT("FrontA"), TEXT("FrontB"),
+			TEXT("Drift"), TEXT("LayerExtinction"), TEXT("SunLum"), TEXT("SunDir"), TEXT("TracerShadow") };
+		for (const TCHAR* Name : Vectors)
+		{
+			FLinearColor V;
+			if (CloudMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(Name), V)) CacheMaterial->SetVectorParameterValue(Name, V);
+		}
+		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth") })
+		{
+			float S;
+			if (CloudMaterial->GetScalarParameterValue(FHashedMaterialParameterInfo(Name), S)) CacheMaterial->SetScalarParameterValue(Name, S);
+		}
+		// The slab (m) and the march: from where the live clouds hand over to 40 km, kSkyCacheSteps steps; the material's
+		// step caps (CLOUD_CODE) read Tracer as the live material does.
+		double BaseKm = 0.0, TopKm = 0.0;
+		W.Sky.Span(BaseKm, TopKm);
+		TopKm = FMath::Max(TopKm, double(W.CloudTopKm));
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheMax"), FLinearColor(kSkyCacheFarM, float(BaseKm * 1000.0 - 50.0), float(TopKm * 1000.0 + 100.0), float(kSkyCacheSteps)));
+		CacheMaterial->SetVectorParameterValue(TEXT("Tracer"), FLinearColor(float(TopKm - BaseKm + 0.15), float(kSkyCacheSteps), 0.f, kSkyCacheFarM / 1000.f));
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, 0.f));
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheEl"), FLinearColor(kSkyCacheElMin, kSkyCacheElMax, 0.f, 0.f));
+		// Shadow step (m), this refresh's number (its jitter) and its weight against the panorama before. Each replaces
+		// the last: blended a third at a time, the clouds' drift between refreshes stacked into ghosts.
+		++CacheRefreshes;
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheShadow"), FLinearColor(300.f, float(CacheRefreshes % 97), 1.f, 0.f));
+		CacheMaterial->SetTextureParameterValue(TEXT("CachePrev"), CacheTargets[1 - CacheBack]);
+	}
+	CacheColumnCarry += float(kSkyCacheWidth) * DeltaSeconds / float(Refresh);
+	const int32 Columns = FMath::Clamp(int32(CacheColumnCarry), 1, kSkyCacheWidth - CacheColumn);
+	CacheColumnCarry = FMath::Max(0.f, CacheColumnCarry - float(Columns));
+	UCanvas* Canvas = nullptr;
+	FVector2D Size;
+	FDrawToRenderTargetContext Context;
+	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(this, CacheTargets[CacheBack], Canvas, Size, Context);
+	if (Canvas)
+	{
+		Canvas->K2_DrawMaterial(CacheMaterial, FVector2D(CacheColumn, 0.0), FVector2D(Columns, kSkyCacheHeight),
+			FVector2D(double(CacheColumn) / kSkyCacheWidth, 0.0), FVector2D(double(Columns) / kSkyCacheWidth, 1.0));
+	}
+	UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this, Context);
+	CacheColumn += Columns;
+	if (CacheColumn < kSkyCacheWidth) return;
+
+	// Done: the dome fades to it, and the next panorama goes into the other target.
+	CacheColumn = 0;
+	CacheRefreshSeconds = Now - CacheRefreshStart;
+	SkyMaterial->SetTextureParameterValue(TEXT("CacheOld"), CacheTargets[1 - CacheBack]);
+	SkyMaterial->SetTextureParameterValue(TEXT("CacheNew"), CacheTargets[CacheBack]);
+	CacheBack = 1 - CacheBack;
+	CacheSwapTime = Now;
+	if (!bCacheReady)
+	{
+		// The first panorama: the live clouds hand the far ones over (fading out over the last 500 m before the cache's
+		// start) and spend their samples on the near ones.
+		bCacheReady = true;
+		SkyMaterial->SetTextureParameterValue(TEXT("CacheOld"), CacheTargets[1 - CacheBack]);
+		CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 1.f, 0.f));
+		if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
+		{
+			CloudComp->TracingMaxDistanceMode = EVolumetricCloudTracingMaxDistanceMode::DistanceFromPointOfView;
+			CloudComp->SetTracingMaxDistance(kSkyCacheSplitM / 1000.f);
+		}
+		UE_LOG(LogSailing, Display, TEXT("Sky cache: first panorama in %.2f s (%dx%d, %d steps); live clouds now to %.1f km"), CacheRefreshSeconds,
+			kSkyCacheWidth, kSkyCacheHeight, kSkyCacheSteps, kSkyCacheSplitM / 1000.f);
+	}
 }
 
 void ASailingEnvironment::UpdateHaze()

@@ -2047,6 +2047,9 @@ AO = 1.0;
     float r = distance(p, Flash.xyz);
     Emit += float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
 }
+// C2 (the sky cache): with it on, the live march draws only the near clouds, fading out over CacheSplit.x to .y metres
+// from the camera; M_CloudCache draws the rest into the sky dome's panorama, fading in over the same band.
+d *= 1.0 - CacheSplit.z * smoothstep(CacheSplit.x, CacheSplit.y, distance(p, Cam * 0.01));
 return d * Density;
 """
 
@@ -2087,10 +2090,10 @@ def build_cloud_layers():
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
-        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0))))}
+        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -2100,7 +2103,7 @@ def build_cloud_layers():
         connect(t, "", c, n)
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
                    ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow"),
-                   ("SunLum", "SunLum"), ("SunDir", "SunDir")):
+                   ("SunLum", "SunLum"), ("SunDir", "SunDir"), ("CacheSplit", "CacheSplit")):
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
     connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 1400), "", c, "MaxStepDepth")
@@ -2127,6 +2130,160 @@ def build_cloud_layers():
             break
         except Exception:
             pass
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+# C2 (the sky cache, Inputs/clouds-trees/plan.md): the far clouds, marched slowly into a panorama a strip at a time
+# (ASailingEnvironment::UpdateSkyCache) and drawn by M_SkyDome; the live volumetric clouds draw only the near ones.
+# Each texel is a view ray from CacheCam: azimuth from north (u), elevation from CacheEl.y down to CacheEl.x degrees (v).
+# The march runs from CacheSplit.x metres (fading in to .y) to CacheMax.x through the cloud slab (CacheMax.yz, metres),
+# with CLOUD_CODE's own density at every step, so the shapes are the live clouds' exactly. It stores three numbers, not
+# a colour, so the dome lights them now: R the sunlight scattered toward the eye per unit of the sun's illuminance (phase,
+# shadow toward the sun, two multiple-scattering octaves), G the sky light per unit of the sky's radiance (the cloud's AO),
+# B the transmittance.
+CACHE_HEAD = """
+float az = UV.x * 6.2831853;
+float el = radians(lerp(CacheEl.y, CacheEl.x, UV.y));
+float3 dir = float3(cos(el) * cos(az), cos(el) * sin(az), sin(el));
+float3 cam = Cam * 0.01;
+float t0 = CacheSplit.x, t1 = CacheMax.x;
+float slabLo = CacheMax.y, slabHi = CacheMax.z;
+// The slab is flat here; the earth's curvature raises its altitude along the ray (t^2 / 2R), so a ray near the horizon
+// is cut by the curved slab's top: extend the flat cut by the drop at the far end.
+float drop = t1 * t1 / 12742000.0;
+if (abs(dir.z) > 1e-4)
+{
+    float ta = (slabLo - drop - cam.z) / dir.z, tb = (slabHi - cam.z) / dir.z;
+    t0 = max(t0, min(ta, tb));
+    t1 = min(t1, max(ta, tb));
+}
+float S = 0.0, Amb = 0.0, Tr = 1.0;
+[branch] if (t1 > t0)
+{
+    const int Steps = int(CacheMax.w);
+    float stepLen = (t1 - t0) / Steps;
+    // A new jitter every refresh (CacheShadow.y counts them): the panoramas are blended (below), so the march's grain
+    // averages out over a few refreshes instead of being frozen into the cache.
+    float jit = frac(sin(dot(floor(UV * float2(8192.0, 2048.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    float cosT = dot(dir, SunDir.xyz);
+    float g1 = 0.72, g2 = -0.3;
+    // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud
+    // a kilometre deep got two or three coarse samples, and its sunlit skin was never resolved); back to coarse after
+    // eight empty fine steps. At most twice Steps samples.
+    float t = t0 + jit * stepLen;
+    float fineLeft = 0.0;
+    float empty = 0.0;
+    [loop] for (int i = 0; i < 2 * Steps; i++)
+    {
+        if (Tr < 0.01 || t > t1) break;
+        float h = fineLeft > 0.0 ? stepLen / 6.0 : stepLen;
+        float3 P = (cam + dir * t) * 100.0;
+        float Alt = (cam.z + dir.z * t + t * t / 12742000.0) * 100.0;
+        float dens = 0.0, ao = 1.0, alb = 0.95;
+        {
+            float3 Albedo; float3 Emit; float Cons; float AO;
+"""
+CACHE_SHADOW = """
+        }
+        dens *= smoothstep(CacheSplit.x, CacheSplit.y, t);
+        if (fineLeft <= 0.0 && dens > 1e-6 && i > 0)
+        {
+            t = max(t - stepLen, t0) + stepLen / 6.0;
+            fineLeft = 1.0;
+            empty = 0.0;
+            continue;
+        }
+        empty = dens > 1e-6 ? 0.0 : empty + 1.0;
+        if (fineLeft > 0.0 && empty >= 8.0) fineLeft = 0.0;
+        [branch] if (dens > 1e-6)
+        {
+            // Toward the sun: five steps doubling from 50 m (50, 100, 200, 400, 800: 1.55 km), so the skin's shading
+            // resolves and the far side of the cloud still counts.
+            float tau = 0.0;
+            float sOff = 0.0;
+            [loop] for (int k = 1; k <= 5; k++)
+            {
+                float sStep = 50.0 * exp2(k - 1);
+                float sAt = sOff + 0.5 * sStep;
+                sOff += sStep;
+                float3 P = (cam + dir * t + SunDir.xyz * sAt) * 100.0;
+                float Alt = (cam.z + dir.z * t + SunDir.z * sAt + t * t / 12742000.0) * 100.0;
+                float sd = 0.0;
+                {
+                    float3 Albedo; float3 Emit; float Cons; float AO;
+"""
+CACHE_TAIL = """
+                }
+                tau += sd * sStep;
+            }
+            float sunT = 0.0;
+            [unroll] for (int o = 0; o < 3; o++)
+            {
+                float a = pow(0.5, o), gs = pow(0.5, o);
+                float ga = g1 * gs, gb = g2 * gs;
+                float hga = (1.0 - ga * ga) / (12.566371 * pow(1.0 + ga * ga - 2.0 * ga * cosT, 1.5));
+                float hgb = (1.0 - gb * gb) / (12.566371 * pow(1.0 + gb * gb - 2.0 * gb * cosT, 1.5));
+                sunT += a * lerp(hga, hgb, 0.3) * exp(-tau * a);
+            }
+            float dT = exp(-dens * h);
+            S += Tr * (1.0 - dT) * alb * sunT;
+            Amb += Tr * (1.0 - dT) * alb * ao;
+            Tr *= dT;
+        }
+        t += h;
+    }
+}
+// Blended with the previous panorama (CacheShadow.z of the new one: 1 = replace).
+float3 prev = CachePrev.SampleLevel(CachePrevSampler, UV, 0).rgb;
+return lerp(prev, float3(S, Amb, Tr), CacheShadow.z);
+"""
+
+
+def cache_code():
+    """CACHE_HEAD, CLOUD_CODE as the step's density, CACHE_SHADOW, CLOUD_CODE again as the shadow ray's, CACHE_TAIL."""
+    body = cloud_code()
+    view = body.replace("return d * Density;", "dens = d * Density; ao = AO; alb = dot(Albedo, float3(0.3, 0.59, 0.11));")
+    shadow = body.replace("return d * Density;", "sd = d * Density;")
+    return CACHE_HEAD + view + CACHE_SHADOW + shadow + CACHE_TAIL
+
+
+def build_cloud_cache():
+    """M_CloudCache (C2): the far clouds' panorama, drawn to a render target a strip at a time (see CACHE_HEAD)."""
+    mat = new_material("M_CloudCache")
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -1600, -200)
+    linear = linear_default()
+    wx = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 200, parameter_name="WeatherMap", texture=linear,
+              sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    tex = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 350 + 60 * i, parameter_name=n,
+                   texture=unreal.load_asset(f"/Game/Materials/Clouds/T_Cloud{n}"))
+           for i, n in enumerate(("Shape", "Detail", "Curl"))}
+    vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
+        ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
+        ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
+        ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
+        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0)), ("CacheCam", (0, 0, 0, 0)),
+        ("CacheEl", (-3, 33, 0, 0)), ("CacheMax", (40000, 1000, 3000, 48)), ("CacheShadow", (300, 0, 0, 0))))}
+    dens = scalar(mat, "CloudDensity", 0.02, -1600, 2400)
+    c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
+                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev"],
+               unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 300)
+    connect(uv, "", c, "UV")
+    connect(vecs["CacheCam"], "RGBA", c, "Cam")
+    connect(node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 2600, parameter_name="CachePrev", texture=linear,
+                 sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR), "", c, "CachePrev")
+    connect(wx, "", c, "Wx")
+    for n, t in tex.items():
+        connect(t, "", c, n)
+    for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
+                   ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow"),
+                   ("SunLum", "SunLum"), ("SunDir", "SunDir"), ("CacheSplit", "CacheSplit"), ("CacheEl", "CacheEl"), ("CacheMax", "CacheMax"),
+                   ("CacheShadow", "CacheShadow")):
+        connect(vecs[n], "RGBA", c, pin)
+    connect(dens, "", c, "Density")
+    connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 2500), "", c, "MaxStepDepth")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -2239,6 +2396,28 @@ float cm = dot(dir, MoonDir.xyz);
         col += MoonDir.w * (lit + SunTrue.w) * maria * saturate(dir.z * 6.0 + 0.2);
     }
 }
+// C2: the far clouds from the sky cache (M_CloudCache), in front of all of the above. The panorama holds, per direction,
+// the sunlight scattered (R, per unit of the sun's illuminance: pi x SunLum), the sky light scattered (G, per unit of the
+// sky's radiance, the sky toward that direction standing in for all of it) and the transmittance (B); old and new
+// panoramas cross-fade over half a second after each refresh.
+[branch] if (CacheP.x > 0.0)
+{
+    float el = degrees(asin(clamp(dir.z, -1.0, 1.0)));
+    float v = (CacheP.w - el) / (CacheP.w - CacheP.z);
+    [branch] if (v > 0.0 && v < 1.0)
+    {
+        float2 cuv = float2(frac(atan2(dir.y, dir.x) / 6.2831853 + 1.0), v);
+        float3 s = lerp(CacheOld.SampleLevel(CacheOldSampler, cuv, 0).rgb, CacheNew.SampleLevel(CacheNewSampler, cuv, 0).rgb, CacheP.y);
+        // The sun's light on the clouds is the atmosphere's own (SunIll: its illuminance at the clouds' height, reddened
+        // through the air as the live clouds see it). The sky light comes from the whole sky and the ground under it,
+        // not the blue patch behind the cloud: the sky's brightness, half of it in the sun's colour (the warm bounce
+        // the live clouds' ground term gives). CacheSun.x and .w scale the two (matched to the live clouds at the seam).
+        float skyL = dot(ViewLum, float3(0.3, 0.59, 0.11));
+        float sunL = max(dot(SunIll, float3(0.3, 0.59, 0.11)), 1e-4);
+        float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), SunIll / sunL, 0.5);
+        col = col * s.b + s.r * CacheSun.x * SunIll + s.g * CacheSun.w * amb;
+    }
+}
 return col;
 """
 
@@ -2259,9 +2438,24 @@ def build_sky_dome():
               sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     vecs = {n: vector(mat, n, d, -1400, 650 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("CirrusParams", (0, 0, 0, 0)), ("NightParams", (0, 0, 0, 0)), ("StarRot0", (1, 0, 0, 0)),
-        ("StarRot1", (0, 1, 0, 0)), ("StarRot2", (0, 0, 1, 0)), ("MoonDir", (0, 0, 1, 0)), ("SunTrue", (0, 0, 1, 0))))}
-    c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue"],
+        ("StarRot1", (0, 1, 0, 0)), ("StarRot2", (0, 0, 1, 0)), ("MoonDir", (0, 0, 1, 0)), ("SunTrue", (0, 0, 1, 0)),
+        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1))))}
+    # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
+    cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
+                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
+    c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
+    for n, t in cache.items():
+        connect(t, "", c, n)
+    # C2: the sun's illuminance through the atmosphere at the clouds' height (1.5 km over the camera).
+    ill = node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -1100, 1700)
+    up = node(mat, unreal.MaterialExpressionConstant3Vector, -1600, 1800, constant=unreal.LinearColor(0, 0, 150000, 0))
+    at = node(mat, unreal.MaterialExpressionAdd, -1300, 1750)
+    connect(campos, "", at, "A")
+    connect(up, "", at, "B")
+    connect(at, "", ill, "World Position")
+    connect(ill, "", c, "SunIll")
     connect(camvec, "", c, "CamVec")
     connect(campos, "", c, "CamPos")
     connect(view_lum, "", c, "ViewLum")
@@ -2269,7 +2463,7 @@ def build_sky_dome():
     connect(sun_disk, "", c, "SunDisk")
     connect(wx, "", c, "Wx")
     for n, pin in (("WeatherRect", "WRect"), ("CirrusParams", "Cirrus"), ("NightParams", "Night"), ("StarRot0", "Rot0"), ("StarRot1", "Rot1"),
-                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue")):
+                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue"), ("CacheParams", "CacheP"), ("CacheSun", "CacheSun")):
         connect(vecs[n], "RGBA", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
@@ -3342,6 +3536,7 @@ build(build_water)
 build(build_water_v4)
 build(build_spray)
 build(build_cloud_layers)
+build(build_cloud_cache)
 build(build_sky_dome)
 build(build_lens_water)
 build(build_trees_materials)
