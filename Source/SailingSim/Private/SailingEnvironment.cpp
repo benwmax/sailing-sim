@@ -59,8 +59,8 @@ namespace
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
 	// samples, read brighter than High's.
-	constexpr float kSkyCacheSunHigh = 1.35f, kSkyCacheSkyHigh = 1.45f;
-	constexpr float kSkyCacheSunUltra = 1.75f, kSkyCacheSkyUltra = 1.5f;
+	constexpr float kSkyCacheSunHigh = 1.45f, kSkyCacheSkyHigh = 2.1f;
+	constexpr float kSkyCacheSunUltra = 1.7f, kSkyCacheSkyUltra = 1.2f;
 }
 ASailingEnvironment::ASailingEnvironment()
 {

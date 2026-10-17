@@ -2416,7 +2416,9 @@ float cm = dot(dir, MoonDir.xyz);
         float skyL = dot(ViewLum, float3(0.3, 0.59, 0.11));
         float sunL = max(dot(SunIll, float3(0.3, 0.59, 0.11)), 1e-4);
         float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), SunIll / sunL, 0.25);
-        col = col * s.b + s.r * CacheSun.x * SunIll + s.g * CacheSun.w * amb;
+        // The live clouds' grey-scale scattering keeps less of the sun's colour than the raw illuminance: 30% toward grey.
+        float3 sunC = lerp(float3(sunL, sunL, sunL), SunIll, 0.7);
+        col = col * s.b + s.r * CacheSun.x * sunC + s.g * CacheSun.w * amb;
     }
 }
 return col;
