@@ -34,7 +34,7 @@ namespace Sailing
 		Tack,      // the bow through the wind: the true wind on the other side, |TWA| 30..100 (settled, not hung in irons)
 		Gybe,      // the stern through the wind (the true wind changes sides with |TWA| over 100)
 		Hold,      // a TWA band, a heel limit, a speed and / or a station held for HoldSeconds
-		Station,   // the crew member has taken a station ("helm", "grinder", ...)
+		Station,   // the crew member has taken a station ("helm", "jib-trimmer", "main-trimmer")
 		Action,    // a named crew action has been done ("clip-on", "grind")
 		Count
 	};
@@ -69,6 +69,9 @@ namespace Sailing
 		std::string Station;         // Station, or Hold's station
 		std::string Action;          // Action
 		double Seconds = 0.0;        // None
+		/** Sheet and Hold (step 2): the station controls the crew member must work after the call, in this order
+		 *  ("grinder", "wheel", "traveller-dump", "main-sheet": StationControlName), at the step's station. */
+		std::vector<std::string> Controls;
 	};
 
 	struct FSceneCall
@@ -92,6 +95,7 @@ namespace Sailing
 		bool bRestartPose = false;      // the boat's pose for a restart here (the game puts her there)
 		double RestartTwaDeg = 0.0, RestartSpeedKn = 0.0;
 		std::string Camera;             // a named view the renderer may use
+		std::string Station;            // step 2: the station the scene puts the crew member at when the step begins
 	};
 
 	/** Where the scene is meant to be sailed, and its stand-in until that boat and weather exist. */
@@ -110,6 +114,7 @@ namespace Sailing
 		FBoatControls Controls;
 		std::string Station;
 		std::vector<std::string> Actions;
+		unsigned Worked = 0;     // step 2: station controls worked this step (StationControlBit, FStationControls::TakeWorked)
 	};
 
 	/** A finished (or abandoned) scene, for the save (string ids only). */
@@ -161,6 +166,12 @@ namespace Sailing
 		int GetCallRepeats() const { return Repeats; }
 		/** The camera hint of the current step (empty: none). */
 		const std::string& GetCamera() const;
+		/** Step 2: the station the current step puts the crew member at (empty: none named), and a serial that grows each
+		 *  time a step names one (move them when it changes: a restart moves them again). */
+		const std::string& GetStation() const;
+		int GetStationSerial() const { return StationSerial; }
+		/** How many of the current expectation's Controls have been worked, in order. */
+		int GetControlsDone() const { return ControlsDone; }
 		/** The last checkpoint reached (step id; empty before the first). */
 		const std::string& GetCheckpoint() const { return CheckpointId; }
 		const FSceneResult& GetResult() const { return Result; }
@@ -190,6 +201,8 @@ namespace Sailing
 		double RepeatAt = -1.0;  // when the next repeat goes out (< 0: none scheduled)
 		int Repeats = 0;
 		int CallSerial = 0;
+		int StationSerial = 0;
+		int ControlsDone = 0;
 		double SheetAtCall = 0.0;
 		int SideAtCall = 0;
 		double HeldFor = 0.0;

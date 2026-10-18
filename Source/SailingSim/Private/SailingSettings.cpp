@@ -222,7 +222,16 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("BackJib"), EKeys::B);
 	Add(TEXT("BackJib"), EKeys::Gamepad_LeftThumbstick);
 	Add(TEXT("DockLines"), EKeys::Gamepad_RightThumbstick);
+	// The prologue's station layer (docs/prologue/README.md): at a crew station the crew hold the boat's other commands,
+	// so these share keys and pad buttons with commands only the crew work there (SailingBindings::SameLayer).
 	Add(TEXT("CrewAction"), EKeys::SpaceBar);   // Prologue step 1: answer the captain's call (clip on)
+	Add(TEXT("CrewAction"), EKeys::Gamepad_FaceButton_Left);
+	Add(TEXT("Grind"), EKeys::G);               // Prologue step 2: the jib winch, tap or hold
+	Add(TEXT("Grind"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("TravellerDump"), EKeys::X);       // the main trimmer drops the traveller car to leeward
+	Add(TEXT("TravellerDump"), EKeys::Gamepad_FaceButton_Right);
+	Add(TEXT("Station"), EKeys::F);             // move to the next station
+	Add(TEXT("Station"), EKeys::Gamepad_FaceButton_Top);
 	// Fleet: spinnaker, reefs, the board, the engine(s) and righting a capsized boat.
 	Add(TEXT("Spinnaker"), EKeys::N);
 	Add(TEXT("Reef"), EKeys::M);

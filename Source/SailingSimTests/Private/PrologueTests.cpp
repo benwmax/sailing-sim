@@ -1,5 +1,6 @@
 #include "Misc/AutomationTest.h"
 #include "AutoTrim.h"
+#include "CrewStation.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "SailingMath.h"
@@ -25,18 +26,21 @@ namespace PrologueTestsLocal
 		TArray<FString> Calls;
 		TArray<FString> Captions;
 		TArray<FString> Cameras;
+		TArray<FString> Stations; // where the crew member was at each call
 		FSceneResult Result;
+		double GrindMeters = 0.0; // sheet the crew member ground in
 		int32 MaxRepeats = 0;
 		double Seconds = 0.0;
 	};
 
 	/**
-	 * The J/22 stand-in in 25 kn with a scripted crew answering the captain: FAutoTrim on the sheets and FAutopilot on
-	 * the tiller, plus what each call asks (clip on, ease the jib a hand's length, a heavy-air tack, grind the new sheet,
-	 * the helm downwind, dump the main, bring her up to a reach). Gusts come when a step waits for one: the wind steps
-	 * to 35 kn for a few seconds, the way a squall line hits.
+	 * The J/22 stand-in in 25 kn with a scripted crew member answering the captain at the station the scene puts them
+	 * at (step 2), and the rest of the crew (FStationControls: FAutoTrim, FAutopilot and the heavy-air tack) holding
+	 * everything else: clip on, ease the jib a hand's length, steer the tack with the wheel, grind the new sheet in, the
+	 * wheel downwind, dump the traveller then the main, the wheel up to a reach. Gusts come when a step waits for one:
+	 * the wind steps to 35 kn for a few seconds, the way a squall line hits.
 	 */
-	FPlaythrough Play(FScriptedScene& Scene, ECrew Crew, double MaxSeconds = 900.0, const TFunction<void(double)>& Each = nullptr)
+	FPlaythrough Play(FScriptedScene& Scene, ECrew Crew, double MaxSeconds = 900.0, const TFunction<void(double)>& Each = nullptr, FStationControls* OutStations = nullptr)
 	{
 		FPlaythrough Out;
 		FWindParams P;
@@ -47,19 +51,23 @@ namespace PrologueTestsLocal
 		const FWindField Gust(P);
 		FBoatModel Boat;
 		Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 6.0 * kKnot); // close-hauled on starboard (TWA = wind from - heading)
-		FAutoTrim Trim;
-		FAutopilot Pilot;
-		FBoatControls C;
+		FStationControls Stations;
+		Stations.Config = FStationConfig::For(Boat.GetConfig());
+		Stations.Reset(Boat, FBoatControls(), ECrewStation::JibTrimmer);
+		FAutopilot Hand; // where the crew member means to steer when they have the wheel
 		int32 Side = 1;
-		Pilot.TargetTWADeg = 45.0;
 		Scene.Start(Boat, StandInKnots);
-		int32 LastSerial = 0, LastStep = -1;
-		double T = 0.0, CallT = 0.0, StepT = 0.0, JibHold = -1.0, MainHold = -1.0;
-		bool bLetFly = false, bTacking = false;
-		std::string Station;
+		int32 LastSerial = 0, LastStep = -1, StationSerial = 0;
+		double T = 0.0, CallT = 0.0, StepT = 0.0, JibAim = -1.0;
+		bool bTacking = false, bDumped = false;
 		for (int32 I = 0; I < int32(MaxSeconds * PhysicsHz) && !Scene.IsComplete(); ++I, T += PhysicsDt)
 		{
-			if (Scene.GetStepIndex() != LastStep) { LastStep = Scene.GetStepIndex(); StepT = T; JibHold = MainHold = -1.0; bTacking = false; }
+			if (Scene.GetStepIndex() != LastStep) { LastStep = Scene.GetStepIndex(); StepT = T; JibAim = -1.0; bTacking = bDumped = false; }
+			if (Scene.GetStationSerial() != StationSerial)
+			{
+				StationSerial = Scene.GetStationSerial();
+				Stations.MoveTo(Boat, CrewStationFromName(Scene.GetStation()));
+			}
 			const FSceneStep* S = Scene.GetStep();
 			const std::string Id = S ? S->Id : std::string();
 			const bool bCalling = Scene.GetPhase() == FScriptedScene::EPhase::Calling;
@@ -73,52 +81,88 @@ namespace PrologueTestsLocal
 				Out.Calls.Add(UTF8_TO_TCHAR(Scene.GetCallId().c_str()));
 				Out.Captions.Add(UTF8_TO_TCHAR(Scene.GetCaption().c_str()));
 				if (!Scene.GetCamera().empty()) Out.Cameras.AddUnique(UTF8_TO_TCHAR(Scene.GetCamera().c_str()));
+				Out.Stations.Add(UTF8_TO_TCHAR(CrewStationName(Stations.GetStation())));
 				Out.MaxRepeats = FMath::Max(Out.MaxRepeats, Scene.GetCallRepeats());
 			}
 			FSceneInput In;
+			FStationInput Hands;
 			const bool bAnswer = bCalling && T - CallT > 0.8 && Crew != ECrew::Silent && !(Crew == ECrew::IgnoresFirstEase && Id == "ease-jib" && Scene.GetCallRepeats() == 0);
+			const FBoatControls& Now = Stations.GetControls();
 			if (bAnswer)
 			{
 				if (Id == "clip-on") In.Actions.push_back("clip-on");
-				else if (Id == "ease-jib" && JibHold < 0.0) JibHold = FMath::Min(1.0, C.JibSheet + 0.25);
-				else if (Id == "ready-about" && !bTacking)
+				else if (Id == "ease-jib")
 				{
-					Side = -Side;
-					bTacking = true;
-					Pilot.TargetTWADeg = 45.0 * Side;
-					Pilot.MaxTiller = 0.8;
-					Pilot.bKeepShortOfStall = false;
+					if (JibAim < 0.0) JibAim = FMath::Min(1.0, Now.JibSheet + 0.2);
+					if (Now.JibSheet < JibAim) Hands.JibSheet = 1.0;
 				}
-				else if (Id == "grind") { bLetFly = false; JibHold = 0.3; }
-				else if (Id == "take-helm") { Station = "helm"; Pilot.TargetTWADeg = 150.0 * Side; }
-				else if (Id == "dump-main") MainHold = 1.0;
-				else if (Id == "the-break") Pilot.TargetTWADeg = 90.0 * Side;
+				else if (Id == "ready-about")
+				{
+					if (!bTacking) { Side = -Side; bTacking = true; }
+					Hand.TargetTWADeg = 45.0 * Side;
+					Hand.MaxTiller = 0.8;
+					Hand.bKeepShortOfStall = false;
+				}
+				else if (Id == "grind") Hands.Grind = 1.0;
+				else if (Id == "take-helm") Hand.TargetTWADeg = 150.0 * Side;
+				else if (Id == "dump-main")
+				{
+					if (!bDumped) { Hands.bTravellerDump = true; bDumped = true; }
+					else Hands.MainSheet = 1.0;
+				}
+				else if (Id == "the-break") Hand.TargetTWADeg = 90.0 * Side;
 			}
-			if (Id == "grind" && T - StepT < 0.5 * PhysicsDt && Crew != ECrew::Silent) bLetFly = true; // tacked: the old sheet let go
-			if (Id != "ready-about" && Id != "grind") { Pilot.MaxTiller = 0.6; Pilot.bKeepShortOfStall = true; }
-			C = Trim.Update(Boat, C, PhysicsDt);
-			if (bLetFly) C.JibSheet = 1.0;
-			if (JibHold >= 0.0) C.JibSheet = JibHold;
-			if (MainHold >= 0.0) C.MainSheet = MainHold;
-			C.bBackJib = false;
-			if (Id == "ready-about" && bTacking)
+			if (Id != "ready-about") { Hand.MaxTiller = 0.6; Hand.bKeepShortOfStall = true; }
+			if (Stations.GetStation() == ECrewStation::Helm && Crew != ECrew::Silent)
 			{
-				// A heavy-air tack (the J/22 will not tack on the helm alone in 25 kn): jib let fly and the main hard in to
-				// head up, then the jib held aback and the main eased to push the bow down onto the new tack.
-				const double Twa = Boat.GetTelemetry().TrueWindAngle * kRadToDeg;
-				if (Twa * Side < 0.0) { C.JibSheet = 1.0; C.MainSheet = 0.0; }
-				else if (FMath::Abs(Twa) < 35.0) { C.bBackJib = true; C.MainSheet = 1.0; }
+				// The wheel is a rate: turn it toward where the hand wants the rudder (before the tack, the course she is on).
+				if (!bAnswer && !bTacking && Id == "ready-about") Hand.TargetTWADeg = 45.0 * Side;
+				Hands.Wheel = FMath::Clamp((Hand.Update(Boat) - Now.Tiller) * 8.0, -1.0, 1.0);
 			}
-			C.Tiller = Pilot.Update(Boat);
+			const FBoatControls& C = Stations.Step(Boat, Hands, PhysicsDt);
 			In.Controls = C;
-			In.Station = Station;
+			In.Station = CrewStationName(Stations.GetStation());
+			In.Worked = Stations.TakeWorked();
 			Boat.Step(PhysicsDt, C, bGusting ? Gust : Base);
 			Scene.Update(Boat, In, PhysicsDt);
 			if (Each) Each(T);
 		}
 		Out.Result = Scene.GetResult();
 		Out.Seconds = T;
+		Out.GrindMeters = Stations.GetPlayerGrindM();
+		if (OutStations) *OutStations = Stations;
 		return Out;
+	}
+
+	/** Seconds of grinding (the key held) to bring the jib sheet from fully eased in to Home, close-hauled on the J/22
+	 *  stand-in in a steady wind with the rest of the crew steering and on the main. */
+	double GrindSeconds(double Knots, double Home)
+	{
+		FWindParams P;
+		P.SpeedKnots = Knots;
+		P.FromDegrees = 0.0;
+		const FWindField Wind(P);
+		FBoatModel Boat;
+		Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 6.0 * kKnot);
+		FStationControls Stations;
+		Stations.Config = FStationConfig::For(Boat.GetConfig());
+		Stations.Reset(Boat, FBoatControls(), ECrewStation::JibTrimmer);
+		int32 Phase = 0;
+		double T = 0.0, Ground = 0.0;
+		for (int32 I = 0; I < int32(90.0 * PhysicsHz); ++I, T += PhysicsDt)
+		{
+			FStationInput Hands;
+			if (Phase == 0) { Hands.Grind = 1.0; if (T > 20.0) Phase = 1; } // sailing, trimmed
+			if (Phase == 1) { Hands.JibSheet = 1.0; if (Stations.GetControls().JibSheet >= 0.999) Phase = 2; } // let fly
+			if (Phase == 2)
+			{
+				if (Stations.GetControls().JibSheet <= Home) return Ground;
+				Hands.Grind = 1.0;
+				Ground += PhysicsDt;
+			}
+			Boat.Step(PhysicsDt, Stations.Step(Boat, Hands, PhysicsDt), Wind);
+		}
+		return -1.0;
 	}
 
 	bool Load(FAutomationTestBase& Test, FScriptedScene& Scene)
@@ -157,6 +201,9 @@ bool FSailingPrologueSceneTest::RunTest(const FString&)
 	TestTrue(TEXT("Camera hints came with the steps"), P.Cameras.Num() >= 5);
 	TestTrue(TEXT("About the length the scene is written for (under 10 minutes of sim time)"), P.Result.Seconds > 30.0 && P.Result.Seconds < 600.0);
 	TestTrue(TEXT("The last step's 'ok' is on screen as it ends"), !Scene.GetCaption().empty());
+	TArray<FString> StepStations;
+	for (const FSceneStep& S : Scene.GetSteps()) StepStations.Add(UTF8_TO_TCHAR(S.Station.c_str()));
+	TestEqual(TEXT("Step 2: at each call the crew member is at the step's station"), P.Stations, StepStations);
 
 	// The save keeps the finished scene by id (rule 7), with no version change.
 	FSailSave Save;
@@ -269,7 +316,103 @@ bool FSailingPrologueValidatorTest::RunTest(const FString&)
 	Rejects(TEXT("an unknown expectation"), ReplaceFirst(Text, TEXT("\"type\": \"tack\""), TEXT("\"type\": \"dance\"")), "unknown expectation");
 	Rejects(TEXT("a camera the scene does not list"), ReplaceFirst(Text, TEXT("\"camera\": \"grinder\""), TEXT("\"camera\": \"drone\"")), "not in the scene's cameras");
 	Rejects(TEXT("a misspelt field"), ReplaceFirst(Text, TEXT("\"over_mean_kn\""), TEXT("\"over_mean\"")), "unknown field \"over_mean\"");
+	Rejects(TEXT("a control the step's station does not work"), ReplaceFirst(Text, TEXT("\"controls\": [\"grinder\"]"), TEXT("\"controls\": [\"wheel\"]")), "is not worked at the step's station");
+	Rejects(TEXT("an unknown control"), ReplaceFirst(Text, TEXT("\"controls\": [\"grinder\"]"), TEXT("\"controls\": [\"capstan\"]")), "unknown control \"capstan\"");
+	Rejects(TEXT("a station the scene does not list"), ReplaceFirst(Text, TEXT("\"station\": \"helm\""), TEXT("\"station\": \"pit\"")), "not in the scene's stations");
 	Rejects(TEXT("broken JSON"), Text.LeftChop(Text.Len() - Text.Find(TEXT("\"steps\""))), "JSON line");
+	return true;
+}
+
+/**
+ * Step 2, crew stations: the merge gives the crew every control the player does not work; a player at the jib who moves
+ * the tiller changes nothing; the grinder brings a fully eased sheet home in 4-12 s of grinding in 25 kn and faster in
+ * 12 kn; the whole scene still finishes with the scripted crew member grinding, steering the wheel and dumping.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPrologueStationsTest, "SailingSim.Prologue.Stations", PrologueTestsLocal::PrologueFlags)
+bool FSailingPrologueStationsTest::RunTest(const FString&)
+{
+	using namespace PrologueTestsLocal;
+	// The merge.
+	FBoatControls Player, Crew;
+	Player.Tiller = 0.7; Player.JibSheet = 0.9; Player.MainSheet = 0.8; Player.Traveler = 1.0; Player.bBackJib = true; Player.Vang = 0.9; Player.Hike = -1.0;
+	Crew.Tiller = -0.2; Crew.JibSheet = 0.1; Crew.MainSheet = 0.2; Crew.Traveler = -0.5; Crew.bBackJib = false; Crew.Vang = 0.4; Crew.Hike = 1.0;
+	auto Same = [](const FBoatControls& A, const FBoatControls& B)
+	{
+		return A.Tiller == B.Tiller && A.JibSheet == B.JibSheet && A.MainSheet == B.MainSheet && A.Traveler == B.Traveler && A.bBackJib == B.bBackJib && A.Vang == B.Vang && A.Hike == B.Hike;
+	};
+	FBoatControls Expect = Crew;
+	Expect.Tiller = Player.Tiller;
+	TestTrue(TEXT("Helm: the wheel is the player's, the rest the crew's"), Same(FStationControls::Merge(ECrewStation::Helm, Player, Crew), Expect));
+	Expect = Crew;
+	Expect.JibSheet = Player.JibSheet;
+	Expect.bBackJib = Player.bBackJib;
+	TestTrue(TEXT("Jib trimmer: the jib sheet (and backing it) only"), Same(FStationControls::Merge(ECrewStation::JibTrimmer, Player, Crew), Expect));
+	Expect = Crew;
+	Expect.MainSheet = Player.MainSheet;
+	Expect.Traveler = Player.Traveler;
+	TestTrue(TEXT("Main trimmer: mainsheet and traveller only"), Same(FStationControls::Merge(ECrewStation::MainTrimmer, Player, Crew), Expect));
+	TestTrue(TEXT("No station (normal sailing): every control is the player's"), Same(FStationControls::Merge(ECrewStation::None, Player, Crew), Player));
+	for (int32 S = 1; S < int32(ECrewStation::Count); ++S)
+	{
+		int32 Owned = 0;
+		for (int32 C = 0; C < int32(EStationControl::Count); ++C) Owned += StationOwns(ECrewStation(S), EStationControl(C));
+		TestTrue(FString::Printf(TEXT("%hs works some controls, not all"), CrewStationName(ECrewStation(S))), Owned > 0 && Owned < int32(EStationControl::Count));
+		TestTrue(TEXT("Names round-trip"), CrewStationFromName(CrewStationName(ECrewStation(S))) == ECrewStation(S));
+	}
+
+	// A player at the jib who moves the tiller changes nothing (the crew have the wheel).
+	{
+		FWindParams P;
+		P.SpeedKnots = StandInKnots;
+		const FWindField Wind(P);
+		FVector2D End[2];
+		double Heading[2] = { 0.0, 0.0 };
+		for (int32 Run = 0; Run < 2; ++Run)
+		{
+			FBoatModel Boat;
+			Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 6.0 * kKnot);
+			FStationControls Stations;
+			Stations.Reset(Boat, FBoatControls(), ECrewStation::JibTrimmer);
+			for (int32 I = 0; I < int32(20.0 * PhysicsHz); ++I)
+			{
+				FStationInput Hands;
+				Hands.Wheel = Run == 1 ? (I / 240 % 2 ? 1.0 : -1.0) : 0.0;
+				Hands.MainSheet = Run == 1 ? 1.0 : 0.0; // the main is not theirs either
+				Hands.bTravellerDump = Run == 1;
+				Boat.Step(PhysicsDt, Stations.Step(Boat, Hands, PhysicsDt), Wind);
+			}
+			const Vec3 O = Boat.OriginPosition();
+			End[Run] = FVector2D(O.X, O.Y);
+			Heading[Run] = Boat.GetTelemetry().Heading;
+			TestTrue(TEXT("Nothing the jib trimmer does not work counts as worked"), (Stations.TakeWorked() & ~(StationControlBit(EStationControl::JibSheet) | StationControlBit(EStationControl::Grinder))) == 0u);
+		}
+		TestTrue(TEXT("Jib trimmer on the wheel, mainsheet and traveller: the boat sails exactly as without"), End[0] == End[1] && Heading[0] == Heading[1]);
+	}
+
+	// The grinder: from fully eased to the scene's "all the way" in a gale and in a sailing breeze.
+	FScriptedScene Scene;
+	if (!Load(*this, Scene)) return false;
+	double Home = 0.15;
+	for (const FSceneStep& S : Scene.GetSteps()) if (S.Id == "grind") Home = S.Expect.AtMost;
+	const double Gale = GrindSeconds(StandInKnots, Home);
+	const double Breeze = GrindSeconds(12.0, Home);
+	AddInfo(FString::Printf(TEXT("Grinding the J/22's jib sheet home (fully eased to %.2f): %.1f s in %.0f kn, %.1f s in 12 kn"), Home, Gale, StandInKnots, Breeze));
+	TestTrue(TEXT("A grind in 25 kn takes real seconds: 4 to 12"), Gale >= 4.0 && Gale <= 12.0);
+	TestTrue(TEXT("... and is quicker in 12 kn"), Breeze > 0.0 && Breeze < Gale);
+	FStationControls Winch;
+	TestTrue(TEXT("Against no load the line runs at the winch's top speed"), FMath::IsNearlyEqual(Winch.GrindLineSpeed(0.0, 1.0), Winch.Config.MaxLineSpeedMs));
+	TestTrue(TEXT("Twice the load, half the speed (power-limited)"), FMath::IsNearlyEqual(Winch.GrindLineSpeed(4000.0, 1.0) * 2.0, Winch.GrindLineSpeed(2000.0, 1.0)));
+
+	// The whole scene with the crew member at the stations: every call answered there, the grind by grinding.
+	const FPlaythrough Good = Play(Scene, ECrew::Good);
+	AddInfo(FString::Printf(TEXT("Stations playthrough: %d answered, %d by the crew, %d repeats, %.0f s, %.1f m of sheet ground; stations %s"),
+		Good.Result.StepsPassed, Good.Result.StepsAssisted, Good.Result.Retries, Good.Result.Seconds, Good.GrindMeters, *FString::Join(Good.Stations, TEXT(", "))));
+	TestTrue(TEXT("The scene finishes"), Good.Result.bComplete);
+	TestEqual(TEXT("All seven steps answered at their stations"), Good.Result.StepsPassed, 7);
+	TestTrue(TEXT("The new sheet was ground in by the crew member (over a metre of it)"), Good.GrindMeters > 1.0);
+	int32 GrindIndex = -1;
+	for (int32 I = 0; I < int32(Scene.GetSteps().size()); ++I) if (Scene.GetSteps()[size_t(I)].Id == "grind") GrindIndex = I;
+	TestTrue(TEXT("The grind step asks for the grinder"), GrindIndex >= 0 && Scene.GetSteps()[size_t(GrindIndex)].Expect.Controls == std::vector<std::string>{ "grinder" });
 	return true;
 }
 

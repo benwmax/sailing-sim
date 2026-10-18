@@ -1,4 +1,5 @@
 #include "ScriptedScene.h"
+#include "CrewStation.h"
 #include "SailingMath.h"
 #include <cmath>
 #include <cstdlib>
@@ -282,6 +283,7 @@ namespace Sailing
 		S.Cameras = C.Names(Root, "cameras", "scene");
 		S.Stations = C.Names(Root, "stations", "scene");
 		S.Actions = C.Names(Root, "actions", "scene");
+		for (const std::string& St : S.Stations) if (CrewStationFromName(St) == ECrewStation::Count) C.Bad("scene", "unknown station \"" + St + "\"");
 		if (const FValue* Set = C.Obj(Root, "setting", "scene", true))
 		{
 			C.OnlyKeys(*Set, "setting", { "boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "stand_in", "then" });
@@ -314,7 +316,7 @@ namespace Sailing
 			{
 				const std::string Where = "step " + std::to_string(S.Steps.size() + 1);
 				if (V.Type != FValue::EType::Object) { C.Bad(Where, "not an object"); continue; }
-				C.OnlyKeys(V, Where, { "id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera" });
+				C.OnlyKeys(V, Where, { "id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station" });
 				FSceneStep St;
 				St.Id = C.Str(V, "id", Where, true);
 				const std::string W = St.Id.empty() ? Where : St.Id;
@@ -327,6 +329,8 @@ namespace Sailing
 				St.bCheckpoint = C.Bool(V, "checkpoint", W);
 				St.Camera = C.Str(V, "camera", W);
 				if (!St.Camera.empty() && !Contains(S.Cameras, St.Camera)) C.Bad(W, "camera \"" + St.Camera + "\" is not in the scene's cameras");
+				St.Station = C.Str(V, "station", W);
+				if (!St.Station.empty() && !Contains(S.Stations, St.Station)) C.Bad(W, "station \"" + St.Station + "\" is not in the scene's stations");
 				if (const FValue* R = C.Obj(V, "restart", W, false))
 				{
 					C.OnlyKeys(*R, W + ".restart", { "twa_deg", "speed_kn" });
@@ -392,7 +396,7 @@ namespace Sailing
 					{
 					case ESceneExpect::None: C.OnlyKeys(*E, EW, { "type", "seconds" }); Ex.Seconds = C.Num(*E, "seconds", EW, 0.0, true); break;
 					case ESceneExpect::Sheet:
-						C.OnlyKeys(*E, EW, { "type", "sheet", "by", "at_least", "at_most", "within_s" });
+						C.OnlyKeys(*E, EW, { "type", "sheet", "by", "at_least", "at_most", "controls", "within_s" });
 						Ex.Sheet = C.Str(*E, "sheet", EW, true);
 						if (!Ex.Sheet.empty() && Ex.Sheet != "main" && Ex.Sheet != "jib") C.Bad(EW, "sheet must be main or jib");
 						Ex.By = C.Num(*E, "by", EW, 0.0);
@@ -403,7 +407,7 @@ namespace Sailing
 					case ESceneExpect::Tack:
 					case ESceneExpect::Gybe: C.OnlyKeys(*E, EW, { "type", "within_s" }); break;
 					case ESceneExpect::Hold:
-						C.OnlyKeys(*E, EW, { "type", "hold_s", "twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "within_s" });
+						C.OnlyKeys(*E, EW, { "type", "hold_s", "twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "controls", "within_s" });
 						Ex.HoldSeconds = C.Num(*E, "hold_s", EW, 0.0, true);
 						Ex.TwaMinDeg = C.Num(*E, "twa_min_deg", EW, -1.0);
 						Ex.TwaMaxDeg = C.Num(*E, "twa_max_deg", EW, -1.0);
@@ -416,6 +420,13 @@ namespace Sailing
 					case ESceneExpect::Action: C.OnlyKeys(*E, EW, { "type", "action", "within_s" }); Ex.Action = C.Str(*E, "action", EW, true); break;
 					case ESceneExpect::Count:
 					default: break;
+					}
+					Ex.Controls = C.Names(*E, "controls", EW);
+					for (const std::string& Name : Ex.Controls)
+					{
+						const EStationControl Ctl = StationControlFromName(Name);
+						if (Ctl == EStationControl::Count) C.Bad(EW, "unknown control \"" + Name + "\"");
+						else if (!StationOwns(CrewStationFromName(St.Station), Ctl)) C.Bad(EW, "control \"" + Name + "\" is not worked at the step's station \"" + St.Station + "\"");
 					}
 					if (!Ex.Station.empty() && !Contains(S.Stations, Ex.Station)) C.Bad(EW, "station \"" + Ex.Station + "\" is not in the scene's stations");
 					if (!Ex.Action.empty() && !Contains(S.Actions, Ex.Action)) C.Bad(EW, "action \"" + Ex.Action + "\" is not in the scene's actions");
@@ -464,8 +475,10 @@ namespace Sailing
 		RepeatAt = -1.0;
 		HeldFor = 0.0;
 		ActionsDone.clear();
+		ControlsDone = 0;
 		const FSceneStep& S = Steps[size_t(Index)];
 		if (S.bCheckpoint) { CheckpointId = S.Id; CheckpointIndex = Index; }
+		if (!S.Station.empty()) ++StationSerial;
 	}
 
 	void FScriptedScene::RestartFromCheckpoint()
@@ -520,12 +533,15 @@ namespace Sailing
 		SideAtCall = Boat.GetTelemetry().TrueWindAngle >= 0.0 ? 1 : -1;
 		HeldFor = 0.0;
 		ActionsDone.clear();
+		ControlsDone = 0;
 	}
 
 	bool FScriptedScene::Answered(const FSceneStep& S, const FBoatModel& Boat, const FSceneInput& In, double Dt)
 	{
 		const FSceneExpectation& E = S.Expect;
 		const FBoatTelemetry& Tel = Boat.GetTelemetry();
+		// Step 2: the station controls asked for, worked in order (a grind is judged by grinding, a helm by the wheel).
+		const bool bControls = ControlsDone >= int(E.Controls.size());
 		switch (E.Type)
 		{
 		case ESceneExpect::None: return Elapsed - FirstCallAt >= E.Seconds;
@@ -539,7 +555,7 @@ namespace Sailing
 			if (E.By < 0.0) bOk &= V <= std::max(SheetAtCall + E.By, 0.02);
 			if (E.AtLeast >= 0.0) bOk &= V >= E.AtLeast;
 			if (E.AtMost >= 0.0) bOk &= V <= E.AtMost;
-			return bOk;
+			return bOk && bControls;
 		}
 		case ESceneExpect::Tack:
 		case ESceneExpect::Gybe:
@@ -558,6 +574,7 @@ namespace Sailing
 			if (E.MaxHeelDeg >= 0.0) bOk &= std::fabs(Tel.Heel) / kDegToRad <= E.MaxHeelDeg;
 			if (E.MinSpeedKn >= 0.0) bOk &= Tel.BoatSpeed / kKnot >= E.MinSpeedKn;
 			if (!E.Station.empty()) bOk &= In.Station == E.Station;
+			bOk &= bControls;
 			HeldFor = bOk ? HeldFor + Dt : 0.0;
 			return HeldFor >= E.HoldSeconds;
 		}
@@ -603,6 +620,12 @@ namespace Sailing
 			return;
 		}
 		for (const std::string& A : In.Actions) if (!SceneJson::Contains(ActionsDone, A)) ActionsDone.push_back(A);
+		// One control a step, so "the traveller dump, then the mainsheet" needs them one after the other.
+		if (ControlsDone < int(S.Expect.Controls.size()))
+		{
+			const EStationControl Next = StationControlFromName(S.Expect.Controls[size_t(ControlsDone)]);
+			if (Next != EStationControl::Count && (In.Worked & StationControlBit(Next)) != 0) ++ControlsDone;
+		}
 		if (Answered(S, Boat, In, Dt)) { Succeed(false); return; }
 		if (RepeatAt < 0.0 && Elapsed >= WindowEnd)
 		{
@@ -636,6 +659,13 @@ namespace Sailing
 		static const std::string Empty;
 		const FSceneStep* S = GetStep();
 		return Phase == EPhase::Calling && S ? S->Call.Id : Empty;
+	}
+
+	const std::string& FScriptedScene::GetStation() const
+	{
+		static const std::string Empty;
+		const FSceneStep* S = GetStep();
+		return IsActive() && S ? S->Station : Empty;
 	}
 
 	const std::string& FScriptedScene::GetCamera() const
