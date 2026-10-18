@@ -331,9 +331,12 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// T1: the custom data after the instances (one float triple each), one render-state update per component.
 	auto SetLooks = [this](UInstancedStaticMeshComponent* C, const TArray<float>& D)
 	{
-		if (!bTreeLooks || C->NumCustomDataFloats < 3) return;
-		for (int32 K = 0; K * 3 + 2 < D.Num(); ++K) C->SetCustomData(K, TArrayView<const float>(&D[K * 3], 3), false);
-		C->MarkRenderStateDirty();
+		if (!bTreeLooks || C->NumCustomDataFloats < 3 || D.Num() < 3) return;
+		// One range, queued incrementally through the instance data manager like the instances themselves. No
+		// MarkRenderStateDirty: that destroyed and rebuilt every tree component's whole scene proxy (all instances, their
+		// Nanite and GPU-scene data, the crowns' Lumen cards and distance-field objects) at every regroup, which tipped
+		// Metal's cloud march into its slow mode on High (the storm view, #126).
+		C->SetCustomData(0, D.Num() / 3 - 1, TConstArrayView<float>(D.GetData(), (D.Num() / 3) * 3), false);
 	};
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{
