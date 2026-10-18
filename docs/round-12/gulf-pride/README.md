@@ -22,3 +22,9 @@ its licence row.
 
 `gp-abeam-high.jpg`, camera in `scenes.csv` (`-SailingTraffic=1` puts only the tanker in the channel,
 `-SailingNearShip=350` starts the boat 350 m off her). The boat's sail hides her house from this camera.
+
+## Mac still (packaged, High, Apple M5 Pro)
+
+`mac/gp-abeam-high-mac.jpg`: the same scene from `scenes.csv` on the Mac's packaged build after main (Easy mode) was
+merged in; below, the ship cropped. The boat sits a little further ahead here, so the five-tier house shows at the
+left edge, clear of the jib, with the radar mast and funnel. Gate on this tree: `scripts/gate.sh --scope world` passed.
