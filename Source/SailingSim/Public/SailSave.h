@@ -92,6 +92,7 @@ struct SAILINGSIM_API FSailSave
 	{
 		FString Id;
 		FString Medal;                       // empty: none yet
+		bool bMedalEasy = false;             // that medal was earned on Easy (capped: career.json's easy_max_medal)
 		double BestSeconds = 0.0;            // the fastest run that earned a medal
 		int32 Runs = 0;
 		bool bQuizPassed = false;

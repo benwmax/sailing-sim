@@ -65,9 +65,11 @@ namespace CareerLocal
 	}
 }
 
-FCareerRun MakeCareerRun(const FDrillRunner& Drill, double MaxContactKnots, int32 Collisions, int32 Infractions, const FString& WorldId, const FString& BoatId)
+FCareerRun MakeCareerRun(const FDrillRunner& Drill, double MaxContactKnots, int32 Collisions, int32 Infractions, const FString& WorldId, const FString& BoatId,
+	bool bEasy)
 {
 	FCareerRun R;
+	R.bEasy = bEasy;
 	R.Drill = Drill.GetDrill();
 	R.bComplete = Drill.IsComplete();
 	R.Outcome = Drill.GetOutcome();
@@ -141,6 +143,8 @@ bool FCareerContent::LoadText(const FString& Json, FString* OutError)
 		return false;
 	}
 	Root->TryGetStringField(TEXT("school"), School);
+	FString EasyMax;
+	if (Root->TryGetStringField(TEXT("easy_max_medal"), EasyMax)) EasyMaxMedal = MedalFromId(EasyMax);
 	AlwaysOpen = ReadUnlocks(Child(*Root, TEXT("always_open")));
 	const TArray<TSharedPtr<FJsonValue>>* List = nullptr;
 	if (Root->TryGetArrayField(TEXT("tiers"), List))
@@ -225,6 +229,7 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 		Check(!TierIds.Contains(T.Id) && !T.Id.IsEmpty(), FString::Printf(TEXT("tier id '%s' empty or repeated"), *T.Id));
 		TierIds.Add(T.Id);
 	}
+	Check(EasyMaxMedal != ECareerMedal::None, TEXT("easy_max_medal: bronze, silver or gold"));
 	for (const FString& T : AlwaysOpen.Tiers) Check(TierIds.Contains(T), FString::Printf(TEXT("always_open: unknown tier %s"), *T));
 	for (const FString& W : AlwaysOpen.Worlds) Check(FSailSave::WorldIndex(W) >= 0, FString::Printf(TEXT("always_open: unknown world %s"), *W));
 	for (const FString& B : AlwaysOpen.Boats) Check(FSailSave::BoatIndex(B) >= 0, FString::Printf(TEXT("always_open: unknown boat %s"), *B));
@@ -313,7 +318,7 @@ TArray<FQuizQuestion> FCareerContent::MakeCheckrideQuiz(const FCareerTier& T, co
 	return Out;
 }
 
-ECareerMedal FCareerContent::Grade(const FCareerLesson& Lesson, const FCareerRun& Run)
+ECareerMedal FCareerContent::Grade(const FCareerLesson& Lesson, const FCareerRun& Run, ECareerMedal EasyMax)
 {
 	if (!Run.bComplete || Run.Drill != Lesson.Drill) return ECareerMedal::None;
 	ECareerMedal Best = ECareerMedal::None;
@@ -322,7 +327,7 @@ ECareerMedal FCareerContent::Grade(const FCareerLesson& Lesson, const FCareerRun
 		if (!Lesson.Medals[I].Holds(Run)) break;   // a medal needs every medal below it
 		Best = ECareerMedal(I + 1);
 	}
-	return Best;
+	return Run.bEasy ? FMath::Min(Best, EasyMax) : Best;
 }
 
 FString FCareerContent::MedalId(ECareerMedal Medal) { return CareerLocal::MedalIds[FMath::Clamp(int32(Medal), 0, 3)]; }
@@ -366,7 +371,8 @@ FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run, bool b
 	if (!L || !Run.bComplete) return A;
 	A.LessonId = L->Id;
 	A.Seconds = Run.Seconds;
-	A.Medal = FCareerContent::Grade(*L, Run);
+	A.Medal = FCareerContent::Grade(*L, Run, Content.EasyMaxMedal);
+	A.bEasyCapped = Run.bEasy && FCareerContent::Grade(*L, Run) > A.Medal;
 	FSailSave::FLessonRecord* R = Progress.FindLesson(L->Id);
 	if (!R)
 	{
@@ -379,7 +385,12 @@ FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run, bool b
 	if (A.Medal > Before)
 	{
 		R->Medal = FCareerContent::MedalId(A.Medal);
+		R->bMedalEasy = Run.bEasy;
 		A.bNewBest = true;
+	}
+	else if (A.Medal == Before && A.Medal != ECareerMedal::None && !Run.bEasy)
+	{
+		R->bMedalEasy = false; // the same medal sailed on Realistic
 	}
 	if (A.Medal != ECareerMedal::None && (R->BestSeconds <= 0.0 || Run.Seconds < R->BestSeconds))
 	{
@@ -387,6 +398,7 @@ FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run, bool b
 		R->BestSeconds = Run.Seconds;
 	}
 	A.Best = FCareerContent::MedalFromId(R->Medal);
+	A.bBestEasy = R->bMedalEasy;
 	return A;
 }
 
@@ -411,6 +423,12 @@ ECareerMedal FCareerProgress::LessonMedal(const FString& LessonId) const
 {
 	const FSailSave::FLessonRecord* R = Progress.FindLesson(LessonId);
 	return R ? FCareerContent::MedalFromId(R->Medal) : ECareerMedal::None;
+}
+
+bool FCareerProgress::IsLessonMedalEasy(const FString& LessonId) const
+{
+	const FSailSave::FLessonRecord* R = Progress.FindLesson(LessonId);
+	return R && R->bMedalEasy && !R->Medal.IsEmpty();
 }
 
 bool FCareerProgress::IsLessonClosed(const FString& LessonId) const
