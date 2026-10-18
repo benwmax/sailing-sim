@@ -52,6 +52,17 @@ namespace SailingNav
 		return From + FVector2D(FMath::Cos(T), FMath::Sin(T)) * (SpeedMs * Seconds);
 	}
 
+	Sailing::FLatLon LatLonAt(const Sailing::FGeoAnchor& Anchor, const FVector2D& Map)
+	{
+		return Anchor.ToLatLon({ Map.X, Map.Y });
+	}
+
+	FVector2D MapAt(const Sailing::FGeoAnchor& Anchor, const Sailing::FLatLon& Geo)
+	{
+		const Sailing::FMapPoint P = Anchor.ToMap(Geo);
+		return FVector2D(P.North, P.East);
+	}
+
 	FString FormatDistance(double Meters)
 	{
 		const double Nm = Meters / MetersPerNauticalMile;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GeoAnchor.h"
 
 /**
  * Chart work, the way it is taught for ASA 103/105: bearings with a hand-bearing compass, lines of position,
@@ -37,6 +38,15 @@ namespace SailingNav
 
 	/** Dead reckoning: position after sailing a true course at a speed (m/s) for a time (s). */
 	SAILINGSIM_API FVector2D DeadReckon(const FVector2D& From, double CourseTrueDeg, double SpeedMs, double Seconds);
+
+	/**
+	 * The physics/Unreal boundary for places on the earth (online readiness rule 6, docs/geo-anchor): a map-frame point
+	 * (X north, Y east, metres, as everything here takes) to lat/lon and back through the world's anchor
+	 * (FLakeData::Anchor). Bearings, fixes and dead reckoning stay in the map frame; only what persists or is shown as a
+	 * position goes through these.
+	 */
+	SAILINGSIM_API Sailing::FLatLon LatLonAt(const Sailing::FGeoAnchor& Anchor, const FVector2D& Map);
+	SAILINGSIM_API FVector2D MapAt(const Sailing::FGeoAnchor& Anchor, const Sailing::FLatLon& Geo);
 
 	/** "2.3 nm" style distance. */
 	SAILINGSIM_API FString FormatDistance(double Meters);

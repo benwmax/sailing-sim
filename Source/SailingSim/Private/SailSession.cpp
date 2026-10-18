@@ -1,5 +1,6 @@
 #include "SailSession.h"
 #include "SailingSettings.h"
+#include "SailSave.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -8,6 +9,19 @@ USailSessionSubsystem* USailSessionSubsystem::Get(const UObject* WorldContext)
 	const UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
 	const UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
 	return GI ? GI->GetSubsystem<USailSessionSubsystem>() : nullptr;
+}
+
+void USailSessionSave::Commit()
+{
+	if (USailingSettings::IgnoresSavedChoices()) return;   // a measuring run keeps the player's Continue
+	SaveConfig();
+	SailSaveStore::Commit();
+}
+
+void USailSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	SailSaveStore::LoadOnce();
 }
 
 const TArray<FSailPreset>& USailSessionSubsystem::Presets()
@@ -56,7 +70,9 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	const USailSessionSave* Save = USailSessionSave::Get();
 	C.World = Save->bHasLast ? Save->Last.World : USailingSettings::Get()->World;
 	if (C.World == 2) C.World = 1;   // the Gulf passage is Galveston's Passage mode
-	C.Boat = 0;
+	// The last session's spot and boat (the save file's), on the conditions of a lesson day.
+	C.Boat = Save->bHasLast ? Save->Last.Boat : 0;
+	C.LaunchSpot = Save->bHasLast && Save->Last.World == C.World ? Save->Last.LaunchSpot : 0;
 	ApplyPreset(C.Conditions, Presets()[0]);
 	return C;
 }
@@ -128,7 +144,7 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;
 	Save->Last = Active;
-	if (!USailingSettings::IgnoresSavedChoices()) Save->SaveConfig();   // a measuring run keeps the player's Continue
+	Save->Commit();
 	ApplyToSettings(Active);
 	if (WorldContext)
 	{

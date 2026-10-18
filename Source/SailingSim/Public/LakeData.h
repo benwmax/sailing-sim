@@ -5,6 +5,7 @@
 #include "BoatModel.h"
 #include "LakeTerrain.h"
 #include "Lights.h"
+#include "GeoAnchor.h"
 #include "Tides.h"
 #include "TreePlacement.h"
 
@@ -152,6 +153,9 @@ struct SAILINGSIM_API FLakeData
 	double VariationDeg = 0.0;   // magnetic variation, + = east
 	double MeanHighWater = 0.0;  // m above the datum
 	double Latitude = 32.82, Longitude = -96.50;
+	/** Where the map frame sits on the earth (the bake's "projection", else the build script's centre): lat/lon <->
+	 *  map metres for anything that persists (docs/geo-anchor). */
+	Sailing::FGeoAnchor Anchor;
 	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage"
 	bool bOcean = false;         // open sea: the FFT ocean with swell (the Gulf passage)
 	TArray<TPair<FString, FVector2D>> Passage; // the passage plan's waypoints, in order

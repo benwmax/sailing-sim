@@ -330,6 +330,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
   from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
   runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
+- Save file (`docs/save/`): `FSailSave`/`SailSaveStore` (`SailSave.h`) keep the settings, last session and progress in
+  `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README.
+- Geo anchor (`docs/geo-anchor/`): `FGeoAnchor` (`GeoAnchor.h`) is the bakes' tmerc exactly (pyproj to nanometres); persistent
+  places go by id, then lat/lon (`ResolvePlacement`, the save's `launchSpotAt`); convert at the edge with `SailingNav::LatLonAt`/`MapAt`.
 - Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`
   fetches Commons photos (CC0/PD/BY/BY-SA only) with credits.json; `docs/graphics-5/blind/scenes.csv` holds the matched
   captures; `make_blind_pack.py` packs them; `make_g5_compare.py` builds the before/after page. The haze's inscattering

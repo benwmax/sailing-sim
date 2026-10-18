@@ -1,5 +1,6 @@
 #include "UI/SailCatalog.h"
 #include "SailSession.h"
+#include "SailSave.h"
 #include "BoatModel.h"
 #include "PolarReference.h"
 #include "SailingEnvironment.h"
@@ -50,6 +51,11 @@ namespace SailCatalog
 				W.GridHeightM = ((*Grid)->GetNumberField(TEXT("rows_north")) - 1) * Cell;
 				W.GridWidthM = ((*Grid)->GetNumberField(TEXT("cols_east")) - 1) * Cell;
 			}
+			FString Projection;
+			if (!Root->TryGetStringField(TEXT("projection"), Projection) || !Sailing::FGeoAnchor::ParseProj4(TCHAR_TO_UTF8(*Projection), W.Anchor))
+			{
+				W.Anchor = Sailing::FGeoAnchor::ForWorld(TCHAR_TO_UTF8(*W.File));
+			}
 			const TArray<TSharedPtr<FJsonValue>>* Spots = nullptr;
 			if (Root->TryGetArrayField(TEXT("launch_spots"), Spots))
 			{
@@ -58,10 +64,15 @@ namespace SailCatalog
 					const TSharedPtr<FJsonObject> O = V->AsObject();
 					FSpot S;
 					S.Name = O->GetStringField(TEXT("name"));
+					// A renamed spot keeps its save id with an "id" field in the bake.
+					if (!O->TryGetStringField(TEXT("id"), S.Id) || S.Id.IsEmpty()) S.Id = SpotId(S.Name);
 					const TArray<TSharedPtr<FJsonValue>>& XY = O->GetArrayField(TEXT("xy"));
 					S.North = XY[0]->AsNumber();
 					S.East = XY[1]->AsNumber();
 					S.Heading = O->GetNumberField(TEXT("heading"));
+					const Sailing::FLatLon Geo = W.Anchor.ToLatLon({ S.North, S.East });
+					S.Lat = FMath::RoundToDouble(Geo.LatDeg * 1e8) / 1e8;
+					S.Lon = FMath::RoundToDouble(Geo.LonDeg * 1e8) / 1e8;
 					W.Spots.Add(S);
 				}
 			}
@@ -108,6 +119,7 @@ namespace SailCatalog
 			}
 			for (FWorld& W : Out)
 			{
+				W.Id = FSailSave::WorldId(W.Index);
 				for (FSpot& S : W.Spots)
 				{
 					if (S.StartType.IsEmpty()) S.StartType = TEXT("Under sail");
@@ -192,6 +204,57 @@ namespace SailCatalog
 			return Out;
 		}();
 		return Maps[FMath::Clamp(SettingsWorld, 0, 2)];
+	}
+
+	FString SpotId(const FString& Name)
+	{
+		FString Id;
+		for (const TCHAR C : Name)
+		{
+			if (FChar::IsAlnum(C)) Id.AppendChar(FChar::ToLower(C));
+			else if (!Id.IsEmpty() && !Id.EndsWith(TEXT("-"))) Id.AppendChar(TEXT('-'));
+		}
+		while (Id.EndsWith(TEXT("-"))) Id.LeftChopInline(1);
+		return Id;
+	}
+
+	namespace
+	{
+		/** The three settings worlds' headers (0 lake, 1 Galveston Bay, 2 the Gulf passage), read once. */
+		const TArray<FWorld>& SettingsWorlds()
+		{
+			static TArray<FWorld> Out = []()
+			{
+				TArray<FWorld> List;
+				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
+				for (const TCHAR* F : Files)
+				{
+					FWorld& W = List.AddDefaulted_GetRef();
+					W.File = F;
+					ReadWorld(W);
+				}
+				return List;
+			}();
+			return Out;
+		}
+	}
+
+	const TArray<FSpot>& Spots(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Spots; }
+	const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Anchor; }
+
+	const TArray<FString>& SpotIds(int32 SettingsWorld)
+	{
+		static TArray<TArray<FString>> Ids = []()
+		{
+			TArray<TArray<FString>> Out;
+			for (int32 W = 0; W < 3; ++W)
+			{
+				TArray<FString>& List = Out.AddDefaulted_GetRef();
+				for (const FSpot& S : Spots(W)) List.Add(S.Id);
+			}
+			return Out;
+		}();
+		return Ids[FMath::Clamp(SettingsWorld, 0, 2)];
 	}
 
 	const TArray<FBoat>& Boats() { static TArray<FBoat> B = MakeBoats(); return B; }
