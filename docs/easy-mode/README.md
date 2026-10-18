@@ -75,6 +75,23 @@ the wind, and they fall back onto the old tack.
 Realistic is unchanged: `scripts/polar.sh` (0 of 39 points outside tolerance), `--scenarios` and
 `scripts/reference-checks.sh --quick` print byte for byte what main does.
 
+## In the game
+
+The packaged game (High, 12 kn, `-SailingDemo -SailingHoldTWA=45 -SailingCrudeTackAt=20`, 60 s: close-hauled, then the
+beginner's tack at 20 s; bench.json's `easy`, `max_heel_deg`, `tacked`, `final_twa_deg`):
+
+| | Easy (`-SailingEasy=1`) | Realistic (`-SailingEasy=0`) |
+| --- | --- | --- |
+| Max heel | 12.7 deg (cap 24.7) | 14.4 deg |
+| After the tack | tacked: 47.8 deg on the new tack, 5.45 kn | not tacked: 17.9 deg, 1.58 kn, stalled head to wind |
+| Frame rate | 62.1 fps | 61.9 fps |
+
+The no-go cue, held at 50 deg (`-SailingHoldTWA=50`, 15 s):
+
+| Easy | Realistic |
+| --- | --- |
+| ![Easy: the wide band, amber near it, the early tip](nogo-easy.jpg) | ![Realistic: the thin 35 deg band](nogo-realistic.jpg) |
+
 ## What Realistic keeps
 
 The boat's own helm, damping, weather helm and capsize, the trim assist as the setting has it, the 35 deg no-go
