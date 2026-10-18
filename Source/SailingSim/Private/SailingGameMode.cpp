@@ -714,7 +714,11 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	float Next = Now;
 	if (GovernorMs > 21.6f) Next = FMath::Max(82.f, Now - 3.f);      // over 46 fps' budget: step down
 	else if (GovernorMs < 18.5f) Next = FMath::Min(100.f, Now + 2.f); // headroom: step back up
-	if (Next != Now) Pct->Set(Next, ECVF_SetByCode);
+	if (Next != Now)
+	{
+		Pct->Set(Next, ECVF_SetByCode);
+		UE_LOG(LogSailing, Display, TEXT("Resolution governor: %.0f%% -> %.0f%% (frame %.2f ms smoothed)"), Now, Next, GovernorMs);
+	}
 }
 
 float ASailingGameMode::GetRenderScale() const
@@ -748,7 +752,21 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 #endif
 	Elapsed += DeltaSeconds;
 	if (bBenchTrace) TraceTimes.Emplace(Elapsed, static_cast<float>(FApp::GetDeltaTime() * 1000.0));
-	if (Elapsed > BenchWarmup && Elapsed <= BenchWarmup + BenchSeconds)
+	// Visual V1: three frames profiled on the GPU (ProfileGPU) and summed into the plan's budget slices. They are taken
+	// inside the measured window, at 40, 60 and 80% of it, so they see the same GPU state as the frames measured (after
+	// the window the storm's cloud march sat in its slow phase on every launch: docs/budget/storm-high-2026-10-18.md).
+	// A profiled frame and the dump hitch the frames that follow; those are left out of the frame and thread times.
+	// -SailingNoGpuSlices skips it.
+	static SailingArgs::FCachedFlag NoGpuSlicesArg(TEXT("SailingNoGpuSlices"));
+	const bool bGpuSlices = !NoGpuSlicesArg.Get();
+	const float ProfileAt[] = { 0.4f, 0.6f, 0.8f };
+	constexpr int32 FramesSkippedPerProfile = 16; // the profiled frame lands 8-13 frames after the request (storm, High)
+	if (Elapsed > BenchWarmup && Elapsed <= BenchWarmup + BenchSeconds && GpuProfileSkipFrames > 0)
+	{
+		--GpuProfileSkipFrames;
+		++GpuProfileSkipped;
+	}
+	else if (Elapsed > BenchWarmup && Elapsed <= BenchWarmup + BenchSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
@@ -760,6 +778,17 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		// Real wall-clock frame time, not the (possibly clamped) game delta.
 		FrameTimes.Add(static_cast<float>(FApp::GetDeltaTime()));
 		ForegroundFrames += FPlatformApplicationMisc::IsThisApplicationForeground() ? 1 : 0;
+		if (bGpuSlices && GpuProfilesRequested < UE_ARRAY_COUNT(ProfileAt) && Elapsed > BenchWarmup + BenchSeconds * ProfileAt[GpuProfilesRequested])
+		{
+			if (!GpuCapture.IsValid())
+			{
+				GpuCapture = MakeShared<FGpuProfileCapture>();
+				GLog->AddOutputDevice(GpuCapture.Get());
+			}
+			++GpuProfilesRequested;
+			GpuProfileSkipFrames = FramesSkippedPerProfile;
+			GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
+		}
 	}
 
 	if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmup + RecordSeconds)
@@ -803,25 +832,6 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		const FString ShotPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *ShotName));
 		FScreenshotRequest::RequestScreenshot(ShotPath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		bScreenshotRequested = true;
-	}
-	// Visual V1: after the measured window, profile three frames on the GPU (their frame times are not counted) and
-	// sum their passes into the plan's budget slices. -SailingNoGpuSlices skips it.
-	static SailingArgs::FCachedFlag NoGpuSlicesArg(TEXT("SailingNoGpuSlices"));
-	const bool bGpuSlices = !NoGpuSlicesArg.Get();
-	const float ProfileTimes[] = { 0.3f, 0.9f, 1.5f };
-	if (bGpuSlices && Elapsed > End && Elapsed <= End + 2.4f)
-	{
-		if (!GpuCapture.IsValid())
-		{
-			GpuCapture = MakeShared<FGpuProfileCapture>();
-			GLog->AddOutputDevice(GpuCapture.Get());
-		}
-		if (GpuProfilesRequested < UE_ARRAY_COUNT(ProfileTimes) && Elapsed > End + ProfileTimes[GpuProfilesRequested])
-		{
-			++GpuProfilesRequested;
-			GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
-		}
-		return;
 	}
 	if (Elapsed > End)
 	{
@@ -894,7 +904,7 @@ void ASailingGameMode::FinishBenchmark()
 	}
 	if (!GpuSlicesJson.IsEmpty())
 	{
-		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + TEXT("}");
+		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + FString::Printf(TEXT(",\"gpu_skipped_frames\":%d}"), GpuProfileSkipped);
 	}
 	// Visual V7: the render resolution at the end of the window (High's governor may have lowered it).
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"render_pct\":%.0f}"), GetRenderScale());

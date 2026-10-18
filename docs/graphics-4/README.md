@@ -67,6 +67,12 @@ flow in reverse, and Continue on the title starts the last session again.
 
   ![Controls with the controller column: X put on the jib ease through -SailingUIScript (Down x4, Y, X)](screens/Controls-gamepad.jpg)
 
+  Credits (release readiness, `docs/licences`): Title > Credits or Settings > Credits and licences. The Unreal Engine
+  notice, then CREDITS.md read at runtime, scrolling with the arrows or D-pad, Page Up/Down or the bumpers, Home/End
+  and either stick. Test: `SailingSim.UI.Credits`.
+
+  ![Credits at 1080p (-SailingFrontEnd=Credits)](screens/Credits.jpg)
+
 ## The HUD
 
 ![Racing in Galveston Bay](screens/hud-race.png)

@@ -13,9 +13,9 @@ class APlayerController;
  * Graphics G4: the front end and the in-game menus (ui-spec.md section 5) as one Slate widget with a screen stack:
  * Title, then World, Launch spot, Boat, Conditions and Mode (each pushes the next; Back walks the flow back with the
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
- * USailSessionSubsystem, which reloads the map with it.
+ * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits };
 
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
@@ -31,6 +31,8 @@ public:
 	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
 	/** Controls: a listening row takes the next key before the focused button sees it (so Enter and A can be bound). */
 	virtual FReply OnPreviewKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
+	/** Credits: the sticks scroll the text. */
+	virtual FReply OnAnalogValueChanged(const FGeometry& Geometry, const FAnalogInputEvent& Event) override;
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 
 	void Push(ESailScreen Screen);
@@ -61,6 +63,8 @@ private:
 	FEntry BuildBriefing();
 	FEntry BuildQuiz();
 	void StartQuiz();
+	/** Release readiness: every credit in CREDITS.md, after the Unreal Engine notice, as scrolling text. */
+	FEntry BuildCredits();
 	void Show(const FEntry& Entry, bool bForward);
 	void CastOff();
 	void Close();
@@ -91,4 +95,8 @@ private:
 	int32 FocusedControlRow = 0;
 	void ListenControls(int32 Row, bool bPad);
 	FString ControlsMessage;
+	// Credits: its scroll box and the stick's scroll speed (-1..1, held while the stick is), applied by an active timer.
+	TSharedPtr<class SScrollBox> CreditsScroll;
+	float CreditsStick = 0.f;
+	EActiveTimerReturnType ScrollCredits(double Time, float Delta);
 };

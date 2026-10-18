@@ -922,12 +922,25 @@ void AWaterSurface::UpdateHullClip()
 		if (Hulls.empty()) return;
 		const FHullShape& S = Hulls[0];
 		const Vec3 O = M.OriginPosition();
-		const double H = M.GetTelemetry().Heading;
+		const Quat& Q = M.GetState().Orientation;
+		const Vec3 Ax = Q.Rotate(Vec3(1.0, 0.0, 0.0)), Ay = Q.Rotate(Vec3(0.0, 1.0, 0.0)), Az = Q.Rotate(Vec3(0.0, 0.0, 1.0));
 		// Catamarans have no hull on the centreline (the water between the hulls stays); a trimaran's main hull does.
 		const bool bOn = Hulls.size() != 2;
-		WaterMaterial->SetVectorParameterValue(TEXT("HullClipA"), FLinearColor(float(O.X), float(O.Y), float(FMath::Cos(H)), float(FMath::Sin(H))));
-		WaterMaterial->SetVectorParameterValue(TEXT("HullClipB"), FLinearColor(float(S.BowX), float(S.SternX), float(S.MaxBeamX), float(S.MaxHalfBeam)));
-		WaterMaterial->SetVectorParameterValue(TEXT("HullClipC"), FLinearColor(float(S.AftLength), float(S.TransomBeamLoss), float(S.CenterY), bOn ? 1.f : 0.f));
+		// -SailingClassicHullClip: V7's flat 2 m drop over 80% of the deck plan (compare the pit it opened at the bow).
+		static SailingArgs::FCachedFlag ClassicArg(TEXT("SailingClassicHullClip"));
+		auto Set = [this](const TCHAR* Name, double X, double Y, double Z, double W)
+		{
+			WaterMaterial->SetVectorParameterValue(Name, FLinearColor(float(X), float(Y), float(Z), float(W)));
+		};
+		// The material drops the water below this hull's bottom (FHullShape::BottomZ) wherever it is inside her.
+		Set(TEXT("HullClipA"), O.X, O.Y, O.Z, bOn ? 1.0 : 0.0);
+		Set(TEXT("HullClipB"), Ax.X, Ax.Y, Ax.Z, S.SheerZ);
+		Set(TEXT("HullClipC"), Ay.X, Ay.Y, Ay.Z, S.SheerRise);
+		Set(TEXT("HullClipD"), Az.X, Az.Y, Az.Z, S.SheerRiseFromX);
+		Set(TEXT("HullClipE"), S.BowX, S.SternX, S.MaxBeamX, S.MaxHalfBeam);
+		Set(TEXT("HullClipF"), S.AftLength, S.TransomBeamLoss, S.CenterY, S.BilgePower);
+		Set(TEXT("HullClipG"), S.WaterlineMidX, S.WaterlineHalfLength, M.HullDepth() * S.DepthScale, S.DepthOffset);
+		Set(TEXT("HullClipH"), S.BowOverhangSlope, S.SternOverhangSlope, ClassicArg.Get() ? 1.0 : 0.0, 0.0);
 		return;
 	}
 }

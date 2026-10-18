@@ -105,7 +105,7 @@ void ASailingHUD::BeginPlay()
 		&& (FDateTime::Now() - Session->Active.SavedAt).GetTotalMinutes() < 10.0;
 	if (!bLoadingSession && FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Screen))
 	{
-		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Loading.
+		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Credits|Loading.
 		if (Screen == TEXT("Briefing") || Screen == TEXT("Quiz"))
 		{
 			// Graphics G7 stills: the drill's briefing or its quiz a few seconds in (with -SailingDrill=<name>).
@@ -113,6 +113,12 @@ void ASailingHUD::BeginPlay()
 			FTimerHandle Later;
 			const ESailScreen Learn = Screen == TEXT("Briefing") ? ESailScreen::Briefing : ESailScreen::Quiz;
 			GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Learn]() { OpenLearning(Learn); }), 4.f, false);
+			return;
+		}
+		if (Screen == TEXT("Credits"))
+		{
+			OpenFrontEnd(ESailScreen::Title);
+			FrontEnd->Push(ESailScreen::Credits);
 			return;
 		}
 		if (Screen == TEXT("Loading"))

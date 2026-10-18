@@ -360,6 +360,22 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		return FReply::Handled();
 	}
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
+	if (Current() == ESailScreen::Credits && CreditsScroll.IsValid())
+	{
+		// Arrows, the D-pad and the stick's flicks step a few lines, Page Up/Down and the shoulders a screen.
+		const float Step = 60.f, Page = FMath::Max(200.f, float(CreditsScroll->GetCachedGeometry().GetLocalSize().Y) - 80.f);
+		const float Offset = CreditsScroll->GetScrollOffset();
+		float To = Offset;
+		if (K == EKeys::Down || K == EKeys::S || K == EKeys::Gamepad_DPad_Down || K == EKeys::Gamepad_LeftStick_Down) To += Step;
+		else if (K == EKeys::Up || K == EKeys::W || K == EKeys::Gamepad_DPad_Up || K == EKeys::Gamepad_LeftStick_Up) To -= Step;
+		else if (K == EKeys::PageDown || K == EKeys::SpaceBar || K == EKeys::Gamepad_RightShoulder || K == EKeys::Gamepad_RightTrigger) To += Page;
+		else if (K == EKeys::PageUp || K == EKeys::Gamepad_LeftShoulder || K == EKeys::Gamepad_LeftTrigger) To -= Page;
+		else if (K == EKeys::Home) To = 0.f;
+		else if (K == EKeys::End) { CreditsScroll->ScrollToEnd(); return FReply::Handled(); }
+		else return FReply::Unhandled();
+		CreditsScroll->SetScrollOffset(FMath::Clamp(To, 0.f, CreditsScroll->GetScrollOffsetOfEnd()));
+		return FReply::Handled();
+	}
 	if (Current() == ESailScreen::Settings && (K == EKeys::Q || K == EKeys::E || K == EKeys::Gamepad_LeftShoulder || K == EKeys::Gamepad_RightShoulder))
 	{
 		SettingsTab = (SettingsTab + ((K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) ? 4 : 1)) % 5;
@@ -373,6 +389,25 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		return FReply::Handled();
 	}
 	return FReply::Unhandled();
+}
+
+FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputEvent& E)
+{
+	if (Current() != ESailScreen::Credits) return FReply::Unhandled();
+	// Either stick scrolls (up is positive Y); the timer runs while it is held.
+	const FKey K = E.GetKey();
+	if (K != EKeys::Gamepad_LeftY && K != EKeys::Gamepad_RightY) return FReply::Unhandled();
+	const float V = FMath::Abs(E.GetAnalogValue()) > 0.2f ? -E.GetAnalogValue() : 0.f;
+	if (V != 0.f && CreditsStick == 0.f) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::ScrollCredits));
+	CreditsStick = V;
+	return FReply::Handled();
+}
+
+EActiveTimerReturnType SSailFrontEnd::ScrollCredits(double, float Delta)
+{
+	if (Current() != ESailScreen::Credits || !CreditsScroll.IsValid() || CreditsStick == 0.f) { CreditsStick = 0.f; return EActiveTimerReturnType::Stop; }
+	CreditsScroll->SetScrollOffset(FMath::Clamp(CreditsScroll->GetScrollOffset() + CreditsStick * 900.f * Delta, 0.f, CreditsScroll->GetScrollOffsetOfEnd()));
+	return EActiveTimerReturnType::Continue;
 }
 
 void SSailFrontEnd::CastOff()
@@ -422,6 +457,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Confirm: E = BuildConfirm(); break;
 	case ESailScreen::Briefing: E = BuildBriefing(); break;
 	case ESailScreen::Quiz: if (Quiz.Num() == 0) StartQuiz(); E = BuildQuiz(); break;
+	case ESailScreen::Credits: E = BuildCredits(); break;
 	}
 	E.Screen = S;
 	return E;
@@ -468,6 +504,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
 	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
+	Item(TEXT("Credits"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Credits); }));
 	Item(TEXT("Quit"), FString(), FSimpleDelegate::CreateLambda([this]() { Pop(); }));
 
 	TSharedRef<SWidget> Card = SNullWidget::NullWidget;
@@ -1166,6 +1203,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		break;
 	}
 	}
+	// Every tab ends with the credits (fonts, sounds, data and the engine).
+	Rows->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
+	[
+		SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f)).OnClicked_Lambda([this]() { Push(ESailScreen::Credits); })
+		[ SailUI::Text(TEXT("Credits and licences"), EType::Ui, Fg) ]
+	];
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Settings"), Tabs[SettingsTab], 0) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 20.f)[ TabRow ]
@@ -1251,6 +1294,60 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 			]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Rebind key")), Prompt(TEXT("Tab"), TEXT("Y"), TEXT("Rebind button")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
+	return E;
+}
+
+// ---------------------------------------------------------------- Credits
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildCredits()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	const TArray<SailCatalog::FCreditLine> Lines = SailCatalog::Credits();
+	FString Title = TEXT("Credits and licences");
+	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
+	for (const SailCatalog::FCreditLine& L : Lines)
+	{
+		switch (L.Kind)
+		{
+		case SailCatalog::ECreditKind::Notice:
+			Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 18.f)[ SailUI::Text(L.Text, EType::CardTitleS, Fg, true) ];
+			break;
+		case SailCatalog::ECreditKind::Heading1:
+			Title = L.Text;   // the page's own title heads the screen
+			break;
+		case SailCatalog::ECreditKind::Heading2:
+			Rows->AddSlot().AutoHeight().Padding(0.f, 22.f, 0.f, 8.f)[ SailUI::Text(L.Text, EType::CardTitleS, Accent, true) ];
+			break;
+		case SailCatalog::ECreditKind::Heading3:
+			Rows->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 6.f)[ SailUI::Text(L.Text, EType::Eyebrow, Accent, true) ];
+			break;
+		case SailCatalog::ECreditKind::Bullet:
+			Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().Padding(4.f, 0.f, 12.f, 0.f)[ SailUI::Text(TEXT("\u2022"), EType::Body, Dim) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(L.Text, EType::Body, Muted, true) ]
+			];
+			break;
+		default:
+			Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ SailUI::Text(L.Text, EType::Body, Muted, true) ];
+			break;
+		}
+	}
+	Rows->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SailUI::Text(TEXT("From CREDITS.md, shipped with the game."), EType::Small, Dim, true) ];
+	CreditsScroll = SNew(SScrollBox).ScrollBarAlwaysVisible(true) + SScrollBox::Slot().Padding(0.f, 0.f, 18.f, 0.f)[ Rows ];
+	E.Content = SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Credits"), Title, 0) ]
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
+		[
+			// A reading measure, not the full width of a wide screen.
+			SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.f).MaxWidth(1180.f)[ PanelBox(CreditsScroll.ToSharedRef(), FMargin(26.f, 22.f)) ]
+		];
+	// No focus target: the front end itself takes the keys and scrolls.
+	E.Footer = PromptBar({ Prompt(TEXT("\u2191 \u2193"), TEXT("\u2191 \u2193"), TEXT("Scroll")), Prompt(TEXT("PgUp / PgDn"), TEXT("LB / RB"), TEXT("Page")),
+		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
 	return E;
 }
 

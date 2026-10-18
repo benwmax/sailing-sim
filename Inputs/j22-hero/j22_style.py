@@ -139,11 +139,12 @@ def rope_pair(style, role):
     return ROPE_COLOURS[style["ropes"][role]]
 
 
-# TX 7295 EC as photographed at Rush Creek in October 2026: a club boat with red (white fleck) and green (white fleck)
+# The player's J/22, modelled on a club boat photographed at Rush Creek in October 2026 (the hero carries a made-up
+# registration, TX 1288 ZX, never the real boat's number): red (white fleck) and green (white fleck)
 # jib sheets (IMG_9272: solid colour with white tracers, red to port and green to starboard by convention),
 # a red/white backstay bridle, silvered teak, a varnished tiller, white sails (Bean: grey or white), grey bottom.
 TX7295 = {
-    "hull.registration": "TX 7295 EC", "hull.boot_stripe_hex": None, "hull.sticker_hex": "#2F7D3A",
+    "hull.registration": "TX 1288 ZX", "hull.boot_stripe_hex": None, "hull.sticker_hex": "#2F7D3A",
     "ropes.jib_sheet_port": "red_white", "ropes.jib_sheet_stbd": "green_white", "ropes.backstay": "white_red",
     "ropes.mainsheet": "white_red", "teak.state": "silvered",
     "deck.nonskid_hex": "#CDC5AE",  # IMG_9224/9272: grey-beige under overcast, not tan "sails.cloth": "white_dacron", "sails.base_hex": "#F2EFE6",

@@ -88,6 +88,7 @@ private:
 	 *  depth pass, no shadow): Lumen sees a tree there, so its inside and the ground under it darken. */
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeProxy;
 	bool bTreeLooks = true;
+	bool bTreeLean = true;   // measuring: -SailingNoTreeLean
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
 	void UpdateModelTrees(const FVector2D& Camera);

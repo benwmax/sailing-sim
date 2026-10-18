@@ -117,9 +117,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 
 20. The gate (bench-fast, `docs/bench-fast/`): `scripts/gate.sh --scope clouds|water|boats|crew|world|night|ui|all
    [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed
-   (`Artifacts/gate/`), runs the heavy physics tests (`scripts/gate-heavy-tests.txt`) only when the physics, tests or
-   terrain changed, then benches the scope's views on Medium and High (helm-eye, slip and coast-day always) and checks
-   60/45. `--scope all` is the full sweep: daily and before every blind round. `bench-visual.sh` takes `ONLY=a,b` and
+   (`Artifacts/gate/`), runs the heavy physics tests (`scripts/gate-heavy-tests.txt`) only when the physics, their five
+   test files or the terrain changed (a change to the tests alone skips package and bench: `GAME_HASH`), then benches the scope's views on High (helm-eye always; slip and coast-day in the scopes that show
+   them) plus the storm view on Medium, checks 60/45, and skips the bench when the packaged tree already passed that
+   scope (`Artifacts/gate/bench-<scope>.hash`; `--force` reruns). A view under its floor in a scoped gate is benched again
+   beside origin/main (`Artifacts/apps/main.app`, packaged in the worktree `Artifacts/main-tree` via `SAILING_ROOT` when
+   main's game hash moved: `Artifacts/gate/main.hash`) and passes as flapping within 1 fps of main (`rerun_fps`,
+   `main_fps` columns in `bench-<scope>.csv`; `--no-main-check` turns it off). `--scope all` is the full sweep, absolute:
+   daily and before every blind round. `bench-visual.sh` takes `ONLY=a,b` and
    `BENCH_EXTRA=`; `FAST=1` runs several views per launch (`USailingBenchRunner`, `-SailingBenchList=<file in
    Saved/Bench>`), opt-in because the RHI thread can slow from view to view within one process (re-run alone
    by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
@@ -323,7 +328,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   the player's resolution, frame cap and focus pause (`USailingSettings::IsMeasuring`). Pitfalls: no file-scope
   `using namespace` (unity build); `FSlateDrawElement::MakeBox` ignores the brush tint (multiply it in); never cache
   UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
-  from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`.
+  from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
+  runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
 - Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`
   fetches Commons photos (CC0/PD/BY/BY-SA only) with credits.json; `docs/graphics-5/blind/scenes.csv` holds the matched
   captures; `make_blind_pack.py` packs them; `make_g5_compare.py` builds the before/after page. The haze's inscattering
@@ -471,8 +477,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
   `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
   materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
-- Water in the cockpit: `M_WaterV4` drops its surface 2 m inside the player's hull plan (`HullClipA/B/C`, set by
-  `AWaterSurface::UpdateHullClip`; off for catamarans), so low-freeboard cockpits don't fill with the drawn sea.
+- Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
+  the hull (`FHullShape::BottomZ` in the hull's frame, `HullClipA..H`, set by `AWaterSurface::UpdateHullClip`; off for
+  catamarans), so cockpits stay dry and no pit opens under the overhangs (`docs/water-hull-clip/`;
+  `-SailingClassicHullClip` is V7's 2 m drop over the deck plan). Keep the shader's hull in step with `FHullShape`.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly
