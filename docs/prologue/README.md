@@ -108,6 +108,14 @@ Placeholder captions in the captain's voice; the later steps only change data.
 | 6 | `dump-main` | a gust 8 kn over the mean, 10 s on (or 40 s) | "Squall! Dump the main!" | main out past 0.8 in 4 s | squall-astern |
 | 7 | `the-break` (checkpoint, TWA 140 at 9 kn) | 12 s after | "There's the break. Harbour on the bow. Bring her up onto a reach." | TWA 60–120 for 6 s, then the end | harbour-ahead |
 
+![The captain's call over the HUD (packaged High, the first call; Space answers it)](callout.jpg)
+
+## Measured
+
+Oct 18 2026, M5 Pro, packaged build: `scripts/gate.sh --scope ui` passed (181 tests; helm-eye High 60.5 fps, beam8
+High 64.2). With the scene running and the callout up (`ONLY=beam8 BENCH_EXTRA=-SailingPrologue=1
+scripts/bench-visual.sh 12 prologue-callout High`) beam8 High is 64.5 fps; the storm view on Medium is 68.5 fps.
+
 ## Tests
 
 - `SailingSim.Prologue.Scene`: the whole scene headless on the J/22 stand-in in 25 kn with a scripted crew (FAutoTrim
