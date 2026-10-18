@@ -63,6 +63,8 @@ public:
 	/** Easy mode's assists on this boat (off on traffic boats, the ghost and in measuring runs: ApplyDifficulty). */
 	const Sailing::FEasyAssists& GetEasyAssists() const { return EasyAssists; }
 	bool IsEasyRecovering() const { return EasyHelm.IsRecovering(); }
+	/** bench.json's Easy fields: the assists, the run's max heel, and the crude tack's result (-SailingCrudeTackAt). */
+	FString EasyRunJson() const;
 
 	/** Puts the boat back at its start (the launch spot on the lake), with a little way on. */
 	void ResetBoat();
@@ -442,6 +444,11 @@ private:
 	double PrevMainSheet = 0.0, PrevJibSheet = 0.0;
 	Sailing::FAutopilot DemoPilot;
 	double DemoFirstSign = 1.0;
+	// Easy mode's gate runs: -SailingCrudeTackAt=<s> in a demo puts the tiller hard over for 4 s at that sim time, then
+	// lets it go (a beginner's tack, as SailingSim.Physics.EasyMode sails it); the run's max heel goes to bench.json.
+	double CrudeTackAt = -1.0;
+	int32 CrudeTackSign = 0;
+	double RunMaxHeelDeg = 0.0;
 	Sailing::FWindField FallbackWind;
 	double WaterSurfaceZ = 0.0; // cm
 	FVector StartLocation = FVector::ZeroVector;

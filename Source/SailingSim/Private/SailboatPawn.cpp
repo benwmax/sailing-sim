@@ -653,6 +653,16 @@ const FWindField& ASailboatPawn::GetWind() const
 	return FallbackWind;
 }
 
+FString ASailboatPawn::EasyRunJson() const
+{
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const double Twa = T.TrueWindAngle * kRadToDeg;
+	const bool bTacked = CrudeTackSign != 0 && Twa * CrudeTackSign < -FEasyAssists::kRealisticNoGoDeg && T.ForwardSpeed > 1.5 * kKnot;
+	return FString::Printf(TEXT("\"easy\":%s,\"heel_cap_deg\":%.1f,\"max_heel_deg\":%.1f,\"crude_tack\":%s,\"tacked\":%s,\"final_twa_deg\":%.1f,\"final_kn\":%.2f"),
+		EasyAssists.bEnabled ? TEXT("true") : TEXT("false"), EasyAssists.HeelCapDegFor(Boat.GetConfig()), RunMaxHeelDeg, CrudeTackSign != 0 ? TEXT("true") : TEXT("false"),
+		bTacked ? TEXT("true") : TEXT("false"), Twa, T.ForwardSpeed / kKnot);
+}
+
 bool ASailboatPawn::IsTrimAssistActive() const
 {
 	// Easy mode: always on, back a few seconds after the player's own trim.
@@ -779,6 +789,8 @@ void ASailboatPawn::BeginPlay()
 		DemoPilot.MaxTiller = 0.8;
 		CameraYaw = bDemoTacks ? 150.f : 210.f;
 		CameraPitch = -14.f;
+		float CrudeAt = -1.f;
+		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingCrudeTackAt="), CrudeAt)) CrudeTackAt = CrudeAt;
 	}
 	// Benchmarks and screenshots: camera angle (degrees) and distance (meters), and a drill to start in.
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamYaw="), CameraYaw);
@@ -947,6 +959,13 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
 		}
 		Controls.Tiller = DemoPilot.Update(Boat);
+		if (CrudeTackAt >= 0.0 && T >= CrudeTackAt)
+		{
+			// A beginner's tack: the tiller hard over toward the boom (bow toward the wind), then let go.
+			if (CrudeTackSign == 0) CrudeTackSign = Boat.GetTelemetry().TrueWindAngle >= 0.0 ? 1 : -1;
+			Controls.Tiller = T < CrudeTackAt + 4.0 ? double(CrudeTackSign) : 0.0;
+		}
+		if (T > 5.0) RunMaxHeelDeg = FMath::Max(RunMaxHeelDeg, FMath::Abs(Boat.GetTelemetry().Heel) * kRadToDeg);
 		if (bDemoTacks)
 		{
 			CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);

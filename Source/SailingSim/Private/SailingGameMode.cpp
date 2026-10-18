@@ -909,6 +909,11 @@ void ASailingGameMode::FinishBenchmark()
 	{
 		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + FString::Printf(TEXT(",\"gpu_skipped_frames\":%d}"), GpuProfileSkipped);
 	}
+	// Easy mode's gate runs: the assists, the player's max heel and the crude tack (ASailboatPawn::EasyRunJson).
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (const ASailboatPawn* Player = Cast<ASailboatPawn>(PC->GetPawn())) Summary = Summary.LeftChop(1) + TEXT(",") + Player->EasyRunJson() + TEXT("}");
+	}
 	// Visual V7: the render resolution at the end of the window (High's governor may have lowered it).
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"render_pct\":%.0f}"), GetRenderScale());
 	// Bench-fast: the share of the window's frames with the game in front (below 1, the view may have been throttled).
