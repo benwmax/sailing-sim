@@ -231,3 +231,11 @@ gate CSVs since:
 
 A boats gate goes from 14 launches to 6 (about 2 min of bench), a ui gate to 2, and a docs-only PR to a few seconds.
 `--scope all` is unchanged: every view on Low, Medium and High, daily and before a blind round.
+
+Two test-side skips (Oct 18 2026, gate-test-skips, on top of the above): the credits-screen gate spent 683 of its
+952 s on tests because editing one UI test changed the heavy tests' hash (it covered all of `Source/SailingSimTests`).
+The heavy tests now key on their own five files (`OceanTests`, `FleetTests`, `ReferenceTests`, `PhysicsTests`,
+`TrafficTests`) plus the physics, so another test edit runs the other ~150 tests in about 70 s. Package and bench key
+on the game without the editor-only tests module (`GAME_HASH`), so a change to the tests alone is build plus tests,
+about 1.5 min.
+

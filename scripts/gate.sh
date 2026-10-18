@@ -64,6 +64,9 @@ fi
 # inputs_hash (env.sh): what a step reads, by content.
 CODE_HASH="$(inputs_hash Source SailingSim.uproject Config Plugins)"
 PACKAGE_HASH="$(inputs_hash Source SailingSim.uproject Config Plugins Content)"
+# What the packaged game is made of: everything but the tests module (editor only, never packaged), so a change to the
+# tests alone neither repackages nor benches.
+GAME_HASH="$(inputs_hash Source ':(exclude)Source/SailingSimTests' SailingSim.uproject Config Plugins Content)"
 T0=$(date +%s)
 step() { echo "[gate $(( $(date +%s) - T0 )) s] $*"; }
 
@@ -76,7 +79,10 @@ else
 fi
 # The heavy tests (scripts/gate-heavy-tests.txt) read only the physics, the tests and the terrain bake (and the few
 # game files the test sources include): when none of those changed since they last passed, the rest run alone.
-HEAVY_INPUTS=(Source/SailingPhysics Source/SailingSimTests Content/TerrainData Source/SailingSim/Public/LakeData.h
+# The heavy tests live in these five test files: an edit to any other test file leaves them be.
+HEAVY_INPUTS=(Source/SailingPhysics Source/SailingSimTests/SailingSimTests.Build.cs Source/SailingSimTests/Private/OceanTests.cpp
+	Source/SailingSimTests/Private/FleetTests.cpp Source/SailingSimTests/Private/ReferenceTests.cpp
+	Source/SailingSimTests/Private/PhysicsTests.cpp Source/SailingSimTests/Private/TrafficTests.cpp Content/TerrainData Source/SailingSim/Public/LakeData.h
 	Source/SailingSim/Private/LakeData.cpp Source/SailingSim/Public/Chart.h Source/SailingSim/Private/Chart.cpp
 	Source/SailingSim/Public/Navigation.h Source/SailingSim/Private/Navigation.cpp Source/SailingSim/Public/ReferenceCapture.h
 	Source/SailingSim/Private/ReferenceCapture.cpp)
@@ -114,15 +120,15 @@ PY
 		fi
 	fi
 fi
-if [[ $FORCE == 1 || ! -d "$REPO_ROOT/Packaged/Mac/SailingSim.app" || "$(cat "$STATE/package.hash" 2>/dev/null)" != "$PACKAGE_HASH" ]]; then
+if [[ $FORCE == 1 || ! -d "$REPO_ROOT/Packaged/Mac/SailingSim.app" || "$(cat "$STATE/package.hash" 2>/dev/null)" != "$GAME_HASH" ]]; then
 	step "package"
 	"$GATE_SCRIPTS/package-mac.sh" Development > /dev/null || { echo "Package failed: Artifacts/package.log" >&2; exit 1; }
-	echo "$PACKAGE_HASH" > "$STATE/package.hash"
+	echo "$GAME_HASH" > "$STATE/package.hash"
 else
 	step "package: the packaged game is already this tree"
 fi
 # The bench reads only the packaged game: when that is the tree the scope last passed on, the result stands.
-BENCH_KEY="$PACKAGE_HASH $SCOPE $SECONDS_PER_RUN"
+BENCH_KEY="$GAME_HASH $SCOPE $SECONDS_PER_RUN"
 if [[ $FORCE == 0 && -z "$BASELINE" && "$(cat "$STATE/bench-$SCOPE.hash" 2>/dev/null)" == "$BENCH_KEY" && -f "$STATE/bench-$SCOPE.csv" ]]; then
 	step "bench: this scope passed on this packaged game already (--force reruns it)"
 	cp "$STATE/bench-$SCOPE.csv" "$ARTIFACTS/visual-bench-$LABEL.csv"
