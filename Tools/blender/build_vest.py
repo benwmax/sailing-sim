@@ -273,8 +273,17 @@ def tail(x0, z0, length, lean):
             f = bm.faces.new((a[k], a[(k + 1) % 4], b[(k + 1) % 4], b[k]))
             f.material_index = STRAPS
     if vs:
-        for r in (vs[0], vs[-1]):
-            bm.faces.new(r).material_index = STRAPS
+        bm.faces.new(vs[0]).material_index = STRAPS
+    if len(vs) > 1:
+        # Round 12: the end cut as webbing is, a hot-knife point (14 mm), not a square slab: its corners fold in to a tip
+        # on the strap's line, both faces of the ribbon meeting the two cut edges.
+        a, b = [sum((v.co for v in r), Vector()) / 4 for r in (vs[-2], vs[-1])]
+        d = (b - a).normalized()
+        lb, rb, rf, lf = vs[-1]
+        n = (lf.co - lb.co).normalized() * 0.001
+        tb, tf = bm.verts.new(b + d * 0.014 - n), bm.verts.new(b + d * 0.014 + n)
+        for f in ((lb, rb, tb), (lf, tf, rf), (rb, rf, tf, tb), (lb, tb, tf, lf)):
+            bm.faces.new(f).material_index = STRAPS
     return len(vs) > 1
 
 
