@@ -55,7 +55,8 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
     "hoursSailed": 0,
     "lessons": { "day-sailor.leave-the-dock": { "medal": "silver", "medalEasy": false, "bestSeconds": 212.4, "runs": 2, "quizPassed": true, "quizBest": 2, "quizOf": 3 } },
     "checkrides": {},
-    "certificates": {}
+    "certificates": {},
+    "scenes": { "prologue": { "done": true, "plays": 1, "bestSeconds": 611.5, "stepsPassed": 7, "stepsAssisted": 0, "retries": 1, "completedAt": "2026-10-18T20:01:02.000Z" } }
   }
 }
 ```
@@ -83,6 +84,8 @@ Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bind
 The progress block is the career's (`docs/career/README.md`): `lessons` (best medal, whether it was earned on Easy, fastest medal run, quiz),
 `checkrides` (the written quiz's best) and `certificates` (when each was earned, UTC), each an object keyed by its id;
 `hoursSailed` and the logbook counts grow at each session's end, `racesSailed` and `racesWon` when a race is over.
+`scenes` holds each scripted scene finished (`docs/prologue/README.md`), keyed by scene id: done (the prologue can be
+skipped from then on), plays, the quickest finish and the last finish's counts; added in version 1 without a version change.
 `settings.career.freeSail` is the title screen's Mode (Free Sail or Career, `docs/free-sail/README.md`) and
 `lastSession.freeSail` the mode Continue sails in. These were added in version 1 without a version change: an older
 version-1 file reads them as empty. Career 1 wrote `settings.career.openEverything` (Settings > Gameplay > Open

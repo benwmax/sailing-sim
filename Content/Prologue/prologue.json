@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "id": "prologue",
+  "title": "Mistral",
+  "setting": {
+    "boat": "Maxi",
+    "world": "mistral-coast",
+    "weather": "Mistral",
+    "rain": "light",
+    "wind_kn": 32,
+    "gust_kn": 40,
+    "sea_hs_m": 3.5,
+    "stand_in": { "boat": "J22", "wind_kn": 25, "gust_kn": 32 },
+    "then": { "cut": "lake-club", "tier": "day-sailor" }
+  },
+  "assist_caption": "I've got it. Watch how it's done, then it's yours.",
+  "cameras": ["deck-wide", "jib-sheet", "grinder", "helm-over-shoulder", "wave-face", "squall-astern", "harbour-ahead"],
+  "stations": ["helm", "main-trimmer", "jib-trimmer", "grinder", "pit"],
+  "actions": ["clip-on", "grind"],
+  "steps": [
+    {
+      "id": "clip-on",
+      "checkpoint": true,
+      "restart": { "twa_deg": 60, "speed_kn": 8 },
+      "camera": "deck-wide",
+      "trigger": { "type": "time", "at_s": 3 },
+      "call": {
+        "id": "captain.clip-on",
+        "caption": "You, new hand! Clip on to the jackline before you do anything else.",
+        "retry": "Tether. Jackline. Now. Nobody goes over the side on my boat.",
+        "ok": "Good. Now you can't lose yourself. Watch the jib."
+      },
+      "expect": { "type": "action", "action": "clip-on", "within_s": 10 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "ease-jib",
+      "camera": "jib-sheet",
+      "trigger": { "type": "gust", "over_mean_kn": 6, "after_s": 4, "or_after_s": 45 },
+      "call": {
+        "id": "captain.ease-jib",
+        "caption": "Gust! Ease the jib! Ease, ease!",
+        "retry": "She's rounding up! Let the jib sheet out, a good arm's length!",
+        "ok": "That's it. Feel her come back on her feet."
+      },
+      "expect": { "type": "sheet", "sheet": "jib", "by": 0.12, "within_s": 4 },
+      "retry_after_s": 3,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "ready-about",
+      "checkpoint": true,
+      "restart": { "twa_deg": 55, "speed_kn": 8 },
+      "camera": "helm-over-shoulder",
+      "trigger": { "type": "previous", "after_s": 8 },
+      "call": {
+        "id": "captain.ready-about",
+        "caption": "Ready about! Helm's going down. Bring her bow through the wind!",
+        "retry": "Push the tiller away and keep it there. Through the wind, all the way!",
+        "ok": "Lee-oh! Through she goes."
+      },
+      "expect": { "type": "tack", "within_s": 25 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 2
+    },
+    {
+      "id": "grind",
+      "camera": "grinder",
+      "trigger": { "type": "previous", "after_s": 0 },
+      "call": {
+        "id": "captain.grind",
+        "caption": "Grind! Bring the new jib sheet in, all the way!",
+        "retry": "Keep grinding! That jib's flogging itself to pieces!",
+        "ok": "Made. Nice work on the handles."
+      },
+      "expect": { "type": "sheet", "sheet": "jib", "at_most": 0.35, "within_s": 8 },
+      "retry_after_s": 3,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "take-helm",
+      "checkpoint": true,
+      "restart": { "twa_deg": 150, "speed_kn": 10 },
+      "camera": "wave-face",
+      "trigger": { "type": "previous", "after_s": 6 },
+      "call": {
+        "id": "captain.take-helm",
+        "caption": "Take the helm. Bear away and let her run down the face of this one.",
+        "retry": "Bear away more. Wind over your shoulder, stern to the sea. Hold her there.",
+        "ok": "Feel that? That's a thirty-metre boat surfing. Don't let it go to your head."
+      },
+      "expect": { "type": "hold", "station": "helm", "twa_min_deg": 130, "twa_max_deg": 170, "hold_s": 8, "within_s": 30 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "dump-main",
+      "camera": "squall-astern",
+      "trigger": { "type": "gust", "over_mean_kn": 8, "after_s": 10, "or_after_s": 40 },
+      "call": {
+        "id": "captain.dump-main",
+        "caption": "Squall! Dump the main! Let it go, all of it!",
+        "retry": "Main sheet off! Off! She'll broach!",
+        "ok": "Good. Power off, boat under control. That's seamanship."
+      },
+      "expect": { "type": "sheet", "sheet": "main", "at_least": 0.8, "within_s": 4 },
+      "retry_after_s": 2,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "the-break",
+      "checkpoint": true,
+      "restart": { "twa_deg": 140, "speed_kn": 9 },
+      "camera": "harbour-ahead",
+      "trigger": { "type": "previous", "after_s": 12 },
+      "call": {
+        "id": "captain.the-break",
+        "caption": "There's the break. Harbour on the bow. Bring her up onto a reach and let's take her home.",
+        "retry": "Head up a little more. Wind on the beam, the harbour wall to leeward.",
+        "ok": "Well sailed. Every sailor starts somewhere. Yours starts on a lake."
+      },
+      "expect": { "type": "hold", "twa_min_deg": 60, "twa_max_deg": 120, "hold_s": 6, "within_s": 40 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 3,
+      "next": "end"
+    }
+  ]
+}

@@ -5,6 +5,7 @@
 #include "SailingSettings.h"
 
 class FJsonObject;
+namespace Sailing { struct FSceneResult; }
 
 /**
  * The versioned save file (docs/save/README.md): one JSON file per profile, Saved/SaveGames/profile.json. Every
@@ -113,6 +114,17 @@ struct SAILINGSIM_API FSailSave
 		FString Id;
 		FDateTime EarnedAt;                  // UTC
 	};
+	/** A scripted scene finished (Content/Prologue, Sailing::FScriptedScene), by scene id ("prologue"): once done, the
+	 *  prologue can be skipped. Added in version 1 without a version change (docs/prologue/README.md). */
+	struct FSceneRecord
+	{
+		FString Id;
+		bool bDone = false;                  // finished at least once
+		int32 Plays = 0;                     // finished runs
+		double BestSeconds = 0.0;            // the quickest finish, on the sim clock
+		int32 StepsPassed = 0, StepsAssisted = 0, Retries = 0; // the last finish
+		FDateTime CompletedAt;               // the first finish, UTC
+	};
 
 	/** Progress: drills passed, the career's lessons, checkrides and certificates, races, the logbook's totals. The
 	 *  career fields were added in version 1 without a version change (a missing field reads as empty). */
@@ -127,6 +139,11 @@ struct SAILINGSIM_API FSailSave
 		FCheckrideRecord* FindCheckride(const FString& Id) { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
 		const FCheckrideRecord* FindCheckride(const FString& Id) const { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
 		bool HasCertificate(const FString& Id) const { return Certificates.ContainsByPredicate([&Id](const FCertificateRecord& C) { return C.Id == Id; }); }
+		TArray<FSceneRecord> Scenes;         // by scene id
+		const FSceneRecord* FindScene(const FString& Id) const { return Scenes.FindByPredicate([&Id](const FSceneRecord& S) { return S.Id == Id; }); }
+		bool IsSceneDone(const FString& Id) const { const FSceneRecord* S = FindScene(Id); return S && S->bDone; }
+		/** A finished scene (the sim's FSceneResult, rule 8); an unfinished one changes nothing. */
+		void RecordScene(const Sailing::FSceneResult& Result, const FDateTime& NowUtc);
 		int32 RacesSailed = 0;
 		int32 RacesWon = 0;
 		int32 LogbookSessions = 0;

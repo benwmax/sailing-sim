@@ -498,6 +498,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   moves. Reference-check peaks are GPS-like one-second means.
 - Easy mode (`docs/easy-mode/`): one switch (`USailingSettings::IsEasy`, `-SailingEasy=0|1`; off when measuring, capturing, in automation, traffic, ghost) applies `FEasyAssists` (`EasyAssists.h`: helm, heel cap, trim, no-go cue, `FEasyHelm` irons/bear-away on a copy of the controls); Realistic is the boat's own.
   Easy medals cap at career.json's `easy_max_medal` (`FCareerRun::bEasy`, save `medalEasy`); `scripts/polar.sh --easy`, `-SailingCrudeTackAt=<s>` (demo) for the gate runs.
+- Prologue (`docs/prologue/`): scripted scenes are data (`Content/Prologue/prologue.json`, staged loose; `python3
+  Tools/prologue/validate.py [--self-test]`) run by `Sailing::FScriptedScene` (`ScriptedScene.h`: triggers, captain calls,
+  expected answers judged from telemetry and `FSceneInput`, repeats and crew takeover, never a hard fail; its own JSON
+  reader). `-SailingPrologue=1` runs it on the stand-in (game mode `UpdateScene`, fed by the pawn; Space is the crew
+  action, R restarts at the checkpoint); `SSailHud::RefreshScene` shows the caption; finished scenes go to the save's
+  `progress.scenes`. SailingPhysics and SailingSimTests are `bUseUnity = false` (UBT unity-builds from 32 files).
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

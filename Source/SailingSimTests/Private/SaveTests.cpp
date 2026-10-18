@@ -115,6 +115,16 @@ namespace SailSaveTestsLocal
 		Cert.Id = TEXT("day-sailor");
 		Cert.EarnedAt = FDateTime(2026, 10, 18, 15, 2, 9);
 		S.Progress.Certificates.Add(Cert);
+		FSailSave::FSceneRecord Scene;
+		Scene.Id = TEXT("prologue");
+		Scene.bDone = true;
+		Scene.Plays = 2;
+		Scene.BestSeconds = 611.5;
+		Scene.StepsPassed = 6;
+		Scene.StepsAssisted = 1;
+		Scene.Retries = 3;
+		Scene.CompletedAt = FDateTime(2026, 10, 18, 20, 1, 2);
+		S.Progress.Scenes.Add(Scene);
 		return S;
 	}
 }
@@ -204,6 +214,13 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 		&& B.Progress.Checkrides[0].QuizBest == 11 && B.Progress.Checkrides[0].QuizOf == 12);
 	TestTrue(TEXT("certificate"), B.Progress.Certificates.Num() == 1 && B.Progress.Certificates[0].Id == TEXT("day-sailor")
 		&& B.Progress.Certificates[0].EarnedAt == A.Progress.Certificates[0].EarnedAt);
+	if (TestEqual(TEXT("scenes"), B.Progress.Scenes.Num(), 1))
+	{
+		const FSailSave::FSceneRecord& P = A.Progress.Scenes[0];
+		const FSailSave::FSceneRecord& Q = B.Progress.Scenes[0];
+		TestTrue(TEXT("scene fields"), Q.Id == P.Id && Q.bDone && Q.Plays == P.Plays && Q.BestSeconds == P.BestSeconds && Q.StepsPassed == P.StepsPassed
+			&& Q.StepsAssisted == P.StepsAssisted && Q.Retries == P.Retries && Q.CompletedAt == P.CompletedAt);
+	}
 	TestEqual(TEXT("Written again, the same text"), B.ToJson(), Text);
 
 	// Through the game's objects and back: Apply then Capture gives the same save.

@@ -84,7 +84,7 @@ bool ASailingHUD::UsesFrontEnd() const
 {
 	using namespace SailingHUDLocal;
 	const bool bOff = USailingSettings::IgnoresSavedChoices() || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoFrontEnd"))
-		|| FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu")) || IsRunningCommandlet();
+		|| FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu")) || IsRunningCommandlet() || ASailingGameMode::IsPrologueRun();
 	FString Forced;   // -SailingFrontEnd=<screen> forces it (screenshots of the menus)
 	return !bOff || FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Forced);
 }
@@ -1190,6 +1190,7 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		One(TEXT("Wing-on-wing"), TEXT("WingOnWing")),
 		One(TEXT("Back the jib (heave to, irons)"), TEXT("BackJib")),
 		One(TEXT("Dock lines on / off"), TEXT("DockLines")),
+		One(TEXT("Crew action (answer the captain)"), TEXT("CrewAction")),
 		One(TEXT("Spinnaker up / down (the jib sheet trims it)"), TEXT("Spinnaker")),
 		One(TEXT("Take a reef / shake out"), TEXT("Reef")),
 		One(TEXT("Board or swing keel up / down"), TEXT("Board")),
