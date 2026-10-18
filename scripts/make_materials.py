@@ -2086,7 +2086,7 @@ def cloud_code():
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
     c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9"))
-    c = c.replace("WISP_THIN", _os.environ.get("SAILING_WISP_THIN", "0.15"))
+    c = c.replace("WISP_THIN", _os.environ.get("SAILING_WISP_THIN", "0.1"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),

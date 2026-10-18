@@ -8,9 +8,9 @@ then goes from main.
 Round 12's verdict on the clouds was "not wispy enough, too solid". In `CLOUD_CODE`, where the march steps are short
 (under 90 m), the cumulus change in three ways:
 
-- **Thinner.** The density is 0.15 of the full value (`SAILING_WISP_THIN`). At full density a cumulus closes within tens
+- **Thinner.** The density is 0.1 of the full value (`SAILING_WISP_THIN`). At full density a cumulus closes within tens
   of metres and reads as a solid lit skin, the clay look. Real cloud light diffuses deep through the skin; the short-step
-  march only shows that with thinner vapour. The value was chosen by eye between 0.1 and 0.2.
+  march only shows that with thinner vapour. Bean chose 0.1 over 0.15 ("fluffier").
 - **A gentler edge ramp,** 1.2 to 2.5 against C1's 2.5 to 6.
 - **Fine detail at the outline and the base:** 30 m of fine curl distortion and high-frequency erosion. The detail is
   filtered at the step and the pixel footprint, never finer.
