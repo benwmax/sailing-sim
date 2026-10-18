@@ -16,6 +16,7 @@
 #include "BoatModel.h"
 #include "AutoTrim.h"
 #include "EasyAssists.h"
+#include "CrewStation.h"
 #include "BoatPhysicsTask.generated.h"
 
 class ASailboatPawn;
@@ -37,6 +38,9 @@ struct SAILINGSIM_API FBoatStepJob
 	bool bSimple = false;              // the simple layout: the crew handles traveler and sail shape
 	const Sailing::FEasyAssists* Easy = nullptr; // Easy mode: its helm steps the boat on a copy of the controls
 	Sailing::FEasyHelm* EasyHelm = nullptr;
+	/** Prologue step 2: at a crew station the merge steps the controls (the crew's and the player's hands) instead. */
+	Sailing::FStationControls* Stations = nullptr;
+	Sailing::FStationInput StationInput;
 	void Run() const;
 };
 

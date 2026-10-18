@@ -34,6 +34,19 @@ namespace
 
 void FBoatStepJob::Run() const
 {
+	if (Stations && Stations->IsActive())
+	{
+		// A crew station: the station merge is the crew and the player both; taps and the dump count once.
+		FStationInput In = StationInput;
+		for (int32 I = 0; I < Steps; ++I)
+		{
+			*Controls = Stations->Step(*Boat, In, StepDt);
+			In.GrindTaps = 0;
+			In.bTravellerDump = false;
+			Boat->Step(StepDt, *Controls, *Wind, Waves);
+		}
+		return;
+	}
 	for (int32 I = 0; I < Steps; ++I)
 	{
 		const FBoatControls Before = *Controls;

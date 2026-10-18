@@ -1,6 +1,6 @@
 """Checks the prologue's scripted scene (Content/Prologue/prologue.json, docs/prologue/README.md): the same rules
 FScriptedScene::LoadText applies in the game (Source/SailingPhysics/Private/ScriptedScene.cpp), plus a few the loader
-leaves to the author (captions in every call, call ids under "captain.", every camera, station and action used).
+leaves to the author (captions in every call, call ids under "captain.", every camera used, every step at a station).
 
 Usage: python3 Tools/prologue/validate.py [scene.json ...]   (defaults to Content/Prologue/prologue.json)
        python3 Tools/prologue/validate.py --self-test         (the validator rejects broken scenes)
@@ -14,7 +14,7 @@ DEFAULT = os.path.join(ROOT, "Content", "Prologue", "prologue.json")
 
 SCENE_KEYS = {"schema_version", "id", "title", "setting", "assist_caption", "cameras", "stations", "actions", "steps"}
 SETTING_KEYS = {"boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "stand_in", "then"}
-STEP_KEYS = {"id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera"}
+STEP_KEYS = {"id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station"}
 CALL_KEYS = {"id", "caption", "retry", "ok"}
 # Trigger type -> (required, optional) fields, as ScriptedScene.cpp reads them.
 TRIGGERS = {
@@ -28,13 +28,21 @@ TRIGGERS = {
 }
 EXPECTS = {
     "none": ({"seconds"}, set()),
-    "sheet": ({"sheet"}, {"by", "at_least", "at_most", "within_s"}),
+    "sheet": ({"sheet"}, {"by", "at_least", "at_most", "controls", "within_s"}),
     "tack": (set(), {"within_s"}),
     "gybe": (set(), {"within_s"}),
-    "hold": ({"hold_s"}, {"twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "within_s"}),
+    "hold": ({"hold_s"}, {"twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "controls", "within_s"}),
     "station": ({"station"}, {"within_s"}),
     "action": ({"action"}, {"within_s"}),
 }
+
+# Step 2: the crew stations and the controls each one works (CrewStation.cpp's StationOwns).
+STATIONS = {
+    "helm": {"wheel"},
+    "jib-trimmer": {"jib-sheet", "grinder"},
+    "main-trimmer": {"main-sheet", "traveller", "traveller-dump"},
+}
+CONTROLS = set().union(*STATIONS.values())
 
 
 def problems(scene):
@@ -70,6 +78,8 @@ def problems(scene):
     for name, lst in (("cameras", cameras), ("stations", stations), ("actions", actions)):
         check(isinstance(lst, list) and all(isinstance(x, str) and x for x in lst), f"scene: {name} holds names only")
         check(len(set(lst)) == len(lst), f"scene: {name} repeat")
+    for st in stations if isinstance(stations, list) else []:
+        check(st in STATIONS, f"scene: unknown station \"{st}\"")
 
     steps = scene.get("steps")
     check(isinstance(steps, list) and steps, "scene: steps must be a non-empty list")
@@ -95,6 +105,11 @@ def problems(scene):
         if "camera" in st:
             check(st["camera"] in cameras, f"{sid}: camera \"{st['camera']}\" is not in the scene's cameras")
             used_cameras.add(st["camera"])
+        if "station" in st:
+            check(st["station"] in stations, f"{sid}: station \"{st['station']}\" is not in the scene's stations")
+            used_stations.add(st["station"])
+        elif stations:
+            errors.append(f"{sid}: every step names its station (where the scene puts the crew member)")
 
         t = st.get("trigger")
         check(isinstance(t, dict), f"{sid}: missing trigger")
@@ -131,6 +146,13 @@ def problems(scene):
                     check(any(k in e for k in ("by", "at_least", "at_most")), f"{sid}.expect: a sheet expectation needs by, at_least or at_most")
                 if et == "hold":
                     check(("twa_min_deg" in e) == ("twa_max_deg" in e), f"{sid}.expect: a TWA band needs both twa_min_deg and twa_max_deg")
+                if "controls" in e:
+                    ok = isinstance(e["controls"], list) and all(isinstance(c, str) and c for c in e["controls"])
+                    check(ok, f"{sid}.expect: controls holds names only")
+                    for c in e["controls"] if ok else []:
+                        if c not in CONTROLS: errors.append(f"{sid}.expect: unknown control \"{c}\"")
+                        elif c not in STATIONS.get(st.get("station"), set()):
+                            errors.append(f"{sid}.expect: control \"{c}\" is not worked at the step's station \"{st.get('station', '')}\"")
                 if "station" in e:
                     check(e["station"] in stations, f"{sid}.expect: station \"{e['station']}\" is not in the scene's stations")
                     used_stations.add(e["station"])
@@ -167,6 +189,11 @@ def self_test():
     bad = copy.deepcopy(good); bad["steps"][0]["camera"] = "drone"; cases.append(("unknown camera", bad, "not in the scene's cameras"))
     bad = copy.deepcopy(good); bad["steps"][1]["trigger"]["over_mean"] = 6; cases.append(("typo'd field", bad, "unknown field"))
     bad = copy.deepcopy(good); bad["steps"][-1]["next"] = good["steps"][0]["id"]; cases.append(("loop", bad, "never ends"))
+    grind = next(i for i, st in enumerate(good["steps"]) if st["id"] == "grind")
+    bad = copy.deepcopy(good); bad["steps"][grind]["expect"]["controls"] = ["wheel"]; cases.append(("control at the wrong station", bad, "is not worked at the step's station"))
+    bad = copy.deepcopy(good); bad["steps"][grind]["expect"]["controls"] = ["capstan"]; cases.append(("unknown control", bad, "unknown control"))
+    bad = copy.deepcopy(good); del bad["steps"][grind]["station"]; cases.append(("step without a station", bad, "every step names its station"))
+    bad = copy.deepcopy(good); bad["stations"].append("pit"); cases.append(("unknown station", bad, "unknown station"))
     for name, scene, expect in cases:
         errs = problems(scene)
         assert any(expect in e for e in errs), f"{name}: expected '{expect}', got {errs}"
