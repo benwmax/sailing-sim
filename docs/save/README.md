@@ -102,9 +102,20 @@ counts are read, kept and written back, but nothing adds to them yet.
 
 ## Checking it on the packaged game
 
-The front end can drive a whole session and quit, with no simulated input (`-SailingUIScript`, `Quit` ends the game,
-`Log` prints the save's status and the last session):
+The front end can drive a whole session and quit with no simulated input (`-SailingUIScript`: `Quit` ends the game,
+`Log` prints the save's status and the last session). From the title (Continue first): Sail, the lake, the third spot,
+the Catalina 22, the lesson day, free sail, cast off, start, quit:
 
 ```bash
-open -n -W Packaged/Mac/SailingSim.app --args -windowed -SailingFrontEnd=Title -SailingUIScript=Down,Enter,Enter,Down,Enter,Enter,Enter,Enter,Wait,Wait,Log,Quit
+open -n -W Packaged/Mac/SailingSim.app --args -windowed -SailingFrontEnd=Title "-SailingUIScript=Down,Enter,Left,Enter,Down,Down,Enter,Enter,Up,Enter,Enter,Enter,Gamepad_Special_Right,Wait,Wait,Wait,Wait,Wait,Enter,Wait,Wait,Log,Quit"
 ```
+
+Oct 18 2026, on the M5 Pro with no save file and the container's ini holding a Galveston session on the Lagoon 42:
+the first launch logged `Save: no save at ...: migrated GameUserSettings.ini (version 0)`, and after the cast off
+`profile.json` held `ray-hubbard`, `south-lake-near-the-dam`, `Catalina22`. A second plain launch
+(`-SailingFrontEnd=Title -SailingUIScript=Log,Quit`) logged `loaded ... (ok)` with the same last session and left the
+file unchanged (same checksum). Stills read from it (`-SailingBench=5 -SailingShot=save-Launch -SailingFrontEnd=Launch
+-SailingSave=SaveGames/profile.json`) show the Launch and Boat screens on those choices:
+
+![Launch screen on the saved spot](launch-from-save.jpg)
+![Boat screen on the saved boat](boat-from-save.jpg)
