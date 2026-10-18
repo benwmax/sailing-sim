@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "about": "The learn-to-sail career (docs/career/README.md). Edited by hand; check with python3 Tools/career/validate.py. Ids are stable: the save keeps them.",
+  "school": "Blue Heron Sailing School",
+  "medals": ["bronze", "silver", "gold"],
+  "always_open": {
+    "tiers": ["day-sailor"],
+    "worlds": ["ray-hubbard"],
+    "boats": ["J22"]
+  },
+  "tiers": [
+    {
+      "id": "day-sailor",
+      "name": "Day Sailor",
+      "status": "ready",
+      "summary": "Handle a small keelboat in light to moderate air on sheltered water: leave and return to the dock, sail every point of sail, stop, and recover crew overboard.",
+      "learning": "The skills of a basic keelboat course (about the level of ASA 101), taught on Lake Ray Hubbard in the J/22.",
+      "world": "ray-hubbard",
+      "boats": ["J22"],
+      "lessons": [
+        {
+          "id": "day-sailor.leave-the-dock",
+          "title": "Leave the dock",
+          "drill": "LeaveTheDock",
+          "quiz": "LeaveTheDock",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["clean"], "max_seconds": 300, "max_infractions": 0 },
+            "gold": { "outcomes": ["clean"], "max_seconds": 180, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "day-sailor.sail-a-triangle",
+          "title": "Sail a triangle",
+          "drill": "SailATriangle",
+          "quiz": "SailATriangle",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "max_seconds": 480, "max_collisions": 0, "max_infractions": 0 },
+            "gold": { "max_seconds": 330, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "day-sailor.heave-to",
+          "title": "Heave to",
+          "drill": "HeaveTo",
+          "quiz": "HeaveTo",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "max_seconds": 180, "max_infractions": 0 },
+            "gold": { "max_seconds": 90, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "day-sailor.crew-overboard-figure-eight",
+          "title": "Crew overboard: figure-eight",
+          "drill": "CrewOverboardFigureEight",
+          "quiz": "CrewOverboardFigureEight",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["proper"], "max_seconds": 300, "max_infractions": 0 },
+            "gold": { "outcomes": ["proper"], "max_seconds": 180, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "day-sailor.crew-overboard-quick-stop",
+          "title": "Crew overboard: quick-stop",
+          "drill": "CrewOverboardQuickStop",
+          "quiz": "CrewOverboardQuickStop",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["proper"], "max_seconds": 180, "max_infractions": 0 },
+            "gold": { "outcomes": ["proper"], "max_seconds": 90, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "day-sailor.return-and-dock",
+          "title": "Return and dock",
+          "drill": "ReturnAndDock",
+          "quiz": "ReturnAndDock",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["gentle"], "max_seconds": 360, "max_infractions": 0 },
+            "gold": { "outcomes": ["gentle"], "max_seconds": 240, "max_contact_kn": 0.5, "max_infractions": 0 }
+          }
+        }
+      ],
+      "checkride": {
+        "id": "day-sailor.checkride",
+        "title": "Day Sailor checkride",
+        "lessons": ["day-sailor.leave-the-dock", "day-sailor.sail-a-triangle", "day-sailor.heave-to",
+          "day-sailor.crew-overboard-figure-eight", "day-sailor.crew-overboard-quick-stop", "day-sailor.return-and-dock"],
+        "min_medal": "silver",
+        "quiz": {
+          "drills": ["LeaveTheDock", "SailATriangle", "HeaveTo", "CrewOverboardFigureEight", "CrewOverboardQuickStop", "ReturnAndDock"],
+          "questions": 12,
+          "pass": 0.8
+        }
+      },
+      "certificate": { "id": "day-sailor", "name": "Day Sailor certificate" },
+      "unlocks": { "tiers": ["club-racer", "coastal-cruiser"], "worlds": [], "boats": [] }
+    },
+    {
+      "id": "club-racer",
+      "name": "Club Racer",
+      "status": "stub",
+      "summary": "Start, round marks and finish in club races off the yacht club, in the J/22 and a singlehanded dinghy.",
+      "learning": "Racing rules and boat handling around a course: lessons to come.",
+      "world": "ray-hubbard",
+      "boats": ["J22"],
+      "notes": "The dinghy (Sunfish or ILCA 7) waits on Bean: add its id to boats.",
+      "lessons": [],
+      "checkride": { "id": "club-racer.checkride", "title": "Club Racer checkride", "lessons": [], "min_medal": "silver", "quiz": null },
+      "certificate": { "id": "club-racer", "name": "Club Racer certificate" },
+      "unlocks": { "tiers": [], "worlds": [], "boats": [] }
+    },
+    {
+      "id": "coastal-cruiser",
+      "name": "Coastal Cruiser",
+      "status": "stub",
+      "summary": "Cruise a bigger boat on tidal water: channels, aids to navigation, anchoring and the weather on the bay.",
+      "learning": "Coastal cruising on Galveston Bay: lessons to come.",
+      "world": "galveston-bay",
+      "boats": ["Catalina22", "Catalina30"],
+      "notes": "Which boats come later waits on Bean.",
+      "lessons": [],
+      "checkride": { "id": "coastal-cruiser.checkride", "title": "Coastal Cruiser checkride", "lessons": [], "min_medal": "silver", "quiz": null },
+      "certificate": { "id": "coastal-cruiser", "name": "Coastal Cruiser certificate" },
+      "unlocks": { "tiers": ["passage-maker"], "worlds": [], "boats": [] }
+    },
+    {
+      "id": "passage-maker",
+      "name": "Passage Maker",
+      "status": "stub",
+      "summary": "Plan and sail a coastal passage in the Gulf, from the Galveston entrance to Freeport, by chart and fix.",
+      "learning": "Passage planning and offshore seamanship: lessons to come.",
+      "world": "gulf",
+      "boats": [],
+      "notes": "The passage boat waits on Bean.",
+      "lessons": [],
+      "checkride": { "id": "passage-maker.checkride", "title": "Passage Maker checkride", "lessons": [], "min_medal": "silver", "quiz": null },
+      "certificate": { "id": "passage-maker", "name": "Passage Maker certificate" },
+      "unlocks": { "tiers": [], "worlds": [], "boats": [] }
+    }
+  ]
+}
