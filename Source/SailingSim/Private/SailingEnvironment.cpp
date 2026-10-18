@@ -1157,6 +1157,9 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	const double Refresh = 4.0;
 	if (CacheColumn == 0)
 	{
+		// Not before the first weather map (about 2 s in): started at once, the first panorama read the empty map with the
+		// default WeatherRect and drew another sky's clouds for its first 4 s (seen on the Mac's recording).
+		if (!bHasWeatherMap) return;
 		// One camera and one set of cloud parameters for the whole panorama, so its strips agree.
 		CacheRefreshStart = Now;
 		CacheMaterial->SetVectorParameterValue(TEXT("CacheCam"), FLinearColor(float(CameraPos.X), float(CameraPos.Y), float(CameraPos.Z), 0.f));
@@ -1225,6 +1228,10 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		UE_LOG(LogSailing, Display, TEXT("Sky cache: first panorama in %.2f s (%dx%d, %d steps); live clouds now to %.1f km"), CacheRefreshSeconds,
 			kSkyCacheWidth, kSkyCacheHeight, kSkyCacheSteps, kSkyCacheSplitM / 1000.f);
 	}
+	// This frame already shows the swapped textures: start the fade now. With the CacheParams set at the top (blend 1, and
+	// before the first panorama, no cache) the dome flashed the new panorama for a frame, and the first handover showed
+	// the sky without its far clouds for a frame (the live clouds already cut at 5 km).
+	SkyMaterial->SetVectorParameterValue(TEXT("CacheParams"), FLinearColor(1.f, 0.f, kSkyCacheElMin, kSkyCacheElMax));
 }
 
 void ASailingEnvironment::UpdateHaze()
