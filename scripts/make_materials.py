@@ -1942,8 +1942,32 @@ AO = 1.0;
     // C1: the billows build upward (Nubis): next to nothing eaten from the base (one flat base for every cell), wispy
     // erosion just above it, billowed (inverted Worley) higher up where the bubbles rise.
     float ero = lerp(0.15 * hfCu, 0.55 * (1.0 - hfCu), smoothstep(0.05, 0.45, hCu));
+    // Wisps (round 12: "not wispy enough, too solid"): where the march steps are short (the near clouds: under 90 m,
+    // as the sky cache's 5 km live rays give on High and Ultra's 3 km do), 30 m of fine curl distortion and
+    // high-frequency erosion at the outline and the base only. The detail is filtered at the step and the pixel's
+    // footprint, never finer, so it can't alias into the grain (CLOUD_CODE's rule); on long steps it switches off.
+    float wGate = saturate((90.0 - stepM) / 50.0) * CacheSplit.w;   // CacheSplit.w: 1 on, 0 -SailingNoWisps (used below too)
+    [branch] if (wGate > 0.0 && covCu > 0.001)
+    {
+        float footW = max(distance(p, Cam * 0.01) * 0.0022, stepM * 0.85);
+        float2 fc = Curl.SampleLevel(CurlSampler, q.xy * 1.9, 0).rg * 2.0 - 1.0;
+        float3 wq = dq * 3.0 + float3(fc * 0.135, 0.0);   // the detail at three times its frequency (3.5 m texels), bent 30 m
+        float3 dtw = Detail.SampleLevel(DetailSampler, wq, clamp(log2(footW / 3.5), 0.0, 5.0)).rgb;
+        float fineW = dtw.g * 0.6 + dtw.b * 0.4;
+        float outline = saturate(1.0 - shapeCu * 1.8);
+        float baseBand = 1.0 - smoothstep(0.0, 0.25, hCu);
+        ero += wGate * max(outline, baseBand * 0.7) * (1.0 - fineW) * 0.6;
+    }
     // Crisp, sunlit tops and soft bases: the edge-to-body ramp steepens with height.
-    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * lerp(2.5, 6.0, saturate(hCu * 1.5))) * 1.6;
+    // Wisps (round 12, "too solid"): where the steps are short the edge-to-body ramp is two to three times gentler,
+    // so the outline is a translucent fringe tens of metres deep (a cloud's skin is thin vapour, not a wall); on long
+    // steps the crisp C1 ramp stays (a soft edge there is what the jitter turns into grain).
+    float rampCu = lerp(lerp(2.5, 6.0, saturate(hCu * 1.5)), lerp(1.2, 2.5, saturate(hCu * 1.5)), wGate);
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * rampCu) * 1.6;
+    // And thinner: at full density a cumulus closes within tens of metres and reads as a solid, lit skin (the clay
+    // look); real cloud light diffuses deep through the skin, which the short-step march shows only with the vapour
+    // this much thinner (0.15 of the full density, chosen by eye on lake-towers and Texas City between 0.1 and 0.2).
+    dCu *= lerp(1.0, WISP_THIN, wGate);
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
@@ -2062,6 +2086,7 @@ def cloud_code():
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
     c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9"))
+    c = c.replace("WISP_THIN", _os.environ.get("SAILING_WISP_THIN", "0.15"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
@@ -2090,7 +2115,7 @@ def build_cloud_layers():
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
-        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0))))}
+        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 1))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
     c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit"], F1,
@@ -2267,7 +2292,7 @@ def build_cloud_cache():
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
         ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0)), ("CacheCam", (0, 0, 0, 0)),
-        ("CacheEl", (-3, 33, 0, 0)), ("CacheMax", (40000, 1000, 3000, 48)), ("CacheShadow", (300, 0, 0, 0))))}
+        ("CacheEl", (-3, 75, 0, 0)), ("CacheMax", (40000, 1000, 3000, 96)), ("CacheShadow", (300, 0, 1, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 2400)
     c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
                                    "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev"],

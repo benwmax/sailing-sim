@@ -57,6 +57,12 @@ namespace
 	constexpr int32 kSkyCacheSteps = 96;
 	constexpr float kSkyCacheSplitM = 5000.f;
 	constexpr float kSkyCacheFarM = 40000.f;
+	// Wisps (CLOUD_CODE, the near clouds' fine edges): on, or off for comparing with -SailingNoWisps.
+	float WispsOn()
+	{
+		static SailingArgs::FCachedFlag NoWisps(TEXT("SailingNoWisps"));
+		return NoWisps.Get() ? 0.f : 1.f;
+	}
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
 	// samples, read brighter than High's.
@@ -312,6 +318,7 @@ void ASailingEnvironment::BeginPlay()
 			}
 			SkyMaterial->SetTextureParameterValue(TEXT("CacheOld"), CacheTargets[0]);
 			SkyMaterial->SetTextureParameterValue(TEXT("CacheNew"), CacheTargets[1]);
+			CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, WispsOn()));
 			if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
 			{
 				CacheTraceKm = CloudComp->TracingMaxDistance;
@@ -1124,7 +1131,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		{
 			bCacheReady = false;
 			CacheColumn = 0;
-			CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, 0.f));
+			CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, WispsOn()));
 			if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
 			{
 				CloudComp->TracingMaxDistanceMode = EVolumetricCloudTracingMaxDistanceMode(CacheTraceMode);
@@ -1182,8 +1189,10 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		W.Sky.Span(BaseKm, TopKm);
 		TopKm = FMath::Max(TopKm, double(W.CloudTopKm));
 		CacheMaterial->SetVectorParameterValue(TEXT("CacheMax"), FLinearColor(kSkyCacheFarM, float(BaseKm * 1000.0 - 50.0), float(TopKm * 1000.0 + 100.0), float(kSkyCacheSteps)));
-		CacheMaterial->SetVectorParameterValue(TEXT("Tracer"), FLinearColor(float(TopKm - BaseKm + 0.15), float(kSkyCacheSteps), 0.f, kSkyCacheFarM / 1000.f));
-		CacheMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, 0.f));
+		// Inside cloud the cache steps six times finer than its coarse step: Tracer says so, so CLOUD_CODE's step caps and
+		// its wisps (which switch on under 90 m steps) see the steps the cache really takes.
+		CacheMaterial->SetVectorParameterValue(TEXT("Tracer"), FLinearColor(float(TopKm - BaseKm + 0.15), float(kSkyCacheSteps * 6), 0.f, kSkyCacheFarM / 1000.f));
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, WispsOn()));
 		CacheMaterial->SetVectorParameterValue(TEXT("CacheEl"), FLinearColor(kSkyCacheElMin, kSkyCacheElMax, 0.f, 0.f));
 		// Shadow step (m), this refresh's number (its jitter) and its weight against the panorama before. Each replaces
 		// the last: blended a third at a time, the clouds' drift between refreshes stacked into ghosts.
@@ -1220,7 +1229,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		// start) and spend their samples on the near ones.
 		bCacheReady = true;
 		SkyMaterial->SetTextureParameterValue(TEXT("CacheOld"), CacheTargets[1 - CacheBack]);
-		CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 1.f, 0.f));
+		CloudMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 1.f, WispsOn()));
 		if (UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
 		{
 			CloudComp->TracingMaxDistanceMode = EVolumetricCloudTracingMaxDistanceMode::DistanceFromPointOfView;
