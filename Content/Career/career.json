@@ -3,6 +3,7 @@
   "about": "The learn-to-sail career (docs/career/README.md). Edited by hand; check with python3 Tools/career/validate.py. Ids are stable: the save keeps them.",
   "school": "Blue Heron Sailing School",
   "medals": ["bronze", "silver", "gold"],
+  "easy_max_medal": "bronze",
   "always_open": {
     "tiers": ["day-sailor"],
     "worlds": ["ray-hubbard"],

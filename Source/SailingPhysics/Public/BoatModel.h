@@ -143,6 +143,11 @@ namespace Sailing
 		// out to leeward by the heeled rig, it is why a keelboat's weather helm grows as she heels (Keuning & Sonnenberg).
 		double HeelYawCoef = 0.0;
 		double ExtraRollDamping = 0.0;    // N m s; the easy difficulty adds some
+		// Easy mode's righting assist (EasyAssists.h; 0 = none): from HeelCapSoftDeg short of HeelCapDeg it adds a righting
+		// moment growing with the square of the heel, HeelCapLeverM times the boat's weight at the cap.
+		double HeelCapDeg = 0.0;
+		double HeelCapSoftDeg = 6.0;
+		double HeelCapLeverM = 0.0;
 		// Added resistance in waves: AddedResistanceCoef x R(lambda/LWL) x rho g (Hs/2)^2 B^2 / LWL, largest heading
 		// into the waves ((1 + cos)^2 / 4 of the angle off the wave direction) and growing with speed up to about 4 kn.
 		// R = r^4 / (0.25 + r^4) with r = mean wavelength / LWL: short chop barely pitches the boat, waves near hull

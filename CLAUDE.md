@@ -491,6 +491,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly
   moves. Reference-check peaks are GPS-like one-second means.
+- Easy mode (`docs/easy-mode/`): one switch (`USailingSettings::IsEasy`, `-SailingEasy=0|1`; off when measuring, capturing, in automation, traffic, ghost) applies `FEasyAssists` (`EasyAssists.h`: helm, heel cap, trim, no-go cue, `FEasyHelm` irons/bear-away on a copy of the controls); Realistic is the boat's own.
+  Easy medals cap at career.json's `easy_max_medal` (`FCareerRun::bEasy`, save `medalEasy`); `scripts/polar.sh --easy`, `-SailingCrudeTackAt=<s>` (demo) for the gate runs.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

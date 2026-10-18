@@ -15,6 +15,8 @@ namespace Sailing
 		bool bTrimJib = true;
 		bool bHike = true;
 		bool bShape = true;            // vang, outhaul, cunningham, backstay
+		double RateScale = 1.0;        // sheet speed against a good crew's (Easy mode: faster)
+		bool bEasePuffs = false;       // a keelboat crew eases in a puff the way a dinghy sailor does (Easy mode)
 	};
 
 	/**

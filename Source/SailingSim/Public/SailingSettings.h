@@ -181,6 +181,14 @@ public:
 	/** The player's fixed resolution percentage, or 0 (the tier's own; always 0 when measuring). */
 	int32 FixedResolutionScale() const { return IsMeasuring() ? 0 : ResolutionScale; }
 
+	/**
+	 * Easy mode's assists are on (Sailing::FEasyAssists, docs/easy-mode/README.md): -SailingEasy=0|1 decides; otherwise the
+	 * Difficulty, except in measuring, capture and automation runs, which sail Realistic.
+	 */
+	bool IsEasy() const;
+	/** -SailingEasy=0|1, or -1 when the command line doesn't say. */
+	static int32 EasyArg();
+
 	/** Simple layout is in effect (always on Easy). */
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
 
