@@ -30,6 +30,7 @@ public:
 private:
 	void Refresh();
 	void RefreshTraffic(const ASailboatPawn& P, const class ASailingGameMode& GM);
+	void RefreshScene(const class ASailingGameMode& GM);
 	TWeakObjectPtr<APlayerController> Player;
 	double NextRefresh = 0.0;
 	// Text refreshed at 10 Hz.
@@ -37,6 +38,9 @@ private:
 		PointText, SpeedUnitText, DepthUnitText, TipTitle, TipBody, ToastText, DrillTitle, DrillFooter, HintsText;
 	FLinearColor ToastColor = FLinearColor::White;
 	bool bShallow = false, bTidal = false, bTip = false, bDrill = false, bToast = false;
+	// Prologue step 1: the captain's call (FScriptedScene's caption) and the keys that answer it.
+	bool bCaptain = false;
+	FText CaptainText, CaptainHint;
 	double ToastSince = 0.0;
 	FString LastToast, LastTip;
 	double TipShownAt = 0.0;

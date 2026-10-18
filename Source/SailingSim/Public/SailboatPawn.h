@@ -264,6 +264,7 @@ private:
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
 	bool bDrillTouching = false, bDrillGraded = false;
+	bool bCrewActionPressed = false;   // Prologue step 1: the crew-action button since the scene last stepped
 	bool bDrillEasy = false; // Easy mode's assists were on at any time during the drill (its medal is capped: career.json)
 	FCareerProgress::FAward CareerAward;
 	FLearningCoach Learning;

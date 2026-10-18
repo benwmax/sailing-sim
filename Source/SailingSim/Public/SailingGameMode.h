@@ -8,6 +8,7 @@
 #include "Weather.h"
 #include "Wind.h"
 #include "WorldClock.h"
+#include "ScriptedScene.h"
 #include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
@@ -83,6 +84,19 @@ public:
 	/** W5b: loads Content/TerrainData/Weather/<date>.wxday; null if it is not there or not valid. */
 	static std::shared_ptr<const Sailing::FWeatherDay> LoadRealDay(const FString& Date);
 
+	/** Prologue step 1 (docs/prologue/README.md): the scripted crew scene this session runs, or null. A prologue session is
+	 *  -SailingPrologue=1 for now (the first-launch flow comes later); it sails the scene's stand-in boat and wind. */
+	const Sailing::FScriptedScene* GetScene() const { return bScene ? &Scene : nullptr; }
+	static bool IsPrologueRun();
+	/** The boat the scene follows hands it her state and the crew's input once a frame, after her physics (the pawn).
+	 *  The scene steps on the sim clock (her physics time). */
+	void UpdateScene(const Sailing::FBoatModel& Boat, const Sailing::FSceneInput& Input);
+	/** The boat is being (re)started: the scene goes back to its last checkpoint if it is running, and Out* is the pose to
+	 *  start from (that checkpoint's, or the first step's before it starts). False when the step has no pose. */
+	bool RestartScene(double& OutTwaDeg, double& OutKnots);
+	/** Content/Prologue/prologue.json read and checked; false (with a log line) if it is missing or invalid. */
+	static bool LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError = nullptr);
+
 	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather. */
 	void ApplyWeatherSettings();
 	/** Applies the quality tier from settings to engine scalability and the water mesh. */
@@ -149,6 +163,11 @@ private:
 	FDateTime SessionDate;
 	bool bSessionDate = false;
 	bool bWindArgsRead = false;
+	// Prologue step 1: the scene, its clock (the boat's physics time when it last stepped) and the last call voiced.
+	Sailing::FScriptedScene Scene;
+	bool bScene = false, bSceneStarted = false, bSceneRecorded = false;
+	double SceneTime = 0.0;
+	int32 SceneCallSerial = 0;
 public:
 	/** Graphics G4: changes the running session's weather in place (Pause > Change conditions): no reload. */
 	void ApplyConditions(const struct FSailConditions& Conditions);

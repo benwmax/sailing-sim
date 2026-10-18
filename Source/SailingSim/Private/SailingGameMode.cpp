@@ -4,6 +4,8 @@
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
+#include "SailSave.h"
+#include "SailingAudio.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
 #include "SailingHUD.h"
@@ -131,6 +133,23 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 		{
 			Lake.Terrain.SetLevelBelowPool(-C.LakeLevelFt * 0.3048);   // above the pool raises the water: the shore drops by as much
 		}
+	}
+	// Prologue step 1: the scene's stand-in wind until its own boat and weather exist (the command line still wins).
+	if (IsPrologueRun())
+	{
+		FString SceneError;
+		bScene = LoadPrologue(Scene, &SceneError);
+		if (bScene)
+		{
+			const Sailing::FSceneSetting& Set = Scene.GetSetting();
+			const double Kn = Set.StandInWindKn > 0.0 ? Set.StandInWindKn : Set.WindKn;
+			const double Gust = Set.StandInWindKn > 0.0 ? Set.StandInGustKn : Set.GustKn;
+			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = float(Kn);
+			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), Value)) GustOverride = float(FMath::Clamp(Gust / FMath::Max(Kn, 1.0) - 1.0, 0.0, 1.0));
+			UE_LOG(LogSailing, Display, TEXT("Prologue: \"%s\", %d steps, stand-in %s in %.0f kn gusting %.0f"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
+				int32(Scene.GetSteps().size()), UTF8_TO_TCHAR(Set.StandInBoat.c_str()), Kn, Gust);
+		}
+		else UE_LOG(LogSailing, Warning, TEXT("Prologue: %s"), *SceneError);
 	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingQuality="), Value))
 	{
@@ -941,4 +960,84 @@ void ASailingGameMode::FinishBenchmark()
 		return;
 	}
 	FPlatformMisc::RequestExit(false, TEXT("SailingBench finished"));
+}
+
+bool ASailingGameMode::IsPrologueRun()
+{
+	static uint32 Gen = MAX_uint32;
+	static bool bArg = false;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		int32 V = 0;
+		bArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingPrologue="), V) && V != 0;
+	}
+	return bArg;
+}
+
+bool ASailingGameMode::LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError)
+{
+	const FString Path = FPaths::ProjectContentDir() / TEXT("Prologue/prologue.json");
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *Path))
+	{
+		if (OutError) *OutError = FString::Printf(TEXT("%s not found"), *Path);
+		return false;
+	}
+	std::string Error;
+	if (!Out.LoadText(TCHAR_TO_UTF8(*Text), &Error))
+	{
+		if (OutError) *OutError = FString::Printf(TEXT("%s: %s"), *Path, UTF8_TO_TCHAR(Error.c_str()));
+		return false;
+	}
+	return true;
+}
+
+bool ASailingGameMode::RestartScene(double& OutTwaDeg, double& OutKnots)
+{
+	if (!bScene || Scene.GetSteps().empty()) return false;
+	if (Scene.IsActive()) Scene.RestartFromCheckpoint();
+	const std::string& At = Scene.GetCheckpoint();
+	const Sailing::FSceneStep* Pose = &Scene.GetSteps().front();
+	for (const Sailing::FSceneStep& S : Scene.GetSteps()) if (!At.empty() && S.Id == At) Pose = &S;
+	if (!Pose->bRestartPose) return false;
+	OutTwaDeg = Pose->RestartTwaDeg;
+	OutKnots = Pose->RestartSpeedKn;
+	return true;
+}
+
+void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailing::FSceneInput& Input)
+{
+	if (!bScene) return;
+	const double Now = Boat.GetState().Time;
+	if (!bSceneStarted)
+	{
+		bSceneStarted = true;
+		SceneTime = Now;
+		Scene.Start(Boat, WeatherState.Wind.SpeedKnots);
+	}
+	Scene.SetMeanWindKn(WeatherState.Wind.SpeedKnots);
+	Scene.Update(Boat, Input, FMath::Max(0.0, Now - SceneTime));
+	SceneTime = Now;
+	// The captain's voice: a recording named for the call id, if the pack has one (none yet: the caption carries it).
+	if (Scene.GetCallSerial() != SceneCallSerial)
+	{
+		SceneCallSerial = Scene.GetCallSerial();
+		const FString CallId = UTF8_TO_TCHAR(Scene.GetCallId().c_str());
+		const FString Cue = CallId.Replace(TEXT("."), TEXT("_")).Replace(TEXT("-"), TEXT("_"));
+		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice);
+		UE_LOG(LogSailing, Display, TEXT("Prologue %.1f s: %s (repeat %d)"), Scene.GetElapsed(), *CallId, Scene.GetCallRepeats());
+	}
+	// The sim judged the scene finished: the save keeps it by id (rule 7), unless this run never writes the save.
+	if (Scene.IsComplete() && !bSceneRecorded)
+	{
+		bSceneRecorded = true;
+		const Sailing::FSceneResult& R = Scene.GetResult();
+		UE_LOG(LogSailing, Display, TEXT("Prologue done in %.0f s: %d steps answered, %d by the crew, %d repeats"), R.Seconds, R.StepsPassed, R.StepsAssisted, R.Retries);
+		if (!USailingSettings::IgnoresSavedChoices())
+		{
+			SailSaveStore::Progress().RecordScene(R, FDateTime::UtcNow());
+			USailSessionSave::Get()->Commit();
+		}
+	}
 }

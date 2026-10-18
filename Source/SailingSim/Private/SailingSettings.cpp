@@ -222,6 +222,7 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("BackJib"), EKeys::B);
 	Add(TEXT("BackJib"), EKeys::Gamepad_LeftThumbstick);
 	Add(TEXT("DockLines"), EKeys::Gamepad_RightThumbstick);
+	Add(TEXT("CrewAction"), EKeys::SpaceBar);   // Prologue step 1: answer the captain's call (clip on)
 	// Fleet: spinnaker, reefs, the board, the engine(s) and righting a capsized boat.
 	Add(TEXT("Spinnaker"), EKeys::N);
 	Add(TEXT("Reef"), EKeys::M);

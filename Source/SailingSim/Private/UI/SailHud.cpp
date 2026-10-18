@@ -439,6 +439,23 @@ void SSailHud::Construct(const FArguments& A)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(M)
 		[
 			SNew(SVerticalBox)
+			// Prologue step 1: the captain's call, in the rules callout's panel; shown in every HUD mode (it is the scene).
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 10.f)
+			[
+				SNew(SBox).WidthOverride(560.f).Visibility_Lambda([this]() { return bCaptain ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(4.f)[ SNew(SBorder).BorderImage(Rounded(Warn, 2.f)) ] ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)
+					[
+						PanelBox(SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Captain"), EType::Eyebrow, Warn) ]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 2.f)[ TextAttr(Attr(CaptainText), EType::Ui, FSlateColor(Fg), true) ]
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda([this]() { return CaptainHint.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(CaptainHint), EType::Small, FSlateColor(Muted), true) ] ],
+							FMargin(16.f, 10.f), 4.f)
+					]
+				]
+			]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
 			[
 				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bSignals && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
@@ -659,6 +676,7 @@ void SSailHud::Refresh()
 			}
 		}
 	}
+	RefreshScene(*GM);
 	RefreshTraffic(*P, *GM);
 	// Key hints: up to three, from the situation.
 	TArray<FString> Hints;
@@ -669,6 +687,44 @@ void SSailHud::Refresh()
 	Hints.Add(KeyName(TEXT("Menu"), false) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+void SSailHud::RefreshScene(const ASailingGameMode& GM)
+{
+	// What the sim's scene says now (rule 8: the scene judges, the HUD only shows its caption and the answering keys).
+	const Sailing::FScriptedScene* Scene = GM.GetScene();
+	const FString Caption = Scene ? FString(UTF8_TO_TCHAR(Scene->GetCaption().c_str())) : FString();
+	bCaptain = !Caption.IsEmpty();
+	CaptainText = FText::FromString(Caption);
+	FString Hint;
+	const Sailing::FSceneStep* Step = Scene ? Scene->GetStep() : nullptr;
+	if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling)
+	{
+		using SailingBindings::Label;
+		const Sailing::FSceneExpectation& E = Step->Expect;
+		const FName Sheet = E.Sheet == "main" ? FName(TEXT("MainSheet")) : FName(TEXT("JibSheet"));
+		const TCHAR* SheetName = E.Sheet == "main" ? TEXT("main") : TEXT("jib");
+		switch (E.Type)
+		{
+		case Sailing::ESceneExpect::Action: Hint = FString::Printf(TEXT("%s: %s"), *Label(TEXT("CrewAction"), false, false), UTF8_TO_TCHAR(E.Action.c_str())); break;
+		case Sailing::ESceneExpect::Sheet:
+		{
+			const bool bEase = E.By > 0.0 || E.AtLeast >= 0.0;
+			Hint = FString::Printf(TEXT("%s: %s the %s"), *Label(Sheet, !bEase, false), bEase ? TEXT("ease") : TEXT("trim"), SheetName);
+			break;
+		}
+		case Sailing::ESceneExpect::Tack:
+		case Sailing::ESceneExpect::Gybe:
+		case Sailing::ESceneExpect::Hold:
+			Hint = FString::Printf(TEXT("%s / %s: steer"), *Label(TEXT("Tiller"), true, false), *Label(TEXT("Tiller"), false, false));
+			break;
+		case Sailing::ESceneExpect::None:
+		case Sailing::ESceneExpect::Station:
+		case Sailing::ESceneExpect::Count:
+		default: break;
+		}
+	}
+	CaptainHint = FText::FromString(Hint);
 }
 
 void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM)

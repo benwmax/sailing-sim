@@ -75,7 +75,7 @@ namespace
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
-			|| Action == TEXT("CockpitView");
+			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -875,9 +875,22 @@ void ASailboatPawn::ResetBoat()
 		}
 	}
 	float StartTwa = 0.f;
-	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingTWA="), StartTwa))
+	const bool bTwaArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingTWA="), StartTwa);
+	if (bTwaArg)
 	{
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa; // recordings and benchmarks start on a set point of sail
+	}
+	// Prologue step 1: (re)start on the scene's checkpoint pose, the point of sail and speed the step starts from; a reset
+	// while the scene runs takes it back to that checkpoint.
+	double ResetSpeedKnots = StartSpeedKnots;
+	if (ASailingGameMode* SceneGM = GetWorld()->GetAuthGameMode<ASailingGameMode>(); SceneGM && SceneGM->GetScene() && !bTrafficBoat && !bGhost)
+	{
+		double PoseTwa = 0.0, PoseKnots = 0.0;
+		if (SceneGM->RestartScene(PoseTwa, PoseKnots) && !bTwaArg)
+		{
+			StartYaw = GetWind().GetParams().FromDegrees - PoseTwa;
+			ResetSpeedKnots = PoseKnots;
+		}
 	}
 	Boat.GetMooringLines().clear();
 	// Soaks: -SailingMooring parks the player's boat on a buoy 12 m upwind of the start, head to wind with the sails up,
@@ -886,7 +899,7 @@ void ASailboatPawn::ResetBoat()
 	if (bMooring) StartYaw = GetWind().GetParams().FromDegrees;
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
-	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : StartSpeedKnots * kKnot);
+	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : ResetSpeedKnots * kKnot);
 	Boat.GetMutableState().Time = Time;
 	if (bMooring)
 	{
@@ -1074,6 +1087,25 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 					*FCareerContent::MedalName(CareerAward.Medal), int32(CareerAward.Seconds) / 60, int32(CareerAward.Seconds) % 60));
 			}
 			Save->Commit();
+		}
+	}
+	// Prologue step 1: the scripted scene follows this boat (the game mode owns it and judges it on the sim clock). Until the
+	// crew-station mode, the player is at the helm and the crew-action button answers the call that asks for an action.
+	if (!bTrafficBoat && !bGhost)
+	{
+		if (ASailingGameMode* SceneGM = GetWorld()->GetAuthGameMode<ASailingGameMode>(); SceneGM && SceneGM->GetScene())
+		{
+			const Sailing::FScriptedScene& Scene = *SceneGM->GetScene();
+			Sailing::FSceneInput In;
+			In.Controls = Controls;
+			In.Station = "helm";
+			const Sailing::FSceneStep* Step = Scene.GetStep();
+			if (bCrewActionPressed && Step && Scene.GetPhase() == Sailing::FScriptedScene::EPhase::Calling && Step->Expect.Type == Sailing::ESceneExpect::Action)
+			{
+				In.Actions.push_back(Step->Expect.Action);
+			}
+			bCrewActionPressed = false;
+			SceneGM->UpdateScene(Boat, In);
 		}
 	}
 	UpdateDrillVisuals();
@@ -2711,6 +2743,10 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		Plot.Start(GetMapPosition(), Boat.GetState().Time);
 		StatusMessage = TEXT("Plot cleared: dead reckoning from here");
 		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("CrewAction"))
+	{
+		bCrewActionPressed = true;   // the scene reads it after this frame's physics (TickAfterPhysics)
 	}
 	else if (Action == TEXT("BackJib"))
 	{

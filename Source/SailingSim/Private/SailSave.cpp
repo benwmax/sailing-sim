@@ -4,6 +4,7 @@
 #include "BoatModel.h"
 #include "Drills.h"
 #include "Learning.h"
+#include "ScriptedScene.h"
 #include "UI/SailCatalog.h"
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
@@ -299,6 +300,20 @@ FString FSailSave::ToJson() const
 		Certs->SetObjectField(C.Id, O);
 	}
 	Prog->SetObjectField(TEXT("certificates"), Certs);
+	TSharedRef<FJsonObject> Scenes = Obj();
+	for (const FSceneRecord& Sc : Progress.Scenes)
+	{
+		TSharedRef<FJsonObject> O = Obj();
+		O->SetBoolField(TEXT("done"), Sc.bDone);
+		O->SetNumberField(TEXT("plays"), Sc.Plays);
+		O->SetNumberField(TEXT("bestSeconds"), Sc.BestSeconds);
+		O->SetNumberField(TEXT("stepsPassed"), Sc.StepsPassed);
+		O->SetNumberField(TEXT("stepsAssisted"), Sc.StepsAssisted);
+		O->SetNumberField(TEXT("retries"), Sc.Retries);
+		O->SetStringField(TEXT("completedAt"), Sc.CompletedAt.ToIso8601());
+		Scenes->SetObjectField(Sc.Id, O);
+	}
+	Prog->SetObjectField(TEXT("scenes"), Scenes);
 	Root->SetObjectField(TEXT("progress"), Prog);
 
 	if (Raw.IsValid()) KeepUnknown(*Root, *Raw);
@@ -507,9 +522,46 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 				Out.Progress.Certificates.Add(C);
 			}
 		}
+		if (const TSharedPtr<FJsonObject> Scenes = Child(*P, TEXT("scenes")))
+		{
+			for (const auto& F : Scenes->Values)
+			{
+				if (!F.Value.IsValid() || F.Value->Type != EJson::Object || F.Key.IsEmpty()) continue;
+				const FJsonObject& O = *F.Value->AsObject();
+				FSceneRecord S;
+				S.Id = F.Key;
+				Read(O, TEXT("done"), S.bDone);
+				Read(O, TEXT("plays"), S.Plays);
+				Read(O, TEXT("bestSeconds"), S.BestSeconds);
+				Read(O, TEXT("stepsPassed"), S.StepsPassed);
+				Read(O, TEXT("stepsAssisted"), S.StepsAssisted);
+				Read(O, TEXT("retries"), S.Retries);
+				Read(O, TEXT("completedAt"), S.CompletedAt);
+				Out.Progress.Scenes.Add(S);
+			}
+		}
 	}
 	Say(bMigrated ? FString::Printf(TEXT("migrated from version %d"), Version) : FString(TEXT("ok")));
 	return bMigrated ? EResult::Migrated : EResult::Ok;
+}
+
+void FSailSave::FProgress::RecordScene(const Sailing::FSceneResult& Result, const FDateTime& NowUtc)
+{
+	if (!Result.bComplete || Result.SceneId.empty()) return;
+	const FString Id = UTF8_TO_TCHAR(Result.SceneId.c_str());
+	FSceneRecord* S = Scenes.FindByPredicate([&Id](const FSceneRecord& R) { return R.Id == Id; });
+	if (!S)
+	{
+		S = &Scenes.AddDefaulted_GetRef();
+		S->Id = Id;
+	}
+	if (!S->bDone) S->CompletedAt = NowUtc;
+	S->BestSeconds = S->bDone ? FMath::Min(S->BestSeconds, Result.Seconds) : Result.Seconds;
+	S->bDone = true;
+	++S->Plays;
+	S->StepsPassed = Result.StepsPassed;
+	S->StepsAssisted = Result.StepsAssisted;
+	S->Retries = Result.Retries;
 }
 
 // ---------------------------------------------------------------- the game's objects
