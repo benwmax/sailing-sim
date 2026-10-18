@@ -1293,17 +1293,46 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
     float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
     h *= k; d *= k; ho *= k;
 }
-// Inside the player's hull (Visual V7): the water drops 2 m below its deck so it never shows in the cockpit. The plan
-// view is the physics' FHullShape (ellipse forward of the widest station, taper aft), 80% of the beam so the dip stays
-// behind the topsides when she heels.
-float2 hr = p.xy - HullClipA.xy;
-float hbx = hr.x * HullClipA.z + hr.y * HullClipA.w;
-float hby = -hr.x * HullClipA.w + hr.y * HullClipA.z - HullClipC.z;
-float hfu = (hbx - HullClipB.z) / max(HullClipB.x - HullClipB.z, 0.1);
-float hau = (HullClipB.z - hbx) / max(HullClipC.x, 0.1);
-float hhb = hbx > HullClipB.z ? HullClipB.w * sqrt(saturate(1.0 - hfu * hfu)) : HullClipB.w - HullClipC.y * hau * hau;
-float hin = saturate((0.8 * hhb - abs(hby)) / 0.1) * step(HullClipB.y + 0.2, hbx) * step(hbx, HullClipB.x - 0.3) * HullClipC.w;
-return float3(d.x * 100.0, d.y * 100.0, (h + ho - 2.0 * hin) * 100.0);
+// Inside the player's hull: the drawn sea must not show in her cockpit or cabin. Where the water surface is inside the
+// hull, above the physics' FHullShape bottom (the hull's frame: A origin, B/C/D its axes in the world), it drops just
+// below that bottom, so it hides under the hull's own skin and never shows outside it: under the overhangs, where the
+// bottom is above the water, nothing changes (V7 dropped 2 m over 80% of the deck plan, which opened a pit beside the
+// bow and the stern seen from a low camera). The drop is continuous, zero where the water meets the skin. Water over the
+// sheer (a knockdown) still drops, faded over the last 15 cm inside the gunwale. HullClipH.z = 1: the V7 clip
+// (-SailingClassicHullClip).
+// Only the vertices within her length of the hull's origin do the work (the water vertex shader runs for every ring
+// vertex: done everywhere it cost 0.3 ms on High).
+float hin = 0.0;
+float2 hr0 = p.xy - HullClipA.xy;
+[branch] if (HullClipA.w > 0.0 && dot(hr0, hr0) < (HullClipE.x - HullClipE.y) * (HullClipE.x - HullClipE.y))
+{
+    float3 hq = float3(p.xy + d, h + ho) - HullClipA.xyz;
+    float hbx = dot(hq, HullClipB.xyz);
+    float hby = dot(hq, HullClipC.xyz) - HullClipF.z;
+    float hbz = dot(hq, HullClipD.xyz);
+    float hfu = (hbx - HullClipE.z) / max(HullClipE.x - HullClipE.z + 0.02, 0.1);
+    float hau = (HullClipE.z - hbx) / max(HullClipF.x, 0.1);
+    float hhb = hbx > HullClipE.z ? HullClipE.w * sqrt(saturate(1.0 - hfu * hfu)) : max(HullClipE.w - HullClipF.y * hau * hau, 0.02);
+    float hku = (hbx - HullClipG.x) / max(HullClipG.y, 0.1);
+    float hkd = (abs(hku) <= 1.0 ? HullClipG.z * (1.0 - hku * hku) : -(abs(hku) - 1.0) * HullClipG.y * (hku > 0.0 ? HullClipH.x : HullClipH.y)) - HullClipG.w;
+    float hsh = HullClipB.w + HullClipC.w * max(0.0, (hbx - HullClipD.w) / max(HullClipE.x - HullClipD.w, 0.001));
+    float hbot = -hkd + (hkd + hsh) * pow(max(saturate(abs(hby) / max(hhb, 0.001)), 0.0001), HullClipF.w);
+    float himm = hbz - hbot;
+    float hedge = hbz < hsh ? 1.0 : saturate((hhb - abs(hby)) / 0.15);
+    hin = min(2.0, max(0.0, 1.1 * himm + 0.03 * saturate(himm / 0.05)) / max(HullClipD.z, 0.3))
+        * hedge * saturate((hbx - HullClipE.y) / 0.05) * step(hbx, HullClipE.x);
+    // V7: 80% of the deck plan, flat, 2 m down.
+    float2 hh = normalize(HullClipB.xy + float2(1e-6, 0.0));
+    float2 hr = p.xy - HullClipA.xy;
+    float obx = dot(hr, hh);
+    float oby = -hr.x * hh.y + hr.y * hh.x - HullClipF.z;
+    float ofu = (obx - HullClipE.z) / max(HullClipE.x - HullClipE.z, 0.1);
+    float oau = (HullClipE.z - obx) / max(HullClipF.x, 0.1);
+    float ohb = obx > HullClipE.z ? HullClipE.w * sqrt(saturate(1.0 - ofu * ofu)) : HullClipE.w - HullClipF.y * oau * oau;
+    float oin = 2.0 * saturate((0.8 * ohb - abs(oby)) / 0.1) * step(HullClipE.y + 0.2, obx) * step(obx, HullClipE.x - 0.3);
+    hin = lerp(hin, oin, HullClipH.z);
+}
+return float3(d.x * 100.0, d.y * 100.0, (h + ho - hin) * 100.0);
 """
 
 V4_SHADE = """
@@ -1658,11 +1687,16 @@ def build_water_v4():
     common = ["P", "Cam", "T", "Fade", "Chop"] + [f"W{i}" for i in range(NUM_LONG)] + [f"A{i}" for i in range(NUM_LONG // 4)] \
         + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect",
            "Sea", "SeaRect", "SeaP"]
-    wpo = custom(mat, V4_WPO, common + ["HullClipA", "HullClipB", "HullClipC"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
+    hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
+    wpo = custom(mat, V4_WPO, common + hull_clip, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
-    # The player's hull (AWaterSurface): A (x, y m, cos, sin heading), B (bow x, stern x, widest x, half beam), C (aft
-    # length, transom beam loss, hull centre y, on).
-    for i, (n, v) in enumerate((("HullClipA", (0, 0, 1, 0)), ("HullClipB", (3, -3, 0, 1)), ("HullClipC", (3, 0.2, 0, 0)))):
+    # The player's hull (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D the hull's x/y/z axes in the world
+    # with sheer z, sheer rise, sheer rise from x; E bow x, stern x, widest x, half beam; F aft length, transom beam loss,
+    # centre y, bilge power; G waterline mid x, half length, canoe depth, depth offset; H bow and stern overhang slopes,
+    # 1 = the V7 clip.
+    defaults = ((0, 0, 0, 0), (1, 0, 0, 0.62), (0, 1, 0, 0.1), (0, 0, 1, 1), (3.45, -3.41, -0.4, 1.22), (3, 0.27, 0, 4),
+                (-0.15, 2.9, 0.4, 0), (1.1, 0.5, 0, 0))
+    for i, (n, v) in enumerate(zip(hull_clip, defaults)):
         connect(vector(mat, n, v, -1800, 3000 + 100 * i), "RGBA", wpo, n)
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
