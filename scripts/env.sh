@@ -2,7 +2,9 @@
 # Shared paths for the build scripts. Override UE_ROOT if Unreal lives elsewhere.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# SAILING_ROOT points the scripts at another checkout of the project (gate.sh builds and packages origin/main in
+# Artifacts/main-tree with this branch's scripts).
+REPO_ROOT="${SAILING_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PROJECT="$REPO_ROOT/SailingSim.uproject"
 UE_ROOT="${UE_ROOT:-/Users/Shared/Epic Games/UE_5.8}"
 UBT_BUILD="$UE_ROOT/Engine/Build/BatchFiles/Mac/Build.sh"
