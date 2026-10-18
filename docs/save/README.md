@@ -19,7 +19,7 @@ one; the front end's stills use that to show a given save's choices.
 
 Writes are atomic: the text goes to `profile.json.tmp`, which is then renamed over `profile.json`, so a crash or a full
 disk leaves the old file whole. The game writes whenever the settings are saved (every Settings row), when a session
-starts and when a drill is passed. `GameUserSettings.ini` is still written beside it, so an older build keeps working.
+starts and ends, when a drill is passed (with its lesson's medal), after each quiz, and when a race is over. `GameUserSettings.ini` is still written beside it, so an older build keeps working.
 
 ## Schema (version 1)
 
@@ -37,6 +37,7 @@ starts and when a drill is passed. `GameUserSettings.ini` is still written besid
     "start": { "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "launchSpotAt": { "lat": 32.82334959, "lon": -96.50040047 },
                "boat": "J22", "weather": "AfternoonBreeze",
                "startHour": 15, "traffic": 1, "weatherSeed": 2027, "gaugeLakeLevel": false },
+    "career": { "openEverything": false },
     "input": { "bindings": "Input.ini" }
   },
   "lastSession": {
@@ -51,7 +52,10 @@ starts and when a drill is passed. `GameUserSettings.ini` is still written besid
     "drillsPassed": [ "LeaveTheDock" ],
     "racesSailed": 0, "racesWon": 0,
     "logbook": { "sessions": 0, "entries": 0, "nauticalMiles": 0 },
-    "hoursSailed": 0
+    "hoursSailed": 0,
+    "lessons": { "day-sailor.leave-the-dock": { "medal": "silver", "bestSeconds": 212.4, "runs": 2, "quizPassed": true, "quizBest": 2, "quizOf": 3 } },
+    "checkrides": {},
+    "certificates": {}
   }
 }
 ```
@@ -76,8 +80,11 @@ lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's 
 
 Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bindings` names that file.
 
-The progress block is a placeholder for the career phase: only `drillsPassed` is kept by the game so far. The other
-counts are read, kept and written back, but nothing adds to them yet.
+The progress block is the career's (`docs/career/README.md`): `lessons` (best medal, fastest medal run, quiz),
+`checkrides` (the written quiz's best) and `certificates` (when each was earned, UTC), each an object keyed by its id;
+`hoursSailed` and the logbook counts grow at each session's end, `racesSailed` and `racesWon` when a race is over.
+`settings.career.openEverything` is Settings > Gameplay > Open everything. These were added in version 1 without a
+version change: an older version-1 file reads them as empty.
 
 ## Versions and migration
 

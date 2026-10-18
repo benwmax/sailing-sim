@@ -332,6 +332,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
 - Save file (`docs/save/`): `FSailSave`/`SailSaveStore` (`SailSave.h`) keep the settings, last session and progress in
   `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README.
+- Career (`docs/career/`): tiers, lessons, medal rules, checkrides and unlocks in `Content/Career/career.json` (`Tools/career/validate.py`); `Career.h`
+  (plain) grades from `FDrillRunner` into the save's progress, `SailCareer::*` is the game's edge; locks are menu-only; `SailingSim.Career.*`.
 - Geo anchor (`docs/geo-anchor/`): `FGeoAnchor` (`GeoAnchor.h`) is the bakes' tmerc exactly (pyproj to nanometres); persistent
   places go by id, then lat/lon (`ResolvePlacement`, the save's `launchSpotAt`); convert at the edge with `SailingNav::LatLonAt`/`MapAt`.
 - Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`

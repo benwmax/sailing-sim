@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "game": "SailingSim",
+  "settings": { "start": { "world": "ray-hubbard", "boat": "J22" } },
+  "lastSession": null,
+  "progress": {
+    "drillsPassed": ["LeaveTheDock", "SailATriangle", "HeaveTo", "CrewOverboardFigureEight"],
+    "racesSailed": 0, "racesWon": 0,
+    "logbook": { "sessions": 5, "entries": 31, "nauticalMiles": 9.8 },
+    "hoursSailed": 3.4,
+    "lessons": {
+      "day-sailor.leave-the-dock": { "medal": "gold", "bestSeconds": 161, "runs": 3, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "day-sailor.sail-a-triangle": { "medal": "silver", "bestSeconds": 372, "runs": 2, "quizPassed": true, "quizBest": 3, "quizOf": 4 },
+      "day-sailor.heave-to": { "medal": "gold", "bestSeconds": 58, "runs": 1, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "day-sailor.crew-overboard-figure-eight": { "medal": "bronze", "bestSeconds": 340, "runs": 2, "quizPassed": false, "quizBest": 1, "quizOf": 4 }
+    },
+    "checkrides": {},
+    "certificates": {}
+  }
+}

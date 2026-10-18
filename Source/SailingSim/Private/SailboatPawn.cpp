@@ -4,6 +4,7 @@
 #include "SailingHUD.h"
 #include "UI/SailHud.h"
 #include "SailSession.h"
+#include "SailSave.h"
 #include "GroomComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "PowerVesselActor.h"
@@ -657,6 +658,16 @@ bool ASailboatPawn::IsTrimAssistActive() const
 	return USailingSettings::Get()->bTrimAssist && Boat.GetState().Time - LastManualTrimTime > kTrimAssistIdleSeconds;
 }
 
+void ASailboatPawn::EndPlay(const EEndPlayReason::Type Reason)
+{
+	// Career 1: the session's time on the world clock (the boat's physics time) and the logbook's counts (rule 3).
+	if (!bTrafficBoat && !bGhost && bLogStarted && !IsCaptureMode())
+	{
+		SailCareer::RecordSession(Boat.GetState().Time, Logbook.GetEntries().Num(), LogNm);
+	}
+	Super::EndPlay(Reason);
+}
+
 void ASailboatPawn::BeginPlay()
 {
 	Super::BeginPlay();
@@ -1019,13 +1030,25 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		Ctx.bTiedUp = IsTiedUp();
 		Ctx.bBackJib = Controls.bBackJib;
 		Ctx.MaxContactSpeed = MaxContactKnots;
+		DrillCollisions += Tel.bCollision && !bDrillTouching;
+		bDrillTouching = Tel.bCollision;
 		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
 		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
-		if (DrillRunner.IsComplete() && !bTrafficBoat)
+		if (DrillRunner.IsComplete() && !bTrafficBoat && !bGhost)
 		{
 			USailSessionSave* Save = USailSessionSave::Get();
 			const int32 Index = int32(DrillRunner.GetDrill()) - 1;
-			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); Save->Commit(); }
+			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) Save->DrillsPassed.Add(Index);
+			// Career 1: the lesson's medal, from the runner and what the boat counted (rule 8), then the save.
+			if (!bDrillGraded)
+			{
+				bDrillGraded = true;
+				CareerAward = SailCareer::RecordRun(MakeCareerRun(DrillRunner, MaxContactKnots, DrillCollisions, DrillInfractions,
+					FSailSave::WorldId(USailingSettings::Get()->World), FSailSave::BoatId(int32(Boat.GetConfig().Type))));
+				if (CareerAward.IsValid()) AddLogEvent(FString::Printf(TEXT("Lesson: %s, %s medal (%d:%02d)"), DrillName(DrillRunner.GetDrill()),
+					*FCareerContent::MedalName(CareerAward.Medal), int32(CareerAward.Seconds) / 60, int32(CareerAward.Seconds) % 60));
+			}
+			Save->Commit();
 		}
 	}
 	UpdateDrillVisuals();
@@ -1757,6 +1780,9 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		ApplyStateToTransform();
 	}
 	MaxContactKnots = 0.0;
+	DrillCollisions = DrillInfractions = 0;
+	bDrillTouching = bDrillGraded = false;
+	CareerAward = FCareerProgress::FAward();
 	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
 	DrillRunner.Start(Drill, Boat, WindFrom);
 	if (!bTrafficBoat) ++DrillSerial;
