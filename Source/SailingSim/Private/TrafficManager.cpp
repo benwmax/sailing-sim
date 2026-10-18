@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "Career.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "SailSession.h"
@@ -502,6 +503,7 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		for (size_t I = Before; I < Coach.GetScores().size(); ++I)
 		{
 			Player->AddLogEvent(FString::Printf(TEXT("Rules %+d: %s"), Coach.GetScores()[I].Points, UTF8_TO_TCHAR(Coach.GetScores()[I].Text.c_str())));
+			Player->NoteRuleScore(Coach.GetScores()[I].Points);
 		}
 	}
 	if (bRace && Race.IsOver() && !bRaceLogged)
@@ -509,6 +511,7 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		bRaceLogged = true;
 		if (const FRaceEntry* E = Race.FindEntry(FTrafficSim::PlayerId))
 		{
+			SailCareer::RecordRace(E->bFinished, E->Place);   // Career 1: races sailed and won
 			Player->AddLogEvent(E->bFinished ? FString::Printf(TEXT("Race: finished %d of %d (%d:%02d)"), E->Place, int32(Race.Entries.size()),
 				int32(E->FinishTime - Race.StartTime()) / 60, int32(E->FinishTime - Race.StartTime()) % 60)
 				: FString::Printf(TEXT("Race: %s"), UTF8_TO_TCHAR(E->Status.c_str())));

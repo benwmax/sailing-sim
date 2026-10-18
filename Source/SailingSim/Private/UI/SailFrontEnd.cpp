@@ -12,6 +12,8 @@
 #include "SailingBindings.h"
 #include "Drills.h"
 #include "Learning.h"
+#include "Career.h"
+#include "SailSave.h"
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/PlayerController.h"
@@ -271,6 +273,7 @@ void SSailFrontEnd::Pop()
 		else if (Current() == ESailScreen::Title) Confirm(TEXT("Quit Sailing Sim?"), TEXT("Quit"), [this]() { UKismetSystemLibrary::QuitGame(Player.Get(), Player.Get(), EQuitPreference::Quit, false); });
 		return;
 	}
+	if (Current() == ESailScreen::Quiz) { Quiz.Reset(); CheckrideTierId.Reset(); }
 	Stack.Pop();
 	// Rebuild the uncovered screen: its summary rows may show choices made further on.
 	const ESailScreen S = Stack.Last().Screen;
@@ -458,6 +461,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Briefing: E = BuildBriefing(); break;
 	case ESailScreen::Quiz: if (Quiz.Num() == 0) StartQuiz(); E = BuildQuiz(); break;
 	case ESailScreen::Credits: E = BuildCredits(); break;
+	case ESailScreen::Career: E = BuildCareer(); break;
 	}
 	E.Screen = S;
 	return E;
@@ -475,13 +479,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	TSharedPtr<SWidget> First;
 	auto Item = [&](const FString& Label, const FString& Sub, FSimpleDelegate Do)
 	{
-		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).Padding(FMargin(18.f, 6.f))
+		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines.
+		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).Padding(FMargin(18.f, 3.f))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(Label, EType::MenuItem, Fg) ]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SailUI::Text(Sub, EType::Small, Muted) ]
 		];
-		Menu->AddSlot().AutoHeight().Padding(0.f, 2.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
+		Menu->AddSlot().AutoHeight().Padding(0.f, 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
 		if (!First.IsValid()) First = B;
 	};
 	const SailCatalog::FWorld& LastWorld = SailCatalog::World(Save->Last.World);
@@ -492,6 +497,19 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 			FSimpleDelegate::CreateLambda([this, Save]() { Pending = Save->Last; CastOff(); }));
 	}
 	Item(TEXT("Sail"), TEXT("Pick world, boat and weather"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Push(ESailScreen::World); }));
+	{
+		// Career 1: the first open tier without its certificate, and how far along it is.
+		const FCareerProgress Career = SailCareer::Progress();
+		FString Sub = TEXT("Lessons, checkrides, certificates");
+		for (const FCareerTier& T : FCareerContent::Get().Tiers)
+		{
+			if (!Career.IsTierOpen(T.Id) || !T.IsReady()) continue;
+			Sub = Career.HasCertificate(T.CertificateId) ? T.CertificateName
+				: FString::Printf(TEXT("%s · %d of %d lessons"), *T.Name, Career.LessonsAtLeast(T, ECareerMedal::Bronze), T.Lessons.Num());
+			if (!Career.HasCertificate(T.CertificateId)) break;
+		}
+		Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
+	}
 	const int32 Passed = Save->DrillsPassed.Num();
 	Item(TEXT("ASA 101 drills"), FString::Printf(TEXT("6 drills · %d passed"), Passed), FSimpleDelegate::CreateLambda([this, Save]()
 	{
@@ -548,13 +566,18 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
+	// Career 1: worlds open as certificates are earned (or all, with Settings > Gameplay > Open everything).
+	const FCareerProgress Career = SailCareer::Progress();
+	const bool bAll = SailCareer::OpenEverything();
+	if (!Career.IsWorldOpen(FSailSave::WorldId(FMath::Min(Pending.World, 1)), bAll)) { Pending.World = 0; Pending.LaunchSpot = 0; }
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
 	{
+		const FString Locked = Career.WorldLockReason(W.Id, bAll);
 		TSharedPtr<FSlateBrush> Art = TextureBrush(W.CardTexture);
 		TSharedRef<SHorizontalBox> Facts = SNew(SHorizontalBox);
 		for (const TPair<FString, FString>& F : W.Facts) Facts->AddSlot().FillWidth(1.f)[ Fact(F.Key, F.Value) ];
 		const int32 Index = W.Index;
-		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(0.f)).IsSelected_Lambda([this, Index]() { return Pending.World == Index; })
+		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(0.f)).IsEnabled(Locked.IsEmpty()).IsSelected_Lambda([this, Index]() { return Pending.World == Index; })
 			.OnClicked_Lambda([this, Index]() { if (Pending.World != Index) { Pending.World = Index; Pending.LaunchSpot = 0; if (Index == 0 && Pending.Mode == ESailMode::Passage) Pending.Mode = ESailMode::Free; } Push(ESailScreen::Launch); })
 		[
 			SNew(SVerticalBox)
@@ -562,10 +585,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 			[
 				SNew(SOverlay)
 				+ SOverlay::Slot()[ SNew(SBox).HeightOverride(300.f)[ SNew(SImage).Image_Lambda([Art]() { return Art.Get(); }) ] ]
-				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(16.f)[ Pill(W.Tagline, W.Index == 0) ]
+				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(16.f)[ Pill(Locked.IsEmpty() ? W.Tagline : FString(TEXT("Locked")), W.Index == 0) ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 20.f, 24.f, 6.f)[ SailUI::Text(W.Name, EType::CardTitle, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 16.f)[ SNew(SBox).HeightOverride(80.f)[ SailUI::Text(W.Description, EType::Body, Muted, true) ] ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 16.f)[ SNew(SBox).HeightOverride(80.f)[ SailUI::Text(Locked.IsEmpty() ? W.Description : Locked, EType::Body, Locked.IsEmpty() ? Muted : Fg, true) ] ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 22.f)[ Facts ]
 		];
 		Cards->AddSlot().FillWidth(1.f).Padding(W.Index == 0 ? FMargin(0.f, 0.f, 16.f, 0.f) : FMargin(16.f, 0.f, 0.f, 0.f))[ Card ];
@@ -672,12 +695,17 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
+	// Career 1: boats open as certificates are earned; a locked boat's card says which certificate opens it.
+	const FCareerProgress Career = SailCareer::Progress();
+	const bool bAll = SailCareer::OpenEverything();
+	if (!Career.IsBoatOpen(FSailSave::BoatId(Pending.Boat), bAll)) Pending.Boat = 0;
 	FocusedBoat = Pending.Boat;
 	TSharedRef<SUniformGridPanel> Grid = SNew(SUniformGridPanel).SlotPadding(FMargin(8.f));
 	for (const SailCatalog::FBoat& B : SailCatalog::Boats())
 	{
 		const int32 T = B.Type;
-		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(14.f))
+		const FString Locked = Career.BoatLockReason(FSailSave::BoatId(T), bAll);
+		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(14.f)).IsEnabled(Locked.IsEmpty())
 			.IsSelected_Lambda([this, T]() { return Pending.Boat == T; })
 			.OnFocused_Lambda([this, T]() { FocusedBoat = T; })
 			.OnClicked_Lambda([this, T]() { if (Pending.Boat == T) Push(ESailScreen::Conditions); else Pending.Boat = T; })
@@ -685,7 +713,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SNew(SBoatIcon).Type(T) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 2.f)[ SailUI::Text(B.Name, EType::CardTitleS, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B.TypeLine, EType::Small, Muted) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Locked.IsEmpty() ? B.TypeLine : Locked, EType::Small, Locked.IsEmpty() ? Muted : Fg, true) ]
 		];
 		Grid->AddSlot(T % 4, T / 4)[ Card ];
 		if (T == Pending.Boat) E.Focus = Card;
@@ -902,14 +930,15 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const FModeCard& M : Modes)
 	{
-		const bool bOk = M.Mode != ESailMode::Passage || Pending.World == 1;
+		const FString GulfLocked = SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2), SailCareer::OpenEverything());
+		const bool bOk = M.Mode != ESailMode::Passage || (Pending.World == 1 && GulfLocked.IsEmpty());
 		const ESailMode Mode = M.Mode;
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(18.f, 16.f)).IsEnabled(bOk).IsSelected_Lambda([this, Mode]() { return Pending.Mode == Mode; })
 			.OnClicked_Lambda([this, Mode]() { Pending.Mode = Mode; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(M.Name, EType::CardTitleS, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(bOk ? M.Line : TEXT("Galveston world only"), EType::Small, Muted) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(bOk ? FString(M.Line) : (Pending.World != 1 ? FString(TEXT("Galveston world only")) : GulfLocked), EType::Small, Muted) ]
 		];
 		Cards->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 12.f, 0.f)[ B ];
 		if (M.Mode == Pending.Mode) E.Focus = B;
@@ -1174,6 +1203,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		Add(SNew(SSailChoice).Label(TEXT("Controls")).Options({ TEXT("Simple"), TEXT("Full") }).Index_Lambda([S]() { return S->ControlLayout == ESailingControlLayout::Simple ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->ControlLayout = I == 0 ? ESailingControlLayout::Simple : ESailingControlLayout::Full; S->Save(); })
 			.Note(TEXT("Easy always uses Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest.")));
+		Section(TEXT("Career"));
+		Add(SNew(SSailChoice).Label(TEXT("Open everything")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bOpenEverything ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bOpenEverything = I == 1; S->Save(); })
+			.Note(TEXT("Every world and boat, whatever certificates you hold. Lessons, medals and certificates still count.")));
 		Section(TEXT("Units"));
 		Add(SNew(SSailChoice).Label(TEXT("Speed")).Options({ TEXT("Knots"), TEXT("mph"), TEXT("km/h") }).Index_Lambda([S]() { return S->SpeedUnits; })
 			.OnChanged_Lambda([S](int32 I) { S->SpeedUnits = I; S->Save(); }));
@@ -1446,9 +1479,24 @@ void SSailFrontEnd::StartQuiz()
 {
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
+	QuizLessonId.Reset();
+	QuizCareerLine.Reset();
+	FRandomStream Rng{ int32(FPlatformTime::Cycles()) };
+	if (!CheckrideTierId.IsEmpty())
+	{
+		// Career 1: a checkride's written quiz, from the Career screen.
+		const FCareerContent& Content = FCareerContent::Get();
+		const FCareerTier* T = Content.Tier(CheckrideTierId);
+		Quiz = T ? Content.MakeCheckrideQuiz(*T, FLearningContent::Get(), Rng) : TArray<FQuizQuestion>();
+		QuizIndex = QuizRight = 0;
+		QuizChosen = -1;
+		QuizDrillName = T ? T->Checkride.Title : FString();
+		QuizDebrief = T ? FString::Printf(TEXT("The written part of the checkride: %d questions across the tier's %d lessons. %d right passes."), Quiz.Num(),
+			T->Checkride.Lessons.Num(), FMath::CeilToInt32(T->Checkride.Quiz.Pass * Quiz.Num() - 1e-6)) : FString();
+		return;
+	}
 	const ASailboatPawn* P = Pawn();
 	const ESailingDrill Drill = P ? P->GetDrill().GetDrill() : ESailingDrill::None;
-	FRandomStream Rng{ int32(FPlatformTime::Cycles()) };
 	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng);
 	QuizIndex = QuizRight = 0;
 	QuizChosen = -1;
@@ -1460,6 +1508,15 @@ void SSailFrontEnd::StartQuiz()
 		FString Outcome = D.GetOutcome();
 		if (Outcome.IsEmpty() && FDrillRunner::Outcomes(Drill).Num()) Outcome = FDrillRunner::Outcomes(Drill)[0];   // stills before the drill ends
 		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots());
+		// Career 1: the lesson this drill counted for, and its medal; the quiz closes it.
+		const FCareerProgress::FAward& A = P->GetCareerAward();
+		if (const FCareerLesson* L = A.IsValid() ? FCareerContent::Get().Lesson(A.LessonId) : nullptr)
+		{
+			QuizLessonId = L->Id;
+			const int32 Sec = FMath::RoundToInt32(A.Seconds);
+			QuizDebrief += FString::Printf(TEXT("%sLesson: %s · %s medal in %d:%02d%s."), QuizDebrief.IsEmpty() ? TEXT("") : TEXT("\n\n"), *L->Title,
+				*FCareerContent::MedalName(A.Medal), Sec / 60, Sec % 60, A.bNewBest && A.Medal != ECareerMedal::None ? TEXT(", a new best") : TEXT(""));
+		}
 	}
 }
 
@@ -1477,9 +1534,15 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 		Box->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 4.f)[ SailUI::Text(QuizDebrief, EType::Body, Muted, true) ];
 	if (bDone)
 	{
-		TSharedRef<SSailButton> Done = ActionButton(TEXT("Back to sailing"), FSimpleDelegate::CreateLambda([this]() { Quiz.Reset(); Close(); }));
+		const bool bCheckride = !CheckrideTierId.IsEmpty();
+		TSharedRef<SSailButton> Done = ActionButton(bCheckride ? TEXT("Back to the career") : TEXT("Back to sailing"), FSimpleDelegate::CreateLambda([this, bCheckride]()
+		{
+			if (bCheckride) Pop();
+			else { Quiz.Reset(); Close(); }
+		}));
 		Box->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 6.f)[ SailUI::Text(FString::Printf(TEXT("%d of %d right"), QuizRight, Quiz.Num()), EType::ScreenTitle, QuizRight == Quiz.Num() ? Starboard : Fg) ];
 		Box->AddSlot().AutoHeight()[ SailUI::Text(QuizRight == Quiz.Num() ? TEXT("All correct. On to the next drill.") : TEXT("The drill panel's coach notes and the briefing cover the ones you missed."), EType::Body, Muted, true) ];
+		if (!QuizCareerLine.IsEmpty()) Box->AddSlot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ SailUI::Text(QuizCareerLine, EType::Body, Accent, true) ];
 		Box->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SNew(SBox).WidthOverride(320.f)[ Done ] ];
 		E.Focus = Done;
 	}
@@ -1523,6 +1586,27 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 				if (QuizIndex >= Quiz.Num())
 				{
 					if (ASailboatPawn* B = Pawn()) B->AddLogEvent(FString::Printf(TEXT("Quiz after %s: %d of %d"), *QuizDrillName, QuizRight, Quiz.Num()));
+					// Career 1: the score goes to the lesson, or to the checkride (which may award the certificate).
+					const FCareerContent& Content = FCareerContent::Get();
+					if (const FCareerTier* T = Content.Tier(CheckrideTierId))
+					{
+						const bool bAwarded = SailCareer::RecordCheckrideQuiz(T->Id, QuizRight, Quiz.Num());
+						if (bAwarded)
+						{
+							TArray<FString> Opens;
+							for (const FString& Id : T->Unlocks.Tiers) if (const FCareerTier* X = Content.Tier(Id)) Opens.Add(X->Name);
+							QuizCareerLine = T->CertificateName + TEXT(" earned.") + (Opens.Num() ? FString::Printf(TEXT(" Open now: %s."), *FString::Join(Opens, TEXT(", "))) : FString());
+						}
+						else if (T->Checkride.Quiz.Passes(QuizRight, Quiz.Num())) QuizCareerLine = FString::Printf(TEXT("Passed. The %s is already yours."), *T->CertificateName);
+						else QuizCareerLine = FString::Printf(TEXT("%d right passes: read the briefings again and retake it from the Career screen."),
+							FMath::CeilToInt32(T->Checkride.Quiz.Pass * Quiz.Num() - 1e-6));
+					}
+					else if (const FCareerLesson* L = Content.Lesson(QuizLessonId))
+					{
+						const bool bPass = SailCareer::RecordLessonQuiz(L->Id, QuizRight, Quiz.Num());
+						QuizCareerLine = bPass ? FString::Printf(TEXT("%s: lesson closed."), *L->Title)
+							: FString::Printf(TEXT("%d right closes the lesson: sail the drill again to retake the quiz."), FMath::CeilToInt32(L->QuizPass * Quiz.Num() - 1e-6));
+					}
 				}
 				Rebuild();
 			}));
@@ -1541,6 +1625,158 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 		SNew(SBox).WidthOverride(940.f)[ PanelBox(Box, FMargin(34.f, 28.f)) ]
 	];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip the quiz")) }, TEXT("Questions in ASA 101 wording, set on the lake"));
+	return E;
+}
+
+// ---------------------------------------------------------------- Career
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	const FCareerContent& Content = FCareerContent::Get();
+	const FCareerProgress Career = SailCareer::Progress();
+	const FSailSave::FProgress& Prog = Career.Get();
+	auto MedalColour = [](ECareerMedal M)
+	{
+		return M == ECareerMedal::Gold ? Hex(0xE2B84E) : (M == ECareerMedal::Silver ? Hex(0xC4CDD3) : (M == ECareerMedal::Bronze ? Hex(0xC08552) : Dim));
+	};
+	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Career); Show(Stack.Last(), true); };
+	// The tier on show: the one chosen, else the first open tier without its certificate.
+	const FCareerTier* Shown = Content.Tier(CareerTierId);
+	for (const FCareerTier& T : Content.Tiers)
+	{
+		if (Shown) break;
+		if (Career.IsTierOpen(T.Id) && T.IsReady() && !Career.HasCertificate(T.CertificateId)) Shown = &T;
+	}
+	if (!Shown && Content.Tiers.Num()) Shown = &Content.Tiers[0];
+
+	// Left: the tiers.
+	TSharedRef<SVerticalBox> Tiers = SNew(SVerticalBox);
+	for (const FCareerTier& T : Content.Tiers)
+	{
+		const bool bOpen = Career.IsTierOpen(T.Id), bHeld = Career.HasCertificate(T.CertificateId);
+		FString State;
+		if (bHeld) State = TEXT("Certificate earned");
+		else if (!bOpen)
+		{
+			const FCareerTier* By = Content.Tiers.FindByPredicate([&T](const FCareerTier& X) { return X.Unlocks.Tiers.Contains(T.Id); });
+			State = By ? FString::Printf(TEXT("Earn the %s"), *By->CertificateName) : FString(TEXT("Locked"));
+		}
+		else if (!T.IsReady()) State = TEXT("Lessons to come");
+		else State = FString::Printf(TEXT("%d of %d lessons · %d at silver"), Career.LessonsAtLeast(T, ECareerMedal::Bronze), T.Lessons.Num(), Career.LessonsAtLeast(T, ECareerMedal::Silver));
+		const FString Id = T.Id;
+		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(16.f, 12.f)).IsSelected_Lambda([Shown, Id]() { return Shown && Shown->Id == Id; })
+			.OnClicked_Lambda([this, Id, Rebuild]() { CareerTierId = Id; Rebuild(); })
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(T.Name, EType::CardTitleS, bOpen ? Fg : Muted) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(bHeld ? TEXT("Certified") : (bOpen ? TEXT("Open") : TEXT("Locked")), bHeld) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(State, EType::Small, Muted) ]
+		];
+		Tiers->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Card ];
+		if (Shown && Shown->Id == T.Id) E.Focus = Card;
+	}
+	// The logbook's totals under the tiers.
+	Tiers->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+	[
+		PanelBox(SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::Printf(TEXT("%.1f"), Prog.HoursSailed), TEXT("Hours")) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::Printf(TEXT("%.1f"), Prog.LogbookMiles), TEXT("Miles")) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::Printf(TEXT("%d/%d"), Prog.RacesWon, Prog.RacesSailed), TEXT("Races won")) ], FMargin(16.f, 12.f))
+	];
+
+	// Right: the tier's lessons and checkride.
+	TSharedRef<SVerticalBox> Detail = SNew(SVerticalBox);
+	if (Shown)
+	{
+		const FCareerTier& T = *Shown;
+		const bool bOpen = Career.IsTierOpen(T.Id);
+		const int32 WorldIndex = FMath::Max(FSailSave::WorldIndex(T.WorldId), 0);
+		TArray<FString> BoatNames;
+		for (const FString& B : T.Boats) if (FSailSave::BoatIndex(B) >= 0) BoatNames.Add(SailCatalog::Boat(FSailSave::BoatIndex(B)).Name);
+		Detail->AddSlot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("%s · %s"), *(WorldIndex < 2 ? SailCatalog::World(WorldIndex).Name : FString(TEXT("The Gulf"))),
+			BoatNames.Num() ? *FString::Join(BoatNames, TEXT(", ")) : TEXT("boats to come")), EType::Eyebrow, Accent) ];
+		Detail->AddSlot().AutoHeight().Padding(0.f, 6.f, 0.f, 4.f)[ SailUI::Text(T.Summary, EType::Body, Fg, true) ];
+		if (!T.Learning.IsEmpty()) Detail->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)[ SailUI::Text(T.Learning, EType::Small, Muted, true) ];
+		for (int32 I = 0; I < T.Lessons.Num(); ++I)
+		{
+			const FCareerLesson& L = T.Lessons[I];
+			const FSailSave::FLessonRecord* R = Prog.FindLesson(L.Id);
+			const ECareerMedal M = Career.LessonMedal(L.Id);
+			const int32 Sec = R ? FMath::RoundToInt32(R->BestSeconds) : 0;
+			const FString QuizText = !R || R->QuizOf == 0 ? FString(TEXT("Quiz to take")) : (R->bQuizPassed ? FString(TEXT("Quiz passed")) : FString::Printf(TEXT("Quiz %d of %d"), R->QuizBest, R->QuizOf));
+			const ESailingDrill Drill = L.Drill;
+			const FString TierWorld = T.WorldId, TierBoat = T.Boats.Num() ? T.Boats[0] : FString(TEXT("J22"));
+			TSharedRef<SSailButton> Row = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOpen)
+				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat]()
+				{
+					// Sail this lesson: its drill, in the tier's world and first boat; the flow goes on from the launch spot.
+					Pending = USailSessionSubsystem::MakeDefault();
+					Pending.World = FMath::Max(FSailSave::WorldIndex(TierWorld), 0);
+					Pending.LaunchSpot = 0;
+					Pending.Boat = FMath::Max(FSailSave::BoatIndex(TierBoat), 0);
+					Pending.Mode = ESailMode::Drill;
+					Pending.DrillIndex = int32(Drill) - 1;
+					Push(ESailScreen::Launch);
+				})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ SNew(SBox).WidthOverride(22.f)[ SailUI::Text(FString::FromInt(I + 1), EType::Value, Muted) ] ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(L.Title, EType::Ui, Fg) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f)[ SNew(SBox).WidthOverride(110.f)[ SailUI::Text(QuizText, EType::Small, R && R->bQuizPassed ? Starboard : Muted) ] ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f)[ SNew(SBox).WidthOverride(56.f)[ SailUI::Text(M == ECareerMedal::None ? FString(TEXT("–")) : FString::Printf(TEXT("%d:%02d"), Sec / 60, Sec % 60), EType::Value, Fg) ] ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(84.f)[ SailUI::Text(M == ECareerMedal::None ? FString(TEXT("No medal")) : FCareerContent::MedalName(M), EType::Label, MedalColour(M)) ] ]
+			];
+			Detail->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ Row ];
+		}
+		if (T.Lessons.Num() == 0)
+		{
+			Detail->AddSlot().AutoHeight().Padding(0.f, 6.f)[ PanelBox(SailUI::Text(T.Notes.IsEmpty() ? FString(TEXT("Lessons for this tier are still being written.")) : T.Notes, EType::Body, Muted, true), FMargin(16.f, 12.f)) ];
+		}
+		// The checkride and the certificate.
+		FString Why;
+		const bool bReady = Career.IsCheckrideReady(T.Id, &Why);
+		const bool bHeld = Career.HasCertificate(T.CertificateId);
+		const FSailSave::FCertificateRecord* Cert = Prog.Certificates.FindByPredicate([&T](const FSailSave::FCertificateRecord& C) { return C.Id == T.CertificateId; });
+		const FSailSave::FCheckrideRecord* Ride = Prog.FindCheckride(T.Checkride.Id);
+		FString RideLine = bHeld ? FString::Printf(TEXT("%s earned %s."), *T.CertificateName, Cert ? *Cert->EarnedAt.ToString(TEXT("%b %d, %Y")) : TEXT(""))
+			: (bReady ? FString::Printf(TEXT("Ready: every lesson at %s or better. The written part is %d questions; %.0f%% passes."), *FCareerContent::MedalName(T.Checkride.MinMedal).ToLower(),
+				T.Checkride.Quiz.Questions, T.Checkride.Quiz.Pass * 100.0) : Why);
+		if (Ride && Ride->QuizOf > 0 && !bHeld) RideLine += FString::Printf(TEXT(" Best so far %d of %d."), Ride->QuizBest, Ride->QuizOf);
+		const FString TierId = T.Id;
+		TSharedRef<SSailButton> Take = ActionButton(bHeld ? TEXT("Retake the written checkride") : TEXT("Take the written checkride"),
+			FSimpleDelegate::CreateLambda([this, TierId]() { CheckrideTierId = TierId; Quiz.Reset(); Push(ESailScreen::Quiz); }));
+		Detail->AddSlot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
+		[
+			PanelBox(SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(T.Checkride.Title.IsEmpty() ? FString(TEXT("Checkride")) : T.Checkride.Title, EType::CardTitleS, Fg) ]
+					+ SHorizontalBox::Slot().AutoWidth()[ Pill(bHeld ? TEXT("Certified") : (bReady ? TEXT("Ready") : TEXT("Not yet")), bHeld || bReady) ]
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 10.f)[ SailUI::Text(RideLine, EType::Body, Muted, true) ]
+				+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(360.f).HAlign(HAlign_Left).Visibility(bReady ? EVisibility::Visible : EVisibility::Collapsed)[ Take ] ],
+				FMargin(18.f, 14.f))
+		];
+	}
+
+	E.Content = SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ Header(Content.School.IsEmpty() ? FString(TEXT("Career")) : Content.School, TEXT("Learn to sail"), 0) ]
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Tiers ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
+		];
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
+		TEXT("A lesson sails its drill; free sail stays open whatever you hold"));
 	return E;
 }
 

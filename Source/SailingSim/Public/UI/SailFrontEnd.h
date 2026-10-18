@@ -15,7 +15,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career };
 
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
@@ -63,6 +63,8 @@ private:
 	FEntry BuildBriefing();
 	FEntry BuildQuiz();
 	void StartQuiz();
+	/** Career 1 (docs/career): the tiers, the chosen tier's lessons with their medals, its checkride and certificate. */
+	FEntry BuildCareer();
 	/** Release readiness: every credit in CREDITS.md, after the Unreal Engine notice, as scrolling text. */
 	FEntry BuildCredits();
 	void Show(const FEntry& Entry, bool bForward);
@@ -83,6 +85,9 @@ private:
 	TArray<FQuizQuestion> Quiz;
 	int32 QuizIndex = 0, QuizChosen = -1, QuizRight = 0;
 	FString QuizDebrief, QuizDrillName;
+	// Career 1: the tier shown on the Career screen; the checkride whose quiz is running (empty: a drill's quiz); the
+	// lesson a drill's quiz closes; the career's line on the quiz's last page.
+	FString CareerTierId, CheckrideTierId, QuizLessonId, QuizCareerLine;
 	TFunction<void()> ConfirmAction;
 	// Screen transitions (3.3): a 180 ms fade with a 24 px slide.
 	double TransitionStart = 0.0;
