@@ -247,3 +247,45 @@ about 1.5 min.
 passed on these physics inputs, so the gate ran the other 145); package skipped (the packaged game was already this
 tree); bench 659 s (36 launches); 12.5 min in all. Tightest views: High storm 50.2 fps (floor 45), High crew 53.2 and
 slip 53.4; Medium storm 68.0 (floor 60).
+
+## Against main for a view under its floor (Oct 18 2026)
+
+Storm High made the scoped gate flap: 44.3 to 44.6 fps in the clouds' slow phase, on main and on any branch run back to
+back, and 50.2 in a fast launch ([storm-high-2026-10-18.md](../budget/storm-high-2026-10-18.md)). A scoped gate now
+treats a view under its floor as a regression question. That view alone (and only views under their floor) is benched
+again on this tree and on a package of origin/main, back to back, one launch each, with the same seconds. It passes
+as **flapping** when this tree is within 1.0 fps of main (or reaches the floor on the rerun), and fails when it is more
+than 1 fps under main.
+
+- **The main package** is `Artifacts/apps/main.app`, keyed by main's `GAME_HASH` in `Artifacts/gate/main.hash`. It is
+  packaged in a git worktree, `Artifacts/main-tree` (detached at origin/main, so the working tree is untouched), by this
+  branch's `build.sh` and `package-mac.sh` pointed at it with `SAILING_ROOT` (env.sh). The git-ignored MetaHumans are
+  APFS-cloned in. It is built only when a view is under its floor and main moved, never when nothing failed.
+- **The verdict is kept.** The pair goes into `bench-<scope>.csv` as `rerun_fps` and `main_fps`, so a rerun that skips
+  the bench prints the same verdict. Every main run is also appended to `Artifacts/gate/main-bench.csv`.
+- **`--scope all` stays absolute.** It never runs main. A view under its floor fails, and the line names it as flapping
+  when the last main run of that view on the current main package was within 1 fps.
+- `--no-main-check` turns it off. The bench-skip and heavy-test keys are unchanged.
+
+First run, `scripts/gate.sh --scope clouds` on this branch (main a58eb1ec plus the gate change):
+
+```
+[gate 0 s] build
+[gate 19 s] tests: the heavy set passed on these physics inputs; 145 others
+[gate 95 s] package
+[gate 201 s] bench beam8,beat15,storm,gulf-sea,bridge,helm-eye on High, storm on Medium
+[gate 331 s] bench done
+storm          High      44.6   25.27    21.0  UNDER 45
+gate: 1 view(s) under the gate or lost
+[gate 338 s] main package: building main a58eb1ec in Artifacts/main-tree
+[gate 488 s] back to back with main a58eb1ec: storm High
+[gate 543 s] storm High: this tree 45.0, main 44.6
+storm          High      44.6   25.27    21.0  under 45, but 45.0 on the rerun beside main 44.6: pass (flapping)
+gate: pass, 1 flapping: storm High under 45, but 45.0 on the rerun beside main 44.6
+[gate 543 s] gate passed
+```
+
+The other views: beam8 58.5, beat15 62.0, gulf-sea 69.5, helm-eye 59.5, bridge 64.5 (High), storm Medium 65.8. The
+first main package, from a fresh worktree, took 150 s: the editor build was 34 s (UBA), and the cook was full but fast
+on the shared DDC. When main has not moved, the main step is just the two launches, about 55 s. Running the same
+command again skipped everything and printed the same table and verdict in about 1 s.
