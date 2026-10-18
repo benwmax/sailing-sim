@@ -316,7 +316,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		// T1: each tree's own look and a small lean (FTreeLook, from its position: the same after every regroup).
 		const FTreeLook Look = bTreeLooks ? TreeLookFor(I) : FTreeLook();
 		const FVector At(I.Position.X * CmPerMeter, I.Position.Y * CmPerMeter, (I.Ground - Drop) * CmPerMeter);
-		const FRotator Rot(Look.LeanPitch, I.Yaw, Look.LeanRoll);
+		const FRotator Rot(bTreeLean ? Look.LeanPitch : 0.f, I.Yaw, bTreeLean ? Look.LeanRoll : 0.f);
 		(bNear ? Near : (bMid ? Mid : Far))[Index].Add(FTransform(Rot, At, FVector(ScaleXY, ScaleXY, Scale)));
 		(bNear ? NearD : (bMid ? MidD : FarD))[Index].Append({ Look.Tint, Look.Deciduous, Look.AutumnHue });
 		// The lighting-only crown under a near tree, sized as the far crown would be for this tree, 85% of it.
@@ -331,7 +331,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// T1: the custom data after the instances (one float triple each), one render-state update per component.
 	auto SetLooks = [this](UInstancedStaticMeshComponent* C, const TArray<float>& D)
 	{
-		if (!bTreeLooks) return;
+		if (!bTreeLooks || C->NumCustomDataFloats < 3) return;
 		for (int32 K = 0; K * 3 + 2 < D.Num(); ++K) C->SetCustomData(K, TArrayView<const float>(&D[K * 3], 3), false);
 		C->MarkRenderStateDirty();
 	};
@@ -517,7 +517,13 @@ void ALakeTerrainActor::PlaceTrees()
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingTreeRayTracing="), TreeRT);
 		const bool bTreeRayTracing = bTreeLight && TreeRT != 0;
 		bTreeLooks = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeLooks"));
-		for (int32 Pass = 0; Pass < (bTreeLight ? 4 : 3); ++Pass)
+		// Measuring (docs/budget/storm-high-2026-10-18.md): the looks without the lean or without the custom data, the
+		// lighting without the proxies or without the mid and far crowns.
+		bTreeLean = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeLean"));
+		const bool bTreeData = bTreeLooks && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeData"));
+		const bool bTreeProxies = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoTreeProxy"));
+		const bool bCrownLight = bTreeLight && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoCrownLight"));
+		for (int32 Pass = 0; Pass < (bTreeLight && bTreeProxies ? 4 : 3); ++Pass)
 		{
 			for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S)
 			{
@@ -559,12 +565,12 @@ void ALakeTerrainActor::PlaceTrees()
 					// T1: the opaque mid and far crowns are cheap occluders, so the lighting sees them (Lumen's scene: ray tracing
 					// on High and Ultra, distance fields on Medium): their insides and the ground under them darken. The leaf
 					// cards stay out.
-					C->bAffectDynamicIndirectLighting = bTreeLight && Pass >= 1;
-					C->bAffectDistanceFieldLighting = bTreeLight && Pass >= 1;
+					C->bAffectDynamicIndirectLighting = bCrownLight && Pass >= 1;
+					C->bAffectDistanceFieldLighting = bCrownLight && Pass >= 1;
 					C->bVisibleInRayTracing = bTreeRayTracing && Pass >= 1;
 					// T1: each tree's tint, autumn turn and autumn colour (FTreeLook) for M_TreeLeaves / M_TreeCrown (without
 					// them the materials take their defaults: the model's green, no season).
-					C->NumCustomDataFloats = bTreeLooks ? 3 : 0;
+					C->NumCustomDataFloats = bTreeData ? 3 : 0;
 					// Shadows (virtual shadow maps), cached as if still: the sway never re-renders the trees' shadow
 					// pages (thousands of swaying trees would invalidate the cache every frame).
 					// Graphics G6: the far band casts none (-SailingFarTreeShadows=1 to compare).
