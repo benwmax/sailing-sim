@@ -510,7 +510,15 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   runs); steps name their `station`, expectations their `controls` (worked in order, `FSceneInput::Worked`). Grind,
   TravellerDump, Station and CrewAction are a key layer (`SailingBindings::SameLayer`) sharing buttons with boat
   commands the crew hold; `SailingSim.Prologue.Stations`.
-- Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
+- Prologue maxi (step 3, `docs/prologue/README.md`): `EBoatType::Maxi` is the PC's made-up 100 ft maxi; her hull is the
+  exported sections (`FHullShape::Stations`, from `Tools/boats/maxi/sections.json` via `make_maxi_hull.py` ->
+  `MaxiHullData.inl`; the formula's fields are only a stand-in fit for the water clip and BoatExport), fixed appendages
+  float their own volume (`FBoatConfig::AppendageVolume`), reefs can change the jib (`ReefJibFraction`), a wheel has a
+  rate (`WheelHardOverSeconds`). Estimated polar: `Tools/boats/maxi/estimate_polar.py`. `FSceneLimits` (EasyAssists.h)
+  is the scene's cap and anti-broach, applied after Easy mode's while a scene runs. The prologue sails her on the
+  Gulf's offshore spot (`setting.reefs`; `-SailingPrologueBoat=J22` is the stand-in); she is off the Boat screen and
+  the pause menu until her model lands (the PC's list is in the README).
+- Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,

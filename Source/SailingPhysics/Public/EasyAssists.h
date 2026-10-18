@@ -93,6 +93,32 @@ namespace Sailing
 		static constexpr double kRealisticNoGoDeg = 35.0;
 	};
 
+	/**
+	 * A scripted scene's assisted limits (the prologue, docs/prologue/README.md step 3): FEasyAssists' righting cap and
+	 * steadier helm without the rest of Easy mode, so the maxi in the mistral never capsizes or broaches whatever the
+	 * player does at their station. The scene sets them; normal sailing never does (off, every knob is the boat's own).
+	 */
+	struct SAILINGPHYSICS_API FSceneLimits
+	{
+		bool bEnabled = false;
+		// The heel cap: a righting assist from SoftDeg short of it, growing with the square of the heel past that, reaching
+		// CapLeverM times the boat's weight at the cap (FBoatConfig::HeelCapDeg). 35 deg lets a gust lay her rail in the
+		// water (the drama) but never her spreaders.
+		double HeelCapDeg = 35.0;
+		double HeelCapSoftDeg = 8.0;
+		double CapLeverM = 2.0;
+		// No broach: the rudders keep this share of the grip they lose to ventilation heeled (a broach is the rudder
+		// letting go as she heels and rounds up), and the yaw is damped twice as hard (a round-up starts slower).
+		double RudderVentScale = 0.25;
+		double YawDampingScale = 2.0;
+
+		static FSceneLimits For(bool bOn) { FSceneLimits L; L.bEnabled = bOn; return L; }
+		/** Sets the cap, rudder ventilation and yaw damping on the boat's config. Off, only the rudders' ventilation goes
+		 *  back to the boat's own (FBoatConfig::Make): the cap and yaw damping are FEasyAssists::ApplyTo's, so apply that
+		 *  first and this after it. */
+		void ApplyTo(FBoatConfig& Config) const;
+	};
+
 	/** Where the bow is against the no-go cue: clear, close to it (the early warning), or inside. */
 	enum class ENoGoCue : unsigned char { Clear, Near, Inside };
 	SAILINGPHYSICS_API ENoGoCue NoGoCueFor(const FBoatTelemetry& T, const FEasyAssists& Assists);

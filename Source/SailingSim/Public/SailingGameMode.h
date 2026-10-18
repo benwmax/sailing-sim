@@ -96,6 +96,10 @@ public:
 	bool RestartScene(double& OutTwaDeg, double& OutKnots);
 	/** Content/Prologue/prologue.json read and checked; false (with a log line) if it is missing or invalid. */
 	static bool LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError = nullptr);
+	/** Prologue step 3: the scene sails its own boat (setting.boat, the maxi) unless -SailingPrologueBoat names its stand-in;
+	 *  the reefs the crew start with (setting.reefs, or the stand-in's). */
+	bool IsSceneStandIn() const { return bScene && bSceneStandIn; }
+	int32 GetSceneReefs() const { return bScene ? SceneReefs : 0; }
 
 	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather. */
 	void ApplyWeatherSettings();
@@ -165,7 +169,8 @@ private:
 	bool bWindArgsRead = false;
 	// Prologue step 1: the scene, its clock (the boat's physics time when it last stepped) and the last call voiced.
 	Sailing::FScriptedScene Scene;
-	bool bScene = false, bSceneStarted = false, bSceneRecorded = false;
+	bool bScene = false, bSceneStarted = false, bSceneRecorded = false, bSceneStandIn = false;
+	int32 SceneReefs = 0;
 	double SceneTime = 0.0;
 	int32 SceneCallSerial = 0;
 public:

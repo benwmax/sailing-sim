@@ -103,8 +103,10 @@ namespace Sailing
 	{
 		std::string Boat, World, Weather, Rain;
 		double WindKn = 0.0, GustKn = 0.0, SeaHsM = 0.0;
+		int Reefs = 0;             // reefs the crew start with (the maxi's gale sails)
 		std::string StandInBoat;
 		double StandInWindKn = 0.0, StandInGustKn = 0.0;
+		int StandInReefs = 0;
 		std::string ThenCut, ThenTier; // where the scene hands over when it ends
 	};
 

@@ -286,7 +286,7 @@ namespace Sailing
 		for (const std::string& St : S.Stations) if (CrewStationFromName(St) == ECrewStation::Count) C.Bad("scene", "unknown station \"" + St + "\"");
 		if (const FValue* Set = C.Obj(Root, "setting", "scene", true))
 		{
-			C.OnlyKeys(*Set, "setting", { "boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "stand_in", "then" });
+			C.OnlyKeys(*Set, "setting", { "boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "stand_in", "then" });
 			S.Setting.Boat = C.Str(*Set, "boat", "setting", true);
 			S.Setting.World = C.Str(*Set, "world", "setting");
 			S.Setting.Weather = C.Str(*Set, "weather", "setting");
@@ -294,12 +294,14 @@ namespace Sailing
 			S.Setting.WindKn = C.Num(*Set, "wind_kn", "setting", 0.0, true);
 			S.Setting.GustKn = C.Num(*Set, "gust_kn", "setting", S.Setting.WindKn);
 			S.Setting.SeaHsM = C.Num(*Set, "sea_hs_m", "setting", 0.0);
+			S.Setting.Reefs = int(C.Num(*Set, "reefs", "setting", 0.0));
 			if (const FValue* In = C.Obj(*Set, "stand_in", "setting", false))
 			{
-				C.OnlyKeys(*In, "setting.stand_in", { "boat", "wind_kn", "gust_kn" });
+				C.OnlyKeys(*In, "setting.stand_in", { "boat", "wind_kn", "gust_kn", "reefs" });
 				S.Setting.StandInBoat = C.Str(*In, "boat", "setting.stand_in", true);
 				S.Setting.StandInWindKn = C.Num(*In, "wind_kn", "setting.stand_in", S.Setting.WindKn);
 				S.Setting.StandInGustKn = C.Num(*In, "gust_kn", "setting.stand_in", S.Setting.StandInWindKn);
+				S.Setting.StandInReefs = int(C.Num(*In, "reefs", "setting.stand_in", 0.0));
 			}
 			if (const FValue* Then = C.Obj(*Set, "then", "setting", false))
 			{

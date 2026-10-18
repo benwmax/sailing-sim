@@ -64,10 +64,29 @@ namespace Sailing
 
 	FStationConfig FStationConfig::For(const FBoatConfig& Boat)
 	{
-		// The J/22 stand-in's hardware (a #16 two-speed winch for the jib, a tiller turned into a wheel). The maxi's
-		// pedestal grinders, longer sheet and slower wheel come with its class (prologue step 3).
+		// The J/22 stand-in's hardware (a #16 two-speed winch for the jib, a tiller turned into a wheel) by default; a boat
+		// with a wheel turns it at her own rate (FBoatConfig::WheelHardOverSeconds).
 		FStationConfig C;
-		(void)Boat;
+		if (Boat.WheelHardOverSeconds > 0.0) C.WheelHardOverSeconds = Boat.WheelHardOverSeconds;
+		if (Boat.Type == EBoatType::Maxi)
+		{
+			// The maxi (prologue step 3): the jib sheet runs to a primary driven by two linked pedestals, which the player
+			// grinds with three more grinders (four sprinting at 350 W), through the shafts and the winch's gears (80%).
+			// Top gear brings in 1.2 m/s unloaded (big primaries in first gear). With two at 600 W even the luffing J4's
+			// 3-4 kN let the sheet in at 0.1 m/s: a minute to get it near home. The J3's and J4's clews (the reefed
+			// headsails) sweep about 8 m from hard in to eased; easing round the big drum is 2 m/s (a quarter of the
+			// travel a second). The mainsheet and traveller are a pedestal of their own: half the dinghy-sized rates.
+			C.GrinderPowerW = 1400.0;
+			C.WinchEfficiency = 0.8;
+			C.MaxLineSpeedMs = 1.2;
+			C.JibSheetTravelM = 8.0;
+			C.EaseRate = 0.25;
+			C.MainSheetRate = 0.18;
+			C.TravellerRate = 0.4;
+			// She tacks on the helm and the trim in 30 kn under her gale sails (RunTack: 17 s); the J/22's heavy-air help
+			// (the jib let fly early, the main eased through the wind) stops her head to wind.
+			C.bTackHelp = false;
+		}
 		return C;
 	}
 
@@ -207,7 +226,7 @@ namespace Sailing
 			Crew.JibSheet = std::max(Crew.JibSheet, Target);
 		}
 		Crew.Tiller = CrewHelm.Update(Boat);
-		if (Station == ECrewStation::Helm) TackHelp(Boat, Crew);
+		if (Station == ECrewStation::Helm && Config.bTackHelp) TackHelp(Boat, Crew);
 		else { TackPhase = 0; Crew.bBackJib = false; }
 
 		// The player's hands at their station.

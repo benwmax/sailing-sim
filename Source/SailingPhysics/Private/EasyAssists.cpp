@@ -29,6 +29,23 @@ namespace Sailing
 		Config.HeelCapLeverM = bEnabled ? CapLeverM : Own.HeelCapLeverM;
 	}
 
+	void FSceneLimits::ApplyTo(FBoatConfig& Config) const
+	{
+		const FBoatConfig Own = FBoatConfig::Make(Config.Type);
+		if (bEnabled)
+		{
+			Config.HeelCapDeg = HeelCapDeg;
+			Config.HeelCapSoftDeg = HeelCapSoftDeg;
+			Config.HeelCapLeverM = CapLeverM;
+			Config.YawDampingLinear = YawDampingScale * Own.YawDampingLinear;
+		}
+		for (size_t I = 0; I < Config.Foils.size() && I < Own.Foils.size(); ++I)
+		{
+			if (Config.Foils[I].Role != EFoilRole::Rudder) continue;
+			Config.Foils[I].VentDepth = Own.Foils[I].VentDepth * (bEnabled ? RudderVentScale : 1.0);
+		}
+	}
+
 	void FEasyAssists::ApplyTo(FAutoTrimSettings& Settings) const
 	{
 		const FAutoTrimSettings Own;

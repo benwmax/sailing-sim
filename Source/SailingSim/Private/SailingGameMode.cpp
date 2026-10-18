@@ -62,6 +62,32 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	// Command-line overrides (benchmarks, recordings) are applied to settings for this run only.
 	USailingSettings* Settings = USailingSettings::Get();
 	FString Value;
+	// Prologue step 3: the scene's own boat (setting.boat, the maxi), or its stand-in with -SailingPrologueBoat=J22 (steps 1
+	// and 2's J/22 in the stand-in wind, for comparison); -SailingBoat still wins. Until the mistral coast exists (step 4)
+	// the maxi sails the Gulf's offshore spot, 15 nm south of Galveston: the only water in the game deep enough for her
+	// 6 m draft. The command line's world and launch spot still win.
+	FString SceneError;
+	if (IsPrologueRun())
+	{
+		bScene = LoadPrologue(Scene, &SceneError);
+		if (bScene)
+		{
+			const Sailing::FSceneSetting& Set = Scene.GetSetting();
+			FString Want = UTF8_TO_TCHAR(Set.Boat.c_str());
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingPrologueBoat="), Want);
+			bSceneStandIn = !Set.StandInBoat.empty() && Want.Equals(UTF8_TO_TCHAR(Set.StandInBoat.c_str()), ESearchCase::IgnoreCase);
+			SceneReefs = bSceneStandIn ? Set.StandInReefs : Set.Reefs;
+			// -SailingBoat wins (the pawn applies it again; resolved here so the world below follows it).
+			const bool bBoatArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingBoat="), Value);
+			const int32 Match = USailingSettings::MatchBoatName(bBoatArg ? Value : Want);
+			if (Match >= 0) Settings->BoatType = Match;
+			if (!bSceneStandIn && Settings->BoatType == int32(Sailing::EBoatType::Maxi) && !FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value))
+			{
+				Settings->World = 2;
+				Settings->LaunchSpot = 2;
+			}
+		}
+	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value))
 	{
 		// 0 or "Lake", 1 or "Galveston", 2 or "Gulf".
@@ -134,20 +160,21 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			Lake.Terrain.SetLevelBelowPool(-C.LakeLevelFt * 0.3048);   // above the pool raises the water: the shore drops by as much
 		}
 	}
-	// Prologue step 1: the scene's stand-in wind until its own boat and weather exist (the command line still wins).
+	// Prologue: the scene's wind (the stand-in's with the stand-in boat) until the gale preset exists (the command line
+	// still wins).
 	if (IsPrologueRun())
 	{
-		FString SceneError;
-		bScene = LoadPrologue(Scene, &SceneError);
 		if (bScene)
 		{
 			const Sailing::FSceneSetting& Set = Scene.GetSetting();
-			const double Kn = Set.StandInWindKn > 0.0 ? Set.StandInWindKn : Set.WindKn;
-			const double Gust = Set.StandInWindKn > 0.0 ? Set.StandInGustKn : Set.GustKn;
+			const bool bStandInWind = bSceneStandIn && Set.StandInWindKn > 0.0;
+			const double Kn = bStandInWind ? Set.StandInWindKn : Set.WindKn;
+			const double Gust = bStandInWind ? Set.StandInGustKn : Set.GustKn;
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = float(Kn);
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), Value)) GustOverride = float(FMath::Clamp(Gust / FMath::Max(Kn, 1.0) - 1.0, 0.0, 1.0));
-			UE_LOG(LogSailing, Display, TEXT("Prologue: \"%s\", %d steps, stand-in %s in %.0f kn gusting %.0f"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
-				int32(Scene.GetSteps().size()), UTF8_TO_TCHAR(Set.StandInBoat.c_str()), Kn, Gust);
+			UE_LOG(LogSailing, Display, TEXT("Prologue: \"%s\", %d steps, %s%s in %.0f kn gusting %.0f, %d reefs"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
+				int32(Scene.GetSteps().size()), UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(Settings->BoatType))), bSceneStandIn ? TEXT(" (stand-in)") : TEXT(""),
+				Kn, Gust, SceneReefs);
 		}
 		else UE_LOG(LogSailing, Warning, TEXT("Prologue: %s"), *SceneError);
 	}

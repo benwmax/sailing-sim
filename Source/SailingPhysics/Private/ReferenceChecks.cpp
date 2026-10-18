@@ -314,7 +314,7 @@ namespace Sailing
 			Out.push_back(Check("Capsize", std::string(C.Name) + " righted from her side", Run.RightingSeconds, 3.0, 30.0, "s",
 				"Righted in about 10-30 s with the crew on the board or the righting line (SUN-S-004, H16-C-001)"));
 		}
-		for (EBoatType T : { EBoatType::J22, EBoatType::Catalina22, EBoatType::Catalina30 })
+		for (EBoatType T : { EBoatType::J22, EBoatType::Catalina22, EBoatType::Catalina30, EBoatType::Maxi })
 		{
 			const FBoatConfig C = FBoatConfig::Make(T);
 			Out.push_back(Check("Capsize", std::string(C.Name) + " knocked down to 85 deg, 30 s later", HeelAfterCapsize(C, 85.0, 12.0, 30.0), 0.0, 35.0, "deg",
@@ -340,6 +340,13 @@ namespace Sailing
 			// The ILCA's top speed in a big gust, both ways: a steady 22 kn, and a 16 kn day gusting to about 22 in W1's puffs.
 			// The sailor (auto-trim) dumps the sheet in the hand, sheets in against a roll to windward and sits back on the
 			// plane, and must stay upright for the whole three minutes (a capsized run's peak means nothing).
+			// The prologue maxi in the mistral: two reefs and the J4, a broad reach in 30 kn gusting 37 (gust intensity 0.10; her own reefed gale
+			// sails; no spinnaker), upright throughout.
+			const FSpeedRun M = SpeedRun(FBoatConfig::Make(EBoatType::Maxi), 30.0, 120.0, false, 0.10, 13000.0, 120.0, 2);
+			Out.push_back(Check("Top speed", "Maxi 100 broad reach, 30 kn, two reefs: peak", M.PeakKnots, 18.0, 34.0, "kn",
+				"100 ft maxis reach in the 20s in a gale, one-second peaks into the low 30s (Comanche's 24 h record averaged 25.8 kn; method target)"));
+			Out.push_back(Check("Capsize", "Maxi 100 broad reach, 30 kn, two reefs: most tilt", M.MaxTiltDeg, 0.0, 60.0, "deg",
+				"A ballasted maxi stays on her feet reefed in a gale"));
 			const FBoatConfig Ilca = FBoatConfig::Make(EBoatType::ILCA7);
 			const FSpeedRun L = SpeedRun(Ilca, 22.0, 110.0, false, 0.0, 13000.0, 180.0);
 			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 22 kn: peak", L.PeakKnots, 10.0, 16.0, "kn", "ILCA about 15 kn GPS in a big gust"));
