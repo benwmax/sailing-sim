@@ -56,6 +56,8 @@ struct SAILINGSIM_API FSailSave
 		int32 Traffic = 1;
 		int32 WeatherSeed = 2027;
 		bool bGaugeLakeLevel = false;
+		/** Career (docs/career): every world and boat open whatever certificates are held. Optional in version 1. */
+		bool bOpenEverything = false;
 		/** Key bindings stay in Input.ini (USailingInputSettings); the save names where they are. */
 		FString InputBindings = TEXT("Input.ini");
 	};
@@ -85,10 +87,42 @@ struct SAILINGSIM_API FSailSave
 		FString RealDay;
 	};
 
-	/** Progress, ready for the career phase to extend. Only DrillsPassed is kept by the game so far. */
+	/** A career lesson (docs/career): its best medal and time, and its quiz. Medal is a string id (bronze, silver, gold). */
+	struct FLessonRecord
+	{
+		FString Id;
+		FString Medal;                       // empty: none yet
+		double BestSeconds = 0.0;            // the fastest run that earned a medal
+		int32 Runs = 0;
+		bool bQuizPassed = false;
+		int32 QuizBest = 0, QuizOf = 0;
+	};
+	/** A tier's checkride: its written quiz's best score. */
+	struct FCheckrideRecord
+	{
+		FString Id;
+		bool bPassed = false;
+		int32 QuizBest = 0, QuizOf = 0;
+	};
+	struct FCertificateRecord
+	{
+		FString Id;
+		FDateTime EarnedAt;                  // UTC
+	};
+
+	/** Progress: drills passed, the career's lessons, checkrides and certificates, races, the logbook's totals. The
+	 *  career fields were added in version 1 without a version change (a missing field reads as empty). */
 	struct FProgress
 	{
 		TArray<FString> DrillsPassed;        // drill ids
+		TArray<FLessonRecord> Lessons;       // by lesson id (career.json)
+		TArray<FCheckrideRecord> Checkrides; // by checkride id
+		TArray<FCertificateRecord> Certificates;
+		FLessonRecord* FindLesson(const FString& Id) { return Lessons.FindByPredicate([&Id](const FLessonRecord& L) { return L.Id == Id; }); }
+		const FLessonRecord* FindLesson(const FString& Id) const { return Lessons.FindByPredicate([&Id](const FLessonRecord& L) { return L.Id == Id; }); }
+		FCheckrideRecord* FindCheckride(const FString& Id) { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
+		const FCheckrideRecord* FindCheckride(const FString& Id) const { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
+		bool HasCertificate(const FString& Id) const { return Certificates.ContainsByPredicate([&Id](const FCertificateRecord& C) { return C.Id == Id; }); }
 		int32 RacesSailed = 0;
 		int32 RacesWon = 0;
 		int32 LogbookSessions = 0;
@@ -148,4 +182,6 @@ namespace SailSaveStore
 	SAILINGSIM_API void Commit();
 	/** What the load did, for the log and the UI script's Log key. */
 	SAILINGSIM_API FString Status();
+	/** The save's progress, which the career (Career.h) and the session totals edit in place; Commit writes it. */
+	SAILINGSIM_API FSailSave::FProgress& Progress();
 }

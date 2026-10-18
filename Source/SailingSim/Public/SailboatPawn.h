@@ -8,6 +8,7 @@
 #include "InputActionValue.h"
 #include "Drills.h"
 #include "Learning.h"
+#include "Career.h"
 #include "Navigation.h"
 #include "Logbook.h"
 #include "Replay.h"
@@ -45,6 +46,8 @@ public:
 	ASailboatPawn();
 
 	virtual void BeginPlay() override;
+	/** Career 1: the session ends here (map reload or quit): its time on the world clock goes to the hours sailed. */
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void RegisterActorTickFunctions(bool bRegister) override;
 	/** Perf 1: the rest of the tick after the physics steps (from the join tick when they ran on a task). */
@@ -70,6 +73,10 @@ public:
 	/** Graphics G7: counts drill starts (the HUD opens the briefing and, once it is done, the quiz for each). */
 	int32 GetDrillSerial() const { return DrillSerial; }
 	double GetMaxContactKnots() const { return MaxContactKnots; }
+	/** Career 1: the last drill's medal for its lesson (invalid when the run counted for no lesson). */
+	const FCareerProgress::FAward& GetCareerAward() const { return CareerAward; }
+	/** The rules coach scored the boat (TrafficManager): a penalty during a drill counts against its medal. */
+	void NoteRuleScore(int32 Points) { if (Points < 0 && DrillRunner.IsActive()) ++DrillInfractions; }
 	/** The learning tips' coach (player's boat in learning mode). */
 	const FLearningCoach& GetLearning() const { return Learning; }
 	double GetSimTime() const { return Boat.GetState().Time; }
@@ -246,6 +253,10 @@ private:
 	ESailingDrill MenuDrill = ESailingDrill::None;
 	double MaxContactKnots = 0.0;
 	int32 DrillSerial = 0;
+	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
+	int32 DrillCollisions = 0, DrillInfractions = 0;
+	bool bDrillTouching = false, bDrillGraded = false;
+	FCareerProgress::FAward CareerAward;
 	FLearningCoach Learning;
 	size_t LearningTrafficEvents = 0;
 	double NextDockScan = 0.0, NearestDock = -1.0;

@@ -116,10 +116,10 @@ void ASailingHUD::BeginPlay()
 			GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Learn]() { OpenLearning(Learn); }), 4.f, false);
 			return;
 		}
-		if (Screen == TEXT("Credits"))
+		if (Screen == TEXT("Credits") || Screen == TEXT("Career"))
 		{
 			OpenFrontEnd(ESailScreen::Title);
-			FrontEnd->Push(ESailScreen::Credits);
+			FrontEnd->Push(Screen == TEXT("Career") ? ESailScreen::Career : ESailScreen::Credits);
 			return;
 		}
 		if (Screen == TEXT("Loading"))
