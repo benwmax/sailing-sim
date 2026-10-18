@@ -5,7 +5,7 @@
    "R": "T_J22H_Hull_R.png",
    "N": "T_J22H_Hull_N.png",
    "X": "T_J22H_Hull_X.png",
-   "uv_m": 7.1593
+   "uv_m": 6.8992
   },
   "DeckMould": {
    "D": "T_J22H_DeckMould_D.png",
@@ -33,7 +33,7 @@
    "R": "T_J22H_Interior_R.png",
    "N": "T_J22H_Interior_N.png",
    "X": "T_J22H_Interior_X.png",
-   "uv_m": 8.4528
+   "uv_m": 8.2976
   }
  },
  "flat_materials": {
@@ -389,5 +389,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 18471460
+ "glb_bytes": 18777248
 }

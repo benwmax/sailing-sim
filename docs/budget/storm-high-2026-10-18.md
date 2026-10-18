@@ -77,3 +77,83 @@ T1 switch doesn't reliably bring the fast state back.
    the cloud march's counters (texture cache hit rate, memory bandwidth, occupancy).
 2. For the gates in the meantime: the storm view sits at 45.5 against a floor of 45 on High, with T1 and C2 in.
    Nothing else on main costs it more than 0.5 fps.
+
+## Metal capture: what the slow state is (Mac, 2026-10-18 night)
+
+Tools: Instruments' Metal System Trace from the command line (`xcrun xctrace record --template 'Metal System Trace'`,
+attached to the bench's game or launched by xctrace), and ProfileGPU dumps every 4 s through
+`-SailingExecAt=4:ProfileGPU;8:ProfileGPU;...` on the packaged base (e07fdb2a) and main (aa471309) apps, storm view,
+High, governor on (all at 82%: `CloudView (PS) 296x222`). Each line below is one launch, cloud march ms per dump in
+order; the last three are the bench's own GPU-slice dumps after the measured window.
+
+| Launch | fps | cloud march (ms) at 4, 8, 12 ... s, then the three end-of-bench dumps |
+|---|---|---|
+| base | 52.4 | 5.56 5.91 5.84 5.75 5.68 5.67 5.67 5.84 5.66, then 7.95 7.89 8.06 |
+| base, `r.TextureStreaming=0` | 51.9 | 5.69 5.92 5.88 5.57, then 8.52 8.22 8.18 |
+| base, extra dumps at 17.4/18.4/18.8 s | 48.8 | 7.46 5.49 7.81 7.36 7.95 5.38 5.25, then 5.50 8.34 8.12 |
+| main, T1 off (`-SailingNoTreeLight -SailingNoTreeLooks`) | 51.5 | 7.91 5.75 5.89 5.79, then 8.90 8.80 8.58 |
+| main | 46.0 | 7.70 7.87 8.65 8.31 8.84 8.86 8.65 8.73 8.40, then 8.56 8.49 8.45 |
+| main | 45.4 | 8.53 7.73 8.63 8.33, then 8.90 9.05 8.54 |
+| main, `-SailingNoTreeData` | 45.6 | 8.43 7.78 8.71 8.23, then 8.90 8.70 8.45 |
+
+What differs between the two states, and what doesn't:
+
+- **One draw.** The whole difference is the view march, `CloudView (PS) 296x222`, a single fragment kick in its own
+  render encoder: 5.3-5.9 ms fast, 7.7-9.0 ms slow (more under Instruments). Reconstruction and compose are unchanged.
+  Same viewport, same encoder, every frame.
+- **Not the GPU clock.** In the 40 s trace of a slow launch (1,100 cloud kicks), the other encoders of a slow frame are
+  no slower than those of the rare fast frames (Lumen, VSM, base pass, reconstruction all within 0.1 ms). A lower
+  performance state would slow them too.
+- **Not other GPU work.** The cloud kick overlaps none of the game's own encoders (Apple runs encoders concurrently;
+  this one runs alone) and, traced with `--all-processes` during a run, no other process's GPU work at all.
+  (With no game in front, the Claude desktop app and WindowServer keep the GPU 30-50% busy; they stop when the game
+  window covers them, so benches are not affected.)
+- **No register spill.** The Metal compiler's spill events (per encoder, in the trace) name no cloud encoder, fast or slow.
+- **Not texture streaming** (`r.TextureStreaming=0`: the same pattern), **not the screenshot** (a `shot` at 6 s does
+  nothing; dumps just after the bench's own screenshot are still fast).
+- **Not a per-launch property.** The state changes within a launch, in phases of seconds: base and T1-off launches start
+  slow for the first few seconds, turn fast, and turn slow again as soon as the measured window ends (every launch, fast
+  or slow, reads 7.9-9.0 ms in the three end-of-bench dumps). With T1 on, main stays in the slow phase the whole run;
+  the trace of a slow launch shows only isolated fast frames (12 of 1,100).
+- **Per-instance custom data alone keeps it slow** (`-SailingNoTreeData`: 45.6, slow throughout), matching the earlier
+  finding that only T1 off as a whole brings the fast phase back.
+
+Consequence for the gates: **the bench's `gpu` slices (`clouds_fog_ms`) are always taken in the slow phase**, after
+the measured window, so a fast run's slices overstate its clouds by 2-3 ms. The fps and `gpu_frame_ms` are right.
+
+What this leaves: the march's cost changes with something that is not its inputs' content (same image), not the clock,
+not overlap and not its pipeline's register use, and that flips while the game runs. The candidates are its texture
+reads' memory behaviour (the weather map, 1024^2 half floats re-uploaded by blit every 2 s; the noise volumes;
+`CloudShadowTexture`, the sky LUTs) and which pipeline the draw binds (the PS path picks its permutation in the mesh
+processor each frame). Telling those apart needs the GPU's own counters on that draw (texture cache misses, L1/last
+level, ALU and occupancy limiters), and xctrace on this M5 Pro exports only "RT Unit Active" from the counter
+instrument. That takes Xcode's frame capture (Debug > Attach to Process > SailingSim, then Capture GPU Workload), one
+capture in each phase: easiest in a T1-off launch, which is slow for its first ~5 s and fast from ~8 s. No fix here.
+
+Scripts: the capture helpers (`run.sh`, `tl.sh`, `xproc.py`, ...) live in git-ignored `Artifacts/cap/`; the traces
+there carry the session environment, so they stay off git.
+
+## GPU slices inside the measured window (branch gpu-slices-in-window)
+
+The bench's three `ProfileGPU` frames are now taken **spread through the measured window**, at 40, 60 and 80% of it
+(`ASailingGameMode::Tick`), not in the 2.4 s after it, so `gpu` slices see the same phase as the frames measured. The bench
+also ends 2.4 s sooner. To keep the frame times clean, the 16 frames after each request are left out of the frame and thread
+times. On the storm view the profiled frame shows as 3 frames of +2-4 ms, 8 to 13 frames after the request. bench.json
+reports the count as `gpu_skipped_frames` (48 for three dumps). The game thread's named slices (`gt`) still sum over the
+whole window.
+
+Storm view on High, packaged, 12 s, governor on (82% in every run), one launch per line:
+
+| Launch | fps | gpu_frame_ms | slices total ms | clouds_fog_ms |
+|---|---|---|---|---|
+| main, in-window slices (8 skipped frames) | 45.1, 45.2, 45.1 | 21.4 | 20.4-20.5 | 9.43-9.48 |
+| main, in-window slices (16 skipped) | 44.3 | 21.8 | 21.7 | 9.75 |
+| main, T1 off, in-window slices | 45.2, 45.2, 44.0 | 21.3-21.9 | 20.3-22.1 | 9.57-9.70 |
+| main, T1 off, `-SailingNoGpuSlices` | 45.1, 45.2 | 21.3-21.4 | - | - |
+| main, `-SailingNoGpuSlices` | 43.7 | 22.1 | - | - |
+
+Frame rates with and without the in-window dumps agree to within launch-to-launch noise, so the dumps don't shift the
+measurement. Tonight every launch on this Mac was in the slow phase, including the T1-off launches that were mostly fast
+earlier. So no run here shows a fast launch's slices. In every slow launch the slices now agree with `gpu_frame_ms`
+(about 1 ms apart, which is the work between passes). A fast launch should now report a `clouds_fog_ms` about 2-3 ms lower
+than before, matching its fps.

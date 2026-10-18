@@ -35,7 +35,7 @@ The PNG, FBX and GLB files are plain git blobs (see `.gitattributes`), because c
 Blender 4.2 or later (tested with the bpy 5.2 module):
 
 ```
-blender -b --factory-startup -P build_j22_hero.py -- out --sails                      # TX 7295 EC (club, seed 7295)
+blender -b --factory-startup -P build_j22_hero.py -- out --sails                      # the hero (club, seed 7295, made-up registration TX 1288 ZX)
 blender -b --factory-startup -P build_j22_hero.py -- out_b --sails --seed 22 --preset race   # any other boat
 blender -b --factory-startup -P build_j22_hero.py -- out_c --sails --style styles/mine.json  # a saved style
 blender -b -P render_j22_hero.py -- out/j22_hero.blend out/renders
