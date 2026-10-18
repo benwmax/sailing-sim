@@ -74,6 +74,9 @@ private:
 	void BuildBolt(const FVector& Ground, float CloudBaseCm);
 	/** Visual V5 (Medium and High): paints the weather map on a worker every couple of seconds and drives M_CloudLayers. */
 	void UpdateCloudLayers(const FVector& CameraPos);
+	/** C2 (the sky cache): the far clouds marched into a panorama a strip per frame (M_CloudCache), shown by the sky dome;
+	 *  the live clouds keep only the near ones (CacheSplit, TracingMaxDistance). -SailingNoSkyCache compares. */
+	void UpdateSkyCache(const FVector& CameraPos, float DeltaSeconds);
 	/** Visual V5: the sky dome's sun disc, night sky, moon and cirrus. Directions are map-frame unit vectors. */
 	void UpdateSkyDome(const FVector& SunTrue, const FVector& MoonTrue, float MoonLuminance, float MoonLit, float Night, double UnixUtc);
 	/** Visual V5: height fog and volumetric fog from the visibility, the humidity haze and the water body. */
@@ -86,8 +89,23 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class APostProcessVolume> PostProcess;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> CloudMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> CloudLayersMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> CloudCacheMaterial;   // C2: M_CloudCache (a hard reference: cooked)
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> SkyDome;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> SkyMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> CacheMaterial;
+	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> CacheTargets[2];
+	bool bSkyCache = false;
+	bool bCacheReady = false;      // a whole panorama has been drawn: the live clouds may hand the far ones over
+	int32 CacheBack = 0;           // the target being drawn
+	int32 CacheColumn = 0;         // the next column of the panorama to draw
+	double CacheSwapTime = -1e9;   // when the last panorama finished (the dome cross-fades for half a second)
+	float CacheColumnCarry = 0.f;
+	float CacheTraceKm = 50.f;     // the live clouds' tracing distance before the cache took the far ones
+	uint8 CacheTraceMode = 0;      // and how it was measured (EVolumetricCloudTracingMaxDistanceMode)
+	float CacheFullAtKm = 0.f;     // r.VolumetricCloud.DistanceToSampleMaxCount before the cache shortened it (0: untouched)
+	double CacheRefreshSeconds = 0.0;  // the last full refresh's time, for the log
+	double CacheRefreshStart = 0.0;
+	int32 CacheRefreshes = 0;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensWaterMaterial;
 	UPROPERTY(Transient) TObjectPtr<class UMaterialParameterCollection> WorldCollection; // MPC_World (Visual V6: the wind)
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LensMaterial;
