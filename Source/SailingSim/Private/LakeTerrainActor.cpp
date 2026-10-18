@@ -355,7 +355,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// T1 follow-up (the D3D12 regroup traces): clearing and re-adding every tree at each regroup made it a 210 ms frame
 	// on the 4090, 80 ms of game thread and 116 ms of the renderer re-adding every mid and far crown to the distance-field
 	// scene. Now only the trees that cross a band's edge move, and only their tiles' components change.
-	constexpr double kTileM = 2000.0;
+	constexpr double kTileM = 4000.0;
 	if (TreeBand.Num() != ModelTrees.Num())
 	{
 		for (UInstancedStaticMeshComponent* C : TreeComps) if (C) C->ClearInstances();
@@ -443,6 +443,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		for (int32 K = 0; K < A.Trees.Num(); ++K) { TreeComp[A.Trees[K]] = P.Key; TreeSlot[A.Trees[K]] = First + K; CompTrees[P.Key].Add(A.Trees[K]); }
 		if (C->GetInstanceCount() == A.X.Num()) CompPlacedAt[P.Key] = Camera;
 	}
+	if (Adds.Num() > 64) UE_LOG(LogSailing, Display, TEXT("Trees: %d components (%d tiles)"), TreeComps.Num(), TileComps.Num());
 }
 
 void ALakeTerrainActor::Tick(float DeltaSeconds)
