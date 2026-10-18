@@ -1,5 +1,6 @@
 #include "UI/SailCatalog.h"
 #include "SailSession.h"
+#include "SailSave.h"
 #include "BoatModel.h"
 #include "PolarReference.h"
 #include "SailingEnvironment.h"
@@ -58,6 +59,8 @@ namespace SailCatalog
 					const TSharedPtr<FJsonObject> O = V->AsObject();
 					FSpot S;
 					S.Name = O->GetStringField(TEXT("name"));
+					// A renamed spot keeps its save id with an "id" field in the bake.
+					if (!O->TryGetStringField(TEXT("id"), S.Id) || S.Id.IsEmpty()) S.Id = SpotId(S.Name);
 					const TArray<TSharedPtr<FJsonValue>>& XY = O->GetArrayField(TEXT("xy"));
 					S.North = XY[0]->AsNumber();
 					S.East = XY[1]->AsNumber();
@@ -108,6 +111,7 @@ namespace SailCatalog
 			}
 			for (FWorld& W : Out)
 			{
+				W.Id = FSailSave::WorldId(W.Index);
 				for (FSpot& S : W.Spots)
 				{
 					if (S.StartType.IsEmpty()) S.StartType = TEXT("Under sail");
@@ -192,6 +196,37 @@ namespace SailCatalog
 			return Out;
 		}();
 		return Maps[FMath::Clamp(SettingsWorld, 0, 2)];
+	}
+
+	FString SpotId(const FString& Name)
+	{
+		FString Id;
+		for (const TCHAR C : Name)
+		{
+			if (FChar::IsAlnum(C)) Id.AppendChar(FChar::ToLower(C));
+			else if (!Id.IsEmpty() && !Id.EndsWith(TEXT("-"))) Id.AppendChar(TEXT('-'));
+		}
+		while (Id.EndsWith(TEXT("-"))) Id.LeftChopInline(1);
+		return Id;
+	}
+
+	const TArray<FString>& SpotIds(int32 SettingsWorld)
+	{
+		static TArray<TArray<FString>> Ids = []()
+		{
+			TArray<TArray<FString>> Out;
+			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
+			for (const TCHAR* F : Files)
+			{
+				FWorld W;
+				W.File = F;
+				ReadWorld(W);
+				TArray<FString>& List = Out.AddDefaulted_GetRef();
+				for (const FSpot& S : W.Spots) List.Add(S.Id);
+			}
+			return Out;
+		}();
+		return Ids[FMath::Clamp(SettingsWorld, 0, 2)];
 	}
 
 	const TArray<FBoat>& Boats() { static TArray<FBoat> B = MakeBoats(); return B; }

@@ -1,6 +1,7 @@
 #include "SailingSettings.h"
 #include "BenchRunner.h"
 #include "BoatModel.h"
+#include "SailSave.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
@@ -36,6 +37,13 @@ void USailingSettings::SnapshotClassDefaults()
 		It->ExportText_InContainer(0, Text, this, this, nullptr, PPF_None);
 		Values.Emplace(*It, Text);
 	}
+}
+
+void USailingSettings::Save()
+{
+	if (IgnoresSavedChoices()) return;
+	SaveConfig();   // the ini stays current too (version 0 of the save: docs/save/README.md)
+	SailSaveStore::Commit();
 }
 
 bool USailingSettings::IgnoresSavedChoices()

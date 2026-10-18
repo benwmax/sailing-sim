@@ -3,6 +3,7 @@
 #include "Learning.h"
 #include "SailingSim.h"
 #include "SailSession.h"
+#include "SailSave.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailLoading.h"
 #include "UI/SailHud.h"
@@ -183,6 +184,13 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	const FString Token = Session->UIScript[0];
 	Session->UIScript.RemoveAt(0);
 	if (Token == TEXT("Wait")) { NextScriptKey += 2.0; return; }
+	if (Token == TEXT("Quit"))
+	{
+		// The save check's launches end themselves (no simulated input on the build Mac).
+		UE_LOG(LogSailing, Display, TEXT("UI script: quit"));
+		FPlatformMisc::RequestExit(false, TEXT("SailingUIScript"));
+		return;
+	}
 	if (Token == TEXT("Log"))
 	{
 		const USailingSettings* S = USailingSettings::Get();
@@ -190,6 +198,9 @@ void ASailingHUD::Tick(float DeltaSeconds)
 		const float Progress = Loading.IsValid() ? Loading->Progress(Stage) : 1.f;
 		UE_LOG(LogSailing, Display, TEXT("UI script: world %d, launch %d, boat %d, preset %d, hour %.2f, traffic %d, front end %s, loading %.0f%% (%s)"),
 			S->World, S->LaunchSpot, S->BoatType, int32(S->WeatherPreset), S->StartHour, S->TrafficLevel, IsFrontEndOpen() ? TEXT("open") : TEXT("closed"), Progress * 100.f, *Stage);
+		const USailSessionSave* Last = USailSessionSave::Get();
+		UE_LOG(LogSailing, Display, TEXT("UI script: save %s; last session %s, world %d, launch %d, boat %d, mode %d; %d drills passed"), *SailSaveStore::Status(),
+			Last->bHasLast ? TEXT("yes") : TEXT("no"), Last->Last.World, Last->Last.LaunchSpot, Last->Last.Boat, int32(Last->Last.Mode), Last->DrillsPassed.Num());
 		return;
 	}
 	const FKey Key(*Token);
