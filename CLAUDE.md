@@ -504,6 +504,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   reader). `-SailingPrologue=1` runs it on the stand-in (game mode `UpdateScene`, fed by the pawn; Space is the crew
   action, R restarts at the checkpoint); `SSailHud::RefreshScene` shows the caption; finished scenes go to the save's
   `progress.scenes`. SailingPhysics and SailingSimTests are `bUseUnity = false` (UBT unity-builds from 32 files).
+  Crew stations (step 2): `FStationControls` (`CrewStation.h`) merges the player's station (helm = a wheel, jib trimmer
+  = sheet and rate-limited grinder against the telemetry's sheet load, main trimmer = sheet, traveller, dump) with the
+  crew's held controls each physics step (`FBoatStepJob::Stations`, `ASailboatPawn::UpdateStations`, only while a scene
+  runs); steps name their `station`, expectations their `controls` (worked in order, `FSceneInput::Worked`). Grind,
+  TravellerDump, Station and CrewAction are a key layer (`SailingBindings::SameLayer`) sharing buttons with boat
+  commands the crew hold; `SailingSim.Prologue.Stations`.
 - Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
