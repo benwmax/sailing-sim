@@ -239,3 +239,11 @@ The heavy tests now key on their own five files (`OceanTests`, `FleetTests`, `Re
 on the game without the editor-only tests module (`GAME_HASH`), so a change to the tests alone is build plus tests,
 about 1.5 min.
 
+
+## Daily sweep, Oct 18 2026
+
+`scripts/gate.sh --scope all` on main c9e6fa9c: **pass**, every view on Low, Medium and High over its floor
+([sweep-2026-10-18.csv](sweep-2026-10-18.csv)). Steps: build 21 s; tests 72 s (145 passed: the heavy set had already
+passed on these physics inputs, so the gate ran the other 145); package skipped (the packaged game was already this
+tree); bench 659 s (36 launches); 12.5 min in all. Tightest views: High storm 50.2 fps (floor 45), High crew 53.2 and
+slip 53.4; Medium storm 68.0 (floor 60).
