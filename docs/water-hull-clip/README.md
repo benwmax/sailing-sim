@@ -14,8 +14,8 @@ meets the skin, so there is no seam, and the dropped water stays behind the hull
 Water over the sheer (a knockdown) still drops inside the gunwale, faded over its last 15 cm.
 
 `AWaterSurface::UpdateHullClip` now passes the hull's frame (origin and its three axes) and the full `FHullShape`
-(eight vectors, `HullClipA`..`H`). `-SailingClassicHullClip` brings back the V7 clip for comparison. The cost is a few
-dozen ALU per water vertex; the gate below shows no change.
+(eight vectors, `HullClipA`..`H`). `-SailingClassicHullClip` brings back the V7 clip for comparison. Only water
+vertices within a hull length of her origin run the hull maths (a branch; without it every ring vertex paid for it).
 
 ## Stills
 
@@ -37,3 +37,25 @@ Dock: `scripts/run-game.sh 6 -SailingDrill=LeavetheDock -SailingKeepStart -Saili
 Limits: the clip follows the physics hull, not the drawn model. Where a model's skin lies inside the physics bottom
 the water there dips by at most 1.1 times the gap (none seen on the hero J/22). Only the main hull is clipped, and
 catamarans (two hulls) are still left alone.
+
+## Gate (water scope, High plus storm on Medium)
+
+Main c9e6fa9c and this branch, packaged and benched back to back
+([gate-water-main.csv](gate-water-main.csv), [gate-water.csv](gate-water.csv)):
+
+| view | main fps | fix fps | water GPU ms main / fix |
+|---|---|---|---|
+| beam8 High | 61.6 | 61.8 | 2.89 / 3.13 |
+| beat15 High | 60.0 | 59.6 | 3.12 / 3.27 |
+| storm High | 44.5 | 44.3 | 2.49 / 2.84 |
+| marina High | 59.5 | 58.5 | 3.00 / 3.19 |
+| coast-day High | 53.1 | 53.0 | 2.94 / 3.18 |
+| gulf-sea High | 67.5 | 66.6 | 3.07 / 3.17 |
+| helm-eye High | 57.9 | 57.4 | 2.39 / 2.34 |
+| bridge High | 63.2 | 62.3 | 3.31 / 3.47 |
+| storm Medium | 65.7 | 65.0 | 2.24 / 2.36 |
+
+The fix costs 0.1 to 0.35 ms on the water slice (about 0.2 ms, under 1 fps). Storm High is under its 45 fps floor on
+**main too** (44.5; 44.4 again run alone): this evening's full sweep had it at 50.2, and the extra time is in the
+clouds (7.2 ms then, 9.6 now), not the water. That is a separate regression or a change in the machine's state, to
+look at before this merges.
