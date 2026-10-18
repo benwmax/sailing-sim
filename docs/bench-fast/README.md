@@ -212,3 +212,22 @@ CSVs are `Artifacts/visual-bench-cook-{full,inc,inc0}.csv`.
 
 When to use `FULL=1`: after an engine update, if a cook warning mentions stale or invalidated packages, or for a
 release build.
+
+## Less of it (Oct 18 2026)
+
+Bean asked for faster gates. A scoped gate was running 14 launches (7 views on Medium and High), about 5 min of bench
+on every PR, including ones that changed only docs. Three cuts, measured against the sweeps in this folder and the
+gate CSVs since:
+
+- **High only, plus the storm view on Medium.** Across every sweep since bench-fast, the lowest Medium view is the storm
+  at 67-69 fps (floor 60); every other Medium view has 13 fps or more in hand, while High has under 1 fps on the storm
+  and a few on the sentinels. A change that takes 7 fps off Medium takes far more off High first. Medium's storm run
+  is appended to the gate CSV from a second `bench-visual.sh` call (`<label>-medium`).
+- **One sentinel, not three.** helm-eye runs in every scope; slip (the marina with the player's boat) runs in boats,
+  crew and world; coast-day (the bay shore) in water and world.
+- **No bench when the packaged game did not change.** The bench reads only `Packaged/Mac`, whose inputs are the package
+  hash (Source, Config, Plugins, Content). A scope that passed on that hash keeps its result
+  (`Artifacts/gate/bench-<scope>.hash` and `.csv`, written only on a pass; `--force` or `--baseline` rerun it).
+
+A boats gate goes from 14 launches to 6 (about 2 min of bench), a ui gate to 2, and a docs-only PR to a few seconds.
+`--scope all` is unchanged: every view on Low, Medium and High, daily and before a blind round.

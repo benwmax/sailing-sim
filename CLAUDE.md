@@ -118,8 +118,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 20. The gate (bench-fast, `docs/bench-fast/`): `scripts/gate.sh --scope clouds|water|boats|crew|world|night|ui|all
    [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed
    (`Artifacts/gate/`), runs the heavy physics tests (`scripts/gate-heavy-tests.txt`) only when the physics, tests or
-   terrain changed, then benches the scope's views on Medium and High (helm-eye, slip and coast-day always) and checks
-   60/45. `--scope all` is the full sweep: daily and before every blind round. `bench-visual.sh` takes `ONLY=a,b` and
+   terrain changed, then benches the scope's views on High (helm-eye always; slip and coast-day in the scopes that show
+   them) plus the storm view on Medium, checks 60/45, and skips the bench when the packaged tree already passed that
+   scope (`Artifacts/gate/bench-<scope>.hash`; `--force` reruns). `--scope all` is the full sweep: daily and before every blind round. `bench-visual.sh` takes `ONLY=a,b` and
    `BENCH_EXTRA=`; `FAST=1` runs several views per launch (`USailingBenchRunner`, `-SailingBenchList=<file in
    Saved/Bench>`), opt-in because the RHI thread can slow from view to view within one process (re-run alone
    by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
