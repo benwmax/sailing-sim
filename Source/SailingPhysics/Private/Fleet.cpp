@@ -354,6 +354,145 @@ namespace Sailing
 		}
 	}
 
+	namespace
+	{
+#include "MaxiHullData.inl"
+
+		// Residuary resistance per unit weight for the maxi. The Delft series' residuary per unit displacement weight falls
+		// steeply with slenderness (LWL / volume^(1/3)): about as its cube through the hump (Keuning & Sonnenberg's
+		// regression at Fn 0.35-0.45). The maxi's slenderness is 29.6 / 40.2^(1/3) = 8.7 against the J/22's 5.7, so her
+		// hump is the J/22's table times (5.7 / 8.7)^3 = 0.28 up to Fn 0.45. Past it an ultralight, flat-run hull keeps
+		// climbing instead of hitting a wall: from Fn 0.7 the planing dinghies' table (spray, the bulb and rudders near
+		// ventilating, the bow into the sea). A 100 ft maxi's fastest reaching is about Fn 0.8-0.9 (25-28 kn); with half
+		// these values past Fn 0.6 she reached at 32 kn under two reefs and the J4 in a 40 kn gust.
+		const std::vector<std::pair<double, double>> kMaxi = { { 0.00, 0.0 }, { 0.10, 0.00006 }, { 0.15, 0.00014 }, { 0.20, 0.00034 },
+			{ 0.25, 0.0007 }, { 0.30, 0.0014 }, { 0.35, 0.0028 }, { 0.40, 0.0062 }, { 0.45, 0.0134 }, { 0.50, 0.0200 }, { 0.55, 0.0250 },
+			{ 0.60, 0.0300 }, { 0.70, 0.0520 }, { 0.80, 0.0640 }, { 0.90, 0.0710 }, { 1.00, 0.0770 }, { 1.30, 0.0820 } };
+
+		FBoatConfig Maxi()
+		{
+			// The prologue's made-up 100 ft racing maxi (Tools/boats/maxi/ref.json, sections.json: the PC's model, no real
+			// design copied). LOA 30.48 m, LWL 29.6, beam 7.2, draft 6.0 on a fixed T-keel (steel fin, lead bulb), twin
+			// canted spade rudders on wheels, square-top main 335 m^2 and a J1 245 m^2 on a masthead rig 44.5 m above
+			// the deck, A2 720 m^2 off a 2.6 m sprit, 12 crew. The hull is the exported sections themselves.
+			FBoatConfig C;
+			C.Type = EBoatType::Maxi; C.Name = "Maxi 100";
+			// A maxi crew sail her at 15-20 deg (the rail just clear, rudders gripping), easing the main on the traveller.
+			C.TrimHeelLimitDeg = 18.0; C.TrimMaxEaseDeg = 25.0;
+
+			// Hull: the PC's sections (kMaxiSections), drawn as they are; the parameters are the stand-in fit the water's hull
+			// clip and BoatExport read (deck plan: the widest station 3.61 m at x -6.3, 3.15 at the transom; sheer 2.0
+			// amidships rising 0.75 to the stem; plumb bow, transom 0.12 m clear).
+			FHullShape H;
+			for (const FMaxiSection& M : kMaxiSections)
+			{
+				FHullShape::FStation St;
+				St.X = M.X; St.Sheer = M.Sheer;
+				St.Y.assign(M.Y, M.Y + kMaxiSectionPoints);
+				St.Z.assign(M.Z, M.Z + kMaxiSectionPoints);
+				H.StationDepth = std::max(H.StationDepth, -M.Z[0]);
+				H.Stations.push_back(St);
+			}
+			H.BowX = kMaxiSections[kMaxiStations - 1].X; H.SternX = kMaxiSections[0].X;
+			H.WaterlineMidX = 0.0; H.WaterlineHalfLength = 14.8;
+			H.MaxHalfBeam = 3.61; H.MaxBeamX = -6.3; H.AftLength = 9.18; H.TransomBeamLoss = 0.46;
+			H.SheerZ = 2.0; H.SheerRise = 0.75; H.SheerRiseFromX = 0.0; H.BilgePower = 5.2; H.BowOverhangSlope = 3.0; H.SternOverhangSlope = 0.17;
+			C.Hulls = { H };
+			C.LengthOverall = 30.48; C.WaterlineLength = 29.6; C.Beam = 7.2; C.WaterlineBeam = 5.8; C.Draft = 6.0; // WL beam: the export's 2 x 2.91
+
+			// Mass budget. She floats on her design waterline: the canoe body's 37.13 m^3 (sections.json) plus the fin, bulb
+			// and rudders (3.04 m^3 from ref.json's plan forms, make_maxi_hull.py) displace 40.2 t in the sim's fresh water
+			// (ref.json's 42 t is about the same volume in sea water). Ballast: the steel fin (0.39 m^3, 3.06 t) and 20 t of
+			// lead in the lower three quarters of the faired bulb (2.43 m^3). Crew: 12 at 88 kg.
+			C.CrewMass = 1056.0; C.CrewCount = 12;
+			C.BallastMass = 23060.0; C.BallastCG = Vec3(-0.63, 0.0, -5.26); // fin at (0.12, -3.06), lead at (-0.74, -5.6)
+			C.AppendageVolume = kMaxiFinVolume + kMaxiBulbVolume + 2.0 * kMaxiRudderVolume;
+			C.AppendageCentre = Vec3((kMaxiFinVolume * kMaxiFinX + kMaxiBulbVolume * kMaxiBulbX + 2.0 * kMaxiRudderVolume * -13.0) / C.AppendageVolume, 0.0,
+				(kMaxiFinVolume * kMaxiFinZ + kMaxiBulbVolume * kMaxiBulbZ + 2.0 * kMaxiRudderVolume * -1.3) / C.AppendageVolume);
+			// Hull, deck, interior, engine and gear (12.5 t about 1 m up) and the rig (mast 1.7 t, boom, rods, sails: 3.2 t
+			// with its centroid 20 m up): 4.0 m up, and far enough aft that she floats level over the bulb, which ref.json
+			// puts 1.6 m ahead of the canoe body's centre of buoyancy.
+			C.HullRigMass = 1000.0 * (kMaxiCanoeVolume + C.AppendageVolume) - C.BallastMass - C.CrewMass;
+			C.HullRigCG = Vec3(-4.3, 0.0, 4.0);
+			// The crew on the windward rail, the helmsman, trimmers and grinders in the cockpit: on average 2.6 m out to
+			// windward, legs over the side adding 0.3 when "hiking". Body frame mean place: the cockpit's forward end.
+			C.CrewCG = Vec3(-6.0, 0.0, 2.5);
+			C.CrewSitOut = 2.6; C.CrewHikeOut = 0.3; C.CrewMoveSpeed = 1.2;
+			// Gyradii from the same budget: the mast (1.7 t, 25 m above the CG) and the bulb (20 t, 4.2 m below) dominate
+			// roll; the hull's length adds to pitch and yaw.
+			C.RadiiOfGyration = Vec3(7.3, 8.7, 5.0);
+
+			// Resistance. Wetted area: the sections' girth below the DWL integrates to 114.7 m^2, 3.46 x sqrt(V x LWL)
+			// (wide, flat aft sections: the J/22's round ones are 2.75).
+			C.Residuary = kMaxi;
+			C.WettedAreaCoef = 3.46;
+			// Waves: the J/22's calibration (the formula already scales by beam^2 / LWL and with the wavelength against her
+			// length, so the lake's short chop hardly touches her); saturating by 4 kn like any keelboat.
+			C.AddedResistanceCoef = 1.3;
+			// Sway and yaw: the canoe body's lateral area is about 18 m^2 (LWL x a mean 0.6 m), so 9 m^2 at each station
+			// (the J/22's 0.55 x 16); Munk added mass and low-speed yaw damping scaled by displacement and length^4 from the
+			// Catalina 30 and the Lagoon (with the J/22's ratios they turn her far too slowly through a tack).
+			C.HullLateralArea = 9.0; C.MunkAddedMass = 9000.0; C.YawDampingLinear = 90000.0; C.HeaveDamping = 1200.0;
+
+			// Appendages (ref.json). The fin: span 4.2 m from the canoe body to the bulb, chords 1.65 / 1.05, swept 6 deg.
+			// Its area here carries the bulb's and the canoe body's side force (7.3 m^2 against the fin's 5.7), centred
+			// between the fin's centroid and the bulb, so its foot reaches the 6.0 m draft; effective aspect ratio 5: the
+			// hull above and the bulb below are end plates on a 3.1 geometric fin. Its x is the balance knob (as the J/22's):
+			// at the fin's 0.1 she sailed with 3-5 deg of lee helm upwind; the centre of lateral resistance of hull, fin and
+			// bulb together sits ahead of the fin (the long forward canoe body), and at 1.2, with the downwash and heel yaw
+			// below, she carries 1.5-2.5 deg of weather helm upwind and 4-5 reaching in 10-16 kn. Grounding under the bulb
+			// (nose 1.6, tail -3.6).
+			FFoilDef Keel = Foil(EFoilRole::Keel, Vec3(1.2, 0.0, -3.4), 7.3, 1.35, 5.0, 15.0);
+			Keel.Params.ProfileDrag = 0.008;
+			Keel.ContactLeadingX = 1.6; Keel.ContactTrailingX = -3.6;
+			// Twin spade rudders on stocks at x -12.9, 1.75 m off the centreline and canted 8 deg out (their centres a span's
+			// half further out): span 2.55 m, chords 0.82 / 0.52 (1.71 m^2 each). Heeled, the windward one lifts out and the
+			// leeward one stands upright and deep (the model's immersion of each blade). Vertical in the model; the cant shows
+			// as their outboard centres.
+			C.Foils = { Keel,
+				Foil(EFoilRole::Rudder, Vec3(-13.05, -1.93, -1.37), 1.71, 0.67, 4.5, 15.0), Foil(EFoilRole::Rudder, Vec3(-13.05, 1.93, -1.37), 1.71, 0.67, 4.5, 15.0) };
+			// The twin rudders are there so the leeward blade stays deep and upright heeled (canted 8 deg out, it is vertical
+			// at 8 deg of heel): it starts to draw air from the surface at 40 deg rather than the single transom rudders'
+			// 30 (the windward blade's lift out of the water is the immersion above).
+			for (FFoilDef& F : C.Foils) if (F.Role == EFoilRole::Rudder) { F.VentStartDeg = 40.0; F.VentEndDeg = 65.0; }
+			// The rudders in the downwash of the hull, fin and bulb (the J/22's 1.7 reasoning: the canoe body's side force is in
+			// the keel's area), and the lopsided heeled hull's yaw toward the wind (Keuning & Sonnenberg; two thirds of the
+			// J/22's coefficient: her long, beamy aft sections are less lopsided heeled than they are wide).
+			C.KeelDownwashFactor = 1.8; C.HeelYawCoef = 0.04;
+			// Wheels: balanced spades (centre of pressure 5 cm behind the stock), a firm helm, the cable drive
+			// taking 1.6 s from amidships to hard over with the wheel spun flat out (about three quarters of a turn).
+			C.MaxRudderAngleDeg = 32.0; C.RudderStockToCP = 0.05; C.TillerLength = 0.5; C.HelmStiffness = 100000.0; C.RudderResponseTime = 0.5;
+			C.WheelHardOverSeconds = 1.6;
+
+			// Rig: masthead sloop, mast at x 3.1, 44.5 m above the 2.18 m deck (masthead 46.7), boom at 2.15. Main P 40.5,
+			// E 11.2, 4.2 m head (square top). Membrane sails on a tall rig: the J/22's lift slopes, aspect ratios scaled with
+			// the geometric ones (main P^2/A 4.9 against the J/22's 2.8; the boom just above the deck keeps the end plate).
+			C.MastX = 3.1; C.MastheadZ = 46.7; C.MastDiameter = 0.45;
+			SetMain(C, 2.15, 42.65, 11.2, 4.2, 0.08, 2.8, 2.8, 335.0, 3.8, 6.5, 0.11);
+			// J1 (non-overlapping: LP 12.4 on J 11.65), tacked at the stem (x 14.75), luff to the masthead.
+			C.JibFootZ = 2.9; C.JibHeadZ = 44.0; C.JibFootChord = 12.0; C.JibHeadChord = 0.3; C.JibLuffX = 14.75; C.JibLuffXHead = 3.6; C.JibArea = 245.0;
+			SetSail(C.Jib, C.JibFootZ, C.JibHeadZ, C.JibFootChord, C.JibHeadChord, C.JibLuffX, C.JibLuffXHead, C.JibArea, 4.1, 6.5, 0.12);
+			// A2 off the sprit (tack 2.6 m ahead of the stem), hoisted to the masthead.
+			SetSail(C.Spinnaker, 2.9, 44.5, 21.0, 4.0, 17.6, 6.5, 720.0, 2.8, 2.6, 0.18);
+			C.bAsymmetricSpinnaker = true;
+			// Swept spreaders (20 deg) stop the boom short of square; the traveller (4.4 m wide, 14 m behind the gooseneck)
+			// moves the boom 9 deg either side; jib leads on tracks 2.95 m out, 8 deg inboard sheeting.
+			C.MainMaxEaseDeg = 72.0; C.TravelerRangeDeg = 9.0; C.JibMinAngleDeg = 8.0; C.JibMaxAngleDeg = 70.0;
+			// Windage: the mast's 46 m x 0.45 m mean frontal width, runners, shrouds and stays (the Catalina 30's 2.0 per
+			// 2.2 m^2 of mast); the hull's 15 m^2 of bow-on topsides, twelve crew and the deck gear.
+			C.RigWindageCdA = 18.0; C.HullWindageCdA = 15.0;
+			// Reefs: one at 87% of the luff, two at 74% (the gale sails of the prologue's step 4), each with its headsail:
+			// the J3 (55% of the J1) and the J4 (35%).
+			C.ReefLuffFraction = { 0.87, 0.74 };
+			C.ReefJibFraction = { 0.55, 0.35 };
+			// Engine: a 150 hp diesel on a shaft behind the keel, 0.6 m folding prop (about 9 kgf of bollard pull per hp).
+			C.Engines.clear();
+			FEngineDef E; E.Position = Vec3(-5.5, 0.0, -1.3); E.MaxThrustN = 13000.0; E.PropSpeedKnots = 11.0; E.PropDiameter = 0.6; E.PropWalk = 0.06;
+			C.Engines.push_back(E);
+			return C;
+		}
+	}
+
 	FBoatConfig FBoatConfig::Make(EBoatType Type)
 	{
 		FBoatConfig C;
@@ -366,6 +505,7 @@ namespace Sailing
 		case EBoatType::Hobie16: C = Hobie16(); break;
 		case EBoatType::Corsair880: C = Corsair880(); break;
 		case EBoatType::Lagoon42: C = Lagoon42(); break;
+		case EBoatType::Maxi: C = Maxi(); break;
 		default: return C;
 		}
 		// The rest of the fleet starts from the J/22. Her helm balance (Phase 8: rudder downwash, heel-induced yaw and the
@@ -467,6 +607,15 @@ namespace Sailing
 		case EBoatType::Lagoon42:
 			AddTable(P, Tws16, 3, { 60, 90, 120, 150 }, { { 2.5, 3.1, 3.3, 2.4 }, { 4.1, 5.1, 5.7, 4.3 }, { 6.5, 7.1, 7.6, 6.7 } },
 				"estimate: third-party cruising polar (sabado.pol) x1.10 for a clean boat, checked against reviews", 999.0, 0.20, 1.10);
+			break;
+		case EBoatType::Maxi:
+			// No published polar (a made-up boat): the Catalina 30's ORC certificate and the J/22's ORC polar scaled to her by
+			// Froude number (speeds and wind by sqrt(LWL ratio)), sail area / displacement^(2/3) (49.5 against 18.9 and 28.9)
+			// and ITTC-57 friction at her Reynolds number, then averaged (Tools/boats/maxi/estimate_polar.py). Scaled the same
+			// way from the Catalina 30, the J/22's own polar comes out within 4% on average and 17% at worst; the maxi's
+			// displacement-length ratio (43) is far outside both (151, 317), hence 30%. A2 from 120.
+			AddTable(P, Tws16, 3, { 52, 60, 90, 120, 150 }, { { 7.5, 8.0, 8.3, 7.8, 6.2 }, { 11.2, 11.8, 12.2, 11.8, 9.8 }, { 13.4, 13.7, 14.3, 14.3, 13.1 } },
+				"estimate: Catalina 30 and J/22 ORC scaled by Froude, SA/D and Reynolds (estimate_polar.py)", 120.0, 0.30);
 			break;
 		default:
 			break;

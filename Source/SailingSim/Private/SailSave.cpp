@@ -18,7 +18,7 @@ namespace SailSaveLocal
 {
 	// The boats' save ids are EBoatType's names: a new boat is appended there and here, never renamed.
 	const TCHAR* const BoatIds[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"),
-		TEXT("Corsair880"), TEXT("Lagoon42") };
+		TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	static_assert(UE_ARRAY_COUNT(BoatIds) == int32(Sailing::EBoatType::Count), "every boat needs a save id");
 	const TCHAR* const WorldIds[] = { TEXT("ray-hubbard"), TEXT("galveston-bay"), TEXT("gulf") };
 	const TCHAR* const SpeedIds[] = { TEXT("kn"), TEXT("mph"), TEXT("kmh") };

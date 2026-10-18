@@ -6,8 +6,10 @@
 #include "SailingMath.h"
 #include "ScriptedScene.h"
 #include "Wind.h"
+#include "EasyAssists.h"
 #include "SailingGameMode.h"
 #include "SailSave.h"
+#include "SailingSettings.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -17,6 +19,46 @@ namespace PrologueTestsLocal
 {
 	constexpr EAutomationTestFlags PrologueFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter;
 	constexpr double StandInKnots = 25.0;
+
+	/** The boat a playthrough sails: the scene's own (step 3: the maxi in its 32 kn gusting 40 on two reefs, with the
+	 *  scene's assisted limits) or the stand-in (steps 1 and 2: the J/22 in 25 kn gusting 35), read from the scene. */
+	struct FPlayBoat
+	{
+		EBoatType Type = EBoatType::Maxi;
+		double Knots = 32.0, GustKnots = 40.0;
+		int32 Reefs = 2;
+		const TCHAR* Name = TEXT("maxi");
+
+		static FPlayBoat Own(const FScriptedScene& Scene)
+		{
+			const FSceneSetting& Set = Scene.GetSetting();
+			FPlayBoat B;
+			B.Type = EBoatType(FMath::Max(0, USailingSettings::MatchBoatName(UTF8_TO_TCHAR(Set.Boat.c_str()))));
+			B.Knots = Set.WindKn;
+			B.GustKnots = Set.GustKn;
+			B.Reefs = Set.Reefs;
+			return B;
+		}
+		static FPlayBoat StandIn(const FScriptedScene& Scene)
+		{
+			const FSceneSetting& Set = Scene.GetSetting();
+			FPlayBoat B;
+			B.Type = EBoatType(FMath::Max(0, USailingSettings::MatchBoatName(UTF8_TO_TCHAR(Set.StandInBoat.c_str()))));
+			B.Knots = Set.StandInWindKn;
+			B.GustKnots = StandInKnots + 10.0; // a squall line's step, as in steps 1 and 2
+			B.Reefs = Set.StandInReefs;
+			B.Name = TEXT("J/22 stand-in");
+			return B;
+		}
+		FBoatConfig Config() const
+		{
+			FBoatConfig C = FBoatConfig::Make(Type);
+			FSceneLimits::For(true).ApplyTo(C); // the scene's limits, as the game sets them while a scene runs
+			return C;
+		}
+		/** Close-hauled on starboard at a speed she sails at (TWA = wind from - heading). */
+		void Start(FBoatModel& Boat) const { Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, (Type == EBoatType::Maxi ? 9.0 : 6.0) * kKnot); }
+	};
 
 	enum class ECrew : uint8 { Good, IgnoresFirstEase, Silent };
 
@@ -40,23 +82,26 @@ namespace PrologueTestsLocal
 	 * wheel downwind, dump the traveller then the main, the wheel up to a reach. Gusts come when a step waits for one:
 	 * the wind steps to 35 kn for a few seconds, the way a squall line hits.
 	 */
-	FPlaythrough Play(FScriptedScene& Scene, ECrew Crew, double MaxSeconds = 900.0, const TFunction<void(double)>& Each = nullptr, FStationControls* OutStations = nullptr)
+	FPlaythrough Play(FScriptedScene& Scene, ECrew Crew, const FPlayBoat& On, double MaxSeconds = 900.0, const TFunction<void(double)>& Each = nullptr,
+		FStationControls* OutStations = nullptr)
 	{
 		FPlaythrough Out;
 		FWindParams P;
-		P.SpeedKnots = StandInKnots;
+		P.SpeedKnots = On.Knots;
 		P.FromDegrees = 0.0;
 		const FWindField Base(P);
-		P.SpeedKnots = StandInKnots + 10.0;
+		P.SpeedKnots = On.GustKnots;
 		const FWindField Gust(P);
-		FBoatModel Boat;
-		Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 6.0 * kKnot); // close-hauled on starboard (TWA = wind from - heading)
+		FBoatModel Boat(On.Config());
+		On.Start(Boat);
 		FStationControls Stations;
 		Stations.Config = FStationConfig::For(Boat.GetConfig());
-		Stations.Reset(Boat, FBoatControls(), ECrewStation::JibTrimmer);
+		FBoatControls Sails;
+		Sails.Reef = On.Reefs;
+		Stations.Reset(Boat, Sails, ECrewStation::JibTrimmer);
 		FAutopilot Hand; // where the crew member means to steer when they have the wheel
 		int32 Side = 1;
-		Scene.Start(Boat, StandInKnots);
+		Scene.Start(Boat, On.Knots);
 		int32 LastSerial = 0, LastStep = -1, StationSerial = 0;
 		double T = 0.0, CallT = 0.0, StepT = 0.0, JibAim = -1.0;
 		bool bTacking = false, bDumped = false;
@@ -134,19 +179,21 @@ namespace PrologueTestsLocal
 		return Out;
 	}
 
-	/** Seconds of grinding (the key held) to bring the jib sheet from fully eased in to Home, close-hauled on the J/22
-	 *  stand-in in a steady wind with the rest of the crew steering and on the main. */
-	double GrindSeconds(double Knots, double Home)
+	/** Seconds of grinding (the key held) to bring the jib sheet from fully eased in to Home, close-hauled in a steady
+	 *  wind with the rest of the crew steering and on the main. */
+	double GrindSeconds(const FPlayBoat& On, double Knots, double Home)
 	{
 		FWindParams P;
 		P.SpeedKnots = Knots;
 		P.FromDegrees = 0.0;
 		const FWindField Wind(P);
-		FBoatModel Boat;
-		Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 6.0 * kKnot);
+		FBoatModel Boat(On.Config());
+		On.Start(Boat);
 		FStationControls Stations;
 		Stations.Config = FStationConfig::For(Boat.GetConfig());
-		Stations.Reset(Boat, FBoatControls(), ECrewStation::JibTrimmer);
+		FBoatControls Sails;
+		Sails.Reef = On.Reefs;
+		Stations.Reset(Boat, Sails, ECrewStation::JibTrimmer);
 		int32 Phase = 0;
 		double T = 0.0, Ground = 0.0;
 		for (int32 I = 0; I < int32(90.0 * PhysicsHz); ++I, T += PhysicsDt)
@@ -187,9 +234,21 @@ bool FSailingPrologueSceneTest::RunTest(const FString&)
 	TestEqual(TEXT("Seven steps"), int32(Scene.GetSteps().size()), 7);
 	TestEqual(TEXT("Id"), FString(UTF8_TO_TCHAR(Scene.GetId().c_str())), FString(TEXT("prologue")));
 	TestEqual(TEXT("Stand-in: the J/22"), FString(UTF8_TO_TCHAR(Scene.GetSetting().StandInBoat.c_str())), FString(TEXT("J22")));
-	const FPlaythrough P = Play(Scene, ECrew::Good);
-	AddInfo(FString::Printf(TEXT("Prologue on the J/22 stand-in in %.0f kn: %d answered, %d by the crew, %d repeats, %.0f s; calls %s"), StandInKnots,
-		P.Result.StepsPassed, P.Result.StepsAssisted, P.Result.Retries, P.Result.Seconds, *FString::Join(P.Calls, TEXT(", "))));
+	const FPlayBoat Own = FPlayBoat::Own(Scene);
+	TestEqual(TEXT("Step 3: the scene's own boat is the maxi"), int32(Own.Type), int32(EBoatType::Maxi));
+	TestEqual(TEXT("... on her two gale reefs"), Own.Reefs, 2);
+	// The stand-in first (steps 1 and 2's boat, kept for comparison), then the maxi (the save checks below use hers).
+	{
+		FScriptedScene StandIn;
+		if (!Load(*this, StandIn)) return false;
+		const FPlaythrough S = Play(StandIn, ECrew::Good, FPlayBoat::StandIn(StandIn));
+		AddInfo(FString::Printf(TEXT("Prologue on the J/22 stand-in in %.0f kn: %d answered, %d by the crew, %d repeats, %.0f s"), StandInKnots,
+			S.Result.StepsPassed, S.Result.StepsAssisted, S.Result.Retries, S.Result.Seconds));
+		TestTrue(TEXT("Stand-in: the scene finishes, every step answered, no repeats"), S.Result.bComplete && S.Result.StepsPassed == 7 && S.Result.Retries == 0);
+	}
+	const FPlaythrough P = Play(Scene, ECrew::Good, Own);
+	AddInfo(FString::Printf(TEXT("Prologue on the maxi in %.0f kn gusting %.0f, %d reefs: %d answered, %d by the crew, %d repeats, %.0f s; calls %s"), Own.Knots,
+		Own.GustKnots, Own.Reefs, P.Result.StepsPassed, P.Result.StepsAssisted, P.Result.Retries, P.Result.Seconds, *FString::Join(P.Calls, TEXT(", "))));
 	TestTrue(TEXT("The scene finishes"), Scene.IsComplete() && P.Result.bComplete);
 	TestEqual(TEXT("Every step answered by the crew member"), P.Result.StepsPassed, 7);
 	TestEqual(TEXT("... none done for them"), P.Result.StepsAssisted, 0);
@@ -244,7 +303,7 @@ bool FSailingPrologueRepeatsTest::RunTest(const FString&)
 	{
 		FScriptedScene Scene;
 		if (!Load(*this, Scene)) return false;
-		const FPlaythrough P = Play(Scene, ECrew::IgnoresFirstEase);
+		const FPlaythrough P = Play(Scene, ECrew::IgnoresFirstEase, FPlayBoat::Own(Scene));
 		AddInfo(FString::Printf(TEXT("Ignored the first ease: %d answered, %d by the crew, %d repeats, %.0f s"), P.Result.StepsPassed, P.Result.StepsAssisted, P.Result.Retries, P.Result.Seconds));
 		const FSceneStep* Ease = nullptr;
 		for (const FSceneStep& S : Scene.GetSteps()) if (S.Id == "ease-jib") Ease = &S;
@@ -258,7 +317,7 @@ bool FSailingPrologueRepeatsTest::RunTest(const FString&)
 	{
 		FScriptedScene Scene;
 		if (!Load(*this, Scene)) return false;
-		const FPlaythrough P = Play(Scene, ECrew::Silent);
+		const FPlaythrough P = Play(Scene, ECrew::Silent, FPlayBoat::Own(Scene));
 		AddInfo(FString::Printf(TEXT("A silent crew member: %d answered, %d by the crew, %d repeats, %.0f s"), P.Result.StepsPassed, P.Result.StepsAssisted, P.Result.Retries, P.Result.Seconds));
 		TestTrue(TEXT("Never a hard fail: the scene finishes"), P.Result.bComplete);
 		TestTrue(TEXT("The crew did the calls nobody answered"), P.Result.StepsAssisted >= 4);
@@ -272,7 +331,7 @@ bool FSailingPrologueRepeatsTest::RunTest(const FString&)
 		int32 TackIndex = -1;
 		for (int32 I = 0; I < int32(Scene.GetSteps().size()); ++I) if (Scene.GetSteps()[size_t(I)].Id == "ready-about") TackIndex = I;
 		bool bRestarted = false;
-		Play(Scene, ECrew::Good, 900.0, [&](double)
+		Play(Scene, ECrew::Good, FPlayBoat::Own(Scene), 900.0, [&](double)
 		{
 			if (!bRestarted && Scene.GetStepIndex() == TackIndex + 1)
 			{
@@ -389,22 +448,32 @@ bool FSailingPrologueStationsTest::RunTest(const FString&)
 		TestTrue(TEXT("Jib trimmer on the wheel, mainsheet and traveller: the boat sails exactly as without"), End[0] == End[1] && Heading[0] == Heading[1]);
 	}
 
-	// The grinder: from fully eased to the scene's "all the way" in a gale and in a sailing breeze.
+	// The grinder: from fully eased to "all the way" in a gale and in a sailing breeze. On the J/22 stand-in that is 0.15
+	// (step 2's "all the way"); on the maxi it is the scene's grind step (step 3: the J4's sheet to 0.4 against 40 kN).
 	FScriptedScene Scene;
 	if (!Load(*this, Scene)) return false;
 	double Home = 0.15;
 	for (const FSceneStep& S : Scene.GetSteps()) if (S.Id == "grind") Home = S.Expect.AtMost;
-	const double Gale = GrindSeconds(StandInKnots, Home);
-	const double Breeze = GrindSeconds(12.0, Home);
-	AddInfo(FString::Printf(TEXT("Grinding the J/22's jib sheet home (fully eased to %.2f): %.1f s in %.0f kn, %.1f s in 12 kn"), Home, Gale, StandInKnots, Breeze));
+	const FPlayBoat StandIn = FPlayBoat::StandIn(Scene), Own = FPlayBoat::Own(Scene);
+	const double Gale = GrindSeconds(StandIn, StandInKnots, 0.15);
+	const double Breeze = GrindSeconds(StandIn, 12.0, 0.15);
+	AddInfo(FString::Printf(TEXT("Grinding the J/22's jib sheet home (fully eased to 0.15): %.1f s in %.0f kn, %.1f s in 12 kn"), Gale, StandInKnots, Breeze));
 	TestTrue(TEXT("A grind in 25 kn takes real seconds: 4 to 12"), Gale >= 4.0 && Gale <= 12.0);
 	TestTrue(TEXT("... and is quicker in 12 kn"), Breeze > 0.0 && Breeze < Gale);
+	const double MaxiGale = GrindSeconds(Own, Own.Knots, Home);
+	const double MaxiHome = GrindSeconds(Own, Own.Knots, 0.2);
+	const double MaxiBreeze = GrindSeconds(Own, 12.0, Home);
+	AddInfo(FString::Printf(TEXT("Grinding the maxi's jib sheet (two reefs, the J4) from fully eased: to %.2f in %.1f s in %.0f kn (to 0.20 in %.1f s), %.1f s in 12 kn"),
+		Home, MaxiGale, Own.Knots, MaxiHome, MaxiBreeze));
+	TestTrue(TEXT("Maxi: the scene's grind in 32 kn takes longer than the J/22's and fits its 25 s"), MaxiGale > Gale && MaxiGale < 25.0);
+	TestTrue(TEXT("... the last of it is power-limited (to 0.2 takes far longer)"), MaxiHome > 2.0 * MaxiGale);
+	TestTrue(TEXT("... and it is quicker in 12 kn"), MaxiBreeze > 0.0 && MaxiBreeze < MaxiGale);
 	FStationControls Winch;
 	TestTrue(TEXT("Against no load the line runs at the winch's top speed"), FMath::IsNearlyEqual(Winch.GrindLineSpeed(0.0, 1.0), Winch.Config.MaxLineSpeedMs));
 	TestTrue(TEXT("Twice the load, half the speed (power-limited)"), FMath::IsNearlyEqual(Winch.GrindLineSpeed(4000.0, 1.0) * 2.0, Winch.GrindLineSpeed(2000.0, 1.0)));
 
 	// The whole scene with the crew member at the stations: every call answered there, the grind by grinding.
-	const FPlaythrough Good = Play(Scene, ECrew::Good);
+	const FPlaythrough Good = Play(Scene, ECrew::Good, Own);
 	AddInfo(FString::Printf(TEXT("Stations playthrough: %d answered, %d by the crew, %d repeats, %.0f s, %.1f m of sheet ground; stations %s"),
 		Good.Result.StepsPassed, Good.Result.StepsAssisted, Good.Result.Retries, Good.Result.Seconds, Good.GrindMeters, *FString::Join(Good.Stations, TEXT(", "))));
 	TestTrue(TEXT("The scene finishes"), Good.Result.bComplete);

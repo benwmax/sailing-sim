@@ -15,12 +15,46 @@ namespace Sailing
 		case EBoatType::Hobie16: return "Hobie 16";
 		case EBoatType::Corsair880: return "Corsair 880";
 		case EBoatType::Lagoon42: return "Lagoon 42";
+		case EBoatType::Maxi: return "Maxi 100";
 		default: return "Boat";
 		}
 	}
 
+	void FHullShape::StationAt(double X, int& OutI, double& OutT) const
+	{
+		const int N = int(Stations.size());
+		int I = 0;
+		while (I < N - 2 && Stations[I + 1].X < X) ++I;
+		OutI = I;
+		OutT = Clamp((X - Stations[I].X) / std::max(Stations[I + 1].X - Stations[I].X, 1e-6), 0.0, 1.0);
+	}
+
+	double FHullShape::StationBottomZ(int I, double T, double AbsY) const
+	{
+		const FStation& A = Stations[I];
+		const FStation& B = Stations[I + 1];
+		const int N = int(std::min(A.Y.size(), B.Y.size()));
+		double PrevY = Lerp(A.Y[0], B.Y[0], T), PrevZ = Lerp(A.Z[0], B.Z[0], T);
+		if (AbsY <= PrevY) return PrevZ;
+		for (int K = 1; K < N; ++K)
+		{
+			const double Y = Lerp(A.Y[K], B.Y[K], T), Z = Lerp(A.Z[K], B.Z[K], T);
+			if (AbsY <= Y) return Lerp(PrevZ, Z, (AbsY - PrevY) / std::max(Y - PrevY, 1e-6));
+			PrevY = Y;
+			PrevZ = Z;
+		}
+		return PrevZ;
+	}
+
 	double FHullShape::DeckHalfBeam(double X) const
 	{
+		if (HasStations())
+		{
+			if (X > Stations.back().X || X < Stations.front().X) return 0.02;
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return std::max(Lerp(Stations[I].Y.back(), Stations[I + 1].Y.back(), T), 0.02);
+		}
 		if (X > MaxBeamX)
 		{
 			const double U = (X - MaxBeamX) / (BowX - MaxBeamX + 0.02);
@@ -32,11 +66,23 @@ namespace Sailing
 
 	double FHullShape::SheerHeight(double X) const
 	{
+		if (HasStations())
+		{
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return Lerp(Stations[I].Sheer, Stations[I + 1].Sheer, T);
+		}
 		return SheerZ + SheerRise * std::max(0.0, (X - SheerRiseFromX) / std::max(BowX - SheerRiseFromX, 1e-3));
 	}
 
 	double FHullShape::KeelLineDepth(double X, double MainDepth) const
 	{
+		if (HasStations())
+		{
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return -StationBottomZ(I, T, 0.0) + (MainDepth - StationDepth);
+		}
 		const double D = MainDepth * DepthScale;
 		const double U = (X - WaterlineMidX) / WaterlineHalfLength;
 		if (std::fabs(U) <= 1.0)
@@ -48,6 +94,12 @@ namespace Sailing
 
 	double FHullShape::BottomZ(double X, double Y, double MainDepth) const
 	{
+		if (HasStations())
+		{
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return StationBottomZ(I, T, std::fabs(Y)) - (MainDepth - StationDepth);
+		}
 		const double D = KeelLineDepth(X, MainDepth);
 		const double B = std::max(DeckHalfBeam(X), 1e-3);
 		const double R = std::min(std::fabs(Y) / B, 1.0);
@@ -93,6 +145,15 @@ namespace Sailing
 		const double FootChord = MainFootChord * (0.9 + 0.1 * F);
 		const int Strips = Main.NumStrips > 0 ? Main.NumStrips : 4;
 		BuildSail(Main, Strips, MainFootZ, HeadZ, FootChord, MainHeadChord, MainRoach, MainLuffX, Lerp(MainLuffX, MainLuffXHead, F), MainArea * std::pow(F, 1.3));
+		if (!ReefJibFraction.empty() && JibArea > 0.0 && Jib.NumStrips > 0)
+		{
+			// The smaller headsail for this reef, tacked at the same point: luff and foot each shrink by the square root.
+			const int JR = std::min(R, int(ReefJibFraction.size()));
+			const double JF = JR == 0 ? 1.0 : ReefJibFraction[JR - 1];
+			const double S = std::sqrt(JF);
+			BuildSail(Jib, Jib.NumStrips, JibFootZ, JibFootZ + (JibHeadZ - JibFootZ) * S, JibFootChord * S, JibHeadChord, 0.0, JibLuffX,
+				Lerp(JibLuffX, JibLuffXHead, S), JibArea * JF);
+		}
 	}
 
 	bool FBoatConfig::HasBoard() const
@@ -215,6 +276,10 @@ namespace Sailing
 	namespace
 	{
 		constexpr int kStationsX = 26, kStationsY = 12;
+
+		/** How much of a fixed appendage's volume is under water with its centroid this far above the surface (m):
+		 *  all of it 0.5 m down, none 0.5 m up (a fin and bulb a metre deep through the surface). */
+		double AppendageWet(double HeightAboveWater) { return Clamp(0.5 - HeightAboveWater, 0.0, 1.0); }
 	}
 
 	double FBoatModel::SubmergedVolumeUpright(double Depth) const
@@ -241,7 +306,8 @@ namespace Sailing
 	void FBoatModel::BuildHull()
 	{
 		// Find the canoe-body depth that floats the boat (with crew) at the design waterline.
-		const double Target = Mass / kWaterDensity;
+		// Fixed appendages float their own volume (FBoatConfig::AppendageVolume); the canoe body carries the rest.
+		const double Target = Mass / kWaterDensity - Config.AppendageVolume;
 		double Lo = 0.02, Hi = 3.0;
 		for (int I = 0; I < 60; ++I)
 		{
@@ -461,6 +527,13 @@ namespace Sailing
 				OutVolume += Vol;
 				OutMomentX += P.Y * Vol; // buoyancy up at lateral offset Y from the CG
 			}
+			if (Config.AppendageVolume > 0.0)
+			{
+				const Vec3 P = Q.Rotate(Config.AppendageCentre - CenterOfGravity);
+				const double Vol = Config.AppendageVolume * AppendageWet(P.Z + CenterOfGravity.Z - Sink);
+				OutVolume += Vol;
+				OutMomentX += P.Y * Vol;
+			}
 		};
 		const double Target = Mass / kWaterDensity;
 		double Lo = -3.0, Hi = 3.0, Vol = 0.0, MX = 0.0;
@@ -529,6 +602,14 @@ namespace Sailing
 			const double Damping = -C.HeaveDamping * Col.Area * Wet * (PointVel.Z - WaterVZ);
 			AddWorldForce(Vec3(0.0, 0.0, kWaterDensity * kGravity * Volume + Damping), Point);
 			if (Col.Hull < 8) HullVolume[Col.Hull] += Volume;
+		}
+
+		// The fixed appendages' buoyancy at their centroid (out of the water only when she is far over or turtled).
+		if (C.AppendageVolume > 0.0)
+		{
+			const Vec3 P = Origin + Q.Rotate(C.AppendageCentre);
+			const double Wet = AppendageWet(P.Z - WaterAt(P));
+			if (Wet > 0.0) AddWorldForce(Vec3(0.0, 0.0, kWaterDensity * kGravity * C.AppendageVolume * Wet), P);
 		}
 
 		// Crew: the CG assumes them on the centerline; moving them out (or onto the board) adds a gravity moment.

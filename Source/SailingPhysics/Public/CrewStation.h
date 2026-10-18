@@ -64,8 +64,12 @@ namespace Sailing
 		double TravellerRate = 0.8;
 		/** The rest of the crew grind flat out too (they are the same people). */
 		double CrewGrindEffort = 1.0;
+		/** The crew's heavy-air tack while the player steers (the jib let fly and the main hard in, then the jib aback and the
+		 *  main eased): the J/22 stand-in needs it in 25 kn; the maxi tacks on her helm and trim and only stalls with it. */
+		bool bTackHelp = true;
 
-		/** The station hardware of this boat (the J/22 stand-in's for now; the maxi's comes with its class). */
+		/** The station hardware of this boat: the maxi's pedestal and primaries, the J/22 stand-in's for the rest, and the
+		 *  boat's own wheel rate where she has a wheel. */
 		static FStationConfig For(const FBoatConfig& Boat);
 	};
 

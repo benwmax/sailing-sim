@@ -861,6 +861,10 @@ void ASailboatPawn::ApplyDifficulty()
 	EasyAssists.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
 	EasyAssists.ApplyTo(TrimAssist.Settings);
 	EasyHelm.Reset();
+	// Prologue step 3: a scene's assisted limits (the maxi never capsizes or broaches in the mistral); never in normal
+	// sailing, on traffic boats or the ghost.
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	FSceneLimits::For(!bTrafficBoat && !bGhost && GM && GM->GetScene()).ApplyTo(Boat.GetMutableConfig());
 }
 
 void ASailboatPawn::ResetBoat()
@@ -917,6 +921,11 @@ void ASailboatPawn::ResetBoat()
 	// -SailingSpinnaker: start with it up, whenever the boat is (re)started.
 	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 	int32 ReefArg = 0;
+	// A scene starts (and restarts) with its own sails: the maxi's gale reefs in the prologue.
+	if (const ASailingGameMode* ReefGM = GetWorld()->GetAuthGameMode<ASailingGameMode>(); ReefGM && !bTrafficBoat && !bGhost && ReefGM->GetScene())
+	{
+		Controls.Reef = FMath::Clamp(ReefGM->GetSceneReefs(), 0, int32(Boat.GetConfig().ReefLuffFraction.size()));
+	}
 	if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingReef="), ReefArg))
 	{
 		Controls.Reef = FMath::Clamp(ReefArg, 0, int32(Boat.GetConfig().ReefLuffFraction.size()));
@@ -2947,7 +2956,9 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->Save();
 		break;
 	case RowBoat:
-		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
+		// The prologue's maxi is not offered here (prologue step 3: only the prologue sails her until her model lands).
+		do S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
+		while (S->BoatType == int32(EBoatType::Maxi));
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:

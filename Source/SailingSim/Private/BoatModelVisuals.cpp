@@ -158,7 +158,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.bOwnOutboard = J22HullMesh->FindSocket(TEXT("Outboard")) != nullptr; // build_j22.py draws one since round 12
 		return M;
 	}
-	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class.
+	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class. The
+	// prologue's maxi has none yet (the PC's model, branch maxi-hero): she draws the procedural stand-in from her physics.
 	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return M;
 	const TCHAR* Tag = BoatTags[int32(Type)];

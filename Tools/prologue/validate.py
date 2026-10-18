@@ -13,7 +13,7 @@ ROOT = os.path.join(HERE, "..", "..")
 DEFAULT = os.path.join(ROOT, "Content", "Prologue", "prologue.json")
 
 SCENE_KEYS = {"schema_version", "id", "title", "setting", "assist_caption", "cameras", "stations", "actions", "steps"}
-SETTING_KEYS = {"boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "stand_in", "then"}
+SETTING_KEYS = {"boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "stand_in", "then"}
 STEP_KEYS = {"id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station"}
 CALL_KEYS = {"id", "caption", "retry", "ok"}
 # Trigger type -> (required, optional) fields, as ScriptedScene.cpp reads them.
@@ -68,9 +68,12 @@ def problems(scene):
         check(isinstance(s.get("boat"), str) and s["boat"], "setting: missing boat")
         check(num(s.get("wind_kn")), "setting: missing wind_kn")
         if "gust_kn" in s: check(num(s["gust_kn"]) and s["gust_kn"] >= s.get("wind_kn", 0), "setting: gust_kn below wind_kn")
+        reefs_ok = lambda r: isinstance(r, int) and not isinstance(r, bool) and 0 <= r <= 3
+        if "reefs" in s: check(reefs_ok(s["reefs"]), "setting: reefs is 0 to 3")
         si = s.get("stand_in")
         if si is not None:
-            check(isinstance(si, dict) and set(si) <= {"boat", "wind_kn", "gust_kn"} and si.get("boat"), "setting.stand_in: boat, wind_kn, gust_kn")
+            check(isinstance(si, dict) and set(si) <= {"boat", "wind_kn", "gust_kn", "reefs"} and si.get("boat"), "setting.stand_in: boat, wind_kn, gust_kn, reefs")
+            if isinstance(si, dict) and "reefs" in si: check(reefs_ok(si["reefs"]), "setting.stand_in: reefs is 0 to 3")
         th = s.get("then")
         if th is not None:
             check(isinstance(th, dict) and set(th) <= {"cut", "tier"}, "setting.then: cut and tier only")

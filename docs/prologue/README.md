@@ -9,7 +9,7 @@ step fills with data: a scene read from a JSON file, judged by the sim, shown by
 | --- | --- | --- |
 | 1 | Data-driven scripted scenes | done |
 | 2 | Crew-station control mode ([below](#step-2-crew-stations)) | done |
-| 3 | The maxi class (`Tools/boats/maxi/ref.json`, `sections.json` on `maxi-hero`) | next |
+| 3 | The maxi class ([below](#step-3-the-maxi)) | done |
 | 4+ | The gale preset, the captain's voice, cameras, the first-launch flow (prologue, then Easy/Realistic, then the career) | later |
 
 ## How it runs
@@ -22,8 +22,9 @@ step fills with data: a scene read from a JSON file, judged by the sim, shown by
   `FBoatControls`, the station they hold and the crew actions done this frame. The scene judges every answer from the
   boat's telemetry and those controls (online rule 8), never from the HUD.
 - **Game:** `-SailingPrologue=1` makes a session a prologue (the first-launch wiring comes later). `ASailingGameMode`
-  loads the scene, sails it on the stand-in boat and wind (`setting.stand_in`: the J/22 in 25 kn gusting 32 until the
-  maxi and the gale exist; `-SailingWind`/`-SailingGust` still win), and steps it from the player's boat
+  loads the scene, sails it on its own boat (`setting.boat`: the maxi since step 3, on `setting.reefs`, in the scene's
+  wind; `-SailingPrologueBoat=J22` sails the stand-in, `setting.stand_in`, for comparison; `-SailingBoat`,
+  `-SailingWind`/`-SailingGust` still win), and steps it from the player's boat
   (`ASailboatPawn::TickAfterPhysics` hands over the boat, the merged controls, the player's station, the station
   controls they worked, and the **crew action** button, Space or X on the pad, which answers a call that asks for an
   action). The boat starts on the first checkpoint's pose; R
@@ -107,7 +108,7 @@ Placeholder captions in the captain's voice; the later steps only change data.
 | 1 | `clip-on` (checkpoint, TWA 60 at 8 kn) | jib trimmer | 3 s in | "Clip on to the jackline before you do anything else." | action `clip-on` in 10 s | deck-wide |
 | 2 | `ease-jib` | jib trimmer | a gust 6 kn over the mean (or 45 s) | "Gust! Ease the jib!" | the jib sheet eased 0.12 in 4 s | jib-sheet |
 | 3 | `ready-about` (checkpoint, TWA 55 at 8 kn) | helm | 8 s after | "You're on the wheel. Ready about!" | a tack in 25 s (the crew work the sheets) | helm-over-shoulder |
-| 4 | `grind` | jib trimmer | at once | "Back on the jib. Grind! Bring the new sheet in, all the way!" | the grinder, jib in to 0.15 in 14 s | grinder |
+| 4 | `grind` | jib trimmer | at once | "Back on the jib. Grind! Bring the new sheet in, all the way!" | the grinder, jib in to 0.4 in 25 s (step 3: the maxi's J4; 0.15 in 14 s on the J/22) | grinder |
 | 5 | `take-helm` (checkpoint, TWA 150 at 10 kn) | helm | 6 s after | "Take the helm. Bear away and let her run down the face of this one." | the wheel, TWA 130–170 for 8 s | wave-face |
 | 6 | `dump-main` | main trimmer | a gust 8 kn over the mean, 10 s on (or 40 s) | "Squall! Dump the traveller, then ease the main!" | the traveller dump, then the mainsheet, main out past 0.8 in 6 s | squall-astern |
 | 7 | `the-break` (checkpoint, TWA 140 at 9 kn) | helm | 12 s after | "There's the break. Harbour on the bow. Bring her up onto a reach." | the wheel, TWA 60–120 for 6 s, then the end | harbour-ahead |
@@ -206,15 +207,111 @@ jib trimmer, helm, jib trimmer, helm, main trimmer, helm.
 Packaged build, Oct 18 2026: `scripts/gate.sh --scope ui` passed (182 tests; helm-eye High 60.3 fps, beam8 High
 63.0); the storm view on Medium (`ONLY=storm scripts/bench-visual.sh 12 stations-storm Medium`) is 68.3 fps.
 
+## Step 3: the maxi
+
+The prologue's boat: a made-up 100 ft racing maxi, built by the PC as a model (`maxi-hero`: `Tools/boats/maxi/ref.json`
+and `sections.json`, copied here) and here as a physics class, `EBoatType::Maxi` in `FBoatConfig::Make`
+(`Source/SailingPhysics/Private/Fleet.cpp`). Every number has its reason in the comment beside it.
+
+- **Hull: the exported sections themselves.** `FHullShape` can now be a table of stations (`Stations`: half sections
+  keel to sheer, stern to bow) instead of the formula; `DeckHalfBeam`, `SheerHeight`, `KeelLineDepth` and `BottomZ`
+  follow them, so the hydrostatics, wetted hull, grounding, wake, crew placement and water clip all see the model's
+  hull. `Tools/boats/maxi/make_maxi_hull.py` writes them into `MaxiHullData.inl` (rerun it when the PC re-exports).
+  The formula's parameters are kept as a stand-in fit (the water material's hull clip, `BoatExport`).
+- **Displacement:** the canoe body's 37.13 m^3 plus the fin, bulb and rudders (3.03 m^3 from ref.json's plan forms,
+  `FBoatConfig::AppendageVolume`: fixed appendages now float their own volume, at their centroid) float her 40.2 t in
+  the sim's fresh water; ref.json's 42 t is the same volume in sea water within 2%. Ballast: the steel fin (3.06 t) and
+  20 t of lead in the bulb; 12 crew of 88 kg on the rail (2.6 m out on average).
+- **Righting curve** (from the hull and keel): GM 5.9 m; righting moment 0.94 MN m at 30 deg, 1.13 at 45, positive
+  past 110 deg (GZ 5.3 m); knocked down to 85 deg she is back under 2 deg in 30 s.
+- **Appendages:** a fixed T-keel (the fin's area carries the bulb's and canoe body's side force; the bulb is the
+  grounding footprint at 6.0 m), twin spade rudders 1.75 m off the centreline canted 8 deg (the windward blade lifts
+  out heeled; the leeward one ventilates from 40 deg, not the single rudders' 30), wheel steering
+  (`FBoatConfig::WheelHardOverSeconds` 1.6 s, which the station wheel reads).
+- **Rig:** masthead sloop, mast 44.5 m above the deck, square-top main 335 m^2, a non-overlapping J1 245 m^2, A2 720
+  m^2 off the sprit. **Reefs:** one (87% of the luff, the J3 at 55% of the J1) and two (74%, the J4 at 35%): the gale
+  sails. `FBoatConfig::ReefJibFraction` changes the headsail with each reef (the small boats keep theirs).
+- **Resistance:** wetted area from the sections' girth (114.7 m^2); residuary the J/22's Delft-shaped table scaled by
+  slenderness cubed through the hump, the planing dinghies' rise past Fn 0.7; windage from the mast's frontal area.
+- **Engine:** 150 hp diesel, 13 kN of bollard pull.
+- **The estimated polar** (`FleetReferencePolar`, `Tools/boats/maxi/estimate_polar.py`): no published polar, so the
+  Catalina 30's and the J/22's ORC polars are scaled to her by Froude number, sail area / displacement and Reynolds
+  number and averaged; the same scaling from the Catalina 30 lands within 4% of the J/22's own polar on average (17% at
+  worst), and the maxi is far outside the fleet (displacement-length 43), so the tolerance is 30%. `scripts/polar.sh
+  --boat maxi` sails it, `--scenarios` runs the heavy-air tacks and the gust.
+- **The scene's assisted limits:** `FSceneLimits` (`EasyAssists.h`): a 35 deg heel cap (FEasyAssists' righting assist),
+  the rudders keeping three quarters of the grip they lose to ventilation, yaw damped twice as hard. The pawn applies it
+  while a scene runs (after Easy mode's); normal sailing never does.
+- **Stations:** `FStationConfig::For` gives the maxi two linked pedestals the player grinds with three more grinders
+  (1.4 kW, 80%, 1.2 m/s top gear), 8 m of J3/J4 sheet, her wheel rate, slower main and traveller; her crew tack on the
+  helm and the trim (`bTackHelp` off: the J/22's heavy-air help stopped her head to wind).
+- **The game's edge:** the scene's `setting.boat` ("Maxi") picks her and `setting.reefs` (2, new) her sails; until the
+  mistral coast exists she sails the Gulf world's offshore spot (15 nm south of Galveston, the only water deep enough
+  for her draft). `-SailingPrologueBoat=J22` sails the stand-in on the lake as before. She is not on the Boat screen or
+  in the pause menu's boat row yet; `-SailingBoat=Maxi` works for stills, drawn by the fleet's procedural stand-in from
+  her physics (`ModelMeshesFor` has no meshes for her yet). Save id `Maxi`.
+- **The scene retuned for her:** the grind step asks for the jib in to 0.4 in 25 s (the J4's last metre against 40 kN
+  of sheet load is a minute's work); every other step already fits her.
+
+![The maxi's procedural stand-in on her two reefs in the prologue's 32 kn, the Gulf's offshore spot (High, no HUD)](maxi-standin.jpg)
+
+### Measured (step 3)
+
+Oct 18 2026, standalone and `SailingSim.Physics.Maxi*`, `SailingSim.Prologue.*`:
+
+| | |
+| --- | --- |
+| Floating draft (canoe body) | 0.959 m (ref.json 0.95) |
+| Centre of buoyancy | x -2.375, z -0.259 (export -2.342, -0.272) |
+| At rest | level within 0.04 deg, on her lines within 1 mm |
+| Polar | 15 points within 30%: 6 kn upwind 9.0 kn at 52 deg, 10.5 reaching; 10 kn 11.7 / 14.6; 16 kn 12.2 / 16.1, 15.3 at 150 with the A2 |
+| Helm upwind (10-16 kn) | 2.0-4.3 deg of weather helm |
+| Tack, 30 kn, two reefs | 17.2 s, 10.5 kn down to 3.6 (full sail: she cannot) |
+| 40 kn gust on a close reach (TWA 70), sheets held, limits off | heel 39 deg, rounds up to 47 deg off the wind, no capsize |
+| ... limits on | heel 30.2 deg, 5 deg off course, no broach |
+| ... broad reach (TWA 100), limits on | heel 30.1 deg, 21.3 to 25.5 kn |
+| Broad reach, 30 kn gusting to about 37, two reefs (reference check) | one-second peak 30.3 kn (band 18-34), most tilt 20 deg |
+| Grind, 32 kn, two reefs: fully eased to 0.40 | 23.1 s (to 0.20: 65.7 s); 4.7 s in 12 kn. The J/22: 6.8 s to 0.15 in 25 kn |
+| The scene on the maxi, 32 kn gusting 40 | 7 steps answered, none by the crew, no repeats, 112 s, 3.3 m of sheet ground (the J/22 stand-in: 84 s) |
+| A crew member who never answers | the crew do all 7 after 20 repeats; the scene finishes (650 s) |
+
+Packaged build, Oct 18 2026: `scripts/gate.sh --scope boats` passed (185 tests; High: beam8 62.5 fps, beat15 60.7,
+marina 59.4, helm-eye 58.3, slip 52.1, crew 52.5). The prologue on the maxi uncooked (`scripts/run-game.sh 20
+-SailingPrologue=1 -SailingBoat=Maxi -SailingWorld=Gulf -SailingLaunch=2 -SailingQuality=High`): 58-60 fps.
+
+A known gap: in the reference checks' gustier field (gust intensity 0.15, gusts near 48 kn) the polar's crew, who ease
+only as far as their trim lets them, broach her on a broad reach under two reefs; the scene's limits hold her (38.5 deg,
+21 kn mean). The check runs at 0.10.
+
+### What the model needs
+
+For the PC, so the hero sits on the physics:
+
+- **Waterline:** the physics floats her on the sections' design waterline (body Z = 0, the export's frame) with the
+  canoe body 0.959 m deep (0.95 in ref.json: 9 mm of sinkage). Keep the model's origin on the DWL amidships of the
+  waterline, X forward, as exported; the pawn places the model's origin at the physics origin.
+- **Hull:** the physics is `sections.json` as exported (21 stations, 11 points each). A re-export means copying both
+  JSON files into `Tools/boats/maxi/` and rerunning `make_maxi_hull.py` (then `SailingSim.Physics.MaxiHull` checks the
+  draft, centre of buoyancy and displacement).
+- **Sockets** the pawn reads (`BoatModelVisuals.cpp`, the J/22 hero's names): on the hull `MastStep` (x 3.1),
+  `RudderPivot` and `RudderPivot_1` (the two stocks, x -12.9, y -/+1.75), `ForestayTack` (x 14.75, z 2.95),
+  `BackstayPlate`, `JibLead_S`/`_P` (the genoa tracks), `JibTailer_S`, `Traveler_C` and `Traveler_S` (x -11.4),
+  `LazySheetVia`, and the crew's `Seat`, `FootBrace`, `SideDeck`, `HandholdCoaming`, `HandholdCabin` with `_S`/`_P`;
+  on the mast `MastBase`, `LowerTang`, `Hounds`, `MastheadAft`; on the boom `Boom_Vang`, `Boom_Mainsheet` (the boom
+  hangs on the physics gooseneck, z 2.15); on the rudder `RudderStock` and `TillerEnd` (a point on the wheel's rim
+  for the helm's hand: the pawn reads it as the tiller end). No `Outboard` (set `bOwnOutboard`: the diesel is inboard).
+- **Code:** `ASailboatPawn::ModelMeshesFor` needs a `Maxi` entry (`/Game/Boats/Maxi/SM_Maxi_*`, `BoatTags` has 8);
+  `SailingSim.Visual.FleetMesh` should hold the hero to the physics hull (LOA 30.48, beam 7.2) like the fleet's; the
+  catalogue's Boat screen skip (`SailCatalog::MakeBoats`) and the pause menu's skip come out when she is offered.
+  `BoatExport` is not needed (the model is the source of the hull).
+
 ## What the later steps need
 
-- **Step 3, the maxi's stations:** `FStationConfig::For` returns the J/22 stand-in's hardware for every boat; the maxi
-  needs its pedestal grinders (several crew, more power), longer sheets, a slower wheel and its own sheet load. The HUD
-  draws no wheel yet (`GetWheel()` is there for it).
-- **Step 3, the maxi:** `setting.boat` names it; drop `stand_in` (or keep it for the tests) and retune the sheet
-  amounts and TWA bands on the maxi's polar.
-- **The gale preset and the mistral world:** `setting.weather`, `world`, `rain`, `sea_hs_m` are recorded but not
-  applied yet; the game mode applies only the stand-in wind and gust.
+- **The HUD's wheel:** none drawn yet (`FStationControls::GetWheel()` is there for it).
+- **The gale preset and the mistral world (step 4):** `setting.weather`, `world`, `rain`, `sea_hs_m` are recorded but
+  not applied yet; the game mode applies the scene's wind and gust, and the maxi sails the Gulf's offshore spot until
+  the mistral coast exists. The gale sails are the maxi's two reefs (main 74% of the luff, the J4).
+- **The maxi's model (the PC, `maxi-hero`):** what the physics needs from it is in [step 3](#what-the-model-needs).
 - **Cameras:** the renderer reads `FScriptedScene::GetCamera()`; nothing consumes it yet.
 - **Voice:** record the seven calls (and repeats) as `/Game/Audio/Pack/Voice/captain_<step>` with licence rows.
 - **The first-launch flow (step 7):** title, prologue, Easy/Realistic, career; skip from `IsSceneDone("prologue")`;
