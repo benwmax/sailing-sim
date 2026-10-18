@@ -132,3 +132,28 @@ capture in each phase: easiest in a T1-off launch, which is slow for its first ~
 
 Scripts: the capture helpers (`run.sh`, `tl.sh`, `xproc.py`, ...) live in git-ignored `Artifacts/cap/`; the traces
 there carry the session environment, so they stay off git.
+
+## GPU slices inside the measured window (branch gpu-slices-in-window)
+
+The bench's three `ProfileGPU` frames are now taken **spread through the measured window**, at 40, 60 and 80% of it
+(`ASailingGameMode::Tick`), not in the 2.4 s after it, so `gpu` slices see the same phase as the frames measured. The bench
+also ends 2.4 s sooner. To keep the frame times clean, the 16 frames after each request are left out of the frame and thread
+times. On the storm view the profiled frame shows as 3 frames of +2-4 ms, 8 to 13 frames after the request. bench.json
+reports the count as `gpu_skipped_frames` (48 for three dumps). The game thread's named slices (`gt`) still sum over the
+whole window.
+
+Storm view on High, packaged, 12 s, governor on (82% in every run), one launch per line:
+
+| Launch | fps | gpu_frame_ms | slices total ms | clouds_fog_ms |
+|---|---|---|---|---|
+| main, in-window slices (8 skipped frames) | 45.1, 45.2, 45.1 | 21.4 | 20.4-20.5 | 9.43-9.48 |
+| main, in-window slices (16 skipped) | 44.3 | 21.8 | 21.7 | 9.75 |
+| main, T1 off, in-window slices | 45.2, 45.2, 44.0 | 21.3-21.9 | 20.3-22.1 | 9.57-9.70 |
+| main, T1 off, `-SailingNoGpuSlices` | 45.1, 45.2 | 21.3-21.4 | - | - |
+| main, `-SailingNoGpuSlices` | 43.7 | 22.1 | - | - |
+
+Frame rates with and without the in-window dumps agree to within launch-to-launch noise, so the dumps don't shift the
+measurement. Tonight every launch on this Mac was in the slow phase, including the T1-off launches that were mostly fast
+earlier. So no run here shows a fast launch's slices. In every slow launch the slices now agree with `gpu_frame_ms`
+(about 1 ms apart, which is the work between passes). A fast launch should now report a `clouds_fog_ms` about 2-3 ms lower
+than before, matching its fps.
