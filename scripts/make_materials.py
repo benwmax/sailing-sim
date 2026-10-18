@@ -2670,6 +2670,32 @@ def import_texture(src, folder, srgb=True):
     return tex
 
 
+TREE_SCANS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Inputs", "trees", "ambientcg")
+TREE_SCAN_FOLDER = "/Game/World/Trees/Scanned"
+
+
+def scan_texture(name, src, folder, kind, flip_green=False):
+    """T2: a scanned map imported as `name`: colour (sRGB), normal (flip_green for GL normals) or roughness."""
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", src)
+    task.set_editor_property("destination_path", folder)
+    task.set_editor_property("destination_name", name)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("replace_existing", True)
+    task.set_editor_property("save", False)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(f"{folder}/{name}")
+    if kind == "normal":
+        tex.set_editor_property("srgb", False)
+        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
+        tex.set_editor_property("flip_green_channel", flip_green)
+    elif kind == "rough":
+        tex.set_editor_property("srgb", False)
+        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
+
+
 def tree_wind(mat, leaf, x=-1200, y=600):
     mpc = world_collection()
     wind = node(mat, unreal.MaterialExpressionCollectionParameter, x, y, collection=mpc, parameter_name="Wind")
@@ -2732,6 +2758,10 @@ def build_trees_materials():
     atlas_src = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "Artifacts", "models", "world", "T_LeafAtlas.png")
     # The PC has no venv to draw the atlas (make-content.sh does): keep the imported one when there is no fresh PNG.
     atlas = import_texture(atlas_src, WORLD_FOLDER) if _os.path.exists(atlas_src) else unreal.load_asset(f"{WORLD_FOLDER}/T_LeafAtlas")
+    # T2: the photographed leaves' normals, composed with the atlas (make_leaf_atlas.py, GL normals: green flipped here).
+    normal_src = atlas_src.replace("T_LeafAtlas.png", "T_LeafAtlasN.png")
+    leaf_normals = scan_texture("T_LeafAtlasN", normal_src, WORLD_FOLDER, "normal", flip_green=True) if _os.path.exists(normal_src) \
+        else unreal.load_asset(f"{WORLD_FOLDER}/T_LeafAtlasN")
     leaves = world_material("M_TreeLeaves")
     leaves.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
     leaves.set_editor_property("two_sided", True)
@@ -2763,6 +2793,10 @@ c = lerp(c, c * float3(1.15, 1.08, 0.85), VC.r * 0.35);
     MEL.connect_material_property(sss, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
     MEL.connect_material_property(tex, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    if leaf_normals:
+        tn = node(leaves, unreal.MaterialExpressionTextureSample, -800, -300, texture=leaf_normals)
+        tn.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+        MEL.connect_material_property(tn, "RGB", unreal.MaterialProperty.MP_NORMAL)
     tree_wind(leaves, True)
     MEL.recompile_material(leaves)
     unreal.EditorAssetLibrary.save_loaded_asset(leaves)
@@ -2806,7 +2840,34 @@ c = c * lerp(0.85, 1.15, VC.b) * lerp(0.32, 1.0, VA) * lerp(0.6, 1.1, hollow);
 
     bark = world_material("M_TreeBark")
     uv = node(bark, unreal.MaterialExpressionTextureCoordinate, -800, 0)
-    code = """
+    # T2: scanned bark (ambientCG Bark001, CC0, Inputs/trees/ambientcg): the trunks' UVs wrap once round (U) and run at
+    # two per metre (V), so the scan is laid twice round and once a metre, the ridges vertical.
+    bark_src = _os.path.join(TREE_SCANS, "Bark001", "Bark001_1K-JPG_")
+    if _os.path.exists(bark_src + "Color.jpg"):
+        bark_c = scan_texture("T_Bark001_C", bark_src + "Color.jpg", TREE_SCAN_FOLDER, "color")
+        bark_n = scan_texture("T_Bark001_N", bark_src + "NormalDX.jpg", TREE_SCAN_FOLDER, "normal")
+        bark_r = scan_texture("T_Bark001_R", bark_src + "Roughness.jpg", TREE_SCAN_FOLDER, "rough")
+    else:
+        bark_c, bark_n, bark_r = (unreal.load_asset(f"{TREE_SCAN_FOLDER}/{n}") for n in ("T_Bark001_C", "T_Bark001_N", "T_Bark001_R"))
+    if bark_c:
+        tiled = node(bark, unreal.MaterialExpressionMultiply, -600, 0)
+        connect(uv, "", tiled, "A")
+        connect(node(bark, unreal.MaterialExpressionConstant2Vector, -800, 100, r=2.0, g=0.5), "", tiled, "B")
+        tc = node(bark, unreal.MaterialExpressionTextureSample, -400, -100, texture=bark_c)
+        tn = node(bark, unreal.MaterialExpressionTextureSample, -400, 150, texture=bark_n)
+        tn.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+        tr = node(bark, unreal.MaterialExpressionTextureSample, -400, 400, texture=bark_r)
+        tr.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+        for t in (tc, tn, tr):
+            connect(tiled, "", t, "UVs")
+        # A shade darker and greyer than the scan's daylight photo (the old bark's range: 0.16 to 0.30).
+        dim = custom(bark, "return C * float3(0.62, 0.6, 0.58);", ["C"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -200, -100)
+        connect(tc, "RGB", dim, "C")
+        MEL.connect_material_property(dim, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        MEL.connect_material_property(tn, "RGB", unreal.MaterialProperty.MP_NORMAL)
+        MEL.connect_material_property(tr, "R", unreal.MaterialProperty.MP_ROUGHNESS)
+    else:
+        code = """
 // Grey-brown bark with vertical furrows and lichen.
 float f = 0.5 + 0.5 * sin(UV.x * 6.2832 * 7.0 + sin(UV.y * 9.0) * 1.5);
 float n = frac(sin(dot(floor(UV * float2(24.0, 6.0)), float2(12.9898, 78.233))) * 43758.5453);
@@ -2814,11 +2875,11 @@ float3 c = lerp(float3(0.16, 0.13, 0.11), float3(0.30, 0.27, 0.23), f * 0.7 + n 
 c = lerp(c, float3(0.35, 0.38, 0.30), step(0.92, n) * 0.6);
 return c;
 """
-    bc = custom(bark, code, ["UV"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
-    connect(uv, "", bc, "UV")
-    r = node(bark, unreal.MaterialExpressionConstant, -300, 200, r=0.85)
-    MEL.connect_material_property(bc, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(r, "", unreal.MaterialProperty.MP_ROUGHNESS)
+        bc = custom(bark, code, ["UV"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0)
+        connect(uv, "", bc, "UV")
+        r = node(bark, unreal.MaterialExpressionConstant, -300, 200, r=0.85)
+        MEL.connect_material_property(bc, "", unreal.MaterialProperty.MP_BASE_COLOR)
+        MEL.connect_material_property(r, "", unreal.MaterialProperty.MP_ROUGHNESS)
     tree_wind(bark, False)
     MEL.recompile_material(bark)
     unreal.EditorAssetLibrary.save_loaded_asset(bark)

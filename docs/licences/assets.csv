@@ -29,6 +29,8 @@ Content/UI/Fonts/Saira*,Saira (Condensed and SemiCondensed),third-party,Google F
 Content/UI/Fonts/SourceSans3*,Source Sans 3,third-party,Google Fonts / Adobe,SIL OFL 1.1 (Reserved Font Name 'Source'),yes,ship OFL-SourceSans3.txt (staged),UI
 Content/UI/Fonts/OFL-*,OFL licence texts,third-party,the font authors,SIL OFL 1.1,yes,must ship,UI
 Content/UI/*,"Cards, loading stills, title art and maps (Tools/ui/make_ui_art.py, scripts/import_ui_art.py)",generated,the game's own captures and bakes; no photos,own work (maps carry OSM/ODbL data),conditions,maps: ODbL attribution as the bakes,"front end, minimap"
+Content/World/Trees/Scanned/*,"T2: scanned bark Bark001 (colour, normal, roughness)",third-party,https://ambientcg.com/a/Bark001 (Inputs/trees/ambientcg),CC0 1.0,yes,,tree trunks (M_TreeBark)
+Content/World/T_LeafAtlas*,"T2: leaf-spray atlas and normals composed from ambientCG LeafSet016, LeafSet019, LeafSet022, LeafSet024 (Tools/blender/make_leaf_atlas.py)",derived,https://ambientcg.com (Inputs/trees/ambientcg),CC0 1.0,yes,,tree leaf cards (M_TreeLeaves)
 Content/World/*,"World kit: trees, houses, props, vehicles, navaids, vessels, landmarks, baked Nanite tiles and their materials (Tools/blender/*, scripts/import_world.py, bake_*)",generated,"this project; placement from the bakes (OSM, Overture, USGS, NOAA ENC)",own work (positions from ODbL and public-domain data),conditions,ODbL attribution as the bakes,both worlds
 Content/Collections/*,(empty),generated,,,yes,,
 Content/Developers/*,(empty),generated,,,yes,,
@@ -59,6 +61,7 @@ Inputs/j22-hero/*,"J/22 hero generator scripts, styles, baked textures, FBX, GLB
 Inputs/rope/*,Rope and wire textures (Tools/rope/make_rope_textures.py),generated,this project (computed),own work,yes,,Content/Boats/Rope
 Inputs/boat-detail/*,Close-up detail textures (Tools/boats/make_detail_textures.py),generated,this project (numpy),own work,yes,,Content/Boats/Detail
 Inputs/look/*,Grade LUT and bloom kernel (Tools/look),generated,this project,CC0 (own work),yes,,Content/Look
+Inputs/trees/ambientcg/*,"T2: leaf atlases LeafSet016, LeafSet019, LeafSet022, LeafSet024 (colour, opacity, normal) and bark Bark001 (colour, normal, roughness), 1K JPG as downloaded",third-party,https://ambientcg.com,CC0 1.0,yes,,make_leaf_atlas.py and M_TreeBark
 Inputs/drills/*,"Drill briefings, tips, quiz and validator",generated,this project; no ASA Study Kit text,own work,yes,ASA 101 is a trademark (descriptive use only),Content/Learning
 Inputs/g3/*,"Boat catalogue (published dimensions, colour schemes) and clothing notes",generated,this project; facts from class rules and builders,own work (facts),yes,,"Tools/fleet/make_liveries.py, crew clothing"
 Inputs/g4/*,Front end spec and clickable mockup,generated,this project,own work,yes,,UI
