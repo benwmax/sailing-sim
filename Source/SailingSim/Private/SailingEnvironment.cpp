@@ -47,12 +47,13 @@ namespace
 
 namespace
 {
-	// C2: the sky cache's panorama: 4096 x 512 half floats over elevations -3 to 33 degrees (a cumulus base at 2 km is
-	// under 22 degrees from 5 km out), 96 steps from 5 km to 40 km, the sky light's share of the dome's view luminance.
+	// C2: the sky cache's panorama: 4096 x 896 half floats over elevations -3 to 75 degrees (about 11 texels a degree
+	// each way). A cumulus base at 2 km is under 22 degrees from 5 km out, but a storm's deck and core reach far higher:
+	// at 33 degrees the dome showed bare sky above the shelf where the live clouds stop at 5 km. 96 steps to 40 km.
 	constexpr int32 kSkyCacheWidth = 4096;
-	constexpr int32 kSkyCacheHeight = 512;
+	constexpr int32 kSkyCacheHeight = 896;
 	constexpr float kSkyCacheElMin = -3.f;
-	constexpr float kSkyCacheElMax = 33.f;
+	constexpr float kSkyCacheElMax = 75.f;
 	constexpr int32 kSkyCacheSteps = 96;
 	constexpr float kSkyCacheSplitM = 5000.f;
 	constexpr float kSkyCacheFarM = 40000.f;
@@ -1111,10 +1112,12 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	if (!GM) return;
 	const double Now = GetWorld()->GetTimeSeconds();
 	const FWeatherState& W = GM->GetWeatherState();
-	// Not under a storm (yet): the shelf's lit face is emission in CLOUD_CODE and the deck's slate albedo, which the
-	// cache's two lighting terms don't carry (its storm came out a black-brown deck). While a storm is in the sky the
-	// live clouds take the whole sky back, as they were before the cache; it starts again when the storm has gone.
-	const bool bStorm = W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02;
+	// Under a storm too: the shelf's lit face (CLOUD_CODE's emission) is carried in the sun term and the deck's slate in
+	// the albedo, and the panorama refreshes every second (the front moves at 10 m/s or more). -SailingNoStormCache
+	// gives a storm's sky back to the live clouds (as before the storm cover).
+	static SailingArgs::FCachedFlag NoStormCacheArg(TEXT("SailingNoStormCache"));
+	const bool bStormActive = W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02;
+	const bool bStorm = bStormActive && NoStormCacheArg.Get();
 	if (bStorm)
 	{
 		if (bCacheReady)
@@ -1150,12 +1153,12 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		FString L, A, B;
 		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCacheLight="), L, false) && L.Split(TEXT(","), &A, &B)) { SunScale = FCString::Atof(*A); SkyScale = FCString::Atof(*B); }
 	}
-	SkyMaterial->SetVectorParameterValue(TEXT("CacheSun"), FLinearColor(SunScale, 0.f, 0.f, SkyScale));
+	SkyMaterial->SetVectorParameterValue(TEXT("CacheSun"), FLinearColor(SunScale, float(FMath::Clamp(W.Sky[ECloudLayer::Storm].Coverage, 0.0, 1.0)), 0.f, SkyScale));
 	if (Blend < 1.f) return;
 
-	// A whole panorama every four seconds: a strip of columns a frame (fair-weather cumulus drift a few tens of metres in
-	// that time, nothing at 5 km and beyond).
-	const double Refresh = 4.0;
+	// A whole panorama every four seconds (fair-weather cumulus drift a few tens of metres in that time, nothing at 5 km
+	// and beyond), every second under a storm: a strip of columns a frame.
+	const double Refresh = bStormActive ? 1.0 : 4.0;
 	if (CacheColumn == 0)
 	{
 		// One camera and one set of cloud parameters for the whole panorama, so its strips agree.
