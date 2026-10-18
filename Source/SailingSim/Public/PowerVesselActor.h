@@ -23,7 +23,8 @@ class SAILINGSIM_API APowerVesselActor : public AActor
 public:
 	APowerVesselActor();
 
-	void Build(Sailing::ETrafficKind Kind);
+	/** bTanker: a Ship drawn as the tanker (the Gulf Pride) rather than the container ship. */
+	void Build(Sailing::ETrafficKind Kind, bool bTanker = false);
 	Sailing::ETrafficKind GetKind() const { return Kind; }
 	/** Moves her to the simulated vessel and lights her for the observer (lights show only over their arcs). */
 	void UpdateFrom(const Sailing::FTrafficVessel& Vessel, bool bDark, const FVector& Observer, float Time);
