@@ -47,6 +47,7 @@ struct FSailSessionConfig
 	UPROPERTY(config) bool bLearningMode = true;
 	UPROPERTY(config) bool bEasy = true;
 	UPROPERTY(config) bool bLearningTips = true;
+	UPROPERTY(config) bool bFreeSail = false;      // the play mode (docs/free-sail): Free Sail, or Career
 	UPROPERTY(config) int32 Traffic = 1;           // 0 off, 1 light, 2 busy
 	UPROPERTY(config) FDateTime SavedAt;
 };
@@ -98,7 +99,7 @@ public:
 	void ResetForRun();
 	/** Writes a session's choices into the persistent settings (world, spot, boat, difficulty, traffic...). */
 	static void ApplyToSettings(const FSailSessionConfig& Config);
-	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy. */
+	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy, the title's play mode. */
 	static FSailSessionConfig MakeDefault();
 	static const TArray<FSailPreset>& Presets();
 	static void ApplyPreset(FSailConditions& Conditions, const FSailPreset& Preset);

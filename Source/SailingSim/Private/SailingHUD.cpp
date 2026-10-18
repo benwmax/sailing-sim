@@ -1132,7 +1132,10 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 	// Sections: what you sail and against whom, the water and weather, how the game helps, display and keys.
 	const TMap<int32, const TCHAR*> Sections = { { 0, TEXT("SAILING") }, { 6, TEXT("WATER AND WEATHER") }, { 11, TEXT("HELP AND CONTROLS") }, { 15, TEXT("DISPLAY, SOUND AND KEYS") } };
 	const float RowH = 29.f, SectionH = 24.f;
-	const float W = 760.f, H = 110.f + Rows.Num() * RowH + Sections.Num() * SectionH;
+	// Bottom: the hint and two credit lines, then the same 20 px margin as the sides (the last credit line used to sit on
+	// the panel's edge at 1280x720).
+	const float Margin = 20.f, CreditH = 16.f;
+	const float W = 760.f, H = 110.f + Rows.Num() * RowH + Sections.Num() * SectionH + Margin;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = FMath::Max(10.f, Canvas->ClipY / UIScale * 0.5f - H * 0.5f);
 	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.72f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
 	Text(TEXT("Settings"), X + 20.f, Y + 12.f, FLinearColor::White, 1.1f, true);
@@ -1150,13 +1153,14 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 		Text(Rows[I].Key, X + 24.f, RY, bSel ? FLinearColor::White : Dim, 0.9f);
 		Text(FString::Printf(TEXT("<  %s  >"), *Rows[I].Value), X + 290.f, RY, bSel ? Good : FLinearColor::White, 0.9f);
 	}
-	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 54.f, Dim, 0.8f);
+	const float Bottom = Y + H - Margin;
+	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + Margin, Bottom - 2.f * CreditH - 26.f, Dim, 0.8f);
 	// Required attribution for the map data (OpenStreetMap is ODbL; Overture's buildings carry Esri Community Maps, CC BY 4.0,
 	// and Microsoft's Global ML Building Footprints, ODbL); the full wording is in CREDITS.md and on the Credits screen.
-	Text(TEXT("Map data (c) OpenStreetMap contributors (ODbL); buildings via Overture Maps: Esri Community Maps contributors (CC BY 4.0), Microsoft (ODbL). Terrain: USGS 3DEP."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
+	Text(TEXT("Map data (c) OpenStreetMap contributors (ODbL); buildings via Overture Maps: Esri Community Maps contributors (CC BY 4.0), Microsoft (ODbL). Terrain: USGS 3DEP."), X + Margin, Bottom - 2.f * CreditH, Dim, 0.7f);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	Text(GM && GM->GetLake().IsTidal() ? TEXT("Chart, tides and currents: NOAA (ENC, CO-OPS). Not for navigation.")
-		: TEXT("Lake depths and levels: Texas Water Development Board."), X + 20.f, Y + H - 12.f, Dim, 0.7f);
+		: TEXT("Lake depths and levels: Texas Water Development Board."), X + Margin, Bottom - CreditH, Dim, 0.7f);
 }
 
 void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)

@@ -88,6 +88,8 @@ private:
 	// Career 1: the tier shown on the Career screen; the checkride whose quiz is running (empty: a drill's quiz); the
 	// lesson a drill's quiz closes; the career's line on the quiz's last page.
 	FString CareerTierId, CheckrideTierId, QuizLessonId, QuizCareerLine;
+	// Free Sail: the title was rebuilt by its Mode switch, so the switch keeps the focus.
+	bool bTitleFocusMode = false;
 	TFunction<void()> ConfirmAction;
 	// Screen transitions (3.3): a 180 ms fade with a 24 px slide.
 	double TransitionStart = 0.0;

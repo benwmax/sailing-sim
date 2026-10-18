@@ -211,7 +211,7 @@ FString FSailSave::ToJson() const
 	Start->SetBoolField(TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 	Set->SetObjectField(TEXT("start"), Start);
 	TSharedRef<FJsonObject> Career = Obj();
-	Career->SetBoolField(TEXT("openEverything"), S.bOpenEverything);
+	Career->SetBoolField(TEXT("freeSail"), S.bFreeSail);
 	Set->SetObjectField(TEXT("career"), Career);
 	TSharedRef<FJsonObject> Input = Obj();
 	Input->SetStringField(TEXT("bindings"), S.InputBindings);
@@ -231,6 +231,7 @@ FString FSailSave::ToJson() const
 		Sess->SetBoolField(TEXT("learningMode"), L.bLearningMode);
 		Sess->SetBoolField(TEXT("easy"), L.bEasy);
 		Sess->SetBoolField(TEXT("learningTips"), L.bLearningTips);
+		Sess->SetBoolField(TEXT("freeSail"), L.bFreeSail);
 		Sess->SetNumberField(TEXT("traffic"), L.Traffic);
 		Sess->SetStringField(TEXT("savedAt"), L.SavedAt.ToIso8601());
 		TSharedRef<FJsonObject> C = Obj();
@@ -301,6 +302,8 @@ FString FSailSave::ToJson() const
 	Root->SetObjectField(TEXT("progress"), Prog);
 
 	if (Raw.IsValid()) KeepUnknown(*Root, *Raw);
+	// Career 1's Open everything is Free Sail now (docs/free-sail): freeSail carries it, so the old field goes.
+	Career->RemoveField(TEXT("openEverything"));
 
 	FString Text;
 	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Text);
@@ -401,7 +404,12 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*St, TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 		}
 		if (const TSharedPtr<FJsonObject> In = Child(*Set, TEXT("input"))) Read(*In, TEXT("bindings"), S.InputBindings);
-		if (const TSharedPtr<FJsonObject> Ca = Child(*Set, TEXT("career"))) Read(*Ca, TEXT("openEverything"), S.bOpenEverything);
+		if (const TSharedPtr<FJsonObject> Ca = Child(*Set, TEXT("career")))
+		{
+			// Free Sail replaced Career 1's Open everything switch: a file from before reads that field.
+			if (Ca->HasField(TEXT("freeSail"))) Read(*Ca, TEXT("freeSail"), S.bFreeSail);
+			else Read(*Ca, TEXT("openEverything"), S.bFreeSail);
+		}
 	}
 
 	if (const TSharedPtr<FJsonObject> Sess = Child(*Root, TEXT("lastSession")))
@@ -417,6 +425,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Sess, TEXT("learningMode"), L.bLearningMode);
 		Read(*Sess, TEXT("easy"), L.bEasy);
 		Read(*Sess, TEXT("learningTips"), L.bLearningTips);
+		Read(*Sess, TEXT("freeSail"), L.bFreeSail);
 		Read(*Sess, TEXT("traffic"), L.Traffic);
 		Read(*Sess, TEXT("savedAt"), L.SavedAt);
 		if (const TSharedPtr<FJsonObject> C = Child(*Sess, TEXT("conditions")))
@@ -535,7 +544,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.Traffic = In.TrafficLevel;
 	S.WeatherSeed = In.WeatherSeed;
 	S.bGaugeLakeLevel = In.bGaugeLakeLevel;
-	S.bOpenEverything = In.bOpenEverything;
+	S.bFreeSail = In.bFreeSail;
 
 	bHasLast = InSession.bHasLast;
 	const FSailSessionConfig& C = InSession.Last;
@@ -549,6 +558,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	L.bLearningMode = C.bLearningMode;
 	L.bEasy = C.bEasy;
 	L.bLearningTips = C.bLearningTips;
+	L.bFreeSail = C.bFreeSail;
 	L.Traffic = C.Traffic;
 	L.SavedAt = C.SavedAt + UtcOffset();   // the game keeps local time; the file UTC
 	L.PresetId = C.Conditions.PresetId.ToString();
@@ -611,7 +621,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.TrafficLevel = FMath::Clamp(S.Traffic, 0, 2);
 	Out.WeatherSeed = S.WeatherSeed;
 	Out.bGaugeLakeLevel = S.bGaugeLakeLevel;
-	Out.bOpenEverything = S.bOpenEverything;
+	Out.bFreeSail = S.bFreeSail;
 
 	OutSession.bHasLast = bHasLast;
 	OutSession.Last = FSailSessionConfig();
@@ -627,6 +637,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 		C.bLearningMode = L.bLearningMode;
 		C.bEasy = L.bEasy;
 		C.bLearningTips = L.bLearningTips;
+		C.bFreeSail = L.bFreeSail;
 		C.Traffic = FMath::Clamp(L.Traffic, 0, 2);
 		C.SavedAt = L.SavedAt - UtcOffset();
 		C.Conditions.PresetId = FName(*L.PresetId);

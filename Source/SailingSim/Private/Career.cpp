@@ -348,12 +348,12 @@ FString FCareerContent::MedalName(ECareerMedal Medal)
 
 // ---------------------------------------------------------------- progress
 
-const FCareerLesson* FCareerProgress::LessonForRun(const FCareerRun& Run, bool bOpenEverything) const
+const FCareerLesson* FCareerProgress::LessonForRun(const FCareerRun& Run) const
 {
 	const FCareerLesson* Found = nullptr;
 	for (const FCareerTier& T : Content.Tiers)
 	{
-		if (!IsTierOpen(T.Id, bOpenEverything) || (T.Boats.Num() && !T.Boats.Contains(Run.BoatId))) continue;
+		if (!IsTierOpen(T.Id) || (T.Boats.Num() && !T.Boats.Contains(Run.BoatId))) continue;
 		for (const FCareerLesson& L : T.Lessons)
 		{
 			if (L.Drill != Run.Drill) continue;
@@ -364,10 +364,11 @@ const FCareerLesson* FCareerProgress::LessonForRun(const FCareerRun& Run, bool b
 	return Found;
 }
 
-FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run, bool bOpenEverything)
+FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run)
 {
 	FAward A;
-	const FCareerLesson* L = LessonForRun(Run, bOpenEverything);
+	if (bFreeSail) return A;   // Free Sail earns no medals
+	const FCareerLesson* L = LessonForRun(Run);
 	if (!L || !Run.bComplete) return A;
 	A.LessonId = L->Id;
 	A.Seconds = Run.Seconds;
@@ -405,7 +406,7 @@ FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run, bool b
 bool FCareerProgress::RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of)
 {
 	const FCareerLesson* L = Content.Lesson(LessonId);
-	if (!L || Of <= 0) return false;
+	if (!L || Of <= 0 || bFreeSail) return false;
 	FSailSave::FLessonRecord* R = Progress.FindLesson(LessonId);
 	if (!R)
 	{
@@ -470,7 +471,7 @@ bool FCareerProgress::IsCheckrideReady(const FString& TierId, FString* OutWhy) c
 bool FCareerProgress::RecordCheckrideQuiz(const FString& TierId, int32 Right, int32 Of, const FDateTime& WhenUtc)
 {
 	const FCareerTier* T = Content.Tier(TierId);
-	if (!T || !IsCheckrideReady(TierId) || Of <= 0) return false;
+	if (!T || bFreeSail || !IsCheckrideReady(TierId) || Of <= 0) return false;
 	FSailSave::FCheckrideRecord* R = Progress.FindCheckride(T->Checkride.Id);
 	if (!R)
 	{
@@ -489,10 +490,10 @@ bool FCareerProgress::RecordCheckrideQuiz(const FString& TierId, int32 Right, in
 	return true;
 }
 
-bool FCareerProgress::IsTierOpen(const FString& TierId, bool bOpenEverything) const
+bool FCareerProgress::IsTierOpen(const FString& TierId) const
 {
 	if (!Content.Tier(TierId)) return false;
-	if (bOpenEverything || Content.AlwaysOpen.Tiers.Contains(TierId)) return true;
+	if (bFreeSail || Content.AlwaysOpen.Tiers.Contains(TierId)) return true;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
 	{
 		const FCareerTier* By = Content.TierOfCertificate(C.Id);
@@ -515,9 +516,9 @@ void FCareerProgress::Opens(const FCareerTier& T, TSet<FString>& Worlds, TSet<FS
 	}
 }
 
-bool FCareerProgress::IsWorldOpen(const FString& WorldId, bool bOpenEverything) const
+bool FCareerProgress::IsWorldOpen(const FString& WorldId) const
 {
-	if (bOpenEverything || Content.AlwaysOpen.Worlds.Contains(WorldId)) return true;
+	if (bFreeSail || Content.AlwaysOpen.Worlds.Contains(WorldId)) return true;
 	for (const FCareerTier& T : Content.Tiers)
 	{
 		if (Content.AlwaysOpen.Tiers.Contains(T.Id) && T.WorldId == WorldId) return true;
@@ -530,9 +531,9 @@ bool FCareerProgress::IsWorldOpen(const FString& WorldId, bool bOpenEverything) 
 	return Worlds.Contains(WorldId);
 }
 
-bool FCareerProgress::IsBoatOpen(const FString& BoatId, bool bOpenEverything) const
+bool FCareerProgress::IsBoatOpen(const FString& BoatId) const
 {
-	if (bOpenEverything || Content.AlwaysOpen.Boats.Contains(BoatId)) return true;
+	if (bFreeSail || Content.AlwaysOpen.Boats.Contains(BoatId)) return true;
 	for (const FCareerTier& T : Content.Tiers)
 	{
 		if (Content.AlwaysOpen.Tiers.Contains(T.Id) && T.Boats.Contains(BoatId)) return true;
@@ -554,17 +555,17 @@ FString FCareerProgress::LockReason(const FString& Id, bool bWorld) const
 		Opens(T, Worlds, Boats);
 		if ((bWorld ? Worlds : Boats).Contains(Id)) return FString::Printf(TEXT("Earn the %s"), *T.CertificateName);
 	}
-	return TEXT("Not in the career yet");   // Settings > Gameplay > Open everything opens it
+	return TEXT("Not in the career yet");   // Free Sail opens it
 }
 
-FString FCareerProgress::WorldLockReason(const FString& WorldId, bool bOpenEverything) const
+FString FCareerProgress::WorldLockReason(const FString& WorldId) const
 {
-	return IsWorldOpen(WorldId, bOpenEverything) ? FString() : LockReason(WorldId, true);
+	return IsWorldOpen(WorldId) ? FString() : LockReason(WorldId, true);
 }
 
-FString FCareerProgress::BoatLockReason(const FString& BoatId, bool bOpenEverything) const
+FString FCareerProgress::BoatLockReason(const FString& BoatId) const
 {
-	return IsBoatOpen(BoatId, bOpenEverything) ? FString() : LockReason(BoatId, false);
+	return IsBoatOpen(BoatId) ? FString() : LockReason(BoatId, false);
 }
 
 void FCareerProgress::AddSession(double SimSeconds, int32 LogEntries, double LogMiles)
@@ -584,13 +585,13 @@ void FCareerProgress::RecordRace(bool bFinished, int32 Place)
 
 // ---------------------------------------------------------------- the game's edge
 
-bool SailCareer::OpenEverything() { return USailingSettings::Get()->bOpenEverything; }
+bool SailCareer::IsFreeSail() { return USailingSettings::Get()->IsFreeSail(); }
 
-FCareerProgress SailCareer::Progress() { return FCareerProgress(FCareerContent::Get(), SailSaveStore::Progress()); }
+FCareerProgress SailCareer::Progress() { return FCareerProgress(FCareerContent::Get(), SailSaveStore::Progress(), IsFreeSail()); }
 
 FCareerProgress::FAward SailCareer::RecordRun(const FCareerRun& Run)
 {
-	const FCareerProgress::FAward A = Progress().RecordRun(Run, OpenEverything());
+	const FCareerProgress::FAward A = Progress().RecordRun(Run);
 	if (A.IsValid())
 	{
 		UE_LOG(LogSailing, Display, TEXT("Career: %s %s in %.0f s (best %s)"), *A.LessonId, *FCareerContent::MedalName(A.Medal), A.Seconds, *FCareerContent::MedalName(A.Best));

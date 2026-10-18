@@ -84,6 +84,26 @@ bool USailingSettings::IsEasy() const
 	return Difficulty == ESailingDifficulty::Easy;
 }
 
+int32 USailingSettings::FreeSailArg()
+{
+	static uint32 Gen = MAX_uint32;
+	static int32 Arg = -1;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Arg = -1;
+		int32 V = 0;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingFreeSail="), V)) Arg = V != 0 ? 1 : 0;
+	}
+	return Arg;
+}
+
+bool USailingSettings::IsFreeSail() const
+{
+	const int32 Arg = FreeSailArg();
+	return Arg >= 0 ? Arg != 0 : bFreeSail;
+}
+
 void USailingSettings::UseRunDefaults()
 {
 	static bool bDone = false;
@@ -92,6 +112,7 @@ void USailingSettings::UseRunDefaults()
 	RestoreClassDefaults();
 	// -SailingEasy picks the difficulty for the run too (the HUD and the menus say what the physics does).
 	if (EasyArg() >= 0) Get()->Difficulty = EasyArg() ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic;
+	if (FreeSailArg() >= 0) Get()->bFreeSail = FreeSailArg() != 0;
 }
 
 void USailingSettings::RestoreClassDefaults()

@@ -66,7 +66,7 @@ namespace SailSaveTestsLocal
 		T.Traffic = 2;
 		T.WeatherSeed = 99;
 		T.bGaugeLakeLevel = true;
-		T.bOpenEverything = true;
+		T.bFreeSail = true;
 		T.InputBindings = TEXT("Input.ini");
 		S.bHasLast = true;
 		FSailSave::FSession& L = S.Last;
@@ -81,6 +81,7 @@ namespace SailSaveTestsLocal
 		L.bLearningMode = false;
 		L.bEasy = false;
 		L.bLearningTips = false;
+		L.bFreeSail = true;
 		L.Traffic = 0;
 		L.SavedAt = FDateTime(2026, 10, 17, 9, 30, 15);
 		L.PresetId = TEXT("SeaBreeze");
@@ -170,6 +171,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("last learning"), M.bLearningMode, L.bLearningMode);
 	TestEqual(TEXT("last easy"), M.bEasy, L.bEasy);
 	TestEqual(TEXT("last tips"), M.bLearningTips, L.bLearningTips);
+	TestEqual(TEXT("last free sail"), M.bFreeSail, L.bFreeSail);
 	TestEqual(TEXT("last traffic"), M.Traffic, L.Traffic);
 	TestEqual(TEXT("last saved at"), M.SavedAt, L.SavedAt);
 	TestEqual(TEXT("preset"), M.PresetId, L.PresetId);
@@ -190,7 +192,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("log entries"), B.Progress.LogbookEntries, A.Progress.LogbookEntries);
 	TestEqual(TEXT("log miles"), B.Progress.LogbookMiles, A.Progress.LogbookMiles);
 	TestEqual(TEXT("hours"), B.Progress.HoursSailed, A.Progress.HoursSailed);
-	TestEqual(TEXT("open everything"), Y.bOpenEverything, X.bOpenEverything);
+	TestEqual(TEXT("free sail"), Y.bFreeSail, X.bFreeSail);
 	if (TestEqual(TEXT("lessons"), B.Progress.Lessons.Num(), 1))
 	{
 		const FSailSave::FLessonRecord& P = A.Progress.Lessons[0];
