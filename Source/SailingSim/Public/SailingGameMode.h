@@ -172,9 +172,12 @@ private:
 	bool bBenchDone = false;
 	FString ShotName = TEXT("screenshot");
 	TArray<float> FrameTimes;
-	// Visual V1: GPU time per budget slice, profiled after the measured window (see GpuSlices.h).
+	// Visual V1: GPU time per budget slice (see GpuSlices.h), profiled inside the measured window since Perf (storm-high
+	// 2026-10-18); the frames around each profiled one are left out of the frame times.
 	TSharedPtr<class FGpuProfileCapture> GpuCapture;
 	int32 GpuProfilesRequested = 0;
+	int32 GpuProfileSkipFrames = 0;
+	int32 GpuProfileSkipped = 0;
 	FString GpuSlicesJson;
 	double ClothSecondsAtStart = -1.0;
 	double WaterSecondsAtStart = -1.0;
