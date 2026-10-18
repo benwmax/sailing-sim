@@ -37,6 +37,13 @@
 
 namespace SailFrontEndImpl
 {
+	/** "Oct 18" (FDateTime::ToString has no month-name format: %b printed the letter). */
+	FString ShortDate(const FDateTime& T, bool bYear = false)
+	{
+		static const TCHAR* Months[] = { TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec") };
+		const FString D = FString::Printf(TEXT("%s %d"), Months[FMath::Clamp(T.GetMonth(), 1, 12) - 1], T.GetDay());
+		return bYear ? FString::Printf(TEXT("%s, %d"), *D, T.GetYear()) : D;
+	}
 	using namespace SailUI;
 	using Prompt = TTuple<FString, FString, FString>;
 
@@ -508,6 +515,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 				: FString::Printf(TEXT("%s · %d of %d lessons"), *T.Name, Career.LessonsAtLeast(T, ECareerMedal::Bronze), T.Lessons.Num());
 			if (!Career.HasCertificate(T.CertificateId)) break;
 		}
+		if (SailCareer::IsFreeSail()) Sub = TEXT("Medals count in Career mode");
 		Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
 	}
 	const int32 Passed = Save->DrillsPassed.Num();
@@ -537,24 +545,60 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		Card = SNew(SBox).WidthOverride(460.f)
 		[
 			PanelBox(SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Last session · %s"), *L.SavedAt.ToString(TEXT("%b %d"))), EType::Eyebrow, Accent) ]
+				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Last session · %s · %s"), *ShortDate(L.SavedAt), L.bFreeSail ? TEXT("Free Sail") : TEXT("Career")), EType::Eyebrow, Accent) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f)[ SailUI::Text(SailCatalog::Boat(L.Boat).Name + TEXT(" on ") + LastWorld.Name, EType::CardTitleS, Fg) ]
 				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Detail, EType::Small, Muted, true) ])
 		];
 	}
+	// Free Sail: the play mode (docs/free-sail). Career opens places and boats with certificates and grades the lessons;
+	// Free Sail opens everything and earns no medals. The menus below follow it; Continue keeps its own session's mode.
+	TSharedRef<SSailChoice> ModeChoice = SNew(SSailChoice).Label(TEXT("Mode")).Options({ TEXT("Career"), TEXT("Free Sail") })
+		.Index_Lambda([]() { return SailCareer::IsFreeSail() ? 1 : 0; })
+		.OnChanged_Lambda([this](int32 I)
+		{
+			USailingSettings* S = USailingSettings::Get();
+			if (S->bFreeSail == (I == 1)) return;
+			S->bFreeSail = I == 1;
+			S->Save();
+			bTitleFocusMode = true;   // rebuilt for the Career line; keep the switch focused
+			Stack.Last() = Build(ESailScreen::Title);
+			Show(Stack.Last(), true);
+		});
+	const FString ModeLine = SailCareer::IsFreeSail()
+		? TEXT("Every world, boat, condition and mode open. No medals; the logbook still counts.")
+		: TEXT("Earn certificates to open places and boats. Lessons are graded.");
 	E.Content = SNew(SOverlay)
 		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Text(FText::FromString(TEXT("SAILING\nSIM"))).Font(Font(EType::Logo)).ColorAndOpacity(Fg).LineHeightPercentage(0.78f) ]
+			// The mode switch sits beside the logo's short second line, so the menu keeps its height.
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SBox).WidthOverride(560.f)
+				[
+					SNew(SOverlay)
+					+ SOverlay::Slot()[ SNew(STextBlock).Text(FText::FromString(TEXT("SAILING\nSIM"))).Font(Font(EType::Logo)).ColorAndOpacity(Fg).LineHeightPercentage(0.78f) ]
+					+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 6.f)
+					[
+						SNew(SBox).WidthOverride(330.f)
+						[
+							PanelBox(SNew(SVerticalBox)
+								+ SVerticalBox::Slot().AutoHeight()[ ModeChoice ]
+								+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 0.f, 16.f, 10.f)[ SailUI::Text(ModeLine, EType::Small, Muted, true) ],
+								FMargin(0.f))
+						]
+					]
+				]
+			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 6.f, 0.f, 36.f)[ SNew(STextBlock).Text(FText::FromString(TEXT("LAKE RAY HUBBARD  ·  GALVESTON BAY")))
 				.Font([] { FSlateFontInfo F = Font(EType::Eyebrow); F.LetterSpacing = 320; return F; }()).ColorAndOpacity(Muted) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top)[ SailUI::Text(TEXT("Graphics G4 build"), EType::Label, Dim) ]
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 90.f)[ Card ];
-	E.Focus = First;
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Quit")) }, FString());
+	E.Focus = bTitleFocusMode ? TSharedPtr<SWidget>(ModeChoice) : First;
+	bTitleFocusMode = false;
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Quit")) }, TEXT("Left / Right on Mode: Career or Free Sail"));
 	return E;
 }
 
@@ -566,13 +610,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
-	// Career 1: worlds open as certificates are earned (or all, with Settings > Gameplay > Open everything).
+	// Career 1: worlds open as certificates are earned (all of them in Free Sail).
 	const FCareerProgress Career = SailCareer::Progress();
-	const bool bAll = SailCareer::OpenEverything();
-	if (!Career.IsWorldOpen(FSailSave::WorldId(FMath::Min(Pending.World, 1)), bAll)) { Pending.World = 0; Pending.LaunchSpot = 0; }
+	if (!Career.IsWorldOpen(FSailSave::WorldId(FMath::Min(Pending.World, 1)))) { Pending.World = 0; Pending.LaunchSpot = 0; }
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
 	{
-		const FString Locked = Career.WorldLockReason(W.Id, bAll);
+		const FString Locked = Career.WorldLockReason(W.Id);
 		TSharedPtr<FSlateBrush> Art = TextureBrush(W.CardTexture);
 		TSharedRef<SHorizontalBox> Facts = SNew(SHorizontalBox);
 		for (const TPair<FString, FString>& F : W.Facts) Facts->AddSlot().FillWidth(1.f)[ Fact(F.Key, F.Value) ];
@@ -697,14 +740,13 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	FEntry E;
 	// Career 1: boats open as certificates are earned; a locked boat's card says which certificate opens it.
 	const FCareerProgress Career = SailCareer::Progress();
-	const bool bAll = SailCareer::OpenEverything();
-	if (!Career.IsBoatOpen(FSailSave::BoatId(Pending.Boat), bAll)) Pending.Boat = 0;
+	if (!Career.IsBoatOpen(FSailSave::BoatId(Pending.Boat))) Pending.Boat = 0;
 	FocusedBoat = Pending.Boat;
 	TSharedRef<SUniformGridPanel> Grid = SNew(SUniformGridPanel).SlotPadding(FMargin(8.f));
 	for (const SailCatalog::FBoat& B : SailCatalog::Boats())
 	{
 		const int32 T = B.Type;
-		const FString Locked = Career.BoatLockReason(FSailSave::BoatId(T), bAll);
+		const FString Locked = Career.BoatLockReason(FSailSave::BoatId(T));
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(14.f)).IsEnabled(Locked.IsEmpty())
 			.IsSelected_Lambda([this, T]() { return Pending.Boat == T; })
 			.OnFocused_Lambda([this, T]() { FocusedBoat = T; })
@@ -930,7 +972,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const FModeCard& M : Modes)
 	{
-		const FString GulfLocked = SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2), SailCareer::OpenEverything());
+		const FString GulfLocked = SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2));
 		const bool bOk = M.Mode != ESailMode::Passage || (Pending.World == 1 && GulfLocked.IsEmpty());
 		const ESailMode Mode = M.Mode;
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(18.f, 16.f)).IsEnabled(bOk).IsSelected_Lambda([this, Mode]() { return Pending.Mode == Mode; })
@@ -1203,10 +1245,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		Add(SNew(SSailChoice).Label(TEXT("Controls")).Options({ TEXT("Simple"), TEXT("Full") }).Index_Lambda([S]() { return S->ControlLayout == ESailingControlLayout::Simple ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->ControlLayout = I == 0 ? ESailingControlLayout::Simple : ESailingControlLayout::Full; S->Save(); })
 			.Note(TEXT("Easy always uses Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest.")));
-		Section(TEXT("Career"));
-		Add(SNew(SSailChoice).Label(TEXT("Open everything")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bOpenEverything ? 1 : 0; })
-			.OnChanged_Lambda([S](int32 I) { S->bOpenEverything = I == 1; S->Save(); })
-			.Note(TEXT("Every world and boat, whatever certificates you hold. Lessons, medals and certificates still count.")));
+		Section(TEXT("Mode"));
+		Add(SNew(SSailChoice).Label(TEXT("Mode")).Options({ TEXT("Career"), TEXT("Free Sail") }).Index_Lambda([]() { return SailCareer::IsFreeSail() ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bFreeSail = I == 1; S->Save(); })
+			.Note(TEXT("Free Sail opens every world, boat and mode and earns no medals. The title screen has the same switch.")));
 		Section(TEXT("Units"));
 		Add(SNew(SSailChoice).Label(TEXT("Speed")).Options({ TEXT("Knots"), TEXT("mph"), TEXT("km/h") }).Index_Lambda([S]() { return S->SpeedUnits; })
 			.OnChanged_Lambda([S](int32 I) { S->SpeedUnits = I; S->Save(); }));
@@ -1520,6 +1562,10 @@ void SSailFrontEnd::StartQuiz()
 			if (A.bEasyCapped) QuizDebrief += FString::Printf(TEXT(" Sailed on Easy, which earns at most %s: sail it on Realistic for more."),
 				*FCareerContent::MedalName(FCareerContent::Get().EasyMaxMedal).ToLower());
 		}
+		else if (SailCareer::IsFreeSail() && D.IsComplete())
+		{
+			QuizDebrief += FString::Printf(TEXT("%sFree Sail: no medal. Sail it in Career mode to grade the lesson."), QuizDebrief.IsEmpty() ? TEXT("") : TEXT("\n\n"));
+		}
 	}
 }
 
@@ -1751,15 +1797,19 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		const bool bHeld = Career.HasCertificate(T.CertificateId);
 		const FSailSave::FCertificateRecord* Cert = Prog.Certificates.FindByPredicate([&T](const FSailSave::FCertificateRecord& C) { return C.Id == T.CertificateId; });
 		const FSailSave::FCheckrideRecord* Ride = Prog.FindCheckride(T.Checkride.Id);
-		FString RideLine = bHeld ? FString::Printf(TEXT("%s earned %s."), *T.CertificateName, Cert ? *Cert->EarnedAt.ToString(TEXT("%b %d, %Y")) : TEXT(""))
+		FString RideLine = bHeld ? FString::Printf(TEXT("%s earned %s."), *T.CertificateName, Cert ? *ShortDate(Cert->EarnedAt, true) : TEXT(""))
 			: (bReady ? FString::Printf(TEXT("Ready: every lesson at %s or better. The written part is %d questions; %.0f%% passes."), *FCareerContent::MedalName(T.Checkride.MinMedal).ToLower(),
 				T.Checkride.Quiz.Questions, T.Checkride.Quiz.Pass * 100.0) : Why);
+		if (!RideLine.IsEmpty() && !RideLine.EndsWith(TEXT("."))) RideLine += TEXT(".");
 		if (Ride && Ride->QuizOf > 0 && !bHeld) RideLine += FString::Printf(TEXT(" Best so far %d of %d."), Ride->QuizBest, Ride->QuizOf);
 		// Easy mode earns at most bronze: a checkride that asks for more needs the lessons sailed on Realistic.
 		const ECareerMedal EasyMax = FCareerContent::Get().EasyMaxMedal;
 		if (!bHeld && !bReady && T.Checkride.MinMedal > EasyMax)
 			RideLine += FString::Printf(TEXT(" The checkride needs %s: sail the lessons on Realistic (Easy earns at most %s)."),
 				*FCareerContent::MedalName(T.Checkride.MinMedal).ToLower(), *FCareerContent::MedalName(EasyMax).ToLower());
+		// Free Sail grades nothing: the checkride waits for Career mode.
+		const bool bFree = Career.IsFreeSail();
+		if (bFree && !bHeld) RideLine = TEXT("Free Sail: lessons sail without medals. Choose Career on the title screen to earn medals and take the checkride.");
 		const FString TierId = T.Id;
 		TSharedRef<SSailButton> Take = ActionButton(bHeld ? TEXT("Retake the written checkride") : TEXT("Take the written checkride"),
 			FSimpleDelegate::CreateLambda([this, TierId]() { CheckrideTierId = TierId; Quiz.Reset(); Push(ESailScreen::Quiz); }));
@@ -1773,7 +1823,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 					+ SHorizontalBox::Slot().AutoWidth()[ Pill(bHeld ? TEXT("Certified") : (bReady ? TEXT("Ready") : TEXT("Not yet")), bHeld || bReady) ]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 10.f)[ SailUI::Text(RideLine, EType::Body, Muted, true) ]
-				+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(360.f).HAlign(HAlign_Left).Visibility(bReady ? EVisibility::Visible : EVisibility::Collapsed)[ Take ] ],
+				+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(360.f).HAlign(HAlign_Left).Visibility(bReady && !bFree ? EVisibility::Visible : EVisibility::Collapsed)[ Take ] ],
 				FMargin(18.f, 14.f))
 		];
 	}
@@ -1787,7 +1837,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
-		TEXT("A lesson sails its drill; free sail stays open whatever you hold"));
+		SailCareer::IsFreeSail() ? TEXT("Free Sail: lessons sail without medals") : TEXT("A lesson sails its drill; Free Sail on the title opens everything"));
 	return E;
 }
 

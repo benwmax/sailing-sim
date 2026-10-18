@@ -331,9 +331,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
   runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
 - Save file (`docs/save/`): `FSailSave`/`SailSaveStore` (`SailSave.h`) keep the settings, last session and progress in
-  `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README.
+  `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README; the mode is
+  `settings.career.freeSail` and `lastSession.freeSail` (an older file's `openEverything` reads as it). UI stills at a size
+  larger than the display's logical width need `-ForceRes` (`RESX=1920 RESY=1080 scripts/run-game.sh 6 -ForceRes ...`).
 - Career (`docs/career/`): tiers, lessons, medal rules, checkrides and unlocks in `Content/Career/career.json` (`Tools/career/validate.py`); `Career.h`
   (plain) grades from `FDrillRunner` into the save's progress, `SailCareer::*` is the game's edge; locks are menu-only; `SailingSim.Career.*`.
+  Two modes on the title (`docs/free-sail/`): Career, and Free Sail (`USailingSettings::bFreeSail`, `FSailSessionConfig::bFreeSail`,
+  `-SailingFreeSail=0|1`): everything open, `FCareerProgress(..., bFreeSail)` records no medal, quiz or certificate; the logbook
+  counts. It replaced Career 1's Open everything. The Sunfish is Club Racer's dinghy (its first boat; `SailingSim.Drills.SunfishLessons`).
 - Geo anchor (`docs/geo-anchor/`): `FGeoAnchor` (`GeoAnchor.h`) is the bakes' tmerc exactly (pyproj to nanometres); persistent
   places go by id, then lat/lon (`ResolvePlacement`, the save's `launchSpotAt`); convert at the edge with `SailingNav::LatLonAt`/`MapAt`.
 - Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`

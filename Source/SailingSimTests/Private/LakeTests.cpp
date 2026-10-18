@@ -552,6 +552,90 @@ bool FSailingDockingTest::RunTest(const FString& Parameters)
 }
 
 
+/**
+ * Free Sail job: the Club Racer tier's Sunfish lessons (Content/Career/career.json). The Sunfish sails the course and the
+ * quick-stop with the same scripted helmsmen as the J/22's drill tests above; their times are what the lessons' gold
+ * limits are checked against (gold must be reachable, with room for a person).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSunfishLessonsTest, "SailingSim.Drills.SunfishLessons", Flags)
+bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
+{
+	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
+	double TriangleSeconds = 0.0, QuickStopSeconds = 0.0;
+	{
+		const FWindField Wind = WindFrom(10.0, 0.0);
+		FBoatModel Boat(Sunfish);
+		Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 3.0 * kKnot);
+		FDrillRunner Drill;
+		Drill.Start(ESailingDrill::SailATriangle, Boat, 0.0);
+		FAutoTrim Trim;
+		FAutopilot Pilot;
+		FBoatControls C;
+		int32 Tack = 1;
+		for (int32 I = 0; I < int32(1200 * PhysicsHz) && Drill.IsActive(); ++I)
+		{
+			const Vec3 O = Boat.OriginPosition();
+			const FVector2D M = Drill.GetMarks()[Drill.GetNextMark()];
+			const double MarkTwa = FMath::RadiansToDegrees(WrapAngle(0.0 - FMath::Atan2(M.Y - O.Y, M.X - O.X)));
+			if (FMath::Abs(MarkTwa) < 46.0)
+			{
+				if (FMath::Abs(MarkTwa) > 2.0 && FMath::Sign(MarkTwa) != Tack && FMath::Abs(MarkTwa) > 44.0) Tack = -Tack;
+				Pilot.TargetTWADeg = 45.0 * Tack;
+			}
+			else
+			{
+				Pilot.TargetTWADeg = MarkTwa;
+				Tack = MarkTwa > 0.0 ? 1 : -1;
+			}
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Pilot.Update(Boat);
+			Boat.Step(PhysicsDt, C, Wind);
+			Drill.Update(Boat, FDrillContext(), PhysicsDt);
+		}
+		AddInfo(FString::Printf(TEXT("Sunfish triangle: %s"), *Drill.GetStatus()));
+		TestTrue(TEXT("The Sunfish rounds all three marks within 20 minutes"), Drill.IsComplete());
+		TriangleSeconds = Drill.GetElapsed();
+	}
+	{
+		const FWindField Wind = WindFrom(10.0, 0.0);
+		FBoatModel Boat(Sunfish);
+		Boat.Reset(0.0, 0.0, -100.0 * kDegToRad, 4.0 * kKnot);
+		FDrillRunner Drill;
+		Drill.Start(ESailingDrill::CrewOverboardQuickStop, Boat, 0.0);
+		FAutoTrim Trim;
+		FAutopilot Pilot;
+		Pilot.MaxTiller = 0.7;
+		FBoatControls C;
+		bool bBelow = false;
+		double T = 0.0;
+		for (int32 I = 0; I < int32(240 * PhysicsHz) && Drill.IsActive(); ++I, T += PhysicsDt)
+		{
+			const Vec3 O = Boat.OriginPosition();
+			const FVector2D Dmy = Drill.GetDummy();
+			const double Dist = FVector2D::Distance(FVector2D(O.X, O.Y), Dmy);
+			if (!bBelow && O.X < Dmy.X - 20.0 && FMath::Abs(O.Y - Dmy.Y) < 20.0) bBelow = true;
+			const FVector2D Aim = bBelow ? Dmy : Dmy - FVector2D(25.0, 0.0);
+			const double MarkTwa = FMath::RadiansToDegrees(WrapAngle(0.0 - FMath::Atan2(Aim.Y - O.Y, Aim.X - O.X)));
+			if (T < 4.0) Pilot.TargetTWADeg = -150.0;
+			else
+			{
+				const double Sign = MarkTwa >= 0.0 ? 1.0 : -1.0;
+				Pilot.TargetTWADeg = Sign * FMath::Max(FMath::Abs(MarkTwa), bBelow && Dist < 15.0 ? 0.0 : 50.0);
+			}
+			C = Trim.Update(Boat, C, PhysicsDt);
+			if (bBelow && Dist < 30.0 && Boat.GetTelemetry().BoatSpeed > ApproachSpeed(Dist)) { C.MainSheet = 1.0; C.JibSheet = 1.0; }
+			C.Tiller = Pilot.Update(Boat);
+			Boat.Step(PhysicsDt, C, Wind);
+			Drill.Update(Boat, FDrillContext(), PhysicsDt);
+		}
+		AddInfo(FString::Printf(TEXT("Sunfish quick-stop: %s"), *Drill.GetStatus()));
+		TestTrue(TEXT("The Sunfish recovers the person overboard"), Drill.IsComplete());
+		QuickStopSeconds = Drill.GetElapsed();
+	}
+	AddInfo(FString::Printf(TEXT("Sunfish: triangle %.0f s, quick-stop %.0f s (the club-racer lessons' gold limits sit above these)"), TriangleSeconds, QuickStopSeconds));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingLakeLevelTest, "SailingSim.Lake.GaugeLevel", Flags)
 bool FSailingLakeLevelTest::RunTest(const FString& Parameters)
 {

@@ -153,9 +153,11 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
 	bool bPauseOnFocusLoss = false;
 
-	/** Career (docs/career): every world and boat open, whatever certificates are held. Progress still counts. */
+	/** The play mode (docs/free-sail), chosen on the title screen: Free Sail opens every world, spot, boat, condition and
+	 *  mode and earns no career medals or unlocks (the logbook still counts); false is Career. Career 1's Open
+	 *  everything switch became this. */
 	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
-	bool bOpenEverything = false;
+	bool bFreeSail = false;
 
 	/** Speed (m/s) in the chosen unit, and the unit's label. */
 	double SpeedIn(double MetersPerSecond) const { return MetersPerSecond * (SpeedUnits == 1 ? 2.236936 : (SpeedUnits == 2 ? 3.6 : 1.943844)); }
@@ -188,6 +190,10 @@ public:
 	bool IsEasy() const;
 	/** -SailingEasy=0|1, or -1 when the command line doesn't say. */
 	static int32 EasyArg();
+	/** The run is in Free Sail mode: -SailingFreeSail=0|1 decides, otherwise bFreeSail (docs/free-sail). */
+	bool IsFreeSail() const;
+	/** -SailingFreeSail=0|1, or -1 when the command line doesn't say. */
+	static int32 FreeSailArg();
 
 	/** Simple layout is in effect (always on Easy). */
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }

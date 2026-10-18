@@ -56,8 +56,10 @@ struct SAILINGSIM_API FSailSave
 		int32 Traffic = 1;
 		int32 WeatherSeed = 2027;
 		bool bGaugeLakeLevel = false;
-		/** Career (docs/career): every world and boat open whatever certificates are held. Optional in version 1. */
-		bool bOpenEverything = false;
+		/** The play mode the title screen last chose (docs/free-sail): Free Sail opens everything and earns no medals;
+		 *  false is Career. Saved as settings.career.freeSail; a file without it reads the Career 1 field
+		 *  settings.career.openEverything (Open everything became Free Sail). Optional in version 1. */
+		bool bFreeSail = false;
 		/** Key bindings stay in Input.ini (USailingInputSettings); the save names where they are. */
 		FString InputBindings = TEXT("Input.ini");
 	};
@@ -77,6 +79,7 @@ struct SAILINGSIM_API FSailSave
 		bool bLearningMode = true;
 		bool bEasy = true;
 		bool bLearningTips = true;
+		bool bFreeSail = false;              // the session's play mode (docs/free-sail); optional in version 1
 		int32 Traffic = 1;
 		FDateTime SavedAt;                   // UTC (the session's own is local)
 		// Conditions.
