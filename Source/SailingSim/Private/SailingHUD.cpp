@@ -1151,8 +1151,9 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 		Text(FString::Printf(TEXT("<  %s  >"), *Rows[I].Value), X + 290.f, RY, bSel ? Good : FLinearColor::White, 0.9f);
 	}
 	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 54.f, Dim, 0.8f);
-	// Required attribution for the map data (OpenStreetMap and Overture buildings are ODbL); see CREDITS.md.
-	Text(TEXT("Map data (c) OpenStreetMap contributors and Overture Maps Foundation, ODbL. Terrain: USGS 3DEP."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
+	// Required attribution for the map data (OpenStreetMap is ODbL; Overture's buildings carry Esri Community Maps, CC BY 4.0,
+	// and Microsoft's Global ML Building Footprints, ODbL); the full wording is in CREDITS.md and on the Credits screen.
+	Text(TEXT("Map data (c) OpenStreetMap contributors (ODbL); buildings via Overture Maps: Esri Community Maps contributors (CC BY 4.0), Microsoft (ODbL). Terrain: USGS 3DEP."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	Text(GM && GM->GetLake().IsTidal() ? TEXT("Chart, tides and currents: NOAA (ENC, CO-OPS). Not for navigation.")
 		: TEXT("Lake depths and levels: Texas Water Development Board."), X + 20.f, Y + H - 12.f, Dim, 0.7f);
