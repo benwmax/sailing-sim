@@ -90,6 +90,7 @@ scripts/licence-check.sh
 Closed (Oct 18 2026, Bean's choice): the hero J/22 now carries a made-up registration, TX 1288 ZX, in its style
 (`Inputs/j22-hero/j22_style.py`), its character sheet (`Tools/boatkit/characters/tx1288zx.json`) and the rebaked hull
 (`hero-registration`); the lesson boat's number stays only in source comments and older renders under `docs/`, as the
-photographed reference. Overture's buildings theme mixes OSM, Microsoft and Esri footprints, all ODbL; if Esri Community Maps
+photographed reference. In the game (reimported on the Mac, boats gate passed): [hero-registration-game.jpg](hero-registration-game.jpg),
+the starboard bow in the home slip on High. Overture's buildings theme mixes OSM, Microsoft and Esri footprints, all ODbL; if Esri Community Maps
 footprints are inside the bake, Overture's attribution guidance may ask for "Esri Community Maps contributors" as well: worth
 a look at their attribution page before release.
