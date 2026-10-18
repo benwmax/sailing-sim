@@ -286,7 +286,7 @@ namespace Sailing
 		for (const std::string& St : S.Stations) if (CrewStationFromName(St) == ECrewStation::Count) C.Bad("scene", "unknown station \"" + St + "\"");
 		if (const FValue* Set = C.Obj(Root, "setting", "scene", true))
 		{
-			C.OnlyKeys(*Set, "setting", { "boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "stand_in", "then" });
+			C.OnlyKeys(*Set, "setting", { "boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "hour", "world_stand_in", "stand_in", "then" });
 			S.Setting.Boat = C.Str(*Set, "boat", "setting", true);
 			S.Setting.World = C.Str(*Set, "world", "setting");
 			S.Setting.Weather = C.Str(*Set, "weather", "setting");
@@ -295,6 +295,16 @@ namespace Sailing
 			S.Setting.GustKn = C.Num(*Set, "gust_kn", "setting", S.Setting.WindKn);
 			S.Setting.SeaHsM = C.Num(*Set, "sea_hs_m", "setting", 0.0);
 			S.Setting.Reefs = int(C.Num(*Set, "reefs", "setting", 0.0));
+			S.Setting.Hour = C.Num(*Set, "hour", "setting", -1.0);
+			if (S.Setting.Hour >= 24.0) C.Bad("setting", "hour must be under 24");
+			if (const FValue* WS = C.Obj(*Set, "world_stand_in", "setting", false))
+			{
+				C.OnlyKeys(*WS, "setting.world_stand_in", { "world", "launch", "wind_from_deg" });
+				S.Setting.WorldStandIn = C.Str(*WS, "world", "setting.world_stand_in", true);
+				S.Setting.WorldStandInLaunch = int(C.Num(*WS, "launch", "setting.world_stand_in", 0.0));
+				S.Setting.WorldStandInWindFromDeg = C.Num(*WS, "wind_from_deg", "setting.world_stand_in", -1.0);
+				if (S.Setting.WorldStandInWindFromDeg >= 360.0) C.Bad("setting.world_stand_in", "wind_from_deg must be under 360");
+			}
 			if (const FValue* In = C.Obj(*Set, "stand_in", "setting", false))
 			{
 				C.OnlyKeys(*In, "setting.stand_in", { "boat", "wind_kn", "gust_kn", "reefs" });
@@ -318,7 +328,7 @@ namespace Sailing
 			{
 				const std::string Where = "step " + std::to_string(S.Steps.size() + 1);
 				if (V.Type != FValue::EType::Object) { C.Bad(Where, "not an object"); continue; }
-				C.OnlyKeys(V, Where, { "id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station" });
+				C.OnlyKeys(V, Where, { "id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station", "weather" });
 				FSceneStep St;
 				St.Id = C.Str(V, "id", Where, true);
 				const std::string W = St.Id.empty() ? Where : St.Id;
@@ -341,6 +351,14 @@ namespace Sailing
 					St.RestartSpeedKn = C.Num(*R, "speed_kn", W + ".restart", 0.0);
 				}
 				if (St.bRestartPose && !St.bCheckpoint) C.Bad(W, "a restart pose belongs on a checkpoint");
+				if (const FValue* Wx = C.Obj(V, "weather", W, false))
+				{
+					C.OnlyKeys(*Wx, W + ".weather", { "cue", "in_s" });
+					St.WeatherCue = C.Str(*Wx, "cue", W + ".weather", true);
+					St.WeatherInSeconds = C.Num(*Wx, "in_s", W + ".weather", 0.0);
+					if (!St.WeatherCue.empty() && St.WeatherCue != "squall" && St.WeatherCue != "clearing") C.Bad(W + ".weather", "unknown weather cue \"" + St.WeatherCue + "\"");
+					if (St.WeatherInSeconds < 0.0) C.Bad(W + ".weather", "in_s must not be negative");
+				}
 
 				if (const FValue* T = C.Obj(V, "trigger", W, true))
 				{
@@ -452,7 +470,20 @@ namespace Sailing
 		return true;
 	}
 
-	void FScriptedScene::Start(const FBoatModel& Boat, double InMeanWindKn)
+	int FScriptedScene::FindStep(const std::string& StepId) const
+	{
+		for (int I = 0; I < int(Steps.size()); ++I) if (Steps[size_t(I)].Id == StepId) return I;
+		return -1;
+	}
+
+	int FScriptedScene::CheckpointAtOrBefore(int Index) const
+	{
+		int Out = 0;
+		for (int I = 0; I <= Index && I < int(Steps.size()); ++I) if (Steps[size_t(I)].bCheckpoint) Out = I;
+		return Out;
+	}
+
+	void FScriptedScene::Start(const FBoatModel& Boat, double InMeanWindKn, int FirstStep)
 	{
 		if (Steps.empty()) return;
 		MeanWindKn = InMeanWindKn;
@@ -462,10 +493,12 @@ namespace Sailing
 		StartY = O.Y;
 		Result = FSceneResult();
 		Result.SceneId = Id;
-		CheckpointId.clear();
-		CheckpointIndex = 0;
+		FirstStep = std::max(0, std::min(FirstStep, int(Steps.size()) - 1));
+		CheckpointIndex = CheckpointAtOrBefore(FirstStep);
+		CheckpointId = FirstStep > 0 ? Steps[size_t(CheckpointIndex)].Id : std::string();
 		OkUntil = -1.0;
-		Enter(0);
+		Enter(FirstStep);
+		++WeatherSerial; // a fresh start takes the weather back to the scene's opening (no cue yet)
 	}
 
 	void FScriptedScene::Enter(int Index)
@@ -481,6 +514,7 @@ namespace Sailing
 		const FSceneStep& S = Steps[size_t(Index)];
 		if (S.bCheckpoint) { CheckpointId = S.Id; CheckpointIndex = Index; }
 		if (!S.Station.empty()) ++StationSerial;
+		if (!S.WeatherCue.empty()) ++WeatherSerial;
 	}
 
 	void FScriptedScene::RestartFromCheckpoint()
@@ -490,6 +524,15 @@ namespace Sailing
 		Result.bComplete = false;
 		OkUntil = -1.0;
 		Enter(CheckpointIndex);
+		++WeatherSerial; // the weather goes back to the checkpoint's too
+	}
+
+	const FSceneStep* FScriptedScene::GetWeatherStep() const
+	{
+		// The latest cue in the scene's order up to the current step (steps run in their order; a next only skips ahead).
+		const FSceneStep* Out = nullptr;
+		for (int I = 0; I <= Current && I < int(Steps.size()); ++I) if (!Steps[size_t(I)].WeatherCue.empty()) Out = &Steps[size_t(I)];
+		return Out;
 	}
 
 	bool FScriptedScene::Triggered(const FSceneStep& S, const FBoatModel& Boat) const

@@ -13,8 +13,8 @@ ROOT = os.path.join(HERE, "..", "..")
 DEFAULT = os.path.join(ROOT, "Content", "Prologue", "prologue.json")
 
 SCENE_KEYS = {"schema_version", "id", "title", "setting", "assist_caption", "cameras", "stations", "actions", "steps"}
-SETTING_KEYS = {"boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "stand_in", "then"}
-STEP_KEYS = {"id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station"}
+SETTING_KEYS = {"boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "hour", "world_stand_in", "stand_in", "then"}
+STEP_KEYS = {"id", "trigger", "call", "expect", "retry_after_s", "crew_takes_over_after", "next", "checkpoint", "restart", "camera", "station", "weather"}
 CALL_KEYS = {"id", "caption", "retry", "ok"}
 # Trigger type -> (required, optional) fields, as ScriptedScene.cpp reads them.
 TRIGGERS = {
@@ -35,6 +35,9 @@ EXPECTS = {
     "station": ({"station"}, {"within_s"}),
     "action": ({"action"}, {"within_s"}),
 }
+
+# Step 4: the weather a step brings as it begins (FWeatherSystem::CueSquall / CueClearing).
+WEATHER_CUES = {"squall", "clearing"}
 
 # Step 2: the crew stations and the controls each one works (CrewStation.cpp's StationOwns).
 STATIONS = {
@@ -74,6 +77,12 @@ def problems(scene):
         if si is not None:
             check(isinstance(si, dict) and set(si) <= {"boat", "wind_kn", "gust_kn", "reefs"} and si.get("boat"), "setting.stand_in: boat, wind_kn, gust_kn, reefs")
             if isinstance(si, dict) and "reefs" in si: check(reefs_ok(si["reefs"]), "setting.stand_in: reefs is 0 to 3")
+        if "hour" in s: check(num(s["hour"]) and 0 <= s["hour"] < 24, "setting: hour is 0 to 24")
+        ws = s.get("world_stand_in")
+        if ws is not None:
+            check(isinstance(ws, dict) and set(ws) <= {"world", "launch", "wind_from_deg"} and isinstance(ws.get("world"), str) and ws["world"],
+                  "setting.world_stand_in: world, launch, wind_from_deg")
+            if isinstance(ws, dict) and "wind_from_deg" in ws: check(num(ws["wind_from_deg"]) and 0 <= ws["wind_from_deg"] < 360, "setting.world_stand_in: wind_from_deg is 0 to 360")
         th = s.get("then")
         if th is not None:
             check(isinstance(th, dict) and set(th) <= {"cut", "tier"}, "setting.then: cut and tier only")
@@ -88,6 +97,7 @@ def problems(scene):
     check(isinstance(steps, list) and steps, "scene: steps must be a non-empty list")
     if not isinstance(steps, list): return errors
     ids, used_cameras, used_stations, used_actions, call_ids = [], set(), set(), set(), set()
+    cues = []
     for n, st in enumerate(steps, 1):
         if not isinstance(st, dict):
             errors.append(f"step {n}: not an object"); continue
@@ -113,6 +123,14 @@ def problems(scene):
             used_stations.add(st["station"])
         elif stations:
             errors.append(f"{sid}: every step names its station (where the scene puts the crew member)")
+
+        if "weather" in st:
+            w = st["weather"]
+            check(isinstance(w, dict) and set(w) <= {"cue", "in_s"}, f"{sid}.weather: cue and in_s only")
+            if isinstance(w, dict):
+                check(w.get("cue") in WEATHER_CUES, f"{sid}.weather: unknown weather cue \"{w.get('cue')}\"")
+                if "in_s" in w: check(num(w["in_s"]) and w["in_s"] >= 0, f"{sid}.weather: in_s must not be negative")
+                cues.append((sid, w.get("cue")))
 
         t = st.get("trigger")
         check(isinstance(t, dict), f"{sid}: missing trigger")
@@ -177,6 +195,10 @@ def problems(scene):
         check(i >= len(steps), "the steps loop: the scene never ends")
         for j, st in enumerate(steps):
             check(j in seen, f"{st['id']}: never reached")
+    # The weather runs forward: a clearing clears a squall, each cue once.
+    names = [c for _, c in cues]
+    check(len(set(names)) == len(names), "a weather cue is used twice")
+    if "clearing" in names: check("squall" in names and names.index("squall") < names.index("clearing"), "the clearing cue comes after the squall's")
     for c in set(cameras) - used_cameras: errors.append(f"camera \"{c}\" is listed but no step uses it")
     return errors
 
@@ -197,6 +219,9 @@ def self_test():
     bad = copy.deepcopy(good); bad["steps"][grind]["expect"]["controls"] = ["capstan"]; cases.append(("unknown control", bad, "unknown control"))
     bad = copy.deepcopy(good); del bad["steps"][grind]["station"]; cases.append(("step without a station", bad, "every step names its station"))
     bad = copy.deepcopy(good); bad["stations"].append("pit"); cases.append(("unknown station", bad, "unknown station"))
+    dump = next(i for i, st in enumerate(good["steps"]) if st.get("weather", {}).get("cue") == "squall")
+    bad = copy.deepcopy(good); bad["steps"][dump]["weather"]["cue"] = "hail"; cases.append(("unknown weather cue", bad, "unknown weather cue"))
+    bad = copy.deepcopy(good); del bad["steps"][dump]["weather"]; cases.append(("a clearing without a squall", bad, "comes after the squall"))
     for name, scene, expect in cases:
         errs = problems(scene)
         assert any(expect in e for e in errs), f"{name}: expected '{expect}', got {errs}"

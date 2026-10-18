@@ -71,4 +71,25 @@ namespace Sailing
 		/** The game's rain amount, 0..1 (1 = a downpour, 50 mm/h and over). */
 		static double Amount(double MmPerHour);
 	};
+
+	/**
+	 * Prologue step 4: a squall line in a gale (the mistral's), not a thunderstorm: a band of heavier rain riding just
+	 * behind its own small gust front, over the day's light rain. Distances as FStormRain's (FGustFront::DistanceAhead, m,
+	 * positive = ahead of the front). No anvil, no core, no microburst: the shower clouds of a cold northerly are a few
+	 * kilometres deep, and their rain falls straight from the deck (the outflow is the gale itself, a little harder).
+	 * Rates: the moderate showers of a mistral day on the Provence coast (Meteo-France: 5 to 15 mm/h in the line, 1 to 2
+	 * between, in the 1 h records of its winter and spring days).
+	 */
+	struct SAILINGPHYSICS_API FSquallLine
+	{
+		double PeakMmPerHour = 12.0;   // just inside the edge
+		double BandLengthM = 1500.0;   // the heavy band, behind the edge; it eases to the day's rain over as much again
+		double EdgeWidthM = 200.0;
+		double LeadM = 80.0;           // the rain's edge sits this far ahead of the wind's (it falls through the outflow's head)
+
+		/** The line's own rain (mm/h, on top of the day's) at a distance ahead of the front. */
+		double RateAt(double DistanceAheadM) const;
+		/** How far into the line a point is (0 ahead of it, 1 in its heavy band, easing behind): its gloom and its haze. */
+		double Inside(double DistanceAheadM) const;
+	};
 }

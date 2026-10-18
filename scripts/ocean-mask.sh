@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gulf swell: builds SailingPhysics standalone and maps FOcean's mask (where the swell reaches) on a world's terrain.
-# Usage: scripts/ocean-mask.sh [GalvestonBay|GulfPassage] [swell Hs m]
+# Usage: scripts/ocean-mask.sh [GalvestonBay|GulfPassage] [swell Hs m] [swell from deg]
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$REPO_ROOT/Source/SailingPhysics"

@@ -518,6 +518,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   is the scene's cap and anti-broach, applied after Easy mode's while a scene runs. The prologue sails her on the
   Gulf's offshore spot (`setting.reefs`; `-SailingPrologueBoat=J22` is the stand-in); she is off the Boat screen and
   the pause menu until her model lands (the PC's list is in the README).
+- Prologue gale (step 4, `docs/prologue/README.md`): `EWeatherPreset::Mistral` (32 kn gusting 40, 1.5 mm/h, a low fast
+  deck, `FOceanParams::WindSeaHs`/`WindSeaTp` Hs 3.3 at 7 s on a 1.2 m sea with the wind: 3.5 m); its squall is an
+  `FGustFront` with an `FSquallLine` (`FWeatherState::bSquall`: no storm layer, no lightning, no burst), cued by a step's
+  `"weather"` (`squall` with `in_s`, `clearing`) through `FWeatherSystem::ApplySceneCue` on the sim clock; uncued it runs
+  at `kSquallArrives`/`kSquallClears`. `setting.world_stand_in` turns the gale to the Gulf's open water
+  (`SetPrevailingFrom`; from the northwest the ocean mask is shut). `-SailingPrologueStep=<id>` starts a scene partway.
+  Known gaps: the maxi does not tack in that sea (`AddedResistanceCoef`) and nothing surfs (vertical buoyancy).
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

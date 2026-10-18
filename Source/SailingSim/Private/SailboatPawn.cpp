@@ -1949,7 +1949,9 @@ void ASailboatPawn::UpdateLearning()
 	if (GM)
 	{
 		const FWeatherState& W = GM->GetWeatherState();
-		F.Storm = W.Storm;
+		// A squall line in a gale (the mistral's) is no thunderstorm: no storm or lightning tips (the scene's captain
+		// has the squall).
+		F.Storm = W.bSquall ? EStormPhase::None : W.Storm;
 		F.WindFromDeg = W.Wind.FromDegrees;
 		F.bTidal = GM->GetLake().IsTidal();
 	}

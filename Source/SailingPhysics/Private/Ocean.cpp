@@ -81,8 +81,9 @@ namespace Sailing
 		++Generation;
 		// Wind sea: fully developed (Pierson-Moskowitz) for the wind, scaled by how developed it is.
 		const double U = std::max(Params.WindMs, 0.5);
-		const double HsWindTarget = 0.21 * U * U / G * Clamp(Params.WindSeaFraction, 0.0, 1.0);
-		const double OmegaPWind = 0.877 * G / U / std::sqrt(std::max(Params.WindSeaFraction, 0.2));
+		const bool bGiven = Params.WindSeaHs > 0.0 && Params.WindSeaTp > 0.0;
+		const double HsWindTarget = bGiven ? Params.WindSeaHs : 0.21 * U * U / G * Clamp(Params.WindSeaFraction, 0.0, 1.0);
+		const double OmegaPWind = bGiven ? 2.0 * kPi / std::max(Params.WindSeaTp, 2.0) : 0.877 * G / U / std::sqrt(std::max(Params.WindSeaFraction, 0.2));
 		const double OmegaPSwell = 2.0 * kPi / std::max(Params.SwellTp, 3.0);
 		const double WindTo = Params.WindFromRad + kPi, SwellTo = Params.SwellFromRad + kPi;
 		// The long cascade carries wavelengths of 30 m and up (four or more grid cells per wave), the short one the rest.

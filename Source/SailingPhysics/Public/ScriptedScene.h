@@ -96,6 +96,11 @@ namespace Sailing
 		double RestartTwaDeg = 0.0, RestartSpeedKn = 0.0;
 		std::string Camera;             // a named view the renderer may use
 		std::string Station;            // step 2: the station the scene puts the crew member at when the step begins
+		/** Step 4: the weather this step brings (FWeatherSystem::CueSquall / CueClearing), as it becomes current:
+		 *  "squall" (its front reaches the boat WeatherInSeconds later: the step's gust trigger) or "clearing" (the break
+		 *  starts). Empty: none. */
+		std::string WeatherCue;
+		double WeatherInSeconds = 0.0;
 	};
 
 	/** Where the scene is meant to be sailed, and its stand-in until that boat and weather exist. */
@@ -104,6 +109,12 @@ namespace Sailing
 		std::string Boat, World, Weather, Rain;
 		double WindKn = 0.0, GustKn = 0.0, SeaHsM = 0.0;
 		int Reefs = 0;             // reefs the crew start with (the maxi's gale sails)
+		double Hour = -1.0;        // step 4: the local hour the scene is sailed at (< 0: the session's)
+		// Step 4: where the scene is sailed until its world exists (the world's name, its launch spot, the wind's direction
+		// there: the Gulf's open water to the south for the mistral's sea; < 0 the preset's own).
+		std::string WorldStandIn;
+		int WorldStandInLaunch = 0;
+		double WorldStandInWindFromDeg = -1.0;
 		std::string StandInBoat;
 		double StandInWindKn = 0.0, StandInGustKn = 0.0;
 		int StandInReefs = 0;
@@ -138,8 +149,13 @@ namespace Sailing
 		bool LoadText(const std::string& Json, std::string* Error = nullptr);
 		bool IsLoaded() const { return !Steps.empty(); }
 
-		/** Starts at the first step. MeanWindKn is what the Gust triggers count from (the scene's sailing wind). */
-		void Start(const FBoatModel& Boat, double MeanWindKn);
+		/** Starts at the first step (or FirstStep: stills and checks start partway, from the checkpoint at or before it).
+		 *  MeanWindKn is what the Gust triggers count from (the scene's sailing wind). */
+		void Start(const FBoatModel& Boat, double MeanWindKn, int FirstStep = 0);
+		/** A step's index by id (-1: none). */
+		int FindStep(const std::string& StepId) const;
+		/** The last checkpoint at or before a step (its index; 0 if none). */
+		int CheckpointAtOrBefore(int Index) const;
 		void SetMeanWindKn(double Kn) { MeanWindKn = Kn; }
 		/** Call every physics step (or frame) with the sim's Dt. */
 		void Update(const FBoatModel& Boat, const FSceneInput& Input, double Dt);
@@ -172,6 +188,10 @@ namespace Sailing
 		 *  time a step names one (move them when it changes: a restart moves them again). */
 		const std::string& GetStation() const;
 		int GetStationSerial() const { return StationSerial; }
+		/** Step 4: the step whose weather cue holds now (the latest at or before the current step; null: none yet), and a
+		 *  serial that grows when a step with a cue begins and on every restart (apply the cue when it changes). */
+		const FSceneStep* GetWeatherStep() const;
+		int GetWeatherSerial() const { return WeatherSerial; }
 		/** How many of the current expectation's Controls have been worked, in order. */
 		int GetControlsDone() const { return ControlsDone; }
 		/** The last checkpoint reached (step id; empty before the first). */
@@ -204,6 +224,7 @@ namespace Sailing
 		int Repeats = 0;
 		int CallSerial = 0;
 		int StationSerial = 0;
+		int WeatherSerial = 0;
 		int ControlsDone = 0;
 		double SheetAtCall = 0.0;
 		int SideAtCall = 0;
