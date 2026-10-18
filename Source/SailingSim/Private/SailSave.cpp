@@ -53,12 +53,36 @@ namespace SailSaveLocal
 		return Ids.IsValidIndex(Spot) ? Ids[Spot] : (Ids.Num() > 0 ? Ids[0] : FString());
 	}
 
-	int32 SpotIndexOf(int32 World, const FString& Id)
+	/** The catalogue's lat/lon of a spot (the save's fallback for its id). */
+	void SpotAtOf(int32 World, int32 Spot, bool& bOutHas, double& OutLat, double& OutLon)
 	{
-		if (Id.IsEmpty()) return 0;
-		const int32 I = SailCatalog::SpotIds(World).IndexOfByKey(Id);
-		if (I < 0) UE_LOG(LogSailing, Warning, TEXT("Save: unknown launch spot \"%s\" in %s, using the first"), *Id, *FSailSave::WorldId(World));
-		return FMath::Max(I, 0);
+		const TArray<SailCatalog::FSpot>& Spots = SailCatalog::Spots(World);
+		const int32 I = Spots.IsValidIndex(Spot) ? Spot : 0;
+		bOutHas = Spots.IsValidIndex(I);
+		OutLat = bOutHas ? Spots[I].Lat : 0.0;
+		OutLon = bOutHas ? Spots[I].Lon : 0.0;
+	}
+
+	void WriteAt(FJsonObject& O, bool bHas, double Lat, double Lon)
+	{
+		if (!bHas) return;
+		TSharedRef<FJsonObject> At = MakeShared<FJsonObject>();
+		At->SetNumberField(TEXT("lat"), Lat);
+		At->SetNumberField(TEXT("lon"), Lon);
+		O.SetObjectField(TEXT("launchSpotAt"), At);
+	}
+
+	void ReadAt(const FJsonObject& O, bool& bHas, double& Lat, double& Lon)
+	{
+		const TSharedPtr<FJsonObject>* At = nullptr;
+		double La = 0.0, Lo = 0.0;
+		if (O.TryGetObjectField(TEXT("launchSpotAt"), At) && At && (*At)->TryGetNumberField(TEXT("lat"), La) && (*At)->TryGetNumberField(TEXT("lon"), Lo)
+			&& FMath::Abs(La) <= 90.0 && FMath::Abs(Lo) <= 180.0)
+		{
+			bHas = true;
+			Lat = La;
+			Lon = Lo;
+		}
 	}
 
 	/** UTC minus local time, to the minute (two calls agree). */
@@ -115,6 +139,27 @@ int32 FSailSave::WorldIndex(const FString& Id) { return SailSaveLocal::IndexOf(S
 FString FSailSave::BoatId(int32 Boat) { return SailSaveLocal::BoatIds[FMath::Clamp(Boat, 0, int32(UE_ARRAY_COUNT(SailSaveLocal::BoatIds)) - 1)]; }
 int32 FSailSave::BoatIndex(const FString& Id) { return SailSaveLocal::IndexOf(SailSaveLocal::BoatIds, UE_ARRAY_COUNT(SailSaveLocal::BoatIds), Id); }
 FString FSailSave::DrillId(int32 Index) { return FLearningContent::DrillId(ESailingDrill(FMath::Clamp(Index + 1, 1, int32(ESailingDrill::Count) - 1))); }
+int32 FSailSave::SpotIndex(int32 World, const FString& Id, bool bHasAt, double Lat, double Lon)
+{
+	if (Id.IsEmpty() && !bHasAt) return 0;
+	std::vector<Sailing::FPlacedThing> Things;
+	for (const SailCatalog::FSpot& S : SailCatalog::Spots(World)) Things.push_back({ TCHAR_TO_UTF8(*S.Id), { S.North, S.East } });
+	Sailing::FGeoPlacement Placement;
+	Placement.Id = TCHAR_TO_UTF8(*Id);
+	Placement.bHasLatLon = bHasAt;
+	Placement.Geo = { Lat, Lon };
+	Sailing::FMapPoint At;
+	bool bById = false;
+	const int32 I = Sailing::ResolvePlacement(SailCatalog::Anchor(World), Things, Placement, SpotSnapMeters, At, bById);
+	if (I >= 0 && !bById)
+	{
+		UE_LOG(LogSailing, Log, TEXT("Save: launch spot \"%s\" is gone from %s; %s is at its saved position (%.6f, %.6f)"), *Id, *WorldId(World),
+			*SailCatalog::Spots(World)[I].Id, Lat, Lon);
+	}
+	if (I < 0 && !Id.IsEmpty()) UE_LOG(LogSailing, Warning, TEXT("Save: unknown launch spot \"%s\" in %s, using the first"), *Id, *WorldId(World));
+	return FMath::Max(I, 0);
+}
+
 int32 FSailSave::DrillIndex(const FString& Id)
 {
 	const ESailingDrill D = FLearningContent::DrillFromId(Id);
@@ -157,6 +202,7 @@ FString FSailSave::ToJson() const
 	TSharedRef<FJsonObject> Start = Obj();
 	Start->SetStringField(TEXT("world"), S.WorldId);
 	Start->SetStringField(TEXT("launchSpot"), S.SpotId);
+	WriteAt(*Start, S.bHasSpotAt, S.SpotLat, S.SpotLon);
 	Start->SetStringField(TEXT("boat"), S.BoatId);
 	Start->SetStringField(TEXT("weather"), S.WeatherId);
 	Start->SetNumberField(TEXT("startHour"), S.StartHour);
@@ -175,6 +221,7 @@ FString FSailSave::ToJson() const
 		TSharedRef<FJsonObject> Sess = Obj();
 		Sess->SetStringField(TEXT("world"), L.WorldId);
 		Sess->SetStringField(TEXT("launchSpot"), L.SpotId);
+		WriteAt(*Sess, L.bHasSpotAt, L.SpotLat, L.SpotLon);
 		Sess->SetStringField(TEXT("boat"), L.BoatId);
 		Sess->SetStringField(TEXT("mode"), L.ModeId);
 		Sess->SetStringField(TEXT("drill"), L.DrillId);
@@ -309,6 +356,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		{
 			Read(*St, TEXT("world"), S.WorldId);
 			Read(*St, TEXT("launchSpot"), S.SpotId);
+			ReadAt(*St, S.bHasSpotAt, S.SpotLat, S.SpotLon);
 			Read(*St, TEXT("boat"), S.BoatId);
 			Read(*St, TEXT("weather"), S.WeatherId);
 			Read(*St, TEXT("startHour"), S.StartHour);
@@ -325,6 +373,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		FSession& L = Out.Last;
 		Read(*Sess, TEXT("world"), L.WorldId);
 		Read(*Sess, TEXT("launchSpot"), L.SpotId);
+		ReadAt(*Sess, L.bHasSpotAt, L.SpotLat, L.SpotLon);
 		Read(*Sess, TEXT("boat"), L.BoatId);
 		Read(*Sess, TEXT("mode"), L.ModeId);
 		Read(*Sess, TEXT("drill"), L.DrillId);
@@ -399,6 +448,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bPauseOnFocusLoss = In.bPauseOnFocusLoss;
 	S.WorldId = WorldId(In.World);
 	S.SpotId = SpotIdOf(FMath::Clamp(In.World, 0, 2), In.LaunchSpot);
+	SpotAtOf(FMath::Clamp(In.World, 0, 2), In.LaunchSpot, S.bHasSpotAt, S.SpotLat, S.SpotLon);
 	S.BoatId = BoatId(In.BoatType);
 	S.WeatherId = EnumId(In.WeatherPreset);
 	S.StartHour = In.StartHour;
@@ -411,6 +461,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	FSession& L = Last;
 	L.WorldId = WorldId(C.World);
 	L.SpotId = SpotIdOf(FMath::Clamp(C.World, 0, 2), C.LaunchSpot);
+	SpotAtOf(FMath::Clamp(C.World, 0, 2), C.LaunchSpot, L.bHasSpotAt, L.SpotLat, L.SpotLon);
 	L.BoatId = BoatId(C.Boat);
 	L.ModeId = EnumId(C.Mode);
 	L.DrillId = DrillId(C.DrillIndex);
@@ -472,7 +523,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 		return FMath::Max(B, 0);
 	};
 	Out.World = World(S.WorldId);
-	Out.LaunchSpot = SpotIndexOf(Out.World, S.SpotId);
+	Out.LaunchSpot = SpotIndex(Out.World, S.SpotId, S.bHasSpotAt, S.SpotLat, S.SpotLon);
 	Out.BoatType = Boat(S.BoatId);
 	Out.WeatherPreset = EnumFrom(S.WeatherId, ESailingWeather::AfternoonBreeze, TEXT("weather"));
 	Out.StartHour = S.StartHour;
@@ -487,7 +538,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 		const FSession& L = Last;
 		FSailSessionConfig& C = OutSession.Last;
 		C.World = World(L.WorldId);
-		C.LaunchSpot = SpotIndexOf(C.World, L.SpotId);
+		C.LaunchSpot = SpotIndex(C.World, L.SpotId, L.bHasSpotAt, L.SpotLat, L.SpotLon);
 		C.Boat = Boat(L.BoatId);
 		C.Mode = EnumFrom(L.ModeId, ESailMode::Free, TEXT("mode"));
 		C.DrillIndex = FMath::Max(DrillIndex(L.DrillId), 0);

@@ -57,6 +57,9 @@ namespace SailSaveTestsLocal
 		T.bPauseOnFocusLoss = true;
 		T.WorldId = TEXT("galveston-bay");
 		T.SpotId = SailCatalog::SpotIds(1).Last();
+		T.bHasSpotAt = true;
+		T.SpotLat = SailCatalog::Spots(1).Last().Lat;
+		T.SpotLon = SailCatalog::Spots(1).Last().Lon;
 		T.BoatId = TEXT("Corsair880");
 		T.WeatherId = TEXT("Thunderstorm");
 		T.StartHour = 17.5f;
@@ -68,6 +71,9 @@ namespace SailSaveTestsLocal
 		FSailSave::FSession& L = S.Last;
 		L.WorldId = TEXT("galveston-bay");
 		L.SpotId = SailCatalog::SpotIds(1)[2];
+		L.bHasSpotAt = true;
+		L.SpotLat = SailCatalog::Spots(1)[2].Lat;
+		L.SpotLon = SailCatalog::Spots(1)[2].Lon;
 		L.BoatId = TEXT("Hobie16");
 		L.ModeId = TEXT("Race");
 		L.DrillId = TEXT("HeaveTo");
@@ -124,6 +130,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("pause on focus"), Y.bPauseOnFocusLoss, X.bPauseOnFocusLoss);
 	TestEqual(TEXT("world"), Y.WorldId, X.WorldId);
 	TestEqual(TEXT("spot"), Y.SpotId, X.SpotId);
+	TestTrue(TEXT("spot lat/lon"), Y.bHasSpotAt && Y.SpotLat == X.SpotLat && Y.SpotLon == X.SpotLon);
 	TestEqual(TEXT("boat"), Y.BoatId, X.BoatId);
 	TestEqual(TEXT("weather"), Y.WeatherId, X.WeatherId);
 	TestEqual(TEXT("start hour"), Y.StartHour, X.StartHour);
@@ -136,6 +143,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	const FSailSave::FSession& M = B.Last;
 	TestEqual(TEXT("last world"), M.WorldId, L.WorldId);
 	TestEqual(TEXT("last spot"), M.SpotId, L.SpotId);
+	TestTrue(TEXT("last spot lat/lon"), M.bHasSpotAt && M.SpotLat == L.SpotLat && M.SpotLon == L.SpotLon);
 	TestEqual(TEXT("last boat"), M.BoatId, L.BoatId);
 	TestEqual(TEXT("last mode"), M.ModeId, L.ModeId);
 	TestEqual(TEXT("last drill"), M.DrillId, L.DrillId);

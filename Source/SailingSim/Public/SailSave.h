@@ -19,6 +19,9 @@ class FJsonObject;
 struct SAILINGSIM_API FSailSave
 {
 	static constexpr int32 CurrentVersion = 1;
+	/** A spot id the game no longer has falls back to the spot nearest the saved lat/lon within this (metres); beyond
+	 *  it, the world's first spot. Spots are 800 m apart or more, so a spot moved in a rebake still matches. */
+	static constexpr double SpotSnapMeters = 500.0;
 
 	/** The player's choices from the Settings screen and the next start (USailingSettings). */
 	struct FSettings
@@ -43,6 +46,10 @@ struct SAILINGSIM_API FSailSave
 		// The next start.
 		FString WorldId = TEXT("ray-hubbard");
 		FString SpotId;                      // empty: the world's first spot
+		/** The spot on the earth (docs/geo-anchor): where the id is gone (renamed or removed in a rebake), the spot
+		 *  nearest this within FSailSave::SpotSnapMeters. Optional in version 1: a file without it reads as before. */
+		bool bHasSpotAt = false;
+		double SpotLat = 0.0, SpotLon = 0.0;
 		FString BoatId = TEXT("J22");
 		FString WeatherId = TEXT("AfternoonBreeze");
 		float StartHour = 15.f;
@@ -58,6 +65,10 @@ struct SAILINGSIM_API FSailSave
 	{
 		FString WorldId = TEXT("ray-hubbard");
 		FString SpotId;
+		/** Where the last session started (its launch spot) on the earth: the fallback for SpotId, as in FSettings.
+		 *  Continue starts there; a session saved mid-sail would add its own position beside it. */
+		bool bHasSpotAt = false;
+		double SpotLat = 0.0, SpotLon = 0.0;
 		FString BoatId = TEXT("J22");
 		FString ModeId = TEXT("Free");
 		FString DrillId = TEXT("LeaveTheDock");
@@ -118,6 +129,8 @@ struct SAILINGSIM_API FSailSave
 	/** The drill id of a session's drill index (ESailingDrill - 1). */
 	static FString DrillId(int32 DrillIndex);
 	static int32 DrillIndex(const FString& Id);
+	/** A settings world's launch spot index for a saved spot: by id, else by lat/lon (rule 6), else 0. */
+	static int32 SpotIndex(int32 World, const FString& Id, bool bHasAt, double Lat, double Lon);
 };
 
 /**
