@@ -63,6 +63,21 @@ namespace CareerLocal
 	}
 }
 
+FCareerRun MakeCareerRun(const FDrillRunner& Drill, double MaxContactKnots, int32 Collisions, int32 Infractions, const FString& WorldId, const FString& BoatId)
+{
+	FCareerRun R;
+	R.Drill = Drill.GetDrill();
+	R.bComplete = Drill.IsComplete();
+	R.Outcome = Drill.GetOutcome();
+	R.Seconds = Drill.GetElapsed();
+	R.MaxContactKnots = MaxContactKnots;
+	R.Collisions = Collisions;
+	R.Infractions = Infractions;
+	R.WorldId = WorldId;
+	R.BoatId = BoatId;
+	return R;
+}
+
 bool FCareerMedalRule::Holds(const FCareerRun& Run) const
 {
 	if (!Run.bComplete) return false;

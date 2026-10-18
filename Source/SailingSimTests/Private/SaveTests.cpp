@@ -66,6 +66,7 @@ namespace SailSaveTestsLocal
 		T.Traffic = 2;
 		T.WeatherSeed = 99;
 		T.bGaugeLakeLevel = true;
+		T.bOpenEverything = true;
 		T.InputBindings = TEXT("Input.ini");
 		S.bHasLast = true;
 		FSailSave::FSession& L = S.Last;
@@ -94,6 +95,25 @@ namespace SailSaveTestsLocal
 		S.Progress.LogbookEntries = 42;
 		S.Progress.LogbookMiles = 31.5;
 		S.Progress.HoursSailed = 12.25;
+		FSailSave::FLessonRecord Lesson;
+		Lesson.Id = TEXT("day-sailor.heave-to");
+		Lesson.Medal = TEXT("silver");
+		Lesson.BestSeconds = 83.5;
+		Lesson.Runs = 3;
+		Lesson.bQuizPassed = true;
+		Lesson.QuizBest = 2;
+		Lesson.QuizOf = 3;
+		S.Progress.Lessons.Add(Lesson);
+		FSailSave::FCheckrideRecord Ride;
+		Ride.Id = TEXT("day-sailor.checkride");
+		Ride.bPassed = true;
+		Ride.QuizBest = 11;
+		Ride.QuizOf = 12;
+		S.Progress.Checkrides.Add(Ride);
+		FSailSave::FCertificateRecord Cert;
+		Cert.Id = TEXT("day-sailor");
+		Cert.EarnedAt = FDateTime(2026, 10, 18, 15, 2, 9);
+		S.Progress.Certificates.Add(Cert);
 		return S;
 	}
 }
@@ -170,6 +190,18 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("log entries"), B.Progress.LogbookEntries, A.Progress.LogbookEntries);
 	TestEqual(TEXT("log miles"), B.Progress.LogbookMiles, A.Progress.LogbookMiles);
 	TestEqual(TEXT("hours"), B.Progress.HoursSailed, A.Progress.HoursSailed);
+	TestEqual(TEXT("open everything"), Y.bOpenEverything, X.bOpenEverything);
+	if (TestEqual(TEXT("lessons"), B.Progress.Lessons.Num(), 1))
+	{
+		const FSailSave::FLessonRecord& P = A.Progress.Lessons[0];
+		const FSailSave::FLessonRecord& Q = B.Progress.Lessons[0];
+		TestTrue(TEXT("lesson fields"), Q.Id == P.Id && Q.Medal == P.Medal && Q.BestSeconds == P.BestSeconds && Q.Runs == P.Runs && Q.bQuizPassed == P.bQuizPassed
+			&& Q.QuizBest == P.QuizBest && Q.QuizOf == P.QuizOf);
+	}
+	TestTrue(TEXT("checkride"), B.Progress.Checkrides.Num() == 1 && B.Progress.Checkrides[0].Id == A.Progress.Checkrides[0].Id && B.Progress.Checkrides[0].bPassed
+		&& B.Progress.Checkrides[0].QuizBest == 11 && B.Progress.Checkrides[0].QuizOf == 12);
+	TestTrue(TEXT("certificate"), B.Progress.Certificates.Num() == 1 && B.Progress.Certificates[0].Id == TEXT("day-sailor")
+		&& B.Progress.Certificates[0].EarnedAt == A.Progress.Certificates[0].EarnedAt);
 	TestEqual(TEXT("Written again, the same text"), B.ToJson(), Text);
 
 	// Through the game's objects and back: Apply then Capture gives the same save.

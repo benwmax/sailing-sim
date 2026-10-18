@@ -28,6 +28,10 @@ struct FCareerRun
 	FString WorldId, BoatId;         // FSailSave ids
 };
 
+/** A finished (or stopped) drill as a career run: the runner's drill, outcome and time, plus what the boat counted. */
+SAILINGSIM_API FCareerRun MakeCareerRun(const FDrillRunner& Drill, double MaxContactKnots, int32 Collisions, int32 Infractions, const FString& WorldId,
+	const FString& BoatId);
+
 /** What a medal asks of a run; an unset limit (negative, or no outcomes) asks nothing. */
 struct FCareerMedalRule
 {
