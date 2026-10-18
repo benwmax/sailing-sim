@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "EasyAssists.h"
 #include "BenchRunner.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
@@ -444,7 +445,7 @@ void ASailingGameMode::ApplyQualitySettings()
 
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 {
-	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
+	const bool bEasy = USailingSettings::Get()->IsEasy();
 	const double Now = GetSimTime();
 	WeatherState = Weather.Evaluate(Now - WeatherStartTime);
 	WeatherState.Wind.SpeedKnots *= WindScale;
@@ -468,10 +469,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	}
 	if (bEasy)
 	{
-		WeatherState.Wind.GustIntensity *= 0.5;
-		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= 0.5;
-		WeatherState.Wind.ShiftDegrees *= 0.5;
-		WeatherState.Wind.PersistentShiftDegrees *= 0.5;
+		// Easy mode (EasyAssists.h): the gusts, puffs and shifts at a fraction of their strength.
+		const double Scale = Sailing::FEasyAssists().WindVariabilityScale;
+		WeatherState.Wind.GustIntensity *= Scale;
+		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= Scale;
+		WeatherState.Wind.ShiftDegrees *= Scale;
+		WeatherState.Wind.PersistentShiftDegrees *= Scale;
 	}
 	// The weather's own clock starts at zero; the wind field runs on simulation time.
 	WeatherState.Front.StartTime += WeatherStartTime;

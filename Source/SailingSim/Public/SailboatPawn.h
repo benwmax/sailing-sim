@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "AutoTrim.h"
+#include "EasyAssists.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "InputActionValue.h"
@@ -59,6 +60,9 @@ public:
 	const Sailing::FBoatControls& GetControls() const { return Controls; }
 	const Sailing::FWindField& GetWind() const;
 	bool IsTrimAssistActive() const;
+	/** Easy mode's assists on this boat (off on traffic boats, the ghost and in measuring runs: ApplyDifficulty). */
+	const Sailing::FEasyAssists& GetEasyAssists() const { return EasyAssists; }
+	bool IsEasyRecovering() const { return EasyHelm.IsRecovering(); }
 
 	/** Puts the boat back at its start (the launch spot on the lake), with a little way on. */
 	void ResetBoat();
@@ -246,6 +250,8 @@ private:
 	Sailing::FBoatControls Controls;
 	Sailing::FFixedStepper Stepper;
 	Sailing::FAutoTrim TrimAssist;
+	Sailing::FEasyAssists EasyAssists;
+	Sailing::FEasyHelm EasyHelm;
 	/** -SailingDemo: the autopilot sails close-hauled and tacks every few seconds, for recordings and the QA gate. */
 	bool bDemo = false;
 	FString StatusMessage;
@@ -256,6 +262,7 @@ private:
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
 	bool bDrillTouching = false, bDrillGraded = false;
+	bool bDrillEasy = false; // Easy mode's assists were on at any time during the drill (its medal is capped: career.json)
 	FCareerProgress::FAward CareerAward;
 	FLearningCoach Learning;
 	size_t LearningTrafficEvents = 0;

@@ -99,15 +99,20 @@ namespace SailHudImpl
 	};
 
 	/** The apparent wind dial: boat outline, port (red) and starboard (green) close-hauled sectors, the no-go zone,
-	 *  the apparent wind arrow (yellow) and a true wind tick. */
+	 *  the apparent wind arrow (yellow) and a true wind tick. Around the true wind, the no-go cue at the sim's angle
+	 *  (FEasyAssists::NoGoDeg): a thin band on Realistic, a wide one with edge lines on Easy, amber close to it and
+	 *  bright inside it (NoGoCueFor). */
 	class SWindDialHud : public SLeafWidget
 	{
 	public:
 		SLATE_BEGIN_ARGS(SWindDialHud) {}
 			SLATE_ATTRIBUTE(float, Awa)
 			SLATE_ATTRIBUTE(float, Twa)
+			SLATE_ATTRIBUTE(float, NoGo)
+			SLATE_ATTRIBUTE(int32, Cue)
+			SLATE_ATTRIBUTE(bool, Wide)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; ForceVolatile(true); }
+		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; NoGo = A._NoGo; Cue = A._Cue; Wide = A._Wide; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(200, 200); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -126,6 +131,19 @@ namespace SailHudImpl
 			Arc(20.f, 60.f, R - 5.f, Starboard, 7.f);
 			Arc(-60.f, -20.f, R - 5.f, Port, 7.f);
 			for (int32 D = 0; D < 360; D += 30) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(D, R - 12.f), Pt(D, R - 2.f) }, ESlateDrawEffect::None, Muted, true, 1.f);
+			// The no-go cue around the true wind.
+			{
+				const float W = Twa.Get(0.f), Half = NoGo.Get(35.f);
+				const bool bWide = Wide.Get(false);
+				const int32 CueNow = Cue.Get(0);
+				const FLinearColor Col = CueNow == 2 ? Port : (CueNow == 1 ? Warn : Port.CopyWithNewOpacity(bWide ? 0.55f : 0.35f));
+				Arc(W - Half, W + Half, R - (bWide ? 17.f : 15.f), Col, bWide ? 10.f : 3.f);
+				if (bWide)
+				{
+					for (const float E : { W - Half, W + Half })
+						FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(E, R * 0.22f), Pt(E, R - 12.f) }, ESlateDrawEffect::None, Col.CopyWithNewOpacity(0.8f), true, 2.f);
+				}
+			}
 			// The boat.
 			const TArray<FVector2f> Hull = { C + FVector2f(0.f, -R * 0.45f), C + FVector2f(R * 0.14f, -R * 0.1f), C + FVector2f(R * 0.12f, R * 0.38f),
 				C + FVector2f(-R * 0.12f, R * 0.38f), C + FVector2f(-R * 0.14f, -R * 0.1f), C + FVector2f(0.f, -R * 0.45f) };
@@ -140,7 +158,9 @@ namespace SailHudImpl
 			return Layer + 3;
 		}
 	private:
-		TAttribute<float> Awa, Twa;
+		TAttribute<float> Awa, Twa, NoGo;
+		TAttribute<int32> Cue;
+		TAttribute<bool> Wide;
 	};
 
 	/** North-up chart crop around the boat (T_MiniMap_<World>), the boat, the true wind. */
@@ -282,6 +302,10 @@ void SSailHud::Construct(const FArguments& A)
 	auto WindFrom = [this]() { const ASailboatPawn* P = Pawn(); const ASailingGameMode* GM = P ? P->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr; return GM ? float(GM->GetWeatherState().Wind.FromDegrees) : 0.f; };
 	auto Awa = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(FMath::RadiansToDegrees(P->GetBoatModel().GetTelemetry().ApparentWindAngle)) : 0.f; };
 	auto Twa = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(FMath::RadiansToDegrees(P->GetBoatModel().GetTelemetry().TrueWindAngle)) : 0.f; };
+	// Easy mode's wider no-go cue, from the sim (FEasyAssists, NoGoCueFor), not a HUD guess.
+	auto NoGo = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(P->GetEasyAssists().NoGoDeg()) : float(Sailing::FEasyAssists::kRealisticNoGoDeg); };
+	auto Cue = [this]() { const ASailboatPawn* P = Pawn(); return P ? int32(Sailing::NoGoCueFor(P->GetBoatModel().GetTelemetry(), P->GetEasyAssists())) : 0; };
+	auto Wide = [this]() { const ASailboatPawn* P = Pawn(); return P && P->GetEasyAssists().bEnabled; };
 	const float M = HudMargin;
 	ChildSlot
 	[
@@ -441,7 +465,7 @@ void SSailHud::Construct(const FArguments& A)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 10.f, 0.f)
 			[
 				PanelBox(SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa) ] ]
+					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa).NoGo_Lambda(NoGo).Cue_Lambda(Cue).Wide_Lambda(Wide) ] ]
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwaText; }), EType::Value, FSlateColor(Fg)) ]
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwsText; }), EType::Label, FSlateColor(Muted)) ], FMargin(10.f, 8.f))
 			]

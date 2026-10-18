@@ -655,6 +655,8 @@ const FWindField& ASailboatPawn::GetWind() const
 
 bool ASailboatPawn::IsTrimAssistActive() const
 {
+	// Easy mode: always on, back a few seconds after the player's own trim.
+	if (EasyAssists.bEnabled) return Boat.GetState().Time - LastManualTrimTime > EasyAssists.TrimIdleSeconds;
 	return USailingSettings::Get()->bTrimAssist && Boat.GetState().Time - LastManualTrimTime > kTrimAssistIdleSeconds;
 }
 
@@ -840,12 +842,13 @@ void ASailboatPawn::BeginPlay()
 
 void ASailboatPawn::ApplyDifficulty()
 {
-	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
-	FBoatConfig& Config = Boat.GetMutableConfig();
-	const FBoatConfig Defaults = FBoatConfig::Make(Config.Type);
-	// Easy: the helm holds the tiller rigidly (no weather-helm drift) and the boat rolls less in gusts.
-	Config.HelmStiffness = bEasy ? 1.0e5 : Defaults.HelmStiffness;
-	Config.ExtraRollDamping = bEasy ? 2500.0 * Boat.TotalMass() / 1052.0 : 0.0;
+	// Easy mode is one switch (USailingSettings::IsEasy); what it does is the sim's (EasyAssists.h). Never on traffic boats
+	// or the ghost: they sail as the boats are.
+	const bool bEasy = !bTrafficBoat && !bGhost && USailingSettings::Get()->IsEasy();
+	EasyAssists = FEasyAssists::For(Boat.GetConfig(), bEasy);
+	EasyAssists.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
+	EasyAssists.ApplyTo(TrimAssist.Settings);
+	EasyHelm.Reset();
 }
 
 void ASailboatPawn::ResetBoat()
@@ -986,10 +989,12 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	Job.Waves = Waves;
 	Job.Steps = Steps;
 	Job.StepDt = Stepper.GetStepDt();
-	Job.bTrimAssist = USailingSettings::Get()->bTrimAssist; // IsTrimAssistActive, step by step
+	Job.bTrimAssist = EasyAssists.bEnabled || USailingSettings::Get()->bTrimAssist; // IsTrimAssistActive, step by step
 	Job.LastManualTrimTime = LastManualTrimTime;
-	Job.TrimIdleSeconds = kTrimAssistIdleSeconds;
+	Job.TrimIdleSeconds = EasyAssists.bEnabled ? EasyAssists.TrimIdleSeconds : kTrimAssistIdleSeconds;
 	Job.bSimple = bSimple;
+	Job.Easy = &EasyAssists;
+	Job.EasyHelm = &EasyHelm;
 	{
 		SAILING_PERF_SCOPE(BoatPhysics);
 		if (PhysicsTask.Start(this, PhysicsJoinTick, Job)) return;
@@ -1031,6 +1036,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		Ctx.bBackJib = Controls.bBackJib;
 		Ctx.MaxContactSpeed = MaxContactKnots;
 		DrillCollisions += Tel.bCollision && !bDrillTouching;
+		bDrillEasy |= EasyAssists.bEnabled;
 		bDrillTouching = Tel.bCollision;
 		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
 		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
@@ -1044,7 +1050,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 			{
 				bDrillGraded = true;
 				CareerAward = SailCareer::RecordRun(MakeCareerRun(DrillRunner, MaxContactKnots, DrillCollisions, DrillInfractions,
-					FSailSave::WorldId(USailingSettings::Get()->World), FSailSave::BoatId(int32(Boat.GetConfig().Type))));
+					FSailSave::WorldId(USailingSettings::Get()->World), FSailSave::BoatId(int32(Boat.GetConfig().Type)), bDrillEasy));
 				if (CareerAward.IsValid()) AddLogEvent(FString::Printf(TEXT("Lesson: %s, %s medal (%d:%02d)"), DrillName(DrillRunner.GetDrill()),
 					*FCareerContent::MedalName(CareerAward.Medal), int32(CareerAward.Seconds) / 60, int32(CareerAward.Seconds) % 60));
 			}
@@ -1782,6 +1788,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	MaxContactKnots = 0.0;
 	DrillCollisions = DrillInfractions = 0;
 	bDrillTouching = bDrillGraded = false;
+	bDrillEasy = EasyAssists.bEnabled;
 	CareerAward = FCareerProgress::FAward();
 	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
 	DrillRunner.Start(Drill, Boat, WindFrom);
