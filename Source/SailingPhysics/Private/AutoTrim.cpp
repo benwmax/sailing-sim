@@ -52,7 +52,7 @@ namespace Sailing
 		const double Downwind = SmoothStep(100.0, 140.0, Twa);
 		const double Reach = SmoothStep(55.0, 85.0, Twa);
 
-		const double Rate = 0.8 * Dt; // sheets move at most 0.8 of full travel per second
+		const double Rate = 0.8 * Set.RateScale * Dt; // sheets move at most 0.8 of full travel per second
 		// A dinghy sailor sails her flat with the sheet in the hand: dumps it as soon as she heels past the limit (or starts
 		// to roll toward it), and never trims in while she is still overpowered, even if the apparent wind comes forward.
 		const bool bDinghy = Cfg.DinghyEasePerHeelDeg > 0.0;
@@ -68,7 +68,7 @@ namespace Sailing
 		// or rolling to windward over the hiked sailor: easing then starts the windward roll. (Dumping on the helm's pull as
 		// well was tried: she slows, rolls to windward and nose-dives into the next wave.)
 		double PuffEase = 0.0;
-		if (bDinghy)
+		if (bDinghy || Set.bEasePuffs)
 		{
 			if (FeltWind <= 0.0) FeltWind = SetUpWind = T.TrueWindSpeed;
 			FeltWind += (T.TrueWindSpeed - FeltWind) * std::min(Dt / PuffReactionSeconds, 1.0);
