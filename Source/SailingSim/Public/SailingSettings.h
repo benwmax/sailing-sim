@@ -153,6 +153,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
 	bool bPauseOnFocusLoss = false;
 
+	/** Career (docs/career): every world and boat open, whatever certificates are held. Progress still counts. */
+	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
+	bool bOpenEverything = false;
+
 	/** Speed (m/s) in the chosen unit, and the unit's label. */
 	double SpeedIn(double MetersPerSecond) const { return MetersPerSecond * (SpeedUnits == 1 ? 2.236936 : (SpeedUnits == 2 ? 3.6 : 1.943844)); }
 	const TCHAR* SpeedUnit() const { return SpeedUnits == 1 ? TEXT("mph") : (SpeedUnits == 2 ? TEXT("km/h") : TEXT("kn")); }

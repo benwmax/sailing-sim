@@ -210,6 +210,9 @@ FString FSailSave::ToJson() const
 	Start->SetNumberField(TEXT("weatherSeed"), S.WeatherSeed);
 	Start->SetBoolField(TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 	Set->SetObjectField(TEXT("start"), Start);
+	TSharedRef<FJsonObject> Career = Obj();
+	Career->SetBoolField(TEXT("openEverything"), S.bOpenEverything);
+	Set->SetObjectField(TEXT("career"), Career);
 	TSharedRef<FJsonObject> Input = Obj();
 	Input->SetStringField(TEXT("bindings"), S.InputBindings);
 	Set->SetObjectField(TEXT("input"), Input);
@@ -262,6 +265,38 @@ FString FSailSave::ToJson() const
 	Log->SetNumberField(TEXT("nauticalMiles"), Progress.LogbookMiles);
 	Prog->SetObjectField(TEXT("logbook"), Log);
 	Prog->SetNumberField(TEXT("hoursSailed"), Progress.HoursSailed);
+	// The career, each record keyed by its id (an object, so a later game's lessons survive KeepUnknown).
+	TSharedRef<FJsonObject> Lessons = Obj();
+	for (const FLessonRecord& L : Progress.Lessons)
+	{
+		TSharedRef<FJsonObject> O = Obj();
+		O->SetStringField(TEXT("medal"), L.Medal);
+		O->SetNumberField(TEXT("bestSeconds"), L.BestSeconds);
+		O->SetNumberField(TEXT("runs"), L.Runs);
+		O->SetBoolField(TEXT("quizPassed"), L.bQuizPassed);
+		O->SetNumberField(TEXT("quizBest"), L.QuizBest);
+		O->SetNumberField(TEXT("quizOf"), L.QuizOf);
+		Lessons->SetObjectField(L.Id, O);
+	}
+	Prog->SetObjectField(TEXT("lessons"), Lessons);
+	TSharedRef<FJsonObject> Rides = Obj();
+	for (const FCheckrideRecord& C : Progress.Checkrides)
+	{
+		TSharedRef<FJsonObject> O = Obj();
+		O->SetBoolField(TEXT("passed"), C.bPassed);
+		O->SetNumberField(TEXT("quizBest"), C.QuizBest);
+		O->SetNumberField(TEXT("quizOf"), C.QuizOf);
+		Rides->SetObjectField(C.Id, O);
+	}
+	Prog->SetObjectField(TEXT("checkrides"), Rides);
+	TSharedRef<FJsonObject> Certs = Obj();
+	for (const FCertificateRecord& C : Progress.Certificates)
+	{
+		TSharedRef<FJsonObject> O = Obj();
+		O->SetStringField(TEXT("earnedAt"), C.EarnedAt.ToIso8601());
+		Certs->SetObjectField(C.Id, O);
+	}
+	Prog->SetObjectField(TEXT("certificates"), Certs);
 	Root->SetObjectField(TEXT("progress"), Prog);
 
 	if (Raw.IsValid()) KeepUnknown(*Root, *Raw);
@@ -365,6 +400,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*St, TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 		}
 		if (const TSharedPtr<FJsonObject> In = Child(*Set, TEXT("input"))) Read(*In, TEXT("bindings"), S.InputBindings);
+		if (const TSharedPtr<FJsonObject> Ca = Child(*Set, TEXT("career"))) Read(*Ca, TEXT("openEverything"), S.bOpenEverything);
 	}
 
 	if (const TSharedPtr<FJsonObject> Sess = Child(*Root, TEXT("lastSession")))
@@ -418,6 +454,48 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*Log, TEXT("nauticalMiles"), Out.Progress.LogbookMiles);
 		}
 		Read(*P, TEXT("hoursSailed"), Out.Progress.HoursSailed);
+		if (const TSharedPtr<FJsonObject> Lessons = Child(*P, TEXT("lessons")))
+		{
+			for (const auto& F : Lessons->Values)
+			{
+				if (!F.Value.IsValid() || F.Value->Type != EJson::Object || F.Key.IsEmpty()) continue;
+				const FJsonObject& O = *F.Value->AsObject();
+				FLessonRecord L;
+				L.Id = F.Key;
+				Read(O, TEXT("medal"), L.Medal);
+				Read(O, TEXT("bestSeconds"), L.BestSeconds);
+				Read(O, TEXT("runs"), L.Runs);
+				Read(O, TEXT("quizPassed"), L.bQuizPassed);
+				Read(O, TEXT("quizBest"), L.QuizBest);
+				Read(O, TEXT("quizOf"), L.QuizOf);
+				Out.Progress.Lessons.Add(L);
+			}
+		}
+		if (const TSharedPtr<FJsonObject> Rides = Child(*P, TEXT("checkrides")))
+		{
+			for (const auto& F : Rides->Values)
+			{
+				if (!F.Value.IsValid() || F.Value->Type != EJson::Object || F.Key.IsEmpty()) continue;
+				const FJsonObject& O = *F.Value->AsObject();
+				FCheckrideRecord C;
+				C.Id = F.Key;
+				Read(O, TEXT("passed"), C.bPassed);
+				Read(O, TEXT("quizBest"), C.QuizBest);
+				Read(O, TEXT("quizOf"), C.QuizOf);
+				Out.Progress.Checkrides.Add(C);
+			}
+		}
+		if (const TSharedPtr<FJsonObject> Certs = Child(*P, TEXT("certificates")))
+		{
+			for (const auto& F : Certs->Values)
+			{
+				if (!F.Value.IsValid() || F.Value->Type != EJson::Object || F.Key.IsEmpty()) continue;
+				FCertificateRecord C;
+				C.Id = F.Key;
+				Read(*F.Value->AsObject(), TEXT("earnedAt"), C.EarnedAt);
+				Out.Progress.Certificates.Add(C);
+			}
+		}
 	}
 	Say(bMigrated ? FString::Printf(TEXT("migrated from version %d"), Version) : FString(TEXT("ok")));
 	return bMigrated ? EResult::Migrated : EResult::Ok;
@@ -455,6 +533,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.Traffic = In.TrafficLevel;
 	S.WeatherSeed = In.WeatherSeed;
 	S.bGaugeLakeLevel = In.bGaugeLakeLevel;
+	S.bOpenEverything = In.bOpenEverything;
 
 	bHasLast = InSession.bHasLast;
 	const FSailSessionConfig& C = InSession.Last;
@@ -530,6 +609,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.TrafficLevel = FMath::Clamp(S.Traffic, 0, 2);
 	Out.WeatherSeed = S.WeatherSeed;
 	Out.bGaugeLakeLevel = S.bGaugeLakeLevel;
+	Out.bOpenEverything = S.bOpenEverything;
 
 	OutSession.bHasLast = bHasLast;
 	OutSession.Last = FSailSessionConfig();
@@ -599,6 +679,7 @@ FString SailSaveStore::Path()
 }
 
 FString SailSaveStore::Status() { return SailSaveLocal::Store().Status; }
+FSailSave::FProgress& SailSaveStore::Progress() { return SailSaveLocal::Store().Save.Progress; }
 
 void SailSaveStore::LoadOnce()
 {
