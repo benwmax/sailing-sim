@@ -181,8 +181,8 @@ public:
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
 
 	static USailingSettings* Get() { return GetMutableDefault<USailingSettings>(); }
-	/** Writes the player's choices to GameUserSettings.ini (never in a run that ignores them). */
-	void Save() { if (!IgnoresSavedChoices()) SaveConfig(); }
+	/** Writes the player's choices to the save file and GameUserSettings.ini (never in a run that ignores them). */
+	void Save();
 
 private:
 	void SnapshotClassDefaults();
