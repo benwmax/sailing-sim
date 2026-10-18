@@ -26,11 +26,12 @@ struct FCareerRun
 	int32 Collisions = 0;            // contacts begun during the drill
 	int32 Infractions = 0;           // rules coach penalties during the drill
 	FString WorldId, BoatId;         // FSailSave ids
+	bool bEasy = false;              // Easy mode's assists were on during the run (Sailing::FEasyAssists)
 };
 
 /** A finished (or stopped) drill as a career run: the runner's drill, outcome and time, plus what the boat counted. */
 SAILINGSIM_API FCareerRun MakeCareerRun(const FDrillRunner& Drill, double MaxContactKnots, int32 Collisions, int32 Infractions, const FString& WorldId,
-	const FString& BoatId);
+	const FString& BoatId, bool bEasy = false);
 
 /** What a medal asks of a run; an unset limit (negative, or no outcomes) asks nothing. */
 struct FCareerMedalRule
@@ -108,14 +109,17 @@ public:
 	/** The checkride's written quiz: its questions from the listed drills (and Any), shuffled, options shuffled. */
 	TArray<FQuizQuestion> MakeCheckrideQuiz(const FCareerTier& Tier, const FLearningContent& Learning, FRandomStream& Rng) const;
 
-	/** The best medal a run earns in a lesson (None if the drill was not finished or misses bronze). */
-	static ECareerMedal Grade(const FCareerLesson& Lesson, const FCareerRun& Run);
+	/** The best medal a run earns in a lesson (None if the drill was not finished or misses bronze); a run on Easy earns
+	 *  at most EasyMax. */
+	static ECareerMedal Grade(const FCareerLesson& Lesson, const FCareerRun& Run, ECareerMedal EasyMax = ECareerMedal::Gold);
 	static FString MedalId(ECareerMedal Medal);          // "", bronze, silver, gold
 	static ECareerMedal MedalFromId(const FString& Id);
 	static FString MedalName(ECareerMedal Medal);        // Bronze, Silver, Gold, or "No medal"
 
 	FString School;
 	FCareerUnlocks AlwaysOpen;
+	/** The best medal a lesson run on Easy can earn (career.json "easy_max_medal"; Gold, no cap, when absent). */
+	ECareerMedal EasyMaxMedal = ECareerMedal::Gold;
 	TArray<FCareerTier> Tiers;
 
 private:
@@ -138,6 +142,8 @@ public:
 		ECareerMedal Best = ECareerMedal::None;    // the lesson's best after it
 		bool bNewBest = false;                     // a better medal than before
 		bool bBestTime = false;                    // a faster medal run than before
+		bool bEasyCapped = false;                  // the run on Easy held a better medal than Easy may earn
+		bool bBestEasy = false;                    // the lesson's best is an Easy medal
 		double Seconds = 0.0;
 		bool IsValid() const { return !LessonId.IsEmpty(); }
 	};
@@ -149,6 +155,8 @@ public:
 	/** A lesson's quiz: kept as its best score; true when this one passes. */
 	bool RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of);
 	ECareerMedal LessonMedal(const FString& LessonId) const;
+	/** The lesson's best medal was earned on Easy. */
+	bool IsLessonMedalEasy(const FString& LessonId) const;
 	/** A lesson is closed once it holds a medal and its quiz is passed. */
 	bool IsLessonClosed(const FString& LessonId) const;
 	int32 LessonsAtLeast(const FCareerTier& Tier, ECareerMedal Medal) const;

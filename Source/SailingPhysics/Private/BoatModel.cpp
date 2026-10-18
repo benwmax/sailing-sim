@@ -632,6 +632,13 @@ namespace Sailing
 			}
 			TorqueBody.Z += -C.YawDampingLinear * State.AngularVelocity.Z;
 			TorqueBody.X += -C.ExtraRollDamping * State.AngularVelocity.X;
+			if (C.HeelCapDeg > 0.0)
+			{
+				// Easy mode: no capsize. Measured by the tilt (the heel alone turns back toward zero past 90 degrees).
+				const double Soft = std::max(C.HeelCapSoftDeg, 0.5) * kDegToRad;
+				const double Over = std::max(Q.Tilt() - C.HeelCapDeg * kDegToRad + Soft, 0.0) / Soft;
+				TorqueBody.X += -Sign(Q.Heel()) * Mass * kGravity * C.HeelCapLeverM * Over * Over;
+			}
 		}
 
 		// Engines: thrust lags the throttle by about a second; it falls off toward the propeller's pitch speed.

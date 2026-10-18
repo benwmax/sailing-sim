@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "EasyAssists.h"
 #include "BenchRunner.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
@@ -444,7 +445,7 @@ void ASailingGameMode::ApplyQualitySettings()
 
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 {
-	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
+	const bool bEasy = USailingSettings::Get()->IsEasy();
 	const double Now = GetSimTime();
 	WeatherState = Weather.Evaluate(Now - WeatherStartTime);
 	WeatherState.Wind.SpeedKnots *= WindScale;
@@ -468,10 +469,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	}
 	if (bEasy)
 	{
-		WeatherState.Wind.GustIntensity *= 0.5;
-		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= 0.5;
-		WeatherState.Wind.ShiftDegrees *= 0.5;
-		WeatherState.Wind.PersistentShiftDegrees *= 0.5;
+		// Easy mode (EasyAssists.h): the gusts, puffs and shifts at a fraction of their strength.
+		const double Scale = Sailing::FEasyAssists().WindVariabilityScale;
+		WeatherState.Wind.GustIntensity *= Scale;
+		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= Scale;
+		WeatherState.Wind.ShiftDegrees *= Scale;
+		WeatherState.Wind.PersistentShiftDegrees *= Scale;
 	}
 	// The weather's own clock starts at zero; the wind field runs on simulation time.
 	WeatherState.Front.StartTime += WeatherStartTime;
@@ -905,6 +908,11 @@ void ASailingGameMode::FinishBenchmark()
 	if (!GpuSlicesJson.IsEmpty())
 	{
 		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + FString::Printf(TEXT(",\"gpu_skipped_frames\":%d}"), GpuProfileSkipped);
+	}
+	// Easy mode's gate runs: the assists, the player's max heel and the crude tack (ASailboatPawn::EasyRunJson).
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (const ASailboatPawn* Player = Cast<ASailboatPawn>(PC->GetPawn())) Summary = Summary.LeftChop(1) + TEXT(",") + Player->EasyRunJson() + TEXT("}");
 	}
 	// Visual V7: the render resolution at the end of the window (High's governor may have lowered it).
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"render_pct\":%.0f}"), GetRenderScale());

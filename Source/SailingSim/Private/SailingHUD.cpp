@@ -1236,9 +1236,10 @@ void ASailingHUD::DrawWindDiagram(const ASailboatPawn& Boat, const FVector2D& Ce
 		const float A0 = I * 10.f * PI / 180.f, A1 = (I + 1) * 10.f * PI / 180.f;
 		DrawLine(C.X + R * FMath::Sin(A0), C.Y - R * FMath::Cos(A0), C.X + R * FMath::Sin(A1), C.Y - R * FMath::Cos(A1), FLinearColor(1, 1, 1, 0.4f), 1.f);
 	}
-	// No-go zone, about 40 degrees either side of the true wind.
+	// No-go zone either side of the true wind, at the sim's angle (wider on Easy: FEasyAssists::NoGoDeg).
 	const float Twa = float(T.TrueWindAngle);
-	for (const float Edge : { Twa - 0.7f, Twa + 0.7f })
+	const float NoGo = FMath::DegreesToRadians(float(Boat.GetEasyAssists().NoGoDeg()));
+	for (const float Edge : { Twa - NoGo, Twa + NoGo })
 	{
 		DrawLine(C.X, C.Y, C.X + R * FMath::Sin(Edge), C.Y - R * FMath::Cos(Edge), FLinearColor(1.f, 0.3f, 0.3f, 0.5f), 1.f);
 	}
@@ -1279,14 +1280,24 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 	const FString Pos = PointOfSail(TwaDeg, T.bInIrons);
 	Tips.Add({ FString::Printf(TEXT("%s  (%s tack)"), *Pos, TwaDeg >= 0.0 ? TEXT("starboard") : TEXT("port")), 0 });
 
-	if (T.bInIrons)
+	// The no-go cue is the sim's (EasyAssists.h): Easy draws it wider and warns before the bow gets there.
+	const ENoGoCue Cue = NoGoCueFor(T, Boat.GetEasyAssists());
+	if (Boat.IsEasyRecovering())
+	{
+		Tips.Add({ TEXT("In irons: your crew is backing the jib and steering the bow off. Watch how: next time you can do it yourself."), 2 });
+	}
+	else if (T.bInIrons)
 	{
 		Tips.Add({ TEXT("Stuck head to wind. Push the tiller toward the boom and hold the jib out to the side the bow should go (backing it)."), 2 });
 		Tips.Add({ TEXT("You will drift backward first; the bow falls off, then trim in and sail away."), 0 });
 	}
-	else if (FMath::Abs(TwaDeg) < 35.0)
+	else if (Cue == ENoGoCue::Inside)
 	{
 		Tips.Add({ TEXT("Too close to the wind: the sails cannot draw. Bear away (steer away from the wind) to about 45 degrees."), 2 });
+	}
+	else if (Cue == ENoGoCue::Near)
+	{
+		Tips.Add({ TEXT("Close to the no-go zone (the red band on the wind dial): bear away a little before she slows."), 2 });
 	}
 
 	auto Count = [](const FSailStripState* Strips, int32 N, ESailFlow Flow) { int32 K = 0; for (int32 I = 0; I < N; ++I) K += Strips[I].Flow == Flow; return K; };
