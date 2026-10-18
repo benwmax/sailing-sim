@@ -959,6 +959,9 @@ BOAT_LIBRARY = {
     "Teak": ("M_BoatSurface", (0.22, 0.19, 0.15), 0.85, 0.0, 0.0, 0.0, 0.5),           # weathered grey teak toe rails (G6)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
+    # The maxi (Tools/boats/maxi): clear-coated carbon (spars, wheels, pedestals) and the satin carbon of its deck gear.
+    "Carbon": ("M_BoatSurface", (0.020, 0.020, 0.022), 0.18, 0.0, 1.0, 0.0, 0.02),
+    "CarbonMatte": ("M_BoatSurface", (0.028, 0.028, 0.030), 0.42, 0.0, 0.3, 0.0, 0.05),
     # The crew (Visual V3): foul-weather jacket (recoloured per sailor), PFD, trousers, deck boots, skin, cap, glasses.
     "CrewJacket": ("M_BoatSurface", (0.45, 0.03, 0.03), 0.55, 0.0, 0.2, 0.0, 0.20),
     "CrewPFD": ("M_BoatSurface", (0.02, 0.03, 0.10), 0.60, 0.0, 0.0, 0.0, 0.30),

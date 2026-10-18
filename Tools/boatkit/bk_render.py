@@ -91,8 +91,8 @@ def _bounds(ob):
 
 def contact_sheet(parts, path, cols=6, tile=(420, 320)):
     """Render each part alone in the studio (scaled to a 1 m bound so the light is the same for all), from a
-    three-quarter view, and tile the renders with their names into one sheet."""
-    from PIL import Image, ImageDraw
+    three-quarter view, and tile the renders with their names into one sheet. The tiles stay in _tiles; without PIL in
+    Blender's Python (the PC's Blender) the sheet is left to a system Python."""
     tmp = os.path.join(os.path.dirname(path), "_tiles")
     os.makedirs(tmp, exist_ok=True)
     _engine(*tile)
@@ -119,6 +119,11 @@ def contact_sheet(parts, path, cols=6, tile=(420, 320)):
         ob.hide_render = True
         ob.matrix_world = keep
         tiles.append((name, p))
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print(f"Kit: {len(tiles)} tiles -> {tmp} (no PIL here for the sheet)")
+        return
     rows = math.ceil(len(tiles) / cols)
     sheet = Image.new("RGB", (cols * tile[0], rows * (tile[1] + 28)), (24, 26, 28))
     d = ImageDraw.Draw(sheet)
