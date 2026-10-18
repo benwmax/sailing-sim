@@ -231,13 +231,11 @@ namespace SailSaveLocal
 	 *  JSON (it is GameUserSettings.ini, read by Capture), so the first step will be 1 -> 2. */
 	bool MigrateStep(FJsonObject& Root, int32 From)
 	{
-		switch (From)
-		{
-		// case 1: ...; Root.SetNumberField(TEXT("version"), 2); return true;
-		default:
-			UE_LOG(LogSailing, Error, TEXT("Save: no migration from version %d"), From);
-			return false;
-		}
+		// One step per version, e.g. if (From == 1) { ...; Root.SetNumberField(TEXT("version"), 2); return true; }
+		// (an if chain, not a switch: MSVC rejects a switch with only a default, C4065, while there is no step yet).
+		(void)Root;
+		UE_LOG(LogSailing, Error, TEXT("Save: no migration from version %d"), From);
+		return false;
 	}
 }
 
