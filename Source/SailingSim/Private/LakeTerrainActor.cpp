@@ -343,7 +343,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 			TArray<FTransform> X;
 			X.Reserve(CompTrees[Id].Num());
 			for (const int32 T : CompTrees[Id]) X.Add(TreeTransform(ModelTrees[T], false, Camera, nullptr));
-			TreeComps[Id]->BatchUpdateInstancesTransforms(0, X, true, false, false);
+			TreeComps[Id]->BatchUpdateInstancesTransforms(0, X, true, false, true);   // a teleport: static instances keep no previous transforms
 			CompPlacedAt[Id] = Camera;
 			break;
 		}
@@ -629,6 +629,9 @@ void ALakeTerrainActor::PlaceTrees()
 						// crown's few surface-cache cards, not a leaf card's thousands). A little smaller than the tree, so the
 						// sunny outer leaves stay lit.
 						UInstancedStaticMeshComponent* P = NewObject<UInstancedStaticMeshComponent>(this);
+						// Static: a movable instanced primitive is re-culled as dynamic by the renderer every frame (scene culling's
+						// IsOftenMoving), and the regroups only add and remove instances. The tiles cloned from these inherit it.
+						P->SetMobility(EComponentMobility::Static);
 						P->SetupAttachment(RootComponent);
 						P->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name)));
 						P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -646,6 +649,7 @@ void ALakeTerrainActor::PlaceTrees()
 					}
 					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
 					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+					C->SetMobility(EComponentMobility::Static);   // as the proxies above
 					C->SetupAttachment(RootComponent);
 					C->SetStaticMesh(Mesh);
 					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
