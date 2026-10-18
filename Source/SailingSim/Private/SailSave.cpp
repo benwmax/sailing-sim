@@ -61,6 +61,12 @@ namespace SailSaveLocal
 		return FMath::Max(I, 0);
 	}
 
+	/** UTC minus local time, to the minute (two calls agree). */
+	FTimespan UtcOffset()
+	{
+		return FTimespan::FromMinutes(FMath::RoundToDouble((FDateTime::UtcNow() - FDateTime::Now()).GetTotalMinutes()));
+	}
+
 	// Typed reads that keep the default when a field is missing or of another type.
 	void Read(const FJsonObject& O, const TCHAR* Key, bool& V) { O.TryGetBoolField(Key, V); }
 	void Read(const FJsonObject& O, const TCHAR* Key, int32& V) { O.TryGetNumberField(Key, V); }
@@ -414,7 +420,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	L.bEasy = C.bEasy;
 	L.bLearningTips = C.bLearningTips;
 	L.Traffic = C.Traffic;
-	L.SavedAt = C.SavedAt;
+	L.SavedAt = C.SavedAt + UtcOffset();   // the game keeps local time; the file UTC
 	L.PresetId = C.Conditions.PresetId.ToString();
 	L.SkyId = EnumId(C.Conditions.Sky);
 	L.WindFromDeg = C.Conditions.WindFromDeg;
@@ -491,7 +497,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 		C.bEasy = L.bEasy;
 		C.bLearningTips = L.bLearningTips;
 		C.Traffic = FMath::Clamp(L.Traffic, 0, 2);
-		C.SavedAt = L.SavedAt;
+		C.SavedAt = L.SavedAt - UtcOffset();
 		C.Conditions.PresetId = FName(*L.PresetId);
 		C.Conditions.Sky = EnumFrom(L.SkyId, ESailSky::Fair, TEXT("sky"));
 		C.Conditions.WindFromDeg = L.WindFromDeg;

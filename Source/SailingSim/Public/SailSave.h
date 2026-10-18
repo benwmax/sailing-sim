@@ -65,7 +65,7 @@ struct SAILINGSIM_API FSailSave
 		bool bEasy = true;
 		bool bLearningTips = true;
 		int32 Traffic = 1;
-		FDateTime SavedAt;
+		FDateTime SavedAt;                   // UTC (the session's own is local)
 		// Conditions.
 		FString PresetId = TEXT("Lesson");
 		FString SkyId = TEXT("Fair");
