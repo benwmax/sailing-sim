@@ -87,8 +87,10 @@ scripts/licence-check.sh
 - Nothing from MetaHuman or Fab is tracked under `Content/` (`git ls-files Content | grep -i -e metahuman -e fab` finds
   only the ambientCG `Crew/Fabric`).
 
-Open, for Bean: the hero J/22 carries the lesson boat's real registration, TX 7295 EC (hull, renders, docs). It is a
-public registration, not a licence issue, but it ties the game to a real boat and its owner; a made-up number would
-avoid that. Overture's buildings theme mixes OSM, Microsoft and Esri footprints, all ODbL; if Esri Community Maps
+Closed (Oct 18 2026, Bean's choice): the hero J/22 now carries a made-up registration, TX 1288 ZX, in its style
+(`Inputs/j22-hero/j22_style.py`), its character sheet (`Tools/boatkit/characters/tx1288zx.json`) and the rebaked hull
+(`hero-registration`); the lesson boat's number stays only in source comments and older renders under `docs/`, as the
+photographed reference. In the game (reimported on the Mac, boats gate passed): [hero-registration-game.jpg](hero-registration-game.jpg),
+the starboard bow in the home slip on High. Overture's buildings theme mixes OSM, Microsoft and Esri footprints, all ODbL; if Esri Community Maps
 footprints are inside the bake, Overture's attribution guidance may ask for "Esri Community Maps contributors" as well: worth
 a look at their attribution page before release.
