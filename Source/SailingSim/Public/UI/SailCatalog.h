@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GeoAnchor.h"
 
 /**
  * Graphics G4: what the front end offers (ui-spec.md 2.5), read from the game's own data rather than typed: launch spots
@@ -14,6 +15,9 @@ namespace SailCatalog
 		FString Id;                // stable: the bake's "id", or the name made lower-case with dashes (SpotId)
 		FString Name, Detail, Tag, StartType;
 		double North = 0.0, East = 0.0, Heading = 0.0;
+		/** The spot on the earth, from the world's anchor (docs/geo-anchor; rounded to 1e-8 degrees, about a millimetre):
+		 *  the save's fallback when a spot id is gone. Shown nowhere yet. */
+		double Lat = 0.0, Lon = 0.0;
 	};
 
 	struct FWorld
@@ -25,6 +29,7 @@ namespace SailCatalog
 		TArray<FSpot> Spots;
 		double GridNorth = 0.0, GridEast = 0.0, GridHeightM = 1.0, GridWidthM = 1.0;   // the map image's extent
 		bool bTidal = false;
+		Sailing::FGeoAnchor Anchor;   // the bake's projection (FLakeData::Anchor without loading the terrain)
 		FString MapTexture, CardTexture, TitleTexture;
 		TArray<FString> LoadingTextures;
 	};
@@ -51,6 +56,9 @@ namespace SailCatalog
 	SAILINGSIM_API const FMiniMap& MiniMap(int32 SettingsWorld);
 	/** A settings world's launch spot ids (0 lake, 1 Galveston Bay, 2 the Gulf passage), in the bake's order. */
 	SAILINGSIM_API const TArray<FString>& SpotIds(int32 SettingsWorld);
+	/** A settings world's launch spots (ids, map position, lat/lon) and its anchor, read from the bake header alone. */
+	SAILINGSIM_API const TArray<FSpot>& Spots(int32 SettingsWorld);
+	SAILINGSIM_API const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld);
 	/** "Rush Creek Yacht Club" -> "rush-creek-yacht-club". */
 	SAILINGSIM_API FString SpotId(const FString& Name);
 	SAILINGSIM_API const TArray<FBoat>& Boats();
