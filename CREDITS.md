@@ -98,7 +98,9 @@ were made"). Each set has its own `credits.md` beside it (the blind packs' list 
 texts: CC0 https://creativecommons.org/publicdomain/zero/1.0/, CC BY and CC BY-SA https://creativecommons.org/licenses/.
 The BY-SA photos stay under their BY-SA licence. In brackets: the `docs/` folders that use each photo.
 
+- [(284-365) The Sky (6060101901)](https://commons.wikimedia.org/wiki/File%3A%28284-365%29_The_Sky_%286060101901%29.jpg) by Sander van der Wel from Netherlands, CC BY-SA 2.0 (round-12)
 - [2012년 4월 해군 참모총장배 전국요트대회 (1) (7305393640)](https://commons.wikimedia.org/wiki/File%3A2012%EB%85%84_4%EC%9B%94_%ED%95%B4%EA%B5%B0_%EC%B0%B8%EB%AA%A8%EC%B4%9D%EC%9E%A5%EB%B0%B0_%EC%A0%84%EA%B5%AD%EC%9A%94%ED%8A%B8%EB%8C%80%ED%9A%8C_%281%29_%287305393640%29.jpg) by 대한민국 국군 Republic of Korea Armed Forces, CC BY-SA 2.0 (graphics-5)
+- [2013-06-07 15-54-46-cumulus](https://commons.wikimedia.org/wiki/File%3A2013-06-07_15-54-46-cumulus.jpg) by Thomas Bresson, CC BY 3.0 (round-12)
 - [A cumulonimbus - Flickr - odako1](https://commons.wikimedia.org/wiki/File%3AA_cumulonimbus_-_Flickr_-_odako1.jpg) by Koichi Oda, CC BY-SA 2.0 (graphics-5, round-12)
 - [A Tormenta](https://commons.wikimedia.org/wiki/File%3AA_Tormenta.jpg) by Fábio Henrique Jacob Stella, CC BY-SA 3.0 (graphics-5, round-12)
 - [Aeolian island (49)](https://commons.wikimedia.org/wiki/File%3AAeolian_island_%2849%29.jpg) by stefan_fotos from Leipzig, Germany, CC BY-SA 2.0 (graphics-5)
