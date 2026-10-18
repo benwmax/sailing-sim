@@ -4,10 +4,12 @@
 #                   [--tests <filter>|--no-tests] [--force] [--merge <ref> ...]
 # --merge gates several PRs as one batch: a local branch gate-<n> from origin/main with each ref merged in (fetched
 # first; a conflict stops the gate), so one build, one test run, one package and one bench cover them all.
-# Builds, tests and packages only when their inputs changed since the last pass (hashes in Artifacts/gate/), then
-# benches the scope's views on its tiers (bench-visual.sh, one launch per view), and checks the gates
-# (Medium 60 fps, High 45 fps). `all` is the full sweep (every view, Low Medium High): run it at least daily and before
-# every blind round. --baseline compares each view with an earlier bench-visual CSV.
+# Builds, tests, packages and benches only when their inputs changed since the last pass (hashes in Artifacts/gate/;
+# a docs-only change gates in seconds), then benches the scope's views (bench-visual.sh, one launch per view) and checks
+# the gates (Medium 60 fps, High 45 fps). Scoped gates run High, where the margin is under 1 fps on the storm view and
+# a few fps on the sentinels, plus Medium for the storm view alone (its margin is 7-9 fps; every other Medium view has
+# 13 fps or more). `all` is the full sweep (every view, Low Medium High): run it at least daily and before every blind
+# round. --baseline compares each view with an earlier bench-visual CSV.
 # bash reads a script as it runs it, and --merge checks out another tree: run from a copy.
 if [[ -z "${GATE_COPY:-}" ]]; then
 	COPY="$(mktemp -t gate).sh"; cp "$0" "$COPY"
@@ -28,21 +30,22 @@ while [[ $# -gt 0 ]]; do
 		*) echo "Unknown argument $1" >&2; exit 2 ;;
 	esac
 done
-# The three tightest High views (about 1 fps over 45 after W2) run in every scope.
-SENTINELS="helm-eye,slip,coast-day"
-TIERS=(Medium High)
+# The tightest High view, helm-eye (about 1 fps over 45 after W2), runs in every scope; the next two, slip (the
+# marina with the player's boat) and coast-day (the bay shore), only in the scopes that touch what they show.
+TIERS=(High)
 case "$SCOPE" in
-	clouds|sky) VIEWS="beam8,beat15,storm,gulf-sea,bridge" ;;
-	water) VIEWS="beam8,beat15,storm,marina,gulf-sea,bridge" ;;
-	boats) VIEWS="beam8,beat15,marina,crew" ;;
-	crew) VIEWS="beat15,crew" ;;
-	world) VIEWS="marina,bridge,coast-night,marina-night" ;;
-	night) VIEWS="coast-night,marina-night" ;;
-	ui) VIEWS="beam8" ;;
+	clouds|sky) VIEWS="beam8,beat15,storm,gulf-sea,bridge,helm-eye" ;;
+	water) VIEWS="beam8,beat15,storm,marina,gulf-sea,bridge,helm-eye,coast-day" ;;
+	boats) VIEWS="beam8,beat15,marina,crew,helm-eye,slip" ;;
+	crew) VIEWS="beat15,crew,helm-eye,slip" ;;
+	world) VIEWS="marina,bridge,coast-night,marina-night,helm-eye,slip,coast-day" ;;
+	night) VIEWS="coast-night,marina-night,helm-eye" ;;
+	ui) VIEWS="beam8,helm-eye" ;;
 	all) VIEWS=""; TIERS=(Low Medium High) ;;
 	*) echo "Unknown scope $SCOPE" >&2; exit 2 ;;
 esac
-[[ -n "$VIEWS" ]] && VIEWS="$VIEWS,$SENTINELS"
+# Medium's one tight view: the storm (67-69 fps against 60 in every sweep since bench-fast).
+MEDIUM_VIEWS=""; [[ ",$VIEWS," == *",storm,"* ]] && MEDIUM_VIEWS="storm"
 LABEL="${LABEL:-gate-$SCOPE}"
 STATE="$ARTIFACTS/gate"; mkdir -p "$STATE"
 cd "$REPO_ROOT"
@@ -118,10 +121,23 @@ if [[ $FORCE == 1 || ! -d "$REPO_ROOT/Packaged/Mac/SailingSim.app" || "$(cat "$S
 else
 	step "package: the packaged game is already this tree"
 fi
-step "bench ${VIEWS:-every view} on ${TIERS[*]}"
-ONLY="$VIEWS" "$GATE_SCRIPTS/bench-visual.sh" "$SECONDS_PER_RUN" "$LABEL" "${TIERS[@]}" > /dev/null
+# The bench reads only the packaged game: when that is the tree the scope last passed on, the result stands.
+BENCH_KEY="$PACKAGE_HASH $SCOPE $SECONDS_PER_RUN"
+if [[ $FORCE == 0 && -z "$BASELINE" && "$(cat "$STATE/bench-$SCOPE.hash" 2>/dev/null)" == "$BENCH_KEY" && -f "$STATE/bench-$SCOPE.csv" ]]; then
+	step "bench: this scope passed on this packaged game already (--force reruns it)"
+	cp "$STATE/bench-$SCOPE.csv" "$ARTIFACTS/visual-bench-$LABEL.csv"
+else
+	rm -f "$STATE/bench-$SCOPE.hash"
+	step "bench ${VIEWS:-every view} on ${TIERS[*]}${MEDIUM_VIEWS:+, $MEDIUM_VIEWS on Medium}"
+	ONLY="$VIEWS" "$GATE_SCRIPTS/bench-visual.sh" "$SECONDS_PER_RUN" "$LABEL" "${TIERS[@]}" > /dev/null
+	if [[ -n "$MEDIUM_VIEWS" ]]; then
+		ONLY="$MEDIUM_VIEWS" "$GATE_SCRIPTS/bench-visual.sh" "$SECONDS_PER_RUN" "$LABEL-medium" Medium > /dev/null
+		tail -n +2 "$ARTIFACTS/visual-bench-$LABEL-medium.csv" >> "$ARTIFACTS/visual-bench-$LABEL.csv"
+	fi
+fi
 step "done"
-python3 - "$ARTIFACTS/visual-bench-$LABEL.csv" "$BASELINE" <<'PY'
+GATE_OK=0
+python3 - "$ARTIFACTS/visual-bench-$LABEL.csv" "$BASELINE" <<'PY' && GATE_OK=1
 import csv, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
 base = {}
@@ -147,3 +163,9 @@ for r in rows:
 print("gate: " + ("pass" if not fail else f"{fail} view(s) under the gate or lost"))
 sys.exit(1 if fail else 0)
 PY
+if [[ $GATE_OK == 1 ]]; then
+	echo "$BENCH_KEY" > "$STATE/bench-$SCOPE.hash"
+	cp "$ARTIFACTS/visual-bench-$LABEL.csv" "$STATE/bench-$SCOPE.csv"
+	exit 0
+fi
+exit 1
