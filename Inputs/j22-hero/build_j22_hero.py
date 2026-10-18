@@ -937,7 +937,7 @@ def _project(ob, side, plane):
 
 
 def build_registration():
-    """State registration on both bows (style: TX 7295 EC for the lesson boat) with the validation sticker,
+    """State registration on both bows (style: a made-up TX number for the hero, never the lesson boat's) with the validation sticker,
     projected onto the hull. Texas wants 3 in block letters, the sticker within 6 in of the number."""
     out = []
     font = bpy.data.fonts.load(M.FONT)
