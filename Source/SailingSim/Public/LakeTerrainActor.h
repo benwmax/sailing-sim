@@ -91,7 +91,22 @@ private:
 	bool bTreeLean = true;   // measuring: -SailingNoTreeLean
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
+	/** Regroups move only the trees that cross a band's edge, and the mid and far crowns live in 2 km tiles (one component
+	 *  per tile, band and model, cloned from TreeMid / TreeFar), so a regroup touches only the components along the band
+	 *  edges: the renderer re-adds a component's every instance to the distance-field and Lumen scenes when its instance
+	 *  count changes. TreeComps holds the near leaf cards (TreeModels, the first entries) and the tiles' components;
+	 *  CompTrees which tree each instance is, CompPlacedAt where the camera was when its transforms were made. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeComps;
+	TArray<TArray<int32>> CompTrees;
+	TArray<FVector2D> CompPlacedAt;
+	TMap<int32, int32> TileComps;   // (tile, band, model) -> TreeComps index
+	TArray<int32> TreeTile;         // per tree: its tile
+	TArray<uint8> TreeBand;         // per tree: 0 none, 1 near, 2 mid, 3 far
+	TArray<int32> TreeComp, TreeSlot;
+	int32 DriftCursor = 0;
 	void UpdateModelTrees(const FVector2D& Camera);
+	FTransform TreeTransform(const struct FTreeInstance& I, bool bNear, const FVector2D& Camera, FTransform* OutProxy) const;
+	int32 TileComponent(int32 Tile, uint8 Band, int32 Model);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
 	/** Graphics G6: the G2 houses' tiles (baked Nanite, or procedural where a tile has no bake). */
 	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> HouseTileMeshes;

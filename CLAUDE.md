@@ -342,7 +342,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `<World>.houses`, `HouseKit.cpp`, baked by `scripts/make-houses.sh` to `/Game/World/Baked/SM_Houses_*`); trees from the
   G2 lidar crowns (`Tools/terrain/build_crowns.py` -> `<World>.crowns`, `PlaceCrownTrees`) in three bands (leaf cards to
   250 m on High, shadowed opaque crowns to 1 km, unshadowed beyond: `-SailingNearTrees`, `-SailingMidTrees`,
-  `-SailingFarTreeShadows=1`; `-SailingClassicTrees`/`-SailingClassicHouses` compare). Marina neighbours wear one of six
+  `-SailingFarTreeShadows=1`; `-SailingClassicTrees`/`-SailingClassicHouses` compare). A regroup moves only the trees crossing a band edge, and the mid and far crowns live in 4 km tile components (`TileComponent`, static, bounds scaled past `r.SceneCulling.MaxCellSize`): an ISM whose instance count changes is re-added whole to the distance-field and Lumen scenes, and a cullable tile costs scene culling every frame. Marina neighbours wear one of six
   `build_berthed.py` dresses (`SM_<Tag>_Berthed[_1..5]`); the player's keelboat wears dress 0 while tied up in her slip.
   The crew's vests are tailored over each polo (`Tools/blender/build_vest.py`, run by `make-crew-clothes.sh`; `PIECES=Vest`
   imports only them). `import_boats.py` takes `dress`, `gearonly`, `j22only`; `import_world.py` takes `ONLY=a,b`.
