@@ -13,6 +13,7 @@ navigation lights use (APowerVesselActor). Origin amidships on the waterline, X 
   SM_Barge_Hopper      a jumbo hopper barge (one hull; the tow is two of them)
   SM_Vessel_Container  a 230 m feeder container ship: bulbous bow, flare, house and funnel aft, hatch coamings
   SM_Container_40      a 40 ft container (stacked on the ship per instance, colour per instance)
+  SM_Vessel_Tanker     a 228 m product tanker (the Gulf Pride): catwalk, cargo pipes, manifold and hose cranes, house aft
 Slots map to MI_World_<slot> (scripts/make_materials.py WORLD_LIBRARY). Prints "Vessels: <name> <tris>".
 Usage: blender -b --factory-startup -P build_vessels.py -- <out dir>
 """
@@ -573,6 +574,140 @@ def ship():
     c.export()
 
 
+def tanker():
+    """The Gulf Pride: a 228 m product tanker laden in the channel (6 m of freeboard). Black topsides over the red
+    bottom paint, a flush main deck with the cargo pipes and the raised catwalk running from the house to the
+    forecastle, ullage domes over the tanks, the midships manifold with its hose cranes, vent risers, a foremast on the
+    forecastle, and a five-tier house aft with the bridge wings, radar mast, funnel and freefall lifeboat."""
+    p = Part("SM_Vessel_Tanker")
+    L, B = 228.0, 32.0
+    p.hull(L, B, 7.0, 10.0, 12.0, "box", top="ShipHull", bottom="Antifouling", boot=0.4, transom=0.8, stations=40, rows=12, bow_rise=0.9, bulb=True)
+
+    def deck(x):
+        return p.edge(x)[1]
+
+    def rail(pts, h=1.1, post=1.6, slot="Trim"):
+        """Stanchions every `post` metres along a polyline, a top rail and a mid rail."""
+        for a, b in zip(pts, pts[1:]):
+            a, b = Vector(a), Vector(b)
+            n = max(1, int((b - a).length / post))
+            for k in range(n):
+                q = a + (b - a) * (k / n)
+                p.tube(q, q + Vector((0, 0, h)), 0.03, slot, 4)
+            for z in (h, h * 0.5):
+                p.tube(a + Vector((0, 0, z)), b + Vector((0, 0, z)), 0.025, slot, 4)
+
+    x0, x1 = -76.0, 96.0                       # the cargo deck, house front to forecastle
+    # Cargo and vapour pipes along the deck on saddles, a little to each side of the catwalk.
+    for y, r in ((-3.4, 0.35), (-2.4, 0.3), (-1.5, 0.25), (1.5, 0.25), (2.4, 0.3), (3.4, 0.35), (4.6, 0.45)):
+        pts = [(x, y, deck(x) + 0.9) for x in [x0 + (x1 - x0) * k / 12 for k in range(13)]]
+        for a, b in zip(pts, pts[1:]):
+            p.tube(a, b, r, "Steel", 8)
+    for k in range(29):
+        x = x0 + (x1 - x0) * k / 28
+        p.box((x, 0.5, deck(x) + 0.35), (0.15, 5.0, 0.35), "Steel")
+    # The catwalk: a raised gangway on the centreline, on pillars, railed both sides.
+    cz = lambda x: deck(x) + 2.6
+    for k in range(30):
+        x = x0 + (x1 - x0) * k / 29
+        p.tube((x, 0.0, deck(x)), (x, 0.0, cz(x)), 0.15, "Steel", 6)
+    walk = [x0 + (x1 - x0) * k / 12 for k in range(13)]
+    for a, b in zip(walk, walk[1:]):
+        p.box(((a + b) / 2, 0.0, (cz(a) + cz(b)) / 2), ((b - a) / 2, 0.6, 0.06), "Steel")
+    for s_ in (1, -1):
+        rail([(x, s_ * 0.6, cz(x) + 0.06) for x in walk], 1.0, 2.0, "Trim")
+    # Ullage domes and tank hatches over twelve pairs of tanks.
+    for i in range(12):
+        x = x0 + 8.0 + i * 14.0
+        for s_ in (1, -1):
+            p.tube((x, s_ * 8.0, deck(x)), (x, s_ * 8.0, deck(x) + 0.7), 0.7, "Steel", 10)
+            p.box((x + 3.0, s_ * 11.5, deck(x) + 0.25), (0.8, 0.8, 0.25), "Steel")
+    # Vent risers with their pressure/vacuum heads.
+    for x in (-60.0, -20.0, 20.0, 60.0):
+        for s_ in (1, -1):
+            p.tube((x, s_ * 5.6, deck(x)), (x, s_ * 5.6, deck(x) + 5.0), 0.25, "Steel", 8)
+            p.box((x, s_ * 5.6, deck(x) + 5.2), (0.45, 0.45, 0.25), "Funnel")
+    # The manifold midships: crossover pipes to both sides, valves, drip trays, a hose crane each side.
+    mx = 4.0
+    for k in range(4):
+        x = mx - 3.0 + 2.0 * k
+        p.tube((x, -B * 0.46, deck(x) + 1.2), (x, B * 0.46, deck(x) + 1.2), 0.3, "Steel", 8)
+        for s_ in (1, -1):
+            p.box((x, s_ * B * 0.42, deck(x) + 1.2), (0.4, 0.5, 0.5), "TrimGreen")
+            p.box((x, s_ * B * 0.455, deck(x) + 1.2), (0.05, 0.4, 0.4), "Steel")
+    for s_ in (1, -1):
+        p.box((mx, s_ * B * 0.44, deck(mx) + 0.15), (4.5, 1.2, 0.15), "Steel")
+        cx, cy = mx + 7.0, s_ * B * 0.36
+        p.tube((cx, cy, deck(cx)), (cx, cy, deck(cx) + 8.0), 0.6, "Steel", 10)
+        p.box((cx, cy, deck(cx) + 8.6), (1.2, 1.0, 0.8), "Steel")
+        tip = Vector((cx - 12.0, cy, deck(cx) + 10.0))
+        p.tube((cx, cy, deck(cx) + 9.0), tuple(tip), 0.3, "Steel", 6)
+        p.tube(tuple(tip), tuple(tip - Vector((0, 0, 3.0))), 0.03, "Steel", 4)
+    # Bulwark rail along the main deck, both sides.
+    for s_ in (1, -1):
+        pts = [(x, s_ * (p.edge(x)[0] - 0.3), deck(x)) for x in [-112.0 + 6.0 * k for k in range(37)] if x < 103.0]
+        rail(pts, 1.1, 2.0)
+    # The forecastle: a raised deck, its breakwater, the foremast, windlasses, bollards and the anchors.
+    fx = 98.0
+    p.box((fx + 6.0, 0.0, deck(fx) + 1.2), (8.0, p.edge(fx)[0] * 0.8, 1.2), "ShipHull")
+    for s_ in (1, -1):
+        p.box((fx - 3.0, s_ * 4.5, deck(fx) + 1.2), (0.15, 5.0, 1.2), "ShipHull", yaw=s_ * 0.35)
+    fz = deck(fx) + 2.4
+    p.tube((fx + 2.0, 0.0, fz), (fx + 2.0, 0.0, fz + 14.0), 0.35, "Steel", 8)
+    p.box((fx + 2.0, 0.0, fz + 9.0), (0.15, 2.0, 0.12), "Steel")
+    for s_ in (1, -1):
+        wx, wy = fx + 8.0, s_ * 3.0
+        p.box((wx, wy, fz + 0.6), (1.2, 0.9, 0.6), "TrimGreen")
+        p.tube((wx, wy - 1.2, fz + 1.0), (wx, wy + 1.2, fz + 1.0), 0.55, "Funnel", 10)
+        for dx in (0.0, 0.7):
+            p.tube((fx + 3.0 + dx, s_ * 5.5, fz), (fx + 3.0 + dx, s_ * 5.5, fz + 0.8), 0.22, "Funnel", 8)
+        hx_ = 108.0
+        hy = s_ * (p.edge(hx_)[0] + 0.15)
+        p.box((hx_, hy, deck(hx_) - 1.5), (1.0, 0.1, 0.9), "Funnel")
+        p.box((hx_ - 0.2, hy + s_ * 0.15, deck(hx_) - 2.4), (0.35, 0.12, 1.2), "Funnel")
+    # The house: five tiers stepping in, window bands, rails round every deck; the bridge and its wings on top.
+    hx, hw = -88.0, B * 0.42
+    z = deck(hx)
+    for t in range(5):
+        dx, dw = 9.0 - 0.6 * t, hw - 0.4 * t
+        p.box((hx, 0.0, z + 1.4), (dx, dw, 1.4), "Gelcoat")
+        p.box((hx + dx + 0.03, 0.0, z + 1.6), (0.05, dw * 0.9, 0.55), "Glass")
+        for s_ in (1, -1):
+            for k in range(int(2 * dx / 2.4)):
+                p.box((hx - dx + 1.2 + 2.4 * k, s_ * (dw + 0.03), z + 1.6), (0.6, 0.05, 0.5), "Glass")
+        top_ = z + 2.8
+        rail([(hx - dx, -dw, top_), (hx + dx, -dw, top_), (hx + dx, dw, top_), (hx - dx, dw, top_), (hx - dx, -dw, top_)], 1.0, 1.8)
+        z = top_
+    p.box((hx - 1.0, 0.0, z + 1.5), (5.0, B * 0.51, 1.5), "Gelcoat")
+    p.box((hx + 4.03, 0.0, z + 1.9), (0.05, B * 0.5, 0.75), "Glass")
+    for s_ in (1, -1):
+        p.box((hx - 1.0, s_ * (B * 0.51 + 0.03), z + 1.9), (4.0, 0.05, 0.75), "Glass")
+    top = z + 3.0
+    rail([(hx - 6.0, -B * 0.5, top), (hx + 4.0, -B * 0.5, top), (hx + 4.0, B * 0.5, top), (hx - 6.0, B * 0.5, top)], 1.0, 2.0)
+    rx = hx - 1.0
+    p.tube((rx, 0.0, top), (rx, 0.0, top + 9.0), 0.25, "Steel", 8)
+    p.tube((rx - 2.5, -1.5, top), (rx, 0.0, top + 6.0), 0.12, "Steel", 6)
+    p.tube((rx - 2.5, 1.5, top), (rx, 0.0, top + 6.0), 0.12, "Steel", 6)
+    p.box((rx, 0.0, top + 6.0), (0.8, 2.2, 0.08), "Steel")
+    p.box((rx + 0.3, 0.0, top + 6.5), (0.15, 2.0, 0.12), "Funnel")
+    p.box((rx + 0.3, 0.0, top + 8.3), (0.12, 1.4, 0.1), "Funnel")
+    # The funnel behind the house, its band and black top; the freefall lifeboat on its ramp over the stern.
+    fy = top - 2.0
+    p.box((-100.0, 0.0, fy), (4.0, 3.5, 6.0), "Funnel")
+    p.box((-100.0, 0.0, fy + 2.0), (4.05, 3.55, 1.0), "AviationRed")
+    p.box((-100.0, 0.0, fy + 5.8), (4.05, 3.55, 0.2), "Funnel")
+    p.box((-108.0, 0.0, deck(-108.0) + 2.0), (4.5, 1.6, 0.15), "Steel")
+    ramp = Vector((-108.0, 0.0, deck(-108.0) + 3.4))
+    p.box(tuple(ramp), (4.2, 1.5, 1.2), "Lifeboat")
+    p.box(tuple(ramp + Vector((0.5, 0.0, 1.35))), (2.0, 1.2, 0.3), "Lifeboat")
+    for s_ in (1, -1):
+        for bx in (-106.0, -102.0):
+            for dx in (0.0, 0.7):
+                p.tube((bx + dx, s_ * 10.0, deck(bx)), (bx + dx, s_ * 10.0, deck(bx) + 0.8), 0.22, "Funnel", 8)
+    print(f"Tanker: masthead fwd z {fz + 14.0:.1f} aft z {top + 9.0:.1f}, bridge deck z {z:.1f}, funnel top z {fy + 6.0:.1f}")
+    p.export()
+
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 runabout()
 trawler("SM_Vessel_Shrimper", 21.0, 6.5, 0.42, 11.0)
@@ -582,3 +717,4 @@ sportfish()
 motor_yacht()
 towboat()
 ship()
+tanker()
