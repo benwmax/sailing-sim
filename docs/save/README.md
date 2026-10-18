@@ -34,12 +34,14 @@ starts and when a drill is passed. `GameUserSettings.ini` is still written besid
     "audio": { "volume": 0.8 },
     "display": { "resolutionScale": 0, "frameCap": 0, "cinematicLook": false, "hudScale": 100, "textScale": 100,
                  "speedUnits": "kn", "depthUnits": "ft", "headingsTrue": false, "autoStart": false, "pauseOnFocusLoss": false },
-    "start": { "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "boat": "J22", "weather": "AfternoonBreeze",
+    "start": { "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "launchSpotAt": { "lat": 32.82334959, "lon": -96.50040047 },
+               "boat": "J22", "weather": "AfternoonBreeze",
                "startHour": 15, "traffic": 1, "weatherSeed": 2027, "gaugeLakeLevel": false },
     "input": { "bindings": "Input.ini" }
   },
   "lastSession": {
-    "world": "galveston-bay", "launchSpot": "kemah-channel-outbound", "boat": "Hobie16", "mode": "Free",
+    "world": "galveston-bay", "launchSpot": "kemah-channel-outbound", "launchSpotAt": { "lat": 29.54180281, "lon": -95.00795119 },
+    "boat": "Hobie16", "mode": "Free",
     "drill": "LeaveTheDock", "learningMode": true, "easy": true, "learningTips": true, "traffic": 1,
     "savedAt": "2026-10-18T12:04:55.000Z",
     "conditions": { "preset": "Lesson", "sky": "Fair", "windFromDeg": 180, "windKn": 10, "gustKn": 13, "localHour": 10,
@@ -67,6 +69,10 @@ mode reads it through `USailingSettings`); `lastSession` is what Continue sails.
 | preset | `Lesson`, `July`, `Glassy`, `Norther`, `SeaBreeze`, `Today` | `FSailPreset::Id` |
 | quality, difficulty, controlLayout, sky, mode | the enum's names (`High`, `Realistic`, `Full`, `Storms`, `Race`) | the UENUMs |
 | speed / depth units | `kn`, `mph`, `kmh` / `ft`, `m`, `fathoms` | `USailingSettings::SpeedUnits`, `DepthUnits` |
+
+`launchSpotAt` (optional, added in version 1 without a version change: `docs/geo-anchor/README.md`) is the spot on the
+earth. When `launchSpot` names a spot the game no longer has (renamed or removed in a rebake), the spot nearest that
+lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's first spot.
 
 Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bindings` names that file.
 

@@ -51,6 +51,11 @@ namespace SailCatalog
 				W.GridHeightM = ((*Grid)->GetNumberField(TEXT("rows_north")) - 1) * Cell;
 				W.GridWidthM = ((*Grid)->GetNumberField(TEXT("cols_east")) - 1) * Cell;
 			}
+			FString Projection;
+			if (!Root->TryGetStringField(TEXT("projection"), Projection) || !Sailing::FGeoAnchor::ParseProj4(TCHAR_TO_UTF8(*Projection), W.Anchor))
+			{
+				W.Anchor = Sailing::FGeoAnchor::ForWorld(TCHAR_TO_UTF8(*W.File));
+			}
 			const TArray<TSharedPtr<FJsonValue>>* Spots = nullptr;
 			if (Root->TryGetArrayField(TEXT("launch_spots"), Spots))
 			{
@@ -65,6 +70,9 @@ namespace SailCatalog
 					S.North = XY[0]->AsNumber();
 					S.East = XY[1]->AsNumber();
 					S.Heading = O->GetNumberField(TEXT("heading"));
+					const Sailing::FLatLon Geo = W.Anchor.ToLatLon({ S.North, S.East });
+					S.Lat = FMath::RoundToDouble(Geo.LatDeg * 1e8) / 1e8;
+					S.Lon = FMath::RoundToDouble(Geo.LonDeg * 1e8) / 1e8;
 					W.Spots.Add(S);
 				}
 			}
@@ -210,19 +218,39 @@ namespace SailCatalog
 		return Id;
 	}
 
+	namespace
+	{
+		/** The three settings worlds' headers (0 lake, 1 Galveston Bay, 2 the Gulf passage), read once. */
+		const TArray<FWorld>& SettingsWorlds()
+		{
+			static TArray<FWorld> Out = []()
+			{
+				TArray<FWorld> List;
+				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
+				for (const TCHAR* F : Files)
+				{
+					FWorld& W = List.AddDefaulted_GetRef();
+					W.File = F;
+					ReadWorld(W);
+				}
+				return List;
+			}();
+			return Out;
+		}
+	}
+
+	const TArray<FSpot>& Spots(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Spots; }
+	const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Anchor; }
+
 	const TArray<FString>& SpotIds(int32 SettingsWorld)
 	{
 		static TArray<TArray<FString>> Ids = []()
 		{
 			TArray<TArray<FString>> Out;
-			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
-			for (const TCHAR* F : Files)
+			for (int32 W = 0; W < 3; ++W)
 			{
-				FWorld W;
-				W.File = F;
-				ReadWorld(W);
 				TArray<FString>& List = Out.AddDefaulted_GetRef();
-				for (const FSpot& S : W.Spots) List.Add(S.Id);
+				for (const FSpot& S : Spots(W)) List.Add(S.Id);
 			}
 			return Out;
 		}();

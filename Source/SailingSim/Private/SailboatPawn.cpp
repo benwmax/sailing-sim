@@ -1228,10 +1228,10 @@ FLogEntry ASailboatPawn::MakeLogEntry(const TCHAR* Kind, const FString& Remarks)
 		E.UnixTime = GM->GetUnixTime();
 		const int32 Minutes = int32(FMath::Fmod(GM->GetLocalHour(), 24.0) * 60.0);
 		E.Clock = FString::Printf(TEXT("%02d:%02d"), Minutes / 60, Minutes % 60);
-		// The map is a local projection about the area's origin: near enough for a log's position.
-		const double Lat0 = GM->GetLake().Latitude, Lon0 = GM->GetLake().Longitude;
-		E.Latitude = Lat0 + P.X / 111320.0;
-		E.Longitude = Lon0 + P.Y / (111320.0 * FMath::Cos(FMath::DegreesToRadians(Lat0)));
+		// The bake's own transverse Mercator, inverted (docs/geo-anchor): the logbook's position is the chart's.
+		const Sailing::FLatLon Geo = SailingNav::LatLonAt(GM->GetLake().Anchor, P);
+		E.Latitude = Geo.LatDeg;
+		E.Longitude = Geo.LonDeg;
 		E.HeadingMagnetic = SailingNav::TrueToMagnetic(GetHeadingTrueDeg(), GM->GetLake().VariationDeg);
 		E.WindFromDeg = SailingNav::NormalizeDeg(GM->GetWeatherState().Wind.FromDegrees);
 		E.WindKnots = T.TrueWindSpeed / kKnot;
