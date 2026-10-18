@@ -1025,7 +1025,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		{
 			USailSessionSave* Save = USailSessionSave::Get();
 			const int32 Index = int32(DrillRunner.GetDrill()) - 1;
-			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); if (!USailingSettings::IgnoresSavedChoices()) Save->SaveConfig(); }
+			if (Index >= 0 && !Save->DrillsPassed.Contains(Index)) { Save->DrillsPassed.Add(Index); Save->Commit(); }
 		}
 	}
 	UpdateDrillVisuals();

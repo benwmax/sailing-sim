@@ -70,6 +70,8 @@ public:
 	UPROPERTY(config) FSailSessionConfig Last;
 	UPROPERTY(config) TArray<int32> DrillsPassed;   // drill indices passed at least once
 	static USailSessionSave* Get() { return GetMutableDefault<USailSessionSave>(); }
+	/** Writes it to the save file (SailSave.h) and the ini, unless the run ignores saved choices. */
+	void Commit();
 };
 
 UCLASS()
@@ -88,6 +90,8 @@ public:
 	TArray<FString> UIScript;
 	bool bUIScriptRead = false;
 
+	/** Reads the save file (SailSaveStore::LoadOnce) before anything reads the settings. */
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	/** Starts a session: saves it for Continue, applies the settings it overrides, and reloads the map. */
 	void StartSession(const FSailSessionConfig& Config, UObject* WorldContext);
 	/** Bench-fast: back to a new process's state (no session, nothing pending, no UI script); a bench list's next view. */
