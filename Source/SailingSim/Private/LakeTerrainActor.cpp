@@ -320,6 +320,11 @@ int32 ALakeTerrainActor::TileComponent(int32 Tile, uint8 Band, int32 Model)
 	C->ClearInstances();
 	C->SetupAttachment(RootComponent);
 	C->SetRemoveSwap();
+	// Bounds far past r.SceneCulling.MaxCellSize (10.5 km), as the lake-wide band components had: the renderer then
+	// leaves the tile's crowns out of its culling hierarchy and culls them per instance on the GPU. Hashed into the
+	// hierarchy, the tiles' 294,000 crowns cost the render thread 0.3 ms a frame (SceneCulling_Update_FinalizeAndClear on
+	// the 4090) with the GPU no faster. A tile can hold a single tree, hence the large scale.
+	C->SetBoundsScale(2000.f);
 	C->RegisterComponent();
 	const int32 Id = TreeComps.Add(C);
 	CompTrees.AddDefaulted();
