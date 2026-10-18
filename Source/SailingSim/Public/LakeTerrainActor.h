@@ -91,6 +91,13 @@ private:
 	bool bTreeLean = true;   // measuring: -SailingNoTreeLean
 	TArray<struct FTreeInstance> ModelTrees;
 	FVector2D TreeCenter = FVector2D(1e12, 1e12);
+	/** Regroups move only the trees that cross a band's edge: each tree's band (0 none, 1 near, 2 mid, 3 far) and its
+	 *  instance in that band's component, and per component which tree each instance is. Every band is rebuilt only on
+	 *  the first regroup, after SetTreeFraction, or past kTreeRebuildM of travel (the far trees' curvature drop). */
+	TArray<uint8> TreeBand;
+	TArray<int32> TreeSlot;
+	TArray<TArray<int32>> NearSlots, MidSlots, FarSlots;
+	FVector2D TreeRebuildCenter = FVector2D(1e12, 1e12);
 	void UpdateModelTrees(const FVector2D& Camera);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
 	/** Graphics G6: the G2 houses' tiles (baked Nanite, or procedural where a tile has no bake). */

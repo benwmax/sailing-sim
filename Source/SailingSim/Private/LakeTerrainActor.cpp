@@ -285,8 +285,67 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// crowns beyond; regrouped when the camera has moved a quarter of the near radius.
 	if (TreeModels.Num() == 0 || ModelTrees.Num() == 0 || FVector2D::Distance(Camera, TreeCenter) < FMath::Max(100.0, 0.25 * NearTreesM())) return;
 	TreeCenter = Camera;
+	// T1 follow-up (docs/budget/storm-high-2026-10-18.md, the D3D12 regroup traces): clearing and re-adding every tree at
+	// each regroup made it a 210 ms frame on the 4090, 80 ms of game thread and 116 ms of the renderer re-adding every
+	// mid and far crown to the distance-field scene. Now only the trees that cross a band's edge move. The rest keep
+	// their transforms, so a far tree keeps the curvature drop it was placed with; past kTreeRebuildM of travel (where
+	// that drift could reach a pixel at the far crowns' range) every band is rebuilt once.
+	constexpr double kTreeRebuildM = 2000.0;
+	const bool bRebuild = TreeBand.Num() != ModelTrees.Num() || FVector2D::Distance(Camera, TreeRebuildCenter) > kTreeRebuildM;
+	if (bRebuild)
+	{
+		TreeRebuildCenter = Camera;
+		for (UInstancedStaticMeshComponent* C : TreeModels) C->ClearInstances();
+		for (UInstancedStaticMeshComponent* C : TreeMid) C->ClearInstances();
+		for (UInstancedStaticMeshComponent* C : TreeFar) C->ClearInstances();
+		for (UInstancedStaticMeshComponent* C : TreeProxy) C->ClearInstances();
+		TreeBand.Init(0, ModelTrees.Num());
+		TreeSlot.Init(INDEX_NONE, ModelTrees.Num());
+		NearSlots.Reset(); NearSlots.SetNum(TreeModels.Num());
+		MidSlots.Reset(); MidSlots.SetNum(TreeMid.Num());
+		FarSlots.Reset(); FarSlots.SetNum(TreeFar.Num());
+		// Swap removal: a removed instance's place is taken by the component's last one (NearSlots etc. follow it).
+		for (UInstancedStaticMeshComponent* C : TreeModels) C->SetRemoveSwap();
+		for (UInstancedStaticMeshComponent* C : TreeMid) C->SetRemoveSwap();
+		for (UInstancedStaticMeshComponent* C : TreeFar) C->SetRemoveSwap();
+		for (UInstancedStaticMeshComponent* C : TreeProxy) C->SetRemoveSwap();
+	}
+	auto Component = [this](uint8 Band, int32 Index) -> UInstancedStaticMeshComponent*
+	{
+		return Band == 1 ? TreeModels[Index].Get() : (Band == 2 ? TreeMid[Index].Get() : TreeFar[Index].Get());
+	};
+	auto Slots = [this](uint8 Band, int32 Index) -> TArray<int32>&
+	{
+		return Band == 1 ? NearSlots[Index] : (Band == 2 ? MidSlots[Index] : FarSlots[Index]);
+	};
+	// The trees leaving their band, then the ones entering one (the movers appear in both).
+	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
+	TArray<int32> Movers;
+	TArray<uint8> NewBands;
+	for (int32 T = 0; T < ModelTrees.Num(); ++T)
+	{
+		const double D2 = FVector2D::DistSquared(ModelTrees[T].Position, Camera);
+		const uint8 Band = D2 < R2 ? 1 : (D2 < RM2 && TreeMid.Num() > 0 ? 2 : 3);
+		if (Band != TreeBand[T]) { Movers.Add(T); NewBands.Add(Band); }
+	}
+	for (const int32 T : Movers)
+	{
+		const uint8 Old = TreeBand[T];
+		if (Old == 0) continue;
+		const int32 Index = int32(ModelTrees[T].Species) * 2 + ModelTrees[T].Variant;
+		TArray<int32>& S = Slots(Old, Index);
+		const int32 Slot = TreeSlot[T], Last = S.Num() - 1;
+		Component(Old, Index)->RemoveInstance(Slot);
+		// The near proxies mirror the leaf cards instance for instance, so they swap the same way.
+		if (Old == 1 && TreeProxy.IsValidIndex(Index)) TreeProxy[Index]->RemoveInstance(Slot);
+		if (Slot != Last) { S[Slot] = S[Last]; TreeSlot[S[Slot]] = Slot; }
+		S.Pop(EAllowShrinking::No);
+		TreeBand[T] = 0;
+		TreeSlot[T] = INDEX_NONE;
+	}
 	TArray<TArray<FTransform>> Near, Mid, Far, Proxy;
 	TArray<TArray<float>> NearD, MidD, FarD;   // T1: three custom floats per instance (FTreeLook)
+	TArray<TArray<int32>> NearT, MidT, FarT;   // the trees they are
 	Near.SetNum(TreeModels.Num());
 	Mid.SetNum(TreeMid.Num());
 	Far.SetNum(TreeFar.Num());
@@ -294,12 +353,17 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	NearD.SetNum(TreeModels.Num());
 	MidD.SetNum(TreeMid.Num());
 	FarD.SetNum(TreeFar.Num());
-	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
-	for (const FTreeInstance& I : ModelTrees)
+	NearT.SetNum(TreeModels.Num());
+	MidT.SetNum(TreeMid.Num());
+	FarT.SetNum(TreeFar.Num());
+	for (int32 Mv = 0; Mv < Movers.Num(); ++Mv)
 	{
+		const int32 T = Movers[Mv];
+		const FTreeInstance& I = ModelTrees[T];
 		const int32 Index = int32(I.Species) * 2 + I.Variant;
-		const double D2 = FVector2D::DistSquared(I.Position, Camera);
-		const bool bNear = D2 < R2, bMid = !bNear && D2 < RM2 && TreeMid.Num() > 0;
+		const bool bNear = NewBands[Mv] == 1, bMid = NewBands[Mv] == 2;
+		TreeBand[T] = NewBands[Mv];
+		(bNear ? NearT : (bMid ? MidT : FarT))[Index].Add(T);
 		UStaticMesh* Mesh = (bNear ? TreeModels : TreeFar)[Index]->GetStaticMesh();
 		const float MeshHeight = Mesh ? FMath::Max(100.f, float(Mesh->GetBounds().BoxExtent.Z * 2.0)) : 1000.f;
 		const float Scale = I.Height * CmPerMeter / MeshHeight;
@@ -328,32 +392,22 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 			Proxy[Index].Add(FTransform(Rot, At, FVector(ScaleXY * K, ScaleXY * K, Scale * K)));
 		}
 	}
-	// T1: the custom data after the instances (one float triple each), one render-state update per component.
-	auto SetLooks = [this](UInstancedStaticMeshComponent* C, const TArray<float>& D)
+	// The entering trees go on the end of their band's component (one batch each), their custom data after them as one
+	// range: both are queued through the instance data manager, no scene-proxy rebuild.
+	auto Append = [this](UInstancedStaticMeshComponent* C, const TArray<FTransform>& X, const TArray<float>& D, const TArray<int32>& Trees, TArray<int32>& S)
 	{
-		if (!bTreeLooks || C->NumCustomDataFloats < 3) return;
-		for (int32 K = 0; K * 3 + 2 < D.Num(); ++K) C->SetCustomData(K, TArrayView<const float>(&D[K * 3], 3), false);
-		C->MarkRenderStateDirty();
+		if (X.Num() == 0) return;
+		const int32 First = C->GetInstanceCount();
+		C->AddInstances(X, false, true);
+		if (bTreeLooks && C->NumCustomDataFloats >= 3) C->SetCustomData(First, First + X.Num() - 1, TConstArrayView<float>(D), false);
+		for (int32 K = 0; K < Trees.Num(); ++K) { TreeSlot[Trees[K]] = First + K; S.Add(Trees[K]); }
 	};
 	for (int32 M = 0; M < TreeModels.Num(); ++M)
 	{
-		TreeModels[M]->ClearInstances();
-		TreeModels[M]->AddInstances(Near[M], false, true);
-		SetLooks(TreeModels[M], NearD[M]);
-		TreeFar[M]->ClearInstances();
-		TreeFar[M]->AddInstances(Far[M], false, true);
-		SetLooks(TreeFar[M], FarD[M]);
-		if (TreeMid.IsValidIndex(M))
-		{
-			TreeMid[M]->ClearInstances();
-			TreeMid[M]->AddInstances(Mid[M], false, true);
-			SetLooks(TreeMid[M], MidD[M]);
-		}
-		if (TreeProxy.IsValidIndex(M))
-		{
-			TreeProxy[M]->ClearInstances();
-			TreeProxy[M]->AddInstances(Proxy[M], false, true);
-		}
+		Append(TreeModels[M], Near[M], NearD[M], NearT[M], NearSlots[M]);
+		if (TreeProxy.IsValidIndex(M) && Proxy[M].Num() > 0) TreeProxy[M]->AddInstances(Proxy[M], false, true);
+		Append(TreeFar[M], Far[M], FarD[M], FarT[M], FarSlots[M]);
+		if (TreeMid.IsValidIndex(M)) Append(TreeMid[M], Mid[M], MidD[M], MidT[M], MidSlots[M]);
 	}
 }
 
@@ -590,6 +644,7 @@ void ALakeTerrainActor::PlaceTrees()
 	{
 		ModelTrees = MoveTemp(Trees);
 		TreeCenter = FVector2D(1e12, 1e12); // rebuilt around the camera on the next tick
+		TreeBand.Reset();                   // every band, not only the trees crossing an edge
 		bTreesPlaced = true;
 		UE_LOG(LogSailing, Display, TEXT("Trees: %d (Nanite models; leaf cards within %.0f m)"), ModelTrees.Num(), NearTreesM());
 		return;
