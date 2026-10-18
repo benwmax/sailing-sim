@@ -1127,6 +1127,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 				CloudComp->TracingMaxDistanceMode = EVolumetricCloudTracingMaxDistanceMode(CacheTraceMode);
 				CloudComp->SetTracingMaxDistance(CacheTraceKm);
 			}
+			if (CacheFullAtKm > 0.f) if (IConsoleVariable* FullAt = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount"))) FullAt->Set(CacheFullAtKm, ECVF_SetByCode);
 		}
 		SkyMaterial->SetVectorParameterValue(TEXT("CacheParams"), FLinearColor(0.f, 1.f, kSkyCacheElMin, kSkyCacheElMax));
 		return;
@@ -1224,6 +1225,17 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		{
 			CloudComp->TracingMaxDistanceMode = EVolumetricCloudTracingMaxDistanceMode::DistanceFromPointOfView;
 			CloudComp->SetTracingMaxDistance(kSkyCacheSplitM / 1000.f);
+		}
+		// And the near rays keep all their samples: UE thins them in proportion on rays shorter than
+		// r.VolumetricCloud.DistanceToSampleMaxCount (15 km below Ultra), so cut to 5 km a ray kept 15 km / 80 = 190 m
+		// steps on High, the grain. At 5 km they step about 60 m (Ultra's 3 km stays).
+		if (IConsoleVariable* FullAt = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount")))
+		{
+			if (FullAt->GetFloat() > kSkyCacheSplitM / 1000.f)
+			{
+				CacheFullAtKm = FullAt->GetFloat();
+				FullAt->Set(kSkyCacheSplitM / 1000.f, ECVF_SetByCode);
+			}
 		}
 		UE_LOG(LogSailing, Display, TEXT("Sky cache: first panorama in %.2f s (%dx%d, %d steps); live clouds now to %.1f km"), CacheRefreshSeconds,
 			kSkyCacheWidth, kSkyCacheHeight, kSkyCacheSteps, kSkyCacheSplitM / 1000.f);
