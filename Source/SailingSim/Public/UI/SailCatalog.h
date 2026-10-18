@@ -11,6 +11,7 @@ namespace SailCatalog
 {
 	struct FSpot
 	{
+		FString Id;                // stable: the bake's "id", or the name made lower-case with dashes (SpotId)
 		FString Name, Detail, Tag, StartType;
 		double North = 0.0, East = 0.0, Heading = 0.0;
 	};
@@ -18,6 +19,7 @@ namespace SailCatalog
 	struct FWorld
 	{
 		int32 Index = 0;           // the game's world index (0 lake, 1 Galveston Bay)
+		FString Id;                // the save's world id (FSailSave::WorldId)
 		FString File, Name, Tagline, Description;
 		TArray<TPair<FString, FString>> Facts;   // value, label
 		TArray<FSpot> Spots;
@@ -47,6 +49,10 @@ namespace SailCatalog
 		double GridNorth = 0.0, GridEast = 0.0, GridHeightM = 1.0, GridWidthM = 1.0, SpanM = 3000.0;
 	};
 	SAILINGSIM_API const FMiniMap& MiniMap(int32 SettingsWorld);
+	/** A settings world's launch spot ids (0 lake, 1 Galveston Bay, 2 the Gulf passage), in the bake's order. */
+	SAILINGSIM_API const TArray<FString>& SpotIds(int32 SettingsWorld);
+	/** "Rush Creek Yacht Club" -> "rush-creek-yacht-club". */
+	SAILINGSIM_API FString SpotId(const FString& Name);
 	SAILINGSIM_API const TArray<FBoat>& Boats();
 	SAILINGSIM_API const FBoat& Boat(int32 Type);
 	SAILINGSIM_API FString FeetInches(double Meters);
