@@ -258,3 +258,108 @@ const TArray<SailCatalog::FRealDay>& SailCatalog::RealDays()
 	}();
 	return Days;
 }
+
+namespace SailCatalog
+{
+	const TCHAR* const UnrealNotice = TEXT("Made with Unreal Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc.");
+
+	FString CreditsPath()
+	{
+		return FPaths::ProjectDir() / TEXT("CREDITS.md");
+	}
+
+	namespace
+	{
+		/** Inline Markdown to plain text: code spans and bold lose their marks, a link keeps its words and, unless it is a
+		 *  Commons file page (the title names the file), its address in brackets. */
+		FString PlainCredit(const FString& In)
+		{
+			FString S = In.Replace(TEXT("`"), TEXT("")).Replace(TEXT("**"), TEXT(""));
+			FString Out;
+			int32 I = 0;
+			while (I < S.Len())
+			{
+				if (S[I] == TEXT('['))
+				{
+					// The label may hold brackets itself ("Laser 2000 [...]"): match the ] that is followed by (.
+					int32 Depth = 0, Close = INDEX_NONE;
+					for (int32 J = I; J < S.Len(); ++J)
+					{
+						if (S[J] == TEXT('[')) ++Depth;
+						else if (S[J] == TEXT(']') && --Depth == 0) { Close = J; break; }
+					}
+					if (Close != INDEX_NONE && Close + 1 < S.Len() && S[Close + 1] == TEXT('('))
+					{
+						// The address runs to the ) that closes it (addresses can hold balanced brackets).
+						int32 Paren = 0, UrlEnd = INDEX_NONE;
+						for (int32 J = Close + 1; J < S.Len(); ++J)
+						{
+							if (S[J] == TEXT('(')) ++Paren;
+							else if (S[J] == TEXT(')') && --Paren == 0) { UrlEnd = J; break; }
+						}
+						if (UrlEnd != INDEX_NONE)
+						{
+							const FString Label = S.Mid(I + 1, Close - I - 1), Url = S.Mid(Close + 2, UrlEnd - Close - 2);
+							Out += Label;
+							if (!Url.Contains(TEXT("commons.wikimedia.org/wiki/File"))) Out += TEXT(" (") + Url + TEXT(")");
+							I = UrlEnd + 1;
+							continue;
+						}
+					}
+				}
+				Out.AppendChar(S[I++]);
+			}
+			return Out;
+		}
+	}
+
+	TArray<FCreditLine> ParseCredits(const FString& Markdown)
+	{
+		TArray<FCreditLine> Out;
+		Out.Add({ ECreditKind::Notice, UnrealNotice });
+		TArray<FString> Lines;
+		Markdown.ParseIntoArrayLines(Lines, false);
+		bool bOpen = false;   // the last line is a paragraph or bullet that the next indented or plain line continues
+		for (const FString& Raw : Lines)
+		{
+			const FString Line = Raw.TrimEnd();
+			const FString Trimmed = Line.TrimStart();
+			if (Trimmed.IsEmpty()) { bOpen = false; continue; }
+			if (Trimmed.StartsWith(TEXT("#")))
+			{
+				int32 Level = 0;
+				while (Level < Trimmed.Len() && Trimmed[Level] == TEXT('#')) ++Level;
+				const ECreditKind Kind = Level <= 1 ? ECreditKind::Heading1 : (Level == 2 ? ECreditKind::Heading2 : ECreditKind::Heading3);
+				Out.Add({ Kind, PlainCredit(Trimmed.Mid(Level).TrimStartAndEnd()) });
+				bOpen = false;
+			}
+			else if (Trimmed.StartsWith(TEXT("- ")) || Trimmed.StartsWith(TEXT("* ")))
+			{
+				Out.Add({ ECreditKind::Bullet, Trimmed.Mid(2).TrimStart() });
+				bOpen = true;
+			}
+			else if (bOpen)
+			{
+				Out.Last().Text += TEXT(" ") + Trimmed;
+			}
+			else
+			{
+				Out.Add({ ECreditKind::Paragraph, Trimmed });
+				bOpen = true;
+			}
+		}
+		// Inline marks after joining, so a link broken over two lines still reads as one.
+		for (FCreditLine& L : Out) if (L.Kind == ECreditKind::Paragraph || L.Kind == ECreditKind::Bullet) L.Text = PlainCredit(L.Text);
+		return Out;
+	}
+
+	TArray<FCreditLine> Credits()
+	{
+		FString Text;
+		if (FFileHelper::LoadFileToString(Text, *CreditsPath())) return ParseCredits(Text);
+		TArray<FCreditLine> Out;
+		Out.Add({ ECreditKind::Notice, UnrealNotice });
+		Out.Add({ ECreditKind::Paragraph, TEXT("CREDITS.md is missing from this build.") });
+		return Out;
+	}
+}

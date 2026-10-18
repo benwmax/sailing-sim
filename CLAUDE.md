@@ -323,7 +323,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   the player's resolution, frame cap and focus pause (`USailingSettings::IsMeasuring`). Pitfalls: no file-scope
   `using namespace` (unity build); `FSlateDrawElement::MakeBox` ignores the brush tint (multiply it in); never cache
   UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
-  from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`.
+  from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
+  runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
 - Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`
   fetches Commons photos (CC0/PD/BY/BY-SA only) with credits.json; `docs/graphics-5/blind/scenes.csv` holds the matched
   captures; `make_blind_pack.py` packs them; `make_g5_compare.py` builds the before/after page. The haze's inscattering
