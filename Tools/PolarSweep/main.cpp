@@ -1,6 +1,7 @@
 // Standalone polar sweep for calibrating the J/22 physics outside Unreal. Build and run with scripts/polar.sh.
 #include "PolarReference.h"
 #include "Scenarios.h"
+#include "EasyAssists.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -49,6 +50,29 @@ int main(int Argc, char** Argv)
 			const FIronsResult I = RunIrons(10.0, 20.0, Tiller);
 			std::printf("irons 10 kn tiller %.0f: TWA %.1f fwd speed %.2f (max %.2f) in irons %d\n", Tiller, I.FinalTWADeg, I.FinalForwardSpeedKnots,
 				I.MaxForwardSpeedKnots, I.bInIronsAtEnd);
+		}
+		return 0;
+	}
+	if (Argc > 1 && std::strcmp(Argv[1], "--easy") == 0)
+	{
+		// Easy mode's checks (docs/easy-mode/README.md), each with the assists off and on.
+		for (const bool bEasy : { false, true })
+		{
+			const char* Mode = bEasy ? "easy" : "realistic";
+			const FEasyReachResult R = RunEasyReach(Type, bEasy, 15.0, 90.0, 120.0);
+			std::printf("%-9s reach 15 kn gusty: max heel %.1f (cap %.1f) course error max %.1f deg, %.2f kn, capsized %d\n", Mode, R.MaxHeelDeg, R.HeelCapDeg,
+				R.MaxCourseErrorDeg, R.MeanSpeedKnots, R.bCapsized);
+			const FEasyReachResult G = RunEasyReach(Type, bEasy, 22.0, 70.0, 120.0, 0.3);
+			std::printf("%-9s reach 22 kn very gusty: max heel %.1f (cap %.1f) course error max %.1f deg, %.2f kn, capsized %d\n", Mode, G.MaxHeelDeg, G.HeelCapDeg,
+				G.MaxCourseErrorDeg, G.MeanSpeedKnots, G.bCapsized);
+			const FEasyIronsResult I = RunEasyIrons(Type, bEasy, 10.0, 40.0);
+			std::printf("%-9s irons 10 kn: filled after %.1f s, TWA %.1f, %.2f kn\n", Mode, I.FilledSeconds, I.FinalTwaDeg, I.FinalSpeedKnots);
+			for (const double Tws : { 6.0, 10.0, 15.0 })
+			{
+				const FEasyTackResult T = RunEasyTack(Type, bEasy, Tws);
+				std::printf("%-9s crude tack %2.0f kn: %s, TWA %.1f, %.2f kn, max heel %.1f\n", Mode, Tws, T.bTacked ? "tacked" : "NOT TACKED", T.FinalTwaDeg,
+					T.FinalSpeedKnots, T.MaxHeelDeg);
+			}
 		}
 		return 0;
 	}

@@ -395,3 +395,68 @@ bool FSailingCareerPlaythroughTest::RunTest(const FString&)
 	TestEqual(TEXT("Reloaded: six lessons closed"), Reloaded.LessonsClosed(Day), 6);
 	return true;
 }
+
+/**
+ * Easy mode's honest grading (docs/easy-mode/README.md): a run on Easy earns at most career.json's easy_max_medal
+ * (bronze), the lesson remembers that its medal was an Easy one until the same medal or better is sailed on Realistic,
+ * the save keeps it, and the checkride (silver) cannot be reached on Easy alone.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerEasyMedalTest, "SailingSim.Career.EasyMedal", CareerTestsLocal::CareerFlags)
+bool FSailingCareerEasyMedalTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	const FCareerContent* C = Load(*this);
+	if (!C) return false;
+	TestEqual(TEXT("career.json caps Easy at bronze"), FCareerContent::MedalName(C->EasyMaxMedal), FString(TEXT("Bronze")));
+	const FCareerLesson* Dock = C->Lesson(TEXT("day-sailor.leave-the-dock"));
+	if (!TestNotNull(TEXT("Leave the dock"), Dock)) return false;
+	const ESailingDrill D = ESailingDrill::LeaveTheDock;
+	auto Easy = [](FCareerRun R) { R.bEasy = true; return R; };
+	// The grade alone: a gold run is bronze on Easy; a run that misses bronze earns nothing either way.
+	TestEqual(TEXT("A gold run on Realistic: gold"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Run(D, TEXT("clean"), 170.0), C->EasyMaxMedal)), FString(TEXT("Gold")));
+	TestEqual(TEXT("The same run on Easy: bronze"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Easy(Run(D, TEXT("clean"), 170.0)), C->EasyMaxMedal)), FString(TEXT("Bronze")));
+	FCareerRun Unfinished = Easy(Run(D, FString(), 60.0));
+	Unfinished.bComplete = false;
+	TestEqual(TEXT("Unfinished on Easy: none"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Unfinished, C->EasyMaxMedal)), FString(TEXT("No medal")));
+	// A content without the cap grades Easy runs like any other.
+	FCareerContent NoCap;
+	TestTrue(TEXT("A career.json without easy_max_medal loads"), NoCap.LoadText(TEXT(R"({"schema_version":1,"tiers":[{"id":"t","name":"T","status":"stub","world":"ray-hubbard","lessons":[]}]})")));
+	TestEqual(TEXT("... and caps nothing"), FCareerContent::MedalName(NoCap.EasyMaxMedal), FString(TEXT("Gold")));
+
+	FSailSave Save;
+	FCareerProgress Career(*C, Save.Progress);
+	FCareerProgress::FAward A = Career.RecordRun(Easy(Run(D, TEXT("clean"), 170.0)));
+	TestTrue(TEXT("Easy gold run: bronze, capped, an Easy best"), A.Medal == ECareerMedal::Bronze && A.bEasyCapped && A.bBestEasy && A.bNewBest);
+	TestTrue(TEXT("... the lesson says Easy"), Career.IsLessonMedalEasy(Dock->Id));
+	A = Career.RecordRun(Easy(Run(D, TEXT("contact"), 150.0, 1, 0, 2.0)));
+	TestTrue(TEXT("An Easy bronze run is not capped"), A.Medal == ECareerMedal::Bronze && !A.bEasyCapped);
+	// The round trip keeps the Easy mark (a string id and a flag, rule 7).
+	{
+		FSailSave Back;
+		const FString Text = Save.ToJson();
+		TestEqual(TEXT("Reads back"), int32(FSailSave::FromJson(Text, Back)), int32(FSailSave::EResult::Ok));
+		TestTrue(TEXT("... the Easy mark kept"), FCareerProgress(*C, Back.Progress).IsLessonMedalEasy(Dock->Id) && Text.Contains(TEXT("\"medalEasy\": true")));
+	}
+	A = Career.RecordRun(Run(D, TEXT("contact"), 150.0, 1, 0, 2.0));
+	TestTrue(TEXT("The same bronze on Realistic clears the mark"), A.Medal == ECareerMedal::Bronze && !A.bBestEasy && !Career.IsLessonMedalEasy(Dock->Id));
+	A = Career.RecordRun(Run(D, TEXT("clean"), 170.0));
+	TestTrue(TEXT("Gold on Realistic: gold, not Easy"), A.Best == ECareerMedal::Gold && !Career.IsLessonMedalEasy(Dock->Id));
+	A = Career.RecordRun(Easy(Run(D, TEXT("clean"), 120.0)));
+	TestTrue(TEXT("A later Easy run keeps the Realistic gold"), A.Best == ECareerMedal::Gold && !A.bBestEasy && !Career.IsLessonMedalEasy(Dock->Id));
+
+	// Every Day Sailor lesson at gold pace on Easy: all bronze, so the checkride (silver) is not ready.
+	const FCareerTier& Day = *C->Tier(TEXT("day-sailor"));
+	FSailSave EasySave;
+	FCareerProgress EasyCareer(*C, EasySave.Progress);
+	for (const FCareerLesson& L : Day.Lessons)
+	{
+		EasyCareer.RecordRun(Easy(Run(L.Drill, GoodOutcome(L.Drill), 30.0)));
+		EasyCareer.RecordLessonQuiz(L.Id, 3, 3);
+	}
+	TestEqual(TEXT("Easy alone: every lesson bronze"), EasyCareer.LessonsAtLeast(Day, ECareerMedal::Bronze), Day.Lessons.Num());
+	TestEqual(TEXT("... none at silver"), EasyCareer.LessonsAtLeast(Day, ECareerMedal::Silver), 0);
+	TestTrue(TEXT("The checkride asks for more than Easy earns"), Day.Checkride.MinMedal > C->EasyMaxMedal);
+	TestFalse(TEXT("... so it is not ready"), EasyCareer.IsCheckrideReady(Day.Id));
+	TestFalse(TEXT("... and a perfect written quiz awards nothing"), EasyCareer.RecordCheckrideQuiz(Day.Id, 12, 12, FDateTime(2026, 10, 18)));
+	return true;
+}

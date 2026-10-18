@@ -1,0 +1,2 @@
+"scene","preset","args","description"
+"gp-abeam","Chase","-SailingWorld=1 -SailingTraffic=1 -SailingTrafficNear -SailingNearShip=350 -SailingWeather=AfternoonBreeze -SailingHour=10.5 -SailingWind=10 -SailingTWA=90 -SailingHoldTWA=90 -SailingCaptureBearing=270 -SailingQuality=High","Galveston ship channel: the Gulf Pride 350 m off, the camera looking across the boat at her (crop: the ship)"

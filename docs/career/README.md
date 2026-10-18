@@ -83,6 +83,12 @@ The Day Sailor times are first guesses, checked against the autopilot's own runs
 sails the triangle in 4:36 (gold under 5:30, silver under 8:00), the quick-stop recovers in 0:51 (gold under 1:30),
 heave-to holds in 0:27 (gold under 1:30). Tune them by playing; they live in the data.
 
+**Easy mode earns at most bronze** (`"easy_max_medal": "bronze"` at the top of `career.json`, read by `FCareerContent`;
+no field means no cap). The run carries its difficulty (`FCareerRun::bEasy`: the assists were on at any moment of the
+drill) and `FCareerContent::Grade` caps it; the lesson remembers that its best medal was an Easy one (`medalEasy` in the
+save) until the same medal or better is sailed on Realistic, and the Career screen shows it as "Easy: bronze". The
+checkride asks for silver, so it needs the lessons sailed on Realistic; the screen says so. See `docs/easy-mode/README.md`.
+
 A lesson keeps its best medal, its fastest medal run and its best quiz score. It is **closed** once it holds a medal and
 its quiz has passed (`quiz_pass`, two thirds for Day Sailor). A run counts for a lesson when the lesson's tier is open
 and the run's boat is one of the tier's boats (empty: any boat); the tier on the run's world is preferred.
@@ -114,7 +120,7 @@ Version stays 1: the new fields read as empty from older files (`docs/save/READM
 ```json
 "settings": { "career": { "openEverything": false } },
 "progress": {
-  "lessons": { "day-sailor.heave-to": { "medal": "gold", "bestSeconds": 58, "runs": 1, "quizPassed": true, "quizBest": 3, "quizOf": 3 } },
+  "lessons": { "day-sailor.heave-to": { "medal": "gold", "medalEasy": false, "bestSeconds": 58, "runs": 1, "quizPassed": true, "quizBest": 3, "quizOf": 3 } },
   "checkrides": { "day-sailor.checkride": { "passed": true, "quizBest": 11, "quizOf": 12 } },
   "certificates": { "day-sailor": { "earnedAt": "2026-10-18T16:30:00.000Z" } },
   "hoursSailed": 3.4, "logbook": { "sessions": 5, "entries": 31, "nauticalMiles": 9.8 }, "racesSailed": 0, "racesWon": 0
@@ -147,6 +153,5 @@ a map reload or quit), with the logbook's entries and miles; races sailed and wo
 ## Not covered yet
 
 - The checkride is the lessons' medals plus a written quiz; there is no separate sailed checkride run.
-- Difficulty (Easy or Realistic) does not change grading.
 - In Game mode the drill's quiz does not open, so a lesson's medal counts but the lesson stays open until it is sailed in
   Learning mode.

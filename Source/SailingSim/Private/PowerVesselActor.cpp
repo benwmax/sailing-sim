@@ -149,7 +149,7 @@ void APowerVesselActor::Light(const FVector& LocationM, const FLinearColor& Colo
 	Parts.Add(C);
 }
 
-void APowerVesselActor::Build(ETrafficKind InKind)
+void APowerVesselActor::Build(ETrafficKind InKind, bool bTanker)
 {
 	Kind = InKind;
 	// Sound (Visual V7): the engine where it is, and the gulls that follow a shrimper working her nets.
@@ -271,7 +271,22 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 	{
 		// A product tanker: black topsides, red boot top, white house aft, a funnel; pipework on deck.
 		const float L = 230.f, B = 32.f;
-		if (Model(TEXT("SM_Vessel_Container"), FVector::ZeroVector))
+		if (bTanker && Model(TEXT("SM_Vessel_Tanker"), FVector::ZeroVector))
+		{
+			// The Gulf Pride (build_vessels.py tanker()): masthead lights on the foremast and higher on the radar mast aft
+			// (Rule 23(a)), sidelights on the bridge wings, sternlight; constrained by her draft (Rule 28), three reds on
+			// the radar mast; a cylinder by day.
+			Light(FVector(100.f, 0.f, 26.f), NavWhite, Masthead[0], Masthead[1]);
+			Light(FVector(-89.f, 0.f, 33.2f), NavWhite, Masthead[0], Masthead[1]);
+			Sidelights(-86.f, B * 0.51f + 0.3f, 22.5f);
+			Stern(-114.f, 8.5f);
+			Light(FVector(-89.6f, 0.f, 31.f), NavRed, AllRound[0], AllRound[1]);
+			Light(FVector(-89.6f, 0.f, 29.5f), NavRed, AllRound[0], AllRound[1]);
+			Light(FVector(-89.6f, 0.f, 28.f), NavRed, AllRound[0], AllRound[1]);
+			DayShapes.Add(Part(Cylinder, FVector(-87, 0, 29.5), FVector(1.5, 1.5, 3.0), HullDark));
+			break;
+		}
+		if (!bTanker && Model(TEXT("SM_Vessel_Container"), FVector::ZeroVector))
 		{
 			// A feeder container ship: masthead lights on the foremast and higher aft (Rule 23(a)), sidelights on the
 			// bridge wings, sternlight; constrained by her draft (Rule 28), three reds; a cylinder by day.

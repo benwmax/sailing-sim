@@ -271,6 +271,7 @@ FString FSailSave::ToJson() const
 	{
 		TSharedRef<FJsonObject> O = Obj();
 		O->SetStringField(TEXT("medal"), L.Medal);
+		O->SetBoolField(TEXT("medalEasy"), L.bMedalEasy);
 		O->SetNumberField(TEXT("bestSeconds"), L.BestSeconds);
 		O->SetNumberField(TEXT("runs"), L.Runs);
 		O->SetBoolField(TEXT("quizPassed"), L.bQuizPassed);
@@ -463,6 +464,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 				FLessonRecord L;
 				L.Id = F.Key;
 				Read(O, TEXT("medal"), L.Medal);
+				Read(O, TEXT("medalEasy"), L.bMedalEasy);
 				Read(O, TEXT("bestSeconds"), L.BestSeconds);
 				Read(O, TEXT("runs"), L.Runs);
 				Read(O, TEXT("quizPassed"), L.bQuizPassed);

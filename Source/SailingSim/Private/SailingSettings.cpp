@@ -62,12 +62,36 @@ bool USailingSettings::IgnoresSavedChoices()
 	return bArgs || GIsAutomationTesting;
 }
 
+int32 USailingSettings::EasyArg()
+{
+	static uint32 Gen = MAX_uint32;
+	static int32 Arg = -1;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Arg = -1;
+		int32 V = 0;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingEasy="), V)) Arg = V != 0 ? 1 : 0;
+	}
+	return Arg;
+}
+
+bool USailingSettings::IsEasy() const
+{
+	const int32 Arg = EasyArg();
+	if (Arg >= 0) return Arg != 0;
+	if (IsMeasuring() || GIsAutomationTesting || FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCapture="))) return false;
+	return Difficulty == ESailingDifficulty::Easy;
+}
+
 void USailingSettings::UseRunDefaults()
 {
 	static bool bDone = false;
 	if (bDone || !IgnoresSavedChoices()) return;
 	bDone = true;
 	RestoreClassDefaults();
+	// -SailingEasy picks the difficulty for the run too (the HUD and the menus say what the physics does).
+	if (EasyArg() >= 0) Get()->Difficulty = EasyArg() ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic;
 }
 
 void USailingSettings::RestoreClassDefaults()

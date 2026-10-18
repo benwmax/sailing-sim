@@ -1516,6 +1516,9 @@ void SSailFrontEnd::StartQuiz()
 			const int32 Sec = FMath::RoundToInt32(A.Seconds);
 			QuizDebrief += FString::Printf(TEXT("%sLesson: %s · %s medal in %d:%02d%s."), QuizDebrief.IsEmpty() ? TEXT("") : TEXT("\n\n"), *L->Title,
 				*FCareerContent::MedalName(A.Medal), Sec / 60, Sec % 60, A.bNewBest && A.Medal != ECareerMedal::None ? TEXT(", a new best") : TEXT(""));
+			// Easy mode: honest grading (career.json's easy_max_medal).
+			if (A.bEasyCapped) QuizDebrief += FString::Printf(TEXT(" Sailed on Easy, which earns at most %s: sail it on Realistic for more."),
+				*FCareerContent::MedalName(FCareerContent::Get().EasyMaxMedal).ToLower());
 		}
 	}
 }
@@ -1709,6 +1712,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			const FCareerLesson& L = T.Lessons[I];
 			const FSailSave::FLessonRecord* R = Prog.FindLesson(L.Id);
 			const ECareerMedal M = Career.LessonMedal(L.Id);
+			// Easy mode: a medal earned on Easy says so ("Easy: bronze").
+			const FString MedalText = M == ECareerMedal::None ? FString(TEXT("No medal"))
+				: (Career.IsLessonMedalEasy(L.Id) ? FString::Printf(TEXT("Easy: %s"), *FCareerContent::MedalName(M).ToLower()) : FCareerContent::MedalName(M));
 			const int32 Sec = R ? FMath::RoundToInt32(R->BestSeconds) : 0;
 			const FString QuizText = !R || R->QuizOf == 0 ? FString(TEXT("Quiz to take")) : (R->bQuizPassed ? FString(TEXT("Quiz passed")) : FString::Printf(TEXT("Quiz %d of %d"), R->QuizBest, R->QuizOf));
 			const ESailingDrill Drill = L.Drill;
@@ -1731,7 +1737,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(L.Title, EType::Ui, Fg) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f)[ SNew(SBox).WidthOverride(110.f)[ SailUI::Text(QuizText, EType::Small, R && R->bQuizPassed ? Starboard : Muted) ] ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f)[ SNew(SBox).WidthOverride(56.f)[ SailUI::Text(M == ECareerMedal::None ? FString(TEXT("–")) : FString::Printf(TEXT("%d:%02d"), Sec / 60, Sec % 60), EType::Value, Fg) ] ]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(84.f)[ SailUI::Text(M == ECareerMedal::None ? FString(TEXT("No medal")) : FCareerContent::MedalName(M), EType::Label, MedalColour(M)) ] ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(104.f)[ SailUI::Text(MedalText, EType::Label, MedalColour(M)) ] ]
 			];
 			Detail->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ Row ];
 		}
@@ -1749,6 +1755,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			: (bReady ? FString::Printf(TEXT("Ready: every lesson at %s or better. The written part is %d questions; %.0f%% passes."), *FCareerContent::MedalName(T.Checkride.MinMedal).ToLower(),
 				T.Checkride.Quiz.Questions, T.Checkride.Quiz.Pass * 100.0) : Why);
 		if (Ride && Ride->QuizOf > 0 && !bHeld) RideLine += FString::Printf(TEXT(" Best so far %d of %d."), Ride->QuizBest, Ride->QuizOf);
+		// Easy mode earns at most bronze: a checkride that asks for more needs the lessons sailed on Realistic.
+		const ECareerMedal EasyMax = FCareerContent::Get().EasyMaxMedal;
+		if (!bHeld && !bReady && T.Checkride.MinMedal > EasyMax)
+			RideLine += FString::Printf(TEXT(" The checkride needs %s: sail the lessons on Realistic (Easy earns at most %s)."),
+				*FCareerContent::MedalName(T.Checkride.MinMedal).ToLower(), *FCareerContent::MedalName(EasyMax).ToLower());
 		const FString TierId = T.Id;
 		TSharedRef<SSailButton> Take = ActionButton(bHeld ? TEXT("Retake the written checkride") : TEXT("Take the written checkride"),
 			FSimpleDelegate::CreateLambda([this, TierId]() { CheckrideTierId = TierId; Quiz.Reset(); Push(ESailScreen::Quiz); }));

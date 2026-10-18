@@ -53,7 +53,7 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
     "racesSailed": 0, "racesWon": 0,
     "logbook": { "sessions": 0, "entries": 0, "nauticalMiles": 0 },
     "hoursSailed": 0,
-    "lessons": { "day-sailor.leave-the-dock": { "medal": "silver", "bestSeconds": 212.4, "runs": 2, "quizPassed": true, "quizBest": 2, "quizOf": 3 } },
+    "lessons": { "day-sailor.leave-the-dock": { "medal": "silver", "medalEasy": false, "bestSeconds": 212.4, "runs": 2, "quizPassed": true, "quizBest": 2, "quizOf": 3 } },
     "checkrides": {},
     "certificates": {}
   }
@@ -80,7 +80,7 @@ lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's 
 
 Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bindings` names that file.
 
-The progress block is the career's (`docs/career/README.md`): `lessons` (best medal, fastest medal run, quiz),
+The progress block is the career's (`docs/career/README.md`): `lessons` (best medal, whether it was earned on Easy, fastest medal run, quiz),
 `checkrides` (the written quiz's best) and `certificates` (when each was earned, UTC), each an object keyed by its id;
 `hoursSailed` and the logbook counts grow at each session's end, `racesSailed` and `racesWon` when a race is over.
 `settings.career.openEverything` is Settings > Gameplay > Open everything. These were added in version 1 without a
