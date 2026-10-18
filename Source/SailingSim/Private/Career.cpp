@@ -536,7 +536,7 @@ FString FCareerProgress::LockReason(const FString& Id, bool bWorld) const
 		Opens(T, Worlds, Boats);
 		if ((bWorld ? Worlds : Boats).Contains(Id)) return FString::Printf(TEXT("Earn the %s"), *T.CertificateName);
 	}
-	return TEXT("Not in the career yet: open it with Settings > Gameplay > Open everything");
+	return TEXT("Not in the career yet");   // Settings > Gameplay > Open everything opens it
 }
 
 FString FCareerProgress::WorldLockReason(const FString& WorldId, bool bOpenEverything) const
