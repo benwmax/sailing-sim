@@ -13,5 +13,9 @@ public class SailingSim : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[] {
 			"RHI", "ProceduralMeshComponent", "AudioExtensions", "Json", "MeshDescription", "StaticMeshDescription", "HairStrandsCore", "Slate", "SlateCore", "ApplicationCore", "PhysicsControl", "PhysicsCore"
 		});
+
+		// The credits screen reads CREDITS.md at runtime (SailCatalog::Credits): stage the repo's own file into the pak,
+		// in every configuration, so it stays the single source.
+		RuntimeDependencies.Add("$(ProjectDir)/CREDITS.md", StagedFileType.UFS);
 	}
 }

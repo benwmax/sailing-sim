@@ -12,6 +12,7 @@
 #include "Dom/JsonObject.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/FileHelper.h"
+#include "Widgets/Text/STextBlock.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -102,6 +103,8 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 			TSharedRef<SSailFrontEnd> F = SNew(SSailFrontEnd).Start(ESailScreen(I));
 			TestTrue(FString::Printf(TEXT("Screen %d builds"), I), F->Current() == ESailScreen(I));
 		}
+		TSharedRef<SSailFrontEnd> Credits = SNew(SSailFrontEnd).Start(ESailScreen::Credits);
+		TestTrue(TEXT("Credits builds"), Credits->Current() == ESailScreen::Credits);
 		TSharedRef<SSailHud> Hud = SNew(SSailHud);
 		TestTrue(TEXT("HUD builds"), Hud->Pawn() == nullptr);
 	}
@@ -109,6 +112,64 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	S->Save();
 	return true;
 }
+namespace
+{
+	/** Every text block's text under a widget (upper-cased, as some styles draw it). */
+	void CollectTexts(const TSharedRef<SWidget>& W, TArray<FString>& Out)
+	{
+		if (W->GetType() == TEXT("STextBlock")) Out.Add(StaticCastSharedRef<STextBlock>(W)->GetText().ToString().ToUpper());
+		FChildren* Children = W->GetChildren();
+		for (int32 I = 0; Children && I < Children->Num(); ++I) CollectTexts(Children->GetChildAt(I), Out);
+	}
+}
+
+// Release readiness (docs/licences): the credits screen opens, leads with the Unreal Engine notice and shows every
+// heading of CREDITS.md (read at runtime, the single source), and the Markdown reads as plain text.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUICreditsTest, "SailingSim.UI.Credits", UIFlags)
+bool FSailingUICreditsTest::RunTest(const FString&)
+{
+	FString Markdown;
+	if (!TestTrue(TEXT("CREDITS.md loads"), FFileHelper::LoadFileToString(Markdown, *SailCatalog::CreditsPath()))) return false;
+	TArray<FString> Lines, Headings;
+	Markdown.ParseIntoArrayLines(Lines);
+	for (const FString& L : Lines) if (L.StartsWith(TEXT("#"))) Headings.Add(L.Replace(TEXT("#"), TEXT("")).TrimStartAndEnd());
+	TestTrue(TEXT("CREDITS.md has its sections"), Headings.Num() >= 4);
+
+	const TArray<SailCatalog::FCreditLine> Credits = SailCatalog::Credits();
+	TestTrue(TEXT("The Unreal notice comes first"), Credits.Num() > 1 && Credits[0].Kind == SailCatalog::ECreditKind::Notice
+		&& Credits[0].Text.Contains(TEXT("Made with Unreal Engine")) && Credits[0].Text.Contains(TEXT("trademark of Epic Games")));
+	bool bLarus = false, bMarkdown = false;
+	for (const SailCatalog::FCreditLine& L : Credits)
+	{
+		bLarus |= L.Text.Contains(TEXT("Larus atricilla")) && L.Text.Contains(TEXT("CC BY 3.0"));
+		bMarkdown |= L.Text.Contains(TEXT("](")) || L.Text.Contains(TEXT("`")) || L.Text.Contains(TEXT("**"));
+	}
+	TestTrue(TEXT("Credits Larus atricilla (CC BY 3.0)"), bLarus);
+	TestFalse(TEXT("No Markdown marks left"), bMarkdown);
+	const TArray<SailCatalog::FCreditLine> Sample = SailCatalog::ParseCredits(TEXT("## A\n- [OSM](https://osm.org/c) and\n  `x` **y**\n\nPara [P](https://commons.wikimedia.org/wiki/File:P.jpg)."));
+	TestEqual(TEXT("Parsed lines"), Sample.Num(), 4);
+	if (Sample.Num() == 4)
+	{
+		TestEqual(TEXT("Bullet joined, link kept with its address"), Sample[2].Text, FString(TEXT("OSM (https://osm.org/c) and x y")));
+		TestEqual(TEXT("Commons file link keeps its title"), Sample[3].Text, FString(TEXT("Para P.")));
+	}
+
+	if (FSlateApplication::IsInitialized())
+	{
+		TSharedRef<SSailFrontEnd> F = SNew(SSailFrontEnd).Start(ESailScreen::Title);
+		F->Push(ESailScreen::Credits);
+		TestTrue(TEXT("Credits opens from the title"), F->Current() == ESailScreen::Credits);
+		TArray<FString> Texts;
+		CollectTexts(F, Texts);
+		auto Shows = [&Texts](const FString& S) { const FString U = S.ToUpper(); return Texts.ContainsByPredicate([&U](const FString& T) { return T.Contains(U); }); };
+		TestTrue(TEXT("The screen shows the Unreal notice"), Shows(SailCatalog::UnrealNotice));
+		for (const FString& H : Headings) TestTrue(FString::Printf(TEXT("The screen shows \"%s\""), *H), Shows(H));
+		F->Pop();
+		TestTrue(TEXT("Back returns to the title"), F->Current() == ESailScreen::Title);
+	}
+	return true;
+}
+
 // Bench-fix: a measuring run (bench, capture, shot, demo, drill, automation) ignores the player's saved session. With
 // Galveston, the Lagoon 42 and a far launch spot in the settings (as GameUserSettings.ini would load them), the run's
 // defaults are the J/22 at Rush Creek on Lake Ray Hubbard, and saving writes nothing to the player's ini.

@@ -66,4 +66,21 @@ namespace SailCatalog
 		bool bStorm = false;
 	};
 	SAILINGSIM_API const TArray<FRealDay>& RealDays();
+
+	/**
+	 * Release readiness (docs/licences): the credits screen's text, from CREDITS.md (the single source; staged into the
+	 * package by SailingSim.Build.cs). The Unreal Engine notice comes first, then every heading and paragraph in order,
+	 * with the Markdown reduced to plain text.
+	 */
+	enum class ECreditKind : uint8 { Notice, Heading1, Heading2, Heading3, Paragraph, Bullet };
+	struct FCreditLine
+	{
+		ECreditKind Kind = ECreditKind::Paragraph;
+		FString Text;
+	};
+	SAILINGSIM_API extern const TCHAR* const UnrealNotice;
+	SAILINGSIM_API FString CreditsPath();
+	SAILINGSIM_API TArray<FCreditLine> ParseCredits(const FString& Markdown);
+	/** CREDITS.md read now (a few kB), or the notice and a missing-file line. */
+	SAILINGSIM_API TArray<FCreditLine> Credits();
 }
