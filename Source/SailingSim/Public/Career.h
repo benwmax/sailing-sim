@@ -181,3 +181,21 @@ private:
 	const FCareerContent& Content;
 	FSailSave::FProgress& Progress;
 };
+
+/**
+ * The game's edge of the career: the loaded content over the save's progress (SailSaveStore::Progress) and the
+ * settings' open-everything switch; each Record writes the save (nothing is written in a measuring run).
+ */
+namespace SailCareer
+{
+	SAILINGSIM_API bool OpenEverything();
+	SAILINGSIM_API FCareerProgress Progress();
+	/** A drill run has ended (the pawn, when FDrillRunner completes). */
+	SAILINGSIM_API FCareerProgress::FAward RecordRun(const FCareerRun& Run);
+	SAILINGSIM_API bool RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of);
+	/** True when the certificate was awarded by this quiz. */
+	SAILINGSIM_API bool RecordCheckrideQuiz(const FString& TierId, int32 Right, int32 Of);
+	/** The sim's session ended (time on the world clock, the logbook's counts). */
+	SAILINGSIM_API void RecordSession(double SimSeconds, int32 LogEntries, double LogMiles);
+	SAILINGSIM_API void RecordRace(bool bFinished, int32 Place);
+}

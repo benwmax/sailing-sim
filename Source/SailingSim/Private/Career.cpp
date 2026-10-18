@@ -1,5 +1,7 @@
 #include "Career.h"
 #include "SailingSim.h"
+#include "SailSession.h"
+#include "SailingSettings.h"
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -560,4 +562,48 @@ void FCareerProgress::RecordRace(bool bFinished, int32 Place)
 {
 	++Progress.RacesSailed;
 	if (bFinished && Place == 1) ++Progress.RacesWon;
+}
+
+// ---------------------------------------------------------------- the game's edge
+
+bool SailCareer::OpenEverything() { return USailingSettings::Get()->bOpenEverything; }
+
+FCareerProgress SailCareer::Progress() { return FCareerProgress(FCareerContent::Get(), SailSaveStore::Progress()); }
+
+FCareerProgress::FAward SailCareer::RecordRun(const FCareerRun& Run)
+{
+	const FCareerProgress::FAward A = Progress().RecordRun(Run, OpenEverything());
+	if (A.IsValid())
+	{
+		UE_LOG(LogSailing, Display, TEXT("Career: %s %s in %.0f s (best %s)"), *A.LessonId, *FCareerContent::MedalName(A.Medal), A.Seconds, *FCareerContent::MedalName(A.Best));
+		USailSessionSave::Get()->Commit();
+	}
+	return A;
+}
+
+bool SailCareer::RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of)
+{
+	const bool bPass = Progress().RecordLessonQuiz(LessonId, Right, Of);
+	USailSessionSave::Get()->Commit();
+	return bPass;
+}
+
+bool SailCareer::RecordCheckrideQuiz(const FString& TierId, int32 Right, int32 Of)
+{
+	const bool bAwarded = Progress().RecordCheckrideQuiz(TierId, Right, Of, FDateTime::UtcNow());
+	if (bAwarded) UE_LOG(LogSailing, Display, TEXT("Career: %s certificate awarded"), *TierId);
+	USailSessionSave::Get()->Commit();
+	return bAwarded;
+}
+
+void SailCareer::RecordSession(double SimSeconds, int32 LogEntries, double LogMiles)
+{
+	Progress().AddSession(SimSeconds, LogEntries, LogMiles);
+	USailSessionSave::Get()->Commit();
+}
+
+void SailCareer::RecordRace(bool bFinished, int32 Place)
+{
+	Progress().RecordRace(bFinished, Place);
+	USailSessionSave::Get()->Commit();
 }
