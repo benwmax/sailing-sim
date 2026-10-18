@@ -61,6 +61,12 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	Root->TryGetNumberField(TEXT("latitude"), Latitude);
 	Root->TryGetNumberField(TEXT("longitude"), Longitude);
 	Root->TryGetBoolField(TEXT("ocean"), bOcean);
+	FString Projection;
+	if (!Root->TryGetStringField(TEXT("projection"), Projection) || !Sailing::FGeoAnchor::ParseProj4(TCHAR_TO_UTF8(*Projection), Anchor))
+	{
+		Anchor = Sailing::FGeoAnchor::ForWorld(TCHAR_TO_UTF8(*Name));
+		UE_LOG(LogSailing, Warning, TEXT("Lake %s: no tmerc projection in the header, using the build script's centre"), *Name);
+	}
 	const TArray<TSharedPtr<FJsonValue>>* PassageArray = nullptr;
 	if (Root->TryGetArrayField(TEXT("passage"), PassageArray))
 	{
