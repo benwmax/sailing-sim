@@ -2000,7 +2000,7 @@ AO = 1.0;
     float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * rampCu) * 1.6;
     // And thinner: at full density a cumulus closes within tens of metres and reads as a solid, lit skin (the clay
     // look); real cloud light diffuses deep through the skin, which the short-step march shows only with the vapour
-    // this much thinner (0.15 of the full density, chosen by eye on lake-towers and Texas City between 0.1 and 0.2).
+    // this much thinner (0.1 of the full density: Bean's pick over 0.15, "fluffier").
     dCu *= lerp(1.0, WISP_THIN, wGate);
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
@@ -2239,7 +2239,7 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
         float h = fineLeft > 0.0 ? stepLen / 6.0 : stepLen;
         float3 P = (cam + dir * t) * 100.0;
         float Alt = (cam.z + dir.z * t + t * t / 12742000.0) * 100.0;
-        float dens = 0.0, ao = 1.0, alb = 0.95, emitL = 0.0;
+        float dens = 0.0, ao = 1.0, alb = 0.95;
         {
             float3 Albedo; float3 Emit; float Cons; float AO;
 """
@@ -2287,9 +2287,6 @@ CACHE_TAIL = """
             }
             float dT = exp(-dens * h);
             S += Tr * (1.0 - dT) * alb * sunT;
-            // The storm shelf's lit face is emission in CLOUD_CODE (proportional to SunLum and to the extinction):
-            // integrated over the step and carried in the sun term, per unit of the sun's illuminance (pi x SunLum).
-            S += Tr * (1.0 - dT) * emitL / max(dens * 3.14159265 * dot(SunLum.rgb, float3(0.3, 0.59, 0.11)), 1e-9);
             Amb += Tr * (1.0 - dT) * alb * ao;
             Tr *= dT;
         }
@@ -2305,7 +2302,7 @@ return lerp(prev, float3(S, Amb, Tr), CacheShadow.z);
 def cache_code():
     """CACHE_HEAD, CLOUD_CODE as the step's density, CACHE_SHADOW, CLOUD_CODE again as the shadow ray's, CACHE_TAIL."""
     body = cloud_code()
-    view = body.replace("return d * Density;", "dens = d * Density; ao = AO; alb = dot(Albedo, float3(0.3, 0.59, 0.11)); emitL = dot(Emit, float3(0.3, 0.59, 0.11));")
+    view = body.replace("return d * Density;", "dens = d * Density; ao = AO; alb = dot(Albedo, float3(0.3, 0.59, 0.11));")
     shadow = body.replace("return d * Density;", "sd = d * Density;")
     return CACHE_HEAD + view + CACHE_SHADOW + shadow + CACHE_TAIL
 
@@ -2326,7 +2323,7 @@ def build_cloud_cache():
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
         ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0)), ("CacheCam", (0, 0, 0, 0)),
-        ("CacheEl", (-3, 75, 0, 0)), ("CacheMax", (40000, 1000, 3000, 96)), ("CacheShadow", (300, 0, 1, 0))))}
+        ("CacheEl", (-3, 33, 0, 0)), ("CacheMax", (40000, 1000, 3000, 48)), ("CacheShadow", (300, 0, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 2400)
     c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
                                    "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev"],
@@ -2490,10 +2487,7 @@ float cm = dot(dir, MoonDir.xyz);
         float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), skyCol, 0.85) * lerp(1.04, 0.72, hi);
         // The live clouds' grey-scale scattering keeps less of the sun's colour than the raw illuminance: 30% toward grey.
         float3 sunC = lerp(float3(sunL, sunL, sunL), SunIll, 0.7) * lerp(1.09, 0.86, hi);
-        // Under a storm (CacheSun.y: how much storm is in the sky) the deck's slate albedo is blue-grey, which the cache's
-        // one albedo number loses: its light is tinted toward slate and the sky term lifted, as the live storm reads.
-        float3 slate = lerp(float3(1.0, 1.0, 1.0), float3(0.82, 0.95, 1.3), CacheSun.y);
-        col = col * s.b + (s.r * CacheSun.x * sunC * (1.0 - 0.6 * CacheSun.y) + s.g * CacheSun.w * amb * (1.0 + 2.0 * CacheSun.y)) * slate;
+        col = col * s.b + s.r * CacheSun.x * sunC + s.g * CacheSun.w * amb;
     }
 }
 return col;
