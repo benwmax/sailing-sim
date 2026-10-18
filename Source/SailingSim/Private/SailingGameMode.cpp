@@ -714,7 +714,11 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	float Next = Now;
 	if (GovernorMs > 21.6f) Next = FMath::Max(82.f, Now - 3.f);      // over 46 fps' budget: step down
 	else if (GovernorMs < 18.5f) Next = FMath::Min(100.f, Now + 2.f); // headroom: step back up
-	if (Next != Now) Pct->Set(Next, ECVF_SetByCode);
+	if (Next != Now)
+	{
+		Pct->Set(Next, ECVF_SetByCode);
+		UE_LOG(LogSailing, Display, TEXT("Resolution governor: %.0f%% -> %.0f%% (frame %.2f ms smoothed)"), Now, Next, GovernorMs);
+	}
 }
 
 float ASailingGameMode::GetRenderScale() const
