@@ -18,7 +18,7 @@
 /**
  * Owns the world's weather, wind and waves and the simulation clock (the boat's physics time), and spawns
  * the player's boat. Command line (for benchmarks and recordings):
- *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay>  -SailingHour=<h>
+ *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay|Mistral>  -SailingHour=<h>
  *   -SailingWind=<knots> (scale the preset to this base wind)  -SailingWeatherTime=<s> (start partway in)
  *   -SailingSeed=<n>  -SailingBench=<s>  -SailingRecord=<s>  -SailingRecordInterval=<s>  -SailingShot=<name>
  */
@@ -47,6 +47,8 @@ public:
 	TOptional<FLaunchSpot> NearShipStart;
 	/** The area's data files by setting: "RayHubbard" or "GalvestonBay". */
 	static const TCHAR* WorldFileName(int32 World);
+	/** A world by its name or number (-SailingWorld, a scene's setting.world_stand_in): "Lake" 0, "Galveston" 1, "Gulf" 2. */
+	static int32 WorldIndexFromName(const FString& Name);
 	static const TCHAR* WorldDisplayName(int32 World);
 
 	/** Real time (seconds since 1970 UTC): the chosen date and start time plus the time sailed. Tides run on it. */
@@ -173,6 +175,9 @@ private:
 	int32 SceneReefs = 0;
 	double SceneTime = 0.0;
 	int32 SceneCallSerial = 0;
+	int32 SceneWeatherSerial = -1;
+	int32 SceneStartStep = 0;  // -SailingPrologueStep (stills)
+	bool bScenePreset = false; // the scene's setting.weather named a preset (step 4: the mistral)
 public:
 	/** Graphics G4: changes the running session's weather in place (Pause > Change conditions): no reload. */
 	void ApplyConditions(const struct FSailConditions& Conditions);

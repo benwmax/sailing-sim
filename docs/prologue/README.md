@@ -10,7 +10,8 @@ step fills with data: a scene read from a JSON file, judged by the sim, shown by
 | 1 | Data-driven scripted scenes | done |
 | 2 | Crew-station control mode ([below](#step-2-crew-stations)) | done |
 | 3 | The maxi class ([below](#step-3-the-maxi)) | done |
-| 4+ | The gale preset, the captain's voice, cameras, the first-launch flow (prologue, then Easy/Realistic, then the career) | later |
+| 4 | The gale preset: the mistral, its squall and the break on the scene's clock ([below](#step-4-the-mistral)) | done |
+| 5+ | The storyboard, the captain's voice, cameras, the first-launch flow (prologue, then Easy/Realistic, then the career) | later |
 
 ## How it runs
 
@@ -110,8 +111,8 @@ Placeholder captions in the captain's voice; the later steps only change data.
 | 3 | `ready-about` (checkpoint, TWA 55 at 8 kn) | helm | 8 s after | "You're on the wheel. Ready about!" | a tack in 25 s (the crew work the sheets) | helm-over-shoulder |
 | 4 | `grind` | jib trimmer | at once | "Back on the jib. Grind! Bring the new sheet in, all the way!" | the grinder, jib in to 0.4 in 25 s (step 3: the maxi's J4; 0.15 in 14 s on the J/22) | grinder |
 | 5 | `take-helm` (checkpoint, TWA 150 at 10 kn) | helm | 6 s after | "Take the helm. Bear away and let her run down the face of this one." | the wheel, TWA 130–170 for 8 s | wave-face |
-| 6 | `dump-main` | main trimmer | a gust 8 kn over the mean, 10 s on (or 40 s) | "Squall! Dump the traveller, then ease the main!" | the traveller dump, then the mainsheet, main out past 0.8 in 6 s | squall-astern |
-| 7 | `the-break` (checkpoint, TWA 140 at 9 kn) | helm | 12 s after | "There's the break. Harbour on the bow. Bring her up onto a reach." | the wheel, TWA 60–120 for 6 s, then the end | harbour-ahead |
+| 6 | `dump-main` | main trimmer | a gust 6 kn over the mean, 10 s on (or 40 s): the squall's front (step 4) | "Squall! Dump the traveller, then ease the main!" | the traveller dump, then the mainsheet, main out past 0.8 in 6 s | squall-astern |
+| 7 | `the-break` (checkpoint, TWA 140 at 9 kn) | helm | 12 s after (the sky opening: step 4) | "There's the break. Harbour on the bow. Bring her up onto a reach." | the wheel, TWA 60–120 for 6 s, then the end | harbour-ahead |
 
 ![The captain's call over the HUD (packaged High, the first call; Space answers it)](callout.jpg)
 
@@ -136,6 +137,13 @@ scripts/bench-visual.sh 12 prologue-callout High`) beam8 High is 64.5 fps; the s
 - `SailingSim.Prologue.Stations` (step 2): the merge gives the crew every control the player's station does not work;
   a player at the jib on the wheel, mainsheet and traveller dump leaves the boat sailing exactly as without; the grind
   times above (4–12 s in 25 kn, quicker in 12 kn); the playthrough at the stations.
+- `SailingSim.Weather.Mistral` (step 4): the preset's numbers (the gust factor measured, sky, rain, visibility, the sea
+  through `FOcean`), no thunderstorm, its own timeline uncued, the squall on a scene step's cue (on the clock, 38-46 kn,
+  5-20 mm/h, under 4 km), the break after it, restarts either side, the stand-in direction.
+- `SailingSim.Prologue.Gale` (step 4): the whole scene on the maxi in the preset (wind, cues and FFT sea as the game runs
+  them) finishes with every step done; the squall cued with its step and on her on its clock, the call with it; the
+  break with its step; the grind and the tack timed; her motion on a beat, a reach and a run; the sea big enough to
+  surf; the J/22 stand-in in the same gale.
 - `SailingSim.UI.GamepadBindings`: the station layer keeps its buttons through the boat layer's swaps and swaps within
   its own.
 - `SailingSim.Save.RoundTrip` carries a scene record.
@@ -305,12 +313,135 @@ For the PC, so the hero sits on the physics:
   catalogue's Boat screen skip (`SailCatalog::MakeBoats`) and the pause menu's skip come out when she is offered.
   `BoatExport` is not needed (the model is the source of the hull).
 
+## Step 4: the mistral
+
+Bean's setting: a Mediterranean mistral, a serious sailing day and not a full storm. 30-35 kn true gusting 40, light
+rain, a short steep 3-4 m sea, overcast with fast low scud. A squall arrives with "Dump the main!" (a line of heavier
+rain and a 40 kn gust front) and clears at the break (the sky opens). The scene file's `setting` names it and the game
+now honours it.
+
+- **The preset:** `EWeatherPreset::Mistral` (`Weather.h`/`.cpp`, in the same switch as the others; `-SailingWeather=Mistral`,
+  `ESailingWeather::Mistral` saved by name, after Random day in the pause menu's list). Every number has its reason in
+  the comment beside it:
+  - **Wind:** 32 kn from the northwest. The gust factor is given outright: `GustIntensityForFactor(40 / 32)`, not the
+    Texas month's. Puffs 0.07 every 2 min. Shifts are small (6 deg, a 4 deg swing).
+  - **Air:** 13 C over 16 C water, so cold over warm (unstable: the gusts reach the water). Dew point 6 C, a 900 m mixed
+    layer. No thunderstorm cell, no lightning, no microburst.
+  - **Rain and visibility:** light rain everywhere from the deck (1.5 mm/h), visibility 6.5 km.
+  - **Sky:** a stratocumulus deck at 0.55-1.6 km covering 85% (cover 0.88), with 15% scud under it at 0.35-0.8 km,
+    drifting at 1.4 times the surface wind (the mistral is a shallow jet). Haze is thin (dry air).
+  - **Sea:** a fetch-limited wind sea given outright (`FOceanParams::WindSeaHs`/`WindSeaTp`, new: 0 keeps the wind's own
+    sea, as before), Hs 3.3 m at Tp 7 s (77 m long, steepness 1/23), on an older 1.2 m 9 s sea from the same way:
+    Hs 3.5 m. It comes through `FWeatherState::WindSeaHsM`/`SwellHsM`/`SwellFromDeg`, which `UpdateOcean` uses instead of
+    the Gulf's climatology. The ocean mask is rebuilt for the swell's direction.
+  - **Daylight:** the scene's `setting.hour`, 17.5 (local).
+- **The squall:** a squall line, not a thunderstorm (`FSquallLine`, `Storm.h`). Its own small cold pool (3 C, 500 m) on an
+  `FGustFront` moving with the gale at 15.3 m/s (`FColdPool::FrontSpeed` with the whole gale along its track).
+  - **Wind:** behind it 36 kn, about 41 at its head (the front's edge boost), with no microburst. Its wind shift is
+    sharp: a 40 m edge, a few seconds at a fixed point.
+  - **Rain:** 12 mm/h just inside its edge, easing over 1.5 km back to the day's rain.
+  - **Light:** its dark base comes over in the last 2.5 km, and visibility in its rain is 2 km (`LocalizeStorm`'s
+    squall branch).
+  - **What draws it:** rain curtains draw it from the stratus base. The storm cloud layer stays empty, so there is no
+    shelf, anvil or lightning, and the HUD's tips say "squall", not "thunderstorm".
+  - **When it isn't cued:** it reaches the start at 240 s, and the break follows at 330 s (`kSquallArrives`,
+    `kSquallClears`).
+- **The break:** over 45 s the squall's outflow eases, the rain stops, the deck breaks up to 40% (cover 0.45, darkness
+  0.15), visibility opens to 25 km and the gale eases to 28 kn.
+- **On the scene's clock:** a step can carry `"weather": { "cue": "squall" | "clearing", "in_s": n }` (loader and
+  validator; a clearing needs a squall before it, each cue once). `dump-main` has the squall with `in_s` 10 (its gust
+  trigger's `after_s`), and `the-break` has the clearing.
+  - `FScriptedScene::GetWeatherStep()` / `GetWeatherSerial()` give the cue that holds, and the serial grows when a cued
+    step begins and on every start or restart.
+  - The game mode hands the cue to `FWeatherSystem::ApplySceneCue` on the sim clock (weather time = sim time -
+    `WeatherStartTime`, as the thunderstorm's front is shifted). The tests do the same.
+  - A squall's front is laid so its wind is on her where she will be `in_s` on, at her speed and course. A restart at the
+    break gets a squall that has passed and the break from then; a restart before the squall takes both back.
+  - The squall's trigger is now 6 kn over the mean (38): at 8 the 41 kn head's gust noise left the call up to 7 s after
+    the front.
+- **The stand-in world:** `setting.world_stand_in` (`{ "world": "Gulf", "launch": 2, "wind_from_deg": 180 }`, new) puts the
+  maxi at the Gulf's offshore spot until a Mediterranean coast exists, with the mistral from the south: the Gulf's open
+  water.
+  - Why not the northwest: from 320 deg the land is 28 km upwind and `FOcean::BuildMask` shuts the sea off there
+    (`scripts/ocean-mask.sh GulfPassage 3.5 320`: 0.00 offshore; from 180 or 150: 1.00). The swell direction argument
+    is new.
+  - The J/22 stand-in sails the same preset scaled to its 25 kn on the lake, from the northwest.
+- **Stills:** `-SailingPrologueStep=<step id>` (new) starts the scene at a step, the boat on the checkpoint before it.
+  `FScriptedScene::Start` takes a first step.
+
+![Before the squall: the deck low and dark astern, 32 kn gusting 37 (High, uncooked)](gale/before.jpg)
+
+More stills, and how they were made: [gale/](gale/README.md).
+
+### Measured (step 4)
+
+Oct 18 2026, `SailingSim.Weather.Mistral` and `SailingSim.Prologue.Gale`:
+
+| | |
+| --- | --- |
+| The gale, measured the way the stations do (1 h, 4 points) | mean 32.1 kn, gust factor 1.25 (5 s peaks to 40.0 kn), puffs 0.060 |
+| Sky, rain, visibility | cover 0.88, the deck at 0.55 km, 1.5 mm/h, 6.5 km |
+| Sea | Hs 3.51 m (wind sea 3.30 at Tp 7.0 s), Tm01 6.0 s, with the wind |
+| Squall, cued with a 10 s lead | its wind on the boat at 84.5 s for a cue at 75 + 10, 44 kn at 10 m in its first 20 s, rain to 13 mm/h, visibility 2.0 km |
+| The break | cover 0.98 to 0.45, rain 12.4 to 0 mm/h, visibility 2 to 25 km, wind 32 to 28 kn |
+| The scene on the maxi in the preset | finishes in 191 s: 6 steps answered, the tack done by the crew (below), 3 repeats |
+| ... the squall | "dump the main" began at 157.2 s, its squall's wind on her at 165.7 s, the call at 167.2 s (as the trigger opens), 45 kn |
+| Grind in the gale (fully eased to 0.40, the preset's wind and sea) | 17.2 s (23.1 s in step 3's steady 32 kn) |
+| Tack on the wheel in the preset's wind, flat water | 12.4, 10.5, 12.1 s |
+| ... in its 3.5 m sea | none in 90 s (0 of 3; 0 of 36 in the standalone sweep below) |
+| The J/22 stand-in in the preset at 25 kn | all 7 answered, no repeats, 109 s |
+
+Her motion in the sea (0.1 s second differences; "off a crest" counts the seconds her midship bottom is above the water
+under her):
+
+| 120 s, crew sailing | Max pitch | Heave (peak to peak) | Bow, up / down | CG, up / down | Off a crest | Speed |
+| --- | --- | --- | --- | --- | --- | --- |
+| Beat (TWA 50) | 10.5 deg | 5.4 m | 2.23 / -0.58 g | 0.93 / -0.47 g | 3.6 s | 4.5-7.6 kn, mean 6.0 |
+| Reach (TWA 100) | 9.8 deg | 5.2 m | 1.92 / -0.73 g | 0.90 / -0.47 g | 2.7 s | 12.1-20.3, mean 16.1 |
+| Run (TWA 150) | 10.7 deg | 2.8 m | 0.38 / -0.26 g | 0.17 / -0.10 g | 0.2 s | 12.9-20.9, mean 16.6 |
+| The whole scene | 10.3 deg | 4.7 m | 2.44 / -0.75 g | 1.13 / -0.51 g | 8.8 s | |
+
+She comes off the steepest crests upwind and on the reach. The worst traced, on a reach: her midship waterline 2.3 m
+above the water under her, falling for a second at about 0.4 g (never free fall) and landing at 1.7 g at the CG. Real
+big boats fall off short steep seas like this. She never falls faster than gravity, and the tests hold pitch under 12
+deg, the CG under 2.5 g, the bow under 3 g and heave under 2 Hs.
+
+### What the maxi needs in the sea
+
+Two physics gaps showed up in the gale. Neither is changed here (the job said to tune nothing in the fleet), so both are
+for the sim thread to decide.
+
+1. **She cannot tack in the 3.5 m sea.** The scene's tack goes to the crew after its two repeats, the boat never comes
+   through, and the grind that follows has nothing to grind (1.1 s).
+   - **The sweep** (standalone, the playthrough's wheel, 6 seeds each): flat water in the preset's wind, 6 of 6 from TWA
+     45, 55 and 65 (10-13 s, the worst 26 s). In the sea, 0 of 36 from those angles, gusts or not, 0 of 6 from TWA 75 at
+     12 kn, and 0 with the heavy-air tack help, the wheel hard over or gentle, or the scene's limits off.
+   - **Where it goes wrong:** she drops from 10 kn to 2 kn head to wind and falls back.
+   - **The cause:** `FBoatConfig::AddedResistanceCoef`, the fleet's default 1.3 (Gerritsma-Beukelman, rho g (Hs/2)^2
+     B^2 / LWL). For her 7.2 m beam that is about 30 kN at 10 kn, three times her calm-water drag, which also halves her
+     upwind speed (6 kn against 11.5 flat).
+   - **What fixes it:** at 0.3 she tacks 5 of 6 (12-40 s); at 0 she tacks 6 of 6 (9-21 s, 14.7 s mean). Hs 2.4 m or Tp 8.5
+     s do not.
+   - **Suggested:** her own coefficient, about 0.3, or a size-aware response (the sum counts each band at 4 m0 where the
+     spectral form has 2 m0). Calibrate it against a maxi's upwind speed in a seaway, then rerun `SailingSim.Prologue.Gale`.
+2. **No surfing.** The hull's buoyancy is vertical, with no push from the surface's slope (Froude-Krylov surge), and the
+   water has no orbital velocity. So "run down the face of this one" has the waves (faces past a slope of 0.1, peak
+   waves at 21.2 kn against her 16.6) but not the ride: her mean acceleration on faces is the same as on backs (-0.018
+   against -0.010 m/s^2 on the run).
+   - **A prototype** (buoyancy normal to the local surface, `-rho g V (slope x, slope y, -1)` per column) gives +0.07 on
+     the faces against -0.08 on the backs, and her speed on the run swings 9-27 kn instead of 16-20.
+   - **The catch:** it changes every boat in waves, so it needs the polar gate and the reference checks rerun.
+
+### Performance (step 4)
+
+See [gale/README.md](gale/README.md#performance).
+
 ## What the later steps need
 
 - **The HUD's wheel:** none drawn yet (`FStationControls::GetWheel()` is there for it).
-- **The gale preset and the mistral world (step 4):** `setting.weather`, `world`, `rain`, `sea_hs_m` are recorded but
-  not applied yet; the game mode applies the scene's wind and gust, and the maxi sails the Gulf's offshore spot until
-  the mistral coast exists. The gale sails are the maxi's two reefs (main 74% of the luff, the J4).
+- **The mistral world:** the scene still sails the Gulf's offshore spot (`setting.world_stand_in`); step 4's weather is
+  the real thing, the coast is not.
+- **The maxi in the gale's sea (step 4, [below](#what-the-maxi-needs-in-the-sea)):** her added resistance and a surf force.
 - **The maxi's model (the PC, `maxi-hero`):** what the physics needs from it is in [step 3](#what-the-model-needs).
 - **Cameras:** the renderer reads `FScriptedScene::GetCamera()`; nothing consumes it yet.
 - **Voice:** record the seven calls (and repeats) as `/Game/Audio/Pack/Voice/captain_<step>` with licence rows.

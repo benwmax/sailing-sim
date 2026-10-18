@@ -23,7 +23,8 @@ enum class ESailingWeather : uint8
 	Overcast,
 	Rain,
 	Thunderstorm,
-	RandomDay
+	RandomDay,
+	Mistral     // prologue step 4 (the scene's gale)
 };
 
 /** Graphics quality tier, measured on the build Mac (see docs/phase-2). */

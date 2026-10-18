@@ -566,7 +566,8 @@ void SSailHud::Refresh()
 	WindText = FText::FromString(FString::Printf(TEXT("%.0f %s %s G%.0f"), U->SpeedIn(T.TrueWindSpeed), U->SpeedUnit(), *USailSessionSubsystem::CompassPoint(float(Wx.Wind.FromDegrees)),
 		U->SpeedIn(T.TrueWindSpeed) * (1.0 + Wx.Wind.GustIntensity)));
 	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(P);
-	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : 80.f;
+	// Without a session's own temperature, the weather's air (the mistral's cold 13 C).
+	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : float(Wx.AirC * 9.0 / 5.0 + 32.0);
 	SkyText = FText::FromString(FString::Printf(TEXT("%s · %.0f°F"), UTF8_TO_TCHAR(WeatherPresetName(GM->GetWeather().GetPreset())), TempF));
 	bTidal = Lake.IsTidal();
 	if (bTidal)

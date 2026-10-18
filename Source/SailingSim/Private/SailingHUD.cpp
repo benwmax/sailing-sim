@@ -1342,7 +1342,15 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 	if (const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr)
 	{
 		const FWeatherState& W = GM->GetWeatherState();
-		if (W.Storm == EStormPhase::Building)
+		if (W.bSquall)
+		{
+			// A squall line in a gale (the mistral's): no thunderstorm, no lightning.
+			if (W.Storm == EStormPhase::Building)
+				Tips.Add({ TEXT("Squall coming: a line of heavier rain and a harder gust behind it. Watch for the dark water upwind and be ready to depower."), 3 });
+			else if (W.Storm == EStormPhase::GustFront)
+				Tips.Add({ TEXT("Squall: depower (ease sheets, traveller down) and keep the bow off the wind until it passes."), 3 });
+		}
+		else if (W.Storm == EStormPhase::Building)
 			Tips.Add({ TEXT("Thunderstorm building to the west-northwest: watch for the dark line of the gust front on the water and reef or head in."), 3 });
 		else if (W.Storm == EStormPhase::GustFront || W.Storm == EStormPhase::Rain)
 			Tips.Add({ TEXT("Storm: depower (ease sheets, hike), keep the bow off the wind, and stay clear of the mast in lightning."), 3 });
