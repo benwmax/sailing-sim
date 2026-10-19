@@ -396,6 +396,28 @@ def build_spars():
     return mast, spreaders, boom, sprit
 
 
+# ------------------------------------------------------------------------------------------------------------ deck gear
+
+def place_kit():
+    """The shared kit's deck gear (Tools/boatkit) where layout.json puts it: on the deck surface or the cockpit floor."""
+    sys.path.insert(0, os.path.join(HERE, "..", "..", "boatkit"))
+    import bk_parts as P   # noqa: E402 (needs bpy, so imported here)
+    from mathutils import Matrix
+    lay = json.load(open(os.path.join(HERE, "layout.json")))
+    pit_d = REF["deck"]["cockpit"]["depth"]
+    placed = 0
+    for e in lay["parts"]:
+        for s in ((1, -1) if e.get("mirror") else (1,)):
+            ob = P.build(e["part"], **e.get("kw", {}))
+            x, y = e["x"], e["y"] * s
+            z = deck_z(x, y) - (pit_d if e["on"] == "pit" else 0.0)
+            yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
+            ob.matrix_world = Matrix.Translation(B((x, y, z))) @ Matrix.Rotation(-yaw, 4, "Z")
+            ob.name = f"Maxi_{e['part']}_{placed}"
+            placed += 1
+    return placed
+
+
 # --------------------------------------------------------------------------------------------------------------- sockets
 
 def socket(name, p):
@@ -468,6 +490,7 @@ def main():
     fin, bulb = build_keel()
     rudders = build_rudders()
     spars = build_spars()
+    n_kit = place_kit()
     socks = sockets()
     H.export_sections(os.path.join(OUT, "sections.json"))
     vol, cbx, cbz = H.canoe_volume()
