@@ -238,7 +238,23 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 				}
 			}
 			FLinearColor Col;
-			if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
+			if (Lake->IsGarrigue())
+			{
+				// marseille-look: the Mediterranean's dress. A pale sand and rock bed under the clear water, limestone
+				// shingle and rock at the waterline (no mud), garrigue scrub (kermes oak, rosemary, thyme) over bare
+				// limestone in 20 m patches, Aleppo pines dark under the canopy, white limestone on every steep face (the
+				// Calanques; M_Terrain draws their strata and fissures on this pale rock).
+				const float Bare = float(FMath::Clamp(1.6 * Rand01(uint32((GR / 4) * 7907 + (GC / 4) * 6469)) - 0.55 + 0.3 * Rand01(uint32(GR * 13 + GC * 101)), 0.0, 1.0));
+				const FLinearColor Scrub(0.21f, 0.22f, 0.13f), Limestone(0.58f, 0.56f, 0.50f), Pine(0.11f, 0.15f, 0.07f);
+				if (Z < -0.3) Col = FLinearColor(0.34f, 0.32f, 0.27f);
+				else
+				{
+					Col = FMath::Lerp(FMath::Lerp(Scrub, Limestone, Bare * 0.75f), Pine, float(FMath::Clamp(Canopy * 1.3, 0.0, 1.0)));
+					Col = FMath::Lerp(Col, FLinearColor(0.50f, 0.48f, 0.43f), Near);
+				}
+				if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.66f, 0.64f, 0.58f), float(FMath::Clamp((Slope - 0.08) * 5.0, 0.0, 1.0)));
+			}
+			else if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
 			else if (Z < 0.6)
 			{
 				// Low ground back from the edge: sedge and lush grass (the lake's flats grow over).
@@ -246,7 +262,7 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 				Col = FMath::Lerp(FLinearColor(0.24f, 0.28f, 0.12f), Bank, Near);
 			}
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
-			if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
+			if (!Lake->IsGarrigue() && Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
 			Col = Col * Noise;
 			Col.A = Near;
 			M.Colors.Add(Col);
