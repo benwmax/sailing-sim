@@ -4,12 +4,15 @@
 #include "GameFramework/Actor.h"
 #include "Async/Future.h"
 #include "TreePlacement.h"
+#include "FarRing.h"
 #include "LakeTerrainActor.generated.h"
 
 class UProceduralMeshComponent;
 class UHierarchicalInstancedStaticMeshComponent;
 class UInstancedStaticMeshComponent;
 class UMaterialInterface;
+class UMaterialInstanceDynamic;
+class UStaticMeshComponent;
 struct FLakeData;
 
 /**
@@ -34,6 +37,9 @@ public:
 
 	/** Chunks waiting to be built or upgraded (0 once streaming has caught up). */
 	int32 GetPendingChunks() const { return Pending; }
+	/** Wide World Rendering PR 1: far coast tiles drawn now, and in all (0 without a ring). */
+	int32 GetFarTilesVisible() const;
+	int32 GetFarTiles() const { return FarTiles.Num(); }
 
 private:
 	struct FChunkMesh
@@ -67,6 +73,16 @@ private:
 	void PlaceBridgesAndDocks();
 
 	TArray<FChunk> Chunks;
+	/** Wide World Rendering PR 1 (FarRing.h): the far coast ring's tiles, loaded without blocking and added a few a frame;
+	 *  once they are all in, the near chunks stop at the ring's inner edge (NearCapM; 20 km without a ring). */
+	FFarRingLoader FarLoader;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FarTiles;   // by tile index (null until loaded)
+	TArray<TPair<int32, UStaticMesh*>> FarArrived;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> FarMaterialBase;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> FarMaterial;
+	FVector2D FarCamera = FVector2D(1e12, 1e12);
+	double NearCapM = 20000.0;
+	void UpdateFarRing(const FVector2D& Camera);
 	int32 ChunkRows = 0, ChunkCols = 0;
 	int32 Pending = 0;
 	// Perf 1 fix 7: where and when the chunks' detail was last chosen, and how many are building.

@@ -3126,6 +3126,85 @@ def build_world_surface():
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
 
+# Wide World Rendering PR 1 (docs/world-far): the far coast ring's land, 8 to 40 km out (Tools/terrain/build_far_ring.py,
+# UWorldKitLibrary::BakeFarRing). The world position offset: the earth's curvature as CURVATURE_CODE (the water's), the land
+# buried under the water inside the hand-over (InnerCm less 200 m), and UnderCm lower where the near terrain may also be
+# drawn (to BandCm, back up over 1.5 km), so the near terrain wins there. FarRing::OffsetZ mirrors it (keep them in step).
+FAR_LAND_WPO = """
+float2 d2 = (WP - Cam).xy;
+float d = length(d2);
+float drop = dot(d2, d2) / (2.0 * 7.433e8);
+float buried = d < InnerCm - 20000.0 ? 1.0 : 0.0;
+float bury = max(WP.z - (-6000.0), 0.0);
+float under = 200.0 * (1.0 - smoothstep(BandCm, BandCm + 150000.0, d));
+return float3(0.0, 0.0, -drop - lerp(under, bury, buried));
+"""
+
+# The colour: M_Terrain's palette (LakeTerrainActor::BuildChunk's vertex colours: grass, woods, the low flats, rock on
+# slopes, sand at the beach) by height above the water and slope, with kilometre-scale mottling so a 30 km plain isn't one
+# paint; the baked sky visibility (vertex red) is the ambient occlusion and darkens hollows; vertex green weights an
+# optional land-cover tint (Tint, none baked yet).
+FAR_LAND_CODE = """
+float3 n = normalize(N);
+float slope = 1.0 - n.z;
+float h = (P.z - WaterZ) * 0.01;
+float2 q = P.xy * 1e-5;
+float m = 0.5 + 0.5 * sin(q.x * 3.1 + sin(q.y * 2.3) * 1.7) * sin(q.y * 2.7 + sin(q.x * 1.9) * 1.3);
+float f = 0.5 + 0.5 * sin(q.x * 17.0 + sin(q.y * 13.0)) * sin(q.y * 19.0 - q.x * 7.0);
+float3 grass = float3(0.36, 0.36, 0.16);
+float3 woods = float3(0.16, 0.22, 0.08);
+float3 flats = float3(0.24, 0.28, 0.12);
+float3 rock = float3(0.40, 0.33, 0.27);
+float3 sand = float3(0.50, 0.42, 0.30);
+float3 col = lerp(grass, woods, saturate(m * 0.8 + 0.3 * f - 0.1));
+col = lerp(flats, col, smoothstep(0.3, 0.9, h));
+col = lerp(sand, col, smoothstep(0.05, 0.4, h));
+col = lerp(col, rock, smoothstep(0.12, 0.45, slope));
+col = lerp(col, Tint.rgb, VC.g * Tint.a);
+col *= 0.9 + 0.2 * f;
+AO = lerp(0.35, 1.0, VC.r);
+return col * lerp(0.75, 1.0, VC.r);
+"""
+
+
+def build_far_land():
+    """M_FarLand: the far coast ring's land (Nanite, opaque, no shadow: the components opt out of shadows, Lumen and the
+    distance fields). InnerCm and BandCm are set per world by ALakeTerrainActor (a dynamic instance)."""
+    mat = world_material("M_FarLand")
+    mat.set_editor_property("used_with_static_lighting", False)
+    mat.set_editor_property("used_with_instanced_static_meshes", False)
+    # The curvature at 60 km (242 m) plus the burial of the highest land a tile can reach inside the hand-over.
+    mat.set_editor_property("max_world_position_offset_displacement", 100000.0)
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT3
+    vc = node(mat, unreal.MaterialExpressionVertexColor, -900, 0)
+    # The height above the water before the curvature drop (with it, land 15 km off reads 30 m under the water).
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -900, 150,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 250)
+    tint = vector(mat, "Tint", (0.30, 0.30, 0.18, 0.0), -900, 350)
+    wz = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 450)
+    wz.set_editor_property("collection", world_collection())
+    wz.set_editor_property("parameter_name", "WaterZ")
+    c = custom(mat, FAR_LAND_CODE, ["VC", "P", "N", "Tint", "WaterZ"], F3, -500, 100, extra_outputs=[("AO", F1)])
+    connect(vc, "", c, "VC")
+    connect(pos, "", c, "P")
+    connect(nrm, "", c, "N")
+    connect(tint, "RGBA", c, "Tint")
+    connect(wz, "", c, "WaterZ")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "AO", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+    MEL.connect_material_property(node(mat, unreal.MaterialExpressionConstant, -300, 300, r=0.92), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    w = custom(mat, FAR_LAND_WPO, ["WP", "Cam", "InnerCm", "BandCm"], F3, -500, 600)
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 600), "", w, "WP")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -900, 680), "", w, "Cam")
+    connect(scalar(mat, "InnerCm", 800000.0, -900, 760), "", w, "InnerCm")
+    connect(scalar(mat, "BandCm", 981000.0, -900, 840), "", w, "BandCm")
+    MEL.connect_material_property(w, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_vehicle_paint():
     """The bridge traffic's paint: colour per instance (custom data 0..2, set by ABridgesActor), glossy clear-coated."""
     mat = world_material("M_VehiclePaint")
@@ -3623,6 +3702,7 @@ build(build_sky_dome)
 build(build_lens_water)
 build(build_trees_materials)
 build(build_world_surface)
+build(build_far_land)
 build(build_vehicle_paint)
 build(build_navaid_paint)
 build(build_house_materials)

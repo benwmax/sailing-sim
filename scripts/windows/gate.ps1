@@ -33,7 +33,7 @@ $Views = switch ($Scope) {
 	'water' { 'beam8,beat15,storm,marina,gulf-sea,bridge' }
 	'boats' { 'beam8,beat15,marina,crew' }
 	'crew' { 'beat15,crew' }
-	'world' { 'marina,bridge,coast-night,marina-night,marseille-port' }
+	'world' { 'marina,bridge,coast-night,marina-night,marseille-port,far-coast,far-coast-night' }
 	'night' { 'coast-night,marina-night' }
 	'ui' { 'beam8' }
 	'all' { '' }
