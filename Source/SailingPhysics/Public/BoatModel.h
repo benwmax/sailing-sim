@@ -175,15 +175,20 @@ namespace Sailing
 		double HeelCapDeg = 0.0;
 		double HeelCapSoftDeg = 6.0;
 		double HeelCapLeverM = 0.0;
-		// Added resistance in waves: AddedResistanceCoef x R(lambda/LWL) x rho g (Hs/2)^2 B^2 / LWL, largest heading
-		// into the waves ((1 + cos)^2 / 4 of the angle off the wave direction) and growing with speed up to about 4 kn.
-		// R = r^4 / (0.25 + r^4) with r = mean wavelength / LWL: short chop barely pitches the boat, waves near hull
-		// length do (Gerritsma-Beukelman style scaling). The coefficient is calibrated so the J/22 matches ORC's polar,
-		// which assumes a moderate sea state. Heave and pitch in the waves come from the hydrostatics directly.
-		double AddedResistanceCoef = 1.3;
-		// Speed (m/s / 2) at which the added resistance stops growing: a keelboat's pitching saturates by about 4 kn;
-		// a light catamaran keeps slamming harder into the chop the faster it goes.
+		// Added resistance in waves (docs/wave-physics/): AddedResistanceCoef x R(lambda/LWL) x rho g 2 m0 B^2 / LWL summed
+		// over the sea's bands (ORC VPP 2023 eq. 6.61's 2 x the spectral integral), largest heading into the waves
+		// ((1 + cos)^2 / 4 of the angle off the wave direction), growing with the Froude number up to 0.265 x the speed cap.
+		// R = r^4 / (0.25 + r^4) with r = wavelength / LWL up to her peak (short chop barely pitches her), then Jinkine &
+		// Ferdinande's long-wave fall (she rides waves much longer than her). The J/22's 2.6 is calibrated so she matches
+		// ORC's polar in the lake's chop; boats the lake's chop does not load (the maxi) or that ORC scales differently
+		// (the Catalina 30) take ORC's length scaling against her (Fleet.cpp). Heave and pitch come from the hydrostatics.
+		double AddedResistanceCoef = 2.6;
+		// Froude number (in units of 0.265, the J/22's 4 kn) at which the added resistance stops growing: a keelboat's
+		// pitching saturates there; a light catamaran keeps slamming harder into the chop the faster it goes.
 		double AddedResistanceSpeedCap = 1.0;
+		// The waves' slope push on the hull (Froude-Krylov surge and sway, the surf down a face): 1 is the physics, 0
+		// leaves the buoyancy vertical as it was before docs/wave-physics/ (for comparisons only).
+		double WaveSlopeForceScale = 1.0;
 
 		// Foils: keels, boards and rudders. Rudders are linked to one tiller (or wheel).
 		std::vector<FFoilDef> Foils;
@@ -321,6 +326,12 @@ namespace Sailing
 		bool bPlaning = false;        // dinghies and beach cats: up on the plane
 		bool bFlyingHull = false;     // multihulls: the windward hull (or ama) is clear of the water
 		double Froude = 0.0;          // boat speed / sqrt(g LWL)
+		// Wave physics (docs/wave-physics/): the hulls' calm-water resistance (friction and residuary), their added
+		// resistance in the waves, both N against her motion, and the waves' slope push along the bow (N, positive
+		// forward: the surf down a face; it averages out over a wave she does not ride).
+		double CalmResistance = 0.0;
+		double WaveResistance = 0.0;
+		double WaveSlopeSurge = 0.0;
 		bool IsStarboardTack() const { return TrueWindAngle > 0.0; }
 
 		FSailStripState MainStrips[kMaxSailStrips];
@@ -422,6 +433,10 @@ namespace Sailing
 		double DesignVolume = 0.0;
 		std::vector<Vec3> BottomPoints, OutlinePoints; // grounding and collision probes (body frame)
 		double MainMeanLift = 0.0;
+		std::vector<double> ColumnMeanVolume; // each column's immersion below her mean waterplane, averaged (the slope push, m^3)
+		struct FColumnWater { Vec3 Low; double Water, VZ, SlopeX, SlopeY; bool bNear; };
+		std::vector<FColumnWater> ColumnWater; // this step's water at each column (scratch)
+		bool bColumnMeanFresh = true;         // after a reset: start the averages at the immersion she has
 		const FWaveField* CurrentWaves = nullptr;
 		const FLakeTerrain* Terrain = nullptr;
 		const std::vector<FObstacleSegment>* Obstacles = nullptr;

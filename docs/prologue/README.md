@@ -404,12 +404,16 @@ under her):
 She comes off the steepest crests upwind and on the reach. The worst traced, on a reach: her midship waterline 2.3 m
 above the water under her, falling for a second at about 0.4 g (never free fall) and landing at 1.7 g at the CG. Real
 big boats fall off short steep seas like this. She never falls faster than gravity, and the tests hold pitch under 12
-deg, the CG under 2.5 g, the bow under 3 g and heave under 2 Hs.
+deg, the CG under 2.5 g, the bow under 3 g and heave under 2 Hs. (Since [docs/wave-physics/](../wave-physics/README.md)
+she beats at 10 kn here instead of 6 and meets the sea harder: pitch under 15 deg, the steepest faces, and the bow under 4
+g, a slam going as the encounter frequency squared.)
 
 ### What the maxi needs in the sea
 
 Two physics gaps showed up in the gale. Neither is changed here (the job said to tune nothing in the fleet), so both are
-for the sim thread to decide.
+for the sim thread to decide. **Both are fixed in [docs/wave-physics/](../wave-physics/README.md):** added resistance by
+size (the maxi's coefficient from ORC's length scaling, 0.47 on the new spectral sum) and the waves' slope push; she now
+beats at 10.7 kn in the sea and tacks 6 of 6 on the wheel (`SailingSim.Physics.GaleTack`).
 
 1. **She cannot tack in the 3.5 m sea.** The scene's tack goes to the crew after its two repeats, the boat never comes
    through, and the grind that follows has nothing to grind (1.1 s).
@@ -441,7 +445,8 @@ See [gale/README.md](gale/README.md#performance).
 - **The HUD's wheel:** none drawn yet (`FStationControls::GetWheel()` is there for it).
 - **The mistral world:** the scene still sails the Gulf's offshore spot (`setting.world_stand_in`); step 4's weather is
   the real thing, the coast is not.
-- **The maxi in the gale's sea (step 4, [below](#what-the-maxi-needs-in-the-sea)):** her added resistance and a surf force.
+- **The maxi in the gale's sea (step 4, [below](#what-the-maxi-needs-in-the-sea)):** done in
+  [docs/wave-physics/](../wave-physics/README.md).
 - **The maxi's model (the PC, `maxi-hero`):** what the physics needs from it is in [step 3](#what-the-model-needs).
 - **Cameras:** the renderer reads `FScriptedScene::GetCamera()`; nothing consumes it yet.
 - **Voice:** record the seven calls (and repeats) as `/Game/Audio/Pack/Voice/captain_<step>` with licence rows.

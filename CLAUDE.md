@@ -525,6 +525,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   at `kSquallArrives`/`kSquallClears`. `setting.world_stand_in` turns the gale to the Gulf's open water
   (`SetPrevailingFrom`; from the northwest the ocean mask is shut). `-SailingPrologueStep=<id>` starts a scene partway.
   Known gaps: the maxi does not tack in that sea (`AddedResistanceCoef`) and nothing surfs (vertical buoyancy).
+- Wave physics (`docs/wave-physics/`): added resistance is 2 m0 x R(lambda/LWL) (Jinkine & Ferdinande's fall past the
+  peak) x Fn^1.5 to Fn 0.265; `AddedResistanceCoef` per boat (the J/22's 2.6 from her polar; the maxi's 0.47 and the
+  Catalina 30's 1.57 from ORC's length scaling, VPP 2023 eq. 6.62). The waves' slope push (`WaveSlopeForceScale`) uses
+  each column's immersion below her mean waterplane averaged over 8 s, so it stays first order (no drift from the chop at
+  her ends). `FAutopilot` reverses the helm from 0.3 m/s of sternway. `SeaTrials.h` (`RunInSea`, `RunGaleTack`) and
+  `scripts/polar.sh [--boat b] [--ar c] [--surf s] --sea [gale | checks | orc <hs> <tws> | at <tws> <twa>]` (loads
+  `Wind.mann` as the module does). Telemetry: `CalmResistance`, `WaveResistance`, `WaveSlopeSurge`. Keels and rudders
+  still meet still water (no orbital flow or wave inertia): a known gap.
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
