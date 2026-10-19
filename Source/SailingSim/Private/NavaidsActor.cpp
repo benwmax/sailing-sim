@@ -1,4 +1,6 @@
 #include "NavaidsActor.h"
+#include "FarLightsActor.h"
+#include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingEnvironment.h"
@@ -320,13 +322,17 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	}
 	const double Now = GM->GetUnixTime();
 	const TArray<FNavaid>& Navaids = GM->GetLake().Navaids;
+	static SailingArgs::FCachedFlag NoFarLightsArg(TEXT("SailingNoFarLights"));
+	const bool bFarLights = GM->GetLake().FarLights.Lights.Num() > 0 && !NoFarLightsArg.Get();
 	LitCount = 0;
 	for (FLightInstance& L : Lights)
 	{
 		const FNavaid& N = Navaids[L.Navaid];
 		const FVector World = (L.bFloating ? FloatingRoot : FixedRoot)->GetComponentTransform().TransformPosition(L.Position);
 		const double Distance = FVector::Distance(World, Camera) / CmPerMeter;
-		const double Range = (N.Light.RangeNm > 0.0 ? N.Light.RangeNm : 3.0) * 1852.0;
+		// Wide World Rendering PR 3: past the near pool AFarLightsActor draws the light (Allard's law, the horizon), never both.
+		const double Range = FMath::Min((N.Light.RangeNm > 0.0 ? N.Light.RangeNm : 3.0) * 1852.0,
+			bFarLights ? AFarLightsActor::NearPoolM : TNumericLimits<double>::Max());
 		const bool bOn = bDark && Distance < Range && N.Light.IsOn(Now + L.Phase);
 		// A light is a point: keep it about two pixels across however far away, never smaller than the lantern.
 		const double Size = bOn ? FMath::Max(0.3, Distance * 0.003) : 0.0;

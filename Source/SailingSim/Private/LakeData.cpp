@@ -160,6 +160,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	LoadHouses(Directory / (Name + TEXT(".houses")));
 	LoadCrowns(Directory / (Name + TEXT(".crowns")));
 	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPiers"))) LoadPiers(Directory / (Name + TEXT(".piers")));
+	FarLights.Load(Directory / (Name + TEXT(".farlights.json")));
 	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
 	{
 		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
@@ -167,6 +168,59 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	BuildObstacles();
 	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d decks, %d moored boats, %d bridges, %d buildings, %d houses, %d launch spots, %d navaids, %d tide stations"), *LakeName,
 		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Decks.Num(), MooredBoats.Num(), Bridges.Num(), Buildings.Num(), Houses.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
+	return true;
+}
+
+bool FFarLightsData::Load(const FString& Path)
+{
+	Lights.Reset(); Shore.Reset(); Cities.Reset(); Lanes.Reset();
+	FString Text;
+	TSharedPtr<FJsonObject> Root;
+	if (!FFileHelper::LoadFileToString(Text, *Path) || !FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Root) || !Root.IsValid()) return false;
+	auto XYOf = [](const TSharedPtr<FJsonValue>& V) { const TArray<TSharedPtr<FJsonValue>>& A = V->AsArray(); return FVector2D(A[0]->AsNumber(), A[1]->AsNumber()); };
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("lights")))
+	{
+		const TSharedPtr<FJsonObject> O = V->AsObject();
+		FLight L;
+		L.XY = XYOf(O->TryGetField(TEXT("xy")));
+		O->TryGetNumberField(TEXT("z"), L.Z);
+		O->TryGetStringField(TEXT("name"), L.Name);
+		double Number = 0.0;
+		if (O->TryGetNumberField(TEXT("navaid"), Number) && Number >= 0.0) L.Navaid = int32(Number);
+		if (O->TryGetNumberField(TEXT("litchr"), Number)) L.Light.Litchr = FMath::Max(1, int32(Number));
+		FString Group;
+		O->TryGetStringField(TEXT("siggrp"), Group);
+		L.Light.SetGroup(TCHAR_TO_UTF8(*Group));
+		if (O->TryGetNumberField(TEXT("sigper"), Number)) L.Light.Period = Number;
+		if (O->TryGetNumberField(TEXT("range"), Number)) L.Light.RangeNm = Number;
+		L.Light.HeightM = L.Z;
+		const TArray<TSharedPtr<FJsonValue>>* Colours = nullptr;
+		if (O->TryGetArrayField(TEXT("colour"), Colours)) for (const TSharedPtr<FJsonValue>& C : *Colours) L.Light.Colours.push_back(int(C->AsNumber()));
+		if (L.Light.Colours.empty()) L.Light.Colours.push_back(1);
+		Lights.Add(MoveTemp(L));
+	}
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("shore")))
+	{
+		const TArray<TSharedPtr<FJsonValue>>& A = V->AsArray();
+		if (A.Num() >= 4) Shore.Add({ FVector2D(A[0]->AsNumber(), A[1]->AsNumber()), A[2]->AsNumber(), int32(A[3]->AsNumber()) });
+	}
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("cities")))
+	{
+		const TSharedPtr<FJsonObject> O = V->AsObject();
+		Cities.Add({ O->GetStringField(TEXT("name")), XYOf(O->TryGetField(TEXT("xy"))), O->GetNumberField(TEXT("light")) });
+	}
+	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("lanes")))
+	{
+		const TSharedPtr<FJsonObject> O = V->AsObject();
+		FLane L;
+		L.Name = O->GetStringField(TEXT("name"));
+		L.Knots = O->GetNumberField(TEXT("kn"));
+		double Ships = 3.0;
+		O->TryGetNumberField(TEXT("ships"), Ships);
+		L.Ships = int32(Ships);
+		for (const TSharedPtr<FJsonValue>& P : O->GetArrayField(TEXT("pts"))) L.Points.Add(XYOf(P));
+		if (L.Points.Num() >= 2) Lanes.Add(MoveTemp(L));
+	}
 	return true;
 }
 
