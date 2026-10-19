@@ -32,6 +32,7 @@
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
+#include "FarLightsActor.h"
 #include "MarinaActor.h"
 #include "BridgesActor.h"
 #include "LandmarksActor.h"
@@ -903,6 +904,12 @@ void ASailingGameMode::StartPlay()
 	if (Lake.Navaids.Num() > 0)
 	{
 		GetWorld()->SpawnActor<ANavaidsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
+	}
+	// Wide World Rendering PR 3: the far lights, lit shores and horizon ships (-SailingNoFarLights compares).
+	if ((Lake.FarLights.Lights.Num() > 0 || Lake.FarLights.Shore.Num() > 0 || Lake.FarLights.Lanes.Num() > 0)
+		&& !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoFarLights")))
+	{
+		GetWorld()->SpawnActor<AFarLightsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	if (Lake.Marina.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoMarina")))
 	{

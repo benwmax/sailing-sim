@@ -140,6 +140,14 @@ int32 ATrafficManager::AddPower(ETrafficKind Kind, double X, double Y, double He
 	return Id;
 }
 
+bool ATrafficManager::HandOffShip(double X, double Y, double HeadingRad, std::vector<std::pair<double, double>> Route, const FString& Name)
+{
+	if (PopulatedLevel <= 0) return false;
+	AddPower(ETrafficKind::Ship, X, Y, HeadingRad, std::move(Route), Name);
+	Message(FString::Printf(TEXT("%s is in sight"), *Name));
+	return true;
+}
+
 void ATrafficManager::RemoveVessel(int32 Id)
 {
 	Sim.Remove(Id); // before the actor goes: the simulation borrows a sailboat's model from it

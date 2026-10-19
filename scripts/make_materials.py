@@ -2424,15 +2424,23 @@ float cirrus = 0.0;
     float mw = band * rift;
     col += (float3(1.0, 0.97, 0.93) * star + float3(0.8, 0.85, 1.0) * mw * 0.12) * Night.x * up * (1.0 - cirrus);
 }
-// Light pollution (Visual V6): the sodium-and-LED dome over the nearest big city (Night.y its strength, Night.z its
-// azimuth in the map frame), brightest on the horizon toward it, and a fainter glow all round.
+// Light pollution (Visual V6; Wide World Rendering PR 3: up to four domes from the world's cities). GlowA/GlowB hold
+// (azimuth in the map frame, strength) pairs, brightest first; Night.y is their sum. Each dome is brightest on the
+// horizon toward its city, with a fainter glow all round.
 [branch] if (Night.y > 0.0)
 {
     float az = atan2(dir.y, dir.x);
-    float da = abs(atan2(sin(az - Night.z), cos(az - Night.z)));
     float h = max(dir.z, 0.0);
-    float glow = Night.y * (0.12 + 1.6 * exp(-da * da / 0.5)) * exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
-    col += float3(1.0, 0.70, 0.42) * glow;
+    float lift = exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
+    float4 domes[2] = { GlowA, GlowB };
+    float glow = 0.0;
+    [unroll] for (int k = 0; k < 4; ++k)
+    {
+        float2 d = (k % 2 == 0) ? domes[k / 2].xy : domes[k / 2].zw;
+        float da = abs(atan2(sin(az - d.x), cos(az - d.x)));
+        glow += d.y * (0.12 + 1.6 * exp(-da * da / 0.5));
+    }
+    col += float3(1.0, 0.70, 0.42) * glow * lift;
 }
 // The moon: lit by the sun (its phase), the dark part faintly lit by the earth.
 float cm = dot(dir, MoonDir.xyz);
@@ -2506,12 +2514,12 @@ def build_sky_dome():
     vecs = {n: vector(mat, n, d, -1400, 650 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("CirrusParams", (0, 0, 0, 0)), ("NightParams", (0, 0, 0, 0)), ("StarRot0", (1, 0, 0, 0)),
         ("StarRot1", (0, 1, 0, 0)), ("StarRot2", (0, 0, 1, 0)), ("MoonDir", (0, 0, 1, 0)), ("SunTrue", (0, 0, 1, 0)),
-        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1))))}
+        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0))))}
     # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
     c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
-                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv"],
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
     for n, t in cache.items():
         connect(t, "", c, n)
@@ -2534,7 +2542,8 @@ def build_sky_dome():
     connect(sun_disk, "", c, "SunDisk")
     connect(wx, "", c, "Wx")
     for n, pin in (("WeatherRect", "WRect"), ("CirrusParams", "Cirrus"), ("NightParams", "Night"), ("StarRot0", "Rot0"), ("StarRot1", "Rot1"),
-                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue"), ("CacheParams", "CacheP"), ("CacheSun", "CacheSun")):
+                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue"), ("CacheParams", "CacheP"), ("CacheSun", "CacheSun"),
+                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB")):
         connect(vecs[n], "RGBA", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)

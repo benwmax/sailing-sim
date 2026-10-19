@@ -1364,21 +1364,56 @@ void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& M
 	// Star brightness tracks the moonlight's scale (both exposed by the same night exposure); a bright moon washes the
 	// faint stars and the Milky Way out a little.
 	const float StarScale = float(SunIntensity) * 0.006f * Night * (1.f - 0.6f * MoonLit);
-	// The nearest big city's light dome (Visual V6): Dallas from the lake, Houston from the bay, scaled by population light
-	// and falling off with distance.
-	struct FCity { double Lat, Lon, Light; };
-	static const FCity Cities[] = { { 32.78, -96.80, 1.0 }, { 29.76, -95.37, 1.3 }, { 29.39, -94.92, 0.35 }, { 32.75, -97.33, 0.6 } };
-	const double CosLat = FMath::Cos(GM->GetLake().Latitude * kDegToRad);
-	float Glow = 0.f, GlowAz = 0.f;
-	for (const FCity& C : Cities)
+	// City light domes (Visual V6; Wide World Rendering PR 3: from the world's <World>.farlights.json, up to four, the
+	// brightest first: from Frioul, Marseille to the east and La Ciotat to the south-east at once). Each falls off with
+	// distance from its light weight; the sky draws a dome toward each.
+	struct FDome { float Glow, Az; };
+	TArray<FDome, TInlineAllocator<8>> Domes;
+	const TArray<FFarLightsData::FCity>& Cities = GM->GetLake().FarLights.Cities;
+	if (Cities.Num() > 0)
 	{
-		const double North = (C.Lat - GM->GetLake().Latitude) * 111.2, East = (C.Lon - GM->GetLake().Longitude) * 111.2 * CosLat;
-		const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
-		const float G = float(C.Light * FMath::Pow(30.0 / Km, 1.5));
-		if (G > Glow) { Glow = G; GlowAz = float(FMath::Atan2(East, North)); }
+		FVector CamM = FVector::ZeroVector;
+		if (APlayerCameraManager* PCM = UGameplayStatics::GetPlayerCameraManager(this, 0)) CamM = SailingFrame::ToMapCm(GetWorld(), PCM->GetCameraLocation()) / 100.0;   // the map frame (the city domes are)
+		for (const FFarLightsData::FCity& C : Cities)
+		{
+			const double North = (C.XY.X - CamM.X) / 1000.0, East = (C.XY.Y - CamM.Y) / 1000.0;
+			const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
+			// Capped: from inside a city's own lights (the Vieux-Port in Marseille) its dome is no brighter than Houston's
+			// from Kemah.
+			Domes.Add({ float(FMath::Min(C.Light * FMath::Pow(30.0 / Km, 1.5), 1.2)), float(FMath::Atan2(East, North)) });
+		}
 	}
-	const float GlowScale = float(SunIntensity) * 0.006f * NightAmount * Glow * 1.1f;
-	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowScale, GlowAz, GetWorld()->GetTimeSeconds()));
+	else
+	{
+		// A bake without far lights: the old Texas list (Dallas, Houston, Texas City, Fort Worth).
+		struct FCityLL { double Lat, Lon, Light; };
+		static const FCityLL Texas[] = { { 32.78, -96.80, 1.0 }, { 29.76, -95.37, 1.3 }, { 29.39, -94.92, 0.35 }, { 32.75, -97.33, 0.6 } };
+		const double CosLat = FMath::Cos(GM->GetLake().Latitude * kDegToRad);
+		for (const FCityLL& C : Texas)
+		{
+			const double North = (C.Lat - GM->GetLake().Latitude) * 111.2, East = (C.Lon - GM->GetLake().Longitude) * 111.2 * CosLat;
+			const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
+			Domes.Add({ float(C.Light * FMath::Pow(30.0 / Km, 1.5)), float(FMath::Atan2(East, North)) });
+		}
+	}
+	Domes.Sort([](const FDome& A, const FDome& B) { return A.Glow > B.Glow; });
+	float GlowParams[8] = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+	float GlowTotal = 0.f;
+	const float GlowUnit = float(SunIntensity) * 0.006f * NightAmount * 1.1f;
+	// The domes share the brightest one's light (the sky's total stays what the single dome gave: more domes spread it
+	// round the horizon, they do not brighten the night).
+	float Sum = 0.f;
+	for (int32 I = 0; I < FMath::Min(Domes.Num(), 4); ++I) Sum += Domes[I].Glow;
+	const float Share = (Domes.Num() > 0 && Sum > 0.f) ? Domes[0].Glow / Sum : 0.f;
+	for (int32 I = 0; I < FMath::Min(Domes.Num(), 4); ++I)
+	{
+		GlowParams[2 * I] = Domes[I].Az;
+		GlowParams[2 * I + 1] = Domes[I].Glow * Share * GlowUnit;
+		GlowTotal += GlowParams[2 * I + 1];
+	}
+	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowTotal, GlowParams[0], GetWorld()->GetTimeSeconds()));
+	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesA"), FLinearColor(GlowParams[0], GlowParams[1], GlowParams[2], GlowParams[3]));
+	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesB"), FLinearColor(GlowParams[4], GlowParams[5], GlowParams[6], GlowParams[7]));
 	SkyMaterial->SetVectorParameterValue(TEXT("MoonDir"), FLinearColor(float(MoonTrue.X), float(MoonTrue.Y), float(MoonTrue.Z), MoonTrue.Z > -0.02f ? MoonLuminance : 0.f));
 	// Earthshine: the dark limb at about a few thousandths of the lit side (strongest near new moon).
 	SkyMaterial->SetVectorParameterValue(TEXT("SunTrue"), FLinearColor(float(SunTrue.X), float(SunTrue.Y), float(SunTrue.Z), 0.004f * (1.f - MoonLit)));

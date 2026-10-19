@@ -163,7 +163,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    after a world's grid changes (the ring takes the grid's heights inside it). `M_FarLand`'s WPO (`FAR_LAND_WPO`) is
    mirrored by `FarRing::OffsetZ`; `SailingSim.World.FarRing` holds both. `-SailingNoFarRing` compares.
 
-25. World streaming (Wide World Rendering PR 2, `docs/world-streaming/`): a composed world (`Tools/coast/worlds/TexasCoast.json`,
+25. Far lights (`docs/world-far-lights/`): `Tools/venv/bin/python -I Tools/terrain/build_far_lights.py [World ...]` writes
+   `<World>.farlights.json` (lights from the world's navaids, neighbouring bakes and NGA Pub 113; lit-shore cells from
+   the houses bake; city domes from the world json's `city_glow`; shipping lanes). `AFarLightsActor` draws lights past
+   `NearPoolM` by `FFarLightMath` (Allard's law, geographic range, loom), the shore sprites and horizon ships (handed to
+   `ATrafficManager::HandOffShip` at 8 km); `ANavaidsActor` keeps lights inside the near pool. `M_SkyDome` takes four
+   domes (`GlowDomesA/B`). `-SailingNoFarLights` compares; `SailingSim.World.FarLights`.
+26. World streaming (Wide World Rendering PR 2, `docs/world-streaming/`): a composed world (`Tools/coast/worlds/TexasCoast.json`,
    `"compose"`) is baked from other bakes by `Tools/coast/build_coast.py TexasCoast` (`compose_world.py`): `<World>.tiles`
    (6.4 km height tiles, `FTileIndex` in `WorldStream.h`), its own trees, json and chart; the frame member's houses, crowns,
    piers, current and kit tiles are read in place (`FLakeData::SourceFor`). `FWorldStreamer` (game) reads tiles on one
