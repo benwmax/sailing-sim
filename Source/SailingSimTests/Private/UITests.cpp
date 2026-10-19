@@ -50,7 +50,7 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	TestEqual(TEXT("Galveston launch spots match GalvestonBay.json"), Worlds[1].Spots.Num(), JsonSpots(TEXT("GalvestonBay")));
 	TestTrue(TEXT("Marseille launch spots match Marseille.json"), Worlds.Num() > 2 && Worlds[2].Index == 3 && Worlds[2].Spots.Num() == JsonSpots(TEXT("Marseille")));
 	TestTrue(TEXT("The lake's first spot is home"), Worlds[0].Spots.Num() > 0 && Worlds[0].Spots[0].Tag == TEXT("Home"));
-	TestEqual(TEXT("Eight boats"), SailCatalog::Boats().Num(), 8);
+	TestEqual(TEXT("Nine boats (the fleet and the prologue's maxi)"), SailCatalog::Boats().Num(), 9);
 	TestEqual(TEXT("J/22 length 22'6\""), SailCatalog::Boat(0).Length, FString(TEXT("22′6″")));
 	for (const SailCatalog::FBoat& B : SailCatalog::Boats()) TestFalse(FString::Printf(TEXT("%s has a close-hauled speed"), *B.Name), B.CloseHauled == TEXT("–"));
 	TestEqual(TEXT("Six condition presets"), USailSessionSubsystem::Presets().Num(), 6);

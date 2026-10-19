@@ -255,9 +255,8 @@ and `sections.json`, copied here) and here as a physics class, `EBoatType::Maxi`
   helm and the trim (`bTackHelp` off: the J/22's heavy-air help stopped her head to wind).
 - **The game's edge:** the scene's `setting.boat` ("Maxi") picks her and `setting.reefs` (2, new) her sails; until the
   mistral coast exists she sails the Gulf world's offshore spot (15 nm south of Galveston, the only water deep enough
-  for her draft). `-SailingPrologueBoat=J22` sails the stand-in on the lake as before. She is not on the Boat screen or
-  in the pause menu's boat row yet; `-SailingBoat=Maxi` works for stills, drawn by the fleet's procedural stand-in from
-  her physics (`ModelMeshesFor` has no meshes for her yet). Save id `Maxi`.
+  for her draft). `-SailingPrologueBoat=J22` sails the stand-in on the lake as before. Since the PC's model landed she is on
+  the Boat screen and in the pause menu's boat row, drawn by her hero model (below). Save id `Maxi`.
 - **The scene retuned for her:** the grind step asks for the jib in to 0.4 in 25 s (the J4's last metre against 40 kN
   of sheet load is a minute's work); every other step already fits her.
 
@@ -313,6 +312,41 @@ For the PC, so the hero sits on the physics:
   `SailingSim.Visual.FleetMesh` should hold the hero to the physics hull (LOA 30.48, beam 7.2) like the fleet's; the
   catalogue's Boat screen skip (`SailCatalog::MakeBoats`) and the pause menu's skip come out when she is offered.
   `BoatExport` is not needed (the model is the source of the hull).
+
+### The model (PC, Oct 19 2026)
+
+`Tools/boats/maxi/build_maxi.py` (Blender, headless) builds her as the game's four parts and
+`scripts/import_boats.py maxi` imports them to `/Game/Boats/Maxi` (`make-boat-models.{sh,ps1}` run both; the PC's
+`-Parts maxi`). Everything above is in:
+
+- **Parts:** `SM_Maxi_Hull` (the loft from `maxi_hull.py` under a subdivision surface, the chine creased aft, a flat
+  transom; the deck shell, cockpit well and coachroof; keel fin and bulb; the bowsprit; the shared kit's deck gear from
+  `layout.json`: two 1.95 m wheels, three grinder pedestals, eight winches, the traveller, clutch banks and genoa tracks),
+  `SM_Maxi_Mast` (tapering carbon section and three swept spreaders, about the mast step), `SM_Maxi_Boom` (about the
+  gooseneck, x 2.8, z 4.33), `SM_Maxi_Rudder` (the port blade canted 8 deg out with its stock, about `RudderPivot`;
+  `FBoatModelMeshes::bMirrorTwinRudder` draws it mirrored on `RudderPivot_1`). Hull 171k triangles, Nanite, fallback at
+  6% of them; the mast is not Nanite (it bends in `M_BoatMast`: slot `CarbonMast`) and is 1k triangles.
+- **Held to the physics** (`SailingSim.Visual.FleetMesh`, now with the maxi): canoe body LOA 30.49 m (30.48), beam 7.23
+  (7.22), volume 37.136 m^3 against the sections' 37.130 (the subdivision rounds the loft in by 2%; the hull is pushed
+  out 6 mm along its normals to make it up), centre of buoyancy (-2.383, -0.255) against (-2.375, -0.259), draft 6.000.
+- **Sockets** (`Maxi_sockets.json`, 63): the names above, plus a socket per crew station for the later steps:
+  `Helm_S`/`_P` and `Wheel_S`/`_P`, `Trimmer_Jib_S`/`_P` with `Trimmer_Jib_Hands_*` at the primary winches,
+  `Grinder_1..3` with `Grinder_Hands_1..3` at the handles, `Trimmer_Main` with `Trimmer_Main_Hands` at the mainsheet
+  winch, `Pit`, `Mast`, `Bow`, `Navigator`. `TillerEnd` is on the port stock's axis at the port wheel's rim (it stays put
+  as the blade turns); a wheel boat draws no tiller extension and the helm's aft hand holds the rim.
+- **Materials:** the `MI_Boat_*` library by slot, so the livery and wear apply: a `maxi` class in the boat catalogue
+  (graphite or white topsides, grey deck and non-skid, race wear: scuffs 0.25-0.5, oxidation 0.15-0.3), `Carbon`,
+  `CarbonMatte` and `CarbonMast` for the spars and gear.
+- **Sails:** the physics' cloth as for every boat, drawn with `M_SailCloth` Layout 4: a black membrane (fibre tows
+  fanning from the clew, head and tack, aramid every fourth, a scrim grid, horizontal seams every 3.4 m, glossy and
+  near-opaque against the sun), the main with six full battens. Telltales and the live sheets, shrouds, vang and
+  mainsheet come from the sockets as on the other boats.
+- **Offered:** on the Boat screen ("Racing maxi · 12 crew") and in the pause menu's boat row.
+
+![The maxi at High on the Gulf's offshore spot, 14 kn at 60 deg](maxi/maxi-chase-high.jpg)
+![Ultra, from the quarter](maxi/maxi-quarter-ultra.jpg)
+![The deck and the membrane main up close (Ultra)](maxi/maxi-deck-ultra.jpg)
+![The model in Blender, eight views round her (one rudder: the game draws it mirrored on the other stock; the mast's head is cropped)](maxi/maxi-turntable.jpg)
 
 ## Step 4: the mistral
 
