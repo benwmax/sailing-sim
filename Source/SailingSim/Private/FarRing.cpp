@@ -187,11 +187,11 @@ void FFarRingLoader::Poll(const FVector2D& Camera)
 	if (!Ring->IsValid()) return;
 	// World streaming: the tiles within reach of the camera (the outer edge and a tile), asked for again when it has moved
 	// a kilometre; the actor lets go of those past it (Release), so a long coast keeps only the ring around the boat.
-	if (FVector2D::Distance(Camera, RequestedFrom) < 1000.0) return;
+	if (!bAll && FVector2D::Distance(Camera, RequestedFrom) < 1000.0) return;
 	RequestedFrom = Camera;
 	for (int32 K = 0; K < Ring->Tiles.Num(); ++K)
 	{
-		if (TileState[K] != 0 || FarRing::TileDistance(*Ring, Ring->Tiles[K], Camera) > RequestM()) continue;
+		if (TileState[K] != 0 || (!bAll && FarRing::TileDistance(*Ring, Ring->Tiles[K], Camera) > RequestM())) continue;
 		TileState[K] = 1;
 		const FString Package = FPackageName::ObjectPathToPackageName(FFarRingData::AssetPath(World, Ring->Tiles[K]));
 		// The callback runs on the game thread when the package is in; it only notes the mesh (the State outlives this).

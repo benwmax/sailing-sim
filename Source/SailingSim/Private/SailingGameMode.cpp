@@ -371,7 +371,9 @@ int32 ASailingGameMode::CentralEuropeanOffsetHours(const FDateTime& Date)
 
 int32 ASailingGameMode::WorldIndexFromName(const FString& Name)
 {
-	// 0 or "Lake", 1 or "Galveston", 2 or "Gulf", 3 or "Marseille".
+	// 0 or "Lake", 1 or "Galveston", 2 or "Gulf", 3 or "Marseille", 4 or "TexasCoast" (world streaming: the bay and the
+	// Gulf passage as one streamed coast).
+	if (Name.StartsWith(TEXT("Texas"), ESearchCase::IgnoreCase) || Name == TEXT("4")) return 4;
 	if (Name.StartsWith(TEXT("Mars"), ESearchCase::IgnoreCase) || Name == TEXT("3")) return 3;
 	return (Name.StartsWith(TEXT("Gulf"), ESearchCase::IgnoreCase) || Name == TEXT("2")) ? 2
 		: ((Name.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Name == TEXT("1")) ? 1 : 0);
@@ -379,11 +381,13 @@ int32 ASailingGameMode::WorldIndexFromName(const FString& Name)
 
 const TCHAR* ASailingGameMode::WorldFileName(int32 World)
 {
+	if (World == 4) return TEXT("TexasCoast");
 	return World == 3 ? TEXT("Marseille") : (World == 2 ? TEXT("GulfPassage") : (World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard")));
 }
 
 const TCHAR* ASailingGameMode::WorldDisplayName(int32 World)
 {
+	if (World == 4) return TEXT("Texas coast (Clear Lake to Freeport, streamed)");
 	return World == 3 ? TEXT("Marseille (Vieux-Port, Frioul, the Calanques)") : (World == 2 ? TEXT("Gulf passage (Galveston to Freeport)")
 		: (World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)")));
 }
@@ -1172,6 +1176,18 @@ void ASailingGameMode::FinishBenchmark()
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"windmap_cpu_ms\":%.3f}"), (AWaterSurface::WindMapCpuSeconds - WindMapSecondsAtStart) * 1000.0 / N);
+		// World streaming (docs/world-streaming): what the loader, the re-centre and the chunks did over the run.
+		{
+			int32 Chunks = 0, Made = 0, Dropped = 0, FarDropped = 0;
+			for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
+			{
+				Chunks = It->GetNumChunks(); Made = It->GetChunksMade(); Dropped = It->GetChunksDropped(); FarDropped = It->GetFarTilesDropped();
+			}
+			const FVector2D At = GetFollowPoint();
+			Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"world\":{\"streamed\":%s,\"tiles_resident\":%d,\"tile_mb\":%.1f,\"tile_loads\":%d,\"tile_drops\":%d,\"loader_longest_ms\":%.3f,\"recentres\":%d,\"recentre_longest_ms\":%.2f,\"window_marches\":%d,\"chunks\":%d,\"chunks_made\":%d,\"chunks_dropped\":%d,\"far_dropped\":%d,\"boat_n\":%.0f,\"boat_e\":%.0f}}"),
+				Streamer.IsStreamed() ? TEXT("true") : TEXT("false"), Streamer.NumResident(), Streamer.ResidentBytes() / 1e6, Streamer.NumLoads(), Streamer.NumDrops(),
+				Streamer.LongestTickMs(), Recentres, LongestRecentreMs, WindowMarches, Chunks, Made, Dropped, FarDropped, At.X, At.Y);
+		}
 	}
 	// Perf 1: the threads' own times (game thread without its waits) and the game thread's named slices.
 	if (const FString Threads = ThreadTimes.JsonFields(); !Threads.IsEmpty())

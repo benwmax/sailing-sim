@@ -463,6 +463,11 @@ private:
 	Sailing::FWindField FallbackWind;
 	double WaterSurfaceZ = 0.0; // cm
 	FVector StartLocation = FVector::ZeroVector;   // the map frame, cm (SailingFrame::ToMapCm)
+	/** World streaming, measuring: -SailingRun slides the world under the player's boat (UpdateRun). */
+	void UpdateRun(float DeltaSeconds);
+	bool bRunning = false;
+	double RunTravelled = 0.0;
+	double RunSign = 1.0;
 	float StartYaw = 0.f;
 
 	/** Held axis values from the input system, applied each frame as rates. */

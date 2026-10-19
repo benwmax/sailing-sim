@@ -43,9 +43,17 @@ namespace Sailing
 	const FTerrainTile* FTileSet::At(double X, double Y) const
 	{
 		if (Count == 0) return nullptr;
-		const int R = int(std::floor((X - OriginX) / TileM)) - R0, C = int(std::floor((Y - OriginY) / TileM)) - C0;
-		if (R < 0 || C < 0 || R >= NR || C >= NC) return nullptr;
-		return Slots[size_t(R) * NC + C].get();
+		const double FR = (X - OriginX) / TileM - R0, FC = (Y - OriginY) / TileM - C0;
+		const int R = int(std::floor(FR)), C = int(std::floor(FC));
+		auto Slot = [&](int SR, int SC) -> const FTerrainTile* { return SR < 0 || SC < 0 || SR >= NR || SC >= NC ? nullptr : Slots[size_t(SR) * NC + SC].get(); };
+		if (const FTerrainTile* T = Slot(R, C)) return T;
+		// A point on a tile's south or west edge is also its neighbour's north or east edge node (tiles hold their edges):
+		// past the last tile, or where the next one is not resident, the one before has it.
+		const bool bOnR = FR == double(R), bOnC = FC == double(C);
+		if (bOnR) if (const FTerrainTile* T = Slot(R - 1, C)) return T;
+		if (bOnC) if (const FTerrainTile* T = Slot(R, C - 1)) return T;
+		if (bOnR && bOnC) return Slot(R - 1, C - 1);
+		return nullptr;
 	}
 
 	bool FLakeTerrain::LoadHeight(const uint8_t* Data, size_t Size)
@@ -206,9 +214,11 @@ namespace Sailing
 	{
 		FLakeTerrain W = *this;
 		if (Rows == 0) return W;
-		// Node range of the window within the view, snapped to the spacing.
-		const int RA = std::max(0, int(std::floor((X - HalfM - OriginX) / Cell))), RB = std::min(Rows - 1, int(std::ceil((X + HalfM - OriginX) / Cell)));
-		const int CA = std::max(0, int(std::floor((Y - HalfM - OriginY) / Cell))), CB = std::min(Cols - 1, int(std::ceil((Y + HalfM - OriginY) / Cell)));
+		// Node range of the window within the view, its corner on a 200 m lattice from the view's origin: the grids built
+		// over it (the sea fetch's and the ocean mask's 100 m cells, the shelter's 40 m) then fall on the whole view's cells.
+		const int Snap = std::max(1, int(std::lround(200.0 / Cell)));
+		const int RA = std::max(0, int(std::floor((X - HalfM - OriginX) / Cell / Snap)) * Snap), RB = std::min(Rows - 1, int(std::ceil((X + HalfM - OriginX) / Cell)));
+		const int CA = std::max(0, int(std::floor((Y - HalfM - OriginY) / Cell / Snap)) * Snap), CB = std::min(Cols - 1, int(std::ceil((Y + HalfM - OriginY) / Cell)));
 		if (RB <= RA || CB <= CA) { W.Rows = W.Cols = 0; return W; }
 		W.OriginX = OriginX + RA * Cell;
 		W.OriginY = OriginY + CA * Cell;

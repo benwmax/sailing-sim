@@ -64,8 +64,10 @@ namespace
 	{
 		switch (World)
 		{
-		// Galveston Bay: shallow, silty, grey-green; about 0.6 m of Secchi depth.
-		case 1: return { FLinearColor(0.15f, 0.20f, 0.14f), FLinearColor(2.3f, 1.8f, 2.4f) };
+		// Galveston Bay: shallow, silty, grey-green; about 0.6 m of Secchi depth. The streamed Texas coast (4) is the bay's
+		// water, with the Gulf's where the swell mask lets the open sea in (WaterAlbedoSea).
+		case 1:
+		case 4: return { FLinearColor(0.15f, 0.20f, 0.14f), FLinearColor(2.3f, 1.8f, 2.4f) };
 		// The Gulf off Galveston: green, a few metres of visibility (river silt and plankton); red goes first. Graphics G6:
 		// greener and less saturated than the V4 teal (0.04, 0.20, 0.21), which read as tropical under an overcast.
 		case 2: return { FLinearColor(0.08f, 0.16f, 0.13f), FLinearColor(0.62f, 0.32f, 0.42f) };
@@ -414,10 +416,23 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	switch (World)
 	{
 	case 1: return 0.7f; // Galveston Bay: brackish
+	case 4: return 0.7f; // the streamed Texas coast: the bay's, and the Gulf's beyond the jetties (WhitecapScaleHere)
 	case 2: return 1.f;  // the Gulf: sea water, Monahan's law as measured
 	case 3: return 1.f;  // the Mediterranean: sea water
 	default: return 0.4f; // fresh water: bubbles coalesce and burst sooner, so caps are fewer and fade faster
 	}
+}
+
+float AWaterSurface::WhitecapScaleHere() const
+{
+	// World streaming: on the Texas coast the water is the bay's inside and the Gulf's outside, so the caps scale with
+	// the open sea's share where the boat is (the ocean mask: 0 in the bay, 1 offshore).
+	const int32 World = USailingSettings::Get()->World;
+	if (World != 4) return WhitecapScaleFor(World);
+	const FWaveField* W = GetWaves();
+	const FOcean* O = W ? W->GetOcean() : nullptr;
+	const float Open = O ? float(FMath::Clamp(O->MaskAt(BoatPos.X, BoatPos.Y), 0.0, 1.0)) : 0.f;
+	return FMath::Lerp(WhitecapScaleFor(1), WhitecapScaleFor(2), Open);
 }
 
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
@@ -805,7 +820,7 @@ void AWaterSurface::UpdateDetail()
 	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there). Below 12 kn
 	// only the share that breaks (WhitecapOnset); never quite zero, so the threshold is extrapolated below every sample.
 	const double MeanMs = Waves->GetParams().WindSpeedKnots * kKnot;
-	const double CapTarget = FMath::Max(3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleFor(USailingSettings::Get()->World)
+	const double CapTarget = FMath::Max(3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleHere()
 		* WhitecapOnset(float(Waves->GetParams().WindSpeedKnots)), 1e-7);
 	const double CapTime = Ahead;
 	TArray<FWaveComponent> Long(Waves->GetComponents(), kWaveComponents);
@@ -1460,7 +1475,7 @@ void AWaterSurface::UpdateMaterial()
 		// body's whitecap scale.
 		const float MeanMs = float(Waves->GetParams().WindSpeedKnots * kKnot);
 		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
-			WhitecapScaleFor(USailingSettings::Get()->World)));
+			WhitecapScaleHere()));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{

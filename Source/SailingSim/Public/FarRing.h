@@ -87,6 +87,8 @@ public:
 	/** Game thread, each frame: once the index is in, requests the packages of the tiles within RequestM of the camera
 	 *  (asynchronously; world streaming: not every tile of a long coast). */
 	void Poll(const FVector2D& Camera);
+	/** Every tile, wherever the camera is (tests, the bake's checks). */
+	void Poll() { bAll = true; Poll(FVector2D::ZeroVector); }
 	/** The reach the tiles are asked for within: the ring's outer edge and a tile. */
 	double RequestM() const;
 	/** The actor has dropped this tile (out of reach): it may be asked for again later. */
@@ -111,6 +113,7 @@ private:
 		int32 Answered = 0, Loaded = 0, Failed = 0;
 	};
 	TArray<uint8> TileState;   // 0 not asked for, 1 asked for (answered or not)
+	bool bAll = false;
 	FVector2D RequestedFrom = FVector2D(1e12, 1e12);
 	FString World;
 	TFuture<TSharedPtr<FFarRingData>> Index;

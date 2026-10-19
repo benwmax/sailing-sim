@@ -159,6 +159,7 @@ void ALakeTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
 	{
 		if (P.Value->bBuilding) P.Value->Future.Wait();
 	}
+	if (TreeTileJobTile != INDEX_NONE) TreeTileJob.Wait();
 	FarLoader.Reset();
 	FarArrived.Reset();
 	Super::EndPlay(Reason);
@@ -366,7 +367,6 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// T1 follow-up (the D3D12 regroup traces): clearing and re-adding every tree at each regroup made it a 210 ms frame
 	// on the 4090, 80 ms of game thread and 116 ms of the renderer re-adding every mid and far crown to the distance-field
 	// scene. Now only the trees that cross a band's edge move, and only their tiles' components change.
-	constexpr double kTileM = 4000.0;
 	if (TreeBand.Num() != ModelTrees.Num())
 	{
 		for (UInstancedStaticMeshComponent* C : TreeComps) if (C) C->ClearInstances();
@@ -386,13 +386,13 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		// The tile components of a placement before (SetTreeFraction) go; the tiles are made again as trees enter them.
 		for (const TPair<int32, int32>& P : TileComps) if (Keep.IsValidIndex(P.Value) && Keep[P.Value]) Keep[P.Value]->DestroyComponent();
 		TileComps.Reset();
-		TMap<FIntPoint, int32> Tiles;
+		TreeTileIds.Reset();
 		TreeTile.SetNumUninitialized(ModelTrees.Num());
 		for (int32 T = 0; T < ModelTrees.Num(); ++T)
 		{
-			const FIntPoint Cell(FMath::FloorToInt32(ModelTrees[T].Position.X / kTileM), FMath::FloorToInt32(ModelTrees[T].Position.Y / kTileM));
-			const int32* Found = Tiles.Find(Cell);
-			TreeTile[T] = Found ? *Found : Tiles.Add(Cell, Tiles.Num());
+			const FIntPoint Cell(FMath::FloorToInt32(ModelTrees[T].Position.X / kTreeTileM), FMath::FloorToInt32(ModelTrees[T].Position.Y / kTreeTileM));
+			const int32* Found = TreeTileIds.Find(Cell);
+			TreeTile[T] = Found ? *Found : TreeTileIds.Add(Cell, TreeTileIds.Num());
 		}
 		TreeBand.Init(0, ModelTrees.Num());
 		TreeComp.Init(INDEX_NONE, ModelTrees.Num());
@@ -400,12 +400,16 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	}
 	// The trees leaving their component, then the ones entering one.
 	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
+	// World streaming: on a streamed world the trees past the far crowns' cull (9 km) leave the components altogether
+	// (band 0), so a long coast's trees do not pile up in them.
+	const FWorldStreamer* St = GetStreamer();
+	const double RF2 = St && St->IsStreamed() ? FMath::Square(9500.0) : 1e300;
 	TArray<int32> Movers;
 	TArray<uint8> NewBands;
 	for (int32 T = 0; T < ModelTrees.Num(); ++T)
 	{
 		const double D2 = FVector2D::DistSquared(ModelTrees[T].Position, Camera);
-		const uint8 Band = D2 < R2 ? 1 : (D2 < RM2 && TreeMid.Num() > 0 ? 2 : 3);
+		const uint8 Band = D2 < R2 ? 1 : (D2 < RM2 && TreeMid.Num() > 0 ? 2 : (D2 < RF2 ? 3 : 0));
 		if (Band != TreeBand[T]) { Movers.Add(T); NewBands.Add(Band); }
 	}
 	for (const int32 T : Movers)
@@ -433,6 +437,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		const int32 Model = int32(I.Species) * 2 + I.Variant;
 		const bool bNear = NewBands[Mv] == 1;
 		TreeBand[T] = NewBands[Mv];
+		if (NewBands[Mv] == 0) continue;   // out of reach: in no component
 		const int32 Id = bNear ? Model : TileComponent(TreeTile[T], NewBands[Mv], Model);
 		FAdds& A = Adds.FindOrAdd(Id);
 		FTransform Proxy;
@@ -490,7 +495,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	// World streaming: the camera in the map frame (the render origin moves; the world's data does not).
 	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), Cam);
 	const double CamX = CamMap.X, CamY = CamMap.Y;
-	{ SAILING_PERF_SCOPE(Trees); UpdateModelTrees(CamMap); }
+	{ SAILING_PERF_SCOPE(Trees); UpdateTreeTiles(CamMap); UpdateModelTrees(CamMap); }
 	UpdateFarRing(CamMap);   // inside the Terrain slice
 
 	// Perf 1 fix 7: a chunk's wanted detail changes only as the camera moves, so look again after 20 m or half a second
@@ -759,6 +764,102 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 	}
 }
 
+void ALakeTerrainActor::RemoveTreesInHouses(const FLakeData& Lake, TArray<FTreeInstance>& Trees)
+{
+	if (Lake.Houses.Num() == 0) return;
+	constexpr double Cell = 50.0;
+	TMap<FIntPoint, TArray<int32, TInlineAllocator<4>>> Grid;
+	for (int32 K = 0; K < Lake.Houses.Num(); ++K)
+	{
+		const FLakeHouse& H = Lake.Houses[K];
+		Grid.FindOrAdd(FIntPoint(FMath::FloorToInt32(H.X / Cell), FMath::FloorToInt32(H.Y / Cell))).Add(K);
+	}
+	Trees.RemoveAll([&](const FTreeInstance& I)
+	{
+		const FIntPoint C(FMath::FloorToInt32(I.Position.X / Cell), FMath::FloorToInt32(I.Position.Y / Cell));
+		for (int32 Dx = -1; Dx <= 1; ++Dx) for (int32 Dy = -1; Dy <= 1; ++Dy)
+		{
+			const auto* List = Grid.Find(C + FIntPoint(Dx, Dy));
+			if (!List) continue;
+			for (const int32 K : *List)
+			{
+				for (const FLakeHouse::FWing& W : Lake.Houses[K].Wings)
+				{
+					const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+					const double Dx2 = I.Position.X - W.X, Dy2 = I.Position.Y - W.Y;
+					const double A = Dx2 * FMath::Cos(Yaw) + Dy2 * FMath::Sin(Yaw), B = -Dx2 * FMath::Sin(Yaw) + Dy2 * FMath::Cos(Yaw);
+					if (FMath::Abs(A) < W.HalfLength + 2.0 && FMath::Abs(B) < W.HalfWidth + 2.0) return true;
+				}
+			}
+		}
+		return false;
+	});
+}
+
+void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
+{
+	// World streaming: the model trees of each tile as it becomes resident, placed on a worker one tile at a time (the
+	// canopy map near the water, as PlaceTreeInstances does over a whole grid; none where the lidar crowns stand or in a
+	// house), and added to the trees the bands draw.
+	const FWorldStreamer* St = GetStreamer();
+	const FLakeData* Lake = GetLake();
+	if (!St || !St->IsStreamed() || !Lake || TreeModels.Num() == 0) return;
+	if (TreeTileJobTile != INDEX_NONE)
+	{
+		if (!TreeTileJob.IsReady()) return;
+		TArray<FTreeInstance> New = TreeTileJob.Consume();
+		TreeTilesPlaced.Add(TreeTileJobTile);
+		TreeTileJobTile = INDEX_NONE;
+		if (New.Num() > 0 && TreeBand.Num() == ModelTrees.Num())
+		{
+			const int32 First = ModelTrees.Num();
+			ModelTrees.Append(MoveTemp(New));
+			TreeBand.SetNumZeroed(ModelTrees.Num());
+			TreeComp.SetNum(ModelTrees.Num());
+			TreeSlot.SetNum(ModelTrees.Num());
+			TreeTile.SetNum(ModelTrees.Num());
+			for (int32 T = First; T < ModelTrees.Num(); ++T)
+			{
+				TreeComp[T] = INDEX_NONE;
+				TreeSlot[T] = INDEX_NONE;
+				const FIntPoint Cell(FMath::FloorToInt32(ModelTrees[T].Position.X / kTreeTileM), FMath::FloorToInt32(ModelTrees[T].Position.Y / kTreeTileM));
+				const int32* Found = TreeTileIds.Find(Cell);
+				TreeTile[T] = Found ? *Found : TreeTileIds.Add(Cell, TreeTileIds.Num());
+			}
+			TreeCenter = FVector2D(1e12, 1e12);   // band them on the next regroup
+		}
+		else if (New.Num() > 0) ModelTrees.Append(MoveTemp(New));   // before the first regroup: banded with the rest
+	}
+	// The nearest resident tile not placed yet.
+	const Sailing::FTileIndex& Index = St->GetIndex();
+	int32 Next = INDEX_NONE;
+	double Best = 1e300;
+	for (int32 K = 0; K < int32(Index.GetTiles().size()); ++K)
+	{
+		if (!St->IsResident(K) || TreeTilesPlaced.Contains(K)) continue;
+		const double D = Index.DistanceTo(Index.GetTiles()[K], Camera.X, Camera.Y);
+		if (D < Best) { Best = D; Next = K; }
+	}
+	if (Next == INDEX_NONE) return;
+	double X0, Y0;
+	Index.Corner(Index.GetTiles()[Next], X0, Y0);
+	const double TileM = Index.GetTileM();
+	TreeTileJobTile = Next;
+	TreeTileJob = Async(EAsyncExecution::ThreadPool, [Terrain = Lake->Terrain, Lake, X0, Y0, TileM, Fraction = TreeFraction, Band = CrownBand]()
+	{
+		TArray<FTreeInstance> Out;
+		const FLakeTerrain Window = Terrain.WindowAround(X0 + 0.5 * TileM, Y0 + 0.5 * TileM, 0.5 * TileM);
+		PlaceTreeInstances(Window, Fraction, Out);
+		Out.RemoveAll([&](const FTreeInstance& I)
+		{
+			if (I.Position.X < X0 || I.Position.Y < Y0 || I.Position.X >= X0 + TileM || I.Position.Y >= Y0 + TileM) return true;
+			return Band.IsValid() && Band->Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0)));
+		});
+		RemoveTreesInHouses(*Lake, Out);
+		return Out;
+	});
+}
+
 void ALakeTerrainActor::PlaceTrees()
 {
 	const FLakeData* Lake = GetLake();
@@ -771,35 +872,25 @@ void ALakeTerrainActor::PlaceTrees()
 	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
 	if (Lake->Houses.Num() > 0)
 	{
-		constexpr double Cell = 50.0;
-		TMap<FIntPoint, TArray<int32, TInlineAllocator<4>>> Grid;
-		for (int32 K = 0; K < Lake->Houses.Num(); ++K)
-		{
-			const FLakeHouse& H = Lake->Houses[K];
-			Grid.FindOrAdd(FIntPoint(FMath::FloorToInt32(H.X / Cell), FMath::FloorToInt32(H.Y / Cell))).Add(K);
-		}
 		const int32 Before = Trees.Num();
-		Trees.RemoveAll([&](const FTreeInstance& I)
-		{
-			const FIntPoint C(FMath::FloorToInt32(I.Position.X / Cell), FMath::FloorToInt32(I.Position.Y / Cell));
-			for (int32 Dx = -1; Dx <= 1; ++Dx) for (int32 Dy = -1; Dy <= 1; ++Dy)
-			{
-				const auto* List = Grid.Find(C + FIntPoint(Dx, Dy));
-				if (!List) continue;
-				for (const int32 K : *List)
-				{
-					for (const FLakeHouse::FWing& W : Lake->Houses[K].Wings)
-					{
-						const double Yaw = FMath::DegreesToRadians(W.YawDeg);
-						const double Dx2 = I.Position.X - W.X, Dy2 = I.Position.Y - W.Y;
-						const double A = Dx2 * FMath::Cos(Yaw) + Dy2 * FMath::Sin(Yaw), B = -Dx2 * FMath::Sin(Yaw) + Dy2 * FMath::Cos(Yaw);
-						if (FMath::Abs(A) < W.HalfLength + 2.0 && FMath::Abs(B) < W.HalfWidth + 2.0) return true;
-					}
-				}
-			}
-			return false;
-		});
+		RemoveTreesInHouses(*Lake, Trees);
 		UE_LOG(LogSailing, Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
+	}
+	// World streaming: on a streamed world these are the trees of the tiles resident now; the others are placed as their
+	// tiles arrive (UpdateTreeTiles).
+	if (const FWorldStreamer* St = GetStreamer(); St && St->IsStreamed())
+	{
+		for (int32 K = 0; K < int32(St->GetIndex().GetTiles().size()); ++K) if (St->IsResident(K)) TreeTilesPlaced.Add(K);
+		if (Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees")))
+		{
+			TSharedPtr<TSet<FIntPoint>> Band = MakeShared<TSet<FIntPoint>>();
+			for (const FLakeCrown& C : Lake->Crowns)
+			{
+				const FIntPoint Cell(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f));
+				for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Band->Add(Cell + FIntPoint(Dx, Dy));
+			}
+			CrownBand = Band;
+		}
 	}
 
 	// Visual V6 (Medium and High): Nanite trees built in Blender (four species, two variants each), swaying in the wind

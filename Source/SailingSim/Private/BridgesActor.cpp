@@ -51,8 +51,11 @@ void ABridgesActor::BeginPlay()
 	TMap<FIntPoint, FKitGeometry> Tiles, ShoreTiles;
 	All.SplitTiles(UWorldKitLibrary::BridgeTileM, Tiles);
 	Shore.SplitTiles(UWorldKitLibrary::ShoreTileM, ShoreTiles);
-	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
-	const int32 ShoreBaked = SpawnKitTiles(this, ShoreTiles, TEXT("Shore_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
+	// World streaming: a composed world (the Texas coast) uses its frame member's baked tiles (the same metres); its other
+	// members' structures fall back to procedural tiles until they are baked for it (docs/world-streaming).
+	const FString Kit = Lake.SourceFor(TEXT("kit"));
+	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Kit, bProcedural, KitMaterial, Tiled, Mobility);
+	const int32 ShoreBaked = SpawnKitTiles(this, ShoreTiles, TEXT("Shore_") + Kit, bProcedural, KitMaterial, Tiled, Mobility);
 	BuildTraffic();
 	// Graphics G2 (Medium and up): the riprap is boulders. The baked mound is only its core now (WorldKit.cpp); the
 	// world kit's six limestone blocks are piled over it, five across every 1.2 m, each sized, tipped and turned.

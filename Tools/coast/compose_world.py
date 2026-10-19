@@ -11,8 +11,8 @@ same metres), and the others are reprojected into it (pyproj: their tmerc -> lat
                     heights in cm above the datum, rows north, columns east, zlib-compressed. Tiles that overlap the frame
                     member's grid are 10 m (its own nodes where it has them), the rest take the coarsest member's spacing
                     there (50 m on the Gulf). Within BLEND_M of the frame grid's edge, where another member has data, the two
-                    are blended so the seam has no step. Where no member has data the ground is land (NO_DATA_M); a tile
-                    with no data at all is left out (the game reads a missing tile as land too).
+                    are blended so the seam has no step. Where no member has data the ground is
+                    the nearest data's (the sea runs on as sea, the land as land), so the whole lattice is tiled.
   - <World>.trees : tree density on the frame member's 20 m grid over the whole box (others resampled)
   - <World>.json  : the frame's metadata with every member's launch spots, checkpoints, docks, bridges, buildings, navaids,
                     landmarks and tide stations (another member's only where the frame's grid does not reach), the world's
@@ -38,7 +38,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TERRAIN = os.path.join(ROOT, "Content", "TerrainData")
 TILE_M = 6400.0          # FTileIndex::kTileM
 BLEND_M = 1000.0         # the frame grid fades into the next member over this, inside its edge
-NO_DATA_M = 1.5          # ground where no member has data (inland, beyond the charts)
+NO_DATA_M = 1.5          # a placeholder where no member has data (compose fills those nodes from the nearest data)
 ZLIB_LEVEL = 9
 
 
@@ -179,6 +179,37 @@ def compose(cfg):
     coarse = max(m.cell for m in members)
     print(f"{name}: tile lattice {nr} x {nc} of {TILE_M / 1000:.1f} km from ({ox:.0f}, {oy:.0f}); frame {frame.name} at {fine:.0f} m, others to {coarse:.0f} m")
 
+    # Where no member has data (inland past the grids, the Gulf past the passage's chart, the end of East Bay) the ground is
+    # the nearest data's: a 200 m field of the composed heights, its holes filled from the nearest known cell. The sea runs
+    # on as sea and the land as land, so nothing marches into a wall at a bake's edge (the ocean mask, the fetch, the lee).
+    FILL = 200.0
+    fr, fc = int(round(nr * TILE_M / FILL)) + 1, int(round(nc * TILE_M / FILL)) + 1
+    FX, FY = np.meshgrid(ox + np.arange(fr) * FILL, oy + np.arange(fc) * FILL, indexing="ij")
+    fz, fdata = composite_heights(frames, frame, others, FX, FY)
+    fz = np.where(fdata, fz, np.nan)
+    # Land or sea in the holes from GLO-90 (Tools/terrain/build_far_ring.py's tiles, as the far ring draws them): land at its
+    # height above the frame's datum (never under mean high water + 0.25 m), sea at the nearest known water's depth.
+    sys.path.insert(0, os.path.join(ROOT, "Tools", "terrain"))
+    import build_far_ring as far
+    glo = far.Glo(far.raw_dirs(name) + far.raw_dirs(frame.name))
+    hole = np.isnan(fz)
+    water = np.where(fz < 0.0, fz, np.nan)
+    _, (ir, ic) = ndimage.distance_transform_edt(np.isnan(water), return_indices=True)
+    sea = water[ir, ic]
+    filled = fz.copy()
+    if hole.any():
+        lon, lat = frames.to_ll.transform(FY[hole], FX[hole])
+        e = glo.sample(np.asarray(lat), np.asarray(lon)) if glo.tiles else np.zeros(int(hole.sum()))
+        navd = frame.meta.get("navd88_to_mllw_m") or 0.0
+        mhw = frame.meta.get("mhw_m") or 0.0
+        filled[hole] = np.where(e > 0.3, np.maximum(e + navd, mhw + 0.25), np.minimum(sea[hole], -0.5))
+    print(f"{name}: {int(hole.sum())} of {hole.size} fill cells had no member's data ({len(glo.tiles)} GLO-90 tiles for land and sea)")
+
+    def fill_at(X, Y):
+        R = np.clip((X - ox) / FILL, 0, fr - 1)
+        C = np.clip((Y - oy) / FILL, 0, fc - 1)
+        return ndimage.map_coordinates(filled, [R, C], order=1, mode="nearest")
+
     entries, blobs = [], []
     raw_bytes = 0
     for i in range(nr):
@@ -198,11 +229,11 @@ def compose(cfg):
                 inside_blend = frame.edge_distance(X, Y) < BLEND_M
                 if inside_blend.any():
                     z, data = composite_heights(frames, frame, others, X, Y)
+                    z = np.where(data, z, fill_at(X, Y))
                     q = np.clip(np.round(z / 0.01), -32768, 32767).astype("<i2")
             else:
                 z, data = composite_heights(frames, frame, others, X, Y)
-                if not data.any():
-                    continue
+                z = np.where(data, z, fill_at(X, Y))
                 q = np.clip(np.round(z / 0.01), -32768, 32767).astype("<i2")
             q = np.ascontiguousarray(q, dtype="<i2")
             flags = 1 | (2 if (q < 0).any() else 0) | (4 if (q > 0).any() else 0)
@@ -263,6 +294,7 @@ def compose(cfg):
                      "coarse_cell_m": coarse}
     meta["members"] = {kind: frame.name for kind in ("houses", "crowns", "piers", "current")
                        if os.path.exists(os.path.join(TERRAIN, f"{frame.name}.{kind}"))}
+    meta["members"]["kit"] = frame.name   # baked bridge and shore tiles (/Game/World/Baked/SM_Bridges_<frame>_*)
     meta["composed_from"] = [m.name for m in members]
     meta["sources"] = {k: "; ".join(dict.fromkeys(m.meta["sources"].get(k, "") for m in members if m.meta["sources"].get(k))) for k in frame.meta["sources"]}
 

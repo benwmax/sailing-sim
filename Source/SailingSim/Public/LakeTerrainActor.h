@@ -42,6 +42,8 @@ public:
 	/** Wide World Rendering PR 1: far coast tiles drawn now, and in all (0 without a ring). */
 	int32 GetFarTilesVisible() const;
 	int32 GetFarTiles() const { return FarTiles.Num(); }
+	/** World streaming: the far ring's tiles within reach of the camera are in (or the world has none). */
+	bool IsFarRingSettled() const { return !FarLoader.Data() || (FarLoader.IsDone() && FarArrived.Num() == 0); }
 
 private:
 	struct FChunkMesh
@@ -159,6 +161,17 @@ private:
 	TArray<int32> TreeTile;         // per tree: its tile
 	TArray<uint8> TreeBand;         // per tree: 0 none, 1 near, 2 mid, 3 far
 	TArray<int32> TreeComp, TreeSlot;
+	/** The tree tiles' ids by 4 km cell (TreeTile's values). */
+	TMap<FIntPoint, int32> TreeTileIds;
+	static constexpr double kTreeTileM = 4000.0;
+	/** World streaming: the model trees of each world tile as it becomes resident (placed on a worker). */
+	void UpdateTreeTiles(const FVector2D& Camera);
+	TSet<int32> TreeTilesPlaced;
+	TFuture<TArray<struct FTreeInstance>> TreeTileJob;
+	int32 TreeTileJobTile = INDEX_NONE;
+	/** 100 m cells within 200 m of a lidar crown: the canopy map's trees give way there (PlaceCrownTrees). */
+	TSharedPtr<TSet<FIntPoint>> CrownBand;
+	static void RemoveTreesInHouses(const struct FLakeData& Lake, TArray<struct FTreeInstance>& Trees);
 	int32 DriftCursor = 0;
 	void UpdateModelTrees(const FVector2D& Camera);
 	FTransform TreeTransform(const struct FTreeInstance& I, bool bNear, const FVector2D& Camera, FTransform* OutProxy) const;

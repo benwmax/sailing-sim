@@ -30,6 +30,8 @@ public:
 	void Tick(double X, double Y);
 	/** Waits for the worker (EndPlay, tests). */
 	void Stop();
+	/** Waits for the read on the worker, if any (tests: the worker keeps up with a boat far faster than a real one). */
+	void WaitForWorker() const { if (InFlight.IsValid()) InFlight.Wait(); }
 
 	bool IsStarted() const { return Lake != nullptr; }
 	/** Whether the heights stream from a .tiles file (false: a whole grid, all resident). */

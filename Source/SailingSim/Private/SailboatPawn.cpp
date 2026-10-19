@@ -1062,6 +1062,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 {
 	if (PhysicsTask.IsPending()) { SAILING_PERF_SCOPE(BoatPhysics); PhysicsTask.Wait(); }
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
@@ -2220,6 +2221,44 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		if (NextDockShot > 0.0) PlayPackShot(uint8(FMath::RandBool() ? EPackShot::DockCreak : EPackShot::FenderSqueak), (0.3f + 0.5f * Surge) * Vol);
 		NextDockShot = Now + FMath::FRandRange(2.5, 8.0) / (0.4f + Surge);
 	}
+}
+
+void ASailboatPawn::UpdateRun(float DeltaSeconds)
+{
+	// World streaming, measuring (docs/world-streaming): -SailingRun=<m/s>,<bearing deg>[,<turn after m>] slides the world
+	// under the boat: she sails as she would (her velocity, and so the water and the apparent wind, are her own) while her
+	// position runs on along the bearing, out and back every <turn after> metres. The streaming bench and soak cross tiles
+	// and re-centres in seconds this way. She leaves the terrain and its obstacles behind (no grounding on the way).
+	static uint32 Gen = MAX_uint32;
+	static double Speed = 0.0, Bearing = 0.0, TurnAfter = 0.0;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Speed = 0.0;
+		FString Arg;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingRun="), Arg, false))
+		{
+			TArray<FString> P;
+			Arg.ParseIntoArray(P, TEXT(","));
+			Speed = P.Num() > 0 ? FCString::Atod(*P[0]) : 0.0;
+			Bearing = P.Num() > 1 ? FCString::Atod(*P[1]) : 0.0;
+			TurnAfter = P.Num() > 2 ? FCString::Atod(*P[2]) : 0.0;
+		}
+	}
+	if (Speed <= 0.0 || DeltaSeconds <= 0.f) return;
+	if (!bRunning)
+	{
+		bRunning = true;
+		Boat.SetTerrain(nullptr);
+		Boat.SetObstacles(nullptr);
+	}
+	const double Step = Speed * DeltaSeconds;
+	RunTravelled += Step;
+	if (TurnAfter > 0.0 && RunTravelled >= TurnAfter) { RunTravelled = 0.0; RunSign = -RunSign; }
+	const double A = FMath::DegreesToRadians(Bearing);
+	FBoatState& S = Boat.GetMutableState();
+	S.Position.X += RunSign * Step * FMath::Cos(A);
+	S.Position.Y += RunSign * Step * FMath::Sin(A);
 }
 
 void ASailboatPawn::ApplyStateToTransform()

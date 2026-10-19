@@ -185,8 +185,5 @@ namespace Sailing
 		return OutX != OriginX || OutY != OriginY;
 	}
 
-	bool FPhysicsWindow::Contains(double X, double Y) const
-	{
-		return bValid && std::fabs(X - CenterX) <= CoreM && std::fabs(Y - CenterY) <= CoreM;
-	}
+
 }

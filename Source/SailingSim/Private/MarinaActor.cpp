@@ -168,7 +168,7 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			if (bWear) C->NumCustomDataFloats = FWearSeed::TotalFloats;
 			C->RegisterComponent();
 			TArray<FTransform> X = KV.Value[K];
-			C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), X), false, true);
+			C->AddInstances(SailingFrame::ToWorldTransforms(Owner->GetWorld(), X), false, true);
 			const TArray<FWearSeed>& Ws = Wear[KV.Key][K];
 			for (int32 I = 0; I < Ws.Num() && bWear; ++I)
 			{

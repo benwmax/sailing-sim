@@ -3,6 +3,7 @@
 #include "SailingPhysicsApi.h"
 #include "LakeTerrain.h"
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -129,6 +130,6 @@ namespace Sailing
 		double CoreM = 8000.0;
 		double CenterX = 0.0, CenterY = 0.0;
 		bool bValid = false;
-		bool Contains(double X, double Y) const;
+		bool Contains(double X, double Y) const { return bValid && std::fabs(X - CenterX) <= CoreM && std::fabs(Y - CenterY) <= CoreM; }
 	};
 }

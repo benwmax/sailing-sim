@@ -194,8 +194,8 @@ void ASailboatPawn::UpdateCrewFalls(float DeltaSeconds)
 		{
 			if (!BI || !BI->IsInstanceSimulatingPhysics()) continue;
 			const FVector P = BI->GetCOMPosition();
-			const FVector2D M = SailingFrame::ToMap(GetWorld(), P);   // the waves are in the map frame
-			const double SeaCm = (Waves ? Waves->Height(M.X, M.Y, S.Time) * Sailing::CmPerMeter : 0.0) + WaterSurfaceZ;
+			const FVector2D AtMap = SailingFrame::ToMap(GetWorld(), P);   // the waves are in the map frame
+			const double SeaCm = (Waves ? Waves->Height(AtMap.X, AtMap.Y, S.Time) * Sailing::CmPerMeter : 0.0) + WaterSurfaceZ;
 			const float In = FMath::Clamp(float(SeaCm - P.Z) / ImmersionCm, 0.f, 1.f);
 			if (In <= 0.f) continue;
 			const FVector Lift(0.0, 0.0, 981.0 * WaterLift * In);

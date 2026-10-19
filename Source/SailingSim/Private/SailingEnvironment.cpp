@@ -1071,7 +1071,8 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);   // the weather map is painted in the map frame
 		const double Cx = CamMap.X, Cy = CamMap.Y;
 		// World streaming: a copy of the terrain (it shares the heights): the tiles may be swapped while the worker reads.
-		TSharedPtr<const Sailing::FLakeTerrain> Terrain = Lake ? MakeShared<const Sailing::FLakeTerrain>(Lake->Terrain) : nullptr;
+		TSharedPtr<const Sailing::FLakeTerrain> Terrain;
+		if (Lake) Terrain = MakeShared<const Sailing::FLakeTerrain>(Lake->Terrain);
 		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Terrain, Cx, Cy, Tw]()
 		{
 			FWeatherMap Map;
