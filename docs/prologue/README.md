@@ -279,7 +279,7 @@ Oct 18 2026, standalone and `SailingSim.Physics.Maxi*`, `SailingSim.Prologue.*` 
 | 40 kn gust on a close reach (TWA 70), sheets held, limits off | heel 44 deg, rounds up to 36 deg off the wind, no capsize |
 | ... limits on | heel 32.5 deg, 11 deg off course, no broach |
 | ... broad reach (TWA 100), limits on | heel 29.5 deg, 20.7 to 24.9 kn |
-| Broad reach, 30 kn gusting to about 37, two reefs (reference check) | one-second peak 30.3 kn (band 18-34), most tilt 20 deg |
+| Broad reach, 30 kn gusting to about 37, two reefs (reference check) | one-second peak 30.4 kn (band 18-34), most tilt 24 deg (20 before the boom went up) |
 | Grind, 32 kn, two reefs: fully eased to 0.40 | 22.8 s (to 0.20: 67.3 s); 4.7 s in 12 kn. The J/22: 6.8 s to 0.15 in 25 kn |
 | The scene on the maxi, 32 kn gusting 40 | 7 steps answered, none by the crew, no repeats, 114 s (112 before the boom went up), 3.3 m of sheet ground (the J/22 stand-in: 84 s) |
 | A crew member who never answers | the crew do all 7 after 20 repeats; the scene finishes (650 s) |
