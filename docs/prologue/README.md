@@ -280,8 +280,8 @@ Oct 18 2026, standalone and `SailingSim.Physics.Maxi*`, `SailingSim.Prologue.*` 
 | ... limits on | heel 32.5 deg, 11 deg off course, no broach |
 | ... broad reach (TWA 100), limits on | heel 29.5 deg, 20.7 to 24.9 kn |
 | Broad reach, 30 kn gusting to about 37, two reefs (reference check) | one-second peak 30.3 kn (band 18-34), most tilt 20 deg |
-| Grind, 32 kn, two reefs: fully eased to 0.40 | 23.1 s (to 0.20: 65.7 s); 4.7 s in 12 kn. The J/22: 6.8 s to 0.15 in 25 kn |
-| The scene on the maxi, 32 kn gusting 40 | 7 steps answered, none by the crew, no repeats, 112 s, 3.3 m of sheet ground (the J/22 stand-in: 84 s) |
+| Grind, 32 kn, two reefs: fully eased to 0.40 | 22.8 s (to 0.20: 67.3 s); 4.7 s in 12 kn. The J/22: 6.8 s to 0.15 in 25 kn |
+| The scene on the maxi, 32 kn gusting 40 | 7 steps answered, none by the crew, no repeats, 114 s (112 before the boom went up), 3.3 m of sheet ground (the J/22 stand-in: 84 s) |
 | A crew member who never answers | the crew do all 7 after 20 repeats; the scene finishes (650 s) |
 
 Packaged build, Oct 18 2026: `scripts/gate.sh --scope boats` passed (185 tests; High: beam8 62.5 fps, beat15 60.7,
@@ -385,9 +385,9 @@ Oct 18 2026, `SailingSim.Weather.Mistral` and `SailingSim.Prologue.Gale`:
 | Sea | Hs 3.51 m (wind sea 3.30 at Tp 7.0 s), Tm01 6.0 s, with the wind |
 | Squall, cued with a 10 s lead | its wind on the boat at 84.5 s for a cue at 75 + 10, 44 kn at 10 m in its first 20 s, rain to 13 mm/h, visibility 2.0 km |
 | The break | cover 0.98 to 0.45, rain 12.4 to 0 mm/h, visibility 2 to 25 km, wind 32 to 28 kn |
-| The scene on the maxi in the preset | finishes in 191 s: 6 steps answered, the tack done by the crew (below), 3 repeats |
-| ... the squall | "dump the main" began at 157.2 s, its squall's wind on her at 165.7 s, the call at 167.2 s (as the trigger opens), 45 kn |
-| Grind in the gale (fully eased to 0.40, the preset's wind and sea) | 17.2 s (23.1 s in step 3's steady 32 kn) |
+| The scene on the maxi in the preset | finishes in 190 s: 6 steps answered, the tack done by the crew (below), 3 repeats |
+| ... the squall | "dump the main" began at 151.3 s, its squall's wind on her at 158.4 s, the call at 161.3 s (as the trigger opens), 46.7 kn (before the boom went up: 1.5 s early and 45 kn; she now heels more and rounds up into it sooner, so `SailingSim.Prologue.Gale` allows 3 s and 48 kn) |
+| Grind in the gale (fully eased to 0.40, the preset's wind and sea) | 17.4 s (22.8 s in step 3's steady 32 kn) |
 | Tack on the wheel in the preset's wind, flat water | 13.9, 10.5, 12.9 s |
 | ... in its 3.5 m sea | none in 90 s (0 of 3; 0 of 36 in the standalone sweep below) |
 | The J/22 stand-in in the preset at 25 kn | all 7 answered, no repeats, 109 s |
