@@ -343,10 +343,13 @@ For the PC, so the hero sits on the physics:
   mainsheet come from the sockets as on the other boats.
 - **Offered:** on the Boat screen ("Racing maxi · 12 crew") and in the pause menu's boat row.
 
-![The maxi at High on the Gulf's offshore spot, 14 kn at 60 deg](maxi/maxi-chase-high.jpg)
-![Ultra, from the quarter](maxi/maxi-quarter-ultra.jpg)
-![The deck and the membrane main up close (Ultra)](maxi/maxi-deck-ultra.jpg)
-![The model in Blender, eight views round her (one rudder: the game draws it mirrored on the other stock; the mast's head is cropped)](maxi/maxi-turntable.jpg)
+Capture stills (`-SailingCapture=Chase|Drone|ActionCam`, the Gulf's offshore spot, 14 kn at 60 deg, 15:00; each at High
+and Ultra in `maxi/`): from leeward against the sun the membrane reads black; lit from above, its tows and the aramid
+show; the deck camera has the wheels, the boom on the corrected gooseneck and the running rigging.
+
+![Chase, High](maxi/maxi-chase-high.jpg)
+![Drone from the quarter, Ultra](maxi/maxi-quarter-ultra.jpg)
+![The deck camera, Ultra](maxi/maxi-deck-ultra.jpg)![The model in Blender, eight views round her (one rudder: the game draws it mirrored on the other stock; the mast's head is cropped)](maxi/maxi-turntable.jpg)
 
 ## Step 4: the mistral
 
