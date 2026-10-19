@@ -52,7 +52,7 @@ bool FMarseilleLoadsTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("The gale spot is offshore in deep water"), Lake.SpotRoles.Contains(TEXT("gale")) && -Lake.Terrain.HeightAt(
 		Lake.LaunchSpots[Lake.SpotRoles[TEXT("gale")]].X, Lake.LaunchSpots[Lake.SpotRoles[TEXT("gale")]].Y) > 40.0);
-	TestTrue(TEXT("The passage runs Vieux-Port to Cassis"), Lake.Passage.Num() >= 5 && Lake.Passage.Last().Key.Contains(TEXT("Cassis")));
+	TestTrue(TEXT("The passage runs from the Vieux-Port by Cassis"), Lake.Passage.Num() >= 5 && Lake.Passage[0].Key.Contains(TEXT("Vieux-Port")) && Lake.Passage.ContainsByPredicate([](const TPair<FString, FVector2D>& W) { return W.Key.Contains(TEXT("Cassis")); }));
 	TestEqual(TEXT("Summer time on 19 October 2026"), ASailingGameMode::CentralEuropeanOffsetHours(FDateTime(2026, 10, 19)), 2);
 	TestEqual(TEXT("Winter time from 25 October 2026"), ASailingGameMode::CentralEuropeanOffsetHours(FDateTime(2026, 10, 25)), 1);
 	TestEqual(TEXT("Winter time in January"), ASailingGameMode::CentralEuropeanOffsetHours(FDateTime(2026, 1, 15)), 1);
