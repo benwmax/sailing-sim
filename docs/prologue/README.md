@@ -265,7 +265,8 @@ and `sections.json`, copied here) and here as a physics class, `EBoatType::Maxi`
 
 ### Measured (step 3)
 
-Oct 18 2026, standalone and `SailingSim.Physics.Maxi*`, `SailingSim.Prologue.*`:
+Oct 18 2026, standalone and `SailingSim.Physics.Maxi*`, `SailingSim.Prologue.*` (the tack and gust rows rerun Oct 19
+2026 with the boom at the deck's height: `Fleet.cpp` had read ref.json's gooseneck height above the deck as body z):
 
 | | |
 | --- | --- |
@@ -274,13 +275,13 @@ Oct 18 2026, standalone and `SailingSim.Physics.Maxi*`, `SailingSim.Prologue.*`:
 | At rest | level within 0.04 deg, on her lines within 1 mm |
 | Polar | 15 points within 30%: 6 kn upwind 9.0 kn at 52 deg, 10.5 reaching; 10 kn 11.7 / 14.6; 16 kn 12.2 / 16.1, 15.3 at 150 with the A2 |
 | Helm upwind (10-16 kn) | 2.0-4.3 deg of weather helm |
-| Tack, 30 kn, two reefs | 17.2 s, 10.5 kn down to 3.6 (full sail: she cannot) |
-| 40 kn gust on a close reach (TWA 70), sheets held, limits off | heel 39 deg, rounds up to 47 deg off the wind, no capsize |
-| ... limits on | heel 30.2 deg, 5 deg off course, no broach |
-| ... broad reach (TWA 100), limits on | heel 30.1 deg, 21.3 to 25.5 kn |
-| Broad reach, 30 kn gusting to about 37, two reefs (reference check) | one-second peak 30.3 kn (band 18-34), most tilt 20 deg |
-| Grind, 32 kn, two reefs: fully eased to 0.40 | 23.1 s (to 0.20: 65.7 s); 4.7 s in 12 kn. The J/22: 6.8 s to 0.15 in 25 kn |
-| The scene on the maxi, 32 kn gusting 40 | 7 steps answered, none by the crew, no repeats, 112 s, 3.3 m of sheet ground (the J/22 stand-in: 84 s) |
+| Tack, 30 kn, two reefs | 16.6 s, 9.9 kn down to 3.5 (full sail: she cannot) |
+| 40 kn gust on a close reach (TWA 70), sheets held, limits off | heel 44 deg, rounds up to 36 deg off the wind, no capsize |
+| ... limits on | heel 32.5 deg, 11 deg off course, no broach |
+| ... broad reach (TWA 100), limits on | heel 29.5 deg, 20.7 to 24.9 kn |
+| Broad reach, 30 kn gusting to about 37, two reefs (reference check) | one-second peak 30.4 kn (band 18-34), most tilt 24 deg (20 before the boom went up) |
+| Grind, 32 kn, two reefs: fully eased to 0.40 | 22.8 s (to 0.20: 67.3 s); 4.7 s in 12 kn. The J/22: 6.8 s to 0.15 in 25 kn |
+| The scene on the maxi, 32 kn gusting 40 | 7 steps answered, none by the crew, no repeats, 114 s (112 before the boom went up), 3.3 m of sheet ground (the J/22 stand-in: 84 s) |
 | A crew member who never answers | the crew do all 7 after 20 repeats; the scene finishes (650 s) |
 
 Packaged build, Oct 18 2026: `scripts/gate.sh --scope boats` passed (185 tests; High: beam8 62.5 fps, beat15 60.7,
@@ -306,7 +307,7 @@ For the PC, so the hero sits on the physics:
   `BackstayPlate`, `JibLead_S`/`_P` (the genoa tracks), `JibTailer_S`, `Traveler_C` and `Traveler_S` (x -11.4),
   `LazySheetVia`, and the crew's `Seat`, `FootBrace`, `SideDeck`, `HandholdCoaming`, `HandholdCabin` with `_S`/`_P`;
   on the mast `MastBase`, `LowerTang`, `Hounds`, `MastheadAft`; on the boom `Boom_Vang`, `Boom_Mainsheet` (the boom
-  hangs on the physics gooseneck, z 2.15); on the rudder `RudderStock` and `TillerEnd` (a point on the wheel's rim
+  hangs on the physics gooseneck, z 4.33: ref.json's 2.15 above the 2.18 deck); on the rudder `RudderStock` and `TillerEnd` (a point on the wheel's rim
   for the helm's hand: the pawn reads it as the tiller end). No `Outboard` (set `bOwnOutboard`: the diesel is inboard).
 - **Code:** `ASailboatPawn::ModelMeshesFor` needs a `Maxi` entry (`/Game/Boats/Maxi/SM_Maxi_*`, `BoatTags` has 8);
   `SailingSim.Visual.FleetMesh` should hold the hero to the physics hull (LOA 30.48, beam 7.2) like the fleet's; the
@@ -384,10 +385,10 @@ Oct 18 2026, `SailingSim.Weather.Mistral` and `SailingSim.Prologue.Gale`:
 | Sea | Hs 3.51 m (wind sea 3.30 at Tp 7.0 s), Tm01 6.0 s, with the wind |
 | Squall, cued with a 10 s lead | its wind on the boat at 84.5 s for a cue at 75 + 10, 44 kn at 10 m in its first 20 s, rain to 13 mm/h, visibility 2.0 km |
 | The break | cover 0.98 to 0.45, rain 12.4 to 0 mm/h, visibility 2 to 25 km, wind 32 to 28 kn |
-| The scene on the maxi in the preset | finishes in 191 s: 6 steps answered, the tack done by the crew (below), 3 repeats |
-| ... the squall | "dump the main" began at 157.2 s, its squall's wind on her at 165.7 s, the call at 167.2 s (as the trigger opens), 45 kn |
-| Grind in the gale (fully eased to 0.40, the preset's wind and sea) | 17.2 s (23.1 s in step 3's steady 32 kn) |
-| Tack on the wheel in the preset's wind, flat water | 12.4, 10.5, 12.1 s |
+| The scene on the maxi in the preset | finishes in 190 s: 6 steps answered, the tack done by the crew (below), 3 repeats |
+| ... the squall | "dump the main" began at 151.3 s, its squall's wind on her at 158.4 s, the call at 161.3 s (as the trigger opens), 46.7 kn (before the boom went up: 1.5 s early and 45 kn; she now heels more and rounds up into it sooner, so `SailingSim.Prologue.Gale` allows 3 s and 48 kn) |
+| Grind in the gale (fully eased to 0.40, the preset's wind and sea) | 17.4 s (22.8 s in step 3's steady 32 kn) |
+| Tack on the wheel in the preset's wind, flat water | 13.9, 10.5, 12.9 s |
 | ... in its 3.5 m sea | none in 90 s (0 of 3; 0 of 36 in the standalone sweep below) |
 | The J/22 stand-in in the preset at 25 kn | all 7 answered, no repeats, 109 s |
 
@@ -413,7 +414,9 @@ g, a slam going as the encounter frequency squared.)
 Two physics gaps showed up in the gale. Neither is changed here (the job said to tune nothing in the fleet), so both are
 for the sim thread to decide. **Both are fixed in [docs/wave-physics/](../wave-physics/README.md):** added resistance by
 size (the maxi's coefficient from ORC's length scaling, 0.47 on the new spectral sum) and the waves' slope push; she now
-beats at 10.7 kn in the sea and tacks 6 of 6 on the wheel (`SailingSim.Physics.GaleTack`).
+beats at 10.7 kn in the sea and tacks 6 of 6 on the wheel (`SailingSim.Physics.GaleTack`). Since the boom went up to
+the deck's height (the main's foot and head 2.18 m higher, Oct 19 2026) she beats at 10.2 kn and still tacks 6 of 6,
+slower (9-48 s in the sea, 30 s mean, against 9-35 and 19).
 
 1. **She cannot tack in the 3.5 m sea.** The scene's tack goes to the crew after its two repeats, the boat never comes
    through, and the grind that follows has nothing to grind (1.1 s).

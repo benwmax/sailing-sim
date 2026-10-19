@@ -479,12 +479,16 @@ namespace Sailing
 			C.MaxRudderAngleDeg = 32.0; C.RudderStockToCP = 0.05; C.TillerLength = 0.5; C.HelmStiffness = 100000.0; C.RudderResponseTime = 0.5;
 			C.WheelHardOverSeconds = 1.6;
 
-			// Rig: masthead sloop, mast at x 3.1, 44.5 m above the 2.18 m deck (masthead 46.7), boom at 2.15. Main P 40.5,
-			// E 11.2, 4.2 m head (square top). Membrane sails on a tall rig: the J/22's lift slopes, aspect ratios scaled with
-			// the geometric ones (main P^2/A 4.9 against the J/22's 2.8; the boom just above the deck keeps the end plate).
+			// Rig: masthead sloop, mast at x 3.1, 44.5 m above the 2.18 m deck (masthead 46.7). ref.json gives the rig's
+			// heights above the deck (gooseneck 2.15, hounds 43.6, I 42.0), so they take the deck's 2.18 here: the gooseneck
+			// at 4.33 (the boom's underside 4.1, clear of the 2.70 coachroof and heads in the cockpit), the main's head at
+			// 44.83 (P 40.5). Main E 11.2, 4.2 m head (square top). Membrane sails on a tall rig: the J/22's lift slopes,
+			// aspect ratios scaled with the geometric ones (main P^2/A 4.9 against the J/22's 2.8).
 			C.MastX = 3.1; C.MastheadZ = 46.7; C.MastDiameter = 0.45;
-			SetMain(C, 2.15, 42.65, 11.2, 4.2, 0.08, 2.8, 2.8, 335.0, 3.8, 6.5, 0.11);
-			// J1 (non-overlapping: LP 12.4 on J 11.65), tacked at the stem (x 14.75), luff to the masthead.
+			SetMain(C, 4.33, 44.83, 11.2, 4.2, 0.08, 2.8, 2.8, 335.0, 3.8, 6.5, 0.11);
+			// J1 (non-overlapping: LP 12.4 on J 11.65), tacked at the stem (x 14.75); its tack and the forestay's foot (ref.json
+			// forestay_z 2.95) are body-frame heights (the sheer at the stem is 2.75), its head at the forestay's top
+			// (I 42.0 above the 2.18 deck: 44.2).
 			C.JibFootZ = 2.9; C.JibHeadZ = 44.0; C.JibFootChord = 12.0; C.JibHeadChord = 0.3; C.JibLuffX = 14.75; C.JibLuffXHead = 3.6; C.JibArea = 245.0;
 			SetSail(C.Jib, C.JibFootZ, C.JibHeadZ, C.JibFootChord, C.JibHeadChord, C.JibLuffX, C.JibLuffXHead, C.JibArea, 4.1, 6.5, 0.12);
 			// A2 off the sprit (tack 2.6 m ahead of the stem), hoisted to the masthead.
