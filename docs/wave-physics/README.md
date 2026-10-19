@@ -11,7 +11,7 @@ The prologue's gale found two holes in how boats meet waves. Both are fixed for 
    giant J/22. In the gale's 3.5 m sea she slowed from 11.6 kn to 6.5 upwind and never once got through a tack. Now each
    boat's cost comes from her own length against the waves' length, plus her own coefficient: from her polar where
    the lake's chop loads her, and from ORC's own scaling between yacht sizes where it doesn't. The maxi now beats at
-   10.7 kn in that sea and tacks 6 times in 6. The lake boats' polars are where they were.
+   10.7 kn in that sea and tacks 6 times in 6 (10.2 kn since her boom went up to the deck's height, `docs/prologue/`). The lake boats' polars are where they were.
 2. **Boats could not surf.** The water pushed boats straight up and never along. Now a wave's slope pushes the hull
    along it, as real water does. Running on the Gulf swell the J/22 peaks at 7.9 kn instead of 5.6. The maxi running in the
    gale peaks at 25 kn instead of 22, and averages 19.3 kn against 17.8 on flat water. On flat water the push is exactly
