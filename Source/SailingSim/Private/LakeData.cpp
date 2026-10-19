@@ -76,7 +76,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	const TSharedPtr<FJsonObject>* Roles = nullptr;
 	if (Root->TryGetObjectField(TEXT("spots"), Roles) && Roles && Roles->IsValid())
 	{
-		for (const auto& Role : (*Roles)->Values) SpotRoles.Add(Role.Key, int32(Role.Value->AsNumber()));
+		for (const auto& Role : (*Roles)->Values) SpotRoles.Add(FString(Role.Key), int32(Role.Value->AsNumber()));
 	}
 	FString Projection;
 	if (!Root->TryGetStringField(TEXT("projection"), Projection) || !Sailing::FGeoAnchor::ParseProj4(TCHAR_TO_UTF8(*Projection), Anchor))
