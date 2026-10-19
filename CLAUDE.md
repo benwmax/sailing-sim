@@ -163,6 +163,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    after a world's grid changes (the ring takes the grid's heights inside it). `M_FarLand`'s WPO (`FAR_LAND_WPO`) is
    mirrored by `FarRing::OffsetZ`; `SailingSim.World.FarRing` holds both. `-SailingNoFarRing` compares.
 
+24. Far lights (`docs/world-far-lights/`): `Tools/venv/bin/python -I Tools/terrain/build_far_lights.py [World ...]` writes
+   `<World>.farlights.json` (lights from the world's navaids, neighbouring bakes and NGA Pub 113; lit-shore cells from
+   the houses bake; city domes from the world json's `city_glow`; shipping lanes). `AFarLightsActor` draws lights past
+   `NearPoolM` by `FFarLightMath` (Allard's law, geographic range, loom), the shore sprites and horizon ships (handed to
+   `ATrafficManager::HandOffShip` at 8 km); `ANavaidsActor` keeps lights inside the near pool. `M_SkyDome` takes four
+   domes (`GlowDomesA/B`). `-SailingNoFarLights` compares; `SailingSim.World.FarLights`.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
