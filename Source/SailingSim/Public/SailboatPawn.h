@@ -462,7 +462,7 @@ private:
 	double RunMaxHeelDeg = 0.0;
 	Sailing::FWindField FallbackWind;
 	double WaterSurfaceZ = 0.0; // cm
-	FVector StartLocation = FVector::ZeroVector;
+	FVector StartLocation = FVector::ZeroVector;   // the map frame, cm (SailingFrame::ToMapCm)
 	float StartYaw = 0.f;
 
 	/** Held axis values from the input system, applied each frame as rates. */

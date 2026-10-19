@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "SailingHUD.h"
@@ -703,7 +704,7 @@ void ASailboatPawn::BeginPlay()
 		Water = *It;
 		WaterSurfaceZ = It->GetSurfaceZ();
 	}
-	StartLocation = GetActorLocation();
+	StartLocation = SailingFrame::ToMapCm(GetWorld(), GetActorLocation());
 	StartYaw = GetActorRotation().Yaw;
 	if (const ASailingGameMode* GM = bTrafficBoat ? nullptr : GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -1990,11 +1991,11 @@ void ASailboatPawn::UpdateDrillVisuals()
 	{
 		const bool bShow = DrillRunner.IsActive() && I < Marks.Num() && I >= DrillRunner.GetNextMark();
 		MarkMeshes[I]->SetVisibility(bShow);
-		if (bShow) MarkMeshes[I]->SetWorldLocation(FVector(Marks[I].X * CmPerMeter, Marks[I].Y * CmPerMeter, WaterSurfaceZ + 60.f));
+		if (bShow) MarkMeshes[I]->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), Marks[I].X, Marks[I].Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + 60.f));
 	}
 	const bool bDummy = DrillRunner.IsActive() && DrillRunner.HasDummy();
 	DummyMesh->SetVisibility(bDummy);
-	if (bDummy) DummyMesh->SetWorldLocation(FVector(DrillRunner.GetDummy().X * CmPerMeter, DrillRunner.GetDummy().Y * CmPerMeter, WaterSurfaceZ + 10.f));
+	if (bDummy) DummyMesh->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), DrillRunner.GetDummy().X, DrillRunner.GetDummy().Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + 10.f));
 }
 
 void ASailboatPawn::StartSampleLayer()
@@ -2225,7 +2226,8 @@ void ASailboatPawn::ApplyStateToTransform()
 {
 	const Vec3 Origin = Boat.OriginPosition();
 	const Quat& Q = Boat.GetState().Orientation;
-	SetActorLocationAndRotation(FVector(Origin.X * CmPerMeter, Origin.Y * CmPerMeter, Origin.Z * CmPerMeter + WaterSurfaceZ), FQuat(Q.X, Q.Y, Q.Z, Q.W));
+	// World streaming: the physics is in the map frame (doubles), the actor in the render frame (SailingFrame.h).
+	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), Origin.X, Origin.Y, Origin.Z) + FVector(0.0, 0.0, WaterSurfaceZ), FQuat(Q.X, Q.Y, Q.Z, Q.W));
 }
 
 void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
@@ -3200,7 +3202,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		bCaptureBearingResolved = true;
 		const float Bearing = FMath::IsNaN(CaptureBearing) ? -90.f : CaptureBearing;
 		const Vec3 O = Boat.OriginPosition();
-		const FVector Origin(O.X * CmPerMeter, O.Y * CmPerMeter, 0.0);
+		const FVector Origin = SailingFrame::ToWorld(GetWorld(), O.X, O.Y, 0.0);
 		const float Heading = float(FMath::RadiansToDegrees(T.Heading));
 		FVector Location;
 		FRotator Rotation;
@@ -3208,12 +3210,13 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		if (CapturePreset == ECapturePreset::ShoreTele)
 		{
 			// A tripod: it stays where it was set up and only pans.
-			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = Location; bShoreStandSet = true; }
+			// (Kept in the map frame: a re-centre moves the render frame under it.)
+			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = SailingFrame::ToMapCm(GetWorld(), Location); bShoreStandSet = true; }
 			if (bShoreStandSet)
 			{
 				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + 0.33f * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
-				Location = ShoreStand;
-				Rotation = (Aim - ShoreStand).Rotation();
+				Location = SailingFrame::FromMapCm(GetWorld(), ShoreStand);
+				Rotation = (Aim - Location).Rotation();
 			}
 		}
 		// Measuring the sky: -SailingCamWorld=<north m>,<east m>,<up m>,<heading deg>,<pitch deg> fixes the camera in the
@@ -3225,7 +3228,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			CamWorld.ParseIntoArray(P, TEXT(","));
 			if (P.Num() >= 5)
 			{
-				Location = StartLocation + FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter;
+				Location = SailingFrame::FromMapCm(GetWorld(), StartLocation) + FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter;
 				Location.Z = WaterSurfaceZ + FCString::Atof(*P[2]) * CmPerMeter;
 				Rotation = FRotator(FCString::Atof(*P[4]), FCString::Atof(*P[3]), 0.f);
 			}
@@ -3282,7 +3285,7 @@ void ASailboatPawn::WriteCaptureSettings() const
 	const FCapturePresetInfo& Info = CapturePresetInfo(CapturePreset);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
-	const FVector L = CaptureCamera->GetComponentLocation();
+	const FVector L = SailingFrame::ToMapCm(GetWorld(), CaptureCamera->GetComponentLocation());   // the map frame
 	const FRotator R = CaptureCamera->GetComponentRotation();
 	double SunElevation = 0.0, SunAzimuth = 0.0;
 	FString Area, Date;

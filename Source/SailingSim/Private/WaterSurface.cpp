@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "SailingFrame.h"
 #include "SeaState.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
@@ -813,9 +814,9 @@ void AWaterSurface::UpdateDetail()
 	float CapShort = 1.f;
 	if (const FSeaMap* Sea = Waves->GetSeaMap(); Sea && Sea->IsValid())
 	{
-		const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
+		const FVector2D Cam = SailingFrame::ToMap(GetWorld(), UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation());
 		float Ratio[kSeaChannels];
-		Sea->Sample(Cam.X / CmPerMeter, Cam.Y / CmPerMeter, Ratio);
+		Sea->Sample(Cam.X, Cam.Y, Ratio);
 		for (int32 I = 0; I < kSeaLongComponents && I < Long.Num(); ++I) Long[I].Amplitude *= Ratio[I];
 		CapShort = Ratio[kSeaLongComponents];
 	}
@@ -1079,7 +1080,8 @@ void AWaterSurface::UpdateShoreMap()
 		return;
 	}
 	const FVector2D Origin(FMath::GridSnap(BoatPos.X - Half, 16.f), FMath::GridSnap(BoatPos.Y - Half, 16.f));
-	PendingShore = Async(EAsyncExecution::ThreadPool, [Lake, Origin, Level]()
+	// World streaming: a copy of the terrain (it shares the heights): the tiles may be swapped while the worker reads.
+	PendingShore = Async(EAsyncExecution::ThreadPool, [Lake, Terrain = Lake->Terrain, Origin, Level]()
 	{
 		// Reads only data the game thread doesn't change while sailing (the tide moves the level, read once here).
 		FShoreFrame Out;
@@ -1090,7 +1092,7 @@ void AWaterSurface::UpdateShoreMap()
 		{
 			for (int32 C = 0; C < kShoreRes; ++C)
 			{
-				Out.Depth[R * kShoreRes + C] = float(Lake->Terrain.DepthAt(Origin.X + (R + 0.5) * kShoreCellM, Origin.Y + (C + 0.5) * kShoreCellM));
+				Out.Depth[R * kShoreRes + C] = float(Terrain.DepthAt(Origin.X + (R + 0.5) * kShoreCellM, Origin.Y + (C + 0.5) * kShoreCellM));
 			}
 		});
 		// Docks, piers and breakwaters standing in the water: the waves lap against them too.
@@ -1142,7 +1144,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
 	const double T = GetSimTime();
 	const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
-	const FVector2D CamM(Cam.X / CmPerMeter, Cam.Y / CmPerMeter);
+	const FVector2D CamM = SailingFrame::ToMap(GetWorld(), Cam);   // droplets fly in the map frame
 	const Vec3 WindV = Wind ? Wind->VelocityAt(Vec3(CamM.X, CamM.Y, 2.0), T) : Vec3();
 	const FVector WindAt2m(WindV.X, WindV.Y, 0.0);
 	auto Emit = [&](const FVector& P, const FVector& V, float Size)
@@ -1223,7 +1225,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 
 	// Spray reaching the camera's glass (lens drops on High, SailingEnvironment).
 	LensSpray = FMath::Max(0.f, LensSpray - 0.35f * Dt);
-	const FVector CamM3(Cam.X / CmPerMeter, Cam.Y / CmPerMeter, (Cam.Z - GetActorLocation().Z) / CmPerMeter);
+	const FVector CamM3(CamM.X, CamM.Y, (Cam.Z - GetActorLocation().Z) / CmPerMeter);
 	for (const FDroplet& D : Droplets)
 	{
 		if (D.Age < 0.6f && FVector::DistSquared(D.P, CamM3) < 4.f) { LensSpray = 1.f; break; }
@@ -1248,7 +1250,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		{
 			const FDroplet& D = Droplets[I];
 			const float Fade = 1.f - FMath::Square(D.Age / D.Life);
-			Xf[I] = FTransform(FQuat::Identity, FVector(D.P.X * CmPerMeter, D.P.Y * CmPerMeter, D.P.Z * CmPerMeter + Z0), FVector(D.Size * Fade));
+			Xf[I] = FTransform(FQuat::Identity, SailingFrame::ToWorld(GetWorld(), D.P.X, D.P.Y, D.P.Z) + FVector(0.0, 0.0, Z0), FVector(D.Size * Fade));
 		}
 		else
 		{
@@ -1748,7 +1750,7 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	if (bFoamPending || !Done || Done->JCap.empty() || Done->N <= 0) return;
 	if (!FoamState) FoamState = MakeShared<FFoamGrid, ESPMode::ThreadSafe>();
 	const FVector CamCm = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
-	const FVector2D Cam(CamCm.X / CmPerMeter, CamCm.Y / CmPerMeter);
+	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CamCm);
 	const double T = GetSimTime();
 	FVector2D Drift = FVector2D::ZeroVector;
 	if (const FWindField* Wind = GetWind())

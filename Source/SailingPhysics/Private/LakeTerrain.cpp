@@ -10,6 +10,44 @@ namespace Sailing
 		T ReadLE(const uint8_t* P) { T V; std::memcpy(&V, P, sizeof(T)); return V; }
 	}
 
+	double FTerrainTile::HeightAt(double X, double Y) const
+	{
+		const double R = Clamp((X - OriginX) / Cell, 0.0, double(Cells)), C = Clamp((Y - OriginY) / Cell, 0.0, double(Cells));
+		const int R0 = std::min(int(R), Cells - 1), C0 = std::min(int(C), Cells - 1);
+		const double FR = R - R0, FC = C - C0;
+		return Lerp(Lerp(Node(R0, C0), Node(R0, C0 + 1), FC), Lerp(Node(R0 + 1, C0), Node(R0 + 1, C0 + 1), FC), FR);
+	}
+
+	FTileSet::FTileSet(double InTileM, double InOriginX, double InOriginY, const std::vector<std::shared_ptr<const FTerrainTile>>& InTiles)
+		: TileM(InTileM), OriginX(InOriginX), OriginY(InOriginY)
+	{
+		int RMin = 0, RMax = -1, CMin = 0, CMax = -1;
+		double Fine = 1e9;
+		for (const std::shared_ptr<const FTerrainTile>& T : InTiles)
+		{
+			if (!T) continue;
+			if (Count == 0) { RMin = RMax = T->Row; CMin = CMax = T->Col; }
+			RMin = std::min(RMin, T->Row); RMax = std::max(RMax, T->Row);
+			CMin = std::min(CMin, T->Col); CMax = std::max(CMax, T->Col);
+			Fine = std::min(Fine, T->Cell);
+			++Count;
+		}
+		if (Count == 0) return;
+		Finest = Fine;
+		R0 = RMin; C0 = CMin; NR = RMax - RMin + 1; NC = CMax - CMin + 1;
+		Slots.assign(size_t(NR) * NC, nullptr);
+		for (const std::shared_ptr<const FTerrainTile>& T : InTiles)
+			if (T) Slots[size_t(T->Row - R0) * NC + (T->Col - C0)] = T;
+	}
+
+	const FTerrainTile* FTileSet::At(double X, double Y) const
+	{
+		if (Count == 0) return nullptr;
+		const int R = int(std::floor((X - OriginX) / TileM)) - R0, C = int(std::floor((Y - OriginY) / TileM)) - C0;
+		if (R < 0 || C < 0 || R >= NR || C >= NC) return nullptr;
+		return Slots[size_t(R) * NC + C].get();
+	}
+
 	bool FLakeTerrain::LoadHeight(const uint8_t* Data, size_t Size)
 	{
 		const size_t Header = 4 + 4 * 3 + 4 * 4;
@@ -19,13 +57,16 @@ namespace Sailing
 		const int NY = int(ReadLE<uint32_t>(Data + 12));
 		if (Version != 1 || NX <= 1 || NY <= 1 || Size < Header + size_t(NX) * NY * 2) return false;
 		Cell = ReadLE<float>(Data + 16);
-		OriginX = ReadLE<float>(Data + 20);
-		OriginY = ReadLE<float>(Data + 24);
+		GridOriginX = OriginX = ReadLE<float>(Data + 20);
+		GridOriginY = OriginY = ReadLE<float>(Data + 24);
 		Unit = ReadLE<float>(Data + 28);
-		Rows = NY;
-		Cols = NX;
-		Heights.resize(size_t(NX) * NY);
-		std::memcpy(Heights.data(), Data + Header, Heights.size() * 2);
+		GridRows = Rows = NY;
+		GridCols = Cols = NX;
+		RowOff = ColOff = 0;
+		auto Grid = std::make_shared<std::vector<int16_t>>(size_t(NX) * NY);
+		std::memcpy(Grid->data(), Data + Header, Grid->size() * 2);
+		Heights = Grid;
+		Tiles.reset();
 		return true;
 	}
 
@@ -33,13 +74,15 @@ namespace Sailing
 	{
 		const size_t Header = 4 + 4 * 3 + 4 * 3;
 		if (Size < Header || std::memcmp(Data, "SSTR", 4) != 0) return false;
-		TreeCols = int(ReadLE<uint32_t>(Data + 8));
-		TreeRows = int(ReadLE<uint32_t>(Data + 12));
-		TreeCell = ReadLE<float>(Data + 16);
-		TreeOriginX = ReadLE<float>(Data + 20);
-		TreeOriginY = ReadLE<float>(Data + 24);
-		if (Size < Header + size_t(TreeRows) * TreeCols) { TreeRows = TreeCols = 0; return false; }
-		Trees.assign(Data + Header, Data + Header + size_t(TreeRows) * TreeCols);
+		auto T = std::make_shared<FTrees>();
+		T->Cols = int(ReadLE<uint32_t>(Data + 8));
+		T->Rows = int(ReadLE<uint32_t>(Data + 12));
+		T->Cell = ReadLE<float>(Data + 16);
+		T->OriginX = ReadLE<float>(Data + 20);
+		T->OriginY = ReadLE<float>(Data + 24);
+		if (Size < Header + size_t(T->Rows) * T->Cols) { Trees.reset(); return false; }
+		T->Density.assign(Data + Header, Data + Header + size_t(T->Rows) * T->Cols);
+		Trees = T;
 		return true;
 	}
 
@@ -51,37 +94,40 @@ namespace Sailing
 		const size_t Count = ReadLE<uint32_t>(Data + 12);
 		const size_t Nodes = size_t(Tile + 1) * (Tile + 1);
 		if (Tile < 2 || Size < Header + Count * (8 + Nodes * 2)) return false;
-		DetailTile = Tile;
-		DetailCell = ReadLE<float>(Data + 16);
-		DetailOriginX = ReadLE<float>(Data + 20);
-		DetailOriginY = ReadLE<float>(Data + 24);
-		DetailUnit = ReadLE<float>(Data + 28);
-		const double Span = Tile * DetailCell;
-		DetailRows = int(std::ceil((OriginX + (Rows - 1) * Cell - DetailOriginX) / Span)) + 1;
-		DetailCols = int(std::ceil((OriginY + (Cols - 1) * Cell - DetailOriginY) / Span)) + 1;
-		DetailIndex.assign(size_t(DetailRows) * DetailCols, -1);
+		auto D = std::make_shared<FDetail>();
+		D->Tile = Tile;
+		D->Cell = ReadLE<float>(Data + 16);
+		D->OriginX = ReadLE<float>(Data + 20);
+		D->OriginY = ReadLE<float>(Data + 24);
+		D->Unit = ReadLE<float>(Data + 28);
+		const double Span = Tile * D->Cell;
+		D->Rows = int(std::ceil((OriginX + (Rows - 1) * Cell - D->OriginX) / Span)) + 1;
+		D->Cols = int(std::ceil((OriginY + (Cols - 1) * Cell - D->OriginY) / Span)) + 1;
+		D->Index.assign(size_t(D->Rows) * D->Cols, -1);
 		const uint8_t* P = Data + Header;
 		for (size_t K = 0; K < Count; ++K)
 		{
 			const int R = ReadLE<int32_t>(P + 8 * K), C = ReadLE<int32_t>(P + 8 * K + 4);
-			if (R >= 0 && C >= 0 && R < DetailRows && C < DetailCols) DetailIndex[size_t(R) * DetailCols + C] = int32_t(K);
+			if (R >= 0 && C >= 0 && R < D->Rows && C < D->Cols) D->Index[size_t(R) * D->Cols + C] = int32_t(K);
 		}
-		Detail.resize(Count * Nodes);
-		std::memcpy(Detail.data(), P + 8 * Count, Detail.size() * 2);
+		D->Heights.resize(Count * Nodes);
+		std::memcpy(D->Heights.data(), P + 8 * Count, D->Heights.size() * 2);
+		Detail = D;
 		return true;
 	}
 
 	int FLakeTerrain::DetailTileAt(double X, double Y, double& U, double& V) const
 	{
-		if (Detail.empty()) return -1;
-		const double Span = DetailTile * DetailCell;
-		const double TX = (X - DetailOriginX) / Span, TY = (Y - DetailOriginY) / Span;
+		if (!Detail) return -1;
+		const FDetail& D = *Detail;
+		const double Span = D.Tile * D.Cell;
+		const double TX = (X - D.OriginX) / Span, TY = (Y - D.OriginY) / Span;
 		if (TX < 0.0 || TY < 0.0) return -1;
 		const int R = int(TX), C = int(TY);
-		if (R >= DetailRows || C >= DetailCols) return -1;
-		U = (TX - R) * DetailTile;
-		V = (TY - C) * DetailTile;
-		return DetailIndex[size_t(R) * DetailCols + C];
+		if (R >= D.Rows || C >= D.Cols) return -1;
+		U = (TX - R) * D.Tile;
+		V = (TY - C) * D.Tile;
+		return D.Index[size_t(R) * D.Cols + C];
 	}
 
 	bool FLakeTerrain::DetailHeightAt(double X, double Y, double& Height) const
@@ -89,84 +135,144 @@ namespace Sailing
 		double U, V;
 		const int Index = DetailTileAt(X, Y, U, V);
 		if (Index < 0) return false;
-		const int N = DetailTile + 1;
-		const int R0 = int(U) < DetailTile ? int(U) : DetailTile - 1, C0 = int(V) < DetailTile ? int(V) : DetailTile - 1;
+		const FDetail& D = *Detail;
+		const int N = D.Tile + 1;
+		const int R0 = int(U) < D.Tile ? int(U) : D.Tile - 1, C0 = int(V) < D.Tile ? int(V) : D.Tile - 1;
 		const double FR = U - R0, FC = V - C0;
-		const int16_t* T = Detail.data() + size_t(Index) * N * N;
+		const int16_t* T = D.Heights.data() + size_t(Index) * N * N;
 		const double H00 = T[R0 * N + C0], H01 = T[R0 * N + C0 + 1], H10 = T[(R0 + 1) * N + C0], H11 = T[(R0 + 1) * N + C0 + 1];
-		Height = Lerp(Lerp(H00, H01, FC), Lerp(H10, H11, FC), FR) * DetailUnit + LevelBelowPool;
+		Height = Lerp(Lerp(H00, H01, FC), Lerp(H10, H11, FC), FR) * D.Unit + LevelBelowPool;
 		return true;
 	}
 
 	bool FLakeTerrain::HasDetailIn(double MinX, double MinY, double MaxX, double MaxY) const
 	{
-		if (Detail.empty()) return false;
-		const double Span = DetailTile * DetailCell;
-		const int R0 = int(std::floor((MinX - DetailOriginX) / Span)), R1 = int(std::floor((MaxX - DetailOriginX) / Span));
-		const int C0 = int(std::floor((MinY - DetailOriginY) / Span)), C1 = int(std::floor((MaxY - DetailOriginY) / Span));
-		for (int R = R0 < 0 ? 0 : R0; R <= R1 && R < DetailRows; ++R)
-			for (int C = C0 < 0 ? 0 : C0; C <= C1 && C < DetailCols; ++C)
-				if (DetailIndex[size_t(R) * DetailCols + C] >= 0) return true;
+		if (!Detail) return false;
+		const FDetail& D = *Detail;
+		const double Span = D.Tile * D.Cell;
+		const int R0 = int(std::floor((MinX - D.OriginX) / Span)), R1 = int(std::floor((MaxX - D.OriginX) / Span));
+		const int C0 = int(std::floor((MinY - D.OriginY) / Span)), C1 = int(std::floor((MaxY - D.OriginY) / Span));
+		for (int R = R0 < 0 ? 0 : R0; R <= R1 && R < D.Rows; ++R)
+			for (int C = C0 < 0 ? 0 : C0; C <= C1 && C < D.Cols; ++C)
+				if (D.Index[size_t(R) * D.Cols + C] >= 0) return true;
 		return false;
 	}
 
 	void FLakeTerrain::InitSyntheticTrees(int InRows, int InCols, double InCell, double InOriginX, double InOriginY, const std::vector<uint8_t>& Density)
 	{
-		TreeRows = InRows;
-		TreeCols = InCols;
-		TreeCell = InCell;
-		TreeOriginX = InOriginX;
-		TreeOriginY = InOriginY;
-		Trees = Density;
-		Trees.resize(size_t(TreeRows) * TreeCols, 0);
+		auto T = std::make_shared<FTrees>();
+		T->Rows = InRows;
+		T->Cols = InCols;
+		T->Cell = InCell;
+		T->OriginX = InOriginX;
+		T->OriginY = InOriginY;
+		T->Density = Density;
+		T->Density.resize(size_t(T->Rows) * T->Cols, 0);
+		Trees = T;
 	}
 
 	void FLakeTerrain::InitSynthetic(int InRows, int InCols, double InCell, double InOriginX, double InOriginY, const std::vector<float>& InHeights)
 	{
-		Rows = InRows;
-		Cols = InCols;
+		GridRows = Rows = InRows;
+		GridCols = Cols = InCols;
 		Cell = InCell;
-		OriginX = InOriginX;
-		OriginY = InOriginY;
+		GridOriginX = OriginX = InOriginX;
+		GridOriginY = OriginY = InOriginY;
+		RowOff = ColOff = 0;
 		Unit = 0.01;
-		Heights.resize(size_t(Rows) * Cols);
-		for (size_t I = 0; I < Heights.size(); ++I)
+		auto Grid = std::make_shared<std::vector<int16_t>>(size_t(Rows) * Cols);
+		for (size_t I = 0; I < Grid->size(); ++I)
 		{
-			Heights[I] = int16_t(Clamp(std::round(InHeights[I] / Unit), -32000.0, 32000.0));
+			(*Grid)[I] = int16_t(Clamp(std::round(InHeights[I] / Unit), -32000.0, 32000.0));
 		}
+		Heights = Grid;
+		Tiles.reset();
+	}
+
+	void FLakeTerrain::SetTiles(std::shared_ptr<const FTileSet> InTiles, double FinestCell)
+	{
+		Heights.reset();
+		GridRows = GridCols = RowOff = ColOff = 0;
+		Tiles = std::move(InTiles);
+		if (!Tiles || Tiles->Num() == 0) { Rows = Cols = 0; return; }
+		Cell = FinestCell > 0.0 ? FinestCell : Tiles->GetFinestCell();
+		OriginX = Tiles->GetOriginX() + Tiles->GetRow0() * Tiles->GetTileM();
+		OriginY = Tiles->GetOriginY() + Tiles->GetCol0() * Tiles->GetTileM();
+		Rows = int(std::lround(Tiles->GetNumRows() * Tiles->GetTileM() / Cell)) + 1;
+		Cols = int(std::lround(Tiles->GetNumCols() * Tiles->GetTileM() / Cell)) + 1;
+	}
+
+	FLakeTerrain FLakeTerrain::WindowAround(double X, double Y, double HalfM) const
+	{
+		FLakeTerrain W = *this;
+		if (Rows == 0) return W;
+		// Node range of the window within the view, snapped to the spacing.
+		const int RA = std::max(0, int(std::floor((X - HalfM - OriginX) / Cell))), RB = std::min(Rows - 1, int(std::ceil((X + HalfM - OriginX) / Cell)));
+		const int CA = std::max(0, int(std::floor((Y - HalfM - OriginY) / Cell))), CB = std::min(Cols - 1, int(std::ceil((Y + HalfM - OriginY) / Cell)));
+		if (RB <= RA || CB <= CA) { W.Rows = W.Cols = 0; return W; }
+		W.OriginX = OriginX + RA * Cell;
+		W.OriginY = OriginY + CA * Cell;
+		W.Rows = RB - RA + 1;
+		W.Cols = CB - CA + 1;
+		W.RowOff = RowOff + RA;
+		W.ColOff = ColOff + CA;
+		return W;
+	}
+
+	double FLakeTerrain::GridNode(int Row, int Col) const
+	{
+		// Whole grid: a node of the data, clamped to its edge.
+		Row = Row < 0 ? 0 : (Row >= GridRows ? GridRows - 1 : Row);
+		Col = Col < 0 ? 0 : (Col >= GridCols ? GridCols - 1 : Col);
+		return (*Heights)[size_t(Row) * GridCols + Col] * Unit;
 	}
 
 	double FLakeTerrain::NodeHeight(int Row, int Col) const
 	{
 		Row = Row < 0 ? 0 : (Row >= Rows ? Rows - 1 : Row);
 		Col = Col < 0 ? 0 : (Col >= Cols ? Cols - 1 : Col);
-		return Heights[size_t(Row) * Cols + Col] * Unit + LevelBelowPool;
+		if (Heights) return GridNode(Row + RowOff, Col + ColOff) + LevelBelowPool;
+		if (!Tiles) return 50.0;
+		const double X = OriginX + Row * Cell, Y = OriginY + Col * Cell;
+		const FTerrainTile* T = Tiles->At(X, Y);
+		return (T ? T->HeightAt(X, Y) : 50.0) + LevelBelowPool;
+	}
+
+	double FLakeTerrain::GroundAt(double X, double Y) const
+	{
+		if (Tiles)
+		{
+			const FTerrainTile* T = Tiles->At(X, Y);
+			return T ? T->HeightAt(X, Y) + LevelBelowPool : 50.0; // nothing resident (or no data): land
+		}
+		const double R = (X - GridOriginX) / Cell, C = (Y - GridOriginY) / Cell;
+		if (R < -1.0 || C < -1.0 || R > GridRows || C > GridCols) return 50.0; // off the map: land
+		const int R0 = int(std::floor(R)), C0 = int(std::floor(C));
+		const double FR = R - R0, FC = C - C0;
+		const double H00 = GridNode(R0, C0), H01 = GridNode(R0, C0 + 1), H10 = GridNode(R0 + 1, C0), H11 = GridNode(R0 + 1, C0 + 1);
+		return Lerp(Lerp(H00, H01, FC), Lerp(H10, H11, FC), FR) + LevelBelowPool;
 	}
 
 	double FLakeTerrain::HeightAt(double X, double Y) const
 	{
-		if (Rows == 0) return -1000.0; // no terrain: open water everywhere
+		if (Rows == 0 && !Heights && !Tiles) return -1000.0; // no terrain: open water everywhere
 		double Fine;
 		if (DetailHeightAt(X, Y, Fine)) return Fine;
-		const double R = (X - OriginX) / Cell, C = (Y - OriginY) / Cell;
-		if (R < -1.0 || C < -1.0 || R > Rows || C > Cols) return 50.0; // off the map: land
-		const int R0 = int(std::floor(R)), C0 = int(std::floor(C));
-		const double FR = R - R0, FC = C - C0;
-		const double H00 = NodeHeight(R0, C0), H01 = NodeHeight(R0, C0 + 1), H10 = NodeHeight(R0 + 1, C0), H11 = NodeHeight(R0 + 1, C0 + 1);
-		return Lerp(Lerp(H00, H01, FC), Lerp(H10, H11, FC), FR);
+		return GroundAt(X, Y);
 	}
 
 	double FLakeTerrain::CanopyAt(double X, double Y) const
 	{
-		if (TreeRows == 0) return 0.0;
-		const int R = int((X - TreeOriginX) / TreeCell), C = int((Y - TreeOriginY) / TreeCell);
-		if (R < 0 || C < 0 || R >= TreeRows || C >= TreeCols) return 0.0;
-		return Trees[size_t(R) * TreeCols + C] / 255.0 * 12.0;
+		if (!Trees || Trees->Rows == 0) return 0.0;
+		const FTrees& T = *Trees;
+		const int R = int((X - T.OriginX) / T.Cell), C = int((Y - T.OriginY) / T.Cell);
+		if (R < 0 || C < 0 || R >= T.Rows || C >= T.Cols) return 0.0;
+		return T.Density[size_t(R) * T.Cols + C] / 255.0 * 12.0;
 	}
 
 	double FLakeTerrain::FetchToward(double X, double Y, double FromRadians, double MaxDistance) const
 	{
-		if (Rows == 0) return MaxDistance;
+		if (Rows == 0 && !Heights && !Tiles) return MaxDistance;
 		const double DX = std::cos(FromRadians), DY = std::sin(FromRadians);
 		const double Step = Cell;
 		for (double S = Step; S < MaxDistance; S += Step)

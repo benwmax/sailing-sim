@@ -114,6 +114,13 @@ namespace FarRing
 		return -Drop - UnderM * (1.0 - T * T * (3.0 - 2.0 * T));
 	}
 
+	double TileDistance(const FFarRingData& Ring, const FFarRingTile& Tile, const FVector2D& Cam)
+	{
+		const FVector2D Lo = Ring.TileOrigin(Tile), Hi = Lo + FVector2D(Ring.TileM, Ring.TileM);
+		const double DX = FMath::Max3(Lo.X - Cam.X, 0.0, Cam.X - Hi.X), DY = FMath::Max3(Lo.Y - Cam.Y, 0.0, Cam.Y - Hi.Y);
+		return FMath::Sqrt(DX * DX + DY * DY);
+	}
+
 	bool TileVisible(const FFarRingData& Ring, const FFarRingTile& Tile, const FVector2D& Cam)
 	{
 		const FVector2D Lo = Ring.TileOrigin(Tile), Hi = Lo + FVector2D(Ring.TileM, Ring.TileM);
@@ -142,6 +149,8 @@ void FFarRingLoader::Reset()
 	Index = {};
 	Ring.Reset();
 	State.Reset();
+	TileState.Reset();
+	RequestedFrom = FVector2D(1e12, 1e12);
 	Requested = 0;
 	Longest = 0.0;
 }
@@ -164,30 +173,52 @@ bool FFarRingLoader::Start(const FString& InWorld)
 	return true;
 }
 
-void FFarRingLoader::Poll()
+void FFarRingLoader::Poll(const FVector2D& Camera)
 {
-	if (Ring.IsValid() || !Index.IsValid() || !Index.IsReady()) return;
 	const double T0 = FPlatformTime::Seconds();
-	Ring = Index.Get();
-	Index = {};
-	if (Ring->IsValid())
+	if (!Ring.IsValid())
 	{
-		for (int32 K = 0; K < Ring->Tiles.Num(); ++K)
+		if (!Index.IsValid() || !Index.IsReady()) return;
+		Ring = Index.Get();
+		Index = {};
+		TileState.Init(0, Ring->IsValid() ? Ring->Tiles.Num() : 0);
+		Note(T0);
+	}
+	if (!Ring->IsValid()) return;
+	// World streaming: the tiles within reach of the camera (the outer edge and a tile), asked for again when it has moved
+	// a kilometre; the actor lets go of those past it (Release), so a long coast keeps only the ring around the boat.
+	if (FVector2D::Distance(Camera, RequestedFrom) < 1000.0) return;
+	RequestedFrom = Camera;
+	for (int32 K = 0; K < Ring->Tiles.Num(); ++K)
+	{
+		if (TileState[K] != 0 || FarRing::TileDistance(*Ring, Ring->Tiles[K], Camera) > RequestM()) continue;
+		TileState[K] = 1;
+		const FString Package = FPackageName::ObjectPathToPackageName(FFarRingData::AssetPath(World, Ring->Tiles[K]));
+		// The callback runs on the game thread when the package is in; it only notes the mesh (the State outlives this).
+		TSharedPtr<FState> S = State;
+		LoadPackageAsync(Package, FLoadPackageAsyncDelegate::CreateLambda([S, K](const FName&, UPackage* Loaded, EAsyncLoadingResult::Type Result)
 		{
-			const FString Package = FPackageName::ObjectPathToPackageName(FFarRingData::AssetPath(World, Ring->Tiles[K]));
-			// The callback runs on the game thread when the package is in; it only notes the mesh (the State outlives this).
-			TSharedPtr<FState> S = State;
-			LoadPackageAsync(Package, FLoadPackageAsyncDelegate::CreateLambda([S, K](const FName&, UPackage* Loaded, EAsyncLoadingResult::Type Result)
-			{
-				++S->Answered;
-				UStaticMesh* Mesh = Loaded && Result == EAsyncLoadingResult::Succeeded ? FindObject<UStaticMesh>(Loaded, *FPackageName::GetShortName(Loaded)) : nullptr;
-				if (Mesh) { ++S->Loaded; S->Arrived.Emplace(K, TStrongObjectPtr<UStaticMesh>(Mesh)); }
-				else ++S->Failed;
-			}));
-			++Requested;
-		}
+			++S->Answered;
+			S->AnsweredTiles.Add(K);
+			UStaticMesh* Mesh = Loaded && Result == EAsyncLoadingResult::Succeeded ? FindObject<UStaticMesh>(Loaded, *FPackageName::GetShortName(Loaded)) : nullptr;
+			if (Mesh) { ++S->Loaded; S->Arrived.Emplace(K, TStrongObjectPtr<UStaticMesh>(Mesh)); }
+			else ++S->Failed;
+		}));
+		++Requested;
 	}
 	Note(T0);
+}
+
+double FFarRingLoader::RequestM() const
+{
+	return Ring.IsValid() ? Ring->OuterM + Ring->TileM : 0.0;
+}
+
+void FFarRingLoader::Release(int32 Tile)
+{
+	if (TileState.IsValidIndex(Tile)) TileState[Tile] = 0;
+	if (State.IsValid()) State->AnsweredTiles.Remove(Tile);
+	RequestedFrom = FVector2D(1e12, 1e12);   // ask again as the camera comes back
 }
 
 void FFarRingLoader::TakeArrived(TArray<TPair<int32, UStaticMesh*>>& Out)
@@ -199,7 +230,12 @@ void FFarRingLoader::TakeArrived(TArray<TPair<int32, UStaticMesh*>>& Out)
 
 bool FFarRingLoader::IsDone() const
 {
-	return Ring.IsValid() && (!Ring->IsValid() || (State.IsValid() && State->Answered >= Requested));
+	if (!Ring.IsValid()) return false;
+	if (!Ring->IsValid() || !State.IsValid()) return true;
+	// Every tile asked for has been answered (loaded or failed).
+	for (int32 K = 0; K < TileState.Num(); ++K)
+		if (TileState[K] == 1 && !State->AnsweredTiles.Contains(K)) return false;
+	return true;
 }
 
 int32 FFarRingLoader::NumArrived() const { return State.IsValid() ? State->Loaded : 0; }

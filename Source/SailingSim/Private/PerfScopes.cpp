@@ -14,7 +14,7 @@ namespace SailingPerf
 	{
 		static const TCHAR* Names[] = { TEXT("boat_physics"), TEXT("boat_visuals"), TEXT("sails"), TEXT("crew"), TEXT("rig_lines"),
 			TEXT("telltales"), TEXT("boat_sound"), TEXT("boat_capture"), TEXT("boat_learning"), TEXT("water"), TEXT("water_uploads"),
-			TEXT("terrain"), TEXT("trees"), TEXT("traffic"), TEXT("traffic_step"), TEXT("hud") };
+			TEXT("terrain"), TEXT("trees"), TEXT("traffic"), TEXT("traffic_step"), TEXT("hud"), TEXT("streaming") };
 		static_assert(UE_ARRAY_COUNT(Names) == int32(ESlice::Count), "a name per slice");
 		return Names[int32(Slice)];
 	}

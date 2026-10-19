@@ -1,4 +1,5 @@
 #include "BridgesActor.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "SailingSim.h"
@@ -118,7 +119,7 @@ void ABridgesActor::BeginPlay()
 			// it every frame (5 fps of render thread on High, coast-day). Lumen's screen traces still see them.
 			C->bVisibleInRayTracing = false;
 			C->RegisterComponent();
-			C->AddInstances(RockX[K], false, true);
+			C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), RockX[K]), false, true);
 			Tiled.Add(C);
 			Boulders += RockX[K].Num();
 		}
@@ -217,7 +218,7 @@ void ABridgesActor::Tick(float DeltaSeconds)
 		// Follow the terrain's tide offset in 2 cm steps (moving them every frame would keep invalidating their shadows).
 		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
-		if (!FMath::IsNearlyEqual(GetActorLocation().Z, Z, 0.1)) SetActorLocation(FVector(0.0, 0.0, Z));
+		if (!GetActorLocation().Equals(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z), 0.1)) SetActorLocation(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z));
 	}
 	if (VehicleMeshes.Num() == 0) return;
 	const float Dt = FMath::Min(DeltaSeconds, 0.1f);
@@ -238,7 +239,7 @@ void ABridgesActor::Tick(float DeltaSeconds)
 			const double T = (V.S - L.Cum[I - 1]) / FMath::Max(L.Cum[I] - L.Cum[I - 1], 1.0);
 			const FVector P = FMath::Lerp(L.Points[I - 1], L.Points[I], T);
 			const FVector D = L.Points[I] - L.Points[I - 1];
-			X.Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X))), 0.f), P));
+			X.Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X))), 0.f), SailingFrame::FromMapCm(GetWorld(), P)));
 		}
 		VehicleMeshes[K]->BatchUpdateInstancesTransforms(0, X, true, true, false);
 	}
