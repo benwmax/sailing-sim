@@ -102,6 +102,28 @@ struct FLandmark
 	bool bConspicuous = false;
 };
 
+/** Wide World Rendering PR 3: what the world shows at night beyond its near lights (<Name>.farlights.json,
+ *  Tools/terrain/build_far_lights.py). */
+struct SAILINGSIM_API FFarLightsData
+{
+	struct FLight
+	{
+		FVector2D XY = FVector2D::ZeroVector;  // map frame, m
+		double Z = 6.0;                         // the lantern, m above the datum
+		Sailing::FLightCharacter Light;
+		FString Name;
+		int32 Navaid = INDEX_NONE;              // this world's navaid (ANavaidsActor draws it within the near pool)
+	};
+	struct FShore { FVector2D XY; double Z = 6.0; int32 Houses = 0; };
+	struct FCity { FString Name; FVector2D XY; double Light = 0.0; };
+	struct FLane { FString Name; double Knots = 12.0; int32 Ships = 3; TArray<FVector2D> Points; };
+	TArray<FLight> Lights;
+	TArray<FShore> Shore;
+	TArray<FCity> Cities;
+	TArray<FLane> Lanes;
+	bool Load(const FString& Path);
+};
+
 /**
  * A sailing area as baked by Tools/terrain/build_rayhubbard.py (Lake Ray Hubbard) or Tools/coast/build_galveston.py
  * (Galveston Bay): terrain and tree heights for the physics, docks, bridges, buildings, launch spots, shoreline
@@ -164,6 +186,8 @@ struct SAILINGSIM_API FLakeData
 	double MistralFromDeg = std::numeric_limits<double>::quiet_NaN();
 	/** Named launch spots by role ("home_slip", "anchorage", "gale"): indices into LaunchSpots. */
 	TMap<FString, int32> SpotRoles;
+	/** Wide World Rendering PR 3: far lights, lit shores, city domes and shipping lanes (<Name>.farlights.json). */
+	FFarLightsData FarLights;
 	/** The sources line for the chart's credit (the bake's "sources.chart"). */
 	FString ChartSource;
 	double VariationDeg = 0.0;   // magnetic variation, + = east
