@@ -349,7 +349,8 @@ show; the deck camera has the wheels, the boom on the corrected gooseneck and th
 
 ![Chase, High](maxi/maxi-chase-high.jpg)
 ![Drone from the quarter, Ultra](maxi/maxi-quarter-ultra.jpg)
-![The deck camera, Ultra](maxi/maxi-deck-ultra.jpg)![The model in Blender, eight views round her (one rudder: the game draws it mirrored on the other stock; the mast's head is cropped)](maxi/maxi-turntable.jpg)
+![The deck camera, Ultra](maxi/maxi-deck-ultra.jpg)
+![The model in Blender, eight views round her (one rudder: the game draws it mirrored on the other stock; the mast's head is cropped)](maxi/maxi-turntable.jpg)
 
 ## Step 4: the mistral
 
