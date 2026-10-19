@@ -3,6 +3,7 @@
 #include "LakeData.h"
 #include "Marina.h"
 #include "MarinaActor.h"
+#include "FarRing.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
@@ -693,6 +694,107 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key))) Out.Add(M);
 	}
 	UE_LOG(LogSailing, Display, TEXT("Baked the %s marina: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+#endif
+	return Out;
+}
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FFarRingData Ring;
+	if (!Ring.Load(FFarRingData::PathFor(WorldName), true)) return Out;
+	UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/World/M_FarLand.M_FarLand"));
+	const FName Slot(TEXT("FarLand"));
+	int64 Triangles = 0;
+	for (int32 I = 0; I < Ring.Tiles.Num(); ++I)
+	{
+		const FFarRingTile& T = Ring.Tiles[I];
+		const int32 N = T.Cells;
+		const double Step = Ring.TileM / N;
+		const FVector2D Corner = Ring.TileOrigin(T);
+		// A node's height, reaching into the neighbouring tile at the edge (so the normals agree across it).
+		auto H = [&](int32 R, int32 C)
+		{
+			if (R >= 0 && C >= 0 && R <= N && C <= N) return Ring.NodeHeight(I, R, C);
+			double Z;
+			if (Ring.HeightAt(Corner.X + R * Step, Corner.Y + C * Step, Z)) return Z;
+			return Ring.NodeHeight(I, R, C);   // no neighbour: clamped to the edge
+		};
+		FMeshDescription MD;
+		FStaticMeshAttributes Attr(MD);
+		Attr.Register();
+		TVertexAttributesRef<FVector3f> Positions = Attr.GetVertexPositions();
+		TVertexInstanceAttributesRef<FVector3f> Normals = Attr.GetVertexInstanceNormals();
+		TVertexInstanceAttributesRef<FVector3f> Tangents = Attr.GetVertexInstanceTangents();
+		TVertexInstanceAttributesRef<float> Signs = Attr.GetVertexInstanceBinormalSigns();
+		TVertexInstanceAttributesRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
+		TVertexInstanceAttributesRef<FVector4f> Colors = Attr.GetVertexInstanceColors();
+		Attr.GetPolygonGroupMaterialSlotNames()[MD.CreatePolygonGroup()] = Slot;
+		const FPolygonGroupID Group(0);
+		TArray<FVertexInstanceID> Inst;
+		Inst.Reserve((N + 1) * (N + 1));
+		for (int32 R = 0; R <= N; ++R)
+		{
+			for (int32 C = 0; C <= N; ++C)
+			{
+				const FVertexID V = MD.CreateVertex();
+				// Centimetres from the tile's corner (the component sits there): small numbers, full float precision.
+				Positions[V] = FVector3f(float(R * Step * 100.0), float(C * Step * 100.0), float(H(R, C) * 100.0));
+				const FVertexInstanceID VI = MD.CreateVertexInstance(V);
+				const double DZX = (H(R + 1, C) - H(R - 1, C)) / (2.0 * Step), DZY = (H(R, C + 1) - H(R, C - 1)) / (2.0 * Step);
+				const FVector3f Nrm = FVector3f(float(-DZX), float(-DZY), 1.f).GetSafeNormal();
+				Normals[VI] = Nrm;
+				Tangents[VI] = (FVector3f(1.f, 0.f, 0.f) - Nrm * Nrm.X).GetSafeNormal();
+				Signs[VI] = 1.f;
+				UVs.Set(VI, 0, FVector2f(float(R * Step / 100.0), float(C * Step / 100.0)));
+				// R: the baked sky visibility (M_FarLand's ambient occlusion); G: the land-cover tint's weight (none yet).
+				Colors[VI] = FVector4f(FLinearColor::FromSRGBColor(FColor(uint8(FMath::RoundToInt(255.0 * Ring.NodeSky(I, R, C))), 0, 0, 255)));
+				Inst.Add(VI);
+			}
+		}
+		for (int32 R = 0; R < N; ++R)
+		{
+			for (int32 C = 0; C < N; ++C)
+			{
+				// Cells wholly under a metre of water are left out (the water covers them; GLO-90's sea is flat).
+				if (FMath::Max(FMath::Max(H(R, C), H(R, C + 1)), FMath::Max(H(R + 1, C), H(R + 1, C + 1))) < -1.0) continue;
+				const int32 V0 = R * (N + 1) + C, V1 = V0 + 1, V2 = V0 + N + 1, V3 = V2 + 1;
+				MD.CreatePolygon(Group, { Inst[V0], Inst[V1], Inst[V2] });
+				MD.CreatePolygon(Group, { Inst[V1], Inst[V3], Inst[V2] });
+				Triangles += 2;
+			}
+		}
+		const FString ObjectPath = FFarRingData::AssetPath(WorldName, T);
+		const FString PackagePath = FPackageName::ObjectPathToPackageName(ObjectPath);
+		const FString Name = FPackageName::GetLongPackageAssetName(PackagePath);
+		UPackage* Package = CreatePackage(*PackagePath);
+		Package->FullyLoad();
+		UStaticMesh* Mesh = FindObject<UStaticMesh>(Package, *Name);
+		if (!Mesh) Mesh = NewObject<UStaticMesh>(Package, *Name, RF_Public | RF_Standalone);
+		Mesh->GetStaticMaterials().Reset();
+		Mesh->GetStaticMaterials().Add(FStaticMaterial(Mat, Slot, Slot));
+		Mesh->SetNumSourceModels(1);
+		FStaticMeshSourceModel& Src = Mesh->GetSourceModel(0);
+		Src.BuildSettings.bRecomputeNormals = false;
+		Src.BuildSettings.bRecomputeTangents = false;
+		Src.BuildSettings.bGenerateLightmapUVs = false;
+		// Not in the distance fields (nor the Lumen scene: the components opt out too) and no ray-tracing structure.
+		Src.BuildSettings.DistanceFieldResolutionScale = 0.f;
+		Mesh->bGenerateMeshDistanceField = false;
+		Mesh->bSupportRayTracing = false;
+		Mesh->CreateMeshDescription(0, MoveTemp(MD));
+		Mesh->CommitMeshDescription(0);
+		FMeshNaniteSettings Nanite = Mesh->GetNaniteSettings();
+		Nanite.bEnabled = true;
+		Mesh->SetNaniteSettings(Nanite);
+		Mesh->Build(true);
+		Mesh->PostEditChange();
+		Mesh->MarkPackageDirty();
+		FAssetRegistryModule::AssetCreated(Mesh);
+		Out.Add(Mesh);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Baked the %s far ring: %d tiles, %lld triangles"), *WorldName, Out.Num(), Triangles);
 #endif
 	return Out;
 }
