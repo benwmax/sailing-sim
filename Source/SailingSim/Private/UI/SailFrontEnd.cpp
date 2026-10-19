@@ -612,7 +612,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	// Career 1: worlds open as certificates are earned (all of them in Free Sail).
 	const FCareerProgress Career = SailCareer::Progress();
-	if (!Career.IsWorldOpen(FSailSave::WorldId(FMath::Min(Pending.World, 1)))) { Pending.World = 0; Pending.LaunchSpot = 0; }
+	if (!Career.IsWorldOpen(FSailSave::WorldId(Pending.World == 2 ? 1 : Pending.World))) { Pending.World = 0; Pending.LaunchSpot = 0; }
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
 	{
 		const FString Locked = Career.WorldLockReason(W.Id);

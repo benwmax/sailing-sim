@@ -12,7 +12,8 @@ What it writes (JSON, the map frame: [north, east] metres, heights above MLLW li
   at the row's walkway in a marina (bow in), elsewhere at the nearest deck within 15 m, else along the hull axis.
 - "marinas": each marina's hull and boat count.
 
-Run: Tools/venv/bin/python Tools/coast/build_piers.py   (then scripts/test.sh SailingSim.Coast and rebake the shore)
+Run: Tools/venv/bin/python Tools/coast/build_piers.py [GalvestonBay|<World>]   (then scripts/test.sh SailingSim.Coast and rebake
+the shore). A world without the lidar pack (Marseille) bakes from OpenStreetMap instead: osm_harbour.py.
 """
 import gzip
 import json
@@ -442,4 +443,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # Galveston bakes from the G2 lidar pack; a port without one (Tools/coast/worlds/<World>.json, chart "osm") from OSM.
+    if len(sys.argv) > 1 and sys.argv[1] != "GalvestonBay":
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import osm_harbour
+        sys.exit(osm_harbour.build(sys.argv[1]))
     sys.exit(main())

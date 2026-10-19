@@ -37,3 +37,4 @@
 *.crowns filter=lfs diff=lfs merge=lfs -text
 *.mann filter=lfs diff=lfs merge=lfs -text
 *.wxday filter=lfs diff=lfs merge=lfs -text
+*.far filter=lfs diff=lfs merge=lfs -text

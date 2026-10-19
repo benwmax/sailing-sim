@@ -9,6 +9,8 @@
 #include "Marina.h"
 #include "TreePlacement.h"
 #include "WorldKit.h"
+#include "FarRing.h"
+#include "Components/StaticMeshComponent.h"
 #include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -84,6 +86,9 @@ ALakeTerrainActor::ALakeTerrainActor()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Shape(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	TerrainMaterial = Terrain.Object;
 	ShapeMaterial = Shape.Object;
+	// Wide World Rendering PR 1: the far coast ring's land (a hard reference: cooked with the game).
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FarLand(TEXT("/Game/World/M_FarLand.M_FarLand"));
+	FarMaterialBase = FarLand.Object;
 }
 
 const FLakeData* ALakeTerrainActor::GetLake() const
@@ -110,7 +115,7 @@ void ALakeTerrainActor::BeginPlay()
 	Super::BeginPlay();
 	// The bed is hidden where the water (Single Layer Water, Visual V4) absorbs 99% of the light coming back from it:
 	// about 2 m in the lake's and the bay's silt, 14 m offshore; with a metre to spare for the lake level and the tide.
-	HideBelow = USailingSettings::Get()->World == 2 ? -15.0 : -3.5;
+	HideBelow = (USailingSettings::Get()->World == 2 || USailingSettings::Get()->World == 3) ? -15.0 : -3.5;   // the Gulf and the clear Mediterranean
 	const FLakeData* Lake = GetLake();
 	if (!Lake)
 	{
@@ -140,6 +145,8 @@ void ALakeTerrainActor::BeginPlay()
 			Ch.Mesh = Mesh;
 		}
 	}
+	// Wide World Rendering PR 1: the far coast ring, if the world has one (Galveston Bay and the Gulf; -SailingNoFarRing).
+	if (FarLoader.Start(Lake->FileName)) UE_LOG(LogSailing, Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
 	PlaceTrees();
 	PlaceReeds();
 	PlaceBuildings();
@@ -171,6 +178,8 @@ void ALakeTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
 	{
 		if (Ch.bBuilding) Ch.Future.Wait();
 	}
+	FarLoader.Reset();
+	FarArrived.Reset();
 	Super::EndPlay(Reason);
 }
 
@@ -484,6 +493,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	{ SAILING_PERF_SCOPE(Trees); UpdateModelTrees(FVector2D(CamX, CamY)); }
 	const FLakeTerrain& T = Lake->Terrain;
 	const double ChunkSize = GChunkCells * T.GetCell();
+	UpdateFarRing(FVector2D(CamX, CamY));   // inside the Terrain slice
 
 	// Perf 1 fix 7: a chunk's wanted detail changes only as the camera moves, so look again after 20 m or half a second
 	// (every frame while chunks are queued or building). Galveston Bay has some 4,000 chunks.
@@ -502,6 +512,11 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 			FChunk& Ch = Chunks[I];
 			const double CX = T.GetOriginX() + (Ch.Row + 0.5) * ChunkSize, CY = T.GetOriginY() + (Ch.Col + 0.5) * ChunkSize;
 			const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), FVector2D(CamX, CamY)) - 0.5 * ChunkSize);
+			// Wide World Rendering PR 1: past the cap (the far ring's inner edge, or 20 km) a chunk is out of the scene
+			// altogether, not only culled: culling Galveston Bay's ~1,000 chunks every frame was the render thread's cost.
+			const bool bDrawn = FarRing::NearChunkDrawn(D, NearCapM);
+			if (Ch.Mesh->GetVisibleFlag() != bDrawn) Ch.Mesh->SetVisibility(bDrawn);
+			if (!bDrawn) { InFlight += Ch.bBuilding; continue; }
 			Ch.Wanted = D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8));
 			// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
 			if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
@@ -548,6 +563,80 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		if (Ch.Mesh->CastShadow != bShadow) Ch.Mesh->SetCastShadow(bShadow);
 		Ch.bBuilding = false;
 		--Building;
+	}
+}
+
+int32 ALakeTerrainActor::GetFarTilesVisible() const
+{
+	int32 N = 0;
+	for (const UStaticMeshComponent* C : FarTiles) N += C && C->GetVisibleFlag();
+	return N;
+}
+
+void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
+{
+	FarLoader.Poll();
+	const FFarRingData* Ring = FarLoader.Data();
+	if (!Ring) return;
+	if (FarTiles.Num() != Ring->Tiles.Num())
+	{
+		FarTiles.SetNum(Ring->Tiles.Num());
+		if (FarMaterialBase)
+		{
+			const FLakeData* Lake = GetLake();
+			const double ChunkM = Lake ? GChunkCells * Lake->Terrain.GetCell() : 1280.0;
+			FarMaterial = UMaterialInstanceDynamic::Create(FarMaterialBase, this);
+			FarMaterial->SetScalarParameterValue(TEXT("InnerCm"), float(Ring->InnerM * CmPerMeter));
+			FarMaterial->SetScalarParameterValue(TEXT("BandCm"), float(FarRing::BandEndM(Ring->InnerM, ChunkM) * CmPerMeter));
+		}
+	}
+	// A few new tiles a frame (each is one static component; the meshes are already in memory).
+	FarLoader.TakeArrived(FarArrived);
+	int32 Added = 0;
+	while (FarArrived.Num() > 0 && Added < 8)
+	{
+		const TPair<int32, UStaticMesh*> A = FarArrived.Pop(EAllowShrinking::No);
+		if (!A.Value || !FarTiles.IsValidIndex(A.Key) || FarTiles[A.Key]) continue;
+		const FFarRingTile& Tile = Ring->Tiles[A.Key];
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+		C->SetMobility(EComponentMobility::Static);
+		C->SetupAttachment(RootComponent);
+		C->SetRelativeLocation(FVector(Ring->TileOrigin(Tile) * CmPerMeter, 0.0));
+		C->SetStaticMesh(A.Value);
+		if (FarMaterial) C->SetMaterial(0, FarMaterial);
+		// No shadows, not in the Lumen scene or the distance fields, not in ray tracing: at 8-40 km they are under the haze,
+		// and each would cost shadow pages and scene updates.
+		C->SetCastShadow(false);
+		C->bAffectDistanceFieldLighting = false;
+		C->bAffectDynamicIndirectLighting = false;
+		C->bVisibleInRayTracing = false;
+		C->bReceivesDecals = false;
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetVisibleFlag(FarRing::TileVisible(*Ring, Tile, Camera));
+		C->RegisterComponent();
+		FarTiles[A.Key] = C;
+		++Added;
+	}
+	// The near chunks hand over once every tile is in (until then they draw to 20 km, so nothing goes missing).
+	if (NearCapM != Ring->InnerM && FarLoader.IsDone() && FarArrived.Num() == 0)
+	{
+		NearCapM = Ring->InnerM;
+		LodTime = -1e30;   // look at the chunks again now
+		UE_LOG(LogSailing, Display, TEXT("Far ring: %d tiles in (%d failed), near terrain to %.0f km, longest game-thread call %.2f ms"),
+			FarLoader.NumArrived(), FarLoader.NumFailed(), NearCapM / 1000.0, FarLoader.LongestCallMs());
+	}
+	// Tiles in or out of the band as the camera moves (whole tiles inside the burial or past the outer edge are left out).
+	if (Added > 0 || FVector2D::Distance(Camera, FarCamera) > 250.0)
+	{
+		FarCamera = Camera;
+		for (int32 K = 0; K < FarTiles.Num(); ++K)
+		{
+			UStaticMeshComponent* C = FarTiles[K];
+			if (!C) continue;
+			const bool bShow = FarRing::TileVisible(*Ring, Ring->Tiles[K], Camera);
+			if (C->GetVisibleFlag() != bShow) C->SetVisibility(bShow);
+		}
 	}
 }
 

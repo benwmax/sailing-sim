@@ -20,7 +20,7 @@ namespace SailSaveLocal
 	const TCHAR* const BoatIds[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"),
 		TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	static_assert(UE_ARRAY_COUNT(BoatIds) == int32(Sailing::EBoatType::Count), "every boat needs a save id");
-	const TCHAR* const WorldIds[] = { TEXT("ray-hubbard"), TEXT("galveston-bay"), TEXT("gulf") };
+	const TCHAR* const WorldIds[] = { TEXT("ray-hubbard"), TEXT("galveston-bay"), TEXT("gulf"), TEXT("marseille") };
 	const TCHAR* const SpeedIds[] = { TEXT("kn"), TEXT("mph"), TEXT("kmh") };
 	const TCHAR* const DepthIds[] = { TEXT("ft"), TEXT("m"), TEXT("fathoms") };
 
@@ -135,8 +135,8 @@ namespace SailSaveLocal
 
 // ---------------------------------------------------------------- ids
 
-FString FSailSave::WorldId(int32 World) { return SailSaveLocal::WorldIds[FMath::Clamp(World, 0, 2)]; }
-int32 FSailSave::WorldIndex(const FString& Id) { return SailSaveLocal::IndexOf(SailSaveLocal::WorldIds, 3, Id); }
+FString FSailSave::WorldId(int32 World) { return SailSaveLocal::WorldIds[FMath::Clamp(World, 0, 3)]; }
+int32 FSailSave::WorldIndex(const FString& Id) { return SailSaveLocal::IndexOf(SailSaveLocal::WorldIds, 4, Id); }
 FString FSailSave::BoatId(int32 Boat) { return SailSaveLocal::BoatIds[FMath::Clamp(Boat, 0, int32(UE_ARRAY_COUNT(SailSaveLocal::BoatIds)) - 1)]; }
 int32 FSailSave::BoatIndex(const FString& Id) { return SailSaveLocal::IndexOf(SailSaveLocal::BoatIds, UE_ARRAY_COUNT(SailSaveLocal::BoatIds), Id); }
 FString FSailSave::DrillId(int32 Index) { return FLearningContent::DrillId(ESailingDrill(FMath::Clamp(Index + 1, 1, int32(ESailingDrill::Count) - 1))); }

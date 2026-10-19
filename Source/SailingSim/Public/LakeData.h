@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <limits>
 #include "Marina.h"
 #include "BoatModel.h"
 #include "LakeTerrain.h"
@@ -150,6 +151,21 @@ struct SAILINGSIM_API FLakeData
 	TArray<FLandmark> Landmarks;
 	Sailing::FTideModel Tides;
 	bool IsTidal() const { return Tides.IsValid(); }
+	/** world-marseille: a sea coast with a chart, navaids and the coast's look, tidal or not (Marseille has no tide
+	 *  model: under 0.3 m). Chart, navigation HUD, coastal wear and sounds follow this; tides and currents IsTidal(). */
+	bool IsCoast() const { return bCoast || IsTidal(); }
+	bool bCoast = false;
+	/** IALA buoyage region: 'A' (Europe: port red) or 'B' (the Americas: port green). */
+	TCHAR Iala = TEXT('B');
+	/** The local clock's rule: empty for the machine's own zone (Texas), "Europe/Paris" for central European time. */
+	FString TimeZone;
+	/** The open sea's usual swell and the strong wind's direction (degrees from), NaN when the world gives none. */
+	double SwellFromDeg = std::numeric_limits<double>::quiet_NaN();
+	double MistralFromDeg = std::numeric_limits<double>::quiet_NaN();
+	/** Named launch spots by role ("home_slip", "anchorage", "gale"): indices into LaunchSpots. */
+	TMap<FString, int32> SpotRoles;
+	/** The sources line for the chart's credit (the bake's "sources.chart"). */
+	FString ChartSource;
 	double VariationDeg = 0.0;   // magnetic variation, + = east
 	double MeanHighWater = 0.0;  // m above the datum
 	double Latitude = 32.82, Longitude = -96.50;

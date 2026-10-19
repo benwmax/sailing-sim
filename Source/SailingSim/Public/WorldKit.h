@@ -178,6 +178,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
 	static TArray<UStaticMesh*> BakeHouses(const FString& LakeName);
 
+	/** Wide World Rendering PR 1 (docs/world-far): the far coast ring (<World>.far, Tools/terrain/build_far_ring.py), one
+	 *  Nanite mesh per tile, /Game/World/Far/SM_Far_<World>_<row>_<col> with M_FarLand, its pivot at the tile's corner; no
+	 *  distance field or ray-tracing structure. */
+	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
+	static TArray<UStaticMesh*> BakeFarRing(const FString& WorldName);
+
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);
 #endif

@@ -171,7 +171,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 		}
 		SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), FMath::Clamp(C.Day, 1, FDateTime::DaysInMonth(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12))));
 		bSessionDate = true;
-		if (!Lake.IsTidal() && FMath::Abs(C.LakeLevelFt) > 0.01f)
+		if (!Lake.IsCoast() && FMath::Abs(C.LakeLevelFt) > 0.01f)
 		{
 			Lake.Terrain.SetLevelBelowPool(-C.LakeLevelFt * 0.3048);   // above the pool raises the water: the shore drops by as much
 		}
@@ -210,21 +210,37 @@ void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 	if (!GetWorld()->IsPaused()) Clock.Advance(DeltaSeconds);
 }
 
+int32 ASailingGameMode::CentralEuropeanOffsetHours(const FDateTime& Date)
+{
+	// world-marseille: central European time, +1, and +2 from the last Sunday of March to the last Sunday of October (the
+	// change is at 01:00 UTC; by the day is close enough for a sailing day's clock).
+	auto LastSunday = [](int32 Year, int32 Month)
+	{
+		const FDateTime Last(Year, Month, FDateTime::DaysInMonth(Year, Month));
+		return Last.GetDay() - (int32(Last.GetDayOfWeek()) + 1) % 7;   // EDayOfWeek: Monday 0 .. Sunday 6
+	};
+	const int32 Y = Date.GetYear(), M = Date.GetMonth(), D = Date.GetDay();
+	const bool bSummer = (M > 3 && M < 10) || (M == 3 && D >= LastSunday(Y, 3)) || (M == 10 && D < LastSunday(Y, 10));
+	return bSummer ? 2 : 1;
+}
+
 int32 ASailingGameMode::WorldIndexFromName(const FString& Name)
 {
-	// 0 or "Lake", 1 or "Galveston", 2 or "Gulf".
+	// 0 or "Lake", 1 or "Galveston", 2 or "Gulf", 3 or "Marseille".
+	if (Name.StartsWith(TEXT("Mars"), ESearchCase::IgnoreCase) || Name == TEXT("3")) return 3;
 	return (Name.StartsWith(TEXT("Gulf"), ESearchCase::IgnoreCase) || Name == TEXT("2")) ? 2
 		: ((Name.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Name == TEXT("1")) ? 1 : 0);
 }
 
 const TCHAR* ASailingGameMode::WorldFileName(int32 World)
 {
-	return World == 2 ? TEXT("GulfPassage") : (World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard"));
+	return World == 3 ? TEXT("Marseille") : (World == 2 ? TEXT("GulfPassage") : (World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard")));
 }
 
 const TCHAR* ASailingGameMode::WorldDisplayName(int32 World)
 {
-	return World == 2 ? TEXT("Gulf passage (Galveston to Freeport)") : (World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)"));
+	return World == 3 ? TEXT("Marseille (Vieux-Port, Frioul, the Calanques)") : (World == 2 ? TEXT("Gulf passage (Galveston to Freeport)")
+		: (World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)")));
 }
 
 double ASailingGameMode::GetLocalHour() const
@@ -236,7 +252,7 @@ double ASailingGameMode::GetLocalHour() const
 
 const FChartData& ASailingGameMode::GetChart() const
 {
-	if (!bChartTried && Lake.IsTidal())
+	if (!bChartTried && Lake.IsCoast())
 	{
 		bChartTried = true;
 		Chart.Load(FLakeData::DefaultDirectory() / (Lake.FileName + TEXT(".chart.json")));
@@ -439,7 +455,8 @@ void ASailingGameMode::ApplyWeatherSettings()
 		if (Parts.Num() == 3) Date = FDateTime(FCString::Atoi(*Parts[0]), FCString::Atoi(*Parts[1]), FCString::Atoi(*Parts[2]));
 	}
 	if (RealDay) Date = FDateTime(RealDay->Year(), RealDay->Month(), RealDay->DayOfMonth());
-	UtcOffsetHours = FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
+	UtcOffsetHours = Lake.TimeZone == TEXT("Europe/Paris") ? CentralEuropeanOffsetHours(Date)
+		: FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
 	DayOfYear = Date.GetDayOfYear();
 	// W1: the wind's calibration and stability follow the month and the water (the lake, or the bay and the Gulf).
 	Weather.SetClimate(Date.GetMonth(), Settings->World != 0);
@@ -685,7 +702,8 @@ void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)
 	case EWeatherPreset::Thunderstorm: P.SwellHs = 1.4; P.SwellTp = 8.0; break;
 	default: P.SwellHs = 0.9; P.SwellTp = 9.0; break;
 	}
-	P.SwellFromRad = 135.0 * kDegToRad;
+	// The Gulf's swell runs in from the southeast; a world can give its own (Marseille: from the south-southwest).
+	P.SwellFromRad = (FMath::IsFinite(Lake.SwellFromDeg) ? Lake.SwellFromDeg : 135.0) * kDegToRad;
 	P.WindSeaHs = P.WindSeaTp = 0.0;
 	// Prologue step 4: weather that brings its own sea (the mistral's short fetch-limited sea on an older sea from the
 	// same way) instead of the Gulf's climatology.

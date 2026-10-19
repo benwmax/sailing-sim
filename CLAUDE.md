@@ -149,6 +149,20 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `Center` stays a balance knob), the hero's aft freeboard is the ORC 0.568 m, its cabin face ends at 1.65.
    `photomatch/profile_match.py` lays the hero's outline over a broadside photo from two picked points (no camera solve).
 
+23. Ports from a box and a name (`docs/world-marseille/`): `Tools/coast/worlds/<World>.json` defines a coast (box, origin,
+   datum, harbours, spots, passage, climate, city glow, far ring); `build_coast.py <World>` bakes it (`build_galveston.py`
+   is its old name). `"chart": "enc"` reads NOAA ENC (Galveston, Gulf: their rebakes are byte-identical); `"osm"` reads
+   `fetch_world.py`'s downloads through `osm_chart.py` (OSM coastline and seamarks as S-57 rows, EMODnet depths, NGA Pub
+   113 lights, Copernicus or IGN land). `build_piers.py <World>` and `build_houses.py <World>` fall back to OSM
+   (`osm_harbour.py`: pontoons, breakwaters, boats stern-to) when there is no G2 pack. No SHOM products.
+
+24. Far coast ring (Wide World Rendering PR 1, `docs/world-far/`): `scripts/make-far-ring.sh [World ...]` fetches the
+   Copernicus GLO-90 tiles (`Tools/terrain/fetch_far_dem.sh` -> `Data/Far/raw`, or a world's own `Data/<World>/raw/far`),
+   bakes `Content/TerrainData/<World>.far` (`Tools/terrain/build_far_ring.py`, bands in `Tools/terrain/far_ring.json` or a
+   world bake's `far_ring.draw_km`) and its Nanite tiles in `/Game/World/Far` (`UWorldKitLibrary::BakeFarRing`). Rerun it
+   after a world's grid changes (the ring takes the grid's heights inside it). `M_FarLand`'s WPO (`FAR_LAND_WPO`) is
+   mirrored by `FarRing::OffsetZ`; `SailingSim.World.FarRing` holds both. `-SailingNoFarRing` compares.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
