@@ -66,14 +66,9 @@ def setup(mesh, nanite, slot_map, sockets):
 
 
 def add_lods(mesh, nanite):
-    """The prologue's maxi: a classic LOD chain under Nanite (the fallback where Nanite is off, and the mast's own LODs: it
-    is not Nanite, it bends in its material), the Nanite fallback at 6% of the triangles."""
-    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
-    options = unreal.EditorScriptingMeshReductionOptions()
-    options.set_editor_property("auto_compute_lod_screen_size", False)
-    options.set_editor_property("reduction_settings", [unreal.EditorScriptingMeshReductionSettings(p, s) for p, s in
-                                                        ((1.0, 1.0), (0.35, 0.3), (0.12, 0.12), (0.04, 0.04))])
-    subsystem.set_lods(mesh, options)
+    """The prologue's maxi: her Nanite fallback (what draws where Nanite is off, and for ray tracing) at 6% of the
+    triangles, about 10k for the hull. The rest are small (the mast, not Nanite since it bends in its material, is 1k
+    triangles). A classic LOD chain needs the editor's static mesh subsystem, which a commandlet does not have."""
     if nanite:
         ns = mesh.get_editor_property("nanite_settings")
         ns.set_editor_property("fallback_percent_triangles", 0.06)

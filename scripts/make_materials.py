@@ -1130,7 +1130,8 @@ float fibre = 0.0;
 if (Layout > 3.5)
 {
     // Three families of fibre paths, each fanning from a corner (clew, head, tack) in metres, so they crowd where the
-    // loads gather: a line every 0.05 rad, 9 mm wide, fading away from its corner. Every fourth path is aramid (gold).
+    // loads gather: a tow every 0.035 rad, 2.4 cm wide (a bundle of fibres, what reads from the deck and beyond), fading away from
+    // its corner. Every fourth path is aramid (gold).
     float w = 0.32 * Height;                          // the sail's width in metres, about (UV1 is normalized)
     float2 q[3] = { float2((1.0 - UV1.x) * w, UV1.y * Height), float2(UV1.x * w + 0.02, (1.0 - UV1.y) * Height), float2(UV1.x * w + 0.02, UV1.y * Height) };
     float reach[3] = { 0.75, 0.55, 0.45 };
@@ -1138,9 +1139,9 @@ if (Layout > 3.5)
     for (int f = 0; f < 3; f++)
     {
         float r = length(q[f]) + 1e-3;
-        float a = atan2(q[f].y, q[f].x) / 0.05;
-        float d = abs(frac(a + 0.5) - 0.5) * 0.05 * r;
-        float on = (1.0 - smoothstep(0.0045, 0.009, d)) * (1.0 - smoothstep(0.2, reach[f], r / Height));
+        float a = atan2(q[f].y, q[f].x) / 0.035;
+        float d = abs(frac(a + 0.5) - 0.5) * 0.035 * r;
+        float on = (1.0 - smoothstep(0.008, 0.012, d)) * (1.0 - smoothstep(0.2, reach[f], r / Height));
         fibre = max(fibre, on);
         aramid = max(aramid, on * step(fmod(abs(floor(a + 0.5)), 4.0), 0.5));
     }
@@ -1148,7 +1149,7 @@ if (Layout > 3.5)
     float2 g = float2(UV0.x * 0.866 + UV0.y * 0.5, UV0.x * 0.866 - UV0.y * 0.5) / 0.12;
     float scrim = max(1.0 - smoothstep(0.02, 0.06, abs(frac(g.x) - 0.5) * 2.0 - 0.9), 1.0 - smoothstep(0.02, 0.06, abs(frac(g.y) - 0.5) * 2.0 - 0.9));
     cloth = base * (1.0 + 0.06 * scrim) * (0.97 + 0.03 * panel);
-    cloth = lerp(cloth, lerp(base * 2.6 + 0.025, float3(0.42, 0.30, 0.10), aramid), fibre * 0.55);
+    cloth = lerp(cloth, lerp(base * 3.0 + 0.04, float3(0.45, 0.32, 0.11), aramid), fibre * 0.6);
 }
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
