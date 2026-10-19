@@ -188,6 +188,10 @@ struct SAILINGSIM_API FLakeData
 	TMap<FString, int32> SpotRoles;
 	/** Wide World Rendering PR 3: far lights, lit shores, city domes and shipping lanes (<Name>.farlights.json). */
 	FFarLightsData FarLights;
+	/** Wide World Rendering PR 4: the haze's scale height (m; <= 0: the fog's own 50 m) and the water's far plane (km
+	 *  across: 40 on the Texas coast, 60 at Marseille), from the bake's "haze". */
+	double FogScaleHeightM = -1.0;
+	double FarPlaneKm = 40.0;
 	/** The sources line for the chart's credit (the bake's "sources.chart"). */
 	FString ChartSource;
 	double VariationDeg = 0.0;   // magnetic variation, + = east

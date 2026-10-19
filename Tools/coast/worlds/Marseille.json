@@ -734,5 +734,11 @@
         ]
       ]
     }
-  ]
+  ],
+  "haze": {
+    "fog_scale_height_m": 400.0,
+    "far_plane_km": 60.0,
+    "fog_scale_height_note": "the sea haze under the dry air: a 400 m layer (the Texas coast's fog falls off over 50 m)",
+    "far_plane_note": "the water plane 60 km across, so the sea meets the far ring and the skyline's mountains"
+  }
 }

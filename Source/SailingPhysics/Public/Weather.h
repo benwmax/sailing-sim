@@ -21,6 +21,7 @@ namespace Sailing
 		Thunderstorm,    // the full sequence: towering cumulus, gust front, rain, lightning, clearing
 		RandomDay,       // seeded mix of the above, chosen and varied by the seed
 		Mistral,         // prologue step 4: a cold northwesterly gale (32 kn gusting 40), light rain, a short steep sea, a squall
+		ClearMistral,    // Wide World Rendering PR 4: the classic mistral day, 24 kn gusting 32 from the NW, cloudless, 60 km
 		Count
 	};
 

@@ -24,6 +24,8 @@ class UPointLightComponent;
  * volumetric clouds (coverage, towering storm cells, darkness), haze from visibility, rain around the camera,
  * lightning bolts and flashes. Thunder is scheduled at the speed of sound for the audio.
  */
+namespace Sailing { class FSkyline; }
+
 UCLASS()
 class SAILINGSIM_API ASailingEnvironment : public AActor
 {
@@ -81,6 +83,14 @@ private:
 	void UpdateSkyDome(const FVector& SunTrue, const FVector& MoonTrue, float MoonLuminance, float MoonLit, float Night, double UnixUtc);
 	/** Visual V5: height fog and volumetric fog from the visibility, the humidity haze and the water body. */
 	void UpdateHaze();
+	/** Wide World Rendering PR 4, band D: the mountains past the far ring (<World>.skyline) marched from the camera on a
+	 *  worker every 500 m into a 2048 x 1 elevation-angle texture the sky dome draws under. -SailingNoSkyline compares. */
+	void UpdateSkyline(const FVector& CameraPos);
+	UPROPERTY(Transient) TObjectPtr<class UTexture2D> SkylineTex;
+	TSharedPtr<class Sailing::FSkyline, ESPMode::ThreadSafe> Skyline;
+	TFuture<TArray<float>> PendingSkyline;
+	FVector SkylineAt = FVector(1e12);
+	bool bSkylinePending = false;
 
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> SkyLightActor;

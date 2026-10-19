@@ -71,6 +71,12 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		(*Climate)->TryGetNumberField(TEXT("swell_from_deg"), SwellFromDeg);
 		(*Climate)->TryGetNumberField(TEXT("mistral_from_deg"), MistralFromDeg);
 	}
+	const TSharedPtr<FJsonObject>* HazeObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("haze"), HazeObj) && HazeObj && HazeObj->IsValid())
+	{
+		(*HazeObj)->TryGetNumberField(TEXT("fog_scale_height_m"), FogScaleHeightM);
+		(*HazeObj)->TryGetNumberField(TEXT("far_plane_km"), FarPlaneKm);
+	}
 	const TSharedPtr<FJsonObject>* Sources = nullptr;
 	if (Root->TryGetObjectField(TEXT("sources"), Sources) && Sources && Sources->IsValid()) (*Sources)->TryGetStringField(TEXT("chart"), ChartSource);
 	const TSharedPtr<FJsonObject>* Roles = nullptr;

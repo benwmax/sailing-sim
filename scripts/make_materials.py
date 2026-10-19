@@ -2438,6 +2438,21 @@ float cm = dot(dir, MoonDir.xyz);
         col += MoonDir.w * (lit + SunTrue.w) * maria * saturate(dir.z * 6.0 + 0.2);
     }
 }
+// Wide World Rendering PR 4, band D: the mountains past the far ring (ASailingEnvironment::UpdateSkyline: per azimuth
+// the highest elevation angle, R, and its distance in km, G). Below that angle the land stands in front of the sky, the
+// sun, the stars and the city glow, darker than the sky behind it by its contrast through the haze (Koschmieder:
+// exp(-3.912 d / V), SkylineP.y the visibility in km).
+[branch] if (SkylineP.x > 0.0 && dir.z > -0.05)
+{
+    float az = atan2(dir.y, dir.x);
+    float2 ridge = Skyline.SampleLevel(SkylineSampler, float2(az / 6.2831853 + (az < 0.0 ? 1.0 : 0.0), 0.5), 0).rg;
+    float el = asin(clamp(dir.z, -1.0, 1.0));
+    [branch] if (ridge.y > 0.0 && el < ridge.x)
+    {
+        float contrast = exp(-3.912 * ridge.y / max(SkylineP.y, 0.5));
+        col = lerp(col, col * 0.42, contrast);
+    }
+}
 // C2: the far clouds from the sky cache (M_CloudCache), in front of all of the above. The panorama holds, per direction,
 // the sunlight scattered (R, per unit of the sun's illuminance: pi x SunLum), the sky light scattered (G, per unit of the
 // sky's radiance, the sky toward that direction standing in for all of it) and the transmittance (B); old and new
@@ -2494,15 +2509,19 @@ def build_sky_dome():
     vecs = {n: vector(mat, n, d, -1400, 650 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("CirrusParams", (0, 0, 0, 0)), ("NightParams", (0, 0, 0, 0)), ("StarRot0", (1, 0, 0, 0)),
         ("StarRot1", (0, 1, 0, 0)), ("StarRot2", (0, 0, 1, 0)), ("MoonDir", (0, 0, 1, 0)), ("SunTrue", (0, 0, 1, 0)),
-        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0))))}
+        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0)),
+        ("SkylineP", (0, 25, 0, 0))))}
+    sky_ridge = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 2200, parameter_name="Skyline", texture=linear,
+                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
     c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
-                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB"],
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
     for n, t in cache.items():
         connect(t, "", c, n)
+    connect(sky_ridge, "", c, "Skyline")
     # C2: the sun's illuminance through the atmosphere at the clouds' height (1.5 km over the camera).
     ill = node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -1100, 1700)
     up = node(mat, unreal.MaterialExpressionConstant3Vector, -1600, 1800, constant=unreal.LinearColor(0, 0, 150000, 0))
@@ -2523,7 +2542,7 @@ def build_sky_dome():
     connect(wx, "", c, "Wx")
     for n, pin in (("WeatherRect", "WRect"), ("CirrusParams", "Cirrus"), ("NightParams", "Night"), ("StarRot0", "Rot0"), ("StarRot1", "Rot1"),
                    ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue"), ("CacheParams", "CacheP"), ("CacheSun", "CacheSun"),
-                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB")):
+                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB"), ("SkylineP", "SkylineP")):
         connect(vecs[n], "RGBA", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)

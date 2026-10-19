@@ -24,7 +24,8 @@ enum class ESailingWeather : uint8
 	Rain,
 	Thunderstorm,
 	RandomDay,
-	Mistral     // prologue step 4 (the scene's gale)
+	Mistral,    // prologue step 4 (the scene's gale)
+	ClearMistral // Wide World Rendering PR 4: a dry, cloudless mistral day, 60 km of visibility
 };
 
 /** Graphics quality tier, measured on the build Mac (see docs/phase-2). */
