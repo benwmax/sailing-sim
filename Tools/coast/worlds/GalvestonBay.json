@@ -1,0 +1,100 @@
+{
+  "_doc": "World definition for Tools/coast/build_coast.py (NOAA ENC chart, USGS DEM, CO-OPS tides). Positions are lat/lon (NAD83).",
+  "name": "GalvestonBay",
+  "display": "Galveston Bay",
+  "docs": "phase-5",
+  "alias": "galveston",
+  "cell": 10.0,
+  "center": [
+    29.5446,
+    -95.0193
+  ],
+  "bbox": [
+    -95.115,
+    29.19,
+    -94.665,
+    29.625
+  ],
+  "ellipsoid": "NAD83",
+  "chart": "enc",
+  "ocean": true,
+  "elevation": [
+    {
+      "kind": "geotiff",
+      "path": "dem_3dep.tif",
+      "note": "USGS 3DEP 1/3 arc-second (NAVD88)"
+    }
+  ],
+  "datum": {
+    "name": "MLLW (chart datum); heights in meters above it"
+  },
+  "tides": {
+    "source": "noaa",
+    "datum_station": "8771450",
+    "stations": [
+      "8771450",
+      "8771341",
+      "8771013",
+      "8770613",
+      "8771486"
+    ],
+    "current": true,
+    "reference": true
+  },
+  "check": [
+    [
+      "Kemah, Clear Lake channel",
+      29.544,
+      -95.015
+    ],
+    [
+      "Texas City Dike",
+      29.388,
+      -94.88
+    ],
+    [
+      "Eagle Point",
+      29.481,
+      -94.917
+    ]
+  ],
+  "launch": [
+    [
+      "Clear Lake, off the yacht clubs",
+      29.556,
+      -95.056,
+      90.0
+    ],
+    [
+      "Kemah channel, outbound",
+      29.5418,
+      -95.008,
+      110.0
+    ],
+    [
+      "Galveston Bay, off Clear Lake",
+      29.525,
+      -94.97,
+      130.0
+    ],
+    [
+      "Red Fish Bar",
+      29.495,
+      -94.875,
+      180.0
+    ],
+    [
+      "Texas City Dike",
+      29.4,
+      -94.86,
+      140.0
+    ],
+    [
+      "Bolivar Roads",
+      29.355,
+      -94.77,
+      120.0
+    ]
+  ],
+  "passage": []
+}

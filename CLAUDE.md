@@ -149,6 +149,13 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `Center` stays a balance knob), the hero's aft freeboard is the ORC 0.568 m, its cabin face ends at 1.65.
    `photomatch/profile_match.py` lays the hero's outline over a broadside photo from two picked points (no camera solve).
 
+23. Ports from a box and a name (`docs/world-marseille/`): `Tools/coast/worlds/<World>.json` defines a coast (box, origin,
+   datum, harbours, spots, passage, climate, city glow, far ring); `build_coast.py <World>` bakes it (`build_galveston.py`
+   is its old name). `"chart": "enc"` reads NOAA ENC (Galveston, Gulf: their rebakes are byte-identical); `"osm"` reads
+   `fetch_world.py`'s downloads through `osm_chart.py` (OSM coastline and seamarks as S-57 rows, EMODnet depths, NGA Pub
+   113 lights, Copernicus or IGN land). `build_piers.py <World>` and `build_houses.py <World>` fall back to OSM
+   (`osm_harbour.py`: pontoons, breakwaters, boats stern-to) when there is no G2 pack. No SHOM products.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
