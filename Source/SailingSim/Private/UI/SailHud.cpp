@@ -570,6 +570,7 @@ void SSailHud::Refresh()
 	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : float(Wx.AirC * 9.0 / 5.0 + 32.0);
 	SkyText = FText::FromString(FString::Printf(TEXT("%s · %.0f°F"), UTF8_TO_TCHAR(WeatherPresetName(GM->GetWeather().GetPreset())), TempF));
 	bTidal = Lake.IsTidal();
+	bCoast = Lake.IsCoast();
 	if (bTidal)
 	{
 		const Vec3 O = P->GetBoatModel().OriginPosition();
@@ -692,7 +693,7 @@ void SSailHud::Refresh()
 	const Sailing::FStationControls& Stations = P->GetStations();
 	if (!Stations.IsActive() || Stations.GetStation() == Sailing::ECrewStation::Helm) Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
 	else Hints.Add(KeyName(TEXT("Station"), false) + TEXT("  Next station"));
-	if (bTidal) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
+	if (bCoast) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
 	Hints.Add(KeyName(TEXT("Menu"), false) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
@@ -768,7 +769,7 @@ void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM
 	const FLakeData& Lake = GM.GetLake();
 	const FBoatModel& Model = P.GetBoatModel();
 	// The coast's navigation: GPS (when on), the tide and its next turn, the current, the passage's next waypoint.
-	bNav = Lake.IsTidal();
+	bNav = Lake.IsCoast();
 	if (bNav)
 	{
 		const Vec3 V = Model.GetState().Velocity;
@@ -783,18 +784,21 @@ void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM
 		{
 			Lines.Add(TEXT("GPS off: dead reckoning"));
 		}
-		FString Tide = FString::Printf(TEXT("Tide  %+.1f ft"), GM.GetTideHeight() / 0.3048);
-		FTideEvent Next;
-		if (GM.GetNextTide(Next))
+		if (Lake.IsTidal())
 		{
-			const int32 Minutes = int32(FMath::Fmod((Next.Time + GM.GetUtcOffsetHours() * 3600.0) / 60.0, 1440.0));
-			Tide += FString::Printf(TEXT(" · %s %s"), Next.Type == FTideEvent::High ? TEXT("high water") : TEXT("low water"), *SailCatalog::ClockText(Minutes / 60.f));
+			FString Tide = FString::Printf(TEXT("Tide  %+.1f ft"), GM.GetTideHeight() / 0.3048);
+			FTideEvent Next;
+			if (GM.GetNextTide(Next))
+			{
+				const int32 Minutes = int32(FMath::Fmod((Next.Time + GM.GetUtcOffsetHours() * 3600.0) / 60.0, 1440.0));
+				Tide += FString::Printf(TEXT(" · %s %s"), Next.Type == FTideEvent::High ? TEXT("high water") : TEXT("low water"), *SailCatalog::ClockText(Minutes / 60.f));
+			}
+			Lines.Add(Tide);
+			const Vec3 Cur = GM.GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
+			const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
+			Lines.Add(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f°T"), Drift / kKnot,
+				SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)))));
 		}
-		Lines.Add(Tide);
-		const Vec3 Cur = GM.GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
-		const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
-		Lines.Add(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f°T"), Drift / kKnot,
-			SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)))));
 		NavText = FText::FromString(FString::Join(Lines, TEXT("\n")));
 		const TArray<TPair<FString, FVector2D>>& Plan = Lake.Passage;
 		FString NextLine;

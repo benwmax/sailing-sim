@@ -117,13 +117,30 @@ namespace SailCatalog
 				if (W.Spots.Num() > 1) W.Spots[1].Tag = TEXT("Busy");
 				Out.Add(W);
 			}
+			{
+				// world-marseille: the first port baked from a box and a name (Tools/coast/worlds/Marseille.json).
+				FWorld W;
+				W.Index = 3; W.File = TEXT("Marseille"); W.Name = TEXT("Marseille & the Calanques"); W.Tagline = TEXT("Mediterranean · Mistral · Islands");
+				W.Description = TEXT("Leave the Vieux-Port under Notre-Dame de la Garde, round the Chateau d'If and the Frioul islands, and "
+					"follow the limestone Calanques to Cassis. Clear blue water, swell from the open sea, and the mistral off the hills.");
+				W.MapTexture = TEXT("/Game/UI/T_Map_Marseille.T_Map_Marseille");
+				W.CardTexture = TEXT("/Game/UI/T_Card_Marseille.T_Card_Marseille");
+				W.TitleTexture = TEXT("/Game/UI/T_Title_Marseille.T_Title_Marseille");
+				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_Marseille_%d.T_Load_Marseille_%d"), I, I));
+				ReadWorld(W);
+				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
+				W.Facts.Add({ TEXT("2"), TEXT("Ports: Marseille, Cassis") });
+				W.Facts.Add({ TEXT("2°50′ E"), TEXT("Variation") });
+				if (W.Spots.Num() > 0) W.Spots[0].Tag = TEXT("Home");
+				Out.Add(W);
+			}
 			for (FWorld& W : Out)
 			{
 				W.Id = FSailSave::WorldId(W.Index);
 				for (FSpot& S : W.Spots)
 				{
 					if (S.StartType.IsEmpty()) S.StartType = TEXT("Under sail");
-					if (S.Tag.IsEmpty()) S.Tag = W.Index == 0 ? TEXT("Lake") : TEXT("Bay");
+					if (S.Tag.IsEmpty()) S.Tag = W.Index == 0 ? TEXT("Lake") : (W.Index == 3 ? TEXT("Sea") : TEXT("Bay"));
 					S.Detail = FString::Printf(TEXT("Heading %03.0f° · %s"), S.Heading, *S.StartType);
 				}
 			}
@@ -185,14 +202,20 @@ namespace SailCatalog
 	}
 
 	const TArray<FWorld>& Worlds() { static TArray<FWorld> W = MakeWorlds(); return W; }
-	const FWorld& World(int32 Index) { return Worlds()[FMath::Clamp(Index == 2 ? 1 : Index, 0, Worlds().Num() - 1)]; }
+	const FWorld& World(int32 Index)
+	{
+		// The Gulf passage is Galveston's card; the others by their own index.
+		const int32 Want = Index == 2 ? 1 : Index;
+		for (const FWorld& W : Worlds()) if (W.Index == Want) return W;
+		return Worlds()[0];
+	}
 	const FMiniMap& MiniMap(int32 SettingsWorld)
 	{
 		static TArray<FMiniMap> Maps = []()
 		{
 			TArray<FMiniMap> Out;
-			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
-			for (int32 I = 0; I < 3; ++I)
+			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille") };
+			for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Files)); ++I)
 			{
 				FWorld W;
 				W.File = Files[I];
@@ -205,7 +228,7 @@ namespace SailCatalog
 			}
 			return Out;
 		}();
-		return Maps[FMath::Clamp(SettingsWorld, 0, 2)];
+		return Maps[FMath::Clamp(SettingsWorld, 0, Maps.Num() - 1)];
 	}
 
 	FString SpotId(const FString& Name)
@@ -228,7 +251,7 @@ namespace SailCatalog
 			static TArray<FWorld> Out = []()
 			{
 				TArray<FWorld> List;
-				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
+				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille") };
 				for (const TCHAR* F : Files)
 				{
 					FWorld& W = List.AddDefaulted_GetRef();
@@ -241,8 +264,8 @@ namespace SailCatalog
 		}
 	}
 
-	const TArray<FSpot>& Spots(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Spots; }
-	const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Anchor; }
+	const TArray<FSpot>& Spots(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, SettingsWorlds().Num() - 1)].Spots; }
+	const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, SettingsWorlds().Num() - 1)].Anchor; }
 
 	const TArray<FString>& SpotIds(int32 SettingsWorld)
 	{

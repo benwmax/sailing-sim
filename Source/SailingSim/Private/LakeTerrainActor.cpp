@@ -110,7 +110,7 @@ void ALakeTerrainActor::BeginPlay()
 	Super::BeginPlay();
 	// The bed is hidden where the water (Single Layer Water, Visual V4) absorbs 99% of the light coming back from it:
 	// about 2 m in the lake's and the bay's silt, 14 m offshore; with a metre to spare for the lake level and the tide.
-	HideBelow = USailingSettings::Get()->World == 2 ? -15.0 : -3.5;
+	HideBelow = (USailingSettings::Get()->World == 2 || USailingSettings::Get()->World == 3) ? -15.0 : -3.5;   // the Gulf and the clear Mediterranean
 	const FLakeData* Lake = GetLake();
 	if (!Lake)
 	{

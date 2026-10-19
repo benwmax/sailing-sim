@@ -74,7 +74,7 @@ void FWearSeed::Write(float* Dst) const
 EWearSite WearSiteFor(const FLakeData& Lake)
 {
 	if (Lake.FileName.Contains(TEXT("Gulf"))) return EWearSite::Gulf;
-	return Lake.IsTidal() ? EWearSite::Bay : EWearSite::Lake;
+	return Lake.IsCoast() ? EWearSite::Bay : EWearSite::Lake;
 }
 
 const FKitLookDesc& KitLook(EKitLook Look)

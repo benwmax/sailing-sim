@@ -49,6 +49,8 @@ public:
 	static const TCHAR* WorldFileName(int32 World);
 	/** A world by its name or number (-SailingWorld, a scene's setting.world_stand_in): "Lake" 0, "Galveston" 1, "Gulf" 2. */
 	static int32 WorldIndexFromName(const FString& Name);
+	/** Central European time's offset from UTC on a date (+1, +2 in summer time): the Marseille world's clock. */
+	static int32 CentralEuropeanOffsetHours(const FDateTime& Date);
 	static const TCHAR* WorldDisplayName(int32 World);
 
 	/** Real time (seconds since 1970 UTC): the chosen date and start time plus the time sailed. Tides run on it. */

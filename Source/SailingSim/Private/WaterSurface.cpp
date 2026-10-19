@@ -68,6 +68,9 @@ namespace
 		// The Gulf off Galveston: green, a few metres of visibility (river silt and plankton); red goes first. Graphics G6:
 		// greener and less saturated than the V4 teal (0.04, 0.20, 0.21), which read as tropical under an overcast.
 		case 2: return { FLinearColor(0.08f, 0.16f, 0.13f), FLinearColor(0.62f, 0.32f, 0.42f) };
+		// world-marseille: the Mediterranean off Marseille, clear blue (Secchi depths of 20 m and more offshore): nearly pure
+		// water's absorption (red gone in a few metres, blue last), little scattering, and that blue.
+		case 3: return { FLinearColor(0.02f, 0.09f, 0.16f), FLinearColor(0.40f, 0.075f, 0.045f) };
 		// Lake Ray Hubbard: olive grey-green, about half a metre of visibility, blue absorbed most. (Seen from a boat the
 		// sky's reflection dominates; the body only tints it: the drone and chase references.)
 		default: return { FLinearColor(0.16f, 0.18f, 0.11f), FLinearColor(2.4f, 2.0f, 2.8f) };
@@ -395,7 +398,7 @@ void AWaterSurface::CreateWaterMaterial()
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterExtinction"), Body.Extinction);
 		// W2 (the gulf-swell handoff): where the swell mask lets the open sea in, the Gulf's body (the material blends by
 		// the mask; in the Gulf world both are the Gulf's, on the lake there is no mask).
-		const FWaterBody Sea = WaterBodyFor(2);
+		const FWaterBody Sea = WaterBodyFor(USailingSettings::Get()->World == 3 ? 3 : 2);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterAlbedoSea"), Sea.Albedo);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterExtinctionSea"), Sea.Extinction);
 		Detail.Reset(); // reconfigures (the ripples come and go with the tier)
@@ -411,6 +414,7 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	{
 	case 1: return 0.7f; // Galveston Bay: brackish
 	case 2: return 1.f;  // the Gulf: sea water, Monahan's law as measured
+	case 3: return 1.f;  // the Mediterranean: sea water
 	default: return 0.4f; // fresh water: bubbles coalesce and burst sooner, so caps are fewer and fade faster
 	}
 }

@@ -1,0 +1,605 @@
+{
+  "_doc": "World definition for Tools/coast/build_coast.py and fetch_world.py: a coast bakes from a box and a name. Positions are lat/lon (WGS84); the bake projects them into the map frame (X north, Y east, metres, origin at 'center'). README: docs/world-marseille/README.md.",
+  "name": "Marseille",
+  "display": "Marseille: Vieux-Port, Frioul and the Calanques",
+  "docs": "world-marseille",
+  "cell": 10.0,
+  "center": [
+    43.295,
+    5.3625
+  ],
+  "center_note": "the Vieux-Port entrance, between Fort Saint-Jean and Fort Saint-Nicolas",
+  "bbox": [
+    5.17,
+    43.15,
+    5.58,
+    43.37
+  ],
+  "ellipsoid": "GRS80",
+  "chart": "osm",
+  "ocean": true,
+  "elevation": [
+    {
+      "kind": "rgealti",
+      "glob": "rgealti/*.bil",
+      "note": "IGN RGE ALTI 5 m (Licence Ouverte 2.0, bare earth, NGF-IGN69)"
+    },
+    {
+      "kind": "geotiff",
+      "path": "copdem_N43_E005.tif",
+      "note": "Copernicus GLO-30 DSM (EGM2008)"
+    }
+  ],
+  "bathymetry": {
+    "path": "emodnet_mean.tif",
+    "note": "EMODnet Bathymetry DTM 2024, 1/16 arc-minute, mean depth (CC BY 4.0)",
+    "trust_from_shore_m": 180.0
+  },
+  "harbours": [
+    {
+      "name": "Vieux-Port",
+      "lat": 43.2946,
+      "lon": 5.371,
+      "depth_m": 6.0,
+      "radius_m": 900.0
+    },
+    {
+      "name": "Port de la Pointe Rouge",
+      "lat": 43.247,
+      "lon": 5.369,
+      "depth_m": 3.0,
+      "radius_m": 450.0
+    },
+    {
+      "name": "Port du Frioul",
+      "lat": 43.2797,
+      "lon": 5.308,
+      "depth_m": 3.5,
+      "radius_m": 450.0
+    },
+    {
+      "name": "Port de Cassis",
+      "lat": 43.213,
+      "lon": 5.538,
+      "depth_m": 3.0,
+      "radius_m": 450.0
+    },
+    {
+      "name": "Vallon des Auffes",
+      "lat": 43.2853,
+      "lon": 5.3497,
+      "depth_m": 2.0,
+      "radius_m": 450.0
+    },
+    {
+      "name": "Port du Roucas Blanc",
+      "lat": 43.27,
+      "lon": 5.362,
+      "depth_m": 3.0,
+      "radius_m": 450.0
+    },
+    {
+      "name": "Port de la Lave",
+      "lat": 43.358,
+      "lon": 5.311,
+      "depth_m": 3.0,
+      "radius_m": 450.0
+    }
+  ],
+  "harbour_default_depth_m": 3.0,
+  "datum": {
+    "name": "NGF-IGN69: mean sea level at the Marseille tide gauge (1884-1896), the datum of French levelling; heights in metres above it",
+    "mhw_m": 0.15,
+    "mhw_note": "Marseille's spring range is about 0.3 m; mean high water sits about 0.15 m above mean sea level",
+    "elevation_offset_m": 0.0,
+    "elevation_offset_note": "EGM2008 and IGN69 agree within the 30 m DSM's own error here; RGE ALTI is IGN69 already"
+  },
+  "tides": {
+    "source": "none",
+    "note": "Mediterranean: under 0.3 m; no tide model (the water stands at the datum)"
+  },
+  "variation": {
+    "deg_east": 2.83,
+    "annual_change_min": 7.1,
+    "year": 2026,
+    "source": "NOAA WMM-2025 at the Vieux-Port entrance, 2026-10-19"
+  },
+  "check": [
+    [
+      "Fort Saint-Jean",
+      43.2958,
+      5.3624
+    ],
+    [
+      "Chateau d'If",
+      43.2797,
+      5.3252
+    ],
+    [
+      "Cap Croisette",
+      43.2128,
+      5.3388
+    ],
+    [
+      "Cassis, Pointe des Lombards",
+      43.212,
+      5.537
+    ]
+  ],
+  "launch": [
+    [
+      "Vieux-Port, Quai de Rive Neuve",
+      43.2938,
+      5.37,
+      280.0
+    ],
+    [
+      "Vieux-Port entrance, outbound",
+      43.2952,
+      5.357,
+      260.0
+    ],
+    [
+      "Frioul anchorage, off Port du Frioul",
+      43.2795,
+      5.315,
+      90.0
+    ],
+    [
+      "Pointe Rouge, off the marina",
+      43.244,
+      5.36,
+      250.0
+    ],
+    [
+      "Rade Sud, off the Prado",
+      43.258,
+      5.35,
+      220.0
+    ],
+    [
+      "Calanques, off Sormiou",
+      43.198,
+      5.42,
+      90.0
+    ],
+    [
+      "Cassis bay",
+      43.206,
+      5.53,
+      250.0
+    ],
+    [
+      "Offshore, past Planier (gale)",
+      43.172,
+      5.27,
+      135.0
+    ]
+  ],
+  "spots": {
+    "home_slip": [
+      "Vieux-Port, Quai de Rive Neuve",
+      43.2938,
+      5.37,
+      280.0
+    ],
+    "anchorage": [
+      "Frioul anchorage, off Port du Frioul",
+      43.2795,
+      5.315,
+      90.0
+    ],
+    "gale": [
+      "Offshore, past Planier (gale)",
+      43.172,
+      5.27,
+      135.0
+    ]
+  },
+  "passage": [
+    [
+      "Vieux-Port entrance",
+      43.2952,
+      5.357
+    ],
+    [
+      "Chateau d'If",
+      43.277,
+      5.329
+    ],
+    [
+      "Off Cap Croisette",
+      43.205,
+      5.33
+    ],
+    [
+      "Off Riou",
+      43.168,
+      5.39
+    ],
+    [
+      "Off the Calanque d'En-Vau",
+      43.19,
+      5.5
+    ],
+    [
+      "Cassis entrance",
+      43.211,
+      5.535
+    ]
+  ],
+  "ports": [
+    {
+      "name": "Marseille, Vieux-Port",
+      "lat": 43.2946,
+      "lon": 5.371
+    },
+    {
+      "name": "Cassis",
+      "lat": 43.213,
+      "lon": 5.538,
+      "note": "the second Gulf of Lion port, in the same pack"
+    }
+  ],
+  "climate": {
+    "swell_from_deg": 210.0,
+    "swell_note": "open-sea swell from S to SW (the Gulf of Lion's long fetch)",
+    "mistral_from_deg": 315.0,
+    "mistral_note": "the mistral blows from the NW down the Rhone valley, offshore here",
+    "sea_breeze_from_deg": 225.0
+  },
+  "city_glow": [
+    {
+      "name": "Marseille",
+      "lat": 43.296,
+      "lon": 5.381,
+      "radius_km": 9.0,
+      "population": 870000
+    },
+    {
+      "name": "Aubagne",
+      "lat": 43.292,
+      "lon": 5.57,
+      "radius_km": 3.0,
+      "population": 47000
+    },
+    {
+      "name": "Cassis",
+      "lat": 43.215,
+      "lon": 5.538,
+      "radius_km": 1.0,
+      "population": 7000
+    },
+    {
+      "name": "Aix-en-Provence",
+      "lat": 43.5297,
+      "lon": 5.4474,
+      "radius_km": 5.0,
+      "population": 145000
+    },
+    {
+      "name": "Martigues",
+      "lat": 43.4053,
+      "lon": 5.048,
+      "radius_km": 3.0,
+      "population": 49000
+    },
+    {
+      "name": "La Ciotat",
+      "lat": 43.1748,
+      "lon": 5.6046,
+      "radius_km": 2.5,
+      "population": 37000
+    }
+  ],
+  "far_ring": {
+    "radius_km": 45.0,
+    "draw_km": 60.0,
+    "elevation": "Copernicus GLO-90 (copernicus-dem-90m on AWS Open Data), tiles listed in fetch",
+    "tiles": [
+      "N42_00_E004_00",
+      "N42_00_E005_00",
+      "N43_00_E004_00",
+      "N43_00_E005_00"
+    ],
+    "skyline": [
+      [
+        "Sainte-Victoire",
+        43.532,
+        5.608,
+        1011
+      ],
+      [
+        "Sainte-Baume, Pic de Bertagne",
+        43.301,
+        5.732,
+        1041
+      ],
+      [
+        "Garlaban",
+        43.328,
+        5.565,
+        714
+      ],
+      [
+        "Etoile, Grande Etoile",
+        43.377,
+        5.415,
+        652
+      ],
+      [
+        "Marseilleveyre",
+        43.216,
+        5.377,
+        432
+      ],
+      [
+        "Cap Canaille",
+        43.202,
+        5.556,
+        394
+      ]
+    ]
+  },
+  "osm": {
+    "buildings_tiles": 4,
+    "buildings_within_m": 1500.0
+  },
+  "iala": "A",
+  "shore_depth_m": 2.0,
+  "tree_default": 15,
+  "tree_density": [
+    [
+      "landuse",
+      "forest",
+      170
+    ],
+    [
+      "natural",
+      "wood",
+      170
+    ],
+    [
+      "natural",
+      "scrub",
+      70
+    ],
+    [
+      "natural",
+      "heath",
+      40
+    ],
+    [
+      "natural",
+      "grassland",
+      15
+    ],
+    [
+      "natural",
+      "bare_rock",
+      0
+    ],
+    [
+      "natural",
+      "cliff",
+      0
+    ],
+    [
+      "natural",
+      "beach",
+      0
+    ],
+    [
+      "leisure",
+      "park",
+      90
+    ],
+    [
+      "leisure",
+      "garden",
+      60
+    ],
+    [
+      "landuse",
+      "residential",
+      35
+    ],
+    [
+      "landuse",
+      "commercial",
+      5
+    ],
+    [
+      "landuse",
+      "industrial",
+      0
+    ],
+    [
+      "landuse",
+      "port",
+      0
+    ],
+    [
+      "landuse",
+      "vineyard",
+      10
+    ],
+    [
+      "landuse",
+      "orchard",
+      60
+    ],
+    [
+      "landuse",
+      "farmland",
+      5
+    ],
+    [
+      "landuse",
+      "meadow",
+      10
+    ],
+    [
+      "landuse",
+      "grass",
+      15
+    ],
+    [
+      "natural",
+      "wetland",
+      5
+    ]
+  ],
+  "house_style": {
+    "gable_share": 0.6,
+    "pitch_deg": 20.0,
+    "storeys": [
+      2,
+      4
+    ],
+    "flat_from_storeys": 6,
+    "roof_palette": [
+      [
+        "#a8553a",
+        0.4
+      ],
+      [
+        "#b5654a",
+        0.25
+      ],
+      [
+        "#9a4a34",
+        0.15
+      ],
+      [
+        "#8c6a58",
+        0.1
+      ],
+      [
+        "#9a9a92",
+        0.1
+      ]
+    ],
+    "note": "Roman-tile gables and hips at about 20 degrees; the trois-fenetres town houses of three storeys; blocks flat"
+  },
+  "harbour_kit": {
+    "deck_m": 1.2,
+    "breakwater_crest_m": 5.0,
+    "breakwater_width_m": 18.0,
+    "groyne_crest_m": 1.5,
+    "groyne_width_m": 6.0,
+    "sail_share": 0.6,
+    "empty_berths": 0.1,
+    "note": "Mediterranean: quays and decks about a metre over the still water; the Digue du Large is a rubble mound with a wall"
+  },
+  "landmarks": [
+    [
+      "Notre-Dame de la Garde",
+      43.28396,
+      5.37121,
+      41.0,
+      "basilica on its 149 m hill, the Bonne Mere's statue 41 m up the bell tower"
+    ],
+    [
+      "Chateau d'If",
+      43.2799,
+      5.3251,
+      22.0,
+      "the castle on its islet"
+    ],
+    [
+      "Cathedrale de la Major",
+      43.2993,
+      5.3653,
+      70.0,
+      "striped domes on the Joliette front"
+    ],
+    [
+      "Fort Saint-Jean",
+      43.2959,
+      5.3612,
+      30.0,
+      "the Tour du Fanal at the Vieux-Port's north side"
+    ],
+    [
+      "Fort Saint-Nicolas",
+      43.2916,
+      5.3629,
+      25.0,
+      "the star fort at the south side of the entrance"
+    ],
+    [
+      "MuCEM",
+      43.2967,
+      5.3606,
+      18.0,
+      "the black lattice cube on the J4 pier"
+    ],
+    [
+      "Palais du Pharo",
+      43.2921,
+      5.3567,
+      20.0,
+      "the palace on the headland west of the entrance"
+    ],
+    [
+      "Tour CMA CGM",
+      43.3125,
+      5.3659,
+      147.0,
+      "the tallest tower in the port"
+    ],
+    [
+      "Phare du Planier",
+      43.1989,
+      5.2307,
+      68.0,
+      "the offshore lighthouse"
+    ],
+    [
+      "Hopital Caroline, Ratonneau",
+      43.2829,
+      5.3014,
+      15.0,
+      "the quarantine hospital on Frioul"
+    ]
+  ],
+  "preview_depth_m": 60.0,
+  "harbour_views": [
+    [
+      "Vieux-Port",
+      43.2946,
+      5.369,
+      900
+    ],
+    [
+      "Port du Frioul",
+      43.2797,
+      5.308,
+      700
+    ],
+    [
+      "Pointe Rouge",
+      43.2465,
+      5.368,
+      500
+    ],
+    [
+      "Cassis",
+      43.2135,
+      5.5375,
+      400
+    ]
+  ],
+  "time_zone": "Europe/Paris",
+  "ign": {
+    "l93_box": [
+      875000,
+      6229000,
+      911000,
+      6257000
+    ],
+    "cell_m": 5.0
+  },
+  "height_unit_m": 0.025
+}

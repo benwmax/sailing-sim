@@ -579,7 +579,7 @@ void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
 {
 	using namespace SailingHUDLocal;
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
-	if (!GM || !GM->GetLake().IsTidal()) return;
+	if (!GM || !GM->GetLake().IsCoast()) return;
 	const FLakeData& Lake = GM->GetLake();
 	const FBoatModel& Model = Boat.GetBoatModel();
 	const FBoatTelemetry& T = Model.GetTelemetry();
@@ -609,22 +609,25 @@ void ASailingHUD::DrawNavigation(const ASailboatPawn& Boat, float Top)
 		Text(TEXT("GPS      off (O)"), X + 12.f, Y, Dim, 0.9f);
 	}
 	Y += 24.f;
-	// Tide: height above chart datum (MLLW) and the next turn, in local time.
-	FTideEvent Next;
-	FString TideLine = FString::Printf(TEXT("Tide     %+.1f ft"), GM->GetTideHeight() / 0.3048);
-	if (GM->GetNextTide(Next))
+	if (Lake.IsTidal())
 	{
-		const double Local = Next.Time + GM->GetUtcOffsetHours() * 3600.0;
-		const int32 Minutes = int32(FMath::Fmod(Local / 60.0, 1440.0));
-		TideLine += FString::Printf(TEXT("  %s %02d:%02d"), Next.Type == FTideEvent::High ? TEXT("HW") : TEXT("LW"), Minutes / 60, Minutes % 60);
+		// Tide: height above chart datum (MLLW) and the next turn, in local time.
+		FTideEvent Next;
+		FString TideLine = FString::Printf(TEXT("Tide     %+.1f ft"), GM->GetTideHeight() / 0.3048);
+		if (GM->GetNextTide(Next))
+		{
+			const double Local = Next.Time + GM->GetUtcOffsetHours() * 3600.0;
+			const int32 Minutes = int32(FMath::Fmod(Local / 60.0, 1440.0));
+			TideLine += FString::Printf(TEXT("  %s %02d:%02d"), Next.Type == FTideEvent::High ? TEXT("HW") : TEXT("LW"), Minutes / 60, Minutes % 60);
+		}
+		Text(TideLine, X + 12.f, Y, FLinearColor::White, 0.9f);
+		Y += 24.f;
+		const Vec3 Cur = GM->GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
+		const double Set = SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)));
+		const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
+		Text(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f T"), Drift / kKnot, Set), X + 12.f, Y, Dim, 0.9f);
+		Y += 24.f;
 	}
-	Text(TideLine, X + 12.f, Y, FLinearColor::White, 0.9f);
-	Y += 24.f;
-	const Vec3 Cur = GM->GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
-	const double Set = SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)));
-	const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
-	Text(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f T"), Drift / kKnot, Set), X + 12.f, Y, Dim, 0.9f);
-	Y += 24.f;
 	if (bPassage)
 	{
 		// The passage plan: the next waypoint by GPS, bearing in degrees magnetic, and time at the speed made good.
@@ -1160,7 +1163,8 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 	Text(TEXT("Map data (c) OpenStreetMap contributors (ODbL); buildings via Overture Maps: Esri Community Maps contributors (CC BY 4.0), Microsoft (ODbL). Terrain: USGS 3DEP."), X + Margin, Bottom - 2.f * CreditH, Dim, 0.7f);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	Text(GM && GM->GetLake().IsTidal() ? TEXT("Chart, tides and currents: NOAA (ENC, CO-OPS). Not for navigation.")
-		: TEXT("Lake depths and levels: Texas Water Development Board."), X + Margin, Bottom - CreditH, Dim, 0.7f);
+		: (GM && GM->GetLake().IsCoast() ? TEXT("Chart: OpenStreetMap, EMODnet Bathymetry (CC BY 4.0), NGA lights; land: IGN RGE ALTI, Copernicus DEM. Not for navigation.")
+		: TEXT("Lake depths and levels: Texas Water Development Board.")), X + Margin, Bottom - CreditH, Dim, 0.7f);
 }
 
 void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
