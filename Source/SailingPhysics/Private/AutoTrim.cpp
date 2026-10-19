@@ -144,6 +144,11 @@ namespace Sailing
 		const double Limit = bKeepShortOfStall ? std::min(MaxTiller, (StallDeg + 2.0) / Cfg.MaxRudderAngleDeg) : MaxTiller;
 		// Heeled to port (wind from starboard) she wants to round up to starboard: hold the tiller against it (bow to port).
 		const double Lean = Cfg.HeelYawCoef > 0.0 ? -HelmPerHeel * (T.Heel * kRadToDeg) / Cfg.MaxRudderAngleDeg : 0.0;
-		return Clamp(Gain * Error + Lean - RateGain * YawRate, -Limit, Limit);
+		// Making sternway (a wave stopped her head to wind and she is falling back) the rudder works the other way: a
+		// helmsman reverses it, from 0.3 m/s astern to fully reversed by 0.8 (docs/wave-physics/: in the gale's sea the
+		// maxi's tacks were stopped by a face and fell back at 1 to 4 kn, the wheel still hard over). Not for the moment a
+		// dinghy stuffs her bow into a wave (0.5 kn astern for an instant): she is going again before the helm could act.
+		const double Astern = Clamp(1.0 + 4.0 * std::min(T.ForwardSpeed + 0.3, 0.0), -1.0, 1.0);
+		return Clamp(Astern * (Gain * Error + Lean - RateGain * YawRate), -Limit, Limit);
 	}
 }

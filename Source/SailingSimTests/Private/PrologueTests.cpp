@@ -776,10 +776,10 @@ bool FSailingPrologueGaleTest::RunTest(const FString&)
 		P.Result.Retries, P.Result.Seconds, *FString::Join(P.Calls, TEXT(", "))));
 	TestTrue(TEXT("The scene finishes in the gale"), P.Result.bComplete);
 	TestEqual(TEXT("... every step done"), P.Result.StepsPassed + P.Result.StepsAssisted, 7);
-	// Known gap (docs/prologue/README.md, step 4): in the preset's 3.5 m sea the maxi does not tack on the helm (her added
-	// resistance, FBoatConfig::AddedResistanceCoef, the fleet's default: a fleet change, not made here), so the crew take
-	// the tack over after its repeats; every other step is the crew member's.
-	TestTrue(TEXT("... all but the tack answered by the crew member"), P.Result.StepsPassed >= 6);
+	// The tack: before docs/wave-physics/ the maxi could not tack in the preset's 3.5 m sea (the fleet's added resistance),
+	// so the crew took it over after its repeats. With her own (ORC's length scaling) she tacks, but a face can still stop
+	// her head to wind and send the call round again, so the test asks for every other step answered by the crew member.
+	TestTrue(TEXT("... all but at most the tack answered by the crew member"), P.Result.StepsPassed >= 6);
 
 	// Grind and tack in 32 kn gusting 40: the scene's, and on their own in the preset's wind with and without its sea.
 	const double Tack = At(P.AnswerSeconds, TEXT("ready-about")), Grind = At(P.AnswerSeconds, TEXT("grind"));
@@ -831,9 +831,12 @@ bool FSailingPrologueGaleTest::RunTest(const FString&)
 	AddInfo(FString::Printf(TEXT("Run (TWA 150): %s"), *RunDown.Describe()));
 	for (const FSeaMotion* M : { &Reach, &Beat, &RunDown, static_cast<const FSeaMotion*>(&Run) })
 	{
-		TestTrue(TEXT("A 40 t boat pitches within reason (under 12 deg)"), M->MaxPitchDeg < 12.0);
+		// Since docs/wave-physics/ she beats at 10 kn in this sea instead of 6, so she meets it harder. The highest waves (1.86
+		// Hs, 6.5 m over the 7 s sea's 76 m) have faces near 15 deg; a slam's peak goes as the encounter frequency squared,
+		// 1.34 x at 10 kn against 6 (0.9 + 0.9^2 U / g rad/s): 3 g at the bow then is 4 now. The centre's 2.5 g stands.
+		TestTrue(TEXT("A 40 t boat pitches within reason (under 15 deg, the steepest faces)"), M->MaxPitchDeg < 15.0);
 		TestTrue(TEXT("... falls off a crest no faster than gravity (no launching)"), M->BowDownG > -1.0 && M->CgDownG > -1.0);
-		TestTrue(TEXT("... and lands from it under 2.5 g at her centre, 3 g at the bow"), M->CgUpG < 2.5 && M->BowUpG < 3.0);
+		TestTrue(TEXT("... and lands from it under 2.5 g at her centre, 4 g at the bow"), M->CgUpG < 2.5 && M->BowUpG < 4.0);
 		TestTrue(TEXT("... heaving no more than the sea's highest waves (2 Hs)"), M->HeaveMax - M->HeaveMin < 2.0 * Set.SeaHsM);
 	}
 	TestTrue(TEXT("She makes way upwind in it"), Beat.MeanSpeed() > 5.0);
