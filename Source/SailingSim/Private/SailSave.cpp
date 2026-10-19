@@ -4,6 +4,7 @@
 #include "BoatModel.h"
 #include "Drills.h"
 #include "Learning.h"
+#include "ScriptedScene.h"
 #include "UI/SailCatalog.h"
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
@@ -17,7 +18,7 @@ namespace SailSaveLocal
 {
 	// The boats' save ids are EBoatType's names: a new boat is appended there and here, never renamed.
 	const TCHAR* const BoatIds[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"),
-		TEXT("Corsair880"), TEXT("Lagoon42") };
+		TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	static_assert(UE_ARRAY_COUNT(BoatIds) == int32(Sailing::EBoatType::Count), "every boat needs a save id");
 	const TCHAR* const WorldIds[] = { TEXT("ray-hubbard"), TEXT("galveston-bay"), TEXT("gulf") };
 	const TCHAR* const SpeedIds[] = { TEXT("kn"), TEXT("mph"), TEXT("kmh") };
@@ -211,7 +212,7 @@ FString FSailSave::ToJson() const
 	Start->SetBoolField(TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 	Set->SetObjectField(TEXT("start"), Start);
 	TSharedRef<FJsonObject> Career = Obj();
-	Career->SetBoolField(TEXT("openEverything"), S.bOpenEverything);
+	Career->SetBoolField(TEXT("freeSail"), S.bFreeSail);
 	Set->SetObjectField(TEXT("career"), Career);
 	TSharedRef<FJsonObject> Input = Obj();
 	Input->SetStringField(TEXT("bindings"), S.InputBindings);
@@ -231,6 +232,7 @@ FString FSailSave::ToJson() const
 		Sess->SetBoolField(TEXT("learningMode"), L.bLearningMode);
 		Sess->SetBoolField(TEXT("easy"), L.bEasy);
 		Sess->SetBoolField(TEXT("learningTips"), L.bLearningTips);
+		Sess->SetBoolField(TEXT("freeSail"), L.bFreeSail);
 		Sess->SetNumberField(TEXT("traffic"), L.Traffic);
 		Sess->SetStringField(TEXT("savedAt"), L.SavedAt.ToIso8601());
 		TSharedRef<FJsonObject> C = Obj();
@@ -271,6 +273,7 @@ FString FSailSave::ToJson() const
 	{
 		TSharedRef<FJsonObject> O = Obj();
 		O->SetStringField(TEXT("medal"), L.Medal);
+		O->SetBoolField(TEXT("medalEasy"), L.bMedalEasy);
 		O->SetNumberField(TEXT("bestSeconds"), L.BestSeconds);
 		O->SetNumberField(TEXT("runs"), L.Runs);
 		O->SetBoolField(TEXT("quizPassed"), L.bQuizPassed);
@@ -297,9 +300,25 @@ FString FSailSave::ToJson() const
 		Certs->SetObjectField(C.Id, O);
 	}
 	Prog->SetObjectField(TEXT("certificates"), Certs);
+	TSharedRef<FJsonObject> Scenes = Obj();
+	for (const FSceneRecord& Sc : Progress.Scenes)
+	{
+		TSharedRef<FJsonObject> O = Obj();
+		O->SetBoolField(TEXT("done"), Sc.bDone);
+		O->SetNumberField(TEXT("plays"), Sc.Plays);
+		O->SetNumberField(TEXT("bestSeconds"), Sc.BestSeconds);
+		O->SetNumberField(TEXT("stepsPassed"), Sc.StepsPassed);
+		O->SetNumberField(TEXT("stepsAssisted"), Sc.StepsAssisted);
+		O->SetNumberField(TEXT("retries"), Sc.Retries);
+		O->SetStringField(TEXT("completedAt"), Sc.CompletedAt.ToIso8601());
+		Scenes->SetObjectField(Sc.Id, O);
+	}
+	Prog->SetObjectField(TEXT("scenes"), Scenes);
 	Root->SetObjectField(TEXT("progress"), Prog);
 
 	if (Raw.IsValid()) KeepUnknown(*Root, *Raw);
+	// Career 1's Open everything is Free Sail now (docs/free-sail): freeSail carries it, so the old field goes.
+	Career->RemoveField(TEXT("openEverything"));
 
 	FString Text;
 	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Text);
@@ -400,7 +419,12 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*St, TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 		}
 		if (const TSharedPtr<FJsonObject> In = Child(*Set, TEXT("input"))) Read(*In, TEXT("bindings"), S.InputBindings);
-		if (const TSharedPtr<FJsonObject> Ca = Child(*Set, TEXT("career"))) Read(*Ca, TEXT("openEverything"), S.bOpenEverything);
+		if (const TSharedPtr<FJsonObject> Ca = Child(*Set, TEXT("career")))
+		{
+			// Free Sail replaced Career 1's Open everything switch: a file from before reads that field.
+			if (Ca->HasField(TEXT("freeSail"))) Read(*Ca, TEXT("freeSail"), S.bFreeSail);
+			else Read(*Ca, TEXT("openEverything"), S.bFreeSail);
+		}
 	}
 
 	if (const TSharedPtr<FJsonObject> Sess = Child(*Root, TEXT("lastSession")))
@@ -416,6 +440,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Sess, TEXT("learningMode"), L.bLearningMode);
 		Read(*Sess, TEXT("easy"), L.bEasy);
 		Read(*Sess, TEXT("learningTips"), L.bLearningTips);
+		Read(*Sess, TEXT("freeSail"), L.bFreeSail);
 		Read(*Sess, TEXT("traffic"), L.Traffic);
 		Read(*Sess, TEXT("savedAt"), L.SavedAt);
 		if (const TSharedPtr<FJsonObject> C = Child(*Sess, TEXT("conditions")))
@@ -463,6 +488,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 				FLessonRecord L;
 				L.Id = F.Key;
 				Read(O, TEXT("medal"), L.Medal);
+				Read(O, TEXT("medalEasy"), L.bMedalEasy);
 				Read(O, TEXT("bestSeconds"), L.BestSeconds);
 				Read(O, TEXT("runs"), L.Runs);
 				Read(O, TEXT("quizPassed"), L.bQuizPassed);
@@ -496,9 +522,46 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 				Out.Progress.Certificates.Add(C);
 			}
 		}
+		if (const TSharedPtr<FJsonObject> Scenes = Child(*P, TEXT("scenes")))
+		{
+			for (const auto& F : Scenes->Values)
+			{
+				if (!F.Value.IsValid() || F.Value->Type != EJson::Object || F.Key.IsEmpty()) continue;
+				const FJsonObject& O = *F.Value->AsObject();
+				FSceneRecord S;
+				S.Id = F.Key;
+				Read(O, TEXT("done"), S.bDone);
+				Read(O, TEXT("plays"), S.Plays);
+				Read(O, TEXT("bestSeconds"), S.BestSeconds);
+				Read(O, TEXT("stepsPassed"), S.StepsPassed);
+				Read(O, TEXT("stepsAssisted"), S.StepsAssisted);
+				Read(O, TEXT("retries"), S.Retries);
+				Read(O, TEXT("completedAt"), S.CompletedAt);
+				Out.Progress.Scenes.Add(S);
+			}
+		}
 	}
 	Say(bMigrated ? FString::Printf(TEXT("migrated from version %d"), Version) : FString(TEXT("ok")));
 	return bMigrated ? EResult::Migrated : EResult::Ok;
+}
+
+void FSailSave::FProgress::RecordScene(const Sailing::FSceneResult& Result, const FDateTime& NowUtc)
+{
+	if (!Result.bComplete || Result.SceneId.empty()) return;
+	const FString Id = UTF8_TO_TCHAR(Result.SceneId.c_str());
+	FSceneRecord* S = Scenes.FindByPredicate([&Id](const FSceneRecord& R) { return R.Id == Id; });
+	if (!S)
+	{
+		S = &Scenes.AddDefaulted_GetRef();
+		S->Id = Id;
+	}
+	if (!S->bDone) S->CompletedAt = NowUtc;
+	S->BestSeconds = S->bDone ? FMath::Min(S->BestSeconds, Result.Seconds) : Result.Seconds;
+	S->bDone = true;
+	++S->Plays;
+	S->StepsPassed = Result.StepsPassed;
+	S->StepsAssisted = Result.StepsAssisted;
+	S->Retries = Result.Retries;
 }
 
 // ---------------------------------------------------------------- the game's objects
@@ -533,7 +596,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.Traffic = In.TrafficLevel;
 	S.WeatherSeed = In.WeatherSeed;
 	S.bGaugeLakeLevel = In.bGaugeLakeLevel;
-	S.bOpenEverything = In.bOpenEverything;
+	S.bFreeSail = In.bFreeSail;
 
 	bHasLast = InSession.bHasLast;
 	const FSailSessionConfig& C = InSession.Last;
@@ -547,6 +610,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	L.bLearningMode = C.bLearningMode;
 	L.bEasy = C.bEasy;
 	L.bLearningTips = C.bLearningTips;
+	L.bFreeSail = C.bFreeSail;
 	L.Traffic = C.Traffic;
 	L.SavedAt = C.SavedAt + UtcOffset();   // the game keeps local time; the file UTC
 	L.PresetId = C.Conditions.PresetId.ToString();
@@ -609,7 +673,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.TrafficLevel = FMath::Clamp(S.Traffic, 0, 2);
 	Out.WeatherSeed = S.WeatherSeed;
 	Out.bGaugeLakeLevel = S.bGaugeLakeLevel;
-	Out.bOpenEverything = S.bOpenEverything;
+	Out.bFreeSail = S.bFreeSail;
 
 	OutSession.bHasLast = bHasLast;
 	OutSession.Last = FSailSessionConfig();
@@ -625,6 +689,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 		C.bLearningMode = L.bLearningMode;
 		C.bEasy = L.bEasy;
 		C.bLearningTips = L.bLearningTips;
+		C.bFreeSail = L.bFreeSail;
 		C.Traffic = FMath::Clamp(L.Traffic, 0, 2);
 		C.SavedAt = L.SavedAt - UtcOffset();
 		C.Conditions.PresetId = FName(*L.PresetId);

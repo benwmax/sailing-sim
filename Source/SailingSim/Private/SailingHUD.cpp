@@ -84,7 +84,7 @@ bool ASailingHUD::UsesFrontEnd() const
 {
 	using namespace SailingHUDLocal;
 	const bool bOff = USailingSettings::IgnoresSavedChoices() || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoFrontEnd"))
-		|| FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu")) || IsRunningCommandlet();
+		|| FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu")) || IsRunningCommandlet() || ASailingGameMode::IsPrologueRun();
 	FString Forced;   // -SailingFrontEnd=<screen> forces it (screenshots of the menus)
 	return !bOff || FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Forced);
 }
@@ -1132,7 +1132,10 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 	// Sections: what you sail and against whom, the water and weather, how the game helps, display and keys.
 	const TMap<int32, const TCHAR*> Sections = { { 0, TEXT("SAILING") }, { 6, TEXT("WATER AND WEATHER") }, { 11, TEXT("HELP AND CONTROLS") }, { 15, TEXT("DISPLAY, SOUND AND KEYS") } };
 	const float RowH = 29.f, SectionH = 24.f;
-	const float W = 760.f, H = 110.f + Rows.Num() * RowH + Sections.Num() * SectionH;
+	// Bottom: the hint and two credit lines, then the same 20 px margin as the sides (the last credit line used to sit on
+	// the panel's edge at 1280x720).
+	const float Margin = 20.f, CreditH = 16.f;
+	const float W = 760.f, H = 110.f + Rows.Num() * RowH + Sections.Num() * SectionH + Margin;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = FMath::Max(10.f, Canvas->ClipY / UIScale * 0.5f - H * 0.5f);
 	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.72f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
 	Text(TEXT("Settings"), X + 20.f, Y + 12.f, FLinearColor::White, 1.1f, true);
@@ -1150,12 +1153,14 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 		Text(Rows[I].Key, X + 24.f, RY, bSel ? FLinearColor::White : Dim, 0.9f);
 		Text(FString::Printf(TEXT("<  %s  >"), *Rows[I].Value), X + 290.f, RY, bSel ? Good : FLinearColor::White, 0.9f);
 	}
-	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + 20.f, Y + H - 54.f, Dim, 0.8f);
-	// Required attribution for the map data (OpenStreetMap and Overture buildings are ODbL); see CREDITS.md.
-	Text(TEXT("Map data (c) OpenStreetMap contributors and Overture Maps Foundation, ODbL. Terrain: USGS 3DEP."), X + 20.f, Y + H - 30.f, Dim, 0.7f);
+	const float Bottom = Y + H - Margin;
+	Text(TEXT("Up/Down choose, Left/Right change, Tab (Menu) closes"), X + Margin, Bottom - 2.f * CreditH - 26.f, Dim, 0.8f);
+	// Required attribution for the map data (OpenStreetMap is ODbL; Overture's buildings carry Esri Community Maps, CC BY 4.0,
+	// and Microsoft's Global ML Building Footprints, ODbL); the full wording is in CREDITS.md and on the Credits screen.
+	Text(TEXT("Map data (c) OpenStreetMap contributors (ODbL); buildings via Overture Maps: Esri Community Maps contributors (CC BY 4.0), Microsoft (ODbL). Terrain: USGS 3DEP."), X + Margin, Bottom - 2.f * CreditH, Dim, 0.7f);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	Text(GM && GM->GetLake().IsTidal() ? TEXT("Chart, tides and currents: NOAA (ENC, CO-OPS). Not for navigation.")
-		: TEXT("Lake depths and levels: Texas Water Development Board."), X + 20.f, Y + H - 12.f, Dim, 0.7f);
+		: TEXT("Lake depths and levels: Texas Water Development Board."), X + Margin, Bottom - CreditH, Dim, 0.7f);
 }
 
 void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
@@ -1185,6 +1190,10 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		One(TEXT("Wing-on-wing"), TEXT("WingOnWing")),
 		One(TEXT("Back the jib (heave to, irons)"), TEXT("BackJib")),
 		One(TEXT("Dock lines on / off"), TEXT("DockLines")),
+		One(TEXT("Crew action (answer the captain)"), TEXT("CrewAction")),
+		One(TEXT("Crew station: grind the jib winch (tap or hold)"), TEXT("Grind")),
+		One(TEXT("Crew station: dump the traveller"), TEXT("TravellerDump")),
+		One(TEXT("Crew station: move to the next"), TEXT("Station")),
 		One(TEXT("Spinnaker up / down (the jib sheet trims it)"), TEXT("Spinnaker")),
 		One(TEXT("Take a reef / shake out"), TEXT("Reef")),
 		One(TEXT("Board or swing keel up / down"), TEXT("Board")),
@@ -1235,9 +1244,10 @@ void ASailingHUD::DrawWindDiagram(const ASailboatPawn& Boat, const FVector2D& Ce
 		const float A0 = I * 10.f * PI / 180.f, A1 = (I + 1) * 10.f * PI / 180.f;
 		DrawLine(C.X + R * FMath::Sin(A0), C.Y - R * FMath::Cos(A0), C.X + R * FMath::Sin(A1), C.Y - R * FMath::Cos(A1), FLinearColor(1, 1, 1, 0.4f), 1.f);
 	}
-	// No-go zone, about 40 degrees either side of the true wind.
+	// No-go zone either side of the true wind, at the sim's angle (wider on Easy: FEasyAssists::NoGoDeg).
 	const float Twa = float(T.TrueWindAngle);
-	for (const float Edge : { Twa - 0.7f, Twa + 0.7f })
+	const float NoGo = FMath::DegreesToRadians(float(Boat.GetEasyAssists().NoGoDeg()));
+	for (const float Edge : { Twa - NoGo, Twa + NoGo })
 	{
 		DrawLine(C.X, C.Y, C.X + R * FMath::Sin(Edge), C.Y - R * FMath::Cos(Edge), FLinearColor(1.f, 0.3f, 0.3f, 0.5f), 1.f);
 	}
@@ -1278,14 +1288,24 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 	const FString Pos = PointOfSail(TwaDeg, T.bInIrons);
 	Tips.Add({ FString::Printf(TEXT("%s  (%s tack)"), *Pos, TwaDeg >= 0.0 ? TEXT("starboard") : TEXT("port")), 0 });
 
-	if (T.bInIrons)
+	// The no-go cue is the sim's (EasyAssists.h): Easy draws it wider and warns before the bow gets there.
+	const ENoGoCue Cue = NoGoCueFor(T, Boat.GetEasyAssists());
+	if (Boat.IsEasyRecovering())
+	{
+		Tips.Add({ TEXT("In irons: your crew is backing the jib and steering the bow off. Watch how: next time you can do it yourself."), 2 });
+	}
+	else if (T.bInIrons)
 	{
 		Tips.Add({ TEXT("Stuck head to wind. Push the tiller toward the boom and hold the jib out to the side the bow should go (backing it)."), 2 });
 		Tips.Add({ TEXT("You will drift backward first; the bow falls off, then trim in and sail away."), 0 });
 	}
-	else if (FMath::Abs(TwaDeg) < 35.0)
+	else if (Cue == ENoGoCue::Inside)
 	{
 		Tips.Add({ TEXT("Too close to the wind: the sails cannot draw. Bear away (steer away from the wind) to about 45 degrees."), 2 });
+	}
+	else if (Cue == ENoGoCue::Near)
+	{
+		Tips.Add({ TEXT("Close to the no-go zone (the red band on the wind dial): bear away a little before she slows."), 2 });
 	}
 
 	auto Count = [](const FSailStripState* Strips, int32 N, ESailFlow Flow) { int32 K = 0; for (int32 I = 0; I < N; ++I) K += Strips[I].Flow == Flow; return K; };
@@ -1322,7 +1342,15 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 	if (const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr)
 	{
 		const FWeatherState& W = GM->GetWeatherState();
-		if (W.Storm == EStormPhase::Building)
+		if (W.bSquall)
+		{
+			// A squall line in a gale (the mistral's): no thunderstorm, no lightning.
+			if (W.Storm == EStormPhase::Building)
+				Tips.Add({ TEXT("Squall coming: a line of heavier rain and a harder gust behind it. Watch for the dark water upwind and be ready to depower."), 3 });
+			else if (W.Storm == EStormPhase::GustFront)
+				Tips.Add({ TEXT("Squall: depower (ease sheets, traveller down) and keep the bow off the wind until it passes."), 3 });
+		}
+		else if (W.Storm == EStormPhase::Building)
 			Tips.Add({ TEXT("Thunderstorm building to the west-northwest: watch for the dark line of the gust front on the water and reef or head in."), 3 });
 		else if (W.Storm == EStormPhase::GustFront || W.Storm == EStormPhase::Rain)
 			Tips.Add({ TEXT("Storm: depower (ease sheets, hike), keep the bow off the wind, and stay clear of the mast in lightning."), 3 });

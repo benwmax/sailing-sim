@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "AutoTrim.h"
+#include "EasyAssists.h"
+#include "CrewStation.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "InputActionValue.h"
@@ -59,6 +61,11 @@ public:
 	const Sailing::FBoatControls& GetControls() const { return Controls; }
 	const Sailing::FWindField& GetWind() const;
 	bool IsTrimAssistActive() const;
+	/** Easy mode's assists on this boat (off on traffic boats, the ghost and in measuring runs: ApplyDifficulty). */
+	const Sailing::FEasyAssists& GetEasyAssists() const { return EasyAssists; }
+	bool IsEasyRecovering() const { return EasyHelm.IsRecovering(); }
+	/** bench.json's Easy fields: the assists, the run's max heel, and the crude tack's result (-SailingCrudeTackAt). */
+	FString EasyRunJson() const;
 
 	/** Puts the boat back at its start (the launch spot on the lake), with a little way on. */
 	void ResetBoat();
@@ -100,6 +107,8 @@ public:
 	struct FKeyRow { FName Action; bool bNegative = false; FString Label; FKey Key; FKey PadKey; FKey PadAxis; };
 	bool IsKeysOpen() const { return bKeysOpen; }
 	const TArray<FKeyRow>& GetKeyRows() const { return KeyRows; }
+	/** Prologue step 2: the crew station the player works in a scene (inactive outside one: every control is theirs). */
+	const Sailing::FStationControls& GetStations() const { return Stations; }
 	int32 GetKeysIndex() const { return KeysIndex; }
 	bool IsCapturingKey() const { return bCapturingKey; }
 	const FString& GetKeysMessage() const { return KeysMessage; }
@@ -246,6 +255,8 @@ private:
 	Sailing::FBoatControls Controls;
 	Sailing::FFixedStepper Stepper;
 	Sailing::FAutoTrim TrimAssist;
+	Sailing::FEasyAssists EasyAssists;
+	Sailing::FEasyHelm EasyHelm;
 	/** -SailingDemo: the autopilot sails close-hauled and tacks every few seconds, for recordings and the QA gate. */
 	bool bDemo = false;
 	FString StatusMessage;
@@ -256,6 +267,15 @@ private:
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
 	bool bDrillTouching = false, bDrillGraded = false;
+	bool bCrewActionPressed = false;   // Prologue step 1: the crew-action button since the scene last stepped
+	// Prologue step 2: the player's crew station and the rest of the crew (docs/prologue/README.md). Active only while a
+	// scene runs; the scene's station orders arrive by serial, the station key and the grind taps between frames.
+	Sailing::FStationControls Stations;
+	int32 SceneStationSerial = 0;
+	int32 GrindTaps = 0;
+	bool bTravellerDumpPressed = false, bStationKeyPressed = false;
+	void UpdateStations(Sailing::FStationInput& OutInput);
+	bool bDrillEasy = false; // Easy mode's assists were on at any time during the drill (its medal is capped: career.json)
 	FCareerProgress::FAward CareerAward;
 	FLearningCoach Learning;
 	size_t LearningTrafficEvents = 0;
@@ -435,6 +455,11 @@ private:
 	double PrevMainSheet = 0.0, PrevJibSheet = 0.0;
 	Sailing::FAutopilot DemoPilot;
 	double DemoFirstSign = 1.0;
+	// Easy mode's gate runs: -SailingCrudeTackAt=<s> in a demo puts the tiller hard over for 4 s at that sim time, then
+	// lets it go (a beginner's tack, as SailingSim.Physics.EasyMode sails it); the run's max heel goes to bench.json.
+	double CrudeTackAt = -1.0;
+	int32 CrudeTackSign = 0;
+	double RunMaxHeelDeg = 0.0;
 	Sailing::FWindField FallbackWind;
 	double WaterSurfaceZ = 0.0; // cm
 	FVector StartLocation = FVector::ZeroVector;

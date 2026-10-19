@@ -3,6 +3,19 @@
 
 namespace Sailing
 {
+	namespace
+	{
+		// FBoatConfig::AddedResistanceCoef's speed term saturates at this Froude number (times its speed cap): 2 m/s on
+		// the J/22's 5.79 m waterline, where the added resistance was first calibrated (docs/wave-physics/).
+		constexpr double AddedResistanceFroude = 0.2654;
+		// The waves' slope push takes each hull column's immersion below her mean waterplane averaged over this long:
+		// longer than the encounter period of the waves that slope her (the maxi meets the gale's 7 s sea every 5 s
+		// upwind), so the push is the linear one at her mean attitude, and still short enough to follow a tack's heel
+		// or a capsize. From 6 s up the maxi's mean push in the gale stops changing; the J/22 stays neutral (her mean
+		// push beating in 15 kn and running in 6 kn is under 1 N).
+		constexpr double kSlopeVolumeSeconds = 8.0;
+	}
+
 	const char* BoatTypeName(EBoatType Type)
 	{
 		switch (Type)
@@ -15,12 +28,46 @@ namespace Sailing
 		case EBoatType::Hobie16: return "Hobie 16";
 		case EBoatType::Corsair880: return "Corsair 880";
 		case EBoatType::Lagoon42: return "Lagoon 42";
+		case EBoatType::Maxi: return "Maxi 100";
 		default: return "Boat";
 		}
 	}
 
+	void FHullShape::StationAt(double X, int& OutI, double& OutT) const
+	{
+		const int N = int(Stations.size());
+		int I = 0;
+		while (I < N - 2 && Stations[I + 1].X < X) ++I;
+		OutI = I;
+		OutT = Clamp((X - Stations[I].X) / std::max(Stations[I + 1].X - Stations[I].X, 1e-6), 0.0, 1.0);
+	}
+
+	double FHullShape::StationBottomZ(int I, double T, double AbsY) const
+	{
+		const FStation& A = Stations[I];
+		const FStation& B = Stations[I + 1];
+		const int N = int(std::min(A.Y.size(), B.Y.size()));
+		double PrevY = Lerp(A.Y[0], B.Y[0], T), PrevZ = Lerp(A.Z[0], B.Z[0], T);
+		if (AbsY <= PrevY) return PrevZ;
+		for (int K = 1; K < N; ++K)
+		{
+			const double Y = Lerp(A.Y[K], B.Y[K], T), Z = Lerp(A.Z[K], B.Z[K], T);
+			if (AbsY <= Y) return Lerp(PrevZ, Z, (AbsY - PrevY) / std::max(Y - PrevY, 1e-6));
+			PrevY = Y;
+			PrevZ = Z;
+		}
+		return PrevZ;
+	}
+
 	double FHullShape::DeckHalfBeam(double X) const
 	{
+		if (HasStations())
+		{
+			if (X > Stations.back().X || X < Stations.front().X) return 0.02;
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return std::max(Lerp(Stations[I].Y.back(), Stations[I + 1].Y.back(), T), 0.02);
+		}
 		if (X > MaxBeamX)
 		{
 			const double U = (X - MaxBeamX) / (BowX - MaxBeamX + 0.02);
@@ -32,11 +79,23 @@ namespace Sailing
 
 	double FHullShape::SheerHeight(double X) const
 	{
+		if (HasStations())
+		{
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return Lerp(Stations[I].Sheer, Stations[I + 1].Sheer, T);
+		}
 		return SheerZ + SheerRise * std::max(0.0, (X - SheerRiseFromX) / std::max(BowX - SheerRiseFromX, 1e-3));
 	}
 
 	double FHullShape::KeelLineDepth(double X, double MainDepth) const
 	{
+		if (HasStations())
+		{
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return -StationBottomZ(I, T, 0.0) + (MainDepth - StationDepth);
+		}
 		const double D = MainDepth * DepthScale;
 		const double U = (X - WaterlineMidX) / WaterlineHalfLength;
 		if (std::fabs(U) <= 1.0)
@@ -48,6 +107,12 @@ namespace Sailing
 
 	double FHullShape::BottomZ(double X, double Y, double MainDepth) const
 	{
+		if (HasStations())
+		{
+			int I = 0; double T = 0.0;
+			StationAt(X, I, T);
+			return StationBottomZ(I, T, std::fabs(Y)) - (MainDepth - StationDepth);
+		}
 		const double D = KeelLineDepth(X, MainDepth);
 		const double B = std::max(DeckHalfBeam(X), 1e-3);
 		const double R = std::min(std::fabs(Y) / B, 1.0);
@@ -93,6 +158,15 @@ namespace Sailing
 		const double FootChord = MainFootChord * (0.9 + 0.1 * F);
 		const int Strips = Main.NumStrips > 0 ? Main.NumStrips : 4;
 		BuildSail(Main, Strips, MainFootZ, HeadZ, FootChord, MainHeadChord, MainRoach, MainLuffX, Lerp(MainLuffX, MainLuffXHead, F), MainArea * std::pow(F, 1.3));
+		if (!ReefJibFraction.empty() && JibArea > 0.0 && Jib.NumStrips > 0)
+		{
+			// The smaller headsail for this reef, tacked at the same point: luff and foot each shrink by the square root.
+			const int JR = std::min(R, int(ReefJibFraction.size()));
+			const double JF = JR == 0 ? 1.0 : ReefJibFraction[JR - 1];
+			const double S = std::sqrt(JF);
+			BuildSail(Jib, Jib.NumStrips, JibFootZ, JibFootZ + (JibHeadZ - JibFootZ) * S, JibFootChord * S, JibHeadChord, 0.0, JibLuffX,
+				Lerp(JibLuffX, JibLuffXHead, S), JibArea * JF);
+		}
 	}
 
 	bool FBoatConfig::HasBoard() const
@@ -215,6 +289,10 @@ namespace Sailing
 	namespace
 	{
 		constexpr int kStationsX = 26, kStationsY = 12;
+
+		/** How much of a fixed appendage's volume is under water with its centroid this far above the surface (m):
+		 *  all of it 0.5 m down, none 0.5 m up (a fin and bulb a metre deep through the surface). */
+		double AppendageWet(double HeightAboveWater) { return Clamp(0.5 - HeightAboveWater, 0.0, 1.0); }
 	}
 
 	double FBoatModel::SubmergedVolumeUpright(double Depth) const
@@ -241,7 +319,8 @@ namespace Sailing
 	void FBoatModel::BuildHull()
 	{
 		// Find the canoe-body depth that floats the boat (with crew) at the design waterline.
-		const double Target = Mass / kWaterDensity;
+		// Fixed appendages float their own volume (FBoatConfig::AppendageVolume); the canoe body carries the rest.
+		const double Target = Mass / kWaterDensity - Config.AppendageVolume;
 		double Lo = 0.02, Hi = 3.0;
 		for (int I = 0; I < 60; ++I)
 		{
@@ -411,6 +490,7 @@ namespace Sailing
 		State.Velocity = State.Orientation.Forward() * Speed;
 		Telemetry = FBoatTelemetry();
 		MainMeanLift = 0.0;
+		bColumnMeanFresh = true;
 	}
 
 	Vec3 FBoatModel::PointVelocityWorld(const Vec3& BodyPoint) const
@@ -461,6 +541,13 @@ namespace Sailing
 				OutVolume += Vol;
 				OutMomentX += P.Y * Vol; // buoyancy up at lateral offset Y from the CG
 			}
+			if (Config.AppendageVolume > 0.0)
+			{
+				const Vec3 P = Q.Rotate(Config.AppendageCentre - CenterOfGravity);
+				const double Vol = Config.AppendageVolume * AppendageWet(P.Z + CenterOfGravity.Z - Sink);
+				OutVolume += Vol;
+				OutMomentX += P.Y * Vol;
+			}
 		};
 		const double Target = Mass / kWaterDensity;
 		double Lo = -3.0, Hi = 3.0, Vol = 0.0, MX = 0.0;
@@ -503,32 +590,100 @@ namespace Sailing
 
 		// Hydrostatics and heave/roll/pitch damping: each hull column against the water surface.
 		double HullVolume[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		if (ColumnMeanVolume.size() != Columns.size()) { ColumnMeanVolume.assign(Columns.size(), 0.0); bColumnMeanFresh = true; }
+		ColumnWater.resize(Columns.size());
+		double SlopeSurge = 0.0, CalmDrag = 0.0, WaveDrag = 0.0; // telemetry (docs/wave-physics/)
 		const Vec3 Axis = Q.Up();
-		for (const FColumn& Col : Columns)
+		const bool bUpright = Axis.Z >= 0.0;
+		// First the water at each column's low end (the bottom when upright, the deck when inverted), and per hull the
+		// plane through it (area-weighted least squares): her mean waterplane in these waves, for the slope push.
+		double PlaneW[8] = {}, PlaneX[8] = {}, PlaneY[8] = {}, PlaneH[8] = {}, PlaneXX[8] = {}, PlaneXY[8] = {}, PlaneYY[8] = {}, PlaneXH[8] = {}, PlaneYH[8] = {};
+		for (size_t I = 0; I < Columns.size(); ++I)
 		{
+			const FColumn& Col = Columns[I];
+			FColumnWater& CW = ColumnWater[I];
 			const Vec3 Base = Origin + Q.Rotate(Vec3(Col.X, Col.Y, Col.ZBottom));
+			CW.Low = bUpright ? Base : Base + Axis * (Col.ZTop - Col.ZBottom);
+			CW.Water = CW.VZ = CW.SlopeX = CW.SlopeY = 0.0;
+			CW.bNear = CW.Low.Z < 1.0; // well clear of any lake chop otherwise
+			if (!CW.bNear) continue;
+			if (Waves) Waves->Sample(CW.Low.X, CW.Low.Y, State.Time, CW.Water, CW.VZ, CW.SlopeX, CW.SlopeY);
+			if (Col.Hull >= 8) continue;
+			const int H = Col.Hull;
+			const double W = Col.Area, X = CW.Low.X - Origin.X, Y = CW.Low.Y - Origin.Y;
+			PlaneW[H] += W; PlaneX[H] += W * X; PlaneY[H] += W * Y; PlaneH[H] += W * CW.Water;
+			PlaneXX[H] += W * X * X; PlaneXY[H] += W * X * Y; PlaneYY[H] += W * Y * Y; PlaneXH[H] += W * X * CW.Water; PlaneYH[H] += W * Y * CW.Water;
+		}
+		double PlaneMeanX[8] = {}, PlaneMeanY[8] = {}, PlaneMeanH[8] = {}, PlaneSlopeX[8] = {}, PlaneSlopeY[8] = {};
+		for (int H = 0; H < NumHulls && H < 8; ++H)
+		{
+			if (PlaneW[H] <= 0.0) continue;
+			const double MX = PlaneX[H] / PlaneW[H], MY = PlaneY[H] / PlaneW[H], MH = PlaneH[H] / PlaneW[H];
+			const double Sxx = PlaneXX[H] / PlaneW[H] - MX * MX, Sxy = PlaneXY[H] / PlaneW[H] - MX * MY, Syy = PlaneYY[H] / PlaneW[H] - MY * MY;
+			const double Sxh = PlaneXH[H] / PlaneW[H] - MX * MH, Syh = PlaneYH[H] / PlaneW[H] - MY * MH;
+			const double Det = Sxx * Syy - Sxy * Sxy;
+			PlaneMeanX[H] = MX; PlaneMeanY[H] = MY; PlaneMeanH[H] = MH;
+			if (Det > 1e-9) { PlaneSlopeX[H] = (Sxh * Syy - Syh * Sxy) / Det; PlaneSlopeY[H] = (Syh * Sxx - Sxh * Sxy) / Det; }
+		}
+		for (size_t I = 0; I < Columns.size(); ++I)
+		{
+			const FColumn& Col = Columns[I];
+			const FColumnWater& CW = ColumnWater[I];
+			double& MeanVolume = ColumnMeanVolume[I];
+			if (!CW.bNear) { MeanVolume = 0.0; continue; }
 			const double Len = Col.ZTop - Col.ZBottom;
-			const Vec3 Tip = Base + Axis * Len;
-			// The column's low end (the bottom when upright, the deck when inverted).
-			const bool bUpright = Axis.Z >= 0.0;
-			const Vec3 Low = bUpright ? Base : Tip;
-			if (Low.Z >= 1.0) continue; // well clear of any lake chop
-			double Water = 0.0, WaterVZ = 0.0, SlopeX = 0.0, SlopeY = 0.0;
-			if (Waves)
-			{
-				Waves->Sample(Low.X, Low.Y, State.Time, Water, WaterVZ, SlopeX, SlopeY);
-			}
-			if (Low.Z >= Water) continue;
+			const Vec3& Low = CW.Low;
 			const double Rise = std::max(std::fabs(Axis.Z) * Len, 1e-6);
-			const double F = Clamp((Water - Low.Z) / Rise, 0.0, 1.0);
-			const double Volume = Col.Area * Len * F;
 			const Vec3 Dir = bUpright ? Axis : -Axis;
+			// The waves' pressure along the slope (Froude-Krylov surge and sway): what pushes a boat down a face, surfing.
+			// Under a wave the water's pressure falls along the surface's slope (rho times the water's own acceleration,
+			// -g grad eta at the surface), so the column feels rho g V (-slope) sideways as well as rho g V up. Summed
+			// over the hull it is the linear Froude-Krylov force, filtered by her own sectional areas: waves near her
+			// length and longer push her (the surf), chop much shorter than her sums out along her. V is the column's
+			// immersion below her mean waterplane in these waves (the plane through the water along her hull), averaged
+			// over kSlopeVolumeSeconds: on a long wave she keeps her own trim and immersion, and the chop at her ends
+			// does not count. That keeps the push first order. The instant immersion's correlation with the slope (her
+			// bow lifting clear of short chop, her pitch and heave lagging the waves) is a second-order drift that this
+			// column model gets wrong and the added resistance below already carries, calibrated. So on flat water the
+			// push is zero, and over a wave she does not ride it averages out; only time spent on a face (or a back)
+			// nets anything. Left out: the decay with depth (small for the waves that slope her) and diffraction (surge
+			// added mass, 0.05 of her mass). Known gap: the keels and rudders meet the water as if it were still (no orbital
+			// flow, no wave inertia), so a beam sea's sideways push makes them scull her along a little: the J/22 adrift
+			// beam-on to a 1.2 m swell creeps at 1.3 kn (0.25 to 0.7 without the push, as before; docs/wave-physics/).
+			if (C.WaveSlopeForceScale != 0.0 && Col.Hull < 8)
+			{
+				const int H = Col.Hull;
+				const double Plane = PlaneMeanH[H] + PlaneSlopeX[H] * (Low.X - Origin.X - PlaneMeanX[H]) + PlaneSlopeY[H] * (Low.Y - Origin.Y - PlaneMeanY[H]);
+				const double PlaneVolume = Col.Area * Len * Clamp((Plane - Low.Z) / Rise, 0.0, 1.0);
+				// After a reset she is upright on her design waterline: start each average at its immersion there (a boat
+				// reset into a crest is briefly far deeper, and carried for seconds that would shove her down the wave).
+				MeanVolume = bColumnMeanFresh ? Col.Area * Clamp(-Col.ZBottom, 0.0, Len)
+					: MeanVolume + (PlaneVolume - MeanVolume) * std::min(1.0, Dt / kSlopeVolumeSeconds);
+				if (MeanVolume > 0.0)
+				{
+					const Vec3 SlopePush = Vec3(-CW.SlopeX, -CW.SlopeY, 0.0) * (kWaterDensity * kGravity * MeanVolume * C.WaveSlopeForceScale);
+					SlopeSurge += SlopePush.Dot(Q.Forward());
+					AddWorldForce(SlopePush, Low + Dir * (0.5 * MeanVolume / (Col.Area * Len) * Len));
+				}
+			}
+			if (Low.Z >= CW.Water) continue;
+			const double F = Clamp((CW.Water - Low.Z) / Rise, 0.0, 1.0);
+			const double Volume = Col.Area * Len * F;
 			const Vec3 Point = Low + Dir * (0.5 * F * Len);
 			const Vec3 PointVel = State.Velocity + OmegaWorld.Cross(Point - CGWorld);
 			const double Wet = std::min(1.0, F * Len / 0.1);
-			const double Damping = -C.HeaveDamping * Col.Area * Wet * (PointVel.Z - WaterVZ);
+			const double Damping = -C.HeaveDamping * Col.Area * Wet * (PointVel.Z - CW.VZ);
 			AddWorldForce(Vec3(0.0, 0.0, kWaterDensity * kGravity * Volume + Damping), Point);
 			if (Col.Hull < 8) HullVolume[Col.Hull] += Volume;
+		}
+		bColumnMeanFresh = false;
+
+		// The fixed appendages' buoyancy at their centroid (out of the water only when she is far over or turtled).
+		if (C.AppendageVolume > 0.0)
+		{
+			const Vec3 P = Origin + Q.Rotate(C.AppendageCentre);
+			const double Wet = AppendageWet(P.Z - WaterAt(P));
+			if (Wet > 0.0) AddWorldForce(Vec3(0.0, 0.0, kWaterDensity * kGravity * C.AppendageVolume * Wet), P);
 		}
 
 		// Crew: the CG assumes them on the centerline; moving them out (or onto the board) adds a gravity moment.
@@ -600,13 +755,34 @@ namespace Sailing
 						const double PeakEnd = 1.2 + 1.0 * Froude * std::max(IntoWaves, 0.0);
 						const double R4 = Ratio * Ratio * Ratio * Ratio;
 						double Response = R4 / (0.25 + R4);
-						if (Ratio > PeakEnd) Response *= 1.0 / (1.0 + (Ratio - PeakEnd) * (Ratio - PeakEnd) / 0.64);
-						// (Hs/2)^2 of a band is four times its variance.
-						Sum += Response * 4.0 * Band.Variance * BandShare * (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25;
+						if (Ratio > PeakEnd)
+						{
+							// Past her peak she starts to ride the waves (heave and pitch follow the surface, the relative
+							// motion that costs her goes): Jinkine & Ferdinande's long-wave form (1974; carried into
+							// STAwave-2 and ITTC 7.5-04-01-01.2), w^11 exp(11/14 (1 - w^14)) in the frequency against the
+							// peak's, w = sqrt(peak length / length). About 20% of the peak at 1.5 x its wavelength, 5% at 2 x,
+							// as the Delft yachts' measured curves fall (Gerritsma & Keuning). The size effect: the gale's
+							// 76 m sea is 2.6 waterlines for the maxi and far past her peak, where a 6 m boat's 15 m chop is
+							// near hers. (Before docs/wave-physics/ the tail was a Lorentzian that kept a third at 2.6.)
+							const double W2 = PeakEnd / Ratio, W14 = W2 * W2 * W2 * W2 * W2 * W2 * W2;
+							Response *= std::pow(W2, 5.5) * std::exp(11.0 / 14.0 * (1.0 - W14));
+						}
+						// The mean of a sea's added resistance is 2 x the integral of the response (per zeta_a^2) over the
+						// spectrum (ORC VPP 2023 eq. 6.61): twice each band's variance. (Before docs/wave-physics/ this was
+						// four times, (Hs/2)^2; the coefficients doubled with it, so the change alone moves nothing.)
+						Sum += Response * 2.0 * Band.Variance * BandShare * (1.0 + IntoWaves) * (1.0 + IntoWaves) * 0.25;
 					}
+					// Speed: the response grows as the Froude number to the 1.5 (Jinkine & Ferdinande's amplitude: she
+					// meets the waves faster and pitches harder) up to AddedResistanceFroude, where a keelboat's pitching
+					// saturates; a beach cat's keeps growing past it, linearly (her speed cap, as she was calibrated). By
+					// Froude number, not m/s: a 30 m boat at 4 kn is barely moving through her waves (Fn 0.12), where the
+					// J/22 is at Fn 0.27 (the old 2 m/s, so her saturated beat is unchanged); the 1.5 spares light air.
+					const double SpeedRatio = Clamp(Froude / AddedResistanceFroude, 0.0, C.AddedResistanceSpeedCap);
 					WaveResistance = C.AddedResistanceCoef * kWaterDensity * kGravity * Sum * HullBeam * HullBeam / Lwl
-						* Clamp(V / 2.0, 0.0, C.AddedResistanceSpeedCap) * Clamp(Vol / std::max(DesignHullVolume[H], 1e-3), 0.0, 1.0);
+						* (SpeedRatio < 1.0 ? SpeedRatio * std::sqrt(SpeedRatio) : SpeedRatio) * Clamp(Vol / std::max(DesignHullVolume[H], 1e-3), 0.0, 1.0);
 				}
+				CalmDrag += Friction + Residuary;
+				WaveDrag += WaveResistance;
 				// Going astern, the transom leads: much more form drag than with the bow first.
 				AddBodyForce(Vec3(-Sign(U) * (Friction + Residuary + WaveResistance) * (U < 0.0 ? 1.6 : 1.0), 0.0, 0.0), HullPoint);
 			}
@@ -632,6 +808,13 @@ namespace Sailing
 			}
 			TorqueBody.Z += -C.YawDampingLinear * State.AngularVelocity.Z;
 			TorqueBody.X += -C.ExtraRollDamping * State.AngularVelocity.X;
+			if (C.HeelCapDeg > 0.0)
+			{
+				// Easy mode: no capsize. Measured by the tilt (the heel alone turns back toward zero past 90 degrees).
+				const double Soft = std::max(C.HeelCapSoftDeg, 0.5) * kDegToRad;
+				const double Over = std::max(Q.Tilt() - C.HeelCapDeg * kDegToRad + Soft, 0.0) / Soft;
+				TorqueBody.X += -Sign(Q.Heel()) * Mass * kGravity * C.HeelCapLeverM * Over * Over;
+			}
 		}
 
 		// Engines: thrust lags the throttle by about a second; it falls off toward the propeller's pitch speed.
@@ -965,6 +1148,9 @@ namespace Sailing
 		T.HelmForce = -(Hinge / C.TillerLength) * State.WindwardSide;
 		T.bInIrons = std::fabs(T.TrueWindAngle) < 35.0 * kDegToRad && T.ForwardSpeed < 0.5 * kKnot;
 		T.Froude = T.BoatSpeed / std::sqrt(kGravity * std::max(C.WaterlineLength, 0.5));
+		T.CalmResistance = CalmDrag;
+		T.WaveResistance = WaveDrag;
+		T.WaveSlopeSurge = SlopeSurge;
 		bool bAnyPlaning = false;
 		for (const FHullShape& Hull : C.Hulls) bAnyPlaning |= Hull.PlaningLift > 0.0;
 		T.bPlaning = (bAnyPlaning || C.bMultihull) && MaxFroude > 0.65 && HeelAbs < 40.0 * kDegToRad;

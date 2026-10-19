@@ -74,6 +74,7 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	C.Boat = Save->bHasLast ? Save->Last.Boat : 0;
 	C.LaunchSpot = Save->bHasLast && Save->Last.World == C.World ? Save->Last.LaunchSpot : 0;
 	ApplyPreset(C.Conditions, Presets()[0]);
+	C.bFreeSail = USailingSettings::Get()->IsFreeSail();
 	return C;
 }
 
@@ -122,6 +123,7 @@ void USailSessionSubsystem::ApplyToSettings(const FSailSessionConfig& Config)
 	S->TrafficLevel = FMath::Clamp(Config.Traffic, 0, 2);
 	S->Difficulty = Config.bEasy ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic;
 	S->bLearningMode = Config.bLearningMode;
+	S->bFreeSail = Config.bFreeSail;
 	S->Save();
 }
 

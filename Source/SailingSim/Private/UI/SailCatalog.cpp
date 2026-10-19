@@ -152,6 +152,8 @@ namespace SailCatalog
 			TArray<FBoat> Out;
 			for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 			{
+				// The prologue's maxi is sailed only in the prologue until the PC's model lands (prologue step 3).
+				if (EBoatType(T) == EBoatType::Maxi) continue;
 				const FBoatConfig C = FBoatConfig::Make(EBoatType(T));
 				const FWords& W = Words(T);
 				FBoat B;
@@ -258,7 +260,11 @@ namespace SailCatalog
 	}
 
 	const TArray<FBoat>& Boats() { static TArray<FBoat> B = MakeBoats(); return B; }
-	const FBoat& Boat(int32 Type) { return Boats()[FMath::Clamp(Type, 0, Boats().Num() - 1)]; }
+	const FBoat& Boat(int32 Type)
+	{
+		for (const FBoat& B : Boats()) if (B.Type == Type) return B;
+		return Boats()[0]; // a boat the Boat screen does not list (the maxi) reads as the J/22's card
+	}
 
 	float SunsetHour(int32 Month, int32 Day, int32 WorldIndex)
 	{

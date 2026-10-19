@@ -125,7 +125,7 @@ int32 ATrafficManager::AddPower(ETrafficKind Kind, double X, double Y, double He
 	APowerVesselActor* Actor = GetWorld()->SpawnActor<APowerVesselActor>(FVector(X, Y, 0.0) * 100.0, FRotator(0.0, FMath::RadiansToDegrees(Heading), 0.0), Params);
 	if (Actor)
 	{
-		Actor->Build(Kind);
+		Actor->Build(Kind, Name.StartsWith(TEXT("Tanker")));
 		PowerActors.Add(Id, Actor);
 		// -SailingNearShip=<m>: the player is moved this far abeam of the first ship, on her heading (measuring stills).
 		double NearM = 0.0;

@@ -31,6 +31,14 @@ namespace SailingBindings
 	/** Menu navigation (MenuUp/Down/Left/Right) shares the arrows and the D-pad with game commands: no row, never swapped. */
 	SAILINGSIM_API bool IsRowAction(FName Action);
 
+	/**
+	 * Key layers: the prologue's crew-station commands (CrewAction, Grind, TravellerDump, Station) are only live at a crew
+	 * station, where the crew hold the boat's other commands, so the two layers may share a key or a button. Menu and the
+	 * controls card are in both. Two rows clash (and swap on Assign) only when they share a layer.
+	 */
+	SAILINGSIM_API bool IsStationAction(FName Action);
+	SAILINGSIM_API bool SameLayer(FName A, FName B);
+
 	/** The row's key in a column (the first binding), or an invalid key. */
 	SAILINGSIM_API FKey Find(const TArray<FSailingKeyBinding>& Bindings, FName Action, bool bNegative, EColumn Column);
 	/** The stick or trigger that drives this row on the pad, or an invalid key. Sticks drive both directions, triggers one. */

@@ -19,6 +19,10 @@ namespace Sailing
 		double WindMs = 6.0;            // at 10 m
 		double WindFromRad = 0.0;       // where the wind comes from (map frame, 0 = north)
 		double WindSeaFraction = 1.0;   // how developed the wind sea is (1 = fully developed for this wind)
+		/** Prologue step 4: a fetch-limited wind sea given outright (the mistral's short steep sea: higher and shorter than
+		 *  WindSeaFraction's partly developed sea, which keeps Pierson-Moskowitz's height-to-period). 0 = from the wind. */
+		double WindSeaHs = 0.0;         // m
+		double WindSeaTp = 0.0;         // s
 		double SwellHs = 1.0;           // m, significant height of the swell
 		double SwellTp = 9.0;           // s, its peak period
 		double SwellFromRad = 2.4;      // where it comes from (the Gulf swell runs in from the southeast)

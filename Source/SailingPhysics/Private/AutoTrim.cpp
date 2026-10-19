@@ -52,7 +52,7 @@ namespace Sailing
 		const double Downwind = SmoothStep(100.0, 140.0, Twa);
 		const double Reach = SmoothStep(55.0, 85.0, Twa);
 
-		const double Rate = 0.8 * Dt; // sheets move at most 0.8 of full travel per second
+		const double Rate = 0.8 * Set.RateScale * Dt; // sheets move at most 0.8 of full travel per second
 		// A dinghy sailor sails her flat with the sheet in the hand: dumps it as soon as she heels past the limit (or starts
 		// to roll toward it), and never trims in while she is still overpowered, even if the apparent wind comes forward.
 		const bool bDinghy = Cfg.DinghyEasePerHeelDeg > 0.0;
@@ -68,7 +68,7 @@ namespace Sailing
 		// or rolling to windward over the hiked sailor: easing then starts the windward roll. (Dumping on the helm's pull as
 		// well was tried: she slows, rolls to windward and nose-dives into the next wave.)
 		double PuffEase = 0.0;
-		if (bDinghy)
+		if (bDinghy || Set.bEasePuffs)
 		{
 			if (FeltWind <= 0.0) FeltWind = SetUpWind = T.TrueWindSpeed;
 			FeltWind += (T.TrueWindSpeed - FeltWind) * std::min(Dt / PuffReactionSeconds, 1.0);
@@ -144,6 +144,11 @@ namespace Sailing
 		const double Limit = bKeepShortOfStall ? std::min(MaxTiller, (StallDeg + 2.0) / Cfg.MaxRudderAngleDeg) : MaxTiller;
 		// Heeled to port (wind from starboard) she wants to round up to starboard: hold the tiller against it (bow to port).
 		const double Lean = Cfg.HeelYawCoef > 0.0 ? -HelmPerHeel * (T.Heel * kRadToDeg) / Cfg.MaxRudderAngleDeg : 0.0;
-		return Clamp(Gain * Error + Lean - RateGain * YawRate, -Limit, Limit);
+		// Making sternway (a wave stopped her head to wind and she is falling back) the rudder works the other way: a
+		// helmsman reverses it, from 0.3 m/s astern to fully reversed by 0.8 (docs/wave-physics/: in the gale's sea the
+		// maxi's tacks were stopped by a face and fell back at 1 to 4 kn, the wheel still hard over). Not for the moment a
+		// dinghy stuffs her bow into a wave (0.5 kn astern for an instant): she is going again before the helm could act.
+		const double Astern = Clamp(1.0 + 4.0 * std::min(T.ForwardSpeed + 0.3, 0.0), -1.0, 1.0);
+		return Clamp(Astern * (Gain * Error + Lean - RateGain * YawRate), -Limit, Limit);
 	}
 }

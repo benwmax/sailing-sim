@@ -91,9 +91,12 @@ Closed (Oct 18 2026, Bean's choice): the hero J/22 now carries a made-up registr
 (`Inputs/j22-hero/j22_style.py`), its character sheet (`Tools/boatkit/characters/tx1288zx.json`) and the rebaked hull
 (`hero-registration`); the lesson boat's number stays only in source comments and older renders under `docs/`, as the
 photographed reference. In the game (reimported on the Mac, boats gate passed): [hero-registration-game.jpg](hero-registration-game.jpg),
-the starboard bow in the home slip on High. Overture's buildings theme mixes OSM, Microsoft and Esri footprints, all ODbL; if Esri Community Maps
-footprints are inside the bake, Overture's attribution guidance may ask for "Esri Community Maps contributors" as well: worth
-a look at their attribution page before release.
+the starboard bow in the home slip on High. Overture's buildings theme mixes OSM, Microsoft and Esri footprints. Closed Oct 18 2026 (Bean: "yes include them
+in the credits"): Overture's attribution page (docs.overturemaps.org/attribution, buildings theme) asks for "© OpenStreetMap
+contributors. Available under the Open Database License.", "Esri Community Maps contributors. Available under CC BY 4.0." and
+"Global ML Building Footprints. Licensed by Microsoft under the Open Database License." (Google Open Buildings and the
+East Asia and Spain sources do not cover Texas). CREDITS.md, the Credits screen (which shows CREDITS.md) and the in-game
+map credit line carry all three.
 
 Credits screen (Oct 18 2026, `credits-screen`): the front end has a Credits screen (Title > Credits, and Settings > Credits
 and licences on every tab). It leads with the Unreal Engine trademark notice and then shows all of CREDITS.md, which it

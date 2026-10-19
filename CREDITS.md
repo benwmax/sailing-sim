@@ -68,8 +68,10 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 ## Added by the licence audit (Oct 15 2026, docs/licences)
 
 - Buildings (house footprints and heights, Graphics G2/G6): Overture Maps Foundation, buildings theme (release
-  2026-09-23.1), including OpenStreetMap, Microsoft and Esri footprints: © Overture Maps Foundation and OpenStreetMap
-  contributors, ODbL 1.0. The `.houses` bakes are a derived database offered under the same licence.
+  2026-09-23.1). Its sources, credited as Overture's attribution page asks: © OpenStreetMap contributors, available
+  under the Open Database License; Esri Community Maps contributors, available under CC BY 4.0; Global ML Building
+  Footprints, licensed by Microsoft under the Open Database License. The `.houses` bakes are a derived database
+  offered under ODbL 1.0.
 - Shore detail, tree crowns, piers and roofs: USGS 3DEP 1 m lidar DEM and lidar point clouds (TX_Pecos_Dallas 2018,
   TX_Coastal 2018), USDA NAIP 2022 imagery and NOAA C-CAP 2020 land cover, distributed by TxGIO/TNRIS (public domain).
 - Weather and wind: NOAA HRRR and MRMS (NOAA Open Data Dissemination, public domain); NWS ASOS observations from
@@ -86,7 +88,8 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 ## Added by the licence closure (Oct 17 2026, docs/licences)
 
 - The game now credits "Larus atricilla" (Tony Phillips, CC BY 3.0) and the two public-domain Commons recordings on
-  Settings > Sound, and names Overture Maps Foundation beside OpenStreetMap in the in-game map credit.
+  Settings > Sound, and names Overture Maps Foundation, Esri Community Maps contributors and Microsoft's Global ML
+  Building Footprints beside OpenStreetMap in the in-game map credit (Bean, Oct 18 2026: include Esri in the credits).
 - Boat kit photo match (`Tools/boatkit/photomatch/matches`): only picked pixel coordinates are in the repo. The J/22
   broadside is [J-22 sailboat Jay2PLay on trailer](https://commons.wikimedia.org/wiki/File:J-22_sailboat_Jay2PLay_on_trailer.jpg)
   by Thomas Gutenstein, CC BY-SA 3.0 (credited as a courtesy; the photo is not copied).
