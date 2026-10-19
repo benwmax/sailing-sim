@@ -349,11 +349,14 @@ namespace Sailing
 				"A ballasted maxi stays on her feet reefed in a gale"));
 			const FBoatConfig Ilca = FBoatConfig::Make(EBoatType::ILCA7);
 			const FSpeedRun L = SpeedRun(Ilca, 22.0, 110.0, false, 0.0, 13000.0, 180.0);
-			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 22 kn: peak", L.PeakKnots, 10.0, 16.0, "kn", "ILCA about 15 kn GPS in a big gust"));
+			// Up to 18 since she surfs (docs/wave-physics/): the class's GPS logs reach 21.6 kn running in a 40 kn gust on
+			// flat water and 22.2 kn reaching (ilcasailing.org, "Australian speed rivalry"); 22 kn of wind with the lake's
+			// chop to ride sits between.
+			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 22 kn: peak", L.PeakKnots, 10.0, 18.0, "kn", "ILCA about 15 kn GPS in a big gust; class GPS logs to 21.6-22.2 kn in 40 kn"));
 			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 22 kn: heel at most", L.MaxTiltDeg, 0.0, 70.0, "deg", "A good sailor keeps her up on a heavy-air reach (past 70 deg the model counts a capsize)"));
 			// (Gust intensity 0.14 puts the 99th percentile of the one-second wind at 22 kn on a 16 kn day; 0.25 took it to 27.)
 			const FSpeedRun G = SpeedRun(Ilca, 16.0, 110.0, false, 0.14, 13000.0, 180.0);
-			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 16 kn gusting 22: peak", G.PeakKnots, 10.0, 16.0, "kn", "ILCA about 15 kn GPS in a big gust"));
+			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 16 kn gusting 22: peak", G.PeakKnots, 10.0, 18.0, "kn", "ILCA about 15 kn GPS in a big gust; class GPS logs to 21.6-22.2 kn in 40 kn"));
 			Out.push_back(Check("Top speed", "ILCA 7 broad reach, 16 kn gusting 22: heel at most", G.MaxTiltDeg, 0.0, 70.0, "deg", "A good sailor keeps her up on a heavy-air reach (past 70 deg the model counts a capsize)"));
 		}
 

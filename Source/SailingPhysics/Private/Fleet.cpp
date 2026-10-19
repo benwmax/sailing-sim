@@ -65,6 +65,9 @@ namespace Sailing
 			// LOA 13 ft 9 in, beam 4 ft 1 in, 120 lb hull, lateen rig 75 sq ft on a 10 ft mast. One sailor, hiking.
 			FBoatConfig C;
 			C.Type = EBoatType::Sunfish; C.TrimHeelLimitDeg = 8.0; C.TrimMaxEaseDeg = 60.0; C.Name = "Sunfish";
+			// Added resistance: the J/22's until docs/wave-physics/, whose long-wave fall took a little off her in the 15 kn
+			// chop (about two of her lengths); 3.0 puts her 15 kn beat back where her polar had it (+14.9% against +14.5%).
+			C.AddedResistanceCoef = 3.0;
 			C.HullRigMass = 70.0; C.HullRigCG = Vec3(-0.1, 0.0, 0.30);
 			C.BallastMass = 0.0; C.BallastCG = Vec3();
 			C.CrewMass = 75.0; C.CrewCG = Vec3(-0.9, 0.0, 0.40); C.CrewCount = 1;
@@ -204,6 +207,11 @@ namespace Sailing
 			C.LengthOverall = 9.12; C.WaterlineLength = 7.62; C.Beam = 3.30; C.WaterlineBeam = 2.8; C.Draft = 1.60;
 			C.Residuary = kCruiser;
 			C.WettedAreaCoef = 2.9; C.HullLateralArea = 1.4; C.MunkAddedMass = 1200.0; C.YawDampingLinear = 2500.0; C.HeaveDamping = 1200.0;
+			// Waves (docs/wave-physics/): ORC's added resistance (VPP 2023 eq. 6.62, its 16 kn sea) puts her at 1.23 to 1.36
+			// x the J/22's (log10 or ln in its f(L30)); with the J/22's coefficient the model gave 2.14 x in that 5 s sea
+			// (her 7.6 m waterline is nearer its peak). 2.6 x 1.29 / 2.14: her certificate's beat at 16 kn moves from -6.1%
+			// to -4.9%, nothing else by more than 0.4%.
+			C.AddedResistanceCoef = 1.57;
 			C.Foils = { Foil(EFoilRole::Keel, Vec3(0.30, 0.0, -1.05), 1.35, 1.22, 2.6, 15.0), Foil(EFoilRole::Rudder, Vec3(-2.9, 0.0, -0.80), 0.56, 0.457, 3.2, 15.0) };
 			C.MaxRudderAngleDeg = 35.0; C.RudderStockToCP = 0.04; C.TillerLength = 0.4; C.HelmStiffness = 6000.0; C.RudderResponseTime = 0.25;
 			C.MastX = 1.05; C.MastheadZ = 13.99; C.MastDiameter = 0.16;
@@ -228,8 +236,9 @@ namespace Sailing
 			// crew aft on the wire), and most in a breeze, when the lake's chop is up and she is going fast into it. At 4 she
 			// sailed upwind 13 % over the Hotline polar at 10 kn and lapped 14 % under the D-PN 12+ band (71.3); at 9 the
 			// added resistance (Hs^2 and speed: strongest upwind in a breeze) puts 10 kn upwind within 4 % of the polar and
-			// both D-PN bands near their middles, leaving the light-air band where it was.
-			C.Type = EBoatType::Hobie16; C.AddedResistanceCoef = 9.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.7; C.TrimMaxEaseDeg = 45.0; C.Name = "Hobie 16"; C.bMultihull = true;
+			// both D-PN bands near their middles, leaving the light-air band where it was. (Those were 4 and 9 against the
+			// J/22's 1.3; docs/wave-physics/ doubled every coefficient with the spectral sum, so 9 is 18 here.)
+			C.Type = EBoatType::Hobie16; C.AddedResistanceCoef = 18.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.7; C.TrimMaxEaseDeg = 45.0; C.Name = "Hobie 16"; C.bMultihull = true;
 			C.HullRigMass = 145.0; C.HullRigCG = Vec3(0.0, 0.0, 0.75);
 			C.BallastMass = 0.0; C.BallastCG = Vec3();
 			C.CrewMass = 150.0; C.CrewCG = Vec3(-0.7, 0.0, 0.60); C.CrewCount = 2;
@@ -272,7 +281,9 @@ namespace Sailing
 			// daggerboard 1.6 m down / 0.43 m up, main about 33.5 m^2 + self-tacking jib about 18 m^2, asymmetric
 			// spinnaker on the bowsprit, 9.9 hp outboard.
 			FBoatConfig C;
-			C.Type = EBoatType::Corsair880; C.AddedResistanceCoef = 3.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.0; C.TrimMaxEaseDeg = 40.0; C.Name = "Corsair 880"; C.bMultihull = true;
+			// Added resistance: 3 against the J/22's 1.3 before docs/wave-physics/ doubled every coefficient with the
+			// spectral sum.
+			C.Type = EBoatType::Corsair880; C.AddedResistanceCoef = 6.0; C.AddedResistanceSpeedCap = 4.0; C.TrimHeelLimitDeg = 10.0; C.TrimMaxEaseDeg = 40.0; C.Name = "Corsair 880"; C.bMultihull = true;
 			C.HullRigMass = 1760.0; C.HullRigCG = Vec3(-0.3, 0.0, 0.60);
 			C.BallastMass = 0.0; C.BallastCG = Vec3();
 			C.CrewMass = 240.0; C.CrewCG = Vec3(-2.6, 0.0, 0.95); C.CrewCount = 3;
@@ -426,9 +437,13 @@ namespace Sailing
 			// (wide, flat aft sections: the J/22's round ones are 2.75).
 			C.Residuary = kMaxi;
 			C.WettedAreaCoef = 3.46;
-			// Waves: the J/22's calibration (the formula already scales by beam^2 / LWL and with the wavelength against her
-			// length, so the lake's short chop hardly touches her); saturating by 4 kn like any keelboat.
-			C.AddedResistanceCoef = 1.3;
+			// Waves (docs/wave-physics/): her polar's lake chop is far shorter than her and does not load her, so the number
+			// comes from ORC's length scaling instead. ORC's added resistance (VPP 2023 eq. 6.62 with its length baselines
+			// for f(Vt) and its f(L30), at 16 kn) puts a 97 ft boat of her proportions at 2.78 to 4.12 x the J/22's (the
+			// log in f(L30) read as log10 or ln); the model with the J/22's 2.6 gave 18.7 x in the same 5 s sea, where she
+			// is near her peak and the J/22 rides it. 2.6 x 3.4 / 18.7 = 0.47 (0.38 to 0.57 across the reading). In the
+			// prologue's gale (Hs 3.5 m, 7 s) she then beats at 10.8 kn against 12.3 flat and tacks 5 of 6 on the wheel.
+			C.AddedResistanceCoef = 0.47;
 			// Sway and yaw: the canoe body's lateral area is about 18 m^2 (LWL x a mean 0.6 m), so 9 m^2 at each station
 			// (the J/22's 0.55 x 16); Munk added mass and low-speed yaw damping scaled by displacement and length^4 from the
 			// Catalina 30 and the Lagoon (with the J/22's ratios they turn her far too slowly through a tack).
@@ -577,6 +592,12 @@ namespace Sailing
 				"estimate from measured racing speeds (PMC9719898) and Day 2017 VPP; x0.85 at 120+ (no surfing)", 999.0);
 			// The measured data pins upwind and downwind VMG; the reaching speeds in between were judged (+/-15%).
 			for (FPolarPoint& Q : P) if (Q.TrueWindAngleDeg > 50.0 && Q.TrueWindAngleDeg < 140.0) Q.Tolerance = 0.15;
+			// Running in the lake's chop she locks to the waves her own length, whose speed is her hull speed
+			// (docs/wave-physics/): at TWA 150 she makes 5.8 kn in anything from 12 to 15 kn of wind, rides them below (+17%
+			// at 11 kn) and is held behind them above (-11% at 16 kn) until she breaks through near 18 kn. Racers steer and
+			// pump off them; the crew here hold the course. So the run's speed swings by a fifth with a knot of wind, on top
+			// of the reference's own x0.85 judgment (the 15 kn run, held behind the chop, is 18% under it): 25%.
+			for (FPolarPoint& Q : P) if (Q.TrueWindAngleDeg >= 140.0) Q.Tolerance = 0.25;
 			break;
 		}
 		case EBoatType::Sunfish:
@@ -587,8 +608,10 @@ namespace Sailing
 			break;
 		}
 		case EBoatType::Catalina22:
+			// A handicap-scaled estimate: 15% (FPolarPoint::Tolerance). It was held to 10% until docs/wave-physics/, whose
+			// surf down the lake's chop carries her 3 to 4% faster on the 16 kn reach and run.
 			AddTable(P, Tws16, 3, { 52, 60, 90, 120, 150 }, { { 4.03, 4.26, 4.32, 4.09, 3.23 }, { 5.19, 5.36, 5.52, 5.52, 4.81 }, { 5.56, 5.72, 5.99, 6.25, 5.89 } },
-				"estimate: Catalina 30 ORC x PHRF 270/183", 110.0);
+				"estimate: Catalina 30 ORC x PHRF 270/183", 110.0, 0.15);
 			break;
 		case EBoatType::Catalina30:
 			AddTable(P, Tws16, 3, { 52, 60, 90, 120, 150 }, { { 4.51, 4.76, 4.83, 4.57, 3.61 }, { 5.8, 5.99, 6.18, 6.17, 5.38 }, { 6.33, 6.51, 6.82, 7.11, 6.7 } },

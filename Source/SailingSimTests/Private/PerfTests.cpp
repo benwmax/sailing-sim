@@ -164,7 +164,9 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Still 120 Hz"), Task.Stepper.GetStepDt(), 1.0 / 120.0);
 		// The hitch frames (0.09 s) are under the 12-step cap, so every step of the elapsed time ran.
 		TestEqual(TEXT("120 steps a second of frames"), double(TaskSteps), FMath::FloorToDouble(Elapsed * 120.0 + 1e-6), 1.0);
-		TestTrue(TEXT("She sailed"), Task.Boat.GetState().Position.LengthXY() > 20.0);
+		// (Not frozen: on her fixed tiller she rounds up into irons, sooner or later as the swell takes her; since
+		// docs/wave-physics/ its slope pushes her too, and 20 m was the edge.)
+		TestTrue(FString::Printf(TEXT("She sailed (%.1f m)"), Task.Boat.GetState().Position.LengthXY()), Task.Boat.GetState().Position.LengthXY() > 10.0);
 	}
 	return true;
 }
