@@ -197,7 +197,20 @@ game's fine turbulence (`Wind.mann`), as the module does; without it the gale's 
 
 ## Gate
 
-See the PR for `scripts/gate.sh --scope boats` (Medium 60 / High 45).
+`scripts/gate.sh --scope boats --no-tests` (the full `scripts/test.sh` ran on the same physics: 190 of 190): pass.
+
+| View (High) | fps | p99 ms | GPU ms | Game thread ms |
+|---|---|---|---|---|
+| beam8 | 65.0 | 18.0 | 14.6 | 2.61 |
+| beat15 | 63.5 | 19.7 | 14.9 | 2.62 |
+| marina | 62.1 | 16.9 | 15.3 | 2.71 |
+| helm-eye | 60.3 | 21.0 | 15.4 | 2.62 |
+| slip | 53.6 | 20.5 | 17.9 | 2.80 |
+| crew | 53.2 | 21.7 | 18.1 | 2.88 |
+
+Physics cost per boat (one step with the lake chop and an ocean, standalone, M5 Pro), main -> now: J/22 172.7 -> 170.3
+us, ILCA 172.8 -> 169.7, Lagoon 42 221.7 -> 214.5, maxi 171.9 -> 168.9. The second pass over the hull columns and the
+waterplane fit cost nothing measurable beside the wave sampling, which was already there.
 
 ## Sources
 
