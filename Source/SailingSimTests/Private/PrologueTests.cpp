@@ -302,7 +302,9 @@ namespace PrologueTestsLocal
 		Stations.Reset(Boat, Sails, ECrewStation::JibTrimmer);
 		int32 Phase = 0;
 		double T = 0.0, Ground = 0.0;
-		for (int32 I = 0; I < int32(90.0 * PhysicsHz); ++I, T += PhysicsDt)
+		// Three minutes: since the boom went up to the deck's height (Fleet.cpp) the maxi heels more and the J4's last metre
+		// to 0.2 against its sheet load takes longer than the 90 s this ran for.
+		for (int32 I = 0; I < int32(180.0 * PhysicsHz); ++I, T += PhysicsDt)
 		{
 			FStationInput Hands;
 			if (Phase == 0) { Hands.Grind = 1.0; if (T > 20.0) Phase = 1; } // sailing, trimmed
@@ -814,10 +816,14 @@ bool FSailingPrologueGaleTest::RunTest(const FString&)
 	AddInfo(FString::Printf(TEXT("Squall: \"dump the main\" began at %.1f s, the squall cued at %.1f s for %.1f s; its wind was on her at %.1f s (%.1f kn at 10 m in its first 20 s, rain to %.1f mm/h), the call at %.1f s; the break began at %.1f s, cued at %.1f s"),
 		DumpAt, Gale.SquallCuedAt, Gale.SquallDue, FrontAt, SquallPeak, MaxRain, DumpCall, BreakAt, Gale.ClearingAt));
 	TestTrue(TEXT("The squall is cued as its step begins"), FMath::Abs(Gale.SquallCuedAt - DumpAt) < 0.02);
-	// Within 2 s: the cue aims at where she will be at her speed and course when the step begins, and she turns after.
-	TestTrue(TEXT("Its wind is on her on the step's clock (within 2 s of its in_s)"), FMath::Abs(FrontAt - (DumpAt + Dump->WeatherInSeconds)) < 2.0);
+	// Within 3 s: the cue aims at where she will be at her speed and course when the step begins, and she turns after (in
+	// the 3.5 m sea her speed swings 11-21 kn on a reach; with the boom at the deck's height she heels more and rounds up
+	// into it sooner: 2.9 s early, 1.5 s before).
+	TestTrue(TEXT("Its wind is on her on the step's clock (within 3 s of its in_s)"), FMath::Abs(FrontAt - (DumpAt + Dump->WeatherInSeconds)) < 3.0);
 	TestTrue(TEXT("The call comes with the squall's gust (within 3 s of the front)"), DumpCall >= DumpAt + Dump->Trigger.AfterSeconds && DumpCall < FrontAt + 3.0);
-	TestTrue(TEXT("A 40 kn front (38-46 kn at 10 m)"), SquallPeak >= 38.0 && SquallPeak <= 46.0);
+	// The peak she meets in its first 20 s is the front's 40 kn and a gust on it (45 kn; 46.7 since the boom went up, meeting
+	// it sooner).
+	TestTrue(TEXT("A 40 kn front (38-48 kn at 10 m)"), SquallPeak >= 38.0 && SquallPeak <= 48.0);
 	TestTrue(TEXT("The break begins with its step"), FMath::Abs(Gale.ClearingAt - BreakAt) < 0.02);
 	const FWeatherState End = Gale.Weather.Evaluate(BreakAt + FWeatherSystem::kClearingSeconds + 1.0);
 	TestTrue(TEXT("... and the sky has opened 45 s on"), End.CloudCover < 0.5 && End.RainRateAt(0.0, 0.0, 0.0, BreakAt + 46.0) < 0.05);
