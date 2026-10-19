@@ -2,6 +2,8 @@
 #include "PolarReference.h"
 #include "Scenarios.h"
 #include "EasyAssists.h"
+#include "SeaTrials.h"
+#include "Wind.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -33,10 +35,149 @@ int main(int Argc, char** Argv)
 		Argv += 2;
 		Argc -= 2;
 	}
+	// --ar <coef> and --surf <scale> override the boat's added resistance and wave slope push (calibration runs).
+	FBoatConfig Config = FBoatConfig::Make(Type);
+	while (Argc > 2 && (std::strcmp(Argv[1], "--ar") == 0 || std::strcmp(Argv[1], "--surf") == 0))
+	{
+		(std::strcmp(Argv[1], "--ar") == 0 ? Config.AddedResistanceCoef : Config.WaveSlopeForceScale) = std::atof(Argv[2]);
+		Argv += 2;
+		Argc -= 2;
+	}
 	const bool bQuick = Argc > 1 && std::strcmp(Argv[1], "--quick") == 0;
-	const FBoatConfig Config = FBoatConfig::Make(Type);
 	const std::vector<FPolarPoint>& Polar = FleetReferencePolar(Type);
 	std::printf("%s\n", Config.Name);
+	if (Argc > 1 && std::strcmp(Argv[1], "--sea") == 0)
+	{
+		// The game's fine turbulence (the gale is gusty), as the module loads it.
+		if (!FTurbulenceTile::LoadShared("Content/TerrainData/Wind.mann")) std::printf("(no Content/TerrainData/Wind.mann: fine turbulence stand-in)\n");
+		// Wave physics (docs/wave-physics/): calm and added resistance and the surf. --sea alone: the polar's sea at 8-20 kn,
+		// beating, reaching and running. --sea gale: the prologue's gale (six tacks on the wheel; beat, reach and run, in its
+		// sea and on flat water). --sea checks: what the wave tests assert. --sea orc <hs> <tws>: ORC's 5 s sea. --sea at
+		// <tws> <twa> [settle s] [seconds]: one point of the polar's sea.
+		const bool bGale = Argc > 2 && std::strcmp(Argv[2], "gale") == 0;
+		auto Print = [](const char* What, const FSeaRunResult& R)
+		{
+			std::printf("%-34s Hs %.2f m  %5.2f kn (net %5.2f, 1 s %5.2f..%5.2f)  calm %6.0f N  waves %6.0f N (%3.0f%%)  surge %+6.0f N  face %+.3f back %+.3f m/s2 (%2.0f%% on faces)  heel %4.1f%s\n",
+				What, R.Hs, R.MeanKnots, R.NetKnots, R.MinKnots, R.MaxKnots, R.MeanCalmN, R.MeanWaveN, 100.0 * R.MeanWaveN / std::max(R.MeanCalmN, 1.0), R.MeanSurgeN, R.FaceAccel,
+				R.BackAccel, 100.0 * R.FaceShare, R.MeanHeelDeg, R.bCapsized ? "  CAPSIZED" : "");
+		};
+		if (Argc > 2 && std::strcmp(Argv[2], "checks") == 0)
+		{
+			// What SailingSim.Physics.WaveAddedResistanceScaling and SailingSim.Physics.Surfing assert, printed.
+			FTrialSeaSpec Orc;
+			Orc.WindKnots = 16.0;
+			Orc.FetchMeters = 1.0;
+			Orc.bOcean = true;
+			Orc.Ocean.WindMs = 16.0 * kKnot;
+			Orc.Ocean.WindFromRad = 0.0;
+			Orc.Ocean.WindSeaHs = 1.0;
+			Orc.Ocean.WindSeaTp = 5.0;
+			Orc.Ocean.SwellHs = 0.0;
+			double J22 = 0.0;
+			for (const EBoatType B : { EBoatType::J22, EBoatType::Catalina22, EBoatType::Catalina30, EBoatType::Maxi })
+			{
+				const FSeaRunResult R = RunInSea(FBoatConfig::Make(B), Orc, 45.0, 0, false, 30.0, 120.0);
+				if (B == EBoatType::J22) J22 = R.MeanWaveN;
+				std::printf("ORC sea, %-12s added resistance %6.0f N = %5.2f x the J/22's (%.2f kn)\n", BoatTypeName(B), R.MeanWaveN, R.MeanWaveN / std::max(J22, 1.0), R.MeanKnots);
+			}
+			FTrialSeaSpec Gulf;
+			Gulf.WindKnots = 12.0;
+			Gulf.WindFromDeg = 180.0;
+			Gulf.FetchMeters = 1.0;
+			Gulf.bOcean = true;
+			Gulf.Ocean.WindMs = 12.0 * kKnot;
+			Gulf.Ocean.WindFromRad = kPi;
+			Gulf.Ocean.SwellHs = 1.2;
+			Gulf.Ocean.SwellTp = 9.0;
+			Gulf.Ocean.SwellFromRad = 135.0 * kDegToRad;
+			for (const double Surf : { 0.0, 1.0 })
+			{
+				FBoatConfig C = FBoatConfig::Make(EBoatType::J22);
+				C.WaveSlopeForceScale = Surf;
+				Print(Surf > 0.0 ? "J/22 Gulf swell TWA 150, push" : "J/22 Gulf swell TWA 150, no push", RunInSea(C, Gulf, 150.0, 0, false, 30.0, 240.0));
+				FBoatConfig L = FBoatConfig::Make(EBoatType::ILCA7);
+				L.WaveSlopeForceScale = Surf;
+				FTrialSeaSpec Chop;
+				Chop.WindKnots = 20.0;
+				Chop.bCalibrationSea = true;
+				Print(Surf > 0.0 ? "ILCA 20 kn chop TWA 150, push" : "ILCA 20 kn chop TWA 150, no push", RunInSea(L, Chop, 150.0, 0, false, 30.0, 240.0));
+				FTrialSeaSpec Swell = Gulf;
+				Swell.WindKnots = 0.0;
+				Swell.Ocean.WindMs = 0.5;
+				Print(Surf > 0.0 ? "J/22 adrift on the swell, push" : "J/22 adrift on the swell, no push", RunInSea(C, Swell, 90.0, 0, false, 30.0, 300.0));
+			}
+			return 0;
+		}
+		if (Argc > 4 && std::strcmp(Argv[2], "orc") == 0)
+		{
+			// ORC's VPP sea (docs/wave-physics/): an open-sea wind sea at a fixed 5 s modal period, here at Hs <hs>, TWS
+			// <tws>; upwind at TWA 45, no chop (the ratio of two boats' added resistance is what is compared with ORC).
+			FTrialSeaSpec Sea;
+			Sea.WindKnots = std::atof(Argv[4]);
+			Sea.FetchMeters = 1.0;
+			Sea.bOcean = true;
+			Sea.Ocean.WindMs = Sea.WindKnots * kKnot;
+			Sea.Ocean.WindFromRad = 0.0;
+			Sea.Ocean.WindSeaHs = std::atof(Argv[3]);
+			Sea.Ocean.WindSeaTp = 5.0;
+			Sea.Ocean.SwellHs = 0.0;
+			for (const double Twa : { 45.0, 90.0, 150.0 })
+			{
+				char Name[64];
+				std::snprintf(Name, sizeof(Name), "ORC sea Hs %.1f TWA %3.0f", Sea.Ocean.WindSeaHs, Twa);
+				Print(Name, RunInSea(Config, Sea, Twa, 0, Twa > 100.0 && Config.HasSpinnaker(), 30.0, 120.0));
+			}
+			return 0;
+		}
+		if (bGale)
+		{
+			FBoatConfig Scene = Config;
+			FSceneLimits::For(true).ApplyTo(Scene);
+			int Ok = 0, FlatOk = 0;
+			for (uint32_t Seed = 1; Seed <= 6; ++Seed)
+			{
+				const double W = RunGaleTack(Scene, 2, Seed, true), F = RunGaleTack(Scene, 2, Seed, false);
+				Ok += W > 0.0;
+				FlatOk += F > 0.0;
+				std::printf("gale tack seed %u: in the sea %5.1f s, flat %5.1f s\n", Seed, W, F);
+			}
+			std::printf("gale tacks: %d of 6 in the sea, %d of 6 on flat water\n", Ok, FlatOk);
+			for (const double Twa : { 50.0, 100.0, 150.0 })
+			{
+				char Name[64];
+				std::snprintf(Name, sizeof(Name), "gale TWA %3.0f, sea", Twa);
+				Print(Name, RunInSea(Scene, FTrialSeaSpec::Gale(1), Twa, 2, false, 30.0, 120.0, 0.05));
+				std::snprintf(Name, sizeof(Name), "gale TWA %3.0f, flat", Twa);
+				Print(Name, RunInSea(Scene, FTrialSeaSpec::Gale(1, 32.0, false), Twa, 2, false, 30.0, 120.0, 0.05));
+			}
+			return 0;
+		}
+		if (Argc > 3 && std::strcmp(Argv[2], "at") == 0)
+		{
+			// --sea at <tws> <twa>: the polar's sea at one point.
+			FTrialSeaSpec Sea;
+			Sea.WindKnots = std::atof(Argv[3]);
+			Sea.bCalibrationSea = true;
+			const double Twa = std::atof(Argv[4]);
+			const double Settle = Argc > 5 ? std::atof(Argv[5]) : 25.0, Seconds = Argc > 6 ? std::atof(Argv[6]) : 120.0;
+			Print("polar sea", RunInSea(Config, Sea, Twa, 0, Twa > 100.0 && Config.HasSpinnaker(), Settle, Seconds));
+			return 0;
+		}
+		for (const double Tws : { 8.0, 12.0, 16.0, 20.0 })
+		{
+			for (const double Twa : { 45.0, 90.0, 150.0 })
+			{
+				FTrialSeaSpec Sea;
+				Sea.WindKnots = Tws;
+				Sea.FetchMeters = kPolarFetchMeters;
+				Sea.bCalibrationSea = true;
+				char Name[64];
+				std::snprintf(Name, sizeof(Name), "polar sea %2.0f kn TWA %3.0f", Tws, Twa);
+				Print(Name, RunInSea(Config, Sea, Twa, 0, Twa > 100.0 && Config.HasSpinnaker(), 25.0, 60.0));
+			}
+		}
+		return 0;
+	}
 	if (Argc > 1 && std::strcmp(Argv[1], "--scenarios") == 0 && Type == EBoatType::Maxi)
 	{
 		// The prologue maxi (docs/prologue/README.md step 3): heavy-air tacks and the gust on a reach.

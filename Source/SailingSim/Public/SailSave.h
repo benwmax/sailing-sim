@@ -143,7 +143,7 @@ struct SAILINGSIM_API FSailSave
 		const FSceneRecord* FindScene(const FString& Id) const { return Scenes.FindByPredicate([&Id](const FSceneRecord& S) { return S.Id == Id; }); }
 		bool IsSceneDone(const FString& Id) const { const FSceneRecord* S = FindScene(Id); return S && S->bDone; }
 		/** A finished scene (the sim's FSceneResult, rule 8); an unfinished one changes nothing. */
-		void RecordScene(const Sailing::FSceneResult& Result, const FDateTime& NowUtc);
+		SAILINGSIM_API void RecordScene(const Sailing::FSceneResult& Result, const FDateTime& NowUtc);   // MSVC: a nested struct does not inherit FSailSave's export
 		int32 RacesSailed = 0;
 		int32 RacesWon = 0;
 		int32 LogbookSessions = 0;

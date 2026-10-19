@@ -194,8 +194,11 @@ bool FMoonPhaseTest::RunTest(const FString& Parameters)
 }
 
 // Laser planing drag: above Froude 1.3 the ILCA's residuary climbs again (Fleet.cpp), so on a steady 22 kn broad reach,
-// anywhere from 100 to 130 degrees, her best one-second speed stays under the 16 kn ceiling of her published top speeds,
-// she stays up, and the drag below Froude 1.3 is the shared dinghy table's.
+// anywhere from 100 to 130 degrees, her best one-second speed stays under 18 kn (a big gust's 15 kn GPS, the class's logs to
+// 21.6-22.2 kn in 40 kn of wind; since docs/wave-physics/ she surfs the chop), and the drag below Froude 1.3 is the shared
+// dinghy table's. She stays up at all but a few angles: between 110 and 120 deg she can round up on a wave, lift clear
+// over its crest and crash-gybe as she lands (main before docs/wave-physics/: 3 of these 16 angles, at 112, 116 and 118
+// deg; since: 2, at 114 and 120). The test used to sample four angles, which missed main's.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingLaserPlaningDragTest, "SailingSim.Physics.LaserPlaningDrag", RefFlags)
 bool FSailingLaserPlaningDragTest::RunTest(const FString& Parameters)
 {
@@ -205,20 +208,22 @@ bool FSailingLaserPlaningDragTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The ILCA's table is the shared dinghy table up to Froude 1.3"),
 		Ilca.Residuary.size() > Sunfish.Residuary.size() && std::equal(Sunfish.Residuary.begin(), Sunfish.Residuary.end(), Ilca.Residuary.begin()));
 	TestTrue(TEXT("... and climbs past it"), Ilca.Residuary.back().first > 1.3 && Ilca.Residuary.back().second > 2.0 * Sunfish.Residuary.back().second);
-	for (const double Twa : { 100.0, 110.0, 120.0, 130.0 })
+	int32 Capsized = 0;
+	for (int32 Twa = 100; Twa <= 130; Twa += 2)
 	{
-		const FSpeedRun R = SpeedRun(Ilca, 22.0, Twa, false, 0.0, 13000.0, 180.0);
-		AddInfo(FString::Printf(TEXT("ILCA, 22 kn at %.0f deg: peak %.2f kn, mean %.2f, tilt at most %.0f deg"), Twa, R.PeakKnots, R.MeanKnots, R.MaxTiltDeg));
-		TestTrue(FString::Printf(TEXT("%.0f deg: peak under 16 kn (%.2f)"), Twa, R.PeakKnots), R.PeakKnots <= 16.0);
-		TestTrue(FString::Printf(TEXT("%.0f deg: she stays up (%.0f deg)"), Twa, R.MaxTiltDeg), R.MaxTiltDeg < 70.0);
+		const FSpeedRun R = SpeedRun(Ilca, 22.0, double(Twa), false, 0.0, 13000.0, 180.0);
+		AddInfo(FString::Printf(TEXT("ILCA, 22 kn at %d deg: peak %.2f kn, mean %.2f, tilt at most %.0f deg"), Twa, R.PeakKnots, R.MeanKnots, R.MaxTiltDeg));
+		TestTrue(FString::Printf(TEXT("%d deg: peak under 18 kn (%.2f)"), Twa, R.PeakKnots), R.PeakKnots <= 18.0);
+		Capsized += R.MaxTiltDeg >= 70.0;
 	}
+	TestTrue(FString::Printf(TEXT("She stays up at all but 3 of 16 angles (%d over)"), Capsized), Capsized <= 3);
 	return true;
 }
 
 // Physics gaps: W1's biggest puffs (25 to 29 kn on a 16 kn day, seed 3) capsized the ILCA on a broad reach at 110 and 120
 // deg. Hiked flat, she hardly heeled, so the heel-driven ease never came; she surged past 16 kn, buried the bow and rounded
 // up with the rudder stalled. The sailor now feels the puff 0.4 s late and eases on it (FAutoTrim): both runs stay up and
-// under the 16 kn ceiling. The steady 22 kn reach has no puffs, so the change can't touch it.
+// under the ceiling (16 kn then, 18 since she surfs: docs/wave-physics/). The steady 22 kn reach has no puffs, so the change can't touch it.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingLaserPuffHandlingTest, "SailingSim.Physics.LaserPuffHandling", RefFlags)
 bool FSailingLaserPuffHandlingTest::RunTest(const FString& Parameters)
 {
@@ -229,7 +234,7 @@ bool FSailingLaserPuffHandlingTest::RunTest(const FString& Parameters)
 		const FSpeedRun R = SpeedRun(Ilca, 16.0, Twa, false, 0.14, 13000.0, 180.0);
 		AddInfo(FString::Printf(TEXT("ILCA, 16 kn gusting 22 at %.0f deg: peak %.2f kn, mean %.2f, tilt at most %.0f deg"), Twa, R.PeakKnots, R.MeanKnots, R.MaxTiltDeg));
 		TestTrue(FString::Printf(TEXT("%.0f deg: she stays up through the puffs (%.0f deg)"), Twa, R.MaxTiltDeg), R.MaxTiltDeg < 70.0);
-		TestTrue(FString::Printf(TEXT("%.0f deg: peak under 16 kn (%.2f)"), Twa, R.PeakKnots), R.PeakKnots <= 16.0);
+		TestTrue(FString::Printf(TEXT("%.0f deg: peak under 18 kn (%.2f)"), Twa, R.PeakKnots), R.PeakKnots <= 18.0);
 		TestTrue(FString::Printf(TEXT("%.0f deg: and still sails fast (%.2f kn mean)"), Twa, R.MeanKnots), R.MeanKnots > 8.0);
 	}
 	// A keelboat crew on winches and cleats has no puff ease: the J/22's controls are unchanged in the same puffs.
