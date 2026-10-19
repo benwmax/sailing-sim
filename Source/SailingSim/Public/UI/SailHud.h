@@ -48,7 +48,7 @@ private:
 	TSharedPtr<class SVerticalBox> DrillList;
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
-	bool bCoach = false, bSignals = false, bRace = false, bNav = false;
+	bool bCoach = false, bSignals = false, bRace = false, bNav = false, bCoast = false;
 	FText CoachWho, CoachRole, CoachReason, CoachAction, CoachCpa, SignalsText, ScoreText, RaceHead, RaceTask, RaceLine, RaceResults, NavText, NextText;
 	FLinearColor CoachRoleColor = FLinearColor::White, CoachCpaColor = FLinearColor::White, RaceHeadColor = FLinearColor::White, RaceTaskColor = FLinearColor::White,
 		RaceLineColor = FLinearColor::White, ScoreColor = FLinearColor::White;

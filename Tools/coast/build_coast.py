@@ -815,6 +815,8 @@ if CHART_INFO:
     meta["datum"] = CFG["datum"]["name"]
     meta["coast"] = True
     meta["iala"] = CFG.get("iala", "A")
+    if "time_zone" in CFG:
+        meta["time_zone"] = CFG["time_zone"]
     meta["sources"] = {"chart": CHART_INFO["chart"], "elevation": "; ".join(ELEVATION_USED) or "none",
                        "tides": TIDES_CFG.get("note", "none"), "buildings_landuse": "OpenStreetMap contributors, ODbL 1.0"}
     meta["harbours"] = CHART_INFO["harbours"]

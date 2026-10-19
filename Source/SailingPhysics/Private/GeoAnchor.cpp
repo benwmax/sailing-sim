@@ -114,6 +114,7 @@ namespace Sailing
 		if (FileName == "RayHubbard") return FGeoAnchor(32.8233, -96.5);
 		if (FileName == "GalvestonBay") return FGeoAnchor(29.5446, -95.0193);
 		if (FileName == "GulfPassage") return FGeoAnchor(29.33, -94.69);
+		if (FileName == "Marseille") return FGeoAnchor(43.295, 5.3625);   // Tools/coast/worlds/Marseille.json "center"
 		return FGeoAnchor();
 	}
 

@@ -63,7 +63,7 @@ void ABridgesActor::BeginPlay()
 		const FBox2D MarinaBox = Lake.Marina.Bounds();
 		// A coast has hundreds of kilometres of jetty and seawall (Galveston's put 950,000 boulders in the scene and the render
 		// thread's visibility pass took 25 ms): there the blocks are bigger, three across every 3 m, and drawn to 1.5 km.
-		const bool bCoast = Lake.IsTidal();
+		const bool bCoast = Lake.IsCoast();
 		const double Spacing = bCoast ? 3.0 : 1.2;
 		const int32 Rows = bCoast ? 1 : 2;
 		const float SizeScale = bCoast ? 1.6f : 1.f;

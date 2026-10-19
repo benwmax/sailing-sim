@@ -63,8 +63,12 @@ def build(world_name):
         return [(nn, ee) for nn, ee in zip(n, e)]
 
     def height(p):
-        r, c = int(round((p[0] - X0) / CELL)), int(round((p[1] - Y0) / CELL))
-        return H[r, c] if 0 <= r < NY and 0 <= c < NX else 99.0
+        # Bilinear, as FLakeTerrain::HeightAt reads the grid; the highest of the four nodes around (a boat's keel spans them).
+        fr, fc = (p[0] - X0) / CELL, (p[1] - Y0) / CELL
+        r, c = int(math.floor(fr)), int(math.floor(fc))
+        if not (0 <= r < NY - 1 and 0 <= c < NX - 1):
+            return 99.0
+        return float(H[r:r + 2, c:c + 2].max())
 
     def rnd(v):
         return round(float(v), 2)

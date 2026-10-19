@@ -61,6 +61,23 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	Root->TryGetNumberField(TEXT("latitude"), Latitude);
 	Root->TryGetNumberField(TEXT("longitude"), Longitude);
 	Root->TryGetBoolField(TEXT("ocean"), bOcean);
+	Root->TryGetBoolField(TEXT("coast"), bCoast);
+	FString IalaText;
+	if (Root->TryGetStringField(TEXT("iala"), IalaText) && IalaText.Len() > 0) Iala = FChar::ToUpper(IalaText[0]);
+	Root->TryGetStringField(TEXT("time_zone"), TimeZone);
+	const TSharedPtr<FJsonObject>* Climate = nullptr;
+	if (Root->TryGetObjectField(TEXT("climate"), Climate) && Climate && Climate->IsValid())
+	{
+		(*Climate)->TryGetNumberField(TEXT("swell_from_deg"), SwellFromDeg);
+		(*Climate)->TryGetNumberField(TEXT("mistral_from_deg"), MistralFromDeg);
+	}
+	const TSharedPtr<FJsonObject>* Sources = nullptr;
+	if (Root->TryGetObjectField(TEXT("sources"), Sources) && Sources && Sources->IsValid()) (*Sources)->TryGetStringField(TEXT("chart"), ChartSource);
+	const TSharedPtr<FJsonObject>* Roles = nullptr;
+	if (Root->TryGetObjectField(TEXT("spots"), Roles) && Roles && Roles->IsValid())
+	{
+		for (const auto& Role : (*Roles)->Values) SpotRoles.Add(Role.Key, int32(Role.Value->AsNumber()));
+	}
 	FString Projection;
 	if (!Root->TryGetStringField(TEXT("projection"), Projection) || !Sailing::FGeoAnchor::ParseProj4(TCHAR_TO_UTF8(*Projection), Anchor))
 	{

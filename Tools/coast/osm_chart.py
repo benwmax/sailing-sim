@@ -338,7 +338,8 @@ def load(ctx):
             light.update({"LITCHR": n_["litchr"], "SIGGRP": n_["siggrp"], "SIGPER": n_["sigper"] or light["SIGPER"],
                           "COLOUR": n_["colour"] or light["COLOUR"], "VALNMR": n_["range"] or light["VALNMR"],
                           "HEIGHT": n_["height"] or light["HEIGHT"], "source": "nga", "nga": n_["number"]})
-        features["LIGHTS"].append({"geom_xy": g, "cell": CODE, **light})
+            name = name or n_["name"]
+        features["LIGHTS"].append({"geom_xy": g, "cell": CODE, "OBJNAM": name, **light})
     added = 0
     for i, n_ in enumerate(nga):
         if i in used_nga:
