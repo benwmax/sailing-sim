@@ -252,7 +252,10 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 					Col = FMath::Lerp(FMath::Lerp(Scrub, Limestone, Bare * 0.75f), Pine, float(FMath::Clamp(Canopy * 1.3, 0.0, 1.0)));
 					Col = FMath::Lerp(Col, FLinearColor(0.50f, 0.48f, 0.43f), Near);
 				}
-				if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.66f, 0.64f, 0.58f), float(FMath::Clamp((Slope - 0.08) * 5.0, 0.0, 1.0)));
+				// The faces: grey-white limestone (each cell a shade warmer or greyer), the scrub holding on to the gentler
+				// slopes and gullies between them.
+				const FLinearColor Face = FMath::Lerp(FLinearColor(0.47f, 0.46f, 0.42f), FLinearColor(0.56f, 0.53f, 0.47f), float(Rand01(uint32(GR * 389 + GC * 211))));
+				if (Slope > 0.12) Col = FMath::Lerp(Col, Face, float(FMath::Clamp((Slope - 0.12) * 3.5, 0.0, 1.0)));
 			}
 			else if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
 			else if (Z < 0.6)
