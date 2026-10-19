@@ -10,8 +10,8 @@ in a sold game with credit (docs/licences/assets.csv, CREDITS.md):
   - OpenStreetMap (ODbL 1.0) through Overpass: coastline, harbours, quays, pontoons, breakwaters, seamarks (buoys,
     beacons, lights with their characters), landmarks, land use, buildings
   - NGA Pub 113 List of Lights (US public domain), the light characters checked against OSM's
-  - IGN RGE ALTI 5 m (Licence Ouverte 2.0) is used when its ASCII grid tiles are in Data/<World>/raw/rgealti (the
-    Geoplateforme download host does not resolve from every network; the bake falls back to Copernicus)
+  - IGN RGE ALTI 5 m (Licence Ouverte 2.0), bare earth, through the Geoplateforme's WMS-R (the world's "ign" box,
+    Lambert-93); the bake prefers it to Copernicus wherever it has a value
 SHOM products (charts, Litto3D, tide tables) are not free for this use: never fetch them.
 """
 import json
@@ -64,6 +64,41 @@ def main():
         except subprocess.CalledProcessError:
             print("  no GLO-90 tile (all sea):", t)
     os.makedirs(os.path.join(raw, "far"), exist_ok=True)
+
+    # Land, bare earth: IGN RGE ALTI 5 m through the Geoplateforme's WMS-R (32-bit BIL, Lambert-93), in 10 km tiles with a
+    # 100 m overlap, each with its ESRI .hdr. Some resolvers fail on data.geopf.fr: then its address comes from Google's
+    # public DNS over HTTPS and curl is pinned to it (the TLS name stays data.geopf.fr).
+    ign = world.get("ign")
+    if ign:
+        resolve = []
+        if subprocess.run(["curl", "-sS", "-m", "20", "-o", "/dev/null", "https://data.geopf.fr/"], capture_output=True).returncode != 0:
+            ans = json.loads(subprocess.run(["curl", "-sS", "-m", "20", "-H", "accept: application/dns-json",
+                                             "https://dns.google/resolve?name=data.geopf.fr&type=A"], capture_output=True, text=True, check=True).stdout)
+            ip = [a["data"] for a in ans.get("Answer", []) if a["type"] == 1][0]
+            resolve = ["--resolve", f"data.geopf.fr:443:{ip}"]
+            print("data.geopf.fr does not resolve here: pinned to", ip)
+        os.makedirs(os.path.join(raw, "rgealti"), exist_ok=True)
+        x0, y0, x1, y1 = ign["l93_box"]
+        res, tile, pad = float(ign.get("cell_m", 5.0)), 10000.0, 100.0
+        x = x0
+        while x < x1:
+            y = y0
+            while y < y1:
+                name = f"rgealti/RGEALTI_{int(x)}_{int(y)}"
+                if need(name + ".bil"):
+                    bx = (x - pad, y - pad, x + tile + pad, y + tile + pad)
+                    n_ = int(round((tile + 2 * pad) / res))
+                    url = ("https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES"
+                           f"&CRS=EPSG:2154&BBOX={bx[0]},{bx[1]},{bx[2]},{bx[3]}&WIDTH={n_}&HEIGHT={n_}&FORMAT=image/x-bil;bits=32&STYLES=")
+                    print("fetch", name)
+                    subprocess.run(["curl", "-sS", "-f", "-m", "600", *resolve, "-o", os.path.join(raw, name + ".bil"), url], check=True)
+                    # ESRI BIL header: the map coordinates of the upper-left cell's centre, little-endian float32.
+                    with open(os.path.join(raw, name + ".hdr"), "w") as fh:
+                        fh.write(f"BYTEORDER I\nLAYOUT BIL\nNROWS {n_}\nNCOLS {n_}\nNBANDS 1\nNBITS 32\nPIXELTYPE FLOAT\n"
+                                 f"ULXMAP {bx[0] + res / 2}\nULYMAP {bx[3] - res / 2}\nXDIM {res}\nYDIM {res}\nNODATA -99999\n")
+                    time.sleep(1)
+                y += tile
+            x += tile
 
     # Sea bed: EMODnet mean depth, the box plus a margin.
     m = 0.06

@@ -68,7 +68,8 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Marseille (world-marseille: the Vieux-Port, Frioul, Pointe Rouge, the Calanques to Cassis): coastline, harbours,
   quays, pontoons, breakwaters, seamarks, landmarks, land use and buildings © OpenStreetMap contributors (ODbL, as
   above). Sea bed: EMODnet Bathymetry Consortium, EMODnet Digital Bathymetry (DTM 2024), CC BY 4.0
-  (emodnet.ec.europa.eu). Land: Copernicus DEM GLO-30 and GLO-90, © DLR e.V. 2010-2014 and © Airbus Defence and Space
+  (emodnet.ec.europa.eu). Land: IGN RGE ALTI 5 m, Institut national de l'information geographique et forestiere,
+  Licence Ouverte / Open Licence 2.0 (Etalab); far coast and fallback: Copernicus DEM GLO-30 and GLO-90, © DLR e.V. 2010-2014 and © Airbus Defence and Space
   GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA; all rights reserved (free licence, any use
   with this credit). Light characters checked against the U.S. National Geospatial-Intelligence Agency's Pub. 113 List
   of Lights (public domain). Magnetic variation: NOAA NCEI World Magnetic Model 2025 (public domain). No SHOM product

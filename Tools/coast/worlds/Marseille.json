@@ -21,8 +21,8 @@
   "elevation": [
     {
       "kind": "rgealti",
-      "glob": "rgealti/*.asc",
-      "note": "IGN RGE ALTI 5 m (Licence Ouverte 2.0), used when present"
+      "glob": "rgealti/*.bil",
+      "note": "IGN RGE ALTI 5 m (Licence Ouverte 2.0, bare earth, NGF-IGN69)"
     },
     {
       "kind": "geotiff",
@@ -591,5 +591,15 @@
       400
     ]
   ],
-  "time_zone": "Europe/Paris"
+  "time_zone": "Europe/Paris",
+  "ign": {
+    "l93_box": [
+      875000,
+      6229000,
+      911000,
+      6257000
+    ],
+    "cell_m": 5.0
+  },
+  "height_unit_m": 0.025
 }

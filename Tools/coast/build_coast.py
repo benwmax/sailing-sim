@@ -273,7 +273,7 @@ print(f"deepest {np.nanmax(depth):.1f} m below the datum, water cells {water.sum
 
 # ---------------------------------------------------------------- land: USGS 3DEP (NAVD88 -> MLLW), IGN RGE ALTI or Copernicus
 def read_ascii_grid(path):
-    """An ESRI ASCII grid (IGN RGE ALTI tiles, Lambert-93): array and the georef of its cell centres."""
+    """An ESRI ASCII grid (IGN's downloadable RGE ALTI tiles, Lambert-93): array and the georef of its cell centres."""
     head = {}
     with open(path) as fh:
         for _ in range(6):
@@ -284,6 +284,19 @@ def read_ascii_grid(path):
     y0 = head.get("yllcenter", head.get("yllcorner", 0.0) + head["cellsize"] / 2) + (a.shape[0] - 1) * head["cellsize"]
     a[a == head.get("nodata_value", -99999.0)] = np.nan
     return a, geotiff.Georef(x0, y0, head["cellsize"], -head["cellsize"])
+
+
+def read_bil(path):
+    """An ESRI BIL tile with its .hdr (fetch_world.py's RGE ALTI tiles, Lambert-93): array and the georef of its cell
+    centres. The no-data value (-99999 out at sea) and anything far below the sea become NaN."""
+    head = {}
+    for line in open(path[:-4] + ".hdr"):
+        if line.strip():
+            k, v = line.split()[:2]
+            head[k.upper()] = v
+    a = np.fromfile(path, "<f4" if head.get("BYTEORDER", "I") == "I" else ">f4").reshape(int(head["NROWS"]), int(head["NCOLS"])).astype(np.float64)
+    a[a < -50.0] = np.nan
+    return a, geotiff.Georef(float(head["ULXMAP"]), float(head["ULYMAP"]), float(head["XDIM"]), -float(head["YDIM"]))
 
 
 def land_from_sources():
@@ -300,7 +313,7 @@ def land_from_sources():
             ex, ny_ = l93.transform(lon, lat)
             v = np.full((NY, NX), np.nan)
             for tile in sorted(glob.glob(os.path.join(RAW, src["glob"]))):
-                d, ref = read_ascii_grid(tile)
+                d, ref = read_bil(tile) if tile.endswith(".bil") else read_ascii_grid(tile)
                 t = geotiff.sample(d, ref, ex, ny_)
                 v = np.where(np.isnan(v), t, v)
         else:
@@ -349,7 +362,9 @@ else:
     # Offshore past the charts' coverage (the Gulf passage's far corners): open water, as deep as the nearest charted water.
     idx = ndimage.distance_transform_edt(outside, return_distances=False, return_indices=True)
     height[outside] = np.minimum(height[idx[0][outside], idx[1][outside]], -5.0)
-height = np.clip(height, -320.0, 320.0)
+# int16 heights: centimetres reach 327 m; a world with higher land (Marseille's Garlaban, 714 m) takes a coarser unit.
+UNIT = float(CFG.get("height_unit_m", 0.01))
+height = np.clip(height, -320.0, 320.0) if UNIT == 0.01 else np.clip(height, -32000.0 * UNIT, 32000.0 * UNIT)
 
 # ---------------------------------------------------------------- shoreline checkpoints (chart coastline vs the terrain's MHW contour)
 CHECK = CFG["check"]
@@ -768,8 +783,8 @@ print(f"chart: {len(chart['areas'])} triangles, {len(chart['contours'])} contour
 os.makedirs(OUT, exist_ok=True)
 os.makedirs(DOCS, exist_ok=True)
 with open(os.path.join(OUT, f"{NAME}.height"), "wb") as fh:
-    fh.write(b"SSHT" + struct.pack("<III", 1, NX, NY) + struct.pack("<ffff", CELL, X0, Y0, 0.01))
-    fh.write(np.round(height * 100.0).astype("<i2").tobytes())
+    fh.write(b"SSHT" + struct.pack("<III", 1, NX, NY) + struct.pack("<ffff", CELL, X0, Y0, UNIT))
+    fh.write(np.round(height * 100.0 if UNIT == 0.01 else height / UNIT).astype("<i2").tobytes())
 with open(os.path.join(OUT, f"{NAME}.trees"), "wb") as fh:
     fh.write(b"SSTR" + struct.pack("<III", 1, TNX, TNY) + struct.pack("<fff", TREE_CELL, X0, Y0))
     fh.write(trees.astype(np.uint8).tobytes())
@@ -783,7 +798,7 @@ if TIDES_CFG.get("current"):
 meta = {
     "name": CFG["display"],
     "ocean": CFG["ocean"],
-    "grid": {"rows_north": NY, "cols_east": NX, "cell_m": CELL, "origin_north_m": X0, "origin_east_m": Y0, "height_unit_m": 0.01},
+    "grid": {"rows_north": NY, "cols_east": NX, "cell_m": CELL, "origin_north_m": X0, "origin_east_m": Y0, "height_unit_m": UNIT},
     "trees": {"rows_north": TNY, "cols_east": TNX, "cell_m": TREE_CELL},
     "projection": LOCAL,
     "datum": "MLLW (chart datum); heights in meters above it",

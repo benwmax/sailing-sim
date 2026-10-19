@@ -8,7 +8,7 @@ launch spots, the passage, the climate, the city glow and the far coast ring's s
 |---|---|
 | Box | 5.17-5.58 E, 43.15-43.37 N: the Rade de Marseille, Frioul (If, Pomegues, Ratonneau), Pointe Rouge, Cap Croisette, Riou, the Calanques to Cassis, Planier |
 | Origin | the Vieux-Port entrance (43.2950 N, 5.3625 E), X north, Y east, metres |
-| Grid | 3321 x 2442 cells of 10 m (33 x 24 km) |
+| Grid | 3321 x 2442 cells of 10 m (33 x 24 km); heights in 2.5 cm steps (int16 reaches 819 m: the Garlaban is 714 m) |
 | Datum | NGF-IGN69, mean sea level at the Marseille tide gauge (the gauge that defines French levelling); MHW 0.15 m |
 | Tides | none (spring range about 0.3 m): the water stands at the datum |
 | Projection | tmerc on GRS80 (ETRS89, which WGS84 positions match to centimetres); `FGeoAnchor::ParseProj4` reads it |
@@ -20,23 +20,23 @@ launch spots, the passage, the climate, the city glow and the far coast ring's s
 ## Rebake
 
 ```
-python3 Tools/coast/fetch_world.py Marseille                 # Data/Marseille/raw, about 6 min (Overpass waits between queries)
-Tools/venv/bin/python Tools/coast/build_coast.py Marseille   # height, trees, json, chart: 8 s
+python3 Tools/coast/fetch_world.py Marseille                 # Data/Marseille/raw, about 8 min (Overpass waits between queries)
+Tools/venv/bin/python Tools/coast/build_coast.py Marseille   # height, trees, json, chart: 25 s
 Tools/venv/bin/python -I Tools/coast/build_piers.py Marseille     # piers, pontoons, breakwaters, moored boats: 1 s
 Tools/venv/bin/python -I Tools/terrain/build_houses.py Marseille  # houses: 10 s
 Tools/venv/bin/python -I Tools/coast/plot_harbours.py Marseille docs/world-marseille/harbours.jpg
 ```
 
-The whole bake runs in about 20 s on the M5 Pro; the downloads are 301 MB (git-ignored). The pack in
-`Content/TerrainData` is 24 MB: `Marseille.height` 16.2 MB, `.houses` 3.8 MB, `.trees` 2.0 MB, `.chart.json` 1.3 MB,
-`.json` 1.1 MB, `.piers` 0.2 MB.
+The whole bake runs in about 40 s on the M5 Pro; the downloads are 481 MB (git-ignored; IGN's tiles 198 MB). The
+pack in `Content/TerrainData` is 25 MB: `Marseille.height` 16.2 MB, `.houses` 3.8 MB, `.trees` 2.0 MB, `.chart.json`
+1.3 MB, `.json` 1.1 MB, `.piers` 0.2 MB.
 
 ## Sources (all free for a sold game with credit; rows in docs/licences/assets.csv, credit in CREDITS.md)
 
-- Land: Copernicus DEM GLO-30 (a surface model: in the city it carries the buildings' tops, smoothed over 30 m).
-  IGN RGE ALTI 5 m (bare earth, Licence Ouverte 2.0) is wired in as the first source (`rgealti/*.asc` in the raw
-  folder) but its download host, data.geopf.fr, does not resolve from the Mac's network today, so the bake falls back
-  to Copernicus. Dropping the RGE ALTI tiles into `Data/Marseille/raw/rgealti` and rebaking is all it takes.
+- Land: IGN RGE ALTI 5 m (bare earth, NGF-IGN69, Licence Ouverte 2.0) through the Geoplateforme's WMS-R, twelve
+  10 km tiles in Lambert-93 (`rgealti/*.bil` with ESRI headers). It covers all the land; Copernicus DEM GLO-30 stays as
+  the fallback. data.geopf.fr does not resolve from the Mac's own DNS, so `fetch_world.py` asks Google's public DNS
+  over HTTPS for its address and pins curl to it (Bean approved the fetch, Oct 19 2026).
 - Sea bed: EMODnet Bathymetry DTM 2024 (1/16 arc-minute), trusted 180 m and more from the shore; harbours at their
   dredged depths (the world json's list); the shore pin is 2 m on rock and quays, 0 on OSM beaches.
 - Coastline, harbours, piers, pontoons, breakwaters, seamarks, landmarks, land use, buildings: OpenStreetMap.
@@ -88,8 +88,7 @@ Counts from the bake and OSM; the first column is the model to build, the last w
 
 ## Gaps
 
-- The land is Copernicus's surface model until the RGE ALTI tiles can be fetched; the 1 m shore detail
-  (`.detail`) needs RGE ALTI 1 m and is not baked.
+- The 1 m shore detail (`.detail`) needs RGE ALTI 1 m (or LiDAR HD) and is not baked yet.
 - Harbour depths are the world json's dredged depths, not surveyed ones; EMODnet does not resolve the harbours.
 - No tree crowns (no lidar canopy yet): trees come from the OSM land-use density map (`tree_density` in the json).
 - Moored boats are laid along the pontoons, not observed; two small harbours (Vallon des Auffes, Roucas Blanc) map no

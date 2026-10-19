@@ -1163,7 +1163,7 @@ void ASailingHUD::DrawMenu(const ASailboatPawn& Boat)
 	Text(TEXT("Map data (c) OpenStreetMap contributors (ODbL); buildings via Overture Maps: Esri Community Maps contributors (CC BY 4.0), Microsoft (ODbL). Terrain: USGS 3DEP."), X + Margin, Bottom - 2.f * CreditH, Dim, 0.7f);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	Text(GM && GM->GetLake().IsTidal() ? TEXT("Chart, tides and currents: NOAA (ENC, CO-OPS). Not for navigation.")
-		: (GM && GM->GetLake().IsCoast() ? TEXT("Chart: OpenStreetMap, EMODnet Bathymetry (CC BY 4.0), NGA lights; land: Copernicus DEM. Not for navigation.")
+		: (GM && GM->GetLake().IsCoast() ? TEXT("Chart: OpenStreetMap, EMODnet Bathymetry (CC BY 4.0), NGA lights; land: IGN RGE ALTI, Copernicus DEM. Not for navigation.")
 		: TEXT("Lake depths and levels: Texas Water Development Board.")), X + Margin, Bottom - CreditH, Dim, 0.7f);
 }
 
