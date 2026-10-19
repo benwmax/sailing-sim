@@ -557,7 +557,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(false);
 	for (UStaticMeshComponent* T : LeechTelltales) T->SetVisibility(false);
 	// Per-class sail layouts (Visual V7): the Sunfish's striped sail, the Hobie's coloured panels and seven full battens,
-	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens.
+	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens; the maxi's black
+	// membrane main with six full battens (Layout 4: fibre paths from the corners, a few wide panels).
 	struct FSailLayout { float Layout, Battens, Full; };
 	auto LayoutFor = [](EBoatType T) -> FSailLayout
 	{
@@ -569,6 +570,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		case EBoatType::Corsair880: return { 3.f, 5.f, 1.f };
 		case EBoatType::Lagoon42: return { 3.f, 5.f, 1.f };
 		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f };
+		case EBoatType::Maxi: return { 4.f, 6.f, 1.f };
 		default: return { 0.f, 4.f, 0.f };
 		}
 	};
@@ -592,7 +594,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
 	// (light enough that the dark sail numbers still read). The player's boat keeps the club's Dacron.
-	FLinearColor SailColor(0.70f, 0.68f, 0.63f);
+	FLinearColor SailColor = Lay.Layout == 4.f ? FLinearColor(0.035f, 0.036f, 0.04f) : FLinearColor(0.70f, 0.68f, 0.63f);
 	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7)
 	{
 		const uint32 H = (GetUniqueID() * 2654435761u) >> 8;
@@ -607,7 +609,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	{
 		Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
 		// The jibs match their mains' colours (no battens).
-		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout == 2.f ? 2.f : (Lay.Layout == 3.f ? 3.f : 0.f));
+		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout >= 2.f ? Lay.Layout : 0.f);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
 	}
 	JibSail->SetVisibility(C.HasJib());
@@ -2958,9 +2960,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->Save();
 		break;
 	case RowBoat:
-		// The prologue's maxi is not offered here (prologue step 3: only the prologue sails her until her model lands).
-		do S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
-		while (S->BoatType == int32(EBoatType::Maxi));
+		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:

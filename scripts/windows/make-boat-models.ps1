@@ -1,11 +1,12 @@
 # Regenerates the boat models on Windows. Windows twin of scripts/make-boat-models.sh: exports the physics geometry
 # (Tools/BoatExport, standalone C++, built with MSVC), builds the models in Blender headless (Tools/blender/build_*.py ->
 # Artifacts\models\*.fbx), then imports them with scripts/import_boats.py. Build the editor first.
-# Usage: scripts\windows\make-boat-models.ps1 [-Parts fleet,j22,gear,berthed] [-Fleet Sunfish,Catalina30] [-NoImport]
-#   -Parts: what to rebuild (default: all). -Fleet narrows the fleet to some classes.
+# Usage: scripts\windows\make-boat-models.ps1 [-Parts fleet,j22,gear,berthed,maxi] [-Fleet Sunfish,Catalina30] [-NoImport]
+#   -Parts: what to rebuild (default: all). -Fleet narrows the fleet to some classes. maxi: the prologue's hero maxi
+#   (Tools/boats/maxi/build_maxi.py; no physics export, her hull is the sections).
 #   Blender: $env:BLENDER, else the newest under C:\Program Files\Blender Foundation.
 param(
-	[string[]]$Parts = @('fleet', 'j22', 'gear', 'berthed'),
+	[string[]]$Parts = @('fleet', 'j22', 'gear', 'berthed', 'maxi'),
 	[string[]]$Fleet = @('Sunfish', 'ILCA7', 'Catalina22', 'Catalina30', 'Hobie16', 'Corsair880', 'Lagoon42'),
 	[switch]$NoImport
 )
@@ -60,6 +61,11 @@ if ($Parts -contains 'berthed') {
 		}
 	}
 }
+if ($Parts -contains 'maxi') {
+	$C = Invoke-Tool $Blender "-b --factory-startup -noaudio -P `"$RepoRoot\Tools\boats\maxi\build_maxi.py`" -- `"$Models`"" (Join-Path $Artifacts 'blender-maxi.log') | Select-Object -Last 1
+	if ($C -ne 0) { throw "Blender build_maxi.py failed; see Artifacts\blender-maxi.log" }
+	Select-String -Path (Join-Path $Artifacts 'blender-maxi.log') -Pattern '^Maxi:' | ForEach-Object { $_.Line }
+}
 if ($NoImport) { exit 0 }
 # import_boats.py, one run per part asked for: `fleet` (the seven fleet boats), `j22only`, `gearonly`, `dress` (the
 # keelboats' berthed dresses). The old single run passed `dress` whenever berthed was asked for, and that branch
@@ -69,5 +75,6 @@ if ($Parts -contains 'fleet') { $Runs += 'fleet' }
 if ($Parts -contains 'j22') { $Runs += 'j22only' }
 if ($Parts -contains 'gear') { $Runs += 'gearonly' }
 if ($Parts -contains 'berthed') { $Runs += 'dress' }
+if ($Parts -contains 'maxi') { $Runs += 'maxi' }
 foreach ($R in $Runs) { & (Join-Path $PSScriptRoot 'run-python.ps1') -Script import_boats.py -ScriptArgs $R }
 exit $LASTEXITCODE

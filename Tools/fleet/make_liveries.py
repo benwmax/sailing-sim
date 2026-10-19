@@ -11,7 +11,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "Inputs", "g3", "boat-catalogue.json")
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "Source", "SailingSim", "Private", "BoatLiveryData.inl")
-ORDER = ["j22", "sunfish", "ilca7", "catalina22", "catalina30", "hobie16", "corsair880", "lagoon42"]   # EBoatType order
+ORDER = ["j22", "sunfish", "ilca7", "catalina22", "catalina30", "hobie16", "corsair880", "lagoon42", "maxi"]   # EBoatType order
 CHANNELS = {"oxidation": 0, "stain": 1, "scuff": 2, "rust": 3}
 
 

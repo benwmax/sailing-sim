@@ -160,6 +160,7 @@ namespace SailCatalog
 				{ TEXT("Beach catamaran"), TEXT("Twin hulls and a trapeze. Flies a hull in a breeze and goes very fast, until you bury a bow."), 4, { TEXT("Capsize"), TEXT("Trapeze") }, true, 12.f, 18.f },
 				{ TEXT("Trailerable trimaran"), TEXT("Folding amas and a big rig: double-digit speeds on a reach, a light touch on the helm."), 4, { TEXT("Outboard"), TEXT("Spinnaker") }, false, 14.f, 20.f },
 				{ TEXT("Cruising catamaran"), TEXT("Forty-two feet of steady platform with two engines. No heel, slow to tack, a lot of windage at the dock."), 3, { TEXT("Twin engines"), TEXT("Wheel") }, false, 16.f, 22.f },
+				{ TEXT("Racing maxi · 12 crew"), TEXT("The prologue's 100-foot offshore racer: twin wheels, three grinders, a 6 m keel and black membrane sails. Fast and heavy, and every trim is a crew job."), 5, { TEXT("Wheel"), TEXT("Grinders"), TEXT("Inboard") }, false, 18.f, 25.f },
 			};
 			return W[FMath::Clamp(Type, 0, int32(UE_ARRAY_COUNT(W)) - 1)];
 		}
@@ -169,8 +170,6 @@ namespace SailCatalog
 			TArray<FBoat> Out;
 			for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 			{
-				// The prologue's maxi is sailed only in the prologue until the PC's model lands (prologue step 3).
-				if (EBoatType(T) == EBoatType::Maxi) continue;
 				const FBoatConfig C = FBoatConfig::Make(EBoatType(T));
 				const FWords& W = Words(T);
 				FBoat B;

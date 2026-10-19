@@ -996,6 +996,7 @@ BOAT_LIBRARY = {
     "FenderBlue": ("M_BoatSurface", (0.02, 0.04, 0.12), 0.95, 0.0, 0.0, 0.0, 0.6),      # navy fleece fender covers
     "CoolerLid": ("M_BoatSurface", (0.04, 0.14, 0.42), 0.45, 0.0, 0.0, 0.0, 0.05),
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
+    "CarbonMast": ("M_BoatMast", (0.025, 0.025, 0.028), 0.3, 0.0, 0.6, 0.0, 0.0),        # the maxi's mast: clear-coated carbon that bends
 }
 
 
@@ -1025,8 +1026,14 @@ SAIL_CODE = r"""
 // sail number from the marks atlas (top half insignia, bottom half number).
 // Visual V7: per-class layouts (Layout 0 crosscut, 1 the Sunfish's striped sail, 2 the Hobie's coloured panels, 3 tri-radial
 // panels for the bigger multihulls), BattenCount pockets (FullBattens: luff to leech).
+// The prologue's maxi: Layout 4, a moulded membrane (carbon and aramid fibre paths laid along the load lines from the
+// corners, between black film; a few wide laminated panels with horizontal seams; glossy, nearly opaque).
 float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
-if (Layout > 2.5)
+if (Layout > 3.5)
+{
+    seamDist = abs(frac(UV0.y / 3.4 + 0.5) - 0.5) * 3.4;
+}
+else if (Layout > 2.5)
 {
     // Tri-radial: seams fan out from the clew (UV1 (1, 0)) and the head, crossing at the sail's middle.
     float2 fromClew = float2(1.0 - UV1.x, UV1.y);
@@ -1119,10 +1126,34 @@ float2 sp = UV0 / 0.045;
 float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
 float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
 cloth *= 1.0 - 0.35 * speck * whiteish;
+float fibre = 0.0;
+if (Layout > 3.5)
+{
+    // Three families of fibre paths, each fanning from a corner (clew, head, tack) in metres, so they crowd where the
+    // loads gather: a line every 0.05 rad, 9 mm wide, fading away from its corner. Every fourth path is aramid (gold).
+    float w = 0.32 * Height;                          // the sail's width in metres, about (UV1 is normalized)
+    float2 q[3] = { float2((1.0 - UV1.x) * w, UV1.y * Height), float2(UV1.x * w + 0.02, (1.0 - UV1.y) * Height), float2(UV1.x * w + 0.02, UV1.y * Height) };
+    float reach[3] = { 0.75, 0.55, 0.45 };
+    float aramid = 0.0;
+    for (int f = 0; f < 3; f++)
+    {
+        float r = length(q[f]) + 1e-3;
+        float a = atan2(q[f].y, q[f].x) / 0.05;
+        float d = abs(frac(a + 0.5) - 0.5) * 0.05 * r;
+        float on = (1.0 - smoothstep(0.0045, 0.009, d)) * (1.0 - smoothstep(0.2, reach[f], r / Height));
+        fibre = max(fibre, on);
+        aramid = max(aramid, on * step(fmod(abs(floor(a + 0.5)), 4.0), 0.5));
+    }
+    // The scrim under the film: a faint diamond grid every 12 cm.
+    float2 g = float2(UV0.x * 0.866 + UV0.y * 0.5, UV0.x * 0.866 - UV0.y * 0.5) / 0.12;
+    float scrim = max(1.0 - smoothstep(0.02, 0.06, abs(frac(g.x) - 0.5) * 2.0 - 0.9), 1.0 - smoothstep(0.02, 0.06, abs(frac(g.y) - 0.5) * 2.0 - 0.9));
+    cloth = base * (1.0 + 0.06 * scrim) * (0.97 + 0.03 * panel);
+    cloth = lerp(cloth, lerp(base * 2.6 + 0.025, float3(0.42, 0.30, 0.10), aramid), fibre * 0.55);
+}
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through));
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1148,6 +1179,7 @@ NormalTS = normalize(float3(-dhdu, -dhdv, 1.0));
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
+if (Layout > 3.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 return col;
 """
 
