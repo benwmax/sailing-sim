@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "game": "SailingSim",
+  "settings": { "start": { "world": "ray-hubbard", "boat": "Sunfish" }, "career": { "freeSail": false } },
+  "lastSession": {
+    "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "boat": "Sunfish", "mode": "Drill",
+    "drill": "SailATriangle", "learningMode": true, "easy": false, "learningTips": true, "freeSail": false, "traffic": 1,
+    "savedAt": "2026-10-18T16:40:00.000Z",
+    "conditions": { "preset": "Lesson", "sky": "Fair", "windFromDeg": 180, "windKn": 10, "gustKn": 13, "localHour": 10,
+                    "month": 4, "day": 18, "airTempF": 74, "lakeLevelFt": 0, "realDay": "" }
+  },
+  "progress": {
+    "drillsPassed": ["LeaveTheDock", "SailATriangle", "HeaveTo", "CrewOverboardFigureEight", "CrewOverboardQuickStop", "ReturnAndDock"],
+    "racesSailed": 1, "racesWon": 0,
+    "logbook": { "sessions": 11, "entries": 64, "nauticalMiles": 21.3 },
+    "hoursSailed": 7.6,
+    "lessons": {
+      "day-sailor.leave-the-dock": { "medal": "gold", "bestSeconds": 161, "runs": 3, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "day-sailor.sail-a-triangle": { "medal": "silver", "bestSeconds": 372, "runs": 2, "quizPassed": true, "quizBest": 3, "quizOf": 4 },
+      "day-sailor.heave-to": { "medal": "gold", "bestSeconds": 58, "runs": 1, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "day-sailor.crew-overboard-figure-eight": { "medal": "silver", "bestSeconds": 251, "runs": 3, "quizPassed": true, "quizBest": 3, "quizOf": 4 },
+      "day-sailor.crew-overboard-quick-stop": { "medal": "gold", "bestSeconds": 84, "runs": 2, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "day-sailor.return-and-dock": { "medal": "silver", "bestSeconds": 302, "runs": 4, "quizPassed": true, "quizBest": 2, "quizOf": 3 },
+      "club-racer.sunfish-leave-the-dock": { "medal": "silver", "bestSeconds": 214, "runs": 2, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "club-racer.sunfish-course": { "medal": "bronze", "bestSeconds": 611, "runs": 1, "quizPassed": false, "quizBest": 0, "quizOf": 0 }
+    },
+    "checkrides": { "day-sailor.checkride": { "passed": true, "quizBest": 11, "quizOf": 12 } },
+    "certificates": { "day-sailor": { "earnedAt": "2026-10-17T21:10:00.000Z" } }
+  }
+}

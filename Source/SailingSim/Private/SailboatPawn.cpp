@@ -75,7 +75,7 @@ namespace
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
-			|| Action == TEXT("CockpitView");
+			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -861,6 +861,10 @@ void ASailboatPawn::ApplyDifficulty()
 	EasyAssists.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
 	EasyAssists.ApplyTo(TrimAssist.Settings);
 	EasyHelm.Reset();
+	// Prologue step 3: a scene's assisted limits (the maxi never capsizes or broaches in the mistral); never in normal
+	// sailing, on traffic boats or the ghost.
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	FSceneLimits::For(!bTrafficBoat && !bGhost && GM && GM->GetScene()).ApplyTo(Boat.GetMutableConfig());
 }
 
 void ASailboatPawn::ResetBoat()
@@ -875,9 +879,22 @@ void ASailboatPawn::ResetBoat()
 		}
 	}
 	float StartTwa = 0.f;
-	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingTWA="), StartTwa))
+	const bool bTwaArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingTWA="), StartTwa);
+	if (bTwaArg)
 	{
 		StartYaw = GetWind().GetParams().FromDegrees - StartTwa; // recordings and benchmarks start on a set point of sail
+	}
+	// Prologue step 1: (re)start on the scene's checkpoint pose, the point of sail and speed the step starts from; a reset
+	// while the scene runs takes it back to that checkpoint.
+	double ResetSpeedKnots = StartSpeedKnots;
+	if (ASailingGameMode* SceneGM = GetWorld()->GetAuthGameMode<ASailingGameMode>(); SceneGM && SceneGM->GetScene() && !bTrafficBoat && !bGhost)
+	{
+		double PoseTwa = 0.0, PoseKnots = 0.0;
+		if (SceneGM->RestartScene(PoseTwa, PoseKnots) && !bTwaArg)
+		{
+			StartYaw = GetWind().GetParams().FromDegrees - PoseTwa;
+			ResetSpeedKnots = PoseKnots;
+		}
 	}
 	Boat.GetMooringLines().clear();
 	// Soaks: -SailingMooring parks the player's boat on a buoy 12 m upwind of the start, head to wind with the sails up,
@@ -886,7 +903,7 @@ void ASailboatPawn::ResetBoat()
 	if (bMooring) StartYaw = GetWind().GetParams().FromDegrees;
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
-	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : StartSpeedKnots * kKnot);
+	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : ResetSpeedKnots * kKnot);
 	Boat.GetMutableState().Time = Time;
 	if (bMooring)
 	{
@@ -904,11 +921,18 @@ void ASailboatPawn::ResetBoat()
 	// -SailingSpinnaker: start with it up, whenever the boat is (re)started.
 	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 	int32 ReefArg = 0;
+	// A scene starts (and restarts) with its own sails: the maxi's gale reefs in the prologue.
+	if (const ASailingGameMode* ReefGM = GetWorld()->GetAuthGameMode<ASailingGameMode>(); ReefGM && !bTrafficBoat && !bGhost && ReefGM->GetScene())
+	{
+		Controls.Reef = FMath::Clamp(ReefGM->GetSceneReefs(), 0, int32(Boat.GetConfig().ReefLuffFraction.size()));
+	}
 	if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingReef="), ReefArg))
 	{
 		Controls.Reef = FMath::Clamp(ReefArg, 0, int32(Boat.GetConfig().ReefLuffFraction.size()));
 	}
 	TrimAssist.Reset();
+	// Prologue step 2: the crew start again from the reset boat (the scene's checkpoint moves the player as it re-enters).
+	if (Stations.IsActive()) Stations.Reset(Boat, Controls, Stations.GetStation());
 	KeyboardTiller = 0.f;
 	// The sails start again from their shape too: cloth carried over a reset (a new spot, a new tack) can blow out.
 	MainCloth.Reset();
@@ -1014,6 +1038,12 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	Job.bSimple = bSimple;
 	Job.Easy = &EasyAssists;
 	Job.EasyHelm = &EasyHelm;
+	UpdateStations(Job.StationInput);
+	if (Stations.IsActive())
+	{
+		Job.Stations = &Stations;
+		if (Steps > 0) { GrindTaps = 0; bTravellerDumpPressed = false; } // handed to this frame's steps
+	}
 	{
 		SAILING_PERF_SCOPE(BoatPhysics);
 		if (PhysicsTask.Start(this, PhysicsJoinTick, Job)) return;
@@ -1074,6 +1104,27 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 					*FCareerContent::MedalName(CareerAward.Medal), int32(CareerAward.Seconds) / 60, int32(CareerAward.Seconds) % 60));
 			}
 			Save->Commit();
+		}
+	}
+	// Prologue step 1: the scripted scene follows this boat (the game mode owns it and judges it on the sim clock). The
+	// crew-action button answers the call that asks for an action; step 2: the station merge reports the station and the
+	// controls the player worked (UpdateStations).
+	if (!bTrafficBoat && !bGhost)
+	{
+		if (ASailingGameMode* SceneGM = GetWorld()->GetAuthGameMode<ASailingGameMode>(); SceneGM && SceneGM->GetScene())
+		{
+			const Sailing::FScriptedScene& Scene = *SceneGM->GetScene();
+			Sailing::FSceneInput In;
+			In.Controls = Controls;
+			In.Station = Stations.IsActive() ? Sailing::CrewStationName(Stations.GetStation()) : "helm";
+			In.Worked = Stations.TakeWorked();
+			const Sailing::FSceneStep* Step = Scene.GetStep();
+			if (bCrewActionPressed && Step && Scene.GetPhase() == Sailing::FScriptedScene::EPhase::Calling && Step->Expect.Type == Sailing::ESceneExpect::Action)
+			{
+				In.Actions.push_back(Step->Expect.Action);
+			}
+			bCrewActionPressed = false;
+			SceneGM->UpdateScene(Boat, In);
 		}
 	}
 	UpdateDrillVisuals();
@@ -1321,6 +1372,8 @@ namespace
 			{ TEXT("Photo"), { TEXT("Photo mode"), TEXT("") } }, { TEXT("PhotoShot"), { TEXT("Take a photo / choose"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
+			{ TEXT("CrewAction"), { TEXT("Crew station: answer the captain"), TEXT("") } }, { TEXT("Grind"), { TEXT("Crew station: grind the jib winch"), TEXT("") } },
+			{ TEXT("TravellerDump"), { TEXT("Crew station: dump the traveller"), TEXT("") } }, { TEXT("Station"), { TEXT("Crew station: move to the next"), TEXT("") } },
 		};
 		if (const TPair<FString, FString>* N = Names.Find(Action.ToString())) return bNegative && !N->Value.IsEmpty() ? N->Value : N->Key;
 		return Action.ToString();
@@ -1896,7 +1949,9 @@ void ASailboatPawn::UpdateLearning()
 	if (GM)
 	{
 		const FWeatherState& W = GM->GetWeatherState();
-		F.Storm = W.Storm;
+		// A squall line in a gale (the mistral's) is no thunderstorm: no storm or lightning tips (the scene's captain
+		// has the squall).
+		F.Storm = W.bSquall ? EStormPhase::None : W.Storm;
 		F.WindFromDeg = W.Wind.FromDegrees;
 		F.bTidal = GM->GetLake().IsTidal();
 	}
@@ -2402,6 +2457,47 @@ void ASailboatPawn::UpdateTelltales()
 	}
 }
 
+void ASailboatPawn::UpdateStations(FStationInput& Out)
+{
+	// Prologue step 2: crew-station mode while a scene runs (never on traffic boats or the ghost); normal sailing otherwise.
+	Out = FStationInput();
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FScriptedScene* Scene = GM && !bTrafficBoat && !bGhost ? GM->GetScene() : nullptr;
+	if (!Scene)
+	{
+		if (Stations.IsActive()) Stations.Reset(Boat, Controls, ECrewStation::None);
+		return;
+	}
+	if (!Stations.IsActive())
+	{
+		Stations.Config = FStationConfig::For(Boat.GetConfig());
+		Stations.Reset(Boat, Controls, ECrewStation::JibTrimmer); // a new hand starts on the jib
+		SceneStationSerial = 0;
+	}
+	if (Scene->GetStationSerial() != SceneStationSerial)
+	{
+		SceneStationSerial = Scene->GetStationSerial();
+		Stations.MoveTo(Boat, CrewStationFromName(Scene->GetStation()));
+	}
+	if (bStationKeyPressed)
+	{
+		bStationKeyPressed = false;
+		Stations.MoveTo(Boat, NextCrewStation(Stations.GetStation()));
+	}
+	auto Held = [this](FName Action)
+	{
+		const float* V = bMenuOpen ? nullptr : HeldAxes.Find(Action);
+		return V ? double(*V) : 0.0;
+	};
+	Out.Wheel = Held(NAME_Tiller);
+	Out.JibSheet = Held(NAME_JibSheet);
+	Out.Grind = Held(TEXT("Grind"));
+	Out.GrindTaps = GrindTaps;
+	Out.MainSheet = Held(NAME_MainSheet);
+	Out.Traveller = Held(NAME_Traveler);
+	Out.bTravellerDump = bTravellerDumpPressed;
+}
+
 void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 {
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
@@ -2420,6 +2516,8 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 			LastManualTrimTime = Boat.GetState().Time;
 		}
 	};
+	// Prologue step 2: at a crew station the hands go to the station merge (UpdateStations), not straight to the controls.
+	if (Stations.IsActive()) return;
 	Adjust(Controls.MainSheet, NAME_MainSheet, 0.35, 0.0, 1.0);
 	// With the spinnaker up the jib-sheet keys trim the spinnaker sheet (the jib is in its shadow anyway).
 	Adjust(Controls.bSpinnaker ? Controls.SpinSheet : Controls.JibSheet, NAME_JibSheet, 0.35, 0.0, 1.0);
@@ -2594,6 +2692,16 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	{
 		return;
 	}
+	if (Stations.IsActive())
+	{
+		// Prologue step 2: the station layer's buttons; the crew hold the boat's other commands (their keys are shared).
+		if (Action == TEXT("Grind")) { ++GrindTaps; return; }
+		if (Action == TEXT("TravellerDump")) { bTravellerDumpPressed = true; return; }
+		if (Action == TEXT("Station")) { bStationKeyPressed = true; return; }
+		if (Action == TEXT("WingOnWing") || Action == TEXT("ToggleLearning") || Action == TEXT("ToggleDifficulty") || Action == TEXT("DockLines")
+			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting")
+			|| Action == TEXT("EngineNeutral") || Action == TEXT("BackJib")) return;
+	}
 	if (Action == TEXT("WingOnWing"))
 	{
 		Controls.bWingOnWing = !Controls.bWingOnWing;
@@ -2711,6 +2819,10 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		Plot.Start(GetMapPosition(), Boat.GetState().Time);
 		StatusMessage = TEXT("Plot cleared: dead reckoning from here");
 		StatusUntil = Boat.GetState().Time + 3.0;
+	}
+	else if (Action == TEXT("CrewAction"))
+	{
+		bCrewActionPressed = true;   // the scene reads it after this frame's physics (TickAfterPhysics)
 	}
 	else if (Action == TEXT("BackJib"))
 	{
@@ -2846,7 +2958,9 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->Save();
 		break;
 	case RowBoat:
-		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
+		// The prologue's maxi is not offered here (prologue step 3: only the prologue sails her until her model lands).
+		do S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
+		while (S->BoatType == int32(EBoatType::Maxi));
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:
@@ -2982,6 +3096,8 @@ void ASailboatPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		{
 			Input->BindAction(Action, ETriggerEvent::Triggered, this, &ASailboatPawn::OnAxis, Name);
 			Input->BindAction(Action, ETriggerEvent::Completed, this, &ASailboatPawn::OnAxisReleased, Name);
+			// The grinder is held (an axis) and tapped (each press is half a turn of the handle).
+			if (Name == TEXT("Grind")) Input->BindAction(Action, ETriggerEvent::Started, this, &ASailboatPawn::OnButton, Name);
 		}
 	}
 }

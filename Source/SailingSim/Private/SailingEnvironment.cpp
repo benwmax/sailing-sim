@@ -851,7 +851,7 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		if (RainCurtainMaterial)
 		{
 			// The storm's rain falls from the core's base; other rain from the stratus deck's.
-			const double BaseM = W.Front.bActive ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
+			const double BaseM = W.Front.bActive && !W.bSquall ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
 			RainCurtainMaterial->SetScalarParameterValue(TEXT("RainBase"), float(BaseM));
 		}
 	}
@@ -864,10 +864,10 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 	}
 	RainCurtains->SetVisibility(Want > 0);
 	if (Want == 0) return;
-	const double BaseM = W.Front.bActive ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
+	const double BaseM = W.Front.bActive && !W.bSquall ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
 	// The foot runs ahead of the core toward where the storm is going.
 	const double Move = W.Front.MoveDegrees * kDegToRad;
-	const FVector FootShift = W.Front.bActive ? FVector(FMath::Cos(Move), FMath::Sin(Move), 0.0) * FStormRain::FootReachM : FVector::ZeroVector;
+	const FVector FootShift = W.Front.bActive && !W.bSquall ? FVector(FMath::Cos(Move), FMath::Sin(Move), 0.0) * FStormRain::FootReachM : FVector::ZeroVector;
 	for (int32 K = 0; K < Curtains.Num(); ++K)
 	{
 		const FRainCurtain& C = Curtains[K];

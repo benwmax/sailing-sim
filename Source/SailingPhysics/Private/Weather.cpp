@@ -14,6 +14,7 @@ namespace Sailing
 		case EWeatherPreset::Rain: return "Rain";
 		case EWeatherPreset::Thunderstorm: return "Thunderstorm";
 		case EWeatherPreset::RandomDay: return "Random day";
+		case EWeatherPreset::Mistral: return "Mistral";
 		default: return "?";
 		}
 	}
@@ -45,6 +46,30 @@ namespace Sailing
 		// The microburst in the core: a moderate wet one, its outflow peaking at 10 m/s 50 m up on a ring 1.2 km across (JAWS
 		// microbursts: 10 to 25 m/s; at 10 m about 5 m/s on top of the cold pool's own flow, whose gusts already reach the
 		// 1.5 times the front's speed Goff 1976 measured), bursting as the front nears the start and lasting ten minutes.
+
+		// Prologue step 4, the mistral: the cold, dry northwesterly down the Rhone valley into the Gulf of Lion, on a day it
+		// brings showers (a trough aloft over a gale). 32 kn gusting 40: Bean's setting, and the Gulf of Lion's strong-mistral
+		// gust factor (Meteo-France buoy 61002 and Cap Bear: 1.2 to 1.3 at sea). Air 13 C over 16 C water: the cold air
+		// over the warmer sea is unstable, so the gusts reach the water readily; dew point 6 C (dry: the haze is thin).
+		// The sea is the short, steep one of a short fetch (the coast is upwind): Hs 3.3 m at Tp 7 s (steepness Hs / Lp
+		// 1/23, near the limit young seas keep), on an older 1.2 m sea from the same way; 3.5 m together.
+		constexpr double kMistralAirC = 13.0, kMistralDewC = 6.0, kMistralWaterC = 16.0;
+		constexpr double kMistralMixedLayerM = 900.0;
+		constexpr double kMistralPuff = 0.07;        // the 2-minute mean's spread: steady in the mean, gusty in the 5 s peaks
+		constexpr double kMistralPuffMinutes = 2.0;
+		constexpr double kMistralRainMmPerHour = 1.5; // light rain from the deck between the squalls
+		constexpr double kMistralWindSeaHs = 3.3, kMistralWindSeaTp = 7.0;
+		constexpr double kMistralSwellHs = 1.2, kMistralSwellTp = 9.0;
+		constexpr double kMistralClearedEase = 0.88; // the gale eases a little behind the squall line as the deck breaks
+		// The squall: a line of shower cloud with its own small cold pool (3 C, 500 m deep: shallow, the gale's air is cold
+		// already) moving with the gale. Behind its head the wind is the gale pushed by the pool, 36 kn, 41 at the head
+		// (FGustFront's edge boost): Bean's 40 kn gust front.
+		constexpr double kSquallDeltaC = 3.0, kSquallDepthM = 500.0;
+		constexpr double kSquallOutflowKnots = 36.0;
+		constexpr double kSquallGustIntensity = 0.12;
+		constexpr double kSquallEdgeMeters = 40.0;   // a squall line's wind shift is sharp: a few seconds at a fixed point
+		constexpr double kSquallLeadSeconds = 900.0; // the front line is laid this long before it arrives (the water shows it coming)
+		constexpr double kNever = 1e18;
 
 		/** Diurnal cycle of a southern lake: calm mornings, building afternoon breeze, easing at dusk. */
 		double Diurnal(double Hour)
@@ -132,12 +157,27 @@ namespace Sailing
 			case EWeatherPreset::Thunderstorm:
 				StormSky(S, T, 1.0);
 				break;
+			case EWeatherPreset::Mistral:
+			{
+				// A low deck of stratocumulus with ragged scud under it, breaking up behind the squall line (the break: the
+				// low sun comes in under the edge of the deck).
+				const double Clr = W.StormClearing;
+				St.Coverage = Lerp(0.85, 0.4, Clr);
+				St.BaseKm = 0.55; St.TopKm = Lerp(1.6, 1.3, Clr); St.Density = Lerp(0.9, 0.6, Clr);
+				Cu.Coverage = Lerp(0.15, 0.2, Clr);
+				Cu.BaseKm = 0.35; Cu.TopKm = 0.8;
+				S.CuCellScale = 0.5;
+				Ci.Coverage = 0.0;
+				S.Haze = Lerp(0.3, 0.15, Clr);
+				break;
+			}
 			default:
 				break;
 			}
-			// The clouds drift with the wind at their height: about twice the surface wind, from a little to the right.
-			const double From = (W.Wind.FromDegrees + 15.0) * kDegToRad;
-			const double Aloft = std::max(4.0, 2.0 * W.Wind.SpeedKnots * kKnot);
+			// The clouds drift with the wind at their height: about twice the surface wind, from a little to the right. The
+			// mistral's deck is low and the gale is a shallow jet: its scud runs at about 1.4 times the surface wind.
+			const double From = (W.Wind.FromDegrees + (P == EWeatherPreset::Mistral ? 10.0 : 15.0)) * kDegToRad;
+			const double Aloft = std::max(4.0, (P == EWeatherPreset::Mistral ? 1.4 : 2.0) * W.Wind.SpeedKnots * kKnot);
 			S.DriftX = -std::cos(From) * Aloft;
 			S.DriftY = -std::sin(From) * Aloft;
 		}
@@ -151,6 +191,47 @@ namespace Sailing
 		return FColdPool::FrontSpeed(kColdPoolDeltaC, kColdPoolDepthM, kStormAirC, Along);
 	}
 
+	double FWeatherSystem::SquallFrontSpeed()
+	{
+		// The squall moves with the gale: its whole speed is along the track.
+		return FColdPool::FrontSpeed(kSquallDeltaC, kSquallDepthM, kMistralAirC, kMistralKnots * kKnot);
+	}
+
+	void FWeatherSystem::CueSquall(double ArrivesT, double X, double Y)
+	{
+		bCued = true;
+		SquallArrives = ArrivesT;
+		SquallX = X;
+		SquallY = Y;
+	}
+
+	void FWeatherSystem::CueClearing(double StartT)
+	{
+		bCued = true;
+		ClearingStarts = StartT;
+	}
+
+	void FWeatherSystem::ClearCues()
+	{
+		bCued = true;
+		SquallArrives = ClearingStarts = kNever;
+	}
+
+	void FWeatherSystem::ApplySceneCue(const std::string& Cue, double InSeconds, double T, double X, double Y, double Vx, double Vy)
+	{
+		if (Cue == "squall")
+		{
+			ClearCues();
+			CueSquall(T + InSeconds, X + Vx * InSeconds, Y + Vy * InSeconds);
+		}
+		else if (Cue == "clearing")
+		{
+			if (!bCued || SquallArrives > T) CueSquall(T - 60.0, X, Y);
+			CueClearing(T);
+		}
+		else ClearCues();
+	}
+
 	void FWeatherSystem::Configure(EWeatherPreset InPreset, uint32_t InSeed, double InStartHour, double BoatX, double BoatY)
 	{
 		Preset = InPreset;
@@ -159,6 +240,11 @@ namespace Sailing
 		OriginX = BoatX;
 		OriginY = BoatY;
 		Strikes.clear();
+		bCued = false;
+		SquallArrives = kSquallArrives;
+		ClearingStarts = kSquallClears;
+		SquallX = BoatX;
+		SquallY = BoatY;
 
 		uint32_t S = Seed;
 		if (Preset == EWeatherPreset::RandomDay)
@@ -417,6 +503,27 @@ namespace Sailing
 			ApplyStorm(W, T, 0.0, Spec, OriginX, OriginY);
 			break;
 		}
+		case EWeatherPreset::Mistral:
+		{
+			W.StormClearing = SmoothStep(ClearingStarts, ClearingStarts + kClearingSeconds, T);
+			const double Clr = W.StormClearing;
+			W.Wind.SpeedKnots = kMistralKnots * Lerp(1.0, kMistralClearedEase, Clr);
+			W.Wind.FromDegrees = std::isnan(PrevailingFromDeg) ? kMistralFromDeg : PrevailingFromDeg;
+			W.Wind.ShiftDegrees = 6.0;
+			W.Wind.ShiftPeriodSeconds = 300.0;
+			W.Wind.PersistentShiftDegrees = 4.0;
+			W.CloudCover = Lerp(0.88, 0.45, Clr);
+			W.CloudTopKm = Lerp(1.6, 1.3, Clr);
+			W.CloudDarkness = Lerp(0.5, 0.15, Clr);
+			W.VisibilityKm = Lerp(6.5, 25.0, Clr);
+			W.FetchMeters = 60000.0;
+			W.WindSeaHsM = kMistralWindSeaHs;
+			W.WindSeaTpS = kMistralWindSeaTp;
+			W.SwellHsM = kMistralSwellHs;
+			W.SwellTpS = kMistralSwellTp;
+			W.SwellFromDeg = W.Wind.FromDegrees;
+			break;
+		}
 		default:
 			break;
 		}
@@ -434,7 +541,21 @@ namespace Sailing
 		W.Wind.ClimateMixedLayerMeters = ClimateMixedLayerM(Month, W.HourOfDay, bCoast);
 		W.Wind.PuffIntervalSeconds = 60.0 * ClimatePuffMinutes(Month, W.HourOfDay, bCoast);
 
+		if (P == EWeatherPreset::Mistral)
+		{
+			// The mistral's own air, not the Texas month's: the gust factor outright (32 gusting 40), the puffs steady.
+			W.Wind.GustIntensity = GustIntensityForFactor(kMistralGustKnots / kMistralKnots);
+			W.Wind.PuffIntensity = kMistralPuff;
+			W.AirC = kMistralAirC;
+			W.DewC = kMistralDewC;
+			W.Wind.AirMinusWaterC = kMistralAirC - kMistralWaterC;
+			W.Wind.MixedLayerMeters = kMistralMixedLayerM;
+			W.Wind.ClimateAirMinusWaterC = W.Wind.AirMinusWaterC; // the puffs are given for this air: no stability rescale
+			W.Wind.ClimateMixedLayerMeters = kMistralMixedLayerM;
+			W.Wind.PuffIntervalSeconds = 60.0 * kMistralPuffMinutes;
+		}
 		FillSky(P, T, W);
+		if (P == EWeatherPreset::Mistral) ApplySquall(W, T, W.Wind.FromDegrees);
 		W.Wind.SpeedKnots *= SpeedScale;
 		W.Wind.FromDegrees = std::fmod(W.Wind.FromDegrees + DirOffset + 360.0, 360.0);
 		return W;
@@ -493,6 +614,51 @@ namespace Sailing
 		W.StormDistanceKm = (Speed * (kFrontArrives - Ts) + kCellBehindFront) / 1000.0;
 	}
 
+	void FWeatherSystem::ApplySquall(FWeatherState& W, double T, double FromDeg) const
+	{
+		// Rain everywhere from the deck, and the line's rain on its front (both stop as it clears).
+		W.bStormRain = true;
+		W.bSquall = true;
+		W.BaseRainMmPerHour = kMistralRainMmPerHour;
+		W.StormRainScale = 1.0 - W.StormClearing;
+		W.BaseCloudCover = W.CloudCover;
+		W.BaseCloudDarkness = W.CloudDarkness;
+		W.BaseVisibilityKm = W.VisibilityKm;
+		if (SquallArrives < 0.5 * kNever)
+		{
+			const double Speed = SquallFrontSpeed();
+			const double Move = std::fmod(FromDeg + 180.0, 360.0);
+			FGustFront& F = W.Front;
+			F.bActive = true;
+			F.MoveDegrees = Move;
+			F.SpeedMs = Speed;
+			// Arriving means the squall's wind is on her: the line's soft edge (LeadingEdgeMeters) has passed the point.
+			const double Reach = Speed * kSquallLeadSeconds - kSquallEdgeMeters;
+			F.StartTime = SquallArrives - kSquallLeadSeconds;
+			F.StartX = SquallX - std::cos(Move * kDegToRad) * Reach;
+			F.StartY = SquallY - std::sin(Move * kDegToRad) * Reach;
+			F.OutflowKnots = kSquallOutflowKnots;
+			F.OutflowFromDegrees = FromDeg;
+			F.OutflowGustIntensity = kSquallGustIntensity;
+			F.LeadingEdgeMeters = kSquallEdgeMeters;
+			F.ColdPoolDeltaC = kSquallDeltaC;
+			F.ColdPoolDepthM = kSquallDepthM;
+			F.Burst.PeakOutflowMs = 0.0; // a shower line in a gale: no microburst
+			F.DecayStartTime = std::min(SquallArrives + kSquallHoldSeconds, ClearingStarts);
+			F.DecaySeconds = 0.6 * kClearingSeconds;
+			const double Ends = std::min(SquallArrives + kSquallHoldSeconds, ClearingStarts) + kClearingSeconds;
+			if (T < SquallArrives - 120.0) W.Storm = EStormPhase::None;
+			else if (T < SquallArrives) W.Storm = EStormPhase::Building;
+			else if (T < F.DecayStartTime) W.Storm = EStormPhase::GustFront;
+			else if (T < Ends) W.Storm = EStormPhase::Clearing;
+			else W.Storm = EStormPhase::Clear;
+			W.StormDirectionDeg = FromDeg;
+			W.StormDistanceKm = std::max(Speed * (SquallArrives - T), 0.0) / 1000.0;
+		}
+		W.Rain = W.RainAt(SquallX, SquallY, T);
+		W.LocalizeStorm(SquallX, SquallY, T);
+	}
+
 	double FWeatherState::RainRateAt(double X, double Y, double Z, double FrontTime) const
 	{
 		if (!bStormRain) return Rain >= 1.0 ? 50.0 : 50.0 * Rain * Rain; // the inverse of FStormRain::Amount
@@ -501,6 +667,11 @@ namespace Sailing
 		{
 			const double R = Day->RadarRate(X - RadarOffsetX, Y - RadarOffsetY, DayStartHour + FrontTime / 3600.0);
 			if (R >= 0.0) return R;
+		}
+		if (bSquall)
+		{
+			const double Line = Front.bActive ? Squall.RateAt(Front.DistanceAhead(X, Y, FrontTime)) : 0.0;
+			return (BaseRainMmPerHour + Line) * StormRainScale;
 		}
 		if (!Front.bActive || StormRainScale <= 0.0) return 0.0;
 		return FStormRain::RateAt(Front.DistanceAhead(X, Y, FrontTime), Z, Front.AlongFront(X, Y)) * StormRainScale;
@@ -513,6 +684,18 @@ namespace Sailing
 
 	void FWeatherState::LocalizeStorm(double X, double Y, double FrontTime)
 	{
+		if (bSquall)
+		{
+			// The squall's dark base comes over in the last two kilometres before its front; inside the line the rain closes
+			// the visibility in. The day's deck (Base*, already broken up as it clears) is the rest.
+			const double D = Front.bActive ? Front.DistanceAhead(X, Y, FrontTime) : 1e9;
+			const double Near = Front.bActive ? (1.0 - SmoothStep(0.0, 2500.0, D)) * StormRainScale : 0.0;
+			const double In = Front.bActive ? Squall.Inside(D) * StormRainScale : 0.0;
+			CloudCover = Lerp(BaseCloudCover, 0.98, Near);
+			CloudDarkness = Lerp(BaseCloudDarkness, 0.8, std::max(0.6 * Near, In));
+			VisibilityKm = std::min(BaseVisibilityKm, Lerp(BaseVisibilityKm, 2.0, In));
+			return;
+		}
 		if (!Front.bActive || !bStormRain) return;
 		// W8: the storm's gloom comes with its shelf, not with its timeline: ahead of the front the sun shines (the direct
 		// light is FWeatherMap::SunTransmittance's), and the sky darkens as the shelf covers more of it overhead. Before

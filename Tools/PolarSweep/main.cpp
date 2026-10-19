@@ -37,6 +37,29 @@ int main(int Argc, char** Argv)
 	const FBoatConfig Config = FBoatConfig::Make(Type);
 	const std::vector<FPolarPoint>& Polar = FleetReferencePolar(Type);
 	std::printf("%s\n", Config.Name);
+	if (Argc > 1 && std::strcmp(Argv[1], "--scenarios") == 0 && Type == EBoatType::Maxi)
+	{
+		// The prologue maxi (docs/prologue/README.md step 3): heavy-air tacks and the gust on a reach.
+		for (const int Reefs : { 0, 2 })
+		{
+			for (const double Tws : { 16.0, 30.0 })
+			{
+				const FTackResult T = RunTack(Config, Tws, Reefs);
+				std::printf("tack %2.0f kn, %d reefs: %s in %.1f s, speed %.2f -> min %.2f -> %.2f after 10 s\n", Tws, Reefs, T.bCompleted ? "done" : "NOT DONE",
+					T.TackSeconds, T.SpeedBeforeKnots, T.MinSpeedKnots, T.SpeedAfter10sKnots);
+			}
+		}
+		for (const bool bLimits : { false, true })
+		{
+			for (const double Twa : { 70.0, 80.0, 90.0, 100.0, 130.0 })
+			{
+				const FGustReachResult G = RunGustReach(Config, 30.0, 40.0, Twa, 2, bLimits);
+				std::printf("gust 30 -> 40 kn at TWA %3.0f, 2 reefs, limits %s: max heel %.1f, speed %.1f -> max %.1f kn, min TWA %.0f, course error %.0f, capsized %d\n",
+					Twa, bLimits ? "on " : "off", G.MaxHeelDeg, G.SpeedBeforeKnots, G.MaxSpeedKnots, G.MinTwaDeg, G.MaxCourseErrorDeg, G.bCapsized);
+			}
+		}
+		return 0;
+	}
 	if (Argc > 1 && std::strcmp(Argv[1], "--scenarios") == 0)
 	{
 		for (double Tws : { 6.0, 10.0, 15.0 })

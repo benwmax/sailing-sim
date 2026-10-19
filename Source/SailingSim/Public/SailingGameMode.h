@@ -8,6 +8,7 @@
 #include "Weather.h"
 #include "Wind.h"
 #include "WorldClock.h"
+#include "ScriptedScene.h"
 #include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
@@ -17,7 +18,7 @@
 /**
  * Owns the world's weather, wind and waves and the simulation clock (the boat's physics time), and spawns
  * the player's boat. Command line (for benchmarks and recordings):
- *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay>  -SailingHour=<h>
+ *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay|Mistral>  -SailingHour=<h>
  *   -SailingWind=<knots> (scale the preset to this base wind)  -SailingWeatherTime=<s> (start partway in)
  *   -SailingSeed=<n>  -SailingBench=<s>  -SailingRecord=<s>  -SailingRecordInterval=<s>  -SailingShot=<name>
  */
@@ -46,6 +47,8 @@ public:
 	TOptional<FLaunchSpot> NearShipStart;
 	/** The area's data files by setting: "RayHubbard" or "GalvestonBay". */
 	static const TCHAR* WorldFileName(int32 World);
+	/** A world by its name or number (-SailingWorld, a scene's setting.world_stand_in): "Lake" 0, "Galveston" 1, "Gulf" 2. */
+	static int32 WorldIndexFromName(const FString& Name);
 	static const TCHAR* WorldDisplayName(int32 World);
 
 	/** Real time (seconds since 1970 UTC): the chosen date and start time plus the time sailed. Tides run on it. */
@@ -82,6 +85,23 @@ public:
 	const Sailing::FWeatherDay* GetRealDay() const { return RealDay.get(); }
 	/** W5b: loads Content/TerrainData/Weather/<date>.wxday; null if it is not there or not valid. */
 	static std::shared_ptr<const Sailing::FWeatherDay> LoadRealDay(const FString& Date);
+
+	/** Prologue step 1 (docs/prologue/README.md): the scripted crew scene this session runs, or null. A prologue session is
+	 *  -SailingPrologue=1 for now (the first-launch flow comes later); it sails the scene's stand-in boat and wind. */
+	const Sailing::FScriptedScene* GetScene() const { return bScene ? &Scene : nullptr; }
+	static bool IsPrologueRun();
+	/** The boat the scene follows hands it her state and the crew's input once a frame, after her physics (the pawn).
+	 *  The scene steps on the sim clock (her physics time). */
+	void UpdateScene(const Sailing::FBoatModel& Boat, const Sailing::FSceneInput& Input);
+	/** The boat is being (re)started: the scene goes back to its last checkpoint if it is running, and Out* is the pose to
+	 *  start from (that checkpoint's, or the first step's before it starts). False when the step has no pose. */
+	bool RestartScene(double& OutTwaDeg, double& OutKnots);
+	/** Content/Prologue/prologue.json read and checked; false (with a log line) if it is missing or invalid. */
+	static bool LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError = nullptr);
+	/** Prologue step 3: the scene sails its own boat (setting.boat, the maxi) unless -SailingPrologueBoat names its stand-in;
+	 *  the reefs the crew start with (setting.reefs, or the stand-in's). */
+	bool IsSceneStandIn() const { return bScene && bSceneStandIn; }
+	int32 GetSceneReefs() const { return bScene ? SceneReefs : 0; }
 
 	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather. */
 	void ApplyWeatherSettings();
@@ -149,6 +169,15 @@ private:
 	FDateTime SessionDate;
 	bool bSessionDate = false;
 	bool bWindArgsRead = false;
+	// Prologue step 1: the scene, its clock (the boat's physics time when it last stepped) and the last call voiced.
+	Sailing::FScriptedScene Scene;
+	bool bScene = false, bSceneStarted = false, bSceneRecorded = false, bSceneStandIn = false;
+	int32 SceneReefs = 0;
+	double SceneTime = 0.0;
+	int32 SceneCallSerial = 0;
+	int32 SceneWeatherSerial = -1;
+	int32 SceneStartStep = 0;  // -SailingPrologueStep (stills)
+	bool bScenePreset = false; // the scene's setting.weather named a preset (step 4: the mistral)
 public:
 	/** Graphics G4: changes the running session's weather in place (Pause > Change conditions): no reload. */
 	void ApplyConditions(const struct FSailConditions& Conditions);

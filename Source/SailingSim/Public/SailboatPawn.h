@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "AutoTrim.h"
 #include "EasyAssists.h"
+#include "CrewStation.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "InputActionValue.h"
@@ -106,6 +107,8 @@ public:
 	struct FKeyRow { FName Action; bool bNegative = false; FString Label; FKey Key; FKey PadKey; FKey PadAxis; };
 	bool IsKeysOpen() const { return bKeysOpen; }
 	const TArray<FKeyRow>& GetKeyRows() const { return KeyRows; }
+	/** Prologue step 2: the crew station the player works in a scene (inactive outside one: every control is theirs). */
+	const Sailing::FStationControls& GetStations() const { return Stations; }
 	int32 GetKeysIndex() const { return KeysIndex; }
 	bool IsCapturingKey() const { return bCapturingKey; }
 	const FString& GetKeysMessage() const { return KeysMessage; }
@@ -264,6 +267,14 @@ private:
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
 	bool bDrillTouching = false, bDrillGraded = false;
+	bool bCrewActionPressed = false;   // Prologue step 1: the crew-action button since the scene last stepped
+	// Prologue step 2: the player's crew station and the rest of the crew (docs/prologue/README.md). Active only while a
+	// scene runs; the scene's station orders arrive by serial, the station key and the grind taps between frames.
+	Sailing::FStationControls Stations;
+	int32 SceneStationSerial = 0;
+	int32 GrindTaps = 0;
+	bool bTravellerDumpPressed = false, bStationKeyPressed = false;
+	void UpdateStations(Sailing::FStationInput& OutInput);
 	bool bDrillEasy = false; // Easy mode's assists were on at any time during the drill (its medal is capped: career.json)
 	FCareerProgress::FAward CareerAward;
 	FLearningCoach Learning;

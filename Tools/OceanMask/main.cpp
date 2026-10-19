@@ -1,6 +1,6 @@
 // Gulf swell: FOcean's mask on a world's terrain, standalone (no Unreal). Prints the build time and the mask at named
 // points, and writes a greyscale map (north up) to Artifacts/ocean-mask-<World>.pgm. Usage: scripts/ocean-mask.sh
-// [GalvestonBay|GulfPassage] [swell Hs m]
+// [GalvestonBay|GulfPassage] [swell Hs m] [swell from deg]
 #include "LakeTerrain.h"
 #include "Ocean.h"
 #include "SailingMath.h"
@@ -30,7 +30,7 @@ int main(int Argc, char** Argv)
 	P.WindFromRad = kPi;
 	P.SwellHs = Argc > 2 ? std::atof(Argv[2]) : 0.9;
 	P.SwellTp = 9.0;
-	P.SwellFromRad = 135.0 * kDegToRad;
+	P.SwellFromRad = (Argc > 3 ? std::atof(Argv[3]) : 135.0) * kDegToRad;
 	FOcean Ocean;
 	Ocean.Configure(P);
 	const auto T0 = std::chrono::steady_clock::now();

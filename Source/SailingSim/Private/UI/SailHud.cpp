@@ -439,6 +439,28 @@ void SSailHud::Construct(const FArguments& A)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(M)
 		[
 			SNew(SVerticalBox)
+			// Prologue step 1: the captain's call, in the rules callout's panel; shown in every HUD mode (it is the scene).
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 10.f)
+			[
+				SNew(SBox).WidthOverride(560.f).Visibility_Lambda([this]() { return bCaptain ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(4.f)[ SNew(SBorder).BorderImage(Rounded(Warn, 2.f)) ] ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)
+					[
+						PanelBox(SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Captain"), EType::Eyebrow, Warn) ]
+								+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(CaptainStation), EType::Eyebrow, FSlateColor(Accent), false) ]
+							]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 2.f)[ TextAttr(Attr(CaptainText), EType::Ui, FSlateColor(Fg), true) ]
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda([this]() { return CaptainHint.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(CaptainHint), EType::Small, FSlateColor(Muted), true) ] ],
+							FMargin(16.f, 10.f), 4.f)
+					]
+				]
+			]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
 			[
 				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bSignals && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
@@ -544,7 +566,8 @@ void SSailHud::Refresh()
 	WindText = FText::FromString(FString::Printf(TEXT("%.0f %s %s G%.0f"), U->SpeedIn(T.TrueWindSpeed), U->SpeedUnit(), *USailSessionSubsystem::CompassPoint(float(Wx.Wind.FromDegrees)),
 		U->SpeedIn(T.TrueWindSpeed) * (1.0 + Wx.Wind.GustIntensity)));
 	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(P);
-	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : 80.f;
+	// Without a session's own temperature, the weather's air (the mistral's cold 13 C).
+	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : float(Wx.AirC * 9.0 / 5.0 + 32.0);
 	SkyText = FText::FromString(FString::Printf(TEXT("%s · %.0f°F"), UTF8_TO_TCHAR(WeatherPresetName(GM->GetWeather().GetPreset())), TempF));
 	bTidal = Lake.IsTidal();
 	if (bTidal)
@@ -659,16 +682,83 @@ void SSailHud::Refresh()
 			}
 		}
 	}
+	RefreshScene(*P, *GM);
 	RefreshTraffic(*P, *GM);
 	// Key hints: up to three, from the situation.
 	TArray<FString> Hints;
 	if (T.bCapsized && Cfg.RightingLever > 0.0) Hints.Add(KeyName(TEXT("Righting"), false) + TEXT("  Right the boat"));
 	const FString SteerPort = KeyName(TEXT("Tiller"), true), SteerStbd = KeyName(TEXT("Tiller"), false);
-	Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
+	// Prologue step 2: away from the helm the crew steer; the hint is the station key instead.
+	const Sailing::FStationControls& Stations = P->GetStations();
+	if (!Stations.IsActive() || Stations.GetStation() == Sailing::ECrewStation::Helm) Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
+	else Hints.Add(KeyName(TEXT("Station"), false) + TEXT("  Next station"));
 	if (bTidal) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
 	Hints.Add(KeyName(TEXT("Menu"), false) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+void SSailHud::RefreshScene(const ASailboatPawn& P, const ASailingGameMode& GM)
+{
+	// What the sim's scene says now (rule 8: the scene judges, the HUD only shows its caption and the answering keys).
+	const Sailing::FScriptedScene* Scene = GM.GetScene();
+	const FString Caption = Scene ? FString(UTF8_TO_TCHAR(Scene->GetCaption().c_str())) : FString();
+	bCaptain = !Caption.IsEmpty();
+	CaptainText = FText::FromString(Caption);
+	FString Hint;
+	const Sailing::FSceneStep* Step = Scene ? Scene->GetStep() : nullptr;
+	// Step 2: the station the player works, and the key that answers the call there (or the one that gets them there).
+	const Sailing::FStationControls& Stations = P.GetStations();
+	FString StationName = Stations.IsActive() ? FString(UTF8_TO_TCHAR(Sailing::CrewStationName(Stations.GetStation()))).Replace(TEXT("-"), TEXT(" ")) : FString();
+	CaptainStation = FText::FromString(StationName.IsEmpty() ? FString() : TEXT("You: ") + StationName);
+	if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling && Stations.IsActive() && !Step->Station.empty()
+		&& Sailing::CrewStationFromName(Step->Station) != Stations.GetStation())
+	{
+		Hint = FString::Printf(TEXT("%s: go to the %s"), *SailingBindings::Label(TEXT("Station"), false, false), *FString(UTF8_TO_TCHAR(Step->Station.c_str())).Replace(TEXT("-"), TEXT(" ")));
+	}
+	else if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling && Scene->GetControlsDone() < int32(Step->Expect.Controls.size()))
+	{
+		using SailingBindings::Label;
+		const bool bEase = Step->Expect.By > 0.0 || Step->Expect.AtLeast >= 0.0;
+		switch (Sailing::StationControlFromName(Step->Expect.Controls[size_t(Scene->GetControlsDone())]))
+		{
+		case Sailing::EStationControl::Wheel: Hint = FString::Printf(TEXT("%s / %s: turn the wheel"), *Label(TEXT("Tiller"), true, false), *Label(TEXT("Tiller"), false, false)); break;
+		case Sailing::EStationControl::JibSheet: Hint = FString::Printf(TEXT("%s: ease the jib sheet"), *Label(TEXT("JibSheet"), false, false)); break;
+		case Sailing::EStationControl::Grinder: Hint = FString::Printf(TEXT("%s: grind (tap or hold)"), *Label(TEXT("Grind"), false, false)); break;
+		case Sailing::EStationControl::MainSheet: Hint = FString::Printf(TEXT("%s: %s the main"), *Label(TEXT("MainSheet"), !bEase, false), bEase ? TEXT("ease") : TEXT("trim")); break;
+		case Sailing::EStationControl::Traveller: Hint = FString::Printf(TEXT("%s / %s: traveller"), *Label(TEXT("Traveler"), true, false), *Label(TEXT("Traveler"), false, false)); break;
+		case Sailing::EStationControl::TravellerDump: Hint = FString::Printf(TEXT("%s: dump the traveller"), *Label(TEXT("TravellerDump"), false, false)); break;
+		case Sailing::EStationControl::Count:
+		default: break;
+		}
+	}
+	else if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling)
+	{
+		using SailingBindings::Label;
+		const Sailing::FSceneExpectation& E = Step->Expect;
+		const FName Sheet = E.Sheet == "main" ? FName(TEXT("MainSheet")) : FName(TEXT("JibSheet"));
+		const TCHAR* SheetName = E.Sheet == "main" ? TEXT("main") : TEXT("jib");
+		switch (E.Type)
+		{
+		case Sailing::ESceneExpect::Action: Hint = FString::Printf(TEXT("%s: %s"), *Label(TEXT("CrewAction"), false, false), UTF8_TO_TCHAR(E.Action.c_str())); break;
+		case Sailing::ESceneExpect::Sheet:
+		{
+			const bool bEase = E.By > 0.0 || E.AtLeast >= 0.0;
+			Hint = FString::Printf(TEXT("%s: %s the %s"), *Label(Sheet, !bEase, false), bEase ? TEXT("ease") : TEXT("trim"), SheetName);
+			break;
+		}
+		case Sailing::ESceneExpect::Tack:
+		case Sailing::ESceneExpect::Gybe:
+		case Sailing::ESceneExpect::Hold:
+			Hint = FString::Printf(TEXT("%s / %s: steer"), *Label(TEXT("Tiller"), true, false), *Label(TEXT("Tiller"), false, false));
+			break;
+		case Sailing::ESceneExpect::None:
+		case Sailing::ESceneExpect::Station:
+		case Sailing::ESceneExpect::Count:
+		default: break;
+		}
+	}
+	CaptainHint = FText::FromString(Hint);
 }
 
 void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM)

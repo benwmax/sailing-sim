@@ -5,6 +5,7 @@
 #include "SailingSettings.h"
 
 class FJsonObject;
+namespace Sailing { struct FSceneResult; }
 
 /**
  * The versioned save file (docs/save/README.md): one JSON file per profile, Saved/SaveGames/profile.json. Every
@@ -56,8 +57,10 @@ struct SAILINGSIM_API FSailSave
 		int32 Traffic = 1;
 		int32 WeatherSeed = 2027;
 		bool bGaugeLakeLevel = false;
-		/** Career (docs/career): every world and boat open whatever certificates are held. Optional in version 1. */
-		bool bOpenEverything = false;
+		/** The play mode the title screen last chose (docs/free-sail): Free Sail opens everything and earns no medals;
+		 *  false is Career. Saved as settings.career.freeSail; a file without it reads the Career 1 field
+		 *  settings.career.openEverything (Open everything became Free Sail). Optional in version 1. */
+		bool bFreeSail = false;
 		/** Key bindings stay in Input.ini (USailingInputSettings); the save names where they are. */
 		FString InputBindings = TEXT("Input.ini");
 	};
@@ -77,6 +80,7 @@ struct SAILINGSIM_API FSailSave
 		bool bLearningMode = true;
 		bool bEasy = true;
 		bool bLearningTips = true;
+		bool bFreeSail = false;              // the session's play mode (docs/free-sail); optional in version 1
 		int32 Traffic = 1;
 		FDateTime SavedAt;                   // UTC (the session's own is local)
 		// Conditions.
@@ -110,6 +114,17 @@ struct SAILINGSIM_API FSailSave
 		FString Id;
 		FDateTime EarnedAt;                  // UTC
 	};
+	/** A scripted scene finished (Content/Prologue, Sailing::FScriptedScene), by scene id ("prologue"): once done, the
+	 *  prologue can be skipped. Added in version 1 without a version change (docs/prologue/README.md). */
+	struct FSceneRecord
+	{
+		FString Id;
+		bool bDone = false;                  // finished at least once
+		int32 Plays = 0;                     // finished runs
+		double BestSeconds = 0.0;            // the quickest finish, on the sim clock
+		int32 StepsPassed = 0, StepsAssisted = 0, Retries = 0; // the last finish
+		FDateTime CompletedAt;               // the first finish, UTC
+	};
 
 	/** Progress: drills passed, the career's lessons, checkrides and certificates, races, the logbook's totals. The
 	 *  career fields were added in version 1 without a version change (a missing field reads as empty). */
@@ -124,6 +139,11 @@ struct SAILINGSIM_API FSailSave
 		FCheckrideRecord* FindCheckride(const FString& Id) { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
 		const FCheckrideRecord* FindCheckride(const FString& Id) const { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
 		bool HasCertificate(const FString& Id) const { return Certificates.ContainsByPredicate([&Id](const FCertificateRecord& C) { return C.Id == Id; }); }
+		TArray<FSceneRecord> Scenes;         // by scene id
+		const FSceneRecord* FindScene(const FString& Id) const { return Scenes.FindByPredicate([&Id](const FSceneRecord& S) { return S.Id == Id; }); }
+		bool IsSceneDone(const FString& Id) const { const FSceneRecord* S = FindScene(Id); return S && S->bDone; }
+		/** A finished scene (the sim's FSceneResult, rule 8); an unfinished one changes nothing. */
+		SAILINGSIM_API void RecordScene(const Sailing::FSceneResult& Result, const FDateTime& NowUtc);   // MSVC: a nested struct does not inherit FSailSave's export
 		int32 RacesSailed = 0;
 		int32 RacesWon = 0;
 		int32 LogbookSessions = 0;

@@ -39,7 +39,9 @@ namespace Sailing
 
 	enum class EBoatType : unsigned char
 	{
-		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42, Count
+		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42,
+		Maxi, // the prologue's made-up 100 ft maxi (Tools/boats/maxi): in the catalogue only for the prologue for now
+		Count
 	};
 
 	SAILINGPHYSICS_API const char* BoatTypeName(EBoatType Type);
@@ -63,11 +65,32 @@ namespace Sailing
 		double DepthOffset = 0.0;      // m the keel line sits above the main hull's (amas clear of the water at rest)
 		double PlaningLift = 0.0;      // dynamic lift coefficient of the bottom (planing dinghies)
 
+		/**
+		 * A hull drawn by its sections instead of the formula above (the prologue maxi: the PC's exported hull). Each
+		 * station is a half section from the keel (Y 0) to the sheer, half breadths never decreasing, every station with
+		 * the same number of points; stations run stern to bow. With stations, DeckHalfBeam, SheerHeight, KeelLineDepth
+		 * and BottomZ follow them (between stations point by point) and the parameters above are only a stand-in fit
+		 * for the water's hull clip and BoatExport. The canoe depth the boat floats at moves the sections down by its
+		 * difference from StationDepth (their own keel depth), so a heavier boat sinks the drawn hull.
+		 */
+		struct FStation
+		{
+			double X = 0.0, Sheer = 0.0;
+			std::vector<double> Y, Z;
+		};
+		std::vector<FStation> Stations;
+		double StationDepth = 0.0;     // the sections' deepest keel point below the DWL (m)
+		bool HasStations() const { return Stations.size() >= 2; }
+
 		double DeckHalfBeam(double X) const;
 		double SheerHeight(double X) const;
 		double KeelLineDepth(double X, double MainDepth) const;
 		double BottomZ(double X, double Y, double MainDepth) const; // Y relative to CenterY
 		double WaterlineLength() const { return 2.0 * WaterlineHalfLength; }
+		/** The station pair around X (I and I + 1, T from I to I + 1), clamped to the ends. */
+		void StationAt(double X, int& OutI, double& OutT) const;
+		/** The bottom's height at |Y| on the section between stations I and I + 1 (the sheer past the deck edge). */
+		double StationBottomZ(int I, double T, double AbsY) const;
 	};
 
 	enum class EFoilRole : unsigned char { Keel, Board, Rudder, HullLateral };
@@ -111,6 +134,10 @@ namespace Sailing
 		// Mass budget (body frame: origin at the design waterline, midships of the waterline; X fwd, Y stbd, Z up).
 		double HullRigMass = 494.0;  Vec3 HullRigCG = Vec3(-0.15, 0.0, 0.35);
 		double BallastMass = 318.0;  Vec3 BallastCG = Vec3(0.10, 0.0, -0.65); // centroid of a cast-lead fin
+		// The fixed appendages' own buoyancy (a big fin and bulb, fixed rudders), m^3 and their centroid: always under
+		// water upright, so the canoe body floats the rest. 0 = folded into the ballast's weight (the small boats: the
+		// J/22's fin displaces 40 litres).
+		double AppendageVolume = 0.0; Vec3 AppendageCentre;
 		double CrewMass = 240.0;     Vec3 CrewCG = Vec3(-1.20, 0.0, 0.55); // three crew, sitting on centerline
 		int CrewCount = 3;
 		double CrewSitOut = 0.30;    // m from centerline sitting on the windward side
@@ -166,6 +193,9 @@ namespace Sailing
 		double TillerLength = 1.0;        // m
 		double HelmStiffness = 600.0;     // N m/rad, how firmly the helm holds the tiller; lower = more helm feel
 		double RudderResponseTime = 0.10; // s
+		// Wheel steering: the helm turns the rudder from amidships to hard over in this long, wheel turned flat out (the
+		// crew-station wheel reads it: CrewStation.h). 0 = a tiller (the station's own default stands in).
+		double WheelHardOverSeconds = 0.0;
 
 		// Sails. A sail with NumStrips = 0 is absent (una and lateen rigs have no jib).
 		FSailGeometry Main;
@@ -186,6 +216,11 @@ namespace Sailing
 		std::vector<double> ReefLuffFraction;
 		// Main build recipe, kept so reefs can rebuild it: foot and head heights, chords, roach, luff X.
 		double MainFootZ = 1.45, MainHeadZ = 9.05, MainFootChord = 2.97, MainHeadChord = 0.45, MainRoach = 0.12, MainLuffX = 0.95, MainLuffXHead = 0.95, MainArea = 11.5;
+		// The headsail change that goes with each reef (a big boat's J1 -> J3 -> J4), as a fraction of the full jib's area
+		// (BuildMain rebuilds the jib too: luff and foot each by the square root). Empty = the jib stays (the small boats
+		// reef the main only). The full jib's recipe is kept here by the boats that use it.
+		std::vector<double> ReefJibFraction;
+		double JibFootZ = 0.0, JibHeadZ = 0.0, JibFootChord = 0.0, JibHeadChord = 0.0, JibLuffX = 0.0, JibLuffXHead = 0.0, JibArea = 0.0;
 
 		std::vector<FEngineDef> Engines;
 

@@ -70,6 +70,17 @@ namespace SailingBindings
 		return Action != TEXT("MenuUp") && Action != TEXT("MenuDown") && Action != TEXT("MenuLeft") && Action != TEXT("MenuRight");
 	}
 
+	bool IsStationAction(FName Action)
+	{
+		return Action == TEXT("CrewAction") || Action == TEXT("Grind") || Action == TEXT("TravellerDump") || Action == TEXT("Station");
+	}
+
+	bool SameLayer(FName A, FName B)
+	{
+		auto Global = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard"); };
+		return Global(A) || Global(B) || IsStationAction(A) == IsStationAction(B);
+	}
+
 	FKey Find(const TArray<FSailingKeyBinding>& Bindings, FName Action, bool bNegative, EColumn Column)
 	{
 		for (const FSailingKeyBinding& B : Bindings) if (SameRow(B, Action, bNegative) && InColumn(B.Key, Column)) return B.Key;
@@ -99,7 +110,7 @@ namespace SailingBindings
 		for (int32 I = 0; I < Bindings.Num(); ++I)
 		{
 			const FSailingKeyBinding& B = Bindings[I];
-			if (B.Key == Key && IsRowAction(B.Action) && !SameRow(B, Action, bNegative)) { Other = I; break; }
+			if (B.Key == Key && IsRowAction(B.Action) && !SameRow(B, Action, bNegative) && SameLayer(B.Action, Action)) { Other = I; break; }
 		}
 		if (Other != INDEX_NONE)
 		{
@@ -111,7 +122,7 @@ namespace SailingBindings
 			for (int32 I = Bindings.Num() - 1; I >= 0; --I)
 			{
 				FSailingKeyBinding& B = Bindings[I];
-				if (B.Key != Key || !IsRowAction(B.Action) || SameRow(B, Action, bNegative)) continue;
+				if (B.Key != Key || !IsRowAction(B.Action) || SameRow(B, Action, bNegative) || !SameLayer(B.Action, Action)) continue;
 				if (R.Old.IsValid()) B.Key = R.Old;
 				else Bindings.RemoveAt(I);
 			}
