@@ -1,7 +1,7 @@
 {
   "_doc": "World definition for Tools/coast/build_coast.py and fetch_world.py: a coast bakes from a box and a name. Positions are lat/lon (WGS84); the bake projects them into the map frame (X north, Y east, metres, origin at 'center'). README: docs/world-marseille/README.md.",
   "name": "Marseille",
-  "display": "Marseille: Vieux-Port, Frioul and the Calanques",
+  "display": "Marseille: Vieux-Port, Frioul, the Calanques, Cassis and La Ciotat",
   "docs": "world-marseille",
   "cell": 10.0,
   "center": [
@@ -12,7 +12,7 @@
   "bbox": [
     5.17,
     43.15,
-    5.58,
+    5.66,
     43.37
   ],
   "ellipsoid": "GRS80",
@@ -61,7 +61,7 @@
       "name": "Port de Cassis",
       "lat": 43.213,
       "lon": 5.538,
-      "depth_m": 3.0,
+      "depth_m": 3.5,
       "radius_m": 450.0
     },
     {
@@ -84,6 +84,20 @@
       "lon": 5.311,
       "depth_m": 3.0,
       "radius_m": 450.0
+    },
+    {
+      "name": "Port de La Ciotat",
+      "lat": 43.1752,
+      "lon": 5.606,
+      "depth_m": 4.0,
+      "radius_m": 600.0
+    },
+    {
+      "name": "Port-Miou",
+      "lat": 43.205,
+      "lon": 5.516,
+      "depth_m": 5.0,
+      "radius_m": 700.0
     }
   ],
   "harbour_default_depth_m": 3.0,
@@ -124,6 +138,11 @@
       "Cassis, Pointe des Lombards",
       43.212,
       5.537
+    ],
+    [
+      "La Ciotat, Bec de l'Aigle",
+      43.164,
+      5.599
     ]
   ],
   "launch": [
@@ -170,6 +189,18 @@
       250.0
     ],
     [
+      "Cassis, Port de Cassis",
+      43.2128,
+      5.5374,
+      200.0
+    ],
+    [
+      "La Ciotat bay, off Ile Verte",
+      43.168,
+      5.625,
+      300.0
+    ],
+    [
       "Offshore, past Planier (gale)",
       43.172,
       5.27,
@@ -194,6 +225,12 @@
       43.172,
       5.27,
       135.0
+    ],
+    "cassis_slip": [
+      "Cassis, Port de Cassis",
+      43.2128,
+      5.5374,
+      200.0
     ]
   },
   "passage": [
@@ -226,6 +263,16 @@
       "Cassis entrance",
       43.211,
       5.535
+    ],
+    [
+      "Off Cap Canaille",
+      43.195,
+      5.555
+    ],
+    [
+      "La Ciotat, off Ile Verte",
+      43.165,
+      5.615
     ]
   ],
   "ports": [
@@ -239,6 +286,11 @@
       "lat": 43.213,
       "lon": 5.538,
       "note": "the second Gulf of Lion port, in the same pack"
+    },
+    {
+      "name": "La Ciotat",
+      "lat": 43.1752,
+      "lon": 5.606
     }
   ],
   "climate": {
@@ -562,6 +614,20 @@
       5.3014,
       15.0,
       "the quarantine hospital on Frioul"
+    ],
+    [
+      "Bec de l'Aigle",
+      43.1625,
+      5.5985,
+      155.0,
+      "the eagle's-beak cliff over La Ciotat"
+    ],
+    [
+      "La Ciotat shipyard cranes",
+      43.172,
+      5.612,
+      90.0,
+      "the gantry cranes of the old shipyard"
     ]
   ],
   "preview_depth_m": 60.0,
@@ -579,16 +645,16 @@
       700
     ],
     [
-      "Pointe Rouge",
-      43.2465,
-      5.368,
-      500
-    ],
-    [
       "Cassis",
       43.2135,
       5.5375,
       400
+    ],
+    [
+      "La Ciotat",
+      43.1752,
+      5.606,
+      700
     ]
   ],
   "time_zone": "Europe/Paris",
@@ -596,7 +662,7 @@
     "l93_box": [
       875000,
       6229000,
-      911000,
+      925000,
       6257000
     ],
     "cell_m": 5.0

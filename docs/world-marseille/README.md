@@ -6,9 +6,9 @@ launch spots, the passage, the climate, the city glow and the far coast ring's s
 
 | | |
 |---|---|
-| Box | 5.17-5.58 E, 43.15-43.37 N: the Rade de Marseille, Frioul (If, Pomegues, Ratonneau), Pointe Rouge, Cap Croisette, Riou, the Calanques to Cassis, Planier |
+| Box | 5.17-5.66 E, 43.15-43.37 N: the Rade de Marseille, Frioul (If, Pomegues, Ratonneau), Pointe Rouge, Cap Croisette, Riou, the Calanques, Cassis and La Ciotat (Ile Verte), Planier |
 | Origin | the Vieux-Port entrance (43.2950 N, 5.3625 E), X north, Y east, metres |
-| Grid | 3321 x 2442 cells of 10 m (33 x 24 km); heights in 2.5 cm steps (int16 reaches 819 m: the Garlaban is 714 m) |
+| Grid | 3970 x 2440 cells of 10 m (40 x 24 km); heights in 2.5 cm steps (int16 reaches 819 m: the Garlaban is 714 m) |
 | Datum | NGF-IGN69, mean sea level at the Marseille tide gauge (the gauge that defines French levelling); MHW 0.15 m |
 | Tides | none (spring range about 0.3 m): the water stands at the datum |
 | Projection | tmerc on GRS80 (ETRS89, which WGS84 positions match to centimetres); `FGeoAnchor::ParseProj4` reads it |
@@ -51,20 +51,25 @@ pack in `Content/TerrainData` is 25 MB: `Marseille.height` 16.2 MB, `.houses` 3.
 
 ## What the bake holds
 
-- 67 aids to navigation (49 lit: 37 lights, 17 beacons, 13 buoys), 220 landmarks (ten named in the world json:
-  Notre-Dame de la Garde, Chateau d'If, La Major, Fort Saint-Jean, Fort Saint-Nicolas, the MuCEM, the Pharo, the CMA
-  CGM tower, Planier, the Caroline hospital).
-- 151 fixed piers in the world json; in `Marseille.piers` 64 pier decks, 34 breakwaters and groynes (4.5 km), 133
-  pontoons (8.3 km) and about 3,800 boats moored stern-to, Mediterranean style (Vieux-Port about 2,000, Frioul 800,
-  Port de la Lave 390, Pointe Rouge 250, Cassis 20).
-- About 71,000 houses within 1.5 km of the water (22,000 within 400 m at full detail): OSM's height, storeys, roof
+- 73 aids to navigation (54 lit), 244 landmarks (twelve named in the world json: Notre-Dame de la Garde, Chateau
+  d'If, La Major, Fort Saint-Jean, Fort Saint-Nicolas, the MuCEM, the Pharo, the CMA CGM tower, Planier, the Caroline
+  hospital, the Bec de l'Aigle, La Ciotat's shipyard cranes).
+- 190 fixed piers in the world json; in `Marseille.piers` 64 pier decks, 41 breakwaters and groynes, 133 pontoons
+  (8.3 km) and about 3,800 boats moored stern-to, Mediterranean style (Vieux-Port about 1,870, Frioul 770, La Ciotat
+  330, Port de la Lave 290, Pointe Rouge 220, Cassis 75, Port-Miou 23). Boats also berth along the narrow fixed piers
+  inside a harbour (Pointe Rouge's and Cassis's are mapped as untagged outlines).
+- Cassis, the second port: its own slip (`cassis_slip` spot role) and harbour at 3.5 m. OSM's coastline wraps Cassis's
+  piers as land, so the bake carves narrow pier outlines (and harbour basins mapped as water) back out of the land;
+  only eight of its pontoons are mapped, hence 75 boats where the port has about 450 berths.
+- About 84,000 houses within 1.5 km of the water (27,000 within 400 m at full detail): OSM's height, storeys, roof
   shape and colour where mapped, else the world's `house_style` (Roman-tile gables and hips at 20 degrees, two to four
   storeys, terracotta palette, blocks of six storeys and more flat).
 - Shoreline: at 4,474 points every 50 m along the OSM coastline the terrain crosses mean high water within 5 m of the
   line at 89% of them and within 10 m at 97% (median 2 m) on the 10 m grid.
 - Launch spots: the Vieux-Port (Quai de Rive Neuve, the home slip), the entrance, the Frioul anchorage, Pointe Rouge,
-  the Rade Sud, off Sormiou, Cassis bay, and the gale spot offshore past Planier. The passage: Vieux-Port, If, Cap
-  Croisette, Riou, En-Vau, Cassis.
+  the Rade Sud, off Sormiou, Cassis bay, the Port de Cassis (Cassis's slip), La Ciotat bay off Ile Verte, and the gale
+  spot offshore past Planier. The passage: Vieux-Port, If, Cap Croisette, Riou, En-Vau, Cassis, Cap Canaille, La
+  Ciotat.
 
 ![harbours](harbours.jpg)
 
@@ -83,7 +88,7 @@ Counts from the bake and OSM; the first column is the model to build, the last w
 | Port cranes (container and ship-to-shore) | 23 | the Grand Port Maritime (north) |
 | Forts and towers | Fort Saint-Jean (Tour du Roi Rene, Tour du Fanal), Fort Saint-Nicolas, Chateau d'If, Fort de Ratonneau, Pomegues batteries, Batterie de Croisette | entrance and Frioul |
 | Landmark buildings | Notre-Dame de la Garde, Cathedrale de la Major, MuCEM, Palais du Pharo, Tour CMA CGM, Hopital Caroline | skyline |
-| Marseille town houses (trois-fenetres, 3-4 storeys, tile roofs) | most of the 71,000 houses: an archetype set, not one each | the city |
+| Marseille town houses (trois-fenetres, 3-4 storeys, tile roofs) | most of the 84,000 houses: an archetype set, not one each | the city |
 | Calanques limestone cliff and scree material | the whole south coast | Calanques |
 
 ## Gaps

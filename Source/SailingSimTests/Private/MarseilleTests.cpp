@@ -193,4 +193,36 @@ bool FMarseilleMooredBoatsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/** Cassis, the world's second port, and La Ciotat past Cap Canaille: their own slip afloat, full harbours, the passage
+ *  on to La Ciotat, and their harbour lights. */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMarseilleCassisTest, "SailingSim.Coast.MarseilleCassis", MarseilleFlags)
+bool FMarseilleCassisTest::RunTest(const FString& Parameters)
+{
+	const FLakeData& Lake = Marseille();
+	if (!TestTrue(TEXT("Marseille loads"), Lake.IsLoaded())) return false;
+	const int32* Slip = Lake.SpotRoles.Find(TEXT("cassis_slip"));
+	if (TestTrue(TEXT("A Cassis slip"), Slip != nullptr && Lake.LaunchSpots.IsValidIndex(*Slip)))
+	{
+		const FLaunchSpot& S = Lake.LaunchSpots[*Slip];
+		const double Depth = -Lake.Terrain.HeightAt(S.X, S.Y);
+		AddInfo(FString::Printf(TEXT("%s at %.0f, %.0f: %.1f m of water"), *S.Name, S.X, S.Y, Depth));
+		TestTrue(TEXT("The Cassis slip is in the harbour, afloat"), Depth > 1.5 && S.Name.Contains(TEXT("Cassis")));
+		TestTrue(TEXT("Cassis is about 17 km east-southeast of the Vieux-Port"), S.Y > 13000.0 && S.Y < 16000.0 && S.X < -8000.0 && S.X > -10500.0);
+	}
+	int32 Cassis = 0, Ciotat = 0, Miou = 0;
+	for (const FMooredBoat& B : Lake.MooredBoats)
+	{
+		Cassis += B.Marina == 3;
+		Ciotat += B.Marina == 7;
+		Miou += B.Marina == 8;
+	}
+	AddInfo(FString::Printf(TEXT("Moored: Cassis %d, La Ciotat %d, Port-Miou %d"), Cassis, Ciotat, Miou));
+	TestTrue(TEXT("Port de Cassis has its pontoons full (eight piers in OSM)"), Cassis > 60);
+	TestTrue(TEXT("La Ciotat's port has boats"), Ciotat > 100);
+	TestTrue(TEXT("The passage ends off La Ciotat"), Lake.Passage.Num() > 0 && Lake.Passage.Last().Key.Contains(TEXT("La Ciotat")));
+	TestTrue(TEXT("Cassis's harbour light is charted"), Lake.Navaids.ContainsByPredicate([](const FNavaid& N) { return N.bLit && N.Name.Contains(TEXT("Cassis")); }));
+	TestTrue(TEXT("The map reaches past La Ciotat's Ile Verte"), Lake.Terrain.GetCols() * 10.0 > 39000.0);
+	return true;
+}
+
 #endif
