@@ -196,6 +196,25 @@ def load(ctx):
             coast.append(ln)
             features["COALNE"].append({"geom_xy": ln, "cell": CODE})
     land, nfaces = land_polygons(coast, box)
+    # Harbour basins OSM draws as water inside the coastline (Cassis's port, Port-Miou's calanque) are sea: carve them out
+    # where they touch the sea the coastline already bounds.
+    sea = box.difference(land)
+    basins = [xy(p) for el in elements(raw, "water_osm.json") for p in area_polygons(el)]
+    basins = [b for b in basins if b.is_valid and b.buffer(15.0).intersects(sea)]
+    # Piers the coastline wraps as land (Cassis's): a narrow pier outline stands on piles over the water, so the water
+    # runs under it (the pier itself stays a deck and an obstacle in the piers file).
+    piers = []
+    for el in elements(raw, "harbours_osm.json"):
+        if el["type"] == "way" and el.get("tags", {}).get("man_made") == "pier":
+            for p in area_polygons(el):
+                g = xy(p)
+                mrr = np.asarray(g.minimum_rotated_rectangle.exterior.coords)[:4]
+                if g.is_valid and min(np.linalg.norm(mrr[1] - mrr[0]), np.linalg.norm(mrr[2] - mrr[1])) < 8.0:
+                    piers.append(g.buffer(0.5))
+    basins += [p for p in piers if p.buffer(15.0).intersects(sea)]
+    if basins:
+        land = land.difference(shapely.unary_union(basins))
+        print(f"osm: {len(basins) - len(piers)}+ harbour basins and narrow piers carved from the land ({len(piers)} piers)")
     print(f"osm: {len(coast)} coastline ways, {nfaces} faces, land {land.area / box.area * 100:.0f}% of the box")
     land_hi = ctx.new_image(ctx.SS_LAND)
     for p in ctx.polygons(land):

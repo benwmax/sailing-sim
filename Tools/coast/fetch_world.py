@@ -116,6 +116,8 @@ def main():
     overpass(f'[out:json][timeout:250];(way["man_made"~"pier|breakwater|groyne|quay"]({b});nwr["leisure"~"marina|slipway"]({b});'
              f'nwr["harbour"]({b});nwr["landuse"="harbour"]({b});way["mooring"]({b});way["bridge"]["highway"]({b}););out geom tags;',
              "harbours_osm.json")
+    # Harbour basins that OSM maps as water inside the coastline (Cassis, Port-Miou): the bake carves them out of the land.
+    overpass(f'[out:json][timeout:250];nwr["natural"="water"]["water"~"harbour|marina|basin|bay|lagoon|dock"]({b});out geom tags;', "water_osm.json")
     overpass(f'[out:json][timeout:250];(nwr["man_made"~"tower|water_tower|chimney|crane|mast|obelisk"]({b});'
              f'nwr["historic"~"castle|fort|monument"]({b});nwr["building"~"cathedral|church|basilica"]["name"]({b});'
              f'nwr["amenity"="place_of_worship"]["name"]({b}););out center tags;', "landmarks_osm.json")
