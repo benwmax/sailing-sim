@@ -163,12 +163,19 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    after a world's grid changes (the ring takes the grid's heights inside it). `M_FarLand`'s WPO (`FAR_LAND_WPO`) is
    mirrored by `FarRing::OffsetZ`; `SailingSim.World.FarRing` holds both. `-SailingNoFarRing` compares.
 
-24. Far lights (`docs/world-far-lights/`): `Tools/venv/bin/python -I Tools/terrain/build_far_lights.py [World ...]` writes
+25. Far lights (`docs/world-far-lights/`): `Tools/venv/bin/python -I Tools/terrain/build_far_lights.py [World ...]` writes
    `<World>.farlights.json` (lights from the world's navaids, neighbouring bakes and NGA Pub 113; lit-shore cells from
    the houses bake; city domes from the world json's `city_glow`; shipping lanes). `AFarLightsActor` draws lights past
    `NearPoolM` by `FFarLightMath` (Allard's law, geographic range, loom), the shore sprites and horizon ships (handed to
    `ATrafficManager::HandOffShip` at 8 km); `ANavaidsActor` keeps lights inside the near pool. `M_SkyDome` takes four
    domes (`GlowDomesA/B`). `-SailingNoFarLights` compares; `SailingSim.World.FarLights`.
+26. World streaming (Wide World Rendering PR 2, `docs/world-streaming/`): a composed world (`Tools/coast/worlds/TexasCoast.json`,
+   `"compose"`) is baked from other bakes by `Tools/coast/build_coast.py TexasCoast` (`compose_world.py`): `<World>.tiles`
+   (6.4 km height tiles, `FTileIndex` in `WorldStream.h`), its own trees, json and chart; the frame member's houses, crowns,
+   piers, current and kit tiles are read in place (`FLakeData::SourceFor`). `FWorldStreamer` (game) reads tiles on one
+   worker around the boat; every world gets a tile index (whole grids: `FTileIndex::ForGrid`) and the terrain actor makes and
+   drops its chunks by tile. Then `scripts/make-far-ring.sh TexasCoast`. Tests `SailingSim.World.Streaming.*`; bench view
+   `stream-run` (`-SailingRun=<m/s>,<bearing>[,<turn after m>]` slides the world under the boat).
 
 ## Conventions
 
@@ -561,6 +568,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
 - Avoid identifiers that collide with Unreal macros in physics code (`PI`, `check`, `verify`).
 - Unreal code converts cm <-> m at the edge (`Sailing::CmPerMeter`). Axes match Unreal: X forward, Y right (starboard), Z up.
+- The render frame (world streaming, `SailingFrame.h`): the game mode moves the render origin (`UWorld::SetNewWorldOrigin`,
+  on a 19.2 km lattice) when the boat is 20 km from it; the physics stays in the map frame. Map metres to Unreal and back
+  only through `SailingFrame::ToWorld`/`ToMap`/`ToMapCm`/`FromMapCm`; world-space instance adds of map-frame transforms go
+  through `ToWorldTransforms`; actors that build geometry in map coordinates spawn at `MapAnchor`. Materials see map-frame
+  positions: `make_materials.py`'s `node()` adds `MPC_World.RenderOrigin` to every world, camera and object position.
+  Workers read a copy of `FLakeTerrain` (it shares its heights), never `Lake->Terrain` (tiles are swapped under it).
 - Input actions and the mapping context are built in code from `USailingInputSettings` (rebindable in Input.ini).
 - Every physics change gets an automation test in `Source/SailingSimTests` (`SailingSim.Physics.*`). Game/world checks go
   under `SailingSim.Smoke.*`. Tests that tick a world must `++GFrameCounter` each frame.

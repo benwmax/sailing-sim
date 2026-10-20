@@ -45,7 +45,8 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	const bool bLearn0 = S->bLearningMode;
 	// The catalog, from the data.
 	const TArray<SailCatalog::FWorld>& Worlds = SailCatalog::Worlds();
-	TestEqual(TEXT("Three worlds (the lake, Galveston, Marseille)"), Worlds.Num(), 3);
+	TestEqual(TEXT("Four worlds (the lake, Galveston, Marseille, the streamed Texas coast)"), Worlds.Num(), 4);
+	TestTrue(TEXT("The Texas coast's launch spots match TexasCoast.json"), Worlds.Num() > 3 && Worlds[3].Index == 4 && Worlds[3].Spots.Num() == JsonSpots(TEXT("TexasCoast")));
 	TestEqual(TEXT("Lake launch spots match RayHubbard.json"), Worlds[0].Spots.Num(), JsonSpots(TEXT("RayHubbard")));
 	TestEqual(TEXT("Galveston launch spots match GalvestonBay.json"), Worlds[1].Spots.Num(), JsonSpots(TEXT("GalvestonBay")));
 	TestTrue(TEXT("Marseille launch spots match Marseille.json"), Worlds.Num() > 2 && Worlds[2].Index == 3 && Worlds[2].Spots.Num() == JsonSpots(TEXT("Marseille")));

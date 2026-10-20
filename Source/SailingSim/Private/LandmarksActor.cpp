@@ -1,4 +1,5 @@
 #include "LandmarksActor.h"
+#include "SailingFrame.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "LakeData.h"
@@ -96,12 +97,12 @@ void ALandmarksActor::Tick(float DeltaSeconds)
 	if (bTidal)
 	{
 		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
-		if (!FMath::IsNearlyEqual(GetActorLocation().Z, Z, 0.1)) SetActorLocation(FVector(0.0, 0.0, Z));
+		if (!GetActorLocation().Equals(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z), 0.1)) SetActorLocation(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z));
 	}
 	// Far landmarks sink with the earth's curvature (a tower's foot goes below the horizon before its top): placed again
 	// when the camera has moved 200 m.
 	FVector Camera = FVector::ZeroVector;
-	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation() / CmPerMeter;
+	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = SailingFrame::ToMapCm(GetWorld(), Cam->GetCameraLocation()) / CmPerMeter;
 	if (FVector2D::Distance(FVector2D(Camera), CurvedFrom) < 200.0) return;
 	CurvedFrom = FVector2D(Camera);
 	TSet<UInstancedStaticMeshComponent*> Dirty;
