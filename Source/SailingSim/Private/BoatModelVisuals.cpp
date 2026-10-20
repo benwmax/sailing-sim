@@ -387,6 +387,28 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		{
 			Wires.Add({ RigPoint(ModelHull, TEXT("BackstayPlate")), RigPoint(ModelMast, TEXT("MastheadAft")), WireR * 0.8f, 0.0008f * (1.f - float(Controls.Backstay)) * (1.f - Loaded) });
 		}
+		// The clipping audit (the Hobie's crew out on the trapeze hung from nothing): the trapeze wire from the hounds to the
+		// harness of each crew member out beyond the rail, taut. In on the boat it hangs on its shock cord, which the
+		// mast model draws (build_fleet.py), so this one shrinks to a stub at the hounds (always drawn: the rig mesh keeps
+		// its vertex count).
+		if (Boat.GetConfig().bTrapeze && ModelHull && ModelHull->GetStaticMesh())
+		{
+			const double RailCm = 0.85 * ModelHull->GetStaticMesh()->GetBounds().BoxExtent.Y;
+			const FTransform& Root = BoatRoot->GetComponentTransform();
+			for (int32 I = 0; I + 1 < Crew.Num(); ++I)   // the last is the helm, who sits in on the tiller
+			{
+				FVector Harness = Hounds - FVector(0.f, 0.f, 1.f);
+				if (Crew[I] && Crew[I]->IsVisible())
+				{
+					const FVector Pelvis = Root.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("pelvis"), EBoneSpaces::WorldSpace));
+					// The hook at the front of the harness: a hand's width up and forward of the hips, toward the mast.
+					if (FMath::Abs(Pelvis.Y) > RailCm) Harness = Pelvis + FVector(8.f, 0.f, 10.f);
+				}
+				// Drawn thicker than the 3 mm wire (with its ring and handle it reads as a cord): at the real size it vanished from the
+				// chase camera.
+				Wires.Add({ Hounds, Harness, FMath::Max(WireR * 2.4f, 0.6f), 0.f });
+			}
+		}
 	}
 
 	// Jib sheets: the working sheet (leeward) from the clew through its lead to the winch, nearly straight under load;
