@@ -73,6 +73,22 @@ pack in `Content/TerrainData` is 25 MB: `Marseille.height` 16.2 MB, `.houses` 3.
 
 ![harbours](harbours.jpg)
 
+## The land: garrigue and limestone (marseille-look)
+
+The world json's `"land": "garrigue"` (carried into the bake by `build_coast.py`, read as `FLakeData::Land`) dresses
+the terrain Mediterranean instead of the Texas prairie: `LakeTerrainActor::BuildChunk` lays a pale sand and rock bed
+under the clear water, limestone shingle at the waterline (no mud band), garrigue scrub over bare limestone in 20 m
+patches, Aleppo pines dark under the tree canopy, and grey-white limestone on every face steeper than about 30 deg (the
+Calanques), each 5 m cell a shade warmer or greyer. `MPC_World`'s new `Land` scalar (1 here, set by
+`ASailingEnvironment`) turns on `M_Terrain`'s bedding planes and vertical joints on that pale rock and its rounded
+scrub bushes, and `M_FarLand`'s garrigue palette for the far ring. Other worlds are unchanged (`Land` 0). The baked
+`Marseille.json` carries the field already, so no rebake is needed.
+
+![Off Sormiou, the Calanques (Ultra)](look/calanques-sormiou-ultra.jpg)
+![The Vieux-Port entrance toward the Frioul islands (Ultra)](look/port-frioul-ultra.jpg)
+
+Before, for comparison: [captures/calanques-chase.jpg](captures/calanques-chase.jpg) (the prairie dress).
+
 ## Harbour kit the port needs (for the PC's model lane)
 
 Counts from the bake and OSM; the first column is the model to build, the last where it goes.
