@@ -447,6 +447,11 @@ private:
 	double WetLineZ = -1e9;   // world cm: the highest recent water at the hull, drying back down
 	float DeckWetness = 0.f;
 	bool bRigLinesBuilt = false;
+	/** Rig lines pacing: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm), the
+	 *  time an AI boat's paced rig has missed, and the frame its rig was last built. */
+	TArray<FVector> RigLineKeys[2];
+	float RigPendingSeconds = 0.f;
+	uint64 RigBuiltFrame = 0;
 	double StatusUntil = 0.0;
 	bool bDemoTacks = true;
 	bool bMenuOpen = false;
