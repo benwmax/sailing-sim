@@ -32,7 +32,7 @@ the deck edge and the ends, taken from the hull the point is most inside. `AWate
 once per boat and canoe depth and uploads it as a float texture (`HullClipMap`, `HullClipRect`). `M_WaterV4`'s vertex
 shader samples it in place of the formula, with the same drop as before: 1.1 times the immersion plus 3 cm, capped at
 2 m, faded over the last 5 cm inside the deck edge and ends (15 cm over the sheer). Between a multihull's hulls the
-water is untouched. One texture fetch replaces about 40 ALU operations per vertex near the boat. `-SailingClassicHullClip`
+water is untouched. One texture fetch replaces the formula's maths for the vertices near the boat. `-SailingClassicHullClip`
 still draws V7's clip.
 
 `SailingSim.Visual.HullClip` checks, for every boat, that:
@@ -91,4 +91,21 @@ Arguments (with `-SailingQuality=High -SailingNoHud -SailingHour=11`):
 
 ## Gate
 
-See [gate-water.csv](gate-water.csv) and [gate-boats.csv](gate-boats.csv).
+`scripts/gate.sh --scope water` and `--scope boats` on this branch (merged with main bf639dc0) both pass: 207 tests,
+the package, and every view over its floor ([gate-water.csv](gate-water.csv), [gate-boats.csv](gate-boats.csv)).
+The water slice is the same as or below what `docs/water-hull-clip/` measured for the formula clip on Oct 18 (another
+day's main, so only roughly comparable):
+
+| view | fps | water GPU ms (formula clip, Oct 18) | water GPU ms (map) |
+|---|---|---|---|
+| beam8 High | 60.6 | 3.13 | 3.10 |
+| beat15 High | 63.1 | 3.27 | 3.21 |
+| storm High | 45.8 | 2.84 | 2.54 |
+| marina High | 62.0 | 3.19 | 2.99 |
+| coast-day High | 54.6 | 3.18 | 3.11 |
+| gulf-sea High | 66.7 | 3.17 | 3.09 |
+| helm-eye High | 60.7 | 2.34 | 2.38 |
+| bridge High | 65.7 | 3.47 | 3.26 |
+| storm Medium | 66.7 | 2.36 | 2.22 |
+
+Boats scope: beam8 64.6, beat15 63.0, marina 62.1, helm-eye 60.7, slip 53.7, crew 53.6 fps on High (floor 45).
