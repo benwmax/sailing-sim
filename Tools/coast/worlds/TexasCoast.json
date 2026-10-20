@@ -1,0 +1,66 @@
+{
+  "_doc": "World streaming (docs/world-streaming): Galveston Bay and the Gulf passage as one streamed coast, Clear Lake to Freeport. Composed from the two bakes by Tools/coast/compose_world.py (build_coast.py TexasCoast): Galveston Bay's map frame, grid and shore data unchanged, the Gulf passage reprojected into it. Positions are lat/lon (NAD83).",
+  "name": "TexasCoast",
+  "display": "Texas coast: Clear Lake to Freeport",
+  "docs": "world-streaming",
+  "alias": "texas",
+  "compose": [
+    "GalvestonBay",
+    "GulfPassage"
+  ],
+  "frame": "GalvestonBay",
+  "ocean": true,
+  "chart": "enc",
+  "center": [
+    29.5446,
+    -95.0193
+  ],
+  "passage": [
+    [
+      "Kemah channel",
+      29.5418,
+      -95.008
+    ],
+    [
+      "Houston Ship Channel, Red Fish Bar",
+      29.495,
+      -94.875
+    ],
+    [
+      "Bolivar Roads",
+      29.355,
+      -94.77
+    ],
+    [
+      "Galveston entrance",
+      29.315,
+      -94.665
+    ],
+    [
+      "Galveston sea buoy",
+      29.285,
+      -94.62
+    ],
+    [
+      "Off Galveston Island",
+      29.15,
+      -94.85
+    ],
+    [
+      "Off San Luis Pass",
+      28.99,
+      -95.06
+    ],
+    [
+      "Freeport sea buoy",
+      28.875,
+      -95.225
+    ],
+    [
+      "Freeport entrance",
+      28.93,
+      -95.29
+    ]
+  ],
+  "launch": []
+}
