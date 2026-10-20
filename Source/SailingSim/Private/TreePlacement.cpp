@@ -16,6 +16,8 @@ namespace
 	// the coast's above MLLW (its marsh edges and the spoil banks' salt cedar).
 	constexpr float kLakeWaterlineM = 2.5f;
 	constexpr float kCoastWaterlineM = 2.0f;
+	// The lidar crowns are many more and closer together than the canopy map's trees: only those nearest the water.
+	constexpr float kLakeCrownWaterlineM = 1.8f;
 
 	bool LeansToWater(ETreeSpecies S) { return S == ETreeSpecies::BlackWillow || S == ETreeSpecies::Cottonwood || S == ETreeSpecies::SaltCedar; }
 
@@ -143,9 +145,10 @@ void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown>
 		// most of all; a narrow one an elm or a cedar. The model then needs little stretching to the measured width.
 		const float U = TreeRand(Seed + 3);
 		const float Aspect = C.Radius / FMath::Max(C.Height, 1.f);
-		if (Region == ETreeRegion::CrossTimbers && Ground < kLakeWaterlineM && !C.bCedar)
+		if (Region == ETreeRegion::CrossTimbers && Ground < kLakeCrownWaterlineM && !C.bCedar && TreeRand(Seed + 9) < 0.7f)
 		{
-			// T2 species: by the water the tall crowns are cottonwoods, the spreading and the low ones black willows.
+			// T2 species: right by the water (most of it: the bottomland's oaks and elms stand among them) the tall crowns are
+			// cottonwoods, the spreading and the low ones black willows.
 			if (C.Height > 15.f) I.Species = U < 0.7f ? ETreeSpecies::Cottonwood : ETreeSpecies::PostOak;
 			else I.Species = U < 0.6f ? ETreeSpecies::BlackWillow : (U < 0.8f ? ETreeSpecies::Sugarberry : (Aspect > 0.4f ? ETreeSpecies::Cottonwood : ETreeSpecies::CedarElm));
 		}

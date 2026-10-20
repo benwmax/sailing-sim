@@ -33,12 +33,12 @@ SPECIES = {
     # Galveston's salt cedar. "stemmed" trees grow `stems` trunks from the ground, splayed by `splay` (deg from upright) and
     # all leaning `lean` (deg) toward +X: the placement turns that side to the water.
     "Sugarberry":  dict(h=(9.0, 13.0), w=0.95, trunk=3.0, limbs=(4, 6), rise=(35, 60), levels=3, leaf=1.25, dens=1.1, droop=0.1, kind="broad", tiles=(4,)),
-    "BlackWillow": dict(h=(7.0, 11.0), w=1.0, trunk=2.0, limbs=(5, 7), rise=(25, 50), levels=3, leaf=1.2, dens=1.0, droop=0.45, kind="stemmed",
-                        stems=(2, 3), splay=(8, 22), lean=16, tiles=(5,)),
+    "BlackWillow": dict(h=(7.0, 11.0), w=1.2, trunk=2.8, limbs=(5, 7), rise=(20, 45), levels=3, leaf=1.25, dens=0.85, droop=0.28, kind="stemmed",
+                        stems=(2, 3), splay=(12, 28), lean=24, tiles=(5,)),
     "Cottonwood":  dict(h=(17.0, 23.0), w=0.75, trunk=6.5, limbs=(5, 7), rise=(40, 65), levels=3, leaf=1.6, dens=0.85, droop=0.06, kind="stemmed",
                         stems=(1, 1), splay=(0, 3), lean=4, tiles=(6,)),
-    "SaltCedar":   dict(h=(3.5, 6.0), w=1.2, trunk=0.8, limbs=(3, 4), rise=(45, 70), levels=2, leaf=0.9, dens=1.5, droop=0.2, kind="stemmed",
-                        stems=(5, 8), splay=(12, 35), lean=5, tiles=(7,)),
+    "SaltCedar":   dict(h=(3.5, 6.0), w=1.1, trunk=2.2, limbs=(2, 3), rise=(55, 80), levels=2, leaf=0.85, dens=1.3, droop=0.25, kind="stemmed",
+                        stems=(6, 9), splay=(15, 40), lean=5, tiles=(7,)),
 }
 
 
@@ -177,7 +177,7 @@ def stemmed_tree(name, spec, seed):
         trunk = bent(Vector((random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15), -0.3)), d, length, 4, 0.08, 0.0)
         b.tube(trunk, [trunk_r * (1.15 - 0.3 * i / (len(trunk) - 1)) for i in range(len(trunk))], sides=10 if trunk_r > 0.15 else 6)
         top = trunk[-1]
-        n = limbs if count == 1 else max(2, round(limbs * 1.6 / count) + random.randint(0, 1))
+        n = limbs if count == 1 else max(2, round(limbs * 1.1 / count) + random.randint(0, 1))
         for k in range(n):
             a = 2 * math.pi * (k + random.uniform(-0.3, 0.3)) / n
             rise = math.radians(random.uniform(*spec["rise"]))
