@@ -47,6 +47,15 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
 
 ![Before (left), after (middle) and close (right), Ultra on the lake](ilca-before-after.jpg)
 
+## Hobie 16
+
+- **Platform:** the cast aluminium beam ends at each hull, the righting line's bag on the front beam, the trapeze shock
+  cords' deck eyes beside the tramp, and each hull's coloured stripe along the sheer.
+- **Trapeze:** the wires from the hounds to their rings and handles at a crew member's reach, the shock cord down to the
+  deck eye (baked on the mast mesh, which they hang from).
+
+![Before (left) and after (right), Ultra on the lake](hobie16-before-after.jpg)
+
 ## Corsair 880
 
 - **Bow:** the bowsprit's end fitting with the gennaker's tack block and its bobstay down to the stem.
