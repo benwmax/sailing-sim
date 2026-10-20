@@ -38,3 +38,10 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
   the teak eyebrow and the companionway's teak drop boards; the wheel, binnacle, dodger and stern ladder stay.
 
 ![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina30-before-after.jpg)
+
+## Lagoon 42
+
+- **Stern:** the charter cat's davits off the aft beam with the tender hung between them (a grey RIB, its outboard
+  tilted up), and a swim ladder folded on each hull's sugar-scoop step.
+
+![Before (left) and after (right), Ultra on the lake](lagoon42-before-after.jpg)
