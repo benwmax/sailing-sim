@@ -39,6 +39,14 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
 
 ![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina30-before-after.jpg)
 
+## ILCA
+
+- **Mast:** the two-piece spar, its collar over the joint 2.85 m up, the black gooseneck fitting the boom pins to, the
+  rotating mast's step ring and the cunningham hook.
+- **Boom:** the outhaul cleat and fairlead, the clew's tie-down strap round the boom end and the vang key.
+
+![Before (left), after (middle) and close (right), Ultra on the lake](ilca-before-after.jpg)
+
 ## Corsair 880
 
 - **Bow:** the bowsprit's end fitting with the gennaker's tack block and its bobstay down to the stem.
