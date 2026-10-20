@@ -1035,6 +1035,17 @@ def build_mast():
     else:
         # Wind indicator at the masthead.
         tube(m, [(mast_x, 0, top), (mast_x - 0.25, 0, top + 0.25)], 0.004, "Stainless", 4)
+    if TAG == "ILCA7":
+        # Fleet hero: the ILCA's two-piece mast. The top section sleeves into the bottom one 2.85 m up, a collar over the
+        # joint; the black plastic gooseneck fitting where the boom pins on; the rotating mast's step ring and the
+        # cunningham's hook just above the boom.
+        jz = min(mast_step_z + 2.85, top - 0.5)
+        tube(m, [(mast_x, 0, jz - 0.07), (mast_x, 0, jz + 0.07)], 0.5 * d + 0.004, "Aluminium", 16)
+        tube(m, [(mast_x, 0, jz + 0.07), (mast_x, 0, jz + 0.075)], 0.5 * d + 0.006, "Stainless", 16)
+        bz = RIG["boom_z"]
+        box(m, (mast_x - 0.5 * d - 0.02, 0, bz), (0.05, 0.035, 0.07), "BlackPlastic")
+        tube(m, [(mast_x, 0, mast_step_z - 0.01), (mast_x, 0, mast_step_z + 0.025)], 0.5 * d + 0.008, "BlackPlastic", 16)
+        box(m, (mast_x + 0.5 * d + 0.012, 0, bz + 0.22), (0.02, 0.012, 0.04), "Stainless")
     return m.finish(smooth_angle=60.0, origin=(mast_x, 0, mast_step_z))
 
 
@@ -1055,6 +1066,14 @@ def build_boom():
     socket("Boom_Clew", (gx - length + 0.06, 0, gz + 0.04), "Boom")
     if SPEC.get("vang", SPEC["rig"] in ("masthead", "tri", "cruisingcat")):
         socket("Boom_Vang", (gx - 0.55, 0, gz - 0.03 - r), "Boom")
+    if TAG == "ILCA7":
+        # Fleet hero: the ILCA boom's outhaul cleat and fairlead, the clew's tie-down strap round the boom's end and the
+        # vang key near the gooseneck.
+        box(m, (gx - 0.75, 0, gz - 0.02 + r + 0.012), (0.08, 0.03, 0.02), "BlackPlastic")
+        box(m, (gx - length + 0.25, 0, gz - 0.02 + r + 0.008), (0.03, 0.02, 0.016), "Stainless")
+        cx = gx - length + 0.09
+        tube(m, [(cx, r * 1.05 * math.cos(2 * math.pi * k / 12), gz - 0.02 + r * 1.05 * math.sin(2 * math.pi * k / 12)) for k in range(13)], 0.006, "Graphics", 4, cap=False)
+        box(m, (gx - 0.55, 0, gz - 0.02 - r - 0.012), (0.04, 0.02, 0.025), "Stainless")
     if SPEC["rig"] == "lateen":
         # The Sunfish's upper spar (the yard) lies along the sail's luff from the tack to the head.
         lx0, z0 = main[0]["luff_x"], main[0]["z_bottom"]
