@@ -38,3 +38,10 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
   the teak eyebrow and the companionway's teak drop boards; the wheel, binnacle, dodger and stern ladder stay.
 
 ![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina30-before-after.jpg)
+
+## Corsair 880
+
+- **Bow:** the bowsprit's end fitting with the gennaker's tack block and its bobstay down to the stem.
+- **Cabin top:** the self-tacking jib's track across the trunk, with its car, where the jib leads.
+
+![Before (left) and after (right), Ultra on the lake](corsair880-before-after.jpg)
