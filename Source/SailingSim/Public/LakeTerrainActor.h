@@ -83,6 +83,7 @@ private:
 		int32 Cells = 128;
 		int32 GridRow0 = 0, GridCol0 = 0;   // a whole grid's node indices of the chunk's corner
 		int32 TileRow0 = 0, TileCol0 = 0;   // the tile's node indices of the chunk's corner
+		bool bGarrigue = false;             // marseille-look: the land's Mediterranean dress (FLakeData::IsGarrigue)
 	};
 
 	const FLakeData* GetLake() const;

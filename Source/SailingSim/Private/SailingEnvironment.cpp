@@ -379,6 +379,8 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		if (WaterActor.IsValid()) UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("WaterZ"), float(WaterActor->GetActorLocation().Z));
 		// E1: the world's wear site (0 lake, 1 bay, 2 Gulf) for M_WorldSurface's baked tiles, which carry no seed of their own.
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Site"), GM->GetLake().IsLoaded() ? float(int32(WearSiteFor(GM->GetLake()))) : 0.f);
+		// marseille-look: the land's dress for M_Terrain and M_FarLand (0 prairie, 1 garrigue).
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Land"), GM->GetLake().IsLoaded() && GM->GetLake().IsGarrigue() ? 1.f : 0.f);
 		// T1: the season on the trees, from the session's date (AutumnAmount, SpringAmount).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Autumn"), AutumnAmount(GM->GetDayOfYear()));
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Spring"), SpringAmount(GM->GetDayOfYear()));
