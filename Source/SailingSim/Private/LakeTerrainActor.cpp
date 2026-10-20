@@ -878,11 +878,11 @@ void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
 	Index.Corner(Index.GetTiles()[Next], X0, Y0);
 	const double TileM = Index.GetTileM();
 	TreeTileJobTile = Next;
-	TreeTileJob = Async(EAsyncExecution::ThreadPool, [Terrain = Lake->Terrain, Lake, X0, Y0, TileM, Fraction = TreeFraction, Band = CrownBand]()
+	TreeTileJob = Async(EAsyncExecution::ThreadPool, [Terrain = Lake->Terrain, Lake, X0, Y0, TileM, Fraction = TreeFraction, Band = CrownBand, Region = TreeRegionFor(Lake->FileName)]()
 	{
 		TArray<FTreeInstance> Out;
 		const FLakeTerrain Window = Terrain.WindowAround(X0 + 0.5 * TileM, Y0 + 0.5 * TileM, 0.5 * TileM);
-		PlaceTreeInstances(Window, Fraction, Out);
+		PlaceTreeInstances(Window, Fraction, Out, Region);
 		Out.RemoveAll([&](const FTreeInstance& I)
 		{
 			if (I.Position.X < X0 || I.Position.Y < Y0 || I.Position.X >= X0 + TileM || I.Position.Y >= Y0 + TileM) return true;
@@ -900,8 +900,10 @@ void ALakeTerrainActor::PlaceTrees()
 	const FLakeTerrain& T = Lake->Terrain;
 	TArray<FTreeInstance> Trees;
 	// Graphics G6: the lidar's crowns where the G2 band has them (-SailingClassicTrees compares).
-	if (Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees"))) PlaceCrownTrees(T, Lake->Crowns, TreeFraction, Trees);
-	else PlaceTreeInstances(T, TreeFraction, Trees);
+	// T2 species: each world's own mix (TreeRegionFor; -SailingClassicSpecies keeps V6's four species everywhere, to compare).
+	const ETreeRegion Region = FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicSpecies")) ? ETreeRegion::Classic : TreeRegionFor(Lake->FileName);
+	if (Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees"))) PlaceCrownTrees(T, Lake->Crowns, TreeFraction, Trees, Region);
+	else PlaceTreeInstances(T, TreeFraction, Trees, Region);
 	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
 	if (Lake->Houses.Num() > 0)
 	{
@@ -926,9 +928,11 @@ void ALakeTerrainActor::PlaceTrees()
 		}
 	}
 
-	// Visual V6 (Medium and High): Nanite trees built in Blender (four species, two variants each), swaying in the wind
-	// (M_TreeLeaves / M_TreeBark read MPC_World). Low keeps the Phase 3 shapes.
-	static const TCHAR* SpeciesNames[] = { TEXT("LiveOak"), TEXT("PostOak"), TEXT("CedarElm"), TEXT("RedCedar") };
+	// Visual V6 (Medium and High): Nanite trees built in Blender (eight species since T2 species, two variants each), swaying
+	// in the wind (M_TreeLeaves / M_TreeBark read MPC_World). Low keeps the Phase 3 shapes.
+	static const TCHAR* SpeciesNames[] = { TEXT("LiveOak"), TEXT("PostOak"), TEXT("CedarElm"), TEXT("RedCedar"), TEXT("Sugarberry"), TEXT("BlackWillow"),
+		TEXT("Cottonwood"), TEXT("SaltCedar") };
+	static_assert(UE_ARRAY_COUNT(SpeciesNames) == int32(ETreeSpecies::Count), "a model name per species");
 	const bool bModelTrees = USailingSettings::Get()->Quality != ESailingQuality::Low;
 	if (bModelTrees && TreeModels.Num() == 0)
 	{

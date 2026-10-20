@@ -5,8 +5,10 @@ North Texas cross-timbers species, two variants each, as a branch skeleton (tape
   post oak     - crooked limbs, a broad irregular crown about as wide as it is tall
   cedar elm    - an upright vase of finer branches
   red cedar    - a dense, ragged evergreen cone on a central leader
+and from T2 species the lake's sugarberry (a rounded crown on ascending limbs) and its waterline black willow (two or
+three leaning trunks, drooping twigs) and cottonwood (tall, open), and Galveston's salt cedar (a shrubby clump of stems).
 Vertex colours carry the wind response for the material: R = how far the point is out along the tree (sway), G = a
-per-card phase (leaf flutter), B = a per-card tint. Leaves use a 2x2 atlas of leaf-spray textures (Tools/blender/
+per-card phase (leaf flutter), B = a per-card tint. Leaves use a 4x2 atlas of leaf-spray textures (Tools/blender/
 make_leaf_atlas.py). Units are metres (the FBX carries the unit; Unreal imports centimetres). Prints "Trees: <name> <tris>" per tree.
 Usage: blender -b --factory-startup -P build_trees.py -- <out dir>
 """
@@ -27,6 +29,16 @@ SPECIES = {
     "PostOak":   dict(h=(10.0, 13.0), w=1.0, trunk=3.5, limbs=(4, 6), rise=(30, 55), levels=3, leaf=1.45, dens=1.2, droop=0.08, kind="broad", tiles=(0, 1)),
     "CedarElm":  dict(h=(12.0, 15.0), w=0.65, trunk=4.0, limbs=(5, 7), rise=(55, 75), levels=3, leaf=1.2, dens=1.1, droop=0.04, kind="broad", tiles=(2,)),
     "RedCedar":  dict(h=(7.0, 10.0), w=0.5, trunk=0.6, limbs=(0, 0), rise=(0, 0), levels=0, leaf=1.15, dens=1.0, droop=0.0, kind="cone", tiles=(3,)),
+    # T2 species (Inputs/clouds-trees/plan.md): the lake's sugarberry, its waterline black willow and cottonwood, and
+    # Galveston's salt cedar. "stemmed" trees grow `stems` trunks from the ground, splayed by `splay` (deg from upright) and
+    # all leaning `lean` (deg) toward +X: the placement turns that side to the water.
+    "Sugarberry":  dict(h=(9.0, 13.0), w=0.95, trunk=3.0, limbs=(4, 6), rise=(35, 60), levels=3, leaf=1.25, dens=1.1, droop=0.1, kind="broad", tiles=(4,)),
+    "BlackWillow": dict(h=(7.0, 11.0), w=1.2, trunk=2.8, limbs=(5, 7), rise=(20, 45), levels=3, leaf=1.25, dens=0.85, droop=0.28, kind="stemmed",
+                        stems=(2, 3), splay=(12, 28), lean=24, tiles=(5,)),
+    "Cottonwood":  dict(h=(17.0, 23.0), w=0.75, trunk=6.5, limbs=(5, 7), rise=(40, 65), levels=3, leaf=1.6, dens=0.85, droop=0.06, kind="stemmed",
+                        stems=(1, 1), splay=(0, 3), lean=4, tiles=(6,)),
+    "SaltCedar":   dict(h=(3.5, 6.0), w=1.1, trunk=2.2, limbs=(2, 3), rise=(55, 80), levels=2, leaf=0.85, dens=1.3, droop=0.25, kind="stemmed",
+                        stems=(6, 9), splay=(15, 40), lean=5, tiles=(7,)),
 }
 
 
@@ -74,9 +86,9 @@ class Builder:
         h = size * 0.5
         vs = [self.bm.verts.new(center + (-a - b) * h), self.bm.verts.new(center + (a - b) * h), self.bm.verts.new(center + (a + b) * h), self.bm.verts.new(center + (-a + b) * h)]
         f = self.bm.faces.new(vs)
-        tu, tv = (tile % 2) * 0.5, (tile // 2) * 0.5
+        tu, tv = (tile % 4) * 0.25, (tile // 4) * 0.5   # T2 species: four tiles a row, two rows
         for loop, (u, v) in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
-            loop[self.uv].uv = (tu + u * 0.5, tv + v * 0.5)
+            loop[self.uv].uv = (tu + u * 0.25, tv + v * 0.5)
             loop[self.color] = (sway, phase, tint, 1.0)
         self.leaf_faces.append(f)
         self.leaf_centers.append((center.copy(), size))
@@ -142,6 +154,38 @@ def broad_tree(name, spec, seed):
         d = Vector((math.cos(az) * math.cos(rise), math.sin(az) * math.cos(rise), math.sin(rise)))
         length = math.hypot(reach, h - spec["trunk"]) * random.uniform(0.55, 0.75)
         grow(b, spec, top + Vector((0, 0, random.uniform(-0.4, 0.4))), d, length, trunk_r * 0.6, 1, spec["levels"])
+    return b
+
+
+def stemmed_tree(name, spec, seed):
+    """T2 species: one or more trunks from the ground, splayed and leaning together toward +X (a willow's over the water,
+    a salt cedar's clump of stems), each carrying its share of the limbs."""
+    random.seed(seed)
+    b = Builder(name)
+    h = random.uniform(*spec["h"])
+    b.height = h
+    lean = math.radians(spec["lean"])
+    count = random.randint(*spec["stems"])
+    trunk_r = (0.18 + h * 0.025) / math.sqrt(count)
+    limbs = random.randint(*spec["limbs"])
+    reach = 0.5 * spec["w"] * h
+    for s in range(count):
+        az = 2 * math.pi * (s + random.uniform(-0.3, 0.3)) / count
+        tilt = math.radians(random.uniform(*spec["splay"]))
+        d = Vector((math.cos(az) * math.sin(tilt) + math.sin(lean), math.sin(az) * math.sin(tilt), math.cos(tilt) * math.cos(lean))).normalized()
+        length = spec["trunk"] * random.uniform(0.8, 1.1) + 0.3
+        trunk = bent(Vector((random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15), -0.3)), d, length, 4, 0.08, 0.0)
+        b.tube(trunk, [trunk_r * (1.15 - 0.3 * i / (len(trunk) - 1)) for i in range(len(trunk))], sides=10 if trunk_r > 0.15 else 6)
+        top = trunk[-1]
+        n = limbs if count == 1 else max(2, round(limbs * 1.1 / count) + random.randint(0, 1))
+        for k in range(n):
+            a = 2 * math.pi * (k + random.uniform(-0.3, 0.3)) / n
+            rise = math.radians(random.uniform(*spec["rise"]))
+            ld = Vector((math.cos(a) * math.cos(rise), math.sin(a) * math.cos(rise), math.sin(rise)))
+            # The limbs lean with the stems: the crown sits out over the lean, not over the roots.
+            ld = (ld + d * 0.5).normalized()
+            ll = math.hypot(reach, max(1.0, h - top.z)) * random.uniform(0.55, 0.75)
+            grow(b, spec, top, ld, ll, trunk_r * 0.6, 1, spec["levels"])
     return b
 
 
@@ -271,7 +315,7 @@ def main():
     for name, spec in SPECIES.items():
         for variant in range(2):
             seed = sum(ord(ch) for ch in name) * 31 + variant * 7919
-            b = cone_tree(name, spec, seed) if spec["kind"] == "cone" else broad_tree(name, spec, seed)
+            b = {"cone": cone_tree, "stemmed": stemmed_tree}.get(spec["kind"], broad_tree)(name, spec, seed)
             full = f"SM_{name}_{variant}"
             far = far_version(b, full + "_Far", seed)
             dropped = hollow(b, far.blobs, seed)

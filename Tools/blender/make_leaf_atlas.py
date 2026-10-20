@@ -1,9 +1,11 @@
-"""The leaf-spray atlas for the tree cards (2x2 tiles, RGBA) and, from T2 on, its normal map.
+"""The leaf-spray atlas for the tree cards (4x2 tiles, RGBA; 2x2 before T2 species) and, from T2 on, its normal map.
 
 T2 (Inputs/clouds-trees/plan.md, "real leaves"): each tile is a spray of photographed leaves (ambientCG leaf atlases,
 CC0, Inputs/trees/ambientcg) on twigs radiating from the middle (the cards are turned at random, so a spray has no up):
 0 post oak (LeafSet016, lobed), 1 live oak (LeafSet022, entire, leathery), 2 cedar elm (LeafSet024, small, toothed),
-3 eastern red cedar (LeafSet019, scale-leaf fronds). Each leaf is cut from its atlas by the opacity, turned stem-first
+3 eastern red cedar (LeafSet019, scale-leaf fronds); T2 species' second row: 4 sugarberry (LeafSet024 narrowed), 5 black
+willow (LeafSet022 cut to a third of its width), 6 cottonwood (LeafSet024 widened), 7 salt cedar (LeafSet019, fine
+grey-green sprays). Each leaf is cut from its atlas by the opacity, turned stem-first
 along the twig, and carries its own photographed normals (turned with it). The colours are scaled to the drawn atlas's
 mean so the trees' exposure doesn't jump; M_TreeLeaves tints per card and per tree on top (TREE_LOOK).
 Without the photo sources (Visual V6's drawn atlas): oak sprays (lobed leaves), cedar elm, red cedar fronds.
@@ -50,7 +52,7 @@ def spray(tile, rng, kind):
                 g = rng.randint(55, 85)
                 d.ellipse((x - 9 * (1 - t) - 3, y - 9 * (1 - t) - 3, x + 9 * (1 - t) + 3, y + 9 * (1 - t) + 3), fill=(30, g, 32, 255))
     else:
-        n = 110 if kind == "elm" else 60
+        n = 110 if kind in ("elm", "willow") else 60
         for _ in range(n):
             r = rng.uniform(0, 1) ** 0.6 * 215
             a = rng.uniform(0, 2 * math.pi)
@@ -59,29 +61,40 @@ def spray(tile, rng, kind):
             col = (int(g * 0.45), g, int(g * 0.3), 255)
             if kind == "elm":
                 leaf(d, cx, cy, rng.uniform(28, 40), rng.uniform(10, 14), rng.uniform(0, 2 * math.pi), col)
+            elif kind == "willow":
+                leaf(d, cx, cy, rng.uniform(40, 55), rng.uniform(4, 6), rng.uniform(0, 2 * math.pi), col)
             else:
                 leaf(d, cx, cy, rng.uniform(55, 80), rng.uniform(18, 26), rng.uniform(0, 2 * math.pi), col, lobes=5)
     return img.filter(ImageFilter.GaussianBlur(0.6))
 
 
-def drawn_atlas():
+def drawn_atlas(tiles=None):
+    """Visual V6's drawn sprays, in the photo atlas's layout. drawn_atlas(4) is V6's own four (the exposure reference)."""
     rng = random.Random(5)
-    atlas = Image.new("RGBA", (2 * S, 2 * S), (0, 0, 0, 0))
-    for tile, kind in enumerate(("oak", "oak", "elm", "cedar")):
-        atlas.paste(spray(tile, rng, kind), ((tile % 2) * S, (tile // 2) * S))
+    atlas = Image.new("RGBA", (COLS * S, 2 * S), (0, 0, 0, 0))
+    for tile, kind in enumerate(DRAWN_KINDS[:tiles]):
+        atlas.paste(spray(tile, rng, kind), ((tile % COLS) * S, (tile // COLS) * S))
     return atlas
 
 
 # --- T2: sprays of photographed leaves --------------------------------------------------------------------------------
 
-T = 1024   # photo tile (a 2048 atlas)
-# Per tile: source, leaf length on the tile (px), leaves per twig, twigs, how far the twigs reach (px).
+T = 1024   # photo tile (a 4096 x 2048 atlas: four tiles a row, two rows)
+COLS = 4
+# Per tile: source, leaf length on the tile (px), leaves per twig, twigs, how far the twigs reach (px), and from T2 species
+# on the leaf's width against the photo's (a narrow willow leaf from an elliptic one) and a colour scale.
 SPECIES = (
     ("LeafSet016", (150, 210), 5, 7, 400),   # post oak
     ("LeafSet022", (120, 170), 7, 7, 410),   # live oak
     ("LeafSet024", (85, 120), 9, 8, 420),    # cedar elm
     ("LeafSet019", (300, 420), 1, 11, 380),  # eastern red cedar: whole fronds
+    # T2 species (the plan's lake and Galveston trees), from the same four photographed sets:
+    ("LeafSet024", (110, 150), 8, 8, 420, 0.8, (1.0, 1.0, 0.92)),     # sugarberry: ovate, pointed, a little narrower
+    ("LeafSet022", (140, 190), 9, 9, 430, 0.32, (1.04, 1.06, 0.8)),   # black willow: long, narrow, yellow-green
+    ("LeafSet024", (150, 200), 6, 7, 410, 1.15, (1.08, 1.1, 0.95)),   # cottonwood: broad, deltoid, bright
+    ("LeafSet019", (140, 200), 4, 13, 330, 0.75, (0.95, 1.0, 1.08)),  # salt cedar: fine feathery sprays, grey-green
 )
+DRAWN_KINDS = ("oak", "oak", "elm", "cedar", "elm", "willow", "oak", "cedar")
 
 
 def leaves_of(name):
@@ -154,7 +167,7 @@ def turn_sprite(c, nm, deg):
     return c2, Image.fromarray(np.clip((v + 1.0) * 127.5, 0, 255).astype(np.uint8), "RGB")
 
 
-def photo_tile(rng, name, length, per_twig, twigs, reach):
+def photo_tile(rng, name, length, per_twig, twigs, reach, stretch=1.0, scale=(1.0, 1.0, 1.0)):
     col = Image.new("RGBA", (T, T), (0, 0, 0, 0))
     nrm = Image.new("RGBA", (T, T), (128, 128, 255, 0))
     sprites = leaves_of(name)
@@ -187,7 +200,7 @@ def photo_tile(rng, name, length, per_twig, twigs, reach):
     for depth, px, py, out, ln in placed:
         c, nm = sprites[rng.randrange(len(sprites))]
         s = ln / c.height
-        c = c.resize((max(2, int(c.width * s)), max(2, int(c.height * s))), Image.LANCZOS)
+        c = c.resize((max(2, int(c.width * s * stretch)), max(2, int(c.height * s))), Image.LANCZOS)
         nm = nm.resize(c.size, Image.LANCZOS)
         if rng.random() < 0.5:
             c, nm = c.transpose(Image.FLIP_LEFT_RIGHT), flip_normals_x(nm.transpose(Image.FLIP_LEFT_RIGHT))
@@ -196,7 +209,8 @@ def photo_tile(rng, name, length, per_twig, twigs, reach):
         c, nm = turn_sprite(c, nm, deg)
         shade = 0.72 + 0.28 * depth
         r, g, b, a = c.split()
-        c = Image.merge("RGBA", (r.point(lambda v: int(v * shade)), g.point(lambda v: int(v * shade)), b.point(lambda v: int(v * shade)), a))
+        c = Image.merge("RGBA", (r.point(lambda v: min(255, int(v * shade * scale[0]))), g.point(lambda v: min(255, int(v * shade * scale[1]))),
+                                 b.point(lambda v: min(255, int(v * shade * scale[2]))), a))
         # Where the turned sprite's stem point lands: its centre offset by half the leaf along `out`.
         cx = px + math.cos(out) * ln * 0.5
         cy = py + math.sin(out) * ln * 0.5
@@ -213,15 +227,19 @@ def flip_normals_x(nm):
 
 def photo_atlas():
     rng = random.Random(12)
-    atlas = Image.new("RGBA", (2 * T, 2 * T), (0, 0, 0, 0))
-    normals = Image.new("RGBA", (2 * T, 2 * T), (128, 128, 255, 0))
+    atlas = Image.new("RGBA", (COLS * T, 2 * T), (0, 0, 0, 0))
+    normals = Image.new("RGBA", (COLS * T, 2 * T), (128, 128, 255, 0))
+    first = None
     for tile, spec in enumerate(SPECIES):
         c, n = photo_tile(rng, *spec)
-        atlas.paste(c, ((tile % 2) * T, (tile // 2) * T))
-        normals.paste(n, ((tile % 2) * T, (tile // 2) * T))
-    # Exposure: the drawn atlas's mean leaf colour, so the trees keep their brightness and the tints mean the same.
-    ref = mean_rgb(drawn_atlas())
-    got = mean_rgb(atlas)
+        atlas.paste(c, ((tile % COLS) * T, (tile // COLS) * T))
+        normals.paste(n, ((tile % COLS) * T, (tile // COLS) * T))
+        if tile == 3:
+            first = atlas.copy()
+    # Exposure: the drawn atlas's mean leaf colour, so the trees keep their brightness and the tints mean the same. Taken
+    # over the first four species (T2's scale, unchanged by the species added after them: theirs ride on the same scale).
+    ref = mean_rgb(drawn_atlas(4))
+    got = mean_rgb(first)
     k = sum(ref) / max(1e-6, sum(got))
     r, g, b, a = atlas.split()
     atlas = Image.merge("RGBA", (r.point(lambda v: min(255, int(v * k))), g.point(lambda v: min(255, int(v * k))), b.point(lambda v: min(255, int(v * k))), a))

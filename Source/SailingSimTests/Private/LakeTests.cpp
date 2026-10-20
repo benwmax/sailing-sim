@@ -252,7 +252,7 @@ bool FSailingCrownsTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("%d crowns, %d within 400 m of the water, %d red cedar"), Lake.Crowns.Num(), Full, Cedar));
 	TestTrue(TEXT("Most kept crowns are in the full-detail band"), Full > Lake.Crowns.Num() / 2);
 	TArray<FTreeInstance> Trees;
-	PlaceCrownTrees(Lake.Terrain, Lake.Crowns, 1.f, Trees);
+	PlaceCrownTrees(Lake.Terrain, Lake.Crowns, 1.f, Trees, ETreeRegion::CrossTimbers);
 	TSet<FIntPoint> CrownCells;
 	for (const FLakeCrown& C : Lake.Crowns) CrownCells.Add(FIntPoint(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f)));
 	int32 Placed = 0, InWater = 0, MapInBand = 0, TooTall = 0, Tall = 0;
@@ -268,8 +268,9 @@ bool FSailingCrownsTest::RunTest(const FString& Parameters)
 		}
 		else MapInBand += CrownCells.Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0)));
 	}
-	AddInfo(FString::Printf(TEXT("%d trees: %d from crowns, %d tall (post oak %d, live oak %d, cedar elm %d)"), Trees.Num(), Placed, Tall,
-		TallSpecies[int32(ETreeSpecies::PostOak)], TallSpecies[int32(ETreeSpecies::LiveOak)], TallSpecies[int32(ETreeSpecies::CedarElm)]));
+	AddInfo(FString::Printf(TEXT("%d trees: %d from crowns, %d tall (post oak %d, live oak %d, cedar elm %d, sugarberry %d, black willow %d, cottonwood %d)"), Trees.Num(), Placed, Tall,
+		TallSpecies[int32(ETreeSpecies::PostOak)], TallSpecies[int32(ETreeSpecies::LiveOak)], TallSpecies[int32(ETreeSpecies::CedarElm)],
+		TallSpecies[int32(ETreeSpecies::Sugarberry)], TallSpecies[int32(ETreeSpecies::BlackWillow)], TallSpecies[int32(ETreeSpecies::Cottonwood)]));
 	TestTrue(TEXT("Nearly every crown on land placed"), Placed > Lake.Crowns.Num() * 9 / 10);
 	TestEqual(TEXT("No tree in the water"), InWater, 0);
 	TestEqual(TEXT("No crown over 30 m"), TooTall, 0);
