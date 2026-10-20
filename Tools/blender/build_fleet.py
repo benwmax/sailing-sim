@@ -671,6 +671,18 @@ def hobie_detail(fb, rb, bz, inner, traveler):
         # the rudder casting's gudgeons on the transom
         for gz in (Hh.sheer(st) - 0.04, Hh.sheer(st) - 0.24):
             box(hull, (st + 0.015, Hh.cy, gz), (0.03, 0.06, 0.03), "Stainless")
+        # Fleet hero: the cast aluminium beam ends (the corner castings bolted to each hull), the hull's coloured stripe
+        # along the sheer, and the trapeze shock cords' deck eyes beside the tramp.
+        for bx in (fb, rb):
+            by = Hh.cy - side * 0.02
+            box(hull, (bx, by, bz + 0.005), (0.2, 0.16, 0.11), "Aluminium")
+        xs_ = stations(Hh.h["stern_x"] + 0.15, Hh.h["bow_x"] - 0.5, 36)
+        stripe = [(x, Hh.cy + side * (Hh.sharp_half_beam(x) + 0.004), Hh.sheer(x) - 0.06) for x in xs_]
+        tube(hull, stripe, 0.012, "Graphics", 4, cap=False)
+        ex = mast_x - 0.35
+        box(hull, (ex, Hh.cy - side * 0.12, bz + 0.03), (0.04, 0.02, 0.02), "Stainless")
+    # Fleet hero: the righting line's bag on the front beam's middle.
+    box(hull, (fb - 0.08, 0, bz + 0.03), (0.12, 0.3, 0.06), "BlackPlastic")
 
 
 def corsair_detail(ck, cb, top, half, st, bw):
@@ -1023,6 +1035,16 @@ def build_mast():
         else:
             socket("LowerTang", (mast_x, 0, hounds_z - 0.1), "Mast")
     socket("MastBase", (mast_x - 0.06, 0, mast_step_z + 0.2), "Mast")
+    if TAG == "Hobie16":
+        # Fleet hero: the trapeze wires from the hounds, each to its ring and handle at a crew member's reach over the
+        # tramp, and the shock cord down to the deck eye beside it (baked on the mast: they hang from it).
+        bzh = MAIN.sheer(mast_x)
+        for Hh, side in ((HS[1], 1), (HS[0], -1)):
+            ring = (mast_x - 0.35, Hh.cy - side * 0.12, bzh + 1.15)
+            tube(m, [(mast_x, side * 0.03, hounds_z - 0.05), ring], 0.002, "Stainless", 4, cap=False)
+            tube(m, [ring, (ring[0], ring[1], ring[2] - 0.12)], 0.012, "BlackPlastic", 8)
+            tube(m, [(ring[0] - 0.06, ring[1], ring[2] - 0.12), (ring[0] + 0.06, ring[1], ring[2] - 0.12)], 0.012, "BlackPlastic", 8)
+            tube(m, [(ring[0], ring[1], ring[2] - 0.12), (ring[0], ring[1], bzh + 0.06)], 0.004, "Rope", 4, cap=False)
     if TAG == "Sunfish":
         # Fleet hero: the Sunfish's masthead is a black halyard cap with its sheave (no wind indicator); the halyard comes
         # down the forward face to the deck.
