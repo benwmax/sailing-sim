@@ -34,6 +34,9 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
     "audio": { "volume": 0.8 },
     "display": { "resolutionScale": 0, "frameCap": 0, "cinematicLook": false, "hudScale": 100, "textScale": 100,
                  "speedUnits": "kn", "depthUnits": "ft", "headingsTrue": false, "autoStart": false, "pauseOnFocusLoss": false },
+    "graphics": { "antiAliasing": -1, "shadowQuality": -1, "lightingQuality": -1, "reflectionQuality": -1, "cloudQuality": -1,
+                  "waterQuality": -1, "foliageQuality": -1, "viewDistanceQuality": -1, "motionBlur": -1, "fieldOfView": 0,
+                  "brightness": 100, "vsync": false },
     "start": { "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "launchSpotAt": { "lat": 32.82334959, "lon": -96.50040047 },
                "boat": "J22", "weather": "AfternoonBreeze",
                "startHour": 15, "traffic": 1, "weatherSeed": 2027, "gaugeLakeLevel": false },
@@ -137,3 +140,8 @@ file unchanged (same checksum). Stills read from it (`-SailingBench=5 -SailingSh
 
 ![Launch screen on the saved spot](launch-from-save.jpg)
 ![Boat screen on the saved boat](boat-from-save.jpg)
+
+`graphics` (Bean's playtest, Oct 2026; optional in version 1: a file without it reads every row as Auto): the Settings
+screen's Graphics and Display rows. -1 is Auto (the Quality tier's own, so a tier is their preset); the detail rows
+otherwise hold a tier (0 Low .. 3 Ultra), `antiAliasing` 0 off, 2 TAA, 4 TSR, 5 SMAA or, with NVIDIA's DLSS plugin, 10
+DLAA, 11..13 DLSS Quality, Balanced, Performance; `motionBlur` 0 off, 1 on; `fieldOfView` 0 = the game's 90 degrees.

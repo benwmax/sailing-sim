@@ -50,6 +50,24 @@ Without it the game uses the Blender crew (`SK_Sailor`) on every tier, and the p
 missing `/Game/Crew/MetaHumans/...` folders; it should still package. With it, High and Ultra draw the crew's hair as
 strands (the Mac can only draw cards).
 
+## 3b. NVIDIA DLSS (optional, NVIDIA GPUs)
+
+`Plugins/DLSS` and `Plugins/StreamlineNGXCommon` are git-ignored: NVIDIA's RTX SDK licence allows them only inside the
+shipped game (never in git or on their own), and they are about 4 GB. The `.uproject` lists both as optional, Win64
+only, and the game finds DLSS by its console variable (`r.NGX.DLSS.Enable`), never by linking to it: the Mac and a fresh
+clone build and run without them, and keep TSR.
+
+1. Download "UE 5.8 DLSS Plugin" from https://developer.nvidia.com/rtx/dlss (no sign-in; v8.9.0 was used, 1.17 GB).
+2. Unzip it outside the repo, then copy its `Plugins/DLSS` and `Plugins/StreamlineNGXCommon` folders into the repo's
+   `Plugins/`. Build as usual (`scripts\windows\build.ps1`, then package).
+3. In the game, Settings > Graphics > Anti-aliasing gains DLAA, DLSS Quality, Balanced and Performance on an NVIDIA GPU.
+   DLSS sets its own render scale (DLAA native, Quality 67%, Balanced 58%, Performance 50%); benches ignore it.
+
+Before a commercial release (`docs/licences/assets.csv`, the DLSS row): notify NVIDIA
+(https://developer.nvidia.com/sw-notification), and show the DLSS attribution and NVIDIA's marks on the splash screen,
+the about box and the credits, each use approved by NVIDIA in writing (send a sample at least two weeks ahead). The
+game's own EULA must protect NVIDIA's parts at least as well as NVIDIA's licence. No NVIDIA logos are in the game yet.
+
 ## 4. One command
 
 Double-click `build-windows.bat` in the repo root, or from a terminal in the repo:

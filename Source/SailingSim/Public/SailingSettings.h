@@ -129,7 +129,8 @@ public:
 
 	// Bean's playtest (Oct 20): the Display and Graphics page. Each row is -1 (Auto: the Quality tier's own, so the tiers are
 	// presets that fill them in) or an override; benches and captures ignore them all (IsMeasuring).
-	/** Anti-aliasing: -1 Auto, 0 off, 2 TAA, 4 TSR, 5 SMAA (r.AntiAliasingMethod). */
+	/** Anti-aliasing: -1 Auto, 0 off, 2 TAA, 4 TSR, 5 SMAA (r.AntiAliasingMethod); with NVIDIA's DLSS plugin on an NVIDIA
+	 *  GPU (DLSSAvailable) also 10 DLAA, 11 DLSS Quality, 12 Balanced, 13 Performance (their own render scale). */
 	UPROPERTY(config, EditAnywhere, Category = "Graphics")
 	int32 AntiAliasing = -1;
 	/** Per-feature detail, -1 Auto or an ESailingQuality (0 Low .. 3 Ultra): the engine's scalability group, or ours. */
@@ -224,6 +225,12 @@ public:
 	float BrightnessBias() const { return IsMeasuring() ? 0.f : FMath::Log2(FMath::Clamp(float(Brightness), 50.f, 150.f) / 100.f); }
 	/** Choosing a Quality tier makes it the preset again: every Graphics row back to Auto. */
 	void ResetGraphicsRows();
+	/** NVIDIA DLSS can run: the optional plugin is installed (its r.NGX.DLSS.Enable exists) and the GPU is NVIDIA's. */
+	static bool DLSSAvailable();
+	/** The DLSS mode in force (10..13), or -1: none chosen, measuring, or DLSS not available here (another GPU, the Mac). */
+	int32 DLSSMode() const { const int32 A = Override(AntiAliasing); return A >= 10 && A <= 13 && DLSSAvailable() ? A : -1; }
+	/** A DLSS mode's render scale, percent: DLAA native, Quality 67, Balanced 58, Performance 50. */
+	static float DLSSScreenPercentage(int32 Mode) { return Mode == 10 ? 100.f : (Mode == 11 ? 66.7f : (Mode == 12 ? 58.f : 50.f)); }
 
 	/**
 	 * Easy mode's assists are on (Sailing::FEasyAssists, docs/easy-mode/README.md): -SailingEasy=0|1 decides; otherwise the

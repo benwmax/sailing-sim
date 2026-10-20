@@ -680,8 +680,12 @@ void ASailingGameMode::ApplyQualitySettings()
 	// The Anti-aliasing row (0 off, 2 TAA, 4 TSR, 5 SMAA); -SailingAA below still wins for measuring. Low sets no method of
 	// its own: back on Auto it gets the project's again.
 	IConsoleVariable* AAVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"));
-	if (USailingSettings::Override(S->AntiAliasing) >= 0) AAVar->Set(S->AntiAliasing, ECVF_SetByCode);
-	else if (Quality == ESailingQuality::Low) AAVar->Set(ProjectAA, ECVF_SetByCode);
+	const int32 AARow = USailingSettings::Override(S->AntiAliasing);
+	const int32 DLSS = S->DLSSMode();
+	if (DLSS >= 0) AAVar->Set(4, ECVF_SetByCode);          // DLSS takes TSR's place as the temporal upscaler
+	else if (AARow >= 0 && AARow < 10) AAVar->Set(AARow, ECVF_SetByCode);
+	else if (Quality == ESailingQuality::Low) AAVar->Set(ProjectAA, ECVF_SetByCode);   // Auto, or DLSS where it can't run
+	if (IConsoleVariable* DLSSVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.NGX.DLSS.Enable"))) DLSSVar->Set(DLSS >= 0 ? 1 : 0, ECVF_SetByCode);
 	// The Motion blur row: on or off over the tier's camera look (ASailingEnvironment::ApplyCameraLook sets the amount).
 	if (USailingSettings::Override(S->MotionBlur) >= 0)
 	{
@@ -704,6 +708,11 @@ void ASailingGameMode::ApplyQualitySettings()
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(PctOverride, ECVF_SetByCode);
 	}
 	// Graphics G4: the player's resolution scale (Settings > Graphics) fixes the tier's percentage, governor off.
+	// NVIDIA DLSS: its mode owns the render scale (the Render scale row and High's governor stand aside).
+	else if (S->DLSSMode() >= 0)
+	{
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(USailingSettings::DLSSScreenPercentage(S->DLSSMode()), ECVF_SetByCode);
+	}
 	else if (USailingSettings::Get()->FixedResolutionScale() > 0)
 	{
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(float(USailingSettings::Get()->FixedResolutionScale()), ECVF_SetByCode);
@@ -1032,7 +1041,7 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 		bFixed = FParse::Param(SailingArgs::Dev(), TEXT("SailingScreenPct")) || FCString::Strifind(SailingArgs::Dev(), TEXT("SailingScreenPct=")) != nullptr
 		|| FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCapture=")) != nullptr;
 	}
-	if (USailingSettings::Get()->FixedResolutionScale() > 0) return;   // the player fixed it
+	if (USailingSettings::Get()->FixedResolutionScale() > 0 || USailingSettings::Get()->DLSSMode() >= 0) return;   // the player fixed it, or DLSS has
 	if (bFixed || USailingSettings::Get()->Quality != ESailingQuality::High || DeltaSeconds <= 0.f || DeltaSeconds > 0.25f) return;
 	GovernorMs += (DeltaSeconds * 1000.f - GovernorMs) * FMath::Clamp(DeltaSeconds / 0.5f, 0.f, 1.f);
 	GovernorClock += DeltaSeconds;

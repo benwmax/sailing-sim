@@ -1187,11 +1187,20 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Index_Lambda([S]() { return int32(S->Quality); })
 			.OnChanged_Lambda([S, GM](int32 I) { S->Quality = ESailingQuality(I); S->ResetGraphicsRows(); S->Save(); if (GM) GM->ApplyQualitySettings(); }));
 		// Bean's playtest: anti-aliasing and each feature's detail on their own, Auto following the tier.
-		static const TArray<int32> AAValues = { -1, 0, 2, 4, 5 };
-		Add(SNew(SSailChoice).Label(TEXT("Anti-aliasing")).Options({ TEXT("Auto"), TEXT("Off"), TEXT("TAA"), TEXT("TSR"), TEXT("SMAA") })
-			.Index_Lambda([S, IndexOf]() { return IndexOf(AAValues, S->AntiAliasing); })
-			.OnChanged_Lambda([S, GM](int32 I) { S->AntiAliasing = AAValues[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
-			.Note(TEXT("TSR: the sharpest, upscales from the render resolution. TAA: lighter. SMAA: no ghosting, more shimmer.")));
+		// NVIDIA DLSS's modes join the list where the optional plugin is installed and the GPU is NVIDIA's.
+		TArray<int32> AAValues = { -1, 0, 2, 4, 5 };
+		TArray<FString> AANames = { TEXT("Auto"), TEXT("Off"), TEXT("TAA"), TEXT("TSR"), TEXT("SMAA") };
+		const bool bDLSS = USailingSettings::DLSSAvailable();
+		if (bDLSS)
+		{
+			AAValues.Append({ 10, 11, 12, 13 });
+			AANames.Append({ TEXT("DLAA"), TEXT("DLSS Quality"), TEXT("DLSS Balanced"), TEXT("DLSS Performance") });
+		}
+		Add(SNew(SSailChoice).Label(TEXT("Anti-aliasing")).Options(AANames)
+			.Index_Lambda([S, IndexOf, AAValues]() { return IndexOf(AAValues, S->AntiAliasing); })
+			.OnChanged_Lambda([S, GM, AAValues](int32 I) { S->AntiAliasing = AAValues[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
+			.Note(bDLSS ? TEXT("TSR: the sharpest of the engine's own. DLAA and DLSS: NVIDIA's AI anti-aliasing and upscaling (DLSS sets its own render scale).")
+				: TEXT("TSR: the sharpest, upscales from the render resolution. TAA: lighter. SMAA: no ghosting, more shimmer.")));
 		auto Detail = [&](const TCHAR* Label, int32 USailingSettings::* Field, const TCHAR* Note)
 		{
 			Add(SNew(SSailChoice).Label(Label).Options({ TEXT("Auto"), TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") })
