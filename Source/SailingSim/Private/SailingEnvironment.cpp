@@ -583,7 +583,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			}
 			PP.AutoExposureMinBrightness = float(EV) - Band + 2.5f * IntoSun;
 			PP.AutoExposureMaxBrightness = float(EV) + Band + 2.5f * IntoSun;
-			PP.AutoExposureBias = 0.5f * (1.f - Dark);
+			PP.AutoExposureBias = 0.5f * (1.f - Dark) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
 		}
 	}
 	if (MoonLight)
@@ -740,7 +740,7 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		if (!UsesPhysicalCamera(USailingSettings::Get()->Quality)) // the physical camera meters the gloom itself
 		{
 			PostProcess->Settings.bOverride_AutoExposureBias = true;
-			PostProcess->Settings.AutoExposureBias = 0.5f - 1.5f * float(W.CloudDarkness);
+			PostProcess->Settings.AutoExposureBias = 0.5f - 1.5f * float(W.CloudDarkness) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
 		}
 		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.

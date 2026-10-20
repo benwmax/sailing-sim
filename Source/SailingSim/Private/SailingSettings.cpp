@@ -150,7 +150,13 @@ void USailingSettings::ApplyDisplay() const
 	// Benchmarks and captures measure the uncapped game in the foreground, whatever the player chose.
 	if (IsMeasuring()) return;
 	if (IConsoleVariable* Cap = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"))) Cap->Set(float(FrameCap), ECVF_SetByGameSetting);
+	if (IConsoleVariable* VSync = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VSync"))) VSync->Set(bVSync ? 1 : 0, ECVF_SetByGameSetting);
 	if (GEngine) GEngine->bPauseOnLossOfFocus = bPauseOnFocusLoss;
+}
+
+void USailingSettings::ResetGraphicsRows()
+{
+	AntiAliasing = ShadowQuality = LightingQuality = ReflectionQuality = CloudQuality = WaterQuality = FoliageQuality = ViewDistanceQuality = MotionBlur = -1;
 }
 
 USailingInputSettings::USailingInputSettings()

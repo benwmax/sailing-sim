@@ -638,11 +638,22 @@ void ASailingGameMode::ApplyWeatherSettings()
 void ASailingGameMode::ApplyQualitySettings()
 {
 	const ESailingQuality Quality = USailingSettings::Get()->Quality;
+	// The project's own anti-aliasing (DefaultEngine.ini), read before any tier or row has set one.
+	static const int32 ProjectAA = IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->GetInt();
 	// Engine scalability: Low = engine Medium (no Lumen), Medium = High, High = Epic. Then the tier's own console
 	// variables (VisualPipeline.h: cloud samples, virtual shadow maps, ray tracing, anti-aliasing and resolution).
 	Scalability::FQualityLevels Levels = Scalability::GetQualityLevels();
 	Levels.SetFromSingleQualityLevel(QualityScalabilityLevel(Quality));
 	Levels.GlobalIlluminationQuality = QualityGIScalabilityLevel(Quality);
+	// Settings > Graphics (Bean's playtest): a row set to a tier takes that tier's engine level for its group; Auto (-1)
+	// and every measuring run keep the Quality tier's.
+	const USailingSettings* S = USailingSettings::Get();
+	auto Row = [](int32 V) { const int32 O = USailingSettings::Override(V); return O < 0 ? -1 : FMath::Clamp(O, 0, 3); };
+	if (Row(S->ShadowQuality) >= 0) Levels.ShadowQuality = QualityScalabilityLevel(ESailingQuality(Row(S->ShadowQuality)));
+	if (Row(S->LightingQuality) >= 0) Levels.GlobalIlluminationQuality = QualityGIScalabilityLevel(ESailingQuality(Row(S->LightingQuality)));
+	if (Row(S->ReflectionQuality) >= 0) Levels.ReflectionQuality = QualityScalabilityLevel(ESailingQuality(Row(S->ReflectionQuality)));
+	if (Row(S->FoliageQuality) >= 0) Levels.FoliageQuality = QualityScalabilityLevel(ESailingQuality(Row(S->FoliageQuality)));
+	if (Row(S->ViewDistanceQuality) >= 0) Levels.ViewDistanceQuality = QualityScalabilityLevel(ESailingQuality(Row(S->ViewDistanceQuality)));
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingGI="), Levels.GlobalIlluminationQuality); // measuring
 	Scalability::SetQualityLevels(Levels);
 	for (const FQualityCVar& C : QualityCVars(Quality))
@@ -655,6 +666,26 @@ void ASailingGameMode::ApplyQualitySettings()
 			// Only on a change: toggling ray tracing recreates every render state.
 			if (Var->GetFloat() != Value) Var->Set(Value, ECVF_SetByCode);
 		}
+	}
+	// The Clouds row: that tier's cloud march (samples, tracing resolution, near-ray distance), whatever the Quality tier.
+	if (Row(S->CloudQuality) >= 0)
+	{
+		auto Set = [](const TCHAR* Name, float Value) { if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(Name); Var && Var->GetFloat() != Value) Var->Set(Value, ECVF_SetByCode); };
+		Set(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount"), 15.f);   // the engine's own, unless the cloud tier sets it
+		for (const FQualityCVar& C : QualityCVars(ESailingQuality(Row(S->CloudQuality))))
+		{
+			if (FCString::Strncmp(C.Name, TEXT("r.VolumetricCloud."), 18) == 0 || FCString::Strncmp(C.Name, TEXT("r.VolumetricRenderTarget."), 25) == 0) Set(C.Name, C.Value);
+		}
+	}
+	// The Anti-aliasing row (0 off, 2 TAA, 4 TSR, 5 SMAA); -SailingAA below still wins for measuring. Low sets no method of
+	// its own: back on Auto it gets the project's again.
+	IConsoleVariable* AAVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"));
+	if (USailingSettings::Override(S->AntiAliasing) >= 0) AAVar->Set(S->AntiAliasing, ECVF_SetByCode);
+	else if (Quality == ESailingQuality::Low) AAVar->Set(ProjectAA, ECVF_SetByCode);
+	// The Motion blur row: on or off over the tier's camera look (ASailingEnvironment::ApplyCameraLook sets the amount).
+	if (USailingSettings::Override(S->MotionBlur) >= 0)
+	{
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.MotionBlurQuality"))->Set(S->MotionBlur == 0 ? 0 : 4, ECVF_SetByCode);
 	}
 	// Measuring (Graphics G1): -SailingCloudMode=<r.VolumetricRenderTarget.Mode> -SailingCloudSamples=<view ray max>.
 	int32 CloudMode = -1, CloudSamples = 0;
@@ -684,10 +715,12 @@ void ASailingGameMode::ApplyQualitySettings()
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.RayTracing.Enable"))->Set(LumenHW, ECVF_SetByCode);
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing"))->Set(LumenHW, ECVF_SetByCode);
 	}
+	// The Water row: that tier's water (rings and the V4 material), whatever the Quality tier.
+	const ESailingQuality WaterTier = Row(S->WaterQuality) >= 0 ? ESailingQuality(Row(S->WaterQuality)) : Quality;
 	for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It)
 	{
-		It->SetRingCount(Quality == ESailingQuality::Low ? 4 : 5);
-		It->SetQualityTier(Quality == ESailingQuality::Low ? 0 : (Quality == ESailingQuality::Medium ? 1 : 2));
+		It->SetRingCount(WaterTier == ESailingQuality::Low ? 4 : 5);
+		It->SetQualityTier(WaterTier == ESailingQuality::Low ? 0 : (WaterTier == ESailingQuality::Medium ? 1 : 2));
 	}
 	UE_LOG(LogSailing, Display, TEXT("Quality %d: AA %d, screen %d%%, VSM %d, ray tracing supported %d enabled %d, Lumen HW %d, Substrate %d"),
 		int32(Quality), IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->GetInt(),
@@ -698,7 +731,9 @@ void ASailingGameMode::ApplyQualitySettings()
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Substrate"))->GetInt());
 	for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
 	{
-		It->SetTreeFraction(Quality == ESailingQuality::Low ? 0.35f : (Quality == ESailingQuality::Medium ? 0.7f : 1.f));
+		// The Foliage row: that tier's share of the trees.
+		const ESailingQuality TreeTier = Row(S->FoliageQuality) >= 0 ? ESailingQuality(Row(S->FoliageQuality)) : Quality;
+		It->SetTreeFraction(TreeTier == ESailingQuality::Low ? 0.35f : (TreeTier == ESailingQuality::Medium ? 0.7f : 1.f));
 	}
 }
 
