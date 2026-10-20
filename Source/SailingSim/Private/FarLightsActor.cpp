@@ -1,4 +1,5 @@
 #include "FarLightsActor.h"
+#include "SailingFrame.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "TrafficManager.h"
@@ -178,14 +179,14 @@ void AFarLightsActor::UpdateLights(const FVector& Camera, bool bDark, double Vis
 		UInstancedStaticMeshComponent* Ism = LightIsms[S.Colour];
 		if (Size > 0.f || S.Size != 0.f)
 		{
-			Ism->UpdateInstanceTransform(S.Instance, FTransform(FQuat::Identity, FVector(L.XY.X * 100.0, L.XY.Y * 100.0, (L.Z - Drop) * 100.0), FVector(Size)), true, false, true);
+			Ism->UpdateInstanceTransform(S.Instance, FTransform(FQuat::Identity, FVector(L.XY.X * 100.0, L.XY.Y * 100.0, (L.Z - Drop) * 100.0), FVector(Size)), false, false, true);
 			S.Size = Size;
 		}
 		if (LoomSize > 0.f || S.LoomSize != 0.f)
 		{
 			const double Dip = FMath::Sqrt(2.0 * Eye / FarLightsLocal::kEarthR);
 			const double Z = Eye - Distance * Dip + Distance * 0.003;
-			LoomIsm->UpdateInstanceTransform(S.Loom, FTransform(FQuat::Identity, FVector(L.XY.X * 100.0, L.XY.Y * 100.0, Z * 100.0), FVector(LoomSize)), true, false, true);
+			LoomIsm->UpdateInstanceTransform(S.Loom, FTransform(FQuat::Identity, FVector(L.XY.X * 100.0, L.XY.Y * 100.0, Z * 100.0), FVector(LoomSize)), false, false, true);
 			S.LoomSize = LoomSize;
 		}
 		Shown += bOn && !bLoom;
@@ -250,9 +251,9 @@ void AFarLightsActor::UpdateShips(const FVector& Camera, bool bDark, double SimT
 		// A 180 m ship, 28 m beam, 20 m of hull and superstructure (a box impostor: under a pixel's detail at 8 km).
 		const FTransform Hull(FRotator(0.0, FMath::RadiansToDegrees(Heading), 0.0), FVector(At.X * 100.0, At.Y * 100.0, (10.0 - Drop) * 100.0),
 			bDraw ? FVector(180.0, 28.0, 20.0) : FVector::ZeroVector);
-		HullIsm->UpdateInstanceTransform(S.Hull, Hull, true, false, true);
+		HullIsm->UpdateInstanceTransform(S.Hull, Hull, false, false, true);
 		const double LightSize = (bDraw && bDark) ? FMath::Max(0.5, Distance * 0.0018) : 0.0;
-		ShipLightIsm->UpdateInstanceTransform(S.Light, FTransform(FQuat::Identity, FVector(At.X * 100.0, At.Y * 100.0, (32.0 - Drop) * 100.0), FVector(LightSize)), true, false, true);
+		ShipLightIsm->UpdateInstanceTransform(S.Light, FTransform(FQuat::Identity, FVector(At.X * 100.0, At.Y * 100.0, (32.0 - Drop) * 100.0), FVector(LightSize)), false, false, true);
 	}
 }
 
@@ -262,7 +263,9 @@ void AFarLightsActor::Tick(float DeltaSeconds)
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return;
 	FVector Camera = FVector::ZeroVector;
-	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation();
+	// World streaming: the camera in the map frame (cm); the lights are placed in this actor's space, which is the map's
+	// (it sits at SailingFrame::MapAnchor), so the render origin's moves carry them.
+	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = SailingFrame::ToMapCm(GetWorld(), Cam->GetCameraLocation());
 	const bool bDark = GM->IsDark();
 	const double Visibility = GM->GetWeatherState().VisibilityKm;
 	UpdateLights(Camera, bDark, Visibility, GM->GetUnixTime());

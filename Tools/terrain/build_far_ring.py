@@ -19,6 +19,8 @@ as in the grid's bake. Tiles out to coarse_past_km from the grid are meshed at c
 Tiles with no land above -1 m are left out. Sky visibility is the open share of the sky over eight horizons marched to
 2 km (the material darkens hollows and valley floors with it).
 
+A streamed world (World streaming: <World>.tiles, no .height) is read from its tiles at 50 m; where it has no tile, GLO-90.
+
 Ultra (--ultra): <World>.far30, the same format meshed at 30.3 m (264 cells) out to coarse_past_km and 90.9 beyond, from
 the Copernicus DEM GLO-30 (glo30_<tile>.tif beside the GLO-90 files; a missing GLO-30 tile falls back to GLO-90). The game
 draws it on Ultra (FFarRingData::PathFor(World, "30"), /Game/World/Far30).
@@ -75,7 +77,28 @@ def world_meta(world):
     return meta, g
 
 
+def load_tiles(world, cell=50.0):
+    """A streamed world's heights (<World>.tiles, Tools/coast/compose_world.py) as one grid at the coarse spacing; NaN where it
+    has no tile (filled from GLO-90 like the land outside a grid)."""
+    import zlib
+    with open(os.path.join(TERRAIN, f"{world}.tiles"), "rb") as fh:
+        data = fh.read()
+    assert data[:4] == b"SSTI"
+    _, _, n, tile_m, ox, oy, _ = struct.unpack_from("<4sIIfddf", data, 0)
+    ents = [struct.unpack_from("<iiIffIhhQI", data, 48 + 40 * k) for k in range(n)]
+    nr, nc = max(e[0] for e in ents) + 1, max(e[1] for e in ents) + 1
+    per = int(round(tile_m / cell))
+    h = np.full((nr * per + 1, nc * per + 1), np.nan)
+    for i, j, cells, c, unit, _, _, _, off, size in ents:
+        q = np.frombuffer(zlib.decompress(data[off:off + size]), "<i2").reshape(cells + 1, cells + 1).astype(np.float64) * unit
+        step = int(round(cell / c))
+        h[i * per:(i + 1) * per + 1, j * per:(j + 1) * per + 1] = q[::step, ::step]
+    return h, float(cell), float(ox), float(oy)
+
+
 def load_grid(world):
+    if not os.path.exists(os.path.join(TERRAIN, f"{world}.height")) and os.path.exists(os.path.join(TERRAIN, f"{world}.tiles")):
+        return load_tiles(world)
     with open(os.path.join(TERRAIN, f"{world}.height"), "rb") as fh:
         data = fh.read()
     assert data[:4] == b"SSHT"
@@ -214,6 +237,9 @@ def heights(world_ctx, X, Y):
     dy = np.maximum(0.0, np.maximum(bx[1] - Y, Y - bx[3]))
     out = np.hypot(dx, dy)
     w = np.clip(out / BLEND_M, 0.0, 1.0)
+    # A streamed world's box has holes where it has no tile (inland, beyond the charts): GLO-90 there.
+    w = np.where(np.isnan(g), 1.0, w)
+    g = np.nan_to_num(g)
     z = g.copy()
     m = w > 0
     if m.any():

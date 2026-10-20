@@ -65,6 +65,8 @@ namespace FarRing
 	SAILINGSIM_API double OffsetZ(double DistanceM, double Z, double InnerM, double BandEndM);
 	/** Where the under-band ends for a near chunk of this size: InnerM plus the chunk's diagonal (the farthest a drawn chunk reaches). */
 	inline double BandEndM(double InnerM, double ChunkM) { return InnerM + ChunkM * UE_DOUBLE_SQRT_2; }
+	/** The distance (m) from Cam to a far tile's nearest point (0 inside it). */
+	SAILINGSIM_API double TileDistance(const FFarRingData& Ring, const FFarRingTile& Tile, const FVector2D& Cam);
 	/** Whether a far tile is drawn for a camera at Cam: part of it lies outside the burial and its nearest point inside OuterM. */
 	SAILINGSIM_API bool TileVisible(const FFarRingData& Ring, const FFarRingTile& Tile, const FVector2D& Cam);
 	/** Whether a near chunk is drawn (its nearest edge within InnerM; with no ring, CapM = the old 20 km). */
@@ -86,13 +88,20 @@ class SAILINGSIM_API FFarRingLoader
 public:
 	/** Starts reading World's index on a worker; returns at once. False when the world has no ring (or it is off). */
 	bool Start(const FString& World, const FString& InVariant = FString());
-	/** Game thread, each frame: once the index is in, requests the tiles' packages (asynchronously). */
-	void Poll();
+	/** Game thread, each frame: once the index is in, requests the packages of the tiles within RequestM of the camera
+	 *  (asynchronously; world streaming: not every tile of a long coast). */
+	void Poll(const FVector2D& Camera);
+	/** Every tile, wherever the camera is (tests, the bake's checks). */
+	void Poll() { bAll = true; Poll(FVector2D::ZeroVector); }
+	/** The reach the tiles are asked for within: the ring's outer edge and a tile. */
+	double RequestM() const;
+	/** The actor has dropped this tile (out of reach): it may be asked for again later. */
+	void Release(int32 Tile);
 	/** The index, once read (null before, or when the world has none). */
 	const FFarRingData* Data() const { return Ring.IsValid() && Ring->IsValid() ? Ring.Get() : nullptr; }
 	/** The meshes that arrived since the last call: (tile index, mesh). */
 	void TakeArrived(TArray<TPair<int32, UStaticMesh*>>& Out);
-	/** Every tile's request answered (loaded or failed). */
+	/** Every tile asked for answered (loaded or failed). */
 	bool IsDone() const;
 	int32 NumRequested() const { return Requested; }
 	int32 NumArrived() const;
@@ -104,8 +113,12 @@ private:
 	struct FState
 	{
 		TArray<TPair<int32, TStrongObjectPtr<UStaticMesh>>> Arrived;
+		TSet<int32> AnsweredTiles;
 		int32 Answered = 0, Loaded = 0, Failed = 0;
 	};
+	TArray<uint8> TileState;   // 0 not asked for, 1 asked for (answered or not)
+	bool bAll = false;
+	FVector2D RequestedFrom = FVector2D(1e12, 1e12);
 	FString World;
 	FString Variant;
 	TFuture<TSharedPtr<FFarRingData>> Index;
