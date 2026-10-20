@@ -13,6 +13,7 @@
 #include "SailingSettings.h"
 #include "WaterSurface.h"
 #include "DynamicRHI.h"
+#include "RenderingThread.h"
 #include "HAL/PlatformApplicationMisc.h"
 #include "Engine/GameViewportClient.h"
 #include "Widgets/SWindow.h"
@@ -266,7 +267,14 @@ bool ASailingGameMode::RecentreAt(double NorthM, double EastM)
 	const double Start = FPlatformTime::Seconds();
 	// The engine shifts every actor, component and render primitive by the difference in one go (UWorld::SetNewWorldOrigin);
 	// the physics is in the map frame and does not move.
+	// The scene's own shift is one render command (FScene::ApplyWorldOffset); two markers around it time it there.
+	TSharedRef<double, ESPMode::ThreadSafe> RenderStart = MakeShared<double, ESPMode::ThreadSafe>(0.0);
+	ENQUEUE_RENDER_COMMAND(SailingRecentreStart)([RenderStart](FRHICommandListImmediate&) { *RenderStart = FPlatformTime::Seconds(); });
 	if (!World->SetNewWorldOrigin(To)) return false;
+	ENQUEUE_RENDER_COMMAND(SailingRecentreEnd)([RenderStart](FRHICommandListImmediate&)
+	{
+		UE_LOG(LogSailing, Display, TEXT("World streaming: the scene's shift took %.2f ms of render thread"), (FPlatformTime::Seconds() - *RenderStart) * 1000.0);
+	});
 	PublishRenderOrigin();
 	const double Ms = (FPlatformTime::Seconds() - Start) * 1000.0;
 	LongestRecentreMs = FMath::Max(LongestRecentreMs, Ms);
@@ -1038,7 +1046,12 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	}
 #endif
 	Elapsed += DeltaSeconds;
-	if (bBenchTrace) TraceTimes.Emplace(Elapsed, static_cast<float>(FApp::GetDeltaTime() * 1000.0));
+	if (bBenchTrace)
+	{
+		TraceTimes.Add({ Elapsed, float(FApp::GetDeltaTime() * 1000.0), float(FPlatformTime::ToMilliseconds(GGameThreadTime)),
+			float(FPlatformTime::ToMilliseconds(GRenderThreadTime)), float(FPlatformTime::ToMilliseconds(GRHIThreadTime)),
+			float(FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles(0))) });
+	}
 	// Visual V1: three frames profiled on the GPU (ProfileGPU) and summed into the plan's budget slices. They are taken
 	// inside the measured window, at 40, 60 and 80% of it, so they see the same GPU state as the frames measured (after
 	// the window the storm's cloud march sat in its slow phase on every launch: docs/budget/storm-high-2026-10-18.md).
@@ -1225,8 +1238,11 @@ void ASailingGameMode::FinishBenchmark()
 	FFileHelper::SaveStringToFile(Summary, *(FPaths::ProjectSavedDir() / TEXT("Bench/bench.json")));
 	if (bBenchTrace)
 	{
-		FString Csv = TEXT("t_s,frame_ms\n");
-		for (const TPair<float, float>& F : TraceTimes) Csv += FString::Printf(TEXT("%.4f,%.3f\n"), F.Key, F.Value);
+		FString Csv = TEXT("t_s,frame_ms,game_ms,render_ms,rhi_ms,gpu_ms\n");
+		for (const FTraceFrame& F : TraceTimes)
+		{
+			Csv += FString::Printf(TEXT("%.4f,%.3f,%.3f,%.3f,%.3f,%.3f\n"), F.T, F.FrameMs, F.GameMs, F.RenderMs, F.RhiMs, F.GpuMs);
+		}
 		FFileHelper::SaveStringToFile(Csv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.frames.csv"), *ShotName)));
 	}
 

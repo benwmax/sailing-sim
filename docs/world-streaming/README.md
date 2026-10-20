@@ -128,8 +128,7 @@ The stream-run view on High:
 - 523 chunks made and 279 dropped during the run.
 - Game thread 3.1 ms (streaming 0.002 ms a frame).
 
-Its frame trace has one spike: the re-centre's frame at 56 ms. The engine shifts every primitive, its virtual shadow
-pages and the Lumen scene on the render thread. The 170-200 ms `max_ms` in every view's bench.json, streaming or not,
+Its frame trace has one spike: the re-centre's frame at 56 ms (21 ms since `docs/recentre-hitch/`). The 170-200 ms `max_ms` in every view's bench.json, streaming or not,
 is the end of the bench.
 
 ![The stream-run view on High just after the re-centre, 19.2 km from where the run started](stream-run-high.jpg)
@@ -182,9 +181,8 @@ Streaming's own state is flat: tiles, chunks and far tiles come and go and their
   is the engine's per-frame Metal leak, made worse by the extra uploads; the game's own streaming state is flat. It needs
   the same fix as the budget soaks' leak.
 
-- **The re-centre's frame costs about 40 ms extra on High.** It is the engine's world-origin shift on the render
-  thread, not the game's code. Once every 20 km it is a visible stutter. Worth profiling (virtual shadow map
-  invalidation and Lumen's scene are the suspects) before a 60 fps target.
+- **The re-centre's frame cost about 40 ms extra on High.** Fixed in `docs/recentre-hitch/`: it was the riprap's 380,000
+  boulders going through the distance-field scene again, not the shift itself. The frame is now about 21 ms on High.
 - **The Gulf's own structures are not baked for the Texas coast.** Its bridges and shore riprap use Galveston Bay's
   baked tiles, so the bay is unchanged. The passage's structures outside the bay grid (Freeport's jetties and San Luis
   Pass's bridge) fall back to procedural tiles until `make-world-models.sh` bakes them for TexasCoast.

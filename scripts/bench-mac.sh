@@ -90,8 +90,8 @@ if [[ ! -f "$BENCH_DIR/bench.json" ]]; then
 fi
 cp "$BENCH_DIR/bench.json" "$ARTIFACTS/bench.json"
 cp "$BENCH_DIR/$SHOT.png" "$ARTIFACTS/$SHOT.png" 2>/dev/null || true
-# Reference captures (-SailingCapture) also leave the camera settings and the telemetry.
-for EXT in camera.json telemetry.csv; do
+# Reference captures (-SailingCapture) also leave the camera settings and the telemetry; -SailingBenchTrace the frames.
+for EXT in camera.json telemetry.csv frames.csv; do
 	[[ -f "$BENCH_DIR/$SHOT.$EXT" ]] && cp "$BENCH_DIR/$SHOT.$EXT" "$ARTIFACTS/$SHOT.$EXT"
 done
 echo "Bench: $(cat "$ARTIFACTS/bench.json")"
