@@ -656,6 +656,24 @@ float m = sin(p.x * 1.3 + p.y * 0.7) * sin(p.y * 1.7 - p.x * 0.4);
 // Graphics G2: finer mottling (gravel, tufts, bare patches) so a bank isn't flat paint up close.
 float f = sin(p.x * 4.1 + sin(p.y * 3.3) * 1.7) * sin(p.y * 4.7 + sin(p.x * 2.9) * 1.9) * sin(p.x * 9.3 - p.y * 7.1);
 float3 col = C * (0.88 + 0.12 * n + 0.05 * m) * (0.93 + 0.07 * f);
+// marseille-look (Land 1, the garrigue): on the pale limestone (the vertex colour's, LakeTerrainActor::BuildChunk) the
+// Calanques' bedding, a band every 0.6-1.2 m of height bent by the face, and their vertical joints, dark and a few
+// centimetres wide; on the scrub, rounded bushes 1-2 m across over the bare ground between them.
+if (Land > 0.5)
+{
+    float lum = min(C.r, min(C.g, C.b));
+    float rock = saturate((lum - 0.40) * 6.0);
+    float z = P.z * 0.01;
+    float bed = 0.5 + 0.5 * sin(z * 6.3 + sin(p.x * 0.9 + p.y * 0.7) * 1.6 + 0.8 * f);
+    float joint = 1.0 - smoothstep(0.0, 0.05, abs(sin(p.x * 1.3 + p.y * 1.7 + sin(z * 0.9) * 0.5)));
+    col = lerp(col, col * (0.84 + 0.16 * bed) * (1.0 - 0.4 * joint), rock);
+    float2 cell = floor(p.xy / 1.7);
+    float2 hsh = frac(sin(float2(dot(cell, float2(127.1, 311.7)), dot(cell, float2(269.5, 183.3)))) * 43758.5453);
+    float2 ctr = (cell + 0.25 + 0.5 * hsh) * 1.7;
+    float r = length(p.xy - ctr) / (0.45 + 0.4 * hsh.y);
+    float bush = (1.0 - smoothstep(0.75, 1.0, r)) * step(0.35, hsh.x) * (1.0 - rock) * saturate((0.33 - lum) * 8.0);
+    col = lerp(col, float3(0.07, 0.09, 0.045) * (0.8 + 0.4 * hsh.y), bush * 0.8);
+}
 // The wet band: banks are dark and glossy from the water up the swash, about half a metre (ragged); just under the
 // surface the bed takes the water's olive cast.
 float h = (P.z - WaterZ) * 0.01;
@@ -666,7 +684,7 @@ col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
@@ -675,6 +693,10 @@ return col;
     wz.set_editor_property("collection", world_collection())
     wz.set_editor_property("parameter_name", "WaterZ")
     connect(wz, "", c, "WaterZ")
+    land = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 450)
+    land.set_editor_property("collection", world_collection())
+    land.set_editor_property("parameter_name", "Land")
+    connect(land, "", c, "Land")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -979,6 +1001,9 @@ BOAT_LIBRARY = {
     "Teak": ("M_BoatSurface", (0.22, 0.19, 0.15), 0.85, 0.0, 0.0, 0.0, 0.5),           # weathered grey teak toe rails (G6)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
+    # The maxi (Tools/boats/maxi): clear-coated carbon (spars, wheels, pedestals) and the satin carbon of its deck gear.
+    "Carbon": ("M_BoatSurface", (0.020, 0.020, 0.022), 0.18, 0.0, 1.0, 0.0, 0.02),
+    "CarbonMatte": ("M_BoatSurface", (0.028, 0.028, 0.030), 0.42, 0.0, 0.3, 0.0, 0.05),
     # The crew (Visual V3): foul-weather jacket (recoloured per sailor), PFD, trousers, deck boots, skin, cap, glasses.
     "CrewJacket": ("M_BoatSurface", (0.45, 0.03, 0.03), 0.55, 0.0, 0.2, 0.0, 0.20),
     "CrewPFD": ("M_BoatSurface", (0.02, 0.03, 0.10), 0.60, 0.0, 0.0, 0.0, 0.30),
@@ -1013,6 +1038,7 @@ BOAT_LIBRARY = {
     "FenderBlue": ("M_BoatSurface", (0.02, 0.04, 0.12), 0.95, 0.0, 0.0, 0.0, 0.6),      # navy fleece fender covers
     "CoolerLid": ("M_BoatSurface", (0.04, 0.14, 0.42), 0.45, 0.0, 0.0, 0.0, 0.05),
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
+    "CarbonMast": ("M_BoatMast", (0.025, 0.025, 0.028), 0.3, 0.0, 0.6, 0.0, 0.0),        # the maxi's mast: clear-coated carbon that bends
 }
 
 
@@ -1042,8 +1068,14 @@ SAIL_CODE = r"""
 // sail number from the marks atlas (top half insignia, bottom half number).
 // Visual V7: per-class layouts (Layout 0 crosscut, 1 the Sunfish's striped sail, 2 the Hobie's coloured panels, 3 tri-radial
 // panels for the bigger multihulls), BattenCount pockets (FullBattens: luff to leech).
+// The prologue's maxi: Layout 4, a moulded membrane (carbon and aramid fibre paths laid along the load lines from the
+// corners, between black film; a few wide laminated panels with horizontal seams; glossy, nearly opaque).
 float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
-if (Layout > 2.5)
+if (Layout > 3.5)
+{
+    seamDist = abs(frac(UV0.y / 3.4 + 0.5) - 0.5) * 3.4;
+}
+else if (Layout > 2.5)
 {
     // Tri-radial: seams fan out from the clew (UV1 (1, 0)) and the head, crossing at the sail's middle.
     float2 fromClew = float2(1.0 - UV1.x, UV1.y);
@@ -1136,10 +1168,35 @@ float2 sp = UV0 / 0.045;
 float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
 float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
 cloth *= 1.0 - 0.35 * speck * whiteish;
+float fibre = 0.0;
+if (Layout > 3.5)
+{
+    // Three families of fibre paths, each fanning from a corner (clew, head, tack) in metres, so they crowd where the
+    // loads gather: a tow every 0.035 rad, 2.4 cm wide (a bundle of fibres, what reads from the deck and beyond), fading away from
+    // its corner. Every fourth path is aramid (gold).
+    float w = 0.32 * Height;                          // the sail's width in metres, about (UV1 is normalized)
+    float2 q[3] = { float2((1.0 - UV1.x) * w, UV1.y * Height), float2(UV1.x * w + 0.02, (1.0 - UV1.y) * Height), float2(UV1.x * w + 0.02, UV1.y * Height) };
+    float reach[3] = { 0.75, 0.55, 0.45 };
+    float aramid = 0.0;
+    for (int f = 0; f < 3; f++)
+    {
+        float r = length(q[f]) + 1e-3;
+        float a = atan2(q[f].y, q[f].x) / 0.035;
+        float d = abs(frac(a + 0.5) - 0.5) * 0.035 * r;
+        float on = (1.0 - smoothstep(0.008, 0.012, d)) * (1.0 - smoothstep(0.2, reach[f], r / Height));
+        fibre = max(fibre, on);
+        aramid = max(aramid, on * step(fmod(abs(floor(a + 0.5)), 4.0), 0.5));
+    }
+    // The scrim under the film: a faint diamond grid every 12 cm.
+    float2 g = float2(UV0.x * 0.866 + UV0.y * 0.5, UV0.x * 0.866 - UV0.y * 0.5) / 0.12;
+    float scrim = max(1.0 - smoothstep(0.02, 0.06, abs(frac(g.x) - 0.5) * 2.0 - 0.9), 1.0 - smoothstep(0.02, 0.06, abs(frac(g.y) - 0.5) * 2.0 - 0.9));
+    cloth = base * (1.0 + 0.06 * scrim) * (0.97 + 0.03 * panel);
+    cloth = lerp(cloth, lerp(base * 3.0 + 0.04, float3(0.45, 0.32, 0.11), aramid), fibre * 0.6);
+}
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through));
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1165,6 +1222,7 @@ NormalTS = normalize(float3(-dhdu, -dhdv, 1.0));
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
+if (Layout > 3.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 return col;
 """
 
@@ -2687,7 +2745,8 @@ def world_collection():
     # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
     # Site (E1): the world's wear site, 0 lake / 1 bay / 2 Gulf (WearSiteFor), for the baked tiles that carry no seed.
     # Autumn, Spring (T1): the season on the trees, from the session's date (ASailingEnvironment).
-    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring"):
+    # Land (marseille-look): the world's dress, 0 prairie / 1 garrigue (FLakeData::Land), for M_Terrain and M_FarLand.
+    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring", "Land"):
         if not any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
             n = unreal.CollectionScalarParameter()
             n.set_editor_property("parameter_name", name)
@@ -3199,6 +3258,15 @@ float3 woods = float3(0.16, 0.22, 0.08);
 float3 flats = float3(0.24, 0.28, 0.12);
 float3 rock = float3(0.40, 0.33, 0.27);
 float3 sand = float3(0.50, 0.42, 0.30);
+if (Land > 0.5)
+{
+    // marseille-look: the garrigue's (BuildChunk's palette), its bare limestone mottled in at the kilometre scale.
+    grass = lerp(float3(0.22, 0.23, 0.14), float3(0.50, 0.48, 0.42), saturate(f * 1.4 - 0.45));
+    woods = float3(0.12, 0.16, 0.08);
+    flats = grass;
+    rock = float3(0.62, 0.60, 0.54);
+    sand = float3(0.50, 0.48, 0.43);
+}
 float3 col = lerp(grass, woods, saturate(m * 0.8 + 0.3 * f - 0.1));
 col = lerp(flats, col, smoothstep(0.3, 0.9, h));
 col = lerp(sand, col, smoothstep(0.05, 0.4, h));
@@ -3229,7 +3297,11 @@ def build_far_land():
     wz = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 450)
     wz.set_editor_property("collection", world_collection())
     wz.set_editor_property("parameter_name", "WaterZ")
-    c = custom(mat, FAR_LAND_CODE, ["VC", "P", "N", "Tint", "WaterZ"], F3, -500, 100, extra_outputs=[("AO", F1)])
+    c = custom(mat, FAR_LAND_CODE, ["VC", "P", "N", "Tint", "WaterZ", "Land"], F3, -500, 100, extra_outputs=[("AO", F1)])
+    land = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 550)
+    land.set_editor_property("collection", world_collection())
+    land.set_editor_property("parameter_name", "Land")
+    connect(land, "", c, "Land")
     connect(vc, "", c, "VC")
     connect(pos, "", c, "P")
     connect(nrm, "", c, "N")

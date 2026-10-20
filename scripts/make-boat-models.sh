@@ -38,6 +38,10 @@ for V in 0 1 2 3 4 5; do
 		"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_berthed.py" -- "${PAIR%%:*}" "$MODELS/${PAIR#*:}.json" "$MODELS" "$V" 2>&1 | grep -E "^Berthed:" || true
 	done
 done
+# The prologue's hero maxi (Tools/boats/maxi/build_maxi.py): her hull is the exported sections, no physics export.
+"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/boats/maxi/build_maxi.py" -- "$MODELS" > "$ARTIFACTS/blender-maxi.log" 2>&1 \
+	|| { tail -30 "$ARTIFACTS/blender-maxi.log"; exit 1; }
+grep -E "^Maxi:" "$ARTIFACTS/blender-maxi.log" || true
 [[ "${1:-}" == "--no-import" ]] && exit 0
 "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_boats.py ${IMPORT_ARGS:-}" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import-boats.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/import-boats.log"; exit 1; }

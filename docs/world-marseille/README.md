@@ -73,6 +73,22 @@ pack in `Content/TerrainData` is 25 MB: `Marseille.height` 16.2 MB, `.houses` 3.
 
 ![harbours](harbours.jpg)
 
+## The land: garrigue and limestone (marseille-look)
+
+The world json's `"land": "garrigue"` (carried into the bake by `build_coast.py`, read as `FLakeData::Land`) dresses
+the terrain Mediterranean instead of the Texas prairie: `LakeTerrainActor::BuildChunk` lays a pale sand and rock bed
+under the clear water, limestone shingle at the waterline (no mud band), garrigue scrub over bare limestone in 20 m
+patches, Aleppo pines dark under the tree canopy, and grey-white limestone on every face steeper than about 30 deg (the
+Calanques), each 5 m cell a shade warmer or greyer. `MPC_World`'s new `Land` scalar (1 here, set by
+`ASailingEnvironment`) turns on `M_Terrain`'s bedding planes and vertical joints on that pale rock and its rounded
+scrub bushes, and `M_FarLand`'s garrigue palette for the far ring. Other worlds are unchanged (`Land` 0). The baked
+`Marseille.json` carries the field already, so no rebake is needed.
+
+![Off Sormiou, the Calanques (Ultra)](look/calanques-sormiou-ultra.jpg)
+![The Vieux-Port entrance toward the Frioul islands (Ultra)](look/port-frioul-ultra.jpg)
+
+Before, for comparison: [captures/calanques-chase.jpg](captures/calanques-chase.jpg) (the prairie dress).
+
 ## Harbour kit the port needs (for the PC's model lane)
 
 Counts from the bake and OSM; the first column is the model to build, the last where it goes.
@@ -90,6 +106,17 @@ Counts from the bake and OSM; the first column is the model to build, the last w
 | Landmark buildings | Notre-Dame de la Garde, Cathedrale de la Major, MuCEM, Palais du Pharo, Tour CMA CGM, Hopital Caroline | skyline |
 | Marseille town houses (trois-fenetres, 3-4 storeys, tile roofs) | most of the 84,000 houses: an archetype set, not one each | the city |
 | Calanques limestone cliff and scree material | the whole south coast | Calanques |
+
+### Built
+
+- **Harbour light towers** (harbour-lights): `SM_Light_MoleTower` in `Tools/blender/build_navaids.py`, a whitewashed masonry
+  tower on a concrete plinth, its top third in the light's colour (the structure's first colour that is not white), a
+  railed gallery and the lantern under a painted dome (1.3k triangles). `ANavaidsActor` stands every light structure on
+  it on an IALA A coast, scaled to the light's height (and a little stouter as it gets taller); IALA B coasts keep the
+  USCG steel skeleton tower.
+
+![Before and after: the mole head light at the Vieux-Port entrance (Ultra)](kit/mole-light-before-after.jpg)
+
 
 ## Gaps
 

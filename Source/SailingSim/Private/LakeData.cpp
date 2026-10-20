@@ -79,6 +79,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	FString IalaText;
 	if (Root->TryGetStringField(TEXT("iala"), IalaText) && IalaText.Len() > 0) Iala = FChar::ToUpper(IalaText[0]);
 	Root->TryGetStringField(TEXT("time_zone"), TimeZone);
+	Root->TryGetStringField(TEXT("land"), Land);
 	const TSharedPtr<FJsonObject>* Climate = nullptr;
 	if (Root->TryGetObjectField(TEXT("climate"), Climate) && Climate && Climate->IsValid())
 	{
