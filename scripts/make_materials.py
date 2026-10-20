@@ -3590,6 +3590,12 @@ WORLD_LIBRARY = {
     "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
     "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),
     "Brick": ((0.36, 0.15, 0.09), 0.85, 4.0, 0.0, 0.0),
+    # Marseille's landmarks (harbour kit): pale Cassis-type limestone, the basilica's green Golfolina stone courses, Roman
+    # tile, gilded copper.
+    "Limestone": ((0.64, 0.60, 0.52), 0.85, 4.0, 0.0, 0.0),
+    "StoneGreen": ((0.28, 0.31, 0.25), 0.8, 4.0, 0.0, 0.0),
+    "RoofTile": ((0.40, 0.17, 0.09), 0.8, 2.0, 0.0, 0.0),
+    "Gold": ((0.80, 0.58, 0.22), 0.3, 0.0, 0.0, 1.0),
     # Vehicles (Tools/blender/build_props.py slots).
     "Glass": ((0.03, 0.035, 0.04), 0.06, 0.0, 0.0, 0.0),
     "Tyre": ((0.03, 0.03, 0.03), 0.85, 0.0, 0.0, 0.0),
