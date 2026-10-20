@@ -22,6 +22,16 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
 
 ![Before (left), after (middle) and the well from above (right), Ultra on the lake](sunfish-before-after-deck.jpg)
 
+## Catalina 22
+
+- **Cabin trunk:** the class's two smoked windows a side with rounded ends in aluminium frames, in place of the generic
+  window band; a teak eyebrow along both edges of the trunk top.
+- **Companionway:** three teak drop boards, their edges proud, in place of the black stand-in.
+- `import_boats.py fleet` imports only the seven fleet boats (it had re-imported the maxi whenever her FBX was in
+  `Artifacts\models`).
+
+![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina22-before-after.jpg)
+
 ## ILCA
 
 - **Mast:** the two-piece spar, its collar over the joint 2.85 m up, the black gooseneck fitting the boom pins to, the
