@@ -134,6 +134,24 @@ namespace SailCatalog
 				if (W.Spots.Num() > 0) W.Spots[0].Tag = TEXT("Home");
 				Out.Add(W);
 			}
+			{
+				// World streaming (docs/world-streaming): Galveston Bay and the Gulf passage as one coast, streamed as you sail
+				// (Tools/coast/compose_world.py). The bay's art for now: the map frame is the bay's.
+				FWorld W;
+				W.Index = 4; W.File = TEXT("TexasCoast"); W.Name = TEXT("The Texas coast"); W.Tagline = TEXT("Clear Lake to Freeport · One sail");
+				W.Description = TEXT("Galveston Bay and the Gulf as one coast: leave Kemah, run down the ship channel, out through Bolivar Roads "
+					"and the jetties, and on along the beaches to Freeport, 105 km with no loading screen on the way.");
+				W.bTidal = true;
+				W.MapTexture = TEXT("/Game/UI/T_Map_GalvestonBay.T_Map_GalvestonBay");
+				W.CardTexture = TEXT("/Game/UI/T_Card_GalvestonBay.T_Card_GalvestonBay");
+				W.TitleTexture = TEXT("/Game/UI/T_Title_GalvestonBay.T_Title_GalvestonBay");
+				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_GalvestonBay_%d.T_Load_GalvestonBay_%d"), I, I));
+				ReadWorld(W);
+				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
+				W.Facts.Add({ TEXT("105 km"), TEXT("Clear Lake to Freeport") });
+				W.Facts.Add({ TEXT("Streamed"), TEXT("No loading on the way") });
+				Out.Add(W);
+			}
 			for (FWorld& W : Out)
 			{
 				W.Id = FSailSave::WorldId(W.Index);
@@ -214,7 +232,8 @@ namespace SailCatalog
 		static TArray<FMiniMap> Maps = []()
 		{
 			TArray<FMiniMap> Out;
-			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille") };
+			// The Texas coast (4) draws the bay's minimap: its map frame is the bay's (the Gulf beyond it is off the map).
+			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille"), TEXT("GalvestonBay") };
 			for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Files)); ++I)
 			{
 				FWorld W;
@@ -251,7 +270,7 @@ namespace SailCatalog
 			static TArray<FWorld> Out = []()
 			{
 				TArray<FWorld> List;
-				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille") };
+				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille"), TEXT("TexasCoast") };
 				for (const TCHAR* F : Files)
 				{
 					FWorld& W = List.AddDefaulted_GetRef();

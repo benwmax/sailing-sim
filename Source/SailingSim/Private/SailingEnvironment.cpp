@@ -1,4 +1,5 @@
 #include "SailingEnvironment.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -367,7 +368,8 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	if (WorldCollection)
 	{
 		// The trees on the shore sway with the wind there (MPC_World.Wind: direction it blows toward, speed with gusts).
-		const Vec3 V = GM->GetWind().VelocityAt(Vec3(CamPos.X / CmPerMeter, CamPos.Y / CmPerMeter, 10.0), GM->GetSimTime());
+		const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CamPos);
+		const Vec3 V = GM->GetWind().VelocityAt(Vec3(CamMap.X, CamMap.Y, 10.0), GM->GetSimTime());
 		const double Speed = V.LengthXY();
 		const double Mean = FMath::Max(W.Wind.SpeedKnots * kKnot, 0.5);
 		UKismetMaterialLibrary::SetVectorParameterValue(this, WorldCollection, TEXT("Wind"),
@@ -525,7 +527,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		const double E = Elevation * kDegToRad, A = Azimuth * kDegToRad;
 		FVector Cam = FVector::ZeroVector;
-		if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CamMgr->GetCameraLocation() / CmPerMeter;
+		if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = SailingFrame::ToMapCm(GetWorld(), CamMgr->GetCameraLocation()) / CmPerMeter;
 		const FGustFront& F = W.Front;
 		const double Seen = LastWeatherMap.SunTransmittance(W.Sky, F, F.SpeedMs * (GM->GetSimTime() - F.StartTime), GM->GetWeatherTime(), Cam.X, Cam.Y,
 			FMath::Cos(E) * FMath::Cos(A), FMath::Cos(E) * FMath::Sin(A), FMath::Sin(E));
@@ -747,7 +749,8 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FWeatherState& W = GM->GetWeatherState();
 	// W5b: the rain where the camera is (a storm's falls under its core, not everywhere at once).
-	const double RainHere = GM->GetRainAt(CameraPos.X / CmPerMeter, CameraPos.Y / CmPerMeter);
+	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);
+	const double RainHere = GM->GetRainAt(CamMap.X, CamMap.Y);
 	const bool bRaining = RainHere > 0.01;
 	if (LensMaterial)
 	{
@@ -805,7 +808,8 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 	}
 	const FWeatherState& W = GM->GetWeatherState();
 	const double Now = GM->GetSimTime();
-	const double Cx = CameraPos.X / CmPerMeter, Cy = CameraPos.Y / CmPerMeter;
+	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);   // the rain field is in the map frame
+	const double Cx = CamMap.X, Cy = CamMap.Y;
 	constexpr double Cell = 2000.0, Reach = 26000.0;
 	CurtainClock -= DeltaSeconds;
 	if (CurtainClock <= 0.f)
@@ -880,8 +884,8 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		// Near the camera the rain cylinders show the rain; far off the haze takes it.
 		const double Fade = FMath::SmoothStep(700.0, 2500.0, D) * (1.0 - FMath::SmoothStep(22000.0, Reach, D));
 		const double Amount = FStormRain::Amount(C.Rate) * Fade;
-		const FTransform Veil(Q, (P + FVector(0, 0, 0.5 * BaseM)) * CmPerMeter, FVector(2200.0, BaseM, 1.0));
-		const FTransform Foot(Q, (P + FootShift + FVector(0, 0, 110.0)) * CmPerMeter, FVector(3300.0, 220.0, 1.0));
+		const FTransform Veil(Q, SailingFrame::FromMapCm(GetWorld(), (P + FVector(0, 0, 0.5 * BaseM)) * CmPerMeter), FVector(2200.0, BaseM, 1.0));
+		const FTransform Foot(Q, SailingFrame::FromMapCm(GetWorld(), (P + FootShift + FVector(0, 0, 110.0)) * CmPerMeter), FVector(3300.0, 220.0, 1.0));
 		RainCurtains->UpdateInstanceTransform(2 * K, Veil, true, false, true);
 		RainCurtains->UpdateInstanceTransform(2 * K + 1, Foot, true, false, true);
 		RainCurtains->SetCustomDataValue(2 * K, 0, float(Amount), false);
@@ -901,7 +905,7 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const auto& Strikes = GM->GetWeather().GetStrikes();
 	const double T = GM->GetWeatherTime();
-	const FVector2D Listener(CameraPos.X / CmPerMeter, CameraPos.Y / CmPerMeter);
+	const FVector2D Listener = SailingFrame::ToMap(GetWorld(), CameraPos);
 
 	// W8: -SailingNoLightning for stills compared before and after (a flash lights the water white at random times).
 	static SailingArgs::FCachedFlag NoLightningArg(TEXT("SailingNoLightning"));
@@ -918,9 +922,9 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		FlashParams = FVector4f(float(S.X), float(S.Y), S.bCloudToGround ? 2500.f : 4500.f, 1.f);
 		if (S.bCloudToGround)
 		{
-			BuildBolt(FVector(S.X, S.Y, 0.0) * CmPerMeter, (bLayeredClouds ? 0.7f : kCloudBaseKm) * 1000.f * CmPerMeter);
+			BuildBolt(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 0.0), (bLayeredClouds ? 0.7f : kCloudBaseKm) * 1000.f * CmPerMeter);
 			BoltTime = 0.f;
-			BoltLight->SetWorldLocation(FVector(S.X, S.Y, 300.0) * CmPerMeter);
+			BoltLight->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 300.0));
 		}
 		// Light from the strike's direction.
 		const FVector Dir = (FVector(Listener.X - S.X, Listener.Y - S.Y, -1500.f)).GetSafeNormal();
@@ -1064,14 +1068,18 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		const FCloudSky Sky = W.Sky;
 		const FGustFront Front = W.Front;
 		const FLakeData* Lake = GM->GetLake().IsLoaded() ? &GM->GetLake() : nullptr;
-		const double Cx = CameraPos.X / CmPerMeter, Cy = CameraPos.Y / CmPerMeter;
-		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Lake, Cx, Cy, Tw]()
+		const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);   // the weather map is painted in the map frame
+		const double Cx = CamMap.X, Cy = CamMap.Y;
+		// World streaming: a copy of the terrain (it shares the heights): the tiles may be swapped while the worker reads.
+		TSharedPtr<const Sailing::FLakeTerrain> Terrain;
+		if (Lake) Terrain = MakeShared<const Sailing::FLakeTerrain>(Lake->Terrain);
+		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Terrain, Cx, Cy, Tw]()
 		{
 			FWeatherMap Map;
-			if (Lake)
+			if (Terrain)
 			{
 				// Cumulus build over the heated land, not the lake.
-				Map.LandFraction = [Lake](double X, double Y) { return FMath::Clamp((Lake->Terrain.HeightAt(X, Y) + 0.5) / 2.0, 0.0, 1.0); };
+				Map.LandFraction = [Terrain](double X, double Y) { return FMath::Clamp((Terrain->HeightAt(X, Y) + 0.5) / 2.0, 0.0, 1.0); };
 			}
 			Map.Paint(Sky, Front, Cx, Cy, Tw);
 			FWeatherMapFrame Out;
@@ -1163,7 +1171,8 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		if (!bHasWeatherMap) return;
 		// One camera and one set of cloud parameters for the whole panorama, so its strips agree.
 		CacheRefreshStart = Now;
-		CacheMaterial->SetVectorParameterValue(TEXT("CacheCam"), FLinearColor(float(CameraPos.X), float(CameraPos.Y), float(CameraPos.Z), 0.f));
+		const FVector CacheCam = SailingFrame::ToMapCm(GetWorld(), CameraPos);   // the material's positions are in the map frame
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheCam"), FLinearColor(float(CacheCam.X), float(CacheCam.Y), float(CacheCam.Z), 0.f));
 		static const TCHAR* Vectors[] = { TEXT("WeatherRect"), TEXT("LayerCumulus"), TEXT("LayerStratus"), TEXT("LayerCirrus"), TEXT("FrontA"), TEXT("FrontB"),
 			TEXT("Drift"), TEXT("LayerExtinction"), TEXT("SunLum"), TEXT("SunDir"), TEXT("TracerShadow") };
 		for (const TCHAR* Name : Vectors)
@@ -1364,7 +1373,7 @@ void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& M
 	if (Cities.Num() > 0)
 	{
 		FVector CamM = FVector::ZeroVector;
-		if (APlayerCameraManager* PCM = UGameplayStatics::GetPlayerCameraManager(this, 0)) CamM = PCM->GetCameraLocation() / 100.0;
+		if (APlayerCameraManager* PCM = UGameplayStatics::GetPlayerCameraManager(this, 0)) CamM = SailingFrame::ToMapCm(GetWorld(), PCM->GetCameraLocation()) / 100.0;   // the map frame (the city domes are)
 		for (const FFarLightsData::FCity& C : Cities)
 		{
 			const double North = (C.XY.X - CamM.X) / 1000.0, East = (C.XY.Y - CamM.Y) / 1000.0;

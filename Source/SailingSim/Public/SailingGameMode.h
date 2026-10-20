@@ -12,6 +12,7 @@
 #include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
+#include "WorldStreaming.h"
 #include "Async/Future.h"
 #include "SailingGameMode.generated.h"
 
@@ -112,7 +113,52 @@ public:
 	/** Kept for the difficulty toggle: gusts are softer on easy. */
 	void ApplyDifficultyToWind() { ApplyWeatherSettings(); }
 
+	/** World streaming (docs/world-streaming): the world's height tiles around the boat. */
+	const FWorldStreamer& GetStreamer() const { return Streamer; }
+	/** Moves the render frame's origin to this map point (m, on the re-centre lattice or not) now; false if the engine
+	 *  refused (a level becoming visible). The game does it itself when the boat is kRecentreM from the origin. */
+	bool RecentreAt(double NorthM, double EastM);
+	/** Re-centres so far, and the longest one's game-thread time (ms). */
+	int32 GetRecentres() const { return Recentres; }
+	double GetLongestRecentreMs() const { return LongestRecentreMs; }
+	/** Where the boat the world follows is (map frame, m): the player's boat, or the camera when there is none. */
+	FVector2D GetFollowPoint() const;
+	/** The physics' window on a streamed world (the sea fetch, ocean mask and shelter map are built over it). */
+	const Sailing::FPhysicsWindow& GetPhysicsWindow() const { return PhysicsWindow; }
+	int32 GetWindowMarches() const { return WindowMarches; }
+	/** Whether a march of the physics' window is running on a worker. */
+	bool IsWindowMarching() const { return bWindowMarching; }
+
 private:
+	// World streaming.
+	FWorldStreamer Streamer;
+	UPROPERTY(Transient) TObjectPtr<class UMaterialParameterCollection> WorldCollection;
+	int32 Recentres = 0;
+	double LongestRecentreMs = 0.0;
+	/** Starts the world's streaming and reads the tiles around the launch spot (end of InitGame). */
+	void StartStreaming();
+	/** Each frame: tiles around the boat, the render origin, the physics' window. */
+	void UpdateStreaming();
+	/** MPC_World.RenderOrigin (cm): the materials put their positions back in the map frame with it. */
+	void PublishRenderOrigin();
+	struct FWindowGrids
+	{
+		TSharedPtr<const Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch;
+		TSharedPtr<Sailing::FShelterMap> Shelter;
+		Sailing::FOcean::FMask Mask;
+		bool bMask = false;
+		double CenterX = 0.0, CenterY = 0.0, ShelterFrom = 0.0;
+		double Ms = 0.0;
+	};
+	Sailing::FPhysicsWindow PhysicsWindow;
+	TFuture<FWindowGrids> PendingWindow;
+	bool bWindowMarching = false;
+	bool bWindowStale = false;   // the ocean's swell changed: march the window again
+	int32 WindowMarches = 0;
+	/** Marches the sea fetch, the ocean mask and the shelter map over a window centred on (X, Y) on a worker. */
+	void MarchWindow(double X, double Y);
+	/** The terrain the derived grids are built on: the window on a streamed world, the whole grid otherwise (a copy). */
+	Sailing::FLakeTerrain DerivedTerrain(double CenterX, double CenterY) const;
 	void UpdateWeather(float DeltaSeconds);
 	void UpdateOcean(double WindKnots, double WindFromDeg);
 	TSharedPtr<Sailing::FOcean> Ocean;

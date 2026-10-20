@@ -1,5 +1,6 @@
 // Crew C5: the crew's falls on the player's boat (CrewFalls.h): Physics Control drives each MetaHuman body toward its
 // animated pose; FCrewFalls decides how hard, and when the animation alone poses them again.
+#include "SailingFrame.h"
 #include "SailboatPawn.h"
 #include "BenchRunner.h"
 #include "SailingSim.h"
@@ -193,7 +194,8 @@ void ASailboatPawn::UpdateCrewFalls(float DeltaSeconds)
 		{
 			if (!BI || !BI->IsInstanceSimulatingPhysics()) continue;
 			const FVector P = BI->GetCOMPosition();
-			const double SeaCm = (Waves ? Waves->Height(P.X / Sailing::CmPerMeter, P.Y / Sailing::CmPerMeter, S.Time) * Sailing::CmPerMeter : 0.0) + WaterSurfaceZ;
+			const FVector2D AtMap = SailingFrame::ToMap(GetWorld(), P);   // the waves are in the map frame
+			const double SeaCm = (Waves ? Waves->Height(AtMap.X, AtMap.Y, S.Time) * Sailing::CmPerMeter : 0.0) + WaterSurfaceZ;
 			const float In = FMath::Clamp(float(SeaCm - P.Z) / ImmersionCm, 0.f, 1.f);
 			if (In <= 0.f) continue;
 			const FVector Lift(0.0, 0.0, 981.0 * WaterLift * In);

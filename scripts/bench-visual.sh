@@ -27,6 +27,9 @@ VIEWS=(
 	"far-coast|-SailingWorld=1 -SailingStartAt=-21700,26000,315 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=11 -SailingCamYaw=0 -SailingCamPitch=-3 -SailingCamDist=14"
 	"far-coast-night|-SailingWorld=1 -SailingStartAt=-21700,26000,315 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=21 -SailingCamYaw=0 -SailingCamPitch=-3 -SailingCamDist=14"
 	"marseille-port|-SailingWorld=Marseille -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=14 -SailingCamYaw=120 -SailingCamPitch=-8 -SailingCamDist=30"
+	# World streaming (docs/world-streaming): the Texas coast, the world sliding under the boat at 40 m/s down the bay toward
+	# Bolivar Roads; she crosses a tile boundary about 7 s in and the render origin moves about 11 s in (inside the measure).
+	"stream-run|-SailingWorld=TexasCoast -SailingStartAt=-11068,16118,124 -SailingKeepStart -SailingRun=40,124 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=90 -SailingHoldTWA=90 -SailingHour=11 -SailingCamYaw=200 -SailingCamPitch=-8 -SailingCamDist=14"
 )
 if [[ -n "${ONLY:-}" ]]; then
 	KEPT=()
