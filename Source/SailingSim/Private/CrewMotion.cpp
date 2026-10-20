@@ -184,12 +184,15 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	}
 	// Multihull crew: a trimaran's helm sits in the main hull's cockpit (the Corsair's tiller is on the centreline, the
 	// ama 2.8 m out of reach); her crew out past the main hull's deck sit on the windward net, forward of the after aka
-	// (at x -2.05 and -2.6 they sat over the water behind it), side by side.
+	// (at x -2.05 and -2.6 they sat over the water behind it) and of the cockpit, side by side.
 	const bool bTrimaran = Cfg.bMultihull && Cfg.Hulls.size() == 3;
 	double NetAft = 0.0, NetForward = 0.0;
 	if (bTrimaran && I != N - 1 && FMath::Abs(In.CrewOffset) > Hull.DeckHalfBeam(X) && CrewNetSpan(Cfg, NetAft, NetForward))
 	{
-		X = FMath::Clamp(X, NetAft + 0.35 + 0.55 * (N - 2 - I), NetForward - 0.5);
+		// Forward of the cockpit too: facing inboard from beside it, their feet came down on its seats' edge, tilted.
+		FCrewCockpitWell TriWell;
+		const double From = CrewCockpitWell(Cfg, TriWell) ? FMath::Max(NetAft, TriWell.X1) : NetAft;
+		X = FMath::Clamp(X, From + 0.35 + 0.55 * (N - 2 - I), NetForward - 0.5);
 	}
 	const double Rail = Cfg.bMultihull && !(bTrimaran && I == N - 1) ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
 	// On a multihull the stances below are placed over 0 and lifted onto the surface under the sailor at the end
