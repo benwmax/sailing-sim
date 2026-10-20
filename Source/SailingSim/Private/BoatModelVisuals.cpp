@@ -27,6 +27,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "ProceduralMeshComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "CrewPose.h"
 
 using namespace Sailing;
@@ -75,14 +77,36 @@ namespace
 		TArray<int32> Tris;
 	};
 
-	void AppendTube(const FRigLine& L, const FVector& Down, float LayDiameters, FTubeStreams& Out, bool bTris)
+	/** The mid-span sag of a line: across it, in the plane of the line and gravity. */
+	FVector SagOf(const FRigLine& L, const FVector& Down)
 	{
 		const FVector D = L.B - L.A;
 		const float Len = D.Size();
 		const FVector Dir = Len > 1e-3f ? D / Len : FVector::UpVector;
-		// Sag across the line, in the plane of the line and gravity.
-		FVector Sag = Down - FVector::DotProduct(Down, Dir) * Dir;
-		Sag = Sag.GetSafeNormal() * SagFor(Len, L.Slack);
+		const FVector Sag = Down - FVector::DotProduct(Down, Dir) * Dir;
+		return Sag.GetSafeNormal() * SagFor(Len, L.Slack);
+	}
+
+	/** Round the tube: the ring's cosines and sines, worked out once. */
+	struct FRingTable
+	{
+		float Cos[kLineSides + 1], Sin[kLineSides + 1];
+		FRingTable()
+		{
+			for (int32 K = 0; K <= kLineSides; ++K)
+			{
+				Cos[K] = FMath::Cos(2.f * PI * K / kLineSides);
+				Sin[K] = FMath::Sin(2.f * PI * K / kLineSides);
+			}
+		}
+	};
+
+	void AppendTube(const FRigLine& L, const FVector& Sag, float LayDiameters, FTubeStreams& Out, bool bTris)
+	{
+		static const FRingTable Ring;
+		const FVector D = L.B - L.A;
+		const float Len = D.Size();
+		const FVector Dir = Len > 1e-3f ? D / Len : FVector::UpVector;
 		const FVector Ref = FMath::Abs(Dir.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector;
 		const FVector U = FVector::CrossProduct(Dir, Ref).GetSafeNormal();
 		const FVector W = FVector::CrossProduct(Dir, U);
@@ -99,25 +123,26 @@ namespace
 			Prev = C;
 			// Along the sagged curve: the parabola's derivative.
 			const FVector Along = (D + Sag * (4.f - 8.f * T)).GetSafeNormal();
+			const FProcMeshTangent Tangent(Along, false);
+			const float UArc = Arc / Lay;
 			for (int32 K = 0; K <= kLineSides; ++K)
 			{
-				const float A = 2.f * PI * K / kLineSides;
-				const FVector N = U * FMath::Cos(A) + W * FMath::Sin(A);
+				const FVector N = U * Ring.Cos[K] + W * Ring.Sin[K];
 				Out.Verts.Add(C + N * L.RadiusCm);
 				Out.Normals.Add(N);
-				Out.UV0.Add(FVector2D(Arc / Lay, float(K) / kLineSides));
+				Out.UV0.Add(FVector2D(UArc, float(K) / kLineSides));
 				if (bTris) Out.Colors.Add(Look); // the look never changes: sent once, at build (an update skips an empty stream)
-				Out.Tangents.Add(FProcMeshTangent(Along, false));
+				Out.Tangents.Add(Tangent);
 			}
 		}
 		if (!bTris) return;
-		constexpr int32 Ring = kLineSides + 1;
+		constexpr int32 RingVerts = kLineSides + 1;
 		for (int32 I = 0; I < kLineSegments; ++I)
 		{
 			for (int32 K = 0; K < kLineSides; ++K)
 			{
-				const int32 A0 = Base + I * Ring + K, A1 = A0 + 1;
-				const int32 B0 = A0 + Ring, B1 = A1 + Ring;
+				const int32 A0 = Base + I * RingVerts + K, A1 = A0 + 1;
+				const int32 B0 = A0 + RingVerts, B1 = A1 + RingVerts;
 				Out.Tris.Append({ A0, B0, B1, A0, B1, A1 });
 			}
 		}
@@ -279,6 +304,25 @@ FVector ASailboatPawn::RigPoint(const UStaticMeshComponent* Part, FName Socket) 
 
 void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 {
+	// Rig lines pacing (the PC's Ultra bench had the rig lines at 0.9 ms of boat_visuals' 2.0, most of it AI boats'): an AI
+	// boat's rig is rebuilt every frame within 30 m of the camera, every 2nd to 150 m, 4th to 600 m, 8th beyond, and every
+	// 15th while it is off screen, staggered by boat. Between rebuilds the lines stay drawn where they were, in the boat's
+	// frame (the mesh keeps its vertex count). The player's boat is rebuilt every frame.
+	if (bTrafficBoat && bRigLinesBuilt)
+	{
+		int32 Every = 15;
+		if (ModelHull && ModelHull->WasRecentlyRendered(0.25f))
+		{
+			const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+			const double Dist = PC && PC->PlayerCameraManager ? FVector::Dist(PC->PlayerCameraManager->GetCameraLocation(), GetActorLocation()) / CmPerMeter : 0.0;
+			Every = Dist < 30.0 ? 1 : Dist < 150.0 ? 2 : Dist < 600.0 ? 4 : 8;
+		}
+		RigPendingSeconds += DeltaSeconds;
+		if ((GFrameCounter + GetUniqueID()) % uint64(Every) != 0 && GFrameCounter - RigBuiltFrame < uint64(Every)) return;
+		DeltaSeconds = RigPendingSeconds;
+	}
+	RigPendingSeconds = 0.f;
+	RigBuiltFrame = GFrameCounter;
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 	const float Aws = float(T.ApparentWindSpeed / 0.514444); // knots
@@ -449,15 +493,25 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	for (int32 Section = 0; Section < 2; ++Section)
 	{
 		const TArray<FRigLine>& Lines = Section == 0 ? Wires : Ropes;
+		// A section none of whose lines moved more than half a millimetre (ends or sag) since its last upload is left as
+		// it is: the standing rig at rest, a sheet made fast.
+		TArray<FVector> Keys;
+		Keys.Reserve(Lines.Num() * 3);
+		for (const FRigLine& L : Lines) Keys.Append({ L.A, L.B, SagOf(L, Down) });
+		TArray<FVector>& Last = RigLineKeys[Section];
+		bool bMoved = !bRigLinesBuilt || Last.Num() != Keys.Num();
+		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > 0.05f * 0.05f;
+		if (!bMoved) continue;
+		Last = MoveTemp(Keys);
 		FTubeStreams Out;
 		// Reserved up front, and no colours after the build: the per-frame update converted every vertex's linear colour
 		// to sRGB and doubled the rig lines' game-thread time (0.65 -> 1.4 ms on the PC).
 		const int32 NumVerts = Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
 		Out.Verts.Reserve(NumVerts); Out.Normals.Reserve(NumVerts); Out.UV0.Reserve(NumVerts); Out.Tangents.Reserve(NumVerts);
 		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
-		for (const FRigLine& L : Lines)
+		for (int32 K = 0; K < Lines.Num(); ++K)
 		{
-			AppendTube(L, Down, Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
+			AppendTube(Lines[K], Last[3 * K + 2], Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
 		}
 		if (!bRigLinesBuilt)
 		{
