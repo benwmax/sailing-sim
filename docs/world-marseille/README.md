@@ -117,6 +117,14 @@ Counts from the bake and OSM; the first column is the model to build, the last w
 
 ![Before and after: the mole head light at the Vieux-Port entrance (Ultra)](kit/mole-light-before-after.jpg)
 
+### Built: the landmarks (harbour-landmarks)
+
+`Tools/blender/build_landmarks.py` adds four hero models, matched in `ALandmarksActor` by the chart's French names and at their own sizes (the chart's heights at Marseille are a gallery's or a roof's): `SM_Landmark_Church` (a church, limestone nave under Roman tile, round apse, square bell tower with its wrought-iron campanile, 28 m: "Eglise" and, at 18 m, every "Chapelle"), `SM_Landmark_Fort` (a crenellated curtain, keep and three round, 16 m: the forts, chateaux and batteries), `SM_Landmark_Lighthouse` (the Planier, 70 m; the other phares at m) and `SM_Landmark_NotreDameGarde` (crypt platform, nave and bell tower in white and green courses, gilded dome Virgin, 62 m on her hill). Before this none of Marseille's landmarks matched a model. New `MI_World` slots:
+`Limestone`, `StoneGreen`, `RoofTile`, `Gold`.
+
+![The Vieux-Port from the entrance (Ultra)](kit/landmarks-vieux-port-ultra.jpg)
+![The same, cropped: Notre-Dame de la Garde on her hill, the city's churches](kit/landmarks-vieux-port-crop.jpg)
+
 
 ## Gaps
 
