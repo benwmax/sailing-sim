@@ -771,6 +771,9 @@ void ASailboatPawn::BeginPlay()
 		else UE_LOG(LogSailing, Warning, TEXT("-SailingBoat=%s matches no boat; sailing the %s"), *BoatArg, UTF8_TO_TCHAR(BoatTypeName(EBoatType(USailingSettings::Get()->BoatType))));
 	}
 	SetBoat(USailingSettings::Get()->BoatType);
+	// -SailingHideBoat (stills): the player's boat and crew hidden, so the water's hull clip shows (docs/boat-water-clip/).
+	static SailingArgs::FCachedFlag HideBoatArg(TEXT("SailingHideBoat"));
+	if (HideBoatArg.Get()) SetActorHiddenInGame(true);
 
 	// Sound: one synthesized voice for everything on board.
 	Synth = NewObject<USailingSynthWave>(this);

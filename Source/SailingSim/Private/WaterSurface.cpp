@@ -996,7 +996,9 @@ void AWaterSurface::UpdateHullClip()
 		};
 		// The material drops the water below her bottom (FHullClipMap) wherever it is inside a hull; the main hull's
 		// shape is only for the V7 clip.
-		Set(TEXT("HullClipA"), O.X, O.Y, O.Z, 1.0);
+		// -SailingNoHullClip: the sea drawn through every hull (compare what the clip hides, with -SailingHideBoat).
+		static SailingArgs::FCachedFlag NoClipArg(TEXT("SailingNoHullClip"));
+		Set(TEXT("HullClipA"), O.X, O.Y, O.Z, NoClipArg.Get() ? 0.0 : 1.0);
 		Set(TEXT("HullClipB"), Ax.X, Ax.Y, Ax.Z, S.SheerZ);
 		Set(TEXT("HullClipC"), Ay.X, Ay.Y, Ay.Z, S.SheerRise);
 		Set(TEXT("HullClipD"), Az.X, Az.Y, Az.Z, S.SheerRiseFromX);

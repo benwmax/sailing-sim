@@ -80,11 +80,14 @@ bool FVisualHullClipTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("%s: water dropped outside the hulls (worst %.3f m)"), *Name, WorstPit), Pits, 0);
 		for (int32 H = 0; H < HullsSeen.Num(); ++H)
 		{
-			// Amas clear of the water at rest have no wet bottom; every immersed hull is clipped.
-			if (Cfg.Hulls[H].DepthOffset <= 0.0)
-			{
-				TestTrue(FString::Printf(TEXT("%s: hull %d clipped"), *Name, H), HullsSeen[H] > 10);
-			}
+			const FHullShape& S = Cfg.Hulls[H];
+			// Every immersed hull is clipped at rest; an ama clear of the water at rest is clipped once she heels it in
+			// (water 10 cm above its keel line amidships drops below its bottom).
+			if (S.DepthOffset <= 0.0) TestTrue(FString::Printf(TEXT("%s: hull %d clipped"), *Name, H), HullsSeen[H] > 10);
+			const double AmidX = S.HasStations() ? 0.5 * (S.Stations.front().X + S.Stations.back().X) : S.MaxBeamX;
+			const double KeelZ = S.BottomZ(AmidX, 0.0, Depth);
+			TestTrue(FString::Printf(TEXT("%s: hull %d clipped once immersed"), *Name, H),
+				KeelZ + 0.1 - Map.Drop(AmidX, S.CenterY, KeelZ + 0.1, 1.0) < KeelZ);
 		}
 		// Heeled 25 deg: water up to 15 cm above the lee sheer inside the gunwale still drops below the deck.
 		const FHullShape& Main = Cfg.Hulls[0];
