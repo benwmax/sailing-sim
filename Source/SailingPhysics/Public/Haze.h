@@ -1,0 +1,27 @@
+#pragma once
+
+#include "SailingPhysicsApi.h"
+
+namespace Sailing
+{
+	/**
+	 * Wide World Rendering PR 4 (docs/world-haze): the fog's density for a meteorological visibility. Koschmieder:
+	 * visibility = 3.912 / extinction (2% contrast). The exponential height fog was tuned so 25 km is a clear lake day
+	 * and 1.5 km a downpour, density = 0.06 / V(km) at the surface, which makes the extinction 65.2 x density per km.
+	 * The clamp used to stop at 40 km; a mistral day sees 60 to 80 km, so it stops at 80 km now.
+	 */
+	struct SAILINGPHYSICS_API FHaze
+	{
+		static constexpr double DensityPerInverseKm = 0.06;
+		static constexpr double MaxVisibilityKm = 80.0;
+		static constexpr double MinVisibilityKm = 0.5;
+
+		/** The fog density for a visibility (km), clamped to 0.5..80 km. */
+		static double FogDensity(double VisibilityKm);
+		/** The visibility (km) the fog shows at a density (Koschmieder: 3.912 / extinction). */
+		static double VisibilityKm(double FogDensity);
+		/** The fog's height falloff for a haze scale height (m): the density falls by e every ScaleHeightM. Unreal's
+		 *  falloff is per 1,000 world units (10 m), so 50 m is today's 0.2. */
+		static double HeightFalloff(double ScaleHeightM);
+	};
+}

@@ -834,6 +834,8 @@ if CHART_INFO:
         meta["land"] = CFG["land"]   # marseille-look: the land's dress (FLakeData::Land)
     if "time_zone" in CFG:
         meta["time_zone"] = CFG["time_zone"]
+    if "haze" in CFG:
+        meta["haze"] = {k: v for k, v in CFG["haze"].items() if not k.endswith("_note")}
     meta["sources"] = {"chart": CHART_INFO["chart"], "elevation": "; ".join(ELEVATION_USED) or "none",
                        "tides": TIDES_CFG.get("note", "none"), "buildings_landuse": "OpenStreetMap contributors, ODbL 1.0"}
     meta["harbours"] = CHART_INFO["harbours"]

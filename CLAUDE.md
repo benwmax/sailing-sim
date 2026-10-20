@@ -177,6 +177,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    drops its chunks by tile. Then `scripts/make-far-ring.sh TexasCoast`. Tests `SailingSim.World.Streaming.*`; bench view
    `stream-run` (`-SailingRun=<m/s>,<bearing>[,<turn after m>]` slides the world under the boat).
 
+25. Haze and far water (`docs/world-haze/`): `FHaze` (`Haze.h`: fog density for a visibility, clamped 0.5 to 80 km),
+   `EWeatherPreset::ClearMistral` (60 km, cloudless NW), a world's `"haze"` (`fog_scale_height_m`, `far_plane_km`;
+   `FLakeData::FogScaleHeightM`/`FarPlaneKm`). Band D: `Tools/venv/bin/python -I Tools/terrain/build_skyline.py
+   Marseille` bakes `<World>.skyline` (500 m GLO-90); `FSkyline` marches it on a worker every 500 m into the sky dome's
+   `Skyline` texture (`-SailingNoSkyline`). Tests `SailingSim.World.Haze`, `SailingSim.World.Skyline`.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in

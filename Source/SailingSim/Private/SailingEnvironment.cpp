@@ -17,6 +17,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Storm.h"
+#include "Haze.h"
+#include "Skyline.h"
+#include "Misc/FileHelper.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
@@ -363,6 +366,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateCloudLayers(CamPos);
 	UpdateSkyCache(CamPos, DeltaSeconds);
 	UpdateHaze();
+	UpdateSkyline(CamPos);
 	UpdateRain(CamPos);
 	UpdateRainCurtains(CamPos, DeltaSeconds);
 	if (WorldCollection)
@@ -1257,6 +1261,69 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	SkyMaterial->SetVectorParameterValue(TEXT("CacheParams"), FLinearColor(1.f, 0.f, kSkyCacheElMin, kSkyCacheElMax));
 }
 
+void ASailingEnvironment::UpdateSkyline(const FVector& CameraPos)
+{
+	constexpr int32 kAzimuths = 2048;
+	constexpr double kFromM = 45000.0, kToM = 160000.0;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || !SkyMaterial) return;
+	if (!Skyline)
+	{
+		static SailingArgs::FCachedFlag NoSkylineArg(TEXT("SailingNoSkyline"));
+		Skyline = MakeShared<Sailing::FSkyline, ESPMode::ThreadSafe>();
+		TArray<uint8> Bytes;
+		if (NoSkylineArg.Get() || !FFileHelper::LoadFileToArray(Bytes, *(FLakeData::DefaultDirectory() / (GM->GetLake().FileName + TEXT(".skyline"))), FILEREAD_Silent)
+			|| !Skyline->Load(Bytes.GetData(), Bytes.Num()))
+		{
+			SkyMaterial->SetVectorParameterValue(TEXT("SkylineP"), FLinearColor(0.f, 25.f, 0.f, 0.f));
+			return;
+		}
+		SkylineTex = UTexture2D::CreateTransient(kAzimuths, 1, PF_FloatRGBA);
+		SkylineTex->SRGB = false;
+		SkylineTex->Filter = TF_Bilinear;
+		SkylineTex->AddressX = TA_Wrap;
+		SkylineTex->AddressY = TA_Clamp;
+		SkylineTex->UpdateResource();
+		SkyMaterial->SetTextureParameterValue(TEXT("Skyline"), SkylineTex);
+		UE_LOG(LogSailing, Display, TEXT("Skyline: %s.skyline loaded (mountains %.0f to %.0f km)"), *GM->GetLake().FileName, kFromM / 1000.0, kToM / 1000.0);
+	}
+	if (!Skyline->IsValid()) return;
+	// The haze fades the mountains as it fades everything (Koschmieder: contrast exp(-3.912 d / V)).
+	SkyMaterial->SetVectorParameterValue(TEXT("SkylineP"), FLinearColor(1.f, float(GM->GetWeatherState().VisibilityKm), 0.f, 0.f));
+	if (bSkylinePending && PendingSkyline.IsReady())
+	{
+		bSkylinePending = false;
+		const TArray<float> Result = PendingSkyline.Get();
+		TArray<FFloat16Color>* Pixels = new TArray<FFloat16Color>();
+		Pixels->SetNum(kAzimuths);
+		for (int32 K = 0; K < kAzimuths; ++K)
+		{
+			FFloat16Color& P = (*Pixels)[K];
+			P.R = FFloat16(Result[K]);                       // elevation angle, rad
+			P.G = FFloat16(Result[kAzimuths + K] / 1000.f);  // distance, km
+			P.B = FFloat16(0.f);
+			P.A = FFloat16(1.f);
+		}
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, kAzimuths, 1);
+		SkylineTex->UpdateTextureRegions(0, 1, Region, kAzimuths * sizeof(FFloat16Color), sizeof(FFloat16Color), reinterpret_cast<uint8*>(Pixels->GetData()),
+			[Pixels](uint8*, const FUpdateTextureRegion2D* Rg) { delete Pixels; delete Rg; });
+	}
+	// Re-marched every 500 m (the parallax of a summit 45 km off is under a pixel per 500 m).
+	if (bSkylinePending || FVector::Dist2D(CameraPos, SkylineAt) < 50000.0) return;
+	SkylineAt = CameraPos;
+	bSkylinePending = true;
+	const double X = CameraPos.X / CmPerMeter, Y = CameraPos.Y / CmPerMeter, Eye = FMath::Max(CameraPos.Z / CmPerMeter, 1.0);
+	PendingSkyline = Async(EAsyncExecution::ThreadPool, [Sky = Skyline, X, Y, Eye, Count = kAzimuths, From = kFromM, To = kToM]()
+	{
+		std::vector<float> Angles, Distances;
+		Sky->Compute(X, Y, Eye, Count, From, To, Angles, Distances);
+		TArray<float> Out;
+		Out.Append(Angles.data(), int32(Angles.size()));
+		Out.Append(Distances.data(), int32(Distances.size()));
+		return Out;
+	});
+}
+
 void ASailingEnvironment::UpdateHaze()
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1264,7 +1331,8 @@ void ASailingEnvironment::UpdateHaze()
 	const FWeatherState& W = GM->GetWeatherState();
 	const int32 World = USailingSettings::Get()->World;
 	// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day and 1.5 km a downpour.
-	const float Density = FMath::Clamp(0.03f * (2.f / FMath::Max(float(W.VisibilityKm), 0.3f)), 0.0015f, 0.12f);
+	// Wide World Rendering PR 4: the clamp reaches 80 km now (a mistral day), FHaze (Haze.h).
+	const float Density = float(Sailing::FHaze::FogDensity(W.VisibilityKm));
 	UExponentialHeightFogComponent* F = Fog->GetComponent();
 	// Perf 4: each fog setter marks the fog's render state dirty when its value changes, and the engine then rebuilds
 	// the fog's scene proxy. The inscattering colour follows HazeLight (the metered light, new every frame) and the
@@ -1278,8 +1346,12 @@ void ASailingEnvironment::UpdateHaze()
 	{
 		return Current != Want && !Current.Equals(Want, 0.03f * FMath::Max3(Want.R, Want.G, Want.B));
 	};
-	const float Falloff = FMath::Lerp(0.2f, 0.05f, float(W.Rain));
-	if (Stepped(F->FogHeightFalloff, Falloff, 0.2f, 0.05f)) F->SetFogHeightFalloff(Falloff);
+	// The haze's thickness: 50 m on the Texas coast and lake (falloff 0.2); a world can give its own scale height
+	// (Marseille's sea haze lies under the dry air of a mistral, 400 m). Rain mixes it up toward 200 m.
+	const double ScaleHeight = GM->GetLake().FogScaleHeightM;
+	const float Dry = ScaleHeight > 0.0 ? float(Sailing::FHaze::HeightFalloff(ScaleHeight)) : 0.2f;
+	const float Falloff = FMath::Lerp(Dry, 0.05f, float(W.Rain));
+	if (Stepped(F->FogHeightFalloff, Falloff, Dry, 0.05f)) F->SetFogHeightFalloff(Falloff);
 	if (USailingSettings::Get()->Quality == ESailingQuality::Low)
 	{
 		if (Stepped(F->FogDensity, Density)) F->SetFogDensity(Density);

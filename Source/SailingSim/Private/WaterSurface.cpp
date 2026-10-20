@@ -571,7 +571,13 @@ void AWaterSurface::BuildRings()
 	// showed above it (docs/water-8/edge-mac).
 	TArray<FVector> Verts;
 	TArray<int32> Tris;
-	int32 PerSide = FarGridPerSide;
+	// Wide World Rendering PR 4: the far plane's size is the world's (40 km on the Texas coast, 60 km at Marseille, where
+	// the sea must meet the far ring's mountains), with as many vertices per kilometre so it follows the curvature as well.
+	if (const ASailingGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr)
+	{
+		if (GameMode->GetLake().IsLoaded()) FarPlaneSizeMeters = float(FMath::Clamp(GameMode->GetLake().FarPlaneKm, 20.0, 120.0) * 1000.0);
+	}
+	int32 PerSide = FMath::RoundToInt(FarGridPerSide * FarPlaneSizeMeters / 40000.f);
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingFarGrid="), PerSide); // measuring
 	BuildFarGrid(FarGridInnerHalfMeters(RingCount), 0.5f * FarPlaneSizeMeters, PerSide, Verts, Tris);
 	TArray<FVector> Normals;

@@ -15,6 +15,7 @@ namespace Sailing
 		case EWeatherPreset::Thunderstorm: return "Thunderstorm";
 		case EWeatherPreset::RandomDay: return "Random day";
 		case EWeatherPreset::Mistral: return "Mistral";
+		case EWeatherPreset::ClearMistral: return "Clear mistral";
 		default: return "?";
 		}
 	}
@@ -61,6 +62,12 @@ namespace Sailing
 		constexpr double kMistralWindSeaHs = 3.3, kMistralWindSeaTp = 7.0;
 		constexpr double kMistralSwellHs = 1.2, kMistralSwellTp = 9.0;
 		constexpr double kMistralClearedEase = 0.88; // the gale eases a little behind the squall line as the deck breaks
+		// Wide World Rendering PR 4: the mistral most days, dry and cloudless (Meteo-France's Marignane climatology: a
+		// strong mistral blows 20 to 30 kn with gusts a third higher; the air is cold and dry, the visibility 50 to 80 km:
+		// Mont Ventoux shows from Marseille), with the short wind sea it raises offshore.
+		constexpr double kClearMistralKnots = 24.0, kClearMistralGustKnots = 32.0, kClearMistralVisibilityKm = 60.0;
+		constexpr double kClearMistralAirC = 14.0, kClearMistralDewC = 1.0;
+		constexpr double kClearMistralWindSeaHs = 1.8, kClearMistralWindSeaTp = 5.5;
 		// The squall: a line of shower cloud with its own small cold pool (3 C, 500 m deep: shallow, the gale's air is cold
 		// already) moving with the gale. Behind its head the wind is the gale pushed by the pool, 36 kn, 41 at the head
 		// (FGustFront's edge boost): Bean's 40 kn gust front.
@@ -156,6 +163,13 @@ namespace Sailing
 				break;
 			case EWeatherPreset::Thunderstorm:
 				StormSky(S, T, 1.0);
+				break;
+			case EWeatherPreset::ClearMistral:
+				// Cloudless but for a few flat cumulus over the hills; the dry air leaves almost no haze.
+				Cu.Coverage = 0.03;
+				Cu.TopKm = Cu.BaseKm + 0.3;
+				Ci.Coverage = 0.0;
+				S.Haze = 0.03;
 				break;
 			case EWeatherPreset::Mistral:
 			{
@@ -524,6 +538,22 @@ namespace Sailing
 			W.SwellFromDeg = W.Wind.FromDegrees;
 			break;
 		}
+		case EWeatherPreset::ClearMistral:
+			W.Wind.SpeedKnots = kClearMistralKnots;
+			W.Wind.FromDegrees = std::isnan(PrevailingFromDeg) ? kMistralFromDeg : PrevailingFromDeg;
+			W.Wind.ShiftDegrees = 6.0;
+			W.Wind.ShiftPeriodSeconds = 300.0;
+			W.Wind.PersistentShiftDegrees = 4.0;
+			W.CloudCover = 0.03;
+			W.CloudTopKm = 1.5;
+			W.VisibilityKm = kClearMistralVisibilityKm;
+			W.FetchMeters = 60000.0;
+			W.WindSeaHsM = kClearMistralWindSeaHs;
+			W.WindSeaTpS = kClearMistralWindSeaTp;
+			W.SwellHsM = 0.6;
+			W.SwellTpS = 7.0;
+			W.SwellFromDeg = W.Wind.FromDegrees;
+			break;
 		default:
 			break;
 		}
@@ -551,6 +581,18 @@ namespace Sailing
 			W.Wind.AirMinusWaterC = kMistralAirC - kMistralWaterC;
 			W.Wind.MixedLayerMeters = kMistralMixedLayerM;
 			W.Wind.ClimateAirMinusWaterC = W.Wind.AirMinusWaterC; // the puffs are given for this air: no stability rescale
+			W.Wind.ClimateMixedLayerMeters = kMistralMixedLayerM;
+			W.Wind.PuffIntervalSeconds = 60.0 * kMistralPuffMinutes;
+		}
+		if (P == EWeatherPreset::ClearMistral)
+		{
+			W.Wind.GustIntensity = GustIntensityForFactor(kClearMistralGustKnots / kClearMistralKnots);
+			W.Wind.PuffIntensity = kMistralPuff;
+			W.AirC = kClearMistralAirC;
+			W.DewC = kClearMistralDewC;
+			W.Wind.AirMinusWaterC = kClearMistralAirC - kMistralWaterC;
+			W.Wind.MixedLayerMeters = kMistralMixedLayerM;
+			W.Wind.ClimateAirMinusWaterC = W.Wind.AirMinusWaterC;
 			W.Wind.ClimateMixedLayerMeters = kMistralMixedLayerM;
 			W.Wind.PuffIntervalSeconds = 60.0 * kMistralPuffMinutes;
 		}
