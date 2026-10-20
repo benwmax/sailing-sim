@@ -178,6 +178,8 @@ public:
 
 	/** Reference capture (-SailingCapture=<preset>): a reference camera, locked exposure, no HUD, telemetry CSV. */
 	bool IsCaptureMode() const { return CapturePreset != ECapturePreset::None; }
+	/** Bean's playtest: the keys every mapping context gets beside the rebindable rows (Esc opens the pause menu). */
+	static void MapFixedKeys(class UInputMappingContext* Context, const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
 	ECapturePreset GetCapturePreset() const { return CapturePreset; }
 	UCameraComponent* GetCaptureCamera() const { return CaptureCamera; }
 	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);
@@ -290,7 +292,6 @@ private:
 	void BuildKeyRows();
 	bool AssignKey(int32 Row, const FKey& Key);
 	void RebuildMappings();
-	static void MapFixedKeys(class UInputMappingContext* Context, const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
 	void PollKeyCapture();
 	bool bKeysOpen = false, bCapturingKey = false;
 	uint64 CaptureFrame = 0;
