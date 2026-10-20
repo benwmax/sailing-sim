@@ -21,3 +21,11 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
   park) most; white cloth keeps the Dacron ageing it had. The Sunfish's club boats fade 0.4-0.8 (the player's 0.6).
 
 ![Before (left), after (middle) and the well from above (right), Ultra on the lake](sunfish-before-after-deck.jpg)
+
+## ILCA
+
+- **Mast:** the two-piece spar, its collar over the joint 2.85 m up, the black gooseneck fitting the boom pins to, the
+  rotating mast's step ring and the cunningham hook.
+- **Boom:** the outhaul cleat and fairlead, the clew's tie-down strap round the boom end and the vang key.
+
+![Before (left), after (middle) and close (right), Ultra on the lake](ilca-before-after.jpg)
