@@ -10,6 +10,9 @@
 #include "UI/SailHud.h"
 #include "UI/SailLoading.h"
 #include "LakeData.h"
+#include "SailboatPawn.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
 #include "Dom/JsonObject.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/FileHelper.h"
@@ -352,5 +355,24 @@ bool FSailingUIGraphicsRowsTest::RunTest(const FString&)
 		&& S->CloudQuality == -1 && S->WaterQuality == -1 && S->FoliageQuality == -1 && S->ViewDistanceQuality == -1 && S->MotionBlur == -1);
 	for (int32 K = 0; K < UE_ARRAY_COUNT(Rows); ++K) S->*Rows[K] = Kept[K];
 	S->bVSync = bVSync0;
+	return true;
+}
+
+/**
+ * Bean's playtest (Oct 20): Esc opens the pause menu. It is mapped to the Menu action as a fixed key, next to whatever
+ * the rebindable rows hold, so a saved Input.ini can't lose it; and Tab, the Menu row's default, is still there.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIEscMenuTest, "SailingSim.UI.EscOpensMenu", UIFlags)
+bool FSailingUIEscMenuTest::RunTest(const FString& Parameters)
+{
+	UInputMappingContext* Context = NewObject<UInputMappingContext>();
+	UInputAction* Menu = NewObject<UInputAction>();
+	TMap<FName, TObjectPtr<UInputAction>> Actions;
+	Actions.Add(TEXT("Menu"), Menu);
+	ASailboatPawn::MapFixedKeys(Context, Actions);
+	const bool bEsc = Context->GetMappings().ContainsByPredicate([&](const FEnhancedActionKeyMapping& M) { return M.Action == Menu && M.Key == EKeys::Escape; });
+	TestTrue(TEXT("Esc is the Menu action's"), bEsc);
+	const bool bTab = GetDefault<USailingInputSettings>()->GetDefaults().ContainsByPredicate([](const FSailingKeyBinding& B) { return B.Action == TEXT("Menu") && B.Key == EKeys::Tab; });
+	TestTrue(TEXT("Tab stays the Menu row's default"), bTab);
 	return true;
 }
