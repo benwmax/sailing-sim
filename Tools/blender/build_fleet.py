@@ -608,6 +608,17 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
                 q = [(pa[0], pa[1], za), (pb[0], pb[1], zb), (pb[0], pb[1], zb + 0.075 - 0.025 * t1), (pa[0], pa[1], za + 0.075 - 0.025 * t0)]
                 hull.face(q if side > 0 else list(reversed(q)), "Deck")
                 hull.face(list(reversed(q)) if side > 0 else q, "Deck")
+        # Fleet hero: the well's moulded lip, a rounded rim along its edge (the deck's own gelcoat), and the hiking strap's
+        # worn webbing ends screwed to the sole.
+        rim, rr = [], 0.05
+        for (cx, cy, a0) in ((x1 - rr, w - rr, 0.0), (x0 + rr, w - rr, 90.0), (x0 + rr, -w + rr, 180.0), (x1 - rr, -w + rr, 270.0)):
+            for k in range(5):
+                a = math.radians(a0 + 90.0 * k / 4)
+                px, py = cx + rr * math.cos(a), cy + rr * math.sin(a)
+                rim.append((px, py, H.deck_z(px, py) + 0.004))
+        tube(hull, rim + rim[:1], 0.011, "Deck", 6, cap=False)
+        for xs_ in (x0 + 0.06, x1 - 0.06):
+            box(hull, (xs_, 0, sole(xs_) + 0.004), (0.05, 0.05, 0.008), "Graphics")
         cleat(x1 + 0.05, -0.18, H.deck_z(x1 + 0.05, -0.18), 0.0, 0.12)
         line = [(mast_x - 0.05, -0.03, mast_step_z + 0.04), (x1 + 0.4, -0.12, H.deck_z(x1 + 0.4, -0.12) + 0.01), (x1 + 0.08, -0.18, H.deck_z(x1 + 0.08, -0.18) + 0.045)]
         tube(hull, line, 0.003, "Rope", 4, cap=False)
@@ -1012,8 +1023,17 @@ def build_mast():
         else:
             socket("LowerTang", (mast_x, 0, hounds_z - 0.1), "Mast")
     socket("MastBase", (mast_x - 0.06, 0, mast_step_z + 0.2), "Mast")
-    # Wind indicator at the masthead.
-    tube(m, [(mast_x, 0, top), (mast_x - 0.25, 0, top + 0.25)], 0.004, "Stainless", 4)
+    if TAG == "Sunfish":
+        # Fleet hero: the Sunfish's masthead is a black halyard cap with its sheave (no wind indicator); the halyard comes
+        # down the forward face to the deck.
+        tube(m, [(mast_x, 0, top - 0.02), (mast_x, 0, top + 0.06)], 0.5 * d + 0.006, "BlackPlastic", 14)
+        box(m, (mast_x + 0.5 * d + 0.012, 0, top + 0.02), (0.03, 0.012, 0.06), "BlackPlastic")
+        tube(m, [(mast_x + 0.5 * d + 0.02, 0, top + 0.02), (mast_x + 0.5 * d + 0.012, 0, mast_step_z + 0.3)], 0.003, "Rope", 4, cap=False)
+        # Chalky anodising bands where the sail ties and the mast meets the step.
+        tube(m, [(mast_x, 0, mast_step_z), (mast_x, 0, mast_step_z + 0.06)], 0.5 * d + 0.004, "BlackPlastic", 14)
+    else:
+        # Wind indicator at the masthead.
+        tube(m, [(mast_x, 0, top), (mast_x - 0.25, 0, top + 0.25)], 0.004, "Stainless", 4)
     return m.finish(smooth_angle=60.0, origin=(mast_x, 0, mast_step_z))
 
 
@@ -1038,7 +1058,17 @@ def build_boom():
         # The Sunfish's upper spar (the yard) lies along the sail's luff from the tack to the head.
         lx0, z0 = main[0]["luff_x"], main[0]["z_bottom"]
         lx1, z1 = main[-1]["luff_x"], main[-1]["z_top"]
-        tube(m, [(lx0 + 0.05, 0, z0 - 0.01), (lx1 - 0.05, 0, z1 + 0.05)], 0.024, "Aluminium", 10)
+        a, b = Vector((lx0 + 0.05, 0, z0 - 0.01)), Vector((lx1, 0, z1))
+        tube(m, [tuple(a), tuple(b)], 0.024, "Aluminium", 10)
+        # Fleet hero: black end caps, the yard's halyard eye a third of the way up, and the gooseneck jaw where yard and
+        # boom meet at the tack (stainless, through-bolted).
+        u = (b - a).normalized()
+        tube(m, [tuple(b), tuple(b + u * 0.03)], 0.026, "BlackPlastic", 10)
+        tube(m, [tuple(a - u * 0.03), tuple(a)], 0.026, "BlackPlastic", 10)
+        eye = a + (b - a) * 0.36
+        box(m, (eye.x + 0.03, 0, eye.z), (0.05, 0.014, 0.02), "Stainless")
+        box(m, (gx - 0.02, 0, gz + 0.02), (0.09, 0.05, 0.06), "Stainless")
+        tube(m, [(gx - 0.02, -0.03, gz + 0.02), (gx - 0.02, 0.03, gz + 0.02)], 0.006, "Stainless", 6)
     return m.finish(smooth_angle=60.0, origin=(gx, 0, gz))
 
 

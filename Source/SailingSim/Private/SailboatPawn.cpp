@@ -591,6 +591,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Mid->SetScalarParameterValue(TEXT("FullBattens"), Lay.Full);
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Main.NumStrips > 0 ? float(C.Main.Strips[C.Main.NumStrips - 1].ZTop - C.Main.Strips[0].ZBottom) : 1.f);
+		Mid->SetScalarParameterValue(TEXT("Fade"), Livery.SailFade);   // fleet hero: the coloured cloth's sun fade
 	}
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
@@ -612,6 +613,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		// The jibs match their mains' colours (no battens).
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout >= 2.f ? Lay.Layout : 0.f);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
+		Mid->SetScalarParameterValue(TEXT("Fade"), Livery.SailFade);
 	}
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
