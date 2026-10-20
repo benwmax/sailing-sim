@@ -220,7 +220,7 @@ private:
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
 	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; };
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
@@ -462,7 +462,12 @@ private:
 	double RunMaxHeelDeg = 0.0;
 	Sailing::FWindField FallbackWind;
 	double WaterSurfaceZ = 0.0; // cm
-	FVector StartLocation = FVector::ZeroVector;
+	FVector StartLocation = FVector::ZeroVector;   // the map frame, cm (SailingFrame::ToMapCm)
+	/** World streaming, measuring: -SailingRun slides the world under the player's boat (UpdateRun). */
+	void UpdateRun(float DeltaSeconds);
+	bool bRunning = false;
+	double RunTravelled = 0.0;
+	double RunSign = 1.0;
 	float StartYaw = 0.f;
 
 	/** Held axis values from the input system, applied each frame as rates. */

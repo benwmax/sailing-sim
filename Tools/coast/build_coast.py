@@ -830,6 +830,8 @@ if CHART_INFO:
     meta["datum"] = CFG["datum"]["name"]
     meta["coast"] = True
     meta["iala"] = CFG.get("iala", "A")
+    if "land" in CFG:
+        meta["land"] = CFG["land"]   # marseille-look: the land's dress (FLakeData::Land)
     if "time_zone" in CFG:
         meta["time_zone"] = CFG["time_zone"]
     if "haze" in CFG:

@@ -13,5 +13,8 @@
   },
   "GulfPassage": {
     "outer_km": 40
+  },
+  "TexasCoast": {
+    "outer_km": 40
   }
 }

@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "SailingHUD.h"
@@ -557,7 +558,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (UStaticMeshComponent* T : JibTelltales) T->SetVisibility(false);
 	for (UStaticMeshComponent* T : LeechTelltales) T->SetVisibility(false);
 	// Per-class sail layouts (Visual V7): the Sunfish's striped sail, the Hobie's coloured panels and seven full battens,
-	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens.
+	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens; the maxi's black
+	// membrane main with six full battens (Layout 4: fibre paths from the corners, a few wide panels).
 	struct FSailLayout { float Layout, Battens, Full; };
 	auto LayoutFor = [](EBoatType T) -> FSailLayout
 	{
@@ -569,6 +571,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		case EBoatType::Corsair880: return { 3.f, 5.f, 1.f };
 		case EBoatType::Lagoon42: return { 3.f, 5.f, 1.f };
 		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f };
+		case EBoatType::Maxi: return { 4.f, 6.f, 1.f };
 		default: return { 0.f, 4.f, 0.f };
 		}
 	};
@@ -592,7 +595,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
 	// (light enough that the dark sail numbers still read). The player's boat keeps the club's Dacron.
-	FLinearColor SailColor(0.70f, 0.68f, 0.63f);
+	FLinearColor SailColor = Lay.Layout == 4.f ? FLinearColor(0.035f, 0.036f, 0.04f) : FLinearColor(0.70f, 0.68f, 0.63f);
 	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7)
 	{
 		const uint32 H = (GetUniqueID() * 2654435761u) >> 8;
@@ -607,7 +610,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	{
 		Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
 		// The jibs match their mains' colours (no battens).
-		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout == 2.f ? 2.f : (Lay.Layout == 3.f ? 3.f : 0.f));
+		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout >= 2.f ? Lay.Layout : 0.f);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
 	}
 	JibSail->SetVisibility(C.HasJib());
@@ -703,7 +706,7 @@ void ASailboatPawn::BeginPlay()
 		Water = *It;
 		WaterSurfaceZ = It->GetSurfaceZ();
 	}
-	StartLocation = GetActorLocation();
+	StartLocation = SailingFrame::ToMapCm(GetWorld(), GetActorLocation());
 	StartYaw = GetActorRotation().Yaw;
 	if (const ASailingGameMode* GM = bTrafficBoat ? nullptr : GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -1061,6 +1064,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 {
 	if (PhysicsTask.IsPending()) { SAILING_PERF_SCOPE(BoatPhysics); PhysicsTask.Wait(); }
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
@@ -1990,11 +1994,11 @@ void ASailboatPawn::UpdateDrillVisuals()
 	{
 		const bool bShow = DrillRunner.IsActive() && I < Marks.Num() && I >= DrillRunner.GetNextMark();
 		MarkMeshes[I]->SetVisibility(bShow);
-		if (bShow) MarkMeshes[I]->SetWorldLocation(FVector(Marks[I].X * CmPerMeter, Marks[I].Y * CmPerMeter, WaterSurfaceZ + 60.f));
+		if (bShow) MarkMeshes[I]->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), Marks[I].X, Marks[I].Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + 60.f));
 	}
 	const bool bDummy = DrillRunner.IsActive() && DrillRunner.HasDummy();
 	DummyMesh->SetVisibility(bDummy);
-	if (bDummy) DummyMesh->SetWorldLocation(FVector(DrillRunner.GetDummy().X * CmPerMeter, DrillRunner.GetDummy().Y * CmPerMeter, WaterSurfaceZ + 10.f));
+	if (bDummy) DummyMesh->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), DrillRunner.GetDummy().X, DrillRunner.GetDummy().Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + 10.f));
 }
 
 void ASailboatPawn::StartSampleLayer()
@@ -2221,11 +2225,50 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 	}
 }
 
+void ASailboatPawn::UpdateRun(float DeltaSeconds)
+{
+	// World streaming, measuring (docs/world-streaming): -SailingRun=<m/s>,<bearing deg>[,<turn after m>] slides the world
+	// under the boat: she sails as she would (her velocity, and so the water and the apparent wind, are her own) while her
+	// position runs on along the bearing, out and back every <turn after> metres. The streaming bench and soak cross tiles
+	// and re-centres in seconds this way. She leaves the terrain and its obstacles behind (no grounding on the way).
+	static uint32 Gen = MAX_uint32;
+	static double Speed = 0.0, Bearing = 0.0, TurnAfter = 0.0;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Speed = 0.0;
+		FString Arg;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingRun="), Arg, false))
+		{
+			TArray<FString> P;
+			Arg.ParseIntoArray(P, TEXT(","));
+			Speed = P.Num() > 0 ? FCString::Atod(*P[0]) : 0.0;
+			Bearing = P.Num() > 1 ? FCString::Atod(*P[1]) : 0.0;
+			TurnAfter = P.Num() > 2 ? FCString::Atod(*P[2]) : 0.0;
+		}
+	}
+	if (Speed <= 0.0 || DeltaSeconds <= 0.f) return;
+	if (!bRunning)
+	{
+		bRunning = true;
+		Boat.SetTerrain(nullptr);
+		Boat.SetObstacles(nullptr);
+	}
+	const double Step = Speed * DeltaSeconds;
+	RunTravelled += Step;
+	if (TurnAfter > 0.0 && RunTravelled >= TurnAfter) { RunTravelled = 0.0; RunSign = -RunSign; }
+	const double A = FMath::DegreesToRadians(Bearing);
+	FBoatState& S = Boat.GetMutableState();
+	S.Position.X += RunSign * Step * FMath::Cos(A);
+	S.Position.Y += RunSign * Step * FMath::Sin(A);
+}
+
 void ASailboatPawn::ApplyStateToTransform()
 {
 	const Vec3 Origin = Boat.OriginPosition();
 	const Quat& Q = Boat.GetState().Orientation;
-	SetActorLocationAndRotation(FVector(Origin.X * CmPerMeter, Origin.Y * CmPerMeter, Origin.Z * CmPerMeter + WaterSurfaceZ), FQuat(Q.X, Q.Y, Q.Z, Q.W));
+	// World streaming: the physics is in the map frame (doubles), the actor in the render frame (SailingFrame.h).
+	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), Origin.X, Origin.Y, Origin.Z) + FVector(0.0, 0.0, WaterSurfaceZ), FQuat(Q.X, Q.Y, Q.Z, Q.W));
 }
 
 void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
@@ -2958,9 +3001,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->Save();
 		break;
 	case RowBoat:
-		// The prologue's maxi is not offered here (prologue step 3: only the prologue sails her until her model lands).
-		do S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
-		while (S->BoatType == int32(EBoatType::Maxi));
+		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:
@@ -3200,7 +3241,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		bCaptureBearingResolved = true;
 		const float Bearing = FMath::IsNaN(CaptureBearing) ? -90.f : CaptureBearing;
 		const Vec3 O = Boat.OriginPosition();
-		const FVector Origin(O.X * CmPerMeter, O.Y * CmPerMeter, 0.0);
+		const FVector Origin = SailingFrame::ToWorld(GetWorld(), O.X, O.Y, 0.0);
 		const float Heading = float(FMath::RadiansToDegrees(T.Heading));
 		FVector Location;
 		FRotator Rotation;
@@ -3208,12 +3249,13 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		if (CapturePreset == ECapturePreset::ShoreTele)
 		{
 			// A tripod: it stays where it was set up and only pans.
-			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = Location; bShoreStandSet = true; }
+			// (Kept in the map frame: a re-centre moves the render frame under it.)
+			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = SailingFrame::ToMapCm(GetWorld(), Location); bShoreStandSet = true; }
 			if (bShoreStandSet)
 			{
 				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + 0.33f * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
-				Location = ShoreStand;
-				Rotation = (Aim - ShoreStand).Rotation();
+				Location = SailingFrame::FromMapCm(GetWorld(), ShoreStand);
+				Rotation = (Aim - Location).Rotation();
 			}
 		}
 		// Measuring the sky: -SailingCamWorld=<north m>,<east m>,<up m>,<heading deg>,<pitch deg> fixes the camera in the
@@ -3225,7 +3267,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			CamWorld.ParseIntoArray(P, TEXT(","));
 			if (P.Num() >= 5)
 			{
-				Location = StartLocation + FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter;
+				Location = SailingFrame::FromMapCm(GetWorld(), StartLocation) + FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter;
 				Location.Z = WaterSurfaceZ + FCString::Atof(*P[2]) * CmPerMeter;
 				Rotation = FRotator(FCString::Atof(*P[4]), FCString::Atof(*P[3]), 0.f);
 			}
@@ -3282,7 +3324,7 @@ void ASailboatPawn::WriteCaptureSettings() const
 	const FCapturePresetInfo& Info = CapturePresetInfo(CapturePreset);
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
-	const FVector L = CaptureCamera->GetComponentLocation();
+	const FVector L = SailingFrame::ToMapCm(GetWorld(), CaptureCamera->GetComponentLocation());   // the map frame
 	const FRotator R = CaptureCamera->GetComponentRotation();
 	double SunElevation = 0.0, SunAzimuth = 0.0;
 	FString Area, Date;

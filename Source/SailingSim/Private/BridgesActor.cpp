@@ -1,4 +1,5 @@
 #include "BridgesActor.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "SailingSim.h"
@@ -50,8 +51,11 @@ void ABridgesActor::BeginPlay()
 	TMap<FIntPoint, FKitGeometry> Tiles, ShoreTiles;
 	All.SplitTiles(UWorldKitLibrary::BridgeTileM, Tiles);
 	Shore.SplitTiles(UWorldKitLibrary::ShoreTileM, ShoreTiles);
-	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
-	const int32 ShoreBaked = SpawnKitTiles(this, ShoreTiles, TEXT("Shore_") + Lake.FileName, bProcedural, KitMaterial, Tiled, Mobility);
+	// World streaming: a composed world (the Texas coast) uses its frame member's baked tiles (the same metres); its other
+	// members' structures fall back to procedural tiles until they are baked for it (docs/world-streaming).
+	const FString Kit = Lake.SourceFor(TEXT("kit"));
+	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Bridges_") + Kit, bProcedural, KitMaterial, Tiled, Mobility);
+	const int32 ShoreBaked = SpawnKitTiles(this, ShoreTiles, TEXT("Shore_") + Kit, bProcedural, KitMaterial, Tiled, Mobility);
 	BuildTraffic();
 	// Graphics G2 (Medium and up): the riprap is boulders. The baked mound is only its core now (WorldKit.cpp); the
 	// world kit's six limestone blocks are piled over it, five across every 1.2 m, each sized, tipped and turned.
@@ -118,7 +122,7 @@ void ABridgesActor::BeginPlay()
 			// it every frame (5 fps of render thread on High, coast-day). Lumen's screen traces still see them.
 			C->bVisibleInRayTracing = false;
 			C->RegisterComponent();
-			C->AddInstances(RockX[K], false, true);
+			C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), RockX[K]), false, true);
 			Tiled.Add(C);
 			Boulders += RockX[K].Num();
 		}
@@ -217,7 +221,7 @@ void ABridgesActor::Tick(float DeltaSeconds)
 		// Follow the terrain's tide offset in 2 cm steps (moving them every frame would keep invalidating their shadows).
 		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
-		if (!FMath::IsNearlyEqual(GetActorLocation().Z, Z, 0.1)) SetActorLocation(FVector(0.0, 0.0, Z));
+		if (!GetActorLocation().Equals(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z), 0.1)) SetActorLocation(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z));
 	}
 	if (VehicleMeshes.Num() == 0) return;
 	const float Dt = FMath::Min(DeltaSeconds, 0.1f);
@@ -238,7 +242,7 @@ void ABridgesActor::Tick(float DeltaSeconds)
 			const double T = (V.S - L.Cum[I - 1]) / FMath::Max(L.Cum[I] - L.Cum[I - 1], 1.0);
 			const FVector P = FMath::Lerp(L.Points[I - 1], L.Points[I], T);
 			const FVector D = L.Points[I] - L.Points[I - 1];
-			X.Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X))), 0.f), P));
+			X.Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X))), 0.f), SailingFrame::FromMapCm(GetWorld(), P)));
 		}
 		VehicleMeshes[K]->BatchUpdateInstancesTransforms(0, X, true, true, false);
 	}

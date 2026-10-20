@@ -1,4 +1,5 @@
 #include "NightLightsActor.h"
+#include "SailingFrame.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
@@ -91,7 +92,7 @@ void ANightLightsActor::Tick(float DeltaSeconds)
 		return;
 	}
 	FVector Camera = FVector::ZeroVector;
-	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = Cam->GetCameraLocation() / CmPerMeter;
+	if (APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Camera = SailingFrame::ToMapCm(GetWorld(), Cam->GetCameraLocation()) / CmPerMeter;
 	// The nearest fixtures get the pool (a partial sort; a few thousand fixtures at 4 Hz).
 	TArray<TPair<double, int32>> Near;
 	Near.Reserve(Fixtures.Num());
@@ -104,7 +105,7 @@ void ANightLightsActor::Tick(float DeltaSeconds)
 		const FKitLight& F = Fixtures[Near[I].Value];
 		const FLightKind& K = Kinds[F.Kind];
 		UPointLightComponent* L = Pool[I];
-		L->SetWorldLocation(F.Position * CmPerMeter + FVector(0.0, 0.0, TideZ));
+		L->SetWorldLocation(SailingFrame::FromMapCm(GetWorld(), F.Position * CmPerMeter) + FVector(0.0, 0.0, TideZ));
 		L->SetIntensity(K.Lumens * Scale);
 		L->SetLightColor(K.Color);
 		L->SetAttenuationRadius(K.RadiusM * CmPerMeter);

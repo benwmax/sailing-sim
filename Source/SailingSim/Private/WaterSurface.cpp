@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "SailingFrame.h"
 #include "SeaState.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
@@ -63,8 +64,10 @@ namespace
 	{
 		switch (World)
 		{
-		// Galveston Bay: shallow, silty, grey-green; about 0.6 m of Secchi depth.
-		case 1: return { FLinearColor(0.15f, 0.20f, 0.14f), FLinearColor(2.3f, 1.8f, 2.4f) };
+		// Galveston Bay: shallow, silty, grey-green; about 0.6 m of Secchi depth. The streamed Texas coast (4) is the bay's
+		// water, with the Gulf's where the swell mask lets the open sea in (WaterAlbedoSea).
+		case 1:
+		case 4: return { FLinearColor(0.15f, 0.20f, 0.14f), FLinearColor(2.3f, 1.8f, 2.4f) };
 		// The Gulf off Galveston: green, a few metres of visibility (river silt and plankton); red goes first. Graphics G6:
 		// greener and less saturated than the V4 teal (0.04, 0.20, 0.21), which read as tropical under an overcast.
 		case 2: return { FLinearColor(0.08f, 0.16f, 0.13f), FLinearColor(0.62f, 0.32f, 0.42f) };
@@ -413,10 +416,23 @@ float AWaterSurface::WhitecapScaleFor(int32 World)
 	switch (World)
 	{
 	case 1: return 0.7f; // Galveston Bay: brackish
+	case 4: return 0.7f; // the streamed Texas coast: the bay's, and the Gulf's beyond the jetties (WhitecapScaleHere)
 	case 2: return 1.f;  // the Gulf: sea water, Monahan's law as measured
 	case 3: return 1.f;  // the Mediterranean: sea water
 	default: return 0.4f; // fresh water: bubbles coalesce and burst sooner, so caps are fewer and fade faster
 	}
+}
+
+float AWaterSurface::WhitecapScaleHere() const
+{
+	// World streaming: on the Texas coast the water is the bay's inside and the Gulf's outside, so the caps scale with
+	// the open sea's share where the boat is (the ocean mask: 0 in the bay, 1 offshore).
+	const int32 World = USailingSettings::Get()->World;
+	if (World != 4) return WhitecapScaleFor(World);
+	const FWaveField* W = GetWaves();
+	const FOcean* O = W ? W->GetOcean() : nullptr;
+	const float Open = O ? float(FMath::Clamp(O->MaskAt(BoatPos.X, BoatPos.Y), 0.0, 1.0)) : 0.f;
+	return FMath::Lerp(WhitecapScaleFor(1), WhitecapScaleFor(2), Open);
 }
 
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
@@ -810,7 +826,7 @@ void AWaterSurface::UpdateDetail()
 	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there). Below 12 kn
 	// only the share that breaks (WhitecapOnset); never quite zero, so the threshold is extrapolated below every sample.
 	const double MeanMs = Waves->GetParams().WindSpeedKnots * kKnot;
-	const double CapTarget = FMath::Max(3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleFor(USailingSettings::Get()->World)
+	const double CapTarget = FMath::Max(3.84e-6 * FMath::Pow(FMath::Max(MeanMs, 0.0), 3.41) * WhitecapScaleHere()
 		* WhitecapOnset(float(Waves->GetParams().WindSpeedKnots)), 1e-7);
 	const double CapTime = Ahead;
 	TArray<FWaveComponent> Long(Waves->GetComponents(), kWaveComponents);
@@ -819,9 +835,9 @@ void AWaterSurface::UpdateDetail()
 	float CapShort = 1.f;
 	if (const FSeaMap* Sea = Waves->GetSeaMap(); Sea && Sea->IsValid())
 	{
-		const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
+		const FVector2D Cam = SailingFrame::ToMap(GetWorld(), UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation());
 		float Ratio[kSeaChannels];
-		Sea->Sample(Cam.X / CmPerMeter, Cam.Y / CmPerMeter, Ratio);
+		Sea->Sample(Cam.X, Cam.Y, Ratio);
 		for (int32 I = 0; I < kSeaLongComponents && I < Long.Num(); ++I) Long[I].Amplitude *= Ratio[I];
 		CapShort = Ratio[kSeaLongComponents];
 	}
@@ -1085,7 +1101,8 @@ void AWaterSurface::UpdateShoreMap()
 		return;
 	}
 	const FVector2D Origin(FMath::GridSnap(BoatPos.X - Half, 16.f), FMath::GridSnap(BoatPos.Y - Half, 16.f));
-	PendingShore = Async(EAsyncExecution::ThreadPool, [Lake, Origin, Level]()
+	// World streaming: a copy of the terrain (it shares the heights): the tiles may be swapped while the worker reads.
+	PendingShore = Async(EAsyncExecution::ThreadPool, [Lake, Terrain = Lake->Terrain, Origin, Level]()
 	{
 		// Reads only data the game thread doesn't change while sailing (the tide moves the level, read once here).
 		FShoreFrame Out;
@@ -1096,7 +1113,7 @@ void AWaterSurface::UpdateShoreMap()
 		{
 			for (int32 C = 0; C < kShoreRes; ++C)
 			{
-				Out.Depth[R * kShoreRes + C] = float(Lake->Terrain.DepthAt(Origin.X + (R + 0.5) * kShoreCellM, Origin.Y + (C + 0.5) * kShoreCellM));
+				Out.Depth[R * kShoreRes + C] = float(Terrain.DepthAt(Origin.X + (R + 0.5) * kShoreCellM, Origin.Y + (C + 0.5) * kShoreCellM));
 			}
 		});
 		// Docks, piers and breakwaters standing in the water: the waves lap against them too.
@@ -1148,7 +1165,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
 	const double T = GetSimTime();
 	const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
-	const FVector2D CamM(Cam.X / CmPerMeter, Cam.Y / CmPerMeter);
+	const FVector2D CamM = SailingFrame::ToMap(GetWorld(), Cam);   // droplets fly in the map frame
 	const Vec3 WindV = Wind ? Wind->VelocityAt(Vec3(CamM.X, CamM.Y, 2.0), T) : Vec3();
 	const FVector WindAt2m(WindV.X, WindV.Y, 0.0);
 	auto Emit = [&](const FVector& P, const FVector& V, float Size)
@@ -1229,7 +1246,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 
 	// Spray reaching the camera's glass (lens drops on High, SailingEnvironment).
 	LensSpray = FMath::Max(0.f, LensSpray - 0.35f * Dt);
-	const FVector CamM3(Cam.X / CmPerMeter, Cam.Y / CmPerMeter, (Cam.Z - GetActorLocation().Z) / CmPerMeter);
+	const FVector CamM3(CamM.X, CamM.Y, (Cam.Z - GetActorLocation().Z) / CmPerMeter);
 	for (const FDroplet& D : Droplets)
 	{
 		if (D.Age < 0.6f && FVector::DistSquared(D.P, CamM3) < 4.f) { LensSpray = 1.f; break; }
@@ -1254,7 +1271,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		{
 			const FDroplet& D = Droplets[I];
 			const float Fade = 1.f - FMath::Square(D.Age / D.Life);
-			Xf[I] = FTransform(FQuat::Identity, FVector(D.P.X * CmPerMeter, D.P.Y * CmPerMeter, D.P.Z * CmPerMeter + Z0), FVector(D.Size * Fade));
+			Xf[I] = FTransform(FQuat::Identity, SailingFrame::ToWorld(GetWorld(), D.P.X, D.P.Y, D.P.Z) + FVector(0.0, 0.0, Z0), FVector(D.Size * Fade));
 		}
 		else
 		{
@@ -1464,7 +1481,7 @@ void AWaterSurface::UpdateMaterial()
 		// body's whitecap scale.
 		const float MeanMs = float(Waves->GetParams().WindSpeedKnots * kKnot);
 		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
-			WhitecapScaleFor(USailingSettings::Get()->World)));
+			WhitecapScaleHere()));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -1754,7 +1771,7 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	if (bFoamPending || !Done || Done->JCap.empty() || Done->N <= 0) return;
 	if (!FoamState) FoamState = MakeShared<FFoamGrid, ESPMode::ThreadSafe>();
 	const FVector CamCm = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
-	const FVector2D Cam(CamCm.X / CmPerMeter, CamCm.Y / CmPerMeter);
+	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CamCm);
 	const double T = GetSimTime();
 	FVector2D Drift = FVector2D::ZeroVector;
 	if (const FWindField* Wind = GetWind())

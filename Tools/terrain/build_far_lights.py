@@ -38,7 +38,8 @@ TEXAS_LANES = {
     "GulfPassage": [{"name": "Galveston fairway", "kn": 12.0, "pts": [[29.335, -94.700], [29.20, -94.55], [28.95, -94.35]]},
                     {"name": "Freeport fairway", "kn": 11.0, "pts": [[28.93, -95.30], [28.80, -95.15], [28.60, -95.00]]}],
 }
-FAR_RADIUS_M = {"RayHubbard": 30000.0, "GalvestonBay": 45000.0, "GulfPassage": 45000.0}
+TEXAS_LANES["TexasCoast"] = TEXAS_LANES["GulfPassage"]   # world streaming: the bay and the passage as one coast
+FAR_RADIUS_M = {"RayHubbard": 30000.0, "GalvestonBay": 45000.0, "GulfPassage": 45000.0, "TexasCoast": 45000.0}
 
 
 def world_cfg(name):
@@ -105,7 +106,9 @@ def build(world):
 
     # Lit shore: the houses binned to 100 m.
     shore = {}
-    hp = os.path.join(DATA, f"{world}.houses")
+    # A composed world (world streaming) reads its frame member's houses (the same metres).
+    houses_from = json.load(open(os.path.join(DATA, f"{world}.json"))).get("members", {}).get("houses", world)
+    hp = os.path.join(DATA, f"{houses_from}.houses")
     if os.path.exists(hp):
         data = open(hp, "rb").read()
         count = struct.unpack("<I", data[8:12])[0]

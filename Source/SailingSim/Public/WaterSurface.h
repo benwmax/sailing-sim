@@ -59,6 +59,8 @@ public:
 	/** W0: whitecap coverage against the open sea's (Monahan) by water body. Fresh water foams less (smaller, shorter-lived
 	 *  bubbles: about 0.4 of the sea's coverage on the lake), the brackish bay about 0.7, the Gulf the full law. */
 	static float WhitecapScaleFor(int32 World);
+	/** The scale where the boat is (WhitecapScaleFor, but the streamed Texas coast's by the open sea's share there). */
+	float WhitecapScaleHere() const;
 	/** Light air: the share of Monahan's cover that breaks below 12 kn. Monahan's power law is fitted in a breeze and
 	 *  still gives 0.04% on the lake at 10 kn, enough for a few metre-long caps in view; Callaghan et al. (2008, GRL 35,
 	 *  L23609) put the onset of breaking at 3.7 m/s with cover growing as the cube of the wind above it. 1 from 12 kn,
