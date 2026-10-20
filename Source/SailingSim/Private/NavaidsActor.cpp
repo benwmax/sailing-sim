@@ -129,7 +129,18 @@ bool ANavaidsActor::BuildModels()
 			// Beacons: a three-pile dolphin standing on the bottom with its dayboard; a light structure is a steel tower.
 			const bool bTower = N.Kind == TEXT("light");
 			const double Top = bTower ? FMath::Max(N.Light.HeightM, 6.0) : FMath::Max(N.Light.HeightM, 4.5);
-			if (bTower)
+			// Harbour kit: on a European coast (IALA A: Marseille) a light stands on a whitewashed masonry tower with its top
+			// in the light's colour (the first colour that is not white), a little stouter as it gets taller.
+			UInstancedStaticMeshComponent* Mole = bTower && GM->GetLake().Iala == TEXT('A') ? ModelIsm(TEXT("SM_Light_MoleTower"), false) : nullptr;
+			if (Mole)
+			{
+				int32 Band = N.Colours.Num() > 0 ? N.Colours.Last() : 0;
+				for (int32 C : N.Colours) if (C != 1) { Band = C; break; }
+				const FLinearColor BandCol = Band == 0 ? (N.Light.Colours.size() > 0 ? PaintOf(int32(N.Light.Colours[0])) : Col) : PaintOf(Band);
+				const double S = FMath::Clamp(FMath::Sqrt(Top / 9.68), 0.8, 1.6);
+				Paint(Mole, Mole->AddInstance(FTransform(FRotator(0.f, Yaw, 0.f), FVector(N.X, N.Y, 0.0) * CmPerMeter, FVector(S, S, Top / 9.68))), BandCol);
+			}
+			else if (bTower)
 			{
 				UInstancedStaticMeshComponent* Ism = ModelIsm(TEXT("SM_Light_Tower"), false);
 				if (!Ism) return false;

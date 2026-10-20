@@ -65,12 +65,24 @@ def setup(mesh, nanite, slot_map, sockets):
     unreal.EditorAssetLibrary.save_loaded_asset(mesh)
 
 
-def import_boat(tag, dest):
+def add_lods(mesh, nanite):
+    """The prologue's maxi: her Nanite fallback (what draws where Nanite is off, and for ray tracing) at 6% of the
+    triangles, about 10k for the hull. The rest are small (the mast, not Nanite since it bends in its material, is 1k
+    triangles). A classic LOD chain needs the editor's static mesh subsystem, which a commandlet does not have."""
+    if nanite:
+        ns = mesh.get_editor_property("nanite_settings")
+        ns.set_editor_property("fallback_percent_triangles", 0.06)
+        mesh.set_editor_property("nanite_settings", ns)
+
+
+def import_boat(tag, dest, lods=False):
     meta = json.load(open(os.path.join(MODELS, f"{tag}_sockets.json")))
     for name, nanite in ((f"SM_{tag}_Hull", True), (f"SM_{tag}_Mast", False), (f"SM_{tag}_Boom", True), (f"SM_{tag}_Rudder", True)):
         mesh = import_fbx(os.path.join(MODELS, name + ".fbx"), dest, name)
         origin = meta["origins"][name]
         sockets = {s: [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]] for s, p in meta["sockets"].items() if meta["owner"][s] == name}
+        if lods:
+            add_lods(mesh, nanite)
         setup(mesh, nanite, {"Aluminium": "MastAluminium"} if name.endswith("Mast") else {}, sockets)
         b = mesh.get_bounding_box()
         unreal.log(f"Imported {name}: {len(sockets)} sockets, Nanite {nanite}, bounds {b.min} .. {b.max}")
@@ -151,7 +163,11 @@ import sys
 # Visual V7: the other seven boats (Tools/blender/build_fleet.py). `-- fleet` imports only them.
 FLEET = ("Sunfish", "ILCA7", "Catalina22", "Catalina30", "Hobie16", "Corsair880", "Lagoon42")
 only_fleet = "fleet" in sys.argv
-if "dress" in sys.argv or "gearonly" in sys.argv or "j22only" in sys.argv:
+if "maxi" in sys.argv:
+    # The prologue's maxi (Tools/boats/maxi/build_maxi.py): Nanite with LODs under it, no berthed dress.
+    import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
+    unreal.log("Import done")
+elif "dress" in sys.argv or "gearonly" in sys.argv or "j22only" in sys.argv:
     # Graphics G6: `-- dress` imports only the berthed dresses of the keelboats, `-- gearonly` only the crew's gear.
     if "dress" in sys.argv:
         for tag in ("J22", "Catalina22", "Catalina30"):
@@ -172,6 +188,8 @@ else:
     for tag in FLEET:
         if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
             import_boat(tag, f"/Game/Boats/{tag}")
+    if os.path.exists(os.path.join(MODELS, "Maxi_sockets.json")):
+        import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
     unreal.log("Import done")
     if sys.platform != "win32":  # see above: on Windows let -run=pythonscript return
         os._exit(0)

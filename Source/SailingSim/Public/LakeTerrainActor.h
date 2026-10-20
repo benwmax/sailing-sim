@@ -121,7 +121,9 @@ private:
 	 *  once they are all in, the near chunks stop at the ring's inner edge (NearCapM; 20 km without a ring). */
 	FFarRingLoader FarLoader;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FarTiles;   // by tile index (null until loaded)
-	TArray<TPair<int32, UStaticMesh*>> FarArrived;
+	// Held strongly until added: a tile left waiting on its render data (uncooked, cold DDC) must outlive a garbage
+	// collection (the loader lets go of its reference when it hands the mesh over).
+	TArray<TPair<int32, TStrongObjectPtr<UStaticMesh>>> FarArrived;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> FarMaterialBase;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> FarMaterial;
 	FVector2D FarCamera = FVector2D(1e12, 1e12);

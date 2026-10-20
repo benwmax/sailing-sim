@@ -107,6 +107,16 @@ Counts from the bake and OSM; the first column is the model to build, the last w
 | Marseille town houses (trois-fenetres, 3-4 storeys, tile roofs) | most of the 84,000 houses: an archetype set, not one each | the city |
 | Calanques limestone cliff and scree material | the whole south coast | Calanques |
 
+### Built
+
+- **Harbour light towers** (harbour-lights): `SM_Light_MoleTower` in `Tools/blender/build_navaids.py`, a whitewashed masonry
+  tower on a concrete plinth, its top third in the light's colour (the structure's first colour that is not white), a
+  railed gallery and the lantern under a painted dome (1.3k triangles). `ANavaidsActor` stands every light structure on
+  it on an IALA A coast, scaled to the light's height (and a little stouter as it gets taller); IALA B coasts keep the
+  USCG steel skeleton tower.
+
+![Before and after: the mole head light at the Vieux-Port entrance (Ultra)](kit/mole-light-before-after.jpg)
+
 ### Built: the landmarks (harbour-landmarks)
 
 `Tools/blender/build_landmarks.py` adds four hero models, matched in `ALandmarksActor` by the chart's French names and at their own sizes (the chart's heights at Marseille are a gallery's or a roof's): `SM_Landmark_Church` (a church, limestone nave under Roman tile, round apse, square bell tower with its wrought-iron campanile, 28 m: "Eglise" and, at 18 m, every "Chapelle"), `SM_Landmark_Fort` (a crenellated curtain, keep and three round, 16 m: the forts, chateaux and batteries), `SM_Landmark_Lighthouse` (the Planier, 70 m; the other phares at m) and `SM_Landmark_NotreDameGarde` (crypt platform, nave and bell tower in white and green courses, gilded dome Virgin, 62 m on her hill). Before this none of Marseille's landmarks matched a model. New `MI_World` slots:
