@@ -5,6 +5,8 @@
 #include "Async/Future.h"
 #include "TreePlacement.h"
 #include "FarRing.h"
+#include "LakeTerrain.h"
+#include <memory>
 #include "LakeTerrainActor.generated.h"
 
 class UProceduralMeshComponent;
@@ -40,6 +42,8 @@ public:
 	/** Wide World Rendering PR 1: far coast tiles drawn now, and in all (0 without a ring). */
 	int32 GetFarTilesVisible() const;
 	int32 GetFarTiles() const { return FarTiles.Num(); }
+	/** World streaming: the far ring's tiles within reach of the camera are in (or the world has none). */
+	bool IsFarRingSettled() const { return !FarLoader.Data() || (FarLoader.IsDone() && FarArrived.Num() == 0); }
 
 private:
 	struct FChunkMesh
@@ -49,20 +53,48 @@ private:
 		TArray<FVector> Normals;
 		TArray<FLinearColor> Colors;
 	};
+	/**
+	 * World streaming (docs/world-streaming): a chunk is a square of one tile of the world's index (FWorldStreamer): 128
+	 * cells on grids of 10 m and coarser (five a side on a 6.4 km tile of 10 m, one on a tile of 50 m), 64 on the lake's
+	 * 5 m. Chunks exist only near the camera (within the near terrain's cap) and while their tile is resident.
+	 */
 	struct FChunk
 	{
-		int32 Row = 0, Col = 0;   // chunk indices
+		int32 Tile = INDEX_NONE;  // in the world's tile index
+		int32 Row = 0, Col = 0;   // chunk indices from the index's origin (on this chunk size)
+		int32 Cells = 128;        // per side
+		double Cell = 10.0;       // m
+		double OriginX = 0.0, OriginY = 0.0;   // its south-west corner (map frame)
 		int32 Lod = -1;           // step in cells (1, 2, 4, 8; 0 the 1 m shore detail), -1 = not built
 		int32 Wanted = 8;
 		bool bBuilding = false;
 		bool bHasDetail = false;  // the lidar shore detail covers part of it
+		bool bShadow = false;     // the step being built casts shadows (within about 2 km)
 		TObjectPtr<UProceduralMeshComponent> Mesh;
 		TFuture<FChunkMesh> Future;
+	};
+	/** What a chunk's mesh is built from, read on a worker: a copy of the terrain (it shares the heights) and, on a streamed
+	 *  world, the chunk's tile. */
+	struct FChunkSource
+	{
+		Sailing::FLakeTerrain Terrain;
+		std::shared_ptr<const Sailing::FTerrainTile> Tile;
+		double OriginX = 0.0, OriginY = 0.0, Cell = 10.0;
+		int32 Cells = 128;
+		int32 GridRow0 = 0, GridCol0 = 0;   // a whole grid's node indices of the chunk's corner
+		int32 TileRow0 = 0, TileCol0 = 0;   // the tile's node indices of the chunk's corner
+		bool bGarrigue = false;             // marseille-look: the land's Mediterranean dress (FLakeData::IsGarrigue)
 	};
 
 	const FLakeData* GetLake() const;
 	/** HideBelow: the bed deeper than this (m, map frame) is not meshed (it can't be seen through the water). */
-	static FChunkMesh BuildChunk(const FLakeData* Lake, int32 ChunkRow, int32 ChunkCol, int32 Step, double HideBelow);
+	static FChunkMesh BuildChunk(const FChunkSource& Source, int32 Step, double HideBelow);
+	/** Makes, keeps and drops chunks by distance and their tiles' residency (world streaming); returns how many it still
+	 *  has to make (a few a look). */
+	int32 UpdateChunkSet(const FLakeData& Lake, double CamX, double CamY);
+	const class FWorldStreamer* GetStreamer() const;
+	/** Chunk cells per side for a spacing. */
+	static int32 ChunkCellsFor(double Cell) { return Cell >= 9.99 ? 128 : 64; }
 	/** How deep the water hides the bed: where its colour has absorbed 99% of the light coming back (Visual V4). */
 	double HideBelow = -1e9;
 	void PlaceTrees();
@@ -72,7 +104,19 @@ private:
 	void PlaceBuildings();
 	void PlaceBridgesAndDocks();
 
-	TArray<FChunk> Chunks;
+	TMap<FIntPoint, TUniquePtr<FChunk>> Chunks;   // by chunk row and column
+	uint32 ChunkGeneration = 0;   // the streamer's generation the chunk set was last made for
+	FVector2D ChunkCamera = FVector2D(1e12, 1e12);
+	int32 ChunksMade = 0, ChunksDropped = 0;
+public:
+	/** World streaming: the chunks there are now, made and dropped so far. */
+	int32 GetNumChunks() const { return Chunks.Num(); }
+	int32 GetChunksMade() const { return ChunksMade; }
+	int32 GetChunksDropped() const { return ChunksDropped; }
+	/** Far ring tiles dropped (out of reach) so far. */
+	int32 GetFarTilesDropped() const { return FarDropped; }
+private:
+	int32 FarDropped = 0;
 	/** Wide World Rendering PR 1 (FarRing.h): the far coast ring's tiles, loaded without blocking and added a few a frame;
 	 *  once they are all in, the near chunks stop at the ring's inner edge (NearCapM; 20 km without a ring). */
 	FFarRingLoader FarLoader;
@@ -83,7 +127,6 @@ private:
 	FVector2D FarCamera = FVector2D(1e12, 1e12);
 	double NearCapM = 20000.0;
 	void UpdateFarRing(const FVector2D& Camera);
-	int32 ChunkRows = 0, ChunkCols = 0;
 	int32 Pending = 0;
 	// Perf 1 fix 7: where and when the chunks' detail was last chosen, and how many are building.
 	FVector2D LodCamera = FVector2D(1e12, 1e12);
@@ -119,6 +162,17 @@ private:
 	TArray<int32> TreeTile;         // per tree: its tile
 	TArray<uint8> TreeBand;         // per tree: 0 none, 1 near, 2 mid, 3 far
 	TArray<int32> TreeComp, TreeSlot;
+	/** The tree tiles' ids by 4 km cell (TreeTile's values). */
+	TMap<FIntPoint, int32> TreeTileIds;
+	static constexpr double kTreeTileM = 4000.0;
+	/** World streaming: the model trees of each world tile as it becomes resident (placed on a worker). */
+	void UpdateTreeTiles(const FVector2D& Camera);
+	TSet<int32> TreeTilesPlaced;
+	TFuture<TArray<struct FTreeInstance>> TreeTileJob;
+	int32 TreeTileJobTile = INDEX_NONE;
+	/** 100 m cells within 200 m of a lidar crown: the canopy map's trees give way there (PlaceCrownTrees). */
+	TSharedPtr<TSet<FIntPoint>> CrownBand;
+	static void RemoveTreesInHouses(const struct FLakeData& Lake, TArray<struct FTreeInstance>& Trees);
 	int32 DriftCursor = 0;
 	void UpdateModelTrees(const FVector2D& Camera);
 	FTransform TreeTransform(const struct FTreeInstance& I, bool bNear, const FVector2D& Camera, FTransform* OutProxy) const;

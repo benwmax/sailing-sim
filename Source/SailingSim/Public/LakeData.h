@@ -200,7 +200,13 @@ struct SAILINGSIM_API FLakeData
 	/** Where the map frame sits on the earth (the bake's "projection", else the build script's centre): lat/lon <->
 	 *  map metres for anything that persists (docs/geo-anchor). */
 	Sailing::FGeoAnchor Anchor;
-	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage"
+	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage", "TexasCoast"
+	/** World streaming (docs/world-streaming): the heights stream from <FileName>.tiles (FWorldStreamer) instead of one grid. */
+	bool bStreamed = false;
+	/** A composed world's files read from a member in the same map frame, by kind ("houses", "crowns", "piers", "current"). */
+	TMap<FString, FString> Members;
+	/** The world whose file of this kind to read (the member's, or this world's own). Baked kit tiles go by it too. */
+	FString SourceFor(const TCHAR* Kind) const { const FString* M = Members.Find(Kind); return M ? *M : FileName; }
 	bool bOcean = false;         // open sea: the FFT ocean with swell (the Gulf passage)
 	TArray<TPair<FString, FVector2D>> Passage; // the passage plan's waypoints, in order
 

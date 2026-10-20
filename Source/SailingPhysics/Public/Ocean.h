@@ -79,6 +79,12 @@ namespace Sailing
 		double MaskAt(double X, double Y) const;
 		struct FMask { int Rows = 0, Cols = 0; double Cell = 100.0, X0 = 0.0, Y0 = 0.0; std::vector<float> Values; };
 		const FMask& GetMask() const { return Mask; }
+		/** World streaming: the mask BuildMask makes, for a swell from SwellFromRad of significant height HsTotal, built on its
+		 *  own (a worker marches it over a window of a streamed world) and installed with SetMask between steps. */
+		static FMask MakeMask(const FLakeTerrain& Terrain, double SwellFromRad, double InHs, double Cell = 100.0);
+		void SetMask(FMask&& InMask) { Mask = std::move(InMask); ++MaskGeneration; }
+		/** Changes with every mask (the renderer uploads it again). */
+		uint64_t GetMaskGeneration() const { return MaskGeneration; }
 
 		/** The spectrum in 16 wavelength bins (2 to 500 m, log spaced): variance and mean travel direction of each. */
 		const std::vector<struct FWaveBand>& Bands() const { return BandList; }
@@ -95,6 +101,7 @@ namespace Sailing
 		FMask Mask;
 
 		uint64_t Generation = 0;
+		uint64_t MaskGeneration = 0;
 		static constexpr int CacheSize = 8;
 		mutable std::array<std::array<FGrid, CacheSize>, NumCascades> Cache;
 		mutable std::array<int, NumCascades> CacheNext{};

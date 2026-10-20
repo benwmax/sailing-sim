@@ -44,7 +44,7 @@ case "$SCOPE" in
 	water) VIEWS="beam8,beat15,storm,marina,gulf-sea,bridge,helm-eye,coast-day" ;;
 	boats) VIEWS="beam8,beat15,marina,crew,helm-eye,slip" ;;
 	crew) VIEWS="beat15,crew,helm-eye,slip" ;;
-	world) VIEWS="marina,bridge,coast-night,marina-night,helm-eye,slip,coast-day,marseille-port,far-coast,far-coast-night" ;;
+	world) VIEWS="marina,bridge,coast-night,marina-night,helm-eye,slip,coast-day,marseille-port,far-coast,far-coast-night,stream-run" ;;
 	night) VIEWS="coast-night,marina-night,helm-eye" ;;
 	ui) VIEWS="beam8,helm-eye" ;;
 	all) VIEWS=""; TIERS=(Low Medium High); MAIN_CHECK=0 ;;

@@ -1,4 +1,5 @@
 #include "MarinaActor.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "BoatLivery.h"
@@ -166,7 +167,8 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			const bool bWear = bSail || bPaint;
 			if (bWear) C->NumCustomDataFloats = FWearSeed::TotalFloats;
 			C->RegisterComponent();
-			C->AddInstances(KV.Value[K], false, true);
+			TArray<FTransform> X = KV.Value[K];
+			C->AddInstances(SailingFrame::ToWorldTransforms(Owner->GetWorld(), X), false, true);
 			const TArray<FWearSeed>& Ws = Wear[KV.Key][K];
 			for (int32 I = 0; I < Ws.Num() && bWear; ++I)
 			{
@@ -342,7 +344,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		C->RegisterComponent();
-		C->AddInstances(RockX[K], false, true);
+		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), RockX[K]), false, true);
 		Rocks.Add(C);
 	}
 

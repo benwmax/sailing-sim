@@ -29,10 +29,30 @@ def new_material(name):
     return ASSETS.create_asset(name, FOLDER, unreal.Material, unreal.MaterialFactoryNew())
 
 
+# World streaming (docs/world-streaming): the render frame's origin follows the boat (UWorld::SetNewWorldOrigin every 20 km,
+# SailingFrame.h), while every map-anchored thing a material reads (wave phases, wind and sea maps, the weather map, the
+# storm front, world-aligned patterns) is in the world's map frame. So every world, camera and object position node a
+# material reads is put back in the map frame: the position plus MPC_World.RenderOrigin (cm, set by the game mode). All
+# of them move together, so distances and directions between them are unchanged.
+MAP_FRAME_POSITIONS = ("MaterialExpressionWorldPosition", "MaterialExpressionCameraPositionWS", "MaterialExpressionObjectPositionWS")
+
+
 def node(mat, cls, x, y, **props):
     n = MEL.create_material_expression(mat, cls, x, y)
     for k, v in props.items():
         n.set_editor_property(k, v)
+    if cls.__name__ in MAP_FRAME_POSITIONS:
+        origin = MEL.create_material_expression(mat, unreal.MaterialExpressionCollectionParameter, x - 220, y + 40)
+        origin.set_editor_property("collection", world_collection())
+        origin.set_editor_property("parameter_name", "RenderOrigin")
+        mask = MEL.create_material_expression(mat, unreal.MaterialExpressionComponentMask, x - 120, y + 40)
+        for c, on in (("r", True), ("g", True), ("b", True), ("a", False)):
+            mask.set_editor_property(c, on)
+        MEL.connect_material_expressions(origin, "", mask, "")
+        add = MEL.create_material_expression(mat, unreal.MaterialExpressionAdd, x + 120, y)
+        MEL.connect_material_expressions(n, "", add, "A")
+        MEL.connect_material_expressions(mask, "", add, "B")
+        return add
     return n
 
 
@@ -309,8 +329,8 @@ return normalize(float3(-sx, -sy, 1.0));
 def build_water():
     mat = new_material("M_Water")
     mat.set_editor_property("tangent_space_normal", False)
-    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0)
-    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
     cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, 100)
     time = scalar(mat, "WaveTime", 0.0, -1600, 200)
     fade = scalar(mat, "WaveFadeMeters", 900.0, -1600, 300)
@@ -1684,8 +1704,8 @@ def build_water_v4():
     and Single Layer Water: light absorbed and scattered by the water body itself (olive-brown and murky on the lake,
     grey-green on the bay, blue-green offshore), the bottom showing through in the shallows, the hull refracted below."""
     mat = new_material("M_WaterV4")
-    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0)
-    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
     cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1800, 100)
     time = scalar(mat, "WaveTime", 0.0, -1800, 200)
     fade = scalar(mat, "WaveFadeMeters", 900.0, -1800, 300)
@@ -2661,7 +2681,12 @@ return off * 100.0;
 """
 
 
+_WORLD_MPC = []
+
+
 def world_collection():
+    if _WORLD_MPC:
+        return _WORLD_MPC[0]
     path = f"{WORLD_FOLDER}/MPC_World"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         mpc = unreal.load_asset(path)
@@ -2671,6 +2696,14 @@ def world_collection():
         p.set_editor_property("parameter_name", "Wind")
         p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
         mpc.set_editor_property("vector_parameters", [p])
+    # RenderOrigin (world streaming): the render frame's origin in the map frame, cm (node() adds it to every position).
+    vectors = list(mpc.get_editor_property("vector_parameters"))
+    if not any(str(x.get_editor_property("parameter_name")) == "RenderOrigin" for x in vectors):
+        o = unreal.CollectionVectorParameter()
+        o.set_editor_property("parameter_name", "RenderOrigin")
+        o.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
+        vectors.append(o)
+        mpc.set_editor_property("vector_parameters", vectors)
     # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
     scalars = list(mpc.get_editor_property("scalar_parameters"))
     # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
@@ -2685,6 +2718,7 @@ def world_collection():
             scalars.append(n)
     mpc.set_editor_property("scalar_parameters", scalars)
     unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    _WORLD_MPC.append(mpc)
     return mpc
 
 
