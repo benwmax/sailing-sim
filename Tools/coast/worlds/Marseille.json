@@ -98,6 +98,13 @@
       "lon": 5.516,
       "depth_m": 5.0,
       "radius_m": 700.0
+    },
+    {
+      "name": "Vieux-Port entrance channel",
+      "lat": 43.2953,
+      "lon": 5.356,
+      "depth_m": 8.0,
+      "radius_m": 420.0
     }
   ],
   "harbour_default_depth_m": 3.0,
@@ -236,43 +243,38 @@
   "passage": [
     [
       "Vieux-Port entrance",
-      43.2952,
-      5.357
+      43.2955,
+      5.36
     ],
     [
-      "Chateau d'If",
-      43.277,
-      5.329
+      "Off the Pharo",
+      43.295,
+      5.348
     ],
     [
-      "Off Cap Croisette",
-      43.205,
-      5.33
+      "Off Chateau d'If",
+      43.2775,
+      5.332
+    ],
+    [
+      "West of Maire",
+      43.212,
+      5.312
     ],
     [
       "Off Riou",
-      43.168,
+      43.16,
       5.39
     ],
     [
       "Off the Calanque d'En-Vau",
-      43.19,
+      43.188,
       5.5
     ],
     [
       "Cassis entrance",
       43.211,
       5.535
-    ],
-    [
-      "Off Cap Canaille",
-      43.195,
-      5.555
-    ],
-    [
-      "La Ciotat, off Ile Verte",
-      43.165,
-      5.615
     ]
   ],
   "ports": [
