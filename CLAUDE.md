@@ -544,8 +544,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   float their own volume (`FBoatConfig::AppendageVolume`), reefs can change the jib (`ReefJibFraction`), a wheel has a
   rate (`WheelHardOverSeconds`). Estimated polar: `Tools/boats/maxi/estimate_polar.py`. `FSceneLimits` (EasyAssists.h)
   is the scene's cap and anti-broach, applied after Easy mode's while a scene runs. The prologue sails her on the
-  Gulf's offshore spot (`setting.reefs`; `-SailingPrologueBoat=J22` is the stand-in); she is off the Boat screen and
-  the pause menu until her model lands (the PC's list is in the README).
+  Gulf's offshore spot (`setting.reefs`; `-SailingPrologueBoat=J22` is the stand-in); her hero model is
+  `Tools/boats/maxi/build_maxi.py` (`import_boats.py maxi`, `/Game/Boats/Maxi`), on the Boat screen and the pause menu.
 - Prologue gale (step 4, `docs/prologue/README.md`): `EWeatherPreset::Mistral` (32 kn gusting 40, 1.5 mm/h, a low fast
   deck, `FOceanParams::WindSeaHs`/`WindSeaTp` Hs 3.3 at 7 s on a 1.2 m sea with the wind: 3.5 m); its squall is an
   `FGustFront` with an `FSquallLine` (`FWeatherState::bSquall`: no storm layer, no lightning, no burst), cued by a step's

@@ -2779,6 +2779,107 @@
         ]
       },
       "research_notes": "Lives at Galveston in the sim; salt-air wear profile rather than lake."
+    },
+    {
+      "id": "maxi",
+      "name": "Maxi 100 (made-up)",
+      "kind": "racing maxi",
+      "dimensions": {
+        "loa_m": 30.48,
+        "lwl_m": 29.6,
+        "beam_m": 7.2,
+        "draft_m": {
+          "standard": 6.0
+        },
+        "displacement_kg": 42000,
+        "sources": [
+          "Tools/boats/maxi/ref.json (the PC's made-up design)"
+        ],
+        "notes": "The prologue's boat; no real design, name, sponsor or sail number."
+      },
+      "colour_schemes": [
+        {
+          "id": "graphite",
+          "weight": 0.6,
+          "hull_hex": "#2E3236",
+          "deck_hex": "#7A7E82",
+          "nonskid_hex": "#5C6064",
+          "bottom_hex": "#1C1E21",
+          "stripes": [],
+          "notes": "Dark grey topsides, grey deck: the look of the type (made up).",
+          "confidence": "low"
+        },
+        {
+          "id": "white",
+          "weight": 0.4,
+          "hull_hex": "#ECECE8",
+          "deck_hex": "#8A8E92",
+          "nonskid_hex": "#666A6E",
+          "bottom_hex": "#1C1E21",
+          "stripes": [],
+          "notes": "White topsides, grey deck (made up).",
+          "confidence": "low"
+        }
+      ],
+      "wear": {
+        "profile_weights": {
+          "club": 0.0,
+          "race": 1.0,
+          "charter": 0.0
+        },
+        "zones": [
+          {
+            "zone": "topsides",
+            "kind": "scuff",
+            "intensity": {"race": [0.25, 0.5], "charter": [0.25, 0.5]},
+            "notes": "Fender, sheet and crew scuffs along the rail and the transom: a hard-raced boat."
+          },
+          {
+            "zone": "deck",
+            "kind": "oxidation",
+            "intensity": {"race": [0.15, 0.3], "charter": [0.15, 0.3]},
+            "notes": "Sun on the deck's paint and the non-skid's tops."
+          },
+          {
+            "zone": "waterline",
+            "kind": "stain",
+            "intensity": {"race": [0.1, 0.2], "charter": [0.1, 0.2]},
+            "notes": "Kept clean; a faint line between hauls."
+          },
+          {
+            "zone": "fittings",
+            "kind": "rust",
+            "intensity": {"race": [0.0, 0.05], "charter": [0.0, 0.05]},
+            "notes": "Titanium and stainless: next to none."
+          }
+        ]
+      },
+      "sail_number": {
+        "required": false,
+        "probability": 0.0,
+        "format": "{n}",
+        "number_range": [
+          1,
+          99
+        ],
+        "notes": "No sail number: the made-up boat carries no real one."
+      },
+      "sails": [
+        {
+          "sail": "main",
+          "cloth": "membrane (carbon/aramid, black film)",
+          "panel_layout": "membrane",
+          "battens": {
+            "count": 6,
+            "type": "full"
+          }
+        },
+        {
+          "sail": "jib",
+          "cloth": "membrane (carbon/aramid, black film)",
+          "panel_layout": "membrane"
+        }
+      ]
     }
   ]
 }

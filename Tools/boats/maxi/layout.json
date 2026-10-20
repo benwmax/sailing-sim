@@ -1,0 +1,17 @@
+{
+  "_about": "Kit parts on the maxi (Tools/boatkit/bk_parts.py), body frame metres; on: deck (on the deck surface), pit (the cockpit floor). mirror: also at -y. yaw in degrees about Z.",
+  "parts": [
+    {"part": "SteeringWheel", "x": -13.0, "y": 2.15, "on": "pit", "mirror": true, "kw": {"diameter": 1.95}},
+    {"part": "GrinderPedestal", "x": -6.2, "y": 0.0, "on": "pit"},
+    {"part": "GrinderPedestal", "x": -7.6, "y": 0.0, "on": "pit"},
+    {"part": "GrinderPedestal", "x": -9.0, "y": 0.0, "on": "pit"},
+    {"part": "Winch70", "x": -7.0, "y": 2.55, "on": "deck", "mirror": true},
+    {"part": "Winch70", "x": -9.2, "y": 2.75, "on": "deck", "mirror": true, "kw": {"scale": 0.85}},
+    {"part": "Winch70", "x": -10.6, "y": 0.0, "on": "pit", "kw": {"scale": 0.9}},
+    {"part": "Winch70", "x": -12.0, "y": 3.0, "on": "deck", "mirror": true, "kw": {"scale": 0.75}},
+    {"part": "Winch70", "x": -4.0, "y": 1.35, "on": "deck", "mirror": true, "kw": {"scale": 0.65}},
+    {"part": "TravellerHeavy", "x": -11.4, "y": 0.0, "on": "pit", "yaw": 90, "kw": {"length": 4.4}},
+    {"part": "ClutchBank", "x": -4.55, "y": 1.25, "on": "deck", "mirror": true, "yaw": 180, "kw": {"count": 4}},
+    {"part": "GenoaTrackHeavy", "x": -3.2, "y": 2.95, "on": "deck", "mirror": true, "kw": {"length": 4.8}}
+  ]
+}
