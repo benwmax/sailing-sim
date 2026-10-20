@@ -140,6 +140,24 @@ def needed_glo(world):
     return sorted(names)
 
 
+def deflate_float_tiles(fh, page):
+    """A GLO-30 Cloud Optimized GeoTIFF without the imagecodecs package: DEFLATE tiles of float32 with the floating-point
+    predictor (TIFF Technical Note 3: each row's bytes split into planes, most significant first, then differenced)."""
+    import zlib
+    tw, th = page.tilewidth, page.tilelength
+    out = np.zeros((page.imagelength, page.imagewidth), np.float32)
+    across = -(-page.imagewidth // tw)
+    for k, (off, size) in enumerate(zip(page.dataoffsets, page.databytecounts)):
+        fh.seek(off)
+        raw = np.frombuffer(zlib.decompress(fh.read(size)), np.uint8).reshape(th, 4 * tw)
+        raw = np.cumsum(raw, axis=1, dtype=np.uint8)
+        tile = np.ascontiguousarray(raw.reshape(th, 4, tw).transpose(0, 2, 1)).view(">f4")[..., 0]
+        r, c = (k // across) * th, (k % across) * tw
+        h, w = min(th, page.imagelength - r), min(tw, page.imagewidth - c)
+        out[r:r + h, c:c + w] = tile[:h, :w]
+    return out
+
+
 class Glo:
     """The GLO-90 tiles on disk (with --ultra the GLO-30 ones first, GLO-90 where a 30 m tile is missing), sampled
     bilinearly by latitude and longitude."""
@@ -158,7 +176,10 @@ class Glo:
         if True:
             with tifffile.TiffFile(path) as tif:
                 page = tif.pages[0]
-                dem = page.asarray().astype(np.float64)
+                try:
+                    dem = page.asarray().astype(np.float64)
+                except ValueError:
+                    dem = deflate_float_tiles(tif.filehandle, page).astype(np.float64)
                 tie = page.tags["ModelTiepointTag"].value
                 scale = page.tags["ModelPixelScaleTag"].value
             self.tiles[name] = (dem, tie[3], tie[4], scale[0], scale[1])
