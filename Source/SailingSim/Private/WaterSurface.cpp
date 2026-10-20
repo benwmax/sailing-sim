@@ -797,6 +797,8 @@ void AWaterSurface::UpdateDetail()
 			UploadPackedMips(DetailBMap, Done->B, Done->N);
 			UploadPackedMips(DetailCMap, Done->C, Done->N);
 			WaterMaterial->SetVectorParameterValue(TEXT("CapTable"), FLinearColor(Done->CapFirst, Done->CapStep, 0.f, 0.f));
+			for (int32 K = 0; K < 4; ++K) CapsLast[K] = Done->CapThr[K];
+			CapsLastSlope = Done->CapSlope;
 			// W8: the threshold for this sea's share of caps, eased (each frame's quantile is of 16k samples).
 			if (Done->CapSlope > 0.f)
 			{
@@ -842,7 +844,13 @@ void AWaterSurface::UpdateDetail()
 		CapShort = Ratio[kSeaLongComponents];
 	}
 	const float FoldScale = DrawnFoldScaleAt(float(Waves->GetParams().WindSpeedKnots));
-	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long)]() -> FDetailUploadPtr
+	// The cap thresholds are solved at the short waves' rate (each solve is eased into what is drawn over about 12 frames,
+	// CapThrSmooth); between solves the blend reuses the last.
+	const bool bSolveCaps = CapsSolvedAt < 0.0 || CapsLastSlope <= 0.f || Ahead < CapsSolvedAt || Ahead - CapsSolvedAt >= 0.999 * kDetailStep;
+	if (bSolveCaps) CapsSolvedAt = Ahead;
+	const double LastThr[4] = { CapsLast[0], CapsLast[1], CapsLast[2], CapsLast[3] };
+	const double LastSlope = CapsLastSlope;
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
 		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
@@ -862,12 +870,21 @@ void AWaterSurface::UpdateDetail()
 			std::vector<float> JCap(NN);
 			for (int32 I = 0; I < NN; ++I) JCap[I] = Blend(A.JCap, B.JCap, I);
 			const double Cell = A.Tile / A.N, OmegaMax = 2.0 * UE_DOUBLE_PI * SplitHz;
-			double CapThr[4] = {}, CapSlope = 0.0;
-			for (int32 K = 0; K < 4; ++K)
+			double CapThr[4] = { LastThr0, LastThr1, LastThr2, LastThr3 }, CapSlope = LastSlope;
+			if (bSolveCaps)
 			{
-				const double Spacing = 0.5 * double(1 << K), Fade = FMath::Clamp(1.0 - 64.0 * Spacing / 900.0, 0.0, 1.0);
-				std::vector<float> Samples;
-				Samples.reserve(NN / 4);
+				// The four spacings sample the same points: each train's terms once, its sine once per point for all four
+				// (FWaveDetail::FLongJacobians; the PC's Ultra trace had this blend at 6-8 ms of worker time a frame, most of it
+				// these sines).
+				double Spacings[4], Fades[4];
+				std::vector<float> Samples[4];
+				for (int32 K = 0; K < 4; ++K)
+				{
+					Spacings[K] = 0.5 * double(1 << K);
+					Fades[K] = FMath::Clamp(1.0 - 64.0 * Spacings[K] / 900.0, 0.0, 1.0);
+					Samples[K].reserve(NN / 4);
+				}
+				const FWaveDetail::FLongJacobians LongJ(Long.GetData(), Long.Num(), OmegaMax, Choppiness, Spacings, Fades, 4);
 				for (int32 R = 0; R < A.N; R += 2)
 					for (int32 Cc = 0; Cc < A.N; Cc += 2)
 					{
@@ -875,12 +892,16 @@ void AWaterSurface::UpdateDetail()
 						const double Chop = 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - JCap[I]); // the shader's jd
 						// The long trains sampled over about 170 m (the chop's 23 m tile holds about one of their wavelengths, so a
 						// frame's sample sat on whatever crests crossed it), the chop at its own texel.
-						const double Jt = FWaveDetail::LongJacobian(Long.GetData(), Long.Num(), OmegaMax, Choppiness, R * Cell * 7.31, Cc * Cell * 7.37, CapTime, Spacing, Fade) * Chop;
-						Samples.push_back(float(1.0 - FoldScale * (1.0 - Jt)));
+						double Jl[4];
+						LongJ.Evaluate(R * Cell * 7.31, Cc * Cell * 7.37, CapTime, Jl);
+						for (int32 K = 0; K < 4; ++K) Samples[K].push_back(float(1.0 - FoldScale * (1.0 - Jl[K] * Chop)));
 					}
-				double Slope = 0.0;
-				FWaveDetail::CapThreshold(MoveTemp(Samples), CapTarget, CapThr[K], Slope);
-				if (K == 0) CapSlope = Slope;
+				for (int32 K = 0; K < 4; ++K)
+				{
+					double Slope = 0.0;
+					FWaveDetail::CapThreshold(MoveTemp(Samples[K]), CapTarget, CapThr[K], Slope);
+					if (K == 0) CapSlope = Slope;
+				}
 			}
 			// The table holds the chop's own J: centred on the nearest threshold.
 			const float CapStep = FMath::Max(float(CapSlope), 0.03f), CapFirst = float(CapThr[0]) - 1.5f * CapStep;
@@ -1769,6 +1790,10 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 		return;
 	}
 	if (bFoamPending || !Done || Done->JCap.empty() || Done->N <= 0) return;
+	// At the short waves' 30 Hz (the caps it takes in change at that rate; the residual foam fades and drifts over seconds).
+	const double FoamNow = GetSimTime();
+	if (FoamStepAt >= 0.0 && FoamNow >= FoamStepAt && FoamNow - FoamStepAt < 0.999 * kDetailStep) return;
+	FoamStepAt = FoamNow;
 	if (!FoamState) FoamState = MakeShared<FFoamGrid, ESPMode::ThreadSafe>();
 	const FVector CamCm = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
 	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CamCm);
@@ -1825,23 +1850,30 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 		const int32 DN = D->N;
 		const float Tile = D->Tile;
 		const float Ks = FMath::Min(D->CapShort, 2.f);
+		// Each column's detail and wake columns, worked out once for every row.
+		TArray<int32> DCs, WCs;
+		DCs.SetNumUninitialized(N);
+		WCs.SetNumUninitialized(N);
+		for (int32 C = 0; C < N; ++C)
+		{
+			const double Y = (F.OY + C + 0.5) * F.Cell;
+			DCs[C] = ((FMath::FloorToInt(float(Y / Tile * DN)) % DN) + DN) % DN;
+			WCs[C] = WakeN > 0 ? FMath::FloorToInt(float((Y - WakeO.Y) / WakeC)) : -1;
+		}
 		for (int32 R = 0; R < N; ++R)
 		{
 			const double X = (F.OX + R + 0.5) * F.Cell;
 			const int32 DR = ((FMath::FloorToInt(float(X / Tile * DN)) % DN) + DN) % DN;
+			const int32 WR = WakeN > 0 ? FMath::FloorToInt(float((X - WakeO.X) / WakeC)) : -1;
+			const bool bWakeRow = WakeF && WR >= 0 && WR < WakeN;
 			for (int32 C = 0; C < N; ++C)
 			{
-				const double Y = (F.OY + C + 0.5) * F.Cell;
-				const int32 DC = ((FMath::FloorToInt(float(Y / Tile * DN)) % DN) + DN) % DN;
-				const float Jd = 1.f - Ks * (1.f - D->JCap[DR * DN + DC]);
+				const float Jd = 1.f - Ks * (1.f - D->JCap[DR * DN + DCs[C]]);
 				const float Jt = 1.f - D->FoldScale * (1.f - Jd);
 				float Src = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
 				// The boats' wash (the wake grid's foam, as M_WaterV4's wakeBreak without its bubble pattern).
-				if (WakeN > 0 && WakeF)
-				{
-					const int32 WR = FMath::FloorToInt(float((X - WakeO.X) / WakeC)), WC = FMath::FloorToInt(float((Y - WakeO.Y) / WakeC));
-					if (WR >= 0 && WR < WakeN && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp((*WakeF)[2 * (WR * WakeN + WC) + 1] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
-				}
+				const int32 WC = WCs[C];
+				if (bWakeRow && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp((*WakeF)[2 * (WR * WakeN + WC) + 1] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
 				float& V = Next[R * N + C];
 				V = FMath::Max(V, Src);
 			}

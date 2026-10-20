@@ -83,6 +83,18 @@ namespace Sailing
 		 *  fold (fully under 4), and Fade (0..1, the distance fade) scales what is left. */
 		static double LongJacobian(const FWaveComponent* Components, int Count, double OmegaMax, double Chop, double X, double Y, double T,
 			double Spacing = 0.0, double Fade = 1.0);
+		/** LongJacobian for several (Spacing, Fade) pairs over many points (the water's four cap thresholds sample the same
+		 *  points): each train's terms per pair are worked out once, its sine once per point. Equal to LongJacobian's to
+		 *  rounding. */
+		struct SAILINGPHYSICS_API FLongJacobians
+		{
+			static constexpr int MaxPairs = 4;
+			struct FTerm { double Kx, Ky, Omega, Phase, Coef[MaxPairs]; };
+			std::vector<FTerm> Terms;
+			int Pairs = 0;
+			FLongJacobians(const FWaveComponent* Components, int Count, double OmegaMax, double Chop, const double* Spacings, const double* Fades, int InPairs);
+			void Evaluate(double X, double Y, double T, double* OutJ) const;
+		};
 		/**
 		 * W8 (docs/water-8/whitecaps): the fold threshold that caps a Target share of the drawn sea, from samples of its
 		 * whitecap Jacobian (long times chop), and the threshold's shift per e-fold of cover there. The renderer solves it

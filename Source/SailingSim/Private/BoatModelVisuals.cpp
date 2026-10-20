@@ -212,6 +212,9 @@ UStaticMeshComponent* ASailboatPawn::AddModelPart(UStaticMesh* Mesh, USceneCompo
 	Part->SetStaticMesh(Mesh);
 	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Part->SetRelativeLocation(LocationCm);
+	// Measuring: -SailingNoBoatDF keeps the boats' parts out of the distance-field lighting (moving meshes re-mark it).
+	static SailingArgs::FCachedFlag NoBoatDFArg(TEXT("SailingNoBoatDF"));
+	if (NoBoatDFArg.Get()) Part->bAffectDistanceFieldLighting = false;
 	Part->RegisterComponent();
 	BoatParts.Add(Part);
 	return Part;

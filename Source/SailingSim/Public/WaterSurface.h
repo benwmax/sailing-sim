@@ -166,6 +166,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailCMap;
 	/** W8: the whitecap threshold solved on the drawn sea (FWaveDetail::CapThreshold), smoothed over a couple of seconds. */
 	float CapThrSmooth[4] = { 0.f, 0.f, 0.f, 0.f }, CapSlopeSmooth = 0.f;
+	/** The cap thresholds are solved at the short waves' 30 Hz (the blend in between reuses the last): when, and what. */
+	double CapsSolvedAt = -1.0;
+	float CapsLast[4] = { 0.f, 0.f, 0.f, 0.f }, CapsLastSlope = 0.f;
+	/** The foam grid steps at the short waves' 30 Hz too: when it last started. */
+	double FoamStepAt = -1.0;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> RippleBMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeGridMap;
 	/** W3: the sea map's atlas (SeaState.h): seven tiles of RGBA half floats, re-uploaded when the field gets a new map. */
