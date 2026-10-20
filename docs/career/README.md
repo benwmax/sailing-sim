@@ -112,9 +112,18 @@ in `FCareerProgress` (`IsCheckrideReady`, `RecordCheckrideQuiz`), not the UI.
   Career 1's Open everything switch, under which progress still counted (`docs/free-sail/README.md`).
 
 With the current data: Day Sailor opens Club Racer and Coastal Cruiser, so the Sunfish, Galveston Bay and the Catalina 22
-and 30; Club Racer opens the ILCA 7; Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says
+and 30, and outright the Texas coast (`texas-coast`, world streaming's one-piece bay and Gulf: Bean, Oct 20 2026, "Career
+unlocks the Texas coast after the lake"; `SailingSim.Career.TexasCoastUnlock`); Marseille is not in the career yet (Free
+Sail); Club Racer opens the ILCA 7; Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says
 "Not in the career yet". Locks are applied by the menus only (World, Boat and Mode screens grey the card and say which
 certificate opens it); command-line runs, benches and Continue are not locked.
+
+![The World screen for a new sailor: Galveston and the Texas coast wait on the Day Sailor certificate](world-locked.jpg)
+![...and with it: both open; Marseille stays Free Sail only](world-unlocked.jpg)
+
+Stills: `RESX=1920 RESY=1080 scripts/run-game.sh 6 -ForceRes -SailingFreeSail=0 -SailingFrontEnd=World
+-SailingSave=<abs path>` with `docs/career/still-save-new.json` or `still-save-day-sailor.json` (copy them out first: a
+run writes back to its save).
 
 ## The save
 
