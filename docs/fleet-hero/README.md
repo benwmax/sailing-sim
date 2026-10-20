@@ -39,6 +39,23 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
 
 ![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina30-before-after.jpg)
 
+## ILCA
+
+- **Mast:** the two-piece spar, its collar over the joint 2.85 m up, the black gooseneck fitting the boom pins to, the
+  rotating mast's step ring and the cunningham hook.
+- **Boom:** the outhaul cleat and fairlead, the clew's tie-down strap round the boom end and the vang key.
+
+![Before (left), after (middle) and close (right), Ultra on the lake](ilca-before-after.jpg)
+
+## Hobie 16
+
+- **Platform:** the cast aluminium beam ends at each hull, the righting line's bag on the front beam, the trapeze shock
+  cords' deck eyes beside the tramp, and each hull's coloured stripe along the sheer.
+- **Trapeze:** the wires from the hounds to their rings and handles at a crew member's reach, the shock cord down to the
+  deck eye (baked on the mast mesh, which they hang from).
+
+![Before (left) and after (right), Ultra on the lake](hobie16-before-after.jpg)
+
 ## Lagoon 42
 
 - **Stern:** the charter cat's davits off the aft beam with the tender hung between them (a grey RIB, its outboard
