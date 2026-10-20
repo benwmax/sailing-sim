@@ -56,6 +56,13 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
 
 ![Before (left) and after (right), Ultra on the lake](hobie16-before-after.jpg)
 
+## Corsair 880
+
+- **Bow:** the bowsprit's end fitting with the gennaker's tack block and its bobstay down to the stem.
+- **Cabin top:** the self-tacking jib's track across the trunk, with its car, where the jib leads.
+
+![Before (left) and after (right), Ultra on the lake](corsair880-before-after.jpg)
+
 ## Lagoon 42
 
 - **Stern:** the charter cat's davits off the aft beam with the tender hung between them (a grey RIB, its outboard
