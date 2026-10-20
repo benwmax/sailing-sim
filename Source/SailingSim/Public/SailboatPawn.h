@@ -290,6 +290,7 @@ private:
 	void BuildKeyRows();
 	bool AssignKey(int32 Row, const FKey& Key);
 	void RebuildMappings();
+	static void MapFixedKeys(class UInputMappingContext* Context, const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
 	void PollKeyCapture();
 	bool bKeysOpen = false, bCapturingKey = false;
 	uint64 CaptureFrame = 0;
