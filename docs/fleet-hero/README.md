@@ -21,3 +21,13 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
   park) most; white cloth keeps the Dacron ageing it had. The Sunfish's club boats fade 0.4-0.8 (the player's 0.6).
 
 ![Before (left), after (middle) and the well from above (right), Ultra on the lake](sunfish-before-after-deck.jpg)
+
+## Catalina 22
+
+- **Cabin trunk:** the class's two smoked windows a side with rounded ends in aluminium frames, in place of the generic
+  window band; a teak eyebrow along both edges of the trunk top.
+- **Companionway:** three teak drop boards, their edges proud, in place of the black stand-in.
+- `import_boats.py fleet` imports only the seven fleet boats (it had re-imported the maxi whenever her FBX was in
+  `Artifacts\models`).
+
+![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina22-before-after.jpg)
