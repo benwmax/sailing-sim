@@ -494,7 +494,8 @@ bool FWorldTreeLooksTest::RunTest(const FString&)
 	}
 	TestTrue(TEXT("Greens spread across the range"), MinTint < 0.05 && MaxTint > 0.95);
 	TestTrue(TEXT("Leans of a few degrees"), MaxLean > 2.0 && MaxLean <= 3.0);
-	TestEqual(TEXT("Every post oak and cedar elm turns"), Turning, 1000);
+	// Every deciduous tree turns: all but the two evergreens (T2 species: six of the eight species).
+	TestEqual(TEXT("Every deciduous tree turns"), Turning, 2000 * (int32(ETreeSpecies::Count) - 2) / int32(ETreeSpecies::Count));
 	AddInfo(FString::Printf(TEXT("Autumn: %.2f in July, %.2f on Oct 17, %.2f on Nov 25, %.2f on Jan 10, %.2f on Apr 10; spring %.2f on Apr 5"),
 		AutumnAmount(196), AutumnAmount(290), AutumnAmount(329), AutumnAmount(10), AutumnAmount(100), SpringAmount(95)));
 	TestEqual(TEXT("Green in July"), AutumnAmount(196), 0.f);
