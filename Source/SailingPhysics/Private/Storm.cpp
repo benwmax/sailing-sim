@@ -75,4 +75,20 @@ namespace Sailing
 		// The eye reads rain roughly by the square root of its rate: moderate rain (7.6 mm/h) about 0.4, heavy (25) 0.7.
 		return MmPerHour <= 0.0 ? 0.0 : std::sqrt(std::min(MmPerHour / 50.0, 1.0));
 	}
+
+	// ---------------------------------------------------------------- squall line (prologue step 4)
+
+	double FSquallLine::Inside(double DistanceAheadM) const
+	{
+		const double Behind = LeadM - DistanceAheadM; // m inside the rain
+		const double Edge = SmoothStep(-0.5 * EdgeWidthM, 0.5 * EdgeWidthM, Behind);
+		return Edge * (1.0 - SmoothStep(BandLengthM, 2.0 * BandLengthM, Behind));
+	}
+
+	double FSquallLine::RateAt(double DistanceAheadM) const
+	{
+		// Heaviest at the edge, easing back through the band.
+		const double Behind = std::max(LeadM - DistanceAheadM, 0.0);
+		return PeakMmPerHour * Inside(DistanceAheadM) * (1.0 - 0.4 * std::min(Behind / BandLengthM, 1.0));
+	}
 }

@@ -19,6 +19,10 @@ namespace Sailing
 		double WindMs = 6.0;            // at 10 m
 		double WindFromRad = 0.0;       // where the wind comes from (map frame, 0 = north)
 		double WindSeaFraction = 1.0;   // how developed the wind sea is (1 = fully developed for this wind)
+		/** Prologue step 4: a fetch-limited wind sea given outright (the mistral's short steep sea: higher and shorter than
+		 *  WindSeaFraction's partly developed sea, which keeps Pierson-Moskowitz's height-to-period). 0 = from the wind. */
+		double WindSeaHs = 0.0;         // m
+		double WindSeaTp = 0.0;         // s
 		double SwellHs = 1.0;           // m, significant height of the swell
 		double SwellTp = 9.0;           // s, its peak period
 		double SwellFromRad = 2.4;      // where it comes from (the Gulf swell runs in from the southeast)
@@ -75,6 +79,12 @@ namespace Sailing
 		double MaskAt(double X, double Y) const;
 		struct FMask { int Rows = 0, Cols = 0; double Cell = 100.0, X0 = 0.0, Y0 = 0.0; std::vector<float> Values; };
 		const FMask& GetMask() const { return Mask; }
+		/** World streaming: the mask BuildMask makes, for a swell from SwellFromRad of significant height HsTotal, built on its
+		 *  own (a worker marches it over a window of a streamed world) and installed with SetMask between steps. */
+		static FMask MakeMask(const FLakeTerrain& Terrain, double SwellFromRad, double InHs, double Cell = 100.0);
+		void SetMask(FMask&& InMask) { Mask = std::move(InMask); ++MaskGeneration; }
+		/** Changes with every mask (the renderer uploads it again). */
+		uint64_t GetMaskGeneration() const { return MaskGeneration; }
 
 		/** The spectrum in 16 wavelength bins (2 to 500 m, log spaced): variance and mean travel direction of each. */
 		const std::vector<struct FWaveBand>& Bands() const { return BandList; }
@@ -91,6 +101,7 @@ namespace Sailing
 		FMask Mask;
 
 		uint64_t Generation = 0;
+		uint64_t MaskGeneration = 0;
 		static constexpr int CacheSize = 8;
 		mutable std::array<std::array<FGrid, CacheSize>, NumCascades> Cache;
 		mutable std::array<int, NumCascades> CacheNext{};

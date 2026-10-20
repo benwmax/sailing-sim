@@ -3,6 +3,7 @@
   "about": "The learn-to-sail career (docs/career/README.md). Edited by hand; check with python3 Tools/career/validate.py. Ids are stable: the save keeps them.",
   "school": "Blue Heron Sailing School",
   "medals": ["bronze", "silver", "gold"],
+  "easy_max_medal": "bronze",
   "always_open": {
     "tiers": ["day-sailor"],
     "worlds": ["ray-hubbard"],
@@ -104,21 +105,80 @@
         }
       },
       "certificate": { "id": "day-sailor", "name": "Day Sailor certificate" },
-      "unlocks": { "tiers": ["club-racer", "coastal-cruiser"], "worlds": [], "boats": [] }
+      "unlocks": { "tiers": ["club-racer", "coastal-cruiser"], "worlds": ["texas-coast"], "boats": [] }
     },
     {
       "id": "club-racer",
       "name": "Club Racer",
-      "status": "stub",
-      "summary": "Start, round marks and finish in club races off the yacht club, in the J/22 and a singlehanded dinghy.",
-      "learning": "Racing rules and boat handling around a course: lessons to come.",
+      "status": "ready",
+      "summary": "Sail a singlehanded dinghy off the yacht club: leave the dock, sail a course around marks, stop for a swimmer and come back alongside, all without a crew to help.",
+      "learning": "Small-boat handling in the Sunfish on Lake Ray Hubbard: a boat that answers every move of your weight and the sheet in your hand. The first course of the Blue Heron club's racing program; starts and racing rules in the J/22 come later.",
       "world": "ray-hubbard",
-      "boats": ["J22"],
-      "notes": "The dinghy (Sunfish or ILCA 7) waits on Bean: add its id to boats.",
-      "lessons": [],
-      "checkride": { "id": "club-racer.checkride", "title": "Club Racer checkride", "lessons": [], "min_medal": "silver", "quiz": null },
+      "boats": ["Sunfish", "J22"],
+      "notes": "These lessons are sailed in the Sunfish (the tier's first boat). J/22 racing lessons (starts, mark roundings, the rules) are still to come.",
+      "lessons": [
+        {
+          "id": "club-racer.sunfish-leave-the-dock",
+          "title": "Sunfish: leave the dock",
+          "drill": "LeaveTheDock",
+          "quiz": "LeaveTheDock",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["clean"], "max_seconds": 300, "max_infractions": 0 },
+            "gold": { "outcomes": ["clean"], "max_seconds": 180, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "club-racer.sunfish-course",
+          "title": "Sunfish: sail the course",
+          "drill": "SailATriangle",
+          "quiz": "SailATriangle",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "max_seconds": 540, "max_collisions": 0, "max_infractions": 0 },
+            "gold": { "max_seconds": 360, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "club-racer.sunfish-quick-stop",
+          "title": "Sunfish: quick-stop for a swimmer",
+          "drill": "CrewOverboardQuickStop",
+          "quiz": "CrewOverboardQuickStop",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["proper"], "max_seconds": 180, "max_infractions": 0 },
+            "gold": { "outcomes": ["proper"], "max_seconds": 90, "max_collisions": 0, "max_infractions": 0 }
+          }
+        },
+        {
+          "id": "club-racer.sunfish-return-and-dock",
+          "title": "Sunfish: return and dock",
+          "drill": "ReturnAndDock",
+          "quiz": "ReturnAndDock",
+          "quiz_pass": 0.66,
+          "medals": {
+            "bronze": {},
+            "silver": { "outcomes": ["gentle"], "max_seconds": 360, "max_infractions": 0 },
+            "gold": { "outcomes": ["gentle"], "max_seconds": 240, "max_contact_kn": 0.5, "max_infractions": 0 }
+          }
+        }
+      ],
+      "checkride": {
+        "id": "club-racer.checkride",
+        "title": "Club Racer checkride",
+        "lessons": ["club-racer.sunfish-leave-the-dock", "club-racer.sunfish-course", "club-racer.sunfish-quick-stop", "club-racer.sunfish-return-and-dock"],
+        "min_medal": "silver",
+        "quiz": {
+          "drills": ["LeaveTheDock", "SailATriangle", "CrewOverboardQuickStop", "ReturnAndDock"],
+          "questions": 10,
+          "pass": 0.8
+        }
+      },
       "certificate": { "id": "club-racer", "name": "Club Racer certificate" },
-      "unlocks": { "tiers": [], "worlds": [], "boats": [] }
+      "unlocks": { "tiers": [], "worlds": [], "boats": ["ILCA7"] }
     },
     {
       "id": "coastal-cruiser",

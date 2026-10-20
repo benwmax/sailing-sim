@@ -15,12 +15,14 @@
 #include "Tasks/Task.h"
 #include "BoatModel.h"
 #include "AutoTrim.h"
+#include "EasyAssists.h"
+#include "CrewStation.h"
 #include "BoatPhysicsTask.generated.h"
 
 class ASailboatPawn;
 
 /** One frame's fixed steps exactly as the pawn's tick ran them: the trim assist (or the simple layout's crew) trims,
- *  the helm's tiller and wing-on-wing stay, then the boat steps. */
+ *  the helm's tiller and wing-on-wing stay, Easy mode's helm help goes on a copy, then the boat steps. */
 struct SAILINGSIM_API FBoatStepJob
 {
 	Sailing::FBoatModel* Boat = nullptr;
@@ -34,6 +36,11 @@ struct SAILINGSIM_API FBoatStepJob
 	double LastManualTrimTime = 0.0;   // the assist trims once the boat's time is TrimIdleSeconds past the last manual trim
 	double TrimIdleSeconds = 1e300;
 	bool bSimple = false;              // the simple layout: the crew handles traveler and sail shape
+	const Sailing::FEasyAssists* Easy = nullptr; // Easy mode: its helm steps the boat on a copy of the controls
+	Sailing::FEasyHelm* EasyHelm = nullptr;
+	/** Prologue step 2: at a crew station the merge steps the controls (the crew's and the player's hands) instead. */
+	Sailing::FStationControls* Stations = nullptr;
+	Sailing::FStationInput StationInput;
 	void Run() const;
 };
 

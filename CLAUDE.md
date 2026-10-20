@@ -149,6 +149,40 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `Center` stays a balance knob), the hero's aft freeboard is the ORC 0.568 m, its cabin face ends at 1.65.
    `photomatch/profile_match.py` lays the hero's outline over a broadside photo from two picked points (no camera solve).
 
+23. Ports from a box and a name (`docs/world-marseille/`): `Tools/coast/worlds/<World>.json` defines a coast (box, origin,
+   datum, harbours, spots, passage, climate, city glow, far ring); `build_coast.py <World>` bakes it (`build_galveston.py`
+   is its old name). `"chart": "enc"` reads NOAA ENC (Galveston, Gulf: their rebakes are byte-identical); `"osm"` reads
+   `fetch_world.py`'s downloads through `osm_chart.py` (OSM coastline and seamarks as S-57 rows, EMODnet depths, NGA Pub
+   113 lights, Copernicus or IGN land). `build_piers.py <World>` and `build_houses.py <World>` fall back to OSM
+   (`osm_harbour.py`: pontoons, breakwaters, boats stern-to) when there is no G2 pack. No SHOM products.
+
+24. Far coast ring (Wide World Rendering PR 1, `docs/world-far/`): `scripts/make-far-ring.sh [World ...]` fetches the
+   Copernicus GLO-90 tiles (`Tools/terrain/fetch_far_dem.sh` -> `Data/Far/raw`, or a world's own `Data/<World>/raw/far`),
+   bakes `Content/TerrainData/<World>.far` (`Tools/terrain/build_far_ring.py`, bands in `Tools/terrain/far_ring.json` or a
+   world bake's `far_ring.draw_km`) and its Nanite tiles in `/Game/World/Far` (`UWorldKitLibrary::BakeFarRing`). Rerun it
+   after a world's grid changes (the ring takes the grid's heights inside it). `M_FarLand`'s WPO (`FAR_LAND_WPO`) is
+   mirrored by `FarRing::OffsetZ`; `SailingSim.World.FarRing` holds both. `-SailingNoFarRing` compares.
+
+25. Far lights (`docs/world-far-lights/`): `Tools/venv/bin/python -I Tools/terrain/build_far_lights.py [World ...]` writes
+   `<World>.farlights.json` (lights from the world's navaids, neighbouring bakes and NGA Pub 113; lit-shore cells from
+   the houses bake; city domes from the world json's `city_glow`; shipping lanes). `AFarLightsActor` draws lights past
+   `NearPoolM` by `FFarLightMath` (Allard's law, geographic range, loom), the shore sprites and horizon ships (handed to
+   `ATrafficManager::HandOffShip` at 8 km); `ANavaidsActor` keeps lights inside the near pool. `M_SkyDome` takes four
+   domes (`GlowDomesA/B`). `-SailingNoFarLights` compares; `SailingSim.World.FarLights`.
+26. World streaming (Wide World Rendering PR 2, `docs/world-streaming/`): a composed world (`Tools/coast/worlds/TexasCoast.json`,
+   `"compose"`) is baked from other bakes by `Tools/coast/build_coast.py TexasCoast` (`compose_world.py`): `<World>.tiles`
+   (6.4 km height tiles, `FTileIndex` in `WorldStream.h`), its own trees, json and chart; the frame member's houses, crowns,
+   piers, current and kit tiles are read in place (`FLakeData::SourceFor`). `FWorldStreamer` (game) reads tiles on one
+   worker around the boat; every world gets a tile index (whole grids: `FTileIndex::ForGrid`) and the terrain actor makes and
+   drops its chunks by tile. Then `scripts/make-far-ring.sh TexasCoast`. Tests `SailingSim.World.Streaming.*`; bench view
+   `stream-run` (`-SailingRun=<m/s>,<bearing>[,<turn after m>]` slides the world under the boat).
+
+25. Haze and far water (`docs/world-haze/`): `FHaze` (`Haze.h`: fog density for a visibility, clamped 0.5 to 80 km),
+   `EWeatherPreset::ClearMistral` (60 km, cloudless NW), a world's `"haze"` (`fog_scale_height_m`, `far_plane_km`;
+   `FLakeData::FogScaleHeightM`/`FarPlaneKm`). Band D: `Tools/venv/bin/python -I Tools/terrain/build_skyline.py
+   Marseille` bakes `<World>.skyline` (500 m GLO-90); `FSkyline` marches it on a worker every 500 m into the sky dome's
+   `Skyline` texture (`-SailingNoSkyline`). Tests `SailingSim.World.Haze`, `SailingSim.World.Skyline`.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in
@@ -331,9 +365,14 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
   runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
 - Save file (`docs/save/`): `FSailSave`/`SailSaveStore` (`SailSave.h`) keep the settings, last session and progress in
-  `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README.
+  `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README; the mode is
+  `settings.career.freeSail` and `lastSession.freeSail` (an older file's `openEverything` reads as it). UI stills at a size
+  larger than the display's logical width need `-ForceRes` (`RESX=1920 RESY=1080 scripts/run-game.sh 6 -ForceRes ...`).
 - Career (`docs/career/`): tiers, lessons, medal rules, checkrides and unlocks in `Content/Career/career.json` (`Tools/career/validate.py`); `Career.h`
   (plain) grades from `FDrillRunner` into the save's progress, `SailCareer::*` is the game's edge; locks are menu-only; `SailingSim.Career.*`.
+  Two modes on the title (`docs/free-sail/`): Career, and Free Sail (`USailingSettings::bFreeSail`, `FSailSessionConfig::bFreeSail`,
+  `-SailingFreeSail=0|1`): everything open, `FCareerProgress(..., bFreeSail)` records no medal, quiz or certificate; the logbook
+  counts. It replaced Career 1's Open everything. The Sunfish is Club Racer's dinghy (its first boat; `SailingSim.Drills.SunfishLessons`).
 - Geo anchor (`docs/geo-anchor/`): `FGeoAnchor` (`GeoAnchor.h`) is the bakes' tmerc exactly (pyproj to nanometres); persistent
   places go by id, then lat/lon (`ResolvePlacement`, the save's `launchSpotAt`); convert at the edge with `SailingNav::LatLonAt`/`MapAt`.
 - Blind test and fixes (Graphics G5): `Tools/blindtest/fetch_commons.py search|pick <dir> <key> <query or Category:...>`
@@ -491,13 +530,56 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly
   moves. Reference-check peaks are GPS-like one-second means.
-- Weather helm: `FBoatConfig::HeelYawCoef` (J/22 only; `Make()` resets J/22-only knobs for the other boats) and
+- Easy mode (`docs/easy-mode/`): one switch (`USailingSettings::IsEasy`, `-SailingEasy=0|1`; off when measuring, capturing, in automation, traffic, ghost) applies `FEasyAssists` (`EasyAssists.h`: helm, heel cap, trim, no-go cue, `FEasyHelm` irons/bear-away on a copy of the controls); Realistic is the boat's own.
+  Easy medals cap at career.json's `easy_max_medal` (`FCareerRun::bEasy`, save `medalEasy`); `scripts/polar.sh --easy`, `-SailingCrudeTackAt=<s>` (demo) for the gate runs.
+- Prologue (`docs/prologue/`): scripted scenes are data (`Content/Prologue/prologue.json`, staged loose; `python3
+  Tools/prologue/validate.py [--self-test]`) run by `Sailing::FScriptedScene` (`ScriptedScene.h`: triggers, captain calls,
+  expected answers judged from telemetry and `FSceneInput`, repeats and crew takeover, never a hard fail; its own JSON
+  reader). `-SailingPrologue=1` runs it on the stand-in (game mode `UpdateScene`, fed by the pawn; Space is the crew
+  action, R restarts at the checkpoint); `SSailHud::RefreshScene` shows the caption; finished scenes go to the save's
+  `progress.scenes`. SailingPhysics and SailingSimTests are `bUseUnity = false` (UBT unity-builds from 32 files).
+  Crew stations (step 2): `FStationControls` (`CrewStation.h`) merges the player's station (helm = a wheel, jib trimmer
+  = sheet and rate-limited grinder against the telemetry's sheet load, main trimmer = sheet, traveller, dump) with the
+  crew's held controls each physics step (`FBoatStepJob::Stations`, `ASailboatPawn::UpdateStations`, only while a scene
+  runs); steps name their `station`, expectations their `controls` (worked in order, `FSceneInput::Worked`). Grind,
+  TravellerDump, Station and CrewAction are a key layer (`SailingBindings::SameLayer`) sharing buttons with boat
+  commands the crew hold; `SailingSim.Prologue.Stations`.
+- Prologue maxi (step 3, `docs/prologue/README.md`): `EBoatType::Maxi` is the PC's made-up 100 ft maxi; her hull is the
+  exported sections (`FHullShape::Stations`, from `Tools/boats/maxi/sections.json` via `make_maxi_hull.py` ->
+  `MaxiHullData.inl`; the formula's fields are only a stand-in fit for the water clip and BoatExport), fixed appendages
+  float their own volume (`FBoatConfig::AppendageVolume`), reefs can change the jib (`ReefJibFraction`), a wheel has a
+  rate (`WheelHardOverSeconds`). Estimated polar: `Tools/boats/maxi/estimate_polar.py`. `FSceneLimits` (EasyAssists.h)
+  is the scene's cap and anti-broach, applied after Easy mode's while a scene runs. The prologue sails her on the
+  Gulf's offshore spot (`setting.reefs`; `-SailingPrologueBoat=J22` is the stand-in); her hero model is
+  `Tools/boats/maxi/build_maxi.py` (`import_boats.py maxi`, `/Game/Boats/Maxi`), on the Boat screen and the pause menu.
+- Prologue gale (step 4, `docs/prologue/README.md`): `EWeatherPreset::Mistral` (32 kn gusting 40, 1.5 mm/h, a low fast
+  deck, `FOceanParams::WindSeaHs`/`WindSeaTp` Hs 3.3 at 7 s on a 1.2 m sea with the wind: 3.5 m); its squall is an
+  `FGustFront` with an `FSquallLine` (`FWeatherState::bSquall`: no storm layer, no lightning, no burst), cued by a step's
+  `"weather"` (`squall` with `in_s`, `clearing`) through `FWeatherSystem::ApplySceneCue` on the sim clock; uncued it runs
+  at `kSquallArrives`/`kSquallClears`. `setting.world_stand_in` turns the gale to the Gulf's open water
+  (`SetPrevailingFrom`; from the northwest the ocean mask is shut). `-SailingPrologueStep=<id>` starts a scene partway.
+  Known gaps: the maxi does not tack in that sea (`AddedResistanceCoef`) and nothing surfs (vertical buoyancy).
+- Wave physics (`docs/wave-physics/`): added resistance is 2 m0 x R(lambda/LWL) (Jinkine & Ferdinande's fall past the
+  peak) x Fn^1.5 to Fn 0.265; `AddedResistanceCoef` per boat (the J/22's 2.6 from her polar; the maxi's 0.47 and the
+  Catalina 30's 1.57 from ORC's length scaling, VPP 2023 eq. 6.62). The waves' slope push (`WaveSlopeForceScale`) uses
+  each column's immersion below her mean waterplane averaged over 8 s, so it stays first order (no drift from the chop at
+  her ends). `FAutopilot` reverses the helm from 0.3 m/s of sternway. `SeaTrials.h` (`RunInSea`, `RunGaleTack`) and
+  `scripts/polar.sh [--boat b] [--ar c] [--surf s] --sea [gale | checks | orc <hs> <tws> | at <tws> <twa>]` (loads
+  `Wind.mann` as the module does). Telemetry: `CalmResistance`, `WaveResistance`, `WaveSlopeSurge`. Keels and rudders
+  still meet still water (no orbital flow or wave inertia): a known gap.
+- Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
 - Avoid identifiers that collide with Unreal macros in physics code (`PI`, `check`, `verify`).
 - Unreal code converts cm <-> m at the edge (`Sailing::CmPerMeter`). Axes match Unreal: X forward, Y right (starboard), Z up.
+- The render frame (world streaming, `SailingFrame.h`): the game mode moves the render origin (`UWorld::SetNewWorldOrigin`,
+  on a 19.2 km lattice) when the boat is 20 km from it; the physics stays in the map frame. Map metres to Unreal and back
+  only through `SailingFrame::ToWorld`/`ToMap`/`ToMapCm`/`FromMapCm`; world-space instance adds of map-frame transforms go
+  through `ToWorldTransforms`; actors that build geometry in map coordinates spawn at `MapAnchor`. Materials see map-frame
+  positions: `make_materials.py`'s `node()` adds `MPC_World.RenderOrigin` to every world, camera and object position.
+  Workers read a copy of `FLakeTerrain` (it shares its heights), never `Lake->Terrain` (tiles are swapped under it).
 - Input actions and the mapping context are built in code from `USailingInputSettings` (rebindable in Input.ini).
 - Every physics change gets an automation test in `Source/SailingSimTests` (`SailingSim.Physics.*`). Game/world checks go
   under `SailingSim.Smoke.*`. Tests that tick a world must `++GFrameCounter` each frame.

@@ -3,11 +3,12 @@
 The career mirrors real sailing certification. A **tier** is a course (Day Sailor, Club Racer, Coastal Cruiser,
 Passage Maker); it has **lessons**, each a drill graded **bronze, silver or gold** and closed by its short quiz; a
 **checkride** (every lesson at a minimum medal, then a written quiz); and the **certificate** the checkride awards, which
-opens further tiers, worlds and boats. Free sail stays open throughout: locks only grey out choices in the menus.
+opens further tiers, worlds and boats. The title screen's other mode, **Free Sail** (`docs/free-sail/README.md`), opens
+everything and records no medals; locks only grey out choices in the menus.
 
-This first pass (Career 1) fills in the Day Sailor tier (the six drills on Lake Ray Hubbard in the J/22) and leaves the
-other three as stubs with their ids, names, worlds and the boats the roadmap names, so the loader, the save and the
-tests see the whole shape.
+Career 1 filled in the Day Sailor tier (the six drills on Lake Ray Hubbard in the J/22); the Free Sail job filled in
+Club Racer's Sunfish lessons (`docs/free-sail/README.md`). Coastal Cruiser and Passage Maker are stubs with their ids,
+names, worlds and the boats the roadmap names, so the loader, the save and the tests see the whole shape.
 
 ![The Career screen](career-screen.jpg)
 
@@ -23,8 +24,8 @@ that file into `Saved/SaveGames/`).*
 | Validator (no game) | `python3 Tools/career/validate.py` |
 | Logic (plain, no world) | `Career.h`: `FCareerContent` (load, validate, checkride quiz, grading), `FCareerProgress` (records, checkride, certificates, unlocks, session totals) |
 | The game's edge | `SailCareer::*` in `Career.h`: the loaded content over `SailSaveStore::Progress()`, each record written to the save |
-| Wiring | `ASailboatPawn` (a finished drill grades its lesson; `EndPlay` adds the session's hours), `ATrafficManager` (rules penalties during a drill, races sailed and won), `SSailFrontEnd` (Career screen, locks, quizzes, the Settings switch) |
-| Save | `progress.lessons`, `progress.checkrides`, `progress.certificates`, `settings.career.openEverything` (`docs/save/README.md`) |
+| Wiring | `ASailboatPawn` (a finished drill grades its lesson; `EndPlay` adds the session's hours), `ATrafficManager` (rules penalties during a drill, races sailed and won), `SSailFrontEnd` (Career screen, locks, quizzes, the title's Mode switch) |
+| Save | `progress.lessons`, `progress.checkrides`, `progress.certificates`, `settings.career.freeSail` (`docs/save/README.md`) |
 | Tests | `SailingSim.Career.*` in `Source/SailingSimTests/Private/CareerTests.cpp` |
 
 ## The data
@@ -83,6 +84,12 @@ The Day Sailor times are first guesses, checked against the autopilot's own runs
 sails the triangle in 4:36 (gold under 5:30, silver under 8:00), the quick-stop recovers in 0:51 (gold under 1:30),
 heave-to holds in 0:27 (gold under 1:30). Tune them by playing; they live in the data.
 
+**Easy mode earns at most bronze** (`"easy_max_medal": "bronze"` at the top of `career.json`, read by `FCareerContent`;
+no field means no cap). The run carries its difficulty (`FCareerRun::bEasy`: the assists were on at any moment of the
+drill) and `FCareerContent::Grade` caps it; the lesson remembers that its best medal was an Easy one (`medalEasy` in the
+save) until the same medal or better is sailed on Realistic, and the Career screen shows it as "Easy: bronze". The
+checkride asks for silver, so it needs the lessons sailed on Realistic; the screen says so. See `docs/easy-mode/README.md`.
+
 A lesson keeps its best medal, its fastest medal run and its best quiz score. It is **closed** once it holds a medal and
 its quiz has passed (`quiz_pass`, two thirds for Day Sailor). A run counts for a lesson when the lesson's tier is open
 and the run's boat is one of the tier's boats (empty: any boat); the tier on the run's world is preferred.
@@ -99,22 +106,33 @@ in `FCareerProgress` (`IsCheckrideReady`, `RecordCheckrideQuiz`), not the UI.
 - `always_open` tiers, worlds and boats, plus the world and boats of every always-open tier.
 - A certificate opens its tier's `unlocks`: the tiers listed (and with them their world and boats), and any worlds and
   boats listed outright.
-- **Settings > Gameplay > Open everything** (`USailingSettings::bOpenEverything`, saved as
-  `settings.career.openEverything`, off by default) opens every tier, world and boat. Progress still counts.
+- **Free Sail** (the title screen's Mode switch, also Settings > Gameplay > Mode; `USailingSettings::bFreeSail`, saved as
+  `settings.career.freeSail`; `-SailingFreeSail=0|1`) opens every tier, world and boat, and records no lesson, medal,
+  quiz, checkride or certificate (`FCareerProgress`'s `bFreeSail`); the logbook and races still count. It replaced
+  Career 1's Open everything switch, under which progress still counted (`docs/free-sail/README.md`).
 
-With the current data: Day Sailor opens Club Racer and Coastal Cruiser, so Galveston Bay and the Catalina 22 and 30;
-Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says
+With the current data: Day Sailor opens Club Racer and Coastal Cruiser, so the Sunfish, Galveston Bay and the Catalina 22
+and 30, and outright the Texas coast (`texas-coast`, world streaming's one-piece bay and Gulf: Bean, Oct 20 2026, "Career
+unlocks the Texas coast after the lake"; `SailingSim.Career.TexasCoastUnlock`); Marseille is not in the career yet (Free
+Sail); Club Racer opens the ILCA 7; Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says
 "Not in the career yet". Locks are applied by the menus only (World, Boat and Mode screens grey the card and say which
 certificate opens it); command-line runs, benches and Continue are not locked.
+
+![The World screen for a new sailor: Galveston and the Texas coast wait on the Day Sailor certificate](world-locked.jpg)
+![...and with it: both open; Marseille stays Free Sail only](world-unlocked.jpg)
+
+Stills: `RESX=1920 RESY=1080 scripts/run-game.sh 6 -ForceRes -SailingFreeSail=0 -SailingFrontEnd=World
+-SailingSave=<abs path>` with `docs/career/still-save-new.json` or `still-save-day-sailor.json` (copy them out first: a
+run writes back to its save).
 
 ## The save
 
 Version stays 1: the new fields read as empty from older files (`docs/save/README.md`, "Adding a field").
 
 ```json
-"settings": { "career": { "openEverything": false } },
+"settings": { "career": { "freeSail": false } },
 "progress": {
-  "lessons": { "day-sailor.heave-to": { "medal": "gold", "bestSeconds": 58, "runs": 1, "quizPassed": true, "quizBest": 3, "quizOf": 3 } },
+  "lessons": { "day-sailor.heave-to": { "medal": "gold", "medalEasy": false, "bestSeconds": 58, "runs": 1, "quizPassed": true, "quizBest": 3, "quizOf": 3 } },
   "checkrides": { "day-sailor.checkride": { "passed": true, "quizBest": 11, "quizOf": 12 } },
   "certificates": { "day-sailor": { "earnedAt": "2026-10-18T16:30:00.000Z" } },
   "hoursSailed": 3.4, "logbook": { "sessions": 5, "entries": 31, "nauticalMiles": 9.8 }, "racesSailed": 0, "racesWon": 0
@@ -137,16 +155,16 @@ a map reload or quit), with the logbook's entries and miles; races sailed and wo
 
 ## Waiting on Bean
 
-- **Which boats come later**: Club Racer holds the J/22 only and Passage Maker none; the Hobie 16, Corsair 880 and
-  Lagoon 42 are in no tier yet (open with Open everything). Add their ids to a tier's `boats` or `unlocks.boats`.
-- **The dinghy** for Club Racer: Sunfish or ILCA 7 (left open on purpose; add its id to `club-racer.boats`).
+- **Which boats come later**: Passage Maker holds none; the Hobie 16, Corsair 880 and Lagoon 42 are in no tier yet (open
+  in Free Sail). Add their ids to a tier's `boats` or `unlocks.boats`.
+- **Club Racer's J/22 racing lessons** (starts, roundings, the rules): they need race drills first. The Sunfish is the
+  dinghy (Bean, Oct 18); its lessons are in.
 - **Real names**: the school is a placeholder ("Blue Heron Sailing School"); certificates use generic names.
 - **Medal times**: first guesses (above); worth a pass after Bean has sailed them, on Easy and on Realistic.
-- **Lesson content** for Club Racer, Coastal Cruiser and Passage Maker (stubs).
+- **Lesson content** for Coastal Cruiser and Passage Maker (stubs).
 
 ## Not covered yet
 
 - The checkride is the lessons' medals plus a written quiz; there is no separate sailed checkride run.
-- Difficulty (Easy or Realistic) does not change grading.
 - In Game mode the drill's quiz does not open, so a lesson's medal counts but the lesson stays open until it is sailed in
   Learning mode.

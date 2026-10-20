@@ -3,6 +3,7 @@ Nanite on, materials by slot name from WORLD_SLOTS. Run by scripts/make-world-mo
 import glob
 import os
 import re
+import sys
 
 import unreal
 
@@ -16,10 +17,10 @@ WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeC
                "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer",
                "Dark": "MI_World_Tyre", "Steel": "MI_World_Steel", "Wood": "MI_World_Pilings", "Lantern": "MI_World_Glass",
                "Reflective": "MI_World_Reflective", "ContainerPaint": "MI_World_ContainerPaint", "Trim": "MI_World_Trim"}
-for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed"):
+for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed", "Limestone", "StoneGreen", "RoofTile", "Gold"):
     WORLD_SLOTS[_slot] = f"MI_World_{_slot}"
 KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"),
-         ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"),
+         ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"), ("SM_Light_MoleTower", "Navaids"),
          ("SM_Vessel", "Vessels"), ("SM_Barge", "Vessels"), ("SM_Container", "Vessels"),
          ("SM_House", "Houses"), ("SM_Landmark", "Landmarks"), ("SM_Reeds", "Props"))
 
@@ -105,4 +106,7 @@ for path in ([] if ONLY else sorted(old)):  # never with ONLY: no bake ran, so e
 # Everything is saved. Leave without finalizing the interpreter: its last garbage collection crashes (a weak reference
 # to one of the baked meshes) and the crash reporter then hangs the commandlet.
 unreal.log("Import done")
-os._exit(0)
+# With ONLY no bake ran (no baked mesh for that collection to trip on), and on Windows os._exit leaves a zombie editor
+# holding the module DLLs (docs/windows): return normally there.
+if not (ONLY and sys.platform == "win32"):
+    os._exit(0)

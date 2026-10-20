@@ -8,16 +8,18 @@
 #include "Weather.h"
 #include "Wind.h"
 #include "WorldClock.h"
+#include "ScriptedScene.h"
 #include "PerfScopes.h"
 #include "LakeData.h"
 #include "Chart.h"
+#include "WorldStreaming.h"
 #include "Async/Future.h"
 #include "SailingGameMode.generated.h"
 
 /**
  * Owns the world's weather, wind and waves and the simulation clock (the boat's physics time), and spawns
  * the player's boat. Command line (for benchmarks and recordings):
- *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay>  -SailingHour=<h>
+ *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay|Mistral>  -SailingHour=<h>
  *   -SailingWind=<knots> (scale the preset to this base wind)  -SailingWeatherTime=<s> (start partway in)
  *   -SailingSeed=<n>  -SailingBench=<s>  -SailingRecord=<s>  -SailingRecordInterval=<s>  -SailingShot=<name>
  */
@@ -46,6 +48,10 @@ public:
 	TOptional<FLaunchSpot> NearShipStart;
 	/** The area's data files by setting: "RayHubbard" or "GalvestonBay". */
 	static const TCHAR* WorldFileName(int32 World);
+	/** A world by its name or number (-SailingWorld, a scene's setting.world_stand_in): "Lake" 0, "Galveston" 1, "Gulf" 2. */
+	static int32 WorldIndexFromName(const FString& Name);
+	/** Central European time's offset from UTC on a date (+1, +2 in summer time): the Marseille world's clock. */
+	static int32 CentralEuropeanOffsetHours(const FDateTime& Date);
 	static const TCHAR* WorldDisplayName(int32 World);
 
 	/** Real time (seconds since 1970 UTC): the chosen date and start time plus the time sailed. Tides run on it. */
@@ -83,6 +89,23 @@ public:
 	/** W5b: loads Content/TerrainData/Weather/<date>.wxday; null if it is not there or not valid. */
 	static std::shared_ptr<const Sailing::FWeatherDay> LoadRealDay(const FString& Date);
 
+	/** Prologue step 1 (docs/prologue/README.md): the scripted crew scene this session runs, or null. A prologue session is
+	 *  -SailingPrologue=1 for now (the first-launch flow comes later); it sails the scene's stand-in boat and wind. */
+	const Sailing::FScriptedScene* GetScene() const { return bScene ? &Scene : nullptr; }
+	static bool IsPrologueRun();
+	/** The boat the scene follows hands it her state and the crew's input once a frame, after her physics (the pawn).
+	 *  The scene steps on the sim clock (her physics time). */
+	void UpdateScene(const Sailing::FBoatModel& Boat, const Sailing::FSceneInput& Input);
+	/** The boat is being (re)started: the scene goes back to its last checkpoint if it is running, and Out* is the pose to
+	 *  start from (that checkpoint's, or the first step's before it starts). False when the step has no pose. */
+	bool RestartScene(double& OutTwaDeg, double& OutKnots);
+	/** Content/Prologue/prologue.json read and checked; false (with a log line) if it is missing or invalid. */
+	static bool LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError = nullptr);
+	/** Prologue step 3: the scene sails its own boat (setting.boat, the maxi) unless -SailingPrologueBoat names its stand-in;
+	 *  the reefs the crew start with (setting.reefs, or the stand-in's). */
+	bool IsSceneStandIn() const { return bScene && bSceneStandIn; }
+	int32 GetSceneReefs() const { return bScene ? SceneReefs : 0; }
+
 	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather. */
 	void ApplyWeatherSettings();
 	/** Applies the quality tier from settings to engine scalability and the water mesh. */
@@ -90,7 +113,52 @@ public:
 	/** Kept for the difficulty toggle: gusts are softer on easy. */
 	void ApplyDifficultyToWind() { ApplyWeatherSettings(); }
 
+	/** World streaming (docs/world-streaming): the world's height tiles around the boat. */
+	const FWorldStreamer& GetStreamer() const { return Streamer; }
+	/** Moves the render frame's origin to this map point (m, on the re-centre lattice or not) now; false if the engine
+	 *  refused (a level becoming visible). The game does it itself when the boat is kRecentreM from the origin. */
+	bool RecentreAt(double NorthM, double EastM);
+	/** Re-centres so far, and the longest one's game-thread time (ms). */
+	int32 GetRecentres() const { return Recentres; }
+	double GetLongestRecentreMs() const { return LongestRecentreMs; }
+	/** Where the boat the world follows is (map frame, m): the player's boat, or the camera when there is none. */
+	FVector2D GetFollowPoint() const;
+	/** The physics' window on a streamed world (the sea fetch, ocean mask and shelter map are built over it). */
+	const Sailing::FPhysicsWindow& GetPhysicsWindow() const { return PhysicsWindow; }
+	int32 GetWindowMarches() const { return WindowMarches; }
+	/** Whether a march of the physics' window is running on a worker. */
+	bool IsWindowMarching() const { return bWindowMarching; }
+
 private:
+	// World streaming.
+	FWorldStreamer Streamer;
+	UPROPERTY(Transient) TObjectPtr<class UMaterialParameterCollection> WorldCollection;
+	int32 Recentres = 0;
+	double LongestRecentreMs = 0.0;
+	/** Starts the world's streaming and reads the tiles around the launch spot (end of InitGame). */
+	void StartStreaming();
+	/** Each frame: tiles around the boat, the render origin, the physics' window. */
+	void UpdateStreaming();
+	/** MPC_World.RenderOrigin (cm): the materials put their positions back in the map frame with it. */
+	void PublishRenderOrigin();
+	struct FWindowGrids
+	{
+		TSharedPtr<const Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch;
+		TSharedPtr<Sailing::FShelterMap> Shelter;
+		Sailing::FOcean::FMask Mask;
+		bool bMask = false;
+		double CenterX = 0.0, CenterY = 0.0, ShelterFrom = 0.0;
+		double Ms = 0.0;
+	};
+	Sailing::FPhysicsWindow PhysicsWindow;
+	TFuture<FWindowGrids> PendingWindow;
+	bool bWindowMarching = false;
+	bool bWindowStale = false;   // the ocean's swell changed: march the window again
+	int32 WindowMarches = 0;
+	/** Marches the sea fetch, the ocean mask and the shelter map over a window centred on (X, Y) on a worker. */
+	void MarchWindow(double X, double Y);
+	/** The terrain the derived grids are built on: the window on a streamed world, the whole grid otherwise (a copy). */
+	Sailing::FLakeTerrain DerivedTerrain(double CenterX, double CenterY) const;
 	void UpdateWeather(float DeltaSeconds);
 	void UpdateOcean(double WindKnots, double WindFromDeg);
 	TSharedPtr<Sailing::FOcean> Ocean;
@@ -149,6 +217,15 @@ private:
 	FDateTime SessionDate;
 	bool bSessionDate = false;
 	bool bWindArgsRead = false;
+	// Prologue step 1: the scene, its clock (the boat's physics time when it last stepped) and the last call voiced.
+	Sailing::FScriptedScene Scene;
+	bool bScene = false, bSceneStarted = false, bSceneRecorded = false, bSceneStandIn = false;
+	int32 SceneReefs = 0;
+	double SceneTime = 0.0;
+	int32 SceneCallSerial = 0;
+	int32 SceneWeatherSerial = -1;
+	int32 SceneStartStep = 0;  // -SailingPrologueStep (stills)
+	bool bScenePreset = false; // the scene's setting.weather named a preset (step 4: the mistral)
 public:
 	/** Graphics G4: changes the running session's weather in place (Pause > Change conditions): no reload. */
 	void ApplyConditions(const struct FSailConditions& Conditions);

@@ -10,7 +10,7 @@ import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..")
 
-WORLDS = {"ray-hubbard", "galveston-bay", "gulf"}           # FSailSave::WorldId
+WORLDS = {"ray-hubbard", "galveston-bay", "gulf", "marseille", "texas-coast"}   # FSailSave::WorldId
 MEDALS = ["bronze", "silver", "gold"]
 CRITERIA = {"outcomes", "max_seconds", "max_contact_kn", "max_collisions", "max_infractions"}
 STATUS = {"ready", "stub"}
@@ -34,6 +34,7 @@ questions = json.load(open(os.path.join(learning, "quiz-bank.json"), encoding="u
 c = json.load(open(os.path.join(ROOT, "Content", "Career", "career.json"), encoding="utf-8"))
 check(c.get("schema_version") == 1, "schema_version must be 1")
 check(c.get("medals") == MEDALS, f"medals must be {MEDALS}")
+check(c.get("easy_max_medal", "gold") in MEDALS, f"easy_max_medal must be one of {MEDALS}")
 tiers = c.get("tiers", [])
 tier_ids = [t.get("id") for t in tiers]
 check(len(set(tier_ids)) == len(tier_ids), f"tier ids repeat: {tier_ids}")

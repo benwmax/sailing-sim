@@ -1,0 +1,321 @@
+{
+  "_about": "A made-up modern 100 ft racing maxi for the prologue (no real design copied): plumb bow, beam carried aft, hard chines aft, fixed T-keel, twin rudders, square-top main, J1 on a furler, A-sail off a short bowsprit. Body frame as the game's boats: metres, X forward, Y starboard, Z up, origin on the design waterline amidships (of the waterline). Proportions from public figures for 100 ft maxis (Volvo/IMA-style and supermaxi particulars, class rule drawings), studied only; nothing traced. Numbers marked guess in _notes. The Mac builds the physics class from these and the exported sections.",
+  "tag": "Maxi100",
+  "name": "Maxi 100 (made-up)",
+  "loa": 30.48,
+  "lwl": 29.6,
+  "beam_max": 7.2,
+  "beam_max_x": -3.0,
+  "beam_wl": 6.1,
+  "transom_beam": 6.3,
+  "displacement_kg": 42000,
+  "canoe_depth": 0.95,
+  "draft": 6.0,
+  "bow_x": 15.0,
+  "stern_x": -15.48,
+  "wl_bow_x": 14.8,
+  "wl_stern_x": -14.8,
+  "freeboard": {
+    "bow": 2.75,
+    "mid": 2.15,
+    "stern": 1.7
+  },
+  "_stations": "From the transom (u 0) to the stem (u 1). half_deck/half_chine/half_wl: half-breadths (m) at the sheer, the chine and the waterline; z_chine: the chine's height (m, above the DWL; null where the sections are round); z_keel: the canoe body's bottom on the centreline (m, negative). The bow is plumb above the waterline (the last station is the stem).",
+  "stations": [
+    {
+      "u": 0.0,
+      "x": -15.48,
+      "half_deck": 3.15,
+      "half_chine": 3.05,
+      "z_chine": 0.25,
+      "half_wl": 0.0,
+      "z_keel": 0.12
+    },
+    {
+      "u": 0.05,
+      "x": -14.0,
+      "half_deck": 3.3,
+      "half_chine": 3.22,
+      "z_chine": 0.18,
+      "half_wl": 2.55,
+      "z_keel": -0.15
+    },
+    {
+      "u": 0.15,
+      "x": -10.9,
+      "half_deck": 3.5,
+      "half_chine": 3.42,
+      "z_chine": 0.12,
+      "half_wl": 2.95,
+      "z_keel": -0.45
+    },
+    {
+      "u": 0.25,
+      "x": -7.9,
+      "half_deck": 3.6,
+      "half_chine": 3.5,
+      "z_chine": 0.1,
+      "half_wl": 3.05,
+      "z_keel": -0.72
+    },
+    {
+      "u": 0.35,
+      "x": -4.8,
+      "half_deck": 3.6,
+      "half_chine": 3.46,
+      "z_chine": 0.14,
+      "half_wl": 3.04,
+      "z_keel": -0.88
+    },
+    {
+      "u": 0.45,
+      "x": -1.75,
+      "half_deck": 3.54,
+      "half_chine": 3.3,
+      "z_chine": 0.25,
+      "half_wl": 2.92,
+      "z_keel": -0.95
+    },
+    {
+      "u": 0.55,
+      "x": 1.3,
+      "half_deck": 3.38,
+      "half_chine": 3.0,
+      "z_chine": 0.45,
+      "half_wl": 2.62,
+      "z_keel": -0.94
+    },
+    {
+      "u": 0.65,
+      "x": 4.35,
+      "half_deck": 3.1,
+      "half_chine": null,
+      "z_chine": null,
+      "half_wl": 2.18,
+      "z_keel": -0.84
+    },
+    {
+      "u": 0.75,
+      "x": 7.45,
+      "half_deck": 2.65,
+      "half_chine": null,
+      "z_chine": null,
+      "half_wl": 1.62,
+      "z_keel": -0.68
+    },
+    {
+      "u": 0.85,
+      "x": 10.5,
+      "half_deck": 1.95,
+      "half_chine": null,
+      "z_chine": null,
+      "half_wl": 1.0,
+      "z_keel": -0.44
+    },
+    {
+      "u": 0.93,
+      "x": 12.95,
+      "half_deck": 1.15,
+      "half_chine": null,
+      "z_chine": null,
+      "half_wl": 0.48,
+      "z_keel": -0.22
+    },
+    {
+      "u": 1.0,
+      "x": 15.0,
+      "half_deck": 0.06,
+      "half_chine": null,
+      "z_chine": null,
+      "half_wl": 0.04,
+      "z_keel": 0.02
+    }
+  ],
+  "sheer": {
+    "bow": 2.75,
+    "mid": 2.15,
+    "stern": 1.7
+  },
+  "deck_camber": 0.12,
+  "keel": {
+    "x_root_le": 0.95,
+    "root_chord": 1.65,
+    "tip_chord": 1.05,
+    "sweep_deg": 6.0,
+    "thickness": 0.12,
+    "bulb_length": 5.2,
+    "bulb_diameter": 0.98,
+    "bulb_x_nose": 1.6,
+    "draft": 6.0
+  },
+  "rudders": {
+    "x_stock": -12.9,
+    "y": 1.75,
+    "span": 2.55,
+    "root_chord": 0.82,
+    "tip_chord": 0.52,
+    "cant_deg": 8.0,
+    "thickness": 0.11
+  },
+  "rig": {
+    "mast_x": 3.1,
+    "mast_above_deck": 44.5,
+    "mast_chord": 0.62,
+    "mast_width": 0.32,
+    "mast_tip_chord": 0.3,
+    "spreaders": [
+      {
+        "z": 11.5,
+        "span": 2.6,
+        "sweep_deg": 20
+      },
+      {
+        "z": 22.5,
+        "span": 2.1,
+        "sweep_deg": 20
+      },
+      {
+        "z": 32.5,
+        "span": 1.6,
+        "sweep_deg": 20
+      }
+    ],
+    "boom": {
+      "gooseneck_z": 2.15,
+      "length": 11.6,
+      "depth": 0.46,
+      "width": 0.36
+    },
+    "bowsprit": {
+      "length": 2.6,
+      "z": 2.9
+    },
+    "forestay_x": 14.75,
+    "forestay_z": 2.95,
+    "hounds_z": 43.6,
+    "runners_x": -11.8,
+    "runner_y": 3.25
+  },
+  "sails": {
+    "I": 42.0,
+    "J": 11.65,
+    "P": 40.5,
+    "E": 11.2,
+    "main_area": 335.0,
+    "main_head_width": 4.2,
+    "main_battens": 6,
+    "j1_area": 245.0,
+    "j1_lp": 12.4,
+    "a2_area": 720.0,
+    "_cloth": "membrane: carbon/aramid fibre paths fanning from the corners, laminated panels with horizontal seams, black film both sides"
+  },
+  "deck": {
+    "cockpit": {
+      "x_aft": -14.6,
+      "x_fwd": -4.6,
+      "width": 4.7,
+      "depth": 0.55
+    },
+    "coachroof": {
+      "x_aft": -4.6,
+      "x_fwd": 3.6,
+      "width": 4.1,
+      "height": 0.52
+    },
+    "wheels": {
+      "x": -13.0,
+      "y": 2.15,
+      "diameter": 1.95
+    },
+    "pedestals": [
+      {
+        "x": -6.2,
+        "y": 0.0
+      },
+      {
+        "x": -7.6,
+        "y": 0.0
+      },
+      {
+        "x": -9.0,
+        "y": 0.0
+      }
+    ],
+    "winches": [
+      {
+        "name": "Primary",
+        "x": -7.0,
+        "y": 2.55,
+        "size": 1.0
+      },
+      {
+        "name": "Secondary",
+        "x": -9.2,
+        "y": 2.75,
+        "size": 0.85
+      },
+      {
+        "name": "Mainsheet",
+        "x": -10.6,
+        "y": 0.0,
+        "size": 0.9
+      },
+      {
+        "name": "Runner",
+        "x": -12.0,
+        "y": 3.0,
+        "size": 0.75
+      },
+      {
+        "name": "Halyard",
+        "x": -4.0,
+        "y": 1.35,
+        "size": 0.65
+      }
+    ],
+    "traveller": {
+      "x": -11.4,
+      "width": 4.4
+    },
+    "clutch_banks": {
+      "x": -4.55,
+      "y_in": 0.6,
+      "y_out": 1.9,
+      "count": 8
+    },
+    "genoa_tracks": {
+      "x_aft": -5.6,
+      "x_fwd": -0.8,
+      "y": 2.95
+    },
+    "hatches": [
+      {
+        "x": 6.5,
+        "size": 0.9
+      },
+      {
+        "x": 0.8,
+        "size": 0.75
+      }
+    ]
+  },
+  "crew_stations": [
+    "Helm_S",
+    "Helm_P",
+    "Trimmer_Main",
+    "Trimmer_Jib_S",
+    "Trimmer_Jib_P",
+    "Grinder_1",
+    "Grinder_2",
+    "Grinder_3",
+    "Pit",
+    "Mast",
+    "Bow",
+    "Navigator"
+  ],
+  "_notes": [
+    "guess: the chine heights and the section breadths are proportioned by eye from published 100 ft maxi photos and particulars; the Mac's physics hull follows these sections, not the other way round",
+    "guess: keel and rudder plan forms, rig heights and sail areas are typical of the type, not of any one boat",
+    "no real boat's name, sail numbers, sponsor graphics or sailmaker marks"
+  ]
+}

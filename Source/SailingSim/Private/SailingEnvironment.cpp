@@ -1,4 +1,5 @@
 #include "SailingEnvironment.h"
+#include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -16,6 +17,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Storm.h"
+#include "Haze.h"
+#include "Skyline.h"
+#include "Misc/FileHelper.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
@@ -362,12 +366,14 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateCloudLayers(CamPos);
 	UpdateSkyCache(CamPos, DeltaSeconds);
 	UpdateHaze();
+	UpdateSkyline(CamPos);
 	UpdateRain(CamPos);
 	UpdateRainCurtains(CamPos, DeltaSeconds);
 	if (WorldCollection)
 	{
 		// The trees on the shore sway with the wind there (MPC_World.Wind: direction it blows toward, speed with gusts).
-		const Vec3 V = GM->GetWind().VelocityAt(Vec3(CamPos.X / CmPerMeter, CamPos.Y / CmPerMeter, 10.0), GM->GetSimTime());
+		const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CamPos);
+		const Vec3 V = GM->GetWind().VelocityAt(Vec3(CamMap.X, CamMap.Y, 10.0), GM->GetSimTime());
 		const double Speed = V.LengthXY();
 		const double Mean = FMath::Max(W.Wind.SpeedKnots * kKnot, 0.5);
 		UKismetMaterialLibrary::SetVectorParameterValue(this, WorldCollection, TEXT("Wind"),
@@ -377,6 +383,8 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		if (WaterActor.IsValid()) UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("WaterZ"), float(WaterActor->GetActorLocation().Z));
 		// E1: the world's wear site (0 lake, 1 bay, 2 Gulf) for M_WorldSurface's baked tiles, which carry no seed of their own.
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Site"), GM->GetLake().IsLoaded() ? float(int32(WearSiteFor(GM->GetLake()))) : 0.f);
+		// marseille-look: the land's dress for M_Terrain and M_FarLand (0 prairie, 1 garrigue).
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Land"), GM->GetLake().IsLoaded() && GM->GetLake().IsGarrigue() ? 1.f : 0.f);
 		// T1: the season on the trees, from the session's date (AutumnAmount, SpringAmount).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Autumn"), AutumnAmount(GM->GetDayOfYear()));
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Spring"), SpringAmount(GM->GetDayOfYear()));
@@ -525,7 +533,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		const double E = Elevation * kDegToRad, A = Azimuth * kDegToRad;
 		FVector Cam = FVector::ZeroVector;
-		if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CamMgr->GetCameraLocation() / CmPerMeter;
+		if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = SailingFrame::ToMapCm(GetWorld(), CamMgr->GetCameraLocation()) / CmPerMeter;
 		const FGustFront& F = W.Front;
 		const double Seen = LastWeatherMap.SunTransmittance(W.Sky, F, F.SpeedMs * (GM->GetSimTime() - F.StartTime), GM->GetWeatherTime(), Cam.X, Cam.Y,
 			FMath::Cos(E) * FMath::Cos(A), FMath::Cos(E) * FMath::Sin(A), FMath::Sin(E));
@@ -747,7 +755,8 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FWeatherState& W = GM->GetWeatherState();
 	// W5b: the rain where the camera is (a storm's falls under its core, not everywhere at once).
-	const double RainHere = GM->GetRainAt(CameraPos.X / CmPerMeter, CameraPos.Y / CmPerMeter);
+	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);
+	const double RainHere = GM->GetRainAt(CamMap.X, CamMap.Y);
 	const bool bRaining = RainHere > 0.01;
 	if (LensMaterial)
 	{
@@ -805,7 +814,8 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 	}
 	const FWeatherState& W = GM->GetWeatherState();
 	const double Now = GM->GetSimTime();
-	const double Cx = CameraPos.X / CmPerMeter, Cy = CameraPos.Y / CmPerMeter;
+	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);   // the rain field is in the map frame
+	const double Cx = CamMap.X, Cy = CamMap.Y;
 	constexpr double Cell = 2000.0, Reach = 26000.0;
 	CurtainClock -= DeltaSeconds;
 	if (CurtainClock <= 0.f)
@@ -851,7 +861,7 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		if (RainCurtainMaterial)
 		{
 			// The storm's rain falls from the core's base; other rain from the stratus deck's.
-			const double BaseM = W.Front.bActive ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
+			const double BaseM = W.Front.bActive && !W.bSquall ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
 			RainCurtainMaterial->SetScalarParameterValue(TEXT("RainBase"), float(BaseM));
 		}
 	}
@@ -864,10 +874,10 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 	}
 	RainCurtains->SetVisibility(Want > 0);
 	if (Want == 0) return;
-	const double BaseM = W.Front.bActive ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
+	const double BaseM = W.Front.bActive && !W.bSquall ? FStormShape::CoreBaseM : FMath::Max(W.Sky[ECloudLayer::Stratus].BaseKm * 1000.0, 300.0);
 	// The foot runs ahead of the core toward where the storm is going.
 	const double Move = W.Front.MoveDegrees * kDegToRad;
-	const FVector FootShift = W.Front.bActive ? FVector(FMath::Cos(Move), FMath::Sin(Move), 0.0) * FStormRain::FootReachM : FVector::ZeroVector;
+	const FVector FootShift = W.Front.bActive && !W.bSquall ? FVector(FMath::Cos(Move), FMath::Sin(Move), 0.0) * FStormRain::FootReachM : FVector::ZeroVector;
 	for (int32 K = 0; K < Curtains.Num(); ++K)
 	{
 		const FRainCurtain& C = Curtains[K];
@@ -880,8 +890,8 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		// Near the camera the rain cylinders show the rain; far off the haze takes it.
 		const double Fade = FMath::SmoothStep(700.0, 2500.0, D) * (1.0 - FMath::SmoothStep(22000.0, Reach, D));
 		const double Amount = FStormRain::Amount(C.Rate) * Fade;
-		const FTransform Veil(Q, (P + FVector(0, 0, 0.5 * BaseM)) * CmPerMeter, FVector(2200.0, BaseM, 1.0));
-		const FTransform Foot(Q, (P + FootShift + FVector(0, 0, 110.0)) * CmPerMeter, FVector(3300.0, 220.0, 1.0));
+		const FTransform Veil(Q, SailingFrame::FromMapCm(GetWorld(), (P + FVector(0, 0, 0.5 * BaseM)) * CmPerMeter), FVector(2200.0, BaseM, 1.0));
+		const FTransform Foot(Q, SailingFrame::FromMapCm(GetWorld(), (P + FootShift + FVector(0, 0, 110.0)) * CmPerMeter), FVector(3300.0, 220.0, 1.0));
 		RainCurtains->UpdateInstanceTransform(2 * K, Veil, true, false, true);
 		RainCurtains->UpdateInstanceTransform(2 * K + 1, Foot, true, false, true);
 		RainCurtains->SetCustomDataValue(2 * K, 0, float(Amount), false);
@@ -901,7 +911,7 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const auto& Strikes = GM->GetWeather().GetStrikes();
 	const double T = GM->GetWeatherTime();
-	const FVector2D Listener(CameraPos.X / CmPerMeter, CameraPos.Y / CmPerMeter);
+	const FVector2D Listener = SailingFrame::ToMap(GetWorld(), CameraPos);
 
 	// W8: -SailingNoLightning for stills compared before and after (a flash lights the water white at random times).
 	static SailingArgs::FCachedFlag NoLightningArg(TEXT("SailingNoLightning"));
@@ -918,9 +928,9 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		FlashParams = FVector4f(float(S.X), float(S.Y), S.bCloudToGround ? 2500.f : 4500.f, 1.f);
 		if (S.bCloudToGround)
 		{
-			BuildBolt(FVector(S.X, S.Y, 0.0) * CmPerMeter, (bLayeredClouds ? 0.7f : kCloudBaseKm) * 1000.f * CmPerMeter);
+			BuildBolt(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 0.0), (bLayeredClouds ? 0.7f : kCloudBaseKm) * 1000.f * CmPerMeter);
 			BoltTime = 0.f;
-			BoltLight->SetWorldLocation(FVector(S.X, S.Y, 300.0) * CmPerMeter);
+			BoltLight->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 300.0));
 		}
 		// Light from the strike's direction.
 		const FVector Dir = (FVector(Listener.X - S.X, Listener.Y - S.Y, -1500.f)).GetSafeNormal();
@@ -1064,14 +1074,18 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		const FCloudSky Sky = W.Sky;
 		const FGustFront Front = W.Front;
 		const FLakeData* Lake = GM->GetLake().IsLoaded() ? &GM->GetLake() : nullptr;
-		const double Cx = CameraPos.X / CmPerMeter, Cy = CameraPos.Y / CmPerMeter;
-		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Lake, Cx, Cy, Tw]()
+		const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);   // the weather map is painted in the map frame
+		const double Cx = CamMap.X, Cy = CamMap.Y;
+		// World streaming: a copy of the terrain (it shares the heights): the tiles may be swapped while the worker reads.
+		TSharedPtr<const Sailing::FLakeTerrain> Terrain;
+		if (Lake) Terrain = MakeShared<const Sailing::FLakeTerrain>(Lake->Terrain);
+		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Terrain, Cx, Cy, Tw]()
 		{
 			FWeatherMap Map;
-			if (Lake)
+			if (Terrain)
 			{
 				// Cumulus build over the heated land, not the lake.
-				Map.LandFraction = [Lake](double X, double Y) { return FMath::Clamp((Lake->Terrain.HeightAt(X, Y) + 0.5) / 2.0, 0.0, 1.0); };
+				Map.LandFraction = [Terrain](double X, double Y) { return FMath::Clamp((Terrain->HeightAt(X, Y) + 0.5) / 2.0, 0.0, 1.0); };
 			}
 			Map.Paint(Sky, Front, Cx, Cy, Tw);
 			FWeatherMapFrame Out;
@@ -1163,7 +1177,8 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		if (!bHasWeatherMap) return;
 		// One camera and one set of cloud parameters for the whole panorama, so its strips agree.
 		CacheRefreshStart = Now;
-		CacheMaterial->SetVectorParameterValue(TEXT("CacheCam"), FLinearColor(float(CameraPos.X), float(CameraPos.Y), float(CameraPos.Z), 0.f));
+		const FVector CacheCam = SailingFrame::ToMapCm(GetWorld(), CameraPos);   // the material's positions are in the map frame
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheCam"), FLinearColor(float(CacheCam.X), float(CacheCam.Y), float(CacheCam.Z), 0.f));
 		static const TCHAR* Vectors[] = { TEXT("WeatherRect"), TEXT("LayerCumulus"), TEXT("LayerStratus"), TEXT("LayerCirrus"), TEXT("FrontA"), TEXT("FrontB"),
 			TEXT("Drift"), TEXT("LayerExtinction"), TEXT("SunLum"), TEXT("SunDir"), TEXT("TracerShadow") };
 		for (const TCHAR* Name : Vectors)
@@ -1246,6 +1261,69 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	SkyMaterial->SetVectorParameterValue(TEXT("CacheParams"), FLinearColor(1.f, 0.f, kSkyCacheElMin, kSkyCacheElMax));
 }
 
+void ASailingEnvironment::UpdateSkyline(const FVector& CameraPos)
+{
+	constexpr int32 kAzimuths = 2048;
+	constexpr double kFromM = 45000.0, kToM = 160000.0;
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || !SkyMaterial) return;
+	if (!Skyline)
+	{
+		static SailingArgs::FCachedFlag NoSkylineArg(TEXT("SailingNoSkyline"));
+		Skyline = MakeShared<Sailing::FSkyline, ESPMode::ThreadSafe>();
+		TArray<uint8> Bytes;
+		if (NoSkylineArg.Get() || !FFileHelper::LoadFileToArray(Bytes, *(FLakeData::DefaultDirectory() / (GM->GetLake().FileName + TEXT(".skyline"))), FILEREAD_Silent)
+			|| !Skyline->Load(Bytes.GetData(), Bytes.Num()))
+		{
+			SkyMaterial->SetVectorParameterValue(TEXT("SkylineP"), FLinearColor(0.f, 25.f, 0.f, 0.f));
+			return;
+		}
+		SkylineTex = UTexture2D::CreateTransient(kAzimuths, 1, PF_FloatRGBA);
+		SkylineTex->SRGB = false;
+		SkylineTex->Filter = TF_Bilinear;
+		SkylineTex->AddressX = TA_Wrap;
+		SkylineTex->AddressY = TA_Clamp;
+		SkylineTex->UpdateResource();
+		SkyMaterial->SetTextureParameterValue(TEXT("Skyline"), SkylineTex);
+		UE_LOG(LogSailing, Display, TEXT("Skyline: %s.skyline loaded (mountains %.0f to %.0f km)"), *GM->GetLake().FileName, kFromM / 1000.0, kToM / 1000.0);
+	}
+	if (!Skyline->IsValid()) return;
+	// The haze fades the mountains as it fades everything (Koschmieder: contrast exp(-3.912 d / V)).
+	SkyMaterial->SetVectorParameterValue(TEXT("SkylineP"), FLinearColor(1.f, float(GM->GetWeatherState().VisibilityKm), 0.f, 0.f));
+	if (bSkylinePending && PendingSkyline.IsReady())
+	{
+		bSkylinePending = false;
+		const TArray<float> Result = PendingSkyline.Get();
+		TArray<FFloat16Color>* Pixels = new TArray<FFloat16Color>();
+		Pixels->SetNum(kAzimuths);
+		for (int32 K = 0; K < kAzimuths; ++K)
+		{
+			FFloat16Color& P = (*Pixels)[K];
+			P.R = FFloat16(Result[K]);                       // elevation angle, rad
+			P.G = FFloat16(Result[kAzimuths + K] / 1000.f);  // distance, km
+			P.B = FFloat16(0.f);
+			P.A = FFloat16(1.f);
+		}
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, kAzimuths, 1);
+		SkylineTex->UpdateTextureRegions(0, 1, Region, kAzimuths * sizeof(FFloat16Color), sizeof(FFloat16Color), reinterpret_cast<uint8*>(Pixels->GetData()),
+			[Pixels](uint8*, const FUpdateTextureRegion2D* Rg) { delete Pixels; delete Rg; });
+	}
+	// Re-marched every 500 m (the parallax of a summit 45 km off is under a pixel per 500 m).
+	if (bSkylinePending || FVector::Dist2D(CameraPos, SkylineAt) < 50000.0) return;
+	SkylineAt = CameraPos;
+	bSkylinePending = true;
+	const double X = CameraPos.X / CmPerMeter, Y = CameraPos.Y / CmPerMeter, Eye = FMath::Max(CameraPos.Z / CmPerMeter, 1.0);
+	PendingSkyline = Async(EAsyncExecution::ThreadPool, [Sky = Skyline, X, Y, Eye, Count = kAzimuths, From = kFromM, To = kToM]()
+	{
+		std::vector<float> Angles, Distances;
+		Sky->Compute(X, Y, Eye, Count, From, To, Angles, Distances);
+		TArray<float> Out;
+		Out.Append(Angles.data(), int32(Angles.size()));
+		Out.Append(Distances.data(), int32(Distances.size()));
+		return Out;
+	});
+}
+
 void ASailingEnvironment::UpdateHaze()
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1253,7 +1331,8 @@ void ASailingEnvironment::UpdateHaze()
 	const FWeatherState& W = GM->GetWeatherState();
 	const int32 World = USailingSettings::Get()->World;
 	// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day and 1.5 km a downpour.
-	const float Density = FMath::Clamp(0.03f * (2.f / FMath::Max(float(W.VisibilityKm), 0.3f)), 0.0015f, 0.12f);
+	// Wide World Rendering PR 4: the clamp reaches 80 km now (a mistral day), FHaze (Haze.h).
+	const float Density = float(Sailing::FHaze::FogDensity(W.VisibilityKm));
 	UExponentialHeightFogComponent* F = Fog->GetComponent();
 	// Perf 4: each fog setter marks the fog's render state dirty when its value changes, and the engine then rebuilds
 	// the fog's scene proxy. The inscattering colour follows HazeLight (the metered light, new every frame) and the
@@ -1267,8 +1346,12 @@ void ASailingEnvironment::UpdateHaze()
 	{
 		return Current != Want && !Current.Equals(Want, 0.03f * FMath::Max3(Want.R, Want.G, Want.B));
 	};
-	const float Falloff = FMath::Lerp(0.2f, 0.05f, float(W.Rain));
-	if (Stepped(F->FogHeightFalloff, Falloff, 0.2f, 0.05f)) F->SetFogHeightFalloff(Falloff);
+	// The haze's thickness: 50 m on the Texas coast and lake (falloff 0.2); a world can give its own scale height
+	// (Marseille's sea haze lies under the dry air of a mistral, 400 m). Rain mixes it up toward 200 m.
+	const double ScaleHeight = GM->GetLake().FogScaleHeightM;
+	const float Dry = ScaleHeight > 0.0 ? float(Sailing::FHaze::HeightFalloff(ScaleHeight)) : 0.2f;
+	const float Falloff = FMath::Lerp(Dry, 0.05f, float(W.Rain));
+	if (Stepped(F->FogHeightFalloff, Falloff, Dry, 0.05f)) F->SetFogHeightFalloff(Falloff);
 	if (USailingSettings::Get()->Quality == ESailingQuality::Low)
 	{
 		if (Stepped(F->FogDensity, Density)) F->SetFogDensity(Density);
@@ -1355,21 +1438,56 @@ void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& M
 	// Star brightness tracks the moonlight's scale (both exposed by the same night exposure); a bright moon washes the
 	// faint stars and the Milky Way out a little.
 	const float StarScale = float(SunIntensity) * 0.006f * Night * (1.f - 0.6f * MoonLit);
-	// The nearest big city's light dome (Visual V6): Dallas from the lake, Houston from the bay, scaled by population light
-	// and falling off with distance.
-	struct FCity { double Lat, Lon, Light; };
-	static const FCity Cities[] = { { 32.78, -96.80, 1.0 }, { 29.76, -95.37, 1.3 }, { 29.39, -94.92, 0.35 }, { 32.75, -97.33, 0.6 } };
-	const double CosLat = FMath::Cos(GM->GetLake().Latitude * kDegToRad);
-	float Glow = 0.f, GlowAz = 0.f;
-	for (const FCity& C : Cities)
+	// City light domes (Visual V6; Wide World Rendering PR 3: from the world's <World>.farlights.json, up to four, the
+	// brightest first: from Frioul, Marseille to the east and La Ciotat to the south-east at once). Each falls off with
+	// distance from its light weight; the sky draws a dome toward each.
+	struct FDome { float Glow, Az; };
+	TArray<FDome, TInlineAllocator<8>> Domes;
+	const TArray<FFarLightsData::FCity>& Cities = GM->GetLake().FarLights.Cities;
+	if (Cities.Num() > 0)
 	{
-		const double North = (C.Lat - GM->GetLake().Latitude) * 111.2, East = (C.Lon - GM->GetLake().Longitude) * 111.2 * CosLat;
-		const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
-		const float G = float(C.Light * FMath::Pow(30.0 / Km, 1.5));
-		if (G > Glow) { Glow = G; GlowAz = float(FMath::Atan2(East, North)); }
+		FVector CamM = FVector::ZeroVector;
+		if (APlayerCameraManager* PCM = UGameplayStatics::GetPlayerCameraManager(this, 0)) CamM = SailingFrame::ToMapCm(GetWorld(), PCM->GetCameraLocation()) / 100.0;   // the map frame (the city domes are)
+		for (const FFarLightsData::FCity& C : Cities)
+		{
+			const double North = (C.XY.X - CamM.X) / 1000.0, East = (C.XY.Y - CamM.Y) / 1000.0;
+			const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
+			// Capped: from inside a city's own lights (the Vieux-Port in Marseille) its dome is no brighter than Houston's
+			// from Kemah.
+			Domes.Add({ float(FMath::Min(C.Light * FMath::Pow(30.0 / Km, 1.5), 1.2)), float(FMath::Atan2(East, North)) });
+		}
 	}
-	const float GlowScale = float(SunIntensity) * 0.006f * NightAmount * Glow * 1.1f;
-	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowScale, GlowAz, GetWorld()->GetTimeSeconds()));
+	else
+	{
+		// A bake without far lights: the old Texas list (Dallas, Houston, Texas City, Fort Worth).
+		struct FCityLL { double Lat, Lon, Light; };
+		static const FCityLL Texas[] = { { 32.78, -96.80, 1.0 }, { 29.76, -95.37, 1.3 }, { 29.39, -94.92, 0.35 }, { 32.75, -97.33, 0.6 } };
+		const double CosLat = FMath::Cos(GM->GetLake().Latitude * kDegToRad);
+		for (const FCityLL& C : Texas)
+		{
+			const double North = (C.Lat - GM->GetLake().Latitude) * 111.2, East = (C.Lon - GM->GetLake().Longitude) * 111.2 * CosLat;
+			const double Km = FMath::Max(FMath::Sqrt(North * North + East * East), 5.0);
+			Domes.Add({ float(C.Light * FMath::Pow(30.0 / Km, 1.5)), float(FMath::Atan2(East, North)) });
+		}
+	}
+	Domes.Sort([](const FDome& A, const FDome& B) { return A.Glow > B.Glow; });
+	float GlowParams[8] = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+	float GlowTotal = 0.f;
+	const float GlowUnit = float(SunIntensity) * 0.006f * NightAmount * 1.1f;
+	// The domes share the brightest one's light (the sky's total stays what the single dome gave: more domes spread it
+	// round the horizon, they do not brighten the night).
+	float Sum = 0.f;
+	for (int32 I = 0; I < FMath::Min(Domes.Num(), 4); ++I) Sum += Domes[I].Glow;
+	const float Share = (Domes.Num() > 0 && Sum > 0.f) ? Domes[0].Glow / Sum : 0.f;
+	for (int32 I = 0; I < FMath::Min(Domes.Num(), 4); ++I)
+	{
+		GlowParams[2 * I] = Domes[I].Az;
+		GlowParams[2 * I + 1] = Domes[I].Glow * Share * GlowUnit;
+		GlowTotal += GlowParams[2 * I + 1];
+	}
+	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowTotal, GlowParams[0], GetWorld()->GetTimeSeconds()));
+	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesA"), FLinearColor(GlowParams[0], GlowParams[1], GlowParams[2], GlowParams[3]));
+	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesB"), FLinearColor(GlowParams[4], GlowParams[5], GlowParams[6], GlowParams[7]));
 	SkyMaterial->SetVectorParameterValue(TEXT("MoonDir"), FLinearColor(float(MoonTrue.X), float(MoonTrue.Y), float(MoonTrue.Z), MoonTrue.Z > -0.02f ? MoonLuminance : 0.f));
 	// Earthshine: the dark limb at about a few thousandths of the lit side (strongest near new moon).
 	SkyMaterial->SetVectorParameterValue(TEXT("SunTrue"), FLinearColor(float(SunTrue.X), float(SunTrue.Y), float(SunTrue.Z), 0.004f * (1.f - MoonLit)));

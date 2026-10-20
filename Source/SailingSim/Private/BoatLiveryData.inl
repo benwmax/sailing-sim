@@ -10,7 +10,7 @@ static const FLiveryScheme Schemes_j22[] = {
 	{ 0.040f, FLinearColor(0.2705f, 0.0116f, 0.0116f), FLinearColor(0.8879f, 0.8714f, 0.8228f), FLinearColor(0.6939f, 0.6795f, 0.6308f), FLinearColor(0.8879f, 0.8714f, 0.8228f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), true, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // painted_red
 	{ 0.030f, FLinearColor(0.0423f, 0.0497f, 0.0595f), FLinearColor(0.8879f, 0.8714f, 0.8228f), FLinearColor(0.6939f, 0.6795f, 0.6308f), FLinearColor(0.8879f, 0.8714f, 0.8228f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), true, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // painted_dark_grey
 };
-static const FLiveryWear Wear_j22 = { 0.80f, 0.20f, 0.00f, { { 0.50f, 0.90f }, { 0.30f, 0.70f }, { 0.40f, 0.80f }, { 0.30f, 0.70f } }, { { 0.00f, 0.20f }, { 0.00f, 0.10f }, { 0.05f, 0.20f }, { 0.00f, 0.10f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_j22 = { 0.80f, 0.20f, 0.00f, { { 0.50f, 0.90f }, { 0.30f, 0.70f }, { 0.40f, 0.80f }, { 0.30f, 0.70f } }, { { 0.00f, 0.20f }, { 0.00f, 0.10f }, { 0.05f, 0.20f }, { 0.00f, 0.10f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.40f, 0.80f }, { 0.00f, 0.30f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_j22 = { true, 1.00f, 1, 1700, TEXT("USA {n}") };
 
 static const FLiveryScheme Schemes_sunfish[] = {
@@ -19,7 +19,7 @@ static const FLiveryScheme Schemes_sunfish[] = {
 	{ 0.080f, FLinearColor(0.9047f, 0.8879f, 0.8388f), FLinearColor(0.0137f, 0.0762f, 0.3231f), FLinearColor(0.0137f, 0.0762f, 0.3231f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // blue_deck_white_stripe
 	{ 0.120f, FLinearColor(0.8714f, 0.8388f, 0.7454f), FLinearColor(0.0232f, 0.2623f, 0.2623f), FLinearColor(0.0232f, 0.2623f, 0.2623f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // vintage_solid_deck
 };
-static const FLiveryWear Wear_sunfish = { 0.85f, 0.15f, 0.00f, { { 0.40f, 0.90f }, { 0.00f, 0.00f }, { 0.30f, 0.70f }, { 0.00f, 0.00f } }, { { 0.00f, 0.20f }, { 0.00f, 0.00f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_sunfish = { 0.85f, 0.15f, 0.00f, { { 0.40f, 0.90f }, { 0.00f, 0.00f }, { 0.30f, 0.70f }, { 0.00f, 0.00f } }, { { 0.00f, 0.20f }, { 0.00f, 0.00f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.40f, 0.80f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_sunfish = { true, 1.00f, 1000, 99999, TEXT("{n}") };
 
 static const FLiveryScheme Schemes_ilca7[] = {
@@ -27,7 +27,7 @@ static const FLiveryScheme Schemes_ilca7[] = {
 	{ 0.100f, FLinearColor(0.6939f, 0.7011f, 0.7084f), FLinearColor(0.7605f, 0.7682f, 0.7682f), FLinearColor(0.6445f, 0.6514f, 0.6514f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // grey_white
 	{ 0.100f, FLinearColor(0.3968f, 0.5711f, 0.7011f), FLinearColor(0.8879f, 0.8796f, 0.8388f), FLinearColor(0.7913f, 0.7835f, 0.7454f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // vintage_coloured
 };
-static const FLiveryWear Wear_ilca7 = { 0.70f, 0.30f, 0.00f, { { 0.30f, 0.70f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.15f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_ilca7 = { 0.70f, 0.30f, 0.00f, { { 0.30f, 0.70f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.15f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_ilca7 = { true, 1.00f, 100000, 225000, TEXT("{n6}") };
 
 static const FLiveryScheme Schemes_catalina22[] = {
@@ -36,7 +36,7 @@ static const FLiveryScheme Schemes_catalina22[] = {
 	{ 0.100f, FLinearColor(0.8632f, 0.8228f, 0.7157f), FLinearColor(0.5841f, 0.6514f, 0.3813f), FLinearColor(0.5841f, 0.6514f, 0.3813f), FLinearColor(0.1559f, 0.1441f, 0.1119f), true, FLinearColor(0.1470f, 0.0685f, 0.0273f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_70s_coloured_deck
 	{ 0.100f, FLinearColor(0.9047f, 0.8879f, 0.8388f), FLinearColor(0.8879f, 0.8632f, 0.7913f), FLinearColor(0.8388f, 0.8070f, 0.7157f), FLinearColor(0.1559f, 0.1441f, 0.1119f), true, FLinearColor(0.2705f, 0.0116f, 0.0116f), true, FLinearColor(0.2705f, 0.0116f, 0.0116f), true, FLinearColor(0.2705f, 0.0116f, 0.0116f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_red_stripes
 };
-static const FLiveryWear Wear_catalina22 = { 0.85f, 0.15f, 0.00f, { { 0.50f, 0.90f }, { 0.40f, 0.80f }, { 0.30f, 0.70f }, { 0.50f, 1.00f } }, { { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.10f, 0.30f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_catalina22 = { 0.85f, 0.15f, 0.00f, { { 0.50f, 0.90f }, { 0.40f, 0.80f }, { 0.30f, 0.70f }, { 0.50f, 1.00f } }, { { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.10f, 0.30f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.40f, 0.90f }, { 0.00f, 0.30f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_catalina22 = { false, 0.50f, 1, 15500, TEXT("{n}") };
 
 static const FLiveryScheme Schemes_catalina30[] = {
@@ -44,7 +44,7 @@ static const FLiveryScheme Schemes_catalina30[] = {
 	{ 0.250f, FLinearColor(0.8632f, 0.8228f, 0.7157f), FLinearColor(0.8469f, 0.7913f, 0.6514f), FLinearColor(0.6939f, 0.6105f, 0.4452f), FLinearColor(0.1559f, 0.1441f, 0.1119f), true, FLinearColor(0.1470f, 0.0685f, 0.0273f), true, FLinearColor(0.1470f, 0.0685f, 0.0273f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.3231f, 0.3005f, 0.2542f) }, // white_brown_cove
 	{ 0.150f, FLinearColor(0.8879f, 0.8714f, 0.8228f), FLinearColor(0.8714f, 0.8469f, 0.7758f), FLinearColor(0.7913f, 0.7529f, 0.6514f), FLinearColor(0.1559f, 0.1441f, 0.1119f), true, FLinearColor(0.1119f, 0.0137f, 0.0232f), true, FLinearColor(0.1119f, 0.0137f, 0.0232f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_burgundy_cove
 };
-static const FLiveryWear Wear_catalina30 = { 0.80f, 0.20f, 0.00f, { { 0.50f, 0.90f }, { 0.50f, 0.90f }, { 0.30f, 0.70f }, { 0.40f, 0.80f } }, { { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.00f, 0.20f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_catalina30 = { 0.80f, 0.20f, 0.00f, { { 0.50f, 0.90f }, { 0.50f, 0.90f }, { 0.30f, 0.70f }, { 0.40f, 0.80f } }, { { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.00f, 0.20f }, { 0.00f, 0.20f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.40f, 0.90f }, { 0.00f, 0.30f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_catalina30 = { false, 0.25f, 1, 6430, TEXT("{n}") };
 
 static const FLiveryScheme Schemes_hobie16[] = {
@@ -53,22 +53,29 @@ static const FLiveryScheme Schemes_hobie16[] = {
 	{ 0.100f, FLinearColor(0.2122f, 0.4508f, 0.6939f), FLinearColor(0.2122f, 0.4508f, 0.6939f), FLinearColor(0.2122f, 0.4508f, 0.6939f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // vintage_light_blue
 	{ 0.030f, FLinearColor(0.3813f, 0.5776f, 0.0423f), FLinearColor(0.3813f, 0.5776f, 0.0423f), FLinearColor(0.3813f, 0.5776f, 0.0423f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // vintage_lime
 };
-static const FLiveryWear Wear_hobie16 = { 0.80f, 0.20f, 0.00f, { { 0.30f, 0.70f }, { 0.00f, 0.00f }, { 0.40f, 0.80f }, { 0.00f, 0.00f } }, { { 0.00f, 0.20f }, { 0.00f, 0.00f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_hobie16 = { 0.80f, 0.20f, 0.00f, { { 0.30f, 0.70f }, { 0.00f, 0.00f }, { 0.40f, 0.80f }, { 0.00f, 0.00f } }, { { 0.00f, 0.20f }, { 0.00f, 0.00f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.50f, 0.90f }, { 0.10f, 0.30f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_hobie16 = { true, 1.00f, 1, 120000, TEXT("{n}") };
 
 static const FLiveryScheme Schemes_corsair880[] = {
 	{ 0.850f, FLinearColor(0.9131f, 0.9131f, 0.8879f), FLinearColor(0.9131f, 0.9131f, 0.8879f), FLinearColor(0.5841f, 0.5972f, 0.5972f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), true, FLinearColor(0.0232f, 0.0284f, 0.0356f), true, FLinearColor(0.0232f, 0.0284f, 0.0356f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_standard
 	{ 0.150f, FLinearColor(0.9131f, 0.9131f, 0.8879f), FLinearColor(0.9131f, 0.9131f, 0.8879f), FLinearColor(0.5841f, 0.5972f, 0.5972f), FLinearColor(0.1559f, 0.1441f, 0.1119f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_sport_carbon
 };
-static const FLiveryWear Wear_corsair880 = { 0.50f, 0.50f, 0.00f, { { 0.30f, 0.60f }, { 0.30f, 0.60f }, { 0.30f, 0.60f }, { 0.00f, 0.00f } }, { { 0.00f, 0.15f }, { 0.10f, 0.30f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryWear Wear_corsair880 = { 0.50f, 0.50f, 0.00f, { { 0.30f, 0.60f }, { 0.30f, 0.60f }, { 0.30f, 0.60f }, { 0.00f, 0.00f } }, { { 0.00f, 0.15f }, { 0.10f, 0.30f }, { 0.00f, 0.20f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_corsair880 = { false, 0.40f, 1, 200, TEXT("{n}") };
 
 static const FLiveryScheme Schemes_lagoon42[] = {
 	{ 0.800f, FLinearColor(0.9301f, 0.9301f, 0.9131f), FLinearColor(0.9301f, 0.9301f, 0.9131f), FLinearColor(0.7011f, 0.7084f, 0.6867f), FLinearColor(0.0232f, 0.0423f, 0.1022f), true, FLinearColor(0.0232f, 0.0284f, 0.0356f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_charter
 	{ 0.200f, FLinearColor(0.9301f, 0.9301f, 0.9131f), FLinearColor(0.9301f, 0.9301f, 0.9131f), FLinearColor(0.7011f, 0.7084f, 0.6867f), FLinearColor(0.0103f, 0.0103f, 0.0103f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white_grey_accent
 };
-static const FLiveryWear Wear_lagoon42 = { 0.15f, 0.20f, 0.65f, { { 0.20f, 0.50f }, { 0.20f, 0.50f }, { 0.30f, 0.60f }, { 0.20f, 0.50f } }, { { 0.00f, 0.10f }, { 0.00f, 0.10f }, { 0.00f, 0.15f }, { 0.00f, 0.10f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.50f, 0.90f }, { 0.30f, 0.60f } } };
+static const FLiveryWear Wear_lagoon42 = { 0.15f, 0.20f, 0.65f, { { 0.20f, 0.50f }, { 0.20f, 0.50f }, { 0.30f, 0.60f }, { 0.20f, 0.50f } }, { { 0.00f, 0.10f }, { 0.00f, 0.10f }, { 0.00f, 0.15f }, { 0.00f, 0.10f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.50f, 0.90f }, { 0.30f, 0.60f } }, { { 0.30f, 0.60f }, { 0.00f, 0.20f }, { 0.50f, 0.90f } } };
 static const FLiveryNumbers Numbers_lagoon42 = { false, 0.05f, 1, 999, TEXT("{n}") };
+
+static const FLiveryScheme Schemes_maxi[] = {
+	{ 0.600f, FLinearColor(0.0273f, 0.0319f, 0.0369f), FLinearColor(0.1946f, 0.2086f, 0.2232f), FLinearColor(0.1070f, 0.1170f, 0.1274f), FLinearColor(0.0116f, 0.0130f, 0.0152f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // graphite
+	{ 0.400f, FLinearColor(0.8388f, 0.8388f, 0.8070f), FLinearColor(0.2542f, 0.2705f, 0.2874f), FLinearColor(0.1329f, 0.1441f, 0.1559f), FLinearColor(0.0116f, 0.0130f, 0.0152f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white
+};
+static const FLiveryWear Wear_maxi = { 0.00f, 1.00f, 0.00f, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.15f, 0.30f }, { 0.10f, 0.20f }, { 0.25f, 0.50f }, { 0.00f, 0.05f } }, { { 0.15f, 0.30f }, { 0.10f, 0.20f }, { 0.25f, 0.50f }, { 0.00f, 0.05f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryNumbers Numbers_maxi = { false, 0.00f, 1, 99, TEXT("{n}") };
 
 static const FLiveryClass LiveryClasses[] = {
 	{ Schemes_j22, UE_ARRAY_COUNT(Schemes_j22), &Wear_j22, &Numbers_j22 },
@@ -79,4 +86,5 @@ static const FLiveryClass LiveryClasses[] = {
 	{ Schemes_hobie16, UE_ARRAY_COUNT(Schemes_hobie16), &Wear_hobie16, &Numbers_hobie16 },
 	{ Schemes_corsair880, UE_ARRAY_COUNT(Schemes_corsair880), &Wear_corsair880, &Numbers_corsair880 },
 	{ Schemes_lagoon42, UE_ARRAY_COUNT(Schemes_lagoon42), &Wear_lagoon42, &Numbers_lagoon42 },
+	{ Schemes_maxi, UE_ARRAY_COUNT(Schemes_maxi), &Wear_maxi, &Numbers_maxi },
 };

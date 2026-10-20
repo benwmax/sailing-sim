@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "game": "SailingSim",
+  "settings": {
+    "start": {
+      "world": "ray-hubbard",
+      "boat": "J22"
+    }
+  },
+  "lastSession": null,
+  "progress": {
+    "drillsPassed": [],
+    "racesSailed": 0,
+    "racesWon": 0,
+    "logbook": {
+      "sessions": 5,
+      "entries": 31,
+      "nauticalMiles": 9.8
+    },
+    "hoursSailed": 3.4,
+    "lessons": {},
+    "checkrides": {},
+    "certificates": {}
+  }
+}

@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "SailingFrame.h"
 #include "Career.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
@@ -103,13 +104,13 @@ int32 ATrafficManager::AddSailboat(EBoatType Type, double X, double Y, double He
 {
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	ASailboatPawn* Pawn = GetWorld()->SpawnActorDeferred<ASailboatPawn>(ASailboatPawn::StaticClass(), FTransform(FVector(X, Y, 0.0) * 100.0), nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	ASailboatPawn* Pawn = GetWorld()->SpawnActorDeferred<ASailboatPawn>(ASailboatPawn::StaticClass(), FTransform(SailingFrame::ToWorld(GetWorld(), X, Y, 0.0)), nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (!Pawn) return -1;
 	Pawn->bTrafficBoat = true;
 	Pawn->TrafficHullColor = HullColors[Rng.UniformInt(0, UE_ARRAY_COUNT(HullColors) - 1)];
 	Pawn->AutoPossessPlayer = EAutoReceiveInput::Disabled;
 	Pawn->AutoPossessAI = EAutoPossessAI::Disabled;
-	Pawn->FinishSpawning(FTransform(FVector(X, Y, 0.0) * 100.0));
+	Pawn->FinishSpawning(FTransform(SailingFrame::ToWorld(GetWorld(), X, Y, 0.0)));
 	FBoatModel* Model = Pawn->InitTraffic(int32(Type), X, Y, Heading);
 	// The actor owns the model; the simulation borrows it for as long as the actor lives.
 	const int32 Id = Sim.AddSailboatModel(std::shared_ptr<FBoatModel>(Model, [](FBoatModel*) {}), std::move(Route), TCHAR_TO_UTF8(*Name));
@@ -122,10 +123,10 @@ int32 ATrafficManager::AddPower(ETrafficKind Kind, double X, double Y, double He
 	const int32 Id = Sim.AddPower(Kind, X, Y, Heading, std::move(Route), TCHAR_TO_UTF8(*Name));
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	APowerVesselActor* Actor = GetWorld()->SpawnActor<APowerVesselActor>(FVector(X, Y, 0.0) * 100.0, FRotator(0.0, FMath::RadiansToDegrees(Heading), 0.0), Params);
+	APowerVesselActor* Actor = GetWorld()->SpawnActor<APowerVesselActor>(SailingFrame::ToWorld(GetWorld(), X, Y, 0.0), FRotator(0.0, FMath::RadiansToDegrees(Heading), 0.0), Params);
 	if (Actor)
 	{
-		Actor->Build(Kind);
+		Actor->Build(Kind, Name.StartsWith(TEXT("Tanker")));
 		PowerActors.Add(Id, Actor);
 		// -SailingNearShip=<m>: the player is moved this far abeam of the first ship, on her heading (measuring stills).
 		double NearM = 0.0;
@@ -137,6 +138,14 @@ int32 ATrafficManager::AddPower(ETrafficKind Kind, double X, double Y, double He
 		}
 	}
 	return Id;
+}
+
+bool ATrafficManager::HandOffShip(double X, double Y, double HeadingRad, std::vector<std::pair<double, double>> Route, const FString& Name)
+{
+	if (PopulatedLevel <= 0) return false;
+	AddPower(ETrafficKind::Ship, X, Y, HeadingRad, std::move(Route), Name);
+	Message(FString::Printf(TEXT("%s is in sight"), *Name));
+	return true;
 }
 
 void ATrafficManager::RemoveVessel(int32 Id)
@@ -330,7 +339,7 @@ void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
 		C->SetStaticMesh(Mesh);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetAbsolute(true, true, true);
-		C->SetWorldLocation(FVector(X, Y, Z) * 100.0);
+		C->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), X, Y, Z));
 		C->SetWorldScale3D(Size);
 		C->RegisterComponent();
 		if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Material, this))

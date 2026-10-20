@@ -3,14 +3,69 @@
 #include "SailingPhysicsApi.h"
 #include "SailingMath.h"
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace Sailing
 {
 	/**
+	 * World streaming (docs/world-streaming): one tile of a streamed world's heights, (Cells + 1)^2 nodes at its own spacing
+	 * (10 m in the bay, 50 m offshore on the Texas coast), rows north and columns east from its south-west corner. Immutable
+	 * once made: the loader builds it on a worker and every reader holds it by shared pointer.
+	 */
+	struct SAILINGPHYSICS_API FTerrainTile
+	{
+		int Row = 0, Col = 0;          // in tiles from the world's tile origin
+		int Cells = 0;                 // per side
+		double Cell = 10.0;            // m between nodes
+		double OriginX = 0.0, OriginY = 0.0;  // its south-west node (map frame)
+		double Unit = 0.01;            // m per height step
+		std::vector<int16_t> Heights;  // (Cells + 1)^2
+
+		double Node(int R, int C) const { return Heights[size_t(R) * (Cells + 1) + C] * Unit; }
+		/** Bilinear inside the tile (clamped to its edge). */
+		double HeightAt(double X, double Y) const;
+	};
+
+	/**
+	 * The tiles resident now, as an immutable snapshot (FLakeTerrain holds one by shared pointer: swapping in a new set never
+	 * disturbs a worker reading the old). Tile (R, C) covers [OriginX + R TileM, OriginX + (R + 1) TileM) north and the same
+	 * east from OriginY. Where no tile is resident the ground is unknown and reads as land, as off a whole grid's edge.
+	 */
+	class SAILINGPHYSICS_API FTileSet
+	{
+	public:
+		FTileSet(double InTileM, double InOriginX, double InOriginY, const std::vector<std::shared_ptr<const FTerrainTile>>& InTiles);
+		const FTerrainTile* At(double X, double Y) const;
+		double GetTileM() const { return TileM; }
+		double GetOriginX() const { return OriginX; }
+		double GetOriginY() const { return OriginY; }
+		/** The resident tiles' bounding box in tiles (empty when none). */
+		int GetRow0() const { return R0; }
+		int GetCol0() const { return C0; }
+		int GetNumRows() const { return NR; }
+		int GetNumCols() const { return NC; }
+		size_t Num() const { return Count; }
+		/** The finest spacing among the resident tiles (m). */
+		double GetFinestCell() const { return Finest; }
+		const std::vector<std::shared_ptr<const FTerrainTile>>& GetSlots() const { return Slots; }
+
+	private:
+		double TileM = 6400.0, OriginX = 0.0, OriginY = 0.0, Finest = 10.0;
+		int R0 = 0, C0 = 0, NR = 0, NC = 0;
+		size_t Count = 0;
+		std::vector<std::shared_ptr<const FTerrainTile>> Slots;   // NR x NC, null where nothing is resident
+	};
+
+	/**
 	 * Lake bed and surrounding land as a height grid (meters, Z = 0 at the conservation pool), baked by
 	 * Tools/terrain/build_rayhubbard.py from USGS 3DEP, TWDB bathymetry and the OpenStreetMap shoreline.
 	 * Rows run north (+X), columns east (+Y).
+	 *
+	 * World streaming: the heights are either one whole grid or a set of resident tiles (SetTiles), and a terrain can be a
+	 * window onto either (WindowAround): GetRows/GetCols/GetOriginX/GetOriginY/NodeHeight then describe the window, at the
+	 * finest spacing, while HeightAt answers wherever there is data. Everything big is held by shared pointer, so copying a
+	 * terrain is cheap: a worker takes its own copy (a snapshot) and the game thread may swap tiles meanwhile.
 	 */
 	class SAILINGPHYSICS_API FLakeTerrain
 	{
@@ -24,8 +79,8 @@ namespace Sailing
 		 * heights in 64 m tiles along the shoreline. Where a tile exists HeightAt uses it instead of the grid.
 		 */
 		bool LoadDetail(const uint8_t* Data, size_t Size);
-		bool HasDetail() const { return !Detail.empty(); }
-		double GetDetailCell() const { return DetailCell; }
+		bool HasDetail() const { return Detail != nullptr; }
+		double GetDetailCell() const { return Detail ? Detail->Cell : 1.0; }
 		/** The 1 m height at a world XY, if a detail tile covers it. */
 		bool DetailHeightAt(double X, double Y, double& Height) const;
 		/** Whether any detail tile overlaps the box (world metres, X north, Y east). */
@@ -34,6 +89,21 @@ namespace Sailing
 		void InitSynthetic(int Rows, int Cols, double Cell, double OriginX, double OriginY, const std::vector<float>& Heights);
 		/** Synthetic tree density (0..255, 255 = 12 m canopy) on its own grid (tests). */
 		void InitSyntheticTrees(int Rows, int Cols, double Cell, double OriginX, double OriginY, const std::vector<uint8_t>& Density);
+
+		/**
+		 * World streaming: the heights become this tile set (the whole grid, if any, is dropped). The view is the set's
+		 * bounding box at its finest spacing (or FinestCell when given, the world's: the view keeps its spacing as coarse
+		 * tiles come and go).
+		 */
+		void SetTiles(std::shared_ptr<const FTileSet> Tiles, double FinestCell = 0.0);
+		const FTileSet* GetTiles() const { return Tiles.get(); }
+		bool IsTiled() const { return Tiles != nullptr; }
+		/**
+		 * A window onto the same heights: the view clipped to the square of half-side HalfM around (X, Y), snapped to the
+		 * spacing (the physics' derived grids are built over it: the sea fetch, the ocean mask, the shelter map). Shares
+		 * the data; the window is never larger than the view it is cut from.
+		 */
+		FLakeTerrain WindowAround(double X, double Y, double HalfM) const;
 
 		bool IsValid() const { return Rows > 0; }
 
@@ -56,7 +126,7 @@ namespace Sailing
 		double GetCell() const { return Cell; }
 		double GetOriginX() const { return OriginX; }
 		double GetOriginY() const { return OriginY; }
-		/** Height of a grid node (row north, column east), meters above the water. */
+		/** Height of a node of the view (row north, column east), meters above the water; clamped to the view's edge. */
 		double NodeHeight(int Row, int Col) const;
 
 		/**
@@ -67,18 +137,34 @@ namespace Sailing
 		double GetLevelBelowPool() const { return LevelBelowPool; }
 
 	private:
+		struct FDetail
+		{
+			int Tile = 64, Rows = 0, Cols = 0;
+			double Cell = 1.0, OriginX = 0.0, OriginY = 0.0, Unit = 0.01;
+			std::vector<int32_t> Index;   // per tile of the grid's extent: index into Heights, or -1
+			std::vector<int16_t> Heights; // (Tile + 1)^2 nodes per tile
+		};
+		struct FTrees
+		{
+			int Rows = 0, Cols = 0;
+			double Cell = 20.0, OriginX = 0.0, OriginY = 0.0;
+			std::vector<uint8_t> Density;
+		};
+		// The view: what the getters and NodeHeight describe.
 		int Rows = 0, Cols = 0;
-		double Cell = 10.0, OriginX = 0.0, OriginY = 0.0, Unit = 0.01;
+		double Cell = 10.0, OriginX = 0.0, OriginY = 0.0;
 		double LevelBelowPool = 0.0;
-		std::vector<int16_t> Heights;
-		int TreeRows = 0, TreeCols = 0;
-		double TreeCell = 20.0, TreeOriginX = 0.0, TreeOriginY = 0.0;
-		std::vector<uint8_t> Trees;
-		int DetailTile = 64, DetailRows = 0, DetailCols = 0;
-		double DetailCell = 1.0, DetailOriginX = 0.0, DetailOriginY = 0.0, DetailUnit = 0.01;
-		std::vector<int32_t> DetailIndex;   // per tile of the grid's extent: index into Detail, or -1
-		std::vector<int16_t> Detail;        // (DetailTile + 1)^2 nodes per tile
+		// A whole grid (the view is a window onto it, RowOff and ColOff nodes in).
+		int GridRows = 0, GridCols = 0, RowOff = 0, ColOff = 0;
+		double GridOriginX = 0.0, GridOriginY = 0.0, Unit = 0.01;
+		std::shared_ptr<const std::vector<int16_t>> Heights;
+		// Or resident tiles.
+		std::shared_ptr<const FTileSet> Tiles;
+		std::shared_ptr<const FTrees> Trees;
+		std::shared_ptr<const FDetail> Detail;
 		int DetailTileAt(double X, double Y, double& U, double& V) const;
+		double GridNode(int Row, int Col) const;
+		double GroundAt(double X, double Y) const;
 	};
 
 	/**

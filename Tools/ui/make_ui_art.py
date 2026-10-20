@@ -40,6 +40,9 @@ PLACES = {
     "GalvestonBay": [("KEMAH", 29.5427, -95.0205), ("SEABROOK", 29.5641, -95.0255), ("LA PORTE", 29.6658, -95.0194),
                      ("TEXAS CITY", 29.3838, -94.9027), ("GALVESTON", 29.2900, -94.8200), ("BOLIVAR", 29.4100, -94.7000),
                      ("SMITH POINT", 29.5450, -94.7800)],
+    "Marseille": [("MARSEILLE", 43.3000, 5.3850), ("FRIOUL", 43.2700, 5.2950), ("POINTE ROUGE", 43.2470, 5.3850),
+                  ("LES GOUDES", 43.2160, 5.3500), ("CALANQUES", 43.2150, 5.4600), ("CASSIS", 43.2200, 5.5400),
+                  ("PLANIER", 43.1900, 5.2350), ("RIOU", 43.1650, 5.3900), ("LA CIOTAT", 43.1800, 5.6100)],
 }
 
 
@@ -118,9 +121,9 @@ def crop(src, out, aspect=16 / 9, size=(1600, 900), focus=0.5):
     im.resize(size, Image.LANCZOS).save(os.path.join(OUT, out), quality=90)
 
 
-for world in ("RayHubbard", "GalvestonBay"):
+for world in ("RayHubbard", "GalvestonBay", "Marseille"):
     make_map(world)
-for world in ("RayHubbard", "GalvestonBay", "GulfPassage"):
+for world in ("RayHubbard", "GalvestonBay", "GulfPassage", "Marseille"):
     make_map(world, long_side=4096, mini=True)
 # The capture-mode stills and the blind test's frames: the game without its HUD.
 CAP = "docs/graphics-3/captures/"
@@ -133,4 +136,12 @@ for i, src in enumerate((CAP4 + "bay-j22-chase.png", CAP4 + "bay-hobie-chase.png
     crop(src, f"T_Load_GalvestonBay_{i}.jpg")
 crop(CAP + "j22-heavy-chase.png", "T_Title_RayHubbard.jpg")
 crop(CAP4 + "bay-j22-chase.png", "T_Title_GalvestonBay.jpg")
+# world-marseille: its card, loading and title stills from the capture mode (docs/world-marseille/captures, when shot).
+CAPM = "docs/world-marseille/captures/"
+MARS = ("vieux-port-chase", "frioul-drone", "calanques-chase")
+if all(os.path.exists(os.path.join(ROOT, CAPM + n + ".jpg")) for n in MARS):
+    crop(CAPM + MARS[0] + ".jpg", "T_Card_Marseille.jpg", aspect=2.2, size=(1320, 600))
+    for i, n in enumerate(MARS):
+        crop(CAPM + n + ".jpg", f"T_Load_Marseille_{i}.jpg")
+    crop(CAPM + MARS[2] + ".jpg", "T_Title_Marseille.jpg")
 print("ui art in", OUT)

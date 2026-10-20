@@ -26,11 +26,12 @@ struct FCareerRun
 	int32 Collisions = 0;            // contacts begun during the drill
 	int32 Infractions = 0;           // rules coach penalties during the drill
 	FString WorldId, BoatId;         // FSailSave ids
+	bool bEasy = false;              // Easy mode's assists were on during the run (Sailing::FEasyAssists)
 };
 
 /** A finished (or stopped) drill as a career run: the runner's drill, outcome and time, plus what the boat counted. */
 SAILINGSIM_API FCareerRun MakeCareerRun(const FDrillRunner& Drill, double MaxContactKnots, int32 Collisions, int32 Infractions, const FString& WorldId,
-	const FString& BoatId);
+	const FString& BoatId, bool bEasy = false);
 
 /** What a medal asks of a run; an unset limit (negative, or no outcomes) asks nothing. */
 struct FCareerMedalRule
@@ -108,14 +109,17 @@ public:
 	/** The checkride's written quiz: its questions from the listed drills (and Any), shuffled, options shuffled. */
 	TArray<FQuizQuestion> MakeCheckrideQuiz(const FCareerTier& Tier, const FLearningContent& Learning, FRandomStream& Rng) const;
 
-	/** The best medal a run earns in a lesson (None if the drill was not finished or misses bronze). */
-	static ECareerMedal Grade(const FCareerLesson& Lesson, const FCareerRun& Run);
+	/** The best medal a run earns in a lesson (None if the drill was not finished or misses bronze); a run on Easy earns
+	 *  at most EasyMax. */
+	static ECareerMedal Grade(const FCareerLesson& Lesson, const FCareerRun& Run, ECareerMedal EasyMax = ECareerMedal::Gold);
 	static FString MedalId(ECareerMedal Medal);          // "", bronze, silver, gold
 	static ECareerMedal MedalFromId(const FString& Id);
 	static FString MedalName(ECareerMedal Medal);        // Bronze, Silver, Gold, or "No medal"
 
 	FString School;
 	FCareerUnlocks AlwaysOpen;
+	/** The best medal a lesson run on Easy can earn (career.json "easy_max_medal"; Gold, no cap, when absent). */
+	ECareerMedal EasyMaxMedal = ECareerMedal::Gold;
 	TArray<FCareerTier> Tiers;
 
 private:
@@ -129,7 +133,11 @@ private:
 class SAILINGSIM_API FCareerProgress
 {
 public:
-	FCareerProgress(const FCareerContent& InContent, FSailSave::FProgress& InProgress) : Content(InContent), Progress(InProgress) {}
+	/** bInFreeSail: the run is in Free Sail mode (docs/free-sail): every tier, world and boat is open, and runs, quizzes
+	 *  and checkrides record nothing (no medals, no certificates); sessions and races still count. */
+	FCareerProgress(const FCareerContent& InContent, FSailSave::FProgress& InProgress, bool bInFreeSail = false)
+		: Content(InContent), Progress(InProgress), bFreeSail(bInFreeSail) {}
+	bool IsFreeSail() const { return bFreeSail; }
 
 	struct FAward
 	{
@@ -138,17 +146,22 @@ public:
 		ECareerMedal Best = ECareerMedal::None;    // the lesson's best after it
 		bool bNewBest = false;                     // a better medal than before
 		bool bBestTime = false;                    // a faster medal run than before
+		bool bEasyCapped = false;                  // the run on Easy held a better medal than Easy may earn
+		bool bBestEasy = false;                    // the lesson's best is an Easy medal
 		double Seconds = 0.0;
 		bool IsValid() const { return !LessonId.IsEmpty(); }
 	};
 	/** The lesson a run counts for: the drill's lesson in an open tier whose boats include the run's (the run's world's
 	 *  tier first). Null when the run counts for no lesson. */
-	const FCareerLesson* LessonForRun(const FCareerRun& Run, bool bOpenEverything = false) const;
-	/** Grades a finished run and keeps the lesson's best medal and time. Invalid award: the run counts for no lesson. */
-	FAward RecordRun(const FCareerRun& Run, bool bOpenEverything = false);
-	/** A lesson's quiz: kept as its best score; true when this one passes. */
+	const FCareerLesson* LessonForRun(const FCareerRun& Run) const;
+	/** Grades a finished run and keeps the lesson's best medal and time. Invalid award: the run counts for no lesson
+	 *  (or the run is in Free Sail). */
+	FAward RecordRun(const FCareerRun& Run);
+	/** A lesson's quiz: kept as its best score; true when this one passes (never in Free Sail: nothing is kept). */
 	bool RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of);
 	ECareerMedal LessonMedal(const FString& LessonId) const;
+	/** The lesson's best medal was earned on Easy. */
+	bool IsLessonMedalEasy(const FString& LessonId) const;
 	/** A lesson is closed once it holds a medal and its quiz is passed. */
 	bool IsLessonClosed(const FString& LessonId) const;
 	int32 LessonsAtLeast(const FCareerTier& Tier, ECareerMedal Medal) const;
@@ -161,12 +174,12 @@ public:
 	bool RecordCheckrideQuiz(const FString& TierId, int32 Right, int32 Of, const FDateTime& WhenUtc);
 	bool HasCertificate(const FString& CertificateId) const { return Progress.HasCertificate(CertificateId); }
 
-	bool IsTierOpen(const FString& TierId, bool bOpenEverything = false) const;
-	bool IsWorldOpen(const FString& WorldId, bool bOpenEverything) const;
-	bool IsBoatOpen(const FString& BoatId, bool bOpenEverything) const;
+	bool IsTierOpen(const FString& TierId) const;
+	bool IsWorldOpen(const FString& WorldId) const;
+	bool IsBoatOpen(const FString& BoatId) const;
 	/** One line on why a world or boat is locked ("Earn the Day Sailor certificate"); empty when it is open. */
-	FString WorldLockReason(const FString& WorldId, bool bOpenEverything) const;
-	FString BoatLockReason(const FString& BoatId, bool bOpenEverything) const;
+	FString WorldLockReason(const FString& WorldId) const;
+	FString BoatLockReason(const FString& BoatId) const;
 
 	/** The sim's session end: time on the world clock and the logbook's counts go to the totals. */
 	void AddSession(double SimSeconds, int32 LogEntries, double LogMiles);
@@ -180,15 +193,17 @@ private:
 	FString LockReason(const FString& Id, bool bWorld) const;
 	const FCareerContent& Content;
 	FSailSave::FProgress& Progress;
+	bool bFreeSail = false;
 };
 
 /**
  * The game's edge of the career: the loaded content over the save's progress (SailSaveStore::Progress) and the
- * settings' open-everything switch; each Record writes the save (nothing is written in a measuring run).
+ * play mode (Career or Free Sail); each Record writes the save (nothing is written in a measuring run).
  */
 namespace SailCareer
 {
-	SAILINGSIM_API bool OpenEverything();
+	/** The run is in Free Sail (USailingSettings::IsFreeSail): Progress() opens everything and records no medals. */
+	SAILINGSIM_API bool IsFreeSail();
 	SAILINGSIM_API FCareerProgress Progress();
 	/** A drill run has ended (the pawn, when FDrillRunner completes). */
 	SAILINGSIM_API FCareerProgress::FAward RecordRun(const FCareerRun& Run);

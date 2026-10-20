@@ -1,7 +1,8 @@
 """Graphics G3: turns the boat catalogue (Inputs/g3/boat-catalogue.json, sourced colour schemes and wear per class) into
 Source/SailingSim/Private/BoatLiveryData.inl, the table FBoatLivery samples from (BoatLivery.h). Hex colours become
 linear RGB; each class's wear zones collapse into four channels by kind (oxidation; stain = the waterline scum; scuff;
-rust), each with a [min, max] intensity per profile (club, race, charter).
+rust), each with a [min, max] intensity per profile (club, race, charter), and the coloured sails' sun fade (kind "fade",
+FLiveryWear::FadeRange) the same way.
     python3 Tools/fleet/make_liveries.py [catalogue.json] [out.inl]
 """
 import json
@@ -11,7 +12,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "Inputs", "g3", "boat-catalogue.json")
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "Source", "SailingSim", "Private", "BoatLiveryData.inl")
-ORDER = ["j22", "sunfish", "ilca7", "catalina22", "catalina30", "hobie16", "corsair880", "lagoon42"]   # EBoatType order
+ORDER = ["j22", "sunfish", "ilca7", "catalina22", "catalina30", "hobie16", "corsair880", "lagoon42", "maxi"]   # EBoatType order
 CHANNELS = {"oxidation": 0, "stain": 1, "scuff": 2, "rust": 3}
 
 
@@ -70,10 +71,18 @@ def main():
             for p, rng in z["intensity"].items():
                 if p in ranges:
                     ranges[p][ch] = [max(ranges[p][ch][0], rng[0]), max(ranges[p][ch][1], rng[1])]
+        fade = {p: [0.0, 0.0] for p in ("club", "race", "charter")}
+        for z in w["zones"]:
+            if z["kind"] == "fade":
+                for p, rng in z["intensity"].items():
+                    if p in fade:
+                        fade[p] = [max(fade[p][0], rng[0]), max(fade[p][1], rng[1])]
+
         def r4(p):
             return "{ " + ", ".join(f"{{ {a:.2f}f, {b:.2f}f }}" for a, b in ranges[p]) + " }"
+        f3 = "{ " + ", ".join(f"{{ {fade[p][0]:.2f}f, {fade[p][1]:.2f}f }}" for p in ("club", "race", "charter")) + " }"
         lines.append(f"static const FLiveryWear Wear_{cid} = {{ {prof.get('club', 0):.2f}f, {prof.get('race', 0):.2f}f, {prof.get('charter', 0):.2f}f, "
-                     f"{r4('club')}, {r4('race')}, {r4('charter')} }};")
+                     f"{r4('club')}, {r4('race')}, {r4('charter')}, {f3} }};")
         sn = c["sail_number"]
         rng = sn.get("number_range", [1, 999])
         lines.append(f"static const FLiveryNumbers Numbers_{cid} = {{ {'true' if sn.get('required') else 'false'}, {float(sn.get('probability', 1.0 if sn.get('required') else 0.0)):.2f}f, "

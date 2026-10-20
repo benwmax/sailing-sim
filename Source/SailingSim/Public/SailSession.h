@@ -47,6 +47,7 @@ struct FSailSessionConfig
 	UPROPERTY(config) bool bLearningMode = true;
 	UPROPERTY(config) bool bEasy = true;
 	UPROPERTY(config) bool bLearningTips = true;
+	UPROPERTY(config) bool bFreeSail = false;      // the play mode (docs/free-sail): Free Sail, or Career
 	UPROPERTY(config) int32 Traffic = 1;           // 0 off, 1 light, 2 busy
 	UPROPERTY(config) FDateTime SavedAt;
 };
@@ -98,7 +99,13 @@ public:
 	void ResetForRun();
 	/** Writes a session's choices into the persistent settings (world, spot, boat, difficulty, traffic...). */
 	static void ApplyToSettings(const FSailSessionConfig& Config);
-	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy. */
+	/** Wide World Rendering PR 6: Passage mode's world and start for a chosen world (Galveston sails the Gulf world to
+	 *  Freeport from the chosen spot; Marseille sails its own passage to Cassis from the Vieux-Port entrance). */
+	static int32 PassageWorld(int32 World);
+	static int32 PassageStartSpot(int32 World, int32 ChosenSpot);
+	/** Whether a world has a passage to sail (Galveston's Gulf passage, Marseille's to Cassis). */
+	static bool HasPassage(int32 World) { return World == 1 || World == 3; }
+	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy, the title's play mode. */
 	static FSailSessionConfig MakeDefault();
 	static const TArray<FSailPreset>& Presets();
 	static void ApplyPreset(FSailConditions& Conditions, const FSailPreset& Preset);

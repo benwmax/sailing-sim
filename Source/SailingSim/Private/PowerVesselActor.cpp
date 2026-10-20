@@ -1,4 +1,5 @@
 #include "PowerVesselActor.h"
+#include "SailingFrame.h"
 #include "SailingSim.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -149,7 +150,7 @@ void APowerVesselActor::Light(const FVector& LocationM, const FLinearColor& Colo
 	Parts.Add(C);
 }
 
-void APowerVesselActor::Build(ETrafficKind InKind)
+void APowerVesselActor::Build(ETrafficKind InKind, bool bTanker)
 {
 	Kind = InKind;
 	// Sound (Visual V7): the engine where it is, and the gulls that follow a shrimper working her nets.
@@ -271,7 +272,22 @@ void APowerVesselActor::Build(ETrafficKind InKind)
 	{
 		// A product tanker: black topsides, red boot top, white house aft, a funnel; pipework on deck.
 		const float L = 230.f, B = 32.f;
-		if (Model(TEXT("SM_Vessel_Container"), FVector::ZeroVector))
+		if (bTanker && Model(TEXT("SM_Vessel_Tanker"), FVector::ZeroVector))
+		{
+			// The Gulf Pride (build_vessels.py tanker()): masthead lights on the foremast and higher on the radar mast aft
+			// (Rule 23(a)), sidelights on the bridge wings, sternlight; constrained by her draft (Rule 28), three reds on
+			// the radar mast; a cylinder by day.
+			Light(FVector(100.f, 0.f, 26.f), NavWhite, Masthead[0], Masthead[1]);
+			Light(FVector(-89.f, 0.f, 33.2f), NavWhite, Masthead[0], Masthead[1]);
+			Sidelights(-86.f, B * 0.51f + 0.3f, 22.5f);
+			Stern(-114.f, 8.5f);
+			Light(FVector(-89.6f, 0.f, 31.f), NavRed, AllRound[0], AllRound[1]);
+			Light(FVector(-89.6f, 0.f, 29.5f), NavRed, AllRound[0], AllRound[1]);
+			Light(FVector(-89.6f, 0.f, 28.f), NavRed, AllRound[0], AllRound[1]);
+			DayShapes.Add(Part(Cylinder, FVector(-87, 0, 29.5), FVector(1.5, 1.5, 3.0), HullDark));
+			break;
+		}
+		if (!bTanker && Model(TEXT("SM_Vessel_Container"), FVector::ZeroVector))
 		{
 			// A feeder container ship: masthead lights on the foremast and higher aft (Rule 23(a)), sidelights on the
 			// bridge wings, sternlight; constrained by her draft (Rule 28), three reds; a cylinder by day.
@@ -325,7 +341,7 @@ void APowerVesselActor::UpdateFrom(const FTrafficVessel& V, bool bDark, const FV
 	// A little pitch and roll so she is not frozen on the water; heavier vessels move less.
 	const float Motion = FMath::Clamp(6.f / float(V.Power.Type.Length), 0.02f, 0.6f);
 	const FRotator Rot(Motion * FMath::Sin(Time * 0.9f + S.Id), FMath::RadiansToDegrees(S.Heading), Motion * 1.6f * FMath::Sin(Time * 0.7f + 2.f * S.Id));
-	SetActorLocationAndRotation(FVector(S.X, S.Y, 0.0) * 100.0, Rot);
+	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 0.0), Rot);
 	const FVector D = Observer - GetActorLocation();
 	const float Rel = FMath::UnwindDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X) - S.Heading));
 	const float Dist = float(D.Size()) / 100.f;
@@ -373,7 +389,7 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kMaxPuffs);
 		Exhaust->AddInstances(Hidden, false, true);
 		ExhaustRng.Initialize(int32(V.Snapshot().Id) * 7919 + 13);
-		UE_LOG(LogTemp, Display, TEXT("Exhaust: %s %d at %.0f, %.0f m"), ANSI_TO_TCHAR(TrafficKindName(Kind)), int32(V.Snapshot().Id), GetActorLocation().X / 100.0, GetActorLocation().Y / 100.0);
+		UE_LOG(LogTemp, Display, TEXT("Exhaust: %s %d at %.0f, %.0f m"), ANSI_TO_TCHAR(TrafficKindName(Kind)), int32(V.Snapshot().Id), V.Snapshot().X, V.Snapshot().Y);
 	}
 	// Where the exhaust leaves her and what it looks like, by kind (stack positions read off the Blender vessels).
 	const double L = V.Power.Type.Length;
@@ -389,7 +405,7 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 	const FVesselSnapshot S = V.Snapshot();
 	const FVector Vel(S.VX, S.VY, 0.0);
 	const float Throttle = FMath::Clamp(float(Vel.Size() / FMath::Max(V.Power.Type.CruiseKnots * 0.514444, 1.0)), 0.f, 1.f);
-	const FVector Stack = GetActorTransform().TransformPosition(StackM * 100.0) / 100.0;
+	const FVector Stack = SailingFrame::ToMapCm(GetWorld(), GetActorTransform().TransformPosition(StackM * 100.0)) / 100.0;   // the puffs fly in the map frame
 	const Vec3 W = GM->GetWind().VelocityAt(Vec3(Stack.X, Stack.Y, FMath::Max(Stack.Z, 2.0)), GM->GetSimTime());
 	const FVector Wind(W.X, W.Y, 0.0);
 	if (DistM <= 3000.f)
@@ -427,7 +443,7 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 			const FPuff& P = Puffs[I];
 			const float A = P.Age / P.Life;
 			const float Size = FMath::Lerp(P.Size0, P.Size1, FMath::Sqrt(A)); // spreads fast, then slowly
-			Xf[I] = FTransform(FQuat::Identity, P.P * 100.0, FVector(Size));
+			Xf[I] = FTransform(FQuat::Identity, SailingFrame::FromMapCm(GetWorld(), P.P * 100.0), FVector(Size));
 			Exhaust->SetCustomDataValue(I, 0, P.Shade, false);
 			Exhaust->SetCustomDataValue(I, 1, P.Alpha * FMath::SmoothStep(0.f, 0.08f, A) * FMath::Square(1.f - A), false);
 		}

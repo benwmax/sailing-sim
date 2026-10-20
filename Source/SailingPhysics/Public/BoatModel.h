@@ -39,7 +39,9 @@ namespace Sailing
 
 	enum class EBoatType : unsigned char
 	{
-		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42, Count
+		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42,
+		Maxi, // the prologue's made-up 100 ft maxi (Tools/boats/maxi): in the catalogue only for the prologue for now
+		Count
 	};
 
 	SAILINGPHYSICS_API const char* BoatTypeName(EBoatType Type);
@@ -63,11 +65,32 @@ namespace Sailing
 		double DepthOffset = 0.0;      // m the keel line sits above the main hull's (amas clear of the water at rest)
 		double PlaningLift = 0.0;      // dynamic lift coefficient of the bottom (planing dinghies)
 
+		/**
+		 * A hull drawn by its sections instead of the formula above (the prologue maxi: the PC's exported hull). Each
+		 * station is a half section from the keel (Y 0) to the sheer, half breadths never decreasing, every station with
+		 * the same number of points; stations run stern to bow. With stations, DeckHalfBeam, SheerHeight, KeelLineDepth
+		 * and BottomZ follow them (between stations point by point) and the parameters above are only a stand-in fit
+		 * for the water's hull clip and BoatExport. The canoe depth the boat floats at moves the sections down by its
+		 * difference from StationDepth (their own keel depth), so a heavier boat sinks the drawn hull.
+		 */
+		struct FStation
+		{
+			double X = 0.0, Sheer = 0.0;
+			std::vector<double> Y, Z;
+		};
+		std::vector<FStation> Stations;
+		double StationDepth = 0.0;     // the sections' deepest keel point below the DWL (m)
+		bool HasStations() const { return Stations.size() >= 2; }
+
 		double DeckHalfBeam(double X) const;
 		double SheerHeight(double X) const;
 		double KeelLineDepth(double X, double MainDepth) const;
 		double BottomZ(double X, double Y, double MainDepth) const; // Y relative to CenterY
 		double WaterlineLength() const { return 2.0 * WaterlineHalfLength; }
+		/** The station pair around X (I and I + 1, T from I to I + 1), clamped to the ends. */
+		void StationAt(double X, int& OutI, double& OutT) const;
+		/** The bottom's height at |Y| on the section between stations I and I + 1 (the sheer past the deck edge). */
+		double StationBottomZ(int I, double T, double AbsY) const;
 	};
 
 	enum class EFoilRole : unsigned char { Keel, Board, Rudder, HullLateral };
@@ -111,6 +134,10 @@ namespace Sailing
 		// Mass budget (body frame: origin at the design waterline, midships of the waterline; X fwd, Y stbd, Z up).
 		double HullRigMass = 494.0;  Vec3 HullRigCG = Vec3(-0.15, 0.0, 0.35);
 		double BallastMass = 318.0;  Vec3 BallastCG = Vec3(0.10, 0.0, -0.65); // centroid of a cast-lead fin
+		// The fixed appendages' own buoyancy (a big fin and bulb, fixed rudders), m^3 and their centroid: always under
+		// water upright, so the canoe body floats the rest. 0 = folded into the ballast's weight (the small boats: the
+		// J/22's fin displaces 40 litres).
+		double AppendageVolume = 0.0; Vec3 AppendageCentre;
 		double CrewMass = 240.0;     Vec3 CrewCG = Vec3(-1.20, 0.0, 0.55); // three crew, sitting on centerline
 		int CrewCount = 3;
 		double CrewSitOut = 0.30;    // m from centerline sitting on the windward side
@@ -143,15 +170,25 @@ namespace Sailing
 		// out to leeward by the heeled rig, it is why a keelboat's weather helm grows as she heels (Keuning & Sonnenberg).
 		double HeelYawCoef = 0.0;
 		double ExtraRollDamping = 0.0;    // N m s; the easy difficulty adds some
-		// Added resistance in waves: AddedResistanceCoef x R(lambda/LWL) x rho g (Hs/2)^2 B^2 / LWL, largest heading
-		// into the waves ((1 + cos)^2 / 4 of the angle off the wave direction) and growing with speed up to about 4 kn.
-		// R = r^4 / (0.25 + r^4) with r = mean wavelength / LWL: short chop barely pitches the boat, waves near hull
-		// length do (Gerritsma-Beukelman style scaling). The coefficient is calibrated so the J/22 matches ORC's polar,
-		// which assumes a moderate sea state. Heave and pitch in the waves come from the hydrostatics directly.
-		double AddedResistanceCoef = 1.3;
-		// Speed (m/s / 2) at which the added resistance stops growing: a keelboat's pitching saturates by about 4 kn;
-		// a light catamaran keeps slamming harder into the chop the faster it goes.
+		// Easy mode's righting assist (EasyAssists.h; 0 = none): from HeelCapSoftDeg short of HeelCapDeg it adds a righting
+		// moment growing with the square of the heel, HeelCapLeverM times the boat's weight at the cap.
+		double HeelCapDeg = 0.0;
+		double HeelCapSoftDeg = 6.0;
+		double HeelCapLeverM = 0.0;
+		// Added resistance in waves (docs/wave-physics/): AddedResistanceCoef x R(lambda/LWL) x rho g 2 m0 B^2 / LWL summed
+		// over the sea's bands (ORC VPP 2023 eq. 6.61's 2 x the spectral integral), largest heading into the waves
+		// ((1 + cos)^2 / 4 of the angle off the wave direction), growing with the Froude number up to 0.265 x the speed cap.
+		// R = r^4 / (0.25 + r^4) with r = wavelength / LWL up to her peak (short chop barely pitches her), then Jinkine &
+		// Ferdinande's long-wave fall (she rides waves much longer than her). The J/22's 2.6 is calibrated so she matches
+		// ORC's polar in the lake's chop; boats the lake's chop does not load (the maxi) or that ORC scales differently
+		// (the Catalina 30) take ORC's length scaling against her (Fleet.cpp). Heave and pitch come from the hydrostatics.
+		double AddedResistanceCoef = 2.6;
+		// Froude number (in units of 0.265, the J/22's 4 kn) at which the added resistance stops growing: a keelboat's
+		// pitching saturates there; a light catamaran keeps slamming harder into the chop the faster it goes.
 		double AddedResistanceSpeedCap = 1.0;
+		// The waves' slope push on the hull (Froude-Krylov surge and sway, the surf down a face): 1 is the physics, 0
+		// leaves the buoyancy vertical as it was before docs/wave-physics/ (for comparisons only).
+		double WaveSlopeForceScale = 1.0;
 
 		// Foils: keels, boards and rudders. Rudders are linked to one tiller (or wheel).
 		std::vector<FFoilDef> Foils;
@@ -161,6 +198,9 @@ namespace Sailing
 		double TillerLength = 1.0;        // m
 		double HelmStiffness = 600.0;     // N m/rad, how firmly the helm holds the tiller; lower = more helm feel
 		double RudderResponseTime = 0.10; // s
+		// Wheel steering: the helm turns the rudder from amidships to hard over in this long, wheel turned flat out (the
+		// crew-station wheel reads it: CrewStation.h). 0 = a tiller (the station's own default stands in).
+		double WheelHardOverSeconds = 0.0;
 
 		// Sails. A sail with NumStrips = 0 is absent (una and lateen rigs have no jib).
 		FSailGeometry Main;
@@ -181,6 +221,11 @@ namespace Sailing
 		std::vector<double> ReefLuffFraction;
 		// Main build recipe, kept so reefs can rebuild it: foot and head heights, chords, roach, luff X.
 		double MainFootZ = 1.45, MainHeadZ = 9.05, MainFootChord = 2.97, MainHeadChord = 0.45, MainRoach = 0.12, MainLuffX = 0.95, MainLuffXHead = 0.95, MainArea = 11.5;
+		// The headsail change that goes with each reef (a big boat's J1 -> J3 -> J4), as a fraction of the full jib's area
+		// (BuildMain rebuilds the jib too: luff and foot each by the square root). Empty = the jib stays (the small boats
+		// reef the main only). The full jib's recipe is kept here by the boats that use it.
+		std::vector<double> ReefJibFraction;
+		double JibFootZ = 0.0, JibHeadZ = 0.0, JibFootChord = 0.0, JibHeadChord = 0.0, JibLuffX = 0.0, JibLuffXHead = 0.0, JibArea = 0.0;
 
 		std::vector<FEngineDef> Engines;
 
@@ -281,6 +326,12 @@ namespace Sailing
 		bool bPlaning = false;        // dinghies and beach cats: up on the plane
 		bool bFlyingHull = false;     // multihulls: the windward hull (or ama) is clear of the water
 		double Froude = 0.0;          // boat speed / sqrt(g LWL)
+		// Wave physics (docs/wave-physics/): the hulls' calm-water resistance (friction and residuary), their added
+		// resistance in the waves, both N against her motion, and the waves' slope push along the bow (N, positive
+		// forward: the surf down a face; it averages out over a wave she does not ride).
+		double CalmResistance = 0.0;
+		double WaveResistance = 0.0;
+		double WaveSlopeSurge = 0.0;
 		bool IsStarboardTack() const { return TrueWindAngle > 0.0; }
 
 		FSailStripState MainStrips[kMaxSailStrips];
@@ -382,6 +433,10 @@ namespace Sailing
 		double DesignVolume = 0.0;
 		std::vector<Vec3> BottomPoints, OutlinePoints; // grounding and collision probes (body frame)
 		double MainMeanLift = 0.0;
+		std::vector<double> ColumnMeanVolume; // each column's immersion below her mean waterplane, averaged (the slope push, m^3)
+		struct FColumnWater { Vec3 Low; double Water, VZ, SlopeX, SlopeY; bool bNear; };
+		std::vector<FColumnWater> ColumnWater; // this step's water at each column (scratch)
+		bool bColumnMeanFresh = true;         // after a reset: start the averages at the immersion she has
 		const FWaveField* CurrentWaves = nullptr;
 		const FLakeTerrain* Terrain = nullptr;
 		const std::vector<FObstacleSegment>* Obstacles = nullptr;

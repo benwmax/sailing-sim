@@ -117,13 +117,48 @@ namespace SailCatalog
 				if (W.Spots.Num() > 1) W.Spots[1].Tag = TEXT("Busy");
 				Out.Add(W);
 			}
+			{
+				// world-marseille: the first port baked from a box and a name (Tools/coast/worlds/Marseille.json).
+				FWorld W;
+				W.Index = 3; W.File = TEXT("Marseille"); W.Name = TEXT("Marseille & Cassis"); W.Tagline = TEXT("Mediterranean · Mistral · Islands");   // "& the Calanques" ran off the card
+				W.Description = TEXT("Leave the Vieux-Port under Notre-Dame de la Garde, round the Chateau d'If and the Frioul islands, and "
+					"follow the limestone Calanques to Cassis. Clear blue water, swell from the open sea, and the mistral off the hills.");
+				W.MapTexture = TEXT("/Game/UI/T_Map_Marseille.T_Map_Marseille");
+				W.CardTexture = TEXT("/Game/UI/T_Card_Marseille.T_Card_Marseille");
+				W.TitleTexture = TEXT("/Game/UI/T_Title_Marseille.T_Title_Marseille");
+				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_Marseille_%d.T_Load_Marseille_%d"), I, I));
+				ReadWorld(W);
+				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
+				W.Facts.Add({ TEXT("2"), TEXT("Ports: Marseille, Cassis") });
+				W.Facts.Add({ TEXT("2°50′ E"), TEXT("Variation") });
+				if (W.Spots.Num() > 0) W.Spots[0].Tag = TEXT("Home");
+				Out.Add(W);
+			}
+			{
+				// World streaming (docs/world-streaming): Galveston Bay and the Gulf passage as one coast, streamed as you sail
+				// (Tools/coast/compose_world.py). The bay's art for now: the map frame is the bay's.
+				FWorld W;
+				W.Index = 4; W.File = TEXT("TexasCoast"); W.Name = TEXT("The Texas coast"); W.Tagline = TEXT("Clear Lake to Freeport · One sail");
+				W.Description = TEXT("Galveston Bay and the Gulf as one coast: leave Kemah, run down the ship channel, out through Bolivar Roads "
+					"and the jetties, and on along the beaches to Freeport, 105 km with no loading screen on the way.");
+				W.bTidal = true;
+				W.MapTexture = TEXT("/Game/UI/T_Map_GalvestonBay.T_Map_GalvestonBay");
+				W.CardTexture = TEXT("/Game/UI/T_Card_GalvestonBay.T_Card_GalvestonBay");
+				W.TitleTexture = TEXT("/Game/UI/T_Title_GalvestonBay.T_Title_GalvestonBay");
+				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_GalvestonBay_%d.T_Load_GalvestonBay_%d"), I, I));
+				ReadWorld(W);
+				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
+				W.Facts.Add({ TEXT("105 km"), TEXT("Clear Lake to Freeport") });
+				W.Facts.Add({ TEXT("Streamed"), TEXT("No loading on the way") });
+				Out.Add(W);
+			}
 			for (FWorld& W : Out)
 			{
 				W.Id = FSailSave::WorldId(W.Index);
 				for (FSpot& S : W.Spots)
 				{
 					if (S.StartType.IsEmpty()) S.StartType = TEXT("Under sail");
-					if (S.Tag.IsEmpty()) S.Tag = W.Index == 0 ? TEXT("Lake") : TEXT("Bay");
+					if (S.Tag.IsEmpty()) S.Tag = W.Index == 0 ? TEXT("Lake") : (W.Index == 3 ? TEXT("Sea") : TEXT("Bay"));
 					S.Detail = FString::Printf(TEXT("Heading %03.0f° · %s"), S.Heading, *S.StartType);
 				}
 			}
@@ -143,6 +178,7 @@ namespace SailCatalog
 				{ TEXT("Beach catamaran"), TEXT("Twin hulls and a trapeze. Flies a hull in a breeze and goes very fast, until you bury a bow."), 4, { TEXT("Capsize"), TEXT("Trapeze") }, true, 12.f, 18.f },
 				{ TEXT("Trailerable trimaran"), TEXT("Folding amas and a big rig: double-digit speeds on a reach, a light touch on the helm."), 4, { TEXT("Outboard"), TEXT("Spinnaker") }, false, 14.f, 20.f },
 				{ TEXT("Cruising catamaran"), TEXT("Forty-two feet of steady platform with two engines. No heel, slow to tack, a lot of windage at the dock."), 3, { TEXT("Twin engines"), TEXT("Wheel") }, false, 16.f, 22.f },
+				{ TEXT("Racing maxi · 12 crew"), TEXT("The prologue's 100-foot offshore racer: twin wheels, three grinders, a 6 m keel and black membrane sails. Fast and heavy, and every trim is a crew job."), 5, { TEXT("Wheel"), TEXT("Grinders"), TEXT("Inboard") }, false, 18.f, 25.f },
 			};
 			return W[FMath::Clamp(Type, 0, int32(UE_ARRAY_COUNT(W)) - 1)];
 		}
@@ -183,14 +219,21 @@ namespace SailCatalog
 	}
 
 	const TArray<FWorld>& Worlds() { static TArray<FWorld> W = MakeWorlds(); return W; }
-	const FWorld& World(int32 Index) { return Worlds()[FMath::Clamp(Index == 2 ? 1 : Index, 0, Worlds().Num() - 1)]; }
+	const FWorld& World(int32 Index)
+	{
+		// The Gulf passage is Galveston's card; the others by their own index.
+		const int32 Want = Index == 2 ? 1 : Index;
+		for (const FWorld& W : Worlds()) if (W.Index == Want) return W;
+		return Worlds()[0];
+	}
 	const FMiniMap& MiniMap(int32 SettingsWorld)
 	{
 		static TArray<FMiniMap> Maps = []()
 		{
 			TArray<FMiniMap> Out;
-			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
-			for (int32 I = 0; I < 3; ++I)
+			// The Texas coast (4) draws the bay's minimap: its map frame is the bay's (the Gulf beyond it is off the map).
+			const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille"), TEXT("GalvestonBay") };
+			for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Files)); ++I)
 			{
 				FWorld W;
 				W.File = Files[I];
@@ -203,7 +246,7 @@ namespace SailCatalog
 			}
 			return Out;
 		}();
-		return Maps[FMath::Clamp(SettingsWorld, 0, 2)];
+		return Maps[FMath::Clamp(SettingsWorld, 0, Maps.Num() - 1)];
 	}
 
 	FString SpotId(const FString& Name)
@@ -226,7 +269,7 @@ namespace SailCatalog
 			static TArray<FWorld> Out = []()
 			{
 				TArray<FWorld> List;
-				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage") };
+				const TCHAR* Files[] = { TEXT("RayHubbard"), TEXT("GalvestonBay"), TEXT("GulfPassage"), TEXT("Marseille"), TEXT("TexasCoast") };
 				for (const TCHAR* F : Files)
 				{
 					FWorld& W = List.AddDefaulted_GetRef();
@@ -239,8 +282,8 @@ namespace SailCatalog
 		}
 	}
 
-	const TArray<FSpot>& Spots(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Spots; }
-	const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, 2)].Anchor; }
+	const TArray<FSpot>& Spots(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, SettingsWorlds().Num() - 1)].Spots; }
+	const Sailing::FGeoAnchor& Anchor(int32 SettingsWorld) { return SettingsWorlds()[FMath::Clamp(SettingsWorld, 0, SettingsWorlds().Num() - 1)].Anchor; }
 
 	const TArray<FString>& SpotIds(int32 SettingsWorld)
 	{
@@ -258,7 +301,11 @@ namespace SailCatalog
 	}
 
 	const TArray<FBoat>& Boats() { static TArray<FBoat> B = MakeBoats(); return B; }
-	const FBoat& Boat(int32 Type) { return Boats()[FMath::Clamp(Type, 0, Boats().Num() - 1)]; }
+	const FBoat& Boat(int32 Type)
+	{
+		for (const FBoat& B : Boats()) if (B.Type == Type) return B;
+		return Boats()[0]; // a boat the Boat screen does not list (the maxi) reads as the J/22's card
+	}
 
 	float SunsetHour(int32 Month, int32 Day, int32 WorldIndex)
 	{

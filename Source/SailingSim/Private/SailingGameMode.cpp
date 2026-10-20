@@ -1,8 +1,12 @@
 #include "SailingGameMode.h"
+#include "SailingFrame.h"
+#include "EasyAssists.h"
 #include "BenchRunner.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
+#include "SailSave.h"
+#include "SailingAudio.h"
 #include "SailingSim.h"
 #include "SailboatPawn.h"
 #include "SailingHUD.h"
@@ -28,6 +32,7 @@
 #include "Async/Async.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
+#include "FarLightsActor.h"
 #include "MarinaActor.h"
 #include "BridgesActor.h"
 #include "LandmarksActor.h"
@@ -37,6 +42,9 @@
 #include "SailingEnvironment.h"
 #include "UnrealClient.h"
 #include "ShaderCompiler.h"
+#include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "UObject/ConstructorHelpers.h"
 
 using namespace Sailing;
 
@@ -47,6 +55,9 @@ ASailingGameMode::ASailingGameMode()
 	HUDClass = ASailingHUD::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickGroup = TG_PrePhysics;
+	// World streaming: the render origin goes to every material through MPC_World.RenderOrigin (a hard reference).
+	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> WorldMpc(TEXT("/Game/World/MPC_World.MPC_World"));
+	WorldCollection = WorldMpc.Object;
 }
 
 void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
@@ -59,30 +70,62 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	// Command-line overrides (benchmarks, recordings) are applied to settings for this run only.
 	USailingSettings* Settings = USailingSettings::Get();
 	FString Value;
+	// Prologue step 3: the scene's own boat (setting.boat, the maxi), or its stand-in with -SailingPrologueBoat=J22 (steps 1
+	// and 2's J/22 in the stand-in wind, for comparison); -SailingBoat still wins. Until the mistral coast exists (step 4)
+	// the maxi sails the Gulf's offshore spot, 15 nm south of Galveston: the only water in the game deep enough for her
+	// 6 m draft. The command line's world and launch spot still win.
+	FString SceneError;
+	if (IsPrologueRun())
+	{
+		bScene = LoadPrologue(Scene, &SceneError);
+		if (bScene)
+		{
+			const Sailing::FSceneSetting& Set = Scene.GetSetting();
+			FString Want = UTF8_TO_TCHAR(Set.Boat.c_str());
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingPrologueBoat="), Want);
+			bSceneStandIn = !Set.StandInBoat.empty() && Want.Equals(UTF8_TO_TCHAR(Set.StandInBoat.c_str()), ESearchCase::IgnoreCase);
+			SceneReefs = bSceneStandIn ? Set.StandInReefs : Set.Reefs;
+			// -SailingBoat wins (the pawn applies it again; resolved here so the world below follows it).
+			const bool bBoatArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingBoat="), Value);
+			const int32 Match = USailingSettings::MatchBoatName(bBoatArg ? Value : Want);
+			if (Match >= 0) Settings->BoatType = Match;
+			// Step 4: the scene's stand-in world (setting.world_stand_in: the Gulf's offshore spot) until its own exists.
+			if (!bSceneStandIn && Settings->BoatType == int32(Sailing::EBoatType::Maxi) && !Set.WorldStandIn.empty() && !FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value))
+			{
+				Settings->World = WorldIndexFromName(UTF8_TO_TCHAR(Set.WorldStandIn.c_str()));
+				Settings->LaunchSpot = Set.WorldStandInLaunch;
+			}
+			// Step 4: the scene's weather preset (setting.weather, the mistral) and hour; -SailingWeather and -SailingHour win.
+			for (int32 I = 0; I < int32(EWeatherPreset::Count); ++I)
+			{
+				if (FString(UTF8_TO_TCHAR(Set.Weather.c_str())).Equals(FString(WeatherPresetName(EWeatherPreset(I))).Replace(TEXT(" "), TEXT("")), ESearchCase::IgnoreCase))
+				{
+					Settings->WeatherPreset = ESailingWeather(I);
+					bScenePreset = true;
+				}
+			}
+			if (Set.Hour >= 0.0) Settings->StartHour = float(Set.Hour);
+			// Stills: -SailingPrologueStep=<step id> starts the scene at that step, the boat on the checkpoint before it.
+			FString StepId;
+			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingPrologueStep="), StepId))
+			{
+				SceneStartStep = FMath::Max(0, Scene.FindStep(TCHAR_TO_UTF8(*StepId)));
+				UE_LOG(LogSailing, Display, TEXT("Prologue: starting at step %d (%s)"), SceneStartStep, *StepId);
+			}
+		}
+	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value))
 	{
-		// 0 or "Lake", 1 or "Galveston", 2 or "Gulf".
-		Settings->World = (Value.StartsWith(TEXT("Gulf"), ESearchCase::IgnoreCase) || Value == TEXT("2")) ? 2
-			: ((Value.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Value == TEXT("1")) ? 1 : 0);
+		Settings->World = WorldIndexFromName(Value);
 	}
 	Lake.Load(FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
+	// World streaming: the tile index (a streamed world's heights arrive in StartStreaming, at the end of InitGame).
+	Streamer.Start(Lake, FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
 	// gulf-swell: Galveston carries the Gulf's ocean too (masked out of the bay); -SailingNoOcean compares without it.
 	if (Lake.bOcean && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoOcean")))
 	{
 		Ocean = MakeShared<FOcean>();
 		Waves.SetOcean(std::shared_ptr<FOcean>(Ocean.Get(), [Keep = Ocean](FOcean*) {}));
-	}
-	// W3: the fetch every way at every point, and the water's depth (about 50 ms). The components' wavenumbers follow the
-	// world's median depth (shallow-water dispersion) before anything reads them.
-	if (Lake.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoSeaMap")))
-	{
-		const double Start = FPlatformTime::Seconds();
-		TSharedPtr<Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch = MakeShared<Sailing::FSeaFetch, ESPMode::ThreadSafe>();
-		Fetch->Build(Lake.Terrain);
-		SeaFetch = Fetch;
-		Waves.SetDepth(Fetch->GetMedianDepth());
-		UE_LOG(LogSailing, Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
-			Fetch->GetRows(), Fetch->GetCols(), Fetch->GetCell(), Fetch->GetMedianDepth(), (FPlatformTime::Seconds() - Start) * 1000.0);
 	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWeather="), Value))
 	{
@@ -126,10 +169,29 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 		}
 		SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), FMath::Clamp(C.Day, 1, FDateTime::DaysInMonth(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12))));
 		bSessionDate = true;
-		if (!Lake.IsTidal() && FMath::Abs(C.LakeLevelFt) > 0.01f)
+		if (!Lake.IsCoast() && FMath::Abs(C.LakeLevelFt) > 0.01f)
 		{
 			Lake.Terrain.SetLevelBelowPool(-C.LakeLevelFt * 0.3048);   // above the pool raises the water: the shore drops by as much
 		}
+	}
+	// Prologue: the scene's wind, by its preset (step 4: the mistral's own 32 kn gusting 40) or, with the stand-in boat
+	// or no preset, scaled to the setting's wind and gusts (the command line still wins).
+	if (IsPrologueRun())
+	{
+		if (bScene)
+		{
+			const Sailing::FSceneSetting& Set = Scene.GetSetting();
+			const bool bStandInWind = bSceneStandIn && Set.StandInWindKn > 0.0;
+			const double Kn = bStandInWind ? Set.StandInWindKn : Set.WindKn;
+			const double Gust = bStandInWind ? Set.StandInGustKn : Set.GustKn;
+			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = float(Kn);
+			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), Value) && (bStandInWind || !bScenePreset))
+				GustOverride = float(FMath::Clamp(Gust / FMath::Max(Kn, 1.0) - 1.0, 0.0, 1.0));
+			UE_LOG(LogSailing, Display, TEXT("Prologue: \"%s\", %d steps, %s%s in %.0f kn gusting %.0f, %d reefs"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
+				int32(Scene.GetSteps().size()), UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(Settings->BoatType))), bSceneStandIn ? TEXT(" (stand-in)") : TEXT(""),
+				Kn, Gust, SceneReefs);
+		}
+		else UE_LOG(LogSailing, Warning, TEXT("Prologue: %s"), *SceneError);
 	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingQuality="), Value))
 	{
@@ -137,6 +199,154 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			: (Value.Equals(TEXT("Medium"), ESearchCase::IgnoreCase) ? ESailingQuality::Medium
 			: (Value.Equals(TEXT("Ultra"), ESearchCase::IgnoreCase) ? ESailingQuality::Ultra : ESailingQuality::High));
 	}
+	StartStreaming();
+}
+
+void ASailingGameMode::StartStreaming()
+{
+	// World streaming (docs/world-streaming). A streamed world reads the tiles within the load radius of the launch spot
+	// now (the loading screen's "Reading the coast"); every world's derived grids are then marched once here.
+	FLaunchSpot Spot;
+	const bool bSpot = GetLaunchSpot(Spot);
+	if (Lake.bStreamed && Streamer.IsStarted())
+	{
+		Streamer.LoadAround(bSpot ? Spot.X : 0.0, bSpot ? Spot.Y : 0.0, Streamer.Radii.LoadM);
+	}
+	// W3: the fetch every way at every point, and the water's depth (about 50 ms). The components' wavenumbers follow the
+	// world's median depth (shallow-water dispersion) before anything reads them. On a streamed world, over the physics'
+	// window around the start (and again on a worker as the boat sails on: MarchWindow).
+	if (Lake.bStreamed)
+	{
+		PhysicsWindow.CenterX = bSpot ? Spot.X : 0.0;
+		PhysicsWindow.CenterY = bSpot ? Spot.Y : 0.0;
+		PhysicsWindow.bValid = true;
+	}
+	if (Lake.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoSeaMap")))
+	{
+		const double Start = FPlatformTime::Seconds();
+		TSharedPtr<Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch = MakeShared<Sailing::FSeaFetch, ESPMode::ThreadSafe>();
+		Fetch->Build(DerivedTerrain(PhysicsWindow.CenterX, PhysicsWindow.CenterY));
+		SeaFetch = Fetch;
+		Waves.SetDepth(Fetch->GetMedianDepth());
+		UE_LOG(LogSailing, Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
+			Fetch->GetRows(), Fetch->GetCols(), Fetch->GetCell(), Fetch->GetMedianDepth(), (FPlatformTime::Seconds() - Start) * 1000.0);
+	}
+}
+
+Sailing::FLakeTerrain ASailingGameMode::DerivedTerrain(double CenterX, double CenterY) const
+{
+	return Lake.bStreamed ? Lake.Terrain.WindowAround(CenterX, CenterY, PhysicsWindow.HalfM) : Lake.Terrain;
+}
+
+FVector2D ASailingGameMode::GetFollowPoint() const
+{
+	const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (const ASailboatPawn* Boat = PC ? Cast<ASailboatPawn>(PC->GetPawn()) : nullptr)
+	{
+		const Sailing::Vec3 O = Boat->GetBoatModel().OriginPosition();
+		return FVector2D(O.X, O.Y);
+	}
+	if (PC && PC->PlayerCameraManager) return SailingFrame::ToMap(GetWorld(), PC->PlayerCameraManager->GetCameraLocation());
+	return SailingFrame::OriginM(GetWorld());
+}
+
+void ASailingGameMode::PublishRenderOrigin()
+{
+	if (!WorldCollection || !GetWorld()) return;
+	const FVector O = SailingFrame::OriginCm(GetWorld());
+	UKismetMaterialLibrary::SetVectorParameterValue(this, WorldCollection, TEXT("RenderOrigin"), FLinearColor(float(O.X), float(O.Y), float(O.Z), 0.f));
+}
+
+bool ASailingGameMode::RecentreAt(double NorthM, double EastM)
+{
+	UWorld* World = GetWorld();
+	if (!World) return false;
+	const FIntVector To(int32(FMath::RoundToInt64(NorthM * CmPerMeter)), int32(FMath::RoundToInt64(EastM * CmPerMeter)), 0);
+	if (To == World->OriginLocation) return true;
+	const double Start = FPlatformTime::Seconds();
+	// The engine shifts every actor, component and render primitive by the difference in one go (UWorld::SetNewWorldOrigin);
+	// the physics is in the map frame and does not move.
+	if (!World->SetNewWorldOrigin(To)) return false;
+	PublishRenderOrigin();
+	const double Ms = (FPlatformTime::Seconds() - Start) * 1000.0;
+	LongestRecentreMs = FMath::Max(LongestRecentreMs, Ms);
+	++Recentres;
+	UE_LOG(LogSailing, Display, TEXT("World streaming: render origin to %.1f N %.1f E km (%.2f ms)"), NorthM / 1000.0, EastM / 1000.0, Ms);
+	return true;
+}
+
+void ASailingGameMode::MarchWindow(double X, double Y)
+{
+	if (bWindowMarching || !Lake.IsLoaded()) return;
+	bWindowMarching = true;
+	++WindowMarches;
+	const Sailing::FLakeTerrain Window = Lake.Terrain.WindowAround(X, Y, PhysicsWindow.HalfM);   // a snapshot: shares the tiles
+	const bool bFetch = SeaFetch.IsValid();
+	const bool bMask = Ocean.IsValid() && bOceanConfigured;
+	const double SwellFrom = bMask ? Ocean->GetParams().SwellFromRad : 0.0, Hs = bMask ? Ocean->SignificantHeight() : 0.0;
+	const double ShelterFrom = WeatherState.Wind.FromDegrees * Sailing::kDegToRad;
+	const std::vector<Sailing::FShelterObstacle>* Obstacles = &ShelterObstacles;
+	PendingWindow = Async(EAsyncExecution::ThreadPool, [Window, X, Y, bFetch, bMask, SwellFrom, Hs, ShelterFrom, Obstacles]()
+	{
+		const double Start = FPlatformTime::Seconds();
+		FWindowGrids G;
+		G.CenterX = X;
+		G.CenterY = Y;
+		G.ShelterFrom = ShelterFrom;
+		if (bFetch)
+		{
+			TSharedPtr<Sailing::FSeaFetch, ESPMode::ThreadSafe> Fetch = MakeShared<Sailing::FSeaFetch, ESPMode::ThreadSafe>();
+			Fetch->Build(Window);
+			G.Fetch = Fetch;
+		}
+		if (bMask)
+		{
+			G.Mask = Sailing::FOcean::MakeMask(Window, SwellFrom, Hs);
+			G.bMask = true;
+		}
+		G.Shelter = MakeShared<Sailing::FShelterMap>();
+		G.Shelter->Build(Window, ShelterFrom, 40.0, Obstacles);
+		G.Ms = (FPlatformTime::Seconds() - Start) * 1000.0;
+		return G;
+	});
+}
+
+void ASailingGameMode::UpdateStreaming()
+{
+	if (!Streamer.IsStarted()) return;
+	const FVector2D At = GetFollowPoint();
+	Streamer.Tick(At.X, At.Y);
+	// The render frame: moved when the boat is kRecentreM from its origin, to the lattice point nearest her.
+	const FVector2D Origin = SailingFrame::OriginM(GetWorld());
+	double NX, NY;
+	bool bMoved = false;
+	if (Sailing::NeedsRecentre(Origin.X, Origin.Y, At.X, At.Y, NX, NY)) bMoved = RecentreAt(NX, NY);
+	if (!Lake.bStreamed) return;
+	// The physics' window: its grids, when a march has finished; a new march when the boat has left its core, or the
+	// render origin has moved.
+	if (bWindowMarching && PendingWindow.IsReady())
+	{
+		FWindowGrids G = PendingWindow.Consume();
+		bWindowMarching = false;
+		PhysicsWindow.CenterX = G.CenterX;
+		PhysicsWindow.CenterY = G.CenterY;
+		PhysicsWindow.bValid = true;
+		if (G.Fetch.IsValid())
+		{
+			SeaFetch = G.Fetch;
+			SeaMapKnots = -1.0;   // the sea map again on the new fetch
+		}
+		if (G.bMask && Ocean.IsValid()) Ocean->SetMask(MoveTemp(G.Mask));
+		if (G.Shelter.IsValid())
+		{
+			Shelter = G.Shelter;
+			Wind.SetShelter(Shelter.Get());
+		}
+		UE_LOG(LogSailing, Display, TEXT("World streaming: physics window at %.1f N %.1f E km marched in %.0f ms (worker)"), G.CenterX / 1000.0, G.CenterY / 1000.0, G.Ms);
+	}
+	if (!bWindowMarching && (bMoved || !PhysicsWindow.Contains(At.X, At.Y))) MarchWindow(At.X, At.Y);
+	else if (!bWindowMarching && bWindowStale) MarchWindow(PhysicsWindow.CenterX, PhysicsWindow.CenterY);
+	if (bWindowMarching) bWindowStale = false;
 }
 
 void ASailingGameMode::AdvanceClock(float DeltaSeconds)
@@ -146,14 +356,41 @@ void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 	if (!GetWorld()->IsPaused()) Clock.Advance(DeltaSeconds);
 }
 
+int32 ASailingGameMode::CentralEuropeanOffsetHours(const FDateTime& Date)
+{
+	// world-marseille: central European time, +1, and +2 from the last Sunday of March to the last Sunday of October (the
+	// change is at 01:00 UTC; by the day is close enough for a sailing day's clock).
+	auto LastSunday = [](int32 Year, int32 Month)
+	{
+		const FDateTime Last(Year, Month, FDateTime::DaysInMonth(Year, Month));
+		return Last.GetDay() - (int32(Last.GetDayOfWeek()) + 1) % 7;   // EDayOfWeek: Monday 0 .. Sunday 6
+	};
+	const int32 Y = Date.GetYear(), M = Date.GetMonth(), D = Date.GetDay();
+	const bool bSummer = (M > 3 && M < 10) || (M == 3 && D >= LastSunday(Y, 3)) || (M == 10 && D < LastSunday(Y, 10));
+	return bSummer ? 2 : 1;
+}
+
+int32 ASailingGameMode::WorldIndexFromName(const FString& Name)
+{
+	// 0 or "Lake", 1 or "Galveston", 2 or "Gulf", 3 or "Marseille", 4 or "TexasCoast" (world streaming: the bay and the
+	// Gulf passage as one streamed coast).
+	if (Name.StartsWith(TEXT("Texas"), ESearchCase::IgnoreCase) || Name == TEXT("4")) return 4;
+	if (Name.StartsWith(TEXT("Mars"), ESearchCase::IgnoreCase) || Name == TEXT("3")) return 3;
+	return (Name.StartsWith(TEXT("Gulf"), ESearchCase::IgnoreCase) || Name == TEXT("2")) ? 2
+		: ((Name.StartsWith(TEXT("Galv"), ESearchCase::IgnoreCase) || Name == TEXT("1")) ? 1 : 0);
+}
+
 const TCHAR* ASailingGameMode::WorldFileName(int32 World)
 {
-	return World == 2 ? TEXT("GulfPassage") : (World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard"));
+	if (World == 4) return TEXT("TexasCoast");
+	return World == 3 ? TEXT("Marseille") : (World == 2 ? TEXT("GulfPassage") : (World == 1 ? TEXT("GalvestonBay") : TEXT("RayHubbard")));
 }
 
 const TCHAR* ASailingGameMode::WorldDisplayName(int32 World)
 {
-	return World == 2 ? TEXT("Gulf passage (Galveston to Freeport)") : (World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)"));
+	if (World == 4) return TEXT("Texas coast (Clear Lake to Freeport, streamed)");
+	return World == 3 ? TEXT("Marseille (Vieux-Port, Frioul, the Calanques)") : (World == 2 ? TEXT("Gulf passage (Galveston to Freeport)")
+		: (World == 1 ? TEXT("Galveston Bay (Clear Lake, Kemah)") : TEXT("Lake Ray Hubbard (Rush Creek YC)")));
 }
 
 double ASailingGameMode::GetLocalHour() const
@@ -165,7 +402,7 @@ double ASailingGameMode::GetLocalHour() const
 
 const FChartData& ASailingGameMode::GetChart() const
 {
-	if (!bChartTried && Lake.IsTidal())
+	if (!bChartTried && Lake.IsCoast())
 	{
 		bChartTried = true;
 		Chart.Load(FLakeData::DefaultDirectory() / (Lake.FileName + TEXT(".chart.json")));
@@ -192,8 +429,9 @@ void ASailingGameMode::UpdateTide()
 	{
 		if (const APawn* P = PC->GetPawn())
 		{
-			X = P->GetActorLocation().X / CmPerMeter;
-			Y = P->GetActorLocation().Y / CmPerMeter;
+			const FVector2D At = SailingFrame::ToMap(GetWorld(), P->GetActorLocation());
+			X = At.X;
+			Y = At.Y;
 		}
 	}
 	TideHeight = Lake.Tides.HeightAt(X, Y, GetUnixTime());
@@ -212,7 +450,7 @@ void ASailingGameMode::UpdateTide()
 		// In 2 cm steps, like the rest of the world kit: moving the actor re-uploads every instance under it (the shore's
 		// reeds, houses and docks, some 300,000 on Galveston Bay), and doing that each frame cost the render thread 20 ms.
 		const double Shown = FMath::RoundToDouble(TideHeight / 0.02) * 0.02;
-		const FVector At(0.0, 0.0, -Shown * CmPerMeter);
+		const FVector At = SailingFrame::MapAnchor(GetWorld(), -Shown);   // the map's origin, in the render frame
 		if (!TerrainActor->GetActorLocation().Equals(At, 0.1)) TerrainActor->SetActorLocation(At);
 	}
 }
@@ -251,7 +489,9 @@ void ASailingGameMode::UpdateShelter()
 	if (!bShelterBuilding && (!Shelter || FMath::Abs(Sailing::WrapAngle(Shelter->GetFromRadians() - From)) > 8.0 * Sailing::kDegToRad))
 	{
 		bShelterBuilding = true;
-		const Sailing::FLakeTerrain* Terrain = &Lake.Terrain;
+		// A copy (it shares the heights): a streamed world's tiles may change while the worker reads. On a streamed world,
+		// the physics' window.
+		const Sailing::FLakeTerrain Terrain = DerivedTerrain(PhysicsWindow.CenterX, PhysicsWindow.CenterY);
 		// W1: houses shelter the water too (their ridge above the water, their wings' extent).
 		if (ShelterObstacles.empty())
 		{
@@ -271,7 +511,7 @@ void ASailingGameMode::UpdateShelter()
 		{
 			const double Start = FPlatformTime::Seconds();
 			TSharedPtr<Sailing::FShelterMap> Map = MakeShared<Sailing::FShelterMap>();
-			Map->Build(*Terrain, From, 40.0, Obstacles);
+			Map->Build(Terrain, From, 40.0, Obstacles);
 			UE_LOG(LogSailing, Display, TEXT("Shelter map for wind from %.0f built in %.0f ms"), FMath::RadiansToDegrees(From), (FPlatformTime::Seconds() - Start) * 1000.0);
 			return Map;
 		});
@@ -346,6 +586,17 @@ void ASailingGameMode::ApplyWeatherSettings()
 		Weather.Configure(EWeatherPreset(Settings->WeatherPreset), uint32(FMath::Max(Settings->WeatherSeed, 1)), Settings->StartHour,
 			(bStart ? Start.X : 0.0) + FMath::Cos(TrackRad) * Shift, (bStart ? Start.Y : 0.0) + FMath::Sin(TrackRad) * Shift);
 	}
+	// Prologue step 4: in the scene's stand-in world its wind comes from where that world has the open water
+	// (setting.world_stand_in.wind_from_deg); a scene runs its weather on cue (UpdateScene), not on the preset's timeline.
+	Weather.SetPrevailingFrom(std::numeric_limits<double>::quiet_NaN());
+	if (bScene)
+	{
+		const Sailing::FSceneSetting& Set = Scene.GetSetting();
+		if (!Set.WorldStandIn.empty() && Set.WorldStandInWindFromDeg >= 0.0 && Settings->World == WorldIndexFromName(UTF8_TO_TCHAR(Set.WorldStandIn.c_str())))
+			Weather.SetPrevailingFrom(Set.WorldStandInWindFromDeg);
+		Weather.ClearCues();
+		SceneWeatherSerial = -1;
+	}
 
 	// The clock: today's date (or -SailingDate=YYYY-MM-DD) at the start time, in this machine's time zone (Texas).
 	FDateTime Date = bSessionDate ? SessionDate : FDateTime::Now();
@@ -357,7 +608,8 @@ void ASailingGameMode::ApplyWeatherSettings()
 		if (Parts.Num() == 3) Date = FDateTime(FCString::Atoi(*Parts[0]), FCString::Atoi(*Parts[1]), FCString::Atoi(*Parts[2]));
 	}
 	if (RealDay) Date = FDateTime(RealDay->Year(), RealDay->Month(), RealDay->DayOfMonth());
-	UtcOffsetHours = FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
+	UtcOffsetHours = Lake.TimeZone == TEXT("Europe/Paris") ? CentralEuropeanOffsetHours(Date)
+		: FMath::RoundToInt((FDateTime::Now() - FDateTime::UtcNow()).GetTotalHours());
 	DayOfYear = Date.GetDayOfYear();
 	// W1: the wind's calibration and stability follow the month and the water (the lake, or the bay and the Gulf).
 	Weather.SetClimate(Date.GetMonth(), Settings->World != 0);
@@ -444,7 +696,7 @@ void ASailingGameMode::ApplyQualitySettings()
 
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 {
-	const bool bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
+	const bool bEasy = USailingSettings::Get()->IsEasy();
 	const double Now = GetSimTime();
 	WeatherState = Weather.Evaluate(Now - WeatherStartTime);
 	WeatherState.Wind.SpeedKnots *= WindScale;
@@ -468,10 +720,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	}
 	if (bEasy)
 	{
-		WeatherState.Wind.GustIntensity *= 0.5;
-		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= 0.5;
-		WeatherState.Wind.ShiftDegrees *= 0.5;
-		WeatherState.Wind.PersistentShiftDegrees *= 0.5;
+		// Easy mode (EasyAssists.h): the gusts, puffs and shifts at a fraction of their strength.
+		const double Scale = Sailing::FEasyAssists().WindVariabilityScale;
+		WeatherState.Wind.GustIntensity *= Scale;
+		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= Scale;
+		WeatherState.Wind.ShiftDegrees *= Scale;
+		WeatherState.Wind.PersistentShiftDegrees *= Scale;
 	}
 	// The weather's own clock starts at zero; the wind field runs on simulation time.
 	WeatherState.Front.StartTime += WeatherStartTime;
@@ -494,7 +748,7 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	{
 		WeatherState.Rain = WeatherState.RainAt(BoatPos.X, BoatPos.Y, Now);
 		// W8: and the storm's gloom is the boat's too (sunshine ahead of the front until the shelf is close).
-		if (WeatherState.Front.bActive) WeatherState.LocalizeStorm(BoatPos.X, BoatPos.Y, Now);
+		if (WeatherState.Front.bActive || WeatherState.bSquall) WeatherState.LocalizeStorm(BoatPos.X, BoatPos.Y, Now);
 		else WeatherState.VisibilityKm = FMath::Lerp(FMath::Max(WeatherState.VisibilityKm, 10.0), 1.5, WeatherState.Rain);
 	}
 
@@ -601,55 +855,87 @@ void ASailingGameMode::UpdateOcean(double WindKnots, double WindFromDeg)
 	case EWeatherPreset::Thunderstorm: P.SwellHs = 1.4; P.SwellTp = 8.0; break;
 	default: P.SwellHs = 0.9; P.SwellTp = 9.0; break;
 	}
+	// The Gulf's swell runs in from the southeast; a world can give its own (Marseille: from the south-southwest).
+	P.SwellFromRad = (FMath::IsFinite(Lake.SwellFromDeg) ? Lake.SwellFromDeg : 135.0) * kDegToRad;
+	P.WindSeaHs = P.WindSeaTp = 0.0;
+	// Prologue step 4: weather that brings its own sea (the mistral's short fetch-limited sea on an older sea from the
+	// same way) instead of the Gulf's climatology.
+	if (WeatherState.SwellHsM >= 0.0)
+	{
+		P.SwellHs = WeatherState.SwellHsM;
+		P.SwellTp = WeatherState.SwellTpS;
+		P.SwellFromRad = WeatherState.SwellFromDeg * kDegToRad;
+		P.WindSeaHs = WeatherState.WindSeaHsM;
+		P.WindSeaTp = WeatherState.WindSeaTpS;
+	}
 	float SwellArg = 0.f;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSwell="), SwellArg)) P.SwellHs = SwellArg;
-	P.SwellFromRad = 135.0 * kDegToRad;
 	const FOceanParams& Old = Ocean->GetParams();
 	const bool bChanged = !bOceanConfigured || FMath::Abs(P.WindMs - Old.WindMs) > 0.4 || FMath::Abs(FMath::UnwindRadians(P.WindFromRad - Old.WindFromRad)) > 0.1
-		|| P.SwellHs != Old.SwellHs || P.SwellTp != Old.SwellTp;
+		|| P.SwellHs != Old.SwellHs || P.SwellTp != Old.SwellTp || P.SwellFromRad != Old.SwellFromRad || P.WindSeaHs != Old.WindSeaHs || P.WindSeaTp != Old.WindSeaTp;
 	if (!bChanged) return;
 	const double OldHs = Ocean->SignificantHeight();
 	Ocean->Configure(P);
 	// The depth limit depends on the wave height: rebuild the mask when it has changed noticeably.
-	if (!bOceanConfigured || FMath::Abs(Ocean->SignificantHeight() - OldHs) > 0.15 * OldHs) Ocean->BuildMask(Lake.Terrain);
+	if (!bOceanConfigured || FMath::Abs(Ocean->SignificantHeight() - OldHs) > 0.15 * OldHs || P.SwellFromRad != Old.SwellFromRad)
+	{
+		// World streaming: a streamed world's mask is marched over the physics' window, on a worker once under way.
+		if (!Lake.bStreamed || !bOceanConfigured) Ocean->BuildMask(DerivedTerrain(PhysicsWindow.CenterX, PhysicsWindow.CenterY));
+		else bWindowStale = true;
+	}
 	bOceanConfigured = true;
 }
 
 void ASailingGameMode::StartPlay()
 {
+	// World streaming: the render frame starts on the lattice point nearest the launch spot when that is past the re-centre
+	// distance (Bolivar Roads, the Gulf's offshore spots, a streamed coast's far end), before any actor begins play, so
+	// everything is built in its frame from the start.
+	PublishRenderOrigin();
+	{
+		FLaunchSpot Spot;
+		double NX, NY;
+		if (GetLaunchSpot(Spot) && Sailing::NeedsRecentre(0.0, 0.0, Spot.X, Spot.Y, NX, NY)) RecentreAt(NX, NY);
+	}
 	// Weather first: the boat reads the wind when it is spawned during Super::StartPlay.
 	ApplyQualitySettings();
 	ApplyWeatherSettings();
 	Super::StartPlay();
 	if (Lake.Navaids.Num() > 0)
 	{
-		GetWorld()->SpawnActor<ANavaidsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		GetWorld()->SpawnActor<ANavaidsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
+	}
+	// Wide World Rendering PR 3: the far lights, lit shores and horizon ships (-SailingNoFarLights compares).
+	if ((Lake.FarLights.Lights.Num() > 0 || Lake.FarLights.Shore.Num() > 0 || Lake.FarLights.Lanes.Num() > 0)
+		&& !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoFarLights")))
+	{
+		GetWorld()->SpawnActor<AFarLightsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	if (Lake.Marina.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoMarina")))
 	{
-		GetWorld()->SpawnActor<AMarinaActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		GetWorld()->SpawnActor<AMarinaActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	// Graphics G7: the coast's moored boats and floating walkways (Inputs/g2/piers, <Lake>.piers).
 	if (Lake.MooredBoats.Num() > 0 && USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
-		GetWorld()->SpawnActor<ACoastMarinasActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		GetWorld()->SpawnActor<ACoastMarinasActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	if ((Lake.Bridges.Num() > 0 || Lake.Docks.Num() > 0) && USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
-		GetWorld()->SpawnActor<ABridgesActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		GetWorld()->SpawnActor<ABridgesActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	if (Lake.Landmarks.Num() > 0 && USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
-		GetWorld()->SpawnActor<ALandmarksActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		GetWorld()->SpawnActor<ALandmarksActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
-		GetWorld()->SpawnActor<ANightLightsActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		GetWorld()->SpawnActor<ANightLightsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
 	int32 TrafficArg = 0;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingTraffic="), TrafficArg)) USailingSettings::Get()->TrafficLevel = FMath::Clamp(TrafficArg, 0, 2);
-	GetWorld()->SpawnActor<ATrafficManager>(FVector::ZeroVector, FRotator::ZeroRotator);
+	GetWorld()->SpawnActor<ATrafficManager>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
@@ -730,6 +1016,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	AdvanceClock(DeltaSeconds);
+	{ SAILING_PERF_SCOPE(Streaming); UpdateStreaming(); }
 	if (!GetWorld()->IsPaused())
 	{
 		UpdateWeather(DeltaSeconds);
@@ -803,7 +1090,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		const APlayerController* PC = GetWorld()->GetFirstPlayerController();
 		if (const APawn* Pawn = PC ? PC->GetPawn() : nullptr)
 		{
-			const FVector Pos = Pawn->GetActorLocation() / CmPerMeter;
+			const FVector Pos = SailingFrame::ToMapCm(GetWorld(), Pawn->GetActorLocation()) / CmPerMeter;
 			UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y,
 				NextPosLog > 0.f ? FVector::Dist2D(Pos, LastPosLog) : 0.0);
 			LastPosLog = Pos;
@@ -896,6 +1183,18 @@ void ASailingGameMode::FinishBenchmark()
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"windmap_cpu_ms\":%.3f}"), (AWaterSurface::WindMapCpuSeconds - WindMapSecondsAtStart) * 1000.0 / N);
+		// World streaming (docs/world-streaming): what the loader, the re-centre and the chunks did over the run.
+		{
+			int32 Chunks = 0, Made = 0, Dropped = 0, FarDropped = 0;
+			for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
+			{
+				Chunks = It->GetNumChunks(); Made = It->GetChunksMade(); Dropped = It->GetChunksDropped(); FarDropped = It->GetFarTilesDropped();
+			}
+			const FVector2D At = GetFollowPoint();
+			Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"world\":{\"streamed\":%s,\"tiles_resident\":%d,\"tile_mb\":%.1f,\"tile_loads\":%d,\"tile_drops\":%d,\"loader_longest_ms\":%.3f,\"recentres\":%d,\"recentre_longest_ms\":%.2f,\"window_marches\":%d,\"chunks\":%d,\"chunks_made\":%d,\"chunks_dropped\":%d,\"far_dropped\":%d,\"boat_n\":%.0f,\"boat_e\":%.0f}}"),
+				Streamer.IsStreamed() ? TEXT("true") : TEXT("false"), Streamer.NumResident(), Streamer.ResidentBytes() / 1e6, Streamer.NumLoads(), Streamer.NumDrops(),
+				Streamer.LongestTickMs(), Recentres, LongestRecentreMs, WindowMarches, Chunks, Made, Dropped, FarDropped, At.X, At.Y);
+		}
 	}
 	// Perf 1: the threads' own times (game thread without its waits) and the game thread's named slices.
 	if (const FString Threads = ThreadTimes.JsonFields(); !Threads.IsEmpty())
@@ -905,6 +1204,11 @@ void ASailingGameMode::FinishBenchmark()
 	if (!GpuSlicesJson.IsEmpty())
 	{
 		Summary = Summary.LeftChop(1) + TEXT(",") + GpuSlicesJson + FString::Printf(TEXT(",\"gpu_skipped_frames\":%d}"), GpuProfileSkipped);
+	}
+	// Easy mode's gate runs: the assists, the player's max heel and the crude tack (ASailboatPawn::EasyRunJson).
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (const ASailboatPawn* Player = Cast<ASailboatPawn>(PC->GetPawn())) Summary = Summary.LeftChop(1) + TEXT(",") + Player->EasyRunJson() + TEXT("}");
 	}
 	// Visual V7: the render resolution at the end of the window (High's governor may have lowered it).
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"render_pct\":%.0f}"), GetRenderScale());
@@ -933,4 +1237,96 @@ void ASailingGameMode::FinishBenchmark()
 		return;
 	}
 	FPlatformMisc::RequestExit(false, TEXT("SailingBench finished"));
+}
+
+bool ASailingGameMode::IsPrologueRun()
+{
+	static uint32 Gen = MAX_uint32;
+	static bool bArg = false;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		int32 V = 0;
+		bArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingPrologue="), V) && V != 0;
+	}
+	return bArg;
+}
+
+bool ASailingGameMode::LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError)
+{
+	const FString Path = FPaths::ProjectContentDir() / TEXT("Prologue/prologue.json");
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *Path))
+	{
+		if (OutError) *OutError = FString::Printf(TEXT("%s not found"), *Path);
+		return false;
+	}
+	std::string Error;
+	if (!Out.LoadText(TCHAR_TO_UTF8(*Text), &Error))
+	{
+		if (OutError) *OutError = FString::Printf(TEXT("%s: %s"), *Path, UTF8_TO_TCHAR(Error.c_str()));
+		return false;
+	}
+	return true;
+}
+
+bool ASailingGameMode::RestartScene(double& OutTwaDeg, double& OutKnots)
+{
+	if (!bScene || Scene.GetSteps().empty()) return false;
+	if (Scene.IsActive()) Scene.RestartFromCheckpoint();
+	const std::string& At = Scene.GetCheckpoint();
+	const Sailing::FSceneStep* Pose = &Scene.GetSteps()[size_t(bSceneStarted ? 0 : Scene.CheckpointAtOrBefore(SceneStartStep))];
+	for (const Sailing::FSceneStep& S : Scene.GetSteps()) if (!At.empty() && S.Id == At) Pose = &S;
+	if (!Pose->bRestartPose) return false;
+	OutTwaDeg = Pose->RestartTwaDeg;
+	OutKnots = Pose->RestartSpeedKn;
+	return true;
+}
+
+void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailing::FSceneInput& Input)
+{
+	if (!bScene) return;
+	const double Now = Boat.GetState().Time;
+	if (!bSceneStarted)
+	{
+		bSceneStarted = true;
+		SceneTime = Now;
+		Scene.Start(Boat, WeatherState.Wind.SpeedKnots, SceneStartStep);
+	}
+	Scene.SetMeanWindKn(WeatherState.Wind.SpeedKnots);
+	Scene.Update(Boat, Input, FMath::Max(0.0, Now - SceneTime));
+	SceneTime = Now;
+	// Step 4: the scene's weather cues (the squall on the "dump the main" step, its front reaching her as the step's gust
+	// trigger is due; the break on the next), on the sim clock: weather time is sim time less WeatherStartTime.
+	if (Scene.GetWeatherSerial() != SceneWeatherSerial)
+	{
+		SceneWeatherSerial = Scene.GetWeatherSerial();
+		const Sailing::FSceneStep* Cue = Scene.GetWeatherStep();
+		const Vec3 O = Boat.OriginPosition(), V = Boat.GetState().Velocity;
+		Weather.ApplySceneCue(Cue ? Cue->WeatherCue : std::string(), Cue && Cue == Scene.GetStep() ? Cue->WeatherInSeconds : 0.0,
+			Now - WeatherStartTime, O.X, O.Y, V.X, V.Y);
+		UE_LOG(LogSailing, Display, TEXT("Prologue %.1f s: weather %hs (squall at %.0f s, clearing at %.0f s of sim time)"), Scene.GetElapsed(),
+			Cue ? Cue->WeatherCue.c_str() : "none yet", Weather.GetSquallArrives() + WeatherStartTime, Weather.GetClearingStarts() + WeatherStartTime);
+	}
+	// The captain's voice: a recording named for the call id, if the pack has one (none yet: the caption carries it).
+	if (Scene.GetCallSerial() != SceneCallSerial)
+	{
+		SceneCallSerial = Scene.GetCallSerial();
+		const FString CallId = UTF8_TO_TCHAR(Scene.GetCallId().c_str());
+		const FString Cue = CallId.Replace(TEXT("."), TEXT("_")).Replace(TEXT("-"), TEXT("_"));
+		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice);
+		UE_LOG(LogSailing, Display, TEXT("Prologue %.1f s: %s (repeat %d)"), Scene.GetElapsed(), *CallId, Scene.GetCallRepeats());
+	}
+	// The sim judged the scene finished: the save keeps it by id (rule 7), unless this run never writes the save.
+	if (Scene.IsComplete() && !bSceneRecorded)
+	{
+		bSceneRecorded = true;
+		const Sailing::FSceneResult& R = Scene.GetResult();
+		UE_LOG(LogSailing, Display, TEXT("Prologue done in %.0f s: %d steps answered, %d by the crew, %d repeats"), R.Seconds, R.StepsPassed, R.StepsAssisted, R.Retries);
+		if (!USailingSettings::IgnoresSavedChoices())
+		{
+			SailSaveStore::Progress().RecordScene(R, FDateTime::UtcNow());
+			USailSessionSave::Get()->Commit();
+		}
+	}
 }

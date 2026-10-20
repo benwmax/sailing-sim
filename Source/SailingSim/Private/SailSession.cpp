@@ -1,6 +1,7 @@
 #include "SailSession.h"
 #include "SailingSettings.h"
 #include "SailSave.h"
+#include "UI/SailCatalog.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -74,6 +75,7 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	C.Boat = Save->bHasLast ? Save->Last.Boat : 0;
 	C.LaunchSpot = Save->bHasLast && Save->Last.World == C.World ? Save->Last.LaunchSpot : 0;
 	ApplyPreset(C.Conditions, Presets()[0]);
+	C.bFreeSail = USailingSettings::Get()->IsFreeSail();
 	return C;
 }
 
@@ -110,18 +112,33 @@ FString USailSessionSubsystem::CompassPoint(float Degrees)
 	return P[I];
 }
 
+int32 USailSessionSubsystem::PassageWorld(int32 World)
+{
+	return World == 3 ? 3 : 2;
+}
+
+int32 USailSessionSubsystem::PassageStartSpot(int32 World, int32 ChosenSpot)
+{
+	if (World != 3) return ChosenSpot;
+	// Marseille: the passage's first waypoint is the Vieux-Port entrance; start on its launch spot, outbound.
+	const TArray<SailCatalog::FSpot>& Spots = SailCatalog::Spots(3);
+	const int32 I = Spots.IndexOfByPredicate([](const SailCatalog::FSpot& S) { return S.Name.StartsWith(TEXT("Vieux-Port entrance")); });
+	return I != INDEX_NONE ? I : ChosenSpot;
+}
+
 void USailSessionSubsystem::ApplyToSettings(const FSailSessionConfig& Config)
 {
 	USailingSettings* S = USailingSettings::Get();
-	// Passage mode on Galveston sails the Gulf world (the passage to Freeport).
-	S->World = Config.Mode == ESailMode::Passage ? 2 : Config.World;
-	S->LaunchSpot = Config.LaunchSpot;
+	// Passage mode on Galveston sails the Gulf world (the passage to Freeport); on Marseille its own passage to Cassis.
+	S->World = Config.Mode == ESailMode::Passage ? PassageWorld(Config.World) : Config.World;
+	S->LaunchSpot = Config.Mode == ESailMode::Passage ? PassageStartSpot(Config.World, Config.LaunchSpot) : Config.LaunchSpot;
 	S->BoatType = Config.Boat;
 	S->WeatherPreset = ESailingWeather(WeatherPresetFor(Config.Conditions.Sky));
 	S->StartHour = FMath::Clamp(Config.Conditions.LocalHour, 5.f, 22.f);
 	S->TrafficLevel = FMath::Clamp(Config.Traffic, 0, 2);
 	S->Difficulty = Config.bEasy ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic;
 	S->bLearningMode = Config.bLearningMode;
+	S->bFreeSail = Config.bFreeSail;
 	S->Save();
 }
 

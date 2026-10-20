@@ -285,7 +285,7 @@ UAudioComponent* SailingSound::MakeWorldSound(UObject* Owner, USceneComponent* P
 	{
 		USailingWorldSamples* Samples = NewObject<USailingWorldSamples>(Actor);
 		const ASailingGameMode* GM = Actor->GetWorld() ? Actor->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
-		if (Samples->Init(OutSynth, Parent, FalloffM, GM && GM->GetLake().IsTidal())) Samples->RegisterComponent();
+		if (Samples->Init(OutSynth, Parent, FalloffM, GM && GM->GetLake().IsCoast())) Samples->RegisterComponent();
 		else Samples->MarkAsGarbage();
 	}
 	return A;

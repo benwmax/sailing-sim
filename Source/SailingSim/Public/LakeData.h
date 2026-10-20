@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <limits>
 #include "Marina.h"
 #include "BoatModel.h"
 #include "LakeTerrain.h"
@@ -101,6 +102,28 @@ struct FLandmark
 	bool bConspicuous = false;
 };
 
+/** Wide World Rendering PR 3: what the world shows at night beyond its near lights (<Name>.farlights.json,
+ *  Tools/terrain/build_far_lights.py). */
+struct SAILINGSIM_API FFarLightsData
+{
+	struct FLight
+	{
+		FVector2D XY = FVector2D::ZeroVector;  // map frame, m
+		double Z = 6.0;                         // the lantern, m above the datum
+		Sailing::FLightCharacter Light;
+		FString Name;
+		int32 Navaid = INDEX_NONE;              // this world's navaid (ANavaidsActor draws it within the near pool)
+	};
+	struct FShore { FVector2D XY; double Z = 6.0; int32 Houses = 0; };
+	struct FCity { FString Name; FVector2D XY; double Light = 0.0; };
+	struct FLane { FString Name; double Knots = 12.0; int32 Ships = 3; TArray<FVector2D> Points; };
+	TArray<FLight> Lights;
+	TArray<FShore> Shore;
+	TArray<FCity> Cities;
+	TArray<FLane> Lanes;
+	bool Load(const FString& Path);
+};
+
 /**
  * A sailing area as baked by Tools/terrain/build_rayhubbard.py (Lake Ray Hubbard) or Tools/coast/build_galveston.py
  * (Galveston Bay): terrain and tree heights for the physics, docks, bridges, buildings, launch spots, shoreline
@@ -150,13 +173,44 @@ struct SAILINGSIM_API FLakeData
 	TArray<FLandmark> Landmarks;
 	Sailing::FTideModel Tides;
 	bool IsTidal() const { return Tides.IsValid(); }
+	/** world-marseille: a sea coast with a chart, navaids and the coast's look, tidal or not (Marseille has no tide
+	 *  model: under 0.3 m). Chart, navigation HUD, coastal wear and sounds follow this; tides and currents IsTidal(). */
+	bool IsCoast() const { return bCoast || IsTidal(); }
+	bool bCoast = false;
+	/** IALA buoyage region: 'A' (Europe: port red) or 'B' (the Americas: port green). */
+	TCHAR Iala = TEXT('B');
+	/** The local clock's rule: empty for the machine's own zone (Texas), "Europe/Paris" for central European time. */
+	FString TimeZone;
+	/** marseille-look: the land's dress (the bake's "land"): empty or "prairie" for Texas (grass, red clay at the water,
+	 *  oak woods), "garrigue" for the Mediterranean (scrub over bare limestone, pines, white limestone cliffs). */
+	FString Land;
+	bool IsGarrigue() const { return Land == TEXT("garrigue"); }
+	/** The open sea's usual swell and the strong wind's direction (degrees from), NaN when the world gives none. */
+	double SwellFromDeg = std::numeric_limits<double>::quiet_NaN();
+	double MistralFromDeg = std::numeric_limits<double>::quiet_NaN();
+	/** Named launch spots by role ("home_slip", "anchorage", "gale"): indices into LaunchSpots. */
+	TMap<FString, int32> SpotRoles;
+	/** Wide World Rendering PR 3: far lights, lit shores, city domes and shipping lanes (<Name>.farlights.json). */
+	FFarLightsData FarLights;
+	/** Wide World Rendering PR 4: the haze's scale height (m; <= 0: the fog's own 50 m) and the water's far plane (km
+	 *  across: 40 on the Texas coast, 60 at Marseille), from the bake's "haze". */
+	double FogScaleHeightM = -1.0;
+	double FarPlaneKm = 40.0;
+	/** The sources line for the chart's credit (the bake's "sources.chart"). */
+	FString ChartSource;
 	double VariationDeg = 0.0;   // magnetic variation, + = east
 	double MeanHighWater = 0.0;  // m above the datum
 	double Latitude = 32.82, Longitude = -96.50;
 	/** Where the map frame sits on the earth (the bake's "projection", else the build script's centre): lat/lon <->
 	 *  map metres for anything that persists (docs/geo-anchor). */
 	Sailing::FGeoAnchor Anchor;
-	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage"
+	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage", "TexasCoast"
+	/** World streaming (docs/world-streaming): the heights stream from <FileName>.tiles (FWorldStreamer) instead of one grid. */
+	bool bStreamed = false;
+	/** A composed world's files read from a member in the same map frame, by kind ("houses", "crowns", "piers", "current"). */
+	TMap<FString, FString> Members;
+	/** The world whose file of this kind to read (the member's, or this world's own). Baked kit tiles go by it too. */
+	FString SourceFor(const TCHAR* Kind) const { const FString* M = Members.Find(Kind); return M ? *M : FileName; }
 	bool bOcean = false;         // open sea: the FFT ocean with swell (the Gulf passage)
 	TArray<TPair<FString, FVector2D>> Passage; // the passage plan's waypoints, in order
 

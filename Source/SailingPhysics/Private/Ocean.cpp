@@ -81,8 +81,9 @@ namespace Sailing
 		++Generation;
 		// Wind sea: fully developed (Pierson-Moskowitz) for the wind, scaled by how developed it is.
 		const double U = std::max(Params.WindMs, 0.5);
-		const double HsWindTarget = 0.21 * U * U / G * Clamp(Params.WindSeaFraction, 0.0, 1.0);
-		const double OmegaPWind = 0.877 * G / U / std::sqrt(std::max(Params.WindSeaFraction, 0.2));
+		const bool bGiven = Params.WindSeaHs > 0.0 && Params.WindSeaTp > 0.0;
+		const double HsWindTarget = bGiven ? Params.WindSeaHs : 0.21 * U * U / G * Clamp(Params.WindSeaFraction, 0.0, 1.0);
+		const double OmegaPWind = bGiven ? 2.0 * kPi / std::max(Params.WindSeaTp, 2.0) : 0.877 * G / U / std::sqrt(std::max(Params.WindSeaFraction, 0.2));
 		const double OmegaPSwell = 2.0 * kPi / std::max(Params.SwellTp, 3.0);
 		const double WindTo = Params.WindFromRad + kPi, SwellTo = Params.SwellFromRad + kPi;
 		// The long cascade carries wavelengths of 30 m and up (four or more grid cells per wave), the short one the rest.
@@ -211,15 +212,21 @@ namespace Sailing
 
 	void FOcean::BuildMask(const FLakeTerrain& Terrain, double Cell)
 	{
-		Mask = FMask();
-		if (!Terrain.IsValid()) return;
-		Mask.Cell = Cell;
-		Mask.X0 = Terrain.GetOriginX();
-		Mask.Y0 = Terrain.GetOriginY();
-		Mask.Rows = int(Terrain.GetRows() * Terrain.GetCell() / Cell) + 1;
-		Mask.Cols = int(Terrain.GetCols() * Terrain.GetCell() / Cell) + 1;
-		Mask.Values.assign(size_t(Mask.Rows) * Mask.Cols, 0.0f);
-		const int Rows = Mask.Rows, Cols = Mask.Cols;
+		Mask = MakeMask(Terrain, Params.SwellFromRad, HsTotal, Cell);
+		++MaskGeneration;
+	}
+
+	FOcean::FMask FOcean::MakeMask(const FLakeTerrain& Terrain, double SwellFromRad, double InHs, double Cell)
+	{
+		FMask Out;
+		if (!Terrain.IsValid()) return Out;
+		Out.Cell = Cell;
+		Out.X0 = Terrain.GetOriginX();
+		Out.Y0 = Terrain.GetOriginY();
+		Out.Rows = int(Terrain.GetRows() * Terrain.GetCell() / Cell) + 1;
+		Out.Cols = int(Terrain.GetCols() * Terrain.GetCell() / Cell) + 1;
+		Out.Values.assign(size_t(Out.Rows) * Out.Cols, 0.0f);
+		const int Rows = Out.Rows, Cols = Out.Cols;
 
 		// Land on the mask grid: a cell is land if any terrain node in it is above the water, so a seawall or a jetty a
 		// node or two wide still stops the swell.
@@ -247,8 +254,8 @@ namespace Sailing
 		for (int K = 0; K < NumRays; ++K)
 		{
 			const double A = -Spread + 2.0 * Spread * K / (NumRays - 1);
-			RayDX[K] = std::cos(Params.SwellFromRad + A);
-			RayDY[K] = std::sin(Params.SwellFromRad + A);
+			RayDX[K] = std::cos(SwellFromRad + A);
+			RayDY[K] = std::sin(SwellFromRad + A);
 			RayW[K] = std::cos(0.5 * kPi * A / Spread) * std::cos(0.5 * kPi * A / Spread);
 			WSum += RayW[K];
 		}
@@ -274,7 +281,7 @@ namespace Sailing
 						if (IR < 0 || IC < 0 || IR >= Rows || IC >= Cols)
 						{
 							const int LR = std::clamp(IR, 0, Rows - 1), LC = std::clamp(IC, 0, Cols - 1);
-							if (Terrain.DepthAt(Mask.X0 + LR * Cell, Mask.Y0 + LC * Cell) >= OpenDepth) Open += RayW[K];
+							if (Terrain.DepthAt(Out.X0 + LR * Cell, Out.Y0 + LC * Cell) >= OpenDepth) Open += RayW[K];
 							break;
 						}
 						if (IsLand(IR, IC)) break;
@@ -301,7 +308,7 @@ namespace Sailing
 					}
 				Filled[size_t(R) * EC + C] = Count > 0 ? float(Sum / Count) : 0.0f;
 			}
-		const double Hs = std::max(HsTotal, 0.1);
+		const double Hs = std::max(InHs, 0.1);
 		for (int R = 0; R < Rows; ++R)
 			for (int C = 0; C < Cols; ++C)
 			{
@@ -311,10 +318,11 @@ namespace Sailing
 				const double E = (1 - TR) * ((1 - TC) * Filled[size_t(R0) * EC + C0] + TC * Filled[size_t(R0) * EC + C0 + 1])
 					+ TR * ((1 - TC) * Filled[size_t(R0 + 1) * EC + C0] + TC * Filled[size_t(R0 + 1) * EC + C0 + 1]);
 				// Depth limit: waves break at a height of about 0.6 times the depth, so they die away across the shoals.
-				const double Depth = Terrain.DepthAt(Mask.X0 + R * Cell, Mask.Y0 + C * Cell);
+				const double Depth = Terrain.DepthAt(Out.X0 + R * Cell, Out.Y0 + C * Cell);
 				const double Limit = Clamp(Depth / (1.6 * Hs), 0.0, 1.0);
-				Mask.Values[size_t(R) * Cols + C] = float(E * Limit);
+				Out.Values[size_t(R) * Cols + C] = float(E * Limit);
 			}
+		return Out;
 	}
 
 	double FOcean::MaskAt(double X, double Y) const

@@ -47,6 +47,9 @@ public:
 	int32 GetRacePosition() const;
 
 	static ATrafficManager* Find(const UWorld* World);
+	/** Wide World Rendering PR 3: a horizon ship (AFarLightsActor) closing inside 8 km joins the traffic as a ship on her
+	 *  lane, when traffic is on. False when it is off (the impostor then just stops being drawn). */
+	bool HandOffShip(double X, double Y, double HeadingRad, std::vector<std::pair<double, double>> Route, const FString& Name);
 
 private:
 	int32 AddSailboat(Sailing::EBoatType Type, double X, double Y, double Heading, std::vector<std::pair<double, double>> Route, const FString& Name);

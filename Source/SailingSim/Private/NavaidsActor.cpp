@@ -1,4 +1,7 @@
 #include "NavaidsActor.h"
+#include "SailingFrame.h"
+#include "FarLightsActor.h"
+#include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
 #include "SailingEnvironment.h"
@@ -126,7 +129,18 @@ bool ANavaidsActor::BuildModels()
 			// Beacons: a three-pile dolphin standing on the bottom with its dayboard; a light structure is a steel tower.
 			const bool bTower = N.Kind == TEXT("light");
 			const double Top = bTower ? FMath::Max(N.Light.HeightM, 6.0) : FMath::Max(N.Light.HeightM, 4.5);
-			if (bTower)
+			// Harbour kit: on a European coast (IALA A: Marseille) a light stands on a whitewashed masonry tower with its top
+			// in the light's colour (the first colour that is not white), a little stouter as it gets taller.
+			UInstancedStaticMeshComponent* Mole = bTower && GM->GetLake().Iala == TEXT('A') ? ModelIsm(TEXT("SM_Light_MoleTower"), false) : nullptr;
+			if (Mole)
+			{
+				int32 Band = N.Colours.Num() > 0 ? N.Colours.Last() : 0;
+				for (int32 C : N.Colours) if (C != 1) { Band = C; break; }
+				const FLinearColor BandCol = Band == 0 ? (N.Light.Colours.size() > 0 ? PaintOf(int32(N.Light.Colours[0])) : Col) : PaintOf(Band);
+				const double S = FMath::Clamp(FMath::Sqrt(Top / 9.68), 0.8, 1.6);
+				Paint(Mole, Mole->AddInstance(FTransform(FRotator(0.f, Yaw, 0.f), FVector(N.X, N.Y, 0.0) * CmPerMeter, FVector(S, S, Top / 9.68))), BandCol);
+			}
+			else if (bTower)
 			{
 				UInstancedStaticMeshComponent* Ism = ModelIsm(TEXT("SM_Light_Tower"), false);
 				if (!Ism) return false;
@@ -309,7 +323,7 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	for (int32 I = 0; I < Buoys.Num(); ++I)
 	{
 		const FBuoy& B = Buoys[I];
-		if (FVector2D::Distance(FVector2D(B.X, B.Y), FVector2D(Camera) / CmPerMeter) > 3000.0) continue;
+		if (FVector2D::Distance(FVector2D(B.X, B.Y), SailingFrame::ToMap(GetWorld(), Camera)) > 3000.0) continue;
 		const FWaveField& W = GM->GetWaves();
 		const double H = W.Height(B.X, B.Y, T);
 		const double Hx = (W.Height(B.X + 0.8, B.Y, T) - W.Height(B.X - 0.8, B.Y, T)) / 1.6;
@@ -320,13 +334,17 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	}
 	const double Now = GM->GetUnixTime();
 	const TArray<FNavaid>& Navaids = GM->GetLake().Navaids;
+	static SailingArgs::FCachedFlag NoFarLightsArg(TEXT("SailingNoFarLights"));
+	const bool bFarLights = GM->GetLake().FarLights.Lights.Num() > 0 && !NoFarLightsArg.Get();
 	LitCount = 0;
 	for (FLightInstance& L : Lights)
 	{
 		const FNavaid& N = Navaids[L.Navaid];
 		const FVector World = (L.bFloating ? FloatingRoot : FixedRoot)->GetComponentTransform().TransformPosition(L.Position);
 		const double Distance = FVector::Distance(World, Camera) / CmPerMeter;
-		const double Range = (N.Light.RangeNm > 0.0 ? N.Light.RangeNm : 3.0) * 1852.0;
+		// Wide World Rendering PR 3: past the near pool AFarLightsActor draws the light (Allard's law, the horizon), never both.
+		const double Range = FMath::Min((N.Light.RangeNm > 0.0 ? N.Light.RangeNm : 3.0) * 1852.0,
+			bFarLights ? AFarLightsActor::NearPoolM : TNumericLimits<double>::Max());
 		const bool bOn = bDark && Distance < Range && N.Light.IsOn(Now + L.Phase);
 		// A light is a point: keep it about two pixels across however far away, never smaller than the lantern.
 		const double Size = bOn ? FMath::Max(0.3, Distance * 0.003) : 0.0;

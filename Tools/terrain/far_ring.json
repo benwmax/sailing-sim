@@ -1,0 +1,20 @@
+{
+  "_comment": "Wide World Rendering PR 1, the far coast ring (docs/world-far, Tools/terrain/build_far_ring.py): per world, the band past the near terrain. inner_km: where the near chunks hand over (ALakeTerrainActor caps them there); outer_km: the band's outer edge from anywhere in the world's grid (45 km by default; a world bake's far_ring.draw_km, Marseille's 60, when the world has no entry here); tile_km: one Nanite mesh per tile; cell_m: the mesh spacing out to coarse_past_km from the grid, coarse_m beyond (cell_m and coarse_m divide the tile evenly, coarse twice cell).",
+  "_default": {
+    "inner_km": 8,
+    "outer_km": 45,
+    "tile_km": 8,
+    "cell_m": 90.9,
+    "coarse_m": 181.8,
+    "coarse_past_km": 20
+  },
+  "GalvestonBay": {
+    "outer_km": 40
+  },
+  "GulfPassage": {
+    "outer_km": 40
+  },
+  "TexasCoast": {
+    "outer_km": 40
+  }
+}

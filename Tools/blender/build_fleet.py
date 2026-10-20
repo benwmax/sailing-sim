@@ -368,6 +368,22 @@ def cabin(H, spec):
     for side in (1, -1):
         wall = [[(x, H.cy + side * half(x), H.deck_z(x, H.cy + side * half(x)) - 0.02), (x, H.cy + side * half(x) * 0.93, top(x) - 0.04)] for x in xs]
         hull.grid(wall, "Topsides", flip=side > 0)
+        if TAG in ("Catalina22", "Catalina30"):
+            # Fleet hero: the Catalinas' smoked windows, rounded ends in aluminium frames (the 22's two long ones a side,
+            # the 30's three).
+            for (fa, fb) in (((0.16, 0.44), (0.5, 0.78)) if TAG == "Catalina22" else ((0.12, 0.28), (0.34, 0.52), (0.58, 0.76))):
+                wa, wb = x0 + fa * (x1 - x0), x0 + fb * (x1 - x0)
+                zc = lambda x: H.deck_z(x, H.cy) + 0.62 * h   # noqa: E731
+                r = 0.16 * h
+                loop = []
+                for (cx, a0) in ((wb - r, -90.0), (wa + r, 90.0)):
+                    for k in range(9):
+                        a = math.radians(a0 + 180.0 * k / 8)
+                        x = cx + r * math.cos(a)
+                        loop.append((x, H.cy + side * (half(x) * 0.968 + 0.006), zc(x) + r * math.sin(a)))
+                hull.face(loop if side < 0 else list(reversed(loop)), "CabinWindow")
+                tube(hull, loop + loop[:1], 0.008, "Aluminium", 5, cap=False)
+            continue
         # Ports: a long dark window band in the trunk side.
         wx0, wx1 = x0 + 0.2 * (x1 - x0), x0 + 0.78 * (x1 - x0)
         for k in range(10):
@@ -386,7 +402,17 @@ def cabin(H, spec):
         pts = [(x, H.cy - hb, H.deck_z(x, H.cy - hb) - 0.02)] + [(x, H.cy + hb * 0.93 * v, top(x) - 0.04 + 0.035 * (1 - v * v)) for v in [-1 + 2 * k / 10 for k in range(11)]] + [(x, H.cy + hb, H.deck_z(x, H.cy + hb) - 0.02)]
         hull.face(list(reversed(pts)) if rev else pts, "Topsides")
     # Companionway hatch and washboard; forward hatch.
-    box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
+    if TAG in ("Catalina22", "Catalina30"):
+        # Fleet hero: teak drop boards in the companionway (three, their edges proud), and a teak eyebrow along both
+        # edges of the trunk top.
+        for k in range(3):
+            zk = H.deck_z(x0, H.cy) + 0.1 * h + k * 0.27 * h
+            box(hull, (x0 + 0.012, H.cy, zk + 0.13 * h), (0.025, 0.48 - 0.03 * k, 0.24 * h), "Wood")
+            box(hull, (x0 + 0.03, H.cy, zk + 0.255 * h), (0.012, 0.47 - 0.03 * k, 0.012), "Wood")
+        for side in (1, -1):
+            tube(hull, [(x, H.cy + side * half(x) * 0.935, top(x) - 0.035) for x in stations(x0 + 0.02, x1 - 0.02, 14)], 0.01, "Wood", 5, cap=False)
+    else:
+        box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
     box(hull, (x0 + 0.45, H.cy, top(x0 + 0.45) + 0.01), (0.8, 0.62, 0.04), "Deck")
     box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
     # Grab rails on the top.
@@ -583,6 +609,17 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
                 q = [(pa[0], pa[1], za), (pb[0], pb[1], zb), (pb[0], pb[1], zb + 0.075 - 0.025 * t1), (pa[0], pa[1], za + 0.075 - 0.025 * t0)]
                 hull.face(q if side > 0 else list(reversed(q)), "Deck")
                 hull.face(list(reversed(q)) if side > 0 else q, "Deck")
+        # Fleet hero: the well's moulded lip, a rounded rim along its edge (the deck's own gelcoat), and the hiking strap's
+        # worn webbing ends screwed to the sole.
+        rim, rr = [], 0.05
+        for (cx, cy, a0) in ((x1 - rr, w - rr, 0.0), (x0 + rr, w - rr, 90.0), (x0 + rr, -w + rr, 180.0), (x1 - rr, -w + rr, 270.0)):
+            for k in range(5):
+                a = math.radians(a0 + 90.0 * k / 4)
+                px, py = cx + rr * math.cos(a), cy + rr * math.sin(a)
+                rim.append((px, py, H.deck_z(px, py) + 0.004))
+        tube(hull, rim + rim[:1], 0.011, "Deck", 6, cap=False)
+        for xs_ in (x0 + 0.06, x1 - 0.06):
+            box(hull, (xs_, 0, sole(xs_) + 0.004), (0.05, 0.05, 0.008), "Graphics")
         cleat(x1 + 0.05, -0.18, H.deck_z(x1 + 0.05, -0.18), 0.0, 0.12)
         line = [(mast_x - 0.05, -0.03, mast_step_z + 0.04), (x1 + 0.4, -0.12, H.deck_z(x1 + 0.4, -0.12) + 0.01), (x1 + 0.08, -0.18, H.deck_z(x1 + 0.08, -0.18) + 0.045)]
         tube(hull, line, 0.003, "Rope", 4, cap=False)
@@ -635,6 +672,18 @@ def hobie_detail(fb, rb, bz, inner, traveler):
         # the rudder casting's gudgeons on the transom
         for gz in (Hh.sheer(st) - 0.04, Hh.sheer(st) - 0.24):
             box(hull, (st + 0.015, Hh.cy, gz), (0.03, 0.06, 0.03), "Stainless")
+        # Fleet hero: the cast aluminium beam ends (the corner castings bolted to each hull), the hull's coloured stripe
+        # along the sheer, and the trapeze shock cords' deck eyes beside the tramp.
+        for bx in (fb, rb):
+            by = Hh.cy - side * 0.02
+            box(hull, (bx, by, bz + 0.005), (0.2, 0.16, 0.11), "Aluminium")
+        xs_ = stations(Hh.h["stern_x"] + 0.15, Hh.h["bow_x"] - 0.5, 36)
+        stripe = [(x, Hh.cy + side * (Hh.sharp_half_beam(x) + 0.004), Hh.sheer(x) - 0.06) for x in xs_]
+        tube(hull, stripe, 0.012, "Graphics", 4, cap=False)
+        ex = mast_x - 0.35
+        box(hull, (ex, Hh.cy - side * 0.12, bz + 0.03), (0.04, 0.02, 0.02), "Stainless")
+    # Fleet hero: the righting line's bag on the front beam's middle.
+    box(hull, (fb - 0.08, 0, bz + 0.03), (0.12, 0.3, 0.06), "BlackPlastic")
 
 
 def corsair_detail(ck, cb, top, half, st, bw):
@@ -987,8 +1036,38 @@ def build_mast():
         else:
             socket("LowerTang", (mast_x, 0, hounds_z - 0.1), "Mast")
     socket("MastBase", (mast_x - 0.06, 0, mast_step_z + 0.2), "Mast")
-    # Wind indicator at the masthead.
-    tube(m, [(mast_x, 0, top), (mast_x - 0.25, 0, top + 0.25)], 0.004, "Stainless", 4)
+    if TAG == "Hobie16":
+        # Fleet hero: the trapeze wires from the hounds, each to its ring and handle at a crew member's reach over the
+        # tramp, and the shock cord down to the deck eye beside it (baked on the mast: they hang from it).
+        bzh = MAIN.sheer(mast_x)
+        for Hh, side in ((HS[1], 1), (HS[0], -1)):
+            ring = (mast_x - 0.35, Hh.cy - side * 0.12, bzh + 1.15)
+            tube(m, [(mast_x, side * 0.03, hounds_z - 0.05), ring], 0.002, "Stainless", 4, cap=False)
+            tube(m, [ring, (ring[0], ring[1], ring[2] - 0.12)], 0.012, "BlackPlastic", 8)
+            tube(m, [(ring[0] - 0.06, ring[1], ring[2] - 0.12), (ring[0] + 0.06, ring[1], ring[2] - 0.12)], 0.012, "BlackPlastic", 8)
+            tube(m, [(ring[0], ring[1], ring[2] - 0.12), (ring[0], ring[1], bzh + 0.06)], 0.004, "Rope", 4, cap=False)
+    if TAG == "Sunfish":
+        # Fleet hero: the Sunfish's masthead is a black halyard cap with its sheave (no wind indicator); the halyard comes
+        # down the forward face to the deck.
+        tube(m, [(mast_x, 0, top - 0.02), (mast_x, 0, top + 0.06)], 0.5 * d + 0.006, "BlackPlastic", 14)
+        box(m, (mast_x + 0.5 * d + 0.012, 0, top + 0.02), (0.03, 0.012, 0.06), "BlackPlastic")
+        tube(m, [(mast_x + 0.5 * d + 0.02, 0, top + 0.02), (mast_x + 0.5 * d + 0.012, 0, mast_step_z + 0.3)], 0.003, "Rope", 4, cap=False)
+        # Chalky anodising bands where the sail ties and the mast meets the step.
+        tube(m, [(mast_x, 0, mast_step_z), (mast_x, 0, mast_step_z + 0.06)], 0.5 * d + 0.004, "BlackPlastic", 14)
+    else:
+        # Wind indicator at the masthead.
+        tube(m, [(mast_x, 0, top), (mast_x - 0.25, 0, top + 0.25)], 0.004, "Stainless", 4)
+    if TAG == "ILCA7":
+        # Fleet hero: the ILCA's two-piece mast. The top section sleeves into the bottom one 2.85 m up, a collar over the
+        # joint; the black plastic gooseneck fitting where the boom pins on; the rotating mast's step ring and the
+        # cunningham's hook just above the boom.
+        jz = min(mast_step_z + 2.85, top - 0.5)
+        tube(m, [(mast_x, 0, jz - 0.07), (mast_x, 0, jz + 0.07)], 0.5 * d + 0.004, "Aluminium", 16)
+        tube(m, [(mast_x, 0, jz + 0.07), (mast_x, 0, jz + 0.075)], 0.5 * d + 0.006, "Stainless", 16)
+        bz = RIG["boom_z"]
+        box(m, (mast_x - 0.5 * d - 0.02, 0, bz), (0.05, 0.035, 0.07), "BlackPlastic")
+        tube(m, [(mast_x, 0, mast_step_z - 0.01), (mast_x, 0, mast_step_z + 0.025)], 0.5 * d + 0.008, "BlackPlastic", 16)
+        box(m, (mast_x + 0.5 * d + 0.012, 0, bz + 0.22), (0.02, 0.012, 0.04), "Stainless")
     return m.finish(smooth_angle=60.0, origin=(mast_x, 0, mast_step_z))
 
 
@@ -1009,11 +1088,29 @@ def build_boom():
     socket("Boom_Clew", (gx - length + 0.06, 0, gz + 0.04), "Boom")
     if SPEC.get("vang", SPEC["rig"] in ("masthead", "tri", "cruisingcat")):
         socket("Boom_Vang", (gx - 0.55, 0, gz - 0.03 - r), "Boom")
+    if TAG == "ILCA7":
+        # Fleet hero: the ILCA boom's outhaul cleat and fairlead, the clew's tie-down strap round the boom's end and the
+        # vang key near the gooseneck.
+        box(m, (gx - 0.75, 0, gz - 0.02 + r + 0.012), (0.08, 0.03, 0.02), "BlackPlastic")
+        box(m, (gx - length + 0.25, 0, gz - 0.02 + r + 0.008), (0.03, 0.02, 0.016), "Stainless")
+        cx = gx - length + 0.09
+        tube(m, [(cx, r * 1.05 * math.cos(2 * math.pi * k / 12), gz - 0.02 + r * 1.05 * math.sin(2 * math.pi * k / 12)) for k in range(13)], 0.006, "Graphics", 4, cap=False)
+        box(m, (gx - 0.55, 0, gz - 0.02 - r - 0.012), (0.04, 0.02, 0.025), "Stainless")
     if SPEC["rig"] == "lateen":
         # The Sunfish's upper spar (the yard) lies along the sail's luff from the tack to the head.
         lx0, z0 = main[0]["luff_x"], main[0]["z_bottom"]
         lx1, z1 = main[-1]["luff_x"], main[-1]["z_top"]
-        tube(m, [(lx0 + 0.05, 0, z0 - 0.01), (lx1 - 0.05, 0, z1 + 0.05)], 0.024, "Aluminium", 10)
+        a, b = Vector((lx0 + 0.05, 0, z0 - 0.01)), Vector((lx1, 0, z1))
+        tube(m, [tuple(a), tuple(b)], 0.024, "Aluminium", 10)
+        # Fleet hero: black end caps, the yard's halyard eye a third of the way up, and the gooseneck jaw where yard and
+        # boom meet at the tack (stainless, through-bolted).
+        u = (b - a).normalized()
+        tube(m, [tuple(b), tuple(b + u * 0.03)], 0.026, "BlackPlastic", 10)
+        tube(m, [tuple(a - u * 0.03), tuple(a)], 0.026, "BlackPlastic", 10)
+        eye = a + (b - a) * 0.36
+        box(m, (eye.x + 0.03, 0, eye.z), (0.05, 0.014, 0.02), "Stainless")
+        box(m, (gx - 0.02, 0, gz + 0.02), (0.09, 0.05, 0.06), "Stainless")
+        tube(m, [(gx - 0.02, -0.03, gz + 0.02), (gx - 0.02, 0.03, gz + 0.02)], 0.006, "Stainless", 6)
     return m.finish(smooth_angle=60.0, origin=(gx, 0, gz))
 
 

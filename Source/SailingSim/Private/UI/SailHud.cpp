@@ -99,15 +99,20 @@ namespace SailHudImpl
 	};
 
 	/** The apparent wind dial: boat outline, port (red) and starboard (green) close-hauled sectors, the no-go zone,
-	 *  the apparent wind arrow (yellow) and a true wind tick. */
+	 *  the apparent wind arrow (yellow) and a true wind tick. Around the true wind, the no-go cue at the sim's angle
+	 *  (FEasyAssists::NoGoDeg): a thin band on Realistic, a wide one with edge lines on Easy, amber close to it and
+	 *  bright inside it (NoGoCueFor). */
 	class SWindDialHud : public SLeafWidget
 	{
 	public:
 		SLATE_BEGIN_ARGS(SWindDialHud) {}
 			SLATE_ATTRIBUTE(float, Awa)
 			SLATE_ATTRIBUTE(float, Twa)
+			SLATE_ATTRIBUTE(float, NoGo)
+			SLATE_ATTRIBUTE(int32, Cue)
+			SLATE_ATTRIBUTE(bool, Wide)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; ForceVolatile(true); }
+		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; NoGo = A._NoGo; Cue = A._Cue; Wide = A._Wide; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(200, 200); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -126,6 +131,19 @@ namespace SailHudImpl
 			Arc(20.f, 60.f, R - 5.f, Starboard, 7.f);
 			Arc(-60.f, -20.f, R - 5.f, Port, 7.f);
 			for (int32 D = 0; D < 360; D += 30) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(D, R - 12.f), Pt(D, R - 2.f) }, ESlateDrawEffect::None, Muted, true, 1.f);
+			// The no-go cue around the true wind.
+			{
+				const float W = Twa.Get(0.f), Half = NoGo.Get(35.f);
+				const bool bWide = Wide.Get(false);
+				const int32 CueNow = Cue.Get(0);
+				const FLinearColor Col = CueNow == 2 ? Port : (CueNow == 1 ? Warn : Port.CopyWithNewOpacity(bWide ? 0.55f : 0.35f));
+				Arc(W - Half, W + Half, R - (bWide ? 17.f : 15.f), Col, bWide ? 10.f : 3.f);
+				if (bWide)
+				{
+					for (const float E : { W - Half, W + Half })
+						FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(E, R * 0.22f), Pt(E, R - 12.f) }, ESlateDrawEffect::None, Col.CopyWithNewOpacity(0.8f), true, 2.f);
+				}
+			}
 			// The boat.
 			const TArray<FVector2f> Hull = { C + FVector2f(0.f, -R * 0.45f), C + FVector2f(R * 0.14f, -R * 0.1f), C + FVector2f(R * 0.12f, R * 0.38f),
 				C + FVector2f(-R * 0.12f, R * 0.38f), C + FVector2f(-R * 0.14f, -R * 0.1f), C + FVector2f(0.f, -R * 0.45f) };
@@ -140,7 +158,9 @@ namespace SailHudImpl
 			return Layer + 3;
 		}
 	private:
-		TAttribute<float> Awa, Twa;
+		TAttribute<float> Awa, Twa, NoGo;
+		TAttribute<int32> Cue;
+		TAttribute<bool> Wide;
 	};
 
 	/** North-up chart crop around the boat (T_MiniMap_<World>), the boat, the true wind. */
@@ -282,6 +302,10 @@ void SSailHud::Construct(const FArguments& A)
 	auto WindFrom = [this]() { const ASailboatPawn* P = Pawn(); const ASailingGameMode* GM = P ? P->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr; return GM ? float(GM->GetWeatherState().Wind.FromDegrees) : 0.f; };
 	auto Awa = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(FMath::RadiansToDegrees(P->GetBoatModel().GetTelemetry().ApparentWindAngle)) : 0.f; };
 	auto Twa = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(FMath::RadiansToDegrees(P->GetBoatModel().GetTelemetry().TrueWindAngle)) : 0.f; };
+	// Easy mode's wider no-go cue, from the sim (FEasyAssists, NoGoCueFor), not a HUD guess.
+	auto NoGo = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(P->GetEasyAssists().NoGoDeg()) : float(Sailing::FEasyAssists::kRealisticNoGoDeg); };
+	auto Cue = [this]() { const ASailboatPawn* P = Pawn(); return P ? int32(Sailing::NoGoCueFor(P->GetBoatModel().GetTelemetry(), P->GetEasyAssists())) : 0; };
+	auto Wide = [this]() { const ASailboatPawn* P = Pawn(); return P && P->GetEasyAssists().bEnabled; };
 	const float M = HudMargin;
 	ChildSlot
 	[
@@ -415,6 +439,28 @@ void SSailHud::Construct(const FArguments& A)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(M)
 		[
 			SNew(SVerticalBox)
+			// Prologue step 1: the captain's call, in the rules callout's panel; shown in every HUD mode (it is the scene).
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 10.f)
+			[
+				SNew(SBox).WidthOverride(560.f).Visibility_Lambda([this]() { return bCaptain ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(4.f)[ SNew(SBorder).BorderImage(Rounded(Warn, 2.f)) ] ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)
+					[
+						PanelBox(SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Captain"), EType::Eyebrow, Warn) ]
+								+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(CaptainStation), EType::Eyebrow, FSlateColor(Accent), false) ]
+							]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 2.f)[ TextAttr(Attr(CaptainText), EType::Ui, FSlateColor(Fg), true) ]
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda([this]() { return CaptainHint.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(CaptainHint), EType::Small, FSlateColor(Muted), true) ] ],
+							FMargin(16.f, 10.f), 4.f)
+					]
+				]
+			]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
 			[
 				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bSignals && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
@@ -441,7 +487,7 @@ void SSailHud::Construct(const FArguments& A)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 10.f, 0.f)
 			[
 				PanelBox(SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa) ] ]
+					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa).NoGo_Lambda(NoGo).Cue_Lambda(Cue).Wide_Lambda(Wide) ] ]
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwaText; }), EType::Value, FSlateColor(Fg)) ]
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwsText; }), EType::Label, FSlateColor(Muted)) ], FMargin(10.f, 8.f))
 			]
@@ -520,9 +566,11 @@ void SSailHud::Refresh()
 	WindText = FText::FromString(FString::Printf(TEXT("%.0f %s %s G%.0f"), U->SpeedIn(T.TrueWindSpeed), U->SpeedUnit(), *USailSessionSubsystem::CompassPoint(float(Wx.Wind.FromDegrees)),
 		U->SpeedIn(T.TrueWindSpeed) * (1.0 + Wx.Wind.GustIntensity)));
 	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(P);
-	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : 80.f;
+	// Without a session's own temperature, the weather's air (the mistral's cold 13 C).
+	const float TempF = Session && Session->bHasActive ? Session->Active.Conditions.AirTempF : float(Wx.AirC * 9.0 / 5.0 + 32.0);
 	SkyText = FText::FromString(FString::Printf(TEXT("%s · %.0f°F"), UTF8_TO_TCHAR(WeatherPresetName(GM->GetWeather().GetPreset())), TempF));
 	bTidal = Lake.IsTidal();
+	bCoast = Lake.IsCoast();
 	if (bTidal)
 	{
 		const Vec3 O = P->GetBoatModel().OriginPosition();
@@ -635,16 +683,83 @@ void SSailHud::Refresh()
 			}
 		}
 	}
+	RefreshScene(*P, *GM);
 	RefreshTraffic(*P, *GM);
 	// Key hints: up to three, from the situation.
 	TArray<FString> Hints;
 	if (T.bCapsized && Cfg.RightingLever > 0.0) Hints.Add(KeyName(TEXT("Righting"), false) + TEXT("  Right the boat"));
 	const FString SteerPort = KeyName(TEXT("Tiller"), true), SteerStbd = KeyName(TEXT("Tiller"), false);
-	Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
-	if (bTidal) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
+	// Prologue step 2: away from the helm the crew steer; the hint is the station key instead.
+	const Sailing::FStationControls& Stations = P->GetStations();
+	if (!Stations.IsActive() || Stations.GetStation() == Sailing::ECrewStation::Helm) Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
+	else Hints.Add(KeyName(TEXT("Station"), false) + TEXT("  Next station"));
+	if (bCoast) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
 	Hints.Add(KeyName(TEXT("Menu"), false) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+void SSailHud::RefreshScene(const ASailboatPawn& P, const ASailingGameMode& GM)
+{
+	// What the sim's scene says now (rule 8: the scene judges, the HUD only shows its caption and the answering keys).
+	const Sailing::FScriptedScene* Scene = GM.GetScene();
+	const FString Caption = Scene ? FString(UTF8_TO_TCHAR(Scene->GetCaption().c_str())) : FString();
+	bCaptain = !Caption.IsEmpty();
+	CaptainText = FText::FromString(Caption);
+	FString Hint;
+	const Sailing::FSceneStep* Step = Scene ? Scene->GetStep() : nullptr;
+	// Step 2: the station the player works, and the key that answers the call there (or the one that gets them there).
+	const Sailing::FStationControls& Stations = P.GetStations();
+	FString StationName = Stations.IsActive() ? FString(UTF8_TO_TCHAR(Sailing::CrewStationName(Stations.GetStation()))).Replace(TEXT("-"), TEXT(" ")) : FString();
+	CaptainStation = FText::FromString(StationName.IsEmpty() ? FString() : TEXT("You: ") + StationName);
+	if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling && Stations.IsActive() && !Step->Station.empty()
+		&& Sailing::CrewStationFromName(Step->Station) != Stations.GetStation())
+	{
+		Hint = FString::Printf(TEXT("%s: go to the %s"), *SailingBindings::Label(TEXT("Station"), false, false), *FString(UTF8_TO_TCHAR(Step->Station.c_str())).Replace(TEXT("-"), TEXT(" ")));
+	}
+	else if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling && Scene->GetControlsDone() < int32(Step->Expect.Controls.size()))
+	{
+		using SailingBindings::Label;
+		const bool bEase = Step->Expect.By > 0.0 || Step->Expect.AtLeast >= 0.0;
+		switch (Sailing::StationControlFromName(Step->Expect.Controls[size_t(Scene->GetControlsDone())]))
+		{
+		case Sailing::EStationControl::Wheel: Hint = FString::Printf(TEXT("%s / %s: turn the wheel"), *Label(TEXT("Tiller"), true, false), *Label(TEXT("Tiller"), false, false)); break;
+		case Sailing::EStationControl::JibSheet: Hint = FString::Printf(TEXT("%s: ease the jib sheet"), *Label(TEXT("JibSheet"), false, false)); break;
+		case Sailing::EStationControl::Grinder: Hint = FString::Printf(TEXT("%s: grind (tap or hold)"), *Label(TEXT("Grind"), false, false)); break;
+		case Sailing::EStationControl::MainSheet: Hint = FString::Printf(TEXT("%s: %s the main"), *Label(TEXT("MainSheet"), !bEase, false), bEase ? TEXT("ease") : TEXT("trim")); break;
+		case Sailing::EStationControl::Traveller: Hint = FString::Printf(TEXT("%s / %s: traveller"), *Label(TEXT("Traveler"), true, false), *Label(TEXT("Traveler"), false, false)); break;
+		case Sailing::EStationControl::TravellerDump: Hint = FString::Printf(TEXT("%s: dump the traveller"), *Label(TEXT("TravellerDump"), false, false)); break;
+		case Sailing::EStationControl::Count:
+		default: break;
+		}
+	}
+	else if (bCaptain && Step && Scene->GetPhase() == Sailing::FScriptedScene::EPhase::Calling)
+	{
+		using SailingBindings::Label;
+		const Sailing::FSceneExpectation& E = Step->Expect;
+		const FName Sheet = E.Sheet == "main" ? FName(TEXT("MainSheet")) : FName(TEXT("JibSheet"));
+		const TCHAR* SheetName = E.Sheet == "main" ? TEXT("main") : TEXT("jib");
+		switch (E.Type)
+		{
+		case Sailing::ESceneExpect::Action: Hint = FString::Printf(TEXT("%s: %s"), *Label(TEXT("CrewAction"), false, false), UTF8_TO_TCHAR(E.Action.c_str())); break;
+		case Sailing::ESceneExpect::Sheet:
+		{
+			const bool bEase = E.By > 0.0 || E.AtLeast >= 0.0;
+			Hint = FString::Printf(TEXT("%s: %s the %s"), *Label(Sheet, !bEase, false), bEase ? TEXT("ease") : TEXT("trim"), SheetName);
+			break;
+		}
+		case Sailing::ESceneExpect::Tack:
+		case Sailing::ESceneExpect::Gybe:
+		case Sailing::ESceneExpect::Hold:
+			Hint = FString::Printf(TEXT("%s / %s: steer"), *Label(TEXT("Tiller"), true, false), *Label(TEXT("Tiller"), false, false));
+			break;
+		case Sailing::ESceneExpect::None:
+		case Sailing::ESceneExpect::Station:
+		case Sailing::ESceneExpect::Count:
+		default: break;
+		}
+	}
+	CaptainHint = FText::FromString(Hint);
 }
 
 void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM)
@@ -654,7 +769,7 @@ void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM
 	const FLakeData& Lake = GM.GetLake();
 	const FBoatModel& Model = P.GetBoatModel();
 	// The coast's navigation: GPS (when on), the tide and its next turn, the current, the passage's next waypoint.
-	bNav = Lake.IsTidal();
+	bNav = Lake.IsCoast();
 	if (bNav)
 	{
 		const Vec3 V = Model.GetState().Velocity;
@@ -669,18 +784,21 @@ void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM
 		{
 			Lines.Add(TEXT("GPS off: dead reckoning"));
 		}
-		FString Tide = FString::Printf(TEXT("Tide  %+.1f ft"), GM.GetTideHeight() / 0.3048);
-		FTideEvent Next;
-		if (GM.GetNextTide(Next))
+		if (Lake.IsTidal())
 		{
-			const int32 Minutes = int32(FMath::Fmod((Next.Time + GM.GetUtcOffsetHours() * 3600.0) / 60.0, 1440.0));
-			Tide += FString::Printf(TEXT(" · %s %s"), Next.Type == FTideEvent::High ? TEXT("high water") : TEXT("low water"), *SailCatalog::ClockText(Minutes / 60.f));
+			FString Tide = FString::Printf(TEXT("Tide  %+.1f ft"), GM.GetTideHeight() / 0.3048);
+			FTideEvent Next;
+			if (GM.GetNextTide(Next))
+			{
+				const int32 Minutes = int32(FMath::Fmod((Next.Time + GM.GetUtcOffsetHours() * 3600.0) / 60.0, 1440.0));
+				Tide += FString::Printf(TEXT(" · %s %s"), Next.Type == FTideEvent::High ? TEXT("high water") : TEXT("low water"), *SailCatalog::ClockText(Minutes / 60.f));
+			}
+			Lines.Add(Tide);
+			const Vec3 Cur = GM.GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
+			const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
+			Lines.Add(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f°T"), Drift / kKnot,
+				SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)))));
 		}
-		Lines.Add(Tide);
-		const Vec3 Cur = GM.GetCurrentAt(Model.OriginPosition().X, Model.OriginPosition().Y);
-		const double Drift = FMath::Sqrt(Cur.X * Cur.X + Cur.Y * Cur.Y);
-		Lines.Add(Drift < 0.03 ? FString(TEXT("Current  slack")) : FString::Printf(TEXT("Current  %.1f kn setting %03.0f°T"), Drift / kKnot,
-			SailingNav::NormalizeDeg(FMath::RadiansToDegrees(FMath::Atan2(Cur.Y, Cur.X)))));
 		NavText = FText::FromString(FString::Join(Lines, TEXT("\n")));
 		const TArray<TPair<FString, FVector2D>>& Plan = Lake.Passage;
 		FString NextLine;

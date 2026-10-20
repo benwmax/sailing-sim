@@ -29,10 +29,30 @@ def new_material(name):
     return ASSETS.create_asset(name, FOLDER, unreal.Material, unreal.MaterialFactoryNew())
 
 
+# World streaming (docs/world-streaming): the render frame's origin follows the boat (UWorld::SetNewWorldOrigin every 20 km,
+# SailingFrame.h), while every map-anchored thing a material reads (wave phases, wind and sea maps, the weather map, the
+# storm front, world-aligned patterns) is in the world's map frame. So every world, camera and object position node a
+# material reads is put back in the map frame: the position plus MPC_World.RenderOrigin (cm, set by the game mode). All
+# of them move together, so distances and directions between them are unchanged.
+MAP_FRAME_POSITIONS = ("MaterialExpressionWorldPosition", "MaterialExpressionCameraPositionWS", "MaterialExpressionObjectPositionWS")
+
+
 def node(mat, cls, x, y, **props):
     n = MEL.create_material_expression(mat, cls, x, y)
     for k, v in props.items():
         n.set_editor_property(k, v)
+    if cls.__name__ in MAP_FRAME_POSITIONS:
+        origin = MEL.create_material_expression(mat, unreal.MaterialExpressionCollectionParameter, x - 220, y + 40)
+        origin.set_editor_property("collection", world_collection())
+        origin.set_editor_property("parameter_name", "RenderOrigin")
+        mask = MEL.create_material_expression(mat, unreal.MaterialExpressionComponentMask, x - 120, y + 40)
+        for c, on in (("r", True), ("g", True), ("b", True), ("a", False)):
+            mask.set_editor_property(c, on)
+        MEL.connect_material_expressions(origin, "", mask, "")
+        add = MEL.create_material_expression(mat, unreal.MaterialExpressionAdd, x + 120, y)
+        MEL.connect_material_expressions(n, "", add, "A")
+        MEL.connect_material_expressions(mask, "", add, "B")
+        return add
     return n
 
 
@@ -309,8 +329,8 @@ return normalize(float3(-sx, -sy, 1.0));
 def build_water():
     mat = new_material("M_Water")
     mat.set_editor_property("tangent_space_normal", False)
-    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0)
-    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
     cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, 100)
     time = scalar(mat, "WaveTime", 0.0, -1600, 200)
     fade = scalar(mat, "WaveFadeMeters", 900.0, -1600, 300)
@@ -636,6 +656,24 @@ float m = sin(p.x * 1.3 + p.y * 0.7) * sin(p.y * 1.7 - p.x * 0.4);
 // Graphics G2: finer mottling (gravel, tufts, bare patches) so a bank isn't flat paint up close.
 float f = sin(p.x * 4.1 + sin(p.y * 3.3) * 1.7) * sin(p.y * 4.7 + sin(p.x * 2.9) * 1.9) * sin(p.x * 9.3 - p.y * 7.1);
 float3 col = C * (0.88 + 0.12 * n + 0.05 * m) * (0.93 + 0.07 * f);
+// marseille-look (Land 1, the garrigue): on the pale limestone (the vertex colour's, LakeTerrainActor::BuildChunk) the
+// Calanques' bedding, a band every 0.6-1.2 m of height bent by the face, and their vertical joints, dark and a few
+// centimetres wide; on the scrub, rounded bushes 1-2 m across over the bare ground between them.
+if (Land > 0.5)
+{
+    float lum = min(C.r, min(C.g, C.b));
+    float rock = saturate((lum - 0.40) * 6.0);
+    float z = P.z * 0.01;
+    float bed = 0.5 + 0.5 * sin(z * 6.3 + sin(p.x * 0.9 + p.y * 0.7) * 1.6 + 0.8 * f);
+    float joint = 1.0 - smoothstep(0.0, 0.05, abs(sin(p.x * 1.3 + p.y * 1.7 + sin(z * 0.9) * 0.5)));
+    col = lerp(col, col * (0.84 + 0.16 * bed) * (1.0 - 0.4 * joint), rock);
+    float2 cell = floor(p.xy / 1.7);
+    float2 hsh = frac(sin(float2(dot(cell, float2(127.1, 311.7)), dot(cell, float2(269.5, 183.3)))) * 43758.5453);
+    float2 ctr = (cell + 0.25 + 0.5 * hsh) * 1.7;
+    float r = length(p.xy - ctr) / (0.45 + 0.4 * hsh.y);
+    float bush = (1.0 - smoothstep(0.75, 1.0, r)) * step(0.35, hsh.x) * (1.0 - rock) * saturate((0.33 - lum) * 8.0);
+    col = lerp(col, float3(0.07, 0.09, 0.045) * (0.8 + 0.4 * hsh.y), bush * 0.8);
+}
 // The wet band: banks are dark and glossy from the water up the swash, about half a metre (ragged); just under the
 // surface the bed takes the water's olive cast.
 float h = (P.z - WaterZ) * 0.01;
@@ -646,7 +684,7 @@ col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
@@ -655,6 +693,10 @@ return col;
     wz.set_editor_property("collection", world_collection())
     wz.set_editor_property("parameter_name", "WaterZ")
     connect(wz, "", c, "WaterZ")
+    land = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 450)
+    land.set_editor_property("collection", world_collection())
+    land.set_editor_property("parameter_name", "Land")
+    connect(land, "", c, "Land")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -959,6 +1001,9 @@ BOAT_LIBRARY = {
     "Teak": ("M_BoatSurface", (0.22, 0.19, 0.15), 0.85, 0.0, 0.0, 0.0, 0.5),           # weathered grey teak toe rails (G6)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
+    # The maxi (Tools/boats/maxi): clear-coated carbon (spars, wheels, pedestals) and the satin carbon of its deck gear.
+    "Carbon": ("M_BoatSurface", (0.020, 0.020, 0.022), 0.18, 0.0, 1.0, 0.0, 0.02),
+    "CarbonMatte": ("M_BoatSurface", (0.028, 0.028, 0.030), 0.42, 0.0, 0.3, 0.0, 0.05),
     # The crew (Visual V3): foul-weather jacket (recoloured per sailor), PFD, trousers, deck boots, skin, cap, glasses.
     "CrewJacket": ("M_BoatSurface", (0.45, 0.03, 0.03), 0.55, 0.0, 0.2, 0.0, 0.20),
     "CrewPFD": ("M_BoatSurface", (0.02, 0.03, 0.10), 0.60, 0.0, 0.0, 0.0, 0.30),
@@ -993,6 +1038,7 @@ BOAT_LIBRARY = {
     "FenderBlue": ("M_BoatSurface", (0.02, 0.04, 0.12), 0.95, 0.0, 0.0, 0.0, 0.6),      # navy fleece fender covers
     "CoolerLid": ("M_BoatSurface", (0.04, 0.14, 0.42), 0.45, 0.0, 0.0, 0.0, 0.05),
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
+    "CarbonMast": ("M_BoatMast", (0.025, 0.025, 0.028), 0.3, 0.0, 0.6, 0.0, 0.0),        # the maxi's mast: clear-coated carbon that bends
 }
 
 
@@ -1022,8 +1068,14 @@ SAIL_CODE = r"""
 // sail number from the marks atlas (top half insignia, bottom half number).
 // Visual V7: per-class layouts (Layout 0 crosscut, 1 the Sunfish's striped sail, 2 the Hobie's coloured panels, 3 tri-radial
 // panels for the bigger multihulls), BattenCount pockets (FullBattens: luff to leech).
+// The prologue's maxi: Layout 4, a moulded membrane (carbon and aramid fibre paths laid along the load lines from the
+// corners, between black film; a few wide laminated panels with horizontal seams; glossy, nearly opaque).
 float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
-if (Layout > 2.5)
+if (Layout > 3.5)
+{
+    seamDist = abs(frac(UV0.y / 3.4 + 0.5) - 0.5) * 3.4;
+}
+else if (Layout > 2.5)
 {
     // Tri-radial: seams fan out from the clew (UV1 (1, 0)) and the head, crossing at the sail's middle.
     float2 fromClew = float2(1.0 - UV1.x, UV1.y);
@@ -1094,6 +1146,12 @@ else if (Layout > 1.5 && Layout < 2.5)
     float3 pal[4] = { float3(0.02, 0.10, 0.45), float3(0.80, 0.80, 0.78), float3(0.70, 0.08, 0.04), float3(0.85, 0.65, 0.05) };
     base = pal[band % 4];
 }
+// Fleet hero (the Sunfish's dinghy park): the coloured cloth's sun fade (the livery's SailFade). Reds go pink first, blues
+// least; the head and the leech, rolled up outermost on the spars between sails, the most.
+float sunfade = saturate(Fade * (0.7 + 0.4 * UV1.y + 0.25 * exp(-UV2.x / 0.5)));
+float redness = saturate((base.r - max(base.g, base.b)) * 2.0), blueness = saturate((base.b - max(base.r, base.g)) * 2.0);
+float dyed = 1.0 - step(0.6, min(base.r, min(base.g, base.b)));   // white panels age by the Dacron rules below
+base = lerp(base, lerp(base, float3(0.86, 0.80, 0.76), 0.65), sunfade * saturate(0.6 + 0.4 * redness - 0.35 * blueness) * dyed);
 float3 cloth = base * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
 // Graphics G6: a club boat's Dacron is off-white and shows its age (round 7: "too white"). The leech and the head take the
 // most sun and yellow first, each panel a little differently; the foot is greyed from the deck and from being flaked
@@ -1116,10 +1174,35 @@ float2 sp = UV0 / 0.045;
 float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
 float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
 cloth *= 1.0 - 0.35 * speck * whiteish;
+float fibre = 0.0;
+if (Layout > 3.5)
+{
+    // Three families of fibre paths, each fanning from a corner (clew, head, tack) in metres, so they crowd where the
+    // loads gather: a tow every 0.035 rad, 2.4 cm wide (a bundle of fibres, what reads from the deck and beyond), fading away from
+    // its corner. Every fourth path is aramid (gold).
+    float w = 0.32 * Height;                          // the sail's width in metres, about (UV1 is normalized)
+    float2 q[3] = { float2((1.0 - UV1.x) * w, UV1.y * Height), float2(UV1.x * w + 0.02, (1.0 - UV1.y) * Height), float2(UV1.x * w + 0.02, UV1.y * Height) };
+    float reach[3] = { 0.75, 0.55, 0.45 };
+    float aramid = 0.0;
+    for (int f = 0; f < 3; f++)
+    {
+        float r = length(q[f]) + 1e-3;
+        float a = atan2(q[f].y, q[f].x) / 0.035;
+        float d = abs(frac(a + 0.5) - 0.5) * 0.035 * r;
+        float on = (1.0 - smoothstep(0.008, 0.012, d)) * (1.0 - smoothstep(0.2, reach[f], r / Height));
+        fibre = max(fibre, on);
+        aramid = max(aramid, on * step(fmod(abs(floor(a + 0.5)), 4.0), 0.5));
+    }
+    // The scrim under the film: a faint diamond grid every 12 cm.
+    float2 g = float2(UV0.x * 0.866 + UV0.y * 0.5, UV0.x * 0.866 - UV0.y * 0.5) / 0.12;
+    float scrim = max(1.0 - smoothstep(0.02, 0.06, abs(frac(g.x) - 0.5) * 2.0 - 0.9), 1.0 - smoothstep(0.02, 0.06, abs(frac(g.y) - 0.5) * 2.0 - 0.9));
+    cloth = base * (1.0 + 0.06 * scrim) * (0.97 + 0.03 * panel);
+    cloth = lerp(cloth, lerp(base * 3.0 + 0.04, float3(0.45, 0.32, 0.11), aramid), fibre * 0.6);
+}
 float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through));
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1145,6 +1228,7 @@ NormalTS = normalize(float3(-dhdu, -dhdv, 1.0));
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
+if (Layout > 3.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 return col;
 """
 
@@ -1178,16 +1262,17 @@ def build_sail_cloth():
     layout = scalar(mat, "Layout", 0.0, -1400, 50)
     bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
     full = scalar(mat, "FullBattens", 0.0, -1400, 250)
+    fade = scalar(mat, "Fade", 0.0, -1400, 700)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
-                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face")):
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -1662,8 +1747,8 @@ def build_water_v4():
     and Single Layer Water: light absorbed and scattered by the water body itself (olive-brown and murky on the lake,
     grey-green on the bay, blue-green offshore), the bottom showing through in the shallows, the hull refracted below."""
     mat = new_material("M_WaterV4")
-    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0)
-    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
     cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1800, 100)
     time = scalar(mat, "WaveTime", 0.0, -1800, 200)
     fade = scalar(mat, "WaveFadeMeters", 900.0, -1800, 300)
@@ -2404,15 +2489,23 @@ float cirrus = 0.0;
     float mw = band * rift;
     col += (float3(1.0, 0.97, 0.93) * star + float3(0.8, 0.85, 1.0) * mw * 0.12) * Night.x * up * (1.0 - cirrus);
 }
-// Light pollution (Visual V6): the sodium-and-LED dome over the nearest big city (Night.y its strength, Night.z its
-// azimuth in the map frame), brightest on the horizon toward it, and a fainter glow all round.
+// Light pollution (Visual V6; Wide World Rendering PR 3: up to four domes from the world's cities). GlowA/GlowB hold
+// (azimuth in the map frame, strength) pairs, brightest first; Night.y is their sum. Each dome is brightest on the
+// horizon toward its city, with a fainter glow all round.
 [branch] if (Night.y > 0.0)
 {
     float az = atan2(dir.y, dir.x);
-    float da = abs(atan2(sin(az - Night.z), cos(az - Night.z)));
     float h = max(dir.z, 0.0);
-    float glow = Night.y * (0.12 + 1.6 * exp(-da * da / 0.5)) * exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
-    col += float3(1.0, 0.70, 0.42) * glow;
+    float lift = exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
+    float4 domes[2] = { GlowA, GlowB };
+    float glow = 0.0;
+    [unroll] for (int k = 0; k < 4; ++k)
+    {
+        float2 d = (k % 2 == 0) ? domes[k / 2].xy : domes[k / 2].zw;
+        float da = abs(atan2(sin(az - d.x), cos(az - d.x)));
+        glow += d.y * (0.12 + 1.6 * exp(-da * da / 0.5));
+    }
+    col += float3(1.0, 0.70, 0.42) * glow * lift;
 }
 // The moon: lit by the sun (its phase), the dark part faintly lit by the earth.
 float cm = dot(dir, MoonDir.xyz);
@@ -2428,6 +2521,21 @@ float cm = dot(dir, MoonDir.xyz);
         float lit = saturate(dot(n, SunTrue.xyz));
         float maria = 0.82 + 0.18 * sin(uv.x * 5.0 + 1.0) * sin(uv.y * 4.0 + 2.0 + uv.x * 3.0);
         col += MoonDir.w * (lit + SunTrue.w) * maria * saturate(dir.z * 6.0 + 0.2);
+    }
+}
+// Wide World Rendering PR 4, band D: the mountains past the far ring (ASailingEnvironment::UpdateSkyline: per azimuth
+// the highest elevation angle, R, and its distance in km, G). Below that angle the land stands in front of the sky, the
+// sun, the stars and the city glow, darker than the sky behind it by its contrast through the haze (Koschmieder:
+// exp(-3.912 d / V), SkylineP.y the visibility in km).
+[branch] if (SkylineP.x > 0.0 && dir.z > -0.05)
+{
+    float az = atan2(dir.y, dir.x);
+    float2 ridge = Skyline.SampleLevel(SkylineSampler, float2(az / 6.2831853 + (az < 0.0 ? 1.0 : 0.0), 0.5), 0).rg;
+    float el = asin(clamp(dir.z, -1.0, 1.0));
+    [branch] if (ridge.y > 0.0 && el < ridge.x)
+    {
+        float contrast = exp(-3.912 * ridge.y / max(SkylineP.y, 0.5));
+        col = lerp(col, col * 0.42, contrast);
     }
 }
 // C2: the far clouds from the sky cache (M_CloudCache), in front of all of the above. The panorama holds, per direction,
@@ -2486,15 +2594,19 @@ def build_sky_dome():
     vecs = {n: vector(mat, n, d, -1400, 650 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("CirrusParams", (0, 0, 0, 0)), ("NightParams", (0, 0, 0, 0)), ("StarRot0", (1, 0, 0, 0)),
         ("StarRot1", (0, 1, 0, 0)), ("StarRot2", (0, 0, 1, 0)), ("MoonDir", (0, 0, 1, 0)), ("SunTrue", (0, 0, 1, 0)),
-        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1))))}
+        ("CacheParams", (0, 1, -3, 33)), ("CacheSun", (0, 0, 0, 1)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0)),
+        ("SkylineP", (0, 25, 0, 0))))}
+    sky_ridge = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 2200, parameter_name="Skyline", texture=linear,
+                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
     c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
-                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv"],
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
     for n, t in cache.items():
         connect(t, "", c, n)
+    connect(sky_ridge, "", c, "Skyline")
     # C2: the sun's illuminance through the atmosphere at the clouds' height (1.5 km over the camera).
     ill = node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -1100, 1700)
     up = node(mat, unreal.MaterialExpressionConstant3Vector, -1600, 1800, constant=unreal.LinearColor(0, 0, 150000, 0))
@@ -2514,7 +2626,8 @@ def build_sky_dome():
     connect(sun_disk, "", c, "SunDisk")
     connect(wx, "", c, "Wx")
     for n, pin in (("WeatherRect", "WRect"), ("CirrusParams", "Cirrus"), ("NightParams", "Night"), ("StarRot0", "Rot0"), ("StarRot1", "Rot1"),
-                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue"), ("CacheParams", "CacheP"), ("CacheSun", "CacheSun")):
+                   ("StarRot2", "Rot2"), ("MoonDir", "MoonDir"), ("SunTrue", "SunTrue"), ("CacheParams", "CacheP"), ("CacheSun", "CacheSun"),
+                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB"), ("SkylineP", "SkylineP")):
         connect(vecs[n], "RGBA", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
@@ -2630,7 +2743,12 @@ return off * 100.0;
 """
 
 
+_WORLD_MPC = []
+
+
 def world_collection():
+    if _WORLD_MPC:
+        return _WORLD_MPC[0]
     path = f"{WORLD_FOLDER}/MPC_World"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         mpc = unreal.load_asset(path)
@@ -2640,12 +2758,21 @@ def world_collection():
         p.set_editor_property("parameter_name", "Wind")
         p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
         mpc.set_editor_property("vector_parameters", [p])
+    # RenderOrigin (world streaming): the render frame's origin in the map frame, cm (node() adds it to every position).
+    vectors = list(mpc.get_editor_property("vector_parameters"))
+    if not any(str(x.get_editor_property("parameter_name")) == "RenderOrigin" for x in vectors):
+        o = unreal.CollectionVectorParameter()
+        o.set_editor_property("parameter_name", "RenderOrigin")
+        o.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
+        vectors.append(o)
+        mpc.set_editor_property("vector_parameters", vectors)
     # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
     scalars = list(mpc.get_editor_property("scalar_parameters"))
     # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
     # Site (E1): the world's wear site, 0 lake / 1 bay / 2 Gulf (WearSiteFor), for the baked tiles that carry no seed.
     # Autumn, Spring (T1): the season on the trees, from the session's date (ASailingEnvironment).
-    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring"):
+    # Land (marseille-look): the world's dress, 0 prairie / 1 garrigue (FLakeData::Land), for M_Terrain and M_FarLand.
+    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring", "Land"):
         if not any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
             n = unreal.CollectionScalarParameter()
             n.set_editor_property("parameter_name", name)
@@ -2653,6 +2780,7 @@ def world_collection():
             scalars.append(n)
     mpc.set_editor_property("scalar_parameters", scalars)
     unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    _WORLD_MPC.append(mpc)
     return mpc
 
 
@@ -3187,6 +3315,98 @@ def build_world_surface():
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
 
+# Wide World Rendering PR 1 (docs/world-far): the far coast ring's land, 8 to 40 km out (Tools/terrain/build_far_ring.py,
+# UWorldKitLibrary::BakeFarRing). The world position offset: the earth's curvature as CURVATURE_CODE (the water's), the land
+# buried under the water inside the hand-over (InnerCm less 200 m), and UnderCm lower where the near terrain may also be
+# drawn (to BandCm, back up over 1.5 km), so the near terrain wins there. FarRing::OffsetZ mirrors it (keep them in step).
+FAR_LAND_WPO = """
+float2 d2 = (WP - Cam).xy;
+float d = length(d2);
+float drop = dot(d2, d2) / (2.0 * 7.433e8);
+float buried = d < InnerCm - 20000.0 ? 1.0 : 0.0;
+float bury = max(WP.z - (-6000.0), 0.0);
+float under = 200.0 * (1.0 - smoothstep(BandCm, BandCm + 150000.0, d));
+return float3(0.0, 0.0, -drop - lerp(under, bury, buried));
+"""
+
+# The colour: M_Terrain's palette (LakeTerrainActor::BuildChunk's vertex colours: grass, woods, the low flats, rock on
+# slopes, sand at the beach) by height above the water and slope, with kilometre-scale mottling so a 30 km plain isn't one
+# paint; the baked sky visibility (vertex red) is the ambient occlusion and darkens hollows; vertex green weights an
+# optional land-cover tint (Tint, none baked yet).
+FAR_LAND_CODE = """
+float3 n = normalize(N);
+float slope = 1.0 - n.z;
+float h = (P.z - WaterZ) * 0.01;
+float2 q = P.xy * 1e-5;
+float m = 0.5 + 0.5 * sin(q.x * 3.1 + sin(q.y * 2.3) * 1.7) * sin(q.y * 2.7 + sin(q.x * 1.9) * 1.3);
+float f = 0.5 + 0.5 * sin(q.x * 17.0 + sin(q.y * 13.0)) * sin(q.y * 19.0 - q.x * 7.0);
+float3 grass = float3(0.36, 0.36, 0.16);
+float3 woods = float3(0.16, 0.22, 0.08);
+float3 flats = float3(0.24, 0.28, 0.12);
+float3 rock = float3(0.40, 0.33, 0.27);
+float3 sand = float3(0.50, 0.42, 0.30);
+if (Land > 0.5)
+{
+    // marseille-look: the garrigue's (BuildChunk's palette), its bare limestone mottled in at the kilometre scale.
+    grass = lerp(float3(0.22, 0.23, 0.14), float3(0.50, 0.48, 0.42), saturate(f * 1.4 - 0.45));
+    woods = float3(0.12, 0.16, 0.08);
+    flats = grass;
+    rock = float3(0.62, 0.60, 0.54);
+    sand = float3(0.50, 0.48, 0.43);
+}
+float3 col = lerp(grass, woods, saturate(m * 0.8 + 0.3 * f - 0.1));
+col = lerp(flats, col, smoothstep(0.3, 0.9, h));
+col = lerp(sand, col, smoothstep(0.05, 0.4, h));
+col = lerp(col, rock, smoothstep(0.12, 0.45, slope));
+col = lerp(col, Tint.rgb, VC.g * Tint.a);
+col *= 0.9 + 0.2 * f;
+AO = lerp(0.35, 1.0, VC.r);
+return col * lerp(0.75, 1.0, VC.r);
+"""
+
+
+def build_far_land():
+    """M_FarLand: the far coast ring's land (Nanite, opaque, no shadow: the components opt out of shadows, Lumen and the
+    distance fields). InnerCm and BandCm are set per world by ALakeTerrainActor (a dynamic instance)."""
+    mat = world_material("M_FarLand")
+    mat.set_editor_property("used_with_static_lighting", False)
+    mat.set_editor_property("used_with_instanced_static_meshes", False)
+    # The curvature at 60 km (242 m) plus the burial of the highest land a tile can reach inside the hand-over.
+    mat.set_editor_property("max_world_position_offset_displacement", 100000.0)
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT3
+    vc = node(mat, unreal.MaterialExpressionVertexColor, -900, 0)
+    # The height above the water before the curvature drop (with it, land 15 km off reads 30 m under the water).
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -900, 150,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 250)
+    tint = vector(mat, "Tint", (0.30, 0.30, 0.18, 0.0), -900, 350)
+    wz = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 450)
+    wz.set_editor_property("collection", world_collection())
+    wz.set_editor_property("parameter_name", "WaterZ")
+    c = custom(mat, FAR_LAND_CODE, ["VC", "P", "N", "Tint", "WaterZ", "Land"], F3, -500, 100, extra_outputs=[("AO", F1)])
+    land = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 550)
+    land.set_editor_property("collection", world_collection())
+    land.set_editor_property("parameter_name", "Land")
+    connect(land, "", c, "Land")
+    connect(vc, "", c, "VC")
+    connect(pos, "", c, "P")
+    connect(nrm, "", c, "N")
+    connect(tint, "RGBA", c, "Tint")
+    connect(wz, "", c, "WaterZ")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "AO", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+    MEL.connect_material_property(node(mat, unreal.MaterialExpressionConstant, -300, 300, r=0.92), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    w = custom(mat, FAR_LAND_WPO, ["WP", "Cam", "InnerCm", "BandCm"], F3, -500, 600)
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 600), "", w, "WP")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -900, 680), "", w, "Cam")
+    connect(scalar(mat, "InnerCm", 800000.0, -900, 760), "", w, "InnerCm")
+    connect(scalar(mat, "BandCm", 981000.0, -900, 840), "", w, "BandCm")
+    MEL.connect_material_property(w, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_vehicle_paint():
     """The bridge traffic's paint: colour per instance (custom data 0..2, set by ABridgesActor), glossy clear-coated."""
     mat = world_material("M_VehiclePaint")
@@ -3563,6 +3783,12 @@ WORLD_LIBRARY = {
     "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
     "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),
     "Brick": ((0.36, 0.15, 0.09), 0.85, 4.0, 0.0, 0.0),
+    # Marseille's landmarks (harbour kit): pale Cassis-type limestone, the basilica's green Golfolina stone courses, Roman
+    # tile, gilded copper.
+    "Limestone": ((0.64, 0.60, 0.52), 0.85, 4.0, 0.0, 0.0),
+    "StoneGreen": ((0.28, 0.31, 0.25), 0.8, 4.0, 0.0, 0.0),
+    "RoofTile": ((0.40, 0.17, 0.09), 0.8, 2.0, 0.0, 0.0),
+    "Gold": ((0.80, 0.58, 0.22), 0.3, 0.0, 0.0, 1.0),
     # Vehicles (Tools/blender/build_props.py slots).
     "Glass": ((0.03, 0.035, 0.04), 0.06, 0.0, 0.0, 0.0),
     "Tyre": ((0.03, 0.03, 0.03), 0.85, 0.0, 0.0, 0.0),
@@ -3684,6 +3910,7 @@ build(build_sky_dome)
 build(build_lens_water)
 build(build_trees_materials)
 build(build_world_surface)
+build(build_far_land)
 build(build_vehicle_paint)
 build(build_navaid_paint)
 build(build_house_materials)

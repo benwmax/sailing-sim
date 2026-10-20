@@ -1,0 +1,7 @@
+tier,start_step,fps,p99_ms,gpu_ms,clouds_fog_ms,water_ms,lumen_ms,game_ms,resolution
+High,clip-on,62.0,17.57,15.32,2.89,3.27,1.79,3.11,1440x1080
+High,dump-main,57.1,18.79,16.72,3.87,3.25,1.86,3.18,1440x1080
+High,the-break,58.9,18.68,16.19,3.35,3.13,1.72,3.17,1440x1080
+Medium,clip-on,89.3,12.23,10.91,2.06,2.41,1.34,2.47,1440x1080
+Medium,dump-main,83.5,12.99,11.68,2.56,2.39,1.38,2.59,1440x1080
+Medium,the-break,85.8,12.76,11.35,2.32,2.37,1.38,2.56,1440x1080
