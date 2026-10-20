@@ -739,7 +739,81 @@ double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTrave
 		if (K == 0 && bWell && InWell(C, W, X, Yh, Floor)) return Floor;
 		return H.SheerHeight(X);
 	}
-	return -1e9;
+	return CrewBetweenHullsZ(C, X, Y);
+}
+
+namespace CrewPoseDetail
+{
+	// build_fleet.py SPECS "crown": the deck's camber over the sheer at a hull's centreline.
+	double DeckCrown(Sailing::EBoatType Type)
+	{
+		switch (Type)
+		{
+		case Sailing::EBoatType::Hobie16: return 0.12;
+		case Sailing::EBoatType::Corsair880: return 0.05;
+		case Sailing::EBoatType::Lagoon42: return 0.04;
+		default: return 0.0;
+		}
+	}
+}
+
+bool CrewNetSpan(const Sailing::FBoatConfig& C, double& AftX, double& ForwardX)
+{
+	switch (C.Type)
+	{
+	case Sailing::EBoatType::Hobie16: AftX = -1.75; ForwardX = 0.55; return true;    // "beams"
+	case Sailing::EBoatType::Corsair880: AftX = -1.75; ForwardX = 1.55; return true; // "akas"
+	case Sailing::EBoatType::Lagoon42: AftX = -4.6; ForwardX = 4.3; return true;     // "bridgedeck"
+	default: return false;
+	}
+}
+
+double CrewBetweenHullsZ(const Sailing::FBoatConfig& C, double X, double Y)
+{
+	double AftX = 0.0, ForwardX = 0.0;
+	if (!C.bMultihull || !CrewNetSpan(C, AftX, ForwardX) || X < AftX || X > ForwardX) return -1e9;
+	const Sailing::FHullShape& Outer = C.Hulls.back();
+	const double OuterInner = FMath::Abs(Outer.CenterY) - Outer.DeckHalfBeam(X);
+	if (FMath::Abs(Y) > OuterInner) return -1e9;
+	if (C.Hulls.size() == 3)
+	{
+		// The Corsair's nets: from the main hull's deck edge out to the ama's centreline deck, bellied 0.12 m up mid-span.
+		const Sailing::FHullShape& Main = C.Hulls[0];
+		const double Y0 = Main.DeckHalfBeam(X) - 0.05, Y1 = FMath::Abs(Outer.CenterY) - (Outer.DeckHalfBeam(X) - 0.1);
+		if (FMath::Abs(Y) < Y0) return -1e9;
+		const double T = FMath::Clamp((FMath::Abs(Y) - Y0) / FMath::Max(Y1 - Y0, 0.1), 0.0, 1.0);
+		const double Z0 = Main.SheerHeight(X), Z1 = Outer.SheerHeight(X) + CrewPoseDetail::DeckCrown(C.Type);
+		return Z0 - 0.02 + 0.12 * FMath::Sin(UE_DOUBLE_PI * T) + (Z1 - Z0) * T;
+	}
+	// Two hulls: the Hobie's trampoline 0.10 m over the sheer at the forward beam, the Lagoon's bridgedeck 0.02 m over
+	// the sheer amidships.
+	const Sailing::FHullShape& H = C.Hulls[0];
+	return C.Type == Sailing::EBoatType::Hobie16 ? H.SheerHeight(ForwardX) + 0.10 : H.SheerHeight(0.0) + 0.02;
+}
+
+double CrewSeatSurfaceZ(const Sailing::FBoatConfig& C, double X, double Y)
+{
+	FCrewCockpitWell W;
+	const bool bWell = CrewCockpitWell(C, W);
+	const double Crown = CrewPoseDetail::DeckCrown(C.Type);
+	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
+	{
+		const Sailing::FHullShape& H = C.Hulls[K];
+		const double Half = H.DeckHalfBeam(X), Yh = FMath::Abs(Y - H.CenterY);
+		if (X < H.SternX || X > H.BowX || Yh >= Half) continue;
+		double Floor = 0.0;
+		if (K == 0 && bWell && InWell(C, W, X, Yh, Floor)) return H.SheerHeight(X);
+		return H.SheerHeight(X) + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(Half, 1e-3)));
+	}
+	const double Between = CrewBetweenHullsZ(C, X, Y);
+	if (Between > -1e8) return Between;
+	// Out over the water (on the wire) or past the nets: the deck of the hull nearest the sailor's side.
+	const Sailing::FHullShape* Near = &C.Hulls[0];
+	for (const Sailing::FHullShape& H : C.Hulls)
+	{
+		if (FMath::Abs(Y - H.CenterY) < FMath::Abs(Y - Near->CenterY)) Near = &H;
+	}
+	return Near->SheerHeight(FMath::Clamp(X, Near->SternX, Near->BowX)) + Crown;
 }
 
 bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P, bool bTravelerBridge)

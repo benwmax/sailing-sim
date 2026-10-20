@@ -105,6 +105,14 @@ struct SAILINGSIM_API FCrewCockpitWell
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out, bool bTravelerBridge = true);
 /** The surface a foot stands on at (X, Y) (m, boat frame): seat or sole in the well, the deck elsewhere; -1e9 off the boat. */
 SAILINGSIM_API double CrewFloorZ(const Sailing::FBoatConfig& Config, double X, double Y, bool bTravelerBridge = true);
+/** A multihull's surface between the hulls at (X, Y) (m, boat frame): the Hobie's trampoline, the Corsair's nets, the
+ *  Lagoon's bridgedeck (Tools/blender/build_fleet.py); -1e9 where there is none (or on a monohull). */
+SAILINGSIM_API double CrewBetweenHullsZ(const Sailing::FBoatConfig& Config, double X, double Y);
+/** The nets' or trampoline's fore-and-aft extent on a multihull (build_fleet.py beams, akas, bridgedeck); false otherwise. */
+SAILINGSIM_API bool CrewNetSpan(const Sailing::FBoatConfig& Config, double& AftX, double& ForwardX);
+/** What a multihull sailor sits on at (X, Y): a hull's crowned deck (its sheer in the cockpit well, where the keelboat
+ *  stances' offsets apply), else the surface between the hulls, else the nearest hull's deck at its centreline. */
+SAILINGSIM_API double CrewSeatSurfaceZ(const Sailing::FBoatConfig& Config, double X, double Y);
 /** Is a point (m, boat frame) inside the solid boat: under the deck, inside the topsides, not in the cockpit well? */
 SAILINGSIM_API bool CrewInsideBoat(const Sailing::FBoatConfig& Config, double HullDepth, const FVector& P, bool bTravelerBridge = true);
 
