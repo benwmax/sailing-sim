@@ -1126,14 +1126,17 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		GEngine->Exec(GetWorld(), TEXT("ProfileGPU"));
 	}
 
+	// The screenshot is taken after the measured window, and the stats a second later once it is written: inside the
+	// window its frame (a render flush and a synchronous PNG compress, about 280 ms) set every view's max_ms and could
+	// lift p99 on short runs (the PC's stream-run trace, Oct 20).
 	const float End = BenchWarmup + BenchSeconds;
-	if (!bScreenshotRequested && Elapsed > End - 1.f)
+	if (!bScreenshotRequested && Elapsed > End)
 	{
 		const FString ShotPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *ShotName));
 		FScreenshotRequest::RequestScreenshot(ShotPath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		bScreenshotRequested = true;
 	}
-	if (Elapsed > End)
+	if (Elapsed > End + 1.f)
 	{
 		FinishGpuSlices();
 		FinishBenchmark();
