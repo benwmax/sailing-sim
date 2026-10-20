@@ -17,7 +17,7 @@ WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeC
                "TailLight": "MI_World_TailLight", "Trailer": "MI_World_Trailer",
                "Dark": "MI_World_Tyre", "Steel": "MI_World_Steel", "Wood": "MI_World_Pilings", "Lantern": "MI_World_Glass",
                "Reflective": "MI_World_Reflective", "ContainerPaint": "MI_World_ContainerPaint", "Trim": "MI_World_Trim"}
-for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed"):
+for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed", "Limestone", "StoneGreen", "RoofTile", "Gold"):
     WORLD_SLOTS[_slot] = f"MI_World_{_slot}"
 KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Rock", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"),
          ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"), ("SM_Light_MoleTower", "Navaids"),

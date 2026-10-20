@@ -15,9 +15,16 @@ TArray<FLandmarkPlacement> LandmarkPlacements(const TArray<FLandmark>& Landmarks
 	// Chart name -> model, its modelled height (m) and the height drawn when the chart gives none. Round 12: a generic
 	// charted tower (CATLMK 17, no name) is a slim tower, the lattice mast at 45 m, not a water tower; Kemah's real water
 	// tower comes from OpenStreetMap ("Water tower", build_galveston.py).
-	struct FKind { const TCHAR* Chart; const TCHAR* Mesh; double Height; double Default; };
+	// Harbour kit (Marseille): the chart's French names take hero models drawn at their own size where bOwnHeight (the
+	// chart's heights there are a gallery's or a roof's, not the top's); "Tour" and the like stay unmatched.
+	struct FKind { const TCHAR* Chart; const TCHAR* Mesh; double Height; double Default; bool bOwnHeight = false; };
 	static const FKind Kinds[] = {
 		{ TEXT("Platform"), TEXT("SM_Landmark_Platform"), 8.6, 0.0 }, { TEXT("Water tower"), TEXT("SM_Landmark_WaterTower"), 41.6, 0.0 },
+		{ TEXT("Basilique Notre-Dame de la Garde"), TEXT("SM_Landmark_NotreDameGarde"), 61.6, 0.0, true },
+		{ TEXT("Phare du Planier"), TEXT("SM_Landmark_Lighthouse"), 70.0, 0.0, true }, { TEXT("Phare"), TEXT("SM_Landmark_Lighthouse"), 70.0, 22.0 },
+		{ TEXT("Église"), TEXT("SM_Landmark_Church"), 28.0, 0.0, true }, { TEXT("Chapelle"), TEXT("SM_Landmark_Church"), 28.0, 18.0 },
+		{ TEXT("Fort"), TEXT("SM_Landmark_Fort"), 16.0, 0.0, true }, { TEXT("Château"), TEXT("SM_Landmark_Fort"), 16.0, 0.0, true },
+		{ TEXT("Batterie"), TEXT("SM_Landmark_Fort"), 16.0, 9.0 },
 		{ TEXT("Tower"), TEXT("SM_Landmark_Mast"), 100.0, 45.0 },
 		{ TEXT("Mast"), TEXT("SM_Landmark_Mast"), 100.0, 0.0 }, { TEXT("Windmill"), TEXT("SM_Landmark_Windmill"), 13.3, 0.0 },
 		{ TEXT("Chimney"), TEXT("SM_Landmark_Stack"), 60.0, 0.0 }, { TEXT("Spire"), TEXT("SM_Landmark_Spire"), 30.0, 0.0 },
@@ -39,7 +46,7 @@ TArray<FLandmarkPlacement> LandmarkPlacements(const TArray<FLandmark>& Landmarks
 		const double MergeM = bPlatform ? 5.0 : 100.0;
 		if (Seen.ContainsByPredicate([&](const FSeen& Q) { return Q.Kind == K && FVector2D::DistSquared(P, Q.P) < MergeM * MergeM; })) continue;
 		Seen.Add({ P, K });
-		const double Drawn = L.Height > 1.0 ? L.Height : K->Default;
+		const double Drawn = K->bOwnHeight ? K->Height : (L.Height > 1.0 ? L.Height : K->Default);
 		FLandmarkPlacement& Pl = Out.AddDefaulted_GetRef();
 		Pl.Index = I;
 		Pl.Mesh = K->Mesh;
