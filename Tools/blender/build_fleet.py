@@ -763,6 +763,25 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
     # solar panels on the bimini
     for y in (-0.62, 0.62):
         box(hull, (0.5 * (b0 + 0.3 + s0), y, roof + 0.08), (1.1, 1.0, 0.03), "CabinWindow")
+    # Fleet hero: the charter cat's davits off the stern with the tender hung between them (a grey RIB: two tubes and a
+    # floor, its outboard tilted up), and a swim ladder folded on each sugar-scoop step.
+    dx0 = min(Hh.h["stern_x"] for Hh in HS[:2]) - 0.45   # hung clear of the sugar scoops
+    for y in (-0.95, 0.95):
+        tube(hull, [(b0 - 0.1, y, dz + 0.9), (dx0 + 0.45, y, dz + 1.25), (dx0, y, dz + 1.2)], 0.03, "Stainless", 8)
+        tube(hull, [(dx0, y, dz + 1.2), (dx0, y * 0.7, dz + 0.85)], 0.004, "Rope", 4, cap=False)
+    tz = dz + 0.8    # the tender's tubes, hung across the stern from the davits
+    ty0, ty1 = -1.3, 1.3
+    for xo in (-0.32, 0.32):
+        tube(hull, [(dx0 + xo, ty0 + 0.25, tz), (dx0 + xo, ty1 - 0.2, tz)], 0.2, "BlackPlastic", 14)
+    tube(hull, [(dx0 - 0.32, ty0 + 0.25, tz), (dx0, ty0 + 0.05, tz), (dx0 + 0.32, ty0 + 0.25, tz)], 0.2, "BlackPlastic", 14)
+    box(hull, (dx0, 0.05, tz - 0.12), (0.5, 2.3, 0.06), "Deck")
+    box(hull, (dx0, ty1 - 0.05, tz + 0.15), (0.22, 0.18, 0.35), "BlackPlastic")
+    for Hh in HS[:2]:
+        st = Hh.h["stern_x"]
+        for k in range(3):
+            tube(hull, [(st + 0.12, Hh.cy - 0.18, Hh.sheer(st) - 0.3 - 0.18 * k), (st + 0.12, Hh.cy + 0.18, Hh.sheer(st) - 0.3 - 0.18 * k)], 0.012, "Stainless", 6)
+        for y in (-0.18, 0.18):
+            tube(hull, [(st + 0.12, Hh.cy + y, Hh.sheer(st) - 0.2), (st + 0.12, Hh.cy + y, Hh.sheer(st) - 0.7)], 0.012, "Stainless", 6)
     # windlass and bow roller on the forward crossbeam
     box(hull, (b1 + 0.9, 0, dz + 0.1), (0.22, 0.25, 0.14), "Stainless")
     tube(hull, [(b1 + 0.9, -0.16, dz + 0.12), (b1 + 0.9, 0.16, dz + 0.12)], 0.05, "BlackPlastic", 12)
@@ -916,6 +935,15 @@ elif TAG == "Corsair880":
     bw = MAIN.h["bow_x"]
     sp = SPEC["bowsprit"]
     tube(hull, [(bw - 0.3, 0, MAIN.deck_z(bw - 0.3, 0) + 0.05), (bw + sp, 0, MAIN.deck_z(bw, 0) + 0.02)], 0.035, "BlackPlastic", 10)
+    # Fleet hero: the sprit's end fitting with the gennaker's tack block, its bobstay down to the stem just above the
+    # water, and the self-tacking jib's track across the cabin top where its lead is.
+    ez = MAIN.deck_z(bw, 0) + 0.02
+    tube(hull, [(bw + sp - 0.06, 0, ez), (bw + sp + 0.03, 0, ez)], 0.042, "Aluminium", 10)
+    box(hull, (bw + sp + 0.02, 0, ez - 0.07), (0.05, 0.03, 0.06), "BlackPlastic")
+    tube(hull, [(bw + sp - 0.02, 0, ez - 0.03), (bw - 0.02, 0, 0.12)], 0.004, "Stainless", 4, cap=False)
+    jx = mast_x + 0.6
+    tube(hull, [(jx, y, top(jx) + 0.02) for y in (-0.5, -0.25, 0.0, 0.25, 0.5)], 0.012, "Aluminium", 6)
+    box(hull, (jx, 0.3, top(jx) + 0.045), (0.07, 0.05, 0.03), "BlackPlastic")
     lifelines(MAIN, ck[0] - 0.1, bw - 0.9)
     st = MAIN.h["stern_x"]
     traveler = (ck[0] + 0.3, MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.1)

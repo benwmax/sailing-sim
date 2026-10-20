@@ -634,4 +634,58 @@ bool FSmokeCrewAnimationTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualMultihullCrewSeatTest, "SailingSim.Visual.MultihullCrewSeat", CrewMotionFlags)
+bool FVisualMultihullCrewSeatTest::RunTest(const FString& Parameters)
+{
+	// The Corsair's crew had sat over the water aft of her after aka and her helm on the windward ama, out of reach of the
+	// tiller, every multihull sailor at the main hull's sheer plus 0.1 m. Each sailor on a multihull sits on what is under
+	// them (a hull's deck, the net, trampoline or bridgedeck), apart, the trimaran's helm in her cockpit.
+	using namespace Sailing;
+	for (const EBoatType Type : { EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
+	{
+		const FBoatConfig Cfg = FBoatConfig::Make(Type);
+		const FString Name = UTF8_TO_TCHAR(Cfg.Name);
+		const double Reach = Cfg.CrewSitOut + Cfg.CrewHikeOut;
+		for (const double Side : { 1.0, -1.0 })
+		{
+			for (int32 Step = 0; Step <= 8; ++Step)
+			{
+				const double Out = Reach * Step / 8.0;
+				TArray<FVector> Pelvises;
+				for (int32 I = 0; I < Cfg.CrewCount; ++I)
+				{
+					FCrewPlaceInput Place;
+					Place.Config = &Cfg;
+					Place.Index = I;
+					Place.CrewOffset = Side * Out;
+					Place.WindwardSide = int32(Side);
+					Place.TrueWindAngle = FMath::DegreesToRadians(80.0);
+					FCrewPlacement Pl;
+					CrewPlacement(Place, Pl);
+					const FVector& P = Pl.Pelvis;
+					const FString What = FString::Printf(TEXT("%s sailor %d at %.2f m out (side %+.0f)"), *Name, I, Out, Side);
+					Pelvises.Add(P);
+					if (Pl.Params.Stance == ECrewStance::Trapeze) continue;
+					TestTrue(What + TEXT(" sits over the boat"), CrewFloorZ(Cfg, P.X, P.Y) > -1e8);
+					const double Over = P.Z - CrewSeatSurfaceZ(Cfg, P.X, P.Y);
+					const double Lowest = Pl.Params.Stance == ECrewStance::Cockpit ? -0.15 : 0.03;
+					if (Over < Lowest || Over > 0.10) AddError(FString::Printf(TEXT("%s: pelvis %.2f m over its seat (stance %d)"), *What, Over, int32(Pl.Params.Stance)));
+					if (Type == EBoatType::Corsair880 && Pl.bHelm)
+					{
+						TestTrue(What + TEXT(": the helm is on the main hull, in reach of the tiller"), FMath::Abs(P.Y) < Cfg.Hulls[0].DeckHalfBeam(P.X));
+					}
+				}
+				for (int32 A = 0; A < Pelvises.Num(); ++A)
+				{
+					for (int32 B = A + 1; B < Pelvises.Num(); ++B)
+					{
+						if (FVector::Dist(Pelvises[A], Pelvises[B]) < 0.4) AddError(FString::Printf(TEXT("%s: sailors %d and %d sit %.2f m apart at %.2f m out"), *Name, A, B, FVector::Dist(Pelvises[A], Pelvises[B]), Out));
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
