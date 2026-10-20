@@ -5,6 +5,7 @@
 #include "Async/Future.h"
 #include "WakeGrid.h"
 #include "WaveDetail.h"
+#include "HullClip.h"
 #include "WaterSurface.generated.h"
 
 class UProceduralMeshComponent;
@@ -250,6 +251,10 @@ private:
 	struct FWakeFrame { TArray<float> Pixels; FVector2D Origin = FVector2D::ZeroVector; int32 N = 0; float Cell = 0.f; };
 	TFuture<FWakeFrame> PendingWake;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> ShoreMap;
+	// The player's hulls for M_WaterV4's clip (UpdateHullClip), rebuilt when her boat or canoe depth changes.
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> HullClipTexture;
+	Sailing::FHullClipMap HullClip;
+	int32 HullClipBoatType = -1;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Spray;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> DropletMesh;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> SprayMaterial;

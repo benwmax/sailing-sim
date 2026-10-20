@@ -971,16 +971,32 @@ void AWaterSurface::UpdateHullClip()
 		const Vec3 O = M.OriginPosition();
 		const Quat& Q = M.GetState().Orientation;
 		const Vec3 Ax = Q.Rotate(Vec3(1.0, 0.0, 0.0)), Ay = Q.Rotate(Vec3(0.0, 1.0, 0.0)), Az = Q.Rotate(Vec3(0.0, 0.0, 1.0));
-		// Catamarans have no hull on the centreline (the water between the hulls stays); a trimaran's main hull does.
-		const bool bOn = Hulls.size() != 2;
+		// Every hull on one map in her frame (a catamaran's two, a trimaran's amas, the maxi's sections), built once
+		// per boat and canoe depth.
+		const int32 Type = int32(M.GetConfig().Type);
+		if (!HullClipTexture || Type != HullClipBoatType || FMath::Abs(HullClip.MainDepth - M.HullDepth()) > 0.005)
+		{
+			HullClip.Build(Hulls, M.HullDepth());
+			HullClipBoatType = Type;
+			if (!HullClipTexture)
+			{
+				HullClipTexture = MakeFloatMap(FHullClipMap::Cols, FHullClipMap::Rows, PF_A32B32G32R32F, false);
+			}
+			const std::vector<float> Pixels = HullClip.Pixels();
+			UploadFloats(HullClipTexture, TArray<float>(Pixels.data(), int32(Pixels.size())), FHullClipMap::Cols, FHullClipMap::Rows, 4);
+		}
+		WaterMaterial->SetTextureParameterValue(TEXT("HullClipMap"), HullClipTexture);
+		WaterMaterial->SetVectorParameterValue(TEXT("HullClipRect"),
+			FLinearColor(float(HullClip.X0), float(HullClip.Y0), float(HullClip.SizeX), float(HullClip.SizeY)));
 		// -SailingClassicHullClip: V7's flat 2 m drop over 80% of the deck plan (compare the pit it opened at the bow).
 		static SailingArgs::FCachedFlag ClassicArg(TEXT("SailingClassicHullClip"));
 		auto Set = [this](const TCHAR* Name, double X, double Y, double Z, double W)
 		{
 			WaterMaterial->SetVectorParameterValue(Name, FLinearColor(float(X), float(Y), float(Z), float(W)));
 		};
-		// The material drops the water below this hull's bottom (FHullShape::BottomZ) wherever it is inside her.
-		Set(TEXT("HullClipA"), O.X, O.Y, O.Z, bOn ? 1.0 : 0.0);
+		// The material drops the water below her bottom (FHullClipMap) wherever it is inside a hull; the main hull's
+		// shape is only for the V7 clip.
+		Set(TEXT("HullClipA"), O.X, O.Y, O.Z, 1.0);
 		Set(TEXT("HullClipB"), Ax.X, Ax.Y, Ax.Z, S.SheerZ);
 		Set(TEXT("HullClipC"), Ay.X, Ay.Y, Ay.Z, S.SheerRise);
 		Set(TEXT("HullClipD"), Az.X, Az.Y, Az.Z, S.SheerRiseFromX);
