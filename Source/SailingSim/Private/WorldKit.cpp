@@ -698,12 +698,12 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 	return Out;
 }
 
-TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
+TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName, const FString& Variant)
 {
 	TArray<UStaticMesh*> Out;
 #if WITH_EDITOR
 	FFarRingData Ring;
-	if (!Ring.Load(FFarRingData::PathFor(WorldName), true)) return Out;
+	if (!Ring.Load(FFarRingData::PathFor(WorldName, Variant), true)) return Out;
 	UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/World/M_FarLand.M_FarLand"));
 	const FName Slot(TEXT("FarLand"));
 	int64 Triangles = 0;
@@ -765,7 +765,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
 				Triangles += 2;
 			}
 		}
-		const FString ObjectPath = FFarRingData::AssetPath(WorldName, T);
+		const FString ObjectPath = FFarRingData::AssetPath(WorldName, T, Variant);
 		const FString PackagePath = FPackageName::ObjectPathToPackageName(ObjectPath);
 		const FString Name = FPackageName::GetLongPackageAssetName(PackagePath);
 		UPackage* Package = CreatePackage(*PackagePath);

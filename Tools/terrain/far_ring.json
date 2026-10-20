@@ -8,6 +8,11 @@
     "coarse_m": 181.8,
     "coarse_past_km": 20
   },
+  "_ultra": {
+    "_comment": "build_far_ring.py --ultra (<World>.far30, drawn on Ultra): GLO-30 at 30.3 m out to coarse_past_km, 90.9 beyond (a fine tile's edge against a coarse one takes its line).",
+    "cell_m": 30.3,
+    "coarse_m": 90.9
+  },
   "GalvestonBay": {
     "outer_km": 40
   },

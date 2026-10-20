@@ -1,6 +1,7 @@
 #include "FarRing.h"
 #include "BenchRunner.h"
 #include "LakeData.h"
+#include "SailingSettings.h"
 #include "WorldKit.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -23,9 +24,9 @@ namespace
 	constexpr int64 kIndexBytes = 16;
 }
 
-FString FFarRingData::PathFor(const FString& World)
+FString FFarRingData::PathFor(const FString& World, const FString& Variant)
 {
-	return FPaths::Combine(FLakeData::DefaultDirectory(), World + TEXT(".far"));
+	return FPaths::Combine(FLakeData::DefaultDirectory(), World + TEXT(".far") + Variant);
 }
 
 bool FFarRingData::Load(const FString& Path, bool bHeights)
@@ -98,10 +99,10 @@ bool FFarRingData::HeightAt(double X, double Y, double& Out) const
 	return true;
 }
 
-FString FFarRingData::AssetPath(const FString& World, const FFarRingTile& T)
+FString FFarRingData::AssetPath(const FString& World, const FFarRingTile& T, const FString& Variant)
 {
-	const FString Name = FKitGeometry::TileAssetName(TEXT("Far_") + World, FIntPoint(T.Row, T.Col));
-	return FString::Printf(TEXT("/Game/World/Far/%s.%s"), *Name, *Name);
+	const FString Name = FKitGeometry::TileAssetName(TEXT("Far") + Variant + TEXT("_") + World, FIntPoint(T.Row, T.Col));
+	return FString::Printf(TEXT("/Game/World/Far%s/%s.%s"), *Variant, *Name, *Name);
 }
 
 namespace FarRing
@@ -129,6 +130,14 @@ namespace FarRing
 		static SailingArgs::FCachedFlag NoRing(TEXT("SailingNoFarRing"));
 		return !NoRing.Get();
 	}
+
+	FString VariantFor(const FString& World)
+	{
+		int32 Forced = 0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingFarRing="), Forced);
+		const bool bWant30 = Forced == 30 || (Forced != 90 && USailingSettings::Get()->Quality == ESailingQuality::Ultra);
+		return bWant30 && FPaths::FileExists(FFarRingData::PathFor(World, TEXT("30"))) ? FString(TEXT("30")) : FString();
+	}
 }
 
 void FFarRingLoader::Note(double StartSeconds)
@@ -146,12 +155,13 @@ void FFarRingLoader::Reset()
 	Longest = 0.0;
 }
 
-bool FFarRingLoader::Start(const FString& InWorld)
+bool FFarRingLoader::Start(const FString& InWorld, const FString& InVariant)
 {
 	const double T0 = FPlatformTime::Seconds();
 	Reset();
 	World = InWorld;
-	const FString Path = FFarRingData::PathFor(World);
+	Variant = InVariant;
+	const FString Path = FFarRingData::PathFor(World, Variant);
 	if (!FarRing::Enabled() || !FPaths::FileExists(Path)) return false;
 	State = MakeShared<FState>();
 	Index = Async(EAsyncExecution::ThreadPool, [Path]()
@@ -174,7 +184,7 @@ void FFarRingLoader::Poll()
 	{
 		for (int32 K = 0; K < Ring->Tiles.Num(); ++K)
 		{
-			const FString Package = FPackageName::ObjectPathToPackageName(FFarRingData::AssetPath(World, Ring->Tiles[K]));
+			const FString Package = FPackageName::ObjectPathToPackageName(FFarRingData::AssetPath(World, Ring->Tiles[K], Variant));
 			// The callback runs on the game thread when the package is in; it only notes the mesh (the State outlives this).
 			TSharedPtr<FState> S = State;
 			LoadPackageAsync(Package, FLoadPackageAsyncDelegate::CreateLambda([S, K](const FName&, UPackage* Loaded, EAsyncLoadingResult::Type Result)

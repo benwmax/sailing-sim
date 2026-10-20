@@ -146,7 +146,9 @@ void ALakeTerrainActor::BeginPlay()
 		}
 	}
 	// Wide World Rendering PR 1: the far coast ring, if the world has one (Galveston Bay and the Gulf; -SailingNoFarRing).
-	if (FarLoader.Start(Lake->FileName)) UE_LOG(LogSailing, Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
+	// The far ring at 30 m on Ultra where it is baked (FarRing::VariantFor).
+	const FString FarVariant = FarRing::VariantFor(Lake->FileName);
+	if (FarLoader.Start(Lake->FileName, FarVariant)) UE_LOG(LogSailing, Display, TEXT("Far ring: loading %s's tiles%s"), *Lake->FileName, FarVariant.IsEmpty() ? TEXT("") : TEXT(" (30 m)"));
 	PlaceTrees();
 	PlaceReeds();
 	PlaceBuildings();

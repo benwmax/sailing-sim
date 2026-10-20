@@ -182,7 +182,7 @@ public:
 	 *  Nanite mesh per tile, /Game/World/Far/SM_Far_<World>_<row>_<col> with M_FarLand, its pivot at the tile's corner; no
 	 *  distance field or ray-tracing structure. */
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
-	static TArray<UStaticMesh*> BakeFarRing(const FString& WorldName);
+	static TArray<UStaticMesh*> BakeFarRing(const FString& WorldName, const FString& Variant = TEXT(""));
 
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);

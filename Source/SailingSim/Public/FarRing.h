@@ -30,7 +30,8 @@ struct SAILINGSIM_API FFarRingData
 
 	/** Reads <Directory>/<World>.far. */
 	bool Load(const FString& Path, bool bHeights);
-	static FString PathFor(const FString& World);
+	/** <World>.far, or with Variant "30" the Ultra ring <World>.far30 (GLO-30 at 30 m: build_far_ring.py --ultra). */
+	static FString PathFor(const FString& World, const FString& Variant = FString());
 	bool IsValid() const { return Tiles.Num() > 0; }
 
 	/** A tile's node height (m above the world's datum) and sky visibility (0..1); R north, C east. Needs the heights. */
@@ -42,8 +43,8 @@ struct SAILINGSIM_API FFarRingData
 	/** Its corner (m, map frame). */
 	FVector2D TileOrigin(const FFarRingTile& T) const { return FVector2D(T.Row * TileM, T.Col * TileM); }
 
-	/** /Game/World/Far/SM_Far_<World>_<row>_<col> (m for minus). */
-	static FString AssetPath(const FString& World, const FFarRingTile& T);
+	/** /Game/World/Far/SM_Far_<World>_<row>_<col> (m for minus); Variant "30": /Game/World/Far30/SM_Far30_<World>_... */
+	static FString AssetPath(const FString& World, const FFarRingTile& T, const FString& Variant = FString());
 
 private:
 	TMap<FIntPoint, int32> ByCell;
@@ -70,6 +71,9 @@ namespace FarRing
 	inline bool NearChunkDrawn(double NearestEdgeM, double CapM) { return NearestEdgeM < CapM; }
 	/** -SailingNoFarRing turns the ring off (the near terrain then draws to 20 km as before). */
 	SAILINGSIM_API bool Enabled();
+	/** The ring a world draws on this tier: "30" (the 30 m ring) on Ultra when it is baked, else "" (the 90 m one).
+	 *  -SailingFarRing=90 or 30 forces one (benches). */
+	SAILINGSIM_API FString VariantFor(const FString& World);
 }
 
 /**
@@ -81,7 +85,7 @@ class SAILINGSIM_API FFarRingLoader
 {
 public:
 	/** Starts reading World's index on a worker; returns at once. False when the world has no ring (or it is off). */
-	bool Start(const FString& World);
+	bool Start(const FString& World, const FString& InVariant = FString());
 	/** Game thread, each frame: once the index is in, requests the tiles' packages (asynchronously). */
 	void Poll();
 	/** The index, once read (null before, or when the world has none). */
@@ -103,6 +107,7 @@ private:
 		int32 Answered = 0, Loaded = 0, Failed = 0;
 	};
 	FString World;
+	FString Variant;
 	TFuture<TSharedPtr<FFarRingData>> Index;
 	TSharedPtr<FFarRingData> Ring;
 	TSharedPtr<FState> State;

@@ -19,7 +19,11 @@ as in the grid's bake. Tiles out to coarse_past_km from the grid are meshed at c
 Tiles with no land above -1 m are left out. Sky visibility is the open share of the sky over eight horizons marched to
 2 km (the material darkens hollows and valley floors with it).
 
-Run: Tools/venv/bin/python Tools/terrain/build_far_ring.py [World ...]   (default GalvestonBay GulfPassage Marseille)
+Ultra (--ultra): <World>.far30, the same format meshed at 30.3 m (264 cells) out to coarse_past_km and 90.9 beyond, from
+the Copernicus DEM GLO-30 (glo30_<tile>.tif beside the GLO-90 files; a missing GLO-30 tile falls back to GLO-90). The game
+draws it on Ultra (FFarRingData::PathFor(World, "30"), /Game/World/Far30).
+
+Run: Tools/venv/bin/python Tools/terrain/build_far_ring.py [--ultra] [World ...]   (default GalvestonBay GulfPassage Marseille)
      ... --tiles [World ...] prints the GLO-90 tile names the worlds need (fetch_far_dem.sh uses it).
 """
 import json
@@ -40,14 +44,19 @@ DEFAULT = CONFIG["_default"]
 WORLDS = ["GalvestonBay", "GulfPassage", "Marseille"]
 
 
+ULTRA = False   # --ultra: the GLO-30 ring (far_ring.json's _ultra spacings), written to <World>.far30
+
+
 def ring_config(world):
     """far_ring.json's entry for the world, else the default with the world bake's own far_ring.draw_km as the outer edge
-    (Marseille: 60 km; Tools/coast/worlds/<World>.json); None when the world has neither (Ray Hubbard: no ring)."""
+    (Marseille: 60 km; Tools/coast/worlds/<World>.json); None when the world has neither (Ray Hubbard: no ring). With
+    --ultra the spacings are _ultra's."""
+    ultra = CONFIG.get("_ultra", {}) if ULTRA else {}
     if world in CONFIG:
-        return dict(DEFAULT, **CONFIG[world])
+        return {**DEFAULT, **CONFIG[world], **ultra}
     meta = json.load(open(os.path.join(TERRAIN, f"{world}.json")))
     if "far_ring" in meta:
-        return dict(DEFAULT, outer_km=meta["far_ring"]["draw_km"])
+        return {**DEFAULT, "outer_km": meta["far_ring"]["draw_km"], **ultra}
     return None
 
 
@@ -132,16 +141,18 @@ def needed_glo(world):
 
 
 class Glo:
-    """The GLO-90 tiles on disk, sampled bilinearly by latitude and longitude."""
+    """The GLO-90 tiles on disk (with --ultra the GLO-30 ones first, GLO-90 where a 30 m tile is missing), sampled
+    bilinearly by latitude and longitude."""
 
     def __init__(self, dirs):
         import tifffile
         self.tiles = {}
-        for d in dirs:
-            for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
-                if not (f.startswith("glo90_") and f.endswith(".tif")) or f[6:-4] in self.tiles:
-                    continue
-                self.load(tifffile, os.path.join(d, f), f[6:-4])
+        for prefix in (("glo30_", "glo90_") if ULTRA else ("glo90_",)):
+            for d in dirs:
+                for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+                    if not (f.startswith(prefix) and f.endswith(".tif")) or f[6:-4] in self.tiles:
+                        continue
+                    self.load(tifffile, os.path.join(d, f), f[6:-4])
 
     def load(self, tifffile, path, name):
         if True:
@@ -231,16 +242,21 @@ def bake(world):
         Z = Zp[P:-P, P:-P].copy()
         if Z.max() < -1.0:
             continue
-        # A fine tile's edge against a coarse (or missing) neighbour: its odd vertices on the coarse line.
+        # A fine tile's edge against a coarse neighbour (n / nb cells to one of its): the vertices between the coarse
+        # ones on the coarse line.
         for (di, dj), edge in (((-1, 0), (0, slice(None))), ((1, 0), (-1, slice(None))), ((0, -1), (slice(None), 0)), ((0, 1), (slice(None), -1))):
             nb = cells.get((i + di, j + dj))
             if nb is not None and nb < n:
-                line = Z[edge]
-                line[1:-1:2] = 0.5 * (line[0:-2:2] + line[2::2])
-                Z[edge] = line
+                r = n // nb
+                line = Z[edge].copy()
+                k = np.arange(n + 1)
+                a = (k // r) * r
+                b = np.minimum(a + r, n)
+                t = (k - a) / r
+                Z[edge] = (1.0 - t) * line[a] + t * line[b]
         sky = sky_visibility(Zp, step)
         kept.append((i, j, n, Z, np.clip(np.round(sky * 255.0), 0, 255).astype(np.uint8)))
-    path = os.path.join(TERRAIN, f"{world}.far")
+    path = os.path.join(TERRAIN, f"{world}.far30" if ULTRA else f"{world}.far")
     unit = 0.01 if max(float(np.abs(t[3]).max()) for t in kept) < 320.0 else 0.05
     kept = [(i, j, n, np.clip(np.round(Z / unit), -32768, 32767).astype("<i2"), s) for i, j, n, Z, s in kept]
     head = struct.pack("<4sIIffff", b"SSFR", 1, len(kept), T, cfg["inner_km"] * 1000.0, cfg["outer_km"] * 1000.0, unit)
@@ -261,6 +277,9 @@ def bake(world):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    if "--ultra" in args:
+        ULTRA = True
+        args.remove("--ultra")
     if args and args[0] == "--tiles":
         names = set()
         for w in args[1:] or WORLDS:
