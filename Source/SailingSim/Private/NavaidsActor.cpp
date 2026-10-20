@@ -1,4 +1,5 @@
 #include "NavaidsActor.h"
+#include "SailingFrame.h"
 #include "FarLightsActor.h"
 #include "BenchRunner.h"
 #include "SailingSim.h"
@@ -322,7 +323,7 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	for (int32 I = 0; I < Buoys.Num(); ++I)
 	{
 		const FBuoy& B = Buoys[I];
-		if (FVector2D::Distance(FVector2D(B.X, B.Y), FVector2D(Camera) / CmPerMeter) > 3000.0) continue;
+		if (FVector2D::Distance(FVector2D(B.X, B.Y), SailingFrame::ToMap(GetWorld(), Camera)) > 3000.0) continue;
 		const FWaveField& W = GM->GetWaves();
 		const double H = W.Height(B.X, B.Y, T);
 		const double Hx = (W.Height(B.X + 0.8, B.Y, T) - W.Height(B.X - 0.8, B.Y, T)) / 1.6;

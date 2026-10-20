@@ -16,4 +16,5 @@ $Views = [ordered]@{
 	"far-coast" = "-SailingWorld=1 -SailingStartAt=-21700,26000,315 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=11 -SailingCamYaw=0 -SailingCamPitch=-3 -SailingCamDist=14"
 	"far-coast-night" = "-SailingWorld=1 -SailingStartAt=-21700,26000,315 -SailingKeepStart -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=21 -SailingCamYaw=0 -SailingCamPitch=-3 -SailingCamDist=14"
 	"marseille-port" = "-SailingWorld=Marseille -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=14 -SailingCamYaw=120 -SailingCamPitch=-8 -SailingCamDist=30"
+	"stream-run" = "-SailingWorld=TexasCoast -SailingStartAt=-11068,16118,124 -SailingKeepStart -SailingRun=40,124 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=90 -SailingHoldTWA=90 -SailingHour=11 -SailingCamYaw=200 -SailingCamPitch=-8 -SailingCamDist=14"
 }

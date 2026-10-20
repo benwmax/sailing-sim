@@ -181,6 +181,10 @@ struct SAILINGSIM_API FLakeData
 	TCHAR Iala = TEXT('B');
 	/** The local clock's rule: empty for the machine's own zone (Texas), "Europe/Paris" for central European time. */
 	FString TimeZone;
+	/** marseille-look: the land's dress (the bake's "land"): empty or "prairie" for Texas (grass, red clay at the water,
+	 *  oak woods), "garrigue" for the Mediterranean (scrub over bare limestone, pines, white limestone cliffs). */
+	FString Land;
+	bool IsGarrigue() const { return Land == TEXT("garrigue"); }
 	/** The open sea's usual swell and the strong wind's direction (degrees from), NaN when the world gives none. */
 	double SwellFromDeg = std::numeric_limits<double>::quiet_NaN();
 	double MistralFromDeg = std::numeric_limits<double>::quiet_NaN();
@@ -196,7 +200,13 @@ struct SAILINGSIM_API FLakeData
 	/** Where the map frame sits on the earth (the bake's "projection", else the build script's centre): lat/lon <->
 	 *  map metres for anything that persists (docs/geo-anchor). */
 	Sailing::FGeoAnchor Anchor;
-	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage"
+	FString FileName;            // "RayHubbard", "GalvestonBay", "GulfPassage", "TexasCoast"
+	/** World streaming (docs/world-streaming): the heights stream from <FileName>.tiles (FWorldStreamer) instead of one grid. */
+	bool bStreamed = false;
+	/** A composed world's files read from a member in the same map frame, by kind ("houses", "crowns", "piers", "current"). */
+	TMap<FString, FString> Members;
+	/** The world whose file of this kind to read (the member's, or this world's own). Baked kit tiles go by it too. */
+	FString SourceFor(const TCHAR* Kind) const { const FString* M = Members.Find(Kind); return M ? *M : FileName; }
 	bool bOcean = false;         // open sea: the FFT ocean with swell (the Gulf passage)
 	TArray<TPair<FString, FVector2D>> Passage; // the passage plan's waypoints, in order
 

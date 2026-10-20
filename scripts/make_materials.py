@@ -29,10 +29,30 @@ def new_material(name):
     return ASSETS.create_asset(name, FOLDER, unreal.Material, unreal.MaterialFactoryNew())
 
 
+# World streaming (docs/world-streaming): the render frame's origin follows the boat (UWorld::SetNewWorldOrigin every 20 km,
+# SailingFrame.h), while every map-anchored thing a material reads (wave phases, wind and sea maps, the weather map, the
+# storm front, world-aligned patterns) is in the world's map frame. So every world, camera and object position node a
+# material reads is put back in the map frame: the position plus MPC_World.RenderOrigin (cm, set by the game mode). All
+# of them move together, so distances and directions between them are unchanged.
+MAP_FRAME_POSITIONS = ("MaterialExpressionWorldPosition", "MaterialExpressionCameraPositionWS", "MaterialExpressionObjectPositionWS")
+
+
 def node(mat, cls, x, y, **props):
     n = MEL.create_material_expression(mat, cls, x, y)
     for k, v in props.items():
         n.set_editor_property(k, v)
+    if cls.__name__ in MAP_FRAME_POSITIONS:
+        origin = MEL.create_material_expression(mat, unreal.MaterialExpressionCollectionParameter, x - 220, y + 40)
+        origin.set_editor_property("collection", world_collection())
+        origin.set_editor_property("parameter_name", "RenderOrigin")
+        mask = MEL.create_material_expression(mat, unreal.MaterialExpressionComponentMask, x - 120, y + 40)
+        for c, on in (("r", True), ("g", True), ("b", True), ("a", False)):
+            mask.set_editor_property(c, on)
+        MEL.connect_material_expressions(origin, "", mask, "")
+        add = MEL.create_material_expression(mat, unreal.MaterialExpressionAdd, x + 120, y)
+        MEL.connect_material_expressions(n, "", add, "A")
+        MEL.connect_material_expressions(mask, "", add, "B")
+        return add
     return n
 
 
@@ -309,8 +329,8 @@ return normalize(float3(-sx, -sy, 1.0));
 def build_water():
     mat = new_material("M_Water")
     mat.set_editor_property("tangent_space_normal", False)
-    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0)
-    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1600, 0,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
     cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, 100)
     time = scalar(mat, "WaveTime", 0.0, -1600, 200)
     fade = scalar(mat, "WaveFadeMeters", 900.0, -1600, 300)
@@ -636,6 +656,24 @@ float m = sin(p.x * 1.3 + p.y * 0.7) * sin(p.y * 1.7 - p.x * 0.4);
 // Graphics G2: finer mottling (gravel, tufts, bare patches) so a bank isn't flat paint up close.
 float f = sin(p.x * 4.1 + sin(p.y * 3.3) * 1.7) * sin(p.y * 4.7 + sin(p.x * 2.9) * 1.9) * sin(p.x * 9.3 - p.y * 7.1);
 float3 col = C * (0.88 + 0.12 * n + 0.05 * m) * (0.93 + 0.07 * f);
+// marseille-look (Land 1, the garrigue): on the pale limestone (the vertex colour's, LakeTerrainActor::BuildChunk) the
+// Calanques' bedding, a band every 0.6-1.2 m of height bent by the face, and their vertical joints, dark and a few
+// centimetres wide; on the scrub, rounded bushes 1-2 m across over the bare ground between them.
+if (Land > 0.5)
+{
+    float lum = min(C.r, min(C.g, C.b));
+    float rock = saturate((lum - 0.40) * 6.0);
+    float z = P.z * 0.01;
+    float bed = 0.5 + 0.5 * sin(z * 6.3 + sin(p.x * 0.9 + p.y * 0.7) * 1.6 + 0.8 * f);
+    float joint = 1.0 - smoothstep(0.0, 0.05, abs(sin(p.x * 1.3 + p.y * 1.7 + sin(z * 0.9) * 0.5)));
+    col = lerp(col, col * (0.84 + 0.16 * bed) * (1.0 - 0.4 * joint), rock);
+    float2 cell = floor(p.xy / 1.7);
+    float2 hsh = frac(sin(float2(dot(cell, float2(127.1, 311.7)), dot(cell, float2(269.5, 183.3)))) * 43758.5453);
+    float2 ctr = (cell + 0.25 + 0.5 * hsh) * 1.7;
+    float r = length(p.xy - ctr) / (0.45 + 0.4 * hsh.y);
+    float bush = (1.0 - smoothstep(0.75, 1.0, r)) * step(0.35, hsh.x) * (1.0 - rock) * saturate((0.33 - lum) * 8.0);
+    col = lerp(col, float3(0.07, 0.09, 0.045) * (0.8 + 0.4 * hsh.y), bush * 0.8);
+}
 // The wet band: banks are dark and glossy from the water up the swash, about half a metre (ragged); just under the
 // surface the bed takes the water's olive cast.
 float h = (P.z - WaterZ) * 0.01;
@@ -646,7 +684,7 @@ col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
@@ -655,6 +693,10 @@ return col;
     wz.set_editor_property("collection", world_collection())
     wz.set_editor_property("parameter_name", "WaterZ")
     connect(wz, "", c, "WaterZ")
+    land = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 450)
+    land.set_editor_property("collection", world_collection())
+    land.set_editor_property("parameter_name", "Land")
+    connect(land, "", c, "Land")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -1662,8 +1704,8 @@ def build_water_v4():
     and Single Layer Water: light absorbed and scattered by the water body itself (olive-brown and murky on the lake,
     grey-green on the bay, blue-green offshore), the bottom showing through in the shallows, the hull refracted below."""
     mat = new_material("M_WaterV4")
-    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0)
-    pos.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    pos = node(mat, unreal.MaterialExpressionWorldPosition, -1800, 0,
+               world_position_shader_offset=unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
     cam = node(mat, unreal.MaterialExpressionCameraPositionWS, -1800, 100)
     time = scalar(mat, "WaveTime", 0.0, -1800, 200)
     fade = scalar(mat, "WaveFadeMeters", 900.0, -1800, 300)
@@ -2639,7 +2681,12 @@ return off * 100.0;
 """
 
 
+_WORLD_MPC = []
+
+
 def world_collection():
+    if _WORLD_MPC:
+        return _WORLD_MPC[0]
     path = f"{WORLD_FOLDER}/MPC_World"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         mpc = unreal.load_asset(path)
@@ -2649,12 +2696,21 @@ def world_collection():
         p.set_editor_property("parameter_name", "Wind")
         p.set_editor_property("default_value", unreal.LinearColor(1, 0, 4, 0))
         mpc.set_editor_property("vector_parameters", [p])
+    # RenderOrigin (world streaming): the render frame's origin in the map frame, cm (node() adds it to every position).
+    vectors = list(mpc.get_editor_property("vector_parameters"))
+    if not any(str(x.get_editor_property("parameter_name")) == "RenderOrigin" for x in vectors):
+        o = unreal.CollectionVectorParameter()
+        o.set_editor_property("parameter_name", "RenderOrigin")
+        o.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
+        vectors.append(o)
+        mpc.set_editor_property("vector_parameters", vectors)
     # Night (0 day .. 1 full night): lamps, lit windows and vehicle lights (Visual V6), set by ASailingEnvironment.
     scalars = list(mpc.get_editor_property("scalar_parameters"))
     # WaterZ (Graphics G2): the water surface's world height (cm), for the wet band along every shore.
     # Site (E1): the world's wear site, 0 lake / 1 bay / 2 Gulf (WearSiteFor), for the baked tiles that carry no seed.
     # Autumn, Spring (T1): the season on the trees, from the session's date (ASailingEnvironment).
-    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring"):
+    # Land (marseille-look): the world's dress, 0 prairie / 1 garrigue (FLakeData::Land), for M_Terrain and M_FarLand.
+    for name in ("Night", "WaterZ", "Site", "Autumn", "Spring", "Land"):
         if not any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
             n = unreal.CollectionScalarParameter()
             n.set_editor_property("parameter_name", name)
@@ -2662,6 +2718,7 @@ def world_collection():
             scalars.append(n)
     mpc.set_editor_property("scalar_parameters", scalars)
     unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    _WORLD_MPC.append(mpc)
     return mpc
 
 
@@ -3165,6 +3222,15 @@ float3 woods = float3(0.16, 0.22, 0.08);
 float3 flats = float3(0.24, 0.28, 0.12);
 float3 rock = float3(0.40, 0.33, 0.27);
 float3 sand = float3(0.50, 0.42, 0.30);
+if (Land > 0.5)
+{
+    // marseille-look: the garrigue's (BuildChunk's palette), its bare limestone mottled in at the kilometre scale.
+    grass = lerp(float3(0.22, 0.23, 0.14), float3(0.50, 0.48, 0.42), saturate(f * 1.4 - 0.45));
+    woods = float3(0.12, 0.16, 0.08);
+    flats = grass;
+    rock = float3(0.62, 0.60, 0.54);
+    sand = float3(0.50, 0.48, 0.43);
+}
 float3 col = lerp(grass, woods, saturate(m * 0.8 + 0.3 * f - 0.1));
 col = lerp(flats, col, smoothstep(0.3, 0.9, h));
 col = lerp(sand, col, smoothstep(0.05, 0.4, h));
@@ -3195,7 +3261,11 @@ def build_far_land():
     wz = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 450)
     wz.set_editor_property("collection", world_collection())
     wz.set_editor_property("parameter_name", "WaterZ")
-    c = custom(mat, FAR_LAND_CODE, ["VC", "P", "N", "Tint", "WaterZ"], F3, -500, 100, extra_outputs=[("AO", F1)])
+    c = custom(mat, FAR_LAND_CODE, ["VC", "P", "N", "Tint", "WaterZ", "Land"], F3, -500, 100, extra_outputs=[("AO", F1)])
+    land = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 550)
+    land.set_editor_property("collection", world_collection())
+    land.set_editor_property("parameter_name", "Land")
+    connect(land, "", c, "Land")
     connect(vc, "", c, "VC")
     connect(pos, "", c, "P")
     connect(nrm, "", c, "N")

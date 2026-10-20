@@ -26,6 +26,7 @@ namespace SailingPerf
 		Traffic,       // ATrafficManager::Tick
 		TrafficStep,   // FTrafficSim::Step inside it
 		Hud,           // SSailHud::Tick
+		Streaming,     // world streaming: the tile loader's game-thread side, re-centres, the physics window's swaps
 		Count
 	};
 

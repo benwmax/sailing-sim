@@ -17,11 +17,19 @@ FString FLakeData::DefaultDirectory()
 bool FLakeData::Load(const FString& Directory, const FString& Name)
 {
 	TArray<uint8> HeightBytes;
+	bStreamed = false;
 	if (!FFileHelper::LoadFileToArray(HeightBytes, *(Directory / (Name + TEXT(".height")))) || !Terrain.LoadHeight(HeightBytes.GetData(), HeightBytes.Num()))
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Lake %s: no terrain in %s"), *Name, *Directory);
-		return false;
+		// World streaming (docs/world-streaming): a streamed world has its heights in <Name>.tiles; FWorldStreamer reads
+		// the tiles around the boat into Terrain (empty until then).
+		if (!FPaths::FileExists(Directory / (Name + TEXT(".tiles"))))
+		{
+			UE_LOG(LogSailing, Warning, TEXT("Lake %s: no terrain in %s"), *Name, *Directory);
+			return false;
+		}
+		bStreamed = true;
 	}
+	HeightBytes.Empty();
 	if (FFileHelper::LoadFileToArray(TreeBytes, *(Directory / (Name + TEXT(".trees")))))
 	{
 		Terrain.LoadTrees(TreeBytes.GetData(), TreeBytes.Num());
@@ -56,6 +64,12 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	}
 	FileName = Name;
 	LakeName = Root->GetStringField(TEXT("name"));
+	// World streaming: a composed world reads some of its files from the member whose map frame it keeps (the same metres).
+	const TSharedPtr<FJsonObject>* MemberFiles = nullptr;
+	if (Root->TryGetObjectField(TEXT("members"), MemberFiles) && MemberFiles && MemberFiles->IsValid())
+	{
+		for (const auto& M : (*MemberFiles)->Values) Members.Add(FString(M.Key), M.Value->AsString());
+	}
 	Root->TryGetNumberField(TEXT("pool_ft_ngvd29"), PoolFeet);
 	Root->TryGetNumberField(TEXT("mhw_m"), MeanHighWater);
 	Root->TryGetNumberField(TEXT("latitude"), Latitude);
@@ -65,6 +79,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	FString IalaText;
 	if (Root->TryGetStringField(TEXT("iala"), IalaText) && IalaText.Len() > 0) Iala = FChar::ToUpper(IalaText[0]);
 	Root->TryGetStringField(TEXT("time_zone"), TimeZone);
+	Root->TryGetStringField(TEXT("land"), Land);
 	const TSharedPtr<FJsonObject>* Climate = nullptr;
 	if (Root->TryGetObjectField(TEXT("climate"), Climate) && Climate && Climate->IsValid())
 	{
@@ -157,9 +172,9 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		}
 	}
 	LoadCoast(*Root, Directory, Name);
-	LoadHouses(Directory / (Name + TEXT(".houses")));
-	LoadCrowns(Directory / (Name + TEXT(".crowns")));
-	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPiers"))) LoadPiers(Directory / (Name + TEXT(".piers")));
+	LoadHouses(Directory / (SourceFor(TEXT("houses")) + TEXT(".houses")));
+	LoadCrowns(Directory / (SourceFor(TEXT("crowns")) + TEXT(".crowns")));
+	if (!FParse::Param(SailingArgs::Dev(), TEXT("SailingNoPiers"))) LoadPiers(Directory / (SourceFor(TEXT("piers")) + TEXT(".piers")));
 	FarLights.Load(Directory / (Name + TEXT(".farlights.json")));
 	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
 	{
@@ -599,7 +614,7 @@ void FLakeData::LoadCoast(const FJsonObject& Root, const FString& Directory, con
 	if (Root.TryGetObjectField(TEXT("current_station"), Current) && Current && Current->IsValid())
 	{
 		Tides.CurrentStation = ReadStation(**Current);
-		Tides.bHasCurrent = FFileHelper::LoadFileToArray(CurrentBytes, *(Directory / (Name + TEXT(".current"))))
+		Tides.bHasCurrent = FFileHelper::LoadFileToArray(CurrentBytes, *(Directory / (SourceFor(TEXT("current")) + TEXT(".current"))))
 			&& Tides.LoadCurrentField(CurrentBytes.GetData(), CurrentBytes.Num());
 	}
 }

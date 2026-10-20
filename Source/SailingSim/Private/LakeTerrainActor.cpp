@@ -1,4 +1,6 @@
 #include "LakeTerrainActor.h"
+#include "SailingFrame.h"
+#include "WorldStreaming.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "UObject/UObjectIterator.h"
@@ -121,30 +123,9 @@ void ALakeTerrainActor::BeginPlay()
 	{
 		return;
 	}
-	const FLakeTerrain& T = Lake->Terrain;
-	GChunkCells = T.GetCell() >= 9.99 ? 128 : 64;
-	ChunkRows = FMath::DivideAndRoundUp(T.GetRows() - 1, GChunkCells);
-	ChunkCols = FMath::DivideAndRoundUp(T.GetCols() - 1, GChunkCells);
-	Chunks.SetNum(ChunkRows * ChunkCols);
-	for (int32 R = 0; R < ChunkRows; ++R)
-	{
-		for (int32 C = 0; C < ChunkCols; ++C)
-		{
-			FChunk& Ch = Chunks[R * ChunkCols + C];
-			Ch.Row = R;
-			Ch.Col = C;
-			const double Size = GChunkCells * T.GetCell();
-			Ch.bHasDetail = T.HasDetailIn(T.GetOriginX() + R * Size, T.GetOriginY() + C * Size, T.GetOriginX() + (R + 1) * Size, T.GetOriginY() + (C + 1) * Size);
-			UProceduralMeshComponent* Mesh = NewObject<UProceduralMeshComponent>(this);
-			Mesh->SetupAttachment(RootComponent);
-			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			Mesh->bUseAsyncCooking = true;
-			Mesh->RegisterComponent();
-			Mesh->SetMaterial(0, TerrainMaterial);
-			Mesh->SetCullDistance(20000.f * 100.f); // past 20 km the land is a sliver on the horizon, under the haze
-			Ch.Mesh = Mesh;
-		}
-	}
+	// World streaming (docs/world-streaming): the chunks are made as the camera comes near them (UpdateChunkSet), by the
+	// world's tile index, and dropped behind it.
+	GChunkCells = ChunkCellsFor(Lake->Terrain.IsValid() ? Lake->Terrain.GetCell() : 10.0);
 	// Wide World Rendering PR 1: the far coast ring, if the world has one (Galveston Bay and the Gulf; -SailingNoFarRing).
 	if (FarLoader.Start(Lake->FileName)) UE_LOG(LogSailing, Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
 	PlaceTrees();
@@ -174,39 +155,56 @@ void ALakeTerrainActor::BeginPlay()
 
 void ALakeTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
 {
-	for (FChunk& Ch : Chunks)
+	for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks)
 	{
-		if (Ch.bBuilding) Ch.Future.Wait();
+		if (P.Value->bBuilding) P.Value->Future.Wait();
 	}
+	if (TreeTileJobTile != INDEX_NONE) TreeTileJob.Wait();
 	FarLoader.Reset();
 	FarArrived.Reset();
 	Super::EndPlay(Reason);
 }
 
-ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lake, int32 ChunkRow, int32 ChunkCol, int32 Step, double HideBelow)
+ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FChunkSource& Src, int32 Step, double HideBelow)
 {
-	// Runs on a worker thread: reads only the immutable lake data.
+	// Runs on a worker thread: reads only its copy of the terrain and the tile (immutable).
 	FChunkMesh M;
-	if (!Lake) return M;
-	const FLakeTerrain& T = Lake->Terrain;
+	const FLakeTerrain& T = Src.Terrain;
+	if (!T.IsValid() && !Src.Tile) return M;
 	// Graphics G2: Step 0 is the near level on the shore: the chunk meshed at the 1 m lidar detail's spacing (HeightAt
 	// takes the detail where a tile covers the point and the grid elsewhere in the chunk).
 	const bool bFine = Step == 0;
-	const double Cell = bFine ? T.GetDetailCell() : T.GetCell();
-	const int32 Sub = bFine ? FMath::Max(1, FMath::RoundToInt(T.GetCell() / Cell)) : 1;
+	const double Cell = bFine ? T.GetDetailCell() : Src.Cell;
+	const int32 Sub = bFine ? FMath::Max(1, FMath::RoundToInt(Src.Cell / Cell)) : 1;
 	if (bFine) Step = 1;
-	const int32 N = GChunkCells * Sub / Step;
-	const double OX = T.GetOriginX(), OY = T.GetOriginY();
-	auto H = [&](int32 R, int32 C) { return bFine ? T.HeightAt(OX + R * Cell, OY + C * Cell) : T.NodeHeight(R, C); };
-	const int32 R0 = ChunkRow * GChunkCells * Sub, C0 = ChunkCol * GChunkCells * Sub;
-	const int32 MaxR = (T.GetRows() - 1) * Sub, MaxC = (T.GetCols() - 1) * Sub;
+	const int32 N = Src.Cells * Sub / Step;
+	// Node (R, C) of the chunk, counted from its corner on the chunk's spacing (Sub nodes a cell at the fine level).
+	const double OX = Src.OriginX, OY = Src.OriginY;
+	const FTerrainTile* Tile = Src.Tile.get();
+	const double Level = T.GetLevelBelowPool();
+	auto H = [&](int32 R, int32 C) -> double
+	{
+		if (bFine) return T.HeightAt(OX + R * Cell, OY + C * Cell);
+		if (Tile)
+		{
+			// World streaming: the tile's own nodes; past its edge (a normal's neighbour) the terrain's, from the next tile.
+			const int32 TR = Src.TileRow0 + R, TC = Src.TileCol0 + C;
+			if (TR >= 0 && TC >= 0 && TR <= Tile->Cells && TC <= Tile->Cells) return Tile->Node(TR, TC) + Level;
+			return T.HeightAt(OX + R * Cell, OY + C * Cell);
+		}
+		return T.NodeHeight(Src.GridRow0 + R, Src.GridCol0 + C);   // a whole grid (clamped at its edge)
+	};
+	// A whole grid's last chunk may run past its last node: those nodes repeat the edge, as NodeHeight clamps.
+	const int32 MaxR = Tile ? N * Step : ((T.GetRows() - 1) - Src.GridRow0) * Sub, MaxC = Tile ? N * Step : ((T.GetCols() - 1) - Src.GridCol0) * Sub;
+	const int32 GridR0 = (Tile ? Tile->Row * Tile->Cells + Src.TileRow0 : Src.GridRow0) * Sub;
+	const int32 GridC0 = (Tile ? Tile->Col * Tile->Cells + Src.TileCol0 : Src.GridCol0) * Sub;
 
 	M.Vertices.Reserve((N + 1) * (N + 1) + 4 * (N + 1));
 	for (int32 I = 0; I <= N; ++I)
 	{
 		for (int32 J = 0; J <= N; ++J)
 		{
-			const int32 R = FMath::Min(R0 + I * Step, MaxR), C = FMath::Min(C0 + J * Step, MaxC);
+			const int32 R = FMath::Min(I * Step, MaxR), C = FMath::Min(J * Step, MaxC);
 			const double Z = H(R, C);
 			M.Vertices.Add(FVector(OX + R * Cell, OY + C * Cell, Z) * CmPerMeter);
 			const double DZX = (H(R + Step, C) - H(R - Step, C)) / (2.0 * Step * Cell);
@@ -217,7 +215,7 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 			// banks, dry grass above, darker under woods.
 			const double Slope = 1.0 - Nrm.Z;
 			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
-			const int32 GR = R / Sub, GC = C / Sub; // the colour noise stays on the 5 m grid's cells at every level
+			const int32 GR = (GridR0 + R) / Sub, GC = (GridC0 + C) / Sub; // the colour noise stays on the grid's cells at every level
 			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
 			// Graphics G6: how close open water is (1 at the edge, 0 past 14 m): the bare clay and sand band and the
 			// material's wet band (alpha) are the waterline's, not every low flat's. A cove's head a few decimetres above
@@ -238,7 +236,26 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 				}
 			}
 			FLinearColor Col;
-			if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
+			if (Src.bGarrigue)
+			{
+				// marseille-look: the Mediterranean's dress. A pale sand and rock bed under the clear water, limestone
+				// shingle and rock at the waterline (no mud), garrigue scrub (kermes oak, rosemary, thyme) over bare
+				// limestone in 20 m patches, Aleppo pines dark under the canopy, white limestone on every steep face (the
+				// Calanques; M_Terrain draws their strata and fissures on this pale rock).
+				const float Bare = float(FMath::Clamp(1.6 * Rand01(uint32((GR / 4) * 7907 + (GC / 4) * 6469)) - 0.55 + 0.3 * Rand01(uint32(GR * 13 + GC * 101)), 0.0, 1.0));
+				const FLinearColor Scrub(0.21f, 0.22f, 0.13f), Limestone(0.58f, 0.56f, 0.50f), Pine(0.11f, 0.15f, 0.07f);
+				if (Z < -0.3) Col = FLinearColor(0.34f, 0.32f, 0.27f);
+				else
+				{
+					Col = FMath::Lerp(FMath::Lerp(Scrub, Limestone, Bare * 0.75f), Pine, float(FMath::Clamp(Canopy * 1.3, 0.0, 1.0)));
+					Col = FMath::Lerp(Col, FLinearColor(0.50f, 0.48f, 0.43f), Near);
+				}
+				// The faces: grey-white limestone (each cell a shade warmer or greyer), the scrub holding on to the gentler
+				// slopes and gullies between them.
+				const FLinearColor Face = FMath::Lerp(FLinearColor(0.47f, 0.46f, 0.42f), FLinearColor(0.56f, 0.53f, 0.47f), float(Rand01(uint32(GR * 389 + GC * 211))));
+				if (Slope > 0.12) Col = FMath::Lerp(Col, Face, float(FMath::Clamp((Slope - 0.12) * 3.5, 0.0, 1.0)));
+			}
+			else if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
 			else if (Z < 0.6)
 			{
 				// Low ground back from the edge: sedge and lush grass (the lake's flats grow over).
@@ -246,7 +263,7 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FLakeData* Lak
 				Col = FMath::Lerp(FLinearColor(0.24f, 0.28f, 0.12f), Bank, Near);
 			}
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
-			if (Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
+			if (!Src.bGarrigue && Slope > 0.08) Col = FMath::Lerp(Col, FLinearColor(0.40f, 0.33f, 0.27f), float(FMath::Clamp((Slope - 0.08) * 6.0, 0.0, 1.0)));
 			Col = Col * Noise;
 			Col.A = Near;
 			M.Colors.Add(Col);
@@ -357,7 +374,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 			TArray<FTransform> X;
 			X.Reserve(CompTrees[Id].Num());
 			for (const int32 T : CompTrees[Id]) X.Add(TreeTransform(ModelTrees[T], false, Camera, nullptr));
-			TreeComps[Id]->BatchUpdateInstancesTransforms(0, X, true, false, true);   // a teleport: static instances keep no previous transforms
+			TreeComps[Id]->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), X), true, false, true);   // a teleport: static instances keep no previous transforms
 			CompPlacedAt[Id] = Camera;
 			break;
 		}
@@ -369,7 +386,6 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	// T1 follow-up (the D3D12 regroup traces): clearing and re-adding every tree at each regroup made it a 210 ms frame
 	// on the 4090, 80 ms of game thread and 116 ms of the renderer re-adding every mid and far crown to the distance-field
 	// scene. Now only the trees that cross a band's edge move, and only their tiles' components change.
-	constexpr double kTileM = 4000.0;
 	if (TreeBand.Num() != ModelTrees.Num())
 	{
 		for (UInstancedStaticMeshComponent* C : TreeComps) if (C) C->ClearInstances();
@@ -389,13 +405,13 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		// The tile components of a placement before (SetTreeFraction) go; the tiles are made again as trees enter them.
 		for (const TPair<int32, int32>& P : TileComps) if (Keep.IsValidIndex(P.Value) && Keep[P.Value]) Keep[P.Value]->DestroyComponent();
 		TileComps.Reset();
-		TMap<FIntPoint, int32> Tiles;
+		TreeTileIds.Reset();
 		TreeTile.SetNumUninitialized(ModelTrees.Num());
 		for (int32 T = 0; T < ModelTrees.Num(); ++T)
 		{
-			const FIntPoint Cell(FMath::FloorToInt32(ModelTrees[T].Position.X / kTileM), FMath::FloorToInt32(ModelTrees[T].Position.Y / kTileM));
-			const int32* Found = Tiles.Find(Cell);
-			TreeTile[T] = Found ? *Found : Tiles.Add(Cell, Tiles.Num());
+			const FIntPoint Cell(FMath::FloorToInt32(ModelTrees[T].Position.X / kTreeTileM), FMath::FloorToInt32(ModelTrees[T].Position.Y / kTreeTileM));
+			const int32* Found = TreeTileIds.Find(Cell);
+			TreeTile[T] = Found ? *Found : TreeTileIds.Add(Cell, TreeTileIds.Num());
 		}
 		TreeBand.Init(0, ModelTrees.Num());
 		TreeComp.Init(INDEX_NONE, ModelTrees.Num());
@@ -403,12 +419,16 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	}
 	// The trees leaving their component, then the ones entering one.
 	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
+	// World streaming: on a streamed world the trees past the far crowns' cull (9 km) leave the components altogether
+	// (band 0), so a long coast's trees do not pile up in them.
+	const FWorldStreamer* St = GetStreamer();
+	const double RF2 = St && St->IsStreamed() ? FMath::Square(9500.0) : 1e300;
 	TArray<int32> Movers;
 	TArray<uint8> NewBands;
 	for (int32 T = 0; T < ModelTrees.Num(); ++T)
 	{
 		const double D2 = FVector2D::DistSquared(ModelTrees[T].Position, Camera);
-		const uint8 Band = D2 < R2 ? 1 : (D2 < RM2 && TreeMid.Num() > 0 ? 2 : 3);
+		const uint8 Band = D2 < R2 ? 1 : (D2 < RM2 && TreeMid.Num() > 0 ? 2 : (D2 < RF2 ? 3 : 0));
 		if (Band != TreeBand[T]) { Movers.Add(T); NewBands.Add(Band); }
 	}
 	for (const int32 T : Movers)
@@ -436,6 +456,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		const int32 Model = int32(I.Species) * 2 + I.Variant;
 		const bool bNear = NewBands[Mv] == 1;
 		TreeBand[T] = NewBands[Mv];
+		if (NewBands[Mv] == 0) continue;   // out of reach: in no component
 		const int32 Id = bNear ? Model : TileComponent(TreeTile[T], NewBands[Mv], Model);
 		FAdds& A = Adds.FindOrAdd(Id);
 		FTransform Proxy;
@@ -449,7 +470,9 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	for (TPair<int32, FAdds>& P : Adds)
 	{
 		UInstancedStaticMeshComponent* C = TreeComps[P.Key];
-		const FAdds& A = P.Value;
+		FAdds& A = P.Value;
+		SailingFrame::ToWorldTransforms(GetWorld(), A.X);   // made in the map frame; added in world space
+		SailingFrame::ToWorldTransforms(GetWorld(), A.Proxy);
 		const int32 First = C->GetInstanceCount();
 		C->AddInstances(A.X, false, true);
 		if (bTreeLooks && C->NumCustomDataFloats >= 3) C->SetCustomData(First, First + A.X.Num() - 1, TConstArrayView<float>(A.D), false);
@@ -483,62 +506,85 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		for (const TPair<FString, int64>& P : By) { if (K++ >= 16) break; Top += FString::Printf(TEXT(" %s %lld;"), *P.Key, P.Value); }
 		UE_LOG(LogSailing, Display, TEXT("World instances: %lld:%s"), Total, *Top);
 	}
-	if (Chunks.Num() == 0) return;
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;
 
 	FVector Cam = FVector::ZeroVector;
 	if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(this, 0)) Cam = CM->GetCameraLocation();
-	const double CamX = Cam.X / CmPerMeter, CamY = Cam.Y / CmPerMeter;
-	{ SAILING_PERF_SCOPE(Trees); UpdateModelTrees(FVector2D(CamX, CamY)); }
-	const FLakeTerrain& T = Lake->Terrain;
-	const double ChunkSize = GChunkCells * T.GetCell();
-	UpdateFarRing(FVector2D(CamX, CamY));   // inside the Terrain slice
+	// World streaming: the camera in the map frame (the render origin moves; the world's data does not).
+	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), Cam);
+	const double CamX = CamMap.X, CamY = CamMap.Y;
+	{ SAILING_PERF_SCOPE(Trees); UpdateTreeTiles(CamMap); UpdateModelTrees(CamMap); }
+	UpdateFarRing(CamMap);   // inside the Terrain slice
 
 	// Perf 1 fix 7: a chunk's wanted detail changes only as the camera moves, so look again after 20 m or half a second
-	// (every frame while chunks are queued or building). Galveston Bay has some 4,000 chunks.
+	// (every frame while chunks are queued or building).
 	const double Now = FPlatformTime::Seconds();
-	const bool bLook = Pending > 0 || Building > 0 || FVector2D::Distance(FVector2D(CamX, CamY), LodCamera) > 20.0 || Now - LodTime > 0.5;
+	const bool bLook = Pending > 0 || Building > 0 || FVector2D::Distance(CamMap, LodCamera) > 20.0 || Now - LodTime > 0.5;
 	if (bLook)
 	{
-		LodCamera = FVector2D(CamX, CamY);
+		LodCamera = CamMap;
 		LodTime = Now;
+		const int32 Unmade = UpdateChunkSet(*Lake, CamX, CamY);
 		// Wanted level of detail by distance to the camera; queue the closest chunks first.
-		TArray<int32> Order;
-		Pending = 0;
+		TArray<FChunk*> Order;
+		Pending = Unmade;
 		int32 InFlight = 0;
-		for (int32 I = 0; I < Chunks.Num(); ++I)
+		for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks)
 		{
-			FChunk& Ch = Chunks[I];
-			const double CX = T.GetOriginX() + (Ch.Row + 0.5) * ChunkSize, CY = T.GetOriginY() + (Ch.Col + 0.5) * ChunkSize;
-			const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), FVector2D(CamX, CamY)) - 0.5 * ChunkSize);
+			FChunk& Ch = *P.Value;
+			const double Size = Ch.Cells * Ch.Cell;
+			const double CX = Ch.OriginX + 0.5 * Size, CY = Ch.OriginY + 0.5 * Size;
+			const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), CamMap) - 0.5 * Size);
 			// Wide World Rendering PR 1: past the cap (the far ring's inner edge, or 20 km) a chunk is out of the scene
-			// altogether, not only culled: culling Galveston Bay's ~1,000 chunks every frame was the render thread's cost.
+			// altogether, not only culled (world streaming: past it by a margin, dropped).
 			const bool bDrawn = FarRing::NearChunkDrawn(D, NearCapM);
 			if (Ch.Mesh->GetVisibleFlag() != bDrawn) Ch.Mesh->SetVisibility(bDrawn);
 			if (!bDrawn) { InFlight += Ch.bBuilding; continue; }
-			Ch.Wanted = D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8));
+			// Steps of the 5 and 10 m grids by distance; a coarse tile (50 m offshore) is meshed at its own spacing.
+			Ch.Wanted = Ch.Cell >= 20.0 ? 1 : (D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8)));
 			// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
 			if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
+			Ch.bShadow = D < 2200.0;
 			if (Ch.bBuilding) ++InFlight;
-			if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(I); ++Pending; }
+			if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(&Ch); ++Pending; }
 		}
-		Order.Sort([&](int32 A, int32 B)
+		Order.Sort([](const FChunk& A, const FChunk& B)
 		{
 			// Unbuilt chunks first (so the whole lake appears quickly at low detail), then nearest.
-			const bool BuiltA = Chunks[A].Lod >= 0, BuiltB = Chunks[B].Lod >= 0;
+			const bool BuiltA = A.Lod >= 0, BuiltB = B.Lod >= 0;
 			if (BuiltA != BuiltB) return !BuiltA;
-			return Chunks[A].Wanted < Chunks[B].Wanted;
+			return A.Wanted < B.Wanted;
 		});
-		for (int32 Index : Order)
+		for (FChunk* ChP : Order)
 		{
 			if (InFlight >= kMaxBuildsInFlight) break;
-			FChunk& Ch = Chunks[Index];
+			FChunk& Ch = *ChP;
+			FChunkSource Src;
+			Src.Terrain = Lake->Terrain;   // a copy: shares the heights, keeps the tiles it saw
+			Src.bGarrigue = Lake->IsGarrigue();
+			if (const FWorldStreamer* St = GetStreamer(); St && St->IsStreamed())
+			{
+				Src.Tile = St->GetTile(Ch.Tile);
+				if (!Src.Tile) continue;   // dropped meanwhile
+				const Sailing::FTileEntry& E = St->GetIndex().GetTiles()[Ch.Tile];
+				Src.TileRow0 = Ch.Row * Ch.Cells - E.Row * E.Cells;
+				Src.TileCol0 = Ch.Col * Ch.Cells - E.Col * E.Cells;
+			}
+			else
+			{
+				Src.GridRow0 = FMath::RoundToInt32((Ch.OriginX - Lake->Terrain.GetOriginX()) / Ch.Cell);
+				Src.GridCol0 = FMath::RoundToInt32((Ch.OriginY - Lake->Terrain.GetOriginY()) / Ch.Cell);
+			}
+			Src.OriginX = Ch.OriginX;
+			Src.OriginY = Ch.OriginY;
+			Src.Cell = Ch.Cell;
+			Src.Cells = Ch.Cells;
 			Ch.bBuilding = true;
-			const int32 Row = Ch.Row, Col = Ch.Col, Step = Ch.Wanted;
+			const int32 Step = Ch.Wanted;
 			Ch.Lod = -2 - Step; // marks the step being built
 			const double Hide = HideBelow;
-			Ch.Future = Async(EAsyncExecution::ThreadPool, [Lake, Row, Col, Step, Hide]() { return BuildChunk(Lake, Row, Col, Step, Hide); });
+			Ch.Future = Async(EAsyncExecution::ThreadPool, [Src = MoveTemp(Src), Step, Hide]() { return BuildChunk(Src, Step, Hide); });
 			++InFlight;
 		}
 		Building = InFlight;
@@ -547,8 +593,9 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 
 	// Upload finished chunks, a few per frame.
 	int32 Uploads = 0;
-	for (FChunk& Ch : Chunks)
+	for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks)
 	{
+		FChunk& Ch = *P.Value;
 		if (!Ch.bBuilding || !Ch.Future.IsReady()) continue;
 		if (Uploads++ >= kMaxUploadsPerFrame) break;
 		// Consume moves the mesh out and frees the future's state: Get() copied it, and the future kept its own copy
@@ -558,12 +605,99 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		Ch.Mesh->CreateMeshSection_LinearColor(0, M.Vertices, M.Triangles, M.Normals, {}, M.Colors, {}, false);
 		Ch.Lod = -2 - Ch.Lod;
 		// Only chunks within about 2 km cast shadows: farther, the shadows are under a pixel but every chunk is a
-		// draw in each cascade (Galveston Bay has some 4,000 chunks; facing the shore cost 15 fps on the render thread).
-		const bool bShadow = Ch.Lod <= 2;
-		if (Ch.Mesh->CastShadow != bShadow) Ch.Mesh->SetCastShadow(bShadow);
+		// draw in each cascade (facing the shore with Galveston Bay's 4,000 chunks cost 15 fps on the render thread).
+		if (Ch.Mesh->CastShadow != Ch.bShadow) Ch.Mesh->SetCastShadow(Ch.bShadow);
 		Ch.bBuilding = false;
 		--Building;
 	}
+}
+
+const FWorldStreamer* ALakeTerrainActor::GetStreamer() const
+{
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	return GM && GM->GetStreamer().IsStarted() ? &GM->GetStreamer() : nullptr;
+}
+
+int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, double CamY)
+{
+	const FWorldStreamer* St = GetStreamer();
+	if (!St) return 0;
+	const uint32 Gen = St->GetGeneration();
+	// Again when the camera has moved a quarter of a chunk or the resident tiles changed.
+	if (Gen == ChunkGeneration && FVector2D::Distance(FVector2D(CamX, CamY), ChunkCamera) < 300.0) return 0;
+	ChunkGeneration = Gen;
+	ChunkCamera = FVector2D(CamX, CamY);
+	const Sailing::FTileIndex& Index = St->GetIndex();
+	// Made within the cap and a chunk's diagonal; dropped past it and 2 km more (the gap keeps a chunk on the edge from
+	// coming and going), or when its tile is no longer resident.
+	const double MakeM = NearCapM + 1900.0, DropM = NearCapM + 4000.0;
+	const FLakeTerrain& T = Lake.Terrain;
+	int32 Made = 0, Unmade = 0;
+	constexpr int32 kMaxMadePerLook = 24;   // components registered a look (a few hundred at the start, over a few frames)
+	for (int32 K = 0; K < int32(Index.GetTiles().size()); ++K)
+	{
+		const Sailing::FTileEntry& E = Index.GetTiles()[K];
+		if (!St->IsResident(K) || Index.DistanceTo(E, CamX, CamY) > MakeM) continue;
+		const int32 Cells = FMath::Min(E.Cells, ChunkCellsFor(E.Cell));
+		const int32 Per = FMath::Max(1, E.Cells / Cells);
+		double TX0, TY0;
+		Index.Corner(E, TX0, TY0);
+		for (int32 SR = 0; SR < Per; ++SR)
+			for (int32 SC = 0; SC < Per; ++SC)
+			{
+				const FIntPoint Key(E.Row * Per + SR, E.Col * Per + SC);
+				if (Chunks.Contains(Key)) continue;
+				const double OX = TX0 + SR * Cells * E.Cell, OY = TY0 + SC * Cells * E.Cell;
+				// A whole grid's partial last tile: no chunk past the grid's last node.
+				if (!St->IsStreamed() && (OX >= T.GetOriginX() + (T.GetRows() - 1) * E.Cell - 0.5 * E.Cell || OY >= T.GetOriginY() + (T.GetCols() - 1) * E.Cell - 0.5 * E.Cell)) continue;
+				const double Size = Cells * E.Cell;
+				const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(OX + 0.5 * Size, OY + 0.5 * Size), FVector2D(CamX, CamY)) - 0.5 * Size);
+				if (D > MakeM || Made >= kMaxMadePerLook) { if (D <= MakeM) ++Unmade; continue; }
+				TUniquePtr<FChunk> Ch = MakeUnique<FChunk>();
+				Ch->Tile = K;
+				Ch->Row = Key.X;
+				Ch->Col = Key.Y;
+				Ch->Cells = Cells;
+				Ch->Cell = E.Cell;
+				Ch->OriginX = OX;
+				Ch->OriginY = OY;
+				Ch->bHasDetail = T.HasDetailIn(OX, OY, OX + Size, OY + Size);
+				UProceduralMeshComponent* Mesh = NewObject<UProceduralMeshComponent>(this);
+				Mesh->SetupAttachment(RootComponent);
+				Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				Mesh->bUseAsyncCooking = true;
+				Mesh->RegisterComponent();
+				Mesh->SetMaterial(0, TerrainMaterial);
+				Mesh->SetCullDistance(20000.f * 100.f); // past 20 km the land is a sliver on the horizon, under the haze
+				Ch->Mesh = Mesh;
+				Chunks.Add(Key, MoveTemp(Ch));
+				++Made;
+				++ChunksMade;
+			}
+	}
+	// Dropped: out of reach, or its tile gone.
+	TArray<FIntPoint> Drop;
+	for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks)
+	{
+		const FChunk& Ch = *P.Value;
+		const double Size = Ch.Cells * Ch.Cell;
+		const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(Ch.OriginX + 0.5 * Size, Ch.OriginY + 0.5 * Size), FVector2D(CamX, CamY)) - 0.5 * Size);
+		if (D > DropM || !St->IsResident(Ch.Tile)) Drop.Add(P.Key);
+	}
+	for (const FIntPoint& Key : Drop)
+	{
+		TUniquePtr<FChunk>& Ch = Chunks[Key];
+		if (Ch->bBuilding) { Ch->Future.Wait(); --Building; }
+		if (Ch->Mesh) Ch->Mesh->DestroyComponent();
+		Chunks.Remove(Key);
+		++ChunksDropped;
+	}
+	if (Made > 0 || Drop.Num() > 0)
+	{
+		UE_LOG(LogSailing, Verbose, TEXT("Terrain chunks: %d made, %d dropped, %d now"), Made, Drop.Num(), Chunks.Num());
+	}
+	if (Made >= kMaxMadePerLook) ChunkGeneration = 0;   // more to make: look again next time
+	return Unmade;
 }
 
 int32 ALakeTerrainActor::GetFarTilesVisible() const
@@ -575,7 +709,7 @@ int32 ALakeTerrainActor::GetFarTilesVisible() const
 
 void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 {
-	FarLoader.Poll();
+	FarLoader.Poll(Camera);
 	const FFarRingData* Ring = FarLoader.Data();
 	if (!Ring) return;
 	if (FarTiles.Num() != Ring->Tiles.Num())
@@ -584,7 +718,7 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 		if (FarMaterialBase)
 		{
 			const FLakeData* Lake = GetLake();
-			const double ChunkM = Lake ? GChunkCells * Lake->Terrain.GetCell() : 1280.0;
+			const double ChunkM = Lake && Lake->Terrain.IsValid() ? GChunkCells * Lake->Terrain.GetCell() : 1280.0;
 			FarMaterial = UMaterialInstanceDynamic::Create(FarMaterialBase, this);
 			FarMaterial->SetScalarParameterValue(TEXT("InnerCm"), float(Ring->InnerM * CmPerMeter));
 			FarMaterial->SetScalarParameterValue(TEXT("BandCm"), float(FarRing::BandEndM(Ring->InnerM, ChunkM) * CmPerMeter));
@@ -626,18 +760,124 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 		UE_LOG(LogSailing, Display, TEXT("Far ring: %d tiles in (%d failed), near terrain to %.0f km, longest game-thread call %.2f ms"),
 			FarLoader.NumArrived(), FarLoader.NumFailed(), NearCapM / 1000.0, FarLoader.LongestCallMs());
 	}
-	// Tiles in or out of the band as the camera moves (whole tiles inside the burial or past the outer edge are left out).
+	// Tiles in or out of the band as the camera moves (whole tiles inside the burial or past the outer edge are left out);
+	// world streaming: tiles past the loader's reach and another tile are dropped (and asked for again if it comes back).
 	if (Added > 0 || FVector2D::Distance(Camera, FarCamera) > 250.0)
 	{
 		FarCamera = Camera;
+		const double DropM = FarLoader.RequestM() + Ring->TileM;
 		for (int32 K = 0; K < FarTiles.Num(); ++K)
 		{
 			UStaticMeshComponent* C = FarTiles[K];
 			if (!C) continue;
+			if (FarRing::TileDistance(*Ring, Ring->Tiles[K], Camera) > DropM)
+			{
+				C->DestroyComponent();
+				FarTiles[K] = nullptr;
+				FarLoader.Release(K);
+				++FarDropped;
+				continue;
+			}
 			const bool bShow = FarRing::TileVisible(*Ring, Ring->Tiles[K], Camera);
 			if (C->GetVisibleFlag() != bShow) C->SetVisibility(bShow);
 		}
 	}
+}
+
+void ALakeTerrainActor::RemoveTreesInHouses(const FLakeData& Lake, TArray<FTreeInstance>& Trees)
+{
+	if (Lake.Houses.Num() == 0) return;
+	constexpr double Cell = 50.0;
+	TMap<FIntPoint, TArray<int32, TInlineAllocator<4>>> Grid;
+	for (int32 K = 0; K < Lake.Houses.Num(); ++K)
+	{
+		const FLakeHouse& H = Lake.Houses[K];
+		Grid.FindOrAdd(FIntPoint(FMath::FloorToInt32(H.X / Cell), FMath::FloorToInt32(H.Y / Cell))).Add(K);
+	}
+	Trees.RemoveAll([&](const FTreeInstance& I)
+	{
+		const FIntPoint C(FMath::FloorToInt32(I.Position.X / Cell), FMath::FloorToInt32(I.Position.Y / Cell));
+		for (int32 Dx = -1; Dx <= 1; ++Dx) for (int32 Dy = -1; Dy <= 1; ++Dy)
+		{
+			const auto* List = Grid.Find(C + FIntPoint(Dx, Dy));
+			if (!List) continue;
+			for (const int32 K : *List)
+			{
+				for (const FLakeHouse::FWing& W : Lake.Houses[K].Wings)
+				{
+					const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+					const double Dx2 = I.Position.X - W.X, Dy2 = I.Position.Y - W.Y;
+					const double A = Dx2 * FMath::Cos(Yaw) + Dy2 * FMath::Sin(Yaw), B = -Dx2 * FMath::Sin(Yaw) + Dy2 * FMath::Cos(Yaw);
+					if (FMath::Abs(A) < W.HalfLength + 2.0 && FMath::Abs(B) < W.HalfWidth + 2.0) return true;
+				}
+			}
+		}
+		return false;
+	});
+}
+
+void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
+{
+	// World streaming: the model trees of each tile as it becomes resident, placed on a worker one tile at a time (the
+	// canopy map near the water, as PlaceTreeInstances does over a whole grid; none where the lidar crowns stand or in a
+	// house), and added to the trees the bands draw.
+	const FWorldStreamer* St = GetStreamer();
+	const FLakeData* Lake = GetLake();
+	if (!St || !St->IsStreamed() || !Lake || TreeModels.Num() == 0) return;
+	if (TreeTileJobTile != INDEX_NONE)
+	{
+		if (!TreeTileJob.IsReady()) return;
+		TArray<FTreeInstance> New = TreeTileJob.Consume();
+		TreeTilesPlaced.Add(TreeTileJobTile);
+		TreeTileJobTile = INDEX_NONE;
+		if (New.Num() > 0 && TreeBand.Num() == ModelTrees.Num())
+		{
+			const int32 First = ModelTrees.Num();
+			ModelTrees.Append(MoveTemp(New));
+			TreeBand.SetNumZeroed(ModelTrees.Num());
+			TreeComp.SetNum(ModelTrees.Num());
+			TreeSlot.SetNum(ModelTrees.Num());
+			TreeTile.SetNum(ModelTrees.Num());
+			for (int32 T = First; T < ModelTrees.Num(); ++T)
+			{
+				TreeComp[T] = INDEX_NONE;
+				TreeSlot[T] = INDEX_NONE;
+				const FIntPoint Cell(FMath::FloorToInt32(ModelTrees[T].Position.X / kTreeTileM), FMath::FloorToInt32(ModelTrees[T].Position.Y / kTreeTileM));
+				const int32* Found = TreeTileIds.Find(Cell);
+				TreeTile[T] = Found ? *Found : TreeTileIds.Add(Cell, TreeTileIds.Num());
+			}
+			TreeCenter = FVector2D(1e12, 1e12);   // band them on the next regroup
+		}
+		else if (New.Num() > 0) ModelTrees.Append(MoveTemp(New));   // before the first regroup: banded with the rest
+	}
+	// The nearest resident tile not placed yet.
+	const Sailing::FTileIndex& Index = St->GetIndex();
+	int32 Next = INDEX_NONE;
+	double Best = 1e300;
+	for (int32 K = 0; K < int32(Index.GetTiles().size()); ++K)
+	{
+		if (!St->IsResident(K) || TreeTilesPlaced.Contains(K)) continue;
+		const double D = Index.DistanceTo(Index.GetTiles()[K], Camera.X, Camera.Y);
+		if (D < Best) { Best = D; Next = K; }
+	}
+	if (Next == INDEX_NONE) return;
+	double X0, Y0;
+	Index.Corner(Index.GetTiles()[Next], X0, Y0);
+	const double TileM = Index.GetTileM();
+	TreeTileJobTile = Next;
+	TreeTileJob = Async(EAsyncExecution::ThreadPool, [Terrain = Lake->Terrain, Lake, X0, Y0, TileM, Fraction = TreeFraction, Band = CrownBand]()
+	{
+		TArray<FTreeInstance> Out;
+		const FLakeTerrain Window = Terrain.WindowAround(X0 + 0.5 * TileM, Y0 + 0.5 * TileM, 0.5 * TileM);
+		PlaceTreeInstances(Window, Fraction, Out);
+		Out.RemoveAll([&](const FTreeInstance& I)
+		{
+			if (I.Position.X < X0 || I.Position.Y < Y0 || I.Position.X >= X0 + TileM || I.Position.Y >= Y0 + TileM) return true;
+			return Band.IsValid() && Band->Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0)));
+		});
+		RemoveTreesInHouses(*Lake, Out);
+		return Out;
+	});
 }
 
 void ALakeTerrainActor::PlaceTrees()
@@ -652,35 +892,25 @@ void ALakeTerrainActor::PlaceTrees()
 	// Graphics G6: no tree inside a G2 house (the canopy grid only knew the OSM footprints).
 	if (Lake->Houses.Num() > 0)
 	{
-		constexpr double Cell = 50.0;
-		TMap<FIntPoint, TArray<int32, TInlineAllocator<4>>> Grid;
-		for (int32 K = 0; K < Lake->Houses.Num(); ++K)
-		{
-			const FLakeHouse& H = Lake->Houses[K];
-			Grid.FindOrAdd(FIntPoint(FMath::FloorToInt32(H.X / Cell), FMath::FloorToInt32(H.Y / Cell))).Add(K);
-		}
 		const int32 Before = Trees.Num();
-		Trees.RemoveAll([&](const FTreeInstance& I)
-		{
-			const FIntPoint C(FMath::FloorToInt32(I.Position.X / Cell), FMath::FloorToInt32(I.Position.Y / Cell));
-			for (int32 Dx = -1; Dx <= 1; ++Dx) for (int32 Dy = -1; Dy <= 1; ++Dy)
-			{
-				const auto* List = Grid.Find(C + FIntPoint(Dx, Dy));
-				if (!List) continue;
-				for (const int32 K : *List)
-				{
-					for (const FLakeHouse::FWing& W : Lake->Houses[K].Wings)
-					{
-						const double Yaw = FMath::DegreesToRadians(W.YawDeg);
-						const double Dx2 = I.Position.X - W.X, Dy2 = I.Position.Y - W.Y;
-						const double A = Dx2 * FMath::Cos(Yaw) + Dy2 * FMath::Sin(Yaw), B = -Dx2 * FMath::Sin(Yaw) + Dy2 * FMath::Cos(Yaw);
-						if (FMath::Abs(A) < W.HalfLength + 2.0 && FMath::Abs(B) < W.HalfWidth + 2.0) return true;
-					}
-				}
-			}
-			return false;
-		});
+		RemoveTreesInHouses(*Lake, Trees);
 		UE_LOG(LogSailing, Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
+	}
+	// World streaming: on a streamed world these are the trees of the tiles resident now; the others are placed as their
+	// tiles arrive (UpdateTreeTiles).
+	if (const FWorldStreamer* St = GetStreamer(); St && St->IsStreamed())
+	{
+		for (int32 K = 0; K < int32(St->GetIndex().GetTiles().size()); ++K) if (St->IsResident(K)) TreeTilesPlaced.Add(K);
+		if (Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees")))
+		{
+			TSharedPtr<TSet<FIntPoint>> Band = MakeShared<TSet<FIntPoint>>();
+			for (const FLakeCrown& C : Lake->Crowns)
+			{
+				const FIntPoint Cell(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f));
+				for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Band->Add(Cell + FIntPoint(Dx, Dy));
+			}
+			CrownBand = Band;
+		}
 	}
 
 	// Visual V6 (Medium and High): Nanite trees built in Blender (four species, two variants each), swaying in the wind
@@ -827,10 +1057,10 @@ void ALakeTerrainActor::PlaceTrees()
 			Trunk.Add(FTransform(FRotator::ZeroRotator, Base + FVector(0, 0, Height * 20.f), FVector(0.4f, 0.4f, Height * 0.4f)));
 		}
 	}
-	TreeMeshes[0]->AddInstances(Oak, false, true);
-	TreeMeshes[1]->AddInstances(Elm, false, true);
-	TreeMeshes[2]->AddInstances(Cedar, false, true);
-	TreeMeshes[3]->AddInstances(Trunk, false, true);
+	TreeMeshes[0]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Oak), false, true);
+	TreeMeshes[1]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Elm), false, true);
+	TreeMeshes[2]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Cedar), false, true);
+	TreeMeshes[3]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Trunk), false, true);
 	UE_LOG(LogSailing, Display, TEXT("Trees: %d oak, %d cedar elm, %d red cedar"), Oak.Num(), Elm.Num(), Cedar.Num());
 	bTreesPlaced = true;
 }
@@ -890,7 +1120,7 @@ void ALakeTerrainActor::PlaceReeds()
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		C->SetCullDistances(0, 400.f * 100.f);
 		C->RegisterComponent();
-		C->AddInstances(Out[Kind], false, true);
+		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Out[Kind]), false, true);
 		ReedModels.Add(C);
 	}
 	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail and %d rush clumps (first at %s)"), Out[0].Num(), Out[1].Num(),
@@ -930,7 +1160,7 @@ void ALakeTerrainActor::PlaceBuildings()
 		}
 		Lists[Hash(K) % 3].Add(FTransform(FRotator(0, B.YawDeg, 0), FVector(B.X, B.Y, B.Ground + B.Height * 0.5) * CmPerMeter, FVector(B.Length, B.Width, B.Height)));
 	}
-	for (int32 K = 0; K < 3; ++K) BuildingMeshes[K]->AddInstances(Lists[K], false, true);
+	for (int32 K = 0; K < 3; ++K) BuildingMeshes[K]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Lists[K]), false, true);
 }
 
 bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
@@ -948,7 +1178,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		HouseTiles(Lake, ByTile);
 		TMap<FIntPoint, FKitGeometry> Tiles;
 		int32 Procedural = 0;
-		const FString Prefix = TEXT("Houses_") + Lake.FileName;
+		const FString Prefix = TEXT("Houses_") + Lake.SourceFor(TEXT("houses"));   // a composed world bakes nothing of its own: its member's tiles
 		for (const auto& KV : ByTile)
 		{
 			FKitGeometry& G = Tiles.Add(KV.Key);
@@ -1119,14 +1349,14 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	}
 	for (int32 K = 0; K < 3; ++K)
 	{
-		Ism[K]->AddInstances(X[K], false, true);
+		Ism[K]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), X[K]), false, true);
 		for (int32 I = 0; I < X[K].Num(); ++I) Ism[K]->SetCustomData(I, TArrayView<const float>(&D[K][Stride * I], Stride), false);
 		Ism[K]->MarkRenderStateDirty();
 	}
 	int32 NearCount = 0;
 	for (int32 N = 0; N < NumNear && bNear; ++N)
 	{
-		NearIsm[N]->AddInstances(NearX[N], false, true);
+		NearIsm[N]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), NearX[N]), false, true);
 		for (int32 I = 0; I < NearX[N].Num(); ++I) NearIsm[N]->SetCustomData(I, TArrayView<const float>(&NearD[N][Stride * I], Stride), false);
 		NearIsm[N]->MarkRenderStateDirty();
 		NearCount += NearX[N].Num();
@@ -1134,7 +1364,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	for (int32 Which = 0; Which < 2; ++Which)
 	{
 		if (!DockIsm[Which]) continue;
-		DockIsm[Which]->AddInstances(DockX[Which], false, true);
+		DockIsm[Which]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), DockX[Which]), false, true);
 		for (int32 I = 0; I < DockX[Which].Num(); ++I) DockIsm[Which]->SetCustomData(I, TArrayView<const float>(&DockD[Which][Stride * I], Stride), false);
 		DockIsm[Which]->MarkRenderStateDirty();
 	}
@@ -1244,6 +1474,6 @@ void ALakeTerrainActor::PlaceBridgesAndDocks()
 	{
 		DockMesh->CreateMeshSection_LinearColor(0, V, Tri, N, {}, {}, {}, false);
 	}
-	BridgeDecks->AddInstances(Decks, false, true);
-	Pilings->AddInstances(Piles, false, true);
+	BridgeDecks->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Decks), false, true);
+	Pilings->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Piles), false, true);
 }

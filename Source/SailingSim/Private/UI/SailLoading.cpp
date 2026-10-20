@@ -6,6 +6,7 @@
 #include "SailboatPawn.h"
 #include "SailingEnvironment.h"
 #include "LakeTerrainActor.h"
+#include "SailingGameMode.h"
 #include "TrafficManager.h"
 #include "Drills.h"
 #include "EngineUtils.h"
@@ -135,6 +136,12 @@ float SSailLoading::Progress(FString& Stage) const
 {
 	UWorld* W = World.Get();
 	if (!W) { Stage = TEXT("Loading"); return 0.f; }
+	// World streaming (docs/world-streaming): the far coast's tiles within reach of the start are in (the near tiles were
+	// read before the map started), and the physics' window has been marched (a streamed world re-marches it on the way).
+	bool bFar = true;
+	for (TActorIterator<ALakeTerrainActor> It(W); It; ++It) bFar = It->IsFarRingSettled();
+	const ASailingGameMode* GM = W->GetAuthGameMode<ASailingGameMode>();
+	const bool bSea = !GM || !GM->IsWindowMarching();
 	// Stage 1: the shore around the start streamed in (the terrain's chunk queue empties).
 	float Shore = 1.f;
 	for (TActorIterator<ALakeTerrainActor> It(W); It; ++It)
@@ -150,17 +157,18 @@ float SSailLoading::Progress(FString& Stage) const
 	const bool bShaders = FShaderPipelineCache::NumPrecompilesRemaining() == 0;
 	bool bTraffic = true;
 	for (TActorIterator<ATrafficManager> It(W); It; ++It) bTraffic = It->IsPopulated();
-	const bool Done[5] = { Shore >= 1.f, bClouds, bBoat, bShaders, bTraffic };
-	static const TCHAR* Names[5] = { TEXT("Streaming shoreline and trees"), TEXT("Baking cloud weather map"), TEXT("Rigging the boat and crew"),
-		TEXT("Warming water and wake shaders"), TEXT("Placing traffic") };
+	constexpr int32 N = 7;
+	const bool Done[N] = { bFar, Shore >= 1.f, bSea, bClouds, bBoat, bShaders, bTraffic };
+	static const TCHAR* Names[N] = { TEXT("Reading the far coast"), TEXT("Streaming shoreline and trees"), TEXT("Marching the sea"),
+		TEXT("Baking cloud weather map"), TEXT("Rigging the boat and crew"), TEXT("Warming water and wake shaders"), TEXT("Placing traffic") };
 	float Sum = 0.f;
 	Stage = TEXT("Ready");
-	for (int32 I = 0; I < 5; ++I)
+	for (int32 I = 0; I < N; ++I)
 	{
-		Sum += Done[I] ? 1.f : (I == 0 ? Shore : 0.f);
+		Sum += Done[I] ? 1.f : (I == 1 ? Shore : 0.f);
 		if (!Done[I] && Stage == TEXT("Ready")) Stage = Names[I];
 	}
-	return Sum / 5.f;
+	return Sum / float(N);
 }
 
 bool SSailLoading::IsReady() const
