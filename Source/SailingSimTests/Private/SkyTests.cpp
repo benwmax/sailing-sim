@@ -199,7 +199,7 @@ bool FSkyStormSunshineTest::RunTest(const FString&)
 /**
  * The shore's trees stand where the canopy map has trees (Visual V6): over the lake bake, the trees per hectare in each
  * 100 m cell follow the baked canopy (correlation over 0.8), none stand in the water or where the canopy is bare, and
- * every species appears.
+ * every species of the lake's mix appears (T2 species: the cross timbers' six, the waterline willows and cottonwoods fewer).
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldCanopyTest, "SailingSim.Visual.Canopy", SkyFlags)
 bool FWorldCanopyTest::RunTest(const FString&)
@@ -208,7 +208,7 @@ bool FWorldCanopyTest::RunTest(const FString&)
 	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
 	const FLakeTerrain& T = Lake.Terrain;
 	TArray<FTreeInstance> Trees;
-	PlaceTreeInstances(T, 1.f, Trees);
+	PlaceTreeInstances(T, 1.f, Trees, ETreeRegion::CrossTimbers);
 	TestTrue(TEXT("Trees placed"), Trees.Num() > 10000);
 	// Count per 100 m cell.
 	TMap<FIntPoint, int32> Counts;
@@ -242,15 +242,84 @@ bool FWorldCanopyTest::RunTest(const FString&)
 		Sx += Canopy; Sy += C; Sxx += Canopy * Canopy; Syy += C * C; Sxy += Canopy * C; ++N;
 	}
 	const double Corr = (N * Sxy - Sx * Sy) / FMath::Sqrt(FMath::Max((N * Sxx - Sx * Sx) * (N * Syy - Sy * Sy), 1e-9));
-	AddInfo(FString::Printf(TEXT("%d trees in %d cells: correlation with the canopy %.2f; in water %d, on bare ground %d; live oak %d, post oak %d, cedar elm %d, red cedar %d"),
-		Trees.Num(), N, Corr, InWater, OnBare, Species[0], Species[1], Species[2], Species[3]));
+	AddInfo(FString::Printf(TEXT("%d trees in %d cells: correlation with the canopy %.2f; in water %d, on bare ground %d; live oak %d, post oak %d, cedar elm %d, red cedar %d, sugarberry %d, black willow %d, cottonwood %d"),
+		Trees.Num(), N, Corr, InWater, OnBare, Species[0], Species[1], Species[2], Species[3], Species[4], Species[5], Species[6]));
 	TestTrue(TEXT("Tree counts follow the canopy map"), Corr > 0.8);
 	TestEqual(TEXT("No trees in the water"), InWater, 0);
 	TestTrue(TEXT("Hardly any on bare ground (edges of canopy cells)"), OnBare < Trees.Num() / 50);
-	for (int32 S = 0; S < int32(ETreeSpecies::Count); ++S) TestTrue(TEXT("Every species grows"), Species[S] > Trees.Num() / 20);
+	for (ETreeSpecies S : { ETreeSpecies::LiveOak, ETreeSpecies::PostOak, ETreeSpecies::CedarElm, ETreeSpecies::RedCedar, ETreeSpecies::Sugarberry })
+		TestTrue(TEXT("Every upland species grows"), Species[int32(S)] > Trees.Num() / 20);
+	TestTrue(TEXT("Black willows by the water"), Species[int32(ETreeSpecies::BlackWillow)] > Trees.Num() / 400);
+	TestTrue(TEXT("Cottonwoods by the water"), Species[int32(ETreeSpecies::Cottonwood)] > Trees.Num() / 400);
+	TestEqual(TEXT("No salt cedar on the lake"), Species[int32(ETreeSpecies::SaltCedar)], 0);
 	return true;
 }
 
+/**
+ * T2 species (docs/trees-2): each world's own mix. The lake's black willows and cottonwoods stand only on the low ground by
+ * the water and the willows lean toward it (their models lean to +X: the yaw turns that side downhill); Galveston grows
+ * live oak most, salt cedar on its low ground, and no post oak, red cedar, willow or cottonwood; Marseille keeps V6's four.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldTreeSpeciesTest, "SailingSim.Visual.TreeSpecies", SkyFlags)
+bool FWorldTreeSpeciesTest::RunTest(const FString&)
+{
+	TestEqual(TEXT("The lake is cross timbers"), int32(TreeRegionFor(TEXT("RayHubbard"))), int32(ETreeRegion::CrossTimbers));
+	TestEqual(TEXT("Galveston is Gulf coast"), int32(TreeRegionFor(TEXT("GalvestonBay"))), int32(ETreeRegion::GulfCoast));
+	TestEqual(TEXT("The Texas coast is Gulf coast"), int32(TreeRegionFor(TEXT("TexasCoast"))), int32(ETreeRegion::GulfCoast));
+	TestEqual(TEXT("Marseille keeps the classic mix"), int32(TreeRegionFor(TEXT("Marseille"))), int32(ETreeRegion::Classic));
+
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	const FLakeTerrain& T = Lake.Terrain;
+	TArray<FTreeInstance> Trees;
+	PlaceTreeInstances(T, 1.f, Trees, ETreeRegion::CrossTimbers);
+	int32 Waterline = 0, HighWaterline = 0, Willows = 0, Facing = 0;
+	for (const FTreeInstance& I : Trees)
+	{
+		if (I.Species != ETreeSpecies::BlackWillow && I.Species != ETreeSpecies::Cottonwood) continue;
+		++Waterline;
+		HighWaterline += I.Ground >= 2.5f;
+		if (I.Species != ETreeSpecies::BlackWillow) continue;
+		const double GX = T.HeightAt(I.Position.X + 10.0, I.Position.Y) - T.HeightAt(I.Position.X - 10.0, I.Position.Y);
+		const double GY = T.HeightAt(I.Position.X, I.Position.Y + 10.0) - T.HeightAt(I.Position.X, I.Position.Y - 10.0);
+		if (GX * GX + GY * GY < 0.01) continue;
+		++Willows;
+		const FVector2D Lean(FMath::Cos(FMath::DegreesToRadians(I.Yaw)), FMath::Sin(FMath::DegreesToRadians(I.Yaw)));
+		Facing += FVector2D::DotProduct(Lean, FVector2D(-GX, -GY).GetSafeNormal()) > 0.85;
+	}
+	AddInfo(FString::Printf(TEXT("Lake: %d waterline trees (%d above 2.5 m), %d willows on a slope, %d leaning downhill"), Waterline, HighWaterline, Willows, Facing));
+	TestTrue(TEXT("Waterline trees grow"), Waterline > 100);
+	TestEqual(TEXT("Willows and cottonwoods only by the water"), HighWaterline, 0);
+	TestTrue(TEXT("Willows lean toward the water"), Willows > 0 && Facing >= Willows * 95 / 100);
+
+	TArray<FTreeInstance> Classic;
+	PlaceTreeInstances(T, 1.f, Classic, ETreeRegion::Classic);
+	int32 New = 0;
+	for (const FTreeInstance& I : Classic) New += int32(I.Species) > int32(ETreeSpecies::RedCedar);
+	TestEqual(TEXT("The classic mix is V6's four species"), New, 0);
+
+	FLakeData Bay;
+	if (!TestTrue(TEXT("Galveston Bay data loads"), Bay.Load(FLakeData::DefaultDirectory(), TEXT("GalvestonBay")))) return false;
+	TArray<FTreeInstance> Coast;
+	if (Bay.Crowns.Num() > 0) PlaceCrownTrees(Bay.Terrain, Bay.Crowns, 1.f, Coast, ETreeRegion::GulfCoast);
+	else PlaceTreeInstances(Bay.Terrain, 1.f, Coast, ETreeRegion::GulfCoast);
+	int32 Species[int32(ETreeSpecies::Count)] = {}, SaltHigh = 0;
+	for (const FTreeInstance& I : Coast)
+	{
+		Species[int32(I.Species)]++;
+		SaltHigh += I.Species == ETreeSpecies::SaltCedar && Bay.Terrain.HeightAt(I.Position.X, I.Position.Y) > 6.0;
+	}
+	AddInfo(FString::Printf(TEXT("Galveston: %d trees; live oak %d, sugarberry %d, cedar elm %d, salt cedar %d (%d above 6 m)"), Coast.Num(),
+		Species[int32(ETreeSpecies::LiveOak)], Species[int32(ETreeSpecies::Sugarberry)], Species[int32(ETreeSpecies::CedarElm)], Species[int32(ETreeSpecies::SaltCedar)], SaltHigh));
+	TestTrue(TEXT("Galveston has trees"), Coast.Num() > 1000);
+	for (ETreeSpecies S : { ETreeSpecies::PostOak, ETreeSpecies::RedCedar, ETreeSpecies::BlackWillow, ETreeSpecies::Cottonwood })
+		TestEqual(TEXT("No cross-timbers or lake-waterline species on the coast"), Species[int32(S)], 0);
+	const int32 Most = FMath::Max(FMath::Max(Species[int32(ETreeSpecies::Sugarberry)], Species[int32(ETreeSpecies::CedarElm)]), Species[int32(ETreeSpecies::SaltCedar)]);
+	TestTrue(TEXT("Live oak the commonest"), Species[int32(ETreeSpecies::LiveOak)] > Most);
+	TestTrue(TEXT("Salt cedar grows"), Species[int32(ETreeSpecies::SaltCedar)] > Coast.Num() / 100);
+	TestTrue(TEXT("Salt cedar mostly on the low ground"), SaltHigh < Species[int32(ETreeSpecies::SaltCedar)] / 4);
+	return true;
+}
 #if WITH_EDITORONLY_DATA
 #include "Engine/VolumeTexture.h"
 #include "Engine/Texture2D.h"

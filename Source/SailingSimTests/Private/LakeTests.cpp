@@ -252,7 +252,7 @@ bool FSailingCrownsTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("%d crowns, %d within 400 m of the water, %d red cedar"), Lake.Crowns.Num(), Full, Cedar));
 	TestTrue(TEXT("Most kept crowns are in the full-detail band"), Full > Lake.Crowns.Num() / 2);
 	TArray<FTreeInstance> Trees;
-	PlaceCrownTrees(Lake.Terrain, Lake.Crowns, 1.f, Trees);
+	PlaceCrownTrees(Lake.Terrain, Lake.Crowns, 1.f, Trees, ETreeRegion::CrossTimbers);
 	TSet<FIntPoint> CrownCells;
 	for (const FLakeCrown& C : Lake.Crowns) CrownCells.Add(FIntPoint(FMath::FloorToInt32(C.X / 100.f), FMath::FloorToInt32(C.Y / 100.f)));
 	int32 Placed = 0, InWater = 0, MapInBand = 0, TooTall = 0, Tall = 0;

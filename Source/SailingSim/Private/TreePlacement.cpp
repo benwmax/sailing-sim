@@ -11,9 +11,58 @@ namespace
 		return X;
 	}
 	float TreeRand(uint32 Seed) { return (TreeHash(Seed) & 0xFFFFFF) / float(0xFFFFFF); }
+
+	// T2 species: the low ground by the water (m above it) where the waterline trees grow: the lake's bank above the pool,
+	// the coast's above MLLW (its marsh edges and the spoil banks' salt cedar).
+	constexpr float kLakeWaterlineM = 2.5f;
+	constexpr float kCoastWaterlineM = 2.0f;
+
+	bool LeansToWater(ETreeSpecies S) { return S == ETreeSpecies::BlackWillow || S == ETreeSpecies::Cottonwood || S == ETreeSpecies::SaltCedar; }
+
+	// The models lean toward +X (build_trees.py's "stemmed" trees): turn that side downhill, to the water, within 25 deg.
+	float YawToWater(const Sailing::FLakeTerrain& T, double X, double Y, float Jitter, float Fallback)
+	{
+		const double GX = T.HeightAt(X + 10.0, Y) - T.HeightAt(X - 10.0, Y), GY = T.HeightAt(X, Y + 10.0) - T.HeightAt(X, Y - 10.0);
+		if (GX * GX + GY * GY < 0.01) return Fallback;
+		return float(FMath::RadiansToDegrees(FMath::Atan2(-GY, -GX))) + (Jitter * 2.f - 1.f) * 25.f;
+	}
+
+	ETreeSpecies CanopySpecies(ETreeRegion Region, float Kind, float Ground, float U)
+	{
+		switch (Region)
+		{
+		case ETreeRegion::CrossTimbers:
+			// By the water: black willow most, cottonwood, and the upland mix behind them.
+			if (Ground < kLakeWaterlineM && U < 0.75f) return U < 0.45f ? ETreeSpecies::BlackWillow : ETreeSpecies::Cottonwood;
+			return Kind < 0.12f ? ETreeSpecies::RedCedar : (Kind < 0.22f ? ETreeSpecies::LiveOak : (Kind < 0.55f ? ETreeSpecies::PostOak
+				: (Kind < 0.78f ? ETreeSpecies::CedarElm : ETreeSpecies::Sugarberry)));
+		case ETreeRegion::GulfCoast:
+			// Salt cedar on the low ground by the water; live oak and sugarberry (hackberry) on the ridges, a few cedar elms.
+			if (Ground < kCoastWaterlineM && U < 0.7f) return ETreeSpecies::SaltCedar;
+			return Kind < 0.5f ? ETreeSpecies::LiveOak : (Kind < 0.78f ? ETreeSpecies::Sugarberry : (Kind < 0.9f ? ETreeSpecies::CedarElm : ETreeSpecies::SaltCedar));
+		default:
+			return Kind < 0.12f ? ETreeSpecies::RedCedar : (Kind < 0.3f ? ETreeSpecies::LiveOak : (Kind < 0.66f ? ETreeSpecies::PostOak : ETreeSpecies::CedarElm));
+		}
+	}
 }
 
-void PlaceTreeInstances(const Sailing::FLakeTerrain& T, float Fraction, TArray<FTreeInstance>& Out)
+ETreeRegion TreeRegionFor(const FString& LakeName)
+{
+	if (LakeName == TEXT("RayHubbard")) return ETreeRegion::CrossTimbers;
+	if (LakeName == TEXT("GalvestonBay") || LakeName == TEXT("GulfPassage") || LakeName == TEXT("TexasCoast")) return ETreeRegion::GulfCoast;
+	return ETreeRegion::Classic;
+}
+
+void TreeHeightRange(ETreeSpecies Species, float& MinH, float& MaxH)
+{
+	// LiveOak, PostOak, CedarElm, RedCedar (V6), then sugarberry, black willow, cottonwood, salt cedar.
+	static const float Min[] = { 8.f, 10.f, 12.f, 6.f, 9.f, 7.f, 16.f, 3.5f }, Max[] = { 12.f, 14.f, 16.f, 10.f, 14.f, 12.f, 24.f, 6.f };
+	static_assert(UE_ARRAY_COUNT(Min) == int32(ETreeSpecies::Count), "a height range per species");
+	MinH = Min[int32(Species)];
+	MaxH = Max[int32(Species)];
+}
+
+void PlaceTreeInstances(const Sailing::FLakeTerrain& T, float Fraction, TArray<FTreeInstance>& Out, ETreeRegion Region)
 {
 	Out.Reset();
 	const double Step = 20.0;
@@ -49,11 +98,13 @@ void PlaceTreeInstances(const Sailing::FLakeTerrain& T, float Fraction, TArray<F
 				FTreeInstance I;
 				I.Position = FVector2D(PX, PY);
 				I.Ground = float(Ground);
-				I.Species = Kind < 0.12f ? ETreeSpecies::RedCedar : (Kind < 0.3f ? ETreeSpecies::LiveOak : (Kind < 0.66f ? ETreeSpecies::PostOak : ETreeSpecies::CedarElm));
+				I.Species = CanopySpecies(Region, Kind, float(Ground), Region == ETreeRegion::Classic ? 0.f : TreeRand(Seed + K * 13 + 7));
 				const float U = TreeRand(Seed + K * 13 + 4);
-				static const float MinH[] = { 8.f, 10.f, 12.f, 6.f }, MaxH[] = { 12.f, 14.f, 16.f, 10.f };
-				I.Height = FMath::Lerp(MinH[int32(I.Species)], MaxH[int32(I.Species)], U);
+				float MinH, MaxH;
+				TreeHeightRange(I.Species, MinH, MaxH);
+				I.Height = FMath::Lerp(MinH, MaxH, U);
 				I.Yaw = 360.f * TreeRand(Seed + K * 13 + 5);
+				if (LeansToWater(I.Species)) I.Yaw = YawToWater(T, PX, PY, TreeRand(Seed + K * 13 + 8), I.Yaw);
 				I.Variant = uint8(TreeRand(Seed + K * 13 + 6) < 0.5f ? 0 : 1);
 				Out.Add(I);
 			}
@@ -61,9 +112,9 @@ void PlaceTreeInstances(const Sailing::FLakeTerrain& T, float Fraction, TArray<F
 	}
 }
 
-void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out)
+void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out, ETreeRegion Region)
 {
-	PlaceTreeInstances(T, Fraction, Out);
+	PlaceTreeInstances(T, Fraction, Out, Region);
 	if (Crowns.Num() == 0) return;
 	// The crowns' band, in 100 m cells: any cell with a crown within 200 m. The canopy-map trees there give way.
 	TSet<FIntPoint> Band;
@@ -92,13 +143,37 @@ void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown>
 		// most of all; a narrow one an elm or a cedar. The model then needs little stretching to the measured width.
 		const float U = TreeRand(Seed + 3);
 		const float Aspect = C.Radius / FMath::Max(C.Height, 1.f);
-		if (C.bCedar) I.Species = ETreeSpecies::RedCedar;
+		if (Region == ETreeRegion::CrossTimbers && Ground < kLakeWaterlineM && !C.bCedar)
+		{
+			// T2 species: by the water the tall crowns are cottonwoods, the spreading and the low ones black willows.
+			if (C.Height > 15.f) I.Species = U < 0.7f ? ETreeSpecies::Cottonwood : ETreeSpecies::PostOak;
+			else I.Species = U < 0.6f ? ETreeSpecies::BlackWillow : (U < 0.8f ? ETreeSpecies::Sugarberry : (Aspect > 0.4f ? ETreeSpecies::Cottonwood : ETreeSpecies::CedarElm));
+		}
+		else if (Region == ETreeRegion::GulfCoast)
+		{
+			// The coast: salt cedar in the low thickets by the water, live oak's spreading crowns, sugarberry the rest.
+			if (Ground < kCoastWaterlineM && C.Height < 8.f) I.Species = U < 0.75f ? ETreeSpecies::SaltCedar : ETreeSpecies::Sugarberry;
+			else if (Aspect > 0.45f) I.Species = U < 0.8f ? ETreeSpecies::LiveOak : ETreeSpecies::Sugarberry;
+			else I.Species = U < 0.45f ? ETreeSpecies::Sugarberry : (U < 0.75f ? ETreeSpecies::LiveOak : (U < 0.9f ? ETreeSpecies::CedarElm
+				: (C.Height < 8.f ? ETreeSpecies::SaltCedar : ETreeSpecies::LiveOak)));
+		}
+		else if (C.bCedar) I.Species = ETreeSpecies::RedCedar;
 		else if (Aspect > 0.5f) I.Species = U < 0.55f ? ETreeSpecies::LiveOak : ETreeSpecies::PostOak;
+		else if (Region == ETreeRegion::CrossTimbers)
+		{
+			// T2 species: sugarberry takes a share of the cross timbers' narrower and middling crowns.
+			if (Aspect < 0.28f) I.Species = U < 0.5f ? ETreeSpecies::CedarElm : (U < 0.72f ? ETreeSpecies::RedCedar : (U < 0.88f ? ETreeSpecies::Sugarberry : ETreeSpecies::PostOak));
+			else if (C.Height < 7.f) I.Species = U < 0.5f ? ETreeSpecies::CedarElm : (U < 0.68f ? ETreeSpecies::Sugarberry : (U < 0.88f ? ETreeSpecies::PostOak : ETreeSpecies::RedCedar));
+			else if (C.Height > 14.f) I.Species = U < 0.55f ? ETreeSpecies::PostOak : (U < 0.8f ? ETreeSpecies::LiveOak : (U < 0.9f ? ETreeSpecies::Sugarberry : ETreeSpecies::CedarElm));
+			else I.Species = U < 0.38f ? ETreeSpecies::PostOak : (U < 0.6f ? ETreeSpecies::CedarElm : (U < 0.78f ? ETreeSpecies::Sugarberry
+				: (U < 0.92f ? ETreeSpecies::LiveOak : ETreeSpecies::RedCedar)));
+		}
 		else if (Aspect < 0.28f) I.Species = U < 0.6f ? ETreeSpecies::CedarElm : (U < 0.8f ? ETreeSpecies::RedCedar : ETreeSpecies::PostOak);
 		else if (C.Height < 7.f) I.Species = U < 0.6f ? ETreeSpecies::CedarElm : (U < 0.85f ? ETreeSpecies::PostOak : ETreeSpecies::RedCedar);
 		else if (C.Height > 14.f) I.Species = U < 0.6f ? ETreeSpecies::PostOak : (U < 0.85f ? ETreeSpecies::LiveOak : ETreeSpecies::CedarElm);
 		else I.Species = U < 0.45f ? ETreeSpecies::PostOak : (U < 0.75f ? ETreeSpecies::CedarElm : (U < 0.92f ? ETreeSpecies::LiveOak : ETreeSpecies::RedCedar));
 		I.Yaw = 360.f * TreeRand(Seed + 5);
+		if (LeansToWater(I.Species)) I.Yaw = YawToWater(T, C.X, C.Y, TreeRand(Seed + 8), I.Yaw);
 		I.Variant = uint8(TreeRand(Seed + 6) < 0.5f ? 0 : 1);
 		Out.Add(I);
 	}
@@ -113,9 +188,19 @@ FTreeLook TreeLookFor(const FTreeInstance& Tree)
 	FTreeLook L;
 	L.Tint = U(1);
 	// The deciduous trees turn, each its own amount (some early, some hardly); the evergreens keep their green.
-	const bool bDeciduous = Tree.Species == ETreeSpecies::PostOak || Tree.Species == ETreeSpecies::CedarElm;
+	const bool bDeciduous = Tree.Species != ETreeSpecies::LiveOak && Tree.Species != ETreeSpecies::RedCedar;
 	L.Deciduous = bDeciduous ? 0.35f + 0.65f * U(2) : 0.f;
-	L.AutumnHue = Tree.Species == ETreeSpecies::CedarElm ? 0.75f + 0.25f * U(3) : 0.25f * U(3);
+	// The autumn colour: post oak russet-brown; cedar elm, sugarberry and salt cedar yellow to gold; willow and cottonwood
+	// the brightest yellow.
+	switch (Tree.Species)
+	{
+	case ETreeSpecies::CedarElm: L.AutumnHue = 0.75f + 0.25f * U(3); break;
+	case ETreeSpecies::Sugarberry: L.AutumnHue = 0.7f + 0.3f * U(3); break;
+	case ETreeSpecies::SaltCedar: L.AutumnHue = 0.55f + 0.35f * U(3); break;
+	case ETreeSpecies::BlackWillow:
+	case ETreeSpecies::Cottonwood: L.AutumnHue = 0.88f + 0.12f * U(3); break;
+	default: L.AutumnHue = 0.25f * U(3); break;
+	}
 	// A small lean, up to 3 degrees either way (a whole stand standing ruler-straight read as planted).
 	L.LeanPitch = (U(4) * 2.f - 1.f) * 3.f;
 	L.LeanRoll = (U(5) * 2.f - 1.f) * 3.f;
