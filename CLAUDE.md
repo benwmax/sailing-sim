@@ -528,9 +528,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
   materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
-  the hull (`FHullShape::BottomZ` in the hull's frame, `HullClipA..H`, set by `AWaterSurface::UpdateHullClip`; off for
-  catamarans), so cockpits stay dry and no pit opens under the overhangs (`docs/water-hull-clip/`;
-  `-SailingClassicHullClip` is V7's 2 m drop over the deck plan). Keep the shader's hull in step with `FHullShape`.
+  a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
+  deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe
+  depth (`HullClipMap`, `HullClipRect`; frame `HullClipA..D`), so catamarans, amas and the maxi are clipped and the water
+  between hulls stays (`docs/water-hull-clip/`, `docs/boat-water-clip/`; `-SailingClassicHullClip` is V7's 2 m drop over
+  the deck plan). Keep the shader's drop in step with `FHullClipMap::Drop` (`SailingSim.Visual.HullClip`).
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly

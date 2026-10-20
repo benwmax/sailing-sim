@@ -1378,34 +1378,29 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
     float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
     h *= k; d *= k; ho *= k;
 }
-// Inside the player's hull: the drawn sea must not show in her cockpit or cabin. Where the water surface is inside the
-// hull, above the physics' FHullShape bottom (the hull's frame: A origin, B/C/D its axes in the world), it drops just
-// below that bottom, so it hides under the hull's own skin and never shows outside it: under the overhangs, where the
-// bottom is above the water, nothing changes (V7 dropped 2 m over 80% of the deck plan, which opened a pit beside the
-// bow and the stern seen from a low camera). The drop is continuous, zero where the water meets the skin. Water over the
-// sheer (a knockdown) still drops, faded over the last 15 cm inside the gunwale. HullClipH.z = 1: the V7 clip
+// Inside the player's hulls: the drawn sea must not show in her cockpit, cabin or hulls. Where the water surface is
+// inside a hull, above its bottom (FHullClipMap: every hull's FHullShape::BottomZ, sheer and deck edge on one grid in
+// the boat frame, A origin and B/C/D her axes in the world, HullClipRect its corner and size), it drops just below that
+// bottom, so it hides under the hull's own skin and never shows outside it: under the overhangs, where the bottom is
+// above the water, and between a multihull's hulls nothing changes (V7 dropped 2 m over 80% of the deck plan, which
+// opened a pit beside the bow and the stern seen from a low camera). The drop is continuous, zero where the water meets
+// the skin, faded over the last 5 cm inside the deck edge and the ends. Water over the sheer (a knockdown) still drops,
+// faded over the last 15 cm inside the gunwale. Keep it in step with FHullClipMap::Drop. HullClipH.z = 1: the V7 clip
 // (-SailingClassicHullClip).
 // Only the vertices within her length of the hull's origin do the work (the water vertex shader runs for every ring
 // vertex: done everywhere it cost 0.3 ms on High).
 float hin = 0.0;
 float2 hr0 = p.xy - HullClipA.xy;
-[branch] if (HullClipA.w > 0.0 && dot(hr0, hr0) < (HullClipE.x - HullClipE.y) * (HullClipE.x - HullClipE.y))
+[branch] if (HullClipA.w > 0.0 && dot(hr0, hr0) < HullClipRect.z * HullClipRect.z + HullClipRect.w * HullClipRect.w)
 {
     float3 hq = float3(p.xy + d, h + ho) - HullClipA.xyz;
     float hbx = dot(hq, HullClipB.xyz);
-    float hby = dot(hq, HullClipC.xyz) - HullClipF.z;
+    float hby = dot(hq, HullClipC.xyz);
     float hbz = dot(hq, HullClipD.xyz);
-    float hfu = (hbx - HullClipE.z) / max(HullClipE.x - HullClipE.z + 0.02, 0.1);
-    float hau = (HullClipE.z - hbx) / max(HullClipF.x, 0.1);
-    float hhb = hbx > HullClipE.z ? HullClipE.w * sqrt(saturate(1.0 - hfu * hfu)) : max(HullClipE.w - HullClipF.y * hau * hau, 0.02);
-    float hku = (hbx - HullClipG.x) / max(HullClipG.y, 0.1);
-    float hkd = (abs(hku) <= 1.0 ? HullClipG.z * (1.0 - hku * hku) : -(abs(hku) - 1.0) * HullClipG.y * (hku > 0.0 ? HullClipH.x : HullClipH.y)) - HullClipG.w;
-    float hsh = HullClipB.w + HullClipC.w * max(0.0, (hbx - HullClipD.w) / max(HullClipE.x - HullClipD.w, 0.001));
-    float hbot = -hkd + (hkd + hsh) * pow(max(saturate(abs(hby) / max(hhb, 0.001)), 0.0001), HullClipF.w);
-    float himm = hbz - hbot;
-    float hedge = hbz < hsh ? 1.0 : saturate((hhb - abs(hby)) / 0.15);
-    hin = min(2.0, max(0.0, 1.1 * himm + 0.03 * saturate(himm / 0.05)) / max(HullClipD.z, 0.3))
-        * hedge * saturate((hbx - HullClipE.y) / 0.05) * step(hbx, HullClipE.x);
+    float4 hc = HullClipMap.SampleLevel(HullClipMapSampler, (float2(hbx, hby) - HullClipRect.xy) / HullClipRect.zw, 0);
+    float himm = hbz - hc.r;
+    float hedge = saturate(min(hc.b, hc.a) / (hbz < hc.g ? 0.05 : 0.15));
+    hin = min(2.0, max(0.0, 1.1 * himm + 0.03 * saturate(himm / 0.05)) / max(HullClipD.z, 0.3)) * hedge;
     // V7: 80% of the deck plan, flat, 2 m down.
     float2 hh = normalize(HullClipB.xy + float2(1e-6, 0.0));
     float2 hr = p.xy - HullClipA.xy;
@@ -1773,16 +1768,19 @@ def build_water_v4():
         + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect",
            "Sea", "SeaRect", "SeaP"]
     hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
-    wpo = custom(mat, V4_WPO, common + hull_clip, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
+    wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
-    # The player's hull (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D the hull's x/y/z axes in the world
-    # with sheer z, sheer rise, sheer rise from x; E bow x, stern x, widest x, half beam; F aft length, transom beam loss,
-    # centre y, bilge power; G waterline mid x, half length, canoe depth, depth offset; H bow and stern overhang slopes,
-    # 1 = the V7 clip.
+    # The player's boat (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D her x/y/z axes in the world. The
+    # rest is the main hull's shape for the V7 clip (-SailingClassicHullClip): B/C/D.w sheer z, sheer rise, sheer rise
+    # from x; E bow x, stern x, widest x, half beam; F aft length, transom beam loss, centre y, bilge power; G waterline
+    # mid x, half length, canoe depth, depth offset; H bow and stern overhang slopes, 1 = the V7 clip.
     defaults = ((0, 0, 0, 0), (1, 0, 0, 0.62), (0, 1, 0, 0.1), (0, 0, 1, 1), (3.45, -3.41, -0.4, 1.22), (3, 0.27, 0, 4),
                 (-0.15, 2.9, 0.4, 0), (1.1, 0.5, 0, 0))
     for i, (n, v) in enumerate(zip(hull_clip, defaults)):
         connect(vector(mat, n, v, -1800, 3000 + 100 * i), "RGBA", wpo, n)
+    # FHullClipMap (RGBA: bottom z, sheer z, side margin, end margin, in the boat frame) and its corner x, y and size.
+    connect(tex("HullClipMap", 3900), "", wpo, "HullClipMap")
+    connect(vector(mat, "HullClipRect", (0, 0, 1, 1), -1800, 4000), "RGBA", wpo, "HullClipRect")
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
