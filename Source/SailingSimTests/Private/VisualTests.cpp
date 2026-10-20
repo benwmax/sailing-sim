@@ -307,7 +307,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualFleetMeshTest, "SailingSim.Visual.FleetM
 bool FVisualFleetMeshTest::RunTest(const FString& Parameters)
 {
 	using namespace Sailing;
-	static const TCHAR* Tags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
+	// The prologue's maxi too (the PC's hero, Tools/boats/maxi): her hull is the exported sections, LOA 30.48, beam 7.2.
+	static const TCHAR* Tags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	for (int32 Type = 1; Type < int32(UE_ARRAY_COUNT(Tags)); ++Type)
 	{
 		const TCHAR* Tag = Tags[Type];

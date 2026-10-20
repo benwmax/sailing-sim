@@ -181,6 +181,10 @@ struct SAILINGSIM_API FLakeData
 	TCHAR Iala = TEXT('B');
 	/** The local clock's rule: empty for the machine's own zone (Texas), "Europe/Paris" for central European time. */
 	FString TimeZone;
+	/** marseille-look: the land's dress (the bake's "land"): empty or "prairie" for Texas (grass, red clay at the water,
+	 *  oak woods), "garrigue" for the Mediterranean (scrub over bare limestone, pines, white limestone cliffs). */
+	FString Land;
+	bool IsGarrigue() const { return Land == TEXT("garrigue"); }
 	/** The open sea's usual swell and the strong wind's direction (degrees from), NaN when the world gives none. */
 	double SwellFromDeg = std::numeric_limits<double>::quiet_NaN();
 	double MistralFromDeg = std::numeric_limits<double>::quiet_NaN();

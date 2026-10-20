@@ -295,6 +295,137 @@ def traveler(length=0.90):
     return done("Traveler", objs, [("Car", (0, 0, 0.040)), ("EndP", (-length / 2, 0, 0.02)), ("EndS", (length / 2, 0, 0.02))])
 
 
+# ------------------------------------------------------------------ big-boat deck gear (the maxi, Tools/boats/maxi)
+
+@part("Winch70", "winch", "Large two-speed self-tailing winch (about 70 size): flanged base, ribbed drum, self-tailer jaws and stripper arm, top cap; scale option")
+def winch70(scale=1.0):
+    s = scale
+    base = G.lathe("base", [(0, 0), (0.165 * s, 0), (0.165 * s, 0.012 * s), (0.150 * s, 0.022 * s), (0.120 * s, 0.032 * s), (0, 0.032 * s)], M("CarbonMatte"), 64)
+    G.finish(base, 0.003 * s)
+    prof = [(0, 0.032 * s), (0.112 * s, 0.032 * s), (0.112 * s, 0.050 * s), (0.104 * s, 0.056 * s), (0.098 * s, 0.070 * s),
+            (0.094 * s, 0.200 * s), (0.100 * s, 0.215 * s), (0.110 * s, 0.222 * s), (0, 0.222 * s)]
+    drum = G.lathe("drum", prof, M("Aluminium"), 96)
+    for v in drum.data.vertices:
+        if 0.075 * s < v.co.z < 0.195 * s:
+            a = math.atan2(v.co.y, v.co.x)
+            k = 1 + 0.02 * max(0.0, math.cos(a * 48)) ** 6
+            v.co.x *= k
+            v.co.y *= k
+    G.finish(drum, 0.002 * s, sharp=50)
+    # The self-tailer: two jaw rings with a groove between, a stripper arm reaching out over the drum.
+    jaws = G.lathe("jaws", [(0, 0.222 * s), (0.118 * s, 0.222 * s), (0.124 * s, 0.232 * s), (0.104 * s, 0.240 * s), (0.124 * s, 0.248 * s),
+                            (0.118 * s, 0.262 * s), (0.060 * s, 0.272 * s), (0, 0.274 * s)], M("BlackPlastic"), 72)
+    G.finish(jaws, 0.0015 * s)
+    arm = G.prism("stripper", [(0.0, -0.018 * s), (0.150 * s, -0.012 * s), (0.150 * s, 0.012 * s), (0.0, 0.018 * s)], 0.236 * s, 0.252 * s, M("CarbonMatte"))
+    G.finish(arm, 0.003 * s)
+    cap = G.lathe("cap", [(0, 0.274 * s), (0.030 * s, 0.274 * s), (0.030 * s, 0.284 * s), (0, 0.284 * s)], M("Aluminium"), 8)   # octagonal handle socket
+    G.finish(cap, 0.001)
+    objs = [base, drum, jaws, arm, cap] + _fastener_ring(8, 0.150 * s, 0.150 * s, 0.012 * s, M("Stainless"), 0.006 * s)
+    return done("Winch70", objs, [("Drum", (0, 0.098 * s, 0.13 * s)), ("Handle", (0, 0, 0.284 * s)), ("Tail", (0.150 * s, 0, 0.244 * s)),
+                                  ("Grinder", (0, 0, 0.0))])
+
+
+@part("GrinderPedestal", "winch", "Coffee-grinder pedestal: tapered carbon column on a foot plate, a gearbox head and two crank arms with folding grips")
+def grinder_pedestal(height=0.92):
+    foot = G.prism("foot", G.rrect(0.42, 0.34, 0.06), 0, 0.02, M("CarbonMatte"), taper=0.96)
+    G.finish(foot, 0.004)
+    col = G.prism("column", G.rrect(0.20, 0.16, 0.05), 0.02, height - 0.12, M("Carbon"), taper=0.72)
+    G.finish(col, 0.008)
+    head = G.prism("head", G.rrect(0.20, 0.26, 0.06), height - 0.14, height, M("Carbon"), taper=0.94)
+    G.finish(head, 0.012)
+    objs = [foot, col, head]
+    hz = height - 0.07
+    for s in (1, -1):
+        hub = G.cyl(f"hub{s}", (0, s * 0.13, hz), (0, s * 0.17, hz), 0.045, M("Aluminium"), 32)
+        objs.append(G.finish(hub, 0.003))
+        # The crank, opposite phase each side (the arms at 180 degrees, as they are in use).
+        a = 0.6 if s > 0 else 0.6 + math.pi
+        tip = (0.30 * math.cos(a), s * 0.19, hz + 0.30 * math.sin(a))
+        crank = G.prism(f"crank{s}", G.rrect(0.32, 0.045, 0.02), 0, 0.022, M("Aluminium"))
+        crank.matrix_world = Matrix.Translation((0.15 * math.cos(a), s * 0.185, hz + 0.15 * math.sin(a))) @ Matrix.Rotation(-a, 4, "Y") @ Matrix.Rotation(math.radians(90), 4, "X")
+        G.bake_xform(crank)
+        objs.append(G.finish(crank, 0.004))
+        grip = G.lathe(f"grip{s}", [(0, 0), (0.019, 0), (0.021, 0.03), (0.021, 0.11), (0.017, 0.13), (0, 0.13)], M("BlackPlastic"), 32)
+        grip.matrix_world = Matrix.Translation((tip[0], s * 0.20, tip[2])) @ Matrix.Rotation(math.radians(-90 * s), 4, "X")
+        G.bake_xform(grip)
+        objs.append(G.finish(grip, 0))
+    return done("GrinderPedestal", objs, [("CrankS", (0, 0.19, hz)), ("CrankP", (0, -0.19, hz)), ("Stance", (-0.45, 0, 0)), ("Drive", (0, 0, 0))])
+
+
+@part("SteeringWheel", "steering", "Carbon wheel on a binnacle pedestal: thin rim with a grip wrap, five spokes, hub, binnacle with an instrument pod; diameter option")
+def steering_wheel(diameter=1.95, binnacle=0.78):
+    r = diameter / 2
+    objs = []
+    ped = G.prism("binnacle", G.rrect(0.26, 0.22, 0.06), 0, binnacle, M("Carbon"), taper=0.7)
+    objs.append(G.finish(ped, 0.01))
+    pod = G.prism("pod", G.rrect(0.30, 0.10, 0.03), binnacle - 0.02, binnacle + 0.20, M("CarbonMatte"), taper=0.9)
+    objs.append(G.finish(pod, 0.008))
+    hz = binnacle + 0.06
+    # The wheel stands in the YZ plane, its axle along X (aft of the binnacle).
+    hub = G.cyl("hub", (-0.06, 0, hz), (-0.18, 0, hz), 0.07, M("Aluminium"), 32)
+    objs.append(G.finish(hub, 0.004))
+    rim = G.tube("rim", [(-0.18, r * math.cos(2 * math.pi * k / 96), hz + r * math.sin(2 * math.pi * k / 96)) for k in range(96)], 0.022, M("Carbon"), 16, closed=True)
+    objs.append(G.finish(rim))
+    wrap = G.tube("wrap", [(-0.18, (r + 0.001) * math.cos(2 * math.pi * k / 96), hz + (r + 0.001) * math.sin(2 * math.pi * k / 96)) for k in range(40, 57)], 0.0245, M("BlackPlastic"), 16)
+    objs.append(G.finish(wrap))
+    for k in range(5):
+        a = 2 * math.pi * k / 5 + math.pi / 2
+        spoke = G.tube(f"spoke{k}", [(-0.18, 0.07 * math.cos(a), hz + 0.07 * math.sin(a)), (-0.18, (r - 0.02) * math.cos(a), hz + (r - 0.02) * math.sin(a))], 0.016, M("Carbon"), 12,
+                       radii=[0.022, 0.012])
+        objs.append(G.finish(spoke))
+    return done("SteeringWheel", objs, [("Axle", (-0.18, 0, hz)), ("GripTop", (-0.18, 0, hz + r)), ("GripS", (-0.18, r, hz)), ("GripP", (-0.18, -r, hz)),
+                                        ("Stance", (-0.75, 0, 0))])
+
+
+@part("ClutchBank", "rope", "A bank of rope clutches on a moulded base, handles closed; count option")
+def clutch_bank(count=4, pitch=0.072):
+    w = count * pitch + 0.03
+    base = G.prism("base", G.rrect(0.20, w, 0.012), 0, 0.012, M("CarbonMatte"), taper=0.97)
+    objs = [G.finish(base, 0.003)]
+    for i in range(count):
+        y = -w / 2 + 0.015 + pitch * (i + 0.5)
+        body = G.prism(f"body{i}", G.rrect(0.17, pitch - 0.012, 0.012), 0.012, 0.062, M("BlackPlastic"), taper=0.88)
+        body.location = (0, y, 0)
+        G.bake_xform(body)
+        objs.append(G.finish(body, 0.004))
+        handle = G.prism(f"handle{i}", G.rrect(0.15, pitch - 0.022, 0.010), 0.062, 0.078, M("Aluminium"), taper=0.9)
+        handle.location = (-0.01, y, 0)
+        G.bake_xform(handle)
+        objs.append(G.finish(handle, 0.003))
+        objs += G.screw_heads(f"s{i}", [(0.075, y, 0.012), (-0.075, y, 0.012)], M("Stainless"), 0.004, 0.0015)
+    socks = [(f"Line{i}", (0.09, -w / 2 + 0.015 + pitch * (i + 0.5), 0.04)) for i in range(count)]
+    return done("ClutchBank", objs, socks)
+
+
+@part("TravellerHeavy", "track", "Big-boat mainsheet traveller: wide low track, ball-bearing car with a sheave pair, end controls; length option")
+def traveller_heavy(length=4.4):
+    objs = _track(length, 0.070, 0.024, "CarbonMatte")
+    car = G.prism("car", G.rrect(0.26, 0.11, 0.02), 0.020, 0.075, M("Aluminium"), taper=0.9)
+    objs.append(G.finish(car, 0.004))
+    for s in (-1, 1):
+        sh = G.lathe(f"sh{s}", [(0.008, 0), (0.045, 0), (0.045, 0.014), (0.008, 0.014)], M("BlackPlastic"), 40)
+        sh.matrix_world = Matrix.Translation((s * 0.06, -0.007, 0.11)) @ Matrix.Rotation(math.radians(-90), 4, "X")
+        G.bake_xform(sh)
+        objs.append(G.finish(sh, 0.001))
+        end = G.prism(f"end{s}", G.rrect(0.09, 0.12, 0.02), 0.0, 0.07, M("BlackPlastic"), taper=0.9)
+        end.location = (s * (length / 2 - 0.045), 0, 0)
+        G.bake_xform(end)
+        objs.append(G.finish(end, 0.004))
+    return done("TravellerHeavy", objs, [("Car", (0, 0, 0.12)), ("EndP", (-length / 2, 0, 0.04)), ("EndS", (length / 2, 0, 0.04))])
+
+
+@part("GenoaTrackHeavy", "track", "Big-boat genoa track with an adjustable lead car (large sheave); length option")
+def genoa_track_heavy(length=4.8):
+    objs = _track(length, 0.045, 0.016, "CarbonMatte")
+    car = G.prism("car", G.rrect(0.22, 0.07, 0.015), 0.014, 0.05, M("Aluminium"), taper=0.85)
+    objs.append(G.finish(car, 0.004))
+    sh = G.lathe("sheave", [(0.010, 0), (0.060, 0), (0.060, 0.006), (0.052, 0.012), (0.060, 0.018), (0.060, 0.024), (0.010, 0.024)], M("BlackPlastic"), 48)
+    sh.matrix_world = Matrix.Translation((0.03, -0.012, 0.11)) @ Matrix.Rotation(math.radians(-90), 4, "X")
+    G.bake_xform(sh)
+    objs.append(G.finish(sh, 0, sharp=60))
+    return done("GenoaTrackHeavy", objs, [("Sheave", (0.03, 0, 0.11)), ("TrackEnd", (length / 2, 0, 0))])
+
+
 # ------------------------------------------------------------------ rig attachments
 
 @part("Chainplate", "rig", "Stainless chainplate strap through a deck cover plate, with clevis and split ring")

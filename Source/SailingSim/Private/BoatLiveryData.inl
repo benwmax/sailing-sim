@@ -70,6 +70,13 @@ static const FLiveryScheme Schemes_lagoon42[] = {
 static const FLiveryWear Wear_lagoon42 = { 0.15f, 0.20f, 0.65f, { { 0.20f, 0.50f }, { 0.20f, 0.50f }, { 0.30f, 0.60f }, { 0.20f, 0.50f } }, { { 0.00f, 0.10f }, { 0.00f, 0.10f }, { 0.00f, 0.15f }, { 0.00f, 0.10f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.50f, 0.90f }, { 0.30f, 0.60f } } };
 static const FLiveryNumbers Numbers_lagoon42 = { false, 0.05f, 1, 999, TEXT("{n}") };
 
+static const FLiveryScheme Schemes_maxi[] = {
+	{ 0.600f, FLinearColor(0.0273f, 0.0319f, 0.0369f), FLinearColor(0.1946f, 0.2086f, 0.2232f), FLinearColor(0.1070f, 0.1170f, 0.1274f), FLinearColor(0.0116f, 0.0130f, 0.0152f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // graphite
+	{ 0.400f, FLinearColor(0.8388f, 0.8388f, 0.8070f), FLinearColor(0.2542f, 0.2705f, 0.2874f), FLinearColor(0.1329f, 0.1441f, 0.1559f), FLinearColor(0.0116f, 0.0130f, 0.0152f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), false, FLinearColor(0.2623f, 0.2307f, 0.1878f) }, // white
+};
+static const FLiveryWear Wear_maxi = { 0.00f, 1.00f, 0.00f, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.15f, 0.30f }, { 0.10f, 0.20f }, { 0.25f, 0.50f }, { 0.00f, 0.05f } }, { { 0.15f, 0.30f }, { 0.10f, 0.20f }, { 0.25f, 0.50f }, { 0.00f, 0.05f } } };
+static const FLiveryNumbers Numbers_maxi = { false, 0.00f, 1, 99, TEXT("{n}") };
+
 static const FLiveryClass LiveryClasses[] = {
 	{ Schemes_j22, UE_ARRAY_COUNT(Schemes_j22), &Wear_j22, &Numbers_j22 },
 	{ Schemes_sunfish, UE_ARRAY_COUNT(Schemes_sunfish), &Wear_sunfish, &Numbers_sunfish },
@@ -79,4 +86,5 @@ static const FLiveryClass LiveryClasses[] = {
 	{ Schemes_hobie16, UE_ARRAY_COUNT(Schemes_hobie16), &Wear_hobie16, &Numbers_hobie16 },
 	{ Schemes_corsair880, UE_ARRAY_COUNT(Schemes_corsair880), &Wear_corsair880, &Numbers_corsair880 },
 	{ Schemes_lagoon42, UE_ARRAY_COUNT(Schemes_lagoon42), &Wear_lagoon42, &Numbers_lagoon42 },
+	{ Schemes_maxi, UE_ARRAY_COUNT(Schemes_maxi), &Wear_maxi, &Numbers_maxi },
 };

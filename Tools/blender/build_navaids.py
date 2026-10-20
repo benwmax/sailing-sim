@@ -9,8 +9,9 @@ the visible pile (beacons, which the game stands on the bottom), X forward, Z up
   SM_Beacon_Pile  a three-pile dolphin bound with wire, a platform on top (dayboard and light are separate)
   SM_Dayboard_Square / SM_Dayboard_Triangle  the boards with their reflective border
   SM_Light_Tower  a steel skeleton tower for a minor light, ladder and lantern on top
+  SM_Light_MoleTower  a European (IALA A) harbour light: whitewashed masonry tower, coloured top, gallery, lantern
 Slots: Paint (the aid's colour per instance, with rust and growth from M_NavaidPaint), Dark (counterweight, fenders),
-Steel, Wood, Lantern, Reflective. Prints "Navaids: <name> <tris>".
+Steel, Wood, Lantern, Reflective; the mole tower adds White, Concrete and Door. Prints "Navaids: <name> <tris>".
 Usage: blender -b --factory-startup -P build_navaids.py -- <out dir>
 """
 import math
@@ -194,6 +195,32 @@ def tower():
     p.export()
 
 
+def mole_tower():
+    """A European harbour light (IALA A, Marseille's mole heads): a round masonry tower on a plinth, whitewashed, its top
+    third in the light's colour (Paint: red to port, green to starboard), a railed gallery and the lantern with its
+    painted dome; the lantern's centre at 9.68 m like SM_Light_Tower so the actor scales both the same."""
+    p = Part("SM_Light_MoleTower")
+    p.lathe([(1.75, -1.0), (1.75, 0.35), (1.55, 0.45)], "Concrete", sides=28, cap_top=False)
+    body = [(1.30, 0.45), (1.22, 3.0), (1.12, 5.6)]
+    p.lathe(body, "White", sides=28, cap_bottom=False, cap_top=False)
+    p.lathe([(1.12, 5.6), (1.04, 8.2), (1.04, 8.25)], "Paint", sides=28, cap_bottom=False, cap_top=False)
+    # The gallery: a corbelled slab, its rail on stanchions.
+    p.lathe([(1.04, 8.25), (1.45, 8.35), (1.45, 8.5), (0.0, 8.5)], "White", sides=28, cap_bottom=False)
+    for k in range(16):
+        a = 2 * math.pi * k / 16
+        p.tube((1.38 * math.cos(a), 1.38 * math.sin(a), 8.5), (1.38 * math.cos(a), 1.38 * math.sin(a), 9.45), 0.025, "Steel", sides=6)
+    p.lathe([(1.40, 9.42), (1.40, 9.48), (1.36, 9.48), (1.36, 9.42)], "Steel", sides=28, cap_top=False, cap_bottom=False)
+    p.lathe([(0.55, 8.5), (0.55, 9.1)], "Paint", sides=20, cap_bottom=False, cap_top=False)
+    p.lathe([(0.5, 9.1), (0.5, 10.26)], "Lantern", sides=20, cap_bottom=False, cap_top=False)
+    p.lathe([(0.58, 10.26), (0.45, 10.5), (0.2, 10.65), (0.0, 10.7)], "Paint", sides=20, cap_bottom=False)
+    p.tube((0.0, 0.0, 10.7), (0.0, 0.0, 11.1), 0.03, "Steel", sides=6)
+    # A door and two slit windows up the tower's face.
+    p.box((1.27, 0.0, 1.3), (0.06, 0.45, 0.9), "Door")
+    for z in (3.6, 6.4):
+        p.box((1.18 - 0.035 * (z - 3.6), 0.0, z), (0.05, 0.12, 0.35), "Door")
+    p.export()
+
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 can()
 nun()
@@ -202,3 +229,4 @@ sphere()
 pile()
 dayboards()
 tower()
+mole_tower()

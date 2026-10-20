@@ -159,8 +159,10 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		return M;
 	}
 	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class. The
-	// prologue's maxi has none yet (the PC's model, branch maxi-hero): she draws the procedural stand-in from her physics.
-	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42") };
+	// prologue's maxi is the PC's hero model (Tools/boats/maxi/build_maxi.py, imported by import_boats.py `maxi`) on every
+	// boat: her deck gear is in the hull, the traveller lies on the cockpit floor, the diesel is inboard and her canted twin
+	// rudders are one blade, mirrored on the starboard stock.
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return M;
 	const TCHAR* Tag = BoatTags[int32(Type)];
 	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
@@ -168,7 +170,13 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	M.Mast = Load(TEXT("Mast"));
 	M.Boom = Load(TEXT("Boom"));
 	M.Rudder = Load(TEXT("Rudder"));
-	if (!M.Hull || !M.Mast || !M.Boom || !M.Rudder) M = FBoatModelMeshes();
+	if (!M.Hull || !M.Mast || !M.Boom || !M.Rudder) return FBoatModelMeshes();
+	if (Type == EBoatType::Maxi)
+	{
+		M.bOwnOutboard = true;
+		M.bTravelerBridge = false;
+		M.bMirrorTwinRudder = true;
+	}
 	return M;
 }
 
@@ -233,6 +241,7 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
 		UStaticMeshComponent* Blade = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector); // built about its own stock
+		if (K > 0 && Model.bMirrorTwinRudder) Blade->SetRelativeScale3D(FVector(1.f, -1.f, 1.f)); // canted outboard each side
 		if (K == 0) ModelRudder = Blade;
 	}
 	// Graphics G6: the berthed dress for the player's keelboat tied up in her slip (the marina's neighbours wear the same).
@@ -380,7 +389,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
 	}
 	FVector End;
-	if (TillerEndCm(End))
+	// (A wheel boat's TillerEnd is a point on the wheel's rim: no extension there.)
+	if (TillerEndCm(End) && Boat.GetConfig().WheelHardOverSeconds <= 0.0)
 	{
 		const TOptional<FVector> Hand = HelmGripCm ? HelmGripCm : (NumCrew >= 1 ? HandNear(NumCrew - 1, End) : TOptional<FVector>());
 		// In the helm's hand, else lying back along the tiller.
@@ -649,7 +659,12 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
 			const FVector Toward = FRotator(0.f, F.Yaw, 0.f).Vector();
-			if (bHelm && bTiller && P.Stance == ECrewStance::DinghyHike)
+			if (bHelm && bTiller && Cfg.WheelHardOverSeconds > 0.0)
+			{
+				// The maxi: the aft hand on the wheel's rim (TillerEnd), where it can reach it.
+				if (Hold(Aft, TillerEnd, HelmGripCm, FVector::ZeroVector)) Tension[Aft] = HelmLoad;
+			}
+			else if (bHelm && bTiller && P.Stance == ECrewStance::DinghyHike)
 			{
 				// Round 10: a dinghy sailor holds the extension across the body, the aft hand in front of the chest (the dagger
 				// grip), and the mainsheet coming up from its ratchet block in the forward hand just ahead of it (the ILCA's
