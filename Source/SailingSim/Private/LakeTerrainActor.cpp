@@ -17,6 +17,7 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "StaticMeshResources.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
@@ -727,18 +728,29 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 		}
 	}
 	// A few new tiles a frame (each is one static component; the meshes are already in memory).
-	FarLoader.TakeArrived(FarArrived);
+	TArray<TPair<int32, UStaticMesh*>> Fresh;
+	FarLoader.TakeArrived(Fresh);
+	for (const TPair<int32, UStaticMesh*>& F : Fresh) FarArrived.Emplace(F.Key, TStrongObjectPtr<UStaticMesh>(F.Value));
 	int32 Added = 0;
+	TArray<TPair<int32, TStrongObjectPtr<UStaticMesh>>, TInlineAllocator<8>> NotReady;
 	while (FarArrived.Num() > 0 && Added < 8)
 	{
-		const TPair<int32, UStaticMesh*> A = FarArrived.Pop(EAllowShrinking::No);
-		if (!A.Value || !FarTiles.IsValidIndex(A.Key) || FarTiles[A.Key]) continue;
+		const TPair<int32, TStrongObjectPtr<UStaticMesh>> A = FarArrived.Pop(EAllowShrinking::No);
+		UStaticMesh* const Mesh = A.Value.Get();
+		if (!Mesh || !FarTiles.IsValidIndex(A.Key) || FarTiles[A.Key]) continue;
+		// Uncooked with a cold DDC the mesh can still be building; registering it then asserts on its render data. Next frame.
+		FStaticMeshRenderData* RenderData = Mesh->IsCompiling() ? nullptr : Mesh->GetRenderData();
+		if (!RenderData || !RenderData->IsInitialized())
+		{
+			NotReady.Add(A);
+			continue;
+		}
 		const FFarRingTile& Tile = Ring->Tiles[A.Key];
 		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
 		C->SetMobility(EComponentMobility::Static);
 		C->SetupAttachment(RootComponent);
 		C->SetRelativeLocation(FVector(Ring->TileOrigin(Tile) * CmPerMeter, 0.0));
-		C->SetStaticMesh(A.Value);
+		C->SetStaticMesh(Mesh);
 		if (FarMaterial) C->SetMaterial(0, FarMaterial);
 		// No shadows, not in the Lumen scene or the distance fields, not in ray tracing: at 8-40 km they are under the haze,
 		// and each would cost shadow pages and scene updates.
@@ -754,6 +766,7 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 		FarTiles[A.Key] = C;
 		++Added;
 	}
+	FarArrived.Append(NotReady);
 	// The near chunks hand over once every tile is in (until then they draw to 20 km, so nothing goes missing).
 	if (NearCapM != Ring->InnerM && FarLoader.IsDone() && FarArrived.Num() == 0)
 	{
