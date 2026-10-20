@@ -1503,6 +1503,14 @@ bool ASailboatPawn::Rebind(FName Action, bool bNegative, const FKey& Key)
 	return AssignKey(Row, Key);
 }
 
+// Bean's playtest (Oct 20): Esc opens the pause menu, as in most games (and the front end's Back closes it again). It is
+// fixed, not one of the rebindable rows: a saved Input.ini keeps it, and the Controls screen's key capture still takes Esc
+// as Cancel. Tab (the rebindable key) keeps working; the editor's play-in-editor stops on Esc before the game sees it.
+void ASailboatPawn::MapFixedKeys(UInputMappingContext* Context, const TMap<FName, TObjectPtr<UInputAction>>& InActions)
+{
+	if (const TObjectPtr<UInputAction>* Menu = InActions.Find(TEXT("Menu")); Context && Menu && *Menu) Context->MapKey(*Menu, EKeys::Escape);
+}
+
 void ASailboatPawn::RebuildMappings()
 {
 	// The same actions (bound to the same handlers), mapped to the new keys.
@@ -1520,6 +1528,7 @@ void ASailboatPawn::RebuildMappings()
 			Mapping.Modifiers.Add(Scalar);
 		}
 	}
+	MapFixedKeys(Context, Actions);
 	MappingContext = Context;
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -3096,6 +3105,7 @@ void ASailboatPawn::CreateInput()
 			Mapping.Modifiers.Add(Scalar);
 		}
 	}
+	MapFixedKeys(MappingContext, Actions);
 }
 
 void ASailboatPawn::PawnClientRestart()

@@ -694,7 +694,8 @@ void SSailHud::Refresh()
 	if (!Stations.IsActive() || Stations.GetStation() == Sailing::ECrewStation::Helm) Hints.Add((SteerPort == SteerStbd ? SteerPort : SteerPort + TEXT(" / ") + SteerStbd) + TEXT("  Steer"));
 	else Hints.Add(KeyName(TEXT("Station"), false) + TEXT("  Next station"));
 	if (bCoast) Hints.Add(KeyName(TEXT("Chart"), false) + TEXT("  Chart"));
-	Hints.Add(KeyName(TEXT("Menu"), false) + TEXT("  Pause"));
+	// The keyboard's is Esc, the fixed key (ASailboatPawn::MapFixedKeys); the rebindable one works too.
+	Hints.Add((SailUI::UsingGamepad() ? KeyName(TEXT("Menu"), false) : FString(TEXT("Esc"))) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
 }
