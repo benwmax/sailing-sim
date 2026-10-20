@@ -38,4 +38,5 @@
 *.mann filter=lfs diff=lfs merge=lfs -text
 *.wxday filter=lfs diff=lfs merge=lfs -text
 *.far filter=lfs diff=lfs merge=lfs -text
+*.far30 filter=lfs diff=lfs merge=lfs -text
 *.tiles filter=lfs diff=lfs merge=lfs -text
