@@ -55,3 +55,10 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
   deck eye (baked on the mast mesh, which they hang from).
 
 ![Before (left) and after (right), Ultra on the lake](hobie16-before-after.jpg)
+
+## Corsair 880
+
+- **Bow:** the bowsprit's end fitting with the gennaker's tack block and its bobstay down to the stem.
+- **Cabin top:** the self-tacking jib's track across the trunk, with its car, where the jib leads.
+
+![Before (left) and after (right), Ultra on the lake](corsair880-before-after.jpg)

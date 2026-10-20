@@ -916,6 +916,15 @@ elif TAG == "Corsair880":
     bw = MAIN.h["bow_x"]
     sp = SPEC["bowsprit"]
     tube(hull, [(bw - 0.3, 0, MAIN.deck_z(bw - 0.3, 0) + 0.05), (bw + sp, 0, MAIN.deck_z(bw, 0) + 0.02)], 0.035, "BlackPlastic", 10)
+    # Fleet hero: the sprit's end fitting with the gennaker's tack block, its bobstay down to the stem just above the
+    # water, and the self-tacking jib's track across the cabin top where its lead is.
+    ez = MAIN.deck_z(bw, 0) + 0.02
+    tube(hull, [(bw + sp - 0.06, 0, ez), (bw + sp + 0.03, 0, ez)], 0.042, "Aluminium", 10)
+    box(hull, (bw + sp + 0.02, 0, ez - 0.07), (0.05, 0.03, 0.06), "BlackPlastic")
+    tube(hull, [(bw + sp - 0.02, 0, ez - 0.03), (bw - 0.02, 0, 0.12)], 0.004, "Stainless", 4, cap=False)
+    jx = mast_x + 0.6
+    tube(hull, [(jx, y, top(jx) + 0.02) for y in (-0.5, -0.25, 0.0, 0.25, 0.5)], 0.012, "Aluminium", 6)
+    box(hull, (jx, 0.3, top(jx) + 0.045), (0.07, 0.05, 0.03), "BlackPlastic")
     lifelines(MAIN, ck[0] - 0.1, bw - 0.9)
     st = MAIN.h["stern_x"]
     traveler = (ck[0] + 0.3, MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.1)
