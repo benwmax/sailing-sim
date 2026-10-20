@@ -765,10 +765,11 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
         box(hull, (0.5 * (b0 + 0.3 + s0), y, roof + 0.08), (1.1, 1.0, 0.03), "CabinWindow")
     # Fleet hero: the charter cat's davits off the stern with the tender hung between them (a grey RIB: two tubes and a
     # floor, its outboard tilted up), and a swim ladder folded on each sugar-scoop step.
-    dx0 = min(Hh.h["stern_x"] for Hh in HS[:2]) + 0.15
+    dx0 = min(Hh.h["stern_x"] for Hh in HS[:2]) - 0.45   # hung clear of the sugar scoops
     for y in (-0.95, 0.95):
-        tube(hull, [(b0 - 0.1, y, dz + 0.9), (dx0 + 0.25, y, dz + 1.05), (dx0, y, dz + 0.95)], 0.03, "Stainless", 8)
-    tz = dz + 0.55   # the tender's tubes, laid across the stern between the davits
+        tube(hull, [(b0 - 0.1, y, dz + 0.9), (dx0 + 0.45, y, dz + 1.25), (dx0, y, dz + 1.2)], 0.03, "Stainless", 8)
+        tube(hull, [(dx0, y, dz + 1.2), (dx0, y * 0.7, dz + 0.85)], 0.004, "Rope", 4, cap=False)
+    tz = dz + 0.8    # the tender's tubes, hung across the stern from the davits
     ty0, ty1 = -1.3, 1.3
     for xo in (-0.32, 0.32):
         tube(hull, [(dx0 + xo, ty0 + 0.25, tz), (dx0 + xo, ty1 - 0.2, tz)], 0.2, "BlackPlastic", 14)
