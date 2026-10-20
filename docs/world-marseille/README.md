@@ -107,6 +107,17 @@ Counts from the bake and OSM; the first column is the model to build, the last w
 | Marseille town houses (trois-fenetres, 3-4 storeys, tile roofs) | most of the 84,000 houses: an archetype set, not one each | the city |
 | Calanques limestone cliff and scree material | the whole south coast | Calanques |
 
+### Built
+
+- **Harbour light towers** (harbour-lights): `SM_Light_MoleTower` in `Tools/blender/build_navaids.py`, a whitewashed masonry
+  tower on a concrete plinth, its top third in the light's colour (the structure's first colour that is not white), a
+  railed gallery and the lantern under a painted dome (1.3k triangles). `ANavaidsActor` stands every light structure on
+  it on an IALA A coast, scaled to the light's height (and a little stouter as it gets taller); IALA B coasts keep the
+  USCG steel skeleton tower.
+
+![Before and after: the mole head light at the Vieux-Port entrance (Ultra)](kit/mole-light-before-after.jpg)
+
+
 ## Gaps
 
 - The 1 m shore detail (`.detail`) needs RGE ALTI 1 m (or LiDAR HD) and is not baked yet.
