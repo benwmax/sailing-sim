@@ -365,6 +365,21 @@ bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 		// The CPU's long-wave fold is the test's (and the material's) at full mesh resolution.
 		const double Exact = RenderedVertex(Waves, nullptr, 3.7, 8.1, 42.0, AWaterSurface::Choppiness).J;
 		TestTrue(TEXT("LongJacobian is the drawn long waves' fold"), FMath::IsNearlyEqual(Exact, FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness, 3.7, 8.1, 42.0), 1e-9));
+		// The renderer's four-spacing pass (FLongJacobians, water worker load) is LongJacobian at each spacing.
+		const double Spacings[4] = { 0.5, 1.0, 2.0, 4.0 }, Fades[4] = { 1.0, 0.93, 0.86, 0.72 };
+		const FWaveDetail::FLongJacobians Four(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness, Spacings, Fades, 4);
+		double MaxErr = 0.0;
+		for (int32 P = 0; P < 50; ++P)
+		{
+			const double X = 13.7 * P, Y = -9.1 * P + 4.0, T = 42.0 + 0.37 * P;
+			double J[4];
+			Four.Evaluate(X, Y, T, J);
+			for (int32 K = 0; K < 4; ++K)
+			{
+				MaxErr = FMath::Max(MaxErr, FMath::Abs(J[K] - FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness, X, Y, T, Spacings[K], Fades[K])));
+			}
+		}
+		TestTrue(FString::Printf(TEXT("%.0f kn: FLongJacobians matches LongJacobian at four spacings (max error %.1e)"), Knots, MaxErr), MaxErr < 1e-9);
 	}
 	return true;
 }

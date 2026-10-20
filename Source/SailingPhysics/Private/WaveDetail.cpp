@@ -279,6 +279,43 @@ namespace Sailing
 		return Jxx * Jyy - Jxy * Jxy;
 	}
 
+	FWaveDetail::FLongJacobians::FLongJacobians(const FWaveComponent* Components, int Count, double OmegaMax, double Chop, const double* Spacings,
+		const double* Fades, int InPairs)
+	{
+		Pairs = std::min(InPairs, MaxPairs);
+		for (int I = 0; I < Count; ++I)
+		{
+			const FWaveComponent& W = Components[I];
+			if (W.Amplitude <= 1e-5 || W.Omega >= OmegaMax) continue;
+			const double K = std::sqrt(W.Kx * W.Kx + W.Ky * W.Ky);
+			FTerm T{ W.Kx, W.Ky, W.Omega, W.Phase, {} };
+			for (int P = 0; P < Pairs; ++P)
+			{
+				const double Keep = Spacings[P] > 0.0 ? Clamp(6.2832 / (K * Spacings[P]) / 4.0 - 1.0, 0.0, 1.0) : 1.0;
+				T.Coef[P] = Chop * W.Amplitude * Keep * Fades[P] / K;
+			}
+			Terms.push_back(T);
+		}
+	}
+
+	void FWaveDetail::FLongJacobians::Evaluate(double X, double Y, double T, double* OutJ) const
+	{
+		double Jxx[MaxPairs], Jyy[MaxPairs], Jxy[MaxPairs];
+		for (int P = 0; P < Pairs; ++P) { Jxx[P] = 1.0; Jyy[P] = 1.0; Jxy[P] = 0.0; }
+		for (const FTerm& W : Terms)
+		{
+			const double Sin = std::sin(W.Kx * X + W.Ky * Y - W.Omega * T + W.Phase);
+			const double Xx = W.Kx * W.Kx * Sin, Yy = W.Ky * W.Ky * Sin, Xy = W.Kx * W.Ky * Sin;
+			for (int P = 0; P < Pairs; ++P)
+			{
+				Jxx[P] -= Xx * W.Coef[P];
+				Jyy[P] -= Yy * W.Coef[P];
+				Jxy[P] -= Xy * W.Coef[P];
+			}
+		}
+		for (int P = 0; P < Pairs; ++P) OutJ[P] = Jxx[P] * Jyy[P] - Jxy[P] * Jxy[P];
+	}
+
 	/** The standard normal's quantile for a lower-tail share P under 0.024 (Acklam's rational approximation, 1e-9). */
 	static double NormalTailQuantile(double P)
 	{
