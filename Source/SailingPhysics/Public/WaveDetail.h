@@ -86,7 +86,7 @@ namespace Sailing
 		/** LongJacobian for several (Spacing, Fade) pairs over many points (the water's four cap thresholds sample the same
 		 *  points): each train's terms per pair are worked out once, its sine once per point. Equal to LongJacobian's to
 		 *  rounding. */
-		struct FLongJacobians
+		struct SAILINGPHYSICS_API FLongJacobians
 		{
 			static constexpr int MaxPairs = 4;
 			struct FTerm { double Kx, Ky, Omega, Phase, Coef[MaxPairs]; };
