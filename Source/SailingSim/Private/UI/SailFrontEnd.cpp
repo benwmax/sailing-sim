@@ -972,15 +972,17 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const FModeCard& M : Modes)
 	{
-		const FString GulfLocked = SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2));
-		const bool bOk = M.Mode != ESailMode::Passage || (Pending.World == 1 && GulfLocked.IsEmpty());
+		// Passage: Galveston's to Freeport (the Gulf world, its own career lock) or Marseille's to Cassis.
+		const FString GulfLocked = Pending.World == 1 ? SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2)) : FString();
+		const bool bOk = M.Mode != ESailMode::Passage || (USailSessionSubsystem::HasPassage(Pending.World) && GulfLocked.IsEmpty());
+		const FString ModeLine = (M.Mode == ESailMode::Passage && Pending.World == 3) ? FString(TEXT("Vieux-Port to Cassis by the Calanques")) : FString(M.Line);
 		const ESailMode Mode = M.Mode;
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(18.f, 16.f)).IsEnabled(bOk).IsSelected_Lambda([this, Mode]() { return Pending.Mode == Mode; })
 			.OnClicked_Lambda([this, Mode]() { Pending.Mode = Mode; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(M.Name, EType::CardTitleS, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(bOk ? FString(M.Line) : (Pending.World != 1 ? FString(TEXT("Galveston world only")) : GulfLocked), EType::Small, Muted) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(bOk ? ModeLine : (!USailSessionSubsystem::HasPassage(Pending.World) ? FString(TEXT("Galveston and Marseille only")) : GulfLocked), EType::Small, Muted) ]
 		];
 		Cards->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 12.f, 0.f)[ B ];
 		if (M.Mode == Pending.Mode) E.Focus = B;
@@ -1011,7 +1013,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	}
 	else if (Pending.Mode == ESailMode::Passage)
 	{
-		Context = PanelBox(SailUI::Text(TEXT("Galveston entrance → Freeport, 45 nm along the coast. Plot fixes on the chart (P) as you go."), EType::Body, Fg), FMargin(16.f, 12.f));
+		Context = PanelBox(SailUI::Text(Pending.World == 3
+			? TEXT("Vieux-Port → Cassis, 18 nm: past the Château d'If, outside Maïre and Riou, along the Calanques. Plot fixes on the chart (P) as you go.")
+			: TEXT("Galveston entrance → Freeport, 45 nm along the coast. Plot fixes on the chart (P) as you go."), EType::Body, Fg), FMargin(16.f, 12.f));
 	}
 	auto Seg = [](const FString& Label, TArray<FString> Opts, TFunction<int32()> Get, TFunction<void(int32)> Set, bool bEnabled = true, const FString& Note = FString())
 	{

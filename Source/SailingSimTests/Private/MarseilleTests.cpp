@@ -219,7 +219,27 @@ bool FMarseilleCassisTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("Moored: Cassis %d, La Ciotat %d, Port-Miou %d"), Cassis, Ciotat, Miou));
 	TestTrue(TEXT("Port de Cassis has its pontoons full (eight piers in OSM)"), Cassis > 60);
 	TestTrue(TEXT("La Ciotat's port has boats"), Ciotat > 100);
-	TestTrue(TEXT("The passage ends off La Ciotat"), Lake.Passage.Num() > 0 && Lake.Passage.Last().Key.Contains(TEXT("La Ciotat")));
+	// PR 6: the passage is sailable: the Vieux-Port to Cassis, every leg in water a J/22 can sail (2.5 m and more on the
+	// 10 m grid, sampled every 20 m), about 18 nm.
+	TestTrue(TEXT("The passage runs from the Vieux-Port to Cassis"), Lake.Passage.Num() >= 5 && Lake.Passage[0].Key.Contains(TEXT("Vieux-Port"))
+		&& Lake.Passage.Last().Key.Contains(TEXT("Cassis")));
+	double Shallowest = 1e9, Miles = 0.0;
+	FString Where;
+	for (int32 I = 0; I + 1 < Lake.Passage.Num(); ++I)
+	{
+		const FVector2D A = Lake.Passage[I].Value, B = Lake.Passage[I + 1].Value;
+		const double L = FVector2D::Distance(A, B);
+		Miles += L / 1852.0;
+		for (double D = 0.0; D <= L; D += 20.0)
+		{
+			const FVector2D P = A + (B - A) * (D / FMath::Max(L, 1.0));
+			const double Depth = -Lake.Terrain.HeightAt(P.X, P.Y);
+			if (Depth < Shallowest) { Shallowest = Depth; Where = Lake.Passage[I].Key + TEXT(" to ") + Lake.Passage[I + 1].Key; }
+		}
+	}
+	AddInfo(FString::Printf(TEXT("Passage: %d waypoints, %.1f nm, shallowest %.1f m (%s)"), Lake.Passage.Num(), Miles, Shallowest, *Where));
+	TestTrue(TEXT("Every leg in 2.5 m of water or more"), Shallowest >= 2.5);
+	TestTrue(TEXT("About 18 nm"), Miles > 15.0 && Miles < 20.0);
 	TestTrue(TEXT("Cassis's harbour light is charted"), Lake.Navaids.ContainsByPredicate([](const FNavaid& N) { return N.bLit && N.Name.Contains(TEXT("Cassis")); }));
 	TestTrue(TEXT("The map reaches past La Ciotat's Ile Verte"), Lake.Terrain.GetCols() * 10.0 > 39000.0);
 	return true;
