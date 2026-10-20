@@ -75,6 +75,14 @@ FBoatLivery SampleBoatLivery(int32 BoatType, uint32 Seed)
 		const float T = Seed == 0 ? 0.5f : R.Next();
 		L.Wear[K] = FMath::Lerp(Range[K][0], Range[K][1], T);
 	}
+	// Fleet hero (the Sunfish's dinghy park): the coloured sails' sun fade, from its own stream so the draws after it (the
+	// sail number) are what they were.
+	{
+		FRng F{ Seed * 40503u + 0x51ed27u + uint32(BoatType) * 31u };
+		for (int32 K = 0; K < 3; ++K) F.Next();
+		const float* Fade = W.FadeRange[FMath::Clamp(L.Profile, 0, 2)];
+		L.SailFade = FMath::Lerp(Fade[0], Fade[1], Seed == 0 ? 0.5f : F.Next());
+	}
 	// The sail number, from the class's range and format ("USA {n}", "{n}", "{n6}": six digits).
 	const FLiveryNumbers& N = *C.Numbers;
 	if (N.bRequired || R.Next() < N.Probability)

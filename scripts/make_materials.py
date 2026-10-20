@@ -1146,6 +1146,12 @@ else if (Layout > 1.5 && Layout < 2.5)
     float3 pal[4] = { float3(0.02, 0.10, 0.45), float3(0.80, 0.80, 0.78), float3(0.70, 0.08, 0.04), float3(0.85, 0.65, 0.05) };
     base = pal[band % 4];
 }
+// Fleet hero (the Sunfish's dinghy park): the coloured cloth's sun fade (the livery's SailFade). Reds go pink first, blues
+// least; the head and the leech, rolled up outermost on the spars between sails, the most.
+float sunfade = saturate(Fade * (0.7 + 0.4 * UV1.y + 0.25 * exp(-UV2.x / 0.5)));
+float redness = saturate((base.r - max(base.g, base.b)) * 2.0), blueness = saturate((base.b - max(base.r, base.g)) * 2.0);
+float dyed = 1.0 - step(0.6, min(base.r, min(base.g, base.b)));   // white panels age by the Dacron rules below
+base = lerp(base, lerp(base, float3(0.86, 0.80, 0.76), 0.65), sunfade * saturate(0.6 + 0.4 * redness - 0.35 * blueness) * dyed);
 float3 cloth = base * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
 // Graphics G6: a club boat's Dacron is off-white and shows its age (round 7: "too white"). The leech and the head take the
 // most sun and yellow first, each panel a little differently; the foot is greyed from the deck and from being flaked
@@ -1256,16 +1262,17 @@ def build_sail_cloth():
     layout = scalar(mat, "Layout", 0.0, -1400, 50)
     bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
     full = scalar(mat, "FullBattens", 0.0, -1400, 250)
+    fade = scalar(mat, "Fade", 0.0, -1400, 700)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
-                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face")):
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)

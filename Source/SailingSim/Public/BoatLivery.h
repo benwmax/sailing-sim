@@ -22,6 +22,7 @@ struct FLiveryWear
 {
 	float Club, Race, Charter;          // profile weights
 	float ClubRange[4][2], RaceRange[4][2], CharterRange[4][2]; // oxidation, waterline scum, scuffs, rust: [min, max]
+	float FadeRange[3][2];              // the coloured sails' sun fade per profile (club, race, charter): [min, max]
 };
 struct FLiveryNumbers { bool bRequired; float Probability; int32 Lo, Hi; const TCHAR* Format; };
 struct FLiveryClass { const FLiveryScheme* Schemes; int32 NumSchemes; const FLiveryWear* Wear; const FLiveryNumbers* Numbers; };
@@ -33,6 +34,7 @@ struct SAILINGSIM_API FBoatLivery
 	bool bBoot = true, bCove = true, bTeak = false;
 	FLinearColor Teak = FLinearColor(0.25f, 0.23f, 0.2f);
 	FVector4f Wear = FVector4f(0.f, 0.f, 0.f, 0.f);   // oxidation, waterline scum, scuffs, rust (0..1)
+	float SailFade = 0.f;                             // the coloured sails' sun fade (0..1; M_SailCloth's Fade)
 	int32 Scheme = 0, Profile = 0;                    // profile: 0 club, 1 race, 2 charter
 	FString SailNumber;                               // empty: none
 };
