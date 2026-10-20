@@ -1132,6 +1132,9 @@ void ALakeTerrainActor::PlaceReeds()
 		C->bVisibleInRayTracing = false;
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		C->SetCullDistances(0, 400.f * 100.f);
+		// Bounds cached, not rebuilt from 200,000 clumps (nor a navigation pass over them) when the actor moves: tide, re-centre.
+		C->SetUseConservativeBounds(true);
+		C->SetCanEverAffectNavigation(false);
 		C->RegisterComponent();
 		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Out[Kind]), false, true);
 		ReedModels.Add(C);

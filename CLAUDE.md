@@ -176,6 +176,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    worker around the boat; every world gets a tile index (whole grids: `FTileIndex::ForGrid`) and the terrain actor makes and
    drops its chunks by tile. Then `scripts/make-far-ring.sh TexasCoast`. Tests `SailingSim.World.Streaming.*`; bench view
    `stream-run` (`-SailingRun=<m/s>,<bearing>[,<turn after m>]` slides the world under the boat).
+   Re-centre hitch (`docs/recentre-hitch/`): a world shift (and any move of an actor, like the tide's 2 cm steps) makes every
+   instanced mesh recompute its bounds and resend all its instances to the distance-field and Lumen scenes. Big instanced
+   sets on actors that move get `bAffectDistanceFieldLighting = false` where it doesn't show, `SetUseConservativeBounds(true)`
+   and `SetCanEverAffectNavigation(false)`. Profile with `-trace=cpu,frame -statnamedevents -tracefile=<abs path>` and
+   `UnrealInsights -NoUI -AutoQuit -ExecOnAnalysisCompleteCmd="@=<rsp>"` (`TimingInsights.ExportTimingEvents`).
 
 25. Haze and far water (`docs/world-haze/`): `FHaze` (`Haze.h`: fog density for a visibility, clamped 0.5 to 80 km),
    `EWeatherPreset::ClearMistral` (60 km, cloudless NW), a world's `"haze"` (`fog_scale_height_m`, `far_plane_km`;

@@ -121,6 +121,14 @@ void ABridgesActor::BeginPlay()
 			// Perf 2: out of the ray-tracing scene, like the trees and reeds: Galveston's 324,000 boulders were gathered into
 			// it every frame (5 fps of render thread on High, coast-day). Lumen's screen traces still see them.
 			C->bVisibleInRayTracing = false;
+			// Out of the distance-field scene too: every shift of the actor (each 2 cm of tide, each re-centre) re-sent all their
+			// instances to it, 53 ms of render thread for the Texas coast's 380,000 (docs/recentre-hitch). High's Lumen traces
+			// the ray-tracing scene, which they were never in; a Medium still showed no difference.
+			C->bAffectDistanceFieldLighting = false;
+			// The bounds are cached in the component's frame, not rebuilt from every instance whenever it moves, and there is no
+			// navigation bounds pass over them either (8 ms of game thread at a re-centre).
+			C->SetUseConservativeBounds(true);
+			C->SetCanEverAffectNavigation(false);
 			C->RegisterComponent();
 			C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), RockX[K]), false, true);
 			Tiled.Add(C);

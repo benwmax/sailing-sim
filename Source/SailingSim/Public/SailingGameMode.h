@@ -235,7 +235,10 @@ private:
 	float BenchWarmup = 3.f;
 	bool bBenchTrace = false;
 	int32 ForegroundFrames = 0;
-	TArray<TPair<float, float>> TraceTimes;   // -SailingBenchTrace: (time since start, frame ms)
+	/** -SailingBenchTrace: one row a frame (time since start, frame ms, then the game, render, RHI and GPU times the
+	 *  engine last published: those lag the frame by one or two). */
+	struct FTraceFrame { float T, FrameMs, GameMs, RenderMs, RhiMs, GpuMs; };
+	TArray<FTraceFrame> TraceTimes;
 	float RecordSeconds = 0.f;
 	TArray<TPair<float, FString>> ExecAt;   // -SailingExecAt: (seconds, console command)
 	int32 NextExecAt = 0;
