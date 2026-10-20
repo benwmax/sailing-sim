@@ -32,6 +32,13 @@ Its signatures: the lateen rig, the cockpit well and the dinghy-park sun fade.
 
 ![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina22-before-after.jpg)
 
+## Catalina 30
+
+- **Cabin trunk:** three smoked windows a side with rounded ends in aluminium frames (the shared Catalina hero cabin),
+  the teak eyebrow and the companionway's teak drop boards; the wheel, binnacle, dodger and stern ladder stay.
+
+![Before (left), after (middle) and the deck from above (right), Ultra on the lake](catalina30-before-after.jpg)
+
 ## ILCA
 
 - **Mast:** the two-piece spar, its collar over the joint 2.85 m up, the black gooseneck fitting the boom pins to, the

@@ -368,9 +368,10 @@ def cabin(H, spec):
     for side in (1, -1):
         wall = [[(x, H.cy + side * half(x), H.deck_z(x, H.cy + side * half(x)) - 0.02), (x, H.cy + side * half(x) * 0.93, top(x) - 0.04)] for x in xs]
         hull.grid(wall, "Topsides", flip=side > 0)
-        if TAG == "Catalina22":
-            # Fleet hero: the Catalina 22's two smoked windows a side, rounded ends in aluminium frames.
-            for (fa, fb) in ((0.16, 0.44), (0.5, 0.78)):
+        if TAG in ("Catalina22", "Catalina30"):
+            # Fleet hero: the Catalinas' smoked windows, rounded ends in aluminium frames (the 22's two long ones a side,
+            # the 30's three).
+            for (fa, fb) in (((0.16, 0.44), (0.5, 0.78)) if TAG == "Catalina22" else ((0.12, 0.28), (0.34, 0.52), (0.58, 0.76))):
                 wa, wb = x0 + fa * (x1 - x0), x0 + fb * (x1 - x0)
                 zc = lambda x: H.deck_z(x, H.cy) + 0.62 * h   # noqa: E731
                 r = 0.16 * h
@@ -401,7 +402,7 @@ def cabin(H, spec):
         pts = [(x, H.cy - hb, H.deck_z(x, H.cy - hb) - 0.02)] + [(x, H.cy + hb * 0.93 * v, top(x) - 0.04 + 0.035 * (1 - v * v)) for v in [-1 + 2 * k / 10 for k in range(11)]] + [(x, H.cy + hb, H.deck_z(x, H.cy + hb) - 0.02)]
         hull.face(list(reversed(pts)) if rev else pts, "Topsides")
     # Companionway hatch and washboard; forward hatch.
-    if TAG == "Catalina22":
+    if TAG in ("Catalina22", "Catalina30"):
         # Fleet hero: teak drop boards in the companionway (three, their edges proud), and a teak eyebrow along both
         # edges of the trunk top.
         for k in range(3):
