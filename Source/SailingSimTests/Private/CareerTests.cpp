@@ -337,6 +337,42 @@ bool FSailingCareerSaveTest::RunTest(const FString&)
 }
 
 /**
+ * The Texas coast (world streaming's one-piece Galveston Bay and Gulf, "texas-coast") opens with the lake's Day Sailor
+ * certificate (Bean, Oct 20 2026: "Career unlocks the Texas coast after the lake"). Locks are menu-only: the World
+ * screen shows the reason; Free Sail keeps it open; the save names it by its string id.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerTexasCoastTest, "SailingSim.Career.TexasCoastUnlock", CareerTestsLocal::CareerFlags)
+bool FSailingCareerTexasCoastTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	const FCareerContent* C = Load(*this);
+	if (!C) return false;
+	const FString Coast = FSailSave::WorldId(4);
+	TestEqual(TEXT("World 4's id"), Coast, FString(TEXT("texas-coast")));
+	TestEqual(TEXT("...and back"), FSailSave::WorldIndex(Coast), 4);
+	FSailSave Save;
+	FCareerProgress Career(*C, Save.Progress);
+	TestFalse(TEXT("A new sailor: the Texas coast is locked"), Career.IsWorldOpen(Coast));
+	TestEqual(TEXT("...until the Day Sailor certificate"), Career.WorldLockReason(Coast), FString(TEXT("Earn the Day Sailor certificate")));
+	TestTrue(TEXT("Free Sail keeps it open"), FCareerProgress(*C, Save.Progress, true).IsWorldOpen(Coast));
+	FSailSave::FCertificateRecord Cert;
+	Cert.Id = TEXT("day-sailor");
+	Cert.EarnedAt = FDateTime(2026, 10, 20, 6, 0, 0);
+	Save.Progress.Certificates.Add(Cert);
+	TestTrue(TEXT("The Day Sailor certificate opens it"), Career.IsWorldOpen(Coast) && Career.WorldLockReason(Coast).IsEmpty());
+	TestTrue(TEXT("...beside Galveston Bay"), Career.IsWorldOpen(TEXT("galveston-bay")));
+	TestFalse(TEXT("Marseille is not in the career yet"), Career.IsWorldOpen(TEXT("marseille")));
+	// The save keeps the certificate and names the world by its id.
+	Save.Settings.WorldId = Coast;
+	const FString Text = Save.ToJson();
+	FSailSave Back;
+	TestEqual(TEXT("Reads back"), int32(FSailSave::FromJson(Text, Back)), int32(FSailSave::EResult::Ok));
+	TestTrue(TEXT("The world by its string id"), Text.Contains(TEXT("\"texas-coast\"")) && Back.Settings.WorldId == Coast);
+	TestTrue(TEXT("Still open after the round trip"), FCareerProgress(*C, Back.Progress).IsWorldOpen(Coast));
+	return true;
+}
+
+/**
  * A new sailor's Day Sailor tier in logic: one drill sailed for real on the physics (heave to, graded from the
  * FDrillRunner), the other five as the sim would report them at silver, each lesson's quiz, the checkride's quiz,
  * the certificate, Galveston and the Catalinas unlocked, the hours on the world clock.

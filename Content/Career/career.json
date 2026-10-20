@@ -105,7 +105,7 @@
         }
       },
       "certificate": { "id": "day-sailor", "name": "Day Sailor certificate" },
-      "unlocks": { "tiers": ["club-racer", "coastal-cruiser"], "worlds": [], "boats": [] }
+      "unlocks": { "tiers": ["club-racer", "coastal-cruiser"], "worlds": ["texas-coast"], "boats": [] }
     },
     {
       "id": "club-racer",

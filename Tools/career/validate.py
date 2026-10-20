@@ -10,7 +10,7 @@ import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..")
 
-WORLDS = {"ray-hubbard", "galveston-bay", "gulf"}           # FSailSave::WorldId
+WORLDS = {"ray-hubbard", "galveston-bay", "gulf", "marseille", "texas-coast"}   # FSailSave::WorldId
 MEDALS = ["bronze", "silver", "gold"]
 CRITERIA = {"outcomes", "max_seconds", "max_contact_kn", "max_collisions", "max_infractions"}
 STATUS = {"ready", "stub"}

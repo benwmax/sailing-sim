@@ -120,7 +120,7 @@ namespace SailCatalog
 			{
 				// world-marseille: the first port baked from a box and a name (Tools/coast/worlds/Marseille.json).
 				FWorld W;
-				W.Index = 3; W.File = TEXT("Marseille"); W.Name = TEXT("Marseille & the Calanques"); W.Tagline = TEXT("Mediterranean · Mistral · Islands");
+				W.Index = 3; W.File = TEXT("Marseille"); W.Name = TEXT("Marseille & Cassis"); W.Tagline = TEXT("Mediterranean · Mistral · Islands");   // "& the Calanques" ran off the card
 				W.Description = TEXT("Leave the Vieux-Port under Notre-Dame de la Garde, round the Chateau d'If and the Frioul islands, and "
 					"follow the limestone Calanques to Cassis. Clear blue water, swell from the open sea, and the mistral off the hills.");
 				W.MapTexture = TEXT("/Game/UI/T_Map_Marseille.T_Map_Marseille");

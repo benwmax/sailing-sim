@@ -190,8 +190,8 @@ Streaming's own state is flat: tiles, chunks and far tiles come and go and their
   Pass's bridge) fall back to procedural tiles until `make-world-models.sh` bakes them for TexasCoast.
 - **The minimap and art are the bay's.** On the Texas coast the minimap shows the bay's map, so offshore beyond it the
   map is blank. The World screen's card reuses Galveston's pictures.
-- **Career:** the Texas coast opens in Free Sail. Whether and when Career opens it is Bean's call; it is not in
-  `career.json`.
+- **Career:** the Day Sailor certificate opens the Texas coast (Bean, Oct 20 2026); Free Sail opens it too
+  (`docs/career/README.md`).
 - **Low tier trees:** the Low tier places its tree shapes once, around the start. Medium and up place their model trees
   tile by tile.
 - **The density trees, houses, crowns and piers are loaded whole** (the bay's, at start) rather than per tile. Only the
