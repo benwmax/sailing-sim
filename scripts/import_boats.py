@@ -188,7 +188,7 @@ else:
     for tag in FLEET:
         if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
             import_boat(tag, f"/Game/Boats/{tag}")
-    if os.path.exists(os.path.join(MODELS, "Maxi_sockets.json")):
+    if not only_fleet and os.path.exists(os.path.join(MODELS, "Maxi_sockets.json")):   # `fleet` is the seven; `maxi` imports her
         import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
     unreal.log("Import done")
     if sys.platform != "win32":  # see above: on Windows let -run=pythonscript return

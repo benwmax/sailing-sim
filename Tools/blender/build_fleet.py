@@ -368,6 +368,21 @@ def cabin(H, spec):
     for side in (1, -1):
         wall = [[(x, H.cy + side * half(x), H.deck_z(x, H.cy + side * half(x)) - 0.02), (x, H.cy + side * half(x) * 0.93, top(x) - 0.04)] for x in xs]
         hull.grid(wall, "Topsides", flip=side > 0)
+        if TAG == "Catalina22":
+            # Fleet hero: the Catalina 22's two smoked windows a side, rounded ends in aluminium frames.
+            for (fa, fb) in ((0.16, 0.44), (0.5, 0.78)):
+                wa, wb = x0 + fa * (x1 - x0), x0 + fb * (x1 - x0)
+                zc = lambda x: H.deck_z(x, H.cy) + 0.62 * h   # noqa: E731
+                r = 0.16 * h
+                loop = []
+                for (cx, a0) in ((wb - r, -90.0), (wa + r, 90.0)):
+                    for k in range(9):
+                        a = math.radians(a0 + 180.0 * k / 8)
+                        x = cx + r * math.cos(a)
+                        loop.append((x, H.cy + side * (half(x) * 0.968 + 0.006), zc(x) + r * math.sin(a)))
+                hull.face(loop if side < 0 else list(reversed(loop)), "CabinWindow")
+                tube(hull, loop + loop[:1], 0.008, "Aluminium", 5, cap=False)
+            continue
         # Ports: a long dark window band in the trunk side.
         wx0, wx1 = x0 + 0.2 * (x1 - x0), x0 + 0.78 * (x1 - x0)
         for k in range(10):
@@ -386,7 +401,17 @@ def cabin(H, spec):
         pts = [(x, H.cy - hb, H.deck_z(x, H.cy - hb) - 0.02)] + [(x, H.cy + hb * 0.93 * v, top(x) - 0.04 + 0.035 * (1 - v * v)) for v in [-1 + 2 * k / 10 for k in range(11)]] + [(x, H.cy + hb, H.deck_z(x, H.cy + hb) - 0.02)]
         hull.face(list(reversed(pts)) if rev else pts, "Topsides")
     # Companionway hatch and washboard; forward hatch.
-    box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
+    if TAG == "Catalina22":
+        # Fleet hero: teak drop boards in the companionway (three, their edges proud), and a teak eyebrow along both
+        # edges of the trunk top.
+        for k in range(3):
+            zk = H.deck_z(x0, H.cy) + 0.1 * h + k * 0.27 * h
+            box(hull, (x0 + 0.012, H.cy, zk + 0.13 * h), (0.025, 0.48 - 0.03 * k, 0.24 * h), "Wood")
+            box(hull, (x0 + 0.03, H.cy, zk + 0.255 * h), (0.012, 0.47 - 0.03 * k, 0.012), "Wood")
+        for side in (1, -1):
+            tube(hull, [(x, H.cy + side * half(x) * 0.935, top(x) - 0.035) for x in stations(x0 + 0.02, x1 - 0.02, 14)], 0.01, "Wood", 5, cap=False)
+    else:
+        box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
     box(hull, (x0 + 0.45, H.cy, top(x0 + 0.45) + 0.01), (0.8, 0.62, 0.04), "Deck")
     box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
     # Grab rails on the top.
