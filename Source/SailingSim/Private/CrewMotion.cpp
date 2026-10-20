@@ -182,8 +182,20 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		X = FMath::Clamp(FMath::Min(X, Hull.SternX + Cfg.TillerLength + 0.15), KeelWell.X0 + 0.35, KeelWell.X1 - 0.12);
 	}
-	const double Rail = Cfg.bMultihull ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
-	const double Sheer = Cfg.bMultihull ? Hull.SheerZ + 0.1 : Hull.SheerHeight(X);
+	// Multihull crew: a trimaran's helm sits in the main hull's cockpit (the Corsair's tiller is on the centreline, the
+	// ama 2.8 m out of reach); her crew out past the main hull's deck sit on the windward net, forward of the after aka
+	// (at x -2.05 and -2.6 they sat over the water behind it), side by side.
+	const bool bTrimaran = Cfg.bMultihull && Cfg.Hulls.size() == 3;
+	double NetAft = 0.0, NetForward = 0.0;
+	if (bTrimaran && I != N - 1 && FMath::Abs(In.CrewOffset) > Hull.DeckHalfBeam(X) && CrewNetSpan(Cfg, NetAft, NetForward))
+	{
+		X = FMath::Clamp(X, NetAft + 0.35 + 0.55 * (N - 2 - I), NetForward - 0.5);
+	}
+	const double Rail = Cfg.bMultihull && !(bTrimaran && I == N - 1) ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
+	// On a multihull the stances below are placed over 0 and lifted onto the surface under the sailor at the end
+	// (CrewSeatSurfaceZ: a hull's deck, the net, trampoline or bridgedeck); before, they all took the main hull's sheer
+	// plus 0.1 m, wherever they were.
+	const double Sheer = Cfg.bMultihull ? 0.0 : Hull.SheerHeight(X);
 	FCrewPoseParams& P = Out.Params;
 	Out.bHelm = I == N - 1;
 	Out.Roll = 0.f;
@@ -265,7 +277,16 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// Light air or downwind: on the cockpit seat (to leeward if the crew model put them there).
 		P.Stance = ECrewStance::Cockpit;
 		Out.Pelvis = FVector(X, Side * FMath::Clamp(Off, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
+		// A multihull's net or bridgedeck has no seat to drop the legs from: sit on it as on a side deck.
+		FCrewCockpitWell CockpitWell;
+		const bool bInWell = CrewCockpitWell(Cfg, CockpitWell) && CrewFloorZ(Cfg, X, Out.Pelvis.Y) < Hull.SheerHeight(X) - 0.05;
+		if (Cfg.bMultihull && !bInWell)
+		{
+			P.Stance = ECrewStance::RailHike;
+			Out.Pelvis.Z = Sheer + 0.07;
+		}
 	}
+	if (Cfg.bMultihull) Out.Pelvis.Z += CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y);
 	Out.Yaw = CrewFacingYaw(P);
 }
 
