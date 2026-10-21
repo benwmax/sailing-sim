@@ -18,6 +18,8 @@ Evidence is a graded clip in `reference-log.csv`, a number from `scripts/referen
 | 10 | Hobie 16 16-30% too fast against the ILCA at 8 kn and up (Portsmouth). | reference-checks "Portsmouth"; H16-M-006 | 3 | 1 | 2 | 2 | 3 | **partly**: DPN2/3 in range; DPN4 0.67 vs 0.74 (steady laps leave out tacking and capsize losses) |
 | 11 | No moon phases. | method known gaps | 2 | 2 | 1 | 2 | 2 | **done**: moon age, illumination and sky position from the date; test `Smoke.MoonPhase` |
 | 12 | Catalina 22 / 30 a little fast against the ILCA in light air. | reference-checks "Portsmouth" | 2 | 1 | 1 | 2 | 1 | **partly**: Catalina 30 in range; Catalina 22 DPN2 0.93 vs 0.96 (open) |
+| 13 | The ILCA 7's traveler range: her class rig gives about 4 deg (the value that had sat in a comment in Fleet.cpp); she is calibrated with the default 8, and at 4 she capsized on the 22 kn broad reach and on four of LaserPlaningDrag's angles. | #225; `scripts/reference-checks.sh`, `SailingSim.Physics.LaserPlaningDrag` | 2 | 1 | 2 | 3 | 1.3 | open (parked): retune her heavy-air depowering for 4 deg |
+| 14 | Hobie 16 running: the crew sit aft on the leeward hull under the boom (the mainsheet passes 3 cm from the forward sailor's back), and the trapeze wire is drawn to a sailor who is only sitting out, a metre aft across the main. | `SailingSim.Visual.RigClearance` with the wire drawn only to a sailor on the trapeze (docs/rig-clip-3/) | 2 | 2 | 1 | 2 | 2 | open |
 | - | Sounds not tuned by ear | needs Bean's recordings (method step 6) | | | | | deferred | |
 | - | Docks, buildings and trees are simple shapes | needs Bean's photos and LiDAR scans of Rush Creek | | | | | deferred | |
 
