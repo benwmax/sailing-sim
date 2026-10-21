@@ -70,6 +70,12 @@ float porosity = lerp(lerp(0.1, 0.5, X.r), 0.6, X.g);
 c *= lerp(1.0, 1.0 - 0.55 * porosity, wetAll) * (1.0 - 0.45 * ns * (1.0 - NSM.r) * wetAll);
 Rough = lerp(Rough, lerp(0.06, Rough, 0.25 + 0.4 * X.r), wetAll);
 Rough = lerp(Rough, 0.02, bead);                                  // a bead is a lens: a sharp glint
+// docs/lee-topside-patch/: Lumen's screen traces run before the sea (Single Layer Water) is drawn, so a mirror reflection
+// pointing down into it found the hull and keel under the water: a dark dome on the lee topsides of a heeled boat. Where
+// the reflection points below the horizon the gelcoat is rough enough (0.45) that Lumen takes its radiance cache, the
+// sea's soft sky light, instead.
+float3 rv = reflect(-V, nw);
+Rough = lerp(Rough, max(Rough, 0.45), saturate(-rv.z * 3.0));
 return c;
 """
 

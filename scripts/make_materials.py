@@ -1012,7 +1012,9 @@ if (DetailOn > 0.5 && surf > 0)
     float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
     float2 tile = (surf == 2 || surf == 3) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.3, 0.15)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : float2(0.25, 0.25);
-    float strength = (surf == 4 ? 0.5 : surf == 5 ? 0.7 : surf == 11 ? 0.8 : 1.0) * fadeD;
+    // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
+    // shaders refuse FP64: the material had fallen back to the default on High.)
+    float strength = (surf == 4 ? 0.5f : surf == 5 ? 0.7f : surf == 11 ? 0.8f : 1.0f) * fadeD;
     float3 LZ = cross(LX, LY);
     float3 bw = pow(abs(float3(dot(n, LX), dot(n, LY), dot(n, LZ))), 4.0);
     bw /= bw.x + bw.y + bw.z + 1e-5;
@@ -1048,7 +1050,7 @@ if (DetailOn > 0.5 && surf > 0)
         cav = m.b * fadeD;
         col *= lerp(1.0, lerp(0.94, 1.04, m.r), fadeD);
         rough = saturate(rough + fadeD * (m.g - 0.5) * 0.2);
-        col = lerp(col, float3(0.28, 0.17, 0.09), (surf == 3 ? 0.6 : 0.0) * cav * ageK * (0.4 + 0.6 * salt));
+        col = lerp(col, float3(0.28, 0.17, 0.09), (surf == 3 ? 0.6f : 0.0f) * cav * ageK * (0.4 + 0.6 * salt));
     }
     else if (surf == 6)                  // varnished wood: the figure under the film, open pores
     {
@@ -1092,6 +1094,13 @@ F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
 RoughOut = lerp(rough, lerp(0.06, rough, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
 CoatOut = saturate(coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
+// docs/lee-topside-patch/: where the reflection points down into the sea, rough enough that Lumen skips its screen traces
+// (they run before the water is drawn and find the hull under it: a dark patch on a heeled boat's lee topsides), and the
+// gloss lobe fades.
+float3 rvb = reflect(-V, dot(n, V) < 0.0 ? -n : n);
+float down = saturate(-rvb.z * 3.0);
+RoughOut = lerp(RoughOut, max(RoughOut, 0.45), down);
+CoatOut *= 1.0 - down;
 return normalize(n - grad);
 """
 
