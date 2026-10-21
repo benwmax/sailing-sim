@@ -29,6 +29,8 @@
 #include "ProceduralMeshComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "CrewPose.h"
 
 using namespace Sailing;
@@ -147,6 +149,61 @@ namespace
 			}
 		}
 	}
+
+	/** Boat fidelity 4: a rope along a polyline (a coiled tail), Catmull-Rom smoothed (two steps per span), its rings carried
+	 *  along by parallel transport so the braid doesn't twist; the same streams as AppendTube (U over 5 diameters). */
+	void AppendPolyTube(const TArray<FVector>& P, float RadiusCm, uint8 Look, FTubeStreams& Out)
+	{
+		static const FRingTable Ring;
+		if (P.Num() < 2) return;
+		TArray<FVector> C;
+		for (int32 I = 0; I + 1 < P.Num(); ++I)
+		{
+			const FVector P0 = P[FMath::Max(I - 1, 0)], P1 = P[I], P2 = P[I + 1], P3 = P[FMath::Min(I + 2, P.Num() - 1)];
+			for (int32 S = 0; S < 2; ++S)
+			{
+				const float T = S * 0.5f, T2 = T * T, T3 = T2 * T;
+				C.Add(0.5f * (2.f * P1 + (P2 - P0) * T + (2.f * P0 - 5.f * P1 + 4.f * P2 - P3) * T2 + (3.f * P1 - P0 - 3.f * P2 + P3) * T3));
+			}
+		}
+		C.Add(P.Last());
+		const int32 Base = Out.Verts.Num();
+		const float Lay = 5.f * 2.f * RadiusCm;
+		const FLinearColor Col(float(Look) / 255.f, 0.f, 0.f, 1.f);
+		FVector Along = (C[1] - C[0]).GetSafeNormal();
+		FVector U = FVector::CrossProduct(Along, FMath::Abs(Along.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector).GetSafeNormal();
+		float Arc = 0.f;
+		for (int32 I = 0; I < C.Num(); ++I)
+		{
+			const FVector NewAlong = (C[FMath::Min(I + 1, C.Num() - 1)] - C[FMath::Max(I - 1, 0)]).GetSafeNormal();
+			U = (U - FVector::DotProduct(U, NewAlong) * NewAlong).GetSafeNormal();   // parallel transport
+			Along = NewAlong;
+			const FVector W = FVector::CrossProduct(Along, U);
+			if (I > 0) Arc += FVector::Dist(C[I], C[I - 1]);
+			const FProcMeshTangent Tangent(Along, false);
+			for (int32 K = 0; K <= kLineSides; ++K)
+			{
+				const FVector N = U * Ring.Cos[K] + W * Ring.Sin[K];
+				Out.Verts.Add(C[I] + N * RadiusCm);
+				Out.Normals.Add(N);
+				Out.UV0.Add(FVector2D(Arc / Lay, float(K) / kLineSides));
+				Out.Colors.Add(Col);
+				Out.Tangents.Add(Tangent);
+			}
+		}
+		constexpr int32 RingVerts = kLineSides + 1;
+		for (int32 I = 0; I + 1 < C.Num(); ++I)
+		{
+			for (int32 K = 0; K < kLineSides; ++K)
+			{
+				const int32 A0 = Base + I * RingVerts + K, A1 = A0 + 1;
+				const int32 B0 = A0 + RingVerts, B1 = A1 + RingVerts;
+				Out.Tris.Append({ A0, B0, B1, A0, B1, A1 });
+			}
+		}
+	}
+
+#include "J22CoilData.inl"
 }
 
 ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) const
@@ -491,16 +548,38 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 	}
 
+	// Boat fidelity 4: a rig-wide minimum on-screen width. A 5 mm shroud is under half a pixel at chase range and flickers
+	// in and out under TSR; each line is drawn at least kMinLinePx wide at its middle's distance from the camera. The radius
+	// steps by a quarter at a time, so a moving camera re-uploads a section only now and then. -SailingNoMinLineWidth compares.
+	static SailingArgs::FCachedFlag NoMinWidthArg(TEXT("SailingNoMinLineWidth"));
+	const APlayerController* ViewPC = GetWorld()->GetFirstPlayerController();
+	if (!NoMinWidthArg.Get() && ViewPC && ViewPC->PlayerCameraManager && GEngine && GEngine->GameViewport)
+	{
+		constexpr float kMinLinePx = 0.8f;
+		FVector2D ViewSize;
+		GEngine->GameViewport->GetViewportSize(ViewSize);
+		const float PxAngle = 2.f * FMath::Tan(FMath::DegreesToRadians(ViewPC->PlayerCameraManager->GetFOVAngle() * 0.5f)) / FMath::Max(ViewSize.X, 1.0);
+		const FVector Eye = BoatRoot->GetComponentTransform().InverseTransformPosition(ViewPC->PlayerCameraManager->GetCameraLocation());
+		for (TArray<FRigLine>* Lines : { &Wires, &Ropes })
+		{
+			for (FRigLine& L : *Lines)
+			{
+				const float MinR = 0.5f * kMinLinePx * PxAngle * FVector::Dist(Eye, 0.5f * (L.A + L.B));
+				if (MinR > L.RadiusCm) L.RadiusCm *= FMath::Pow(1.25f, FMath::CeilToFloat(FMath::Loge(MinR / L.RadiusCm) / FMath::Loge(1.25f)));
+			}
+		}
+	}
+
 	// Gravity in the boat frame (the boat heels and pitches).
 	const FVector Down = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
 	for (int32 Section = 0; Section < 2; ++Section)
 	{
 		const TArray<FRigLine>& Lines = Section == 0 ? Wires : Ropes;
-		// A section none of whose lines moved more than half a millimetre (ends or sag) since its last upload is left as
-		// it is: the standing rig at rest, a sheet made fast.
+		// A section none of whose lines moved more than half a millimetre (ends, sag or radius) since its last upload is left
+		// as it is: the standing rig at rest, a sheet made fast.
 		TArray<FVector> Keys;
-		Keys.Reserve(Lines.Num() * 3);
-		for (const FRigLine& L : Lines) Keys.Append({ L.A, L.B, SagOf(L, Down) });
+		Keys.Reserve(Lines.Num() * 4);
+		for (const FRigLine& L : Lines) Keys.Append({ L.A, L.B, SagOf(L, Down), FVector(L.RadiusCm, 0.f, 0.f) });
 		TArray<FVector>& Last = RigLineKeys[Section];
 		bool bMoved = !bRigLinesBuilt || Last.Num() != Keys.Num();
 		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > 0.05f * 0.05f;
@@ -514,7 +593,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
 		for (int32 K = 0; K < Lines.Num(); ++K)
 		{
-			AppendTube(Lines[K], Last[3 * K + 2], Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
+			AppendTube(Lines[K], Last[4 * K + 2], Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
 		}
 		if (!bRigLinesBuilt)
 		{
@@ -525,6 +604,27 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		{
 			RigLines->UpdateMeshSection_LinearColor(Section, Out.Verts, Out.Normals, Out.UV0, Out.Colors, Out.Tangents);
 		}
+	}
+	// Boat fidelity 4: the hero J/22's coiled tails (J22CoilData.inl), lying where bake_j22_hero.py baked their shadows into
+	// the deck: built once into their own section (they never move in the boat frame). -SailingNoCoils leaves them out.
+	static SailingArgs::FCachedFlag NoCoilsArg(TEXT("SailingNoCoils"));
+	if (!bRigLinesBuilt && !bTrafficBoat && !bGhost && !NoCoilsArg.Get() && ModelHull && ModelHull->GetStaticMesh()
+		&& ModelHull->GetStaticMesh()->GetName() == TEXT("SM_J22H_Hull"))
+	{
+		FTubeStreams Out;
+		TArray<FVector> Pts;
+		for (const FJ22Coil& Coil : GJ22Coils)
+		{
+			Pts.Reset();
+			for (int32 I = 0; I < Coil.Count; ++I)
+			{
+				const float* Q = GJ22CoilPoints[Coil.First + I];
+				Pts.Add(FVector(Q[0], Q[1], Q[2]));
+			}
+			AppendPolyTube(Pts, Coil.RadiusCm, Coil.Look, Out);
+		}
+		RigLines->CreateMeshSection_LinearColor(2, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
+		RigLines->SetMaterial(2, RopeMaterial.Get());
 	}
 	bRigLinesBuilt = true;
 }

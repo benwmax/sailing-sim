@@ -527,6 +527,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
   `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
   materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
+  Boat fidelity 4 (`docs/boat-fidelity-4/`): `M_SailCloth` has `Detail` (the pawn sets 1 on High/Ultra: seams held on
+  screen, stitching, tabling, corner patches, pocket ends, backlit layers), `Age`/`Care` (foot dirt; -1 unset); the
+  insignia is a made-up emblem. The hero's coiled tails are live rope (rig-line section 2) from `J22CoilData.inl`
+  (`Tools/boats/make_coil_data.py` <- `Inputs/j22-hero/J22H_coils.json` <- `build_j22_hero.py`, `J22H_COILS_ONLY=1`);
+  every rig line keeps 0.8 px on screen. Args `-SailingNoSailDetail`, `-SailingNoCoils`, `-SailingNoMinLineWidth`.
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
   a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
   deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe

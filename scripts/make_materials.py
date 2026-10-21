@@ -1169,7 +1169,9 @@ float whiteish = saturate((min(base.r, min(base.g, base.b)) - 0.4) * 4.0);
 float age = saturate(0.3 + 0.45 * exp(-UV2.x / 0.6) + 0.25 * UV1.y + 0.35 * (panel - 0.5) + 0.15 * (mott - 0.5));
 cloth *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.95, 0.83), age * 0.6 * whiteish);
 float foot = (1.0 - smoothstep(0.05, 0.55 + 0.3 * mott, UV0.y)) * (0.6 + 0.4 * mott);
-cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.78, 0.72), foot * 0.5 * whiteish);
+// Boat fidelity 4: how grimy the foot is follows the boat's age and care where it has one (E1's Age, -1 = unset: as before).
+float dirtK = Age >= 0.0 ? saturate(0.15 + Age / 15.0) * (1.0 - 0.6 * saturate(Care)) * 2.0 : 1.0;
+cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.78, 0.72), saturate(foot * 0.5 * dirtK) * whiteish);
 float2 sp = UV0 / 0.045;
 float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
 float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
@@ -1199,10 +1201,68 @@ if (Layout > 3.5)
     cloth = base * (1.0 + 0.06 * scrim) * (0.97 + 0.03 * panel);
     cloth = lerp(cloth, lerp(base * 3.0 + 0.04, float3(0.45, 0.32, 0.11), aramid), fibre * 0.6);
 }
-float3 col = lerp(cloth * (1.0 - 0.12 * seam), base * 0.93, batten);
+// Boat fidelity 4 (Detail: High and Ultra; Medium and Low keep the lines above): what a sailmaker's sail carries.
+// Seams that hold a minimum width on screen (Depth: cm to the camera, a pixel is about 1.25e-5 Depth metres), with the
+// overlap's edge line and two rows of zigzag stitching; tabling on the luff, leech and foot; layered reinforcement
+// patches at the tack, clew and head; batten pocket stitching with the elastic end at the leech; each extra layer of
+// cloth darker against the light and a step in the surface at each patch edge.
+float layers = 0.0, stitch = 0.0, edgeLine = 0.0, ndu = 0.0, ndv = 0.0;
+if (Detail > 0.5)
+{
+    float px = max(Depth, 1.0) * 1.25e-5;
+    float hw = max(0.008, 0.6 * px);
+    float seamAA = (1.0 - smoothstep(hw - px, hw + px, seamDist)) * lerp(1.0, 0.55, saturate((hw - 0.008) / 0.02));
+    seam = max(seam, seamAA);
+    float fineK = 1.0 - smoothstep(0.0006, 0.002, px);             // stitches and edge lines fade out past a few metres
+    edgeLine = (1.0 - smoothstep(0.0, max(0.0012, px), abs(seamDist - 0.008))) * fineK;
+    float zig = abs(frac(UV0.x / 0.006) - 0.5) * 2.0;              // a 6 mm zigzag along the seam
+    float rowA = 1.0 - smoothstep(0.0004, 0.0009, abs(seamDist - (0.0025 + 0.0025 * zig)));
+    float rowB = 1.0 - smoothstep(0.0004, 0.0009, abs(seamDist - (0.0055 + 0.0020 * zig)));
+    stitch = max(rowA, rowB) * fineK * step(Layout, 3.5);
+    // Tabling: 25 mm on the luff, 40 on the leech, 30 on the foot, a stitch line near its inner edge.
+    float dl = UV0.x, df = UV0.y, dk = UV2.x;
+    float tab = max(max(1.0 - smoothstep(0.025 - px, 0.025 + px, dl), 1.0 - smoothstep(0.040 - px, 0.040 + px, dk)), 1.0 - smoothstep(0.030 - px, 0.030 + px, df));
+    float tabStitch = max(max(1.0 - smoothstep(0.0004, 0.0010, abs(dl - 0.019)), 1.0 - smoothstep(0.0004, 0.0010, abs(dk - 0.033))), 1.0 - smoothstep(0.0004, 0.0010, abs(df - 0.024)));
+    stitch = max(stitch, tabStitch * fineK);
+    layers += tab;
+    // Corner patches: three layers each, scaled with the sail (the J/22 main is 7.6 m), as rings round the corner.
+    float sc = clamp(Height / 7.6, 0.4, 3.0);
+    float headY = (1.0 - UV1.y) * Height;
+    // Cut panels, not circles: an octagonal distance gives each layer straight edges at 45-degree steps.
+    float2 qT = float2(dl, df), qC = float2(dk, df), qH = float2(min(dl, dk), headY);
+    float rT = max(max(qT.x, qT.y), 0.78 * (qT.x + qT.y)), rC = max(max(qC.x, qC.y), 0.78 * (qC.x + qC.y)), rH = max(max(qH.x, qH.y), 0.78 * (qH.x + qH.y));
+    float3 LT = float3(0.34, 0.24, 0.14) * sc, LC = float3(0.44, 0.31, 0.19) * sc, LH = float3(0.36, 0.25, 0.15) * sc;
+    for (int p = 0; p < 3; p++)
+    {
+        float lt = LT[p], lc = LC[p], lh = LH[p];
+        layers += (1.0 - smoothstep(lt - px, lt + px, rT)) + (1.0 - smoothstep(lc - px, lc + px, rC)) + (1.0 - smoothstep(lh - px, lh + px, rH));
+        float e = max(max(1.0 - smoothstep(0.0, max(0.0015, px), abs(rT - lt)), 1.0 - smoothstep(0.0, max(0.0015, px), abs(rC - lc))), 1.0 - smoothstep(0.0, max(0.0015, px), abs(rH - lh)));
+        edgeLine = max(edgeLine, e * fineK);
+        stitch = max(stitch, max(max(1.0 - smoothstep(0.0004, 0.0010, abs(rT - lt + 0.006)), 1.0 - smoothstep(0.0004, 0.0010, abs(rC - lc + 0.006))), 1.0 - smoothstep(0.0004, 0.0010, abs(rH - lh + 0.006))) * fineK);
+        // The patch's edge is a step in the cloth (0.3 mm): a ridge in the normal across each ring.
+        float gT = exp(-pow((rT - lt) / 0.002, 2.0)), gC = exp(-pow((rC - lc) / 0.002, 2.0));
+        ndu += 0.06 * (gT * dl / max(rT, 1e-3) - gC * dk / max(rC, 1e-3));
+        ndv += 0.06 * (gT * df / max(rT, 1e-3) + gC * df / max(rC, 1e-3));
+    }
+    // Batten pockets: a stitch line along each side and the elastic end at the leech.
+    for (int j = 1; j <= 8; j++)
+    {
+        if (j > nb) break;
+        float vb = float(j) / (BattenCount + 1.0);
+        float off = abs(abs(UV1.y - vb) * Height - 0.024);
+        stitch = max(stitch, (1.0 - smoothstep(0.0004, 0.0010, off)) * Battens * step(UV2.x, FullBattens > 0.5 ? 50.0 : 0.72) * fineK);
+    }
+    float elastic = batten * (1.0 - smoothstep(0.035, 0.045, UV2.x));
+    layers += 2.0 * batten;
+    edgeLine = max(edgeLine, elastic * 0.8);
+}
+float3 col = lerp(cloth * (1.0 - 0.12 * seam) * (1.0 - 0.015 * min(layers, 4.0)), base * 0.93, batten);
+col *= 1.0 - 0.09 * edgeLine - 0.16 * stitch * (1.0 - mark);
 col = lerp(col, ink, mark);
-// Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind.
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0);
+// Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind (and with Detail
+// every patch layer, the tabling and the stitch holes).
+Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
+    * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1223,7 +1283,7 @@ dhdu += dth * (cb / cr2);      // UV2.x runs from the leech toward the luff: d/d
 dhdv += dth * (ca / cr2);
 float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
 dhdu += pucker * 55.0 * cos(UV0.x * 55.0);
-NormalTS = normalize(float3(-dhdu, -dhdv, 1.0));
+NormalTS = normalize(float3(-(dhdu + ndu), -(dhdv + ndv), 1.0));
 // The resin cracks along a fold: the line reads a shade darker and rougher than the sheen around it.
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
@@ -1263,16 +1323,23 @@ def build_sail_cloth():
     bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
     full = scalar(mat, "FullBattens", 0.0, -1400, 250)
     fade = scalar(mat, "Fade", 0.0, -1400, 700)
+    # Boat fidelity 4: the sailmaker's detail (the pawn sets Detail 1 on High and Ultra), the boat's age and care, the
+    # camera distance the seams and stitches size themselves by.
+    detail = scalar(mat, "Detail", 0.0, -1400, 800)
+    age = scalar(mat, "Age", -1.0, -1400, 900)
+    care = scalar(mat, "Care", 0.5, -1400, 1000)
+    depth = node(mat, unreal.MaterialExpressionPixelDepth, -1400, 1100)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
-                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade")):
+                     (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
+                     (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
