@@ -183,7 +183,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	}
 	// docs/crew-followups/: the Catalinas' crew spread along the cockpit, not shoulder to shoulder in its after part
 	// (0.55 m apart round CrewCG they left the forward half empty): the forward hand at its forward end, the helm at the
-	// tiller's end (the 22) or where the wheel boat's helm already sits (the 30), the rest evenly between, 0.55-0.9 m apart.
+	// tiller's end (the 22) or where the wheel boat's helm already sits (the 30), the rest evenly between, 0.45-0.9 m apart.
 	if ((Cfg.Type == EBoatType::Catalina22 || Cfg.Type == EBoatType::Catalina30) && CrewCockpitWell(Cfg, KeelWell))
 	{
 		const bool bTiller = Cfg.WheelHardOverSeconds <= 0.0;
@@ -196,8 +196,12 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		}
 		else
 		{
-			const double Fwd = KeelWell.X1 - 0.3, Aft = HelmX + 0.6;
-			const double Step = N > 2 ? FMath::Clamp((Fwd - Aft) / (N - 2), 0.55, 0.9) : 0.0;
+			// (0.8 m clear ahead of the helm: at 0.6 the 22's middle hand's back was a hand's width from the helm's face, the
+			// cockpit camera's eye: docs/cockpit-eye/.)
+			const double Fwd = KeelWell.X1 - 0.3, Aft = HelmX + 0.8;
+			// (At least 0.45 m apart, a body's width and a little: a 0.55 m floor put the 30's aftmost hand 0.43 m from her
+			// helm, at the cockpit camera's eye: docs/cockpit-eye/.)
+			const double Step = N > 2 ? FMath::Clamp((Fwd - Aft) / (N - 2), 0.45, 0.9) : 0.0;
 			X = Fwd - Step * I;
 		}
 	}
@@ -312,6 +316,11 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// docs/crew-hull-clip/: the maxi's helm aft of the windward wheel (ref.json "wheels": x -13.0, 2.15 m out), on the
 		// cockpit's edge with the legs in it; at x -9 on the rail their legs went down through 1.1 m of deck.
 		if (Cfg.Type == EBoatType::Maxi) Out.Pelvis = FVector(-13.7, Side * 2.55, CrewSeatSurfaceZ(Cfg, -13.7, Side * 2.55) + 0.07);
+		// docs/cockpit-eye/: the Catalina 30's helm behind her wheel (build_fleet.py SPECS: at x -3.45 in the well, which ends
+		// at -4.05), on the after deck to windward of its rim (0.42 m across: seated behind it the rim was at eye height), the
+		// legs in the well, on a helm seat 25 cm over the deck so they see over the rim. On the rail beside the wheel they faced the crew's row, and the cockpit camera, at their head,
+		// looked along it.
+		if (Cfg.Type == EBoatType::Catalina30) Out.Pelvis = FVector(-4.15, Side * 0.65, Hull.SheerHeight(-4.15) + 0.32);
 		// The Lagoon's helm on her helm seat (build_fleet.py lagoon_detail(): aft of the saloon on the starboard side,
 		// the cushion 0.49 m over the bridgedeck), not on a hull's deck aft.
 	}
