@@ -144,7 +144,7 @@ namespace Sailing
 			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee
 			// Her traveler range stays the default 8 deg her polar and planing were calibrated with: a "TravelerRangeDeg = 4.0"
 			// had sat inside the comment above since the fleet came in, and applied it capsized her on the 22 kn broad reach
-			// (ReferenceChecks) and on four of LaserPlaningDrag's sixteen angles (docs/boom-stop/).
+			// (ReferenceChecks) and on four of LaserPlaningDrag's sixteen angles.
 			C.RigWindageCdA = 0.15; C.HullWindageCdA = 0.5;
 			C.ReefLuffFraction.clear();
 			C.Engines.clear();
