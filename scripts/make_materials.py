@@ -2078,13 +2078,18 @@ float hfReach = length(HullClipRect.zw) + 3.0 + 1.5 * HullClipV.z;   // the chur
     float2 hn1 = float2(hbx * 2.7 + T * 0.9 * HullClipV.z, hby * 4.1);
     float2 hn2 = float2(hbx * 7.3 + T * 1.3 * HullClipV.z, hby * 8.9 + 3.7);
     float hn = saturate(WB_NOISE(hn1) * 0.65 + WB_NOISE(hn2) * 0.55 - 0.1);
+    // Outside the map the clamped texel's margins stop at its two texels of padding (a few cm): count the rest of the way
+    // too, or the waterline band and the churn ran on sideways to the branch's reach, a flat white polygon off her low
+    // side (docs/clipping-audit-2/water-rectangle.jpg).
+    float2 hout = max(HullClipRect.xy - float2(hbx, hby), 0.0) + max(float2(hbx, hby) - HullClipRect.xy - HullClipRect.zw, 0.0);
+    float side = hc.b - hout.y;
     float gap = hc.r - hbz;
-    float wl = saturate(1.0 - gap / (0.03 + 0.07 * spd)) * step(0.0, gap) * saturate(min(hc.b, hc.a) / 0.1 + 1.0);
+    float wl = saturate(1.0 - gap / (0.03 + 0.07 * spd)) * step(0.0, gap) * saturate(min(side, hc.a - hout.x) / 0.1 + 1.0);
     // Past the map's aft edge the clamped texel stops counting: add the rest of the way (docs/sails-1/: the churn
     // ended in a hard line there and ran straight aft at the transom's width, a white rectangle). It spreads and softens
     // as it goes, and fades out well inside the branch's reach.
     float aft = -hc.a + max(HullClipRect.x - hbx, 0.0);
-    float spread = hc.b + 0.3 * aft;
+    float spread = side + 0.3 * aft;
     float churn = saturate(spread / (0.15 + 0.3 * aft)) * step(0.0, aft) * step(hbx, HullClipRect.x + 0.5 * HullClipRect.z)
         * exp(-aft / (0.4 + 0.45 * HullClipV.z)) * saturate(1.0 - aft / (2.5 + 1.2 * HullClipV.z));
     hullFoam = spd * max(wl * (0.45 + 0.55 * hn), churn * saturate(hn * 1.7 - 0.25));
