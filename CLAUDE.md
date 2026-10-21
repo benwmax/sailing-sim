@@ -528,6 +528,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
   `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
   materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
+  Boat fidelity 1 (`docs/boat-fidelity-1/`): `M_BoatSurface`'s `Surface` is each slot's kind in the shared library
+  (`BOAT_SURFACE`; weathering by E1's Age/Care, box-projected detail maps on High/Ultra via `MPC_Boat.Detail`); `up` is
+  judged on the side the camera sees (two-sided shells). Args `-SailingNoBoatDetail`, `-SailingBoatAge=<y>[,<care>]`,
+  `-SailingDeckWet=<0..1>`; `HERO_MATERIALS_ONLY=1` rebuilds the hero's materials without reimporting.
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
   a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
   deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe

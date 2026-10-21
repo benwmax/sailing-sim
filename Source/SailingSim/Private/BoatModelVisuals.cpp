@@ -21,6 +21,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
+#include "SailingSettings.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Kismet/KismetMaterialLibrary.h"
@@ -226,12 +227,25 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	// Graphics G3: this boat's livery and wear (sampled in RebuildBoatVisuals) on each hull slot.
 	{
 		const FBoatLivery& L = Livery;
+		// Boat fidelity 1 stills: -SailingBoatAge=<years>[,<care 0..1>] ages this boat's hull slots as E1 ages a berthed one.
+		FString AgeArg;
+		const bool bAge = !bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false);
+		FString AgeStr, CareStr;
+		if (bAge && !AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
+		// -SailingDeckWet=<0..1> starts the deck that wet (it dries over about five minutes: UpdateBoatWetness).
+		float StartWet = 0.f;
+		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingDeckWet="), StartWet)) DeckWetness = FMath::Clamp(StartWet, 0.f, 1.f);
 		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
 		for (int32 I = 0; I < Slots.Num(); ++I)
 		{
 			UMaterialInstanceDynamic* Mid = ModelHull->CreateDynamicMaterialInstance(I);
 			if (!Mid) continue;
 			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
+			if (bAge)
+			{
+				Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
+				Mid->SetScalarParameterValue(TEXT("Care"), FCString::Atof(*CareStr));
+			}
 			const FString Name = Slots[I].ToString();
 			const FLinearColor* Col = Name == TEXT("Topsides") ? &L.Hull : Name == TEXT("Deck") ? &L.Deck : Name == TEXT("NonSkid") ? &L.NonSkid
 				: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove
@@ -574,6 +588,10 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WaterZ"), float(WetLineZ));
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WetBand"), Band);
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("DeckWet"), DeckWetness);
+	// Boat fidelity 1: M_BoatSurface's close-up detail maps on High and Ultra (docs/boat-fidelity-1); -SailingNoBoatDetail compares.
+	static SailingArgs::FCachedFlag NoBoatDetailArg(TEXT("SailingNoBoatDetail"));
+	const bool bDetail = USailingSettings::Get()->Quality >= ESailingQuality::High && !NoBoatDetailArg.Get();
+	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("Detail"), bDetail ? 1.f : 0.f);
 }
 
 void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
