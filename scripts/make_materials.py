@@ -691,9 +691,12 @@ float h01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h
 float nz = lerp(lerp(h00, h10, qf.x), lerp(h01, h11, qf.x), qf.y);
 float crest = exp(-pow((u - 0.22) / 0.14, 2.0)) * VC.g;
 float foam = 0.4 * saturate(crest * (0.25 + 0.75 * VC.r) * (0.3 + 1.2 * nz) + (1.0 - u) * 0.2 * VC.r * nz);
-Rough = lerp(0.03, 0.55, foam);
-Opacity = 0.85 * saturate(VA * (1.0 - smoothstep(0.5, 1.0, u)) * (0.85 + 0.15 * foam));
-return lerp(float3(0.018, 0.032, 0.028), float3(0.8, 0.82, 0.8), foam);
+// A thin film of moving water, not a body: mostly the sky's reflection (Fresnel: clear from above, mirror-like at grazing
+// angles), a faint dark-water tint, gone where it meets the sea and soft at its root (the vertex alpha).
+float fres = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(normalize(N), normalize(V)))), 5.0);
+Rough = lerp(0.02, 0.5, foam);
+Opacity = saturate(VA * (1.0 - smoothstep(0.45, 1.0, u)) * (0.16 + 0.55 * fres + 0.6 * foam));
+return lerp(float3(0.01, 0.018, 0.016), float3(0.8, 0.82, 0.8), foam);
 """
 
 
@@ -708,7 +711,9 @@ def build_bow_wave():
            "VC": node(mat, unreal.MaterialExpressionVertexColor, -900, 100),
            "VA": None,
            "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 250),
-           "Time": node(mat, unreal.MaterialExpressionTime, -900, 400)}
+           "Time": node(mat, unreal.MaterialExpressionTime, -900, 400),
+           "N": node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 500),
+           "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 600)}
     c = custom(mat, BOW_WAVE_CODE, list(ins.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Opacity", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for name, n in ins.items():

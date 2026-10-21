@@ -718,7 +718,7 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	TArray<int32> Tris;
 	V.Reserve(2 * NS * NU); UV.Reserve(2 * NS * NU); Col.Reserve(2 * NS * NU);
 	// From where the bow meets the water (BowX is the stem's top: raked bows overhang it; the spray peels from 0.55-0.8 of it).
-	const double X0 = Hull.BowX * 0.8, X1 = Hull.BowX * 0.15;
+	const double X0 = Hull.BowX * 0.8, X1 = Hull.BowX * 0.45;
 	for (int32 Side = 0; Side < 2; ++Side)
 	{
 		const double S = Side == 0 ? 1.0 : -1.0;
@@ -728,23 +728,36 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 			const float Tt = float(I) / (NS - 1);
 			const double X = FMath::Lerp(X0, X1, double(Tt));
 			const double Aft = X0 - X;                                         // m aft of the stem
-			const float Rise = FMath::Sin(0.5f * PI * FMath::Min(Tt / 0.2f, 1.f)) * FMath::Exp(-2.2f * FMath::Max(Tt - 0.15f, 0.f));
+			const float Rise = FMath::Sin(0.5f * PI * FMath::Min(Tt / 0.15f, 1.f)) * FMath::Exp(-2.6f * FMath::Max(Tt - 0.12f, 0.f));
 			const float H = Head * Rise;
-			const double YHull = Hull.CenterY + S * FMath::Max(0.9 * Hull.DeckHalfBeam(X), 0.02);
+			// The root: where this station's side meets the sea as she heels and pitches now (heeled, the lee waterline lies
+			// well outboard of the upright half-beam: rooted there the sheet lay on her topsides). The side is taken as a wall
+			// at the deck's half-beam; along it the world height is linear in body z, so one step solves for the sea.
+			const double YHull = Hull.CenterY + S * FMath::Max(Hull.DeckHalfBeam(X), 0.02);
+			const Vec3 Z0 = Boat.BodyToWorld(Vec3(X, YHull, 0.0)), Z1 = Boat.BodyToWorld(Vec3(X, YHull, 1.0));
+			const double Sea0 = Waves.Height(Z0.X, Z0.Y, Time);
+			const double Zb = FMath::Abs(Z1.Z - Z0.Z) > 1e-3 ? FMath::Clamp((Sea0 - Z0.Z) / (Z1.Z - Z0.Z), -1.5, 1.5) : 0.0;
+			const Vec3 Root = Boat.BodyToWorld(Vec3(X, YHull, Zb));
+			const Vec3 Off = Boat.BodyToWorld(Vec3(X, YHull + S, Zb));
+			FVector2D Out(Off.X - Root.X, Off.Y - Root.Y);
+			Out = Out.GetSafeNormal();
 			const double Width = 0.12 * Scale + 0.36 * Aft;                    // out to the Kelvin wedge
 			for (int32 J = 0; J < NU; ++J)
 			{
 				const float U = float(J) / (NU - 1);
-				// Across: highest at the hull, a shoulder (the lip, curling outward at speed), then down to the sea.
+				// Across: highest at the hull, a shoulder (the lip, curling outward at speed), then down to the sea; 4 cm off
+				// her skin.
 				const float Profile = FMath::Pow(1.f - U, 1.3f) + Lip * 0.35f * FMath::Sin(PI * FMath::Min(U / 0.45f, 1.f)) * (1.f - U);
-				const double Y = YHull + S * (U * Width - 0.03 + 0.04 * Lip * FMath::Sin(PI * U));
-				const Vec3 W = Boat.BodyToWorld(Vec3(X, Y, 0.0));
-				const double Sea = Waves.Height(W.X, W.Y, Time);
-				FVector P = SailingFrame::ToWorld(GetWorld(), W.X, W.Y, 0.0);
+				const double Reach = 0.04 + U * Width + 0.04 * Lip * FMath::Sin(PI * U);
+				const double WX = Root.X + Out.X * Reach, WY = Root.Y + Out.Y * Reach;
+				const double Sea = Waves.Height(WX, WY, Time);
+				FVector P = SailingFrame::ToWorld(GetWorld(), WX, WY, 0.0);
 				P.Z = WaterSurfaceZ + (Sea + double(H * Profile) + 0.01) * CmPerMeter;
 				V.Add(P);
 				UV.Add(FVector2D(U, Tt));
-				Col.Add(FLinearColor(Lip, Rise, 0.f, Fade * (1.f - FMath::Pow(Tt, 3.f))));
+				// Fades: in from the stem, out aft, into the sea at the outer edge (the material) and softly at the root.
+				const float Ends = FMath::SmoothStep(0.f, 0.18f, Tt) * (1.f - Tt * Tt);
+				Col.Add(FLinearColor(Lip, Rise, 0.f, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
 			}
 		}
 		for (int32 I = 0; I + 1 < NS; ++I)

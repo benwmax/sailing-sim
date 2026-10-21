@@ -39,6 +39,27 @@ and a foam crest along the shoulder is broken by bubbly noise that runs aft.
 
 **Compare.** `-SailingNoBowWave` turns it off.
 
+### The fix after the Mac gate
+
+The Mac's High stills of the J/22 beating at 17 kn showed the curl as a hard-edged, opaque, olive half-dome lying on the
+lee topsides well aft of the stem. The cause was the root. Each station was rooted at the deck's half-beam with the boat
+upright, but heeled, the lee waterline lies well outboard of that, so the sheet was drawn over her side.
+
+**Root.** Each station now solves for the point where her side meets the sea as she heels and pitches. Along the side,
+world height is linear in body z, so one step finds the sea surface. The sheet starts 4 cm outboard of that point and runs
+out horizontally.
+
+**Length.** It is shorter, 0.8 to 0.45 of `BowX`, so it stays at the stem.
+
+**Fades.** It fades in from the stem and out aft, at its root, and where it meets the sea.
+
+**Material.** `M_BowWave` is now a thin film of moving water: mostly the sky's reflection by Fresnel, clear from above and
+mirror-like at grazing angles, with only a faint dark-water tint and the foam crest.
+
+`bow-wave-fix-high.jpg` shows the PC High run-game repro (J/22, 17 kn, 42 degrees TWA): be174a8b on the left, the fix on
+the right. There are three views: from the lee at 8 m, a lee bow close-up, and a windward bow close-up. The dark patch on
+the lee topsides is gone, and the curl sits at the stem, blending into the spray and the sea.
+
 ## Stills (Ultra, uncooked; main's materials and `-SailingNoBowWave` on the left, this branch on the right)
 
 `bow-wave-wet-band.jpg` holds three pairs:
