@@ -257,14 +257,11 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		|| (FMath::Abs(In.OffsetRate) > 0.6 && Off < (bDinghy ? FMath::Min(0.2, 0.8 * Cfg.CrewSitOut) : 0.8 * Cfg.CrewSitOut));
 	// docs/crew-hull-clip/: facing across the boat in the well (on a seat, or crossing), the hips are a body's width
 	// apart fore and aft; at 0.12 m from the well's forward end the forward hip went into the cabin trunk's face.
-	// (Each a body's width, 0.45 m, further aft than the one forward of them: held all to the same 0.3 m, the J/22's
-	// trimmer and bow sat in each other on the leeward seat in light air. The J/22's trimmer takes the forward place,
-	// beside the jib winch's self-tailer, the bow the next one aft.)
+	// (Each a body's width, 0.42 m, further aft than the one forward of them: held all to the same 0.3 m they sat in each
+	// other. The J/22's two in the 0.95 m between her cabin and her traveler bridge sit on opposite seats instead: below.)
 	if (!bDinghy && !Cfg.bMultihull && Cfg.Type != EBoatType::Maxi && !Out.bHelm && KeelWell.X1 > KeelWell.X0 && (bCrossing || Off <= 0.55 * Rail))
 	{
-		const bool bJ22 = Cfg.Type == EBoatType::J22 && N == 3;
-		const int32 Rank = bJ22 ? (I == N - 2 ? 0 : 1) : I;
-		X = bJ22 ? KeelWell.X1 - 0.3 - 0.45 * Rank : FMath::Min(X, KeelWell.X1 - 0.3 - 0.45 * Rank);
+		X = FMath::Min(X, KeelWell.X1 - 0.3 - (Cfg.Type == EBoatType::J22 ? 0.0 : 0.42 * I));
 	}
 	if (In.bRighting)
 	{
@@ -338,7 +335,10 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		// Light air or downwind: on the cockpit seat (to leeward if the crew model put them there).
 		P.Stance = ECrewStance::Cockpit;
-		Out.Pelvis = FVector(X, Side * FMath::Clamp(Off, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
+		// The J/22's bow on the other seat from the trimmer: 0.28 m apart on one seat they sat in each other (the well forward
+		// of her traveler bridge has room for one a side; further apart their feet stepped onto the bridge or the cabin's face).
+		if (Cfg.Type == EBoatType::J22 && N == 3 && I == 0) P.Side = -P.Side;
+		Out.Pelvis = FVector(X, P.Side * FMath::Clamp(Off, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
 		// docs/crew-hull-clip/: on the seat, not 6 cm into it (a seated pelvis is about 9 cm over what it sits on).
 		if (!Cfg.bMultihull)
 		{

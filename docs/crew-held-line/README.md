@@ -16,9 +16,11 @@ the leeward seat.
   is unchanged.
 - **The wrist** (`CrewSolver::ClampWrist`, after the palm turns to the line): flexion within ±60° and deviation within
   ±25° of the rest pose. The turn about the forearm is left alone, so the forearm takes the rest.
-- **The light-air seat** (`CrewPlacement`): the keelboats' seated crew are now each 0.45 m further aft than the one
-  forward of them. Before, all of them were clamped to the same spot, 0.3 m aft of the well's forward end. On the J/22 the
-  trimmer takes the forward place, beside the jib winch, and the bow sits next aft.
+- **The light-air seat** (`CrewPlacement`): the keelboats' seated crew are now each 0.42 m further aft than the one
+  forward of them. Before, all of them were clamped to the same spot, 0.3 m aft of the well's forward end. The J/22 is
+  different: the forward part of her well, between the cabin and the traveler bridge, is 0.95 m long. Moved apart there,
+  someone's feet stepped onto the bridge or the cabin's face (`CrewClipLimits`). So in light air her bow takes the other
+  seat. With the bow out of the way, the trimmer reaches the self-tailer again.
 - **The jib sheet's tail** (`UpdateModelRig`): it goes only into a hand that holds it. Otherwise it lies where the model
   lays it. Before, it went to the nearer hand resting on a knee, through the thigh.
 
@@ -33,13 +35,13 @@ and the J/22's crew 0.28 m apart.
 
 The stills are before (main) and after, High, 4 kn, 50° TWA:
 
-- `winch-hand-side`: the trimmer and bow apart;
-- `hands-close`: the hands, and the tail no longer through the thigh.
+- `winch-hand-side`: the bow now on the near seat;
+- `winch-hand-ultra`: the PC's repro view, Ultra. The trimmer holds the tail at the self-tailer again.
+- `winch-hand-zoom`: that hand, closed round the sheet with the wrist near straight.
 
 ## Not done
 
-- **The winch hold itself:** on the Mac, the trimmer doesn't take the tail into a hand in this setup, on main either. So
-  the fixed winch hand can't be shown here; the test checks the hand directly. Please re-shoot it on the PC with the same
-  args.
+- **The winch hold:** `winch-hand-zoom` is 10 cm from the camera, in shade. Please re-shoot it on the PC with the same
+  args to confirm.
 - **The vest at the armpit:** the vest poking through the polo at the armpit isn't touched. It needs the vest's weights
   near the armpit checked in `build_vest.py`, with the MetaHuman clothes rebuilt.
