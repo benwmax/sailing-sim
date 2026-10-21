@@ -250,6 +250,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		const double From = Edge - 0.06, Full = Cfg.CrewSitOut + Cfg.CrewHikeOut;
 		P.Hike = float(FMath::Clamp((Off - From) / FMath::Max(Full - From, 0.1), 0.0, 1.0));
+		P.Inboard = float(FMath::Clamp((From - Off) / FMath::Max(From - Inner, 0.1), 0.0, 1.0));
 	}
 	// Crew C1: a tack or gybe is timed to the boom. Turning through the eye of the wind (or the boom swinging across dead
 	// downwind) the crew go over as it comes across the cockpit, crouched under it the closer it is to the centreline,
@@ -387,7 +388,8 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	if (Cfg.bMultihull) Out.Pelvis.Z += FMath::Max(CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y), CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y - P.Side * 0.10));
 	// docs/crew-hull-clip/: sitting where the floor ahead of the feet is as high as the seat (no well to put the feet
 	// in): knees up, feet on the deck.
-	if (P.Stance == ECrewStance::RailHike)
+	// (The Hobie's dinghy stance too, on her trampoline: its legs had dropped into a well that isn't there, a kneel.)
+	if (P.Stance == ECrewStance::RailHike || (P.Stance == ECrewStance::DinghyHike && Cfg.bMultihull))
 	{
 		const double FootY = Out.Pelvis.Y - P.Side * 0.45;
 		const double SeatZ = Out.Pelvis.Z - 0.07;
