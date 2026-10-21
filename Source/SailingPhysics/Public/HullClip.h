@@ -15,8 +15,8 @@ namespace Sailing
 	 *
 	 * Each texel (column along X, row along Y) holds four floats for the hull nearest to being around it:
 	 * the bottom's height (FHullShape::BottomZ, the sheer past the deck edge), the sheer's height, the side margin
-	 * (m inside the deck edge, negative outside) and the end margin (m inside the bow and the transom). The GPU samples
-	 * it bilinearly; Sample does the same, so the tests hold what the shader sees.
+	 * (m inside the deck edge, negative outside; past the ends, the end section's) and the end margin (m inside the bow
+	 * and the transom). The GPU samples it bilinearly; Sample does the same, so the tests hold what the shader sees.
 	 */
 	struct SAILINGPHYSICS_API FHullClipMap
 	{

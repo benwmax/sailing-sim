@@ -51,10 +51,11 @@ namespace
 	constexpr float kTrailSeconds = 8.f;
 	constexpr double kDetailStep = 1.0 / 30.0;  // FFT short waves: evaluated at 30 Hz, blended between
 	constexpr float kDetailFadeM = 300.f;       // distance they fade over (past it their slopes become roughness)
-	constexpr int32 kMaxDroplets = 600;
+	// docs/spray/: the pool of spray quads on High (drops, sheets and mist share it).
+	constexpr int32 kMaxDroplets = 1200;
 	// Graphics G8 Ultra showcase: two and a half times the bow spray on Ultra (the 4090 has the room; still CPU droplets in
 	// the same ISM, so High's look and cost don't move).
-	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1500 : kMaxDroplets; }
+	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 3000 : kMaxDroplets; }
 	// docs/spray/: what one spray instance is (FDroplet::Kind).
 	enum class ESprayKind : uint8 { Drops, Sheet, Mist };
 	constexpr int32 kShoreRes = 512;            // shore map: 512 m around the boat at 1 m
@@ -989,6 +990,9 @@ void AWaterSurface::UpdateHullClip()
 			UploadFloats(HullClipTexture, TArray<float>(Pixels.data(), int32(Pixels.size())), FHullClipMap::Cols, FHullClipMap::Rows, 4);
 		}
 		WaterMaterial->SetTextureParameterValue(TEXT("HullClipMap"), HullClipTexture);
+		// docs/spray/: her velocity and speed for the white water she makes (M_WaterV4's hullFoam).
+		const Vec3 Vel = M.GetState().Velocity;
+		WaterMaterial->SetVectorParameterValue(TEXT("HullClipV"), FLinearColor(float(Vel.X), float(Vel.Y), float(FMath::Sqrt(Vel.X * Vel.X + Vel.Y * Vel.Y)), 1.f));
 		WaterMaterial->SetVectorParameterValue(TEXT("HullClipRect"),
 			FLinearColor(float(HullClip.X0), float(HullClip.Y0), float(HullClip.SizeX), float(HullClip.SizeY)));
 		// -SailingClassicHullClip: V7's flat 2 m drop over 80% of the deck plan (compare the pit it opened at the bow).
@@ -1244,15 +1248,47 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		Waves->Sample(Bow.X, Bow.Y, T, H, Vz, Sx, Sy);
 		const double Closing = Vz - BowV.Z; // water rising past the bow, or the bow plunging into it
 		const double Speed = FVector2D(BowV.X, BowV.Y).Size();
-		if (Bow.Z > H + 0.15 || Closing < 0.45 || Speed < 1.5) continue;
 		const float Dense = float(MaxDroplets()) / float(kMaxDroplets); // Ultra: a fuller sheet, the same shape
-		const float Slam = float(FMath::Min(Closing, 2.5));
-		const float Fast = FMath::Min(float(Speed) / 3.f, 1.5f);
-		const int32 Count = FMath::Clamp(FMath::RoundToInt(Dense * Dt * 900.f * float(Closing - 0.45) * Fast), 0, FMath::RoundToInt(40.f * Dense));
 		const FVector Fwd = FVector(BowV.X, BowV.Y, 0.0).GetSafeNormal();
 		const FVector Side(-Fwd.Y, Fwd.X, 0.0);
 		// Hull size: a dinghy's bow throws less and lower than a keelboat's.
 		const float Scale = FMath::Clamp(float(Hull.MaxHalfBeam) / 1.2f, 0.5f, 1.5f);
+		// The bow wave: at speed a thin sheet of water peels off each side of the bow where it meets the water and breaks
+		// into drops, slam or no slam (it grows with the speed past 2 m/s, about 4 kn).
+		if (Speed > 2.0)
+		{
+			const float Rate = Dense * float(Speed - 2.0) * 14.f * Scale;
+			const int32 Peel = FMath::Min(int32(Rate * Dt + SprayRng.FRand()), FMath::RoundToInt(6.f * Dense));
+			for (int32 I = 0; I < Peel; ++I)
+			{
+				const float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
+				const double X = Hull.BowX * SprayRng.FRandRange(0.55f, 0.8f);
+				const Vec3 W = M.BodyToWorld(Vec3(X, Hull.CenterY + S * 0.9 * Hull.DeckHalfBeam(X), 0.0));
+				const FVector P(W.X, W.Y, Waves->Height(W.X, W.Y, T) + 0.02);
+				const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.85f + Side * S * float(Speed) * SprayRng.FRandRange(0.15f, 0.3f)
+					+ FVector(0, 0, SprayRng.FRandRange(0.3f, 0.9f) * FMath::Sqrt(float(Speed) / 3.f));
+				Emit(P, V, SprayRng.FRandRange(0.15f, 0.35f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.25f, 0.45f));
+				if (SprayRng.FRand() < 0.5f) Emit(P, V * 1.1f, SprayRng.FRandRange(0.08f, 0.18f) * Scale, ESprayKind::Drops, SprayRng.FRandRange(0.4f, 0.8f));
+			}
+		}
+		if (Bow.Z > H + 0.15 || Closing < 0.45 || Speed < 1.5) continue;
+		const float Slam = float(FMath::Min(Closing, 2.5));
+		const float Fast = FMath::Min(float(Speed) / 3.f, 1.5f);
+		const int32 Count = FMath::Clamp(FMath::RoundToInt(Dense * Dt * 1800.f * float(Closing - 0.45) * Fast), 0, FMath::RoundToInt(80.f * Dense));
+		// A hard slam (the bow falling onto a wave faster than 1.2 m/s): a splash, a burst of mist and torn sheets that
+		// hangs over the bow and blows aft.
+		if (Closing > 1.2)
+		{
+			const int32 Burst = FMath::Min(FMath::RoundToInt(Dense * Dt * 60.f * float(Closing - 1.2) * Fast * 4.f), FMath::RoundToInt(6.f * Dense));
+			for (int32 I = 0; I < Burst; ++I)
+			{
+				const FVector P = FVector(Bow.X, Bow.Y, H) + Side * SprayRng.FRandRange(-0.5f, 0.5f) * Scale + FVector(0, 0, 0.2f);
+				const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.4f + Side * SprayRng.FRandRange(-1.5f, 1.5f)
+					+ FVector(0, 0, SprayRng.FRandRange(1.5f, 3.f) * Slam / 2.5f);
+				Emit(P, V, SprayRng.FRandRange(0.6f, 1.2f) * Scale, ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.8f));
+				Emit(P, V * 1.3f, SprayRng.FRandRange(0.3f, 0.6f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.3f, 0.5f));
+			}
+		}
 		for (int32 I = 0; I < Count; ++I)
 		{
 			const float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
