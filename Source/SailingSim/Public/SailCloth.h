@@ -41,6 +41,16 @@ struct FSailClothDrive
 	bool bSimulate = true;          // false: draw the target shape (Low tier)
 };
 
+/** Rig clearance: a wire the sail can't pass through (boat frame, cm): a shroud, a spreader, a trapeze wire. */
+struct FSailObstacle
+{
+	FVector A, B;
+	float RadiusCm = 1.f;
+	// How much of each end the sail leaves to the spars and the deck (a wire's tang at the mast, its chainplate); 0 where a
+	// wire drawn in pieces carries on.
+	float FreeA = 12.f, FreeB = 12.f;
+};
+
 class SAILINGSIM_API FSailCloth
 {
 public:
@@ -58,6 +68,11 @@ public:
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
 
+	/** The wires this sail keeps clear of from the next Step (the pawn's shrouds and spreaders). */
+	void SetObstacles(const TArray<FSailObstacle>& In) { Obstacles = In; }
+	/** How far the main's foot was turned to keep clear (radians about the boat's Z, + = from X toward Y): the boom is
+	 *  drawn turned with it (stopped at the shroud). */
+	float GetFootTurn() const { return FootTurn; }
 	/** Advances the cloth toward the target shape (or snaps to it when not simulating). */
 	void Step(const Sailing::FSailStripState* Strips, int32 Side, const FSailClothDrive& Drive);
 
@@ -87,6 +102,13 @@ private:
 	struct FRowShape { double Z, LuffX, Chord, Angle, Camber, Load; };
 	void RowAt(const Sailing::FSailStripState* Strips, int32 Side, int32 R, FRowShape& Out) const;
 	static int32 Index(int32 R, int32 C) { return R * Cols + C; }
+	/** Rig clearance: puts the cloth back on the clew's side of every obstacle it passed through (the main eased onto the
+	 *  shrouds and spreaders, a genoa sheeted onto them), as the cloth presses on a wire instead of passing it. */
+	void KeepClear(TArray<FVector>& P, bool bTarget = false);
+	TArray<FSailObstacle> Obstacles;
+	float FootTurn = 0.f;
+	float MainTurn = 0.f;  // the main's turn off the wires, eased (KeepClear)
+	float TurnDt = 0.f;
 
 	Sailing::FSailGeometry Geo;
 	ESailKind Kind = ESailKind::Main;

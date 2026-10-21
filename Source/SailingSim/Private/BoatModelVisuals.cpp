@@ -62,7 +62,17 @@ namespace
 		float RadiusCm;
 		float Slack;
 		uint8 Look = 0;
+		const TCHAR* Name = TEXT(""); // what the line is (the rig clearance test's reports): set by Label after each group
+		// Rig clearance: how far each ring of the tube is lifted to lie over the boat instead of through it (a lazy sheet
+		// over the cabin top, a sheet led up to a coachroof winch): DrapeOverBoat.
+		float Lift[kLineSegments + 1] = {};
 	};
+
+	FVector LinePoint(const FRigLine& L, const FVector& Sag, int32 I)
+	{
+		const float T = float(I) / kLineSegments;
+		return L.A + (L.B - L.A) * T + Sag * (4.f * T * (1.f - T)) + FVector(0.f, 0.f, L.Lift[I]);
+	}
 
 	/** Mid-span sag of a line of length L with a small extra length fraction e: a parabola with e = 8/3 (s/L)^2. */
 	float SagFor(float LengthCm, float Slack)
@@ -123,12 +133,13 @@ namespace
 		for (int32 I = 0; I <= kLineSegments; ++I)
 		{
 			const float T = float(I) / kLineSegments;
-			const FVector C = L.A + D * T + Sag * (4.f * T * (1.f - T));
+			const FVector C = LinePoint(L, Sag, I);
 			Arc += FVector::Dist(C, Prev);
 			Prev = C;
-			// Along the sagged curve: the parabola's derivative.
-			const FVector Along = (D + Sag * (4.f - 8.f * T)).GetSafeNormal();
-			const FProcMeshTangent Tangent(Along, false);
+			// Along the sagged curve: the parabola's derivative (and the drape's, between its neighbours).
+			const FVector Along = (D + Sag * (4.f - 8.f * T)).GetSafeNormal()
+				+ FVector(0.f, 0.f, (L.Lift[FMath::Min(I + 1, kLineSegments)] - L.Lift[FMath::Max(I - 1, 0)]) / FMath::Max(2.f * Len / kLineSegments, 1.f));
+			const FProcMeshTangent Tangent(Along.GetSafeNormal(), false);
 			const float UArc = Arc / Lay;
 			for (int32 K = 0; K <= kLineSides; ++K)
 			{
@@ -432,12 +443,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	const float Loaded = FMath::Clamp((Aws - 3.f) / 5.f, 0.f, 1.f); // below about 3 kn nothing is loaded
 
 	TArray<FRigLine> Wires, Ropes;
+	auto Label = [](TArray<FRigLine>& Lines, const TCHAR* Name) { for (FRigLine& L : Lines) if (!*L.Name) L.Name = Name; };
 	// Standing rigging: forestay, uppers via the spreaders, lowers, backstay (each where the class has it).
 	const float WireR = 0.25f * FMath::Clamp(float(Boat.GetConfig().MastheadZ / 8.0), 0.8f, 2.4f);
 	if (Has(ModelMast, TEXT("Hounds")))
 	{
 		const FVector Hounds = RigPoint(ModelMast, TEXT("Hounds"));
 		if (Has(ModelHull, TEXT("ForestayTack"))) Wires.Add({ RigPoint(ModelHull, TEXT("ForestayTack")), Hounds, WireR, 0.f });
+		Label(Wires, TEXT("forestay"));
 		for (const TCHAR* Tag : { TEXT("S"), TEXT("P") })
 		{
 			const bool bStbd = Tag[0] == TEXT('S');
@@ -452,16 +465,20 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				const FVector Tip = RigPoint(ModelMast, *TipName);
 				Wires.Add({ Upper, Tip, WireR, Slack });
 				Wires.Add({ Tip, Hounds, WireR, Slack });
+				Label(Wires, TEXT("upper shroud"));
 				Wires.Add({ RigPoint(ModelHull, *FString::Printf(TEXT("ChainplateLower_%s"), Tag)), RigPoint(ModelMast, TEXT("LowerTang")), WireR, Slack });
+				Label(Wires, TEXT("lower shroud"));
 			}
 			else
 			{
 				Wires.Add({ Upper, Hounds, WireR, Slack });
+				Label(Wires, TEXT("shroud"));
 			}
 		}
 		if (Has(ModelHull, TEXT("BackstayPlate")))
 		{
 			Wires.Add({ RigPoint(ModelHull, TEXT("BackstayPlate")), RigPoint(ModelMast, TEXT("MastheadAft")), WireR * 0.8f, 0.0008f * (1.f - float(Controls.Backstay)) * (1.f - Loaded) });
+			Label(Wires, TEXT("backstay"));
 		}
 		// The clipping audit (the Hobie's crew out on the trapeze hung from nothing): the trapeze wire from the hounds to the
 		// harness of each crew member out beyond the rail, taut. In on the boat it hangs on its shock cord, which the
@@ -483,6 +500,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				// Drawn thicker than the 3 mm wire (with its ring and handle it reads as a cord): at the real size it vanished from the
 				// chase camera.
 				Wires.Add({ Hounds, Harness, FMath::Max(WireR * 2.4f, 0.6f), 0.f });
+				Label(Wires, TEXT("trapeze wire"));
 			}
 		}
 	}
@@ -508,6 +526,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				Ropes.Add({ Via, Lead, 0.45f, 0.05f, Look });
 			}
 			Ropes.Add({ Lead, Winch, 0.45f, bWorking ? 0.f : 0.02f, Look });
+			Label(Ropes, bWorking ? TEXT("jib sheet") : TEXT("lazy jib sheet"));
 		}
 	}
 
@@ -532,6 +551,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand
 			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
 		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
+		Label(Ropes, TEXT("jib sheet tail"));
 	}
 	FVector End;
 	// (A wheel boat's TillerEnd is a point on the wheel's rim: no extension there.)
@@ -547,6 +567,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const EBoatType Type = Boat.GetConfig().Type;
 		if (HelmGripCm && (Type == EBoatType::ILCA7 || Type == EBoatType::Sunfish)) Grip += (Grip - End).GetSafeNormal() * 12.f;
 		Wires.Add({ End + FVector(0.f, 0.f, 4.5f), Grip, 1.1f, 0.f, RopeLook::Plain });
+		Label(Wires, TEXT("tiller extension"));
 	}
 
 	// Mainsheet: a 4:1 tackle between the boom bail and the traveler car; taut when the main is drawing. Graphics G8: its
@@ -568,16 +589,29 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		Ropes.Add({ MidBlock, Ratchet, 0.4f, MainSlack });
 		Ropes.Add({ Ratchet, MainGripCm ? *MainGripCm : Ratchet + FVector(-30.f, 8.f, -4.f), 0.4f, MainGripCm ? 0.01f : 0.03f });
 	}
+	else if (Boat.GetConfig().Type == EBoatType::Sunfish && CrewCockpitWell(Boat.GetConfig(), Well))
+	{
+		// Rig clearance: the Sunfish's sheet runs from the bridle up to the boom's end block, forward along the boom to a block
+		// over the cockpit and down to the hand (its tail ran from the bridle along the deck under the sailor's hips).
+		const FVector SheetLocal = ModelBoom->GetSocketTransform(TEXT("Boom_Mainsheet"), RTS_Component).GetLocation();
+		const double Over = Well.X1 * CmPerMeter;
+		const double Along = FMath::Clamp((Boat.GetConfig().MainLuffX * CmPerMeter - Over) / FMath::Max(FMath::Abs(SheetLocal.X), 1.0), 0.1, 1.0);
+		const FVector MidBlock = BoatRoot->GetComponentTransform().InverseTransformPosition(ModelBoom->GetComponentTransform().TransformPosition(SheetLocal * Along));
+		Ropes.Add({ BoomBlock, MidBlock, 0.4f, 0.f });
+		Ropes.Add({ MidBlock, MainGripCm ? *MainGripCm : MidBlock + FVector(-10.f, 0.f, -45.f), 0.4f, MainGripCm ? 0.01f : 0.05f });
+	}
 	else
 	{
 		// (Always drawn, so the rig mesh keeps its vertex count: with no hand on it, a short tail onto the cockpit sole.)
 		Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), 0.4f, MainGripCm ? 0.01f : 0.04f });
 	}
+	Label(Ropes, TEXT("mainsheet tail"));
 	for (int32 K = 0; K < 4; ++K)
 	{
 		const FVector Off(0.f, (K - 1.5f) * 1.2f, 0.f);
 		Ropes.Add({ BoomBlock + Off, Car + FVector(0.f, 0.f, 3.f) + Off, 0.35f, MainSlack });
 	}
+	Label(Ropes, TEXT("mainsheet"));
 	// Vang: a 3:1 tackle from the boom to the mast base, slack when eased off.
 	if (Has(ModelBoom, TEXT("Boom_Vang")))
 	{
@@ -586,6 +620,88 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		{
 			const FVector Off(0.f, (K - 1.f) * 1.0f, 0.f);
 			Ropes.Add({ VangBoom + Off, VangMast + Off, 0.3f, 0.02f * (1.f - float(Controls.Vang)), RopeLook::Vang });
+		}
+		Label(Ropes, TEXT("vang"));
+	}
+
+	// Rig clearance: the ropes lie over the boat, not through it. Where a sheet's curve passes inside the solid boat
+	// (CrewInsideBoat: deck, cabin trunk, coachroof), its rings are lifted onto the surface: the lazy sheet draped over the
+	// cabin top, a sheet led from its lead up over the roof's edge to the winch, a running mainsheet over the coaming. (The
+	// vang hangs in the air between its blocks.)
+	{
+		const FBoatConfig& Cfg = Boat.GetConfig();
+		const double HullDepth = Boat.HullDepth();
+		const FVector DownD = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
+		for (FRigLine& L : Ropes)
+		{
+			const FString What = L.Name;
+			if (What == TEXT("vang")) continue;
+			// (Not the Lagoon's jib sheets: her overlapping jib's clew is by the mast under the saloon roof's height while her
+			// model leads the sheet to a self-tacking track 4.5 m forward, so lifted over the roof it hung in the air.
+			// docs/rig-clearance/.)
+			if (Cfg.Type == EBoatType::Lagoon42 && What.Contains(TEXT("jib"))) continue;
+			const FVector Sag = SagOf(L, DownD);
+			// How far up a point must go to be out of the boat (a coachroof is up to a metre and a half over the deck).
+			auto Under = [&](const FVector& C) -> float
+			{
+				if (!CrewInsideBoat(Cfg, HullDepth, C / CmPerMeter, bModelTravelerBridge)) return 0.f;
+				float Up = 2.f;
+				while (Up < 150.f && CrewInsideBoat(Cfg, HullDepth, (C + FVector(0.f, 0.f, Up)) / CmPerMeter, bModelTravelerBridge)) Up += 2.f;
+				return Up < 150.f ? Up + L.RadiusCm : 0.f;
+			};
+			// Each ring takes the most any point within half a span of it needs, so the spans between the rings clear the edge
+			// they are lifted over too (a lazy sheet over the cabin top's corner, a sheet up over a coachroof's front).
+			for (int32 I = 1; I < kLineSegments; ++I)
+			{
+				for (const float Off : { -0.5f, -0.25f, 0.f, 0.25f, 0.5f })
+				{
+					const float U = FMath::Clamp((I + Off) / kLineSegments, 0.f, 1.f);
+					L.Lift[I] = FMath::Max(L.Lift[I], Under(L.A + (L.B - L.A) * U + Sag * (4.f * U * (1.f - U))));
+				}
+			}
+		}
+	}
+
+	// Rig clearance: the wires the sails can't pass through (FSailCloth::KeepClear): the shrouds, the spreaders (the mast
+	// model draws them: from the mast at the tip's height out to the tip) and a trapeze wire.
+	SailObstacles.Reset();
+	for (const FRigLine& L : Wires)
+	{
+		const FString What = L.Name;
+		if (!What.Contains(TEXT("shroud")) && What != TEXT("trapeze wire")) continue;
+		// Along its sag (a leeward shroud goes slack in a breeze and bows out): four straight pieces.
+		const FVector Sag = SagOf(L, BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f)));
+		auto At = [&](float T) { return L.A + (L.B - L.A) * T + Sag * (4.f * T * (1.f - T)); };
+		for (int32 K = 0; K < 4; ++K) SailObstacles.Add({ At(K / 4.f), At((K + 1) / 4.f), L.RadiusCm, K == 0 ? 12.f : 0.f, K == 3 ? 12.f : 0.f });
+	}
+	const int32 NumWireObstacles = SailObstacles.Num();
+	if (Has(ModelMast, TEXT("SpreaderTip_S")) && Has(ModelMast, TEXT("MastBase")) && Has(ModelMast, TEXT("Hounds")))
+	{
+		const FVector Base = RigPoint(ModelMast, TEXT("MastBase")), Head = RigPoint(ModelMast, TEXT("Hounds"));
+		for (const TCHAR* Tip : { TEXT("SpreaderTip_S"), TEXT("SpreaderTip_P") })
+		{
+			const FVector P = RigPoint(ModelMast, Tip);
+			const FVector Root = FMath::Lerp(Base, Head, FMath::Clamp((P.Z - Base.Z) / FMath::Max(Head.Z - Base.Z, 1.0), 0.0, 1.0));
+			SailObstacles.Add({ Root, P, 1.5f });
+		}
+	}
+	if (bRecordRigLines)
+	{
+		// For the rig clearance test: each line as built (before the on-screen minimum width), named by what it is.
+		const FVector DownRec = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
+		RigLineSamples.Reset();
+		for (const TArray<FRigLine>* Lines : { &Wires, &Ropes })
+		{
+			for (const FRigLine& L : *Lines)
+			{
+				FRigLineSample& Rec = RigLineSamples.Add_GetRef({ L.A, L.B, SagOf(L, DownRec), L.RadiusCm, L.Name });
+				for (int32 I = 0; I <= kLineSegments; ++I) Rec.Points.Add(LinePoint(L, Rec.Sag, I));
+			}
+		}
+		for (int32 K = NumWireObstacles; K < SailObstacles.Num(); ++K)
+		{
+			FRigLineSample& Rec = RigLineSamples.Add_GetRef({ SailObstacles[K].A, SailObstacles[K].B, FVector::ZeroVector, SailObstacles[K].RadiusCm, TEXT("spreader") });
+			Rec.Points = { Rec.A, Rec.B };
 		}
 	}
 
@@ -620,7 +736,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// as it is: the standing rig at rest, a sheet made fast.
 		TArray<FVector> Keys;
 		Keys.Reserve(Lines.Num() * 4);
-		for (const FRigLine& L : Lines) Keys.Append({ L.A, L.B, SagOf(L, Down), FVector(L.RadiusCm, 0.f, 0.f) });
+		for (const FRigLine& L : Lines) Keys.Append({ L.A, L.B, SagOf(L, Down), FVector(L.RadiusCm, L.Lift[kLineSegments / 2], L.Lift[kLineSegments / 4] + L.Lift[3 * kLineSegments / 4]) });
 		TArray<FVector>& Last = RigLineKeys[Section];
 		bool bMoved = !bRigLinesBuilt || Last.Num() != Keys.Num();
 		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > 0.05f * 0.05f;

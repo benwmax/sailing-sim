@@ -397,6 +397,14 @@ public:
 	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
 	const TArray<TObjectPtr<class USkeletalMeshComponent>>& GetCrewMeshes() const { return Crew; }
 	const FBoatLivery& GetLivery() const { return Livery; }
+	/** Rig clearance (SailingSim.Visual.RigClearance): in a bare test world, a steady breeze and the autopilot holding a true
+	 *  wind angle (deg, + = wind from starboard), and the rig lines recorded as they are built (boat frame, cm): each drawn
+	 *  line, named, plus the spreaders (not drawn as lines: the mast model has them) for the sails to clear. */
+	void HoldForTests(double TwaDeg, double WindKnots);
+	struct FRigLineSample { FVector A, B, Sag; float RadiusCm = 0.f; const TCHAR* Name = TEXT(""); TArray<FVector> Points; /* the drawn centreline */ };
+	const TArray<FRigLineSample>& GetRigLineSamples() const { return RigLineSamples; }
+	bool HasModelTravelerBridge() const { return bModelTravelerBridge; }
+	const UProceduralMeshComponent* GetSailMesh(int32 Sail) const { return Sail == 0 ? MainSail.Get() : Sail == 1 ? JibSail.Get() : SpinSail.Get(); }
 	/** Crew C5: the crew's falls (CrewFalls.h), for the tests and the stills. */
 	const FCrewFalls& GetCrewFalls() const { return CrewFalls; }
 	bool HasCrewFalls() const { return bCrewFalls; }
@@ -482,6 +490,9 @@ private:
 	int32 CrudeTackSign = 0;
 	double RunMaxHeelDeg = 0.0;
 	Sailing::FWindField FallbackWind;
+	bool bRecordRigLines = false;
+	TArray<FSailObstacle> SailObstacles; // rig clearance: the wires the sails keep clear of (UpdateModelRig)
+	TArray<FRigLineSample> RigLineSamples;
 	double WaterSurfaceZ = 0.0; // cm
 	FVector StartLocation = FVector::ZeroVector;   // the map frame, cm (SailingFrame::ToMapCm)
 	/** World streaming, measuring: -SailingRun slides the world under the player's boat (UpdateRun). */
