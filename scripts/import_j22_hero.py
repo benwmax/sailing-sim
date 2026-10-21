@@ -80,16 +80,20 @@ float pn = lerp(lerp(p00, p10, pf.x), lerp(p01, p11, pf.x), pf.y);
 float level = saturate((nw.z - 0.92) * 12.5);
 float pudK = level * (1.0 - smoothstep(Puddle * 0.62 - 0.04, Puddle * 0.62 + 0.02, pn)) * step(0.02, Puddle);
 float rainK = saturate(Rain);
-float2 rc = WP.xy / 22.0;
+// (A drop every 14 cm cell, its ring out to 5 cm and 6 mm wide: at 22 cm, 7 cm and 3.5 mm they were under a pixel from the
+// cockpit.) The ring bends the normal outward, which is what shows on a puddle: the reflection wobbles.
+float2 rc = WP.xy / 14.0;
 float2 rcf = frac(rc) - 0.5;
 float rh = frac(sin(dot(floor(rc), float2(41.7, 19.3))) * 43758.5);
 float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
-float rdist = length(rcf - (float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25)) * 22.0;
-float rring = exp(-pow((rdist - rph * 7.0) / 0.35, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.35 * saturate(DeckWet) * up);
+float2 rto = rcf - (float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25);
+float rdist = length(rto) * 14.0;
+float rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.5 * saturate(DeckWet) * up);
+NormalOut = normalize(lerp(NormalOut, float3(0.0, 0.0, 1.0), pudK) + float3(rto / max(length(rto), 1e-3) * rring * 1.2, 0.0));
 float2 rbf = frac(WP.xy / 0.8) - 0.5;
 float rbh = frac(sin(dot(floor(WP.xy / 0.8), float2(23.17, 61.3))) * 43758.5);
 float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rainK * (1.0 - pudK) * level * gcAll;
-c *= (1.0 - 0.3 * pudK) * (1.0 + 0.25 * rring);
+c *= (1.0 - 0.3 * pudK) * (1.0 + 0.6 * rring);
 Rough = lerp(Rough, 0.015, saturate(pudK + rbead));
 Rough = lerp(Rough, 0.12, rring);
 Rough = lerp(Rough, 0.02, bead);                                  // a bead is a lens: a sharp glint

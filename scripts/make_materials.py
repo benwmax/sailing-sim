@@ -692,9 +692,19 @@ float nz = lerp(lerp(h00, h10, qf.x), lerp(h01, h11, qf.x), qf.y);
 // bow-curl-crest: the crest line where the sheet tops over (just off the hull) is a bright white lip of torn foam, broken
 // up by the noise and thicker at speed; the sheet below it stays a clear film. Typed literals throughout (Metal's
 // ray-tracing hit shaders reject FP64: #203).
-float crest = exp(-pow((u - 0.16f) / 0.09f, 2.0f)) * VC.g;
-float lipLine = crest * (0.55f + 0.45f * VC.r) * smoothstep(0.25f, 0.6f, nz + 0.35f * VC.r);
-float foam = saturate(lipLine * 1.4f + crest * 0.25f * nz + (1.0f - u) * 0.12f * VC.r * nz);
+// (Mac gate on #206: the lip read as one even line.) A coarser noise along it, running aft with the water, tears it into
+// clumps and gaps: a clump widens the crest and wanders it off the hull, a gap leaves only the clear sheet.
+float2 q2 = WP.xy / 34.0 + float2(Time * 0.45, 3.7);
+float2 ci = floor(q2), cf = frac(q2);
+cf = cf * cf * (3.0f - 2.0f * cf);
+float c00 = frac(sin(dot(ci, float2(39.35, 11.13))) * 43758.5), c10 = frac(sin(dot(ci + float2(1, 0), float2(39.35, 11.13))) * 43758.5);
+float c01 = frac(sin(dot(ci + float2(0, 1), float2(39.35, 11.13))) * 43758.5), c11 = frac(sin(dot(ci + float2(1, 1), float2(39.35, 11.13))) * 43758.5);
+float nc = lerp(lerp(c00, c10, cf.x), lerp(c01, c11, cf.x), cf.y);
+float clump = smoothstep(0.45f, 0.85f, nc);
+float gap = smoothstep(0.18f, 0.42f, nc + 0.25f * (nz - 0.5f));
+float crest = exp(-pow((u - 0.16f - 0.05f * clump) / (0.06f + 0.08f * clump), 2.0f)) * VC.g;
+float lipLine = crest * gap * (0.4f + 0.45f * VC.r + 0.5f * clump) * smoothstep(0.25f, 0.6f, nz + 0.35f * VC.r);
+float foam = saturate(lipLine * 1.4f + crest * gap * 0.25f * nz + (1.0f - u) * 0.12f * VC.r * nz);
 // A thin film of moving water, not a body: mostly the sky's reflection (Fresnel: clear from above, mirror-like at grazing
 // angles, strongest along the curling top edge), a faint dark-water tint, gone where it meets the sea and soft at its root.
 float fres = 0.04f + 0.96f * pow(1.0f - saturate(abs(dot(normalize(N), normalize(V)))), 5.0f);
@@ -1082,22 +1092,22 @@ col *= 1.0 - 0.3 * cav * wetAll;
 float level = saturate((n.z - 0.92) * 12.5) * (1.0 - Metal);
 float pudK = level * (1.0 - smoothstep(Puddle * 0.62 - 0.04, Puddle * 0.62 + 0.02, vn)) * step(0.02, Puddle);
 float rainK = saturate(Rain);
-float2 rc = LP.xy / 22.0;
+float2 rc = LP.xy / 14.0;                                        // (22 cm cells, 7 cm rings 3.5 mm wide were under a pixel)
 float2 rci = floor(rc), rcf = frac(rc) - 0.5;
 float rh = frac(sin(dot(rci, float2(41.7, 19.3))) * 43758.5);
 float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
 float2 roff = float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25;
-float rdist = length(rcf - roff) * 22.0;                             // cm from the drop
-float rring = exp(-pow((rdist - rph * 7.0) / 0.35, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.35 * deckWet);
+float rdist = length(rcf - roff) * 14.0;                             // cm from the drop
+float rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.5 * deckWet);
 grad = lerp(grad, float3(0.0, 0.0, 0.0), pudK);                      // a puddle's surface is flat water
-grad += ((rcf - roff).x * LX + (rcf - roff).y * LY) / max(rdist / 22.0, 1e-3) * rring * 0.5;
+grad += ((rcf - roff).x * LX + (rcf - roff).y * LY) / max(rdist / 14.0, 1e-3) * rring * 0.8;
 float2 rbq = (abs(n.z) > 0.7 ? LP.xy : float2(LP.x + LP.y, LP.z)) / 0.8;
 float2 rbf = frac(rbq) - 0.5;
 float rbh = frac(sin(dot(floor(rbq), float2(23.17, 61.3))) * 43758.5);
 float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rainK * (1.0 - pudK)
     * max(level * gel, Metal * 0.8);
 grad += (rbf.x * LX + rbf.y * LY) * rbead * 1.2;
-col *= 1.0 - 0.3 * pudK;
+col *= (1.0 - 0.3 * pudK) * (1.0 + 0.4 * rring);
 wetAll = saturate(max(wetAll, max(pudK, rbead)));
 // Spray hull (docs/spray-hull): below the wet line the topsides carry a water film, a fifth darker even on gelcoat that
 // takes up no water (the film's own absorption and the shore it reflects); beads stand in the band's top 8 cm, drips run

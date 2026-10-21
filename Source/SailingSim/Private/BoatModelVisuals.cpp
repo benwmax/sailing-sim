@@ -689,22 +689,25 @@ void ASailboatPawn::UpdateDrips(float DeltaSeconds)
 		if (!Plane || !Mat) return;
 		Drips = NewObject<UInstancedStaticMeshComponent>(this);
 		Drips->SetupAttachment(GetRootComponent());
+		Drips->SetMobility(EComponentMobility::Movable);
+		Drips->SetUsingAbsoluteLocation(true);
+		Drips->SetUsingAbsoluteRotation(true);
+		Drips->SetUsingAbsoluteScale(true);
+		Drips->SetWorldTransform(FTransform::Identity);
 		Drips->SetStaticMesh(Plane);
 		Drips->SetMaterial(0, Mat);
 		Drips->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Drips->SetCastShadow(false);
-		Drips->SetUsingAbsoluteLocation(true);
-		Drips->SetUsingAbsoluteRotation(true);
-		Drips->SetUsingAbsoluteScale(true);
+		Drips->bAffectDistanceFieldLighting = false;
 		Drips->NumCustomDataFloats = 3;   // M_Spray: opacity, grain, seed
 		Drips->RegisterComponent();
 		TArray<FTransform> Hidden;
-		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kPool);
+		Hidden.Init(FTransform(FQuat::Identity, GetActorLocation(), FVector::ZeroVector), kPool);
 		Drips->AddInstances(Hidden, false, true);
 	}
-	// Spawn: the rate follows the wetness, and stops under way (the water runs aft instead of dripping).
+	// Spawn: the rate follows the wetness, and eases off under way (past 3.5 m/s the water runs aft instead of dripping).
 	const float Wet = FMath::Max(DeckWetness, 0.5f * FMath::Clamp(float(GetWorld()->GetAuthGameMode<ASailingGameMode>() ? GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState().Rain : 0.0), 0.f, 1.f));
-	const float Rate = bOn ? 6.f * FMath::Clamp((Wet - 0.1f) / 0.5f, 0.f, 1.f) * FMath::Clamp((2.f - Speed) / 1.5f, 0.f, 1.f) : 0.f;
+	const float Rate = bOn ? 10.f * FMath::Clamp((Wet - 0.1f) / 0.5f, 0.f, 1.f) * FMath::Clamp((3.5f - Speed) / 2.f, 0.f, 1.f) : 0.f;
 	DripClock += Rate * Dt;
 	const FHullShape& Hull = Boat.GetConfig().Hulls[0];
 	while (DripClock >= 1.f && DripList.Num() < kPool)
@@ -734,7 +737,7 @@ void ASailboatPawn::UpdateDrips(float DeltaSeconds)
 		DripList.Add(D);
 	}
 	if (DripClock >= 1.f) DripClock = 0.f;
-	// Fall, and draw: each drip a 6 mm smooth quad facing the camera, stretched along its fall by the exposure.
+	// Fall, and draw: each drip a 15 mm smooth quad facing the camera, stretched along its fall by the exposure.
 	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	const FVector Cam = PC && PC->PlayerCameraManager ? PC->PlayerCameraManager->GetCameraLocation() : GetActorLocation();
 	TArray<FTransform> Xf;
@@ -758,16 +761,16 @@ void ASailboatPawn::UpdateDrips(float DeltaSeconds)
 			if (Smear < 1e-3f) Across = FVector::CrossProduct(N, FVector::UpVector);
 			const FVector X = Across.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
 			const FQuat Q = FMatrix(X, FVector::CrossProduct(N, X), N, FVector::ZeroVector).ToQuat();
-			const float Size = 0.006f;
-			Xf[I] = FTransform(Q, D.P, FVector(Size + Smear / 60.f, Size, 1.f));
-			Data[0] = 0.7f;
+			const float Size = 0.015f;   // (M_Spray's smooth profile: about an 8 mm drop; 6 mm quads were a pixel from the cockpit)
+			Xf[I] = FTransform(Q, D.P, FVector(Size + Smear / 40.f, Size, 1.f));
+			Data[0] = 1.f;
 			Data[1] = 0.f;
 			Data[2] = D.Seed;
 			Drips->SetCustomData(I, MakeArrayView(Data, 3), false);
 		}
 		else
 		{
-			Xf[I] = FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector);
+			Xf[I] = FTransform(FQuat::Identity, GetActorLocation(), FVector::ZeroVector);
 		}
 	}
 	Drips->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
