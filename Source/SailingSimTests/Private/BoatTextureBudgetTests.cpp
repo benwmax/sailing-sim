@@ -8,7 +8,7 @@ namespace
 }
 
 // Boat texture budget (docs/boat-tex-medium): the hero J/22's baked maps and the boats' close-up detail maps are in the
-// Vehicle texture groups, which ASailingGameMode drops a mip on Medium and Low (24 MB for the hero boat there). A texture
+// Vehicle texture groups, whose device-profile sizes keep the hero boat inside Medium's 24 MB (22.4 MB on the Mac). A texture
 // left in a World group would keep its full size on Medium.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualBoatTextureBudgetTest, "SailingSim.Visual.BoatTextureBudget", BoatTexFlags)
 bool FVisualBoatTextureBudgetTest::RunTest(const FString& Parameters)

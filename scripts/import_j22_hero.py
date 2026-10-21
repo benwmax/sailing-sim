@@ -109,7 +109,7 @@ def import_texture(path, kind):
     elif kind == "X":
         tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
         tex.set_editor_property("srgb", False)
-    # Boat texture budget (docs/boat-tex-medium): the Vehicle groups drop a mip on Medium and Low (ApplyBoatTextureBias).
+    # Boat texture budget (docs/boat-tex-medium): the Vehicle groups (their device-profile sizes keep the hero boat inside Medium's 24 MB).
     tex.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_VEHICLE_NORMAL_MAP if kind == "N" else unreal.TextureGroup.TEXTUREGROUP_VEHICLE)
     unreal.EditorAssetLibrary.save_loaded_asset(tex)
     return tex
