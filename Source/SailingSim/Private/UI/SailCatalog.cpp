@@ -331,6 +331,7 @@ namespace SailCatalog
 			: *FString::Printf(TEXT("Consider a reef on the %s."), *B.Name));
 		else S += FString::Printf(TEXT("Strong. Realistic mode will %s the %s without a reef. "), B.bDinghy ? TEXT("capsize") : TEXT("overpower"), *B.Name);
 		if (Sky == 3) S += TEXT("A storm cell builds through the afternoon, with a gust front of 35 kn or more. ");
+		if (Sky == 5) S += TEXT("Steady rain all day: the deck is wet and slippery, and visibility is down to about 2 miles. ");
 		if (Sky == 4) S += WorldIndex == 1 ? TEXT("Visibility under half a mile; sound signals and radar matter. ") : TEXT("Low cloud and poor visibility. ");
 		S += FString::Printf(TEXT("Sunset %s."), *ClockText(SunsetHour(Month, Day, WorldIndex)));
 		return S;

@@ -10,7 +10,9 @@
  * overrides use), so a session started from the menus and a benchmark started from arguments go the same way.
  */
 UENUM(BlueprintType)
-enum class ESailSky : uint8 { Clear, Fair, Overcast, Storms, Fog };
+// Rain is last so the int uses of the others (SailCatalog::Expect) and old saves (string ids) keep their meaning; the
+// Conditions screen shows it after Overcast (SkyRowOrder).
+enum class ESailSky : uint8 { Clear, Fair, Overcast, Storms, Fog, Rain };
 
 UENUM(BlueprintType)
 enum class ESailMode : uint8 { Free, Drill, Race, Passage };

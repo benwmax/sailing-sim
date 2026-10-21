@@ -840,7 +840,9 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
  * The jib-winch hand (the PC, Ultra, light air): a trimmer holding the sheet's tail had the fingers folded into a full fist
  * through the line (a mitten from the palm side) and the wrist bent about 90 degrees by the palm's turn to it; and the
  * J/22's trimmer and bow sat in each other on the leeward seat. Each MetaHuman rig closes a hand on a line in five
- * directions: the wrist's bend stays within flexion 60 and deviation 25 degrees of the rest pose (66 in all), and no finger
+ * directions and one led along the reach, as a sheet comes from its winch (the elbow swings to bring each across the
+ * palm): the wrist's bend stays within flexion 40 and deviation 25 degrees of the rest pose for that one (48 in all) and
+ * 60 for the others (66), and no finger
  * bone passes within 0.6 cm of the line's axis (a 6 mm sheet in a hand), and the middle finger curls 110 degrees at most
  * over its first two joints. Every boat's crew, in CrewHullClearance's cases,
  * sit 0.4 m apart or more (pelvis to pelvis) outside a crossing.
@@ -917,9 +919,13 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 		Place.TrueWindAngle = 0.9;
 		FCrewPlacement Pl;
 		CrewPlacement(Place, Pl);
-		const FVector Dirs[] = { FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1), FVector(1, 1, 0).GetSafeNormal(), FVector(1, -0.5, 0.8).GetSafeNormal() };
-		for (const FVector& Dir : Dirs)
+		// (The last: led along the reach, from the shoulder to the hand, as a sheet comes to the trimmer's hand from its winch.)
+		const FVector Dirs[] = { FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1), FVector(1, 1, 0).GetSafeNormal(), FVector(1, -0.5, 0.8).GetSafeNormal(),
+			FVector::ZeroVector };
+		const int32 Shoulder = Bone(TEXT("upperarm_r"));
+		for (const FVector& Given : Dirs)
 		{
+			FVector Dir = Given;
 			FCrewMotionState State;
 			FCrewMotionInput In;
 			In.Params = Pl.Params;
@@ -935,6 +941,7 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 			In.Hands.Mode[1] = FCrewHands::EMode::Reach;
 			In.Hands.Target[1] = Target;
 			In.Hands.Grip[1] = 1.f;
+			if (Dir.IsZero() && Shoulder != INDEX_NONE) Dir = (Target - CS[Shoulder].GetLocation()).GetSafeNormal();
 			In.Hands.Along[1] = Dir;
 			for (int32 K = 0; K < 10; ++K) CrewMotionUpdate(State, In, 1.f / 30.f);
 			CrewMotionPose(Ref, &Body.Rig, &Cfg, Model.HullDepth(), State, In, CS);
@@ -942,7 +949,9 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 			const double Bend = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct((CS[Hand].GetLocation() - CS[Fore].GetLocation()).GetSafeNormal(),
 				(CS[Knuckle].GetLocation() - CS[Hand].GetLocation()).GetSafeNormal()), -1.0, 1.0)));
 			const FString What = FString::Printf(TEXT("%s, a line along (%.1f, %.1f, %.1f)"), *Body.Name, Dir.X, Dir.Y, Dir.Z);
-			TestTrue(FString::Printf(TEXT("%s: the wrist bent %.0f deg from rest (%.0f there)"), *What, FMath::Abs(Bend - RestBend), RestBend), FMath::Abs(Bend - RestBend) <= 66.0);
+			// (40 and 25 led along the reach: 48 in all; 60 and 25 across it: 66.)
+			const double WristMax = Given.IsZero() ? 48.0 : 66.0;
+			TestTrue(FString::Printf(TEXT("%s: the wrist bent %.0f deg from rest (%.0f there)"), *What, FMath::Abs(Bend - RestBend), RestBend), FMath::Abs(Bend - RestBend) <= WristMax);
 			double Closest = 1e9;
 			FString Where;
 			for (const TCHAR* Finger : { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky") })
@@ -967,6 +976,9 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 				}
 			}
 			TestTrue(FString::Printf(TEXT("%s: the fingers clear the line (closest %.2f cm, %s)"), *What, Closest, *Where), Closest >= 0.6);
+			// And the hand is on it: the middle finger's knuckle within 4 cm of the line (a hand that missed it clears it too).
+			const double OnLine = FVector::CrossProduct(CS[Knuckle].GetLocation() - Target, Dir).Size();
+			TestTrue(FString::Printf(TEXT("%s: the hand holds the line (knuckle %.1f cm from it)"), *What, OnLine), OnLine <= 4.0);
 			// Closed round the line, not into a fist: the middle finger's first two joints curl 110 degrees at most between
 			// their bones (the full fist measured 123 here and folded the fingers into a mitten from the palm side; held now 92).
 			const int32 M1 = Bone(TEXT("middle_01_r")), M2 = Bone(TEXT("middle_02_r")), M3 = Bone(TEXT("middle_03_r"));

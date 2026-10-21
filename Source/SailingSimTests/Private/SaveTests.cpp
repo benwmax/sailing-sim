@@ -450,14 +450,14 @@ bool FSailingSaveIdsTest::RunTest(const FString&)
 		TestNotNull(*FString::Printf(TEXT("Drill %s has a briefing"), *Id), Content.Briefing(ESailingDrill(I + 1)));
 		if (const FDrillBriefing* B = Content.Briefing(ESailingDrill(I + 1))) TestEqual(*FString::Printf(TEXT("Drill %s is the content's id"), *Id), B->Id, Id);
 	}
-	// Weather presets, skies and modes by their names.
+	// Weather presets, skies (Rain too: P 0..5 covers all six) and modes by their names.
 	USailingSettings* S = NewObject<USailingSettings>();
 	USailSessionSave* Session = NewObject<USailSessionSave>();
 	Session->bHasLast = true;
 	for (int32 P = 0; P <= int32(ESailingWeather::RandomDay); ++P)
 	{
 		S->WeatherPreset = ESailingWeather(P);
-		Session->Last.Conditions.Sky = ESailSky(P % 5);
+		Session->Last.Conditions.Sky = ESailSky(P % 6);
 		Session->Last.Mode = ESailMode(P % 4);
 		FSailSave Save;
 		Save.Capture(*S, *Session);
@@ -466,7 +466,7 @@ bool FSailingSaveIdsTest::RunTest(const FString&)
 		Session->Last.Mode = ESailMode::Free;
 		Save.Apply(*S, *Session);
 		TestEqual(*FString::Printf(TEXT("Weather %s"), *Save.Settings.WeatherId), int32(S->WeatherPreset), P);
-		TestEqual(*FString::Printf(TEXT("Sky %s"), *Save.Last.SkyId), int32(Session->Last.Conditions.Sky), P % 5);
+		TestEqual(*FString::Printf(TEXT("Sky %s"), *Save.Last.SkyId), int32(Session->Last.Conditions.Sky), P % 6);
 		TestEqual(*FString::Printf(TEXT("Mode %s"), *Save.Last.ModeId), int32(Session->Last.Mode), P % 4);
 	}
 	for (const FSailPreset& P : USailSessionSubsystem::Presets()) TestFalse(TEXT("Preset id"), P.Id.IsNone());

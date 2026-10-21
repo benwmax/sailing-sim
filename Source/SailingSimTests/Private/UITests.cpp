@@ -88,6 +88,11 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	TestEqual(TEXT("Lake: boat"), S->BoatType, 0);
 	TestEqual(TEXT("Lake: overcast"), int32(S->WeatherPreset), int32(ESailingWeather::Overcast));
 	TestTrue(TEXT("Lake: easy"), S->Difficulty == ESailingDifficulty::Easy);
+	// The Sky row's Rain: steady rain from the start (the Rain preset), named for the loading screen.
+	B.Conditions.Sky = ESailSky::Rain;
+	USailSessionSubsystem::ApplyToSettings(B);
+	TestEqual(TEXT("Lake: rain runs the Rain preset"), int32(S->WeatherPreset), int32(ESailingWeather::Rain));
+	TestEqual(TEXT("Rain's name"), USailSessionSubsystem::SkyName(ESailSky::Rain), FString(TEXT("Rain")));
 
 	// Passage mode on Galveston sails the Gulf world.
 	FSailSessionConfig C = A;
