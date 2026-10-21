@@ -836,4 +836,160 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * The jib-winch hand (the PC, Ultra, light air): a trimmer holding the sheet's tail had the fingers folded into a full fist
+ * through the line (a mitten from the palm side) and the wrist bent about 90 degrees by the palm's turn to it; and the
+ * J/22's trimmer and bow sat in each other on the leeward seat. Each MetaHuman rig closes a hand on a line in five
+ * directions: the wrist's bend stays within flexion 60 and deviation 25 degrees of the rest pose (66 in all), and no finger
+ * bone passes within 0.6 cm of the line's axis (a 6 mm sheet in a hand), and the middle finger curls 110 degrees at most
+ * over its first two joints. Every boat's crew, in CrewHullClearance's cases,
+ * sit 0.4 m apart or more (pelvis to pelvis) outside a crossing.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewHeldLineTest, "SailingSim.Visual.CrewHeldLine", CrewMotionFlags)
+bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	// The crew's spacing.
+	int32 Pairs = 0;
+	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
+	{
+		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
+		const int32 N = Cfg.CrewCount;
+		const double Up = Cfg.CrewSitOut * 0.8, Hiked = Cfg.CrewSitOut + Cfg.CrewHikeOut;
+		struct FCase { double Offset, BoomAngle, Twa; const TCHAR* Name; };
+		const FCase Cases[] = { { Up, 0.3, 0.8, TEXT("sitting up") }, { Hiked, 0.25, 0.8, TEXT("hiked") }, { 0.3, 0.6, 1.6, TEXT("light air, leeward seat") },
+			{ -0.3, -0.6, 1.6, TEXT("light air, the other seat") }, { -0.2, -1.3, 2.9, TEXT("running") } };
+		for (const FCase& C : Cases)
+		{
+			TArray<FCrewPlacement> Placed;
+			for (int32 I = 0; I < N; ++I)
+			{
+				FCrewPlaceInput Place;
+				Place.Config = &Cfg;
+				Place.Index = I;
+				Place.CrewOffset = C.Offset;
+				Place.WindwardSide = C.Offset >= 0.0 ? 1 : -1;
+				Place.BoomAngle = C.BoomAngle;
+				Place.TrueWindAngle = C.Twa;
+				CrewPlacement(Place, Placed.AddDefaulted_GetRef());
+			}
+			for (int32 A = 0; A < N; ++A)
+			{
+				for (int32 B = A + 1; B < N; ++B)
+				{
+					if (Placed[A].Params.Stance == ECrewStance::Crossing || Placed[B].Params.Stance == ECrewStance::Crossing) continue;
+					++Pairs;
+					const double Gap = FVector::Dist(Placed[A].Pelvis, Placed[B].Pelvis);
+					if (Gap < 0.4)
+					{
+						AddError(FString::Printf(TEXT("%s, %s: crew %d and %d %.2f m apart (pelvis at (%.2f, %.2f) and (%.2f, %.2f))"), ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)),
+							C.Name, A, B, Gap, Placed[A].Pelvis.X, Placed[A].Pelvis.Y, Placed[B].Pelvis.X, Placed[B].Pelvis.Y));
+					}
+				}
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d pairs of crew checked"), Pairs));
+
+	// The hand on a line.
+	TArray<FCrewBody> Bodies;
+	CrewBodies(*this, Bodies);
+	const FBoatConfig Cfg;
+	const FBoatModel Model(Cfg);
+	const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
+	int32 Hands = 0;
+	for (const FCrewBody& Body : Bodies)
+	{
+		if (!Body.Rig.bValid) continue;
+		const FReferenceSkeleton& Ref = Body.Mesh->GetRefSkeleton();
+		auto Bone = [&](const TCHAR* Name) { return Ref.FindBoneIndex(Name); };
+		const int32 Fore = Bone(TEXT("lowerarm_r")), Hand = Bone(TEXT("hand_r")), Knuckle = Bone(TEXT("middle_01_r"));
+		if (!TestTrue(FString::Printf(TEXT("%s has the arm's bones"), *Body.Name), Fore != INDEX_NONE && Hand != INDEX_NONE && Knuckle != INDEX_NONE)) continue;
+		const TArray<FTransform>& Rest = Body.Rig.RestCS;
+		const double RestBend = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct((Rest[Hand].GetLocation() - Rest[Fore].GetLocation()).GetSafeNormal(),
+			(Rest[Knuckle].GetLocation() - Rest[Hand].GetLocation()).GetSafeNormal()), -1.0, 1.0)));
+		FCrewPlaceInput Place;
+		Place.Config = &Cfg;
+		Place.Index = Cfg.CrewCount - 2;   // the trimmer, on the leeward seat in light air
+		Place.CrewOffset = -0.3;
+		Place.WindwardSide = 1;
+		Place.BoomAngle = -0.6;
+		Place.TrueWindAngle = 0.9;
+		FCrewPlacement Pl;
+		CrewPlacement(Place, Pl);
+		const FVector Dirs[] = { FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1), FVector(1, 1, 0).GetSafeNormal(), FVector(1, -0.5, 0.8).GetSafeNormal() };
+		for (const FVector& Dir : Dirs)
+		{
+			FCrewMotionState State;
+			FCrewMotionInput In;
+			In.Params = Pl.Params;
+			In.ToBoat = FigureFrame(Pl, &Body.Rig);
+			In.SeatFromCG = Pl.Pelvis - CG;
+			In.bClips = false;
+			CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
+			TArray<FTransform> CS;
+			CrewMotionUpdate(State, In, 1.f / 30.f);
+			CrewMotionPose(Ref, &Body.Rig, &Cfg, Model.HullDepth(), State, In, CS);
+			// The line a forearm's length out in front of where the hand hangs, held.
+			const FVector Target = CS[Hand].GetLocation() + In.ToBoat.InverseTransformVectorNoScale(FVector(25.0, 0.0, 15.0));
+			In.Hands.Mode[1] = FCrewHands::EMode::Reach;
+			In.Hands.Target[1] = Target;
+			In.Hands.Grip[1] = 1.f;
+			In.Hands.Along[1] = Dir;
+			for (int32 K = 0; K < 10; ++K) CrewMotionUpdate(State, In, 1.f / 30.f);
+			CrewMotionPose(Ref, &Body.Rig, &Cfg, Model.HullDepth(), State, In, CS);
+			++Hands;
+			const double Bend = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct((CS[Hand].GetLocation() - CS[Fore].GetLocation()).GetSafeNormal(),
+				(CS[Knuckle].GetLocation() - CS[Hand].GetLocation()).GetSafeNormal()), -1.0, 1.0)));
+			const FString What = FString::Printf(TEXT("%s, a line along (%.1f, %.1f, %.1f)"), *Body.Name, Dir.X, Dir.Y, Dir.Z);
+			TestTrue(FString::Printf(TEXT("%s: the wrist bent %.0f deg from rest (%.0f there)"), *What, FMath::Abs(Bend - RestBend), RestBend), FMath::Abs(Bend - RestBend) <= 66.0);
+			double Closest = 1e9;
+			FString Where;
+			for (const TCHAR* Finger : { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky") })
+			{
+				FVector Prev = FVector::ZeroVector;
+				for (int32 J = 1; J <= 3; ++J)
+				{
+					const int32 B = Bone(*FString::Printf(TEXT("%s_0%d_r"), Finger, J));
+					if (B == INDEX_NONE) break;
+					const FVector P = CS[B].GetLocation();
+					if (J > 1)
+					{
+						// The bone's segment against the line's axis (sampled).
+						for (double U = 0.0; U <= 1.0; U += 0.1)
+						{
+							const FVector Q = FMath::Lerp(Prev, P, U);
+							const double D = FVector::CrossProduct(Q - Target, Dir).Size();
+							if (D < Closest) { Closest = D; Where = FString::Printf(TEXT("%s_0%d"), Finger, J); }
+						}
+					}
+					Prev = P;
+				}
+			}
+			TestTrue(FString::Printf(TEXT("%s: the fingers clear the line (closest %.2f cm, %s)"), *What, Closest, *Where), Closest >= 0.6);
+			// Closed round the line, not into a fist: the middle finger's first two joints curl 110 degrees at most between
+			// their bones (the full fist measured 123 here and folded the fingers into a mitten from the palm side; held now 92).
+			const int32 M1 = Bone(TEXT("middle_01_r")), M2 = Bone(TEXT("middle_02_r")), M3 = Bone(TEXT("middle_03_r"));
+			if (M1 != INDEX_NONE && M2 != INDEX_NONE && M3 != INDEX_NONE)
+			{
+				auto Turn = [&](int32 A, int32 B, int32 C)
+				{
+					return FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct((CS[B].GetLocation() - CS[A].GetLocation()).GetSafeNormal(),
+						(CS[C].GetLocation() - CS[B].GetLocation()).GetSafeNormal()), -1.0, 1.0)));
+				};
+				const auto RestTurn = [&](int32 A, int32 B, int32 C)
+				{
+					return FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct((Rest[B].GetLocation() - Rest[A].GetLocation()).GetSafeNormal(),
+						(Rest[C].GetLocation() - Rest[B].GetLocation()).GetSafeNormal()), -1.0, 1.0)));
+				};
+				const double Curl = Turn(Hand, M1, M2) + Turn(M1, M2, M3) - RestTurn(Hand, M1, M2) - RestTurn(M1, M2, M3);
+				TestTrue(FString::Printf(TEXT("%s: the middle finger curls %.0f deg"), *What, Curl), Curl <= 110.0);
+			}
+			AddInfo(FString::Printf(TEXT("%s: wrist %.0f deg from rest, fingers %.2f cm from the line"), *What, FMath::Abs(Bend - RestBend), Closest));
+		}
+	}
+	if (Hands == 0) AddWarning(TEXT("No MetaHuman crew installed: the hand is not checked"));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
