@@ -3136,6 +3136,8 @@ def build_lens_water():
     connect(off, "", uv2, "B")
     refr = node(mat, unreal.MaterialExpressionSceneTexture, -150, 200)
     refr.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
+    # Filtered: the drop shows the scene shifted and magnified, and point sampled its inside was blocky (PC Ultra audit).
+    refr.set_editor_property("filtered", True)
     connect(uv2, "", refr, "UVs")
     scene = node(mat, unreal.MaterialExpressionSceneTexture, -150, 0)
     scene.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
