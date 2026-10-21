@@ -1098,21 +1098,28 @@ col *= 1.0 - 0.3 * cav * wetAll;
 float level = saturate((n.z - 0.92) * 12.5) * (1.0 - Metal);
 float pudK = level * (1.0 - smoothstep(Puddle * 0.62 - 0.04, Puddle * 0.62 + 0.02, vn)) * step(0.02, Puddle);
 float rainK = saturate(Rain);
-float2 rc = LP.xy / 14.0;                                        // (22 cm cells, 7 cm rings 3.5 mm wide were under a pixel)
-float2 rci = floor(rc), rcf = frac(rc) - 0.5;
-float rh = frac(sin(dot(rci, float2(41.7, 19.3))) * 43758.5);
-float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
-float2 roff = float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25;
-float rdist = length(rcf - roff) * 14.0;                             // cm from the drop
-float rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.5 * deckWet);
 grad = lerp(grad, float3(0.0, 0.0, 0.0), pudK);                      // a puddle's surface is flat water
-grad += ((rcf - roff).x * LX + (rcf - roff).y * LY) / max(rdist / 14.0, 1e-3) * rring * 0.8;
-float2 rbq = (abs(n.z) > 0.7 ? LP.xy : float2(LP.x + LP.y, LP.z)) / 0.8;
-float2 rbf = frac(rbq) - 0.5;
-float rbh = frac(sin(dot(floor(rbq), float2(23.17, 61.3))) * 43758.5);
-float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rainK * (1.0 - pudK)
-    * max(level * gel, Metal * 0.8);
-grad += (rbf.x * LX + rbf.y * LY) * rbead * 1.2;
+// rain-fade: the rings and beads fade out from 2 to 3 m and aren't computed past it (0.2 ms on the Mac's storm view,
+// for detail nobody sees from there); the puddles' darkening and gloss stay at every distance.
+float rfade = rainK * (1.0f - saturate((Depth - 200.0f) / 100.0f));
+float rring = 0.0f, rbead = 0.0f;
+[branch] if (rfade > 0.0f)
+{
+    float2 rc = LP.xy / 14.0;                                        // (22 cm cells, 7 cm rings 3.5 mm wide were under a pixel)
+    float2 rci = floor(rc), rcf = frac(rc) - 0.5;
+    float rh = frac(sin(dot(rci, float2(41.7, 19.3))) * 43758.5);
+    float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
+    float2 roff = float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25;
+    float rdist = length(rcf - roff) * 14.0;                             // cm from the drop
+    rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rfade * max(pudK, 0.5 * deckWet);
+    grad += ((rcf - roff).x * LX + (rcf - roff).y * LY) / max(rdist / 14.0, 1e-3) * rring * 0.8;
+    float2 rbq = (abs(n.z) > 0.7 ? LP.xy : float2(LP.x + LP.y, LP.z)) / 0.8;
+    float2 rbf = frac(rbq) - 0.5;
+    float rbh = frac(sin(dot(floor(rbq), float2(23.17, 61.3))) * 43758.5);
+    rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rfade * (1.0 - pudK)
+        * max(level * gel, Metal * 0.8);
+    grad += (rbf.x * LX + rbf.y * LY) * rbead * 1.2;
+}
 col *= (1.0 - 0.3 * pudK) * (1.0 + 0.4 * rring);
 wetAll = saturate(max(wetAll, max(pudK, rbead)));
 // Spray hull (docs/spray-hull): below the wet line the topsides carry a water film, a fifth darker even on gelcoat that
