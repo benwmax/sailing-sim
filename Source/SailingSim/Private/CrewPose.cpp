@@ -206,7 +206,7 @@ namespace CrewSolver
 	/** Graphics G8: two-bone IK for one arm toward a wrist target (component space). The elbow stays in the plane the
 	 *  stance put it in; the shoulder and elbow rotations are written back into the joint map. */
 	void ReachArm(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Hand, const FVector& Target,
-		TMap<FName, FQuat>& Joints)
+		TMap<FName, FQuat>& Joints, const FVector& HeldLine)
 	{
 		const int32 Lower = Ref.GetParentIndex(Hand);
 		const int32 Upper = Lower == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Lower);
@@ -222,8 +222,33 @@ namespace CrewSolver
 		if (Y.SizeSquared() < 1.0) Y = FVector::CrossProduct(X, FVector::CrossProduct(FVector(0, 0, -1), X)); // a straight arm: elbow down
 		Y = Y.GetSafeNormal();
 		const double CosA = FMath::Clamp((A * A + Dist * Dist - B * B) / (2.0 * A * Dist), -1.0, 1.0);
-		const FVector E2 = S + X * (A * CosA) + Y * (A * FMath::Sqrt(FMath::Max(0.0, 1.0 - CosA * CosA)));
+		const double SinA = FMath::Sqrt(FMath::Max(0.0, 1.0 - CosA * CosA));
 		const FVector T2 = S + X * Dist;
+		// Holding a line: the elbow swings about the shoulder-to-wrist axis (up to 60 deg from where the stance had it, the elbow kept low) to the
+		// place whose forearm runs most nearly square to the line, so the line can lie across the palm with the wrist near
+		// straight (the PC, Ultra: with the stance's elbow, a sheet led along the forearm cocked the wrist 60-70 deg).
+		if (!HeldLine.IsNearlyZero())
+		{
+			const FVector Line = HeldLine.GetSafeNormal();
+			const FVector Z = FVector::CrossProduct(X, Y);
+			auto SquareAt = [&](const FVector& Yk) { return FMath::Abs(FVector::DotProduct((T2 - (S + X * (A * CosA) + Yk * (A * SinA))).GetSafeNormal(), Line)); };
+			const double Stance = SquareAt(Y);
+			double Best = Stance;
+			FVector BestY = Y;
+			for (int32 K = -6; K <= 6; ++K)
+			{
+				const double Swing = FMath::DegreesToRadians(10.0 * K);
+				const FVector Yk = Y * FMath::Cos(Swing) + Z * FMath::Sin(Swing);
+				// (Never with the elbow raised: no higher than the shoulder; swung up, the trimmer's
+				// arm went up past the head and the shoulder's skin and vest tore.)
+				if ((X * (A * CosA) + Yk * (A * SinA)).Z > -0.05 * A) continue;
+				const double Cost = SquareAt(Yk) + 0.08 * FMath::Abs(Swing);   // (a little to stay near the stance's own elbow)
+				if (Cost < Best) { Best = Cost; BestY = Yk; }
+			}
+			// (Only for a real gain: a line led along the reach is at the same angle to the forearm wherever the elbow goes.)
+			if (Stance - SquareAt(BestY) > 0.15) Y = BestY;
+		}
+		const FVector E2 = S + X * (A * CosA) + Y * (A * SinA);
 		const FQuat Q1 = FQuat::FindBetweenVectors(E - S, E2 - S);
 		const FVector W1 = S + Q1.RotateVector(W - S);
 		const FQuat Q2 = FQuat::FindBetweenVectors(W1 - E2, T2 - E2);
@@ -425,11 +450,11 @@ namespace CrewSolver
 		}
 	}
 
-	/** The wrist within its range (flexion +-60 deg, deviation +-25), the turn about the forearm left to it (the forearm
+	/** The wrist within its range (flexion +-MaxFlexDeg: 60, 40 holding a line; deviation +-25), the turn about the forearm left to it (the forearm
 	 *  pronates): the winch hand had been bent 90 deg back by the palm's turn to the line. Axes from the rest pose: the
 	 *  forearm toward the hand, across the knuckles, and the palm's normal. */
 	void ClampWrist(const TArray<FTransform>& RestCS, const TArray<FQuat>& D, int32 Hand, int32 Forearm, int32 IndexK, int32 PinkyK, FName HandName,
-		TMap<FName, FQuat>& Carried)
+		TMap<FName, FQuat>& Carried, double MaxFlexDeg)
 	{
 		const FVector Along = (RestCS[Hand].GetLocation() - RestCS[Forearm].GetLocation()).GetSafeNormal();
 		FVector Across = RestCS[IndexK].GetLocation() - RestCS[PinkyK].GetLocation();
@@ -442,10 +467,80 @@ namespace CrewSolver
 		Rel.ToSwingTwist(Along, Swing, Twist);
 		const FVector V = Swing.ToRotationVector();
 		const double Flex = FVector::DotProduct(V, Across), Dev = FVector::DotProduct(V, Normal);
-		const double MaxFlex = FMath::DegreesToRadians(60.0), MaxDev = FMath::DegreesToRadians(25.0);
+		const double MaxFlex = FMath::DegreesToRadians(MaxFlexDeg), MaxDev = FMath::DegreesToRadians(25.0);
 		if (FMath::Abs(Flex) <= MaxFlex && FMath::Abs(Dev) <= MaxDev) return;
 		const FVector Clamped = Across * FMath::Clamp(Flex, -MaxFlex, MaxFlex) + Normal * FMath::Clamp(Dev, -MaxDev, MaxDev);
 		Carried.Add(HandName, FQuat::MakeFromRotationVector(Clamped) * Twist);
+	}
+
+	constexpr double kHeldWristDeg = 40.0; // the wrist's flexion holding a line led along the reach (the elbow swung first: ReachArm)
+
+	/** Each finger of a hand closed on a line stops short of it: a finger whose bones pass within kFingerClearCm of the
+	 *  line's axis opens (its three curl joints eased toward straight, 15% a step, at most five) until it clears. The curl's
+	 *  fixed angles suit a line square across the palm; led diagonally across it the middle finger closed through it. */
+	constexpr double kFingerClearCm = 0.75; // the sheet's radius (3 mm) and a finger bone's from its axis
+	bool ClearFingers(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
+		TMap<FName, FQuat>& Carried)
+	{
+		bool bMoved = false;
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			if (Hands.Mode[Side] != FCrewHands::EMode::Reach || Hands.Along[Side].IsNearlyZero()) continue;
+			const FVector Line = Hands.Along[Side].GetSafeNormal(), At = Hands.Target[Side];
+			for (int32 F = 0; F < 4; ++F) // not the thumb: it closes over the fingers, not round the line
+			{
+				int32 Bones[3];
+				FName Names[3];
+				bool bAll = true;
+				for (int32 K = 0; K < 3; ++K)
+				{
+					Names[K] = FName(*FString::Printf(TEXT("%s_0%d_%s"), FingerNames[F], K + 1, Side == 0 ? TEXT("l") : TEXT("r")));
+					Bones[K] = Ref.FindBoneIndex(Names[K]);
+					bAll &= Bones[K] != INDEX_NONE;
+				}
+				if (!bAll) continue;
+				FVector Near = FVector::ZeroVector;
+				auto Closest = [&]()
+				{
+					double Best = 1e9;
+					for (int32 K = 1; K < 3; ++K)
+					{
+						for (int32 U = 0; U <= 10; ++U)
+						{
+							const FVector Q = FMath::Lerp(CS[Bones[K - 1]].GetLocation(), CS[Bones[K]].GetLocation(), U / 10.0);
+							const double Dist = FVector::CrossProduct(Q - At, Line).Size();
+							if (Dist < Best) { Best = Dist; Near = Q; }
+						}
+					}
+					return Best;
+				};
+				for (int32 Step = 0; Step < 5 && Closest() < kFingerClearCm; ++Step)
+				{
+					for (const FName& Name : Names)
+					{
+						if (const FQuat* Q = Carried.Find(Name)) Carried.Add(Name, FQuat::Slerp(FQuat::Identity, *Q, 0.85f));
+					}
+					Solve(Ref, RestCS, Carried, CS, &D);
+					bMoved = true;
+				}
+				// Still too close where opening barely moves it (the first bone, by the knuckle, with the line led diagonally across
+				// the palm): the hand moves off the line by the shortfall, square to it.
+				const double Left = Closest();
+				const int32 Hand = Ref.GetParentIndex(Bones[0]);
+				if (Left < kFingerClearCm && Hand != INDEX_NONE)
+				{
+					FVector Off = Near - At;
+					Off -= FVector::DotProduct(Off, Line) * Line;
+					if (Off.Normalize())
+					{
+						ReachArm(Ref, CS, D, Hand, CS[Hand].GetLocation() + Off * (kFingerClearCm - Left + 0.02), Carried);
+						Solve(Ref, RestCS, Carried, CS, &D);
+						bMoved = true;
+					}
+				}
+			}
+		}
+		return bMoved;
 	}
 
 	bool PlaceHands(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
@@ -481,7 +576,16 @@ namespace CrewSolver
 			const bool bAlong = !Hands.Along[Side].IsNearlyZero() && IndexK != INDEX_NONE && PinkyK != INDEX_NONE && Forearm != INDEX_NONE;
 			// (Turned first, then reached: the wrist ends where the palm closes on the target, the line within a few degrees
 			// of across it as the second reach turns the forearm.)
-			for (int32 Pass = 0; Pass < 2; ++Pass)
+			// (Four passes holding a line: the swung elbow turns the forearm, and the hand with it, so the palm's offset to the target
+			// is taken again after each reach.)
+			// The wrist holding a line bends 40 deg at most when the line is led along the reach (within 20 deg of the shoulder to the
+			// hand, as a sheet comes from its winch to the trimmer: the PC, Ultra, saw that wrist cocked 60-70 deg); a line
+			// across the arm keeps the 60 (the elbow swings first in either case).
+			const int32 UpperArm = Forearm == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Forearm);
+			const bool bAlongReach = bAlong && UpperArm != INDEX_NONE
+				&& FMath::Abs(FVector::DotProduct((Target - CS[UpperArm].GetLocation()).GetSafeNormal(), Hands.Along[Side].GetSafeNormal())) > FMath::Cos(FMath::DegreesToRadians(20.0));
+			const double WristDeg = bAlongReach ? kHeldWristDeg : 60.0;
+			for (int32 Pass = 0; Pass < (bAlong ? 4 : 2); ++Pass)
 			{
 				if (bAlong)
 				{
@@ -496,11 +600,11 @@ namespace CrewSolver
 				}
 				if (IndexK != INDEX_NONE && PinkyK != INDEX_NONE && Forearm != INDEX_NONE)
 				{
-					ClampWrist(RestCS, D, Hand, Forearm, IndexK, PinkyK, Ref.GetBoneName(Hand), Carried);
+					ClampWrist(RestCS, D, Hand, Forearm, IndexK, PinkyK, Ref.GetBoneName(Hand), Carried, WristDeg);
 				}
 				Solve(Ref, RestCS, Carried, CS, &D);
 				const FVector Palm = Knuckle == INDEX_NONE ? FVector::ZeroVector : (CS[Knuckle].GetLocation() - CS[Hand].GetLocation()) * 0.75;
-				ReachArm(Ref, CS, D, Hand, Target - Palm, Carried);
+				ReachArm(Ref, CS, D, Hand, Target - Palm, Carried, bAlong ? Hands.Along[Side] : FVector::ZeroVector);
 				Solve(Ref, RestCS, Carried, CS, &D);
 			}
 		}
