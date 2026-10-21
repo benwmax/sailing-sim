@@ -843,8 +843,14 @@ float3 grad = (gx * LX + gy * LY) * 0.35 * NonSkid;
 // Wet below the splash line: the water level plus the band the waves and heel throw spray to; a ragged, dripping
 // edge (streaks along the hull) rather than a ruled line.
 float streak = 0.5 + 0.5 * sin(LP.x * 0.21 + sin(LP.x * 0.047) * 3.0);
-float wetLine = WaterZ + WetBand * (0.6 + 0.4 * streak);
-float wet = 1.0 - smoothstep(wetLine - 3.0, wetLine + 3.0, WP.z);
+// (Clipping audit 2: with spray-hull's raised band the ragged edge was 0.4 of it, up to 20 cm of regular teeth every
+// 30 cm near the sheer. Now at most 6 cm, half of it a slow 1.1 m noise, and the edge softens as the band grows.)
+float wlx = LP.x / 110.0, wli = floor(wlx), wlf = frac(wlx);
+wlf = wlf * wlf * (3.0 - 2.0 * wlf);
+float wln = lerp(frac(sin(wli * 37.13) * 43758.5), frac(sin((wli + 1.0) * 37.13) * 43758.5), wlf);
+float wetLine = WaterZ + WetBand * 0.8 + min(WetBand * 0.4, 6.0) * (1.2 * streak + 0.8 * wln - 1.0);
+float wetEdge = 3.0 + 0.1 * WetBand;
+float wet = 1.0 - smoothstep(wetLine - wetEdge, wetLine + wetEdge, WP.z);
 // Deck wetness from rain and spray: up-facing surfaces darken a little, gloss up and carry droplets. Boat fidelity 1: up
 // is judged on the side the camera sees (the material is two-sided and generated shells, like the J/22's cockpit sole,
 // aren't all wound outward); the shading normal stays the mesh's (the engine flips back faces itself).

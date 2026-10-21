@@ -50,11 +50,17 @@ Rough = lerp(Rough, 0.75, ox);
 c *= 1.0 - 0.3 * ageK * X.r * up;                  // grime worked into the non-skid where feet go
 c *= 1.0 - 0.25 * ageK * X.g;                      // teak greys and darkens
 float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
-float wet = (1.0 - smoothstep(WaterZ + WetBand * (0.6 + 0.4 * streak) - 3.0, WaterZ + WetBand * (0.6 + 0.4 * streak) + 3.0, WP.z)) * (1.0 - up);
+// (Clipping audit 2, as M_BoatSurface: at most 6 cm of ragged edge, half of it slow noise, softer as the band grows.)
+float wlx = WP.x / 110.0, wli = floor(wlx), wlf = frac(wlx);
+wlf = wlf * wlf * (3.0 - 2.0 * wlf);
+float wln = lerp(frac(sin(wli * 37.13) * 43758.5), frac(sin((wli + 1.0) * 37.13) * 43758.5), wlf);
+float wetLine = WaterZ + WetBand * 0.8 + min(WetBand * 0.4, 6.0) * (1.2 * streak + 0.8 * wln - 1.0);
+float wetEdge = 3.0 + 0.1 * WetBand;
+float wet = (1.0 - smoothstep(wetLine - wetEdge, wetLine + wetEdge, WP.z)) * (1.0 - up);
 float wetAll = saturate(max(wet, saturate(DeckWet) * up * 0.8));
 // Spray hull (docs/spray-hull), as M_BoatSurface: a water film below the wet line (a fifth darker), beads in its top
 // 8 cm and spattered above it after spray (SprayWet), drips running down from the line; glossy where wet.
-float below = WaterZ + WetBand * (0.6 + 0.4 * streak) - WP.z;
+float below = wetLine - WP.z;
 float2 bq = float2(WP.x + WP.y, WP.z) / 0.9;
 float2 bf = frac(bq) - 0.5;
 float bh = frac(sin(dot(floor(bq), float2(17.31, 91.7))) * 43758.5), br = 0.18 + 0.2 * frac(bh * 7.13);
