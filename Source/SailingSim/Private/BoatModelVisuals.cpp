@@ -546,7 +546,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// (Always drawn, so the rig mesh keeps its vertex count: with no hand in reach, down onto where the model lays it,
 		// JibTailRest (the hero's cabin top, forward and inboard of its winch), else onto the seat behind the winch.)
 		const FVector Tailer = RigPoint(ModelHull, S.JibSide > 0 ? TEXT("JibTailer_S") : TEXT("JibTailer_P"));
-		const TOptional<FVector> Hand = JibGripCm ? JibGripCm : HandNear(NumCrew - 2, Tailer);
+		// (Only into a hand that holds it: led to the nearer hand resting on a knee it ran through the thigh.)
+		const TOptional<FVector> Hand = JibGripCm;
 		const TCHAR* Rest = S.JibSide > 0 ? TEXT("JibTailRest_S") : TEXT("JibTailRest_P");
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand
 			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
