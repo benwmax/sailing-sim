@@ -623,22 +623,56 @@ def build_ghost():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+SPRAY_CODE = """
+// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion. Grain 1: a clump of droplets,
+// round drops on a jittered grid (stretched with the quad: the motion blur) over a faint veil; 0: smooth mist.
+// The quad's own position (the engine plane spans -50..50 cm; its UVs don't reach the material here).
+float2 q = Local.xy / 50.0;
+float2 Coord = q * 0.5 + 0.5;
+float r = length(q);
+float soft = saturate(1.0 - r);
+soft *= soft;
+float2 g = Coord * float2(4.0, 3.0) + Seed * 17.0;
+float2 c = floor(g);
+float2 f = frac(g) - 0.5;
+float h = frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453);
+float2 o = float2(frac(h * 7.31), frac(h * 3.17)) - 0.5;
+float drop = saturate((0.24 + 0.14 * h - length(f - 0.25 * o)) * 10.0) * step(0.25, h);
+float grainy = saturate(drop + 0.4 * soft) * saturate(1.25 - r);
+return saturate(Alpha * lerp(soft, grainy, Grain));
+"""
+
+
 def build_spray():
-    """M_Spray (Visual V4, High): droplets of spray, instanced; a dithered half opacity the temporal AA blends to mist."""
+    """M_Spray (docs/spray/, High): spray as lit translucent quads facing the camera (AWaterSurface::UpdateSpray), per
+    instance opacity, grain (droplet clump or mist) and seed. Water droplets scatter the sun forward: looking toward the
+    sun the spray glows (a Henyey-Greenstein lobe of the sun's illuminance on the emissive)."""
     mat = new_material("M_Spray")
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_instanced_static_meshes", True)
-    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.82, 0.86, 0.88, 1))
-    rough = node(mat, unreal.MaterialExpressionConstant, -500, 150, r=0.35)
-    alpha = node(mat, unreal.MaterialExpressionConstant, -500, 300, r=0.55)
-    # Interleaved-gradient noise per pixel, shifted each frame: the temporal AA averages it to the alpha.
-    dither = custom(mat, """float2 px = Parameters.SvPosition.xy + float(View.StateFrameIndexMod8) * float2(7.0, 3.0);
-float n = frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
-return Alpha - n + 0.3333;""", ["Alpha"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 300)
-    connect(alpha, "", dither, "Alpha")
+    inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -900, 0)}
+    for k, (name, y) in enumerate((("Alpha", 100), ("Grain", 200), ("Seed", 300))):
+        inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    c = custom(mat, SPRAY_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
+    for name, n in inputs.items():
+        connect(n, "", c, name)
+    glow_in = {"V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 500),
+               "L": node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -900, 600),
+               "E": node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -900, 700)}
+    glow = custom(mat, """// Forward scattering (g = 0.75) of the sun through the drops toward the camera (V points at the camera).
+float mu = dot(-V, L);
+float hg = (1.0 - 0.5625) / pow(max(1.5625 - 1.5 * mu, 1e-3), 1.5) / 12.566;
+return E * 0.35 * hg;""", list(glow_in.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 600)
+    for name, n in glow_in.items():
+        connect(n, "", glow, name)
+    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.86, 0.9, 0.92, 1))
+    rough = node(mat, unreal.MaterialExpressionConstant, -500, 450, r=0.25)
     MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_OPACITY)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -748,8 +782,10 @@ float3 grad = (gx * LX + gy * LY) * 0.35 * NonSkid;
 float streak = 0.5 + 0.5 * sin(LP.x * 0.21 + sin(LP.x * 0.047) * 3.0);
 float wetLine = WaterZ + WetBand * (0.6 + 0.4 * streak);
 float wet = 1.0 - smoothstep(wetLine - 3.0, wetLine + 3.0, WP.z);
-// Deck wetness from rain and spray: up-facing surfaces darken a little, gloss up and carry droplets.
-float up = saturate((n.z - 0.4) * 2.5);
+// Deck wetness from rain and spray: up-facing surfaces darken a little, gloss up and carry droplets. Boat fidelity 1: up
+// is judged on the side the camera sees (the material is two-sided and generated shells, like the J/22's cockpit sole,
+// aren't all wound outward); the shading normal stays the mesh's (the engine flips back faces itself).
+float up = saturate(((dot(n, V) < 0.0 ? -n.z : n.z) - 0.4) * 2.5);
 // The splash line wets the hull's sides, not the cockpit sole inside it (low cockpits sit near the outside water level).
 wet *= 1.0 - up;
 float2 cell = floor(LP.xy / 0.9);
@@ -775,8 +811,13 @@ float sunF = seeded ? 0.6 + 0.8 * saturate(CD12) : 1.0;
 float salt = seeded ? step(0.5, CD14) : 0.0;
 // Variant: one gelcoat batch is never quite another's, plus or minus 3%.
 col *= seeded ? 1.0 + gel * 0.03 * (frac(CD15 * 0.618 + 0.31) * 2.0 - 1.0) : 1.0;
+// How old and how kept: E1's seeded Age (years) and Care (0 neglected .. 1 tidy): per instance (custom data 10 and 11 on
+// the marina's berthed boats, docs/environment-1) or per boat (the Age and Care parameters; Age -1 = unset). Boat fidelity 1:
+// ageK (0 new .. 1 worn out) drives every surface's weathering; unset, the livery's oxidation channel stands in.
+float age = CD10 >= 0.0 ? CD10 : Age, care = CD10 >= 0.0 ? CD11 : Care;
+float ageK = age >= 0.0 ? saturate(age / 20.0) * (1.0 - 0.6 * saturate(care)) : wear.x;
 // Oxidation: gelcoat chalks under the Texas sun, decks and tops first: paler, flatter, the clear coat gone.
-float ox = saturate(wear.x * sunF) * gel * (0.55 + 0.45 * up);
+float ox = saturate(max(wear.x, ageK) * sunF) * gel * (0.55 + 0.45 * up);
 float lum = dot(col, float3(0.3, 0.59, 0.11));
 // Pale gelcoat goes toward chalk; dark paint (linear polyurethane, slower to chalk) only greys and loses depth.
 float3 chalk = lerp(lerp(float3(lum, lum, lum), float3(0.82, 0.80, 0.74), 0.5) * 1.02, col * 1.25 + lum * 0.35 + 0.01, saturate(1.0 - lum * 2.5));
@@ -801,10 +842,7 @@ for (int o = 0; o < 3; ++o)
 }
 vn /= 1.05;
 float deckish = up * (1.0 - Metal) * (1.0 - IsHull) * (1.0 - Grain);
-// How dirty: E1's seeded Age (years) and Care (0 neglected .. 1 tidy): per instance (custom data 10 and 11 on the marina's
-// berthed boats, docs/environment-1) or per boat (the Age and Care parameters; Age -1 = unset), else the livery's
-// oxidation channel.
-float age = CD10 >= 0.0 ? CD10 : Age, care = CD10 >= 0.0 ? CD11 : Care;
+// How dirty: from the age and care above, else the livery's oxidation channel.
 float dirt = age >= 0.0 ? saturate(0.15 + age / 18.0) * (1.0 - 0.65 * saturate(care)) : 0.3 + 0.7 * wear.x;
 float grime = saturate(vn * 1.8 - 0.6) * deckish * dirt * (0.45 + 0.55 * saturate(NonSkid));
 col = lerp(col, col * 0.76 + float3(0.014, 0.011, 0.007), grime);
@@ -870,6 +908,118 @@ col *= 1.0 + gel * 0.06 * (tone - 0.5);
 // core) bend the clear coat's reflections of the sky and the shore the way they wobble along a real hull.
 float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * sin(LP.x * 0.113 + LP.z * 0.05);
 grad += LX * (0.018 * gel * (1.0 - up) * fair);
+// Boat fidelity 1 (docs/boat-fidelity-1): the shared library. Surface is the part's kind (0 none: crew, plastics, glass;
+// 1 gelcoat, 2 non-skid, 3 stainless, 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber,
+// 9 rope, 10 sailcloth, 11 canvas): first its weathering with ageK (anchored to the boat by the grime's noise), then,
+// close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
+// part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
+int surf = (int)(Surface + 0.5);
+if (surf == 3)          // 316 stainless: tea-staining, a brown bloom round welds and crevices, worse on salt water
+{
+    float tea = ageK * (0.35 + 0.65 * salt) * saturate(vn * 1.6 - 0.35);
+    col = lerp(col, float3(0.28, 0.17, 0.09), 0.45 * tea);
+    rough = lerp(rough, 0.55, tea);
+}
+else if (surf == 4)     // clear anodising: fades to a chalky matt grey
+{
+    float lumA = dot(col, float3(0.3, 0.59, 0.11));
+    col = lerp(col, float3(lumA, lumA, lumA) * 0.92 + 0.03, 0.5 * ageK);
+    rough = lerp(rough, 0.55, ageK * (0.5 + 0.5 * vn));
+}
+else if (surf == 5)     // painted aluminium: the paint chalks (as dark gelcoat does, above) and chips to grey metal
+{
+    float chipCell = frac(sin(dot(floor(LP.xz / 1.3), float2(27.1, 61.7))) * 4375.5);
+    float chip = ageK * step(0.86 - 0.12 * ageK, chipCell) * saturate(vn * 2.0 - 0.5);
+    col = lerp(col, float3(0.42, 0.43, 0.44), chip);
+    rough = lerp(rough, 0.45, chip);
+    coat *= 1.0 - chip;
+}
+else if (surf == 6)     // varnish: yellows, then breaks down in patches to grey wood with its gloss gone
+{
+    float fail = ageK * saturate(vn * 2.2 - 0.6 + ageK * 0.6);
+    col = lerp(col * lerp(float3(1.0, 1.0, 1.0), float3(1.06, 0.98, 0.82), ageK), float3(0.30, 0.28, 0.25), 0.7 * fail);
+    rough = lerp(rough, 0.75, fail);
+    coat *= 1.0 - fail;
+}
+else if (surf == 7)     // bare teak: weathers silver grey
+{
+    col = lerp(col, float3(0.30, 0.29, 0.27), 0.6 * ageK);
+    rough = lerp(rough, 0.9, 0.5 * ageK);
+}
+else if (surf == 8)     // rubber and soft PVC: UV bloom, a grey chalky skin
+{
+    col = lerp(col, col + 0.05, ageK);
+    rough = lerp(rough, 0.85, ageK);
+}
+else if (surf >= 9)     // rope, sailcloth, canvas: dingy, and on a neglected boat specks of mildew
+{
+    col = lerp(col, col * 0.8 + float3(0.035, 0.033, 0.026), ageK);
+    float milCell = frac(sin(dot(floor(LP.xz / 0.6), float2(19.3, 47.9))) * 4375.5);
+    float mil = (1.0 - saturate(care)) * ageK * step(0.9, milCell) * saturate(vn * 2.5 - 1.0);
+    col = lerp(col, float3(0.05, 0.05, 0.04), 0.5 * mil);
+}
+float cav = 0.0;        // the detail's cavities: grime and standing water collect there
+if (DetailOn > 0.5 && surf > 0)
+{
+    float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
+    float2 tile = (surf == 2 || surf == 3) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.3, 0.15)
+        : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : float2(0.25, 0.25);
+    float strength = (surf == 4 ? 0.5 : surf == 5 ? 0.7 : surf == 11 ? 0.8 : 1.0) * fadeD;
+    float3 LZ = cross(LX, LY);
+    float3 bw = pow(abs(float3(dot(n, LX), dot(n, LY), dot(n, LZ))), 4.0);
+    bw /= bw.x + bw.y + bw.z + 1e-5;
+    float3 lpm = LP / 100.0;
+    bool upG = GrainUp > 0.5;
+    float2 uv0 = (upG ? lpm.zy : lpm.yz) / tile, uv1 = (upG ? lpm.zx : lpm.xz) / tile, uv2 = lpm.xy / tile;
+    float3 a0 = upG ? LZ : LY, b0 = upG ? LY : LZ, a1 = upG ? LZ : LX, b1 = upG ? LX : LZ;
+    float4 n0 = float4(0.5, 0.5, 1.0, 1.0), n1 = n0, n2 = n0, m0 = float4(0.5, 0.5, 0.5, 0.5), m1 = m0, m2 = m0;
+    SamplerState DS = View.MaterialTextureBilinearWrapedSampler;
+#define BOAT_TRI(T, o0, o1, o2) o0 = Texture2DSample(T, DS, uv0); o1 = Texture2DSample(T, DS, uv1); o2 = Texture2DSample(T, DS, uv2)
+    // Surface is a parameter (uniform), so one pair is sampled.
+    if (surf == 2) { BOAT_TRI(TNonSkidN, n0, n1, n2); BOAT_TRI(TNonSkidM, m0, m1, m2); }
+    else if (surf == 3 || surf == 4) { BOAT_TRI(TMetalN, n0, n1, n2); BOAT_TRI(TMetalM, m0, m1, m2); }
+    else if (surf == 6) { BOAT_TRI(TWoodN, n0, n1, n2); BOAT_TRI(TWoodM, m0, m1, m2); }
+    else if (surf == 7) { BOAT_TRI(TTeakN, n0, n1, n2); BOAT_TRI(TTeakM, m0, m1, m2); }
+    else if (surf == 8) { BOAT_TRI(TRubberN, n0, n1, n2); }
+    else if (surf == 9) { BOAT_TRI(TBraidN, n0, n1, n2); }
+    else if (surf == 10) { BOAT_TRI(TSailclothN, n0, n1, n2); }
+    else if (surf == 11) { BOAT_TRI(TCanvasN, n0, n1, n2); }
+    else { BOAT_TRI(TGelcoatN, n0, n1, n2); BOAT_TRI(TGelcoatM, m0, m1, m2); }
+#undef BOAT_TRI
+    float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
+    float2 d0 = (n0.xy * 2.0 - 1.0) * strength, d1 = (n1.xy * 2.0 - 1.0) * strength, d2 = (n2.xy * 2.0 - 1.0) * strength;
+    grad -= bw.x * (d0.x * a0 + d0.y * b0) + bw.y * (d1.x * a1 + d1.y * b1) + bw.z * (d2.x * LX + d2.y * LY);
+    if (surf == 2)                       // non-skid: grime in the grooves (as dirty as the boat), tops worn smooth
+    {
+        cav = (1.0 - m.r) * fadeD;
+        col *= lerp(1.0, lerp(0.70 + 0.2 * (1.0 - dirt), 1.06, m.r), fadeD);
+        rough = saturate(rough + fadeD * (0.12 * (1.0 - m.r) - 0.15 * m.g));
+    }
+    else if (surf == 3 || surf == 4)     // brushing streaks in the gloss; stainless tea-stains in its pits first
+    {
+        cav = m.b * fadeD;
+        col *= lerp(1.0, lerp(0.94, 1.04, m.r), fadeD);
+        rough = saturate(rough + fadeD * (m.g - 0.5) * 0.2);
+        col = lerp(col, float3(0.28, 0.17, 0.09), (surf == 3 ? 0.6 : 0.0) * cav * ageK * (0.4 + 0.6 * salt));
+    }
+    else if (surf == 6)                  // varnished wood: the figure under the film, open pores
+    {
+        cav = m.g * fadeD;
+        col *= lerp(1.0, lerp(0.82, 1.12, m.r), fadeD);
+    }
+    else if (surf == 7)                  // weathered teak: pale latewood, dark checks
+    {
+        cav = saturate(m.g + (1.0 - m.b) * 0.5) * fadeD;
+        col *= lerp(1.0, lerp(0.72, 1.15, m.r), fadeD);
+        rough = saturate(rough + fadeD * 0.1 * m.g);
+    }
+    else if (surf == 1 || surf == 5)     // gelcoat and paint: orange peel, buffing scratches catching the light
+    {
+        rough = saturate(rough + fadeD * ((m.g - 0.5) * 0.15 + m.r * 0.15 * (0.3 + ageK)));
+    }
+}
+// Wet: standing water darkens the cavities first (non-skid grooves, checks, pores).
+col *= 1.0 - 0.3 * cav * wetAll;
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
@@ -880,13 +1030,24 @@ return normalize(n - grad);
 """
 
 
+MPC_BOAT_PARAMS = (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0),
+                   ("Detail", 0.0))   # boat fidelity 1: 1 = the close-up detail maps (High and Ultra; the pawn sets it)
+
+
 def collection():
     path = "/Game/Boats/MPC_Boat"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
-        return unreal.load_asset(path)
-    mpc = ASSETS.create_asset("MPC_Boat", "/Game/Boats", unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
-    params = []
-    for name, default in (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0)):
+        mpc = unreal.load_asset(path)
+    else:
+        mpc = ASSETS.create_asset("MPC_Boat", "/Game/Boats", unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+    # Missing parameters are appended (an older collection keeps its own, in their order).
+    params = list(mpc.get_editor_property("scalar_parameters"))
+    have = {str(p.get_editor_property("parameter_name")) for p in params}
+    if all(name in have for name, _ in MPC_BOAT_PARAMS):
+        return mpc
+    for name, default in MPC_BOAT_PARAMS:
+        if name in have:
+            continue
         p = unreal.CollectionScalarParameter()
         p.set_editor_property("parameter_name", name)
         p.set_editor_property("default_value", default)
@@ -894,6 +1055,14 @@ def collection():
     mpc.set_editor_property("scalar_parameters", params)
     unreal.EditorAssetLibrary.save_loaded_asset(mpc)
     return mpc
+
+
+# Boat fidelity 1: the close-up detail maps M_BoatSurface reads (custom node pin, asset in /Game/Boats/Detail).
+BOAT_DETAIL_MAPS = (("TGelcoatN", "T_Detail_Gelcoat_N"), ("TGelcoatM", "T_Detail_Gelcoat_M"), ("TNonSkidN", "T_Detail_NonSkid_N"),
+                    ("TNonSkidM", "T_Detail_NonSkid_M"), ("TMetalN", "T_Detail_Metal_N"), ("TMetalM", "T_Detail_Metal_M"),
+                    ("TWoodN", "T_Detail_WoodVarnish_N"), ("TWoodM", "T_Detail_WoodVarnish_M"), ("TTeakN", "T_Detail_TeakWeathered_N"),
+                    ("TTeakM", "T_Detail_TeakWeathered_M"), ("TRubberN", "T_Detail_Rubber_N"), ("TBraidN", "T_Detail_Braid_N"),
+                    ("TSailclothN", "T_Detail_Sailcloth_N"), ("TCanvasN", "T_Detail_Canvas_N"))
 
 
 def build_boat_surface(name, bend):
@@ -933,15 +1102,38 @@ def build_boat_surface(name, bend):
         connect(c, "", t, "")
         axes.append(t)
     params = {}
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -1400, 1100 + i * 100)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
         params[pname] = cp
+    # Boat fidelity 1: the part's kind in the shared library (BOAT_CODE), the detail maps' grain up the part (masts), the
+    # camera distance, and the detail maps themselves (scripts/import_boat_detail.py; engine stand-ins before it has run).
+    surface = scalar(mat, "Surface", 0.0, -1600, 750)
+    grain_up = scalar(mat, "GrainUp", 1.0 if bend else 0.0, -1600, 850)
+    depth = node(mat, unreal.MaterialExpressionPixelDepth, -1600, 950)
+    detail_tex = {}
+    for i, (pin, asset) in enumerate(BOAT_DETAIL_MAPS):
+        t = node(mat, unreal.MaterialExpressionTextureObject, -1900, 200 + i * 90)
+        tex = unreal.load_asset(f"/Game/Boats/Detail/{asset}") if unreal.EditorAssetLibrary.does_asset_exist(f"/Game/Boats/Detail/{asset}") else None
+        if tex is None:
+            unreal.log_warning(f"{name}: no /Game/Boats/Detail/{asset} yet (run import_boat_detail.py, then build_boat_library)")
+            tex = unreal.load_asset("/Engine/EngineMaterials/DefaultNormal" if asset.endswith("_N") else "/Engine/EngineResources/Black")
+        t.set_editor_property("texture", tex)
+        stype = unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if asset.endswith("_N") else unreal.MaterialSamplerType.SAMPLERTYPE_MASKS
+        fallback = not tex.get_path_name().startswith("/Game/") and not asset.endswith("_N")
+        t.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if fallback else stype)
+        detail_tex[pin] = t
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
-                                "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))],
+                                "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
+    view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
+    for src, pin in ((surface, "Surface"), (grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V")):
+        connect(src, "", c, pin)
+    for pin, t in detail_tex.items():
+        connect(t, "", c, pin)
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
     connect(scalar(mat, "IsHull", 0.0, -1400, 1550), "", c, "IsHull")
@@ -1039,6 +1231,20 @@ BOAT_LIBRARY = {
     "CoolerLid": ("M_BoatSurface", (0.04, 0.14, 0.42), 0.45, 0.0, 0.0, 0.0, 0.05),
     "MastAluminium": ("M_BoatMast", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),
     "CarbonMast": ("M_BoatMast", (0.025, 0.025, 0.028), 0.3, 0.0, 0.6, 0.0, 0.0),        # the maxi's mast: clear-coated carbon that bends
+    # Boat fidelity 1: the rest of the shared library for the hero models to come.
+    "PaintedAluminium": ("M_BoatSurface", (0.80, 0.80, 0.78), 0.35, 0.0, 0.6, 0.0, 0.05),  # white two-pack on spars, stanchions
+    "Rubber": ("M_BoatSurface", (0.025, 0.025, 0.026), 0.70, 0.0, 0.0, 0.0, 0.10),         # EPDM gaskets, PVC rub strake, hiking-strap backing
+    "Sailcloth": ("M_BoatSurface", (0.80, 0.79, 0.74), 0.50, 0.0, 0.0, 0.0, 0.30),        # resinated Dacron on furled and flaked sails
+}
+
+# Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
+# 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 9 rope, 10 sailcloth, 11 canvas;
+# unlisted slots (crew, plastics, glass, antifouling) are 0: no detail map, no extra weathering.
+BOAT_SURFACE = {
+    "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
+    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8,
+    "Rope": 9, "Dacron": 10, "Sailcloth": 10,
+    "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
 }
 
 
@@ -1055,7 +1261,8 @@ def build_boat_library():
         MEL.set_material_instance_parent(mi, parents[parent])
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         for pname, value in (("Roughness", rough), ("Metallic", metal), ("ClearCoat", coat), ("NonSkid", nonskid), ("Porosity", porosity),
-                             ("IsHull", 1.0 if slot == "Topsides" else 0.0), ("Grain", 1.0 if slot in ("Wood", "Teak") else 0.0)):
+                             ("IsHull", 1.0 if slot == "Topsides" else 0.0), ("Grain", 1.0 if slot in ("Wood", "Teak") else 0.0),
+                             ("Surface", float(BOAT_SURFACE.get(slot, 0)))):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
@@ -1436,7 +1643,7 @@ float om = 0.0;
     ho = (oa.r + ob.r) * of;
 }
 // The long waves' slopes and fold for the pixels (interpolated), from the same sincos.
-LongN = float3(lsx, lsy, ljxx * ljyy - ljxy * ljxy);
+LongN = float4(lsx, lsy, ljxx * ljyy - ljxy * ljxy, 0.0);
 // The shore: waves grow a little as they feel the bottom (shoaling) and die on the beach.
 float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
 [branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0))
@@ -1479,6 +1686,8 @@ float2 hr0 = p.xy - HullClipA.xy;
     float oin = 2.0 * saturate((0.8 * ohb - abs(oby)) / 0.1) * step(HullClipE.y + 0.2, obx) * step(obx, HullClipE.x - 0.3);
     hin = lerp(hin, oin, HullClipH.z);
 }
+// The water's height for the pixels (the boats' white water: V4_SHADE's hullFoam).
+LongN.w = h + ho;
 return float3(d.x * 100.0, d.y * 100.0, (h + ho - hin) * 100.0);
 """
 
@@ -1645,13 +1854,16 @@ float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 
 // it is against four thresholds, AWaterSurface::CapTableEntry), whose mips average cover, read at this pixel's threshold
 // (AWaterSurface::CapCover). The lace and streak patterns fade to their means before they alias, and the caps no
 // longer fade with the long waves (WaveFadeMeters): whitecaps show to the horizon.
-float foot = length(fwidth(p.xy));                 // m a pixel spans (its long axis)
 // The mip the sampler reads: its short axis, or a sixteenth of its long one (16x anisotropic filtering). Grazing views
 // keep a sharp texture far out, and the caps stay discrete there.
 float2 fdx = ddx(p.xy), fdy = ddy(p.xy);
 float footMip = max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 16.0);
 float useTable = smoothstep(1.0, 2.5, footMip * 128.0 / DetailP.x);
-float patFade = smoothstep(0.08, 0.3, foot);
+// docs/spray/: the patterns fade by the footprint the anisotropic filter resolves (its short axis, or a quarter of its long
+// one), not by its long axis: at a grazing view the long axis is many times the short, and fading by it flattened every
+// cap, paw and windrow into a smooth smear from a few boat lengths out. A pattern aliasing along the long axis by up to
+// 4x is smoothed by the temporal AA.
+float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 4.0));
 float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
 float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
@@ -1687,8 +1899,17 @@ residue = saturate((capThr + 0.08 - Jt) / 0.08 + 0.5);
 crest *= saturate(0.8 + 1.3 * laceE);
 residue *= patternE * 0.25;
 float caps = max(crest, residue);
-// Foam the boats make.
-float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
+// Foam the boats make. Its bubble patches are octaves of value noise (0.4 m, 0.14 m and 5 cm, rotated, drifting apart),
+// multiplied as the two sines they replace were (mean about 0.25): a product of sines read as a tread-plate lattice in a
+// wake seen from above (docs/spray/). Cells wrap every 289 so the hash keeps its precision far from the origin.
+#define WB_HASH(c_) frac(sin(dot(fmod(c_, 289.0), float2(127.1, 311.7))) * 43758.5453)
+#define WB_NOISE(x_) (lerp(lerp(WB_HASH(floor(x_)), WB_HASH(floor(x_) + float2(1.0, 0.0)), smoothstep(0.0, 1.0, frac(x_).x)), \
+    lerp(WB_HASH(floor(x_) + float2(0.0, 1.0)), WB_HASH(floor(x_) + float2(1.0, 1.0)), smoothstep(0.0, 1.0, frac(x_).x)), smoothstep(0.0, 1.0, frac(x_).y)))
+float2 wb1 = float2(0.8 * p.x - 0.6 * p.y, 0.6 * p.x + 0.8 * p.y) * 2.5 + float2(T * 0.05, 0.0);
+float2 wb2 = float2(0.28 * p.x + 0.96 * p.y, -0.96 * p.x + 0.28 * p.y) * 7.1 - float2(0.0, T * 0.09);
+float2 wb3 = float2(0.6 * p.x + 0.8 * p.y, -0.8 * p.x + 0.6 * p.y) * 19.0 + float2(T * 0.13, -T * 0.07);
+// A third, finer octave (5 cm) laces the patches' edges so the wash isn't round blotches.
+float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 0.8 + WB_NOISE(wb3) * 0.5 - 0.15);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them.
 float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
@@ -1722,7 +1943,29 @@ float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85
 float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
 FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
-Foam = saturate(max(capsDrawn + wakeBreak, 0.85 * lap) + 0.10 * Rain);
+// docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's
+// clip): foam clinging along her waterline where the water meets the skin (the bottom just above the drawn surface,
+// inside the deck plan), and the churned water behind a transom (past the hull's end aft, within its beam, fading over a
+// few metres that grow with her speed). Both grow with her speed from 0.8 m/s and are broken by WB_NOISE's bubbles.
+float hullFoam = 0.0;
+float2 hfr = p.xy - HullClipA.xy;
+[branch] if (HullClipA.w > 0.0 && HullClipV.w > 0.0 && dot(hfr, hfr) < HullClipRect.z * HullClipRect.z + HullClipRect.w * HullClipRect.w)
+{
+    float3 hq = float3(p.xy, LongN.w) - HullClipA.xyz;
+    float hbx = dot(hq, HullClipB.xyz), hby = dot(hq, HullClipC.xyz), hbz = dot(hq, HullClipD.xyz);
+    float4 hc = HullClipMap.SampleLevel(HullClipMapSampler, (float2(hbx, hby) - HullClipRect.xy) / HullClipRect.zw, 0);
+    float spd = saturate((HullClipV.z - 0.8) / 3.0);
+    float2 hn1 = float2(hbx * 2.7 + T * 0.9 * HullClipV.z, hby * 4.1);
+    float2 hn2 = float2(hbx * 7.3 + T * 1.3 * HullClipV.z, hby * 8.9 + 3.7);
+    float hn = saturate(WB_NOISE(hn1) * 0.65 + WB_NOISE(hn2) * 0.55 - 0.1);
+    float gap = hc.r - hbz;
+    float wl = saturate(1.0 - gap / (0.03 + 0.07 * spd)) * step(0.0, gap) * saturate(min(hc.b, hc.a) / 0.1 + 1.0);
+    float aft = -hc.a;
+    float churn = saturate(hc.b / 0.2) * step(0.0, aft) * step(hbx, HullClipRect.x + 0.5 * HullClipRect.z) * exp(-aft / (0.4 + 0.45 * HullClipV.z));
+    hullFoam = spd * max(wl * (0.45 + 0.55 * hn), churn * saturate(hn * 1.7 - 0.25));
+}
+FoamTone = lerp(FoamTone, 1.0, saturate(hullFoam * 2.0) * (1.0 - saturate(caps * 4.0)));
+Foam = saturate(max(capsDrawn + wakeBreak + hullFoam, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
 // mirror (a lull on a light day, the lake at dawn); a puff ruffles it again within seconds (the map's roughness rises in
@@ -1836,18 +2079,23 @@ def build_water_v4():
            "Sea", "SeaRect", "SeaP"]
     hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
     wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
-                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT4)])
     # The player's boat (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D her x/y/z axes in the world. The
     # rest is the main hull's shape for the V7 clip (-SailingClassicHullClip): B/C/D.w sheer z, sheer rise, sheer rise
     # from x; E bow x, stern x, widest x, half beam; F aft length, transom beam loss, centre y, bilge power; G waterline
     # mid x, half length, canoe depth, depth offset; H bow and stern overhang slopes, 1 = the V7 clip.
     defaults = ((0, 0, 0, 0), (1, 0, 0, 0.62), (0, 1, 0, 0.1), (0, 0, 1, 1), (3.45, -3.41, -0.4, 1.22), (3, 0.27, 0, 4),
                 (-0.15, 2.9, 0.4, 0), (1.1, 0.5, 0, 0))
-    for i, (n, v) in enumerate(zip(hull_clip, defaults)):
-        connect(vector(mat, n, v, -1800, 3000 + 100 * i), "RGBA", wpo, n)
+    hull_nodes = {n: vector(mat, n, v, -1800, 3000 + 100 * i) for i, (n, v) in enumerate(zip(hull_clip, defaults))}
+    for n, v in hull_nodes.items():
+        connect(v, "RGBA", wpo, n)
     # FHullClipMap (RGBA: bottom z, sheer z, side margin, end margin, in the boat frame) and its corner x, y and size.
-    connect(tex("HullClipMap", 3900), "", wpo, "HullClipMap")
-    connect(vector(mat, "HullClipRect", (0, 0, 1, 1), -1800, 4000), "RGBA", wpo, "HullClipRect")
+    hull_map = tex("HullClipMap", 3900)
+    hull_rect = vector(mat, "HullClipRect", (0, 0, 1, 1), -1800, 4000)
+    connect(hull_map, "", wpo, "HullClipMap")
+    connect(hull_rect, "RGBA", wpo, "HullClipRect")
+    # docs/spray/: her velocity over the ground (m/s, map frame) and speed, w = 1 when set.
+    hull_v = vector(mat, "HullClipV", (0, 0, 0, 0), -1800, 4100)
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
@@ -1861,10 +2109,15 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
-    shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+    shade = custom(mat, V4_SHADE, shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
+    for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
+        connect(hull_nodes[n], "RGBA", shade, n)
+    connect(hull_map, "", shade, "HullClipMap")
+    connect(hull_rect, "RGBA", shade, "HullClipRect")
+    connect(hull_v, "RGBA", shade, "HullClipV")
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")

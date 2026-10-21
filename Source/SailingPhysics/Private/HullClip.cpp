@@ -52,7 +52,8 @@ namespace Sailing
 				for (const FHullShape& H : Hulls)
 				{
 					const double LocalY = Y - H.CenterY;
-					const double Side = H.DeckHalfBeam(X) - std::fabs(LocalY);
+					// Past the ends the side margin is the end section's (M_WaterV4's churn behind a transom reads it).
+					const double Side = H.DeckHalfBeam(Clamp(X, SternOf(H), BowOf(H))) - std::fabs(LocalY);
 					const double End = std::min(X - SternOf(H), BowOf(H) - X);
 					const double In = std::min(Side, End);
 					if (In <= BestIn) continue;

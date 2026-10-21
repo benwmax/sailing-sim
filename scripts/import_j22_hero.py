@@ -33,6 +33,28 @@ d = lerp(d, NSN, ns);
 d = lerp(d, GCN, gc);
 d = lerp(d, TKN, tk);
 NormalOut = normalize(float3(N.xy + d.xy, N.z * d.z));      // whiteout blend over the baked normal
+// Boat fidelity 1 (docs/boat-fidelity-1), as M_BoatSurface does it: the boat's age and care (Age -1 = unset: the livery's
+// oxidation channel, Wear.x, at half weight, since the bake carries the club boat's own wear) chalk the smooth gelcoat
+// (more on the sun-facing tops), and the hull is wet up to the splash line and the deck with rain and spray (MPC_Boat):
+// darker by each surface's porosity (gelcoat 0.1, non-skid 0.5, teak 0.6), water standing in the non-skid's grooves,
+// glossy. (A sunlit white deck sits on the tone curve's shoulder, so these read smaller on screen than in albedo.)
+float ageK = Age >= 0.0 ? saturate(Age / 20.0) * (1.0 - 0.6 * saturate(Care)) : 0.5 * Wear.x;
+float3 nw = normalize(NW);
+nw *= dot(nw, V) < 0.0 ? -1.0 : 1.0;          // two-sided: the generated shells (the cockpit sole) aren't all wound outward
+float up = saturate((nw.z - 0.4) * 2.5);
+float gcAll = X.b * (1.0 - X.r) * (1.0 - X.g);
+float ox = ageK * gcAll * (0.55 + 0.45 * up);
+float lum = dot(c, float3(0.3, 0.59, 0.11));
+c = lerp(c, lerp(float3(lum, lum, lum), float3(0.80, 0.77, 0.66), 0.6), 0.6 * ox);   // chalky and a little yellowed
+Rough = lerp(Rough, 0.75, ox);
+c *= 1.0 - 0.3 * ageK * X.r * up;                  // grime worked into the non-skid where feet go
+c *= 1.0 - 0.25 * ageK * X.g;                      // teak greys and darkens
+float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
+float wet = (1.0 - smoothstep(WaterZ + WetBand * (0.6 + 0.4 * streak) - 3.0, WaterZ + WetBand * (0.6 + 0.4 * streak) + 3.0, WP.z)) * (1.0 - up);
+float wetAll = saturate(max(wet, saturate(DeckWet) * up * 0.8));
+float porosity = lerp(lerp(0.1, 0.5, X.r), 0.6, X.g);
+c *= lerp(1.0, 1.0 - 0.55 * porosity, wetAll) * (1.0 - 0.45 * ns * (1.0 - NSM.r) * wetAll);
+Rough = lerp(Rough, lerp(0.06, Rough, 0.25 + 0.4 * X.r), wetAll);
 return c;
 """
 
@@ -43,6 +65,7 @@ TEX = f"{DEST}/Textures"
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
 META = json.load(open(os.path.join(SRC, "materials.json")))
+MATERIALS_ONLY = os.environ.get("HERO_MATERIALS_ONLY") == "1"
 
 
 def import_texture(path, kind):
@@ -116,10 +139,42 @@ def hero_material(defaults):
             MEL.connect_material_expressions(scale, "", t, "UVs")
             detail[name + kind] = t
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -900, 1100)
+    # Boat fidelity 1: the wear (the pawn's per-boat Wear on every hull slot, Age and Care) and MPC_Boat's wetness.
+    extra = {}
+    for pname, default, y in (("Age", -1.0, 1900), ("Care", 0.5, 1980)):
+        p = node(mat, unreal.MaterialExpressionScalarParameter, -900, y)
+        p.set_editor_property("parameter_name", pname)
+        p.set_editor_property("default_value", default)
+        extra[pname] = (p, "")
+    wear = node(mat, unreal.MaterialExpressionVectorParameter, -900, 2060)
+    wear.set_editor_property("parameter_name", "Wear")
+    wear.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
+    extra["Wear"] = (wear, "RGBA")
+    mpc = unreal.load_asset("/Game/Boats/MPC_Boat")
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet")):
+        cp = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 2160 + i * 80)
+        cp.set_editor_property("collection", mpc)
+        cp.set_editor_property("parameter_name", pname)
+        extra[pname] = (cp, "")
+    # World position (make_materials.py's node() adds MPC_World.RenderOrigin: the boat's wet line is in the map frame).
+    wp = node(mat, unreal.MaterialExpressionWorldPosition, -1100, 2400)
+    origin = node(mat, unreal.MaterialExpressionCollectionParameter, -1300, 2480)
+    origin.set_editor_property("collection", unreal.load_asset("/Game/World/MPC_World"))
+    origin.set_editor_property("parameter_name", "RenderOrigin")
+    mask = node(mat, unreal.MaterialExpressionComponentMask, -1150, 2480)
+    for ch, on in (("r", True), ("g", True), ("b", True), ("a", False)):
+        mask.set_editor_property(ch, on)
+    MEL.connect_material_expressions(origin, "", mask, "")
+    wp_map = node(mat, unreal.MaterialExpressionAdd, -950, 2400)
+    MEL.connect_material_expressions(wp, "", wp_map, "A")
+    MEL.connect_material_expressions(mask, "", wp_map, "B")
+    extra["WP"] = (wp_map, "")
+    extra["NW"] = (node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 2560), "")
+    extra["V"] = (node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 2640), "")
     c = node(mat, unreal.MaterialExpressionCustom, -500, 400)
     c.set_editor_property("code", DETAIL_CODE)
     c.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
-    pins = ["Base", "R", "N", "X", "Depth", "NSN", "NSM", "GCN", "GCM", "TKN", "TKM"]
+    pins = ["Base", "R", "N", "X", "Depth", "NSN", "NSM", "GCN", "GCM", "TKN", "TKM"] + list(extra)
     ins = []
     for pn in pins:
         i = unreal.CustomInput()
@@ -137,7 +192,8 @@ def hero_material(defaults):
                           (samplers["DetailMask"], "RGB", "X"), (depth, "", "Depth"),
                           (detail["NonSkidN"], "RGB", "NSN"), (detail["NonSkidM"], "RGB", "NSM"),
                           (detail["GelcoatN"], "RGB", "GCN"), (detail["GelcoatM"], "RGB", "GCM"),
-                          (detail["TeakWeatheredN"], "RGB", "TKN"), (detail["TeakWeatheredM"], "RGB", "TKM")):
+                          (detail["TeakWeatheredN"], "RGB", "TKN"), (detail["TeakWeatheredM"], "RGB", "TKM")) \
+            + tuple((src, out, pin) for pin, (src, out) in extra.items()):
         MEL.connect_material_expressions(src, out, c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
@@ -172,6 +228,18 @@ def glass_material():
     return mat
 
 
+# Boat fidelity 1: the flat materials' kinds in M_BoatSurface's shared library (make_materials.py BOAT_SURFACE: 1 gelcoat,
+# 3 stainless, 4 anodised aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 10 sailcloth, 11 canvas; 0 none), and how
+# much each darkens wet.
+HERO_SURFACE = {
+    "Gelcoat": 1, "GelcoatHull": 1, "CabinGelcoat": 1, "InteriorLiner": 1, "InteriorSole": 1,
+    "Stainless": 3, "Chrome": 3, "Galvanised": 3, "KeelBoltSteel": 3, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
+    "TeakVarnish": 6, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10,
+    "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 11,
+}
+HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0}
+
+
 def instance(name, parent):
     path = f"{DEST}/{name}"
     mi = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else \
@@ -182,7 +250,10 @@ def instance(name, parent):
 
 def materials():
     names = {"D": "BaseColor", "R": "Roughness", "N": "Normal", "X": "DetailMask"}
-    textures = {group: {names[k]: import_texture(os.path.join(SRC, "textures", f), k) for k, f in maps.items() if f and k in names}
+    # HERO_MATERIALS_ONLY=1 rebuilds the materials over the textures already imported (no mesh or texture reimport).
+    get = (lambda f, k: unreal.load_asset(f"{TEX}/{os.path.splitext(f)[0]}")) if MATERIALS_ONLY else \
+        (lambda f, k: import_texture(os.path.join(SRC, "textures", f), k))
+    textures = {group: {names[k]: get(f, k) for k, f in maps.items() if f and k in names}
                 for group, maps in META["groups"].items()}
     hero = hero_material(textures["Hull"])
     out = {}
@@ -212,7 +283,8 @@ def materials():
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(c[0], c[1], c[2], 1.0))
         gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish")
         for pname, value in (("Roughness", v["roughness"]), ("Metallic", v["metallic"]), ("ClearCoat", 1.0 if gel else 0.0),
-                             ("NonSkid", 0.0), ("Porosity", 0.1), ("IsHull", 0.0)):
+                             ("NonSkid", 0.0), ("Porosity", HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1)), ("IsHull", 0.0),
+                             ("Surface", float(HERO_SURFACE.get(name, 0)))):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
@@ -298,4 +370,8 @@ def main():
 
 # No os._exit here: on Windows it trips the crash reporter, and an editor killed in that state lingers holding its files
 # until a reboot. The import is small; the commandlet exits on its own.
-main()
+if MATERIALS_ONLY:
+    materials()
+    unreal.log("Hero materials done")
+else:
+    main()

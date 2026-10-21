@@ -258,7 +258,14 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Spray;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> DropletMesh;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> SprayMaterial;
-	struct FDroplet { FVector P = FVector::ZeroVector, V = FVector::ZeroVector; float Age = 0.f, Life = 1.f, Size = 0.03f; };
+	// Spray (docs/spray/): a clump of droplets, a sheet torn off the bow wave, or the mist they leave (ESprayKind).
+	struct FDroplet
+	{
+		FVector P = FVector::ZeroVector, V = FVector::ZeroVector;
+		float Age = 0.f, Life = 1.f, Size = 0.03f;
+		uint8 Kind = 0;
+		float Seed = 0.f;
+	};
 	TArray<FDroplet> Droplets;
 	TMap<TWeakObjectPtr<AActor>, FVector> LastBow;
 	FRandomStream SprayRng = FRandomStream(5);

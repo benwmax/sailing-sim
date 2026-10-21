@@ -257,7 +257,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   Jacobian < `FoamThreshold` 0.6 (`SailingSim.Visual.Whitecaps` against Monahan). `FWakeGrid` (`WakeGrid.h`) solves the
   wave equation spectrally on a worker with each hull as a pressure patch (a truncated iWave kernel gives the wrong
   dispersion). Water bodies' albedo and extinction are in `WaterBodyFor`; the shore depth map is rebuilt on a worker;
-  spray (High) is CPU droplets in an ISM. The terrain doesn't mesh the bed deeper than the water lets you see
+  spray (High) is CPU droplets in an ISM of camera-facing quads (`M_Spray`: drops, sheets, mist by per-instance data;
+  `-SailingDebugSpray`, `docs/spray/`); `M_WaterV4` also draws the player's waterline foam and transom churn from `FHullClipMap`. The terrain doesn't mesh the bed deeper than the water lets you see
   (`ALakeTerrainActor::HideBelow`): drawn behind SLW it cost 6 fps on High in shading and shadow pages.
   Measuring args: `-SailingClassicWater`, `-SailingWaterRings=N`; bench.json has `water_cpu_ms`.
 - Sky (Visual V5): `FCloudSky` (`CloudSky.h`, in `FWeatherState::Sky`) holds the cloud layers per preset (cumulus,
@@ -527,6 +528,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
   `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
   materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
+  Boat fidelity 1 (`docs/boat-fidelity-1/`): `M_BoatSurface`'s `Surface` is each slot's kind in the shared library
+  (`BOAT_SURFACE`; weathering by E1's Age/Care, box-projected detail maps on High/Ultra via `MPC_Boat.Detail`); `up` is
+  judged on the side the camera sees (two-sided shells). Args `-SailingNoBoatDetail`, `-SailingBoatAge=<y>[,<care>]`,
+  `-SailingDeckWet=<0..1>`; `HERO_MATERIALS_ONLY=1` rebuilds the hero's materials without reimporting.
   Boat fidelity 4 (`docs/boat-fidelity-4/`): `M_SailCloth` has `Detail` (the pawn sets 1 on High/Ultra: seams held on
   screen, stitching, tabling, corner patches, pocket ends, backlit layers), `Age`/`Care` (foot dirt; -1 unset); the
   insignia is a made-up emblem. The hero's coiled tails are live rope (rig-line section 2) from `J22CoilData.inl`
