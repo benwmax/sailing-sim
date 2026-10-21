@@ -689,14 +689,19 @@ qf = qf * qf * (3.0 - 2.0 * qf);
 float h00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
 float h01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
 float nz = lerp(lerp(h00, h10, qf.x), lerp(h01, h11, qf.x), qf.y);
-float crest = exp(-pow((u - 0.22) / 0.14, 2.0)) * VC.g;
-float foam = 0.4 * saturate(crest * (0.25 + 0.75 * VC.r) * (0.3 + 1.2 * nz) + (1.0 - u) * 0.2 * VC.r * nz);
+// bow-curl-crest: the crest line where the sheet tops over (just off the hull) is a bright white lip of torn foam, broken
+// up by the noise and thicker at speed; the sheet below it stays a clear film. Typed literals throughout (Metal's
+// ray-tracing hit shaders reject FP64: #203).
+float crest = exp(-pow((u - 0.16f) / 0.09f, 2.0f)) * VC.g;
+float lipLine = crest * (0.55f + 0.45f * VC.r) * smoothstep(0.25f, 0.6f, nz + 0.35f * VC.r);
+float foam = saturate(lipLine * 1.4f + crest * 0.25f * nz + (1.0f - u) * 0.12f * VC.r * nz);
 // A thin film of moving water, not a body: mostly the sky's reflection (Fresnel: clear from above, mirror-like at grazing
-// angles), a faint dark-water tint, gone where it meets the sea and soft at its root (the vertex alpha).
-float fres = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(normalize(N), normalize(V)))), 5.0);
-Rough = lerp(0.02, 0.5, foam);
-Opacity = saturate(VA * (1.0 - smoothstep(0.45, 1.0, u)) * (0.16 + 0.55 * fres + 0.6 * foam));
-return lerp(float3(0.01, 0.018, 0.016), float3(0.8, 0.82, 0.8), foam);
+// angles, strongest along the curling top edge), a faint dark-water tint, gone where it meets the sea and soft at its root.
+float fres = 0.04f + 0.96f * pow(1.0f - saturate(abs(dot(normalize(N), normalize(V)))), 5.0f);
+fres = saturate(fres * (1.0f + 1.5f * crest));
+Rough = lerp(0.02f, 0.45f, foam);
+Opacity = saturate(VA * (1.0f - smoothstep(0.45f, 1.0f, u)) * (0.16f + 0.6f * fres + 0.85f * foam));
+return lerp(float3(0.01f, 0.018f, 0.016f), float3(0.92f, 0.94f, 0.93f), foam);
 """
 
 
