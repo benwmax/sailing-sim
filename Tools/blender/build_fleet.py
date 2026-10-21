@@ -831,7 +831,13 @@ elif TAG in ("Catalina22", "Catalina30"):
     lifelines(MAIN, st + 0.25, bw - 0.95)
     keelboat_deck_detail(MAIN, top, half, cb, mast_x, st, bw)
     keelboat_cockpit_detail(MAIN, ck, cb, top, half, st, bw)
-    traveler = (ck[0] + (0.35 if TAG == "Catalina22" else 0.6), MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.12)
+    if TAG == "Catalina22":
+        traveler = (ck[0] + 0.35, MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.12)
+    else:
+        # The 30's traveler on the cabin top just forward of the companionway hatch, sheeted mid-boom, as on most hulls
+        # (it had been across the cockpit at the wheel, and an eased sheet swept the helm's back).
+        tx = cb[0] + 1.0  # (forward of the slide-hatch rails)
+        traveler = (tx, top(tx) + 0.03, half(tx) - 0.15)
     tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):

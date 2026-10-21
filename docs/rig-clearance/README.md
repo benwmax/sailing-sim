@@ -60,11 +60,34 @@ the main as one piece, with a small cap, looks right.
   roof. The model leads its sheet to a self-tacking track 4.5 m forward (`build_fleet.py`). Whatever the route, the sheet
   crosses the roof or the jib's foot. Lifted over the roof, it hung in the air, so her jib sheets are left as they were.
   The sail geometry (Fleet.cpp, its polar) and the lead need to agree first.
-- **The mainsheet across the helm when running.** On the Catalina 30, the Corsair 880 and the maxi, the traveler is
-  where the helm sits, at the aft end of the cockpit. A sheet eased square sweeps the helm's back (2 to 5 cm).
-  That's crew placement against an end-boom traveler, not routing.
 - **Small cases, a few centimetres:**
   - lines lying on a deck or trampoline under a resting calf (the Hobie's jib sheets);
   - the dinghies' tiller extension alongside the hip in light air;
   - the ILCA's sheet over its cockpit edge when eased;
   - the Catalina 22's mainsheet touching the pushpit at 21° of heel.
+
+## Follow-up: the mainsheet across the helm
+
+Running with the main eased square, the mainsheet swept a sailor's back on three boats.
+
+- **Catalina 30:** her traveler was across the cockpit at the wheel. Most C30 hulls carry it on the cabin top, just
+  forward of the companionway. `build_fleet.py` now puts it there, 1.0 m forward of the cabin's aft end, clear of the
+  slide-hatch rails and forward of the dodger, and the boom is sheeted above it, mid-boom. The model is rebuilt and
+  reimported.
+- **Corsair 880:** her traveler really is at the aft end of the cockpit, behind the helm.
+- **The maxi:** her traveler is in her cockpit, and her trimmers sit on the rail beside it.
+- **The rule:** for every keelboat and multihull (not the dinghies), the crew sit on the windward side when the boom is
+  out past 55°, away from the boom, as crews do (`CrewPlacement`). The J/22's light-air trimmer still takes the leeward
+  seat by the working winch.
+
+`SailingSim.Visual.RigClearance` now fails when the mainsheet's tackle passes through a sailor. Main fails it on the
+Catalina 30, the Corsair 880 and the maxi.
+
+The stills are before and after, High, 12 kn at 160°, from forward:
+
+- `cat30-run-aft`: the C30's crew now to windward of her cockpit;
+- `corsair-run-aft`: the Corsair's crew on the windward net;
+- `maxi-run-aft`: the maxi's rail crew to windward.
+
+Seen in passing: on the Corsair's windward net, one crew member's legs rise steeply onto the main hull's deck when
+running. That pose was the same on the leeward net before, hidden behind the sail; it's left for a crew job.

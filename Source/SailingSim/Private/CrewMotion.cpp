@@ -164,7 +164,11 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	const FHullShape& Hull = Cfg.Hulls[0];
 	const int32 N = Cfg.CrewCount, I = In.Index;
 	const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
-	const float Side = In.CrewOffset != 0.0 ? float(FMath::Sign(In.CrewOffset)) : float(In.WindwardSide);
+	float Side = In.CrewOffset != 0.0 ? float(FMath::Sign(In.CrewOffset)) : float(In.WindwardSide);
+	// Running with the boom out past 55 degrees a keelboat's or multihull's crew sit on the windward side, away from the
+	// boom, as crews do: on its side an eased mainsheet swept the helm's and the trimmer's backs (the Corsair's traveler at
+	// her cockpit's aft end, the maxi's in her cockpit).
+	if (!bDinghy && FMath::Abs(In.BoomAngle) > FMath::DegreesToRadians(55.0)) Side = -float(FMath::Sign(In.BoomAngle));
 	const double Off = FMath::Abs(In.CrewOffset);
 	double X = Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - I) + In.CrewOffsetX;
 	// Round 11: a keelboat's crew sit beside the cockpit well with their feet in it, so the forward sailor (the J/22's bow,
