@@ -954,7 +954,7 @@ elif TAG == "Corsair880":
         winch(wx, y, MAIN.deck_z(wx, y))
         socket(f"JibWinch_{tag}", (wx, y, MAIN.deck_z(wx, y) + 0.08))
         socket(f"JibLead_{tag}", (mast_x + 0.6, side * 0.45, top(mast_x + 0.6) + 0.04))  # self-tacking track on the cabin top
-        Hh = HS[1] if tag == "S" else HS[2]
+        Hh = max(HS[1:], key=lambda h: side * h.cy)  # rig clearance: the float on this side (HS[1] is the port one)
         socket(f"ChainplateUpper_{tag}", (mast_x - 0.3, Hh.cy, Hh.deck_z(mast_x - 0.3, Hh.cy)))
         socket(f"ChainplateLower_{tag}", (mast_x - 0.2, side * (MAIN.sharp_half_beam(mast_x) - 0.08), MAIN.deck_z(mast_x, side * 0.5)))
     socket("LazySheetVia", (mast_x + 0.6, 0, top(mast_x + 0.6) + 0.05))

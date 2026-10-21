@@ -210,6 +210,10 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 		}
 	}
 
+	// The wires: the shape the cloth follows keeps clear of them too (the cloth itself is held clear after every substep).
+	TurnDt = bStarted ? Drive.DeltaSeconds : 10.f;
+	KeepClear(Target, true);
+
 	// A cloth that has run away from its target (a bad frame's strips, a non-finite vertex) starts again from it.
 	bool bRunaway = Pos.Num() != Target.Num();
 	for (int32 I = 0; I < Pos.Num() && !bRunaway; ++I)
@@ -221,6 +225,8 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 		Pos = Target;
 		Prev = Target;
 		bStarted = true;
+		KeepClear(Pos);
+		Prev = Pos;
 		if (!Drive.bSimulate) return;
 	}
 
@@ -295,6 +301,10 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 				}
 			}
 		}
+		// The wires come last: the cloth rests against them however the shape and the panels pull.
+		const TArray<FVector> Before = Pos;
+		KeepClear(Pos);
+		for (int32 I = 0; I < Pos.Num(); ++I) Prev[I] += Pos[I] - Before[I]; // pressed onto the wire, not thrown off it
 	}
 }
 
@@ -358,4 +368,128 @@ FVector FSailCloth::NormalAt(float U, float V) const
 	const FVector DU = ChordTangentAt(U, V);
 	const FVector DV = (PointAt(U, FMath::Min(V + 0.05f, 1.f)) - PointAt(U, FMath::Max(V - 0.05f, 0.f))).GetSafeNormal();
 	return FVector::CrossProduct(DU, DV).GetSafeNormal();
+}
+
+void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
+{
+	if (bTarget) FootTurn = 0.f;
+	if (Kind == ESailKind::Main && !bTarget) return;
+	if (Obstacles.Num() == 0 || Kind == ESailKind::Spinnaker || P.Num() != Rows * Cols) return;
+	constexpr float kGapCm = 2.f;      // the cloth's surface off the wire
+	constexpr float kNearLuffCm = 12.f; // the luff's own neighbourhood: the mast and the forestay
+	constexpr int32 kBarSamples = 6;   // points along a spreader
+	// A row turns about its luff, level in the boat frame (the rows are), just far enough to clear every wire it meets at
+	// its height: the main's cloth stays inside the shrouds and spreaders (eased onto them it lies against them, the boom
+	// stopped at the shroud), and a jib that reaches past them (an overlapping genoa) goes outside. Angles are from aft:
+	// both sails run aft from their luffs. A spreader is level: the rows within a panel of it keep clear of it, so no
+	// panel spans it.
+	const float RowPitch = float(FMath::Max(ZHead - ZFoot, 0.01) / (Rows - 1)) * Sailing::CmPerMeter;
+	const bool bMain = Kind == ESailKind::Main;
+	constexpr float kMainTurnMax = 0.2f;  // radians (11 deg)
+	constexpr float kJibTurnMax = 0.35f;
+	double Turns[Rows] = {};
+	// (The main's foot too, on the boom: the boom is drawn turned with it, FootTurn. A jib's foot ends at its sheet.)
+	for (int32 R = bMain ? 0 : 1; R < Rows - 1; ++R)
+	{
+		const FVector L = P[Index(R, 0)];
+		double Z = 0.0, RowReach = 0.0;
+		for (int32 C = 0; C < Cols; ++C)
+		{
+			Z += P[Index(R, C)].Z / Cols;
+			RowReach = FMath::Max(RowReach, FVector::Dist2D(P[Index(R, C)], L));
+		}
+		auto FromAft = [&](const FVector& Q) { return FMath::Atan2(Q.Y - L.Y, -(Q.X - L.X)); }; // + to starboard
+		// Where the cloth is at a distance from the luff: the first crossing of that radius along the row.
+		auto ClothAt = [&](double Radius, double& Angle) -> bool
+		{
+			for (int32 C = 1; C < Cols; ++C)
+			{
+				const FVector A = P[Index(R, C - 1)], B = P[Index(R, C)];
+				const double Ra = FVector::Dist2D(A, L), Rb = FVector::Dist2D(B, L);
+				if (Rb < Radius || Ra >= Radius) continue;
+				Angle = FromAft(FMath::Lerp(A, B, (Radius - Ra) / FMath::Max(Rb - Ra, 1e-3)));
+				return true;
+			}
+			return false;
+		};
+		double Turn = 0.0; // radians, toward the side the row must go
+		for (const FSailObstacle& O : Obstacles)
+		{
+			const FVector Axis = O.B - O.A;
+			const double Len = Axis.Size();
+			if (Len < 1.0) continue;
+			TArray<FVector, TInlineAllocator<kBarSamples + 1>> Points;
+			if (FMath::Abs(Axis.Z) > 0.3 * Len)
+			{
+				// A shroud or a trapeze wire: where it passes this row's height, and half a row either way (the panels between
+				// the rows span it there).
+				for (const double Dz : { 0.0, -0.5 * RowPitch, 0.5 * RowPitch })
+				{
+					const double T = (Z + Dz - O.A.Z) / Axis.Z;
+					if (T < 0.0 || T > 1.0 || T * Len < O.FreeA || (1.0 - T) * Len < O.FreeB) continue;
+					Points.Add(O.A + Axis * T - FVector(0.0, 0.0, Dz));  // (compared level with the row)
+				}
+			}
+			else
+			{
+				if (FMath::Abs(Z - 0.5 * (O.A.Z + O.B.Z)) > RowPitch + O.RadiusCm) continue;
+				for (int32 K = 1; K <= kBarSamples; ++K) Points.Add(O.A + Axis * (double(K) / kBarSamples));
+			}
+			for (const FVector& W : Points)
+			{
+				const double Radius = FVector::Dist2D(W, L);
+				if (Radius < kNearLuffCm || Radius > RowReach) continue;
+				double Cloth = 0.0;
+				if (!ClothAt(Radius, Cloth)) continue;
+				const double Wire = FromAft(W);
+				if (Wire * Cloth <= 0.0) continue;  // the other side's wires
+				const double Margin = (O.RadiusCm + kGapCm) / Radius;
+				// The main inside the wire (nearer aft), a jib outside it.
+				const double Need = bMain ? FMath::Abs(Cloth) - (FMath::Abs(Wire) - Margin) : (FMath::Abs(Wire) + Margin) - FMath::Abs(Cloth);
+				if (Need > 0.0) Turn = FMath::Max(Turn, FMath::Min(Need, 0.6));
+			}
+		}
+		Turns[R] = Turn;
+	}
+	// The turns, as the cloth can take them. The main turns as one, like a boom stopped at the shroud, and no further than
+	// a sheet's few degrees: the belly of a running main that would have to swing far round a spreader is left draped over
+	// it (turning each row its own way tore the sail into steps). A jib's rows turn with their neighbours.
+	double Applied[Rows] = {};
+	if (bMain)
+	{
+		double Most = 0.0;
+		for (int32 R = 0; R < Rows - 1; ++R) Most = FMath::Max(Most, Turns[R]);
+		// Eased over a few tenths of a second: a flogging leech mustn't shake the boom. (The cloth follows the target's turn;
+		// only the target turns.)
+		MainTurn = FMath::Lerp(MainTurn, FMath::Min(float(Most), kMainTurnMax), 1.f - FMath::Exp(-TurnDt / 0.3f));
+		for (int32 R = 0; R < Rows - 1; ++R) Applied[R] = MainTurn;
+	}
+	else
+	{
+		for (int32 R = 1; R < Rows - 1; ++R)
+		{
+			for (int32 K = 1; K < Rows - 1; ++K)
+			{
+				Applied[R] = FMath::Max(Applied[R], Turns[K] * FMath::Max(0.0, 1.0 - FMath::Abs(R - K) / 4.0));
+			}
+			Applied[R] = FMath::Min(Applied[R], double(kJibTurnMax));
+		}
+	}
+	// Which way: the main toward aft (against its side), a jib away from it.
+	const double Side = FMath::Atan2(P[Index(0, Cols - 1)].Y - P[Index(0, 0)].Y, -(P[Index(0, Cols - 1)].X - P[Index(0, 0)].X)) >= 0.0 ? 1.0 : -1.0;
+	for (int32 R = bMain ? 0 : 1; R < Rows - 1; ++R)
+	{
+		if (Applied[R] <= 0.0) continue;
+		const double Rot = (bMain ? -Side : Side) * Applied[R]; // + turns from aft toward starboard
+		// The angle from aft grows toward +Y; in the boat frame's XY that is a turn of -Rot about Z (aft is -X).
+		const FQuat Q(FVector::UpVector, -Rot);
+		if (R == 0 && bTarget) FootTurn = float(-Rot);
+		const FVector L = P[Index(R, 0)];
+		for (int32 C = 1; C < Cols; ++C)
+		{
+			FVector& V = P[Index(R, C)];
+			const FVector D = V - L;
+			V = L + Q.RotateVector(FVector(D.X, D.Y, 0.0)) + FVector(0.0, 0.0, D.Z);
+		}
+	}
 }
