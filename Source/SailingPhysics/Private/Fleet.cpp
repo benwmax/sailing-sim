@@ -173,6 +173,9 @@ namespace Sailing
 			C.Foils[0].Params.ProfileDrag = 0.03;
 			C.MunkAddedMass = 260.0; C.HelmStiffness = 600.0;
 			C.MastX = 0.86; C.MastheadZ = 8.84; C.BoomZ = 1.45; C.MastDiameter = 0.09;
+			// Boom stop (docs/boom-stop/): her aft lowers, from chainplates 0.31 m aft of the gooseneck and 0.96 m out
+			// (Catalina22_sockets.json) to the mast at 4.94 m, pass 0.83 m from it at boom height, 70 deg from aft.
+			C.MainMaxEaseDeg = 70.0;
 			SetMain(C, 1.45, 7.85, 2.94, 0.25, 0.08, 0.82, 0.82, 9.42, 3.6, 4.2, 0.12);
 			SetSail(C.Jib, 0.85, 8.6, 3.3, 0.12, 3.20, 0.95, 12.9, 4.0, 4.4, 0.13); // 135% genoa
 			SetSail(C.Spinnaker, 1.0, 8.4, 4.1, 1.0, 3.6, 2.6, 26.0, 2.6, 2.2, 0.20);
@@ -216,6 +219,9 @@ namespace Sailing
 			C.MaxRudderAngleDeg = 35.0; C.RudderStockToCP = 0.04; C.TillerLength = 0.4; C.HelmStiffness = 6000.0; C.RudderResponseTime = 0.25;
 			C.MastX = 1.05; C.MastheadZ = 13.99; C.MastDiameter = 0.16;
 			SetMain(C, 2.0, 12.67, 3.50, 0.45, 0.20, 1.0, 1.0, 22.57, 3.6, 4.6, 0.12); // ORC-measured main, with roach
+			// Boom stop (docs/boom-stop/): her aft lowers, from chainplates 0.30 m aft of the gooseneck and 1.39 m out
+			// (Catalina30_sockets.json) to the mast at 7.77 m, pass 1.22 m from it at boom height, 76 deg from aft.
+			C.MainMaxEaseDeg = 76.0;
 			SetSail(C.Jib, 1.3, 13.2, 5.25, 0.15, 4.45, 1.15, 32.85, 4.0, 4.6, 0.13);
 			SetSail(C.Spinnaker, 1.6, 13.2, 6.3, 1.4, 4.9, 3.7, 60.3, 2.6, 2.2, 0.20); // ORC-measured spinnaker
 			C.JibMinAngleDeg = 10.0;
@@ -267,6 +273,7 @@ namespace Sailing
 			SetMain(C, 0.75, 8.1, 2.60, 0.55, 0.28, 0.50, 0.50, 13.77, 3.9, 3.5, 0.11);
 			SetSail(C.Jib, 0.65, 6.0, 2.0, 0.10, 2.35, 0.75, 5.12, 4.0, 3.0, 0.12);
 			C.Spinnaker.NumStrips = 0;
+			// (Her rotating mast has no shroud to stop the boom: 70 kept, docs/boom-stop/.)
 			C.MainMaxEaseDeg = 70.0; C.TravelerRangeDeg = 22.0; C.JibMinAngleDeg = 9.0; C.JibMaxAngleDeg = 70.0;
 			// Two crew out on the wire, trampoline, beams, bridles and a rotating mast: a lot of drag for 19 m^2 of sail.
 			C.RigWindageCdA = 0.8; C.HullWindageCdA = 1.4;
@@ -312,6 +319,7 @@ namespace Sailing
 			SetSail(C.Jib, 1.2, 11.0, 3.3, 0.12, 4.2, 0.9, 18.0, 4.0, 3.5, 0.12);
 			SetSail(C.Spinnaker, 1.5, 12.2, 6.8, 1.3, 5.8, 3.6, 75.0, 2.8, 2.6, 0.18); // not published: 75-85 m^2 estimated
 			C.bAsymmetricSpinnaker = true;
+			// (A rotating wing mast, its shrouds out at the floats: 75 kept, docs/boom-stop/.)
 			C.MainMaxEaseDeg = 75.0; C.TravelerRangeDeg = 15.0;
 			C.RigWindageCdA = 2.2; C.HullWindageCdA = 3.5; // beams, nets, three hulls, crew
 			C.ReefLuffFraction = { 0.80, 0.62 };
@@ -361,6 +369,7 @@ namespace Sailing
 			SetSail(C.Jib, 3.15, 17.8, 4.2, 0.15, 4.65, -0.2, 35.0, 3.5, 3.3, 0.13);
 			SetSail(C.Spinnaker, 2.4, 19.5, 7.2, 0.4, 6.4, -0.1, 78.0, 3.2, 3.4, 0.12); // Code 0 on the bowsprit
 			C.bAsymmetricSpinnaker = true;
+			// (Her aft lowers stop the boom at about 81 deg, docs/boom-stop/: the 65 her mainsheet allows comes first.)
 			C.MainMaxEaseDeg = 65.0; C.TravelerRangeDeg = 12.0; C.JibMinAngleDeg = 6.0; C.JibMaxAngleDeg = 45.0; // self-tacking track
 			C.RigWindageCdA = 6.0; C.HullWindageCdA = 24.0; // tall house front, flybridge and bimini, high topsides
 			C.ReefLuffFraction = { 0.82, 0.66, 0.50 };
@@ -503,6 +512,7 @@ namespace Sailing
 			C.bAsymmetricSpinnaker = true;
 			// Swept spreaders (20 deg) stop the boom short of square; the traveller (4.4 m wide, 14 m behind the gooseneck)
 			// moves the boom 9 deg either side; jib leads on tracks 2.95 m out, 8 deg inboard sheeting.
+			// (Her upper shroud's lower leg stops the boom at about 76 deg, docs/boom-stop/: 72 is inside it, kept.)
 			C.MainMaxEaseDeg = 72.0; C.TravelerRangeDeg = 9.0; C.JibMinAngleDeg = 8.0; C.JibMaxAngleDeg = 70.0;
 			// Windage: the mast's 46 m x 0.45 m mean frontal width, runners, shrouds and stays (the Catalina 30's 2.0 per
 			// 2.2 m^2 of mast); the hull's 15 m^2 of bow-on topsides, twelve crew and the deck gear.
