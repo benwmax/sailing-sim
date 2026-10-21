@@ -12,6 +12,12 @@ baked detail map (T_<Boat>_<Group>_X: R non-skid, G teak, B smooth gelcoat), and
   T_Detail_TeakWeathered_N/_M  300 mm along the grain x 150 mm across: weathered teak, the soft early wood eroded
                             between ridges of latewood, open checks; M: R grain luminance, G checks, B height
   T_Detail_Canvas_N         50 mm tile: plain-weave cushion and bag cloth
+  Boat fidelity 1 (M_BoatSurface's shared library, box-projected in the boat's frame):
+  T_Detail_Metal_N/_M       100 mm: brushed 316 and anodised extrusions; M: R streaks, G roughness, B pits
+  T_Detail_WoodVarnish_N/_M 300 x 150 mm: grain under varnish; M: R grain luminance, G pores, B film thickness
+  T_Detail_Rubber_N         80 mm: moulded rubber and PVC stipple
+  T_Detail_Braid_N          20 mm: sixteen-plait rope cover, flat
+  T_Detail_Sailcloth_N      40 mm: woven Dacron with fold crinkles
 
 Each texture's real size is in detail_textures.json, so a material tiles it as UV x (metres per UV unit) / tile size.
 """
@@ -173,6 +179,105 @@ def canvas():
     return tile
 
 
+# Boat fidelity phase 1 (docs/boat-fidelity-1): the rest of the shared library's surfaces, each from its own seed so the
+# four maps above stay byte-identical. Tiles are along U (x) for the directional ones: the material lays U along the
+# part's length.
+def metal():
+    """Brushed 316 and anodised extrusions, 100 mm tile: fine straight brushing streaks along U, a few longer tool
+    lines and pits. M: R streak brightness, G roughness, B pits (where salt sits and tea-staining starts)."""
+    tile = 100.0
+    rng = np.random.default_rng(31)
+    streak = rng.random((RES, 1)) * np.ones((1, RES))          # one value per row: straight lines along U
+    streak = 0.6 * blur(streak, 0) + 0.4 * periodic_noise(RES, 512, 1, 0.5, 32)
+    along = periodic_noise(RES, 4, 2, 0.5, 33)                   # streaks fade in and out along their length
+    h = (streak - 0.5) * (0.6 + 0.4 * along)
+    for _ in range(40):                                          # tool lines: longer, deeper, straight
+        yi = int(rng.random() * RES)
+        x0, ln = int(rng.random() * RES), int(rng.uniform(0.2, 0.9) * RES)
+        idx = (np.arange(ln) + x0) % RES
+        h[yi, idx] -= rng.uniform(0.4, 1.0)
+    pits = np.zeros((RES, RES))
+    for _ in range(140):
+        yi, xi = (rng.random(2) * RES).astype(int)
+        pits[yi, xi] = rng.uniform(0.5, 1.0)
+    pits = np.clip(blur(pits, 1) * 4, 0, 1)
+    h = h - 0.8 * pits
+    rough = np.clip(0.5 + 0.6 * (streak - 0.5) + 0.3 * pits, 0, 1)
+    save_rgb(normal_map(h, 0.02, tile), os.path.join(OUT, "T_Detail_Metal_N.png"))
+    save_rgb(np.stack([np.clip(streak, 0, 1), rough, pits], -1), os.path.join(OUT, "T_Detail_Metal_M.png"))
+    return tile
+
+
+def wood_varnish():
+    """Varnished ash or mahogany (tillers, hand rails, washboards), 300 x 150 mm: the grain sits under a glassy film,
+    so the colour carries it and the normal only shows the open pores and a faint brush ripple across it.
+    M: R grain luminance, G pores, B film thickness (thin over the ridges, where the varnish fails first)."""
+    tl, ta = 300.0, 150.0
+    resx, resy = RES, RES // 2
+    y, x = np.meshgrid((np.arange(resy) + 0.5) / resy, (np.arange(resx) + 0.5) / resx, indexing="ij")
+    wander = 0.02 * np.sin(2 * np.pi * (x + 0.2)) + 0.06 * (periodic_noise(max(resx, resy), 5, 3, 0.5, 41)[::2, :] - 0.5)
+    rings = (y + wander) * 18
+    f = rings - np.floor(rings)
+    late = np.clip(1 - np.abs(f - 0.2) / 0.18, 0, 1) ** 0.8
+    rng = np.random.default_rng(42)
+    pores = (rng.random((resy, resx)) > 0.985).astype(float)
+    pores = np.clip(blur(pores, 0) + np.roll(pores, 1, 1) + np.roll(pores, 2, 1), 0, 1) * (1 - late)   # pores open in the early wood, drawn out along the grain
+    ripple = 0.5 + 0.5 * np.sin(2 * np.pi * (x * 37 + 0.3 * periodic_noise(max(resx, resy), 8, 2, 0.5, 43)[::2, :]))
+    h = 0.15 * ripple - 0.6 * pores
+    lum = np.clip(0.5 + 0.4 * late + 0.1 * (periodic_noise(max(resx, resy), 64, 2, 0.5, 44)[::2, :] - 0.5), 0, 1)
+    film = np.clip(1 - 0.6 * late, 0, 1)
+    save_rgb(normal_map(h, 0.1, tl, ta), os.path.join(OUT, "T_Detail_WoodVarnish_N.png"))
+    save_rgb(np.stack([lum, pores, film], -1), os.path.join(OUT, "T_Detail_WoodVarnish_M.png"))
+    return tl, ta
+
+
+def rubber():
+    """Moulded rubber and soft PVC (rub rails, gaskets, hiking straps' backing, fender skins), 80 mm tile: a matt EDM
+    stipple from the mould with flow lines."""
+    tile = 80.0
+    stipple = periodic_noise(RES, 256, 2, 0.6, 51)
+    flow = periodic_noise(RES, 6, 3, 0.5, 52)
+    h = 0.7 * stipple + 0.3 * np.sin(2 * np.pi * (flow * 3))
+    save_rgb(normal_map(h, 0.03, tile), os.path.join(OUT, "T_Detail_Rubber_N.png"))
+    return tile
+
+
+def braid():
+    """Sixteen-plait braided rope cover seen flat (coils, tails and the flat rope slots; the live rig lines have their
+    own rope textures), 20 mm tile: a herringbone of plaits, each carrying its fibres."""
+    tile = 20.0
+    n = 8
+    y, x = np.meshgrid((np.arange(RES) + 0.5) / RES, (np.arange(RES) + 0.5) / RES, indexing="ij")
+    a = (x + y) * n
+    b = (x - y) * n
+    fa, fb = a - np.floor(a), b - np.floor(b)
+    over = ((np.floor(a) + np.floor(b)) % 2) == 0
+    plait = np.where(over, np.sin(np.pi * fb), np.sin(np.pi * fa)) ** 0.6
+    fibre = np.where(over, np.sin(2 * np.pi * fa * 6), np.sin(2 * np.pi * fb * 6)) * 0.08
+    h = plait + fibre
+    save_rgb(normal_map(h, 0.5, tile), os.path.join(OUT, "T_Detail_Braid_N.png"))
+    return tile
+
+
+def sailcloth():
+    """Woven Dacron sailcloth, 40 mm tile: a tight plain weave (finer than the canvas) under a resin finish, with soft
+    crinkles where the cloth has been folded."""
+    tile = 40.0
+    n = 96
+    y, x = np.meshgrid((np.arange(RES) + 0.5) / RES, (np.arange(RES) + 0.5) / RES, indexing="ij")
+    wx, wy = x * n, y * n
+    ix, iy = np.floor(wx).astype(int), np.floor(wy).astype(int)
+    fx, fy = wx - ix, wy - iy
+    warp_top = ((ix + iy) % 2) == 0
+    hx = np.sin(np.pi * fy) ** 0.7
+    hy = np.sin(np.pi * fx) ** 0.7
+    weave = np.where(warp_top, np.maximum(hx, 0.7 * hy), np.maximum(hy, 0.7 * hx))
+    crinkle = np.abs(periodic_noise(RES, 5, 4, 0.55, 61) - 0.5) * 2
+    h = 0.25 * weave - 1.2 * (1 - crinkle) ** 6
+    save_rgb(normal_map(h, 0.08, tile), os.path.join(OUT, "T_Detail_Sailcloth_N.png"))
+    return tile
+
+
 meta = {
     "NonSkid": {"tile_m": [nonskid() / 1000] * 2, "normal_strength": 1.0, "fade_m": [2.0, 6.0]},
     "Gelcoat": {"tile_m": [gelcoat() / 1000] * 2, "normal_strength": 1.0, "fade_m": [1.5, 4.0]},
@@ -180,6 +285,12 @@ meta = {
 tl, ta = teak()
 meta["TeakWeathered"] = {"tile_m": [tl / 1000, ta / 1000], "normal_strength": 1.0, "fade_m": [2.0, 6.0]}
 meta["Canvas"] = {"tile_m": [canvas() / 1000] * 2, "normal_strength": 0.8, "fade_m": [1.0, 3.0]}
+meta["Metal"] = {"tile_m": [metal() / 1000] * 2, "normal_strength": 1.0, "fade_m": [1.0, 4.0]}
+tl, ta = wood_varnish()
+meta["WoodVarnish"] = {"tile_m": [tl / 1000, ta / 1000], "normal_strength": 1.0, "fade_m": [1.5, 5.0]}
+meta["Rubber"] = {"tile_m": [rubber() / 1000] * 2, "normal_strength": 1.0, "fade_m": [1.0, 3.0]}
+meta["Braid"] = {"tile_m": [braid() / 1000] * 2, "normal_strength": 1.0, "fade_m": [0.8, 3.0]}
+meta["Sailcloth"] = {"tile_m": [sailcloth() / 1000] * 2, "normal_strength": 0.8, "fade_m": [1.0, 4.0]}
 meta["note"] = ("Tile by UV0 x (metres per UV unit, materials.json detail_uv_scale) / tile_m; mask by the baked detail map "
                 "T_<Boat>_<Group>_X (R non-skid, G teak, B smooth gelcoat); fade the normal between fade_m[0] and fade_m[1].")
 json.dump(meta, open(os.path.join(OUT, "detail_textures.json"), "w"), indent=1)

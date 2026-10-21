@@ -10,7 +10,9 @@ boats' surfaces. Run in the editor after make_materials.py: scripts\\windows\\ru
     - M_RigWire: the standing rigging, 1x19 strand normals (U over 11 diameters). Look 255 (the tiller extension, drawn
       with the wires) is a plain black tube.
   /Game/Boats/Detail: T_Detail_NonSkid/_Gelcoat/_TeakWeathered/_Canvas (Inputs/boat-detail, made by
-    Tools/boats/make_detail_textures.py), used by import_j22_hero.py's M_J22HeroSurface.
+    Tools/boats/make_detail_textures.py), used by import_j22_hero.py's M_J22HeroSurface, and (boat fidelity 1) those
+    plus _Metal/_WoodVarnish/_Rubber/_Braid/_Sailcloth, read by make_materials.py's M_BoatSurface: rerun
+    `run-python.ps1 make_materials.py -Only build_boat_library` after importing them.
 
 The pawn picks M_RigRope and M_RigWire up at BeginPlay when they exist (-SailingFlatRope keeps the old flat ones).
 """
@@ -167,15 +169,20 @@ def wire_material(tex):
 
 
 def main():
-    tex = {}
-    for f in sorted(os.listdir(ROPE_SRC)):
-        if f.startswith(("T_Rope_", "T_Wire_")) and f.endswith(("_N.png", "_M.png")):
-            tex[f[:-4]] = import_texture(os.path.join(ROPE_SRC, f), ROPE, f[-5])
-    tex["T_RopeColourways"] = import_texture(os.path.join(ROPE_SRC, "T_RopeColourways.png"), ROPE, "LUT")
-    rope_material(tex)
-    wire_material(tex)
+    # DETAIL_NEW_ONLY=1 imports only the detail textures not yet in /Game/Boats/Detail (the rope and wire stay as they are).
+    new_only = os.environ.get("DETAIL_NEW_ONLY") == "1"
+    if not new_only:
+        tex = {}
+        for f in sorted(os.listdir(ROPE_SRC)):
+            if f.startswith(("T_Rope_", "T_Wire_")) and f.endswith(("_N.png", "_M.png")):
+                tex[f[:-4]] = import_texture(os.path.join(ROPE_SRC, f), ROPE, f[-5])
+        tex["T_RopeColourways"] = import_texture(os.path.join(ROPE_SRC, "T_RopeColourways.png"), ROPE, "LUT")
+        rope_material(tex)
+        wire_material(tex)
     for f in sorted(os.listdir(DETAIL_SRC)):
         if f.startswith("T_Detail_") and f.endswith(("_N.png", "_M.png")):
+            if new_only and unreal.EditorAssetLibrary.does_asset_exist(f"{DETAIL}/{f[:-4]}"):
+                continue
             import_texture(os.path.join(DETAIL_SRC, f), DETAIL, f[-5])
     unreal.log("Boat detail import done: M_RigRope, M_RigWire and the detail textures")
 

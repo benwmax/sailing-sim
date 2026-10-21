@@ -43,5 +43,60 @@
    3.0
   ]
  },
+ "Metal": {
+  "tile_m": [
+   0.1,
+   0.1
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   1.0,
+   4.0
+  ]
+ },
+ "WoodVarnish": {
+  "tile_m": [
+   0.3,
+   0.15
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   1.5,
+   5.0
+  ]
+ },
+ "Rubber": {
+  "tile_m": [
+   0.08,
+   0.08
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   1.0,
+   3.0
+  ]
+ },
+ "Braid": {
+  "tile_m": [
+   0.02,
+   0.02
+  ],
+  "normal_strength": 1.0,
+  "fade_m": [
+   0.8,
+   3.0
+  ]
+ },
+ "Sailcloth": {
+  "tile_m": [
+   0.04,
+   0.04
+  ],
+  "normal_strength": 0.8,
+  "fade_m": [
+   1.0,
+   4.0
+  ]
+ },
  "note": "Tile by UV0 x (metres per UV unit, materials.json detail_uv_scale) / tile_m; mask by the baked detail map T_<Boat>_<Group>_X (R non-skid, G teak, B smooth gelcoat); fade the normal between fade_m[0] and fade_m[1]."
 }
