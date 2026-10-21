@@ -1020,17 +1020,44 @@ if (DetailOn > 0.5 && surf > 0)
 }
 // Wet: standing water darkens the cavities first (non-skid grooves, checks, pores).
 col *= 1.0 - 0.3 * cav * wetAll;
+// Rain deck (docs/rain-deck): puddles in the deck's low spots (the grime noise's lows on level surfaces, filling with
+// MPC_Boat Puddle), a still mirror: darker, glossy, the deck's texture drowned. While it rains (Rain) each drop rings the
+// puddles and the wet deck (a ring growing and fading in each 22 cm cell, its own phase), and beads stand on level
+// gelcoat and on the metal fittings.
+float level = saturate((n.z - 0.92) * 12.5) * (1.0 - Metal);
+float pudK = level * (1.0 - smoothstep(Puddle * 0.62 - 0.04, Puddle * 0.62 + 0.02, vn)) * step(0.02, Puddle);
+float rainK = saturate(Rain);
+float2 rc = LP.xy / 22.0;
+float2 rci = floor(rc), rcf = frac(rc) - 0.5;
+float rh = frac(sin(dot(rci, float2(41.7, 19.3))) * 43758.5);
+float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
+float2 roff = float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25;
+float rdist = length(rcf - roff) * 22.0;                             // cm from the drop
+float rring = exp(-pow((rdist - rph * 7.0) / 0.35, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.35 * deckWet);
+grad = lerp(grad, float3(0.0, 0.0, 0.0), pudK);                      // a puddle's surface is flat water
+grad += ((rcf - roff).x * LX + (rcf - roff).y * LY) / max(rdist / 22.0, 1e-3) * rring * 0.5;
+float2 rbq = (abs(n.z) > 0.7 ? LP.xy : float2(LP.x + LP.y, LP.z)) / 0.8;
+float2 rbf = frac(rbq) - 0.5;
+float rbh = frac(sin(dot(floor(rbq), float2(23.17, 61.3))) * 43758.5);
+float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rainK * (1.0 - pudK)
+    * max(level * gel, Metal * 0.8);
+grad += (rbf.x * LX + rbf.y * LY) * rbead * 1.2;
+col *= 1.0 - 0.3 * pudK;
+wetAll = saturate(max(wetAll, max(pudK, rbead)));
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
 RoughOut = lerp(rough, lerp(0.06, rough, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
-CoatOut = saturate(coat * 0.6 + wetAll * 0.5 * (1.0 - Metal));
+// Rain deck: a puddle is a mirror (sharper on High and Ultra); rain on metal tightens its gloss between the beads.
+RoughOut = lerp(RoughOut, DetailOn > 0.5 ? 0.012 : 0.03, pudK);
+RoughOut = lerp(RoughOut, RoughOut * 0.7, 0.6 * rainK * Metal);
+CoatOut = saturate(coat * 0.6 + wetAll * 0.5 * (1.0 - Metal) + 0.4 * pudK);
 return normalize(n - grad);
 """
 
 
-MPC_BOAT_PARAMS = (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0),
+MPC_BOAT_PARAMS = (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0), ("Rain", 0.0), ("Puddle", 0.0),   # rain deck
                    ("Detail", 0.0))   # boat fidelity 1: 1 = the close-up detail maps (High and Ultra; the pawn sets it)
 
 
@@ -1102,7 +1129,7 @@ def build_boat_surface(name, bend):
         connect(c, "", t, "")
         axes.append(t)
     params = {}
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail", "Rain", "Puddle")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -1400, 1100 + i * 100)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
@@ -1127,10 +1154,11 @@ def build_boat_surface(name, bend):
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "Rain", "Puddle", "Time"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
-    for src, pin in ((surface, "Surface"), (grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V")):
+    for src, pin in ((surface, "Surface"), (grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"),
+                     (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time")):
         connect(src, "", c, pin)
     for pin, t in detail_tex.items():
         connect(t, "", c, pin)

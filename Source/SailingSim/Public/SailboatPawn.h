@@ -26,6 +26,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UProceduralMeshComponent;
+class UInstancedStaticMeshComponent;
 class UInputAction;
 class UInputMappingContext;
 class UMaterialInterface;
@@ -230,6 +231,8 @@ private:
 	FVector RigPoint(const UStaticMeshComponent* Part, FName Socket) const;
 	void UpdateModelRig(float DeltaSeconds);
 	void UpdateBoatWetness(float DeltaSeconds);
+	/** Rain deck (docs/rain-deck): drips falling from the boom's underside and the sheer while the boat is wet. */
+	void UpdateDrips(float DeltaSeconds);
 	void ApplyStateToTransform();
 	void UpdateRigVisuals(float DeltaSeconds);
 	void BuildSailMesh(UProceduralMeshComponent* Mesh, const Sailing::FSailGeometry& Geo, const Sailing::FSailStripState* Strips, int32 Side, bool bMain);
@@ -434,6 +437,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> TravelerCar;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
+	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Drips;   // rain deck: falling drips (M_Spray quads)
 	FVector JibClewCm = FVector::ZeroVector;  // body frame, from the jib mesh
 	// Graphics G8: where the crew's hands hold the tiller extension, the mainsheet and the jib sheet (boat frame, cm), set
 	// by UpdateCrewFigures for the rig lines; the mainsheet's block on the car from the last UpdateModelRig.
@@ -448,6 +452,10 @@ private:
 	float MastBendHeightCm = 800.f;
 	double WetLineZ = -1e9;   // world cm: the highest recent water at the hull, drying back down
 	float DeckWetness = 0.f;
+	float PuddleLevel = 0.f;    // rain deck: 0..1, how full the deck's low spots are (fills with rain, drains and dries)
+	struct FDrip { FVector P, V; float KillZ, Seed; };
+	TArray<FDrip> DripList;
+	float DripClock = 0.f;
 	bool bRigLinesBuilt = false;
 	/** Rig lines pacing: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm), the
 	 *  time an AI boat's paced rig has missed, and the frame its rig was last built. */

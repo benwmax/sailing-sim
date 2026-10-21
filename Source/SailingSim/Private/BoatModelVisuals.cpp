@@ -7,6 +7,8 @@
 // wind (its material's world position offset; the rig points on it follow the same curve), the traveler car moves
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
+#include "SailingFrame.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "BenchRunner.h"
 #include "CrewAnimInstance.h"
 #include "CrewMotion.h"
@@ -292,6 +294,9 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		// -SailingDeckWet=<0..1> starts the deck that wet (it dries over about five minutes: UpdateBoatWetness).
 		float StartWet = 0.f;
 		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingDeckWet="), StartWet)) DeckWetness = FMath::Clamp(StartWet, 0.f, 1.f);
+		// Rain deck stills: -SailingPuddle=<0..1> starts the deck's puddles that full.
+		float StartPuddle = 0.f;
+		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingPuddle="), StartPuddle)) PuddleLevel = FMath::Clamp(StartPuddle, 0.f, 1.f);
 		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
 		for (int32 I = 0; I < Slots.Num(); ++I)
 		{
@@ -665,6 +670,109 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	bRigLinesBuilt = true;
 }
 
+void ASailboatPawn::UpdateDrips(float DeltaSeconds)
+{
+	// Rain deck (docs/rain-deck): drips. While the boat is wet (the deck's wetness: rain and spray) and slow, water gathers on
+	// the boom's underside and the sheer and drops off: a few drips a second, falling under gravity, the boom's onto the
+	// cockpit, the sheer's into the sea. Drawn as M_Spray quads (smooth, Grain 0) on an instanced plane, stretched along
+	// their fall. Player's boat, High and Ultra. -SailingNoDrips.
+	constexpr int32 kPool = 48;
+	static SailingArgs::FCachedFlag NoDripsArg(TEXT("SailingNoDrips"));
+	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
+	const float Speed = float(Boat.GetTelemetry().SpeedThroughWater);
+	const bool bOn = !NoDripsArg.Get() && USailingSettings::Get()->Quality >= ESailingQuality::High && Boat.GetConfig().Hulls.size() > 0;
+	if (!bOn && !Drips) return;
+	if (!Drips)
+	{
+		UStaticMesh* Plane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+		UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_Spray.M_Spray"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (!Plane || !Mat) return;
+		Drips = NewObject<UInstancedStaticMeshComponent>(this);
+		Drips->SetupAttachment(GetRootComponent());
+		Drips->SetStaticMesh(Plane);
+		Drips->SetMaterial(0, Mat);
+		Drips->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Drips->SetCastShadow(false);
+		Drips->SetUsingAbsoluteLocation(true);
+		Drips->SetUsingAbsoluteRotation(true);
+		Drips->SetUsingAbsoluteScale(true);
+		Drips->NumCustomDataFloats = 3;   // M_Spray: opacity, grain, seed
+		Drips->RegisterComponent();
+		TArray<FTransform> Hidden;
+		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kPool);
+		Drips->AddInstances(Hidden, false, true);
+	}
+	// Spawn: the rate follows the wetness, and stops under way (the water runs aft instead of dripping).
+	const float Wet = FMath::Max(DeckWetness, 0.5f * FMath::Clamp(float(GetWorld()->GetAuthGameMode<ASailingGameMode>() ? GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState().Rain : 0.0), 0.f, 1.f));
+	const float Rate = bOn ? 6.f * FMath::Clamp((Wet - 0.1f) / 0.5f, 0.f, 1.f) * FMath::Clamp((2.f - Speed) / 1.5f, 0.f, 1.f) : 0.f;
+	DripClock += Rate * Dt;
+	const FHullShape& Hull = Boat.GetConfig().Hulls[0];
+	while (DripClock >= 1.f && DripList.Num() < kPool)
+	{
+		DripClock -= 1.f;
+		FDrip D;
+		D.Seed = FMath::FRand();
+		D.V = FVector::ZeroVector;
+		if (ModelBoom && ModelBoom->GetStaticMesh() && FMath::FRand() < 0.5f)
+		{
+			// Along the boom's underside, its own frame (the boom swings and lifts with the sheet).
+			const FBox B = ModelBoom->GetStaticMesh()->GetBoundingBox();
+			const FVector Local(FMath::Lerp(B.Min.X, B.Max.X, FMath::FRandRange(0.1f, 0.95f)), FMath::FRandRange(-0.3f, 0.3f) * B.GetExtent().Y, B.Min.Z);
+			D.P = ModelBoom->GetComponentTransform().TransformPosition(Local);
+			D.KillZ = float(D.P.Z - 95.f);                                       // the cockpit sole, about
+		}
+		else
+		{
+			// Off the sheer, either side, into the sea.
+			const double X = FMath::Lerp(Hull.SternX, Hull.BowX, double(FMath::FRandRange(0.1f, 0.85f)));
+			const double S = FMath::FRand() < 0.5f ? -1.0 : 1.0;
+			const Vec3 W = Boat.BodyToWorld(Vec3(X, Hull.CenterY + S * (Hull.DeckHalfBeam(X) + 0.01), Hull.SheerHeight(X)));
+			D.P = SailingFrame::ToWorld(GetWorld(), W.X, W.Y, 0.0);
+			D.P.Z = WaterSurfaceZ + W.Z * CmPerMeter;
+			D.KillZ = float(WaterSurfaceZ - 20.0);
+		}
+		DripList.Add(D);
+	}
+	if (DripClock >= 1.f) DripClock = 0.f;
+	// Fall, and draw: each drip a 6 mm smooth quad facing the camera, stretched along its fall by the exposure.
+	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	const FVector Cam = PC && PC->PlayerCameraManager ? PC->PlayerCameraManager->GetCameraLocation() : GetActorLocation();
+	TArray<FTransform> Xf;
+	Xf.SetNumUninitialized(kPool);
+	float Data[3];
+	for (int32 I = DripList.Num() - 1; I >= 0; --I)
+	{
+		FDrip& D = DripList[I];
+		D.V.Z -= 981.f * Dt;
+		D.P += D.V * Dt;
+		if (D.P.Z < D.KillZ) DripList.RemoveAtSwap(I);
+	}
+	for (int32 I = 0; I < kPool; ++I)
+	{
+		if (I < DripList.Num())
+		{
+			const FDrip& D = DripList[I];
+			const FVector N = (Cam - D.P).GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
+			FVector Across = D.V - FVector::DotProduct(D.V, N) * N;
+			const float Smear = float(Across.Size()) / CmPerMeter;              // m/s across the view
+			if (Smear < 1e-3f) Across = FVector::CrossProduct(N, FVector::UpVector);
+			const FVector X = Across.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
+			const FQuat Q = FMatrix(X, FVector::CrossProduct(N, X), N, FVector::ZeroVector).ToQuat();
+			const float Size = 0.006f;
+			Xf[I] = FTransform(Q, D.P, FVector(Size + Smear / 60.f, Size, 1.f));
+			Data[0] = 0.7f;
+			Data[1] = 0.f;
+			Data[2] = D.Seed;
+			Drips->SetCustomData(I, MakeArrayView(Data, 3), false);
+		}
+		else
+		{
+			Xf[I] = FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector);
+		}
+	}
+	Drips->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
+}
+
 void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 {
 	// The material parameters are shared by every boat in view; the player's boat sets them.
@@ -688,6 +796,15 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WaterZ"), float(WetLineZ));
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WetBand"), Band);
 	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("DeckWet"), DeckWetness);
+	// Rain deck (docs/rain-deck): the deck's low spots fill with rain (full in about ten minutes of steady rain), drain and
+	// dry in about fifteen once it stops; heel spills them. The rain itself rings the puddles and the wet deck (Rain).
+	{
+		const float Heel = FMath::Clamp(float(FMath::Abs(T.Heel)) / 0.3f, 0.f, 1.f);
+		PuddleLevel = FMath::Clamp(PuddleLevel + DeltaSeconds * (Rain * 0.0017f - 0.0011f - 0.01f * Heel * PuddleLevel), 0.f, 1.f);
+		UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("Rain"), Rain);
+		UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("Puddle"), PuddleLevel);
+		UpdateDrips(DeltaSeconds);
+	}
 	// Boat fidelity 1: M_BoatSurface's close-up detail maps on High and Ultra (docs/boat-fidelity-1); -SailingNoBoatDetail compares.
 	static SailingArgs::FCachedFlag NoBoatDetailArg(TEXT("SailingNoBoatDetail"));
 	const bool bDetail = USailingSettings::Get()->Quality >= ESailingQuality::High && !NoBoatDetailArg.Get();
