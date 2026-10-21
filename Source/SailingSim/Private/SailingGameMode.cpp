@@ -46,6 +46,11 @@
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "UObject/ConstructorHelpers.h"
+#include "DeviceProfiles/DeviceProfile.h"
+#include "DeviceProfiles/DeviceProfileManager.h"
+#include "Engine/Texture2D.h"
+#include "Engine/TextureLODSettings.h"
+#include "UObject/UObjectIterator.h"
 
 using namespace Sailing;
 
@@ -635,6 +640,39 @@ void ASailingGameMode::ApplyWeatherSettings()
 	Waves.SnapToTarget();
 }
 
+namespace
+{
+	/** Boat texture budget (docs/boat-tex-medium): the hero J/22's baked maps and the boats' close-up detail maps live in
+	 *  the Vehicle texture groups (scripts/import_j22_hero.py, import_boat_detail.py). On Medium and Low those groups drop
+	 *  their top mip (a quarter of the memory), so the hero boat stays inside Medium's 24 MB; High and Ultra keep them
+	 *  whole. Only the textures in those groups are touched, once per change of tier. -SailingBoatTexBias=<n> measures. */
+	void ApplyBoatTextureBias(ESailingQuality Quality)
+	{
+		int32 Bias = Quality <= ESailingQuality::Medium ? 1 : 0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatTexBias="), Bias);
+		const UDeviceProfile* Profile = UDeviceProfileManager::Get().GetActiveProfile();
+		UTextureLODSettings* LOD = Profile ? const_cast<UTextureLODSettings*>(Profile->GetTextureLODSettings()) : nullptr;
+		if (!LOD) return;
+		bool bChanged = false;
+		for (const TextureGroup G : { TEXTUREGROUP_Vehicle, TEXTUREGROUP_VehicleNormalMap })
+		{
+			if (LOD->TextureLODGroups.IsValidIndex(G) && LOD->TextureLODGroups[G].LODBias != Bias)
+			{
+				LOD->TextureLODGroups[G].LODBias = Bias;
+				bChanged = true;
+			}
+		}
+		if (!bChanged) return;
+		for (TObjectIterator<UTexture2D> It; It; ++It)
+		{
+			if (It->LODGroup == TEXTUREGROUP_Vehicle || It->LODGroup == TEXTUREGROUP_VehicleNormalMap)
+			{
+				It->UpdateResource();   // re-reads its group's bias and re-streams
+			}
+		}
+	}
+}
+
 void ASailingGameMode::ApplyQualitySettings()
 {
 	const ESailingQuality Quality = USailingSettings::Get()->Quality;
@@ -656,6 +694,7 @@ void ASailingGameMode::ApplyQualitySettings()
 	if (Row(S->ViewDistanceQuality) >= 0) Levels.ViewDistanceQuality = QualityScalabilityLevel(ESailingQuality(Row(S->ViewDistanceQuality)));
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingGI="), Levels.GlobalIlluminationQuality); // measuring
 	Scalability::SetQualityLevels(Levels);
+	ApplyBoatTextureBias(Quality);
 	for (const FQualityCVar& C : QualityCVars(Quality))
 	{
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(C.Name))
