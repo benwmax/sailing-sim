@@ -92,7 +92,8 @@ namespace Sailing
 			C.SparFloatLiters = 18.0;
 			SetMain(C, 0.55, 4.3, 3.6, 0.25, 0.0, 1.9, -0.6, 6.97, 2.8, 2.0, 0.12);
 			C.Jib.NumStrips = 0; C.Spinnaker.NumStrips = 0;
-			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee C.TravelerRangeDeg = 3.0;
+			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee
+			C.TravelerRangeDeg = 3.0;   // the Sunfish's bridle (it had sat inside the comment above since the fleet came in: the default 8 applied)
 			C.RigWindageCdA = 0.15; C.HullWindageCdA = 0.45;
 			C.ReefLuffFraction.clear();
 			C.Engines.clear();
@@ -140,7 +141,8 @@ namespace Sailing
 			C.MastX = 1.05; C.MastheadZ = 6.3; C.MastDiameter = 0.064;
 			SetMain(C, 0.95, 6.0, 2.73, 0.30, 0.15, 1.02, 0.85, 7.06, 3.4, 3.8, 0.12);
 			C.Jib.NumStrips = 0; C.Spinnaker.NumStrips = 0;
-			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee C.TravelerRangeDeg = 4.0;
+			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee
+			C.TravelerRangeDeg = 4.0;   // the ILCA's traveler line (it had sat inside the comment above since the fleet came in: the default 8 applied)
 			C.RigWindageCdA = 0.15; C.HullWindageCdA = 0.5;
 			C.ReefLuffFraction.clear();
 			C.Engines.clear();
