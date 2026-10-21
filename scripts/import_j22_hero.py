@@ -50,11 +50,17 @@ Rough = lerp(Rough, 0.75, ox);
 c *= 1.0 - 0.3 * ageK * X.r * up;                  // grime worked into the non-skid where feet go
 c *= 1.0 - 0.25 * ageK * X.g;                      // teak greys and darkens
 float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
-float wet = (1.0 - smoothstep(WaterZ + WetBand * (0.6 + 0.4 * streak) - 3.0, WaterZ + WetBand * (0.6 + 0.4 * streak) + 3.0, WP.z)) * (1.0 - up);
+// (Clipping audit 2, as M_BoatSurface: at most 6 cm of ragged edge, half of it slow noise, softer as the band grows.)
+float wlx = WP.x / 110.0, wli = floor(wlx), wlf = frac(wlx);
+wlf = wlf * wlf * (3.0 - 2.0 * wlf);
+float wln = lerp(frac(sin(wli * 37.13) * 43758.5), frac(sin((wli + 1.0) * 37.13) * 43758.5), wlf);
+float wetLine = WaterZ + WetBand * 0.8 + min(WetBand * 0.4, 6.0) * (1.2 * streak + 0.8 * wln - 1.0);
+float wetEdge = 3.0 + 0.1 * WetBand;
+float wet = (1.0 - smoothstep(wetLine - wetEdge, wetLine + wetEdge, WP.z)) * (1.0 - up);
 float wetAll = saturate(max(wet, saturate(DeckWet) * up * 0.8));
 // Spray hull (docs/spray-hull), as M_BoatSurface: a water film below the wet line (a fifth darker), beads in its top
 // 8 cm and spattered above it after spray (SprayWet), drips running down from the line; glossy where wet.
-float below = WaterZ + WetBand * (0.6 + 0.4 * streak) - WP.z;
+float below = wetLine - WP.z;
 float2 bq = float2(WP.x + WP.y, WP.z) / 0.9;
 float2 bf = frac(bq) - 0.5;
 float bh = frac(sin(dot(floor(bq), float2(17.31, 91.7))) * 43758.5), br = 0.18 + 0.2 * frac(bh * 7.13);
@@ -80,19 +86,26 @@ float pn = lerp(lerp(p00, p10, pf.x), lerp(p01, p11, pf.x), pf.y);
 float level = saturate((nw.z - 0.92) * 12.5);
 float pudK = level * (1.0 - smoothstep(Puddle * 0.62 - 0.04, Puddle * 0.62 + 0.02, pn)) * step(0.02, Puddle);
 float rainK = saturate(Rain);
-// (A drop every 14 cm cell, its ring out to 5 cm and 6 mm wide: at 22 cm, 7 cm and 3.5 mm they were under a pixel from the
-// cockpit.) The ring bends the normal outward, which is what shows on a puddle: the reflection wobbles.
-float2 rc = WP.xy / 14.0;
-float2 rcf = frac(rc) - 0.5;
-float rh = frac(sin(dot(floor(rc), float2(41.7, 19.3))) * 43758.5);
-float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
-float2 rto = rcf - (float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25);
-float rdist = length(rto) * 14.0;
-float rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.5 * saturate(DeckWet) * up);
-NormalOut = normalize(lerp(NormalOut, float3(0.0, 0.0, 1.0), pudK) + float3(rto / max(length(rto), 1e-3) * rring * 1.2, 0.0));
-float2 rbf = frac(WP.xy / 0.8) - 0.5;
-float rbh = frac(sin(dot(floor(WP.xy / 0.8), float2(23.17, 61.3))) * 43758.5);
-float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rainK * (1.0 - pudK) * level * gcAll;
+NormalOut = normalize(lerp(NormalOut, float3(0.0, 0.0, 1.0), pudK));   // a puddle is flat water
+// rain-fade, as M_BoatSurface: rings and beads fade out from 2 to 3 m and are skipped past it; puddles stay.
+float rfade = rainK * (1.0f - saturate((Depth - 200.0f) / 100.0f));
+float rring = 0.0f, rbead = 0.0f;
+[branch] if (rfade > 0.0f)
+{
+    // (A drop every 14 cm cell, its ring out to 5 cm and 6 mm wide: at 22 cm, 7 cm and 3.5 mm they were under a pixel from the
+    // cockpit.) The ring bends the normal outward, which is what shows on a puddle: the reflection wobbles.
+    float2 rc = WP.xy / 14.0;
+    float2 rcf = frac(rc) - 0.5;
+    float rh = frac(sin(dot(floor(rc), float2(41.7, 19.3))) * 43758.5);
+    float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
+    float2 rto = rcf - (float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25);
+    float rdist = length(rto) * 14.0;
+    rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rfade * max(pudK, 0.5 * saturate(DeckWet) * up);
+    NormalOut = normalize(NormalOut + float3(rto / max(length(rto), 1e-3) * rring * 1.2, 0.0));
+    float2 rbf = frac(WP.xy / 0.8) - 0.5;
+    float rbh = frac(sin(dot(floor(WP.xy / 0.8), float2(23.17, 61.3))) * 43758.5);
+    rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rfade * (1.0 - pudK) * level * gcAll;
+}
 c *= (1.0 - 0.3 * pudK) * (1.0 + 0.6 * rring);
 Rough = lerp(Rough, 0.015, saturate(pudK + rbead));
 Rough = lerp(Rough, 0.12, rring);

@@ -1680,7 +1680,11 @@ void ASailboatPawn::SetCockpitView(bool bOn)
 	if (bOn) { CameraPitch = -8.f; CameraYaw = 0.f; }
 	else
 	{
-		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(true, true);
+		if (Crew.Num() > 0 && Crew.Last())
+		{
+			Crew.Last()->SetVisibility(true, true);
+			Crew.Last()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
+		}
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
 		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
@@ -1700,7 +1704,14 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	const double Rail = C.bMultihull ? FMath::Abs(C.Hulls.back().CenterY) + 0.2 : H.DeckHalfBeam(X);
 	const double Sheer = C.bMultihull ? H.SheerZ + 0.1 : H.SheerHeight(X);
 	const float Side = S.CrewOffset != 0.0 ? float(FMath::Sign(S.CrewOffset)) : float(S.WindwardSide);
-	const FVector Eye = FVector(X, Side * FMath::Max(Rail - 0.3, 0.25), Sheer + 0.85) * CmPerMeter;
+	FVector Eye = FVector(X, Side * FMath::Max(Rail - 0.3, 0.25), Sheer + 0.85) * CmPerMeter;
+	// Better, the helm's own head where the crew model put it (the eyes about 10 cm ahead of the head bone and 8 cm above
+	// it): the guess above sat inside the trimmer on the wheel boats and the Hobie (docs/cockpit-eye/).
+	USkeletalMeshComponent* Helm = Crew.Num() > 0 ? Crew.Last().Get() : nullptr;
+	if (Helm && Helm->GetBoneIndex(TEXT("head")) != INDEX_NONE)
+	{
+		Eye = BoatRoot->GetComponentTransform().InverseTransformPositionNoScale(Helm->GetBoneLocation(TEXT("head"))) + FVector(10.f, 0.f, 8.f);
+	}
 
 	// Accelerations felt at the head (the boat's, low-passed over 0.3 s): surging forward pushes the head back, a wave
 	// lifting the boat sinks it a little; plus a head-bob the neck lets through. A few centimetres at most.
@@ -1720,8 +1731,12 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	const FTransform BoatXf = BoatRoot->GetComponentTransform();
 	const FVector World = BoatXf.TransformPosition(Eye + CockpitHead);
 	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw);
-	// You are the helm: the helm's own figure is not drawn from inside it.
-	if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false, true);
+	// You are the helm: the helm's own figure is not drawn from inside it, but still posed (its head is the eye).
+	if (Helm)
+	{
+		Helm->SetVisibility(false, true);
+		Helm->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	}
 	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
 	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
 	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov() - 10.f);   // Settings > Field of view, 10 deg narrower aboard

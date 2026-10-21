@@ -1281,6 +1281,21 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 					if (Hold(Fwd, At, MainGripCm, MainsheetCarCm)) Tension[Fwd] = 0.6f * SheetLoad;
 				}
 			}
+			else if (bHelm && Cfg.Type == EBoatType::Catalina30)
+			{
+				// docs/cockpit-eye/: both hands on her wheel's rim on their side (build_fleet.py: the hub 0.95 m over the sole at
+				// x -3.45, the rim 0.42 m across and 12 cm aft of it), the inboard hand 50 deg off the top, the outboard 110.
+				TOptional<FVector> Rim;
+				const double Hub = CrewFloorZ(Cfg, -3.45, 0.0) + 0.95;
+				const double WheelSide = FMath::Sign(Shoulder[0].Y + Shoulder[1].Y);
+				for (int32 Hand = 0; Hand < 2; ++Hand)
+				{
+					const bool bInboard = FMath::Abs(Shoulder[Hand].Y) < FMath::Abs(Shoulder[1 - Hand].Y);
+					const double A = FMath::DegreesToRadians(bInboard ? 50.0 : 110.0);
+					const FVector At = FVector(-3.57, WheelSide * 0.42 * FMath::Sin(A), Hub + 0.42 * FMath::Cos(A)) * CmPerMeter;
+					if (Hold(Hand, At, Rim, FVector::ZeroVector)) Tension[Hand] = 0.5f * HelmLoad;
+				}
+			}
 			else if (!bHelm && bJibTail && I == N - 2)
 			{
 				// The trimmer: the working sheet's tail a forearm's length off its self-tailer.

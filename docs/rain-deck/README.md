@@ -24,6 +24,9 @@ drips off the boom and the sheer. This is for the player's boat on High and Ultr
   the rings were 22 cm cells out to 7 cm and 3.5 mm wide, which came out under a pixel from the cockpit camera.
 - **Beads.** On level gelcoat outside the puddles, and on the metal fittings (`M_BoatSurface`): a bead on half the
   8 mm cells. Rain on metal tightens its gloss between the beads.
+- **Distance (rain-fade).** The rings and beads fade out from 2 to 3 m from the camera, and past 3 m a branch skips
+  their maths. They cost 0.2 ms on the Mac's storm view on High and weren't visible from its 3 m camera. The puddles'
+  darkening, gloss and flat normal stay at every distance: they're cheap.
 - These come before #203's below-horizon roughness (`docs/lee-topside-patch/`), which still runs last, and alongside
   the spray-hull film (`SprayWet`). Every new conditional uses typed literals (`SailingSim.Visual.BoatShaderLiterals`).
 
