@@ -116,6 +116,7 @@ Each mirrors a Mac script and writes the same logs to `Artifacts\`. Run from the
 | `scripts\windows\gate.ps1 -Scope clouds\|water\|boats\|crew\|world\|night\|ui\|all [-Baseline csv] [-Merge a,b]` | `scripts/gate.sh` | The gate: build, tests and package only when their inputs changed (`Artifacts\gate\`), then the scope's views on High and Ultra |
 | `scripts\windows\prescreen-stills.ps1 -Label x [-View storm,beam8] [-Compare main]` | `scripts/run-game.sh` | Stills of the bench views from the uncooked editor binary, no package; `-Compare` puts another label's still beside each |
 | `scripts\windows\run-python.ps1 make_materials.py [-Full]` | `scripts/make-content.sh` | Rebuilds only the materials whose code changed since its last run here; `-Full` all of them |
+| `scripts\windows\make-crew-clothes.ps1 [-SkipExport] [-ExportOnly]` (`$env:PIECES=Vest`) | `scripts/make-crew-clothes.sh` | Exports the MetaHuman bodies (full editor, `QUIT_EDITOR` after the script), tailors polo, shoes and vest in Blender, imports them (`PIECES` filters the import) and tunes the skin. Needs the MetaHumans and Blender; logs `Artifacts\crew-*.log` |
 | `scripts\windows\bench-win.ps1 [-Seconds 20] [-Quality Ultra] [-Demo] [-GameArgs "..."]` | `scripts/bench-mac.sh` | Runs the packaged game, prints fps and GPU slices, copies `bench.json` and the screenshot to `Artifacts\` |
 | `scripts\windows\bench-visual-win.ps1 [-Tiers High,Ultra]` | `scripts/bench-visual.sh` | The twelve visual views per tier, CSV in `Artifacts\` |
 

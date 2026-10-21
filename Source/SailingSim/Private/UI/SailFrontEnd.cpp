@@ -888,47 +888,52 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 				return FText::FromString(SailCatalog::Expect(K.WindKn, K.GustKn, int32(K.Sky), K.LocalHour, K.Month, K.Day, Pending.Boat, Pending.World));
 			}), EType::Body, FSlateColor(Fg), true)
 		], FMargin(16.f));
-	TSharedRef<SVerticalBox> Mid = SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailSlider).Label(TEXT("Wind speed")).Min(0.f).Max(30.f).Step(1.f).Value_Lambda([C]() { return C->WindKn; })
-				.ValueText_Lambda([C, Kn]() { return Kn(C->WindKn); }).OnChanged_Lambda([C, Touch](float V) { C->WindKn = V; C->GustKn = FMath::Max(C->GustKn, V); Touch(); }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailSlider).Label(TEXT("Gusts to")).Min(0.f).Max(40.f).Step(1.f).Value_Lambda([C]() { return C->GustKn; })
-				.ValueText_Lambda([C, Kn]() { return Kn(C->GustKn); }).OnChanged_Lambda([C, Touch](float V) { C->GustKn = FMath::Max(V, C->WindKn); Touch(); }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailChoice).Label(TEXT("Sky")).Options({ TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Rain"), TEXT("Storms"), TEXT("Fog") })
+	// The two columns' rows line up in pairs (wind / time, gusts / date, sky / tide, air temp / lake level): each row is at
+	// least as tall as its partner, so a row that wraps (the Sky row at 1440x1080) doesn't push its column out of step.
+	TArray<TSharedRef<SWidget>> MidRows = {
+		SNew(SSailSlider).Label(TEXT("Wind speed")).Min(0.f).Max(30.f).Step(1.f).Value_Lambda([C]() { return C->WindKn; })
+				.ValueText_Lambda([C, Kn]() { return Kn(C->WindKn); }).OnChanged_Lambda([C, Touch](float V) { C->WindKn = V; C->GustKn = FMath::Max(C->GustKn, V); Touch(); }),
+		SNew(SSailSlider).Label(TEXT("Gusts to")).Min(0.f).Max(40.f).Step(1.f).Value_Lambda([C]() { return C->GustKn; })
+				.ValueText_Lambda([C, Kn]() { return Kn(C->GustKn); }).OnChanged_Lambda([C, Touch](float V) { C->GustKn = FMath::Max(V, C->WindKn); Touch(); }),
+		SNew(SSailChoice).Label(TEXT("Sky")).Options({ TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Rain"), TEXT("Storms"), TEXT("Fog") })
 				.Index_Lambda([C]() { return SailFrontEndImpl::SkyRowOrder.IndexOfByKey(C->Sky); })
-				.OnChanged_Lambda([C, Touch](int32 I) { C->Sky = SailFrontEndImpl::SkyRowOrder[FMath::Clamp(I, 0, SailFrontEndImpl::SkyRowOrder.Num() - 1)]; Touch(); }) ]
-		+ SVerticalBox::Slot().AutoHeight()
-			[ SNew(SSailSlider).Label(TEXT("Air temp")).Min(30.f).Max(105.f).Step(1.f).Value_Lambda([C]() { return C->AirTempF; })
-				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%.0f°F"), C->AirTempF); }).OnChanged_Lambda([C, Touch](float V) { C->AirTempF = V; Touch(); }) ];
-	TSharedRef<SVerticalBox> Right = SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailSlider).Label(TEXT("Time of day")).Min(5.f).Max(22.f).Step(0.25f).Value_Lambda([C]() { return C->LocalHour; })
-				.ValueText_Lambda([C]() { return SailCatalog::ClockText(C->LocalHour); }).OnChanged_Lambda([C](float V) { C->LocalHour = V; C->PresetId = NAME_None; }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailSlider).Label(TEXT("Date")).Min(1.f).Max(12.f).Step(1.f).Value_Lambda([C]() { return float(C->Month); })
+				.OnChanged_Lambda([C, Touch](int32 I) { C->Sky = SailFrontEndImpl::SkyRowOrder[FMath::Clamp(I, 0, SailFrontEndImpl::SkyRowOrder.Num() - 1)]; Touch(); }),
+		SNew(SSailSlider).Label(TEXT("Air temp")).Min(30.f).Max(105.f).Step(1.f).Value_Lambda([C]() { return C->AirTempF; })
+				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%.0f°F"), C->AirTempF); }).OnChanged_Lambda([C, Touch](float V) { C->AirTempF = V; Touch(); }) };
+	TArray<TSharedRef<SWidget>> RightRows = {
+		SNew(SSailSlider).Label(TEXT("Time of day")).Min(5.f).Max(22.f).Step(0.25f).Value_Lambda([C]() { return C->LocalHour; })
+				.ValueText_Lambda([C]() { return SailCatalog::ClockText(C->LocalHour); }).OnChanged_Lambda([C](float V) { C->LocalHour = V; C->PresetId = NAME_None; }),
+		SNew(SSailSlider).Label(TEXT("Date")).Min(1.f).Max(12.f).Step(1.f).Value_Lambda([C]() { return float(C->Month); })
 				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%s %d"), *SailCatalog::MonthName(C->Month), C->Day); })
-				.OnChanged_Lambda([C, Touch](float V) { C->Month = FMath::RoundToInt(V); C->Day = FMath::Min(C->Day, 28); Touch(); }) ];
+				.OnChanged_Lambda([C, Touch](float V) { C->Month = FMath::RoundToInt(V); C->Day = FMath::Min(C->Day, 28); Touch(); }) };
 	if (bGalveston)
 	{
-		Right->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-		[
-			PanelBox(SNew(SVerticalBox)
+		RightRows.Add(PanelBox(SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Tide"), EType::Ui, Fg) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
 				[ SailUI::Text(TEXT("Predicted from NOAA's harmonic constants for the date and time you pick: the tide and current follow the clock."), EType::Small, Muted, true) ],
-				FMargin(16.f, 12.f), RadiusButton)
-		];
+				FMargin(16.f, 12.f), RadiusButton));
 	}
 	else
 	{
-		Right->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailChoice).Label(TEXT("Tide")).Options({ TEXT("None") }).Index(0).IsEnabled(false).Note(TEXT("No tide on Lake Ray Hubbard. Lake level replaces it.")) ];
-		Right->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailSlider).Label(TEXT("Lake level")).Min(-6.f).Max(3.f).Step(0.5f).Value_Lambda([C]() { return C->LakeLevelFt; })
-				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%+.1f ft"), C->LakeLevelFt); }).OnChanged_Lambda([C](float V) { C->LakeLevelFt = V; }) ];
+		RightRows.Add(SNew(SSailChoice).Label(TEXT("Tide")).Options({ TEXT("None") }).Index(0).IsEnabled(false).Note(TEXT("No tide on Lake Ray Hubbard. Lake level replaces it.")));
+		RightRows.Add(SNew(SSailSlider).Label(TEXT("Lake level")).Min(-6.f).Max(3.f).Step(0.5f).Value_Lambda([C]() { return C->LakeLevelFt; })
+				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%+.1f ft"), C->LakeLevelFt); }).OnChanged_Lambda([C](float V) { C->LakeLevelFt = V; }));
 	}
+	auto Paired = [](const TArray<TSharedRef<SWidget>>& Own, const TArray<TSharedRef<SWidget>>& Other, int32 I) -> TSharedRef<SWidget>
+	{
+		const TWeakPtr<SWidget> A = Own[I], B = Other.IsValidIndex(I) ? TWeakPtr<SWidget>(Other[I]) : TWeakPtr<SWidget>();
+		return SNew(SBox).MinDesiredHeight_Lambda([A, B]()
+		{
+			const TSharedPtr<SWidget> PA = A.Pin(), PB = B.Pin();
+			return FOptionalSize(float(FMath::Max(PA ? PA->GetDesiredSize().Y : 0.0, PB ? PB->GetDesiredSize().Y : 0.0)));
+		})
+		[ Own[I] ];
+	};
+	TSharedRef<SVerticalBox> Mid = SNew(SVerticalBox);
+	for (int32 I = 0; I < MidRows.Num(); ++I) Mid->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, I + 1 < MidRows.Num() ? 10.f : 0.f)[ Paired(MidRows, RightRows, I) ];
+	TSharedRef<SVerticalBox> Right = SNew(SVerticalBox);
+	for (int32 I = 0; I < RightRows.Num(); ++I) Right->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Paired(RightRows, MidRows, I) ];
 	TSharedRef<SSailButton> Next = bInGame
 		? ActionButton(TEXT("Apply"), FSimpleDelegate::CreateLambda([this]()
 			{
