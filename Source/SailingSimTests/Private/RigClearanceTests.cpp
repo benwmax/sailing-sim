@@ -315,14 +315,6 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 	for (const TPair<FString, int32>& F : Fails)
 	{
 		if (F.Key.EndsWith(TEXT("'s cloth")) && F.Value < 3) continue;
-		// Known: the Lagoon's jib is the physics' overlapping one, its clew aft by the mast and below the saloon roof, while
-		// the model leads its sheet to a self-tacking track 4.5 m forward (build_fleet.py): its sheets cross the roof and
-		// the foot whatever their route. Listed until the sail and the lead agree.
-		if (F.Key.StartsWith(TEXT("Lagoon 42: jib sheet")) || F.Key.StartsWith(TEXT("Lagoon 42: lazy jib sheet")))
-		{
-			AddInfo(FString::Printf(TEXT("Known: %s (%d samples)"), *F.Key, F.Value));
-			continue;
-		}
 		AddError(FString::Printf(TEXT("%s (%d samples)%s"), *F.Key, F.Value, Where.Contains(F.Key) ? *(TEXT("; first ") + Where[F.Key]) : TEXT("")));
 	}
 
