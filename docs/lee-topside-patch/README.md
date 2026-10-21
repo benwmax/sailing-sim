@@ -52,4 +52,12 @@ such a conditional as a double. Typed as `0.5f`, they compile. Bisected by compi
 
 ## Gate
 
-See [gate-boats.csv](gate-boats.csv) and [gate-water.csv](gate-water.csv).
+`scripts/gate.sh --scope boats` and `--scope water` (merged with main) both pass: 202 tests and the package
+([gate-boats.csv](gate-boats.csv), [gate-water.csv](gate-water.csv)). On High:
+
+- **Boats:** beam8 61.8, beat15 61.3, marina 61.1, helm-eye 60.5, slip 54.0, crew 54.2 fps.
+- **Water:** storm 45.4 (66.0 on Medium), the rest 53.8 to 64.7.
+
+The slip view (the marina from the slip, its berthed boats close up) went from 57.5 to 54.0 fps. Those boats now draw
+their real M_BoatSurface instead of the engine's cheap default material. That is the material's own cost, which #195's
+gate never measured on the Mac's High tier.
