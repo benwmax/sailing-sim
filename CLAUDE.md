@@ -148,6 +148,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Phase 3 (`docs/boatkit-3/`): the J/22's keel is the class template in both models (`keel_edges`; the physics keel
    `Center` stays a balance knob), the hero's aft freeboard is the ORC 0.568 m, its cabin face ends at 1.65.
    `photomatch/profile_match.py` lays the hero's outline over a broadside photo from two picked points (no camera solve).
+   Boat fidelity 2 (`docs/boat-fidelity-2/`): the kit is in the game as `/Game/Boats/Kit` (`SM_Kit_<Part>` Nanite,
+   `SM_Kit_<Part>_Light` decimated, `M_BoatKit`/`MI_Kit_<Slot>` over the 10 px/cm trim sheet `Inputs/boat-kit`, by
+   `bk_trim.py`); `bk_parts.SIZES` holds catalogue sizes; maker's plates are the made-up TERNWAY only. PC:
+   `scripts\windows\make-boatkit.ps1 [-Render] [-Docs] [-Import]`; `scripts/import_hardware_kit.py` imports and copies
+   `kit.json` for `SailingSim.Visual.HardwareKit`. Socket names are global in Blender: export strips the `.001` suffix.
 
 23. Ports from a box and a name (`docs/world-marseille/`): `Tools/coast/worlds/<World>.json` defines a coast (box, origin,
    datum, harbours, spots, passage, climate, city glow, far ring); `build_coast.py <World>` bakes it (`build_galveston.py`
