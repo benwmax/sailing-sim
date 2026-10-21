@@ -65,9 +65,13 @@ OPEN = 0.011                     # half the gap between the front panels
 # shoulder strap at the neck.
 # Round 11 ("person looks like a doll"): seated, the arm swings forward and the armhole's edge tore into a zigzag; the
 # armhole is 2 cm more open above the armpit (ARMHOLE_OPEN), and the import keeps the arm bones off the vest.
+# Clipping audit 2 (the side panel showing under the trimmer's arm, between the sleeve and the torso): the armhole is
+# wider at its bottom. The side runs straight up to ARMHOLE_FOOT under the armpit, then tapers in to the torso's own width
+# (W) at the armpit, so the vest's edge sits on the torso where the arm comes down rather than inside the arm.
 ARMHOLE_OPEN = 0.02
-ARM = [(W * 1.12, zmin - 1.0), (W * 1.12 - ARMHOLE_OPEN, z_arm - 0.02), (W * 0.99 - ARMHOLE_OPEN, z_arm + 0.35 * (z_neck - z_arm)),
-       (W * 0.80 - ARMHOLE_OPEN, z_neck)]
+ARMHOLE_FOOT = 0.09
+ARM = [(W * 1.12, zmin - 1.0), (W * 1.12, z_arm - ARMHOLE_FOOT), (W * 1.0 - ARMHOLE_OPEN, z_arm - 0.02),
+       (W * 0.97 - ARMHOLE_OPEN, z_arm + 0.35 * (z_neck - z_arm)), (W * 0.80 - ARMHOLE_OPEN, z_neck)]
 print(f"polo: {len(bm.verts)} verts, z {zmin:.3f}..{zmax:.3f}, belly half width {W:.3f}, front {'-Y' if FRONT < 0 else '+Y'}")
 
 
