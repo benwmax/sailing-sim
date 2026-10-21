@@ -1193,6 +1193,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	const FWaveField* Waves = GetWaves();
 	const FWindField* Wind = GetWind();
 	if (!Waves || !DropletMesh) return;
+	const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
 	if (!Spray)
 	{
 		Spray = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Spray"));
@@ -1207,12 +1208,13 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		Spray->NumCustomDataFloats = 3;
 		Spray->RegisterComponent();
 		TArray<FTransform> Hidden;
-		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), MaxDroplets());
+		// (Unused instances are parked at the camera, at zero scale: parked 10 km down at the world's origin they stretched the
+		// component's bounds to a 5 km sphere under the lake, the PC's finding.)
+		Hidden.Init(FTransform(FQuat::Identity, Cam, FVector::ZeroVector), MaxDroplets());
 		Spray->AddInstances(Hidden, false, true);
 	}
 	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
 	const double T = GetSimTime();
-	const FVector Cam = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
 	const FVector2D CamM = SailingFrame::ToMap(GetWorld(), Cam);   // droplets fly in the map frame
 	const Vec3 WindV = Wind ? Wind->VelocityAt(Vec3(CamM.X, CamM.Y, 2.0), T) : Vec3();
 	const FVector WindAt2m(WindV.X, WindV.Y, 0.0);
@@ -1429,7 +1431,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		}
 		else
 		{
-			Xf[I] = FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector);
+			Xf[I] = FTransform(FQuat::Identity, Cam, FVector::ZeroVector);
 		}
 	}
 	Spray->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
