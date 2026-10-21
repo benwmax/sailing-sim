@@ -127,6 +127,10 @@ namespace Sailing
 			// the rudder stays in the water.
 			if (Cfg.CrewAftRange > 0.0) Out.CrewAft = MoveToward(Current.CrewAft, Clamp((T.Froude - 0.5) / 0.4, 0.0, 1.0), Dt);
 			Out.Hike = Clamp(Current.Hike + Clamp((Heel - 4.0 + 0.8 * HeelRate) / 4.0, -1.0, 1.0) * HikeRate * Dt, -1.0, 1.0);
+			// A cat's crew with the boom eased past 55 deg sit on the windward hull, not to leeward (docs/hobie-downwind/): the
+			// mainsheet runs from the boom's end, out beyond the leeward hull, back to the traveler on the rear beam, across
+			// the leeward hull where they sat. On two hulls the light-air lean to leeward buys nothing.
+			if (Cfg.bMultihull && std::fabs(S.BoomAngle) > 55.0 * kDegToRad) Out.Hike = std::max(Out.Hike, 0.0);
 		}
 		return Out;
 	}
