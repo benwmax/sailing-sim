@@ -638,6 +638,10 @@ def build_all(st):
     flat["RopeMooring"] = _rgb("#22468F")
     for k, c in flat.items():
         mats[k].diffuse_color = (c[0], c[1], c[2], 1.0)
+    if os.environ.get("J22H_COILS_ONLY"):
+        # Boat fidelity 4: a run that only dumps the coils (J22H_coils.json) needs no sail maps (nor Pillow in Blender).
+        mats["SailMain"] = mats["SailJib"] = bpy.data.materials.new("SailStub")
+        return mats
     mc, mh = draw_sail_textures(st, "main", TEX_DIR)
     jc, jh = draw_sail_textures(st, "jib", TEX_DIR)
     mats["SailMain"] = sail("SailMain", mc, mh, lam)

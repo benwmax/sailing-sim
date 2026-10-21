@@ -337,7 +337,13 @@ def coil(name, centre, radius, turns, mat, r=0.0045, seed=0, flat_z=None, tail=N
         pts.append((c.x + rr * math.cos(a) * 1.3, c.y + rr * math.sin(a), z))
     if tail:
         pts += [tuple(p) for p in tail]
+    # Boat fidelity 4: the game draws these coils as live rope (bake_j22_hero.py keeps them out of the game mesh, so only
+    # their baked shadows were there); build_j22_hero.py writes them to J22H_coils.json for BoatModelVisuals.cpp.
+    COILS.append({"name": name, "radius_m": r, "material": mat.name if mat else "", "points_m": [[round(c, 5) for c in p] for p in pts]})
     return [tube(name, pts, r, mat, smooth_path=True)]
+
+
+COILS = []
 
 
 def stopper_knot(name, at, axis, mat, r=0.0045):

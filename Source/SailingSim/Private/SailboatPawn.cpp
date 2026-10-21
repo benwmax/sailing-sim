@@ -578,8 +578,13 @@ void ASailboatPawn::RebuildBoatVisuals()
 		}
 	};
 	const FSailLayout Lay = LayoutFor(C.Type);
+	// Boat fidelity 4: M_SailCloth's sailmaker's detail (seams held on screen, stitching, tabling, corner patches, pocket
+	// ends) on High and Ultra; Medium and Low keep the plain path. -SailingNoSailDetail compares.
+	static SailingArgs::FCachedFlag NoSailDetailArg(TEXT("SailingNoSailDetail"));
+	const float SailDetail = USailingSettings::Get()->Quality >= ESailingQuality::High && !NoSailDetailArg.Get() ? 1.f : 0.f;
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0)))
 	{
+		Mid->SetScalarParameterValue(TEXT("Detail"), SailDetail);
 		// The J/22's class insignia and number; the other classes' numbers only (where the class carries one). The number
 		// is composed from a digit strip in the marks atlas (Graphics G3: each boat its own, from the livery).
 		FString Digits;
@@ -612,6 +617,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(JibSail->GetMaterial(0)))
 	{
 		Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
+		Mid->SetScalarParameterValue(TEXT("Detail"), SailDetail);
 		// The jibs match their mains' colours (no battens).
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout >= 2.f ? Lay.Layout : 0.f);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);

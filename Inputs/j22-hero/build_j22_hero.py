@@ -1034,4 +1034,7 @@ report = {"canoe_volume_m3": round(vol, 4), "physics_volume_m3": 1.052, "cb_x": 
           "physics_cb": [-0.195, -0.080], "triangles": tris, "objects": len(SC.objects)}
 print("J22H:", json.dumps(report))
 json.dump(report, open(os.path.join(OUT, "j22_hero_report.json"), "w"), indent=1)
+# Boat fidelity 4: the coiled tails the game draws as live rope (Blender frame, metres; the game flips Y).
+json.dump({"frame": "Blender: X forward, Y to port, Z up, metres, the hull's origin", "coils": D.COILS},
+          open(os.path.join(OUT, "J22H_coils.json"), "w"), indent=1)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "j22_hero.blend"))

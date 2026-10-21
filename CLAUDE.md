@@ -537,6 +537,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   (`BOAT_SURFACE`; weathering by E1's Age/Care, box-projected detail maps on High/Ultra via `MPC_Boat.Detail`); `up` is
   judged on the side the camera sees (two-sided shells). Args `-SailingNoBoatDetail`, `-SailingBoatAge=<y>[,<care>]`,
   `-SailingDeckWet=<0..1>`; `HERO_MATERIALS_ONLY=1` rebuilds the hero's materials without reimporting.
+  Boat fidelity 4 (`docs/boat-fidelity-4/`): `M_SailCloth` has `Detail` (the pawn sets 1 on High/Ultra: seams held on
+  screen, stitching, tabling, corner patches, pocket ends, backlit layers), `Age`/`Care` (foot dirt; -1 unset); the
+  insignia is a made-up emblem. The hero's coiled tails are live rope (rig-line section 2) from `J22CoilData.inl`
+  (`Tools/boats/make_coil_data.py` <- `Inputs/j22-hero/J22H_coils.json` <- `build_j22_hero.py`, `J22H_COILS_ONLY=1`);
+  every rig line keeps 0.8 px on screen. Args `-SailingNoSailDetail`, `-SailingNoCoils`, `-SailingNoMinLineWidth`.
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
   a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
   deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe
