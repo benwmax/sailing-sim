@@ -113,7 +113,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    (wood pilings) and 10 (dock boxes) are new and output a normal; keep `KitLook()` in step.
    Crew C2 on the PC: `capture-solve.ps1 [-TestClip tack_port]` runs the MetaHuman body solve (`Tools/capture/solve_clips.py`,
    full editor via `-ExecutePythonScript`) and `capture_clips.py`; see `docs/crew-2/README.md`. Editor scripts end by
-   returning, never `os._exit` (it leaves zombie editors on Windows: `docs/windows/README.md`).
+   returning, never `os._exit` (it leaves zombie editors on Windows: `docs/windows/README.md`). Crew clothes on the PC:
+   `make-crew-clothes.ps1` (twin of `make-crew-clothes.sh`; `$env:PIECES=Vest`, `-SkipExport`).
 
 20. The gate (bench-fast, `docs/bench-fast/`): `scripts/gate.sh --scope clouds|water|boats|crew|world|night|ui|all
    [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed
