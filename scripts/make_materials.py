@@ -1882,7 +1882,8 @@ capsDrawn = max(capsDrawn, trailDrawn);
 // few metres that grow with her speed). Both grow with her speed from 0.8 m/s and are broken by WB_NOISE's bubbles.
 float hullFoam = 0.0;
 float2 hfr = p.xy - HullClipA.xy;
-[branch] if (HullClipA.w > 0.0 && HullClipV.w > 0.0 && dot(hfr, hfr) < HullClipRect.z * HullClipRect.z + HullClipRect.w * HullClipRect.w)
+float hfReach = length(HullClipRect.zw) + 3.0 + 1.5 * HullClipV.z;   // the churn runs past the map aft
+[branch] if (HullClipA.w > 0.0 && HullClipV.w > 0.0 && dot(hfr, hfr) < hfReach * hfReach)
 {
     float3 hq = float3(p.xy, LongN.w) - HullClipA.xyz;
     float hbx = dot(hq, HullClipB.xyz), hby = dot(hq, HullClipC.xyz), hbz = dot(hq, HullClipD.xyz);
@@ -1893,8 +1894,13 @@ float2 hfr = p.xy - HullClipA.xy;
     float hn = saturate(WB_NOISE(hn1) * 0.65 + WB_NOISE(hn2) * 0.55 - 0.1);
     float gap = hc.r - hbz;
     float wl = saturate(1.0 - gap / (0.03 + 0.07 * spd)) * step(0.0, gap) * saturate(min(hc.b, hc.a) / 0.1 + 1.0);
-    float aft = -hc.a;
-    float churn = saturate(hc.b / 0.2) * step(0.0, aft) * step(hbx, HullClipRect.x + 0.5 * HullClipRect.z) * exp(-aft / (0.4 + 0.45 * HullClipV.z));
+    // Past the map's aft edge the clamped texel stops counting: add the rest of the way (docs/sails-1/: the churn
+    // ended in a hard line there and ran straight aft at the transom's width, a white rectangle). It spreads and softens
+    // as it goes, and fades out well inside the branch's reach.
+    float aft = -hc.a + max(HullClipRect.x - hbx, 0.0);
+    float spread = hc.b + 0.3 * aft;
+    float churn = saturate(spread / (0.15 + 0.3 * aft)) * step(0.0, aft) * step(hbx, HullClipRect.x + 0.5 * HullClipRect.z)
+        * exp(-aft / (0.4 + 0.45 * HullClipV.z)) * saturate(1.0 - aft / (2.5 + 1.2 * HullClipV.z));
     hullFoam = spd * max(wl * (0.45 + 0.55 * hn), churn * saturate(hn * 1.7 - 0.25));
 }
 FoamTone = lerp(FoamTone, 1.0, saturate(hullFoam * 2.0) * (1.0 - saturate(caps * 4.0)));
