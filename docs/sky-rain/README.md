@@ -15,3 +15,5 @@ could only be picked from the in-game Settings panel.
 | Before | After |
 | --- | --- |
 | ![](conditions-before.jpg) | ![](conditions-after.jpg) |
+
+The row's six chips overflowed into the next column at 1440x1080 (Mac UI gate). `SSailChoice` now lays its chips out in a right-aligned `SWrapBox` that takes the row's width (a row too narrow wraps inside its panel) and sits rows of six or more a little tighter: one line at 1920x1080 (`conditions-1920.jpg`), two at 1440x1080 (`conditions-1440.jpg`, `conditionsingame-1440.jpg`).
