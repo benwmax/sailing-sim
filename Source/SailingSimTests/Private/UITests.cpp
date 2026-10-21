@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 #include "SailSession.h"
 #include "SailingSettings.h"
+#include "SailSave.h"
 #include "SailingBindings.h"
 #include "BoatModel.h"
 #include "Misc/ConfigCacheIni.h"
@@ -310,6 +311,50 @@ bool FSailingUIGamepadBindingsTest::RunTest(const FString&)
 	// Leave the player's bindings as they were.
 	Settings->Bindings = Saved;
 	Settings->SaveConfig();
+	return true;
+}
+
+/**
+ * Bean's playtest (Oct 20): the Display and Graphics rows. They go through the save and back; a Quality tier puts them all
+ * back on Auto (it is their preset); Auto is -1 so the Mac's tiers keep their own; the field of view and brightness clamp
+ * and default to the game's 90 and 100%.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIGraphicsRowsTest, "SailingSim.UI.GraphicsRows", UIFlags)
+bool FSailingUIGraphicsRowsTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	int32 USailingSettings::* const Rows[] = { &USailingSettings::AntiAliasing, &USailingSettings::ShadowQuality, &USailingSettings::LightingQuality, &USailingSettings::ReflectionQuality,
+		&USailingSettings::CloudQuality, &USailingSettings::WaterQuality, &USailingSettings::FoliageQuality, &USailingSettings::ViewDistanceQuality, &USailingSettings::MotionBlur,
+		&USailingSettings::FieldOfView, &USailingSettings::Brightness };
+	TArray<int32> Kept;
+	for (int32 USailingSettings::* R : Rows) Kept.Add(S->*R);
+	const bool bVSync0 = S->bVSync;
+	TestTrue(TEXT("The class defaults are all Auto"), GetDefault<USailingSettings>()->AntiAliasing == -1 && GetDefault<USailingSettings>()->ShadowQuality == -1
+		&& GetDefault<USailingSettings>()->CloudQuality == -1 && GetDefault<USailingSettings>()->MotionBlur == -1 && !GetDefault<USailingSettings>()->bVSync
+		&& GetDefault<USailingSettings>()->FieldOfView == 0 && GetDefault<USailingSettings>()->Brightness == 100);
+	S->AntiAliasing = 5; S->ShadowQuality = 3; S->LightingQuality = 0; S->ReflectionQuality = 1; S->CloudQuality = 2; S->WaterQuality = 0;
+	S->FoliageQuality = 1; S->ViewDistanceQuality = 3; S->MotionBlur = 0; S->bVSync = true; S->FieldOfView = 105; S->Brightness = 120;
+	FSailSave Save;
+	Save.Capture(*S, *GetMutableDefault<USailSessionSave>());
+	FSailSave Back;
+	FSailSave::FromJson(Save.ToJson(), Back);
+	USailingSettings* Out = NewObject<USailingSettings>();
+	Back.Apply(*Out, *NewObject<USailSessionSave>());
+	TestTrue(TEXT("The rows round-trip through the save"), Out->AntiAliasing == 5 && Out->ShadowQuality == 3 && Out->LightingQuality == 0 && Out->ReflectionQuality == 1
+		&& Out->CloudQuality == 2 && Out->WaterQuality == 0 && Out->FoliageQuality == 1 && Out->ViewDistanceQuality == 3 && Out->MotionBlur == 0 && Out->bVSync
+		&& Out->FieldOfView == 105 && Out->Brightness == 120);
+	TestEqual(TEXT("The field of view as set"), Out->ChaseFov(), 105.f);
+	TestTrue(TEXT("Brightness 120% is a quarter stop up"), FMath::IsNearlyEqual(Out->BrightnessBias(), FMath::Log2(1.2f), 1e-4f));
+	Out->FieldOfView = 200; Out->Brightness = 10;
+	TestEqual(TEXT("The field of view clamps to 120"), Out->ChaseFov(), 120.f);
+	TestTrue(TEXT("Brightness clamps to half"), FMath::IsNearlyEqual(Out->BrightnessBias(), -1.f, 1e-4f));
+	Out->FieldOfView = 0;
+	TestEqual(TEXT("Field of view 0 is the game's 90"), Out->ChaseFov(), 90.f);
+	S->ResetGraphicsRows();
+	TestTrue(TEXT("A tier puts every row back on Auto"), S->AntiAliasing == -1 && S->ShadowQuality == -1 && S->LightingQuality == -1 && S->ReflectionQuality == -1
+		&& S->CloudQuality == -1 && S->WaterQuality == -1 && S->FoliageQuality == -1 && S->ViewDistanceQuality == -1 && S->MotionBlur == -1);
+	for (int32 K = 0; K < UE_ARRAY_COUNT(Rows); ++K) S->*Rows[K] = Kept[K];
+	S->bVSync = bVSync0;
 	return true;
 }
 

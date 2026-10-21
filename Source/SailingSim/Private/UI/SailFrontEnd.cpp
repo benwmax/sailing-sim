@@ -1182,11 +1182,47 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	{
 	case 0:
 	{
+		// The tier is the preset: choosing one puts every row below back on Auto (the tier's own).
 		Add(SNew(SSailChoice).Label(TEXT("Quality")).Options({ TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") })
 			.Index_Lambda([S]() { return int32(S->Quality); })
-			.OnChanged_Lambda([S, GM](int32 I) { S->Quality = ESailingQuality(I); S->Save(); if (GM) GM->ApplyQualitySettings(); }));
+			.OnChanged_Lambda([S, GM](int32 I) { S->Quality = ESailingQuality(I); S->ResetGraphicsRows(); S->Save(); if (GM) GM->ApplyQualitySettings(); }));
+		// Bean's playtest: anti-aliasing and each feature's detail on their own, Auto following the tier.
+		// NVIDIA DLSS's modes join the list where the optional plugin is installed and the GPU is NVIDIA's.
+		TArray<int32> AAValues = { -1, 0, 2, 4, 5 };
+		TArray<FString> AANames = { TEXT("Auto"), TEXT("Off"), TEXT("TAA"), TEXT("TSR"), TEXT("SMAA") };
+		const bool bDLSS = USailingSettings::DLSSAvailable();
+		if (bDLSS)
+		{
+			AAValues.Append({ 10, 11, 12, 13 });
+			AANames.Append({ TEXT("DLAA"), TEXT("DLSS Quality"), TEXT("DLSS Balanced"), TEXT("DLSS Performance") });
+		}
+		Add(SNew(SSailChoice).Label(TEXT("Anti-aliasing")).Options(AANames)
+			.Index_Lambda([S, IndexOf, AAValues]() { return IndexOf(AAValues, S->AntiAliasing); })
+			.OnChanged_Lambda([S, GM, AAValues](int32 I) { S->AntiAliasing = AAValues[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
+			.Note(bDLSS ? TEXT("TSR: the sharpest of the engine's own. DLAA and DLSS: NVIDIA's AI anti-aliasing and upscaling (DLSS sets its own render scale).")
+				: TEXT("TSR: the sharpest, upscales from the render resolution. TAA: lighter. SMAA: no ghosting, more shimmer.")));
+		auto Detail = [&](const TCHAR* Label, int32 USailingSettings::* Field, const TCHAR* Note)
+		{
+			Add(SNew(SSailChoice).Label(Label).Options({ TEXT("Auto"), TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") })
+				.Index_Lambda([S, Field]() { return FMath::Clamp(S->*Field + 1, 0, 4); })
+				.OnChanged_Lambda([S, GM, Field](int32 I) { S->*Field = I - 1; S->Save(); if (GM) GM->ApplyQualitySettings(); })
+				.Note(Note));
+		};
+		Section(TEXT("Detail"));
+		Detail(TEXT("Shadows"), &USailingSettings::ShadowQuality, TEXT("Shadow resolution and distance."));
+		Detail(TEXT("Lighting"), &USailingSettings::LightingQuality, TEXT("Lumen's bounced light: the shade inside crowns and under hulls."));
+		Detail(TEXT("Reflections"), &USailingSettings::ReflectionQuality, TEXT(""));
+		Detail(TEXT("Clouds"), &USailingSettings::CloudQuality, TEXT("Samples through the clouds: the costliest part of the sky."));
+		Detail(TEXT("Water"), &USailingSettings::WaterQuality, TEXT("Low keeps the simple water; Medium and up the full sea."));
+		Detail(TEXT("Foliage"), &USailingSettings::FoliageQuality, TEXT("How many of the shore's trees are drawn."));
+		Detail(TEXT("View distance"), &USailingSettings::ViewDistanceQuality, TEXT(""));
+		static const TArray<int32> BlurValues = { -1, 0, 1 };
+		Add(SNew(SSailChoice).Label(TEXT("Motion blur")).Options({ TEXT("Auto"), TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S, IndexOf]() { return IndexOf(BlurValues, S->MotionBlur); })
+			.OnChanged_Lambda([S, GM](int32 I) { S->MotionBlur = BlurValues[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); }));
+		Section(TEXT("Rendering"));
 		static const TArray<int32> Scales = { 0, 100, 82, 67, 50 };
-		Add(SNew(SSailChoice).Label(TEXT("Resolution")).Options({ TEXT("Auto"), TEXT("100%"), TEXT("82%"), TEXT("67%"), TEXT("50%") })
+		Add(SNew(SSailChoice).Label(TEXT("Render scale")).Options({ TEXT("Auto"), TEXT("100%"), TEXT("82%"), TEXT("67%"), TEXT("50%") })
 			.Index_Lambda([S, IndexOf]() { return IndexOf(Scales, S->ResolutionScale); })
 			.OnChanged_Lambda([S, GM](int32 I) { S->ResolutionScale = Scales[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
 			.Note(TEXT("Auto is the tier's own: 67% with TAA on Medium, native on High with the governor stepping to 82% in heavy views.")));
@@ -1198,8 +1234,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Index_Lambda([S]() { return S->bCinematicLook ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bCinematicLook = I == 1; S->Save(); })
 			.Note(TEXT("Cinematic: a photographic grade (warm highlights, cool shadows), wider bloom and sun glitter. Photo mode always uses it.")));
-		Help = TEXT("Measured on the packaged build, slowest view (docs/graphics-3/bench.csv): Medium 71.6 fps, High 45.3 fps on the M5 Pro. "
-			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor (RTX 4090 PC).\n\nA fixed resolution turns High's governor off.");
+		Help = TEXT("Quality is a preset: choosing a tier sets every row on Auto to that tier's own. Change a row to override it.\n\n"
+			"Measured on the packaged build, slowest view (docs/graphics-3/bench.csv): Medium 71.6 fps, High 45.3 fps on the M5 Pro. "
+			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor (RTX 4090 PC).\n\nRender scale draws the world "
+			"at a share of the screen's resolution and upscales it; a fixed scale turns High's governor off.");
 		break;
 	}
 	case 1:
@@ -1220,6 +1258,38 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 				G->ApplyResolutionSettings(false);
 				G->SaveSettings();
 			}));
+		// Bean's playtest: the screen's own resolutions (the monitor's list, largest first), not only the render scale.
+		TArray<FIntPoint> Modes;
+		UKismetSystemLibrary::GetSupportedFullscreenResolutions(Modes);
+		Modes.Sort([](const FIntPoint& A, const FIntPoint& B) { return A.X * A.Y > B.X * B.Y; });
+		if (G && !Modes.Contains(G->GetScreenResolution())) Modes.Insert(G->GetScreenResolution(), 0);
+		if (Modes.Num() > 0)
+		{
+			TArray<FString> Names;
+			for (const FIntPoint& M : Modes) Names.Add(FString::Printf(TEXT("%d x %d"), M.X, M.Y));
+			Add(SNew(SSailChoice).Label(TEXT("Resolution")).Options(Names)
+				.Index_Lambda([G, Modes]() { return G ? FMath::Max(Modes.IndexOfByKey(G->GetScreenResolution()), 0) : 0; })
+				.OnChanged_Lambda([G, Modes](int32 I)
+				{
+					if (!G || !Modes.IsValidIndex(I)) return;
+					G->SetScreenResolution(Modes[I]);
+					G->ApplyResolutionSettings(false);
+					G->SaveSettings();
+				})
+				.Note(TEXT("Borderless takes the desktop's; Windowed and Fullscreen use this.")));
+		}
+		Add(SNew(SSailChoice).Label(TEXT("V-sync")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bVSync ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bVSync = I == 1; S->Save(); S->ApplyDisplay(); })
+			.Note(TEXT("On: no tearing, the frame rate held to the display's refresh.")));
+		Add(SNew(SSailSlider).Label(TEXT("Field of view")).Min(60.f).Max(120.f).Step(5.f)
+			.Value_Lambda([S]() { return S->FieldOfView > 0 ? float(S->FieldOfView) : 90.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d°"), S->FieldOfView > 0 ? S->FieldOfView : 90); })
+			.OnChanged_Lambda([S](float V) { S->FieldOfView = FMath::RoundToInt32(V) == 90 ? 0 : FMath::RoundToInt32(V); S->Save(); }));
+		Add(SNew(SSailSlider).Label(TEXT("Brightness")).Min(50.f).Max(150.f).Step(5.f)
+			.Value_Lambda([S]() { return float(S->Brightness); })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), S->Brightness); })
+			.OnChanged_Lambda([S](float V) { S->Brightness = FMath::RoundToInt32(V); S->Save(); }));
 		Add(SNew(SSailChoice).Label(TEXT("HUD")).Options({ TEXT("Full"), TEXT("Minimal"), TEXT("Off") })
 			.Index_Lambda([S]() { return S->bShowHud ? FMath::Clamp(SSailHud::Mode, 0, 2) : 2; })
 			.OnChanged_Lambda([S](int32 I) { S->bShowHud = true; SSailHud::Mode = I; S->Save(); })

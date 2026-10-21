@@ -127,6 +127,40 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Graphics")
 	bool bCinematicLook = false;
 
+	// Bean's playtest (Oct 20): the Display and Graphics page. Each row is -1 (Auto: the Quality tier's own, so the tiers are
+	// presets that fill them in) or an override; benches and captures ignore them all (IsMeasuring).
+	/** Anti-aliasing: -1 Auto, 0 off, 2 TAA, 4 TSR, 5 SMAA (r.AntiAliasingMethod); with NVIDIA's DLSS plugin on an NVIDIA
+	 *  GPU (DLSSAvailable) also 10 DLAA, 11 DLSS Quality, 12 Balanced, 13 Performance (their own render scale). */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 AntiAliasing = -1;
+	/** Per-feature detail, -1 Auto or an ESailingQuality (0 Low .. 3 Ultra): the engine's scalability group, or ours. */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 ShadowQuality = -1;
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 LightingQuality = -1;
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 ReflectionQuality = -1;
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 CloudQuality = -1;
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 WaterQuality = -1;
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 FoliageQuality = -1;
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 ViewDistanceQuality = -1;
+	/** Motion blur: -1 Auto (the tier's camera look), 0 off, 1 on. */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	int32 MotionBlur = -1;
+	/** Wait for the display's refresh (r.VSync). */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	bool bVSync = false;
+	/** The chase camera's horizontal field of view, degrees; 0 = the game's 90 (the cockpit view takes 10 less). */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	int32 FieldOfView = 0;
+	/** Brightness, percent (50..150): an exposure bias of log2(Brightness / 100) stops on the metered exposure. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	int32 Brightness = 100;
+
 	/** HUD scale around its anchors, percent (85..130). */
 	UPROPERTY(config, EditAnywhere, Category = "Display")
 	int32 HudScale = 100;
@@ -184,6 +218,19 @@ public:
 	static int32 MatchBoatName(const FString& Prefix);
 	/** The player's fixed resolution percentage, or 0 (the tier's own; always 0 when measuring). */
 	int32 FixedResolutionScale() const { return IsMeasuring() ? 0 : ResolutionScale; }
+	/** A Graphics row's override as it applies: -1 (the tier's) when measuring or when the row is Auto. */
+	static int32 Override(int32 Row) { return IsMeasuring() ? -1 : Row; }
+	/** The chase camera's field of view (degrees), and the exposure bias the Brightness row adds (stops). */
+	float ChaseFov() const { return IsMeasuring() || FieldOfView <= 0 ? 90.f : float(FMath::Clamp(FieldOfView, 60, 120)); }
+	float BrightnessBias() const { return IsMeasuring() ? 0.f : FMath::Log2(FMath::Clamp(float(Brightness), 50.f, 150.f) / 100.f); }
+	/** Choosing a Quality tier makes it the preset again: every Graphics row back to Auto. */
+	void ResetGraphicsRows();
+	/** NVIDIA DLSS can run: the optional plugin is installed (its r.NGX.DLSS.Enable exists) and the GPU is NVIDIA's. */
+	static bool DLSSAvailable();
+	/** The DLSS mode in force (10..13), or -1: none chosen, measuring, or DLSS not available here (another GPU, the Mac). */
+	int32 DLSSMode() const { const int32 A = Override(AntiAliasing); return A >= 10 && A <= 13 && DLSSAvailable() ? A : -1; }
+	/** A DLSS mode's render scale, percent: DLAA native, Quality 67, Balanced 58, Performance 50. */
+	static float DLSSScreenPercentage(int32 Mode) { return Mode == 10 ? 100.f : (Mode == 11 ? 66.7f : (Mode == 12 ? 58.f : 50.f)); }
 
 	/**
 	 * Easy mode's assists are on (Sailing::FEasyAssists, docs/easy-mode/README.md): -SailingEasy=0|1 decides; otherwise the

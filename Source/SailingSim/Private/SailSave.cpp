@@ -192,6 +192,20 @@ FString FSailSave::ToJson() const
 	Display->SetNumberField(TEXT("resolutionScale"), S.ResolutionScale);
 	Display->SetNumberField(TEXT("frameCap"), S.FrameCap);
 	Display->SetBoolField(TEXT("cinematicLook"), S.bCinematicLook);
+	TSharedRef<FJsonObject> Graphics = Obj();
+	Graphics->SetNumberField(TEXT("antiAliasing"), S.AntiAliasing);
+	Graphics->SetNumberField(TEXT("shadowQuality"), S.ShadowQuality);
+	Graphics->SetNumberField(TEXT("lightingQuality"), S.LightingQuality);
+	Graphics->SetNumberField(TEXT("reflectionQuality"), S.ReflectionQuality);
+	Graphics->SetNumberField(TEXT("cloudQuality"), S.CloudQuality);
+	Graphics->SetNumberField(TEXT("waterQuality"), S.WaterQuality);
+	Graphics->SetNumberField(TEXT("foliageQuality"), S.FoliageQuality);
+	Graphics->SetNumberField(TEXT("viewDistanceQuality"), S.ViewDistanceQuality);
+	Graphics->SetNumberField(TEXT("motionBlur"), S.MotionBlur);
+	Graphics->SetNumberField(TEXT("fieldOfView"), S.FieldOfView);
+	Graphics->SetNumberField(TEXT("brightness"), S.Brightness);
+	Graphics->SetBoolField(TEXT("vsync"), S.bVSync);
+	Set->SetObjectField(TEXT("graphics"), Graphics);
 	Display->SetNumberField(TEXT("hudScale"), S.HudScale);
 	Display->SetNumberField(TEXT("textScale"), S.TextScale);
 	Display->SetStringField(TEXT("speedUnits"), S.SpeedUnits);
@@ -393,6 +407,21 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Set, TEXT("trimAssist"), S.bTrimAssist);
 		Read(*Set, TEXT("showHud"), S.bShowHud);
 		if (const TSharedPtr<FJsonObject> A = Child(*Set, TEXT("audio"))) Read(*A, TEXT("volume"), S.Volume);
+		if (const TSharedPtr<FJsonObject> G = Child(*Set, TEXT("graphics")))
+		{
+			Read(*G, TEXT("antiAliasing"), S.AntiAliasing);
+			Read(*G, TEXT("shadowQuality"), S.ShadowQuality);
+			Read(*G, TEXT("lightingQuality"), S.LightingQuality);
+			Read(*G, TEXT("reflectionQuality"), S.ReflectionQuality);
+			Read(*G, TEXT("cloudQuality"), S.CloudQuality);
+			Read(*G, TEXT("waterQuality"), S.WaterQuality);
+			Read(*G, TEXT("foliageQuality"), S.FoliageQuality);
+			Read(*G, TEXT("viewDistanceQuality"), S.ViewDistanceQuality);
+			Read(*G, TEXT("motionBlur"), S.MotionBlur);
+			Read(*G, TEXT("fieldOfView"), S.FieldOfView);
+			Read(*G, TEXT("brightness"), S.Brightness);
+			Read(*G, TEXT("vsync"), S.bVSync);
+		}
 		if (const TSharedPtr<FJsonObject> D = Child(*Set, TEXT("display")))
 		{
 			Read(*D, TEXT("resolutionScale"), S.ResolutionScale);
@@ -580,6 +609,18 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.ResolutionScale = In.ResolutionScale;
 	S.FrameCap = In.FrameCap;
 	S.bCinematicLook = In.bCinematicLook;
+	S.AntiAliasing = In.AntiAliasing;
+ 	S.ShadowQuality = In.ShadowQuality;
+ 	S.LightingQuality = In.LightingQuality;
+ 	S.ReflectionQuality = In.ReflectionQuality;
+ 	S.CloudQuality = In.CloudQuality;
+ 	S.WaterQuality = In.WaterQuality;
+ 	S.FoliageQuality = In.FoliageQuality;
+ 	S.ViewDistanceQuality = In.ViewDistanceQuality;
+ 	S.MotionBlur = In.MotionBlur;
+ 	S.FieldOfView = In.FieldOfView;
+ 	S.Brightness = In.Brightness;
+ 	S.bVSync = In.bVSync;
 	S.HudScale = In.HudScale;
 	S.TextScale = In.TextScale;
 	S.SpeedUnits = SpeedIds[FMath::Clamp(In.SpeedUnits, 0, 2)];
@@ -646,6 +687,18 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.ResolutionScale = S.ResolutionScale;
 	Out.FrameCap = S.FrameCap;
 	Out.bCinematicLook = S.bCinematicLook;
+	Out.AntiAliasing = S.AntiAliasing;
+ 	Out.ShadowQuality = S.ShadowQuality;
+ 	Out.LightingQuality = S.LightingQuality;
+ 	Out.ReflectionQuality = S.ReflectionQuality;
+ 	Out.CloudQuality = S.CloudQuality;
+ 	Out.WaterQuality = S.WaterQuality;
+ 	Out.FoliageQuality = S.FoliageQuality;
+ 	Out.ViewDistanceQuality = S.ViewDistanceQuality;
+ 	Out.MotionBlur = S.MotionBlur;
+ 	Out.FieldOfView = S.FieldOfView;
+ 	Out.Brightness = S.Brightness;
+ 	Out.bVSync = S.bVSync;
 	Out.HudScale = S.HudScale;
 	Out.TextScale = S.TextScale;
 	Out.SpeedUnits = FMath::Max(IndexOf(SpeedIds, 3, S.SpeedUnits), 0);
