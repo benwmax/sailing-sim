@@ -257,7 +257,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   Jacobian < `FoamThreshold` 0.6 (`SailingSim.Visual.Whitecaps` against Monahan). `FWakeGrid` (`WakeGrid.h`) solves the
   wave equation spectrally on a worker with each hull as a pressure patch (a truncated iWave kernel gives the wrong
   dispersion). Water bodies' albedo and extinction are in `WaterBodyFor`; the shore depth map is rebuilt on a worker;
-  spray (High) is CPU droplets in an ISM. The terrain doesn't mesh the bed deeper than the water lets you see
+  spray (High) is CPU droplets in an ISM of camera-facing quads (`M_Spray`: drops, sheets, mist by per-instance data;
+  `-SailingDebugSpray`, `docs/spray/`); `M_WaterV4` also draws the player's waterline foam and transom churn from `FHullClipMap`. The terrain doesn't mesh the bed deeper than the water lets you see
   (`ALakeTerrainActor::HideBelow`): drawn behind SLW it cost 6 fps on High in shading and shadow pages.
   Measuring args: `-SailingClassicWater`, `-SailingWaterRings=N`; bench.json has `water_cpu_ms`.
 - Sky (Visual V5): `FCloudSky` (`CloudSky.h`, in `FWeatherState::Sky`) holds the cloud layers per preset (cumulus,
