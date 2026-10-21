@@ -1,0 +1,2192 @@
+{
+ "ShackleD": {
+  "category": "fastener",
+  "note": "5 mm stainless D-shackle, pin along Y, bow up",
+  "tris": 776,
+  "size_m": [
+   0.0095,
+   0.0255,
+   0.0292
+  ],
+  "min_m": [
+   -0.0047,
+   -0.0145,
+   -0.0047
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Bow": [
+    0.0,
+    0.0,
+    0.022
+   ],
+   "Pin": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 194,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Bow",
+    "Pin"
+   ]
+  },
+  "sizes": {
+   "dim": "pin diameter mm",
+   "default": "5",
+   "scale": {
+    "4": 0.8,
+    "5": 1.0,
+    "6": 1.2,
+    "8": 1.6,
+    "10": 2.0
+   }
+  }
+ },
+ "Padeye": {
+  "category": "fastener",
+  "note": "Stainless U-bolt padeye on a 50 x 30 mm backing plate",
+  "tris": 1060,
+  "size_m": [
+   0.0494,
+   0.0296,
+   0.0334
+  ],
+  "min_m": [
+   -0.0247,
+   -0.0148,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Eye": [
+    0.0,
+    0.0,
+    0.03
+   ]
+  },
+  "light": {
+   "tris": 264,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Eye"
+   ]
+  },
+  "sizes": {
+   "dim": "plate length mm",
+   "default": "50",
+   "scale": {
+    "40": 0.8,
+    "50": 1.0,
+    "65": 1.3
+   }
+  }
+ },
+ "HornCleat": {
+  "category": "cleat",
+  "note": "Cast aluminium horn cleat, 150 mm, two bolts",
+  "tris": 1584,
+  "size_m": [
+   0.1538,
+   0.0291,
+   0.0416
+  ],
+  "min_m": [
+   -0.0769,
+   -0.0146,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "HornAft": [
+    -0.075,
+    0.0,
+    0.0205
+   ],
+   "HornFwd": [
+    0.075,
+    0.0,
+    0.0205
+   ],
+   "Wrap": [
+    0.0,
+    0.0,
+    0.0297
+   ]
+  },
+  "light": {
+   "tris": 396,
+   "slots": [
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "HornAft",
+    "HornFwd",
+    "Wrap"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "150",
+   "kw": {
+    "100": {
+     "length": 0.1
+    },
+    "150": {
+     "length": 0.15
+    },
+    "200": {
+     "length": 0.2
+    },
+    "250": {
+     "length": 0.25
+    }
+   }
+  }
+ },
+ "CamCleat": {
+  "category": "cleat",
+  "note": "Aluminium cam cleat, 75 mm, two toothed cams on a base with a fairlead",
+  "tris": 4976,
+  "size_m": [
+   0.0744,
+   0.0528,
+   0.0225
+  ],
+  "min_m": [
+   -0.0372,
+   -0.0264,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "Lead": [
+    -0.0375,
+    0.0,
+    0.012
+   ],
+   "Line": [
+    0.004,
+    0.0,
+    0.014
+   ]
+  },
+  "light": {
+   "tris": 1244,
+   "slots": [
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "Lead",
+    "Line"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "75",
+   "scale": {
+    "38": 0.51,
+    "75": 1.0,
+    "102": 1.36
+   }
+  }
+ },
+ "CamRiser": {
+  "category": "cleat",
+  "note": "Angled riser wedge under a cam cleat, 20 degrees",
+  "tris": 444,
+  "size_m": [
+   0.08,
+   0.05,
+   0.0347
+  ],
+  "min_m": [
+   -0.04,
+   -0.025,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Top": [
+    0.0,
+    0.0,
+    0.0206
+   ]
+  },
+  "light": {
+   "tris": 160,
+   "slots": [
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Top"
+   ]
+  },
+  "sizes": null
+ },
+ "Fairlead": {
+  "category": "lead",
+  "note": "Moulded bullseye fairlead, 32 mm, for sheets and control lines",
+  "tris": 1548,
+  "size_m": [
+   0.032,
+   0.032,
+   0.0128
+  ],
+  "min_m": [
+   -0.016,
+   -0.016,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Line": [
+    0.0,
+    0.0,
+    0.008
+   ]
+  },
+  "light": {
+   "tris": 386,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Line"
+   ]
+  },
+  "sizes": {
+   "dim": "outside diameter mm",
+   "default": "32",
+   "scale": {
+    "25": 0.78,
+    "32": 1.0,
+    "44": 1.375
+   }
+  }
+ },
+ "Block29": {
+  "category": "block",
+  "note": "29 mm single block with swivel, sheets and control lines",
+  "tris": 2640,
+  "size_m": [
+   0.041,
+   0.0539,
+   0.055
+  ],
+  "min_m": [
+   -0.0205,
+   -0.0269,
+   -0.055
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Axle": [
+    0.0,
+    0.0,
+    -0.0305
+   ],
+   "Head": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "LineIn": [
+    0.0145,
+    0.0,
+    -0.0305
+   ],
+   "LineOut": [
+    -0.0145,
+    0.0,
+    -0.0305
+   ]
+  },
+  "light": {
+   "tris": 660,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Axle",
+    "Head",
+    "LineIn",
+    "LineOut"
+   ]
+  },
+  "sizes": {
+   "dim": "sheave mm",
+   "default": "29",
+   "scale": {
+    "22": 0.76,
+    "29": 1.0
+   }
+  }
+ },
+ "Block40": {
+  "category": "block",
+  "note": "40 mm single block with swivel and becket",
+  "tris": 2896,
+  "size_m": [
+   0.052,
+   0.0646,
+   0.0767
+  ],
+  "min_m": [
+   -0.026,
+   -0.0323,
+   -0.0767
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Axle": [
+    0.0,
+    0.0,
+    -0.036
+   ],
+   "Becket": [
+    0.0,
+    0.0,
+    -0.075
+   ],
+   "Head": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "LineIn": [
+    0.02,
+    0.0,
+    -0.036
+   ],
+   "LineOut": [
+    -0.02,
+    0.0,
+    -0.036
+   ]
+  },
+  "light": {
+   "tris": 724,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Axle",
+    "Becket",
+    "Head",
+    "LineIn",
+    "LineOut"
+   ]
+  },
+  "sizes": {
+   "dim": "sheave mm",
+   "default": "40",
+   "scale": {
+    "40": 1.0,
+    "57": 1.425
+   }
+  }
+ },
+ "Ratchet57": {
+  "category": "block",
+  "note": "57 mm ratchet block for the jib sheet or mainsheet",
+  "tris": 2640,
+  "size_m": [
+   0.069,
+   0.0813,
+   0.083
+  ],
+  "min_m": [
+   -0.0345,
+   -0.0406,
+   -0.083
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Rubrail",
+   "Stainless"
+  ],
+  "sockets": {
+   "Axle": [
+    0.0,
+    0.0,
+    -0.0445
+   ],
+   "Head": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "LineIn": [
+    0.0285,
+    0.0,
+    -0.0445
+   ],
+   "LineOut": [
+    -0.0285,
+    0.0,
+    -0.0445
+   ]
+  },
+  "light": {
+   "tris": 660,
+   "slots": [
+    "BlackPlastic",
+    "Rubrail",
+    "Stainless"
+   ],
+   "sockets": [
+    "Axle",
+    "Head",
+    "LineIn",
+    "LineOut"
+   ]
+  },
+  "sizes": {
+   "dim": "sheave mm",
+   "default": "57",
+   "scale": {
+    "57": 1.0,
+    "75": 1.316
+   }
+  }
+ },
+ "FiddleCam": {
+  "category": "block",
+  "note": "40 mm fiddle block with a cam cleat arm: the mainsheet's bottom block",
+  "tris": 4028,
+  "size_m": [
+   0.056,
+   0.065,
+   0.0767
+  ],
+  "min_m": [
+   -0.026,
+   -0.0325,
+   -0.0767
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless",
+   "Aluminium"
+  ],
+  "sockets": {
+   "Axle": [
+    0.0,
+    0.0,
+    -0.036
+   ],
+   "Becket": [
+    0.0,
+    0.0,
+    -0.075
+   ],
+   "Head": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "LineIn": [
+    0.02,
+    0.0,
+    -0.036
+   ],
+   "LineOut": [
+    -0.02,
+    0.0,
+    -0.036
+   ]
+  },
+  "light": {
+   "tris": 1006,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "Aluminium"
+   ],
+   "sockets": [
+    "Axle",
+    "Becket",
+    "Head",
+    "LineIn",
+    "LineOut"
+   ]
+  },
+  "sizes": null
+ },
+ "Winch16": {
+  "category": "winch",
+  "note": "Two-speed self-tailing-free winch, size 16: base flange, drum with grip band, top cap",
+  "tris": 5044,
+  "size_m": [
+   0.12,
+   0.12,
+   0.097
+  ],
+  "min_m": [
+   -0.06,
+   -0.06,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "Drum": [
+    0.0,
+    0.032,
+    0.05
+   ],
+   "Handle": [
+    0.0,
+    0.0,
+    0.097
+   ],
+   "Tail": [
+    0.0,
+    -0.034,
+    0.075
+   ]
+  },
+  "light": {
+   "tris": 1260,
+   "slots": [
+    "BlackPlastic",
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "Drum",
+    "Handle",
+    "Tail"
+   ]
+  },
+  "sizes": {
+   "dim": "winch size (base diameter 102 / 120 / 130 / 152 / 175 mm)",
+   "default": "16",
+   "scale": {
+    "8": 0.85,
+    "16": 1.0,
+    "20": 1.083,
+    "30": 1.267,
+    "40": 1.458
+   }
+  }
+ },
+ "WinchHandle": {
+  "category": "winch",
+  "note": "8 in lock-in winch handle with a single grip",
+  "tris": 1724,
+  "size_m": [
+   0.2147,
+   0.032,
+   0.138
+  ],
+  "min_m": [
+   -0.0137,
+   -0.016,
+   -0.03
+  ],
+  "slots": [
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Drive": [
+    0.0,
+    0.0,
+    -0.03
+   ],
+   "Grip": [
+    0.185,
+    0.0,
+    0.06
+   ]
+  },
+  "light": {
+   "tris": 430,
+   "slots": [
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Drive",
+    "Grip"
+   ]
+  },
+  "sizes": null
+ },
+ "HandlePocket": {
+  "category": "winch",
+  "note": "Moulded winch-handle pocket for a cockpit side",
+  "tris": 840,
+  "size_m": [
+   0.0742,
+   0.2979,
+   0.0475
+  ],
+  "min_m": [
+   -0.0371,
+   -0.149,
+   -0.04
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Mouth": [
+    0.0,
+    0.0,
+    0.006
+   ]
+  },
+  "light": {
+   "tris": 210,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Mouth"
+   ]
+  },
+  "sizes": null
+ },
+ "JibTrack": {
+  "category": "track",
+  "note": "T-track 25 mm with a jib lead car (sheave, plunger stop); length option",
+  "tris": 2396,
+  "size_m": [
+   0.6,
+   0.0394,
+   0.064
+  ],
+  "min_m": [
+   -0.3,
+   -0.0197,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "CarFwd": [
+    0.045,
+    0.0,
+    0.026
+   ],
+   "Sheave": [
+    0.01,
+    0.0,
+    0.045
+   ],
+   "TrackEnd": [
+    0.3,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 598,
+   "slots": [
+    "Aluminium",
+    "Stainless",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "CarFwd",
+    "Sheave",
+    "TrackEnd"
+   ]
+  },
+  "sizes": {
+   "dim": "track length mm",
+   "default": "600",
+   "kw": {
+    "450": {
+     "length": 0.45
+    },
+    "600": {
+     "length": 0.6
+    },
+    "900": {
+     "length": 0.9
+    }
+   }
+  }
+ },
+ "Traveler": {
+  "category": "track",
+  "note": "Mainsheet traveler: track, car with two control sheaves, end stops; length option",
+  "tris": 3480,
+  "size_m": [
+   0.9,
+   0.0495,
+   0.0429
+  ],
+  "min_m": [
+   -0.45,
+   -0.0248,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Car": [
+    0.0,
+    0.0,
+    0.04
+   ],
+   "EndP": [
+    -0.45,
+    0.0,
+    0.02
+   ],
+   "EndS": [
+    0.45,
+    0.0,
+    0.02
+   ]
+  },
+  "light": {
+   "tris": 870,
+   "slots": [
+    "Aluminium",
+    "Stainless",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Car",
+    "EndP",
+    "EndS"
+   ]
+  },
+  "sizes": {
+   "dim": "track length mm",
+   "default": "900",
+   "kw": {
+    "600": {
+     "length": 0.6
+    },
+    "900": {
+     "length": 0.9
+    },
+    "1500": {
+     "length": 1.5
+    }
+   }
+  }
+ },
+ "Winch70": {
+  "category": "winch",
+  "note": "Large two-speed self-tailing winch (about 70 size): flanged base, ribbed drum, self-tailer jaws and stripper arm, top cap; scale option",
+  "tris": 9228,
+  "size_m": [
+   0.33,
+   0.33,
+   0.284
+  ],
+  "min_m": [
+   -0.165,
+   -0.165,
+   0.0
+  ],
+  "slots": [
+   "CarbonMatte",
+   "Aluminium",
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Drum": [
+    0.0,
+    0.098,
+    0.13
+   ],
+   "Grinder": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Handle": [
+    0.0,
+    0.0,
+    0.284
+   ],
+   "Tail": [
+    0.15,
+    0.0,
+    0.244
+   ]
+  },
+  "light": {
+   "tris": 2306,
+   "slots": [
+    "CarbonMatte",
+    "Aluminium",
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Drum",
+    "Grinder",
+    "Handle",
+    "Tail"
+   ]
+  },
+  "sizes": {
+   "dim": "winch size",
+   "default": "70",
+   "kw": {
+    "50": {
+     "scale": 0.85
+    },
+    "70": {
+     "scale": 1.0
+    }
+   }
+  }
+ },
+ "GrinderPedestal": {
+  "category": "winch",
+  "note": "Coffee-grinder pedestal: tapered carbon column on a foot plate, a gearbox head and two crank arms with folding grips",
+  "tris": 3756,
+  "size_m": [
+   0.5372,
+   0.66,
+   1.0404
+  ],
+  "min_m": [
+   -0.2686,
+   -0.33,
+   0.0
+  ],
+  "slots": [
+   "CarbonMatte",
+   "Carbon",
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "CrankP": [
+    0.0,
+    -0.19,
+    0.85
+   ],
+   "CrankS": [
+    0.0,
+    0.19,
+    0.85
+   ],
+   "Drive": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Stance": [
+    -0.45,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 938,
+   "slots": [
+    "CarbonMatte",
+    "Carbon",
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "CrankP",
+    "CrankS",
+    "Drive",
+    "Stance"
+   ]
+  },
+  "sizes": null
+ },
+ "SteeringWheel": {
+  "category": "steering",
+  "note": "Carbon wheel on a binnacle pedestal: thin rim with a grip wrap, five spokes, hub, binnacle with an instrument pod; diameter option",
+  "tris": 5232,
+  "size_m": [
+   0.354,
+   1.9975,
+   1.994
+  ],
+  "min_m": [
+   -0.2045,
+   -1.0005,
+   -0.157
+  ],
+  "slots": [
+   "Carbon",
+   "CarbonMatte",
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Axle": [
+    -0.18,
+    0.0,
+    0.84
+   ],
+   "GripP": [
+    -0.18,
+    -0.975,
+    0.84
+   ],
+   "GripS": [
+    -0.18,
+    0.975,
+    0.84
+   ],
+   "GripTop": [
+    -0.18,
+    0.0,
+    1.815
+   ],
+   "Stance": [
+    -0.75,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 1308,
+   "slots": [
+    "Carbon",
+    "CarbonMatte",
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Axle",
+    "GripP",
+    "GripS",
+    "GripTop",
+    "Stance"
+   ]
+  },
+  "sizes": null
+ },
+ "ClutchBank": {
+  "category": "rope",
+  "note": "A bank of rope clutches on a moulded base, handles closed; count option",
+  "tris": 5004,
+  "size_m": [
+   0.1986,
+   0.3161,
+   0.0786
+  ],
+  "min_m": [
+   -0.0993,
+   -0.158,
+   0.0
+  ],
+  "slots": [
+   "CarbonMatte",
+   "BlackPlastic",
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "Line0": [
+    0.09,
+    -0.108,
+    0.04
+   ],
+   "Line1": [
+    0.09,
+    -0.036,
+    0.04
+   ],
+   "Line2": [
+    0.09,
+    0.036,
+    0.04
+   ],
+   "Line3": [
+    0.09,
+    0.108,
+    0.04
+   ]
+  },
+  "light": {
+   "tris": 1250,
+   "slots": [
+    "CarbonMatte",
+    "BlackPlastic",
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "Line0",
+    "Line1",
+    "Line2",
+    "Line3"
+   ]
+  },
+  "sizes": null
+ },
+ "TravellerHeavy": {
+  "category": "track",
+  "note": "Big-boat mainsheet traveller: wide low track, ball-bearing car with a sheave pair, end controls; length option",
+  "tris": 6544,
+  "size_m": [
+   4.4,
+   0.1193,
+   0.155
+  ],
+  "min_m": [
+   -2.2,
+   -0.0597,
+   0.0
+  ],
+  "slots": [
+   "CarbonMatte",
+   "Stainless",
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Car": [
+    0.0,
+    0.0,
+    0.12
+   ],
+   "EndP": [
+    -2.2,
+    0.0,
+    0.04
+   ],
+   "EndS": [
+    2.2,
+    0.0,
+    0.04
+   ]
+  },
+  "light": {
+   "tris": 1636,
+   "slots": [
+    "CarbonMatte",
+    "Stainless",
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Car",
+    "EndP",
+    "EndS"
+   ]
+  },
+  "sizes": null
+ },
+ "GenoaTrackHeavy": {
+  "category": "track",
+  "note": "Big-boat genoa track with an adjustable lead car (large sheave); length option",
+  "tris": 4948,
+  "size_m": [
+   4.8,
+   0.0689,
+   0.17
+  ],
+  "min_m": [
+   -2.4,
+   -0.0344,
+   0.0
+  ],
+  "slots": [
+   "CarbonMatte",
+   "Stainless",
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Sheave": [
+    0.03,
+    0.0,
+    0.11
+   ],
+   "TrackEnd": [
+    2.4,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 1236,
+   "slots": [
+    "CarbonMatte",
+    "Stainless",
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Sheave",
+    "TrackEnd"
+   ]
+  },
+  "sizes": null
+ },
+ "Chainplate": {
+  "category": "rig",
+  "note": "Stainless chainplate strap through a deck cover plate, with clevis and split ring",
+  "tris": 1000,
+  "size_m": [
+   0.0692,
+   0.0256,
+   0.045
+  ],
+  "min_m": [
+   -0.0346,
+   -0.0128,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Pin": [
+    0.0,
+    0.0,
+    0.035
+   ]
+  },
+  "light": {
+   "tris": 250,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Pin"
+   ]
+  },
+  "sizes": {
+   "dim": "wire mm",
+   "default": "5",
+   "scale": {
+    "4": 0.85,
+    "5": 1.0,
+    "6": 1.15
+   }
+  }
+ },
+ "Stemhead": {
+  "category": "rig",
+  "note": "Bow stem fitting with forestay tang, tack shackle hole and bow roller cheeks",
+  "tris": 1072,
+  "size_m": [
+   0.1694,
+   0.0439,
+   0.0786
+  ],
+  "min_m": [
+   -0.1,
+   -0.0219,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Forestay": [
+    0.03,
+    0.0,
+    0.06
+   ],
+   "Tack": [
+    0.012,
+    0.0,
+    0.035
+   ]
+  },
+  "light": {
+   "tris": 268,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Forestay",
+    "Tack"
+   ]
+  },
+  "sizes": null
+ },
+ "MastStep": {
+  "category": "rig",
+  "note": "Deck-stepped mast base: cast plate with a hinge pin and halyard turning blocks",
+  "tris": 2008,
+  "size_m": [
+   0.2183,
+   0.1287,
+   0.06
+  ],
+  "min_m": [
+   -0.1091,
+   -0.0644,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "Mast": [
+    0.0,
+    0.0,
+    0.06
+   ],
+   "TurnP": [
+    -0.09,
+    -0.045,
+    0.02
+   ],
+   "TurnS": [
+    -0.09,
+    0.045,
+    0.02
+   ]
+  },
+  "light": {
+   "tris": 502,
+   "slots": [
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "Mast",
+    "TurnP",
+    "TurnS"
+   ]
+  },
+  "sizes": null
+ },
+ "HatchFwd": {
+  "category": "hatch",
+  "note": "Low-profile acrylic deck hatch, 500 x 500 mm: frame, smoked lid, hinges, two handles",
+  "tris": 3024,
+  "size_m": [
+   0.5044,
+   0.4988,
+   0.0461
+  ],
+  "min_m": [
+   -0.255,
+   -0.2494,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "CabinWindow",
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "HandleP": [
+    0.2,
+    -0.125,
+    0.04
+   ],
+   "HandleS": [
+    0.2,
+    0.125,
+    0.04
+   ],
+   "Hinge": [
+    -0.25,
+    0.0,
+    0.02
+   ]
+  },
+  "light": {
+   "tris": 756,
+   "slots": [
+    "Aluminium",
+    "CabinWindow",
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "HandleP",
+    "HandleS",
+    "Hinge"
+   ]
+  },
+  "sizes": null
+ },
+ "Portlight": {
+  "category": "hatch",
+  "note": "Fixed portlight: smoked acrylic in a moulded rim with screws; length option",
+  "tris": 1752,
+  "size_m": [
+   0.4482,
+   0.1093,
+   0.007
+  ],
+  "min_m": [
+   -0.2241,
+   -0.0547,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "CabinWindow",
+   "Stainless"
+  ],
+  "sockets": {},
+  "light": {
+   "tris": 438,
+   "slots": [
+    "BlackPlastic",
+    "CabinWindow",
+    "Stainless"
+   ],
+   "sockets": []
+  },
+  "sizes": null
+ },
+ "VentMushroom": {
+  "category": "hatch",
+  "note": "Low mushroom vent, 110 mm, stainless cap on a moulded base",
+  "tris": 1472,
+  "size_m": [
+   0.11,
+   0.11,
+   0.037
+  ],
+  "min_m": [
+   -0.055,
+   -0.055,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {},
+  "light": {
+   "tris": 368,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": []
+  },
+  "sizes": null
+ },
+ "DeckPlate": {
+  "category": "hatch",
+  "note": "Screw-out inspection deck plate, 100 mm",
+  "tris": 2204,
+  "size_m": [
+   0.104,
+   0.104,
+   0.0135
+  ],
+  "min_m": [
+   -0.052,
+   -0.052,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic"
+  ],
+  "sockets": {},
+  "light": {
+   "tris": 550,
+   "slots": [
+    "BlackPlastic"
+   ],
+   "sockets": []
+  },
+  "sizes": null
+ },
+ "HandrailTeak": {
+  "category": "trim",
+  "note": "Teak cabin-top handrail with N loops; length option",
+  "tris": 2744,
+  "size_m": [
+   0.9,
+   0.03,
+   0.0605
+  ],
+  "min_m": [
+   -0.45,
+   -0.015,
+   0.0
+  ],
+  "slots": [
+   "Teak"
+  ],
+  "sockets": {
+   "Grip0": [
+    -0.3375,
+    0.0,
+    0.048
+   ],
+   "Grip1": [
+    -0.1125,
+    0.0,
+    0.048
+   ],
+   "Grip2": [
+    0.1125,
+    0.0,
+    0.048
+   ],
+   "Grip3": [
+    0.3375,
+    0.0,
+    0.048
+   ]
+  },
+  "light": {
+   "tris": 686,
+   "slots": [
+    "Teak"
+   ],
+   "sockets": [
+    "Grip0",
+    "Grip1",
+    "Grip2",
+    "Grip3"
+   ]
+  },
+  "sizes": null
+ },
+ "Tiller": {
+  "category": "steering",
+  "note": "Laminated ash tiller, 1.05 m, tapered, with a rudder-head socket and an extension pivot",
+  "tris": 1824,
+  "size_m": [
+   1.1311,
+   0.048,
+   0.164
+  ],
+  "min_m": [
+   -1.0511,
+   -0.024,
+   -0.032
+  ],
+  "slots": [
+   "Wood",
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "ExtPivot": [
+    -1.03,
+    0.0,
+    0.13
+   ],
+   "Hand": [
+    -0.84,
+    0.0,
+    0.09
+   ],
+   "Stock": [
+    0.03,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 456,
+   "slots": [
+    "Wood",
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "ExtPivot",
+    "Hand",
+    "Stock"
+   ]
+  },
+  "sizes": null
+ },
+ "TillerExtension": {
+  "category": "steering",
+  "note": "1.0 m tiller extension: aluminium tube, rubber universal joint, foam grip, end knob",
+  "tris": 1104,
+  "size_m": [
+   1.0151,
+   0.038,
+   0.049
+  ],
+  "min_m": [
+   -0.0151,
+   -0.019,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Grip": [
+    0.8,
+    0.0,
+    0.03
+   ],
+   "Tip": [
+    1.0,
+    0.0,
+    0.03
+   ],
+   "UJ": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 276,
+   "slots": [
+    "Aluminium",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Grip",
+    "Tip",
+    "UJ"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "1000",
+   "kw": {
+    "610": {
+     "length": 0.61
+    },
+    "1000": {
+     "length": 1.0
+    },
+    "1220": {
+     "length": 1.22
+    }
+   }
+  }
+ },
+ "OutboardBracket": {
+  "category": "outboard",
+  "note": "Two-position transom outboard bracket with a spring lift and lock pin",
+  "tris": 2560,
+  "size_m": [
+   0.189,
+   0.26,
+   0.22
+  ],
+  "min_m": [
+   -0.185,
+   -0.13,
+   -0.0
+  ],
+  "slots": [
+   "Stainless",
+   "Teak"
+  ],
+  "sockets": {
+   "Clamp": [
+    -0.17,
+    0.0,
+    0.21
+   ],
+   "Pin": [
+    -0.09,
+    0.11,
+    0.11
+   ]
+  },
+  "light": {
+   "tris": 640,
+   "slots": [
+    "Stainless",
+    "Teak"
+   ],
+   "sockets": [
+    "Clamp",
+    "Pin"
+   ]
+  },
+  "sizes": null
+ },
+ "Outboard35": {
+  "category": "outboard",
+  "note": "Generic 3.5 hp four-stroke outboard (brand-free): cowl, midsection, leg, skeg, 3-blade prop, tiller arm",
+  "tris": 3456,
+  "size_m": [
+   0.7708,
+   0.2975,
+   0.9345
+  ],
+  "min_m": [
+   -0.552,
+   -0.1488,
+   -0.0295
+  ],
+  "slots": [
+   "Deck",
+   "BlackPlastic",
+   "Aluminium"
+  ],
+  "sockets": {
+   "Clamp": [
+    0.12,
+    0.0,
+    0.69
+   ],
+   "Pivot": [
+    0.12,
+    0.0,
+    0.62
+   ],
+   "Prop": [
+    -0.15,
+    0.0,
+    0.11
+   ],
+   "TillerArm": [
+    -0.55,
+    0.0,
+    0.72
+   ]
+  },
+  "light": {
+   "tris": 864,
+   "slots": [
+    "Deck",
+    "BlackPlastic",
+    "Aluminium"
+   ],
+   "sockets": [
+    "Clamp",
+    "Pivot",
+    "Prop",
+    "TillerArm"
+   ]
+  },
+  "sizes": null
+ },
+ "Gudgeon": {
+  "category": "steering",
+  "note": "Transom-hung rudder gudgeon (cast strap with a bushed eye)",
+  "tris": 916,
+  "size_m": [
+   0.14,
+   0.045,
+   0.032
+  ],
+  "min_m": [
+   -0.1,
+   -0.0225,
+   -0.016
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Pin": [
+    0.026,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 228,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Pin"
+   ]
+  },
+  "sizes": null
+ },
+ "BowEye": {
+  "category": "hull",
+  "note": "Stainless U-bolt bow eye on the stem below the sheer, for the trailer winch",
+  "tris": 916,
+  "size_m": [
+   0.04,
+   0.06,
+   0.0365
+  ],
+  "min_m": [
+   -0.02,
+   -0.03,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Eye": [
+    0.0,
+    0.0,
+    0.032
+   ]
+  },
+  "light": {
+   "tris": 228,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Eye"
+   ]
+  },
+  "sizes": null
+ },
+ "Scupper": {
+  "category": "hull",
+  "note": "Cockpit drain thru-hull: flanged mushroom with a cross grille",
+  "tris": 1736,
+  "size_m": [
+   0.056,
+   0.056,
+   0.015
+  ],
+  "min_m": [
+   -0.028,
+   -0.028,
+   -0.01
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {},
+  "light": {
+   "tris": 434,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": []
+  },
+  "sizes": null
+ },
+ "Fender": {
+  "category": "loose",
+  "note": "Ribbed vinyl fender, 150 x 500 mm, eyes at both ends",
+  "tris": 3880,
+  "size_m": [
+   0.1523,
+   0.1523,
+   0.5548
+  ],
+  "min_m": [
+   -0.0761,
+   -0.0761,
+   -0.0274
+  ],
+  "slots": [
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "Bottom": [
+    0.0,
+    0.0,
+    -0.024
+   ],
+   "Top": [
+    0.0,
+    0.0,
+    0.524
+   ]
+  },
+  "light": {
+   "tris": 970,
+   "slots": [
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "Bottom",
+    "Top"
+   ]
+  },
+  "sizes": null
+ },
+ "Stanchion": {
+  "category": "lifeline",
+  "note": "25 mm stainless stanchion in a cast base, 610 mm (24 in), with a mid and a top lifeline eye; height option",
+  "tris": 3672,
+  "size_m": [
+   0.0892,
+   0.0593,
+   0.61
+  ],
+  "min_m": [
+   -0.0446,
+   -0.0297,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Base": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "LifelineMid": [
+    0.0,
+    0.0,
+    0.3172
+   ],
+   "LifelineTop": [
+    0.0,
+    0.0,
+    0.602
+   ]
+  },
+  "light": {
+   "tris": 918,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Base",
+    "LifelineMid",
+    "LifelineTop"
+   ]
+  },
+  "sizes": {
+   "dim": "height mm",
+   "default": "610",
+   "kw": {
+    "457": {
+     "height": 0.457
+    },
+    "610": {
+     "height": 0.61
+    },
+    "760": {
+     "height": 0.76
+    }
+   }
+  }
+ },
+ "BowPulpit": {
+  "category": "lifeline",
+  "note": "Bow pulpit: a 25 mm stainless hoop over the stemhead, four legs, 610 mm high; width and length options",
+  "tris": 4372,
+  "size_m": [
+   0.4754,
+   0.6494,
+   0.6227
+  ],
+  "min_m": [
+   -0.0127,
+   -0.3247,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Bow": [
+    0.45,
+    0.0,
+    0.61
+   ],
+   "LifelineP": [
+    0.0,
+    -0.3,
+    0.61
+   ],
+   "LifelineS": [
+    0.0,
+    0.3,
+    0.61
+   ]
+  },
+  "light": {
+   "tris": 1092,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Bow",
+    "LifelineP",
+    "LifelineS"
+   ]
+  },
+  "sizes": {
+   "dim": "width mm",
+   "default": "600",
+   "kw": {
+    "450": {
+     "width": 0.45,
+     "length": 0.35
+    },
+    "600": {
+     "width": 0.6
+    },
+    "800": {
+     "width": 0.8,
+     "length": 0.6
+    }
+   }
+  }
+ },
+ "Pushpit": {
+  "category": "lifeline",
+  "note": "Stern pushpit: a 25 mm stainless rail round the transom corners, four legs, 610 mm; width and depth options",
+  "tris": 4492,
+  "size_m": [
+   0.4254,
+   1.5494,
+   0.6227
+  ],
+  "min_m": [
+   -0.4127,
+   -0.7747,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Centre": [
+    -0.4,
+    0.0,
+    0.61
+   ],
+   "LifelineP": [
+    0.0,
+    -0.75,
+    0.61
+   ],
+   "LifelineS": [
+    0.0,
+    0.75,
+    0.61
+   ]
+  },
+  "light": {
+   "tris": 1122,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Centre",
+    "LifelineP",
+    "LifelineS"
+   ]
+  },
+  "sizes": {
+   "dim": "width mm",
+   "default": "1500",
+   "kw": {
+    "1200": {
+     "width": 1.2
+    },
+    "1500": {
+     "width": 1.5
+    },
+    "2000": {
+     "width": 2.0,
+     "depth": 0.5
+    }
+   }
+  }
+ },
+ "Turnbuckle": {
+  "category": "rig",
+  "note": "Open-body rigging screw with toggle, for 5 mm wire: forged body, two threaded studs, swage eye up, toggle fork down",
+  "tris": 6732,
+  "size_m": [
+   0.02,
+   0.024,
+   0.216
+  ],
+  "min_m": [
+   -0.01,
+   -0.012,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Toggle": [
+    0.0,
+    0.0,
+    0.004
+   ],
+   "Wire": [
+    0.0,
+    0.0,
+    0.216
+   ]
+  },
+  "light": {
+   "tris": 1682,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Toggle",
+    "Wire"
+   ]
+  },
+  "sizes": {
+   "dim": "wire mm",
+   "default": "5",
+   "scale": {
+    "4": 0.85,
+    "5": 1.0,
+    "6": 1.18,
+    "8": 1.5
+   }
+  }
+ },
+ "Clutch": {
+  "category": "rope",
+  "note": "Single rope clutch for 6 to 10 mm line on a moulded base, handle closed, maker's plate",
+  "tris": 1584,
+  "size_m": [
+   0.139,
+   0.0496,
+   0.0666
+  ],
+  "min_m": [
+   -0.0695,
+   -0.0248,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "LineIn": [
+    -0.07,
+    0.0,
+    0.032
+   ],
+   "LineOut": [
+    0.07,
+    0.0,
+    0.032
+   ]
+  },
+  "light": {
+   "tris": 396,
+   "slots": [
+    "BlackPlastic",
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "LineIn",
+    "LineOut"
+   ]
+  },
+  "sizes": {
+   "dim": "line mm",
+   "default": "10",
+   "scale": {
+    "8": 0.85,
+    "10": 1.0,
+    "14": 1.3
+   }
+  }
+ },
+ "TrackCar": {
+  "category": "track",
+  "note": "T-track car for 25 mm track: a sheave between stainless cheeks and a plunger stop (the jib lead car alone)",
+  "tris": 1584,
+  "size_m": [
+   0.0888,
+   0.0394,
+   0.056
+  ],
+  "min_m": [
+   -0.0444,
+   -0.0197,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Plunger": [
+    -0.034,
+    0.0,
+    0.034
+   ],
+   "Sheave": [
+    0.01,
+    0.0,
+    0.037
+   ],
+   "Track": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 396,
+   "slots": [
+    "Aluminium",
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Plunger",
+    "Sheave",
+    "Track"
+   ]
+  },
+  "sizes": null
+ }
+}

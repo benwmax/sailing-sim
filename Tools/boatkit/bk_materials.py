@@ -23,6 +23,52 @@ def boat_library():
 
 LIB = boat_library()
 _cache = {}
+# Boat fidelity 2: build_kit.py sets this so the previews read the shared trim sheet through the parts' UVs (normal,
+# cavity, paint fill), as the game's M_BoatKit does, instead of procedural micro-detail.
+TRIM = False
+TRIM_DIR = os.path.join(HERE, "..", "..", "Inputs", "boat-kit")
+_trim_images = {}
+
+
+def _trim_image(name, colorspace):
+    if name not in _trim_images:
+        im = bpy.data.images.load(os.path.join(TRIM_DIR, f"{name}.png"))
+        im.colorspace_settings.name = colorspace
+        _trim_images[name] = im
+    return _trim_images[name]
+
+
+def _trim_nodes(nt, b, col, rough):
+    uvn = nt.nodes.new("ShaderNodeUVMap")
+    tn = nt.nodes.new("ShaderNodeTexImage")
+    tn.image = _trim_image("T_KitTrim_N", "Non-Color")
+    tm = nt.nodes.new("ShaderNodeTexImage")
+    tm.image = _trim_image("T_KitTrim_M", "Non-Color")
+    for t in (tn, tm):
+        nt.links.new(uvn.outputs["UV"], t.inputs["Vector"])
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], b.inputs["Normal"])
+    sep = nt.nodes.new("ShaderNodeSeparateColor")
+    nt.links.new(tm.outputs["Color"], sep.inputs["Color"])
+    # Base colour: darkened in the cavities, white where an engraving is paint-filled.
+    cav = nt.nodes.new("ShaderNodeMix")
+    cav.data_type = "RGBA"
+    cav.blend_type = "MULTIPLY"
+    cav.inputs["Factor"].default_value = 0.6
+    cav.inputs["A"].default_value = _lin(col)
+    nt.links.new(sep.outputs["Red"], cav.inputs["B"])
+    paint = nt.nodes.new("ShaderNodeMix")
+    paint.data_type = "RGBA"
+    paint.inputs["B"].default_value = (0.85, 0.85, 0.82, 1)
+    nt.links.new(cav.outputs["Result"], paint.inputs["A"])
+    nt.links.new(sep.outputs["Blue"], paint.inputs["Factor"])
+    nt.links.new(paint.outputs["Result"], b.inputs["Base Color"])
+    rr = nt.nodes.new("ShaderNodeMapRange")
+    rr.inputs["To Min"].default_value = max(0.02, rough - 0.25)
+    rr.inputs["To Max"].default_value = min(1.0, rough + 0.25)
+    nt.links.new(sep.outputs["Green"], rr.inputs["Value"])
+    nt.links.new(rr.outputs["Result"], b.inputs["Roughness"])
 
 
 def _lin(c):
@@ -44,6 +90,10 @@ def get(slot):
     b.inputs["Roughness"].default_value = rough
     b.inputs["Metallic"].default_value = metal
     b.inputs["Coat Weight"].default_value = coat * 0.5
+    if TRIM:
+        _trim_nodes(nt, b, col, rough)
+        _cache[slot] = m
+        return m
     tc = nt.nodes.new("ShaderNodeTexCoord")
     noise = nt.nodes.new("ShaderNodeTexNoise")
     mp = nt.nodes.new("ShaderNodeMapping")
