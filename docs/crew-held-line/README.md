@@ -45,3 +45,20 @@ The stills are before (main) and after, High, 4 kn, 50° TWA:
   args to confirm.
 - **The vest at the armpit:** the vest poking through the polo at the armpit isn't touched. It needs the vest's weights
   near the armpit checked in `build_vest.py`, with the MetaHuman clothes rebuilt.
+
+## Follow-up: the trimmer tails on both tacks
+
+The PC re-shot this on Ultra on main 9bbf9a30. In light air the trimmer had let go of the tail, both hands on the knees.
+
+The crew model can seat the light-air crew to windward. The trimmer went with them, 1.1 m across the well from the
+working winch's self-tailer, which is out of reach, so the hold failed. When the crew model swung them to leeward the hold
+came back, so the hold flickered.
+
+The fix: in light air the J/22's trimmer always takes the leeward seat, by the working jib winch, and the bow takes the
+other seat. The bow also sits 5 cm further forward, so its knees clear the trimmer's thigh across the well.
+
+`SailingSim.Visual.TrimmerTailsJib` sails the J/22 at 4 kn and 50° TWA on each tack and checks that the tail is in the
+trimmer's hand in all 8 samples. Main has it in 3 of 8 on each tack.
+
+`grip-port-after` and `grip-stbd-after` are the PC's repro view on Ultra, on each tack. Bare-world runs show the flicker;
+in-game the lake's wind happened to settle the crew to leeward in these frames, so main looks the same there.

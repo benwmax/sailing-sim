@@ -325,4 +325,42 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * The J/22's trimmer tails the jib sheet in light air on both tacks (the PC, Ultra, on main 9bbf9a30: after the crew were
+ * spaced apart the trimmer sat out of reach of the leeward self-tailer and both hands went to the knees). 4 kn, close
+ * reaching at 50 degrees each way, the autopilot and trim assist sailing her: in every sample the working sheet's tail is
+ * in the trimmer's hand.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualTrimmerTailsJibTest, "SailingSim.Visual.TrimmerTailsJib", RigClearanceFlags)
+bool FVisualTrimmerTailsJibTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingTrimmerWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	World->GetWorldSettings()->NotifyBeginPlay();
+	World->SpawnActor<AWaterSurface>(FVector(0.f, 0.f, 0.f), FRotator::ZeroRotator);
+	ASailboatPawn* Pawn = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+	if (TestNotNull(TEXT("Boat spawns"), Pawn))
+	{
+		Pawn->SetBoat(int32(Sailing::EBoatType::J22));
+		for (const double Twa : { 50.0, -50.0 })
+		{
+			Pawn->HoldForTests(Twa, 4.0);
+			int32 Held = 0;
+			for (int32 Frame = 0; Frame < 10 * 30; ++Frame)
+			{
+				++GFrameCounter;
+				World->Tick(LEVELTICK_All, 1.f / 30.f);
+				if (Frame >= 6 * 30 && Frame % 15 == 0) Held += Pawn->IsJibTailHeld() ? 1 : 0;
+			}
+			TestEqual(FString::Printf(TEXT("Light air, TWA %.0f: the trimmer holds the jib tail (samples of 8)"), Twa), Held, 8);
+		}
+	}
+	World->EndPlay(EEndPlayReason::Quit);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
