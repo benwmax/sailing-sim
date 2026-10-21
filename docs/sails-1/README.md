@@ -73,4 +73,9 @@ the branch's reach. The pairs above show it.
 
 ## Gate
 
-See [gate-boats.csv](gate-boats.csv) and [gate-water.csv](gate-water.csv).
+`scripts/gate.sh --scope boats` and `--scope water` on this branch (merged with main fe88d84b) both pass: 197 tests and
+the package. Boats on High: beam8 63.6, beat15 62.2, marina 61.6, helm-eye 60.8, slip 57.4, crew 53.5 fps. Water: storm
+45.7 on High and 66.8 on Medium, the rest 54 to 65 on High ([gate-boats.csv](gate-boats.csv),
+[gate-water.csv](gate-water.csv)). The cloth costs twice its CPU time (`cloth_cpu_ms` 0.074 to 0.151 on beam8; 0.187 in
+the crew view): the bending constraints, the third pass and the flutter's target normals. That is still well inside
+phase 0's 1.1 ms for boat, rig and sails.
