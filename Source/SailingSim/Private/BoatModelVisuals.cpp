@@ -491,7 +491,10 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			for (int32 I = 0; I + 1 < Crew.Num(); ++I)   // the last is the helm, who sits in on the tiller
 			{
 				FVector Harness = Hounds - FVector(0.f, 0.f, 1.f);
-				if (Crew[I] && Crew[I]->IsVisible())
+				// (Only on the wire: sitting out on the hull, beyond the rail too, the wire ran a metre aft and down to their seat,
+				// across the eased main: docs/hobie-downwind/.)
+				const bool bOnWire = CrewFigures.IsValidIndex(I) && CrewFigures[I].Stance == ECrewStance::Trapeze;
+				if (bOnWire && Crew[I] && Crew[I]->IsVisible())
 				{
 					const FVector Pelvis = Root.InverseTransformPosition(Crew[I]->GetBoneLocation(TEXT("pelvis"), EBoneSpaces::WorldSpace));
 					// The hook at the front of the harness: a hand's width up and forward of the hips, toward the mast.
