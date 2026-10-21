@@ -18,12 +18,13 @@ New-Item -ItemType Directory -Force -Path $Crew | Out-Null
 $Roles = 'Helm', 'Trimmer', 'Bow'
 
 if (-not $SkipExport) {
-	# The export ends the editor with os._exit, which can cut the log before its "Crew bodies" lines, so the FBX files
-	# written after the start are the proof of the export.
+	# The full editor (the FBX exporter needs the mesh render data). export_crew_bodies.py doesn't os._exit on Windows (that
+	# leaves a zombie editor holding the asset locks), so QUIT_EDITOR follows it in -ExecCmds. The FBX files written after
+	# the start are the proof of the export.
 	$Start = Get-Date
 	$Editor = Join-Path $UERoot 'Engine\Binaries\Win64\UnrealEditor.exe'
 	$Script = (Join-Path $RepoRoot 'scripts\export_crew_bodies.py') -replace '\\', '/'
-	Invoke-Tool $Editor "`"$Project`" -EnablePlugins=MetaHumanCharacter -ExecCmds=`"py $Script`" -unattended -NoCrashReporter -nosplash -NoP4 -stdout" (Join-Path $Artifacts 'crew-export.log') | Out-Null
+	Invoke-Tool $Editor "`"$Project`" -EnablePlugins=MetaHumanCharacter -ExecCmds=`"py $Script, QUIT_EDITOR`" -unattended -NoCrashReporter -nosplash -NoP4 -stdout" (Join-Path $Artifacts 'crew-export.log') | Out-Null
 	foreach ($Role in $Roles) {
 		foreach ($Part in 'Body', 'Outfit') {
 			$Fbx = Join-Path $Crew "$($Role)_$Part.fbx"
