@@ -623,22 +623,56 @@ def build_ghost():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+SPRAY_CODE = """
+// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion. Grain 1: a clump of droplets,
+// round drops on a jittered grid (stretched with the quad: the motion blur) over a faint veil; 0: smooth mist.
+// The quad's own position (the engine plane spans -50..50 cm; its UVs don't reach the material here).
+float2 q = Local.xy / 50.0;
+float2 Coord = q * 0.5 + 0.5;
+float r = length(q);
+float soft = saturate(1.0 - r);
+soft *= soft;
+float2 g = Coord * float2(4.0, 3.0) + Seed * 17.0;
+float2 c = floor(g);
+float2 f = frac(g) - 0.5;
+float h = frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453);
+float2 o = float2(frac(h * 7.31), frac(h * 3.17)) - 0.5;
+float drop = saturate((0.24 + 0.14 * h - length(f - 0.25 * o)) * 10.0) * step(0.25, h);
+float grainy = saturate(drop + 0.4 * soft) * saturate(1.25 - r);
+return saturate(Alpha * lerp(soft, grainy, Grain));
+"""
+
+
 def build_spray():
-    """M_Spray (Visual V4, High): droplets of spray, instanced; a dithered half opacity the temporal AA blends to mist."""
+    """M_Spray (docs/spray/, High): spray as lit translucent quads facing the camera (AWaterSurface::UpdateSpray), per
+    instance opacity, grain (droplet clump or mist) and seed. Water droplets scatter the sun forward: looking toward the
+    sun the spray glows (a Henyey-Greenstein lobe of the sun's illuminance on the emissive)."""
     mat = new_material("M_Spray")
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_instanced_static_meshes", True)
-    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.82, 0.86, 0.88, 1))
-    rough = node(mat, unreal.MaterialExpressionConstant, -500, 150, r=0.35)
-    alpha = node(mat, unreal.MaterialExpressionConstant, -500, 300, r=0.55)
-    # Interleaved-gradient noise per pixel, shifted each frame: the temporal AA averages it to the alpha.
-    dither = custom(mat, """float2 px = Parameters.SvPosition.xy + float(View.StateFrameIndexMod8) * float2(7.0, 3.0);
-float n = frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
-return Alpha - n + 0.3333;""", ["Alpha"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 300)
-    connect(alpha, "", dither, "Alpha")
+    inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -900, 0)}
+    for k, (name, y) in enumerate((("Alpha", 100), ("Grain", 200), ("Seed", 300))):
+        inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    c = custom(mat, SPRAY_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
+    for name, n in inputs.items():
+        connect(n, "", c, name)
+    glow_in = {"V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 500),
+               "L": node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -900, 600),
+               "E": node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -900, 700)}
+    glow = custom(mat, """// Forward scattering (g = 0.75) of the sun through the drops toward the camera (V points at the camera).
+float mu = dot(-V, L);
+float hg = (1.0 - 0.5625) / pow(max(1.5625 - 1.5 * mu, 1e-3), 1.5) / 12.566;
+return E * 0.35 * hg;""", list(glow_in.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 600)
+    for name, n in glow_in.items():
+        connect(n, "", glow, name)
+    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.86, 0.9, 0.92, 1))
+    rough = node(mat, unreal.MaterialExpressionConstant, -500, 450, r=0.25)
     MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_OPACITY)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -1369,7 +1403,7 @@ float om = 0.0;
     ho = (oa.r + ob.r) * of;
 }
 // The long waves' slopes and fold for the pixels (interpolated), from the same sincos.
-LongN = float3(lsx, lsy, ljxx * ljyy - ljxy * ljxy);
+LongN = float4(lsx, lsy, ljxx * ljyy - ljxy * ljxy, 0.0);
 // The shore: waves grow a little as they feel the bottom (shoaling) and die on the beach.
 float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
 [branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0))
@@ -1412,6 +1446,8 @@ float2 hr0 = p.xy - HullClipA.xy;
     float oin = 2.0 * saturate((0.8 * ohb - abs(oby)) / 0.1) * step(HullClipE.y + 0.2, obx) * step(obx, HullClipE.x - 0.3);
     hin = lerp(hin, oin, HullClipH.z);
 }
+// The water's height for the pixels (the boats' white water: V4_SHADE's hullFoam).
+LongN.w = h + ho;
 return float3(d.x * 100.0, d.y * 100.0, (h + ho - hin) * 100.0);
 """
 
@@ -1578,13 +1614,16 @@ float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 
 // it is against four thresholds, AWaterSurface::CapTableEntry), whose mips average cover, read at this pixel's threshold
 // (AWaterSurface::CapCover). The lace and streak patterns fade to their means before they alias, and the caps no
 // longer fade with the long waves (WaveFadeMeters): whitecaps show to the horizon.
-float foot = length(fwidth(p.xy));                 // m a pixel spans (its long axis)
 // The mip the sampler reads: its short axis, or a sixteenth of its long one (16x anisotropic filtering). Grazing views
 // keep a sharp texture far out, and the caps stay discrete there.
 float2 fdx = ddx(p.xy), fdy = ddy(p.xy);
 float footMip = max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 16.0);
 float useTable = smoothstep(1.0, 2.5, footMip * 128.0 / DetailP.x);
-float patFade = smoothstep(0.08, 0.3, foot);
+// docs/spray/: the patterns fade by the footprint the anisotropic filter resolves (its short axis, or a quarter of its long
+// one), not by its long axis: at a grazing view the long axis is many times the short, and fading by it flattened every
+// cap, paw and windrow into a smooth smear from a few boat lengths out. A pattern aliasing along the long axis by up to
+// 4x is smoothed by the temporal AA.
+float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 4.0));
 float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
 float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
@@ -1620,8 +1659,17 @@ residue = saturate((capThr + 0.08 - Jt) / 0.08 + 0.5);
 crest *= saturate(0.8 + 1.3 * laceE);
 residue *= patternE * 0.25;
 float caps = max(crest, residue);
-// Foam the boats make.
-float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
+// Foam the boats make. Its bubble patches are octaves of value noise (0.4 m, 0.14 m and 5 cm, rotated, drifting apart),
+// multiplied as the two sines they replace were (mean about 0.25): a product of sines read as a tread-plate lattice in a
+// wake seen from above (docs/spray/). Cells wrap every 289 so the hash keeps its precision far from the origin.
+#define WB_HASH(c_) frac(sin(dot(fmod(c_, 289.0), float2(127.1, 311.7))) * 43758.5453)
+#define WB_NOISE(x_) (lerp(lerp(WB_HASH(floor(x_)), WB_HASH(floor(x_) + float2(1.0, 0.0)), smoothstep(0.0, 1.0, frac(x_).x)), \
+    lerp(WB_HASH(floor(x_) + float2(0.0, 1.0)), WB_HASH(floor(x_) + float2(1.0, 1.0)), smoothstep(0.0, 1.0, frac(x_).x)), smoothstep(0.0, 1.0, frac(x_).y)))
+float2 wb1 = float2(0.8 * p.x - 0.6 * p.y, 0.6 * p.x + 0.8 * p.y) * 2.5 + float2(T * 0.05, 0.0);
+float2 wb2 = float2(0.28 * p.x + 0.96 * p.y, -0.96 * p.x + 0.28 * p.y) * 7.1 - float2(0.0, T * 0.09);
+float2 wb3 = float2(0.6 * p.x + 0.8 * p.y, -0.8 * p.x + 0.6 * p.y) * 19.0 + float2(T * 0.13, -T * 0.07);
+// A third, finer octave (5 cm) laces the patches' edges so the wash isn't round blotches.
+float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 0.8 + WB_NOISE(wb3) * 0.5 - 0.15);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them.
 float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
@@ -1655,7 +1703,29 @@ float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85
 float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
 FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
-Foam = saturate(max(capsDrawn + wakeBreak, 0.85 * lap) + 0.10 * Rain);
+// docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's
+// clip): foam clinging along her waterline where the water meets the skin (the bottom just above the drawn surface,
+// inside the deck plan), and the churned water behind a transom (past the hull's end aft, within its beam, fading over a
+// few metres that grow with her speed). Both grow with her speed from 0.8 m/s and are broken by WB_NOISE's bubbles.
+float hullFoam = 0.0;
+float2 hfr = p.xy - HullClipA.xy;
+[branch] if (HullClipA.w > 0.0 && HullClipV.w > 0.0 && dot(hfr, hfr) < HullClipRect.z * HullClipRect.z + HullClipRect.w * HullClipRect.w)
+{
+    float3 hq = float3(p.xy, LongN.w) - HullClipA.xyz;
+    float hbx = dot(hq, HullClipB.xyz), hby = dot(hq, HullClipC.xyz), hbz = dot(hq, HullClipD.xyz);
+    float4 hc = HullClipMap.SampleLevel(HullClipMapSampler, (float2(hbx, hby) - HullClipRect.xy) / HullClipRect.zw, 0);
+    float spd = saturate((HullClipV.z - 0.8) / 3.0);
+    float2 hn1 = float2(hbx * 2.7 + T * 0.9 * HullClipV.z, hby * 4.1);
+    float2 hn2 = float2(hbx * 7.3 + T * 1.3 * HullClipV.z, hby * 8.9 + 3.7);
+    float hn = saturate(WB_NOISE(hn1) * 0.65 + WB_NOISE(hn2) * 0.55 - 0.1);
+    float gap = hc.r - hbz;
+    float wl = saturate(1.0 - gap / (0.03 + 0.07 * spd)) * step(0.0, gap) * saturate(min(hc.b, hc.a) / 0.1 + 1.0);
+    float aft = -hc.a;
+    float churn = saturate(hc.b / 0.2) * step(0.0, aft) * step(hbx, HullClipRect.x + 0.5 * HullClipRect.z) * exp(-aft / (0.4 + 0.45 * HullClipV.z));
+    hullFoam = spd * max(wl * (0.45 + 0.55 * hn), churn * saturate(hn * 1.7 - 0.25));
+}
+FoamTone = lerp(FoamTone, 1.0, saturate(hullFoam * 2.0) * (1.0 - saturate(caps * 4.0)));
+Foam = saturate(max(capsDrawn + wakeBreak + hullFoam, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
 // mirror (a lull on a light day, the lake at dawn); a puff ruffles it again within seconds (the map's roughness rises in
@@ -1769,18 +1839,23 @@ def build_water_v4():
            "Sea", "SeaRect", "SeaP"]
     hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
     wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
-                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT4)])
     # The player's boat (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D her x/y/z axes in the world. The
     # rest is the main hull's shape for the V7 clip (-SailingClassicHullClip): B/C/D.w sheer z, sheer rise, sheer rise
     # from x; E bow x, stern x, widest x, half beam; F aft length, transom beam loss, centre y, bilge power; G waterline
     # mid x, half length, canoe depth, depth offset; H bow and stern overhang slopes, 1 = the V7 clip.
     defaults = ((0, 0, 0, 0), (1, 0, 0, 0.62), (0, 1, 0, 0.1), (0, 0, 1, 1), (3.45, -3.41, -0.4, 1.22), (3, 0.27, 0, 4),
                 (-0.15, 2.9, 0.4, 0), (1.1, 0.5, 0, 0))
-    for i, (n, v) in enumerate(zip(hull_clip, defaults)):
-        connect(vector(mat, n, v, -1800, 3000 + 100 * i), "RGBA", wpo, n)
+    hull_nodes = {n: vector(mat, n, v, -1800, 3000 + 100 * i) for i, (n, v) in enumerate(zip(hull_clip, defaults))}
+    for n, v in hull_nodes.items():
+        connect(v, "RGBA", wpo, n)
     # FHullClipMap (RGBA: bottom z, sheer z, side margin, end margin, in the boat frame) and its corner x, y and size.
-    connect(tex("HullClipMap", 3900), "", wpo, "HullClipMap")
-    connect(vector(mat, "HullClipRect", (0, 0, 1, 1), -1800, 4000), "RGBA", wpo, "HullClipRect")
+    hull_map = tex("HullClipMap", 3900)
+    hull_rect = vector(mat, "HullClipRect", (0, 0, 1, 1), -1800, 4000)
+    connect(hull_map, "", wpo, "HullClipMap")
+    connect(hull_rect, "RGBA", wpo, "HullClipRect")
+    # docs/spray/: her velocity over the ground (m/s, map frame) and speed, w = 1 when set.
+    hull_v = vector(mat, "HullClipV", (0, 0, 0, 0), -1800, 4100)
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
@@ -1794,10 +1869,15 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
-    shade = custom(mat, V4_SHADE, shade_common + ["LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+    shade = custom(mat, V4_SHADE, shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
+    for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
+        connect(hull_nodes[n], "RGBA", shade, n)
+    connect(hull_map, "", shade, "HullClipMap")
+    connect(hull_rect, "RGBA", shade, "HullClipRect")
+    connect(hull_v, "RGBA", shade, "HullClipV")
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
