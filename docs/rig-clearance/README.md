@@ -56,10 +56,6 @@ the main as one piece, with a small cap, looks right.
   upper shroud close to the mast, the wire still shows through the cloth. That happens in about 8 of the 32 samples on
   most keelboats, only when running. Turning the main further looks worse than the contact. A real fix needs the cloth to
   wrap the wire, or a finer grid.
-- **The Lagoon 42's jib.** The physics jib is an overlapping sail. Its clew is aft, by the mast, and lower than the saloon
-  roof. The model leads its sheet to a self-tacking track 4.5 m forward (`build_fleet.py`). Whatever the route, the sheet
-  crosses the roof or the jib's foot. Lifted over the roof, it hung in the air, so her jib sheets are left as they were.
-  The sail geometry (Fleet.cpp, its polar) and the lead need to agree first.
 - **Small cases, a few centimetres:**
   - lines lying on a deck or trampoline under a resting calf (the Hobie's jib sheets);
   - the dinghies' tiller extension alongside the hip in light air;
@@ -91,3 +87,26 @@ The stills are before and after, High, 12 kn at 160°, from forward:
 
 Seen in passing: on the Corsair's windward net, one crew member's legs rise steeply onto the main hull's deck when
 running. That pose was the same on the leeward net before, hidden behind the sail; it's left for a crew job.
+
+## Follow-up: the Lagoon 42's self-tacking jib (Bean's pick)
+
+Her physics jib had been placed as an overlapping sail. The comment always said it was her self-tacker, and the polar's
+source is the stock boat, which has one. But the tack was at x 2.4 m, so the clew was aft by the mast and under the
+saloon roof, while the model led the sheet to a track on the foredeck.
+
+- **The sail** (`Fleet.cpp`): tack on the model's forestay, foot 3.15 m up (10 cm over the roof's crown), a 4.2 m foot
+  with the clew at x 0.45, 0.7 m forward of the mast. Area 35 m², as published.
+- **Aspect ratio:** induced aspect ratio 3.3, down from 3.8, because the foot is 1.6 m clear of the trampoline at the tack
+  and no longer end-plated by the deck. Her polar is within 0.3% of the old one at every point, and her tack and irons
+  scenarios are unchanged. `FleetReferencePolar` is unchanged. The J/22's PolarGate is unchanged.
+- **The model** (`build_fleet.py`): the self-tacking track is an aluminium rail with end stops across the saloon roof's
+  forward end, under the clew; the leads are on it.
+- **The sheet:** one sheet, from the clew to its car and aft along the roof to the leeward winch. The second set of lines
+  lies on it, and it drapes over the roof like the others.
+
+`RigClearance` no longer lists her.
+
+The stills are main and after, High, 12 kn at 45°:
+
+- `lagoon-self-tacker`
+- `lagoon-track`

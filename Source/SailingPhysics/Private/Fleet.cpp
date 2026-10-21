@@ -351,7 +351,14 @@ namespace Sailing
 			C.MastX = -0.4; C.MastheadZ = 20.6; C.MastDiameter = 0.25;
 			// Cruising Dacron, sheeted from a fixed traveler: less lift for the area than a racing rig.
 			SetMain(C, 3.2, 20.2, 5.8, 1.8, 0.12, -0.45, -0.45, 59.0, 3.3, 4.0, 0.12);
-			SetSail(C.Jib, 2.4, 17.8, 4.3, 0.15, 4.0, -0.2, 35.0, 3.5, 3.8, 0.13);
+			// The self-tacking jib (Bean's pick, 2026-10-21; Lagoon's published 35 m^2) on the model's track across the saloon
+			// roof's forward end, not an overlapping genoa: its clew had been aft by the mast, under the roof (sheets through it).
+			// Foot 3.15 m up, 10 cm over the roof's crown at its forward end (build_fleet.py: sheer 1.55 + 1.42 + 0.08 crown);
+			// luff on the forestay from the tack (x 5.2, deck 1.55) to the hounds (x -0.2, 17.8): 4.65 at the foot's height;
+			// foot chord 4.2, the clew at x 0.45 over the track, 0.7 m forward of the mast. Head and area unchanged. Induced
+			// aspect ratio 3.3 (3.8 before): its foot 1.6 m clear of the trampoline at the tack, the deck no longer end-plates
+			// it; the polar is within 0.3% of the old jib's at every point (the reference is the stock boat, a self-tacker).
+			SetSail(C.Jib, 3.15, 17.8, 4.2, 0.15, 4.65, -0.2, 35.0, 3.5, 3.3, 0.13);
 			SetSail(C.Spinnaker, 2.4, 19.5, 7.2, 0.4, 6.4, -0.1, 78.0, 3.2, 3.4, 0.12); // Code 0 on the bowsprit
 			C.bAsymmetricSpinnaker = true;
 			C.MainMaxEaseDeg = 65.0; C.TravelerRangeDeg = 12.0; C.JibMinAngleDeg = 6.0; C.JibMaxAngleDeg = 45.0; // self-tacking track

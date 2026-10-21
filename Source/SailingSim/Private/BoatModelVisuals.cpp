@@ -507,14 +507,18 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 
 	// Jib sheets: the working sheet (leeward) from the clew through its lead to the winch, nearly straight under load;
 	// the lazy sheet over the cabin top to the windward lead, drooping.
+	// A self-tacking jib (the Lagoon's) has one sheet, from the clew down to its car on the track and aft to the leeward
+	// winch: the second set of lines lies on it (the rig mesh keeps its vertex count).
 	if (Boat.GetConfig().HasJib() && Has(ModelHull, TEXT("JibLead_S")))
 	{
+		const bool bSelfTacker = Boat.GetConfig().Type == EBoatType::Lagoon42;
 		for (const TCHAR* Tag : { TEXT("S"), TEXT("P") })
 		{
-			const bool bWorking = (Tag[0] == TEXT('S')) == (S.JibSide > 0);
-			const uint8 Look = Tag[0] == TEXT('S') ? RopeLook::JibStbd : RopeLook::JibPort;
-			const FVector Lead = RigPoint(ModelHull, *FString::Printf(TEXT("JibLead_%s"), Tag));
-			const FVector Winch = RigPoint(ModelHull, *FString::Printf(TEXT("JibWinch_%s"), Tag));
+			const bool bWorking = bSelfTacker || (Tag[0] == TEXT('S')) == (S.JibSide > 0);
+			const TCHAR* Side = bSelfTacker ? (S.JibSide > 0 ? TEXT("S") : TEXT("P")) : Tag;
+			const uint8 Look = Side[0] == TEXT('S') ? RopeLook::JibStbd : RopeLook::JibPort;
+			const FVector Lead = RigPoint(ModelHull, *FString::Printf(TEXT("JibLead_%s"), Side));
+			const FVector Winch = RigPoint(ModelHull, *FString::Printf(TEXT("JibWinch_%s"), Side));
 			if (bWorking)
 			{
 				Ropes.Add({ JibClewCm, Lead, 0.45f, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded), Look });
@@ -637,10 +641,6 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		{
 			const FString What = L.Name;
 			if (What == TEXT("vang")) continue;
-			// (Not the Lagoon's jib sheets: her overlapping jib's clew is by the mast under the saloon roof's height while her
-			// model leads the sheet to a self-tacking track 4.5 m forward, so lifted over the roof it hung in the air.
-			// docs/rig-clearance/.)
-			if (Cfg.Type == EBoatType::Lagoon42 && What.Contains(TEXT("jib"))) continue;
 			const FVector Sag = SagOf(L, DownD);
 			// How far up a point must go to be out of the boat (a coachroof is up to a metre and a half over the deck).
 			auto Under = [&](const FVector& C) -> float

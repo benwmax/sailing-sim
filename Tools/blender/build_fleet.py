@@ -1016,10 +1016,16 @@ elif TAG == "Lagoon42":
         side = 1 if tag == "S" else -1
         socket(f"ChainplateUpper_{tag}", (mast_x - 1.0, Hh.cy + side * (Hh.sharp_half_beam(mast_x) - 0.1), Hh.deck_z(mast_x, Hh.cy)))
         socket(f"ChainplateLower_{tag}", (mast_x - 0.6, Hh.cy + side * (Hh.sharp_half_beam(mast_x) - 0.15), Hh.deck_z(mast_x, Hh.cy)))
-        socket(f"JibLead_{tag}", (b1 - 0.1, side * 0.5, dz + 0.05))       # self-tacking track forward of the saloon
+        # The self-tacking track across the saloon roof's forward end, under the jib's clew (Fleet.cpp: x 0.45).
+        socket(f"JibLead_{tag}", (0.45, side * 0.5, roof + 0.08 * (1 - (0.5 / sw) ** 2) + 0.05))
         socket(f"JibWinch_{tag}", (s0 + 0.3, side * (sw - 0.2), roof + 0.06))
         winch(s0 + 0.3, side * (sw - 0.2), roof)
-    socket("LazySheetVia", (s1 - 0.4, 0, roof + 0.1))
+    socket("LazySheetVia", (0.45, 0, roof + 0.13))
+    # The self-tacking track itself: an aluminium rail across the roof's crown, end stops, and its car's blocks.
+    track = [(0.45, y, roof + 0.08 * (1 - (y / sw) ** 2) + 0.02) for y in [-0.9 + 1.8 * k / 12 for k in range(13)]]
+    tube(hull, track, 0.018, "Aluminium", 8)
+    for y in (-0.9, 0.9):
+        box(hull, (0.45, y, roof + 0.08 * (1 - (y / sw) ** 2) + 0.035), (0.06, 0.04, 0.04), "BlackPlastic")
     traveler = (s0 + 0.2, roof + 0.1, sw - 0.3)
     tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.02, "Aluminium", 8)
     lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof)
