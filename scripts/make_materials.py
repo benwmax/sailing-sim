@@ -623,22 +623,56 @@ def build_ghost():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+SPRAY_CODE = """
+// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion. Grain 1: a clump of droplets,
+// round drops on a jittered grid (stretched with the quad: the motion blur) over a faint veil; 0: smooth mist.
+// The quad's own position (the engine plane spans -50..50 cm; its UVs don't reach the material here).
+float2 q = Local.xy / 50.0;
+float2 Coord = q * 0.5 + 0.5;
+float r = length(q);
+float soft = saturate(1.0 - r);
+soft *= soft;
+float2 g = Coord * float2(4.0, 3.0) + Seed * 17.0;
+float2 c = floor(g);
+float2 f = frac(g) - 0.5;
+float h = frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453);
+float2 o = float2(frac(h * 7.31), frac(h * 3.17)) - 0.5;
+float drop = saturate((0.24 + 0.14 * h - length(f - 0.25 * o)) * 10.0) * step(0.25, h);
+float grainy = saturate(drop + 0.4 * soft) * saturate(1.25 - r);
+return saturate(Alpha * lerp(soft, grainy, Grain));
+"""
+
+
 def build_spray():
-    """M_Spray (Visual V4, High): droplets of spray, instanced; a dithered half opacity the temporal AA blends to mist."""
+    """M_Spray (docs/spray/, High): spray as lit translucent quads facing the camera (AWaterSurface::UpdateSpray), per
+    instance opacity, grain (droplet clump or mist) and seed. Water droplets scatter the sun forward: looking toward the
+    sun the spray glows (a Henyey-Greenstein lobe of the sun's illuminance on the emissive)."""
     mat = new_material("M_Spray")
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_instanced_static_meshes", True)
-    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.82, 0.86, 0.88, 1))
-    rough = node(mat, unreal.MaterialExpressionConstant, -500, 150, r=0.35)
-    alpha = node(mat, unreal.MaterialExpressionConstant, -500, 300, r=0.55)
-    # Interleaved-gradient noise per pixel, shifted each frame: the temporal AA averages it to the alpha.
-    dither = custom(mat, """float2 px = Parameters.SvPosition.xy + float(View.StateFrameIndexMod8) * float2(7.0, 3.0);
-float n = frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
-return Alpha - n + 0.3333;""", ["Alpha"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 300)
-    connect(alpha, "", dither, "Alpha")
+    inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -900, 0)}
+    for k, (name, y) in enumerate((("Alpha", 100), ("Grain", 200), ("Seed", 300))):
+        inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    c = custom(mat, SPRAY_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
+    for name, n in inputs.items():
+        connect(n, "", c, name)
+    glow_in = {"V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 500),
+               "L": node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -900, 600),
+               "E": node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -900, 700)}
+    glow = custom(mat, """// Forward scattering (g = 0.75) of the sun through the drops toward the camera (V points at the camera).
+float mu = dot(-V, L);
+float hg = (1.0 - 0.5625) / pow(max(1.5625 - 1.5 * mu, 1e-3), 1.5) / 12.566;
+return E * 0.35 * hg;""", list(glow_in.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 600)
+    for name, n in glow_in.items():
+        connect(n, "", glow, name)
+    color = node(mat, unreal.MaterialExpressionConstant3Vector, -500, 0, constant=unreal.LinearColor(0.86, 0.9, 0.92, 1))
+    rough = node(mat, unreal.MaterialExpressionConstant, -500, 450, r=0.25)
     MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_OPACITY)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -1620,8 +1654,15 @@ residue = saturate((capThr + 0.08 - Jt) / 0.08 + 0.5);
 crest *= saturate(0.8 + 1.3 * laceE);
 residue *= patternE * 0.25;
 float caps = max(crest, residue);
-// Foam the boats make.
-float bubbles = (0.5 + 0.5 * sin(p.x * 13.1 + sin(p.y * 9.7) * 2.1)) * (0.5 + 0.5 * sin(p.y * 11.3 + sin(p.x * 8.9 + T * 0.4) * 2.3));
+// Foam the boats make. Its bubble patches are two octaves of value noise (0.4 m and 0.14 m, rotated, drifting apart),
+// multiplied as the two sines they replace were (mean about 0.25): a product of sines read as a tread-plate lattice in a
+// wake seen from above (docs/spray/). Cells wrap every 289 so the hash keeps its precision far from the origin.
+#define WB_HASH(c_) frac(sin(dot(fmod(c_, 289.0), float2(127.1, 311.7))) * 43758.5453)
+#define WB_NOISE(x_) (lerp(lerp(WB_HASH(floor(x_)), WB_HASH(floor(x_) + float2(1.0, 0.0)), smoothstep(0.0, 1.0, frac(x_).x)), \
+    lerp(WB_HASH(floor(x_) + float2(0.0, 1.0)), WB_HASH(floor(x_) + float2(1.0, 1.0)), smoothstep(0.0, 1.0, frac(x_).x)), smoothstep(0.0, 1.0, frac(x_).y)))
+float2 wb1 = float2(0.8 * p.x - 0.6 * p.y, 0.6 * p.x + 0.8 * p.y) * 2.5 + float2(T * 0.05, 0.0);
+float2 wb2 = float2(0.28 * p.x + 0.96 * p.y, -0.96 * p.x + 0.28 * p.y) * 7.1 - float2(0.0, T * 0.09);
+float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 1.15 - 0.075);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them.
 float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
