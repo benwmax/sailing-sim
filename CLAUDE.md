@@ -511,6 +511,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `SailingSim.Visual.CrewClipLimits`; the layer goes quiet for crossings, seat changes, bracing and ducking
   (`SailingSim.Visual.CrewClipTack`) and starts a clip's weight-shift onset against the heel's slow trend.
   `-SailingNoCrewClips` compares. CMU terms: in a sold product yes, resold as data no.
+- Crew hull clip (`docs/crew-hull-clip/`): `CrewInsideBoat` and `CrewFloorZ` know the cabin trunks (`CrewCabinTrunk`), deck
+  crowns, the maxi's well, coachroof and camber, a multihull's nets, the Lagoon's bridgedeck, saloon, table and helm seat;
+  `FCrewPoseParams::bFlatDeck` sits a rail sailor knees up with the feet on the deck where there is no well in front;
+  lifeline boats (`CrewHasLifelines`) sit their rail crew 0.32 m in. `SailingSim.Visual.CrewHullClearance` holds every
+  boat, crew and stance clear of the boat (2.5 cm past the flesh's give; crossings listed, not failed).
 - Crew falls (C5, `docs/crew-5/`): `FCrewFalls` (`CrewFalls.h`, plain logic) throws the crew past 55 deg of heel,
   capsized or over 1 g, and brings them back once the boat is steady; `CrewFallsVisuals.cpp` makes the MetaHuman bodies
   active ragdolls with the Physics Control plugin (`CrewControl`; world-space controls relative to `CrewDeck`, a
