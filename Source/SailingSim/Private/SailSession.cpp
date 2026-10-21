@@ -88,14 +88,15 @@ int32 USailSessionSubsystem::WeatherPresetFor(ESailSky Sky)
 	case ESailSky::Clear: return 0;
 	case ESailSky::Fair: return 1;
 	case ESailSky::Storms: return 4;
+	case ESailSky::Rain: return 3;     // steady rain from the start (the storm's rain only comes with its front)
 	default: return 2;
 	}
 }
 
 FString USailSessionSubsystem::SkyName(ESailSky Sky)
 {
-	static const TCHAR* Names[] = { TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Storms"), TEXT("Fog") };
-	return Names[FMath::Clamp(int32(Sky), 0, 4)];
+	static const TCHAR* Names[] = { TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Storms"), TEXT("Fog"), TEXT("Rain") };
+	return Names[FMath::Clamp(int32(Sky), 0, int32(UE_ARRAY_COUNT(Names)) - 1)];
 }
 
 FString USailSessionSubsystem::ModeName(ESailMode Mode)
