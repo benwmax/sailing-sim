@@ -666,6 +666,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		}
 	}
 	if (CrewSolver::PlaceHands(Ref, RestCS, CS, D, Hands, Carried)) CrewSolver::Solve(Ref, RestCS, Carried, CS, &D);
+	CrewSolver::ClearFingers(Ref, RestCS, CS, D, Hands, Carried);
 
 	// The head: near world-level whatever the boat does, turned to the gaze (within the neck's range of the chest).
 	const int32 Head = Ref.FindBoneIndex(TEXT("head"));

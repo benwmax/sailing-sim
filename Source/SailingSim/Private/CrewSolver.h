@@ -22,6 +22,8 @@ namespace CrewSolver
 		TMap<FName, FQuat>& Joints, const FVector& HeldLine = FVector::ZeroVector);
 	bool SolePoints(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const FQuat& Frame, int32 Side, FVector Out[2]);
 	void CurlFingers(const FCrewRig& Rig, const FCrewHands& Hands, TMap<FName, FQuat>& Carried);
+	bool ClearFingers(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
+		TMap<FName, FQuat>& Carried);
 	void PlantAllFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& Ground, TMap<FName, FQuat>& Carried);
 	/** Reach and knee holds; true if a knee hold moved an arm without re-solving. */

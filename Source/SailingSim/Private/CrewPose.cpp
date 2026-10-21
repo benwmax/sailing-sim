@@ -470,6 +470,74 @@ namespace CrewSolver
 
 	constexpr double kHeldWristDeg = 40.0; // the wrist's flexion holding a line led along the reach (the elbow swung first: ReachArm)
 
+	/** Each finger of a hand closed on a line stops short of it: a finger whose bones pass within kFingerClearCm of the
+	 *  line's axis opens (its three curl joints eased toward straight, 15% a step, at most five) until it clears. The curl's
+	 *  fixed angles suit a line square across the palm; led diagonally across it the middle finger closed through it. */
+	constexpr double kFingerClearCm = 0.75; // the sheet's radius (3 mm) and a finger bone's from its axis
+	bool ClearFingers(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
+		TMap<FName, FQuat>& Carried)
+	{
+		bool bMoved = false;
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			if (Hands.Mode[Side] != FCrewHands::EMode::Reach || Hands.Along[Side].IsNearlyZero()) continue;
+			const FVector Line = Hands.Along[Side].GetSafeNormal(), At = Hands.Target[Side];
+			for (int32 F = 0; F < 4; ++F) // not the thumb: it closes over the fingers, not round the line
+			{
+				int32 Bones[3];
+				FName Names[3];
+				bool bAll = true;
+				for (int32 K = 0; K < 3; ++K)
+				{
+					Names[K] = FName(*FString::Printf(TEXT("%s_0%d_%s"), FingerNames[F], K + 1, Side == 0 ? TEXT("l") : TEXT("r")));
+					Bones[K] = Ref.FindBoneIndex(Names[K]);
+					bAll &= Bones[K] != INDEX_NONE;
+				}
+				if (!bAll) continue;
+				FVector Near = FVector::ZeroVector;
+				auto Closest = [&]()
+				{
+					double Best = 1e9;
+					for (int32 K = 1; K < 3; ++K)
+					{
+						for (int32 U = 0; U <= 10; ++U)
+						{
+							const FVector Q = FMath::Lerp(CS[Bones[K - 1]].GetLocation(), CS[Bones[K]].GetLocation(), U / 10.0);
+							const double Dist = FVector::CrossProduct(Q - At, Line).Size();
+							if (Dist < Best) { Best = Dist; Near = Q; }
+						}
+					}
+					return Best;
+				};
+				for (int32 Step = 0; Step < 5 && Closest() < kFingerClearCm; ++Step)
+				{
+					for (const FName& Name : Names)
+					{
+						if (const FQuat* Q = Carried.Find(Name)) Carried.Add(Name, FQuat::Slerp(FQuat::Identity, *Q, 0.85f));
+					}
+					Solve(Ref, RestCS, Carried, CS, &D);
+					bMoved = true;
+				}
+				// Still too close where opening barely moves it (the first bone, by the knuckle, with the line led diagonally across
+				// the palm): the hand moves off the line by the shortfall, square to it.
+				const double Left = Closest();
+				const int32 Hand = Ref.GetParentIndex(Bones[0]);
+				if (Left < kFingerClearCm && Hand != INDEX_NONE)
+				{
+					FVector Off = Near - At;
+					Off -= FVector::DotProduct(Off, Line) * Line;
+					if (Off.Normalize())
+					{
+						ReachArm(Ref, CS, D, Hand, CS[Hand].GetLocation() + Off * (kFingerClearCm - Left + 0.02), Carried);
+						Solve(Ref, RestCS, Carried, CS, &D);
+						bMoved = true;
+					}
+				}
+			}
+		}
+		return bMoved;
+	}
+
 	bool PlaceHands(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
 		TMap<FName, FQuat>& Carried)
 	{
