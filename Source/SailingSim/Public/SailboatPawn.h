@@ -401,6 +401,8 @@ public:
 	 *  wind angle (deg, + = wind from starboard), and the rig lines recorded as they are built (boat frame, cm): each drawn
 	 *  line, named, plus the spreaders (not drawn as lines: the mast model has them) for the sails to clear. */
 	void HoldForTests(double TwaDeg, double WindKnots);
+	/** The autopilot's new true wind angle, sailing on (SailingSim.Visual.SheetClearance: through a tack or a gybe). */
+	void RetargetForTests(double TwaDeg) { DemoPilot.TargetTWADeg = TwaDeg; }
 	struct FRigLineSample { FVector A, B, Sag; float RadiusCm = 0.f; const TCHAR* Name = TEXT(""); TArray<FVector> Points; /* the drawn centreline */ };
 	const TArray<FRigLineSample>& GetRigLineSamples() const { return RigLineSamples; }
 	bool HasModelTravelerBridge() const { return bModelTravelerBridge; }
