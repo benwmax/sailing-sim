@@ -1290,7 +1290,9 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			}
 			for (int32 Hand = 0; Hand < 2; ++Hand)
 			{
-				if (Hands.Mode[Hand] == FCrewHands::EMode::Free && P.Stance != ECrewStance::DinghyHike) Hands.Mode[Hand] = FCrewHands::EMode::Knee;
+				// (A dinghy sailor's free hand stays out for balance; on the Hobie, whose twin tillers have no socket to hold, both
+				// hands were free and, leaning back, the stance's arms pointed overhead at the sail: docs/crew-light-air/.)
+				if (Hands.Mode[Hand] == FCrewHands::EMode::Free && (P.Stance != ECrewStance::DinghyHike || Cfg.bMultihull)) Hands.Mode[Hand] = FCrewHands::EMode::Knee;
 			}
 		}
 

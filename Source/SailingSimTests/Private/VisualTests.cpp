@@ -603,6 +603,18 @@ bool FVisualCrewPoseTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Hiking on the rail: lower legs down into the cockpit"), J[TEXT("foot_l")].Z < J[TEXT("calf_l")].Z - 25.f);
 	Pose(ECrewStance::DinghyHike, 1.f, J);
 	TestTrue(FString::Printf(TEXT("Dinghy hiking: leaning back (%.0f cm behind the pelvis)"), J[TEXT("pelvis")].X - J[TEXT("neck")].X), J[TEXT("pelvis")].X - J[TEXT("neck")].X > 30.f);
+	// docs/crew-light-air/: sitting in from the edge (a light-air run) the dinghy sailor sits up, a little forward; leaning
+	// back 20 deg there with the face to the sky read as a full hike in 4 kn (the PC's Ultra audit).
+	{
+		FCrewPoseParams In;
+		In.Stance = ECrewStance::DinghyHike;
+		In.Inboard = 1.f;
+		TMap<FName, FQuat> InJoints;
+		CrewJointRotations(In, InJoints);
+		CrewPosedJoints(Mesh, InJoints, J);
+		const float Back = J[TEXT("pelvis")].X - J[TEXT("neck")].X;
+		TestTrue(FString::Printf(TEXT("Dinghy sailor sitting inboard: upright or forward (neck %.0f cm behind the pelvis)"), Back), Back < 3.f);
+	}
 	Pose(ECrewStance::Cockpit, 0.f, J);
 	TestTrue(TEXT("Seated: knees forward of the hips"), J[TEXT("calf_l")].X - J[TEXT("thigh_l")].X > 30.f);
 	TestTrue(TEXT("Seated: thighs about level"), FMath::Abs(J[TEXT("calf_l")].Z - J[TEXT("thigh_l")].Z) < 12.f);
