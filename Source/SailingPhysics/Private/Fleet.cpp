@@ -142,7 +142,9 @@ namespace Sailing
 			SetMain(C, 0.95, 6.0, 2.73, 0.30, 0.15, 1.02, 0.85, 7.06, 3.4, 3.8, 0.12);
 			C.Jib.NumStrips = 0; C.Spinnaker.NumStrips = 0;
 			C.MainMaxEaseDeg = 100.0; // unstayed: the boom can go past square, sailing by the lee
-			C.TravelerRangeDeg = 4.0;   // the ILCA's traveler line (it had sat inside the comment above since the fleet came in: the default 8 applied)
+			// Her traveler range stays the default 8 deg her polar and planing were calibrated with: a "TravelerRangeDeg = 4.0"
+			// had sat inside the comment above since the fleet came in, and applied it capsized her on the 22 kn broad reach
+			// (ReferenceChecks) and on four of LaserPlaningDrag's sixteen angles (docs/boom-stop/).
 			C.RigWindageCdA = 0.15; C.HullWindageCdA = 0.5;
 			C.ReefLuffFraction.clear();
 			C.Engines.clear();
