@@ -832,7 +832,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						// MetaHumans crew the player's boat, which on the J/22 is the hero (no traveler bridge); SK_Sailor the light model.
 						const bool bBridge = !(bRig && Cfg.Type == EBoatType::J22);
 						// A MetaHuman crews the player's boat by role: the helm is the last figure, the trimmer the one before.
-						if (bRig && B.Name != MetaHumanRoleName(bHelm ? 0 : (I == N - 2 ? 1 : 2))) continue;
+						if (bRig && B.Name != MetaHumanRoleName(CrewMetaHumanRole(N, I))) continue;
 						const FQuat CompRot = bRig ? Facing * B.Rig.Frame.Inverse() : Facing;
 						const FVector Location = bRig ? Pelvis * CmPerMeter - CompRot.RotateVector(B.Rig.Pelvis) : Pelvis * CmPerMeter - FVector(0.f, 0.f, 93.f);
 						FCrewGround Ground;
@@ -842,6 +842,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						Ground.bTravelerBridge = bBridge;
 						Ground.bFeetDown = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit;
+						Ground.bFlatDeck = P.bFlatDeck;
 						FCrewHands Hands;
 						Hands.Ground = &Ground;
 						FVector Feet[2][2];

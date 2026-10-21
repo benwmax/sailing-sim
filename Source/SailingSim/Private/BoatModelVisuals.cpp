@@ -773,8 +773,144 @@ void ASailboatPawn::UpdateDrips(float DeltaSeconds)
 	Drips->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
 }
 
+void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
+{
+	// Spray hull (docs/spray-hull): the bow wave's curl. Past 1.5 m/s a sheet of water piles against each side of the bow and
+	// falls away outward and aft along the Kelvin wedge (19.5 degrees): highest a little aft of the stem, about a third of
+	// the speed head (V^2 / 2g), scaled with the hull, a lip that thickens at speed. Built every frame in world space on the
+	// waves' surface (the boat heels and pitches through it), as a strip per side: 10 stations along the bow by 6 across.
+	// Not on Low; AI boats only within 120 m of the camera. M_BowWave: translucent water, its foam lip. -SailingNoBowWave.
+	constexpr int32 NS = 10, NU = 6;
+	static SailingArgs::FCachedFlag NoBowWaveArg(TEXT("SailingNoBowWave"));
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const float Speed = float(T.SpeedThroughWater);
+	bool bShow = GM && !bGhost && !NoBowWaveArg.Get() && USailingSettings::Get()->Quality > ESailingQuality::Low && Speed > 1.5f
+		&& !Boat.GetConfig().Hulls.empty();
+	if (bShow && bTrafficBoat)
+	{
+		const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		bShow = PC && PC->PlayerCameraManager && FVector::Dist(PC->PlayerCameraManager->GetCameraLocation(), GetActorLocation()) < 12000.0;
+	}
+	if (!bShow)
+	{
+		if (BowWave) BowWave->SetVisibility(false);
+		return;
+	}
+	if (!BowWave)
+	{
+		BowWave = NewObject<UProceduralMeshComponent>(this);
+		BowWave->SetupAttachment(GetRootComponent());
+		BowWave->SetUsingAbsoluteLocation(true);
+		BowWave->SetUsingAbsoluteRotation(true);
+		BowWave->SetUsingAbsoluteScale(true);
+		BowWave->SetWorldTransform(FTransform::Identity);
+		BowWave->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		BowWave->SetCastShadow(false);
+		BowWave->bAffectDistanceFieldLighting = false;
+		BowWave->RegisterComponent();
+		if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_BowWave.M_BowWave"), nullptr, LOAD_NoWarn | LOAD_Quiet)) BowWave->SetMaterial(0, M);
+	}
+	BowWave->SetVisibility(true);
+	const FHullShape& Hull = Boat.GetConfig().Hulls[0];
+	const FWaveField& Waves = GM->GetWaves();
+	const double Time = Boat.GetState().Time;
+	const float Scale = FMath::Clamp(float(Hull.MaxHalfBeam) / 1.2f, 0.5f, 1.5f);
+	const float Head = FMath::Min(0.4f * Speed * Speed / (2.f * 9.81f), 0.5f) * Scale;    // m, at the crest (bow-curl-crest: 0.25 read as a wet film at 17 kn)
+	const float Fade = FMath::Clamp((Speed - 1.5f) / 1.5f, 0.f, 1.f);
+	const float Lip = FMath::Clamp((Speed - 2.f) / 2.5f, 0.f, 1.f);
+	TArray<FVector> V;
+	TArray<FVector2D> UV;
+	TArray<FLinearColor> Col;
+	TArray<int32> Tris;
+	V.Reserve(2 * NS * NU); UV.Reserve(2 * NS * NU); Col.Reserve(2 * NS * NU);
+	// From where the bow meets the water (BowX is the stem's top: raked bows overhang it; the spray peels from 0.55-0.8 of it).
+	const double X0 = Hull.BowX * 0.8, X1 = Hull.BowX * 0.45;
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		const double S = Side == 0 ? 1.0 : -1.0;
+		const int32 Base = V.Num();
+		for (int32 I = 0; I < NS; ++I)
+		{
+			const float Tt = float(I) / (NS - 1);
+			const double X = FMath::Lerp(X0, X1, double(Tt));
+			const double Aft = X0 - X;                                         // m aft of the stem
+			const float Rise = FMath::Sin(0.5f * PI * FMath::Min(Tt / 0.15f, 1.f)) * FMath::Exp(-2.6f * FMath::Max(Tt - 0.12f, 0.f));
+			const float H = Head * Rise;
+			// The root: where this station's side meets the sea as she heels and pitches now (heeled, the lee waterline lies
+			// well outboard of the upright half-beam: rooted there the sheet lay on her topsides). The side is taken as a wall
+			// at the deck's half-beam; along it the world height is linear in body z, so one step solves for the sea.
+			const double YHull = Hull.CenterY + S * FMath::Max(Hull.DeckHalfBeam(X), 0.02);
+			const Vec3 Z0 = Boat.BodyToWorld(Vec3(X, YHull, 0.0)), Z1 = Boat.BodyToWorld(Vec3(X, YHull, 1.0));
+			const double Sea0 = Waves.Height(Z0.X, Z0.Y, Time);
+			const double Zb = FMath::Abs(Z1.Z - Z0.Z) > 1e-3 ? FMath::Clamp((Sea0 - Z0.Z) / (Z1.Z - Z0.Z), -1.5, 1.5) : 0.0;
+			const Vec3 Root = Boat.BodyToWorld(Vec3(X, YHull, Zb));
+			const Vec3 Off = Boat.BodyToWorld(Vec3(X, YHull + S, Zb));
+			FVector2D Out(Off.X - Root.X, Off.Y - Root.Y);
+			Out = Out.GetSafeNormal();
+			const double Width = 0.12 * Scale + 0.36 * Aft;                    // out to the Kelvin wedge
+			for (int32 J = 0; J < NU; ++J)
+			{
+				const float U = float(J) / (NU - 1);
+				// Across: highest at the hull, a shoulder (the lip, curling outward at speed), then down to the sea; 4 cm off
+				// her skin.
+				const float Profile = FMath::Pow(1.f - U, 1.3f) + Lip * 0.35f * FMath::Sin(PI * FMath::Min(U / 0.45f, 1.f)) * (1.f - U);
+				const double Reach = 0.04 + U * Width + 0.04 * Lip * FMath::Sin(PI * U);
+				const double WX = Root.X + Out.X * Reach, WY = Root.Y + Out.Y * Reach;
+				const double Sea = Waves.Height(WX, WY, Time);
+				FVector P = SailingFrame::ToWorld(GetWorld(), WX, WY, 0.0);
+				P.Z = WaterSurfaceZ + (Sea + double(H * Profile) + 0.01) * CmPerMeter;
+				V.Add(P);
+				UV.Add(FVector2D(U, Tt));
+				// Fades: in from the stem, out aft, into the sea at the outer edge (the material) and softly at the root.
+				const float Ends = FMath::SmoothStep(0.f, 0.18f, Tt) * (1.f - Tt * Tt);
+				Col.Add(FLinearColor(Lip, Rise, 0.f, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
+			}
+		}
+		for (int32 I = 0; I + 1 < NS; ++I)
+		{
+			for (int32 J = 0; J + 1 < NU; ++J)
+			{
+				const int32 A = Base + I * NU + J, B = A + 1, C = A + NU, D = C + 1;
+				if (Side == 0) Tris.Append({ A, C, D, A, D, B }); else Tris.Append({ A, D, C, A, B, D });
+			}
+		}
+	}
+	// Normals from the grid (facing up), tangents along the bow.
+	TArray<FVector> N;
+	TArray<FProcMeshTangent> Tan;
+	N.SetNum(V.Num());
+	Tan.SetNum(V.Num());
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		const int32 Base = Side * NS * NU;
+		for (int32 I = 0; I < NS; ++I)
+		{
+			for (int32 J = 0; J < NU; ++J)
+			{
+				const int32 K = Base + I * NU + J;
+				const FVector Dt = V[Base + FMath::Min(I + 1, NS - 1) * NU + J] - V[Base + FMath::Max(I - 1, 0) * NU + J];
+				const FVector Du = V[Base + I * NU + FMath::Min(J + 1, NU - 1)] - V[Base + I * NU + FMath::Max(J - 1, 0)];
+				FVector Nk = FVector::CrossProduct(Dt, Du).GetSafeNormal();
+				if (Nk.Z < 0.0) Nk = -Nk;
+				N[K] = Nk.IsNearlyZero() ? FVector::UpVector : Nk;
+				Tan[K] = FProcMeshTangent(Dt.GetSafeNormal(), false);
+			}
+		}
+	}
+	if (BowWave->GetNumSections() == 0)
+	{
+		BowWave->CreateMeshSection_LinearColor(0, V, Tris, N, UV, Col, Tan, false);
+	}
+	else
+	{
+		BowWave->UpdateMeshSection_LinearColor(0, V, N, UV, Col, Tan);
+	}
+}
+
 void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 {
+	UpdateBowWave(DeltaSeconds);
 	// The material parameters are shared by every boat in view; the player's boat sets them.
 	if (bTrafficBoat || !BoatParameters) return;
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -787,8 +923,30 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 	WetLineZ = FMath::Max(WetLineZ - DeltaSeconds * 0.05, WaterHere);
 	const double Hs = GM->GetWaves().SignificantHeightAt(O.X, O.Y);
 	const float Knots = float(T.SpeedThroughWater / 0.514444);
-	// Splash band: the bow wave and the chop climb the topsides with speed and sea.
-	const float Band = 4.f + float(Hs) * 45.f + FMath::Clamp(Knots - 3.f, 0.f, 6.f) * 2.5f;
+	// Spray hull (docs/spray-hull): the bow wave and slams throw water up the topsides, the same tests AWaterSurface::
+	// UpdateSpray throws its spray by (the bow wave past 2 m/s, a slam when the water closes on the bow faster than
+	// 0.45 m/s); the side stays wet above the line for half a minute or so after them.
+	{
+		const FHullShape& Hull = Boat.GetConfig().Hulls[0];
+		const Vec3 B = Boat.BodyToWorld(Vec3(0.85 * Hull.BowX, 0.0, 0.0));
+		const FVector BowNow(B.X, B.Y, B.Z);
+		float Throw = 0.f;
+		if (bHasLastBow && DeltaSeconds > 1e-4f)
+		{
+			const FVector BowV = (BowNow - LastBowM) / DeltaSeconds;
+			double H, Vz, Sx, Sy;
+			GM->GetWaves().Sample(B.X, B.Y, S.Time, H, Vz, Sx, Sy);
+			const double Closing = Vz - BowV.Z, Speed = FVector2D(BowV.X, BowV.Y).Size();
+			if (Speed > 2.0) Throw += 0.04f * float(Speed - 2.0) * DeltaSeconds;
+			if (BowNow.Z <= H + 0.15 && Closing > 0.45 && Speed > 1.5)
+				Throw += 0.8f * float(FMath::Min(Closing, 2.5) - 0.45) * FMath::Min(float(Speed) / 3.f, 1.5f) * DeltaSeconds;
+		}
+		LastBowM = BowNow;
+		bHasLastBow = true;
+		SprayWetness = FMath::Clamp(SprayWetness + Throw - DeltaSeconds / 40.f, 0.f, 1.f);
+	}
+	// Splash band: the bow wave and the chop climb the topsides with speed and sea, and spray after them.
+	const float Band = 4.f + float(Hs) * 45.f + FMath::Clamp(Knots - 3.f, 0.f, 6.f) * 2.5f + 25.f * SprayWetness;
 	// Deck: rain soaks it within a minute; spray comes aboard upwind in a sea; it dries in about five minutes.
 	const float Rain = float(GM->GetWeatherState().Rain);
 	const float Spray = FMath::Clamp(float(Hs - 0.3) * 2.f, 0.f, 1.f) * FMath::Clamp((Knots - 3.f) / 3.f, 0.f, 1.f) * FMath::Clamp(float(FMath::Abs(T.Heel)) / 0.25f, 0.f, 1.f);
@@ -805,6 +963,7 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 		UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("Puddle"), PuddleLevel);
 		UpdateDrips(DeltaSeconds);
 	}
+	UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("SprayWet"), SprayWetness);
 	// Boat fidelity 1: M_BoatSurface's close-up detail maps on High and Ultra (docs/boat-fidelity-1); -SailingNoBoatDetail compares.
 	static SailingArgs::FCachedFlag NoBoatDetailArg(TEXT("SailingNoBoatDetail"));
 	const bool bDetail = USailingSettings::Get()->Quality >= ESailingQuality::High && !NoBoatDetailArg.Get();

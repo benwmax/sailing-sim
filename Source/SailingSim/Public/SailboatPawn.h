@@ -233,6 +233,8 @@ private:
 	void UpdateBoatWetness(float DeltaSeconds);
 	/** Rain deck (docs/rain-deck): drips falling from the boom's underside and the sheer while the boat is wet. */
 	void UpdateDrips(float DeltaSeconds);
+	/** Spray hull (docs/spray-hull): the bow wave's curl, a sheet of water standing off each side of the bow at speed. */
+	void UpdateBowWave(float DeltaSeconds);
 	void ApplyStateToTransform();
 	void UpdateRigVisuals(float DeltaSeconds);
 	void BuildSailMesh(UProceduralMeshComponent* Mesh, const Sailing::FSailGeometry& Geo, const Sailing::FSailStripState* Strips, int32 Side, bool bMain);
@@ -438,6 +440,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Drips;   // rain deck: falling drips (M_Spray quads)
+	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> BowWave;   // spray hull: the bow wave's curl (world space)
 	FVector JibClewCm = FVector::ZeroVector;  // body frame, from the jib mesh
 	// Graphics G8: where the crew's hands hold the tiller extension, the mainsheet and the jib sheet (boat frame, cm), set
 	// by UpdateCrewFigures for the rig lines; the mainsheet's block on the car from the last UpdateModelRig.
@@ -456,6 +459,9 @@ private:
 	struct FDrip { FVector P, V; float KillZ, Seed; };
 	TArray<FDrip> DripList;
 	float DripClock = 0.f;
+	float SprayWetness = 0.f;   // spray hull: 0..1, the topsides wetted by the bow wave and slams, drying in about 40 s
+	FVector LastBowM = FVector::ZeroVector;
+	bool bHasLastBow = false;
 	bool bRigLinesBuilt = false;
 	/** Rig lines pacing: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm), the
 	 *  time an AI boat's paced rig has missed, and the frame its rig was last built. */

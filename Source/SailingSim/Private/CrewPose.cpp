@@ -123,9 +123,11 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 		break;
 	}
 	case ECrewStance::Trapeze:
-		// Standing on the rail, body straight; one hand on the handle, the other on the sheet.
+		// Standing on the rail, body straight; one hand on the handle, the other on the sheet. docs/crew-followups/: the
+		// handle hand at chest height toward the wire, elbow bent (the hook takes the weight); raised 55 deg over the
+		// shoulder, with the body flat out over the water, it read as flailing.
 		Legs(Out, 4.f, 6.f, 8.f);
-		Arms(Out, -55.f, 10.f, 20.f, 70.f, 40.f, 40.f);
+		Arms(Out, 15.f, 55.f, 65.f, 70.f, 40.f, 40.f);
 		break;
 	case ECrewStance::Righting:
 		// Standing on the board, leaning back with the hands on the gunwale.
@@ -305,7 +307,7 @@ namespace CrewSolver
 			const bool bJustInto = !bOffPlan && FMath::Min(B[0].Z, B[1].Z) > DeckHere - 0.12;
 			// (And only a foot under a side deck beside the well, within 0.4 m of it, the J/22's side deck and its edge: further
 			// out it is on the deck.)
-			const bool bBesideWell = bWell && Y - Limit < 0.40;
+			const bool bBesideWell = bWell && Y - Limit < 0.40 && !G.bFlatDeck;
 			if (Y > Limit && (bOffPlan || bBesideWell) && !bJustInto)
 			{
 				Shift.Y = (Mid.Y >= H.CenterY ? -1.0 : 1.0) * (Y - Limit);

@@ -52,6 +52,20 @@ c *= 1.0 - 0.25 * ageK * X.g;                      // teak greys and darkens
 float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
 float wet = (1.0 - smoothstep(WaterZ + WetBand * (0.6 + 0.4 * streak) - 3.0, WaterZ + WetBand * (0.6 + 0.4 * streak) + 3.0, WP.z)) * (1.0 - up);
 float wetAll = saturate(max(wet, saturate(DeckWet) * up * 0.8));
+// Spray hull (docs/spray-hull), as M_BoatSurface: a water film below the wet line (a fifth darker), beads in its top
+// 8 cm and spattered above it after spray (SprayWet), drips running down from the line; glossy where wet.
+float below = WaterZ + WetBand * (0.6 + 0.4 * streak) - WP.z;
+float2 bq = float2(WP.x + WP.y, WP.z) / 0.9;
+float2 bf = frac(bq) - 0.5;
+float bh = frac(sin(dot(floor(bq), float2(17.31, 91.7))) * 43758.5), br = 0.18 + 0.2 * frac(bh * 7.13);
+float beadAt = (1.0 - smoothstep(br - 0.06, br, length(bf))) * step(0.4, bh);
+float spatter = saturate(SprayWet) * (1.0 - smoothstep(0.0, 30.0 + 40.0 * saturate(SprayWet), -below)) * step(below, 0.0);
+float bead = beadAt * (1.0 - up) * max(wet * (1.0 - smoothstep(0.0, 8.0, below)), spatter * step(0.8, bh));
+float dlane = (WP.x + WP.y * 0.7) / 1.6;
+float dh = frac(sin(floor(dlane) * 37.7) * 4375.5);
+float drip = wet * step(0.7, dh) * (1.0 - smoothstep(0.04, 0.14, abs(frac(dlane) - 0.5))) * (1.0 - smoothstep(3.0, 3.0 + 14.0 * frac(dh * 3.7), below));
+c *= 1.0 - 0.20 * wet - 0.10 * drip;
+wetAll = saturate(max(wetAll, max(bead, drip)));
 float porosity = lerp(lerp(0.1, 0.5, X.r), 0.6, X.g);
 c *= lerp(1.0, 1.0 - 0.55 * porosity, wetAll) * (1.0 - 0.45 * ns * (1.0 - NSM.r) * wetAll);
 Rough = lerp(Rough, lerp(0.06, Rough, 0.25 + 0.4 * X.r), wetAll);
@@ -78,6 +92,13 @@ float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf)
 c *= (1.0 - 0.3 * pudK) * (1.0 + 0.25 * rring);
 Rough = lerp(Rough, 0.015, saturate(pudK + rbead));
 Rough = lerp(Rough, 0.12, rring);
+Rough = lerp(Rough, 0.02, bead);                                  // a bead is a lens: a sharp glint
+// docs/lee-topside-patch/: Lumen's screen traces run before the sea (Single Layer Water) is drawn, so a mirror reflection
+// pointing down into it found the hull and keel under the water: a dark dome on the lee topsides of a heeled boat. Where
+// the reflection points below the horizon the gelcoat is rough enough (0.45) that Lumen takes its radiance cache, the
+// sea's soft sky light, instead.
+float3 rv = reflect(-V, nw);
+Rough = lerp(Rough, max(Rough, 0.45), saturate(-rv.z * 3.0));
 return c;
 """
 
@@ -111,6 +132,8 @@ def import_texture(path, kind):
     elif kind == "X":
         tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
         tex.set_editor_property("srgb", False)
+    # Boat texture budget (docs/boat-tex-medium): the Vehicle groups (their device-profile sizes keep the hero boat inside Medium's 24 MB).
+    tex.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_VEHICLE_NORMAL_MAP if kind == "N" else unreal.TextureGroup.TEXTUREGROUP_VEHICLE)
     unreal.EditorAssetLibrary.save_loaded_asset(tex)
     return tex
 
@@ -174,7 +197,7 @@ def hero_material(defaults):
     wear.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
     extra["Wear"] = (wear, "RGBA")
     mpc = unreal.load_asset("/Game/Boats/MPC_Boat")
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Rain", "Puddle")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "SprayWet", "Rain", "Puddle")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 2160 + i * 80)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
