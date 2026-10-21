@@ -60,6 +60,15 @@ struct SAILINGSIM_API FCrewRig
 /** The MetaHuman crew's roles (scripts/make_metahumans.py): 0 the helm, 1 the trimmer, 2 the bow. */
 constexpr int32 NumMetaHumanRoles = 3;
 SAILINGSIM_API const TCHAR* MetaHumanRoleName(int32 Role);
+/** Which built MetaHuman crews figure I of N: the helm (the last) role 0, the trimmer (the one before) 1, the rest the bow,
+ *  2. docs/crew-followups/: a big crew (more than four: the maxi's twelve) cycles the other hands through all three, so
+ *  her rail is not one face repeated. */
+inline int32 CrewMetaHumanRole(int32 N, int32 I)
+{
+	if (I == N - 1) return 0;
+	if (I == N - 2) return 1;
+	return N > 4 ? I % NumMetaHumanRoles : 2;
+}
 
 /** Loads a role's built MetaHuman (body, face, outfit under /Game/Crew/MetaHumans, git-ignored); false if not built. */
 SAILINGSIM_API bool LoadMetaHumanCrew(int32 Role, class USkeletalMesh*& Body, class USkeletalMesh*& Face, class USkeletalMesh*& Outfit);
@@ -90,6 +99,7 @@ struct SAILINGSIM_API FCrewGround
 	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
 	bool bTravelerBridge = true; // the drawn model has the cockpit's traveler bridge (the light J/22); false: the hero J/22's own cockpit
 	bool bFeetDown = false;     // sitting in a cockpit (Helm, Cockpit): a foot hanging over the well's sole or a seat goes down onto it
+	bool bFlatDeck = false;     // docs/crew-followups/: sitting with the feet on the deck (FCrewPoseParams::bFlatDeck): never sent into a well
 };
 
 /** The cockpit well of a class (m, boat frame): open above the seats and the sole. False for the cats (nets). */

@@ -177,6 +177,26 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// 0.36 m apart and their shoulders overlapped on the rail (docs/crew-pose/mac).
 		X = FMath::Clamp(X - (I > 0 ? 0.1 : 0.0), KeelWell.X0 + 0.3, KeelWell.X1 - 0.12);
 	}
+	// docs/crew-followups/: the Catalinas' crew spread along the cockpit, not shoulder to shoulder in its after part
+	// (0.55 m apart round CrewCG they left the forward half empty): the forward hand at its forward end, the helm at the
+	// tiller's end (the 22) or where the wheel boat's helm already sits (the 30), the rest evenly between, 0.55-0.9 m apart.
+	if ((Cfg.Type == EBoatType::Catalina22 || Cfg.Type == EBoatType::Catalina30) && CrewCockpitWell(Cfg, KeelWell))
+	{
+		const bool bTiller = Cfg.WheelHardOverSeconds <= 0.0;
+		// (Steering from the extension, the helm sits along the tiller, three quarters of the way to its end.)
+		const double HelmX = bTiller ? FMath::Clamp(Hull.SternX + 0.75 * Cfg.TillerLength + 0.15, KeelWell.X0 + 0.35, KeelWell.X1 - 0.12)
+			: Cfg.CrewCG.X + 0.55 * (0.5 * (N - 1) - (N - 1));
+		if (I == N - 1)
+		{
+			if (bTiller) X = HelmX;
+		}
+		else
+		{
+			const double Fwd = KeelWell.X1 - 0.3, Aft = HelmX + 0.6;
+			const double Step = N > 2 ? FMath::Clamp((Fwd - Aft) / (N - 2), 0.55, 0.9) : 0.0;
+			X = Fwd - Step * I;
+		}
+	}
 	// Round 12: the J/22's helm sits aft of the traveler, about level with the tiller's end. At x -1.75 they sat forward
 	// of the traveler against the trimmer, the three crew bunched by the cabin with the after half of the cockpit empty.
 	if (Cfg.Type == EBoatType::J22 && I == N - 1 && CrewCockpitWell(Cfg, KeelWell))
@@ -589,6 +609,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike;
 		Ground.bTravelerBridge = In.bTravelerBridge;
 		Ground.bFeetDown = St == ECrewStance::Helm || St == ECrewStance::Cockpit;
+		Ground.bFlatDeck = In.Params.bFlatDeck;
 		CrewSolver::PlantAllFeet(Ref, RestCS, CS, D, Frame, Ground, Carried);
 	}
 	if (bBrace)

@@ -524,7 +524,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		&& !FParse::Param(SailingArgs::Dev(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
 	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
 	{
-		const int32 CrewRole = I == C.CrewCount - 1 ? 0 : (I == C.CrewCount - 2 ? 1 : 2);
+		const int32 CrewRole = CrewMetaHumanRole(C.CrewCount, I);
 		if (USkeletalMeshComponent* Figure = AddMetaHumanFigure(CrewRole, I))
 		{
 			Crew.Add(Figure);

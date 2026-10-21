@@ -180,7 +180,7 @@ bool FVisualCrewHeadLevelTest::RunTest(const FString& Parameters)
 		const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
 		for (int32 I = 0; I < Cfg.CrewCount; ++I)
 		{
-			if (Rig && Body.Name != MetaHumanRoleName(I == Cfg.CrewCount - 1 ? 0 : (I == Cfg.CrewCount - 2 ? 1 : 2))) continue;
+			if (Rig && Body.Name != MetaHumanRoleName(CrewMetaHumanRole(Cfg.CrewCount, I))) continue;
 			for (const double Hike : { 0.0, 1.0 })
 			{
 				FCrewPlaceInput Place;
@@ -293,7 +293,7 @@ bool FVisualCrewMotionFeetTest::RunTest(const FString& Parameters)
 				for (const FCrewBody& Body : Bodies)
 				{
 					const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
-					if (Rig && Body.Name != MetaHumanRoleName(bHelm ? 0 : (I == N - 2 ? 1 : 2))) continue;
+					if (Rig && Body.Name != MetaHumanRoleName(CrewMetaHumanRole(N, I))) continue;
 					FCrewMotionState State;
 					FCrewMotionInput In;
 					In.Params = Pl.Params;
@@ -426,7 +426,7 @@ bool FVisualCrewClipLimitsTest::RunTest(const FString& Parameters)
 					for (const FCrewBody& Body : Bodies)
 					{
 						const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
-						if (Rig && Body.Name != MetaHumanRoleName(I == N - 1 ? 0 : (I == N - 2 ? 1 : 2))) continue;
+						if (Rig && Body.Name != MetaHumanRoleName(CrewMetaHumanRole(N, I))) continue;
 						const FReferenceSkeleton& Ref = Body.Mesh->GetRefSkeleton();
 						FCrewMotionState On, Off;
 						FCrewMotionInput In;
@@ -757,7 +757,7 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 				for (const FCrewBody& Body : Bodies)
 				{
 					const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
-					if (Rig && Body.Name != MetaHumanRoleName(bHelm ? 0 : (I == N - 2 ? 1 : 2))) continue;
+					if (Rig && Body.Name != MetaHumanRoleName(CrewMetaHumanRole(N, I))) continue;
 					const FReferenceSkeleton& Ref = Body.Mesh->GetRefSkeleton();
 					FCrewMotionState State;
 					FCrewMotionInput In;
