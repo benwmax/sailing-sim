@@ -562,20 +562,33 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Per-class sail layouts (Visual V7): the Sunfish's striped sail, the Hobie's coloured panels and seven full battens,
 	// tri-radial cruising and racing multihull mains with full battens, the ILCA's three short battens; the maxi's black
 	// membrane main with six full battens (Layout 4: fibre paths from the corners, a few wide panels).
-	struct FSailLayout { float Layout, Battens, Full; };
+	// Sails look (docs/sails-look): each class's cloth width (the crosscut panels, the Sunfish's and Hobie's colour bands)
+	// and whether its jib carries a clear window (the club keelboats').
+	struct FSailLayout { float Layout, Battens, Full, PanelWidth = 0.9f, JibWindow = 0.f; };
 	auto LayoutFor = [](EBoatType T) -> FSailLayout
 	{
 		switch (T)
 		{
-		case EBoatType::Sunfish: return { 1.f, 0.f, 0.f };
-		case EBoatType::ILCA7: return { 0.f, 3.f, 0.f };
-		case EBoatType::Hobie16: return { 2.f, 7.f, 1.f };
-		case EBoatType::Corsair880: return { 3.f, 5.f, 1.f };
-		case EBoatType::Lagoon42: return { 3.f, 5.f, 1.f };
-		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f };
-		case EBoatType::Maxi: return { 4.f, 6.f, 1.f };
-		default: return { 0.f, 4.f, 0.f };
+		case EBoatType::Sunfish: return { 1.f, 0.f, 0.f, 0.42f };
+		case EBoatType::ILCA7: return { 0.f, 3.f, 0.f, 0.72f };
+		case EBoatType::Hobie16: return { 2.f, 7.f, 1.f, 0.85f };
+		case EBoatType::Corsair880: return { 3.f, 5.f, 1.f, 0.9f };
+		case EBoatType::Lagoon42: return { 3.f, 5.f, 1.f, 1.0f };
+		case EBoatType::Catalina22: return { 0.f, 4.f, 0.f, 0.9f, 1.f };
+		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f, 1.0f, 1.f };
+		case EBoatType::Maxi: return { 4.f, 6.f, 1.f, 3.4f };
+		default: return { 0.f, 4.f, 0.f, 0.9f, 1.f };    // the J/22
 		}
+	};
+	// The leech's forward travel per metre of height (the crosscut seams meet it at right angles), from the sail's strips.
+	auto LeechLean = [](const Sailing::FSailGeometry& G) -> float
+	{
+		if (G.NumStrips < 2) return 0.25f;
+		const Sailing::FSailStripGeometry& A = G.Strips[0];
+		const Sailing::FSailStripGeometry& B = G.Strips[G.NumStrips - 1];
+		const double Dz = 0.5 * (B.ZBottom + B.ZTop) - 0.5 * (A.ZBottom + A.ZTop);
+		const double Dx = (B.LuffX - B.Chord) - (A.LuffX - A.Chord);
+		return Dz > 0.1 ? float(FMath::Clamp(Dx / Dz, 0.0, 1.2)) : 0.25f;
 	};
 	const FSailLayout Lay = LayoutFor(C.Type);
 	// Boat fidelity 4: M_SailCloth's sailmaker's detail (seams held on screen, stitching, tabling, corner patches, pocket
@@ -599,6 +612,9 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Main.NumStrips > 0 ? float(C.Main.Strips[C.Main.NumStrips - 1].ZTop - C.Main.Strips[0].ZBottom) : 1.f);
 		Mid->SetScalarParameterValue(TEXT("Fade"), Livery.SailFade);   // fleet hero: the coloured cloth's sun fade
+		Mid->SetScalarParameterValue(TEXT("LeechLean"), LeechLean(C.Main));
+		Mid->SetScalarParameterValue(TEXT("PanelWidth"), Lay.PanelWidth);
+		Mid->SetScalarParameterValue(TEXT("Window"), 0.f);
 	}
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
@@ -622,6 +638,9 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Mid->SetScalarParameterValue(TEXT("Layout"), Lay.Layout >= 2.f ? Lay.Layout : 0.f);
 		Mid->SetScalarParameterValue(TEXT("Height"), C.Jib.NumStrips > 0 ? float(C.Jib.Strips[C.Jib.NumStrips - 1].ZTop - C.Jib.Strips[0].ZBottom) : 1.f);
 		Mid->SetScalarParameterValue(TEXT("Fade"), Livery.SailFade);
+		Mid->SetScalarParameterValue(TEXT("LeechLean"), LeechLean(C.Jib));
+		Mid->SetScalarParameterValue(TEXT("PanelWidth"), Lay.PanelWidth);
+		Mid->SetScalarParameterValue(TEXT("Window"), Lay.JibWindow);
 	}
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
