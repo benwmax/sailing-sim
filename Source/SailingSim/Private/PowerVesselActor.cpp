@@ -386,7 +386,9 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 		Exhaust->NumCustomDataFloats = 2;
 		Exhaust->RegisterComponent();
 		TArray<FTransform> Hidden;
-		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), kMaxPuffs);
+		// (Unused puffs are parked at the vessel, at zero scale: 10 km down at the world's origin they stretched the component's
+		// bounds to a 5 km sphere, as the water's spray did.)
+		Hidden.Init(FTransform(FQuat::Identity, GetActorLocation(), FVector::ZeroVector), kMaxPuffs);
 		Exhaust->AddInstances(Hidden, false, true);
 		ExhaustRng.Initialize(int32(V.Snapshot().Id) * 7919 + 13);
 		UE_LOG(LogTemp, Display, TEXT("Exhaust: %s %d at %.0f, %.0f m"), ANSI_TO_TCHAR(TrafficKindName(Kind)), int32(V.Snapshot().Id), V.Snapshot().X, V.Snapshot().Y);
@@ -449,7 +451,7 @@ void APowerVesselActor::UpdateExhaust(const FTrafficVessel& V, const FVector& Ob
 		}
 		else
 		{
-			Xf[I] = FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector);
+			Xf[I] = FTransform(FQuat::Identity, GetActorLocation(), FVector::ZeroVector);
 		}
 	}
 	Exhaust->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
