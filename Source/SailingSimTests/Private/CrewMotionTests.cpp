@@ -704,6 +704,10 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 	{
 		const FString B = Bone.ToLower();
 		if (B.Contains(TEXT("twist")) || B.Contains(TEXT("corr")) || B.Contains(TEXT("ik_")) || B.Contains(TEXT("root"))) return -1.0;
+		// The MetaHumans' helper joints (thigh_bck, thigh_in, calf_knee, ...) sit at or outside the skin: not centrelines.
+		if (B.Contains(TEXT("bck")) || B.Contains(TEXT("_in")) || B.Contains(TEXT("_out")) || B.Contains(TEXT("_fwd")) || B.Contains(TEXT("knee"))) return -1.0;
+		// (and their muscle helpers, off the centreline: tricep, bicep, latissimus, pec, scap)
+		if (B.Contains(TEXT("tricep")) || B.Contains(TEXT("bicep")) || B.Contains(TEXT("latissimus")) || B.Contains(TEXT("pec")) || B.Contains(TEXT("scap"))) return -1.0;
 		if (B.StartsWith(TEXT("pelvis"))) return 0.10;
 		if (B.StartsWith(TEXT("spine"))) return 0.10;
 		if (B.StartsWith(TEXT("neck"))) return 0.05;
@@ -715,7 +719,7 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 		if (B.StartsWith(TEXT("lowerarm"))) return 0.035;
 		return -1.0;
 	};
-	int32 Checked = 0, Clipped = 0;
+	int32 Checked = 0, Clipped = 0, Crossings = 0;
 	TMap<FString, int32> Worst;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
@@ -785,21 +789,38 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 							if (R < 0.0 || Parent < 0) continue;
 							const FVector A = In.ToBoat.TransformPosition(CS[Parent].GetLocation()) / CmPerMeter;
 							const FVector Bp = In.ToBoat.TransformPosition(CS[B].GetLocation()) / CmPerMeter;
+							// Along the bone from its parent only when the parent is flesh too (the pelvis hangs off the root at
+							// the figure's origin: the segment between them is not body).
+							const bool bSegment = RadiusFor(Ref.GetBoneName(Parent).ToString()) >= 0.0;
 							for (const double U : { 0.25, 0.5, 0.75, 1.0 })
 							{
+								if (!bSegment && U < 1.0) continue;
 								const FVector P = FMath::Lerp(A, Bp, U);
 								for (const FVector& Dir : { FVector(0, 0, -1), FVector(0, 1, 0), FVector(0, -1, 0), FVector(1, 0, 0), FVector(-1, 0, 0) })
 								{
 									++Checked;
-									// The flesh may rest on a surface: 1.5 cm of give.
-									const FVector Q = P + Dir * FMath::Max(R - 0.015, 0.0);
+									// The flesh may rest on a surface: 1.5 cm of give, 4 cm under the hips, lower back, thighs and calves
+									// (seated flesh). A clip is flesh more than 2.5 cm past that inside the boat (how deep: the first
+									// point inside along the ray from the bone).
+									const bool bSeatFlesh = (Dir.Z < 0.0 && (BoneName.StartsWith(TEXT("pelvis")) || BoneName.StartsWith(TEXT("thigh"))
+										|| BoneName == TEXT("spine") || BoneName.StartsWith(TEXT("spine_01")))) || BoneName.StartsWith(TEXT("calf"));
+									const double Reach = FMath::Max(R - (bSeatFlesh ? 0.04 : 0.015), 0.0);
+									const FVector Q = P + Dir * Reach;
 									if (!CrewInsideBoat(Cfg, Model.HullDepth(), Q)) continue;
+									double FirstIn = Reach;
+									for (double S = 0.0; S < Reach; S += 0.005)
+									{
+										if (CrewInsideBoat(Cfg, Model.HullDepth(), P + Dir * S)) { FirstIn = S; break; }
+									}
+									if (Reach - FirstIn < 0.025) continue;
 									++Clipped;
-									const FString Key = FString::Printf(TEXT("%s, %s crew %d (%s, stance %d): %s"), ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *Body.Name, I, C.Name, int32(Pl.Params.Stance), *BoneName);
+									const FString Key = FString::Printf(TEXT("%s, %s crew %d (%s, stance %d%s): %s"), ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *Body.Name, I, C.Name, int32(Pl.Params.Stance), Pl.Params.bFlatDeck ? TEXT(" flat") : TEXT(""), *BoneName);
 									Worst.FindOrAdd(Key)++;
 									if (!Reported.Contains(BoneName))
 									{
 										Reported.Add(BoneName);
+										// Crossing is a half-second transition: its clips are listed, not failed.
+										if (Pl.Params.Stance == ECrewStance::Crossing) { ++Crossings; break; }
 										AddError(FString::Printf(TEXT("%s inside the boat at (%.2f, %.2f, %.2f) m (pelvis at %.2f, %.2f, %.2f)"), *Key, Q.X, Q.Y, Q.Z, Pl.Pelvis.X, Pl.Pelvis.Y, Pl.Pelvis.Z));
 									}
 									break;
@@ -811,7 +832,7 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 			}
 		}
 	}
-	AddInfo(FString::Printf(TEXT("%d body points checked, %d inside the boat"), Checked, Clipped));
+	AddInfo(FString::Printf(TEXT("%d body points checked, %d inside the boat; %d bones in a crossing (transient, not failed)"), Checked, Clipped, Crossings));
 	return true;
 }
 

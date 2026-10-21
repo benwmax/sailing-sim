@@ -23,6 +23,9 @@ struct SAILINGSIM_API FCrewPoseParams
 	ECrewStance Stance = ECrewStance::Cockpit;
 	float Hike = 0.f;       // 0 sitting up .. 1 hiked hard (or flat out on the wire)
 	float Side = 1.f;       // +1 the sailor is on the starboard side, -1 port
+	// docs/crew-hull-clip/: sitting on a deck whose floor ahead of the sailor is as high as the seat (the maxi's deck
+	// beside her cockpit, a multihull's nets or bridgedeck): knees up and the feet on the deck, not down into a well.
+	bool bFlatDeck = false;
 };
 
 /** Joint rotations for a stance (character frame, applied about each joint, parent first). */
@@ -113,7 +116,20 @@ SAILINGSIM_API bool CrewNetSpan(const Sailing::FBoatConfig& Config, double& AftX
 /** What a multihull sailor sits on at (X, Y): a hull's crowned deck (its sheer in the cockpit well, where the keelboat
  *  stances' offsets apply), else the surface between the hulls, else the nearest hull's deck at its centreline. */
 SAILINGSIM_API double CrewSeatSurfaceZ(const Sailing::FBoatConfig& Config, double X, double Y);
-/** Is a point (m, boat frame) inside the solid boat: under the deck, inside the topsides, not in the cockpit well? */
+/** A keelboat's cabin trunk (m, boat frame): from X0 to X1, Height over the sheer, its sides HalfWidth out (or the deck
+ *  edge less SideDeck). False where the drawn model has none. */
+struct SAILINGSIM_API FCrewCabinTrunk
+{
+	double X0 = 0.0, X1 = 0.0;
+	double HalfWidth = 0.0;
+	double SideDeck = -1.0;
+	double Height = 0.0;
+};
+/** The boats whose drawn models carry lifelines (build_fleet.py lifelines(): the Catalinas, the Corsair's main hull). */
+SAILINGSIM_API bool CrewHasLifelines(const Sailing::FBoatConfig& Config);
+SAILINGSIM_API bool CrewCabinTrunk(const Sailing::FBoatConfig& Config, FCrewCabinTrunk& Out, bool bTravelerBridge = true);
+/** Is a point (m, boat frame) inside the solid boat: under the deck (its crown too), inside the topsides, not in the
+ *  cockpit well, in a cabin trunk; between a multihull's hulls, through the nets, the bridgedeck, saloon or table? */
 SAILINGSIM_API bool CrewInsideBoat(const Sailing::FBoatConfig& Config, double HullDepth, const FVector& P, bool bTravelerBridge = true);
 
 struct SAILINGSIM_API FCrewHands

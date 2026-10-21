@@ -64,7 +64,9 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 		// feet on the seat or the sole, leaning back out over the water from the hips the harder they hike; hands on the
 		// knees (the trimmer's on the sheet). Round 11: they had sat facing outboard with their legs hanging down the
 		// topsides, and Bean, who sails J/22s: "people do not hang their legs over a sailboat like that".
-		Legs(Out, 84.f - 8.f * H, 82.f - 22.f * H, 8.f);
+		// On a flat deck (bFlatDeck) the knees come up and the feet rest on the deck in front.
+		if (P.bFlatDeck) Legs(Out, 116.f - 6.f * H, 64.f, 12.f);
+		else Legs(Out, 84.f - 8.f * H, 82.f - 22.f * H, 8.f);
 		const float L = -(6.f + 26.f * H);
 		Out.Add(TEXT("spine"), Lean(0.5f * L));
 		Out.Add(TEXT("chest"), Lean(0.5f * L));
@@ -296,7 +298,15 @@ namespace CrewSolver
 			const bool bWell = Near == 0 && CrewCockpitWell(C, W, G.bTravelerBridge) && Mid.X > W.X0 && Mid.X < W.X1;
 			const double Limit = (bWell ? (W.SideDeck > 0.0 ? H.DeckHalfBeam(Mid.X) - W.SideDeck : W.HalfWidth) : H.DeckHalfBeam(Mid.X)) - 0.08;
 			const double Y = FMath::Max(FMath::Abs(B[0].Y - H.CenterY), FMath::Abs(B[1].Y - H.CenterY));
-			if (Y > Limit && (bOffPlan || bWell))
+			// docs/crew-hull-clip/: a foot only just into the deck (within 12 cm of its surface: a crown, a pose resting a
+			// heel on it) is lifted onto the deck where it is; only one deep under a side deck goes into the well. The
+			// maxi's rail crew at her cockpit's forward end had their feet sent 40 cm down into it.
+			const double DeckHere = FMath::Max(CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge), CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge));
+			const bool bJustInto = !bOffPlan && FMath::Min(B[0].Z, B[1].Z) > DeckHere - 0.12;
+			// (And only a foot under a side deck beside the well, within 0.4 m of it, the J/22's side deck and its edge: further
+			// out it is on the deck.)
+			const bool bBesideWell = bWell && Y - Limit < 0.40;
+			if (Y > Limit && (bOffPlan || bBesideWell) && !bJustInto)
 			{
 				Shift.Y = (Mid.Y >= H.CenterY ? -1.0 : 1.0) * (Y - Limit);
 			}
@@ -706,6 +716,11 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 	case EBoatType::Catalina22: return Fleet(-3.05, -0.78, 0.63, 0.42);
 	case EBoatType::Catalina30: return Fleet(-4.05, -1.32, 0.82, 0.5);
 	case EBoatType::Corsair880: return Fleet(-3.75, -0.95, 0.62, 0.45);
+	case EBoatType::Maxi:
+		// docs/crew-hull-clip/: her cockpit (Tools/boats/maxi ref.json): x -14.6 to -4.6, 4.7 m wide, 0.55 m deep, no
+		// seats (the crew sit on the deck beside it or stand in it).
+		W.X0 = -14.6; W.X1 = -4.6; W.HalfWidth = 2.35; W.SoleZ = H.SheerHeight(-9.6) - 0.55;
+		return true;
 	default: return false;
 	}
 }
@@ -726,6 +741,24 @@ namespace
 	}
 }
 
+namespace CrewPoseDetail
+{
+	// build_fleet.py SPECS "crown": the deck's camber over the sheer at a hull's centreline.
+	double DeckCrown(Sailing::EBoatType Type)
+	{
+		switch (Type)
+		{
+		case Sailing::EBoatType::Hobie16: return 0.12;
+		case Sailing::EBoatType::Corsair880: return 0.05;
+		case Sailing::EBoatType::Lagoon42: return 0.04;
+		// docs/crew-hull-clip/: the maxi's deck (Tools/boats/maxi ref.json "deck_camber"); her rail crew's feet were
+		// put on the sheer, 6 cm into it.
+		case Sailing::EBoatType::Maxi: return 0.12;
+		default: return 0.0;
+		}
+	}
+}
+
 double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTravelerBridge)
 {
 	FCrewCockpitWell W;
@@ -737,25 +770,19 @@ double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTrave
 		if (X < H.SternX || X > H.BowX || Yh >= H.DeckHalfBeam(X)) continue;
 		double Floor = 0.0;
 		if (K == 0 && bWell && InWell(C, W, X, Yh, Floor)) return Floor;
-		return H.SheerHeight(X);
+		// docs/crew-hull-clip/: on a cabin trunk, its top (feet planted on the deck under it went through it).
+		FCrewCabinTrunk Trunk;
+		if (K == 0 && CrewCabinTrunk(C, Trunk, bTravelerBridge) && X > Trunk.X0 && X < Trunk.X1
+			&& Yh < (Trunk.SideDeck > 0.0 ? H.DeckHalfBeam(X) - Trunk.SideDeck : Trunk.HalfWidth))
+		{
+			return H.SheerHeight(X) + Trunk.Height;
+		}
+		// (The deck's crown too: the Hobie's and the maxi's feet were planted on the sheer, inside it.)
+		return H.SheerHeight(X) + CrewPoseDetail::DeckCrown(C.Type) * FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(H.DeckHalfBeam(X), 1e-3)));
 	}
 	return CrewBetweenHullsZ(C, X, Y);
 }
 
-namespace CrewPoseDetail
-{
-	// build_fleet.py SPECS "crown": the deck's camber over the sheer at a hull's centreline.
-	double DeckCrown(Sailing::EBoatType Type)
-	{
-		switch (Type)
-		{
-		case Sailing::EBoatType::Hobie16: return 0.12;
-		case Sailing::EBoatType::Corsair880: return 0.05;
-		case Sailing::EBoatType::Lagoon42: return 0.04;
-		default: return 0.0;
-		}
-	}
-}
 
 bool CrewNetSpan(const Sailing::FBoatConfig& C, double& AftX, double& ForwardX)
 {
@@ -806,6 +833,14 @@ double CrewSeatSurfaceZ(const Sailing::FBoatConfig& C, double X, double Y)
 		return H.SheerHeight(X) + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(Half, 1e-3)));
 	}
 	const double Between = CrewBetweenHullsZ(C, X, Y);
+	// docs/crew-hull-clip/: the Lagoon's helm seat (build_fleet.py lagoon_detail(): its cushion 0.45 by 0.6 m, aft of
+	// the saloon on the starboard side, 0.49 m over the bridgedeck).
+	if (Between > -1e8 && C.Type == Sailing::EBoatType::Lagoon42)
+	{
+		const Sailing::FHullShape& Stbd = C.Hulls[1];
+		const double HelmY = FMath::Abs(Stbd.CenterY) - Stbd.DeckHalfBeam(0.0) + 0.55 - 0.35;
+		if (FMath::Abs(X + 3.25) < 0.225 && FMath::Abs(Y - HelmY) < 0.3) return Between + 0.47;
+	}
 	if (Between > -1e8) return Between;
 	// Out over the water (on the wire) or past the nets: the deck of the hull nearest the sailor's side.
 	const Sailing::FHullShape* Near = &C.Hulls[0];
@@ -816,19 +851,68 @@ double CrewSeatSurfaceZ(const Sailing::FBoatConfig& C, double X, double Y)
 	return Near->SheerHeight(FMath::Clamp(X, Near->SternX, Near->BowX)) + Crown;
 }
 
+bool CrewHasLifelines(const Sailing::FBoatConfig& C)
+{
+	return C.Type == Sailing::EBoatType::Catalina22 || C.Type == Sailing::EBoatType::Catalina30 || C.Type == Sailing::EBoatType::Corsair880;
+}
+
+bool CrewCabinTrunk(const Sailing::FBoatConfig& C, FCrewCabinTrunk& Out, bool bTravelerBridge)
+{
+	using Sailing::EBoatType;
+	Out = FCrewCabinTrunk();
+	// The trunks the drawn models carry (build_fleet.py SPECS "cabin": aft x, forward x, half width, height over the
+	// sheer; build_j22.py CABIN_AFT, CABIN_FWD, SIDE_DECK, cabin_height; the hero's build_j22_hero.py).
+	switch (C.Type)
+	{
+	case EBoatType::J22:
+		if (bTravelerBridge) { Out.X0 = -0.72; Out.X1 = 1.60; Out.SideDeck = 0.36; Out.Height = 0.31; }
+		else { Out.X0 = -0.55; Out.X1 = 1.65; Out.SideDeck = 0.25; Out.Height = 0.30; }
+		return true;
+	case EBoatType::Catalina22: Out.X0 = -0.78; Out.X1 = 1.70; Out.HalfWidth = 0.62; Out.Height = 0.42; return true;
+	case EBoatType::Catalina30: Out.X0 = -1.32; Out.X1 = 2.85; Out.HalfWidth = 0.92; Out.Height = 0.60; return true;
+	case EBoatType::Corsair880: Out.X0 = -0.95; Out.X1 = 2.20; Out.HalfWidth = 0.62; Out.Height = 0.48; return true;
+	case EBoatType::Maxi: Out.X0 = -4.6; Out.X1 = 3.6; Out.HalfWidth = 2.05; Out.Height = 0.52; return true;   // ref.json "coachroof"
+	default: return false;
+	}
+}
+
 bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P, bool bTravelerBridge)
 {
 	FCrewCockpitWell W;
 	const bool bWell = CrewCockpitWell(C, W, bTravelerBridge);
+	FCrewCabinTrunk Trunk;
+	const bool bTrunk = CrewCabinTrunk(C, Trunk, bTravelerBridge);
+	const double Crown = CrewPoseDetail::DeckCrown(C.Type);
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
 	{
 		const Sailing::FHullShape& H = C.Hulls[K];
 		const double Y = FMath::Abs(P.Y - H.CenterY);
-		if (P.X < H.SternX || P.X > H.BowX || Y >= H.DeckHalfBeam(P.X) || P.Z >= H.SheerHeight(P.X)) continue;
+		const double Half = H.DeckHalfBeam(P.X);
+		if (P.X < H.SternX || P.X > H.BowX || Y >= Half) continue;
+		// docs/crew-hull-clip/: the cabin trunk on the main hull, and the deck's crown (the maxi's 12 cm).
+		const double Sheer = H.SheerHeight(P.X);
+		if (K == 0 && bTrunk && P.X > Trunk.X0 && P.X < Trunk.X1 && Y < (Trunk.SideDeck > 0.0 ? Half - Trunk.SideDeck : Trunk.HalfWidth)
+			&& P.Z < Sheer + Trunk.Height && P.Z > Sheer - 0.05)
+		{
+			return true;
+		}
+		if (P.Z >= Sheer + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Y / FMath::Max(Half, 1e-3)))) continue;
 		if (P.Z <= H.BottomZ(P.X, Y, HullDepth)) continue;
 		double Floor = 0.0;
 		if (K == 0 && bWell && InWell(C, W, P.X, Y, Floor) && P.Z >= Floor) continue;
 		return true;
+	}
+	// Between a multihull's hulls: through the trampoline or the nets (8 cm), into the Lagoon's bridgedeck (30 cm), her
+	// saloon and her cockpit table (build_fleet.py: the saloon from x -2.4 to 2.8, 0.55 m inside the hulls' inner sides,
+	// 1.42 m high; the table 1.5 m by 1.1 m at x -3.3, its top 0.71 m up).
+	const double Surface = CrewBetweenHullsZ(C, P.X, P.Y);
+	if (Surface > -1e8 && P.Z < Surface && P.Z > Surface - (C.Type == Sailing::EBoatType::Lagoon42 ? 0.3 : 0.08)) return true;
+	if (C.Type == Sailing::EBoatType::Lagoon42 && Surface > -1e8)
+	{
+		const Sailing::FHullShape& Inner = C.Hulls[1];
+		const double SaloonHalf = FMath::Abs(Inner.CenterY) - Inner.DeckHalfBeam(0.0) + 0.55;
+		if (P.X > -2.4 && P.X < 2.8 && FMath::Abs(P.Y) < SaloonHalf && P.Z < Surface + 1.42) return true;
+		if (FMath::Abs(P.X + 3.3) < 0.375 && FMath::Abs(P.Y) < 0.55 && P.Z > Surface + 0.67 && P.Z < Surface + 0.73) return true;
 	}
 	return false;
 }
