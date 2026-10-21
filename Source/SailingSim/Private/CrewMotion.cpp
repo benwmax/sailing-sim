@@ -298,13 +298,14 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		const double Y = In.CrewOffset * (1.0 - Out.Duck);
 		const double Up = Sheer + (bDinghy ? 0.25 : 0.05);
 		const double FloorZ = CrewFloorZ(Cfg, X, Y);
+		// Under a boom less than a metre over the floor (the Sunfish's, 0.5 m over her deck) the trunk folds flatter and the
+		// crouch goes 12 cm lower, kneeling: at the lowest crouch her sailor's back was at the boom and its sheet
+		// (SailingSim.Visual.SheetClearance).
+		if (FloorZ > -1e8) P.Stoop = Out.Duck * float(FMath::Clamp((1.0 - (Cfg.BoomZ - FloorZ)) / 0.5, 0.0, 1.0));
 		// (30 cm over the floor at the lowest: at 22 the folded knees went through the sole: docs/crew-hull-clip/.)
-		const double Lowest = FloorZ > -1e8 ? FloorZ + 0.30 : Sheer - 0.3;
+		const double Lowest = FloorZ > -1e8 ? FloorZ + 0.30 - 0.12 * P.Stoop : Sheer - 0.3;
 		const double Under = FMath::Max(Cfg.BoomZ - 0.85, Lowest);
 		Out.Pelvis = FVector(X, Y, FMath::Lerp(Up, FMath::Min(Up, Under), double(Out.Duck)));
-		// Under a boom less than a metre over the floor (the Sunfish's, 0.5 m over her deck) the trunk folds flatter as well:
-		// at the lowest crouch her sailor's back was at the boom and its sheet (SailingSim.Visual.SheetClearance).
-		if (FloorZ > -1e8) P.Stoop = Out.Duck * float(FMath::Clamp((1.0 - (Cfg.BoomZ - FloorZ)) / 0.5, 0.0, 1.0));
 		// docs/crew-hull-clip/: over a cabin trunk (the maxi's coachroof), crossing on top of it.
 		FCrewCabinTrunk Trunk;
 		if (CrewCabinTrunk(Cfg, Trunk) && X > Trunk.X0 - 0.4 && X < Trunk.X1) Out.Pelvis.Z = FMath::Max(Out.Pelvis.Z, Sheer + Trunk.Height + 0.25);
