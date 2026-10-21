@@ -106,11 +106,13 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	const FSailStripState& SA = Strips[A];
 	const FSailStripState& SB = Strips[B];
 	Out.Angle = FMath::Lerp(SA.AngleFromCenterline, SB.AngleFromCenterline, T) * Side;
-	auto Load = [](const FSailStripState& S)
+	// docs/sails-1/: a luffing main or jib still has its battens and leech tension (0.15); only a spinnaker goes slack.
+	const double LuffLoad = Kind == ESailKind::Spinnaker ? 0.05 : 0.15;
+	auto Load = [LuffLoad](const FSailStripState& S)
 	{
 		switch (S.Flow)
 		{
-		case ESailFlow::Luffing: return 0.05;
+		case ESailFlow::Luffing: return LuffLoad;
 		case ESailFlow::Backed: return 0.5;
 		case ESailFlow::Stalled: return 0.85;
 		default: return 1.0;
@@ -153,12 +155,16 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 {
 	if (!IsValid()) return;
 	ComputeTarget(Strips, Side, Target);
+	// docs/sails-1/: a row's tension follows its strip's flow over 0.4 s, not in a frame. In a seaway the masthead's
+	// apparent wind swings with every roll, the upper strips flicker between drawing and luffing, and a stiffness that
+	// jumped with them threw the head of the main into jagged folds.
+	const float Ease = bStarted && Drive.bSimulate ? 1.f - FMath::Exp(-Drive.DeltaSeconds / 0.4f) : 1.f;
 	float LoadSum = 0.f;
 	for (int32 R = 0; R < Rows; ++R)
 	{
 		FRowShape Row;
 		RowAt(Strips, Side, R, Row);
-		RowLoad[R] = float(Row.Load);
+		RowLoad[R] = FMath::Lerp(RowLoad[R], float(Row.Load), Ease);
 		LoadSum += RowLoad[R];
 	}
 	MeanLoad = LoadSum / Rows;
@@ -169,10 +175,10 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 	const float Wrinkle = Kind != ESailKind::Spinnaker ? 0.9f * Breeze * (1.f - FMath::Clamp(Drive.Cunningham, 0.f, 1.f)) : 0.f;
 	if (Wrinkle > 0.01f)
 	{
+		// (The target's normals: this used to copy the target over the cloth to take them, which reset the cloth every
+		// frame of a breeze with a soft halyard and kicked it by the difference.)
 		TArray<FVector> N;
-		N.SetNum(Target.Num());
-		Pos = Target;
-		ComputeNormals(N);
+		NormalsOf(Target, N);
 		for (int32 R = 1; R < Rows - 1; ++R)
 		{
 			for (int32 C = 1; C < Cols / 3; ++C)
@@ -180,6 +186,26 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 				const FVector2D& UV = UVMeters[Index(R, C)];
 				const float Envelope = 1.f - float(C) / (Cols / 3);
 				Target[Index(R, C)] += N[Index(R, C)] * (Wrinkle * Envelope * FMath::Sin(2.f * PI * (UV.X * 0.7f + UV.Y * 0.7f) / 0.22f));
+			}
+		}
+	}
+
+	// Leech flutter at speed: a shiver of the last tenth of a drawing sail, a wave running up the leech, as a movement of
+	// the target the cloth follows. docs/sails-1/: it was a push on the cloth at 11 Hz with neighbouring rows nearly
+	// opposite, near the drawing rows' own ringing (their spring rings at about 6 Hz), so it built up into a row-by-row
+	// zigzag along the leech: the dark leech creases.
+	const float FlutterWind = FMath::Clamp((Drive.ApparentWindKnots - 10.f) / 10.f, 0.f, 1.f);
+	if (Kind != ESailKind::Spinnaker && FlutterWind > 0.f)
+	{
+		TArray<FVector> N;
+		NormalsOf(Target, N);
+		for (int32 R = 1; R < Rows - 1; ++R)
+		{
+			const float Amp = 1.5f * FlutterWind * RowLoad[R];   // cm at the leech
+			for (int32 C = Cols - 3; C < Cols; ++C)
+			{
+				const float U = float(C) / (Cols - 1);
+				Target[Index(R, C)] += N[Index(R, C)] * (Amp * FMath::Clamp((U - 0.86f) / 0.14f, 0.f, 1.f) * FMath::Sin(2.f * PI * 9.f * Drive.Time - R * 0.5f));
 			}
 		}
 	}
@@ -211,8 +237,13 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 		for (int32 R = 0; R < Rows; ++R)
 		{
 			const float Load = RowLoad[R];
-			// Drawing rows hold their shape; slack rows follow it only loosely and flog in the wind.
-			const float Stiff = FMath::Lerp(0.04f, 0.45f, Load * Load);
+			// Drawing rows hold their shape; slack rows follow it only loosely and flog in the wind. The last rows under the
+			// head (the headboard and the panels a few centimetres wide below it) hold theirs: docs/sails-1/, their panels
+			// were near degenerate and flipped their normals as they flogged.
+			const float HeadHold = FMath::Clamp(float(R - (Rows - 4)) / 3.f, 0.f, 1.f);
+			const float Stiff = FMath::Max(FMath::Lerp(0.04f, 0.45f, Load * Load), 0.45f * HeadHold);
+			// A narrow row flogs less than a wide one (its cloth is short and held at both ends).
+			const float Width = float(FMath::Clamp(RowChord[R] / FMath::Max(RowChord[0], 0.1), 0.15, 1.0));
 			for (int32 C = 0; C < Cols; ++C)
 			{
 				const int32 I = Index(R, C);
@@ -228,30 +259,27 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 				Prev[I] = Pos[I];
 				FVector Next = Pos[I] + Velocity + (Target[I] - Pos[I]) * Stiff;
 				// Flogging: a wave running aft along a slack panel at 3-5 Hz, stronger in more wind.
-				const float Slack = 1.f - Load;
+				const float Slack = (1.f - Load) * Width * (1.f - HeadHold);
 				const float Wind = FMath::Clamp(Drive.ApparentWindKnots / 15.f, 0.2f, 1.6f);
-				Next += Normals[I] * (Slack * Wind * 2.2f * FMath::Sin(2.f * PI * 4.f * T - U * 9.f + R * 0.7f) * FMath::Sqrt(U + 0.05f));
-				// Leech flutter at speed: a small, fast shiver of the last tenth of a drawing sail.
-				if (U > 0.86f && Kind != ESailKind::Spinnaker)
-				{
-					const float Flutter = Load * FMath::Clamp((Drive.ApparentWindKnots - 10.f) / 10.f, 0.f, 1.f);
-					Next += Normals[I] * (Flutter * 0.9f * (U - 0.86f) / 0.14f * FMath::Sin(2.f * PI * 11.f * T + R * 1.9f));
-				}
+				Next += Normals[I] * (Slack * Wind * 1.4f * FMath::Sin(2.f * PI * 4.f * T - U * 9.f + R * 0.25f) * FMath::Sqrt(U + 0.05f));
 				// A slack spinnaker sags as it collapses.
 				if (Kind == ESailKind::Spinnaker) Next += Drive.GravityBody * (Slack * 0.35f);
 				Pos[I] = Next;
 			}
 		}
-		// Keep the cloth's panel lengths (two passes of edge constraints, rest lengths from the target).
-		for (int32 Pass = 0; Pass < 2; ++Pass)
+		// Keep the cloth's panel lengths (edge constraints, rest lengths from the target), and resist sharp folds:
+		// docs/sails-1/: the cloth had only the neighbours' lengths, so nothing stopped it creasing at every vertex; a
+		// weaker constraint between every other vertex (a bending stiffness) rounds a fold over a few panels, as
+		// sailcloth does.
+		for (int32 Pass = 0; Pass < 3; ++Pass)
 		{
-			auto Edge = [&](int32 A, int32 B)
+			auto Edge = [&](int32 A, int32 B, float K)
 			{
 				const float Rest = FVector::Dist(Target[A], Target[B]);
 				FVector D = Pos[B] - Pos[A];
 				const float Len = D.Size();
 				if (Len < 1e-3f) return;
-				const FVector Corr = D * (0.5f * (Len - Rest) / Len);
+				const FVector Corr = D * (0.5f * K * (Len - Rest) / Len);
 				const bool bA = (A % Cols) == 0, bB = (B % Cols) == 0;
 				if (!bA) Pos[A] += bB ? Corr * 2.f : Corr;
 				if (!bB) Pos[B] -= bA ? Corr * 2.f : Corr;
@@ -260,23 +288,25 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 			{
 				for (int32 C = 0; C < Cols; ++C)
 				{
-					if (C + 1 < Cols) Edge(Index(R, C), Index(R, C + 1));
-					if (R + 1 < Rows) Edge(Index(R, C), Index(R + 1, C));
+					if (C + 1 < Cols) Edge(Index(R, C), Index(R, C + 1), 1.f);
+					if (R + 1 < Rows) Edge(Index(R, C), Index(R + 1, C), 1.f);
+					if (C + 2 < Cols) Edge(Index(R, C), Index(R, C + 2), 0.3f);
+					if (R + 2 < Rows) Edge(Index(R, C), Index(R + 2, C), 0.3f);
 				}
 			}
 		}
 	}
 }
 
-void FSailCloth::ComputeNormals(TArray<FVector>& Out) const
+void FSailCloth::NormalsOf(const TArray<FVector>& P, TArray<FVector>& Out)
 {
-	Out.SetNum(Pos.Num());
+	Out.SetNum(P.Num());
 	for (int32 R = 0; R < Rows; ++R)
 	{
 		for (int32 C = 0; C < Cols; ++C)
 		{
-			const FVector DU = Pos[Index(R, FMath::Min(C + 1, Cols - 1))] - Pos[Index(R, FMath::Max(C - 1, 0))];
-			const FVector DV = Pos[Index(FMath::Min(R + 1, Rows - 1), C)] - Pos[Index(FMath::Max(R - 1, 0), C)];
+			const FVector DU = P[Index(R, FMath::Min(C + 1, Cols - 1))] - P[Index(R, FMath::Max(C - 1, 0))];
+			const FVector DV = P[Index(FMath::Min(R + 1, Rows - 1), C)] - P[Index(FMath::Max(R - 1, 0), C)];
 			Out[Index(R, C)] = FVector::CrossProduct(DU, DV).GetSafeNormal();
 		}
 	}

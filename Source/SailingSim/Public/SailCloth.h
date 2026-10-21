@@ -65,7 +65,9 @@ public:
 	const TArray<FVector2D>& UV0() const { return UVMeters; }
 	const TArray<FVector2D>& UV1() const { return UVNormal; }
 	const TArray<FVector2D>& UV2() const { return UVLeech; }
-	void ComputeNormals(TArray<FVector>& Out) const;
+	void ComputeNormals(TArray<FVector>& Out) const { NormalsOf(Pos, Out); }
+	/** The grid normals of any positions laid out as the cloth's (the target's, for the luff wrinkles). */
+	static void NormalsOf(const TArray<FVector>& P, TArray<FVector>& Out);
 	/** Graphics G6: tangents along the chord (UV0.x), for M_SailCloth's creases (a tangent-space normal). */
 	void ComputeTangents(TArray<struct FProcMeshTangent>& Out) const;
 	void Triangles(TArray<int32>& Out) const;
@@ -93,7 +95,7 @@ private:
 	TArray<double> RowChord;   // planform chord per row (m)
 	TArray<FVector> Pos, Prev, Target;
 	TArray<FVector2D> UVMeters, UVNormal, UVLeech;
-	TArray<float> RowLoad;
+	TArray<float> RowLoad;     // each row's tension as the cloth feels it (eased toward its strip's: RowAt)
 	float MeanLoad = 1.f;
 	bool bStarted = false;
 	float Accumulator = 0.f;
