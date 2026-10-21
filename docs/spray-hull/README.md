@@ -42,8 +42,11 @@ and a foam crest along the shoulder is broken by bubbly noise that runs aft.
 ### The fix after the Mac gate
 
 The Mac's High stills of the J/22 beating at 17 kn showed the curl as a hard-edged, opaque, olive half-dome lying on the
-lee topsides well aft of the stem. The cause was the root. Each station was rooted at the deck's half-beam with the boat
-upright, but heeled, the lee waterline lies well outboard of that, so the sheet was drawn over her side.
+lee topsides well aft of the stem. That patch turned out not to be the curl: it was on main too, a Lumen screen-trace
+reflection of the hull and keel under water, and the Mac fixed it in #203 (where a reflection points below the horizon,
+gelcoat goes to roughness 0.45 and the coat lobe fades). The re-rooting below was still a real fix. Each station had
+been rooted at the deck's half-beam with the boat upright, but heeled, the lee waterline lies well outboard of that, so
+on the lee side the sheet started inside her hull.
 
 **Root.** Each station now solves for the point where her side meets the sea as she heels and pitches. Along the side,
 world height is linear in body z, so one step finds the sea surface. The sheet starts 4 cm outboard of that point and runs
@@ -59,6 +62,20 @@ mirror-like at grazing angles, with only a faint dark-water tint and the foam cr
 `bow-wave-fix-high.jpg` shows the PC High run-game repro (J/22, 17 kn, 42 degrees TWA): be174a8b on the left, the fix on
 the right. There are three views: from the lee at 8 m, a lee bow close-up, and a windward bow close-up. The dark patch on
 the lee topsides is gone, and the curl sits at the stem, blending into the spray and the sea.
+
+### The crest (bow-curl-crest)
+
+After the fix, the Mac found the curl clean but nearly invisible at 17 kn from 4.5 m: it read as a darker wet film, not a
+peeling sheet.
+
+- **Height:** half again as tall, a quarter to 0.4 of the speed head (capped at 0.5 m), peaking sooner after the stem.
+- **Lip:** from 2 m/s instead of 2.5.
+- **Crest:** `M_BowWave` draws the crest line where the sheet tops over as a bright white lip of torn foam, broken up by
+  noise and thicker at speed, with the Fresnel boosted along that edge. The sheet below it stays a clear film.
+- **Literals:** typed float literals throughout, as #203 requires.
+
+`bow-curl-crest-high.jpg` shows the J/22 beating at 17 kn on High (PC, uncooked), about 4.5 m from the bow, lee and
+windward. Main (#202) is on the left, this branch on the right.
 
 ## Stills (Ultra, uncooked; main's materials and `-SailingNoBowWave` on the left, this branch on the right)
 

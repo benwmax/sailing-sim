@@ -825,9 +825,9 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	const FWaveField& Waves = GM->GetWaves();
 	const double Time = Boat.GetState().Time;
 	const float Scale = FMath::Clamp(float(Hull.MaxHalfBeam) / 1.2f, 0.5f, 1.5f);
-	const float Head = FMath::Min(0.25f * Speed * Speed / (2.f * 9.81f), 0.4f) * Scale;   // m, at the crest
+	const float Head = FMath::Min(0.4f * Speed * Speed / (2.f * 9.81f), 0.5f) * Scale;    // m, at the crest (bow-curl-crest: 0.25 read as a wet film at 17 kn)
 	const float Fade = FMath::Clamp((Speed - 1.5f) / 1.5f, 0.f, 1.f);
-	const float Lip = FMath::Clamp((Speed - 2.5f) / 3.f, 0.f, 1.f);
+	const float Lip = FMath::Clamp((Speed - 2.f) / 2.5f, 0.f, 1.f);
 	TArray<FVector> V;
 	TArray<FVector2D> UV;
 	TArray<FLinearColor> Col;
