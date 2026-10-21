@@ -335,9 +335,17 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		// Light air or downwind: on the cockpit seat (to leeward if the crew model put them there).
 		P.Stance = ECrewStance::Cockpit;
-		// The J/22's bow on the other seat from the trimmer: 0.28 m apart on one seat they sat in each other (the well forward
-		// of her traveler bridge has room for one a side; further apart their feet stepped onto the bridge or the cabin's face).
-		if (Cfg.Type == EBoatType::J22 && N == 3 && I == 0) P.Side = -P.Side;
+		// The J/22's trimmer on the leeward seat, by the working jib winch's self-tailer (the crew model can put the light-air
+		// crew to windward, 1.1 m across the well from it, and the trimmer let go of the tail); the bow on the other seat:
+		// 0.28 m apart on one seat they sat in each other (the well forward of her traveler bridge has room for one a side;
+		// further apart their feet stepped onto the bridge or the cabin's face), and 5 cm forward, the knees clear of the
+		// trimmer's thigh across the well.
+		if (Cfg.Type == EBoatType::J22 && N == 3 && I < N - 1 && In.TrueWindAngle != 0.0)
+		{
+			const float Lee = -float(FMath::Sign(In.TrueWindAngle));
+			P.Side = I == N - 2 ? Lee : -Lee;
+			if (I == 0) X = FMath::Min(X + 0.05, KeelWell.X1 - 0.25);
+		}
 		Out.Pelvis = FVector(X, P.Side * FMath::Clamp(Off, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
 		// docs/crew-hull-clip/: on the seat, not 6 cm into it (a seated pelvis is about 9 cm over what it sits on).
 		if (!Cfg.bMultihull)
