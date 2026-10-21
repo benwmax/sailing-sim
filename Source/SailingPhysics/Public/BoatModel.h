@@ -212,7 +212,11 @@ namespace Sailing
 		double MastDiameter = 0.10;       // m; a sealed mast floats a little when the boat is on its side
 		double SparFloatLiters = 0.0; // sealed spars (yard, boom, mast plugs, mast float) that float a capsized rig: holds a dinghy on her side
 		double BoomZ = 1.45;              // m, gooseneck height
-		double MainMaxEaseDeg = 85.0;     // how far the boom can go out (shrouds)
+		// How far the boom can go out: on a stayed rig, until its side meets the aftmost shroud leg at boom height (from
+		// the gooseneck, MainLuffX at BoomZ; docs/boom-stop/). The J/22's: her upper shroud from its chainplate (0.48 m
+		// forward, 1.086 m out, J22H_sockets.json) to the spreader tip passes 1.02 m from the gooseneck at boom height, at
+		// 80 deg from aft less the boom's 4 cm half-width. (85 had the boom, and the eased main with it, through it.)
+		double MainMaxEaseDeg = 80.0;
 		double TravelerRangeDeg = 8.0;    // boom angle the traveler moves either side of the centerline
 		double JibMinAngleDeg = 8.0, JibMaxAngleDeg = 80.0;
 		double RigWindageCdA = 0.8;       // m^2 (mast, rigging)
