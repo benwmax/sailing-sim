@@ -129,10 +129,11 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 		if (N++ == 0) Where.Add(Key, Detail);
 	};
 	// What fails (the rest is listed: lines lying on a surface or pressed under a limb within a couple of centimetres, the
-	// main's cloth wrapping the mast at its luff, a mainsheet sweeping a helm's back when running):
+	// main's cloth wrapping the mast at its luff):
 	//  - a shroud led across the boat to the other side's spreader (the Corsair's floats were swapped),
 	//  - a rope more than 10 cm into the solid boat away from its fittings (a sheet through a cabin trunk or coachroof),
-	//  - a wire through the jib's cloth away from its luff and head, in 3 samples or more (8 cases x 4 samples).
+	//  - a wire through the jib's cloth away from its luff and head, in 3 samples or more (8 cases x 4 samples),
+	//  - the mainsheet's tackle through a sailor (eased square it swept the helm's back: the crew sit to windward running).
 	TMap<FString, int32> Fails;
 
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
@@ -153,7 +154,7 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 				Tick(15);
 				const FTransform Root = Pawn->BoatRoot->GetComponentTransform();
 				const FBoatTelemetry& Tel = Pawn->GetBoatModel().GetTelemetry();
-				const FString CaseState = FString::Printf(TEXT("%s (heel %.0f, TWA %.0f)"), C.Name, FMath::RadiansToDegrees(Tel.Heel), FMath::RadiansToDegrees(Tel.TrueWindAngle));
+				const FString CaseState = FString::Printf(TEXT("%s (heel %.0f, TWA %.0f, boom %.0f)"), C.Name, FMath::RadiansToDegrees(Tel.Heel), FMath::RadiansToDegrees(Tel.TrueWindAngle), FMath::RadiansToDegrees(Pawn->GetBoatModel().GetState().BoomAngle));
 
 				// The crew's flesh: bone segments in the boat frame.
 				struct FBoneSeg { FVector A, B; double R; FString Name; int32 Crew; };
@@ -254,6 +255,12 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 							{
 								Note(FString::Printf(TEXT("%s: %s through crew %d's %s"), *BoatName, *What, B.Crew, *B.Name),
 									FString::Printf(TEXT("%.1f cm into the flesh at (%.0f, %.0f, %.0f) cm, %s"), -Gap, P.X, P.Y, P.Z, *State));
+								if (What == TEXT("mainsheet"))
+								{
+									const FString Key = FString::Printf(TEXT("%s: the mainsheet through the crew"), *BoatName);
+									if (!Fails.Contains(Key)) Where.Add(Key, FString::Printf(TEXT("crew %d's %s, %.1f cm, %s"), B.Crew, *B.Name, -Gap, *State));
+									Fails.FindOrAdd(Key)++;
+								}
 							}
 						}
 					}
