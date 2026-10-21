@@ -978,6 +978,9 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		UpdateNavLights();
 		return;
 	}
+	// Settings > Field of view: the chase camera follows the row as it changes (photo mode keeps its lens, the capture
+	// presets theirs, the cockpit sets its own each frame).
+	if (!bCockpit && !IsCaptureMode() && Camera && Camera->FieldOfView != USailingSettings::Get()->ChaseFov()) Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
 	ApplyHeldInputs(DeltaSeconds);
 	if (Controls.bRighting && FMath::Abs(Boat.GetTelemetry().Heel) < 20.0 * kDegToRad && Boat.GetState().CrewOffsetZ > -0.05)
 	{
@@ -1657,7 +1660,7 @@ void ASailboatPawn::SetCockpitView(bool bOn)
 	{
 		if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(true, true);
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
-		Camera->SetFieldOfView(90.f);
+		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
 	StatusMessage = bOn ? TEXT("Cockpit view: you are at the helm. Look around with the mouse; press \\ for the chase camera") : TEXT("Chase camera");
@@ -1699,7 +1702,7 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	if (Crew.Num() > 0 && Crew.Last()) Crew.Last()->SetVisibility(false, true);
 	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
 	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
-	Camera->SetFieldOfView(80.f);
+	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov() - 10.f);   // Settings > Field of view, 10 deg narrower aboard
 }
 
 void ASailboatPawn::UpdatePhotoLens()
@@ -1731,7 +1734,7 @@ void ASailboatPawn::SetPhoto(bool bOn)
 		FPostProcessSettings& PP = Camera->PostProcessSettings;
 		PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = false;
 		if (LensDistortionAsset) PP.RemoveBlendable(LensDistortionAsset);
-		Camera->SetFieldOfView(90.f);
+		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
 		CameraPitch = FMath::Clamp(CameraPitch, -75.f, 5.f);
 		CameraDistance = FMath::Clamp(CameraDistance, 400.f, 4000.f);
 		CameraBoom->TargetArmLength = CameraDistance;

@@ -37,6 +37,10 @@ struct SAILINGSIM_API FSailSave
 		int32 ResolutionScale = 0;
 		int32 FrameCap = 0;
 		bool bCinematicLook = false;
+		// Bean's playtest: the Graphics page's rows (-1 Auto) and the Display rows (USailingSettings); "graphics" in the file.
+		int32 AntiAliasing = -1, ShadowQuality = -1, LightingQuality = -1, ReflectionQuality = -1, CloudQuality = -1, WaterQuality = -1;
+		int32 FoliageQuality = -1, ViewDistanceQuality = -1, MotionBlur = -1, FieldOfView = 0, Brightness = 100;
+		bool bVSync = false;
 		int32 HudScale = 100;
 		int32 TextScale = 100;
 		FString SpeedUnits = TEXT("kn");     // kn, mph, kmh
