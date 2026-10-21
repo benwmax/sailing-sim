@@ -98,9 +98,10 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 	case ECrewStance::Crossing:
 		// Crouched, moving across the cockpit under the boom on a tack.
 		Legs(Out, 75.f, 112.f);
-		Out.Add(TEXT("spine"), Lean(25.f));
-		Out.Add(TEXT("chest"), Lean(20.f));
-		Out.Add(TEXT("neck"), Lean(-30.f));
+		// (Folded up to 35 deg further under a low boom, the head lifted to keep the eyes forward: P.Stoop.)
+		Out.Add(TEXT("spine"), Lean(25.f + 20.f * FMath::Clamp(P.Stoop, 0.f, 1.f)));
+		Out.Add(TEXT("chest"), Lean(20.f + 15.f * FMath::Clamp(P.Stoop, 0.f, 1.f)));
+		Out.Add(TEXT("neck"), Lean(-30.f - 25.f * FMath::Clamp(P.Stoop, 0.f, 1.f)));
 		Arms(Out, 60.f, 55.f, 30.f, 60.f, 55.f, 30.f);
 		break;
 	case ECrewStance::DinghyHike:
