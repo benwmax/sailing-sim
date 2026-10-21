@@ -551,6 +551,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `MPC_Boat.SprayWet` (raises the splash band; the topsides' film, beads, drips and spatter in `BOAT_CODE` and the hero's
   `DETAIL_CODE`); `UpdateBowWave` draws the bow wave's curl (`M_BowWave`, world-space sheet on the waves, not on Low;
   `-SailingNoBowWave`).
+- Rain on deck (`docs/rain-deck/`): `MPC_Boat.Rain` and `Puddle` (`PuddleLevel`, filled by rain, spilled by heel) drive
+  puddles, rain rings and beads in `BOAT_CODE` and `DETAIL_CODE` (before the below-horizon roughness, which stays last);
+  `UpdateDrips` drops `M_Spray` quads off the boom and sheer (High/Ultra; `-SailingNoDrips`; `-SailingPuddle=<0..1>` for
+  stills). An ISM's hidden instances wait at the boat with zero scale: parked at -1e6 they put its bounds under the lake
+  and nothing drew.
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
   a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
   deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe

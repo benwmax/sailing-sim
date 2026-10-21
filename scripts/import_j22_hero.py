@@ -69,6 +69,33 @@ wetAll = saturate(max(wetAll, max(bead, drip)));
 float porosity = lerp(lerp(0.1, 0.5, X.r), 0.6, X.g);
 c *= lerp(1.0, 1.0 - 0.55 * porosity, wetAll) * (1.0 - 0.45 * ns * (1.0 - NSM.r) * wetAll);
 Rough = lerp(Rough, lerp(0.06, Rough, 0.25 + 0.4 * X.r), wetAll);
+// Rain deck (docs/rain-deck), as M_BoatSurface: puddles in the deck's and sole's low spots (value noise lows on level
+// surfaces, filling with Puddle) are dark mirrors; rain rings them and the wet deck, and beads level gelcoat.
+float2 pq = WP.xy / 37.0;
+float2 pci = floor(pq), pf = frac(pq);
+pf = pf * pf * (3.0 - 2.0 * pf);
+float p00 = frac(sin(dot(pci, float2(12.99, 78.23))) * 43758.5), p10 = frac(sin(dot(pci + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float p01 = frac(sin(dot(pci + float2(0, 1), float2(12.99, 78.23))) * 43758.5), p11 = frac(sin(dot(pci + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float pn = lerp(lerp(p00, p10, pf.x), lerp(p01, p11, pf.x), pf.y);
+float level = saturate((nw.z - 0.92) * 12.5);
+float pudK = level * (1.0 - smoothstep(Puddle * 0.62 - 0.04, Puddle * 0.62 + 0.02, pn)) * step(0.02, Puddle);
+float rainK = saturate(Rain);
+// (A drop every 14 cm cell, its ring out to 5 cm and 6 mm wide: at 22 cm, 7 cm and 3.5 mm they were under a pixel from the
+// cockpit.) The ring bends the normal outward, which is what shows on a puddle: the reflection wobbles.
+float2 rc = WP.xy / 14.0;
+float2 rcf = frac(rc) - 0.5;
+float rh = frac(sin(dot(floor(rc), float2(41.7, 19.3))) * 43758.5);
+float rph = frac(Time * (1.1 + 0.5 * rh) + rh * 7.0);
+float2 rto = rcf - (float2(frac(rh * 13.1), frac(rh * 5.7)) * 0.5 - 0.25);
+float rdist = length(rto) * 14.0;
+float rring = exp(-pow((rdist - rph * 5.0) / 0.6, 2.0)) * (1.0 - rph) * rainK * max(pudK, 0.5 * saturate(DeckWet) * up);
+NormalOut = normalize(lerp(NormalOut, float3(0.0, 0.0, 1.0), pudK) + float3(rto / max(length(rto), 1e-3) * rring * 1.2, 0.0));
+float2 rbf = frac(WP.xy / 0.8) - 0.5;
+float rbh = frac(sin(dot(floor(WP.xy / 0.8), float2(23.17, 61.3))) * 43758.5);
+float rbead = (1.0 - smoothstep(0.14 + 0.16 * rbh, 0.2 + 0.16 * rbh, length(rbf))) * step(0.5, rbh) * rainK * (1.0 - pudK) * level * gcAll;
+c *= (1.0 - 0.3 * pudK) * (1.0 + 0.6 * rring);
+Rough = lerp(Rough, 0.015, saturate(pudK + rbead));
+Rough = lerp(Rough, 0.12, rring);
 Rough = lerp(Rough, 0.02, bead);                                  // a bead is a lens: a sharp glint
 // docs/lee-topside-patch/: Lumen's screen traces run before the sea (Single Layer Water) is drawn, so a mirror reflection
 // pointing down into it found the hull and keel under the water: a dark dome on the lee topsides of a heeled boat. Where
@@ -174,7 +201,7 @@ def hero_material(defaults):
     wear.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
     extra["Wear"] = (wear, "RGBA")
     mpc = unreal.load_asset("/Game/Boats/MPC_Boat")
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "SprayWet")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "SprayWet", "Rain", "Puddle")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 2160 + i * 80)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
@@ -194,6 +221,7 @@ def hero_material(defaults):
     extra["WP"] = (wp_map, "")
     extra["NW"] = (node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 2560), "")
     extra["V"] = (node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 2640), "")
+    extra["Time"] = (node(mat, unreal.MaterialExpressionTime, -900, 2720), "")
     c = node(mat, unreal.MaterialExpressionCustom, -500, 400)
     c.set_editor_property("code", DETAIL_CODE)
     c.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
