@@ -688,4 +688,152 @@ bool FVisualMultihullCrewSeatTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Crew hull clip: every stance's body stays clear of the solid boat. On every boat, each sailor sitting up, hiked, at the
+// light-air cockpit seat, downwind, knocked down and mid-tack, posed through a chop on SK_Sailor and the MetaHumans: the
+// trunk, head, arms and legs (each bone's centreline at three points, with a flesh radius below and to either side) must
+// not be inside the hull, under the deck or in the cockpit well's walls (CrewInsideBoat). The feet have their own test.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewHullClearanceTest, "SailingSim.Visual.CrewHullClearance", CrewMotionFlags)
+bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	TArray<FCrewBody> Bodies;
+	CrewBodies(*this, Bodies);
+	if (!TestTrue(TEXT("SK_Sailor loads"), Bodies.Num() > 0)) return false;
+	// Flesh radius (m) by bone name; bones not listed (feet, fingers, face, twist and correctives) are not checked.
+	auto RadiusFor = [](const FString& Bone) -> double
+	{
+		const FString B = Bone.ToLower();
+		if (B.Contains(TEXT("twist")) || B.Contains(TEXT("corr")) || B.Contains(TEXT("ik_")) || B.Contains(TEXT("root"))) return -1.0;
+		// The MetaHumans' helper joints (thigh_bck, thigh_in, calf_knee, ...) sit at or outside the skin: not centrelines.
+		if (B.Contains(TEXT("bck")) || B.Contains(TEXT("_in")) || B.Contains(TEXT("_out")) || B.Contains(TEXT("_fwd")) || B.Contains(TEXT("knee"))) return -1.0;
+		// (and their muscle helpers, off the centreline: tricep, bicep, latissimus, pec, scap)
+		if (B.Contains(TEXT("tricep")) || B.Contains(TEXT("bicep")) || B.Contains(TEXT("latissimus")) || B.Contains(TEXT("pec")) || B.Contains(TEXT("scap"))) return -1.0;
+		if (B.StartsWith(TEXT("pelvis"))) return 0.10;
+		if (B.StartsWith(TEXT("spine"))) return 0.10;
+		if (B.StartsWith(TEXT("neck"))) return 0.05;
+		if (B == TEXT("head")) return 0.09;
+		if (B.StartsWith(TEXT("thigh"))) return 0.07;
+		if (B.StartsWith(TEXT("calf"))) return 0.045;
+		if (B.StartsWith(TEXT("clavicle"))) return 0.05;
+		if (B.StartsWith(TEXT("upperarm"))) return 0.045;
+		if (B.StartsWith(TEXT("lowerarm"))) return 0.035;
+		return -1.0;
+	};
+	int32 Checked = 0, Clipped = 0, Crossings = 0;
+	TMap<FString, int32> Worst;
+	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
+	{
+		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
+		const FBoatModel Model(Cfg);
+		const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
+		const int32 N = Cfg.CrewCount;
+		for (int32 I = 0; I < N; ++I)
+		{
+			const bool bHelm = I == N - 1;
+			struct FCase { double Offset; double BoomAngle, BoomRate, Rate; double HeelDeg; const TCHAR* Name; double Twa = 0.8, Turn = 0.0; };
+			const double Up = Cfg.CrewSitOut * 0.8, Hiked = Cfg.CrewSitOut + Cfg.CrewHikeOut;
+			const FCase Cases[] = {
+				{ Up, 0.3, 0.0, 0.0, -12.0, TEXT("sitting up, starboard") }, { -Up, -0.3, 0.0, 0.0, 12.0, TEXT("sitting up, port") },
+				{ Hiked, 0.25, 0.0, 0.0, -20.0, TEXT("hiked hard") },
+				{ 0.3, 0.6, 0.0, 0.0, -4.0, TEXT("light air, cockpit seat"), 1.6 },
+				{ -0.2, -1.3, 0.0, 0.0, 2.0, TEXT("running downwind"), 2.9 },
+				{ Up, 0.3, 0.0, 0.0, -42.0, TEXT("knocked down to 42 degrees") },
+				{ 0.05, 0.08, -0.4, 0.0, 0.0, TEXT("tacking under the boom"), 0.1, 0.2 },
+				{ 0.05, -0.1, 0.5, -0.5, 0.0, TEXT("gybing"), 3.0, -0.15 } };
+			for (const FCase& C : Cases)
+			{
+				FCrewPlaceInput Place;
+				Place.Config = &Cfg;
+				Place.Index = I;
+				Place.CrewOffset = C.Offset;
+				Place.WindwardSide = C.Offset >= 0.0 ? 1 : -1;
+				Place.BoomAngle = C.BoomAngle;
+				Place.BoomRate = C.BoomRate;
+				Place.OffsetRate = C.Rate;
+				Place.TrueWindAngle = C.Twa;
+				Place.TurnRate = C.Turn;
+				FCrewPlacement Pl;
+				CrewPlacement(Place, Pl);
+				for (const FCrewBody& Body : Bodies)
+				{
+					const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
+					if (Rig && Body.Name != MetaHumanRoleName(bHelm ? 0 : (I == N - 2 ? 1 : 2))) continue;
+					const FReferenceSkeleton& Ref = Body.Mesh->GetRefSkeleton();
+					FCrewMotionState State;
+					FCrewMotionInput In;
+					In.Params = Pl.Params;
+					In.Duck = Pl.Duck;
+					In.ToBoat = FigureFrame(Pl, Rig);
+					In.SeatFromCG = Pl.Pelvis - CG;
+					CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
+					In.Seed = uint32(I);
+					if (Pl.Params.Stance != ECrewStance::Trapeze && Pl.Params.Stance != ECrewStance::Righting && Pl.Params.Stance != ECrewStance::DinghyHike)
+					{
+						In.Hands.Mode[0] = In.Hands.Mode[1] = FCrewHands::EMode::Knee;
+					}
+					TArray<FTransform> CS;
+					TSet<FString> Reported;
+					for (int32 K = 0; K < 4 * 30; ++K)
+					{
+						const double T = K / 30.0;
+						In.Motion = Chop(T, C.HeelDeg, 0.6);
+						In.Time = float(T);
+						CrewMotionUpdate(State, In, 1.f / 30.f);
+						if (K % 10 != 9) continue;
+						CrewMotionPose(Ref, Rig, &Cfg, Model.HullDepth(), State, In, CS);
+						for (int32 B = 1; B < Ref.GetNum() && B < CS.Num(); ++B)
+						{
+							const FString BoneName = Ref.GetBoneName(B).ToString();
+							const double R = RadiusFor(BoneName);
+							const int32 Parent = Ref.GetParentIndex(B);
+							if (R < 0.0 || Parent < 0) continue;
+							const FVector A = In.ToBoat.TransformPosition(CS[Parent].GetLocation()) / CmPerMeter;
+							const FVector Bp = In.ToBoat.TransformPosition(CS[B].GetLocation()) / CmPerMeter;
+							// Along the bone from its parent only when the parent is flesh too (the pelvis hangs off the root at
+							// the figure's origin: the segment between them is not body).
+							const bool bSegment = RadiusFor(Ref.GetBoneName(Parent).ToString()) >= 0.0;
+							for (const double U : { 0.25, 0.5, 0.75, 1.0 })
+							{
+								if (!bSegment && U < 1.0) continue;
+								const FVector P = FMath::Lerp(A, Bp, U);
+								for (const FVector& Dir : { FVector(0, 0, -1), FVector(0, 1, 0), FVector(0, -1, 0), FVector(1, 0, 0), FVector(-1, 0, 0) })
+								{
+									++Checked;
+									// The flesh may rest on a surface: 1.5 cm of give, 4 cm under the hips, lower back, thighs and calves
+									// (seated flesh). A clip is flesh more than 2.5 cm past that inside the boat (how deep: the first
+									// point inside along the ray from the bone).
+									const bool bSeatFlesh = (Dir.Z < 0.0 && (BoneName.StartsWith(TEXT("pelvis")) || BoneName.StartsWith(TEXT("thigh"))
+										|| BoneName == TEXT("spine") || BoneName.StartsWith(TEXT("spine_01")))) || BoneName.StartsWith(TEXT("calf"));
+									const double Reach = FMath::Max(R - (bSeatFlesh ? 0.04 : 0.015), 0.0);
+									const FVector Q = P + Dir * Reach;
+									if (!CrewInsideBoat(Cfg, Model.HullDepth(), Q)) continue;
+									double FirstIn = Reach;
+									for (double S = 0.0; S < Reach; S += 0.005)
+									{
+										if (CrewInsideBoat(Cfg, Model.HullDepth(), P + Dir * S)) { FirstIn = S; break; }
+									}
+									if (Reach - FirstIn < 0.025) continue;
+									++Clipped;
+									const FString Key = FString::Printf(TEXT("%s, %s crew %d (%s, stance %d%s): %s"), ANSI_TO_TCHAR(BoatTypeName(Cfg.Type)), *Body.Name, I, C.Name, int32(Pl.Params.Stance), Pl.Params.bFlatDeck ? TEXT(" flat") : TEXT(""), *BoneName);
+									Worst.FindOrAdd(Key)++;
+									if (!Reported.Contains(BoneName))
+									{
+										Reported.Add(BoneName);
+										// Crossing is a half-second transition: its clips are listed, not failed.
+										if (Pl.Params.Stance == ECrewStance::Crossing) { ++Crossings; break; }
+										AddError(FString::Printf(TEXT("%s inside the boat at (%.2f, %.2f, %.2f) m (pelvis at %.2f, %.2f, %.2f)"), *Key, Q.X, Q.Y, Q.Z, Pl.Pelvis.X, Pl.Pelvis.Y, Pl.Pelvis.Z));
+									}
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d body points checked, %d inside the boat; %d bones in a crossing (transient, not failed)"), Checked, Clipped, Crossings));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

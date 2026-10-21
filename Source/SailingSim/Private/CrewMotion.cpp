@@ -170,7 +170,8 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	// Round 11: a keelboat's crew sit beside the cockpit well with their feet in it, so the forward sailor (the J/22's bow,
 	// at x -0.65, was beside the cabin trunk, 7 cm forward of the well) comes back to its forward end.
 	FCrewCockpitWell KeelWell;
-	if (!bDinghy && !Cfg.bMultihull && I != N - 1 && CrewCockpitWell(Cfg, KeelWell))
+	// (Not the maxi: her rail crew line the deck forward of her 10 m cockpit; the clamp would bunch them at its end.)
+	if (!bDinghy && !Cfg.bMultihull && I != N - 1 && Cfg.Type != EBoatType::Maxi && CrewCockpitWell(Cfg, KeelWell))
 	{
 		// The crew between the bow and the helm (the trimmer) sit 0.1 m further aft: with the bow brought back they were
 		// 0.36 m apart and their shoulders overlapped on the rail (docs/crew-pose/mac).
@@ -194,6 +195,10 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		const double From = CrewCockpitWell(Cfg, TriWell) ? FMath::Max(NetAft, TriWell.X1) : NetAft;
 		X = FMath::Clamp(X, From + 0.35 + 0.55 * (N - 2 - I), NetForward - 0.5);
 	}
+	// docs/crew-hull-clip/: the Lagoon's crew in her cockpit, aft of the saloon (x -2.4) and forward of the bridgedeck's
+	// end, not in the saloon or under the cockpit table (x -3.3, 1.5 by 1.1 m: build_fleet.py lagoon_detail()).
+	const bool bLagoonCockpit = Cfg.Type == EBoatType::Lagoon42 && I != N - 1;
+	if (bLagoonCockpit) X = FMath::Clamp(X, -4.1, -2.75);
 	const double Rail = Cfg.bMultihull && !(bTrimaran && I == N - 1) ? FMath::Abs(Cfg.Hulls.back().CenterY) + 0.2 : Hull.DeckHalfBeam(X);
 	// On a multihull the stances below are placed over 0 and lifted onto the surface under the sailor at the end
 	// (CrewSeatSurfaceZ: a hull's deck, the net, trampoline or bridgedeck); before, they all took the main hull's sheer
@@ -230,6 +235,12 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	// (Hiking in or out moves the crew model as fast as a tack does: only a move through the middle of the boat is a crossing.)
 	const bool bCrossing = (bUnderBoom && (bTacking || bGybing)) || ((bTacking || bGybing) && FMath::Abs(In.OffsetRate) > 0.3)
 		|| (FMath::Abs(In.OffsetRate) > 0.6 && Off < (bDinghy ? FMath::Min(0.2, 0.8 * Cfg.CrewSitOut) : 0.8 * Cfg.CrewSitOut));
+	// docs/crew-hull-clip/: facing across the boat in the well (on a seat, or crossing), the hips are a body's width
+	// apart fore and aft; at 0.12 m from the well's forward end the forward hip went into the cabin trunk's face.
+	if (!bDinghy && !Cfg.bMultihull && Cfg.Type != EBoatType::Maxi && !Out.bHelm && KeelWell.X1 > KeelWell.X0 && (bCrossing || Off <= 0.55 * Rail))
+	{
+		X = FMath::Min(X, KeelWell.X1 - 0.3);
+	}
 	if (In.bRighting)
 	{
 		P.Stance = ECrewStance::Righting;
@@ -255,9 +266,13 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		const double Y = In.CrewOffset * (1.0 - Out.Duck);
 		const double Up = Sheer + (bDinghy ? 0.25 : 0.05);
 		const double FloorZ = CrewFloorZ(Cfg, X, Y);
-		const double Lowest = FloorZ > -1e8 ? FloorZ + 0.22 : Sheer - 0.3;
+		// (30 cm over the floor at the lowest: at 22 the folded knees went through the sole: docs/crew-hull-clip/.)
+		const double Lowest = FloorZ > -1e8 ? FloorZ + 0.30 : Sheer - 0.3;
 		const double Under = FMath::Max(Cfg.BoomZ - 0.85, Lowest);
 		Out.Pelvis = FVector(X, Y, FMath::Lerp(Up, FMath::Min(Up, Under), double(Out.Duck)));
+		// docs/crew-hull-clip/: over a cabin trunk (the maxi's coachroof), crossing on top of it.
+		FCrewCabinTrunk Trunk;
+		if (CrewCabinTrunk(Cfg, Trunk) && X > Trunk.X0 - 0.4 && X < Trunk.X1) Out.Pelvis.Z = FMath::Max(Out.Pelvis.Z, Sheer + Trunk.Height + 0.25);
 	}
 	else if (bDinghy)
 	{
@@ -268,18 +283,43 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		P.Stance = ECrewStance::Helm;
 		Out.Pelvis = FVector(X, Side * FMath::Max(Rail - 0.18, 0.3), Sheer + 0.07);
+		// docs/crew-hull-clip/: the maxi's helm aft of the windward wheel (ref.json "wheels": x -13.0, 2.15 m out), on the
+		// cockpit's edge with the legs in it; at x -9 on the rail their legs went down through 1.1 m of deck.
+		if (Cfg.Type == EBoatType::Maxi) Out.Pelvis = FVector(-13.7, Side * 2.55, CrewSeatSurfaceZ(Cfg, -13.7, Side * 2.55) + 0.07);
+		// The Lagoon's helm on her helm seat (build_fleet.py lagoon_detail(): aft of the saloon on the starboard side,
+		// the cushion 0.49 m over the bridgedeck), not on a hull's deck aft.
 	}
-	else if (Off > 0.55 * Rail)
+	else if (Off > 0.55 * Rail || (Cfg.Type == EBoatType::Maxi && !Out.bHelm))
 	{
+		// (The maxi's crew forward of her cockpit have no seat but the side deck: her coachroof fills the middle.)
 		P.Stance = ECrewStance::RailHike;
 		// Sitting on the side deck a hand's width in from the edge, facing inboard (round 11: not on the edge, legs over).
-		Out.Pelvis = FVector(X, Side * (Rail - 0.12), Sheer + 0.07);
+		// docs/crew-hull-clip/: inside the lifelines where the boat has them (stanchions 5 cm in from the edge, wires at
+		// 0.3 and 0.6 m: build_fleet.py lifelines()), and leaning back against them, not out through them.
+		const bool bLifelines = CrewHasLifelines(Cfg);
+		Out.Pelvis = FVector(X, Side * (Rail - (bLifelines ? 0.32 : 0.12)), Sheer + 0.07);
+		if (bLifelines) P.Hike = FMath::Min(P.Hike, 0.3f);
+		// On the maxi's cambered deck (the seat is its crown, not the sheer), and her twelve rail crew are not one pose
+		// repeated: a little more or less hiked, a little fore or aft, by their place on the rail.
+		if (!Cfg.bMultihull) Out.Pelvis.Z = CrewSeatSurfaceZ(Cfg, X, Out.Pelvis.Y) + 0.07;
+		if (Cfg.Type == EBoatType::Maxi)
+		{
+			const float Vary = FMath::Frac(0.618034f * float(I + 1)) - 0.5f;
+			P.Hike = FMath::Clamp(P.Hike + 0.5f * Vary, 0.f, 1.f);
+			Out.Pelvis.X += 0.16 * FMath::Frac(0.414214 * double(I + 1)) - 0.08;
+		}
 	}
 	else
 	{
 		// Light air or downwind: on the cockpit seat (to leeward if the crew model put them there).
 		P.Stance = ECrewStance::Cockpit;
 		Out.Pelvis = FVector(X, Side * FMath::Clamp(Off, 0.35, FMath::Max(Rail - 0.45, 0.35)), Sheer - 0.10);
+		// docs/crew-hull-clip/: on the seat, not 6 cm into it (a seated pelvis is about 9 cm over what it sits on).
+		if (!Cfg.bMultihull)
+		{
+			const double Floor = CrewFloorZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y);
+			if (Floor > -1e8) Out.Pelvis.Z = FMath::Max(Out.Pelvis.Z, Floor + 0.09);
+		}
 		// A multihull's net or bridgedeck has no seat to drop the legs from: sit on it as on a side deck.
 		FCrewCockpitWell CockpitWell;
 		const bool bInWell = CrewCockpitWell(Cfg, CockpitWell) && CrewFloorZ(Cfg, X, Out.Pelvis.Y) < Hull.SheerHeight(X) - 0.05;
@@ -289,7 +329,25 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 			Out.Pelvis.Z = Sheer + 0.07;
 		}
 	}
-	if (Cfg.bMultihull) Out.Pelvis.Z += CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y);
+	if (bLagoonCockpit && FMath::Abs(Out.Pelvis.X + 3.3) < 0.7 && FMath::Abs(Out.Pelvis.Y) < 0.9) Out.Pelvis.Y = Side * 0.9;
+	if (Cfg.Type == EBoatType::Lagoon42 && Out.bHelm && P.Stance == ECrewStance::Helm)
+	{
+		const Sailing::FHullShape& Stbd = Cfg.Hulls[1];
+		const double HelmY = FMath::Abs(Stbd.CenterY) - Stbd.DeckHalfBeam(0.0) + 0.55 - 0.35;
+		Out.Pelvis = FVector(-2.75 - 0.5, HelmY, 0.07);   // over the seat (CrewSeatSurfaceZ, below)
+		P.Side = 1.f;
+	}
+	// (On a hull's crowned deck, the seat is the crown under the thighs, a little inboard of the hips: the Hobie's.)
+	if (Cfg.bMultihull) Out.Pelvis.Z += FMath::Max(CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y), CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, Out.Pelvis.Y - P.Side * 0.10));
+	// docs/crew-hull-clip/: sitting where the floor ahead of the feet is as high as the seat (no well to put the feet
+	// in): knees up, feet on the deck.
+	if (P.Stance == ECrewStance::RailHike)
+	{
+		const double FootY = Out.Pelvis.Y - P.Side * 0.45;
+		const double SeatZ = Out.Pelvis.Z - 0.07;
+		const double FootZ = Cfg.bMultihull ? CrewSeatSurfaceZ(Cfg, Out.Pelvis.X, FootY) : CrewFloorZ(Cfg, Out.Pelvis.X, FootY);
+		P.bFlatDeck = FootZ > SeatZ - 0.15;
+	}
 	Out.Yaw = CrewFacingYaw(P);
 }
 
@@ -315,7 +373,11 @@ void CrewDerivedAttachPoints(const Sailing::FBoatConfig& C, double X, FCrewAttac
 		Out.FootBrace[S] = FVector(X, Y * (Half - (W.SeatZ > 0.0 ? W.SeatW : 0.05) - 0.03), SeatZ - 0.06) * ToCm;
 		Out.SideDeck[S] = FVector(X, Y * (H.DeckHalfBeam(X) - 0.05), H.SheerHeight(X)) * ToCm;
 		Out.HandholdCoaming[S] = FVector(X, Y * (Half + 0.02), H.SheerHeight(X) + 0.03) * ToCm;
-		Out.HandholdCabin[S] = FVector(CabinX, Y * CabinHalf, H.SheerHeight(CabinX) + 0.30) * ToCm;
+		// (On top of the trunk: docs/crew-hull-clip/, at 0.30 m over the sheer it was inside the J/22's 0.31 m trunk and the
+		// reaching arm went through its corner.)
+		FCrewCabinTrunk Trunk;
+		const double HandrailZ = CrewCabinTrunk(C, Trunk) ? Trunk.Height + 0.10 : 0.30;
+		Out.HandholdCabin[S] = FVector(CabinX, Y * CabinHalf, H.SheerHeight(CabinX) + HandrailZ) * ToCm;
 	}
 	Out.CockpitSole = FVector(X, 0.0, W.SoleZ) * ToCm;
 	Out.bValid = true;
@@ -496,7 +558,9 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 	// handrail: the J/22 the lessons sail has no lifelines).
 	const FTransform& ToBoat = In.ToBoat;
 	const bool bBrace = In.bReact && S.bBracing && In.Attach.bValid;
-	if (bBrace)
+	// (Not the feet of a sailor on a flat deck: docs/crew-hull-clip/, the maxi's rail crew reached for the far seat of
+	// her cockpit and put a leg down through the deck between.)
+	if (bBrace && !In.Params.bFlatDeck)
 	{
 		const int32 Far = ToBoat.GetLocation().Y >= 0.0 ? 1 : 0; // the seat across the cockpit
 		for (int32 Side = 0; Side < 2; ++Side)
