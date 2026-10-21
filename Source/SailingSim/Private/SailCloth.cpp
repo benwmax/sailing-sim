@@ -515,39 +515,44 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 			const FVector Axis = O.B - O.A;
 			const double Len = Axis.Size();
 			if (Len < 1.0 || FMath::Abs(Axis.Z) <= 0.3 * Len) continue; // the wires (a spreader is level: the turn above keeps it)
-			const double T = (Z - O.A.Z) / Axis.Z;
-			if (T < 0.0 || T > 1.0 || T * Len < O.FreeA || (1.0 - T) * Len < O.FreeB) continue;
-			const FVector W = O.A + Axis * T;
-			const double Radius = FVector::Dist2D(W, L);
-			if (Radius < kNearLuffCm) continue;
-			const double Wire = FromAft(W), Margin = (O.RadiusCm + kGapCm) / Radius;
-			// How far past the wire the cloth is at its radius (the largest over the dent's flat), turned back by that at most.
-			double Need = 0.0;
-			for (int32 C = 1; C < Cols; ++C)
+			// (At the row's height and half a row either way, as the turn does: the panels between rows span the wire there.
+			// At the row's height alone the J/22's main went through her upper shroud just under the spreader tip.)
+			for (const double Dz : { 0.0, -0.5 * RowPitch, 0.5 * RowPitch })
 			{
-				const FVector& V = P[Index(R, C)];
-				const double Rc = FVector::Dist2D(V, L);
-				if (FMath::Abs(Rc - Radius) > kDentFlatCm + kDentFallCm) continue;
-				const double Cloth = FromAft(V);
-				if (Wire * Cloth <= 0.0) continue;
-				Need = FMath::Max(Need, FMath::Abs(Cloth) - (FMath::Abs(Wire) - Margin));
-			}
-			if (Need <= 0.0) continue;
-			Need = FMath::Min(Need, 0.6);
-			const double Sign = Wire >= 0.0 ? 1.0 : -1.0; // the wire's side: the dent turns back toward aft
-			for (int32 C = 1; C < Cols; ++C)
-			{
-				FVector& V = P[Index(R, C)];
-				const FVector D = V - L;
-				const double Rc = FVector::Dist2D(V, L);
-				const double Off = FMath::Abs(Rc - Radius);
-				const double Wt = Off <= kDentFlatCm ? 1.0 : FMath::Max(0.0, 1.0 - (Off - kDentFlatCm) / kDentFallCm);
-				const double Cloth = FromAft(V);
-				if (Wt <= 0.0 || Cloth * Sign <= 0.0) continue;
-				// (No further than aft: a point already inside the wire's angle only moves as far as the dent needs it to.)
-				const double Rot = Sign * FMath::Min(Need * Wt, FMath::Abs(Cloth));
-				const FQuat Q(FVector::UpVector, Rot);
-				V = L + Q.RotateVector(FVector(D.X, D.Y, 0.0)) + FVector(0.0, 0.0, D.Z);
+				const double T = (Z + Dz - O.A.Z) / Axis.Z;
+				if (T < 0.0 || T > 1.0 || T * Len < O.FreeA || (1.0 - T) * Len < O.FreeB) continue;
+				const FVector W = O.A + Axis * T - FVector(0.0, 0.0, Dz);
+				const double Radius = FVector::Dist2D(W, L);
+				if (Radius < kNearLuffCm) continue;
+				const double Wire = FromAft(W), Margin = (O.RadiusCm + kGapCm) / Radius;
+				// How far past the wire the cloth is at its radius (the largest over the dent's flat), turned back by that at most.
+				double Need = 0.0;
+				for (int32 C = 1; C < Cols; ++C)
+				{
+					const FVector& V = P[Index(R, C)];
+					const double Rc = FVector::Dist2D(V, L);
+					if (FMath::Abs(Rc - Radius) > kDentFlatCm + kDentFallCm) continue;
+					const double Cloth = FromAft(V);
+					if (Wire * Cloth <= 0.0) continue;
+					Need = FMath::Max(Need, FMath::Abs(Cloth) - (FMath::Abs(Wire) - Margin));
+				}
+				if (Need <= 0.0) continue;
+				Need = FMath::Min(Need, 0.6);
+				const double Sign = Wire >= 0.0 ? 1.0 : -1.0; // the wire's side: the dent turns back toward aft
+				for (int32 C = 1; C < Cols; ++C)
+				{
+					FVector& V = P[Index(R, C)];
+					const FVector D = V - L;
+					const double Rc = FVector::Dist2D(V, L);
+					const double Off = FMath::Abs(Rc - Radius);
+					const double Wt = Off <= kDentFlatCm ? 1.0 : FMath::Max(0.0, 1.0 - (Off - kDentFlatCm) / kDentFallCm);
+					const double Cloth = FromAft(V);
+					if (Wt <= 0.0 || Cloth * Sign <= 0.0) continue;
+					// (No further than aft: a point already inside the wire's angle only moves as far as the dent needs it to.)
+					const double Rot = Sign * FMath::Min(Need * Wt, FMath::Abs(Cloth));
+					const FQuat Q(FVector::UpVector, Rot);
+					V = L + Q.RotateVector(FVector(D.X, D.Y, 0.0)) + FVector(0.0, 0.0, D.Z);
+				}
 			}
 		}
 	}
