@@ -103,8 +103,16 @@ float3 c = lerp(base, tracer, mask);
 c = lerp(c, float3(0.62, 0.60, 0.55), 0.3 * Fade);             // sun fade toward chalky grey
 float deep = 1.0 - m.r;
 c = lerp(c, float3(0.11, 0.095, 0.07), saturate((deep * 1.2 + 0.3) * Dirt * 0.35));
-c = lerp(c, float3(0.023, 0.021, 0.018), deep * 0.55);        // shadow in the weave
-Rough = 0.62 + 0.25 * deep;
+// Boat fidelity 4 ("readable at arm's reach"): the yarns inside each carrier, fine streaks along the cover's two helices
+// (S and Z, a lay of U over 5 diameters, 24 carriers round), so a strand reads as twisted fibre and not a smooth ribbon.
+float sS = sin(6.2831853 * (UV.x * 36.0 + UV.y * 48.0)), sZ = sin(6.2831853 * (UV.x * 36.0 - UV.y * 48.0));
+float yarn = 0.5 + 0.5 * lerp(sS, sZ, step(0.5, frac(UV.x * 6.0 + UV.y * 12.0)));
+c *= 0.9 + 0.16 * yarn * (1.0 - deep);
+c = lerp(c, float3(0.023, 0.021, 0.018), deep * 0.62);        // shadow in the weave
+// Polyester fuzz: loose fibres stand off a used rope and catch the light along its silhouette.
+float rim = pow(1.0 - saturate(abs(dot(normalize(N), normalize(V)))), 3.0);
+c = lerp(c, c * 1.35 + 0.035, rim * (0.25 + 0.35 * Fade));
+Rough = 0.62 + 0.25 * deep - 0.06 * yarn * (1.0 - deep);
 return c;
 """
 
@@ -126,9 +134,11 @@ def rope_material(tex):
     lut = node(mat, unreal.MaterialExpressionTextureObject, -900, 450, texture=tex["T_RopeColourways"])
     fade = node(mat, unreal.MaterialExpressionScalarParameter, -900, 600, parameter_name="Fade", default_value=0.4)
     dirt = node(mat, unreal.MaterialExpressionScalarParameter, -900, 700, parameter_name="Dirt", default_value=0.5)
-    c = custom(mat, ROPE_CODE, ["UV", "VC", "BraidM", "Lut", "Fade", "Dirt"],
+    nws = node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 800)
+    cam = node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 900)
+    c = custom(mat, ROPE_CODE, ["UV", "VC", "BraidM", "Lut", "Fade", "Dirt", "N", "V"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -450, 200, [("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
-    for src, pin in ((uv, "UV"), (vc, "VC"), (tm, "BraidM"), (lut, "Lut"), (fade, "Fade"), (dirt, "Dirt")):
+    for src, pin in ((uv, "UV"), (vc, "VC"), (tm, "BraidM"), (lut, "Lut"), (fade, "Fade"), (dirt, "Dirt"), (nws, "N"), (cam, "V")):
         MEL.connect_material_expressions(src, "", c, pin)
     nrm = node(mat, unreal.MaterialExpressionTextureSample, -450, 500, texture=tex["T_Rope_Braid24_N"],
                sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
@@ -169,6 +179,11 @@ def wire_material(tex):
 
 
 def main():
+    # ROPE_MATERIAL_ONLY=1 (boat fidelity 4) rebuilds M_RigRope over the textures already imported, nothing else.
+    if os.environ.get("ROPE_MATERIAL_ONLY") == "1":
+        rope_material({n: unreal.load_asset(f"{ROPE}/{n}") for n in ("T_Rope_Braid24_M", "T_Rope_Braid24_N", "T_RopeColourways")})
+        unreal.log("Boat detail import done: M_RigRope only")
+        return
     # DETAIL_NEW_ONLY=1 imports only the detail textures not yet in /Game/Boats/Detail (the rope and wire stay as they are).
     new_only = os.environ.get("DETAIL_NEW_ONLY") == "1"
     if not new_only:
