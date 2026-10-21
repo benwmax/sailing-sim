@@ -666,6 +666,22 @@ const FWindField& ASailboatPawn::GetWind() const
 	return FallbackWind;
 }
 
+void ASailboatPawn::HoldForTests(double TwaDeg, double WindKnots)
+{
+	FWindParams Params;
+	Params.SpeedKnots = WindKnots;
+	FallbackWind.SetParams(Params);
+	bDemo = true;
+	bDemoTacks = false;
+	CrudeTackAt = -1.0;
+	DemoPilot.TargetTWADeg = TwaDeg;
+	DemoPilot.MaxTiller = 0.8;
+	bRecordRigLines = true;
+	// On the point of sail from the start, with way on (as -SailingTWA's start does).
+	const Vec3 O = Boat.OriginPosition();
+	Boat.Reset(O.X, O.Y, FMath::DegreesToRadians(Params.FromDegrees - TwaDeg), 4.0 * kKnot);
+}
+
 FString ASailboatPawn::EasyRunJson() const
 {
 	const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -2317,7 +2333,8 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		if (TravelerCar) TravelerCar->SetVisibility(!bStowed);
 	}
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
-	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle), 0.f));
+	// (Rig clearance: turned as the main's foot was last frame to keep it off the shrouds, FSailCloth::GetFootTurn.)
+	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
 	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));

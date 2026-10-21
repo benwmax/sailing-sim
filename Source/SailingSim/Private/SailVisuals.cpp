@@ -20,6 +20,7 @@ void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& 
 	Drive.GravityBody = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
 	// Low draws the physics shape directly; Medium and High run the cloth (and traffic boats in the distance don't).
 	Drive.bSimulate = USailingSettings::Get()->Quality != ESailingQuality::Low && !bTrafficBoat;
+	Cloth.SetObstacles(SailObstacles);
 	const double Start = FPlatformTime::Seconds();
 	Cloth.Step(Strips, Side, Drive);
 	ClothCpuSeconds += FPlatformTime::Seconds() - Start;
