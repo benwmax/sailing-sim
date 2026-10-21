@@ -4,6 +4,7 @@
 #include "SailSave.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
+#include "RHI.h"
 #include "Misc/CommandLine.h"
 
 USailingSettings::USailingSettings()
@@ -150,7 +151,19 @@ void USailingSettings::ApplyDisplay() const
 	// Benchmarks and captures measure the uncapped game in the foreground, whatever the player chose.
 	if (IsMeasuring()) return;
 	if (IConsoleVariable* Cap = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"))) Cap->Set(float(FrameCap), ECVF_SetByGameSetting);
+	if (IConsoleVariable* VSync = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VSync"))) VSync->Set(bVSync ? 1 : 0, ECVF_SetByGameSetting);
 	if (GEngine) GEngine->bPauseOnLossOfFocus = bPauseOnFocusLoss;
+}
+
+bool USailingSettings::DLSSAvailable()
+{
+	// No link to the plugin: the Mac and a fresh clone build without it (docs/windows/README.md, "NVIDIA DLSS").
+	return IConsoleManager::Get().FindConsoleVariable(TEXT("r.NGX.DLSS.Enable")) != nullptr && IsRHIDeviceNVIDIA();
+}
+
+void USailingSettings::ResetGraphicsRows()
+{
+	AntiAliasing = ShadowQuality = LightingQuality = ReflectionQuality = CloudQuality = WaterQuality = FoliageQuality = ViewDistanceQuality = MotionBlur = -1;
 }
 
 USailingInputSettings::USailingInputSettings()

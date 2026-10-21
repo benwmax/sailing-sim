@@ -17,6 +17,8 @@
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameterCollection.h"
 #include "MeshDescription.h"
 #include "StaticMeshAttributes.h"
 
@@ -948,5 +950,46 @@ bool FVisualLiveryTest::RunTest(const FString&)
 	// The player's boat (seed 0) is 1288, or keeps its last digits inside the class's range (the ILCA read "100000").
 	TestEqual(TEXT("player's J/22 number"), SampleBoatLivery(0, 0).SailNumber, FString(TEXT("USA 1288")));
 	TestEqual(TEXT("player's ILCA number"), SampleBoatLivery(2, 0).SailNumber, FString(TEXT("161288")));
+	return true;
+}
+
+// Boat fidelity 1 (docs/boat-fidelity-1): the shared boat library. Each MI_Boat_* slot carries its kind (M_BoatSurface's
+// Surface, make_materials.py BOAT_SURFACE), MPC_Boat has the Detail switch the pawn sets per tier, and the hero J/22's
+// textured groups take the same wear (Age, Care, Wear) as M_BoatSurface. Skipped (with a warning) before the content is built.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualBoatLibraryTest, "SailingSim.Visual.BoatLibrary", VisualFlags)
+bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
+{
+	UMaterialParameterCollection* Mpc = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Boats/MPC_Boat.MPC_Boat"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Mpc)
+	{
+		AddWarning(TEXT("No /Game/Boats/MPC_Boat: run make_materials.py"));
+		return true;
+	}
+	TestNotNull(TEXT("MPC_Boat has Detail"), Mpc->GetScalarParameterByName(TEXT("Detail")));
+	const TPair<const TCHAR*, int32> Kinds[] = { { TEXT("Topsides"), 1 }, { TEXT("NonSkid"), 2 }, { TEXT("Stainless"), 3 }, { TEXT("Aluminium"), 4 },
+		{ TEXT("PaintedAluminium"), 5 }, { TEXT("Wood"), 6 }, { TEXT("Teak"), 7 }, { TEXT("Rubrail"), 8 }, { TEXT("Rope"), 9 },
+		{ TEXT("Sailcloth"), 10 }, { TEXT("SailCover"), 11 }, { TEXT("MastAluminium"), 4 }, { TEXT("CrewSkin"), 0 } };
+	for (const TPair<const TCHAR*, int32>& K : Kinds)
+	{
+		const FString Path = FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), K.Key, K.Key);
+		const UMaterialInterface* Mi = LoadObject<UMaterialInterface>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		float Surface = -1.f;
+		if (TestNotNull(FString::Printf(TEXT("MI_Boat_%s"), K.Key), Mi))
+		{
+			TestTrue(FString::Printf(TEXT("MI_Boat_%s has Surface"), K.Key), Mi->GetScalarParameterValue(TEXT("Surface"), Surface));
+			TestEqual(FString::Printf(TEXT("MI_Boat_%s kind"), K.Key), FMath::RoundToInt(Surface), K.Value);
+		}
+	}
+	const UMaterialInterface* Deck = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Boats/J22Hero/MI_J22H_DeckMould.MI_J22H_DeckMould"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Deck)
+	{
+		AddWarning(TEXT("No hero J/22 materials: run import_j22_hero.py"));
+		return true;
+	}
+	float Age = 0.f, Care = 0.f;
+	FLinearColor Wear;
+	TestTrue(TEXT("Hero deck takes Age (unset by default)"), Deck->GetScalarParameterValue(TEXT("Age"), Age) && Age < 0.f);
+	TestTrue(TEXT("Hero deck takes Care"), Deck->GetScalarParameterValue(TEXT("Care"), Care));
+	TestTrue(TEXT("Hero deck takes Wear"), Deck->GetVectorParameterValue(TEXT("Wear"), Wear));
 	return true;
 }

@@ -51,10 +51,13 @@ namespace
 	constexpr float kTrailSeconds = 8.f;
 	constexpr double kDetailStep = 1.0 / 30.0;  // FFT short waves: evaluated at 30 Hz, blended between
 	constexpr float kDetailFadeM = 300.f;       // distance they fade over (past it their slopes become roughness)
-	constexpr int32 kMaxDroplets = 600;
+	// docs/spray/: the pool of spray quads on High (drops, sheets and mist share it).
+	constexpr int32 kMaxDroplets = 1200;
 	// Graphics G8 Ultra showcase: two and a half times the bow spray on Ultra (the 4090 has the room; still CPU droplets in
 	// the same ISM, so High's look and cost don't move).
-	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1500 : kMaxDroplets; }
+	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 3000 : kMaxDroplets; }
+	// docs/spray/: what one spray instance is (FDroplet::Kind).
+	enum class ESprayKind : uint8 { Drops, Sheet, Mist };
 	constexpr int32 kShoreRes = 512;            // shore map: 512 m around the boat at 1 m
 	constexpr float kShoreCellM = 1.f;
 
@@ -248,9 +251,10 @@ AWaterSurface::AWaterSurface()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WaterV4(TEXT("/Game/Materials/M_WaterV4.M_WaterV4"));
 	ClassicMaterial = Water.Object;
 	DetailedMaterial = WaterV4.Object;
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	// Spray: camera-facing quads (the engine's 1 m plane), stretched along their motion (UpdateSpray).
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Quad(TEXT("/Engine/BasicShapes/Plane.Plane"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SprayMat(TEXT("/Game/Materials/M_Spray.M_Spray"));
-	DropletMesh = Sphere.Object;
+	DropletMesh = Quad.Object;
 	SprayMaterial = SprayMat.Object;
 
 	// The far water past the rings, out to the horizon: built with the rings (BuildRings).
@@ -986,6 +990,9 @@ void AWaterSurface::UpdateHullClip()
 			UploadFloats(HullClipTexture, TArray<float>(Pixels.data(), int32(Pixels.size())), FHullClipMap::Cols, FHullClipMap::Rows, 4);
 		}
 		WaterMaterial->SetTextureParameterValue(TEXT("HullClipMap"), HullClipTexture);
+		// docs/spray/: her velocity and speed for the white water she makes (M_WaterV4's hullFoam).
+		const Vec3 Vel = M.GetState().Velocity;
+		WaterMaterial->SetVectorParameterValue(TEXT("HullClipV"), FLinearColor(float(Vel.X), float(Vel.Y), float(FMath::Sqrt(Vel.X * Vel.X + Vel.Y * Vel.Y)), 1.f));
 		WaterMaterial->SetVectorParameterValue(TEXT("HullClipRect"),
 			FLinearColor(float(HullClip.X0), float(HullClip.Y0), float(HullClip.SizeX), float(HullClip.SizeY)));
 		// -SailingClassicHullClip: V7's flat 2 m drop over 80% of the deck plan (compare the pit it opened at the bow).
@@ -1196,6 +1203,8 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		Spray->SetCastShadow(false);
 		Spray->SetUsingAbsoluteLocation(true);
 		Spray->SetUsingAbsoluteRotation(true);
+		// M_Spray's per-instance data: opacity, grain (1 a clump of droplets, 0 smooth mist), a seed for the speckle.
+		Spray->NumCustomDataFloats = 3;
 		Spray->RegisterComponent();
 		TArray<FTransform> Hidden;
 		Hidden.Init(FTransform(FQuat::Identity, FVector(0, 0, -1e6), FVector::ZeroVector), MaxDroplets());
@@ -1207,19 +1216,22 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	const FVector2D CamM = SailingFrame::ToMap(GetWorld(), Cam);   // droplets fly in the map frame
 	const Vec3 WindV = Wind ? Wind->VelocityAt(Vec3(CamM.X, CamM.Y, 2.0), T) : Vec3();
 	const FVector WindAt2m(WindV.X, WindV.Y, 0.0);
-	auto Emit = [&](const FVector& P, const FVector& V, float Size)
+	auto Emit = [&](const FVector& P, const FVector& V, float Size, ESprayKind Kind, float Life)
 	{
 		if (Droplets.Num() >= Spray->GetInstanceCount()) return;
 		FDroplet D;
 		D.P = P;
 		D.V = V;
-		D.Life = SprayRng.FRandRange(0.6f, 1.6f);
+		D.Life = Life;
 		D.Size = Size;
+		D.Kind = uint8(Kind);
+		D.Seed = SprayRng.FRand();
 		Droplets.Add(D);
 	};
 
-	// Bows slamming into the waves: the closing speed between the bow and the water surface throws up a sheet of spray
-	// to each side, carried forward with the boat.
+	// Bows slamming into the waves: the closing speed between the bow and the water surface throws up spray to each side,
+	// carried forward with the boat: a sheet off the bow wave first, which tears into clumps of droplets, and the mist
+	// they leave drifting downwind. How much and how high follow the slam and the speed.
 	for (TActorIterator<ASailboatPawn> It(GetWorld()); It; ++It)
 	{
 		if (It->bGhost) continue;
@@ -1236,18 +1248,79 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		Waves->Sample(Bow.X, Bow.Y, T, H, Vz, Sx, Sy);
 		const double Closing = Vz - BowV.Z; // water rising past the bow, or the bow plunging into it
 		const double Speed = FVector2D(BowV.X, BowV.Y).Size();
-		if (Bow.Z > H + 0.15 || Closing < 0.45 || Speed < 1.5) continue;
 		const float Dense = float(MaxDroplets()) / float(kMaxDroplets); // Ultra: a fuller sheet, the same shape
-		const int32 Count = FMath::Clamp(FMath::RoundToInt(Dense * Dt * 900.f * float(Closing - 0.45) * FMath::Min(float(Speed) / 3.f, 1.5f)), 0, FMath::RoundToInt(40.f * Dense));
 		const FVector Fwd = FVector(BowV.X, BowV.Y, 0.0).GetSafeNormal();
 		const FVector Side(-Fwd.Y, Fwd.X, 0.0);
+		// Hull size: a dinghy's bow throws less and lower than a keelboat's.
+		const float Scale = FMath::Clamp(float(Hull.MaxHalfBeam) / 1.2f, 0.5f, 1.5f);
+		// The bow wave: at speed a thin sheet of water peels off each side of the bow where it meets the water and breaks
+		// into drops, slam or no slam (it grows with the speed past 2 m/s, about 4 kn).
+		if (Speed > 2.0)
+		{
+			const float Rate = Dense * float(Speed - 2.0) * 14.f * Scale;
+			const int32 Peel = FMath::Min(int32(Rate * Dt + SprayRng.FRand()), FMath::RoundToInt(6.f * Dense));
+			for (int32 I = 0; I < Peel; ++I)
+			{
+				const float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
+				const double X = Hull.BowX * SprayRng.FRandRange(0.55f, 0.8f);
+				const Vec3 W = M.BodyToWorld(Vec3(X, Hull.CenterY + S * 0.9 * Hull.DeckHalfBeam(X), 0.0));
+				const FVector P(W.X, W.Y, Waves->Height(W.X, W.Y, T) + 0.02);
+				const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.85f + Side * S * float(Speed) * SprayRng.FRandRange(0.15f, 0.3f)
+					+ FVector(0, 0, SprayRng.FRandRange(0.3f, 0.9f) * FMath::Sqrt(float(Speed) / 3.f));
+				Emit(P, V, SprayRng.FRandRange(0.15f, 0.35f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.25f, 0.45f));
+				if (SprayRng.FRand() < 0.5f) Emit(P, V * 1.1f, SprayRng.FRandRange(0.08f, 0.18f) * Scale, ESprayKind::Drops, SprayRng.FRandRange(0.4f, 0.8f));
+			}
+		}
+		if (Bow.Z > H + 0.15 || Closing < 0.45 || Speed < 1.5) continue;
+		const float Slam = float(FMath::Min(Closing, 2.5));
+		const float Fast = FMath::Min(float(Speed) / 3.f, 1.5f);
+		const int32 Count = FMath::Clamp(FMath::RoundToInt(Dense * Dt * 1800.f * float(Closing - 0.45) * Fast), 0, FMath::RoundToInt(80.f * Dense));
+		// A hard slam (the bow falling onto a wave faster than 1.2 m/s): a splash, a burst of mist and torn sheets that
+		// hangs over the bow and blows aft.
+		if (Closing > 1.2)
+		{
+			const int32 Burst = FMath::Min(FMath::RoundToInt(Dense * Dt * 60.f * float(Closing - 1.2) * Fast * 4.f), FMath::RoundToInt(6.f * Dense));
+			for (int32 I = 0; I < Burst; ++I)
+			{
+				const FVector P = FVector(Bow.X, Bow.Y, H) + Side * SprayRng.FRandRange(-0.5f, 0.5f) * Scale + FVector(0, 0, 0.2f);
+				const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.4f + Side * SprayRng.FRandRange(-1.5f, 1.5f)
+					+ FVector(0, 0, SprayRng.FRandRange(1.5f, 3.f) * Slam / 2.5f);
+				Emit(P, V, SprayRng.FRandRange(0.6f, 1.2f) * Scale, ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.8f));
+				Emit(P, V * 1.3f, SprayRng.FRandRange(0.3f, 0.6f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.3f, 0.5f));
+			}
+		}
 		for (int32 I = 0; I < Count; ++I)
 		{
 			const float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
-			const FVector P = FVector(Bow.X, Bow.Y, H) + Side * S * SprayRng.FRandRange(0.2f, 0.6f) - Fwd * SprayRng.FRandRange(0.f, 0.8f);
+			const FVector P = FVector(Bow.X, Bow.Y, H) + Side * S * SprayRng.FRandRange(0.2f, 0.6f) * Scale - Fwd * SprayRng.FRandRange(0.f, 0.8f);
 			const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.6f + Side * S * SprayRng.FRandRange(0.8f, 2.6f)
-				+ FVector(0, 0, SprayRng.FRandRange(0.8f, 2.2f) * float(FMath::Min(Closing, 2.5)));
-			Emit(P, V, SprayRng.FRandRange(0.04f, 0.12f)); // clumps of droplets (sizes in m)
+				+ FVector(0, 0, SprayRng.FRandRange(0.8f, 2.2f) * Slam * FMath::Sqrt(Scale));
+			Emit(P, V, SprayRng.FRandRange(0.1f, 0.25f) * Scale * (0.7f + 0.3f * Slam / 2.5f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
+			// One in four leaves mist; one in six starts as a sheet of the bow wave, wide and short-lived.
+			if (SprayRng.FRand() < 0.25f)
+			{
+				Emit(P + FVector(0, 0, 0.2f), V * 0.35f, SprayRng.FRandRange(0.35f, 0.8f) * Scale, ESprayKind::Mist, SprayRng.FRandRange(1.2f, 2.4f));
+			}
+			if (SprayRng.FRand() < 0.16f)
+			{
+				Emit(P, V * 0.8f, SprayRng.FRandRange(0.25f, 0.5f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.25f, 0.4f));
+			}
+		}
+	}
+
+	// -SailingDebugSpray (stills and tuning): a steady fountain of every kind 3 m ahead of the camera.
+	static SailingArgs::FCachedFlag DebugSprayArg(TEXT("SailingDebugSpray"));
+	if (DebugSprayArg.Get() && UGameplayStatics::GetPlayerCameraManager(this, 0))
+	{
+		const FVector Ahead = UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraRotation().Vector() * 300.0 + Cam;
+		const FVector2D AM = SailingFrame::ToMap(GetWorld(), Ahead);
+		const FVector P(AM.X, AM.Y, Waves->Height(AM.X, AM.Y, T));
+		for (int32 I = 0; I < 6; ++I)
+		{
+			const FVector V(SprayRng.FRandRange(-1.5f, 1.5f), SprayRng.FRandRange(-1.5f, 1.5f), SprayRng.FRandRange(2.f, 4.f));
+			Emit(P, V, SprayRng.FRandRange(0.1f, 0.25f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
+			if (I == 0) Emit(P, V * 0.35f, 0.6f, ESprayKind::Mist, 2.f);
+			if (I == 1) Emit(P, V * 0.8f, 0.4f, ESprayKind::Sheet, 0.35f);
 		}
 	}
 
@@ -1278,7 +1351,8 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 			{
 				const FVector P(X + SprayRng.FRandRange(-0.4f, 0.4f), Y + SprayRng.FRandRange(-0.4f, 0.4f), H);
 				const FVector V = WindAt2m * SprayRng.FRandRange(0.3f, 0.7f) + FVector(0, 0, SprayRng.FRandRange(0.5f, 1.6f));
-				Emit(P, V, SprayRng.FRandRange(0.03f, 0.08f));
+				Emit(P, V, SprayRng.FRandRange(0.08f, 0.2f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
+				if (I == 0) Emit(P, V * 0.5f, SprayRng.FRandRange(0.6f, 1.2f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.5f));
 			}
 		}
 	}
@@ -1288,29 +1362,70 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	const FVector CamM3(CamM.X, CamM.Y, (Cam.Z - GetActorLocation().Z) / CmPerMeter);
 	for (const FDroplet& D : Droplets)
 	{
-		if (D.Age < 0.6f && FVector::DistSquared(D.P, CamM3) < 4.f) { LensSpray = 1.f; break; }
+		if (D.Kind == uint8(ESprayKind::Drops) && D.Age < 0.6f && FVector::DistSquared(D.P, CamM3) < 4.f) { LensSpray = 1.f; break; }
 	}
-	// Fly: gravity, the air dragging them toward the wind's speed; gone when they fall back into the water.
+	// Fly: gravity, the air dragging them toward the wind's speed; gone when they fall back into the water. Mist hangs:
+	// it barely falls and follows the wind closely.
 	const FVector G(0, 0, -9.81);
 	for (int32 I = Droplets.Num() - 1; I >= 0; --I)
 	{
 		FDroplet& D = Droplets[I];
-		D.V += (G + (WindAt2m - D.V) * 1.2f) * Dt;
+		const bool bMist = D.Kind == uint8(ESprayKind::Mist);
+		D.V += ((bMist ? G * 0.05f : G) + (WindAt2m - D.V) * (bMist ? 2.5f : 1.2f)) * Dt;
 		D.P += D.V * Dt;
 		D.Age += Dt;
-		if (D.Age > D.Life || D.P.Z < Waves->Height(D.P.X, D.P.Y, T) - 0.05) Droplets.RemoveAtSwap(I);
+		if (D.Age > D.Life || (!bMist && D.P.Z < Waves->Height(D.P.X, D.P.Y, T) - 0.05)) Droplets.RemoveAtSwap(I);
 	}
+	// Draw: each a quad facing the camera, stretched along its motion across the view (the blur of a 1/60 s exposure),
+	// fading with age and as it falls back. Past 25 m the droplets read as mist (no grain, wider, fainter).
 	TArray<FTransform> Xf;
 	const int32 Pool = Spray->GetInstanceCount();
 	Xf.SetNumUninitialized(Pool);
 	const double Z0 = GetActorLocation().Z;
+	float Data[3];
 	for (int32 I = 0; I < Pool; ++I)
 	{
 		if (I < Droplets.Num())
 		{
 			const FDroplet& D = Droplets[I];
-			const float Fade = 1.f - FMath::Square(D.Age / D.Life);
-			Xf[I] = FTransform(FQuat::Identity, SailingFrame::ToWorld(GetWorld(), D.P.X, D.P.Y, D.P.Z) + FVector(0.0, 0.0, Z0), FVector(D.Size * Fade));
+			const FVector W = SailingFrame::ToWorld(GetWorld(), D.P.X, D.P.Y, D.P.Z) + FVector(0.0, 0.0, Z0);
+			const FVector ToCam = Cam - W;
+			const float Dist = float(ToCam.Size()) / CmPerMeter;
+			const FVector N = ToCam.GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
+			FVector Across = D.V - FVector::DotProduct(D.V, N) * N; // its motion across the view (m/s)
+			const float Smear = float(Across.Size());
+			if (Smear < 1e-3f) Across = FVector::CrossProduct(N, FVector::UpVector);
+			const FVector X = Across.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
+			const FVector Y = FVector::CrossProduct(N, X);
+			const FQuat Q = FMatrix(X, Y, N, FVector::ZeroVector).ToQuat();
+			const float Life = D.Age / D.Life;
+			const float Far = FMath::Clamp((Dist - 25.f) / 25.f, 0.f, 1.f);
+			float Size = D.Size, Alpha = 0.f, Grain = 1.f;
+			switch (ESprayKind(D.Kind))
+			{
+			case ESprayKind::Mist:
+				Size *= 1.f + 1.5f * Life;                                   // spreading as it drifts
+				Alpha = 0.22f * FMath::Sin(UE_PI * FMath::Min(Life * 1.4f, 1.f)) * (1.f - Life);
+				Grain = 0.f;
+				break;
+			case ESprayKind::Sheet:
+				Size *= 1.f + 0.8f * Life;
+				Alpha = 0.45f * (1.f - Life);
+				Grain = 0.6f;
+				break;
+			default:
+				Alpha = 0.85f * (1.f - Life * Life) * (D.V.Z < 0.f ? FMath::Clamp(1.f + float(D.V.Z) * 0.12f, 0.5f, 1.f) : 1.f);
+				Size *= 1.f + 1.5f * Far;
+				Alpha *= 1.f - 0.6f * Far;
+				Grain = 1.f - Far;
+				break;
+			}
+			const float Length = Size + Smear / 60.f;
+			Xf[I] = FTransform(Q, W, FVector(Length, Size, 1.f));
+			Data[0] = Alpha;
+			Data[1] = Grain;
+			Data[2] = D.Seed;
+			Spray->SetCustomData(I, MakeArrayView(Data, 3), false);
 		}
 		else
 		{

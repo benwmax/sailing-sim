@@ -94,6 +94,22 @@
 			]
 		},
 		{
+			"Name": "DLSS",
+			"Enabled": true,
+			"Optional": true,
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "StreamlineNGXCommon",
+			"Enabled": true,
+			"Optional": true,
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
 			"Name": "MovieRenderPipeline",
 			"Enabled": true,
 			"TargetAllowList": [

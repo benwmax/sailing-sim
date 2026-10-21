@@ -148,6 +148,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Phase 3 (`docs/boatkit-3/`): the J/22's keel is the class template in both models (`keel_edges`; the physics keel
    `Center` stays a balance knob), the hero's aft freeboard is the ORC 0.568 m, its cabin face ends at 1.65.
    `photomatch/profile_match.py` lays the hero's outline over a broadside photo from two picked points (no camera solve).
+   Boat fidelity 2 (`docs/boat-fidelity-2/`): the kit is in the game as `/Game/Boats/Kit` (`SM_Kit_<Part>` Nanite,
+   `SM_Kit_<Part>_Light` decimated, `M_BoatKit`/`MI_Kit_<Slot>` over the 10 px/cm trim sheet `Inputs/boat-kit`, by
+   `bk_trim.py`); `bk_parts.SIZES` holds catalogue sizes; maker's plates are the made-up TERNWAY only. PC:
+   `scripts\windows\make-boatkit.ps1 [-Render] [-Docs] [-Import]`; `scripts/import_hardware_kit.py` imports and copies
+   `kit.json` for `SailingSim.Visual.HardwareKit`. Socket names are global in Blender: export strips the `.001` suffix.
 
 23. Ports from a box and a name (`docs/world-marseille/`): `Tools/coast/worlds/<World>.json` defines a coast (box, origin,
    datum, harbours, spots, passage, climate, city glow, far ring); `build_coast.py <World>` bakes it (`build_galveston.py`
@@ -257,7 +262,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   Jacobian < `FoamThreshold` 0.6 (`SailingSim.Visual.Whitecaps` against Monahan). `FWakeGrid` (`WakeGrid.h`) solves the
   wave equation spectrally on a worker with each hull as a pressure patch (a truncated iWave kernel gives the wrong
   dispersion). Water bodies' albedo and extinction are in `WaterBodyFor`; the shore depth map is rebuilt on a worker;
-  spray (High) is CPU droplets in an ISM. The terrain doesn't mesh the bed deeper than the water lets you see
+  spray (High) is CPU droplets in an ISM of camera-facing quads (`M_Spray`: drops, sheets, mist by per-instance data;
+  `-SailingDebugSpray`, `docs/spray/`); `M_WaterV4` also draws the player's waterline foam and transom churn from `FHullClipMap`. The terrain doesn't mesh the bed deeper than the water lets you see
   (`ALakeTerrainActor::HideBelow`): drawn behind SLW it cost 6 fps on High in shading and shadow pages.
   Measuring args: `-SailingClassicWater`, `-SailingWaterRings=N`; bench.json has `water_cpu_ms`.
 - Sky (Visual V5): `FCloudSky` (`CloudSky.h`, in `FWeatherState::Sky`) holds the cloud layers per preset (cumulus,
@@ -527,6 +533,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `M_RigRope`/`M_RigWire` and the close-up detail textures (`Tools/rope/make_rope_textures.py`,
   `Tools/boats/make_detail_textures.py`); run it before `import_j22_hero.py`. `-SailingFlatRope` keeps the old flat
   materials. The hero J/22 has a cabin (`SM_J22H_Interior`, player's boat only) and translucent `SM_J22H_Glass`.
+  Boat fidelity 1 (`docs/boat-fidelity-1/`): `M_BoatSurface`'s `Surface` is each slot's kind in the shared library
+  (`BOAT_SURFACE`; weathering by E1's Age/Care, box-projected detail maps on High/Ultra via `MPC_Boat.Detail`); `up` is
+  judged on the side the camera sees (two-sided shells). Args `-SailingNoBoatDetail`, `-SailingBoatAge=<y>[,<care>]`,
+  `-SailingDeckWet=<0..1>`; `HERO_MATERIALS_ONLY=1` rebuilds the hero's materials without reimporting.
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
   a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
   deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe

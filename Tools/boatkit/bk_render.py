@@ -135,6 +135,36 @@ def contact_sheet(parts, path, cols=6, tile=(420, 320)):
     print(f"Kit: catalogue -> {path}")
 
 
+def group_render(objs, path, tile=(900, 420)):
+    """Boat fidelity 2's size row: objects at true relative scale, laid out left to right across the contact sheet's
+    camera, the row scaled to fit, in the contact sheet's studio (same lights, so rows compare)."""
+    for o in list(bpy.data.objects):
+        if o.type in ("LIGHT", "CAMERA") or o.name == "Floor":
+            bpy.data.objects.remove(o, do_unlink=True)
+    _engine(*tile)
+    _floor(0, 40)
+    _light("Key", "AREA", (-2.2, -3.0, 3.6), (0, 0, 0.3), 700, 2.5)
+    _light("Rim", "AREA", (3.0, 2.6, 1.6), (0, 0, 0.3), 260, 1.5)
+    _light("Fill", "AREA", (2.5, -3.5, 0.8), (0, 0, 0.3), 90, 3.0)
+    cam = Vector((2.1, -2.6, 1.7))
+    right = Vector((2.6, 2.1, 0)).normalized()
+    _camera(tuple(cam * 1.25), (0, 0, 0.22), 50)
+    bounds = [_bounds(o) for o in objs]
+    widths = [max(hi.x - lo.x, hi.y - lo.y) for lo, hi in bounds]
+    gap = 0.25 * max(widths)
+    total = sum(widths) + gap * (len(objs) - 1)
+    tall = max(hi.z - lo.z for lo, hi in bounds)
+    k = min(1.9 / total, 0.9 / max(tall, 1e-3))
+    s = -total / 2
+    for o, (lo, hi), wd in zip(objs, bounds, widths):
+        c = (lo + hi) / 2
+        place = right * ((s + wd / 2) * k)
+        o.matrix_world = Matrix.Translation((place.x, place.y, 0)) @ Matrix.Scale(k, 4) @ Matrix.Translation((-c.x, -c.y, -lo.z)) @ o.matrix_world
+        s += wd + gap
+    bpy.context.scene.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+
+
 def closeup(objs, path, view=(1, -1, 0.7), lens=85, w=960, h=640, floor=True, fill=1.0):
     lo = Vector((1e9, 1e9, 1e9))
     hi = -lo
