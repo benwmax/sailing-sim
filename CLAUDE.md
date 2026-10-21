@@ -542,6 +542,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   insignia is a made-up emblem. The hero's coiled tails are live rope (rig-line section 2) from `J22CoilData.inl`
   (`Tools/boats/make_coil_data.py` <- `Inputs/j22-hero/J22H_coils.json` <- `build_j22_hero.py`, `J22H_COILS_ONLY=1`);
   every rig line keeps 0.8 px on screen. Args `-SailingNoSailDetail`, `-SailingNoCoils`, `-SailingNoMinLineWidth`.
+- Spray hull (`docs/spray-hull/`): `UpdateBoatWetness` mirrors `UpdateSpray`'s bow-wave and slam tests into
+  `MPC_Boat.SprayWet` (raises the splash band; the topsides' film, beads, drips and spatter in `BOAT_CODE` and the hero's
+  `DETAIL_CODE`); `UpdateBowWave` draws the bow wave's curl (`M_BowWave`, world-space sheet on the waves, not on Low;
+  `-SailingNoBowWave`).
 - Water in the cockpit: `M_WaterV4` drops its surface to just under the player's hull bottom wherever it is inside
   a hull: `FHullClipMap` (`HullClip.h`) puts every hull's `FHullShape::BottomZ` (the maxi's sections too), sheer and
   deck-edge margins on a 256x128 grid in her frame, uploaded by `AWaterSurface::UpdateHullClip` once per boat and canoe

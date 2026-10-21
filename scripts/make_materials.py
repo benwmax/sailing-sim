@@ -677,6 +677,49 @@ return E * 0.35 * hg;""", list(glow_in.keys()), unreal.CustomMaterialOutputType.
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+BOW_WAVE_CODE = r"""
+// Spray hull (docs/spray-hull): the bow wave's curl (ASailboatPawn::UpdateBowWave). UV: x across the sheet (0 at the hull,
+// 1 out on the sea), y along the bow (0 at the stem). Vertex colour: R the lip (speed), G the crest's rise, A the fade.
+// Green-dark water thinning out to nothing where it meets the sea, a white crest along the shoulder and the lip, broken
+// by bubbly noise that runs aft with the water.
+float u = UV.x, t = UV.y;
+float2 q = WP.xy / 9.0 + float2(Time * 0.7, 0.0);
+float2 qi = floor(q), qf = frac(q);
+qf = qf * qf * (3.0 - 2.0 * qf);
+float h00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float h01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float nz = lerp(lerp(h00, h10, qf.x), lerp(h01, h11, qf.x), qf.y);
+float crest = exp(-pow((u - 0.22) / 0.14, 2.0)) * VC.g;
+float foam = 0.4 * saturate(crest * (0.25 + 0.75 * VC.r) * (0.3 + 1.2 * nz) + (1.0 - u) * 0.2 * VC.r * nz);
+Rough = lerp(0.03, 0.55, foam);
+Opacity = 0.85 * saturate(VA * (1.0 - smoothstep(0.5, 1.0, u)) * (0.85 + 0.15 * foam));
+return lerp(float3(0.018, 0.032, 0.028), float3(0.8, 0.82, 0.8), foam);
+"""
+
+
+def build_bow_wave():
+    """M_BowWave (docs/spray-hull): the bow wave's curl standing off each side of the bow, a lit translucent sheet of water
+    with a foam crest (ASailboatPawn::UpdateBowWave builds the mesh on the waves each frame)."""
+    mat = new_material("M_BowWave")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    mat.set_editor_property("two_sided", True)
+    ins = {"UV": node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0),
+           "VC": node(mat, unreal.MaterialExpressionVertexColor, -900, 100),
+           "VA": None,
+           "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 250),
+           "Time": node(mat, unreal.MaterialExpressionTime, -900, 400)}
+    c = custom(mat, BOW_WAVE_CODE, list(ins.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
+               extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Opacity", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+    for name, n in ins.items():
+        connect(ins["VC"] if name == "VA" else n, "A" if name == "VA" else "", c, name)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(c, "Opacity", unreal.MaterialProperty.MP_OPACITY)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_terrain():
     """Terrain colored by the vertex colors the terrain builder computes (mud, clay and sand banks, rock, grass,
     woods), with world-space variation so large areas don't look flat."""
@@ -1020,6 +1063,24 @@ if (DetailOn > 0.5 && surf > 0)
 }
 // Wet: standing water darkens the cavities first (non-skid grooves, checks, pores).
 col *= 1.0 - 0.3 * cav * wetAll;
+// Spray hull (docs/spray-hull): below the wet line the topsides carry a water film, a fifth darker even on gelcoat that
+// takes up no water (the film's own absorption and the shore it reflects); beads stand in the band's top 8 cm, drips run
+// down from the line, and after spray and slams (MPC_Boat SprayWet) beads spatter up the side above it.
+float side = 1.0 - up;
+float below = wetLine - WP.z;                                      // cm under the ragged line (negative above it)
+float2 bq = float2(LP.x + LP.y, WP.z) / 0.9;                       // a bead every ~9 mm, anchored to the hull
+float2 bi = floor(bq), bf = frac(bq) - 0.5;
+float bh = frac(sin(dot(bi, float2(17.31, 91.7))) * 43758.5), br = 0.18 + 0.2 * frac(bh * 7.13);
+float beadAt = (1.0 - smoothstep(br - 0.06, br, length(bf))) * step(0.4, bh);
+float spatter = saturate(SprayWet) * (1.0 - smoothstep(0.0, 30.0 + 40.0 * saturate(SprayWet), -below)) * step(below, 0.0);
+float bead = beadAt * side * max(wet * (1.0 - smoothstep(0.0, 8.0, below)), spatter * step(0.8, bh));
+float dlane = (LP.x + LP.y * 0.7) / 1.6;
+float dh = frac(sin(floor(dlane) * 37.7) * 4375.5);
+float drip = side * wet * step(0.7, dh) * (1.0 - smoothstep(0.04, 0.14, abs(frac(dlane) - 0.5))) * (1.0 - smoothstep(3.0, 3.0 + 14.0 * frac(dh * 3.7), below));
+float film = wet * side;
+col *= 1.0 - 0.20 * film * (1.0 - Metal) - 0.10 * drip;
+wetAll = saturate(max(wetAll, max(bead, drip)));
+grad += (bf.x * LX + bf.y * float3(0.0, 0.0, 1.0)) * bead * 1.4;   // each bead a small dome: its own glint
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
@@ -1030,7 +1091,7 @@ return normalize(n - grad);
 """
 
 
-MPC_BOAT_PARAMS = (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0),
+MPC_BOAT_PARAMS = (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0), ("SprayWet", 0.0),   # spray hull: 0..1 after spray and slams
                    ("Detail", 0.0))   # boat fidelity 1: 1 = the close-up detail maps (High and Ultra; the pawn sets it)
 
 
@@ -1102,7 +1163,7 @@ def build_boat_surface(name, bend):
         connect(c, "", t, "")
         axes.append(t)
     params = {}
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail", "SprayWet")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -1400, 1100 + i * 100)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
@@ -1127,10 +1188,10 @@ def build_boat_surface(name, bend):
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
-    for src, pin in ((surface, "Surface"), (grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V")):
+    for src, pin in ((surface, "Surface"), (grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet")):
         connect(src, "", c, pin)
     for pin, t in detail_tex.items():
         connect(t, "", c, pin)
@@ -4228,6 +4289,7 @@ def write_stamp():
 build(build_water)
 build(build_water_v4)
 build(build_spray)
+build(build_bow_wave)
 build(build_cloud_layers)
 build(build_cloud_cache)
 build(build_sky_dome)
