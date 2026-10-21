@@ -249,8 +249,10 @@ void ASailingEnvironment::BeginPlay()
 			CloudComp->SetViewSampleCountScale(Q == ESailingQuality::Ultra ? 2.f : 1.f);
 			CloudComp->SetShadowViewSampleCountScale(Q == ESailingQuality::Ultra ? 4.f : 1.f);
 			// The shadow rays' samples over 4 km instead of the default 15: the same count, three times as dense where the
-			// light is actually lost (a cloud's own few kilometres), so far less jitter (the grain) at no cost.
-			CloudComp->SetShadowTracingDistance(4.f);
+			// light is actually lost (a cloud's own few kilometres), so far less jitter (the grain) at no cost. On High, 3 km
+			// (docs/storm-headroom/): 1.1 ms off the storm view, the clouds' slice 9.5 -> 7.9 ms, and the lake's cumulus, the
+			// storm overhead and two storm skies from outside the same to within the frames' jitter.
+			CloudComp->SetShadowTracingDistance(Q == ESailingQuality::High ? 3.f : 4.f);
 			float ShadowKm = 0.f;
 			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudShadowKm="), ShadowKm)) CloudComp->SetShadowTracingDistance(ShadowKm);
 			FString Scales;
