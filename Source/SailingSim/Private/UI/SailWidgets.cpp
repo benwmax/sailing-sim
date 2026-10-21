@@ -6,6 +6,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SLeafWidget.h"
 
@@ -347,13 +348,16 @@ int32 SSailSlider::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 void SSailChoice::Construct(const FArguments& A)
 {
 	Options = A._Options; Index = A._Index; Enabled = A._IsEnabled; OnChanged = A._OnChanged;
-	TSharedRef<SHorizontalBox> Chips = SNew(SHorizontalBox);
+	// The chips take the width the row gives them and wrap (right-aligned) when it's too narrow; six or more sit a little
+	// tighter. (The Sky row's six ran past its panel over the next column at 1440x1080.)
+	const bool bMany = Options.Num() >= 6;
+	TSharedRef<SWrapBox> Chips = SNew(SWrapBox).UseAllottedSize(true).HAlign(HAlign_Right).InnerSlotPadding(FVector2D(0.f, 6.f));
 	for (int32 I = 0; I < Options.Num(); ++I)
 	{
 		const TAttribute<int32> Idx = Index;
-		Chips->AddSlot().AutoWidth().Padding(4.f, 0.f)
+		Chips->AddSlot().Padding(bMany ? 3.f : 4.f, 0.f)
 		[
-			SNew(SBorder).Padding(FMargin(10.f, 4.f))
+			SNew(SBorder).Padding(FMargin(bMany ? 8.f : 10.f, 4.f))
 			.BorderImage_Lambda([Idx, I]() { return SailUI::Rounded(Idx.Get(0) == I ? SailUI::Fg : SailUI::Raise, SailUI::RadiusButton, SailUI::Line, 1.f); })
 			.OnMouseButtonDown_Lambda([this, I](const FGeometry&, const FPointerEvent&) { if (Enabled.Get(true)) OnChanged.ExecuteIfBound(I); return FReply::Handled(); })
 			[
@@ -367,7 +371,7 @@ void SSailChoice::Construct(const FArguments& A)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(0.3f).VAlign(VAlign_Center)[ SailUI::Text(A._Label, SailUI::EType::Ui, SailUI::Fg) ]
-			+ SHorizontalBox::Slot().FillWidth(0.7f).HAlign(HAlign_Right).VAlign(VAlign_Center)[ Chips ]
+			+ SHorizontalBox::Slot().FillWidth(0.7f).HAlign(HAlign_Fill).VAlign(VAlign_Center)[ Chips ]
 		];
 	if (!A._Note.IsEmpty()) Col->AddSlot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SailUI::Text(A._Note, SailUI::EType::Small, SailUI::Muted, true) ];
 	ChildSlot.Padding(FMargin(16.f, 12.f))[ Col ];

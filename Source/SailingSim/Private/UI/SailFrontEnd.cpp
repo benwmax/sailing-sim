@@ -44,6 +44,8 @@ namespace SailFrontEndImpl
 		const FString D = FString::Printf(TEXT("%s %d"), Months[FMath::Clamp(T.GetMonth(), 1, 12) - 1], T.GetDay());
 		return bYear ? FString::Printf(TEXT("%s, %d"), *D, T.GetYear()) : D;
 	}
+	/** The Sky row's order (Rain sits after Overcast; ESailSky appends it last so saves and int uses keep their meaning). */
+	const TArray<ESailSky> SkyRowOrder = { ESailSky::Clear, ESailSky::Fair, ESailSky::Overcast, ESailSky::Rain, ESailSky::Storms, ESailSky::Fog };
 	using namespace SailUI;
 	using Prompt = TTuple<FString, FString, FString>;
 
@@ -894,8 +896,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 			[ SNew(SSailSlider).Label(TEXT("Gusts to")).Min(0.f).Max(40.f).Step(1.f).Value_Lambda([C]() { return C->GustKn; })
 				.ValueText_Lambda([C, Kn]() { return Kn(C->GustKn); }).OnChanged_Lambda([C, Touch](float V) { C->GustKn = FMath::Max(V, C->WindKn); Touch(); }) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(SSailChoice).Label(TEXT("Sky")).Options({ TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Storms"), TEXT("Fog") })
-				.Index_Lambda([C]() { return int32(C->Sky); }).OnChanged_Lambda([C, Touch](int32 I) { C->Sky = ESailSky(I); Touch(); }) ]
+			[ SNew(SSailChoice).Label(TEXT("Sky")).Options({ TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Rain"), TEXT("Storms"), TEXT("Fog") })
+				.Index_Lambda([C]() { return SailFrontEndImpl::SkyRowOrder.IndexOfByKey(C->Sky); })
+				.OnChanged_Lambda([C, Touch](int32 I) { C->Sky = SailFrontEndImpl::SkyRowOrder[FMath::Clamp(I, 0, SailFrontEndImpl::SkyRowOrder.Num() - 1)]; Touch(); }) ]
 		+ SVerticalBox::Slot().AutoHeight()
 			[ SNew(SSailSlider).Label(TEXT("Air temp")).Min(30.f).Max(105.f).Step(1.f).Value_Lambda([C]() { return C->AirTempF; })
 				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%.0f°F"), C->AirTempF); }).OnChanged_Lambda([C, Touch](float V) { C->AirTempF = V; Touch(); }) ];
