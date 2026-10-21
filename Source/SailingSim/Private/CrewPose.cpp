@@ -112,12 +112,17 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 		// Round 10: sitting out on the edge in a breeze the legs reach across the well to the strap on the centreline
 		// (knees bent half as much, the feet planted on the floor under it), and the body leans back from the start; the
 		// thighs-level, shins-down seat read as a sailor on a chair.
-		Legs(Out, 80.f - 12.f * H, 25.f + 30.f * (1.f - H), 9.f);
-		const float L = -(20.f + 50.f * H);
+		// docs/crew-light-air/: on a flat deck (the Hobie's trampoline) the knees come up and the feet rest on it in front.
+		if (P.bFlatDeck) Legs(Out, 116.f - 6.f * H, 64.f, 12.f);
+		else Legs(Out, 80.f - 12.f * H, 25.f + 30.f * (1.f - H), 9.f);
+		// Sitting in from the edge (light air, a run: the crew model has them inboard) they sit up, a little forward over
+		// the tiller and sheet; leaning back 20 deg there, face to the sky, read as a full hike in 4 kn (docs/crew-light-air/).
+		const float In = FMath::Clamp(P.Inboard, 0.f, 1.f);
+		const float L = FMath::Lerp(-(20.f + 50.f * H), 8.f, In);
 		Out.Add(TEXT("spine"), Lean(0.5f * L));
 		Out.Add(TEXT("chest"), Lean(0.5f * L));
 		// Graphics G8: the head turned toward the bow (the luff and the water ahead), not staring across the boat.
-		Out.Add(TEXT("neck"), Q(FVector::UpVector, 30.f * P.Side) * Lean(-0.7f * L));
+		Out.Add(TEXT("neck"), Q(FVector::UpVector, 30.f * P.Side) * Lean(-0.7f * FMath::Min(L, 0.f)));   // (level against a lean back only)
 		// (Round 10: the elbows nearer the sides; the hands' reach keeps this plane, and 40 deg down held them out like wings.)
 		Arms(Out, 65.f, 55.f, 45.f, 65.f, 55.f, 45.f);
 		break;
