@@ -2,18 +2,22 @@
 
 The studio-style boat pipeline from the plan "Boat modeling pipeline plan" (Claude Doc, Oct 16 2026). Instead of
 one script drawing a whole boat, fittings are modelled once at hero quality and placed on every boat from data. Phase 1
-(docs/boatkit-1) is the kit, the J/22 layout, character sheets and the photo match loop. Nothing here is imported into
-the game yet.
+(docs/boatkit-1) is the kit, the J/22 layout, character sheets and the photo match loop. Boat fidelity 2
+(docs/boat-fidelity-2) adds catalogue sizes, the lifeline and rigging parts, a shared 10 px/cm trim sheet, a light version of
+every part and the import into the game (`/Game/Boats/Kit`, `scripts/import_hardware_kit.py`); fitting it to a boat is phase 3.
 
 | File | What it does |
 | --- | --- |
 | `bk_geom.py` | Primitives (lathe, prism, rotation-minimising sweep), angle-limited bevels, weighted normals, sockets |
 | `bk_materials.py` | Preview materials read from the game's `MI_Boat_*` table in `scripts/make_materials.py` |
-| `bk_parts.py` | The kit: 31 generic, brand-free fittings, each with sockets (`SOCKET_*` empties) |
+| `bk_parts.py` | The kit: 43 generic, brand-free fittings, each with sockets (`SOCKET_*` empties), catalogue sizes (`SIZES`) and maker's plates (`badge`, the made-up TERNWAY) |
+| `bk_trim.py` | Trim-sheet UVs: each face on its surface kind's band at 10 px/cm, badges fitted whole into their plate cell |
+| `make_trim_sheet.py` | The shared trim sheet (`Inputs/boat-kit/T_KitTrim_N/_M`, `trim.json`), numpy and Pillow |
+| `make_review_sheet.py` | Lays the review renders out as sheets (a system Python with Pillow) |
 | `bk_layout.py` | Places parts from `layouts/<boat>.json`: sockets or positions, snapped onto the hull, mirrored, stacked |
 | `bk_touches.py` | Owner touches (coiled line, cooler, fenders, stowed winch handle, tiller bungee, bottle) |
 | `characters/*.json` | One boat each: registration, seed, story, wear levels, colours, touches |
-| `build_kit.py` | Builds every part, exports `SM_Kit_<Part>.fbx` and `kit.json`, renders the catalogue |
+| `build_kit.py` | Builds every part, exports `SM_Kit_<Part>.fbx` (hero) and `SM_Kit_<Part>_Light.fbx` (decimated) and `kit.json`, renders the catalogue and the size rows |
 | `dress_boat.py` | Dresses a boat (hull with its baked fittings stripped, kit, touches), writes `placements.json`, renders |
 | `photomatch/solve_camera.py` | Solves a photo's camera from picked points (DLT + Levenberg-Marquardt, or a fixed lens) |
 | `photomatch/match_blend.py` | Renders any saved .blend (the hero J/22) from a solved camera and writes the compare image |

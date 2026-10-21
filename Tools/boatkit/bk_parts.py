@@ -15,6 +15,7 @@ from mathutils import Matrix, Vector
 
 import bk_geom as G
 import bk_materials as BM
+import bk_trim as BT
 
 PARTS = {}
 
@@ -35,6 +36,19 @@ def done(name, objs, sockets=()):
     for s in sockets:
         G.socket(ob, *s)
     return ob
+
+
+def badge(name, cell, w, h, xform, mat, inst=0, disc=False):
+    """A maker's plate (boat fidelity 2): a thin plate or disc whose top lands whole on a trim-sheet brand cell (TERNWAY:
+    a made-up maker). Built in XY on z = 0 (+X along the text), then placed by `xform` 0.2 mm proud of its face."""
+    if disc:
+        o = G.lathe(name, [(0, 0), (w / 2, 0), (w / 2, 0.0004), (0, 0.0004)], mat, 32)
+    else:
+        o = G.prism(name, G.rrect(w, h, min(w, h) * 0.2), 0.0, 0.0004, mat)
+    o.matrix_world = xform @ Matrix.Translation((0, 0, 0.0002))
+    G.bake_xform(o)
+    G.finish(o, 0, weighted=False)
+    return BT.mark(o, cell=cell, inst=inst)
 
 
 # ------------------------------------------------------------------ small hardware
@@ -128,8 +142,8 @@ def fairlead():
     return done("Fairlead", [body] + G.screw_heads("s", [(0.012, 0, 0.004), (-0.012, 0, 0.004)], M("Stainless"), 0.0022), [("Line", (0, 0, 0.008))])
 
 
-def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=False):
-    """Plastic-cheek block hanging along -Z from a swivel at the origin; axle along Y."""
+def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=False, plate=None):
+    """Plastic-cheek block hanging along -Z from a swivel at the origin; axle along Y; `plate` badges the -Y cheek."""
     objs = []
     R = sheave_d / 2
     t = 0.007                                              # sheave thickness
@@ -163,6 +177,9 @@ def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=Fal
     if cam:
         arm = G.box("camarm", (0.020, 0, cz - R * 0.2), (0.020, 0.030, 0.006), M("Aluminium"))
         objs.append(G.finish(arm, 0.0015))
+    if plate:
+        objs.append(badge("plate", plate, R * 1.1, R * 0.45,
+                          Matrix.Translation((0, -width / 2 + 0.002, cz - R * 0.45)) @ Matrix.Rotation(math.radians(90), 4, "X"), M("BlackPlastic")))
     socks = [("Head", (0, 0, 0)), ("Axle", (0, 0, cz)), ("LineIn", (R, 0, cz)), ("LineOut", (-R, 0, cz))]
     if becket:
         socks.append(("Becket", (0, 0, cz - R - 0.019)))
@@ -171,25 +188,25 @@ def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=Fal
 
 @part("Block29", "block", "29 mm single block with swivel, sheets and control lines")
 def block29(becket=False):
-    objs, socks = _block_parts("Block29", 0.029, becket=becket)
+    objs, socks = _block_parts("Block29", 0.029, becket=becket, plate="Plate29")
     return done("Block29" + ("B" if becket else ""), objs, socks)
 
 
 @part("Block40", "block", "40 mm single block with swivel and becket")
 def block40():
-    objs, socks = _block_parts("Block40", 0.040, becket=True)
+    objs, socks = _block_parts("Block40", 0.040, becket=True, plate="Plate40")
     return done("Block40", objs, socks)
 
 
 @part("Ratchet57", "block", "57 mm ratchet block for the jib sheet or mainsheet")
 def ratchet57():
-    objs, socks = _block_parts("Ratchet57", 0.057, ratchet=True)
+    objs, socks = _block_parts("Ratchet57", 0.057, ratchet=True, plate="Plate57")
     return done("Ratchet57", objs, socks)
 
 
 @part("FiddleCam", "block", "40 mm fiddle block with a cam cleat arm: the mainsheet's bottom block")
 def fiddle_cam():
-    objs, socks = _block_parts("FiddleCam", 0.040, sheaves=2, cam=True, becket=True)
+    objs, socks = _block_parts("FiddleCam", 0.040, sheaves=2, cam=True, becket=True, plate="Plate40")
     return done("FiddleCam", objs, socks)
 
 
@@ -215,6 +232,10 @@ def winch16():
     sock = G.lathe("socket", [(0, 0.096), (0.012, 0.096), (0.012, 0.097), (0.0, 0.097)], M("BlackPlastic"), 8)   # octagonal socket
     G.finish(sock, 0)
     objs = [base, drum, sock] + _fastener_ring(5, 0.050, 0.050, 0.006, M("Stainless"), 0.0035)
+    # The maker's plate on the base flange's slope, facing forward, reading along the flange.
+    tilt = math.atan2(0.008, 0.016)
+    objs.append(badge("plate", "Plate16", 0.024, 0.006, Matrix.Translation((0.052, 0, 0.010)) @ Matrix.Rotation(tilt, 4, "Y") @ Matrix.Rotation(math.radians(90), 4, "Z"),
+                      M("BlackPlastic")))
     return done("Winch16", objs, [("Drum", (0, 0.032, 0.050)), ("Handle", (0, 0, 0.097)), ("Tail", (0, -0.034, 0.075))])
 
 
@@ -229,7 +250,7 @@ def winch_handle():
     grip = G.lathe("grip", [(0, 0.012), (0.014, 0.012), (0.016, 0.040), (0.016, 0.085), (0.013, 0.105), (0, 0.108)], M("BlackPlastic"), 32)
     grip.location = (0.185, 0, 0)
     G.bake_xform(grip)
-    G.finish(grip, 0)
+    BT.mark(G.finish(grip, 0), band="grip")
     return done("WinchHandle", [arm, stub, grip], [("Drive", (0, 0, -0.030)), ("Grip", (0.185, 0, 0.06))])
 
 
@@ -321,6 +342,8 @@ def winch70(scale=1.0):
     cap = G.lathe("cap", [(0, 0.274 * s), (0.030 * s, 0.274 * s), (0.030 * s, 0.284 * s), (0, 0.284 * s)], M("Aluminium"), 8)   # octagonal handle socket
     G.finish(cap, 0.001)
     objs = [base, drum, jaws, arm, cap] + _fastener_ring(8, 0.150 * s, 0.150 * s, 0.012 * s, M("Stainless"), 0.006 * s)
+    # The maker's disc on the top of the self-tailer, round the handle socket.
+    objs.append(badge("disc", "DiscLarge", 0.110 * s, 0, Matrix.Translation((0, 0, 0.272 * s)), M("Aluminium"), disc=True))
     return done("Winch70", objs, [("Drum", (0, 0.098 * s, 0.13 * s)), ("Handle", (0, 0, 0.284 * s)), ("Tail", (0.150 * s, 0, 0.244 * s)),
                                   ("Grinder", (0, 0, 0.0))])
 
@@ -392,6 +415,7 @@ def clutch_bank(count=4, pitch=0.072):
         handle.location = (-0.01, y, 0)
         G.bake_xform(handle)
         objs.append(G.finish(handle, 0.003))
+        objs.append(badge(f"plate{i}", "Plate", 0.060, 0.016, Matrix.Translation((-0.01, y, 0.078)), M("BlackPlastic"), inst=i))
         objs += G.screw_heads(f"s{i}", [(0.075, y, 0.012), (-0.075, y, 0.012)], M("Stainless"), 0.004, 0.0015)
     socks = [(f"Line{i}", (0.09, -w / 2 + 0.015 + pitch * (i + 0.5), 0.04)) for i in range(count)]
     return done("ClutchBank", objs, socks)
@@ -576,7 +600,7 @@ def tiller_extension(length=1.0):
             v.co.y *= k
     G.finish(uj, 0)
     grip = G.cyl("grip", (length * 0.55, 0, 0.03), (length - 0.03, 0, 0.03), 0.0135, M("BlackPlastic"), 24)
-    G.finish(grip, 0.003)
+    BT.mark(G.finish(grip, 0.003), band="grip")
     knob = G.lathe("knob", [(0, 0), (0.016, 0), (0.019, 0.012), (0.012, 0.028), (0, 0.030)], M("BlackPlastic"), 24)
     knob.matrix_world = G.along((length - 0.03, 0, 0.03), (1, 0, 0))
     G.bake_xform(knob)
@@ -698,6 +722,165 @@ def fender(colour="BlackPlastic"):
     return done("Fender", [body] + eyes, [("Top", (0, 0, 0.524)), ("Bottom", (0, 0, -0.024))])
 
 
-def build(name, **kw):
+# ------------------------------------------------------------------ boat fidelity 2: lifelines, rigging screws, clutches, cars
+
+@part("Stanchion", "lifeline", "25 mm stainless stanchion in a cast base, 610 mm (24 in), with a mid and a top lifeline eye; height option")
+def stanchion(height=0.610):
+    base = G.prism("base", G.rrect(0.090, 0.060, 0.010), 0, 0.006, M("Stainless"), taper=0.94)
+    objs = [G.finish(base, 0.0012)]
+    sock = G.lathe("socket", [(0, 0), (0.0175, 0), (0.0175, 0.012), (0.0150, 0.070), (0.0145, 0.085), (0, 0.085)], M("Stainless"), 32)
+    objs.append(G.finish(sock, 0.0008))
+    objs.append(G.finish(G.cyl("tube", (0, 0, 0.080), (0, 0, height - 0.012), 0.0127, M("Stainless"), 32), 0.0006))
+    cap = G.lathe("cap", [(0, height - 0.014), (0.0135, height - 0.014), (0.0140, height - 0.004), (0.010, height), (0, height)], M("Stainless"), 32)
+    objs.append(G.finish(cap, 0.0006))
+    mid = height * 0.52
+    ring = G.lathe("midring", [(0.0125, mid - 0.008), (0.0150, mid - 0.006), (0.0150, mid + 0.006), (0.0125, mid + 0.008)], M("Stainless"), 32)
+    objs.append(G.finish(ring, 0.0004))
+    objs += G.screw_heads("s", [(0.033, 0.019, 0.006), (0.033, -0.019, 0.006), (-0.033, 0.019, 0.006), (-0.033, -0.019, 0.006)], M("Stainless"), 0.0035)
+    return done("Stanchion", objs, [("Base", (0, 0, 0)), ("LifelineTop", (0, 0, height - 0.008)), ("LifelineMid", (0, 0, mid))])
+
+
+def _rail(name, path, feet, height, sockets):
+    """A welded 25 mm stainless rail: the tube along `path`, legs from `feet` (x, y) up to the rail's height, cast bases."""
+    objs = [G.finish(G.tube("rail", path, 0.0127, M("Stainless"), 20))]
+    for i, (x, y) in enumerate(feet):
+        top = min(path, key=lambda p: (p[0] - x) ** 2 + (p[1] - y) ** 2)
+        objs.append(G.finish(G.tube(f"leg{i}", [(x, y, 0.010), (top[0], top[1], top[2])], 0.0127, M("Stainless"), 20)))
+        base = G.prism(f"base{i}", G.rrect(0.060, 0.050, 0.010), 0, 0.006, M("Stainless"), taper=0.92)
+        base.location = (x, y, 0)
+        G.bake_xform(base)
+        objs.append(G.finish(base, 0.001))
+        objs.append(G.finish(G.lathe(f"boss{i}", [(0, 0), (0.0175, 0), (0.0165, 0.030), (0, 0.030)], M("Stainless"), 24), 0.0006))
+        objs[-1].location = (x, y, 0)
+        G.bake_xform(objs[-1])
+    return done(name, objs, sockets)
+
+
+@part("BowPulpit", "lifeline", "Bow pulpit: a 25 mm stainless hoop over the stemhead, four legs, 610 mm high; width and length options")
+def bow_pulpit(width=0.60, length=0.45, height=0.610):
+    w = width / 2
+    path = [(-0.0, -w, height)] + [(length * 0.55 + (length * 0.45) * math.sin(a), -w * math.cos(a), height) for a in [i * math.pi / 16 for i in range(17)]] + [(0.0, w, height)]
+    feet = [(0.02, -w), (0.02, w), (length * 0.75, -w * 0.55), (length * 0.75, w * 0.55)]
+    return _rail("BowPulpit", path, feet, height, [("LifelineP", (0.0, -w, height)), ("LifelineS", (0.0, w, height)), ("Bow", (length, 0, height))])
+
+
+@part("Pushpit", "lifeline", "Stern pushpit: a 25 mm stainless rail round the transom corners, four legs, 610 mm; width and depth options")
+def pushpit(width=1.50, depth=0.40, height=0.610):
+    w = width / 2
+    path = [(0.0, -w, height), (-depth * 0.7, -w, height)] + G.arc_pts((-depth * 0.7, -w + depth * 0.3, height), depth * 0.3, -math.pi / 2, -math.pi, 8, "xy")[1:] \
+        + [(-depth, -w * 0.3, height)]
+    path = [(p[0], p[1], height) for p in path]
+    mirrored = [(p[0], -p[1], p[2]) for p in reversed(path)]
+    path = path + mirrored
+    feet = [(-0.02, -w), (-0.02, w), (-depth + 0.02, -w * 0.6), (-depth + 0.02, w * 0.6)]
+    return _rail("Pushpit", path, feet, height, [("LifelineP", (0.0, -w, height)), ("LifelineS", (0.0, w, height)), ("Centre", (-depth, 0, height))])
+
+
+@part("Turnbuckle", "rig", "Open-body rigging screw with toggle, for 5 mm wire: forged body, two threaded studs, swage eye up, toggle fork down")
+def turnbuckle():
+    L = 0.110                                  # body length
+    objs = []
+    for s in (-1, 1):
+        bar = G.prism(f"bar{s}", G.rrect(0.006, 0.004, 0.0015), -L / 2, L / 2, M("Stainless"))
+        bar.matrix_world = Matrix.Translation((0, s * 0.008, 0.080))
+        G.bake_xform(bar)
+        objs.append(G.finish(bar, 0.0006))
+    for z in (0.080 - L / 2, 0.080 + L / 2):
+        objs.append(G.finish(G.lathe(f"boss{z:.3f}", [(0, -0.006), (0.010, -0.006), (0.010, 0.006), (0, 0.006)], M("Stainless"), 24), 0.0008))
+        objs[-1].location = (0, 0, z)
+        G.bake_xform(objs[-1])
+    lower = G.cyl("studL", (0, 0, 0.012), (0, 0, 0.080 - 0.010), 0.0035, M("Stainless"), 16)
+    upper = G.cyl("studU", (0, 0, 0.080 + 0.010), (0, 0, 0.165), 0.0035, M("Stainless"), 16)
+    objs += [G.finish(lower, 0.0003), G.finish(upper, 0.0003)]
+    # Thread: fine rings on the studs (the hero's close-up), and lock nuts at the body.
+    for z0, z1 in ((0.014, 0.060), (0.100, 0.150)):
+        n = int((z1 - z0) / 0.0018)
+        for k in range(n):
+            z = z0 + k * (z1 - z0) / n
+            objs.append(G.lathe(f"thr{z0}{k}", [(0.0034, z), (0.0040, z + 0.0005), (0.0034, z + 0.0010)], M("Stainless"), 12))
+    swage = G.lathe("swage", [(0, 0.165), (0.0045, 0.165), (0.0045, 0.205), (0.0030, 0.215), (0, 0.216)], M("Stainless"), 20)
+    objs.append(G.finish(swage, 0.0004))
+    fork = G.prism("fork", G.rrect(0.014, 0.020, 0.004), 0.0, 0.016, M("Stainless"))
+    objs.append(G.finish(fork, 0.0008))
+    objs.append(G.finish(G.cyl("pin", (0, -0.012, 0.004), (0, 0.012, 0.004), 0.0025, M("Stainless"), 14), 0.0003))
+    return done("Turnbuckle", objs, [("Toggle", (0, 0, 0.004)), ("Wire", (0, 0, 0.216))])
+
+
+@part("Clutch", "rope", "Single rope clutch for 6 to 10 mm line on a moulded base, handle closed, maker's plate")
+def clutch():
+    base = G.prism("base", G.rrect(0.140, 0.050, 0.010), 0, 0.008, M("BlackPlastic"), taper=0.97)
+    objs = [G.finish(base, 0.002)]
+    body = G.prism("body", G.rrect(0.125, 0.040, 0.010), 0.008, 0.052, M("BlackPlastic"), taper=0.86)
+    objs.append(G.finish(body, 0.004))
+    handle = G.prism("handle", G.rrect(0.110, 0.030, 0.008), 0.052, 0.066, M("Aluminium"), taper=0.9)
+    handle.location = (-0.008, 0, 0)
+    G.bake_xform(handle)
+    objs.append(G.finish(handle, 0.003))
+    objs.append(badge("plate", "Plate", 0.050, 0.014, Matrix.Translation((-0.008, 0, 0.066)), M("BlackPlastic")))
+    objs += G.screw_heads("s", [(0.058, 0, 0.008), (-0.058, 0, 0.008)], M("Stainless"), 0.004, 0.0015)
+    return done("Clutch", objs, [("LineIn", (-0.07, 0, 0.032)), ("LineOut", (0.07, 0, 0.032))])
+
+
+@part("TrackCar", "track", "T-track car for 25 mm track: a sheave between stainless cheeks and a plunger stop (the jib lead car alone)")
+def track_car():
+    objs = []
+    car = G.prism("car", G.rrect(0.090, 0.040, 0.010), 0.0, 0.018, M("Aluminium"), taper=0.85)
+    objs.append(G.finish(car, 0.002))
+    ch = 0.018
+    sh = G.lathe("sheave", [(0.004, 0), (0.019, 0), (0.019, 0.002), (0.016, 0.005), (0.019, 0.008), (0.019, 0.010), (0.004, 0.010)], M("BlackPlastic"), 32)
+    sh.matrix_world = Matrix.Translation((0.010, -0.005, ch + 0.019)) @ Matrix.Rotation(math.radians(-90), 4, "X")
+    G.bake_xform(sh)
+    objs.append(G.finish(sh, 0, sharp=60))
+    for s in (-1, 1):
+        cheek = G.prism(f"cheek{s}", [(-0.012, 0), (0.035, 0), (0.030, 0.035), (-0.004, 0.035)], 0, 0.003, M("Stainless"))
+        cheek.matrix_world = Matrix.Translation((0.0, s * 0.0085 - 0.0015, ch)) @ Matrix.Rotation(math.radians(90), 4, "X")
+        G.bake_xform(cheek)
+        objs.append(G.finish(cheek, 0.0006))
+    plunger = G.cyl("plunger", (-0.034, 0, ch), (-0.034, 0, ch + 0.016), 0.006, M("BlackPlastic"), 20)
+    objs.append(G.finish(plunger, 0.0015))
+    return done("TrackCar", objs, [("Sheave", (0.010, 0, ch + 0.019)), ("Track", (0, 0, 0)), ("Plunger", (-0.034, 0, ch + 0.016))])
+
+
+# Sizes from small-boat hardware catalogues' published dimensions (boat fidelity 2). "scale" sizes are the default
+# build scaled about its mount point (a component scale in the game); "kw" sizes rebuild with the builder's own options
+# (tube parts whose wall and diameter don't scale with length). The value is what the catalogue lists.
+SIZES = {
+    "ShackleD":   {"dim": "pin diameter mm", "default": "5", "scale": {"4": 0.8, "5": 1.0, "6": 1.2, "8": 1.6, "10": 2.0}},
+    "Padeye":     {"dim": "plate length mm", "default": "50", "scale": {"40": 0.8, "50": 1.0, "65": 1.3}},
+    "HornCleat":  {"dim": "length mm", "default": "150", "kw": {"100": {"length": 0.100}, "150": {"length": 0.150}, "200": {"length": 0.200}, "250": {"length": 0.250}}},
+    "CamCleat":   {"dim": "length mm", "default": "75", "scale": {"38": 0.51, "75": 1.0, "102": 1.36}},
+    "Fairlead":   {"dim": "outside diameter mm", "default": "32", "scale": {"25": 0.78, "32": 1.0, "44": 1.375}},
+    "Block29":    {"dim": "sheave mm", "default": "29", "scale": {"22": 0.76, "29": 1.0}},
+    "Block40":    {"dim": "sheave mm", "default": "40", "scale": {"40": 1.0, "57": 1.425}},
+    "Ratchet57":  {"dim": "sheave mm", "default": "57", "scale": {"57": 1.0, "75": 1.316}},
+    "Winch16":    {"dim": "winch size (base diameter 102 / 120 / 130 / 152 / 175 mm)", "default": "16",
+                   "scale": {"8": 0.85, "16": 1.0, "20": 1.083, "30": 1.267, "40": 1.458}},
+    "Winch70":    {"dim": "winch size", "default": "70", "kw": {"50": {"scale": 0.85}, "70": {"scale": 1.0}}},
+    "JibTrack":   {"dim": "track length mm", "default": "600", "kw": {"450": {"length": 0.45}, "600": {"length": 0.60}, "900": {"length": 0.90}}},
+    "Traveler":   {"dim": "track length mm", "default": "900", "kw": {"600": {"length": 0.60}, "900": {"length": 0.90}, "1500": {"length": 1.50}}},
+    "Chainplate": {"dim": "wire mm", "default": "5", "scale": {"4": 0.85, "5": 1.0, "6": 1.15}},
+    "Turnbuckle": {"dim": "wire mm", "default": "5", "scale": {"4": 0.85, "5": 1.0, "6": 1.18, "8": 1.5}},
+    "Stanchion":  {"dim": "height mm", "default": "610", "kw": {"457": {"height": 0.457}, "610": {"height": 0.610}, "760": {"height": 0.760}}},
+    "BowPulpit":  {"dim": "width mm", "default": "600", "kw": {"450": {"width": 0.45, "length": 0.35}, "600": {"width": 0.60}, "800": {"width": 0.80, "length": 0.60}}},
+    "Pushpit":    {"dim": "width mm", "default": "1500", "kw": {"1200": {"width": 1.20}, "1500": {"width": 1.50}, "2000": {"width": 2.00, "depth": 0.50}}},
+    "Clutch":     {"dim": "line mm", "default": "10", "scale": {"8": 0.85, "10": 1.0, "14": 1.3}},
+    "TillerExtension": {"dim": "length mm", "default": "1000", "kw": {"610": {"length": 0.61}, "1000": {"length": 1.0}, "1220": {"length": 1.22}}},
+}
+
+
+def build(name, size=None, **kw):
+    """Build a part; `size` (a SIZES key) scales the default build or rebuilds it with that size's options."""
     fn, _ = PARTS[name]
-    return fn(**kw)
+    spec = SIZES.get(name)
+    if size is None or spec is None or size == spec["default"]:
+        return fn(**kw)
+    if "kw" in spec:
+        ob = fn(**{**spec["kw"][size], **kw})
+    else:
+        ob = fn(**kw)
+        f = spec["scale"][size]
+        ob.data.transform(Matrix.Scale(f, 4))
+        for c in ob.children:
+            c.location = c.location * f
+    ob.name = f"{ob.name}_{size}"
+    return ob
