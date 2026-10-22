@@ -449,53 +449,56 @@ def lifelines(H, x_from, x_to):
         tube(hull, [(st + 0.05, H.cy + y, H.deck_z(st, H.cy)), (st + 0.05, H.cy + y, H.deck_z(st, H.cy) + hgt)], 0.014, "Stainless", 6)
 
 
-def cleat(x, y, z, yaw=0.0, length=0.2):
-    """A horn cleat: a low base and the horns across it (aluminium)."""
-    box(hull, (x, y, z + 0.012), (length * 0.45, 0.035, 0.024), "Aluminium", yaw)
-    box(hull, (x, y, z + 0.04), (length, 0.03, 0.022), "Aluminium", yaw)
-
-
 KIT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "boatkit")
 KIT_LAYOUT = os.path.join(KIT_DIR, "layouts", f"{TAG.lower()}.json")
 
 
-def place_kit(m):
-    """Shared kit (Tools/boatkit): the hero fittings where Tools/boatkit/layouts/<tag>.json puts them, merged into the
-    mesh `m` before it is finished (so they share its box UVs, smoothing and packs). Body frame metres; on: deck (the
-    deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit depth), z (the entry's own z); dz: raised
-    mirror: also at -y; yaw degrees about Z; flip: turned over (the kit's blocks are built hanging from their head, so a block
-    stood on deck is flipped); kw/size: bk_parts.build's.
-    Returns how many parts were placed."""
-    if not os.path.exists(KIT_LAYOUT):
-        return 0
+def kit_part(name, x, y, z, yaw=0.0, flip=False, size=None, m=None, **kw):
+    """One shared-kit fitting (Tools/boatkit/bk_parts.py, the hero quality the J/22 carries) merged into the mesh `m` (the
+    hull) before it is finished, so it shares the box UVs, smoothing and packs. Body frame metres, yaw radians about Z;
+    flip turns it over (the kit's blocks are built hanging from their head: one standing on deck is flipped)."""
+    m = m or hull
     sys.path.insert(0, KIT_DIR)
     import bk_parts as KP   # noqa: E402 (needs bpy)
-    lay = json.load(open(KIT_LAYOUT))
+    ob = KP.build(name, size=size, **kw)
+    xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
+    if flip:
+        xf = xf @ Matrix.Rotation(math.pi, 4, "X")
+    me = ob.data
+    me.transform(ob.matrix_world)
+    me.transform(xf)
+    while me.uv_layers:              # (finish() writes the box UVs: a part's own set would come first)
+        me.uv_layers.remove(me.uv_layers[0])
+    first = len(m.bm.faces)
+    m.bm.from_mesh(me)
+    m.bm.faces.ensure_lookup_table()
+    names = [mt.name.split(".")[0] for mt in me.materials]
+    for f in m.bm.faces[first:]:
+        f.material_index = SLOTS.index(names[f.material_index])
+        f.smooth = True
+    bpy.data.objects.remove(ob)
+
+
+def cleat(x, y, z, yaw=0.0, length=0.2):
+    """A horn cleat: the kit's cast aluminium one at the nearest catalogue length (it had been two boxes)."""
+    kit_part("HornCleat", x, y, z, yaw, size=min(("100", "150", "200", "250"), key=lambda s: abs(int(s) / 1000 - length)))
+
+
+def place_kit(m):
+    """The kit fittings Tools/boatkit/layouts/<tag>.json places (the boats whose fittings aren't placed in code here).
+    Body frame metres; on: deck (the deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit
+    depth), z (the entry's own z); dz: raised; mirror: also at -y; yaw degrees about Z; flip (kit_part's); size and kw:
+    bk_parts.build's. Returns how many parts were placed."""
+    if not os.path.exists(KIT_LAYOUT):
+        return 0
     n = 0
-    for e in lay["parts"]:
+    for e in json.load(open(KIT_LAYOUT))["parts"]:
         for s in ((1, -1) if e.get("mirror") else (1,)):
-            ob = KP.build(e["part"], size=e.get("size"), **e.get("kw", {}))
             x, y = e["x"], e["y"] * s
             Hh = min(HS, key=lambda h: abs(h.cy - y))
             z = e["z"] if e.get("on") == "z" else Hh.deck_z(x, y) - (SPEC["cockpit"][3] if e.get("on") == "sole" else 0.0)
-            z += e.get("dz", 0.0)
             yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
-            xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
-            if e.get("flip"):
-                xf = xf @ Matrix.Rotation(math.pi, 4, "X")
-            me = ob.data
-            me.transform(ob.matrix_world)
-            me.transform(xf)
-            while me.uv_layers:              # (finish() writes the box UVs: a part's own set would come first)
-                me.uv_layers.remove(me.uv_layers[0])
-            first = len(m.bm.faces)
-            m.bm.from_mesh(me)
-            m.bm.faces.ensure_lookup_table()
-            names = [mt.name.split(".")[0] for mt in me.materials]
-            for f in m.bm.faces[first:]:
-                f.material_index = SLOTS.index(names[f.material_index])
-                f.smooth = True
-            bpy.data.objects.remove(ob)
+            kit_part(e["part"], x, y, z + e.get("dz", 0.0), yaw, e.get("flip", False), e.get("size"), m, **e.get("kw", {}))
             n += 1
     return n
 
@@ -522,14 +525,14 @@ def keelboat_deck_detail(H, top, half, cb, mast_x, st, bw):
     x0 = cb[0]
     for side in (1, -1):
         for k in range(3):
-            dy = side * (0.07 + 0.035 * k)
-            yc = H.cy + side * (0.24 + 0.035 * k) * min(1.0, half(x0 + 0.35) / 0.55)
+            dy = side * (0.07 + 0.055 * k)          # (5.5 cm apart: the kit's 29 mm blocks are 54 mm across)
+            yc = H.cy + side * (0.24 + 0.055 * k) * min(1.0, half(x0 + 0.35) / 0.55)
             xm = mast_x - 0.12
-            box(hull, (xm, H.cy + dy, top(xm) + 0.02), (0.05, 0.025, 0.035), "BlackPlastic")       # turning block
+            kit_part("Block29", xm, H.cy + dy, top(xm), flip=True)                                  # turning block (the kit's, stood up)
             xs_l = stations(xm - 0.04, x0 + 0.38, 10)
             line = [(x, H.cy + dy + (yc - H.cy - dy) * ((x - xm) / (x0 + 0.38 - xm)) ** 1.5, top(x) + 0.012) for x in xs_l]
             tube(hull, line, 0.005, "Rope", 4)
-            box(hull, (x0 + 0.3, yc, top(x0 + 0.3) + 0.022), (0.11, 0.03, 0.04), "BlackPlastic")    # clutch
+            kit_part("Clutch", x0 + 0.3, yc, top(x0 + 0.3), math.pi)                                # clutch (the kit's; the line comes from forward)
         # The tails, flaked in a heap on the cabin top beside the hatch.
         for k in range(3):
             c = (x0 + 0.12 - 0.04 * k, H.cy + side * (0.3 + 0.02 * k), top(x0 + 0.12) + 0.008 + 0.009 * k)
@@ -584,8 +587,9 @@ def keelboat_cockpit_detail(H, ck, cb, top, half, st, bw):
 
 
 def winch(x, y, z, r=0.055):
-    tube(hull, [(x, y, z), (x, y, z + 0.11)], r, "Stainless", 14)
-    tube(hull, [(x, y, z + 0.11), (x, y, z + 0.13)], r * 0.6, "BlackPlastic", 10)
+    """A sheet winch: the kit's at the catalogue size whose base is nearest 2r (it had been two stainless cylinders)."""
+    bases = {"8": 0.102, "16": 0.120, "20": 0.130, "30": 0.152, "40": 0.175}
+    kit_part("Winch16", x, y, z, size=min(bases, key=lambda s: abs(bases[s] - 2 * r)))
 
 
 def board(Hh, f, deepest):
@@ -891,7 +895,7 @@ elif TAG in ("Catalina22", "Catalina30"):
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (ck[2] + 0.13)
-        winch(wx, y, MAIN.deck_z(wx, y))
+        winch(wx, y, MAIN.deck_z(wx, y), 0.076 if TAG == "Catalina30" else 0.06)   # (a 30 and a 16)
         socket(f"JibWinch_{tag}", (wx, y, MAIN.deck_z(wx, y) + 0.08))
         clew_x = jib[0]["luff_x"] - jib[0]["chord"]
         lx = clew_x - 0.15
@@ -1006,7 +1010,7 @@ elif TAG == "Corsair880":
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (ck[2] + 0.12)
-        winch(wx, y, MAIN.deck_z(wx, y))
+        winch(wx, y, MAIN.deck_z(wx, y), 0.06)
         socket(f"JibWinch_{tag}", (wx, y, MAIN.deck_z(wx, y) + 0.08))
         socket(f"JibLead_{tag}", (mast_x + 0.6, side * 0.45, top(mast_x + 0.6) + 0.04))  # self-tacking track on the cabin top
         Hh = max(HS[1:], key=lambda h: side * h.cy)  # rig clearance: the float on this side (HS[1] is the port one)
@@ -1068,7 +1072,7 @@ elif TAG == "Lagoon42":
         # The self-tacking track across the saloon roof's forward end, under the jib's clew (Fleet.cpp: x 0.45).
         socket(f"JibLead_{tag}", (0.45, side * 0.5, roof + 0.08 * (1 - (0.5 / sw) ** 2) + 0.05))
         socket(f"JibWinch_{tag}", (s0 + 0.3, side * (sw - 0.2), roof + 0.06))
-        winch(s0 + 0.3, side * (sw - 0.2), roof)
+        winch(s0 + 0.3, side * (sw - 0.2), roof, 0.0875)
     socket("LazySheetVia", (0.45, 0, roof + 0.13))
     # The self-tacking track itself: an aluminium rail across the roof's crown, end stops, and its car's blocks.
     track = [(0.45, y, roof + 0.08 * (1 - (y / sw) ** 2) + 0.02) for y in [-0.9 + 1.8 * k / 12 for k in range(13)]]
