@@ -226,7 +226,10 @@ namespace Sailing
 			// Boom stop (docs/boom-stop/): her aft lowers, from chainplates 0.30 m aft of the gooseneck and 1.39 m out
 			// (Catalina30_sockets.json) to the mast at 7.77 m, pass 1.22 m from it at boom height, 76 deg from aft.
 			C.MainMaxEaseDeg = 76.0;
-			SetSail(C.Jib, 1.3, 13.2, 5.25, 0.15, 4.45, 1.15, 32.85, 4.0, 4.6, 0.13);
+			// (Her genoa's head on the forestay: at 13.2 m it runs 1.34 m from the mast's foot, tack (4.45, 1.3) to masthead
+			// (1.13, 13.99). At 1.15 the head sat in the mast's front face and its leech went through the upper shrouds,
+			// RigClearance.)
+			SetSail(C.Jib, 1.3, 13.2, 5.25, 0.15, 4.45, 1.34, 32.85, 4.0, 4.6, 0.13);
 			SetSail(C.Spinnaker, 1.6, 13.2, 6.3, 1.4, 4.9, 3.7, 60.3, 2.6, 2.2, 0.20); // ORC-measured spinnaker
 			C.JibMinAngleDeg = 10.0;
 			C.RigWindageCdA = 2.0; C.HullWindageCdA = 3.0;
