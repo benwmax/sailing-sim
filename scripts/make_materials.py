@@ -2739,7 +2739,12 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6, gloom
     float inRain = smoothstep(-CORE_BEHIND + 300.0, -CORE_BEHIND - 800.0, D);
     float gTop = lerp(SHELF_BASE - 120.0 - SHELF_SCALLOP, CORE_BASE, inRain);
     float gFoot = GLOOM_FOOT * exp(-alt / GLOOM_FOOT_H) * smoothstep(-CORE_BEHIND + 600.0, -CORE_BEHIND - 300.0, D);
-    gloom = under * (lerp(GLOOM_GAP, GLOOM_RAIN, inRain) + gFoot) * (1.0 - smoothstep(gTop - 100.0, gTop + 50.0, alt)) * w.a * saturate(FrontB.z * 1.5);
+    // Seen from ahead only: once the camera itself is under the deck, the haze and fog carry the storm's visibility
+    // (FWeatherState::LocalizeStorm), and the gloom round the camera would only add shadow rays to every sample (2 ms on
+    // the storm view, its camera under the core).
+    float camD = dot(Cam.xy * 0.01 - FrontA.xy, FrontA.zw) - FrontB.x;
+    float fromAhead = smoothstep(SHELF_LEAD - 1000.0, SHELF_LEAD + 500.0, camD);
+    gloom = under * fromAhead * (lerp(GLOOM_GAP, GLOOM_RAIN, inRain) + gFoot) * (1.0 - smoothstep(gTop - 100.0, gTop + 50.0, alt)) * w.a * saturate(FrontB.z * 1.5);
 }
 // W8: the fair cumulus fade out near the front and under the storm (FStormShape::CumulusFade): inside the deck's shade
 // they were flat grey towers (round 11). nearF: how near the front this is (the deck's shade on the cloud's colour).
