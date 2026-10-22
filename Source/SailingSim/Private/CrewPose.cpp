@@ -844,14 +844,17 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 		if (!bTravelerBridge)
 		{
 			// The hero (build_j22_hero.py COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_IN; the sole from J22H_sockets.json
-			// CockpitSole): a deeper well, seats inboard to 0.40 m, its traveler track on the sole.
+			// CockpitSole): a deeper well, seats inboard to 0.40 m. Its traveler (pc/j22-feedback, Bean's Harken layout) is a
+			// 32 mm track from seat to seat at the boom's end, x -2.06, its top 0.404 m up (Traveler_S/P 0.80 m out).
 			W.X0 = -2.92; W.X1 = -0.55; W.SideDeck = 0.25; W.SeatZ = 0.40; W.SeatIn = 0.40; W.SoleZ = 0.136;
+			W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.388; W.TrackZ1 = 0.404; W.TrackHalfY = 0.84;
 			return true;
 		}
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
 		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
-		// The traveler's bridge: 16 cm fore and aft at TRAV_X, its top 1.5 cm over the seats.
-		W.BridgeX = -1.75; W.BridgeHalfX = 0.08; W.BridgeZ = 0.485;
+		// Its traveler (pc/j22-feedback: at the boom's end, x -2.06, as on the hero): a 32 mm track from seat to seat, its top
+		// 0.474 m up, open below (round 12's 16 cm bridge at x -1.75, which the helm's forward foot stood on, is gone).
+		W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.458; W.TrackZ1 = 0.474; W.TrackHalfY = 1.0;
 		return true;
 	case EBoatType::Sunfish: return Fleet(-1.18, -0.52, 0.29, 0.20);
 	case EBoatType::ILCA7: return Fleet(-1.62, -0.22, 0.31, 0.22);
@@ -877,8 +880,6 @@ namespace
 		if (Y >= Half) return false;
 		const double SeatEdge = W.SeatIn > 0.0 ? FMath::Min(W.SeatIn, Half) : Half - W.SeatW;
 		Floor = W.SeatZ > 0.0 && Y > SeatEdge ? W.SeatZ : W.SoleZ;
-		// Round 12: the helm's forward foot had sunk into the J/22's traveler bridge (this didn't know it was there).
-		if (W.BridgeHalfX > 0.0 && FMath::Abs(X - W.BridgeX) < W.BridgeHalfX && Y <= SeatEdge) Floor = W.BridgeZ;
 		return true;
 	}
 }
@@ -1041,7 +1042,12 @@ bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVect
 		if (P.Z >= Sheer + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Y / FMath::Max(Half, 1e-3)))) continue;
 		if (P.Z <= H.BottomZ(P.X, Y, HullDepth)) continue;
 		double Floor = 0.0;
-		if (K == 0 && bWell && InWell(C, W, P.X, Y, Floor) && P.Z >= Floor) continue;
+		if (K == 0 && bWell && InWell(C, W, P.X, Y, Floor) && P.Z >= Floor)
+		{
+			// (The traveler track across the well.)
+			if (W.TrackHalfX > 0.0 && FMath::Abs(P.X - W.TrackX) < W.TrackHalfX && Y < W.TrackHalfY && P.Z >= W.TrackZ0 && P.Z <= W.TrackZ1) return true;
+			continue;
+		}
 		return true;
 	}
 	// Between a multihull's hulls: through the trampoline or the nets (8 cm), into the Lagoon's bridgedeck (30 cm), her
