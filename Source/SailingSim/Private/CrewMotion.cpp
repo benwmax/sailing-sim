@@ -291,6 +291,9 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// Heading for the new side: the crew model's motion, or (the boom ahead of it) away from where the boom is going.
 		const double Toward = FMath::Abs(In.OffsetRate) > 0.3 ? In.OffsetRate : (FMath::Abs(In.BoomRate) > 0.05 ? -In.BoomRate : -In.BoomAngle);
 		P.Side = -float(FMath::Sign(Toward));
+		// The Catalina 22's helm crosses forward of her mainsheet's tackle (from the boom's end, MainLuffX less the foot,
+		// down to the transom): at the tiller's end they crossed through it (SailingSim.Visual.SheetClearance).
+		if (Cfg.Type == EBoatType::Catalina22 && Out.bHelm) X = FMath::Max(X, Cfg.MainLuffX - Cfg.MainFootChord + 0.3);
 		Out.Duck = bUnderBoom ? float(FMath::Clamp(1.25 - BoomDeg / 28.0, 0.0, 1.0)) : 0.f;
 		// Down to a crouch under the boom (the head about 0.75 m above the pelvis crouched, 10 cm clear).
 		// Into the middle as the boom comes over them (the crew model then takes them to the new side), never lower than a
