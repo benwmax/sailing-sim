@@ -96,19 +96,24 @@
    84.74
   ],
   "Traveler_C": [
-   -195.0,
+   -206.0,
    -0.0,
-   18.0
+   42.4
   ],
   "Traveler_S": [
-   -195.0,
-   33.0,
-   18.0
+   -206.0,
+   80.29,
+   42.4
   ],
   "Traveler_P": [
-   -195.0,
-   -33.0,
-   18.0
+   -206.0,
+   -80.29,
+   42.4
+  ],
+  "MainsheetBlock": [
+   -206.0,
+   -0.0,
+   51.5
   ],
   "LazySheetVia": [
    29.25,
@@ -141,9 +146,9 @@
    141.85
   ],
   "Boom_Mainsheet": [
-   -194.02,
+   -206.0,
    -0.0,
-   135.0
+   137.91
   ],
   "Boom_Clew": [
    -215.02,
@@ -176,9 +181,9 @@
    87.0
   ],
   "MainsheetCam": [
-   -197.6,
-   -9.0,
-   22.0
+   -214.16,
+   -0.0,
+   52.63
   ],
   "JibCam0_S": [
    -105.6,
@@ -284,6 +289,7 @@
   "Traveler_C": "SM_J22H_Hull",
   "Traveler_S": "SM_J22H_Hull",
   "Traveler_P": "SM_J22H_Hull",
+  "MainsheetBlock": "SM_J22H_Hull",
   "LazySheetVia": "SM_J22H_Hull",
   "Hounds": "SM_J22H_Mast",
   "LowerTang": "SM_J22H_Mast",

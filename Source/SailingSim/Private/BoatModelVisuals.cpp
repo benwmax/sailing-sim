@@ -446,7 +446,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		const FVector TravC = RigPoint(ModelHull, TEXT("Traveler_C")), TravS = RigPoint(ModelHull, TEXT("Traveler_S"));
 		const float BoomSide = S.BoomAngle >= 0.0 ? 1.f : -1.f;
-		Car = TravC + (TravS - TravC) * FMath::Clamp(float(Controls.Traveler), -1.f, 1.f) * BoomSide;
+		// By the angle the physics gives the boom (TravelerRangeDeg about the gooseneck), not by the track's length: the
+		// J/22's track spans the cockpit seat to seat, 3 m aft of the gooseneck, and full travel along it would have led
+		// the sheet well outboard of the boom.
+		const double Arm = FMath::Abs(TravC.X - BoomPivot->GetRelativeLocation().X);
+		const double Out = Arm * FMath::Tan(FMath::DegreesToRadians(FMath::Clamp(Controls.Traveler, -1.0, 1.0) * Boat.GetConfig().TravelerRangeDeg));
+		const FVector Along = TravS - TravC;
+		const double Half = Along.Size();
+		Car = TravC + Along.GetSafeNormal() * FMath::Clamp(Out, -Half, Half) * BoomSide;
 		TravelerCar->SetRelativeLocation(Car + FVector(0.f, 0.f, 1.5f));
 	}
 
