@@ -31,3 +31,6 @@ Plugins/DLSS/
 Plugins/DLSSMoviePipelineSupport/
 Plugins/Streamline*/
 Plugins/NIS/
+
+# pc/j22-detail: comparisons with Bean's reference photos (crops of private photos: never committed)
+docs/j22-detail/compare/

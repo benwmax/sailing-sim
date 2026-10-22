@@ -161,6 +161,25 @@
           "confidence": "low"
         }
       ],
+      "spars": {
+        "finishes": [
+          {
+            "id": "painted_white",
+            "weight": 0.5,
+            "hex": "#EEEEEA",
+            "finish": "painted",
+            "notes": "White two-pack over the extrusion with black tape bands at the gooseneck and spreaders: the Rush Creek club boats in Bean's lesson photos. Seed 0 (the player's boat) takes the first finish."
+          },
+          {
+            "id": "clear_anodised",
+            "weight": 0.5,
+            "hex": "#C9CCCF",
+            "finish": "anodised",
+            "notes": "The section's factory clear anodise, also common on the class. The even mix is Bean's call (October 2026), not a survey."
+          }
+        ],
+        "confidence": "low"
+      },
       "sail_number": {
         "required": true,
         "format": "USA {n}",

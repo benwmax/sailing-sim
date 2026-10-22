@@ -80,6 +80,10 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 	TMap<uint8, TArray<uint32>> Seeds; // Graphics G3: each neighbour's livery (hull colour and wear, per instance)
 	TMap<uint8, TArray<UStaticMesh*>> MeshesByClass;
 	TMap<uint8, TArray<TArray<FWearSeed>>> Wear;  // Environment E1: per part, per instance, beside PerClass
+	// pc/j22-detail: painted spars (BoatLivery.h PaintSpars), per part, per instance, beside PerClass; a class's spar parts
+	// are drawn by two components, anodised and painted (one finish per component).
+	TMap<uint8, TArray<TArray<bool>>> SparPaint;
+	TMap<uint8, FBoatLivery> PaintedLook;
 	for (const FBerthedBoat& P : Placed)
 	{
 		if (!MeshesByClass.Contains(P.Type))
@@ -102,6 +106,7 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			MeshesByClass.Add(P.Type, M);
 			PerClass.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
 			Wear.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
+			SparPaint.Add(P.Type).SetNum(UE_ARRAY_COUNT(Parts));
 		}
 		const TArray<UStaticMesh*>& M = MeshesByClass[P.Type];
 		if (!M[0]) continue;
@@ -116,6 +121,7 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 		{
 			PerClass[P.Type][0].Add(Boat);
 			Wear[P.Type][0].Add(W);
+			SparPaint[P.Type][0].Add(false);
 			if (FBerthedBoat::IsPainted(P.Type)) Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 			continue;
 		}
@@ -124,15 +130,19 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 		const UStaticMeshSocket* Stock = M[0]->FindSocket(TEXT("RudderPivot"));
 		const FVector Offsets[] = { FVector::ZeroVector, Step ? Step->RelativeLocation : FVector::ZeroVector,
 			FVector(C.MainLuffX, 0.0, C.BoomZ) * 100.0, Stock ? Stock->RelativeLocation : FVector::ZeroVector };
+		const FBoatLivery Look = SampleBoatLivery(int32(P.Type), MHash(H) | 1u);
+		if (Look.bSparPainted) PaintedLook.Add(P.Type, Look);
 		for (int32 K = 0; K < 4; ++K)
 		{
 			PerClass[P.Type][K].Add(FTransform(FRotator::ZeroRotator, Offsets[K]) * Boat);
 			Wear[P.Type][K].Add(W);
+			SparPaint[P.Type][K].Add((K == 1 || K == 2) && Look.bSparPainted);   // mast and boom (the hull's livery is per instance)
 		}
 		int32 Dress = 4 + (P.Dress >= 0 ? P.Dress % NumDress : int32(MHash(H * 31u + 7u) % NumDress));
 		if (!M[Dress]) Dress = 4;
 		PerClass[P.Type][Dress].Add(Boat);
 		Wear[P.Type][Dress].Add(W);
+		SparPaint[P.Type][Dress].Add(Look.bSparPainted);
 		Seeds.FindOrAdd(P.Type).Add(MHash(H) | 1u);
 	}
 	for (const auto& KV : PerClass)
@@ -143,53 +153,68 @@ void SpawnBerthedBoats(AActor* Owner, USceneComponent* Root, TConstArrayView<FBe
 			// The berthed dress carries a straight Nanite mast: the class's bending (non-Nanite) mast is left out.
 			if (K == 1 && MeshesByClass[KV.Key][4]) continue;
 			if (!Mesh || KV.Value[K].Num() == 0) continue;
-			// Many boats over a bay (Graphics G7: two thousand on the coast) are culled by cluster.
-			UInstancedStaticMeshComponent* C = KV.Value[K].Num() > 400 ? NewObject<UHierarchicalInstancedStaticMeshComponent>(Owner) : NewObject<UInstancedStaticMeshComponent>(Owner);
-			C->SetMobility(Mobility);
-			C->SetupAttachment(Root);
-			C->SetStaticMesh(Mesh);
-			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			// The masts are not Nanite (they bend on a sailing boat): ninety of them overflow the virtual shadow
-			// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
-			C->SetCastShadow(K != 1);
-			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-			C->SetCullDistances(0, int32((K >= 4 ? 900 : 1500) * 100 * CullScale));
-			// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
-			// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
-			if (K >= 2) C->SetCastShadow(false);
-			const bool bLivery = K == 0 && !FBerthedBoat::IsPower(KV.Key);
-			const bool bPaint = K == 0 && FBerthedBoat::IsPainted(KV.Key);
-			// Livery 0-6 on a sailing hull, paint 0-2 on a painted power hull, then (Environment E1) her wear seed from
-			// FWearSeed::Slot. A sailing boat's other parts carry it too, with -1 below the slot: M_BoatSurface's "no
-			// livery here" (its custom data defaults). The unpainted power classes' materials read their own defaults, so
-			// they stay without custom data for now.
-			const bool bSail = !FBerthedBoat::IsPower(KV.Key);
-			const bool bWear = bSail || bPaint;
-			if (bWear) C->NumCustomDataFloats = FWearSeed::TotalFloats;
-			C->RegisterComponent();
-			TArray<FTransform> X = KV.Value[K];
-			C->AddInstances(SailingFrame::ToWorldTransforms(Owner->GetWorld(), X), false, true);
-			const TArray<FWearSeed>& Ws = Wear[KV.Key][K];
-			for (int32 I = 0; I < Ws.Num() && bWear; ++I)
+			for (int32 Painted = 0; Painted < 2; ++Painted)
 			{
-				float D[FWearSeed::TotalFloats];
-				for (int32 J = 0; J < FWearSeed::Slot; ++J) D[J] = bSail ? -1.f : 0.f;
-				if (bLivery)
+				// This finish's instances (pc/j22-detail: anodised, then painted spars).
+				const TArray<bool>& Paint = SparPaint[KV.Key][K];
+				TArray<FTransform> X;
+				TArray<FWearSeed> Ws;
+				TArray<int32> Index;   // into the class's boats (Seeds) for the hull, which is never split
+				for (int32 I = 0; I < KV.Value[K].Num(); ++I)
 				{
-					const FBoatLivery L = SampleBoatLivery(int32(KV.Key), Seeds[KV.Key][I]);
-					const float Liv[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
-					FMemory::Memcpy(D, Liv, sizeof(Liv));
+					if (Paint[I] != (Painted == 1)) continue;
+					X.Add(KV.Value[K][I]);
+					Ws.Add(Wear[KV.Key][K][I]);
+					Index.Add(I);
 				}
-				if (bPaint)
+				if (X.Num() == 0) continue;
+				// Many boats over a bay (Graphics G7: two thousand on the coast) are culled by cluster.
+				UInstancedStaticMeshComponent* C = X.Num() > 400 ? NewObject<UHierarchicalInstancedStaticMeshComponent>(Owner) : NewObject<UInstancedStaticMeshComponent>(Owner);
+				C->SetMobility(Mobility);
+				C->SetupAttachment(Root);
+				C->SetStaticMesh(Mesh);
+				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				// The masts are not Nanite (they bend on a sailing boat): ninety of them overflow the virtual shadow
+				// map's non-Nanite marking, and their thin shadows are lost in its resolution anyway.
+				C->SetCastShadow(K != 1);
+				C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+				C->SetCullDistances(0, int32((K >= 4 ? 900 : 1500) * 100 * CullScale));
+				// Booms, rudders and the berthed dress (masts, wires, covers, fenders, lines) cast no shadow: a hundred boats'
+				// worth of thin shadows are lost in the shadow map anyway, and they cost the High tier its frame rate.
+				if (K >= 2) C->SetCastShadow(false);
+				const bool bLivery = K == 0 && !FBerthedBoat::IsPower(KV.Key);
+				const bool bPaint = K == 0 && FBerthedBoat::IsPainted(KV.Key);
+				// Livery 0-6 on a sailing hull, paint 0-2 on a painted power hull, then (Environment E1) her wear seed from
+				// FWearSeed::Slot. A sailing boat's other parts carry it too, with -1 below the slot: M_BoatSurface's "no
+				// livery here" (its custom data defaults). The unpainted power classes' materials read their own defaults, so
+				// they stay without custom data for now.
+				const bool bSail = !FBerthedBoat::IsPower(KV.Key);
+				const bool bWear = bSail || bPaint;
+				if (bWear) C->NumCustomDataFloats = FWearSeed::TotalFloats;
+				C->RegisterComponent();
+				C->AddInstances(SailingFrame::ToWorldTransforms(Owner->GetWorld(), X), false, true);
+				if (Painted == 1) PaintSpars(C, PaintedLook[KV.Key]);
+				for (int32 I = 0; I < Ws.Num() && bWear; ++I)
 				{
-					const FLinearColor Paint = FBerthedBoat::PowerHullColour(Seeds[KV.Key][I]);
-					D[0] = Paint.R; D[1] = Paint.G; D[2] = Paint.B;
+					float D[FWearSeed::TotalFloats];
+					for (int32 J = 0; J < FWearSeed::Slot; ++J) D[J] = bSail ? -1.f : 0.f;
+					if (bLivery)
+					{
+						const FBoatLivery L = SampleBoatLivery(int32(KV.Key), Seeds[KV.Key][Index[I]]);
+						const float Liv[7] = { L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W, L.Hull.R, L.Hull.G, L.Hull.B };
+						FMemory::Memcpy(D, Liv, sizeof(Liv));
+					}
+					if (bPaint)
+					{
+						const FLinearColor Hue = FBerthedBoat::PowerHullColour(Seeds[KV.Key][Index[I]]);
+						D[0] = Hue.R; D[1] = Hue.G; D[2] = Hue.B;
+					}
+					Ws[I].Write(D + FWearSeed::Slot);
+					C->SetCustomData(I, TArrayView<const float>(D, FWearSeed::TotalFloats), false);
 				}
-				Ws[I].Write(D + FWearSeed::Slot);
-				C->SetCustomData(I, TArrayView<const float>(D, FWearSeed::TotalFloats), false);
+				if (bWear) C->MarkRenderStateDirty();
+				Out.Add(C);
 			}
-			if (bWear) C->MarkRenderStateDirty();
-			Out.Add(C);
 		}
 	}
 }
