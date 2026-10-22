@@ -68,7 +68,7 @@ bool FSailingFleetConfigsTest::RunTest(const FString& Parameters)
 	struct FWant { EBoatType Type; const char* Name; double MaxEase, HeelLimit, ReachHeelLimit, Traveler; };
 	const FWant Want[] = {
 		{ EBoatType::J22, "J/22", 25.0, 13.0, 0.0, 8.0 }, { EBoatType::Sunfish, "Sunfish", 60.0, 8.0, 0.0, 3.0 },
-		{ EBoatType::ILCA7, "ILCA 7 (Laser)", 60.0, 8.0, 5.0, 4.0 }, { EBoatType::Catalina22, "Catalina 22", 25.0, 20.0, 0.0, 8.0 },
+		{ EBoatType::ILCA7, "ILCA 7 (Laser)", 60.0, 8.0, 6.0, 4.0 }, { EBoatType::Catalina22, "Catalina 22", 25.0, 20.0, 0.0, 8.0 },
 		{ EBoatType::Catalina30, "Catalina 30", 25.0, 22.0, 0.0, 8.0 }, { EBoatType::Hobie16, "Hobie 16", 45.0, 10.7, 0.0, 22.0 },
 		{ EBoatType::Corsair880, "Corsair 880", 40.0, 10.0, 0.0, 15.0 }, { EBoatType::Lagoon42, "Lagoon 42", 35.0, 4.0, 0.0, 12.0 },
 		{ EBoatType::Maxi, "Maxi 100", 25.0, 18.0, 0.0, 9.0 },
