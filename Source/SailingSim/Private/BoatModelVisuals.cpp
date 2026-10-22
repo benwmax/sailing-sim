@@ -20,6 +20,7 @@
 #include "Misc/Paths.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "BoatLivery.h"
+#include "BoatPacks.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -319,11 +320,19 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 				Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
 				Mid->SetScalarParameterValue(TEXT("Care"), FCString::Atof(*CareStr));
 			}
-			const FString Name = Slots[I].ToString();
-			const FLinearColor* Col = Name == TEXT("Topsides") ? &L.Hull : Name == TEXT("Deck") ? &L.Deck : Name == TEXT("NonSkid") ? &L.NonSkid
-				: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove
-				: Name == TEXT("Teak") ? (L.bTeak ? &L.Teak : &L.Deck) : nullptr;   // Graphics G6: the toe rails
-			if (Col) Mid->SetVectorParameterValue(TEXT("Color"), *Col);
+			auto LiveryFor = [&L](const FString& Name) -> const FLinearColor*
+			{
+				return Name == TEXT("Topsides") ? &L.Hull : Name == TEXT("Deck") ? &L.Deck : Name == TEXT("NonSkid") ? &L.NonSkid
+					: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove
+					: Name == TEXT("Teak") ? (L.bTeak ? &L.Teak : &L.Deck) : nullptr;   // Graphics G6: the toe rails
+			};
+			// pc/boat-slots: a pack (BoatPacks.h) takes each of its entries' livery colours.
+			const TConstArrayView<const TCHAR*> Packed = SailingBoatPacks::Entries(Slots[I]);
+			for (int32 K = 0; K < Packed.Num(); ++K)
+			{
+				if (const FLinearColor* Col = LiveryFor(Packed[K])) Mid->SetVectorParameterValue(SailingBoatPacks::ColourParam(K), *Col);
+			}
+			if (const FLinearColor* Col = Packed.Num() ? nullptr : LiveryFor(Slots[I].ToString())) Mid->SetVectorParameterValue(TEXT("Color"), *Col);
 		}
 	}
 	// Boat detail pass: the cabin interior, same pivot as the hull; only on the player's boat (it shows through the

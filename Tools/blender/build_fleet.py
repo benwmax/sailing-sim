@@ -24,6 +24,9 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from boat_packs import pack_slots  # noqa: E402  (pc/boat-slots)
+
 ARGS = sys.argv[sys.argv.index("--") + 1:]
 CFG = json.load(open(ARGS[0]))
 TAG = ARGS[1]
@@ -37,7 +40,7 @@ DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
          "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope"]   # Rope last: the earlier slots keep their indices
-CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")
+CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   # (packed: boat_packs.json's PackCanoe is exactly these)
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
 SPECS = {
@@ -163,7 +166,7 @@ class Mesh:
                     q.reverse()
                 self.face(q, slot_fn(i, j) if slot_fn else slot)
 
-    def finish(self, smooth_angle=35.0, origin=(0, 0, 0)):
+    def finish(self, smooth_angle=35.0, origin=(0, 0, 0), keep=()):
         me = bpy.data.meshes.new(self.name)
         bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts, dist=1e-5)
         uv = self.bm.loops.layers.uv.new("UVMap")
@@ -183,6 +186,8 @@ class Mesh:
             me.materials.append(bpy.data.materials.get(name) or bpy.data.materials.new(name))
         for p in me.polygons:
             p.material_index = remap[p.material_index]
+        # pc/boat-slots: one slot per pack (a mast keeps its aluminium: M_BoatMast bends it).
+        pack_slots(me, keep=keep)
         ox, oy, oz = origin
         me.transform(Matrix.Translation((-ox, oy, -oz)))
         obj.location = (ox, -oy, oz)
@@ -1108,7 +1113,7 @@ def build_mast():
         box(m, (mast_x - 0.5 * d - 0.02, 0, bz), (0.05, 0.035, 0.07), "BlackPlastic")
         tube(m, [(mast_x, 0, mast_step_z - 0.01), (mast_x, 0, mast_step_z + 0.025)], 0.5 * d + 0.008, "BlackPlastic", 16)
         box(m, (mast_x + 0.5 * d + 0.012, 0, bz + 0.22), (0.02, 0.012, 0.04), "Stainless")
-    return m.finish(smooth_angle=60.0, origin=(mast_x, 0, mast_step_z))
+    return m.finish(smooth_angle=60.0, origin=(mast_x, 0, mast_step_z), keep=("Aluminium",))
 
 
 def build_boom():

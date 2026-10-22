@@ -23,6 +23,9 @@ import bmesh
 import bpy
 from mathutils import Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from boat_packs import pack_slots  # noqa: E402  (pc/boat-slots)
+
 ARGS = sys.argv[sys.argv.index("--") + 1:]
 TAG, CFG_PATH, MODELS = ARGS[:3]
 V = int(ARGS[3]) if len(ARGS) > 3 else 0
@@ -252,6 +255,9 @@ tris = sum(len(f.verts) - 2 for f in bm.faces)
 bm.free()
 for s in SLOTS:
     mesh.materials.append(bpy.data.materials.get(s) or bpy.data.materials.new(s))
+# pc/boat-slots: one slot per pack, the entry in UV1 (UV0 stays all zeros, as the import made it without a UV set).
+mesh.uv_layers.new(name="UVMap")
+pack_slots(mesh)
 obj = bpy.data.objects.new(mesh.name, mesh)
 bpy.context.scene.collection.objects.link(obj)
 bpy.ops.object.select_all(action="DESELECT")

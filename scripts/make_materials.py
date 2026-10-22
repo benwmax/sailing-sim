@@ -1131,7 +1131,7 @@ if (DetailOn > 0.5 && surf > 0)
     float4 n0 = float4(0.5, 0.5, 1.0, 1.0), n1 = n0, n2 = n0, m0 = float4(0.5, 0.5, 0.5, 0.5), m1 = m0, m2 = m0;
     SamplerState DS = View.MaterialTextureBilinearWrapedSampler;
 #define BOAT_TRI(T, o0, o1, o2) o0 = Texture2DSample(T, DS, uv0); o1 = Texture2DSample(T, DS, uv1); o2 = Texture2DSample(T, DS, uv2)
-    // Surface is a parameter (uniform), so one pair is sampled.
+    // Surface is a parameter (uniform), or in a pack (M_BoatPacked) uniform over each triangle, so one pair is sampled.
     if (surf == 2) { BOAT_TRI(TNonSkidN, n0, n1, n2); BOAT_TRI(TNonSkidM, m0, m1, m2); }
     else if (surf == 3 || surf == 4) { BOAT_TRI(TMetalN, n0, n1, n2); BOAT_TRI(TMetalM, m0, m1, m2); }
     else if (surf == 6) { BOAT_TRI(TWoodN, n0, n1, n2); BOAT_TRI(TWoodM, m0, m1, m2); }
@@ -1281,9 +1281,10 @@ BOAT_DETAIL_MAPS = (("TGelcoatN", "T_Detail_Gelcoat_N"), ("TGelcoatM", "T_Detail
                     ("TSailclothN", "T_Detail_Sailcloth_N"), ("TCanvasN", "T_Detail_Canvas_N"))
 
 
-def build_boat_surface(name, bend):
+def build_boat_surface(name, bend, packed=False):
     """M_BoatSurface / M_BoatMast: one lit surface for every part of a boat model, set by material instances;
-    the mast's variant bends fore and aft (BendCm at mid-height, a half-sine over BendHeightCm)."""
+    the mast's variant bends fore and aft (BendCm at mid-height, a half-sine over BendHeightCm). M_BoatPacked
+    (pc/boat-slots) is the same surface with each face's values picked from its pack's entries by UV1.x."""
     path = f"{BOAT_FOLDER}/{name}"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         unreal.EditorAssetLibrary.delete_asset(path)
@@ -1341,28 +1342,41 @@ def build_boat_surface(name, bend):
         t.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if fallback else stype)
         detail_tex[pin] = t
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    # The surface's per-slot values: a material instance's parameters, or in a pack the face's entry.
+    hull = scalar(mat, "IsHull", 0.0, -1400, 1550)
+    ins = {"C": (color, "RGBA"), "R": (rough, ""), "Metal": (metal, ""), "Coat": (coat, ""), "NonSkid": (nonskid, ""), "Porosity": (porosity, ""),
+           "Grain": (grain, ""), "Surface": (surface, ""), "IsHull": (hull, "")}
+    if packed:
+        sel = custom(mat, PACK_SELECT_CODE, ["PackUV"] + [f"P{k}{s}" for k in range(PACK_SIZE) for s in "CAB"], unreal.CustomMaterialOutputType.CMOT_FLOAT4,
+                     -1150, -400, extra_outputs=[(f"o{p}", F1) for p in PACK_OUTS])
+        connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -1400, -500, coordinate_index=1), "", sel, "PackUV")
+        for k in range(PACK_SIZE):
+            for j, s in enumerate("CAB"):
+                connect(vector(mat, f"P{k}{s}", (0, 0, 0, 1), -2200 - 200 * j, -900 + 70 * k), "RGBA", sel, f"P{k}{s}")
+        ins["C"] = (sel, "")
+        ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
-    for src, pin in ((surface, "Surface"), (grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
+    for src, pin in ((grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
                      (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time")):
         connect(src, "", c, pin)
     for pin, t in detail_tex.items():
         connect(t, "", c, pin)
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
-    connect(scalar(mat, "IsHull", 0.0, -1400, 1550), "", c, "IsHull")
     for k in list(range(7)) + list(range(10, 16)):   # E1's seed: 10 age, 11 care, 12 sun, 13 wet, 14 site, 15 variant (FWearSeed, docs/environment-1)
         cd = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 1650 + 60 * k)
         cd.set_editor_property("data_index", k)
         cd.set_editor_property("const_default_value", -1.0)
         connect(cd, "", c, f"CD{k}")
-    for src, pin in ((color, "C"), (rough, "R"), (metal, "Metal"), (coat, "Coat"), (nonskid, "NonSkid"), (porosity, "Porosity"), (grain, "Grain"), (age, "Age"), (care, "Care"), (lp, "LP"),
-                     (wp, "WP"), (nrm, "N"), (axes[0], "LX"), (axes[1], "LY"), (params["WaterZ"], "WaterZ"), (params["WetBand"], "WetBand"),
-                     (params["DeckWet"], "DeckWet")):
-        connect(src, "RGBA" if src is color else "", c, pin)
+    for pin, (src, out) in ins.items():
+        connect(src, out, c, pin)
+    for src, pin in ((age, "Age"), (care, "Care"), (lp, "LP"), (wp, "WP"), (nrm, "N"), (axes[0], "LX"), (axes[1], "LY"), (params["WaterZ"], "WaterZ"),
+                     (params["WetBand"], "WetBand"), (params["DeckWet"], "DeckWet")):
+        connect(src, "", c, pin)
     # Substrate slab: the gelcoat's clear coat (and a wet film) as the slab's second, glossier specular lobe.
     slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -400, 200)
     connect(c, "AlbedoOut", slab, "Diffuse Albedo")
@@ -1465,22 +1479,61 @@ BOAT_SURFACE = {
 }
 
 
+# pc/boat-slots: each material slot is a draw and a Nanite shading bin, so slots of the one parent are folded into packs
+# (Tools/blender/boat_packs.json, shared with the Blender builders; mirrored by BoatPacks.h). A packed face carries its
+# entry in UV1.x, and MI_Boat_<Pack> holds every entry's library values: P<k>C colour, P<k>A (roughness, metallic,
+# clear coat, non-skid), P<k>B (porosity, surface, hull, grain). The entry is uniform over a triangle, so BOAT_CODE's
+# branches on Surface stay coherent.
+import json
+BOAT_PACKS = {k: v for k, v in json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Tools", "blender", "boat_packs.json"))).items()
+              if not k.startswith("_")}
+PACK_SIZE = 8
+PACK_OUTS = ("R", "Metal", "Coat", "NonSkid", "Porosity", "Surface", "IsHull", "Grain")
+PACK_SELECT_CODE = ("int k = (int)(PackUV.x + 0.5);\nfloat4 c = P0C, a = P0A, b = P0B;\n"
+                    + "".join(f"if (k == {k}) {{ c = P{k}C; a = P{k}A; b = P{k}B; }}\n" for k in range(1, PACK_SIZE))
+                    + "oR = a.x; oMetal = a.y; oCoat = a.z; oNonSkid = a.w; oPorosity = b.x; oSurface = b.y; oIsHull = b.z; oGrain = b.w;\n"
+                    + "return float4(c.rgb, 1.0);")
+
+
+def boat_slot_values(slot):
+    """A library slot's material values: colour, then the scalars by parameter name."""
+    parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
+    return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "Teak") else 0.0,
+                 "Surface": float(BOAT_SURFACE.get(slot, 0))}
+
+
+def boat_instance(name, parent):
+    path = f"{BOAT_FOLDER}/{name}"
+    # Updated in place (never deleted): the boat meshes reference these instances.
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        mi = unreal.load_asset(path)
+    else:
+        mi = ASSETS.create_asset(name, BOAT_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    MEL.set_material_instance_parent(mi, parent)
+    return mi
+
+
 def build_boat_library():
     parents = {"M_BoatSurface": build_boat_surface("M_BoatSurface", False), "M_BoatMast": build_boat_surface("M_BoatMast", True)}
-    for slot, (parent, col, rough, metal, coat, nonskid, porosity) in BOAT_LIBRARY.items():
-        name = f"MI_Boat_{slot}"
-        path = f"{BOAT_FOLDER}/{name}"
-        # Updated in place (never deleted): the boat meshes reference these instances.
-        if unreal.EditorAssetLibrary.does_asset_exist(path):
-            mi = unreal.load_asset(path)
-        else:
-            mi = ASSETS.create_asset(name, BOAT_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-        MEL.set_material_instance_parent(mi, parents[parent])
+    for slot, (parent, *_rest) in BOAT_LIBRARY.items():
+        mi = boat_instance(f"MI_Boat_{slot}", parents[parent])
+        col, values = boat_slot_values(slot)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
-        for pname, value in (("Roughness", rough), ("Metallic", metal), ("ClearCoat", coat), ("NonSkid", nonskid), ("Porosity", porosity),
-                             ("IsHull", 1.0 if slot == "Topsides" else 0.0), ("Grain", 1.0 if slot in ("Wood", "Teak") else 0.0),
-                             ("Surface", float(BOAT_SURFACE.get(slot, 0)))):
+        for pname, value in values.items():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+    packed = build_boat_surface("M_BoatPacked", False, packed=True)
+    for pack, entries in BOAT_PACKS.items():
+        if len(entries) > PACK_SIZE or any(BOAT_LIBRARY[e][0] != "M_BoatSurface" for e in entries):
+            raise RuntimeError(f"{pack}: at most {PACK_SIZE} entries, all on M_BoatSurface")
+        mi = boat_instance(f"MI_Boat_{pack}", packed)
+        for k, slot in enumerate(entries):
+            col, v = boat_slot_values(slot)
+            for s, value in (("C", (col[0], col[1], col[2], 1.0)), ("A", (v["Roughness"], v["Metallic"], v["ClearCoat"], v["NonSkid"])),
+                             ("B", (v["Porosity"], v["Surface"], v["IsHull"], v["Grain"]))):
+                MEL.set_material_instance_vector_parameter_value(mi, f"P{k}{s}", unreal.LinearColor(*value))
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
