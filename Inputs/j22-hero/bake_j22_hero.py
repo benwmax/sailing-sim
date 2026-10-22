@@ -111,6 +111,8 @@ tlo, thi = _bb("TravelerBar")
 sock("Traveler_C", Vector(((tlo.x + thi.x) / 2, 0, thi.z + 0.02)))
 sock("Traveler_S", Vector(((tlo.x + thi.x) / 2, tlo.y + 0.05, thi.z + 0.02)))
 sock("Traveler_P", Vector(((tlo.x + thi.x) / 2, thi.y - 0.05, thi.z + 0.02)))
+# Bean's feedback 1: the mainsheet's lower block stands on the car (j22_mainsheet.py); the tackle ends at its sheave
+sock("MainsheetBlock", _c("MainsheetLow_sheave"))
 # the lazy sheet's pass over the cabin top: a little above the cabin, a hand's width aft of the mast
 clo, chi = _bb("Cabin")
 sock("LazySheetVia", Vector((mast_x - 0.35, 0, chi.z + 0.06)))

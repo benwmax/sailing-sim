@@ -622,15 +622,13 @@ def build_hardware():
             # (4.5 cm apart from 3.35 cm out: at 5.5 cm the outer cam ran into the handrail at 0.46)
             yc = side * (0.335 + 0.045 * k)
             parts += D.cam_cleat(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
-    # traveler across the cockpit floor (photos IMG_9266/9271) with its car and mainsheet blocks
-    xt = -1.95
-    parts.append(box("TravelerBar", xt - 0.02, xt + 0.02, -SEAT_IN + 0.02, SEAT_IN - 0.02, FLOOR_Z, FLOOR_Z + 0.03, MAT["Aluminium"], bev=0.005))
-    parts.append(box("TravelerCar", xt - 0.04, xt + 0.04, 0.05, 0.13, FLOOR_Z + 0.03, FLOOR_Z + 0.06, MAT["BlackPlastic"], bev=0.008))
-    for sgn in (-1, 1):
-        parts.append(box(f"TravEnd_{sgn}", xt - 0.03, xt + 0.03, sgn * (SEAT_IN - 0.06) - 0.02, sgn * (SEAT_IN - 0.06) + 0.02, FLOOR_Z, FLOOR_Z + 0.045, MAT["CastAlu"], bev=0.008))
-        parts += D.screws(f"TravS_{sgn}", [(xt, sgn * (SEAT_IN - 0.06), FLOOR_Z + 0.045)], (0, 0, 1), MAT)
-    parts += D.block("MainsheetLow", (xt, 0.09, FLOOR_Z + 0.12), (1, 0, 0), (0, 0, -1), MAT, 0.057, becket=True)
-    parts += D.cam_cleat("MainCam", (xt - 0.02, 0.09, FLOOR_Z + 0.075), (0, 0, 1), (1, 0, 0), MAT, 0.055)
+    # Bean's feedback 1 (j22_mainsheet.py): the traveler spans the cockpit from seat to seat, let into the seat tops and
+    # open over the well, with the mainsheet's fiddle and cam on its car (it had lain on the cockpit sole)
+    import j22_mainsheet as MS  # noqa: E402
+    xt = TRAVELER_X
+    trav, car = MS.traveler(xt, half_beam(xt) - SIDE_DECK - 0.035, SEAT_Z, SEAT_IN, MAT)
+    parts += trav
+    parts += MS.lower_block(car, MAT)
     # aft deck: inspection port
     xp = (STERN + COCKPIT_AFT) / 2 - 0.02
     parts.append(cyl("DeckPlate", (xp, 0.30, deck_z(xp, 0.3) - 0.002), (xp, 0.30, deck_z(xp, 0.3) + 0.012), 0.075, MAT["WhitePlastic"], 32))
@@ -652,6 +650,7 @@ HOUNDS = 7.86            # GUESS: forestay hounds, I = 7.56 above the sheer at t
 SPREADER_Z = 4.60        # GUESS
 BOOM_Z = 1.45
 BOOM_LEN = 2.70          # GUESS: E
+TRAVELER_X = -2.06       # under the boom's end (its cap at about -2.14): end-boom sheeting, the light J/22's TRAV_X too
 
 
 def spar(name, p0, p1, w_fa, w_at, mat, taper_top=0.0, n=28):
@@ -752,12 +751,13 @@ def build_rig():
         parts.remove(o)
         bpy.data.objects.remove(o, do_unlink=True)
     parts += BG.big_block("VangBlock", vb - vd * 0.075, vd, MAT)   # on the boom (bake BOOM_PARTS): "Vang_" is live rope
-    top = Vector((b1.x + 0.20, 0, BOOM_Z - 0.03))
+    # end-boom sheeting (Bean's feedback 1, the Harken layout): the bail and upper block over the traveler, near the end cap
+    top = Vector((TRAVELER_X, 0, BOOM_Z + 0.03 * (b0.x - TRAVELER_X) / (b0.x - b1.x) - 0.03))
     parts.append(D.tube("MainBail", [(top.x - 0.03, -0.03, top.z + 0.03), (top.x - 0.03, -0.03, top.z - 0.005), (top.x, 0, top.z - 0.02),
                                        (top.x + 0.03, 0.03, top.z - 0.005), (top.x + 0.03, 0.03, top.z + 0.03)], 0.003, MAT["Stainless"], smooth_path=True))
     blk_hi = top - Vector((0, 0, 0.07))
     parts += D.block("MainsheetHigh", blk_hi, (1, 0, 0), (0, 0, 1), MAT, 0.057)
-    low = Vector((-1.95, 0.09, FLOOR_Z + 0.12))
+    low = Vector((TRAVELER_X, 0.0, SEAT_Z + 0.115))      # the fiddle's big sheave on the traveler car (j22_mainsheet.py)
     for k, dx in enumerate((-0.010, -0.0035, 0.0035, 0.010)):
         part = DRAPE.line([tuple(blk_hi + Vector((dx, 0, -0.02))), tuple(low + Vector((dx, 0, 0.03)))], 0.0015, 0.004)
         wires.append(tube(f"Mainsheet_{k}", part, 0.004, MAT["RopeMain"], smooth_path=True))
