@@ -27,6 +27,9 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from boat_packs import pack_slots  # noqa: E402  (pc/boat-slots)
+
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 CFG = json.load(open(ARGS[0]))
 OUT = ARGS[1]
@@ -133,7 +136,7 @@ class Mesh:
                     q.reverse()
                 self.face(q, slot_fn(i, j) if slot_fn else slot)
 
-    def finish(self, smooth_angle=35.0, origin=(0, 0, 0)):
+    def finish(self, smooth_angle=35.0, origin=(0, 0, 0), pack=True):
         me = bpy.data.meshes.new(self.name)
         bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts, dist=1e-5)
         # Box-projected UVs (1 m tiles): the materials are procedural, but a UV set gives the meshes a tangent frame.
@@ -151,6 +154,9 @@ class Mesh:
         for name in SLOTS:
             mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
             me.materials.append(mat)
+        # pc/boat-slots: one slot per pack (the mast keeps its own: M_BoatMast bends it).
+        if pack:
+            pack_slots(me)
         # Origin: geometry is in the boat frame; move it so the object's origin sits at `origin` (boat frame).
         ox, oy, oz = origin
         me.transform(Matrix.Translation((-ox, oy, -oz)))
@@ -766,7 +772,7 @@ box(mast, (MAST_X - 0.06, 0, MAST_TOP + 0.02), (0.22, 0.05, 0.04), "Aluminium")
 socket("MastheadAft", (MAST_X - 0.16, 0, MAST_TOP + 0.02))
 box(mast, (MAST_X - 0.06, 0, RIG["boom_z"]), (0.06, 0.06, 0.08), "Stainless")
 socket("MastBase", (MAST_X - 0.06, 0, mast_step_z + 0.2))
-mast_obj = mast.finish(smooth_angle=60.0, origin=(MAST_X, 0, mast_step_z))
+mast_obj = mast.finish(smooth_angle=60.0, origin=(MAST_X, 0, mast_step_z), pack=False)
 
 boom = Mesh("SM_J22_Boom")
 GX, GZ = RIG["main_luff_x"], RIG["boom_z"]

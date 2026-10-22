@@ -1,0 +1,7 @@
+{
+  "_comment": "pc/boat-slots: the boat library's slots folded into packs of up to 8 entries, one material slot each. A packed face keeps its library slot as its entry (UV1.x); MI_Boat_<Pack> (make_materials.py) holds the entries' values. The C++ mirror is BoatPacks.h (SailingSim.Visual.BoatPacks). Append entries, never reorder: imported meshes carry the indices. PackCanoe is exactly the canoe slots J22Mesh and FleetMesh measure.",
+  "PackCanoe": ["Topsides", "Bootstripe", "CoveStripe", "Antifouling"],
+  "PackDeck": ["Deck", "NonSkid", "Teak", "Graphics", "Keel", "CabinWindow", "Rubrail", "Carbon"],
+  "PackFit": ["Stainless", "Aluminium", "BlackPlastic", "Wood", "Rope", "PaintedAluminium", "Rubber", "CarbonMatte"],
+  "PackCanvas": ["SailCover", "SailCoverRed", "SailCoverGreen", "SailCoverTan", "Tarp", "Dacron", "FenderBlue", "CoolerLid"]
+}

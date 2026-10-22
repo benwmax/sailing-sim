@@ -14,6 +14,7 @@
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "BoatModel.h"
+#include "BoatPacks.h"
 #include "ProceduralMeshComponent.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -94,9 +95,11 @@ bool FSailingBoatSpawnsAndFloatsTest::RunTest(const FString& Parameters)
 		}
 		else if (ModelHull)
 		{
-			const UMaterialInterface* Topsides = ModelHull->GetMaterial(ModelHull->GetMaterialIndex(TEXT("Topsides")));
+			// pc/boat-slots: the topsides are entry 0 of the canoe pack (BoatPacks.h), or a slot of their own.
+			const bool bPacked = ModelHull->GetMaterialIndex(TEXT("PackCanoe")) >= 0;
+			const UMaterialInterface* Topsides = ModelHull->GetMaterial(ModelHull->GetMaterialIndex(bPacked ? TEXT("PackCanoe") : TEXT("Topsides")));
 			FLinearColor HullColor = FLinearColor::Black;
-			TestTrue(TEXT("Topsides have a gelcoat colour"), Topsides && Topsides->GetVectorParameterValue(TEXT("Color"), HullColor));
+			TestTrue(TEXT("Topsides have a gelcoat colour"), Topsides && Topsides->GetVectorParameterValue(bPacked ? SailingBoatPacks::ColourParam(0) : FName(TEXT("Color")), HullColor));
 			TestTrue(TEXT("White gelcoat topsides"), HullColor.R > 0.6f && HullColor.G > 0.6f && HullColor.B > 0.6f);
 		}
 

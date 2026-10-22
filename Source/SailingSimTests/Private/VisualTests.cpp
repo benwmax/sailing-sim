@@ -13,6 +13,7 @@
 #include "CrewMotion.h"
 #include "SailingSim.h"
 #include "BoatLivery.h"
+#include "BoatPacks.h"
 #include "Engine/SkeletalMesh.h"
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
@@ -21,6 +22,10 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "MeshDescription.h"
 #include "StaticMeshAttributes.h"
+#include "Dom/JsonObject.h"
+#include "Misc/FileHelper.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -221,7 +226,7 @@ bool FVisualJ22MeshTest::RunTest(const FString& Parameters)
 	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Boats/J22/SM_J22_Hull.SM_J22_Hull"));
 	if (!TestNotNull(TEXT("SM_J22_Hull is in the project (scripts/make-boat-models.sh)"), Mesh)) return false;
 #if WITH_EDITORONLY_DATA
-	const FCanoeMeasure M = MeasureCanoe(Mesh, [](FName Slot) { return Slot == TEXT("Topsides") || Slot == TEXT("Bootstripe") || Slot == TEXT("CoveStripe") || Slot == TEXT("Antifouling"); });
+	const FCanoeMeasure M = MeasureCanoe(Mesh, [](FName Slot) { return SailingBoatPacks::IsCanoeSlot(Slot); });
 	if (!TestTrue(TEXT("Source mesh"), M.bValid)) return false;
 	const Sailing::FBoatConfig C = Sailing::FBoatConfig::J22();
 	const Sailing::FBoatModel Physics(C);
@@ -326,7 +331,7 @@ bool FVisualFleetMeshTest::RunTest(const FString& Parameters)
 		FStaticMeshConstAttributes Attr(*MD);
 		const TVertexAttributesConstRef<FVector3f> Pos = Attr.GetVertexPositions();
 		const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
-		auto IsCanoe = [](FName Slot) { return Slot == TEXT("Topsides") || Slot == TEXT("Bootstripe") || Slot == TEXT("CoveStripe") || Slot == TEXT("Antifouling"); };
+		auto IsCanoe = [](FName Slot) { return SailingBoatPacks::IsCanoeSlot(Slot); };
 		FBox Canoe(ForceInit);
 		double MinZ = 1e9, Volume = 0.0;
 		FVector3d Moment(0.0);
@@ -1004,5 +1009,52 @@ bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Hero deck takes Age (unset by default)"), Deck->GetScalarParameterValue(TEXT("Age"), Age) && Age < 0.f);
 	TestTrue(TEXT("Hero deck takes Care"), Deck->GetScalarParameterValue(TEXT("Care"), Care));
 	TestTrue(TEXT("Hero deck takes Wear"), Deck->GetVectorParameterValue(TEXT("Wear"), Wear));
+	return true;
+}
+
+// pc/boat-slots: BoatPacks.h matches Tools/blender/boat_packs.json (the builders' packs), and each MI_Boat_<Pack> carries
+// its entries' library values (MI_Boat_<entry>): colour, roughness, metallic, clear coat, non-skid, porosity, surface.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualBoatPacksTest, "SailingSim.Visual.BoatPacks", VisualFlags)
+bool FVisualBoatPacksTest::RunTest(const FString& Parameters)
+{
+	FString Text;
+	TSharedPtr<FJsonObject> Json;
+	if (!TestTrue(TEXT("boat_packs.json reads"), FFileHelper::LoadFileToString(Text, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/blender/boat_packs.json")))
+		&& FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Json) && Json.IsValid())) return true;
+	int32 JsonPacks = 0;
+	for (const TPair<FString, TSharedPtr<FJsonValue>>& P : Json->Values) JsonPacks += P.Key.StartsWith(TEXT("_")) ? 0 : 1;
+	TestEqual(TEXT("BoatPacks.h has every pack"), int32(UE_ARRAY_COUNT(SailingBoatPacks::PackNames)), JsonPacks);
+	for (const TCHAR* Pack : SailingBoatPacks::PackNames)
+	{
+		const TArray<TSharedPtr<FJsonValue>>* Listed = nullptr;
+		const TConstArrayView<const TCHAR*> Entries = SailingBoatPacks::Entries(Pack);
+		if (!TestTrue(FString::Printf(TEXT("%s is in boat_packs.json"), Pack), Json->TryGetArrayField(Pack, Listed))) continue;
+		TestEqual(FString::Printf(TEXT("%s entries"), Pack), Entries.Num(), Listed->Num());
+		const FString PackPath = FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), Pack, Pack);
+		const UMaterialInterface* PackMi = LoadObject<UMaterialInterface>(nullptr, *PackPath, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (!PackMi) AddWarning(FString::Printf(TEXT("No MI_Boat_%s: run make_materials.py"), Pack));
+		for (int32 K = 0; K < FMath::Min(Entries.Num(), Listed->Num()); ++K)
+		{
+			TestEqual(FString::Printf(TEXT("%s entry %d"), Pack, K), FString(Entries[K]), (*Listed)[K]->AsString());
+			const FString Path = FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), Entries[K], Entries[K]);
+			const UMaterialInterface* Mi = LoadObject<UMaterialInterface>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+			if (!PackMi || !TestNotNull(FString::Printf(TEXT("MI_Boat_%s"), Entries[K]), Mi)) continue;
+			FLinearColor C = FLinearColor::Black, PC = C, PA = C, PB = C;
+			float Rough = 0.f, Metal = 0.f, Coat = 0.f, NonSkid = 0.f, Porosity = 0.f, Surface = 0.f;
+			Mi->GetVectorParameterValue(TEXT("Color"), C);
+			Mi->GetScalarParameterValue(TEXT("Roughness"), Rough);
+			Mi->GetScalarParameterValue(TEXT("Metallic"), Metal);
+			Mi->GetScalarParameterValue(TEXT("ClearCoat"), Coat);
+			Mi->GetScalarParameterValue(TEXT("NonSkid"), NonSkid);
+			Mi->GetScalarParameterValue(TEXT("Porosity"), Porosity);
+			Mi->GetScalarParameterValue(TEXT("Surface"), Surface);
+			const bool bHas = PackMi->GetVectorParameterValue(FName(*FString::Printf(TEXT("P%dC"), K)), PC)
+				&& PackMi->GetVectorParameterValue(FName(*FString::Printf(TEXT("P%dA"), K)), PA) && PackMi->GetVectorParameterValue(FName(*FString::Printf(TEXT("P%dB"), K)), PB);
+			TestTrue(FString::Printf(TEXT("MI_Boat_%s entry %d (%s) matches its library slot"), Pack, K, Entries[K]), bHas
+				&& PC.Equals(FLinearColor(C.R, C.G, C.B, PC.A), 1e-4f) && FMath::IsNearlyEqual(PA.R, Rough, 1e-4f) && FMath::IsNearlyEqual(PA.G, Metal, 1e-4f)
+				&& FMath::IsNearlyEqual(PA.B, Coat, 1e-4f) && FMath::IsNearlyEqual(PA.A, NonSkid, 1e-4f) && FMath::IsNearlyEqual(PB.R, Porosity, 1e-4f)
+				&& FMath::IsNearlyEqual(PB.G, Surface, 1e-4f));
+		}
+	}
 	return true;
 }
