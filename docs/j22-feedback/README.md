@@ -103,4 +103,4 @@ Bean kept the spinnaker hardware, fitted to the Harken J/22 layout's positions.
 - **Light J/22:** the same blocks and cams, from its own block and cam helpers.
 
 No socket moved for the spinnaker gear. `JibCam0_S/P` and `JibCam1_S/P` are dropped in the same push, since nothing in
-the game read them. Renders: `4-spin-aft.jpg`, `4-pole-dh.jpg`.
+the game read them. Renders: `4-spin-aft.jpg`, `4-spin-lead.jpg`, `4-spin-twing.jpg`, `4-pole-dh.jpg`.
