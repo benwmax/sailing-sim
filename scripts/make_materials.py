@@ -2621,7 +2621,10 @@ STORM = dict(ShelfLeadM=250.0, ShelfBaseM=520.0, ShelfLipM=180.0, ShelfSlope=0.8
              CumulusFadeFarM=5000.0, CumulusFadeNearM=1500.0, ShelfEdgeM=60.0, ShelfFaceM=450.0,
              # Item 7 (shelf structure): the lit face starts this far over the base (the arcus's hard lower edge); striations
              # ShelfStriaM tall across it; the base scalloped ShelfScallopM deep in lobes ShelfScallopL apart along the front.
-             ShelfFootM=20.0, ShelfStriaM=110.0, ShelfScallopM=70.0, ShelfScallopL=1400.0)
+             ShelfFootM=20.0, ShelfStriaM=110.0, ShelfScallopM=70.0, ShelfScallopL=1400.0,
+             # Storm gloom: the rain-laden air under the deck (extinction relative to CloudDensity, about 0.1 /m): in the gap
+             # under the shelf about 10 km visibility, under the core about 2 km, the rain foot thicker on the water.
+             GloomGap=0.004, GloomRain=0.02, GloomFoot=0.03, GloomFootH=150.0)
 
 # Graphics G6: extinction of cumulus, stratus, storm and rain relative to CloudDensity (-SailingCloudLayerExt overrides).
 CLOUD_EXT = (1.0, 1.0, 1.0, 1.0)
@@ -2683,7 +2686,7 @@ D += 300.0 * sin(L / 2300.0) + 150.0 * sin(L / 900.0);
 // Graphics G1: the storm's walls bulge in and out by a few hundred metres (a straight-sided core read as a block from afar).
 float2 sw = Curl.SampleLevel(CurlSampler, (p.xy - Drift.xy) * 0.00035, 0).rg * 2.0 - 1.0;
 D += 600.0 * sw.x + 250.0 * sw.y * sin(alt * 0.0012);
-float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6;
+float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6, gloom = 0.0;
 [branch] if (FrontB.y > 0.0 && w.a > 0.0)
 {
     float x = SHELF_LEAD - D;
@@ -2724,6 +2727,17 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6;
     // ASailingEnvironment::UpdateRainCurtains), so the march no longer fills the air below the cloud base.
     storm *= w.a;
     shelf *= w.a;
+    // The gloom: the air under the storm's deck is laden with rain and scud, grey and shadowed, not the clear air of a lit
+    // horizon (seen from ahead, the gap under the shelf and the horizon beneath the core read pale, lit like a clear sky).
+    // From under the shelf's lip back through the core: thin in the gap ahead of the rain, thick in it (the core starts
+    // CORE_BEHIND behind the front, its foot reaches FootReachM ahead of that on the water), up to the deck's base.
+    // Everything here varies over hundreds of metres or more: a few percent of optical depth per march step, no grain.
+    // None ahead of the lip: the clear sky ahead of the front is untouched.
+    float under = smoothstep(SHELF_LEAD, SHELF_LEAD - 500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 14000.0, -CORE_BEHIND - 20000.0, D));
+    float inRain = smoothstep(-CORE_BEHIND + 300.0, -CORE_BEHIND - 800.0, D);
+    float gTop = lerp(SHELF_BASE - 120.0 - SHELF_SCALLOP, CORE_BASE, inRain);
+    float gFoot = GLOOM_FOOT * exp(-alt / GLOOM_FOOT_H) * smoothstep(-CORE_BEHIND + 600.0, -CORE_BEHIND - 300.0, D);
+    gloom = under * (lerp(GLOOM_GAP, GLOOM_RAIN, inRain) + gFoot) * (1.0 - smoothstep(gTop - 100.0, gTop + 50.0, alt)) * w.a * saturate(FrontB.z * 1.5);
 }
 // W8: the fair cumulus fade out near the front and under the storm (FStormShape::CumulusFade): inside the deck's shade
 // they were flat grey towers (round 11). nearF: how near the front this is (the deck's shade on the cloud's colour).
@@ -2732,7 +2746,8 @@ float cu = w.r * pCu * Cu.w * (1.0 - w.a * saturate(FrontB.z) * nearF);
 float st = w.g * pSt * St.w;
 float ci = w.b * pCi * Ci.w;
 // Conservative density: what the noise can at most leave (lets the tracer skip empty sky quickly).
-Cons = saturate(cu + st + ci + storm);
+float consLayers = saturate(cu + st + ci + storm);
+Cons = saturate(consLayers + gloom);
 float d = 0.0;
 // Graphics G6: the length of this view ray's march step (m). UE's tracer spreads up to Tracer.y samples over the ray's run
 // through the cloud slab (Tracer.x km thick), capped at Tracer.w km; runs under Tracer.z km get proportionally fewer.
@@ -2745,7 +2760,7 @@ float capStepM = max(stepM, Shadow.x * 1000.0 / max(Shadow.y, 1.0));
 Albedo = float3(0.95, 0.95, 0.95);
 Emit = float3(0.0, 0.0, 0.0);
 AO = 1.0;
-[branch] if (Cons > 0.001)
+[branch] if (consLayers > 0.001)
 {
     // Graphics G1: the baked noise (Tools/clouds/make_cloud_noise.py), drifting with the wind aloft. A curl field 13 km
     // across (incommensurate with the shape's 4 km tile) warps the shape volume by up to 1.3 km, so no cloud repeats
@@ -2948,6 +2963,15 @@ AO = 1.0;
     float r = distance(p, Flash.xyz);
     Emit += float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
 }
+// The storm's gloom (above): added to the cloud, a grey, dim scatterer (its sun comes through the deck by the shadow
+// rays; the sky above it is the deck, so little ambient). No noise: it is the air, not cloud.
+[branch] if (gloom > 0.0)
+{
+    float gShare = gloom / max(d + gloom, 1e-6);
+    d += gloom;
+    Albedo = lerp(Albedo, float3(GLOOM_ALBEDO, GLOOM_ALBEDO, GLOOM_ALBEDO * 1.04), gShare);
+    AO = lerp(AO, GLOOM_AO, gShare);
+}
 // C2 (the sky cache): with it on, the live march draws only the near clouds, fading out over CacheSplit.x to .y metres
 // from the camera; M_CloudCache draws the rest into the sky dome's panorama, fading in over the same band.
 d *= 1.0 - CacheSplit.z * smoothstep(CacheSplit.x, CacheSplit.y, distance(p, Cam * 0.01));
@@ -2962,14 +2986,16 @@ def cloud_code():
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
-    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5"))
+    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5")).replace("GLOOM_ALBEDO", _os.environ.get("GLOOM_ALBEDO", "0.55")).replace("GLOOM_AO", _os.environ.get("GLOOM_AO", "0.3"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
                  ("ANVIL_AHEAD", STORM["AnvilAheadM"]), ("CU_FADE_FAR", STORM["CumulusFadeFarM"]),
                  ("CU_FADE_NEAR", STORM["CumulusFadeNearM"]), ("SHELF_EDGE", STORM["ShelfEdgeM"]), ("SHELF_FACE", STORM["ShelfFaceM"]),
                  ("SHELF_FOOT", STORM["ShelfFootM"]), ("SHELF_STRIA", STORM["ShelfStriaM"]), ("SHELF_SCALLOP_L", STORM["ShelfScallopL"]),
-                 ("SHELF_SCALLOP", STORM["ShelfScallopM"])):
+                 ("SHELF_SCALLOP", STORM["ShelfScallopM"]),
+                 ("GLOOM_GAP", STORM["GloomGap"]), ("GLOOM_RAIN", STORM["GloomRain"]), ("GLOOM_FOOT_H", STORM["GloomFootH"]),
+                 ("GLOOM_FOOT", STORM["GloomFoot"])):
         c = c.replace(k, repr(float(v)))
     return c
 
