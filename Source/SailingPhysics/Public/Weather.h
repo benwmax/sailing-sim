@@ -114,6 +114,9 @@ namespace Sailing
 
 		/** W1: the month and the water (lake, or the bay and the Gulf) for the wind's calibration and the stability. */
 		void SetClimate(int InMonth, bool bInCoast) { Month = InMonth; bCoast = bInCoast; }
+		/** docs/night-clouds/: the local hour of sunset (the game mode's, from the date and the latitude): fair-weather
+		 *  cumulus dies away after it. */
+		void SetSunset(double Hour) { SunsetHour = Hour; }
 
 		/** Weather at T seconds after Configure. */
 		FWeatherState Evaluate(double T) const;
@@ -181,6 +184,7 @@ namespace Sailing
 		EWeatherPreset RandomBase = EWeatherPreset::AfternoonBreeze;
 		uint32_t Seed = 1;
 		double StartHour = 15.0;
+		double SunsetHour = 20.0;
 		int Month = 6;
 		bool bCoast = false;
 		double OriginX = 0.0, OriginY = 0.0;

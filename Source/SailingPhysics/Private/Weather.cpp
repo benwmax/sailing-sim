@@ -119,16 +119,23 @@ namespace Sailing
 		 * deck behind a dry northerly (crisp air); rain falls from a thick nimbostratus; the thunderstorm towers, blows
 		 * cirrus off its anvil ahead of itself and leaves broken debris cloud behind.
 		 */
-		void FillSky(EWeatherPreset P, double T, FWeatherState& W)
+		void FillSky(EWeatherPreset P, double T, FWeatherState& W, double Sunset)
 		{
 			FCloudSky& S = W.Sky;
 			const double H = W.HourOfDay;
+			// docs/night-clouds/: fair-weather cumulus is the land's heat rising; it stops at sunset and the cells die away
+			// over the next couple of hours (to 15% of the day's cover: a few flat remnants). The storm, the squall and the
+			// decks (stratus, rain) keep theirs. (At 18.5-20.5 h whatever the date, a summer evening's cumulus went at
+			// sunset and an autumn night kept 40% of the afternoon's all night.)
+			const double Hh = std::fmod(H, 24.0);
+			// (Night until the morning: past midnight it stays dark until 6-8 h, when the day starts over.)
+			const double Dusk = Hh >= 12.0 ? SmoothStep(Sunset - 0.25, Sunset + 1.75, Hh) : 1.0 - SmoothStep(6.0, 8.0, Hh);
 			FCloudLayer& Cu = S[ECloudLayer::Cumulus];
 			FCloudLayer& St = S[ECloudLayer::Stratus];
 			FCloudLayer& Ci = S[ECloudLayer::Cirrus];
 			Ci.BaseKm = 8.5; Ci.TopKm = 10.0; Ci.Density = 0.25;
 			St.BaseKm = 0.9; St.TopKm = 1.6; St.Density = 0.8;
-			const double Afternoon = SmoothStep(10.5, 15.0, H) * (1.0 - 0.6 * SmoothStep(18.5, 20.5, H));
+			const double Afternoon = SmoothStep(10.5, 15.0, Hh) * (1.0 - Dusk);
 			// C1 (round 12): every cumulus base on a day sits at one height, the lifting condensation level, about 125 m per
 			// degree of spread between the air and its dew point: near 1 km on a humid summer morning, near 2 km on a hot
 			// afternoon over the lake (DFW's July ceilings), lower on the humid coast.
@@ -139,14 +146,14 @@ namespace Sailing
 			switch (P)
 			{
 			case EWeatherPreset::CalmMorning:
-				Cu.Coverage = 0.04 + 0.12 * Afternoon;
+				Cu.Coverage = (0.04 + 0.12 * Afternoon) * (1.0 - 0.85 * Dusk);
 				Ci.Coverage = 0.25;
 				S.Haze = 0.75;
 				break;
 			case EWeatherPreset::AfternoonBreeze:
 				// C1 (round 12): scattered at most, about a fifth of the sky by mid-afternoon (real-05: a row of puffs over the
 				// far shore and a lot of blue). At a third, the towers' sides filled the low sky into a deck seen from the water.
-				Cu.Coverage = 0.04 + 0.18 * Afternoon;
+				Cu.Coverage = (0.04 + 0.18 * Afternoon) * (1.0 - 0.85 * Dusk);
 				Ci.Coverage = 0.1;
 				S.Haze = 0.55;
 				break;
@@ -166,7 +173,7 @@ namespace Sailing
 				break;
 			case EWeatherPreset::ClearMistral:
 				// Cloudless but for a few flat cumulus over the hills; the dry air leaves almost no haze.
-				Cu.Coverage = 0.03;
+				Cu.Coverage = 0.03 * (1.0 - 0.85 * Dusk);
 				Cu.TopKm = Cu.BaseKm + 0.3;
 				Ci.Coverage = 0.0;
 				S.Haze = 0.03;
@@ -596,7 +603,7 @@ namespace Sailing
 			W.Wind.ClimateMixedLayerMeters = kMistralMixedLayerM;
 			W.Wind.PuffIntervalSeconds = 60.0 * kMistralPuffMinutes;
 		}
-		FillSky(P, T, W);
+		FillSky(P, T, W, SunsetHour);
 		if (P == EWeatherPreset::Mistral) ApplySquall(W, T, W.Wind.FromDegrees);
 		W.Wind.SpeedKnots *= SpeedScale;
 		W.Wind.FromDegrees = std::fmod(W.Wind.FromDegrees + DirOffset + 360.0, 360.0);

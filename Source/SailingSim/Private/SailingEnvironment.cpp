@@ -1490,6 +1490,19 @@ void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& M
 	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowTotal, GlowParams[0], GetWorld()->GetTimeSeconds()));
 	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesA"), FLinearColor(GlowParams[0], GlowParams[1], GlowParams[2], GlowParams[3]));
 	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesB"), FLinearColor(GlowParams[4], GlowParams[5], GlowParams[6], GlowParams[7]));
+	// docs/night-clouds/: the same domes light the clouds' bases from below (CLOUD_CODE): GlowLum.rgb is an opaque base's
+	// glow (a cloud base's glow per unit of the domes' total: kCloudGlow, make_materials.py's CLOUD_GLOW), w 1 at night.
+	if (CloudMaterial)
+	{
+		constexpr float kCloudGlow = 1.0f;
+		// -SailingCloudGlow=<scale> measures (stills at other strengths).
+		static float GlowScale = -1.f;
+		if (GlowScale < 0.f) { GlowScale = 1.f; FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudGlow="), GlowScale); }
+		const float G = GlowTotal * kCloudGlow * GlowScale;
+		CloudMaterial->SetVectorParameterValue(TEXT("GlowLum"), FLinearColor(G, 0.70f * G, 0.42f * G, GlowTotal > 0.f ? 1.f : 0.f));
+		CloudMaterial->SetVectorParameterValue(TEXT("GlowDomesA"), FLinearColor(GlowParams[0], GlowParams[1], GlowParams[2], GlowParams[3]));
+		CloudMaterial->SetVectorParameterValue(TEXT("GlowDomesB"), FLinearColor(GlowParams[4], GlowParams[5], GlowParams[6], GlowParams[7]));
+	}
 	SkyMaterial->SetVectorParameterValue(TEXT("MoonDir"), FLinearColor(float(MoonTrue.X), float(MoonTrue.Y), float(MoonTrue.Z), MoonTrue.Z > -0.02f ? MoonLuminance : 0.f));
 	// Earthshine: the dark limb at about a few thousandths of the lit side (strongest near new moon).
 	SkyMaterial->SetVectorParameterValue(TEXT("SunTrue"), FLinearColor(float(SunTrue.X), float(SunTrue.Y), float(SunTrue.Z), 0.004f * (1.f - MoonLit)));
