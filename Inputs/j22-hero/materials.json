@@ -253,6 +253,15 @@
    "roughness": 0.85,
    "metallic": 0.0
   },
+  "PlywoodVarnish": {
+   "base_color_linear": [
+    0.4564,
+    0.2542,
+    0.107
+   ],
+   "roughness": 0.32,
+   "metallic": 0.0
+  },
   "PortlightAcrylic": {
    "base_color_linear": [
     0.0284,
