@@ -82,6 +82,13 @@ namespace Sailing
 		static constexpr double ShelfEdgeM = 60.0;
 		// Its rolled front face, this deep behind the lip, is lit and pale; the underside behind it dark.
 		static constexpr double ShelfFaceM = 450.0;
+		// Item 7 (shelf structure): the lit face starts this far over the base, a hard lower edge (the arcus line);
+		// across it the material draws striations ShelfStriaM tall, and scallops the base ShelfScallopM deep in lobes
+		// ShelfScallopLM apart along the front (material only, like the front's wander: no along-front coordinate here).
+		static constexpr double ShelfFootM = 20.0;
+		static constexpr double ShelfStriaM = 110.0;
+		static constexpr double ShelfScallopM = 70.0;
+		static constexpr double ShelfScallopLM = 1400.0;
 
 		/** Storm cloud density (0..1, before noise) at a distance ahead of the front and an altitude (m). Mask is the
 		 *  storm's lateral extent along the front (the weather map's storm channel), Build its growth (0..1). */

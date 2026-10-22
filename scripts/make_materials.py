@@ -2618,7 +2618,10 @@ def build_water_v4():
 STORM = dict(ShelfLeadM=250.0, ShelfBaseM=520.0, ShelfLipM=180.0, ShelfSlope=0.85, ShelfDepthM=3500.0, ShelfTierM=700.0, CoreBehindM=700.0,
              CoreBaseM=750.0, CoreTopM=6500.0, AnvilBaseM=4800.0, AnvilAheadM=9000.0,
              # W8 (storm from the sunshine): cumulus fade near the front; the shelf's crisp edge and lit rolled face.
-             CumulusFadeFarM=5000.0, CumulusFadeNearM=1500.0, ShelfEdgeM=60.0, ShelfFaceM=450.0)
+             CumulusFadeFarM=5000.0, CumulusFadeNearM=1500.0, ShelfEdgeM=60.0, ShelfFaceM=450.0,
+             # Item 7 (shelf structure): the lit face starts this far over the base (the arcus's hard lower edge); striations
+             # ShelfStriaM tall across it; the base scalloped ShelfScallopM deep in lobes ShelfScallopL apart along the front.
+             ShelfFootM=20.0, ShelfStriaM=110.0, ShelfScallopM=70.0, ShelfScallopL=1400.0)
 
 # Graphics G6: extinction of cumulus, stratus, storm and rain relative to CloudDensity (-SailingCloudLayerExt overrides).
 CLOUD_EXT = (1.0, 1.0, 1.0, 1.0)
@@ -2680,13 +2683,18 @@ D += 300.0 * sin(L / 2300.0) + 150.0 * sin(L / 900.0);
 // Graphics G1: the storm's walls bulge in and out by a few hundred metres (a straight-sided core read as a block from afar).
 float2 sw = Curl.SampleLevel(CurlSampler, (p.xy - Drift.xy) * 0.00035, 0).rg * 2.0 - 1.0;
 D += 600.0 * sw.x + 250.0 * sw.y * sin(alt * 0.0012);
-float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6;
+float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6;
 [branch] if (FrontB.y > 0.0 && w.a > 0.0)
 {
     float x = SHELF_LEAD - D;
     if (x >= 0.0 && x <= SHELF_DEPTH)
     {
         float base = SHELF_BASE - 120.0 * smoothstep(0.0, 800.0, x);
+        // Item 7: the base hangs in rounded lobes along the front (scallops, cusped between them), lobes about
+        // SHELF_SCALLOP_L apart, their spacing wandering: kilometres, coarser than any march step. Material only, like the
+        // front's wander above (FStormShape has no along-front coordinate).
+        float lobeF = frac(L / SHELF_SCALLOP_L + 0.35 * sin(L / 3700.0));
+        base -= SHELF_SCALLOP * sqrt(saturate(sin(3.14159265 * lobeF)));
         // W5a: the face climbs in two or three broad tiers (ledges SHELF_TIER apart, hundreds of metres tall, so the march
         // resolves them), then evenly into the storm: a smooth staircase in x (FStormShape::TierX).
         float tierA = 1.0 - smoothstep(2.0 * SHELF_TIER, 3.0 * SHELF_TIER, x);
@@ -2698,6 +2706,7 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6;
         // Graphics G1: no tiers in the density: anything finer than the march step (about 190 m) aliased into grain
         // (the V5 bands too). The face is shaded smoothly instead: dark at the base, brighter up the face.
         shelfH = saturate((alt - base) / max(top - base, 1.0));
+        shelfB = alt - base;
         storm = shelf;
     }
     float core = smoothstep(-CORE_BEHIND, -CORE_BEHIND - 1500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 14000.0, -CORE_BEHIND - 20000.0, D));
@@ -2823,7 +2832,11 @@ AO = 1.0;
         float torn = lerp(1.0 - n2, 1.0 - nS, saturate(shelf * 2.0));
         // W8: the shelf's sloping face above its base (FStormShape::ShelfShade) is a smooth, sunlit surface, the rolled lip
         // (SHELF_FACE deep behind the leading edge) brightest: almost no erosion there, so its edge is a clean arc, not froth.
-        [branch] if (shelf > 0.0) faceS = smoothstep(0.08, 0.35, shelfH) * lerp(0.6, 1.0, 1.0 - smoothstep(0.33 * SHELF_FACE, SHELF_FACE, shelfX));
+        // Item 7: the face starts SHELF_FOOT over the base, a hard lower edge (the arcus line over the dark underside), not a
+        // ramp over a quarter of the face's height (150 m soft at its middle). The ramp is never shorter than this ray climbs
+        // in one step (a near-level ray climbs 15-50 m a step; one looking steeply up gets the wider ramp).
+        float footRamp = max(30.0, 1.5 * stepM * abs(vd.z));
+        [branch] if (shelf > 0.0) faceS = smoothstep(SHELF_FOOT, SHELF_FOOT + footRamp, shelfB) * smoothstep(0.03, 0.10, shelfH) * lerp(0.6, 1.0, 1.0 - smoothstep(0.33 * SHELF_FACE, SHELF_FACE, shelfX));
         dSm = saturate((storm - (1.0 - nS) * lerp(0.2, 0.35, saturate(alt / 6000.0)) * (1.0 - 0.7 * max(lip, 0.85 * shelf * (1.0 - nearBase))) * lerp(0.25, 1.0, edgeS) * (1.0 - 0.85 * faceS * shelf) - torn * 0.35 * nearBase * (1.0 - lip)) * 1.6);
     }
     // Graphics G6: each layer's extinction relative to the full CloudDensity (Ext: cumulus, stratus, storm; w, the rains, unused since W5a). The grain
@@ -2848,7 +2861,15 @@ AO = 1.0;
     float cT = Tracer.y > 0.0 ? 3.0 * MaxStepDepth / (stepM * Density) : 1e6;
     // W8: the shelf's rolled front face (FStormShape::ShelfShade), lit and pale below.
     float face = faceS * shelf;
-    d = max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cT)), max(dCi, min(dSm * Ext.z, cS)));
+    // Item 7: the face is a hard surface. Capped like the rest of the storm (0.6 per shadow step) a ray ran 400-500 m into
+    // it before closing, so the lit skin mixed with the dim storm behind it into a translucent, frosted veil. Its light is
+    // emitted (below) and its tone varies only over hundreds of metres along the ray, so it can close within a view step
+    // or two without grain: the first samples in take nearly the same light. FACE_STEP_DEPTH 1.5 (about two steps): at 3
+    // (one step) the shade change over the face's first few hundred metres showed as grain (+30% on the near stills,
+    // docs/shelf-structure/). (Its scattering is cut by FACE_SCATTER_CUT.)
+    float cF = Tracer.y > 0.0 ? FACE_STEP_DEPTH * MaxStepDepth / (stepM * Density) : 1e6;
+    float cSm = lerp(cS, max(cS, cF), face);
+    d = max(max(min(dCu * Ext.x, cV), min(dSt * Ext.y, cT)), max(dCi, min(dSm * Ext.z, cSm)));
     // Darker, wetter storm cloud scatters less to the eye; bases sit in their own shadow (height ambient occlusion).
     // Only the low storm cloud (shelf, core) is dark and wet; the anvil's ice stays bright.
     // The fade sits under the anvil (ANVIL_BASE 4.8 km): from 3 km the shelf's upper tiers and the core's flanks read as pale ice.
@@ -2895,6 +2916,13 @@ AO = 1.0;
     // as the deck above shades it.
     float riser = 0.5 - 0.5 * cos(6.2831853 * shelfX / SHELF_TIER) * (1.0 - smoothstep(2.0 * SHELF_TIER, 3.0 * SHELF_TIER, shelfX));
     float faceTone = lerp(0.75, 1.1, riser) * lerp(0.7, 1.15, nS) * lerp(1.0, 0.3, smoothstep(SHELF_FACE, 1800.0, shelfX)) * lerp(0.8, 1.2, shelfH);
+    // Item 7: the face's laminar striations, bands SHELF_STRIA tall wandering a little along the front, each lit at its
+    // top and shaded under its ledge. In height, which a level ray hardly crosses within a step (the face closes within
+    // one or two, so its tone is the first samples'); faded out where one step climbs more than half a band (rays looking up
+    // into it), so nothing varies faster than the march.
+    float striaF = frac((shelfB + 25.0 * sin(L / 900.0) + 12.0 * sin(L / 330.0)) / SHELF_STRIA);
+    float stria = smoothstep(0.0, 0.3, striaF) * (1.0 - 0.8 * smoothstep(0.65, 1.0, striaF));
+    faceTone *= lerp(1.0, lerp(0.6, 1.15, stria), saturate(1.0 - 2.0 * stepM * abs(vd.z) / SHELF_STRIA));
     Emit += SunLum.rgb * (FACE_PALE * faceLit * faceTone) * face * d * Density;
     Albedo *= 1.0 - FACE_SCATTER_CUT * face;
     }
@@ -2934,12 +2962,14 @@ def cloud_code():
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
-    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9"))
+    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
                  ("ANVIL_AHEAD", STORM["AnvilAheadM"]), ("CU_FADE_FAR", STORM["CumulusFadeFarM"]),
-                 ("CU_FADE_NEAR", STORM["CumulusFadeNearM"]), ("SHELF_EDGE", STORM["ShelfEdgeM"]), ("SHELF_FACE", STORM["ShelfFaceM"])):
+                 ("CU_FADE_NEAR", STORM["CumulusFadeNearM"]), ("SHELF_EDGE", STORM["ShelfEdgeM"]), ("SHELF_FACE", STORM["ShelfFaceM"]),
+                 ("SHELF_FOOT", STORM["ShelfFootM"]), ("SHELF_STRIA", STORM["ShelfStriaM"]), ("SHELF_SCALLOP_L", STORM["ShelfScallopL"]),
+                 ("SHELF_SCALLOP", STORM["ShelfScallopM"])):
         c = c.replace(k, repr(float(v)))
     return c
 
