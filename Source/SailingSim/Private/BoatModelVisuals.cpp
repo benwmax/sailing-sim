@@ -1380,7 +1380,10 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			if (I == N - 1) LastDebug = S.Time;
 			const FCrewMotionReport& Rep = Anim->GetReport();
-			UE_LOG(LogTemp, Log, TEXT("Crew %d pelvis %s m over floor %.2f"), I, *Pl.Pelvis.ToString(), CrewFloorZ(Cfg, Pl.Pelvis.X, Pl.Pelvis.Y));
+			FCrewCockpitWell DebugWell;
+			const bool bDebugWell = CrewCockpitWell(Cfg, DebugWell);
+			UE_LOG(LogTemp, Log, TEXT("Crew %d pelvis %s m over floor %.2f (well %.2f..%.2f)"), I, *Pl.Pelvis.ToString(), CrewFloorZ(Cfg, Pl.Pelvis.X, Pl.Pelvis.Y),
+				bDebugWell ? DebugWell.X0 : 0.0, bDebugWell ? DebugWell.X1 : 0.0);
 			UE_LOG(LogTemp, Log, TEXT("Crew %d stance %d duck %.2f: modes %d %d, felt %s, tip %.2f%s, head %.1f deg, clip %s %.2f; accel %s omega %s alpha %s"), I, int32(P.Stance), Pl.Duck,
 				int32(Hands.Mode[0]), int32(Hands.Mode[1]), *Rep.Felt.ToString(), Rep.TipRatio, Rep.bBracing ? TEXT(" bracing") : TEXT(""), Rep.HeadTiltDeg,
 				Rep.Clip >= 0 ? CrewClips::Info(Rep.Clip).Label : TEXT("-"), Rep.ClipWeight,

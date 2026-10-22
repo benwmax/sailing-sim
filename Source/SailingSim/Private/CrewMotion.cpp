@@ -341,11 +341,17 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// docs/crew-hull-clip/: inside the lifelines where the boat has them (stanchions 5 cm in from the edge, wires at
 		// 0.3 and 0.6 m: build_fleet.py lifelines()), and leaning back against them, not out through them.
 		const bool bLifelines = CrewHasLifelines(Cfg);
-		Out.Pelvis = FVector(X, Side * (Rail - (bLifelines ? 0.32 : 0.12)), Sheer + 0.07);
+		// The J/22's rail crew sit far enough aft that their feet go down into the well: at its forward end less 0.12 m
+		// (x -0.84), the bow's feet came up against the hero's cabin face and the trimmer's onto its bridge deck, a leg
+		// raised across the helm's view (docs/crew-leg/). The bow 0.55 m aft of the well's end, the trimmer 0.5 m behind.
+		double RailX = X;
+		if (Cfg.Type == EBoatType::J22 && I < N - 1 && CrewCockpitWell(Cfg, KeelWell)) RailX = FMath::Min(X, KeelWell.X1 - 0.55 - 0.5 * I);
+		const double RailHere = RailX == X ? Rail : Hull.DeckHalfBeam(RailX);
+		Out.Pelvis = FVector(RailX, Side * (RailHere - (bLifelines ? 0.32 : 0.12)), (RailX == X ? Sheer : Hull.SheerHeight(RailX)) + 0.07);
 		if (bLifelines) P.Hike = FMath::Min(P.Hike, 0.3f);
 		// On the maxi's cambered deck (the seat is its crown, not the sheer), and her twelve rail crew are not one pose
 		// repeated: a little more or less hiked, a little fore or aft, by their place on the rail.
-		if (!Cfg.bMultihull) Out.Pelvis.Z = CrewSeatSurfaceZ(Cfg, X, Out.Pelvis.Y) + 0.07;
+		if (!Cfg.bMultihull) Out.Pelvis.Z = CrewSeatSurfaceZ(Cfg, RailX, Out.Pelvis.Y) + 0.07;
 		if (Cfg.Type == EBoatType::Maxi)
 		{
 			const float Vary = FMath::Frac(0.618034f * float(I + 1)) - 0.5f;
