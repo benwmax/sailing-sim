@@ -2080,6 +2080,38 @@ float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85
 // the factor of the cells' mean (0.44).
 float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), lerp(1.5, 1.0, useTable))
     * lerp(lerp(0.4, 1.0, smoothstep(0.15, 0.75, cells)), 0.6, patFade);
+// docs/far-flecks/ (option A of docs/far-caps/): far out the table's cover is the sea's share under foam, a fraction of a
+// percent spread evenly over each pixel, which no one can see. Real distant caps are bright flecks on dark water. So the
+// cover is redistributed into flecks, never added to: world-fixed cells (map frame, so they hold still as the camera
+// moves) five footprints across (the footprint's geometric mean, so a grazing view gets short horizontal dashes; a fleck
+// about three pixels: smaller ones, dimmed by their feather and the temporal AA, didn't read), stepping by twos with the footprint and cross-faded between two levels. Each cell holds one round
+// fleck (radius 0.3 of the cell, its edge feathered over at most a radius, which adds aa^2/12 to its area: share
+// 0.283 (1 + aa^2/12); centred within the middle tenth so the feather stays in its cell) for a 4 s life (a flat-topped
+// rise and fall, 1.6 sin clamped at 1: mean 0.7937), with the probability that makes the mean the cover. Keep FarCapFleck (WaterTests.cpp) in step:
+// SailingSim.Visual.FarCapFlecks holds the mean to the cover.
+float fleck = 0.0;
+[branch] if (useTable > 0.0)
+{
+    float fS = min(length(fdx), length(fdy)), fL = max(length(fdx), length(fdy));
+    float fG = sqrt(fS * fL);
+    float kLev = max(log2(max(5.0 * fG, 2.0) / 2.0), 0.0);
+    float kF = floor(kLev), kW = kLev - kF;
+    float fcov = crest;
+    #define FLK_H(c_) frac(sin(dot(fmod(c_, 289.0), float2(127.1, 311.7))) * 43758.5453)
+    #define FLK(s_, out_) { float2 q_ = p.xy / (s_); float2 id_ = floor(q_); float2 f_ = q_ - id_; \
+        float ep_ = T / 4.0 + FLK_H(id_ + 7.3); float age_ = frac(ep_); float n_ = floor(ep_); \
+        float h_ = FLK_H(id_ + float2(n_ * 3.17, n_ * 1.93)); \
+        float2 c_ = 0.45 + 0.1 * float2(FLK_H(id_ + n_ + 2.1), FLK_H(id_ + n_ + 5.9)); \
+        float aa_ = clamp(fG / ((s_) * 0.3), 1e-3, 1.0); float ar_ = 0.2827 * (1.0 + aa_ * aa_ / 12.0); \
+        float pr_ = saturate(fcov / (ar_ * 0.7937)); float g_ = fcov / max(pr_ * ar_ * 0.7937, 1e-6); \
+        float d_ = length(f_ - c_) / 0.3; \
+        out_ = saturate(step(h_, pr_) * saturate((1.0 - d_) / aa_ + 0.5) * saturate(1.6 * sin(3.14159265 * age_)) * g_); }
+    float fl0 = 0.0, fl1 = 0.0;
+    FLK(2.0 * exp2(kF), fl0);
+    FLK(4.0 * exp2(kF), fl1);
+    fleck = lerp(fl0, fl1, kW);
+}
+capsDrawn = lerp(capsDrawn, max(fleck, residue), useTable);
 FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
 // docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's

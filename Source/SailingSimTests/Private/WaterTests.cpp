@@ -743,3 +743,65 @@ bool FWaterFarGridTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The single 40 km quad was metres out (for the record)"), FMath::Abs(Drop(FVector2D(20000.0, 20000.0)) / 2.0 - Drop(FVector2D(0.0, 0.0))) > 10.0);
 	return true;
 }
+
+namespace
+{
+	/** M_WaterV4's far whitecap fleck (make_materials.py, FLK; docs/far-flecks/): one level's cover at a map point and time. */
+	double FarCapFleckHash(double X, double Y)
+	{
+		const double A = FMath::Fmod(X, 289.0), B = FMath::Fmod(Y, 289.0);
+		const double V = FMath::Sin(A * 127.1 + B * 311.7) * 43758.5453;
+		return V - FMath::Floor(V);
+	}
+	double FarCapFleck(double Px, double Py, double T, double Size, double Cover, double FootG)
+	{
+		const double Qx = Px / Size, Qy = Py / Size;
+		const double Ix = FMath::Floor(Qx), Iy = FMath::Floor(Qy);
+		const double Fx = Qx - Ix, Fy = Qy - Iy;
+		const double Ep = T / 4.0 + FarCapFleckHash(Ix + 7.3, Iy + 7.3);
+		const double Age = Ep - FMath::Floor(Ep), N = FMath::Floor(Ep);
+		const double H = FarCapFleckHash(Ix + N * 3.17, Iy + N * 1.93);
+		const double Cx = 0.45 + 0.1 * FarCapFleckHash(Ix + N + 2.1, Iy + N + 2.1), Cy = 0.45 + 0.1 * FarCapFleckHash(Ix + N + 5.9, Iy + N + 5.9);
+		const double Aa = FMath::Clamp(FootG / (Size * 0.3), 1e-3, 1.0);
+		const double Ar = 0.2827 * (1.0 + Aa * Aa / 12.0);
+		const double Pr = FMath::Clamp(Cover / (Ar * 0.7937), 0.0, 1.0);
+		const double G = Cover / FMath::Max(Pr * Ar * 0.7937, 1e-6);
+		const double D = FMath::Sqrt(FMath::Square(Fx - Cx) + FMath::Square(Fy - Cy)) / 0.3;
+		return FMath::Clamp((H < Pr ? 1.0 : 0.0) * FMath::Clamp((1.0 - D) / Aa + 0.5, 0.0, 1.0) * FMath::Min(1.0, 1.6 * FMath::Sin(UE_DOUBLE_PI * Age)) * G, 0.0, 1.0);
+	}
+}
+
+/**
+ * The far whitecap flecks (docs/far-flecks/): they redistribute the fold table's cover into flecks, never add to it.
+ * Over many cells and a cap's life their mean is the cover, at the lake's light cover and at a Gulf gale's, at a near and
+ * a far cell size.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterFarCapFlecksTest, "SailingSim.Visual.FarCapFlecks", WaterFlags)
+bool FWaterFarCapFlecksTest::RunTest(const FString&)
+{
+	for (const double Size : { 2.0, 16.0 })
+	{
+		for (const double Cover : { 0.002, 0.01, 0.05 })
+		{
+			double Sum = 0.0;
+			int64 Count = 0;
+			const double Step = Size / 10.0;
+			for (int32 K = 0; K < 24; ++K)
+			{
+				const double T = 1000.0 + K * 0.53;
+				for (double X = 5000.0; X < 5000.0 + 120.0 * Size; X += Step)
+				{
+					for (double Y = -3000.0; Y < -3000.0 + 120.0 * Size; Y += Step)
+					{
+						Sum += FarCapFleck(X, Y, T, Size, Cover, Size / 5.0);
+						++Count;
+					}
+				}
+			}
+			const double Mean = Sum / double(Count);
+			AddInfo(FString::Printf(TEXT("Cell %.0f m, cover %.3f: the flecks' mean %.4f"), Size, Cover, Mean));
+			TestTrue(FString::Printf(TEXT("Cell %.0f m, cover %.3f: the flecks average to the cover (within 15%%)"), Size, Cover), FMath::Abs(Mean / Cover - 1.0) < 0.15);
+		}
+	}
+	return true;
+}
