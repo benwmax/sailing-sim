@@ -1911,11 +1911,13 @@ float far = saturate((dist - 0.5 * DetailP.z) / (2.0 * DetailP.z));
 // The boats' own waves: slopes by finite differences, and their foam.
 float2 wg = (p.xy - WakeGridRect.xy) / WakeGridRect.z;
 float wakeFoam = 0.0;
+float wakeSlick = 0.0;
 [branch] if (all(wg > 0.001) && all(wg < 0.999))
 {
     float e = 1.0 / WakeGridRect.w;
     float2 uv = float2(wg.y, wg.x);
-    float2 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0).rg;
+    float3 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0).rgb;
+    wakeSlick = c.b;
     float hx = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(0.0, e), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(0.0, e), 0).r;
     float hy = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(e, 0.0), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(e, 0.0), 0).r;
     float cell = WakeGridRect.z / WakeGridRect.w;
@@ -2146,7 +2148,9 @@ float wdash = 0.5 + 0.5 * sin(along / lerp(3.5, 6.5, wh) + wk * 2.3 + 1.7 * sin(
 float ww = lerp(0.6, 1.8, wh2);   // each row its own width
 float wline = (1.0 - smoothstep(0.008 * ww, 0.025 * ww, abs(frac(wx) - (0.35 + 0.3 * wh)))) * smoothstep(0.35, 0.8, wdash) * lerp(0.3, 1.0, step(0.25, wh));
 float wrow = wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 260.0) * saturate(1.0 - fwidth(wx) * 8.0);
-float smoothing = max(glass, max(0.65 * slick, 0.5 * wrow));
+// docs/wake-slick/: a boat's wake lane (FWakeGrid's slick: the water she stirred, for a minute behind her), the wind's
+// ripples damped along it: the smooth, darker track a sailboat leaves, tens of lengths long.
+float smoothing = max(max(glass, 0.8 * saturate(wakeSlick * 1.5)), max(0.65 * slick, 0.5 * wrow));
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
 slopeVar *= 1.0 - 0.92 * smoothing;
 Foam = saturate(Foam + 0.05 * wrow * lace); // a faint, lacy line of bubbles and scum; mostly they read as smoother water
