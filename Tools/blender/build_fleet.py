@@ -434,9 +434,8 @@ def lifelines(H, x_from, x_to):
     for side in (1, -1):
         posts = [(x, H.cy + side * (H.sharp_half_beam(x) - 0.05), H.deck_z(x, H.cy + side * (H.sharp_half_beam(x) - 0.05))) for x in xs]
         for (x, y, z) in posts:
-            tube(hull, [(x, y, z), (x, y, z + hgt)], 0.012, "Stainless", 6)
-            box(hull, (x, y, z + 0.02), (0.07, 0.05, 0.04), "Stainless")              # boats 11: stanchion base
-        for f in (0.5, 1.0):
+            kit_part("Stanchion", x, y, z, height=hgt)        # the kit's: base plate, socket, tube, mid ring, cap
+        for f in (0.52, 1.0 - 0.008 / hgt):                   # through its mid ring and its cap
             tube(hull, [(x, y, z + hgt * f) for (x, y, z) in posts], 0.0035, "Stainless", 4)
     bow = H.h["bow_x"]
     ring = [(x_to + (bow - 0.1 - x_to) * math.sin(math.pi / 2 * k / 8), H.cy + (H.sharp_half_beam(x_to) - 0.05) * math.cos(math.pi / 2 * k / 8), H.deck_z(x_to, H.cy) + hgt) for k in range(9)]
@@ -890,7 +889,11 @@ elif TAG in ("Catalina22", "Catalina30"):
         # (it had been across the cockpit at the wheel, and an eased sheet swept the helm's back).
         tx = cb[0] + 1.0  # (forward of the slide-hatch rails)
         traveler = (tx, top(tx) + 0.03, half(tx) - 0.15)
-    tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
+    if TAG == "Catalina30":
+        # the kit's traveler (track, car with its control sheaves, end stops) across the cabin top: its car at Traveler_C
+        kit_part("Traveler", traveler[0], 0.0, top(traveler[0]), math.pi / 2, length=2 * traveler[2] + 0.06)
+    else:
+        tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (ck[2] + 0.13)
@@ -899,7 +902,7 @@ elif TAG in ("Catalina22", "Catalina30"):
         clew_x = jib[0]["luff_x"] - jib[0]["chord"]
         lx = clew_x - 0.15
         ly = side * (MAIN.sharp_half_beam(lx) - 0.12)
-        box(hull, (lx, ly, MAIN.deck_z(lx, ly) + 0.015), (0.9, 0.03, 0.02), "Aluminium")
+        kit_part("JibTrack", lx, ly, MAIN.deck_z(lx, ly), length=0.9)          # the kit's T-track and lead car
         socket(f"JibLead_{tag}", (lx, ly, MAIN.deck_z(lx, ly) + 0.05))
     socket("LazySheetVia", (mast_x + 0.4, 0, top(mast_x + 0.4) + 0.05))
     socket("BackstayPlate", (st + 0.04, 0, MAIN.deck_z(st, 0) + 0.02))
