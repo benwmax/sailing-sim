@@ -237,6 +237,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	Out.Roll = 0.f;
 	Out.Duck = 0.f;
 	P.Side = Side;
+	P.Inboard = P.Stoop = 0.f;
 	P.Hike = float(FMath::Clamp((Off - Cfg.CrewSitOut * 0.8) / FMath::Max(Cfg.CrewHikeOut, 0.1), 0.0, 1.0));
 	// Round 10: a dinghy sailor sits on the side deck, at its edge from about the sit-out offset, and leans out from there:
 	// how far they lean is how far the crew model has them past the edge, up to fully hiked (sit-out plus hike-out). Inboard
@@ -300,8 +301,12 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		const double Y = In.CrewOffset * (1.0 - Out.Duck);
 		const double Up = Sheer + (bDinghy ? 0.25 : 0.05);
 		const double FloorZ = CrewFloorZ(Cfg, X, Y);
+		// Under a boom less than a metre over the floor (the Sunfish's, 0.5 m over her deck) the trunk folds flatter and the
+		// crouch goes 12 cm lower, kneeling: at the lowest crouch her sailor's back was at the boom and its sheet
+		// (SailingSim.Visual.SheetClearance).
+		if (FloorZ > -1e8) P.Stoop = Out.Duck * float(FMath::Clamp((1.0 - (Cfg.BoomZ - FloorZ)) / 0.5, 0.0, 1.0));
 		// (30 cm over the floor at the lowest: at 22 the folded knees went through the sole: docs/crew-hull-clip/.)
-		const double Lowest = FloorZ > -1e8 ? FloorZ + 0.30 : Sheer - 0.3;
+		const double Lowest = FloorZ > -1e8 ? FloorZ + 0.30 - 0.12 * P.Stoop : Sheer - 0.3;
 		const double Under = FMath::Max(Cfg.BoomZ - 0.85, Lowest);
 		Out.Pelvis = FVector(X, Y, FMath::Lerp(Up, FMath::Min(Up, Under), double(Out.Duck)));
 		// docs/crew-hull-clip/: over a cabin trunk (the maxi's coachroof), crossing on top of it.

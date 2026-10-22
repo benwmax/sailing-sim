@@ -371,8 +371,7 @@ bool FVisualTrimmerTailsJibTest::RunTest(const FString& Parameters)
  *  - a sheet more than 10 cm into the solid boat away from its fittings,
  *  - a sheet through a wire or the mast (closer than their radii, by more than 1 cm) away from both its ends,
  *  - a sheet more than 4 cm into a sailor away from a hand holding it and off the deck (a line on the deck or the cockpit
- *    floor under a sailor is sat or lain on: the Sunfish's sailor ducking flat under her boom, the maxi's crew on a lazy
- *    sheet),
+ *    floor under a sailor is sat or lain on: the maxi's crew on a lazy sheet),
  * each in more than 2 samples of a boat.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSheetClearanceTest, "SailingSim.Visual.SheetClearance", RigClearanceFlags)
@@ -421,9 +420,6 @@ bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 		const bool bLifelines = CrewHasLifelines(Cfg);
 		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(Cfg.Type));
 
-		// The known gap (fix list 15): the Sunfish's boom is 0.5 m over her deck and her sheet runs along it to the hand, so
-		// ducking under it through a tack or a gybe her sailor's back meets the sheet. Listed, not failed, while turning.
-		bool bTurning = false;
 		auto Check = [&](const FString& State)
 		{
 			const FTransform Root = Pawn->BoatRoot->GetComponentTransform();
@@ -516,7 +512,7 @@ bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 						if (Gap < -2.0)
 						{
 							Note(Found, FString::Printf(TEXT("%s: %s through crew %d's %s"), *BoatName, *What, B.Crew, *B.Name), FString::Printf(TEXT("%.1f cm at (%.0f, %.0f, %.0f), %s"), -Gap, P.X, P.Y, P.Z, *At));
-							if (Gap < -4.0 && !bInHand && !bOnFloor && !(bTurning && Cfg.Type == EBoatType::Sunfish && What == TEXT("mainsheet tail"))) Note(Fails, FString::Printf(TEXT("%s: %s through the crew"), *BoatName, *What), FString::Printf(TEXT("crew %d's %s, %.1f cm, %s"), B.Crew, *B.Name, -Gap, *At));
+							if (Gap < -4.0 && !bInHand && !bOnFloor) Note(Fails, FString::Printf(TEXT("%s: %s through the crew"), *BoatName, *What), FString::Printf(TEXT("crew %d's %s, %.1f cm, %s"), B.Crew, *B.Name, -Gap, *At));
 						}
 					}
 				}
@@ -547,7 +543,6 @@ bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 			Pawn->HoldForTests(T.From, 12.0);
 			Tick(8 * 30);
 			Pawn->RetargetForTests(T.To);
-			bTurning = true;
 			for (int32 Sample = 0; Sample < 36; ++Sample)
 			{
 				Tick(10);
@@ -555,7 +550,6 @@ bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 				Check(FString::Printf(TEXT("%s, %.1f s in (heel %.0f, TWA %.0f, boom %.0f)"), T.Name, (Sample + 1) / 3.0, FMath::RadiansToDegrees(Tel.Heel),
 					FMath::RadiansToDegrees(Tel.TrueWindAngle), FMath::RadiansToDegrees(Pawn->GetBoatModel().GetState().BoomAngle)));
 			}
-			bTurning = false;
 		}
 	}
 	Found.KeySort([](const FString& A, const FString& B) { return A < B; });

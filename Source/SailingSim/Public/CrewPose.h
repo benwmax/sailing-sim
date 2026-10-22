@@ -24,6 +24,7 @@ struct SAILINGSIM_API FCrewPoseParams
 	float Hike = 0.f;       // 0 sitting up .. 1 hiked hard (or flat out on the wire)
 	float Side = 1.f;       // +1 the sailor is on the starboard side, -1 port
 	float Inboard = 0.f;    // a dinghy sailor sitting in from the deck edge (light air, a run): 0 at the edge .. 1 well in
+	float Stoop = 0.f;      // crossing under a boom less than a metre over the floor: 0 crouched .. 1 folded flat under it
 	// docs/crew-hull-clip/: sitting on a deck whose floor ahead of the sailor is as high as the seat (the maxi's deck
 	// beside her cockpit, a multihull's nets or bridgedeck): knees up and the feet on the deck, not down into a well.
 	bool bFlatDeck = false;
