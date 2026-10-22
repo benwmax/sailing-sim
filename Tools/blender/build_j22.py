@@ -578,10 +578,10 @@ box(hull, (fh_x, 0, deck_z(fh_x, 0) + 0.035), (0.5, 0.5, 0.07), "Deck")
 box(hull, (fh_x, 0, deck_z(fh_x, 0) + 0.072), (0.44, 0.44, 0.006), "CabinWindow")
 mast_step_z = cabin_top_edge(RIG["mast_x"])[1] + 0.035
 box(hull, (RIG["mast_x"], 0, mast_step_z + 0.015), (0.2, 0.14, 0.03), "Aluminium")
-# Graphics G6: the halyards' turning blocks round the mast step, and the vang's base block.
-for k in range(3):
-    for side in (1, -1):
-        block(hull, (RIG["mast_x"] - 0.12, side * (0.06 + 0.02 * k), mast_step_z + 0.03), axis_y=True, r=0.02)
+# Graphics G6: the turning blocks at the mast step. Bean's feedback 2 (the Harken J/22 layout): two, one a side (it had
+# been six).
+for side in (1, -1):
+    block(hull, (RIG["mast_x"] - 0.12, side * 0.11, mast_step_z + 0.03), axis_y=True, r=0.02)
 socket("MastStep", (RIG["mast_x"], 0, mast_step_z))
 lazy_x = RIG["mast_x"] + 0.32
 socket("LazySheetVia", (lazy_x, 0, cabin_top_edge(lazy_x)[1] + 0.035 + 0.03))
@@ -644,37 +644,41 @@ rbox(hull, (STERN + 0.03, 0, sheer(STERN) + 0.025), (0.04, 0.012, 0.04), "Stainl
 
 # Winches, cam cleats, jib tracks and cars, cleats, the traveler.
 for side, tag in ((1, "S"), (-1, "P")):
-    wx = CABIN_AFT - 0.28
-    wy = side * (inner_edge(wx) + 0.16)
-    wz = deck_z(wx, wy)
+    # Bean's feedback 3 (the Harken J/22 layout, the hero's): the jib sheet ends at a cam with its fairlead on the cockpit's
+    # side wall, just aft of the side-deck track; the winch is the halyards', on the cabin top's aft corner.
+    xc = -1.05
+    ie = inner_edge(xc)
+    zc = 0.5 * (SEAT_Z + deck_z(xc, ie)) + 0.03
+    rbox(hull, (xc, side * (ie - 0.008), zc), (0.075, 0.016, 0.032), "BlackPlastic", r=0.008)
+    for dx in (-0.012, 0.012):
+        cylinder(hull, (xc - 0.006, side * (ie - 0.016), zc + dx), (0, -side, 0), 0.010, 0.012, "Aluminium", 12)
+    cylinder(hull, (xc + 0.032, side * (ie - 0.016), zc), (0, -side, 0), 0.011, 0.014, "BlackPlastic", 12)   # its fairlead
+    socket(f"JibWinch_{tag}", (xc + 0.032, side * (ie - 0.03), zc))
+    socket(f"JibTailer_{tag}", (xc - 0.006, side * (ie - 0.03), zc))
+    # The jib sheet's tail: from the cam down onto the cockpit seat, the rest coiled there.
+    sz = SEAT_Z + 0.002
+    ty0 = side * (ie - 0.12)
+    tube(hull, [(xc - 0.03, side * (ie - 0.025), zc), (xc - 0.12, side * (ie - 0.06), zc - 0.03), (xc - 0.25, ty0, sz + 0.02), (xc - 0.38, ty0, sz + 0.005)],
+         0.0045, "Rope", 6)
+    coil(hull, (xc - 0.55, ty0), 0.11, 3.0, sz, seed=0.7 * side)
+    wx = CABIN_AFT + 0.12
+    we, wzt = cabin_top_edge(wx)
+    wy = side * (we - 0.10)
+    wz = wzt + 0.035 * (1 - (wy / we) ** 2)
     rbox(hull, (wx, wy, wz + 0.004), (0.20, 0.20, 0.008), "BlackPlastic", r=0.05, chamfer=0.004)
     bolts(hull, [(wx + 0.088 * math.cos(a), wy + 0.088 * math.sin(a)) for a in (2 * math.pi * k / 5 + 0.3 for k in range(5))], wz + 0.008, 0.004)
     winch(hull, wx, wy, wz + 0.008)
-    socket(f"JibWinch_{tag}", (wx, wy, wz + 0.07))
-    socket(f"JibTailer_{tag}", (wx, wy, wz + 0.11))
-    cx2 = wx - 0.25
-    cam_cleat(hull, cx2, side * (inner_edge(cx2) + 0.1), deck_z(cx2, inner_edge(cx2)), 0.0)
-    # The jib sheet's tail: from the self-tailer down onto the cockpit seat, the rest coiled there.
-    sz = SEAT_Z + 0.002
-    ty0 = side * (inner_edge(wx - 0.35) - 0.12)
-    tube(hull, [(wx - 0.02, wy - side * 0.06, wz + 0.11), (wx - 0.12, wy - side * 0.1, wz + 0.05), (wx - 0.25, ty0, sz + 0.02), (wx - 0.38, ty0, sz + 0.005)],
-         0.0045, "Rope", 6)
-    coil(hull, (wx - 0.55, ty0), 0.11, 3.0, sz, seed=0.7 * side)
-    # Rope clutches beside the companionway (halyards, cunningham), their tails coiled on the cabin top's aft edge.
-    for k in range(3):
-        kx = CABIN_AFT + 0.12
-        ky = side * (0.42 + 0.05 * k)
+    # Bean's feedback 2: the halyards' cam cleats just forward of the winch, two a side (they had been three clutches).
+    for k in range(2):
+        kx = CABIN_AFT + 0.30
+        ky = side * (we - 0.16 - 0.07 * k)
         kz = cabin_top_edge(kx)[1] + 0.035 * (1 - (ky / cabin_top_edge(kx)[0]) ** 2)
-        # a rope clutch: cast body with the line through it and the lever folded down over the top
-        rbox(hull, (kx, ky, kz + 0.004), (0.13, 0.042, 0.008), "BlackPlastic", r=0.012)
-        rbox(hull, (kx, ky, kz + 0.022), (0.11, 0.036, 0.03), "Aluminium", r=0.012, chamfer=0.012)
-        tube(hull, [(kx - 0.05, ky, kz + 0.04), (kx - 0.01, ky, kz + 0.047), (kx + 0.05, ky, kz + 0.044)], 0.007, "BlackPlastic", 10)
-        bolts(hull, [(kx - 0.058, ky), (kx + 0.058, ky)], kz + 0.008, 0.0035)
+        cam_cleat(hull, kx, ky, kz, math.pi)
         # Its halyard runs forward along the cabin top to the turning block at the mast step.
         hx = RIG["mast_x"] - 0.12
-        tube(hull, [(kx + 0.06, ky, kz + 0.02), (0.5 * (kx + hx), side * (0.3 + 0.04 * k), cabin_top_edge(0.5 * (kx + hx))[1] + 0.04), (hx, side * (0.06 + 0.02 * k), cabin_top_edge(hx)[1] + 0.05)],
+        tube(hull, [(kx + 0.06, ky, kz + 0.02), (0.5 * (kx + hx), side * (0.3 + 0.04 * k), cabin_top_edge(0.5 * (kx + hx))[1] + 0.04), (hx, side * 0.03, cabin_top_edge(hx)[1] + 0.05)],
              0.004, "Rope", 6)
-    coil(hull, (CABIN_AFT + 0.05, side * 0.55), 0.09, 2.5, cabin_top_edge(CABIN_AFT + 0.05)[1] + 0.01, seed=1.3 * side)
+    coil(hull, (CABIN_AFT + 0.07, side * 0.36), 0.09, 2.5, cabin_top_edge(CABIN_AFT + 0.05)[1] + 0.01, seed=1.3 * side)
     # J/22 light match: the teak grab rail on the cabin top (the hero's), a bar on three legs.
     hx0, hx1 = CABIN_AFT + 0.32, CABIN_AFT + 1.30
 
@@ -686,11 +690,12 @@ for side, tag in ((1, "S"), (-1, "P")):
     for k in range(3):
         x = hx0 + 0.04 + (hx1 - hx0 - 0.08) * k / 2
         box(hull, (x, hy, top_at(x, hy) + 0.03), (0.05, 0.026, 0.06), "Teak")
-    # Jib track on the side deck and its car with a block.
-    tx0, tx1 = 0.45, -0.25
-    ty = side * (sharp_half_beam(0.1) - 0.24)
+    # Jib track on the side deck and its car with a block: Bean's feedback 3, beside the cockpit's forward end (it had been
+    # forward, by the shrouds).
+    tx0, tx1 = -0.25, -0.85
+    ty = side * (sharp_half_beam(-0.55) - 0.11)
     tube(hull, [(tx0, ty, deck_z(tx0, ty) + 0.006), (tx1, ty, deck_z(tx1, ty) + 0.006)], 0.008, "Aluminium", 6)
-    carx = 0.12
+    carx = -0.55
     rbox(hull, (carx, ty, deck_z(carx, ty) + 0.02), (0.08, 0.035, 0.03), "Aluminium", r=0.01, chamfer=0.01)
     cylinder(hull, (carx, ty - side * 0.0, deck_z(carx, ty) + 0.035), (0, 1, 0), 0.025, 0.02, "BlackPlastic", 16)
     socket(f"JibLead_{tag}", (carx, ty, deck_z(carx, ty) + 0.05))
@@ -706,16 +711,29 @@ for side in (1, -1):
     by = side * 0.13
     horn_cleat(hull, BOW - 0.42, by, deck_z(BOW - 0.42, by), 0.13, 0.0)
 socket("BowCleat", (bx, 0, deck_z(bx, 0) + 0.04))
-TRAV_X = -1.75
+TRAV_X = -2.06      # under the boom's end, as the hero's TRAVELER_X (end-boom sheeting: Bean's feedback 1)
 te = inner_edge(TRAV_X) - SEAT_W
-tube(hull, [(TRAV_X, -te, SEAT_Z + 0.02), (TRAV_X, te, SEAT_Z + 0.02)], 0.012, "Aluminium", 8)
+# Bean's J/22 feedback 1 (the hero's j22_mainsheet.py): the traveler is a dark track across the whole cockpit from seat to
+# seat, let into the seat tops and open over the well (it had stood on a gelcoat bridge), with an end cap on each seat.
+box(hull, (TRAV_X, 0, SEAT_Z - 0.004), (0.032, 2 * (te + SEAT_W - 0.04), 0.016), "BlackPlastic")
 for side in (1, -1):
-    rbox(hull, (TRAV_X, side * te, SEAT_Z + 0.02), (0.06, 0.035, 0.04), "Aluminium", r=0.012, chamfer=0.012)
+    rbox(hull, (TRAV_X, side * (te + SEAT_W - 0.06), SEAT_Z + 0.008), (0.05, 0.045, 0.03), "BlackPlastic", r=0.008, chamfer=0.006)
 socket("Traveler_S", (TRAV_X, te - 0.05, SEAT_Z + 0.05))
 socket("Traveler_P", (TRAV_X, -te + 0.05, SEAT_Z + 0.05))
 socket("Traveler_C", (TRAV_X, 0, SEAT_Z + 0.05))
-# The traveler sits on a bridge across the cockpit at seat height.
-box(hull, (TRAV_X, 0, SEAT_Z - 0.005), (0.16, 2 * te, 0.03), "Deck")
+
+# Bean's feedback 4 (the hero's): the spinnaker gear at the Harken J/22 layout's positions: the sheets' turning blocks at
+# the aft quarters, a block and cam cleat beside the cockpit, the twinger blocks by the shrouds, the pole downhaul's
+# block on the foredeck.
+for side in (1, -1):
+    for (bx_, inset, r) in ((STERN + 0.30, 0.13, 0.02), (-1.75, 0.10, 0.02), (RIG["mast_x"] - 0.45, 0.16, 0.015)):
+        by_ = side * (sharp_half_beam(bx_) - inset)
+        block(hull, (bx_, by_, deck_z(bx_, by_) + r + 0.01), axis_y=True, r=r)
+    cx_ = -1.59
+    cy_ = side * (sharp_half_beam(cx_) - 0.10)
+    cam_cleat(hull, cx_, cy_, deck_z(cx_, cy_), math.pi)
+px_ = CABIN_FWD + 0.25
+block(hull, (px_, 0.0, deck_z(px_, 0.0) + 0.025), axis_y=False, r=0.015)
 
 # Gudgeons on the transom for the rudder: each a plate with two lugs, above and below the pintle strap (the hero's, from
 # Bean's transom photos).

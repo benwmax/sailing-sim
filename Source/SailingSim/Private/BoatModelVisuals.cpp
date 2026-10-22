@@ -446,7 +446,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		const FVector TravC = RigPoint(ModelHull, TEXT("Traveler_C")), TravS = RigPoint(ModelHull, TEXT("Traveler_S"));
 		const float BoomSide = S.BoomAngle >= 0.0 ? 1.f : -1.f;
-		Car = TravC + (TravS - TravC) * FMath::Clamp(float(Controls.Traveler), -1.f, 1.f) * BoomSide;
+		// By the angle the physics gives the boom (TravelerRangeDeg about the gooseneck), not by the track's length: the
+		// J/22's track spans the cockpit seat to seat, 3 m aft of the gooseneck, and full travel along it would have led
+		// the sheet well outboard of the boom.
+		const double Arm = FMath::Abs(TravC.X - BoomPivot->GetRelativeLocation().X);
+		const double Out = Arm * FMath::Tan(FMath::DegreesToRadians(FMath::Clamp(Controls.Traveler, -1.0, 1.0) * Boat.GetConfig().TravelerRangeDeg));
+		const FVector Along = TravS - TravC;
+		const double Half = Along.Size();
+		Car = TravC + Along.GetSafeNormal() * FMath::Clamp(Out, -Half, Half) * BoomSide;
 		TravelerCar->SetRelativeLocation(Car + FVector(0.f, 0.f, 1.5f));
 	}
 
@@ -631,10 +638,17 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), 0.4f, MainGripCm ? 0.01f : 0.04f });
 	}
 	Label(Ropes, TEXT("mainsheet tail"));
+	// Bean's J/22 feedback 1: where the lower block stands on the car (the hero's fiddle, MainsheetBlock), the tackle
+	// ends at its sheave, carried with the car.
+	FVector LowBlock = Car + FVector(0.f, 0.f, 3.f);
+	if (Has(ModelHull, TEXT("MainsheetBlock")) && Has(ModelHull, TEXT("Traveler_C")))
+	{
+		LowBlock = Car + RigPoint(ModelHull, TEXT("MainsheetBlock")) - RigPoint(ModelHull, TEXT("Traveler_C"));
+	}
 	for (int32 K = 0; K < 4; ++K)
 	{
 		const FVector Off(0.f, (K - 1.5f) * 1.2f, 0.f);
-		Ropes.Add({ BoomBlock + Off, Car + FVector(0.f, 0.f, 3.f) + Off, 0.35f, MainSlack });
+		Ropes.Add({ BoomBlock + Off, LowBlock + Off, 0.35f, MainSlack });
 	}
 	Label(Ropes, TEXT("mainsheet"));
 	// Vang: a 3:1 tackle from the boom to the mast base, slack when eased off.

@@ -151,9 +151,10 @@ def cheek_block(name, at, axle, toward, M, sheave_d=0.035, padeye=None):
 
 
 def turning_blocks(mast_x, zm, M):
-    """Six blocks fanned round the step's aft side (the halyards and control lines' turn aft), on padeyes."""
+    """Two blocks beside the step's aft side, on padeyes (Bean's feedback 2, the Harken J/22 layout: the halyards turn on
+    the step's own sheaves; these take the control lines). It had been six."""
     out = []
-    for k, dy in enumerate((-0.15, -0.10, -0.05, 0.05, 0.10, 0.15)):
+    for k, dy in enumerate((-0.11, 0.11)):
         out += cheek_block(f"Turn_{k}", (mast_x - 0.12, dy, zm + 0.058), (1, 0, 0), (0, 0, -1), M, padeye=((mast_x - 0.12, dy, zm), (0, 0, 1)))
     return out
 

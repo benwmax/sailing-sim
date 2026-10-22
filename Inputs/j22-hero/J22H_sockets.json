@@ -16,24 +16,24 @@
    68.61
   ],
   "JibWinch_S": [
-   -42.84,
-   74.29,
-   106.72
+   -102.45,
+   91.82,
+   56.64
   ],
   "JibTailer_S": [
-   -42.84,
-   74.29,
-   110.72
+   -105.6,
+   91.74,
+   56.64
   ],
   "JibLead_S": [
-   16.13,
-   62.13,
-   100.36
+   -54.06,
+   111.3,
+   66.99
   ],
   "JibTailRest_S": [
-   -17.84,
-   54.29,
-   97.94
+   -145.0,
+   58.0,
+   40.8
   ],
   "SpreaderTip_S": [
    38.64,
@@ -51,24 +51,24 @@
    68.61
   ],
   "JibWinch_P": [
-   -42.84,
-   -74.29,
-   106.72
+   -102.45,
+   -91.82,
+   56.64
   ],
   "JibTailer_P": [
-   -42.84,
-   -74.29,
-   110.72
+   -105.6,
+   -91.74,
+   56.64
   ],
   "JibLead_P": [
-   16.13,
-   -62.13,
-   100.36
+   -54.06,
+   -111.3,
+   66.99
   ],
   "JibTailRest_P": [
-   -17.84,
-   -54.29,
-   97.94
+   -145.0,
+   -58.0,
+   40.8
   ],
   "SpreaderTip_P": [
    38.64,
@@ -96,19 +96,24 @@
    84.74
   ],
   "Traveler_C": [
-   -195.0,
+   -206.0,
    -0.0,
-   18.0
+   42.4
   ],
   "Traveler_S": [
-   -195.0,
-   33.0,
-   18.0
+   -206.0,
+   80.29,
+   42.4
   ],
   "Traveler_P": [
-   -195.0,
-   -33.0,
-   18.0
+   -206.0,
+   -80.29,
+   42.4
+  ],
+  "MainsheetBlock": [
+   -206.0,
+   -0.0,
+   51.5
   ],
   "LazySheetVia": [
    29.25,
@@ -141,9 +146,9 @@
    141.85
   ],
   "Boom_Mainsheet": [
-   -194.02,
+   -206.0,
    -0.0,
-   135.0
+   137.91
   ],
   "Boom_Clew": [
    -215.02,
@@ -176,19 +181,9 @@
    87.0
   ],
   "MainsheetCam": [
-   -197.6,
-   -9.0,
-   22.0
-  ],
-  "JibCam0_S": [
-   -105.6,
-   91.74,
-   56.64
-  ],
-  "JibCam1_S": [
-   -155.6,
-   89.06,
-   56.26
+   -214.16,
+   -0.0,
+   52.63
   ],
   "HandholdCabin_S": [
    25.5,
@@ -199,16 +194,6 @@
    -171.64,
    91.95,
    66.56
-  ],
-  "JibCam0_P": [
-   -105.6,
-   -91.74,
-   56.64
-  ],
-  "JibCam1_P": [
-   -155.6,
-   -89.06,
-   56.26
   ],
   "HandholdCabin_P": [
    25.5,
@@ -284,6 +269,7 @@
   "Traveler_C": "SM_J22H_Hull",
   "Traveler_S": "SM_J22H_Hull",
   "Traveler_P": "SM_J22H_Hull",
+  "MainsheetBlock": "SM_J22H_Hull",
   "LazySheetVia": "SM_J22H_Hull",
   "Hounds": "SM_J22H_Mast",
   "LowerTang": "SM_J22H_Mast",
@@ -298,12 +284,8 @@
   "TillerExtTip": "SM_J22H_Rudder",
   "TillerExtUJ": "SM_J22H_Rudder",
   "MainsheetCam": "SM_J22H_Hull",
-  "JibCam0_S": "SM_J22H_Hull",
-  "JibCam1_S": "SM_J22H_Hull",
   "HandholdCabin_S": "SM_J22H_Hull",
   "HandholdCoaming_S": "SM_J22H_Hull",
-  "JibCam0_P": "SM_J22H_Hull",
-  "JibCam1_P": "SM_J22H_Hull",
   "HandholdCabin_P": "SM_J22H_Hull",
   "HandholdCoaming_P": "SM_J22H_Hull",
   "CockpitSole": "SM_J22H_Hull",

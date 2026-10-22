@@ -782,17 +782,22 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	using namespace Sailing;
 	const USkeletalMesh* Sailor = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Crew/SK_Sailor.SK_Sailor"));
 	if (!TestNotNull(TEXT("SK_Sailor"), Sailor)) return false;
-	// Round 12: the J/22's traveler bridge (build_j22.py TRAV_X) is a floor, solid down to the sole.
+	// pc/j22-feedback: the J/22's traveler is a 32 mm track from seat to seat in both models (round 12's bridge is gone):
+	// solid, never a floor; the floor under it is the sole.
 	{
 		const FBoatConfig J22;
-		TestEqual(TEXT("J/22: the traveler bridge is the floor over it"), CrewFloorZ(J22, -1.75, 0.0), 0.485, 1e-6);
-		TestTrue(TEXT("J/22: under the traveler bridge is solid"), CrewInsideBoat(J22, FBoatModel(J22).HullDepth(), FVector(-1.75, 0.0, 0.40)));
-		TestEqual(TEXT("J/22: aft of the bridge the floor is the sole"), CrewFloorZ(J22, -2.0, 0.0), 0.30, 1e-6);
+		const double Depth = FBoatModel(J22).HullDepth();
+		TestEqual(TEXT("J/22: the floor under the traveler track is the sole"), CrewFloorZ(J22, -2.06, 0.0), 0.30, 1e-6);
+		TestTrue(TEXT("J/22: the traveler track is solid"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.466)));
+		TestFalse(TEXT("J/22: under the track is open"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.40)));
+		TestFalse(TEXT("J/22: beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-2.03, 0.0, 0.466)));
+		TestEqual(TEXT("J/22: forward of the track the floor is the sole"), CrewFloorZ(J22, -1.75, 0.0), 0.30, 1e-6);
 		// The hero (the player's boat since round 12) has its own cockpit (build_j22_hero.py, J22H_sockets.json): a sole at
-		// 0.136 m with the traveler track on it (no bridge), seats at 0.40 m inboard to 0.40 m.
-		TestEqual(TEXT("Hero J/22: no bridge, the floor is the sole"), CrewFloorZ(J22, -1.75, 0.0, false), 0.136, 1e-6);
+		// 0.136 m, seats at 0.40 m inboard to 0.40 m, the track across the well at x -2.06 (top 0.404 m).
+		TestEqual(TEXT("Hero J/22: the floor under the track is the sole"), CrewFloorZ(J22, -2.06, 0.0, false), 0.136, 1e-6);
 		TestEqual(TEXT("Hero J/22: the seat outboard of 0.40 m"), CrewFloorZ(J22, -1.73, 0.44, false), 0.40, 1e-6);
-		TestFalse(TEXT("Hero J/22: over the sole is open"), CrewInsideBoat(J22, FBoatModel(J22).HullDepth(), FVector(-1.75, 0.0, 0.40), false));
+		TestTrue(TEXT("Hero J/22: the traveler track is solid"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.396), false));
+		TestFalse(TEXT("Hero J/22: over the sole beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-1.75, 0.0, 0.40), false));
 	}
 	struct FBody { const USkeletalMesh* Mesh; FCrewRig Rig; FString Name; };
 	TArray<FBody> Bodies;

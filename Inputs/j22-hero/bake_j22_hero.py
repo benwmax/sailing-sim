@@ -95,12 +95,14 @@ for tag, side in (("S", -1), ("P", 1)):
     # one plate a side: the upper shroud on its aft hole, the lower on its forward hole (build_j22_hero.py)
     sock(f"ChainplateUpper_{tag}", _top(f"Chainplate_{side}_strap") - Vector((0.02, 0, 0)))
     sock(f"ChainplateLower_{tag}", _top(f"Chainplate_{side}_strap") + Vector((0.02, 0, 0)))
-    sock(f"JibWinch_{tag}", _kit_sock(f"Winch_{side}", "Handle"))
-    sock(f"JibTailer_{tag}", _kit_sock(f"Winch_{side}", "Handle") + Vector((0, 0, 0.04)))
+    # Bean's feedback 3 (the Harken layout): the sheet runs from the side-deck lead to the cam on the cockpit's side wall,
+    # not a winch: JibWinch is the cam's fairlead, JibTailer its jaws (the tail leaves there)
+    cam = (_c(f"Cam_{side}_0_cam-1") + _c(f"Cam_{side}_0_cam1")) / 2
+    sock(f"JibWinch_{tag}", _c(f"Cam_{side}_0_lead"))
+    sock(f"JibTailer_{tag}", cam)
     sock(f"JibLead_{tag}", _kit_sock(f"JibTrack_{side}", "Sheave"))
-    # where the tail lies when no hand holds it: on the cabin top, forward and inboard of the winch (the winch sits 13 cm
-    # from the trunk's aft edge, so the old fallback behind it hung in the air)
-    sock(f"JibTailRest_{tag}", _on(_kit_sock(f"Winch_{side}", "Handle") + Vector((0.25, -side * 0.20, 0)), "Cabin", 0.008))
+    # where the tail lies when no hand holds it: on the seat by the cam, where build_j22_hero coils it (JibTail*)
+    sock(f"JibTailRest_{tag}", Vector((-1.45, side * (0.40 + 0.18), 0.40 + 0.008)))
     sock(f"SpreaderTip_{tag}", _c(f"SprTip_{side}_end"))
 sock("ForestayTack", _c("StemPin_pin"))
 bs = [_c(n) for n in ("BS_eye_1_loop", "BS_eye_-1_loop")]
@@ -111,6 +113,8 @@ tlo, thi = _bb("TravelerBar")
 sock("Traveler_C", Vector(((tlo.x + thi.x) / 2, 0, thi.z + 0.02)))
 sock("Traveler_S", Vector(((tlo.x + thi.x) / 2, tlo.y + 0.05, thi.z + 0.02)))
 sock("Traveler_P", Vector(((tlo.x + thi.x) / 2, thi.y - 0.05, thi.z + 0.02)))
+# Bean's feedback 1: the mainsheet's lower block stands on the car (j22_mainsheet.py); the tackle ends at its sheave
+sock("MainsheetBlock", _c("MainsheetLow_sheave"))
 # the lazy sheet's pass over the cabin top: a little above the cabin, a hand's width aft of the mast
 clo, chi = _bb("Cabin")
 sock("LazySheetVia", Vector((mast_x - 0.35, 0, chi.z + 0.06)))
@@ -148,8 +152,6 @@ else:
     sock("TillerExtUJ", _c("ExtUJ"))
 sock("MainsheetCam", (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
 for tag, side in (("S", -1), ("P", 1)):
-    for k in (0, 1):
-        sock(f"JibCam{k}_{tag}", (_c(f"Cam_{side}_{k}_cam-1") + _c(f"Cam_{side}_{k}_cam1")) / 2)
     sock(f"HandholdCabin_{tag}", _top(f"Handrail_{side}"))
     sock(f"HandholdCoaming_{tag}", _top(f"CoamingCap_{side}"))
 

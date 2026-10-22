@@ -112,9 +112,10 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double HalfWidth = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
 	double SeatIn = 0.0;         // the hero J/22: the seats' inboard edge at this half-width (else the well's edge less SeatW)
-	// Round 12: a traveler bridge across the well between the seats (the J/22's, build_j22.py TRAV_X), solid from the sole
-	// to its top; BridgeHalfX 0 for none.
-	double BridgeX = 0.0, BridgeHalfX = 0.0, BridgeZ = 0.0;
+	// pc/j22-feedback: the J/22's traveler, a track across the well from seat to seat (both models; round 12's bridge under
+	// it is gone): solid between TrackZ0 and TrackZ1 within TrackHalfX of TrackX and TrackHalfY of the centreline, never a
+	// floor (a foot stands on the sole beside it, a shin clears it). TrackHalfX 0 for none.
+	double TrackX = 0.0, TrackHalfX = 0.0, TrackZ0 = 0.0, TrackZ1 = 0.0, TrackHalfY = 0.0;
 };
 /** bTravelerBridge false is the hero J/22 (the player's boat): its own cockpit (build_j22_hero.py, J22H_sockets.json), no bridge. */
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out, bool bTravelerBridge = true);
