@@ -38,9 +38,13 @@ namespace Sailing
 		const double Heel = T.Heel * S.WindwardSide * kRadToDeg;
 		// Heel rate toward leeward (deg/s): a good crew reacts to the boat starting to roll, not only to where it is.
 		const double HeelRate = S.AngularVelocity.X * S.WindwardSide * kRadToDeg;
-		// The settings' heel limit is for a keelboat that likes 22 degrees; boats that sail flatter scale it down.
-		const double Excess = Heel + 0.3 * HeelRate - Set.HeelLimitDeg * Cfg.TrimHeelLimitDeg / 22.0;
-		const double EaseRate = 0.6 * std::sqrt(22.0 / Cfg.TrimHeelLimitDeg);
+		// The settings' heel limit is for a keelboat that likes 22 degrees; boats that sail flatter scale it down. Some are
+		// sailed flatter still reaching (TrimReachHeelLimitDeg: the ILCA's sailor eases at 6 deg on a heavy-air reach, 8
+		// upwind), blended in from 80 to 110 deg of true wind.
+		const double ReachShare = Cfg.TrimReachHeelLimitDeg > 0.0 ? SmoothStep(80.0, 110.0, std::fabs(T.TrueWindAngle) * kRadToDeg) : 0.0;
+		const double HeelLimitCfg = Lerp(Cfg.TrimHeelLimitDeg, Cfg.TrimReachHeelLimitDeg, ReachShare);
+		const double Excess = Heel + 0.3 * HeelRate - Set.HeelLimitDeg * HeelLimitCfg / 22.0;
+		const double EaseRate = 0.6 * std::sqrt(22.0 / HeelLimitCfg);
 		// Ease as the boat heels past the limit; trim back in slowly, or at once if it starts to heel to windward.
 		// (A dinghy sailor, dumping the sheet in the hand as she heels, keeps less of it out afterwards.)
 		const double Recover = (Heel < 0.0 ? std::min(-2.0, Heel * 3.0) : -2.0) * (Cfg.DinghyEasePerHeelDeg > 0.0 ? 4.0 : 1.0);
