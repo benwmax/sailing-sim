@@ -299,7 +299,7 @@ def glass_material():
 HERO_SURFACE = {
     "Gelcoat": 1, "GelcoatHull": 1, "CabinGelcoat": 1, "InteriorLiner": 1, "InteriorSole": 1,
     "Stainless": 3, "Chrome": 3, "Galvanised": 3, "KeelBoltSteel": 3, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
-    "TeakVarnish": 6, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10,
+    "TeakVarnish": 6, "PlywoodVarnish": 6, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10,
     "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 11,
 }
 HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0}
