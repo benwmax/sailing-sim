@@ -262,6 +262,7 @@ private:
 	double ClothSecondsAtStart = -1.0;
 	double WaterSecondsAtStart = -1.0;
 	double WindMapSecondsAtStart = -1.0; // W2: the two-level wind map (bench.json windmap_cpu_ms)
+	double FarCapSecondsAtStart = -1.0; // far-cap sprites (bench.json farcap_cpu_ms)
 	// Perf 1: stat unit's thread times over the measured window, and the game thread's slices at its start.
 	SailingPerf::FThreadTimes ThreadTimes;
 	double SlicesAtStart[int32(SailingPerf::ESlice::Count)] = {};
