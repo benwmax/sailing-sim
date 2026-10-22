@@ -69,3 +69,60 @@ centres; all 52 sockets are unchanged. Slots: the boom has 2, the mast 3, the hu
 Spar colour: the photos show white painted spars with black tape. That is the next change, as a livery parameter.
 
 Renders: `boom-goose.jpg`, `boom-vang.jpg`, `boom-boomend.jpg`.
+
+Correction to 3: the vang's upper block was first named `Vang_upper`, and the bake treats `Vang_` objects as live rope,
+so it never reached the game. It is now `VangBlock`, on the boom (`BOOM_PARTS`), and swings with it. Render:
+`boom-vang.jpg`.
+
+## Spars: white with black tape, or anodised (`Inputs/g3/boat-catalogue.json`)
+
+Bean chose a mix. The catalogue's J/22 `spars.finishes` are painted white (weight 0.5) and clear anodised (0.5), and
+`Tools/fleet/make_liveries.py` turns them into `FLiverySpar` rows. Seed 0, the player's boat, takes the first: white.
+AI boats draw their own finish. Marina J/22s draw theirs from their slip seed, and each spar part is drawn by two
+components, anodised and painted. `PaintSpars` (`BoatLivery.h`) sets the library's painted-aluminium values (roughness
+0.35, clear coat 0.6, surface 5) on the mast's and boom's aluminium, whether it is their own slot or a pack's
+`Aluminium` entry. Nothing is geometry: change the catalogue to change the mix. The black tape bands are geometry on the
+hero (assembly 4).
+
+## 4. Mast step, turning blocks, exits, cunningham, spreaders, chainplates (`Inputs/j22-hero/j22_mastgear.py`)
+
+From the photos `mast-bottom-closeup`, `mast-sheetsandhardware`, `mast-cunningham`, `mast-and-spreader`,
+`shroud-mounts` and `mast-boom-gooseneck-connector`.
+
+| Part | Before | Now |
+| --- | --- | --- |
+| Mast step | an aluminium box and a collar | a rounded stainless base plate with countersunk screws; the dark grey heel casting rising round the mast's foot; two white halyard sheaves in a pocket in its aft face on one axle; a hex bolt and nylock across; ring pins through its fore and aft ears |
+| Turning blocks | six small blocks | six blocks with perforated cheeks on swivels and shackles, standing on padeyes |
+| Halyard exits | flat plates | stainless exit boxes: rounded plate, the sheave in a dark slot, four screws |
+| Cunningham | none | a plate low on the mast's port side with a fairlead block and a cam cleat; a block hung under the gooseneck on a strop; the blue line |
+| Tape | none | a black band round the mast at the gooseneck, centred on the game's resting mast bend (`M_BoatMast` bends the mast but not its fittings) |
+| Spreaders | a box root and dark tape | a cast saddle with four rivets and a bolted socket at the root; a white boot over the tip, and white tape round the shroud |
+| Chainplates and shrouds | open-body turnbuckles | rounded cover plates with four countersunk screws; closed-body turnbuckles on toggles with lock nuts and scale rings; ribbed grey boots over the upper studs; white tape at the toggles |
+
+The cunningham's line is a flat entry (`CunnLine`) in the plastic pack, so the mast stays at 3 slots. All 52 sockets
+are unchanged. Slots: hull 6, mast 3, boom 2. Not modelled: the shroud's quick-tension lever in `shroud-mounts`.
+
+Renders: `mast-cunn.jpg`, `mast-shroud.jpg`, `mast-goose.jpg`.
+
+## 5. Deck hardware at real detail (`Tools/boatkit/bk_parts.py`, `j22_details.py`, `build_j22_hero.py`)
+
+The fleet's kit (`/Game/Boats/Kit`, reimported: `Block29`, `Block40`, `FiddleCam`, `Ratchet57`, `CamCleat`, `Winch16`):
+
+- **Blocks:** six lightening holes cut through the outer cheeks, so the sheave shows through (the badge's cheek keeps
+  its lower holes clear); raised hubs; bearing races on the sheaves.
+- **Cam cleats:** cams with raked sawtooth teeth on an eccentric lobe toward the line.
+- **Winch:** five cap screws on the top and a stainless edge ring.
+
+The kit's sockets are unchanged.
+
+The hero:
+
+- **Blocks:** perforated cheeks showing the grey sheave, raised hubs and rivets, a moulded head bridging the cheeks,
+  bearing races. `{name}_sheave` keeps its centre.
+- **Cam cleats:** black base, raked eccentric cams on stainless axles at the old cams' centres (the `JibCam` and
+  `MainsheetCam` sockets read them), a red fairlead hoop, three screws.
+- **Horn cleats:** one swept horn of elliptic section, tapering to its tips, over a cast base. It is set so `BowCleat`
+  (the horn's top) stays put.
+- **Winches:** the kit's.
+
+Renders: `kit-parts.jpg` (Blender), `kit-bowcleat.jpg`, `kit-cams.jpg`, `kit-winch.jpg`, `kit-mainblk.jpg`.

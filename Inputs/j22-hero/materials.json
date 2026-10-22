@@ -127,6 +127,15 @@
    "roughness": 0.5,
    "metallic": 1.0
   },
+  "CunnLine": {
+   "base_color_linear": [
+    0.0252,
+    0.1221,
+    0.3813
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0
+  },
   "Cushion": {
    "base_color_linear": [
     0.0137,

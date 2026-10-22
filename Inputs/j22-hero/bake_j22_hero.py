@@ -216,7 +216,7 @@ PIVOTS = {"SM_J22H_Hull": Vector((0, 0, 0)), "SM_J22H_Interior": Vector((0, 0, 0
 ROPE_LIKE = ("Halyard", "HalTail", "MainTail", "Mainsheet_", "JibSheet", "JibTail", "Bridle", "Backstay", "Forestay",
              "Upper_", "Lower_", "Vang_", "BS_cascade", "JibBowline")
 BOOM_PARTS = ("Boom", "BoomEnd", "MainBail", "MainsheetHigh", "Gooseneck_boomcap", "Gooseneck_fork", "Gooseneck_hpin",
-              "Gooseneck_cunnhook", "Gooseneck_reefhook")
+              "Gooseneck_cunnhook", "Gooseneck_reefhook", "VangBlock")
 
 
 GLASS_MATS = ("PortlightAcrylic", "HatchAcrylic", "WaterBilge")

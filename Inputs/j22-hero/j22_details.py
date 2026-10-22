@@ -103,7 +103,10 @@ def clevis(name, at, axis, M, length=0.02, r=0.0025, ring=True):
 
 
 def block(name, at, axle, toward, M, sheave_d=0.029, cheek="BlackPlastic", becket=False, with_shackle=True):
-    """Ball-bearing block: rounded cheeks, grooved sheave, axle rivets, a head shackle pointing `toward`."""
+    """Ball-bearing block (pc/j22-detail assembly 5; photos mast-sheetsandhardware, boom-vang-closeup): round cheeks with a
+    ring of lightening holes showing the grey sheave, a raised hub and a stainless rivet each side, a moulded head
+    bridging the cheeks, the sheave with its groove and bearing race, a head shackle pointing `toward`. `{name}_sheave`
+    keeps its centre (sockets read it)."""
     R = sheave_d * 0.65
     W = sheave_d * 0.55
     ax = Vector(axle).normalized()
@@ -112,14 +115,21 @@ def block(name, at, axle, toward, M, sheave_d=0.029, cheek="BlackPlastic", becke
     M4 = frame(at, up, ax)          # local X toward the shackle, local Z along the axle
     objs = []
     for sgn in (-1, 1):
-        c = cyl(f"{name}_cheek{sgn}", (0, 0, sgn * W * 0.35), (0, 0, sgn * W * 0.5), R, M[cheek], 28)
-        objs.append(c)
-        objs.append(cyl(f"{name}_rivet{sgn}", (0, 0, sgn * W * 0.5), (0, 0, sgn * (W * 0.5 + 0.0015)), 0.0035, M["Stainless"], 12))
-        # cheek "nose" toward the head
-        objs.append(lbox(f"{name}_nose{sgn}", (R * 0.95, 0, sgn * W * 0.42), (R * 0.7, R * 0.9, W * 0.16), M[cheek], bev=0.002))
+        objs.append(cyl(f"{name}_cheek{sgn}", (0, 0, sgn * W * 0.35), (0, 0, sgn * W * 0.5), R, M[cheek], 32))
+        objs.append(cyl(f"{name}_hub{sgn}", (0, 0, sgn * W * 0.5), (0, 0, sgn * (W * 0.5 + 0.0012)), R * 0.36, M[cheek], 24))
+        objs.append(cyl(f"{name}_rivet{sgn}", (0, 0, sgn * (W * 0.5 + 0.0012)), (0, 0, sgn * (W * 0.5 + 0.0024)), R * 0.17, M["Stainless"], 14))
+        for k in range(6):
+            a = 2 * math.pi * (k + 0.5) / 6
+            c = (math.cos(a) * R * 0.66, math.sin(a) * R * 0.66)
+            objs.append(cyl(f"{name}_hole{sgn}{k}", (c[0], c[1], sgn * W * 0.5), (c[0], c[1], sgn * (W * 0.5 + 0.0003)), R * 0.15, M["SheaveGrey"], 12))
+    # the moulded head bridging the cheeks toward the shackle
+    objs.append(lbox(f"{name}_head", (R * 0.92, 0, 0), (R * 0.42, R * 0.7, W * 1.0), M[cheek], bev=0.002))
     sh = cyl(f"{name}_sheave", (0, 0, -W * 0.33), (0, 0, W * 0.33), sheave_d / 2, M["SheaveGrey"], 28)
     objs.append(sh)
     objs.append(torus(f"{name}_groove", sheave_d / 2 - 0.0005, W * 0.18, M["SheaveGrey"], 28, 8))
+    for sgn in (-1, 1):
+        objs.append(torus(f"{name}_race{sgn}", sheave_d * 0.22, 0.0007, M["Stainless"], 24, 6))
+        objs[-1].matrix_world = Matrix.Translation((0, 0, sgn * W * 0.33))
     _place(objs, M4)
     if with_shackle:
         objs += shackle(f"{name}_sh", Vector(at) + up * R * 1.25, up, M, size=sheave_d / 0.029)
@@ -130,22 +140,39 @@ def block(name, at, axle, toward, M, sheave_d=0.029, cheek="BlackPlastic", becke
     return objs
 
 
+def _cam(name, cx, cy, z0, z1, side, mat):
+    """A cam: a toothed eccentric disc, its teeth raked so the line pulls in and not out; lobe toward the line."""
+    pts = []
+    teeth = 16
+    for i in range(teeth * 3):
+        a = 2 * math.pi * i / (teeth * 3)
+        r = 0.0095 + 0.0022 * max(0.0, math.cos(a + side * math.pi / 2))
+        r += (0.0013, 0.0006, 0.0)[i % 3]
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    from j22_boomgear import plate_xy
+    return plate_xy(name, pts, z0, z1, mat, bev=0.0)
+
+
 def cam_cleat(name, at, out_normal, along, M, length=0.065):
-    """Cam cleat on its riser: base, two toothed cams with springs, fairlead, two screws."""
+    """Cam cleat (pc/j22-detail assembly 5; photo mast-sheetsandhardware): a black base, two raked
+    toothed cams on stainless axles, a coloured fairlead hoop at the lead end, three screws."""
+    from j22_boomgear import plate_xy, rounded
     n = Vector(out_normal).normalized()
     a = Vector(along).normalized()
     M4 = frame(at, a, n)
-    objs = [lbox(f"{name}_base", (0, 0, 0.004), (length, 0.030, 0.008), M["CamBase"], bev=0.002),
-            lbox(f"{name}_lead", (length / 2 - 0.004, 0, 0.012), (0.010, 0.026, 0.012), M["CamBase"], bev=0.003)]
+    L = length
+    objs = [plate_xy(f"{name}_base", rounded(-L / 2, L / 2, -0.016, 0.016, 0.006), 0.0, 0.007, M["CamBase"], bev=0.0012)]
     for sgn in (-1, 1):
-        objs.append(cyl(f"{name}_cam{sgn}", (-0.006, sgn * 0.0095, 0.008), (-0.006, sgn * 0.0095, 0.022), 0.0105, M["RedPlastic"], 18))
-        for t in range(9):                         # teeth
-            ang = math.pi * (0.25 + 0.5 * t / 8) * (-sgn)
-            objs.append(lbox(f"{name}_t{sgn}{t}", (-0.006 + 0.0108 * math.cos(ang), sgn * 0.0095 + 0.0108 * math.sin(ang) * -1, 0.015),
-                             (0.0018, 0.0018, 0.013), M["RedPlastic"]))
-        objs.append(cyl(f"{name}_ax{sgn}", (-0.006, sgn * 0.0095, 0.022), (-0.006, sgn * 0.0095, 0.024), 0.003, M["Stainless"], 8))
+        objs.append(_cam(f"{name}_cam{sgn}", -0.006, sgn * 0.0095, 0.008, 0.022, sgn, M["CastAlu"]))   # centres kept: sockets read them
+        objs.append(cyl(f"{name}_ax{sgn}", (-0.006, sgn * 0.0095, 0.022), (-0.006, sgn * 0.0095, 0.0245), 0.003, M["Stainless"], 10))
+    hoop = []
+    for k in range(13):
+        ang = math.pi * k / 12
+        hoop.append((L / 2 - 0.007, 0.0105 * math.cos(ang), 0.007 + 0.0125 * math.sin(ang)))
+    objs.append(tube(f"{name}_lead", hoop, 0.0024, M["RedPlastic"], smooth_path=True))
     _place(objs, M4)
-    objs += screws(f"{name}", [M4 @ Vector((-length / 2 + 0.006, 0, 0.008)), M4 @ Vector((length / 2 - 0.012, 0, 0.008))], n, M)
+    objs += screws(f"{name}", [M4 @ Vector((-L / 2 + 0.006, 0, 0.007)), M4 @ Vector((L / 2 - 0.013, 0.008, 0.007)),
+                               M4 @ Vector((L / 2 - 0.013, -0.008, 0.007))], n, M)
     return objs
 
 

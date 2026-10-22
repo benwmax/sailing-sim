@@ -1,6 +1,6 @@
 {
   "_comment": "pc/boat-slots: the hero J/22's flat hardware materials (materials.json flat_materials, M_BoatSurface) folded into packs of up to 8, one slot each; the entry is in UV1.x and MI_J22H_<Pack> on M_BoatPacked holds the entries' values (scripts/import_j22_hero.py). The baked groups (J22H_<group>, M_J22HeroSurface), the glass and the mast's aluminium (M_BoatMast) keep their own slots. Append, never reorder.",
   "J22H_PackMetal": ["Stainless", "Chrome", "CastAlu", "Aluminium", "SheaveGrey", "RigTape", "TeakVarnish", "Gelcoat"],
-  "J22H_PackPlastic": ["BlackPlastic", "RedPlastic", "WhitePlastic", "CamBase", "RubRail", "OutboardBlack", "ExtensionBlack"],
+  "J22H_PackPlastic": ["BlackPlastic", "RedPlastic", "WhitePlastic", "CamBase", "RubRail", "OutboardBlack", "ExtensionBlack", "CunnLine"],
   "J22H_PackWood": ["PlywoodVarnish", "TeakWeathered", "AshVarnish"]
 }

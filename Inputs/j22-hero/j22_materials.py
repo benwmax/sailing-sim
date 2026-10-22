@@ -598,6 +598,7 @@ def build_all(st):
         "PlywoodVarnish": simple("PlywoodVarnish", "#B48A5C", 0.32, coat=0.6),
         # pc/j22-detail (photos tiller, tiller-2): the tiller's pale ash laminations between the mahogany ones
         "AshVarnish": simple("AshVarnish", "#C9A36E", 0.30, coat=0.6),
+        "CunnLine": simple("CunnLine", "#2C62A6", 0.78),       # pc/j22-detail: the cunningham's blue line, baked on the mast
         "Aluminium": anodised(st),
         "CastAlu": anodised(st, "CastAlu", "#B7BABD"),
         "Chrome": stainless(st, "Chrome", "#E4E6E8", 0.10),
