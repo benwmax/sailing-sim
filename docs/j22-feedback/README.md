@@ -43,3 +43,47 @@ Sockets moved (old to new, cm):
 The crew's legs against the new bar are the Mac's (`j22-feedback-crew`).
 
 Renders: `1-trav-photo.jpg`, `1-trav-block.jpg`, `1-trav-seat.jpg`.
+
+## 2. Mast base, to the stock layout
+
+Bean: remove the deck hardware a stock J/22 doesn't carry, such as the several little blocks near the mast. The baseline
+is the Harken J/22 layout. Anything not in it goes, unless it's structural.
+
+- **Turning blocks:** two beside the step, one a side, for the control lines (it had been six fanned round it). The
+  halyards turn aft on the step casting's own two sheaves.
+- **Mast:** the three halyard exit boxes up the mast are gone.
+- **Halyards:** they run aft along the cabin top through the organisers to two cam cleats a side, just forward of the
+  cabin-top winches at the aft corners (it had been three cams a side beside the hatch). The winches are the
+  halyards' (the layout's B6).
+- **Light J/22:** the same set. Two turning blocks at the step, two cams a side forward of the winch (it had been three
+  clutches), and the winch moved from the side deck to the cabin top's aft corner.
+
+No socket moved. Renders: `23-mastbase.jpg`, `23-cabintop.jpg`.
+
+## 3. Jib sheets
+
+Bean: improve the positioning and routing of the sheets to match the Harken layout and the cockpit photo.
+
+- **Lead:** the sheet runs from the clew aft along the side deck to a block on a 0.6 m track beside the cockpit's
+  forward end (car at x -0.55).
+- **Cam:** from the lead it goes over the coaming to one cam with its fairlead on the cockpit's side wall, just aft
+  of the track (x -1.05). It ends there, not at a winch.
+- **Gone:** the cabin-top jib track and the second coaming cam with its fairlead blocks.
+- **Light J/22:** the same. Its track moves from by the shrouds to the side deck beside the cockpit, and the sheet ends
+  at a cam on the coaming wall.
+
+The game draws the sheet live from the clew through `JibLead` to `JibWinch`, so moving those sockets reroutes it. The
+trimmer's tail runs from `JibTailer`.
+
+| Socket | Old | New |
+| --- | --- | --- |
+| Hero `JibLead_S/P` | (16.13, ±62.13, 100.36) | (-54.06, ±111.3, 66.99) |
+| Hero `JibWinch_S/P` (the cam's fairlead) | (-42.84, ±74.29, 106.72) | (-102.45, ±91.82, 56.64) |
+| Hero `JibTailer_S/P` (the cam's jaws) | (-42.84, ±74.29, 110.72) | (-105.6, ±91.74, 56.64) |
+| Hero `JibTailRest_S/P` | (-17.84, ±54.29, 97.94) | (-145, ±58, 40.8) |
+| Hero `JibCam1_S/P` (now the same cam as `JibCam0`) | (-155.6, ±89.06, 56.26) | (-105.6, ±91.74, 56.64) |
+| Light `JibLead_S/P` | (12, ±96.76, 68.78) | (-55, ±110.93, 67.86) |
+| Light `JibWinch_S/P` | (-100, ±100.92, 70.52) | (-101.8, ±81.73, 58.77) |
+| Light `JibTailer_S/P` | (-100, ±100.92, 74.52) | (-105.6, ±81.73, 58.77) |
+
+Renders: `23-jiblead.jpg`, `23-cockpitfwd.jpg`.

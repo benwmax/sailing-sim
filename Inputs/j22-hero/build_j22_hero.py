@@ -537,17 +537,18 @@ def build_hardware():
         parts.append(coaming_cap(side))
         parts.append(hull_joint(side))
         parts.append(handrail(side))
-        # coaming face: jib-sheet cam cleats with fairlead blocks below (photo IMG_9272)
-        for k, x in enumerate((-1.05, -1.55)):
-            yw = half_beam(x) - SIDE_DECK - 0.025
-            zc = (SEAT_Z + deck_z(x, yw)) / 2 + 0.05
-            parts += D.cam_cleat(f"Cam_{side}_{k}", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
-            parts += D.block(f"Fair_{side}_{k}", (x + 0.03, side * (yw - 0.03), zc - 0.075), (0, side, 0), (0, side, 1), MAT, 0.029)
-            parts += D.padeye(f"FairEye_{side}_{k}", (x + 0.03, side * yw, zc - 0.04), (0, -side, 0), MAT)
-        # jib winch on the cabin top's aft outboard corner (photos IMG_9224 and IMG_9272, docs/boatkit-2): the kit's size 16
+        # Bean's feedback 3 (the Harken J/22 layout, Bean's cockpit photo): the jib sheet runs aft along the side deck to a
+        # block on a short track beside the cockpit's forward end, then into the cockpit to one cam with its fairlead on the
+        # cockpit's side wall just aft of the track (it had led to a cabin-top track and winch, with two cams and blocks on
+        # the coaming). The cam stays where the first one was (JibCam0, the tail coils on the seats lead to it).
+        x = JIB_CAM_X
+        yw = half_beam(x) - SIDE_DECK - 0.025
+        zc = (SEAT_Z + deck_z(x, yw)) / 2 + 0.05
+        parts += D.cam_cleat(f"Cam_{side}_0", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
+        parts += kit_part(f"JibTrack_{side}", "JibTrack", (JIB_TRACK_X, side * (half_beam(JIB_TRACK_X) - 0.11)),
+                          surface=lambda x, y: deck_z(x, y) - 0.002, length=0.60)
+        # the halyard winch on the cabin top's aft outboard corner (the Harken layout's B6; photos IMG_9224 and IMG_9272)
         parts += kit_part(f"Winch_{side}", "Winch16", (CABIN_AFT + 0.12, side * 0.74), surface=lambda x, y: cabin_top_z(x, y) - 0.002)
-        # jib track and car on the cabin top outboard of the handrail: inboard leads (photo IMG_9224), the kit's T-track
-        parts += kit_part(f"JibTrack_{side}", "JibTrack", (0.15, side * 0.62), surface=lambda x, y: cabin_top_z(x, y) - 0.002, length=0.70)
         # one chainplate a side on the side deck, upper shroud on its aft hole and lower on its forward one (photos)
         xc = CHAINPLATE_X
         yc = half_beam(xc) - 0.09
@@ -609,18 +610,18 @@ def build_hardware():
                          MAT["TeakWeathered"], bev=0.004))
     # mast step, halyard turning blocks, organisers and cam cleats on the cabin top
     zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
-    # pc/j22-detail assembly 4 (j22_mastgear.py): the step casting and six perforated turning blocks fanned round it
-    # (photos mast-bottom-closeup, mast-sheetsandhardware)
+    # pc/j22-detail assembly 4 (j22_mastgear.py): the step casting (the halyards turn aft on its two sheaves) and, Bean's
+    # feedback 2 (the Harken layout), two turning blocks beside it for the control lines (it had been six)
     parts += MG.mast_step(MAST_X, zm, MAT)
     parts += MG.turning_blocks(MAST_X, zm, MAT)
     for side in (1, -1):
         xo = CABIN_AFT + 0.75
         zo = cabin_top_z(xo, side * 0.12)
         parts.append(box(f"Organiser_{side}", xo - 0.04, xo + 0.04, side * 0.12 - 0.06, side * 0.12 + 0.06, zo - 0.005, zo + 0.03, MAT["BlackPlastic"], bev=0.006))
-        for k in range(3):
-            # cam cleats either side of the sliding hatch, just forward of its aft end
-            # (4.5 cm apart from 3.35 cm out: at 5.5 cm the outer cam ran into the handrail at 0.46)
-            yc = side * (0.335 + 0.045 * k)
+        for k in range(2):
+            # Bean's feedback 2 (the Harken layout): the halyards' cam cleats just forward of the cabin-top winch, two a side
+            # (they had been three a side beside the hatch)
+            yc = side * (HAL_CAM_Y + 0.08 * k)
             parts += D.cam_cleat(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
     # Bean's feedback 1 (j22_mainsheet.py): the traveler spans the cockpit from seat to seat, let into the seat tops and
     # open over the well, with the mainsheet's fiddle and cam on its car (it had lain on the cockpit sole)
@@ -650,6 +651,9 @@ HOUNDS = 7.86            # GUESS: forestay hounds, I = 7.56 above the sheer at t
 SPREADER_Z = 4.60        # GUESS
 BOOM_Z = 1.45
 BOOM_LEN = 2.70          # GUESS: E
+JIB_TRACK_X = -0.55      # Bean's feedback 3: the jib lead track on the side deck beside the cockpit's forward end
+JIB_CAM_X = -1.05        # its cam on the cockpit's side wall, just aft of the track
+HAL_CAM_Y = 0.58         # Bean's feedback 2: the halyard cams forward of the cabin-top winch (0.74 out)
 TRAVELER_X = -2.06       # under the boom's end (its cap at about -2.14): end-boom sheeting, the light J/22's TRAV_X too
 
 
@@ -687,10 +691,8 @@ def build_rig():
     aft_face = lambda z: rake(z) - 0.049  # noqa: E731
     parts += D.masthead("Masthead", (rake(MAST_TOP), 0, MAST_TOP), MAT, windex=STYLE["details"]["windex"])
     parts += D.hounds_tang("Hounds", (rake(HOUNDS), 0, HOUNDS), MAT)
-    # pc/j22-detail assembly 4 (j22_mastgear.py): the halyards' exit boxes, the cunningham, the tape at the gooseneck (the
-    # step casting is the hull's: build_hardware)
-    for k, (side, zz) in enumerate(((1, 0.55), (-1, 0.55), (1, 0.75))):
-        parts += MG.exit_box(f"ExitPlate_{k}", (rake(zm + zz) - 0.010, side * 0.035, zm + zz), side, MAT)
+    # pc/j22-detail assembly 4 (j22_mastgear.py): the cunningham and the tape at the gooseneck (the step casting is the
+    # hull's: build_hardware). Bean's feedback 2: no exit boxes up the mast, the halyards leave at the step's sheaves.
     parts += MG.cunningham(MAST_X, zm, BOOM_Z, aft_face, MAT)
     # (forward by the resting bend there: BoatModelVisuals bends the mast 2 cm at mid-height in M_BoatMast, a half-sine)
     parts += MG.tape_band("MastTape_goose", rake(BOOM_Z + 0.045) + 0.02 * math.sin(math.pi * (BOOM_Z + 0.045 - zm) / (MAST_TOP - zm)),
@@ -764,12 +766,12 @@ def build_rig():
     # mainsheet tail from the ratchet block's cam, coiled on the cockpit floor
     parts += D.coil("MainTail", (-2.30, 0.05, FLOOR_Z), 0.13, 3.2, MAT["RopeMain"], seed=STYLE["seed"], flat_z=FLOOR_Z,
                     tail=[(-2.1, 0.07, FLOOR_Z + 0.03), (-2.0, 0.085, FLOOR_Z + 0.07)])
-    # halyards: out of the exit plates, through the turning blocks, aft along the cabin top to the cam cleats
-    for k, (side, dy) in enumerate(((1, 0.05), (-1, -0.05), (1, 0.10))):
-        z0 = zm + 0.55
-        yc = side * (0.34 + 0.055 * (k // 2))
+    # halyards: out of the step's sheaves, aft along the cabin top through the organisers to the cam cleats (Bean's
+    # feedback 2: the Harken layout)
+    for k, (side, dy) in enumerate(((1, 0.0085), (-1, -0.0085), (1, 0.03))):
+        yc = side * (HAL_CAM_Y + 0.08 * (k // 2))
         xo, xc = CABIN_AFT + 0.75, CABIN_AFT + 0.30
-        path = [(MAST_X - 0.01, side * 0.036, z0), (MAST_X - 0.06, dy, zm + 0.05), (MAST_X - 0.20, dy * 1.4, cabin_top_z(MAST_X - 0.20, dy * 1.4) + 0.02),
+        path = [(MAST_X - 0.064, dy, zm + 0.061), (MAST_X - 0.09, dy, zm + 0.035), (MAST_X - 0.20, dy * 4.0, cabin_top_z(MAST_X - 0.20, dy * 4.0) + 0.02),
                 (xo, side * 0.12, cabin_top_z(xo, side * 0.12) + 0.018), (xo - 0.20, yc * 0.85, cabin_top_z(xo - 0.20, yc * 0.85) + 0.012),
                 (xc + 0.03, yc, cabin_top_z(xc, yc) + 0.022)]
         wires.append(tube(f"Halyard_{k}", DRAPE.line(path, [0.0, 0.0, 0.004, 0.003, 0.002], 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
@@ -891,27 +893,25 @@ def build_sails():
         h = 1 - k / 4
         pts = [tuple(jib.point(h, 0.86 + 0.14 * t / 6, off=-0.0025)) for t in range(7)]
         objs.append(tube(f"JibBatten_{k}", pts, 0.003, MAT["SailJib"]))
-    # the cabin-top lead (kit JibTrack's sheave) and the winch drum on the cabin top's aft corner (build_hardware)
-    car = Vector((0.16, side * 0.62, cabin_top_z(0.15, 0.62) + 0.045))
-    drum = Vector((CABIN_AFT + 0.12, side * (0.74 + 0.04), cabin_top_z(CABIN_AFT + 0.12, 0.74) + 0.05))
-    xf = -1.05 + 0.03
-    yf = half_beam(xf) - SIDE_DECK - 0.025 - 0.03
-    zf = (SEAT_Z + deck_z(xf, yf)) / 2 + 0.05 - 0.075
-    xc = -1.05
+    # Bean's feedback 3: the side-deck lead (kit JibTrack's sheave) beside the cockpit's forward end, then over the
+    # coaming to the cam on the cockpit's side wall (build_hardware)
+    yt = half_beam(JIB_TRACK_X) - 0.11
+    car = Vector((JIB_TRACK_X + 0.01, side * yt, deck_z(JIB_TRACK_X, yt) + 0.045))
+    xc = JIB_CAM_X
+    yf = half_beam(xc) - SIDE_DECK - 0.025 - 0.03
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
-    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))), tuple(drum),
-                      (xf + 0.05, side * (yf + 0.01), deck_z(xf, yf) + 0.02), (xf, side * yf, zf + 0.01),
+    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))),
+                      (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
                       (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)],
-                     [0.002, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0], 0.0045)
+                     [0.002, 0.0, 0.01, 0.0, 0.0], 0.0045)
     lines.append(tube("JibSheetLee", lee, 0.0045, MAT["RopeJibPort"], smooth_path=True))
     objs += D.coil("JibTailLee", (-1.45, side * (SEAT_IN + 0.18), SEAT_Z), 0.12, 2.6, MAT["RopeJibPort"], seed=STYLE["seed"] + 3, flat_z=SEAT_Z,
                    tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
     # lazy (windward) sheet: slack over the foredeck, round the mast, back to its own car and cleat
     wcar = Vector((car.x, -car.y, car.z))
-    wdrum = Vector((drum.x, -drum.y, drum.z))
-    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar), tuple(wdrum),
-                       (xf + 0.05, -side * (yf + 0.01), deck_z(xf, yf) + 0.02), (xf, -side * yf, zf + 0.01), (xc, -side * (yf + 0.012), zc)],
-                      [0.22, 0.0, 0.03, 0.03, 0.0, 0.0], 0.0045)
+    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar),
+                       (xc + 0.06, -side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02), (xc, -side * (yf + 0.012), zc)],
+                      [0.22, 0.0, 0.03, 0.0], 0.0045)
     lines.append(tube("JibSheetLazy", lazy, 0.0045, MAT["RopeJibStbd"], smooth_path=True))
     objs += D.coil("JibTailLazy", (-1.50, -side * (SEAT_IN + 0.18), SEAT_Z), 0.11, 2.2, MAT["RopeJibStbd"], seed=STYLE["seed"] + 4, flat_z=SEAT_Z,
                    tail=[(-1.2, -side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, -side * (yf + 0.005), zc - 0.03)])
