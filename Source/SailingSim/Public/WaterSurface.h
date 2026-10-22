@@ -67,6 +67,17 @@ public:
 	 *  L23609) put the onset of breaking at 3.7 m/s with cover growing as the cube of the wind above it. 1 from 12 kn,
 	 *  ((U - 3.7) / (U12 - 3.7))^3 under it (0.2 at 10 kn), 0 under 7.2 kn. */
 	static float WhitecapOnset(float MeanKnots);
+	/** docs/far-cap-sprites/ (far-caps option B): the far caps' sprites, High and Ultra. A tile's cover (Monahan's for the
+	 *  local wind, times the water body's share and the light-air onset), and how many sprite slots of a cap's area it
+	 *  takes, each live with what probability per 4 s life (mean life 0.7937 of it), so the caps' area is the cover. */
+	static double FarCapCover(double WindMs, double Scale, double Onset);
+	static void FarCapTilePlan(double Cover, double TileArea, int32& OutSlots, float& OutProb);
+	/** The sprites' share of the far caps at a point (mirrored by M_WaterV4's flecks, which take the rest, and M_FarCap):
+	 *  from 300 to 400 m out, faded again from 1100 to 1250 m (under a third of a pixel), and only seen low (from above the
+	 *  flat flecks are right, an upright sprite edge-on): gone as the view's rise passes 0.05 to 0.14 of the distance. */
+	static float FarCapSpriteWeight(double DistM, double HeightM);
+	static constexpr double FarCapArea = 1.5;      // m^2: one cap's foam on a lake (a metre or two along the wind)
+	static constexpr double FarCapTileM = 400.0;   // m
 	/** W4: the share of the shoaling term's fold (M_WaterV4's shoalBreak: Jt = J jd - 0.25 shoal x this) for the mean wind.
 	 *  Waves break on the bed where they are high for the depth (McCowan: H over about 0.78 d); the lake's light-air chop is
 	 *  centimetres in a metre or two, so a shallow slip folded into caps at 6 kn. A smoothstep over 3.7-8.2 m/s (7.2-16 kn),
@@ -139,6 +150,8 @@ private:
 	void UpdateShoreMap();
 	/** High: spray thrown up where a bow slams into a wave and blown off breaking crests (CPU droplets, instanced). */
 	void UpdateSpray(float DeltaSeconds);
+	/** High and Ultra: the far caps' sprites (docs/far-cap-sprites/), placed by tile, their lives in M_FarCap. */
+	void UpdateFarCaps(float DeltaSeconds);
 	/** Steps the wake grid with every hull in range and uploads it. */
 	void UpdateWakeGrid(float DeltaSeconds);
 	/** Medium and High: the player's hull plan for M_WaterV4, which drops the water inside it (no sea in the cockpit). */
@@ -258,6 +271,20 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Spray;
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> DropletMesh;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> SprayMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> FarCapMaterial;
+	// docs/far-cap-sprites/: one instanced quad mesh per 400 m tile of the ring (Static: placed once, rebuilt only when the
+	// tile's cover leaves what its slots hold), its own material instance carrying the tile's live probability.
+	struct FFarCapTile
+	{
+		TObjectPtr<UInstancedStaticMeshComponent> Mesh;
+		TObjectPtr<UMaterialInstanceDynamic> Mid;
+		int32 Slots = 0;
+		double Cover = 0.0;
+	};
+	TMap<FIntPoint, FFarCapTile> FarCapTiles;
+	UPROPERTY(Transient) TArray<TObjectPtr<UObject>> FarCapKeep; // the tiles' meshes and instances, held for the GC
+	float FarCapTimer = 0.f;
+	bool bFarCaps = false;
 	// Spray (docs/spray/): a clump of droplets, a sheet torn off the bow wave, or the mist they leave (ESprayKind).
 	struct FDroplet
 	{
