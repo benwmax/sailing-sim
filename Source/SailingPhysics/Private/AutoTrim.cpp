@@ -131,6 +131,12 @@ namespace Sailing
 			// mainsheet runs from the boom's end, out beyond the leeward hull, back to the traveler on the rear beam, across
 			// the leeward hull where they sat. On two hulls the light-air lean to leeward buys nothing.
 			if (Cfg.bMultihull && std::fabs(S.BoomAngle) > 55.0 * kDegToRad) Out.Hike = std::max(Out.Hike, 0.0);
+			// Tied up, or with no way on and not pressed, the crew sit in the middle (docs/dock-look/; Hike -0.5 is the
+			// centreline whichever side is windward): in the slip, the apparent wind swung round her stern as she rolled, "a
+			// little leeward heel" changed sides every roll and the crew shuttled across the cockpit, rocking her 4 deg every
+			// 1.4 s; the same once the lines were off, drifting or backing out at under a knot.
+			const bool bNoWay = std::fabs(T.SpeedThroughWater) < 0.8 * kKnot && std::fabs(T.Heel) < 8.0 * kDegToRad;
+			if (!Boat.GetMooringLines().empty() || bNoWay) Out.Hike = MoveToward(Current.Hike, -0.5, HikeRate * Dt);
 		}
 		return Out;
 	}
