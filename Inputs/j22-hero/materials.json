@@ -19,7 +19,7 @@
    "R": "T_J22H_Rudder_R.png",
    "N": "T_J22H_Rudder_N.png",
    "X": "T_J22H_Rudder_X.png",
-   "uv_m": 1.5405
+   "uv_m": 1.7878
   },
   "Teak": {
    "D": "T_J22H_Teak_D.png",
@@ -45,6 +45,15 @@
    ],
    "roughness": 0.5,
    "metallic": 1.0
+  },
+  "AshVarnish": {
+   "base_color_linear": [
+    0.5841,
+    0.3663,
+    0.1559
+   ],
+   "roughness": 0.3,
+   "metallic": 0.0
   },
   "Bilge": {
    "base_color_linear": [

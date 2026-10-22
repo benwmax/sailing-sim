@@ -124,17 +124,28 @@ sock("Boom_Mainsheet", _c("MainsheetHigh_sheave"))
 sock("Boom_Clew", _c("BoomEnd_outhaul"))
 glo, ghi = _bb("Gooseneck_vpin")
 GOOSE = (glo + ghi) / 2
-tl_lo, tl_hi = _bb("Tiller")
-sock("TillerEnd", Vector((tl_hi.x, 0, tl_hi.z - 0.02)))
-rh_lo, rh_hi = _bb("RudderHead")
-stock_x = rh_hi.x - 0.02
-sock("RudderStock", Vector((stock_x, 0, tl_lo.z + 0.03)))
-sock("RudderPivot", Vector((stock_x, 0, 0)))
+def _anchor(name):
+    """pc/j22-detail: a socket the build pins (an anchor_<Name> empty, j22_steering.py), or None."""
+    o = bpy.data.objects.get("anchor_" + name)
+    return o.matrix_world.translation.copy() if o else None
 
-# crew attach points (crew-motion plan): hands, feet, ducking. The lesson boat has no lifelines or stanchions.
-ux_lo, ux_hi = _bb("TillerExt")
-sock("TillerExtTip", Vector((ux_lo.x, 0, (ux_lo.z + ux_hi.z) / 2)) if ux_lo.x < tl_lo.x + 0.4 else Vector((ux_hi.x, 0, ux_hi.z)))
-sock("TillerExtUJ", _c("ExtUJ"))
+
+STEER_ANCHORS = {n: _anchor(n) for n in ("TillerEnd", "RudderStock", "RudderPivot", "TillerExtTip", "TillerExtUJ")}
+if all(STEER_ANCHORS.values()):
+    for n, v in STEER_ANCHORS.items():
+        sock(n, v)
+    stock_x = STEER_ANCHORS["RudderPivot"].x     # the rudder part's pivot (PIVOTS below)
+else:
+    tl_lo, tl_hi = _bb("Tiller")
+    sock("TillerEnd", Vector((tl_hi.x, 0, tl_hi.z - 0.02)))
+    rh_lo, rh_hi = _bb("RudderHead")
+    stock_x = rh_hi.x - 0.02
+    sock("RudderStock", Vector((stock_x, 0, tl_lo.z + 0.03)))
+    sock("RudderPivot", Vector((stock_x, 0, 0)))
+    # crew attach points (crew-motion plan): hands, feet, ducking. The lesson boat has no lifelines or stanchions.
+    ux_lo, ux_hi = _bb("TillerExt")
+    sock("TillerExtTip", Vector((ux_lo.x, 0, (ux_lo.z + ux_hi.z) / 2)) if ux_lo.x < tl_lo.x + 0.4 else Vector((ux_hi.x, 0, ux_hi.z)))
+    sock("TillerExtUJ", _c("ExtUJ"))
 sock("MainsheetCam", (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
 for tag, side in (("S", -1), ("P", 1)):
     for k in (0, 1):
