@@ -14,8 +14,8 @@ metre to 1 at half a metre, times the duck:
 - **The crouch** goes up to 12 cm lower, kneeling. The 30 cm floor was set so a keelboat sailor's folded knees stay out
   of the sole. `CrewClipLimits` and `CrewHullClearance` still hold the knees and feet out of it.
 
-Only the Sunfish's boom is that low. The ILCA's is 0.8 m over her floor, so she stoops a little. No other boat
-changes.
+Any boat whose boom is under a metre over her floor stoops in proportion. The Sunfish's is by far the lowest; the
+dinghies' crew tests and SheetClearance cover the rest.
 
 ## Checks
 
