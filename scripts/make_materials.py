@@ -2615,8 +2615,6 @@ MAX_STEP_DEPTH = 1.0
 
 # docs/night-clouds/: the city glow's weight toward an azimuth (map frame), shared by the live clouds (CLOUD_CODE), the
 # far clouds from the cache (M_SkyDome) and the sky's own domes' shape: GlowA/GlowB hold (azimuth, strength) pairs.
-# CLOUD_GLOW: a cloud base's glow per unit of the domes' total strength (ASailingEnvironment::kCloudGlow: keep in step).
-CLOUD_GLOW = 1.0
 # 0.3 all round plus 1.0 toward each dome, weighted by its strength (0.3 .. 1.3). An inline block (custom nodes take no
 # functions): reads gAz and GlowA/GlowB, writes gToward.
 GLOW_TOWARD = """
@@ -2901,7 +2899,9 @@ AO = 1.0;
         float aboveCu = max(hCu, 0.0) * max(Cu.z - Cu.y, 0.05), aboveSt = max(hSt, 0.0) * max(St.z - St.y, 0.05);
         // (d is the densest layer's capped extinction: the same layer's height above its base decides.)
         float fromBelow = saturate(max(max(min(dCu * Ext.x, cV) * exp(-aboveCu / 0.6), min(dSt * Ext.y, cT) * exp(-aboveSt / 0.6)), 0.3 * d) / max(d, 1e-4));
-        Emit += GlowLum.rgb * (toward * fromBelow * (1.0 - wet * 0.5)) * d * Density;
+        // (0.1: the volumetric cloud's emission against the sky material's units, fitted to a lit overcast deck at night:
+        // warm brown overhead, as the far clouds' glow. At 1 it sat on the tone curve's white shoulder.)
+        Emit += GlowLum.rgb * (0.1 * toward * fromBelow * (1.0 - wet * 0.5)) * d * Density;
     }
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
@@ -2984,7 +2984,10 @@ def build_cloud_layers():
     # Graphics G1: a sharper forward lobe (silver linings), less multiple-scattering brightening (grey, self-shadowed bases),
     # a third octave so thick cloud stays luminous inside, and the ground's bounce lighting the bases.
     for k, v in (("const_phase_g", 0.72), ("const_phase_g2", -0.3), ("const_phase_blend", 0.3), ("const_multi_scattering_contribution", 0.55),
-                 ("const_multi_scattering_occlusion", 0.5), ("const_multi_scattering_eccentricity", 0.55), ("multi_scattering_approximation_octave_count", 3), ("gray_scale_material", True)):
+                 ("const_multi_scattering_occlusion", 0.5), ("const_multi_scattering_eccentricity", 0.55), ("multi_scattering_approximation_octave_count", 3),
+              # docs/night-clouds/: in colour. Grayscale kept only the red channel of the albedo, extinction and emission:
+              # the city glow lit the night deck neutral grey and the storm slate lost its blue. No cost measured on High.
+              ("gray_scale_material", False)):
         adv.set_editor_property(k, v)
     for k in ("ground_contribution", "b_ground_contribution"):
         try:
@@ -3323,7 +3326,12 @@ float cm = dot(dir, MoonDir.xyz);
         {
             float gAz = atan2(dir.y, dir.x);
             //@GLOW_TOWARD@
-            col += (1.0 - s.b) * float3(1.0, 0.70, 0.42) * (Night.y * CLOUD_GLOW * gToward);
+            // Shaped by the cache's own height shade (G over the opacity: the mean ambient occlusion along the ray, lowest
+            // under the bases): bases and the near sides of cells glow, their upper parts less.
+            float op = 1.0 - s.b;
+            float aoMean = saturate(s.g / max(0.95 * op, 1e-4));
+            float shape = saturate((1.15 - aoMean) * 2.5);
+            col += op * shape * float3(1.0, 0.70, 0.42) * (Night.y * CloudGlow * gToward);   // CloudGlow: kCloudGlow
         }
     }
 }
@@ -3355,9 +3363,10 @@ def build_sky_dome():
     # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
-    c = custom(mat, SKY_CODE.replace("//@GLOW_TOWARD@", GLOW_TOWARD).replace("CLOUD_GLOW", repr(CLOUD_GLOW)), ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
-                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP"],
+    c = custom(mat, SKY_CODE.replace("//@GLOW_TOWARD@", GLOW_TOWARD), ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP", "CloudGlow"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
+    connect(scalar(mat, "CloudGlow", 1.0, -1400, 2300), "", c, "CloudGlow")   # docs/night-clouds/: kCloudGlow
     for n, t in cache.items():
         connect(t, "", c, n)
     connect(sky_ridge, "", c, "Skyline")

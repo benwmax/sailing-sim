@@ -746,7 +746,9 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		}
 		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.
-		const float Grey = FMath::SmoothStep(0.3f, 0.8f, float(W.CloudDarkness));
+		// (Not at night, docs/night-clouds/: under the deck then the light is the towns', warm off its base, and the grey cut
+		// it to a colourless sheet.)
+		const float Grey = FMath::SmoothStep(0.3f, 0.8f, float(W.CloudDarkness)) * (1.f - NightAmount);
 		PostProcess->Settings.bOverride_ColorSaturation = true;
 		PostProcess->Settings.ColorSaturation = FVector4(1.f, 1.f, 1.f, 1.f - 0.7f * Grey);
 	}
@@ -1130,7 +1132,10 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	// Not under a storm (yet): the shelf's lit face is emission in CLOUD_CODE and the deck's slate albedo, which the
 	// cache's two lighting terms don't carry (its storm came out a black-brown deck). While a storm is in the sky the
 	// live clouds take the whole sky back, as they were before the cache; it starts again when the storm has gone.
-	const bool bStorm = W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02;
+	// docs/night-clouds/: nor under a deck at night: its base lit by the towns is emission too, and the cache's night
+	// ambient met the live deck in a bright rim. Scattered night cumulus keep the cache (M_SkyDome adds their glow).
+	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02)
+		|| (NightAmount > 0.5f && W.Sky[ECloudLayer::Stratus].Coverage > 0.3);
 	if (bStorm)
 	{
 		if (bCacheReady)
@@ -1490,14 +1495,15 @@ void ASailingEnvironment::UpdateSkyDome(const FVector& SunTrue, const FVector& M
 	SkyMaterial->SetVectorParameterValue(TEXT("NightParams"), FLinearColor(StarScale, GlowTotal, GlowParams[0], GetWorld()->GetTimeSeconds()));
 	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesA"), FLinearColor(GlowParams[0], GlowParams[1], GlowParams[2], GlowParams[3]));
 	SkyMaterial->SetVectorParameterValue(TEXT("GlowDomesB"), FLinearColor(GlowParams[4], GlowParams[5], GlowParams[6], GlowParams[7]));
-	// docs/night-clouds/: the same domes light the clouds' bases from below (CLOUD_CODE): GlowLum.rgb is an opaque base's
-	// glow (a cloud base's glow per unit of the domes' total: kCloudGlow, make_materials.py's CLOUD_GLOW), w 1 at night.
+	// docs/night-clouds/: the same domes light the clouds' bases from below: GlowLum.rgb is an opaque base's glow (CLOUD_CODE,
+	// the live clouds; w 1 at night) and CloudGlow the same per unit of the domes' total for the far clouds the sky draws
+	// from the cache. kCloudGlow: a base's glow per unit of the domes' total strength; -SailingCloudGlow=<scale> measures.
+	constexpr float kCloudGlow = 0.35f;
+	static float GlowScale = -1.f;
+	if (GlowScale < 0.f) { GlowScale = 1.f; FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudGlow="), GlowScale); }
+	SkyMaterial->SetScalarParameterValue(TEXT("CloudGlow"), kCloudGlow * GlowScale);
 	if (CloudMaterial)
 	{
-		constexpr float kCloudGlow = 1.0f;
-		// -SailingCloudGlow=<scale> measures (stills at other strengths).
-		static float GlowScale = -1.f;
-		if (GlowScale < 0.f) { GlowScale = 1.f; FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudGlow="), GlowScale); }
 		const float G = GlowTotal * kCloudGlow * GlowScale;
 		CloudMaterial->SetVectorParameterValue(TEXT("GlowLum"), FLinearColor(G, 0.70f * G, 0.42f * G, GlowTotal > 0.f ? 1.f : 0.f));
 		CloudMaterial->SetVectorParameterValue(TEXT("GlowDomesA"), FLinearColor(GlowParams[0], GlowParams[1], GlowParams[2], GlowParams[3]));

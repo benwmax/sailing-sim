@@ -93,6 +93,40 @@ bool FSkyCloudLayersTest::RunTest(const FString&)
 }
 
 /**
+ * docs/night-clouds/: fair-weather cumulus is the day's heat rising: it dies away over a couple of hours after sunset
+ * (whatever the date), stays down through the night, and builds again the next day; the decks and the storm keep theirs.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCumulusAfterSunsetTest, "SailingSim.Visual.CumulusAfterSunset", SkyFlags)
+bool FSkyCumulusAfterSunsetTest::RunTest(const FString&)
+{
+	auto CuAt = [](EWeatherPreset P, double Sunset, double Hour)
+	{
+		FWeatherSystem W;
+		W.SetSunset(Sunset);
+		W.Configure(P, 7, Hour);
+		return W.Evaluate(0.0).Sky[ECloudLayer::Cumulus].Coverage;
+	};
+	for (const double Sunset : { 18.75, 20.6 })   // late October and late June at the lake
+	{
+		const double Day = CuAt(EWeatherPreset::AfternoonBreeze, Sunset, 16.0), Before = CuAt(EWeatherPreset::AfternoonBreeze, Sunset, Sunset - 0.5);
+		const double After1 = CuAt(EWeatherPreset::AfternoonBreeze, Sunset, Sunset + 1.0), After2 = CuAt(EWeatherPreset::AfternoonBreeze, Sunset, Sunset + 2.0);
+		const double Midnight = CuAt(EWeatherPreset::AfternoonBreeze, Sunset, 23.9), Small = CuAt(EWeatherPreset::AfternoonBreeze, Sunset, 3.0);
+		AddInfo(FString::Printf(TEXT("Sunset %.2f h: cumulus %.3f at 16 h, %.3f half an hour before, %.3f an hour after, %.3f two hours after, %.3f at midnight, %.3f at 3 h"),
+			Sunset, Day, Before, After1, After2, Midnight, Small));
+		TestTrue(FString::Printf(TEXT("Sunset %.2f: still up just before sunset"), Sunset), Before > 0.7 * Day);
+		TestTrue(FString::Printf(TEXT("Sunset %.2f: dying an hour after"), Sunset), After1 < 0.75 * Day && After1 > 0.15 * Day);
+		TestTrue(FString::Printf(TEXT("Sunset %.2f: a few remnants two hours after"), Sunset), After2 <= 0.2 * Day);
+		TestTrue(FString::Printf(TEXT("Sunset %.2f: down through the night"), Sunset), Midnight <= 0.2 * Day && Small <= 0.2 * Day);
+	}
+	TestTrue(TEXT("The next day builds again"), CuAt(EWeatherPreset::AfternoonBreeze, 18.75, 15.0) > 0.18);
+	FWeatherSystem Deck;
+	Deck.SetSunset(18.75);
+	Deck.Configure(EWeatherPreset::Overcast, 7, 22.0);
+	TestTrue(TEXT("An overcast keeps its deck at night"), Deck.Evaluate(0.0).Sky[ECloudLayer::Stratus].Coverage > 0.9);
+	return true;
+}
+
+/**
  * The shelf cloud rides the physics gust front (Visual V5): the shelf's leading edge, as the cloud shader draws it
  * (FStormShape, mirrored in make_materials.py), arrives over the boat within 30 s of the front itself; the rain core and
  * its darker, higher cloud follow.
