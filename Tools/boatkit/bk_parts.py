@@ -106,9 +106,10 @@ def cam_cleat():
         cy = side * 0.014
         prof = []
         teeth = 18
-        for i in range(teeth * 2):
-            a = G.TAU * i / (teeth * 2)
-            r = 0.0115 + (0.0012 if i % 2 == 0 else 0.0)
+        # pc/j22-detail assembly 5: raked teeth (a sawtooth: the line slides in, not out) on an eccentric lobe toward the line
+        for i in range(teeth * 3):
+            a = G.TAU * i / (teeth * 3)
+            r = 0.0108 + 0.0018 * max(0.0, math.cos(a + side * math.pi / 2)) + (0.0013, 0.0006, 0.0)[i % 3]
             prof.append((r * math.cos(a), r * math.sin(a)))
         cam = G.prism(f"cam{side}", prof, 0.006, 0.020, M("Aluminium"))
         cam.location = (0.004, cy, 0)
@@ -151,11 +152,22 @@ def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=Fal
     cz = -R - 0.016                                        # axle height below the head
     for i in range(sheaves + 1):
         y = -width / 2 + 0.002 + i * (t + 0.004)
-        cheek = G.prism(f"cheek{i}", G.ellipse(R + 0.006, R + 0.010, 28), y, y + 0.003, M("BlackPlastic"))
+        cheek = G.prism(f"cheek{i}", G.ellipse(R + 0.006, R + 0.010, 40), y, y + 0.003, M("BlackPlastic"))
         cheek.matrix_world = Matrix.Rotation(math.radians(90), 4, "X")
         G.bake_xform(cheek)
         cheek.location = (0, 0, cz)
         G.bake_xform(cheek)
+        # pc/j22-detail assembly 5: a ring of lightening holes through the outer cheeks (the sheave shows through), clear
+        # of the head and the badge
+        if i in (0, sheaves):
+            holes = [G.cyl(f"hole{i}{k}", (R * 0.62 * math.cos(a), -1.0, cz + R * 0.62 * math.sin(a)), (R * 0.62 * math.cos(a), 1.0, cz + R * 0.62 * math.sin(a)),
+                           R * 0.16, None, 16) for k, a in enumerate(G.TAU * (j + 0.5) / 6 for j in range(6)) if not (plate and i == 0 and math.sin(a) < -0.4)]
+            G.boolean(cheek, G.join(f"holes{i}", holes))
+            hub = G.lathe(f"hub{i}", [(0, 0), (R * 0.34, 0), (R * 0.32, 0.0012), (0, 0.0012)], M("BlackPlastic"), 24)
+            side = -1 if i == 0 else 1
+            hub.matrix_world = Matrix.Translation((0, y + (0 if i == 0 else 0.003), cz)) @ Matrix.Rotation(math.radians(-90 * side), 4, "X")
+            G.bake_xform(hub)
+            objs.append(G.finish(hub, 0.0004))
         objs.append(G.finish(cheek, 0.0008))
     for i in range(sheaves):
         y0 = -width / 2 + 0.005 + i * (t + 0.004) + 0.0005
@@ -164,6 +176,12 @@ def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=Fal
         sh.matrix_world = Matrix.Translation((0, y0, cz)) @ Matrix.Rotation(math.radians(-90), 4, "X")
         G.bake_xform(sh)
         objs.append(G.finish(sh, 0, sharp=60))
+        # the ball bearings' race on each face of the sheave
+        for face in (0.0, t):
+            race = G.lathe(f"race{i}{face}", [(R * 0.40, 0), (R * 0.50, 0), (R * 0.50, 0.0005), (R * 0.40, 0.0005)], M("Stainless"), 28)
+            race.matrix_world = Matrix.Translation((0, y0 + face - (0.0005 if face == 0.0 else 0.0), cz)) @ Matrix.Rotation(math.radians(-90), 4, "X")
+            G.bake_xform(race)
+            objs.append(G.finish(race, 0, weighted=False))
     ax = G.cyl("axle", (0, -width / 2 - 0.001, cz), (0, width / 2 + 0.001, cz), 0.0045, M("Stainless"), 16)
     objs.append(G.finish(ax, 0.0006))
     # swivel head: a stainless strap over the top and a swivel shackle
@@ -232,6 +250,10 @@ def winch16():
     sock = G.lathe("socket", [(0, 0.096), (0.012, 0.096), (0.012, 0.097), (0.0, 0.097)], M("BlackPlastic"), 8)   # octagonal socket
     G.finish(sock, 0)
     objs = [base, drum, sock] + _fastener_ring(5, 0.050, 0.050, 0.006, M("Stainless"), 0.0035)
+    # pc/j22-detail assembly 5: the top cap's screws and the cap's chrome edge ring
+    objs += _fastener_ring(5, 0.022, 0.022, 0.0952, M("Stainless"), 0.0022)
+    ring = G.lathe("capring", [(0.0335, 0.0895), (0.0362, 0.0895), (0.0362, 0.0912), (0.0335, 0.0912)], M("Stainless"), 64)
+    objs.append(G.finish(ring, 0, weighted=False))
     # The maker's plate on the base flange's slope, facing forward, reading along the flange.
     tilt = math.atan2(0.008, 0.016)
     objs.append(badge("plate", "Plate16", 0.024, 0.006, Matrix.Translation((0.052, 0, 0.010)) @ Matrix.Rotation(tilt, 4, "Y") @ Matrix.Rotation(math.radians(90), 4, "Z"),

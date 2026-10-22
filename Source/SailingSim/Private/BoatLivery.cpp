@@ -1,4 +1,7 @@
 #include "BoatLivery.h"
+#include "BoatPacks.h"
+#include "Components/MeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 namespace
 {
@@ -9,6 +12,37 @@ namespace
 		uint32 S;
 		float Next() { S ^= S << 13; S ^= S >> 17; S ^= S << 5; return (S & 0xFFFFFF) / float(0x1000000); }
 	};
+}
+
+void PaintSpars(UMeshComponent* Part, const FBoatLivery& L)
+{
+	if (!Part || !L.bSparPainted) return;
+	// make_materials.py BOAT_LIBRARY "PaintedAluminium": roughness 0.35, not metallic, clear coat 0.6, porosity 0.05; surface 5.
+	const float Rough = 0.35f, Coat = 0.6f, Porosity = 0.05f, Surface = 5.f;
+	const TArray<FName> Slots = Part->GetMaterialSlotNames();
+	for (int32 I = 0; I < Slots.Num(); ++I)
+	{
+		const TConstArrayView<const TCHAR*> Packed = SailingBoatPacks::Entries(Slots[I]);
+		const int32 Entry = Packed.IndexOfByPredicate([](const TCHAR* E) { return FCString::Strcmp(E, TEXT("Aluminium")) == 0; });
+		const bool bOwn = Slots[I] == TEXT("Aluminium") || Slots[I] == TEXT("MastAluminium");
+		if (!bOwn && Entry == INDEX_NONE) continue;
+		UMaterialInstanceDynamic* Mid = Part->CreateDynamicMaterialInstance(I);
+		if (!Mid) continue;
+		if (bOwn)
+		{
+			Mid->SetVectorParameterValue(TEXT("Color"), L.Spar);
+			Mid->SetScalarParameterValue(TEXT("Roughness"), Rough);
+			Mid->SetScalarParameterValue(TEXT("Metallic"), 0.f);
+			Mid->SetScalarParameterValue(TEXT("ClearCoat"), Coat);
+			Mid->SetScalarParameterValue(TEXT("Porosity"), Porosity);
+			Mid->SetScalarParameterValue(TEXT("Surface"), Surface);
+			continue;
+		}
+		// A pack's entry: P<k>C colour, P<k>A (roughness, metallic, clear coat, non-skid), P<k>B (porosity, surface, hull, grain).
+		Mid->SetVectorParameterValue(SailingBoatPacks::ColourParam(Entry), L.Spar);
+		Mid->SetVectorParameterValue(FName(*FString::Printf(TEXT("P%dA"), Entry)), FLinearColor(Rough, 0.f, Coat, 0.f));
+		Mid->SetVectorParameterValue(FName(*FString::Printf(TEXT("P%dB"), Entry)), FLinearColor(Porosity, Surface, 0.f, 0.f));
+	}
 }
 
 int32 NumLiverySchemes(int32 BoatType)
@@ -82,6 +116,26 @@ FBoatLivery SampleBoatLivery(int32 BoatType, uint32 Seed)
 		for (int32 K = 0; K < 3; ++K) F.Next();
 		const float* Fade = W.FadeRange[FMath::Clamp(L.Profile, 0, 2)];
 		L.SailFade = FMath::Lerp(Fade[0], Fade[1], Seed == 0 ? 0.5f : F.Next());
+	}
+	// pc/j22-detail: the spars' finish, by weight from its own stream (seed 0: the first, the player's painted spars).
+	if (C.NumSpars > 0)
+	{
+		int32 Spar = 0;
+		if (Seed != 0)
+		{
+			FRng F{ Seed * 69069u + 0x2545f491u + uint32(BoatType) * 13u };
+			for (int32 K = 0; K < 3; ++K) F.Next();
+			float Total = 0.f;
+			for (int32 I = 0; I < C.NumSpars; ++I) Total += C.Spars[I].Weight;
+			float X = F.Next() * Total;
+			for (Spar = 0; Spar < C.NumSpars - 1; ++Spar)
+			{
+				X -= C.Spars[Spar].Weight;
+				if (X < 0.f) break;
+			}
+		}
+		L.bSparPainted = C.Spars[Spar].bPainted;
+		L.Spar = C.Spars[Spar].Colour;
 	}
 	// The sail number, from the class's range and format ("USA {n}", "{n}", "{n6}": six digits).
 	const FLiveryNumbers& N = *C.Numbers;

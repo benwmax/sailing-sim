@@ -426,50 +426,6 @@ def build_keel():
     return k
 
 
-def build_rudder():
-    # transom-hung blade, head above the aft deck carrying the tiller
-    r = foil("Rudder", STERN - 0.04, STERN - 0.42, STERN - 0.09, STERN - 0.40, 0.55, -0.98, thick=0.10, mat=MAT["GelcoatHull"])
-    parts = [r]
-    # rudder head: two cast cheeks either side of the blade top, through-bolted, the tiller pinned between them
-    prof = [(STERN - 0.03, 0.40), (STERN - 0.03, 0.66), (STERN - 0.06, 0.74), (STERN - 0.15, 0.77), (STERN - 0.24, 0.75),
-            (STERN - 0.30, 0.66), (STERN - 0.36, 0.48), (STERN - 0.33, 0.40)]
-    for side in (1, -1):
-        y0, y1 = side * 0.019, side * 0.027
-        bm = bmesh.new()
-        f = bm.faces.new([bm.verts.new((x, y0, z)) for x, z in prof])
-        ext = bmesh.ops.extrude_face_region(bm, geom=[f])
-        for v in ext["geom"]:
-            if isinstance(v, bmesh.types.BMVert):
-                v.co.y = y1
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-        ch = mesh_obj("RudderHead" if side > 0 else "RudderHead_cheek", bm, MAT["CastAlu"], smooth_shade=False)
-        bv = ch.modifiers.new("bev", "BEVEL")
-        bv.width, bv.segments = 0.003, 2
-        apply_mods(ch)
-        parts.append(ch)
-    for k, (x, z) in enumerate(((STERN - 0.08, 0.46), (STERN - 0.26, 0.46), (STERN - 0.13, 0.56), (STERN - 0.30, 0.56))):
-        parts.append(cyl(f"RudderBolt_{k}", (x, -0.034, z), (x, 0.034, z), 0.004, MAT["Stainless"], 10))
-        for side in (1, -1):
-            parts.append(cyl(f"RudderNut_{k}_{side}", (x, side * 0.027, z), (x, side * 0.034, z), 0.0075, MAT["Stainless"], 6))
-    parts.append(cyl("TillerPin", (STERN - 0.12, -0.036, 0.70), (STERN - 0.12, 0.036, 0.70), 0.006, MAT["Stainless"], 12))
-    # pintles on the blade's leading edge into gudgeons on the transom
-    # Boat fidelity 3 (photos tiller-transom-attachemnt): each pintle on a long polished strap down both faces of the
-    # blade with four through-bolts, into a gudgeon of two lugs (above and below the strap) bolted to the transom.
-    for k, z in enumerate((0.47, 0.05)):
-        parts.append(cyl(f"Pintle_{k}", (STERN - 0.035, 0, z - 0.035), (STERN - 0.035, 0, z + 0.035), 0.007, MAT["Stainless"], 12))
-        parts.append(box(f"PintleStrap_{k}", STERN - 0.27, STERN - 0.03, -0.024, 0.024, z - 0.012, z + 0.012, MAT["Stainless"], bev=0.003))
-        for b in range(4):
-            xb = STERN - 0.07 - 0.06 * b
-            for sgn in (1, -1):
-                parts.append(cyl(f"PintleBolt_{k}_{b}_{sgn}", (xb, sgn * 0.024, z), (xb, sgn * 0.029, z), 0.0055, MAT["Stainless"], 6))
-        for lug, dz in ((0, 0.023), (1, -0.023)):
-            parts.append(box(f"Gudgeon_{k}_{lug}", STERN - 0.04, STERN + 0.003, -0.030, 0.030, z + dz - 0.009, z + dz + 0.009, MAT["Stainless"], bev=0.003))
-            for sgn in (1, -1):
-                parts.append(cyl(f"GudgeonBolt_{k}_{lug}_{sgn}", (STERN + 0.004, sgn * 0.040, z + dz), (STERN - 0.003, sgn * 0.040, z + dz), 0.0065, MAT["Stainless"], 6))
-        parts.append(box(f"GudgeonPlate_{k}", STERN - 0.002, STERN + 0.004, -0.05, 0.05, z - 0.04, z + 0.04, MAT["Stainless"], bev=0.002))
-    return parts
-
-
 # ------------------------------------------------------------------ deck hardware
 
 def toe_rail(side):
@@ -549,16 +505,28 @@ def kit_part(name, part, at, yaw=0.0, surface=None, **kw):
 
 
 def cleat(name, at, along_x=True, size=0.15):
-    """Horn cleat: tapered horns on two feet, two through-bolts."""
+    """Horn cleat (pc/j22-detail assembly 5; photo bow-hardware): a cast base tapering up into one arched horn of
+    elliptic section, thinner toward its tips, two through-bolts. `{name}_horn`'s top centre is a socket (BowCleat):
+    the horn is set so it stays at (x, y, z + 0.044)."""
+    import bk_geom as G
     x, y, z = at
-    L, w = size, size * 0.17
+    L = size
     ax = Vector((1, 0, 0)) if along_x else Vector((0, 1, 0))
     M4 = D.frame((x, y, z), ax)
-    parts = [D.lbox(name + "_horn", (0, 0, 0.037), (L, w, 0.014), MAT["CastAlu"], bev=0.006)]
-    for dx in (-L / 4, L / 4):
-        parts.append(D.lbox(name + "_foot", (dx, 0, 0.017), (0.026, w * 1.1, 0.034), MAT["CastAlu"], bev=0.006))
+    path = G.bezier((-L / 2, 0, 0.029), (-L * 0.26, 0, 0.040), (L * 0.26, 0, 0.040), (L / 2, 0, 0.029), 24)
+    radii = [0.55 + 0.45 * math.sin(math.pi * i / (len(path) - 1)) ** 0.6 for i in range(len(path))]
+    horn = G.sweep(name + "_horn", path, G.ellipse(L * 0.045, L * 0.058, 20), MAT["CastAlu"], radii=radii, twist_up=(0, 0, 1))
+    G.finish(horn, 0.0, sharp=80)
+    vs = [v.co for v in horn.data.vertices]
+    top = max(v.z for v in vs)
+    cx = (min(v.x for v in vs) + max(v.x for v in vs)) / 2
+    cy = (min(v.y for v in vs) + max(v.y for v in vs)) / 2
+    horn.data.transform(Matrix.Translation((-cx, -cy, 0.044 - top)))
+    base = G.prism(name + "_base", G.rrect(L * 0.44, L * 0.19, L * 0.07), 0.0, 0.030, MAT["CastAlu"], taper=0.78)
+    G.finish(base, 0.003)
+    parts = [horn, base]
     D._place(parts, M4)
-    parts += D.screws(name, [M4 @ Vector((dx, 0, 0.034)) + Vector((0, 0, 0.0)) for dx in (-L / 4, L / 4)], (0, 0, 1), MAT)
+    parts += D.screws(name, [M4 @ Vector((dx, 0, 0.030)) for dx in (-L * 0.12, L * 0.12)], (0, 0, 1), MAT)
     return parts
 
 
@@ -583,7 +551,7 @@ def build_hardware():
         # one chainplate a side on the side deck, upper shroud on its aft hole and lower on its forward one (photos)
         xc = CHAINPLATE_X
         yc = half_beam(xc) - 0.09
-        parts += D.chainplate(f"Chainplate_{side}", (xc, side * yc, deck_z(xc, yc)), MAT, span=0.072)
+        parts += MG.chainplate(f"Chainplate_{side}", (xc, side * yc, deck_z(xc, yc)), MAT, span=0.072)
         # stern cleats and backstay chainplates at the transom corners
         xs = STERN + 0.20
         ys = half_beam(xs) - 0.14
@@ -641,10 +609,10 @@ def build_hardware():
                          MAT["TeakWeathered"], bev=0.004))
     # mast step, halyard turning blocks, organisers and cam cleats on the cabin top
     zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
-    parts.append(box("MastStep", MAST_X - 0.10, MAST_X + 0.10, -0.06, 0.06, zm - 0.005, zm + 0.03, MAT["Aluminium"], bev=0.006))
-    # Boat fidelity 3: six turning blocks fanning round the step (photos mast-bottom-closeup, mast-sheetsandhardware)
-    for k, dy in enumerate((-0.15, -0.10, -0.05, 0.05, 0.10, 0.15)):
-        parts += D.block(f"Turn_{k}", (MAST_X - 0.12, dy, zm + 0.035), (1, 0, 0), (0, 0, -1), MAT, 0.029)
+    # pc/j22-detail assembly 4 (j22_mastgear.py): the step casting and six perforated turning blocks fanned round it
+    # (photos mast-bottom-closeup, mast-sheetsandhardware)
+    parts += MG.mast_step(MAST_X, zm, MAT)
+    parts += MG.turning_blocks(MAST_X, zm, MAT)
     for side in (1, -1):
         xo = CABIN_AFT + 0.75
         zo = cabin_top_z(xo, side * 0.12)
@@ -671,65 +639,10 @@ def build_hardware():
     yt = half_beam(STERN) - 0.07
     zt0 = min(deck_z(STERN, 0.0), deck_z(STERN, yt))
     parts.append(box("TransomTeak", STERN - 0.014, STERN + 0.001, -yt, yt, zt0 - 0.045, zt0 - 0.012, MAT["TeakWeathered"], bev=0.004))
-    # outboard bracket and motor on the port quarter (photo IMG_9273): GUESS on sizes for a 3.5 hp
-    parts += outboard()
+    # outboard bracket and motor on the port quarter (photos transom-worn, aft-transom): pc/j22-detail assembly 2, j22_outboard.py
+    import j22_outboard as OUTBOARD  # noqa: E402
+    parts += OUTBOARD.build(MAT)
     return parts
-
-
-def outboard():
-    side = 1
-    y = side * 0.55
-    x = STERN - 0.03
-    parts = [box("OB_plate", x - 0.012, x, y - 0.13, y + 0.13, 0.30, 0.50, MAT["Stainless"], bev=0.004),
-             box("OB_arm_a", x - 0.17, x, y - 0.12, y - 0.10, 0.36, 0.40, MAT["Stainless"], bev=0.004),
-             box("OB_arm_b", x - 0.17, x, y + 0.10, y + 0.12, 0.36, 0.40, MAT["Stainless"], bev=0.004),
-             box("OB_board", x - 0.20, x - 0.16, y - 0.11, y + 0.11, 0.30, 0.46, MAT["BlackPlastic"], bev=0.006)]
-    xm = x - 0.20
-    parts.append(box("OB_cowl", xm - 0.24, xm + 0.10, y - 0.13, y + 0.13, 0.55, 0.82, MAT["OutboardBlack"], bev=0.06))
-    parts.append(box("OB_midsection", xm - 0.10, xm + 0.04, y - 0.07, y + 0.07, 0.25, 0.56, MAT["OutboardBlack"], bev=0.03))
-    parts.append(box("OB_leg", xm - 0.09, xm + 0.03, y - 0.03, y + 0.03, -0.25, 0.26, MAT["OutboardBlack"], bev=0.015))
-    parts.append(cyl("OB_gearcase", (xm + 0.05, y, -0.27), (xm - 0.16, y, -0.27), 0.045, MAT["OutboardBlack"], 24))
-    parts.append(box("OB_tiller", xm + 0.06, xm + 0.42, y - 0.02, y + 0.02, 0.60, 0.64, MAT["BlackPlastic"], bev=0.012))
-    return parts
-
-
-def build_tiller():
-    """Varnished ash tiller from the rudder head, angled up, with a black extension folded along it."""
-    p0 = Vector((STERN - 0.12, 0, 0.70))
-    p1 = Vector((STERN + 1.25, 0, 0.84))
-    # Boat fidelity 3 (photos tiller, tiller-2): a laminated tiller that sweeps up out of the rudder head and runs on
-    # nearly level to the grip, not a straight stick; a cam cleat on its top. Its ends stay where they were (the bake
-    # takes TillerEnd and RudderStock from its bounds), and it never rises above the grip nor dips below the head.
-    n = 14
-    pts = []
-    for i in range(n + 1):
-        u = i / n
-        z = p0.z + (p1.z - p0.z) * smooth(u) + 0.045 * math.sin(math.pi * u) * (1 - u)
-        pts.append(Vector((p0.x + (p1.x - p0.x) * u, 0, z)))
-    # One lofted tube in world axes (capped cylinders per segment showed dark rings at every joint; and a mesh in a tilted
-    # frame has bounds, which the bake reads, larger than the tiller)
-    bm = bmesh.new()
-    rings = []
-    seg = 20
-    for i, p in enumerate(pts):
-        tan = (pts[min(i + 1, n)] - pts[max(i - 1, 0)]).normalized()
-        side = Vector((0, 1, 0))
-        up = tan.cross(side).normalized()
-        r = 0.026 + (0.019 - 0.026) * i / n
-        rings.append([bm.verts.new(p + r * (math.cos(2 * math.pi * k / seg) * side + math.sin(2 * math.pi * k / seg) * up)) for k in range(seg)])
-    for a, b in zip(rings, rings[1:]):
-        for k in range(seg):
-            bm.faces.new((a[k], a[(k + 1) % seg], b[(k + 1) % seg], b[k]))
-    bm.faces.new(list(reversed(rings[0])))
-    bm.faces.new(rings[-1])
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    t = mesh_obj("Tiller", bm, MAT["TeakVarnish"])
-    cam_at = pts[int(n * 0.72)] + Vector((0, 0, 0.022))
-    t_cam = D.cam_cleat("TCam", cam_at, (0, 0, 1), (pts[11] - pts[9]).normalized(), MAT, 0.055)
-    grip = cyl("TillerGrip", p1, p1 + (p1 - p0).normalized() * 0.04, 0.019, MAT["TeakVarnish"], 20, r1=0.012)
-    uj = cyl("ExtUJ", p1 - Vector((0.02, 0, -0.025)), p1 + Vector((0.02, 0, 0.035)), 0.012, MAT["BlackPlastic"], 12)
-    ext = cyl("TillerExt", p1 + Vector((0, 0, 0.035)), p0 + Vector((0.35, 0, 0.06)), 0.013, MAT["ExtensionBlack"], 14)
-    return [t, grip, uj, ext] + t_cam
 
 
 # ------------------------------------------------------------------ rig
@@ -775,37 +688,41 @@ def build_rig():
     aft_face = lambda z: rake(z) - 0.049  # noqa: E731
     parts += D.masthead("Masthead", (rake(MAST_TOP), 0, MAST_TOP), MAT, windex=STYLE["details"]["windex"])
     parts += D.hounds_tang("Hounds", (rake(HOUNDS), 0, HOUNDS), MAT)
-    # mast base: collar, halyard exit plates, sheaves at the step
-    parts.append(cyl("MastCollar", (MAST_X, 0, zm), (MAST_X, 0, zm + 0.06), 0.058, MAT["CastAlu"], 32))
+    # pc/j22-detail assembly 4 (j22_mastgear.py): the halyards' exit boxes, the cunningham, the tape at the gooseneck (the
+    # step casting is the hull's: build_hardware)
     for k, (side, zz) in enumerate(((1, 0.55), (-1, 0.55), (1, 0.75))):
-        parts.append(box(f"ExitPlate_{k}", MAST_X - 0.03, MAST_X + 0.01, side * 0.033, side * 0.037, zm + zz - 0.06, zm + zz + 0.06, MAT["CastAlu"], bev=0.002))
+        parts += MG.exit_box(f"ExitPlate_{k}", (rake(zm + zz) - 0.010, side * 0.035, zm + zz), side, MAT)
+    parts += MG.cunningham(MAST_X, zm, BOOM_Z, aft_face, MAT)
+    # (forward by the resting bend there: BoatModelVisuals bends the mast 2 cm at mid-height in M_BoatMast, a half-sine)
+    parts += MG.tape_band("MastTape_goose", rake(BOOM_Z + 0.045) + 0.02 * math.sin(math.pi * (BOOM_Z + 0.045 - zm) / (MAST_TOP - zm)),
+                          BOOM_Z + 0.045, 0.049, 0.034, 0.030, MAT)
     tips = []
     for side in (1, -1):
         root = Vector((rake(SPREADER_Z), side * 0.035, SPREADER_Z))
         tip = root + Vector((-0.26, side * 0.70, 0.04))
         tips.append(tip)
         parts.append(spar(f"Spreader_{side}", root, tip, 0.018, 0.045, MAT["Aluminium"]))
-        parts += D.spreader_root(f"SprRoot_{side}", (rake(SPREADER_Z), 0, SPREADER_Z), side, MAT)
-        parts += D.spreader_tip(f"SprTip_{side}", tip, (tip - root), MAT)
+        parts += MG.spreader_root(f"SprRoot_{side}", (rake(SPREADER_Z), 0, SPREADER_Z), tip, side, MAT)
+        parts += MG.spreader_tip(f"SprTip_{side}", tip, (tip - root), MAT)
     wires = []
     for side, tip in zip((1, -1), tips):
         xc = CHAINPLATE_X - 0.02
         yc = side * (half_beam(xc) - 0.09)
         zc = deck_z(xc, abs(yc)) + 0.055
         up_target = Vector(tip)
-        tb, top = D.turnbuckle(f"TB_up_{side}", (xc, yc, zc), up_target - Vector((xc, yc, zc)), MAT)
+        tb, top = MG.turnbuckle(f"TB_up_{side}", (xc, yc, zc), up_target - Vector((xc, yc, zc)), MAT)
         parts += tb
         wires.append(tube(f"Upper_{side}", [tuple(top), tuple(tip), (rake(HOUNDS), side * 0.03, HOUNDS - 0.02)], 0.002, MAT["Wire"]))
         xa = CHAINPLATE_X + 0.02
         ya = side * (half_beam(xa) - 0.09)
         lo_top = Vector((rake(SPREADER_Z), side * 0.035, SPREADER_Z - 0.05))
-        tb, top = D.turnbuckle(f"TB_lo_{side}", (xa, ya, deck_z(xa, abs(ya)) + 0.055), lo_top - Vector((xa, ya, deck_z(xa, abs(ya)) + 0.055)), MAT)
+        tb, top = MG.turnbuckle(f"TB_lo_{side}", (xa, ya, deck_z(xa, abs(ya)) + 0.055), lo_top - Vector((xa, ya, deck_z(xa, abs(ya)) + 0.055)), MAT)
         parts += tb
         wires.append(tube(f"Lower_{side}", [tuple(top), tuple(lo_top)], 0.002, MAT["Wire"]))
     sx = BOW - 0.07
     fs_base = Vector((sx, 0, sheer_z(sx) + 0.06))
     fs_top = Vector((rake(HOUNDS) + 0.045, 0, HOUNDS - 0.03))
-    tb, top = D.turnbuckle("TB_fore", fs_base, fs_top - fs_base, MAT)
+    tb, top = MG.turnbuckle("TB_fore", fs_base, fs_top - fs_base, MAT)
     parts += tb
     wires.append(tube("Forestay", [tuple(top), tuple(fs_top)], 0.0025, MAT["Wire"]))
     # split backstay: wire from the masthead to a cascade block; bridle rope to both transom corners
@@ -819,12 +736,22 @@ def build_rig():
     parts += D.block("BS_cascade", apex - Vector((0, 0, 0.03)), (1, 0, 0), (0, 0, 1), MAT, 0.040)
     wires.append(tube("Backstay", [tuple(apex + Vector((0, 0, 0.04))), (rake(MAST_TOP) - 0.195, 0, MAST_TOP - 0.06)], 0.002, MAT["Wire"]))
     # boom: gooseneck at the mast's aft face, outhaul end, vang, mainsheet bails
-    parts += D.gooseneck("Gooseneck", (aft_face(BOOM_Z), 0, BOOM_Z), BOOM_Z, MAT)
+    # pc/j22-detail assembly 3 (j22_boomgear.py): the gooseneck, the boom end, the outhaul cleat and the vang's upper block
+    import j22_boomgear as BG  # noqa: E402
+    parts += BG.gooseneck("Gooseneck", (aft_face(BOOM_Z), 0, BOOM_Z), BOOM_Z, MAT)
     b0 = Vector((aft_face(BOOM_Z) - 0.12, 0, BOOM_Z))
     b1 = Vector((b0.x - BOOM_LEN + 0.08, 0, BOOM_Z + 0.03))
     parts.append(spar("Boom", b0, b1, 0.075, 0.055, MAT["Aluminium"]))
-    parts += D.boom_end("BoomEnd", b1, MAT)
+    parts += BG.boom_end("BoomEnd", b1, MAT)
+    xo = b0.x - 0.95             # (aft of the vang's bail)
+    parts += BG.outhaul_cleat("BoomOuthaulCleat", (xo, 0, BOOM_Z + 0.03 * (b0.x - xo) / (b0.x - b1.x) - 0.0375), MAT)
     parts += D.vang("Vang", (MAST_X - 0.06, 0, zm + 0.10), (MAST_X - 0.80, 0, BOOM_Z - 0.03), MAT, MAT["RopeVang"])
+    va, vb = Vector((MAST_X - 0.06, 0, zm + 0.10)), Vector((MAST_X - 0.80, 0, BOOM_Z - 0.03))
+    vd = (vb - va).normalized()
+    for o in [o for o in parts if o.name.startswith("Vang_hi")]:     # the upper block: the big one from the photo
+        parts.remove(o)
+        bpy.data.objects.remove(o, do_unlink=True)
+    parts += BG.big_block("VangBlock", vb - vd * 0.075, vd, MAT)   # on the boom (bake BOOM_PARTS): "Vang_" is live rope
     top = Vector((b1.x + 0.20, 0, BOOM_Z - 0.03))
     parts.append(D.tube("MainBail", [(top.x - 0.03, -0.03, top.z + 0.03), (top.x - 0.03, -0.03, top.z - 0.005), (top.x, 0, top.z - 0.02),
                                        (top.x + 0.03, 0.03, top.z - 0.005), (top.x + 0.03, 0.03, top.z + 0.03)], 0.003, MAT["Stainless"], smooth_path=True))
@@ -1055,8 +982,12 @@ import j22_interior as INTERIOR  # noqa: E402
 interior = INTERIOR.build(types.SimpleNamespace(**globals()), cabin, deck, cockpit, hull)
 DRAPE = Drape([o for o in (hull, deck, cockpit, cabin) if isinstance(o, bpy.types.Object)])
 keel = build_keel()
-rudder = build_rudder()
-hw = build_hardware()
+# pc/j22-detail: the steering from Bean's photos (j22_steering.py): the blade and its head, the tiller and its straps, the
+# extension, the pintles; the gudgeons stay with the hull
+import j22_steering as STEER  # noqa: E402
+import j22_mastgear as MG  # noqa: E402
+rudder, gudgeons = STEER.build(MAT, D)
+hw = build_hardware() + gudgeons
 if STYLE.get("interior", {}).get("drop_board_stowed", True):
     # under way the drop board lives below, flat on the port bench, so the companionway shows the cabin
     db = bpy.data.objects["DropBoard"]
@@ -1064,7 +995,6 @@ if STYLE.get("interior", {}).get("drop_board_stowed", True):
     bpy.data.objects.remove(db, do_unlink=True)
     interior.append(box("DropBoard", 0.12, 0.60, INTERIOR.BENCH_IN + 0.22, INTERIOR.BENCH_IN + 0.50, INTERIOR.BENCH_Z,
                         INTERIOR.BENCH_Z + 0.024, MAT["TeakWeathered"], bev=0.004))
-tiller = build_tiller()
 rig, wires = build_rig()
 regs = build_registration()
 sails, sail_lines = build_sails() if SAILS else ([], [])
@@ -1074,7 +1004,7 @@ groups = {
     "Hull": [hull, keel] + regs,
     "Deck": [deck, cockpit, cabin],
     "Hardware": hw,
-    "Rudder": rudder + tiller,
+    "Rudder": rudder,
     "Rig": rig,
     "Rigging": wires + sail_lines,
     "Sails": sails,

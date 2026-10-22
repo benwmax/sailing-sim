@@ -968,6 +968,14 @@ bool FVisualLiveryTest::RunTest(const FString&)
 	// The player's boat (seed 0) is 1288, or keeps its last digits inside the class's range (the ILCA read "100000").
 	TestEqual(TEXT("player's J/22 number"), SampleBoatLivery(0, 0).SailNumber, FString(TEXT("USA 1288")));
 	TestEqual(TEXT("player's ILCA number"), SampleBoatLivery(2, 0).SailNumber, FString(TEXT("161288")));
+	// pc/j22-detail: the player's J/22 has white painted spars (Bean's club boats); the fleet mixes painted and anodised
+	// evenly; a class without spar finishes keeps its anodised mast.
+	TestTrue(TEXT("player's J/22 spars painted"), SampleBoatLivery(0, 0).bSparPainted);
+	TestTrue(TEXT("player's J/22 spars white"), SampleBoatLivery(0, 0).Spar.GetLuminance() > 0.75f);
+	int32 Painted = 0;
+	for (int32 S = 1; S <= 4000; ++S) Painted += SampleBoatLivery(0, uint32(S)).bSparPainted;
+	TestTrue(FString::Printf(TEXT("J/22 painted spar share %.3f near 0.5"), Painted / 4000.f), FMath::Abs(Painted / 4000.f - 0.5f) < 0.03f);
+	TestFalse(TEXT("Sunfish spars not painted"), SampleBoatLivery(1, 0).bSparPainted);
 	return true;
 }
 
