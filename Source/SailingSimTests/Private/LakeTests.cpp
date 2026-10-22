@@ -353,6 +353,79 @@ bool FSailingMooringTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingMooredStillTest, "SailingSim.Lake.TiedUpSitsStill", Flags)
+bool FSailingMooredStillTest::RunTest(const FString& Parameters)
+{
+	// docs/dock-look/: tied up alongside in light air she lies still (a few tenths of a degree in the gusts), not rolling.
+	for (const double From : { 90.0, 270.0 })
+	{
+		std::vector<FObstacleSegment> Dock(1);
+		Dock[0].AX = -20.0; Dock[0].AY = 2.0; Dock[0].BX = 20.0; Dock[0].BY = 2.0;
+		FBoatModel Boat;
+		Boat.SetObstacles(&Dock);
+		Boat.Reset(0.0, 0.0, 0.0, 0.0);
+		Boat.GetMooringLines() = FindDockLines(Boat, Dock);
+		const FWindField Wind = WindFrom(6.0, From);
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 1.0;
+		double Lo = 1e9, Hi = -1e9, MaxRate = 0.0, T = 0.0;
+		SailFor(Boat, C, Wind, 40.0, nullptr, [&]
+		{
+			T += 1.0 / 120.0;
+			if (T < 20.0) return;
+			const double H = FMath::RadiansToDegrees(Boat.GetTelemetry().Heel);
+			Lo = FMath::Min(Lo, H); Hi = FMath::Max(Hi, H);
+			MaxRate = FMath::Max(MaxRate, FMath::Abs(FMath::RadiansToDegrees(Boat.GetState().AngularVelocity.X)));
+		});
+		AddInfo(FString::Printf(TEXT("6 kn from %.0f: heel %.2f .. %.2f deg, roll rate up to %.1f deg/s"), From, Lo, Hi, MaxRate));
+		TestTrue(FString::Printf(TEXT("Alongside, 6 kn from %.0f: lies still"), From), Hi - Lo < 1.0 && MaxRate < 2.0);
+	}
+	// And in the J/22's home slip at the club (the drill's start), between its fingers and neighbours.
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	const FMarina& M = Lake.Marina;
+	if (!TestTrue(TEXT("Home slip"), M.HomeSlip != INDEX_NONE)) return false;
+	const FMarinaSlip& Home = M.Slips[M.HomeSlip];
+	// The wind from ahead, abeam and from astern and either quarter, gusty (the game's day: puffs and slow shifts).
+	for (const double Rel : { 0.0, 90.0, 150.0, 180.0, 210.0, 270.0 })
+	{
+		const double From = FMath::Fmod(Home.HeadingDeg + Rel + 360.0, 360.0);
+		FBoatModel Boat;
+		Boat.SetTerrain(&Lake.Terrain);
+		Boat.SetObstacles(&Lake.Obstacles);
+		Boat.Reset(Home.Center.X, Home.Center.Y, Home.HeadingDeg * kDegToRad, 0.0);
+		Boat.GetMooringLines() = FindDockLines(Boat, Lake.Obstacles);
+		FWindParams WP;
+		WP.SpeedKnots = 6.0;
+		WP.FromDegrees = From;
+		WP.GustIntensity = 0.15;
+		WP.ShiftDegrees = 8.0;
+		WP.ShiftPeriodSeconds = 60.0;
+		const FWindField Wind(WP);
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 0.6;
+		C.bSailsDown = true;   // the drill's start: covered and furled
+		// The crew helper the game runs (its hiking chased "a little leeward heel" round her stern and rocked her).
+		FAutoTrim Trim;
+		double Lo = 1e9, Hi = -1e9, MaxRate = 0.0, T = 0.0;
+		int32 Contacts = 0;
+		SailFor(Boat, C, Wind, 30.0, &Trim, [&]
+		{
+			T += 1.0 / 120.0;
+			if (T < 10.0) return;
+			const double H = FMath::RadiansToDegrees(Boat.GetTelemetry().Heel);
+			Lo = FMath::Min(Lo, H); Hi = FMath::Max(Hi, H);
+			MaxRate = FMath::Max(MaxRate, FMath::Abs(FMath::RadiansToDegrees(Boat.GetState().AngularVelocity.X)));
+			Contacts += Boat.GetTelemetry().bCollision ? 1 : 0;
+		});
+		AddInfo(FString::Printf(TEXT("Home slip, 6 kn gusty from %.0f off the bow: %d lines, heel %.2f .. %.2f deg, roll rate up to %.1f deg/s, in contact %.0f%% of the time"),
+			Rel, int32(Boat.GetMooringLines().size()), Lo, Hi, MaxRate, 100.0 * Contacts / (20.0 * 120.0)));
+		TestTrue(FString::Printf(TEXT("Home slip, 6 kn from %.0f off the bow: lies still (under 1 deg of roll, 2 deg/s)"), Rel), Hi - Lo < 1.0 && MaxRate < 2.0);
+		TestTrue(FString::Printf(TEXT("Home slip, 6 kn from %.0f off the bow: the crew don't lean her (under 2.5 deg)"), Rel), FMath::Max(FMath::Abs(Lo), FMath::Abs(Hi)) < 2.5);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShelterTest, "SailingSim.Lake.WindShadowAndFetch", Flags)
 bool FSailingShelterTest::RunTest(const FString& Parameters)
 {

@@ -1341,7 +1341,9 @@ namespace Sailing
 
 				// A strip in the water (capsized) carries no wind; the rig drag in the water is handled with the mast.
 				const Vec3 CoEWorld = Origin + Q.Rotate(S.CenterOfEffort);
-				const double Dry = 1.0 - Clamp((WaterHeightAt(CoEWorld.X, CoEWorld.Y) - CoEWorld.Z) / 0.3 + 0.5, 0.0, 1.0);
+				// (Furled and covered, bSailsDown: no force, as a sail in the water has none. docs/dock-look/: tied up in her slip
+				// with the sails stowed, the physics still flew them, heeling her 3 deg and rocking her in the gusts.)
+				const double Dry = Controls.bSailsDown ? 0.0 : 1.0 - Clamp((WaterHeightAt(CoEWorld.X, CoEWorld.Y) - CoEWorld.Z) / 0.3 + 0.5, 0.0, 1.0);
 				const Vec3 Air = Apparent(S.CenterOfEffort) * WindScale;
 				const Vec3 U(Air.X, Air.Y, 0.0);
 				const double Speed = U.Length();
