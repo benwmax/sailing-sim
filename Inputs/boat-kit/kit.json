@@ -162,15 +162,15 @@
  "CamCleat": {
   "category": "cleat",
   "note": "Aluminium cam cleat, 75 mm, two toothed cams on a base with a fairlead",
-  "tris": 4976,
+  "tris": 5552,
   "size_m": [
    0.0744,
-   0.0528,
+   0.0516,
    0.0225
   ],
   "min_m": [
    -0.0372,
-   -0.0264,
+   -0.0258,
    0.0
   ],
   "slots": [
@@ -190,7 +190,7 @@
    ]
   },
   "light": {
-   "tris": 1244,
+   "tris": 1388,
    "slots": [
     "Aluminium",
     "Stainless"
@@ -293,7 +293,7 @@
  "Block29": {
   "category": "block",
   "note": "29 mm single block with swivel, sheets and control lines",
-  "tris": 2640,
+  "tris": 6684,
   "size_m": [
    0.041,
    0.0539,
@@ -331,7 +331,7 @@
    ]
   },
   "light": {
-   "tris": 660,
+   "tris": 1670,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -355,7 +355,7 @@
  "Block40": {
   "category": "block",
   "note": "40 mm single block with swivel and becket",
-  "tris": 2896,
+  "tris": 6924,
   "size_m": [
    0.052,
    0.0646,
@@ -398,7 +398,7 @@
    ]
   },
   "light": {
-   "tris": 724,
+   "tris": 1730,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -423,7 +423,7 @@
  "Ratchet57": {
   "category": "block",
   "note": "57 mm ratchet block for the jib sheet or mainsheet",
-  "tris": 2640,
+  "tris": 6716,
   "size_m": [
    0.069,
    0.0813,
@@ -462,7 +462,7 @@
    ]
   },
   "light": {
-   "tris": 660,
+   "tris": 1678,
    "slots": [
     "BlackPlastic",
     "Rubrail",
@@ -487,7 +487,7 @@
  "FiddleCam": {
   "category": "block",
   "note": "40 mm fiddle block with a cam cleat arm: the mainsheet's bottom block",
-  "tris": 4028,
+  "tris": 8688,
   "size_m": [
    0.056,
    0.065,
@@ -531,7 +531,7 @@
    ]
   },
   "light": {
-   "tris": 1006,
+   "tris": 2172,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -550,7 +550,7 @@
  "Winch16": {
   "category": "winch",
   "note": "Two-speed self-tailing-free winch, size 16: base flange, drum with grip band, top cap",
-  "tris": 5044,
+  "tris": 5912,
   "size_m": [
    0.12,
    0.12,
@@ -584,7 +584,7 @@
    ]
   },
   "light": {
-   "tris": 1260,
+   "tris": 1478,
    "slots": [
     "BlackPlastic",
     "Aluminium",

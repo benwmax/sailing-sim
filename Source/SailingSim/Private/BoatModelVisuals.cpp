@@ -353,6 +353,9 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	MastMaterial = ModelMast->CreateDynamicMaterialInstance(ModelMast->GetMaterialIndex(TEXT("Aluminium")) >= 0 ? ModelMast->GetMaterialIndex(TEXT("Aluminium")) : 0);
 	// The boom hangs on the gooseneck pivot (placed from the physics rig); the rudder turns on its stock.
 	ModelBoom = AddModelPart(Model.Boom, BoomPivot, FVector::ZeroVector);
+	// pc/j22-detail: painted spars where the livery has them (the player's J/22: white, as on Bean's club boats).
+	PaintSpars(ModelMast, Livery);
+	PaintSpars(ModelBoom, Livery);
 	// Every rudder (the cats have two: RudderPivot, RudderPivot_1) turns on its own stock; the mesh is the same.
 	for (int32 K = 0; ; ++K)
 	{
