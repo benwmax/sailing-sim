@@ -1,0 +1,7 @@
+{
+  "_about": "Shared kit parts on the Sunfish (Tools/boatkit/bk_parts.py), placed by build_fleet.py's place_kit. Body frame metres (+y starboard); on: deck, sole (the cockpit well's floor) or z; mirror: also at -y; yaw degrees about Z; flip: hung upside down. Replaces the hand-built halyard cleat and mainsheet block (Boats 11).",
+  "parts": [
+    {"part": "HornCleat", "size": "100", "x": -0.47, "y": -0.18, "on": "deck"},
+    {"part": "Block29", "x": -1.24, "y": 0.0, "on": "deck", "yaw": 90}
+  ]
+}

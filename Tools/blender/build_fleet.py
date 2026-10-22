@@ -39,7 +39,8 @@ HULLS = CFG["hulls"]
 DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
-         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope"]   # Rope last: the earlier slots keep their indices
+         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope",   # Rope last: the earlier slots keep their indices
+         "Rubber", "PaintedAluminium", "Teak", "Carbon", "CarbonMatte"]   # the shared kit's other library slots (place_kit)
 CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   # (packed: boat_packs.json's PackCanoe is exactly these)
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
@@ -454,6 +455,49 @@ def cleat(x, y, z, yaw=0.0, length=0.2):
     box(hull, (x, y, z + 0.04), (length, 0.03, 0.022), "Aluminium", yaw)
 
 
+KIT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "boatkit")
+KIT_LAYOUT = os.path.join(KIT_DIR, "layouts", f"{TAG.lower()}.json")
+
+
+def place_kit(m):
+    """Shared kit (Tools/boatkit): the hero fittings where Tools/boatkit/layouts/<tag>.json puts them, merged into the
+    mesh `m` before it is finished (so they share its box UVs, smoothing and packs). Body frame metres; on: deck (the
+    deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit depth), z (the entry's own z);
+    mirror: also at -y; yaw degrees about Z; flip: hung upside down (a block under a bridle); kw/size: bk_parts.build's.
+    Returns how many parts were placed."""
+    if not os.path.exists(KIT_LAYOUT):
+        return 0
+    sys.path.insert(0, KIT_DIR)
+    import bk_parts as KP   # noqa: E402 (needs bpy)
+    lay = json.load(open(KIT_LAYOUT))
+    n = 0
+    for e in lay["parts"]:
+        for s in ((1, -1) if e.get("mirror") else (1,)):
+            ob = KP.build(e["part"], size=e.get("size"), **e.get("kw", {}))
+            x, y = e["x"], e["y"] * s
+            Hh = min(HS, key=lambda h: abs(h.cy - y))
+            z = e["z"] if e.get("on") == "z" else Hh.deck_z(x, y) - (SPEC["cockpit"][3] if e.get("on") == "sole" else 0.0)
+            yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
+            xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
+            if e.get("flip"):
+                xf = xf @ Matrix.Rotation(math.pi, 4, "X")
+            me = ob.data
+            me.transform(ob.matrix_world)
+            me.transform(xf)
+            while me.uv_layers:              # (finish() writes the box UVs: a part's own set would come first)
+                me.uv_layers.remove(me.uv_layers[0])
+            first = len(m.bm.faces)
+            m.bm.from_mesh(me)
+            m.bm.faces.ensure_lookup_table()
+            names = [mt.name.split(".")[0] for mt in me.materials]
+            for f in m.bm.faces[first:]:
+                f.material_index = SLOTS.index(names[f.material_index])
+                f.smooth = True
+            bpy.data.objects.remove(ob)
+            n += 1
+    return n
+
+
 def keelboat_deck_detail(H, top, half, cb, mast_x, st, bw):
     """Boats & models 9 (the boats "read flat"): what a keelboat's deck carries that the clean model didn't. An aluminium
     toe rail along the sheer, mooring cleats on the foredeck and both quarters with fairleads at the bow, the halyards
@@ -584,9 +628,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         rx, rz = 0.5 * (x0 + x1), sole(0.5 * (x0 + x1))
         tube(hull, [(rx, 0, rz), (rx, 0, rz + 0.12)], 0.012, "Stainless", 8)
         box(hull, (rx, 0, rz + 0.16), (0.08, 0.03, 0.08), "BlackPlastic")
-    else:
-        rx = x0 - 0.06
-        box(hull, (rx, 0, H.deck_z(rx, 0) + 0.035), (0.06, 0.03, 0.07), "BlackPlastic")
+    # (the Sunfish's mainsheet block on the aft deck is the kit's Block29: layouts/sunfish.json)
     # deck control lines to cam cleats either side of the well's forward end (ILCA: cunningham, outhaul, vang;
     # Sunfish: the halyard to a horn cleat and the sail's bow line)
     if TAG == "ILCA7":
@@ -625,7 +667,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         tube(hull, rim + rim[:1], 0.011, "Deck", 6, cap=False)
         for xs_ in (x0 + 0.06, x1 - 0.06):
             box(hull, (xs_, 0, sole(xs_) + 0.004), (0.05, 0.05, 0.008), "Graphics")
-        cleat(x1 + 0.05, -0.18, H.deck_z(x1 + 0.05, -0.18), 0.0, 0.12)
+        # (the halyard's horn cleat is the kit's: layouts/sunfish.json)
         line = [(mast_x - 0.05, -0.03, mast_step_z + 0.04), (x1 + 0.4, -0.12, H.deck_z(x1 + 0.4, -0.12) + 0.01), (x1 + 0.08, -0.18, H.deck_z(x1 + 0.08, -0.18) + 0.045)]
         tube(hull, line, 0.003, "Rope", 4, cap=False)
     # bow handle (inside the stem so LOA is untouched) and the transom drain plug
@@ -1210,6 +1252,7 @@ def build_rudder():
 mast_obj = build_mast()
 boom_obj = build_boom()
 rudder_obj = build_rudder()
+place_kit(hull)   # the shared kit's fittings (Tools/boatkit/layouts/<tag>.json)
 hull_obj = hull.finish(smooth_angle=35.0, origin=(0, 0, 0))
 
 
