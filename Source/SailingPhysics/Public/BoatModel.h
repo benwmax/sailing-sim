@@ -29,6 +29,7 @@ namespace Sailing
 		double Hike = 0.0;       // -1 = crew on the leeward side, 0 = sitting on the windward rail, 1 = fully hiked (or out on the wire)
 		double CrewAft = 0.0;    // 0 = the crew's usual place, 1 = as far aft as they go (a dinghy sailor sits back planing)
 		bool bSpinnaker = false; // spinnaker (or gennaker / screacher) hoisted, if the boat has one
+		bool bSailsDown = false; // furled and covered (tied up in her slip): no sail force; the rig's and hull's windage stay
 		double SpinSheet = 0.5;  // 0 = trimmed in, 1 = eased
 		int Reef = 0;            // mainsail reefs taken in (0 = full main)
 		double Board = 1.0;      // centerboard / daggerboard / swing keel: 1 = fully down, 0 = up

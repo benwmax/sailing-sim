@@ -1077,6 +1077,8 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	{
 		Steps = Stepper.Advance(DeltaSeconds);
 	}
+	// Stowed in her slip (covered and furled, as drawn), the sails give no force (docs/dock-look/).
+	Controls.bSailsDown = bSailsStowed && StowedDress && IsTiedUp();
 	// Perf 1: the steps run on a task when they can (BoatPhysicsTask.h); the join tick (TG_PostPhysics) does the rest.
 	FBoatStepJob Job;
 	Job.Boat = &Boat;
@@ -1221,16 +1223,34 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	}
 
 	// Scripted debrief checks: -SailingGhostAt=<s> resets then sails beside the ghost of the run so far;
-	// -SailingWatchAt=<s> starts watching it.
+	// -SailingWatchAt=<s> starts watching it. Dock stills (docs/dock-look/): -SailingCastOffAt=<s>[,<throttle>] casts off at
+	// that sim time and holds the outboard there (-1 full astern .. 1 ahead; -0.4 by default, backing out of the slip).
 	{
-		static float GhostAt = -1.f, WatchAt = -1.f;
+		static float GhostAt = -1.f, WatchAt = -1.f, CastOffAt = -1.f, CastOffThrottle = -0.4f;
+		static bool bCastOff = false;
 		static SailingArgs::FOnce Parsed;
 		if (Parsed.Take())
 		{
-			GhostAt = WatchAt = -1.f;
+			GhostAt = WatchAt = CastOffAt = -1.f;
+			CastOffThrottle = -0.4f;
+			bCastOff = false;
 			FParse::Value(SailingArgs::Dev(), TEXT("SailingGhostAt="), GhostAt);
 			FParse::Value(SailingArgs::Dev(), TEXT("SailingWatchAt="), WatchAt);
+			FString CastOffArg, AtStr, ThrottleStr;
+			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCastOffAt="), CastOffArg, false))
+			{
+				if (!CastOffArg.Split(TEXT(","), &AtStr, &ThrottleStr)) AtStr = CastOffArg;
+				CastOffAt = FCString::Atof(*AtStr);
+				if (!ThrottleStr.IsEmpty()) CastOffThrottle = FMath::Clamp(FCString::Atof(*ThrottleStr), -1.f, 1.f);
+			}
 		}
+		if (CastOffAt > 0.f && Boat.GetState().Time >= CastOffAt)
+		{
+			CastOffAt = -1.f;
+			if (IsTiedUp()) ToggleDockLines();
+			bCastOff = true;
+		}
+		if (bCastOff) Controls.Throttle = CastOffThrottle;
 		if (GhostAt > 0.f && Boat.GetState().Time >= GhostAt)
 		{
 			GhostAt = -1.f;
