@@ -36,7 +36,8 @@ while [[ $# -gt 0 ]]; do
 		*) echo "Unknown argument $1" >&2; exit 2 ;;
 	esac
 done
-# The tightest High view, helm-eye (about 1 fps over 45 after W2), runs in every scope; the next two, slip (the
+# The tightest High view, helm-eye (about 1 fps over 45 after W2; about 60 since docs/crew-leg, whose baseline moved:
+# docs/bench-fast), runs in every scope; the next two, slip (the
 # marina with the player's boat) and coast-day (the bay shore), only in the scopes that touch what they show.
 TIERS=(High)
 case "$SCOPE" in
