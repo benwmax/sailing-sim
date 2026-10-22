@@ -29,3 +29,25 @@ rudder's pivot; the old blade's leading edge sat ahead of it. All 52 sockets are
 changed.
 
 Renders: `steering-tiller2.jpg`, `steering-pintle.jpg`, `steering-tiller.jpg`, `steering-quarter.jpg`.
+
+## 2. Outboard and its bracket (`Inputs/j22-hero/j22_outboard.py`)
+
+Before, this was seven boxes. Bean's photos `transom-worn` and `aft-transom` show the bracket on the port quarter but no
+motor, so the motor is a generic 5 hp long-shaft four-stroke, the class's usual kicker (sizes GUESS). It carries a
+made-up maker, TERNWAY, the boat kit's brand. No real maker's shapes or marks are used.
+
+- **Transom bracket:** a stainless plate with four bolts, two pairs of parallel arms on pins, the lift spring, the lock
+  pin and its ring, and the HDPE pad.
+- **Motor:**
+  - Clamp bracket: hooked over the pad, two clamp screws with T-bars and swivel feet.
+  - Tilt tube and nuts, and the swivel housing.
+  - Cowl: a superellipse lower pan, the parting-line gasket, and the domed upper cowl. It carries the latch, the recoil
+    starter's handle, the integral tank's cap and vent, and the name and a stripe on both sides.
+  - Lower unit: a streamlined midsection; the anti-cavitation plate with its anode; the strut and the gearcase torpedo
+    with its water intakes; the skeg; and a pitched three-blade prop with hub and nut.
+  - Tiller arm: a ribbed twist grip, the stop button and the shift lever.
+
+The outboard is part of the hull (`SM_J22H_Hull`), and every part is a pack entry, so the hull stays at 6 slots.
+Sockets are unchanged.
+
+Renders: `outboard-ob-quarter.jpg`, `outboard-ob-top.jpg`.

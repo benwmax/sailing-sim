@@ -627,25 +627,9 @@ def build_hardware():
     yt = half_beam(STERN) - 0.07
     zt0 = min(deck_z(STERN, 0.0), deck_z(STERN, yt))
     parts.append(box("TransomTeak", STERN - 0.014, STERN + 0.001, -yt, yt, zt0 - 0.045, zt0 - 0.012, MAT["TeakWeathered"], bev=0.004))
-    # outboard bracket and motor on the port quarter (photo IMG_9273): GUESS on sizes for a 3.5 hp
-    parts += outboard()
-    return parts
-
-
-def outboard():
-    side = 1
-    y = side * 0.55
-    x = STERN - 0.03
-    parts = [box("OB_plate", x - 0.012, x, y - 0.13, y + 0.13, 0.30, 0.50, MAT["Stainless"], bev=0.004),
-             box("OB_arm_a", x - 0.17, x, y - 0.12, y - 0.10, 0.36, 0.40, MAT["Stainless"], bev=0.004),
-             box("OB_arm_b", x - 0.17, x, y + 0.10, y + 0.12, 0.36, 0.40, MAT["Stainless"], bev=0.004),
-             box("OB_board", x - 0.20, x - 0.16, y - 0.11, y + 0.11, 0.30, 0.46, MAT["BlackPlastic"], bev=0.006)]
-    xm = x - 0.20
-    parts.append(box("OB_cowl", xm - 0.24, xm + 0.10, y - 0.13, y + 0.13, 0.55, 0.82, MAT["OutboardBlack"], bev=0.06))
-    parts.append(box("OB_midsection", xm - 0.10, xm + 0.04, y - 0.07, y + 0.07, 0.25, 0.56, MAT["OutboardBlack"], bev=0.03))
-    parts.append(box("OB_leg", xm - 0.09, xm + 0.03, y - 0.03, y + 0.03, -0.25, 0.26, MAT["OutboardBlack"], bev=0.015))
-    parts.append(cyl("OB_gearcase", (xm + 0.05, y, -0.27), (xm - 0.16, y, -0.27), 0.045, MAT["OutboardBlack"], 24))
-    parts.append(box("OB_tiller", xm + 0.06, xm + 0.42, y - 0.02, y + 0.02, 0.60, 0.64, MAT["BlackPlastic"], bev=0.012))
+    # outboard bracket and motor on the port quarter (photos transom-worn, aft-transom): pc/j22-detail assembly 2, j22_outboard.py
+    import j22_outboard as OUTBOARD  # noqa: E402
+    parts += OUTBOARD.build(MAT)
     return parts
 
 
