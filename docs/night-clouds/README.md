@@ -52,3 +52,24 @@ stayed at 40% of the afternoon's cover all night.
 6. **Dusk is dusk.** The dusk and night bench views (`coast-dusk`, `gulf-dusk` at 18.9, and the night views) now pin
    `-SailingDate=2026-10-22`. On today's date they drifted with the season: 18.9 h is ten minutes after an October
    sunset but an hour and a half before a June one. The Windows views are kept in step.
+
+## The overcast's rings overhead (fixed)
+
+**The symptom:** on an overcast night, faint concentric rings round the zenith (`banding-stretched-before.jpg`, the
+contrast stretched).
+
+**The cause:** the cloud march, not the cache, the sky dome or the tone map. UE thins a ray's samples in proportion
+when the ray is shorter than `r.VolumetricCloud.DistanceToSampleMaxCount`. Under a night deck the live clouds take the
+whole sky (above), and that distance goes back to 15 km. A ray straight up through a 0.7 km deck then got about
+80 x 0.7 / 15 = 4 samples, and the deck's base came out in steps. Softening the stratus base over 250 m instead of 12%
+of the deck hardly helped (high-pass deviation 3.86 → 3.53); the samples did.
+
+**The fix:** under a night deck the distance is 3 km (Ultra's), so about 19 samples through it. It is restored when the
+deck goes; the day cache keeps its 5 km. High-pass deviation overhead: 3.86 → 2.73 at night, 2.07 → 2.07 by day.
+
+Cost, an overcast night on the packaged build:
+
+| view | High | Medium |
+|---|---|---|
+| chase | 63.3 fps (clouds 2.4 ms) | 100.8 fps |
+| overhead | 65.2 fps (3.8 ms) | 100.4 fps |

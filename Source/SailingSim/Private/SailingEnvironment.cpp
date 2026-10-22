@@ -59,6 +59,7 @@ namespace
 	constexpr float kSkyCacheElMax = 33.f;
 	constexpr int32 kSkyCacheSteps = 96;
 	constexpr float kSkyCacheSplitM = 5000.f;
+	constexpr float kNightDeckFullAtKm = 3.f; // docs/night-clouds/: the distance below which a ray's samples thin, under a night deck
 	constexpr float kSkyCacheFarM = 40000.f;
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
@@ -1134,8 +1135,24 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	// live clouds take the whole sky back, as they were before the cache; it starts again when the storm has gone.
 	// docs/night-clouds/: nor under a deck at night: its base lit by the towns is emission too, and the cache's night
 	// ambient met the live deck in a bright rim. Scattered night cumulus keep the cache (M_SkyDome adds their glow).
-	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02)
-		|| (NightAmount > 0.5f && W.Sky[ECloudLayer::Stratus].Coverage > 0.3);
+	const bool bNightDeck = NightAmount > 0.5f && W.Sky[ECloudLayer::Stratus].Coverage > 0.3;
+	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02) || bNightDeck;
+	// docs/night-clouds/ (banding): under that deck the rays up through it keep their samples. UE thins a ray's samples in
+	// proportion below r.VolumetricCloud.DistanceToSampleMaxCount; at the live clouds' 15 km a ray up through a 0.7 km
+	// deck got 80 x 0.7 / 15, about 4, and the overcast came out in rings round the zenith. 3 km (Ultra's): about 19.
+	if (IConsoleVariable* FullAtCv = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount")))
+	{
+		if (bNightDeck && FullAtCv->GetFloat() > kNightDeckFullAtKm)
+		{
+			NightDeckFullAtKm = FullAtCv->GetFloat();
+			FullAtCv->Set(kNightDeckFullAtKm, ECVF_SetByCode);
+		}
+		else if (!bNightDeck && NightDeckFullAtKm > 0.f)
+		{
+			FullAtCv->Set(NightDeckFullAtKm, ECVF_SetByCode);
+			NightDeckFullAtKm = 0.f;
+		}
+	}
 	if (bStorm)
 	{
 		if (bCacheReady)
