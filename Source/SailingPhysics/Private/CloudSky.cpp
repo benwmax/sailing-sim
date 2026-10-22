@@ -160,7 +160,10 @@ namespace Sailing
 	{
 		// Mirrors CLOUD_CODE: the occlusion climbs the face (dark base, lighter tiers), the rolled front face (the first
 		// ShelfFaceM behind the lip, above its base) pale and lit, the rest slate.
-		const double Face = Smooth(0.08, 0.35, H) * Lerp(0.6, 1.0, 1.0 - Smooth(0.33 * ShelfFaceM, ShelfFaceM, X));
+		// Item 7: the face starts ShelfFootM over the base, within 30 m (a near-level ray's ramp), not over a quarter of the
+		// face's height.
+		const double Thick = ShelfLipM + TierX(X) * ShelfSlope;
+		const double Face = Smooth(ShelfFootM, ShelfFootM + 30.0, H * Thick) * Smooth(0.03, 0.10, H) * Lerp(0.6, 1.0, 1.0 - Smooth(0.33 * ShelfFaceM, ShelfFaceM, X));
 		// The underside: slate (0.21) in its own occlusion; the face: emitted as a pale (0.5) wrapped-Lambert diffuser lit by
 		// the sun, brighter up the face (M_CloudLayers' Emit), here for a sun square on to it.
 		const double Under = Lerp(0.25, 0.8, H) * 0.21;
