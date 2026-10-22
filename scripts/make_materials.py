@@ -1494,7 +1494,15 @@ SAIL_CODE = r"""
 // panels for the bigger multihulls), BattenCount pockets (FullBattens: luff to leech).
 // The prologue's maxi: Layout 4, a moulded membrane (carbon and aramid fibre paths laid along the load lines from the
 // corners, between black film; a few wide laminated panels with horizontal seams; glossy, nearly opaque).
-float seamDist = abs(frac(UV0.y / 0.9 + 0.5) - 0.5) * 0.9;
+// Sails look (docs/sails-look): a crosscut sail's panels meet the leech at right angles, so the seams slope down toward
+// the luff (LeechLean: the leech's forward travel per metre of height, from the sail's strips). alongLeech is the
+// distance along the leech in metres; PanelWidth is the class's cloth width (0.9 m Dacron on the keelboats, narrower on
+// the dinghies). The batten pockets and the coloured panels follow the same lines.
+float leechK = sqrt(1.0f + LeechLean * LeechLean);
+float alongLeech = UV0.y * leechK + LeechLean * UV2.x / leechK;
+float pw = max(PanelWidth, 0.2f);
+float seamDist = abs(frac(alongLeech / pw + 0.5f) - 0.5f) * pw;
+float leechLen = Height * leechK;
 if (Layout > 3.5)
 {
     seamDist = abs(frac(UV0.y / 3.4 + 0.5) - 0.5) * 3.4;
@@ -1513,9 +1521,9 @@ int nb = (int)BattenCount;
 for (int i = 1; i <= 8; i++)
 {
     if (i > nb) break;
-    float vb = float(i) / (BattenCount + 1.0);
-    float len = FullBattens > 0.5 ? 50.0 : 0.45 + 0.25 * (i == 2 || i == 3);
-    batten = max(batten, (1.0 - smoothstep(0.018, 0.026, abs(UV1.y - vb) * Height)) * (1.0 - smoothstep(len - 0.02, len, UV2.x)));
+    float vb = float(i) / (BattenCount + 1.0f);
+    float len = FullBattens > 0.5f ? 50.0f : 0.45f + 0.25f * float(i == 2 || i == 3);
+    batten = max(batten, (1.0 - smoothstep(0.018, 0.026, abs(alongLeech - vb * leechLen))) * (1.0 - smoothstep(len - 0.02, len, UV2.x)));
 }
 batten *= Battens;
 float mark = 0.0;
@@ -1554,19 +1562,19 @@ if (Marks > 0.5)
 }
 // A faint weave and the panels' slight tone differences.
 float weave = 0.5 + 0.5 * sin(UV0.x * 1400.0) * sin(UV0.y * 1400.0);
-float panel = frac(sin(floor(UV0.y / 0.9) * 12.9898) * 43758.5453);
+float panel = frac(sin(floor(alongLeech / pw) * 12.9898) * 43758.5453);
 float3 base = C.rgb;
 if (Layout > 0.5 && Layout < 1.5)
 {
     // The Sunfish's sail: bands of colour, from the foot up.
-    int band = (int)floor(UV0.y / 0.42);
+    int band = (int)floor(alongLeech / pw);
     float3 pal[6] = { float3(0.60, 0.04, 0.03), float3(0.75, 0.30, 0.02), float3(0.80, 0.62, 0.05), float3(0.05, 0.35, 0.10), float3(0.02, 0.12, 0.45), float3(0.80, 0.80, 0.78) };
     base = pal[band % 6];
 }
 else if (Layout > 1.5 && Layout < 2.5)
 {
     // The Hobie 16's main and jib: wide panels of colour between white ones.
-    int band = (int)floor(UV0.y / 0.9);
+    int band = (int)floor(alongLeech / pw);
     float3 pal[4] = { float3(0.02, 0.10, 0.45), float3(0.80, 0.80, 0.78), float3(0.70, 0.08, 0.04), float3(0.85, 0.65, 0.05) };
     base = pal[band % 4];
 }
@@ -1672,21 +1680,33 @@ if (Detail > 0.5)
     for (int j = 1; j <= 8; j++)
     {
         if (j > nb) break;
-        float vb = float(j) / (BattenCount + 1.0);
-        float off = abs(abs(UV1.y - vb) * Height - 0.024);
-        stitch = max(stitch, (1.0 - smoothstep(0.0004, 0.0010, off)) * Battens * step(UV2.x, FullBattens > 0.5 ? 50.0 : 0.72) * fineK);
+        float vb = float(j) / (BattenCount + 1.0f);
+        float off = abs(abs(alongLeech - vb * leechLen) - 0.024);
+        stitch = max(stitch, (1.0 - smoothstep(0.0004, 0.0010, off)) * Battens * step(UV2.x, FullBattens > 0.5f ? 50.0f : 0.72f) * fineK);
     }
     float elastic = batten * (1.0 - smoothstep(0.035, 0.045, UV2.x));
     layers += 2.0 * batten;
     edgeLine = max(edgeLine, elastic * 0.8);
 }
+// Sails look: a keelboat jib's clear vinyl window, low on the sail ahead of the clew (Window 1). Seen from the lit side it
+// reads darker, glossy, with a stitched border; against the light it lets more through than the cloth.
+float win = 0.0, winEdge = 0.0;
+if (Window > 0.5)
+{
+    float2 wq = (float2(UV0.x, UV0.y) - float2(0.28f * (UV0.x + UV2.x), 0.55f)) / float2(max(0.22f * (UV0.x + UV2.x), 0.15f), 0.42f);
+    float wr = max(abs(wq.x), abs(wq.y));
+    win = 1.0 - smoothstep(0.96, 1.0, wr);
+    winEdge = (1.0 - smoothstep(0.0, 0.05, abs(wr - 1.03))) ;
+}
 float3 col = lerp(cloth * (1.0 - 0.12 * seam) * (1.0 - 0.015 * min(layers, 4.0)), base * 0.93, batten);
+col = lerp(col, float3(0.10, 0.11, 0.12), 0.75 * win * (1.0 - mark));
+col *= 1.0 - 0.25 * winEdge;
 col *= 1.0 - 0.09 * edgeLine - 0.16 * stitch * (1.0 - mark);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind (and with Detail
 // every patch layer, the tabling and the stitch holes).
 Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
-    * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine);
+    * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine) * (1.0 + 0.6 * win) * (1.0 - 0.5 * winEdge);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1713,6 +1733,7 @@ float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
 if (Layout > 3.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
+Rough = lerp(Rough, 0.08, win);                                     // the window's vinyl
 return col;
 """
 
@@ -1747,6 +1768,10 @@ def build_sail_cloth():
     bcount = scalar(mat, "BattenCount", 4.0, -1400, 150)
     full = scalar(mat, "FullBattens", 0.0, -1400, 250)
     fade = scalar(mat, "Fade", 0.0, -1400, 700)
+    # Sails look: the leech's lean (the pawn, from the sail's strips), the class's cloth width, a jib's window.
+    lean = scalar(mat, "LeechLean", 0.25, -1600, 700)
+    panelw = scalar(mat, "PanelWidth", 0.9, -1600, 800)
+    window = scalar(mat, "Window", 0.0, -1600, 900)
     # Boat fidelity 4: the sailmaker's detail (the pawn sets Detail 1 on High and Ultra), the boat's age and care, the
     # camera distance the seams and stitches size themselves by.
     detail = scalar(mat, "Detail", 0.0, -1400, 800)
@@ -1758,12 +1783,12 @@ def build_sail_cloth():
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
-                     (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth")):
+                     (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)

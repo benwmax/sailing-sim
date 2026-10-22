@@ -453,11 +453,20 @@ def build_rudder():
             parts.append(cyl(f"RudderNut_{k}_{side}", (x, side * 0.027, z), (x, side * 0.034, z), 0.0075, MAT["Stainless"], 6))
     parts.append(cyl("TillerPin", (STERN - 0.12, -0.036, 0.70), (STERN - 0.12, 0.036, 0.70), 0.006, MAT["Stainless"], 12))
     # pintles on the blade's leading edge into gudgeons on the transom
+    # Boat fidelity 3 (photos tiller-transom-attachemnt): each pintle on a long polished strap down both faces of the
+    # blade with four through-bolts, into a gudgeon of two lugs (above and below the strap) bolted to the transom.
     for k, z in enumerate((0.47, 0.05)):
         parts.append(cyl(f"Pintle_{k}", (STERN - 0.035, 0, z - 0.035), (STERN - 0.035, 0, z + 0.035), 0.007, MAT["Stainless"], 12))
-        parts.append(box(f"PintleStrap_{k}", STERN - 0.12, STERN - 0.03, -0.024, 0.024, z - 0.012, z + 0.012, MAT["Stainless"], bev=0.003))
-        parts.append(box(f"Gudgeon_{k}", STERN - 0.04, STERN + 0.003, -0.045, 0.045, z + 0.014, z + 0.034, MAT["Stainless"], bev=0.003))
-        parts.append(box(f"GudgeonPlate_{k}", STERN - 0.002, STERN + 0.004, -0.05, 0.05, z - 0.02, z + 0.06, MAT["Stainless"], bev=0.002))
+        parts.append(box(f"PintleStrap_{k}", STERN - 0.27, STERN - 0.03, -0.024, 0.024, z - 0.012, z + 0.012, MAT["Stainless"], bev=0.003))
+        for b in range(4):
+            xb = STERN - 0.07 - 0.06 * b
+            for sgn in (1, -1):
+                parts.append(cyl(f"PintleBolt_{k}_{b}_{sgn}", (xb, sgn * 0.024, z), (xb, sgn * 0.029, z), 0.0055, MAT["Stainless"], 6))
+        for lug, dz in ((0, 0.023), (1, -0.023)):
+            parts.append(box(f"Gudgeon_{k}_{lug}", STERN - 0.04, STERN + 0.003, -0.030, 0.030, z + dz - 0.009, z + dz + 0.009, MAT["Stainless"], bev=0.003))
+            for sgn in (1, -1):
+                parts.append(cyl(f"GudgeonBolt_{k}_{lug}_{sgn}", (STERN + 0.004, sgn * 0.040, z + dz), (STERN - 0.003, sgn * 0.040, z + dz), 0.0065, MAT["Stainless"], 6))
+        parts.append(box(f"GudgeonPlate_{k}", STERN - 0.002, STERN + 0.004, -0.05, 0.05, z - 0.04, z + 0.04, MAT["Stainless"], bev=0.002))
     return parts
 
 
@@ -586,7 +595,32 @@ def build_hardware():
     parts.append(box("StemFitting", sx - 0.06, sx + 0.06, -0.005, 0.005, sheer_z(sx) - 0.01, sheer_z(sx) + 0.08, MAT["Stainless"], bev=0.004))
     parts += D.clevis("StemPin", (sx, 0, sheer_z(sx) + 0.06), (0, 1, 0), MAT, 0.02, 0.003)
     parts += D.screws("StemS", [(sx + dx, 0, deck_z(sx + dx, 0) + 0.001) for dx in (-0.05, 0.05)], (0, 0, 1), MAT)
-    parts += cleat("BowCleat", (2.70, 0, deck_z(2.70, 0)), along_x=True, size=0.15)
+    # Boat fidelity 3 (Bean's J/22 photos, bow-hardware): two horn cleats abreast near the bow, not one on the centreline.
+    # The starboard one keeps the name (its horn is the BowCleat socket).
+    for side, nm in ((-1, "BowCleat"), (1, "BowCleat_P")):
+        bx, by = BOW - 0.42, side * 0.13
+        parts += cleat(nm, (bx, by, deck_z(bx, by)), along_x=True, size=0.13)
+    # the cockpit drains' outlets on the transom, just above the water: white flanges round a dark bore (photo
+    # aft-drainholes-on-transom)
+    for side in (1, -1):
+        dz, dy = 0.17, side * 0.30
+        parts.append(cyl(f"DrainFlange_{side}", (STERN + 0.004, dy, dz), (STERN - 0.008, dy, dz), 0.030, MAT["WhitePlastic"], 28))
+        parts.append(cyl(f"DrainBore_{side}", (STERN - 0.0075, dy, dz), (STERN - 0.0095, dy, dz), 0.016, MAT["BlackPlastic"], 20))
+    # spinnaker sheet leads on the side decks abreast of the cockpit's forward end: a block on a spring stand and a cam
+    # cleat behind it (photos deck-hardware, port-jib-sheet)
+    for side in (1, -1):
+        xl = CABIN_AFT - 0.20
+        yl = half_beam(xl) - SIDE_DECK * 0.45
+        zl = deck_z(xl, yl)
+        parts.append(cyl(f"SpinStand_{side}", (xl, side * yl, zl), (xl, side * yl, zl + 0.035), 0.004, MAT["Stainless"], 10))
+        for k in range(5):
+            t = D.torus(f"SpinSpring_{side}_{k}", 0.008, 0.0012, MAT["Stainless"], 14, 6)
+            t.matrix_world = Matrix.Translation((xl, side * yl, zl + 0.005 + 0.006 * k))
+            parts.append(t)
+        parts += D.block(f"SpinLead_{side}", (xl, side * yl, zl + 0.055), (0, 1, 0), (0, 0, -1), MAT, 0.029)
+        xc2 = xl - 0.14
+        yc2 = half_beam(xc2) - SIDE_DECK * 0.45
+        parts += D.cam_cleat(f"SpinCam_{side}", (xc2, side * yc2, deck_z(xc2, yc2)), (0, 0, 1), (-1, 0, 0), MAT)
     # fore hatch (GUESS on its size): on the flat of the cabin top between the mast step and the raked face
     hx0, hx1 = FWD_HATCH
     hxc = 0.5 * (hx0 + hx1)
@@ -600,7 +634,8 @@ def build_hardware():
     # mast step, halyard turning blocks, organisers and cam cleats on the cabin top
     zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     parts.append(box("MastStep", MAST_X - 0.10, MAST_X + 0.10, -0.06, 0.06, zm - 0.005, zm + 0.03, MAT["Aluminium"], bev=0.006))
-    for k, dy in enumerate((-0.10, -0.05, 0.05, 0.10)):
+    # Boat fidelity 3: six turning blocks fanning round the step (photos mast-bottom-closeup, mast-sheetsandhardware)
+    for k, dy in enumerate((-0.15, -0.10, -0.05, 0.05, 0.10, 0.15)):
         parts += D.block(f"Turn_{k}", (MAST_X - 0.12, dy, zm + 0.035), (1, 0, 0), (0, 0, -1), MAT, 0.029)
     for side in (1, -1):
         xo = CABIN_AFT + 0.75
@@ -608,7 +643,8 @@ def build_hardware():
         parts.append(box(f"Organiser_{side}", xo - 0.04, xo + 0.04, side * 0.12 - 0.06, side * 0.12 + 0.06, zo - 0.005, zo + 0.03, MAT["BlackPlastic"], bev=0.006))
         for k in range(3):
             # cam cleats either side of the sliding hatch, just forward of its aft end
-            yc = side * (0.34 + 0.055 * k)
+            # (4.5 cm apart from 3.35 cm out: at 5.5 cm the outer cam ran into the handrail at 0.46)
+            yc = side * (0.335 + 0.045 * k)
             parts += D.cam_cleat(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
     # traveler across the cockpit floor (photos IMG_9266/9271) with its car and mainsheet blocks
     xt = -1.95
@@ -648,11 +684,39 @@ def build_tiller():
     """Varnished ash tiller from the rudder head, angled up, with a black extension folded along it."""
     p0 = Vector((STERN - 0.12, 0, 0.70))
     p1 = Vector((STERN + 1.25, 0, 0.84))
-    t = cyl("Tiller", p0, p1, 0.026, MAT["TeakVarnish"], 20, r1=0.019)
+    # Boat fidelity 3 (photos tiller, tiller-2): a laminated tiller that sweeps up out of the rudder head and runs on
+    # nearly level to the grip, not a straight stick; a cam cleat on its top. Its ends stay where they were (the bake
+    # takes TillerEnd and RudderStock from its bounds), and it never rises above the grip nor dips below the head.
+    n = 14
+    pts = []
+    for i in range(n + 1):
+        u = i / n
+        z = p0.z + (p1.z - p0.z) * smooth(u) + 0.045 * math.sin(math.pi * u) * (1 - u)
+        pts.append(Vector((p0.x + (p1.x - p0.x) * u, 0, z)))
+    # One lofted tube in world axes (capped cylinders per segment showed dark rings at every joint; and a mesh in a tilted
+    # frame has bounds, which the bake reads, larger than the tiller)
+    bm = bmesh.new()
+    rings = []
+    seg = 20
+    for i, p in enumerate(pts):
+        tan = (pts[min(i + 1, n)] - pts[max(i - 1, 0)]).normalized()
+        side = Vector((0, 1, 0))
+        up = tan.cross(side).normalized()
+        r = 0.026 + (0.019 - 0.026) * i / n
+        rings.append([bm.verts.new(p + r * (math.cos(2 * math.pi * k / seg) * side + math.sin(2 * math.pi * k / seg) * up)) for k in range(seg)])
+    for a, b in zip(rings, rings[1:]):
+        for k in range(seg):
+            bm.faces.new((a[k], a[(k + 1) % seg], b[(k + 1) % seg], b[k]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    t = mesh_obj("Tiller", bm, MAT["TeakVarnish"])
+    cam_at = pts[int(n * 0.72)] + Vector((0, 0, 0.022))
+    t_cam = D.cam_cleat("TCam", cam_at, (0, 0, 1), (pts[11] - pts[9]).normalized(), MAT, 0.055)
     grip = cyl("TillerGrip", p1, p1 + (p1 - p0).normalized() * 0.04, 0.019, MAT["TeakVarnish"], 20, r1=0.012)
     uj = cyl("ExtUJ", p1 - Vector((0.02, 0, -0.025)), p1 + Vector((0.02, 0, 0.035)), 0.012, MAT["BlackPlastic"], 12)
     ext = cyl("TillerExt", p1 + Vector((0, 0, 0.035)), p0 + Vector((0.35, 0, 0.06)), 0.013, MAT["ExtensionBlack"], 14)
-    return [t, grip, uj, ext]
+    return [t, grip, uj, ext] + t_cam
 
 
 # ------------------------------------------------------------------ rig

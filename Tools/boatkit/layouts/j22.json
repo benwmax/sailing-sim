@@ -25,7 +25,15 @@
    "id": "BowCleat",
    "at": "BowCleat",
    "opts": {
-    "length": 0.15
+    "length": 0.13
+   }
+  },
+  {
+   "kit": "HornCleat",
+   "id": "BowCleatPort",
+   "at": "BowCleatPort",
+   "opts": {
+    "length": 0.13
    }
   },
   {
