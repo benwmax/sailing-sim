@@ -76,3 +76,28 @@ The gaps from `notes.md` that the photos haven't closed:
 - The keel and rudder side-on out of the water.
 - A level broadside with a scale object, to check the sheer and freeboard.
 - A winch close-up with scale.
+
+## Gaps closed from the photos in hand (#235 follow-up)
+
+Three things the second batch of photos shows that the hero didn't have:
+
+| Change | Photos |
+| --- | --- |
+| **Sliding hatch:** varnished marine plywood (`PlywoodVarnish`), not moulded gelcoat | `companionway-1` |
+| **Companionway trims:** teak strips beside the closed hatch, and posts framing the aft face either side of the drop board (clear of the halyard cams) | `companionway-1`, `companionway-lookinto`, `companionway-rail-port` |
+| **Transom:** a teak strip along the top, just under the deck edge, short of the corners | `transom-worn` |
+
+The parts are flat-material objects outside the baked groups. The rebake left every group's UVs as they were (`uv_m`
+identical), so main's maps stay, except as below; the hull fbx and `PlywoodVarnish`'s values in `materials.json` are new. The
+two wood flats share a new pack, `J22H_PackWood`, because `J22H_PackPlastic` already has 7 of `M_BoatPacked`'s 8
+entries. The hero hull is at 6 slots, and `BoatBudget` holds it there. Sockets are unchanged.
+
+**The dark aft face.** To starboard of the companionway, the cabin's aft wall drew as a dark, mirror-glossy panel in
+every cockpit and helm view. The mesh, normals and materials are symmetric. The fault was in the committed
+DeckMould maps: a stale bake had that face at base colour 0.16 and roughness 0.08, where the port side is 0.89 and 0.20.
+A fresh bake is right there, but Blender 4.2 washes out the non-skid's speckle. `patch_deckmould.py` keeps the
+committed maps and takes only the cabin trunk's walls (inside and out, not the non-skid top) from the fresh bake,
+face by face in UV space. Every other pixel is unchanged.
+
+Stills (Ultra, before at left): `gaps-cockpit-before-after.jpg` (the aft face), `gaps-companion-before-after.jpg`,
+`gaps-hatchside-before-after.jpg`, `gaps-transom-before-after.jpg`.

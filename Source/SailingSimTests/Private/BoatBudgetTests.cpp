@@ -12,7 +12,7 @@ namespace
 	constexpr int32 SlotTarget = 8;
 	struct FBudget { const TCHAR* Path; int32 MaxSlots; };
 	const FBudget Budgets[] = {
-		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Hull"), 5 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Rudder"), 3 },
+		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Hull"), 6 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Rudder"), 3 },
 		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Boom"), 2 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Mast"), 3 },
 		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Interior"), 1 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Glass"), 3 },
 		{ TEXT("/Game/Boats/J22/SM_J22_Hull"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Rudder"), 2 },
