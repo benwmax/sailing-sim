@@ -594,6 +594,8 @@ def build_all(st):
         "CabinGelcoat": deck_mould(st, "CabinGelcoat"),      # real portlights since the interior pass
         "TeakWeathered": teak(st, "TeakWeathered"),
         "TeakVarnish": teak(st, "TeakVarnish", varnish=True),
+        # #235 gaps (photo companionway-1): the sliding hatch is pale varnished marine plywood, not moulded gelcoat
+        "PlywoodVarnish": simple("PlywoodVarnish", "#B48A5C", 0.32, coat=0.6),
         "Aluminium": anodised(st),
         "CastAlu": anodised(st, "CastAlu", "#B7BABD"),
         "Chrome": stainless(st, "Chrome", "#E4E6E8", 0.10),
