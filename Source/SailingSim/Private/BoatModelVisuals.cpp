@@ -528,7 +528,12 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			}
 			else
 			{
-				const FVector Via = RigPoint(ModelHull, TEXT("LazySheetVia"));
+				FVector Via = RigPoint(ModelHull, TEXT("LazySheetVia"));
+				// (Over the cabin top forward of the mast only while the clew is forward of it too: an overlapping genoa's clew,
+				// aft of the mast through a tack, took the sheet forward round the via and back through the mast,
+				// SailingSim.Visual.SheetClearance. Then it crosses over the cabin top aft of the mast, at the via's height on the
+				// centreline level with the clew, still in two pieces.)
+				if (JibClewCm.X < Via.X) Via = FVector(JibClewCm.X, 0.f, Via.Z);
 				Ropes.Add({ JibClewCm, Via, 0.45f, 0.03f, Look });
 				Ropes.Add({ Via, Lead, 0.45f, 0.05f, Look });
 			}

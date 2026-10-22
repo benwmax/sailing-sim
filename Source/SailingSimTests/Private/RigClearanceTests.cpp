@@ -362,4 +362,215 @@ bool FVisualTrimmerTailsJibTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * The running lines' audit (the sheets' job): every boat's sheets, their tails and the vang, on the eight points of sail
+ * RigClearance holds and through a tack and a gybe (sampled every third of a second while the autopilot turns her), against
+ * the solid boat (hull, deck, cabin trunk, cockpit: CrewInsideBoat), the lifelines, the crew's flesh, the standing rig
+ * (shrouds, stays, spreaders, the trapeze wire) and the mast. Within a few centimetres of a line's ends (its block, the
+ * clew, a hand holding it) it is not checked. Everything found is listed; what fails:
+ *  - a sheet more than 10 cm into the solid boat away from its fittings,
+ *  - a sheet through a wire or the mast (closer than their radii, by more than 1 cm) away from both its ends,
+ *  - a sheet more than 4 cm into a sailor away from a hand holding it and off the deck (a line on the deck or the cockpit
+ *    floor under a sailor is sat or lain on: the Sunfish's sailor ducking flat under her boom, the maxi's crew on a lazy
+ *    sheet),
+ * each in more than 2 samples of a boat.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSheetClearanceTest, "SailingSim.Visual.SheetClearance", RigClearanceFlags)
+bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingSheetClearanceWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	World->GetWorldSettings()->NotifyBeginPlay();
+	World->SpawnActor<AWaterSurface>(FVector(0.f, 0.f, 0.f), FRotator::ZeroRotator);
+	ASailboatPawn* Pawn = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+	if (!TestNotNull(TEXT("Boat spawns"), Pawn))
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+		return false;
+	}
+	auto Tick = [&](int32 Frames)
+	{
+		for (int32 F = 0; F < Frames; ++F)
+		{
+			++GFrameCounter;
+			World->Tick(LEVELTICK_All, 1.f / 30.f);
+		}
+	};
+	auto IsRunning = [](const FString& What) { return What.Contains(TEXT("sheet")) || What == TEXT("vang"); };
+
+	TMap<FString, int32> Found, Fails;
+	TMap<FString, FString> Where;
+	int32 Checked = 0;
+	auto Note = [&](TMap<FString, int32>& Map, const FString& Key, const FString& Detail)
+	{
+		int32& N = Map.FindOrAdd(Key);
+		if (N++ == 0 && !Where.Contains(Key)) Where.Add(Key, Detail);
+	};
+
+	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
+	{
+		Pawn->SetBoat(Type);
+		Tick(2);
+		const FBoatConfig& Cfg = Pawn->GetBoatModel().GetConfig();
+		const double HullDepth = Pawn->GetBoatModel().HullDepth();
+		const bool bBridge = Pawn->HasModelTravelerBridge();
+		const bool bLifelines = CrewHasLifelines(Cfg);
+		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(Cfg.Type));
+
+		// The known gap (fix list 15): the Sunfish's boom is 0.5 m over her deck and her sheet runs along it to the hand, so
+		// ducking under it through a tack or a gybe her sailor's back meets the sheet. Listed, not failed, while turning.
+		bool bTurning = false;
+		auto Check = [&](const FString& State)
+		{
+			const FTransform Root = Pawn->BoatRoot->GetComponentTransform();
+			struct FBoneSeg { FVector A, B; double R; FString Name; int32 Crew; };
+			TArray<FBoneSeg> Bones;
+			TArray<FVector> Hands;
+			const TArray<TObjectPtr<USkeletalMeshComponent>>& Crew = Pawn->GetCrewMeshes();
+			for (int32 I = 0; I < Crew.Num(); ++I)
+			{
+				const USkeletalMeshComponent* M = Crew[I];
+				if (!M || !M->IsVisible() || !M->GetSkeletalMeshAsset()) continue;
+				const FReferenceSkeleton& Ref = M->GetSkeletalMeshAsset()->GetRefSkeleton();
+				for (int32 B = 1; B < Ref.GetNum(); ++B)
+				{
+					const FString Bone = Ref.GetBoneName(B).ToString();
+					if (Bone == TEXT("hand_l") || Bone == TEXT("hand_r")) Hands.Add(Root.InverseTransformPosition(M->GetBoneLocation(Ref.GetBoneName(B), EBoneSpaces::WorldSpace)));
+					const double R = FleshCm(Bone);
+					const int32 Parent = Ref.GetParentIndex(B);
+					if (R < 0.0 || Parent < 0 || FleshCm(Ref.GetBoneName(Parent).ToString()) < 0.0) continue;
+					Bones.Add({ Root.InverseTransformPosition(M->GetBoneLocation(Ref.GetBoneName(Parent), EBoneSpaces::WorldSpace)),
+						Root.InverseTransformPosition(M->GetBoneLocation(Ref.GetBoneName(B), EBoneSpaces::WorldSpace)), R, Bone, I });
+				}
+			}
+			// The standing rig the sheets mustn't pass through, and the mast (its foot at the deck to its head).
+			struct FWire { FVector A, B; double R; FString Name; };
+			TArray<FWire> Wires;
+			for (const ASailboatPawn::FRigLineSample& L : Pawn->GetRigLineSamples())
+			{
+				const FString What = L.Name;
+				if (!IsRunning(What) && What != TEXT("tiller extension")) Wires.Add({ L.A, L.B, L.RadiusCm, What });
+			}
+			Wires.Add({ FVector(Cfg.MastX, 0.0, Cfg.Hulls[0].SheerZ) * CmPerMeter, FVector(Cfg.MastX, 0.0, Cfg.MastheadZ) * CmPerMeter, 0.5 * Cfg.MastDiameter * CmPerMeter, TEXT("mast") });
+			for (const ASailboatPawn::FRigLineSample& L : Pawn->GetRigLineSamples())
+			{
+				const FString What = L.Name;
+				if (!IsRunning(What)) continue;
+				const double Len = FVector::Dist(L.A, L.B);
+				if (Len < 5.0) continue;
+				const bool bHeld = What.Contains(TEXT("tail"));
+				const FString At = FString::Printf(TEXT("%s; the line (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f)"), *State, L.A.X, L.A.Y, L.A.Z, L.B.X, L.B.Y, L.B.Z);
+				constexpr int32 NumU = 32;
+				for (int32 K = 1; K < NumU; ++K)
+				{
+					const double U = double(K) / NumU;
+					const FVector P = LinePoint(L, U);
+					const double FromEnd = FMath::Min(U, 1.0 - U) * Len;
+					if (FromEnd < FMath::Max(6.0, 4.0 * L.RadiusCm)) continue;
+					++Checked;
+					const double Depth = DepthInBoat(Cfg, HullDepth, P, bBridge);
+					if (Depth > L.RadiusCm + 1.5)
+					{
+						Note(Found, FString::Printf(TEXT("%s: %s inside the boat"), *BoatName, *What), FString::Printf(TEXT("%.1f cm deep at (%.0f, %.0f, %.0f), %s"), Depth, P.X, P.Y, P.Z, *At));
+						if (Depth > 10.0 && FromEnd > 40.0) Note(Fails, FString::Printf(TEXT("%s: %s more than 10 cm into the boat"), *BoatName, *What), FString::Printf(TEXT("%.0f cm at (%.0f, %.0f, %.0f), %s"), Depth, P.X, P.Y, P.Z, *At));
+					}
+					if (bLifelines)
+					{
+						const double Y = FMath::Abs(P.Y - Cfg.Hulls[0].CenterY * CmPerMeter);
+						const double Fence = (Cfg.Hulls[0].DeckHalfBeam(P.X / CmPerMeter) - 0.05) * CmPerMeter;
+						const double Deck = CrewFloorZ(Cfg, P.X / CmPerMeter, FMath::Sign(P.Y) * (Fence - 5.0) / CmPerMeter, bBridge) * CmPerMeter;
+						const double Hgt = Cfg.Hulls[0].SheerZ < 0.9 ? 60.0 : 68.0;
+						for (const double Wire : { 0.5 * Hgt, Hgt })
+						{
+							if (Deck > -1e6 && FMath::Abs(Y - Fence) < 1.0 + L.RadiusCm && FMath::Abs(P.Z - (Deck + Wire)) < 1.0 + L.RadiusCm)
+							{
+								Note(Found, FString::Printf(TEXT("%s: %s through a lifeline"), *BoatName, *What), FString::Printf(TEXT("at (%.0f, %.0f, %.0f), %s"), P.X, P.Y, P.Z, *At));
+							}
+						}
+					}
+					for (const FWire& W : Wires)
+					{
+						if (What == TEXT("vang") && W.Name == TEXT("mast")) continue; // its foot is on the mast
+						const FVector C = FMath::ClosestPointOnSegment(P, W.A, W.B);
+						const double Gap = FVector::Dist(C, P) - W.R - L.RadiusCm;
+						const double WireEnd = FMath::Min(FVector::Dist(C, W.A), FVector::Dist(C, W.B));
+						if (Gap < -1.0 && WireEnd > 8.0)
+						{
+							Note(Found, FString::Printf(TEXT("%s: %s through the %s"), *BoatName, *What, *W.Name), FString::Printf(TEXT("%.1f cm at (%.0f, %.0f, %.0f), %s"), -Gap, P.X, P.Y, P.Z, *At));
+							if (FromEnd > 20.0) Note(Fails, FString::Printf(TEXT("%s: %s through the %s"), *BoatName, *What, *W.Name), FString::Printf(TEXT("%.1f cm at (%.0f, %.0f, %.0f), %s"), -Gap, P.X, P.Y, P.Z, *At));
+						}
+					}
+					bool bInHand = false;
+					for (const FVector& H : Hands) bInHand |= bHeld && FVector::Dist(H, P) < 25.0;
+					// (A line lying on the deck or the cockpit floor under a sailor is sat or lain on: listed, not failed.)
+					const bool bOnFloor = CrewInsideBoat(Cfg, HullDepth, (P - FVector(0.0, 0.0, L.RadiusCm + 4.0)) / CmPerMeter, bBridge);
+					for (const FBoneSeg& B : Bones)
+					{
+						if (bInHand && B.Name.StartsWith(TEXT("lowerarm"))) continue;
+						const FVector C = FMath::ClosestPointOnSegment(P, B.A, B.B);
+						const double Gap = FVector::Dist(C, P) - B.R - L.RadiusCm;
+						if (Gap < -2.0)
+						{
+							Note(Found, FString::Printf(TEXT("%s: %s through crew %d's %s"), *BoatName, *What, B.Crew, *B.Name), FString::Printf(TEXT("%.1f cm at (%.0f, %.0f, %.0f), %s"), -Gap, P.X, P.Y, P.Z, *At));
+							if (Gap < -4.0 && !bInHand && !bOnFloor && !(bTurning && Cfg.Type == EBoatType::Sunfish && What == TEXT("mainsheet tail"))) Note(Fails, FString::Printf(TEXT("%s: %s through the crew"), *BoatName, *What), FString::Printf(TEXT("crew %d's %s, %.1f cm, %s"), B.Crew, *B.Name, -Gap, *At));
+						}
+					}
+				}
+			}
+		};
+
+		struct FCase { double Twa, Knots; const TCHAR* Name; };
+		const FCase Cases[] = {
+			{ 45.0, 7.0, TEXT("close-hauled, starboard tack, light") }, { -45.0, 7.0, TEXT("close-hauled, port tack, light") },
+			{ 45.0, 16.0, TEXT("close-hauled, starboard tack, fresh") }, { -45.0, 16.0, TEXT("close-hauled, port tack, fresh") },
+			{ 95.0, 12.0, TEXT("reaching, starboard tack") }, { -95.0, 12.0, TEXT("reaching, port tack") },
+			{ 160.0, 12.0, TEXT("running, starboard gybe") }, { -160.0, 12.0, TEXT("running, port gybe") } };
+		for (const FCase& C : Cases)
+		{
+			Pawn->HoldForTests(C.Twa, C.Knots);
+			Tick(8 * 30);
+			for (int32 Sample = 0; Sample < 3; ++Sample)
+			{
+				Tick(15);
+				const FBoatTelemetry& Tel = Pawn->GetBoatModel().GetTelemetry();
+				Check(FString::Printf(TEXT("%s (heel %.0f, TWA %.0f)"), C.Name, FMath::RadiansToDegrees(Tel.Heel), FMath::RadiansToDegrees(Tel.TrueWindAngle)));
+			}
+		}
+		// Through a tack and a gybe: on the first heading 8 s, then the autopilot takes her to the other, sampled for 12 s.
+		struct FTurn { double From, To; const TCHAR* Name; };
+		for (const FTurn& T : { FTurn{ 45.0, -45.0, TEXT("tacking") }, FTurn{ 150.0, -150.0, TEXT("gybing") } })
+		{
+			Pawn->HoldForTests(T.From, 12.0);
+			Tick(8 * 30);
+			Pawn->RetargetForTests(T.To);
+			bTurning = true;
+			for (int32 Sample = 0; Sample < 36; ++Sample)
+			{
+				Tick(10);
+				const FBoatTelemetry& Tel = Pawn->GetBoatModel().GetTelemetry();
+				Check(FString::Printf(TEXT("%s, %.1f s in (heel %.0f, TWA %.0f, boom %.0f)"), T.Name, (Sample + 1) / 3.0, FMath::RadiansToDegrees(Tel.Heel),
+					FMath::RadiansToDegrees(Tel.TrueWindAngle), FMath::RadiansToDegrees(Pawn->GetBoatModel().GetState().BoomAngle)));
+			}
+			bTurning = false;
+		}
+	}
+	Found.KeySort([](const FString& A, const FString& B) { return A < B; });
+	for (const TPair<FString, int32>& F : Found) AddInfo(FString::Printf(TEXT("%s: %d samples; first %s"), *F.Key, F.Value, *Where[F.Key]));
+	AddInfo(FString::Printf(TEXT("%d sheet points checked; %d kinds of contact"), Checked, Found.Num()));
+	for (const TPair<FString, int32>& F : Fails)
+	{
+		if (F.Value <= 2) continue;
+		AddError(FString::Printf(TEXT("%s (%d samples); first %s"), *F.Key, F.Value, Where.Contains(F.Key) ? *Where[F.Key] : TEXT("")));
+	}
+
+	World->EndPlay(EEndPlayReason::Quit);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
