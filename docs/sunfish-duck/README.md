@@ -32,5 +32,5 @@ This is a pose change only: the physics and her polar are untouched.
 `tack-before` and `tack-after`: High, 10 kn, a second into a tack (`-SailingCrudeTackAt=10`). Before, she crosses in a
 crouch with her back at the boom; after, folded low under it.
 
-Once #229 is on main, SheetClearance's Sunfish allowance (listed, not failed, while turning) can go, and fix-list item 15
-can be marked done.
+With #229 on main, SheetClearance's Sunfish allowance (listed, not failed, while turning) is gone and fix-list item 15 is
+done.

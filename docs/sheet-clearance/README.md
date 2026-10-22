@@ -26,7 +26,7 @@ Everything it finds is listed. It fails when one of these happens in more than t
 | --- | --- | --- |
 | Catalina 30 | the lazy jib sheet through the mast through a tack | `UpdateModelRig`: the lazy sheet goes over the cabin top forward of the mast (`LazySheetVia`) only while the clew is forward of it too. An overlapping genoa's clew is aft of the mast during a tack; the sheet then crosses the cabin top aft of the mast, at the via's height, level with the clew. Mast: 3 samples down to 1. |
 | Catalina 22 | the mainsheet's tackle through the helm's back through a tack (spine 4 cm, 5 samples) | `CrewPlacement`: her helm crosses forward of the tackle, which runs from the boom's end (`MainLuffX` less the foot) down to the transom. Before, they crossed at the tiller's end, under the tackle. |
-| Sunfish | the mainsheet tail across the sailor's back while ducking under her boom | **open, fix list 15**: her boom is 0.5 m over the deck and the sheet runs along it, so a sailor ducking under it meets it. Listed, not failed, while turning. |
+| Sunfish | the mainsheet tail across the sailor's back while ducking under her boom | **done** (docs/sunfish-duck/): her sailor now stoops and kneels lower under the boom. |
 | Maxi 100 | a lazy jib sheet under two seated crew in the gybe | on the deck under them: sat on, listed |
 | Catalina 22 | the mainsheet against the top lifeline, close-hauled in a breeze | a sheet rubbing a lifeline: listed |
 | every boat | sheets 2–7 cm "into" the deck and cabin top | lines lying on a surface (the drape): listed |
