@@ -902,8 +902,35 @@ namespace CrewPoseDetail
 	}
 }
 
+namespace
+{
+	/** The Lagoon 42's helm station (build_fleet.py lagoon_detail(), raised in pc/lagoon-helm): the helm's y, and the heights
+	 *  over the bridgedeck of the seat's cushion (0.86, 0.45 by 0.6 m at x -3.25), the helm deck under the helm's feet (0.40,
+	 *  x -3.60 to -2.42, y within 0.40 of the helm's) and the step up to it (0.20, x -3.90 to -3.60). The station stands
+	 *  outboard of the starboard hull's inner deck edge (the helm's y is 2.16 m, the edge 1.97), so its heights are taken
+	 *  from the bridgedeck's level (CrewBetweenHullsZ), not from the surface under it. */
+	double LagoonHelmY(const Sailing::FBoatConfig& C)
+	{
+		const Sailing::FHullShape& Stbd = C.Hulls[1];
+		return FMath::Abs(Stbd.CenterY) - Stbd.DeckHalfBeam(0.0) + 0.55 - 0.35;
+	}
+	bool IsLagoon(const Sailing::FBoatConfig& C) { return C.Type == Sailing::EBoatType::Lagoon42 && C.Hulls.size() >= 2; }
+	double LagoonBridgedeckZ(const Sailing::FBoatConfig& C) { return C.Hulls[0].SheerHeight(0.0) + 0.02; }
+	/** The helm deck's or the step's height over the bridgedeck at (X, Y), or -1 off them. */
+	double LagoonHelmDeckZ(const Sailing::FBoatConfig& C, double X, double Y)
+	{
+		if (!IsLagoon(C) || FMath::Abs(Y - LagoonHelmY(C)) >= 0.40) return -1.0;
+		if (X > -3.60 && X < -2.42) return 0.40;
+		if (X > -3.90 && X <= -3.60) return 0.20;
+		return -1.0;
+	}
+}
+
 double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTravelerBridge)
 {
+	// (The Lagoon's raised helm deck and its step: the helm's feet rest on them, not on the deck under them.)
+	const double HelmDeck = LagoonHelmDeckZ(C, X, Y);
+	if (HelmDeck >= 0.0) return LagoonBridgedeckZ(C) + HelmDeck;
 	FCrewCockpitWell W;
 	const bool bWell = CrewCockpitWell(C, W, bTravelerBridge);
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
@@ -963,6 +990,10 @@ double CrewBetweenHullsZ(const Sailing::FBoatConfig& C, double X, double Y)
 
 double CrewSeatSurfaceZ(const Sailing::FBoatConfig& C, double X, double Y)
 {
+	// docs/crew-hull-clip/: the Lagoon's helm seat (build_fleet.py lagoon_detail(): its cushion 0.45 by 0.6 m, aft of
+	// the saloon on the starboard side; raised in pc/lagoon-helm from 0.49 to 0.86 m over the bridgedeck so the helm
+	// sees over the saloon roof).
+	if (IsLagoon(C) && FMath::Abs(X + 3.25) < 0.225 && FMath::Abs(Y - LagoonHelmY(C)) < 0.3) return LagoonBridgedeckZ(C) + 0.86;
 	FCrewCockpitWell W;
 	const bool bWell = CrewCockpitWell(C, W);
 	const double Crown = CrewPoseDetail::DeckCrown(C.Type);
@@ -976,14 +1007,6 @@ double CrewSeatSurfaceZ(const Sailing::FBoatConfig& C, double X, double Y)
 		return H.SheerHeight(X) + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(Half, 1e-3)));
 	}
 	const double Between = CrewBetweenHullsZ(C, X, Y);
-	// docs/crew-hull-clip/: the Lagoon's helm seat (build_fleet.py lagoon_detail(): its cushion 0.45 by 0.6 m, aft of
-	// the saloon on the starboard side, 0.49 m over the bridgedeck).
-	if (Between > -1e8 && C.Type == Sailing::EBoatType::Lagoon42)
-	{
-		const Sailing::FHullShape& Stbd = C.Hulls[1];
-		const double HelmY = FMath::Abs(Stbd.CenterY) - Stbd.DeckHalfBeam(0.0) + 0.55 - 0.35;
-		if (FMath::Abs(X + 3.25) < 0.225 && FMath::Abs(Y - HelmY) < 0.3) return Between + 0.47;
-	}
 	if (Between > -1e8) return Between;
 	// Out over the water (on the wire) or past the nets: the deck of the hull nearest the sailor's side.
 	const Sailing::FHullShape* Near = &C.Hulls[0];
@@ -1021,6 +1044,9 @@ bool CrewCabinTrunk(const Sailing::FBoatConfig& C, FCrewCabinTrunk& Out, bool bT
 
 bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVector& P, bool bTravelerBridge)
 {
+	// The Lagoon's raised helm deck and its step are solid (pc/lagoon-helm).
+	const double HelmDeck = LagoonHelmDeckZ(C, P.X, P.Y);
+	if (HelmDeck >= 0.0 && P.Z >= LagoonBridgedeckZ(C) - 0.3 && P.Z < LagoonBridgedeckZ(C) + HelmDeck) return true;
 	FCrewCockpitWell W;
 	const bool bWell = CrewCockpitWell(C, W, bTravelerBridge);
 	FCrewCabinTrunk Trunk;
