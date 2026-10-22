@@ -680,7 +680,7 @@ return E * 0.35 * hg;""", list(glow_in.keys()), unreal.CustomMaterialOutputType.
 FAR_CAP_CODE = r"""
 // docs/far-cap-sprites/ (far-caps option B): a far whitecap standing on the water, an upright quad turned to the camera.
 // The instance's pivot is its slot (AWaterSurface::UpdateFarCaps), lifted to the crests (Lift: 0.6 Hs, cm); each 4 s life it hops a few metres (a hash of its seed
-// and the life) and lives with the tile's probability (Prob), rising and falling as 1.6 sin clamped at 1 (mean 0.7937),
+// and the life) and lives with the tile's probability (ProbA/ProbB, fixed at the life's start), rising and falling as 1.6 sin clamped at 1 (mean 0.7937),
 // faded by the sprites' share (AWaterSurface::FarCapSpriteWeight, M_WaterV4's FCS_W: keep them in step). A dead or
 // faded cap collapses to its pivot (no pixels). Returns the offset to the vertex's place, and in Live (out) how alive.
 float ep = Time / 4.0 + Seed * 7.13;
@@ -689,13 +689,16 @@ float n = floor(ep);
 float h1 = frac(sin(dot(float2(Seed * 91.7, n), float2(127.1, 311.7))) * 43758.5453);
 float h2 = frac(sin(dot(float2(Seed * 37.3, n + 3.1), float2(127.1, 311.7))) * 43758.5453);
 float h3 = frac(sin(dot(float2(Seed * 53.9, n + 7.7), float2(127.1, 311.7))) * 43758.5453);
-float3 P = Pivot + float3((h2 - 0.5) * 1200.0, (h3 - 0.5) * 1200.0, Lift);
+float3 P = Pivot + float3((h2 - 0.5) * 1200.0, (h3 - 0.5) * 1200.0, Lift - 45.0);   // (the pivot stands 45 cm up: AWaterSurface::UpdateFarCaps)
 float3 toCam = Cam - P;
 float dist = max(length(toCam.xy) / 100.0, 1.0);
 float w = smoothstep(300.0, 400.0, dist) * (1.0 - smoothstep(1100.0, 1250.0, dist)) * (1.0 - smoothstep(0.05, 0.14, (toCam.z / 100.0) / dist));
-Live = step(h1, Prob) * w * saturate(1.6 * sin(3.14159265 * age));
+w = max(w, DebugAll);
+// (Decided at the life's start: begun before SwitchT, ProbA, and none on a slot a rebuild added; since, ProbB.)
+float Prob = (n - Seed * 7.13) * 4.0 < SwitchT ? (Born > 0.5 ? 0.0 : ProbA) : ProbB;
+Live = step(h1, max(Prob, DebugAll)) * w * saturate(1.6 * sin(3.14159265 * age));
 float2 side = normalize(float2(-toCam.y, toCam.x) + float2(1e-4, 0.0));
-float width = 150.0 * (0.8 + 0.4 * h2), height = CapH * 100.0 * (0.8 + 0.4 * h3);
+float width = Size * 150.0 * (0.8 + 0.4 * h2), height = Size * CapH * 100.0 * (0.8 + 0.4 * h3);   // (Size: fewer, bigger caps past the slot budget)
 float k = Live > 1e-3 ? 1.0 : 0.0;
 float3 v = P + k * (float3(side * (Local.x / 100.0) * width, 0.0) + float3(0.0, 0.0, (Local.y / 100.0 + 0.5) * height));
 return v - WP;
@@ -706,8 +709,9 @@ def build_far_cap():
     """M_FarCap (docs/far-cap-sprites/, High and Ultra): the far whitecaps as upright sprites (AWaterSurface::UpdateFarCaps):
     lit translucent foam, its life and its share of the caps (against M_WaterV4's flecks) computed per vertex."""
     mat = new_material("M_FarCap")
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    # Masked, its cover dithered (the temporal AA resolves it): translucent, the caps standing on the far water drew only
+    # where the land or the sky was behind them, a ghost over the water at a low eye.
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
     mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_instanced_static_meshes", True)
     # (Raw positions, all in the render's world: the pivot's TransformPosition doesn't take the map's origin.)
@@ -720,8 +724,10 @@ def build_far_cap():
     connect(zero, "", piv, "")
     inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -1400, 300), "Pivot": piv, "WP": wp, "Cam": cam,
               "Seed": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 400, data_index=0),
-              "Prob": scalar(mat, "Prob", 0.0, -1400, 500), "CapH": scalar(mat, "CapH", 0.3, -1400, 600),
-              "Lift": scalar(mat, "Lift", 0.0, -1600, 650),
+              "ProbA": scalar(mat, "ProbA", 0.0, -1400, 500), "ProbB": scalar(mat, "ProbB", 0.0, -1600, 500),
+              "SwitchT": scalar(mat, "SwitchT", 0.0, -1600, 550),
+              "Born": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1600, 400, data_index=1), "CapH": scalar(mat, "CapH", 0.3, -1400, 600),
+              "Lift": scalar(mat, "Lift", 0.0, -1600, 650), "DebugAll": scalar(mat, "DebugAll", 0.0, -1600, 750), "Size": scalar(mat, "Size", 1.0, -1600, 850),
               "Time": node(mat, unreal.MaterialExpressionTime, -1400, 700)}
     c = custom(mat, FAR_CAP_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 200,
                extra_outputs=(("Live", unreal.CustomMaterialOutputType.CMOT_FLOAT1),))
@@ -740,7 +746,18 @@ return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - y * y)) * 0.
     rough = node(mat, unreal.MaterialExpressionConstant, -300, 150, r=0.6)
     MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(shape, "", unreal.MaterialProperty.MP_OPACITY)
+    # Lit as foam lying on the water (mostly up, leaning to the eye), not by the quad's own normal: turned to the camera
+    # in the vertex shader, half the caps were lit from behind.
+    mat.set_editor_property("tangent_space_normal", False)
+    cv = node(mat, unreal.MaterialExpressionCameraVectorWS, -600, 50)
+    nrm = custom(mat, "return normalize(float3(V.xy * 0.4, 1.0));", ["V"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 80)
+    connect(cv, "", nrm, "V")
+    MEL.connect_material_property(nrm, "", unreal.MaterialProperty.MP_NORMAL)
+    dither = node(mat, unreal.MaterialExpressionMaterialFunctionCall, -100, 450)
+    dither.set_editor_property("material_function", unreal.load_asset(
+        "/Engine/Functions/Engine_MaterialFunctions02/Utility/DitherTemporalAA"))
+    connect(shape, "", dither, "Alpha Threshold")
+    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 

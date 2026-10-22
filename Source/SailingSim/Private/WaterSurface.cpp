@@ -460,10 +460,10 @@ double AWaterSurface::FarCapCover(double WindMs, double Scale, double Onset)
 	return 3.84e-6 * FMath::Pow(FMath::Max(WindMs, 0.0), 3.41) * Scale * Onset;
 }
 
-void AWaterSurface::FarCapTilePlan(double Cover, double TileArea, int32& OutSlots, float& OutProb)
+void AWaterSurface::FarCapTilePlan(double Cover, double TileArea, int32& OutSlots, float& OutProb, double CapArea)
 {
 	// The caps live at once: the tile's foam over one cap's, over the mean of a life (M_FarCap: 1.6 sin, clamped at 1).
-	const double Live = Cover * TileArea / (FarCapArea * 0.7937);
+	const double Live = Cover * TileArea / (CapArea * 0.7937);
 	OutSlots = Live < 0.05 ? 0 : FMath::Min(FMath::CeilToInt(Live * 1.3) + 1, 6000);
 	OutProb = OutSlots > 0 ? float(FMath::Min(Live / OutSlots, 1.0)) : 0.f;
 }
@@ -733,7 +733,9 @@ void AWaterSurface::Tick(float DeltaSeconds)
 		UpdateWakeGrid(DeltaSeconds);
 		UpdateShoreMap();
 		if (Tier >= 2) UpdateSpray(DeltaSeconds);
+		const double FarCapStart = FPlatformTime::Seconds();
 		UpdateFarCaps(DeltaSeconds);
+		FarCapCpuSeconds += FPlatformTime::Seconds() - FarCapStart;
 	}
 	WaterCpuSeconds += FPlatformTime::Seconds() - Start;
 }
@@ -1234,15 +1236,18 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 		}
 	}
 	if (!bOn) return;
-	FarCapTimer -= DeltaSeconds;
-	if (FarCapTimer > 0.f) return;
-	FarCapTimer = 0.5f;
 	const FWaveField* Waves = GetWaves();
 	const FWindField* Wind = GetWind();
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!Waves || !Wind) return;
 	APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0);
 	const FVector CamW = CamMgr ? CamMgr->GetCameraLocation() : GetActorLocation();
+	// Planned every half second, and at once when the view turns (only the tiles in view are held).
+	const float Yaw = CamMgr ? float(CamMgr->GetCameraRotation().Yaw) : 0.f;
+	FarCapTimer -= DeltaSeconds;
+	if (FarCapTimer > 0.f && FMath::Abs(FMath::FindDeltaAngleDegrees(Yaw, FarCapYaw)) < 8.f) return;
+	FarCapTimer = 0.5f;
+	FarCapYaw = Yaw;
 	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CamW);
 	const double CamH = (CamW.Z - SailingFrame::MapAnchor(GetWorld()).Z) / CmPerMeter;
 	const double T = GetSimTime();
@@ -1253,7 +1258,15 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	const double TileM = FarCapTileM, Area = TileM * TileM;
 	const int32 Reach = FMath::CeilToInt(Far / TileM) + 1;
 	const FIntPoint Here(FMath::FloorToInt(Cam.X / TileM), FMath::FloorToInt(Cam.Y / TileM));
+	// The view's cone on the map (map +X north, +Y east; Unreal's yaw is the same bearing): a tile is wanted when it
+	// reaches inside the half field of view plus 25 deg, and kept until it is 40 deg out (no churn at the edge).
+	const double HalfFov = 0.5 * (CamMgr ? CamMgr->GetFOVAngle() : 90.0);
+	const FVector2D Fwd = SailingFrame::ToMap(GetWorld(), CamW + FRotator(0.0, Yaw, 0.0).Vector() * 100.0) - Cam;
+	const double Bearing = FMath::RadiansToDegrees(FMath::Atan2(Fwd.Y, Fwd.X));
+	struct FPlan { FIntPoint Key; double Cover, CX, CY; int32 Slots; };
+	TArray<FPlan> Plans;
 	TSet<FIntPoint> Want;
+	int32 Total = 0;
 	for (int32 I = -Reach; I <= Reach; ++I)
 	{
 		for (int32 J = -Reach; J <= Reach; ++J)
@@ -1265,23 +1278,52 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 			const double DNear = FMath::Sqrt(NX * NX + NY * NY), DFar = FMath::Sqrt(FX * FX + FY * FY);
 			// (Only where the sprites can have a share: in the ring, and with the view low enough over its far side.)
 			if (DNear > Far || DFar < Near || CamH > 0.14 * DFar) continue;
-			Want.Add(Key);
+			double Lo = 180.0, Hi = -180.0;
+			for (int32 K = 0; K < 4; ++K)
+			{
+				const double A = FMath::FindDeltaAngleDegrees(Bearing, FMath::RadiansToDegrees(FMath::Atan2(Y0 + (K & 1) * TileM - Cam.Y, X0 + (K >> 1) * TileM - Cam.X)));
+				Lo = FMath::Min(Lo, A); Hi = FMath::Max(Hi, A);
+			}
+			const double Edge = HalfFov + (FarCapTiles.Contains(Key) ? 40.0 : 25.0);
+			if ((Hi - Lo) < 180.0 && (Lo > Edge || Hi < -Edge)) continue;
 			const double CX = X0 + 0.5 * TileM, CY = Y0 + 0.5 * TileM;
 			double From = 0.0, Factor = 1.0;
 			Wind->ReadableAt(CX, CY, T, From, Factor);
-			const double Cover = FarCapCover(Wind->MeanSurfaceRoughnessAt(CX, CY, T) * 8.0 * Factor, Scale, Onset);
+			FPlan P{Key, FarCapCover(Wind->MeanSurfaceRoughnessAt(CX, CY, T) * 8.0 * Factor, Scale, Onset), CX, CY, 0};
+			float Prob0 = 0.f;
+			FarCapTilePlan(P.Cover, Area, P.Slots, Prob0);
+			Total += P.Slots;
+			Plans.Add(P);
+			Want.Add(Key);
+		}
+	}
+	// Over the budget (a storm), fewer and bigger caps: the same foam. Stepped by quarters so the tiles aren't rebuilt as it wanders.
+	const double SizeStep = Total > FarCapBudget ? FMath::CeilToDouble(4.0 * double(Total) / FarCapBudget) / 4.0 : 1.0;
+	const double CapArea = FarCapArea * SizeStep;
+	for (FPlan& P : Plans)
+	{
+		{
+			const FIntPoint Key = P.Key;
+			const double X0 = Key.X * TileM, Y0 = Key.Y * TileM, CX = P.CX, CY = P.CY, Cover = P.Cover;
 			int32 Slots = 0;
 			float Prob = 0.f;
-			FarCapTilePlan(Cover, Area, Slots, Prob);
+			FarCapTilePlan(Cover, Area, Slots, Prob, CapArea);
 			FFarCapTile* Tile = FarCapTiles.Find(Key);
-			// Rebuilt only when the cover has left what the slots can carry (more than they hold, or under half of it).
-			const bool bRebuild = !Tile || Slots > Tile->Slots || (Tile->Slots > 0 && Slots < Tile->Slots / 2);
+			// Rebuilt only when the cover needs more slots than it holds (or the caps' size steps). Not shrunk in place: the
+			// slots past the new count would vanish mid-life; a tile is dropped when it leaves the view or the ring instead.
+			const bool bRebuild = !Tile || Slots > Tile->Slots || Tile->Size != SizeStep;
+			// The probability in effect before (a cap's life is decided at its start, M_FarCap's ProbA and ProbB), and the
+			// slots that already stood (the rest stay dark until their next life).
+			const float ProbBefore = Tile ? Tile->Prob : -1.f;
+			const int32 SlotsBefore = Tile && Tile->Size == SizeStep ? Tile->Slots : 0;
 			if (bRebuild)
 			{
 				if (Tile && Tile->Mesh) { FarCapKeep.Remove(Tile->Mesh); FarCapKeep.Remove(Tile->Mid); Tile->Mesh->DestroyComponent(); }
 				FFarCapTile& New = FarCapTiles.FindOrAdd(Key);
 				New = FFarCapTile();
 				New.Slots = Slots;
+				New.Size = SizeStep;
+				New.Prob = ProbBefore;
 				if (Slots > 0)
 				{
 					UInstancedStaticMeshComponent* Mesh = NewObject<UInstancedStaticMeshComponent>(this);
@@ -1293,16 +1335,22 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 					Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 					Mesh->SetCastShadow(false);
 					Mesh->bAffectDistanceFieldLighting = false;
+					// (Out of ray tracing and the captures: their moving vertices made each tile dynamic ray-tracing geometry, 0.5 ms
+					// of render thread on High for no visible light.)
+					Mesh->bVisibleInRayTracing = false;
+					Mesh->bAffectDynamicIndirectLighting = false;
+					Mesh->bVisibleInReflectionCaptures = false;
+					Mesh->bVisibleInRealTimeSkyCaptures = false;
 					Mesh->SetCanEverAffectNavigation(false);
 					Mesh->BoundsScale = 3.f; // the material stands each quad up and moves it a few metres a life
-					Mesh->NumCustomDataFloats = 1;
+					Mesh->NumCustomDataFloats = 2; // the seed, and 1 on a slot added by a rebuild
 					UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(FarCapMaterial, this);
 					Mesh->SetMaterial(0, Mid);
 					Mesh->RegisterComponent();
 					// Slots over the tile from its own seed (a tile rebuilt keeps its places), none on land.
 					FRandomStream Rng(int32(uint32(Key.X) * 73856093u ^ uint32(Key.Y) * 19349663u));
 					TArray<FTransform> Xf;
-					TArray<float> Seeds;
+					TArray<float> Seeds, Born;
 					Xf.Reserve(Slots);
 					for (int32 K = 0; K < Slots; ++K)
 					{
@@ -1315,11 +1363,18 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 							for (int32 A = 0; A < 4 && !bDry; ++A) bDry = Terrain->HeightAt(PX + (A < 2 ? (A ? 7.0 : -7.0) : 0.0), PY + (A >= 2 ? (A == 3 ? 7.0 : -7.0) : 0.0)) > WaterZ - 0.5;
 							if (bDry) continue;
 						}
-						Xf.Add(FTransform(FQuat::Identity, SailingFrame::ToWorld(GetWorld(), PX, PY, WaterZ + 0.05), FVector::OneVector));
+						// (Stood on end: flat at the water, a tile's bounds were a thin box the water occluded, so the GPU culled all
+						// but the tiles reaching onto land. M_FarCap places every vertex from the pivot, so this changes nothing else.)
+						Xf.Add(FTransform(FRotator(0.0, 0.0, 90.0).Quaternion(), SailingFrame::ToWorld(GetWorld(), PX, PY, WaterZ + 0.5), FVector::OneVector));
 						Seeds.Add(Seed);
+						Born.Add(Tile && K >= SlotsBefore ? 1.f : 0.f);
 					}
 					Mesh->AddInstances(Xf, false, true);
-					for (int32 K = 0; K < Seeds.Num(); ++K) Mesh->SetCustomDataValue(K, 0, Seeds[K], false);
+					for (int32 K = 0; K < Seeds.Num(); ++K)
+					{
+						Mesh->SetCustomDataValue(K, 0, Seeds[K], false);
+						Mesh->SetCustomDataValue(K, 1, Born[K], false);
+					}
 					Mesh->MarkRenderStateDirty();
 					New.Mesh = Mesh;
 					New.Mid = Mid;
@@ -1335,12 +1390,33 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 				// -SailingDebugFarCaps: every slot live and ten times as tall, to see where they stand.
 				static SailingArgs::FCachedFlag DebugFarCapsArg(TEXT("SailingDebugFarCaps"));
 				const bool bDebug = DebugFarCapsArg.Get();
-				Tile->Mid->SetScalarParameterValue(TEXT("Prob"), bDebug ? 1.f : Tile->Slots > 0 ? float(FMath::Min(Cover * Area / (FarCapArea * 0.7937) / Tile->Slots, 1.0)) : 0.f);
+				Tile->Mid->SetScalarParameterValue(TEXT("DebugAll"), bDebug ? 1.f : 0.f);
+				// A cap's life is decided as it starts: lives begun before SwitchT keep ProbA (the slots a rebuild added none),
+				// later ones take ProbB. Changing the probability under a living cap made it blink out (or in) mid-life.
+				const float NewProb = bDebug ? 1.f : Tile->Slots > 0 ? float(FMath::Min(Cover * Area / (CapArea * 0.7937) / Tile->Slots, 1.0)) : 0.f;
+				if (bRebuild || FMath::Abs(NewProb - Tile->Prob) > 0.01f)
+				{
+					Tile->Mid->SetScalarParameterValue(TEXT("ProbA"), Tile->Prob < 0.f ? NewProb : Tile->Prob);
+					Tile->Mid->SetScalarParameterValue(TEXT("ProbB"), NewProb);
+					Tile->Mid->SetScalarParameterValue(TEXT("SwitchT"), GetWorld()->GetTimeSeconds());
+					Tile->Prob = NewProb;
+				}
+				Tile->Mid->SetScalarParameterValue(TEXT("Size"), float(FMath::Sqrt(SizeStep)));
 				Tile->Mid->SetScalarParameterValue(TEXT("CapH"), float(FMath::Lerp(0.2, 0.45, FMath::Clamp((Waves->GetParams().WindSpeedKnots - 12.0) / 10.0, 0.0, 1.0))) * (bDebug ? 10.f : 1.f));
 				// A cap rides a crest: stood at the mean level, the crests between it and a low eye hid it.
 				Tile->Mid->SetScalarParameterValue(TEXT("Lift"), float(0.6 * Waves->SignificantHeightAt(CX, CY) * CmPerMeter));
 			}
 		}
+	}
+	FarCapSlotsHeld = 0;
+	for (const FPlan& P : Plans) if (const FFarCapTile* Tl = FarCapTiles.Find(P.Key)) FarCapSlotsHeld += Tl->Slots;
+	static SailingArgs::FCachedFlag DebugFarCapsLog(TEXT("SailingDebugFarCaps"));
+	if (DebugFarCapsLog.Get())
+	{
+		int32 Placed = 0;
+		for (const TPair<FIntPoint, FFarCapTile>& Tl : FarCapTiles) Placed += Tl.Value.Mesh ? Tl.Value.Mesh->GetInstanceCount() : 0;
+		UE_LOG(LogSailing, Display, TEXT("FarCaps: cam (%.0f, %.0f) h %.1f m, %d tiles wanted, %d held, %d sprites, water %.2f, cover at cam %.5f"), Cam.X, Cam.Y, CamH, Want.Num(), FarCapTiles.Num(), Placed, WaterZ,
+			FarCapCover(Wind->MeanSurfaceRoughnessAt(Cam.X, Cam.Y, T) * 8.0, Scale, Onset));
 	}
 	for (auto It = FarCapTiles.CreateIterator(); It; ++It)
 	{
@@ -1861,6 +1937,8 @@ void AWaterSurface::UpdateGustMap()
 }
 
 double AWaterSurface::WindMapCpuSeconds = 0.0;
+double AWaterSurface::FarCapCpuSeconds = 0.0;
+int32 AWaterSurface::FarCapSlotsHeld = 0;
 
 void AWaterSurface::BindTreeWind()
 {
