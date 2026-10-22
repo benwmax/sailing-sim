@@ -3308,7 +3308,9 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			{
 				// With the figure's children (face, clothes, gear, hair), as the cockpit view hides the helm: the strand hair
 				// round the camera alone cost 1.1 ms of GPU on High (perf-2).
-				if (Figure) Figure->SetVisibility(FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
+				// The helm's own figure always (the eye is in its head, docs/helm-eye/): its origin is the boat's, so the
+				// distance alone left its legs and tiller arm across the view.
+				if (Figure) Figure->SetVisibility(Figure != Crew.Last() && FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
 			}
 		}
 	}
