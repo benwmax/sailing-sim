@@ -722,6 +722,19 @@ socket("Traveler_S", (TRAV_X, te - 0.05, SEAT_Z + 0.05))
 socket("Traveler_P", (TRAV_X, -te + 0.05, SEAT_Z + 0.05))
 socket("Traveler_C", (TRAV_X, 0, SEAT_Z + 0.05))
 
+# Bean's feedback 4 (the hero's): the spinnaker gear at the Harken J/22 layout's positions: the sheets' turning blocks at
+# the aft quarters, a block and cam cleat beside the cockpit, the twinger blocks by the shrouds, the pole downhaul's
+# block on the foredeck.
+for side in (1, -1):
+    for (bx_, inset, r) in ((STERN + 0.30, 0.13, 0.02), (-1.75, 0.10, 0.02), (RIG["mast_x"] - 0.45, 0.16, 0.015)):
+        by_ = side * (sharp_half_beam(bx_) - inset)
+        block(hull, (bx_, by_, deck_z(bx_, by_) + r + 0.01), axis_y=True, r=r)
+    cx_ = -1.59
+    cy_ = side * (sharp_half_beam(cx_) - 0.10)
+    cam_cleat(hull, cx_, cy_, deck_z(cx_, cy_), math.pi)
+px_ = CABIN_FWD + 0.25
+block(hull, (px_, 0.0, deck_z(px_, 0.0) + 0.025), axis_y=False, r=0.015)
+
 # Gudgeons on the transom for the rudder: each a plate with two lugs, above and below the pintle strap (the hero's, from
 # Bean's transom photos).
 for z in (0.32, 0.56):

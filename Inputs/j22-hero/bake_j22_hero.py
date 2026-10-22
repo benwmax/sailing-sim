@@ -152,9 +152,6 @@ else:
     sock("TillerExtUJ", _c("ExtUJ"))
 sock("MainsheetCam", (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
 for tag, side in (("S", -1), ("P", 1)):
-    # one cam a side now (Bean's feedback 3): JibCam1 names the same one, for whatever still reads it
-    for k in (0, 1):
-        sock(f"JibCam{k}_{tag}", (_c(f"Cam_{side}_0_cam-1") + _c(f"Cam_{side}_0_cam1")) / 2)
     sock(f"HandholdCabin_{tag}", _top(f"Handrail_{side}"))
     sock(f"HandholdCoaming_{tag}", _top(f"CoamingCap_{side}"))
 

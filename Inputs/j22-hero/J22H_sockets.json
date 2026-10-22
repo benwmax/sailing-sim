@@ -185,16 +185,6 @@
    -0.0,
    52.63
   ],
-  "JibCam0_S": [
-   -105.6,
-   91.74,
-   56.64
-  ],
-  "JibCam1_S": [
-   -105.6,
-   91.74,
-   56.64
-  ],
   "HandholdCabin_S": [
    25.5,
    46.0,
@@ -204,16 +194,6 @@
    -171.64,
    91.95,
    66.56
-  ],
-  "JibCam0_P": [
-   -105.6,
-   -91.74,
-   56.64
-  ],
-  "JibCam1_P": [
-   -105.6,
-   -91.74,
-   56.64
   ],
   "HandholdCabin_P": [
    25.5,
@@ -304,12 +284,8 @@
   "TillerExtTip": "SM_J22H_Rudder",
   "TillerExtUJ": "SM_J22H_Rudder",
   "MainsheetCam": "SM_J22H_Hull",
-  "JibCam0_S": "SM_J22H_Hull",
-  "JibCam1_S": "SM_J22H_Hull",
   "HandholdCabin_S": "SM_J22H_Hull",
   "HandholdCoaming_S": "SM_J22H_Hull",
-  "JibCam0_P": "SM_J22H_Hull",
-  "JibCam1_P": "SM_J22H_Hull",
   "HandholdCabin_P": "SM_J22H_Hull",
   "HandholdCoaming_P": "SM_J22H_Hull",
   "CockpitSole": "SM_J22H_Hull",

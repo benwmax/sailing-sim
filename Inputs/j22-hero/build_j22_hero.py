@@ -575,10 +575,20 @@ def build_hardware():
         dz, dy = 0.17, side * 0.30
         parts.append(cyl(f"DrainFlange_{side}", (STERN + 0.004, dy, dz), (STERN - 0.008, dy, dz), 0.030, MAT["WhitePlastic"], 28))
         parts.append(cyl(f"DrainBore_{side}", (STERN - 0.0075, dy, dz), (STERN - 0.0095, dy, dz), 0.016, MAT["BlackPlastic"], 20))
-    # spinnaker sheet leads on the side decks abreast of the cockpit's forward end: a block on a spring stand and a cam
-    # cleat behind it (photos deck-hardware, port-jib-sheet)
+    # Bean's feedback 4: the spinnaker gear where the Harken J/22 layout has it (Bean kept it; it had been one block and cam
+    # a side at the cockpit's forward end, where the jib's track now runs):
+    # - the sheets' turning blocks at the aft quarters, on padeyes near the stern corners (the layout's 2636);
+    # - beside the cockpit, a ratchet block on a spring stand with its cam cleat forward of it (2625, on its pad), the sheet
+    #   coming forward along the side deck from the quarter block;
+    # - small blocks on the side decks by the shrouds, for the twinger lines (237);
+    # - the pole's downhaul fitting on the foredeck forward of the mast: a padeye and its block (2146).
     for side in (1, -1):
-        xl = CABIN_AFT - 0.20
+        xa = STERN + 0.30
+        ya = half_beam(xa) - 0.13
+        za = deck_z(xa, ya)
+        parts += MG.cheek_block(f"SpinAft_{side}", (xa, side * ya, za + 0.045), (0, side, 0), (0, 0, -1), MAT, 0.040,
+                                padeye=((xa, side * ya, za), (0, 0, 1)))
+        xl = -1.75
         yl = half_beam(xl) - SIDE_DECK * 0.45
         zl = deck_z(xl, yl)
         parts.append(cyl(f"SpinStand_{side}", (xl, side * yl, zl), (xl, side * yl, zl + 0.035), 0.004, MAT["Stainless"], 10))
@@ -586,10 +596,20 @@ def build_hardware():
             t = D.torus(f"SpinSpring_{side}_{k}", 0.008, 0.0012, MAT["Stainless"], 14, 6)
             t.matrix_world = Matrix.Translation((xl, side * yl, zl + 0.005 + 0.006 * k))
             parts.append(t)
-        parts += D.block(f"SpinLead_{side}", (xl, side * yl, zl + 0.055), (0, 1, 0), (0, 0, -1), MAT, 0.029)
-        xc2 = xl - 0.14
+        parts += MG.cheek_block(f"SpinLead_{side}", (xl, side * yl, zl + 0.062), (0, side, 0), (0, 0, -1), MAT, 0.040)
+        xc2 = xl + 0.16
         yc2 = half_beam(xc2) - SIDE_DECK * 0.45
-        parts += D.cam_cleat(f"SpinCam_{side}", (xc2, side * yc2, deck_z(xc2, yc2)), (0, 0, 1), (-1, 0, 0), MAT)
+        parts.append(box(f"SpinCamPad_{side}", xc2 - 0.05, xc2 + 0.05, side * yc2 - 0.025, side * yc2 + 0.025, deck_z(xc2, yc2) - 0.002,
+                         deck_z(xc2, yc2) + 0.006, MAT["BlackPlastic"], bev=0.002))
+        parts += D.cam_cleat(f"SpinCam_{side}", (xc2, side * yc2, deck_z(xc2, yc2) + 0.006), (0, 0, 1), (-1, 0, 0), MAT)
+        xt = CHAINPLATE_X - 0.30
+        yt = half_beam(xt) - 0.16
+        zt = deck_z(xt, yt)
+        parts += MG.cheek_block(f"SpinTwing_{side}", (xt, side * yt, zt + 0.040), (0, side, 0), (0, 0, -1), MAT, 0.029,
+                                padeye=((xt, side * yt, zt), (0, 0, 1)))
+    xp = CABIN_FWD + 0.25                 # on the foredeck, forward of the cabin (the fore hatch fills the top ahead of the mast)
+    zp = deck_z(xp, 0.0) if xp > CABIN_FWD else cabin_top_z(xp, 0.0)
+    parts += MG.cheek_block("PoleDownhaul", (xp, 0.0, zp + 0.040), (1, 0, 0), (0, 0, -1), MAT, 0.029, padeye=((xp, 0.0, zp), (0, 0, 1)))
     # fore hatch (GUESS on its size): on the flat of the cabin top between the mast step and the raked face
     hx0, hx1 = FWD_HATCH
     hxc = 0.5 * (hx0 + hx1)

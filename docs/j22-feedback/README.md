@@ -87,3 +87,20 @@ trimmer's tail runs from `JibTailer`.
 | Light `JibTailer_S/P` | (-100, ±100.92, 74.52) | (-105.6, ±81.73, 58.77) |
 
 Renders: `23-jiblead.jpg`, `23-cockpitfwd.jpg`.
+
+## 4. Spinnaker gear
+
+Bean kept the spinnaker hardware, fitted to the Harken J/22 layout's positions.
+
+- **Aft quarters:** the sheets' turning blocks near the stern corners, perforated blocks on padeyes (the layout's
+  2636).
+- **Beside the cockpit:** a ratchet block on a spring stand with its cam cleat on a pad just forward of it (2625).
+  The sheet comes forward along the side deck from the quarter block. These had been at the cockpit's forward end,
+  where the jib's track now runs.
+- **By the shrouds:** small blocks on padeyes on the side decks, for the twinger lines (237).
+- **Foredeck:** the pole downhaul's padeye and block, forward of the cabin (2146; the fore hatch fills the cabin top
+  ahead of the mast).
+- **Light J/22:** the same blocks and cams, from its own block and cam helpers.
+
+No socket moved for the spinnaker gear. `JibCam0_S/P` and `JibCam1_S/P` are dropped in the same push, since nothing in
+the game read them. Renders: `4-spin-aft.jpg`, `4-pole-dh.jpg`.
