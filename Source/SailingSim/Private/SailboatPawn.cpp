@@ -3289,6 +3289,16 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		FRotator Rotation;
 		OnboardCameraMount(CapturePreset, Boat.GetConfig(), FMath::Sign(HelmSide), Location, Rotation);
 		Location.Y *= FMath::Abs(HelmSide);
+		// Better, the helm's own head where the crew model put it, as the cockpit view does (eyes 10 cm ahead of the head
+		// bone, 8 cm above): the mount's guess from the crew's centre stood over the hero J/22's companionway, the view
+		// forward half filled by the dark cabin below.
+		USkeletalMeshComponent* HelmFigure = Crew.Num() > 0 ? Crew.Last().Get() : nullptr;
+		if (HelmFigure && HelmFigure->GetBoneIndex(TEXT("head")) != INDEX_NONE)
+		{
+			// (Hidden below, as the camera is in its head: still posed, so the head bone moves with the helm.)
+			HelmFigure->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+			Location = BoatRoot->GetComponentTransform().InverseTransformPositionNoScale(HelmFigure->GetBoneLocation(TEXT("head"))) + FVector(10.f, 0.f, 8.f);
+		}
 		CaptureCamera->SetRelativeLocationAndRotation(Location, Rotation);
 		// We are the helmsman: hide the crew figures beside us (the camera is in one's head and the simple figures
 		// would fill a phone's frame); those further forward stay in view, as in the reference clips.
