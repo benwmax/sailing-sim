@@ -12,7 +12,7 @@ COMMON="-SailingQuality=Medium -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60
 VIEWS=(
 	"gulf-sea|-SailingWorld=Gulf -SailingLaunch=2 -SailingWeather=AfternoonBreeze -SailingHour=11 -SailingCamYaw=200 -SailingCamPitch=-5 -SailingCamDist=22"
 	"gulf-swell|-SailingWorld=Gulf -SailingLaunch=2 -SailingWeather=Overcast -SailingSwell=1.8 -SailingWind=16 -SailingHour=14 -SailingCamYaw=100 -SailingCamPitch=-3 -SailingCamDist=18"
-	"gulf-dusk|-SailingWorld=Gulf -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=18.9 -SailingCamYaw=180 -SailingCamPitch=-5 -SailingCamDist=25"
+	"gulf-dusk|-SailingDate=2026-10-22 -SailingWorld=Gulf -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=18.9 -SailingCamYaw=180 -SailingCamPitch=-5 -SailingCamDist=25"
 	"gulf-entrance|-SailingWorld=Gulf -SailingLaunch=0 -SailingWeather=AfternoonBreeze -SailingHour=10 -SailingCamYaw=220 -SailingCamPitch=-12 -SailingCamDist=60"
 	"gulf-chart|-SailingWorld=Gulf -SailingLaunch=0 -SailingWeather=AfternoonBreeze -SailingHour=10 -SailingChart=40"
 	"logbook|-SailingWorld=Galveston -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=10.45 -SailingPlotFix -SailingLogOpen"

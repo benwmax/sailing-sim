@@ -112,6 +112,7 @@ private:
 	float CacheColumnCarry = 0.f;
 	float CacheTraceKm = 50.f;     // the live clouds' tracing distance before the cache took the far ones
 	uint8 CacheTraceMode = 0;      // and how it was measured (EVolumetricCloudTracingMaxDistanceMode)
+	float NightDeckFullAtKm = 0.f; // r.VolumetricCloud.DistanceToSampleMaxCount before a night deck shortened it (0: untouched)
 	float CacheFullAtKm = 0.f;     // r.VolumetricCloud.DistanceToSampleMaxCount before the cache shortened it (0: untouched)
 	double CacheRefreshSeconds = 0.0;  // the last full refresh's time, for the log
 	double CacheRefreshStart = 0.0;

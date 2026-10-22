@@ -10,8 +10,8 @@ COMMON="-SailingWorld=1 -SailingQuality=Medium -SailingWeather=AfternoonBreeze -
 VIEWS=(
 	"coast-day|-SailingLaunch=1 -SailingHour=11 -SailingCamYaw=250 -SailingCamPitch=-10"
 	"coast-bay|-SailingLaunch=2 -SailingHour=15 -SailingCamYaw=200 -SailingCamPitch=-8 -SailingCamDist=30"
-	"coast-night|-SailingLaunch=1 -SailingHour=21 -SailingCamYaw=150 -SailingCamPitch=-6 -SailingCamDist=14"
-	"coast-dusk|-SailingLaunch=4 -SailingHour=18.9 -SailingCamYaw=180 -SailingCamPitch=-5"
+	"coast-night|-SailingDate=2026-10-22 -SailingLaunch=1 -SailingHour=21 -SailingCamYaw=150 -SailingCamPitch=-6 -SailingCamDist=14"
+	"coast-dusk|-SailingDate=2026-10-22 -SailingLaunch=4 -SailingHour=18.9 -SailingCamYaw=180 -SailingCamPitch=-5"
 	"chart|-SailingLaunch=1 -SailingHour=11 -SailingChart=4 -SailingPlotFix"
 	"chart-bay|-SailingLaunch=2 -SailingHour=11 -SailingChart=25"
 )
