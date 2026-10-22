@@ -710,8 +710,7 @@ def hobie_detail(fb, rb, bz, inner, traveler):
     for Hh, side in ((HS[1], 1), (HS[0], -1)):
         # jib car on a short track at the lead, laid on the tramp
         lx, ly = rb + 0.9, Hh.cy - side * 0.25
-        box(hull, (lx, ly, bz + 0.04), (0.45, 0.03, 0.012), "Aluminium")
-        box(hull, (lx, ly, bz + 0.065), (0.07, 0.04, 0.04), "BlackPlastic")
+        kit_part("JibTrack", lx, ly, bz + 0.034, length=0.45)   # the kit's track and car
         # shroud adjuster: a stainless plate rising from the chainplate at the hull's outer sheer
         cx = mast_x - 0.05
         cy = Hh.cy + side * (Hh.sharp_half_beam(cx) - 0.03)
@@ -724,7 +723,7 @@ def hobie_detail(fb, rb, bz, inner, traveler):
         tube(hull, [(st + 0.004, Hh.cy, Hh.sheer(st) - 0.08), (st - 0.006, Hh.cy, Hh.sheer(st) - 0.08)], 0.012, "BlackPlastic", 8)
         # the rudder casting's gudgeons on the transom
         for gz in (Hh.sheer(st) - 0.04, Hh.sheer(st) - 0.24):
-            box(hull, (st + 0.015, Hh.cy, gz), (0.03, 0.06, 0.03), "Stainless")
+            kit_part("Gudgeon", st, Hh.cy, gz, math.pi)        # the kit's, its eye aft
         # Fleet hero: the cast aluminium beam ends (the corner castings bolted to each hull), the hull's coloured stripe
         # along the sheer, and the trapeze shock cords' deck eyes beside the tramp.
         for bx in (fb, rb):
