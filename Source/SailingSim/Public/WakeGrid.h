@@ -44,6 +44,8 @@ public:
 	FVector2D Origin() const { return Corner; }
 	const TArray<float>& Heights() const { return H; }
 	const TArray<float>& Foam() const { return FoamField; }
+	/** The turbulent lane a hull leaves (0..1): its wake's smooth track, where the stirred water damps the wind's ripples. */
+	const TArray<float>& Slick() const { return SlickField; }
 	/** Height (m) at a map point (0 outside). */
 	float HeightAt(const FVector2D& Point) const;
 
@@ -54,7 +56,7 @@ private:
 	int32 N = 0;
 	float Cell = 0.2f;
 	FVector2D Corner = FVector2D::ZeroVector;
-	TArray<float> H, Velocity, Pressure, Depth, PrevDepth, FoamField;
+	TArray<float> H, Velocity, Pressure, Depth, PrevDepth, FoamField, SlickField, SlickScratch;
 	TArray<float> Omega;                      // per mode, rad/s (deep water)
 	TArray<std::complex<float>> Spectrum;     // scratch
 	float Accumulator = 0.f;

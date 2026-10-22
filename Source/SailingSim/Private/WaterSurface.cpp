@@ -385,7 +385,7 @@ void AWaterSurface::CreateWaterMaterial()
 		{
 			WaitForWorkers();
 			Wake.Init(WakeN, Tier >= 2 ? 0.25f : 0.3f);
-			WakeGridMap = MakeFloatMap(WakeN, WakeN, PF_G32R32F, false);
+			WakeGridMap = MakeFloatMap(WakeN, WakeN, PF_A32B32G32R32F, false);
 		}
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailA"), DetailAMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailB"), DetailBMap);
@@ -1028,7 +1028,7 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 		if (!PendingWake.IsReady()) return;
 		FWakeFrame Done = PendingWake.Consume();
 		bWakePending = false;
-		UploadFloats(WakeGridMap, Done.Pixels, Done.N, Done.N, 2);
+		UploadFloats(WakeGridMap, Done.Pixels, Done.N, Done.N, 4);
 		// W4: keep its foam channel for the foam grid.
 		WakeFoamN = Done.N;
 		WakeFoamOrigin = Done.Origin;
@@ -1107,11 +1107,15 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 		Out.Origin = Grid->Origin();
 		const TArray<float>& H = Grid->Heights();
 		const TArray<float>& F = Grid->Foam();
-		Out.Pixels.SetNumUninitialized(Out.N * Out.N * 2);
+		const TArray<float>& Sl = Grid->Slick();
+		// RGBA: height, foam, the wake's smooth lane (docs/wake-slick/), unused.
+		Out.Pixels.SetNumUninitialized(Out.N * Out.N * 4);
 		for (int32 I = 0; I < Out.N * Out.N; ++I)
 		{
-			Out.Pixels[2 * I] = H[I];
-			Out.Pixels[2 * I + 1] = F[I];
+			Out.Pixels[4 * I] = H[I];
+			Out.Pixels[4 * I + 1] = F[I];
+			Out.Pixels[4 * I + 2] = Sl[I];
+			Out.Pixels[4 * I + 3] = 0.f;
 		}
 		return Out;
 	});
@@ -2008,7 +2012,7 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 				float Src = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
 				// The boats' wash (the wake grid's foam, as M_WaterV4's wakeBreak without its bubble pattern).
 				const int32 WC = WCs[C];
-				if (bWakeRow && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp((*WakeF)[2 * (WR * WakeN + WC) + 1] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
+				if (bWakeRow && WC >= 0 && WC < WakeN) Src = FMath::Max(Src, FMath::Clamp((*WakeF)[4 * (WR * WakeN + WC) + 1] * 2.f - 0.4f, 0.f, 1.f) * 0.85f);
 				float& V = Next[R * N + C];
 				V = FMath::Max(V, Src);
 			}

@@ -49,7 +49,7 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	N = InN;
 	Cell = InCell;
 	const int32 NN = N * N;
-	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField }) A->Init(0.f, NN);
+	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch }) A->Init(0.f, NN);
 	Spectrum.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
@@ -96,7 +96,7 @@ void FWakeGrid::Follow(const FVector2D& Point)
 		}
 		A = MoveTemp(B);
 	};
-	for (TArray<float>* A : { &H, &Velocity, &Depth, &PrevDepth, &FoamField }) Shift(*A);
+	for (TArray<float>* A : { &H, &Velocity, &Depth, &PrevDepth, &FoamField, &SlickField }) Shift(*A);
 	Corner += FVector2D(DR * Cell, DC * Cell);
 }
 
@@ -230,6 +230,31 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			Velocity[I] = Vel;
 		}
 	});
+
+	// The wake's smooth lane (docs/wake-slick/): the water a hull has stirred damps the wind's ripples behind her for a
+	// minute or so, a darker, glossier track tens of lengths long (a sailboat's wake seen from a following boat or the
+	// air). Set where she passes, decaying over kSlickSeconds and widening slowly (a diffusion of about 0.15 m^2/s: her
+	// beam to about twice it over its life). Not with the sponge's edge (it would show the grid's outline).
+	constexpr float kSlickSeconds = 40.f;
+	constexpr float kSlickDiffusion = 0.15f; // m^2/s
+	const float SlickDecay = FMath::Exp(-Dt / kSlickSeconds);
+	const float Mix = FMath::Min(kSlickDiffusion * Dt / (Cell * Cell), 0.2f);
+	ParallelFor(N, [&](int32 R)
+	{
+		for (int32 C = 0; C < N; ++C)
+		{
+			const int32 I = R * N + C;
+			const float Up = R > 0 ? SlickField[I - N] : 0.f, Down = R < N - 1 ? SlickField[I + N] : 0.f;
+			const float Left = C > 0 ? SlickField[I - 1] : 0.f, Right = C < N - 1 ? SlickField[I + 1] : 0.f;
+			float S = SlickField[I] + Mix * (Up + Down + Left + Right - 4.f * SlickField[I]);
+			S *= SlickDecay;
+			if (Depth[I] > 0.02f) S = 1.f;
+			const int32 Edge = FMath::Min(FMath::Min(R, N - 1 - R), FMath::Min(C, N - 1 - C));
+			if (Edge < kSponge) S *= float(Edge) / kSponge;
+			SlickScratch[I] = S;
+		}
+	});
+	Swap(SlickField, SlickScratch);
 }
 
 float FWakeGrid::HeightAt(const FVector2D& Point) const
