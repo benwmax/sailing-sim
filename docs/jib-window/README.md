@@ -21,3 +21,13 @@ past the mast on a run, they read as a starburst. They are now about 9 creases:
 
 Both changes are in `scripts/make_materials.py` (`build_sail_cloth`, `SAIL_CODE`), rebuilt with
 `MATERIALS_ONLY=build_sail_cloth`.
+
+**3. The window's size** (`size-*-before-after.jpg`: helm-eye on the beat, reach and run, and a broadside close-up).
+Bean's broadside photo of a J/22 under sail, scaled by its jib luff of about 8.3 m, shows the window as a strip:
+- about 0.36 of the chord wide and 0.37 m tall;
+- centred 0.42 of the chord aft of the luff and 1.0 m above the foot.
+
+Ours was 0.44 of the chord by 0.84 m, centred 0.28 aft of the luff and 0.55 m up. That is nearly three times the area,
+lower and further forward: a large pane from the helm. `JIB_WINDOW` now takes the photo's proportions. From the helm
+it reads as a strip low in the jib, mostly behind the mast on the beat. This is one boat's window, and windows vary
+from sailmaker to sailmaker, so it is a guide rather than a class rule.
