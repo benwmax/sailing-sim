@@ -1539,6 +1539,22 @@ def build_boat_library():
 
 
 # ---------------------------------------------------------------- sails (Visual V3)
+# Sails look: the jib window's shape (UV0 metres from the tack, UV2.x from the leech), shared by SAIL_CODE's shading and
+# M_SailCloth's opacity mask (JIB_WINDOW_MASK), so the depth pass doesn't run the whole sail shader for it.
+JIB_WINDOW = r"""float win = 0.0, winEdge = 0.0;
+if (Window > 0.5)
+{
+    float2 wq = (float2(UV0.x, UV0.y) - float2(0.28f * (UV0.x + UV2.x), 0.55f)) / float2(max(0.22f * (UV0.x + UV2.x), 0.15f), 0.42f);
+    float wr = max(abs(wq.x), abs(wq.y));
+    win = 1.0 - smoothstep(0.96, 1.0, wr);
+    winEdge = (1.0 - smoothstep(0.0, 0.05, abs(wr - 1.03))) ;
+}"""
+
+# Clear vinyl lets most of the view through; the rest is its haze and gloss (dithered: the temporal AA blends it).
+JIB_WINDOW_MASK = JIB_WINDOW + """
+return 1.0 - 0.88 * win;"""
+
+
 SAIL_CODE = r"""
 // Visual V3 sail cloth. UV0: metres (x along the chord from the luff, y up from the foot); UV1: normalized planform;
 // UV2.x: metres from the leech. Crosscut seams every 0.9 m, batten pockets on the main's leech, the class insignia and
@@ -1741,18 +1757,12 @@ if (Detail > 0.5)
     layers += 2.0 * batten;
     edgeLine = max(edgeLine, elastic * 0.8);
 }
-// Sails look: a keelboat jib's clear vinyl window, low on the sail ahead of the clew (Window 1). Seen from the lit side it
-// reads darker, glossy, with a stitched border; against the light it lets more through than the cloth.
-float win = 0.0, winEdge = 0.0;
-if (Window > 0.5)
-{
-    float2 wq = (float2(UV0.x, UV0.y) - float2(0.28f * (UV0.x + UV2.x), 0.55f)) / float2(max(0.22f * (UV0.x + UV2.x), 0.15f), 0.42f);
-    float wr = max(abs(wq.x), abs(wq.y));
-    win = 1.0 - smoothstep(0.96, 1.0, wr);
-    winEdge = (1.0 - smoothstep(0.0, 0.05, abs(wr - 1.03))) ;
-}
+// Sails look: a keelboat jib's clear vinyl window, low on the sail ahead of the clew (Window 1): see-through (M_SailCloth's
+// opacity mask, JIB_WINDOW_MASK), its few drawn pixels the vinyl's gloss, with a stitched border; against the light it
+// lets more through than the cloth.
+//@JIB_WINDOW@
 float3 col = lerp(cloth * (1.0 - 0.12 * seam) * (1.0 - 0.015 * min(layers, 4.0)), base * 0.93, batten);
-col = lerp(col, float3(0.10, 0.11, 0.12), 0.75 * win * (1.0 - mark));
+col = lerp(col, float3(0.42, 0.44, 0.45), 0.85 * win * (1.0 - mark));   // (the dithered pixels left: the vinyl's milky haze, glossy)
 col *= 1.0 - 0.25 * winEdge;
 col *= 1.0 - 0.09 * edgeLine - 0.16 * stitch * (1.0 - mark);
 col = lerp(col, ink, mark);
@@ -1774,8 +1784,16 @@ dhdv += strength * (-2.0 * dy / (w * w)) * exp(-dy * dy / (w * w));
 float ca = UV2.x, cb = UV0.y;
 float cr2 = max(ca * ca + cb * cb, 1e-3);
 float cth = atan2(cb, max(ca, 1e-3));
-float camp = 0.0012 * exp(-sqrt(cr2) / 0.7) * step(Layout, 0.5);
-float dth = camp * 34.0 * cos(34.0 * cth);
+// (A handful of creases, unevenly spaced, each its own strength, sharp and gone within half a metre: 34 even rays fading
+// over 0.7 m read as a starburst from the helm.) Crease height camp x amp x ((1 + cos ph) / 2)^4, zero between creases,
+// so a crease's strength can change there without a step.
+float camp = 0.0012 * exp(-sqrt(cr2) / 0.4) * step(Layout, 0.5);
+float ph = 9.0 * cth + 0.9 * sin(3.1 * cth + 1.3);
+float dph = 9.0 + 0.9 * 3.1 * cos(3.1 * cth + 1.3);
+float crk = floor((ph + 3.14159265) / 6.2831853);
+float amp = 0.25 + 0.75 * frac(sin(crk * 12.9898 + 4.1) * 43758.5453);
+float hc = 0.5 + 0.5 * cos(ph);
+float dth = camp * amp * 4.0 * hc * hc * hc * (-0.5 * sin(ph)) * dph * 3.0;
 dhdu += dth * (cb / cr2);      // UV2.x runs from the leech toward the luff: d/du = -d/da
 dhdv += dth * (ca / cr2);
 float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
@@ -1788,7 +1806,7 @@ Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
 if (Layout > 3.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 Rough = lerp(Rough, 0.08, win);                                     // the window's vinyl
 return col;
-"""
+""".replace("//@JIB_WINDOW@", JIB_WINDOW)
 
 
 def sail_marks_texture():
@@ -1810,6 +1828,9 @@ def build_sail_cloth():
     seams, batten pockets, insignia and number drawn from the cloth mesh's UVs (FSailCloth)."""
     mat = new_material("M_SailCloth")
     mat.set_editor_property("two_sided", True)
+    # Masked for the jib's window (see-through, dithered); every other pixel is opaque cloth.
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("opacity_mask_clip_value", 0.5)   # (DitherTemporalAA: a pixel is drawn with the alpha's chance at 0.5)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
     color = vector(mat, "Color", (0.70, 0.68, 0.63, 1), -1200, -100)
     battens = scalar(mat, "Battens", 0.0, -1200, 50)
@@ -1848,6 +1869,13 @@ def build_sail_cloth():
     connect(rough, "", c, "R")
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(c, "NormalTS", unreal.MaterialProperty.MP_NORMAL)
+    wmask = custom(mat, JIB_WINDOW_MASK, ["UV0", "UV2", "Window"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -700, 600)
+    for src, pin in ((uv[0], "UV0"), (uv[2], "UV2"), (window, "Window")):
+        connect(src, "", wmask, pin)
+    dither = node(mat, unreal.MaterialExpressionMaterialFunctionCall, -400, 600)
+    dither.set_editor_property("material_function", unreal.load_asset("/Engine/Functions/Engine_MaterialFunctions02/Utility/DitherTemporalAA"))
+    connect(wmask, "", dither, "Alpha Threshold")
+    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     # Instances: the J/22 main (battens, insignia, number), the jib, the spinnaker (nylon, red).
