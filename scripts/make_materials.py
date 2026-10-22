@@ -2074,7 +2074,12 @@ float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
     persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
 float trail = saturate(persist - max(caps, wakeBreak));   // what outlives the cap or the boat's wash
 float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(streak * lace, 0.5, patFade)));
-float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), 1.5) * lerp(0.4, 1.0, smoothstep(0.15, 0.75, cellsE));
+// Far (the fold table's cover): a pixel's cover there is the share of the sea under foam, not how much of one cap it holds,
+// so it is drawn as it is, not to the power 1.5 (a cap's thinning edge): at the lake's 0.2-0.4% that power drew a twentieth
+// of it and the caps vanished past about 200 m (docs/far-caps/). The bubble cells' factor fades to its mean (0.6), not to
+// the factor of the cells' mean (0.44).
+float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), lerp(1.5, 1.0, useTable))
+    * lerp(lerp(0.4, 1.0, smoothstep(0.15, 0.75, cells)), 0.6, patFade);
 FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
 // docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's
