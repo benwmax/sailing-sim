@@ -720,12 +720,22 @@ def build_rig():
     parts += D.block("BS_cascade", apex - Vector((0, 0, 0.03)), (1, 0, 0), (0, 0, 1), MAT, 0.040)
     wires.append(tube("Backstay", [tuple(apex + Vector((0, 0, 0.04))), (rake(MAST_TOP) - 0.195, 0, MAST_TOP - 0.06)], 0.002, MAT["Wire"]))
     # boom: gooseneck at the mast's aft face, outhaul end, vang, mainsheet bails
-    parts += D.gooseneck("Gooseneck", (aft_face(BOOM_Z), 0, BOOM_Z), BOOM_Z, MAT)
+    # pc/j22-detail assembly 3 (j22_boomgear.py): the gooseneck, the boom end, the outhaul cleat and the vang's upper block
+    import j22_boomgear as BG  # noqa: E402
+    parts += BG.gooseneck("Gooseneck", (aft_face(BOOM_Z), 0, BOOM_Z), BOOM_Z, MAT)
     b0 = Vector((aft_face(BOOM_Z) - 0.12, 0, BOOM_Z))
     b1 = Vector((b0.x - BOOM_LEN + 0.08, 0, BOOM_Z + 0.03))
     parts.append(spar("Boom", b0, b1, 0.075, 0.055, MAT["Aluminium"]))
-    parts += D.boom_end("BoomEnd", b1, MAT)
+    parts += BG.boom_end("BoomEnd", b1, MAT)
+    xo = b0.x - 0.95             # (aft of the vang's bail)
+    parts += BG.outhaul_cleat("BoomOuthaulCleat", (xo, 0, BOOM_Z + 0.03 * (b0.x - xo) / (b0.x - b1.x) - 0.0375), MAT)
     parts += D.vang("Vang", (MAST_X - 0.06, 0, zm + 0.10), (MAST_X - 0.80, 0, BOOM_Z - 0.03), MAT, MAT["RopeVang"])
+    va, vb = Vector((MAST_X - 0.06, 0, zm + 0.10)), Vector((MAST_X - 0.80, 0, BOOM_Z - 0.03))
+    vd = (vb - va).normalized()
+    for o in [o for o in parts if o.name.startswith("Vang_hi")]:     # the upper block: the big one from the photo
+        parts.remove(o)
+        bpy.data.objects.remove(o, do_unlink=True)
+    parts += BG.big_block("Vang_upper", vb - vd * 0.075, vd, MAT)
     top = Vector((b1.x + 0.20, 0, BOOM_Z - 0.03))
     parts.append(D.tube("MainBail", [(top.x - 0.03, -0.03, top.z + 0.03), (top.x - 0.03, -0.03, top.z - 0.005), (top.x, 0, top.z - 0.02),
                                        (top.x + 0.03, 0.03, top.z - 0.005), (top.x + 0.03, 0.03, top.z + 0.03)], 0.003, MAT["Stainless"], smooth_path=True))

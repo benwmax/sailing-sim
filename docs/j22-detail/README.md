@@ -51,3 +51,21 @@ The outboard is part of the hull (`SM_J22H_Hull`), and every part is a pack entr
 Sockets are unchanged.
 
 Renders: `outboard-ob-quarter.jpg`, `outboard-ob-top.jpg`.
+
+## 3. Gooseneck, boom end, vang and outhaul (`Inputs/j22-hero/j22_boomgear.py`)
+
+From the photos `mast-boom-gooseneck-connector`, `boom-end`, `boom-vang-closeup` and `outhaul-sheet-cleet`.
+
+| Part | Before | Now |
+| --- | --- | --- |
+| Gooseneck | a block on a pin | a stainless mast plate with rounded corners and eight countersunk screws, two welded tangs, the vertical pin with hex head and nylock, a black knuckle, the boom's cast end sleeve with fork cheeks, the horizontal quick-release pin with its ring, the reef and cunningham hooks |
+| Boom end | a box | the angled cast end cap, the outhaul sheave on its axle, cap screws, the topping-lift lug with a shackle and pin |
+| Vang | a small block | the photo's large upper block: perforated cheeks, three sheaves, a swivel on the boom bail |
+| Outhaul | none | the grey cam cleat under the boom aft of the vang bail, with its throat and screws |
+
+The sockets the bake reads (`Gooseneck_vpin`, `Vang_bail`, `BoomEnd_outhaul`, and the rest) keep their names and
+centres; all 52 sockets are unchanged. Slots: the boom has 2, the mast 3, the hull 6.
+
+Spar colour: the photos show white painted spars with black tape. That is the next change, as a livery parameter.
+
+Renders: `boom-goose.jpg`, `boom-vang.jpg`, `boom-boomend.jpg`.
