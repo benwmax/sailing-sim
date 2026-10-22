@@ -1491,7 +1491,10 @@ def build_boat_library():
 JIB_WINDOW = r"""float win = 0.0, winEdge = 0.0;
 if (Window > 0.5)
 {
-    float2 wq = (float2(UV0.x, UV0.y) - float2(0.28f * (UV0.x + UV2.x), 0.55f)) / float2(max(0.22f * (UV0.x + UV2.x), 0.15f), 0.42f);
+    // (Jib window: Bean's broadside of a J/22 under sail, scaled by its 8.3 m luff: a strip about 0.36 of the chord wide and
+    // 0.37 m tall, centred 0.42 of the chord aft of the luff and 1.0 m above the foot. It had been 0.44 of the chord by
+    // 0.84 m, lower and further forward: nearly three times the area, a large pane from the helm.)
+    float2 wq = (float2(UV0.x, UV0.y) - float2(0.42f * (UV0.x + UV2.x), 1.0f)) / float2(max(0.18f * (UV0.x + UV2.x), 0.15f), 0.19f);
     float wr = max(abs(wq.x), abs(wq.y));
     win = 1.0 - smoothstep(0.96, 1.0, wr);
     winEdge = (1.0 - smoothstep(0.0, 0.05, abs(wr - 1.03))) ;
