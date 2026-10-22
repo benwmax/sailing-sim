@@ -463,7 +463,8 @@ def place_kit(m):
     """Shared kit (Tools/boatkit): the hero fittings where Tools/boatkit/layouts/<tag>.json puts them, merged into the
     mesh `m` before it is finished (so they share its box UVs, smoothing and packs). Body frame metres; on: deck (the
     deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit depth), z (the entry's own z);
-    mirror: also at -y; yaw degrees about Z; flip: hung upside down (a block under a bridle); kw/size: bk_parts.build's.
+    mirror: also at -y; yaw degrees about Z; flip: turned over (the kit's blocks are built hanging from their head, so a block
+    stood on deck is flipped); kw/size: bk_parts.build's.
     Returns how many parts were placed."""
     if not os.path.exists(KIT_LAYOUT):
         return 0
@@ -1252,7 +1253,7 @@ def build_rudder():
 mast_obj = build_mast()
 boom_obj = build_boom()
 rudder_obj = build_rudder()
-place_kit(hull)   # the shared kit's fittings (Tools/boatkit/layouts/<tag>.json)
+print(f"{TAG}: {place_kit(hull)} kit parts")   # the shared kit's fittings (Tools/boatkit/layouts/<tag>.json)
 hull_obj = hull.finish(smooth_angle=35.0, origin=(0, 0, 0))
 
 
