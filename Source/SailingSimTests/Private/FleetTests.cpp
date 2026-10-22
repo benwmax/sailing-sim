@@ -28,7 +28,7 @@ namespace
 	void CheckPolar(FAutomationTestBase& Test, EBoatType Type)
 	{
 		const FBoatConfig Config = FBoatConfig::Make(Type);
-		Test.AddInfo(FString::Printf(TEXT("%hs: TWS TWA polar model err%% heel leeway"), Config.Name));
+		Test.AddInfo(FString::Printf(TEXT("%s: TWS TWA polar model err%% heel leeway"), Config.Name));
 		double Worst = 0.0;
 		for (const FPolarPoint& P : FleetReferencePolar(Type))
 		{
@@ -57,6 +57,40 @@ SAILING_FLEET_POLAR_TEST(FSailingPolarHobie16, "Hobie16", EBoatType::Hobie16)
 SAILING_FLEET_POLAR_TEST(FSailingPolarCorsair880, "Corsair880", EBoatType::Corsair880)
 SAILING_FLEET_POLAR_TEST(FSailingPolarLagoon42, "Lagoon42", EBoatType::Lagoon42)
 
+/**
+ * Each boat's own settings reach its config: #250 had a comment swallow the ILCA's C.TrimMaxEaseDeg and C.Name on the
+ * same line, so she sailed with the default 25 deg ease and no name, and every measurement was of that boat. Every
+ * Make(type) has its type, a non-empty name of its own, and its trim settings as Fleet.cpp gives them.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingFleetConfigsTest, "SailingSim.Fleet.ConfigsComplete", Flags)
+bool FSailingFleetConfigsTest::RunTest(const FString& Parameters)
+{
+	struct FWant { EBoatType Type; const char* Name; double MaxEase, HeelLimit, ReachHeelLimit, Traveler; };
+	const FWant Want[] = {
+		{ EBoatType::J22, "J/22", 25.0, 13.0, 0.0, 8.0 }, { EBoatType::Sunfish, "Sunfish", 60.0, 8.0, 0.0, 3.0 },
+		{ EBoatType::ILCA7, "ILCA 7 (Laser)", 60.0, 8.0, 5.0, 4.0 }, { EBoatType::Catalina22, "Catalina 22", 25.0, 20.0, 0.0, 8.0 },
+		{ EBoatType::Catalina30, "Catalina 30", 25.0, 22.0, 0.0, 8.0 }, { EBoatType::Hobie16, "Hobie 16", 45.0, 10.7, 0.0, 22.0 },
+		{ EBoatType::Corsair880, "Corsair 880", 40.0, 10.0, 0.0, 15.0 }, { EBoatType::Lagoon42, "Lagoon 42", 35.0, 4.0, 0.0, 12.0 },
+		{ EBoatType::Maxi, "Maxi 100", 25.0, 18.0, 0.0, 9.0 },
+	};
+	TSet<FString> Names;
+	for (const FWant& W : Want)
+	{
+		const FBoatConfig C = FBoatConfig::Make(W.Type);
+		const FString Name = UTF8_TO_TCHAR(C.Name ? C.Name : "");
+		TestTrue(FString::Printf(TEXT("%s: its own type"), UTF8_TO_TCHAR(W.Name)), C.Type == W.Type);
+		TestEqual(FString::Printf(TEXT("%s: its name"), UTF8_TO_TCHAR(W.Name)), Name, FString(UTF8_TO_TCHAR(W.Name)));
+		TestFalse(FString::Printf(TEXT("%s: a name no other boat has"), UTF8_TO_TCHAR(W.Name)), Name.IsEmpty() || Names.Contains(Name));
+		Names.Add(Name);
+		TestEqual(FString::Printf(TEXT("%s: TrimMaxEaseDeg"), UTF8_TO_TCHAR(W.Name)), C.TrimMaxEaseDeg, W.MaxEase);
+		TestEqual(FString::Printf(TEXT("%s: TrimHeelLimitDeg"), UTF8_TO_TCHAR(W.Name)), C.TrimHeelLimitDeg, W.HeelLimit);
+		TestEqual(FString::Printf(TEXT("%s: TrimReachHeelLimitDeg"), UTF8_TO_TCHAR(W.Name)), C.TrimReachHeelLimitDeg, W.ReachHeelLimit);
+		TestEqual(FString::Printf(TEXT("%s: TravelerRangeDeg"), UTF8_TO_TCHAR(W.Name)), C.TravelerRangeDeg, W.Traveler);
+	}
+	TestEqual(TEXT("Every boat in the table"), int32(UE_ARRAY_COUNT(Want)), int32(EBoatType::Maxi) + 1);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingDinghyCapsizeTest, "SailingSim.Fleet.DinghyCapsizeAndRighting", Flags)
 bool FSailingDinghyCapsizeTest::RunTest(const FString& Parameters)
 {
@@ -80,7 +114,7 @@ bool FSailingDinghyCapsizeTest::RunTest(const FString& Parameters)
 			Boat.Step(PhysicsDt, C, Wind);
 			MaxHeel = FMath::Max(MaxHeel, FMath::Abs(Boat.GetTelemetry().Heel) * kRadToDeg);
 		}
-		AddInfo(FString::Printf(TEXT("%hs: knocked to %.0f deg, capsized %d"), BoatTypeName(Type), MaxHeel, Boat.GetTelemetry().bCapsized));
+		AddInfo(FString::Printf(TEXT("%s: knocked to %.0f deg, capsized %d"), BoatTypeName(Type), MaxHeel, Boat.GetTelemetry().bCapsized));
 		TestTrue(FString::Printf(TEXT("%hs is knocked flat when overpowered"), BoatTypeName(Type)), MaxHeel > 65.0);
 		if (Type != EBoatType::ILCA7) continue;
 		TestTrue(TEXT("ILCA 7 stays capsized"), Boat.GetTelemetry().bCapsized);
@@ -117,7 +151,7 @@ bool FSailingKeelboatKnockdownTest::RunTest(const FString& Parameters)
 		C.MainSheet = C.JibSheet = 1.0;
 		Run(Boat, C, Wind, 20.0);
 		const double After = FMath::Abs(Boat.GetTelemetry().Heel) * kRadToDeg;
-		AddInfo(FString::Printf(TEXT("%hs: knocked down to %.0f deg, %.0f deg after easing"), BoatTypeName(Type), MaxHeel, After));
+		AddInfo(FString::Printf(TEXT("%s: knocked down to %.0f deg, %.0f deg after easing"), BoatTypeName(Type), MaxHeel, After));
 		TestTrue(FString::Printf(TEXT("%hs knocked down hard"), BoatTypeName(Type)), MaxHeel > 40.0);
 		TestFalse(FString::Printf(TEXT("%hs does not capsize"), BoatTypeName(Type)), bCapsized);
 		TestTrue(FString::Printf(TEXT("%hs comes back up"), BoatTypeName(Type)), After < 25.0);
@@ -247,7 +281,7 @@ bool FSailingEngineTest::RunTest(const FString& Parameters)
 		C.Throttle = -1.0;
 		Run(Boat, C, Calm, 60.0);
 		const double Astern = -Boat.GetTelemetry().ForwardSpeed / kKnot;
-		AddInfo(FString::Printf(TEXT("%hs: %.1f kn ahead, %.1f kn astern"), BoatTypeName(E.Type), Ahead, Astern));
+		AddInfo(FString::Printf(TEXT("%s: %.1f kn ahead, %.1f kn astern"), BoatTypeName(E.Type), Ahead, Astern));
 		TestTrue(FString::Printf(TEXT("%hs motors at a realistic speed"), BoatTypeName(E.Type)), Ahead >= E.MinKnots && Ahead <= E.MaxKnots);
 		TestTrue(FString::Printf(TEXT("%hs goes astern, slower than ahead"), BoatTypeName(E.Type)), Astern > 1.0 && Astern < 0.75 * Ahead);
 	}

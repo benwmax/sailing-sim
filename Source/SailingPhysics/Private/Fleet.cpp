@@ -105,7 +105,8 @@ namespace Sailing
 			// ILCA 7 (Laser standard rig): LOA 4.23 m, LWL 3.81 m, beam 1.37 m, 59 kg hull (79.5 kg rigged, no sail),
 			// 7.06 m^2 una rig on an unstayed two-piece mast. One sailor, 82 kg ideal, hiking.
 			FBoatConfig C;
-			C.Type = EBoatType::ILCA7; C.TrimHeelLimitDeg = 8.0; C.TrimReachHeelLimitDeg = 6.0;   // reaching flatter (item 13, below) C.TrimMaxEaseDeg = 60.0; C.Name = "ILCA 7 (Laser)";
+			// Reaching flatter than upwind (item 13, below).
+			C.Type = EBoatType::ILCA7; C.TrimHeelLimitDeg = 8.0; C.TrimReachHeelLimitDeg = 5.0; C.TrimMaxEaseDeg = 60.0; C.Name = "ILCA 7 (Laser)";
 			// Sailed flat with the mainsheet in the hand (a sailor dumps a metre of sheet in half a second), sitting back on
 			// the plane: the heavy-air reach without a capsize.
 			C.DinghyEasePerHeelDeg = 2.0; C.DinghySheetRate = 2.5;
@@ -146,9 +147,10 @@ namespace Sailing
 			// broad reach (ReferenceChecks) and on four of LaserPlaningDrag's angles, but at the 8 she was calibrated with she
 			// went over too, a little further round (22 kn at 120 deg, 24 kn at 110-130 deg: phase 8 fix list, item 13). What
 			// was missing was her sailor's handling, not travel: on a heavy-air reach a Laser is sailed flat, the sheet eased at
-			// 6 deg of heel (TrimReachHeelLimitDeg), not the 8 she is sailed at upwind (where 6 cost her a third of a polar
-			// point and her pointing: TrimHeelLimitDeg stays). Over 20 three-minute reaches (100-130 deg, 18-24 kn steady and
-			// 16 gusting 22) capsizes fall from 5 to 1 (24 kn at 120 deg), the mean speed holding (10.5 kn against 10.4).
+			// 5 deg of heel (TrimReachHeelLimitDeg), not the 8 she is sailed at upwind (6 there cost her four polar points and
+			// her pointing: TrimHeelLimitDeg stays). Over 20 three-minute reaches (100-130 deg, 18-24 kn steady and 16 gusting
+			// 22) capsizes fall from 4 at 8 deg to 1 (24 kn at 120 deg; 2 at a 6 deg reach limit), none at 22 kn or below, the
+			// mean speed 10.1 kn against 10.4.
 			C.TravelerRangeDeg = 4.0;
 			C.RigWindageCdA = 0.15; C.HullWindageCdA = 0.5;
 			C.ReefLuffFraction.clear();
