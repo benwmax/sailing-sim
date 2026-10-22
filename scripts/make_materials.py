@@ -2733,7 +2733,9 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6, gloom
     // CORE_BEHIND behind the front, its foot reaches FootReachM ahead of that on the water), up to the deck's base.
     // Everything here varies over hundreds of metres or more: a few percent of optical depth per march step, no grain.
     // None ahead of the lip: the clear sky ahead of the front is untouched.
-    float under = smoothstep(SHELF_LEAD, SHELF_LEAD - 500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 14000.0, -CORE_BEHIND - 20000.0, D));
+    // (It ends 3 to 5 km into the rain: at 2 km visibility nothing beyond shows, and every gloom sample takes the shadow
+    // rays: run to the core's far end, 14-20 km back, it cost 2 ms on the storm view.)
+    float under = smoothstep(SHELF_LEAD, SHELF_LEAD - 500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 3000.0, -CORE_BEHIND - 5000.0, D));
     float inRain = smoothstep(-CORE_BEHIND + 300.0, -CORE_BEHIND - 800.0, D);
     float gTop = lerp(SHELF_BASE - 120.0 - SHELF_SCALLOP, CORE_BASE, inRain);
     float gFoot = GLOOM_FOOT * exp(-alt / GLOOM_FOOT_H) * smoothstep(-CORE_BEHIND + 600.0, -CORE_BEHIND - 300.0, D);
