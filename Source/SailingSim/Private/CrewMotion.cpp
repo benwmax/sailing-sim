@@ -198,7 +198,9 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		{
 			// (0.8 m clear ahead of the helm: at 0.6 the 22's middle hand's back was a hand's width from the helm's face, the
 			// cockpit camera's eye: docs/cockpit-eye/.)
-			const double Fwd = KeelWell.X1 - 0.3, Aft = HelmX + 0.8;
+			// (The 30's forward hand 0.55 m aft of the well's end, as the J/22's rail crew (docs/crew-leg/): at 0.3 their feet
+			// came up onto her cabin face, a leg raised across the helm's view: docs/fleet-sweep/.)
+			const double Fwd = KeelWell.X1 - (Cfg.Type == EBoatType::Catalina30 ? 0.55 : 0.3), Aft = HelmX + 0.8;
 			// (At least 0.45 m apart, a body's width and a little: a 0.55 m floor put the 30's aftmost hand 0.43 m from her
 			// helm, at the cockpit camera's eye: docs/cockpit-eye/.)
 			const double Step = N > 2 ? FMath::Clamp((Fwd - Aft) / (N - 2), 0.45, 0.9) : 0.0;
