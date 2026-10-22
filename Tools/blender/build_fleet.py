@@ -40,7 +40,7 @@ DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
          "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope"]   # Rope last: the earlier slots keep their indices
-CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")
+CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   # (packed: boat_packs.json's PackCanoe is exactly these)
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
 SPECS = {

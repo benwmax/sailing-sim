@@ -854,7 +854,7 @@ def measure(obj, slots, z_cut=0.0):
     me.calc_loop_triangles()
     mw = obj.matrix_world
     vol, mom = 0.0, Vector((0, 0, 0))
-    idx = {SLOTS.index(s) for s in slots}
+    idx = {i for i, m in enumerate(me.materials) if m and m.name.split(".")[0] in slots}
     for tri in me.loop_triangles:
         if tri.material_index not in idx:
             continue
@@ -882,10 +882,12 @@ def clip_below(p, z):
     return out
 
 
-vol, cb = measure(hull_obj, ["Topsides", "Bootstripe", "CoveStripe", "Antifouling"])
+# The canoe slots, or the pack that holds exactly them (pc/boat-slots: the finished mesh is packed)
+CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")
+vol, cb = measure(hull_obj, CANOE)
 xs = [(hull_obj.matrix_world @ v.co) for v in hull_obj.data.vertices]
 # length of the hull shell alone, as SailingSim.Visual.J22Mesh measures it (the outboard hangs aft of the transom)
-canoe_slots = {SLOTS.index(n) for n in ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")}
+canoe_slots = {i for i, m in enumerate(hull_obj.data.materials) if m and m.name.split(".")[0] in CANOE}
 cx = [(hull_obj.matrix_world @ hull_obj.data.vertices[i].co).x for f in hull_obj.data.polygons if f.material_index in canoe_slots for i in f.vertices]
 loa = max(cx) - min(cx)
 beam = 2 * max(abs(v.y) for v in xs if v.z < sheer(v.x) + 0.02 and v.z > 0.0)
