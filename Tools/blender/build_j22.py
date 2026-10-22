@@ -706,16 +706,16 @@ for side in (1, -1):
     by = side * 0.13
     horn_cleat(hull, BOW - 0.42, by, deck_z(BOW - 0.42, by), 0.13, 0.0)
 socket("BowCleat", (bx, 0, deck_z(bx, 0) + 0.04))
-TRAV_X = -1.75
+TRAV_X = -2.06      # under the boom's end, as the hero's TRAVELER_X (end-boom sheeting: Bean's feedback 1)
 te = inner_edge(TRAV_X) - SEAT_W
-tube(hull, [(TRAV_X, -te, SEAT_Z + 0.02), (TRAV_X, te, SEAT_Z + 0.02)], 0.012, "Aluminium", 8)
+# Bean's J/22 feedback 1 (the hero's j22_mainsheet.py): the traveler is a dark track across the whole cockpit from seat to
+# seat, let into the seat tops and open over the well (it had stood on a gelcoat bridge), with an end cap on each seat.
+box(hull, (TRAV_X, 0, SEAT_Z - 0.004), (0.032, 2 * (te + SEAT_W - 0.04), 0.016), "BlackPlastic")
 for side in (1, -1):
-    rbox(hull, (TRAV_X, side * te, SEAT_Z + 0.02), (0.06, 0.035, 0.04), "Aluminium", r=0.012, chamfer=0.012)
+    rbox(hull, (TRAV_X, side * (te + SEAT_W - 0.06), SEAT_Z + 0.008), (0.05, 0.045, 0.03), "BlackPlastic", r=0.008, chamfer=0.006)
 socket("Traveler_S", (TRAV_X, te - 0.05, SEAT_Z + 0.05))
 socket("Traveler_P", (TRAV_X, -te + 0.05, SEAT_Z + 0.05))
 socket("Traveler_C", (TRAV_X, 0, SEAT_Z + 0.05))
-# The traveler sits on a bridge across the cockpit at seat height.
-box(hull, (TRAV_X, 0, SEAT_Z - 0.005), (0.16, 2 * te, 0.03), "Deck")
 
 # Gudgeons on the transom for the rudder: each a plate with two lugs, above and below the pintle strap (the hero's, from
 # Bean's transom photos).
