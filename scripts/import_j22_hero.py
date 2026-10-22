@@ -126,6 +126,7 @@ TEX = f"{DEST}/Textures"
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
 META = json.load(open(os.path.join(SRC, "materials.json")))
+PACKS = {k: v for k, v in json.load(open(os.path.join(SRC, "J22H_packs.json"))).items() if not k.startswith("_")}
 MATERIALS_ONLY = os.environ.get("HERO_MATERIALS_ONLY") == "1"
 
 
@@ -339,20 +340,39 @@ def materials():
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[name] = mi
-    for name, v in META["flat_materials"].items():
+    def flat_values(name):
+        v = META["flat_materials"][name]
+        gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish")
+        return v["base_color_linear"], {"Roughness": v["roughness"], "Metallic": v["metallic"], "ClearCoat": 1.0 if gel else 0.0, "NonSkid": 0.0,
+                                        "Porosity": HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1), "IsHull": 0.0,
+                                        "Surface": float(HERO_SURFACE.get(name, 0)), "Grain": 0.0}
+
+    for name in META["flat_materials"]:
         if name in out:
             continue
         mi = instance(f"MI_J22H_{name}", surface)
-        c = v["base_color_linear"]
+        c, values = flat_values(name)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(c[0], c[1], c[2], 1.0))
-        gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish")
-        for pname, value in (("Roughness", v["roughness"]), ("Metallic", v["metallic"]), ("ClearCoat", 1.0 if gel else 0.0),
-                             ("NonSkid", 0.0), ("Porosity", HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1)), ("IsHull", 0.0),
-                             ("Surface", float(HERO_SURFACE.get(name, 0)))):
-            MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        for pname, value in values.items():
+            if pname != "Grain":
+                MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[name] = mi
+    # pc/boat-slots: the flat slots folded into packs (J22H_packs.json, pack_j22_hero.py): MI_J22H_<Pack> on M_BoatPacked
+    # carries each entry's values as P<k>C, P<k>A (roughness, metallic, clear coat, non-skid), P<k>B (porosity, surface,
+    # hull, grain), as make_materials.py builds MI_Boat_<Pack>.
+    packed = unreal.load_asset("/Game/Boats/Materials/M_BoatPacked")
+    for pack, entries in PACKS.items():
+        mi = instance(f"MI_{pack}", packed)
+        for k, name in enumerate(entries):
+            c, v = flat_values(name)
+            for s, value in (("C", (c[0], c[1], c[2], 1.0)), ("A", (v["Roughness"], v["Metallic"], v["ClearCoat"], v["NonSkid"])),
+                             ("B", (v["Porosity"], v["Surface"], v["IsHull"], v["Grain"]))):
+                MEL.set_material_instance_vector_parameter_value(mi, f"P{k}{s}", unreal.LinearColor(*value))
+        MEL.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+        out[pack[len("J22H_"):]] = mi
     return out
 
 

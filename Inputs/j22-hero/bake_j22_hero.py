@@ -34,6 +34,9 @@ sc.render.bake.margin = 12
 # so the hero model ships the same names, measured off its own fittings. Body frame: y to starboard = -Blender y; cm.
 from mathutils import Matrix, Vector  # noqa: E402
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pack_j22_hero import pack_part  # noqa: E402  (pc/boat-slots)
+
 
 def _bb(name):
     o = bpy.data.objects[name]
@@ -472,6 +475,7 @@ for part, names_ in list(members.items()) + [("SM_J22H_RiggingStill", still), ("
     ob.data.transform(ob.matrix_world)
     ob.matrix_world = Matrix.Identity(4)
     ob.data.transform(Matrix.Translation(-pv))
+    pack_part(ob.data, part)   # pc/boat-slots: the flat hardware slots into J22H_packs.json's packs
     bpy.ops.export_scene.fbx(filepath=os.path.join(FBX, f"{part}.fbx"), use_selection=True, axis_forward="X",
                              axis_up="Z", apply_unit_scale=True, apply_scale_options="FBX_SCALE_UNITS",
                              mesh_smooth_type="FACE", use_mesh_modifiers=True, add_leaf_bones=False, bake_space_transform=True,
