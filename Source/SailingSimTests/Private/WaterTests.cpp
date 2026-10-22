@@ -87,6 +87,27 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 	TestTrue(TEXT("Water rises at the bow"), BowCrest > 0.01f);
 	TestTrue(TEXT("Most of the wake lies inside the Kelvin wedge"), Share > 0.7);
 
+	// docs/wake-slick/: the smooth lane she leaves: set under her, still there 20 m astern on her track (6.5 s at 6 kn, of
+	// a 40 s life: 0.85 left by the decay, spread from her beam to about 3 m, measured 0.47), none 8 m to the side, and
+	// wider than her beam by then.
+	const TArray<float>& Sl = Grid.Slick();
+	auto SlickAt = [&](const FVector2D& P)
+	{
+		const FVector2D L = (P - Grid.Origin()) / Grid.CellSize();
+		const int32 R = FMath::FloorToInt(L.X), C = FMath::FloorToInt(L.Y);
+		return R >= 0 && C >= 0 && R < N && C < N ? Sl[R * N + C] : -1.f;
+	};
+	const FVector2D Astern = Stern - FVector2D(20.0, 0.0);
+	const float Under = SlickAt(Hulls[0].Position), OnTrack = SlickAt(Astern), Aside = SlickAt(Astern + FVector2D(0.0, 8.0));
+	float Width = 0.f;
+	for (double Y = -6.0; Y <= 6.0; Y += Grid.CellSize()) Width += SlickAt(Astern + FVector2D(0.0, Y)) > 0.3f ? Grid.CellSize() : 0.f;
+	const float Beam = 2.f * float(Config.Hulls[0].MaxHalfBeam);
+	AddInfo(FString::Printf(TEXT("Wake lane: %.2f under her, %.2f 20 m astern (%.1f m wide; beam %.1f m), %.2f 8 m aside"), Under, OnTrack, Width, Beam, Aside));
+	TestTrue(TEXT("The lane is set under her"), Under > 0.95f);
+	TestTrue(TEXT("It is still there 20 m astern"), OnTrack > 0.35f);
+	TestTrue(TEXT("Not 8 m to the side"), Aside >= 0.f && Aside < 0.1f);
+	TestTrue(TEXT("It has spread wider than her beam"), Width > Beam && Width < 4.f * Beam);
+
 	// Stopped, the waves run off and die away.
 	Hulls[0].Speed = 0.f;
 	for (int32 I = 0; I < 40 * 60; ++I) Grid.Step(Dt, Hulls);
