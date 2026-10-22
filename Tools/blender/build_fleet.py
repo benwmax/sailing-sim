@@ -462,7 +462,7 @@ KIT_LAYOUT = os.path.join(KIT_DIR, "layouts", f"{TAG.lower()}.json")
 def place_kit(m):
     """Shared kit (Tools/boatkit): the hero fittings where Tools/boatkit/layouts/<tag>.json puts them, merged into the
     mesh `m` before it is finished (so they share its box UVs, smoothing and packs). Body frame metres; on: deck (the
-    deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit depth), z (the entry's own z);
+    deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit depth), z (the entry's own z); dz: raised
     mirror: also at -y; yaw degrees about Z; flip: turned over (the kit's blocks are built hanging from their head, so a block
     stood on deck is flipped); kw/size: bk_parts.build's.
     Returns how many parts were placed."""
@@ -478,6 +478,7 @@ def place_kit(m):
             x, y = e["x"], e["y"] * s
             Hh = min(HS, key=lambda h: abs(h.cy - y))
             z = e["z"] if e.get("on") == "z" else Hh.deck_z(x, y) - (SPEC["cockpit"][3] if e.get("on") == "sole" else 0.0)
+            z += e.get("dz", 0.0)
             yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
             xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
             if e.get("flip"):
@@ -628,7 +629,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     if TAG == "ILCA7":
         rx, rz = 0.5 * (x0 + x1), sole(0.5 * (x0 + x1))
         tube(hull, [(rx, 0, rz), (rx, 0, rz + 0.12)], 0.012, "Stainless", 8)
-        box(hull, (rx, 0, rz + 0.16), (0.08, 0.03, 0.08), "BlackPlastic")
+        # (the ratchet block on the post is the kit's Ratchet57: layouts/ilca7.json)
     # (the Sunfish's mainsheet block on the aft deck is the kit's Block29: layouts/sunfish.json)
     # deck control lines to cam cleats either side of the well's forward end (ILCA: cunningham, outhaul, vang;
     # Sunfish: the halyard to a horn cleat and the sail's bow line)
@@ -636,7 +637,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         for side in (1, -1):
             for k in range(3):
                 cx, cy = x1 + 0.06, side * (0.09 + 0.05 * k)
-                box(hull, (cx, cy, H.deck_z(cx, cy) + 0.012), (0.06, 0.035, 0.024), "BlackPlastic")
+                # (the cam cleat is the kit's: layouts/ilca7.json)
                 line = [(mast_x - 0.08, side * 0.03, mast_step_z + 0.02), (bx + 0.25, side * (0.05 + 0.02 * k), H.deck_z(bx + 0.25, 0) + 0.012),
                         (cx + 0.03, cy, H.deck_z(cx, cy) + 0.02)]
                 tube(hull, line, 0.003, "Rope", 4, cap=False)

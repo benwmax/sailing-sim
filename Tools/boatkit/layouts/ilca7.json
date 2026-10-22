@@ -1,0 +1,9 @@
+{
+  "_about": "Shared kit parts on the ILCA 7 (Tools/boatkit/bk_parts.py), placed by build_fleet.py's place_kit. Body frame metres (+y starboard); on: deck, sole (the cockpit well's floor) or z; dz: raised; mirror: also at -y; yaw degrees about Z; flip: turned over (the kit's blocks hang from their head). Replaces the hand-built ratchet block on its post in the well and the control lines' cam cleats either side of the well's forward end (Boats 11).",
+  "parts": [
+    {"part": "Ratchet57", "x": -0.92, "y": 0.0, "on": "sole", "dz": 0.12, "flip": true},
+    {"part": "CamCleat", "x": -0.16, "y": 0.09, "on": "deck", "mirror": true},
+    {"part": "CamCleat", "x": -0.16, "y": 0.14, "on": "deck", "mirror": true},
+    {"part": "CamCleat", "x": -0.16, "y": 0.19, "on": "deck", "mirror": true}
+  ]
+}
