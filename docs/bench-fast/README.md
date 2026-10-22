@@ -44,6 +44,11 @@ helm-eye, slip and coast-day run in every scope: they are High's tightest views 
 change can push them under. The gates stay Medium 60 fps and High 45 fps; the gate prints every view against them and
 against `--baseline`.
 
+**Baseline moves (Oct 22 2026):** #239 put the helm-eye capture's eye at the helm's head (`docs/helm-eye/`; it had
+stood over the hero's companionway), and with the crew in frame that view read about 55 fps on High. Since
+`docs/crew-leg/` the J/22's rail crew sit within 2.2 m of that eye on the bench's beat, so the capture hides them and the
+view reads about 60 fps again. Neither change is a regression in the game.
+
 ## What else the gate does
 
 - **Skips work by content hash.** Build: `Source`, `Config`, `Plugins`, the `.uproject`. Package and tests: those plus
