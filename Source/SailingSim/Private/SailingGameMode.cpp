@@ -621,6 +621,25 @@ void ASailingGameMode::ApplyWeatherSettings()
 	DayOfYear = Date.GetDayOfYear();
 	// W1: the wind's calibration and stability follow the month and the water (the lake, or the bay and the Gulf).
 	Weather.SetClimate(Date.GetMonth(), Settings->World != 0);
+	// docs/night-clouds/: the day's sunset (the sun's upper limb at the horizon, -0.83 deg with refraction), for the
+	// cumulus that dies away after it.
+	{
+		auto Elev = [&](double Hour)
+		{
+			double El = 0.0, Az = 0.0;
+			ASailingEnvironment::SunPosition(Hour, DayOfYear, Lake.Latitude, Lake.Longitude, UtcOffsetHours, El, Az);
+			return El + 0.833;
+		};
+		double Lo = 12.0, Hi = 23.99;
+		for (double Hour = 12.0; Hour < 24.0; Hour += 0.25)
+		{
+			if (Elev(Hour) < 0.0) { Lo = FMath::Max(12.0, Hour - 0.25); Hi = Hour; break; }
+		}
+		for (int32 I = 0; I < 20; ++I) { const double Mid = 0.5 * (Lo + Hi); (Elev(Mid) > 0.0 ? Lo : Hi) = Mid; }
+		SunsetHour = 0.5 * (Lo + Hi);
+		Weather.SetSunset(SunsetHour);
+		UE_LOG(LogSailing, Display, TEXT("Sunset %02d:%02d local (day %d)"), int32(SunsetHour), int32(FMath::Fmod(SunsetHour, 1.0) * 60.0), DayOfYear);
+	}
 	ClockBase = GetSimTime() - WeatherOffset;
 	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (StartHour - UtcOffsetHours) * 3600.0;
 

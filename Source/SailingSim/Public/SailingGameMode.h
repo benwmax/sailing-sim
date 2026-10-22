@@ -167,6 +167,7 @@ private:
 	double StartUnix = 0.0;
 	double ClockBase = 0.0;
 	int32 DayOfYear = 285;
+	double SunsetHour = 19.0; // docs/night-clouds/: local hour, from the date and the latitude (BeginPlay)
 	int32 UtcOffsetHours = -5;
 	double TideHeight = 0.0;
 	Sailing::FTideEvent NextTide;

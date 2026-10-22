@@ -2613,6 +2613,26 @@ CLOUD_EXT = (1.0, 1.0, 1.0, 1.0)
 # caps in CLOUD_CODE). 1 measured smoothest on the storm stills; -SailingCloudStepDepth overrides.
 MAX_STEP_DEPTH = 1.0
 
+# docs/night-clouds/: the city glow's weight toward an azimuth (map frame), shared by the live clouds (CLOUD_CODE), the
+# far clouds from the cache (M_SkyDome) and the sky's own domes' shape: GlowA/GlowB hold (azimuth, strength) pairs.
+# 0.3 all round plus 1.0 toward each dome, weighted by its strength (0.3 .. 1.3). An inline block (custom nodes take no
+# functions): reads gAz and GlowA/GlowB, writes gToward.
+GLOW_TOWARD = """
+float gToward;
+{
+    float gWsum = 0.0, gWdir = 0.0;
+    float4 gDomes[2] = { GlowA, GlowB };
+    [unroll] for (int gk = 0; gk < 4; ++gk)
+    {
+        float2 gd = (gk % 2 == 0) ? gDomes[gk / 2].xy : gDomes[gk / 2].zw;
+        float gDa = abs(atan2(sin(gAz - gd.x), cos(gAz - gd.x)));
+        gWdir += gd.y * (0.3 + exp(-gDa * gDa / 0.5));
+        gWsum += gd.y;
+    }
+    gToward = gWdir / max(gWsum, 1e-6);
+}
+"""
+
 CLOUD_CODE = """
 // Visual V5: the cloud layers from the weather map (FWeatherMap: cumulus, stratus, cirrus, storm extent), each with its
 // own base, top, density profile and noise; the storm's built structure (shelf cloud, rain core, anvil) from the gust
@@ -2865,6 +2885,24 @@ AO = 1.0;
     Emit += SunLum.rgb * (FACE_PALE * faceLit * faceTone) * face * d * Density;
     Albedo *= 1.0 - FACE_SCATTER_CUT * face;
     }
+    // docs/night-clouds/: at night the towns light the clouds from below: the light thrown up off their streets reaches
+    // the bases and dies into each layer above them (600 m), strongest over the cities (GlowToward, the domes seen from
+    // the camera). Emitted in proportion to the extinction like the shelf's face, so an opaque base reads GlowLum and a
+    // thin edge its share: the clouds keep their shape, warm and brighter than the clear sky between them. Everything
+    // here varies over kilometres, coarser than the march. GlowLum.w: 1 at night.
+    [branch] if (GlowLum.w > 0.0)
+    {
+        float2 rel = p.xy - Cam.xy * 0.01;
+        float gAz = atan2(rel.y, rel.x);
+        //@GLOW_TOWARD@
+        float toward = gToward;
+        float aboveCu = max(hCu, 0.0) * max(Cu.z - Cu.y, 0.05), aboveSt = max(hSt, 0.0) * max(St.z - St.y, 0.05);
+        // (d is the densest layer's capped extinction: the same layer's height above its base decides.)
+        float fromBelow = saturate(max(max(min(dCu * Ext.x, cV) * exp(-aboveCu / 0.6), min(dSt * Ext.y, cT) * exp(-aboveSt / 0.6)), 0.3 * d) / max(d, 1e-4));
+        // (0.1: the volumetric cloud's emission against the sky material's units, fitted to a lit overcast deck at night:
+        // warm brown overhead, as the far clouds' glow. At 1 it sat on the tone curve's white shoulder.)
+        Emit += GlowLum.rgb * (0.1 * toward * fromBelow * (1.0 - wet * 0.5)) * d * Density;
+    }
     // Lightning inside the cloud: lights it from within around the strike.
     float r = distance(p, Flash.xyz);
     Emit += float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
@@ -2878,7 +2916,7 @@ return d * Density;
 
 def cloud_code():
     import os
-    c = CLOUD_CODE.replace("DEBUGSTORM", "float3(dSm * 50.0, 0.0, 0.0)" if os.environ.get("SAILING_DEBUG_STORM") else "0.0")
+    c = CLOUD_CODE.replace("//@GLOW_TOWARD@", GLOW_TOWARD).replace("DEBUGSTORM", "float3(dSm * 50.0, 0.0, 0.0)" if os.environ.get("SAILING_DEBUG_STORM") else "0.0")
     if os.environ.get("SAILING_DEBUG_LAYERS"):
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
@@ -2912,10 +2950,11 @@ def build_cloud_layers():
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
-        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0))))}
+        ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0)),
+        ("GlowLum", (0, 0, 0, 0)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -2925,7 +2964,8 @@ def build_cloud_layers():
         connect(t, "", c, n)
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
                    ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow"),
-                   ("SunLum", "SunLum"), ("SunDir", "SunDir"), ("CacheSplit", "CacheSplit")):
+                   ("SunLum", "SunLum"), ("SunDir", "SunDir"), ("CacheSplit", "CacheSplit"), ("GlowLum", "GlowLum"),
+                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB")):
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
     connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 1400), "", c, "MaxStepDepth")
@@ -2944,7 +2984,10 @@ def build_cloud_layers():
     # Graphics G1: a sharper forward lobe (silver linings), less multiple-scattering brightening (grey, self-shadowed bases),
     # a third octave so thick cloud stays luminous inside, and the ground's bounce lighting the bases.
     for k, v in (("const_phase_g", 0.72), ("const_phase_g2", -0.3), ("const_phase_blend", 0.3), ("const_multi_scattering_contribution", 0.55),
-                 ("const_multi_scattering_occlusion", 0.5), ("const_multi_scattering_eccentricity", 0.55), ("multi_scattering_approximation_octave_count", 3), ("gray_scale_material", True)):
+                 ("const_multi_scattering_occlusion", 0.5), ("const_multi_scattering_eccentricity", 0.55), ("multi_scattering_approximation_octave_count", 3),
+              # docs/night-clouds/: in colour. Grayscale kept only the red channel of the albedo, extinction and emission:
+              # the city glow lit the night deck neutral grey and the storm slate lost its blue. No cost measured on High.
+              ("gray_scale_material", False)):
         adv.set_editor_property(k, v)
     for k in ("ground_contribution", "b_ground_contribution"):
         try:
@@ -3064,7 +3107,8 @@ return lerp(prev, float3(S, Amb, Tr), CacheShadow.z);
 
 def cache_code():
     """CACHE_HEAD, CLOUD_CODE as the step's density, CACHE_SHADOW, CLOUD_CODE again as the shadow ray's, CACHE_TAIL."""
-    body = cloud_code()
+    # (The cache keeps no emission: the far clouds' city glow is added where M_SkyDome composites them.)
+    body = "float4 GlowLum = 0.0; float4 GlowA = 0.0; float4 GlowB = 0.0;\n" + cloud_code()
     view = body.replace("return d * Density;", "dens = d * Density; ao = AO; alb = dot(Albedo, float3(0.3, 0.59, 0.11));")
     shadow = body.replace("return d * Density;", "sd = d * Density;")
     return CACHE_HEAD + view + CACHE_SHADOW + shadow + CACHE_TAIL
@@ -3199,7 +3243,9 @@ float cirrus = 0.0;
 {
     float az = atan2(dir.y, dir.x);
     float h = max(dir.z, 0.0);
-    float lift = exp(-h * 7.0) * saturate(dir.z * 30.0 + 1.0);
+    // docs/night-clouds/: hugging the horizon (half by 4 deg, 6% at 15, under 1% past 25): at exp(-7 h) the dome stood
+    // 30 deg deep and the whole low sky glowed beige behind the clouds.
+    float lift = exp(-h * 11.0) * saturate(dir.z * 30.0 + 1.0);
     float4 domes[2] = { GlowA, GlowB };
     float glow = 0.0;
     [unroll] for (int k = 0; k < 4; ++k)
@@ -3274,6 +3320,19 @@ float cm = dot(dir, MoonDir.xyz);
         // The live clouds' grey-scale scattering keeps less of the sun's colour than the raw illuminance: 30% toward grey.
         float3 sunC = lerp(float3(sunL, sunL, sunL), SunIll, 0.7) * lerp(1.09, 0.86, hi);
         col = col * s.b + s.r * CacheSun.x * sunC + s.g * CacheSun.w * amb;
+        // docs/night-clouds/: at night the far clouds are lit from below by the towns too (CLOUD_CODE's glow): seen
+        // from far off it is their bases that show, so their opacity times the base's glow toward that azimuth.
+        [branch] if (Night.y > 0.0)
+        {
+            float gAz = atan2(dir.y, dir.x);
+            //@GLOW_TOWARD@
+            // Shaped by the cache's own height shade (G over the opacity: the mean ambient occlusion along the ray, lowest
+            // under the bases): bases and the near sides of cells glow, their upper parts less.
+            float op = 1.0 - s.b;
+            float aoMean = saturate(s.g / max(0.95 * op, 1e-4));
+            float shape = saturate((1.15 - aoMean) * 2.5);
+            col += op * shape * float3(1.0, 0.70, 0.42) * (Night.y * CloudGlow * gToward);   // CloudGlow: kCloudGlow
+        }
     }
 }
 return col;
@@ -3304,9 +3363,10 @@ def build_sky_dome():
     # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
-    c = custom(mat, SKY_CODE, ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
-                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP"],
+    c = custom(mat, SKY_CODE.replace("//@GLOW_TOWARD@", GLOW_TOWARD), ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
+                               "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP", "CloudGlow"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
+    connect(scalar(mat, "CloudGlow", 1.0, -1400, 2300), "", c, "CloudGlow")   # docs/night-clouds/: kCloudGlow
     for n, t in cache.items():
         connect(t, "", c, n)
     connect(sky_ridge, "", c, "Skyline")
