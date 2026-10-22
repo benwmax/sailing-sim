@@ -727,7 +727,7 @@ def corsair_detail(ck, cb, top, half, st, bw):
 
 def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
     """Boats 11: the Lagoon 42's fittings from builder and charter photos. Long hull windows on each hull's outer side,
-    mullions on the saloon glazing, the helm station on the aft bulkhead's starboard side (wheel, pod and seat), a
+    mullions on the saloon glazing, the raised helm station at the aft bulkhead's starboard end (wheel, pod, seat), a
     cockpit table, solar panels on the bimini, flush deck hatches and mooring cleats on each hull, and the anchor
     windlass and bow roller on the forward crossbeam."""
     for Hh, side in ((HS[1], 1), (HS[0], -1)):
@@ -748,10 +748,20 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
     for side in (1, -1):
         for x in stations(s0 + 0.4, s1 - 0.5, 4):
             tube(hull, [(x, side * (sw + 0.008), dz + 0.55), (x, side * (sw + 0.008), roof - 0.15)], 0.02, "BlackPlastic", 4)
-    # helm station: a raised pod and wheel facing aft on the starboard side of the aft bulkhead, the helm seat behind
-    hx, hy, hz = s0 - 0.35, sw - 0.35, dz + 1.0
-    box(hull, (s0 - 0.12, hy, hz - 0.1), (0.25, 0.5, 0.35), "Topsides")
-    box(hull, (s0 - 0.25, hy, hz + 0.1), (0.05, 0.35, 0.15), "BlackPlastic")                  # instruments
+    # helm station (pc/lagoon-helm): raised on the starboard side at the coachroof's aft end, as on the real boat, so the
+    # helmsman looks forward over the roof (at the old height, 0.49 m up, the view was the wheel and the bulkhead). A helm
+    # deck 0.40 m over the bridgedeck with a step up from the cockpit; the seat on it, its cushion 0.86 m up (a seated eye
+    # about 1.66 m, the roof 1.44 there); the pod and wheel out of the bulkhead, the hub 1.19 m up so the rim stays under
+    # the eye. Fore and aft the seat and wheel are where they were (seat x s0 - 0.85, wheel s0 - 0.35).
+    hx, hy, hz = s0 - 0.35, sw - 0.35, dz + 1.19
+    hd = dz + 0.40                                                                              # the helm deck's top
+    x0, x1 = hx - 0.85, s0 - 0.02
+    box(hull, (0.5 * (x0 + x1), hy, 0.5 * (dz + hd)), (x1 - x0, 0.8, hd - dz), "Topsides")       # helm deck
+    box(hull, (0.5 * (x0 + x1), hy, hd + 0.004), (x1 - x0 - 0.04, 0.76, 0.008), "NonSkid")
+    box(hull, (x0 - 0.15, hy, dz + 0.10), (0.30, 0.8, 0.20), "Topsides")                        # the step up to it
+    box(hull, (x0 - 0.15, hy, dz + 0.204), (0.26, 0.76, 0.008), "NonSkid")
+    box(hull, (s0 - 0.12, hy, hz - 0.15), (0.25, 0.5, 0.45), "Topsides")                        # the pod
+    box(hull, (s0 - 0.25, hy, hz + 0.12), (0.05, 0.35, 0.15), "BlackPlastic")                  # instruments
     r = 0.36
     rim = [(hx, hy + r * math.cos(2 * math.pi * k / 24), hz + r * math.sin(2 * math.pi * k / 24)) for k in range(25)]
     tube(hull, rim, 0.014, "Stainless", 8, cap=False)
@@ -759,8 +769,8 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
         a = 2 * math.pi * k / 5
         tube(hull, [(hx, hy, hz), (hx, hy + r * math.cos(a), hz + r * math.sin(a))], 0.008, "Stainless", 6)
     tube(hull, [(hx, hy, hz), (s0 - 0.25, hy, hz)], 0.025, "Stainless", 8)
-    box(hull, (hx - 0.5, hy, dz + 0.45), (0.45, 0.6, 0.08), "SailCover")                      # helm seat cushion
-    box(hull, (hx - 0.5, hy, dz + 0.2), (0.4, 0.55, 0.4), "Topsides")
+    box(hull, (hx - 0.5, hy, hd + 0.42), (0.45, 0.6, 0.08), "SailCover")                      # helm seat cushion
+    box(hull, (hx - 0.5, hy, hd + 0.19), (0.4, 0.55, 0.38), "Topsides")
     # cockpit table between the bimini legs
     tx = 0.5 * (s0 + b0 + 0.4)
     tube(hull, [(tx, 0, dz), (tx, 0, dz + 0.68)], 0.04, "Stainless", 10)
