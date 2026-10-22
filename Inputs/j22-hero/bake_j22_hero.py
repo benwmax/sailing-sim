@@ -102,7 +102,8 @@ for tag, side in (("S", -1), ("P", 1)):
 sock("ForestayTack", _c("StemPin_pin"))
 bs = [_c(n) for n in ("BS_eye_1_loop", "BS_eye_-1_loop")]
 sock("BackstayPlate", (bs[0] + bs[1]) / 2)
-sock("BowCleat", _top("BowCleat_horn"))
+sock("BowCleat", _top("BowCleat_horn"))              # the starboard of the two bow cleats (boat fidelity 3)
+sock("BowCleatPort", _top("BowCleat_P_horn"))
 tlo, thi = _bb("TravelerBar")
 sock("Traveler_C", Vector(((tlo.x + thi.x) / 2, 0, thi.z + 0.02)))
 sock("Traveler_S", Vector(((tlo.x + thi.x) / 2, tlo.y + 0.05, thi.z + 0.02)))

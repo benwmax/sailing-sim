@@ -86,9 +86,14 @@
    58.26
   ],
   "BowCleat": [
-   270.0,
-   -0.0,
-   84.94
+   303.0,
+   13.0,
+   84.74
+  ],
+  "BowCleatPort": [
+   303.0,
+   -13.0,
+   84.74
   ],
   "Traveler_C": [
    -195.0,
@@ -146,14 +151,14 @@
    149.2
   ],
   "TillerEnd": [
-   -215.74,
+   -215.97,
    -0.0,
-   84.59
+   83.9
   ],
   "RudderStock": [
    -346.0,
    -0.0,
-   70.41
+   70.42
   ],
   "RudderPivot": [
    -346.0,
@@ -275,6 +280,7 @@
   "ForestayTack": "SM_J22H_Hull",
   "BackstayPlate": "SM_J22H_Hull",
   "BowCleat": "SM_J22H_Hull",
+  "BowCleatPort": "SM_J22H_Hull",
   "Traveler_C": "SM_J22H_Hull",
   "Traveler_S": "SM_J22H_Hull",
   "Traveler_P": "SM_J22H_Hull",
