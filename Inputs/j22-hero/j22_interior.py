@@ -165,7 +165,8 @@ def materials(st):
     cw = st.get("interior", {})
     return {
         "InteriorLiner": liner(st),
-        "InteriorSole": liner(st, "InteriorSole", nonskid=True),
+        # boat fidelity 3: the cabin sole is varnished wood on all three J/22s in Bean's interior photos, not moulded liner
+        "InteriorSole": M.teak(st, "InteriorSole", varnish=True),
         "Bilge": bilge(st),
         "Cushion": fabric(st, "Cushion", cw.get("cushion_hex", "#1F2D4A"), fade=0.25 + 0.4 * st["wear"]),
         "SailBag": fabric(st, "SailBag", cw.get("sailbag_hex", "#2457A6"), weave=700.0, fade=0.3),

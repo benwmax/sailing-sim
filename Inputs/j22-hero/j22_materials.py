@@ -451,7 +451,15 @@ def draw_sail_textures(st, kind, out_dir, size=(2048, 4096)):
     grid and taffeta. Both: tabling, corner patches, batten pockets, reef points, telltales, window, insignia,
     numbers and a sailmaker's mark; age adds yellowing, crinkles, mildew spots, stains and stitched repair patches."""
     import random as _r
-    from PIL import Image, ImageDraw, ImageFilter
+    try:
+        from PIL import Image, ImageDraw, ImageFilter
+    except ImportError:
+        # Blender's own Python has no Pillow (the PC's Blender 4.2): reuse the committed maps beside this script, which
+        # the game's live cloth reads anyway (the club style's; a new style needs a Blender with Pillow).
+        name = "Mainsail" if kind == "main" else "Jib"
+        here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "textures")
+        print(f"sail maps: no Pillow in this Blender, using the committed T_J22H_{name}_D/H")
+        return os.path.join(here, f"T_J22H_{name}_D.png"), os.path.join(here, f"T_J22H_{name}_H.png")
     s = st["sails"]
     lam = s["cloth"] == "grey_laminate"
     rng = _r.Random(st["seed"] * 7 + (1 if kind == "main" else 2))
