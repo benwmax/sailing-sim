@@ -32,6 +32,8 @@ sys.path.insert(0, HERE)
 import maxi_hull as H  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, "..", "..", "boatkit"))
 import bk_materials as BM  # noqa: E402 (the game's MI_Boat_* table: slot names import straight onto the library)
+sys.path.insert(0, os.path.join(HERE, "..", "..", "blender"))
+from boat_packs import pack_slots  # noqa: E402 (pc/boat-slots)
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
@@ -596,6 +598,10 @@ def export_part(ob):
     bpy.ops.object.select_all(action="DESELECT")
     ob.select_set(True)
     bpy.context.view_layer.objects.active = ob
+    # pc/boat-slots: one slot per pack (boat_packs.json, the entry in UV1); the mast keeps CarbonMast (M_BoatMast bends it).
+    if not ob.data.uv_layers:
+        ob.data.uv_layers.new(name="UVMap")
+    pack_slots(ob.data, keep=("CarbonMast",))
     loc = ob.location.copy()
     ob.location = (0, 0, 0)
     bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, ob.name + ".fbx"), use_selection=True, axis_forward="X",

@@ -19,11 +19,11 @@ namespace
 		{ TEXT("/Game/Boats/J22/SM_J22_Boom"), 1 }, { TEXT("/Game/Boats/J22/SM_J22_Mast"), 2 },
 		{ TEXT("/Game/Boats/J22/SM_J22_Berthed"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Berthed_1"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Berthed_2"), 3 },
 		{ TEXT("/Game/Boats/J22/SM_J22_Berthed_3"), 2 }, { TEXT("/Game/Boats/J22/SM_J22_Berthed_4"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Berthed_5"), 3 },
-		{ TEXT("/Game/Boats/Sunfish/SM_Sunfish_Hull"), 11 }, { TEXT("/Game/Boats/ILCA7/SM_ILCA7_Hull"), 9 },
-		{ TEXT("/Game/Boats/Catalina22/SM_Catalina22_Hull"), 14 }, { TEXT("/Game/Boats/Catalina22/SM_Catalina22_Berthed"), 5 },
-		{ TEXT("/Game/Boats/Catalina30/SM_Catalina30_Hull"), 15 }, { TEXT("/Game/Boats/Catalina30/SM_Catalina30_Berthed"), 5 },
-		{ TEXT("/Game/Boats/Hobie16/SM_Hobie16_Hull"), 8 }, { TEXT("/Game/Boats/Corsair880/SM_Corsair880_Hull"), 14 },
-		{ TEXT("/Game/Boats/Lagoon42/SM_Lagoon42_Hull"), 15 }, { TEXT("/Game/Boats/Maxi/SM_Maxi_Hull"), 10 },
+		{ TEXT("/Game/Boats/Sunfish/SM_Sunfish_Hull"), 3 }, { TEXT("/Game/Boats/ILCA7/SM_ILCA7_Hull"), 3 },
+		{ TEXT("/Game/Boats/Catalina22/SM_Catalina22_Hull"), 3 }, { TEXT("/Game/Boats/Catalina22/SM_Catalina22_Berthed"), 3 },
+		{ TEXT("/Game/Boats/Catalina30/SM_Catalina30_Hull"), 4 }, { TEXT("/Game/Boats/Catalina30/SM_Catalina30_Berthed"), 3 },
+		{ TEXT("/Game/Boats/Hobie16/SM_Hobie16_Hull"), 3 }, { TEXT("/Game/Boats/Corsair880/SM_Corsair880_Hull"), 3 },
+		{ TEXT("/Game/Boats/Lagoon42/SM_Lagoon42_Hull"), 4 }, { TEXT("/Game/Boats/Maxi/SM_Maxi_Hull"), 3 },
 	};
 }
 

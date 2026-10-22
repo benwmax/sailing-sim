@@ -71,6 +71,9 @@ def add_lods(mesh, nanite):
     triangles). A classic LOD chain needs the editor's static mesh subsystem, which a commandlet does not have."""
     if nanite:
         ns = mesh.get_editor_property("nanite_settings")
+        # (The target too: left on Auto, the engine falls back by relative error and ignores the percentage, 22k
+        # triangles for the hull instead of 1.5k.)
+        ns.set_editor_property("fallback_target", unreal.NaniteFallbackTarget.PERCENT_TRIANGLES)
         ns.set_editor_property("fallback_percent_triangles", 0.06)
         mesh.set_editor_property("nanite_settings", ns)
 
