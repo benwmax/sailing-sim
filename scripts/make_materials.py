@@ -2426,7 +2426,20 @@ Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
     Rough = 1.0;
     return float3(0.0, 0.0, 1.0);
 }
-return normalize(float3(-sx, -sy, 1.0));
+// docs/far-water-speckle/: never a mirror direction below the horizon. Far out, at a grazing view, a short wave's slope
+// turned a pixel's reflection down into the water; Lumen's ray met the dark lake or shore there and the far water was
+// peppered with dark pixels. Where it would, the mirror direction is lifted to just above the horizon in the same
+// vertical plane and the normal is the half-vector to it (exact, and only on those pixels: glints toward a sun above
+// the horizon and the far caps' foam are untouched).
+float3 nOut = normalize(float3(-sx, -sy, 1.0));
+float3 rOut = 2.0 * dot(nOut, vdir) * nOut - vdir;
+[branch] if (rOut.z < 0.02)
+{
+    float2 rh = rOut.xy / max(length(rOut.xy), 1e-5);
+    float3 rUp = float3(rh * 0.9998, 0.02);
+    nOut = normalize(vdir + rUp);
+}
+return nOut;
 """
 
 
