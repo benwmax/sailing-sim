@@ -12,7 +12,7 @@ VIEWS=(
 	"lake-busy|-SailingWorld=0 -SailingLaunch=1 -SailingTraffic=2 -SailingHour=13 -SailingCamYaw=200 -SailingCamPitch=-12 -SailingCamDist=60"
 	"lake-race|-SailingWorld=0 -SailingLaunch=1 -SailingTraffic=1 -SailingRace=8 -SailingHour=13 -SailingCamYaw=200 -SailingCamPitch=-14 -SailingCamDist=45"
 	"bay-ships|-SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingHour=11 -SailingCamYaw=120 -SailingCamPitch=-8 -SailingCamDist=90"
-	"bay-night-traffic|-SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingHour=21 -SailingCamYaw=120 -SailingCamPitch=-6 -SailingCamDist=40"
+	"bay-night-traffic|-SailingDate=2026-10-22 -SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingHour=21 -SailingCamYaw=120 -SailingCamPitch=-6 -SailingCamDist=40"
 	"bay-chart-ais|-SailingWorld=1 -SailingLaunch=3 -SailingTraffic=2 -SailingTrafficNear -SailingHour=11 -SailingChart=10"
 )
 echo "view,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms" > "$OUT"
