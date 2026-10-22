@@ -629,8 +629,16 @@ def build_hardware():
     parts.append(box("FwdHatchFrame", hx0 - 0.02, hx1 + 0.02, -0.28, 0.28, zt - 0.03, zt + 0.02, MAT["Aluminium"], bev=0.008))
     # sliding companionway hatch and its rails
     za = deck_z(CABIN_AFT, 0) + CABIN_H0
-    parts.append(box("SlideHatch", CABIN_AFT - 0.02, CABIN_AFT + 0.62, -0.30, 0.30, za + 0.005, za + 0.035, MAT["Gelcoat"], bev=0.012))
+    # #235 gaps (photos companionway-1, companionway-lookinto, companionway-rail-port): the hatch is varnished marine
+    # plywood; teak trims run along both sides of the opening beside the closed hatch and frame its aft face either side
+    # of the drop board (clear of the halyard cams at 0.335 m out).
+    parts.append(box("SlideHatch", CABIN_AFT - 0.02, CABIN_AFT + 0.62, -0.30, 0.30, za + 0.005, za + 0.035, MAT["PlywoodVarnish"], bev=0.012))
     parts.append(box("DropBoard", CABIN_AFT - 0.012, CABIN_AFT + 0.012, -0.24, 0.24, SEAT_Z + 0.02, za - 0.02, MAT["TeakWeathered"], bev=0.004))
+    for side in (1, -1):
+        parts.append(box(f"CompTrim_{side}", CABIN_AFT - 0.02, CABIN_AFT + 0.55, side * 0.301, side * 0.316, za - 0.002, za + 0.028,
+                         MAT["TeakWeathered"], bev=0.004))
+        parts.append(box(f"CompPost_{side}", CABIN_AFT - 0.022, CABIN_AFT - 0.002, side * 0.240, side * 0.280, SEAT_Z + 0.02, za + 0.004,
+                         MAT["TeakWeathered"], bev=0.004))
     # mast step, halyard turning blocks, organisers and cam cleats on the cabin top
     zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     parts.append(box("MastStep", MAST_X - 0.10, MAST_X + 0.10, -0.06, 0.06, zm - 0.005, zm + 0.03, MAT["Aluminium"], bev=0.006))
@@ -658,6 +666,11 @@ def build_hardware():
     # aft deck: inspection port
     xp = (STERN + COCKPIT_AFT) / 2 - 0.02
     parts.append(cyl("DeckPlate", (xp, 0.30, deck_z(xp, 0.3) - 0.002), (xp, 0.30, deck_z(xp, 0.3) + 0.012), 0.075, MAT["WhitePlastic"], 32))
+    # #235 gaps (photo transom-worn): a teak strip along the top of the transom just under the deck edge, short of the
+    # rounded corners
+    yt = half_beam(STERN) - 0.07
+    zt0 = min(deck_z(STERN, 0.0), deck_z(STERN, yt))
+    parts.append(box("TransomTeak", STERN - 0.014, STERN + 0.001, -yt, yt, zt0 - 0.045, zt0 - 0.012, MAT["TeakWeathered"], bev=0.004))
     # outboard bracket and motor on the port quarter (photo IMG_9273): GUESS on sizes for a 3.5 hp
     parts += outboard()
     return parts
