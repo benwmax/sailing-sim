@@ -236,6 +236,7 @@ namespace Sailing
 
 		// How a good crew sails this boat: the heel they depower at, and how far they will ease the main to do it.
 		double TrimHeelLimitDeg = 22.0;
+		double TrimReachHeelLimitDeg = 0.0; // the heel limit reaching (TWA 80 to 110 deg and on); 0 = TrimHeelLimitDeg
 		double TrimMaxEaseDeg = 25.0;
 		// A dinghy sailor holds the sheet in the hand and sails the boat flat (0 = a keelboat crew on winches and cleats):
 		// boom degrees dumped at once per degree of heel past the limit (and of the roll toward it), and the sheet's travel

@@ -39,7 +39,8 @@ HULLS = CFG["hulls"]
 DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
-         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope"]   # Rope last: the earlier slots keep their indices
+         "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope",   # Rope last: the earlier slots keep their indices
+         "Rubber", "PaintedAluminium", "Teak", "Carbon", "CarbonMatte"]   # the shared kit's other library slots (place_kit)
 CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   # (packed: boat_packs.json's PackCanoe is exactly these)
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
@@ -433,9 +434,8 @@ def lifelines(H, x_from, x_to):
     for side in (1, -1):
         posts = [(x, H.cy + side * (H.sharp_half_beam(x) - 0.05), H.deck_z(x, H.cy + side * (H.sharp_half_beam(x) - 0.05))) for x in xs]
         for (x, y, z) in posts:
-            tube(hull, [(x, y, z), (x, y, z + hgt)], 0.012, "Stainless", 6)
-            box(hull, (x, y, z + 0.02), (0.07, 0.05, 0.04), "Stainless")              # boats 11: stanchion base
-        for f in (0.5, 1.0):
+            kit_part("Stanchion", x, y, z, height=hgt)        # the kit's: base plate, socket, tube, mid ring, cap
+        for f in (0.52, 1.0 - 0.008 / hgt):                   # through its mid ring and its cap
             tube(hull, [(x, y, z + hgt * f) for (x, y, z) in posts], 0.0035, "Stainless", 4)
     bow = H.h["bow_x"]
     ring = [(x_to + (bow - 0.1 - x_to) * math.sin(math.pi / 2 * k / 8), H.cy + (H.sharp_half_beam(x_to) - 0.05) * math.cos(math.pi / 2 * k / 8), H.deck_z(x_to, H.cy) + hgt) for k in range(9)]
@@ -448,10 +448,58 @@ def lifelines(H, x_from, x_to):
         tube(hull, [(st + 0.05, H.cy + y, H.deck_z(st, H.cy)), (st + 0.05, H.cy + y, H.deck_z(st, H.cy) + hgt)], 0.014, "Stainless", 6)
 
 
+KIT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "boatkit")
+KIT_LAYOUT = os.path.join(KIT_DIR, "layouts", f"{TAG.lower()}.json")
+
+
+def kit_part(name, x, y, z, yaw=0.0, flip=False, size=None, m=None, **kw):
+    """One shared-kit fitting (Tools/boatkit/bk_parts.py, the hero quality the J/22 carries) merged into the mesh `m` (the
+    hull) before it is finished, so it shares the box UVs, smoothing and packs. Body frame metres, yaw radians about Z;
+    flip turns it over (the kit's blocks are built hanging from their head: one standing on deck is flipped)."""
+    m = m or hull
+    sys.path.insert(0, KIT_DIR)
+    import bk_parts as KP   # noqa: E402 (needs bpy)
+    ob = KP.build(name, size=size, **kw)
+    xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
+    if flip:
+        xf = xf @ Matrix.Rotation(math.pi, 4, "X")
+    me = ob.data
+    me.transform(ob.matrix_world)
+    me.transform(xf)
+    while me.uv_layers:              # (finish() writes the box UVs: a part's own set would come first)
+        me.uv_layers.remove(me.uv_layers[0])
+    first = len(m.bm.faces)
+    m.bm.from_mesh(me)
+    m.bm.faces.ensure_lookup_table()
+    names = [mt.name.split(".")[0] for mt in me.materials]
+    for f in m.bm.faces[first:]:
+        f.material_index = SLOTS.index(names[f.material_index])
+        f.smooth = True
+    bpy.data.objects.remove(ob)
+
+
 def cleat(x, y, z, yaw=0.0, length=0.2):
-    """A horn cleat: a low base and the horns across it (aluminium)."""
-    box(hull, (x, y, z + 0.012), (length * 0.45, 0.035, 0.024), "Aluminium", yaw)
-    box(hull, (x, y, z + 0.04), (length, 0.03, 0.022), "Aluminium", yaw)
+    """A horn cleat: the kit's cast aluminium one at the nearest catalogue length (it had been two boxes)."""
+    kit_part("HornCleat", x, y, z, yaw, size=min(("100", "150", "200", "250"), key=lambda s: abs(int(s) / 1000 - length)))
+
+
+def place_kit(m):
+    """The kit fittings Tools/boatkit/layouts/<tag>.json places (the boats whose fittings aren't placed in code here).
+    Body frame metres; on: deck (the deck surface of the nearest hull), sole (the cockpit sole: deck less SPEC cockpit
+    depth), z (the entry's own z); dz: raised; mirror: also at -y; yaw degrees about Z; flip (kit_part's); size and kw:
+    bk_parts.build's. Returns how many parts were placed."""
+    if not os.path.exists(KIT_LAYOUT):
+        return 0
+    n = 0
+    for e in json.load(open(KIT_LAYOUT))["parts"]:
+        for s in ((1, -1) if e.get("mirror") else (1,)):
+            x, y = e["x"], e["y"] * s
+            Hh = min(HS, key=lambda h: abs(h.cy - y))
+            z = e["z"] if e.get("on") == "z" else Hh.deck_z(x, y) - (SPEC["cockpit"][3] if e.get("on") == "sole" else 0.0)
+            yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
+            kit_part(e["part"], x, y, z + e.get("dz", 0.0), yaw, e.get("flip", False), e.get("size"), m, **e.get("kw", {}))
+            n += 1
+    return n
 
 
 def keelboat_deck_detail(H, top, half, cb, mast_x, st, bw):
@@ -476,14 +524,14 @@ def keelboat_deck_detail(H, top, half, cb, mast_x, st, bw):
     x0 = cb[0]
     for side in (1, -1):
         for k in range(3):
-            dy = side * (0.07 + 0.035 * k)
-            yc = H.cy + side * (0.24 + 0.035 * k) * min(1.0, half(x0 + 0.35) / 0.55)
+            dy = side * (0.07 + 0.055 * k)          # (5.5 cm apart: the kit's 29 mm blocks are 54 mm across)
+            yc = H.cy + side * (0.24 + 0.055 * k) * min(1.0, half(x0 + 0.35) / 0.55)
             xm = mast_x - 0.12
-            box(hull, (xm, H.cy + dy, top(xm) + 0.02), (0.05, 0.025, 0.035), "BlackPlastic")       # turning block
+            kit_part("Block29", xm, H.cy + dy, top(xm), flip=True)                                  # turning block (the kit's, stood up)
             xs_l = stations(xm - 0.04, x0 + 0.38, 10)
             line = [(x, H.cy + dy + (yc - H.cy - dy) * ((x - xm) / (x0 + 0.38 - xm)) ** 1.5, top(x) + 0.012) for x in xs_l]
             tube(hull, line, 0.005, "Rope", 4)
-            box(hull, (x0 + 0.3, yc, top(x0 + 0.3) + 0.022), (0.11, 0.03, 0.04), "BlackPlastic")    # clutch
+            kit_part("Clutch", x0 + 0.3, yc, top(x0 + 0.3), math.pi)                                # clutch (the kit's; the line comes from forward)
         # The tails, flaked in a heap on the cabin top beside the hatch.
         for k in range(3):
             c = (x0 + 0.12 - 0.04 * k, H.cy + side * (0.3 + 0.02 * k), top(x0 + 0.12) + 0.008 + 0.009 * k)
@@ -538,8 +586,9 @@ def keelboat_cockpit_detail(H, ck, cb, top, half, st, bw):
 
 
 def winch(x, y, z, r=0.055):
-    tube(hull, [(x, y, z), (x, y, z + 0.11)], r, "Stainless", 14)
-    tube(hull, [(x, y, z + 0.11), (x, y, z + 0.13)], r * 0.6, "BlackPlastic", 10)
+    """A sheet winch: the kit's at the catalogue size whose base is nearest 2r (it had been two stainless cylinders)."""
+    bases = {"8": 0.102, "16": 0.120, "20": 0.130, "30": 0.152, "40": 0.175}
+    kit_part("Winch16", x, y, z, size=min(bases, key=lambda s: abs(bases[s] - 2 * r)))
 
 
 def board(Hh, f, deepest):
@@ -583,17 +632,15 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     if TAG == "ILCA7":
         rx, rz = 0.5 * (x0 + x1), sole(0.5 * (x0 + x1))
         tube(hull, [(rx, 0, rz), (rx, 0, rz + 0.12)], 0.012, "Stainless", 8)
-        box(hull, (rx, 0, rz + 0.16), (0.08, 0.03, 0.08), "BlackPlastic")
-    else:
-        rx = x0 - 0.06
-        box(hull, (rx, 0, H.deck_z(rx, 0) + 0.035), (0.06, 0.03, 0.07), "BlackPlastic")
+        # (the ratchet block on the post is the kit's Ratchet57: layouts/ilca7.json)
+    # (the Sunfish's mainsheet block on the aft deck is the kit's Block29: layouts/sunfish.json)
     # deck control lines to cam cleats either side of the well's forward end (ILCA: cunningham, outhaul, vang;
     # Sunfish: the halyard to a horn cleat and the sail's bow line)
     if TAG == "ILCA7":
         for side in (1, -1):
             for k in range(3):
                 cx, cy = x1 + 0.06, side * (0.09 + 0.05 * k)
-                box(hull, (cx, cy, H.deck_z(cx, cy) + 0.012), (0.06, 0.035, 0.024), "BlackPlastic")
+                # (the cam cleat is the kit's: layouts/ilca7.json)
                 line = [(mast_x - 0.08, side * 0.03, mast_step_z + 0.02), (bx + 0.25, side * (0.05 + 0.02 * k), H.deck_z(bx + 0.25, 0) + 0.012),
                         (cx + 0.03, cy, H.deck_z(cx, cy) + 0.02)]
                 tube(hull, line, 0.003, "Rope", 4, cap=False)
@@ -625,7 +672,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         tube(hull, rim + rim[:1], 0.011, "Deck", 6, cap=False)
         for xs_ in (x0 + 0.06, x1 - 0.06):
             box(hull, (xs_, 0, sole(xs_) + 0.004), (0.05, 0.05, 0.008), "Graphics")
-        cleat(x1 + 0.05, -0.18, H.deck_z(x1 + 0.05, -0.18), 0.0, 0.12)
+        # (the halyard's horn cleat is the kit's: layouts/sunfish.json)
         line = [(mast_x - 0.05, -0.03, mast_step_z + 0.04), (x1 + 0.4, -0.12, H.deck_z(x1 + 0.4, -0.12) + 0.01), (x1 + 0.08, -0.18, H.deck_z(x1 + 0.08, -0.18) + 0.045)]
         tube(hull, line, 0.003, "Rope", 4, cap=False)
     # bow handle (inside the stem so LOA is untouched) and the transom drain plug
@@ -662,8 +709,7 @@ def hobie_detail(fb, rb, bz, inner, traveler):
     for Hh, side in ((HS[1], 1), (HS[0], -1)):
         # jib car on a short track at the lead, laid on the tramp
         lx, ly = rb + 0.9, Hh.cy - side * 0.25
-        box(hull, (lx, ly, bz + 0.04), (0.45, 0.03, 0.012), "Aluminium")
-        box(hull, (lx, ly, bz + 0.065), (0.07, 0.04, 0.04), "BlackPlastic")
+        kit_part("JibTrack", lx, ly, bz + 0.034, length=0.45)   # the kit's track and car
         # shroud adjuster: a stainless plate rising from the chainplate at the hull's outer sheer
         cx = mast_x - 0.05
         cy = Hh.cy + side * (Hh.sharp_half_beam(cx) - 0.03)
@@ -676,7 +722,7 @@ def hobie_detail(fb, rb, bz, inner, traveler):
         tube(hull, [(st + 0.004, Hh.cy, Hh.sheer(st) - 0.08), (st - 0.006, Hh.cy, Hh.sheer(st) - 0.08)], 0.012, "BlackPlastic", 8)
         # the rudder casting's gudgeons on the transom
         for gz in (Hh.sheer(st) - 0.04, Hh.sheer(st) - 0.24):
-            box(hull, (st + 0.015, Hh.cy, gz), (0.03, 0.06, 0.03), "Stainless")
+            kit_part("Gudgeon", st, Hh.cy, gz, math.pi)        # the kit's, its eye aft
         # Fleet hero: the cast aluminium beam ends (the corner castings bolted to each hull), the hull's coloured stripe
         # along the sheer, and the trapeze shock cords' deck eyes beside the tramp.
         for bx in (fb, rb):
@@ -853,16 +899,20 @@ elif TAG in ("Catalina22", "Catalina30"):
         # (it had been across the cockpit at the wheel, and an eased sheet swept the helm's back).
         tx = cb[0] + 1.0  # (forward of the slide-hatch rails)
         traveler = (tx, top(tx) + 0.03, half(tx) - 0.15)
-    tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
+    if TAG == "Catalina30":
+        # the kit's traveler (track, car with its control sheaves, end stops) across the cabin top: its car at Traveler_C
+        kit_part("Traveler", traveler[0], 0.0, top(traveler[0]), math.pi / 2, length=2 * traveler[2] + 0.06)
+    else:
+        tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (ck[2] + 0.13)
-        winch(wx, y, MAIN.deck_z(wx, y))
+        winch(wx, y, MAIN.deck_z(wx, y), 0.076 if TAG == "Catalina30" else 0.06)   # (a 30 and a 16)
         socket(f"JibWinch_{tag}", (wx, y, MAIN.deck_z(wx, y) + 0.08))
         clew_x = jib[0]["luff_x"] - jib[0]["chord"]
         lx = clew_x - 0.15
         ly = side * (MAIN.sharp_half_beam(lx) - 0.12)
-        box(hull, (lx, ly, MAIN.deck_z(lx, ly) + 0.015), (0.9, 0.03, 0.02), "Aluminium")
+        kit_part("JibTrack", lx, ly, MAIN.deck_z(lx, ly), length=0.9)          # the kit's T-track and lead car
         socket(f"JibLead_{tag}", (lx, ly, MAIN.deck_z(lx, ly) + 0.05))
     socket("LazySheetVia", (mast_x + 0.4, 0, top(mast_x + 0.4) + 0.05))
     socket("BackstayPlate", (st + 0.04, 0, MAIN.deck_z(st, 0) + 0.02))
@@ -972,7 +1022,7 @@ elif TAG == "Corsair880":
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (ck[2] + 0.12)
-        winch(wx, y, MAIN.deck_z(wx, y))
+        winch(wx, y, MAIN.deck_z(wx, y), 0.06)
         socket(f"JibWinch_{tag}", (wx, y, MAIN.deck_z(wx, y) + 0.08))
         socket(f"JibLead_{tag}", (mast_x + 0.6, side * 0.45, top(mast_x + 0.6) + 0.04))  # self-tacking track on the cabin top
         Hh = max(HS[1:], key=lambda h: side * h.cy)  # rig clearance: the float on this side (HS[1] is the port one)
@@ -1034,7 +1084,7 @@ elif TAG == "Lagoon42":
         # The self-tacking track across the saloon roof's forward end, under the jib's clew (Fleet.cpp: x 0.45).
         socket(f"JibLead_{tag}", (0.45, side * 0.5, roof + 0.08 * (1 - (0.5 / sw) ** 2) + 0.05))
         socket(f"JibWinch_{tag}", (s0 + 0.3, side * (sw - 0.2), roof + 0.06))
-        winch(s0 + 0.3, side * (sw - 0.2), roof)
+        winch(s0 + 0.3, side * (sw - 0.2), roof, 0.0875)
     socket("LazySheetVia", (0.45, 0, roof + 0.13))
     # The self-tacking track itself: an aluminium rail across the roof's crown, end stops, and its car's blocks.
     track = [(0.45, y, roof + 0.08 * (1 - (y / sw) ** 2) + 0.02) for y in [-0.9 + 1.8 * k / 12 for k in range(13)]]
@@ -1220,6 +1270,7 @@ def build_rudder():
 mast_obj = build_mast()
 boom_obj = build_boom()
 rudder_obj = build_rudder()
+print(f"{TAG}: {place_kit(hull)} kit parts")   # the shared kit's fittings (Tools/boatkit/layouts/<tag>.json)
 hull_obj = hull.finish(smooth_angle=35.0, origin=(0, 0, 0))
 
 

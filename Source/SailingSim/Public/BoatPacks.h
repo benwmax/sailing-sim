@@ -19,6 +19,9 @@ namespace SailingBoatPacks
 		if (Slot == TEXT("PackDeck")) return Deck;
 		if (Slot == TEXT("PackFit")) return Fit;
 		if (Slot == TEXT("PackCanvas")) return Canvas;
+		// The hero J/22's hardware pack (Inputs/j22-hero/J22H_packs.json; only the metal pack is read here, for the spars).
+		static const TCHAR* HeroMetal[] = { TEXT("Stainless"), TEXT("Chrome"), TEXT("CastAlu"), TEXT("Aluminium"), TEXT("SheaveGrey"), TEXT("RigTape"), TEXT("TeakVarnish"), TEXT("Gelcoat") };
+		if (Slot == TEXT("J22H_PackMetal")) return HeroMetal;
 		return {};
 	}
 
