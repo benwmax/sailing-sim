@@ -805,3 +805,47 @@ bool FWaterFarCapFlecksTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+/**
+ * The far caps' sprites (docs/far-cap-sprites/, far-caps option B): a tile's sprites carry its cover, no more (the caps
+ * alive at once times a cap's area is the cover's area); none in light air; and their share against M_WaterV4's flecks
+ * is a weight in 0..1, nothing near the boat or from above, all of it at mid range seen low. Past the slot budget, bigger
+ * caps carry the same cover.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterFarCapSpritesTest, "SailingSim.Visual.FarCapSprites", WaterFlags)
+bool FWaterFarCapSpritesTest::RunTest(const FString&)
+{
+	const double Area = AWaterSurface::FarCapTileM * AWaterSurface::FarCapTileM;
+	const double Scale = AWaterSurface::WhitecapScaleFor(0);
+	for (const double Knots : { 12.0, 16.0, 20.0 })
+	{
+		const double Cover = AWaterSurface::FarCapCover(Knots * Sailing::kKnot, Scale, AWaterSurface::WhitecapOnset(float(Knots)));
+		int32 Slots = 0;
+		float Prob = 0.f;
+		AWaterSurface::FarCapTilePlan(Cover, Area, Slots, Prob);
+		const double Carried = Slots * double(Prob) * AWaterSurface::FarCapArea * 0.7937;
+		AddInfo(FString::Printf(TEXT("%.0f kn: cover %.4f%%, %d slots at %.2f, caps' area %.0f m^2 of the tile's %.0f"), Knots, 100.0 * Cover, Slots, Prob, Carried, Cover * Area));
+		TestTrue(FString::Printf(TEXT("%.0f kn: the sprites carry the cover"), Knots), FMath::Abs(Carried / (Cover * Area) - 1.0) < 0.01);
+		TestTrue(FString::Printf(TEXT("%.0f kn: under the cap on slots"), Knots), Slots <= 6000);
+		// Over the slot budget the caps are fewer and bigger: the same foam.
+		int32 BigSlots = 0;
+		float BigProb = 0.f;
+		AWaterSurface::FarCapTilePlan(Cover, Area, BigSlots, BigProb, 2.5 * AWaterSurface::FarCapArea);
+		const double BigCarried = BigSlots * double(BigProb) * 2.5 * AWaterSurface::FarCapArea * 0.7937;
+		TestTrue(FString::Printf(TEXT("%.0f kn: bigger caps carry the same cover"), Knots), FMath::Abs(BigCarried / (Cover * Area) - 1.0) < 0.01 && BigSlots < Slots);
+	}
+	int32 CalmSlots = 0;
+	float CalmProb = 0.f;
+	AWaterSurface::FarCapTilePlan(AWaterSurface::FarCapCover(7.0 * Sailing::kKnot, Scale, AWaterSurface::WhitecapOnset(7.f)), Area, CalmSlots, CalmProb);
+	TestEqual(TEXT("No sprites in light air (7 kn: under the breaking onset)"), CalmSlots, 0);
+	TestEqual(TEXT("None near the boat"), AWaterSurface::FarCapSpriteWeight(200.0, 2.0), 0.f);
+	TestTrue(TEXT("All of the share at 600 m from a helm's eye"), AWaterSurface::FarCapSpriteWeight(600.0, 2.0) > 0.99f);
+	TestEqual(TEXT("None from 150 m up at 600 m (the flecks)"), AWaterSurface::FarCapSpriteWeight(600.0, 150.0), 0.f);
+	TestEqual(TEXT("None past 1.25 km"), AWaterSurface::FarCapSpriteWeight(1300.0, 2.0), 0.f);
+	for (double D = 0.0; D < 2000.0; D += 50.0)
+	{
+		const float W = AWaterSurface::FarCapSpriteWeight(D, 20.0);
+		if (W < 0.f || W > 1.f) { AddError(FString::Printf(TEXT("Weight %.2f at %.0f m"), W, D)); break; }
+	}
+	return true;
+}

@@ -598,6 +598,9 @@ for side in (1, -1):
     hull.grid(wall, "Deck", flip=(side < 0), slot_fn=lambda i, j: "NonSkid" if j == 2 else "Deck")
     # Outside of the coaming (deck to lip).
     hull.grid([[(x, side * (inner_edge(x) + 0.02), deck_z(x, inner_edge(x)) + 0.002), (x, side * (inner_edge(x) + 0.02), deck_z(x, inner_edge(x)) + COAMING_H)] for x in kx], "Deck", flip=(side > 0))
+    # J/22 light match: the teak cap along the coaming's lip (the hero's; Bean's cockpit photos), a wood line that reads
+    # from the next boat over.
+    tube(hull, [(x, side * (inner_edge(x) + 0.01), deck_z(x, inner_edge(x)) + COAMING_H + 0.006) for x in kx[1:-1:2]], 0.016, "Teak", 4)
 sole = [[(x, v * (inner_edge(x) - SEAT_W), SOLE_Z) for v in fv] for x in kx]
 hull.grid(sole, "NonSkid", flip=True)
 for x, ztop in ((COCKPIT_AFT, None), ):
@@ -672,6 +675,17 @@ for side, tag in ((1, "S"), (-1, "P")):
         tube(hull, [(kx + 0.06, ky, kz + 0.02), (0.5 * (kx + hx), side * (0.3 + 0.04 * k), cabin_top_edge(0.5 * (kx + hx))[1] + 0.04), (hx, side * (0.06 + 0.02 * k), cabin_top_edge(hx)[1] + 0.05)],
              0.004, "Rope", 6)
     coil(hull, (CABIN_AFT + 0.05, side * 0.55), 0.09, 2.5, cabin_top_edge(CABIN_AFT + 0.05)[1] + 0.01, seed=1.3 * side)
+    # J/22 light match: the teak grab rail on the cabin top (the hero's), a bar on three legs.
+    hx0, hx1 = CABIN_AFT + 0.32, CABIN_AFT + 1.30
+
+    def top_at(x, y):
+        e, zt = cabin_top_edge(x)
+        return zt + 0.035 * (1 - (y / e) ** 2)
+    hy = side * (cabin_top_edge(0.5 * (hx0 + hx1))[0] - 0.14)
+    tube(hull, [(x, hy, top_at(x, hy) + 0.06) for x in (hx0, 0.5 * (hx0 + hx1), hx1)], 0.014, "Teak", 4)
+    for k in range(3):
+        x = hx0 + 0.04 + (hx1 - hx0 - 0.08) * k / 2
+        box(hull, (x, hy, top_at(x, hy) + 0.03), (0.05, 0.026, 0.06), "Teak")
     # Jib track on the side deck and its car with a block.
     tx0, tx1 = 0.45, -0.25
     ty = side * (sharp_half_beam(0.1) - 0.24)
@@ -685,7 +699,12 @@ for side, tag in ((1, "S"), (-1, "P")):
     sy2 = side * (sharp_half_beam(sx2) - 0.12)
     horn_cleat(hull, sx2, sy2, deck_z(sx2, sy2), 0.16, 0.0)
 bx = BOW - 0.45
-horn_cleat(hull, bx, 0, deck_z(bx, 0), 0.18, 0.5 * math.pi)
+# J/22 light match (the hero's boat fidelity 3, Bean's bow photos): two small horn cleats abreast instead of one on the
+# centreline. The BowCleat socket stays on the centreline between them (nothing reads it; build_berthed.py reads these
+# sockets, so it doesn't move).
+for side in (1, -1):
+    by = side * 0.13
+    horn_cleat(hull, BOW - 0.42, by, deck_z(BOW - 0.42, by), 0.13, 0.0)
 socket("BowCleat", (bx, 0, deck_z(bx, 0) + 0.04))
 TRAV_X = -1.75
 te = inner_edge(TRAV_X) - SEAT_W
@@ -698,9 +717,19 @@ socket("Traveler_C", (TRAV_X, 0, SEAT_Z + 0.05))
 # The traveler sits on a bridge across the cockpit at seat height.
 box(hull, (TRAV_X, 0, SEAT_Z - 0.005), (0.16, 2 * te, 0.03), "Deck")
 
-# Pintles and gudgeons on the transom for the rudder.
+# Gudgeons on the transom for the rudder: each a plate with two lugs, above and below the pintle strap (the hero's, from
+# Bean's transom photos).
 for z in (0.32, 0.56):
-    rbox(hull, (STERN - 0.02, 0, z), (0.05, 0.06, 0.03), "Stainless", r=0.012, chamfer=0.008)
+    rbox(hull, (STERN + 0.001, 0, z), (0.006, 0.10, 0.08), "Stainless", r=0.01)
+    for dz in (0.022, -0.022):
+        rbox(hull, (STERN - 0.02, 0, z + dz), (0.05, 0.06, 0.016), "Stainless", r=0.008, chamfer=0.006)
+# The cockpit drains' outlets low on the transom: white flanges round dark bores (Bean's transom photos).
+zb = -keel_line_depth(STERN)
+for side in (1, -1):
+    zd = zb + 0.07
+    yd = side * 0.42 * half_beam(STERN, zd) * r_at_z(STERN, zd)
+    cylinder(hull, (STERN + 0.004, yd, zd), (-1, 0, 0), 0.030, 0.008, "Rubrail", 16)    # (not a canoe slot: J22Mesh measures those)
+    cylinder(hull, (STERN - 0.003, yd, zd), (-1, 0, 0), 0.016, 0.003, "BlackPlastic", 12)
 
 # The outboard on its bracket, where the physics puts the engine (round 12: the game drew a grey box there; the pawn
 # skips that box when the model has an "Outboard" socket).
@@ -804,7 +833,9 @@ TILLER_Z0 = sheer(STERN) + 0.1
 tiller = [(STOCK_X - 0.02, 0, TILLER_Z0)]
 for k in range(1, 9):
     t = k / 8
-    tiller.append((STOCK_X + RIG["tiller_length"] * t, 0, TILLER_Z0 + 0.1 * t))
+    # J/22 light match: the hero's laminated tiller sweeps up out of the head and runs nearly level to the grip (Bean's
+    # tiller photos); both ends stay where they were, so TillerEnd and RudderStock don't move.
+    tiller.append((STOCK_X + RIG["tiller_length"] * t, 0, TILLER_Z0 + 0.1 * t * t * (3 - 2 * t) + 0.04 * math.sin(math.pi * t) * (1 - t)))
 # one smooth taper (round 12: drawn as eight stepped segments, each capped, it shaded in bands like a repeating texture)
 tube(rudder, tiller, 0.022, "Wood", 16, radii=[0.022 - 0.008 * max(0.0, (p[0] - STOCK_X) / RIG["tiller_length"]) for p in tiller])
 end = tiller[-1]

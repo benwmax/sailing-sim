@@ -999,6 +999,10 @@ void ASailingGameMode::StartPlay()
 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecord="), RecordSeconds);
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecordInterval="), RecordInterval);
+		// -SailingSlowMo=<f>: the world's time dilated (bench clock, physics and materials alike), so -SailingRecord's
+		// screenshots, slow on the Mac (about 0.8 s each), land a short game time apart (docs/far-cap-sprites: popping).
+		float SlowMo = 1.f;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSlowMo="), SlowMo) && SlowMo > 0.f && GetWorldSettings()) GetWorldSettings()->SetTimeDilation(SlowMo);
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmup;
 		// Soaks: -SailingExecAt=<s>:<cmd>[;<s>:<cmd>...] runs console commands at those seconds of the bench clock, '+' for
@@ -1115,6 +1119,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
 		if (WindMapSecondsAtStart < 0.0) WindMapSecondsAtStart = AWaterSurface::WindMapCpuSeconds;
+		if (FarCapSecondsAtStart < 0.0) FarCapSecondsAtStart = AWaterSurface::FarCapCpuSeconds;
 		if (!bSlicesStarted) { bSlicesStarted = true; FMemory::Memcpy(SlicesAtStart, SailingPerf::GSliceSeconds, sizeof(SlicesAtStart)); }
 		// (The thread times read here are the previous frame's, all of them inside the window but the first.)
 		ThreadTimes.Sample();
@@ -1243,6 +1248,8 @@ void ASailingGameMode::FinishBenchmark()
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"water_cpu_ms\":%.3f}"), (AWaterSurface::WaterCpuSeconds - WaterSecondsAtStart) * 1000.0 / N);
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"windmap_cpu_ms\":%.3f}"), (AWaterSurface::WindMapCpuSeconds - WindMapSecondsAtStart) * 1000.0 / N);
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"farcap_cpu_ms\":%.3f}"), (AWaterSurface::FarCapCpuSeconds - FarCapSecondsAtStart) * 1000.0 / N);
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"farcap_slots\":%d}"), AWaterSurface::FarCapSlotsHeld);
 		// World streaming (docs/world-streaming): what the loader, the re-centre and the chunks did over the run.
 		{
 			int32 Chunks = 0, Made = 0, Dropped = 0, FarDropped = 0;

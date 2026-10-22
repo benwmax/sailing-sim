@@ -677,6 +677,91 @@ return E * 0.35 * hg;""", list(glow_in.keys()), unreal.CustomMaterialOutputType.
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+FAR_CAP_CODE = r"""
+// docs/far-cap-sprites/ (far-caps option B): a far whitecap standing on the water, an upright quad turned to the camera.
+// The instance's pivot is its slot (AWaterSurface::UpdateFarCaps), lifted to the crests (Lift: 0.6 Hs, cm); each 4 s life it hops a few metres (a hash of its seed
+// and the life) and lives with the tile's probability (ProbA/ProbB, fixed at the life's start), rising and falling as 1.6 sin clamped at 1 (mean 0.7937),
+// faded by the sprites' share (AWaterSurface::FarCapSpriteWeight, M_WaterV4's FCS_W: keep them in step). A dead or
+// faded cap collapses to its pivot (no pixels). Returns the offset to the vertex's place, and in Live (out) how alive.
+float ep = Time / 4.0 + Seed * 7.13;
+float age = frac(ep);
+float n = floor(ep);
+float h1 = frac(sin(dot(float2(Seed * 91.7, n), float2(127.1, 311.7))) * 43758.5453);
+float h2 = frac(sin(dot(float2(Seed * 37.3, n + 3.1), float2(127.1, 311.7))) * 43758.5453);
+float h3 = frac(sin(dot(float2(Seed * 53.9, n + 7.7), float2(127.1, 311.7))) * 43758.5453);
+float3 P = Pivot + float3((h2 - 0.5) * 1200.0, (h3 - 0.5) * 1200.0, Lift - 45.0);   // (the pivot stands 45 cm up: AWaterSurface::UpdateFarCaps)
+float3 toCam = Cam - P;
+float dist = max(length(toCam.xy) / 100.0, 1.0);
+float w = smoothstep(300.0, 400.0, dist) * (1.0 - smoothstep(1100.0, 1250.0, dist)) * (1.0 - smoothstep(0.05, 0.14, (toCam.z / 100.0) / dist));
+w = max(w, DebugAll);
+// (Decided at the life's start: begun before SwitchT, ProbA, and none on a slot a rebuild added; since, ProbB.)
+float Prob = (n - Seed * 7.13) * 4.0 < SwitchT ? (Born > 0.5 ? 0.0 : ProbA) : ProbB;
+Live = step(h1, max(Prob, DebugAll)) * w * saturate(1.6 * sin(3.14159265 * age));
+float2 side = normalize(float2(-toCam.y, toCam.x) + float2(1e-4, 0.0));
+float width = Size * 150.0 * (0.8 + 0.4 * h2), height = Size * CapH * 100.0 * (0.8 + 0.4 * h3);   // (Size: fewer, bigger caps past the slot budget)
+float k = Live > 1e-3 ? 1.0 : 0.0;
+float3 v = P + k * (float3(side * (Local.x / 100.0) * width, 0.0) + float3(0.0, 0.0, (Local.y / 100.0 + 0.5) * height));
+return v - WP;
+"""
+
+
+def build_far_cap():
+    """M_FarCap (docs/far-cap-sprites/, High and Ultra): the far whitecaps as upright sprites (AWaterSurface::UpdateFarCaps):
+    lit translucent foam, its life and its share of the caps (against M_WaterV4's flecks) computed per vertex."""
+    mat = new_material("M_FarCap")
+    # Masked, its cover dithered (the temporal AA resolves it): translucent, the caps standing on the far water drew only
+    # where the land or the sky was behind them, a ghost over the water at a low eye.
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    # (Raw positions, all in the render's world: the pivot's TransformPosition doesn't take the map's origin.)
+    wp = MEL.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1400, 0)
+    cam = MEL.create_material_expression(mat, unreal.MaterialExpressionCameraPositionWS, -1400, 100)
+    zero = node(mat, unreal.MaterialExpressionConstant3Vector, -1600, 200, constant=unreal.LinearColor(0, 0, 0, 0))
+    piv = node(mat, unreal.MaterialExpressionTransformPosition, -1400, 200)
+    piv.set_editor_property("transform_source_type", unreal.MaterialPositionTransformSource.TRANSFORMPOSSOURCE_LOCAL)
+    piv.set_editor_property("transform_type", unreal.MaterialPositionTransformSource.TRANSFORMPOSSOURCE_WORLD)
+    connect(zero, "", piv, "")
+    inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -1400, 300), "Pivot": piv, "WP": wp, "Cam": cam,
+              "Seed": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 400, data_index=0),
+              "ProbA": scalar(mat, "ProbA", 0.0, -1400, 500), "ProbB": scalar(mat, "ProbB", 0.0, -1600, 500),
+              "SwitchT": scalar(mat, "SwitchT", 0.0, -1600, 550),
+              "Born": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1600, 400, data_index=1), "CapH": scalar(mat, "CapH", 0.3, -1400, 600),
+              "Lift": scalar(mat, "Lift", 0.0, -1600, 650), "DebugAll": scalar(mat, "DebugAll", 0.0, -1600, 750), "Size": scalar(mat, "Size", 1.0, -1600, 850),
+              "Time": node(mat, unreal.MaterialExpressionTime, -1400, 700)}
+    c = custom(mat, FAR_CAP_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 200,
+               extra_outputs=(("Live", unreal.CustomMaterialOutputType.CMOT_FLOAT1),))
+    for name, n in inputs.items():
+        connect(n, "", c, name)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    vi = node(mat, unreal.MaterialExpressionVertexInterpolator, -600, 400)
+    connect(c, "Live", vi, "")
+    uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -600, 550)
+    shape = custom(mat, """// A cap seen from the side: densest low in the middle, thinning out to its ends and up into its spray.
+float x = 2.0 * UV.x - 1.0, y = 2.0 * UV.y - 1.0;
+return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - y * y)) * 0.9;""", ["UV", "Live"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 450)
+    connect(uv, "", shape, "UV")
+    connect(vi, "", shape, "Live")
+    color = node(mat, unreal.MaterialExpressionConstant3Vector, -300, 0, constant=unreal.LinearColor(0.85, 0.88, 0.9, 1))
+    rough = node(mat, unreal.MaterialExpressionConstant, -300, 150, r=0.6)
+    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    # Lit as foam lying on the water (mostly up, leaning to the eye), not by the quad's own normal: turned to the camera
+    # in the vertex shader, half the caps were lit from behind.
+    mat.set_editor_property("tangent_space_normal", False)
+    cv = node(mat, unreal.MaterialExpressionCameraVectorWS, -600, 50)
+    nrm = custom(mat, "return normalize(float3(V.xy * 0.4, 1.0));", ["V"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 80)
+    connect(cv, "", nrm, "V")
+    MEL.connect_material_property(nrm, "", unreal.MaterialProperty.MP_NORMAL)
+    dither = node(mat, unreal.MaterialExpressionMaterialFunctionCall, -100, 450)
+    dither.set_editor_property("material_function", unreal.load_asset(
+        "/Engine/Functions/Engine_MaterialFunctions02/Utility/DitherTemporalAA"))
+    connect(shape, "", dither, "Alpha Threshold")
+    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 BOW_WAVE_CODE = r"""
 // Spray hull (docs/spray-hull): the bow wave's curl (ASailboatPawn::UpdateBowWave). UV: x across the sheet (0 at the hull,
 // 1 out on the sea), y along the bow (0 at the stem). Vertex colour: R the lip (speed), G the crest's rise, A the fade.
@@ -2188,6 +2273,12 @@ float fleck = 0.0;
     FLK(2.0 * exp2(kF), fl0);
     FLK(4.0 * exp2(kF), fl1);
     fleck = lerp(fl0, fl1, kW);
+    // docs/far-cap-sprites/: on High and Ultra the upright sprites (M_FarCap) stand in for the flecks where they have the
+    // caps' share (low views, 300 m to 1.25 km): the flecks keep the rest, so the two never draw the same cover twice.
+    // FCS_W mirrors AWaterSurface::FarCapSpriteWeight.
+    float fcsD = max(dist, 1.0);
+    float FCS_W = smoothstep(300.0, 400.0, fcsD) * (1.0 - smoothstep(1100.0, 1250.0, fcsD)) * (1.0 - smoothstep(0.05, 0.14, (cam.z - p.z) / fcsD));
+    fleck *= 1.0 - FarCapSprites * FCS_W;
 }
 capsDrawn = lerp(capsDrawn, max(fleck, residue), useTable);
 FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
@@ -2372,7 +2463,7 @@ def build_water_v4():
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
     shade = custom(mat, V4_SHADE, shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -2385,6 +2476,7 @@ def build_water_v4():
     connect(wind_slow, "RGBA", shade, "WindSlow")
     connect(polarized, "", shade, "Polarized")
     connect(scalar(mat, "Glitter", 0.0, -2000, 1050), "", shade, "Glitter")
+    connect(scalar(mat, "FarCapSprites", 0.0, -2000, 1150), "", shade, "FarCapSprites")
     connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
     for c in (wpo,):
         connect(chop, "", c, "Chop")
@@ -4486,6 +4578,7 @@ def write_stamp():
 build(build_water)
 build(build_water_v4)
 build(build_spray)
+build(build_far_cap)
 build(build_bow_wave)
 build(build_cloud_layers)
 build(build_cloud_cache)
