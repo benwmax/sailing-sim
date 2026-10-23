@@ -4358,7 +4358,7 @@ def build_vehicle_paint():
         ASSETS.create_asset("MI_World_ContainerPaint", WORLD_FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
     MEL.set_material_instance_parent(mi, mat)
     MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", 0.7)
-    MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", 0.15)
+    MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", 0.0)   # paint, not metal (docs/ship-backlit)
     MEL.update_material_instance(mi)
     unreal.EditorAssetLibrary.save_loaded_asset(mi)
 
@@ -4738,7 +4738,10 @@ WORLD_LIBRARY = {
     "Cargo": ((0.40, 0.36, 0.30), 0.95, 4.0, 0.0, 0.0),
     "Pilothouse": ((0.80, 0.80, 0.78), 0.4, 3.0, 1.0, 0.0),
     "Funnel": ((0.08, 0.08, 0.09), 0.6, 0.0, 0.0, 0.0),
-    "ShipHull": ((0.03, 0.06, 0.12), 0.55, 8.0, 0.0, 0.2),     # Graphics G6: pattern 8, rust weeping from the deck edge
+    # Graphics G6: pattern 8, rust weeping from the deck edge. Ship backlit (docs/ship-backlit): painted steel is a
+    # dielectric (metallic 0, which had cut the sky's diffuse on the shaded side by a fifth) and a weathered navy, not
+    # near-black (0.03 to 0.12 linear, LRV 6, read as a hole against a bright sky): sun-faded navy, LRV about 10.
+    "ShipHull": ((0.07, 0.10, 0.17), 0.55, 8.0, 0.0, 0.0),
     "Lifeboat": ((0.75, 0.22, 0.02), 0.45, 0.0, 0.0, 0.0),      # SOLAS orange
 }
 
