@@ -131,6 +131,21 @@ ASailingEnvironment::ASailingEnvironment()
 	RainCurtains->SetUsingAbsoluteLocation(true);
 	RainCurtains->SetUsingAbsoluteRotation(true);
 	RainCurtains->SetUsingAbsoluteScale(true);
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WallMat(TEXT("/Game/Materials/M_RainWall.M_RainWall"));
+	RainWall = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("RainWall"));
+	RainWall->SetupAttachment(RootComponent);
+	RainWall->SetStaticMesh(Plane.Object);
+	RainWall->SetMaterial(0, WallMat.Object);
+	RainWall->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RainWall->SetCastShadow(false);
+	RainWall->NumCustomDataFloats = 3;
+	RainWall->bVisibleInRayTracing = false;
+	RainWall->SetAffectDistanceFieldLighting(false);
+	RainWall->bAffectDynamicIndirectLighting = false;
+	RainWall->SetUsingAbsoluteLocation(true);
+	RainWall->SetUsingAbsoluteRotation(true);
+	RainWall->SetUsingAbsoluteScale(true);
+	RainWall->SetVisibility(false);
 
 	Bolt = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Bolt"));
 	Bolt->SetupAttachment(RootComponent);
@@ -372,6 +387,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateSkyline(CamPos);
 	UpdateRain(CamPos);
 	UpdateRainCurtains(CamPos, DeltaSeconds);
+	UpdateRainWall(CamPos);
 	if (WorldCollection)
 	{
 		// The trees on the shore sway with the wind there (MPC_World.Wind: direction it blows toward, speed with gusts).
@@ -909,6 +925,48 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		RainCurtains->SetCustomDataValue(2 * K + 1, 3, float(C.Shade), false);
 	}
 	RainCurtains->MarkRenderStateDirty();
+}
+
+void ASailingEnvironment::UpdateRainWall(const FVector& CameraPos)
+{
+	// docs/storm-gloom/: seen from ahead of the storm, the air under its deck read as a lit, clear horizon (the gap under
+	// the shelf, the horizon beneath the core: the height fog's inscatter, which takes no shadow from the deck). One long
+	// card on the front's line under the core's leading edge, from the water to just under the shelf's base, unfogged and
+	// lit by the sun through the deck (M_RainWall). It fades as the camera comes within a few kilometres of it: closer, the
+	// haze and fog carry the storm's visibility (FWeatherState::LocalizeStorm). A marched gloom in the clouds looked the
+	// same and cost 5 ms on the storm view (every view sample under the deck took shadow rays).
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	if (!GM || !RainWall) return;
+	static SailingArgs::FCachedFlag NoWallArg(TEXT("SailingNoRainWall"));
+	const FWeatherState& W = GM->GetWeatherState();
+	const FGustFront& F = W.Front;
+	const double Now = GM->GetSimTime();
+	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CameraPos);
+	constexpr double BehindM = 1200.0, TopM = 420.0, WidthM = 40000.0;
+	const double CamAhead = F.bActive ? F.DistanceAhead(Cam.X, Cam.Y, Now) + BehindM : -1e9;
+	const double Amount = F.bActive && !W.bSquall && !NoWallArg.Get()
+		? FMath::Clamp(W.Sky[ECloudLayer::Storm].Coverage * 1.5, 0.0, 1.0) * FMath::SmoothStep(1500.0, 3500.0, CamAhead) : 0.0;
+	RainWall->SetVisibility(Amount > 0.01);
+	if (Amount <= 0.01) return;
+	if (RainWall->GetInstanceCount() != 1)
+	{
+		RainWall->ClearInstances();
+		RainWall->AddInstance(FTransform::Identity, true);
+	}
+	// On the front's line BehindM behind it, abeam of the camera, facing the way the storm moves.
+	const double A = F.MoveDegrees * kDegToRad;
+	const FVector Dir(FMath::Cos(A), FMath::Sin(A), 0.0);
+	const FVector At = FVector(Cam.X, Cam.Y, 0.0) - Dir * CamAhead;
+	const FVector Up(0, 0, 1), Side = FVector::CrossProduct(Up, Dir);
+	const FQuat Q(FMatrix(Side, Up, Dir, FVector::ZeroVector));
+	RainWall->UpdateInstanceTransform(0, FTransform(Q, SailingFrame::FromMapCm(GetWorld(), (At + FVector(0, 0, 0.5 * TopM)) * CmPerMeter),
+		FVector(WidthM, TopM, 1.0)), true, false, true);
+	const double Shade = SunDirection.Z > 0.0 ? LastWeatherMap.SunTransmittance(W.Sky, F, F.SpeedMs * (Now - F.StartTime), GM->GetWeatherTime(),
+		At.X, At.Y, SunDirection.X, SunDirection.Y, SunDirection.Z) : 0.0;
+	RainWall->SetCustomDataValue(0, 0, float(Amount), false);
+	RainWall->SetCustomDataValue(0, 1, float(TopM), false);
+	RainWall->SetCustomDataValue(0, 2, float(Shade), false);
+	RainWall->MarkRenderStateDirty();
 }
 
 void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& CameraPos)

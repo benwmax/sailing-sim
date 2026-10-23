@@ -72,6 +72,7 @@ private:
 	void UpdateRain(const FVector& CameraPos);
 	/** W5b: the storm's rain curtains and rain foot from afar, where the rain field (FStormRain or the radar) says it rains. */
 	void UpdateRainCurtains(const FVector& CameraPos, float DeltaSeconds);
+	void UpdateRainWall(const FVector& CameraPos);
 	void UpdateLightning(float DeltaSeconds, const FVector& CameraPos);
 	void BuildBolt(const FVector& Ground, float CloudBaseCm);
 	/** Visual V5 (Medium and High): paints the weather map on a worker every couple of seconds and drives M_CloudLayers. */
@@ -152,6 +153,8 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UStaticMeshComponent> RainFar;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainMaterial;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<class UInstancedStaticMeshComponent> RainCurtains;
+	/** docs/storm-gloom/: the grey air under the storm's deck seen from ahead, one card on the front (UpdateRainWall). */
+	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<class UInstancedStaticMeshComponent> RainWall;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> RainCurtainMaterial;
 	struct FRainCurtain { double X = 0.0, Y = 0.0, Rate = 0.0, Seed = 0.0, Shade = 1.0; };
 	TArray<FRainCurtain> Curtains;

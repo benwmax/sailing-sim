@@ -550,6 +550,57 @@ def build_rain_curtain():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+RAIN_WALL_CODE = """
+// docs/storm-gloom/: the rain wall (ASailingEnvironment::UpdateRainWall): one long card along the front under the core's
+// leading edge, seen from ahead of the storm. The rain-laden air under the deck is grey and shadowed, not the lit horizon
+// it read as: nearly opaque, densest at the water (the rain foot), thinning to nothing just under the shelf's base (Top,
+// m), with broad slow shafts in it; its ends fade over a fifth of its length each.
+float alt = WP.z / 100.0;   // m above the water
+float edge = smoothstep(0.0, 0.2, UV.x) * smoothstep(1.0, 0.8, UV.x);
+float shafts = 0.85 + 0.15 * sin(UV.x * 60.0 + 3.0) * sin(UV.x * 23.0 + 1.7);
+float top = 1.0 - smoothstep(Top * 0.75, Top, alt);
+float low = 1.0 + 0.25 * exp(-max(alt, 0.0) / 120.0);
+return saturate(Amount * 0.75 * shafts * top * low * edge);
+"""
+
+
+def build_rain_wall():
+    """M_RainWall (docs/storm-gloom/): the grey air under a storm's deck seen from ahead, one instanced card. Unlit and
+    unfogged: fogged, a card 3-7 km off is the height fog's inscatter (a lit, pale horizon), which is what it hides; its
+    own light is the sun's illuminance (SkyAtmosphereLightIlluminance) times its share through the deck (per instance,
+    from FWeatherMap::SunTransmittance), on a grey air lit mostly by the deck, brightening a little with distance for the
+    shadowed haze in front of it."""
+    mat = new_material("M_RainWall")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    mat.set_editor_property("use_translucency_vertex_fog", False)   # "Apply Fogging" off
+    inputs = {"UV": node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0),
+              "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 100)}
+    for k, (name, y) in enumerate((("Amount", 200), ("Top", 300))):
+        inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    op = custom(mat, RAIN_WALL_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
+    for name, n in inputs.items():
+        connect(n, "", op, name)
+    lum_in = {"E": node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -900, 500),
+              "Shade": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 600, data_index=2, const_default_value=0.0),
+              "Dist": node(mat, unreal.MaterialExpressionPixelDepth, -900, 700),
+              "Gloom": scalar(mat, "WallLum", 0.012, -900, 800)}
+    lum = custom(mat, """// Grey, a little blue (the deck's light), lit by what of the sun gets through the deck, plus a floor for the deck's own
+// glow; the shadowed haze in front lifts it with distance (to twice by 15 km).
+float lit = Gloom * (0.6 + 2.4 * saturate(Shade));
+float haze = 1.0 + saturate(Dist / 1500000.0);
+return E * lit * haze * float3(0.92, 0.96, 1.04);""", list(lum_in.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 600)
+    for name, n in lum_in.items():
+        connect(n, "", lum, name)
+    MEL.connect_material_property(lum, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.connect_material_property(curvature(mat, -500, 900), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_smoke():
     """M_Smoke (Graphics G8 Ultra showcase): an exhaust puff from APowerVesselActor::UpdateExhaust. Instanced spheres,
     lit translucent (volumetric, non-directional: cheap, and smoke has no surface to shade), shade and opacity per instance
@@ -4728,6 +4779,7 @@ build(build_house_kit_materials)
 build(build_terrain)
 build(build_rain)
 build(build_rain_curtain)
+build(build_rain_wall)
 build(build_smoke)
 build(build_emissive)
 build(build_sail)
