@@ -1212,7 +1212,12 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	// docs/night-clouds/: nor under a deck at night: its base lit by the towns is emission too, and the cache's night
 	// ambient met the live deck in a bright rim. Scattered night cumulus keep the cache (M_SkyDome adds their glow).
 	const bool bNightDeck = NightAmount > 0.5f && W.Sky[ECloudLayer::Stratus].Coverage > 0.3;
-	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02) || bNightDeck;
+	// Realism audit 6 (docs/overcast-edge/): nor under a closed deck by day. The far deck is behind the haze (90% at the
+	// horizon), so the cache's panorama hardly shows, and with the live clouds stopped at 5 km the overcast ended there
+	// in a curved edge with clear-looking sky below it. The live march carries a deck to the horizon (as with
+	// -SailingNoSkyCache).
+	const bool bClosedDeck = W.Sky[ECloudLayer::Stratus].Coverage > 0.8;
+	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02) || bNightDeck || bClosedDeck;
 	// docs/night-clouds/ (banding): under that deck the rays up through it keep their samples. UE thins a ray's samples in
 	// proportion below r.VolumetricCloud.DistanceToSampleMaxCount; at the live clouds' 15 km a ray up through a 0.7 km
 	// deck got 80 x 0.7 / 15, about 4, and the overcast came out in rings round the zenith. 3 km (Ultra's): about 19.
@@ -1463,7 +1468,11 @@ void ASailingEnvironment::UpdateHaze()
 	const float HazeDensity = Density * FMath::Lerp(0.6f, 1.6f, Haze);
 	if (Stepped(F->FogDensity, HazeDensity)) F->SetFogDensity(HazeDensity);
 	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
-	const FLinearColor Tint = FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze);
+	// Realism audit 6: under a closed stratus deck the air is lit by the grey deck, not the blue sky: the haze goes neutral
+	// grey with the deck (Crisp's blue under an overcast read as clear sky between the deck and the horizon).
+	const FLinearColor DeckGrey(0.58f, 0.60f, 0.63f);
+	const float Deck = FMath::SmoothStep(0.5f, 0.95f, float(W.Sky[ECloudLayer::Stratus].Coverage));
+	const FLinearColor Tint = FMath::Lerp(FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze), DeckGrey, Deck);
 	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
 	static SailingArgs::FCachedFlag ClassicHazeArg(TEXT("SailingClassicHaze"));   // Graphics G5 compare
 	const bool bClassicHaze = ClassicHazeArg.Get();
