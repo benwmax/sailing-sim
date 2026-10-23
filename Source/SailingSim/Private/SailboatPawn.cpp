@@ -448,6 +448,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 		BoomPivot->SetRelativeLocation(ToCm(C.MainLuffX, 0.0, C.BoomZ));
 	}
 	MastheadFly->SetRelativeLocation(ToCm(C.MastX, 0.0, C.MastheadZ + 0.08));
+	// pc/sunfish-fidelity: a Sunfish carries no masthead fly (class photos); her halyard cap is the model's.
+	MastheadFly->SetVisibility(C.Type != EBoatType::Sunfish, true);
 
 	// Deck structure: a cabin on the keelboats; beams and trampolines on the cats; akas and nets on the trimaran.
 	const double Loa = C.LengthOverall;
