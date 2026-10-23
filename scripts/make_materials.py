@@ -2921,6 +2921,19 @@ AO = 1.0;
         baseCu = lerp(base2, base, smoothstep(0.35, 0.9, w.r));
     }
     float shapeCu = saturate((baseCu - (1.0 - covCu)) / max(covCu, 0.08)) * step(0.001, covCu);
+    // Cumulus billows (docs/cumulus-billows/): packed lobes 300-800 m across (T_CloudBillow, a 3 x 1.5 km tile placed in
+    // metres, so they are round in the world), filtered like the shape. Their crowns push the outline out across the cell's
+    // soft margin and their creases cut it in: a cell's edge is bubbles on bubbles, not one smooth balloon (the shape
+    // noise's own billows are filtered flat at cloud distances; the old erosion only moved a thin skin). The field's mean
+    // (0.79) is taken out; x6 because the outline sits where the shape climbs through about a fifth of its range. Not over
+    // the cell's last 6% of coverage (lobes there floated free as shreds), nor at its flat base.
+    float bl = 0.79;
+    [branch] if (covCu > 0.001)
+    {
+        float billowMip = clamp(log2(foot / 23.4), 0.0, 6.0);   // billow texel: 3 km / 128
+        bl = Billow.SampleLevel(BillowSampler, qw * float3(0.3333, 0.3333, 0.6667), billowMip).r;
+        shapeCu = saturate(shapeCu + 6.0 * (bl - 0.79) * smoothstep(0.03, 0.25, hCu) * smoothstep(0.0, 0.06, covCu));
+    }
     // Graphics G8: eroded by the detail's coarse octaves (the 16- and 32-cell ones speckled the edges), and a crisper
     // ramp from edge to body: fair cumulus has a hard, sunlit outline, not a feathered, painted one.
     float hfCu = dt.r * 0.8 + dt.g * 0.2;
@@ -3111,7 +3124,7 @@ def build_cloud_layers():
     # Graphics G1: the baked noise volumes and curl field (scripts/import_cloud_noise.py).
     tex = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 350 + 60 * i, parameter_name=n,
                    texture=unreal.load_asset(f"/Game/Materials/Clouds/T_Cloud{n}"))
-           for i, n in enumerate(("Shape", "Detail", "Curl"))}
+           for i, n in enumerate(("Shape", "Detail", "Curl", "Billow"))}
     vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
@@ -3122,7 +3135,7 @@ def build_cloud_layers():
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -3293,7 +3306,7 @@ def build_cloud_cache():
               sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     tex = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 350 + 60 * i, parameter_name=n,
                    texture=unreal.load_asset(f"/Game/Materials/Clouds/T_Cloud{n}"))
-           for i, n in enumerate(("Shape", "Detail", "Curl"))}
+           for i, n in enumerate(("Shape", "Detail", "Curl", "Billow"))}
     vecs = {n: vector(mat, n, d, -1600, 500 + 90 * i) for i, (n, d) in enumerate((
         ("WeatherRect", (-32000, -32000, 64000, 0)), ("LayerCumulus", (0.3, 1.4, 2.6, 1)), ("LayerStratus", (0, 0.9, 1.6, 0.8)),
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
@@ -3303,7 +3316,7 @@ def build_cloud_cache():
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 2400)
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "WxTop", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
+    c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
                                    "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 300)
     connect(uv, "", c, "UV")

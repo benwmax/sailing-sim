@@ -444,7 +444,7 @@ namespace
  * field load at their sizes, and the shape field the shader draws (the shape volume's 4 km tile warped by the 13 km curl
  * field) doesn't repeat: along a 40 km line its autocorrelation stays under 0.5 at every lag from 2 to 15 km, where the
  * unwarped volume repeats exactly every 4 km (the V5 noise every 1.25 km: the same puff over and over). The 1024^2
- * weather map's cumulus field doesn't repeat either.
+ * weather map's cumulus field doesn't repeat either, nor do the cumulus billow lobes (T_CloudBillow).
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCloudNoiseTest, "SailingSim.Visual.CloudNoise", SkyFlags)
 bool FSkyCloudNoiseTest::RunTest(const FString&)
@@ -473,6 +473,40 @@ bool FSkyCloudNoiseTest::RunTest(const FString&)
 	AddInfo(FString::Printf(TEXT("Shape autocorrelation, 2-15 km lags: unwarped %.2f, warped %.2f"), PlainRepeat, WarpedRepeat));
 	TestTrue(TEXT("The unwarped volume repeats (sanity: it tiles every 4 km)"), PlainRepeat > 0.8);
 	TestTrue(TEXT("The warped shape field doesn't repeat within 15 km"), WarpedRepeat < 0.5);
+
+	// Cumulus billows (docs/cumulus-billows/): the packed lobes, 128^3 over 3 x 3 x 1.5 km. CLOUD_CODE takes out their mean
+	// (0.79) so the cells' coverage holds; about a fifth of the volume is crease (under 0.7), so lobes are packed, not
+	// solid. Sampled as the shader does (warped q at 1/3 a km), the line doesn't repeat either.
+	UVolumeTexture* Billow = LoadObject<UVolumeTexture>(nullptr, TEXT("/Game/Materials/Clouds/T_CloudBillow.T_CloudBillow"));
+	FSourceTexels B;
+	if (TestNotNull(TEXT("T_CloudBillow"), Billow) && TestTrue(TEXT("Billow source readable"), B.Load(Billow)))
+	{
+		TestEqual(TEXT("Billow volume 128^3"), B.X * 10000 + B.Y * 100 + B.Z, 128 * 10000 + 128 * 100 + 128);
+		double Sum = 0.0;
+		int64 Crease = 0;
+		for (int32 K = 0; K < B.Z; ++K)
+			for (int32 J = 0; J < B.Y; ++J)
+				for (int32 I = 0; I < B.X; ++I)
+				{
+					const float V = B.At(I, J, K, 0);
+					Sum += V;
+					Crease += V < 0.7f;
+				}
+		const double Texels = double(B.X) * B.Y * B.Z, Mean = Sum / Texels, CreaseShare = Crease / Texels;
+		AddInfo(FString::Printf(TEXT("Billow %dx%dx%d: mean %.3f, crease share %.2f"), B.X, B.Y, B.Z, Mean, CreaseShare));
+		TestTrue(TEXT("Billow mean is the shader's 0.79"), FMath::Abs(Mean - 0.79) < 0.02);
+		TestTrue(TEXT("Billow lobes are packed with creases between them"), CreaseShare > 0.1 && CreaseShare < 0.4);
+		TArray<double> Lobes;
+		for (int32 I = 0; I < Count; ++I)
+		{
+			const double Qx = 0.05 * I, Qy = 3.1, Qz = 1.8;
+			const double Cx = C.Sample(Qx * 0.077, Qy * 0.077, 0.0, 0) * 2.0 - 1.0, Cy = C.Sample(Qx * 0.077, Qy * 0.077, 0.0, 1) * 2.0 - 1.0;
+			Lobes.Add(B.Sample((Qx + 1.3 * Cx) / 3.0, (Qy + 1.3 * Cy) / 3.0, (Qz + 0.2 * Cx) / 1.5, 0));
+		}
+		const double LobeRepeat = MaxAutocorrelation(Lobes, 40, 300);
+		AddInfo(FString::Printf(TEXT("Billow autocorrelation, 2-15 km lags: %.2f"), LobeRepeat));
+		TestTrue(TEXT("The warped billows don't repeat within 15 km"), LobeRepeat < 0.5);
+	}
 
 	// The weather map: 1024^2 over 64 km; its cumulus doesn't repeat across a row.
 	FWeatherSystem W;
