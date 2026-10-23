@@ -642,6 +642,19 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Mid->SetScalarParameterValue(TEXT("PanelWidth"), Lay.PanelWidth);
 		Mid->SetScalarParameterValue(TEXT("Window"), Lay.JibWindow);
 	}
+	// Realism audit 7: the spinnaker's own cloth (M_SailCloth Layout 5: horizontal panels, a radial head) and the
+	// sailmaker's detail; it had kept the material's defaults, a main's crosscut lines on red nylon.
+	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(SpinSail->GetMaterial(0)))
+	{
+		Mid->SetScalarParameterValue(TEXT("Detail"), SailDetail);
+		Mid->SetScalarParameterValue(TEXT("Layout"), 5.f);
+		Mid->SetScalarParameterValue(TEXT("Marks"), 0.f);
+		Mid->SetScalarParameterValue(TEXT("Battens"), 0.f);
+		Mid->SetScalarParameterValue(TEXT("Height"), C.Spinnaker.NumStrips > 0 ? float(C.Spinnaker.Strips[C.Spinnaker.NumStrips - 1].ZTop - C.Spinnaker.Strips[0].ZBottom) : 1.f);
+		Mid->SetScalarParameterValue(TEXT("PanelWidth"), 1.0f);
+		Mid->SetScalarParameterValue(TEXT("LeechLean"), 0.f);
+		Mid->SetScalarParameterValue(TEXT("Window"), 0.f);
+	}
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
 	MainSail->ClearAllMeshSections();

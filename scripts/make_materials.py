@@ -1639,7 +1639,17 @@ float alongLeech = UV0.y * leechK + LeechLean * UV2.x / leechK;
 float pw = max(PanelWidth, 0.2f);
 float seamDist = abs(frac(alongLeech / pw + 0.5f) - 0.5f) * pw;
 float leechLen = Height * leechK;
-if (Layout > 3.5)
+if (Layout > 4.5)
+{
+    // Realism audit 7: a spinnaker's panels (Layout 5): horizontal cloths across the body every PanelWidth, and in the
+    // top quarter the radial head, its seams fanning down from the head (in the normalized planform, a fan from the head
+    // is a line of constant UV1.x: the chord in metres is UV0.x + UV2.x), each crossing seam taped.
+    float body = abs(frac(UV0.y / pw + 0.5) - 0.5) * pw;
+    float chord = UV0.x + UV2.x;
+    float radial = abs(frac(UV1.x * 7.0 + 0.5) - 0.5) / 7.0 * chord;
+    seamDist = lerp(body, min(radial, abs(UV1.y - 0.74) * Height), smoothstep(0.73, 0.75, UV1.y));
+}
+else if (Layout > 3.5)
 {
     seamDist = abs(frac(UV0.y / 3.4 + 0.5) - 0.5) * 3.4;
 }
@@ -1699,6 +1709,7 @@ if (Marks > 0.5)
 // A faint weave and the panels' slight tone differences.
 float weave = 0.5 + 0.5 * sin(UV0.x * 1400.0) * sin(UV0.y * 1400.0);
 float panel = frac(sin(floor(alongLeech / pw) * 12.9898) * 43758.5453);
+if (Layout > 4.5) panel = frac(sin((UV1.y > 0.74 ? 40.0 + floor(UV1.x * 7.0) : floor(UV0.y / pw)) * 12.9898) * 43758.5453);
 float3 base = C.rgb;
 if (Layout > 0.5 && Layout < 1.5)
 {
@@ -1721,6 +1732,10 @@ float redness = saturate((base.r - max(base.g, base.b)) * 2.0), blueness = satur
 float dyed = 1.0 - step(0.6, min(base.r, min(base.g, base.b)));   // white panels age by the Dacron rules below
 base = lerp(base, lerp(base, float3(0.86, 0.80, 0.76), 0.65), sunfade * saturate(0.6 + 0.4 * redness - 0.35 * blueness) * dyed);
 float3 cloth = base * (0.97 + 0.03 * weave) * (0.985 + 0.03 * panel);
+// Realism audit 7: each nylon panel its own dye lot, a few percent apart (the spinnaker read as one flat colour), and the
+// coloured Dacron panels of the dinghies a little apart too.
+float dyedCloth = 1.0 - step(0.6, min(base.r, min(base.g, base.b)));
+cloth *= Layout > 4.5 ? 0.93 + 0.12 * panel : 1.0 + 0.04 * (panel - 0.5) * dyedCloth;
 // Graphics G6: a club boat's Dacron is off-white and shows its age (round 7: "too white"). The leech and the head take the
 // most sun and yellow first, each panel a little differently; the foot is greyed from the deck and from being flaked
 // there; a few mildew specks low down. Only on the white cloth (the Sunfish and Hobie colours keep theirs).
@@ -1745,7 +1760,7 @@ float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
 float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
 cloth *= 1.0 - 0.35 * speck * whiteish;
 float fibre = 0.0;
-if (Layout > 3.5)
+if (Layout > 3.5 && Layout < 4.5)
 {
     // Three families of fibre paths, each fanning from a corner (clew, head, tack) in metres, so they crowd where the
     // loads gather: a tow every 0.035 rad, 2.4 cm wide (a bundle of fibres, what reads from the deck and beyond), fading away from
@@ -1786,7 +1801,7 @@ if (Detail > 0.5)
     float zig = abs(frac(UV0.x / 0.006) - 0.5) * 2.0;              // a 6 mm zigzag along the seam
     float rowA = 1.0 - smoothstep(0.0004, 0.0009, abs(seamDist - (0.0025 + 0.0025 * zig)));
     float rowB = 1.0 - smoothstep(0.0004, 0.0009, abs(seamDist - (0.0055 + 0.0020 * zig)));
-    stitch = max(rowA, rowB) * fineK * step(Layout, 3.5);
+    stitch = max(rowA, rowB) * fineK * (Layout < 3.5 || Layout > 4.5 ? 1.0 : 0.0);
     // Tabling: 25 mm on the luff, 40 on the leech, 30 on the foot, a stitch line near its inner edge.
     float dl = UV0.x, df = UV0.y, dk = UV2.x;
     float tab = max(max(1.0 - smoothstep(0.025 - px, 0.025 + px, dl), 1.0 - smoothstep(0.040 - px, 0.040 + px, dk)), 1.0 - smoothstep(0.030 - px, 0.030 + px, df));
@@ -1828,7 +1843,9 @@ if (Detail > 0.5)
 // opacity mask, JIB_WINDOW_MASK), its few drawn pixels the vinyl's gloss, with a stitched border; against the light it
 // lets more through than the cloth.
 //@JIB_WINDOW@
-float3 col = lerp(cloth * (1.0 - 0.12 * seam) * (1.0 - 0.015 * min(layers, 4.0)), base * 0.93, batten);
+// (A nylon or dyed seam's overlap, two layers of colour, reads darker than a white Dacron one: realism audit 7.)
+float seamDark = Layout > 4.5 ? 0.28 : lerp(0.12, 0.22, dyedCloth);
+float3 col = lerp(cloth * (1.0 - seamDark * seam) * (1.0 - 0.015 * min(layers, 4.0)), base * 0.93, batten);
 col = lerp(col, float3(0.42, 0.44, 0.45), 0.85 * win * (1.0 - mark));   // (the dithered pixels left: the vinyl's milky haze, glossy)
 col *= 1.0 - 0.25 * winEdge;
 col *= 1.0 - 0.09 * edgeLine - 0.16 * stitch * (1.0 - mark);
@@ -1843,7 +1860,7 @@ float3 Nf = normalize(VN) * (Face >= 0.0 ? 1.0 : -1.0);
 float fwd = pow(saturate(dot(-normalize(CamV), normalize(SunDir))), 6.0);
 float showThrough = (0.18 + 0.32 * fwd) * through;
 Transmit = base * Translucency * (1.0 + 1.1 * fwd) * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark) * (1.0 - showThrough)
-    * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
+    * (Layout > 3.5 && Layout < 4.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
     * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine) * (1.0 + 0.6 * win) * (1.0 - 0.5 * winEdge);
 // The draft: cloth turning away from the eye darkens (Dacron is a matte weave under its resin: little light comes back at a
 // grazing look), so the sail's belly, its twist and the roll of its leech read in flat light too; it had read as one
@@ -1884,7 +1901,7 @@ NormalTS = normalize(float3(-(dhdu + ndu), -(dhdv + ndv), 1.0));
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
-if (Layout > 3.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
+if (Layout > 3.5 && Layout < 4.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 Rough = lerp(Rough, 0.08, win);                                     // the window's vinyl
 return col;
 """.replace("//@JIB_WINDOW@", JIB_WINDOW)
@@ -1977,7 +1994,7 @@ def build_sail_cloth():
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         # (realism audit 3: nylon lets more light through than resinated Dacron)
         for pname, value in (("Battens", bat), ("Marks", mk), ("Height", h), ("Roughness", 0.5 if name != "MI_Sail_Spinnaker" else 0.45),
-                             ("Translucency", 0.34 if name != "MI_Sail_Spinnaker" else 0.55)):
+                             ("Translucency", 0.34 if name != "MI_Sail_Spinnaker" else 0.45)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
