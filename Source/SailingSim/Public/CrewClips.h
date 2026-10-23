@@ -9,7 +9,8 @@
  * Tools/crew/bake_idles.py into CrewClipData.inl) play as motion about the stance: each joint's turn about the posture it
  * was held in, in the character frame, so the stance stays the base pose and the clip only moves the sailor about it. A
  * MetaHuman takes the same turns through FCrewRig. The layer chooses clips per sailor (seeded, mirrored half the time),
- * crossfades between them, starts a weight shift in step with a change of heel, and goes quiet while the sailor moves (a
+ * crossfades between them (each sailor at their own pace, a few seconds of a clip at a time, the last two avoided:
+ * docs/crew-idle-variety/), starts a weight shift in step with a change of heel, and goes quiet while the sailor moves (a
  * tack's crossing, a change of seat, bracing, ducking) or hangs from a line.
  */
 enum class ECrewClipKind : uint8 { Standing, Seated };
@@ -60,6 +61,9 @@ struct FCrewClipCursor
 	int32 Clip = -1;
 	float T = 0.f;
 	bool bMirror = false;
+	float Amp = 1.f;                // how much of the clip's motion (an idle pick: 0.75..1)
+	float PlayFor = 1e9f;           // s of it before the next pick fades in (an idle pick: 3..8 s)
+	float Pace = 1.f;               // times the sailor's own (an idle pick: 0.9..1.1)
 };
 
 struct SAILINGSIM_API FCrewClipInput
@@ -84,6 +88,8 @@ struct SAILINGSIM_API FCrewClipState
 	float Cooldown = 0.f;           // s before another heel-matched shift
 	uint32 Rng = 0;
 	bool bStarted = false;
+	float Rate = 1.f;               // this sailor's pace through the clips (0.85..1.1, from the seed)
+	int32 Earlier = -1;             // the clip before Cur's, also not picked next
 	int32 HeelShifts = 0;           // weight shifts started on a change of heel
 	int32 LastShiftDirection = 0;   // +1 toward the sailor's right or forward
 	int32 LastShiftAxis = 0;
