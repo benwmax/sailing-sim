@@ -1086,46 +1086,70 @@ void ALakeTerrainActor::PlaceReeds()
 {
 	const FLakeData* Lake = GetLake();
 	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || ReedModels.Num() > 0 || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoReeds"))) return;
-	UStaticMesh* Meshes[2] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
-		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")) };
+	// Realism audit 10 (docs/realism-audit-1022): the shore's edge was clean, trees standing straight out of mown grass to
+	// the water. Besides the cattails and rushes: rank bank grass and weeds where the mowing stops (SM_Reeds_2) and green weed
+	// floating in the shallows along the edge (SM_Reeds_3), both optional (an older import has neither).
+	UStaticMesh* Meshes[4] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
+		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")),
+		Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/World/Props/SM_Reeds_2.SM_Reeds_2"), nullptr, LOAD_NoWarn | LOAD_Quiet)),
+		Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/World/Props/SM_Reeds_3.SM_Reeds_3"), nullptr, LOAD_NoWarn | LOAD_Quiet)) };
 	if (!Meshes[0] || !Meshes[1]) return;
 	const FLakeTerrain& T = Lake->Terrain;
 	// Every grid node: gentle ground from 0.4 m under the water to 0.6 m above it, in patches
 	// (a low-frequency field gates them, so coves fill and open banks stay bare), clear of the club's marina.
 	const int32 Step = 1;
 	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
-	TArray<FTransform> Out[2];
-	for (int32 R = 1; R < T.GetRows() - 1; R += Step)
+	TArray<FTransform> Out[4];
+	// The coasts' 10 m grid would put four times the lake's clumps along Galveston's marshes: thin them to the lake's spacing.
+	const bool bCoarse = T.GetCell() >= 9.99;
+	for (int32 R = 4; R < T.GetRows() - 4; R += Step)
 	{
-		for (int32 C = 1; C < T.GetCols() - 1; C += Step)
+		for (int32 C = 4; C < T.GetCols() - 4; C += Step)
 		{
 			const double H = T.NodeHeight(R, C);
-			if (H < -0.4 || H > 0.6) continue;
+			if (H < -0.4 || H > 1.2) continue;
 			const double Slope = FMath::Max(FMath::Abs(T.NodeHeight(R + 1, C) - T.NodeHeight(R - 1, C)), FMath::Abs(T.NodeHeight(R, C + 1) - T.NodeHeight(R, C - 1))) / (2.0 * T.GetCell());
-			if (Slope > 0.2) continue;
-			// At the water's edge only: open water within three cells (15 m on the lake), not a flat meadow at lake level.
-			if (H > -0.05 && R > 3 && C > 3 && R < T.GetRows() - 4 && C < T.GetCols() - 4
-				&& FMath::Min(FMath::Min(T.NodeHeight(R + 3, C), T.NodeHeight(R - 3, C)), FMath::Min(T.NodeHeight(R, C + 3), T.NodeHeight(R, C - 3))) > -0.05) continue;
+			// The water's edge: open water within three cells (15 m on the lake), land within two (the shallows' side).
+			const double Wet3 = FMath::Min(FMath::Min(T.NodeHeight(R + 3, C), T.NodeHeight(R - 3, C)), FMath::Min(T.NodeHeight(R, C + 3), T.NodeHeight(R, C - 3)));
+			const double Dry2 = FMath::Max(FMath::Max(T.NodeHeight(R + 2, C), T.NodeHeight(R - 2, C)), FMath::Max(T.NodeHeight(R, C + 2), T.NodeHeight(R, C - 2)));
 			const double X = T.GetOriginX() + R * T.GetCell(), Y = T.GetOriginY() + C * T.GetCell();
 			if (X * X + Y * Y < 350.0 * 350.0) continue;
 			const double Patch = FMath::Sin(X * 0.011 + FMath::Sin(Y * 0.007) * 2.0) * FMath::Sin(Y * 0.013 + FMath::Sin(X * 0.005) * 2.0);
 			const uint32 Hh = Hash(uint32(R) * 73856093u ^ uint32(C) * 19349663u);
-			// The coasts' 10 m grid would put four times the lake's clumps along Galveston's marshes: thin them to the lake's spacing.
-			const uint32 Keep = T.GetCell() >= 9.99 ? 260 : 760;
-			if (Patch < -0.1 || (Hh & 1023) > Keep) continue;
-			const int32 Kind = H < 0.05 ? 0 : int32((Hh >> 10) & 1);   // cattails stand in the water, rushes on the bank
-			for (int32 K = 0; K < 2; ++K)
+			auto Scatter = [&](int32 Kind, int32 N, double MinZ, double ZOverride, float S0, float S1, uint32 Salt)
 			{
-				const uint32 Hk = Hash(Hh + K * 2654435761u);
-				const double Dx = (((Hk & 255) / 255.0) - 0.5) * T.GetCell() * Step, Dy = ((((Hk >> 8) & 255) / 255.0) - 0.5) * T.GetCell() * Step;
-				const double Ground = FMath::Max(T.HeightAt(X + Dx, Y + Dy), -0.35);
-				const float S = 0.75f + 0.55f * ((Hk >> 16) & 255) / 255.f;
-				Out[Kind].Add(FTransform(FRotator(0.f, ((Hk >> 24) & 255) * 1.41f, 0.f), FVector(X + Dx, Y + Dy, Ground) * CmPerMeter, FVector(S)));
+				for (int32 K = 0; K < N; ++K)
+				{
+					const uint32 Hk = Hash(Hh + (K + Salt) * 2654435761u);
+					const double Dx = (((Hk & 255) / 255.0) - 0.5) * T.GetCell() * Step, Dy = ((((Hk >> 8) & 255) / 255.0) - 0.5) * T.GetCell() * Step;
+					const double Z = ZOverride > -1e8 ? ZOverride : FMath::Max(T.HeightAt(X + Dx, Y + Dy), MinZ);
+					const float S = S0 + (S1 - S0) * ((Hk >> 16) & 255) / 255.f;
+					Out[Kind].Add(FTransform(FRotator(0.f, ((Hk >> 24) & 255) * 1.41f, 0.f), FVector(X + Dx, Y + Dy, Z) * CmPerMeter, FVector(S)));
+				}
+			};
+			// Cattails and rushes, as before (gentle ground to 0.6 m, at the edge, in patches); realism audit 10: up to a
+			// 0.3 slope (it had been 0.2: the lake's coves have steeper clay banks, and they stood bare).
+			if (H <= 0.6 && Slope <= 0.3 && !(H > -0.05 && Wet3 > -0.05) && Patch >= -0.1 && (Hh & 1023) <= (bCoarse ? 260u : 760u))
+			{
+				Scatter(H < 0.05 ? 0 : int32((Hh >> 10) & 1), 2, -0.35, -1e9, 0.75f, 1.3f, 0);
+			}
+			// Bank grass: the band from the waterline to 1.2 m up, on banks up to a 0.6 slope, near open water; everywhere
+			// along the shore but thinner outside the patches (where the mowers reach the water).
+			if (Meshes[2] && H >= -0.02 && Slope <= 0.6 && Wet3 < -0.05 && (Hh >> 12 & 1023) <= (bCoarse ? 300u : (Patch >= -0.1 ? 960u : 620u)))
+			{
+				// (A dense strip at the waterline, sparse higher up the bank: a tuft every few metres read as nothing from the water.)
+				Scatter(2, H < 0.6 ? (bCoarse ? 4 : 8) : 2, -0.05, -1e9, 0.9f, 1.7f, 7);
+			}
+			// Weed in the shallows just off the edge (land within two cells), floating at the surface, in patches.
+			if (Meshes[3] && H < -0.03 && H > -0.4 && Dry2 > 0.0 && Patch >= 0.05 && (Hh >> 22 & 1023) <= (bCoarse ? 200u : 520u))
+			{
+				Scatter(3, 1, 0.0, 0.004, 0.8f, 1.6f, 13);
 			}
 		}
 	}
-	for (int32 Kind = 0; Kind < 2; ++Kind)
+	for (int32 Kind = 0; Kind < 4; ++Kind)
 	{
+		if (!Meshes[Kind] || Out[Kind].Num() == 0) continue;
 		// Hierarchical: a few hundred thousand clumps are culled by cluster, not one by one on the render thread.
 		UHierarchicalInstancedStaticMeshComponent* C = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
 		C->SetupAttachment(RootComponent);
@@ -1135,7 +1159,9 @@ void ALakeTerrainActor::PlaceReeds()
 		C->bAffectDistanceFieldLighting = false;
 		C->bVisibleInRayTracing = false;
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
-		C->SetCullDistances(0, 400.f * 100.f);
+		// (The grass and the weed are small: drawn to 250 m, and the weed casts no shadow, lying on the water.)
+		C->SetCullDistances(0, (Kind >= 2 ? 250.f : 400.f) * 100.f);
+		if (Kind == 3) C->SetCastShadow(false);
 		// Bounds cached, not rebuilt from 200,000 clumps (nor a navigation pass over them) when the actor moves: tide, re-centre.
 		C->SetUseConservativeBounds(true);
 		C->SetCanEverAffectNavigation(false);
@@ -1143,7 +1169,7 @@ void ALakeTerrainActor::PlaceReeds()
 		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Out[Kind]), false, true);
 		ReedModels.Add(C);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail and %d rush clumps (first at %s)"), Out[0].Num(), Out[1].Num(),
+	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass and %d weed clumps (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(),
 		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
 }
 
