@@ -603,8 +603,10 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			PP.bOverride_AutoExposureMethod = PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = PP.bOverride_AutoExposureBias = true;
 			PP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 			// Under a storm deck the band narrows: the eye does not brighten the gloom much (Phase 8, fix 7).
-			// In clear air the band and the half-stop lift match the Phase 8 look (a camera's auto exposure, as in the
-			// reference clips); both fade out under the deck.
+			// In clear air the band matches the Phase 8 look (a camera's auto exposure, as in the reference clips) and fades out
+			// under the deck. No lift: Phase 8's half stop in clear air (from the reference video) put the clear sky on the tone
+			// curve's shoulder, half a stop over a still camera's, and washed the low sky and the dusk glow (Bean's choice,
+			// docs/exposure-choice/).
 			const float Dark = FMath::Clamp(float(W.CloudDarkness), 0.f, 1.f);
 			const float Band = FMath::Lerp(1.f, 0.3f, Dark);
 			// Graphics G5: looking into a low sun, a camera meters the bright sky and the scene goes deep (every sunset
@@ -625,7 +627,7 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			}
 			PP.AutoExposureMinBrightness = float(EV) - Band + 2.5f * IntoSun;
 			PP.AutoExposureMaxBrightness = float(EV) + Band + 2.5f * IntoSun;
-			PP.AutoExposureBias = 0.5f * (1.f - Dark) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
+			PP.AutoExposureBias = USailingSettings::Get()->BrightnessBias();   // Settings > Brightness
 		}
 	}
 	if (MoonLight)
@@ -785,7 +787,8 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		if (!UsesPhysicalCamera(USailingSettings::Get()->Quality)) // the physical camera meters the gloom itself
 		{
 			PostProcess->Settings.bOverride_AutoExposureBias = true;
-			PostProcess->Settings.AutoExposureBias = 0.5f - 1.5f * float(W.CloudDarkness) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
+			// (No half-stop lift in clear air: docs/exposure-choice/.)
+			PostProcess->Settings.AutoExposureBias = -1.5f * float(W.CloudDarkness) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
 		}
 		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.
