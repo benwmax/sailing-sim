@@ -47,6 +47,27 @@ def cox_munk(dep_deg, wind_ms, samples=200000, seed=1):
     return float((f * weight).sum() / weight.sum())
 
 
+def mean_reflected_elevation(dep_deg, wind_ms, samples=400000, seed=2):
+    """The sky a rippled surface reflects at a depression: the mean (and spread) of the reflected rays' elevation over
+    Cox-Munk slopes, weighted by the facets' area toward the eye and their Fresnel reflectance, back-facing facets and
+    rays reflected below the horizon dropped. At 1-8 deg below the horizon it is about 1.35 times the slopes' rms angle
+    (13 deg at 5 m/s): M_WaterV4 lifts each pixel's mirror direction to it (docs/water-sky-reflection/)."""
+    rng = np.random.default_rng(seed)
+    var = 0.003 + 0.00512 * wind_ms
+    sx = rng.normal(0.0, math.sqrt(var / 2.0), samples)
+    sy = rng.normal(0.0, math.sqrt(var / 2.0), samples)
+    nrm = np.stack([-sx, -sy, np.ones(samples)], 1)
+    nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
+    d = math.radians(dep_deg)
+    view = np.array([math.cos(d), 0.0, -math.sin(d)])
+    cosi = -(nrm @ view)
+    refl = view[None, :] + 2.0 * cosi[:, None] * nrm
+    weight = np.clip(cosi, 0.0, None) / nrm[:, 2] * fresnel(np.clip(cosi, 0.0, 1.0)) * (refl[:, 2] > 0.0)
+    elev = np.degrees(np.arcsin(np.clip(refl[:, 2], -1.0, 1.0)))
+    mean = float((elev * weight).sum() / weight.sum())
+    return mean, float(np.sqrt(((elev - mean) ** 2 * weight).sum() / weight.sum()))
+
+
 def linear(rgb8):
     a = rgb8 / 255.0
     return np.where(a <= 0.04045, a / 12.92, ((a + 0.055) / 1.055) ** 2.4)

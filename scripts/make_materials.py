@@ -2555,6 +2555,37 @@ float3 rOut = 2.0 * dot(nOut, vdir) * nOut - vdir;
     float2 rh = rOut.xy / max(length(rOut.xy), 1e-5);
     float3 rUp = float3(rh * 0.9998, 0.02);
     nOut = normalize(vdir + rUp);
+    rOut = rUp;
+}
+// docs/water-sky-reflection/: the sky a rippled surface shows at a grazing look is well above the mirror angle. The facets
+// you see lean toward you (those leaning away are hidden, and masking favours the rest), so averaged over Cox and Munk's
+// slopes, water 1-8 deg below the horizon in a 10 kn breeze reflects sky about 13 deg up (Tools/water/reflectance_check.py
+// mean_reflected_elevation: 1.35 times the slopes' rms angle, joined smoothly to the mirror angle as it rises). The GGX
+// lobe is centred on the mirror direction, so the far water reflected the low cloud band and haze (red over blue 0.86
+// against the photos' 0.55-0.79). Each pixel's mirror elevation is lifted by the mean's rise, by the same slope variance as
+// the roughness floor above and none on glassy or slick water, which keeps a calm lake's mirror of its shore.
+{
+    float rms = sqrt(cm * (1.0 - smoothing));
+    float e0 = SKYLIFT_K * atan(rms);
+    float em = asin(saturate(rOut.z));
+    // The lift is the mean's, from the view's depression, added to each pixel's own mirror elevation: replaced by one
+    // target, every pixel along an azimuth reflected the same point of sky, and each cloud stood in the water as a column.
+    float dep = asin(saturate(vdir.z));
+    float e4 = e0 * e0 * e0 * e0;
+    float ew = em + max(sqrt(sqrt(e4 + dep * dep * dep * dep)) - dep, 0.0);
+    // Not toward the sun: its glint is the few facets that do reflect a low sun (a sunset's glitter path, thousands of
+    // times the sky), within about twice the slopes' spread of the mirror direction (a facet's tilt turns the ray twice).
+    float3 sunD = normalize(SunDir.xyz);
+    float sunAng = acos(clamp(dot(rOut, sunD), -1.0, 1.0));
+    float spreadR = 2.0 * atan(rms);
+    float awayFromSun = sunD.z > 0.0 ? smoothstep(2.0 * spreadR, 4.0 * spreadR, sunAng) : 1.0;
+    ew = lerp(em, ew, awayFromSun);
+    [branch] if (ew > em + 1e-4)
+    {
+        float2 rh = rOut.xy / max(length(rOut.xy), 1e-5);
+        float3 rLift = float3(rh * cos(ew), sin(ew));
+        nOut = normalize(vdir + rLift);
+    }
 }
 return nOut;
 """
@@ -2623,8 +2654,8 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
-    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
+    shade = custom(mat, V4_SHADE.replace("SKYLIFT_K", os.environ.get("SKYLIFT_K", "1.35")).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "SunDir"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -2637,6 +2668,8 @@ def build_water_v4():
     connect(wind_slow, "RGBA", shade, "WindSlow")
     connect(polarized, "", shade, "Polarized")
     connect(scalar(mat, "Glitter", 0.0, -2000, 1050), "", shade, "Glitter")
+    # docs/water-sky-reflection/: the sun, where the sky lift steps aside for the glint.
+    connect(node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -2000, 1100), "", shade, "SunDir")
     connect(scalar(mat, "FarCapSprites", 0.0, -2000, 1150), "", shade, "FarCapSprites")
     connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
     for c in (wpo,):
