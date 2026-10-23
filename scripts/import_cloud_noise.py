@@ -31,15 +31,18 @@ def import_2d(name):
 
 
 def make_volume(name, tile):
-    atlas = import_2d(name)
+    """Builds (or rebuilds in place: materials reference it) a volume from its atlas already on disk."""
+    atlas = unreal.load_asset(f"{DEST}/{name}_Atlas")
     path = f"{DEST}/{name}"
-    # Updated in place when it exists (materials reference it). An atlas imported in the same session isn't ready for a
-    # new volume: it came out 186 x 93 x 121, not 128^3, so make-content.sh runs this twice (SailingSim.Visual.CloudNoise
-    # checks the sizes).
     vt = unreal.load_asset(path) if LIB.does_asset_exist(path) else TOOLS.create_asset(name, DEST, unreal.VolumeTexture, unreal.VolumeTextureFactory())
-    vt.set_editor_property("source2d_tile_size_x", tile)
-    vt.set_editor_property("source2d_tile_size_y", tile)
+    # Each of these rebuilds the volume from what it has at that moment, and setting a property to its current value doesn't.
+    # Given its atlas, a volume first cuts it near-cubic (186 x 93 x 121, not 128^3); the tile size, nudged off its value
+    # and back, then rebuilds it with both in place.
+    vt.set_editor_property("source2d_texture", None)
     vt.set_editor_property("source2d_texture", atlas)
+    for size in (tile // 2, tile):
+        vt.set_editor_property("source2d_tile_size_x", size)
+        vt.set_editor_property("source2d_tile_size_y", size)
     vt.set_editor_property("srgb", False)
     vt.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
     vt.set_editor_property("address_mode", unreal.TextureAddress.TA_WRAP)
@@ -48,13 +51,18 @@ def make_volume(name, tile):
     unreal.log(f"Cloud noise: {path} from {atlas.blueprint_get_size_x()}x{atlas.blueprint_get_size_y()} in {tile}^2 tiles")
 
 
-# CLOUD_NOISE_ONLY=T_CloudBillow,... imports just those (the others' assets stay byte for byte).
+# Two passes, each its own editor session (make-content.sh runs both): CLOUD_NOISE_PASS=atlas imports the atlases (and the
+# curl), CLOUD_NOISE_PASS=volume builds the volumes from them. A volume built in the session that imported its atlas came
+# out 186 x 93 x 121 instead of 128^3 (SailingSim.Visual.CloudNoise checks the sizes). Without a pass, both, in that order
+# (only safe when the atlases are unchanged). CLOUD_NOISE_ONLY=T_CloudBillow,... limits either pass to those (the others'
+# assets stay byte for byte).
+PASS = os.environ.get("CLOUD_NOISE_PASS", "")
 ONLY = [n for n in os.environ.get("CLOUD_NOISE_ONLY", "").split(",") if n]
-for name, tile in (("T_CloudShape", 128), ("T_CloudDetail", 64), ("T_CloudBillow", 128), ("T_CloudCurl", 0)):
-    if ONLY and name not in ONLY:
-        continue
-    if tile:
-        make_volume(name, tile)
-    else:
+NOISE = (("T_CloudShape", 128), ("T_CloudDetail", 64), ("T_CloudBillow", 128), ("T_CloudCurl", 0))
+for name, tile in NOISE:
+    if (not ONLY or name in ONLY) and PASS in ("", "atlas"):
         import_2d(name)
+for name, tile in NOISE:
+    if (not ONLY or name in ONLY) and PASS in ("", "volume") and tile:
+        make_volume(name, tile)
 unreal.log("Cloud noise imported")
