@@ -137,11 +137,16 @@ namespace Sailing
 		double OriginX() const { return X0; }
 		double OriginY() const { return Y0; }
 		const std::vector<float>& Pixels() const { return Rgba; }
+		/** Realism audit 1: each texel's cumulus cell size as a share of the largest class's ((R / R_max)^0.6, the cell that
+		 *  wins there; 0 where no cell paints), N x N like Pixels(). The renderer takes a cell's top from it: a cell stands
+		 *  about as tall as it is wide (a cell's presence saturates in its core whatever its size, so it can't say). */
+		const std::vector<float>& CumulusTop() const { return CuTop; }
 		/** Mean of one channel (0 cumulus, 1 stratus, 2 cirrus, 3 storm). */
 		double Mean(int Channel) const;
 
 	private:
 		double X0 = 0.0, Y0 = 0.0;
 		std::vector<float> Rgba;
+		std::vector<float> CuTop;
 	};
 }

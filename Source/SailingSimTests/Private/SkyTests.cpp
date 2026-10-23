@@ -96,6 +96,36 @@ bool FSkyCloudLayersTest::RunTest(const FString&)
  * docs/night-clouds/: fair-weather cumulus is the day's heat rising: it dies away over a couple of hours after sunset
  * (whatever the date), stays down through the night, and builds again the next day; the decks and the storm keep theirs.
  */
+// Realism audit 1 (docs/cumulus-size/): the map carries each cumulus cell's size (FWeatherMap::CumulusTop), so the renderer
+// stands a cell about as tall as it is wide. On a fair afternoon the painted cells span the size classes: small cells
+// well under the largest class, the largest at the top; none outside 0..1, and no size where no cell paints.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCumulusSizeTest, "SailingSim.Visual.CumulusSize", SkyFlags)
+bool FSkyCumulusSizeTest::RunTest(const FString&)
+{
+	FWeatherSystem W;
+	W.Configure(EWeatherPreset::AfternoonBreeze, 7, 15.0);
+	const FWeatherState S = W.Evaluate(60.0);
+	FWeatherMap Map;
+	Map.Paint(S.Sky, S.Front, 0.0, 0.0, 60.0);
+	const std::vector<float>& Top = Map.CumulusTop();
+	const std::vector<float>& Px = Map.Pixels();
+	TestEqual(TEXT("One size per texel"), int32(Top.size()), FWeatherMap::N * FWeatherMap::N);
+	int32 Small = 0, Large = 0, Cloudy = 0, Bad = 0;
+	for (size_t I = 0; I < Top.size(); ++I)
+	{
+		if (Top[I] < 0.f || Top[I] > 1.f + 1e-4f) ++Bad;
+		if (Px[I * 4] < 0.2f || Top[I] <= 0.f) continue;
+		++Cloudy;
+		if (Top[I] < 0.5f) ++Small;
+		if (Top[I] > 0.9f) ++Large;
+	}
+	AddInfo(FString::Printf(TEXT("Cloudy texels %d: small cells (size < 0.5) %d, the largest class (> 0.9) %d"), Cloudy, Small, Large));
+	TestEqual(TEXT("Sizes within 0..1"), Bad, 0);
+	TestTrue(TEXT("Small cells are painted small"), Small > Cloudy / 20);
+	TestTrue(TEXT("The largest class is painted"), Large > 0);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCumulusAfterSunsetTest, "SailingSim.Visual.CumulusAfterSunset", SkyFlags)
 bool FSkyCumulusAfterSunsetTest::RunTest(const FString&)
 {

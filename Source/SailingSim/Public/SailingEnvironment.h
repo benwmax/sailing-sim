@@ -123,6 +123,8 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LensMaterial;
 	FVector LastCameraPos = FVector::ZeroVector;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WeatherMapTexture;
+	/** Realism audit 1: each texel's cumulus cell size (FWeatherMap::CumulusTop), R16F like the map. */
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> CumulusTopTexture;
 	UPROPERTY(VisibleAnywhere, Category = "Weather") TObjectPtr<UPointLightComponent> BoltLight;
 	bool bLayeredClouds = false;
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
@@ -140,7 +142,7 @@ private:
 public:
 	float GetNightAmount() const { return NightAmount; }
 private:
-	struct FWeatherMapFrame { Sailing::FWeatherMap Map; TArray<FFloat16> Half; };
+	struct FWeatherMapFrame { Sailing::FWeatherMap Map; TArray<FFloat16> Half; TArray<FFloat16> TopHalf; };
 	Sailing::FWeatherMap LastWeatherMap;
 	float SunVisibility = 1.f; // smoothed transmittance toward the sun through the clouds (layered clouds)
 	bool bHasWeatherMap = false;
