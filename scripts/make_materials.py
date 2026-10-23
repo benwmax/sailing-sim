@@ -919,9 +919,24 @@ float film = (1.0 - smoothstep(0.02, 0.10 + 0.04 * f, h)) * step(-0.05, h) * CA;
 col = lerp(col, col * float3(0.62, 0.74, 0.46), film * 0.8);
 col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
+// Realism audit 1023 item 8 (pc/far-shore): past the 250 m where LakeTerrainActor::PlaceReeds' bank grass and weed stop
+// drawing, a grassy bank met the water as a clean lawn. Here the same band, from the waterline to about a metre up, is
+// painted as the rank grass, sedge and dead stems it stands for: darker and more olive than mown grass, in ragged clumps a
+// few metres across, matte. It fades in from 180 to 260 m (across the plants' cull) on the shore cells (CA): pale sand, rock and
+// riprap keep their own colour, and some stretches of bank stay bare.
+float dist = length(P - Cam) * 0.01;
+float bandTop = 0.95 + 0.3 * n + 0.12 * m;
+float lumC = dot(C.rgb, float3(0.3, 0.59, 0.11));
+float soil = 1.0 - saturate((lumC - 0.38) * 6.0);      // not pale sand, limestone or riprap
+float rank = CA * soil * step(-0.03, h) * (1.0 - smoothstep(bandTop - 0.3, bandTop, h)) * smoothstep(180.0, 260.0, dist);
+float clump = 0.5 + 0.5 * sin(p.x * 0.9 + sin(p.y * 0.6) * 2.0) * sin(p.y * 1.1 + sin(p.x * 0.7) * 2.0);
+float3 weed = lerp(float3(0.045, 0.062, 0.022), float3(0.12, 0.105, 0.05), saturate(0.65 * clump + 0.2 * f + 0.1));
+float cover = rank * smoothstep(-0.55, -0.1, n + 0.4 * m) * (0.75 + 0.25 * saturate(n + 0.6));    // in long patches: some banks stay bare
+col = lerp(col, weed, cover);
+Rough = lerp(Rough, 0.95, cover);
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land", "Cam"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
@@ -934,6 +949,7 @@ return col;
     land.set_editor_property("collection", world_collection())
     land.set_editor_property("parameter_name", "Land")
     connect(land, "", c, "Land")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -800, 550), "", c, "Cam")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -4785,7 +4801,7 @@ WORLD_LIBRARY = {
     "Deck": ((0.55, 0.55, 0.52), 0.8, 0.0, 0.0, 0.0),
     "Cushion": ((0.62, 0.56, 0.44), 0.7, 0.0, 0.0, 0.0),
     "Net": ((0.05, 0.06, 0.05), 0.95, 0.0, 0.0, 0.0),
-    "Barge": ((0.22, 0.10, 0.05), 0.85, 5.0, 0.0, 0.3),
+    "Barge": ((0.22, 0.10, 0.05), 0.85, 5.0, 0.0, 0.0),   # painted steel is a dielectric (docs/ship-backlit; pc/far-shore)
     "Cargo": ((0.40, 0.36, 0.30), 0.95, 4.0, 0.0, 0.0),
     "Pilothouse": ((0.80, 0.80, 0.78), 0.4, 3.0, 1.0, 0.0),
     "Funnel": ((0.08, 0.08, 0.09), 0.6, 0.0, 0.0, 0.0),
