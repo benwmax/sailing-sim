@@ -55,7 +55,7 @@ On Medium and High, exposure follows the light the way a hand-held incident mete
 - **Gloom.** The camera opens only a tenth of the way into gloom, so a storm stays as dark as Phase 8 made it.
 - **Night.** The night floor is unchanged.
 - **Framing.** The auto-exposure histogram may still move ±1 EV for framing in clear air, narrowing to ±0.3 under a storm deck.
-- **Calibration.** The scene's lights are not in real lux (the sun is 10), so `kSceneEVOffset` (14.1) and a half-stop lift in clear air tie the metered EV to the Phase 8 look. The calibration is measured on the 12 reference captures: the clear-day scenes match within 0.1 stop.
+- **Calibration.** The scene's lights are not in real lux (the sun is 10), so `kSceneEVOffset` (14.1) and a half-stop lift in clear air tie the metered EV to the Phase 8 look. The calibration is measured on the 12 reference captures: the clear-day scenes match within 0.1 stop. (Oct 23 2026: the half-stop lift is gone. It put a clear sky half a stop over a still camera's and washed its colour; Bean chose the truer exposure, `docs/exposure-choice/`.)
 - **Capture mode.** The exposure lock is unchanged (`-SailingEV` or frozen at 2.5 s).
 
 The look (`ASailingEnvironment::ApplyCameraLook`):

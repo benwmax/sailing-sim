@@ -253,6 +253,87 @@ def foil(m, sections, slot, thickness=0.12, y0=0.0):
     m.face(list(reversed(rings[-1][:-1])), slot)
 
 
+def oface(m, pts, slot, out):
+    """A face wound to look along `out` (body frame): Mesh.v mirrors Y, so the list goes in with its own normal inward."""
+    n = Vector((0, 0, 0))
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        n += Vector(a).cross(Vector(b))
+    return m.face(list(reversed(pts)) if n.dot(Vector(out)) > 0 else list(pts), slot)
+
+
+def slab(m, outline, y0, thick, slot):
+    """A flat part: a convex outline in the x-z plane [(x, z)], `thick` across y, centred on y0."""
+    a = [(x, y0 - thick / 2, z) for (x, z) in outline]
+    b = [(x, y0 + thick / 2, z) for (x, z) in outline]
+    oface(m, a, slot, (0, -1, 0))
+    oface(m, b, slot, (0, 1, 0))
+    cx = sum(x for x, _ in outline) / len(outline)
+    cz = sum(z for _, z in outline) / len(outline)
+    for i in range(len(outline)):
+        j = (i + 1) % len(outline)
+        mx, mz = 0.5 * (outline[i][0] + outline[j][0]), 0.5 * (outline[i][1] + outline[j][1])
+        oface(m, [a[i], a[j], b[j], b[i]], slot, (mx - cx, 0, mz - cz))
+
+
+def rounded(x0, z0, x1, z1, r, n=4, corners=(1, 1, 1, 1)):
+    """A rectangle's outline in the x-z plane with rounded corners (lower left, lower right, upper right, upper left)."""
+    pts = []
+    for (cx, cz, a0), on in zip(((x0 + r, z0 + r, 180), (x1 - r, z0 + r, 270), (x1 - r, z1 - r, 0), (x0 + r, z1 - r, 90)), corners):
+        if not on:
+            pts.append((cx + r * math.cos(math.radians(a0 + 45)) * math.sqrt(2), cz + r * math.sin(math.radians(a0 + 45)) * math.sqrt(2)))
+            continue
+        for k in range(n + 1):
+            a = math.radians(a0 + 90.0 * k / n)
+            pts.append((cx + r * math.cos(a), cz + r * math.sin(a)))
+    return pts
+
+
+def lathe(m, x, y, profile, slot, sides=16):
+    """A turned part about a vertical axis at (x, y): profile [(radius, z)] from the bottom up."""
+    rings = [[(x + r * math.cos(2 * math.pi * k / sides), y + r * math.sin(2 * math.pi * k / sides), z) for k in range(sides + 1)] for r, z in profile]
+    for i in range(len(profile) - 1):
+        dr, dz = profile[i + 1][0] - profile[i][0], profile[i + 1][1] - profile[i][1]
+        for k in range(sides):
+            a = 2 * math.pi * (k + 0.5) / sides
+            oface(m, [rings[i][k], rings[i][k + 1], rings[i + 1][k + 1], rings[i + 1][k]], slot, (dz * math.cos(a), dz * math.sin(a), -dr))
+
+
+def ring(m, c, axis, radius, r, slot, n=12, sides=5):
+    """A torus: a ring of radius `radius` about `axis` through c (lashings, eyes, sail ties)."""
+    ax = Vector(axis).normalized()
+    u = ax.cross(Vector((0, 0, 1)) if abs(ax.z) < 0.9 else Vector((1, 0, 0))).normalized()
+    w = ax.cross(u)
+    pts = [tuple(Vector(c) + (u * math.cos(2 * math.pi * k / n) + w * math.sin(2 * math.pi * k / n)) * radius) for k in range(n + 1)]
+    tube(m, pts, r, slot, sides, cap=False)
+
+
+def bar(m, path, sections, slot, n=12, cap=True):
+    """A rod of rounded-rectangle section along `path` (roughly horizontal): sections [(width, height)] per point."""
+    pts = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        side = t.cross(Vector((0, 0, 1))).normalized()
+        up = side.cross(t).normalized()
+        w, h = sections[i]
+        loop = []
+        for k in range(n + 1):
+            a = 2 * math.pi * k / n
+            c, s = math.cos(a), math.sin(a)
+            # a superellipse (exponent 4): flat faces, rounded edges
+            loop.append(tuple(p + side * (0.5 * w * math.copysign(abs(c) ** 0.5, c)) + up * (0.5 * h * math.copysign(abs(s) ** 0.5, s))))
+        rings.append(loop)
+    for i in range(len(rings) - 1):
+        c = 0.5 * (pts[i] + pts[i + 1])
+        for k in range(n):
+            q = [rings[i][k], rings[i][k + 1], rings[i + 1][k + 1], rings[i + 1][k]]
+            mid = sum((Vector(p) for p in q), Vector()) / 4
+            oface(m, q, slot, tuple(mid - c))
+    if cap:
+        oface(m, rings[0][:-1], slot, tuple(pts[0] - pts[1]))
+        oface(m, rings[-1][:-1], slot, tuple(pts[-1] - pts[-2]))
+
+
 SOCKETS, OWNER = {}, {}
 
 
@@ -316,7 +397,7 @@ def shell(H):
     return xs
 
 
-def deck(H, cuts=(), slot="NonSkid"):
+def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
     """The crowned deck over a hull, leaving out the rectangles in `cuts` (x0, x1, y0, y1), with a smooth margin."""
     stern, bow = H.h["stern_x"], H.h["bow_x"] - 0.003
     xs = set(stations(stern, bow, 48))
@@ -331,13 +412,39 @@ def deck(H, cuts=(), slot="NonSkid"):
         b = H.sharp_half_beam(x)
         yy = min(max(y, H.cy - b), H.cy + b)
         return (x, yy, H.deck_z(x, yy))
+    def clip(poly, f):
+        out = []
+        for a, b in zip(poly, poly[1:] + poly[:1]):
+            fa, fb = f(a), f(b)
+            if fa >= 0:
+                out.append(a)
+            if (fa >= 0) != (fb >= 0):
+                t = fa / (fa - fb)
+                out.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+        return out
     for i in range(len(xs) - 1):
         for j in range(len(ys) - 1):
             cx, cyy = 0.5 * (xs[i] + xs[i + 1]), 0.5 * (ys[j] + ys[j + 1])
             if any(x0 < cx < x1 and y0 < cyy < y1 for (x0, x1, y0, y1) in cuts):
                 continue
-            edge = abs(cyy - H.cy) > H.sharp_half_beam(cx) - 0.08
-            hull.face([P(xs[i], ys[j]), P(xs[i], ys[j + 1]), P(xs[i + 1], ys[j + 1]), P(xs[i + 1], ys[j])], "Deck" if edge else slot)
+            quad = [P(xs[i], ys[j]), P(xs[i], ys[j + 1]), P(xs[i + 1], ys[j + 1]), P(xs[i + 1], ys[j])]
+            if not smooth_margin:
+                edge = abs(cyy - H.cy) > H.sharp_half_beam(cx) - 0.08
+                hull.face(quad, "Deck" if edge else slot)
+                continue
+            # pc/sunfish-fidelity: the non-skid's border follows the sheer 8 cm in (cells split along it), where a whole
+            # cell had gone to one side or the other and the border stepped like a staircase.
+            e0, e1 = H.sharp_half_beam(xs[i]) - 0.08, H.sharp_half_beam(xs[i + 1]) - 0.08
+            if min(e0, e1) < 0.01:
+                hull.face(quad, "Deck")
+                continue
+            inset = lambda x: e0 + (e1 - e0) * (x - xs[i]) / (xs[i + 1] - xs[i])
+            up = lambda p: inset(p[0]) - (p[1] - H.cy)
+            lo = lambda p: inset(p[0]) + (p[1] - H.cy)
+            flat = [(p[0], p[1]) for p in quad]
+            for part, s in ((clip(clip(flat, up), lo), slot), (clip(flat, lambda p: -up(p)), "Deck"), (clip(flat, lambda p: -lo(p)), "Deck")):
+                if len(part) >= 3:
+                    hull.face([(x, y, H.deck_z(x, y)) for (x, y) in part], s)
     # Rubrail along the hull-deck joint.
     for side in (1, -1):
         rail = [(x, H.cy + side * (H.sharp_half_beam(x) + 0.006), H.sheer(x) - 0.008) for x in stations(stern + 0.02, bow - 0.06, 40)]
@@ -609,6 +716,176 @@ def board(Hh, f, deepest):
         tube(hull, [(le - 0.05, cy, deepest + 0.08), (le - chord * 1.05, cy, deepest + 0.1)], 0.09, "Keel", 12)
 
 
+def sunfish_splash_guard(H, trunk_fwd, mast_x):
+    """pc/sunfish-fidelity: the Sunfish's V splash guard stands between the daggerboard trunk and the mast, its point
+    forward (class photos; it had been behind the trunk, at the well). A white moulded wall 6 mm thick, 7 cm tall at the
+    point and 4.5 cm at the arms' ends, a rolled top edge. Returns where a deck line from (x0, y0) to (x1, y1) crosses its
+    port arm: (x, y, top z) or None."""
+    apex = (mast_x - 0.2, 0.0)
+    ends = {s: (trunk_fwd + 0.08, s * 0.36) for s in (1, -1)}
+    height = lambda t: 0.07 - 0.025 * t
+    n = 10
+    for s in (1, -1):
+        ex, ey = ends[s]
+        d = Vector((ex - apex[0], ey - apex[1], 0)).normalized()
+        nrm = Vector((-d.y, d.x, 0)) * (1 if s > 0 else -1)          # out of the V: forward and outboard
+        if nrm.x < 0:
+            nrm = -nrm
+        off = nrm * 0.003
+        pts = []
+        for k in range(n + 1):
+            t = k / n
+            x, y = apex[0] + (ex - apex[0]) * t, apex[1] + (ey - apex[1]) * t
+            pts.append((x, y, H.deck_z(x, y) - 0.004, H.deck_z(x, y) + height(t)))
+        for k in range(n):
+            (xa, ya, za0, za1), (xb, yb, zb0, zb1) = pts[k], pts[k + 1]
+            for sg in (1, -1):
+                o = off * sg
+                oface(hull, [(xa + o.x, ya + o.y, za0), (xb + o.x, yb + o.y, zb0), (xb + o.x, yb + o.y, zb1), (xa + o.x, ya + o.y, za1)], "Deck", tuple(nrm * sg))
+        tube(hull, [(x, y, z1) for (x, y, _, z1) in pts], 0.0042, "Deck", 6)
+    def hit(x0, y0, x1, y1):
+        (ax, ay), (bx, by) = apex, ends[-1]
+        den = (x1 - x0) * (by - ay) - (y1 - y0) * (bx - ax)
+        if abs(den) < 1e-9:
+            return None
+        t = ((ax - x0) * (by - ay) - (ay - y0) * (bx - ax)) / den
+        u = ((ax - x0) * (y1 - y0) - (ay - y0) * (x1 - x0)) / den
+        if not (0 <= t <= 1 and 0 <= u <= 1):
+            return None
+        x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        return (x, y, H.deck_z(x, y) + height(u) + 0.004)
+    return hit
+
+
+STRAP_TOP_ABOVE_SOLE = (0.12, 0.10)      # (at the end walls, at the middle), metres: the crew lane puts the feet under it
+
+
+def dinghy_hiking_strap(H, ck):
+    """pc/sunfish-strap (and pc/ilca-fidelity, the same on the ILCA): the dinghy's hiking strap, flat black webbing 50 mm wide down the well's middle, taut between
+    its end walls 12 cm over the sole with 2 cm of sag, so the sailor's feet tuck under it; each end under a screwed
+    stainless retainer plate on the wall. (It had been a red tube 36 mm round, 6 cm off the sole, and two red pads.)"""
+    x0, x1, w, depth = ck
+    sole = lambda x: H.deck_z(x, H.cy + w) - depth
+    end_h, mid_h = STRAP_TOP_ABOVE_SOLE
+    xa, xb = x0 + 0.004, x1 - 0.004
+    path, secs = [], []
+    for k in range(13):
+        t = k / 12
+        x = xa + (xb - xa) * t
+        path.append((x, 0.0, sole(x) + end_h - (end_h - mid_h) * 4.0 * t * (1.0 - t) - 0.0015))
+        secs.append((0.05, 0.003))
+    bar(hull, path, secs, "Rubber")
+    for x, s in ((x0, 1), (x1, -1)):
+        z = sole(x) + end_h
+        box(hull, (x + s * 0.003, 0.0, z - 0.004), (0.004, 0.066, 0.03), "Stainless")
+        for y in (-0.024, 0.024):
+            tube(hull, [(x + s * 0.005, y, z - 0.004), (x + s * 0.0065, y, z - 0.004)], 0.004, "Stainless", 8)
+
+
+def sunfish_board(H, f, mast_x, mast_step_z, plastic=False):
+    """pc/sunfish-fidelity: the Sunfish's daggerboard above the deck: varnished wood 19 mm thick, standing 12 cm proud,
+    its top corners rounded and its edges eased; the black rubber gasket round the trunk's slot; the shock cord from an eye
+    at the board's forward top corner to the mast, which keeps it aboard in a capsize (class photos). pc/ilca-fidelity:
+    plastic, the ILCA's: white moulded, 22 mm, a black handle moulding along its top edge."""
+    bx, chord = f["center"][0], f["chord"]
+    dz = H.deck_z(bx, 0)
+    x0, x1 = bx - 0.46 * chord, bx + 0.46 * chord
+    th = 0.022 if plastic else 0.019
+    slab(hull, rounded(x0, dz - 0.02, x1, dz + 0.12, 0.05, 6, corners=(0, 0, 1, 1)), 0.0, th, "Deck" if plastic else "Wood")
+    # (the eased edge: a half-round along the top, a shade wider than the board; the ILCA's black handle moulding)
+    top = [(x, 0.0, z) for (x, z) in rounded(x0, dz - 0.02, x1, dz + 0.12, 0.05, 6, corners=(0, 0, 1, 1))[2:]]
+    tube(hull, top, 0.5 * th + 0.004 if plastic else 0.0098, "BlackPlastic" if plastic else "Wood", 8, cap=False)
+    # the slot's gasket
+    gl, gw = chord + 0.02, 0.022
+    loop = []
+    for (cx, a0) in ((bx + 0.5 * gl - gw, -90.0), (bx - 0.5 * gl + gw, 90.0)):
+        for k in range(7):
+            a = math.radians(a0 + 180.0 * k / 6)
+            x = cx + gw * math.cos(a)
+            loop.append((x, gw * math.sin(a), H.deck_z(x, 0) + 0.003))
+    tube(hull, loop + loop[:1], 0.006, "Rubber", 6, cap=False)
+    # the eye and the shock cord to the mast (tied round it above the step collar)
+    ex, ez = x1 - 0.02, dz + 0.105
+    ring(hull, (ex, 0.0, ez), (0, 1, 0), 0.008, 0.0018, "Stainless", 10, 4)
+    mr = 0.5 * RIG["mast_diameter"]
+    mz = mast_step_z + 0.1
+    cord = [(ex + 0.006, 0.0, ez + 0.002)]
+    for k in range(1, 6):
+        t = k / 6
+        x = ex + (mast_x - mr - 0.004 - ex) * t
+        cord.append((x, 0.0, ez + (mz - ez) * t + 0.035 * math.sin(math.pi * t) * 0.3))
+    cord.append((mast_x - mr - 0.004, 0.0, mz))
+    tube(hull, cord, 0.0028, "BlackPlastic", 5, cap=False)
+    ring(hull, (mast_x, 0.0, mz), (0, 0, 1), mr + 0.004, 0.003, "BlackPlastic", 16, 5)
+
+
+def sunfish_bailer(x, z):
+    """pc/sunfish-fidelity: the Sunfish's self-bailer at the aft end of the well: a cast oval rim screwed to the sole and
+    the hinged flap closing its scoop (it had been a black box)."""
+    a, b = 0.065, 0.032
+    rim = [(x + a * math.cos(2 * math.pi * k / 20), b * math.sin(2 * math.pi * k / 20), z + 0.004) for k in range(21)]
+    tube(hull, rim, 0.005, "Aluminium", 6, cap=False)
+    oface(hull, [(x + 0.9 * a * math.cos(2 * math.pi * k / 20), 0.9 * b * math.sin(2 * math.pi * k / 20), z + 0.002) for k in range(20)], "BlackPlastic", (0, 0, 1))
+    slab(hull, [(x - 0.045, z + 0.003), (x + 0.04, z + 0.003), (x + 0.04, z + 0.008), (x - 0.045, z + 0.006)], 0.0, 0.04, "Aluminium")
+    for k in (-1, 1):
+        lathe(hull, x + k * 0.075, 0.0, [(0.0, z + 0.001), (0.004, z + 0.001), (0.004, z + 0.004), (0.0, z + 0.0055)], "Stainless", 8)
+
+
+def sunfish_bridle(H, traveler):
+    """pc/sunfish-fidelity: the Sunfish's bridle: a stainless wire across the after deck between two padeyes, the
+    mainsheet's lower block riding on it (it had been a black rope and two boxes). The traveler sockets are unchanged."""
+    # (the parts are built here, light: the kit's hero padeyes and block would put the hull past its 40,000 triangles)
+    tx, tz, tw = traveler
+    for s in (1, -1):
+        dz = H.deck_z(tx, s * tw)
+        # an eye strap: a rounded plate on two screws and its stainless loop standing across the wire's line
+        slab(hull, rounded(tx - 0.022, dz - 0.003, tx + 0.022, dz + 0.003, 0.0029, 2), s * tw, 0.014, "Stainless")
+        loop = [(tx + 0.009 * math.cos(math.pi * k / 8), s * tw, dz + 0.003 + 0.016 * math.sin(math.pi * k / 8)) for k in range(9)]
+        tube(hull, loop, 0.0028, "Stainless", 6, cap=False)
+        for k in (-1, 1):
+            lathe(hull, tx + k * 0.016, s * tw, [(0.0, dz + 0.003), (0.0035, dz + 0.003), (0.0035, dz + 0.0045), (0.0, dz + 0.0055)], "Stainless", 8)
+        # the wire's eye round the strap's loop, under a swaged sleeve
+        tube(hull, [(tx, s * (tw - 0.012), tz), (tx, s * tw, dz + 0.015)], 0.0024, "Stainless", 6)
+        tube(hull, [(tx, s * (tw - 0.045), tz), (tx, s * (tw - 0.02), tz)], 0.0042, "Stainless", 8)
+    tube(hull, [(tx, -(tw - 0.012), tz), (tx, tw - 0.012, tz)], 0.0022, "Stainless", 6)
+    # the mainsheet's lower block on the wire: a hook over it, two cheeks and the sheave between them
+    bz = tz + 0.032
+    for k in (-1, 1):
+        slab(hull, rounded(tx - 0.019, bz - 0.019, tx + 0.019, bz + 0.019, 0.017, 4), k * 0.007, 0.003, "BlackPlastic")
+    ring(hull, (tx, 0.0, bz), (0, 1, 0), 0.0125, 0.0045, "BlackPlastic", 14, 6)
+    tube(hull, [(tx, -0.011, bz), (tx, 0.011, bz)], 0.003, "Stainless", 8)
+    hook = [(tx, 0.0, bz - 0.018)] + [(tx + 0.006 * math.sin(math.pi * k / 6), 0.0, tz + 0.006 * math.cos(math.pi * k / 6)) for k in range(7)]
+    tube(hull, hook, 0.0022, "Stainless", 6, cap=False)
+
+
+def ilca_traveller(H, traveler):
+    """pc/ilca-fidelity: the ILCA's traveller: a rope across the after deck through a fairlead at each quarter, one end
+    knotted, the other led forward to a clam cleat; the mainsheet's lower block runs on it (it had been a black rope and
+    two boxes). The traveler sockets are unchanged."""
+    tx, tz, tw = traveler
+    for s in (1, -1):
+        fz = H.deck_z(tx, s * tw)
+        lathe(hull, tx, s * tw, [(0.0, fz - 0.002), (0.016, fz - 0.002), (0.015, fz + 0.005), (0.011, fz + 0.016), (0.009, fz + 0.021),
+                                 (0.006, fz + 0.021), (0.0055, fz + 0.012), (0.0055, fz)], "BlackPlastic", 12)
+    tube(hull, [(tx, -tw - 0.02, tz - 0.012), (tx, -tw, tz), (tx, tw, tz), (tx, tw + 0.025, tz - 0.01)], 0.004, "Rope", 6)
+    ring(hull, (tx, -tw - 0.028, tz - 0.012), (0, 1, 0), 0.008, 0.0045, "Rope", 10, 5)     # the knot
+    # the tail forward along the deck to a clam cleat
+    cx, cy = tx + 0.22, tw - 0.04
+    tail = [(tx, tw + 0.025, tz - 0.01), (tx + 0.04, tw + 0.01, H.deck_z(tx + 0.04, tw) + 0.006), (cx - 0.03, cy, H.deck_z(cx, cy) + 0.008)]
+    tube(hull, tail, 0.004, "Rope", 6, cap=False)
+    cz = H.deck_z(cx, cy)
+    slab(hull, rounded(cx - 0.035, cz - 0.003, cx + 0.035, cz + 0.016, 0.006, 2), cy - 0.009, 0.006, "BlackPlastic")
+    slab(hull, rounded(cx - 0.035, cz - 0.003, cx + 0.035, cz + 0.016, 0.006, 2), cy + 0.009, 0.006, "BlackPlastic")
+    box(hull, (cx, cy, cz + 0.002), (0.07, 0.024, 0.004), "BlackPlastic")
+    # the mainsheet's lower block on the rope: two cheeks and the sheave, a becket below round the rope
+    bz = tz + 0.03
+    for k in (-1, 1):
+        slab(hull, rounded(tx - 0.02, bz - 0.02, tx + 0.02, bz + 0.02, 0.018, 4), k * 0.008, 0.003, "BlackPlastic")
+    ring(hull, (tx, 0.0, bz), (0, 1, 0), 0.013, 0.005, "BlackPlastic", 14, 6)
+    tube(hull, [(tx, -0.012, bz), (tx, 0.012, bz)], 0.003, "Stainless", 8)
+    ring(hull, (tx, 0.0, tz + 0.002), (1, 0, 0), 0.008, 0.0022, "Stainless", 10, 4)
+
+
 def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     """Boats 11: what a Sunfish or ILCA carries on deck that the clean model left out, from class photos. The board
     standing in its trunk with a grip, the self-bailer and drain in the well, the mainsheet's ratchet block and its
@@ -619,16 +896,13 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     bx, chord = f["center"][0], f["chord"]
     dz = H.deck_z(bx, 0)
     # the daggerboard (Sunfish: varnished wood; ILCA: white plastic centreboard) a hand's width proud, with a grip
-    board_slot = "Wood" if TAG == "Sunfish" else "Deck"
-    box(hull, (bx, 0, dz + 0.06), (chord * 0.92, 0.018, 0.12), board_slot)
-    box(hull, (bx - chord * 0.25, 0, dz + 0.135), (0.10, 0.03, 0.03), "BlackPlastic")
-    # well: auto-bailer and drain plug in the sole, a non-skid pad is the sole's own slot already
     xb = x0 + 0.18
-    box(hull, (xb, 0.0, sole(xb) + 0.006), (0.12, 0.07, 0.012), "BlackPlastic")
+    # (pc/ilca-fidelity: the ILCA's board and bailer as the Sunfish's, its board white plastic)
+    sunfish_board(H, f, mast_x, mast_step_z, plastic=TAG == "ILCA7")
+    sunfish_bailer(xb, sole(xb))
     tube(hull, [(xb + 0.2, 0.12, sole(xb + 0.2)), (xb + 0.2, 0.12, sole(xb + 0.2) + 0.008)], 0.02, "BlackPlastic", 10)
     # mainsheet: blocks on the traveler bridle, a swivel ratchet block in the well (ILCA) or on the aft deck (Sunfish)
     tx, tz, tw = traveler
-    box(hull, (tx, 0.0, tz + 0.03), (0.05, 0.03, 0.05), "BlackPlastic")
     if TAG == "ILCA7":
         rx, rz = 0.5 * (x0 + x1), sole(0.5 * (x0 + x1))
         tube(hull, [(rx, 0, rz), (rx, 0, rz + 0.12)], 0.012, "Stainless", 8)
@@ -644,23 +918,11 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
                 line = [(mast_x - 0.08, side * 0.03, mast_step_z + 0.02), (bx + 0.25, side * (0.05 + 0.02 * k), H.deck_z(bx + 0.25, 0) + 0.012),
                         (cx + 0.03, cy, H.deck_z(cx, cy) + 0.02)]
                 tube(hull, line, 0.003, "Rope", 4, cap=False)
-        # shock cord from the transom holding the hiking strap up off the sole
-        tube(hull, [(x0 + 0.1, 0, sole(x0) + 0.07), (x0 - 0.25, 0, H.deck_z(x0 - 0.25, 0) + 0.005)], 0.003, "BlackPlastic", 4, cap=False)
+        # shock cord from the transom holding the hiking strap up off the sole (pc/ilca-fidelity: to the webbing)
+        dinghy_hiking_strap(H, ck)
+        tube(hull, [(x0 + 0.1, 0, sole(x0) + STRAP_TOP_ABOVE_SOLE[0] - 0.006), (x0 - 0.25, 0, H.deck_z(x0 - 0.25, 0) + 0.005)], 0.003, "BlackPlastic", 4, cap=False)
     else:
-        # V splash guard ahead of the well, white moulding
-        sx = x1 + 0.10
-        for side in (1, -1):
-            a = (sx + 0.22, 0.0)
-            b = (sx, side * (w + 0.06))
-            n = 8
-            for k in range(n):
-                t0, t1 = k / n, (k + 1) / n
-                pa = (a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0)
-                pb = (a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1)
-                za, zb = H.deck_z(pa[0], pa[1]), H.deck_z(pb[0], pb[1])
-                q = [(pa[0], pa[1], za), (pb[0], pb[1], zb), (pb[0], pb[1], zb + 0.075 - 0.025 * t1), (pa[0], pa[1], za + 0.075 - 0.025 * t0)]
-                hull.face(q if side > 0 else list(reversed(q)), "Deck")
-                hull.face(list(reversed(q)) if side > 0 else q, "Deck")
+        guard = sunfish_splash_guard(H, bx + 0.5 * chord, mast_x)
         # Fleet hero: the well's moulded lip, a rounded rim along its edge (the deck's own gelcoat), and the hiking strap's
         # worn webbing ends screwed to the sole.
         rim, rr = [], 0.05
@@ -670,10 +932,22 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
                 px, py = cx + rr * math.cos(a), cy + rr * math.sin(a)
                 rim.append((px, py, H.deck_z(px, py) + 0.004))
         tube(hull, rim + rim[:1], 0.011, "Deck", 6, cap=False)
-        for xs_ in (x0 + 0.06, x1 - 0.06):
-            box(hull, (xs_, 0, sole(xs_) + 0.004), (0.05, 0.05, 0.008), "Graphics")
-        # (the halyard's horn cleat is the kit's: layouts/sunfish.json)
-        line = [(mast_x - 0.05, -0.03, mast_step_z + 0.04), (x1 + 0.4, -0.12, H.deck_z(x1 + 0.4, -0.12) + 0.01), (x1 + 0.08, -0.18, H.deck_z(x1 + 0.08, -0.18) + 0.045)]
+        dinghy_hiking_strap(H, ck)
+        # (the halyard's horn cleat is the kit's: layouts/sunfish.json) The halyard comes down the mast to a fairlead on
+        # deck at its foot, then aft over the splash guard's port arm to the cleat.
+        fx, fy = mast_x - 0.11, -0.05
+        fz = H.deck_z(fx, fy)
+        lathe(hull, fx, fy, [(0.0, fz - 0.002), (0.014, fz - 0.002), (0.013, fz + 0.004), (0.009, fz + 0.012), (0.0075, fz + 0.016),
+                              (0.005, fz + 0.016), (0.0045, fz + 0.01), (0.0045, fz)], "Stainless", 12)
+        cx, cy = x1 + 0.08, -0.18
+        mr = 0.5 * RIG["mast_diameter"]
+        line = [(mast_x + mr + 0.012, 0.0, mast_step_z + 0.3), (mast_x + mr + 0.004, -0.012, mast_step_z + 0.12),
+                (mast_x, -mr - 0.006, mast_step_z + 0.06), (fx, fy, H.deck_z(fx, fy) + 0.012)]
+        hit = guard(fx, fy, cx, cy)
+        if hit:
+            hx, hy, hz = hit
+            line += [(hx + 0.03, hy + 0.004, hz + 0.004), (hx, hy, hz + 0.007), (hx - 0.03, hy - 0.004, hz + 0.004)]
+        line += [(cx + 0.12, cy + 0.01, H.deck_z(cx + 0.12, cy) + 0.006), (cx, cy, H.deck_z(cx, cy) + 0.045)]
         tube(hull, line, 0.003, "Rope", 4, cap=False)
     # bow handle (inside the stem so LOA is untouched) and the transom drain plug
     bwx = H.h["bow_x"] - 0.22
@@ -869,17 +1143,24 @@ traveler = None
 
 if TAG in ("Sunfish", "ILCA7"):
     ck = SPEC["cockpit"]
-    deck(MAIN, cuts=[(ck[0], ck[1], -ck[2], ck[2])])
+    deck(MAIN, cuts=[(ck[0], ck[1], -ck[2], ck[2])], smooth_margin=TAG in ("Sunfish", "ILCA7"))
     cockpit(MAIN, ck)
     # Daggerboard trunk cap and the mast thwart; hiking strap.
     f = boards[0]
-    box(hull, (f["center"][0], 0, MAIN.deck_z(f["center"][0], 0) + 0.01), (f["chord"] + 0.06, 0.05, 0.03), "BlackPlastic")
-    tube(hull, [(ck[0] + 0.1, 0, MAIN.deck_z(ck[0], 0) - ck[3] + 0.06), (ck[1] - 0.1, 0, MAIN.deck_z(ck[1], 0) - ck[3] + 0.06)], 0.018, "Graphics", 6)
+    if TAG != "Sunfish":
+        box(hull, (f["center"][0], 0, MAIN.deck_z(f["center"][0], 0) + 0.01), (f["chord"] + 0.06, 0.05, 0.03), "BlackPlastic")
+    if TAG not in ("Sunfish", "ILCA7"):    # (the dinghies' is webbing: dinghy_hiking_strap)
+        tube(hull, [(ck[0] + 0.1, 0, MAIN.deck_z(ck[0], 0) - ck[3] + 0.06), (ck[1] - 0.1, 0, MAIN.deck_z(ck[1], 0) - ck[3] + 0.06)], 0.018, "Graphics", 6)
     tube(hull, [(mast_x, 0, mast_step_z - 0.02), (mast_x, 0, mast_step_z + 0.03)], RIG["mast_diameter"] * 0.7, "BlackPlastic", 12)
     traveler = (MAIN.h["stern_x"] + 0.18, MAIN.deck_z(MAIN.h["stern_x"] + 0.18, 0) + 0.02, 0.32 if TAG == "ILCA7" else 0.2)
-    tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.006, "Rubrail", 6)  # the traveler rope
-    for side in (1, -1):
-        box(hull, (traveler[0], side * traveler[2], traveler[1] - 0.005), (0.05, 0.03, 0.02), "Stainless")
+    if TAG == "Sunfish":
+        sunfish_bridle(MAIN, traveler)
+    elif TAG == "ILCA7":
+        ilca_traveller(MAIN, traveler)
+    else:
+        tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.006, "Rubrail", 6)  # the traveler rope
+        for side in (1, -1):
+            box(hull, (traveler[0], side * traveler[2], traveler[1] - 0.005), (0.05, 0.03, 0.02), "Stainless")
     dinghy_detail(MAIN, ck, boards[0], mast_x, mast_step_z, traveler)
 
 elif TAG in ("Catalina22", "Catalina30"):
@@ -1154,11 +1435,21 @@ def build_mast():
     if TAG == "Sunfish":
         # Fleet hero: the Sunfish's masthead is a black halyard cap with its sheave (no wind indicator); the halyard comes
         # down the forward face to the deck.
-        tube(m, [(mast_x, 0, top - 0.02), (mast_x, 0, top + 0.06)], 0.5 * d + 0.006, "BlackPlastic", 14)
-        box(m, (mast_x + 0.5 * d + 0.012, 0, top + 0.02), (0.03, 0.012, 0.06), "BlackPlastic")
+        # (pc/sunfish-fidelity: a turned cap, its skirt over the tube and a domed top, where it had been a cylinder; the
+        # game's masthead fly is off on the Sunfish: SailboatPawn.)
+        rc = 0.5 * d + 0.004
+        lathe(m, mast_x, 0, [(rc - 0.003, top - 0.035), (rc, top - 0.03), (rc, top + 0.035), (rc * 0.8, top + 0.055),
+                             (rc * 0.4, top + 0.064), (0.0, top + 0.066)], "BlackPlastic", 16)
+        box(m, (mast_x + rc + 0.006, 0, top + 0.02), (0.016, 0.012, 0.05), "BlackPlastic")
+        tube(m, [(mast_x + rc + 0.006, -0.008, top + 0.025), (mast_x + rc + 0.006, 0.008, top + 0.025)], 0.009, "Stainless", 10)
         tube(m, [(mast_x + 0.5 * d + 0.02, 0, top + 0.02), (mast_x + 0.5 * d + 0.012, 0, mast_step_z + 0.3)], 0.003, "Rope", 4, cap=False)
         # Chalky anodising bands where the sail ties and the mast meets the step.
         tube(m, [(mast_x, 0, mast_step_z), (mast_x, 0, mast_step_z + 0.06)], 0.5 * d + 0.004, "BlackPlastic", 14)
+    elif TAG == "ILCA7":
+        # pc/ilca-fidelity: the top section's moulded cap under the sail's sleeve (the sleeve goes over the masthead, so no
+        # wind indicator: the game's fly is off too, SailboatPawn).
+        rc = 0.5 * d * 0.65 + 0.003
+        lathe(m, mast_x, 0, [(rc - 0.002, top - 0.03), (rc, top - 0.025), (rc, top + 0.012), (rc * 0.75, top + 0.03), (0.0, top + 0.038)], "BlackPlastic", 14)
     else:
         # Wind indicator at the masthead.
         tube(m, [(mast_x, 0, top), (mast_x - 0.25, 0, top + 0.25)], 0.004, "Stainless", 4)
@@ -1213,10 +1504,74 @@ def build_boom():
         tube(m, [tuple(b), tuple(b + u * 0.03)], 0.026, "BlackPlastic", 10)
         tube(m, [tuple(a - u * 0.03), tuple(a)], 0.026, "BlackPlastic", 10)
         eye = a + (b - a) * 0.36
-        box(m, (eye.x + 0.03, 0, eye.z), (0.05, 0.014, 0.02), "Stainless")
-        box(m, (gx - 0.02, 0, gz + 0.02), (0.09, 0.05, 0.06), "Stainless")
-        tube(m, [(gx - 0.02, -0.03, gz + 0.02), (gx - 0.02, 0.03, gz + 0.02)], 0.006, "Stainless", 6)
+        # pc/sunfish-fidelity, from class photos: the halyard's clamp round the yard (a band and its eye, where the
+        # halyard's clip takes it); the tack's jaw, two stainless cheeks over the spars' ends on a bolt with nuts; black
+        # plugs in the boom's ends; and the sail laced to both spars with small line ties every 30 cm.
+        ring(m, tuple(eye), tuple(u), 0.0265, 0.004, "Stainless", 14, 5)
+        ring(m, tuple(eye + Vector((0.0, 0.0, 0.034))), (0, 1, 0), 0.008, 0.0022, "Stainless", 10, 4)
+        tube(m, [tuple(eye + Vector((0.0, 0.0, 0.024))), tuple(eye + Vector((0.0, 0.0, 0.028)))], 0.006, "Stainless", 8)
+        jx, jz = gx - 0.02, gz + 0.02
+        for s in (1, -1):
+            slab(m, rounded(jx - 0.06, jz - 0.05, jx + 0.04, jz + 0.05, 0.018, 3), s * 0.029, 0.004, "Stainless")
+        tube(m, [(jx, -0.036, jz), (jx, 0.036, jz)], 0.005, "Stainless", 8)
+        for s in (1, -1):
+            tube(m, [(jx, s * 0.031, jz), (jx, s * 0.037, jz)], 0.0095, "Stainless", 6)
+        tube(m, [(gx + 0.002, 0, gz - 0.02), (gx + 0.03, 0, gz - 0.02)], r + 0.002, "BlackPlastic", 16)
+        tube(m, [(gx - length - 0.03, 0, gz - 0.02), (gx - length + 0.002, 0, gz - 0.02)], r + 0.002, "BlackPlastic", 16)
+        n_y = max(int((b - a).length / 0.3), 2)
+        for k in range(1, n_y):
+            ring(m, tuple(a + (b - a) * (k / n_y) - Vector((0, 0, 0.004))), tuple(u), 0.0275, 0.0022, "Rope", 16, 5)
+        n_b = max(int((length - 0.25) / 0.3), 2)
+        for k in range(1, n_b):
+            ring(m, (gx - 0.08 - (length - 0.25) * k / n_b, 0, gz - 0.02 + 0.003), (1, 0, 0), r + 0.003, 0.0022, "Rope", 16, 5)
     return m.finish(smooth_angle=60.0, origin=(gx, 0, gz))
+
+
+def sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, top_chord, alu_tiller=False):
+    """pc/sunfish-fidelity: the Sunfish's rudder head, from class photos (it had been a white box and a round stick): the
+    cast aluminium head, two cheeks round the blade's top on a through-bolt (the blade kicks up about it), a barrel round
+    the pintle pin on the pivot axis, split where the transom's gudgeon takes it; the tiller socket on top, the varnished
+    tiller deeper than wide and tapering to a rounded grip, held by a bolt. Rudder-side parts (they turn with it); the
+    gudgeon is the hull's (sunfish_gudgeon). pc/ilca-fidelity: alu_tiller, the ILCA's: a round aluminium tube, 28 mm,
+    its last 15 cm under a black grip."""
+    x = stock_x
+    half = 0.5 * 0.11 * top_chord + 0.0005          # the blade's half thickness at the top
+    for s in (1, -1):
+        slab(m, [(x - 0.004, 0.10), (x - 0.13, 0.13), (x - 0.15, 0.17), (x - 0.13, tz - 0.01), (x - 0.004, tz)], cy + s * (half + 0.0035), 0.007, "Aluminium")
+    for z0, z1 in ((0.10, 0.158), (0.202, tz)):
+        tube(m, [(x, cy, z0), (x, cy, z1)], 0.0095, "Aluminium", 12)
+    slab(m, rounded(x - 0.125, tz - 0.026, x + 0.004, tz + 0.026, 0.012, 3), cy, 0.046, "Aluminium")
+    # the pintle pin with its head, and the blade's pivot bolt with nuts
+    tube(m, [(x, cy, 0.092), (x, cy, tz + 0.03)], 0.0045, "Stainless", 8)
+    lathe(m, x, cy, [(0.0, tz + 0.03), (0.008, tz + 0.03), (0.008, tz + 0.036), (0.0, tz + 0.039)], "Stainless", 10)
+    bx, bz = x - 0.1, 0.15
+    tube(m, [(bx, cy - half - 0.012, bz), (bx, cy + half + 0.012, bz)], 0.0045, "Stainless", 8)
+    for s in (1, -1):
+        tube(m, [(bx, cy + s * (half + 0.007), bz), (bx, cy + s * (half + 0.012), bz)], 0.0095, "Stainless", 6)
+    # the tiller
+    path = [(x - 0.11, cy, tz + 0.001), (x + 0.02, cy, tz + 0.008), (x + 0.22, cy, tz + 0.033), (x + 0.5, cy, tz + 0.06),
+            (x + tl - 0.04, cy, tz + 0.078), (x + tl - 0.005, cy, tz + 0.08), (x + tl + 0.012, cy, tz + 0.08)]
+    sections = [(0.03, 0.042), (0.03, 0.042), (0.028, 0.038), (0.026, 0.032), (0.025, 0.028), (0.022, 0.024), (0.01, 0.012)]
+    if alu_tiller:
+        tube(m, [(x - 0.11, cy, tz + 0.001), (x + 0.02, cy, tz + 0.008), (x + 0.22, cy, tz + 0.033), (x + 0.5, cy, tz + 0.06), (x + tl - 0.15, cy, tz + 0.075)], 0.014, "Aluminium", 12)
+        tube(m, [(x + tl - 0.15, cy, tz + 0.075), (x + tl - 0.005, cy, tz + 0.08)], 0.0165, "BlackPlastic", 12)
+    else:
+        bar(m, path, sections, "Wood")
+    tube(m, [(x - 0.06, cy - 0.027, tz), (x - 0.06, cy + 0.027, tz)], 0.0038, "Stainless", 8)
+    for s in (1, -1):
+        tube(m, [(x - 0.06, cy + s * 0.023, tz), (x - 0.06, cy + s * 0.028, tz)], 0.0075, "Stainless", 6)
+
+
+def sunfish_gudgeon(Hh, stock_x, cy, st):
+    """pc/sunfish-fidelity: the transom's gudgeon: a stainless plate screwed to the transom and its barrel round the
+    rudder's pintle, between the head casting's two barrels."""
+    box(hull, (st - 0.002, cy, 0.18), (0.004, 0.06, 0.085), "Stainless")
+    tube(hull, [(stock_x, cy, 0.161), (stock_x, cy, 0.199)], 0.0105, "Stainless", 12)
+    if stock_x < st - 0.012:     # (the ILCA's pivot stands 6 cm off her transom: the gudgeon's arm reaches it)
+        box(hull, (0.5 * (st + stock_x), cy, 0.18), (st - stock_x, 0.014, 0.032), "Stainless")
+    for y in (-0.02, 0.02):
+        for z in (0.15, 0.21):
+            tube(hull, [(st - 0.004, cy + y, z), (st - 0.0058, cy + y, z)], 0.004, "Stainless", 8)
 
 
 def build_rudder():
@@ -1244,8 +1599,18 @@ def build_rudder():
         z = z_top + (z_bot - z_top) * t
         c = chord * (1.2 - 0.45 * t ** 1.4) if transom else chord * (1.0 - 0.3 * t)
         secs.append((z, stock_x + 0.25 * c - 0.25 * chord + 0.03, c))
+    if TAG in ("Sunfish", "ILCA7"):
+        # pc/sunfish-fidelity (and the ILCA's): the blade hangs aft of its pintle in the head casting (its leading edge had been ahead of
+        # the pivot, inside the transom).
+        secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
     foil(m, [(z, le, c) for (z, le, c) in secs], "Antifouling" if SPEC["paint"] else "Topsides", 0.11, cy)
-    if transom and tillered:
+    if transom and tillered and TAG in ("Sunfish", "ILCA7"):
+        tz = Hh.sheer(st) + 0.08
+        tl = RIG["tiller_length"]
+        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7")
+        sunfish_gudgeon(Hh, stock_x, cy, st)
+        socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
+    elif transom and tillered:
         tz = Hh.sheer(st) + 0.08
         box(m, (stock_x - 0.04, cy, tz - 0.12), (0.18, 0.05, 0.3), "Topsides")
         tl = RIG["tiller_length"]

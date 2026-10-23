@@ -919,9 +919,24 @@ float film = (1.0 - smoothstep(0.02, 0.10 + 0.04 * f, h)) * step(-0.05, h) * CA;
 col = lerp(col, col * float3(0.62, 0.74, 0.46), film * 0.8);
 col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
+// Realism audit 1023 item 8 (pc/far-shore): past the 250 m where LakeTerrainActor::PlaceReeds' bank grass and weed stop
+// drawing, a grassy bank met the water as a clean lawn. Here the same band, from the waterline to about a metre up, is
+// painted as the rank grass, sedge and dead stems it stands for: darker and more olive than mown grass, in ragged clumps a
+// few metres across, matte. It fades in from 180 to 260 m (across the plants' cull) on the shore cells (CA): pale sand, rock and
+// riprap keep their own colour, and some stretches of bank stay bare.
+float dist = length(P - Cam) * 0.01;
+float bandTop = 0.95 + 0.3 * n + 0.12 * m;
+float lumC = dot(C.rgb, float3(0.3, 0.59, 0.11));
+float soil = 1.0 - saturate((lumC - 0.38) * 6.0);      // not pale sand, limestone or riprap
+float rank = CA * soil * step(-0.03, h) * (1.0 - smoothstep(bandTop - 0.3, bandTop, h)) * smoothstep(180.0, 260.0, dist);
+float clump = 0.5 + 0.5 * sin(p.x * 0.9 + sin(p.y * 0.6) * 2.0) * sin(p.y * 1.1 + sin(p.x * 0.7) * 2.0);
+float3 weed = lerp(float3(0.045, 0.062, 0.022), float3(0.12, 0.105, 0.05), saturate(0.65 * clump + 0.2 * f + 0.1));
+float cover = rank * smoothstep(-0.55, -0.1, n + 0.4 * m) * (0.75 + 0.25 * saturate(n + 0.6));    // in long patches: some banks stay bare
+col = lerp(col, weed, cover);
+Rough = lerp(Rough, 0.95, cover);
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land", "Cam"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
@@ -934,9 +949,55 @@ return col;
     land.set_editor_property("collection", world_collection())
     land.set_editor_property("parameter_name", "Land")
     connect(land, "", c, "Land")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -800, 550), "", c, "Cam")
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(curvature(mat, -400, 450), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
+def build_far_weed():
+    """M_FarWeed (pc/far-shore-relief, realism audit 1023 item 8): the far shore's weed and low scrub, SM_Reeds_4's ragged
+    cards along the waterline from 250 m to about a kilometre (LakeTerrainActor::PlaceReeds). Two-sided, matte, dark at
+    the foot and olive to straw at the tips in clumps; dithered in from 120 to 170 m (past where its cards would read as cards;
+    the bank grass is a pixel or two tall by then)."""
+    mat = world_material("M_FarWeed")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("two_sided", True)
+    code = """
+float3 p = WP * 0.01;
+float h = saturate((WP.z - WaterZ) * 0.01 / 1.6);
+float2 q = p.xy / 3.0;
+float2 qi = floor(q), qf = frac(q);
+qf = qf * qf * (3.0 - 2.0 * qf);
+float a00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float a01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float clump = lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
+// (#285's Mac gate: near-black at the foot and unbroken, it read as a low hedge. The foot is lit now, a little, and the run
+// breaks into clumps a metre or two long with gaps between: a weed margin is broken and lets the water show through.)
+float3 green = lerp(float3(0.05, 0.064, 0.028), float3(0.09, 0.105, 0.045), h);
+float3 straw = lerp(float3(0.075, 0.068, 0.038), float3(0.17, 0.15, 0.085), h);
+float2 g = p.xy / 1.7 + float2(clump * 0.8, 0.0);
+float gn = frac(sin(dot(floor(g), float2(41.3, 289.1))) * 43758.5);
+float gap = step(0.3, gn);
+Fade = smoothstep(120.0, 170.0, length(WP - Cam) * 0.01) * gap;
+return lerp(green, straw, smoothstep(0.55, 0.9, clump) * 0.7);
+"""
+    c = custom(mat, code, ["WP", "Cam", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0,
+               extra_outputs=[("Fade", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, -800, 0), "", c, "WP")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -800, 100), "", c, "Cam")
+    wz = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 200)
+    wz.set_editor_property("collection", world_collection())
+    wz.set_editor_property("parameter_name", "WaterZ")
+    connect(wz, "", c, "WaterZ")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(node(mat, unreal.MaterialExpressionConstant, -300, 150, r=0.92), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    dither = node(mat, unreal.MaterialExpressionMaterialFunctionCall, -200, 300)
+    dither.set_editor_property("material_function", unreal.load_asset("/Engine/Functions/Engine_MaterialFunctions02/Utility/DitherTemporalAA"))
+    connect(c, "Fade", dither, "Alpha Threshold")
+    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
@@ -1870,7 +1931,24 @@ Transmit = base * Translucency * (1.0 + 1.1 * fwd) * (1.0 - 0.55 * seam) * (1.0 
 // grazing look), so the sail's belly, its twist and the roll of its leech read in flat light too; it had read as one
 // chalky sheet. The far side's number also shows a trace in the cloth seen from the lit side, as a weave does.
 float facingV = saturate(dot(Nf, normalize(CamV)));
-col *= lerp(0.74, 1.0, sqrt(facingV));
+// pc/sail-draft (realism audit 1023 item 6): stronger at a grazing look (0.74 had left a white sail's belly nearly even
+// in flat light), and the sky's shape: an overcast is about three times brighter at the zenith than at the horizon, and
+// the water under it darker still, so cloth tilted up (a spinnaker's shoulders, the windward face of a heeled main) reads
+// lighter and cloth tilted down (her lee face, a spinnaker's foot) darker. Compared with Commons photos of white sails and
+// a spinnaker under an overcast (local only, Data/Reference/raw/sails): the shape there is a gentle gradient, not shading.
+col *= lerp(0.64, 1.0, sqrt(facingV));
+col *= lerp(0.78, 1.04, saturate(0.55 + 0.75 * Nf.z));
+// The belly seen from its hollow side (windward) sees less of the sky: the sail itself hides it. The cloth's curvature
+// toward the eye from the normal's change on screen (positive here: a hollow; the camera vector points to the eye), its occlusion strongest mid-chord: about an
+// eighth of the sky gone at the deepest point of a belly of 3 m radius on a 2.5 m chord (a cylinder's view factor).
+// (No screen derivatives in a ray-tracing hit shader: the traced sail keeps the rest of the look.)
+float hollow = 0.0;
+#if !RAYHITGROUPSHADER
+float3 dpx = ddx(WP) * 0.01, dpy = ddy(WP) * 0.01;
+float kc = (dot(ddx(Nf), dpx) + dot(ddy(Nf), dpy)) / max(dot(dpx, dpx) + dot(dpy, dpy), 1e-8);
+hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y));
+#endif
+col *= 1.0 - 0.16 * hollow;
 col *= 1.0 - 0.06 * through * (1.0 - mark);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
@@ -1965,13 +2043,14 @@ def build_sail_cloth():
     camv = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1200)
     sundir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1600, 1300)
     c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window",
-                                  "Translucency", "VN", "CamV", "SunDir"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+                                  "Translucency", "VN", "CamV", "SunDir", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
                      (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window"),
-                     (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir")):
+                     (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir"),
+                     (node(mat, unreal.MaterialExpressionWorldPosition, -1600, 1400), "WP")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -2946,6 +3025,12 @@ AO = 1.0;
     // C1: the cumulus height profile (Nubis): full coverage over the flat base and up the sides, narrowing near the top so towers
     // round off into domes instead of standing as extruded footprints.
     float covCu = saturate(cu * (1.0 - 0.35 * smoothstep(0.5, 1.0, saturate(hCu / max(cuTop, 0.3)))));
+    // Small cells keep a cloud's outline, not a disc's (realism audit Oct 23 follow-up, docs/cumulus-discs/): a small cell's
+    // presence saturates in its core like a big one's (FWeatherMap), so its outline was the map's round footprint, and in
+    // low sun the small lit domes in front of the big self-shadowed ones read as round holes punched through them. Its
+    // coverage is broken by the shape's coarse Worley (500 and 250 m), fully for the smallest size class (cuSize under 0.3),
+    // none from 0.7.
+    covCu *= lerp(1.0, saturate(lowFbm * 1.8 - 0.4), 1.0 - smoothstep(0.3, 0.7, cuSize));
     // W5a: billows scale with the cloud. The weather map's cells come in many sizes (FWeatherMap::Paint) and a small cell
     // never builds past a low presence: it takes billows at twice the frequency, a big tower the full-size ones (the
     // same noise blended, never a warped frequency).
@@ -4812,7 +4897,7 @@ WORLD_LIBRARY = {
     "Deck": ((0.55, 0.55, 0.52), 0.8, 0.0, 0.0, 0.0),
     "Cushion": ((0.62, 0.56, 0.44), 0.7, 0.0, 0.0, 0.0),
     "Net": ((0.05, 0.06, 0.05), 0.95, 0.0, 0.0, 0.0),
-    "Barge": ((0.22, 0.10, 0.05), 0.85, 5.0, 0.0, 0.3),
+    "Barge": ((0.22, 0.10, 0.05), 0.85, 5.0, 0.0, 0.0),   # painted steel is a dielectric (docs/ship-backlit; pc/far-shore)
     "Cargo": ((0.40, 0.36, 0.30), 0.95, 4.0, 0.0, 0.0),
     "Pilothouse": ((0.80, 0.80, 0.78), 0.4, 3.0, 1.0, 0.0),
     "Funnel": ((0.08, 0.08, 0.09), 0.6, 0.0, 0.0, 0.0),
@@ -4929,6 +5014,7 @@ build(build_navaid_paint)
 build(build_house_materials)
 build(build_house_kit_materials)
 build(build_terrain)
+build(build_far_weed)
 build(build_rain)
 build(build_rain_curtain)
 build(build_rain_wall)

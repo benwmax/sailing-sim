@@ -5,6 +5,8 @@ shallows and at the water's edge.
   SM_Reeds_1  a rush and sedge clump: 110 thin arching blades 0.5 to 1.2 m
   SM_Reeds_2  bank grass and weeds at the waterline: 140 arching blades 0.25 to 0.8 m, seed stalks (realism audit 10)
   SM_Reeds_3  a weed mat floating in the shallows: 260 small oval leaves, 1.6 m across (realism audit 10)
+  SM_Reeds_4  the far shore's weed and scrub: three ragged cards 4.5 m long, 0.4 to 1.5 m tall, and two taller shrub
+              clumps, for 250 m to a kilometre out (pc/far-shore-relief; slot FarWeed)
 Origin at the clump's foot, metres, Z up. Blades are double-faced strips (no two-sided material). Slots: Reed, ReedHead.
 Prints "Reeds: <name> <tris>".
     blender -b --factory-startup -P Tools/blender/build_reeds.py -- <out dir>
@@ -58,7 +60,7 @@ def stem(bm, base, height, rng):
     tube(height, height + rng.uniform(0.1, 0.2), 0.004, 0.001, 1, 4)
 
 
-def export(name, bm):
+def export(name, bm, slots=("Reed", "ReedHead")):
     tris = sum(len(f.verts) - 2 for f in bm.faces)
     me = bpy.data.meshes.new(name)
     uv = bm.loops.layers.uv.new("UVMap")
@@ -67,7 +69,7 @@ def export(name, bm):
             loop[uv].uv = (loop.vert.co.x + loop.vert.co.y, loop.vert.co.z)
     bm.to_mesh(me)
     bm.free()
-    for s in ("Reed", "ReedHead"):
+    for s in slots:
         me.materials.append(bpy.data.materials.get(s) or bpy.data.materials.new(s))
     obj = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(obj)
@@ -146,8 +148,40 @@ def weed_mat():
     export("SM_Reeds_3", bm)
 
 
+def far_margin():
+    """pc/far-shore-relief (realism audit 1023 item 8): a far stand-in for the waterline's weed and scrub, seen from
+    250 m to a kilometre, where only its ragged top against the water and the bank counts: three long cards with jagged
+    tops (each peak its own height), and two crossed pairs of taller shrub cards (buttonbush and water willow). Double
+    faced; one slot, FarWeed (M_FarWeed fades it out near the camera)."""
+    rng = random.Random(23)
+    bm = bmesh.new()
+
+    def card(x0, x1, y, yaw, h0, h1, segs, spike):
+        cs, sn = math.cos(yaw), math.sin(yaw)
+        pts = []
+        for i in range(segs + 1):
+            t = i / segs
+            u = x0 + (x1 - x0) * t
+            top = rng.uniform(h0, h1) * (1.0 if i % 2 == 0 else spike)
+            px, py = u * cs - y * sn, u * sn + y * cs
+            pts.append(((px, py, -0.12), (px, py, top)))
+        for face_side in (0, 1):
+            off = 0.004 if face_side else -0.004
+            vs = [(bm.verts.new((a[0] - sn * off, a[1] + cs * off, a[2])), bm.verts.new((b[0] - sn * off, b[1] + cs * off, b[2]))) for a, b in pts]
+            for (a0, b0), (a1, b1) in zip(vs, vs[1:]):
+                bm.faces.new((a0, a1, b1, b0) if face_side else (a0, b0, b1, a1))
+    for y, yaw in ((-0.25, 0.12), (0.0, -0.06), (0.25, 0.09)):
+        card(-2.25, 2.25, y, yaw, 0.45, 1.25, 18, 0.55)
+    for _ in range(2):
+        cx = rng.uniform(-1.5, 1.5)
+        for yaw in (0.6, -0.9):
+            card(cx - 0.6, cx + 0.6, 0.0, yaw, 1.2, 1.8, 8, 0.75)
+    export("SM_Reeds_4", bm, ("FarWeed",))
+
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 cattails()
 rushes()
 bank_grass()
 weed_mat()
+far_margin()

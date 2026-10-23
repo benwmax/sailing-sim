@@ -643,6 +643,58 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 			}
 		}
 	}
+	// pc/sunfish-strap, pc/ilca-fidelity: hiking from a dinghy with a strap along its well (the Sunfish, the ILCA), the feet go under it: each ankle just
+	// to windward of the webbing, on the sole, the instep beneath it and the toes across the centreline (the legs reach
+	// across the well from the windward deck), the feet 0.12 and 0.30 m ahead of the hips (and 10 cm off the forward wall: there the toes met it) (with a foot further aft the hiked
+	// aft leg couldn't fold down to it, its ankle left over the webbing).
+	// Without it the feet stood beside the strap and a shin went through it.
+	FCrewCockpitWell StrapWell;
+	bool bUnderStrap = false;
+	if (Config && !bBrace && In.Params.Stance == ECrewStance::DinghyHike && !In.Params.bFlatDeck && CrewCockpitWell(*Config, StrapWell) && StrapWell.StrapHalfY > 0.0)
+	{
+		const double Side = ToBoat.GetLocation().Y >= 0.0 ? 1.0 : -1.0;
+		// Ahead of the hips (the sailor faces inboard and forward): with the aft foot at the hips' own station the aft leg
+		// folded back and splayed its knee out over the deck.
+		const double HipX = ToBoat.GetLocation().X / CrewMotionDetail::ToCm;
+		const int32 FootL = Ref.FindBoneIndex(TEXT("foot_l")), FootR = Ref.FindBoneIndex(TEXT("foot_r"));
+		if (FootL != INDEX_NONE && FootR != INDEX_NONE)
+		{
+			// The forward target to the foot that is already the more forward of the two.
+			const bool bLeftForward = ToBoat.TransformPosition(CS[FootL].GetLocation()).X >= ToBoat.TransformPosition(CS[FootR].GetLocation()).X;
+			for (int32 K = 0; K < 2; ++K)
+			{
+				const bool bForward = (K == 0) == bLeftForward;
+				const double FootX = FMath::Clamp(HipX + (bForward ? 0.30 : 0.12), StrapWell.StrapX0 + 0.06, StrapWell.StrapX1 - 0.10);
+				const FVector AtM(FootX, Side * (StrapWell.StrapHalfY + 0.05), StrapWell.SoleZ + 0.075);
+				CrewSolver::ReachArm(Ref, CS, D, K == 0 ? FootL : FootR, ToBoat.InverseTransformPosition(AtM * CrewMotionDetail::ToCm), Carried);
+			}
+			CrewSolver::Solve(Ref, RestCS, Carried, CS, &D);
+			// Then each foot aimed under the webbing: the ball across the centreline, low over the sole (hiked, the legs'
+			// reach tipped the toes up through the strap). A turn of the foot about the ankle, taking the ankle-to-ball
+			// direction to that one, carried as the foot's rotation from the calf.
+			for (int32 K = 0; K < 2; ++K)
+			{
+				const int32 Foot = K == 0 ? FootL : FootR;
+				const int32 Ball = Ref.FindBoneIndex(K == 0 ? TEXT("ball_l") : TEXT("ball_r"));
+				const int32 Calf = Ref.GetParentIndex(Foot);
+				if (Ball == INDEX_NONE || Calf == INDEX_NONE) continue;
+				const FVector AnkleCS = CS[Foot].GetLocation();
+				const FVector AnkleM = ToBoat.TransformPosition(AnkleCS) / CrewMotionDetail::ToCm;
+				const FVector BallM = ToBoat.TransformPosition(CS[Ball].GetLocation()) / CrewMotionDetail::ToCm;
+				const double Len = FVector::Dist(AnkleM, BallM);
+				const double Drop = FMath::Clamp(AnkleM.Z - (StrapWell.SoleZ + 0.035), 0.0, 0.9 * Len);
+				const double Across = FMath::Sqrt(FMath::Max(Len * Len - Drop * Drop - FMath::Square(BallM.X - AnkleM.X), 0.0));
+				const FVector WantM(BallM.X, AnkleM.Y - Side * Across, AnkleM.Z - Drop);
+				const FVector Have = (CS[Ball].GetLocation() - AnkleCS).GetSafeNormal();
+				const FVector Want = (ToBoat.InverseTransformPosition(WantM * CrewMotionDetail::ToCm) - AnkleCS).GetSafeNormal();
+				if (Have.IsNearlyZero() || Want.IsNearlyZero()) continue;
+				const FQuat Turn = FQuat::FindBetweenNormals(Have, Want);
+				Carried.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * Turn * D[Foot]);
+			}
+			CrewSolver::Solve(Ref, RestCS, Carried, CS, &D);
+			bUnderStrap = true;
+		}
+	}
 	FCrewGround Ground;
 	if (Config)
 	{
@@ -650,7 +702,9 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		Ground.HullDepth = HullDepth;
 		Ground.ToBoat = ToBoat;
 		const ECrewStance St = In.Params.Stance;
-		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike;
+		// (And feet under a hiking strap: flat on the sole beneath it, the toes neither through the sole nor up through the
+		// webbing.)
+		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike || bUnderStrap;
 		Ground.bTravelerBridge = In.bTravelerBridge;
 		Ground.bFeetDown = St == ECrewStance::Helm || St == ECrewStance::Cockpit;
 		Ground.bFlatDeck = In.Params.bFlatDeck;

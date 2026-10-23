@@ -116,6 +116,16 @@ struct SAILINGSIM_API FCrewCockpitWell
 	// it is gone): solid between TrackZ0 and TrackZ1 within TrackHalfX of TrackX and TrackHalfY of the centreline, never a
 	// floor (a foot stands on the sole beside it, a shin clears it). TrackHalfX 0 for none.
 	double TrackX = 0.0, TrackHalfX = 0.0, TrackZ0 = 0.0, TrackZ1 = 0.0, TrackHalfY = 0.0;
+	// pc/sunfish-strap: the Sunfish's hiking strap, flat webbing along the well's centreline from StrapX0 to StrapX1, its
+	// underside StrapEndZ over the sole at the ends and StrapMidZ midway (it sags), StrapThick thick, StrapHalfY either
+	// side. Solid like the track, never a floor; the hiking sailor's feet go under it. StrapHalfY 0 for none.
+	double StrapX0 = 0.0, StrapX1 = 0.0, StrapEndZ = 0.0, StrapMidZ = 0.0, StrapThick = 0.0, StrapHalfY = 0.0;
+	/** The strap's underside (m, boat frame) at X: the sole plus its sag curve (a parabola through the ends and middle). */
+	double StrapUnderZ(double X) const
+	{
+		const double U = (StrapX1 > StrapX0) ? (2.0 * (X - StrapX0) / (StrapX1 - StrapX0) - 1.0) : 0.0;
+		return SoleZ + StrapMidZ + (StrapEndZ - StrapMidZ) * U * U;
+	}
 };
 /** bTravelerBridge false is the hero J/22 (the player's boat): its own cockpit (build_j22_hero.py, J22H_sockets.json), no bridge. */
 SAILINGSIM_API bool CrewCockpitWell(const Sailing::FBoatConfig& Config, FCrewCockpitWell& Out, bool bTravelerBridge = true);
