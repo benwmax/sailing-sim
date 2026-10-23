@@ -1822,8 +1822,22 @@ col *= 1.0 - 0.09 * edgeLine - 0.16 * stitch * (1.0 - mark);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind (and with Detail
 // every patch layer, the tabling and the stitch holes).
-Transmit = base * 0.7 * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * max(mark, through)) * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
+// Realism audit 3 (docs/realism-audit-1022): how much the cloth lets through is the cloth's (Translucency: resinated Dacron
+// about a third, spinnaker nylon more), and it is strongest looking toward the sun through it (forward scattering: SunDir
+// is the sky's sun). The other side's number is ink on the far face: its shadow shows faintly against the light, strongest
+// with the sun right behind it, never the solid mirrored number it was (it had blocked 90% of the glow, as the near ink).
+float3 Nf = normalize(VN) * (Face >= 0.0 ? 1.0 : -1.0);
+float fwd = pow(saturate(dot(-normalize(CamV), normalize(SunDir))), 6.0);
+float showThrough = (0.18 + 0.32 * fwd) * through;
+Transmit = base * Translucency * (1.0 + 1.1 * fwd) * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark) * (1.0 - showThrough)
+    * (Layout > 3.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
     * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine) * (1.0 + 0.6 * win) * (1.0 - 0.5 * winEdge);
+// The draft: cloth turning away from the eye darkens (Dacron is a matte weave under its resin: little light comes back at a
+// grazing look), so the sail's belly, its twist and the roll of its leech read in flat light too; it had read as one
+// chalky sheet. The far side's number also shows a trace in the cloth seen from the lit side, as a weave does.
+float facingV = saturate(dot(Nf, normalize(CamV)));
+col *= lerp(0.74, 1.0, sqrt(facingV));
+col *= 1.0 - 0.06 * through * (1.0 - mark);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
 // from the clew; the seams' pucker. The vinyl of the number and insignia is glossier than the Dacron.
@@ -1911,12 +1925,19 @@ def build_sail_cloth():
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
-    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+    # Realism audit 3: the cloth's translucency, the vertex normal and view direction (the draft's shading), the sun.
+    transl = scalar(mat, "Translucency", 0.34, -1600, 1000)
+    vn = node(mat, unreal.MaterialExpressionVertexNormalWS, -1600, 1100)
+    camv = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1200)
+    sundir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1600, 1300)
+    c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window",
+                                  "Translucency", "VN", "CamV", "SunDir"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
-                     (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window")):
+                     (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window"),
+                     (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -1941,7 +1962,9 @@ def build_sail_cloth():
             ASSETS.create_asset(name, FOLDER, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
         MEL.set_material_instance_parent(mi, mat)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
-        for pname, value in (("Battens", bat), ("Marks", mk), ("Height", h), ("Roughness", 0.5 if name != "MI_Sail_Spinnaker" else 0.45)):
+        # (realism audit 3: nylon lets more light through than resinated Dacron)
+        for pname, value in (("Battens", bat), ("Marks", mk), ("Height", h), ("Roughness", 0.5 if name != "MI_Sail_Spinnaker" else 0.45),
+                             ("Translucency", 0.34 if name != "MI_Sail_Spinnaker" else 0.55)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
