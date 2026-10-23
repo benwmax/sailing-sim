@@ -1151,10 +1151,11 @@ void ALakeTerrainActor::PlaceReeds()
 			{
 				Scatter(3, 1, 0.0, 0.004, 0.8f, 1.6f, 13);
 			}
-			// The far stand-in: one ragged strip along the shore at each waterline node (two on the coasts' 10 m grid), turned
-			// along the bank (across the slope), mostly continuous with a few gaps. (Nodes from 0.6 m under the water to 1.6 m up: on a
+			// The far stand-in: a ragged strip along the shore at a waterline node, turned along the bank (across the slope), in
+			// broken runs: about two nodes in three on the lake, and on the coasts' 10 m grid one in four, in patches (#285's
+			// Mac gate: two per node over Galveston's marshes was 900,000 strips for a few pixels). (Nodes from 0.6 m under the water to 1.6 m up: on a
 			// steep bank the 5 m grid has no node near the waterline itself.)
-			if (Meshes[4] && H >= -0.6 && H <= 1.6 && Slope <= 2.0 && Wet3 < -0.05 && (Hh >> 4 & 1023) <= (Patch >= -0.3 ? 900u : 640u))
+			if (Meshes[4] && H >= -0.6 && H <= 1.6 && Slope <= 2.0 && Wet3 < -0.05 && (Hh >> 4 & 1023) <= (bCoarse ? (Patch >= 0.0 ? 400u : 120u) : (Patch >= -0.3 ? 760u : 420u)))
 			{
 				const double Gx = T.NodeHeight(R + 1, C) - T.NodeHeight(R - 1, C), Gy = T.NodeHeight(R, C + 1) - T.NodeHeight(R, C - 1);
 				const double Along = FMath::Atan2(Gy, Gx) + 0.5 * UE_DOUBLE_PI + (((Hh >> 14) & 255) / 255.0 - 0.5) * 0.5;
@@ -1162,9 +1163,8 @@ void ALakeTerrainActor::PlaceReeds()
 				const double Gm = FMath::Sqrt(Gx * Gx + Gy * Gy), Rise = Gm / (2.0 * T.GetCell());
 				const double Shift = Rise > 1e-3 ? FMath::Clamp((H - 0.05) / Rise, -1.5 * T.GetCell(), 1.5 * T.GetCell()) : 0.0;
 				const double Wx = X - (Gm > 1e-6 ? Gx / Gm : 0.0) * Shift, Wy = Y - (Gm > 1e-6 ? Gy / Gm : 0.0) * Shift;
-				for (int32 K = 0; K < (bCoarse ? 2 : 1); ++K)
 				{
-					const double Off = bCoarse ? (K - 0.5) * 5.0 : (((Hh >> 22) & 255) / 255.0 - 0.5) * 1.5;
+					const double Off = (((Hh >> 22) & 255) / 255.0 - 0.5) * (bCoarse ? 4.0 : 1.5);
 					const double Px = Wx + FMath::Cos(Along) * Off, Py = Wy + FMath::Sin(Along) * Off;
 					const float Len = 1.0f + 0.3f * ((Hh >> 8) & 255) / 255.f, Tall = 0.7f + 0.6f * ((Hh >> 24) & 255) / 255.f;
 					Out[4].Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(Along)), 0.f), FVector(Px, Py, FMath::Max(T.HeightAt(Px, Py), -0.08) - 0.02) * CmPerMeter, FVector(Len, 1.f, Tall)));

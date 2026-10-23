@@ -974,9 +974,14 @@ qf = qf * qf * (3.0 - 2.0 * qf);
 float a00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
 float a01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
 float clump = lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
-float3 green = lerp(float3(0.035, 0.048, 0.018), float3(0.085, 0.10, 0.04), h);
-float3 straw = lerp(float3(0.06, 0.055, 0.03), float3(0.17, 0.15, 0.085), h);
-Fade = smoothstep(120.0, 170.0, length(WP - Cam) * 0.01);
+// (#285's Mac gate: near-black at the foot and unbroken, it read as a low hedge. The foot is lit now, a little, and the run
+// breaks into clumps a metre or two long with gaps between: a weed margin is broken and lets the water show through.)
+float3 green = lerp(float3(0.05, 0.064, 0.028), float3(0.09, 0.105, 0.045), h);
+float3 straw = lerp(float3(0.075, 0.068, 0.038), float3(0.17, 0.15, 0.085), h);
+float2 g = p.xy / 1.7 + float2(clump * 0.8, 0.0);
+float gn = frac(sin(dot(floor(g), float2(41.3, 289.1))) * 43758.5);
+float gap = step(0.3, gn);
+Fade = smoothstep(120.0, 170.0, length(WP - Cam) * 0.01) * gap;
 return lerp(green, straw, smoothstep(0.55, 0.9, clump) * 0.7);
 """
     c = custom(mat, code, ["WP", "Cam", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0,
