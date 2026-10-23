@@ -3458,7 +3458,13 @@ float cm = dot(dir, MoonDir.xyz);
         // sky is bright, and the cache read 16% brighter than the live clouds there).
         float hi = saturate((SunDir.z - 0.42) / 0.29);
         float3 skyCol = lerp(SkyEnv / envL, ViewLum / max(skyL, 1e-5), hi);
-        float3 amb = skyL * lerp(float3(1.0, 1.0, 1.0), skyCol, 0.85) * lerp(1.04, 0.72, hi);
+        // Realism audit 2 (docs/low-sun-sky/): with the sun low, the sky toward the view is the horizon's glow, far brighter
+        // than the sky the cloud sees overhead; as the ambient's brightness it lit every far cloud toward a sunset as white as
+        // at noon, where photos show them dark against the glow. Below 25 degrees the brightness is capped at a multiple of
+        // the sky light overhead (SkyEnv), fully by 3 degrees: LOW_SUN_AMB_CAP 0.8 (1.5 still left them pale against the glow).
+        float lowSun = 1.0 - smoothstep(0.05, 0.42, SunDir.z);
+        float ambL = lerp(skyL, min(skyL, LOW_SUN_AMB_CAP * envL), lowSun);
+        float3 amb = ambL * lerp(float3(1.0, 1.0, 1.0), skyCol, 0.85) * lerp(1.04, 0.72, hi);
         // The live clouds' grey-scale scattering keeps less of the sun's colour than the raw illuminance: 30% toward grey.
         float3 sunC = lerp(float3(sunL, sunL, sunL), SunIll, 0.7) * lerp(1.09, 0.86, hi);
         col = col * s.b + s.r * CacheSun.x * sunC + s.g * CacheSun.w * amb;
@@ -3505,7 +3511,7 @@ def build_sky_dome():
     # C2: the sky cache's two panoramas (ASailingEnvironment::UpdateSkyCache sets them).
     cache = {n: node(mat, unreal.MaterialExpressionTextureObjectParameter, -1400, 1500 + 80 * i, parameter_name=n, texture=linear,
                      sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR) for i, n in enumerate(("CacheOld", "CacheNew"))}
-    c = custom(mat, SKY_CODE.replace("//@GLOW_TOWARD@", GLOW_TOWARD), ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
+    c = custom(mat, SKY_CODE.replace("//@GLOW_TOWARD@", GLOW_TOWARD).replace("LOW_SUN_AMB_CAP", os.environ.get("LOW_SUN_AMB_CAP", "0.8")), ["CamVec", "CamPos", "ViewLum", "SunDir", "SunDisk", "Wx", "WRect", "Cirrus", "Night", "Rot0", "Rot1", "Rot2", "MoonDir", "SunTrue",
                                "CacheOld", "CacheNew", "CacheP", "CacheSun", "SunIll", "SkyEnv", "GlowA", "GlowB", "Skyline", "SkylineP", "CloudGlow"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -800, 300)
     connect(scalar(mat, "CloudGlow", 1.0, -1400, 2300), "", c, "CloudGlow")   # docs/night-clouds/: kCloudGlow
