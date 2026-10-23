@@ -2427,6 +2427,7 @@ capsDrawn = max(capsDrawn, trailDrawn);
 // inside the deck plan), and the churned water behind a transom (past the hull's end aft, within its beam, fading over a
 // few metres that grow with her speed). Both grow with her speed from 0.8 m/s and are broken by WB_NOISE's bubbles.
 float hullFoam = 0.0;
+float hullNear = 0.0;   // realism audit 9 (docs/water-at-hull/): how close to her side, for the contact darkening below
 float2 hfr = p.xy - HullClipA.xy;
 float hfReach = length(HullClipRect.zw) + 3.0 + 1.5 * HullClipV.z;   // the churn runs past the map aft
 [branch] if (HullClipA.w > 0.0 && HullClipV.w > 0.0 && dot(hfr, hfr) < hfReach * hfReach)
@@ -2453,10 +2454,17 @@ float hfReach = length(HullClipRect.zw) + 3.0 + 1.5 * HullClipV.z;   // the chur
     float churn = saturate(spread / (0.15 + 0.3 * aft)) * step(0.0, aft) * step(hbx, HullClipRect.x + 0.5 * HullClipRect.z)
         * exp(-aft / (0.4 + 0.45 * HullClipV.z)) * saturate(1.0 - aft / (2.5 + 1.2 * HullClipV.z));
     hullFoam = spd * max(wl * (0.45 + 0.55 * hn), churn * saturate(hn * 1.7 - 0.25));
+    // Realism audit 9: the water against her side sees her topsides where it would see the sky (its reflection and its
+    // skylight half blocked) and lies in her shade: a dark band along the waterline, full under the flare (inside the
+    // deck plan) and fading over HULL_NEAR_M outside it, along her length only (not ahead of the bow or in the churn
+    // astern). From the same clip map as the waterline foam, so it follows the heel and the trim.
+    float outM = max(-side, 0.0);
+    hullNear = exp(-outM / HULL_NEAR_M) * step(0.0, -hout.x) * step(hbx, HullClipRect.x + HullClipRect.z) * step(0.0, hc.a - hout.x + 0.05);
 }
 FoamTone = lerp(FoamTone, 1.0, saturate(hullFoam * 2.0) * (1.0 - saturate(caps * 4.0)));
 Foam = saturate(max(capsDrawn + wakeBreak + hullFoam, 0.85 * lap) + 0.10 * Rain);
 Dark = saturate((gustRatio - 0.95) * 2.5);
+Dark = max(Dark, HULL_NEAR_DARK * hullNear);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
 // mirror (a lull on a light day, the lake at dawn); a puff ruffles it again within seconds (the map's roughness rises in
 // about 2 s and settles over 10). Was under about 2 kn only.
@@ -2518,6 +2526,7 @@ alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing) * (1.0 - 0.4 * Glit
 float3 vdir = normalize(cam - p);
 float inc = acos(saturate(vdir.z));
 Spec = 0.5 * (1.0 - 0.8 * Polarized * exp(-pow((inc - 0.93) / 0.42, 2.0)));
+Spec *= 1.0 - HULL_NEAR_SPEC * hullNear;
 OceanShare = om;
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 // W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
@@ -2614,7 +2623,7 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
-    shade = custom(mat, V4_SHADE, shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
