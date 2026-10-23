@@ -1470,7 +1470,10 @@ void ASailingEnvironment::UpdateHaze()
 	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
 	// Realism audit 6: under a closed stratus deck the air is lit by the grey deck, not the blue sky: the haze goes neutral
 	// grey with the deck (Crisp's blue under an overcast read as clear sky between the deck and the horizon).
-	const FLinearColor DeckGrey(0.58f, 0.60f, 0.63f);
+	// docs/gulf-haze-band/: and no brighter than the deck that lights it. At (0.58, 0.60, 0.63) the haze at the horizon
+	// read a third brighter than the overcast above it, a pale band along the sea's horizon (most of all on the Gulf, with
+	// nothing on the horizon to hide it); a real overcast darkens toward the horizon if anything.
+	const FLinearColor DeckGrey(0.36f, 0.37f, 0.39f);
 	const float Deck = FMath::SmoothStep(0.5f, 0.95f, float(W.Sky[ECloudLayer::Stratus].Coverage));
 	const FLinearColor Tint = FMath::Lerp(FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze), DeckGrey, Deck);
 	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
