@@ -51,6 +51,11 @@ namespace
 
 namespace
 {
+	// docs/overcast-brightness/: a closed stratus deck (the cache steps aside over 0.8 too: bClosedDeck), its diffuse
+	// transmission onto a level white surface, and the sky light's share of it under the deck.
+	float ClosedDeck(const Sailing::FWeatherState& W) { return FMath::SmoothStep(0.8f, 0.95f, float(W.Sky[Sailing::ECloudLayer::Stratus].Coverage)); }
+	constexpr float kDeckDiffuse = 0.3f;
+	constexpr float kDeckSkyLight = 0.25f;
 	// C2: the sky cache's panorama: 4096 x 512 half floats over elevations -3 to 33 degrees (a cumulus base at 2 km is
 	// under 22 degrees from 5 km out), 96 steps from 5 km to 40 km, the sky light's share of the dome's view luminance.
 	constexpr int32 kSkyCacheWidth = 4096;
@@ -566,7 +571,11 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		const double Seen = LastWeatherMap.SunTransmittance(W.Sky, F, F.SpeedMs * (GM->GetSimTime() - F.StartTime), GM->GetWeatherTime(), Cam.X, Cam.Y,
 			FMath::Cos(E) * FMath::Cos(A), FMath::Cos(E) * FMath::Sin(A), FMath::Sin(E));
 		SunVisibility = FMath::FInterpTo(SunVisibility, float(Seen), GetWorld()->GetDeltaSeconds(), 1.5f);
-		CloudShade = 0.12f + 0.88f * SunVisibility;
+		// docs/overcast-brightness/: the 12% floor stood for the light a deck scatters down. Under a closed deck that light
+		// now comes from the deck itself (its base glows, DeckGlow below, and the sky light carries it to the ground), so the
+		// direct beam has no floor there.
+		const float Floor = 0.12f * (1.f - ClosedDeck(W));
+		CloudShade = Floor + (1.f - Floor) * SunVisibility;
 	}
 	if (PostProcess)
 	{
@@ -714,7 +723,10 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		// Under a storm's deck the whole sky is darker, not brighter: illuminance under a shelf cloud falls by one to two
 		// orders of magnitude (Phase 8: STORM-001, SQ-001, C30-S-001 all go grey-dark as it passes over).
-		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * (1.f - 0.6f * float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.08f, Night));
+		// docs/overcast-brightness/: under a closed deck, a quarter. Lit from the glowing deck at full strength the ground
+		// read about half the deck's brightness (a lawn's albedo is a fifth): grass, trees and water as bright as an overcast
+		// that photos show near white over them. Measured against the G5 overcast shore (deck to trees about 9:1 there).
+		SkyLightActor->GetLightComponent()->SetIntensity(SkyIntensity * FMath::Lerp(1.f, kDeckSkyLight, ClosedDeck(W)) * (1.f - 0.6f * float(W.CloudDarkness)) * FMath::Lerp(1.f, 0.08f, Night));
 		SkyLightActor->GetLightComponent()->SetLightColor(FMath::Lerp(FLinearColor::White, FLinearColor(0.55f, 0.65f, 1.f), Night));
 	}
 }
@@ -1180,6 +1192,9 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	auto Layer = [](const FCloudLayer& L) { return FLinearColor(float(L.Coverage), float(L.BaseKm), float(L.TopKm), float(L.Density)); };
 	CloudMaterial->SetVectorParameterValue(TEXT("LayerCumulus"), Layer(W.Sky[ECloudLayer::Cumulus]));
 	CloudMaterial->SetVectorParameterValue(TEXT("LayerStratus"), Layer(W.Sky[ECloudLayer::Stratus]));
+	// docs/overcast-brightness/: a closed deck's base glows with the sun diffused down through it, about 0.3 of it on a level
+	// white surface for an overcast's stratus (optical depth about 20), less as the deck thickens toward rain and storm.
+	CloudMaterial->SetVectorParameterValue(TEXT("DeckGlow"), FLinearColor(kDeckDiffuse * ClosedDeck(W) * (1.f - float(W.CloudDarkness)), 0.f, 0.f, 0.f));
 	CloudMaterial->SetVectorParameterValue(TEXT("LayerCirrus"), Layer(W.Sky[ECloudLayer::Cirrus]));
 	CloudMaterial->SetVectorParameterValue(TEXT("Drift"), FLinearColor(float(W.Sky.DriftX * Tw), float(W.Sky.DriftY * Tw), 0.f, 0.f));
 	if (SkyMaterial)

@@ -3066,6 +3066,16 @@ AO = 1.0;
     Emit += SunLum.rgb * (FACE_PALE * faceLit * faceTone) * face * d * Density;
     Albedo *= 1.0 - FACE_SCATTER_CUT * face;
     }
+    // docs/overcast-brightness/: a closed deck's underside glows with the sunlight diffused down through it (the diffuse
+    // transmission of a stratus deck of optical depth about 20 is a quarter to a third), which a march dominated by single
+    // scattering leaves dark. Emitted in proportion to the extinction like the shelf's face, so an opaque base reads
+    // DeckGlow.x (ASailingEnvironment: 0.3 x the closed deck x (1 - its darkness)) x the sun on a level white surface. The
+    // sky light captures it and lights the ground under the deck with it.
+    [branch] if (DeckGlow.x > 0.0 && SunLum.w > 0.0)
+    {
+        float stShare = saturate(min(dSt * Ext.y, cT) / max(d, 1e-3));
+        Emit += SunLum.rgb * (DeckGlow.x * SunLum.w * stShare) * d * Density;
+    }
     // docs/night-clouds/: at night the towns light the clouds from below: the light thrown up off their streets reaches
     // the bases and dies into each layer above them (600 m), strongest over the cities (GlowToward, the domes seen from
     // the camera). Emitted in proportion to the extinction like the shelf's face, so an opaque base reads GlowLum and a
@@ -3134,12 +3144,12 @@ def build_cloud_layers():
         ("LayerCirrus", (0, 8.5, 10, 0.25)), ("FrontA", (0, 0, 1, 0)), ("FrontB", (0, 0, 0, 0)), ("Flash", (0, 0, 0, 0)),
         ("Drift", (0, 0, 0, 0)), ("LayerExtinction", CLOUD_EXT), ("Tracer", (0, 80, 15, 50)), ("TracerShadow", (4, 10, 0, 0)),
         ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0)),
-        ("GlowLum", (0, 0, 0, 0)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0))))}
+        ("GlowLum", (0, 0, 0, 0)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0)), ("DeckGlow", (0, 0, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -3151,7 +3161,7 @@ def build_cloud_layers():
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
                    ("FrontB", "FrontB"), ("Flash", "Flash"), ("Drift", "Drift"), ("LayerExtinction", "Ext"), ("Tracer", "Tracer"), ("TracerShadow", "Shadow"),
                    ("SunLum", "SunLum"), ("SunDir", "SunDir"), ("CacheSplit", "CacheSplit"), ("GlowLum", "GlowLum"),
-                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB")):
+                   ("GlowDomesA", "GlowA"), ("GlowDomesB", "GlowB"), ("DeckGlow", "DeckGlow")):
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
     connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 1400), "", c, "MaxStepDepth")
@@ -3294,7 +3304,8 @@ return lerp(prev, float3(S, Amb, Tr), CacheShadow.z);
 def cache_code():
     """CACHE_HEAD, CLOUD_CODE as the step's density, CACHE_SHADOW, CLOUD_CODE again as the shadow ray's, CACHE_TAIL."""
     # (The cache keeps no emission: the far clouds' city glow is added where M_SkyDome composites them.)
-    body = "float4 GlowLum = 0.0; float4 GlowA = 0.0; float4 GlowB = 0.0;\n" + cloud_code()
+    # (Nor a deck's glow: under a closed deck the cache steps aside, bClosedDeck.)
+    body = "float4 GlowLum = 0.0; float4 GlowA = 0.0; float4 GlowB = 0.0; float4 DeckGlow = 0.0;\n" + cloud_code()
     view = body.replace("return d * Density;", "dens = d * Density; ao = AO; alb = dot(Albedo, float3(0.3, 0.59, 0.11));")
     shadow = body.replace("return d * Density;", "sd = d * Density;")
     return CACHE_HEAD + view + CACHE_SHADOW + shadow + CACHE_TAIL
