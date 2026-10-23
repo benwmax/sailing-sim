@@ -2913,6 +2913,12 @@ AO = 1.0;
     // C1: the cumulus height profile (Nubis): full coverage over the flat base and up the sides, narrowing near the top so towers
     // round off into domes instead of standing as extruded footprints.
     float covCu = saturate(cu * (1.0 - 0.35 * smoothstep(0.5, 1.0, saturate(hCu / max(cuTop, 0.3)))));
+    // Small cells keep a cloud's outline, not a disc's (realism audit Oct 23 follow-up, docs/cumulus-discs/): a small cell's
+    // presence saturates in its core like a big one's (FWeatherMap), so its outline was the map's round footprint, and in
+    // low sun the small lit domes in front of the big self-shadowed ones read as round holes punched through them. Its
+    // coverage is broken by the shape's coarse Worley (500 and 250 m), fully for the smallest size class (cuSize under 0.3),
+    // none from 0.7.
+    covCu *= lerp(1.0, saturate(lowFbm * 1.8 - 0.4), 1.0 - smoothstep(0.3, 0.7, cuSize));
     // W5a: billows scale with the cloud. The weather map's cells come in many sizes (FWeatherMap::Paint) and a small cell
     // never builds past a low presence: it takes billows at twice the frequency, a big tower the full-size ones (the
     // same noise blended, never a warped frequency).
