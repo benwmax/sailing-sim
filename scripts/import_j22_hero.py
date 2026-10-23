@@ -116,6 +116,15 @@ Rough = lerp(Rough, 0.02, bead);                                  // a bead is a
 // sea's soft sky light, instead.
 float3 rv = reflect(-V, nw);
 Rough = lerp(Rough, max(Rough, 0.45), saturate(-rv.z * 3.0));
+// Realism audit 9 (the hull's half), as M_BoatSurface: a contact band darkening the topsides' last 25 cm over the water,
+// and the water's dark olive in the gelcoat where its reflection points down at it (the traced reflection is skipped
+// there, above), most at a grazing look.
+float aboveW = WP.z - WaterZ;
+float contact = (1.0 - up) * (1.0 - smoothstep(0.0, 25.0, aboveW)) * step(-4.0, aboveW);
+c *= 1.0 - 0.45 * contact;
+float seeWater = saturate(-rv.z * 3.0) * (1.0 - up) * (1.0 - smoothstep(0.0, 120.0, aboveW));
+float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(nw, V))), 5.0);
+c = lerp(c, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gcAll, 0.3));
 return c;
 """
 

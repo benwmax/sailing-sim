@@ -1276,6 +1276,19 @@ float film = wet * side;
 col *= 1.0 - 0.20 * film * (1.0 - Metal) - 0.10 * drip;
 wetAll = saturate(max(wetAll, max(bead, drip)));
 grad += (bf.x * LX + bf.y * float3(0.0, 0.0, 1.0)) * bead * 1.4;   // each bead a small dome: its own glint
+// Realism audit 9 (docs/realism-audit-1022, the hull's half): a boat sits in the water, not on it.
+// - Contact: the topsides' last few centimetres over the water see little sky (the water and the hull's own flare
+//   shade them) and take the water's dark bounce: a soft band darkening toward the waterline.
+// - The water in the hull: where the gelcoat's reflection points down at the water (below, the lobe is roughened so
+//   Lumen skips its screen traces, docs/lee-topside-patch), the reflection a smooth hull shows is the water's dark olive,
+//   most at a grazing look (Fresnel). Drawn into the colour here, since the traced reflection there is skipped.
+float aboveW = WP.z - WaterZ;                                      // cm over the water surface
+float contact = side * (1.0 - smoothstep(0.0, 25.0, aboveW)) * step(-4.0, aboveW) * (1.0 - Metal);
+col *= 1.0 - 0.45 * contact;
+float3 rvw = reflect(-V, dot(n, V) < 0.0 ? -n : n);
+float seeWater = saturate(-rvw.z * 3.0) * side * (1.0 - smoothstep(0.0, 120.0, aboveW));
+float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(n, V))), 5.0);
+col = lerp(col, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gel, 0.3) * (1.0 - Metal));
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
