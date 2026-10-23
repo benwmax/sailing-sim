@@ -3,10 +3,117 @@
 #include "SailingSim.h"
 #include "SailingSettings.h"
 #include "ProceduralMeshComponent.h"
+#include "BenchRunner.h"
 
 using namespace Sailing;
 
 double ASailboatPawn::ClothCpuSeconds = 0.0;
+
+namespace
+{
+	/**
+	 * docs/sail-shadow-steps/: the sails are drawn on a grid three times finer than the cloth's (FSailCloth::Rows x Cols,
+	 * about 30 cm a cell on a J/22's spinnaker). Each of the cloth's cells is a flat facet, so a shadow grazing the curved
+	 * sail (its own far half, the main's on the spinnaker) fell on whole facets: an edge in steps along the grid, which no
+	 * shadow resolution changes (the shadow terminator). The positions between the cloth's are Catmull-Rom (the surface
+	 * curves between them; bilinear points would stay on the old facets), the normals, tangents and UVs bilinear. The cloth,
+	 * its telltales and its clew stay on the cloth's own grid.
+	 */
+	constexpr int32 SailRenderSub = 3;
+	constexpr int32 SailRenderRows = (FSailCloth::Rows - 1) * SailRenderSub + 1;
+	constexpr int32 SailRenderCols = (FSailCloth::Cols - 1) * SailRenderSub + 1;
+
+	template <typename T> T CatmullRom(const T& P0, const T& P1, const T& P2, const T& P3, float t)
+	{
+		const float t2 = t * t, t3 = t2 * t;
+		return (P1 * 2.f + (P2 - P0) * t + (P0 * 2.f - P1 * 5.f + P2 * 4.f - P3) * t2 + (P1 * 3.f - P0 - P2 * 3.f + P3) * t3) * 0.5f;
+	}
+
+	/** Where on the cloth's grid a render vertex falls: the cell (R, C) and the fractions in it. */
+	void SailRenderCell(int32 Rr, int32 Rc, int32& R, int32& C, float& Tr, float& Tc)
+	{
+		R = FMath::Min(Rr / SailRenderSub, FSailCloth::Rows - 2);
+		C = FMath::Min(Rc / SailRenderSub, FSailCloth::Cols - 2);
+		Tr = float(Rr - R * SailRenderSub) / SailRenderSub;
+		Tc = float(Rc - C * SailRenderSub) / SailRenderSub;
+	}
+
+	template <typename T> T SailBilinear(const TArray<T>& G, int32 R, int32 C, float Tr, float Tc)
+	{
+		auto At = [&](int32 Ri, int32 Ci) -> const T& { return G[Ri * FSailCloth::Cols + Ci]; };
+		return (At(R, C) * (1.f - Tc) + At(R, C + 1) * Tc) * (1.f - Tr) + (At(R + 1, C) * (1.f - Tc) + At(R + 1, C + 1) * Tc) * Tr;
+	}
+
+	FVector SailCubic(const TArray<FVector>& G, int32 R, int32 C, float Tr, float Tc)
+	{
+		auto At = [&](int32 Ri, int32 Ci) -> const FVector&
+		{
+			return G[FMath::Clamp(Ri, 0, FSailCloth::Rows - 1) * FSailCloth::Cols + FMath::Clamp(Ci, 0, FSailCloth::Cols - 1)];
+		};
+		FVector Row[4];
+		for (int32 K = 0; K < 4; ++K)
+		{
+			const int32 Ri = R - 1 + K;
+			Row[K] = CatmullRom(At(Ri, C - 1), At(Ri, C), At(Ri, C + 1), At(Ri, C + 2), Tc);
+		}
+		return CatmullRom(Row[0], Row[1], Row[2], Row[3], Tr);
+	}
+
+	void RefineSail(const FSailCloth& Cloth, const TArray<FVector>& Normals, const TArray<FProcMeshTangent>& Tangents,
+		TArray<FVector>& OutPos, TArray<FVector>& OutNormals, TArray<FProcMeshTangent>& OutTangents)
+	{
+		const int32 N = SailRenderRows * SailRenderCols;
+		OutPos.SetNumUninitialized(N);
+		OutNormals.SetNumUninitialized(N);
+		OutTangents.SetNumUninitialized(N);
+		const TArray<FVector>& P = Cloth.Positions();
+		TArray<FVector> TanX;
+		TanX.SetNumUninitialized(Tangents.Num());
+		for (int32 I = 0; I < Tangents.Num(); ++I) TanX[I] = Tangents[I].TangentX;
+		for (int32 Rr = 0; Rr < SailRenderRows; ++Rr)
+		{
+			for (int32 Rc = 0; Rc < SailRenderCols; ++Rc)
+			{
+				int32 R, C;
+				float Tr, Tc;
+				SailRenderCell(Rr, Rc, R, C, Tr, Tc);
+				const int32 I = Rr * SailRenderCols + Rc;
+				OutPos[I] = SailCubic(P, R, C, Tr, Tc);
+				OutNormals[I] = SailBilinear(Normals, R, C, Tr, Tc).GetSafeNormal();
+				OutTangents[I] = FProcMeshTangent(SailBilinear(TanX, R, C, Tr, Tc).GetSafeNormal(), Tangents[R * FSailCloth::Cols + C].bFlipTangentY);
+			}
+		}
+	}
+
+	template <typename T> void RefineSailUV(const TArray<T>& G, TArray<T>& Out)
+	{
+		Out.SetNumUninitialized(SailRenderRows * SailRenderCols);
+		for (int32 Rr = 0; Rr < SailRenderRows; ++Rr)
+		{
+			for (int32 Rc = 0; Rc < SailRenderCols; ++Rc)
+			{
+				int32 R, C;
+				float Tr, Tc;
+				SailRenderCell(Rr, Rc, R, C, Tr, Tc);
+				Out[Rr * SailRenderCols + Rc] = SailBilinear(G, R, C, Tr, Tc);
+			}
+		}
+	}
+
+	/** FSailCloth::Triangles' winding on the render grid (its front face to starboard: M_SailCloth's TwoSidedSign). */
+	void SailRenderTriangles(TArray<int32>& Out)
+	{
+		Out.Reset();
+		for (int32 R = 0; R < SailRenderRows - 1; ++R)
+		{
+			for (int32 C = 0; C < SailRenderCols - 1; ++C)
+			{
+				const int32 A = R * SailRenderCols + C, B = A + 1, D = A + SailRenderCols, E = D + 1;
+				Out.Append({ A, D, B, B, D, E });
+			}
+		}
+	}
+}
 
 void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& Cloth, const FSailGeometry& Geo, ESailKind Kind,
 	const FSailStripState* Strips, int32 Side, float DeltaSeconds)
@@ -29,18 +136,40 @@ void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& 
 	Cloth.ComputeNormals(Normals);
 	TArray<FProcMeshTangent> Tangents;
 	Cloth.ComputeTangents(Tangents);
+	// Drawn on the finer render grid (above); -SailingClassicSailGrid draws the cloth's own grid (compare).
+	static SailingArgs::FCachedFlag ClassicGridArg(TEXT("SailingClassicSailGrid"));
+	if (ClassicGridArg.Get())
+	{
+		if (Mesh->GetNumSections() == 0)
+		{
+			TArray<int32> Tris;
+			Cloth.Triangles(Tris);
+			Mesh->CreateMeshSection(0, Cloth.Positions(), Tris, Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(), TArray<FColor>(), Tangents, false);
+		}
+		else
+		{
+			Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), Tangents);
+		}
+		return;
+	}
+	TArray<FVector> RPos, RNormals;
+	TArray<FProcMeshTangent> RTangents;
+	RefineSail(Cloth, Normals, Tangents, RPos, RNormals, RTangents);
 	if (Mesh->GetNumSections() == 0)
 	{
 		TArray<int32> Tris;
-		Cloth.Triangles(Tris);
-		Mesh->CreateMeshSection(0, Cloth.Positions(), Tris, Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(),
-			TArray<FColor>(), Tangents, false);
+		SailRenderTriangles(Tris);
+		TArray<FVector2D> UV0, UV1, UV2;
+		RefineSailUV(Cloth.UV0(), UV0);
+		RefineSailUV(Cloth.UV1(), UV1);
+		RefineSailUV(Cloth.UV2(), UV2);
+		Mesh->CreateMeshSection(0, RPos, Tris, RNormals, UV0, UV1, UV2, TArray<FVector2D>(), TArray<FColor>(), RTangents, false);
 	}
 	else
 	{
 		// Perf 1 fix 3: the section is updated in place (same topology); the UVs never change after it was made, so only
 		// positions, normals and tangents go across.
-		Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), Tangents);
+		Mesh->UpdateMeshSection(0, RPos, RNormals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), RTangents);
 	}
 }
 
