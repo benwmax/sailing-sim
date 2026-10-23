@@ -244,7 +244,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   startup. TSR is off (TAA at 67% on Medium, native TAA on High; this engine build has no MetalFX). High uses Lumen's
   High GI scalability, not Epic's (5.5 ms at native). Virtual shadow maps cost about 2 ms on Medium and 4 ms on High
   until the scene has Nanite meshes. Exposure on Medium and High follows the light (incident meter), not the frame;
-  `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun.
+  `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun. No clear-air lift (Phase 8's +0.5 EV,
+  dropped Oct 23 2026: `docs/exposure-choice/`).
 - Sails and crew (Visual V3): `FSailCloth` (`SailCloth.h`) builds each sail's grid from the physics strips (target shape)
   and runs a position-based cloth over it on Medium and High (flogging, leech flutter, luff wrinkles, spinnaker
   collapse); `M_SailCloth` draws seams, battens, insignia and number from its UVs (marks atlas from
