@@ -856,7 +856,17 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 		// 0.474 m up, open below (round 12's 16 cm bridge at x -1.75, which the helm's forward foot stood on, is gone).
 		W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.458; W.TrackZ1 = 0.474; W.TrackHalfY = 1.0;
 		return true;
-	case EBoatType::Sunfish: return Fleet(-1.18, -0.52, 0.29, 0.20);
+	case EBoatType::Sunfish:
+		Fleet(-1.18, -0.52, 0.29, 0.20);
+		// The model's sole (pc/sunfish-strap's numbers: 0.047 m up from the waterline), not the sheer less the well's depth:
+		// that put it 2.7 cm low, the feet below the floor the model draws.
+		W.SoleZ = 0.047;
+		// pc/sunfish-strap (build_fleet.py): the strap's ends at the well's aft and forward walls, x -1.176 and -0.524; its
+		// top 0.167 m up from the waterline at the ends and 0.147 midway, the sole at 0.047 (so 0.120 and 0.100 over the
+		// sole), 3 mm of webbing, 25 mm either side of the centreline.
+		W.StrapX0 = -1.176; W.StrapX1 = -0.524; W.StrapThick = 0.003; W.StrapHalfY = 0.025;
+		W.StrapEndZ = 0.120 - W.StrapThick; W.StrapMidZ = 0.100 - W.StrapThick;
+		return true;
 	case EBoatType::ILCA7: return Fleet(-1.62, -0.22, 0.31, 0.22);
 	case EBoatType::Catalina22: return Fleet(-3.05, -0.78, 0.63, 0.42);
 	case EBoatType::Catalina30: return Fleet(-4.05, -1.32, 0.82, 0.5);
@@ -1072,6 +1082,12 @@ bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVect
 		{
 			// (The traveler track across the well.)
 			if (W.TrackHalfX > 0.0 && FMath::Abs(P.X - W.TrackX) < W.TrackHalfX && Y < W.TrackHalfY && P.Z >= W.TrackZ0 && P.Z <= W.TrackZ1) return true;
+			// (The Sunfish's hiking strap along the well.)
+			if (W.StrapHalfY > 0.0 && P.X > W.StrapX0 && P.X < W.StrapX1 && Y < W.StrapHalfY)
+			{
+				const double Under = W.StrapUnderZ(P.X);
+				if (P.Z >= Under && P.Z <= Under + W.StrapThick) return true;
+			}
 			continue;
 		}
 		return true;

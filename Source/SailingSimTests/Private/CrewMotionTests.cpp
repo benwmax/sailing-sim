@@ -1085,4 +1085,99 @@ bool FVisualCrewClipVarietyTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// pc/sunfish-strap: the Sunfish's hiking sailor has both feet under the strap along the well (CrewCockpitWell's strap), the
+// ankles below its underside and close beside the centreline, within its length; and no point along either shin goes
+// through the webbing (CrewInsideBoat counts it solid). Sitting up and hiked, on both tacks.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSunfishStrapTest, "SailingSim.Visual.SunfishStrap", CrewMotionFlags)
+bool FVisualSunfishStrapTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	TArray<FCrewBody> Bodies;
+	CrewBodies(*this, Bodies);
+	if (!TestTrue(TEXT("SK_Sailor loads"), Bodies.Num() > 0)) return false;
+	const FBoatConfig Cfg = FBoatConfig::Make(EBoatType::Sunfish);
+	const FBoatModel Model(Cfg);
+	FCrewCockpitWell W;
+	if (!TestTrue(TEXT("The Sunfish has a well with a strap"), CrewCockpitWell(Cfg, W) && W.StrapHalfY > 0.0)) return false;
+	AddInfo(FString::Printf(TEXT("Well sole %.3f m (pc/sunfish-strap: 0.047), strap underside %.3f m at the ends, %.3f midway"), W.SoleZ, W.StrapUnderZ(W.StrapX0), W.StrapUnderZ(0.5 * (W.StrapX0 + W.StrapX1))));
+	const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
+	int32 Cases = 0;
+	for (const double Out : { Cfg.CrewSitOut * 0.6, Cfg.CrewSitOut + 0.8 * Cfg.CrewHikeOut })
+	{
+		for (const double Side : { 1.0, -1.0 })
+		{
+			FCrewPlaceInput Place;
+			Place.Config = &Cfg;
+			Place.Index = 0;
+			Place.CrewOffset = Side * Out;
+			Place.WindwardSide = int32(Side);
+			Place.TrueWindAngle = 0.8 * Side;
+			FCrewPlacement Pl;
+			CrewPlacement(Place, Pl);
+			if (Pl.Params.Stance != ECrewStance::DinghyHike) continue;
+			for (const FCrewBody& Body : Bodies)
+			{
+				const FCrewRig* Rig = Body.Rig.bValid ? &Body.Rig : nullptr;
+				const FReferenceSkeleton& Ref = Body.Mesh->GetRefSkeleton();
+				FCrewMotionState State;
+				FCrewMotionInput In;
+				In.Params = Pl.Params;
+				In.ToBoat = FigureFrame(Pl, Rig);
+				In.SeatFromCG = Pl.Pelvis - CG;
+				CrewDerivedAttachPoints(Cfg, Pl.Pelvis.X, In.Attach);
+				TArray<FTransform> CS;
+				for (int32 K = 0; K < 60; ++K)
+				{
+					In.Motion = Chop(K / 30.0, -Side * 8.0, 0.3);
+					In.Time = K / 30.f;
+					CrewMotionUpdate(State, In, 1.f / 30.f);
+				}
+				CrewMotionPose(Ref, Rig, &Cfg, Model.HullDepth(), State, In, CS);
+				++Cases;
+				const FString Case = FString::Printf(TEXT("%s, hike %.1f, side %+.0f"), *Body.Name, Pl.Params.Hike, Side);
+				for (const TCHAR* Leg : { TEXT("l"), TEXT("r") })
+				{
+					const int32 Foot = Ref.FindBoneIndex(*FString::Printf(TEXT("foot_%s"), Leg));
+					const int32 Calf = Ref.FindBoneIndex(*FString::Printf(TEXT("calf_%s"), Leg));
+					if (Foot == INDEX_NONE) continue;
+					const FVector Ankle = In.ToBoat.TransformPosition(CS[Foot].GetLocation()) / CmPerMeter;
+					const bool bAlong = Ankle.X > W.StrapX0 && Ankle.X < W.StrapX1;
+					const bool bBeside = FMath::Abs(Ankle.Y) < W.StrapHalfY + 0.12;
+					TestTrue(Case + FString::Printf(TEXT(": the %s ankle by the strap at (%.2f, %.2f, %.2f) m"), Leg, Ankle.X, Ankle.Y, Ankle.Z), bAlong && bBeside);
+					// The instep under it: along the foot from the ankle to the ball, where it crosses beneath the webbing, below its
+					// underside (the ankle itself sits beside it, about 9 cm over the sole).
+					const int32 Ball = Ref.FindBoneIndex(*FString::Printf(TEXT("ball_%s"), Leg));
+					if (Ball != INDEX_NONE)
+					{
+						const FVector BallAt = In.ToBoat.TransformPosition(CS[Ball].GetLocation()) / CmPerMeter;
+						int32 Under = 0, Over = 0;
+						for (int32 T = 0; T <= 20; ++T)
+						{
+							const FVector P = FMath::Lerp(Ankle, BallAt, T / 20.0);
+							if (FMath::Abs(P.Y) >= W.StrapHalfY || P.X <= W.StrapX0 || P.X >= W.StrapX1) continue;
+							(P.Z < W.StrapUnderZ(P.X) ? Under : Over)++;
+						}
+						TestTrue(Case + FString::Printf(TEXT(": the %s foot goes under the strap (%d points beneath it, %d over)"), Leg, Under, Over), Under > 0 && Over == 0);
+					}
+					if (Calf == INDEX_NONE) continue;
+					const FVector Knee = In.ToBoat.TransformPosition(CS[Calf].GetLocation()) / CmPerMeter;
+					int32 Through = 0;
+					for (int32 T = 0; T <= 20; ++T)
+					{
+						const FVector P = FMath::Lerp(Knee, Ankle, T / 20.0);
+						if (P.X > W.StrapX0 && P.X < W.StrapX1 && FMath::Abs(P.Y) < W.StrapHalfY)
+						{
+							const double Under = W.StrapUnderZ(P.X);
+							Through += P.Z >= Under - 0.04 && P.Z <= Under + W.StrapThick + 0.04 ? 1 : 0;   // a shin is about 8 cm thick
+						}
+					}
+					TestTrue(Case + FString::Printf(TEXT(": the %s shin clears the strap (%d of 21 points in it)"), Leg, Through), Through == 0);
+				}
+			}
+		}
+	}
+	TestTrue(TEXT("Hiking cases checked"), Cases >= 2);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
