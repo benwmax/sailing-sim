@@ -910,9 +910,13 @@ if (Land > 0.5)
 // The wet band: banks are dark and glossy from the water up the swash, about half a metre (ragged); just under the
 // surface the bed takes the water's olive cast.
 float h = (P.z - WaterZ) * 0.01;
-float wet = (1.0 - smoothstep(0.05, 0.45 + 0.2 * n + 0.08 * f, h)) * CA;   // CA: open water within 14 m (Graphics G6)
+// (Realism audit 10: the margin read as pale dry clay to the water. Now wetter and a little higher, and the first few
+// centimetres over the water carry a green-brown film of algae and silt, the line a reservoir's edge always has.)
+float wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n + 0.08 * f, h)) * CA;    // CA: open water within 14 m (Graphics G6)
 float under = smoothstep(0.0, -0.35, h);
-col = lerp(col, col * 0.55, wet);
+col = lerp(col, col * 0.5, wet);
+float film = (1.0 - smoothstep(0.02, 0.10 + 0.04 * f, h)) * step(-0.05, h) * CA;
+col = lerp(col, col * float3(0.62, 0.74, 0.46), film * 0.8);
 col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
 Rough = lerp(0.92, 0.32, wet * (1.0 - under));
 return col;
