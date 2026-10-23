@@ -54,3 +54,20 @@ in its own pass.
 ![tack](tack.jpg)
 ![masthead](masthead.jpg)
 ![well](well.jpg)
+
+## Hiking strap (pc/sunfish-strap)
+
+The Mac saw a red bar on the well's floor under the sailor's shin. It was the hiking strap: a red tube 36 mm round,
+6 cm off the sole, with two red pads at its ends. It is now flat black webbing, 50 mm wide, down the well's middle and
+taut between its end walls under screwed stainless retainer plates, with 2 cm of sag so the sailor's feet tuck under it
+(`sunfish_hiking_strap`, `STRAP_TOP_ABOVE_SOLE`).
+
+Coordinates are the boat frame in metres: x forward, z up from the design waterline. The sole is at z 0.047.
+
+- **Ends:** x -1.176 (aft wall) and -0.524 (forward wall). The strap's top is 12 cm over the sole there, at z 0.167.
+- **Middle:** at x -0.85 the top is 10 cm over the sole, at z 0.147.
+- **Width:** y -0.025 to 0.025. The webbing is 3 mm thick.
+
+Sockets are unchanged. The hull is 31,558 triangles. FleetMesh, BoatBudget and HardwareKit pass.
+
+![strap](strap.jpg)
