@@ -52,26 +52,37 @@ Items 1, 5, 6, 8 and 9 of yesterday's list were fixed. Items 2, 3, 7 and 10 were
   near one. Shadow edges on the sails no longer step.
 - **Shore (item 10, in part; #266).** Reeds and bank grass on the Rush Creek shore.
 
-## The ten biggest remaining gaps
+## The biggest remaining gaps
 
 Ranked as before: how often a gap is on screen, times how far off it is. Lanes as the project splits them: the Mac does
 physics, clipping, crew, water and sky; the PC does models, materials, the sails' look and rope. The sizes are rough.
+There are eight this time, not ten. Two candidates from the contact sheets turned out not to be gaps on a closer look
+(see Checked, below), and padding the list would rank noise.
 
 | # | Gap | Where it shows | Lane | Size |
 |---|---|---|---|---|
-| 1 | **The lake is olive-brown, not blue-grey.** In the Tawakoni photos the open lake reads blue-grey to slate, mostly sky reflected off the chop. Ours is olive to the horizon, and olive-brown seen from above. This was yesterday's item 4. It is parked for a low-angle Lake Ray Hubbard reference: the roughness and specular trials changed little, and the Tawakoni photos may be a bluer lake. | Every open-water view (bridge, open lake, chases, drone) | Mac (water: body colour, sky reflection at grazing angles) | 0.5–1 day, once a reference is in |
+| 1 | **The lake is olive-brown, not blue-grey.** In the Tawakoni photos the open lake reads blue-grey to slate, mostly sky reflected off the chop, and dark at the horizon. Ours is olive to the horizon, with a pale strip where it meets the sky, and olive-brown seen from above. This was yesterday's item 4. It is parked for a low-angle Lake Ray Hubbard reference: the roughness and specular trials changed little, and the Tawakoni photos may be a bluer lake. | Every open-water view (bridge, open lake, chases, drone) | Mac (water: body colour, sky reflection at grazing angles) | 0.5–1 day, once a reference is in |
 | 2 | **An overcast is too dark against the ground.** In the shore photo the overcast is near white, several times brighter than the grass and trees. Ours is a mid grey deck, about as bright as the lawn. A Lambertian surface lit by a uniform overcast is as bright as the sky only if it is white; grass at about 0.2 albedo should read about five times darker than the deck. | Overcast views (shore, Sunfish reach, swell) | Mac (sky: deck luminance against the incident-metered exposure) | 0.5 day |
 | 3 | **A low sun leaves the sky blue-grey.** In the sunset and Aeolian photos the whole sky goes orange to gold, and the haze near the sun glows. Ours keeps a neutral blue-grey above the horizon band, with lit cloud rims over it. The clouds' undersides got darker in #265; the sky did not. | Sunset, dusk and evening views (lakesunset, dusk, C30 evening) | Mac (sky: atmosphere and haze at low sun) | 1 day |
 | 4 | **Cumulus outlines glow, and the horizon is packed.** Each cell has a bright rim all round, like a drawn outline, and toward the horizon the small cells pack into a solid band. In the photos the edges away from the sun are no brighter than the body, and there is clear sky between the far clouds. | Every fair-weather view | Mac (sky: CLOUD_CODE edge light, cell spacing with distance) | 0.5–1 day |
-| 5 | **The sails are flat and chalky.** There is still no shading from their draft and no translucency against the light. The far side's number is faint now (#261) but still shows. | Every boat view | PC (M_SailCloth look) | 0.5–1 day |
-| 6 | **Under a squall the white sails go nearly black.** Today the shaded sides of the main and jib read close to black against the storm sky. Yesterday they were grey. White cloth under a dark deck is still lit by the whole sky and stays paler than the cloud. This is likely a side effect of the storm gloom (#256, #259) on the sky light, and needs checking. | Squall and storm views with a boat | Mac (sky light under the storm) / PC (sail material) | 2–4 hours to find |
-| 7 | **The open sea is green.** In the swell photo the open Gulf is dark blue-grey, the same family as the sky. Ours is bottle green. That suits the bay and the lake, but not the Gulf's open water. | Gulf views (swell, Gulf passage) | Mac (water: the Gulf body's albedo and extinction in `WaterBodyFor`) | 2–4 hours |
-| 8 | **The spinnaker and the coloured sails are flat colour.** The red spinnaker still has no shading from its shape and no seams (#264 changed its colour), and the Hobie's and Sunfish's panels are flat too. | Spinnaker and dinghy views | PC (sail look) | 0.5–1 day |
-| 9 | **The overcast shore is a mown lawn to the water.** The shore photo has weed in the shallows, trees overhanging the water and a ragged edge. Ours has clean grass meeting the water in a line. #266 added reeds and bank grass at Rush Creek, but not on this stretch. | Shore views (shore, marina background) | PC (models: shore margin along the whole lake) | 1 day |
-| 10 | **In the helm view the trimmer has gone.** On Oct 22 the trimmer sat in front of the helm in the upwind reservoir view. Today the cockpit ahead is empty. They may have moved to the rail (a placement change on Oct 22–23) or be placed out of view. If the move is right it is not a gap, but an empty cockpit in the most-used view needs checking. | Helm view (j22-helm-reservoir, helm-eye) | Mac (crew placement) | 1–2 hours to check |
+| 5 | **The open sea is green.** In the swell photo the open Gulf is dark blue-grey, the same family as the sky. Ours is bottle green. That suits the bay and the lake, but not the Gulf's open water. | Gulf views (swell, Gulf passage) | Mac (water: the Gulf body's albedo and extinction in `WaterBodyFor`) | 2–4 hours |
+| 6 | **The sails' shape reads only faintly.** #261 (draft shading to 0.74 at a grazing look, translucency per cloth, the faint far-side number) and #264 (the spinnaker's panels and radial head, dye lots, darker seams on coloured cloth) are both in these captures: the mirrored number is faint and the spinnaker's panels show. But the belly and twist of a white sail, and the spinnaker's curve, still read as nearly even tone in flat light. The G5 sail photos all have people in them, so this rests on judgement, not on a side-by-side. A people-free sail photo, or a pass with the PC's own references, would settle how far to take it. | Every boat view | PC (M_SailCloth look) | 0.5 day, after a reference |
+| 7 | **The far shore's reflection on calm water is too sharp.** In the overcast-shore view the trees and buildings reflect as a crisp mirror image. In the photo the reflection is broken and softened by the faint ripples. | Calm-water views (shore, marina) | Mac (water: calm-water roughness floor and ripple at 2–3 kn) | 2–4 hours |
+| 8 | **The far banks are clean.** #266's bank grass and weed are drawn to 250 m. Past that, a bank is grass meeting the water in a line, as on the far side of the overcast-shore view. (The shore photo's weed is at the photographer's feet, so it is not a like-for-like compare; #266's own cove and marina stills show the near plants.) | Wide shore views | PC (models: a far-band stand-in for the bank plants, or a terrain tint) | 0.5 day |
+
+## Checked: not gaps
+
+- **The captures include today's merges.** `capture-scenes.sh` runs the game uncooked from this checkout (`run-game.sh`).
+  It was at main e2e3a0e5, built by the sweep just before, so #261, #264, #266 and every other merge are in them.
+- **Sails under the squall.** On the contact sheet they looked nearly black. At full size the jib's shaded side (55,
+  grey) is brighter than the squall sky behind it (38). Yesterday the jib was level with the sky (95 against 94). The
+  whole sky is 2.7 times darker since the storm-gloom work (#256, #259), the sails followed it by 42%, and the water
+  is unchanged (58 and 57). The sails are not too dark for the light; the downscale misled.
+- **The trimmer in the helm view.** Yesterday's 16 s frame caught the trimmer mid-crossing: centred in the cockpit,
+  facing forward, the crossing pose. Today all three crew are on the windward seat, beside the helm and out of the
+  forward view (checked from above). No crew-placement code changed between the two captures; #273 only turns joints
+  a few degrees about the stance.
 
 ## Smaller
 
 - **Ship.** The container ship is now lit and coloured (#268), not a silhouette.
-- **Reflection on calm water.** The marina's reflections are good, but the far shore's reflection on the calm lake
-  (shore) is sharper than the photo's.
