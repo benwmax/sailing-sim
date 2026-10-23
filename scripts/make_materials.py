@@ -1886,7 +1886,24 @@ Transmit = base * Translucency * (1.0 + 1.1 * fwd) * (1.0 - 0.55 * seam) * (1.0 
 // grazing look), so the sail's belly, its twist and the roll of its leech read in flat light too; it had read as one
 // chalky sheet. The far side's number also shows a trace in the cloth seen from the lit side, as a weave does.
 float facingV = saturate(dot(Nf, normalize(CamV)));
-col *= lerp(0.74, 1.0, sqrt(facingV));
+// pc/sail-draft (realism audit 1023 item 6): stronger at a grazing look (0.74 had left a white sail's belly nearly even
+// in flat light), and the sky's shape: an overcast is about three times brighter at the zenith than at the horizon, and
+// the water under it darker still, so cloth tilted up (a spinnaker's shoulders, the windward face of a heeled main) reads
+// lighter and cloth tilted down (her lee face, a spinnaker's foot) darker. Compared with Commons photos of white sails and
+// a spinnaker under an overcast (local only, Data/Reference/raw/sails): the shape there is a gentle gradient, not shading.
+col *= lerp(0.64, 1.0, sqrt(facingV));
+col *= lerp(0.78, 1.04, saturate(0.55 + 0.75 * Nf.z));
+// The belly seen from its hollow side (windward) sees less of the sky: the sail itself hides it. The cloth's curvature
+// toward the eye from the normal's change on screen (positive here: a hollow; the camera vector points to the eye), its occlusion strongest mid-chord: about an
+// eighth of the sky gone at the deepest point of a belly of 3 m radius on a 2.5 m chord (a cylinder's view factor).
+// (No screen derivatives in a ray-tracing hit shader: the traced sail keeps the rest of the look.)
+float hollow = 0.0;
+#if !RAYHITGROUPSHADER
+float3 dpx = ddx(WP) * 0.01, dpy = ddy(WP) * 0.01;
+float kc = (dot(ddx(Nf), dpx) + dot(ddy(Nf), dpy)) / max(dot(dpx, dpx) + dot(dpy, dpy), 1e-8);
+hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y));
+#endif
+col *= 1.0 - 0.16 * hollow;
 col *= 1.0 - 0.06 * through * (1.0 - mark);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
@@ -1981,13 +1998,14 @@ def build_sail_cloth():
     camv = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1200)
     sundir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1600, 1300)
     c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window",
-                                  "Translucency", "VN", "CamV", "SunDir"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+                                  "Translucency", "VN", "CamV", "SunDir", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
                      (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window"),
-                     (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir")):
+                     (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir"),
+                     (node(mat, unreal.MaterialExpressionWorldPosition, -1600, 1400), "WP")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
