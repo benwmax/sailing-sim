@@ -223,9 +223,13 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			}
 			// Foam: where the surface moves fast (a breaking bow wave) and in the turbulence the transom leaves behind; a
 			// small boat's is a narrow band of bubbles gone within a couple of lengths (Phase 8 drone references).
+			// Realism audit 8 (docs/wake-at-speed/): from 0.25 m/s, not 0.35, and lasting 4 s, not 2.5. At 6-7 kn (a J/22
+			// near her hull speed) the bow wave's crest broke white only in patches and the transom's lane was gone within
+			// a length; in light air (3 kn and under) the surface still moves too slowly to foam.
 			const float Rate = FMath::Abs(Next - Old) / Dt;
-			const float Churn = FMath::Max(0.f, Rate - 0.35f) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
-			FoamField[I] = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / 2.5f) + Churn * Dt * 2.f, 0.f, 1.f);
+			constexpr float kFoamRate = 0.25f, kFoamLife = 4.f;
+			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
+			FoamField[I] = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
 			H[I] = FMath::Clamp(Next, -0.6f, 0.6f);
 			Velocity[I] = Vel;
 		}
