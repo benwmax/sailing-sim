@@ -26,6 +26,7 @@
 #include "VisualPipeline.h"
 #include "SailingSettings.h"
 #include "Engine/SkyLight.h"
+#include "Components/SkyAtmosphereComponent.h"
 #include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
@@ -235,6 +236,10 @@ void ASailingEnvironment::FindSceneActors()
 	if (TActorIterator<ASkyLight> It(GetWorld()); It) SkyLightActor = *It;
 	if (TActorIterator<AExponentialHeightFog> It(GetWorld()); It) Fog = *It;
 	if (TActorIterator<AVolumetricCloud> It(GetWorld()); It) Clouds = *It;
+	// Realism audit Oct 23 (docs/cumulus-rims/): the planet's ground under the atmosphere's multiple scattering is open
+	// water and woods, about 0.1, not the engine's 0.4 grey, which lit the low sky grey from below (red over blue 0.51 at
+	// 20 deg on the bridge view, 0.42 at 0.1).
+	if (TActorIterator<ASkyAtmosphere> It(GetWorld()); It) It->GetComponent()->SetGroundAlbedo(FLinearColor(0.1f, 0.1f, 0.1f).ToFColor(true));
 	if (TActorIterator<APostProcessVolume> It(GetWorld()); It) PostProcess = *It;
 
 	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;

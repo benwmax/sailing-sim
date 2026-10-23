@@ -7,10 +7,11 @@ mkdir -p "$ARTIFACTS/models/world" && "$REPO_ROOT/Tools/venv/bin/python" -I "$RE
 # Graphics G1: the cloud noise volumes (Tools/clouds/make_cloud_noise.py), baked once; CLOUD_NOISE=1 rebakes them.
 if [[ -n "${CLOUD_NOISE:-}" || ! -f "$REPO_ROOT/Content/Materials/Clouds/T_CloudShape.uasset" || ! -f "$REPO_ROOT/Content/Materials/Clouds/T_CloudBillow.uasset" ]]; then
 	"$REPO_ROOT/Tools/venv/bin/python" -I "$REPO_ROOT/Tools/clouds/make_cloud_noise.py" "$ARTIFACTS/clouds" > /dev/null
-	# Twice: a volume made in the same session as its atlas is cut to the wrong size (import_cloud_noise.py).
-	for _ in 1 2; do
-		"$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_cloud_noise.py" \
-			-unattended -nosplash -nosound -NoP4 -stdout > "$ARTIFACTS/import_cloud_noise.log" 2>&1
+	# The atlases, then the volumes from them, in separate sessions: a volume made in the session that imported its atlas
+	# is cut to the wrong size (import_cloud_noise.py).
+	for pass in atlas volume; do
+		CLOUD_NOISE_PASS=$pass "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_cloud_noise.py" \
+			-unattended -nosplash -nosound -NoP4 -stdout > "$ARTIFACTS/import_cloud_noise-$pass.log" 2>&1
 	done
 fi
 # Graphics G4: the front end's maps and images (Tools/ui/make_ui_art.py), from the terrain data and bench screenshots.

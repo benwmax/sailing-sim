@@ -81,11 +81,12 @@ def fbm_worley(n, base, seed):
 # volume's texels are twice as fine upward.
 BILLOW_TILE_M = (3000.0, 1500.0)
 BILLOW_BIG_M = (250.0, 400.0)     # radii of the big lobes
+BILLOW_CREASE = 0.15              # the smooth union's width, in cap height
 BILLOW_SMALL_M = (150.0, 220.0)   # and of the ones packed into the gaps (150 m: still 3 texels at the 110 m mip floor)
 
 
 def billows(n, seed):
-    """Tileable packed lobes: per texel, the highest sphere cap over it (sqrt(1 - (d/r)^2), 0 outside every lobe).
+    """Tileable packed lobes: per texel, the smooth union of the sphere caps over it (sqrt(1 - (d/r)^2), 0 outside every lobe).
 
     A cumulus's outline is bubbles packed on bubbles: the big lobes are spread by dart throwing (centres at least 1.15 big
     radii apart, so neighbours overlap a little and leave crevices), then smaller ones go where the big ones leave the cap
@@ -103,7 +104,11 @@ def billows(n, seed):
         X, Y, Z = np.meshgrid((ix + 0.5) * sx - c[0], (iy + 0.5) * sx - c[1], (iz + 0.5) * sz - c[2], indexing="ij")
         cap = np.sqrt(np.clip(1.0 - (X * X + Y * Y + Z * Z) / (r * r), 0.0, 1.0)).astype(np.float32)
         sub = np.ix_(ix % n, iy % n, iz % n)
-        field[sub] = np.maximum(field[sub], cap)
+        # Smooth union (polynomial smooth max, width BILLOW_CREASE): the hard max left a sharp kink where two lobes met,
+        # which the clouds lit as a hard plane edge (realism audit Oct 23, item 4: faceted lobes).
+        old = field[sub]
+        h = np.clip(BILLOW_CREASE - np.abs(old - cap), 0.0, None) / BILLOW_CREASE
+        field[sub] = np.minimum(np.maximum(old, cap) + h * h * BILLOW_CREASE * 0.25, 1.0)
 
     def wrapped(a, b):
         d = np.abs(a - b)

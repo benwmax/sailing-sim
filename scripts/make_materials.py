@@ -2929,14 +2929,16 @@ AO = 1.0;
     // metres, so they are round in the world), filtered like the shape. Their crowns push the outline out across the cell's
     // soft margin and their creases cut it in: a cell's edge is bubbles on bubbles, not one smooth balloon (the shape
     // noise's own billows are filtered flat at cloud distances; the old erosion only moved a thin skin). The field's mean
-    // (0.79) is taken out; x6 because the outline sits where the shape climbs through about a fifth of its range. Not over
-    // the cell's last 6% of coverage (lobes there floated free as shreds), nor at its flat base.
+    // (0.79) is taken out; x6 because the outline sits where the shape climbs through about a fifth of its range. Not at
+    // the cell's flat base, and only inside its core (coverage over 0.4, eased in from 0): at 0.06 the lobes raised thin
+    // cloud across every cell's soft margin, and summed along a ray toward the horizon that veiled the low sky white
+    // (realism audit Oct 23, item 4: red over blue 0.76 at 12 deg, 0.63 before the billows and 0.64 now).
     float bl = 0.79;
     [branch] if (covCu > 0.001)
     {
         float billowMip = clamp(log2(foot / 23.4), 0.0, 6.0);   // billow texel: 3 km / 128
         bl = Billow.SampleLevel(BillowSampler, qw * float3(0.3333, 0.3333, 0.6667), billowMip).r;
-        shapeCu = saturate(shapeCu + 6.0 * (bl - 0.79) * smoothstep(0.03, 0.25, hCu) * smoothstep(0.0, 0.06, covCu));
+        shapeCu = saturate(shapeCu + 6.0 * (bl - 0.79) * smoothstep(0.03, 0.25, hCu) * smoothstep(0.0, 0.4, covCu));
     }
     // Graphics G8: eroded by the detail's coarse octaves (the 16- and 32-cell ones speckled the edges), and a crisper
     // ramp from edge to body: fair cumulus has a hard, sunlit outline, not a feathered, painted one.
@@ -2944,8 +2946,10 @@ AO = 1.0;
     // C1: the billows build upward (Nubis): next to nothing eaten from the base (one flat base for every cell), wispy
     // erosion just above it, billowed (inverted Worley) higher up where the bubbles rise.
     float ero = lerp(0.15 * hfCu, 0.55 * (1.0 - hfCu), smoothstep(0.05, 0.45, hCu));
-    // Crisp, sunlit tops and soft bases: the edge-to-body ramp steepens with height.
-    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * lerp(2.5, 6.0, saturate(hCu * 1.5))) * 1.6;
+    // Crisp, sunlit tops and soft bases: the edge-to-body ramp steepens with height. To 4 at the top, not 6 (realism audit
+    // Oct 23, item 4): with the billows' lobes in the outline, 6 made an edge finer than the march step, and its jittered
+    // samples frosted every small cloud with a grainy white rim.
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * lerp(2.5, 4.0, saturate(hCu * 1.5))) * 1.6;
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
