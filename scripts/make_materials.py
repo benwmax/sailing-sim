@@ -2974,6 +2974,8 @@ AO = 1.0;
     float striaF = frac((shelfB + 25.0 * sin(L / 900.0) + 12.0 * sin(L / 330.0)) / SHELF_STRIA);
     float stria = smoothstep(0.0, 0.3, striaF) * (1.0 - 0.8 * smoothstep(0.65, 1.0, striaF));
     faceTone *= lerp(1.0, lerp(0.6, 1.15, stria), saturate(1.0 - 2.0 * stepM * abs(vd.z) / SHELF_STRIA));
+    // FACE_PALE 0.02 (realism audit item 5): at W8's 0.3 the face read near white once #255 made it opaque (it closes
+    // within two steps now, so it shows its full emitted light, not a share of it): photos show dark slate with paler bands.
     Emit += SunLum.rgb * (FACE_PALE * faceLit * faceTone) * face * d * Density;
     Albedo *= 1.0 - FACE_SCATTER_CUT * face;
     }
@@ -3013,7 +3015,7 @@ def cloud_code():
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
-    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5"))
+    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.02")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
