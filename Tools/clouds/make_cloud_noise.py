@@ -5,11 +5,13 @@ Layout after Guerrilla's Nubis (Schneider, "The Real-Time Volumetric Cloudscapes
   T_CloudShape   128^3, RGBA: R Perlin-Worley (the base shape), G/B/A Worley fBm at 4, 8 and 16 cells per tile
   T_CloudDetail   64^3, RGB: Worley fBm at 8, 16 and 32 cells per tile (erosion of the edges)
   T_CloudCurl    128^2, RG: 2D curl of a tileable Perlin field, for domain warp and wisps (0.5 = zero)
+  T_CloudBillow  128^3, R: packed billow lobes (cumulus only; see billows())
 Every volume tiles in all three axes. A volume is written as a 2D atlas of its Z slices (tiles in rows of COLS), the
 layout Unreal's volume texture factory takes (Source2DTileSizeX/Y).
 
     Tools/venv/bin/python Tools/clouds/make_cloud_noise.py <out dir>
-Writes T_CloudShape.png (2048x1024), T_CloudDetail.png (512x512), T_CloudCurl.png (128x128) and prints their stats.
+Writes T_CloudShape.png (2048x1024), T_CloudDetail.png (512x512), T_CloudCurl.png (128x128), T_CloudBillow.png
+(2048x1024) and prints their stats.
 """
 import os
 import sys
@@ -74,6 +76,62 @@ def fbm_worley(n, base, seed):
     return (v - v.min()) / (v.max() - v.min())  # full 0..1 range: the shader's remaps assume it
 
 
+# Cumulus billows (docs/cumulus-billows/): the tile's size in metres, across and up. Incommensurate with the shape's 4 x 2 km
+# tile, so the two don't repeat together; the lobes are placed in metres, so they are round in the world although the
+# volume's texels are twice as fine upward.
+BILLOW_TILE_M = (3000.0, 1500.0)
+BILLOW_BIG_M = (250.0, 400.0)     # radii of the big lobes
+BILLOW_SMALL_M = (150.0, 220.0)   # and of the ones packed into the gaps (150 m: still 3 texels at the 110 m mip floor)
+
+
+def billows(n, seed):
+    """Tileable packed lobes: per texel, the highest sphere cap over it (sqrt(1 - (d/r)^2), 0 outside every lobe).
+
+    A cumulus's outline is bubbles packed on bubbles: the big lobes are spread by dart throwing (centres at least 1.15 big
+    radii apart, so neighbours overlap a little and leave crevices), then smaller ones go where the big ones leave the cap
+    under 0.35. Thresholded at any level the field is a union of round lobes with creases between them."""
+    rng = np.random.default_rng(seed)
+    tx, tz = BILLOW_TILE_M
+    sx, sz = tx / n, tz / n
+    field = np.zeros((n, n, n), np.float32)
+    ax = np.arange(n)
+
+    def stamp(c, r):
+        lo = [int(np.floor((c[i] - r) / s)) for i, s in enumerate((sx, sx, sz))]
+        hi = [int(np.ceil((c[i] + r) / s)) for i, s in enumerate((sx, sx, sz))]
+        ix, iy, iz = (np.arange(lo[i], hi[i] + 1) for i in range(3))
+        X, Y, Z = np.meshgrid((ix + 0.5) * sx - c[0], (iy + 0.5) * sx - c[1], (iz + 0.5) * sz - c[2], indexing="ij")
+        cap = np.sqrt(np.clip(1.0 - (X * X + Y * Y + Z * Z) / (r * r), 0.0, 1.0)).astype(np.float32)
+        sub = np.ix_(ix % n, iy % n, iz % n)
+        field[sub] = np.maximum(field[sub], cap)
+
+    def wrapped(a, b):
+        d = np.abs(a - b)
+        d = np.minimum(d, np.array([tx, tx, tz]) - d)
+        return np.sqrt((d * d).sum(-1))
+
+    centres, radii = [], []
+    for _ in range(20000):
+        c = rng.random(3) * np.array([tx, tx, tz])
+        r = rng.uniform(*BILLOW_BIG_M)
+        if centres and np.any(wrapped(np.array(centres), c) < 1.15 * np.maximum(np.array(radii), r)):
+            continue
+        centres.append(c)
+        radii.append(r)
+    for c, r in zip(centres, radii):
+        stamp(c, r)
+    big = len(centres)
+    for _ in range(40000):
+        c = rng.random(3) * np.array([tx, tx, tz])
+        i = (int(c[0] / sx) % n, int(c[1] / sx) % n, int(c[2] / sz) % n)
+        if field[i] >= 0.35:
+            continue
+        stamp(c, rng.uniform(*BILLOW_SMALL_M))
+        centres.append(c)
+    print(f"T_CloudBillow: {big} big lobes, {len(centres) - big} small")
+    return field
+
+
 def remap(v, lo, hi, nlo, nhi):
     return nlo + (v - lo) / (hi - lo) * (nhi - nlo)
 
@@ -122,6 +180,11 @@ def main(out):
     img = np.clip((curl * 0.5 + 0.5) * 255.0 + 0.5, 0, 255).astype(np.uint8)
     img = np.concatenate([img, np.zeros((k, k, 1), np.uint8)], axis=-1)
     Image.fromarray(img.transpose(1, 0, 2), "RGB").save(os.path.join(out, "T_CloudCurl.png"))
+
+    b = billows(n, 91)
+    stats("T_CloudBillow", b)
+    bv = np.repeat(b[..., None], 3, axis=-1)
+    Image.fromarray(atlas(bv, 16), "RGB").save(os.path.join(out, "T_CloudBillow.png"))
 
 
 if __name__ == "__main__":
