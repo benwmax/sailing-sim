@@ -757,6 +757,31 @@ def sunfish_splash_guard(H, trunk_fwd, mast_x):
     return hit
 
 
+STRAP_TOP_ABOVE_SOLE = (0.12, 0.10)      # (at the end walls, at the middle), metres: the crew lane puts the feet under it
+
+
+def sunfish_hiking_strap(H, ck):
+    """pc/sunfish-strap: the Sunfish's hiking strap, flat black webbing 50 mm wide down the well's middle, taut between
+    its end walls 12 cm over the sole with 2 cm of sag, so the sailor's feet tuck under it; each end under a screwed
+    stainless retainer plate on the wall. (It had been a red tube 36 mm round, 6 cm off the sole, and two red pads.)"""
+    x0, x1, w, depth = ck
+    sole = lambda x: H.deck_z(x, H.cy + w) - depth
+    end_h, mid_h = STRAP_TOP_ABOVE_SOLE
+    xa, xb = x0 + 0.004, x1 - 0.004
+    path, secs = [], []
+    for k in range(13):
+        t = k / 12
+        x = xa + (xb - xa) * t
+        path.append((x, 0.0, sole(x) + end_h - (end_h - mid_h) * 4.0 * t * (1.0 - t) - 0.0015))
+        secs.append((0.05, 0.003))
+    bar(hull, path, secs, "Rubber")
+    for x, s in ((x0, 1), (x1, -1)):
+        z = sole(x) + end_h
+        box(hull, (x + s * 0.003, 0.0, z - 0.004), (0.004, 0.066, 0.03), "Stainless")
+        for y in (-0.024, 0.024):
+            tube(hull, [(x + s * 0.005, y, z - 0.004), (x + s * 0.0065, y, z - 0.004)], 0.004, "Stainless", 8)
+
+
 def sunfish_board(H, f, mast_x, mast_step_z):
     """pc/sunfish-fidelity: the Sunfish's daggerboard above the deck: varnished wood 19 mm thick, standing 12 cm proud,
     its top corners rounded and its edges eased; the black rubber gasket round the trunk's slot; the shock cord from an eye
@@ -883,8 +908,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
                 px, py = cx + rr * math.cos(a), cy + rr * math.sin(a)
                 rim.append((px, py, H.deck_z(px, py) + 0.004))
         tube(hull, rim + rim[:1], 0.011, "Deck", 6, cap=False)
-        for xs_ in (x0 + 0.06, x1 - 0.06):
-            box(hull, (xs_, 0, sole(xs_) + 0.004), (0.05, 0.05, 0.008), "Graphics")
+        sunfish_hiking_strap(H, ck)
         # (the halyard's horn cleat is the kit's: layouts/sunfish.json) The halyard comes down the mast to a fairlead on
         # deck at its foot, then aft over the splash guard's port arm to the cleat.
         fx, fy = mast_x - 0.11, -0.05
@@ -1101,7 +1125,8 @@ if TAG in ("Sunfish", "ILCA7"):
     f = boards[0]
     if TAG != "Sunfish":
         box(hull, (f["center"][0], 0, MAIN.deck_z(f["center"][0], 0) + 0.01), (f["chord"] + 0.06, 0.05, 0.03), "BlackPlastic")
-    tube(hull, [(ck[0] + 0.1, 0, MAIN.deck_z(ck[0], 0) - ck[3] + 0.06), (ck[1] - 0.1, 0, MAIN.deck_z(ck[1], 0) - ck[3] + 0.06)], 0.018, "Graphics", 6)
+    if TAG != "Sunfish":    # (the Sunfish's is webbing: sunfish_hiking_strap)
+        tube(hull, [(ck[0] + 0.1, 0, MAIN.deck_z(ck[0], 0) - ck[3] + 0.06), (ck[1] - 0.1, 0, MAIN.deck_z(ck[1], 0) - ck[3] + 0.06)], 0.018, "Graphics", 6)
     tube(hull, [(mast_x, 0, mast_step_z - 0.02), (mast_x, 0, mast_step_z + 0.03)], RIG["mast_diameter"] * 0.7, "BlackPlastic", 12)
     traveler = (MAIN.h["stern_x"] + 0.18, MAIN.deck_z(MAIN.h["stern_x"] + 0.18, 0) + 0.02, 0.32 if TAG == "ILCA7" else 0.2)
     if TAG == "Sunfish":
