@@ -2776,7 +2776,11 @@ float alt = Alt * 0.01;         // m above the water
 float2 wuv = (p.xy - Drift.xy - WRect.xy) / WRect.z;
 float4 w = Wx.SampleLevel(WxSampler, float2(wuv.y, wuv.x), 0);
 // Graphics G2: no cloud past the map's edge (32 km out): its clamped edge texels smeared into streaks toward the horizon.
-w *= saturate(min(min(wuv.x, 1.0 - wuv.x), min(wuv.y, 1.0 - wuv.y)) * 25.0);
+float inMap = saturate(min(min(wuv.x, 1.0 - wuv.x), min(wuv.y, 1.0 - wuv.y)) * 25.0);
+// Realism audit (docs/gulf-haze-band/): but a closed deck goes on past it at the layer's own coverage (uniform, so it can't
+// streak). Stopped at 32 km, its base stood 1.6 degrees over the horizon with the clear sky's bright horizon under it.
+float deckOn = smoothstep(0.8, 0.95, St.x);
+w = float4(w.r * inMap, lerp(St.x * deckOn, w.g, inMap), w.b * inMap, w.a * inMap);
 float altKm = alt * 0.001;
 // Layer profiles: flat bases, rounded tops.
 float hCu = (altKm - Cu.y) / max(Cu.z - Cu.y, 0.05);
