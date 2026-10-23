@@ -1089,17 +1089,23 @@ void ALakeTerrainActor::PlaceReeds()
 	// Realism audit 10 (docs/realism-audit-1022): the shore's edge was clean, trees standing straight out of mown grass to
 	// the water. Besides the cattails and rushes: rank bank grass and weeds where the mowing stops (SM_Reeds_2) and green weed
 	// floating in the shallows along the edge (SM_Reeds_3), both optional (an older import has neither).
-	UStaticMesh* Meshes[4] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
+	// pc/far-shore-relief (realism audit 1023 item 8): past those plants' 250 m the bank met the water in a clean line (a tint
+	// was under a level there). SM_Reeds_4 is a far stand-in, ragged weed and scrub cards along the waterline to 1.1 km on
+	// High and Ultra; M_FarWeed dithers it in from 120 to 170 m (the g5-shore view's banks are 150-250 m off: the bank grass is a
+	// pixel or two tall there and left the line clean).
+	UStaticMesh* Meshes[5] = { LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_0.SM_Reeds_0")),
 		LoadObject<UStaticMesh>(nullptr, TEXT("/Game/World/Props/SM_Reeds_1.SM_Reeds_1")),
 		Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/World/Props/SM_Reeds_2.SM_Reeds_2"), nullptr, LOAD_NoWarn | LOAD_Quiet)),
-		Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/World/Props/SM_Reeds_3.SM_Reeds_3"), nullptr, LOAD_NoWarn | LOAD_Quiet)) };
+		Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/World/Props/SM_Reeds_3.SM_Reeds_3"), nullptr, LOAD_NoWarn | LOAD_Quiet)),
+		USailingSettings::Get()->Quality >= ESailingQuality::High && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoFarWeed"))
+			? Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/World/Props/SM_Reeds_4.SM_Reeds_4"), nullptr, LOAD_NoWarn | LOAD_Quiet)) : nullptr };
 	if (!Meshes[0] || !Meshes[1]) return;
 	const FLakeTerrain& T = Lake->Terrain;
 	// Every grid node: gentle ground from 0.4 m under the water to 0.6 m above it, in patches
 	// (a low-frequency field gates them, so coves fill and open banks stay bare), clear of the club's marina.
 	const int32 Step = 1;
 	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
-	TArray<FTransform> Out[4];
+	TArray<FTransform> Out[5];
 	// The coasts' 10 m grid would put four times the lake's clumps along Galveston's marshes: thin them to the lake's spacing.
 	const bool bCoarse = T.GetCell() >= 9.99;
 	for (int32 R = 4; R < T.GetRows() - 4; R += Step)
@@ -1145,9 +1151,28 @@ void ALakeTerrainActor::PlaceReeds()
 			{
 				Scatter(3, 1, 0.0, 0.004, 0.8f, 1.6f, 13);
 			}
+			// The far stand-in: one ragged strip along the shore at each waterline node (two on the coasts' 10 m grid), turned
+			// along the bank (across the slope), mostly continuous with a few gaps. (Nodes from 0.6 m under the water to 1.6 m up: on a
+			// steep bank the 5 m grid has no node near the waterline itself.)
+			if (Meshes[4] && H >= -0.6 && H <= 1.6 && Slope <= 2.0 && Wet3 < -0.05 && (Hh >> 4 & 1023) <= (Patch >= -0.3 ? 900u : 640u))
+			{
+				const double Gx = T.NodeHeight(R + 1, C) - T.NodeHeight(R - 1, C), Gy = T.NodeHeight(R, C + 1) - T.NodeHeight(R, C - 1);
+				const double Along = FMath::Atan2(Gy, Gx) + 0.5 * UE_DOUBLE_PI + (((Hh >> 14) & 255) / 255.0 - 0.5) * 0.5;
+				// Slid down (or up) the slope to the waterline: the node can be a metre up a steep bank or out in the shallows.
+				const double Gm = FMath::Sqrt(Gx * Gx + Gy * Gy), Rise = Gm / (2.0 * T.GetCell());
+				const double Shift = Rise > 1e-3 ? FMath::Clamp((H - 0.05) / Rise, -1.5 * T.GetCell(), 1.5 * T.GetCell()) : 0.0;
+				const double Wx = X - (Gm > 1e-6 ? Gx / Gm : 0.0) * Shift, Wy = Y - (Gm > 1e-6 ? Gy / Gm : 0.0) * Shift;
+				for (int32 K = 0; K < (bCoarse ? 2 : 1); ++K)
+				{
+					const double Off = bCoarse ? (K - 0.5) * 5.0 : (((Hh >> 22) & 255) / 255.0 - 0.5) * 1.5;
+					const double Px = Wx + FMath::Cos(Along) * Off, Py = Wy + FMath::Sin(Along) * Off;
+					const float Len = 1.0f + 0.3f * ((Hh >> 8) & 255) / 255.f, Tall = 0.7f + 0.6f * ((Hh >> 24) & 255) / 255.f;
+					Out[4].Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(Along)), 0.f), FVector(Px, Py, FMath::Max(T.HeightAt(Px, Py), -0.08) - 0.02) * CmPerMeter, FVector(Len, 1.f, Tall)));
+				}
+			}
 		}
 	}
-	for (int32 Kind = 0; Kind < 4; ++Kind)
+	for (int32 Kind = 0; Kind < 5; ++Kind)
 	{
 		if (!Meshes[Kind] || Out[Kind].Num() == 0) continue;
 		// Hierarchical: a few hundred thousand clumps are culled by cluster, not one by one on the render thread.
@@ -1160,8 +1185,9 @@ void ALakeTerrainActor::PlaceReeds()
 		C->bVisibleInRayTracing = false;
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		// (The grass and the weed are small: drawn to 250 m, and the weed casts no shadow, lying on the water.)
-		C->SetCullDistances(0, (Kind >= 2 ? 250.f : 400.f) * 100.f);
-		if (Kind == 3) C->SetCastShadow(false);
+		// (The far stand-in to 1.1 km, unshadowed: a few pixels tall out there.)
+		C->SetCullDistances(0, (Kind == 4 ? 1100.f : Kind >= 2 ? 250.f : 400.f) * 100.f);
+		if (Kind >= 3) C->SetCastShadow(false);
 		// Bounds cached, not rebuilt from 200,000 clumps (nor a navigation pass over them) when the actor moves: tide, re-centre.
 		C->SetUseConservativeBounds(true);
 		C->SetCanEverAffectNavigation(false);
@@ -1169,7 +1195,7 @@ void ALakeTerrainActor::PlaceReeds()
 		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Out[Kind]), false, true);
 		ReedModels.Add(C);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass and %d weed clumps (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(),
+	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass, %d weed clumps and %d far strips (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(), Out[4].Num(),
 		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
 }
 

@@ -957,6 +957,46 @@ return col;
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_far_weed():
+    """M_FarWeed (pc/far-shore-relief, realism audit 1023 item 8): the far shore's weed and low scrub, SM_Reeds_4's ragged
+    cards along the waterline from 250 m to about a kilometre (LakeTerrainActor::PlaceReeds). Two-sided, matte, dark at
+    the foot and olive to straw at the tips in clumps; dithered in from 120 to 170 m (past where its cards would read as cards;
+    the bank grass is a pixel or two tall by then)."""
+    mat = world_material("M_FarWeed")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("two_sided", True)
+    code = """
+float3 p = WP * 0.01;
+float h = saturate((WP.z - WaterZ) * 0.01 / 1.6);
+float2 q = p.xy / 3.0;
+float2 qi = floor(q), qf = frac(q);
+qf = qf * qf * (3.0 - 2.0 * qf);
+float a00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float a01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float clump = lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
+float3 green = lerp(float3(0.035, 0.048, 0.018), float3(0.085, 0.10, 0.04), h);
+float3 straw = lerp(float3(0.06, 0.055, 0.03), float3(0.17, 0.15, 0.085), h);
+Fade = smoothstep(120.0, 170.0, length(WP - Cam) * 0.01);
+return lerp(green, straw, smoothstep(0.55, 0.9, clump) * 0.7);
+"""
+    c = custom(mat, code, ["WP", "Cam", "WaterZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 0,
+               extra_outputs=[("Fade", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+    connect(node(mat, unreal.MaterialExpressionWorldPosition, -800, 0), "", c, "WP")
+    connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -800, 100), "", c, "Cam")
+    wz = node(mat, unreal.MaterialExpressionCollectionParameter, -800, 200)
+    wz.set_editor_property("collection", world_collection())
+    wz.set_editor_property("parameter_name", "WaterZ")
+    connect(wz, "", c, "WaterZ")
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(node(mat, unreal.MaterialExpressionConstant, -300, 150, r=0.92), "", unreal.MaterialProperty.MP_ROUGHNESS)
+    dither = node(mat, unreal.MaterialExpressionMaterialFunctionCall, -200, 300)
+    dither.set_editor_property("material_function", unreal.load_asset("/Engine/Functions/Engine_MaterialFunctions02/Utility/DitherTemporalAA"))
+    connect(c, "Fade", dither, "Alpha Threshold")
+    MEL.connect_material_property(dither, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_lens_distortion():
     """M_LensDistortion: barrel distortion for the action-cam reference preset (a GoPro's wide lens). The image is
     rendered rectilinear at the camera's full field of view; this pulls the middle in so straight lines bow outward
@@ -4918,6 +4958,7 @@ build(build_navaid_paint)
 build(build_house_materials)
 build(build_house_kit_materials)
 build(build_terrain)
+build(build_far_weed)
 build(build_rain)
 build(build_rain_curtain)
 build(build_rain_wall)
