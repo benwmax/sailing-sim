@@ -23,7 +23,7 @@ one the model draws.
 
 ## Test
 
-`SailingSim.Visual.SunfishStrap` (new) covers SK_Sailor and the MetaHuman crew, sitting up and hiked, on both tacks:
+`SailingSim.Visual.SunfishStrap` (new; since the ILCA seat, `SailingSim.Visual.DinghyStrap`) covers SK_Sailor and the MetaHuman crew, sitting up and hiked, on both tacks:
 - each ankle is within the strap's length and close beside it;
 - the foot from ankle to ball goes beneath the webbing, never over it;
 - no point along either shin is within 4 cm of it.

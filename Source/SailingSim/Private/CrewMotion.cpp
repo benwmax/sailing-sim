@@ -643,7 +643,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 			}
 		}
 	}
-	// pc/sunfish-strap: hiking from a dinghy with a strap along its well (the Sunfish), the feet go under it: each ankle just
+	// pc/sunfish-strap, pc/ilca-fidelity: hiking from a dinghy with a strap along its well (the Sunfish, the ILCA), the feet go under it: each ankle just
 	// to windward of the webbing, on the sole, the instep beneath it and the toes across the centreline (the legs reach
 	// across the well from the windward deck), the feet 0.12 and 0.30 m ahead of the hips (and 10 cm off the forward wall: there the toes met it) (with a foot further aft the hiked
 	// aft leg couldn't fold down to it, its ankle left over the webbing).
