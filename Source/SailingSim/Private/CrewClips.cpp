@@ -91,27 +91,36 @@ float CrewClipStanceWeight(ECrewStance Stance, float Hike)
 namespace CrewClipsDetail
 {
 	/** A clip and start for the next idle: seated clips a little more often (every stance that idles is seated). */
-	FCrewClipCursor Pick(uint32& Rng, int32 Avoid)
+	FCrewClipCursor Pick(uint32& Rng, int32 Avoid, int32 Avoid2 = -1)
 	{
 		float Total = 0.f;
-		for (int32 C = 0; C < CrewClips::Num(); ++C) if (C != Avoid) Total += CrewClipTable[C].Kind == ECrewClipKind::Seated ? 1.5f : 1.f;
+		for (int32 C = 0; C < CrewClips::Num(); ++C) if (C != Avoid && C != Avoid2) Total += CrewClipTable[C].Kind == ECrewClipKind::Seated ? 1.5f : 1.f;
 		float R = Rand01(Rng) * Total;
 		FCrewClipCursor Out;
 		for (int32 C = 0; C < CrewClips::Num(); ++C)
 		{
-			if (C == Avoid) continue;
+			if (C == Avoid || C == Avoid2) continue;
 			Out.Clip = C;
 			R -= CrewClipTable[C].Kind == ECrewClipKind::Seated ? 1.5f : 1.f;
 			if (R <= 0.f) break;
 		}
 		Out.T = Rand01(Rng) * FMath::Max(0.f, CrewClips::Duration(Out.Clip) - 3.f);
 		Out.bMirror = Rand01(Rng) < 0.5f;
+		// docs/crew-idle-variety/: a few seconds of it, not always all, and not always as much of it. Played whole at full
+		// size, eight clips came round often enough to read as a loop (a sixth of a sailor's 4 s stretches matched one
+		// they'd made before).
+		Out.PlayFor = 3.f + 5.f * Rand01(Rng);
+		Out.Amp = 0.75f + 0.25f * Rand01(Rng);
+		Out.Pace = 0.9f + 0.2f * Rand01(Rng);
 		return Out;
 	}
 
 	void SampleScaled(const FCrewClipCursor& C, FVector* Out, float& Yaw, float& Pitch)
 	{
 		CrewClips::Sample(C.Clip, C.T, C.bMirror, Out, Yaw, Pitch);
+		for (int32 J = 0; J < CrewClipJointCount; ++J) Out[J] *= C.Amp;
+		Yaw *= C.Amp;
+		Pitch *= C.Amp;
 		if (CrewClipTable[C.Clip].Kind == ECrewClipKind::Standing)
 		{
 			for (int32 J = 0; J < CrewClipJointCount; ++J) Out[J] *= SeatedFromStanding[J];
@@ -143,6 +152,9 @@ void CrewClipStep(FCrewClipState& S, const FCrewClipInput& In, float Dt)
 	{
 		S.Rng = (In.Seed * 2654435761u + 0x9e3779b9u) | 1u;
 		for (int32 K = 0; K < 3; ++K) Next(S.Rng);
+		// The sailor's pace, times a pick's (0.9..1.1): at most about 1.2 (at 1.3 the helm's planted foot slid 3.4 cm in
+		// SailingSim.Visual.CrewClipLimits, past its 3).
+		S.Rate = 0.85f + 0.25f * Rand01(S.Rng);
 		S.Cur = Pick(S.Rng, -1);
 		S.Blend = 1.f;
 		for (int32 K = 0; K < 3; ++K) { S.TiltF[0][K] = In.Roll; S.TiltF[1][K] = In.Pitch; }
@@ -154,17 +166,25 @@ void CrewClipStep(FCrewClipState& S, const FCrewClipInput& In, float Dt)
 	const bool bPlay = !In.bQuiet && StanceW > 0.f;
 	S.Activity = bPlay ? FMath::Min(1.f, S.Activity + Dt / 1.5f) : FMath::Max(0.f, S.Activity - Dt / 0.2f);
 
-	// The clips play on; one second before the end the next fades in.
-	S.Cur.T += Dt;
+	// The clips play on at the sailor's pace; at the end of a pick's few seconds, or as near the clip's end as the fade needs,
+	// the next fades in, over 0.8 to 1.6 s.
+	S.Cur.T += Dt * S.Rate * S.Cur.Pace;
+	S.Cur.PlayFor -= Dt;
 	if (S.Blend < 1.f)
 	{
-		S.Next.T += Dt;
+		S.Next.T += Dt * S.Rate * S.Next.Pace;
+		S.Next.PlayFor -= Dt;
 		S.Blend += Dt / FMath::Max(S.BlendSeconds, 0.05f);
 		if (S.Blend >= 1.f) { S.Cur = S.Next; S.Blend = 1.f; }
 	}
 	const float Dur = CrewClips::Duration(S.Cur.Clip);
 	if (S.Cur.T >= Dur) S.Cur.T = FMath::Fmod(S.Cur.T, Dur);
-	if (S.Blend >= 1.f && Dur - S.Cur.T < 1.f) StartFade(S, Pick(S.Rng, S.Cur.Clip), 1.f);
+	if (S.Blend >= 1.f && (Dur - S.Cur.T < 1.6f * S.Rate * 1.1f || S.Cur.PlayFor <= 0.f))   // (the longest fade ends inside the clip)
+	{
+		const FCrewClipCursor To = Pick(S.Rng, S.Cur.Clip, S.Earlier);
+		S.Earlier = S.Cur.Clip;
+		StartFade(S, To, 0.8f + 0.8f * Rand01(S.Rng));
+	}
 
 	// The heel's slow trend (three 1 s lags: a puff heeling the boat over a few seconds, not the chop under it), as the
 	// sailor feels it: sideways facing forward, fore and aft facing across the boat.

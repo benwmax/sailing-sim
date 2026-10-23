@@ -1004,4 +1004,85 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Realism audit ("also seen": the hands-on-knees idle repeats; docs/crew-idle-variety/): three sailors idling side by side
+// for three minutes don't visibly repeat themselves or each other. Each sailor's motion (the clip layer's trunk lean both
+// ways and the gaze) is cut into 4 s windows: a window "repeats" when an earlier one at least 5 s before it matches it to
+// within a fifth of the motion's spread (RMS). And two sailors' motions don't move together.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClipVarietyTest, "SailingSim.Visual.CrewClipVariety", CrewMotionFlags)
+bool FVisualCrewClipVarietyTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Sailors = 3, Hz = 10, Seconds = 180, Window = 4 * Hz, Gap = 5 * Hz;
+	TArray<FVector> Motion[Sailors];
+	for (int32 I = 0; I < Sailors; ++I)
+	{
+		FCrewClipState S;
+		FCrewClipInput In;
+		In.Stance = ECrewStance::Cockpit;
+		In.Seed = uint32(I) * 977u;   // as BoatModelVisuals seeds the player's crew
+		constexpr int32 Sub = 6;
+		for (int32 K = 0; K < Seconds * Hz * Sub; ++K)
+		{
+			const float T = float(K) / (Hz * Sub);
+			In.Roll = FMath::DegreesToRadians(1.5f * FMath::Sin(2.f * PI * T / 3.1f));   // chop, no change of heel
+			In.Pitch = FMath::DegreesToRadians(1.f * FMath::Sin(2.f * PI * T / 2.3f));
+			CrewClipStep(S, In, 1.f / (Hz * Sub));
+			if (K % Sub == Sub - 1 && T > 5.f) Motion[I].Add(FVector(S.Lean[0], S.Lean[1], 0.3f * S.GazeYaw));
+		}
+	}
+	auto Spread = [](const TArray<FVector>& M)
+	{
+		FVector Mean(0);
+		for (const FVector& V : M) Mean += V;
+		Mean /= M.Num();
+		double Var = 0.0;
+		for (const FVector& V : M) Var += (V - Mean).SizeSquared();
+		return FMath::Sqrt(Var / M.Num());
+	};
+	double WorstShare = 0.0;
+	for (int32 I = 0; I < Sailors; ++I)
+	{
+		const TArray<FVector>& M = Motion[I];
+		const double Tol = 0.2 * Spread(M);
+		int32 Windows = 0, Repeats = 0;
+		for (int32 A = Gap + Window; A + Window <= M.Num(); A += Window / 2)
+		{
+			++Windows;
+			for (int32 B = 0; B + Window + Gap <= A; ++B)
+			{
+				double Sum = 0.0;
+				for (int32 K = 0; K < Window; ++K) Sum += (M[A + K] - M[B + K]).SizeSquared();
+				if (FMath::Sqrt(Sum / Window) < Tol) { ++Repeats; break; }
+			}
+		}
+		const double Share = double(Repeats) / FMath::Max(Windows, 1);
+		WorstShare = FMath::Max(WorstShare, Share);
+		AddInfo(FString::Printf(TEXT("Sailor %d: %d of %d 4 s windows repeat an earlier one (%.0f%%), motion spread %.2f deg"), I, Repeats, Windows, 100.0 * Share, Spread(M)));
+	}
+	TestTrue(FString::Printf(TEXT("No sailor visibly repeats (worst %.0f%% of windows, at most 10%%)"), 100.0 * WorstShare), WorstShare <= 0.10);
+	double WorstSync = -1.0;
+	for (int32 I = 0; I < Sailors; ++I)
+	{
+		for (int32 J = I + 1; J < Sailors; ++J)
+		{
+			for (int32 Axis = 0; Axis < 2; ++Axis)
+			{
+				double Ma = 0.0, Mb = 0.0;
+				const int32 N = FMath::Min(Motion[I].Num(), Motion[J].Num());
+				for (int32 K = 0; K < N; ++K) Ma += Motion[I][K][Axis], Mb += Motion[J][K][Axis];
+				Ma /= N, Mb /= N;
+				double Sab = 0.0, Saa = 0.0, Sbb = 0.0;
+				for (int32 K = 0; K < N; ++K)
+				{
+					const double A = Motion[I][K][Axis] - Ma, B = Motion[J][K][Axis] - Mb;
+					Sab += A * B, Saa += A * A, Sbb += B * B;
+				}
+				WorstSync = FMath::Max(WorstSync, FMath::Abs(Sab) / FMath::Sqrt(FMath::Max(Saa * Sbb, 1e-12)));
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("Largest correlation between two sailors' leans: %.2f"), WorstSync));
+	TestTrue(TEXT("The sailors don't move together"), WorstSync < 0.5);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
