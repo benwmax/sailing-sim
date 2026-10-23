@@ -2805,7 +2805,13 @@ def build_water_v4():
     foam_col = node(mat, unreal.MaterialExpressionConstant3Vector, -400, 1200, constant=unreal.LinearColor(0.85, 0.88, 0.9, 1))
     foam_rough = node(mat, unreal.MaterialExpressionConstant, -400, 1300, r=0.7)
     rough_mix = node(mat, unreal.MaterialExpressionLinearInterpolate, -200, 1300)
-    connect(shade, "Rough", rough_mix, "A")
+    # Measuring (docs/water-sky-reflection/): RoughOverrideOn 1 replaces the water's roughness by RoughOverride
+    # (AWaterSurface: -SailingWaterRough=<r>).
+    rough_ov = node(mat, unreal.MaterialExpressionLinearInterpolate, -300, 1350)
+    connect(shade, "Rough", rough_ov, "A")
+    connect(scalar(mat, "RoughOverride", 0.02, -500, 1350), "", rough_ov, "B")
+    connect(scalar(mat, "RoughOverrideOn", 0.0, -500, 1400), "", rough_ov, "Alpha")
+    connect(rough_ov, "", rough_mix, "A")
     connect(foam_rough, "", rough_mix, "B")
     connect(shade, "Foam", rough_mix, "Alpha")
     to_tangent = node(mat, unreal.MaterialExpressionTransform, -300, 500)
@@ -2830,7 +2836,12 @@ def build_water_v4():
     connect(shade, "FoamTone", foam_tinted, "B")
     connect(foam_tinted, "", slw, "BaseColor")
     connect(rough_mix, "", slw, "Roughness")
-    connect(shade, "Spec", slw, "Specular")
+    # Measuring (docs/water-sky-reflection/): SpecOverrideOn 1 replaces Specular by SpecOverride (-SailingWaterSpec=<s>).
+    spec_ov = node(mat, unreal.MaterialExpressionLinearInterpolate, -300, 1450)
+    connect(shade, "Spec", spec_ov, "A")
+    connect(scalar(mat, "SpecOverride", 0.5, -500, 1450), "", spec_ov, "B")
+    connect(scalar(mat, "SpecOverrideOn", 0.0, -500, 1500), "", spec_ov, "Alpha")
+    connect(spec_ov, "", slw, "Specular")
     connect(to_tangent, "", slw, "Normal")
     connect(shade, "Foam", slw, "TopMaterialOpacity")
     connect(albedo_dark, "", slw, "WaterAlbedo")

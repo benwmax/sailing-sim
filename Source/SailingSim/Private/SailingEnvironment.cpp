@@ -245,6 +245,21 @@ void ASailingEnvironment::FindSceneActors()
 	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;
 	if (Sun) if (UDirectionalLightComponent* SunDir = Cast<UDirectionalLightComponent>(Sun->GetLightComponent())) SunDir->SetForwardShadingPriority(1);
 	if (SkyLightActor) SkyIntensity = SkyLightActor->GetLightComponent()->Intensity;
+	// Measuring (docs/water-sky-reflection/): -SailingSkyLightScale=<x> scales the sky light, -SailingSkyCubeRes=<n> sets its
+	// real-time capture's cubemap size.
+	if (SkyLightActor)
+	{
+		float Scale = 1.f;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyLightScale="), Scale)) SkyIntensity *= Scale;
+		int32 Res = 0;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCubeRes="), Res) && Res >= 16)
+		{
+			USkyLightComponent* SkyComp = SkyLightActor->GetLightComponent();
+			SkyComp->CubemapResolution = Res;
+			SkyComp->SetCaptureIsDirty();
+			SkyComp->RecaptureSky();
+		}
+	}
 	if (Clouds)
 	{
 		UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>();

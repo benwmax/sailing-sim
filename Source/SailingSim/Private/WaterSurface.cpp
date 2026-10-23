@@ -402,7 +402,30 @@ void AWaterSurface::CreateWaterMaterial()
 		WaterMaterial->SetVectorParameterValue(TEXT("DetailParams"), FLinearColor(float(Chop.Tile), float(Ripple.Tile), kDetailFadeM, Tier >= 2 ? 1.f : 0.f));
 		WaterMaterial->SetScalarParameterValue(TEXT("Choppiness"), Choppiness);
 		WaterMaterial->SetScalarParameterValue(TEXT("SplitOmega"), float(2.0 * UE_DOUBLE_PI * SplitHz));
-		const FWaterBody Body = WaterBodyFor(USailingSettings::Get()->World);
+		FWaterBody Body = WaterBodyFor(USailingSettings::Get()->World);
+		// Measuring (docs/water-sky-reflection/): -SailingWaterAlbedo=<r>,<g>,<b> and -SailingWaterExtinction=<r>,<g>,<b> (1/m)
+		// replace the body's (albedo 0 and extinction 100 leave the surface's reflection alone).
+		for (int32 K = 0; K < 2; ++K)
+		{
+			FString Arg;
+			if (!FParse::Value(SailingArgs::Dev(), K == 0 ? TEXT("SailingWaterAlbedo=") : TEXT("SailingWaterExtinction="), Arg, false)) continue;
+			TArray<FString> Parts;
+			Arg.ParseIntoArray(Parts, TEXT(","));
+			if (Parts.Num() != 3) continue;
+			(K == 0 ? Body.Albedo : Body.Extinction) = FLinearColor(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), FCString::Atof(*Parts[2]));
+		}
+		float RoughOverride = -1.f;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWaterRough="), RoughOverride) && RoughOverride >= 0.f)
+		{
+			WaterMaterial->SetScalarParameterValue(TEXT("RoughOverride"), RoughOverride);
+			WaterMaterial->SetScalarParameterValue(TEXT("RoughOverrideOn"), 1.f);
+		}
+		float SpecOverride = -1.f;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWaterSpec="), SpecOverride) && SpecOverride >= 0.f)
+		{
+			WaterMaterial->SetScalarParameterValue(TEXT("SpecOverride"), SpecOverride);
+			WaterMaterial->SetScalarParameterValue(TEXT("SpecOverrideOn"), 1.f);
+		}
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterAlbedo"), Body.Albedo);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterExtinction"), Body.Extinction);
 		// W2 (the gulf-swell handoff): where the swell mask lets the open sea in, the Gulf's body (the material blends by
