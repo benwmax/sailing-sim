@@ -550,6 +550,57 @@ def build_rain_curtain():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+RAIN_WALL_CODE = """
+// docs/storm-gloom/: the rain wall (ASailingEnvironment::UpdateRainWall): one long card along the front under the core's
+// leading edge, seen from ahead of the storm. The rain-laden air under the deck is grey and shadowed, not the lit horizon
+// it read as: nearly opaque, densest at the water (the rain foot), thinning to nothing just under the shelf's base (Top,
+// m), with broad slow shafts in it; its ends fade over a fifth of its length each.
+float alt = WP.z / 100.0;   // m above the water
+float edge = smoothstep(0.0, 0.2, UV.x) * smoothstep(1.0, 0.8, UV.x);
+float shafts = 0.85 + 0.15 * sin(UV.x * 60.0 + 3.0) * sin(UV.x * 23.0 + 1.7);
+float top = 1.0 - smoothstep(Top * 0.75, Top, alt);
+float low = 1.0 + 0.25 * exp(-max(alt, 0.0) / 120.0);
+return saturate(Amount * 0.75 * shafts * top * low * edge);
+"""
+
+
+def build_rain_wall():
+    """M_RainWall (docs/storm-gloom/): the grey air under a storm's deck seen from ahead, one instanced card. Unlit and
+    unfogged: fogged, a card 3-7 km off is the height fog's inscatter (a lit, pale horizon), which is what it hides; its
+    own light is the sun's illuminance (SkyAtmosphereLightIlluminance) times its share through the deck (per instance,
+    from FWeatherMap::SunTransmittance), on a grey air lit mostly by the deck, brightening a little with distance for the
+    shadowed haze in front of it."""
+    mat = new_material("M_RainWall")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)
+    mat.set_editor_property("use_translucency_vertex_fog", False)   # "Apply Fogging" off
+    inputs = {"UV": node(mat, unreal.MaterialExpressionTextureCoordinate, -900, 0),
+              "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 100)}
+    for k, (name, y) in enumerate((("Amount", 200), ("Top", 300))):
+        inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    op = custom(mat, RAIN_WALL_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
+    for name, n in inputs.items():
+        connect(n, "", op, name)
+    lum_in = {"E": node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -900, 500),
+              "Shade": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 600, data_index=2, const_default_value=0.0),
+              "Dist": node(mat, unreal.MaterialExpressionPixelDepth, -900, 700),
+              "Gloom": scalar(mat, "WallLum", 0.012, -900, 800)}
+    lum = custom(mat, """// Grey, a little blue (the deck's light), lit by what of the sun gets through the deck, plus a floor for the deck's own
+// glow; the shadowed haze in front lifts it with distance (to twice by 15 km).
+float lit = Gloom * (0.6 + 2.4 * saturate(Shade));
+float haze = 1.0 + saturate(Dist / 1500000.0);
+return E * lit * haze * float3(0.92, 0.96, 1.04);""", list(lum_in.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 600)
+    for name, n in lum_in.items():
+        connect(n, "", lum, name)
+    MEL.connect_material_property(lum, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
+    MEL.connect_material_property(curvature(mat, -500, 900), "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_smoke():
     """M_Smoke (Graphics G8 Ultra showcase): an exhaust puff from APowerVesselActor::UpdateExhaust. Instanced spheres,
     lit translucent (volumetric, non-directional: cheap, and smoke has no surface to shade), shade and opacity per instance
@@ -2621,10 +2672,7 @@ STORM = dict(ShelfLeadM=250.0, ShelfBaseM=520.0, ShelfLipM=180.0, ShelfSlope=0.8
              CumulusFadeFarM=5000.0, CumulusFadeNearM=1500.0, ShelfEdgeM=60.0, ShelfFaceM=450.0,
              # Item 7 (shelf structure): the lit face starts this far over the base (the arcus's hard lower edge); striations
              # ShelfStriaM tall across it; the base scalloped ShelfScallopM deep in lobes ShelfScallopL apart along the front.
-             ShelfFootM=20.0, ShelfStriaM=110.0, ShelfScallopM=70.0, ShelfScallopL=1400.0,
-             # Storm gloom: the rain-laden air under the deck (extinction relative to CloudDensity, about 0.1 /m): in the gap
-             # under the shelf about 10 km visibility, under the core about 2 km, the rain foot thicker on the water.
-             GloomGap=0.004, GloomRain=0.02, GloomFoot=0.03, GloomFootH=150.0)
+             ShelfFootM=20.0, ShelfStriaM=110.0, ShelfScallopM=70.0, ShelfScallopL=1400.0)
 
 # Graphics G6: extinction of cumulus, stratus, storm and rain relative to CloudDensity (-SailingCloudLayerExt overrides).
 CLOUD_EXT = (1.0, 1.0, 1.0, 1.0)
@@ -2686,7 +2734,7 @@ D += 300.0 * sin(L / 2300.0) + 150.0 * sin(L / 900.0);
 // Graphics G1: the storm's walls bulge in and out by a few hundred metres (a straight-sided core read as a block from afar).
 float2 sw = Curl.SampleLevel(CurlSampler, (p.xy - Drift.xy) * 0.00035, 0).rg * 2.0 - 1.0;
 D += 600.0 * sw.x + 250.0 * sw.y * sin(alt * 0.0012);
-float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6, gloom = 0.0;
+float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6;
 [branch] if (FrontB.y > 0.0 && w.a > 0.0)
 {
     float x = SHELF_LEAD - D;
@@ -2727,24 +2775,6 @@ float storm = 0.0, shelf = 0.0, shelfH = 0.0, shelfX = 1e6, shelfB = -1e6, gloom
     // ASailingEnvironment::UpdateRainCurtains), so the march no longer fills the air below the cloud base.
     storm *= w.a;
     shelf *= w.a;
-    // The gloom: the air under the storm's deck is laden with rain and scud, grey and shadowed, not the clear air of a lit
-    // horizon (seen from ahead, the gap under the shelf and the horizon beneath the core read pale, lit like a clear sky).
-    // From under the shelf's lip back through the core: thin in the gap ahead of the rain, thick in it (the core starts
-    // CORE_BEHIND behind the front, its foot reaches FootReachM ahead of that on the water), up to the deck's base.
-    // Everything here varies over hundreds of metres or more: a few percent of optical depth per march step, no grain.
-    // None ahead of the lip: the clear sky ahead of the front is untouched.
-    // (It ends 3 to 5 km into the rain: at 2 km visibility nothing beyond shows, and every gloom sample takes the shadow
-    // rays: run to the core's far end, 14-20 km back, it cost 2 ms on the storm view.)
-    float under = smoothstep(SHELF_LEAD, SHELF_LEAD - 500.0, D) * (1.0 - smoothstep(-CORE_BEHIND - 3000.0, -CORE_BEHIND - 5000.0, D));
-    float inRain = smoothstep(-CORE_BEHIND + 300.0, -CORE_BEHIND - 800.0, D);
-    float gTop = lerp(SHELF_BASE - 120.0 - SHELF_SCALLOP, CORE_BASE, inRain);
-    float gFoot = GLOOM_FOOT * exp(-alt / GLOOM_FOOT_H) * smoothstep(-CORE_BEHIND + 600.0, -CORE_BEHIND - 300.0, D);
-    // Seen from ahead only: once the camera itself is under the deck, the haze and fog carry the storm's visibility
-    // (FWeatherState::LocalizeStorm), and the gloom round the camera would only add shadow rays to every sample (2 ms on
-    // the storm view, its camera under the core).
-    float camD = dot(Cam.xy * 0.01 - FrontA.xy, FrontA.zw) - FrontB.x;
-    float fromAhead = smoothstep(SHELF_LEAD - 1000.0, SHELF_LEAD + 500.0, camD);
-    gloom = under * fromAhead * (lerp(GLOOM_GAP, GLOOM_RAIN, inRain) + gFoot) * (1.0 - smoothstep(gTop - 100.0, gTop + 50.0, alt)) * w.a * saturate(FrontB.z * 1.5);
 }
 // W8: the fair cumulus fade out near the front and under the storm (FStormShape::CumulusFade): inside the deck's shade
 // they were flat grey towers (round 11). nearF: how near the front this is (the deck's shade on the cloud's colour).
@@ -2753,8 +2783,7 @@ float cu = w.r * pCu * Cu.w * (1.0 - w.a * saturate(FrontB.z) * nearF);
 float st = w.g * pSt * St.w;
 float ci = w.b * pCi * Ci.w;
 // Conservative density: what the noise can at most leave (lets the tracer skip empty sky quickly).
-float consLayers = saturate(cu + st + ci + storm);
-Cons = saturate(consLayers + gloom);
+Cons = saturate(cu + st + ci + storm);
 float d = 0.0;
 // Graphics G6: the length of this view ray's march step (m). UE's tracer spreads up to Tracer.y samples over the ray's run
 // through the cloud slab (Tracer.x km thick), capped at Tracer.w km; runs under Tracer.z km get proportionally fewer.
@@ -2767,7 +2796,7 @@ float capStepM = max(stepM, Shadow.x * 1000.0 / max(Shadow.y, 1.0));
 Albedo = float3(0.95, 0.95, 0.95);
 Emit = float3(0.0, 0.0, 0.0);
 AO = 1.0;
-[branch] if (consLayers > 0.001)
+[branch] if (Cons > 0.001)
 {
     // Graphics G1: the baked noise (Tools/clouds/make_cloud_noise.py), drifting with the wind aloft. A curl field 13 km
     // across (incommensurate with the shape's 4 km tile) warps the shape volume by up to 1.3 km, so no cloud repeats
@@ -2970,15 +2999,6 @@ AO = 1.0;
     float r = distance(p, Flash.xyz);
     Emit += float3(0.75, 0.8, 1.0) * Flash.w * exp(-r / 1800.0) * d * 40.0 + DEBUGSTORM;
 }
-// The storm's gloom (above): added to the cloud, a grey, dim scatterer (its sun comes through the deck by the shadow
-// rays; the sky above it is the deck, so little ambient). No noise: it is the air, not cloud.
-[branch] if (gloom > 0.0)
-{
-    float gShare = gloom / max(d + gloom, 1e-6);
-    d += gloom;
-    Albedo = lerp(Albedo, float3(GLOOM_ALBEDO, GLOOM_ALBEDO, GLOOM_ALBEDO * 1.04), gShare);
-    AO = lerp(AO, GLOOM_AO, gShare);
-}
 // C2 (the sky cache): with it on, the live march draws only the near clouds, fading out over CacheSplit.x to .y metres
 // from the camera; M_CloudCache draws the rest into the sky dome's panorama, fading in over the same band.
 d *= 1.0 - CacheSplit.z * smoothstep(CacheSplit.x, CacheSplit.y, distance(p, Cam * 0.01));
@@ -2993,16 +3013,14 @@ def cloud_code():
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
-    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5")).replace("GLOOM_ALBEDO", _os.environ.get("GLOOM_ALBEDO", "0.55")).replace("GLOOM_AO", _os.environ.get("GLOOM_AO", "0.3"))
+    c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.3")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
                  ("CORE_BASE", STORM["CoreBaseM"]), ("CORE_TOP", STORM["CoreTopM"]), ("ANVIL_BASE", STORM["AnvilBaseM"]),
                  ("ANVIL_AHEAD", STORM["AnvilAheadM"]), ("CU_FADE_FAR", STORM["CumulusFadeFarM"]),
                  ("CU_FADE_NEAR", STORM["CumulusFadeNearM"]), ("SHELF_EDGE", STORM["ShelfEdgeM"]), ("SHELF_FACE", STORM["ShelfFaceM"]),
                  ("SHELF_FOOT", STORM["ShelfFootM"]), ("SHELF_STRIA", STORM["ShelfStriaM"]), ("SHELF_SCALLOP_L", STORM["ShelfScallopL"]),
-                 ("SHELF_SCALLOP", STORM["ShelfScallopM"]),
-                 ("GLOOM_GAP", STORM["GloomGap"]), ("GLOOM_RAIN", STORM["GloomRain"]), ("GLOOM_FOOT_H", STORM["GloomFootH"]),
-                 ("GLOOM_FOOT", STORM["GloomFoot"])):
+                 ("SHELF_SCALLOP", STORM["ShelfScallopM"])):
         c = c.replace(k, repr(float(v)))
     return c
 
@@ -4761,6 +4779,7 @@ build(build_house_kit_materials)
 build(build_terrain)
 build(build_rain)
 build(build_rain_curtain)
+build(build_rain_wall)
 build(build_smoke)
 build(build_emissive)
 build(build_sail)
