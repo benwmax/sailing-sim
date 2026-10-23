@@ -2720,7 +2720,11 @@ float hCi = (altKm - Ci.y) / max(Ci.z - Ci.y, 0.05);
 // the heated land), its base stays flat.
 // C1 (round 12): a dome, not a cone. The top rose linearly with the cell's presence, which falls off toward its edge, so
 // every cell came out as a pointed cone; a low power (0.3) keeps the sides steep and the top round.
-float cuTop = max(pow(saturate(w.r * 1.25), 0.3), 0.3);   // W5a: small cells are low puffs, not 150 m pancakes
+// Realism audit 1 (docs/cumulus-size/): a cell's top from its size (FWeatherMap::CumulusTop: (R / R_max)^0.6, so a cell
+// stands about as tall as it is wide), domed by its presence. A cell's presence saturates in its core whatever its size,
+// so on presence alone (C1) every small cell stood the full height of the layer: a field of narrow pillars.
+float cuSize = WxTop.SampleLevel(WxTopSampler, float2(wuv.y, wuv.x), 0).r;
+float cuTop = max(cuSize * pow(saturate(w.r * 1.25), 0.3), 0.12);   // W5a: small cells are low puffs, not 150 m pancakes
 // C1: one flat base for every cell (the day's condensation level), softened over its lowest 12%; the top fades over its
 // last quarter only (fading over 70% of the height tapered every tower).
 float pCu = smoothstep(0.0, 0.12, hCu) * (1.0 - smoothstep(0.75 * cuTop, cuTop, hCu));
@@ -3050,12 +3054,15 @@ def build_cloud_layers():
         ("GlowLum", (0, 0, 0, 0)), ("GlowDomesA", (0, 0, 0, 0)), ("GlowDomesB", (0, 0, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 1300)
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB"], F1,
+    wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
+                 sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
     connect(attr, "Altitude", c, "Alt")
     connect(wx, "", c, "Wx")
+    connect(wxtop, "", c, "WxTop")
     for n, t in tex.items():
         connect(t, "", c, n)
     for n, pin in (("WeatherRect", "WRect"), ("LayerCumulus", "Cu"), ("LayerStratus", "St"), ("LayerCirrus", "Ci"), ("FrontA", "FrontA"),
@@ -3228,11 +3235,14 @@ def build_cloud_cache():
         ("SunLum", (0, 0, 0, 0)), ("SunDir", (0, 0, 1, 0)), ("CacheSplit", (4500, 5000, 0, 0)), ("CacheCam", (0, 0, 0, 0)),
         ("CacheEl", (-3, 33, 0, 0)), ("CacheMax", (40000, 1000, 3000, 48)), ("CacheShadow", (300, 0, 0, 0))))}
     dens = scalar(mat, "CloudDensity", 0.02, -1600, 2400)
-    c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
+    wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
+                 sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "WxTop", "Shape", "Detail", "Curl", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
                                    "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 300)
     connect(uv, "", c, "UV")
     connect(vecs["CacheCam"], "RGBA", c, "Cam")
+    connect(wxtop, "", c, "WxTop")
     connect(node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 2600, parameter_name="CachePrev", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR), "", c, "CachePrev")
     connect(wx, "", c, "Wx")

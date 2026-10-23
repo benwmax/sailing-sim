@@ -290,6 +290,14 @@ void ASailingEnvironment::BeginPlay()
 		WeatherMapTexture->CompressionSettings = TC_HDR;
 		WeatherMapTexture->UpdateResource();
 		if (CloudMaterial) CloudMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
+		CumulusTopTexture = UTexture2D::CreateTransient(FWeatherMap::N, FWeatherMap::N, PF_R16F);
+		CumulusTopTexture->SRGB = false;
+		CumulusTopTexture->Filter = TF_Bilinear;
+		CumulusTopTexture->AddressX = TA_Clamp;
+		CumulusTopTexture->AddressY = TA_Clamp;
+		CumulusTopTexture->CompressionSettings = TC_HDR;
+		CumulusTopTexture->UpdateResource();
+		if (CloudMaterial) CloudMaterial->SetTextureParameterValue(TEXT("CumulusTop"), CumulusTopTexture);
 		// Graphics G6 (measuring): each layer's extinction relative to CloudDensity, -SailingCloudLayerExt=<cu>,<st>,<storm>,<rain>
 		// (the material's LayerExtinction default otherwise).
 		FString LayerExt;
@@ -325,6 +333,7 @@ void ASailingEnvironment::BeginPlay()
 		{
 			CacheMaterial = UMaterialInstanceDynamic::Create(CloudCacheMaterial, this);
 			CacheMaterial->SetTextureParameterValue(TEXT("WeatherMap"), WeatherMapTexture);
+			CacheMaterial->SetTextureParameterValue(TEXT("CumulusTop"), CumulusTopTexture);
 			for (int32 I = 0; I < 2; ++I)
 			{
 				CacheTargets[I] = UKismetRenderingLibrary::CreateRenderTarget2D(this, kSkyCacheWidth, kSkyCacheHeight, RTF_RGBA16f, FLinearColor(0.f, 0.f, 1.f, 1.f));
@@ -1126,6 +1135,13 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		FMemory::Memcpy(Copy, Done.Half.GetData(), Bytes);
 		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
 		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 8, 8, Copy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
+		if (CumulusTopTexture && Done.TopHalf.Num() == FWeatherMap::N * FWeatherMap::N)
+		{
+			uint8* TopCopy = new uint8[Done.TopHalf.Num() * sizeof(FFloat16)];
+			FMemory::Memcpy(TopCopy, Done.TopHalf.GetData(), Done.TopHalf.Num() * sizeof(FFloat16));
+			FUpdateTextureRegion2D* TopRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
+			CumulusTopTexture->UpdateTextureRegions(0, 1, TopRegion, FWeatherMap::N * 2, 2, TopCopy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
+		}
 		CloudMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
 		if (SkyMaterial) SkyMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
 	}
@@ -1154,6 +1170,8 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 			FWeatherMapFrame Out;
 			Out.Half.SetNumUninitialized(int32(Map.Pixels().size()));
 			for (int32 I = 0; I < Out.Half.Num(); ++I) Out.Half[I] = FFloat16(Map.Pixels()[I]);
+			Out.TopHalf.SetNumUninitialized(int32(Map.CumulusTop().size()));
+			for (int32 I = 0; I < Out.TopHalf.Num(); ++I) Out.TopHalf[I] = FFloat16(Map.CumulusTop()[I]);
 			Out.Map = MoveTemp(Map);
 			return Out;
 		});
