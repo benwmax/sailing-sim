@@ -117,7 +117,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `make-crew-clothes.ps1` (twin of `make-crew-clothes.sh`; `$env:PIECES=Vest`, `-SkipExport`).
 
 20. The gate (bench-fast, `docs/bench-fast/`): `scripts/gate.sh --scope clouds|water|boats|crew|world|night|ui|all
-   [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed
+   [--baseline <csv>] [--merge <branch> ...]` builds, tests and packages only when their inputs' content hash changed (a full recook when Content changed: an incremental cook once left a stale package that crashed at load)
    (`Artifacts/gate/`), runs the heavy physics tests (`scripts/gate-heavy-tests.txt`) only when the physics, their five
    test files or the terrain changed (a change to the tests alone skips package and bench: `GAME_HASH`), then benches the scope's views on High (helm-eye always; slip and coast-day in the scopes that show
    them) plus the storm view on Medium, checks 60/45, and skips the bench when the packaged tree already passed that
