@@ -189,10 +189,10 @@ namespace Sailing
 		// W5a: cumulus come in all sizes, not one. Real fields follow a power law (many small, few large: number density
 		// n(D) ~ D^-2.5, so each size class below has about 2.4 times the clouds of the next larger one). Each class is a
 		// jittered lattice of seeded cells in the drifting frame, spacing growing as r^0.75; a cell's peak grows with its
-		// size (r^0.6, as a big cell builds taller), so after the coverage threshold the small ones are low, thin puffs
-		// and the big ones reach the full height. Their outlines are lumpy at their own scale.
+		// size (r^0.6, as a big cell builds taller): CumulusTop carries it, and the renderer stands the cell from it. Their
+		// outlines are lumpy at their own scale. Ultra audit 1: a fifth class of scraps (180 m: cumulus humilis and fractus).
 		struct FCuClass { double Radius, Spacing; uint32_t Seed; };
-		static constexpr FCuClass Classes[] = { { 2000.0, 7000.0, 71u }, { 1100.0, 4500.0, 73u }, { 600.0, 2900.0, 79u }, { 330.0, 1850.0, 83u } };
+		static constexpr FCuClass Classes[] = { { 2000.0, 7000.0, 71u }, { 1100.0, 4500.0, 73u }, { 600.0, 2900.0, 79u }, { 330.0, 1850.0, 83u }, { 180.0, 1150.0, 89u } };
 		// C1 (round 12: "clouds are huge and close"): on a fair day the classes shrink together (FCloudSky::CuCellScale,
 		// 0.6: the largest cells about 1.5 km in radius, most of them 200 m to 1 km), the lattice with them so the same
 		// share of sky stays cloudy; a building or stormy day keeps the full sizes.
@@ -222,7 +222,11 @@ namespace Sailing
 						if (E2 >= 1.0) continue;
 						const double Bump = (1.0 - E2) * (1.0 - E2);
 						const double Peak = std::pow(R / (2000.0 * Scale), 0.6);
-						if (Bump * Peak > V) { V = Bump * Peak; Size = Peak; }
+						// Ultra audit 1 (docs/cumulus-field/): presence only weakly by size (Peak^0.3). At Peak^1 a small cell's
+						// presence stayed under the coverage edge, so only the big classes showed: the sky's clouds were mostly
+						// one size. The renderer takes a cell's height from its size (CumulusTop), not from its presence.
+						const double Pres = Bump * std::pow(Peak, 0.3);
+						if (Pres > V) { V = Pres; Size = Peak; }
 					}
 				}
 			}
@@ -252,8 +256,15 @@ namespace Sailing
 				const double Ac = X * Ux + Y * Uy, Bc = -X * Uy + Y * Ux;
 				const double Stretch = 1.0 + 0.4 * Streets;
 				double Size = 0.0;
-				Cu[I] = CellField(Ac, Bc, Stretch, Size) + 0.25 * (Fbm(Ac / (2000.0 * Stretch), Bc / 2000.0, 11u, 4) - 0.5)
-					+ 0.4 * (Land[I] - LandMean) + 0.09 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2));
+				// Ultra audit 1: fair-weather cumulus come in clusters with clear sky between them, kilometres to tens of
+				// kilometres across (the convection's moisture and cold pools organise them: satellite fields' cloud fraction
+				// varies by half its mean over 8 km boxes, with clear ones among them). The convective field is scaled by an
+				// envelope 12 km across (0.2 in a gap, 1 in a cluster) and lowered in the gaps; the coverage solve
+				// (Threshold) keeps the sky's mean, so the clusters fill as the gaps clear.
+				const double Env = 0.2 + 0.8 * Smooth(0.4, 0.6, Fbm(Ac / 12000.0, Bc / 12000.0, 17u, 3));
+				Cu[I] = (CellField(Ac, Bc, Stretch, Size) + 0.25 * (Fbm(Ac / (2000.0 * Stretch), Bc / 2000.0, 11u, 4) - 0.5)
+					+ 0.09 * Streets * std::cos(Bc / 3600.0 * 6.283185307 + 1.7 * Fbm(Ac / 9000.0, Bc / 9000.0, 13u, 2))) * Env
+					+ 0.4 * (Land[I] - LandMean) - 0.3 * (1.0 - Env);
 				CuTop[I] = float(std::min(Size, 1.0));   // (a radius jittered up to 1.25 times its class: the largest reach 1.14)
 				// Stratus: broad, gently varied.
 				St[I] = Fbm(X / 9000.0, Y / 9000.0, 23u, 3);
