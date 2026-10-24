@@ -3338,8 +3338,9 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
 {
     const int Steps = int(CacheMax.w);
     float stepLen = (t1 - t0) / Steps;
-    // A new jitter every refresh (CacheShadow.y counts them): the panoramas are blended (below), so the march's grain
-    // averages out over a few refreshes instead of being frozen into the cache.
+    // A new jitter every refresh (CacheShadow.y counts them). The game replaces the panorama each refresh (CacheShadow.z 1:
+    // blended, the clouds' drift between refreshes stacked into ghosts), so each refresh's grain stays in it; M_SkyDome
+    // reads it through a B-spline that softens it (docs/far-cloud-rims/).
     float jit = frac(sin(dot(floor(UV * float2(8192.0, 2048.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
@@ -3612,7 +3613,27 @@ float cm = dot(dir, MoonDir.xyz);
     [branch] if (v > 0.0 && v < 1.0)
     {
         float2 cuv = float2(frac(atan2(dir.y, dir.x) / 6.2831853 + 1.0), v);
-        float3 s = lerp(CacheOld.SampleLevel(CacheOldSampler, cuv, 0).rgb, CacheNew.SampleLevel(CacheNewSampler, cuv, 0).rgb, CacheP.y);
+        // docs/far-cloud-rims/: read through a cubic B-spline (four bilinear fetches each, Sigg and Hadwiger 2005), not
+        // bilinear. A low sun's bright rims are a texel or two wide in the panorama (about 1.6 px a texel at 80 deg across
+        // 1440 px), and bilinear drew them in steps along the texel grid; each refresh's march jitter is kept, not blended
+        // (blended, the drift between refreshes stacked into ghosts), and showed as single bright texels along the rims.
+        // The spline is smooth to its second derivative and averages each texel with its neighbours.
+        float3 s;
+        {
+            const float2 tsz = float2(4096.0, 512.0);
+            float2 x = cuv * tsz - 0.5;
+            float2 i = floor(x), f = x - i;
+            float2 f2 = f * f, f3 = f2 * f;
+            float2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0, w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+            float2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0, w3 = f3 / 6.0;
+            float2 g0 = w0 + w1, g1 = w2 + w3;
+            float2 t0 = (i - 0.5 + w1 / max(g0, 1e-6)) / tsz, t1 = (i + 1.5 + w3 / max(g1, 1e-6)) / tsz;
+            t0.y = clamp(t0.y, 0.5 / tsz.y, 1.0 - 0.5 / tsz.y); t1.y = clamp(t1.y, 0.5 / tsz.y, 1.0 - 0.5 / tsz.y);
+            #define CACHE_BS(T_, S_) (g0.x * (g0.y * T_.SampleLevel(S_, float2(t0.x, t0.y), 0).rgb + g1.y * T_.SampleLevel(S_, float2(t0.x, t1.y), 0).rgb) \
+                + g1.x * (g0.y * T_.SampleLevel(S_, float2(t1.x, t0.y), 0).rgb + g1.y * T_.SampleLevel(S_, float2(t1.x, t1.y), 0).rgb))
+            s = lerp(CACHE_BS(CacheOld, CacheOldSampler), CACHE_BS(CacheNew, CacheNewSampler), CacheP.y);
+            #undef CACHE_BS
+        }
         // The sun's light on the clouds is the atmosphere's own (SunIll: its illuminance at the clouds' height, reddened
         // through the air as the live clouds see it). The sky light comes from the whole sky and the ground under it,
         // not the blue patch behind the cloud: the sky's brightness, a quarter of it in the sun's colour (the warm bounce
