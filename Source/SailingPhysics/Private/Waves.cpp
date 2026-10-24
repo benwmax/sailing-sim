@@ -197,19 +197,32 @@ namespace Sailing
 		}
 		Mean /= Sum;
 		// Three directions weighted 1 : sech^2(beta Delta) : sech^2(beta Delta) have mean cos (1 + 2 r cos Delta) / (1 + 2 r):
-		// the first Delta where that falls to the spreading's (it turns back up once r is small, so stop at its least).
+		// the first Delta where that falls to the spreading's. It turns back up once r is small, so past its least it is
+		// that least's Delta. Solved continuously (golden section for the least, bisection below it), not stepped: a stepped
+		// search flips a whole step on a last-bit difference between platforms' maths (docs/short-wave-spreading).
 		constexpr double MaxSide = 75.0 * kDegToRad;
-		double Prev = 1.0;
-		for (double D = 0.5 * kDegToRad; D <= MaxSide; D += 0.5 * kDegToRad)
+		auto G = [Beta](double D)
 		{
 			const double C = 1.0 / std::cosh(Beta * D);
 			const double R = C * C;
-			const double G = (1.0 + 2.0 * R * std::cos(D)) / (1.0 + 2.0 * R);
-			if (G <= Mean) return D;
-			if (G > Prev) return D - 0.5 * kDegToRad;
-			Prev = G;
+			return (1.0 + 2.0 * R * std::cos(D)) / (1.0 + 2.0 * R);
+		};
+		double Lo = 0.0, Hi = MaxSide;
+		const double Golden = 0.5 * (std::sqrt(5.0) - 1.0);
+		for (int I = 0; I < 80; ++I)
+		{
+			const double A = Hi - Golden * (Hi - Lo), B = Lo + Golden * (Hi - Lo);
+			if (G(A) < G(B)) Hi = B; else Lo = A;
 		}
-		return MaxSide;
+		const double Least = 0.5 * (Lo + Hi);
+		if (G(Least) > Mean) return Least;
+		Lo = 0.0; Hi = Least;
+		for (int I = 0; I < 60; ++I)
+		{
+			const double M = 0.5 * (Lo + Hi);
+			(G(M) > Mean ? Lo : Hi) = M;
+		}
+		return 0.5 * (Lo + Hi);
 	}
 
 	void FWaveField::AnchorDirections(double TravelDir, double HoldX, double HoldY)
