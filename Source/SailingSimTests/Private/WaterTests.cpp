@@ -431,12 +431,16 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
 		Sailing::FPortableRandom Rng(11);
 		auto U = [&Rng]() { return Rng.Uniform(0.0, 300.0); };
+		// 64 moments of 2 500 vertices: the chop is one periodic tile, so each moment is about one independent draw of it, and
+		// at 10 kn only about 0.06% folds. Four moments of 10 000 caught 12 to 24 folds there, a spread that crossed the
+		// factor of three on one platform's draw and not another's (docs/short-wave-spreading).
 		TArray<double> Js;
-		for (const double T : { 5.0, 23.0, 61.0, 97.0 })
+		for (int32 Moment = 0; Moment < 64; ++Moment)
 		{
+			const double T = 5.0 + 37.3 * Moment;
 			FWaveDetail::FGrid Grid;
 			Detail.Evaluate(0, T, Grid);
-			for (int32 I = 0; I < 10000; ++I)
+			for (int32 I = 0; I < 2500; ++I)
 			{
 				Js.Add(RenderedVertex(Waves, &Grid, U(), U(), T, AWaterSurface::Choppiness).J);
 			}
