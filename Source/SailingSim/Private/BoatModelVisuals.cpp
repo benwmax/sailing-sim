@@ -715,16 +715,27 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			if (What == TEXT("vang")) continue;
 			const FVector Sag = SagOf(L, DownD);
 			auto HeldBy = [&L](const FFlesh& F) { return FVector::DistSquared(F.Hand, L.A) < 625.0 || FVector::DistSquared(F.Hand, L.B) < 625.0; };
+			// The flesh this line could touch (within its sag, the most a drape lifts and a hand's width of its chord), and
+			// whether it reaches the lifelines at all: the checks below run for every ring and span.
+			TArray<const FFlesh*, TInlineAllocator<24>> NearFlesh;
+			const float Reach = Sag.Size() + 60.f + L.RadiusCm;
+			for (const FFlesh& F : Flesh)
+			{
+				if (F.Hand.X < 1e8 && HeldBy(F)) continue;
+				const FVector Fm = 0.5f * (F.A + F.B);
+				if (FVector::Dist(FMath::ClosestPointOnSegment(Fm, L.A, L.B), Fm) < Reach + F.R + 0.5f * FVector::Dist(F.A, F.B)) NearFlesh.Add(&F);
+			}
+			const double Beam0 = Cfg.Hulls[0].MaxHalfBeam * CmPerMeter, CY = Cfg.Hulls[0].CenterY * CmPerMeter;
+			const bool bReachesLifelines = bLifelines && FMath::Max(FMath::Abs(L.A.Y - CY), FMath::Abs(L.B.Y - CY)) + FMath::Abs(Sag.Y) > Beam0 * 0.5;
 			// Is a point in the boat, a sailor's flesh or a lifeline wire?
 			auto Blocked = [&](const FVector& C) -> bool
 			{
 				if (CrewInsideBoat(Cfg, HullDepth, C / CmPerMeter, bModelTravelerBridge)) return true;
-				for (const FFlesh& F : Flesh)
+				for (const FFlesh* F : NearFlesh)
 				{
-					if (F.Hand.X < 1e8 && HeldBy(F)) continue;
-					if (FVector::DistSquared(FMath::ClosestPointOnSegment(C, F.A, F.B), C) < FMath::Square(F.R + L.RadiusCm)) return true;
+					if (FVector::DistSquared(FMath::ClosestPointOnSegment(C, F->A, F->B), C) < FMath::Square(F->R + L.RadiusCm)) return true;
 				}
-				if (bLifelines)
+				if (bReachesLifelines)
 				{
 					const double Fence = (Cfg.Hulls[0].DeckHalfBeam(C.X / CmPerMeter) - 0.05) * CmPerMeter;
 					if (FMath::Abs(FMath::Abs(C.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence) < 1.0 + L.RadiusCm)
@@ -767,16 +778,28 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				for (int32 I = 0; I < kLineSegments; ++I)
 				{
 					const FVector P0 = LinePoint(L, Sag, I), P1 = LinePoint(L, Sag, I + 1);
+					// Only a span that can cut something: one next to a lifted ring (a corner), or near a sailor, or across
+					// a lifeline's plane (below). The rest are where the first pass left them.
+					bool bNear = L.Lift[I] > 0.f || L.Lift[I + 1] > 0.f;
+					const FVector Mid = 0.5f * (P0 + P1);
+					const float Half = 0.5f * FVector::Dist(P0, P1);
+					for (int32 F = 0; F < NearFlesh.Num() && !bNear; ++F)
+					{
+						bNear = FVector::Dist(FMath::ClosestPointOnSegment(Mid, NearFlesh[F]->A, NearFlesh[F]->B), Mid) < Half + NearFlesh[F]->R + L.RadiusCm;
+					}
 					// Its eighths, and where it crosses a lifeline's plane (the wires are 3 cm thick: a span can step over
 					// one between two checks).
-					TArray<float, TInlineAllocator<10>> Checks = { 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f };
-					if (bLifelines)
+					TArray<float, TInlineAllocator<10>> Checks;
+					double Cross = -1.0;
+					if (bReachesLifelines)
 					{
-						const double Fence0 = (Cfg.Hulls[0].DeckHalfBeam(P0.X / CmPerMeter) - 0.05) * CmPerMeter;
-						const double Y0 = FMath::Abs(P0.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence0;
-						const double Y1 = FMath::Abs(P1.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence0;
-						if (Y0 * Y1 < 0.0) Checks.Add(float(FMath::Clamp(Y0 / (Y0 - Y1), 0.02, 0.98)));
+						// Each end against the fence where it is (the beam narrows aft).
+						const double Y0 = FMath::Abs(P0.Y - CY) - (Cfg.Hulls[0].DeckHalfBeam(P0.X / CmPerMeter) - 0.05) * CmPerMeter;
+						const double Y1 = FMath::Abs(P1.Y - CY) - (Cfg.Hulls[0].DeckHalfBeam(P1.X / CmPerMeter) - 0.05) * CmPerMeter;
+						if (Y0 * Y1 < 0.0) { Cross = FMath::Clamp(Y0 / (Y0 - Y1), 0.02, 0.98); bNear = true; }
 					}
+					if (bNear) Checks = { 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f };
+					if (Cross > 0.0) Checks.Add(float(Cross));
 					for (const float Q : Checks)
 					{
 						const float Need = Under(FMath::Lerp(P0, P1, Q));
