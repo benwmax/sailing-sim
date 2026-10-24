@@ -90,3 +90,27 @@ These pass:
 
 `SailingSim.Physics.WaveSpreading` is new. `WaveBandGrowth` now snaps its target from the same field, because a field's
 directions are set by the wind it started in.
+
+## Follow-up: the 10 kn whitecaps on the PC
+
+After the merge, `SailingSim.Visual.Whitecaps` failed on the PC at 10 kn: coverage 0.03% against Monahan's 0.10%, a
+ratio of 3.3 against the test's factor of three. The Mac passed, at 18 of 40 000 vertices (2.3).
+
+There were two causes.
+
+1. **`SideAngle` was not deterministic across platforms.** It stepped Delta in 0.5 deg steps and stopped at the first
+   step past the target. A last-bit difference in libm can stop a step earlier or later on another platform, which
+   turns a band's side directions by half a degree. It is now a continuous solve: golden section for the least of the
+   three-direction mean cos, then bisection below it. Platforms now differ in the last bits only. The side angle at the
+   peak is 37.1 deg.
+2. **The test's sample was too small for 10 kn.** Only about 0.06% of the surface folds at 10 kn. The chop is one
+   periodic FFT tile, so each evaluation time is about one independent draw of it, and the test sampled four times. Its
+   10 kn count ranged from 12 to 24 folds between builds and platforms, a quarter's noise around the limit.
+
+   The test now samples 64 moments of 2 500 vertices each, the same 160 000 vertices in all. At 10 kn that gives 82
+   folds and a ratio of 2.0. A separate fit on 320 000 vertices gave 1.7. At 12 to 25 kn the ratio is 1.16 to 1.35.
+   The bound is unchanged.
+
+The fallback curve (`FoamThresholdAt`, mirrored in M_WaterV4) is not refitted. On the larger sample it sits 0.004 to
+0.013 under Monahan's threshold from 10 to 16 kn, as it did before. The game solves the threshold on the sea it draws
+(`FWaveDetail::CapThreshold`) and uses the curve only as a fallback.
