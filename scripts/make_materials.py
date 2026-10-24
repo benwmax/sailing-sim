@@ -3045,7 +3045,8 @@ AO = 1.0;
     // fitted to the layers present and the samples Ultra spends, steps near a cloud are 10-50 m, and filtering at 160 m
     // blurred every near cloud into cotton. Not below 110 m: at 50 the salt-white frosting (G8) came back on the near
     // clouds overhead.
-    float foot = max(distance(p, Cam * 0.01) * 0.0022, max(110.0, stepM * 0.85));
+    // pc/ultra-cloud-tops: the floor is FootFloor (110 m; Ultra sets its own, ASailingEnvironment).
+    float foot = max(distance(p, Cam * 0.01) * 0.0022, max(FootFloor, stepM * 0.85));
     float shapeMip = clamp(log2(foot / 31.0), 0.0, 6.0);        // shape texel: 4 km / 128
     // Graphics G8 (round 8: "the clouds have noise"): one mip coarser. Edge erosion finer than the step frosted every
     // cloud's outline with salt-white speckle where jittered samples landed either side of a fine billow.
@@ -3112,6 +3113,14 @@ AO = 1.0;
         float billowMip = clamp(log2(foot / 23.4), 0.0, 6.0);   // billow texel: 3 km / 128
         bl = Billow.SampleLevel(BillowSampler, qw * float3(0.3333, 0.3333, 0.6667), billowMip).r;
         shapeCu = saturate(shapeCu + 6.0 * (bl - 0.79) * smoothstep(0.03, 0.25, hCu) * smoothstep(0.0, 0.4, covCu));
+        // pc/ultra-cloud-tops (Ultra only, Billow2 > 0): lobes on the lobes, the cauliflower of a sunlit top. The same billow
+        // field at three times the frequency (100-270 m lobes, a 1 km tile), on the cell's upper part, filtered by the same
+        // footprint (never finer than the march step: CLAUDE.md's no-alias rule).
+        [branch] if (Billow2 > 0.0)
+        {
+            float bl2 = Billow.SampleLevel(BillowSampler, qw * float3(1.0, 1.0, 2.0) + 0.53, clamp(log2(foot / 7.8), 0.0, 6.0)).r;
+            shapeCu = saturate(shapeCu + Billow2 * 3.0 * (bl2 - 0.79) * smoothstep(0.2, 0.55, hCu) * smoothstep(0.2, 0.6, covCu));
+        }
     }
     // Graphics G8: eroded by the detail's coarse octaves (the 16- and 32-cell ones speckled the edges), and a crisper
     // ramp from edge to body: fair cumulus has a hard, sunlit outline, not a feathered, painted one.
@@ -3122,7 +3131,8 @@ AO = 1.0;
     // Crisp, sunlit tops and soft bases: the edge-to-body ramp steepens with height. To 4 at the top, not 6 (realism audit
     // Oct 23, item 4): with the billows' lobes in the outline, 6 made an edge finer than the march step, and its jittered
     // samples frosted every small cloud with a grainy white rim.
-    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * lerp(2.5, 4.0, saturate(hCu * 1.5))) * 1.6;
+    // pc/ultra-cloud-tops: the top's ramp is EdgeTop (4; Ultra, whose near steps are a few tens of metres, sets its own).
+    float dCu = saturate((shapeCu - ero * saturate(1.0 - shapeCu * 1.5)) * lerp(2.5, EdgeTop, saturate(hCu * 1.5))) * 1.6;
     float dSt = saturate((st - (1.0 - n1) * 0.3) * 1.6 - (1.0 - n2) * 0.15 * smoothstep(0.25, 0.0, hSt));
     float dCi = saturate((ci - (1.0 - n1) * 0.6) * 1.5);
     // The storm: the shelf cloud's underside smooth and banded, the core dense, the anvil fibrous.
@@ -3301,6 +3311,14 @@ def cloud_code():
     return c
 
 
+def cloud_tops(mat, c, y):
+    """pc/ultra-cloud-tops: CLOUD_CODE's noise footprint floor (m), the cumulus top's edge ramp and the second billow octave's weight; the defaults are every tier's
+    but Ultra's (ASailingEnvironment sets Ultra's own on the cloud material)."""
+    connect(scalar(mat, "CloudFootFloor", 110.0, -1600, y), "", c, "FootFloor")
+    connect(scalar(mat, "CloudEdgeTop", 4.0, -1600, y + 100), "", c, "EdgeTop")
+    connect(scalar(mat, "CloudBillow2", 0.0, -1600, y + 200), "", c, "Billow2")
+
+
 def build_cloud_layers():
     """M_CloudLayers (Visual V5, Medium and High): the volumetric clouds from the weather map and the storm's structure."""
     mat = new_material("M_CloudLayers")
@@ -3326,7 +3344,7 @@ def build_cloud_layers():
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow", "FootFloor", "EdgeTop", "Billow2"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -3342,6 +3360,7 @@ def build_cloud_layers():
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
     connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 1400), "", c, "MaxStepDepth")
+    cloud_tops(mat, c, 1500)
     # Extinction (per metre) in the subsurface pin; albedo in base colour; height AO; lightning as emission.
     MEL.connect_material_property(c, "Albedo", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -3510,7 +3529,7 @@ def build_cloud_cache():
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
-                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev"],
+                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev", "FootFloor", "EdgeTop", "Billow2"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 300)
     connect(uv, "", c, "UV")
     connect(vecs["CacheCam"], "RGBA", c, "Cam")
@@ -3527,6 +3546,7 @@ def build_cloud_cache():
         connect(vecs[n], "RGBA", c, pin)
     connect(dens, "", c, "Density")
     connect(scalar(mat, "MaxStepDepth", MAX_STEP_DEPTH, -1600, 2500), "", c, "MaxStepDepth")
+    cloud_tops(mat, c, 2600)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
