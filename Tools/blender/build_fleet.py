@@ -986,11 +986,9 @@ def hobie_detail(fb, rb, bz, inner, traveler):
         tube(hull, [(fb, 0, sz), (fb, side * (inner(fb) - 0.02), bz - 0.03)], 0.003, "Stainless", 4, cap=False)
     # the mast ball on its step
     tube(hull, [(fb, 0, bz + 0.06), (fb, 0, bz + 0.1)], 0.035, "BlackPlastic", 12)
-    # mainsheet traveler car and its block on the rear beam
-    box(hull, (rb + 0.02, 0, bz + 0.075), (0.09, 0.07, 0.04), "BlackPlastic")
-    box(hull, (rb + 0.02, 0, bz + 0.13), (0.05, 0.03, 0.07), "BlackPlastic")
-    for side in (1, -1):
-        box(hull, (rb + 0.02, side * traveler[2], bz + 0.065), (0.04, 0.04, 0.03), "BlackPlastic")    # end stops
+    # mainsheet traveler on the rear beam: pc/hobie-fidelity, the kit's track, car and end stops across the beam's top
+    # (they had been four boxes); the traveler sockets are unchanged
+    kit_part("Traveler", rb + 0.02, 0.0, bz + 0.042, math.pi / 2, length=2 * traveler[2] + 0.06)
     for Hh, side in ((HS[1], 1), (HS[0], -1)):
         # jib car on a short track at the lead, laid on the tramp
         lx, ly = rb + 0.9, Hh.cy - side * 0.25
@@ -1011,8 +1009,14 @@ def hobie_detail(fb, rb, bz, inner, traveler):
         # Fleet hero: the cast aluminium beam ends (the corner castings bolted to each hull), the hull's coloured stripe
         # along the sheer, and the trapeze shock cords' deck eyes beside the tramp.
         for bx in (fb, rb):
+            # pc/hobie-fidelity: the cast corner housing, rounded, its socket collar round the beam's end and four bolt heads
+            # on top (it had been a box)
             by = Hh.cy - side * 0.02
-            box(hull, (bx, by, bz + 0.005), (0.2, 0.16, 0.11), "Aluminium")
+            slab(hull, rounded(bx - 0.11, bz - 0.055, bx + 0.11, bz + 0.05, 0.03, 4), by, 0.15, "Aluminium")
+            tube(hull, [(bx, by - side * 0.075, bz), (bx, by - side * 0.105, bz)], 0.056, "Aluminium", 16)
+            for dx in (-0.07, 0.07):
+                for dy in (-0.045, 0.045):
+                    lathe(hull, bx + dx, by + dy, [(0.0, bz + 0.05), (0.008, bz + 0.05), (0.008, bz + 0.056), (0.0, bz + 0.058)], "Stainless", 6)
         xs_ = stations(Hh.h["stern_x"] + 0.15, Hh.h["bow_x"] - 0.5, 36)
         stripe = [(x, Hh.cy + side * (Hh.sharp_half_beam(x) + 0.004), Hh.sheer(x) - 0.06) for x in xs_]
         tube(hull, stripe, 0.012, "Graphics", 4, cap=False)
@@ -1618,6 +1622,8 @@ def build_rudder():
         # pc/sunfish-fidelity (and the ILCA's, the Catalina 22's, the Corsair's): the blade hangs aft of its pintle in the head casting (its leading edge had been ahead of
         # the pivot, inside the transom).
         secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
+    if TAG == "Hobie16":     # pc/hobie-fidelity: hers too (it stood a centimetre inside the transom)
+        secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
     foil(m, [(z, le, c) for (z, le, c) in secs], "Antifouling" if SPEC["paint"] else "Topsides", 0.11, cy)
     if transom and tillered and TAG in ("Sunfish", "ILCA7", "Catalina22", "Corsair880"):
         tz = Hh.sheer(st) + 0.08
@@ -1627,6 +1633,16 @@ def build_rudder():
         sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if big else 1.0)
         sunfish_gudgeon(Hh, stock_x, cy, st, z0)
         socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
+    elif transom and tillered and TAG == "Hobie16":
+        # pc/hobie-fidelity: each rudder in its cast aluminium head (the Sunfish's: cheeks on a through-bolt, the pintle's
+        # barrels on the pivot axis; class photos show the kick-up casting), its aluminium tiller arm forward to the
+        # crossbar, the black end the crossbar's connector (they had been a white box and a wooden stick past the bar).
+        # The kit's gudgeons on the transom are the hull's (hobie_detail).
+        tz = Hh.sheer(st) + 0.08
+        tl = 0.55
+        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=True)
+        # (the extension, hung from the crossbar's middle, which the game doesn't draw: baked, as before)
+        tube(m, [(stock_x + tl, cy, tz + 0.1), (stock_x + tl - 0.8, cy + 0.03, tz + 0.02)], 0.01, "Aluminium", 8)
     elif transom and tillered:
         tz = Hh.sheer(st) + 0.08
         box(m, (stock_x - 0.04, cy, tz - 0.12), (0.18, 0.05, 0.3), "Topsides")
