@@ -81,6 +81,10 @@ namespace
 	// samples, read brighter than High's.
 	constexpr float kSkyCacheSunHigh = 1.45f, kSkyCacheSkyHigh = 2.1f;
 	constexpr float kSkyCacheSunUltra = 1.7f, kSkyCacheSkyUltra = 1.2f;
+	// pc/ultra-cloud-tops: Ultra's cloud noise footprint floor (m) and cumulus top ramp (the material's 110 and 4 elsewhere).
+	constexpr float kUltraCloudFootM = 60.f;
+	constexpr float kUltraCloudEdgeTop = 5.f;
+	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
 }
 ASailingEnvironment::ASailingEnvironment()
 {
@@ -337,6 +341,20 @@ void ASailingEnvironment::BeginPlay()
 		}
 		float MaxStepDepth = 0.f; // measuring: -SailingCloudStepDepth=<optical depth> (the material's MaxStepDepth otherwise)
 		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudStepDepth="), MaxStepDepth)) CloudMaterial->SetScalarParameterValue(TEXT("MaxStepDepth"), MaxStepDepth);
+		// pc/ultra-cloud-tops (docs/ultra-cloud-tops): Ultra's own noise footprint floor, cumulus top ramp and second billow
+		// octave. The material's defaults (110 m, 4, 0) stay every other tier's. Measuring: -SailingCloudFoot=<m>, -SailingCloudEdge=<ramp>,
+		// -SailingCloudBillow2=<weight>.
+		if (CloudMaterial)
+		{
+			const bool bUltraClouds = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+			float Foot = bUltraClouds ? kUltraCloudFootM : 0.f, Edge = bUltraClouds ? kUltraCloudEdgeTop : 0.f, Billow2 = bUltraClouds ? kUltraCloudBillow2 : -1.f;
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudFoot="), Foot);
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudEdge="), Edge);
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudBillow2="), Billow2);
+			if (Foot > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudFootFloor"), Foot);
+			if (Edge > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudEdgeTop"), Edge);
+			if (Billow2 >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudBillow2"), Billow2);
+		}
 		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
 		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudNoise="), NoisePath))
 		{
@@ -1343,7 +1361,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 			FLinearColor V;
 			if (CloudMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(Name), V)) CacheMaterial->SetVectorParameterValue(Name, V);
 		}
-		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth") })
+		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth"), TEXT("CloudFootFloor"), TEXT("CloudEdgeTop"), TEXT("CloudBillow2") })   // pc/ultra-cloud-tops: Ultra's three as the live clouds
 		{
 			float S;
 			if (CloudMaterial->GetScalarParameterValue(FHashedMaterialParameterInfo(Name), S)) CacheMaterial->SetScalarParameterValue(Name, S);
