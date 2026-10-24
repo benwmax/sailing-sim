@@ -133,7 +133,9 @@ Coat = max(Coat, sheer);
 // trace finds no water and returns the sky, so the reflection is dimmed to what the water would show there: its own
 // Fresnel at that grazing angle (Spec scales F0 and F90).
 float3 rv = reflect(-V, nw);
-float guard = saturate((-rv.z - 0.25) * 4.0) * (1.0 - sheer);
+// docs/gelcoat-rt: rough enough for the radiance cache by 12 deg under the horizon, as before docs/gelcoat (Lumen traces
+// every pixel under 0.4); the water's olive keeps its later start (seeW).
+float guard = saturate((-rv.z - 0.08) * 6.0) * (1.0 - sheer), seeW = saturate((-rv.z - 0.25) * 4.0) * (1.0 - sheer);
 Rough = lerp(Rough, max(Rough, 0.45), guard);
 Coat *= 1.0 - guard;
 float fw = 0.02 + 0.98 * pow(1.0 - saturate(-rv.z), 5.0);
@@ -144,7 +146,7 @@ Spec = lerp(1.0, fw + 0.04, saturate(-rv.z * 8.0));
 float aboveW = WP.z - WaterZ;
 float contact = (1.0 - up) * (1.0 - smoothstep(0.0, 25.0, aboveW)) * step(-4.0, aboveW);
 c *= 1.0 - 0.45 * contact;
-float seeWater = guard * (1.0 - up) * (1.0 - smoothstep(0.0, 120.0, aboveW));
+float seeWater = seeW * (1.0 - up) * (1.0 - smoothstep(0.0, 120.0, aboveW));
 float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(nw, V))), 5.0);
 c = lerp(c, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gcAll, 0.3));
 // Corner grime (docs/gelcoat): the global distance field just off the surface (AO 0 in a corner, 1 in the open) darkens
@@ -166,6 +168,7 @@ Coat *= 1.0 - cornerK;
 // docs/gelcoat-cost: the clear coat folded into the one lobe's roughness (a 0.05 coat over the bake's ~0.22, weighted),
 // not a hazy second lobe: the hero stays a simple slab, as it was before the gelcoat pass.
 Rough = lerp(Rough, 0.05, Coat);
+Rough = lerp(Rough, max(Rough, 0.45), guard);   // docs/gelcoat-rt: the fold mustn't pull the guarded band back under 0.4
 return c;
 """
 
