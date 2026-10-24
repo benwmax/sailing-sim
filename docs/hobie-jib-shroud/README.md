@@ -41,3 +41,14 @@ The other boats' entries are the same in both runs.
 The traveller close-up the Mac asked for (#290: the kit's track, car and stops across the rear beam):
 
 ![traveller](traveller.jpg)
+
+## The wire across the jib's lower face (follow-up to #303)
+
+In the chase views the Mac saw a thin wire still crossing the jib's lower face. These are close-ups from ahead of the jib's
+foot, starboard tack left and port tack right, on main after #303. The wire (by its line, the windward shroud) passes in front of
+the sail: it runs unbroken across the cloth and past its edge, where one through the cloth would vanish behind it partway.
+
+`SailingSim.Visual.RigClearance`, rerun on this branch, checks every rig wire (both shrouds, the forestay, the trapeze
+wires) against the jib's cloth in eight cases on both tacks. It still lists nothing for the Hobie 16. Nothing to fix.
+
+![jib foot from ahead, both tacks](foot-ahead.jpg)
