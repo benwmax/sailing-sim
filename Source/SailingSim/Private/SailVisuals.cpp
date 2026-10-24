@@ -142,7 +142,10 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 	struct FWork { TArray<FVector> Normals, RPos, RNormals; TArray<FProcMeshTangent> Tangents, RTangents; };
 	TArray<FWork, TInlineAllocator<3>> Work;
 	Work.SetNum(Sails.Num());
-	for (const FSailUpdate& U : Sails) if (U.Cloth->IsValid()) U.Cloth->SetObstacles(SailObstacles);
+	for (const FSailUpdate& U : Sails)
+	{
+		if (U.Cloth->IsValid()) U.Cloth->SetObstacles(bJibInsideShrouds && U.Cloth->GetKind() == ESailKind::Jib ? JibSailObstacles : SailObstacles);
+	}
 	const double Start = FPlatformTime::Seconds();
 	ParallelFor(Sails.Num(), [&](int32 K)
 	{
