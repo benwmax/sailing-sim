@@ -103,6 +103,9 @@ namespace
 		return Sag.GetSafeNormal() * SagFor(Len, L.Slack);
 	}
 
+	/** pc/rig-lines: a line's radius in its vertex colour's green, as a share of this (M_RigRope/M_RigWire's RADIUS_SCALE). */
+	constexpr float kLineRadiusScaleCm = 2.55f;
+
 	/** Round the tube: the ring's cosines and sines, worked out once. */
 	struct FRingTable
 	{
@@ -128,7 +131,8 @@ namespace
 		const FVector W = FVector::CrossProduct(Dir, U);
 		const int32 Base = Out.Verts.Num();
 		const float Lay = FMath::Max(LayDiameters * 2.f * L.RadiusCm, 0.01f);
-		const FLinearColor Look(float(L.Look) / 255.f, 0.f, 0.f, 1.f);
+		// Red: the look. Green: the line's own radius (2.55 cm full scale), which M_RigRope and M_RigWire widen on screen.
+		const FLinearColor Look(float(L.Look) / 255.f, FMath::Clamp(L.RadiusCm / kLineRadiusScaleCm, 0.f, 1.f), 0.f, 1.f);
 		float Arc = 0.f;
 		FVector Prev = L.A;
 		for (int32 I = 0; I <= kLineSegments; ++I)
@@ -184,7 +188,7 @@ namespace
 		C.Add(P.Last());
 		const int32 Base = Out.Verts.Num();
 		const float Lay = 5.f * 2.f * RadiusCm;
-		const FLinearColor Col(float(Look) / 255.f, 0.f, 0.f, 1.f);
+		const FLinearColor Col(float(Look) / 255.f, FMath::Clamp(RadiusCm / kLineRadiusScaleCm, 0.f, 1.f), 0.f, 1.f);
 		FVector Along = (C[1] - C[0]).GetSafeNormal();
 		FVector U = FVector::CrossProduct(Along, FMath::Abs(Along.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector).GetSafeNormal();
 		float Arc = 0.f;
@@ -867,27 +871,12 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 	}
 
-	// Boat fidelity 4: a rig-wide minimum on-screen width. A 5 mm shroud is under half a pixel at chase range and flickers
-	// in and out under TSR; each line is drawn at least kMinLinePx wide at its middle's distance from the camera. The radius
-	// steps by a quarter at a time, so a moving camera re-uploads a section only now and then. -SailingNoMinLineWidth compares.
+	// pc/rig-lines (docs/rig-lines): the on-screen minimum width is the materials' now. M_RigRope and M_RigWire push each
+	// ring out to MinPx (1.2 px) across at its own distance, so every row of a far shroud lands on a pixel centre and it
+	// stays an unbroken line under TSR/TAA. Boat fidelity 4's widening of a whole line to 0.8 px at its middle's distance
+	// (the far end under it and breaking up, the near end over, the braid's scale changing with it, a re-upload at each
+	// step) is gone. -SailingNoMinLineWidth sets MinPx 0.
 	static SailingArgs::FCachedFlag NoMinWidthArg(TEXT("SailingNoMinLineWidth"));
-	const APlayerController* ViewPC = GetWorld()->GetFirstPlayerController();
-	if (!NoMinWidthArg.Get() && ViewPC && ViewPC->PlayerCameraManager && GEngine && GEngine->GameViewport)
-	{
-		constexpr float kMinLinePx = 0.8f;
-		FVector2D ViewSize;
-		GEngine->GameViewport->GetViewportSize(ViewSize);
-		const float PxAngle = 2.f * FMath::Tan(FMath::DegreesToRadians(ViewPC->PlayerCameraManager->GetFOVAngle() * 0.5f)) / FMath::Max(ViewSize.X, 1.0);
-		const FVector Eye = BoatRoot->GetComponentTransform().InverseTransformPosition(ViewPC->PlayerCameraManager->GetCameraLocation());
-		for (TArray<FRigLine>* Lines : { &Wires, &Ropes })
-		{
-			for (FRigLine& L : *Lines)
-			{
-				const float MinR = 0.5f * kMinLinePx * PxAngle * FVector::Dist(Eye, 0.5f * (L.A + L.B));
-				if (MinR > L.RadiusCm) L.RadiusCm *= FMath::Pow(1.25f, FMath::CeilToFloat(FMath::Loge(MinR / L.RadiusCm) / FMath::Loge(1.25f)));
-			}
-		}
-	}
 
 	// Gravity in the boat frame (the boat heels and pitches).
 	const FVector Down = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
@@ -918,6 +907,11 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		{
 			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 			RigLines->SetMaterial(Section, Section == 0 ? WireMaterial.Get() : RopeMaterial.Get());
+			if (NoMinWidthArg.Get() && RigLines->GetMaterial(Section))
+			{
+				UMaterialInstanceDynamic* Mid = RigLines->CreateDynamicMaterialInstance(Section);
+				if (Mid) Mid->SetScalarParameterValue(TEXT("MinPx"), 0.f);
+			}
 		}
 		else
 		{
@@ -944,6 +938,11 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 		RigLines->CreateMeshSection_LinearColor(2, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 		RigLines->SetMaterial(2, RopeMaterial.Get());
+		if (NoMinWidthArg.Get() && RigLines->GetMaterial(2))
+		{
+			UMaterialInstanceDynamic* Mid = RigLines->CreateDynamicMaterialInstance(2);
+			if (Mid) Mid->SetScalarParameterValue(TEXT("MinPx"), 0.f);
+		}
 	}
 	bRigLinesBuilt = true;
 }
