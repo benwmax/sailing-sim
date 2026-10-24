@@ -527,8 +527,8 @@ def cabin(H, spec):
     else:
         box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
     box(hull, (x0 + 0.45, H.cy, top(x0 + 0.45) + 0.01), (0.8, 0.62, 0.04), "Deck")
-    if TAG in ("Catalina22", "Corsair880"):
-        # pc/c22-fidelity (and pc/corsair-fidelity): the kit's low acrylic hatch on the foredeck, and teak handrails with their loops along the cabin
+    if TAG in ("Catalina22", "Corsair880", "Catalina30"):
+        # pc/c22-fidelity (and pc/corsair-fidelity, pc/c30-fidelity): the kit's low acrylic hatch on the foredeck, and teak handrails with their loops along the cabin
         # top, where they had been a box and two round sticks (class photos: one rail a side, four hand holes).
         kit_part("HatchFwd", x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy))
         for side in (1, -1):
@@ -536,7 +536,8 @@ def cabin(H, spec):
             pb = (x1 - 0.4, H.cy + side * half(x1) * 0.6)
             mx, my = 0.5 * (pa[0] + pb[0]), 0.5 * (pa[1] + pb[1])
             kit_part("HandrailTeak", mx, my, top(mx) - 0.004, math.atan2(pb[1] - pa[1], pb[0] - pa[0]),
-                     length=math.hypot(pb[0] - pa[0], pb[1] - pa[1]), loops=4)
+                     length=math.hypot(pb[0] - pa[0], pb[1] - pa[1]),
+                     loops=4 if TAG != "Catalina30" else max(4, int(math.hypot(pb[0] - pa[0], pb[1] - pa[1]) / 0.3)))   # (a hand hole every 30 cm on the 30's long trunk)
     else:
         box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
         # Grab rails on the top.
@@ -1231,6 +1232,21 @@ elif TAG in ("Catalina22", "Catalina30"):
         pane = lambda i, j: "CabinWindow" if 1 <= i <= 4 and j in (1, 2, 5, 6) else "SailCover"
         hull.grid(rows, "SailCover", slot_fn=pane)
         hull.grid(rows, "SailCover", flip=True, slot_fn=pane)
+        # pc/c30-fidelity: what a dodger is besides its canvas (class photos): the stainless bows it hangs from, along its aft
+        # edge and across its middle, their feet in deck fittings; a dark binding round its edges; the windows' stitched
+        # frames (it had been a bare sheet with two dark squares).
+        cx, cz = x0 + 0.3, top(x0)
+        out = lambda q, d: (q[0] + (q[0] - cx) * d, q[1] * (1.0 + d), q[2] + (q[2] - cz) * d)
+        for row, r in ((rows[8], 0.013), (rows[4], 0.011)):
+            tube(hull, [out(q, 0.012) for q in row], r, "Stainless", 8)
+            for q in (row[0], row[-1]):
+                lathe(hull, q[0], q[1], [(0.0, q[2] - 0.003), (0.022, q[2] - 0.003), (0.02, q[2] + 0.012), (0.0, q[2] + 0.016)], "Stainless", 10)
+        for edge in ([r[0] for r in rows], [r[-1] for r in rows], rows[0]):
+            tube(hull, [out(q, 0.008) for q in edge], 0.009, "BlackPlastic", 6, cap=False)
+        for j0, j1 in ((1, 3), (5, 7)):
+            loop = [rows[1][j] for j in range(j0, j1 + 1)] + [rows[i][j1] for i in range(2, 6)] + \
+                   [rows[5][j] for j in range(j1 - 1, j0 - 1, -1)] + [rows[i][j0] for i in range(4, 0, -1)]
+            tube(hull, [out(q, 0.01) for q in loop], 0.007, "BlackPlastic", 5, cap=False)
     if SPEC.get("outboard"):
         # pc/c22-fidelity: the kit's two-position bracket on the transom's port quarter and its brand-free 3.5 hp four-stroke
         # clamped to it, the prop 16 cm down (they had been three boxes and a cylinder). The physics' engine stays where it was.
