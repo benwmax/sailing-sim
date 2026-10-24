@@ -537,7 +537,7 @@ def cabin(H, spec):
             mx, my = 0.5 * (pa[0] + pb[0]), 0.5 * (pa[1] + pb[1])
             kit_part("HandrailTeak", mx, my, top(mx) - 0.004, math.atan2(pb[1] - pa[1], pb[0] - pa[0]),
                      length=math.hypot(pb[0] - pa[0], pb[1] - pa[1]),
-                     loops=4 if TAG == "Catalina22" else max(4, int(math.hypot(pb[0] - pa[0], pb[1] - pa[1]) / 0.3)))   # (a hand hole every 30 cm on the 30's long trunk)
+                     loops=4 if TAG != "Catalina30" else max(4, int(math.hypot(pb[0] - pa[0], pb[1] - pa[1]) / 0.3)))   # (a hand hole every 30 cm on the 30's long trunk)
     else:
         box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
         # Grab rails on the top.
