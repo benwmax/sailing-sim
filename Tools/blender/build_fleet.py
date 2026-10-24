@@ -527,8 +527,8 @@ def cabin(H, spec):
     else:
         box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
     box(hull, (x0 + 0.45, H.cy, top(x0 + 0.45) + 0.01), (0.8, 0.62, 0.04), "Deck")
-    if TAG == "Catalina22":
-        # pc/c22-fidelity: the kit's low acrylic hatch on the foredeck, and teak handrails with their loops along the cabin
+    if TAG in ("Catalina22", "Corsair880"):
+        # pc/c22-fidelity (and pc/corsair-fidelity): the kit's low acrylic hatch on the foredeck, and teak handrails with their loops along the cabin
         # top, where they had been a box and two round sticks (class photos: one rail a side, four hand holes).
         kit_part("HatchFwd", x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy))
         for side in (1, -1):
@@ -1325,10 +1325,12 @@ elif TAG == "Corsair880":
     keelboat_cockpit_detail(MAIN, ck, cb, top, half, st, bw)
     corsair_detail(ck, cb, top, half, st, bw)
     if SPEC.get("outboard"):
-        e = CFG["engines"][0]["position"]
-        tz = MAIN.deck_z(st, 0)
-        box(hull, (st - 0.25, e[1], tz - 0.05), (0.42, 0.3, 0.38), "BlackPlastic")
-        box(hull, (st - 0.25, e[1], tz - 0.55), (0.14, 0.08, 0.8), "BlackPlastic")
+        # pc/corsair-fidelity: the kit's bracket and outboard, as the C22's (they had been two boxes), on the port quarter
+        # clear of the centreline rudder (the physics' engine, on the centreline, is unchanged); the plate 10 cm under.
+        zb = 0.21
+        ey = -0.45
+        kit_part("OutboardBracket", st, ey, zb)
+        kit_part("Outboard35", st - 0.17 - 0.12, ey, zb + 0.21 - 0.69)
 
 elif TAG == "Lagoon42":
     b0, b1 = SPEC["bridgedeck"]
@@ -1612,16 +1614,17 @@ def build_rudder():
         z = z_top + (z_bot - z_top) * t
         c = chord * (1.2 - 0.45 * t ** 1.4) if transom else chord * (1.0 - 0.3 * t)
         secs.append((z, stock_x + 0.25 * c - 0.25 * chord + 0.03, c))
-    if TAG in ("Sunfish", "ILCA7", "Catalina22"):
-        # pc/sunfish-fidelity (and the ILCA's, the Catalina 22's): the blade hangs aft of its pintle in the head casting (its leading edge had been ahead of
+    if TAG in ("Sunfish", "ILCA7", "Catalina22", "Corsair880"):
+        # pc/sunfish-fidelity (and the ILCA's, the Catalina 22's, the Corsair's): the blade hangs aft of its pintle in the head casting (its leading edge had been ahead of
         # the pivot, inside the transom).
         secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
     foil(m, [(z, le, c) for (z, le, c) in secs], "Antifouling" if SPEC["paint"] else "Topsides", 0.11, cy)
-    if transom and tillered and TAG in ("Sunfish", "ILCA7", "Catalina22"):
+    if transom and tillered and TAG in ("Sunfish", "ILCA7", "Catalina22", "Corsair880"):
         tz = Hh.sheer(st) + 0.08
         tl = RIG["tiller_length"]
-        z0 = tz - 0.45 if TAG == "Catalina22" else 0.10
-        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if TAG == "Catalina22" else 1.0)
+        big = TAG in ("Catalina22", "Corsair880")     # (pc/corsair-fidelity: the Corsair's kick-up head is the C22's size)
+        z0 = tz - 0.45 if big else 0.10
+        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if big else 1.0)
         sunfish_gudgeon(Hh, stock_x, cy, st, z0)
         socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
     elif transom and tillered:
