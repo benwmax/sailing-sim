@@ -220,6 +220,13 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 						{
 							Note(FString::Printf(TEXT("%s: %s inside the boat"), *BoatName, *What),
 								FString::Printf(TEXT("%.1f cm deep at (%.0f, %.0f, %.0f) cm, %s"), Depth, P.X, P.Y, P.Z, *State));
+							// Sails and sheets: the sheets are draped over the boat now (spans included); none goes through it.
+							if (What.Contains(TEXT("sheet")))
+							{
+								const FString Key = FString::Printf(TEXT("%s: %s through the boat"), *BoatName, *What);
+								if (!Fails.Contains(Key)) Where.Add(Key, FString::Printf(TEXT("%.1f cm at (%.0f, %.0f, %.0f) cm, %s"), Depth, P.X, P.Y, P.Z, *State));
+								Fails.FindOrAdd(Key)++;
+							}
 							if (Depth > 10.0 && FromEnd > 40.0)
 							{
 								const FString Key = FString::Printf(TEXT("%s: %s more than 10 cm into the boat"), *BoatName, *What);
@@ -239,6 +246,9 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 								{
 									Note(FString::Printf(TEXT("%s: %s through a lifeline"), *BoatName, *What),
 										FString::Printf(TEXT("at (%.0f, %.0f, %.0f) cm, %s"), P.X, P.Y, P.Z, *State));
+									const FString Key = FString::Printf(TEXT("%s: %s through a lifeline"), *BoatName, *What);
+									if (!Fails.Contains(Key)) Where.Add(Key, FString::Printf(TEXT("at (%.0f, %.0f, %.0f) cm, %s"), P.X, P.Y, P.Z, *State));
+									Fails.FindOrAdd(Key)++;
 								}
 							}
 						}
@@ -255,9 +265,11 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 							{
 								Note(FString::Printf(TEXT("%s: %s through crew %d's %s"), *BoatName, *What, B.Crew, *B.Name),
 									FString::Printf(TEXT("%.1f cm into the flesh at (%.0f, %.0f, %.0f) cm, %s"), -Gap, P.X, P.Y, P.Z, *State));
-								if (What == TEXT("mainsheet"))
+								// Every sheet lies on the crew's legs and arms now, not through them (the tiller extension, rigid in
+								// the helm's hand, is the crew pose's to keep clear).
+								if (What.Contains(TEXT("sheet")))
 								{
-									const FString Key = FString::Printf(TEXT("%s: the mainsheet through the crew"), *BoatName);
+									const FString Key = FString::Printf(TEXT("%s: the %s through the crew"), *BoatName, *What);
 									if (!Fails.Contains(Key)) Where.Add(Key, FString::Printf(TEXT("crew %d's %s, %.1f cm, %s"), B.Crew, *B.Name, -Gap, *State));
 									Fails.FindOrAdd(Key)++;
 								}
