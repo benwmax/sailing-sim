@@ -2358,7 +2358,9 @@ float capSlope = solved ? CapCal.y : 0.018 * pow(meanKn / 10.0, 1.25);
 float spK = clamp(log2(max(dist / 64.0, 0.5) / 0.5), 0.0, 3.0);
 float capSolved = spK < 1.0 ? lerp(CapCal.x, CapCalFar.x, spK) : (spK < 2.0 ? lerp(CapCalFar.x, CapCalFar.y, spK - 1.0) : lerp(CapCalFar.y, CapCalFar.z, spK - 2.0));
 float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10.0) / 5.0) - 0.042 * exp(-(max(meanKn, 10.0) - 10.0) / 2.0) - 0.03 * max(10.0 - meanKn, 0.0);
-float capThr = clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
+// docs/calm-water/: a solved -1 is calm water (FWaveDetail::CapThreshold: nothing breaks); the clamp's 0.3 let the fine
+// ripples' folds through as a sprinkle of caps and the foam grid's blocks.
+float capThr = (solved && capBase < -0.5) ? -1.0 : clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
 float2 wd = ldir; // W2: the foam streaks lie along the local wind
 float2 wn = float2(-wd.y, wd.x);
 float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
