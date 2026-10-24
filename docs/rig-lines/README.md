@@ -68,13 +68,13 @@ The coil now reads as braided rope, with chevrons and strands, instead of a patt
 ## Frame cost
 
 J/22 at 25 m, rig against the sky, 1920x1080, 20 s, Bean's RTX 4090. Main's rig lines are rebuilt against the
-branch's (scratch `rigbench.ps1`).
+branch's (scratch `rigbench.ps1`). GPU is bench.json's `gpu.total_ms`.
 
 | Tier | GPU before ms | GPU after ms | Game thread before ms | Game thread after ms |
 | --- | --- | --- | --- | --- |
-| Medium | 11.43 | 11.49 | 8.89 | 8.53 |
-| High | 13.62 | 13.66 | 10.28 | 9.98 |
-| Ultra | 18.13 | 18.00 | 10.52 | 10.44 |
+| Medium | 3.72 | 3.75 | 8.89 | 8.53 |
+| High | 4.81 | 4.83 | 10.28 | 9.98 |
+| Ultra | 7.07 | 7.00 | 10.52 | 10.44 |
 
 The GPU is unchanged, within noise. The vertex work is a few instructions a ring, and the rope's lay costs a few ALU
 in the pixel shader. The game thread is a little lighter: no per-line widening, and no re-upload as the camera's
