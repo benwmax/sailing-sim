@@ -832,6 +832,11 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		for (int32 K = 0; K < 4; ++K) SailObstacles.Add({ At(K / 4.f), At((K + 1) / 4.f), L.RadiusCm, K == 0 ? 12.f : 0.f, K == 3 ? 12.f : 0.f });
 	}
 	const int32 NumWireObstacles = SailObstacles.Num();
+	// pc/hobie-jib-shroud: FSailCloth keeps a jib outside the wires it meets, an overlapping genoa's way. The Hobie 16's jib
+	// sheets to cars on her trampoline, well inside her shrouds (class photos): pushed outward it lay through the leeward
+	// shroud. Her jib keeps clear of nothing; its own shape stays inside them.
+	bJibInsideShrouds = Boat.GetConfig().Type == EBoatType::Hobie16;
+	JibSailObstacles.Reset();
 	if (Has(ModelMast, TEXT("SpreaderTip_S")) && Has(ModelMast, TEXT("MastBase")) && Has(ModelMast, TEXT("Hounds")))
 	{
 		const FVector Base = RigPoint(ModelMast, TEXT("MastBase")), Head = RigPoint(ModelMast, TEXT("Hounds"));

@@ -1761,17 +1761,30 @@ if (Marks > 0.5)
         float3 c = float3(0.0, 0.0, 0.0);
         float2 r0 = (UV1 - float2(0.30, 0.79)) / float2(0.46, 0.09);
         float2 r1 = (UV1 - float2(0.53 - 0.5 * bw, stbd ? 0.62 : 0.48)) / float2(bw, 0.12);
+        // docs/sail-aliasing/: the atlas is read at the mip its footprint needs (it was read at mip 0, and the number's thin "1"
+        // broke into a dashed stroke at a chase camera's distance). The gradients are taken here, before the branches, from
+        // the continuous coordinates (the digit's cell is picked by a floor, which has no useful derivative). A ray-tracing
+        // hit shader has no screen derivatives: it keeps mip 0.
+        float2 uvIns = float2(stbd ? 1.0 - r0.x : r0.x, 0.5 - r0.y * 0.5);
+        float xs = stbd ? 0.999 - r1.x : r1.x;
+        float2 uvNum = float2(xs * nd / 10.0, 1.0 - r1.y * 0.5);
+        #if !RAYHITGROUPSHADER
+        float2 gIx = ddx(uvIns), gIy = ddy(uvIns), gNx = ddx(uvNum), gNy = ddy(uvNum);
+        #define MARKS_TEX(uv_, gx_, gy_) Tex.SampleGrad(TexSampler, uv_, gx_, gy_)
+        #else
+        #define MARKS_TEX(uv_, gx_, gy_) Tex.SampleLevel(TexSampler, uv_, 0)
+        #endif
         if (Marks < 1.5 && all(r0 >= 0.0) && all(r0 <= 1.0))
         {
-            float4 t = Tex.SampleLevel(TexSampler, float2(stbd ? 1.0 - r0.x : r0.x, 0.5 - r0.y * 0.5), 0); a = t.a; c = t.rgb;
+            float4 t = MARKS_TEX(uvIns, gIx, gIy); a = t.a; c = t.rgb;
         }
         if (all(r1 >= 0.0) && all(r1 <= 0.999))
         {
-            float x = stbd ? 0.999 - r1.x : r1.x;
-            float i = floor(x * nd);
+            float i = floor(xs * nd);
             float d = fmod(floor(SailNum / pow(10.0, nd - 1.0 - i) + 0.01), 10.0);
-            float4 t = Tex.SampleLevel(TexSampler, float2((d + frac(x * nd)) / 10.0, 1.0 - r1.y * 0.5), 0); a = t.a; c = t.rgb;
+            float4 t = MARKS_TEX(float2((d + frac(xs * nd)) / 10.0, uvNum.y), gNx, gNy); a = t.a; c = t.rgb;
         }
+        #undef MARKS_TEX
         if (s == 0) { mark = a; ink = c; }
         else through = a;
     }

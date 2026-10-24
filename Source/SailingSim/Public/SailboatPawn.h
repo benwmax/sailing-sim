@@ -499,6 +499,8 @@ private:
 	Sailing::FWindField FallbackWind;
 	bool bRecordRigLines = false;
 	TArray<FSailObstacle> SailObstacles; // rig clearance: the wires the sails keep clear of (UpdateModelRig)
+	TArray<FSailObstacle> JibSailObstacles; // the jib's, where it sheets inside the shrouds: without them (UpdateModelRig)
+	bool bJibInsideShrouds = false;
 	TArray<FRigLineSample> RigLineSamples;
 	double WaterSurfaceZ = 0.0; // cm
 	FVector StartLocation = FVector::ZeroVector;   // the map frame, cm (SailingFrame::ToMapCm)
