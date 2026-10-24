@@ -506,6 +506,14 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 	TestEqual(TEXT("The full shoal fold at 16 kn"), AWaterSurface::ShoalFoldScale(16.f), 1.f);
 	TestEqual(TEXT("A shallow cell at 6 kn: no cap (no onset, no shoal fold)"), AWaterSurface::WhitecapOnset(6.f) + 0.25f * AWaterSurface::ShoalFoldScale(6.f), 0.f);
 
+	// docs/calm-water/: on calm water every sample is 1 (no drawn fold); the floored target must not put the threshold
+	// at the samples, or the shader's fold ramp (0.05 wide) caps half the surface and its residue ramp (to 0.12 over the
+	// threshold) all of it.
+	{
+		double Thr = 0.0, Slope = 0.0;
+		FWaveDetail::CapThreshold(std::vector<float>(16384, 1.f), 1e-7, Thr, Slope);
+		TestTrue(FString::Printf(TEXT("A flat sea folds nowhere (threshold %.3f)"), Thr), Thr <= -1.0);
+	}
 	const double Knots = 10.0;
 	FWaveField Waves(1);
 	FWaveParams WP;

@@ -294,3 +294,17 @@ The other views: beam8 58.5, beat15 62.0, gulf-sea 69.5, helm-eye 59.5, bridge 6
 first main package, from a fresh worktree, took 150 s: the editor build was 34 s (UBA), and the cook was full but fast
 on the shared DDC. When main has not moved, the main step is just the two launches, about 55 s. Running the same
 command again skipped everything and printed the same table and verdict in about 1 s.
+
+## Full recook when Content changes (Oct 24 2026)
+
+The package step's cook is incremental. After #288's merge changed four Catalina 22 meshes, it left a stale package,
+and the packaged game crashed at load in `FExportArchive::HandleBadExportIndex` (a cooked package pointing at an
+object that wasn't there). Every bench view failed. `FULL=1 package-mac.sh` on the same tree fixed it.
+
+The gate now keeps the Content tree's own hash beside the game's: `Artifacts/gate/package-content.hash`, and
+`main-content.hash` for the main tree. When Content differs from the last packaged tree's, it packages with `FULL=1`:
+- the step prints "package: Content changed, full recook";
+- it costs about a minute more, since `FULL=1` also rebuilds the game;
+- a change to code alone keeps the incremental cook.
+
+The first gate after this change recooks once (no hash yet).
