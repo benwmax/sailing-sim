@@ -1,0 +1,16 @@
+[gate 0 s] build
+[gate 2 s] tests (SailingSim)
+235 passed, 0 failed, 235 total
+[gate 1060 s] package: Content changed, full recook
+[gate 1194 s] bench beam8,beat15,storm,gulf-sea,bridge,helm-eye on High, storm on Medium
+[gate 1332 s] bench done
+view           tier       fps  p99 ms  gpu ms  gate
+beam8          High      58.1   20.86   16.76  ok
+beat15         High      57.2   23.25   16.15  ok
+storm          High      49.2   23.61   19.06  ok
+gulf-sea       High      62.3    17.4    15.2  ok
+helm-eye       High      54.8   21.93   17.68  ok
+bridge         High      61.5   17.87   15.41  ok
+storm          Medium    69.2   16.57   14.54  ok
+gate: pass
+[gate 1332 s] gate passed
