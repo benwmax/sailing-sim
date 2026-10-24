@@ -52,24 +52,25 @@ reflection low on the hull. This pass keeps the physics (F0 0.04) rather than ex
 
 ## Frame cost
 
-GPU time per frame (sum of the bench slices) on Bean's RTX 4090, before and after:
+GPU time per frame (`gpu.total_ms`) on Bean's RTX 4090, before and after. **Corrected:** the first version of this table
+summed every field of bench.json's `gpu` object, including `frames` (4) and `total_ms` itself, so it showed 4 plus
+twice the real total and doubled every change. The numbers below are the same runs, corrected.
 
 | View | Tier | Before ms | After ms | Change |
 | --- | --- | --- | --- | --- |
-| Side (hero J/22 fills a third of the frame) | Medium | 12.03 | 11.94 | -0.09 |
-| | High | 14.38 | 14.73 | +0.35 |
-| | Ultra | 18.62 | 19.07 | +0.45 |
-| Cockpit close-up (the boat fills the frame) | Medium | 11.65 | 11.79 | +0.14 |
-| | High | 15.13 | 15.47 | +0.34 |
-| | Ultra | 18.78 | 18.51 | -0.27 |
-| Marina (bench-visual's view: berthed fleet) | Medium | 11.24 | 11.29 | +0.05 |
-| | High | 13.51 | 13.63 | +0.12 |
-| | Ultra | 17.38 | 17.79 | +0.41 |
+| Side (hero J/22 fills a third of the frame) | Medium | 4.02 | 3.97 | -0.05 |
+| | High | 5.19 | 5.37 | +0.18 |
+| | Ultra | 7.31 | 7.54 | +0.23 |
+| Cockpit close-up (the boat fills the frame) | Medium | 3.83 | 3.90 | +0.07 |
+| | High | 5.57 | 5.74 | +0.17 |
+| | Ultra | 7.39 | 7.26 | -0.13 |
+| Marina (bench-visual's view: berthed fleet) | Medium | 3.62 | 3.65 | +0.03 |
+| | High | 4.76 | 4.82 | +0.06 |
+| | Ultra | 6.69 | 6.90 | +0.21 |
 
-One run each, 20 s, 1920x1080; run-to-run noise on these views is about 0.3 ms. Medium is unchanged. High and Ultra
-pay up to about 0.4 ms in the worst case, for the slab's second lobe on the hero and two distance-field samples per
-boat pixel. Scratch script: `gelbench.ps1` (the before set restores HEAD's `Content/Boats` and puts the new assets back after).
-
+One run each, 20 s, 1920x1080. On the 4090 the pass costs about 0.2 ms at most. The Mac paid more on High close to the
+boat (helm eye 57.3 to 54.6 fps); `docs/gelcoat-cost/` trims it. Scratch script: `gelbench.ps1` (the before set restores
+HEAD's `Content/Boats` and puts the new assets back after).
 ## Checks
 
 TESTS

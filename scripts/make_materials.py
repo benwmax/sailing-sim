@@ -1362,9 +1362,19 @@ float guard = saturate((-rvw.z - 0.25) * 4.0);
 float seeWater = guard * side * (1.0 - smoothstep(0.0, 120.0, aboveW));
 float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(n, V))), 5.0);
 col = lerp(col, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gel, 0.3) * (1.0 - Metal));
-// Corner grime (docs/gelcoat): the global distance field 8 and 24 cm off the surface (D1, D2: 0 in a corner, the offset in
-// the open) darkens where dirt settles and the sky can't reach, and dulls the coat there; only within 15 m.
-float cornerK = (1.0 - sqrt(saturate(D1 / 8.0) * saturate(D2 / 24.0))) * (1.0 - smoothstep(300.0, 1500.0, Depth)) * (1.0 - Metal) * (1.0 - Grain);
+// Corner grime (docs/gelcoat): the global distance field 8 and 24 cm off the surface (0 in a corner, the offset in the
+// open) darkens where dirt settles and the sky can't reach, and dulls the coat there. docs/gelcoat-cost: sampled here, only
+// within 8 m (the grime fades out from 4 m), and never in Lumen's surface-cache capture or the ray-traced hits; GDF is
+// unused (a DistanceToNearestSurface node wired in so the material includes the global distance field).
+float AO = 1.0;
+#if !RAYHITGROUPSHADER && !defined(LUMEN_CARD_CAPTURE)
+[branch] if (Depth < 800.0 && Metal < 0.5 && Grain < 0.5)
+{
+    float3 tw = GetTranslatedWorldPosition(Parameters), nf = dot(n, V) < 0.0 ? -n : n;
+    AO = sqrt(saturate(GetDistanceToNearestSurfaceGlobal(tw + nf * 8.0) / 8.0) * saturate(GetDistanceToNearestSurfaceGlobal(tw + nf * 24.0) / 24.0));
+}
+#endif
+float cornerK = (1.0 - AO) * (1.0 - smoothstep(400.0, 800.0, Depth)) * (1.0 - Metal) * (1.0 - Grain);
 col *= 1.0 - 0.45 * cornerK;
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
@@ -1379,7 +1389,7 @@ RoughOut = lerp(RoughOut, RoughOut * 0.7, 0.6 * rainK * Metal);
 // take a crisp highlight.
 CoatOut = saturate(coat * 0.85 + wetAll * 0.5 * (1.0 - Metal) + 0.4 * pudK);
 float edgeK = 0.0;
-#if !RAYHITGROUPSHADER
+#if !RAYHITGROUPSHADER && !defined(LUMEN_CARD_CAPTURE)
 edgeK = length(fwidth(n)) / max(length(fwidth(WP)), 0.01);
 #endif
 float sheer = smoothstep(0.12, 0.35, edgeK) * (1.0 - smoothstep(150.0, 900.0, Depth)) * gel * (1.0 - ox);
@@ -1512,24 +1522,12 @@ def build_boat_surface(name, bend, packed=False):
         ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "D1", "D2"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
-    # Gelcoat (docs/gelcoat): the global distance field 8 and 24 cm off the surface (toward the camera's side) for the corner
-    # grime. The render frame's own position (MEL directly, not node(): the distance field is in the render frame).
-    probe = custom(mat, "float3 n = normalize(N); n *= dot(n, V) < 0.0 ? -1.0 : 1.0; O2 = n * 24.0; return n * 8.0;", ["N", "V"], F3, -1900, 1300,
-                   extra_outputs=[("O2", F3)])
-    connect(nrm, "", probe, "N")
-    connect(view, "", probe, "V")
-    wp_render = MEL.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1900, 1450)
-    for k, (out, pin) in enumerate((("", "D1"), ("O2", "D2"))):
-        at = node(mat, unreal.MaterialExpressionAdd, -1700, 1300 + k * 100)
-        connect(wp_render, "", at, "A")
-        connect(probe, out, at, "B")
-        dist = node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300 + k * 100)
-        if not any(MEL.connect_material_expressions(at, "", dist, pin_name) for pin_name in ("Position", "", "World Position")):
-            raise RuntimeError(f"{name}: the distance probe did not connect")
-        connect(dist, "", c, pin)
+    # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
+    # docs/gelcoat-cost); this node, wired into an unused pin, is what makes the material include it.
+    connect(node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300), "", c, "GDF")
     for src, pin in ((grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
                      (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time")):
         connect(src, "", c, pin)
