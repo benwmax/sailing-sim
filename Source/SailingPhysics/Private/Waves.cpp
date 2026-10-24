@@ -166,11 +166,95 @@ namespace Sailing
 		return GrowthLawPeriod(Ua, FetchMeters) * std::pow(Older, 2.0 / 3.0);
 	}
 
+	double FWaveField::SpreadingBeta(double F, double Fp)
+	{
+		// Donelan, Hamilton and Hui (1985), 0.56 < f/fp < 1.6; Banner (1990) past 1.6; held at 0.56's below it.
+		const double R = Fp > 0.0 ? std::max(F / Fp, 0.56) : 1.6;
+		if (R < 0.95) return 2.61 * std::pow(R, 1.3);
+		if (R < 1.6) return 2.28 * std::pow(R, -1.3);
+		return std::pow(10.0, -0.4 + 0.8393 * std::exp(-0.567 * std::log(R * R)));
+	}
+
+	double FWaveField::DirectionalSpreading(double F, double Fp, double Theta)
+	{
+		const double B = SpreadingBeta(F, Fp);
+		const double C = 1.0 / std::cosh(B * Theta);
+		// Normalized over -pi..pi (tanh(B pi) of the infinite line's integral).
+		return 0.5 * B * C * C / std::tanh(B * kPi);
+	}
+
+	double FWaveField::SideAngle(double Beta)
+	{
+		// The spreading's mean cos(theta) over -pi..pi (a sech^2 has no closed form for it).
+		constexpr int N = 720;
+		double Mean = 0.0, Sum = 0.0;
+		for (int I = 0; I < N; ++I)
+		{
+			const double T = -kPi + (I + 0.5) * 2.0 * kPi / N;
+			const double C = 1.0 / std::cosh(Beta * T);
+			Mean += C * C * std::cos(T);
+			Sum += C * C;
+		}
+		Mean /= Sum;
+		// Three directions weighted 1 : sech^2(beta Delta) : sech^2(beta Delta) have mean cos (1 + 2 r cos Delta) / (1 + 2 r):
+		// the first Delta where that falls to the spreading's (it turns back up once r is small, so stop at its least).
+		constexpr double MaxSide = 75.0 * kDegToRad;
+		double Prev = 1.0;
+		for (double D = 0.5 * kDegToRad; D <= MaxSide; D += 0.5 * kDegToRad)
+		{
+			const double C = 1.0 / std::cosh(Beta * D);
+			const double R = C * C;
+			const double G = (1.0 + 2.0 * R * std::cos(D)) / (1.0 + 2.0 * R);
+			if (G <= Mean) return D;
+			if (G > Prev) return D - 0.5 * kDegToRad;
+			Prev = G;
+		}
+		return MaxSide;
+	}
+
+	void FWaveField::AnchorDirections(double TravelDir, double HoldX, double HoldY)
+	{
+		const double U = Params.WindSpeedKnots * kKnot;
+		const double Fp = U < 0.5 ? 1.0 / 2.5 : 1.0 / TargetPeakPeriod(U, ReferenceFetch());
+		uint32_t S = (Params.Seed ? Params.Seed : 1u) * 2246822519u + 0x9E3779B9u;
+		auto Rand = [&S]()
+		{
+			S ^= S << 13; S ^= S >> 17; S ^= S << 5;
+			return (S % 1000000u) / 1000000.0;
+		};
+		for (int B = 0; B < kWaveBands; ++B)
+		{
+			const double Side = SideAngle(SpreadingBeta(BandFrequency[B], Fp));
+			for (int D = 0; D < kWaveDirectionsPerBand; ++D)
+			{
+				FWaveComponent& C = Components[B * kWaveDirectionsPerBand + D];
+				// -Delta, 0, +Delta about the wind, each jittered by up to 3 deg so no two bands' crests line up exactly.
+				const double Dir = TravelDir + (D - 1) * Side + (Rand() - 0.5) * 0.1;
+				const double K = WavenumberFor(C.Omega, Depth);
+				const double Kx = K * std::cos(Dir), Ky = K * std::sin(Dir);
+				C.Phase = std::fmod(C.Phase + (C.Kx - Kx) * HoldX + (C.Ky - Ky) * HoldY, 2.0 * kPi);
+				if (C.Phase < 0.0) C.Phase += 2.0 * kPi;
+				C.Kx = Kx;
+				C.Ky = Ky;
+			}
+		}
+		bAnchored = true;
+		AnchorDir = TravelDir;
+		++DirectionGeneration;
+		bBandsDirty = true;
+	}
+
 	void FWaveField::SetWind(const FWaveParams& InParams)
 	{
 		const uint32_t Seed = Params.Seed;
 		Params = InParams;
 		Params.Seed = Seed;
+		// The calibration sea keeps the constructor's directions (the fleet's polars were sailed in them).
+		const double TravelDir = Params.WindFromDegrees * kDegToRad + kPi;
+		if (!Params.bCalibrationSea && (!bAnchored || std::fabs(WrapAngle(TravelDir - AnchorDir)) > kReanchorRadians))
+		{
+			AnchorDirections(TravelDir, Params.HoldX, Params.HoldY);
+		}
 		ComputeTargetAmplitudes();
 	}
 
@@ -192,14 +276,16 @@ namespace Sailing
 		for (int B = 0; B < kWaveBands; ++B)
 		{
 			const double BandEnergy = Jonswap(BandFrequency[B]) * BandWidth[B];
-			// cos^2 spreading over the band's directions, normalized within the band.
+			// The measured spreading over the band's directions (cos^2 in the calibration sea), normalized within the band;
+			// none travels upwind.
 			double Weights[kWaveDirectionsPerBand];
 			double Sum = 0.0;
 			for (int D = 0; D < kWaveDirectionsPerBand; ++D)
 			{
 				const FWaveComponent& C = Components[B * kWaveDirectionsPerBand + D];
 				const double Rel = WrapAngle(std::atan2(C.Ky, C.Kx) - TravelDir);
-				const double W = std::fabs(Rel) < kPi * 0.5 ? std::pow(std::cos(Rel), 2.0) : 0.0;
+				const double W = std::fabs(Rel) >= kPi * 0.5 ? 0.0
+					: Params.bCalibrationSea ? std::pow(std::cos(Rel), 2.0) : DirectionalSpreading(BandFrequency[B], Fp, Rel);
 				Weights[D] = W;
 				Sum += W;
 			}
@@ -273,6 +359,7 @@ namespace Sailing
 			C.Kx = K * std::cos(Dir);
 			C.Ky = K * std::sin(Dir);
 		}
+		++DirectionGeneration;
 		bBandsDirty = true;
 	}
 

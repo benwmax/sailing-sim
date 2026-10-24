@@ -66,7 +66,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveBandGrowthTest, "SailingSim.Physics
 bool FSailingWaveBandGrowthTest::RunTest(const FString& Parameters)
 {
 	FWaveField Waves = MakeWaves(6.0, 0.0, 5000.0);
-	const FWaveField Target = MakeWaves(18.0, 0.0, 5000.0);
+	// The same field snapped to 18 kn (its directions were laid by the 6 kn wind it started in).
+	FWaveField Target = Waves;
+	{
+		FWaveParams P18 = Target.GetParams();
+		P18.WindSpeedKnots = 18.0;
+		Target.SetWind(P18);
+		Target.SnapToTarget();
+	}
 	auto BandNear = [&Waves](double Period)
 	{
 		int32 Best = 0;
@@ -114,6 +121,86 @@ bool FSailingWaveBandGrowthTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The ripples get there long before the 4 s waves (5x sooner)"), ShortT90 > 0.0 && LongT90 > 5.0 * ShortT90);
 	TestTrue(TEXT("Steady state equals the snapped sea"), MaxDiff < 1e-6 * FMath::Max(MaxAmp, 1e-3));
 	TestTrue(TEXT("Growth times clamp to 5..300 s"), FWaveField::GrowthSeconds(0.1) == 5.0 && FWaveField::GrowthSeconds(20.0) == 300.0);
+	return true;
+}
+
+/**
+ * docs/short-wave-spreading: each band's three directions are laid about the wind (-Delta, 0, +Delta, a few degrees of
+ * jitter) and weighted by the measured spreading (Donelan, Hamilton and Hui's sech^2, narrowest at the peak), so the sea
+ * near the peak is long-crested; the calibration sea keeps the constructor's directions and cos^2; a turn past 45 deg
+ * lays them again without moving the surface at the hold point.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveSpreadingTest, "SailingSim.Physics.WaveSpreading", Flags)
+bool FSailingWaveSpreadingTest::RunTest(const FString& Parameters)
+{
+	// DHH at the peak (beta 2.28): 44 deg wide at half height; three directions carry its mean cos at about 37 deg.
+	const double PeakSide = FWaveField::SideAngle(2.28) / kDegToRad;
+	const double FarSide = FWaveField::SideAngle(FWaveField::SpreadingBeta(3.0, 1.0)) / kDegToRad;
+	AddInfo(FString::Printf(TEXT("Side directions: %.1f deg at the peak, %.1f deg at 3 fp"), PeakSide, FarSide));
+	TestTrue(TEXT("Near the peak the sides are 30..45 deg off the wind"), PeakSide > 30.0 && PeakSide < 45.0);
+	TestTrue(TEXT("Far above the peak they spread wider"), FarSide > PeakSide + 15.0);
+	TestEqual(TEXT("The spreading is normalized"), [] { double S = 0.0; for (int32 I = 0; I < 3600; ++I) S += FWaveField::DirectionalSpreading(1.0, 1.0, -UE_DOUBLE_PI + (I + 0.5) * 2.0 * UE_DOUBLE_PI / 3600.0); return S * 2.0 * UE_DOUBLE_PI / 3600.0; }(), 1.0, 1e-6);
+
+	// Wind from 70 deg: the waves travel toward 250 deg.
+	FWaveField Waves = MakeWaves(9.0, 70.0, 3000.0);
+	const double Travel = 250.0 * kDegToRad;
+	double MaxCentre = 0.0, MaxAsym = 0.0;
+	for (int32 B = 0; B < kWaveBands; ++B)
+	{
+		const FWaveComponent* C = Waves.GetComponents() + B * kWaveDirectionsPerBand;
+		const double L = WrapAngle(FMath::Atan2(C[0].Ky, C[0].Kx) - Travel), M = WrapAngle(FMath::Atan2(C[1].Ky, C[1].Kx) - Travel), R = WrapAngle(FMath::Atan2(C[2].Ky, C[2].Kx) - Travel);
+		MaxCentre = FMath::Max(MaxCentre, FMath::Abs(M));
+		MaxAsym = FMath::Max(MaxAsym, FMath::Abs(L + R));
+	}
+	AddInfo(FString::Printf(TEXT("Anchored: centre directions within %.1f deg of the wind, sides symmetric within %.1f deg"), MaxCentre / kDegToRad, MaxAsym / kDegToRad));
+	TestTrue(TEXT("Every band's centre direction is the wind's within 3 deg"), Waves.IsAnchored() && MaxCentre < 3.01 * kDegToRad);
+	TestTrue(TEXT("The sides are symmetric about it within 6 deg"), MaxAsym < 6.01 * kDegToRad);
+	TestEqual(TEXT("The anchored sea keeps its Hs"), Waves.SignificantHeight(), FWaveField::TargetSignificantHeight(9.0 * kKnot, 3000.0), 0.002);
+
+	// Energy-weighted mean cos(theta) about the wind, the sea's directional width: the old fields' was cos^2's or wider.
+	auto MeanCos = [Travel](const FWaveField& W)
+	{
+		double E = 0.0, EC = 0.0;
+		for (int32 I = 0; I < kWaveComponents; ++I)
+		{
+			const FWaveComponent& C = W.GetComponents()[I];
+			E += C.Amplitude * C.Amplitude;
+			EC += C.Amplitude * C.Amplitude * FMath::Cos(FMath::Atan2(C.Ky, C.Kx) - Travel);
+		}
+		return EC / FMath::Max(E, 1e-12);
+	};
+	FWaveField Calib(3);
+	FWaveParams PC;
+	PC.WindSpeedKnots = 9.0;
+	PC.WindFromDegrees = 70.0;
+	PC.FetchMeters = 3000.0;
+	PC.bCalibrationSea = true;
+	Calib.SetWind(PC);
+	Calib.SnapToTarget();
+	const FWaveField Fresh(3);
+	bool bSame = !Calib.IsAnchored();
+	for (int32 I = 0; I < kWaveComponents; ++I) bSame &= Calib.GetComponents()[I].Kx == Fresh.GetComponents()[I].Kx && Calib.GetComponents()[I].Phase == Fresh.GetComponents()[I].Phase;
+	AddInfo(FString::Printf(TEXT("Mean cos about the wind: %.3f measured spreading, %.3f calibration sea (cos^2 over the old directions)"), MeanCos(Waves), MeanCos(Calib)));
+	TestTrue(TEXT("The calibration sea keeps the constructor's directions"), bSame);
+	TestTrue(TEXT("The measured sea is longer-crested than the calibration sea"), MeanCos(Waves) > MeanCos(Calib) + 0.03);
+
+	// A 30 deg shift only reweights; a 60 deg one lays the directions again, the surface unmoved at the hold point.
+	const uint32 Gen = Waves.GetDirectionGeneration();
+	FWaveParams P = Waves.GetParams();
+	P.WindFromDegrees = 100.0;
+	Waves.SetWind(P);
+	TestEqual(TEXT("A 30 deg shift keeps the directions"), Waves.GetDirectionGeneration(), Gen);
+	P.WindFromDegrees = 130.0;
+	P.HoldX = 812.0;
+	P.HoldY = -455.0;
+	double Before[3], After[3];
+	for (int32 K = 0; K < 3; ++K) Before[K] = Waves.Height(P.HoldX, P.HoldY, 40.0 + 1.7 * K);
+	const double Away = Waves.Height(P.HoldX + 300.0, P.HoldY, 40.0);
+	Waves.SetWind(P);
+	for (int32 K = 0; K < 3; ++K) After[K] = Waves.Height(P.HoldX, P.HoldY, 40.0 + 1.7 * K);
+	TestTrue(TEXT("A 60 deg shift lays them again"), Waves.GetDirectionGeneration() == Gen + 1 && FMath::IsNearlyEqual(Waves.GetAnchorDirection(), 310.0 * kDegToRad, 1e-9));
+	TestTrue(TEXT("The surface at the hold point doesn't move"), FMath::Abs(Before[0] - After[0]) < 1e-6 && FMath::Abs(Before[1] - After[1]) < 1e-6 && FMath::Abs(Before[2] - After[2]) < 1e-6);
+	TestTrue(TEXT("Away from it the surface did change (the new directions are in use)"), FMath::Abs(Away - Waves.Height(P.HoldX + 300.0, P.HoldY, 40.0)) > 1e-4);
 	return true;
 }
 

@@ -360,4 +360,5 @@ private:
 	float BoatHeading = 0.f, BoatSpeed = 0.f, BoatHeel = 0.f;
 	float TrailTimer = 0.f;
 	bool bStaticParamsSet = false;
+	uint32 UploadedDirections = 0; // FWaveField::GetDirectionGeneration of the uploaded Wave%02d
 };

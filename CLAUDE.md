@@ -459,6 +459,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   packed on a worker) is seven RGBA half tiles: tile t channel c scales component 4t+c, tile 6 R the short waves;
   `SEA_ATLAS` in make_materials.py mirrors `FSeaMap::Sample` (keep them in step). `scripts/wave-check.sh --map` checks
   against SWAN (w3-swan-bake).
+- Wave spreading (`docs/short-wave-spreading/`): the long and short waves share Donelan-Hamilton-Hui sech^2 spreading
+  (Banner past 1.6 fp; `FWaveField::DirectionalSpreading`). Each band's three components are laid at -Delta, 0, +Delta
+  about the first wind (`AnchorDirections`), and laid again only after a 45 deg turn, in phase at the boat
+  (`FWaveParams::HoldX/Y`). The renderer and the sea map follow `GetDirectionGeneration`. The calibration sea keeps the
+  constructor's directions and cos^2.
 - Wind (W1, `docs/w1/`): `FWindField` is three seeded layers, each a function of place and time in a frame drifting with
   the air (`FDriftFrame`; `SetParamsAt` re-anchors at the boat when the wind turns): convective puffs (lattice along the
   surface wind, drifting with the wind aloft; since the W1 follow-up, kilometre cells from 12 seeded waves 2 to 5 km

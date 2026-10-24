@@ -1851,8 +1851,9 @@ void AWaterSurface::UpdateMaterial()
 		return;
 	}
 	const FWaveComponent* C = Waves->GetComponents();
-	if (!bStaticParamsSet)
+	if (!bStaticParamsSet || UploadedDirections != Waves->GetDirectionGeneration())
 	{
+		UploadedDirections = Waves->GetDirectionGeneration();
 		for (int32 I = 0; I < kWaveComponents; ++I)
 		{
 			WaterMaterial->SetVectorParameterValue(*FString::Printf(TEXT("Wave%02d"), I), FLinearColor(C[I].Kx, C[I].Ky, C[I].Omega, C[I].Phase));
