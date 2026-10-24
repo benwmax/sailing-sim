@@ -671,17 +671,80 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const FBoatConfig& Cfg = Boat.GetConfig();
 		const double HullDepth = Boat.HullDepth();
 		const FVector DownD = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
+		// Sails and sheets: the crew's legs and trunk (boat frame, cm, with RigClearance's flesh radii), so a sheet or tail
+		// lies over a sailor's thigh instead of through it (the Catalina 22's lazy sheet, the J/22's mainsheet tail).
+		struct FFlesh { FVector A, B; float R; FVector Hand = FVector(1e9); };
+		TArray<FFlesh, TInlineAllocator<24>> Flesh;
+		{
+			const FTransform& Root = BoatRoot->GetComponentTransform();
+			static const FName Pelvis(TEXT("pelvis")), Spine3(TEXT("spine_03")), Spine5(TEXT("spine_05"));
+			static const FName Thigh[2] = { FName(TEXT("thigh_l")), FName(TEXT("thigh_r")) }, Calf[2] = { FName(TEXT("calf_l")), FName(TEXT("calf_r")) },
+				Foot[2] = { FName(TEXT("foot_l")), FName(TEXT("foot_r")) };
+			static const FName UpperArm[2] = { FName(TEXT("upperarm_l")), FName(TEXT("upperarm_r")) }, LowerArm[2] = { FName(TEXT("lowerarm_l")), FName(TEXT("lowerarm_r")) },
+				HandBone[2] = { FName(TEXT("hand_l")), FName(TEXT("hand_r")) };
+			for (const TObjectPtr<USkeletalMeshComponent>& M : Crew)
+			{
+				if (!M || !M->IsVisible() || M->GetBoneIndex(Pelvis) == INDEX_NONE) continue;
+				auto At = [&](const FName& Bone) { return Root.InverseTransformPosition(M->GetBoneLocation(Bone, EBoneSpaces::WorldSpace)); };
+				const FName& Chest = M->GetBoneIndex(Spine5) != INDEX_NONE ? Spine5 : Spine3;
+				if (M->GetBoneIndex(Chest) != INDEX_NONE) Flesh.Add({ At(Pelvis), At(Chest), 10.f });
+				for (int32 Sd = 0; Sd < 2; ++Sd)
+				{
+					if (M->GetBoneIndex(Thigh[Sd]) == INDEX_NONE || M->GetBoneIndex(Calf[Sd]) == INDEX_NONE || M->GetBoneIndex(Foot[Sd]) == INDEX_NONE) continue;
+					Flesh.Add({ At(Thigh[Sd]), At(Calf[Sd]), 7.f });
+					Flesh.Add({ At(Calf[Sd]), At(Foot[Sd]), 4.5f });
+				}
+				// The arms too (a lazy sheet lifted over a knee met the forearm resting on it), except for a line held in
+				// that hand.
+				for (int32 Sd = 0; Sd < 2; ++Sd)
+				{
+					if (M->GetBoneIndex(UpperArm[Sd]) == INDEX_NONE || M->GetBoneIndex(LowerArm[Sd]) == INDEX_NONE || M->GetBoneIndex(HandBone[Sd]) == INDEX_NONE) continue;
+					const FVector Hand = At(HandBone[Sd]);
+					Flesh.Add({ At(UpperArm[Sd]), At(LowerArm[Sd]), 4.5f, Hand });
+					Flesh.Add({ At(LowerArm[Sd]), Hand, 3.5f, Hand });
+				}
+			}
+		}
+		// The lifelines (build_fleet.py lifelines(), as RigClearance has them): two wires at half and full height over the
+		// deck at the stanchions, a hull's half beam less 5 cm out.
+		const bool bLifelines = CrewHasLifelines(Cfg);
+		const double LifelineHgt = Cfg.Hulls[0].SheerZ < 0.9 ? 60.0 : 68.0;
 		for (FRigLine& L : Ropes)
 		{
 			const FString What = L.Name;
 			if (What == TEXT("vang")) continue;
 			const FVector Sag = SagOf(L, DownD);
-			// How far up a point must go to be out of the boat (a coachroof is up to a metre and a half over the deck).
+			auto HeldBy = [&L](const FFlesh& F) { return FVector::DistSquared(F.Hand, L.A) < 625.0 || FVector::DistSquared(F.Hand, L.B) < 625.0; };
+			// Is a point in the boat, a sailor's flesh or a lifeline wire?
+			auto Blocked = [&](const FVector& C) -> bool
+			{
+				if (CrewInsideBoat(Cfg, HullDepth, C / CmPerMeter, bModelTravelerBridge)) return true;
+				for (const FFlesh& F : Flesh)
+				{
+					if (F.Hand.X < 1e8 && HeldBy(F)) continue;
+					if (FVector::DistSquared(FMath::ClosestPointOnSegment(C, F.A, F.B), C) < FMath::Square(F.R + L.RadiusCm)) return true;
+				}
+				if (bLifelines)
+				{
+					const double Fence = (Cfg.Hulls[0].DeckHalfBeam(C.X / CmPerMeter) - 0.05) * CmPerMeter;
+					if (FMath::Abs(FMath::Abs(C.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence) < 1.0 + L.RadiusCm)
+					{
+						const double Deck = CrewFloorZ(Cfg, C.X / CmPerMeter, FMath::Sign(C.Y) * (Fence - 5.0) / CmPerMeter, bModelTravelerBridge) * CmPerMeter;
+						for (const double Wire : { 0.5 * LifelineHgt, LifelineHgt })
+						{
+							if (Deck > -1e6 && FMath::Abs(C.Z - (Deck + Wire)) < 1.0 + L.RadiusCm) return true;
+						}
+					}
+				}
+				return false;
+			};
+			// How far up a point must go to be out of the boat (a coachroof is up to a metre and a half over the deck), off a
+			// sailor's leg or over a lifeline.
 			auto Under = [&](const FVector& C) -> float
 			{
-				if (!CrewInsideBoat(Cfg, HullDepth, C / CmPerMeter, bModelTravelerBridge)) return 0.f;
+				if (!Blocked(C)) return 0.f;
 				float Up = 2.f;
-				while (Up < 150.f && CrewInsideBoat(Cfg, HullDepth, (C + FVector(0.f, 0.f, Up)) / CmPerMeter, bModelTravelerBridge)) Up += 2.f;
+				while (Up < 150.f && Blocked(C + FVector(0.f, 0.f, Up))) Up += 2.f;
 				return Up < 150.f ? Up + L.RadiusCm : 0.f;
 			};
 			// Each ring takes the most any point within half a span of it needs, so the spans between the rings clear the edge
@@ -693,6 +756,42 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 					const float U = FMath::Clamp((I + Off) / kLineSegments, 0.f, 1.f);
 					L.Lift[I] = FMath::Max(L.Lift[I], Under(L.A + (L.B - L.A) * U + Sag * (4.f * U * (1.f - U))));
 				}
+			}
+			// Sails and sheets: then the drawn spans themselves. A span between a ring lifted onto a cabin top and the next
+			// one down on the side deck cut the roof's corner (the lazy sheets of five boats 2-3 cm inside their trunks, the
+			// J/22's working sheet 9.5 cm, in SailingSim.Visual.RigClearance): each span is checked at its quarters, and a
+			// point still inside lifts the span's free rings (an end at its fitting stays) until it clears.
+			for (int32 Pass = 0; Pass < 6; ++Pass)
+			{
+				bool bLifted = false;
+				for (int32 I = 0; I < kLineSegments; ++I)
+				{
+					const FVector P0 = LinePoint(L, Sag, I), P1 = LinePoint(L, Sag, I + 1);
+					// Its eighths, and where it crosses a lifeline's plane (the wires are 3 cm thick: a span can step over
+					// one between two checks).
+					TArray<float, TInlineAllocator<10>> Checks = { 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f };
+					if (bLifelines)
+					{
+						const double Fence0 = (Cfg.Hulls[0].DeckHalfBeam(P0.X / CmPerMeter) - 0.05) * CmPerMeter;
+						const double Y0 = FMath::Abs(P0.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence0;
+						const double Y1 = FMath::Abs(P1.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence0;
+						if (Y0 * Y1 < 0.0) Checks.Add(float(FMath::Clamp(Y0 / (Y0 - Y1), 0.02, 0.98)));
+					}
+					for (const float Q : Checks)
+					{
+						const float Need = Under(FMath::Lerp(P0, P1, Q));
+						if (Need <= 0.f) continue;
+						// Both free ends of the span go up by what the point needs; next to an end held at its fitting, the
+						// free one goes up enough to raise the point that much.
+						const bool bFree0 = I > 0, bFree1 = I + 1 < kLineSegments;
+						if (bFree0 && bFree1) { L.Lift[I] += Need; L.Lift[I + 1] += Need; }
+						else if (bFree1) L.Lift[I + 1] += Need / Q;
+						else if (bFree0) L.Lift[I] += Need / (1.f - Q);
+						bLifted = true;
+						break;
+					}
+				}
+				if (!bLifted) break;
 			}
 		}
 	}
