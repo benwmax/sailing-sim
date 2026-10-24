@@ -103,8 +103,25 @@ namespace
 		return Sag.GetSafeNormal() * SagFor(Len, L.Slack);
 	}
 
-	/** pc/rig-lines: a line's radius in its vertex colour's green, as a share of this (M_RigRope/M_RigWire's RADIUS_SCALE). */
-	constexpr float kLineRadiusScaleCm = 2.55f;
+	/** pc/rig-lines: the camera for the on-screen minimum width (boat frame), or off. */
+	struct FLineWidening
+	{
+		FVector Eye = FVector::ZeroVector;
+		float PxAngle = 0.f;   // radians per pixel across the view
+		bool bOn = false;
+	};
+
+	/** pc/rig-lines (docs/rig-lines): a ring's drawn radius, at least kMinLinePx across at its own distance from the camera.
+	 *  It steps by a quarter at a time (Exponent counts the steps), so a moving camera changes a line only now and then. */
+	constexpr float kMinLinePx = 1.2f;
+	float RingRadius(float RadiusCm, const FVector& C, const FLineWidening& W, int32* Exponent = nullptr)
+	{
+		const float MinR = W.bOn ? 0.5f * kMinLinePx * W.PxAngle * float(FVector::Dist(W.Eye, C)) : 0.f;
+		if (MinR <= RadiusCm || RadiusCm <= 0.f) return RadiusCm;
+		const float Steps = FMath::CeilToFloat(FMath::Loge(MinR / RadiusCm) / FMath::Loge(1.25f));
+		if (Exponent) *Exponent += int32(Steps);
+		return RadiusCm * FMath::Pow(1.25f, Steps);
+	}
 
 	/** Round the tube: the ring's cosines and sines, worked out once. */
 	struct FRingTable
@@ -120,7 +137,7 @@ namespace
 		}
 	};
 
-	void AppendTube(const FRigLine& L, const FVector& Sag, float LayDiameters, FTubeStreams& Out, bool bTris)
+	void AppendTube(const FRigLine& L, const FVector& Sag, float LayDiameters, const FLineWidening& Widen, FTubeStreams& Out, bool bTris)
 	{
 		static const FRingTable Ring;
 		const FVector D = L.B - L.A;
@@ -131,8 +148,7 @@ namespace
 		const FVector W = FVector::CrossProduct(Dir, U);
 		const int32 Base = Out.Verts.Num();
 		const float Lay = FMath::Max(LayDiameters * 2.f * L.RadiusCm, 0.01f);
-		// Red: the look. Green: the line's own radius (2.55 cm full scale), which M_RigRope and M_RigWire widen on screen.
-		const FLinearColor Look(float(L.Look) / 255.f, FMath::Clamp(L.RadiusCm / kLineRadiusScaleCm, 0.f, 1.f), 0.f, 1.f);
+		const FLinearColor Look(float(L.Look) / 255.f, 0.f, 0.f, 1.f);
 		float Arc = 0.f;
 		FVector Prev = L.A;
 		for (int32 I = 0; I <= kLineSegments; ++I)
@@ -146,10 +162,11 @@ namespace
 				+ FVector(0.f, 0.f, (L.Lift[FMath::Min(I + 1, kLineSegments)] - L.Lift[FMath::Max(I - 1, 0)]) / FMath::Max(2.f * Len / kLineSegments, 1.f));
 			const FProcMeshTangent Tangent(Along.GetSafeNormal(), false);
 			const float UArc = Arc / Lay;
+			const float R = RingRadius(L.RadiusCm, C, Widen);
 			for (int32 K = 0; K <= kLineSides; ++K)
 			{
 				const FVector N = U * Ring.Cos[K] + W * Ring.Sin[K];
-				Out.Verts.Add(C + N * L.RadiusCm);
+				Out.Verts.Add(C + N * R);
 				Out.Normals.Add(N);
 				Out.UV0.Add(FVector2D(UArc, float(K) / kLineSides));
 				if (bTris) Out.Colors.Add(Look); // the look never changes: sent once, at build (an update skips an empty stream)
@@ -188,7 +205,7 @@ namespace
 		C.Add(P.Last());
 		const int32 Base = Out.Verts.Num();
 		const float Lay = 5.f * 2.f * RadiusCm;
-		const FLinearColor Col(float(Look) / 255.f, FMath::Clamp(RadiusCm / kLineRadiusScaleCm, 0.f, 1.f), 0.f, 1.f);
+		const FLinearColor Col(float(Look) / 255.f, 0.f, 0.f, 1.f);
 		FVector Along = (C[1] - C[0]).GetSafeNormal();
 		FVector U = FVector::CrossProduct(Along, FMath::Abs(Along.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector).GetSafeNormal();
 		float Arc = 0.f;
@@ -871,23 +888,40 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 	}
 
-	// pc/rig-lines (docs/rig-lines): the on-screen minimum width is the materials' now. M_RigRope and M_RigWire push each
-	// ring out to MinPx (1.2 px) across at its own distance, so every row of a far shroud lands on a pixel centre and it
-	// stays an unbroken line under TSR/TAA. Boat fidelity 4's widening of a whole line to 0.8 px at its middle's distance
-	// (the far end under it and breaking up, the near end over, the braid's scale changing with it, a re-upload at each
-	// step) is gone. -SailingNoMinLineWidth sets MinPx 0.
+	// pc/rig-lines (docs/rig-lines): each ring of a line is drawn at least kMinLinePx (1.2 px) across at its own distance
+	// from the camera (RingRadius), so every row of a far shroud lands on a pixel centre and it stays an unbroken line under
+	// TSR/TAA. Boat fidelity 4 widened a whole line to 0.8 px at its middle's distance: the far end fell under it and broke
+	// up, the near end drew fat. (#312 did this in the materials by world position offset; docs/gelcoat-rt moved it back
+	// here: WPO cost the Mac's base pass half a millisecond at helm eye.) The braid keeps its true scale. -SailingNoMinLineWidth.
 	static SailingArgs::FCachedFlag NoMinWidthArg(TEXT("SailingNoMinLineWidth"));
+	FLineWidening Widen;
+	const APlayerController* ViewPC = GetWorld()->GetFirstPlayerController();
+	if (!NoMinWidthArg.Get() && ViewPC && ViewPC->PlayerCameraManager && GEngine && GEngine->GameViewport)
+	{
+		FVector2D ViewSize;
+		GEngine->GameViewport->GetViewportSize(ViewSize);
+		Widen.PxAngle = 2.f * FMath::Tan(FMath::DegreesToRadians(ViewPC->PlayerCameraManager->GetFOVAngle() * 0.5f)) / FMath::Max(ViewSize.X, 1.0);
+		Widen.Eye = BoatRoot->GetComponentTransform().InverseTransformPosition(ViewPC->PlayerCameraManager->GetCameraLocation());
+		Widen.bOn = true;
+	}
 
 	// Gravity in the boat frame (the boat heels and pitches).
 	const FVector Down = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
 	for (int32 Section = 0; Section < 2; ++Section)
 	{
 		const TArray<FRigLine>& Lines = Section == 0 ? Wires : Ropes;
-		// A section none of whose lines moved more than half a millimetre (ends, sag or radius) since its last upload is left
-		// as it is: the standing rig at rest, a sheet made fast.
+		// A section none of whose lines moved more than half a millimetre (ends, sag or radius) since its last upload, and none of
+		// whose rings stepped its on-screen widening, is left as it is: the standing rig at rest, a sheet made fast.
 		TArray<FVector> Keys;
-		Keys.Reserve(Lines.Num() * 4);
-		for (const FRigLine& L : Lines) Keys.Append({ L.A, L.B, SagOf(L, Down), FVector(L.RadiusCm, L.Lift[kLineSegments / 2], L.Lift[kLineSegments / 4] + L.Lift[3 * kLineSegments / 4]) });
+		Keys.Reserve(Lines.Num() * 5);
+		for (const FRigLine& L : Lines)
+		{
+			const FVector Sag = SagOf(L, Down);
+			int32 Steps = 0;
+			for (int32 I = 0; I <= kLineSegments; ++I) RingRadius(L.RadiusCm, LinePoint(L, Sag, I), Widen, &Steps);
+			Keys.Append({ L.A, L.B, Sag, FVector(L.RadiusCm, L.Lift[kLineSegments / 2], L.Lift[kLineSegments / 4] + L.Lift[3 * kLineSegments / 4]),
+				FVector(float(Steps), 0.f, 0.f) });
+		}
 		TArray<FVector>& Last = RigLineKeys[Section];
 		bool bMoved = !bRigLinesBuilt || Last.Num() != Keys.Num();
 		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > 0.05f * 0.05f;
@@ -901,17 +935,12 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
 		for (int32 K = 0; K < Lines.Num(); ++K)
 		{
-			AppendTube(Lines[K], Last[4 * K + 2], Section == 0 ? 11.f : 5.f, Out, !bRigLinesBuilt);
+			AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, !bRigLinesBuilt);
 		}
 		if (!bRigLinesBuilt)
 		{
 			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 			RigLines->SetMaterial(Section, Section == 0 ? WireMaterial.Get() : RopeMaterial.Get());
-			if (NoMinWidthArg.Get() && RigLines->GetMaterial(Section))
-			{
-				UMaterialInstanceDynamic* Mid = RigLines->CreateDynamicMaterialInstance(Section);
-				if (Mid) Mid->SetScalarParameterValue(TEXT("MinPx"), 0.f);
-			}
 		}
 		else
 		{
@@ -938,11 +967,6 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 		RigLines->CreateMeshSection_LinearColor(2, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 		RigLines->SetMaterial(2, RopeMaterial.Get());
-		if (NoMinWidthArg.Get() && RigLines->GetMaterial(2))
-		{
-			UMaterialInstanceDynamic* Mid = RigLines->CreateDynamicMaterialInstance(2);
-			if (Mid) Mid->SetScalarParameterValue(TEXT("MinPx"), 0.f);
-		}
 	}
 	bRigLinesBuilt = true;
 }

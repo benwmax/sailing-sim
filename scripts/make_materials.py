@@ -1358,8 +1358,10 @@ col *= 1.0 - 0.45 * contact;
 // Gelcoat (docs/gelcoat): the reflection is left to Lumen down to 15 deg under the horizon (the `guard` below), so the
 // water's olive goes in only past it.
 float3 rvw = reflect(-V, dot(n, V) < 0.0 ? -n : n);
-float guard = saturate((-rvw.z - 0.25) * 4.0);
-float seeWater = guard * side * (1.0 - smoothstep(0.0, 120.0, aboveW));
+// docs/gelcoat-rt: the lobe is rough enough for the radiance cache (and the haze weight is 0: Lumen traces any hazy pixel)
+// by 12 deg under the horizon, as before docs/gelcoat; the water's olive keeps its later start (seeW).
+float guard = saturate((-rvw.z - 0.08) * 6.0), seeW = saturate((-rvw.z - 0.25) * 4.0);
+float seeWater = seeW * side * (1.0 - smoothstep(0.0, 120.0, aboveW));
 float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(n, V))), 5.0);
 col = lerp(col, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gel, 0.3) * (1.0 - Metal));
 // Corner grime (docs/gelcoat): the global distance field 8 and 24 cm off the surface (0 in a corner, the offset in the
@@ -1401,7 +1403,7 @@ CoatOut = max(CoatOut, sheer);
 // so the reflection is dimmed to what the water would show there, its own Fresnel at that grazing angle (F0 and F90).
 float guardS = guard * (1.0 - sheer);
 RoughOut = lerp(RoughOut, max(RoughOut, 0.45), guardS);
-CoatOut *= (1.0 - guardS) * (1.0 - cornerK);
+CoatOut *= saturate(1.0 - 1.25 * guardS) * (1.0 - cornerK);
 RoughOut = lerp(RoughOut, max(RoughOut, 0.55), cornerK);
 float fw = 0.02 + 0.98 * pow(1.0 - saturate(-rvw.z), 5.0);
 F90Out = lerp(1.0, fw + 0.04, saturate(-rvw.z * 8.0));

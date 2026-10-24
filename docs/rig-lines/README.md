@@ -1,5 +1,9 @@
 # Rig lines (Ultra audit #6)
 
+> **Since `docs/gelcoat-rt/`:** the per-vertex minimum width is done on the CPU per ring (`RingRadius` in
+> `BoatModelVisuals.cpp`), not by world position offset in the materials. The WPO version cost the Mac's base pass
+> 0.48 ms at helm eye. The materials below no longer carry `MinPx` or the vertex colour's radius. The rope's lay is unchanged.
+
 The Ultra audit (`docs/ultra-audit-1024/`) found shrouds, stays, halyards and sheets stair-stepping and flickering in
 wide shots, and lines reading as smooth tubes close up.
 
