@@ -116,8 +116,51 @@ c = lerp(c, float3(0.023, 0.021, 0.018), deep * 0.62);        // shadow in the w
 float rim = pow(1.0 - saturate(abs(dot(normalize(N), normalize(V)))), 3.0);
 c = lerp(c, c * 1.35 + 0.035, rim * (0.25 + 0.35 * Fade));
 Rough = 0.62 + 0.25 * deep - 0.06 * yarn * (1.0 - deep);
+// pc/rig-lines ("a lay seen close up"): the cover's carriers as the eye reads them at arm's length, a diamond of S and Z
+// helices at 45 deg, 4 round (U runs 5 diameters, V once round: a period along the rope of 0.8 diameter), the carrier on
+// top alternating at each crossing. Ridged in colour and normal, faded where a carrier falls under about a pixel (its own
+// screen derivative), so it never aliases into crawl. Below it the braid map's finer pattern carries on.
+float pS = 4.0 * UV.y - UV.x * 4.0 * 5.0 / 3.14159265, pZ = 4.0 * UV.y + UV.x * 4.0 * 5.0 / 3.14159265;
+float layFw = 1.0;
+#if !RAYHITGROUPSHADER
+layFw = max(fwidth(pS), fwidth(pZ));
+#endif
+float layK = saturate(2.0 - 2.5 * layFw);
+float onS = step(0.5, frac(0.5 * (floor(pS) + floor(pZ))));
+float ridge = lerp(abs(cos(3.14159265 * pZ)), abs(cos(3.14159265 * pS)), onS);
+c *= lerp(1.0, 0.7 + 0.36 * ridge, layK);
+Rough = lerp(Rough, Rough + 0.12 * (1.0 - ridge), layK);
+float2 tilt = lerp(float2(0.85, 0.53) * sin(6.2831853 * pZ), float2(-0.85, 0.53) * sin(6.2831853 * pS), onS);
+NormalOut = normalize(float3(NM.xy - 0.35 * layK * tilt, NM.z));
 return c;
 """
+
+# pc/rig-lines (docs/rig-lines): every rig line at least MinPx across on screen, by vertex: its true radius is the vertex
+# colour's green (RADIUS_SCALE cm full scale, BoatModelVisuals.cpp kLineRadiusScaleCm) and each ring is pushed out along
+# its normal to MinPx at its own distance. Opaque: a coverage fade (dithered, for TSR and TAA to resolve) was tried and
+# left the line fainter and no steadier, the history clamp eating the dither (docs/rig-lines).
+RADIUS_SCALE = 2.55
+WIDTH_CODE = f"""
+float r = VC.g * {RADIUS_SCALE};
+float px = 2.0 * length(Rel) / (View.ViewToClip[0][0] * View.ViewSizeAndInvSize.x);   // cm per pixel at this distance
+return normalize(N) * max(0.5 * MinPx * px - r, 0.0);
+"""
+
+
+def screen_width(mat, vc):
+    """pc/rig-lines: the minimum on-screen width as world position offset along the tube's normal; the shadow pass keeps the
+    line's own width."""
+    minpx = node(mat, unreal.MaterialExpressionScalarParameter, -900, 1100, parameter_name="MinPx", default_value=1.2)
+    rel = node(mat, unreal.MaterialExpressionSubtract, -900, 1200)
+    MEL.connect_material_expressions(node(mat, unreal.MaterialExpressionWorldPosition, -1100, 1200), "", rel, "A")
+    MEL.connect_material_expressions(node(mat, unreal.MaterialExpressionCameraPositionWS, -1100, 1300), "", rel, "B")
+    width = custom(mat, WIDTH_CODE, ["VC", "Rel", "N", "MinPx"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -650, 1100)
+    for src, pin in ((vc, "VC"), (rel, "Rel"), (node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 1300), "N"), (minpx, "MinPx")):
+        MEL.connect_material_expressions(src, "", width, pin)
+    wpo = node(mat, unreal.MaterialExpressionShadowReplace, -400, 1100)
+    MEL.connect_material_expressions(width, "", wpo, "Default")
+    MEL.connect_material_expressions(node(mat, unreal.MaterialExpressionConstant3Vector, -650, 1250, constant=unreal.LinearColor(0, 0, 0, 0)), "", wpo, "Shadow")
+    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
 
 WIRE_CODE = r"""
 float plain = VC.r > 0.99 ? 1.0 : 0.0;
@@ -139,16 +182,19 @@ def rope_material(tex):
     dirt = node(mat, unreal.MaterialExpressionScalarParameter, -900, 700, parameter_name="Dirt", default_value=0.5)
     nws = node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 800)
     cam = node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 900)
-    c = custom(mat, ROPE_CODE, ["UV", "VC", "BraidM", "Lut", "Fade", "Dirt", "N", "V"],
-               unreal.CustomMaterialOutputType.CMOT_FLOAT3, -450, 200, [("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
-    for src, pin in ((uv, "UV"), (vc, "VC"), (tm, "BraidM"), (lut, "Lut"), (fade, "Fade"), (dirt, "Dirt"), (nws, "N"), (cam, "V")):
-        MEL.connect_material_expressions(src, "", c, pin)
-    nrm = node(mat, unreal.MaterialExpressionTextureSample, -450, 500, texture=tex["T_Rope_Braid24_N"],
+    c = custom(mat, ROPE_CODE, ["UV", "VC", "BraidM", "Lut", "Fade", "Dirt", "N", "V", "NM"],
+               unreal.CustomMaterialOutputType.CMOT_FLOAT3, -450, 200, [("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
+                                                                         ("NormalOut", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    nrm = node(mat, unreal.MaterialExpressionTextureSample, -700, 500, texture=tex["T_Rope_Braid24_N"],
                sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
     MEL.connect_material_expressions(uv, "", nrm, "UVs")
+    for src, out, pin in ((uv, "", "UV"), (vc, "", "VC"), (tm, "", "BraidM"), (lut, "", "Lut"), (fade, "", "Fade"), (dirt, "", "Dirt"),
+                          (nws, "", "N"), (cam, "", "V"), (nrm, "RGB", "NM")):
+        MEL.connect_material_expressions(src, out, c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(nrm, "RGB", unreal.MaterialProperty.MP_NORMAL)
+    MEL.connect_material_property(c, "NormalOut", unreal.MaterialProperty.MP_NORMAL)
+    screen_width(mat, vc)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return mat
@@ -176,16 +222,19 @@ def wire_material(tex):
     MEL.connect_material_property(c, "Metal", unreal.MaterialProperty.MP_METALLIC)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(lerp, "", unreal.MaterialProperty.MP_NORMAL)
+    screen_width(mat, vc)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return mat
 
 
 def main():
-    # ROPE_MATERIAL_ONLY=1 (boat fidelity 4) rebuilds M_RigRope over the textures already imported, nothing else.
+    # ROPE_MATERIAL_ONLY=1 (boat fidelity 4) rebuilds M_RigRope and M_RigWire over the textures already imported, nothing else.
     if os.environ.get("ROPE_MATERIAL_ONLY") == "1":
-        rope_material({n: unreal.load_asset(f"{ROPE}/{n}") for n in ("T_Rope_Braid24_M", "T_Rope_Braid24_N", "T_RopeColourways")})
-        unreal.log("Boat detail import done: M_RigRope only")
+        tex = {n: unreal.load_asset(f"{ROPE}/{n}") for n in ("T_Rope_Braid24_M", "T_Rope_Braid24_N", "T_RopeColourways", "T_Wire_1x19_M", "T_Wire_1x19_N")}
+        rope_material(tex)
+        wire_material(tex)
+        unreal.log("Boat detail import done: M_RigRope and M_RigWire only")
         return
     # DETAIL_NEW_ONLY=1 imports only the detail textures not yet in /Game/Boats/Detail (the rope and wire stay as they are).
     new_only = os.environ.get("DETAIL_NEW_ONLY") == "1"
