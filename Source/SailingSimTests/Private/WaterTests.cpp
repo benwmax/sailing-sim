@@ -491,6 +491,24 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
  * breaks, and FWaveDetail::CapThreshold reaches a target under eight of its samples by extrapolating down the tail
  * (the quantile floored the cover at the lowest sample's, about 1/N, whatever the target).
  */
+/**
+ * docs/lake-body/: the water body's light leaves through the surface's transmission. Straight down it is all of it (the
+ * body seen from above, as the USGS 2020 spectra of Ray Hubbard measure, is unchanged); at a grazing look a quarter.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterBodyTransmissionTest, "SailingSim.Visual.WaterBodyTransmission", WaterFlags)
+bool FWaterBodyTransmissionTest::RunTest(const FString&)
+{
+	const auto AtDepression = [](double Deg) { return AWaterSurface::BodyTransmission(float(FMath::Sin(FMath::DegreesToRadians(Deg)))); };
+	TestTrue(TEXT("All of it straight down"), FMath::IsNearlyEqual(AtDepression(90.0), 1.f, 1e-3f));
+	TestTrue(FString::Printf(TEXT("A quarter at 3 deg below the horizon (%.3f)"), AtDepression(3.0)), AtDepression(3.0) > 0.25f && AtDepression(3.0) < 0.31f);
+	TestTrue(FString::Printf(TEXT("Two thirds at 10 deg (%.3f)"), AtDepression(10.0)), AtDepression(10.0) > 0.62f && AtDepression(10.0) < 0.72f);
+	TestTrue(TEXT("Nearly all by 40 deg"), AtDepression(40.0) > 0.97f);
+	bool bRising = true;
+	for (int32 D = 1; D < 90; ++D) bRising &= AtDepression(D) <= AtDepression(D + 1) + 1e-6f;
+	TestTrue(TEXT("Rising as the look steepens"), bRising);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWhitecapOnsetTest, "SailingSim.Visual.WhitecapOnset", WaterFlags)
 bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 {
