@@ -195,6 +195,7 @@ private:
 	TFuture<std::shared_ptr<const Sailing::FSeaMap>> PendingSeaMap;
 	bool bSeaMapBuilding = false;
 	double SeaMapKnots = -1.0, SeaMapFrom = 1e9;
+	uint32 SeaMapDirections = 0; // the components' direction generation the map was built on
 	void UpdateSeaMap(double Knots, double FromDegrees);
 	void UpdateShelter();
 	void UpdateResolutionGovernor(float DeltaSeconds);

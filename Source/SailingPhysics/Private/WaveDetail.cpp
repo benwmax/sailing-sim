@@ -117,11 +117,15 @@ namespace Sailing
 					const double Wavelength = 2.0 * kPi / Mode.K;
 					const double F = Mode.Omega / (2.0 * kPi);
 					if (Wavelength < S.MinWavelength || Wavelength > S.MaxWavelength || F < Params.SplitHz) continue;
-					// Directional spectrum in wavenumber space: E(f) df/dk D(theta) / k, D = cos^2 about the wind (the
-					// physics' spreading) with a small share in every direction, as short waves have.
+					// Directional spectrum in wavenumber space: E(f) df/dk D(theta) / k, with a small share in every
+					// direction, as short waves have. docs/short-wave-spreading/: D is Donelan, Hamilton and Hui's (1985)
+					// measured spreading, 0.5 beta sech^2(beta theta), narrowest at the peak (beta 2.4: about 42 deg at half
+					// height) and widening away from it, with Banner's (1990) form past 1.6 fp. It was cos^2 (90 deg at half
+					// height) at every frequency: at low wind and short fetch the peak sits inside the detail's range, and the
+					// wavelets that break a calm lake's reflection into long, regular streaks came out short-crested.
 					const double DfDk = 0.5 * std::sqrt(kGravity / Mode.K) / (2.0 * kPi);
 					const double Rel = WrapAngle(std::atan2(Mode.Ky, Mode.Kx) - Params.TravelDirRad);
-					const double D = 0.9 * (std::fabs(Rel) < 0.5 * kPi ? (2.0 / kPi) * std::cos(Rel) * std::cos(Rel) : 0.0) + 0.1 / (2.0 * kPi);
+					const double D = 0.9 * FWaveField::DirectionalSpreading(F, Fp, Rel) + 0.1 / (2.0 * kPi);
 					const double Psi = (Alpha > 0.0 ? ShapedSpectrum(F, Fp, Alpha) : 0.0) * DfDk * D / Mode.K;
 					const double P = Psi * Dk * Dk * Params.Development * Params.Development;
 					C.Variance += P;

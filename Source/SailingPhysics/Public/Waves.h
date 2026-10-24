@@ -44,17 +44,21 @@ namespace Sailing
 		 * waters grow on U_A.
 		 */
 		bool bCalibrationSea = false;
+		/** Where turning the components to a new wind keeps the surface where it was (the boat; AnchorDirections). */
+		double HoldX = 0.0, HoldY = 0.0;
 		uint32_t Seed = 1;
 	};
 
 	/**
-	 * Fetch-limited wind waves (lake chop) as a sum of 48 linear wave trains with a JONSWAP spectrum and cos^2
-	 * directional spreading about the wind. Significant height and peak period follow the fetch-limited growth
+	 * Fetch-limited wind waves (lake chop) as a sum of 48 linear wave trains with a JONSWAP spectrum and the measured
+	 * directional spreading about the wind (Donelan, Hamilton and Hui's sech^2, Banner's past 1.6 fp; the calibration
+	 * sea keeps cos^2). Significant height and peak period follow the fetch-limited growth
 	 * laws (U.S. Army Corps Shore Protection Manual / JONSWAP): g Hs / U^2 = 0.0016 (g F / U^2)^0.5,
 	 * g Tp / U = 0.286 (g F / U^2)^(1/3), capped at a fully developed sea.
 	 *
-	 * Component directions and wavenumbers never change, so the surface stays continuous when the wind does; when
-	 * the wind builds or shifts, amplitudes move smoothly between components. The renderer evaluates exactly the
+	 * Each band's three directions are laid about the wind (AnchorDirections) and then kept, so the surface stays
+	 * continuous when the wind does; when the wind builds or shifts, amplitudes move smoothly between components. Only a
+	 * turn past kReanchorRadians lays them again (about the new wind, in phase at the params' hold point). The renderer evaluates exactly the
 	 * same sum on the GPU (see GetComponents), so the boat floats on the waves you see.
 	 */
 	class SAILINGPHYSICS_API FWaveField
@@ -105,6 +109,31 @@ namespace Sailing
 		static double GrowthLawPeriod(double StressWindMs, double FetchMeters);
 
 		const FWaveComponent* GetComponents() const { return Components; }
+		/** Counts changes of the components' directions, wavenumbers or phases (the renderer re-uploads them). */
+		uint32_t GetDirectionGeneration() const { return DirectionGeneration; }
+
+		/**
+		 * docs/short-wave-spreading/: Donelan, Hamilton and Hui's (1985) spreading parameter beta at f over the peak fp
+		 * (Banner 1990 past 1.6 fp, held at 0.56 fp's below), and the normalized sech^2 spreading
+		 * D(theta) = 0.5 beta sech^2(beta theta) / tanh(beta pi). FWaveDetail's short waves follow the same law.
+		 */
+		static double SpreadingBeta(double F, double Fp);
+		static double DirectionalSpreading(double F, double Fp, double Theta);
+		/**
+		 * The side directions' angle off the wind for a band whose spreading has this beta: three directions at
+		 * -Delta, 0, +Delta weighted by the spreading carry its mean cos(theta) (its directional width), capped at 75 deg.
+		 */
+		static double SideAngle(double Beta);
+		/**
+		 * Lays each band's three directions about the wind's travel direction (radians) at -Delta, 0 and +Delta (SideAngle
+		 * of the band's beta at this sea's peak) with a little seeded jitter, keeping frequencies; wavenumbers follow the
+		 * depth. Phases are chosen so each component's phase at (HoldX, HoldY) is what it was: the height and its rate there
+		 * don't jump. SetWind calls it on the first wind and after a turn past kReanchorRadians (not in the calibration sea).
+		 */
+		void AnchorDirections(double TravelDir, double HoldX, double HoldY);
+		bool IsAnchored() const { return bAnchored; }
+		double GetAnchorDirection() const { return AnchorDir; }
+		static constexpr double kReanchorRadians = 0.785398163397448; // 45 deg
 		/** The sea's spectrum in bands (the lake components one by one, the ocean in wavelength bins), for added resistance. */
 		const std::vector<FWaveBand>& Bands() const;
 		/** Where the ocean's bins start in Bands() (after the lake components; its size without an ocean). Read after Bands(). */
@@ -160,6 +189,9 @@ namespace Sailing
 		std::shared_ptr<const FSeaMap> SeaMap;
 		uint32_t SeaMapGeneration = 0;
 		double Depth = 0.0;
+		bool bAnchored = false;
+		double AnchorDir = 0.0;
+		uint32_t DirectionGeneration = 0;
 		/** The component each lake entry of BandCache came from (BandsAt scales them). */
 		mutable std::vector<int> BandComponent;
 		// Perf 1: boats stepping in parallel call Bands(): it is rebuilt under a lock, and only when the amplitudes or the

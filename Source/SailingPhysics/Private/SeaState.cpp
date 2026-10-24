@@ -210,6 +210,7 @@ namespace Sailing
 				Table[B][I] = FWaveField::BandAmplitudeFactor(B, WindMs, std::exp(LogF0 + (LogF1 - LogF0) * I / (NF - 1)));
 			}
 		}
+		const double Fp = 1.0 / FWaveField::TargetPeakPeriod(std::max(WindMs, 0.5), ReferenceFetch);
 		struct FComp { int Band, Bin0, Bin1; double T, Omega, Energy; };
 		FComp Comp[kWaveComponents];
 		double ShortEnergy = 0.0;
@@ -225,11 +226,22 @@ namespace Sailing
 			if (A < 0.0) A += kSeaBins;
 			P.Bin0 = int(A) % kSeaBins; P.Bin1 = (P.Bin0 + 1) % kSeaBins; P.T = A - std::floor(A);
 			P.Omega = W.Omega;
-			// The short waves' weights: their share of the reference sea now (cos^2 about the travel direction).
+			// The short waves' weights: their share of the reference sea now (the field's spreading about the travel
+			// direction, normalized within the band as FWaveField::ComputeTargetAmplitudes does: the band's directions are
+			// laid about the wind, so their spreading's sum differs from band to band).
 			const double Rel = WrapAngle(std::atan2(W.Ky, W.Kx) - TravelRadians);
-			const double Spread = std::fabs(Rel) < kPi * 0.5 ? std::pow(std::cos(Rel), 2.0) : 0.0;
-			P.Energy = I >= kSeaLongComponents ? Reference[P.Band] * Reference[P.Band] * Spread : 0.0;
-			ShortEnergy += P.Energy;
+			P.Energy = std::fabs(Rel) < kPi * 0.5 ? FWaveField::DirectionalSpreading(FWaveField::BandCentreHz(P.Band), Fp, Rel) : 0.0;
+		}
+		for (int B = 0; B < kWaveBands; ++B)
+		{
+			double Sum = 0.0;
+			for (int D = 0; D < kWaveDirectionsPerBand; ++D) Sum += Comp[B * kWaveDirectionsPerBand + D].Energy;
+			for (int D = 0; D < kWaveDirectionsPerBand; ++D)
+			{
+				const int I = B * kWaveDirectionsPerBand + D;
+				Comp[I].Energy = I >= kSeaLongComponents && Sum > 1e-12 ? Reference[B] * Reference[B] * Comp[I].Energy / Sum : 0.0;
+				ShortEnergy += Comp[I].Energy;
+			}
 		}
 		const bool bCalm = WindMs < 0.5;
 		for (int R = 0; R < Rows; ++R)

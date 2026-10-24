@@ -858,8 +858,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		if (Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5) WaveParams.FetchMeters = 200.0;
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
-	UpdateSeaMap(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
+	// The wind lays the components' directions first (and, after a turn past 45 deg, again: in phase at the boat), then
+	// the sea map reads them.
+	WaveParams.HoldX = BoatPos.X;
+	WaveParams.HoldY = BoatPos.Y;
 	Waves.SetWind(WaveParams);
+	UpdateSeaMap(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	// Ripples and chop follow a puff within seconds, the longest lake waves over minutes (FWaveField::GrowthSeconds).
 	Waves.Update(DeltaSeconds);
 }
@@ -876,10 +880,12 @@ void ASailingGameMode::UpdateSeaMap(double Knots, double FromDegrees)
 	// fetch directions pulled toward it, its direction. The first one is built here (the start snaps to it).
 	const bool bFirst = Waves.GetSeaMap() == nullptr && !bSeaMapBuilding;
 	const bool bStale = FMath::Abs(Knots - SeaMapKnots) > 0.05 * FMath::Max(SeaMapKnots, 2.0)
-		|| FMath::Abs(Sailing::WrapAngle((FromDegrees - SeaMapFrom) * kDegToRad)) > 11.25 * kDegToRad;
+		|| FMath::Abs(Sailing::WrapAngle((FromDegrees - SeaMapFrom) * kDegToRad)) > 11.25 * kDegToRad
+		|| Waves.GetDirectionGeneration() != SeaMapDirections;
 	if (bSeaMapBuilding || (!bFirst && !bStale)) return;
 	SeaMapKnots = Knots;
 	SeaMapFrom = FromDegrees;
+	SeaMapDirections = Waves.GetDirectionGeneration();
 	// The open sea's mask, copied: the FFT ocean carries the wind sea there and the chop keeps a 200 m fetch.
 	TSharedPtr<FOcean::FMask, ESPMode::ThreadSafe> Mask;
 	if (Ocean && Ocean->GetMask().Rows > 0) Mask = MakeShared<FOcean::FMask, ESPMode::ThreadSafe>(Ocean->GetMask());
