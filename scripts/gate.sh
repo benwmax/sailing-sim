@@ -74,6 +74,10 @@ PACKAGE_HASH="$(inputs_hash Source SailingSim.uproject Config Plugins Content)"
 # What the packaged game is made of: everything but the tests module (editor only, never packaged), so a change to the
 # tests alone neither repackages nor benches.
 GAME_HASH="$(inputs_hash Source ':(exclude)Source/SailingSimTests' SailingSim.uproject Config Plugins Content)"
+# docs/bench-fast/ (full recook): the cook is incremental, and after a merge that changed assets it once left a stale
+# package that crashed the game at load (FExportArchive::HandleBadExportIndex; #288's C22 meshes). When Content changed
+# since the last packaged tree, the package recooks everything (FULL=1, about a minute more).
+CONTENT_HASH="$(inputs_hash Content)"
 T0=$(date +%s)
 step() { echo "[gate $(( $(date +%s) - T0 )) s] $*"; }
 
@@ -128,9 +132,12 @@ PY
 	fi
 fi
 if [[ $FORCE == 1 || ! -d "$REPO_ROOT/Packaged/Mac/SailingSim.app" || "$(cat "$STATE/package.hash" 2>/dev/null)" != "$GAME_HASH" ]]; then
-	step "package"
-	"$GATE_SCRIPTS/package-mac.sh" Development > /dev/null || { echo "Package failed: Artifacts/package.log" >&2; exit 1; }
+	RECOOK=0
+	[[ "$(cat "$STATE/package-content.hash" 2>/dev/null)" != "$CONTENT_HASH" ]] && RECOOK=1
+	step "package$([[ $RECOOK == 1 ]] && echo ": Content changed, full recook")"
+	FULL=$(( RECOOK || ${FULL:-0} )) "$GATE_SCRIPTS/package-mac.sh" Development > /dev/null || { echo "Package failed: Artifacts/package.log" >&2; exit 1; }
 	echo "$GAME_HASH" > "$STATE/package.hash"
+	echo "$CONTENT_HASH" > "$STATE/package-content.hash"
 else
 	step "package: the packaged game is already this tree"
 fi
@@ -227,8 +234,9 @@ main_package() {
 		git worktree add -q -f --detach "$MAIN_TREE" origin/main
 	fi
 	git -C "$MAIN_TREE" lfs pull > /dev/null
-	local HASH
+	local HASH CONTENT RECOOK=0
 	HASH="$(cd "$MAIN_TREE" && inputs_hash Source ':(exclude)Source/SailingSimTests' SailingSim.uproject Config Plugins Content)"
+	CONTENT="$(cd "$MAIN_TREE" && inputs_hash Content)"
 	if [[ -d "$MAIN_APP" && "$(cat "$STATE/main.hash" 2>/dev/null)" == "$HASH" ]]; then
 		step "main package: main.app is already main $(git rev-parse --short origin/main)"
 		return 0
@@ -241,11 +249,13 @@ main_package() {
 	done
 	SAILING_ROOT="$MAIN_TREE" "$GATE_SCRIPTS/build.sh" > /dev/null \
 		|| { echo "Main build failed: Artifacts/main-tree/Artifacts/build.log" >&2; return 1; }
-	SAILING_ROOT="$MAIN_TREE" "$GATE_SCRIPTS/package-mac.sh" Development > /dev/null \
+	[[ "$(cat "$STATE/main-content.hash" 2>/dev/null)" != "$CONTENT" ]] && RECOOK=1
+	SAILING_ROOT="$MAIN_TREE" FULL=$(( RECOOK || ${FULL:-0} )) "$GATE_SCRIPTS/package-mac.sh" Development > /dev/null \
 		|| { echo "Main package failed: Artifacts/main-tree/Artifacts/package.log" >&2; return 1; }
 	rm -rf "$MAIN_APP"; mkdir -p "$(dirname "$MAIN_APP")"
 	cp -Rpc "$MAIN_TREE/Packaged/Mac/SailingSim.app" "$MAIN_APP"
 	echo "$HASH" > "$STATE/main.hash"
+	echo "$CONTENT" > "$STATE/main-content.hash"
 }
 GATE_OK=0
 check && GATE_OK=1
