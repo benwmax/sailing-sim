@@ -3685,7 +3685,9 @@ float cm = dot(dir, MoonDir.xyz);
         // The spline is smooth to its second derivative and averages each texel with its neighbours.
         float3 s;
         {
-            const float2 tsz = float2(4096.0, 512.0);
+            // pc/ultra-sky-cache: the panorama's own size (4096 x 512, Ultra's 8192 x 1024).
+            float2 tsz;
+            CacheNew.GetDimensions(tsz.x, tsz.y);
             float2 x = cuv * tsz - 0.5;
             float2 i = floor(x), f = x - i;
             float2 f2 = f * f, f3 = f2 * f;

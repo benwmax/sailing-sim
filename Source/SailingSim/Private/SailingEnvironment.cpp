@@ -73,6 +73,26 @@ namespace
 	constexpr float kSkyCacheElMin = -3.f;
 	constexpr float kSkyCacheElMax = 33.f;
 	constexpr int32 kSkyCacheSteps = 96;
+	// pc/ultra-sky-cache (docs/ultra-sky-cache): Ultra's own, finer panorama (the far small cumulus are drawn from it).
+	constexpr int32 kSkyCacheWidthUltra = 8192;
+	constexpr int32 kSkyCacheHeightUltra = 1024;
+	constexpr int32 kSkyCacheStepsUltra = 192;
+	struct FSkyCacheSize { int32 Width, Height, Steps; };
+	/** The panorama's size and march for this tier; -SailingSkyCacheSize=<w>,<h>,<steps> (measuring) overrides it. Read where
+	 *  the targets are made and at each panorama's start (not cached: a bench list or a settings change can swap it); the
+	 *  strips follow the targets' own size. */
+	FSkyCacheSize SkyCacheSize()
+	{
+		const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+		FSkyCacheSize S = bUltra ? FSkyCacheSize{ kSkyCacheWidthUltra, kSkyCacheHeightUltra, kSkyCacheStepsUltra } : FSkyCacheSize{ kSkyCacheWidth, kSkyCacheHeight, kSkyCacheSteps };
+		FString Arg;
+		TArray<FString> Parts;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCacheSize="), Arg, false) && Arg.ParseIntoArray(Parts, TEXT(",")) == 3)
+		{
+			S = { FMath::Clamp(FCString::Atoi(*Parts[0]), 256, 16384), FMath::Clamp(FCString::Atoi(*Parts[1]), 32, 4096), FMath::Clamp(FCString::Atoi(*Parts[2]), 8, 512) };
+		}
+		return S;
+	}
 	constexpr float kSkyCacheSplitM = 5000.f;
 	constexpr float kNightDeckFullAtKm = 3.f; // docs/night-clouds/: the distance below which a ray's samples thin, under a night deck
 	constexpr float kSkyCacheFarM = 40000.f;
@@ -360,7 +380,7 @@ void ASailingEnvironment::BeginPlay()
 			CacheMaterial->SetTextureParameterValue(TEXT("CumulusTop"), CumulusTopTexture);
 			for (int32 I = 0; I < 2; ++I)
 			{
-				CacheTargets[I] = UKismetRenderingLibrary::CreateRenderTarget2D(this, kSkyCacheWidth, kSkyCacheHeight, RTF_RGBA16f, FLinearColor(0.f, 0.f, 1.f, 1.f));
+				CacheTargets[I] = UKismetRenderingLibrary::CreateRenderTarget2D(this, SkyCacheSize().Width, SkyCacheSize().Height, RTF_RGBA16f, FLinearColor(0.f, 0.f, 1.f, 1.f));
 				CacheTargets[I]->AddressX = TA_Wrap;
 				CacheTargets[I]->AddressY = TA_Clamp;
 			}
@@ -1348,13 +1368,13 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 			float S;
 			if (CloudMaterial->GetScalarParameterValue(FHashedMaterialParameterInfo(Name), S)) CacheMaterial->SetScalarParameterValue(Name, S);
 		}
-		// The slab (m) and the march: from where the live clouds hand over to 40 km, kSkyCacheSteps steps; the material's
+		// The slab (m) and the march: from where the live clouds hand over to 40 km, SkyCacheSize().Steps steps; the material's
 		// step caps (CLOUD_CODE) read Tracer as the live material does.
 		double BaseKm = 0.0, TopKm = 0.0;
 		W.Sky.Span(BaseKm, TopKm);
 		TopKm = FMath::Max(TopKm, double(W.CloudTopKm));
-		CacheMaterial->SetVectorParameterValue(TEXT("CacheMax"), FLinearColor(kSkyCacheFarM, float(BaseKm * 1000.0 - 50.0), float(TopKm * 1000.0 + 100.0), float(kSkyCacheSteps)));
-		CacheMaterial->SetVectorParameterValue(TEXT("Tracer"), FLinearColor(float(TopKm - BaseKm + 0.15), float(kSkyCacheSteps), 0.f, kSkyCacheFarM / 1000.f));
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheMax"), FLinearColor(kSkyCacheFarM, float(BaseKm * 1000.0 - 50.0), float(TopKm * 1000.0 + 100.0), float(SkyCacheSize().Steps)));
+		CacheMaterial->SetVectorParameterValue(TEXT("Tracer"), FLinearColor(float(TopKm - BaseKm + 0.15), float(SkyCacheSize().Steps), 0.f, kSkyCacheFarM / 1000.f));
 		CacheMaterial->SetVectorParameterValue(TEXT("CacheSplit"), FLinearColor(kSkyCacheSplitM - 500.f, kSkyCacheSplitM, 0.f, 0.f));
 		CacheMaterial->SetVectorParameterValue(TEXT("CacheEl"), FLinearColor(kSkyCacheElMin, kSkyCacheElMax, 0.f, 0.f));
 		// Shadow step (m), this refresh's number (its jitter) and its weight against the panorama before. Each replaces
@@ -1363,8 +1383,9 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		CacheMaterial->SetVectorParameterValue(TEXT("CacheShadow"), FLinearColor(300.f, float(CacheRefreshes % 97), 1.f, 0.f));
 		CacheMaterial->SetTextureParameterValue(TEXT("CachePrev"), CacheTargets[1 - CacheBack]);
 	}
-	CacheColumnCarry += float(kSkyCacheWidth) * DeltaSeconds / float(Refresh);
-	const int32 Columns = FMath::Clamp(int32(CacheColumnCarry), 1, kSkyCacheWidth - CacheColumn);
+	const int32 CacheW = CacheTargets[CacheBack]->SizeX, CacheH = CacheTargets[CacheBack]->SizeY;   // Ultra's finer panorama too
+	CacheColumnCarry += float(CacheW) * DeltaSeconds / float(Refresh);
+	const int32 Columns = FMath::Clamp(int32(CacheColumnCarry), 1, CacheW - CacheColumn);
 	CacheColumnCarry = FMath::Max(0.f, CacheColumnCarry - float(Columns));
 	UCanvas* Canvas = nullptr;
 	FVector2D Size;
@@ -1372,12 +1393,12 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(this, CacheTargets[CacheBack], Canvas, Size, Context);
 	if (Canvas)
 	{
-		Canvas->K2_DrawMaterial(CacheMaterial, FVector2D(CacheColumn, 0.0), FVector2D(Columns, kSkyCacheHeight),
-			FVector2D(double(CacheColumn) / kSkyCacheWidth, 0.0), FVector2D(double(Columns) / kSkyCacheWidth, 1.0));
+		Canvas->K2_DrawMaterial(CacheMaterial, FVector2D(CacheColumn, 0.0), FVector2D(Columns, CacheH),
+			FVector2D(double(CacheColumn) / CacheW, 0.0), FVector2D(double(Columns) / CacheW, 1.0));
 	}
 	UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this, Context);
 	CacheColumn += Columns;
-	if (CacheColumn < kSkyCacheWidth) return;
+	if (CacheColumn < CacheW) return;
 
 	// Done: the dome fades to it, and the next panorama goes into the other target.
 	CacheColumn = 0;
@@ -1410,7 +1431,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 			}
 		}
 		UE_LOG(LogSailing, Display, TEXT("Sky cache: first panorama in %.2f s (%dx%d, %d steps); live clouds now to %.1f km"), CacheRefreshSeconds,
-			kSkyCacheWidth, kSkyCacheHeight, kSkyCacheSteps, kSkyCacheSplitM / 1000.f);
+			CacheTargets[0]->SizeX, CacheTargets[0]->SizeY, SkyCacheSize().Steps, kSkyCacheSplitM / 1000.f);
 	}
 	// This frame already shows the swapped textures: start the fade now. With the CacheParams set at the top (blend 1, and
 	// before the first panorama, no cache) the dome flashed the new panorama for a frame, and the first handover showed
