@@ -1355,10 +1355,17 @@ grad += (bf.x * LX + bf.y * float3(0.0, 0.0, 1.0)) * bead * 1.4;   // each bead 
 float aboveW = WP.z - WaterZ;                                      // cm over the water surface
 float contact = side * (1.0 - smoothstep(0.0, 25.0, aboveW)) * step(-4.0, aboveW) * (1.0 - Metal);
 col *= 1.0 - 0.45 * contact;
+// Gelcoat (docs/gelcoat): the reflection is left to Lumen down to 15 deg under the horizon (the `guard` below), so the
+// water's olive goes in only past it.
 float3 rvw = reflect(-V, dot(n, V) < 0.0 ? -n : n);
-float seeWater = saturate(-rvw.z * 3.0) * side * (1.0 - smoothstep(0.0, 120.0, aboveW));
+float guard = saturate((-rvw.z - 0.25) * 4.0);
+float seeWater = guard * side * (1.0 - smoothstep(0.0, 120.0, aboveW));
 float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(n, V))), 5.0);
 col = lerp(col, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gel, 0.3) * (1.0 - Metal));
+// Corner grime (docs/gelcoat): the global distance field 8 and 24 cm off the surface (D1, D2: 0 in a corner, the offset in
+// the open) darkens where dirt settles and the sky can't reach, and dulls the coat there; only within 15 m.
+float cornerK = (1.0 - sqrt(saturate(D1 / 8.0) * saturate(D2 / 24.0))) * (1.0 - smoothstep(300.0, 1500.0, Depth)) * (1.0 - Metal) * (1.0 - Grain);
+col *= 1.0 - 0.45 * cornerK;
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
 AlbedoOut = base * (1.0 - Metal);
 F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
@@ -1367,14 +1374,28 @@ RoughOut = lerp(rough, lerp(0.06, rough, 0.25 + 0.4 * saturate(NonSkid)), wetAll
 // Rain deck: a puddle is a mirror (sharper on High and Ultra); rain on metal tightens its gloss between the beads.
 RoughOut = lerp(RoughOut, DetailOn > 0.5 ? 0.012f : 0.03f, pudK);
 RoughOut = lerp(RoughOut, RoughOut * 0.7, 0.6 * rainK * Metal);
-CoatOut = saturate(coat * 0.6 + wetAll * 0.5 * (1.0 - Metal) + 0.4 * pudK);
-// docs/lee-topside-patch/: where the reflection points down into the sea, rough enough that Lumen skips its screen traces
-// (they run before the water is drawn and find the hull under it: a dark patch on a heeled boat's lee topsides), and the
-// gloss lobe fades.
-float3 rvb = reflect(-V, dot(n, V) < 0.0 ? -n : n);
-float down = saturate(-rvb.z * 3.0);
-RoughOut = lerp(RoughOut, max(RoughOut, 0.45), down);
-CoatOut *= 1.0 - down;
+// Gelcoat (docs/gelcoat): the clear coat at 0.85 (was 0.6: the gelcoat read matte), so hull and deck mirror the sky and
+// shore. The rounded sheer and other convex edges (curvature from the normal's screen derivatives: under ~3 cm radius)
+// take a crisp highlight.
+CoatOut = saturate(coat * 0.85 + wetAll * 0.5 * (1.0 - Metal) + 0.4 * pudK);
+float edgeK = 0.0;
+#if !RAYHITGROUPSHADER
+edgeK = length(fwidth(n)) / max(length(fwidth(WP)), 0.01);
+#endif
+float sheer = smoothstep(0.12, 0.35, edgeK) * (1.0 - smoothstep(150.0, 900.0, Depth)) * gel * (1.0 - ox);
+RoughOut = lerp(RoughOut, min(RoughOut, 0.1), sheer);
+CoatOut = max(CoatOut, sheer);
+// docs/lee-topside-patch/: Lumen's screen traces run before the water is drawn, so a reflection pointing steeply down found
+// the hull under it (a dark patch on a heeled boat's lee topsides). Past 15 deg below the horizon the lobe is rough enough
+// that Lumen takes its radiance cache, and the gloss lobe fades. Above it the trace finds no water and returns the sky,
+// so the reflection is dimmed to what the water would show there, its own Fresnel at that grazing angle (F0 and F90).
+float guardS = guard * (1.0 - sheer);
+RoughOut = lerp(RoughOut, max(RoughOut, 0.45), guardS);
+CoatOut *= (1.0 - guardS) * (1.0 - cornerK);
+RoughOut = lerp(RoughOut, max(RoughOut, 0.55), cornerK);
+float fw = 0.02 + 0.98 * pow(1.0 - saturate(-rvw.z), 5.0);
+F90Out = lerp(1.0, fw + 0.04, saturate(-rvw.z * 8.0));
+F0Out *= F90Out;
 return normalize(n - grad);
 """
 
@@ -1491,9 +1512,24 @@ def build_boat_surface(name, bend, packed=False):
         ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
-               F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1)])
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "D1", "D2"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
+    # Gelcoat (docs/gelcoat): the global distance field 8 and 24 cm off the surface (toward the camera's side) for the corner
+    # grime. The render frame's own position (MEL directly, not node(): the distance field is in the render frame).
+    probe = custom(mat, "float3 n = normalize(N); n *= dot(n, V) < 0.0 ? -1.0 : 1.0; O2 = n * 24.0; return n * 8.0;", ["N", "V"], F3, -1900, 1300,
+                   extra_outputs=[("O2", F3)])
+    connect(nrm, "", probe, "N")
+    connect(view, "", probe, "V")
+    wp_render = MEL.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1900, 1450)
+    for k, (out, pin) in enumerate((("", "D1"), ("O2", "D2"))):
+        at = node(mat, unreal.MaterialExpressionAdd, -1700, 1300 + k * 100)
+        connect(wp_render, "", at, "A")
+        connect(probe, out, at, "B")
+        dist = node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300 + k * 100)
+        if not any(MEL.connect_material_expressions(at, "", dist, pin_name) for pin_name in ("Position", "", "World Position")):
+            raise RuntimeError(f"{name}: the distance probe did not connect")
+        connect(dist, "", c, pin)
     for src, pin in ((grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
                      (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time")):
         connect(src, "", c, pin)
@@ -1515,6 +1551,7 @@ def build_boat_surface(name, bend, packed=False):
     slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -400, 200)
     connect(c, "AlbedoOut", slab, "Diffuse Albedo")
     connect(c, "F0Out", slab, "F0")
+    connect(c, "F90Out", slab, "F90")
     connect(c, "RoughOut", slab, "Roughness")
     # Substrate's slab takes a tangent-space normal: the custom node works in world space, so transform it.
     to_tangent = node(mat, unreal.MaterialExpressionTransform, -600, 400)
@@ -1542,8 +1579,8 @@ def build_boat_surface(name, bend, packed=False):
 
 # The boat material library: slot name -> (parent, colour, roughness, metallic, clear coat, non-skid, porosity).
 BOAT_LIBRARY = {
-    "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.30, 0.0, 1.0, 0.0, 0.10),     # white gelcoat
-    "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.35, 0.0, 1.0, 0.0, 0.10),
+    "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.22, 0.0, 1.0, 0.0, 0.10),     # white gelcoat (docs/gelcoat: 0.30 read matte)
+    "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.28, 0.0, 1.0, 0.0, 0.10),
     # Graphics G6: the club J/22s' non-skid is beige with grime worked into it (Bean's lesson photos), not white.
     "NonSkid": ("M_BoatSurface", (0.56, 0.52, 0.43), 0.66, 0.0, 0.0, 1.0, 0.35),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
     "Bootstripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),  # navy gelcoat stripes
