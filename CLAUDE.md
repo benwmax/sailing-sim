@@ -263,7 +263,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   roughness; sample with `Texture2DSample`, never `.Sample`, or the ray-tracing hit shaders fail). Foam where the
   Jacobian < `FoamThreshold` 0.6 (`SailingSim.Visual.Whitecaps` against Monahan). `FWakeGrid` (`WakeGrid.h`) solves the
   wave equation spectrally on a worker with each hull as a pressure patch (a truncated iWave kernel gives the wrong
-  dispersion). Water bodies' albedo and extinction are in `WaterBodyFor`; the shore depth map is rebuilt on a worker;
+  dispersion). Water bodies' albedo and extinction are in `WaterBodyFor` (the body's light leaves through each facet's transmission, `BodyT`, mirrored by `AWaterSurface::BodyTransmission`: docs/lake-body/; `-SailingNoBodyTransmission` compares); the shore depth map is rebuilt on a worker;
   spray (High) is CPU droplets in an ISM of camera-facing quads (`M_Spray`: drops, sheets, mist by per-instance data;
   `-SailingDebugSpray`, `docs/spray/`); `M_WaterV4` also draws the player's waterline foam and transom churn from `FHullClipMap`. The terrain doesn't mesh the bed deeper than the water lets you see
   (`ALakeTerrainActor::HideBelow`): drawn behind SLW it cost 6 fps on High in shading and shadow pages.
