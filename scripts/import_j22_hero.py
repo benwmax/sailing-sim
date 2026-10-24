@@ -114,17 +114,44 @@ Rough = lerp(Rough, 0.02, bead);                                  // a bead is a
 // pointing down into it found the hull and keel under the water: a dark dome on the lee topsides of a heeled boat. Where
 // the reflection points below the horizon the gelcoat is rough enough (0.45) that Lumen takes its radiance cache, the
 // sea's soft sky light, instead.
+// Gelcoat (docs/gelcoat), as M_BoatSurface: the smooth gelcoat's clear coat is the slab's second lobe (0.05), so the hull
+// and deck mirror the sky and the shore; chalk and wet film as in M_BoatSurface. The rounded sheer and other convex
+// edges (curvature from the normal's screen derivatives: under ~3 cm radius) take a crisp highlight.
+Coat = saturate(0.85 * gcAll * (1.0 - ox) + 0.5 * wetAll + 0.4 * pudK);
+float edgeK = 0.0;
+#if !RAYHITGROUPSHADER
+edgeK = length(fwidth(nw)) / max(length(fwidth(WP)), 0.01);
+#endif
+float sheer = smoothstep(0.12, 0.35, edgeK) * (1.0 - smoothstep(150.0, 900.0, Depth)) * max(gcAll, X.b) * (1.0 - ox);
+Rough = lerp(Rough, min(Rough, 0.1), sheer);
+Coat = max(Coat, sheer);
+// Lumen's screen traces run before the sea (Single Layer Water) is drawn, so a reflection pointing steeply down found the
+// hull and keel under the water: a dark dome on the lee topsides of a heeled boat (docs/lee-topside-patch/). Past 15 deg
+// below the horizon the lobe is rough enough (0.45) that Lumen takes its radiance cache, and the coat fades. Above it the
+// trace finds no water and returns the sky, so the reflection is dimmed to what the water would show there: its own
+// Fresnel at that grazing angle (Spec scales F0 and F90).
 float3 rv = reflect(-V, nw);
-Rough = lerp(Rough, max(Rough, 0.45), saturate(-rv.z * 3.0));
+float guard = saturate((-rv.z - 0.25) * 4.0) * (1.0 - sheer);
+Rough = lerp(Rough, max(Rough, 0.45), guard);
+Coat *= 1.0 - guard;
+float fw = 0.02 + 0.98 * pow(1.0 - saturate(-rv.z), 5.0);
+Spec = lerp(1.0, fw + 0.04, saturate(-rv.z * 8.0));
 // Realism audit 9 (the hull's half), as M_BoatSurface: a contact band darkening the topsides' last 25 cm over the water,
-// and the water's dark olive in the gelcoat where its reflection points down at it (the traced reflection is skipped
-// there, above), most at a grazing look.
+// and the water's dark olive in the gelcoat where its reflection points steeply down at it (the traced reflection is
+// skipped there, above), most at a grazing look.
 float aboveW = WP.z - WaterZ;
 float contact = (1.0 - up) * (1.0 - smoothstep(0.0, 25.0, aboveW)) * step(-4.0, aboveW);
 c *= 1.0 - 0.45 * contact;
-float seeWater = saturate(-rv.z * 3.0) * (1.0 - up) * (1.0 - smoothstep(0.0, 120.0, aboveW));
+float seeWater = guard * (1.0 - up) * (1.0 - smoothstep(0.0, 120.0, aboveW));
 float fresW = 0.04 + 0.96 * pow(1.0 - saturate(abs(dot(nw, V))), 5.0);
 c = lerp(c, float3(0.045, 0.06, 0.05), seeWater * (0.18 + 0.6 * fresW) * max(gcAll, 0.3));
+// Corner grime (docs/gelcoat): the global distance field just off the surface (AO 0 in a corner, 1 in the open) darkens
+// the gelcoat and non-skid where dirt settles and the sky can't reach, and dulls the coat there.
+float AO = sqrt(saturate(D1 / 8.0) * saturate(D2 / 24.0));
+float cornerK = (1.0 - AO) * (1.0 - smoothstep(300.0, 1500.0, Depth)) * (1.0 - X.g);
+c *= 1.0 - 0.45 * cornerK;
+Rough = lerp(Rough, max(Rough, 0.55), cornerK);
+Coat *= 1.0 - cornerK;
 return c;
 """
 
@@ -245,6 +272,30 @@ def hero_material(defaults):
     extra["NW"] = (node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 2560), "")
     extra["V"] = (node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 2640), "")
     extra["Time"] = (node(mat, unreal.MaterialExpressionTime, -900, 2720), "")
+    # Gelcoat (docs/gelcoat): the global distance field 8 and 24 cm off the surface (toward the camera's side) for the corner grime.
+    probe = node(mat, unreal.MaterialExpressionCustom, -1300, 2800)
+    probe.set_editor_property("code", "float3 n = normalize(NW); n *= dot(n, V) < 0.0 ? -1.0 : 1.0; O2 = n * 24.0; return n * 8.0;")
+    probe.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    probe_ins = []
+    for pn in ("NW", "V"):
+        i = unreal.CustomInput()
+        i.set_editor_property("input_name", pn)
+        probe_ins.append(i)
+    probe.set_editor_property("inputs", probe_ins)
+    o2 = unreal.CustomOutput()
+    o2.set_editor_property("output_name", "O2")
+    o2.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    probe.set_editor_property("additional_outputs", [o2])
+    MEL.connect_material_expressions(extra["NW"][0], "", probe, "NW")
+    MEL.connect_material_expressions(extra["V"][0], "", probe, "V")
+    for k, (out, pin) in enumerate((("", "D1"), ("O2", "D2"))):
+        at = node(mat, unreal.MaterialExpressionAdd, -1100, 2800 + k * 100)
+        MEL.connect_material_expressions(wp, "", at, "A")
+        MEL.connect_material_expressions(probe, out, at, "B")
+        dist = node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -950, 2800 + k * 100)
+        if not any(MEL.connect_material_expressions(at, "", dist, pin_name) for pin_name in ("Position", "", "World Position")):
+            raise RuntimeError("M_J22HeroSurface: the distance probe did not connect")
+        extra[pin] = (dist, "")
     c = node(mat, unreal.MaterialExpressionCustom, -500, 400)
     c.set_editor_property("code", DETAIL_CODE)
     c.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
@@ -256,7 +307,8 @@ def hero_material(defaults):
         ins.append(i)
     c.set_editor_property("inputs", ins)
     outs = []
-    for on, ot in (("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("NormalOut", unreal.CustomMaterialOutputType.CMOT_FLOAT3)):
+    F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
+    for on, ot in (("Rough", F1), ("NormalOut", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Coat", F1), ("Spec", F1)):
         o = unreal.CustomOutput()
         o.set_editor_property("output_name", on)
         o.set_editor_property("output_type", ot)
@@ -269,9 +321,18 @@ def hero_material(defaults):
                           (detail["TeakWeatheredN"], "RGB", "TKN"), (detail["TeakWeatheredM"], "RGB", "TKM")) \
             + tuple((src, out, pin) for pin, (src, out) in extra.items()):
         MEL.connect_material_expressions(src, out, c, pin)
-    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(c, "NormalOut", unreal.MaterialProperty.MP_NORMAL)
+    # Gelcoat (docs/gelcoat): a Substrate slab like M_BoatSurface's, the clear coat as its second, glossier lobe; Spec dims
+    # the reflection where it looks at the water (F0 0.04 and F90 1 at Spec 1, the legacy pins' dielectric).
+    slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -200, 400)
+    f0 = node(mat, unreal.MaterialExpressionMultiply, -350, 600)
+    f0.set_editor_property("const_b", 0.04)
+    MEL.connect_material_expressions(c, "Spec", f0, "A")
+    coat_r = node(mat, unreal.MaterialExpressionConstant, -350, 700)
+    coat_r.set_editor_property("r", 0.05)
+    for src, out, pin in ((c, "", "Diffuse Albedo"), (f0, "", "F0"), (c, "Spec", "F90"), (c, "Rough", "Roughness"), (c, "NormalOut", "Normal"),
+                          (coat_r, "", "Second Roughness"), (c, "Coat", "Second Roughness Weight")):
+        MEL.connect_material_expressions(src, out, slab, pin)
+    MEL.connect_material_property(slab, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return mat
