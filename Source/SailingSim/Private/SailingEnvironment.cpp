@@ -596,6 +596,19 @@ void ASailingEnvironment::UpdateSun(double Hour)
 		const float Floor = 0.12f * (1.f - ClosedDeck(W));
 		CloudShade = Floor + (1.f - Floor) * SunVisibility;
 	}
+	// -SailingCloudShade=<0..1> (measuring): the direct sun reaching the camera held, so a cloud's shadow can be compared
+	// still for still (the cells' shadows don't land at the same moment run to run).
+	{
+		static uint32 ShadeGen = MAX_uint32;
+		static float ShadeArg = -1.f;
+		if (ShadeGen != SailingArgs::Generation())
+		{
+			ShadeGen = SailingArgs::Generation();
+			ShadeArg = -1.f;
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudShade="), ShadeArg);
+		}
+		if (ShadeArg >= 0.f) CloudShade = FMath::Clamp(ShadeArg, 0.f, 1.f);
+	}
 	if (PostProcess)
 	{
 		{
@@ -608,6 +621,8 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			// Visual V1: exposure follows the light, as an incident meter would (VisualPipeline.h), with a little room
 			// for the histogram to react to framing.
 			const double EV = CameraEV100(Elevation, CloudShade, W.CloudDarkness, MoonEl, MoonIllumination(MoonAge), NightFloorEV);
+			LastCloudShade = CloudShade;
+			LastCameraEV = EV;
 			// Graphics G5: the haze is lit by the same light the exposure meters. A fixed inscattering colour stayed at
 			// midday brightness while the exposure opened 4-5 stops for a low sun, so at sunset the horizon blew out
 			// white and hid the sun's disc (the blind test's sunsets).

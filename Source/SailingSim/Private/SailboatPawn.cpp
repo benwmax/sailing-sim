@@ -3464,17 +3464,24 @@ void ASailboatPawn::WriteCaptureSettings() const
 		Gust = GM->GetWind().GetParams().GustIntensity;
 		Date = FDateTime::FromUnixTimestamp(int64(GM->GetUnixTime() + GM->GetUtcOffsetHours() * 3600.0)).ToString(TEXT("%Y-%m-%d"));
 	}
+	float SunThroughCloud = 1.f;
+	double MeterEV = 0.0;
+	if (TActorIterator<ASailingEnvironment> It(GetWorld()); It)
+	{
+		SunThroughCloud = It->GetCloudShade();
+		MeterEV = It->GetCameraEV();
+	}
 	const FString Json = FString::Printf(
 		TEXT("{\n  \"preset\": \"%s\",\n  \"hfov_deg\": %.1f,\n  \"barrel_distortion\": %s,\n  \"exposure\": \"%s\",\n")
 		TEXT("  \"camera_m\": [%.2f, %.2f, %.2f],\n  \"camera_pitch_yaw_roll_deg\": [%.1f, %.1f, %.1f],\n  \"bearing_off_bow_deg\": %.0f,\n")
 		TEXT("  \"area\": \"%s\",\n  \"latitude\": %.4f,\n  \"longitude\": %.4f,\n  \"date\": \"%s\",\n  \"clock_hour\": %.2f,\n")
-		TEXT("  \"sun_elevation_deg\": %.1f,\n  \"sun_azimuth_deg\": %.1f,\n")
+		TEXT("  \"sun_elevation_deg\": %.1f,\n  \"sun_azimuth_deg\": %.1f,\n  \"sun_through_cloud\": %.2f,\n  \"meter_ev100\": %.2f,\n")
 		TEXT("  \"true_wind_kn\": %.1f,\n  \"true_wind_from_deg\": %.0f,\n  \"gust_intensity\": %.2f,\n")
 		TEXT("  \"boat\": \"%hs\",\n  \"reef\": %d,\n  \"spinnaker\": %s,\n  \"crew_kg\": %.0f,\n  \"seconds_into_capture\": %.1f\n}\n"),
 		Info.Name, Info.HFovDeg, Info.bBarrel ? TEXT("true") : TEXT("false"),
 		FMath::IsNaN(CaptureEV) ? TEXT("auto, frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV),
 		L.X / CmPerMeter, L.Y / CmPerMeter, L.Z / CmPerMeter, R.Pitch, R.Yaw, R.Roll, FMath::IsNaN(CaptureBearing) ? 0.f : CaptureBearing,
-		*Area, Latitude, Longitude, *Date, Hour, SunElevation, SunAzimuth, // SunPosition works in degrees
+		*Area, Latitude, Longitude, *Date, Hour, SunElevation, SunAzimuth, SunThroughCloud, MeterEV, // SunPosition works in degrees
 		T.TrueWindSpeed / kKnot, FMath::Fmod(FMath::RadiansToDegrees(T.Heading + T.TrueWindAngle) + 720.0, 360.0), Gust,
 		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed);
 	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));

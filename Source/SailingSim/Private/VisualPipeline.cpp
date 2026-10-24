@@ -10,6 +10,11 @@ namespace
 	constexpr double kSceneEVOffset = 14.1;
 	// How far the exposure follows the light into gloom: 1 = a camera's meter (a storm comes out mid-grey), 0 = fixed.
 	constexpr double kGloomAdaptation = 0.1;
+	// Ultra audit 2 (docs/shade-exposure/): how far it follows a passing cloud's shadow under a fair sky. A camera's auto
+	// exposure (and the eye, within seconds) opens nearly all the way for a cumulus's shadow, which takes two stops of the
+	// direct sun; at the gloom's tenth the whole frame went 1.8 stops dark and shaded faces to black. Most of the way, so
+	// the shadow still reads as one.
+	constexpr double kShadeAdaptation = 0.8;
 }
 
 int32 QualityScalabilityLevel(ESailingQuality Quality)
@@ -128,7 +133,11 @@ double CameraEV100(double SunElevationDeg, double CloudShade, double CloudDarkne
 {
 	const double Metered = MeteredEV100(SceneIlluminanceLux(SunElevationDeg, CloudShade, CloudDarkness, MoonElevationDeg, MoonLit));
 	const double Clear = MeteredEV100(SceneIlluminanceLux(SunElevationDeg, 1.0, 0.0, MoonElevationDeg, MoonLit));
-	// Under cloud the exposure opens only part of the way: the gloom stays visible.
-	const double Real = Metered + (1.0 - kGloomAdaptation) * FMath::Max(Clear - Metered, 0.0);
+	// Under cloud the exposure opens only part of the way: the gloom stays visible. A storm's or an overcast's sky is dark
+	// (CloudDarkness 0.35 and up: the gloom's tenth); under a fair sky the light lost is a cloud's shadow (most of the way).
+	// -SailingClassicShadeExposure compares: the gloom's tenth under every sky, as before.
+	static SailingArgs::FCachedFlag ClassicArg(TEXT("SailingClassicShadeExposure"));
+	const double Adaptation = ClassicArg.Get() ? kGloomAdaptation : FMath::Lerp(kShadeAdaptation, kGloomAdaptation, FMath::SmoothStep(0.1, 0.35, FMath::Clamp(CloudDarkness, 0.0, 1.0)));
+	const double Real = Metered + (1.0 - Adaptation) * FMath::Max(Clear - Metered, 0.0);
 	return FMath::Max(Real - kSceneEVOffset, NightFloorEV);
 }
