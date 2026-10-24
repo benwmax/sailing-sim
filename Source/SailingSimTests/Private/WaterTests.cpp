@@ -208,6 +208,41 @@ namespace
  * random realization of the same spectrum, so the whole surface matches statistically: its significant wave height must
  * lie in the Phase 8 band for the lake's waves (+-20%), and the point-by-point difference is reported.
  */
+/**
+ * docs/near-water/ (Ultra audit 3): the capillary-gravity wavelets drawn near the camera. Their dispersion carries surface
+ * tension (omega^2 = g k + sigma k^3 / rho: 1.4% over the gravity wave at 10 cm, a third at 2 cm, the minimum phase speed
+ * 0.23 m/s near 1.7 cm), and the cascade's mean square slope at 12 kn is a share of Cox and Munk's (0.003 + 0.00512 U)
+ * like the one M_WaterV4 takes out of its roughness floor there (the 2-10 cm band of the saturation range).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterCapillaryTest, "SailingSim.Visual.CapillaryWaves", WaterFlags)
+bool FWaterCapillaryTest::RunTest(const FString& Parameters)
+{
+	auto Ratio = [](double Lambda) { const double K = 2.0 * UE_DOUBLE_PI / Lambda; return FWaveDetail::CapillaryOmega(K) / FMath::Sqrt(9.81 * K); };
+	double MinC = 1e9, AtLambda = 0.0;
+	for (double L = 0.005; L < 0.1; L += 0.0005)
+	{
+		const double K = 2.0 * UE_DOUBLE_PI / L, C = FWaveDetail::CapillaryOmega(K) / K;
+		if (C < MinC) { MinC = C; AtLambda = L; }
+	}
+	AddInfo(FString::Printf(TEXT("Over the gravity wave: %.3f at 10 cm, %.3f at 2 cm; slowest %.3f m/s at %.1f cm"), Ratio(0.1), Ratio(0.02), MinC, AtLambda * 100.0));
+	TestTrue(TEXT("10 cm: a few percent faster"), Ratio(0.1) > 1.01 && Ratio(0.1) < 1.05);
+	TestTrue(TEXT("2 cm: about a third faster"), Ratio(0.02) > 1.3 && Ratio(0.02) < 1.6);
+	TestTrue(TEXT("The slowest water wave, 0.23 m/s near 1.7 cm"), FMath::Abs(MinC - 0.23) < 0.01 && FMath::Abs(AtLambda - 0.017) < 0.002);
+
+	const double Knots = 12.0;
+	FWaveDetail Detail;
+	Detail.Configure(DetailFor(Knots, 3000.0, 0.0), { FWaveDetail::CapillaryCascade() });
+	FWaveDetail::FGrid Grid;
+	Detail.Evaluate(0, 7.0, Grid);
+	double Mss = 0.0;
+	for (size_t I = 0; I < Grid.Sx.size(); ++I) Mss += double(Grid.Sx[I]) * Grid.Sx[I] + double(Grid.Sy[I]) * Grid.Sy[I];
+	Mss /= double(Grid.Sx.size());
+	const double CoxMunk = 0.003 + 0.00512 * Knots * kKnot;
+	AddInfo(FString::Printf(TEXT("12 kn: the 2-10 cm wavelets' mean square slope %.4f, %.0f%% of Cox and Munk's %.4f"), Mss, 100.0 * Mss / CoxMunk, CoxMunk));
+	TestTrue(TEXT("The wavelets carry a fair share of the sea's slope (10-60% of Cox and Munk's)"), Mss > 0.1 * CoxMunk && Mss < 0.6 * CoxMunk);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWaveMatchTest, "SailingSim.Visual.WaveMatch", WaterFlags)
 bool FWaterWaveMatchTest::RunTest(const FString&)
 {

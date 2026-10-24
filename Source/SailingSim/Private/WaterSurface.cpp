@@ -50,7 +50,11 @@ namespace
 	constexpr float kFinestSpacingM = 0.5f;
 	constexpr float kTrailSeconds = 8.f;
 	constexpr double kDetailStep = 1.0 / 30.0;  // FFT short waves: evaluated at 30 Hz, blended between
-	constexpr float kDetailFadeM = 300.f;       // distance they fade over (past it their slopes become roughness)
+	constexpr float kDetailFadeM = 300.f;
+	// docs/near-water/: the capillary wavelets (1 cm texels) are drawn in full to this far and faded out by the next: a pixel
+	// there covers a centimetre or so at 1440p (and the mips' slope variance takes over before it).
+	constexpr float kCapillaryNearM = 12.f;
+	constexpr float kCapillaryFarM = 24.f;       // distance they fade over (past it their slopes become roughness)
 	// docs/spray/: the pool of spray quads on High (drops, sheets and mist share it).
 	constexpr int32 kMaxDroplets = 1200;
 	// Graphics G8 Ultra showcase: two and a half times the bow spray on Ultra (the 4090 has the room; still CPU droplets in
@@ -316,6 +320,11 @@ FWaveDetail::FCascadeSpec AWaterSurface::DrawnChop() const
 	return S;
 }
 
+FWaveDetail::FCascadeSpec AWaterSurface::DrawnCapillary() const
+{
+	return FWaveDetail::CapillaryCascade();
+}
+
 FWaveDetail::FCascadeSpec AWaterSurface::DrawnRipple() const
 {
 	FWaveDetail::FCascadeSpec S = FWaveDetail::RippleCascade();
@@ -373,12 +382,14 @@ void AWaterSurface::CreateWaterMaterial()
 	{
 		bUltraDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra && FParse::Param(SailingArgs::Dev(), TEXT("SailingUltraDetail"));
 		const FWaveDetail::FCascadeSpec Chop = DrawnChop(), Ripple = DrawnRipple();
-		if (!DetailAMap || DetailAMap->GetSizeX() != Chop.N || RippleBMap->GetSizeX() != Ripple.N)
+		const FWaveDetail::FCascadeSpec Capillary = DrawnCapillary();
+		if (!DetailAMap || DetailAMap->GetSizeX() != Chop.N || RippleBMap->GetSizeX() != Ripple.N || !CapillaryBMap)
 		{
 			DetailAMap = MakeFloatMapMips(Chop.N);
 			DetailBMap = MakeFloatMapMips(Chop.N);
 			DetailCMap = MakeFloatMapMips(Chop.N);
 			RippleBMap = MakeFloatMapMips(Ripple.N);
+			CapillaryBMap = MakeFloatMapMips(Capillary.N);
 		}
 		// The wake grid: 38 m around the boat on Medium (128 cells of 0.3 m), 64 m on High (256 of 0.25 m).
 		// Graphics G8 Ultra showcase: 128 m (512 of 0.25 m), so a wake trails four boat lengths further before the grid's edge.
@@ -393,6 +404,9 @@ void AWaterSurface::CreateWaterMaterial()
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailB"), DetailBMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailC"), DetailCMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("RippleB"), RippleBMap);
+		WaterMaterial->SetTextureParameterValue(TEXT("CapillaryB"), CapillaryBMap);
+		// docs/near-water/: the capillaries' tile and the distances they are drawn to (High and Ultra).
+		WaterMaterial->SetVectorParameterValue(TEXT("CapillaryP"), FLinearColor(float(Capillary.Tile), kCapillaryNearM, kCapillaryFarM, Tier >= 2 ? 1.f : 0.f));
 		WaterMaterial->SetTextureParameterValue(TEXT("WakeGrid"), WakeGridMap);
 		if (ShoreMap && bShoreValid)
 		{
@@ -794,7 +808,7 @@ void AWaterSurface::UpdateDetail()
 		if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
 		TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> New = MakeShared<FWaveDetail, ESPMode::ThreadSafe>();
 		std::vector<FWaveDetail::FCascadeSpec> Specs = { DrawnChop() };
-		if (Tier >= 2) Specs.push_back(DrawnRipple());
+		if (Tier >= 2) { Specs.push_back(DrawnRipple()); Specs.push_back(DrawnCapillary()); }
 		New->Configure(P, Specs);
 		Detail = New;
 		DetailConfigured = P;
@@ -811,6 +825,7 @@ void AWaterSurface::UpdateDetail()
 		F->Time = At;
 		D->Evaluate(0, At, F->Chop, Scale);
 		if (D->NumCascades() > 1) D->Evaluate(1, At, F->Ripple, Scale);
+		if (D->NumCascades() > 2) D->Evaluate(2, At, F->Capillary, Scale);
 		return F;
 	};
 	auto Launch = [&](double At)
@@ -865,6 +880,7 @@ void AWaterSurface::UpdateDetail()
 					UE_LOG(LogSailing, Display, TEXT("Caps: thresholds %.3f %.3f %.3f %.3f, slope %.3f"), CapThrSmooth[0], CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], CapSlopeSmooth);
 			}
 			if (Done->RippleN > 0) UploadPackedMips(RippleBMap, Done->Ripple, Done->RippleN);
+			if (Done->CapillaryN > 0) UploadPackedMips(CapillaryBMap, Done->Capillary, Done->CapillaryN);
 			UpdateFoamGrid(Done);
 		}
 	}
@@ -876,6 +892,7 @@ void AWaterSurface::UpdateDetail()
 	const float W = float(FMath::Clamp((Ahead - FramePrev->Time) / kDetailStep, 0.0, 1.0));
 	const FDetailFramePtr Prev = FramePrev, Next = FrameNext;
 	const bool bRipple = Prev->Ripple.N > 0 && Next->Ripple.N == Prev->Ripple.N;
+	const bool bCapillary = Prev->Capillary.N > 0 && Next->Capillary.N == Prev->Capillary.N;
 	// W8: Monahan's whitecap cover for the sea's mean wind times the water body's share: the renderer solves the fold
 	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there). Below 12 kn
 	// only the share that breaks (WhitecapOnset); never quite zero, so the threshold is extrapolated below every sample.
@@ -902,7 +919,7 @@ void AWaterSurface::UpdateDetail()
 	if (bSolveCaps) CapsSolvedAt = Ahead;
 	const double LastThr[4] = { CapsLast[0], CapsLast[1], CapsLast[2], CapsLast[3] };
 	const double LastSlope = CapsLastSlope;
-	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, bCapillary, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
 		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
@@ -1004,6 +1021,25 @@ void AWaterSurface::UpdateDetail()
 			}
 			Out->RippleN = A.N;
 			PackMips(MoveTemp(Pix), A.N, Out->Ripple);
+		}
+		if (bCapillary)
+		{
+			// docs/near-water/: the capillary wavelets as the ripples: slopes and their squares (LEAN).
+			const FWaveDetail::FGrid& A = Prev->Capillary;
+			const FWaveDetail::FGrid& B = Next->Capillary;
+			const int32 NN = A.N * A.N;
+			TArray<float> Pix;
+			Pix.SetNumUninitialized(NN * 4);
+			for (int32 I = 0; I < NN; ++I)
+			{
+				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
+				Pix[4 * I + 0] = Sx;
+				Pix[4 * I + 1] = Sy;
+				Pix[4 * I + 2] = Sx * Sx;
+				Pix[4 * I + 3] = Sy * Sy;
+			}
+			Out->CapillaryN = A.N;
+			PackMips(MoveTemp(Pix), A.N, Out->Capillary);
 		}
 		return Out;
 	});

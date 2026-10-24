@@ -49,6 +49,10 @@ namespace Sailing
 		/** Default cascades: chop (128^2 over 23 m, 0.4-4 m) and ripples (64^2 over 3.1 m, 0.1-0.4 m). */
 		static FCascadeSpec ChopCascade() { return { 128, 23.0, 0.4, 4.0 }; }
 		static FCascadeSpec RippleCascade() { return { 64, 3.1, 0.1, 0.4 }; }
+		/** docs/near-water/: the capillary-gravity wavelets (64^2 over 0.64 m: 1 cm texels, 2-10 cm), drawn near the camera. */
+		static FCascadeSpec CapillaryCascade() { return { 64, 0.64, 0.02, 0.1 }; }
+		/** Angular frequency of a wave of wavenumber K in deep water with surface tension: omega^2 = g k + (sigma / rho) k^3. */
+		static double CapillaryOmega(double K);
 		/** W8 (docs/water-8/whitecaps): whitecaps break on whole crests, not on the chop's 20 cm wrinkles. The full
 		 *  Jacobian folded in specks 0.4 m across (463 in 6350 m^2 at the lake's 20 kn cover, read as glints); folded on
 		 *  the displacement box-blurred over 2 texels (0.36 m) either way the same cover comes in 64 caps about 1 m
