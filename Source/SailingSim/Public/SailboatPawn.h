@@ -241,6 +241,9 @@ private:
 	// Visual V3: the sails as cloth (SailCloth.h) and the telltales as ribbons.
 	void UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& Cloth, const Sailing::FSailGeometry& Geo, ESailKind Kind,
 		const Sailing::FSailStripState* Strips, int32 Side, float DeltaSeconds);
+	/** One sail's cloth to step and draw (UpdateSailCloths: the sails step in parallel, their meshes update after). */
+	struct FSailUpdate { UProceduralMeshComponent* Mesh = nullptr; FSailCloth* Cloth = nullptr; const Sailing::FSailStripState* Strips = nullptr; int32 Side = 0; };
+	void UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float DeltaSeconds);
 	void UpdateTelltaleRibbons();
 public:
 	/** Seconds spent simulating sail cloth, all boats, since the game started (the bench reports it per frame). */

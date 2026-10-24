@@ -4,6 +4,7 @@
 #include "SailingSettings.h"
 #include "ProceduralMeshComponent.h"
 #include "BenchRunner.h"
+#include "Async/ParallelFor.h"
 
 using namespace Sailing;
 
@@ -118,7 +119,15 @@ namespace
 void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& Cloth, const FSailGeometry& Geo, ESailKind Kind,
 	const FSailStripState* Strips, int32 Side, float DeltaSeconds)
 {
-	if (!Cloth.IsValid()) return;
+	const FSailUpdate One{ Mesh, &Cloth, Strips, Side };
+	UpdateSailCloths(MakeArrayView(&One, 1), DeltaSeconds);
+}
+
+void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float DeltaSeconds)
+{
+	// docs/sail-parallel/: each sail's cloth step, normals, tangents and render grid touch only its own FSailCloth and the
+	// inputs read here, so the sails run on the task graph side by side; only the meshes' updates stay on the game thread.
+	// Run one after another on the game thread they cost about 1.2 ms a frame on the Mac (main, jib and spinnaker).
 	FSailClothDrive Drive;
 	Drive.DeltaSeconds = DeltaSeconds;
 	Drive.Time = VisualTime;
@@ -127,49 +136,62 @@ void ASailboatPawn::UpdateSailCloth(UProceduralMeshComponent* Mesh, FSailCloth& 
 	Drive.GravityBody = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
 	// Low draws the physics shape directly; Medium and High run the cloth (and traffic boats in the distance don't).
 	Drive.bSimulate = USailingSettings::Get()->Quality != ESailingQuality::Low && !bTrafficBoat;
-	Cloth.SetObstacles(SailObstacles);
-	const double Start = FPlatformTime::Seconds();
-	Cloth.Step(Strips, Side, Drive);
-	ClothCpuSeconds += FPlatformTime::Seconds() - Start;
-
-	TArray<FVector> Normals;
-	Cloth.ComputeNormals(Normals);
-	TArray<FProcMeshTangent> Tangents;
-	Cloth.ComputeTangents(Tangents);
 	// Drawn on the finer render grid (above); -SailingClassicSailGrid draws the cloth's own grid (compare).
 	static SailingArgs::FCachedFlag ClassicGridArg(TEXT("SailingClassicSailGrid"));
-	if (ClassicGridArg.Get())
+	const bool bClassicGrid = ClassicGridArg.Get();
+	struct FWork { TArray<FVector> Normals, RPos, RNormals; TArray<FProcMeshTangent> Tangents, RTangents; };
+	TArray<FWork, TInlineAllocator<3>> Work;
+	Work.SetNum(Sails.Num());
+	for (const FSailUpdate& U : Sails) if (U.Cloth->IsValid()) U.Cloth->SetObstacles(SailObstacles);
+	const double Start = FPlatformTime::Seconds();
+	ParallelFor(Sails.Num(), [&](int32 K)
 	{
+		const FSailUpdate& U = Sails[K];
+		FSailCloth& Cloth = *U.Cloth;
+		if (!Cloth.IsValid()) return;
+		FWork& W = Work[K];
+		Cloth.Step(U.Strips, U.Side, Drive);
+		Cloth.ComputeNormals(W.Normals);
+		Cloth.ComputeTangents(W.Tangents);
+		if (!bClassicGrid) RefineSail(Cloth, W.Normals, W.Tangents, W.RPos, W.RNormals, W.RTangents);
+	});
+	ClothCpuSeconds += FPlatformTime::Seconds() - Start;
+	for (int32 K = 0; K < Sails.Num(); ++K)
+	{
+		UProceduralMeshComponent* Mesh = Sails[K].Mesh;
+		const FSailCloth& Cloth = *Sails[K].Cloth;
+		if (!Cloth.IsValid()) continue;
+		FWork& W = Work[K];
+		if (bClassicGrid)
+		{
+			if (Mesh->GetNumSections() == 0)
+			{
+				TArray<int32> Tris;
+				Cloth.Triangles(Tris);
+				Mesh->CreateMeshSection(0, Cloth.Positions(), Tris, W.Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(), TArray<FColor>(), W.Tangents, false);
+			}
+			else
+			{
+				Mesh->UpdateMeshSection(0, Cloth.Positions(), W.Normals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), W.Tangents);
+			}
+			continue;
+		}
 		if (Mesh->GetNumSections() == 0)
 		{
 			TArray<int32> Tris;
-			Cloth.Triangles(Tris);
-			Mesh->CreateMeshSection(0, Cloth.Positions(), Tris, Normals, Cloth.UV0(), Cloth.UV1(), Cloth.UV2(), TArray<FVector2D>(), TArray<FColor>(), Tangents, false);
+			SailRenderTriangles(Tris);
+			TArray<FVector2D> UV0, UV1, UV2;
+			RefineSailUV(Cloth.UV0(), UV0);
+			RefineSailUV(Cloth.UV1(), UV1);
+			RefineSailUV(Cloth.UV2(), UV2);
+			Mesh->CreateMeshSection(0, W.RPos, Tris, W.RNormals, UV0, UV1, UV2, TArray<FVector2D>(), TArray<FColor>(), W.RTangents, false);
 		}
 		else
 		{
-			Mesh->UpdateMeshSection(0, Cloth.Positions(), Normals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), Tangents);
+			// Perf 1 fix 3: the section is updated in place (same topology); the UVs never change after it was made, so only
+			// positions, normals and tangents go across.
+			Mesh->UpdateMeshSection(0, W.RPos, W.RNormals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), W.RTangents);
 		}
-		return;
-	}
-	TArray<FVector> RPos, RNormals;
-	TArray<FProcMeshTangent> RTangents;
-	RefineSail(Cloth, Normals, Tangents, RPos, RNormals, RTangents);
-	if (Mesh->GetNumSections() == 0)
-	{
-		TArray<int32> Tris;
-		SailRenderTriangles(Tris);
-		TArray<FVector2D> UV0, UV1, UV2;
-		RefineSailUV(Cloth.UV0(), UV0);
-		RefineSailUV(Cloth.UV1(), UV1);
-		RefineSailUV(Cloth.UV2(), UV2);
-		Mesh->CreateMeshSection(0, RPos, Tris, RNormals, UV0, UV1, UV2, TArray<FVector2D>(), TArray<FColor>(), RTangents, false);
-	}
-	else
-	{
-		// Perf 1 fix 3: the section is updated in place (same topology); the UVs never change after it was made, so only
-		// positions, normals and tangents go across.
-		Mesh->UpdateMeshSection(0, RPos, RNormals, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), RTangents);
 	}
 }
 
