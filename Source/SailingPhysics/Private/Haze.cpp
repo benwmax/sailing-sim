@@ -14,6 +14,11 @@ namespace Sailing
 		return 3.912 / std::max(ExtinctionPerKm, 1e-9);
 	}
 
+	double FHaze::AerosolExtinctionPerKm(double VisibilityKm)
+	{
+		return std::max(3.912 / std::clamp(VisibilityKm, MinVisibilityKm, MaxVisibilityKm) - RayleighExtinctionPerKm, 0.0);
+	}
+
 	double FHaze::HeightFalloff(double ScaleHeightM)
 	{
 		return 10.0 / std::max(ScaleHeightM, 1.0);

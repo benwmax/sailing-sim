@@ -23,5 +23,11 @@ namespace Sailing
 		/** The fog's height falloff for a haze scale height (m): the density falls by e every ScaleHeightM. Unreal's
 		 *  falloff is per 1,000 world units (10 m), so 50 m is today's 0.2. */
 		static double HeightFalloff(double ScaleHeightM);
+
+		/** docs/horizon-sky-colour/: clean air's own extinction at the surface (Rayleigh at 550 nm), per km. */
+		static constexpr double RayleighExtinctionPerKm = 0.0116;
+		/** The aerosol's extinction at the surface (per km) for a visibility: Koschmieder's total less clean air's,
+		 *  over the same 0.5..80 km clamp. */
+		static double AerosolExtinctionPerKm(double VisibilityKm);
 	};
 }

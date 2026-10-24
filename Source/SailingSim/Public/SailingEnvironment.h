@@ -8,6 +8,7 @@
 
 class ADirectionalLight;
 class ASkyLight;
+class ASkyAtmosphere;
 class AExponentialHeightFog;
 class AVolumetricCloud;
 class UStaticMeshComponent;
@@ -95,6 +96,8 @@ private:
 
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> SkyLightActor;
+	UPROPERTY(Transient) TObjectPtr<ASkyAtmosphere> Atmosphere;
+	float FogShare = 1.f;   // the visibility's aerosol left to the fog (docs/horizon-sky-colour/)
 	UPROPERTY(Transient) TObjectPtr<AExponentialHeightFog> Fog;
 	UPROPERTY(Transient) TObjectPtr<AVolumetricCloud> Clouds;
 	UPROPERTY(Transient) TObjectPtr<class APostProcessVolume> PostProcess;
