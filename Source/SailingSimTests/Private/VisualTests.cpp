@@ -107,6 +107,14 @@ bool FVisualMeteredExposureTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("A storm is exposed brighter than the clear day (the camera adapts)"), StormCam < ClearCam);
 	TestTrue(TEXT("...but not all the way (the gloom stays)"), StormCam > StormMeter + 0.3);
 	TestEqual(TEXT("Night holds the floor"), CameraEV100(-40.0, 1.0, 0.0, -10.0, 0.0, Floor), Floor);
+	// Ultra audit 2 (docs/shade-exposure/): under a fair sky, a cumulus's shadow (12% of the beam left) is exposed most of the
+	// way up (as a camera's auto exposure would), not left 1.8 stops dark; an overcast (darkness 0.35) keeps the gloom rule.
+	const double ShadeMeter = Ev(60.0, 0.12, 0.0) - SceneEVOffset(), ShadeCam = CameraEV100(60.0, 0.12, 0.0, -90.0, 0.0, Floor);
+	AddInfo(FString::Printf(TEXT("Cumulus shadow: %.2f stops under the clear day metered; the camera opens %.2f of them"), ClearCam - ShadeMeter, ClearCam - ShadeCam));
+	TestTrue(TEXT("A cloud's shadow under a fair sky is exposed most of the way up (the camera opens over 70% of the stops it loses)"),
+		ClearCam - ShadeCam > 0.7 * (ClearCam - ShadeMeter) && ShadeCam > ShadeMeter);
+	const double OvercastCam = CameraEV100(60.0, 0.18, 0.35, -90.0, 0.0, Floor), OvercastMeter = Ev(60.0, 0.18, 0.35) - SceneEVOffset();
+	TestTrue(TEXT("An overcast keeps its gloom (a tenth of the way)"), FMath::IsNearlyEqual(OvercastCam, OvercastMeter + 0.9 * (ClearCam - OvercastMeter), 1e-6));
 	return true;
 }
 

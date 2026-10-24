@@ -59,6 +59,9 @@ public:
 	/** A thunderclap reaching the listener: loudness 0..1 (distance) and how long ago it started. */
 	struct FThunder { float Loudness; float Age; float Duration; };
 	const TArray<FThunder>& GetActiveThunder() const { return Thunder; }
+	/** The direct sun reaching the camera through the clouds (0..1) and the physical camera's EV100, for the capture metadata. */
+	float GetCloudShade() const { return LastCloudShade; }
+	double GetCameraEV() const { return LastCameraEV; }
 
 	/** 0..1 brightness of the current lightning flash, for the HUD and audio. */
 	float GetFlash() const { return Flash; }
@@ -133,6 +136,8 @@ private:
 	float NightAmount = 0.f; // 0 day .. 1 night (from the sun's elevation, UpdateSun)
 	/** Graphics G5: the haze's light relative to a clear midday (the metered exposure's light), and the sun's elevation. */
 	float HazeLight = 1.f;
+	float LastCloudShade = 1.f;
+	double LastCameraEV = 0.0;
 	bool bCinematic = false; // Graphics G8: the cinematic look is on (UsesCinematicLook, re-read each sun update)
 	bool bTriedLookLoad = false; // the cinematic LUT and bloom kernel were looked up (CinematicLUT, BloomKernel)
 	bool bFogDirectionalSaved = false;
