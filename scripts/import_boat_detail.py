@@ -135,42 +135,6 @@ NormalOut = normalize(float3(NM.xy - 0.35 * layK * tilt, NM.z));
 return c;
 """
 
-# pc/rig-lines (docs/rig-lines): every rig line at least MinPx across on screen, by vertex: its true radius is the vertex
-# colour's green (RADIUS_SCALE cm full scale, BoatModelVisuals.cpp kLineRadiusScaleCm) and each ring is pushed out along
-# its normal to MinPx at its own distance. Opaque: a coverage fade (dithered, for TSR and TAA to resolve) was tried and
-# left the line fainter and no steadier, the history clamp eating the dither (docs/rig-lines).
-RADIUS_SCALE = 2.55
-WIDTH_CODE = f"""
-float r = VC.g * {RADIUS_SCALE};
-float px = 2.0 * length(Rel) / (View.ViewToClip[0][0] * View.ViewSizeAndInvSize.x);   // cm per pixel at this distance
-return normalize(N) * max(0.5 * MinPx * px - r, 0.0);
-"""
-
-
-def screen_width(mat, vc):
-    """pc/rig-lines: the minimum on-screen width as world position offset along the tube's normal; the shadow pass keeps the
-    line's own width."""
-    minpx = node(mat, unreal.MaterialExpressionScalarParameter, -900, 1100, parameter_name="MinPx", default_value=1.2)
-    rel = node(mat, unreal.MaterialExpressionSubtract, -900, 1200)
-    MEL.connect_material_expressions(node(mat, unreal.MaterialExpressionWorldPosition, -1100, 1200), "", rel, "A")
-    MEL.connect_material_expressions(node(mat, unreal.MaterialExpressionCameraPositionWS, -1100, 1300), "", rel, "B")
-    width = custom(mat, WIDTH_CODE, ["VC", "Rel", "N", "MinPx"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -650, 1100)
-    for src, pin in ((vc, "VC"), (rel, "Rel"), (node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 1300), "N"), (minpx, "MinPx")):
-        MEL.connect_material_expressions(src, "", width, pin)
-    wpo = node(mat, unreal.MaterialExpressionShadowReplace, -400, 1100)
-    MEL.connect_material_expressions(width, "", wpo, "Default")
-    MEL.connect_material_expressions(node(mat, unreal.MaterialExpressionConstant3Vector, -650, 1250, constant=unreal.LinearColor(0, 0, 0, 0)), "", wpo, "Shadow")
-    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
-
-WIRE_CODE = r"""
-float plain = VC.r > 0.99 ? 1.0 : 0.0;
-float cav = Texture2DSample(WireM, WireMSampler, UV).r;
-Metal = 1.0 - plain;
-Rough = lerp(0.22 + 0.15 * (1.0 - cav), 0.6, plain);
-NormalWeight = 1.0 - plain;
-return lerp(float3(0.56, 0.58, 0.60) * (0.75 + 0.25 * cav), float3(0.012, 0.012, 0.012), plain);
-"""
-
 
 def rope_material(tex):
     mat = new_material("M_RigRope", ROPE)
@@ -194,10 +158,19 @@ def rope_material(tex):
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(c, "NormalOut", unreal.MaterialProperty.MP_NORMAL)
-    screen_width(mat, vc)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return mat
+
+
+WIRE_CODE = r"""
+float plain = VC.r > 0.99 ? 1.0 : 0.0;
+float cav = Texture2DSample(WireM, WireMSampler, UV).r;
+Metal = 1.0 - plain;
+Rough = lerp(0.22 + 0.15 * (1.0 - cav), 0.6, plain);
+NormalWeight = 1.0 - plain;
+return lerp(float3(0.56, 0.58, 0.60) * (0.75 + 0.25 * cav), float3(0.012, 0.012, 0.012), plain);
+"""
 
 
 def wire_material(tex):
@@ -222,7 +195,6 @@ def wire_material(tex):
     MEL.connect_material_property(c, "Metal", unreal.MaterialProperty.MP_METALLIC)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(lerp, "", unreal.MaterialProperty.MP_NORMAL)
-    screen_width(mat, vc)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return mat
