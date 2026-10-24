@@ -527,10 +527,21 @@ def cabin(H, spec):
     else:
         box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
     box(hull, (x0 + 0.45, H.cy, top(x0 + 0.45) + 0.01), (0.8, 0.62, 0.04), "Deck")
-    box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
-    # Grab rails on the top.
-    for side in (1, -1):
-        tube(hull, [(x0 + 0.3, H.cy + side * half(x0) * 0.75, top(x0 + 0.3)), (x1 - 0.4, H.cy + side * half(x1) * 0.6, top(x1 - 0.4))], 0.015, "Wood", 6)
+    if TAG == "Catalina22":
+        # pc/c22-fidelity: the kit's low acrylic hatch on the foredeck, and teak handrails with their loops along the cabin
+        # top, where they had been a box and two round sticks (class photos: one rail a side, four hand holes).
+        kit_part("HatchFwd", x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy))
+        for side in (1, -1):
+            pa = (x0 + 0.3, H.cy + side * half(x0) * 0.75)
+            pb = (x1 - 0.4, H.cy + side * half(x1) * 0.6)
+            mx, my = 0.5 * (pa[0] + pb[0]), 0.5 * (pa[1] + pb[1])
+            kit_part("HandrailTeak", mx, my, top(mx) - 0.004, math.atan2(pb[1] - pa[1], pb[0] - pa[0]),
+                     length=math.hypot(pb[0] - pa[0], pb[1] - pa[1]), loops=4)
+    else:
+        box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
+        # Grab rails on the top.
+        for side in (1, -1):
+            tube(hull, [(x0 + 0.3, H.cy + side * half(x0) * 0.75, top(x0 + 0.3)), (x1 - 0.4, H.cy + side * half(x1) * 0.6, top(x1 - 0.4))], 0.015, "Wood", 6)
     return top, half
 
 
@@ -1191,12 +1202,12 @@ elif TAG in ("Catalina22", "Catalina30"):
         hull.grid(rows, "SailCover", slot_fn=pane)
         hull.grid(rows, "SailCover", flip=True, slot_fn=pane)
     if SPEC.get("outboard"):
+        # pc/c22-fidelity: the kit's two-position bracket on the transom's port quarter and its brand-free 3.5 hp four-stroke
+        # clamped to it, the prop 16 cm down (they had been three boxes and a cylinder). The physics' engine stays where it was.
         e = CFG["engines"][0]["position"]
-        tz = MAIN.deck_z(st, 0)
-        box(hull, (st - 0.12, e[1], tz - 0.15), (0.12, 0.3, 0.25), "Stainless")                      # bracket
-        box(hull, (st - 0.3, e[1], tz + 0.05), (0.42, 0.3, 0.38), "BlackPlastic")                     # cowling
-        box(hull, (st - 0.28, e[1], tz - 0.4), (0.14, 0.08, 0.75), "BlackPlastic")                    # leg
-        tube(hull, [(st - 0.28, e[1], e[2] + 0.05), (st - 0.42, e[1], e[2] + 0.05)], 0.06, "BlackPlastic", 10)
+        zb = 0.21          # (the anti-cavitation plate 10 cm under: a long shaft's clamp is 0.52 m over it)
+        kit_part("OutboardBracket", st, e[1], zb)
+        kit_part("Outboard35", st - 0.17 - 0.12, e[1], zb + 0.21 - 0.69)
 
 elif TAG == "Hobie16":
     fb, rb = SPEC["beams"]
