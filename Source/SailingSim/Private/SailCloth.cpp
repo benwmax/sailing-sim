@@ -27,6 +27,7 @@ ETelltaleState LeechTelltaleState(const FSailStripState& St)
 
 void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 {
+	WrinkleGrid.Reset();
 	Geo = InGeo;
 	Kind = InKind;
 	NumStrips = Geo.NumStrips;
@@ -169,26 +170,8 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 	}
 	MeanLoad = LoadSum / Rows;
 
-	// Details the strips can't carry, added to the target: luff wrinkles from a soft halyard in a breeze (fine
-	// diagonal folds near the luff), on the main and jib.
-	const float Breeze = FMath::Clamp((Drive.ApparentWindKnots - 8.f) / 10.f, 0.f, 1.f);
-	const float Wrinkle = Kind != ESailKind::Spinnaker ? 0.9f * Breeze * (1.f - FMath::Clamp(Drive.Cunningham, 0.f, 1.f)) : 0.f;
-	if (Wrinkle > 0.01f)
-	{
-		// (The target's normals: this used to copy the target over the cloth to take them, which reset the cloth every
-		// frame of a breeze with a soft halyard and kicked it by the difference.)
-		TArray<FVector> N;
-		NormalsOf(Target, N);
-		for (int32 R = 1; R < Rows - 1; ++R)
-		{
-			for (int32 C = 1; C < Cols / 3; ++C)
-			{
-				const FVector2D& UV = UVMeters[Index(R, C)];
-				const float Envelope = 1.f - float(C) / (Cols / 3);
-				Target[Index(R, C)] += N[Index(R, C)] * (Wrinkle * Envelope * FMath::Sin(2.f * PI * (UV.X * 0.7f + UV.Y * 0.7f) / 0.22f));
-			}
-		}
-	}
+	// (The luff's wrinkles from a soft halyard were a sine on this grid's target: at 20-33 cm a cell their 22 cm waves
+	// aliased. They are FSailWrinkles now, on the render grid.)
 
 	// Leech flutter at speed: a shiver of the last tenth of a drawing sail, a wave running up the leech, as a movement of
 	// the target the cloth follows. docs/sails-1/: it was a push on the cloth at 11 Hz with neighbouring rows nearly
@@ -556,4 +539,91 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 			}
 		}
 	}
+}
+
+FSailWrinkles SailWrinklesFor(const FSailCloth& Cloth, const Sailing::FSailStripState* Strips, const FSailClothDrive& Drive)
+{
+	FSailWrinkles W;
+	if (!Cloth.IsValid() || Cloth.GetKind() == ESailKind::Spinnaker || !Drive.bSimulate) return W;
+	const TArray<FVector2D>& UV = Cloth.UV0();
+	W.Tack = UV[0];
+	W.Clew = UV[FSailCloth::Cols - 1];
+	W.Head = UV[(FSailCloth::Rows - 1) * FSailCloth::Cols];
+	// The sail's normal force, q A |C_L| over its strips, and half of it to the clew and half to the head (the leech
+	// carries the load between them; the luff's half goes to the mast and forestay).
+	double Force = 0.0, Q = 0.0;
+	const int32 N = Cloth.GetNumStrips();
+	for (int32 K = 0; K < N; ++K)
+	{
+		const double V = Strips[K].ApparentSpeed;
+		Q += 0.5 * 1.225 * V * V / N;
+		Force += 0.5 * 1.225 * V * V * FMath::Abs(Strips[K].LiftCoefficient) / N;
+	}
+	Force *= Cloth.Geometry().TotalArea * Cloth.Load();
+	W.SheetN = 0.5 * Force;
+	W.HalyardN = 0.5 * Force;
+	// A soft halyard in a breeze leaves up to 0.4 % more cloth behind the luff than along it.
+	const double Breeze = FMath::Clamp((Drive.ApparentWindKnots - 8.0) / 10.0, 0.0, 1.0);
+	W.LuffStrain = 0.004 * Breeze * (1.0 - FMath::Clamp(double(Drive.Cunningham), 0.0, 1.0));
+	// Across them, the membrane's hoop tension q R, R = chord / (8 camber) for a circular-arc section.
+	const double Foot = FVector2D::Distance(W.Tack, W.Clew);
+	W.LuffTension = FMath::Max(Q * Foot / (8.0 * FMath::Max(Cloth.Geometry().BaseCamber, 0.05)), 1.0);
+	W.bOn = Force > 1.0 || W.LuffStrain > 0.0;
+	return W;
+}
+
+void SailCornerWrinkle(double F, double Beta, double R, double& OutLambda, double& OutAmp)
+{
+	const double Tr = F / (FMath::Max(Beta, 0.2) * FMath::Max(R, 0.05));
+	const double Strain = FMath::Min(FSailWrinkles::Poisson * Tr / FSailWrinkles::BiasStiffness, 0.01);
+	OutLambda = 2.0 * UE_DOUBLE_PI * FMath::Pow(FSailWrinkles::BendingStiffness * R * R / FMath::Max(Tr, 1.0), 0.25);
+	OutAmp = OutLambda / UE_DOUBLE_PI * FMath::Sqrt(Strain);
+}
+
+float SailWrinkleCm(const FSailWrinkles& W, const FVector2D& UVm, float CellU, float CellV)
+{
+	if (!W.bOn) return 0.f;
+	// A wavelength under three cells along its own direction (Dir: across the crests) fades out (two and a half cells and
+	// less is gone): no aliasing.
+	auto Resolved = [CellU, CellV](double Lambda, const FVector2D& Dir)
+	{
+		const double Cell = FMath::Max(FMath::Sqrt(FMath::Square(CellU * Dir.X) + FMath::Square(CellV * Dir.Y)), 1e-3);
+		return FMath::Clamp((Lambda / Cell - 2.5) / 1.5, 0.0, 1.0);
+	};
+	double Offset = 0.0;
+	const double Foot = FVector2D::Distance(W.Tack, W.Clew);
+	// The fans: radial wrinkles inside the corner's angle, from its reinforcing patch (12 cm) to a third of the foot.
+	auto Fan = [&](const FVector2D& Corner, const FVector2D& EdgeA, const FVector2D& EdgeB, double F)
+	{
+		if (F <= 0.0) return;
+		const FVector2D D = UVm - Corner;
+		const double R = D.Size();
+		const double RMax = 0.33 * Foot;
+		if (R < 0.12 || R > RMax) return;
+		const FVector2D A = (EdgeA - Corner).GetSafeNormal(), B = (EdgeB - Corner).GetSafeNormal();
+		const double Beta = FMath::Acos(FMath::Clamp(FVector2D::DotProduct(A, B), -1.0, 1.0));
+		const FVector2D Mid = (A + B).GetSafeNormal();
+		const FVector2D Dir = D / R;
+		const double Theta = FMath::Atan2(FVector2D::CrossProduct(Mid, Dir), FVector2D::DotProduct(Mid, Dir));
+		const double Edge = FMath::Clamp(1.0 - FMath::Abs(Theta) / (0.5 * Beta), 0.0, 1.0);
+		if (Edge <= 0.0) return;
+		double Lambda, Amp;
+		SailCornerWrinkle(F, Beta, R, Lambda, Amp);
+		// Crests run out from the corner; between them, the arc's waves (they coarsen outward as the tension falls).
+		const double Phase = 2.0 * UE_DOUBLE_PI * Theta * R / Lambda;
+		const double Fade = FMath::SmoothStep(0.12, 0.2, R) * (1.0 - FMath::SmoothStep(0.6 * RMax, RMax, R)) * FMath::Sin(0.5 * UE_DOUBLE_PI * Edge);
+		Offset += Amp * Fade * Resolved(Lambda, FVector2D(-Dir.Y, Dir.X)) * FMath::Sin(Phase);
+	};
+	Fan(W.Clew, W.Tack, W.Head, W.SheetN);
+	Fan(W.Head, W.Tack, W.Clew, W.HalyardN);
+	// The luff: across it (crests running back from the luff), within its first 60 cm.
+	if (W.LuffStrain > 0.0 && UVm.X < 0.6)
+	{
+		const double L = 0.3;
+		const double Lambda = 2.0 * UE_DOUBLE_PI * FMath::Pow(FSailWrinkles::BendingStiffness * L * L / W.LuffTension, 0.25);
+		const double Amp = Lambda / UE_DOUBLE_PI * FMath::Sqrt(W.LuffStrain);
+		const double Fade = 1.0 - FMath::SmoothStep(0.15, 0.6, UVm.X);
+		Offset += Amp * Fade * Resolved(Lambda, FVector2D(0.0, 1.0)) * FMath::Sin(2.0 * UE_DOUBLE_PI * UVm.Y / Lambda);
+	}
+	return float(Offset * Sailing::CmPerMeter);
 }
