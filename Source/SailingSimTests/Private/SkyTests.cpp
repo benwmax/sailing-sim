@@ -126,6 +126,72 @@ bool FSkyCumulusSizeTest::RunTest(const FString&)
 	return true;
 }
 
+// Ultra audit 1 (docs/cumulus-field/): a fair-weather cumulus field is clusters with clear sky between them, and many small
+// clouds to few large ones. Over 8 km boxes the cloud fraction varies by more than 40% of its mean, with some boxes nearly
+// clear (the old field: 21%, none clear); counted by area in bins 2.83 times apart from 0.01 km^2, each of the first five
+// bins holds fewer clouds than the one before (a power law; the old field was flat across the middle sizes).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCumulusFieldTest, "SailingSim.Visual.CumulusField", SkyFlags)
+bool FSkyCumulusFieldTest::RunTest(const FString&)
+{
+	FWeatherSystem W;
+	W.Configure(EWeatherPreset::AfternoonBreeze, 7, 15.0);
+	const FWeatherState S = W.Evaluate(60.0);
+	FWeatherMap Map;
+	Map.Paint(S.Sky, S.Front, 0.0, 0.0, 60.0);
+	const int32 N = FWeatherMap::N;
+	const std::vector<float>& Px = Map.Pixels();
+	constexpr int32 Tiles = 8;
+	const int32 Tp = N / Tiles;
+	double Sum = 0.0, Sq = 0.0;
+	int32 Clear = 0;
+	for (int32 A = 0; A < Tiles; ++A)
+	{
+		for (int32 B = 0; B < Tiles; ++B)
+		{
+			double C = 0.0;
+			for (int32 R = A * Tp; R < (A + 1) * Tp; ++R)
+				for (int32 Col = B * Tp; Col < (B + 1) * Tp; ++Col) C += Px[(size_t(R) * N + Col) * 4];
+			C /= double(Tp * Tp);
+			Sum += C; Sq += C * C; Clear += C < 0.05;
+		}
+	}
+	const double Mean = Sum / (Tiles * Tiles), Cv = FMath::Sqrt(FMath::Max(Sq / (Tiles * Tiles) - Mean * Mean, 0.0)) / FMath::Max(Mean, 1e-6);
+	// Clouds (presence over half, 4-connected) by area.
+	const double CellKm2 = FMath::Square(FWeatherMap::SizeMeters / N / 1000.0);
+	TArray<uint8> Seen;
+	Seen.SetNumZeroed(N * N);
+	TArray<int32> Stack;
+	int32 Bins[6] = {};
+	for (int32 Start = 0; Start < N * N; ++Start)
+	{
+		if (Seen[Start] || Px[size_t(Start) * 4] < 0.5f) continue;
+		int32 Area = 0;
+		Stack.Reset();
+		Stack.Add(Start);
+		Seen[Start] = 1;
+		while (Stack.Num())
+		{
+			const int32 I = Stack.Pop(EAllowShrinking::No);
+			++Area;
+			const int32 PixR = I / N, PixC = I % N;
+			const int32 Next[4] = { PixR > 0 ? I - N : -1, PixR < N - 1 ? I + N : -1, PixC > 0 ? I - 1 : -1, PixC < N - 1 ? I + 1 : -1 };
+			for (const int32 J : Next)
+			{
+				if (J >= 0 && !Seen[J] && Px[size_t(J) * 4] >= 0.5f) { Seen[J] = 1; Stack.Add(J); }
+			}
+		}
+		const double Km2 = Area * CellKm2;
+		if (Km2 < 0.01) continue;
+		Bins[FMath::Clamp(int32(FMath::FloorToInt(FMath::Log2(Km2 / 0.01) / 1.5)), 0, 5)] += 1;
+	}
+	AddInfo(FString::Printf(TEXT("8 km boxes: cloud fraction %.2f, varying by %.0f%% of it, %d of %d nearly clear; clouds by area (from 0.01 km^2, x2.83): %d %d %d %d %d %d"),
+		Mean, 100.0 * Cv, Clear, Tiles * Tiles, Bins[0], Bins[1], Bins[2], Bins[3], Bins[4], Bins[5]));
+	TestTrue(TEXT("The field is clustered (cloud fraction over 8 km varies by more than 40% of its mean)"), Cv > 0.4);
+	TestTrue(TEXT("Some 8 km boxes are nearly clear"), Clear >= 3);
+	TestTrue(TEXT("Many small clouds to few large ones (each area bin holds fewer than the last)"), Bins[0] > Bins[1] && Bins[1] > Bins[2] && Bins[2] > Bins[3] && Bins[3] > Bins[4]);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCumulusAfterSunsetTest, "SailingSim.Visual.CumulusAfterSunset", SkyFlags)
 bool FSkyCumulusAfterSunsetTest::RunTest(const FString&)
 {

@@ -2951,7 +2951,10 @@ float hCi = (altKm - Ci.y) / max(Ci.z - Ci.y, 0.05);
 // stands about as tall as it is wide), domed by its presence. A cell's presence saturates in its core whatever its size,
 // so on presence alone (C1) every small cell stood the full height of the layer: a field of narrow pillars.
 float cuSize = WxTop.SampleLevel(WxTopSampler, float2(wuv.y, wuv.x), 0).r;
-float cuTop = max(cuSize * pow(saturate(w.r * 1.25), 0.3), 0.12);   // W5a: small cells are low puffs, not 150 m pancakes
+// Ultra audit 1 (docs/cumulus-field/): the height grows faster than the size (cuSize is (R / R_max)^0.6, so this is about
+// R^0.85): the big cells still stand about as tall as they are wide, a small one (cumulus humilis, the scraps) is a lens
+// half as tall as it is wide. At cuSize itself the 200 m scraps stood 280 m tall: round balls.
+float cuTop = max(pow(cuSize, 1.4) * pow(saturate(w.r * 1.25), 0.3), 0.07);
 // C1: one flat base for every cell (the day's condensation level), softened over its lowest 12%; the top fades over its
 // last quarter only (fading over 70% of the height tapered every tower).
 float pCu = smoothstep(0.0, 0.12, hCu) * (1.0 - smoothstep(0.75 * cuTop, cuTop, hCu));
@@ -3088,6 +3091,13 @@ AO = 1.0;
         baseCu = lerp(base2, base, smoothstep(0.35, 0.9, w.r));
     }
     float shapeCu = saturate((baseCu - (1.0 - covCu)) / max(covCu, 0.08)) * step(0.001, covCu);
+    // Ultra audit 1 (docs/cumulus-field/): a flat base on the condensation level. The noise's iso-surface is the outline all
+    // round, so from below every cell's underside was lumpy and each cloud read as a cotton puff. A cumulus's base is the
+    // level where the rising air saturates: flat, the same height across the field. Over its lowest 120 m the cell's
+    // core footprint (the map's presence, lumpy at the cell's own scale) is filled, easing into the billowed shape by
+    // 360 m: everything here varies over hundreds of metres, coarser than the march.
+    float hmCu = alt - Cu.y * 1000.0;
+    shapeCu = max(shapeCu, smoothstep(0.3, 0.55, covCu) * (1.0 - smoothstep(120.0, 360.0, hmCu)));
     // Cumulus billows (docs/cumulus-billows/): packed lobes 300-800 m across (T_CloudBillow, a 3 x 1.5 km tile placed in
     // metres, so they are round in the world), filtered like the shape. Their crowns push the outline out across the cell's
     // soft margin and their creases cut it in: a cell's edge is bubbles on bubbles, not one smooth balloon (the shape
