@@ -2442,14 +2442,14 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		ClothMainHeadZ = MainHead;
 		MainSail->ClearAllMeshSections();
 	}
-	UpdateSailCloth(MainSail, MainCloth, Cfg.Main, ESailKind::Main, T.MainStrips, S.MainSide, DeltaSeconds);
-	if (Cfg.HasJib())
-	{
-		UpdateSailCloth(JibSail, JibCloth, Cfg.Jib, ESailKind::Jib, T.JibStrips, S.JibSide, DeltaSeconds);
-		JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
-	}
+	// docs/sail-parallel/: the sails step side by side (UpdateSailCloths).
+	TArray<FSailUpdate, TInlineAllocator<3>> SailUpdates;
+	SailUpdates.Add({ MainSail, &MainCloth, T.MainStrips, S.MainSide });
+	if (Cfg.HasJib()) SailUpdates.Add({ JibSail, &JibCloth, T.JibStrips, S.JibSide });
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
-	if (T.NumSpinStrips > 0) UpdateSailCloth(SpinSail, SpinCloth, Cfg.Spinnaker, ESailKind::Spinnaker, T.SpinStrips, S.SpinSide, DeltaSeconds);
+	if (T.NumSpinStrips > 0) SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
+	UpdateSailCloths(SailUpdates, DeltaSeconds);
+	if (Cfg.HasJib()) JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
 	SAILING_PERF_SCOPE_END(Sails);
 	{ SAILING_PERF_SCOPE(Telltales); UpdateTelltaleRibbons(); }
 	if (ModelHull)
