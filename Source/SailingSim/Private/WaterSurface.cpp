@@ -414,6 +414,8 @@ void AWaterSurface::CreateWaterMaterial()
 			if (Parts.Num() != 3) continue;
 			(K == 0 ? Body.Albedo : Body.Extinction) = FLinearColor(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), FCString::Atof(*Parts[2]));
 		}
+		// docs/lake-body/: -SailingNoBodyTransmission draws the body's light without the surface's transmission (as before).
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingNoBodyTransmission"))) WaterMaterial->SetScalarParameterValue(TEXT("BodyTransmission"), 0.f);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterAlbedo"), Body.Albedo);
 		WaterMaterial->SetVectorParameterValue(TEXT("WaterExtinction"), Body.Extinction);
 		// W2 (the gulf-swell handoff): where the swell mask lets the open sea in, the Gulf's body (the material blends by
@@ -455,6 +457,14 @@ float AWaterSurface::WhitecapScaleHere() const
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
 {
 	return FMath::Clamp(0.94f - 0.0075f * (MeanKnots - 12.f), 0.85f, 0.94f);
+}
+
+float AWaterSurface::BodyTransmission(float CosView)
+{
+	const float C = FMath::Clamp(CosView, 0.f, 1.f);
+	const float St = FMath::Sqrt(FMath::Max(1.f - C * C, 0.f)) / 1.333f, Ct = FMath::Sqrt(FMath::Max(1.f - St * St, 0.f));
+	const float Rs = (C - 1.333f * Ct) / FMath::Max(C + 1.333f * Ct, 1e-5f), Rp = (1.333f * C - Ct) / FMath::Max(1.333f * C + Ct, 1e-5f);
+	return FMath::Clamp((1.f - 0.5f * (Rs * Rs + Rp * Rp)) / 0.98f, 0.f, 1.f);
 }
 
 float AWaterSurface::WhitecapOnset(float MeanKnots)

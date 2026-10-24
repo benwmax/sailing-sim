@@ -2622,6 +2622,7 @@ Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
     Spec = 0.0;
     Dark = 1.0 / 0.35;
     Rough = 1.0;
+    BodyT = 1.0;
     return float3(0.0, 0.0, 1.0);
 }
 // docs/far-water-speckle/: never a mirror direction below the horizon. Far out, at a grazing view, a short wave's slope
@@ -2636,6 +2637,19 @@ float3 rOut = 2.0 * dot(nOut, vdir) * nOut - vdir;
     float2 rh = rOut.xy / max(length(rOut.xy), 1e-5);
     float3 rUp = float3(rh * 0.9998, 0.02);
     nOut = normalize(vdir + rUp);
+}
+// docs/lake-body/: the light the water body sends up leaves through the surface, which passes 1 - F of it: at a grazing look
+// only about a quarter of what leaves straight up (Fresnel for water, n 1.333). The single layer water pass drew the body's
+// light the same at every angle (2-6 deg below the horizon it was 1.3 times its straight-down value, against 0.2-0.5), so the
+// far water carried a strong olive veil. Each pixel's own facet (nOut), so rippled water averages its facets'
+// transmission; relative to the straight-down transmission, so the body seen from above is unchanged.
+{
+    float c = saturate(dot(nOut, vdir));
+    float st = sqrt(saturate(1.0 - c * c)) / 1.333;
+    float ct = sqrt(saturate(1.0 - st * st));
+    float rs = (c - 1.333 * ct) / max(c + 1.333 * ct, 1e-5);
+    float rp = (1.333 * c - ct) / max(1.333 * c + ct, 1e-5);
+    BodyT = saturate((1.0 - 0.5 * (rs * rs + rp * rp)) / 0.98);
 }
 return nOut;
 """
@@ -2707,7 +2721,7 @@ def build_water_v4():
     shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
-                   extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1)])
+                   extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
         connect(hull_nodes[n], "RGBA", shade, n)
     connect(hull_map, "", shade, "HullClipMap")
@@ -2790,9 +2804,18 @@ def build_water_v4():
     one = node(mat, unreal.MaterialExpressionConstant, -400, 1500, r=1.0)
     connect(one, "", dark_scale, "A")
     connect(dark_k, "", dark_scale, "B")
-    albedo_dark = node(mat, unreal.MaterialExpressionMultiply, 0, 900)
-    connect(albedo, "", albedo_dark, "A")
-    connect(dark_scale, "", albedo_dark, "B")
+    albedo_dark0 = node(mat, unreal.MaterialExpressionMultiply, 0, 900)
+    connect(albedo, "", albedo_dark0, "A")
+    connect(dark_scale, "", albedo_dark0, "B")
+    # docs/lake-body/: the body's light leaves through the surface's transmission (BodyT).
+    # BodyTransmission 0 (AWaterSurface: -SailingNoBodyTransmission) draws the body as before, for comparing.
+    body_t = node(mat, unreal.MaterialExpressionLinearInterpolate, 0, 1000)
+    connect(node(mat, unreal.MaterialExpressionConstant, -100, 1000, r=1.0), "", body_t, "A")
+    connect(shade, "BodyT", body_t, "B")
+    connect(scalar(mat, "BodyTransmission", 1.0, -100, 1050), "", body_t, "Alpha")
+    albedo_dark = node(mat, unreal.MaterialExpressionMultiply, 100, 900)
+    connect(albedo_dark0, "", albedo_dark, "A")
+    connect(body_t, "", albedo_dark, "B")
     slw = node(mat, unreal.MaterialExpressionSubstrateSingleLayerWaterBSDF, 200, 600)
     foam_tinted = node(mat, unreal.MaterialExpressionMultiply, -100, 1200)  # W4: FoamTone (active crest 1, residue 0.5)
     connect(foam_col, "", foam_tinted, "A")

@@ -67,6 +67,9 @@ public:
 	 *  L23609) put the onset of breaking at 3.7 m/s with cover growing as the cube of the wind above it. 1 from 12 kn,
 	 *  ((U - 3.7) / (U12 - 3.7))^3 under it (0.2 at 10 kn), 0 under 7.2 kn. */
 	static float WhitecapOnset(float MeanKnots);
+	/** docs/lake-body/: the share of the water body's light that leaves through a facet seen at this cosine (n . v), relative
+	 *  to straight up: 1 - Fresnel for water (n 1.333) over its value at normal incidence. M_WaterV4's BodyT mirrors it. */
+	static float BodyTransmission(float CosView);
 	/** docs/far-cap-sprites/ (far-caps option B): the far caps' sprites, High and Ultra. A tile's cover (Monahan's for the
 	 *  local wind, times the water body's share and the light-air onset), and how many sprite slots of a cap's area it
 	 *  takes, each live with what probability per 4 s life (mean life 0.7937 of it), so the caps' area is the cover. */
