@@ -17,9 +17,10 @@ namespace CrewSolver
 		TArray<FQuat>* OutD = nullptr);
 	/** The sailor's joints on the rig's skeleton. */
 	void Carry(const FCrewRig& Rig, const TMap<FName, FQuat>& Joints, TMap<FName, FQuat>& Out);
-	/** Two-bone IK of the chain ending at Hand (a hand or a foot) toward Target, keeping the stance's bend plane. */
+	/** Two-bone IK of the chain ending at Hand (a hand or a foot) toward Target, keeping the stance's bend plane (or bending
+	 *  the middle joint toward Bend, component space, when given). */
 	void ReachArm(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Hand, const FVector& Target,
-		TMap<FName, FQuat>& Joints, const FVector& HeldLine = FVector::ZeroVector);
+		TMap<FName, FQuat>& Joints, const FVector& HeldLine = FVector::ZeroVector, const FVector& Bend = FVector::ZeroVector);
 	bool SolePoints(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const FQuat& Frame, int32 Side, FVector Out[2]);
 	void CurlFingers(const FCrewRig& Rig, const FCrewHands& Hands, TMap<FName, FQuat>& Carried);
 	bool ClearFingers(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
