@@ -28,6 +28,11 @@ bool FWorldHazeTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Past 80 km the fog stays at 80 km"), FMath::IsNearlyEqual(FHaze::VisibilityKm(FHaze::FogDensity(200.0)), 80.0, 1e-6));
 	TestTrue(TEXT("A 50 m haze layer is the fog's old falloff (0.2)"), FMath::IsNearlyEqual(FHaze::HeightFalloff(50.0), 0.2, 1e-9));
+	// docs/horizon-sky-colour/: the aerosol is Koschmieder's extinction less clean air's (Rayleigh at 550 nm), never
+	// negative; a 25 km lake day carries about 32 times the engine's alpine Mie (0.0044 per km).
+	TestTrue(TEXT("25 km of visibility is 0.145 per km of aerosol"), FMath::IsNearlyEqual(FHaze::AerosolExtinctionPerKm(25.0), 3.912 / 25.0 - FHaze::RayleighExtinctionPerKm, 1e-9));
+	TestTrue(TEXT("The aerosol thins with the visibility"), FHaze::AerosolExtinctionPerKm(60.0) < FHaze::AerosolExtinctionPerKm(25.0) && FHaze::AerosolExtinctionPerKm(1.5) > 2.0);
+	TestTrue(TEXT("Past 80 km it stays at 80 km's, above clean air"), FMath::IsNearlyEqual(FHaze::AerosolExtinctionPerKm(500.0), FHaze::AerosolExtinctionPerKm(80.0), 1e-12) && FHaze::AerosolExtinctionPerKm(80.0) > 0.0);
 
 	// The clear mistral: cloudless, 60 km, a northwesterly near 24 kn.
 	FWeatherSystem Weather;

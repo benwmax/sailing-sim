@@ -57,6 +57,15 @@ namespace
 	float ClosedDeck(const Sailing::FWeatherState& W) { return FMath::SmoothStep(0.8f, 0.95f, float(W.Sky[Sailing::ECloudLayer::Stratus].Coverage)); }
 	constexpr float kDeckDiffuse = 0.3f;
 	constexpr float kDeckSkyLight = 0.25f;
+	// docs/horizon-sky-colour/: the share of the visibility's aerosol the atmosphere carries (the fog keeps the rest);
+	// -SailingAtmoHaze=<share> for measuring.
+	constexpr float kAtmosphereHazeShare = 0.3f;
+	float AtmosphereHazeShare()
+	{
+		float Share = kAtmosphereHazeShare;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingAtmoHaze="), Share);
+		return FMath::Clamp(Share, 0.f, 1.f);
+	}
 	// C2: the sky cache's panorama: 4096 x 512 half floats over elevations -3 to 33 degrees (a cumulus base at 2 km is
 	// under 22 degrees from 5 km out), 96 steps from 5 km to 40 km, the sky light's share of the dome's view luminance.
 	constexpr int32 kSkyCacheWidth = 4096;
@@ -239,7 +248,12 @@ void ASailingEnvironment::FindSceneActors()
 	// Realism audit Oct 23 (docs/cumulus-rims/): the planet's ground under the atmosphere's multiple scattering is open
 	// water and woods, about 0.1, not the engine's 0.4 grey, which lit the low sky grey from below (red over blue 0.51 at
 	// 20 deg on the bridge view, 0.42 at 0.1).
-	if (TActorIterator<ASkyAtmosphere> It(GetWorld()); It) It->GetComponent()->SetGroundAlbedo(FLinearColor(0.1f, 0.1f, 0.1f).ToFColor(true));
+	if (TActorIterator<ASkyAtmosphere> It(GetWorld()); It)
+	{
+		Atmosphere = *It;
+		USkyAtmosphereComponent* Atmo = It->GetComponent();
+		Atmo->SetGroundAlbedo(FLinearColor(0.1f, 0.1f, 0.1f).ToFColor(true));
+	}
 	if (TActorIterator<APostProcessVolume> It(GetWorld()); It) PostProcess = *It;
 
 	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;
@@ -1480,15 +1494,41 @@ void ASailingEnvironment::UpdateHaze()
 	const float Dry = ScaleHeight > 0.0 ? float(Sailing::FHaze::HeightFalloff(ScaleHeight)) : 0.2f;
 	const float Falloff = FMath::Lerp(Dry, 0.05f, float(W.Rain));
 	if (Stepped(F->FogHeightFalloff, Falloff, Dry, 0.05f)) F->SetFogHeightFalloff(Falloff);
-	if (USailingSettings::Get()->Quality == ESailingQuality::Low)
-	{
-		if (Stepped(F->FogDensity, Density)) F->SetFogDensity(Density);
-		return;
-	}
 	// Visual V5: humidity haze. A humid Texas summer day is milky; a dry norther is crisp; on the bay and offshore,
 	// sea-salt haze. The haze thickens the visibility's fog near the surface and whitens it.
+	const bool bLow = USailingSettings::Get()->Quality == ESailingQuality::Low;
 	const float Haze = FMath::Clamp(float(W.Sky.Haze) + (World >= 1 ? 0.2f : 0.f), 0.f, 1.f);
-	const float HazeDensity = Density * FMath::Lerp(0.6f, 1.6f, Haze);
+	const float HazeMul = bLow ? 1.f : FMath::Lerp(0.6f, 1.6f, Haze);
+	const float Deck = FMath::SmoothStep(0.5f, 0.95f, float(W.Sky[ECloudLayer::Stratus].Coverage));
+	// docs/horizon-sky-colour/: the haze's aerosol is a boundary layer a kilometre or so deep, and it is what whitens the
+	// low sky. All of it was in the fog, 50 m deep, which does not reach the sky, so the atmosphere kept the engine's
+	// alpine Mie (0.004 per km, about 200 km visibility): a pure Rayleigh horizon, cyan (green over blue 0.96 at 3 deg
+	// before the tone curve, against 0.84 for a Preetham sky). Part of the visibility's aerosol now goes to the atmosphere
+	// (Mie, its 1.2 km scale height, single-scattering albedo 0.9) and the fog keeps the rest, so the surface visibility
+	// is unchanged. Not under a stratus deck or in rain: the clouds do not shadow the atmosphere, and its sunlit aerosol
+	// would glow under them (the grey fog lights those skies). And not with the sun under about 12 degrees: there the
+	// aerosol's long path dimmed the sunlit faces of the clouds to a dull brown and spread an orange glow over the sky
+	// toward the sun, undoing the dusk stills' match (G5); the low sun keeps the fog's haze until the clouds' lighting
+	// through the aerosol is checked on its own.
+	{
+		const double AerosolKm = Sailing::FHaze::AerosolExtinctionPerKm(W.VisibilityKm / HazeMul);
+		const float Share = AtmosphereHazeShare() * (1.f - Deck) * (1.f - float(W.Rain)) * FMath::SmoothStep(2.f, 12.f, SunElevationDeg);
+		const float MieKm = Share * float(AerosolKm);
+		if (Atmosphere)
+		{
+			USkyAtmosphereComponent* Atmo = Atmosphere->GetComponent();
+			const float Scatter = FMath::Max(0.003996f, 0.9f * MieKm), Absorb = FMath::Max(0.000444f, 0.1f * MieKm);
+			if (Stepped(Atmo->MieScatteringScale, Scatter, 0.003996f)) Atmo->SetMieScatteringScale(Scatter);
+			if (Stepped(Atmo->MieAbsorptionScale, Absorb, 0.000444f)) Atmo->SetMieAbsorptionScale(Absorb);
+		}
+		FogShare = 1.f - MieKm / float(3.912 * HazeMul / FMath::Clamp(W.VisibilityKm, 0.5, 80.0));
+	}
+	if (bLow)
+	{
+		if (Stepped(F->FogDensity, Density * FogShare)) F->SetFogDensity(Density * FogShare);
+		return;
+	}
+	const float HazeDensity = Density * HazeMul * FogShare;
 	if (Stepped(F->FogDensity, HazeDensity)) F->SetFogDensity(HazeDensity);
 	const FLinearColor Milky(0.62f, 0.66f, 0.72f), Crisp(0.42f, 0.52f, 0.68f), Sea(0.55f, 0.63f, 0.72f);
 	// Realism audit 6: under a closed stratus deck the air is lit by the grey deck, not the blue sky: the haze goes neutral
@@ -1497,7 +1537,6 @@ void ASailingEnvironment::UpdateHaze()
 	// read a third brighter than the overcast above it, a pale band along the sea's horizon (most of all on the Gulf, with
 	// nothing on the horizon to hide it); a real overcast darkens toward the horizon if anything.
 	const FLinearColor DeckGrey(0.36f, 0.37f, 0.39f);
-	const float Deck = FMath::SmoothStep(0.5f, 0.95f, float(W.Sky[ECloudLayer::Stratus].Coverage));
 	const FLinearColor Tint = FMath::Lerp(FMath::Lerp(Crisp, World >= 1 ? Sea : Milky, Haze), DeckGrey, Deck);
 	// The haze glows with the daylight it scatters: under a storm deck and at night it goes dark with the sky.
 	static SailingArgs::FCachedFlag ClassicHazeArg(TEXT("SailingClassicHaze"));   // Graphics G5 compare

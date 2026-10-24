@@ -527,10 +527,21 @@ def cabin(H, spec):
     else:
         box(hull, (x0 + 0.01, H.cy, H.deck_z(x0, H.cy) + 0.5 * h), (0.03, 0.5, h * 0.8), "BlackPlastic")
     box(hull, (x0 + 0.45, H.cy, top(x0 + 0.45) + 0.01), (0.8, 0.62, 0.04), "Deck")
-    box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
-    # Grab rails on the top.
-    for side in (1, -1):
-        tube(hull, [(x0 + 0.3, H.cy + side * half(x0) * 0.75, top(x0 + 0.3)), (x1 - 0.4, H.cy + side * half(x1) * 0.6, top(x1 - 0.4))], 0.015, "Wood", 6)
+    if TAG == "Catalina22":
+        # pc/c22-fidelity: the kit's low acrylic hatch on the foredeck, and teak handrails with their loops along the cabin
+        # top, where they had been a box and two round sticks (class photos: one rail a side, four hand holes).
+        kit_part("HatchFwd", x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy))
+        for side in (1, -1):
+            pa = (x0 + 0.3, H.cy + side * half(x0) * 0.75)
+            pb = (x1 - 0.4, H.cy + side * half(x1) * 0.6)
+            mx, my = 0.5 * (pa[0] + pb[0]), 0.5 * (pa[1] + pb[1])
+            kit_part("HandrailTeak", mx, my, top(mx) - 0.004, math.atan2(pb[1] - pa[1], pb[0] - pa[0]),
+                     length=math.hypot(pb[0] - pa[0], pb[1] - pa[1]), loops=4)
+    else:
+        box(hull, (x1 + 0.45, H.cy, H.deck_z(x1 + 0.45, H.cy) + 0.04), (0.5, 0.5, 0.06), "CabinWindow")
+        # Grab rails on the top.
+        for side in (1, -1):
+            tube(hull, [(x0 + 0.3, H.cy + side * half(x0) * 0.75, top(x0 + 0.3)), (x1 - 0.4, H.cy + side * half(x1) * 0.6, top(x1 - 0.4))], 0.015, "Wood", 6)
     return top, half
 
 
@@ -1221,12 +1232,12 @@ elif TAG in ("Catalina22", "Catalina30"):
         hull.grid(rows, "SailCover", slot_fn=pane)
         hull.grid(rows, "SailCover", flip=True, slot_fn=pane)
     if SPEC.get("outboard"):
+        # pc/c22-fidelity: the kit's two-position bracket on the transom's port quarter and its brand-free 3.5 hp four-stroke
+        # clamped to it, the prop 16 cm down (they had been three boxes and a cylinder). The physics' engine stays where it was.
         e = CFG["engines"][0]["position"]
-        tz = MAIN.deck_z(st, 0)
-        box(hull, (st - 0.12, e[1], tz - 0.15), (0.12, 0.3, 0.25), "Stainless")                      # bracket
-        box(hull, (st - 0.3, e[1], tz + 0.05), (0.42, 0.3, 0.38), "BlackPlastic")                     # cowling
-        box(hull, (st - 0.28, e[1], tz - 0.4), (0.14, 0.08, 0.75), "BlackPlastic")                    # leg
-        tube(hull, [(st - 0.28, e[1], e[2] + 0.05), (st - 0.42, e[1], e[2] + 0.05)], 0.06, "BlackPlastic", 10)
+        zb = 0.21          # (the anti-cavitation plate 10 cm under: a long shaft's clamp is 0.52 m over it)
+        kit_part("OutboardBracket", st, e[1], zb)
+        kit_part("Outboard35", st - 0.17 - 0.12, e[1], zb + 0.21 - 0.69)
 
 elif TAG == "Hobie16":
     fb, rb = SPEC["beams"]
@@ -1531,31 +1542,32 @@ def build_boom():
     return m.finish(smooth_angle=60.0, origin=(gx, 0, gz))
 
 
-def sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, top_chord, alu_tiller=False):
+def sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, top_chord, alu_tiller=False, z0=0.10, k=1.0):
     """pc/sunfish-fidelity: the Sunfish's rudder head, from class photos (it had been a white box and a round stick): the
     cast aluminium head, two cheeks round the blade's top on a through-bolt (the blade kicks up about it), a barrel round
     the pintle pin on the pivot axis, split where the transom's gudgeon takes it; the tiller socket on top, the varnished
     tiller deeper than wide and tapering to a rounded grip, held by a bolt. Rudder-side parts (they turn with it); the
     gudgeon is the hull's (sunfish_gudgeon). pc/ilca-fidelity: alu_tiller, the ILCA's: a round aluminium tube, 28 mm,
-    its last 15 cm under a black grip."""
+    its last 15 cm under a black grip. pc/c22-fidelity: z0, the head's foot (the Catalina 22's head is 45 cm tall on her
+    high transom), and k, its size (her cheeks 1.4 times the dinghies')."""
     x = stock_x
     half = 0.5 * 0.11 * top_chord + 0.0005          # the blade's half thickness at the top
     for s in (1, -1):
-        slab(m, [(x - 0.004, 0.10), (x - 0.13, 0.13), (x - 0.15, 0.17), (x - 0.13, tz - 0.01), (x - 0.004, tz)], cy + s * (half + 0.0035), 0.007, "Aluminium")
-    for z0, z1 in ((0.10, 0.158), (0.202, tz)):
-        tube(m, [(x, cy, z0), (x, cy, z1)], 0.0095, "Aluminium", 12)
-    slab(m, rounded(x - 0.125, tz - 0.026, x + 0.004, tz + 0.026, 0.012, 3), cy, 0.046, "Aluminium")
+        slab(m, [(x - 0.004, z0), (x - 0.13 * k, z0 + 0.03), (x - 0.15 * k, z0 + 0.07), (x - 0.13 * k, tz - 0.01), (x - 0.004, tz)], cy + s * (half + 0.0035 * k), 0.007 * k, "Aluminium")
+    for za, zb in ((z0, z0 + 0.058), (z0 + 0.102, tz)):
+        tube(m, [(x, cy, za), (x, cy, zb)], 0.0095 * k, "Aluminium", 12)
+    slab(m, rounded(x - 0.125 * k, tz - 0.026, x + 0.004, tz + 0.026, 0.012, 3), cy, 0.046 * k, "Aluminium")
     # the pintle pin with its head, and the blade's pivot bolt with nuts
-    tube(m, [(x, cy, 0.092), (x, cy, tz + 0.03)], 0.0045, "Stainless", 8)
-    lathe(m, x, cy, [(0.0, tz + 0.03), (0.008, tz + 0.03), (0.008, tz + 0.036), (0.0, tz + 0.039)], "Stainless", 10)
-    bx, bz = x - 0.1, 0.15
-    tube(m, [(bx, cy - half - 0.012, bz), (bx, cy + half + 0.012, bz)], 0.0045, "Stainless", 8)
+    tube(m, [(x, cy, z0 - 0.008), (x, cy, tz + 0.03)], 0.0045 * k, "Stainless", 8)
+    lathe(m, x, cy, [(0.0, tz + 0.03), (0.008 * k, tz + 0.03), (0.008 * k, tz + 0.036), (0.0, tz + 0.039)], "Stainless", 10)
+    bx, bz = x - 0.1 * k, z0 + 0.05
+    tube(m, [(bx, cy - half - 0.012 * k, bz), (bx, cy + half + 0.012 * k, bz)], 0.0045 * k, "Stainless", 8)
     for s in (1, -1):
-        tube(m, [(bx, cy + s * (half + 0.007), bz), (bx, cy + s * (half + 0.012), bz)], 0.0095, "Stainless", 6)
+        tube(m, [(bx, cy + s * (half + 0.007 * k), bz), (bx, cy + s * (half + 0.012 * k), bz)], 0.0095 * k, "Stainless", 6)
     # the tiller
     path = [(x - 0.11, cy, tz + 0.001), (x + 0.02, cy, tz + 0.008), (x + 0.22, cy, tz + 0.033), (x + 0.5, cy, tz + 0.06),
             (x + tl - 0.04, cy, tz + 0.078), (x + tl - 0.005, cy, tz + 0.08), (x + tl + 0.012, cy, tz + 0.08)]
-    sections = [(0.03, 0.042), (0.03, 0.042), (0.028, 0.038), (0.026, 0.032), (0.025, 0.028), (0.022, 0.024), (0.01, 0.012)]
+    sections = [(w * min(k, 1.2), h * min(k, 1.2)) for (w, h) in ((0.03, 0.042), (0.03, 0.042), (0.028, 0.038), (0.026, 0.032), (0.025, 0.028), (0.022, 0.024), (0.01, 0.012))]
     if alu_tiller:
         tube(m, [(x - 0.11, cy, tz + 0.001), (x + 0.02, cy, tz + 0.008), (x + 0.22, cy, tz + 0.033), (x + 0.5, cy, tz + 0.06), (x + tl - 0.15, cy, tz + 0.075)], 0.014, "Aluminium", 12)
         tube(m, [(x + tl - 0.15, cy, tz + 0.075), (x + tl - 0.005, cy, tz + 0.08)], 0.0165, "BlackPlastic", 12)
@@ -1566,15 +1578,16 @@ def sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, top_chord, alu_tiller=Fa
         tube(m, [(x - 0.06, cy + s * 0.023, tz), (x - 0.06, cy + s * 0.028, tz)], 0.0075, "Stainless", 6)
 
 
-def sunfish_gudgeon(Hh, stock_x, cy, st):
+def sunfish_gudgeon(Hh, stock_x, cy, st, z0=0.10):
     """pc/sunfish-fidelity: the transom's gudgeon: a stainless plate screwed to the transom and its barrel round the
     rudder's pintle, between the head casting's two barrels."""
-    box(hull, (st - 0.002, cy, 0.18), (0.004, 0.06, 0.085), "Stainless")
-    tube(hull, [(stock_x, cy, 0.161), (stock_x, cy, 0.199)], 0.0105, "Stainless", 12)
+    zc = z0 + 0.08
+    box(hull, (st - 0.002, cy, zc), (0.004, 0.06, 0.085), "Stainless")
+    tube(hull, [(stock_x, cy, z0 + 0.061), (stock_x, cy, z0 + 0.099)], 0.0105, "Stainless", 12)
     if stock_x < st - 0.012:     # (the ILCA's pivot stands 6 cm off her transom: the gudgeon's arm reaches it)
-        box(hull, (0.5 * (st + stock_x), cy, 0.18), (st - stock_x, 0.014, 0.032), "Stainless")
+        box(hull, (0.5 * (st + stock_x), cy, zc), (st - stock_x, 0.014, 0.032), "Stainless")
     for y in (-0.02, 0.02):
-        for z in (0.15, 0.21):
+        for z in (zc - 0.03, zc + 0.03):
             tube(hull, [(st - 0.004, cy + y, z), (st - 0.0058, cy + y, z)], 0.004, "Stainless", 8)
 
 
@@ -1603,18 +1616,19 @@ def build_rudder():
         z = z_top + (z_bot - z_top) * t
         c = chord * (1.2 - 0.45 * t ** 1.4) if transom else chord * (1.0 - 0.3 * t)
         secs.append((z, stock_x + 0.25 * c - 0.25 * chord + 0.03, c))
-    if TAG in ("Sunfish", "ILCA7"):
-        # pc/sunfish-fidelity (and the ILCA's): the blade hangs aft of its pintle in the head casting (its leading edge had been ahead of
+    if TAG in ("Sunfish", "ILCA7", "Catalina22"):
+        # pc/sunfish-fidelity (and the ILCA's, the Catalina 22's): the blade hangs aft of its pintle in the head casting (its leading edge had been ahead of
         # the pivot, inside the transom).
         secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
     if TAG == "Hobie16":     # pc/hobie-fidelity: hers too (it stood a centimetre inside the transom)
         secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
     foil(m, [(z, le, c) for (z, le, c) in secs], "Antifouling" if SPEC["paint"] else "Topsides", 0.11, cy)
-    if transom and tillered and TAG in ("Sunfish", "ILCA7"):
+    if transom and tillered and TAG in ("Sunfish", "ILCA7", "Catalina22"):
         tz = Hh.sheer(st) + 0.08
         tl = RIG["tiller_length"]
-        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7")
-        sunfish_gudgeon(Hh, stock_x, cy, st)
+        z0 = tz - 0.45 if TAG == "Catalina22" else 0.10
+        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if TAG == "Catalina22" else 1.0)
+        sunfish_gudgeon(Hh, stock_x, cy, st, z0)
         socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
     elif transom and tillered and TAG == "Hobie16":
         # pc/hobie-fidelity: each rudder in its cast aluminium head (the Sunfish's: cheeks on a through-bolt, the pintle's
