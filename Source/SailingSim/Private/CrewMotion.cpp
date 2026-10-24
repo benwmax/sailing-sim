@@ -666,7 +666,10 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 				const bool bForward = (K == 0) == bLeftForward;
 				const double FootX = FMath::Clamp(HipX + (bForward ? 0.30 : 0.12), StrapWell.StrapX0 + 0.06, StrapWell.StrapX1 - 0.10);
 				const FVector AtM(FootX, Side * (StrapWell.StrapHalfY + 0.05), StrapWell.SoleZ + 0.075);
-				CrewSolver::ReachArm(Ref, CS, D, K == 0 ? FootL : FootR, ToBoat.InverseTransformPosition(AtM * CrewMotionDetail::ToCm), Carried);
+				// The knee up and a little forward: the stance's own bend had the aft knee folded back beside the tiller's end, the
+				// ILCA's extension through that thigh (RigClearance, reaching).
+				CrewSolver::ReachArm(Ref, CS, D, K == 0 ? FootL : FootR, ToBoat.InverseTransformPosition(AtM * CrewMotionDetail::ToCm), Carried,
+					FVector::ZeroVector, ToBoat.InverseTransformVectorNoScale(FVector(0.3, 0.0, 1.0)));
 			}
 			CrewSolver::Solve(Ref, RestCS, Carried, CS, &D);
 			// Then each foot aimed under the webbing: the ball across the centreline, low over the sole (hiked, the legs'

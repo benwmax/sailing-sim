@@ -207,7 +207,7 @@ namespace CrewSolver
 	/** Graphics G8: two-bone IK for one arm toward a wrist target (component space). The elbow stays in the plane the
 	 *  stance put it in; the shoulder and elbow rotations are written back into the joint map. */
 	void ReachArm(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Hand, const FVector& Target,
-		TMap<FName, FQuat>& Joints, const FVector& HeldLine)
+		TMap<FName, FQuat>& Joints, const FVector& HeldLine, const FVector& Bend)
 	{
 		const int32 Lower = Ref.GetParentIndex(Hand);
 		const int32 Upper = Lower == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Lower);
@@ -221,6 +221,12 @@ namespace CrewSolver
 		if (X.IsNearlyZero()) return;
 		FVector Y = (E - S) - X * FVector::DotProduct(E - S, X);
 		if (Y.SizeSquared() < 1.0) Y = FVector::CrossProduct(X, FVector::CrossProduct(FVector(0, 0, -1), X)); // a straight arm: elbow down
+		// A chosen bend (the legs under a dinghy's strap: knees up), where it isn't along the reach itself.
+		if (!Bend.IsNearlyZero())
+		{
+			const FVector YB = Bend - X * FVector::DotProduct(Bend, X);
+			if (YB.SizeSquared() > 0.01 * Bend.SizeSquared()) Y = YB;
+		}
 		Y = Y.GetSafeNormal();
 		const double CosA = FMath::Clamp((A * A + Dist * Dist - B * B) / (2.0 * A * Dist), -1.0, 1.0);
 		const double SinA = FMath::Sqrt(FMath::Max(0.0, 1.0 - CosA * CosA));
