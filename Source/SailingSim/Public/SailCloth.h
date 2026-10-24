@@ -13,7 +13,7 @@
  *
  * Cloth. On Medium and High a light position-based cloth layer follows that target: stiffly where the sail is drawing,
  * loosely where it luffs, so an eased sail flogs and a blown spinnaker collapses and refills; the leech flutters at
- * speed and the luff wrinkles when the halyard (Cunningham) is soft in a breeze. The luff, and the boom foot of the
+ * speed (the luff's soft-halyard wrinkles and the corners' fans are FSailWrinkles, on the render grid). The luff, and the boom foot of the
  * main, are held to the spars; the jib clew to its sheet. Low draws the target shape directly, as before.
  *
  * Marks. UV0 is metres (along the chord from the luff, up from the foot), UV1 the normalized planform (0..1 both
@@ -50,6 +50,40 @@ struct FSailObstacle
 	// wire drawn in pieces carries on.
 	float FreeA = 12.f, FreeB = 12.f;
 };
+
+/**
+ * Ultra audit item 5: the fine wrinkles of a loaded sail, drawn on the render grid (the cloth's own grid is 20-33 cm a cell
+ * and stays smooth). A wrinkle is the cloth buckling where it is squeezed across a tension (tension field theory):
+ *   - fans from the clew and the head, where the sheet and halyard loads spread into the sail: radial tension
+ *     T_r = F / (beta r) over the corner's angle beta, and the cloth across it squeezed by Poisson's ratio,
+ *     e = nu T_r / (E_bias t);
+ *   - along the luff when the halyard is soft in a breeze: the luff tape is shorter than the cloth behind it.
+ * Wavelength from Cerda and Mahadevan (2003), lambda = 2 pi (B L^2 / T)^(1/4) for bending stiffness B, tension T and
+ * length L across the tension; amplitude from the excess cloth a sine of that wavelength takes up, e = (pi A / lambda)^2,
+ * so A = (lambda / pi) sqrt(e). Wrinkles shorter than about three render cells fade out rather than alias.
+ */
+struct FSailWrinkles
+{
+	bool bOn = false;
+	FVector2D Tack = FVector2D::ZeroVector, Clew = FVector2D::ZeroVector, Head = FVector2D::ZeroVector; // UV0, metres
+	double SheetN = 0.0;        // load at the clew (N)
+	double HalyardN = 0.0;      // load at the head (N)
+	double LuffStrain = 0.0;    // excess cloth behind a soft luff (fraction)
+	double LuffTension = 0.0;   // N/m across the luff wrinkles
+	/** Dacron sailcloth of about 7 oz: 0.3 mm, E 3 GPa along the threads and about a twentieth of that on the bias (woven
+	 *  polyester's bias stretch: the corners' fans pull across the threads). */
+	static constexpr double BendingStiffness = 6.75e-3;   // N m: E t^3 / 12
+	static constexpr double BiasStiffness = 4.5e4;        // N/m: E_bias t
+	static constexpr double Poisson = 0.3;
+};
+
+/** This frame's wrinkle loads for a sail (none for the spinnaker, whose look is the PC's). */
+SAILINGSIM_API FSailWrinkles SailWrinklesFor(const class FSailCloth& Cloth, const Sailing::FSailStripState* Strips, const FSailClothDrive& Drive);
+/** The wrinkles' offset along the sail's normal (cm) at a point (UV0, metres) on a render grid whose cells there are CellU
+ *  along the chord and CellV up the sail (m): each wave fades by the spacing along its own direction. */
+SAILINGSIM_API float SailWrinkleCm(const FSailWrinkles& W, const FVector2D& UVm, float CellU, float CellV);
+/** The fan's wavelength (m) and amplitude (m) at r metres from a corner carrying F newtons over an angle Beta (radians). */
+SAILINGSIM_API void SailCornerWrinkle(double F, double Beta, double R, double& OutLambda, double& OutAmp);
 
 class SAILINGSIM_API FSailCloth
 {
@@ -93,7 +127,12 @@ public:
 	FVector NormalAt(float U, float V) const;
 	FVector ChordTangentAt(float U, float V) const;
 
+	/** The render grid's UV0 and cell sizes (u, v, cell along u, cell along v; metres) for the wrinkles: they never change
+	 *  after Init, so SailVisuals fills this once. */
+	mutable TArray<FVector4f> WrinkleGrid;
 	ESailKind GetKind() const { return Kind; }
+	const Sailing::FSailGeometry& Geometry() const { return Geo; }
+	int32 GetNumStrips() const { return NumStrips; }
 	bool IsValid() const { return NumStrips > 0; }
 	/** Mean tension (0 = slack, 1 = drawing) of the rows, for the sheets' sag. */
 	float Load() const { return MeanLoad; }

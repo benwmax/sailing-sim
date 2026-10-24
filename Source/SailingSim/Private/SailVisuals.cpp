@@ -60,6 +60,72 @@ namespace
 		return CatmullRom(Row[0], Row[1], Row[2], Row[3], Tr);
 	}
 
+	template <typename T> void RefineSailUV(const TArray<T>& G, TArray<T>& Out);
+
+	/**
+	 * Ultra audit item 5: the wrinkles (FSailWrinkles) on the render grid, each vertex moved along its normal, and the
+	 * normals taken again from the wrinkled surface so the light catches them.
+	 */
+	void WrinkleSail(const FSailCloth& Cloth, const FSailWrinkles& W, TArray<FVector>& Pos, TArray<FVector>& Normals)
+	{
+		if (!W.bOn) return;
+		TArray<FVector4f>& Grid = Cloth.WrinkleGrid;
+		if (Grid.Num() != SailRenderRows * SailRenderCols)
+		{
+			TArray<FVector2D> UV;
+			RefineSailUV(Cloth.UV0(), UV);
+			Grid.SetNumUninitialized(UV.Num());
+			for (int32 Rr = 0; Rr < SailRenderRows; ++Rr)
+			{
+				for (int32 Rc = 0; Rc < SailRenderCols; ++Rc)
+				{
+					// The cell here: its steps along the chord and up the sail.
+					const FVector2D& U0 = UV[Rr * SailRenderCols + Rc];
+					const double Du = 0.5 * (FVector2D::Distance(U0, UV[Rr * SailRenderCols + FMath::Min(Rc + 1, SailRenderCols - 1)]) + FVector2D::Distance(U0, UV[Rr * SailRenderCols + FMath::Max(Rc - 1, 0)]));
+					const double Dv = 0.5 * (FVector2D::Distance(U0, UV[FMath::Min(Rr + 1, SailRenderRows - 1) * SailRenderCols + Rc]) + FVector2D::Distance(U0, UV[FMath::Max(Rr - 1, 0) * SailRenderCols + Rc]));
+					Grid[Rr * SailRenderCols + Rc] = FVector4f(float(U0.X), float(U0.Y), float(Du), float(Dv));
+				}
+			}
+		}
+		bool bAny = false;
+		TBitArray<> Moved(false, Pos.Num());
+		const TArray<FVector> SmoothPos = Pos;
+		for (int32 I = 0; I < Grid.Num(); ++I)
+		{
+			const FVector4f& G = Grid[I];
+			const float Cm = SailWrinkleCm(W, FVector2D(G.X, G.Y), G.Z, G.W);
+			if (Cm == 0.f) continue;
+			Pos[I] += Normals[I] * Cm;
+			Moved[I] = true;
+			bAny = true;
+		}
+		if (!bAny) return;
+		// The wrinkles' own turn of the normal (the wrinkled surface's against the same surface unwrinkled, both by central
+		// differences) added to the cloth's normals: no seam where the wrinkles end.
+		auto FdNormal = [](const TArray<FVector>& P, int32 Rr, int32 Rc)
+		{
+			const FVector Du = P[Rr * SailRenderCols + FMath::Min(Rc + 1, SailRenderCols - 1)] - P[Rr * SailRenderCols + FMath::Max(Rc - 1, 0)];
+			const FVector Dv = P[FMath::Min(Rr + 1, SailRenderRows - 1) * SailRenderCols + Rc] - P[FMath::Max(Rr - 1, 0) * SailRenderCols + Rc];
+			return FVector::CrossProduct(Du, Dv).GetSafeNormal();
+		};
+		for (int32 Rr = 0; Rr < SailRenderRows; ++Rr)
+		{
+			for (int32 Rc = 0; Rc < SailRenderCols; ++Rc)
+			{
+				const int32 I = Rr * SailRenderCols + Rc;
+				bool bNear = false;
+				for (int32 Dr = -1; Dr <= 1 && !bNear; ++Dr)
+					for (int32 Dc = -1; Dc <= 1 && !bNear; ++Dc)
+						bNear = Moved[FMath::Clamp(Rr + Dr, 0, SailRenderRows - 1) * SailRenderCols + FMath::Clamp(Rc + Dc, 0, SailRenderCols - 1)];
+				if (!bNear) continue;
+				FVector Nw = FdNormal(Pos, Rr, Rc), Ns = FdNormal(SmoothPos, Rr, Rc);
+				if (Nw.IsNearlyZero() || Ns.IsNearlyZero()) continue;
+				if (FVector::DotProduct(Ns, Normals[I]) < 0.f) { Nw = -Nw; Ns = -Ns; }
+				Normals[I] = (Normals[I] + (Nw - Ns)).GetSafeNormal();
+			}
+		}
+	}
+
 	void RefineSail(const FSailCloth& Cloth, const TArray<FVector>& Normals, const TArray<FProcMeshTangent>& Tangents,
 		TArray<FVector>& OutPos, TArray<FVector>& OutNormals, TArray<FProcMeshTangent>& OutTangents)
 	{
@@ -139,6 +205,10 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 	// Drawn on the finer render grid (above); -SailingClassicSailGrid draws the cloth's own grid (compare).
 	static SailingArgs::FCachedFlag ClassicGridArg(TEXT("SailingClassicSailGrid"));
 	const bool bClassicGrid = ClassicGridArg.Get();
+	// Ultra audit item 5: -SailingNoSailWrinkles draws the sails smooth (compare).
+	static SailingArgs::FCachedFlag NoWrinklesArg(TEXT("SailingNoSailWrinkles"));
+	// (High and Ultra: millimetre wrinkles are lost at Medium's resolution, and the frame there is the tightest.)
+	const bool bNoWrinkles = NoWrinklesArg.Get() || USailingSettings::Get()->Quality < ESailingQuality::High;
 	struct FWork { TArray<FVector> Normals, RPos, RNormals; TArray<FProcMeshTangent> Tangents, RTangents; };
 	TArray<FWork, TInlineAllocator<3>> Work;
 	Work.SetNum(Sails.Num());
@@ -156,7 +226,11 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 		Cloth.Step(U.Strips, U.Side, Drive);
 		Cloth.ComputeNormals(W.Normals);
 		Cloth.ComputeTangents(W.Tangents);
-		if (!bClassicGrid) RefineSail(Cloth, W.Normals, W.Tangents, W.RPos, W.RNormals, W.RTangents);
+		if (!bClassicGrid)
+		{
+			RefineSail(Cloth, W.Normals, W.Tangents, W.RPos, W.RNormals, W.RTangents);
+			if (!bNoWrinkles) WrinkleSail(Cloth, SailWrinklesFor(Cloth, U.Strips, Drive), W.RPos, W.RNormals);
+		}
 	});
 	ClothCpuSeconds += FPlatformTime::Seconds() - Start;
 	for (int32 K = 0; K < Sails.Num(); ++K)

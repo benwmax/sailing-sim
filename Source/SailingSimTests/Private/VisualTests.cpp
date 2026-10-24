@@ -1071,3 +1071,57 @@ bool FVisualBoatPacksTest::RunTest(const FString& Parameters)
 	}
 	return true;
 }
+
+/**
+ * Ultra audit item 5: the sails' fine wrinkles (FSailWrinkles). A corner's fan takes a wavelength from Cerda and
+ * Mahadevan and an amplitude whose sine takes up exactly the cloth's squeeze; both grow as they should with the load and
+ * the distance from the corner; nothing wrinkles with no load and a tight halyard; and a wave too short for the render
+ * grid fades out instead of aliasing.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSailWrinklesTest, "SailingSim.Visual.SailWrinkles", VisualFlags)
+bool FVisualSailWrinklesTest::RunTest(const FString& Parameters)
+{
+	// A J/22 main's clew in 12 kn: about 200 N over a 75 degree corner, 30 cm in.
+	double Lambda = 0.0, Amp = 0.0;
+	SailCornerWrinkle(200.0, FMath::DegreesToRadians(75.0), 0.3, Lambda, Amp);
+	AddInfo(FString::Printf(TEXT("Clew fan at 30 cm, 200 N: wavelength %.0f mm, amplitude %.1f mm"), Lambda * 1000.0, Amp * 1000.0));
+	TestTrue(TEXT("The fan's wavelength is a sail's: 10-40 cm"), Lambda > 0.10 && Lambda < 0.40);
+	TestTrue(TEXT("Its amplitude is a few millimetres (1-10 mm)"), Amp > 0.001 && Amp < 0.010);
+	// The sine takes up the squeeze: (pi A / lambda)^2 = nu T_r / (E_bias t).
+	const double Tr = 200.0 / (FMath::DegreesToRadians(75.0) * 0.3);
+	const double Squeeze = FSailWrinkles::Poisson * Tr / FSailWrinkles::BiasStiffness;
+	TestTrue(TEXT("The wrinkle's extra length is the cloth's squeeze"), FMath::IsNearlyEqual(FMath::Square(UE_DOUBLE_PI * Amp / Lambda), Squeeze, 1e-9));
+	double Lambda2, Amp2;
+	SailCornerWrinkle(400.0, FMath::DegreesToRadians(75.0), 0.3, Lambda2, Amp2);
+	TestTrue(TEXT("Twice the sheet load: shorter, no smaller wrinkles"), Lambda2 < Lambda && Amp2 >= 0.95 * Amp);
+	SailCornerWrinkle(200.0, FMath::DegreesToRadians(75.0), 0.6, Lambda2, Amp2);
+	TestTrue(TEXT("Further from the corner: longer waves (they coarsen outward)"), Lambda2 > Lambda);
+
+	FSailWrinkles W;
+	W.Tack = FVector2D(0.0, 0.0);
+	W.Clew = FVector2D(2.9, 0.0);
+	W.Head = FVector2D(0.0, 8.0);
+	TestEqual(TEXT("No load, tight halyard: no wrinkles"), SailWrinkleCm(W, FVector2D(2.6, 0.2), 0.05f, 0.05f), 0.f);
+	W.bOn = true;
+	W.SheetN = 200.0;
+	float Peak = 0.f, PeakCoarse = 0.f;
+	for (int32 K = 0; K < 200; ++K)
+	{
+		const double A = FMath::DegreesToRadians(100.0 + 70.0 * K / 199.0);
+		const FVector2D P = W.Clew + FVector2D(FMath::Cos(A), FMath::Sin(A)) * 0.3;
+		Peak = FMath::Max(Peak, FMath::Abs(SailWrinkleCm(W, P, 0.02f, 0.02f)));
+		PeakCoarse = FMath::Max(PeakCoarse, FMath::Abs(SailWrinkleCm(W, P, 0.2f, 0.2f)));
+	}
+	AddInfo(FString::Printf(TEXT("Clew fan on a 2 cm grid: %.2f cm peak; on a 20 cm grid: %.2f cm"), Peak, PeakCoarse));
+	TestTrue(TEXT("The fan shows on a fine grid"), Peak > 0.1f && Peak < 1.f);
+	TestEqual(TEXT("A grid too coarse for it draws it smooth"), PeakCoarse, 0.f);
+	// A soft halyard in a breeze wrinkles the luff, within its first 60 cm only.
+	W.SheetN = 0.0;
+	W.LuffStrain = 0.004;
+	W.LuffTension = 100.0;
+	float Luff = 0.f;
+	for (int32 K = 0; K < 100; ++K) Luff = FMath::Max(Luff, FMath::Abs(SailWrinkleCm(W, FVector2D(0.1, 2.0 + K * 0.01), 0.03f, 0.03f)));
+	TestTrue(TEXT("Luff wrinkles from a soft halyard"), Luff > 0.1f);
+	TestEqual(TEXT("None a metre back from the luff"), SailWrinkleCm(W, FVector2D(1.0, 2.0), 0.03f, 0.03f), 0.f);
+	return true;
+}
