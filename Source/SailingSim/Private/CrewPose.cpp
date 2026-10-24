@@ -867,7 +867,15 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 		W.StrapX0 = -1.176; W.StrapX1 = -0.524; W.StrapThick = 0.003; W.StrapHalfY = 0.025;
 		W.StrapEndZ = 0.120 - W.StrapThick; W.StrapMidZ = 0.100 - W.StrapThick;
 		return true;
-	case EBoatType::ILCA7: return Fleet(-1.62, -0.22, 0.31, 0.22);
+	case EBoatType::ILCA7:
+		Fleet(-1.62, -0.22, 0.31, 0.22);
+		// pc/ilca-fidelity (build_fleet.py): the sole 0.12 m up from the waterline; the strap's ends at x -1.616 and -0.224, its
+		// top 0.24 m up at the ends and 0.22 midway (x -0.92), so 0.12 and 0.10 over the sole as on the Sunfish; 25 mm either
+		// side of the centreline (3 mm of webbing, as the Sunfish's).
+		W.SoleZ = 0.12;
+		W.StrapX0 = -1.616; W.StrapX1 = -0.224; W.StrapThick = 0.003; W.StrapHalfY = 0.025;
+		W.StrapEndZ = 0.120 - W.StrapThick; W.StrapMidZ = 0.100 - W.StrapThick;
+		return true;
 	case EBoatType::Catalina22: return Fleet(-3.05, -0.78, 0.63, 0.42);
 	case EBoatType::Catalina30: return Fleet(-4.05, -1.32, 0.82, 0.5);
 	case EBoatType::Corsair880: return Fleet(-3.75, -0.95, 0.62, 0.45);
