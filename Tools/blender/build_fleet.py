@@ -233,6 +233,22 @@ def tube(m, path, radius, slot, sides=10, cap=True):
             m.face(list(reversed(r)) if rev else r, slot)
 
 
+def ttube(m, path, radii, slot, sides=12):
+    """A tube whose radius changes along its path (radii per point), capped at both ends (pc/lagoon-fidelity)."""
+    pts = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        a = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
+        u = t.cross(a).normalized()
+        w = t.cross(u).normalized()
+        rings.append([tuple(p + (u * math.cos(2 * math.pi * k / sides) + w * math.sin(2 * math.pi * k / sides)) * radii[i]) for k in range(sides + 1)])
+    m.grid(rings, slot)
+    for ring, rev in ((rings[0], True), (rings[-1], False)):
+        r = ring[:-1]
+        m.face(list(reversed(r)) if rev else r, slot)
+
+
 def naca_loop(chord, thickness, n=20):
     pts = []
     for i in range(n + 1):
@@ -1076,7 +1092,7 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
             hull.grid(rows, "CabinWindow", flip=side < 0)
         # flush hatches on the foredeck and a cleat at the bow and quarter
         for hx in (b1 + 0.6, b1 + 1.8):
-            box(hull, (hx, Hh.cy, Hh.deck_z(hx, Hh.cy) + 0.008), (0.55, 0.55, 0.016), "CabinWindow")
+            kit_part("HatchFwd", hx, Hh.cy, Hh.deck_z(hx, Hh.cy))     # pc/lagoon-fidelity: the kit's (it had been a dark box)
         for cx in (Hh.h["bow_x"] - 0.7, Hh.h["stern_x"] + 0.45):
             cy = Hh.cy + side * (Hh.sharp_half_beam(cx) - 0.15)
             cleat(cx, cy, Hh.deck_z(cx, cy), 0.0, 0.3)
@@ -1122,11 +1138,27 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
         tube(hull, [(dx0, y, dz + 1.2), (dx0, y * 0.7, dz + 0.85)], 0.004, "Rope", 4, cap=False)
     tz = dz + 0.8    # the tender's tubes, hung across the stern from the davits
     ty0, ty1 = -1.3, 1.3
+    # pc/lagoon-fidelity: a RIB, from charter-cat photos (it had been black cylinders, a plank and a box): grey hypalon
+    # tubes swept round the bow and tapering to cones past her transom, a rubbing strake along them, a moulded GRP
+    # hull under them with its keel line, a bench thwart, and the kit's outboard on her transom.
+    bow = [(dx0 + 0.32 * math.cos(math.pi * k / 10), ty0 + 0.28 - 0.26 * math.sin(math.pi * k / 10), tz) for k in range(11)]
     for xo in (-0.32, 0.32):
-        tube(hull, [(dx0 + xo, ty0 + 0.25, tz), (dx0 + xo, ty1 - 0.2, tz)], 0.2, "BlackPlastic", 14)
-    tube(hull, [(dx0 - 0.32, ty0 + 0.25, tz), (dx0, ty0 + 0.05, tz), (dx0 + 0.32, ty0 + 0.25, tz)], 0.2, "BlackPlastic", 14)
-    box(hull, (dx0, 0.05, tz - 0.12), (0.5, 2.3, 0.06), "Deck")
-    box(hull, (dx0, ty1 - 0.05, tz + 0.15), (0.22, 0.18, 0.35), "BlackPlastic")
+        ttube(hull, [(dx0 + xo, ty0 + 0.28, tz), (dx0 + xo, ty1 - 0.3, tz), (dx0 + xo, ty1, tz + 0.01), (dx0 + xo, ty1 + 0.12, tz + 0.03)],
+              [0.2, 0.2, 0.17, 0.08], "Rubber", 14)
+        tube(hull, [(dx0 + xo * 1.6, ty0 + 0.28, tz - 0.06), (dx0 + xo * 1.6, ty1 - 0.25, tz - 0.06)], 0.02, "BlackPlastic", 6)
+    tube(hull, bow, 0.2, "Rubber", 14, cap=False)
+    tube(hull, [(dx0 + 0.51 * math.cos(math.pi * k / 10), ty0 + 0.28 - 0.45 * math.sin(math.pi * k / 10), tz - 0.06) for k in range(11)], 0.02, "BlackPlastic", 6, cap=False)
+    rows = []
+    for k in range(9):
+        y = ty0 + 0.2 + (ty1 - 0.05 - (ty0 + 0.2)) * k / 8
+        bw = 0.42 * (1.0 - 0.55 * max(0.0, (ty0 + 0.6 - y) / 0.4))
+        rows.append([(dx0 + bw * v, y, tz - 0.14 - 0.12 * (1.0 - abs(v)) ** 1.5) for v in (-1, -0.5, 0, 0.5, 1)])
+    hull.grid(rows, "Deck")          # (gelcoat, not a canoe slot: FleetMesh measures those as her hulls)
+    hull.grid(rows, "Deck", flip=True)
+    box(hull, (dx0, 0.05, tz - 0.1), (0.5, 2.2, 0.03), "NonSkid")                    # the floor
+    box(hull, (dx0, 0.25, tz + 0.02), (0.6, 0.22, 0.03), "Deck")                     # the thwart
+    box(hull, (dx0, ty1 - 0.02, tz - 0.05), (0.56, 0.05, 0.22), "Deck")              # her transom
+    kit_part("Outboard35", dx0, ty1 + 0.15, tz - 0.62, -math.pi / 2)
     for Hh in HS[:2]:
         st = Hh.h["stern_x"]
         for k in range(3):
@@ -1134,8 +1166,13 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
         for y in (-0.18, 0.18):
             tube(hull, [(st + 0.12, Hh.cy + y, Hh.sheer(st) - 0.2), (st + 0.12, Hh.cy + y, Hh.sheer(st) - 0.7)], 0.012, "Stainless", 6)
     # windlass and bow roller on the forward crossbeam
-    box(hull, (b1 + 0.9, 0, dz + 0.1), (0.22, 0.25, 0.14), "Stainless")
-    tube(hull, [(b1 + 0.9, -0.16, dz + 0.12), (b1 + 0.9, 0.16, dz + 0.12)], 0.05, "BlackPlastic", 12)
+    # (pc/lagoon-fidelity: a vertical windlass, from charter photos: its base, the motor housing, the chain gypsy and the
+    # warping drum on top, a stripper toward the roller; it had been a box and a cylinder)
+    wx = b1 + 0.9
+    lathe(hull, wx, 0.0, [(0.0, dz), (0.13, dz), (0.13, dz + 0.02), (0.1, dz + 0.04), (0.09, dz + 0.1), (0.075, dz + 0.11), (0.0, dz + 0.11)], "Stainless", 20)
+    lathe(hull, wx, 0.0, [(0.0, dz + 0.11), (0.085, dz + 0.11), (0.07, dz + 0.13), (0.085, dz + 0.15), (0.0, dz + 0.15)], "Stainless", 20)
+    lathe(hull, wx, 0.0, [(0.0, dz + 0.15), (0.06, dz + 0.15), (0.05, dz + 0.2), (0.055, dz + 0.22), (0.0, dz + 0.235)], "Stainless", 20)
+    box(hull, (wx + 0.1, 0.0, dz + 0.13), (0.1, 0.03, 0.02), "Stainless")
 
 
 # ---------------------------------------------------------------- the boat
