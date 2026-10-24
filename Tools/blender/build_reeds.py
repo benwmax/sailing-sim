@@ -159,10 +159,14 @@ def far_margin():
     def card(x0, x1, y, yaw, h0, h1, segs, spike):
         cs, sn = math.cos(yaw), math.sin(yaw)
         pts = []
+        # (pc/weed-tops: the peaks rise and fall in clumps a metre or two long, with a taller stem now and then: seen from
+        # 200 m the 25 cm zigzag alone was under a pixel and the strip's top read flat, a box.)
+        ph1, ph2 = rng.uniform(0, 6.28), rng.uniform(0, 6.28)
         for i in range(segs + 1):
             t = i / segs
             u = x0 + (x1 - x0) * t
-            top = rng.uniform(h0, h1) * (1.0 if i % 2 == 0 else spike)
+            env = 0.5 + 0.5 * (0.5 + 0.5 * math.sin(u * 4.8 + ph1)) * (0.7 + 0.3 * math.sin(u * 11.0 + ph2))
+            top = rng.uniform(h0, h1) * env * (1.0 if i % 2 == 0 else spike) * (1.5 if rng.random() < 0.08 else 1.0)
             px, py = u * cs - y * sn, u * sn + y * cs
             pts.append(((px, py, -0.12), (px, py, top)))
         for face_side in (0, 1):
@@ -171,7 +175,7 @@ def far_margin():
             for (a0, b0), (a1, b1) in zip(vs, vs[1:]):
                 bm.faces.new((a0, a1, b1, b0) if face_side else (a0, b0, b1, a1))
     for y, yaw in ((-0.25, 0.12), (0.0, -0.06), (0.25, 0.09)):
-        card(-2.25, 2.25, y, yaw, 0.45, 1.25, 18, 0.55)
+        card(-2.25, 2.25, y, yaw, 0.6, 1.5, 30, 0.5)
     for _ in range(2):
         cx = rng.uniform(-1.5, 1.5)
         for yaw in (0.6, -0.9):

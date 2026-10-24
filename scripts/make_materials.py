@@ -978,9 +978,14 @@ float clump = lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
 // breaks into clumps a metre or two long with gaps between: a weed margin is broken and lets the water show through.)
 float3 green = lerp(float3(0.05, 0.064, 0.028), float3(0.09, 0.105, 0.045), h);
 float3 straw = lerp(float3(0.075, 0.068, 0.038), float3(0.17, 0.15, 0.085), h);
-float2 g = p.xy / 1.7 + float2(clump * 0.8, 0.0);
-float gn = frac(sin(dot(floor(g), float2(41.3, 289.1))) * 43758.5);
-float gap = step(0.3, gn);
+// (pc/weed-tops: the gaps came from a 1.7 m grid, each clump cut square at its ends: a box. Now smooth noise along the
+// strip against a threshold that rises with height, so each clump narrows to a ragged top and the gaps open upward.)
+float gs = (p.x + p.y) / 1.3;
+float gi = floor(gs), gf = frac(gs);
+gf = gf * gf * (3.0 - 2.0 * gf);
+float gn = lerp(frac(sin(gi * 41.3) * 43758.5), frac(sin((gi + 1.0) * 41.3) * 43758.5), gf);
+gn = 0.7 * gn + 0.3 * frac(sin(floor(gs * 4.0) * 17.7) * 43758.5);
+float gap = step(0.22 + 0.45 * h * h, gn);
 Fade = smoothstep(120.0, 170.0, length(WP - Cam) * 0.01) * gap;
 return lerp(green, straw, smoothstep(0.55, 0.9, clump) * 0.7);
 """
