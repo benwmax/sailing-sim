@@ -343,6 +343,17 @@ namespace Sailing
 		{
 			const double Up = 2.718281828 * Floor;
 			const double At = Quantile(Floor), AtUp = Quantile(Up);
+			// docs/calm-water/: a flat tail (calm water: the drawn fold scale is zero, every sample 1) has nothing to
+			// extrapolate along, and the threshold came out at the samples themselves (1.0), so M_WaterV4's fold ramp capped
+			// any pixel whose Jacobian dipped under 1, and its residue ramp (to 0.12 over the threshold) every pixel. The
+			// shader's own Jacobian still folds a little in the fine ripples, which these samples don't see. Nothing breaks on
+			// calm water: -1, which no drawn Jacobian reaches.
+			if (AtUp - At < 0.002)
+			{
+				OutSlope = 0.002;
+				OutThreshold = -1.0;
+				return;
+			}
 			OutSlope = std::max(AtUp - At, 0.002);
 			const double Zt = NormalTailQuantile(Target), Zf = NormalTailQuantile(Floor), Zu = NormalTailQuantile(Up);
 			OutThreshold = At - std::max(AtUp - At, 0.0) * (Zf - Zt) / std::max(Zu - Zf, 1e-6);
