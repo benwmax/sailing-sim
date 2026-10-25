@@ -1,5 +1,6 @@
 #include "SailingEnvironment.h"
 #include "SailingFrame.h"
+#include "SailingProbeCopy.h"
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -1341,10 +1342,12 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	CloudMaterial->SetScalarParameterValue(TEXT("CloudDensity"), FMath::Lerp(0.045f, 0.065f, float(W.CloudDarkness)) /* Graphics G1: real cumulus extinction, 0.05-0.1 /m */);
 }
 
-/** docs/sky-lower-hemisphere: M_SkyEnvProbe's 1x1 target copied back without a stall (the render thread fills Value). */
+/** docs/sky-lower-hemisphere: M_SkyEnvProbe's 2x1 target copied back without a stall (the render thread fills Value).
+ *  docs/sky-probe-readback: through a buffer. A texture readback's Lock drained the GPU on Metal every time (30 ms on the
+ *  render thread every two seconds); a buffer's waits only on its own fence, which IsReady has seen signalled. */
 struct FSkyProbeReadback
 {
-	TUniquePtr<FRHIGPUTextureReadback> Readback = MakeUnique<FRHIGPUTextureReadback>(TEXT("SkyEnvProbe"));
+	TUniquePtr<FRHIGPUBufferReadback> Readback = MakeUnique<FRHIGPUBufferReadback>(TEXT("SkyEnvProbe"));
 	std::atomic<bool> bInFlight{ false };
 	FCriticalSection Guard;
 	FLinearColor Value = FLinearColor::Black;   // the sky's mean radiance
@@ -1430,7 +1433,7 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 		TSharedPtr<FSkyProbeReadback, ESPMode::ThreadSafe> State = SkyProbe;
 		ENQUEUE_RENDER_COMMAND(SkyProbeCopy)([State, Res](FRHICommandListImmediate& RHICmdList)
 		{
-			if (Res && Res->GetRenderTargetTexture()) State->Readback->EnqueueCopy(RHICmdList, Res->GetRenderTargetTexture());
+			if (Res && Res->GetRenderTargetTexture()) SailingCopyTexelsToReadback(RHICmdList, Res->GetRenderTargetTexture(), 2, *State->Readback);
 			else State->bInFlight = false;
 		});
 	}
@@ -1440,12 +1443,11 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 		ENQUEUE_RENDER_COMMAND(SkyProbePoll)([State](FRHICommandListImmediate& RHICmdList)
 		{
 			if (!State->bInFlight || !State->Readback->IsReady()) return;
-			int32 RowPitch = 0;
-			if (const FFloat16Color* Px = static_cast<const FFloat16Color*>(State->Readback->Lock(RowPitch)))
+			if (const FVector4f* Px = static_cast<const FVector4f*>(State->Readback->Lock(2 * sizeof(FVector4f))))
 			{
 				FScopeLock Lock(&State->Guard);
-				State->Value = FLinearColor(Px[0].R.GetFloat(), Px[0].G.GetFloat(), Px[0].B.GetFloat());
-				State->Sun = FLinearColor(Px[1].R.GetFloat(), Px[1].G.GetFloat(), Px[1].B.GetFloat());
+				State->Value = FLinearColor(Px[0].X, Px[0].Y, Px[0].Z);
+				State->Sun = FLinearColor(Px[1].X, Px[1].Y, Px[1].Z);
 				State->bHasValue = true;
 			}
 			State->Readback->Unlock();

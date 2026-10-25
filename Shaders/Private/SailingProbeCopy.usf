@@ -1,0 +1,13 @@
+// docs/sky-probe-readback: a texture's first Count texels (its top row) into a structured buffer, read back without a
+// stall on Metal (SailingProbeCopy.cpp).
+#include "/Engine/Public/Platform.ush"
+
+Texture2D<float4> Source;
+RWStructuredBuffer<float4> Dest;
+uint Count;
+
+[numthreads(8, 1, 1)]
+void MainCS(uint3 Id : SV_DispatchThreadID)
+{
+	if (Id.x < Count) Dest[Id.x] = Source.Load(int3(Id.x, 0, 0));
+}
