@@ -701,6 +701,29 @@ float band = abs(frac(sy) - 0.5);
 float torn = smoothstep(0.25, 0.55, frac(Coord.x * (1.2 + 2.0 * hb) + hb * 3.7));
 float strand = saturate((0.08 + 0.12 * hb - band) * 10.0) * torn * step(0.2, hb);
 float t = saturate((Grain - 0.6) / 0.4);
+// pc/ultra-spray (docs/ultra-spray; Ultra only, Fine 1 from AWaterSurface::UpdateSpray): what still read as sprites close up.
+// - Mist was a smooth disc with a clean edge: torn into wisps by two octaves of value noise (it thins out, it has no rim).
+// - A sheet's strands ran the quad's whole length: toward its ends they neck and bead into drops (a ligament breaking up,
+//   Rayleigh-Plateau, beads about four strand widths apart), so a sheet reads as water tearing, not a striped flap.
+[branch] if (Fine > 0.5)
+{
+    float2 mq = q * 2.2 + Seed * 9.3;
+    float2 mi = floor(mq), mf = frac(mq);
+    mf = mf * mf * (3.0 - 2.0 * mf);
+    float m00 = frac(sin(dot(mi, float2(27.17, 113.9))) * 43758.5), m10 = frac(sin(dot(mi + float2(1, 0), float2(27.17, 113.9))) * 43758.5);
+    float m01 = frac(sin(dot(mi + float2(0, 1), float2(27.17, 113.9))) * 43758.5), m11 = frac(sin(dot(mi + float2(1, 1), float2(27.17, 113.9))) * 43758.5);
+    float n1 = lerp(lerp(m00, m10, mf.x), lerp(m01, m11, mf.x), mf.y);
+    float2 mq2 = q * 5.7 + Seed * 3.1;
+    float2 ni = floor(mq2), nf = frac(mq2);
+    nf = nf * nf * (3.0 - 2.0 * nf);
+    float k00 = frac(sin(dot(ni, float2(27.17, 113.9))) * 43758.5), k10 = frac(sin(dot(ni + float2(1, 0), float2(27.17, 113.9))) * 43758.5);
+    float k01 = frac(sin(dot(ni + float2(0, 1), float2(27.17, 113.9))) * 43758.5), k11 = frac(sin(dot(ni + float2(1, 1), float2(27.17, 113.9))) * 43758.5);
+    float n2 = lerp(lerp(k00, k10, nf.x), lerp(k01, k11, nf.x), nf.y);
+    soft = saturate(1.0 - r) * smoothstep(0.3, 0.8, 0.6 * n1 + 0.4 * n2 + 0.35 * (1.0 - r) - 0.15);
+    float ends = smoothstep(0.25, 0.85, abs(q.x));
+    float bead = saturate((0.5 + 0.5 * cos((Coord.x * (9.0 + 8.0 * hb) + hb * 5.0) * 6.2831853) - 0.35) * 2.5);
+    strand *= lerp(1.0, bead, ends);
+}
 float grainy = lerp(strand, drop, t) * edge + 0.1 * soft;
 return saturate(Alpha * lerp(soft, grainy, saturate(Grain / 0.6)));
 """
@@ -718,6 +741,7 @@ def build_spray():
     inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -900, 0)}
     for k, (name, y) in enumerate((("Alpha", 100), ("Grain", 200), ("Seed", 300))):
         inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    inputs["Fine"] = scalar(mat, "Fine", 0.0, -900, 400)   # pc/ultra-spray: 1 on Ultra (AWaterSurface::UpdateSpray's instance)
     c = custom(mat, SPRAY_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
     for name, n in inputs.items():
         connect(n, "", c, name)
@@ -827,7 +851,7 @@ return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - y * y)) * 0.
 
 BOW_WAVE_CODE = r"""
 // Spray hull (docs/spray-hull): the bow wave's curl (ASailboatPawn::UpdateBowWave). UV: x across the sheet (0 at the hull,
-// 1 out on the sea), y along the bow (0 at the stem). Vertex colour: R the lip (speed), G the crest's rise, A the fade.
+// 1 out on the sea), y along the bow (0 at the stem). Vertex colour: R the lip (speed), G the crest's rise, B Ultra's detail, A the fade.
 // Green-dark water thinning out to nothing where it meets the sea, a white crest along the shoulder and the lip, broken
 // by bubbly noise that runs aft with the water.
 float u = UV.x, t = UV.y;
@@ -857,6 +881,28 @@ float foam = saturate(lipLine * 1.4f + crest * gap * 0.25f * nz + (1.0f - u) * 0
 // angles, strongest along the curling top edge), a faint dark-water tint, gone where it meets the sea and soft at its root.
 float fres = 0.04f + 0.96f * pow(1.0f - saturate(abs(dot(normalize(N), normalize(V)))), 5.0f);
 fres = saturate(fres * (1.0f + 1.5f * crest));
+// pc/ultra-spray (docs/ultra-spray; Ultra only: vertex colour B, ASailboatPawn::UpdateBowWave). Close up the lip read as one
+// soft white tube. Water torn off a bow runs aft in streaks a couple of centimetres wide and some tens long, and throws
+// drops off its edge: the lip is cut into streaks running aft with the water, flecked outboard by drops, and the clear
+// film carries the same flow lines in its reflection. (UV: u across, about 0.6 m; t along the bow, about 1.4 m.)
+[branch] if (VC.b > 0.5f)
+{
+    float2 sq = float2(u * 30.0f, t * 3.0f - Time * 2.5f);
+    float2 si = floor(sq), sf = frac(sq);
+    sf = sf * sf * (3.0f - 2.0f * sf);
+    float s00 = frac(sin(dot(si, float2(41.3, 289.1))) * 43758.5), s10 = frac(sin(dot(si + float2(1, 0), float2(41.3, 289.1))) * 43758.5);
+    float s01 = frac(sin(dot(si + float2(0, 1), float2(41.3, 289.1))) * 43758.5), s11 = frac(sin(dot(si + float2(1, 1), float2(41.3, 289.1))) * 43758.5);
+    float ns = lerp(lerp(s00, s10, sf.x), lerp(s01, s11, sf.x), sf.y);
+    float streak = smoothstep(0.4f, 0.8f, ns);
+    foam = saturate(foam * lerp(0.25f, 1.35f, streak));
+    float2 dq = float2(u * 80.0f, t * 20.0f - Time * 7.0f);
+    float2 dc = floor(dq), df = frac(dq) - 0.5f;
+    float dh = frac(sin(dot(dc, float2(12.9898, 78.233))) * 43758.5453);
+    float fleck = saturate((0.16f - length(df - 0.3f * (float2(frac(dh * 7.31f), frac(dh * 3.17f)) - 0.5f))) * 14.0f) * step(0.72f, dh);
+    float outboard = smoothstep(0.12f, 0.22f, u) * (1.0f - smoothstep(0.3f, 0.5f, u)) * VC.g * (0.3f + 0.7f * VC.r);
+    foam = max(foam, fleck * outboard);
+    fres = saturate(fres * lerp(0.6f, 1.4f, ns));
+}
 Rough = lerp(0.02f, 0.45f, foam);
 Opacity = saturate(VA * (1.0f - smoothstep(0.45f, 1.0f, u)) * (0.16f + 0.6f * fres + 0.85f * foam));
 return lerp(float3(0.01f, 0.018f, 0.016f), float3(0.92f, 0.94f, 0.93f), foam);
