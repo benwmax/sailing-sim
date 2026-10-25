@@ -3510,6 +3510,20 @@ def cache_code():
     return CACHE_HEAD + view + CACHE_SHADOW + shadow + CACHE_TAIL
 
 
+def build_sky_env_probe():
+    """M_SkyEnvProbe (docs/sky-lower-hemisphere): the sky light's cube sampled straight up at full roughness, the sky's
+    cosine-weighted mean radiance (its irradiance over pi), drawn into a 1x1 target that ASailingEnvironment reads back
+    to set the sky light's lower hemisphere to what the water reflects and scatters up."""
+    mat = new_material("M_SkyEnvProbe")
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    env = node(mat, unreal.MaterialExpressionSkyLightEnvMapSample, -400, 0)
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -700, 0, constant=unreal.LinearColor(0, 0, 1, 0)), "", env, "Direction")
+    connect(node(mat, unreal.MaterialExpressionConstant, -700, 100, r=1.0), "", env, "Roughness")
+    MEL.connect_material_property(env, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_cloud_cache():
     """M_CloudCache (C2): the far clouds' panorama, drawn to a render target a strip at a time (see CACHE_HEAD)."""
     mat = new_material("M_CloudCache")
@@ -5104,6 +5118,7 @@ build(build_far_cap)
 build(build_bow_wave)
 build(build_cloud_layers)
 build(build_cloud_cache)
+build(build_sky_env_probe)
 build(build_sky_dome)
 build(build_lens_water)
 build(build_trees_materials)
