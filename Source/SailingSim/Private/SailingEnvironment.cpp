@@ -1337,7 +1337,8 @@ struct FSkyProbeReadback
 	TUniquePtr<FRHIGPUTextureReadback> Readback = MakeUnique<FRHIGPUTextureReadback>(TEXT("SkyEnvProbe"));
 	std::atomic<bool> bInFlight{ false };
 	FCriticalSection Guard;
-	FLinearColor Value = FLinearColor::Black;
+	FLinearColor Value = FLinearColor::Black;   // the sky's mean radiance
+	FLinearColor Sun = FLinearColor::Black;     // the sun's illuminance on the horizontal water
 	bool bHasValue = false;
 };
 
@@ -1368,31 +1369,32 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 	if (!SkyComp || NoBounceArg.Get() || FixedGrey >= 0.f || !SkyProbeMaterial || USailingSettings::Get()->Quality == ESailingQuality::Low) return;
 	if (!SkyProbeTarget)
 	{
-		SkyProbeTarget = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1, 1, RTF_RGBA16f, FLinearColor::Black);
+		SkyProbeTarget = UKismetRenderingLibrary::CreateRenderTarget2D(this, 2, 1, RTF_RGBA16f, FLinearColor::Black);
 		SkyProbe = MakeShared<FSkyProbeReadback, ESPMode::ThreadSafe>();
 	}
-	// The last readback, once it has landed: (Fresnel + upwelling) x the sky's mean radiance, in the sky light's own units
+	// The last readback, once it has landed. The water's radiance upward: its Fresnel reflection of the sky (0.066 of the
+	// sky's mean radiance) and the body's upwelling of the sky and of the sun (R_body x their radiance and the sun's
+	// horizontal illuminance over pi; the sun's specular glint isn't diffuse and stays out), in the sky light's own units
 	// (the probe includes its intensity and colour, the lower hemisphere doesn't). Set only when it moves 2%.
-	FLinearColor Probe = FLinearColor::Black;
+	FLinearColor Probe = FLinearColor::Black, SunIll = FLinearColor::Black;
 	bool bNew = false;
 	{
 		FScopeLock Lock(&SkyProbe->Guard);
-		if (SkyProbe->bHasValue) { Probe = SkyProbe->Value; SkyProbe->bHasValue = false; bNew = true; }
+		if (SkyProbe->bHasValue) { Probe = SkyProbe->Value; SunIll = SkyProbe->Sun; SkyProbe->bHasValue = false; bNew = true; }
 	}
 	if (bNew)
 	{
 		const FLinearColor Light = SkyComp->GetLightColor() * FMath::Max(SkyComp->Intensity, 1e-4f);
-		const FLinearColor Reflect = FLinearColor(kWaterSkyFresnel, kWaterSkyFresnel, kWaterSkyFresnel) + WaterUpwelling(USailingSettings::Get()->World);
-		const FLinearColor Lower(Reflect.R * Probe.R / FMath::Max(Light.R, 1e-4f), Reflect.G * Probe.G / FMath::Max(Light.G, 1e-4f), Reflect.B * Probe.B / FMath::Max(Light.B, 1e-4f));
+		const FLinearColor Body = WaterUpwelling(USailingSettings::Get()->World);
+		const FLinearColor Up = (FLinearColor(kWaterSkyFresnel, kWaterSkyFresnel, kWaterSkyFresnel) + Body) * Probe + Body * SunIll * (1.f / PI);
+		const FLinearColor Lower(Up.R / FMath::Max(Light.R, 1e-4f), Up.G / FMath::Max(Light.G, 1e-4f), Up.B / FMath::Max(Light.B, 1e-4f));
 		const float Change = FMath::Abs(Lower.GetLuminance() - AppliedLowerHemisphere.GetLuminance()) / FMath::Max(Lower.GetLuminance(), 1e-6f);
 		if (AppliedLowerHemisphere.R < 0.f || Change > 0.02f)
 		{
 			SkyComp->bLowerHemisphereIsBlack = false;
 			SkyComp->SetLowerHemisphereColor(Lower);
-			if (AppliedLowerHemisphere.R < 0.f)
-			{
-				UE_LOG(LogSailing, Display, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), lower hemisphere (%.4f, %.4f, %.4f)"), Probe.R, Probe.G, Probe.B, Lower.R, Lower.G, Lower.B);
-			}
+			UE_LOG(LogSailing, Log, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), sun on the water (%.4f, %.4f, %.4f), lower hemisphere (%.5f, %.5f, %.5f)"),
+				Probe.R, Probe.G, Probe.B, SunIll.R, SunIll.G, SunIll.B, Lower.R, Lower.G, Lower.B);
 			AppliedLowerHemisphere = Lower;
 		}
 	}
@@ -1404,7 +1406,7 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 		FVector2D Size;
 		FDrawToRenderTargetContext Context;
 		UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(this, SkyProbeTarget, Canvas, Size, Context);
-		if (Canvas) Canvas->K2_DrawMaterial(SkyProbeMaterial, FVector2D::ZeroVector, FVector2D(1.0, 1.0), FVector2D::ZeroVector);
+		if (Canvas) Canvas->K2_DrawMaterial(SkyProbeMaterial, FVector2D::ZeroVector, FVector2D(2.0, 1.0), FVector2D::ZeroVector);
 		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this, Context);
 		SkyProbe->bInFlight = true;
 		FTextureRenderTargetResource* Res = SkyProbeTarget->GameThread_GetRenderTargetResource();
@@ -1425,7 +1427,8 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 			if (const FFloat16Color* Px = static_cast<const FFloat16Color*>(State->Readback->Lock(RowPitch)))
 			{
 				FScopeLock Lock(&State->Guard);
-				State->Value = FLinearColor(Px->R.GetFloat(), Px->G.GetFloat(), Px->B.GetFloat());
+				State->Value = FLinearColor(Px[0].R.GetFloat(), Px[0].G.GetFloat(), Px[0].B.GetFloat());
+				State->Sun = FLinearColor(Px[1].R.GetFloat(), Px[1].G.GetFloat(), Px[1].B.GetFloat());
 				State->bHasValue = true;
 			}
 			State->Readback->Unlock();

@@ -3511,15 +3511,25 @@ def cache_code():
 
 
 def build_sky_env_probe():
-    """M_SkyEnvProbe (docs/sky-lower-hemisphere): the sky light's cube sampled straight up at full roughness, the sky's
-    cosine-weighted mean radiance (its irradiance over pi), drawn into a 1x1 target that ASailingEnvironment reads back
-    to set the sky light's lower hemisphere to what the water reflects and scatters up."""
+    """M_SkyEnvProbe (docs/sky-lower-hemisphere): in a 2x1 target that ASailingEnvironment reads back, the sky light's cube
+    sampled straight up at full roughness (the sky's cosine-weighted mean radiance, its irradiance over pi) and the sun's
+    horizontal illuminance at the water, to set the sky light's lower hemisphere to what the water reflects and scatters up."""
     mat = new_material("M_SkyEnvProbe")
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
-    env = node(mat, unreal.MaterialExpressionSkyLightEnvMapSample, -400, 0)
-    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -700, 0, constant=unreal.LinearColor(0, 0, 1, 0)), "", env, "Direction")
-    connect(node(mat, unreal.MaterialExpressionConstant, -700, 100, r=1.0), "", env, "Roughness")
-    MEL.connect_material_property(env, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    env = node(mat, unreal.MaterialExpressionSkyLightEnvMapSample, -700, 0)
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -1000, 0, constant=unreal.LinearColor(0, 0, 1, 0)), "", env, "Direction")
+    connect(node(mat, unreal.MaterialExpressionConstant, -1000, 100, r=1.0), "", env, "Roughness")
+    # The second texel: the sun's illuminance on the horizontal water (the scene sun, already dimmed by the clouds, through
+    # the atmosphere), for the body's upwelling of sunlight; the same units as the sky's.
+    ill = node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -700, 200)
+    connect(MEL.create_material_expression(mat, unreal.MaterialExpressionCameraPositionWS, -1000, 200), "", ill, "World Position")
+    sun_dir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -700, 350)
+    pick = custom(mat, "return UV.x < 0.5 ? Env : Ill * max(Dir.z, 0.0);", ["UV", "Env", "Ill", "Dir"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -350, 100)
+    connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -700, -150), "", pick, "UV")
+    connect(env, "", pick, "Env")
+    connect(ill, "", pick, "Ill")
+    connect(sun_dir, "", pick, "Dir")
+    MEL.connect_material_property(pick, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
