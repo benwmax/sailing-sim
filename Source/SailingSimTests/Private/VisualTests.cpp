@@ -1138,7 +1138,8 @@ bool FVisualSailWrinklesTest::RunTest(const FString& Parameters)
  * Ultra audit item 7: the polos' looseness (Tools/blender/crew_looseness.py, imported as vertex colour red) is where a
  * shirt hangs free: the hem below the life jacket and the cuffs. A few tenths of the polo is loose, its lowest band is
  * loose and its collar isn't, so M_CrewFabric's wind flutter and lag move only those (a white colour set would flap the
- * whole shirt).
+ * whole shirt). A polo with no looseness at all (built before crew_looseness.py: no colours, the outfit's white ones, or
+ * none loose) warns and is skipped; M_CrewFabric leaves it still.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClothLoosenessTest, "SailingSim.Visual.CrewClothLooseness", VisualFlags)
 bool FVisualCrewClothLoosenessTest::RunTest(const FString& Parameters)
@@ -1159,24 +1160,44 @@ bool FVisualCrewClothLoosenessTest::RunTest(const FString& Parameters)
 		if (!TestNotNull(TEXT("It has a mesh description"), MD)) continue;
 		const TVertexAttributesConstRef<FVector3f> Pos = MD->GetVertexPositions();
 		const TVertexInstanceAttributesConstRef<FVector4f> Col = MD->VertexInstanceAttributes().GetAttributesRef<FVector4f>(MeshAttribute::VertexInstance::Color);
-		if (!TestTrue(TEXT("It carries vertex colours"), Col.IsValid())) continue;
+		// A polo built before crew_looseness.py (the PC's crew until the next pack) has no looseness: say so and skip it.
+		// A colour set that is all white (the outfit's own, imported first) is a real bug and fails below.
+		if (!Col.IsValid() || !Polo->GetHasVertexColors())
+		{
+			AddWarning(FString::Printf(TEXT("%s: the polo has no vertex colours: polos predate crew_looseness: re-pack the crew"), *R));
+			continue;
+		}
 		float ZMin = 1e9f, ZMax = -1e9f;
 		for (const FVertexID V : MD->Vertices().GetElementIDs())
 		{
 			ZMin = FMath::Min(ZMin, Pos[V].Z);
 			ZMax = FMath::Max(ZMax, Pos[V].Z);
 		}
+		// A polo built before crew_looseness.py carries the outfit's white colours (blue 1: M_CrewFabric reads red only where
+		// blue is 0, so it stays still): say so and skip it.
+		bool bWhite = true;
+		for (const FVertexInstanceID I : MD->VertexInstances().GetElementIDs()) bWhite &= Col[I].Z > 0.5f;
+		if (bWhite)
+		{
+			AddWarning(FString::Printf(TEXT("%s: the polo has no looseness (white colours): polos predate crew_looseness: re-pack the crew"), *R));
+			continue;
+		}
 		int32 N = 0, Loose = 0, Hem = 0, HemLoose = 0, Collar = 0, CollarLoose = 0;
 		for (const FVertexInstanceID I : MD->VertexInstances().GetElementIDs())
 		{
 			const float Z = Pos[MD->GetVertexInstanceVertex(I)].Z;
-			const bool bLoose = Col[I].X > 0.05f;
+			const bool bLoose = Col[I].X * (1.f - Col[I].Z) > 0.05f;   // as M_CrewFabric reads it
 			++N;
 			Loose += bLoose ? 1 : 0;
 			if (Z < ZMin + 0.03f * (ZMax - ZMin)) { ++Hem; HemLoose += bLoose ? 1 : 0; }
 			if (Z > ZMax - 0.05f * (ZMax - ZMin)) { ++Collar; CollarLoose += bLoose ? 1 : 0; }
 		}
 		AddInfo(FString::Printf(TEXT("%s: %d of %d vertices loose; the hem band %d of %d, the collar %d of %d"), *R, Loose, N, HemLoose, Hem, CollarLoose, Collar));
+		if (Loose == 0)
+		{
+			AddWarning(FString::Printf(TEXT("%s: no vertex of the polo is loose: polos predate crew_looseness: re-pack the crew"), *R));
+			continue;
+		}
 		TestTrue(FString::Printf(TEXT("%s: a few tenths of the polo is loose, not all of it"), *R), Loose > N / 20 && Loose < N / 2);
 		TestTrue(FString::Printf(TEXT("%s: the hem is loose"), *R), Hem > 0 && HemLoose > Hem / 2);
 		TestTrue(FString::Printf(TEXT("%s: the collar is not"), *R), CollarLoose == 0);

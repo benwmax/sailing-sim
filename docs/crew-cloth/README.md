@@ -11,7 +11,9 @@ into its colour's red channel: 1 at the hem (the polo's lowest band: it is folde
 the cuffs (the open loops furthest out on each side), falling to 0 ten centimetres up the cloth, measured along the mesh.
 The collar and the torso cut away under the life jacket stay at 0 (the cut's loop is the lowest open loop: taking it for
 the hem moved cloth under the jacket, which could poke through it). It is the only colour set, as the outfit's export
-carried a white one and Unreal's FBX import takes the first. `scripts/import_crew_clothes.py` imports the colours.
+carried a white one and Unreal's FBX import takes the first. Blue is 0: the material reads red only where blue is 0, so a
+polo built before this (the outfit's white colours, as the PC has until its next crew pack) stays still instead of flapping
+whole. `scripts/import_crew_clothes.py` imports the colours.
 
 ## How it moves (M_CrewFabric, world position offset)
 
@@ -38,8 +40,8 @@ tenth or so of the cloth loose). `scripts/gate.sh --scope crew` passes (High: be
 ## For the PC
 
 The polos are git-ignored MetaHuman assets: re-pack the crew (`scripts/pack-metahumans.sh`) for the PC to get the colours.
-Without them the material sees no looseness and nothing moves (the colour reads white only on meshes with no colours,
-which the pawn doesn't drive).
+Until then the PC's polos carry the outfit's white colours: the material leaves them still, and
+`SailingSim.Visual.CrewClothLooseness` warns and skips them ("polos predate crew_looseness: re-pack the crew").
 
 ## Not here
 

@@ -3,7 +3,8 @@
     blender -b --factory-startup -noaudio -P Tools/blender/crew_looseness.py -- <in.fbx> <out.fbx>
 
 A shirt's cloth flutters where it hangs free: at the hem below the life jacket and at the sleeves' cuffs. Elsewhere the
-knit lies on the body (the jacket and the collar hold it). Each vertex gets a looseness in its colour's red channel: 1 at
+knit lies on the body (the jacket and the collar hold it). Each vertex gets a looseness in its colour's red channel, blue 0
+(M_CrewFabric reads red only where blue is 0, so an older polo with the outfit's white colours stays still): 1 at
 the hem's and cuffs' edges, falling to 0 a hand's width (10 cm) up the cloth from them, measured along the mesh's
 edges. The hem is the polo's lowest band (it is folded and closed); the cuffs are the open loops furthest out on each
 side; the collar and the torso cut under the jacket (build_vest.py's PoloOpen) stay at 0. M_CrewFabric's wind flutter and lag

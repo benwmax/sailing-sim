@@ -5344,7 +5344,8 @@ def fabric_texture(name, src, kind):
 
 
 # Ultra audit item 7: the crew's loose cloth (the polo's hem and cuffs, Tools/blender/crew_looseness.py's vertex colour red)
-# in the wind and lagging the boat's motion. World position offset, cm. Inputs: L looseness, N the vertex normal, P world
+# in the wind and lagging the boat's motion. World position offset, cm. Inputs: C the vertex colour (looseness = red where
+# blue is 0: a polo built before crew_looseness.py carries the outfit's white colours and stays still), N the vertex normal, P world
 # position (cm), T time (s), W the apparent wind (world, m/s), A the boat's acceleration (world, m/s^2); both are 0 on
 # every instance the pawn doesn't drive (the life jacket, the cap), so nothing else moves.
 #   - Flutter: a free edge flaps above an onset speed (about 3 m/s for a light knit), at a Strouhal frequency
@@ -5352,6 +5353,7 @@ def fabric_texture(name, src, kind):
 #     speed; and the edge trails downwind with the dynamic pressure.
 #   - Lag: the flap on its own stiffness rings at about 4 Hz, so it hangs back from an acceleration a by a / omega^2.
 FLUTTER_CODE = r"""
+float L = C.r * (1.0 - C.b);
 float3 Wv = W.xyz;
 float U = length(Wv);
 float3 wd = U > 0.01 ? Wv / U : float3(1, 0, 0);
@@ -5423,8 +5425,8 @@ def build_crew_fabric():
     MEL.connect_material_property(slab, "", unreal.MaterialProperty.MP_FRONT_MATERIAL)
     # Ultra audit item 7: the loose cloth in the wind and the boat's motion (FLUTTER_CODE; the pawn sets WindWS and AccelWS
     # on the polo's instances each frame).
-    fl = custom(mat, FLUTTER_CODE, ["L", "N", "P", "T", "W", "A"], F3, -400, 900)
-    connect(node(mat, unreal.MaterialExpressionVertexColor, -800, 900), "R", fl, "L")
+    fl = custom(mat, FLUTTER_CODE, ["C", "N", "P", "T", "W", "A"], F3, -400, 900)
+    connect(node(mat, unreal.MaterialExpressionVertexColor, -800, 900), "", fl, "C")
     connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -800, 1000), "", fl, "N")
     connect(node(mat, unreal.MaterialExpressionWorldPosition, -800, 1100), "", fl, "P")
     connect(node(mat, unreal.MaterialExpressionTime, -800, 1200), "", fl, "T")
