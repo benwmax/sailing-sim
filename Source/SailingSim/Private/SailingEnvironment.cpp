@@ -1273,7 +1273,14 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapTake);
 			Done = PendingWeatherMap.Consume();
 		}
-		LastWeatherMap = MoveTemp(Done.Map);
+		{
+			// docs/weather-map-handoff/: the previous map is freed on a worker. Its float map and cumulus tops (about 20 MB)
+			// cost 0.7 ms to free on the Mac and 2 ms on the PC when the move assignment dropped them here.
+			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapSwap);
+			FWeatherMap* Old = new FWeatherMap(MoveTemp(LastWeatherMap));
+			LastWeatherMap = MoveTemp(Done.Map);
+			AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [Old]() { delete Old; });
+		}
 		LastWeatherMap.LandFraction = nullptr;
 		bHasWeatherMap = true;
 		bWeatherMapPending = false;
