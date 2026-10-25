@@ -3564,7 +3564,16 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
     // A new jitter every refresh (CacheShadow.y counts them). The game replaces the panorama each refresh (CacheShadow.z 1:
     // blended, the clouds' drift between refreshes stacked into ghosts), so each refresh's grain stays in it; M_SkyDome
     // reads it through a B-spline that softens it (docs/far-cloud-rims/).
-    float jit = frac(sin(dot(floor(UV * float2(8192.0, 2048.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    // pc/cache-march (docs/cache-march): an integer hash (PCG). The sine hash's argument reached about 270,000 here, where
+    // a GPU's sin has lost most of its fraction: the "random" start offsets came out in runs along the columns and rows,
+    // and the far cumulus showed them as pillars and blades.
+    uint2 hp = uint2(floor(UV * float2(8192.0, 2048.0)));
+    uint hs = hp.x * 1973u + hp.y * 9277u + uint(CacheShadow.y) * 26699u;
+    hs = hs * 747796405u + 2891336453u;
+    hs = ((hs >> ((hs >> 28u) + 4u)) ^ hs) * 277803737u;
+    hs = (hs >> 22u) ^ hs;
+    float jit = float(hs) * (1.0 / 4294967296.0);
+    float jitS = frac(jit * 7.31 + 0.371);
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
     // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud
@@ -3604,7 +3613,7 @@ CACHE_SHADOW = """
             [loop] for (int k = 1; k <= 5; k++)
             {
                 float sStep = 50.0 * exp2(k - 1);
-                float sAt = sOff + 0.5 * sStep;
+                float sAt = sOff + jitS * sStep;   // pc/cache-march: jittered, as the view ray is (was the step's middle)
                 sOff += sStep;
                 float3 P = (cam + dir * t + SunDir.xyz * sAt) * 100.0;
                 float Alt = (cam.z + dir.z * t + SunDir.z * sAt + t * t / 12742000.0) * 100.0;
