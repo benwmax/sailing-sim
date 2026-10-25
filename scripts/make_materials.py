@@ -3088,7 +3088,10 @@ float cuSize = WxTop.SampleLevel(WxTopSampler, float2(wuv.y, wuv.x), 0).r;
 // Ultra audit 1 (docs/cumulus-field/): the height grows faster than the size (cuSize is (R / R_max)^0.6, so this is about
 // R^0.85): the big cells still stand about as tall as they are wide, a small one (cumulus humilis, the scraps) is a lens
 // half as tall as it is wide. At cuSize itself the 200 m scraps stood 280 m tall: round balls.
-float cuTop = max(pow(cuSize, 1.4) * pow(saturate(w.r * 1.25), 0.3), 0.07);
+// docs/cloud-ridges/: by the cell's size. At 1.4 for every cell (#313) the mid-size cells came out as flat lenses that
+// stacked into layers from 3-10 km; a cumulus mediocris stands about as tall as it is wide (1.0, as before #313), and
+// only the humilis scraps (cuSize under 0.25: under about 300 m across) are the shallow lenses.
+float cuTop = max(pow(cuSize, lerp(1.4, 1.0, smoothstep(0.25, 0.5, cuSize))) * pow(saturate(w.r * 1.25), 0.3), 0.07);
 // C1: one flat base for every cell (the day's condensation level), softened over its lowest 12%; the top fades over its
 // last quarter only (fading over 70% of the height tapered every tower).
 float pCu = smoothstep(0.0, 0.12, hCu) * (1.0 - smoothstep(0.75 * cuTop, cuTop, hCu));
@@ -3187,11 +3190,17 @@ AO = 1.0;
     float detailMip = clamp(log2(foot / 10.4) + 1.0, 0.0, 5.0);   // detail texel: 667 m / 64
     float2 cw = Curl.SampleLevel(CurlSampler, q.xy * 0.077, 0).rg * 2.0 - 1.0;
     float3 qw = q + float3(cw * 1.3, 0.0) + float3(0.0, 0.0, 0.2 * cw.x);
+    // docs/cloud-ridges/: a flat cumulus base on the condensation level, its outline the cell's own. Below CU_BASE_SLICE
+    // metres above the base the shape is looked up at that height, so the underside is the body's cross-section there
+    // carried down flat to the base (pCu's soft 12%), and the sides bulge out of the noise right above it. (The #313 fill
+    // set the lowest 120-360 m to the cell's core footprint: a vertical-sided slab wider than the body above, which from
+    // 3-10 km stacked into flat layers with blade-like lips.)
+    float3 qwS = float3(qw.xy, max(qw.z, Cu.y + CU_BASE_SLICE * 0.001 + 0.2 * cw.x));
     // Vertically the shape varies 2.4 times faster than across (a cloud is a few hundred metres to 2 km deep): at one rate a
     // lone peak of the noise stood as a thin column under thin cloud.
     // C1 (round 12: "stacked pancakes, contour lines"): 2 times, not 2.4: squeezed that hard the noise's own layers
     // stacked into flat plates through every tower (at 1.4 they stood as columns instead).
-    float4 sh = Shape.SampleLevel(ShapeSampler, qw * float3(0.25, 0.25, 0.5), shapeMip);
+    float4 sh = Shape.SampleLevel(ShapeSampler, qwS * float3(0.25, 0.25, 0.5), shapeMip);
     float lowFbm = sh.g * 0.5 + sh.b * 0.3 + sh.a * 0.2;     // the 500 m and 250 m octaves carry the billows
     // Perlin-Worley remapped by the low Worley octaves (Nubis): billows packed into cells, 0..1. C1: a little gentler (at 1.9 the
     // remap clipped into flat plateaus whose rims read as contour lines; at 1.5 the billows went smooth as balloons).
@@ -3220,19 +3229,12 @@ AO = 1.0;
     float baseCu = base;
     [branch] if (covCu > 0.001 && w.r < 0.9)
     {
-        float4 sh2 = Shape.SampleLevel(ShapeSampler, qw * float3(0.5, 0.5, 1.0) + 0.37, min(shapeMip + 1.0, 6.0));
+        float4 sh2 = Shape.SampleLevel(ShapeSampler, qwS * float3(0.5, 0.5, 1.0) + 0.37, min(shapeMip + 1.0, 6.0));
         float low2 = sh2.g * 0.5 + sh2.b * 0.3 + sh2.a * 0.2;
         float base2 = saturate((sh2.r - (low2 - 1.0)) / (2.0 - low2) * 1.75 - 0.62);
         baseCu = lerp(base2, base, smoothstep(0.35, 0.9, w.r));
     }
     float shapeCu = saturate((baseCu - (1.0 - covCu)) / max(covCu, 0.08)) * step(0.001, covCu);
-    // Ultra audit 1 (docs/cumulus-field/): a flat base on the condensation level. The noise's iso-surface is the outline all
-    // round, so from below every cell's underside was lumpy and each cloud read as a cotton puff. A cumulus's base is the
-    // level where the rising air saturates: flat, the same height across the field. Over its lowest 120 m the cell's
-    // core footprint (the map's presence, lumpy at the cell's own scale) is filled, easing into the billowed shape by
-    // 360 m: everything here varies over hundreds of metres, coarser than the march.
-    float hmCu = alt - Cu.y * 1000.0;
-    shapeCu = max(shapeCu, smoothstep(0.3, 0.55, covCu) * (1.0 - smoothstep(120.0, 360.0, hmCu)));
     // Cumulus billows (docs/cumulus-billows/): packed lobes 300-800 m across (T_CloudBillow, a 3 x 1.5 km tile placed in
     // metres, so they are round in the world), filtered like the shape. Their crowns push the outline out across the cell's
     // soft margin and their creases cut it in: a cell's edge is bubbles on bubbles, not one smooth balloon (the shape
@@ -3436,6 +3438,7 @@ def cloud_code():
         # Which layer is which: cumulus red, stratus green, storm blue (albedo, so exposure is untouched).
         c = c.replace("    // Lightning inside the cloud", "    Albedo = normalize(float3(dCu, dSt, dSm) + 1e-4) * 0.9;\n    // Lightning inside the cloud")
     import os as _os
+    c = c.replace("CU_BASE_SLICE", _os.environ.get("CU_BASE_SLICE", "60.0"))
     c = c.replace("FACE_PALE", _os.environ.get("W8_FACE_PALE", "0.02")).replace("FACE_SCATTER_CUT", _os.environ.get("W8_FACE_CUT", "0.9")).replace("FACE_STEP_DEPTH", _os.environ.get("SHELF_FACE_DEPTH", "1.5"))
     for k, v in (("SHELF_LEAD", STORM["ShelfLeadM"]), ("SHELF_BASE", STORM["ShelfBaseM"]), ("SHELF_LIP", STORM["ShelfLipM"]),
                  ("SHELF_SLOPE", STORM["ShelfSlope"]), ("SHELF_DEPTH", STORM["ShelfDepthM"]), ("SHELF_TIER", STORM["ShelfTierM"]), ("CORE_BEHIND", STORM["CoreBehindM"]),
