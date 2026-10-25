@@ -1397,6 +1397,23 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 	}
 	if (bNew)
 	{
+		// docs/sky-probe-sun/: the sun's horizontal illuminance at the water from the light itself: its outer-space
+		// illuminance and colour, through the transmittance toward it that the engine gives the scene's surfaces (on the
+		// ground at the planet's top, computed on the CPU), times the sine of its elevation. M_SkyEnvProbe's second texel
+		// drew it with SkyAtmosphereLightIlluminance through a canvas, which isn't a scene view: on Metal it read 0 now and
+		// then, and everywhere it took the canvas camera's position for the light's path (about 16% less atmosphere than
+		// the surfaces get). The probe's texel stays in the log for comparison.
+		const FLinearColor ProbeSun = SunIll;
+		if (Sun && Atmosphere && Atmosphere->GetComponent())
+		{
+			UDirectionalLightComponent* SunComp = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
+			const float SunZ = SunComp ? FMath::Max(-float(SunComp->GetForwardVector().Z), 0.f) : 0.f;
+			if (SunComp)
+			{
+				const FLinearColor T = Atmosphere->GetComponent()->GetAtmosphereTransmitanceOnGroundAtPlanetTop(SunComp);
+				SunIll = SunComp->GetColoredLightBrightness() * T * SunZ;
+			}
+		}
 		const FLinearColor Light = SkyComp->GetLightColor() * FMath::Max(SkyComp->Intensity, 1e-4f);
 		const FLinearColor Body = WaterUpwelling(USailingSettings::Get()->World);
 		// The probe's sun is the light through the atmosphere, not through the clouds: the clouds take the direct sun off the
@@ -1411,8 +1428,8 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 			SkyComp->bLowerHemisphereIsBlack = false;
 			SkyComp->SetLowerHemisphereColor(Lower);
 			const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
-			UE_LOG(LogSailing, Log, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), sun on the water (%.4f, %.4f, %.4f) x direct %.2f, lower hemisphere (%.5f, %.5f, %.5f), x sky light %.3f = (%.5f, %.5f, %.5f); sun light %.3f, cloud shade %.2f, cloud darkness %.2f"),
-				Probe.R, Probe.G, Probe.B, SunIll.R, SunIll.G, SunIll.B, SunDirect, Lower.R, Lower.G, Lower.B, SkyComp->Intensity,
+			UE_LOG(LogSailing, Log, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), sun on the water (%.4f, %.4f, %.4f) (probe %.4f, %.4f, %.4f) x direct %.2f, lower hemisphere (%.5f, %.5f, %.5f), x sky light %.3f = (%.5f, %.5f, %.5f); sun light %.3f, cloud shade %.2f, cloud darkness %.2f"),
+				Probe.R, Probe.G, Probe.B, SunIll.R, SunIll.G, SunIll.B, ProbeSun.R, ProbeSun.G, ProbeSun.B, SunDirect, Lower.R, Lower.G, Lower.B, SkyComp->Intensity,
 				Lower.R * SkyComp->Intensity, Lower.G * SkyComp->Intensity, Lower.B * SkyComp->Intensity,
 				Sun ? Sun->GetLightComponent()->Intensity : -1.f, LastCloudShade, GM ? float(GM->GetWeatherState().CloudDarkness) : -1.f);
 			AppliedLowerHemisphere = Lower;
