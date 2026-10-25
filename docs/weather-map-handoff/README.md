@@ -27,3 +27,16 @@ Packaged slip on High, Mac, ten hand-offs per run. These are named trace scopes,
   heights (`Sailing_WeatherMapTerrainCopy` measures 0) and stays as it was.
 
 What's left (0.73 ms) is mostly freeing the previous map's arrays as `LastWeatherMap` takes the new one.
+
+## The free on a worker
+
+The previous map is now moved to the heap and deleted by a background task (`Sailing_WeatherMapSwap`). On the same
+packaged slip view, ten hand-offs:
+
+| Scope | Before | After |
+|---|---|---|
+| `Sailing_WeatherMapHandOff` | 0.73 ms | 0.006 ms (max 0.008) |
+| `Sailing_WeatherMapSwap` | | 0.001 ms |
+
+Clouds gate on main 161992d0 + weather-free: 225/225 tests; High beam8 58.1, beat15 57.1, storm 48.2, gulf-sea 61.9,
+helm-eye 56.1, bridge 60.9 fps; Medium storm 69.1.
