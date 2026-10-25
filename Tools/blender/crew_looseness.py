@@ -4,9 +4,9 @@
 
 A shirt's cloth flutters where it hangs free: at the hem below the life jacket and at the sleeves' cuffs. Elsewhere the
 knit lies on the body (the jacket and the collar hold it). Each vertex gets a looseness in its colour's red channel: 1 at
-the hem's and cuffs' open edges, falling to 0 a hand's width (10 cm) up the cloth from them, measured along the mesh's
-edges. The open edges are the polo's boundary loops: the hem is the lowest, the cuffs the furthest out on each side;
-the collar and the torso cut under the jacket (build_vest.py's PoloOpen) stay at 0. M_CrewFabric's wind flutter and lag
+the hem's and cuffs' edges, falling to 0 a hand's width (10 cm) up the cloth from them, measured along the mesh's
+edges. The hem is the polo's lowest band (it is folded and closed); the cuffs are the open loops furthest out on each
+side; the collar and the torso cut under the jacket (build_vest.py's PoloOpen) stay at 0. M_CrewFabric's wind flutter and lag
 read it (make_materials.py build_crew_fabric); scripts/import_crew_clothes.py imports the colours.
 """
 import heapq
@@ -55,16 +55,19 @@ for ob in meshes:
     if len(loops) < 3:
         print(f"Looseness: {ob.name}: only {len(loops)} open edges; left at 0")
         continue
-    # The hem: the lowest loop. The cuffs: the two loops furthest out to the sides (the arms are out in the bind pose).
-    hem = min(loops, key=lambda l: l[1].z)
-    rest = [l for l in loops if l is not hem]
-    left = [l for l in rest if l[1].x < 0.0]
-    right = [l for l in rest if l[1].x > 0.0]
+    # The hem is folded and closed (its facing turned up inside), so it is no open edge: it is the polo's lowest band,
+    # its bottom 1.5 cm (the lowest open loop is the torso's cut under the life jacket, and must stay still or it would
+    # poke through the jacket). The cuffs: the open loops furthest out on each side (the arms are out in the bind pose).
+    zs = [(world @ v.co).z for v in bm.verts]
+    z0 = min(zs)
+    hem_verts = {v for v, z in zip(bm.verts, zs) if z < z0 + 0.015}
+    left = [l for l in loops if l[1].x < 0.0]
+    right = [l for l in loops if l[1].x > 0.0]
     if not left or not right:
         print(f"Looseness: {ob.name}: no cuff on one side; left at 0")
         continue
     cuffs = [min(left, key=lambda l: l[1].x), max(right, key=lambda l: l[1].x)]
-    free = set(hem[0])
+    free = set(hem_verts)
     for c in cuffs:
         free |= c[0]
 
@@ -99,7 +102,7 @@ for ob in meshes:
         me.color_attributes.remove(a)
     if me.color_attributes.get("Looseness"):
         me.color_attributes.active_color = me.color_attributes["Looseness"]
-    print(f"Looseness: {ob.name}: {len(loops)} open edges, hem at z {hem[1].z:.3f}, cuffs at x {cuffs[0][1].x:.3f} and "
+    print(f"Looseness: {ob.name}: {len(loops)} open edges, hem {len(hem_verts)} vertices at z {z0:.3f}, cuffs at x {cuffs[0][1].x:.3f} and "
           f"{cuffs[1][1].x:.3f}; {n_loose} of {len(me.vertices)} vertices within {REACH:.2f} m")
 
 # As build_vest.py exports the polo (meshes only, unit scale applied), plus the colours.
