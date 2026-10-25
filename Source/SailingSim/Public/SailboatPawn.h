@@ -531,6 +531,8 @@ private:
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
 	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMeshComponent>> Crew;
+	/** Ultra audit item 7: the polos' instances whose loose cloth moves with the wind and the boat (WindWS, AccelWS). */
+	UPROPERTY(Transient) TArray<TObjectPtr<class UMaterialInstanceDynamic>> CrewClothMids;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibTelltales;  // windward/leeward pairs at three heights
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> LeechTelltales; // main leech, three heights
 

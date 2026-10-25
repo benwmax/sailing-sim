@@ -1320,6 +1320,20 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 	Motion.Omega = FVector(S.AngularVelocity.X, S.AngularVelocity.Y, S.AngularVelocity.Z);
 	Motion.Alpha = FVector(T.AngularAccelBody.X, T.AngularAccelBody.Y, T.AngularAccelBody.Z);
 	const FVector CG(Boat.GetCenterOfGravity().X, Boat.GetCenterOfGravity().Y, Boat.GetCenterOfGravity().Z);
+	// Ultra audit item 7: the polo's loose cloth (M_CrewFabric's flutter and lag) gets the apparent wind, the air's own
+	// motion past the boat (it comes from the apparent wind angle, + from starboard), and the boat's acceleration, both in
+	// the world.
+	if (CrewClothMids.Num() > 0)
+	{
+		const FVector WindBody = -FVector(FMath::Cos(T.ApparentWindAngle), FMath::Sin(T.ApparentWindAngle), 0.0) * T.ApparentWindSpeed;
+		const FVector WindWS = RootTM.TransformVectorNoScale(WindBody), AccelWS = RootTM.TransformVectorNoScale(Motion.Accel);
+		for (UMaterialInstanceDynamic* Mid : CrewClothMids)
+		{
+			if (!Mid) continue;
+			Mid->SetVectorParameterValue(TEXT("WindWS"), FLinearColor(WindWS.X, WindWS.Y, WindWS.Z, 0.f));
+			Mid->SetVectorParameterValue(TEXT("AccelWS"), FLinearColor(AccelWS.X, AccelWS.Y, AccelWS.Z, 0.f));
+		}
+	}
 	// What they look at (boat frame, cm): the jib's luff telltales, the water upwind for the next puff, ahead, and the next
 	// mark or another boat close by (the player's crew; looked for once a second).
 	const FVector Telltale = Has(ModelHull, TEXT("ForestayTack")) && Has(ModelMast, TEXT("Hounds"))

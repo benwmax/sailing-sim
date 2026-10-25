@@ -7,7 +7,7 @@ MI_Boat_CrewButton. Run by scripts/make-crew-clothes.sh."""
 import os
 import unreal
 
-CREW = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Artifacts", "crew")
+CREW = os.environ.get("CREW_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Artifacts", "crew")
 LIB = unreal.EditorAssetLibrary
 # The polo in the crew cloth (make_materials.py, build_crew_fabric), its buttons in the boat library.
 SLOTS = {"Polo": "/Game/Crew/Fabric/MI_Crew_Polo", "Rib": "/Game/Crew/Fabric/MI_Crew_PoloRib", "Button": "/Game/Boats/Materials/MI_Boat_CrewButton"}
@@ -66,6 +66,8 @@ def make(role, piece, fbx, source_mesh, slots):
     opts.static_mesh_import_data.combine_meshes = True
     opts.static_mesh_import_data.auto_generate_collision = False
     opts.static_mesh_import_data.convert_scene = True
+    # Ultra audit item 7: the polo's looseness (Tools/blender/crew_looseness.py) is its vertex colour.
+    opts.static_mesh_import_data.vertex_color_import_option = unreal.VertexColorImportOption.REPLACE
     task.options = opts
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
     source = unreal.load_asset(f"{folder}/SM_{role}_{piece}Source")
@@ -111,6 +113,9 @@ for role in ("Helm", "Trimmer", "Bow"):
     # Graphics G8: the polo with its torso under the vest cut away (build_vest.py), where it has been made.
     if os.path.exists(os.path.join(CREW, f"{role}_PoloOpen.fbx")):
         polo = os.path.join(CREW, f"{role}_PoloOpen.fbx")
+    # Ultra audit item 7: with its looseness when crew_looseness.py has run.
+    if os.path.exists(os.path.join(CREW, f"{role}_PoloLoose.fbx")):
+        polo = os.path.join(CREW, f"{role}_PoloLoose.fbx")
     shoes = os.path.join(CREW, f"{role}_Shoes.fbx")
     vest = os.path.join(CREW, f"{role}_Vest.fbx")
     if outfit and os.path.exists(polo) and "Polo" in PIECES:
