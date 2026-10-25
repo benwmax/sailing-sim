@@ -1265,10 +1265,13 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	if (bWeatherMapPending && PendingWeatherMap.IsReady())
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapHandOff);
+		// docs/weather-map-handoff/: moved out of the future, not copied. TFuture::Get() returns a reference, and taking the
+		// frame by value from it copied about 30 MB (the float map, the cumulus tops and both half images) on the game
+		// thread every two seconds.
 		FWeatherMapFrame Done;
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapTake);
-			Done = PendingWeatherMap.Get();
+			Done = PendingWeatherMap.Consume();
 		}
 		LastWeatherMap = MoveTemp(Done.Map);
 		LastWeatherMap.LandFraction = nullptr;
@@ -1276,17 +1279,17 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		bWeatherMapPending = false;
 		struct { double X0, Y0; } Frame = { LastWeatherMap.OriginX(), LastWeatherMap.OriginY() };
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapUpload);
-		const int32 Bytes = Done.Half.Num() * int32(sizeof(FFloat16));
-		uint8* Copy = new uint8[Bytes];
-		FMemory::Memcpy(Copy, Done.Half.GetData(), Bytes);
+		// The worker's half images go to the render thread as they are (each owned by its upload's callback), not copied.
+		TArray<FFloat16>* Half = new TArray<FFloat16>(MoveTemp(Done.Half));
 		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
-		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 8, 8, Copy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
+		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 8, 8, reinterpret_cast<uint8*>(Half->GetData()),
+			[Half](uint8*, const FUpdateTextureRegion2D* R) { delete Half; delete R; });
 		if (CumulusTopTexture && Done.TopHalf.Num() == FWeatherMap::N * FWeatherMap::N)
 		{
-			uint8* TopCopy = new uint8[Done.TopHalf.Num() * sizeof(FFloat16)];
-			FMemory::Memcpy(TopCopy, Done.TopHalf.GetData(), Done.TopHalf.Num() * sizeof(FFloat16));
+			TArray<FFloat16>* TopHalf = new TArray<FFloat16>(MoveTemp(Done.TopHalf));
 			FUpdateTextureRegion2D* TopRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
-			CumulusTopTexture->UpdateTextureRegions(0, 1, TopRegion, FWeatherMap::N * 2, 2, TopCopy, [](uint8* Data, const FUpdateTextureRegion2D* R) { delete[] Data; delete R; });
+			CumulusTopTexture->UpdateTextureRegions(0, 1, TopRegion, FWeatherMap::N * 2, 2, reinterpret_cast<uint8*>(TopHalf->GetData()),
+				[TopHalf](uint8*, const FUpdateTextureRegion2D* R) { delete TopHalf; delete R; });
 		}
 		CloudMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
 		if (SkyMaterial) SkyMaterial->SetVectorParameterValue(TEXT("WeatherRect"), FLinearColor(float(Frame.X0), float(Frame.Y0), float(FWeatherMap::SizeMeters), 0.f));
@@ -1304,7 +1307,10 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		const double Cx = CamMap.X, Cy = CamMap.Y;
 		// World streaming: a copy of the terrain (it shares the heights): the tiles may be swapped while the worker reads.
 		TSharedPtr<const Sailing::FLakeTerrain> Terrain;
-		if (Lake) Terrain = MakeShared<const Sailing::FLakeTerrain>(Lake->Terrain);
+		{
+			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapTerrainCopy);
+			if (Lake) Terrain = MakeShared<const Sailing::FLakeTerrain>(Lake->Terrain);
+		}
 		PendingWeatherMap = Async(EAsyncExecution::ThreadPool, [Sky, Front, Terrain, Cx, Cy, Tw]()
 		{
 			FWeatherMap Map;
