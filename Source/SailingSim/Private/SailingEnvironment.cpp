@@ -105,6 +105,8 @@ namespace
 	constexpr float kUltraCloudFootM = 60.f;
 	constexpr float kUltraCloudEdgeTop = 5.f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
+	// pc/near-cloud-grain (docs/near-cloud-grain): the cumulus step cap taken as if each step were at least this long (m; 0, off, elsewhere).
+	constexpr float kUltraCloudCapStepM = 76.f;   // four of Ultra's 19 m near steps
 }
 ASailingEnvironment::ASailingEnvironment()
 {
@@ -374,6 +376,9 @@ void ASailingEnvironment::BeginPlay()
 			if (Foot > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudFootFloor"), Foot);
 			if (Edge > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudEdgeTop"), Edge);
 			if (Billow2 >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudBillow2"), Billow2);
+			float CapStep = bUltraClouds ? kUltraCloudCapStepM : -1.f;   // measuring: -SailingCloudCapStep=<m>
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudCapStep="), CapStep);
+			if (CapStep >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudCapStepFloor"), CapStep);
 		}
 		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
 		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudNoise="), NoisePath))
@@ -1381,7 +1386,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 			FLinearColor V;
 			if (CloudMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(Name), V)) CacheMaterial->SetVectorParameterValue(Name, V);
 		}
-		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth"), TEXT("CloudFootFloor"), TEXT("CloudEdgeTop"), TEXT("CloudBillow2") })   // pc/ultra-cloud-tops: Ultra's three as the live clouds
+		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth"), TEXT("CloudFootFloor"), TEXT("CloudEdgeTop"), TEXT("CloudBillow2"), TEXT("CloudCapStepFloor") })   // pc/ultra-cloud-tops: Ultra's three as the live clouds
 		{
 			float S;
 			if (CloudMaterial->GetScalarParameterValue(FHashedMaterialParameterInfo(Name), S)) CacheMaterial->SetScalarParameterValue(Name, S);

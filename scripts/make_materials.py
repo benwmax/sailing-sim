@@ -3179,7 +3179,10 @@ AO = 1.0;
     // Cumulus: 1.5 times the storm's (G8: at 2 its skin frosted). W5a: it is the step that's fitted now, not the cap
     // (QualityCVars: on Ultra near rays keep all their samples, 19 m steps under a deck), so near cumulus keep their real
     // density and the cap binds only on long runs (at 4 the grain came straight back at the engine's 94 m near steps).
-    float cV = Tracer.y > 0.0 ? 1.5 * MaxStepDepth / (stepM * Density) : 1e6;
+    // pc/near-cloud-grain (docs/near-cloud-grain; Ultra only, CapFloor > 0): those short near steps still let a cumulus base
+    // close within one step, and the half-resolution trace showed its jitter as grain under the cloud overhead. The cap is
+    // taken as if the step were at least CapFloor long, so it binds near the camera only (far steps are longer than that).
+    float cV = Tracer.y > 0.0 ? 1.5 * MaxStepDepth / (max(stepM, CapFloor) * Density) : 1e6;
     // Graphics G8 (round 8: "the clouds have noise"): storm and rain at 0.6 of it. Measured on game-08 (-SailingCloudStepDepth):
     // 0.6 smoothed the storm's grain and kept its dark mass, 0.4 washed it grey; more view samples (160) didn't help.
     float cS = Tracer.y > 0.0 ? 0.6 * MaxStepDepth / (capStepM * Density) : 1e6;
@@ -3314,11 +3317,12 @@ def cloud_code():
 
 
 def cloud_tops(mat, c, y):
-    """pc/ultra-cloud-tops: CLOUD_CODE's noise footprint floor (m), the cumulus top's edge ramp and the second billow octave's weight; the defaults are every tier's
+    """pc/ultra-cloud-tops: CLOUD_CODE's noise footprint floor (m), the cumulus top's edge ramp, the second billow octave's weight and the near-step cap floor; the defaults are every tier's
     but Ultra's (ASailingEnvironment sets Ultra's own on the cloud material)."""
     connect(scalar(mat, "CloudFootFloor", 110.0, -1600, y), "", c, "FootFloor")
     connect(scalar(mat, "CloudEdgeTop", 4.0, -1600, y + 100), "", c, "EdgeTop")
     connect(scalar(mat, "CloudBillow2", 0.0, -1600, y + 200), "", c, "Billow2")
+    connect(scalar(mat, "CloudCapStepFloor", 0.0, -1600, y + 300), "", c, "CapFloor")   # pc/near-cloud-grain: Ultra's near-step cap floor (m)
 
 
 def build_cloud_layers():
@@ -3346,7 +3350,7 @@ def build_cloud_layers():
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow", "FootFloor", "EdgeTop", "Billow2"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow", "FootFloor", "EdgeTop", "Billow2", "CapFloor"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -3531,7 +3535,7 @@ def build_cloud_cache():
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
-                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev", "FootFloor", "EdgeTop", "Billow2"],
+                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev", "FootFloor", "EdgeTop", "Billow2", "CapFloor"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 300)
     connect(uv, "", c, "UV")
     connect(vecs["CacheCam"], "RGBA", c, "Cam")
