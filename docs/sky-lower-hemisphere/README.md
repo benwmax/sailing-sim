@@ -37,34 +37,44 @@ the water's light reaches the hull's lighting through the sky light's lower hemi
 - `-SailingNoWaterBounce` keeps the old black. `-SailingSkyLowerHemisphere=<grey>` sets a fixed grey (measuring), and
   the automatic value then stands aside.
 
-**The computed values** (lake, High, log `Water bounce: ...` at every set):
+**The sun reaching the water is the direct light after the clouds.** The probe's sun is the light through the atmosphere,
+but the clouds take the direct sun off the scene by the light's diffuse scale (`UpdateSun`: its intensity keeps a 0.35
+floor for the storm sky's sake). So the sun term is multiplied by `DiffuseScale`. The first version left that out and
+overstated the sun under any cloud: under a storm deck the lower hemisphere hardly fell.
 
-| Condition | Sky mean | Sun on the water | Lower hemisphere |
-| --- | --- | --- | --- |
-| AfternoonBreeze, 15:00 | (0.160, 0.161, 0.164) | (1.76, 1.52, 1.17) | (0.028, 0.028, 0.019) |
-| Dusk, 19:36 | 0.0001 | 0 | 0.00016 |
-| Night, 22:00 | 0.0001 | 0 | 0.00013 |
-| Thunderstorm, 16:00, 10 min in | (0.158, 0.151, 0.144) | (1.27, 1.04, 0.75) | (0.026, 0.025, 0.017) |
+**The computed values** (lake, High; log `Water bounce: ...` at every set). "Effective" is the lower hemisphere times the
+sky light's intensity, which is what lights the topsides: the sky light's intensity falls under a deck (`UpdateSun`),
+and the stored colour is in its units.
 
-About a third of the day's value is the sky (its Fresnel reflection and the body's upwelling of it), two thirds the
-body's upwelling of the sun. (The first readback at start-up comes before the sky light's capture has converged and is
-tiny; the next one, two seconds later, is the real value.)
+| Condition | Sky mean | Sun on the water x direct | Effective lower hemisphere | vs full sun |
+| --- | --- | --- | --- | --- |
+| AfternoonBreeze 15:00, full sun (`-SailingCloudShade=1`) | (0.312, 0.337, 0.379) | (5.02, 4.35, 3.36) x 1.00 | **(0.066, 0.069, 0.048)** | |
+| Same, under a cumulus shadow (`-SailingCloudShade=0.15`) | (0.161, 0.163, 0.164) | (1.76, 1.52, 1.17) x 0.43 | (0.020, 0.021, 0.016) | -1.7 stops |
+| Thunderstorm 16:00, front arriving (`-SailingStormDelay=-140`, darkness 0.10) | (0.087, 0.088, 0.094) | x 0.36 | (0.011, 0.012, 0.009) | -2.5 stops |
+| Thunderstorm, **under the shelf** (`-SailingStormDelay=-250`, darkness 0.85, sky light 0.49) | (0.042, 0.045, 0.049) | x 0.35 | **(0.0078, 0.0080, 0.0056)** | **-3.1 stops** |
+| Thunderstorm, behind it (-500 s, darkness 0.55) | (0.045, 0.043, 0.040) | x 0.37 | (0.0073, 0.0071, 0.0046) | -3.2 stops |
+| Dusk 19:36 | 0.0001 | 0 | 0.00016 | |
+| Night 22:00 | 0.0001 | 0 | 0.00013 | |
+
+`-SailingWeatherTime` doesn't bring the front overhead: it runs on the sim clock and reaches the start at 150 s
+(`kFrontArrives`). `-SailingStormDelay=<negative s>` moves it earlier along its track, which is how these were taken.
+Dividing by the sky light's intensity doesn't cancel a real drop: the probe includes that intensity and the lighting
+multiplies it back. In full sun about a fifth is the sky (its Fresnel reflection and the body's upwelling of it) and the
+rest the body's upwelling of the sun.
 
 ## Effect (Ultra, linear luminance, mean of three runs per state, `-SailingCloudShade=0.15`)
 
 | View | Before (`-SailingNoWaterBounce`) | After | Change |
 | --- | --- | --- | --- |
-| Side, lower topsides | 0.3107 (sd 0.0002) | 0.3316 (sd 0.0003) | **+6.7%** |
-| Backlit chase topsides | 0.0335 (sd 0.0016) | 0.0371 (sd 0.0005) | **+10.8%** |
-| The albedo-0.08 stand-in, side lower topsides (one run) | 0.2990 | 0.3184 | +6.5% |
-| Crew underside view, hull lower (sky term only, one run) | 0.2210 | 0.2210 | none |
-| Boom underside (sky term only, one run) | 0.2352 | 0.2350 | none |
+| Side, lower topsides | 0.3105 (sd 0.0004) | 0.3256 (sd 0.0002) | **+4.8%** |
+| Backlit chase topsides | 0.0350 (sd 0.0014) | 0.0353 (sd 0.0005) | +0.9%, within spread (the sky region itself differed 6%) |
+| The albedo-0.08 stand-in, side lower topsides (one run, unforced shade) | 0.2990 | 0.3184 | +6.5% |
 
-The side view lands on the albedo-0.08 stand-in. With the sky term alone it was +3.3% (the sun's share of the body's
-upwelling is the other half). Where Lumen's rays find the lake bed or the hull itself first (the close underside
-views), the lower hemisphere isn't reached and nothing changes.
-
-The sheets below are from the final build, sky and sun terms (before above, after below).
+Under the shaded sky of these runs, the water's bounce lifts the lower topsides about 5%; in full sun it's larger, as
+the sun term grows with the direct light. (The +6.7%/+10.8% of the first sun-term push were the overstated sun.)
+Where Lumen's rays find the lake bed or the hull itself first (the close underside views), the lower hemisphere isn't
+reached and nothing changes.
+The sheets below are from the final build, sky and sun terms with the clouds' dimming (before above, after below).
 | Side | Chase | Crew underside | Boom from below |
 | --- | --- | --- | --- |
 | ![side](side.jpg) | ![chase](chase.jpg) | ![crew](crewunder.jpg) | ![boom](boomunder.jpg) |

@@ -1386,15 +1386,22 @@ void ASailingEnvironment::UpdateLowerHemisphere(double Now)
 	{
 		const FLinearColor Light = SkyComp->GetLightColor() * FMath::Max(SkyComp->Intensity, 1e-4f);
 		const FLinearColor Body = WaterUpwelling(USailingSettings::Get()->World);
-		const FLinearColor Up = (FLinearColor(kWaterSkyFresnel, kWaterSkyFresnel, kWaterSkyFresnel) + Body) * Probe + Body * SunIll * (1.f / PI);
+		// The probe's sun is the light through the atmosphere, not through the clouds: the clouds take the direct sun off the
+		// scene by the light's diffuse scale (UpdateSun: its intensity keeps a 0.35 floor for the storm sky's sake), so the
+		// sunlight that actually reaches the water is the probe's times that scale.
+		const float SunDirect = Sun ? Sun->GetLightComponent()->DiffuseScale : 1.f;
+		const FLinearColor Up = (FLinearColor(kWaterSkyFresnel, kWaterSkyFresnel, kWaterSkyFresnel) + Body) * Probe + Body * SunIll * (SunDirect / PI);
 		const FLinearColor Lower(Up.R / FMath::Max(Light.R, 1e-4f), Up.G / FMath::Max(Light.G, 1e-4f), Up.B / FMath::Max(Light.B, 1e-4f));
 		const float Change = FMath::Abs(Lower.GetLuminance() - AppliedLowerHemisphere.GetLuminance()) / FMath::Max(Lower.GetLuminance(), 1e-6f);
 		if (AppliedLowerHemisphere.R < 0.f || Change > 0.02f)
 		{
 			SkyComp->bLowerHemisphereIsBlack = false;
 			SkyComp->SetLowerHemisphereColor(Lower);
-			UE_LOG(LogSailing, Log, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), sun on the water (%.4f, %.4f, %.4f), lower hemisphere (%.5f, %.5f, %.5f)"),
-				Probe.R, Probe.G, Probe.B, SunIll.R, SunIll.G, SunIll.B, Lower.R, Lower.G, Lower.B);
+			const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+			UE_LOG(LogSailing, Log, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), sun on the water (%.4f, %.4f, %.4f) x direct %.2f, lower hemisphere (%.5f, %.5f, %.5f), x sky light %.3f = (%.5f, %.5f, %.5f); sun light %.3f, cloud shade %.2f, cloud darkness %.2f"),
+				Probe.R, Probe.G, Probe.B, SunIll.R, SunIll.G, SunIll.B, SunDirect, Lower.R, Lower.G, Lower.B, SkyComp->Intensity,
+				Lower.R * SkyComp->Intensity, Lower.G * SkyComp->Intensity, Lower.B * SkyComp->Intensity,
+				Sun ? Sun->GetLightComponent()->Intensity : -1.f, LastCloudShade, GM ? float(GM->GetWeatherState().CloudDarkness) : -1.f);
 			AppliedLowerHemisphere = Lower;
 		}
 	}
