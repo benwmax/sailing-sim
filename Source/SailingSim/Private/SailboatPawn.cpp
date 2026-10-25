@@ -373,6 +373,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	BoatParts.Reset();
 	RudderPivots.Reset();
 	Crew.Reset();
+	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
@@ -3636,7 +3637,13 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 				for (int32 M = 0; M < Polo->GetNumMaterials(); ++M)
 				{
 					if (M == Polo->GetMaterialIndex(TEXT("Button"))) continue;
-					if (UMaterialInstanceDynamic* Mid = Polo->CreateDynamicMaterialInstance(M)) Mid->SetVectorParameterValue(TEXT("Color"), M == Polo->GetMaterialIndex(TEXT("Rib")) ? Col * 0.92f : Col);
+					if (UMaterialInstanceDynamic* Mid = Polo->CreateDynamicMaterialInstance(M))
+					{
+						Mid->SetVectorParameterValue(TEXT("Color"), M == Polo->GetMaterialIndex(TEXT("Rib")) ? Col * 0.92f : Col);
+						// Ultra audit item 7: its hem and cuffs move in the wind (UpdateCrewFigures feeds them).
+						static SailingArgs::FCachedFlag StiffClothArg(TEXT("SailingStiffCrewCloth"));
+						if (!StiffClothArg.Get()) CrewClothMids.Add(Mid);
+					}
 				}
 				BoatParts.Add(Polo);
 			}

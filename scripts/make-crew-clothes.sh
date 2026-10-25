@@ -35,6 +35,10 @@ for role in Helm Trimmer Bow; do
 	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/build_vest.py" -- "$CREW/${role}_Polo.fbx" "$CREW/${role}_Vest.fbx" "$CREW/${role}_PoloOpen.fbx" \
 		> "$ARTIFACTS/crew-vest-$role.log" 2>&1 || { tail -30 "$ARTIFACTS/crew-vest-$role.log"; exit 1; }
 	grep -E "^Vest:" "$ARTIFACTS/crew-vest-$role.log" || true
+	# Ultra audit item 7: the open polo's looseness (its hem and cuffs) as a vertex colour.
+	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/crew_looseness.py" -- "$CREW/${role}_PoloOpen.fbx" "$CREW/${role}_PoloLoose.fbx" \
+		> "$ARTIFACTS/crew-loose-$role.log" 2>&1 || { tail -30 "$ARTIFACTS/crew-loose-$role.log"; exit 1; }
+	grep -E "^Looseness:" "$ARTIFACTS/crew-loose-$role.log" || true
 done
 "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_crew_clothes.py" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/crew-import.log" 2>&1 || true
 grep "Crew clothes" "$ARTIFACTS/crew-import.log" | sed 's/.*LogPython: //'
