@@ -10,6 +10,11 @@
 			"LoadingPhase": "PreDefault"
 		},
 		{
+			"Name": "SailingShaders",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
 			"Name": "SailingSim",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
