@@ -2059,14 +2059,18 @@ float hollow = 0.0, creaseV = 0.0, creaseR = 0.0;
 #if !RAYHITGROUPSHADER
 float3 dpx = ddx(WP) * 0.01, dpy = ddy(WP) * 0.01;
 float kc = (dot(ddx(Nf), dpx) + dot(ddy(Nf), dpy)) / max(dot(dpx, dpx) + dot(dpy, dpy), 1e-8);
-hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y));
+// docs/sail-edge-speckle/: none of it where the cloth turns edge-on to the eye. There a pixel's footprint runs a long way
+// across the surface, so ddx/ddy of the normal span the curve past the silhouette and kc is noise: it darkened single
+// pixels along every leech against the sky (the speckled edge, with every AA mode: TAA, TSR and SMAA only smeared it).
+float edgeOn = smoothstep(0.08, 0.25, facingV);
+hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y)) * edgeOn;
 // Ultra audit item 5 (docs/sail-cloth-shading): the wrinkles #308 put in the cloth's geometry (a few mm over a few cm:
 // curvatures of tens per metre, far past the belly's under one) shaded as cloth is: a fold's valley sees less of the sky
 // and darkens, its ridge catches a little more. Gated past 2 /m so the belly (hollow, above) is left alone.
 if (Detail > 0.5)
 {
-    creaseV = smoothstep(2.0, 12.0, kc);
-    creaseR = smoothstep(2.0, 12.0, -kc);
+    creaseV = smoothstep(2.0, 12.0, kc) * edgeOn;
+    creaseR = smoothstep(2.0, 12.0, -kc) * edgeOn;
 }
 #endif
 col *= 1.0 - 0.16 * hollow;
