@@ -1,5 +1,8 @@
 # Skin backlight
 
+> **Since `docs/skin-side-light/`:** the tint is (0.3, 0.1, 0.03). With the sun to the side, (0.6, 0.2, 0.06) lit a broad
+> orange patch on the cheek: the engine gives the profile no real thickness there.
+
 Backlit-fill option 2 (the sim thread's decision): against the sun, real skin glows where it's thin, at the ears, the
 nostrils' edges and a neck's rim. The crew's never did.
 
