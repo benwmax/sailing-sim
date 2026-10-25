@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "CrewOutfit.h"
 #include "SailingFrame.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
@@ -384,6 +385,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		uint32 Seed = bTrafficBoat && !bGhost ? GetUniqueID() * 7919u + 1u : 0u;
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingLiverySeed="), Seed);
 		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
+		CrewSeed = Seed;
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
 	bModelTravelerBridge = Model.bTravelerBridge;
@@ -516,11 +518,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 		}
 	}
 
-	// Crew (Visual V3): posed sailors in foul-weather jackets of their own colours (CrewPose.h).
+	// Crew (Visual V3): posed sailors (CrewPose.h), in the boat's crew colours (CrewOutfit.h).
 	CrewFigures.Reset();
 	CrewConfig.Reset(); // a copy of this config for the crew's animation (NewCrewBody)
 	CrewGrooms.Reset();
-	static const FLinearColor Jackets[] = { FLinearColor(0.45f, 0.03f, 0.03f), FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.55f, 0.42f, 0.02f), FLinearColor(0.12f, 0.13f, 0.14f) };
 	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
 	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
 	const bool bMeta = !bTrafficBoat && USailingSettings::Get()->Quality != ESailingQuality::Low
@@ -538,13 +539,17 @@ void ASailboatPawn::RebuildBoatVisuals()
 	{
 		USkeletalMeshComponent* Figure = NewCrewBody(SailorMesh, -1);
 		for (const TPair<FName, TObjectPtr<UMaterialInterface>>& M : CrewMaterials) Figure->SetMaterialByName(M.Key, M.Value);
+		// pc/crew-colours: the top in the crew's light polo colour and the life jacket bright (CrewOutfit.h), as the MetaHumans.
+		const FCrewOutfit Outfit = SampleCrewOutfit(CrewSeed, I);
 		const int32 JacketSlot = Figure->GetMaterialIndex(TEXT("Jacket"));
 		if (JacketSlot >= 0)
 		{
-			if (UMaterialInstanceDynamic* Mid = Figure->CreateDynamicMaterialInstance(JacketSlot))
-			{
-				Mid->SetVectorParameterValue(TEXT("Color"), Jackets[(I + int32(C.Type)) % UE_ARRAY_COUNT(Jackets)]);
-			}
+			if (UMaterialInstanceDynamic* Mid = Figure->CreateDynamicMaterialInstance(JacketSlot)) Mid->SetVectorParameterValue(TEXT("Color"), Outfit.Polo);
+		}
+		const int32 PfdSlot = Figure->GetMaterialIndex(TEXT("PFD"));
+		if (PfdSlot >= 0)
+		{
+			if (UMaterialInstanceDynamic* Mid = Figure->CreateDynamicMaterialInstance(PfdSlot)) Mid->SetVectorParameterValue(TEXT("Color"), Outfit.Vest);
 		}
 		BoatParts.Add(Figure);
 		Crew.Add(Figure);
@@ -3626,8 +3631,8 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 				Polo->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				Polo->RegisterComponent();
 				Polo->SetLeaderPoseComponent(Body);
-				static const FLinearColor Polos[] = { FLinearColor(0.02f, 0.05f, 0.16f), FLinearColor(0.75f, 0.74f, 0.70f), FLinearColor(0.20f, 0.02f, 0.02f), FLinearColor(0.03f, 0.14f, 0.18f) };
-				const FLinearColor Col = Polos[CrewRole % UE_ARRAY_COUNT(Polos)];
+				// pc/crew-colours: a light polo (CrewOutfit.h, Bean's "lighter mix"; dark navy and maroon read near-black backlit).
+				const FLinearColor Col = SampleCrewOutfit(CrewSeed, Index).Polo;
 				for (int32 M = 0; M < Polo->GetNumMaterials(); ++M)
 				{
 					if (M == Polo->GetMaterialIndex(TEXT("Button"))) continue;
@@ -3702,8 +3707,9 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 	const float Span = float(FVector::Dist(At(TEXT("upperarm_l")), At(TEXT("upperarm_r"))));
 	const float Waist = float(At(TEXT("spine_01")).Z) + 3.f; // the hem at the navel, clear of the shorts' waistband
 	const float Top = float(At(TEXT("neck_01")).Z) + 1.f;   // Graphics G6: up to the collarbones (the vest's shoulders)
-	// Graphics G6: the sailing school's royal blue vests (Bean's lesson photos), one older and faded.
-	static const FLinearColor Foam[] = { FLinearColor(0.012f, 0.075f, 0.52f), FLinearColor(0.014f, 0.09f, 0.48f), FLinearColor(0.03f, 0.10f, 0.38f) };
+	// pc/crew-colours: a bright life jacket, yellow, red or light blue (CrewOutfit.h; Graphics G6's royal blue school vests
+	// read near-black backlit).
+	const FLinearColor VestColour = SampleCrewOutfit(CrewSeed, Index).Vest;
 	// Graphics G6: the life jacket tailored over this sailor's polo (Tools/blender/build_vest.py) and skinned like it, so it
 	// wraps the body as it sits; the rigid one below where it has not been built (or with -SailingNoPolo).
 	const FString VestRole = MetaHumanRoleName(CrewRole);
@@ -3718,7 +3724,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		Vest->RegisterComponent();
 		Vest->SetLeaderPoseComponent(Body);
 		const int32 Shell = Vest->GetMaterialIndex(TEXT("PFD"));
-		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(CrewRole + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), VestColour);
 		BoatParts.Add(Vest);
 	}
 	else if (CrewPFDMesh && Span > 10.f && Top > Waist)
@@ -3734,7 +3740,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		Pfd->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("spine_04"))));
 		Pfd->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Pfd->RegisterComponent();
-		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Foam[(CrewRole + Index / NumMetaHumanRoles) % UE_ARRAY_COUNT(Foam)]);
+		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), VestColour);
 		BoatParts.Add(Pfd);
 	}
 	// The helm goes bare-headed (his hair and the trimmer's and bow's caps: crews are mixed).

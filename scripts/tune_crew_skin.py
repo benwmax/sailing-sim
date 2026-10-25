@@ -53,4 +53,21 @@ for role in ROLES:
     tune(f"/Game/Crew/MetaHumans/{role}/Body/Materials/MI_Body_Baked_VT",
          {"Use Micro Skin Details": True},
          {"Micro Skin Normal Strength": 0.9})
+
+# pc/skin-backlight (docs/skin-backlight): the shared skin profile's transmission, the light that comes through an ear, a
+# nostril or a neck's edge against the sun. The optimized build's profile carries a near-black tint (0.1, 0.033, 0) at
+# extinction 18.6, so even with the sun lighting transmission (ASailingEnvironment) the skin never glowed. Measured on the
+# backlit helm: (0.6, 0.2, 0.06) at 8 is a red-orange edge; (1, 0.33, 0.1) at 6 painted a hard orange rim on the nose.
+PROFILE = "/Game/Crew/MetaHumans/Common/Lookdev_UHM/Skin/Materials/SSP_skin_unified"
+profile = unreal.load_asset(PROFILE)
+if profile:
+    settings = profile.get_editor_property("settings")
+    settings.set_editor_property("transmission_tint_color", unreal.LinearColor(0.6, 0.2, 0.06, 1.0))
+    settings.set_editor_property("extinction_scale", 8.0)
+    settings.set_editor_property("normal_scale", 0.3)
+    profile.set_editor_property("settings", settings)
+    LIB.save_loaded_asset(profile)
+    log("SSP_skin_unified: transmission tint (0.6, 0.2, 0.06), extinction 8, normal scale 0.3")
+else:
+    log(f"{PROFILE} missing")
 log("done")

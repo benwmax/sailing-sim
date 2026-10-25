@@ -1997,13 +1997,22 @@ col *= lerp(0.78, 1.04, saturate(0.55 + 0.75 * Nf.z));
 // toward the eye from the normal's change on screen (positive here: a hollow; the camera vector points to the eye), its occlusion strongest mid-chord: about an
 // eighth of the sky gone at the deepest point of a belly of 3 m radius on a 2.5 m chord (a cylinder's view factor).
 // (No screen derivatives in a ray-tracing hit shader: the traced sail keeps the rest of the look.)
-float hollow = 0.0;
+float hollow = 0.0, creaseV = 0.0, creaseR = 0.0;
 #if !RAYHITGROUPSHADER
 float3 dpx = ddx(WP) * 0.01, dpy = ddy(WP) * 0.01;
 float kc = (dot(ddx(Nf), dpx) + dot(ddy(Nf), dpy)) / max(dot(dpx, dpx) + dot(dpy, dpy), 1e-8);
 hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y));
+// Ultra audit item 5 (docs/sail-cloth-shading): the wrinkles #308 put in the cloth's geometry (a few mm over a few cm:
+// curvatures of tens per metre, far past the belly's under one) shaded as cloth is: a fold's valley sees less of the sky
+// and darkens, its ridge catches a little more. Gated past 2 /m so the belly (hollow, above) is left alone.
+if (Detail > 0.5)
+{
+    creaseV = smoothstep(2.0, 12.0, kc);
+    creaseR = smoothstep(2.0, 12.0, -kc);
+}
 #endif
 col *= 1.0 - 0.16 * hollow;
+col *= (1.0 - 0.25 * creaseV) * (1.0 + 0.06 * creaseR);
 col *= 1.0 - 0.06 * through * (1.0 - mark);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
@@ -2033,11 +2042,53 @@ dhdu += dth * (cb / cr2);      // UV2.x runs from the leech toward the luff: d/d
 dhdv += dth * (ca / cr2);
 float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
 dhdu += pucker * 55.0 * cos(UV0.x * 55.0);
+// Ultra audit item 5, the shading half (docs/sail-cloth-shading; Detail: High and Ultra). What close-up Dacron carries:
+// - crinkle: the resin's fine broken creases from use (two octaves of ridged value noise, 3 and 1.2 cm, turned off the
+//   cloth's axes; about 5 deg of slope at a crease, more with age), into the normal, faded where a crease falls under about two pixels;
+// - the weave: a 0.6 mm plain weave in the normal, only where a pixel is under about 0.3 mm (the cloth at arm's reach).
+// Both are slopes in the normal, nothing finer than the pixel (px: metres a pixel at this depth).
+float crinkle = 0.0;
+if (Detail > 0.5 && Layout < 3.5)
+{
+    float pxC = max(Depth, 1.0) * 1.25e-5;
+    float ageC = Age >= 0.0 ? saturate(0.3 + Age / 12.0) * (1.0 - 0.5 * saturate(Care)) : 0.5;
+    float ampC = 0.0009 * (0.5 + ageC);   // a crease is narrow: its slope is what shows (0.15 mm high read as nothing, 1.5 mm as hammered metal)
+    float2 cg = float2(0.0, 0.0);
+    float scales[2] = { 0.03, 0.012 };
+    for (int o = 0; o < 2; o++)
+    {
+        float sC = scales[o];
+        float fadeC = 1.0 - smoothstep(0.08 * sC, 0.2 * sC, pxC);   // a crease about a tenth of its cell wide: gone under two pixels
+        if (fadeC <= 0.0) continue;
+        // Turned off the cloth's axes (a different angle each octave) and bent by a slow warp, or the cells' ridges read
+        // as a grid maze; the warp's own slope is left out of the gradient (it is a quarter of the cell's at most).
+        float ca0 = o == 0 ? 0.8290 : 0.2588, sa0 = o == 0 ? 0.5592 : 0.9659;   // 34 and 75 deg
+        float2 q = float2(ca0 * UV0.x - sa0 * UV0.y, sa0 * UV0.x + ca0 * UV0.y) / sC + o * 7.31;
+        q += 0.4 * float2(sin(q.y * 0.61 + 1.3), sin(q.x * 0.53 + 2.1));
+        float2 qi = floor(q), qf = frac(q);
+        float2 sm = qf * qf * (3.0 - 2.0 * qf), dsm = 6.0 * qf * (1.0 - qf);
+        float a00 = frac(sin(dot(qi, float2(127.1, 311.7))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(127.1, 311.7))) * 43758.5);
+        float a01 = frac(sin(dot(qi + float2(0, 1), float2(127.1, 311.7))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(127.1, 311.7))) * 43758.5);
+        float n = lerp(lerp(a00, a10, sm.x), lerp(a01, a11, sm.x), sm.y);
+        float2 dq = float2(lerp(a10 - a00, a11 - a01, sm.y) * dsm.x, lerp(a01 - a00, a11 - a10, sm.x) * dsm.y) / sC;
+        float2 dn = float2(ca0 * dq.x + sa0 * dq.y, -sa0 * dq.x + ca0 * dq.y);   // back to the cloth's axes
+        // Ridged: h = 1 - |2n - 1|, sharp along n = 0.5 (a crease line), its slope's sign flipping across the line.
+        float sgn = n > 0.5 ? -1.0 : 1.0;
+        cg += ampC * fadeC * (o == 0 ? 1.0 : 0.6) * sgn * 2.0 * dn;
+        crinkle = max(crinkle, fadeC * (1.0 - smoothstep(0.0, 0.06, abs(n - 0.5))));
+    }
+    float weaveK = 1.0 - smoothstep(0.0002, 0.0004, pxC);
+    float2 wv = UV0 * (6.2831853 / 0.0006);
+    cg += weaveK * 0.00002 * (6.2831853 / 0.0006) * float2(cos(wv.x) * sin(wv.y), sin(wv.x) * cos(wv.y));
+    dhdu += cg.x;
+    dhdv += cg.y;
+}
 NormalTS = normalize(float3(-(dhdu + ndu), -(dhdv + ndv), 1.0));
 // The resin cracks along a fold: the line reads a shade darker and rougher than the sheen around it.
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
+Rough = min(Rough + 0.08 * crinkle, 0.9);                          // the resin broken along a crinkle line: duller there
 if (Layout > 3.5 && Layout < 4.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 Rough = lerp(Rough, 0.08, win);                                     // the window's vinyl
 return col;
