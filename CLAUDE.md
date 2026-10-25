@@ -399,7 +399,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 - Fix round (Graphics G6, `docs/graphics-6/`): houses from the G2 footprints (`Tools/terrain/build_houses.py` ->
   `<World>.houses`, `HouseKit.cpp`, baked by `scripts/make-houses.sh` to `/Game/World/Baked/SM_Houses_*`); trees from the
   G2 lidar crowns (`Tools/terrain/build_crowns.py` -> `<World>.crowns`, `PlaceCrownTrees`) in three bands (leaf cards to
-  250 m on High, shadowed opaque crowns to 1 km, unshadowed beyond: `-SailingNearTrees`, `-SailingMidTrees`,
+  250 m on High (1 km on Ultra: docs/ultra-far-shore), shadowed opaque crowns to 1 km, unshadowed beyond: `-SailingNearTrees`, `-SailingMidTrees`,
   `-SailingFarTreeShadows=1`; `-SailingClassicTrees`/`-SailingClassicHouses` compare). A regroup moves only the trees crossing a band edge, and the mid and far crowns live in 4 km tile components (`TileComponent`, static, bounds scaled past `r.SceneCulling.MaxCellSize`): an ISM whose instance count changes is re-added whole to the distance-field and Lumen scenes, and a cullable tile costs scene culling every frame. Marina neighbours wear one of six
   `build_berthed.py` dresses (`SM_<Tag>_Berthed[_1..5]`); the player's keelboat wears dress 0 while tied up in her slip.
   The crew's vests are tailored over each polo (`Tools/blender/build_vest.py`, run by `make-crew-clothes.sh`; `PIECES=Vest`
