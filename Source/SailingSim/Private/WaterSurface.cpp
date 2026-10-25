@@ -1495,6 +1495,12 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		Spray->SetupAttachment(RootComponent);
 		Spray->SetStaticMesh(DropletMesh);
 		if (SprayMaterial) Spray->SetMaterial(0, SprayMaterial);
+		// pc/ultra-spray (docs/ultra-spray): Ultra's spray close up, mist torn into wisps and sheets beading into drops (M_Spray's
+		// Fine; 0, as it was, on the other tiers). -SailingNoUltraSpray compares.
+		if (SprayMaterial && USailingSettings::Get()->Quality == ESailingQuality::Ultra && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoUltraSpray")))
+		{
+			if (UMaterialInstanceDynamic* Fine = Spray->CreateDynamicMaterialInstance(0, SprayMaterial)) Fine->SetScalarParameterValue(TEXT("Fine"), 1.f);
+		}
 		Spray->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Spray->SetCastShadow(false);
 		Spray->SetUsingAbsoluteLocation(true);
