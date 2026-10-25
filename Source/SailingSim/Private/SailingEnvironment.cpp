@@ -264,6 +264,11 @@ void ASailingEnvironment::FindSceneActors()
 		if (Light && Light->IsUsedAsAtmosphereSunLight())
 		{
 			Sun = *It;
+			// pc/skin-backlight (docs/skin-backlight): the sun lights subsurface transmission (an ear or a neck's edge glowing
+			// against it). Lights default to no transmission, and the skin profile's transmission never ran.
+			// -SailingNoSunTransmission compares.
+			static SailingArgs::FCachedFlag NoTransmissionArg(TEXT("SailingNoSunTransmission"));
+			if (!NoTransmissionArg.Get()) It->GetLightComponent()->SetTransmission(true);
 		}
 	}
 	if (TActorIterator<ASkyLight> It(GetWorld()); It) SkyLightActor = *It;
