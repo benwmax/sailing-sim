@@ -64,7 +64,7 @@ The side view lands on the albedo-0.08 stand-in. With the sky term alone it was 
 upwelling is the other half). Where Lumen's rays find the lake bed or the hull itself first (the close underside
 views), the lower hemisphere isn't reached and nothing changes.
 
-The sheets below are from the sky-term-only build (before above, after below); the sun term adds to them.
+The sheets below are from the final build, sky and sun terms (before above, after below).
 | Side | Chase | Crew underside | Boom from below |
 | --- | --- | --- | --- |
 | ![side](side.jpg) | ![chase](chase.jpg) | ![crew](crewunder.jpg) | ![boom](boomunder.jpg) |
