@@ -94,6 +94,9 @@ for ob in meshes:
     n_loose = sum(1 for v in bm.verts if dist.get(v, 1e9) < REACH)
     bm.to_mesh(me)
     bm.free()
+    # The only colour set: the outfit's export carries a white one, and the FBX importer takes the first it finds.
+    for a in [a for a in me.color_attributes if a.name != "Looseness"]:
+        me.color_attributes.remove(a)
     if me.color_attributes.get("Looseness"):
         me.color_attributes.active_color = me.color_attributes["Looseness"]
     print(f"Looseness: {ob.name}: {len(loops)} open edges, hem at z {hem[1].z:.3f}, cuffs at x {cuffs[0][1].x:.3f} and "

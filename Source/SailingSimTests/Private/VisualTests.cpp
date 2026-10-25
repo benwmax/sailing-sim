@@ -1133,3 +1133,54 @@ bool FVisualSailWrinklesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("None a metre back from the luff"), SailWrinkleCm(W, FVector2D(1.0, 2.0), 0.03f, 0.03f), 0.f);
 	return true;
 }
+
+/**
+ * Ultra audit item 7: the polos' looseness (Tools/blender/crew_looseness.py, imported as vertex colour red) is where a
+ * shirt hangs free: the hem below the life jacket and the cuffs. A few tenths of the polo is loose, its lowest band is
+ * loose and its collar isn't, so M_CrewFabric's wind flutter and lag move only those (a white colour set would flap the
+ * whole shirt).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClothLoosenessTest, "SailingSim.Visual.CrewClothLooseness", VisualFlags)
+bool FVisualCrewClothLoosenessTest::RunTest(const FString& Parameters)
+{
+	if (!IFileManager::Get().DirectoryExists(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Crew/MetaHumans"))))
+	{
+		AddWarning(TEXT("Content/Crew/MetaHumans is not installed: nothing to check"));
+		return true;
+	}
+	for (int32 Role = 0; Role < NumMetaHumanRoles; ++Role)
+	{
+		const FString R = MetaHumanRoleName(Role);
+		const USkeletalMesh* Polo = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("/Game/Crew/MetaHumans/%s/Clothing/SKM_%s_Polo.SKM_%s_Polo"), *R, *R, *R));
+		if (!TestNotNull(*FString::Printf(TEXT("%s's polo loads"), *R), Polo)) continue;
+#if WITH_EDITOR
+		// (The mesh description: the render buffers' CPU copies may be gone.)
+		const FMeshDescription* MD = const_cast<USkeletalMesh*>(Polo)->GetMeshDescription(0);
+		if (!TestNotNull(TEXT("It has a mesh description"), MD)) continue;
+		const TVertexAttributesConstRef<FVector3f> Pos = MD->GetVertexPositions();
+		const TVertexInstanceAttributesConstRef<FVector4f> Col = MD->VertexInstanceAttributes().GetAttributesRef<FVector4f>(MeshAttribute::VertexInstance::Color);
+		if (!TestTrue(TEXT("It carries vertex colours"), Col.IsValid())) continue;
+		float ZMin = 1e9f, ZMax = -1e9f;
+		for (const FVertexID V : MD->Vertices().GetElementIDs())
+		{
+			ZMin = FMath::Min(ZMin, Pos[V].Z);
+			ZMax = FMath::Max(ZMax, Pos[V].Z);
+		}
+		int32 N = 0, Loose = 0, Hem = 0, HemLoose = 0, Collar = 0, CollarLoose = 0;
+		for (const FVertexInstanceID I : MD->VertexInstances().GetElementIDs())
+		{
+			const float Z = Pos[MD->GetVertexInstanceVertex(I)].Z;
+			const bool bLoose = Col[I].X > 0.05f;
+			++N;
+			Loose += bLoose ? 1 : 0;
+			if (Z < ZMin + 0.03f * (ZMax - ZMin)) { ++Hem; HemLoose += bLoose ? 1 : 0; }
+			if (Z > ZMax - 0.05f * (ZMax - ZMin)) { ++Collar; CollarLoose += bLoose ? 1 : 0; }
+		}
+		AddInfo(FString::Printf(TEXT("%s: %d of %d vertices loose; the hem band %d of %d, the collar %d of %d"), *R, Loose, N, HemLoose, Hem, CollarLoose, Collar));
+		TestTrue(FString::Printf(TEXT("%s: a few tenths of the polo is loose, not all of it"), *R), Loose > N / 20 && Loose < N / 2);
+		TestTrue(FString::Printf(TEXT("%s: the hem is loose"), *R), Hem > 0 && HemLoose > Hem / 2);
+		TestTrue(FString::Printf(TEXT("%s: the collar is not"), *R), CollarLoose == 0);
+#endif
+	}
+	return true;
+}
