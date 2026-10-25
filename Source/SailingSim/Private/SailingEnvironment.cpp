@@ -1264,12 +1264,18 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	const double Tw = GM->GetWeatherTime();
 	if (bWeatherMapPending && PendingWeatherMap.IsReady())
 	{
-		FWeatherMapFrame Done = PendingWeatherMap.Get();
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapHandOff);
+		FWeatherMapFrame Done;
+		{
+			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapTake);
+			Done = PendingWeatherMap.Get();
+		}
 		LastWeatherMap = MoveTemp(Done.Map);
 		LastWeatherMap.LandFraction = nullptr;
 		bHasWeatherMap = true;
 		bWeatherMapPending = false;
 		struct { double X0, Y0; } Frame = { LastWeatherMap.OriginX(), LastWeatherMap.OriginY() };
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapUpload);
 		const int32 Bytes = Done.Half.Num() * int32(sizeof(FFloat16));
 		uint8* Copy = new uint8[Bytes];
 		FMemory::Memcpy(Copy, Done.Half.GetData(), Bytes);
@@ -1289,6 +1295,7 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	WeatherMapAge += GetWorld()->GetDeltaSeconds();
 	if (!bWeatherMapPending && WeatherMapAge > 2.0)
 	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapLaunch);
 		WeatherMapAge = 0.0;
 		const FCloudSky Sky = W.Sky;
 		const FGustFront Front = W.Front;
