@@ -5,6 +5,10 @@
 #include "ProceduralMeshComponent.h"
 #include "BenchRunner.h"
 #include "Async/ParallelFor.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "GameFramework/PlayerController.h"
 
 using namespace Sailing;
 
@@ -333,18 +337,38 @@ void ASailboatPawn::UpdateTelltaleRibbons()
 	}
 
 	// Ribbons: 6 segments, 1.2 cm wide, waving across their width direction.
+	// pc/cloud-mast-specks (docs/mast-specks): each ribbon is turned to face the camera about its length and kept at least
+	// kMinTelltalePx across, as the rig lines are (docs/rig-lines). A 1.2 cm ribbon seen edge-on, or from the cockpit at the
+	// leech 7 m away, fell under a pixel and broke into the dark-red specks along the mast's edge (Ultra audit follow-up).
+	constexpr float kMinTelltalePx = 1.2f;
+	FVector Eye = FVector::ZeroVector;
+	float PxAngle = 0.f;
+	const APlayerController* ViewPC = GetWorld()->GetFirstPlayerController();
+	if (ViewPC && ViewPC->PlayerCameraManager && GEngine && GEngine->GameViewport)
+	{
+		FVector2D ViewSize;
+		GEngine->GameViewport->GetViewportSize(ViewSize);
+		PxAngle = 2.f * FMath::Tan(FMath::DegreesToRadians(ViewPC->PlayerCameraManager->GetFOVAngle() * 0.5f)) / FMath::Max(ViewSize.X, 1.0);
+		Eye = BoatRoot->GetComponentTransform().InverseTransformPosition(ViewPC->PlayerCameraManager->GetCameraLocation());
+	}
 	TArray<FVector> Verts, Normals;
 	TArray<FColor> Colors;
 	TArray<int32> Tris;
 	constexpr int32 Segs = 6;
 	for (const FRibbon& R : Ribbons)
 	{
-		const FVector Across = FVector::CrossProduct(R.Dir, R.Side).GetSafeNormal() * 0.6f;
+		const FVector Flat = FVector::CrossProduct(R.Dir, R.Side).GetSafeNormal();
 		const int32 Base = Verts.Num();
 		for (int32 I = 0; I <= Segs; ++I)
 		{
 			const float S01 = float(I) / Segs;
 			const FVector C = R.Root + R.Dir * (R.LengthCm * S01) + R.Side * (R.Wave * S01 * FMath::Sin(VisualTime * 22.f - S01 * 6.f + R.LengthCm));
+			FVector Across = Flat * 0.6f;
+			if (PxAngle > 0.f)
+			{
+				const FVector Facing = FVector::CrossProduct(R.Dir, C - Eye).GetSafeNormal();
+				Across = (Facing.IsNearlyZero() ? Flat : Facing) * FMath::Max(0.6f, 0.5f * kMinTelltalePx * PxAngle * float(FVector::Dist(Eye, C)));
+			}
 			Verts.Add(C - Across);
 			Verts.Add(C + Across);
 			Normals.Add(R.Side);
