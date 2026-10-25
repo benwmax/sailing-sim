@@ -1,5 +1,6 @@
 #include "SailingEnvironment.h"
 #include "SailingFrame.h"
+#include "SailingProbeCopy.h"
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -38,6 +39,9 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "Misc/CommandLine.h"
 #include "HAL/IConsoleManager.h"
+#include "RHIGPUReadback.h"
+#include "TextureResource.h"
+#include <atomic>
 #include "Misc/Parse.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
@@ -105,6 +109,8 @@ namespace
 	constexpr float kUltraCloudFootM = 60.f;
 	constexpr float kUltraCloudEdgeTop = 5.f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
+	// pc/near-cloud-grain (docs/near-cloud-grain): the cumulus step cap taken as if each step were at least this long (m; 0, off, elsewhere).
+	constexpr float kUltraCloudCapStepM = 76.f;   // four of Ultra's 19 m near steps
 }
 ASailingEnvironment::ASailingEnvironment()
 {
@@ -119,6 +125,8 @@ ASailingEnvironment::ASailingEnvironment()
 	CloudLayersMaterial = CloudLayers.Object;
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CloudCache(TEXT("/Game/Materials/M_CloudCache.M_CloudCache"));
 	CloudCacheMaterial = CloudCache.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkyProbeMat(TEXT("/Game/Materials/M_SkyEnvProbe.M_SkyEnvProbe"));
+	SkyProbeMaterial = SkyProbeMat.Object;
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkyDomeMat(TEXT("/Game/Materials/M_SkyDome.M_SkyDome"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> LensWater(TEXT("/Game/Materials/M_LensWater.M_LensWater"));
@@ -264,9 +272,24 @@ void ASailingEnvironment::FindSceneActors()
 		if (Light && Light->IsUsedAsAtmosphereSunLight())
 		{
 			Sun = *It;
+			// pc/skin-backlight (docs/skin-backlight): the sun lights subsurface transmission (an ear or a neck's edge glowing
+			// against it). Lights default to no transmission, and the skin profile's transmission never ran.
+			// -SailingNoSunTransmission compares.
+			static SailingArgs::FCachedFlag NoTransmissionArg(TEXT("SailingNoSunTransmission"));
+			if (!NoTransmissionArg.Get()) It->GetLightComponent()->SetTransmission(true);
 		}
 	}
 	if (TActorIterator<ASkyLight> It(GetWorld()); It) SkyLightActor = *It;
+	// docs/hull-water-bounce (measuring): -SailingSkyLowerHemisphere=<grey>: the sky light's lower hemisphere that colour
+	// instead of black (what Lumen's rays below the horizon return where they miss: the water isn't in its scene).
+	float LowerGrey = -1.f;
+	if (SkyLightActor && FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyLowerHemisphere="), LowerGrey) && LowerGrey >= 0.f)
+	{
+		USkyLightComponent* SkyComp = SkyLightActor->GetLightComponent();
+		SkyComp->bLowerHemisphereIsBlack = false;
+		SkyComp->SetLowerHemisphereColor(FLinearColor(LowerGrey, LowerGrey, LowerGrey));
+		SkyComp->RecaptureSky();
+	}
 	if (TActorIterator<AExponentialHeightFog> It(GetWorld()); It) Fog = *It;
 	if (TActorIterator<AVolumetricCloud> It(GetWorld()); It) Clouds = *It;
 	// Realism audit Oct 23 (docs/cumulus-rims/): the planet's ground under the atmosphere's multiple scattering is open
@@ -279,6 +302,32 @@ void ASailingEnvironment::FindSceneActors()
 		Atmo->SetGroundAlbedo(FLinearColor(0.1f, 0.1f, 0.1f).ToFColor(true));
 	}
 	if (TActorIterator<APostProcessVolume> It(GetWorld()); It) PostProcess = *It;
+	// docs/hull-water-bounce (measuring): -SailingWaterGIProxy=<albedo> lays a 4 km plane of that grey at the water line,
+	// hidden but lighting indirectly, so Lumen sees a stand-in for the water (its rings are procedural meshes: no distance
+	// field, no surface cache cards) and the hull's bounce from below can be compared with and without it.
+	float ProxyAlbedo = -1.f;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWaterGIProxy="), ProxyAlbedo) && ProxyAlbedo >= 0.f)
+	{
+		UStaticMesh* Plane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+		TActorIterator<AWaterSurface> Water(GetWorld());
+		if (Plane && Base && Water)
+		{
+			UStaticMeshComponent* Proxy = NewObject<UStaticMeshComponent>(this);
+			Proxy->SetStaticMesh(Plane);
+			Proxy->SetWorldLocation(FVector(Water->GetActorLocation().X, Water->GetActorLocation().Y, Water->GetActorLocation().Z - 3.0));
+			Proxy->SetWorldScale3D(FVector(4000.0, 4000.0, 1.0));
+			Proxy->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Proxy->SetCastShadow(false);
+			Proxy->SetHiddenInGame(!FParse::Param(SailingArgs::Dev(), TEXT("SailingWaterGIProxyVisible")));   // visible: 3 cm under the water, for checking Lumen sees it
+			Proxy->bAffectIndirectLightingWhileHidden = true;
+			Proxy->RegisterComponent();
+			UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Base, this);
+			Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(ProxyAlbedo, ProxyAlbedo, ProxyAlbedo));
+			Proxy->SetMaterial(0, Mid);
+			UE_LOG(LogSailing, Display, TEXT("Water GI proxy: albedo %.3f at z %.0f cm"), ProxyAlbedo, Water->GetActorLocation().Z);
+		}
+	}
 
 	if (Sun) SunIntensity = Sun->GetLightComponent()->Intensity;
 	if (Sun) if (UDirectionalLightComponent* SunDir = Cast<UDirectionalLightComponent>(Sun->GetLightComponent())) SunDir->SetForwardShadingPriority(1);
@@ -374,6 +423,9 @@ void ASailingEnvironment::BeginPlay()
 			if (Foot > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudFootFloor"), Foot);
 			if (Edge > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudEdgeTop"), Edge);
 			if (Billow2 >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudBillow2"), Billow2);
+			float CapStep = bUltraClouds ? kUltraCloudCapStepM : -1.f;   // measuring: -SailingCloudCapStep=<m>
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudCapStep="), CapStep);
+			if (CapStep >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudCapStepFloor"), CapStep);
 		}
 		FString NoisePath; // measuring: -SailingCloudNoise=<volume texture path>
 		if (CloudMaterial && FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudNoise="), NoisePath))
@@ -454,6 +506,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateClouds(DeltaSeconds);
 	UpdateCloudLayers(CamPos);
 	UpdateSkyCache(CamPos, DeltaSeconds);
+	UpdateLowerHemisphere(GetWorld()->GetTimeSeconds());
 	UpdateHaze();
 	UpdateSkyline(CamPos);
 	UpdateRain(CamPos);
@@ -1289,6 +1342,120 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 	CloudMaterial->SetScalarParameterValue(TEXT("CloudDensity"), FMath::Lerp(0.045f, 0.065f, float(W.CloudDarkness)) /* Graphics G1: real cumulus extinction, 0.05-0.1 /m */);
 }
 
+/** docs/sky-lower-hemisphere: M_SkyEnvProbe's 2x1 target copied back without a stall (the render thread fills Value).
+ *  docs/sky-probe-readback: through a buffer. A texture readback's Lock drained the GPU on Metal every time (30 ms on the
+ *  render thread every two seconds); a buffer's waits only on its own fence, which IsReady has seen signalled. */
+struct FSkyProbeReadback
+{
+	TUniquePtr<FRHIGPUBufferReadback> Readback = MakeUnique<FRHIGPUBufferReadback>(TEXT("SkyEnvProbe"));
+	std::atomic<bool> bInFlight{ false };
+	FCriticalSection Guard;
+	FLinearColor Value = FLinearColor::Black;   // the sky's mean radiance
+	FLinearColor Sun = FLinearColor::Black;     // the sun's illuminance on the horizontal water
+	bool bHasValue = false;
+};
+
+namespace
+{
+	// The water's reflectance of a diffuse sky (Fresnel averaged over the hemisphere, cosine weighted: about 0.066 for n
+	// 1.33) and the body's upwelling seen from above: a deep body's diffuse reflectance from its single-scattering albedo,
+	// (1 - sqrt(1 - a)) / (1 + sqrt(1 - a)) per channel, times 0.55 for the light crossing the surface down and back up.
+	// The albedos mirror WaterBodyFor (WaterSurface.cpp): lake, bay, Gulf, Marseille.
+	constexpr float kWaterSkyFresnel = 0.066f;
+	FLinearColor WaterUpwelling(int32 World)
+	{
+		const FLinearColor A = (World == 1 || World == 4) ? FLinearColor(0.15f, 0.20f, 0.14f)
+			: World == 2 ? FLinearColor(0.08f, 0.16f, 0.13f)
+			: World == 3 ? FLinearColor(0.02f, 0.09f, 0.16f)
+			: FLinearColor(0.16f, 0.18f, 0.11f);
+		auto R = [](float Albedo) { const float S = FMath::Sqrt(FMath::Max(0.f, 1.f - Albedo)); return 0.55f * (1.f - S) / (1.f + S); };
+		return FLinearColor(R(A.R), R(A.G), R(A.B));
+	}
+}
+
+void ASailingEnvironment::UpdateLowerHemisphere(double Now)
+{
+	static SailingArgs::FCachedFlag NoBounceArg(TEXT("SailingNoWaterBounce"));
+	USkyLightComponent* SkyComp = SkyLightActor ? SkyLightActor->GetLightComponent() : nullptr;
+	float FixedGrey = -1.f;   // measuring: -SailingSkyLowerHemisphere=<grey> sets a fixed grey instead (FindSceneActors)
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyLowerHemisphere="), FixedGrey);
+	if (!SkyComp || NoBounceArg.Get() || FixedGrey >= 0.f || !SkyProbeMaterial || USailingSettings::Get()->Quality == ESailingQuality::Low) return;
+	if (!SkyProbeTarget)
+	{
+		SkyProbeTarget = UKismetRenderingLibrary::CreateRenderTarget2D(this, 2, 1, RTF_RGBA16f, FLinearColor::Black);
+		SkyProbe = MakeShared<FSkyProbeReadback, ESPMode::ThreadSafe>();
+	}
+	// The last readback, once it has landed. The water's radiance upward: its Fresnel reflection of the sky (0.066 of the
+	// sky's mean radiance) and the body's upwelling of the sky and of the sun (R_body x their radiance and the sun's
+	// horizontal illuminance over pi; the sun's specular glint isn't diffuse and stays out), in the sky light's own units
+	// (the probe includes its intensity and colour, the lower hemisphere doesn't). Set only when it moves 2%.
+	FLinearColor Probe = FLinearColor::Black, SunIll = FLinearColor::Black;
+	bool bNew = false;
+	{
+		FScopeLock Lock(&SkyProbe->Guard);
+		if (SkyProbe->bHasValue) { Probe = SkyProbe->Value; SunIll = SkyProbe->Sun; SkyProbe->bHasValue = false; bNew = true; }
+	}
+	if (bNew)
+	{
+		const FLinearColor Light = SkyComp->GetLightColor() * FMath::Max(SkyComp->Intensity, 1e-4f);
+		const FLinearColor Body = WaterUpwelling(USailingSettings::Get()->World);
+		// The probe's sun is the light through the atmosphere, not through the clouds: the clouds take the direct sun off the
+		// scene by the light's diffuse scale (UpdateSun: its intensity keeps a 0.35 floor for the storm sky's sake), so the
+		// sunlight that actually reaches the water is the probe's times that scale.
+		const float SunDirect = Sun ? Sun->GetLightComponent()->DiffuseScale : 1.f;
+		const FLinearColor Up = (FLinearColor(kWaterSkyFresnel, kWaterSkyFresnel, kWaterSkyFresnel) + Body) * Probe + Body * SunIll * (SunDirect / PI);
+		const FLinearColor Lower(Up.R / FMath::Max(Light.R, 1e-4f), Up.G / FMath::Max(Light.G, 1e-4f), Up.B / FMath::Max(Light.B, 1e-4f));
+		const float Change = FMath::Abs(Lower.GetLuminance() - AppliedLowerHemisphere.GetLuminance()) / FMath::Max(Lower.GetLuminance(), 1e-6f);
+		if (AppliedLowerHemisphere.R < 0.f || Change > 0.02f)
+		{
+			SkyComp->bLowerHemisphereIsBlack = false;
+			SkyComp->SetLowerHemisphereColor(Lower);
+			const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+			UE_LOG(LogSailing, Log, TEXT("Water bounce: sky mean (%.4f, %.4f, %.4f), sun on the water (%.4f, %.4f, %.4f) x direct %.2f, lower hemisphere (%.5f, %.5f, %.5f), x sky light %.3f = (%.5f, %.5f, %.5f); sun light %.3f, cloud shade %.2f, cloud darkness %.2f"),
+				Probe.R, Probe.G, Probe.B, SunIll.R, SunIll.G, SunIll.B, SunDirect, Lower.R, Lower.G, Lower.B, SkyComp->Intensity,
+				Lower.R * SkyComp->Intensity, Lower.G * SkyComp->Intensity, Lower.B * SkyComp->Intensity,
+				Sun ? Sun->GetLightComponent()->Intensity : -1.f, LastCloudShade, GM ? float(GM->GetWeatherState().CloudDarkness) : -1.f);
+			AppliedLowerHemisphere = Lower;
+		}
+	}
+	// A new probe every two seconds: draw, copy back on the render thread, and poll until the copy is ready.
+	if (!SkyProbe->bInFlight && Now >= NextSkyProbe)
+	{
+		NextSkyProbe = Now + 2.0;
+		UCanvas* Canvas = nullptr;
+		FVector2D Size;
+		FDrawToRenderTargetContext Context;
+		UKismetRenderingLibrary::BeginDrawCanvasToRenderTarget(this, SkyProbeTarget, Canvas, Size, Context);
+		if (Canvas) Canvas->K2_DrawMaterial(SkyProbeMaterial, FVector2D::ZeroVector, FVector2D(2.0, 1.0), FVector2D::ZeroVector);
+		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this, Context);
+		SkyProbe->bInFlight = true;
+		FTextureRenderTargetResource* Res = SkyProbeTarget->GameThread_GetRenderTargetResource();
+		TSharedPtr<FSkyProbeReadback, ESPMode::ThreadSafe> State = SkyProbe;
+		ENQUEUE_RENDER_COMMAND(SkyProbeCopy)([State, Res](FRHICommandListImmediate& RHICmdList)
+		{
+			if (Res && Res->GetRenderTargetTexture()) SailingCopyTexelsToReadback(RHICmdList, Res->GetRenderTargetTexture(), 2, *State->Readback);
+			else State->bInFlight = false;
+		});
+	}
+	else if (SkyProbe->bInFlight)
+	{
+		TSharedPtr<FSkyProbeReadback, ESPMode::ThreadSafe> State = SkyProbe;
+		ENQUEUE_RENDER_COMMAND(SkyProbePoll)([State](FRHICommandListImmediate& RHICmdList)
+		{
+			if (!State->bInFlight || !State->Readback->IsReady()) return;
+			if (const FVector4f* Px = static_cast<const FVector4f*>(State->Readback->Lock(2 * sizeof(FVector4f))))
+			{
+				FScopeLock Lock(&State->Guard);
+				State->Value = FLinearColor(Px[0].X, Px[0].Y, Px[0].Z);
+				State->Sun = FLinearColor(Px[1].X, Px[1].Y, Px[1].Z);
+				State->bHasValue = true;
+			}
+			State->Readback->Unlock();
+			State->bInFlight = false;
+		});
+	}
+}
+
 void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSeconds)
 {
 	if (!bSkyCache || !CacheMaterial || !CloudMaterial || !SkyMaterial) return;
@@ -1381,7 +1548,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 			FLinearColor V;
 			if (CloudMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(Name), V)) CacheMaterial->SetVectorParameterValue(Name, V);
 		}
-		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth"), TEXT("CloudFootFloor"), TEXT("CloudEdgeTop"), TEXT("CloudBillow2") })   // pc/ultra-cloud-tops: Ultra's three as the live clouds
+		for (const TCHAR* Name : { TEXT("CloudDensity"), TEXT("MaxStepDepth"), TEXT("CloudFootFloor"), TEXT("CloudEdgeTop"), TEXT("CloudBillow2"), TEXT("CloudCapStepFloor") })   // pc/ultra-cloud-tops: Ultra's three as the live clouds
 		{
 			float S;
 			if (CloudMaterial->GetScalarParameterValue(FHashedMaterialParameterInfo(Name), S)) CacheMaterial->SetScalarParameterValue(Name, S);

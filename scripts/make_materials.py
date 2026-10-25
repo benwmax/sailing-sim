@@ -675,22 +675,57 @@ def build_ghost():
 
 
 SPRAY_CODE = """
-// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion. Grain 1: a clump of droplets,
-// round drops on a jittered grid (stretched with the quad: the motion blur) over a faint veil; 0: smooth mist.
+// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion (quad x). Grain 1: a clump of
+// droplets; 0.6: a sheet torn off the bow wave; 0: smooth mist.
+// docs/near-water/ (Ultra audit 3): bow spray is millimetre drops, at a few metres points a pixel or two across that
+// streak over a 1/60 s exposure (the quad's stretch), and a sheet breaks up into strands along its motion. The clumps were
+// a disc of 3 cm dots over a soft veil and the sheets a smooth translucent flap: sprites.
 // The quad's own position (the engine plane spans -50..50 cm; its UVs don't reach the material here).
 float2 q = Local.xy / 50.0;
 float2 Coord = q * 0.5 + 0.5;
 float r = length(q);
 float soft = saturate(1.0 - r);
 soft *= soft;
-float2 g = Coord * float2(4.0, 3.0) + Seed * 17.0;
+float edge = saturate(1.25 - r);
+// Drops: 9 x 6 jittered cells, a drop in about two thirds of them, each a sixth of its cell across.
+float2 g = Coord * float2(9.0, 6.0) + Seed * 17.0;
 float2 c = floor(g);
 float2 f = frac(g) - 0.5;
 float h = frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453);
 float2 o = float2(frac(h * 7.31), frac(h * 3.17)) - 0.5;
-float drop = saturate((0.24 + 0.14 * h - length(f - 0.25 * o)) * 10.0) * step(0.25, h);
-float grainy = saturate(drop + 0.4 * soft) * saturate(1.25 - r);
-return saturate(Alpha * lerp(soft, grainy, Grain));
+float drop = saturate((0.09 + 0.07 * h - length(f - 0.5 * o)) * 18.0) * step(0.35, h);
+// Sheet: strands along its motion, seven across, each its own width and broken where it has torn.
+float sy = Coord.y * 7.0 + Seed * 5.0;
+float hb = frac(sin(floor(sy) * 91.7 + Seed * 13.1) * 43758.5453);
+float band = abs(frac(sy) - 0.5);
+float torn = smoothstep(0.25, 0.55, frac(Coord.x * (1.2 + 2.0 * hb) + hb * 3.7));
+float strand = saturate((0.08 + 0.12 * hb - band) * 10.0) * torn * step(0.2, hb);
+float t = saturate((Grain - 0.6) / 0.4);
+// pc/ultra-spray (docs/ultra-spray; Ultra only, Fine 1 from AWaterSurface::UpdateSpray): what still read as sprites close up.
+// - Mist was a smooth disc with a clean edge: torn into wisps by two octaves of value noise (it thins out, it has no rim).
+// - A sheet's strands ran the quad's whole length: toward its ends they neck and bead into drops (a ligament breaking up,
+//   Rayleigh-Plateau, beads about four strand widths apart), so a sheet reads as water tearing, not a striped flap.
+[branch] if (Fine > 0.5)
+{
+    float2 mq = q * 2.2 + Seed * 9.3;
+    float2 mi = floor(mq), mf = frac(mq);
+    mf = mf * mf * (3.0 - 2.0 * mf);
+    float m00 = frac(sin(dot(mi, float2(27.17, 113.9))) * 43758.5), m10 = frac(sin(dot(mi + float2(1, 0), float2(27.17, 113.9))) * 43758.5);
+    float m01 = frac(sin(dot(mi + float2(0, 1), float2(27.17, 113.9))) * 43758.5), m11 = frac(sin(dot(mi + float2(1, 1), float2(27.17, 113.9))) * 43758.5);
+    float n1 = lerp(lerp(m00, m10, mf.x), lerp(m01, m11, mf.x), mf.y);
+    float2 mq2 = q * 5.7 + Seed * 3.1;
+    float2 ni = floor(mq2), nf = frac(mq2);
+    nf = nf * nf * (3.0 - 2.0 * nf);
+    float k00 = frac(sin(dot(ni, float2(27.17, 113.9))) * 43758.5), k10 = frac(sin(dot(ni + float2(1, 0), float2(27.17, 113.9))) * 43758.5);
+    float k01 = frac(sin(dot(ni + float2(0, 1), float2(27.17, 113.9))) * 43758.5), k11 = frac(sin(dot(ni + float2(1, 1), float2(27.17, 113.9))) * 43758.5);
+    float n2 = lerp(lerp(k00, k10, nf.x), lerp(k01, k11, nf.x), nf.y);
+    soft = saturate(1.0 - r) * smoothstep(0.3, 0.8, 0.6 * n1 + 0.4 * n2 + 0.35 * (1.0 - r) - 0.15);
+    float ends = smoothstep(0.25, 0.85, abs(q.x));
+    float bead = saturate((0.5 + 0.5 * cos((Coord.x * (9.0 + 8.0 * hb) + hb * 5.0) * 6.2831853) - 0.35) * 2.5);
+    strand *= lerp(1.0, bead, ends);
+}
+float grainy = lerp(strand, drop, t) * edge + 0.1 * soft;
+return saturate(Alpha * lerp(soft, grainy, saturate(Grain / 0.6)));
 """
 
 
@@ -706,6 +741,7 @@ def build_spray():
     inputs = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -900, 0)}
     for k, (name, y) in enumerate((("Alpha", 100), ("Grain", 200), ("Seed", 300))):
         inputs[name] = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=k)
+    inputs["Fine"] = scalar(mat, "Fine", 0.0, -900, 400)   # pc/ultra-spray: 1 on Ultra (AWaterSurface::UpdateSpray's instance)
     c = custom(mat, SPRAY_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT1, -500, 200)
     for name, n in inputs.items():
         connect(n, "", c, name)
@@ -815,7 +851,7 @@ return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - y * y)) * 0.
 
 BOW_WAVE_CODE = r"""
 // Spray hull (docs/spray-hull): the bow wave's curl (ASailboatPawn::UpdateBowWave). UV: x across the sheet (0 at the hull,
-// 1 out on the sea), y along the bow (0 at the stem). Vertex colour: R the lip (speed), G the crest's rise, A the fade.
+// 1 out on the sea), y along the bow (0 at the stem). Vertex colour: R the lip (speed), G the crest's rise, B Ultra's detail, A the fade.
 // Green-dark water thinning out to nothing where it meets the sea, a white crest along the shoulder and the lip, broken
 // by bubbly noise that runs aft with the water.
 float u = UV.x, t = UV.y;
@@ -845,6 +881,28 @@ float foam = saturate(lipLine * 1.4f + crest * gap * 0.25f * nz + (1.0f - u) * 0
 // angles, strongest along the curling top edge), a faint dark-water tint, gone where it meets the sea and soft at its root.
 float fres = 0.04f + 0.96f * pow(1.0f - saturate(abs(dot(normalize(N), normalize(V)))), 5.0f);
 fres = saturate(fres * (1.0f + 1.5f * crest));
+// pc/ultra-spray (docs/ultra-spray; Ultra only: vertex colour B, ASailboatPawn::UpdateBowWave). Close up the lip read as one
+// soft white tube. Water torn off a bow runs aft in streaks a couple of centimetres wide and some tens long, and throws
+// drops off its edge: the lip is cut into streaks running aft with the water, flecked outboard by drops, and the clear
+// film carries the same flow lines in its reflection. (UV: u across, about 0.6 m; t along the bow, about 1.4 m.)
+[branch] if (VC.b > 0.5f)
+{
+    float2 sq = float2(u * 30.0f, t * 3.0f - Time * 2.5f);
+    float2 si = floor(sq), sf = frac(sq);
+    sf = sf * sf * (3.0f - 2.0f * sf);
+    float s00 = frac(sin(dot(si, float2(41.3, 289.1))) * 43758.5), s10 = frac(sin(dot(si + float2(1, 0), float2(41.3, 289.1))) * 43758.5);
+    float s01 = frac(sin(dot(si + float2(0, 1), float2(41.3, 289.1))) * 43758.5), s11 = frac(sin(dot(si + float2(1, 1), float2(41.3, 289.1))) * 43758.5);
+    float ns = lerp(lerp(s00, s10, sf.x), lerp(s01, s11, sf.x), sf.y);
+    float streak = smoothstep(0.4f, 0.8f, ns);
+    foam = saturate(foam * lerp(0.25f, 1.35f, streak));
+    float2 dq = float2(u * 80.0f, t * 20.0f - Time * 7.0f);
+    float2 dc = floor(dq), df = frac(dq) - 0.5f;
+    float dh = frac(sin(dot(dc, float2(12.9898, 78.233))) * 43758.5453);
+    float fleck = saturate((0.16f - length(df - 0.3f * (float2(frac(dh * 7.31f), frac(dh * 3.17f)) - 0.5f))) * 14.0f) * step(0.72f, dh);
+    float outboard = smoothstep(0.12f, 0.22f, u) * (1.0f - smoothstep(0.3f, 0.5f, u)) * VC.g * (0.3f + 0.7f * VC.r);
+    foam = max(foam, fleck * outboard);
+    fres = saturate(fres * lerp(0.6f, 1.4f, ns));
+}
 Rough = lerp(0.02f, 0.45f, foam);
 Opacity = saturate(VA * (1.0f - smoothstep(0.45f, 1.0f, u)) * (0.16f + 0.6f * fres + 0.85f * foam));
 return lerp(float3(0.01f, 0.018f, 0.016f), float3(0.92f, 0.94f, 0.93f), foam);
@@ -1997,13 +2055,26 @@ col *= lerp(0.78, 1.04, saturate(0.55 + 0.75 * Nf.z));
 // toward the eye from the normal's change on screen (positive here: a hollow; the camera vector points to the eye), its occlusion strongest mid-chord: about an
 // eighth of the sky gone at the deepest point of a belly of 3 m radius on a 2.5 m chord (a cylinder's view factor).
 // (No screen derivatives in a ray-tracing hit shader: the traced sail keeps the rest of the look.)
-float hollow = 0.0;
+float hollow = 0.0, creaseV = 0.0, creaseR = 0.0;
 #if !RAYHITGROUPSHADER
 float3 dpx = ddx(WP) * 0.01, dpy = ddy(WP) * 0.01;
 float kc = (dot(ddx(Nf), dpx) + dot(ddy(Nf), dpy)) / max(dot(dpx, dpx) + dot(dpy, dpy), 1e-8);
-hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y));
+// docs/sail-edge-speckle/: none of it where the cloth turns edge-on to the eye. There a pixel's footprint runs a long way
+// across the surface, so ddx/ddy of the normal span the curve past the silhouette and kc is noise: it darkened single
+// pixels along every leech against the sky (the speckled edge, with every AA mode: TAA, TSR and SMAA only smeared it).
+float edgeOn = smoothstep(0.08, 0.25, facingV);
+hollow = saturate(kc / 0.45) * 4.0 * UV1.x * (1.0 - UV1.x) * (1.0 - smoothstep(0.75, 1.0, UV1.y)) * edgeOn;
+// Ultra audit item 5 (docs/sail-cloth-shading): the wrinkles #308 put in the cloth's geometry (a few mm over a few cm:
+// curvatures of tens per metre, far past the belly's under one) shaded as cloth is: a fold's valley sees less of the sky
+// and darkens, its ridge catches a little more. Gated past 2 /m so the belly (hollow, above) is left alone.
+if (Detail > 0.5)
+{
+    creaseV = smoothstep(2.0, 12.0, kc) * edgeOn;
+    creaseR = smoothstep(2.0, 12.0, -kc) * edgeOn;
+}
 #endif
 col *= 1.0 - 0.16 * hollow;
+col *= (1.0 - 0.25 * creaseV) * (1.0 + 0.06 * creaseR);
 col *= 1.0 - 0.06 * through * (1.0 - mark);
 // Graphics G6: the creases a used sail carries (a height field in metres, its slopes into the normal): fold lines from
 // flaking, roughly parallel to the foot every 0.75 m (each its own strength along the chord); stress wrinkles fanning
@@ -2033,11 +2104,53 @@ dhdu += dth * (cb / cr2);      // UV2.x runs from the leech toward the luff: d/d
 dhdv += dth * (ca / cr2);
 float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
 dhdu += pucker * 55.0 * cos(UV0.x * 55.0);
+// Ultra audit item 5, the shading half (docs/sail-cloth-shading; Detail: High and Ultra). What close-up Dacron carries:
+// - crinkle: the resin's fine broken creases from use (two octaves of ridged value noise, 3 and 1.2 cm, turned off the
+//   cloth's axes; about 5 deg of slope at a crease, more with age), into the normal, faded where a crease falls under about two pixels;
+// - the weave: a 0.6 mm plain weave in the normal, only where a pixel is under about 0.3 mm (the cloth at arm's reach).
+// Both are slopes in the normal, nothing finer than the pixel (px: metres a pixel at this depth).
+float crinkle = 0.0;
+if (Detail > 0.5 && Layout < 3.5)
+{
+    float pxC = max(Depth, 1.0) * 1.25e-5;
+    float ageC = Age >= 0.0 ? saturate(0.3 + Age / 12.0) * (1.0 - 0.5 * saturate(Care)) : 0.5;
+    float ampC = 0.0009 * (0.5 + ageC);   // a crease is narrow: its slope is what shows (0.15 mm high read as nothing, 1.5 mm as hammered metal)
+    float2 cg = float2(0.0, 0.0);
+    float scales[2] = { 0.03, 0.012 };
+    for (int o = 0; o < 2; o++)
+    {
+        float sC = scales[o];
+        float fadeC = 1.0 - smoothstep(0.08 * sC, 0.2 * sC, pxC);   // a crease about a tenth of its cell wide: gone under two pixels
+        if (fadeC <= 0.0) continue;
+        // Turned off the cloth's axes (a different angle each octave) and bent by a slow warp, or the cells' ridges read
+        // as a grid maze; the warp's own slope is left out of the gradient (it is a quarter of the cell's at most).
+        float ca0 = o == 0 ? 0.8290 : 0.2588, sa0 = o == 0 ? 0.5592 : 0.9659;   // 34 and 75 deg
+        float2 q = float2(ca0 * UV0.x - sa0 * UV0.y, sa0 * UV0.x + ca0 * UV0.y) / sC + o * 7.31;
+        q += 0.4 * float2(sin(q.y * 0.61 + 1.3), sin(q.x * 0.53 + 2.1));
+        float2 qi = floor(q), qf = frac(q);
+        float2 sm = qf * qf * (3.0 - 2.0 * qf), dsm = 6.0 * qf * (1.0 - qf);
+        float a00 = frac(sin(dot(qi, float2(127.1, 311.7))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(127.1, 311.7))) * 43758.5);
+        float a01 = frac(sin(dot(qi + float2(0, 1), float2(127.1, 311.7))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(127.1, 311.7))) * 43758.5);
+        float n = lerp(lerp(a00, a10, sm.x), lerp(a01, a11, sm.x), sm.y);
+        float2 dq = float2(lerp(a10 - a00, a11 - a01, sm.y) * dsm.x, lerp(a01 - a00, a11 - a10, sm.x) * dsm.y) / sC;
+        float2 dn = float2(ca0 * dq.x + sa0 * dq.y, -sa0 * dq.x + ca0 * dq.y);   // back to the cloth's axes
+        // Ridged: h = 1 - |2n - 1|, sharp along n = 0.5 (a crease line), its slope's sign flipping across the line.
+        float sgn = n > 0.5 ? -1.0 : 1.0;
+        cg += ampC * fadeC * (o == 0 ? 1.0 : 0.6) * sgn * 2.0 * dn;
+        crinkle = max(crinkle, fadeC * (1.0 - smoothstep(0.0, 0.06, abs(n - 0.5))));
+    }
+    float weaveK = 1.0 - smoothstep(0.0002, 0.0004, pxC);
+    float2 wv = UV0 * (6.2831853 / 0.0006);
+    cg += weaveK * 0.00002 * (6.2831853 / 0.0006) * float2(cos(wv.x) * sin(wv.y), sin(wv.x) * cos(wv.y));
+    dhdu += cg.x;
+    dhdv += cg.y;
+}
 NormalTS = normalize(float3(-(dhdu + ndu), -(dhdv + ndv), 1.0));
 // The resin cracks along a fold: the line reads a shade darker and rougher than the sheen around it.
 float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
+Rough = min(Rough + 0.08 * crinkle, 0.9);                          // the resin broken along a crinkle line: duller there
 if (Layout > 3.5 && Layout < 4.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 Rough = lerp(Rough, 0.08, win);                                     // the window's vinyl
 return col;
@@ -2310,6 +2423,7 @@ float shoalBreak = shoal * smoothstep(3.7, 8.2, WindP.z);
 // (anisotropic at grazing angles), so they never sparkle in the distance; the slope variance a mip averages away (the
 // textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
 float2 duv = float2(p.y, p.x) / DetailP.x + 0.5 / 128.0;
+float capW = 0.0;
 float4 da = Texture2DSample(DetailA, DetailASampler, duv);
 float4 db = Texture2DSample(DetailB, DetailBSampler, duv);
 // W3: the chop as its fetch grew it here (the ripples below are the local wind's).
@@ -2330,6 +2444,11 @@ if (DetailP.w > 0.0)
     float k0 = floor(kf);
     float2 rsum = float2(0.0, 0.0);
     float rvar = 0.0;
+    // docs/near-water/: the capillary-gravity wavelets (2-10 cm, CapillaryB) near the camera, in the same turned frames
+    // (they face the local wind too), full to CapillaryP.y metres and faded out by .z.
+    capW = CapillaryP.w * (1.0 - smoothstep(CapillaryP.y, CapillaryP.z, dist));
+    float2 csum = float2(0.0, 0.0);
+    float cvar = 0.0;
     for (int k = 0; k < 2; k++)
     {
         float a = (k0 + k) * 0.2618;
@@ -2339,9 +2458,15 @@ if (DetailP.w > 0.0)
         float wgt = k == 0 ? 1.0 - (kf - k0) : kf - k0;
         rsum += float2(ca * rb.r - sa * rb.g, sa * rb.r + ca * rb.g) * wgt;
         rvar += (max(rb.b - rb.r * rb.r, 0.0) + max(rb.a - rb.g * rb.g, 0.0)) * wgt;
+        [branch] if (capW > 0.0)
+        {
+            float4 cb = Texture2DSample(CapillaryB, CapillaryBSampler, float2(q.y, q.x) / CapillaryP.x + 0.5 / 64.0);
+            csum += float2(ca * cb.r - sa * cb.g, sa * cb.r + ca * cb.g) * wgt;
+            cvar += (max(cb.b - cb.r * cb.r, 0.0) + max(cb.a - cb.g * cb.g, 0.0)) * wgt;
+        }
     }
-    sx += rsum.x * calm; sy += rsum.y * calm;
-    slopeVar += rvar * calm * calm;
+    sx += (rsum.x + csum.x * capW) * calm; sy += (rsum.y + csum.y * capW) * calm;
+    slopeVar += (rvar + cvar * capW) * calm * calm;
 }
 float far = saturate((dist - 0.5 * DetailP.z) / (2.0 * DetailP.z));
 // The boats' own waves: slopes by finite differences, and their foam.
@@ -2653,7 +2778,10 @@ float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);
 // like a calm (round 7's race start) and the far lake from the drone read as a glossy sheet. A little over half of it
 // (the resolved slopes carry the rest), none on glassy water.
 float cm = 0.003 + 0.00512 * rough * 8.0;
-alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing) * (1.0 - 0.4 * Glitter));
+// docs/near-water/: where the capillary wavelets are drawn (to 2 cm) the unresolved share is what is shorter still. In the
+// saturation range (slope variance flat in log k) down to the capillary end near 0.5 cm, waves under 2 cm hold
+// ln(2 / 0.5) / ln(10 / 0.5) = 46% of what waves under 10 cm do: the floor's alpha times sqrt(0.46) = 0.68 there.
+alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing) * (1.0 - 0.4 * Glitter) * lerp(1.0, 0.68, capW));
 // Graphics G8 cinematic look (AWaterSurface: Glitter, High and Ultra): a sharper lobe toward the sun, so the glitter
 // path breaks into the dense sparkle of a sunset photo instead of a soft sheen. Only the unresolved floor is cut: the
 // resolved slopes and their mip variance (LEAN) still set its width.
@@ -2729,11 +2857,13 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid", "CapillaryB"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
     detail_p = vector(mat, "DetailParams", (23, 3.1, 300, 0), -1800, 2600)
+    # docs/near-water/: x: capillary tile (m), y, z: drawn in full to, faded out by (m), w: 1 = on (High and Ultra).
+    capillary_p = vector(mat, "CapillaryP", (0.64, 12, 24, 0), -2000, 2600)
     wake_rect = vector(mat, "WakeGridRect", (0, 0, 25.6, 128), -1800, 2700)
     # Shore map (water depth, m): x0, y0, size (m), w = 1 when bound.
     shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
@@ -2773,7 +2903,7 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
-    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
@@ -2818,6 +2948,8 @@ def build_water_v4():
     connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
     connect(vector(mat, "CapCalibFar", (0, 0, 0, 0), -2000, 1400), "RGBA", shade, "CapCalFar")
     connect(tx["RippleB"], "", shade, "RippleB")
+    connect(tx["CapillaryB"], "", shade, "CapillaryB")
+    connect(capillary_p, "RGBA", shade, "CapillaryP")
     connect(gust_tex, "", shade, "Gust")
     connect(gust_rect, "RGBA", shade, "GustRect")
     connect(wind, "RGBA", shade, "WindP")
@@ -3179,7 +3311,10 @@ AO = 1.0;
     // Cumulus: 1.5 times the storm's (G8: at 2 its skin frosted). W5a: it is the step that's fitted now, not the cap
     // (QualityCVars: on Ultra near rays keep all their samples, 19 m steps under a deck), so near cumulus keep their real
     // density and the cap binds only on long runs (at 4 the grain came straight back at the engine's 94 m near steps).
-    float cV = Tracer.y > 0.0 ? 1.5 * MaxStepDepth / (stepM * Density) : 1e6;
+    // pc/near-cloud-grain (docs/near-cloud-grain; Ultra only, CapFloor > 0): those short near steps still let a cumulus base
+    // close within one step, and the half-resolution trace showed its jitter as grain under the cloud overhead. The cap is
+    // taken as if the step were at least CapFloor long, so it binds near the camera only (far steps are longer than that).
+    float cV = Tracer.y > 0.0 ? 1.5 * MaxStepDepth / (max(stepM, CapFloor) * Density) : 1e6;
     // Graphics G8 (round 8: "the clouds have noise"): storm and rain at 0.6 of it. Measured on game-08 (-SailingCloudStepDepth):
     // 0.6 smoothed the storm's grain and kept its dark mass, 0.4 washed it grey; more view samples (160) didn't help.
     float cS = Tracer.y > 0.0 ? 0.6 * MaxStepDepth / (capStepM * Density) : 1e6;
@@ -3314,11 +3449,12 @@ def cloud_code():
 
 
 def cloud_tops(mat, c, y):
-    """pc/ultra-cloud-tops: CLOUD_CODE's noise footprint floor (m), the cumulus top's edge ramp and the second billow octave's weight; the defaults are every tier's
+    """pc/ultra-cloud-tops: CLOUD_CODE's noise footprint floor (m), the cumulus top's edge ramp, the second billow octave's weight and the near-step cap floor; the defaults are every tier's
     but Ultra's (ASailingEnvironment sets Ultra's own on the cloud material)."""
     connect(scalar(mat, "CloudFootFloor", 110.0, -1600, y), "", c, "FootFloor")
     connect(scalar(mat, "CloudEdgeTop", 4.0, -1600, y + 100), "", c, "EdgeTop")
     connect(scalar(mat, "CloudBillow2", 0.0, -1600, y + 200), "", c, "Billow2")
+    connect(scalar(mat, "CloudCapStepFloor", 0.0, -1600, y + 300), "", c, "CapFloor")   # pc/near-cloud-grain: Ultra's near-step cap floor (m)
 
 
 def build_cloud_layers():
@@ -3346,7 +3482,7 @@ def build_cloud_layers():
     F1, F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow", "FootFloor", "EdgeTop", "Billow2"], F1,
+    c = custom(mat, cloud_code(), ["P", "Cam", "Alt", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift", "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "GlowLum", "GlowA", "GlowB", "DeckGlow", "FootFloor", "EdgeTop", "Billow2", "CapFloor"], F1,
                -900, 300, extra_outputs=[("Albedo", F3), ("Emit", F3), ("Cons", F1), ("AO", F1)])
     connect(pos, "", c, "P")
     connect(node(mat, unreal.MaterialExpressionCameraPositionWS, -1600, -100), "", c, "Cam")
@@ -3510,6 +3646,30 @@ def cache_code():
     return CACHE_HEAD + view + CACHE_SHADOW + shadow + CACHE_TAIL
 
 
+def build_sky_env_probe():
+    """M_SkyEnvProbe (docs/sky-lower-hemisphere): in a 2x1 target that ASailingEnvironment reads back, the sky light's cube
+    sampled straight up at full roughness (the sky's cosine-weighted mean radiance, its irradiance over pi) and the sun's
+    horizontal illuminance at the water, to set the sky light's lower hemisphere to what the water reflects and scatters up."""
+    mat = new_material("M_SkyEnvProbe")
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    env = node(mat, unreal.MaterialExpressionSkyLightEnvMapSample, -700, 0)
+    connect(node(mat, unreal.MaterialExpressionConstant3Vector, -1000, 0, constant=unreal.LinearColor(0, 0, 1, 0)), "", env, "Direction")
+    connect(node(mat, unreal.MaterialExpressionConstant, -1000, 100, r=1.0), "", env, "Roughness")
+    # The second texel: the sun's illuminance on the horizontal water (the scene sun, already dimmed by the clouds, through
+    # the atmosphere), for the body's upwelling of sunlight; the same units as the sky's.
+    ill = node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -700, 200)
+    connect(MEL.create_material_expression(mat, unreal.MaterialExpressionCameraPositionWS, -1000, 200), "", ill, "World Position")
+    sun_dir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -700, 350)
+    pick = custom(mat, "return UV.x < 0.5 ? Env : Ill * max(Dir.z, 0.0);", ["UV", "Env", "Ill", "Dir"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -350, 100)
+    connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -700, -150), "", pick, "UV")
+    connect(env, "", pick, "Env")
+    connect(ill, "", pick, "Ill")
+    connect(sun_dir, "", pick, "Dir")
+    MEL.connect_material_property(pick, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mat)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat)
+
+
 def build_cloud_cache():
     """M_CloudCache (C2): the far clouds' panorama, drawn to a render target a strip at a time (see CACHE_HEAD)."""
     mat = new_material("M_CloudCache")
@@ -3531,7 +3691,7 @@ def build_cloud_cache():
     wxtop = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 260, parameter_name="CumulusTop", texture=linear,
                  sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     c = custom(mat, cache_code(), ["UV", "Cam", "Wx", "WxTop", "Shape", "Detail", "Curl", "Billow", "WRect", "Cu", "St", "Ci", "FrontA", "FrontB", "Flash", "Drift",
-                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev", "FootFloor", "EdgeTop", "Billow2"],
+                                   "Density", "Ext", "Tracer", "Shadow", "MaxStepDepth", "SunLum", "SunDir", "CacheSplit", "CacheEl", "CacheMax", "CacheShadow", "CachePrev", "FootFloor", "EdgeTop", "Billow2", "CapFloor"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 300)
     connect(uv, "", c, "UV")
     connect(vecs["CacheCam"], "RGBA", c, "Cam")
@@ -5104,6 +5264,7 @@ build(build_far_cap)
 build(build_bow_wave)
 build(build_cloud_layers)
 build(build_cloud_cache)
+build(build_sky_env_probe)
 build(build_sky_dome)
 build(build_lens_water)
 build(build_trees_materials)

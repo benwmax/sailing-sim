@@ -393,6 +393,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class UStaticMesh> CrewCapMesh;
 	TArray<FCrewRig> MetaCrewRigs;
 	FBoatLivery Livery; // Graphics G3: this boat's colours, wear and sail number
+	uint32 CrewSeed = 0; // pc/crew-colours: the livery's seed, for the crew's polos and life jackets (CrewOutfit.h)
 	bool LoadMetaCrew();
 	class USkeletalMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);
 public:

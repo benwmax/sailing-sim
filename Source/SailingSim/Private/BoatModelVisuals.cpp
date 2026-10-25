@@ -1123,6 +1123,9 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	const float Head = FMath::Min(0.4f * Speed * Speed / (2.f * 9.81f), 0.5f) * Scale;    // m, at the crest (bow-curl-crest: 0.25 read as a wet film at 17 kn)
 	const float Fade = FMath::Clamp((Speed - 1.5f) / 1.5f, 0.f, 1.f);
 	const float Lip = FMath::Clamp((Speed - 2.f) / 2.5f, 0.f, 1.f);
+	// pc/ultra-spray (docs/ultra-spray): M_BowWave's close-up streaks and flecks, on Ultra (vertex colour blue; -SailingNoUltraSpray compares).
+	static SailingArgs::FCachedFlag NoUltraSprayArg(TEXT("SailingNoUltraSpray"));
+	const float Fine = USailingSettings::Get()->Quality == ESailingQuality::Ultra && !NoUltraSprayArg.Get() ? 1.f : 0.f;
 	TArray<FVector> V;
 	TArray<FVector2D> UV;
 	TArray<FLinearColor> Col;
@@ -1168,7 +1171,7 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 				UV.Add(FVector2D(U, Tt));
 				// Fades: in from the stem, out aft, into the sea at the outer edge (the material) and softly at the root.
 				const float Ends = FMath::SmoothStep(0.f, 0.18f, Tt) * (1.f - Tt * Tt);
-				Col.Add(FLinearColor(Lip, Rise, 0.f, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
+				Col.Add(FLinearColor(Lip, Rise, Fine, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
 			}
 		}
 		for (int32 I = 0; I + 1 < NS; ++I)

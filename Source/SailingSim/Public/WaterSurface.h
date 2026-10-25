@@ -193,6 +193,7 @@ private:
 	/** The foam grid steps at the short waves' 30 Hz too: when it last started. */
 	double FoamStepAt = -1.0;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> RippleBMap;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> CapillaryBMap; // docs/near-water/: the 2-10 cm wavelets near the camera
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeGridMap;
 	/** W3: the sea map's atlas (SeaState.h): seven tiles of RGBA half floats, re-uploaded when the field gets a new map. */
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> SeaAtlas;
@@ -214,11 +215,12 @@ private:
 	bool bUltraDetail = false;
 	Sailing::FWaveDetail::FCascadeSpec DrawnChop() const;
 	Sailing::FWaveDetail::FCascadeSpec DrawnRipple() const;
+	Sailing::FWaveDetail::FCascadeSpec DrawnCapillary() const;
 	struct FDetailFrame
 	{
 		const Sailing::FWaveDetail* Source = nullptr;
 		double Time = 0.0;
-		Sailing::FWaveDetail::FGrid Chop, Ripple;
+		Sailing::FWaveDetail::FGrid Chop, Ripple, Capillary;
 	};
 	using FDetailFramePtr = TSharedPtr<FDetailFrame, ESPMode::ThreadSafe>;
 	TSharedPtr<Sailing::FWaveDetail, ESPMode::ThreadSafe> Detail;
@@ -230,8 +232,8 @@ private:
 	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
 	struct FDetailUpload
 	{
-		TArray<uint8*> A, B, C, Ripple; // half-float RGBA mips, new[] blocks
-		int32 N = 0, RippleN = 0;
+		TArray<uint8*> A, B, C, Ripple, Capillary; // half-float RGBA mips, new[] blocks
+		int32 N = 0, RippleN = 0, CapillaryN = 0;
 		float CapFirst = 0.5f, CapStep = 0.05f; // the fold table's thresholds (CapTable)
 		// W8: the thresholds that cap Monahan's share of this sea as the mesh draws it at vertex spacings CapSpacing[k]
 		// (the long waves' fold fades with the spacing), and the slope at the nearest.
@@ -239,7 +241,7 @@ private:
 		// W4: the blended whitecap Jacobian and what the foam grid needs to read it (tile, chop scale, fold scale).
 		std::vector<float> JCap;
 		float Tile = 23.f, CapShort = 1.f, FoldScale = 1.f;
-		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : C) delete[] P; for (uint8* P : Ripple) delete[] P; }
+		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : C) delete[] P; for (uint8* P : Ripple) delete[] P; for (uint8* P : Capillary) delete[] P; }
 	};
 	using FDetailUploadPtr = TSharedPtr<FDetailUpload, ESPMode::ThreadSafe>;
 	/** W4 (docs/water-4): the foam the caps leave, on a 64 m grid round the camera (256 cells of 0.25 m), stepped on a

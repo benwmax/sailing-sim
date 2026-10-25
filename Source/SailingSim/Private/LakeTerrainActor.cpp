@@ -45,7 +45,10 @@ namespace
 		Gen = SailingArgs::Generation();
 		M = []
 		{
-			double V = USailingSettings::Get()->Quality >= ESailingQuality::High ? 250.0 : 200.0;
+			// Ultra audit #8 (docs/ultra-far-shore): 1 km on Ultra. Past 250 m the opaque crowns read as faceted blobs on the
+			// shore (worst through a long lens); the 4090 draws the leaf cards to 1 km for about 0.15 ms, no added shimmer.
+			const ESailingQuality Q = USailingSettings::Get()->Quality;
+			double V = Q == ESailingQuality::Ultra ? 1000.0 : (Q >= ESailingQuality::High ? 250.0 : 200.0);
 			FParse::Value(SailingArgs::Dev(), TEXT("SailingNearTrees="), V);
 			return V;
 		}();
