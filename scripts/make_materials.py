@@ -675,22 +675,34 @@ def build_ghost():
 
 
 SPRAY_CODE = """
-// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion. Grain 1: a clump of droplets,
-// round drops on a jittered grid (stretched with the quad: the motion blur) over a faint veil; 0: smooth mist.
+// docs/spray/: one spray quad (AWaterSurface::UpdateSpray), stretched along its motion (quad x). Grain 1: a clump of
+// droplets; 0.6: a sheet torn off the bow wave; 0: smooth mist.
+// docs/near-water/ (Ultra audit 3): bow spray is millimetre drops, at a few metres points a pixel or two across that
+// streak over a 1/60 s exposure (the quad's stretch), and a sheet breaks up into strands along its motion. The clumps were
+// a disc of 3 cm dots over a soft veil and the sheets a smooth translucent flap: sprites.
 // The quad's own position (the engine plane spans -50..50 cm; its UVs don't reach the material here).
 float2 q = Local.xy / 50.0;
 float2 Coord = q * 0.5 + 0.5;
 float r = length(q);
 float soft = saturate(1.0 - r);
 soft *= soft;
-float2 g = Coord * float2(4.0, 3.0) + Seed * 17.0;
+float edge = saturate(1.25 - r);
+// Drops: 9 x 6 jittered cells, a drop in about two thirds of them, each a sixth of its cell across.
+float2 g = Coord * float2(9.0, 6.0) + Seed * 17.0;
 float2 c = floor(g);
 float2 f = frac(g) - 0.5;
 float h = frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453);
 float2 o = float2(frac(h * 7.31), frac(h * 3.17)) - 0.5;
-float drop = saturate((0.24 + 0.14 * h - length(f - 0.25 * o)) * 10.0) * step(0.25, h);
-float grainy = saturate(drop + 0.4 * soft) * saturate(1.25 - r);
-return saturate(Alpha * lerp(soft, grainy, Grain));
+float drop = saturate((0.09 + 0.07 * h - length(f - 0.5 * o)) * 18.0) * step(0.35, h);
+// Sheet: strands along its motion, seven across, each its own width and broken where it has torn.
+float sy = Coord.y * 7.0 + Seed * 5.0;
+float hb = frac(sin(floor(sy) * 91.7 + Seed * 13.1) * 43758.5453);
+float band = abs(frac(sy) - 0.5);
+float torn = smoothstep(0.25, 0.55, frac(Coord.x * (1.2 + 2.0 * hb) + hb * 3.7));
+float strand = saturate((0.08 + 0.12 * hb - band) * 10.0) * torn * step(0.2, hb);
+float t = saturate((Grain - 0.6) / 0.4);
+float grainy = lerp(strand, drop, t) * edge + 0.1 * soft;
+return saturate(Alpha * lerp(soft, grainy, saturate(Grain / 0.6)));
 """
 
 
@@ -2361,6 +2373,7 @@ float shoalBreak = shoal * smoothstep(3.7, 8.2, WindP.z);
 // (anisotropic at grazing angles), so they never sparkle in the distance; the slope variance a mip averages away (the
 // textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
 float2 duv = float2(p.y, p.x) / DetailP.x + 0.5 / 128.0;
+float capW = 0.0;
 float4 da = Texture2DSample(DetailA, DetailASampler, duv);
 float4 db = Texture2DSample(DetailB, DetailBSampler, duv);
 // W3: the chop as its fetch grew it here (the ripples below are the local wind's).
@@ -2381,6 +2394,11 @@ if (DetailP.w > 0.0)
     float k0 = floor(kf);
     float2 rsum = float2(0.0, 0.0);
     float rvar = 0.0;
+    // docs/near-water/: the capillary-gravity wavelets (2-10 cm, CapillaryB) near the camera, in the same turned frames
+    // (they face the local wind too), full to CapillaryP.y metres and faded out by .z.
+    capW = CapillaryP.w * (1.0 - smoothstep(CapillaryP.y, CapillaryP.z, dist));
+    float2 csum = float2(0.0, 0.0);
+    float cvar = 0.0;
     for (int k = 0; k < 2; k++)
     {
         float a = (k0 + k) * 0.2618;
@@ -2390,9 +2408,15 @@ if (DetailP.w > 0.0)
         float wgt = k == 0 ? 1.0 - (kf - k0) : kf - k0;
         rsum += float2(ca * rb.r - sa * rb.g, sa * rb.r + ca * rb.g) * wgt;
         rvar += (max(rb.b - rb.r * rb.r, 0.0) + max(rb.a - rb.g * rb.g, 0.0)) * wgt;
+        [branch] if (capW > 0.0)
+        {
+            float4 cb = Texture2DSample(CapillaryB, CapillaryBSampler, float2(q.y, q.x) / CapillaryP.x + 0.5 / 64.0);
+            csum += float2(ca * cb.r - sa * cb.g, sa * cb.r + ca * cb.g) * wgt;
+            cvar += (max(cb.b - cb.r * cb.r, 0.0) + max(cb.a - cb.g * cb.g, 0.0)) * wgt;
+        }
     }
-    sx += rsum.x * calm; sy += rsum.y * calm;
-    slopeVar += rvar * calm * calm;
+    sx += (rsum.x + csum.x * capW) * calm; sy += (rsum.y + csum.y * capW) * calm;
+    slopeVar += (rvar + cvar * capW) * calm * calm;
 }
 float far = saturate((dist - 0.5 * DetailP.z) / (2.0 * DetailP.z));
 // The boats' own waves: slopes by finite differences, and their foam.
@@ -2704,7 +2728,10 @@ float alpha = sqrt(r0 * r0 * r0 * r0 + 0.3 * slopeVar);
 // like a calm (round 7's race start) and the far lake from the drone read as a glossy sheet. A little over half of it
 // (the resolved slopes carry the rest), none on glassy water.
 float cm = 0.003 + 0.00512 * rough * 8.0;
-alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing) * (1.0 - 0.4 * Glitter));
+// docs/near-water/: where the capillary wavelets are drawn (to 2 cm) the unresolved share is what is shorter still. In the
+// saturation range (slope variance flat in log k) down to the capillary end near 0.5 cm, waves under 2 cm hold
+// ln(2 / 0.5) / ln(10 / 0.5) = 46% of what waves under 10 cm do: the floor's alpha times sqrt(0.46) = 0.68 there.
+alpha = max(alpha, sqrt(2.0 * cm) * 0.55 * (1.0 - smoothing) * (1.0 - 0.4 * Glitter) * lerp(1.0, 0.68, capW));
 // Graphics G8 cinematic look (AWaterSurface: Glitter, High and Ultra): a sharper lobe toward the sun, so the glitter
 // path breaks into the dense sparkle of a sunset photo instead of a soft sheen. Only the unresolved floor is cut: the
 // resolved slopes and their mip variance (LEAN) still set its width.
@@ -2780,11 +2807,13 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid", "CapillaryB"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
     detail_p = vector(mat, "DetailParams", (23, 3.1, 300, 0), -1800, 2600)
+    # docs/near-water/: x: capillary tile (m), y, z: drawn in full to, faded out by (m), w: 1 = on (High and Ultra).
+    capillary_p = vector(mat, "CapillaryP", (0.64, 12, 24, 0), -2000, 2600)
     wake_rect = vector(mat, "WakeGridRect", (0, 0, 25.6, 128), -1800, 2700)
     # Shore map (water depth, m): x0, y0, size (m), w = 1 when bound.
     shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
@@ -2824,7 +2853,7 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
-    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
@@ -2869,6 +2898,8 @@ def build_water_v4():
     connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
     connect(vector(mat, "CapCalibFar", (0, 0, 0, 0), -2000, 1400), "RGBA", shade, "CapCalFar")
     connect(tx["RippleB"], "", shade, "RippleB")
+    connect(tx["CapillaryB"], "", shade, "CapillaryB")
+    connect(capillary_p, "RGBA", shade, "CapillaryP")
     connect(gust_tex, "", shade, "Gust")
     connect(gust_rect, "RGBA", shade, "GustRect")
     connect(wind, "RGBA", shade, "WindP")

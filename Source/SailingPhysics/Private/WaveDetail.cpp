@@ -53,6 +53,13 @@ namespace Sailing
 		}
 	}
 
+	double FWaveDetail::CapillaryOmega(double K)
+	{
+		// Water at 20 C: surface tension 0.0728 N/m over 998 kg/m^3.
+		constexpr double TensionOverDensity = 7.29e-5;
+		return std::sqrt(kGravity * K + TensionOverDensity * K * K * K);
+	}
+
 	double FWaveDetail::SpectrumAt(double F, double WindMs, double FetchMeters)
 	{
 		double Fp = 0.0;
@@ -111,11 +118,14 @@ namespace Sailing
 					Mode.Kx = Mx * Dk;
 					Mode.Ky = My * Dk;
 					Mode.K = std::sqrt(Mode.Kx * Mode.Kx + Mode.Ky * Mode.Ky);
-					Mode.Omega = std::sqrt(kGravity * Mode.K);
+					// docs/near-water/: the waves run with surface tension in their dispersion (1.4% faster at 10 cm, a third
+					// faster at 2 cm), while the spectrum is still read at the gravity wave's frequency of the same wavenumber (its
+					// saturation range, slope spectrum flat in log k, continues into the capillary-gravity band).
+					Mode.Omega = CapillaryOmega(Mode.K);
 					const double Gr = Rng.Gaussian(), Gi = Rng.Gaussian();
 					if (Mode.K <= 0.0) continue;
 					const double Wavelength = 2.0 * kPi / Mode.K;
-					const double F = Mode.Omega / (2.0 * kPi);
+					const double F = std::sqrt(kGravity * Mode.K) / (2.0 * kPi);
 					if (Wavelength < S.MinWavelength || Wavelength > S.MaxWavelength || F < Params.SplitHz) continue;
 					// Directional spectrum in wavenumber space: E(f) df/dk D(theta) / k, with a small share in every
 					// direction, as short waves have. docs/short-wave-spreading/: D is Donelan, Hamilton and Hui's (1985)
