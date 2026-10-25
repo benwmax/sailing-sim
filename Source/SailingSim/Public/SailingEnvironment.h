@@ -97,6 +97,17 @@ private:
 	FVector SkylineAt = FVector(1e12);
 	bool bSkylinePending = false;
 
+	/** docs/sky-lower-hemisphere: the sky light's lower hemisphere is what the water sends up (its Fresnel reflection of the
+	 *  sky plus the body's upwelling, times the sky's mean radiance read back from M_SkyEnvProbe every two seconds), not
+	 *  black. Lumen's rays below the horizon miss the water (procedural rings: no distance field or cards) and returned it.
+	 *  -SailingNoWaterBounce compares (black, as before). */
+	void UpdateLowerHemisphere(double Now);
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> SkyProbeMaterial;
+	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> SkyProbeTarget;
+	TSharedPtr<struct FSkyProbeReadback, ESPMode::ThreadSafe> SkyProbe;
+	double NextSkyProbe = 0.0;
+	FLinearColor AppliedLowerHemisphere = FLinearColor(-1.f, -1.f, -1.f);
+
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> SkyLightActor;
 	UPROPERTY(Transient) TObjectPtr<ASkyAtmosphere> Atmosphere;
