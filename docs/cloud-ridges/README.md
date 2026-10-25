@@ -29,3 +29,12 @@ lobes appear at #316 and stay; #317, #321 and #325 add nothing.
 #316 sets three Ultra settings together: noise footprint floor 60 m, top edge ramp 5, second billow octave 1.5. Turning
 them off one at a time leaves the other two on, which fits the PC's finding that it persisted. That is for the PC (Ultra)
 to settle, with all three off together, then each alone. Not changed here.
+
+## With the sky cache off
+
+The PC traced Ultra's pillars to the sky cache's far march, which snaps to its 200 m coarse grid (`-SailingNoSkyCache`
+removes them; the PC is fixing the march). High uses the same cache past 5 km. `nocache-high.jpg` and
+`nocache-ultra.jpg` are the chase with `-SailingNoSkyCache`, main on top and this change below. On main the cells are
+cuSize^1.4 tall, and that thin layer cuts the round billow lobes (`T_CloudBillow`, round in metres) into flat lenses: the
+blade-like lobes. With the size-dependent height, mid-size cells are tall enough for the lobes to stay round. The
+remaining flat undersides are the cells' condensation-level bases.
