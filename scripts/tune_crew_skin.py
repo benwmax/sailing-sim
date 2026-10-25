@@ -58,16 +58,21 @@ for role in ROLES:
 # nostril or a neck's edge against the sun. The optimized build's profile carries a near-black tint (0.1, 0.033, 0) at
 # extinction 18.6, so even with the sun lighting transmission (ASailingEnvironment) the skin never glowed. Measured on the
 # backlit helm: (0.6, 0.2, 0.06) at 8 is a red-orange edge; (1, 0.33, 0.1) at 6 painted a hard orange rim on the nose.
+# pc/skin-side-light (docs/skin-side-light): with the sun to the side that tint also lit a broad orange patch on the temple
+# and cheek. The engine gives the profile no real thickness there: under virtual shadow maps the transmission's thickness
+# is decoded from the shadow term itself (lit reads as 0 cm), and cascades find a short path through the cheek's curve at
+# the terminator; extinction (8 to 20) and the scattering distribution (0.5 to 0.9) don't change it. Half the tint keeps
+# the rim in profile and halves the patch.
 PROFILE = "/Game/Crew/MetaHumans/Common/Lookdev_UHM/Skin/Materials/SSP_skin_unified"
 profile = unreal.load_asset(PROFILE)
 if profile:
     settings = profile.get_editor_property("settings")
-    settings.set_editor_property("transmission_tint_color", unreal.LinearColor(0.6, 0.2, 0.06, 1.0))
+    settings.set_editor_property("transmission_tint_color", unreal.LinearColor(0.3, 0.1, 0.03, 1.0))
     settings.set_editor_property("extinction_scale", 8.0)
     settings.set_editor_property("normal_scale", 0.3)
     profile.set_editor_property("settings", settings)
     LIB.save_loaded_asset(profile)
-    log("SSP_skin_unified: transmission tint (0.6, 0.2, 0.06), extinction 8, normal scale 0.3")
+    log("SSP_skin_unified: transmission tint (0.3, 0.1, 0.03), extinction 8, normal scale 0.3")
 else:
     log(f"{PROFILE} missing")
 log("done")
