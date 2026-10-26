@@ -18,5 +18,8 @@ or with an empty pipe on stdin succeeds; with `0<&-` it fails. Running Xcode's f
 `scripts/xcode-stdin-shim.sh` (sourced by `package-mac.sh`) works around it without touching the engine. UBT finds
 xcodebuild through `xcode-select -p`, which honours `DEVELOPER_DIR`. So the shim points that at a mirror of the
 selected Xcode's Developer folder in `Artifacts/xcode-shim`. It is all symlinks, except `usr/bin/xcodebuild`, which
-runs the real xcodebuild with stdin from `/dev/null`. Every other tool is the real one through its link. It is only
-used with Xcode 27 or later; `SAILING_NO_XCODE_SHIM=1` turns it off, to check whether a later Xcode fixed it.
+runs the real xcodebuild with stdin from `/dev/null`. Every other tool is the real one through its link, and the real
+Xcode is never written to. The mirror is rebuilt when the selected Xcode or its build changes (`stamp`). The gate's main
+baseline (`Artifacts/main-tree`, `SAILING_ROOT`) runs the same `package-mac.sh` and gets its own mirror. Only Xcode 27
+uses it, so it drops away with the next major; `SAILING_NO_XCODE_SHIM=1` turns it off, to check whether an update
+fixed it.
