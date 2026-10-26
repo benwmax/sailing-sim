@@ -51,3 +51,6 @@ Tests 239/239, including the heavy physics tests.
 | storm | Medium | 68.5 |
 
 That matches the day's sweep on main, so no measurable cost.
+
+Photos in `lakeopen.jpg` and `bridge.jpg`: "Lake Tawakoni September 2015 2" and "... 3" by Michael Barera, CC BY-SA 4.0
+(Wikimedia Commons; credits in `docs/graphics-5/blind/credits.md`).
