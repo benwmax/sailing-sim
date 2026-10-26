@@ -1770,21 +1770,30 @@ def build_boat_library():
 # ---------------------------------------------------------------- sails (Visual V3)
 # Sails look: the jib window's shape (UV0 metres from the tack, UV2.x from the leech), shared by SAIL_CODE's shading and
 # M_SailCloth's opacity mask (JIB_WINDOW_MASK), so the depth pass doesn't run the whole sail shader for it.
-JIB_WINDOW = r"""float win = 0.0, winEdge = 0.0;
+JIB_WINDOW = r"""float win = 0.0, winEdge = 0.0, winSdf = 1.0;
 if (Window > 0.5)
 {
     // (Jib window: Bean's broadside of a J/22 under sail, scaled by its 8.3 m luff: a strip about 0.36 of the chord wide and
     // 0.37 m tall, centred 0.42 of the chord aft of the luff and 1.0 m above the foot. It had been 0.44 of the chord by
     // 0.84 m, lower and further forward: nearly three times the area, a large pane from the helm.)
-    float2 wq = (float2(UV0.x, UV0.y) - float2(0.42f * (UV0.x + UV2.x), 1.0f)) / float2(max(0.18f * (UV0.x + UV2.x), 0.15f), 0.19f);
-    float wr = max(abs(wq.x), abs(wq.y));
-    win = 1.0 - smoothstep(0.96, 1.0, wr);
-    winEdge = (1.0 - smoothstep(0.0, 0.05, abs(wr - 1.03))) ;
+    // docs/sail-window/: in metres, with 40 mm round corners (a sailmaker cuts the film round: square corners split). winSdf
+    // is the distance outside the cut (negative inside); the film runs on 20 mm under the cloth (winEdge), sewn there.
+    float2 wc = float2(0.42f * (UV0.x + UV2.x), 1.0f), wh = float2(max(0.18f * (UV0.x + UV2.x), 0.15f), 0.19f);
+    float2 wd = abs(float2(UV0.x, UV0.y) - wc) - (wh - 0.04f);
+    winSdf = length(max(wd, 0.0f)) + min(max(wd.x, wd.y), 0.0f) - 0.04f;
+    win = 1.0 - smoothstep(-0.004, 0.0, winSdf);
+    winEdge = (1.0 - smoothstep(0.018, 0.022, winSdf)) * (1.0 - win);
 }"""
 
-# Clear vinyl lets most of the view through; the rest is its haze and gloss (dithered: the temporal AA blends it).
+# docs/sail-window/: clear PVC lets the view through and reflects the sky by Fresnel (n about 1.54: 4.5% square on, a
+# mirror at grazing), with a few percent of milky haze. The mask draws a window pixel with that chance (dithered; the
+# temporal AA blends it), and SAIL_CODE shades the drawn ones as the film's mirror and haze (Detail: High and Ultra).
+# Medium keeps the flat 12% veil.
 JIB_WINDOW_MASK = JIB_WINDOW + """
-return 1.0 - 0.88 * win;"""
+float cosV = abs(dot(normalize(VN), normalize(CamV)));
+float fres = 0.045 + 0.955 * pow(1.0 - cosV, 5.0);
+float cover = Detail > 0.5 ? saturate(fres + 0.04) : 0.12;
+return 1.0 - (1.0 - cover) * win;"""
 
 
 SAIL_CODE = r"""
@@ -2024,8 +2033,26 @@ if (Detail > 0.5)
 // (A nylon or dyed seam's overlap, two layers of colour, reads darker than a white Dacron one: realism audit 7.)
 float seamDark = Layout > 4.5 ? 0.28 : lerp(0.12, 0.22, dyedCloth);
 float3 col = lerp(cloth * (1.0 - seamDark * seam) * (1.0 - 0.015 * min(layers, 4.0)), base * 0.93, batten);
-col = lerp(col, float3(0.42, 0.44, 0.45), 0.85 * win * (1.0 - mark));   // (the dithered pixels left: the vinyl's milky haze, glossy)
-col *= 1.0 - 0.25 * winEdge;
+// docs/sail-window/ (Detail): the drawn pixels are the film itself, its Fresnel mirror and its haze in proportion (the
+// mask drew them with that chance), metallic for the mirror's share; the film's edge runs under the cloth, sewn with two
+// straight rows, a double layer there. Medium: the flat milky veil.
+float winMetal = 0.0;
+if (Detail > 0.5 && Window > 0.5)
+{
+    float cosW = abs(dot(normalize(VN), normalize(CamV)));
+    float fresW = 0.045 + 0.955 * pow(1.0 - cosW, 5.0);
+    winMetal = win * fresW / (fresW + 0.04);
+    col = lerp(col, float3(0.86, 0.87, 0.85), win * (1.0 - mark));
+    col *= 1.0 - 0.06 * winEdge;
+    float pxW = max(Depth, 1.0) * 1.25e-5, fineW = 1.0 - smoothstep(0.0006, 0.002, pxW);
+    stitch = max(stitch, max(1.0 - smoothstep(0.0004, 0.0010, abs(winSdf - 0.006)), 1.0 - smoothstep(0.0004, 0.0010, abs(winSdf - 0.015))) * fineW * (1.0 - win));
+}
+else
+{
+    col = lerp(col, float3(0.42, 0.44, 0.45), 0.85 * win * (1.0 - mark));   // (the dithered pixels left: the vinyl's milky haze, glossy)
+    col *= 1.0 - 0.25 * winEdge;
+}
+Metal = winMetal;
 col *= 1.0 - 0.09 * edgeLine - 0.16 * stitch * (1.0 - mark);
 col = lerp(col, ink, mark);
 // Against the sun the cloth glows; seams (double layer), batten pockets and ink are darker from behind (and with Detail
@@ -2039,7 +2066,10 @@ float fwd = pow(saturate(dot(-normalize(CamV), normalize(SunDir))), 6.0);
 float showThrough = (0.18 + 0.32 * fwd) * through;
 Transmit = base * Translucency * (1.0 + 1.1 * fwd) * (1.0 - 0.55 * seam) * (1.0 - 0.75 * batten) * (1.0 - 0.9 * mark) * (1.0 - showThrough)
     * (Layout > 3.5 && Layout < 4.5 ? 0.3 * (1.0 - 0.8 * fibre) : 1.0)
-    * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine) * (1.0 + 0.6 * win) * (1.0 - 0.5 * winEdge);
+    * pow(0.5, min(layers, 5.0)) * (1.0 - 0.5 * stitch) * (1.0 - 0.4 * edgeLine) * (1.0 + 0.6 * win)
+    // docs/sail-window/ (Detail): the film's drawn pixels are its mirror and haze, not lit cloth; the overlap band is cloth
+    // over film, which passes about 90% (Medium: half, as before).
+    * (Detail > 0.5 ? (1.0 - win) * (1.0 - 0.12 * winEdge) : 1.0 - 0.5 * winEdge);
 // The draft: cloth turning away from the eye darkens (Dacron is a matte weave under its resin: little light comes back at a
 // grazing look), so the sail's belly, its twist and the roll of its leech read in flat light too; it had read as one
 // chalky sheet. The far side's number also shows a trace in the cloth seen from the lit side, as a weave does.
@@ -2152,7 +2182,7 @@ col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
 Rough = min(Rough + 0.08 * crinkle, 0.9);                          // the resin broken along a crinkle line: duller there
 if (Layout > 3.5 && Layout < 4.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
-Rough = lerp(Rough, 0.08, win);                                     // the window's vinyl
+Rough = lerp(Rough, Detail > 0.5 ? 0.04 : 0.08, win);              // the window's vinyl (its creases are the cloth's, in the normal)
 return col;
 """.replace("//@JIB_WINDOW@", JIB_WINDOW)
 
@@ -2213,7 +2243,7 @@ def build_sail_cloth():
     c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window",
                                   "Translucency", "VN", "CamV", "SunDir", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
-                              ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+                              ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Metal", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
                      (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window"),
@@ -2225,8 +2255,9 @@ def build_sail_cloth():
     connect(rough, "", c, "R")
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(c, "NormalTS", unreal.MaterialProperty.MP_NORMAL)
-    wmask = custom(mat, JIB_WINDOW_MASK, ["UV0", "UV2", "Window"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -700, 600)
-    for src, pin in ((uv[0], "UV0"), (uv[2], "UV2"), (window, "Window")):
+    MEL.connect_material_property(c, "Metal", unreal.MaterialProperty.MP_METALLIC)
+    wmask = custom(mat, JIB_WINDOW_MASK, ["UV0", "UV2", "Window", "VN", "CamV", "Detail"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -700, 600)
+    for src, pin in ((uv[0], "UV0"), (uv[2], "UV2"), (window, "Window"), (vn, "VN"), (camv, "CamV"), (detail, "Detail")):
         connect(src, "", wmask, pin)
     dither = node(mat, unreal.MaterialExpressionMaterialFunctionCall, -400, 600)
     dither.set_editor_property("material_function", unreal.load_asset("/Engine/Functions/Engine_MaterialFunctions02/Utility/DitherTemporalAA"))
