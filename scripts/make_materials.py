@@ -3604,7 +3604,12 @@ CACHE_SHADOW = """
             [loop] for (int k = 1; k <= 5; k++)
             {
                 float sStep = 50.0 * exp2(k - 1);
-                float sAt = sOff + 0.5 * sStep;
+                // docs/cache-march/: each shell jittered over the middle half of its step by the texel's own jitter. At the
+                // steps' middles every texel's shadow samples fell on the same five shells round the cloud (25, 100, 250,
+                // 550, 1150 m), and the sunlit term changed in terraces along them: the far cumulus's blocks and pillars
+                // (sharp on Ultra's finer panorama). Jittered, the shells' edges become a texel's grain, which the dome's
+                // spline averages (over the whole step the grain showed; over half, neither does).
+                float sAt = sOff + (0.25 + 0.5 * frac(jit + 0.618034 * k)) * sStep;
                 sOff += sStep;
                 float3 P = (cam + dir * t + SunDir.xyz * sAt) * 100.0;
                 float Alt = (cam.z + dir.z * t + SunDir.z * sAt + t * t / 12742000.0) * 100.0;
@@ -3871,6 +3876,12 @@ float cm = dot(dir, MoonDir.xyz);
             // pc/ultra-sky-cache: the panorama's own size (4096 x 512, Ultra's 8192 x 1024).
             float2 tsz;
             CacheNew.GetDimensions(tsz.x, tsz.y);
+            // docs/cache-march/: the spline's knots never finer than what the march resolves at the clouds' distance. A
+            // texel is one jittered march, and the march holds nothing finer than its step (35 m inside a cloud on Ultra);
+            // nearer than about 23 km (above 3 deg over a 1.2 km base) that is two of Ultra's texels, and read texel by
+            // texel the cumulus's steep edges and self-shadowed creases stood as blocks and pillars at 3-10 km (High's
+            // 4096 texels hid them). Below 1.5 deg, where Ultra's panorama draws the small far cumulus, every texel.
+            tsz /= 1.0 + smoothstep(1.5, 3.0, el) * saturate(tsz.x / 4096.0 - 1.0);
             float2 x = cuv * tsz - 0.5;
             float2 i = floor(x), f = x - i;
             float2 f2 = f * f, f3 = f2 * f;
