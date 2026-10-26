@@ -140,9 +140,14 @@ namespace Sailing
 			// degree of spread between the air and its dew point: near 1 km on a humid summer morning, near 2 km on a hot
 			// afternoon over the lake (DFW's July ceilings), lower on the humid coast.
 			Cu.BaseKm = Clamp(0.125 * (W.AirC - W.DewC), 0.5, 2.5);
-			// C1: fair-weather cumulus about as deep as they are wide (0.4 to 1.1 km); at 1.5 km deep the towers stood as
-			// columns filling the low sky. A building day deepens them (StormSky, the real days' instability).
-			Cu.TopKm = Cu.BaseKm + 0.4 + 0.7 * Afternoon;
+			// C1: fair-weather cumulus about as deep as they are wide; at 1.5 km deep the towers stood as columns filling the
+			// low sky. A building day deepens them (StormSky, the real days' instability).
+			// docs/cumulus-depth/: as deep as the cells the weather map paints are wide. Since W5a's size classes a fair day's
+			// largest cells are 2.4 km across (FWeatherMap: 2 km x CuCellScale 0.6), and a cell stands its size's share of
+			// this depth (CumulusTop), so at 0.4 + 0.7 km every cell came out about half as tall as wide (the Commons photos
+			// of the lake's fair cumulus: 0.6 to 0.8, the game 0.4 to 0.55): the "cotton" read. 1.9 km by mid-afternoon
+			// (mediocris, 0.8 of the largest cells' width); the morning's 0.4 km humilis as before.
+			Cu.TopKm = Cu.BaseKm + 0.4 + 1.5 * Afternoon;
 			switch (P)
 			{
 			case EWeatherPreset::CalmMorning:
