@@ -50,6 +50,51 @@ over this run's. The lock is `-SailingEV=-0.85`, the incident meter's EV here.
 | Helm eye | ![helm eye](helmeye.jpg) |
 | Action cam | ![action cam](actioncam.jpg) |
 
+## Wider sweep: four views, two tiers, three bands
+
+Same method, and the same pre-exposure calibration per tier (the chase locks: Ultra 1.720 and High 1.661 at EV100
+-0.85). "EV under incident" is how far the exposure sits darker than the incident meter; negative is brighter. The
+incident EV per view comes from the HDR overlay's band: noon 0.8, chase -0.86, dusk -3.1 (High -3.0), storm -0.1. The
+storm view is the bench's (not a capture), and its band is 0.4 under the deck.
+
+| View | Tier | Band | Water | Sky | Pre-exposure | EV under incident | Clipped |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| noon | Ultra | 1,1 | 0.388 | 0.476 | 0.902 | -0.72 | 0.00% |
+| noon | Ultra | 0.5,1 | 0.388 | 0.479 | 0.849 | -0.63 | 0.00% |
+| noon | Ultra | 0.3,1 | 0.390 | 0.480 | 0.870 | -0.67 | 0.00% |
+| noon | High | 1,1 | 0.393 | 0.500 | 0.801 | -0.60 | 0.00% |
+| noon | High | 0.5,1 | 0.292 | 0.335 | 0.833 | -0.65 | 0.00% |
+| noon | High | 0.3,1 | 0.328 | 0.276 | 0.881 | -0.74 | 0.00% |
+| chase | Ultra | 1,1 | 0.020 | 0.120 | 0.971 | 0.83 | 0.00% |
+| chase | Ultra | 0.5,1 | 0.034 | 0.171 | 1.304 | 0.41 | 0.00% |
+| chase | Ultra | 0.3,1 | 0.043 | 0.194 | 1.461 | 0.25 | 0.00% |
+| chase | High | 1,1 | 0.024 | 0.134 | 0.954 | 0.81 | 0.00% |
+| chase | High | 0.5,1 | 0.040 | 0.187 | 1.270 | 0.40 | 0.00% |
+| chase | High | 0.3,1 | 0.048 | 0.211 | 1.420 | 0.24 | 0.00% |
+| dusk | Ultra | 1,1 | 0.127 | 0.299 | 12.450 | -0.61 | 6.86% |
+| dusk | Ultra | 0.5,1 | 0.133 | 0.306 | 12.854 | -0.65 | 7.20% |
+| dusk | Ultra | 0.3,1 | 0.133 | 0.306 | 12.855 | -0.65 | 7.19% |
+| dusk | High | 1,1 | 0.132 | 0.316 | 12.229 | -0.73 | 6.19% |
+| dusk | High | 0.5,1 | 0.136 | 0.323 | 12.585 | -0.77 | 6.55% |
+| dusk | High | 0.3,1 | 0.137 | 0.324 | 12.577 | -0.77 | 6.59% |
+| storm | Ultra | 1,1 | 0.032 | 0.122 | 1.504 | -0.56 | 0.00% |
+| storm | Ultra | 0.5,1 | 0.027 | 0.099 | 1.491 | -0.54 | 0.00% |
+| storm | Ultra | 0.3,1 | 0.029 | 0.097 | 1.492 | -0.55 | 0.00% |
+| storm | High | 1,1 | 0.030 | 0.180 | 1.500 | -0.60 | 0.00% |
+| storm | High | 0.5,1 | 0.028 | 0.130 | 1.444 | -0.55 | 0.00% |
+| storm | High | 0.3,1 | 0.030 | 0.134 | 1.452 | -0.56 | 0.00% |
+
+- **Only the chase pins at the dark end**, a stop's band away from the incident meter: 0.8 EV under at 1,1, 0.4 at
+  0.5,1 and 0.25 at 0.3,1, on both tiers.
+- **Noon, dusk and storm sit 0.55 to 0.77 EV brighter than the incident meter**, inside the band's bright side, so the
+  dark side's width changes nothing there (pre-exposure within 0.06 EV across the bands). The noon helm eye's water and
+  sky move between runs with the frame (the helm's camera moves), not the exposure.
+- **Clipping:** none in any view except dusk (the low sun and its glow, 6-7% of pixels), and that is the same at every
+  band.
+- Ultra and High behave alike.
+
+![contact sheet: rows noon, chase, dusk, storm (Ultra, High); columns 1,1, 0.5,1, 0.3,1](contact-sheet.jpg)
+
 ## Not changed
 
 The default stays 1,1 until the Mac's VisualizeHDR read of the same view is in. If the Mac's histogram also pins at the
