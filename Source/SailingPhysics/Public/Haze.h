@@ -29,5 +29,15 @@ namespace Sailing
 		/** The aerosol's extinction at the surface (per km) for a visibility: Koschmieder's total less clean air's,
 		 *  over the same 0.5..80 km clamp. */
 		static double AerosolExtinctionPerKm(double VisibilityKm);
+
+		/** docs/far-haze/: the engine's two fogs at one density. The analytic fog takes density / 1000 per cm in base 2
+		 *  (exp2, HeightFogCommon.ush), so its extinction is 100 ln 2 x density per km. Inside its distance (3 km) the
+		 *  volumetric fog replaces it, at half the density per cm in base e (VolumetricFog.usf's MatchHeightFogFactor) times
+		 *  its extinction scale: 50 x scale x density per km. */
+		static double AnalyticExtinctionPerKm(double FogDensity);
+		static double VolumetricExtinctionPerKm(double FogDensity, double ExtinctionScale);
+		/** The volumetric fog's extinction scale that gives it the analytic fog's extinction, 2 ln 2: the haze over the
+		 *  first 3 km thins the shore as the visibility says, and runs on into the analytic fog without a step. */
+		static constexpr double VolumetricExtinctionScale = 1.3862943611198906;
 	};
 }
