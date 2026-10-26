@@ -18,7 +18,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    to `Packaged/Mac/SailingSim.app`. About 1.5 min (the cook is incremental and the game build is skipped when the code
    is unchanged; `FULL=1` recooks and rebuilds everything, 2.3 min: docs/bench-fast). Log: `Artifacts/package.log`. Keep `-package`: on Mac it is the step that copies
    the cooked data into the .app; without it the app crashes at startup looking for the .uproject. Never archive into `Build/`:
-   that is Unreal's own platform folder.
+   that is Unreal's own platform folder. On Xcode 27 it runs UBT's app finalization through `scripts/xcode-stdin-shim.sh` (a
+   symlink mirror of Xcode in `Artifacts/xcode-shim` whose xcodebuild gets a stdin; without one every package failed in
+   "Touch UBT generated tiles": docs/xcode27-stdin/).
 5. `scripts/bench-mac.sh [seconds]` launches the packaged app windowed via `open` with `-SailingBench=<s>`: 3 s warm-up,
    measures frame times, writes `bench.json` and a screenshot, quits; copies both to `Artifacts/`. Needs an unlocked desktop.
    Started directly from a shell (not `open`), or fullscreen while the display is asleep, the game hangs at window creation.

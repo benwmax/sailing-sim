@@ -32,6 +32,9 @@ if ! curl -s -m 3 -o /dev/null http://127.0.0.1:8558/health/ && [[ -x "$ZEN_DIR/
 	(cd "$ZEN_DIR/Install" && ./zenserver --port 8558 --data-dir "$ZEN_DIR/Data" --http asio --quiet --detach > /dev/null 2>&1 &)
 	for _ in $(seq 1 30); do curl -s -m 1 -o /dev/null http://127.0.0.1:8558/health/ && break; sleep 1; done
 fi
+# Xcode 27: the app finalization's xcodebuild needs a stdin (scripts/xcode-stdin-shim.sh).
+source "$(dirname "$0")/xcode-stdin-shim.sh"
+xcode_stdin_shim
 "$RUNUAT" BuildCookRun \
 	-project="$PROJECT" -noP4 -utf8output -unattended \
 	-platform=Mac -clientconfig="$CONFIG" \
