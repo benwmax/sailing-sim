@@ -223,6 +223,30 @@ bool FSkyCumulusAfterSunsetTest::RunTest(const FString&)
 }
 
 /**
+ * docs/cumulus-depth/: fair-weather cumulus stand about as tall as their cells are wide. By mid-afternoon the cumulus
+ * layer is 0.6 to 1.0 of the largest fair-day cell's diameter deep (mediocris; FWeatherMap's largest class, 2 km in radius,
+ * times the day's CuCellScale); a morning's humilis a quarter of it or less.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSkyCumulusDepthTest, "SailingSim.Visual.CumulusDepth", SkyFlags)
+bool FSkyCumulusDepthTest::RunTest(const FString&)
+{
+	auto Ratio = [](double Hour, double& DepthKm)
+	{
+		FWeatherSystem W;
+		W.Configure(EWeatherPreset::AfternoonBreeze, 7, Hour);
+		const FCloudSky Sky = W.Evaluate(0.0).Sky;
+		DepthKm = Sky[ECloudLayer::Cumulus].TopKm - Sky[ECloudLayer::Cumulus].BaseKm;
+		return DepthKm / (2.0 * 2.0 * Sky.CuCellScale);
+	};
+	double Afternoon = 0.0, Morning = 0.0;
+	const double RA = Ratio(15.0, Afternoon), RM = Ratio(8.0, Morning);
+	AddInfo(FString::Printf(TEXT("Cumulus depth %.2f km at 15 h (%.2f of the largest cell's width), %.2f km at 8 h (%.2f)"), Afternoon, RA, Morning, RM));
+	TestTrue(TEXT("Mid-afternoon cumulus are about as tall as their cells are wide (0.6 to 1.0)"), RA >= 0.6 && RA <= 1.0);
+	TestTrue(TEXT("A morning's are shallow scraps (a quarter or less)"), RM <= 0.25);
+	return true;
+}
+
+/**
  * The shelf cloud rides the physics gust front (Visual V5): the shelf's leading edge, as the cloud shader draws it
  * (FStormShape, mirrored in make_materials.py), arrives over the boat within 30 s of the front itself; the rain core and
  * its darker, higher cloud follow.
