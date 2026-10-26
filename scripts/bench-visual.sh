@@ -36,7 +36,14 @@ if [[ -n "${ONLY:-}" ]]; then
 	for V in "${VIEWS[@]}"; do [[ ",$ONLY," == *",${V%%|*},"* ]] && KEPT+=("$V"); done
 	VIEWS=("${KEPT[@]}")
 fi
-echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms,game_ms,game_p99_ms,render_ms,rhi_ms,gpu_frame_ms" > "$OUT"
+echo "view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms,game_ms,game_p99_ms,render_ms,rhi_ms,gpu_frame_ms,render_pct,foreground" > "$OUT"
+# docs/bench-fullres/: PIN_HIGH=1 (the gate and the sweep) measures High at full resolution: its governor steps the render
+# scale down when a view is slow, and so hid regressions (today's views sat at 82-97%). The other tiers keep their own
+# scale (Medium's 67% is the tier).
+pin() { [[ "${PIN_HIGH:-0}" == 1 && "$1" == High ]] && echo " -SailingScreenPct=100" || true; }
+# A run whose window was not in front for the whole measured window (bench.json "foreground" under 1: macOS may throttle
+# it) is run again once.
+in_front() { python3 -c "import json,sys; sys.exit(0 if float(json.load(open('$1')).get('foreground', 1)) >= 0.99 else 1)" 2>/dev/null; }
 # Perf 1: the game thread's named slices (PerfScopes.h), ms per frame, one row per run.
 GT_OUT="${OUT%.csv}-gt.csv"; rm -f "$GT_OUT"
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
@@ -46,8 +53,12 @@ run_single() {
 	SHOT="$NAME-$(lower "$Q")"
 	for TRY in 1 2; do
 		rm -f "$ARTIFACTS/bench.json"
-		DEMO=1 SHOT="$SHOT" ARGS="$EXTRA -SailingQuality=$Q" "$(dirname "$0")/bench-mac.sh" "$SECONDS_PER_RUN" > /dev/null || true
-		[[ -f "$ARTIFACTS/bench.json" ]] && { cp "$ARTIFACTS/bench.json" "$ARTIFACTS/$SHOT.bench.json"; break; }
+		DEMO=1 SHOT="$SHOT" ARGS="$EXTRA$(pin "$Q") -SailingQuality=$Q" "$(dirname "$0")/bench-mac.sh" "$SECONDS_PER_RUN" > /dev/null || true
+		if [[ -f "$ARTIFACTS/bench.json" ]]; then
+			cp "$ARTIFACTS/bench.json" "$ARTIFACTS/$SHOT.bench.json"
+			in_front "$ARTIFACTS/bench.json" && break
+			[[ $TRY == 1 ]] && echo "$SHOT: the window was not in front; once more" >&2
+		fi
 	done
 	# A view lost twice is an error row in the CSV, not the end of the sweep (env.sh sets -e).
 	return 0
@@ -64,7 +75,7 @@ if [[ "${FAST:-0}" == "1" ]]; then
 			LISTFILE="$ARTIFACTS/bench-list-$(lower "$Q").txt"; : > "$LISTFILE"
 			NAMES=()
 			for V in "${VIEWS[@]:S0:CHUNK}"; do
-				echo "${V%%|*}-$(lower "$Q")|${V#*|} ${BENCH_EXTRA:-}" >> "$LISTFILE"
+				echo "${V%%|*}-$(lower "$Q")|${V#*|} ${BENCH_EXTRA:-}$(pin "$Q")" >> "$LISTFILE"
 				NAMES+=("$ARTIFACTS/${V%%|*}-$(lower "$Q").bench.json")
 			done
 			DEMO=1 LIST="$LISTFILE" ARGS="-SailingQuality=$Q" "$(dirname "$0")/bench-mac.sh" "$SECONDS_PER_RUN" > /dev/null || true
@@ -80,9 +91,11 @@ for path in sys.argv[1:]:
     if first is None:
         first = rhi
     bad = first is not None and rhi > 1.5 * first + 0.5
-    if bad:
+    behind = float(b.get('foreground', 1)) < 0.99
+    if bad or behind:
         os.rename(path, path + '.slowed')
-        print(f"{os.path.basename(path)}: RHI {rhi:.1f} ms against the launch's first {first:.1f} ms; run again on its own", file=sys.stderr)
+        why = f"RHI {rhi:.1f} ms against the launch's first {first:.1f} ms" if bad else "the window was not in front"
+        print(f"{os.path.basename(path)}: {why}; run again on its own", file=sys.stderr)
 PY
 			for V in "${VIEWS[@]:S0:CHUNK}"; do
 				[[ -f "$ARTIFACTS/${V%%|*}-$(lower "$Q").bench.json" ]] && continue
@@ -105,7 +118,8 @@ G = ('total_ms', 'base_ms', 'lumen_ms', 'water_ms', 'clouds_fog_ms', 'niagara_ms
 T = ('game_ms', 'game_p99_ms', 'render_ms', 'rhi_ms', 'gpu_frame_ms')
 try:
     b = json.load(open(sys.argv[1]))
-    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']}" + ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G) + f",{b.get('cloth_cpu_ms', '')},{b.get('water_cpu_ms', '')}" + ''.join(',' + str(b.get(k, '')) for k in T))
+    print(f"{sys.argv[2]},{sys.argv[3]},{b['avg_fps']},{b['p99_ms']}" + ''.join(',' + str(b.get('gpu', {}).get(k, '')) for k in G) + f",{b.get('cloth_cpu_ms', '')},{b.get('water_cpu_ms', '')}" + ''.join(',' + str(b.get(k, '')) for k in T)
+          + f",{b.get('render_pct', '')},{b.get('foreground', '')}")
     gt = b.get('gt', {})
     if gt:
         path = sys.argv[4]
@@ -114,7 +128,7 @@ try:
             if new: f.write('view,quality,game_ms,' + ','.join(gt) + '\n')
             f.write(f"{sys.argv[2]},{sys.argv[3]},{b.get('game_ms', '')}," + ','.join(str(v) for v in gt.values()) + '\n')
 except Exception:
-    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,,,,,,,,")
+    print(f"{sys.argv[2]},{sys.argv[3]},error,,,,,,,,,,,,,,,,,,")
 PY
 		[[ -n "${DOCS:-}" && -f "$ARTIFACTS/$SHOT.png" ]] && { mkdir -p "$DOCS"; cp "$ARTIFACTS/$SHOT.png" "$DOCS/$SHOT.png"; }
 	done

@@ -14,13 +14,15 @@
 # package of origin/main, back to back (one launch each), and passes as flapping when this tree is within 1 fps of main.
 # The main package is Artifacts/apps/main.app, built in the worktree Artifacts/main-tree only when a view needs it and
 # main moved (Artifacts/gate/main.hash). --no-main-check turns it off; `all` never runs it (the sweep stays absolute
-# and only names a view as flapping from the last main measurement, Artifacts/gate/main-bench.csv).
+# and only names a view as flapping from the last main measurement, Artifacts/gate/main-bench-fullres.csv).
 # bash reads a script as it runs it, and --merge checks out another tree: run from a copy.
 if [[ -z "${GATE_COPY:-}" ]]; then
 	COPY="$(mktemp -t gate).sh"; cp "$0" "$COPY"
 	GATE_COPY=1 GATE_SCRIPTS="$(cd "$(dirname "$0")" && pwd)" exec bash "$COPY" "$@"
 fi
 source "$GATE_SCRIPTS/env.sh"
+# docs/bench-fullres/: High is benched at full resolution (bench-visual.sh: its governor hid regressions).
+export PIN_HIGH=1
 SCOPE=all; SECONDS_PER_RUN=12; LABEL=""; BASELINE=""; TESTS=SailingSim; FORCE=0; MERGE=(); MAIN_CHECK=1
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -142,7 +144,7 @@ else
 	step "package: the packaged game is already this tree"
 fi
 # The bench reads only the packaged game: when that is the tree the scope last passed on, the result stands.
-BENCH_KEY="$GAME_HASH $SCOPE $SECONDS_PER_RUN"
+BENCH_KEY="$GAME_HASH $SCOPE $SECONDS_PER_RUN fullres"
 if [[ $FORCE == 0 && -z "$BASELINE" && "$(cat "$STATE/bench-$SCOPE.hash" 2>/dev/null)" == "$BENCH_KEY" && -f "$STATE/bench-$SCOPE.csv" ]]; then
 	step "bench: this scope passed on this packaged game already (--force reruns it)"
 	cp "$STATE/bench-$SCOPE.csv" "$ARTIFACTS/visual-bench-$LABEL.csv"
@@ -156,7 +158,7 @@ else
 	fi
 fi
 step "bench done"
-MAIN_TREE="$ARTIFACTS/main-tree"; MAIN_APP="$ARTIFACTS/apps/main.app"; MAIN_BENCH="$STATE/main-bench.csv"
+MAIN_TREE="$ARTIFACTS/main-tree"; MAIN_APP="$ARTIFACTS/apps/main.app"; MAIN_BENCH="$STATE/main-bench-fullres.csv"   # (docs/bench-fullres/: the unpinned history was main-bench.csv)
 # The table, against the floors (and --baseline). A row with main_fps (from a back-to-back run) passes as flapping when
 # its rerun is within 1 fps of main; the views still under with no main run go to Artifacts/gate/under.txt.
 check() {
