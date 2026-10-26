@@ -110,6 +110,8 @@ namespace
 	// pc/ultra-cloud-tops: Ultra's cloud noise footprint floor (m) and cumulus top ramp (the material's 110 and 4 elsewhere).
 	constexpr float kUltraCloudFootM = 60.f;
 	constexpr float kUltraCloudEdgeTop = 5.f;
+	// docs/exposure-band: the share of the exposure band the histogram may use on the dark side of the incident meter.
+	constexpr float kExposureBandDark = 0.2f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
 	// pc/near-cloud-grain (docs/near-cloud-grain): the cumulus step cap taken as if each step were at least this long (m; 0, off, elsewhere).
 	constexpr float kUltraCloudCapStepM = 76.f;   // four of Ultra's 19 m near steps
@@ -786,14 +788,18 @@ void ASailingEnvironment::UpdateSun(double Hour)
 					IntoSun = FMath::SmoothStep(0.5f, 0.95f, Facing) * (1.f - FMath::SmoothStep(8.f, 20.f, float(Elevation))) * (1.f - Dark);
 				}
 			}
-			// pc/exposure-band (measuring): -SailingExposureBand=<dark>,<bright>, how many of the band's EV the histogram may
-			// take the exposure darker (up) or brighter (down) than the incident meter. 1,1 (the default) is the band as it was.
+			// docs/exposure-band (Bean's choice, Oct 26): the histogram may take the exposure only a fifth of the band darker
+			// than the incident meter, the whole band brighter. With the full stop it sat a stop under the real light wherever
+			// bright sky, cloud and sails filled the frame (the chase: 0.8 EV under, the water and crew a stop dark); at 0.2 it
+			// is 0.15 EV under, and views the histogram already brightens (noon, dusk, storm) don't change. Measuring:
+			// -SailingExposureBand=<dark>,<bright> (1,1 is the band as it was).
 			static uint32 BandGen = MAX_uint32;
-			static float BandDark = 1.f, BandBright = 1.f;
+			static float BandDark = kExposureBandDark, BandBright = 1.f;
 			if (BandGen != SailingArgs::Generation())
 			{
 				BandGen = SailingArgs::Generation();
-				BandDark = BandBright = 1.f;
+				BandDark = kExposureBandDark;
+				BandBright = 1.f;
 				FString Arg, A, B;
 				if (FParse::Value(SailingArgs::Dev(), TEXT("SailingExposureBand="), Arg, false) && Arg.Split(TEXT(","), &A, &B))
 				{

@@ -1,4 +1,8 @@
-# The histogram's dark side of the exposure band (measuring, no default change)
+# The histogram's dark side of the exposure band
+
+> **Default since pc/exposure-default (Bean's choice, Oct 26: "Truest"): 0.2,1** on every tier that meters the light
+> (Medium, High, Ultra). The histogram may take the exposure 0.2 of the band darker than the incident meter and the
+> whole band brighter. `-SailingExposureBand=1,1` gives the old band back for comparison.
 
 Re-audit gap 2: in the chase view (15:00, 111 deg from the sun) the PC's water read 0.019 against the Mac's 0.064. The
 water isn't the cause. At an exposure locked at the incident meter's EV the PC's water is 0.059 (Ultra) and 0.063
@@ -95,8 +99,8 @@ storm view is the bench's (not a capture), and its band is 0.4 under the deck.
 
 ![contact sheet: rows noon, chase, dusk, storm (Ultra, High); columns 1,1, 0.5,1, 0.3,1](contact-sheet.jpg)
 
-## Not changed
+## The default
 
-The default stays 1,1 until the Mac's VisualizeHDR read of the same view is in. If the Mac's histogram also pins at the
-band's end there, the band is the cause on both machines; if not, the auto path differs between them, and the dumps
-above are where to look.
+Bean chose 0.2,1 ("Truest", Oct 26) after the contact sheet: the chase sits 0.15 EV under the incident meter instead of
+0.8. Views where the histogram already brightens (noon, dusk, storm) are unchanged. The Mac's VisualizeHDR crashes on
+Metal; its own read of the chase (`docs/exposure-diff/` on branch exposure-diff) found the same pin with the same cvars.
