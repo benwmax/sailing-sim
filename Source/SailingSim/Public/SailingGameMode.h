@@ -235,6 +235,7 @@ private:
 
 	float BenchSeconds = 0.f;
 	float BenchWarmup = 3.f;
+	float NextBenchActivate = 0.f;   // docs/bench-fullres/: the warm-up's next try at bringing the window to the front
 	bool bBenchTrace = false;
 	int32 ForegroundFrames = 0;
 	/** -SailingBenchTrace: one row a frame (time since start, frame ms, then the game, render, RHI and GPU times the

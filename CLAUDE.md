@@ -132,6 +132,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Saved/Bench>`), opt-in because the RHI thread can slow from view to view within one process (re-run alone
    by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
    Command-line values cached in statics must use `SailingArgs::FCachedFlag`/`FOnce` (re-read when a list swaps it).
+   Since macOS 27 (`docs/bench-fullres/`): gates and sweeps bench High at full resolution (`PIN_HIGH=1`, exported by
+   gate.sh: `-SailingScreenPct=100`; the governor hid regressions at 82-97%). The CSVs carry `render_pct` and `foreground`,
+   and a run whose window was not in front is run again. The game raises its own window through the warm-up, because a
+   single run's BeginPlay request is dropped.
 
 21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
    no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`
