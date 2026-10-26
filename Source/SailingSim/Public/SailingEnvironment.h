@@ -69,6 +69,7 @@ public:
 private:
 	void FindSceneActors();
 	void UpdateSun(double Hour);
+	void DumpExposureSettings(float EV, float Band, float IntoSun);
 	void ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness);
 	/** Graphics G8: the cinematic look on top of the V1 look (grade LUT, tone curve, bloom, flare, vignette, grain). */
 	void ApplyCinematicLook(FPostProcessSettings& PP, double CloudDarkness);
