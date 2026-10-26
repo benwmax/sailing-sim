@@ -3565,6 +3565,10 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
     // blended, the clouds' drift between refreshes stacked into ghosts), so each refresh's grain stays in it; M_SkyDome
     // reads it through a B-spline that softens it (docs/far-cloud-rims/).
     float jit = frac(sin(dot(floor(UV * float2(8192.0, 2048.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    // docs/cache-march/: the shadow shells' jitter is shared by a block of texels (4 x 4 on Ultra's panorama, 2 x 2 on
+    // High's), so neighbouring texels' shadow samples read the same places (one per texel cost up to 1.2 ms on High in
+    // texture fetches); the dome's spline blends the blocks' edges.
+    float jitB = frac(sin(dot(floor(UV * float2(2048.0, 256.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
     // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud
@@ -3604,7 +3608,12 @@ CACHE_SHADOW = """
             [loop] for (int k = 1; k <= 5; k++)
             {
                 float sStep = 50.0 * exp2(k - 1);
-                float sAt = sOff + 0.5 * sStep;
+                // docs/cache-march/: each shell jittered over the middle half of its step by its block's jitter. At the
+                // steps' middles every texel's shadow samples fell on the same five shells round the cloud (25, 100, 250,
+                // 550, 1150 m), and the sunlit term changed in terraces along them: the far cumulus's blocks and pillars
+                // (sharp on Ultra's finer panorama). Jittered, the shells' edges become a texel's grain, which the dome's
+                // spline averages (over the whole step the grain showed; over half, neither does).
+                float sAt = sOff + (0.25 + 0.5 * frac(jitB + 0.618034 * k)) * sStep;
                 sOff += sStep;
                 float3 P = (cam + dir * t + SunDir.xyz * sAt) * 100.0;
                 float Alt = (cam.z + dir.z * t + SunDir.z * sAt + t * t / 12742000.0) * 100.0;
@@ -3871,6 +3880,12 @@ float cm = dot(dir, MoonDir.xyz);
             // pc/ultra-sky-cache: the panorama's own size (4096 x 512, Ultra's 8192 x 1024).
             float2 tsz;
             CacheNew.GetDimensions(tsz.x, tsz.y);
+            // docs/cache-march/: the spline's knots never finer than what the march resolves at the clouds' distance. A
+            // texel is one jittered march, and the march holds nothing finer than its step (35 m inside a cloud on Ultra);
+            // nearer than about 23 km (above 3 deg over a 1.2 km base) that is two of Ultra's texels, and read texel by
+            // texel the cumulus's steep edges and self-shadowed creases stood as blocks and pillars at 3-10 km (High's
+            // 4096 texels hid them). Below 1.5 deg, where Ultra's panorama draws the small far cumulus, every texel.
+            tsz /= 1.0 + smoothstep(1.5, 3.0, el) * saturate(tsz.x / 4096.0 - 1.0);
             float2 x = cuv * tsz - 0.5;
             float2 i = floor(x), f = x - i;
             float2 f2 = f * f, f3 = f2 * f;
