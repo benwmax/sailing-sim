@@ -873,6 +873,29 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		{
 			if (bLayeredClouds)
 			{
+				// docs/storm-high/: under a storm deck on High the clouds take fewer samples, shadow rays at half and the view
+				// ray capped at 56 (from 80), easing in with the deck's darkness. The sun hardly reaches a deck that dark
+				// (the shelf's face is lit by emission, not scattering), so its shadow rays decide little, and a dense grey
+				// mass seen through rain shows no grain at 56 (2.5 ms of the storm view's 23.4 at full resolution; its stills
+				// the same to within the rain's variance). The approach, with the lit shelf in a clear sky, keeps them all.
+				// -SailingFullStormSamples compares; -SailingCloudScale / -SailingCloudSamples (measuring) leave it alone.
+				static SailingArgs::FCachedFlag FullStormArg(TEXT("SailingFullStormSamples"));
+				const bool bMeasuringClouds = FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCloudScale=")) != nullptr
+					|| FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCloudSamples=")) != nullptr;
+				if (USailingSettings::Get()->Quality == ESailingQuality::High && !bMeasuringClouds && !FullStormArg.Get())
+				{
+					const float Storm = FMath::SmoothStep(0.4f, 0.75f, float(W.CloudDarkness));
+					const float ShadowScale = FMath::RoundToFloat(FMath::Lerp(1.f, 0.5f, Storm) * 10.f) / 10.f;   // 0.1 steps: a set rebuilds the proxy
+					// (Against the live values, not a cache: the tier's settings may be applied again under it.)
+					if (!FMath::IsNearlyEqual(C->ShadowViewSampleCountScale, ShadowScale)) C->SetShadowViewSampleCountScale(ShadowScale);
+					const int32 ViewMax = FMath::RoundToInt(FMath::Lerp(80.f, 56.f, Storm));
+					static IConsoleVariable* ViewMaxVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"));
+					if (ViewMaxVar && ViewMaxVar->GetInt() != ViewMax)
+					{
+						ViewMaxVar->Set(float(ViewMax), ECVF_SetByCode);
+						UE_LOG(LogSailing, Log, TEXT("Storm clouds: shadow samples x%.1f, view samples up to %d (cloud darkness %.2f)"), ShadowScale, ViewMax, W.CloudDarkness);
+					}
+				}
 				// The tracer spans only the layers present: its samples go where the cloud is.
 				double Base, Top;
 				W.Sky.Span(Base, Top);
