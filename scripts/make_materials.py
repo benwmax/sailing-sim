@@ -3565,6 +3565,10 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
     // blended, the clouds' drift between refreshes stacked into ghosts), so each refresh's grain stays in it; M_SkyDome
     // reads it through a B-spline that softens it (docs/far-cloud-rims/).
     float jit = frac(sin(dot(floor(UV * float2(8192.0, 2048.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    // docs/cache-march/: the shadow shells' jitter is shared by a block of texels (4 x 4 on Ultra's panorama, 2 x 2 on
+    // High's), so neighbouring texels' shadow samples read the same places (one per texel cost up to 1.2 ms on High in
+    // texture fetches); the dome's spline blends the blocks' edges.
+    float jitB = frac(sin(dot(floor(UV * float2(2048.0, 256.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
     // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud
@@ -3604,12 +3608,12 @@ CACHE_SHADOW = """
             [loop] for (int k = 1; k <= 5; k++)
             {
                 float sStep = 50.0 * exp2(k - 1);
-                // docs/cache-march/: each shell jittered over the middle half of its step by the texel's own jitter. At the
+                // docs/cache-march/: each shell jittered over the middle half of its step by its block's jitter. At the
                 // steps' middles every texel's shadow samples fell on the same five shells round the cloud (25, 100, 250,
                 // 550, 1150 m), and the sunlit term changed in terraces along them: the far cumulus's blocks and pillars
                 // (sharp on Ultra's finer panorama). Jittered, the shells' edges become a texel's grain, which the dome's
                 // spline averages (over the whole step the grain showed; over half, neither does).
-                float sAt = sOff + (0.25 + 0.5 * frac(jit + 0.618034 * k)) * sStep;
+                float sAt = sOff + (0.25 + 0.5 * frac(jitB + 0.618034 * k)) * sStep;
                 sOff += sStep;
                 float3 P = (cam + dir * t + SunDir.xyz * sAt) * 100.0;
                 float Alt = (cam.z + dir.z * t + SunDir.z * sAt + t * t / 12742000.0) * 100.0;
