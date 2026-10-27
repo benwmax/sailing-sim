@@ -104,7 +104,9 @@ namespace Sailing
 		Boat.GetMutableState().CrewOffset = Windward * Config.CrewSitOut;
 		FAutopilot Pilot;
 		Pilot.TargetTWADeg = TwaDeg;
+		// A sea trial measures the boat in the sea, trimmed as the polars are (ideal hands: docs/trimmer-hands/).
 		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
 		FBoatControls C;
 		C.MainSheet = C.JibSheet = Clamp(std::fabs(TwaDeg) / 180.0, 0.0, 1.0);
 		C.bSpinnaker = bSpinnaker && Config.HasSpinnaker();
@@ -250,6 +252,50 @@ namespace Sailing
 			if (Settled >= 1.0) { R.Seconds = T - Called - 1.0; break; }
 		}
 		R.SpeedBeforeKnots = BeforeN > 0 ? Before / BeforeN : 0.0;
+		return R;
+	}
+
+	FTrimHandsResult MeasureTrimHands(const FBoatConfig& Config, double TrueWindKnots, double TwaDeg, double FetchMeters, double GustIntensity,
+		double Seconds, bool bHands)
+	{
+		FTrialSeaSpec Spec;
+		Spec.WindKnots = TrueWindKnots;
+		Spec.GustIntensity = GustIntensity;
+		Spec.FetchMeters = FetchMeters;
+		FTrialSea Sea(Spec);
+		FBoatModel Boat(Config);
+		Boat.Reset(0.0, 0.0, Sea.HeadingFor(TwaDeg), 0.5 * TrueWindKnots * kKnot);
+		FAutoTrim Trim;
+		Trim.Settings.bHands = bHands;
+		FAutopilot Helm;
+		Helm.TargetTWADeg = TwaDeg;
+		FBoatControls C;
+		const double Warm = 60.0;
+		FTrimHandsResult R;
+		FBoatControls Last;
+		int AdjustmentsAtStart = 0, N = 0;
+		double T = 0.0;
+		for (int I = 0; I < int((Warm + Seconds) * PhysicsHz); ++I, T += PhysicsDt)
+		{
+			const Vec3 O = Boat.OriginPosition();
+			Sea.Update(T, O.X, O.Y);
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Helm.Update(Boat);
+			Boat.Step(PhysicsDt, C, Sea.GetWind(), Sea.GetWaves());
+			if (T < Warm) { Last = C; AdjustmentsAtStart = Trim.GetAdjustments(); continue; }
+			R.MainTravelPerMin += std::fabs(C.MainSheet - Last.MainSheet);
+			R.TravelerTravelPerMin += std::fabs(C.Traveler - Last.Traveler);
+			R.JibTravelPerMin += std::fabs(C.JibSheet - Last.JibSheet);
+			R.MeanKnots += Boat.GetTelemetry().BoatSpeed / kKnot;
+			++N;
+			Last = C;
+		}
+		const double Minutes = Seconds / 60.0;
+		R.MainTravelPerMin /= Minutes;
+		R.TravelerTravelPerMin /= Minutes;
+		R.JibTravelPerMin /= Minutes;
+		R.AdjustmentsPerMin = (Trim.GetAdjustments() - AdjustmentsAtStart) / Minutes;
+		R.MeanKnots /= std::max(N, 1);
 		return R;
 	}
 }
