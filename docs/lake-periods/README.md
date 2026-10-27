@@ -92,7 +92,10 @@ These are byte-identical to main:
 - `--scenarios`;
 - `traffic.sh 98`.
 
-The Seawall and squall numbers and the lake drills come from the gate's tests.
+From the gate's tests:
+- the Seawall: 98.1%, under 98.5%;
+- the squall: on her 0.3 s after its cue, within 4 s;
+- the 9 drill and Easy mode tests: all pass.
 
 ## Stills
 
@@ -100,3 +103,10 @@ Helm eye at 14 kn on the lake, TWA 50, the same seed and conditions. Main is lef
 factor is about 1.03–1.04, so the difference here is small. The change is near the shores.
 
 ![helm eye 14 kn](helm14-compare.jpg)
+
+## Gate
+
+`scripts/gate.sh --scope water --merge lake-periods` (origin/main + 16b02646):
+- All 242 tests passed with the heavy set, and the game packaged.
+- Every view is ok. High: beam8 56.8, beat15 51.7, storm 46.8, marina 55.8, coast-day 51.6, gulf-sea 60.7, helm-eye
+  56.7, bridge 57.9 fps. Medium: storm 67.2 fps.
