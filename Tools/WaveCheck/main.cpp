@@ -216,7 +216,7 @@ int main(int Argc, char** Argv)
 	// The points: SWAN against the map and against the old ray (points.csv's game columns).
 	std::ifstream Pc(Argv[3]);
 	std::ofstream Out(Argv[4]);
-	Out << "point,wind_from,knots,swan_hs,map_hs,now_hs,ray_hs,swan_tp,map_tp,now_tp,ray_tp\n";
+	Out << "point,wind_from,knots,swan_hs,map_hs,now_hs,ray_hs,swan_tp,map_tp,now_tp,ray_tp,eff_fetch_m\n";
 	std::getline(Pc, Line);
 	std::map<std::string, int> Seen;
 	std::vector<double> ErrMap, ErrRay, ErrNow, TErrMap, TErrRay, TErrNow;
@@ -254,7 +254,7 @@ int main(int Argc, char** Argv)
 		// The game before W3: one sea for the whole lake from the effective fetch at the boat (W3 prep).
 		const double NowFetch = std::clamp(T.EffectiveFetch(P->X, P->Y, From * kDegToRad), 200.0, 15000.0);
 		const double NowHs = FWaveField::TargetSignificantHeight(Kn * kKnot, NowFetch), NowTp = FWaveField::TargetPeakPeriod(Kn * kKnot, NowFetch);
-		Out << '"' << P->Name << "\"," << From << ',' << Kn << ',' << SwanHsP << ',' << Hs << ',' << NowHs << ',' << RayHs << ',' << SwanTp << ',' << Tp << ',' << NowTp << ',' << RayTp << '\n';
+		Out << '"' << P->Name << "\"," << From << ',' << Kn << ',' << SwanHsP << ',' << Hs << ',' << NowHs << ',' << RayHs << ',' << SwanTp << ',' << Tp << ',' << NowTp << ',' << RayTp << ',' << NowFetch << '\n';
 		if (SwanHsP <= 0.005) continue;
 		ErrMap.push_back(std::fabs(std::log(Hs / SwanHsP)));
 		ErrRay.push_back(std::fabs(std::log(std::max(RayHs, 1e-3) / SwanHsP)));
