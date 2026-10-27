@@ -96,6 +96,73 @@ namespace
 		}
 		return bIn;
 	}
+
+	/** pc/shore-residential: a lot fence from P0 to P1 following the ground: a 1.8 m board fence (wood) or a 1.2 m black
+	 *  iron one (rails and pickets). Stops where the ground drops under ZMin (the water's edge). */
+	void Fence(FKitSection& Wood, FKitSection& Iron, const Sailing::FLakeTerrain& Terr, const FVector2D& P0, const FVector2D& P1, bool bWood, double ZMin)
+	{
+		const double L = FVector2D::Distance(P0, P1);
+		if (L < 1.0) return;
+		const int32 N = FMath::Max(1, FMath::CeilToInt32(L / 2.4));
+		const FVector2D T = (P1 - P0) / L, Side(-T.Y, T.X);
+		const float Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(T.Y, T.X)));
+		for (int32 I = 0; I < N; ++I)
+		{
+			const FVector2D A = P0 + (P1 - P0) * (double(I) / N), B = P0 + (P1 - P0) * (double(I + 1) / N);
+			const double ZA = Terr.HeightAt(A.X, A.Y), ZB = Terr.HeightAt(B.X, B.Y);
+			if (ZA < ZMin || ZB < ZMin) return;
+			const double Pl = L / N;
+			if (bWood)
+			{
+				// Both faces of the boards, and a post at the panel's start.
+				Wood.Quad(FVector(A, ZA), FVector(A, ZA + 1.8), FVector(B, ZB + 1.8), FVector(B, ZB), { 0, 0 }, { 0, 1.8 }, { Pl, 1.8 }, { Pl, 0 });
+				Wood.Quad(FVector(B + Side * 0.02, ZB), FVector(B + Side * 0.02, ZB + 1.8), FVector(A + Side * 0.02, ZA + 1.8), FVector(A + Side * 0.02, ZA), { 0, 0 }, { 0, 1.8 }, { Pl, 1.8 }, { Pl, 0 });
+				Wood.Box(FVector(A + Side * 0.07, ZA + 0.95), FVector(0.05, 0.05, 0.95), Yaw);
+			}
+			else
+			{
+				Iron.Span(A, B, 0.03f, float(ZA + 0.12), float(ZA + 0.16));
+				Iron.Span(A, B, 0.03f, float(ZA + 1.12), float(ZA + 1.18));
+				Iron.Box(FVector(A, ZA + 0.62), FVector(0.03, 0.03, 0.62), Yaw);
+				for (int32 Pk = 1; Pk < 6; ++Pk)
+				{
+					const FVector2D P = A + (B - A) * (Pk / 6.0);
+					Iron.Box(FVector(P, FMath::Lerp(ZA, ZB, Pk / 6.0) + 0.66), FVector(0.01, 0.01, 0.52), Yaw);
+				}
+			}
+		}
+	}
+
+	/** pc/shore-residential: a runabout under its fitted cover, as most boats on a Ray Hubbard lift sit: a hull from the
+	 *  transom at Base to the bow along Fwd, Len long, Beam wide, from the keel at Z0, the cover's crown Hgt above it. */
+	void CoveredBoat(FKitSection& Hull, FKitSection& Cover, const FVector2D& Base, const FVector2D& Fwd, double Len, double Beam, double Z0, double Hgt)
+	{
+		const FVector2D R(-Fwd.Y, Fwd.X);
+		// Half beams at the transom, the shoulder, near the bow and the stem, at the chine (low) and the gunwale (high).
+		const double X[4] = { 0.0, 0.62 * Len, 0.88 * Len, Len };
+		const double WG[4] = { 0.5 * Beam, 0.5 * Beam, 0.36 * Beam, 0.04 };
+		const double WC[4] = { 0.4 * Beam, 0.38 * Beam, 0.22 * Beam, 0.02 };
+		const double ZG = Z0 + 0.75, ZC = Z0 + 0.25, ZT = Z0 + Hgt;
+		auto P = [&](double Xi, double Yi, double Zi) { return FVector(Base + Fwd * Xi + R * Yi, Zi); };
+		for (int32 I = 0; I < 3; ++I)
+		{
+			for (const double Sd : { -1.0, 1.0 })
+			{
+				const FVector Out(R * Sd, 0.0);
+				FacedQuad(Hull, P(X[I], Sd * WC[I], ZC), P(X[I + 1], Sd * WC[I + 1], ZC), P(X[I + 1], Sd * WG[I + 1], ZG), P(X[I], Sd * WG[I], ZG), Out,
+					{ X[I], 0 }, { X[I + 1], 0 }, { X[I + 1], 0.5 }, { X[I], 0.5 });
+				FacedQuad(Hull, P(X[I], 0.0, Z0 + 0.1 * I), P(X[I + 1], 0.0, Z0 + 0.1 * (I + 1)), P(X[I + 1], Sd * WC[I + 1], ZC), P(X[I], Sd * WC[I], ZC), Out - FVector(0, 0, 1),
+					{ X[I], 0 }, { X[I + 1], 0 }, { X[I + 1], 0.4 }, { X[I], 0.4 });
+				// The cover: from just over the gunwale up to its crown along the centreline, falling toward the bow.
+				const double ZTi = FMath::Lerp(ZT, ZG + 0.05, FMath::Square(X[I] / Len)), ZTj = FMath::Lerp(ZT, ZG + 0.05, FMath::Square(X[I + 1] / Len));
+				FacedQuad(Cover, P(X[I], Sd * (WG[I] + 0.04), ZG - 0.08), P(X[I + 1], Sd * (WG[I + 1] + 0.04), ZG - 0.08), P(X[I + 1], 0.0, ZTj), P(X[I], 0.0, ZTi), Out + FVector(0, 0, 1),
+					{ X[I], 0 }, { X[I + 1], 0 }, { X[I + 1], 1 }, { X[I], 1 });
+			}
+		}
+		// The transom and the cover's back.
+		FacedQuad(Hull, P(0, -WC[0], ZC), P(0, WC[0], ZC), P(0, WG[0], ZG), P(0, -WG[0], ZG), FVector(-Fwd, 0.0), { 0, 0 }, { Beam, 0 }, { Beam, 0.5 }, { 0, 0.5 });
+		FacedQuad(Cover, P(-0.02, -WG[0] - 0.04, ZG - 0.08), P(-0.02, WG[0] + 0.04, ZG - 0.08), P(-0.02, 0.0, ZT), P(-0.02, 0.0, ZT), FVector(-Fwd, 0.0), { 0, 0 }, { Beam, 0 }, { Beam * 0.5, 0.6 }, { Beam * 0.5, 0.6 });
+	}
 }
 
 void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int32>>& Out)
@@ -314,6 +381,13 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 				const FVector& E0 = Ce[S];
 				const FVector& E1 = Ce[(S + 1) % 4];
 				WallQuad(Trim, FVector2D(E0), FVector2D(E1), ZE - 0.22, ZE, Outs[S], 0.0, ZE);
+				// pc/shore-residential: a gutter along the fascia and a downspout down the wall's corner.
+				if (bFull && !H.bCommercial)
+				{
+					Met.Span(FVector2D(E0) + Outs[S] * 0.07, FVector2D(E1) + Outs[S] * 0.07, 0.12f, float(ZE - 0.3), float(ZE - 0.16));
+					const FVector2D DP = Cw[S] + Outs[S] * 0.06 + (Cw[(S + 1) % 4] - Cw[S]).GetSafeNormal() * 0.15;
+					Met.Box(FVector(DP, 0.5 * (G + ZE - 0.3)), FVector(0.045, 0.045, 0.5 * (ZE - 0.3 - G)), float(FMath::RadiansToDegrees(FMath::Atan2(Outs[S].Y, Outs[S].X))));
+				}
 				// Soffit, facing down: from the eave edge in to the wall line.
 				const FVector W0(Cw[S], ZE - 0.22), W1(Cw[(S + 1) % 4], ZE - 0.22);
 				FacedQuad(Trim, FVector(E0.X, E0.Y, ZE - 0.22), FVector(E1.X, E1.Y, ZE - 0.22), W1, W0, -FVector::UpVector, { 0, 0 }, { 1, 0 }, { 1, Over }, { 0, Over });
@@ -349,6 +423,7 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 		// Openings on the outside walls: front door and garage on the street side of the main wing, windows elsewhere.
 		const FColor TrimCol = FColor::White;
 		bool bDoor = false, bGarage = H.bCommercial || bTall || OnDeck || Wings[0].HL < 7.0;
+		FVector2D GarageAt = FVector2D::ZeroVector, GarageOut = FVector2D::ZeroVector;
 		for (int32 Ri = 0; Ri < Runs.Num(); ++Ri)
 		{
 			const FWallRun& Run = Runs[Ri];
@@ -378,6 +453,8 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 					Relief(Trim, Run.P0, T, N, U - 0.12, U + W + 0.12, G + 2.15, G + 2.27, 0.06);
 					Taken.Add(FVector2D(U - 0.5, U + W + 0.5));
 					bGarage = true;
+					GarageAt = Run.P0 + T * (U + 0.5 * W);
+					GarageOut = N * (0.5 * W);   // its direction, and half the door's width in its length
 				}
 			}
 			if (bStreet && !bDoor && L > 4.0)
@@ -454,5 +531,240 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 			}
 			Wall.Paint = Srgb(WallCol); Wall.Paint.A = Code;
 		}
+		if (H.bCommercial || bTall || OnDeck) continue;
+
+		// pc/shore-residential (docs/near-shore-audit/phase-1): the lot round a house in the full-detail band. A North Texas
+		// lakefront lot faces the water with a covered patio or a raised deck, fences its sides, runs a path down the lawn,
+		// holds its bank with a concrete bulkhead or riprap, and keeps a boat in a covered slip on a lift.
+		// All in the looks a house tile already carries (each new look was another material section on every one of the 553
+		// tiles: 4 ms of game thread and 1.3 of render thread at the helm, wherever the camera was). Timber and iron are the
+		// wall look painted (stained lap boards, black stucco), the bank is concrete, the boat's hull trim.
+		FKitSection& Deck = Wall;
+		FKitSection& Pile = Wall;
+		FKitSection& Rip = Conc;
+		FKitSection& Iron = Wall;
+		FKitSection& Pale = Trim;
+		const FColor WoodPaint = [&] { FColor C = Srgb(FLinearColor(0.30f, 0.21f, 0.13f) * (0.75f + 0.5f * Hash01(K, 58))); C.A = Siding; return C; }();
+		Wall.Paint = WoodPaint; Wall.Tag = FVector2D(2.4, 0.5);
+		const FVector2D Water = -Street, Across(-Street.Y, Street.X), Ctr(H.X, H.Y);
+		const float WaterYaw = float(FMath::RadiansToDegrees(FMath::Atan2(Water.Y, Water.X)));
+		auto Up = [](FKitSection& S, const FVector& A, const FVector& B, const FVector& C, const FVector& D)
+		{
+			FacedQuad(S, A, B, C, D, FVector::UpVector, { 0, 0 }, { float(FVector::Dist(A, B)), 0 }, { float(FVector::Dist(A, B)), float(FVector::Dist(B, C)) }, { 0, float(FVector::Dist(B, C)) });
+		};
+		// The house's reach toward the water and to either side of it, all wings.
+		double Front = 0.0, SideW = 0.0;
+		for (const FWingFrame& F : Wings)
+		{
+			for (int32 Cn = 0; Cn < 4; ++Cn)
+			{
+				const FVector2D P = F.At((Cn & 1) ? F.HL : -F.HL, (Cn & 2) ? F.HW : -F.HW) - Ctr;
+				Front = FMath::Max(Front, FVector2D::DotProduct(P, Water));
+				SideW = FMath::Max(SideW, FMath::Abs(FVector2D::DotProduct(P, Across)));
+			}
+		}
+		// The shore straight out from the house's front (metres from its centre), if there's one within reach of a lawn.
+		double Shore = -1.0;
+		for (double D = Front + 2.0; D < Front + 70.0; D += 1.0)
+		{
+			if (Terr.HeightAt(Ctr.X + Water.X * D, Ctr.Y + Water.Y * D) < -0.05) { Shore = D; break; }
+		}
+		// The driveway: concrete from the garage door out toward the street, following the ground.
+		if (GarageOut.SizeSquared() > 0.0)
+		{
+			const double HalfW = GarageOut.Size() + 0.3;
+			const FVector2D N = GarageOut.GetSafeNormal(), T(-N.Y, N.X);
+			for (int32 Sg = 0; Sg < 4; ++Sg)
+			{
+				const FVector2D A = GarageAt + N * (0.1 + 2.0 * Sg), B = GarageAt + N * (0.1 + 2.0 * (Sg + 1));
+				const double ZA = FMath::Max(double(Terr.HeightAt(A.X, A.Y)), 0.2) + 0.04, ZB = FMath::Max(double(Terr.HeightAt(B.X, B.Y)), 0.2) + 0.04;
+				Up(Conc, FVector(A - T * HalfW, Sg == 0 ? G + 0.04 : ZA), FVector(A + T * HalfW, Sg == 0 ? G + 0.04 : ZA), FVector(B + T * HalfW, ZB), FVector(B - T * HalfW, ZB));
+			}
+		}
+		// The patio or deck on the main wing's wall that faces the water.
+		int32 BackRun = INDEX_NONE;
+		double BestDot = 0.6;
+		for (int32 Ri = 0; Ri < Runs.Num(); ++Ri)
+		{
+			const double Dp = FVector2D::DotProduct(Runs[Ri].Out, Water);
+			if (Runs[Ri].Wing == 0 && Dp > BestDot) { BestDot = Dp; BackRun = Ri; }
+		}
+		if (BackRun != INDEX_NONE && Hash01(K, 40) < 0.85f)
+		{
+			const FWallRun& Run = Runs[BackRun];
+			const FVector2D T = (Run.P1 - Run.P0).GetSafeNormal(), N = Run.Out;
+			const double L = FVector2D::Distance(Run.P0, Run.P1);
+			const double Lp = FMath::Min(L * (0.45 + 0.3 * Hash01(K, 41)), 9.0), Dp = 3.0 + 1.4 * Hash01(K, 42);
+			const double U0 = 0.5 + (L - Lp - 1.0) * Hash01(K, 43);
+			const FVector2D A0 = Run.P0 + T * U0, A1 = A0 + T * Lp, F0 = A0 + N * Dp, F1 = A1 + N * Dp;
+			bool bClear = Lp > 2.5 && Terr.HeightAt(0.5 * (F0.X + F1.X), 0.5 * (F0.Y + F1.Y)) > 0.3;
+			for (int32 Wj = 1; Wj < Wings.Num() && bClear; ++Wj) bClear = !Wings[Wj].Contains(0.5 * (A0 + F1), -0.2);
+			const float PostYaw = float(FMath::RadiansToDegrees(FMath::Atan2(T.Y, T.X)));
+			if (bClear && Hash01(K, 44) < 0.6f)
+			{
+				// A covered patio: slab, posts and beam, and a shed roof off the wall below the eave.
+				const double Zs = G + 0.12, Zt = FMath::Min(G + 2.75, E - 0.35), Zw = FMath::Min(Zt + 0.22 * Dp, E - 0.12);
+				Up(Conc, FVector(A0, Zs), FVector(A1, Zs), FVector(F1, Zs), FVector(F0, Zs));
+				WallQuad(Conc, F0, F1, Base, Zs, N, 0.0, G);
+				const int32 Posts = FMath::Max(2, FMath::RoundToInt32(Lp / 3.5) + 1);
+				for (int32 Pt = 0; Pt < Posts; ++Pt)
+				{
+					const FVector2D P = F0 - N * 0.18 + T * (0.15 + (Lp - 0.3) * Pt / (Posts - 1));
+					Trim.Box(FVector(P, 0.5 * (Zs + Zt)), FVector(0.1, 0.1, 0.5 * (Zt - Zs)), PostYaw);
+				}
+				Trim.Span(F0 - N * 0.18, F1 - N * 0.18, 0.2f, float(Zt - 0.28), float(Zt));
+				const FVector2D G0 = F0 + N * 0.3, G1 = F1 + N * 0.3;
+				RoofPlane(Roof, FVector(G0, Zt), FVector(G1, Zt), FVector(A1, Zw), FVector(A0, Zw));
+				WallQuad(Trim, G0, G1, Zt - 0.18, Zt, N, 0.0, Zt);
+				FacedQuad(Trim, FVector(G0, Zt - 0.02), FVector(G1, Zt - 0.02), FVector(A1, Zw - 0.02), FVector(A0, Zw - 0.02), -FVector::UpVector, { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 });
+				// A sliding glass door out onto it.
+				Wall.Paint = FColor(30, 32, 34, Glass);
+				WallQuad(Wall, A0 + T * (0.5 * Lp - 1.2) + N * 0.016, A0 + T * (0.5 * Lp + 1.2) + N * 0.016, Zs, Zs + 2.1, N, 0.0, G);
+				Wall.Paint = WoodPaint;
+			}
+			else if (bClear)
+			{
+				// A raised timber deck: boards on joists, posts to the ground, a rail round its open sides and steps down.
+				const double Zd = G + 0.5 + 0.5 * Hash01(K, 45), Dd = Dp + 0.8;
+				const FVector2D D0 = A0 + N * Dd, D1 = A1 + N * Dd;
+				Deck.Box(FVector(0.5 * (A0 + D1), Zd - 0.05), FVector(0.5 * Lp, 0.5 * Dd, 0.05), PostYaw);
+				for (const FVector2D& P : { D0, D1, 0.5 * (D0 + D1), A0 + N * 0.5 * Dd, A1 + N * 0.5 * Dd })
+				{
+					const double Zg = Terr.HeightAt(P.X, P.Y);
+					Pile.Box(FVector(P, 0.5 * (Zg + Zd)), FVector(0.08, 0.08, 0.5 * FMath::Max(Zd - Zg, 0.1)), PostYaw);
+				}
+				for (const TPair<FVector2D, FVector2D>& Rail : { TPair<FVector2D, FVector2D>(D0, D1), TPair<FVector2D, FVector2D>(A0 + N * 0.05, D0), TPair<FVector2D, FVector2D>(A1 + N * 0.05, D1) })
+				{
+					Pile.Span(Rail.Key, Rail.Value, 0.08f, float(Zd + 0.9), float(Zd + 0.98));
+					const double Rl = FVector2D::Distance(Rail.Key, Rail.Value);
+					for (double U = 0.0; U <= Rl; U += 1.6)
+					{
+						Pile.Box(FVector(Rail.Key + (Rail.Value - Rail.Key) * (U / Rl), Zd + 0.45), FVector(0.04, 0.04, 0.45), PostYaw);
+					}
+				}
+			}
+		}
+		// The rest needs the water within a lawn's reach.
+		if (Shore < 0.0) continue;
+		// Side fences down the lot toward the water, on most lots: board fences or black iron (the lake side stays open).
+		if (Hash01(K, 46) < 0.7f)
+		{
+			const bool bWood = Hash01(K, 47) < 0.45f;
+			const double D0 = 0.2 * Front, D1 = Shore - 3.0;
+			if (D1 - D0 > 4.0)
+			{
+				for (const double Sd : { -1.0, 1.0 })
+				{
+					if (Hash01(K, 48 + (Sd > 0.0 ? 1 : 0)) < 0.35f) continue;
+					const double Off = Sd * (SideW + 2.5 + 2.5 * Hash01(K, 50));
+					if (!bWood) Iron.Paint = FColor(14, 14, 15, Stucco);
+					Fence(Pile, Iron, Terr, Ctr + Across * Off + Water * D0, Ctr + Across * Off + Water * D1, bWood, 0.25);
+					Wall.Paint = WoodPaint;
+				}
+			}
+		}
+		// The waterline along the lot: from points across it, the first wet sample marching out.
+		const double Half = FMath::Clamp(SideW + 5.0, 8.0, 18.0);
+		TArray<FVector2D, TInlineAllocator<20>> Line;
+		for (double S = -Half; S <= Half + 0.01; S += 2.0)
+		{
+			for (double D = Shore - 10.0; D < Shore + 10.0; D += 0.5)
+			{
+				const FVector2D P = Ctr + Across * S + Water * D;
+				if (Terr.HeightAt(P.X, P.Y) < -0.02) { Line.Add(P); break; }
+			}
+		}
+		const float Edge = Hash01(K, 51);
+		// A concrete path down the lawn to the water (or to the dock).
+		if (Hash01(K, 52) < 0.6f)
+		{
+			const FVector2D S0 = Ctr + Water * (Front + 0.5) + Across * ((Hash01(K, 53) - 0.5) * SideW);
+			const double Len = Shore - Front - 2.5;
+			const int32 Sg = FMath::Max(1, FMath::FloorToInt32(Len / 2.0));
+			for (int32 I = 0; I < Sg; ++I)
+			{
+				const FVector2D A = S0 + Water * (Len * I / Sg), B = S0 + Water * (Len * (I + 1) / Sg);
+				const double ZA = Terr.HeightAt(A.X, A.Y) + 0.03, ZB = Terr.HeightAt(B.X, B.Y) + 0.03;
+				if (ZA < 0.2 || ZB < 0.2) break;
+				Up(Conc, FVector(A - Across * 0.5, ZA), FVector(A + Across * 0.5, ZA), FVector(B + Across * 0.5, ZB), FVector(B - Across * 0.5, ZB));
+			}
+		}
+		if (Line.Num() < 3 || Edge > 0.85f) continue;   // a natural bank on some
+		// The bank: a concrete bulkhead (most of the lake's developed shore) or riprap.
+		const bool bBulkhead = Edge < 0.55f;
+		for (int32 I = 0; I + 1 < Line.Num(); ++I)
+		{
+			const FVector2D A = Line[I], B = Line[I + 1];
+			if (FVector2D::Distance(A, B) > 4.5) continue;
+			FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
+			if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
+			if (bBulkhead)
+			{
+				const double Top = 0.5;
+				WallQuad(Conc, A, B, -0.7, Top, N, 0.0, -0.7);
+				Conc.Span(A - N * 0.15, B - N * 0.15, 0.34f, float(Top), float(Top + 0.12));
+				// The fill behind it up to the lawn, so the cap doesn't stand alone as a kerb.
+				const double ZA = Terr.HeightAt((A - N * 2.0).X, (A - N * 2.0).Y), ZB = Terr.HeightAt((B - N * 2.0).X, (B - N * 2.0).Y);
+				Up(Conc, FVector(A - N * 0.3, Top + 0.12), FVector(B - N * 0.3, Top + 0.12), FVector(B - N * 2.0, FMath::Max(ZB, Top + 0.05)), FVector(A - N * 2.0, FMath::Max(ZA, Top + 0.05)));
+			}
+			else
+			{
+				// Riprap: a pile of stones down the bank, in steps so its face is broken, not a paved slope.
+				for (int32 St = 0; St < 3; ++St)
+				{
+					const double I0 = 1.8 - 1.07 * St, I1 = I0 - 1.07, Z0 = -0.55 + 0.38 * St, Z1 = Z0 + 0.38;
+					Up(Rip, FVector(A + N * I0, Z0), FVector(B + N * I0, Z0), FVector(B + N * I1, Z1), FVector(A + N * I1, Z1));
+					Rip.Span(A + N * (I1 + 0.15), B + N * (I1 + 0.15), 0.4f, float(Z1 - 0.12), float(Z1 + 0.08));
+				}
+			}
+		}
+		// A boathouse on a third of the banked lots with water deep enough a few metres out, and none of the map's own docks
+		// near: a walk out on piles, a U of decking round a slip, a gable roof, and the boat on its lift under a cover.
+		if (Hash01(K, 54) > 0.35f) continue;
+		const FVector2D Sp = Line[Line.Num() / 2];
+		bool bDocked = false;
+		for (const FLakeDock& Dk : Lake.Docks)
+		{
+			for (const FVector2D& P : Dk.Points) if (FVector2D::DistSquared(P, Sp) < 30.0 * 30.0) { bDocked = true; break; }
+			if (bDocked) break;
+		}
+		const FVector2D Deep = Sp + Water * 10.0;
+		if (bDocked || Terr.HeightAt(Deep.X, Deep.Y) > -0.7) continue;
+		const double Zd = 1.0;
+		Deck.Box(FVector(Sp + Water * 3.0, Zd - 0.06), FVector(3.0, 0.7, 0.06), WaterYaw);
+		const FVector2D B0 = Sp + Water * 6.0;
+		Deck.Box(FVector(B0 + Water * 0.7, Zd - 0.06), FVector(0.7, 3.8, 0.06), WaterYaw);
+		for (const double Sd : { -1.0, 1.0 }) Deck.Box(FVector(B0 + Water * 5.4 + Across * (Sd * 3.2), Zd - 0.06), FVector(4.0, 0.6, 0.06), WaterYaw);
+		for (double D = 0.6; D < 9.5; D += 3.0)
+		{
+			for (const double Sd : { -1.0, 1.0 })
+			{
+				Pile.Cylinder(FVector(Sp + Water * FMath::Min(D, 5.6) + Across * (Sd * 0.6), -2.0), 0.12f, float(Zd + 1.94), 6);
+				Pile.Cylinder(FVector(B0 + Water * (D + 0.3) + Across * (Sd * 3.5), -2.0), 0.13f, float(Zd + 1.94), 6);
+			}
+		}
+		// The roof on posts at the fingers' corners: ridge along the slip.
+		const double Zr = Zd + 2.9, Rise = 1.5, Wr = 4.2, Lr = 9.6;
+		for (const double D : { 0.2, 0.5 * Lr, Lr - 0.2 })
+		{
+			for (const double Sd : { -1.0, 1.0 }) Trim.Box(FVector(B0 + Water * D + Across * (Sd * 3.6), 0.5 * (Zd + Zr)), FVector(0.09, 0.09, 0.5 * (Zr - Zd)), WaterYaw);
+		}
+		const FVector RA(B0 - Water * 0.3 - Across * Wr, Zr), RB(B0 + Water * Lr - Across * Wr, Zr), RC(B0 + Water * Lr + Across * Wr, Zr), RD(B0 - Water * 0.3 + Across * Wr, Zr);
+		const FVector R0(B0 - Water * 0.3, Zr + Rise), R1(B0 + Water * Lr, Zr + Rise);
+		Roof.Paint = Srgb(FLinearColor(0.22f, 0.21f, 0.2f) * (0.8f + 0.4f * Hash01(K, 55))); Roof.Paint.A = Hash01(K, 56) < 0.5f ? Metal : Shingle;
+		RoofPlane(Roof, RA, RB, R1, R0);
+		RoofPlane(Roof, RC, RD, R0, R1);
+		for (const double Sd : { -1.0, 1.0 })
+		{
+			const FVector2D E0 = B0 + Across * (Sd * Wr) - Water * 0.3, E1 = B0 + Across * (Sd * Wr) + Water * Lr;
+			WallQuad(Trim, E0, E1, Zr - 0.2, Zr, Across * Sd, 0.0, Zr);
+		}
+		// The lift's cradle and the boat on it, covered.
+		const double Zk = Zd - 0.15;
+		for (const double D : { 2.0, 6.0 }) Met.Span(B0 + Water * (1.5 + D) - Across * 2.6, B0 + Water * (1.5 + D) + Across * 2.6, 0.15f, float(Zk - 0.15), float(Zk));
+		// The cover is canvas: navy, tan, forest green or grey (the roof look's membrane finish, coloured per vertex).
+		static const FLinearColor Canvas[] = { FLinearColor(0.03f, 0.05f, 0.12f), FLinearColor(0.42f, 0.36f, 0.25f), FLinearColor(0.05f, 0.12f, 0.06f), FLinearColor(0.25f, 0.26f, 0.27f) };
+		Roof.Paint = Srgb(Canvas[HouseHash(K, 57) % UE_ARRAY_COUNT(Canvas)]); Roof.Paint.A = Membrane;
+		CoveredBoat(Pale, Roof, B0 + Water * 1.6, Water, 6.8, 2.4, Zk, 1.35);
 	}
 }
