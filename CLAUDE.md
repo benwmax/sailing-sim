@@ -199,6 +199,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    `FLakeData::FogScaleHeightM`/`FarPlaneKm`). Band D: `Tools/venv/bin/python -I Tools/terrain/build_skyline.py
    Marseille` bakes `<World>.skyline` (500 m GLO-90); `FSkyline` marches it on a worker every 500 m into the sky dome's
    `Skyline` texture (`-SailingNoSkyline`). Tests `SailingSim.World.Haze`, `SailingSim.World.Skyline`.
+   Far-shore haze (`docs/far-haze/`): the volumetric fog has the analytic fog's extinction (`FHaze::VolumetricExtinctionScale`, 2 ln 2)
+   and, under Lumen, stops at Lumen's translucency volume (80 m: past it the fog has no skylight); `-SailingClassicVolumetricHaze` compares.
 
 ## Conventions
 
