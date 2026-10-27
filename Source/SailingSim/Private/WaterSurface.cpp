@@ -470,7 +470,11 @@ float AWaterSurface::WhitecapScaleHere() const
 
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
 {
-	return FMath::Clamp(0.94f - 0.0075f * (MeanKnots - 12.f), 0.85f, 0.94f);
+	// docs/lake-periods/: with the longer periods the open lake drew 1.4 times W8's 20 kn cover at its old 0.88 (two runs,
+	// 0.62 and 0.60 % against 0.44), and 1.66 times at 0.8725: a larger scale folds less. Refitted on the crest masks:
+	// 0.94 at 12 kn, 0.915 at 16, then barely falling (0.0015 a knot) to 0.909 at 20, still never under W8's 0.85.
+	const float Above = FMath::Max(MeanKnots - 16.f, 0.f);
+	return FMath::Clamp(0.94f - 0.00625f * (FMath::Min(MeanKnots, 16.f) - 12.f) - 0.0015f * Above, 0.85f, 0.94f);
 }
 
 float AWaterSurface::BodyTransmission(float CosView)

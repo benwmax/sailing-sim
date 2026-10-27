@@ -163,7 +163,22 @@ namespace Sailing
 		const double Ua = AdjustedWindSpeed(WindMs);
 		const double HsA = GrowthLawHeight(Ua, FetchMeters);
 		const double Older = HsA > 0.0 ? TargetSignificantHeight(WindMs, FetchMeters) / HsA : 1.0;
-		return GrowthLawPeriod(Ua, FetchMeters) * std::pow(Older, 2.0 / 3.0);
+		return GrowthLawPeriod(Ua, FetchMeters) * std::pow(Older, 2.0 / 3.0) * ShortFetchPeriodFactor(WindMs, FetchMeters);
+	}
+
+	double FWaveField::ShortFetchPeriodFactor(double WindMs, double FetchMeters)
+	{
+		// docs/lake-periods/: SWAN's peak period on Ray Hubbard (the PC's bake, origin/w3-swan-bake: ten points, 16 directions,
+		// seven speeds; scripts/wave-check.sh --map) runs longer than this law at the point's effective fetch, and the
+		// shorter the fetch the more: 1.21-1.32 times under 400 m, 1.08-1.31 under 1 km, 1.01-1.11 past it, at 8-28 kn; none
+		// at 5 kn. A young sea on a short fetch is driven harder than the SPM law (fitted to older seas) allows, and part of
+		// that period is the open lake's sea reaching round into the lee. Fitted to the binned medians, as #41 fitted the
+		// height: 1 + (50 m / F)^0.75 (U / 14 kn)^0.125, blended in from 5 to 10 kn, F floored at 200 m (the bake's floor).
+		// The binned bias falls from 0.128 to 0.037 rms in log period.
+		const double U = WindMs / 0.514444;
+		const double F = std::max(FetchMeters, 200.0);
+		const double T = Clamp((U - 5.0) / 5.0, 0.0, 1.0);
+		return 1.0 + std::pow(50.0 / F, 0.75) * std::pow(std::max(U, 1e-3) / 14.0, 0.125) * T * T * (3.0 - 2.0 * T);
 	}
 
 	double FWaveField::SpreadingBeta(double F, double Fp)
