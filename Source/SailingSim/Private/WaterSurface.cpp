@@ -10,6 +10,7 @@
 #include "Async/ParallelFor.h"
 #include "EngineUtils.h"
 #include "SailboatPawn.h"
+#include "CrewPose.h"
 #include "SailingSettings.h"
 #include "VisualPipeline.h"
 #include "TrafficManager.h"
@@ -1667,8 +1668,34 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	{
 		if (D.Kind == uint8(ESprayKind::Drops) && D.Age < 0.6f && FVector::DistSquared(D.P, CamM3) < 4.f) { LensSpray = 1.f; break; }
 	}
-	// Fly: gravity, the air dragging them toward the wind's speed; gone when they fall back into the water. Mist hangs:
-	// it barely falls and follows the wind closely.
+	// docs/hull-spray/: the boats near the camera. Spray that blows into one (the cabin, the hull below the deck) stops
+	// there: the crests' mist drifted downwind straight through the hull and hung in the cabin, a milky haze with drops
+	// in it under the companionway (Bean's playtest, rough seas). Spray over the deck and into the cockpit well stays.
+	struct FSprayBoat { const FBoatConfig* Config; Vec3 Origin; Quat Orientation; double Reach2, Depth; };
+	TArray<FSprayBoat, TInlineAllocator<8>> SprayBoats;
+	for (TActorIterator<ASailboatPawn> It(GetWorld()); It; ++It)
+	{
+		const FBoatModel& M = It->GetBoatModel();
+		const Vec3 O = M.OriginPosition();
+		if (FVector2D::Distance(FVector2D(O.X, O.Y), CamM) > 80.0) continue;
+		double Reach = 0.0;
+		for (const FHullShape& H : M.GetConfig().Hulls) Reach = FMath::Max(Reach, FMath::Max(H.BowX, -H.SternX) + FMath::Abs(H.CenterY) + H.MaxHalfBeam);
+		SprayBoats.Add({ &M.GetConfig(), O, M.GetState().Orientation, FMath::Square(Reach + 1.0), M.HullDepth() });
+	}
+	auto InsideABoat = [&SprayBoats](const FVector& P)
+	{
+		for (const FSprayBoat& B : SprayBoats)
+		{
+			const Vec3 R(P.X - B.Origin.X, P.Y - B.Origin.Y, P.Z - B.Origin.Z);
+			if (R.X * R.X + R.Y * R.Y + R.Z * R.Z > B.Reach2) continue;
+			const Vec3 L = B.Orientation.Unrotate(R);
+			if (CrewInsideBoat(*B.Config, B.Depth, FVector(L.X, L.Y, L.Z))) return true;
+		}
+		return false;
+	};
+	// Fly: gravity, the air dragging them toward the wind's speed; gone when they fall back into the water, or into a
+	// boat (after their first 0.15 s: the bow wave's sheets start at her skin). Mist hangs: it barely falls and follows
+	// the wind closely.
 	const FVector G(0, 0, -9.81);
 	for (int32 I = Droplets.Num() - 1; I >= 0; --I)
 	{
@@ -1677,7 +1704,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		D.V += ((bMist ? G * 0.05f : G) + (WindAt2m - D.V) * (bMist ? 2.5f : 1.2f)) * Dt;
 		D.P += D.V * Dt;
 		D.Age += Dt;
-		if (D.Age > D.Life || (!bMist && D.P.Z < Waves->Height(D.P.X, D.P.Y, T) - 0.05)) Droplets.RemoveAtSwap(I);
+		if (D.Age > D.Life || (!bMist && D.P.Z < Waves->Height(D.P.X, D.P.Y, T) - 0.05) || (D.Age > 0.15f && InsideABoat(D.P))) Droplets.RemoveAtSwap(I);
 	}
 	// Draw: each a quad facing the camera, stretched along its motion across the view (the blur of a 1/60 s exposure),
 	// fading with age and as it falls back. Past 25 m the droplets read as mist (no grain, wider, fainter).
