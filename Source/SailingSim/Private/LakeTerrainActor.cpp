@@ -134,6 +134,7 @@ void ALakeTerrainActor::BeginPlay()
 	if (FarLoader.Start(Lake->FileName)) UE_LOG(LogSailing, Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
 	PlaceTrees();
 	PlaceReeds();
+	PlaceUnderstory();
 	PlaceBuildings();
 	PlaceBridgesAndDocks();
 	bTreesPlaced = true;
@@ -1210,6 +1211,141 @@ void ALakeTerrainActor::PlaceReeds()
 	}
 	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass, %d weed clumps and %d far strips (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(), Out[4].Num(),
 		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
+}
+
+void ALakeTerrainActor::PlaceUnderstory()
+{
+	const FLakeData* Lake = GetLake();
+	// Near-shore phase 2 (docs/near-shore-audit/phase-2, audit item 4): the wooded shore was trees standing alone in mown
+	// grass, with nothing between them. Under and around each lidar crown near the water: yaupon (evergreen, it takes the
+	// shade) under the canopy, dogwood and coralberry thickets at the drip line where the light gets in, a sapling now and
+	// then, a fallen trunk or a brush pile, and a snag at the water's edge. None in a yard (the houses' 50 m) or the marina.
+	if (!Lake || Lake->Crowns.Num() == 0 || USailingSettings::Get()->Quality < ESailingQuality::High || UnderstoryModels.Num() > 0
+		|| FParse::Param(SailingArgs::Dev(), TEXT("SailingNoUnderstory"))) return;
+	enum EKind { Yaupon0, Yaupon1, Dogwood, Coralberry, Elm, Cedar, Log, Brush, Snag, NumKinds };
+	static const TCHAR* Names[NumKinds] = { TEXT("Trees/SM_Shrub_0"), TEXT("Trees/SM_Shrub_1"), TEXT("Trees/SM_Shrub_2"), TEXT("Trees/SM_Shrub_3"),
+		TEXT("Trees/SM_Sapling_0"), TEXT("Trees/SM_Sapling_1"), TEXT("Props/SM_Deadfall_0"), TEXT("Props/SM_Deadfall_1"), TEXT("Trees/SM_Snag_0") };
+	UStaticMesh* Meshes[NumKinds];
+	for (int32 K = 0; K < NumKinds; ++K)
+	{
+		const FString Path = FString::Printf(TEXT("/Game/World/%s.%s"), Names[K], *FPaths::GetBaseFilename(Names[K]));
+		Meshes[K] = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet));
+		if (!Meshes[K]) return;   // an older import (Tools/blender/build_understory.py)
+	}
+	const FLakeTerrain& T = Lake->Terrain;
+	TSet<FIntPoint> Yards;
+	for (const FLakeHouse& H : Lake->Houses)
+	{
+		const FIntPoint Cell(FMath::FloorToInt32(H.X / 25.0), FMath::FloorToInt32(H.Y / 25.0));
+		for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Yards.Add(Cell + FIntPoint(Dx, Dy));
+	}
+	auto InYard = [&](double X, double Y) { return Yards.Contains(FIntPoint(FMath::FloorToInt32(X / 25.0), FMath::FloorToInt32(Y / 25.0))); };
+	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
+	auto Rand = [&](uint32 Seed, uint32 K) { return float(Hash(Seed + K * 2654435761u) & 0xFFFFFF) / float(0xFFFFFF); };
+	TArray<FTransform> Out[NumKinds];
+	TArray<float> Data[NumKinds];
+	auto Add = [&](int32 Kind, double X, double Y, float Scale, float Yaw, float Sink, uint32 Seed)
+	{
+		const double Z = T.HeightAt(X, Y);
+		if (Z < 0.15 || InYard(X, Y)) return;
+		Out[Kind].Add(FTransform(FRotator(0.f, Yaw, 0.f), FVector(X, Y, Z - Sink) * CmPerMeter, FVector(Scale)));
+		// The trees' look (FTreeLook: tint, how deciduous, autumn hue): yaupon and cedar keep their green, dogwood and
+		// coralberry turn russet-red, the elm sapling yellow.
+		const bool bEvergreen = Kind == Yaupon0 || Kind == Yaupon1 || Kind == Cedar;
+		Data[Kind].Append({ Rand(Seed, 91), bEvergreen ? 0.f : 0.4f + 0.6f * Rand(Seed, 92), Kind == Elm ? 0.75f + 0.25f * Rand(Seed, 93) : 0.12f * Rand(Seed, 93) });
+	};
+	int32 Crowns = 0;
+	for (const FLakeCrown& C : Lake->Crowns)
+	{
+		if (!C.bFullDetail || C.X * C.X + C.Y * C.Y < 350.f * 350.f) continue;
+		const double Ground = T.HeightAt(C.X, C.Y);
+		if (Ground < 0.3 || Ground > 12.0 || InYard(C.X, C.Y)) continue;
+		// The shore band: open water within 80 m (eight rays, 10 m steps), and which way it lies (the light side).
+		double WaterD = 1e9;
+		FVector2D ToWater(0.0, 0.0);
+		for (int32 D = 10; D <= 80 && WaterD > 1e8; D += 10)
+		{
+			for (int32 A = 0; A < 8; ++A)
+			{
+				const FVector2D Dir(FMath::Cos(A * UE_DOUBLE_PI / 4.0), FMath::Sin(A * UE_DOUBLE_PI / 4.0));
+				if (T.HeightAt(C.X + Dir.X * D, C.Y + Dir.Y * D) < -0.05) { WaterD = D; ToWater = Dir; break; }
+			}
+		}
+		if (WaterD > 1e8) continue;
+		++Crowns;
+		const uint32 Seed = Hash(uint32(FMath::RoundToInt32(C.X * 10.f)) * 73856093u ^ uint32(FMath::RoundToInt32(C.Y * 10.f)) * 19349663u);
+		const float R = FMath::Clamp(C.Radius, 2.f, 9.f);
+		const float WaterAz = float(FMath::Atan2(ToWater.Y, ToWater.X));
+		// Shrubs: about one per 12 m2 of crown, a third of them on the water side (the edge's light).
+		const int32 N = FMath::Clamp(FMath::RoundToInt32(R * R * 0.26f), 2, 14);
+		for (int32 K = 0; K < N; ++K)
+		{
+			const uint32 S = Hash(Seed + K * 7919u);
+			const float Az = Rand(S, 2) < 0.35f ? WaterAz + (Rand(S, 3) - 0.5f) * 1.6f : 2.f * UE_PI * Rand(S, 1);
+			const float Rr = R * (0.25f + FMath::Sqrt(Rand(S, 4)));
+			const float U = Rand(S, 5);
+			const int32 Kind = Rr < 0.8f * R ? (U < 0.4f ? Yaupon0 : (U < 0.75f ? Yaupon1 : (U < 0.9f ? Dogwood : Coralberry)))
+				: (U < 0.2f ? Yaupon1 : (U < 0.6f ? Dogwood : Coralberry));
+			Add(Kind, C.X + FMath::Cos(Az) * Rr, C.Y + FMath::Sin(Az) * Rr, 0.75f + 0.5f * Rand(S, 6), 360.f * Rand(S, 7), 0.08f, S);
+		}
+		// Brush between the trees: up to three thickets or saplings 3 to 15 m past the drip line, so a spit of spaced
+		// crowns reads as a scrubby bank rather than trees on a lawn.
+		const int32 Gap = int32(Rand(Seed, 41) * 3.99f);
+		for (int32 K = 0; K < Gap; ++K)
+		{
+			const uint32 S = Hash(Seed + (K + 101) * 7919u);
+			const float Az = 2.f * UE_PI * Rand(S, 1), Rr = R + 3.f + 12.f * Rand(S, 2), U = Rand(S, 3);
+			Add(U < 0.45f ? Coralberry : (U < 0.8f ? Dogwood : (U < 0.9f ? Elm : Cedar)), C.X + FMath::Cos(Az) * Rr, C.Y + FMath::Sin(Az) * Rr,
+				0.7f + 0.5f * Rand(S, 4), 360.f * Rand(S, 5), 0.08f, S);
+		}
+		// A sapling past the drip line on a crown in four, toward the light.
+		if (Rand(Seed, 11) < 0.25f)
+		{
+			const float Az = WaterAz + (Rand(Seed, 12) - 0.5f) * 2.4f, Rr = R * (1.0f + 0.4f * Rand(Seed, 13));
+			Add(C.bCedar || Rand(Seed, 14) < 0.35f ? Cedar : Elm, C.X + FMath::Cos(Az) * Rr, C.Y + FMath::Sin(Az) * Rr, 0.7f + 0.6f * Rand(Seed, 15),
+				360.f * Rand(Seed, 16), 0.05f, Seed + 1);
+		}
+		// Dead wood under one crown in eight: a fallen trunk (sized to the tree) or a brush pile.
+		if (Rand(Seed, 21) < 0.125f)
+		{
+			const float Az = 2.f * UE_PI * Rand(Seed, 22), Rr = R * 0.6f * Rand(Seed, 23);
+			const bool bLog = Rand(Seed, 24) < 0.55f;
+			Add(bLog ? Log : Brush, C.X + FMath::Cos(Az) * Rr, C.Y + FMath::Sin(Az) * Rr, bLog ? FMath::Clamp(C.Height / 14.f, 0.6f, 1.3f) : 0.8f + 0.5f * Rand(Seed, 25),
+				360.f * Rand(Seed, 26), bLog ? 0.06f : 0.1f, Seed + 2);
+		}
+		// A snag at the water's edge on one crown in thirty (the drowned timber of a reservoir's banks).
+		if (WaterD <= 30.0 && Rand(Seed, 31) < 0.033f)
+		{
+			Add(Snag, C.X + ToWater.X * (R + 2.0), C.Y + ToWater.Y * (R + 2.0), 0.8f + 0.5f * Rand(Seed, 32), 360.f * Rand(Seed, 33), 0.2f, Seed + 3);
+		}
+	}
+	for (int32 Kind = 0; Kind < NumKinds; ++Kind)
+	{
+		if (Out[Kind].Num() == 0) continue;
+		// As the reeds: hierarchical (clusters culled together), out of Lumen's scene and ray tracing, shadows cached as
+		// static (the sway never re-renders their pages), bounds kept through the tide and re-centre moves.
+		UHierarchicalInstancedStaticMeshComponent* C = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
+		C->SetupAttachment(RootComponent);
+		C->SetStaticMesh(Meshes[Kind]);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->bAffectDynamicIndirectLighting = false;
+		C->bAffectDistanceFieldLighting = false;
+		C->bVisibleInRayTracing = false;
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		C->NumCustomDataFloats = 3;
+		// (Shrubs and saplings to 600 m, where they still fill the gaps under the crowns; dead wood lies low, to 300 m; the
+		// snags' bare tops show to a kilometre.)
+		C->SetCullDistances(0, (Kind == Snag ? 1000.f : (Kind == Log || Kind == Brush ? 300.f : 600.f)) * 100.f);
+		C->SetWorldPositionOffsetDisableDistance(25000);
+		C->SetUseConservativeBounds(true);
+		C->SetCanEverAffectNavigation(false);
+		C->RegisterComponent();
+		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Out[Kind]), false, true);
+		static_cast<UInstancedStaticMeshComponent*>(C)->SetCustomData(0, Out[Kind].Num() - 1, TConstArrayView<float>(Data[Kind]), true);   // (the range form: HISM hides it)
+		UnderstoryModels.Add(C);
+	}
+	UE_LOG(LogSailing, Display, TEXT("Understory: %d crowns by the water; %d yaupon, %d dogwood, %d coralberry, %d saplings, %d logs, %d brush piles, %d snags"), Crowns,
+		Out[Yaupon0].Num() + Out[Yaupon1].Num(), Out[Dogwood].Num(), Out[Coralberry].Num(), Out[Elm].Num() + Out[Cedar].Num(), Out[Log].Num(), Out[Brush].Num(), Out[Snag].Num());
 }
 
 void ALakeTerrainActor::PlaceBuildings()

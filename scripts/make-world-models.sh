@@ -7,7 +7,7 @@ set -euo pipefail
 OUT="$ARTIFACTS/models/world"
 mkdir -p "$OUT"
 BLENDER="${BLENDER:-$(command -v blender || echo /Applications/Blender.app/Contents/MacOS/Blender)}"
-for GEN in build_trees build_props build_navaids build_vessels build_houses build_landmarks build_reeds; do
+for GEN in build_trees build_props build_navaids build_vessels build_houses build_landmarks build_reeds build_understory; do
 	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/blender/$GEN.py" -- "$OUT" > "$ARTIFACTS/blender-$GEN.log" 2>&1 \
 		|| { tail -30 "$ARTIFACTS/blender-$GEN.log"; exit 1; }
 	grep -E "^[A-Z][a-z]+: " "$ARTIFACTS/blender-$GEN.log" | head -40 || true

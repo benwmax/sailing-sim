@@ -94,6 +94,10 @@ class Builder:
         self.leaf_centers.append((center.copy(), size))
 
 
+# Limbs that sag below this height level out above it (Tools/blender/build_understory.py lowers it for shrubs).
+LIMB_FLOOR = 1.2
+
+
 def bent(start, direction, length, segments, wobble, droop):
     pts = [start.copy()]
     d = direction.normalized()
@@ -101,8 +105,8 @@ def bent(start, direction, length, segments, wobble, droop):
     for i in range(segments):
         d = (d + Vector((random.uniform(-wobble, wobble), random.uniform(-wobble, wobble), random.uniform(-wobble, wobble) * 0.5 - droop / segments))).normalized()
         p = p + d * (length / segments)
-        if p.z < 1.2:  # limbs that sag toward the ground level out above it
-            p.z = 1.2 + 0.2 * random.random()
+        if p.z < LIMB_FLOOR:  # limbs that sag toward the ground level out above it
+            p.z = LIMB_FLOOR + 0.2 * random.random()
             d.z = max(d.z, 0.05)
         pts.append(p.copy())
     return pts
@@ -166,7 +170,7 @@ def stemmed_tree(name, spec, seed):
     b.height = h
     lean = math.radians(spec["lean"])
     count = random.randint(*spec["stems"])
-    trunk_r = (0.18 + h * 0.025) / math.sqrt(count)
+    trunk_r = spec.get("stem_r") or (0.18 + h * 0.025) / math.sqrt(count)   # (stem_r: the understory's shrubs)
     limbs = random.randint(*spec["limbs"])
     reach = 0.5 * spec["w"] * h
     for s in range(count):
@@ -195,7 +199,7 @@ def cone_tree(name, spec, seed):
     h = random.uniform(*spec["h"])
     b.height = h
     leader = bent(Vector((0, 0, -0.3)), Vector((0, 0, 1)), h, 8, 0.03, 0.0)
-    b.tube(leader, [0.2 * (1.0 - 0.9 * i / (len(leader) - 1)) for i in range(len(leader))], sides=8)
+    b.tube(leader, [spec.get("leader_r", 0.2) * (1.0 - 0.9 * i / (len(leader) - 1)) for i in range(len(leader))], sides=8)
     base_r = spec["w"] * h * 0.5
     count = int(1100 * spec["dens"])
     for i in range(count):
@@ -330,4 +334,6 @@ def main():
             bpy.data.objects.remove(obj)
 
 
-main()
+# (Imported by build_understory.py for its Builder and growth: only run as the script.)
+if __name__ == "__main__":
+    main()

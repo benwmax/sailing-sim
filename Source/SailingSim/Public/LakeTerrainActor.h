@@ -100,6 +100,8 @@ private:
 	void PlaceTrees();
 	/** Graphics G2 (Medium and up): cattail and rush clumps in the shallows and at the water's edge. */
 	void PlaceReeds();
+	/** Near-shore phase 2 (High and Ultra): shrubs, saplings, deadfall and snags under and around the lidar crowns along the water. */
+	void PlaceUnderstory();
 	bool PlaceHouseModels(const struct FLakeData& Lake);
 	void PlaceBuildings();
 	void PlaceBridgesAndDocks();
@@ -143,6 +145,7 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeModels; // Visual V6: leaf-card trees near the camera
 	bool bLoggedInstances = false;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> UnderstoryModels; // near-shore phase 2
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeMid;    // Graphics G6: opaque crowns that still cast shadows
 	/** T1: the near trees' opaque crowns, drawn for the lighting only (ray tracing and distance fields; not in the main or
