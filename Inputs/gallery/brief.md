@@ -7,6 +7,7 @@ inputs branch at 2a782cd (showroom brief). Class names below are suggestions; th
   past the assets. Same idea as the new boat showroom: a panel on the left to search and filter the assets, the selected
   asset on the right with zoom, pan and rotate, a full-screen view, and graphics settings in reach so he can see each
   asset at different fidelities.
+- APPROVED by Bean (Oct 27 20:38 UTC, cmsg_01LZf6WW82DddXS8e3xrubuGPjWumUAcoxSc44mfT8ZKRu: "looks good").
 - Clickable mockup: https://claude.ai/artifact/MLtw3UqhR9DWyMNvoZ2k7v (the shapes are browser stand-ins; the list uses
   the real folder names and paths from main; the tier look is imitated).
 - Sequenced after the showroom PRs (`Inputs/ui-showroom/brief.md`): it reuses photo mode's `AFreeCamera` orbit mode
