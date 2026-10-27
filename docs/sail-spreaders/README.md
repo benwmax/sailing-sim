@@ -49,4 +49,23 @@ on the right. At this distance the change is a crease at the spreader's height; 
 ## Cost
 
 The dent's work per frame is each spreader times the rows near it, 6 points along the bar and 16 columns: a few thousand
-small rotations. The gate's bench has the cloth CPU per view (`cloth_cpu_ms`), against today's sweep on main.
+small rotations. Cloth CPU per frame (`cloth_cpu_ms`) is all boats' sails on the game thread, in the packaged build. Main
+is today's `--scope all` sweep on 7a37028f; this branch is the boats gate (High) and a Medium run of three views:
+
+| View | Medium, main | Medium, this | High, main | High, this |
+|---|---|---|---|---|
+| beam8 | 0.653 ms | 0.681 ms | 0.822 ms | 0.828 ms |
+| helm-eye | 0.646 ms | 0.681 ms | 0.792 ms | 0.851 ms |
+| crew | 0.651 ms | 0.686 ms | 0.837 ms | 0.832 ms |
+| beat15 | | | 0.771 ms | 0.803 ms |
+| marina | | | 0.808 ms | 0.828 ms |
+| slip | | | 0.511 ms | 0.525 ms |
+
+That is at most +0.06 ms, well inside the +0.2 ms budget and about the size of the run-to-run spread.
+
+## Gate
+
+`scripts/gate.sh --scope boats --merge sail-spreaders` (origin/main + 3c7f303c):
+- The heavy set passed (cached on these physics inputs), plus 229 other tests.
+- The game packaged.
+- Every view is above its floor on High: beam8 58.6, beat15 52.8, marina 56.8, helm-eye 58.4, slip 50.0, crew 46.5 fps.
