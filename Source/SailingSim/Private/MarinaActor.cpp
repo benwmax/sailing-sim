@@ -344,7 +344,11 @@ void AMarinaActor::Build(const FMarina& Marina)
 	{
 		const int32 Kind = int32(MHash(++Seed) % NumRocks);
 		const float Pitch = (MRand(++Seed) - 0.5f) * 50.f, Yaw = MRand(++Seed) * 360.f, Roll = (MRand(++Seed) - 0.5f) * 50.f;
-		const FVector Stretch(Size * (0.8f + 0.45f * MRand(++Seed)), Size * (0.8f + 0.45f * MRand(++Seed)), Size * Flat * (0.75f + 0.4f * MRand(++Seed)));
+		// (Drawn one by one: three draws inside one constructor call are unsequenced, so compilers could order them differently.)
+		const float SX = 0.8f + 0.45f * MRand(++Seed);
+		const float SY = 0.8f + 0.45f * MRand(++Seed);
+		const float SZ = 0.75f + 0.4f * MRand(++Seed);
+		const FVector Stretch(Size * SX, Size * SY, Size * Flat * SZ);
 		RockX[Kind].Add(FTransform(FRotator(Pitch, Yaw, Roll), FVector(P.X, P.Y, Z) * 100.0, Stretch));
 		float D[16] = {};
 		D[10] = 15.f + 10.f * MRand(++Seed); D[11] = 0.3f; D[12] = 0.5f; D[13] = 0.5f + 0.4f * MRand(++Seed); D[14] = 0.f; D[15] = MRand(++Seed);
