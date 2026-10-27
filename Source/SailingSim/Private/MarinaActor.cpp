@@ -331,10 +331,25 @@ void AMarinaActor::Build(const FMarina& Marina)
 	const int32 Baked = SpawnKitTiles(this, Tiles, TEXT("Marina"), Replaced.Num() > 0 || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralWorld")),
 		KitMaterial, Tiled);
 
-	// The breakwater: limestone riprap piled along its line (the world kit's six rocks, scaled and turned per piece).
-	constexpr int32 NumRocks = 6;
+	// The breakwater: limestone riprap piled along its line. Near-shore phase 3 (audit item 5: one rounded shape repeated
+	// in a line): twelve shapes (build_props.py: the first six, then slabs, long blocks and angular pieces), sizes spread
+	// as quarried armour stone is (many middling, a few big, small chinking in the gaps), each stretched its own way and
+	// tipped as it fell, a toe of the biggest at the water on the lake side, and each its own shade of limestone
+	// (M_WorldSurface's stone pattern reads custom data 10-15: age, care, sun, its wet line, site, and its shade).
+	constexpr int32 NumRocks = 12;
 	TArray<FTransform> RockX[NumRocks];
+	TArray<float> RockD[NumRocks];
 	uint32 Seed = 7;
+	auto AddRock = [&](const FVector2D& P, float Z, float Size, float Flat)
+	{
+		const int32 Kind = int32(MHash(++Seed) % NumRocks);
+		const float Pitch = (MRand(++Seed) - 0.5f) * 50.f, Yaw = MRand(++Seed) * 360.f, Roll = (MRand(++Seed) - 0.5f) * 50.f;
+		const FVector Stretch(Size * (0.8f + 0.45f * MRand(++Seed)), Size * (0.8f + 0.45f * MRand(++Seed)), Size * Flat * (0.75f + 0.4f * MRand(++Seed)));
+		RockX[Kind].Add(FTransform(FRotator(Pitch, Yaw, Roll), FVector(P.X, P.Y, Z) * 100.0, Stretch));
+		float D[16] = {};
+		D[10] = 15.f + 10.f * MRand(++Seed); D[11] = 0.3f; D[12] = 0.5f; D[13] = 0.5f + 0.4f * MRand(++Seed); D[14] = 0.f; D[15] = MRand(++Seed);
+		RockD[Kind].Append(D, 16);
+	};
 	for (const FMarinaLine& L : Marina.Breakwaters)
 	{
 		if (!Generated(L.Id)) continue;
@@ -343,17 +358,32 @@ void AMarinaActor::Build(const FMarina& Marina)
 			const FVector2D A = L.Points[I - 1], B = L.Points[I];
 			const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
 			const float Len = float(FVector2D::Distance(A, B));
-			for (float D = 0.f; D < Len; D += 1.1f)
+			for (float D = 0.f; D < Len; D += 0.8f + 0.7f * MRand(++Seed))
 			{
 				for (int32 K = -2; K <= 2; ++K)
 				{
-					const float Across = K * 0.22f * L.Width + (MRand(++Seed) - 0.5f) * 0.6f;
+					const float Across = K * 0.22f * L.Width + (MRand(++Seed) - 0.5f) * 0.8f;
 					const float Crest = L.Height * (1.f - FMath::Square(Across / (0.55f * L.Width)));
 					const FVector2D P = A + Dir * (D + (MRand(++Seed) - 0.5f)) + Left * Across;
-					const float Size = 0.8f + 0.9f * MRand(++Seed);
-					const int32 Kind = int32(MHash(++Seed) % NumRocks);
-					const float Pitch = (MRand(++Seed) - 0.5f) * 40.f, Yaw = MRand(++Seed) * 360.f, Roll = (MRand(++Seed) - 0.5f) * 40.f;
-					RockX[Kind].Add(FTransform(FRotator(Pitch, Yaw, Roll), FVector(P.X, P.Y, Crest - 0.25f * Size) * 100.0, FVector(Size)));
+					// Armour stone: mostly 0.8-1.5 m, one in eight up to 2.3 m.
+					const float U = MRand(++Seed);
+					const float Size = U < 0.875f ? 0.8f + 0.7f * (U / 0.875f) : 1.5f + 0.8f * ((U - 0.875f) / 0.125f);
+					AddRock(P, Crest - 0.25f * Size, Size, 1.f);
+					// Chinking: a small stone in the gap now and then.
+					if (MRand(++Seed) < 0.35f)
+					{
+						const FVector2D Q = P + Dir * 0.55f + Left * ((MRand(++Seed) - 0.5f) * 0.6f);
+						const float S = 0.35f + 0.3f * MRand(++Seed);
+						AddRock(Q, Crest - 0.1f, S, 0.8f);
+					}
+				}
+				// The toe: big stones along the waterline on both faces, half drowned.
+				if (MRand(++Seed) < 0.5f)
+				{
+					const float Side = MRand(++Seed) < 0.5f ? -1.f : 1.f;
+					const FVector2D P = A + Dir * D + Left * (Side * (0.62f * L.Width + 0.4f * MRand(++Seed)));
+					const float Size = 1.4f + 0.8f * MRand(++Seed);
+					AddRock(P, -0.35f * Size, Size, 0.9f);
 				}
 			}
 		}
@@ -368,8 +398,10 @@ void AMarinaActor::Build(const FMarina& Marina)
 		C->SetStaticMesh(Rock);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		C->NumCustomDataFloats = 16;
 		C->RegisterComponent();
 		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), RockX[K]), false, true);
+		C->SetCustomData(0, RockX[K].Num() - 1, TConstArrayView<float>(RockD[K]), true);
 		Rocks.Add(C);
 	}
 
