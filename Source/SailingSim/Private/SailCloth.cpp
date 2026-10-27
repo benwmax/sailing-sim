@@ -372,7 +372,10 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 	const bool bMain = Kind == ESailKind::Main;
 	if (!bDentOnly)
 	{
-		constexpr float kMainTurnMax = 0.2f;  // radians (11 deg)
+		// docs/sail-dent/: the main turns as far as the wires need, up to 0.6 rad (34 deg), like a boom stopped at the shroud.
+		// At 0.2 (11 deg, "a sheet's few degrees") an eased main running past the shroud was left to the dent below, which
+		// folded a deep trough into it at the spreader's height (Bean's playtest, Oct 27).
+		constexpr float kMainTurnMax = 0.6f;
 		constexpr float kJibTurnMax = 0.35f;
 		double Turns[Rows] = {};
 		// (The main's foot too, on the boom: the boom is drawn turned with it, FootTurn. A jib's foot ends at its sheet.)
@@ -438,9 +441,9 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 			}
 			Turns[R] = Turn;
 		}
-		// The turns, as the cloth can take them. The main turns as one, like a boom stopped at the shroud, and no further than
-		// a sheet's few degrees: the belly of a running main that would have to swing far round a spreader is left draped over
-		// it (turning each row its own way tore the sail into steps). A jib's rows turn with their neighbours.
+		// The turns, as the cloth can take them. The main turns as one, like a boom stopped at the shroud, as far as its wires
+		// need (kMainTurnMax): what is left after that, a twisted head past the upper shroud, is dented below (turning each row
+		// its own way tore the sail into steps). A jib's rows turn with their neighbours.
 		double Applied[Rows] = {};
 		if (bMain)
 		{
@@ -539,7 +542,7 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 			}
 		}
 	}
-	// docs/sail-spreaders/: a running main eased onto a spreader lies over it. The turn above stops at a sheet's few degrees
+	// docs/sail-spreaders/: a running main eased onto a spreader lies over it. The turn above stops at kMainTurnMax
 	// and the wire dents are for the shrouds, so a spreader still stood through the belly (RigClearance: the J/22, Catalina
 	// 30, Corsair and maxi running, boom 72-80 deg). Each row near the bar's height is dented back onto the clew's side of
 	// every point along it, fully within kSpreaderFlatRows rows of the bar and easing out over kSpreaderFallRows more: the
