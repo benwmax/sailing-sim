@@ -73,6 +73,13 @@ namespace Sailing
 		// weight: the slope her hull feels) is downhill by more than FaceSlope (on a face) and uphill by as much (on a
 		// back), and the share of the time on faces.
 		double FaceAccel = 0.0, BackAccel = 0.0, FaceShare = 0.0;
+		// docs/surfing/: speed by the wave's phase under her, from the same slope (bins: steep back under -2 FaceSlope, back,
+		// level, face, steep face over 2 FaceSlope), the share of the time in each; the share of one-second means over
+		// 1.5 x her hull speed (1.34 sqrt(LWL in ft) kn), and her mean course error (|TWA - the autopilot's|, deg) on
+		// faces and on backs (a broach starts on a face).
+		double PhaseKnots[5] = {}, PhaseShare[5] = {};
+		double SurfShare = 0.0, HullSpeedKnots = 0.0;
+		double FaceCourseErrDeg = 0.0, BackCourseErrDeg = 0.0;
 		double MeanHeelDeg = 0.0, MaxTiltDeg = 0.0;
 		double MeanTwaDeg = 0.0;
 		double Hs = 0.0;           // significant height where she sailed

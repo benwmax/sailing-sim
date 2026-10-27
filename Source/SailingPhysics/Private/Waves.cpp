@@ -422,6 +422,35 @@ namespace Sailing
 		}
 	}
 
+	void FWaveField::OrbitalVelocity(double X, double Y, double T, double Below, double& OutU, double& OutV) const
+	{
+		OutU = OutV = 0.0;
+		const double D = std::max(Below, 0.0);
+		float Ratio[kSeaChannels];
+		SeaRatiosAt(X, Y, Ratio);
+		for (int I = 0; I < kWaveComponents; ++I)
+		{
+			const FWaveComponent& C = Components[I];
+			if (C.Amplitude <= 1e-6) continue;
+			const double K = std::sqrt(C.Kx * C.Kx + C.Ky * C.Ky);
+			if (K < 1e-9) continue;
+			// Finite depth: cosh(k (h - d)) / sinh(k h); deep (kh past 6, where the two agree to 1e-5) exp(-k d).
+			const double KH = K * Depth;
+			const double Profile = (Depth > 0.0 && KH < 6.0) ? std::cosh(K * std::max(Depth - D, 0.0)) / std::sinh(KH) : std::exp(-K * D);
+			const double A = C.Amplitude * Ratio[std::min(I, kSeaLongComponents)] * C.Omega * Profile
+				* std::sin(C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase) / K;
+			OutU += A * C.Kx;
+			OutV += A * C.Ky;
+		}
+		if (Ocean)
+		{
+			double U, V;
+			Ocean->OrbitalVelocity(X, Y, T, D, U, V);
+			OutU += U;
+			OutV += V;
+		}
+	}
+
 	double FWaveField::SignificantHeight() const
 	{
 		double Variance = 0.0;

@@ -118,6 +118,9 @@ namespace Sailing
 		std::vector<double> Last(Window, 0.0);
 		double WindowSum = 0.0, PrevSpeed = 0.0, FaceSum = 0.0, BackSum = 0.0, HsSum = 0.0;
 		int Faces = 0, Backs = 0;
+		int PhaseCount[5] = {}, SurfSeconds = 0, Seconds1 = 0;
+		double FaceErr = 0.0, BackErr = 0.0;
+		R.HullSpeedKnots = 1.34 * std::sqrt(Config.WaterlineLength / 0.3048);
 		R.MinKnots = 1e9;
 		double T = 0.0;
 		Vec3 Start;
@@ -142,6 +145,11 @@ namespace Sailing
 					R.MaxKnots = std::max(R.MaxKnots, WindowSum / Window);
 					R.MinKnots = std::min(R.MinKnots, WindowSum / Window);
 				}
+				if (K == Window - 1)
+				{
+					++Seconds1;
+					SurfSeconds += WindowSum / Window > 1.5 * R.HullSpeedKnots ? 1 : 0;
+				}
 				R.MeanKnots += Tm.BoatSpeed / kKnot;
 				R.MeanCalmN += Tm.CalmResistance;
 				R.MeanWaveN += Tm.WaveResistance;
@@ -157,8 +165,12 @@ namespace Sailing
 					// surface, so chop much shorter than her does not count). Positive = downhill ahead (a face).
 					const double Along = Tm.WaveSlopeSurge / (Boat.TotalMass() * kGravity);
 					const double Accel = (Speed - PrevSpeed) / PhysicsDt;
-					if (Along > FaceSlope) { FaceSum += Accel; ++Faces; }
-					else if (Along < -FaceSlope) { BackSum += Accel; ++Backs; }
+					const double Err = std::fabs(Tm.TrueWindAngle * kRadToDeg - TwaDeg);
+					if (Along > FaceSlope) { FaceSum += Accel; ++Faces; FaceErr += Err; }
+					else if (Along < -FaceSlope) { BackSum += Accel; ++Backs; BackErr += Err; }
+					const int Bin = Along < -2.0 * FaceSlope ? 0 : Along < -FaceSlope ? 1 : Along <= FaceSlope ? 2 : Along <= 2.0 * FaceSlope ? 3 : 4;
+					R.PhaseKnots[Bin] += Tm.BoatSpeed / kKnot;
+					++PhaseCount[Bin];
 					if (I % int(PhysicsHz) == 0) HsSum += W->SignificantHeightAt(Boat.GetState().Position.X, Boat.GetState().Position.Y);
 				}
 			}
@@ -176,6 +188,14 @@ namespace Sailing
 		R.FaceAccel = Faces ? FaceSum / Faces : 0.0;
 		R.BackAccel = Backs ? BackSum / Backs : 0.0;
 		R.FaceShare = Faces / N;
+		for (int B = 0; B < 5; ++B)
+		{
+			R.PhaseShare[B] = PhaseCount[B] / N;
+			R.PhaseKnots[B] = PhaseCount[B] ? R.PhaseKnots[B] / PhaseCount[B] : 0.0;
+		}
+		R.SurfShare = Seconds1 ? double(SurfSeconds) / Seconds1 : 0.0;
+		R.FaceCourseErrDeg = Faces ? FaceErr / Faces : 0.0;
+		R.BackCourseErrDeg = Backs ? BackErr / Backs : 0.0;
 		R.Hs = HsSum / std::max(1.0, std::floor(Seconds));
 		if (R.MinKnots > 1e8) R.MinKnots = 0.0;
 		return R;

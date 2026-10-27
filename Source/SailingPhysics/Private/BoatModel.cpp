@@ -563,9 +563,49 @@ namespace Sailing
 		return -MX * kWaterDensity * kGravity;
 	}
 
+	void FBoatModel::SampleOrbitalFlow(const FWaveField* Waves)
+	{
+		const FBoatConfig& C = Config;
+		bOrbitalFlow = Waves && C.WaveOrbitalFlowScale != 0.0 && !Waves->GetParams().bCalibrationSea && !C.Hulls.empty();
+		if (!bOrbitalFlow) return;
+		// Stations at the ends of her (first) waterline: the rudder sits near the aft one, so the flow it meets on a face
+		// differs from the keel's (the yaw the waves give her, and a broach). Depths: the canoe body's middle and the
+		// deepest foil's centre; the orbital speed falls off with depth as exp(-k d), fast for the short chop.
+		const FHullShape& Hull = C.Hulls[0];
+		const double Lwl = Hull.WaterlineLength();
+		OrbitalX[0] = Hull.WaterlineMidX - 0.5 * Lwl;
+		OrbitalX[1] = Hull.WaterlineMidX + 0.5 * Lwl;
+		OrbitalDepth[0] = 0.5 * std::max(CanoeDepth * Hull.DepthScale - Hull.DepthOffset, 0.02);
+		double Deepest = OrbitalDepth[0] + 0.2;
+		for (const FFoilDef& F : C.Foils) Deepest = std::max(Deepest, -F.Params.Center.Z);
+		OrbitalDepth[1] = Deepest;
+		const Vec3 Origin = OriginPosition();
+		for (int S = 0; S < 2; ++S)
+		{
+			const Vec3 P = Origin + State.Orientation.Rotate(Vec3(OrbitalX[S], 0.0, 0.0));
+			for (int D = 0; D < 2; ++D)
+			{
+				double U, V;
+				Waves->OrbitalVelocity(P.X, P.Y, State.Time, OrbitalDepth[D], U, V);
+				OrbitalFlow[S][D] = Vec3(U, V, 0.0) * C.WaveOrbitalFlowScale;
+			}
+		}
+	}
+
+	Vec3 FBoatModel::OrbitalFlowAt(const Vec3& BodyPoint) const
+	{
+		if (!bOrbitalFlow) return Vec3();
+		const double A = Clamp((BodyPoint.X - OrbitalX[0]) / std::max(OrbitalX[1] - OrbitalX[0], 1e-3), 0.0, 1.0);
+		const double B = Clamp((-BodyPoint.Z - OrbitalDepth[0]) / std::max(OrbitalDepth[1] - OrbitalDepth[0], 1e-3), 0.0, 1.0);
+		const Vec3 Shallow = OrbitalFlow[0][0] * (1.0 - A) + OrbitalFlow[1][0] * A;
+		const Vec3 Deep = OrbitalFlow[0][1] * (1.0 - A) + OrbitalFlow[1][1] * A;
+		return Shallow * (1.0 - B) + Deep * B;
+	}
+
 	void FBoatModel::Step(double Dt, const FBoatControls& Controls, const FWindField& Wind, const FWaveField* Waves)
 	{
 		CurrentWaves = Waves;
+		SampleOrbitalFlow(Waves);
 		const FBoatConfig& C = Config;
 		const Quat& Q = State.Orientation;
 		const Vec3 Origin = OriginPosition();
@@ -647,9 +687,9 @@ namespace Sailing
 			// column model gets wrong and the added resistance below already carries, calibrated. So on flat water the
 			// push is zero, and over a wave she does not ride it averages out; only time spent on a face (or a back)
 			// nets anything. Left out: the decay with depth (small for the waves that slope her) and diffraction (surge
-			// added mass, 0.05 of her mass). Known gap: the keels and rudders meet the water as if it were still (no orbital
-			// flow, no wave inertia), so a beam sea's sideways push makes them scull her along a little: the J/22 adrift
-			// beam-on to a 1.2 m swell creeps at 1.3 kn (0.25 to 0.7 without the push, as before; docs/wave-physics/).
+			// added mass, 0.05 of her mass). The hull, keels and rudders meet the waves' orbital flow (OrbitalFlowAt,
+			// docs/surfing/): a drag and lift on the water's motion, not a second slope push (the pressure is all here).
+			// Still left out: the wave's inertia on the foils (the water's acceleration past them).
 			if (C.WaveSlopeForceScale != 0.0 && Col.Hull < 8)
 			{
 				const int H = Col.Hull;
@@ -797,7 +837,7 @@ namespace Sailing
 		}
 		{
 			// Munk moment: the canoe body wants to turn broadside to its motion (part of weather helm).
-			const Vec3 CGVelBody = Q.Unrotate(State.Velocity - WaterCurrent);
+			const Vec3 CGVelBody = Q.Unrotate(State.Velocity - WaterCurrent - OrbitalFlowAt(Vec3(CenterOfGravity.X, 0.0, -OrbitalDepth[0])));
 			TorqueBody.Z += -C.MunkAddedMass * CGVelBody.X * CGVelBody.Y;
 			if (C.HeelYawCoef > 0.0 && !C.Hulls.empty())
 			{

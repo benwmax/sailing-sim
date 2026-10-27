@@ -108,6 +108,48 @@ int main(int Argc, char** Argv)
 			}
 			return 0;
 		}
+		if (Argc > 2 && std::strcmp(Argv[2], "surf") == 0)
+		{
+			// docs/surfing/: speed by wave phase. A J/22 running on a following 2 m wind sea in 20 kn (kite up), the maxi on the
+			// gale's quartering sea, and the J/22 upwind on flat water (which must not change).
+			auto Phase = [](const char* What, const FSeaRunResult& R)
+			{
+				std::printf("%-30s %5.2f kn (1 s %5.2f..%5.2f, hull speed %.1f, over 1.5x %3.0f%%)  by phase steep back/back/level/face/steep face:", What, R.MeanKnots,
+					R.MinKnots, R.MaxKnots, R.HullSpeedKnots, 100.0 * R.SurfShare);
+				for (int B = 0; B < 5; ++B) std::printf(" %5.2f (%2.0f%%)", R.PhaseKnots[B], 100.0 * R.PhaseShare[B]);
+				std::printf("  face %+.2f back %+.2f m/s2, course error face %.1f back %.1f deg, max tilt %.0f%s\n", R.FaceAccel, R.BackAccel, R.FaceCourseErrDeg,
+					R.BackCourseErrDeg, R.MaxTiltDeg, R.bCapsized ? " CAPSIZED" : "");
+			};
+			FTrialSeaSpec Run;
+			Run.WindKnots = 20.0;
+			Run.WindFromDeg = 0.0;
+			Run.FetchMeters = 1.0;
+			Run.bOcean = true;
+			Run.Ocean.WindMs = 20.0 * kKnot;
+			Run.Ocean.WindFromRad = 0.0;
+			Run.Ocean.WindSeaHs = 2.0;
+			Run.Ocean.WindSeaTp = 6.5;
+			Run.Ocean.SwellHs = 0.0;
+			// Each run without the orbital flow (still water past the hull and foils, as before docs/surfing/) and with it.
+			for (const double Flow : { 0.0, 1.0 })
+			{
+				const char* Tag = Flow > 0.0 ? "flow" : "still";
+				FBoatConfig J22 = FBoatConfig::Make(EBoatType::J22);
+				J22.WaveOrbitalFlowScale = Flow;
+				for (const double Twa : { 150.0, 165.0 }) { char N[48]; std::snprintf(N, sizeof(N), "%s J/22 2 m 20 kn TWA %3.0f", Tag, Twa); Phase(N, RunInSea(J22, Run, Twa, 0, true, 30.0, 300.0, 0.02)); }
+				FBoatConfig Maxi = FBoatConfig::Make(EBoatType::Maxi);
+				Maxi.WaveOrbitalFlowScale = Flow;
+				FSceneLimits::For(true).ApplyTo(Maxi);
+				for (const double Twa : { 120.0, 150.0 }) { char N[48]; std::snprintf(N, sizeof(N), "%s maxi gale TWA %3.0f", Tag, Twa); Phase(N, RunInSea(Maxi, FTrialSeaSpec::Gale(1), Twa, 2, false, 30.0, 180.0, 0.03)); }
+				FTrialSeaSpec Flat;
+				Flat.WindKnots = 12.0;
+				Flat.FetchMeters = 1.0;
+				char N[48];
+				std::snprintf(N, sizeof(N), "%s J/22 flat 12 kn TWA 45", Tag);
+				Phase(N, RunInSea(J22, Flat, 45.0, 0, false, 25.0, 60.0));
+			}
+			return 0;
+		}
 		if (Argc > 4 && std::strcmp(Argv[2], "orc") == 0)
 		{
 			// ORC's VPP sea (docs/wave-physics/): an open-sea wind sea at a fixed 5 s modal period, here at Hs <hs>, TWS

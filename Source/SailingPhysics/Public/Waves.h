@@ -88,6 +88,14 @@ namespace Sailing
 		/** Height, vertical velocity and surface slope (dh/dx, dh/dy) at a point. */
 		void Sample(double X, double Y, double T, double& OutHeight, double& OutVerticalVelocity, double& OutSlopeX, double& OutSlopeY) const;
 
+		/**
+		 * docs/surfing/: the water's horizontal orbital velocity (m/s, X and Y) Below meters under the surface (stretched:
+		 * measured from the local surface, so it doesn't grow above the mean level). Linear theory: each component moves
+		 * the water a omega cosh(k (h - d)) / sinh(k h) along its travel direction, in phase with its height (forward
+		 * under a crest, back under a trough); exp(-k d) in deep water. Plus the ocean's.
+		 */
+		void OrbitalVelocity(double X, double Y, double T, double Below, double& OutU, double& OutV) const;
+
 		/** Significant wave height (4 x standard deviation of the surface) of the current amplitudes, m. */
 		double SignificantHeight() const;
 		/** The same where the sea is at a point: the ocean's part only as far as its mask lets it in (gulf-swell). */

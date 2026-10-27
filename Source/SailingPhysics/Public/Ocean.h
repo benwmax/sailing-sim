@@ -48,6 +48,7 @@ namespace Sailing
 		{
 			double Time = -1e30;
 			std::vector<float> H, Vz, Sx, Sy; // N x N, row = X (north) index, column = Y (east) index
+			std::vector<float> U, V;          // the water's horizontal orbital velocity at the surface (m/s, X and Y)
 		};
 
 		FOcean();
@@ -60,6 +61,11 @@ namespace Sailing
 		double Height(double X, double Y, double T) const;
 		/** Height, vertical velocity and slopes (dh/dx, dh/dy) at a point and time. */
 		void Sample(double X, double Y, double T, double& OutHeight, double& OutVz, double& OutSlopeX, double& OutSlopeY) const;
+		/**
+		 * The water's horizontal orbital velocity (m/s, X and Y) at a point and time, Depth meters under the surface: each
+		 * cascade's surface field decays as exp(-k Depth) at its velocity-weighted mean wavenumber (deep water).
+		 */
+		void OrbitalVelocity(double X, double Y, double T, double Depth, double& OutU, double& OutV) const;
 		/** The grids of one cascade at a time (for the renderer). */
 		const FGrid& Evaluate(int Cascade, double T) const;
 
@@ -97,6 +103,7 @@ namespace Sailing
 		std::array<std::vector<FMode>, NumCascades> Modes; // N x N per cascade, FFT order
 		FOceanParams Params;
 		double HsTotal = 0.0, HsWind = 0.0, Tm01 = 0.0, MeanDir = 0.0;
+		std::array<double, NumCascades> VelocityK{}; // each cascade's velocity-variance-weighted mean wavenumber (rad/m)
 		std::vector<struct FWaveBand> BandList;
 		FMask Mask;
 
@@ -105,7 +112,7 @@ namespace Sailing
 		static constexpr int CacheSize = 8;
 		mutable std::array<std::array<FGrid, CacheSize>, NumCascades> Cache;
 		mutable std::array<int, NumCascades> CacheNext{};
-		mutable std::vector<std::complex<double>> Work[4];
+		mutable std::vector<std::complex<double>> Work[6];
 		// Perf 1: boats stepping in parallel share the cache. A slot's time is published (release) once its grid is
 		// filled and found without the lock; a miss evaluates under it. A slot is reused only CacheSize grid times later
 		// (a quarter second at 30 Hz), long after any step that found it is done with it.

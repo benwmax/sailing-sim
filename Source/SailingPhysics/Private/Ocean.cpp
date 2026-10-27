@@ -132,6 +132,7 @@ namespace Sailing
 		const double ScaleWind = SumWind > 0.0 ? HsWindTarget * HsWindTarget / 16.0 / SumWind : 0.0;
 		const double ScaleSwell = SumSwell > 0.0 ? Params.SwellHs * Params.SwellHs / 16.0 / SumSwell : 0.0;
 		double M0 = 0.0, M1 = 0.0, M0W = 0.0, DirX = 0.0, DirY = 0.0;
+		double VelE[NumCascades] = {}, VelEK[NumCascades] = {};
 		for (const FRaw& R : Raw)
 		{
 			FMode& M = Modes[R.Cascade][R.Index];
@@ -143,7 +144,10 @@ namespace Sailing
 			const double K = std::hypot(M.Kx, M.Ky);
 			DirX += E * M.Kx / K;
 			DirY += E * M.Ky / K;
+			VelE[R.Cascade] += E * M.Omega * M.Omega;
+			VelEK[R.Cascade] += E * M.Omega * M.Omega * K;
 		}
+		for (int C = 0; C < NumCascades; ++C) VelocityK[C] = VelE[C] > 0.0 ? VelEK[C] / VelE[C] : 0.0;
 		// The spectrum in wavelength bins, for added resistance (a boat feels waves near her own length most).
 		const int Bins = 16;
 		std::vector<double> BV(Bins, 0.0), BX(Bins, 0.0), BY(Bins, 0.0);
@@ -192,9 +196,14 @@ namespace Sailing
 			Work[1][I] = F * std::complex<double>(0.0, -M.Omega);
 			Work[2][I] = F * std::complex<double>(0.0, M.Kx);
 			Work[3][I] = F * std::complex<double>(0.0, M.Ky);
+			// Deep water: the surface's horizontal velocity is omega a along the travel direction, in phase with the height.
+			const double K = std::hypot(M.Kx, M.Ky);
+			const double Along = K > 1e-9 ? M.Omega / K : 0.0;
+			Work[4][I] = F * (Along * M.Kx);
+			Work[5][I] = F * (Along * M.Ky);
 		}
-		std::vector<float>* Out[4] = { &Grid.H, &Grid.Vz, &Grid.Sx, &Grid.Sy };
-		for (int K = 0; K < 4; ++K)
+		std::vector<float>* Out[6] = { &Grid.H, &Grid.Vz, &Grid.Sx, &Grid.Sy, &Grid.U, &Grid.V };
+		for (int K = 0; K < 6; ++K)
 		{
 			Fft2(Work[K], N);
 			Out[K]->resize(Count);
@@ -373,5 +382,22 @@ namespace Sailing
 		OutVz *= M;
 		OutSlopeX *= M;
 		OutSlopeY *= M;
+	}
+
+	void FOcean::OrbitalVelocity(double X, double Y, double T, double Depth, double& OutU, double& OutV) const
+	{
+		OutU = OutV = 0.0;
+		const double M = MaskAt(X, Y);
+		if (M <= 0.0) return;
+		const double T0 = std::floor(T * GridRate) / GridRate, W = (T - T0) * GridRate;
+		for (int C = 0; C < NumCascades; ++C)
+		{
+			const FGrid& A = Evaluate(C, T0);
+			const FGrid& B = Evaluate(C, T0 + 1.0 / GridRate);
+			const double Cell = Tile[C] / N, U = X / Cell, V = Y / Cell;
+			const double Decay = M * std::exp(-VelocityK[C] * std::max(Depth, 0.0));
+			OutU += Decay * ((1.0 - W) * Bilinear(A.U, U, V) + W * Bilinear(B.U, U, V));
+			OutV += Decay * ((1.0 - W) * Bilinear(A.V, U, V) + W * Bilinear(B.V, U, V));
+		}
 	}
 }
