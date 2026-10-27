@@ -635,7 +635,9 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   the orbital flow is on the hull, keel and rudder, off in the calibration sea (the "keels and rudders still meet still
   water" gap is closed): they meet it (`FWaveField::OrbitalVelocity`, the ocean's `U`/`V` grids;
   `FBoatModel::OrbitalFlowAt` from bow and stern samples at two depths; `WaveOrbitalFlowScale`, never in the calibration
-  sea); `scripts/polar.sh --sea surf` gives speed by wave phase with and without it. Wave inertia on the foils: a known gap.
+  sea); `scripts/polar.sh --sea surf` gives speed by wave phase with and without it. The foils and bulb take the waves'
+  inertia too (Morison, `FWaveField::OrbitalFlow`'s acceleration, `WaveFoilInertiaScale`, telemetry `WaveFoilSurge`;
+  `docs/foil-inertia/`); their own added mass is in `AddedMassRatio`. Unsteady foil lift (Theodorsen) is the known gap.
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

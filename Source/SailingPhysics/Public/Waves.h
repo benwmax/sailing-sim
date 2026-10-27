@@ -95,6 +95,8 @@ namespace Sailing
 		 * under a crest, back under a trough); exp(-k d) in deep water. Plus the ocean's.
 		 */
 		void OrbitalVelocity(double X, double Y, double T, double Below, double& OutU, double& OutV) const;
+		/** The same flow and its acceleration at once (docs/foil-inertia/): each component's du/dt = -a omega^2 profile cos(Arg). */
+		void OrbitalFlow(double X, double Y, double T, double Below, double& OutU, double& OutV, double& OutAx, double& OutAy) const;
 
 		/** Significant wave height (4 x standard deviation of the surface) of the current amplitudes, m. */
 		double SignificantHeight() const;

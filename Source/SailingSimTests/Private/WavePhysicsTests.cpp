@@ -278,4 +278,60 @@ bool FSailingSurfingFlowTest::RunTest(const FString&)
 	return true;
 }
 
+/**
+ * docs/foil-inertia/: the waves' inertia on the foils. The field's orbital acceleration is the time derivative of its flow
+ * (checked against a central difference over 10 ms, lake components and the ocean's 30 Hz grids); in the calibration sea
+ * and on flat water the foils feel none of it (a polar can't move), and in the Gulf's swell they do.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingFoilInertiaTest, "SailingSim.Physics.FoilInertia", WavePhysicsTestsLocal::WaveFlags)
+bool FSailingFoilInertiaTest::RunTest(const FString&)
+{
+	using namespace WavePhysicsTestsLocal;
+	FWaveParams P;
+	P.WindSpeedKnots = 18.0;
+	P.FetchMeters = 15000.0;
+	FWaveField Lake;
+	Lake.SetWind(P);
+	Lake.SnapToTarget();
+	double Worst = 0.0, Rms = 0.0;
+	for (int32 I = 0; I < 200; ++I)
+	{
+		const double T = 3.0 + 0.37 * I, H = 0.005;
+		double U0, V0, U1, V1, U, V, Ax, Ay, Bx, By;
+		Lake.OrbitalFlow(5.0, -3.0, T - H, 0.4, U0, V0, Bx, By);
+		Lake.OrbitalFlow(5.0, -3.0, T + H, 0.4, U1, V1, Bx, By);
+		Lake.OrbitalFlow(5.0, -3.0, T, 0.4, U, V, Ax, Ay);
+		Worst = FMath::Max(Worst, FMath::Max(FMath::Abs((U1 - U0) / (2.0 * H) - Ax), FMath::Abs((V1 - V0) / (2.0 * H) - Ay)));
+		Rms += Ax * Ax + Ay * Ay;
+	}
+	Rms = FMath::Sqrt(Rms / 200.0);
+	AddInfo(FString::Printf(TEXT("Lake at 18 kn: orbital acceleration %.3f m/s^2 rms, off its flow's derivative by %.5f at most"), Rms, Worst));
+	TestTrue(TEXT("The acceleration is the flow's derivative"), Rms > 0.05 && Worst < 0.01 * Rms);
+
+	auto FoilSurge = [](const FTrialSeaSpec& Sea)
+	{
+		FTrialSea Trial(Sea);
+		FBoatModel Boat(FBoatConfig::Make(EBoatType::J22));
+		Boat.Reset(0.0, 0.0, Trial.HeadingFor(90.0), 4.0 * kKnot);
+		FBoatControls C;
+		double Most = 0.0, T = 0.0;
+		for (int32 I = 0; I < int32(30.0 * PhysicsHz); ++I, T += PhysicsDt)
+		{
+			const Vec3 O = Boat.OriginPosition();
+			Trial.Update(T, O.X, O.Y);
+			Boat.Step(PhysicsDt, C, Trial.GetWind(), Trial.GetWaves());
+			Most = FMath::Max(Most, FMath::Abs(Boat.GetTelemetry().WaveFoilSurge));
+		}
+		return Most;
+	};
+	FTrialSeaSpec Calibration;
+	Calibration.WindKnots = 15.0;
+	Calibration.bCalibrationSea = true;
+	const double InCalibration = FoilSurge(Calibration), InSwell = FoilSurge(GulfSea());
+	AddInfo(FString::Printf(TEXT("J/22 beam-on: the foils' wave inertia along her bow at most %.1f N in the calibration sea, %.1f N on the Gulf's swell"), InCalibration, InSwell));
+	TestTrue(TEXT("None in the calibration sea"), InCalibration == 0.0);
+	TestTrue(TEXT("... and some on the swell"), InSwell > 1.0);
+	return true;
+}
+
 #endif
