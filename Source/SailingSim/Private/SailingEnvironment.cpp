@@ -1930,10 +1930,24 @@ void ASailingEnvironment::UpdateHaze()
 	// Volumetric fog: the sun scatters in it, so shafts show through gaps in the cloud (forward-scattering haze).
 	if (!F->bEnableVolumetricFog) F->SetVolumetricFog(true);
 	F->SetVolumetricFogScatteringDistribution(0.75f);
-	const float Extinction = FMath::Lerp(0.12f, 0.3f, Haze); // the volumetric fog reads much thicker than the analytic fog at the same density
-	if (Stepped(F->VolumetricFogExtinctionScale, Extinction, 0.12f, 0.3f)) F->SetVolumetricFogExtinctionScale(Extinction);
+	// docs/far-haze/: the volumetric fog draws the haze inside its distance (3 km), where the analytic fog stops. Its
+	// extinction scale was 0.12 to 0.3 by eye, which made the first 3 km five to eleven times clearer than the visibility
+	// (a 25 km day showed the shore at 3 km as through 180 km), and the haze then started at full strength at 3 km: every
+	// shore inside it the same dark band. 2 ln 2 gives it the analytic fog's extinction (the haze is already in the density).
+	static SailingArgs::FCachedFlag ClassicVolumetricArg(TEXT("SailingClassicVolumetricHaze"));
+	const float Extinction = ClassicVolumetricArg.Get() ? FMath::Lerp(0.12f, 0.3f, Haze) : float(Sailing::FHaze::VolumetricExtinctionScale);
+	if (Stepped(F->VolumetricFogExtinctionScale, Extinction)) F->SetVolumetricFogExtinctionScale(Extinction);
 	F->SetVolumetricFogAlbedo(FColor(240, 244, 250));
-	const float VolumetricDistance = float(FMath::Lerp(3000.f, 1200.f, float(W.Rain)) * CmPerMeter);
+	float VolumetricDistance = float(FMath::Lerp(3000.f, 1200.f, float(W.Rain)) * CmPerMeter);
+	// docs/far-haze/: where Lumen lights the scene, the volumetric fog takes its skylight from Lumen's translucency volume
+	// (VolumetricFog.usf), which ends 80 m out. Past it the fog had only the sun's lobe: from there to 3 km the haze was
+	// darker than the sky-lit analytic fog it hands over to, a grey veil over the low sky and the shores (at the matched
+	// extinction, the horizon 15% darker). It stops at Lumen's volume now, and the analytic fog takes the haze from there;
+	// the shafts it is for are the shadows of the boat and sails, close by.
+	static const IConsoleVariable* GIMethod = IConsoleManager::Get().FindConsoleVariable(TEXT("r.DynamicGlobalIlluminationMethod"));
+	static const IConsoleVariable* LumenVolumeEnd = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.TranslucencyVolume.EndDistanceFromCamera"));
+	if (!ClassicVolumetricArg.Get() && GIMethod && LumenVolumeEnd && GIMethod->GetInt() == 1)
+		VolumetricDistance = FMath::Min(VolumetricDistance, LumenVolumeEnd->GetFloat());
 	if (Stepped(F->VolumetricFogDistance, VolumetricDistance, float(3000.f * CmPerMeter), float(1200.f * CmPerMeter))) F->SetVolumetricFogDistance(VolumetricDistance);
 }
 

@@ -34,6 +34,24 @@ bool FWorldHazeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The aerosol thins with the visibility"), FHaze::AerosolExtinctionPerKm(60.0) < FHaze::AerosolExtinctionPerKm(25.0) && FHaze::AerosolExtinctionPerKm(1.5) > 2.0);
 	TestTrue(TEXT("Past 80 km it stays at 80 km's, above clean air"), FMath::IsNearlyEqual(FHaze::AerosolExtinctionPerKm(500.0), FHaze::AerosolExtinctionPerKm(80.0), 1e-12) && FHaze::AerosolExtinctionPerKm(80.0) > 0.0);
 
+	// docs/far-haze/: the volumetric fog draws the first 3 km, the analytic fog beyond. At the shipped scale both thin a
+	// shore as Koschmieder says for the visibility (within 10%), and the extinction runs on through 3 km without a step.
+	// The old scale (0.12 to 0.3) left 3 km of shore at 94% of its contrast on a 25 km day, against Koschmieder's 63%.
+	for (const double V : { 4.0, 12.0, 25.0, 60.0 })
+	{
+		const double Density = FHaze::FogDensity(V);
+		const double Vol = FHaze::VolumetricExtinctionPerKm(Density, FHaze::VolumetricExtinctionScale);
+		const double Ana = FHaze::AnalyticExtinctionPerKm(Density);
+		TestTrue(FString::Printf(TEXT("%.0f km: the fogs meet at 3 km without a step"), V), FMath::IsNearlyEqual(Vol, Ana, 1e-9 * Ana));
+		for (const double D : { 1.0, 3.0 })
+		{
+			const double Shown = FMath::Exp(-Vol * D), Koschmieder = FMath::Exp(-3.912 * D / V);
+			TestTrue(FString::Printf(TEXT("%.0f km: a shore %.0f km off keeps %.2f of its contrast (Koschmieder %.2f)"), V, D, Shown, Koschmieder),
+				FMath::Abs(FMath::Loge(Shown) / FMath::Loge(Koschmieder) - 1.0) < 0.1);
+		}
+	}
+	TestTrue(TEXT("The old scale was five times too clear"), FHaze::VolumetricExtinctionPerKm(1.0, 0.3) < 0.25 * FHaze::AnalyticExtinctionPerKm(1.0));
+
 	// The clear mistral: cloudless, 60 km, a northwesterly near 24 kn.
 	FWeatherSystem Weather;
 	Weather.Configure(EWeatherPreset::ClearMistral, 3, 14.0);
