@@ -35,6 +35,9 @@ class SAILINGSIM_API ASailingEnvironment : public AActor
 public:
 	/** Graphics G4: the first cloud weather map has been painted (the loading screen waits for it). */
 	bool HasWeatherMap() const { return bHasWeatherMap; }
+	/** The far clouds are drawn as they will stay: the sky cache's first panorama is in (or there is no cache, or a storm or
+	 *  deck keeps the live clouds on the whole sky). The loading screen waits for it (docs/cloud-popin/). */
+	bool IsSkyReady() const { return !bSkyCache || bCacheReady || bCacheSuspended; }
 	ASailingEnvironment();
 
 	virtual void BeginPlay() override;
@@ -125,6 +128,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> CacheTargets[2];
 	bool bSkyCache = false;
 	bool bCacheReady = false;      // a whole panorama has been drawn: the live clouds may hand the far ones over
+	bool bCacheSuspended = false;  // a storm or deck: the live clouds draw the whole sky
 	int32 CacheBack = 0;           // the target being drawn
 	int32 CacheColumn = 0;         // the next column of the panorama to draw
 	double CacheSwapTime = -1e9;   // when the last panorama finished (the dome cross-fades for half a second)
