@@ -103,7 +103,10 @@ namespace Sailing
 
 	FSteadyResult SailSteady(double TrueWindKnots, double TrueWindAngleDeg, const FBoatConfig& Config, bool bSearchTrim, bool bSpinnaker)
 	{
+		// The reference polar is a VPP's: perfect trim, every step (docs/trimmer-hands/). The crews and AI boats in the game
+		// sail with human hands (FAutoTrimSettings::bHands); TrimmerHands measures what that costs.
 		FAutoTrimSettings Base;
+		Base.bHands = false;
 		if (!bSearchTrim)
 		{
 			return SailSteadyWith(TrueWindKnots, TrueWindAngleDeg, Base, Config, 40.0, 15.0, bSpinnaker);

@@ -110,5 +110,19 @@ namespace Sailing
 		double SpeedBeforeKnots = 0.0;
 		double MinSpeedKnots = 0.0;
 	};
+	/**
+	 * docs/trimmer-hands/: how the crew's hands (FAutoTrim) work the sheets: a boat sailed by the autopilot at a true wind
+	 * angle in a wind (GustIntensity: FWindParams'; FetchMeters of lake chop, 1 for flat water) for Seconds after a minute's
+	 * settling. Travel is the summed movement of each control per minute, in its whole travels (the traveller's is 2).
+	 */
+	struct FTrimHandsResult
+	{
+		double MainTravelPerMin = 0.0, TravelerTravelPerMin = 0.0, JibTravelPerMin = 0.0;
+		double AdjustmentsPerMin = 0.0;
+		double MeanKnots = 0.0;
+	};
+	SAILINGPHYSICS_API FTrimHandsResult MeasureTrimHands(const FBoatConfig& Config, double TrueWindKnots, double TwaDeg, double FetchMeters,
+		double GustIntensity, double Seconds, bool bHands = true);
+
 	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0);
 }

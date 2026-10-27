@@ -584,6 +584,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   depth (`HullClipMap`, `HullClipRect`; frame `HullClipA..D`), so catamarans, amas and the maxi are clipped and the water
   between hulls stays (`docs/water-hull-clip/`, `docs/boat-water-clip/`; `-SailingClassicHullClip` is V7's 2 m drop over
   the deck plan). Keep the shader's drop in step with `FHullClipMap::Drop` (`SailingSim.Visual.HullClip`).
+- Trimmer hands (`docs/trimmer-hands/`): `FAutoTrim` trims like a crew (`FAutoTrimSettings::bHands`): the sail seen over a
+  reaction time (0.2 s light air to 1.5 s in a breeze), the heel's trend (0.5 s at a 6 m waterline, by sqrt LWL; at once with
+  a sheet in the hand), dead bands and a rest between adjustments, rates from `FStationConfig` (the jib by the grinder).
+  `bHands = false` is the old ideal trimmer: the reference polars (`SailSteady`) and `RunInSea` use it, so PolarGate and the
+  ORC bands are untouched. `scripts/polar.sh --sea trim` measures travel and adjustments; `SailingSim.Physics.TrimmerHands`.
 - Dinghy handling: `DinghyEasePerHeelDeg`, `DinghySheetRate` and `CrewAftRange` (ILCA only so far) make `FAutoTrim` sail a
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly

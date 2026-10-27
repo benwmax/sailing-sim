@@ -26,7 +26,9 @@ namespace Sailing
 		Boat.Reset(0.0, 0.0, -CloseHauledTWADeg * kDegToRad, std::min(0.7 * TrueWindKnots, 8.0) * kKnot);
 		FAutopilot Pilot;
 		Pilot.TargetTWADeg = CloseHauledTWADeg;
+		// The reference scenarios measure the boat, trimmed as the polars are (ideal hands: docs/trimmer-hands/).
 		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
 		FBoatControls Controls;
 		Controls.MainSheet = Controls.JibSheet = 0.15;
 		Controls.Reef = Reefs;
@@ -108,6 +110,7 @@ namespace Sailing
 		FAutopilot Pilot;
 		Pilot.TargetTWADeg = TwaDeg;
 		FAutoTrim Trim;
+		Trim.Settings.bHands = false; // as RunTack's
 		FBoatControls Controls;
 		Controls.MainSheet = Controls.JibSheet = TwaDeg / 180.0;
 		Controls.Reef = Reefs;

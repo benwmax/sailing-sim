@@ -17,6 +17,27 @@ namespace Sailing
 		bool bShape = true;            // vang, outhaul, cunningham, backstay
 		double RateScale = 1.0;        // sheet speed against a good crew's (Easy mode: faster)
 		bool bEasePuffs = false;       // a keelboat crew eases in a puff the way a dinghy sailor does (Easy mode)
+		/**
+		 * docs/trimmer-hands/: the crew's hands. A trimmer sees the sail and the heel over a couple of seconds, not each roll
+		 * (ReactionSeconds; in light air they play the sheets, LightReactionSeconds; HeelTrendSeconds, while a sheet in the
+		 * hand on a dinghy or a beach cat answers the heel at once), makes an
+		 * adjustment when what they see is off by more than a dead band (degrees of the sail's angle at the boom or clew),
+		 * moving at the sheet's own rate until it is close, and otherwise only creeps it in or out.
+		 */
+		bool bHands = true;            // false: ideal trim, every step at the target (the reference polars, as a VPP trims)
+		double ReactionSeconds = 1.5;
+		double LightReactionSeconds = 0.2; // in light air, LightAirKnots and under, blended to ReactionSeconds by BreezeKnots
+		double LightAirKnots = 8.0;
+		double BreezeKnots = 14.0;
+		double HeelTrendSeconds = 0.5; // at a 6 m waterline; longer boats as the square root of their waterline
+		double HandHeelTrendSeconds = 0.0;  // a sheet in the hand (under HandSheetMassKg, or a dinghy sailor): felt at once
+		double HandSheetMassKg = 500.0;
+		double LightDeadBandDeg = 0.75; // the dead band in light air, blended to DeadBandDeg by BreezeKnots
+		double DeadBandDeg = 2.0;
+		double RestSeconds = 1.5;      // in a breeze, after an adjustment the hand rests this long before the next (it creeps
+		                               // meanwhile); in light air none
+		double CreepDegPerSecond = 1.0; // below the dead band
+		double HeelDeadBandDeg = 1.0;  // a keelboat crew eases past the heel limit plus this, trims back below it minus this
 	};
 
 	/**
@@ -38,7 +59,10 @@ namespace Sailing
 		/** Returns new controls; Tiller and anything not enabled in the settings pass through unchanged. */
 		FBoatControls Update(const FBoatModel& Boat, const FBoatControls& Current, double Dt);
 
-		void Reset() { MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; }
+		/** Deliberate adjustments the hands have started (moves past the dead band, not the creep), for the tests. */
+		int GetAdjustments() const { return Adjustments; }
+
+		void Reset() { MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
 
 	private:
 		double MainEase = 0.0; // rad, extra ease from heel feedback
@@ -46,6 +70,20 @@ namespace Sailing
 		// A dinghy sailor's feel for a puff (0 until the first update):
 		double FeltWind = 0.0;   // m/s, the true wind as the sailor feels it, a reaction time behind
 		double SetUpWind = 0.0;  // m/s, the wind the boat is set up for (the last half minute's mean)
+		// The trimmers' senses and hands (docs/trimmer-hands/).
+		bool bSensed = false;
+		double HeelSeen = 0.0, HeelRateSeen = 0.0; // deg, deg/s: the heel's trend
+		struct FHand { bool bMoving = false; double Rest = 0.0; };
+		FHand MainHand, TravelerHand, JibHand;
+		// Each sail's foot angle as the trimmer sees it (rad): its angle of attack over ReactionSeconds, not each roll.
+		double MainFootSeen = 0.0, JibFootSeen = 0.0;
+		double ReactionNow = 1.5, DeadBandNow = 2.0, RestNow = 1.5; // this step's (light air to a breeze)
+		bool bHandsNow = true;
+		mutable int Adjustments = 0;
+		bool bMainSeen = false, bJibSeen = false;
+		/** One hand on a control: a move at the control's rate past the dead band, a creep below it. */
+		double Work(FHand& Hand, double Now, double Target, double DegPerUnit, double RateOut, double RateIn, double Dt) const;
+		double See(double& Seen, bool& bSeen, double Raw, double Dt) const;
 	};
 
 	/** Holds a true wind angle with the tiller. For tests and the AI later. */

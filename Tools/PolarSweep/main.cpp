@@ -3,6 +3,7 @@
 #include "Scenarios.h"
 #include "EasyAssists.h"
 #include "SeaTrials.h"
+#include "WindClimate.h"
 #include "Wind.h"
 #include <cstdio>
 #include <cstring>
@@ -107,6 +108,23 @@ int main(int Argc, char** Argv)
 				Swell.WindKnots = 0.0;
 				Swell.Ocean.WindMs = 0.5;
 				Print(Surf > 0.0 ? "J/22 adrift on the swell, push" : "J/22 adrift on the swell, no push", RunInSea(C, Swell, 90.0, 0, false, 30.0, 300.0));
+			}
+			return 0;
+		}
+		if (Argc > 2 && std::strcmp(Argv[2], "trim") == 0)
+		{
+			// docs/trimmer-hands/: how the crew work the sheets (the boat's, default the J/22) at 15 kn, with human hands and with
+			// the polar's ideal trim: each control's travel per minute (whole travels; the traveller's is 2), adjustments.
+			const double Gust = GustIntensityForFactor(ClimateGustFactor(7, 15.0, false));
+			for (const double Twa : { 45.0, 90.0 })
+			for (const double Fetch : { 1.0, 5000.0 })
+			for (const double G : { 0.0, Gust })
+			for (const bool bHands : { false, true })
+			{
+				const FTrimHandsResult R = MeasureTrimHands(Config, 15.0, Twa, Fetch, G, 600.0, bHands);
+				std::printf("TWA %2.0f %-9s %-6s %-5s: main %5.2f, traveller %5.2f, jib %5.2f travels/min, %5.1f adjustments/min, %5.2f kn\n", Twa,
+					Fetch > 1.0 ? "lake chop" : "flat", G > 0.0 ? "gusty" : "steady", bHands ? "hands" : "ideal", R.MainTravelPerMin, R.TravelerTravelPerMin,
+					R.JibTravelPerMin, R.AdjustmentsPerMin, R.MeanKnots);
 			}
 			return 0;
 		}

@@ -32,6 +32,14 @@ namespace
 		return T;
 	}
 
+	/** The tests' scripted sailors trim as the polars do (docs/trimmer-hands/): what they test is the drill, not the hands. */
+	FAutoTrim ScriptedTrim()
+	{
+		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
+		return Trim;
+	}
+
 	void SailFor(FBoatModel& Boat, FBoatControls& C, const FWindField& Wind, double Seconds, FAutoTrim* Trim = nullptr, const TFunction<void()>& Each = nullptr)
 	{
 		for (int32 I = 0; I < int32(Seconds * PhysicsHz); ++I)
@@ -288,7 +296,7 @@ bool FSailingGroundingTest::RunTest(const FString& Parameters)
 	Boat.Reset(30.0, 0.0, 0.0, 4.0 * kKnot); // heading north into the shallows
 	const FWindField Wind = WindFrom(10.0, 90.0); // beam reach
 	FBoatControls C;
-	FAutoTrim Trim;
+	FAutoTrim Trim = ScriptedTrim();
 	FAutopilot Helm; // someone has to steer: she carries weather helm and rounds up if the tiller is let go
 	Helm.TargetTWADeg = 90.0;
 	bool bEverAground = false;
@@ -314,7 +322,7 @@ bool FSailingObstacleTest::RunTest(const FString& Parameters)
 		Boat.SetObstacles(&Obs);
 		Boat.Reset(0.0, 0.0, 0.0, 4.0 * kKnot);
 		FBoatControls C;
-		FAutoTrim Trim;
+		FAutoTrim Trim = ScriptedTrim();
 		FAutopilot Helm; // steered on a beam reach (with the tiller let go she would round up)
 		Helm.TargetTWADeg = 90.0;
 		bool bHit = false;
@@ -406,7 +414,7 @@ bool FSailingMooredStillTest::RunTest(const FString& Parameters)
 		C.MainSheet = C.JibSheet = 0.6;
 		C.bSailsDown = true;   // the drill's start: covered and furled
 		// The crew helper the game runs (its hiking chased "a little leeward heel" round her stern and rocked her).
-		FAutoTrim Trim;
+		FAutoTrim Trim = ScriptedTrim();
 		double Lo = 1e9, Hi = -1e9, MaxRate = 0.0, T = 0.0;
 		int32 Contacts = 0;
 		SailFor(Boat, C, Wind, 30.0, &Trim, [&]
@@ -463,7 +471,7 @@ bool FSailingHeaveToTest::RunTest(const FString& Parameters)
 	Boat.Reset(0.0, 0.0, -45.0 * kDegToRad, 4.0 * kKnot);
 	FAutopilot Pilot;
 	Pilot.TargetTWADeg = 45.0;
-	FAutoTrim Trim;
+	FAutoTrim Trim = ScriptedTrim();
 	FBoatControls C;
 	C.MainSheet = C.JibSheet = 0.2;
 	for (int32 I = 0; I < int32(30 * PhysicsHz); ++I) { C = Trim.Update(Boat, C, PhysicsDt); C.Tiller = Pilot.Update(Boat); Boat.Step(PhysicsDt, C, Wind); }
@@ -494,7 +502,7 @@ bool FSailingTriangleTest::RunTest(const FString& Parameters)
 	Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 4.0 * kKnot);
 	FDrillRunner Drill;
 	Drill.Start(ESailingDrill::SailATriangle, Boat, 0.0);
-	FAutoTrim Trim;
+	FAutoTrim Trim = ScriptedTrim();
 	FAutopilot Pilot;
 	FBoatControls C;
 	int32 Tack = 1;
@@ -540,7 +548,7 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 	Boat.Reset(0.0, 0.0, -100.0 * kDegToRad, 5.0 * kKnot);
 	FDrillRunner Drill;
 	Drill.Start(ESailingDrill::CrewOverboardQuickStop, Boat, 0.0);
-	FAutoTrim Trim;
+	FAutoTrim Trim = ScriptedTrim();
 	FAutopilot Pilot;
 	Pilot.MaxTiller = 0.7;
 	FBoatControls C;
@@ -593,7 +601,7 @@ bool FSailingDockingTest::RunTest(const FString& Parameters)
 	FDrillRunner Drill;
 	Drill.Start(ESailingDrill::ReturnAndDock, Boat, 30.0 * kDegToRad);
 	FBoatControls C;
-	FAutoTrim Trim;
+	FAutoTrim Trim = ScriptedTrim();
 	double MaxContact = 0.0;
 	bool bTied = false;
 	for (int32 I = 0; I < int32(180 * PhysicsHz) && Drill.IsActive(); ++I)
@@ -642,7 +650,7 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 3.0 * kKnot);
 		FDrillRunner Drill;
 		Drill.Start(ESailingDrill::SailATriangle, Boat, 0.0);
-		FAutoTrim Trim;
+		FAutoTrim Trim = ScriptedTrim();
 		FAutopilot Pilot;
 		FBoatControls C;
 		int32 Tack = 1;
@@ -676,7 +684,7 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		Boat.Reset(0.0, 0.0, -100.0 * kDegToRad, 4.0 * kKnot);
 		FDrillRunner Drill;
 		Drill.Start(ESailingDrill::CrewOverboardQuickStop, Boat, 0.0);
-		FAutoTrim Trim;
+		FAutoTrim Trim = ScriptedTrim();
 		FAutopilot Pilot;
 		Pilot.MaxTiller = 0.7;
 		FBoatControls C;

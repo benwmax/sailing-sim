@@ -717,6 +717,8 @@ void ASailboatPawn::HoldForTests(double TwaDeg, double WindKnots)
 	CrudeTackAt = -1.0;
 	DemoPilot.TargetTWADeg = TwaDeg;
 	DemoPilot.MaxTiller = 0.8;
+	// The held states are the rig's own trim, as the polars sail them (docs/trimmer-hands/).
+	TrimAssist.Settings.bHands = false;
 	bRecordRigLines = true;
 	// On the point of sail from the start, with way on (as -SailingTWA's start does).
 	const Vec3 O = Boat.OriginPosition();
