@@ -802,7 +802,6 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
 	return Out;
 }
 
-#if WITH_EDITOR
 void UWorldKitLibrary::FinishMeshBuilds()
 {
 #if WITH_EDITOR
@@ -812,6 +811,7 @@ void UWorldKitLibrary::FinishMeshBuilds()
 #endif
 }
 
+#if WITH_EDITOR
 UStaticMesh* UWorldKitLibrary::BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath)
 {
 	const FString Name = FPackageName::GetLongPackageAssetName(PackagePath);
