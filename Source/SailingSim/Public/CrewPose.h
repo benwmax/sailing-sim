@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+struct FReferenceSkeleton;
+
 namespace Sailing { struct FBoatConfig; }
 
 /**
@@ -154,6 +156,12 @@ SAILINGSIM_API bool CrewCabinTrunk(const Sailing::FBoatConfig& Config, FCrewCabi
 /** Is a point (m, boat frame) inside the solid boat: under the deck (its crown too), inside the topsides, not in the
  *  cockpit well, in a cabin trunk; between a multihull's hulls, through the nets, the bridgedeck, saloon or table? */
 SAILINGSIM_API bool CrewInsideBoat(const Sailing::FBoatConfig& Config, double HullDepth, const FVector& P, bool bTravelerBridge = true);
+/** docs/crew-elbow/ (tests): poses Joints on a skeleton (component space, from its T-posed RestCS), reaches the chain
+ *  ending at End (a hand or a foot) toward Target with the crew's two-bone solve, and reports the middle joint's flexion
+ *  (deg, signed about its own hinge: negative is bent backwards), how far the forearm (shin) leaves the hinge's plane
+ *  (deg) and how far the end misses the target (cm). False for a bone that is not the end of an arm or a leg. */
+SAILINGSIM_API bool CrewReachCheck(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TMap<FName, FQuat>& Joints, int32 End,
+	const FVector& Target, double& OutFlexDeg, double& OutOffHingeDeg, double& OutMissCm);
 
 struct SAILINGSIM_API FCrewHands
 {

@@ -21,6 +21,8 @@ namespace CrewSolver
 	 *  the middle joint toward Bend, component space, when given). */
 	void ReachArm(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Hand, const FVector& Target,
 		TMap<FName, FQuat>& Joints, const FVector& HeldLine = FVector::ZeroVector, const FVector& Bend = FVector::ZeroVector);
+	/** The middle joint's hinge in the rest pose (component space; flexion positive about it) and its limit (deg). */
+	bool LimbHinge(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Lower, FVector& OutRest, double& OutMaxDeg);
 	bool SolePoints(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const FQuat& Frame, int32 Side, FVector Out[2]);
 	void CurlFingers(const FCrewRig& Rig, const FCrewHands& Hands, TMap<FName, FQuat>& Carried);
 	bool ClearFingers(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TArray<FTransform>& CS, TArray<FQuat>& D, const FCrewHands& Hands,
