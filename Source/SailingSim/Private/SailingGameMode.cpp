@@ -686,6 +686,25 @@ void ASailingGameMode::ApplyQualitySettings()
 			if (Var->GetFloat() != Value) Var->Set(Value, ECVF_SetByCode);
 		}
 	}
+	// docs/high-headroom/: High's sun shadow pages at -0.5, not Epic scalability's -1.5 (the Medium tier's level uses 0). At
+	// -1.5 the sun's map is about three times the screen's resolution each way; at -0.5 the deck, crew and marina shadows
+	// look the same at full resolution, and the crew, slip and coast-day views save 0.9 to 1.3 ms of GPU (interleaved,
+	// three pairs each). Only with the Shadows row on Auto (a row set to a tier keeps that tier's level); Ultra keeps -1.5.
+	// (Set by code it outranks the scalability level from then on, so on any other tier or row it is put back to that
+	// level's own value, BaseScalability.ini's -1.5 at Epic and Cinematic, 0 below, once this has set it.)
+	{
+		static bool bVsmBiasSet = false;
+		const bool bHighAuto = Quality == ESailingQuality::High && Row(S->ShadowQuality) < 0;
+		if (bHighAuto || bVsmBiasSet)
+		{
+			const float Bias = bHighAuto ? -0.5f : (Levels.ShadowQuality >= 3 ? -1.5f : 0.f);
+			for (const TCHAR* Name : { TEXT("r.Shadow.Virtual.ResolutionLodBiasDirectional"), TEXT("r.Shadow.Virtual.ResolutionLodBiasDirectionalMoving") })
+			{
+				if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(Name); Var && Var->GetFloat() != Bias) Var->Set(Bias, ECVF_SetByCode);
+			}
+			bVsmBiasSet = true;
+		}
+	}
 	// The Clouds row: that tier's cloud march (samples, tracing resolution, near-ray distance), whatever the Quality tier.
 	if (Row(S->CloudQuality) >= 0)
 	{
