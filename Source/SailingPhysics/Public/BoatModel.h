@@ -196,6 +196,9 @@ namespace Sailing
 		// docs/foil-inertia/: the waves' inertia on the keels and rudders (Morison's inertia term on the water's own
 		// acceleration; 1 is the physics, 0 leaves it out for comparisons). Never in the calibration sea, as the flow.
 		double WaveFoilInertiaScale = 1.0;
+		// docs/foil-lag/: the foils' lift lags a change in their angle of attack (Wagner's indicial lift, R. T. Jones's
+		// fit): 1 is the physics, 0 the quasi-steady foil (for comparisons). In waves only, as the orbital flow.
+		double FoilLiftLagScale = 1.0;
 
 		// Foils: keels, boards and rudders. Rudders are linked to one tiller (or wheel).
 		std::vector<FFoilDef> Foils;
@@ -473,6 +476,7 @@ namespace Sailing
 		double OrbitalX[2] = {}, OrbitalDepth[2] = {}; // body x of the stations (aft, fore) and the sample depths (m)
 		Vec3 OrbitalFlow[2][2];                        // [station][depth], world XY
 		Vec3 OrbitalAccel[2][2];                       // the same samples' acceleration
+		std::vector<double> FoilLag;                   // docs/foil-lag/: each foil's two lag states (rad), NaN until set
 		std::vector<FMooringLine> Mooring;
 	};
 }

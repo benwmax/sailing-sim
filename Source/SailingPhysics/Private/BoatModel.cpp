@@ -1,4 +1,5 @@
 #include "BoatModel.h"
+#include <cmath>
 #include <utility>
 
 namespace Sailing
@@ -482,6 +483,7 @@ namespace Sailing
 
 	void FBoatModel::Reset(double X, double Y, double Heading, double Speed)
 	{
+		FoilLag.clear(); // docs/foil-lag/: the lags start again from the flow she meets
 		const int Reef = State.Reef;
 		State = FBoatState();
 		State.Reef = Reef;
@@ -966,9 +968,36 @@ namespace Sailing
 					}
 					const double Vent = 1.0 - F.VentDepth * SmoothStep(F.VentStartDeg * kDegToRad, F.VentEndDeg * kDegToRad, HeelAbs);
 					Vec3 Flow = -Q.Unrotate(PointVelocityThroughWater(P.Center));
+					const size_t FoilIndex = size_t(&F - C.Foils.data());
 					FFoilResult R;
+					// docs/foil-lag/: a foil's circulation builds over the chords it travels, not at once (Wagner 1925). R. T.
+					// Jones's (1940) fit of Wagner's function, phi(s) = 1 - 0.165 e^(-0.0455 s) - 0.335 e^(-0.3 s) with s the
+					// semi-chords travelled (s = 2 U t / c), as a lag on the angle of attack (Leishman, Principles of Helicopter
+					// Aerodynamics, 8.14; Katz and Plotkin, Low-Speed Aerodynamics, 13.10): alpha_eff = alpha (1 - A1 - A2) +
+					// A1 x1 + A2 x2, each x_i following alpha at b_i 2U/c per second. Steady, alpha_eff = alpha: no polar or steady
+					// point moves, and the faster she sails the quicker it catches up. Adrift, the fin's angle swings round
+					// with every roll and wave while she makes almost no way: its lift hardly builds (the quasi-steady fin sculled
+					// her along at 0.4-0.8 kn). The flow is turned to alpha_eff before the foil reads it.
+					auto LagFlow = [&](Vec3 In, const Vec3& ChordDir) -> Vec3
+					{
+						if (!bOrbitalFlow || C.FoilLiftLagScale == 0.0) return In;
+						if (FoilLag.size() != 2 * C.Foils.size()) FoilLag.assign(2 * C.Foils.size(), std::nan(""));
+						const double Alpha = std::atan2(ChordDir.X * In.Y - ChordDir.Y * In.X, ChordDir.X * In.X + ChordDir.Y * In.Y);
+						double& X1 = FoilLag[2 * FoilIndex];
+						double& X2 = FoilLag[2 * FoilIndex + 1];
+						if (std::isnan(X1) || std::isnan(X2)) { X1 = X2 = Alpha; return In; }
+						const double U = std::max(Vec3(In.X, In.Y, 0.0).Length(), 1e-3);
+						const double Rate = 2.0 * U / std::max(P.Chord, 1e-3);
+						constexpr double A1 = 0.165, B1 = 0.0455, A2 = 0.335, B2 = 0.3;
+						X1 += WrapAngle(Alpha - X1) * (1.0 - std::exp(-B1 * Rate * Dt));
+						X2 += WrapAngle(Alpha - X2) * (1.0 - std::exp(-B2 * Rate * Dt));
+						const double Turn = C.FoilLiftLagScale * (A1 * WrapAngle(X1 - Alpha) + A2 * WrapAngle(X2 - Alpha));
+						const double Cs = std::cos(Turn), Sn = std::sin(Turn);
+						return Vec3(In.X * Cs - In.Y * Sn, In.X * Sn + In.Y * Cs, In.Z);
+					};
 					if (!bRudder)
 					{
+						Flow = LagFlow(Flow, Vec3(-1, 0, 0));
 						R = ComputeFoil(P, Flow, Vec3(-1, 0, 0), kWaterDensity, Vent);
 						if (F.Hull < 8 && !bHasDownwash[F.Hull])
 						{
@@ -988,6 +1017,7 @@ namespace Sailing
 							Flow.X -= PropWash[F.Hull];
 						}
 						const Vec3 Chord(-std::cos(State.RudderAngle), std::sin(State.RudderAngle), 0.0);
+						Flow = LagFlow(Flow, Chord);
 						R = ComputeFoil(P, Flow, Chord, kWaterDensity, Vent);
 						const double Speed = Vec3(Flow.X, Flow.Y, 0.0).Length();
 						Hinge += R.LiftCoefficient * 0.5 * kWaterDensity * Speed * Speed * P.Area * Wet * C.RudderStockToCP;
