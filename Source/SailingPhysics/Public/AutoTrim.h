@@ -28,6 +28,12 @@ namespace Sailing
 	{
 	public:
 		FAutoTrimSettings Settings;
+		/**
+		 * The helm has called a tack (FStationControls holds it from the call until she settles on the new tack): the main
+		 * trimmer holds the main in, no easing for heel, the traveller no further to leeward than the centre, so she heads up
+		 * on her weather helm. Eased instead, the main gives her lee helm the rudder cannot beat at the speed she has left.
+		 */
+		bool bHoldMain = false;
 
 		/** Returns new controls; Tiller and anything not enabled in the settings pass through unchanged. */
 		FBoatControls Update(const FBoatModel& Boat, const FBoatControls& Current, double Dt);
@@ -53,7 +59,20 @@ namespace Sailing
 		/** A helmsman leans on the tiller against the weather helm, which grows as she heels: rudder degrees per degree
 		 *  of heel held in advance, so she does not settle a few degrees above her course. */
 		double HelmPerHeel = 0.25;
+		/**
+		 * docs/gale-tack/: in a sea (Hs 0.5 m or more, not the calibration sea) a helmsman told to tack waits, up to one mean
+		 * wave period, for her to be on a back (the waves' slope push along her bow against her: going uphill, SeaTrials'
+		 * bins) with way on (forward speed at least TackSpeedShare of her upwind speed, the last 20 s's mean close-hauled),
+		 * and holds the old tack's angle meanwhile. On flat water and in lake chop she tacks at once, as before.
+		 */
+		bool bTimeTacks = true;
+		double TackSpeedShare = 0.7;
 
 		double Update(const FBoatModel& Boat) const;
+
+	private:
+		// The helm's own sense of the boat (Update is called every step): her upwind speed, and a tack she is waiting to start.
+		mutable double UpwindSpeed = -1.0, LastTime = -1.0, TackAskedAt = -1.0;
+		mutable bool bTackGo = false;
 	};
 }

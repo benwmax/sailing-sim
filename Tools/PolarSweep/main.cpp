@@ -180,10 +180,12 @@ int main(int Argc, char** Argv)
 			int Ok = 0, FlatOk = 0;
 			for (uint32_t Seed = 1; Seed <= 6; ++Seed)
 			{
-				const double W = RunGaleTack(Scene, 2, Seed, true), F = RunGaleTack(Scene, 2, Seed, false);
-				Ok += W > 0.0;
-				FlatOk += F > 0.0;
-				std::printf("gale tack seed %u: in the sea %5.1f s, flat %5.1f s\n", Seed, W, F);
+				const FGaleTackResult W = RunGaleTackDetail(Scene, 2, Seed, true), F = RunGaleTackDetail(Scene, 2, Seed, false);
+				Ok += W.Seconds > 0.0;
+				FlatOk += F.Seconds > 0.0;
+				std::printf("gale tack seed %u: in the sea %5.1f s (%5.2f kn, slowest %5.2f = %3.0f%%), flat %5.1f s (%5.2f kn, slowest %5.2f = %3.0f%%)\n", Seed,
+					W.Seconds, W.SpeedBeforeKnots, W.MinSpeedKnots, 100.0 * W.MinSpeedKnots / std::max(W.SpeedBeforeKnots, 1e-3),
+					F.Seconds, F.SpeedBeforeKnots, F.MinSpeedKnots, 100.0 * F.MinSpeedKnots / std::max(F.SpeedBeforeKnots, 1e-3));
 			}
 			std::printf("gale tacks: %d of 6 in the sea, %d of 6 on flat water\n", Ok, FlatOk);
 			for (const double Twa : { 50.0, 100.0, 150.0 })

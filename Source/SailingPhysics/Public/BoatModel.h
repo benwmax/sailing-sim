@@ -409,6 +409,8 @@ namespace Sailing
 
 		/** Water surface height at a world XY at the boat's current time (the wave field of the last Step). */
 		double WaterHeightAt(double X, double Y) const { return CurrentWaves ? CurrentWaves->Height(X, Y, State.Time) : 0.0; }
+		/** The wave field of the last Step (null on flat water). */
+		const FWaveField* GetWaves() const { return CurrentWaves; }
 
 		/** Hydrostatic righting moment (N m) at a fixed heel, boat level in pitch and floating at its waterline. For tests. */
 		double RightingMomentAt(double HeelRad) const;

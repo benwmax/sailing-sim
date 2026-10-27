@@ -616,7 +616,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `"weather"` (`squall` with `in_s`, `clearing`) through `FWeatherSystem::ApplySceneCue` on the sim clock; uncued it runs
   at `kSquallArrives`/`kSquallClears`. `setting.world_stand_in` turns the gale to the Gulf's open water
   (`SetPrevailingFrom`; from the northwest the ocean mask is shut). `-SailingPrologueStep=<id>` starts a scene partway.
-  Known gaps: the maxi does not tack in that sea (`AddedResistanceCoef`) and nothing surfs (vertical buoyancy).
+  Gale tacks (`docs/gale-tack/`): she tacks the way a crew does it: `FStationControls::CallTack` (or the player's wheel hard
+  to windward) holds the main in until she settles (`FAutoTrim::bHoldMain`), and `FAutopilot::bTimeTacks` waits in a sea
+  (Hs 0.5 m+, not the calibration sea) up to a mean period for a back with way on; 12 of 12 through inside 30 s,
+  11 inside 25, 11 keeping 40% (`RunGaleTackDetail`, `SailingSim.Physics.GaleTack`). Surfing: `docs/surfing/`.
 - Wave physics (`docs/wave-physics/`): added resistance is 2 m0 x R(lambda/LWL) (Jinkine & Ferdinande's fall past the
   peak) x Fn^1.5 to Fn 0.265; `AddedResistanceCoef` per boat (the J/22's 2.6 from her polar; the maxi's 0.47 and the
   Catalina 30's 1.57 from ORC's length scaling, VPP 2023 eq. 6.62). The waves' slope push (`WaveSlopeForceScale`) uses
