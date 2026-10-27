@@ -97,8 +97,10 @@ bool FSailingWaveAddedResistanceScalingTest::RunTest(const FString&)
 
 /**
  * The prologue's gale (step 4: the mistral, Hs 3.5 m at 7 s on the Gulf stand-in, 32 kn, two reefs, the scene's limits):
- * the maxi tacks on the wheel (SailingSim.Prologue.Gale's helm) at least 5 times in 6, and beats 5 to 25% slower than on
- * flat water (before docs/wave-physics/ she made 5.8 kn against 12.3 and tacked 0 of 36).
+ * the maxi tacks on the wheel (SailingSim.Prologue.Gale's helm) at least 5 times in 6, and beats 1 to 10% slower than on
+ * flat water (before docs/wave-physics/ she made 5.8 kn against 12.3 and tacked 0 of 36). The band is ORC's (docs/surfing/):
+ * her coefficient from ORC's length scaling, over this 7 s sea's spectrum, costs her 3.0% alone (1.4 to 3.6% across its log
+ * reading); she loses 4% with the slope push and orbital flow (9% before the flow, which carried a false creep downwave).
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingGaleTackTest, "SailingSim.Physics.GaleTack", WavePhysicsTestsLocal::WaveFlags)
 bool FSailingGaleTackTest::RunTest(const FString&)
@@ -121,7 +123,8 @@ bool FSailingGaleTackTest::RunTest(const FString&)
 	const FSeaRunResult Calm = RunInSea(Maxi, FTrialSeaSpec::Gale(1, 32.0, false), 50.0, 2, false, 30.0, 120.0);
 	const double Loss = 1.0 - Sea.MeanKnots / Calm.MeanKnots;
 	AddInfo(FString::Printf(TEXT("Beating at TWA 50: %.2f kn in the sea (added resistance %.0f N, calm %.0f N), %.2f flat"), Sea.MeanKnots, Sea.MeanWaveN, Sea.MeanCalmN, Calm.MeanKnots));
-	TestTrue(FString::Printf(TEXT("The sea costs her 5 to 25%% upwind (%.0f%%)"), Loss * 100.0), Loss > 0.05 && Loss < 0.25);
+	// 1 to 10%: under ORC's low reading (1.4%) to about three times its central 3.0% for the push and flow on top.
+	TestTrue(FString::Printf(TEXT("The sea costs her 1 to 10%% upwind (%.1f%%)"), Loss * 100.0), Loss > 0.01 && Loss < 0.10);
 	return true;
 }
 
@@ -168,6 +171,96 @@ bool FSailingSurfingTest::RunTest(const FString&)
 	const FSeaRunResult D = RunInSea(WithPush(EBoatType::J22, 1.0), Swell, 90.0, 0, false, 30.0, 300.0);
 	AddInfo(FString::Printf(TEXT("Adrift on the swell: mean push %+.2f N, she made good %.2f kn"), D.MeanSurgeN, D.NetKnots));
 	TestTrue(FString::Printf(TEXT("Adrift, the push averages out (%.2f N)"), D.MeanSurgeN), FMath::Abs(D.MeanSurgeN) < 5.0);
+	return true;
+}
+
+/**
+ * docs/surfing/: the waves' orbital flow past the hull, keels and rudders. The field's horizontal velocity is linear
+ * theory's: forward under the crests (in phase with the height along the waves' travel), falling off with depth, and in
+ * shallow water reaching the bottom. Then the references: a J/22 on a following 2 m wind sea in 20 kn surfs in bursts of
+ * 1.5 to 2 times her hull speed on the steep faces; the maxi reaches past 20 kn on the gale's 3.5 m quartering sea; upwind
+ * on flat water nothing changes. With the flow, the rudder meets less water on a face, so she yaws off course more there.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSurfingFlowTest, "SailingSim.Physics.SurfingFlow", WavePhysicsTestsLocal::WaveFlags)
+bool FSailingSurfingFlowTest::RunTest(const FString&)
+{
+	using namespace WavePhysicsTestsLocal;
+	auto Statistics = [](const FWaveField& W, double Below, double& OutCorr, double& OutRms)
+	{
+		const double Dir = W.MeanDirection();
+		double HU = 0.0, HH = 0.0, UU = 0.0;
+		for (int I = 0; I < 6000; ++I)
+		{
+			const double T = 0.1 * I;
+			double U, V;
+			W.OrbitalVelocity(3.0, 7.0, T, Below, U, V);
+			const double Along = U * FMath::Cos(Dir) + V * FMath::Sin(Dir);
+			const double H = W.Height(3.0, 7.0, T);
+			HU += H * Along; HH += H * H; UU += Along * Along;
+		}
+		OutCorr = HU / FMath::Sqrt(FMath::Max(HH * UU, 1e-12));
+		OutRms = FMath::Sqrt(UU / 6000.0);
+	};
+	FWaveParams P;
+	P.WindSpeedKnots = 18.0;
+	P.FetchMeters = 15000.0;
+	FWaveField Deep;
+	Deep.SetWind(P);
+	Deep.SnapToTarget();
+	FWaveField Shallow;
+	Shallow.SetDepth(2.0);
+	Shallow.SetWind(P);
+	Shallow.SnapToTarget();
+	double Corr, Surface, Deep2, ShallowSurface, ShallowBed, Unused;
+	Statistics(Deep, 0.0, Corr, Surface);
+	Statistics(Deep, 2.0, Unused, Deep2);
+	Statistics(Shallow, 0.0, Unused, ShallowSurface);
+	Statistics(Shallow, 2.0, Unused, ShallowBed);
+	AddInfo(FString::Printf(TEXT("Hs %.2f m: along-wave speed %.2f m/s rms at the surface (correlation with the height %.2f), %.2f at 2 m; 2 m deep water %.2f at the surface, %.2f at the bed"),
+		Deep.SignificantHeight(), Surface, Corr, Deep2, ShallowSurface, ShallowBed));
+	TestTrue(TEXT("The water moves forward under the crests"), Corr > 0.5);
+	TestTrue(TEXT("... and less deep down"), Deep2 < 0.8 * Surface && Deep2 > 0.1 * Surface);
+	TestTrue(TEXT("In shallow water the motion reaches the bed"), ShallowBed > 0.5 * ShallowSurface);
+
+	FTrialSeaSpec Run;
+	Run.WindKnots = 20.0;
+	Run.FetchMeters = 1.0;
+	Run.bOcean = true;
+	Run.Ocean.WindMs = 20.0 * kKnot;
+	Run.Ocean.WindFromRad = 0.0;
+	Run.Ocean.WindSeaHs = 2.0;
+	Run.Ocean.WindSeaTp = 6.5;
+	Run.Ocean.SwellHs = 0.0;
+	const FBoatConfig J22 = FBoatConfig::Make(EBoatType::J22);
+	FBoatConfig J22Still = J22;
+	J22Still.WaveOrbitalFlowScale = 0.0;
+	const FSeaRunResult J = RunInSea(J22, Run, 150.0, 0, true, 30.0, 240.0, 0.02);
+	AddInfo(FString::Printf(TEXT("J/22 on a following 2 m sea in 20 kn, TWA 150: %.2f kn (best second %.2f), %.2f kn on the steep faces, hull speed %.2f"),
+		J.MeanKnots, J.MaxKnots, J.PhaseKnots[4], J.HullSpeedKnots));
+	TestTrue(TEXT("She surfs past 1.5 times her hull speed"), J.MaxKnots > 1.5 * J.HullSpeedKnots);
+	TestTrue(TEXT("... at 1.5 to 2 times it on the steep faces"), J.PhaseKnots[4] > 1.5 * J.HullSpeedKnots && J.PhaseKnots[4] < 2.0 * J.HullSpeedKnots);
+	TestTrue(TEXT("... faster on the faces than on the backs"), J.PhaseKnots[4] > J.PhaseKnots[0] + 1.0);
+
+	const FSeaRunResult Q = RunInSea(J22, Run, 165.0, 0, true, 30.0, 240.0, 0.02);
+	const FSeaRunResult Q0 = RunInSea(J22Still, Run, 165.0, 0, true, 30.0, 240.0, 0.02);
+	AddInfo(FString::Printf(TEXT("TWA 165: off course on the faces by %.1f deg with the flow, %.1f in still water (backs %.1f, %.1f)"),
+		Q.FaceCourseErrDeg, Q0.FaceCourseErrDeg, Q.BackCourseErrDeg, Q0.BackCourseErrDeg));
+	TestTrue(TEXT("With the flow the waves yaw her more on a face"), Q.FaceCourseErrDeg > Q0.FaceCourseErrDeg);
+	TestFalse(TEXT("... without knocking her down"), Q.bCapsized);
+
+	FBoatConfig Maxi = FBoatConfig::Make(EBoatType::Maxi);
+	FSceneLimits::For(true).ApplyTo(Maxi);
+	const FSeaRunResult M = RunInSea(Maxi, FTrialSeaSpec::Gale(1), 120.0, 2, false, 30.0, 150.0, 0.03);
+	AddInfo(FString::Printf(TEXT("Maxi in the gale, TWA 120: %.2f kn (seconds %.1f to %.1f)"), M.MeanKnots, M.MinKnots, M.MaxKnots));
+	TestTrue(TEXT("The maxi reaches past 20 kn on the quartering sea"), M.MeanKnots > 20.0);
+
+	FTrialSeaSpec Flat;
+	Flat.WindKnots = 12.0;
+	Flat.FetchMeters = 1.0;
+	const FSeaRunResult U = RunInSea(J22, Flat, 45.0, 0, false, 25.0, 60.0);
+	const FSeaRunResult U0 = RunInSea(J22Still, Flat, 45.0, 0, false, 25.0, 60.0);
+	AddInfo(FString::Printf(TEXT("Upwind on flat water: %.3f kn with the flow, %.3f without"), U.MeanKnots, U0.MeanKnots));
+	TestTrue(TEXT("Upwind on flat water nothing changes"), FMath::Abs(U.MeanKnots - U0.MeanKnots) < 0.01);
 	return true;
 }
 

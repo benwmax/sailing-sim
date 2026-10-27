@@ -190,6 +190,9 @@ namespace Sailing
 		// The waves' slope push on the hull (Froude-Krylov surge and sway, the surf down a face): 1 is the physics, 0
 		// leaves the buoyancy vertical as it was before docs/wave-physics/ (for comparisons only).
 		double WaveSlopeForceScale = 1.0;
+		// docs/surfing/: the waves' orbital velocity as a flow past the hull, keels and rudders (1 is the physics, 0 the
+		// still water they met before, for comparisons). Never in the calibration sea (FWaveParams::bCalibrationSea).
+		double WaveOrbitalFlowScale = 1.0;
 
 		// Foils: keels, boards and rudders. Rudders are linked to one tiller (or wheel).
 		std::vector<FFoilDef> Foils;
@@ -422,8 +425,14 @@ namespace Sailing
 		double SubmergedVolumeUpright(double Depth) const;
 		void ComputeSails(double Dt, const FBoatControls& Controls, const FWindField& Wind, Vec3& InOutForceBody, Vec3& InOutTorqueBody);
 		Vec3 PointVelocityWorld(const Vec3& BodyPoint) const;
-		/** Velocity of a body point relative to the water (over ground minus the current). */
-		Vec3 PointVelocityThroughWater(const Vec3& BodyPoint) const { return PointVelocityWorld(BodyPoint) - WaterCurrent; }
+		/** Velocity of a body point relative to the water (over ground minus the current and the waves' orbital flow). */
+		Vec3 PointVelocityThroughWater(const Vec3& BodyPoint) const { return PointVelocityWorld(BodyPoint) - WaterCurrent - OrbitalFlowAt(BodyPoint); }
+		/**
+		 * docs/surfing/: the waves' orbital velocity (world XY) at a body point, from this step's samples at her bow and stern
+		 * ends at two depths (her canoe body's middle and her deepest foil's), linear along her length and in depth.
+		 */
+		void SampleOrbitalFlow(const FWaveField* Waves);
+		Vec3 OrbitalFlowAt(const Vec3& BodyPoint) const;
 		double ResistanceCoefficient(double Froude) const;
 		void BuildContactPoints();
 
@@ -452,6 +461,9 @@ namespace Sailing
 		int ObstacleRows = 0, ObstacleCols = 0;
 		std::vector<std::vector<int>> ObstacleBuckets;
 		Vec3 WaterCurrent;
+		bool bOrbitalFlow = false;
+		double OrbitalX[2] = {}, OrbitalDepth[2] = {}; // body x of the stations (aft, fore) and the sample depths (m)
+		Vec3 OrbitalFlow[2][2];                        // [station][depth], world XY
 		std::vector<FMooringLine> Mooring;
 	};
 }

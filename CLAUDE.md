@@ -623,8 +623,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   each column's immersion below her mean waterplane averaged over 8 s, so it stays first order (no drift from the chop at
   her ends). `FAutopilot` reverses the helm from 0.3 m/s of sternway. `SeaTrials.h` (`RunInSea`, `RunGaleTack`) and
   `scripts/polar.sh [--boat b] [--ar c] [--surf s] --sea [gale | checks | orc <hs> <tws> | at <tws> <twa>]` (loads
-  `Wind.mann` as the module does). Telemetry: `CalmResistance`, `WaveResistance`, `WaveSlopeSurge`. Keels and rudders
-  still meet still water (no orbital flow or wave inertia): a known gap.
+  `Wind.mann` as the module does). Telemetry: `CalmResistance`, `WaveResistance`, `WaveSlopeSurge`. Surfing (`docs/surfing/`):
+  the orbital flow is on the hull, keel and rudder, off in the calibration sea (the "keels and rudders still meet still
+  water" gap is closed): they meet it (`FWaveField::OrbitalVelocity`, the ocean's `U`/`V` grids;
+  `FBoatModel::OrbitalFlowAt` from bow and stern samples at two depths; `WaveOrbitalFlowScale`, never in the calibration
+  sea); `scripts/polar.sh --sea surf` gives speed by wave phase with and without it. Wave inertia on the foils: a known gap.
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.

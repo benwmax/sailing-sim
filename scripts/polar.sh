@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the SailingPhysics sources standalone (no Unreal) and runs the J/22 polar sweep.
-# Seconds instead of minutes, for tuning the physics. Usage: scripts/polar.sh [--boat b] [--ar c] [--surf s]
+# Seconds instead of minutes, for tuning the physics. Usage: scripts/polar.sh [--boat b] [--ar c] [--surf s] [--flow f]
 # [--quick | --scenarios | --easy | --point <tws> <twa> | --sea [gale | checks | orc <hs> <tws> | at <tws> <twa>]]
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
