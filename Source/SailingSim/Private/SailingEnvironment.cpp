@@ -1614,6 +1614,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 			NightDeckFullAtKm = 0.f;
 		}
 	}
+	bCacheSuspended = bStorm;
 	if (bStorm)
 	{
 		if (bCacheReady)
@@ -1654,7 +1655,10 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 
 	// A whole panorama every four seconds: a strip of columns a frame (fair-weather cumulus drift a few tens of metres in
 	// that time, nothing at 5 km and beyond).
-	const double Refresh = 4.0;
+	// docs/cloud-popin/: the first one is drawn four times as fast, behind the loading screen (it waits for it): handed
+	// over in play, the sky changed in front of the player, its far clouds from the live march's coarse steps to the
+	// panorama's and its near ones to their finer steps at once.
+	const double Refresh = bCacheReady ? 4.0 : 1.0;
 	if (CacheColumn == 0)
 	{
 		// Not before the first weather map (about 2 s in): started at once, the first panorama read the empty map with the

@@ -151,7 +151,7 @@ float SSailLoading::Progress(FString& Stage) const
 		Shore = InitialChunks > 0 ? 1.f - float(P) / float(InitialChunks) : (P > 0 ? 0.f : 1.f);
 	}
 	bool bClouds = true;
-	for (TActorIterator<ASailingEnvironment> It(W); It; ++It) bClouds = It->HasWeatherMap();
+	for (TActorIterator<ASailingEnvironment> It(W); It; ++It) bClouds = It->HasWeatherMap() && It->IsSkyReady();   // docs/cloud-popin/
 	const ASailboatPawn* Pawn = W->GetFirstPlayerController() ? Cast<ASailboatPawn>(W->GetFirstPlayerController()->GetPawn()) : nullptr;
 	const bool bBoat = Pawn != nullptr && FPlatformTime::Seconds() - ShownAt > 1.0;
 	const bool bShaders = FShaderPipelineCache::NumPrecompilesRemaining() == 0;
