@@ -132,6 +132,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Saved/Bench>`), opt-in because the RHI thread can slow from view to view within one process (re-run alone
    by the guard). Args: `-SailingBenchTrace` (`<shot>.frames.csv`), `-SailingBenchWarmup=<s>` (keep 3 for gates).
    Command-line values cached in statics must use `SailingArgs::FCachedFlag`/`FOnce` (re-read when a list swaps it).
+   Since macOS 27 (`docs/bench-fullres/`): gates and sweeps bench High at full resolution (`PIN_HIGH=1`, exported by
+   gate.sh: `-SailingScreenPct=100`; the governor hid regressions at 82-97%). The CSVs carry `render_pct` and `foreground`,
+   and a run whose window was not in front is run again. The game raises its own window through the warm-up, because a
+   single run's BeginPlay request is dropped.
 
 21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
    no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`
@@ -248,7 +252,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   startup. TSR is off (TAA at 67% on Medium, native TAA on High; this engine build has no MetalFX). High uses Lumen's
   High GI scalability, not Epic's (5.5 ms at native). Virtual shadow maps cost about 2 ms on Medium and 4 ms on High
   until the scene has Nanite meshes. Exposure on Medium and High follows the light (incident meter), not the frame;
-  `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun. No clear-air lift (Phase 8's +0.5 EV,
+  `kSceneEVOffset` in `VisualPipeline.cpp` ties real EV to the scene's 10-lux sun. The histogram may take the exposure only 0.2 of
+  its band darker than that meter (the whole band brighter): docs/exposure-band, `-SailingExposureBand=<dark>,<bright>`. No clear-air lift (Phase 8's +0.5 EV,
   dropped Oct 23 2026: `docs/exposure-choice/`).
 - Sails and crew (Visual V3): `FSailCloth` (`SailCloth.h`) builds each sail's grid from the physics strips (target shape)
   and runs a position-based cloth over it on Medium and High (flogging, leech flutter, luff wrinkles, spinnaker

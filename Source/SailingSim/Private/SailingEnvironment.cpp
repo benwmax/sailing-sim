@@ -32,6 +32,8 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
+#include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/Canvas.h"
@@ -108,6 +110,8 @@ namespace
 	// pc/ultra-cloud-tops: Ultra's cloud noise footprint floor (m) and cumulus top ramp (the material's 110 and 4 elsewhere).
 	constexpr float kUltraCloudFootM = 60.f;
 	constexpr float kUltraCloudEdgeTop = 5.f;
+	// docs/exposure-band: the share of the exposure band the histogram may use on the dark side of the incident meter.
+	constexpr float kExposureBandDark = 0.2f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
 	// pc/near-cloud-grain (docs/near-cloud-grain): the cumulus step cap taken as if each step were at least this long (m; 0, off, elsewhere).
 	constexpr float kUltraCloudCapStepM = 76.f;   // four of Ultra's 19 m near steps
@@ -561,6 +565,45 @@ void ASailingEnvironment::MoonPosition(double ClockHour, double DayOfYear, doubl
 	SunPosition(ClockHour - ElongationDeg / 15.0, DayOfYear + 365.25 * ElongationDeg / 360.0, LatitudeDeg, LongitudeDeg, UtcOffsetHours, OutElevation, OutAzimuth);
 }
 
+void ASailingEnvironment::DumpExposureSettings(float EV, float Band, float IntoSun)
+{
+	// pc/exposure-band (measuring): -SailingDumpExposure logs, once and 6 s in, every exposure input the view blends: the
+	// r.EyeAdaptation.* and r.DefaultFeature.AutoExposure* cvars, this actor's post-process settings and the view
+	// target's camera post process (the capture camera's overrides), so two machines' logs can be diffed.
+	static SailingArgs::FCachedFlag DumpArg(TEXT("SailingDumpExposure"));
+	static SailingArgs::FOnce Once;
+	if (!DumpArg.Get() || GetWorld()->GetTimeSeconds() < 6.0 || Once.Taken() || !Once.Take()) return;
+	UE_LOG(LogSailing, Display, TEXT("ExposureDump: quality %d, incident EV100 %.3f, band %.3f, into-sun %.3f"), int32(USailingSettings::Get()->Quality), EV, Band, IntoSun);
+	for (const TCHAR* Prefix : { TEXT("r.EyeAdaptation"), TEXT("r.DefaultFeature.AutoExposure"), TEXT("r.LocalExposure"), TEXT("r.Tonemapper") })
+	{
+		IConsoleManager::Get().ForEachConsoleObjectThatStartsWith(FConsoleObjectVisitor::CreateLambda([](const TCHAR* Name, IConsoleObject* Obj)
+		{
+			if (IConsoleVariable* V = Obj->AsVariable()) UE_LOG(LogSailing, Display, TEXT("ExposureDump: cvar %s = %s"), Name, *V->GetString());
+		}), Prefix);
+	}
+	auto DumpPP = [](const TCHAR* Who, const FPostProcessSettings& P, float Weight)
+	{
+		UE_LOG(LogSailing, Display, TEXT("ExposureDump: %s weight %.2f | method %d (set %d) | min %.3f (set %d) max %.3f (set %d) | bias %.3f (set %d) | percent %.1f..%.1f (set %d/%d) | speed up %.4f down %.4f (set %d/%d) | histogram EV %.1f..%.1f (set %d/%d) | apply physical camera %d (set %d) | bias curve %s | meter mask %s | local exposure highlight %.2f shadow %.2f (set %d/%d)"),
+			Who, Weight, int32(P.AutoExposureMethod.GetValue()), P.bOverride_AutoExposureMethod, P.AutoExposureMinBrightness, P.bOverride_AutoExposureMinBrightness,
+			P.AutoExposureMaxBrightness, P.bOverride_AutoExposureMaxBrightness, P.AutoExposureBias, P.bOverride_AutoExposureBias,
+			P.AutoExposureLowPercent, P.AutoExposureHighPercent, P.bOverride_AutoExposureLowPercent, P.bOverride_AutoExposureHighPercent,
+			P.AutoExposureSpeedUp, P.AutoExposureSpeedDown, P.bOverride_AutoExposureSpeedUp, P.bOverride_AutoExposureSpeedDown,
+			P.HistogramLogMin, P.HistogramLogMax, P.bOverride_HistogramLogMin, P.bOverride_HistogramLogMax,
+			int32(P.AutoExposureApplyPhysicalCameraExposure), P.bOverride_AutoExposureApplyPhysicalCameraExposure,
+			P.AutoExposureBiasCurve ? *P.AutoExposureBiasCurve->GetName() : TEXT("none"), P.AutoExposureMeterMask ? *P.AutoExposureMeterMask->GetName() : TEXT("none"),
+			P.LocalExposureHighlightContrastScale, P.LocalExposureShadowContrastScale, P.bOverride_LocalExposureHighlightContrastScale, P.bOverride_LocalExposureShadowContrastScale);
+	};
+	if (PostProcess) DumpPP(TEXT("environment volume"), PostProcess->Settings, PostProcess->BlendWeight);
+	if (APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0))
+	{
+		if (AActor* Target = CamMgr->GetViewTarget())
+		{
+			TInlineComponentArray<UCameraComponent*> Cameras(Target);
+			for (UCameraComponent* C : Cameras) if (C && C->IsActive()) DumpPP(*FString::Printf(TEXT("camera %s"), *C->GetName()), C->PostProcessSettings, C->PostProcessBlendWeight);
+		}
+	}
+}
+
 void ASailingEnvironment::ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness)
 {
 	// Visual V1: one filmic look on Medium and High. The engine's filmic tone curve with a slight warm bias for Texas
@@ -745,9 +788,29 @@ void ASailingEnvironment::UpdateSun(double Hour)
 					IntoSun = FMath::SmoothStep(0.5f, 0.95f, Facing) * (1.f - FMath::SmoothStep(8.f, 20.f, float(Elevation))) * (1.f - Dark);
 				}
 			}
-			PP.AutoExposureMinBrightness = float(EV) - Band + 2.5f * IntoSun;
-			PP.AutoExposureMaxBrightness = float(EV) + Band + 2.5f * IntoSun;
+			// docs/exposure-band (Bean's choice, Oct 26): the histogram may take the exposure only a fifth of the band darker
+			// than the incident meter, the whole band brighter. With the full stop it sat a stop under the real light wherever
+			// bright sky, cloud and sails filled the frame (the chase: 0.8 EV under, the water and crew a stop dark); at 0.2 it
+			// is 0.15 EV under, and views the histogram already brightens (noon, dusk, storm) don't change. Measuring:
+			// -SailingExposureBand=<dark>,<bright> (1,1 is the band as it was).
+			static uint32 BandGen = MAX_uint32;
+			static float BandDark = kExposureBandDark, BandBright = 1.f;
+			if (BandGen != SailingArgs::Generation())
+			{
+				BandGen = SailingArgs::Generation();
+				BandDark = kExposureBandDark;
+				BandBright = 1.f;
+				FString Arg, A, B;
+				if (FParse::Value(SailingArgs::Dev(), TEXT("SailingExposureBand="), Arg, false) && Arg.Split(TEXT(","), &A, &B))
+				{
+					BandDark = FCString::Atof(*A);
+					BandBright = FCString::Atof(*B);
+				}
+			}
+			PP.AutoExposureMinBrightness = float(EV) - Band * BandBright + 2.5f * IntoSun;
+			PP.AutoExposureMaxBrightness = float(EV) + Band * BandDark + 2.5f * IntoSun;
 			PP.AutoExposureBias = USailingSettings::Get()->BrightnessBias();   // Settings > Brightness
+			DumpExposureSettings(float(EV), Band, IntoSun);
 		}
 	}
 	if (MoonLight)
@@ -873,6 +936,29 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		{
 			if (bLayeredClouds)
 			{
+				// docs/storm-high/: under a storm deck on High the clouds take fewer samples, shadow rays at half and the view
+				// ray capped at 56 (from 80), easing in with the deck's darkness. The sun hardly reaches a deck that dark
+				// (the shelf's face is lit by emission, not scattering), so its shadow rays decide little, and a dense grey
+				// mass seen through rain shows no grain at 56 (2.5 ms of the storm view's 23.4 at full resolution; its stills
+				// the same to within the rain's variance). The approach, with the lit shelf in a clear sky, keeps them all.
+				// -SailingFullStormSamples compares; -SailingCloudScale / -SailingCloudSamples (measuring) leave it alone.
+				static SailingArgs::FCachedFlag FullStormArg(TEXT("SailingFullStormSamples"));
+				const bool bMeasuringClouds = FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCloudScale=")) != nullptr
+					|| FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCloudSamples=")) != nullptr;
+				if (USailingSettings::Get()->Quality == ESailingQuality::High && !bMeasuringClouds && !FullStormArg.Get())
+				{
+					const float Storm = FMath::SmoothStep(0.4f, 0.75f, float(W.CloudDarkness));
+					const float ShadowScale = FMath::RoundToFloat(FMath::Lerp(1.f, 0.5f, Storm) * 10.f) / 10.f;   // 0.1 steps: a set rebuilds the proxy
+					// (Against the live values, not a cache: the tier's settings may be applied again under it.)
+					if (!FMath::IsNearlyEqual(C->ShadowViewSampleCountScale, ShadowScale)) C->SetShadowViewSampleCountScale(ShadowScale);
+					const int32 ViewMax = FMath::RoundToInt(FMath::Lerp(80.f, 56.f, Storm));
+					static IConsoleVariable* ViewMaxVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"));
+					if (ViewMaxVar && ViewMaxVar->GetInt() != ViewMax)
+					{
+						ViewMaxVar->Set(float(ViewMax), ECVF_SetByCode);
+						UE_LOG(LogSailing, Log, TEXT("Storm clouds: shadow samples x%.1f, view samples up to %d (cloud darkness %.2f)"), ShadowScale, ViewMax, W.CloudDarkness);
+					}
+				}
 				// The tracer spans only the layers present: its samples go where the cloud is.
 				double Base, Top;
 				W.Sky.Span(Base, Top);

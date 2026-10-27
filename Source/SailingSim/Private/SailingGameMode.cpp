@@ -1134,6 +1134,18 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	const bool bGpuSlices = !NoGpuSlicesArg.Get();
 	const float ProfileAt[] = { 0.4f, 0.6f, 0.8f };
 	constexpr int32 FramesSkippedPerProfile = 16; // the profiled frame lands 8-13 frames after the request (storm, High)
+	// docs/bench-fullres/: a single run asked to be in front at BeginPlay, before its window was up, and on macOS 27 that
+	// request is dropped (bench.json "foreground" 0 on every single run since the update; the list runs, asking once the
+	// app is up, stayed in front). So through the warm-up the game raises its own window again every half second until
+	// it is the frontmost app.
+	if (Elapsed <= BenchWarmup && Elapsed >= NextBenchActivate && !FPlatformApplicationMisc::IsThisApplicationForeground())
+	{
+		NextBenchActivate = Elapsed + 0.5f;
+#if PLATFORM_MAC
+		FPlatformApplicationMisc::ActivateApplication();
+#endif
+		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->GetWindow().IsValid()) GEngine->GameViewport->GetWindow()->BringToFront(true);
+	}
 	if (Elapsed > BenchWarmup && Elapsed <= BenchWarmup + BenchSeconds && GpuProfileSkipFrames > 0)
 	{
 		--GpuProfileSkipFrames;

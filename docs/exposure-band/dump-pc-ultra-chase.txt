@@ -1,0 +1,27 @@
+quality 3, incident EV100 -0.862, band 1.000, into-sun 0.000
+cvar r.EyeAdaptationQuality = 2
+cvar r.EyeAdaptation.PreExposureOverride = 0
+cvar r.EyeAdaptation.MethodOverride = -1
+cvar r.EyeAdaptation.ExponentialTransitionDistance = 1.5
+cvar r.EyeAdaptation.VisualizeDebugType = 0
+cvar r.EyeAdaptation.LensAttenuation = 0.78
+cvar r.EyeAdaptation.BlackHistogramBucketInfluence = 0
+cvar r.EyeAdaptation.ExposureCompensationCurveLUT = true
+cvar r.EyeAdaptation.ExposureCompensationCurveLUT.NumSamples = 64
+cvar r.EyeAdaptation.ExposureCompensationCurveLUT.MinX = -10
+cvar r.EyeAdaptation.ExposureCompensationCurveLUT.MaxX = 20
+cvar r.EyeAdaptation.CachedLightingPreExposure = 4
+cvar r.EyeAdaptation.VisualizeLuminanceScale = 1
+cvar r.DefaultFeature.AutoExposure = 1
+cvar r.DefaultFeature.AutoExposure.Method = 0
+cvar r.DefaultFeature.AutoExposure.Bias = 1
+cvar r.DefaultFeature.AutoExposure.ExtendDefaultLuminanceRange = 1
+cvar r.LocalExposure = 1
+cvar r.LocalExposure.ExposureFusion.TargetLuminance = 0.5
+cvar r.LocalExposure.ExposureFusion.NumLevels = 16
+cvar r.LocalExposure.VisualizationMode = 0
+cvar r.Tonemapper.Sharpen = -1
+cvar r.TonemapperGamma = 0
+cvar r.Tonemapper.Quality = 5
+environment volume weight 1.00 | method 0 (set 1) | min -1.862 (set 1) max 0.138 (set 1) | bias 0.000 (set 1) | percent 10.0..90.0 (set 0/0) | speed up 3.0000 down 1.0000 (set 0/0) | histogram EV -10.0..20.0 (set 0/0) | apply physical camera 1 (set 0) | bias curve none | meter mask none | local exposure highlight 0.70 shadow 0.90 (set 1/1)
+camera CaptureCamera weight 1.00 | method 0 (set 0) | min -10.000 (set 0) max 20.000 (set 0) | bias 1.000 (set 0) | percent 10.0..90.0 (set 0/0) | speed up 0.0001 down 0.0001 (set 1/1) | histogram EV -10.0..20.0 (set 0/0) | apply physical camera 1 (set 0) | bias curve none | meter mask none | local exposure highlight 1.00 shadow 1.00 (set 0/0)
