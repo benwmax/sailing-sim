@@ -110,6 +110,8 @@ namespace Sailing
 		/** Fetch-limited growth law targets (SPM forms in GrowthStressWind: U_A, steepened above 18 kn; the period from that Hs by Toba's 3/2 law in U_A). */
 		static double TargetSignificantHeight(double WindMs, double FetchMeters);
 		static double TargetPeakPeriod(double WindMs, double FetchMeters);
+		/** docs/lake-periods/: the period's lengthening on a short fetch against the SPM law, fitted to the Ray Hubbard SWAN bake. */
+		static double ShortFetchPeriodFactor(double WindMs, double FetchMeters);
 		/** The growth laws' wind-stress factor U_A = 0.71 U^1.23 (m/s in, m/s out). */
 		static double AdjustedWindSpeed(double WindMs);
 		/** The wind the targets grow the sea in: U_A, times (U / 18 kn)^0.43 above 18 kn (m/s in, m/s out). */

@@ -94,9 +94,11 @@ bool FSailingWaveGrowthSwanTest::RunTest(const FString& Parameters)
 	}
 	// The period follows Toba's 3/2 law in U_A from the steepened height: at 28 kn (Hs / Hs in U_A)^(2/3) = (28 / 18)^0.287.
 	const double Ua28 = FWaveField::AdjustedWindSpeed(28.0 * kKnot);
+	// (Times docs/lake-periods/' short-fetch factor, fitted to SWAN's points: 1.04 at 2 km.)
 	TestEqual(TEXT("Tp at 28 kn over 2 km is Toba's from the steepened Hs"), FWaveField::TargetPeakPeriod(28.0 * kKnot, 2000.0) / FWaveField::GrowthLawPeriod(Ua28, 2000.0),
-		FMath::Pow(28.0 / 18.0, 0.43 * 2.0 / 3.0), 1e-9);
-	TestEqual(TEXT("... and U_A's own up to 18 kn"), FWaveField::TargetPeakPeriod(15.0 * kKnot, 2000.0), FWaveField::GrowthLawPeriod(FWaveField::AdjustedWindSpeed(15.0 * kKnot), 2000.0), 1e-12);
+		FMath::Pow(28.0 / 18.0, 0.43 * 2.0 / 3.0) * FWaveField::ShortFetchPeriodFactor(28.0 * kKnot, 2000.0), 1e-9);
+	TestEqual(TEXT("... and U_A's own up to 18 kn"), FWaveField::TargetPeakPeriod(15.0 * kKnot, 2000.0),
+		FWaveField::GrowthLawPeriod(FWaveField::AdjustedWindSpeed(15.0 * kKnot), 2000.0) * FWaveField::ShortFetchPeriodFactor(15.0 * kKnot, 2000.0), 1e-12);
 	// (W3 prep left 28 kn 18% low, held at 20%; with the steepened stress wind every speed is inside 10%.)
 	return true;
 }
