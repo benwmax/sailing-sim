@@ -11,8 +11,7 @@ For the build lanes (PC UI/graphics, Mac wiring and gate). Written Oct 27 2026 f
 - Layout mockup (3 artboards, two clickable): https://claude.ai/artifact/E1VMw9HXuF38faVZkwFF5M
   The boat pictures in it are the Oct 20 fleet stills and a crop of the title screen; the conditions tints are CSS
   stand-ins for the game's real sky, light, rain and waves.
-- Pending with Bean (decision card in the thread): whether the picked world loads behind the menus (recommended) or the
-  lake stays behind them. Build everything else first; section 6 is the only part that depends on it.
+- DECIDED by Bean (Oct 27 19:26 UTC, decision card): load the picked world behind the menus. PR 4 is in scope.
 
 ## 1. What the code does today
 
@@ -158,11 +157,10 @@ Today's hold freezes the boat. For the showroom and the conditions preview the b
   Photo mode's brief adds a clock pause switch (`SetWorldHeld`-style, rule 9); whichever lands first, the Conditions
   screen must leave the clock running and the other pause path must not override it.
 - Front end: no revert needed; the preview is the pending choice and Back keeps choices, as now.
-- World behind the menus (pending Bean's answer): if he picks "load the picked world", leaving the World screen with a
+- World behind the menus (Bean chose "load the picked world", Oct 27): leaving the World screen with a
   different world loads it behind the menus (a short loading wipe, the front-end state carried in
   `USailSessionSubsystem` across the travel), so the showroom and preview show the real place. Cast off can then skip
-  the reload when world and launch spot already match. If he picks "keep the lake", show a one-line note on the
-  Conditions screen ("Preview on Lake Ray Hubbard; you'll sail in <world>").
+  the reload when world and launch spot already match.
 - Online readiness: the preview is local presentation only. Keep it in a client-side path that the session commit
   replaces, so a later server-owned weather doesn't inherit menu changes. The camera rig may use the first player
   controller (client-side only), per the rules.
@@ -178,7 +176,7 @@ Today's hold freezes the boat. For the showroom and the conditions preview the b
    and while cycling all 8 boats.
 3. PC, after 2: Conditions layout, live preview hookup and blends, wind HUD and caption, in-game revert. Mac gate with
    the Conditions screen open while dragging time of day and switching Clear to Storms.
-4. Only if Bean picks it: load the picked world behind the menus (Mac, it is session and travel wiring).
+4. Load the picked world behind the menus (Bean chose it Oct 27; Mac, session and travel wiring). Can run after PR 1.
 
 Each PR: stills at 1440x1080 and 1920x1080 for the docs folder (Boat with three boats including the Lagoon 42 and a
 dinghy, View mode, Conditions at 07:30 clear, 15:00 fair, 19:00 storms, fog), the swap and memory numbers, and the
