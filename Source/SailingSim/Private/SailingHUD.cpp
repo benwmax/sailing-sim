@@ -343,16 +343,17 @@ void ASailingHUD::DrawHUD()
 		const AFreeCamera* Cam = Boat->GetFreeCamera();
 		const bool bOrbit = Cam && Cam->GetMode() == EFreeCameraMode::Orbit;
 		const float Y = Canvas->ClipY / UIScale - 40.f;
+		const FString Move = bPad ? L(TEXT("PhotoForward")) : L(TEXT("PhotoForward")) + L(TEXT("PhotoRight"), true) + L(TEXT("PhotoForward"), true) + L(TEXT("PhotoRight"));
+		const FString Leave = bPad ? L(TEXT("Photo")) + TEXT(" (hold)") : L(TEXT("Photo"));
 		if (Now < Boat->GetPhotoHintUntil())
 		{
 			const FString Msg = Boat->GetStatusMessage();
 			const FString Hint = bOrbit
 				? FString::Printf(TEXT("Orbit: look turns about the boat, %s in and out. %s flies, %s takes a photo, %s leaves"),
-					bPad ? TEXT("D-pad") : TEXT("wheel"), *L(TEXT("PhotoOrbit")), *L(TEXT("PhotoShot")), *L(TEXT("Photo")))
-				: FString::Printf(TEXT("Photo mode: %s%s%s%s fly, %s / %s up and down, %s speed, %s fast, %s orbit, %s back to the boat, %s takes a photo, %s leaves"),
-					*L(TEXT("PhotoForward")), *L(TEXT("PhotoRight"), true), *L(TEXT("PhotoForward"), true), *L(TEXT("PhotoRight")),
-					*L(TEXT("PhotoUpDown"), true), *L(TEXT("PhotoUpDown")), bPad ? TEXT("D-pad") : TEXT("wheel"), *L(TEXT("PhotoBoost")),
-					*L(TEXT("PhotoOrbit")), *L(TEXT("PhotoToBoat")), *L(TEXT("PhotoShot")), *L(TEXT("Photo")));
+					bPad ? TEXT("D-pad") : TEXT("wheel"), *L(TEXT("PhotoOrbit")), *L(TEXT("PhotoShot")), *Leave)
+				: FString::Printf(TEXT("Photo mode: %s fly, %s / %s up and down, %s speed, %s fast, %s orbit, %s back to the boat, %s takes a photo, %s leaves"),
+					*Move, *L(TEXT("PhotoUpDown"), true), *L(TEXT("PhotoUpDown")), bPad ? TEXT("D-pad") : TEXT("wheel"), *L(TEXT("PhotoBoost")),
+					*L(TEXT("PhotoOrbit")), *L(TEXT("PhotoToBoat")), *L(TEXT("PhotoShot")), *Leave);
 			Text(Msg.IsEmpty() ? Hint : Msg, 20.f, Y, FLinearColor::White, 0.8f);
 		}
 		if (Cam && Now < FMath::Max(Boat->GetPhotoReadoutUntil(), Boat->GetPhotoHintUntil()))

@@ -1661,7 +1661,8 @@ void ASailboatPawn::MakeActions(UObject* Outer, const TArray<FSailingKeyBinding>
 UInputMappingContext* ASailboatPawn::BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
 	const TMap<FName, TObjectPtr<UInputAction>>& InActions, bool bPhotoContext)
 {
-	UInputMappingContext* Context = NewObject<UInputMappingContext>(Outer, Name);
+	// A rebind builds new contexts while the old ones are still mapped: each gets a name of its own.
+	UInputMappingContext* Context = NewObject<UInputMappingContext>(Outer, MakeUniqueObjectName(Outer, UInputMappingContext::StaticClass(), Name));
 	// Photo mode's pad toggle is a half-second hold of its button (View): the controls card (and, in photo mode, the
 	// orbit toggle) keep that button's tap. Every other button fires once, on the press.
 	TSet<FKey> HoldKeys;
