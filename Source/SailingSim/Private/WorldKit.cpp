@@ -12,6 +12,9 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "MeshDescription.h"
 #include "StaticMeshAttributes.h"
+#include "AssetCompilingManager.h"
+#include "DistanceFieldAtlas.h"
+#include "MeshCardBuild.h"
 #endif
 
 namespace
@@ -800,6 +803,15 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
 }
 
 #if WITH_EDITOR
+void UWorldKitLibrary::FinishMeshBuilds()
+{
+#if WITH_EDITOR
+	FAssetCompilingManager::Get().FinishAllCompilation();
+	if (GDistanceFieldAsyncQueue) GDistanceFieldAsyncQueue->BlockUntilAllBuildsComplete();
+	if (GCardRepresentationAsyncQueue) GCardRepresentationAsyncQueue->BlockUntilAllBuildsComplete();
+#endif
+}
+
 UStaticMesh* UWorldKitLibrary::BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath)
 {
 	const FString Name = FPackageName::GetLongPackageAssetName(PackagePath);

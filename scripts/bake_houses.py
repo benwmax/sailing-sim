@@ -15,6 +15,8 @@ for world in worlds:
     for m in meshes:
         unreal.EditorAssetLibrary.save_loaded_asset(m)
         old.discard(m.get_path_name().split(".")[0])
+    # Their distance fields and Lumen cards into the DDC before leaving (else every uncooked run rebuilds them).
+    unreal.WorldKitLibrary.finish_mesh_builds()
     unreal.log(f"Baked the {world} houses: {len(meshes)} Nanite tiles")
     meshes = None
 for path in sorted(old):
