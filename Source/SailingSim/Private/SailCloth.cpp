@@ -539,6 +539,63 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 			}
 		}
 	}
+	// docs/sail-spreaders/: a running main eased onto a spreader lies over it. The turn above stops at a sheet's few degrees
+	// and the wire dents are for the shrouds, so a spreader still stood through the belly (RigClearance: the J/22, Catalina
+	// 30, Corsair and maxi running, boom 72-80 deg). Each row near the bar's height is dented back onto the clew's side of
+	// every point along it, fully within kSpreaderFlatRows rows of the bar and easing out over kSpreaderFallRows more: the
+	// cloth drapes over the bar in a crease running up and down the sail from it, as a running main does on its spreaders
+	// (where sailmakers sew the chafe patches).
+	constexpr double kSpreaderFlatRows = 0.75;
+	constexpr double kSpreaderFallRows = 1.25;
+	for (const FSailObstacle& O : Obstacles)
+	{
+		const FVector Axis = O.B - O.A;
+		const double Len = Axis.Size();
+		if (Len < 1.0 || FMath::Abs(Axis.Z) > 0.3 * Len) continue; // the level bars only
+		const double BarZ = 0.5 * (O.A.Z + O.B.Z);
+		for (int32 R = 0; R < Rows - 1; ++R)
+		{
+			const FVector L = P[Index(R, 0)];
+			double Z = 0.0;
+			for (int32 C = 0; C < Cols; ++C) Z += P[Index(R, C)].Z / Cols;
+			const double Dz = FMath::Abs(Z - BarZ) / FMath::Max(double(RowPitch), 1.0);
+			const double Vw = Dz <= kSpreaderFlatRows ? 1.0 : FMath::Max(0.0, 1.0 - (Dz - kSpreaderFlatRows) / kSpreaderFallRows);
+			if (Vw <= 0.0) continue;
+			auto FromAft = [&](const FVector& Q) { return FMath::Atan2(Q.Y - L.Y, -(Q.X - L.X)); };
+			for (int32 K = 1; K <= kBarSamples; ++K)
+			{
+				const FVector W = O.A + Axis * (double(K) / kBarSamples);
+				if (FVector::Dist(W, O.A) < O.FreeA) continue;
+				const double Radius = FVector::Dist2D(W, L);
+				if (Radius < kNearLuffCm) continue;
+				const double Wire = FromAft(W), Margin = (O.RadiusCm + kGapCm) / Radius;
+				double Need = 0.0;
+				for (int32 C = 1; C < Cols; ++C)
+				{
+					const FVector& V = P[Index(R, C)];
+					if (FMath::Abs(FVector::Dist2D(V, L) - Radius) > kDentFlatCm + kDentFallCm) continue;
+					const double Cloth = FromAft(V);
+					if (Wire * Cloth <= 0.0) continue;
+					Need = FMath::Max(Need, FMath::Abs(Cloth) - (FMath::Abs(Wire) - Margin));
+				}
+				if (Need <= 0.0) continue;
+				Need = FMath::Min(Need, 0.6) * Vw;
+				const double Sign = Wire >= 0.0 ? 1.0 : -1.0;
+				for (int32 C = 1; C < Cols; ++C)
+				{
+					FVector& V = P[Index(R, C)];
+					const FVector D = V - L;
+					const double Off = FMath::Abs(FVector::Dist2D(V, L) - Radius);
+					const double Wt = Off <= kDentFlatCm ? 1.0 : FMath::Max(0.0, 1.0 - (Off - kDentFlatCm) / kDentFallCm);
+					const double Cloth = FromAft(V);
+					if (Wt <= 0.0 || Cloth * Sign <= 0.0) continue;
+					const double Rot = Sign * FMath::Min(Need * Wt, FMath::Abs(Cloth));
+					const FQuat Q(FVector::UpVector, Rot);
+					V = L + Q.RotateVector(FVector(D.X, D.Y, 0.0)) + FVector(0.0, 0.0, D.Z);
+				}
+			}
+		}
+	}
 }
 
 FSailWrinkles SailWrinklesFor(const FSailCloth& Cloth, const Sailing::FSailStripState* Strips, const FSailClothDrive& Drive)

@@ -301,10 +301,10 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 								const int32 Row = int32(S.I[T]) / FSailCloth::Cols, Col = int32(S.I[T]) % FSailCloth::Cols;
 								Note(FString::Printf(TEXT("%s: %s through the %s"), *BoatName, *What, S.Name),
 									FString::Printf(TEXT("at (%.0f, %.0f, %.0f) cm (cloth row %d, column %d), %s"), P.X, P.Y, P.Z, Row, Col, *State));
-								// (The jib's: a running main eased onto its shrouds and spreaders is turned in only a sheet's few degrees,
-								// FSailCloth::KeepClear, and where its belly presses on a wire near the mast the wire still shows through:
-								// listed, not failed.)
-								if (FCString::Strcmp(S.Name, TEXT("jib")) == 0 && Col >= 4 && Row < FSailCloth::Rows - 5)
+								// The jib's, and since docs/sail-spreaders/ the main's: a running main eased onto its shrouds and spreaders
+								// lies over them (FSailCloth::KeepClear's dents), so a wire through its cloth away from the mast fails too.
+								const bool bMainCloth = FCString::Strcmp(S.Name, TEXT("main")) == 0 && Col >= 2 && Row < FSailCloth::Rows - 3;
+								if ((FCString::Strcmp(S.Name, TEXT("jib")) == 0 && Col >= 4 && Row < FSailCloth::Rows - 5) || bMainCloth)
 								{
 									const FString Key = FString::Printf(TEXT("%s: %s through the %s's cloth"), *BoatName, *What, S.Name);
 									if (!Fails.Contains(Key)) Where.Add(Key, FString::Printf(TEXT("at (%.0f, %.0f, %.0f) cm, row %d, column %d, %s"), P.X, P.Y, P.Z, Row, Col, *State));
