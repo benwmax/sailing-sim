@@ -241,7 +241,10 @@ bool FSailingSpinnakerReefTest::RunTest(const FString& Parameters)
 		Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 3.0);
 		FAutopilot Pilot;
 		Pilot.TargetTWADeg = 60.0;
+		// The boat's own answer to her sail area, trimmed as the polars are (docs/trimmer-hands/): a crew's hands hold her at
+		// the heel limit with either sail.
 		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
 		FBoatControls C;
 		int32 N = 0;
 		for (int32 I = 0; I < int32(60 * PhysicsHz); ++I)
