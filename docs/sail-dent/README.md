@@ -57,6 +57,20 @@ Catalina had the same crease. The others showed little and are unchanged or smoo
 
 ![fleet](fleet-main-vs-fix.jpg)
 
+## Close-hauled and reaching from the helm
+
+The PC saw no dent on Ultra at TWA 170, so I also compared full builds from the helm, where Bean looks at the main most.
+That is 7a37028f (before #350–#354), main 8b765818 (Bean's build had #352 and #353) and this branch, on the Mac's High.
+
+The rows run 12 kn at TWA 40, 60 and 90 on port, then the same on starboard, then TWA 60 at 18 and 8 kn.
+
+![helm eye, 7a37028f / main / this branch](helm-7a-main-fix.jpg)
+
+The helm eye frames the boom and the main's lower panels, and the three builds look the same. There is no indentation
+close-hauled or reaching in any of them, so the only dent found on the Mac is the running one this branch fixes. The PC's
+Shipping build on Ultra draws the sail detail (`M_SailCloth` `Detail`) that High doesn't. If Bean still sees it there
+close-hauled, a still from his build at the point of sail he saw it would pin it down.
+
 ## Tests
 
 `SailingSim.Visual.SailDent` builds a J/22-like rig and drives the main's target shape:
