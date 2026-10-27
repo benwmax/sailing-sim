@@ -637,7 +637,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FBoatModel::OrbitalFlowAt` from bow and stern samples at two depths; `WaveOrbitalFlowScale`, never in the calibration
   sea); `scripts/polar.sh --sea surf` gives speed by wave phase with and without it. The foils and bulb take the waves'
   inertia too (Morison, `FWaveField::OrbitalFlow`'s acceleration, `WaveFoilInertiaScale`, telemetry `WaveFoilSurge`;
-  `docs/foil-inertia/`); their own added mass is in `AddedMassRatio`. Unsteady foil lift (Theodorsen) is the known gap.
+  `docs/foil-inertia/`); their own added mass is in `AddedMassRatio`. Their lift lags the angle of attack (Wagner, Jones's fit:
+  `FoilLiftLagScale`, `docs/foil-lag/`). The gale's sea tacks are chaotic: `GaleTack` holds their distribution over 24 seeds.
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
