@@ -184,6 +184,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
 	static TArray<UStaticMesh*> BakeFarRing(const FString& WorldName);
 
+	/** Waits for the loaded meshes' derived data (Nanite, distance fields, Lumen cards) to finish building into the DDC. A
+	 *  bake that exits first leaves every later uncooked run rebuilding the distance fields of its tiles on the worker threads
+	 *  (several ms of game thread on the Lake) and abandoning them at shutdown. */
+	UFUNCTION(BlueprintCallable, Category = "Sailing|World")
+	static void FinishMeshBuilds();
+
 #if WITH_EDITOR
 	static UStaticMesh* BakeMesh(const FKitGeometry& Geometry, const FString& PackagePath);
 #endif

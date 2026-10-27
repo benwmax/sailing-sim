@@ -12,6 +12,9 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "MeshDescription.h"
 #include "StaticMeshAttributes.h"
+#include "AssetCompilingManager.h"
+#include "DistanceFieldAtlas.h"
+#include "MeshCardBuild.h"
 #endif
 
 namespace
@@ -797,6 +800,15 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
 	UE_LOG(LogSailing, Display, TEXT("Baked the %s far ring: %d tiles, %lld triangles"), *WorldName, Out.Num(), Triangles);
 #endif
 	return Out;
+}
+
+void UWorldKitLibrary::FinishMeshBuilds()
+{
+#if WITH_EDITOR
+	FAssetCompilingManager::Get().FinishAllCompilation();
+	if (GDistanceFieldAsyncQueue) GDistanceFieldAsyncQueue->BlockUntilAllBuildsComplete();
+	if (GCardRepresentationAsyncQueue) GCardRepresentationAsyncQueue->BlockUntilAllBuildsComplete();
+#endif
 }
 
 #if WITH_EDITOR

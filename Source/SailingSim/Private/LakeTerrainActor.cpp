@@ -1111,6 +1111,15 @@ void ALakeTerrainActor::PlaceReeds()
 	TArray<FTransform> Out[5];
 	// The coasts' 10 m grid would put four times the lake's clumps along Galveston's marshes: thin them to the lake's spacing.
 	const bool bCoarse = T.GetCell() >= 9.99;
+	// pc/shore-residential (docs/near-shore-audit): a lakefront lot is mown to its bulkhead. No cattails or rushes within 50 m
+	// of a house in the full-detail band (they stood alone on the lawns), and bank grass only at the waterline there.
+	TSet<FIntPoint> Mown;
+	for (const FLakeHouse& Hs : Lake->Houses)
+	{
+		if (!Hs.bFullDetail || Hs.bCommercial) continue;
+		const FIntPoint Cell(FMath::FloorToInt32(Hs.X / 25.0), FMath::FloorToInt32(Hs.Y / 25.0));
+		for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Mown.Add(Cell + FIntPoint(Dx, Dy));
+	}
 	for (int32 R = 4; R < T.GetRows() - 4; R += Step)
 	{
 		for (int32 C = 4; C < T.GetCols() - 4; C += Step)
@@ -1123,6 +1132,7 @@ void ALakeTerrainActor::PlaceReeds()
 			const double Dry2 = FMath::Max(FMath::Max(T.NodeHeight(R + 2, C), T.NodeHeight(R - 2, C)), FMath::Max(T.NodeHeight(R, C + 2), T.NodeHeight(R, C - 2)));
 			const double X = T.GetOriginX() + R * T.GetCell(), Y = T.GetOriginY() + C * T.GetCell();
 			if (X * X + Y * Y < 350.0 * 350.0) continue;
+			const bool bMown = Mown.Contains(FIntPoint(FMath::FloorToInt32(X / 25.0), FMath::FloorToInt32(Y / 25.0)));
 			const double Patch = FMath::Sin(X * 0.011 + FMath::Sin(Y * 0.007) * 2.0) * FMath::Sin(Y * 0.013 + FMath::Sin(X * 0.005) * 2.0);
 			const uint32 Hh = Hash(uint32(R) * 73856093u ^ uint32(C) * 19349663u);
 			auto Scatter = [&](int32 Kind, int32 N, double MinZ, double ZOverride, float S0, float S1, uint32 Salt)
@@ -1138,13 +1148,13 @@ void ALakeTerrainActor::PlaceReeds()
 			};
 			// Cattails and rushes, as before (gentle ground to 0.6 m, at the edge, in patches); realism audit 10: up to a
 			// 0.3 slope (it had been 0.2: the lake's coves have steeper clay banks, and they stood bare).
-			if (H <= 0.6 && Slope <= 0.3 && !(H > -0.05 && Wet3 > -0.05) && Patch >= -0.1 && (Hh & 1023) <= (bCoarse ? 260u : 760u))
+			if (!bMown && H <= 0.6 && Slope <= 0.3 && !(H > -0.05 && Wet3 > -0.05) && Patch >= -0.1 && (Hh & 1023) <= (bCoarse ? 260u : 760u))
 			{
 				Scatter(H < 0.05 ? 0 : int32((Hh >> 10) & 1), 2, -0.35, -1e9, 0.75f, 1.3f, 0);
 			}
 			// Bank grass: the band from the waterline to 1.2 m up, on banks up to a 0.6 slope, near open water; everywhere
 			// along the shore but thinner outside the patches (where the mowers reach the water).
-			if (Meshes[2] && H >= -0.02 && Slope <= 0.6 && Wet3 < -0.05 && (Hh >> 12 & 1023) <= (bCoarse ? 300u : (Patch >= -0.1 ? 960u : 620u)))
+			if (Meshes[2] && H >= -0.02 && (!bMown || H < 0.25) && Slope <= 0.6 && Wet3 < -0.05 && (Hh >> 12 & 1023) <= (bCoarse ? 300u : (Patch >= -0.1 ? 960u : 620u)))
 			{
 				// (A dense strip at the waterline, sparse higher up the bank: a tuft every few metres read as nothing from the water.)
 				Scatter(2, H < 0.6 ? (bCoarse ? 4 : 8) : 2, -0.05, -1e9, 0.9f, 1.7f, 7);
