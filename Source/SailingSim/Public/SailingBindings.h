@@ -37,7 +37,18 @@ namespace SailingBindings
 	 * controls card are in both. Two rows clash (and swap on Assign) only when they share a layer.
 	 */
 	SAILINGSIM_API bool IsStationAction(FName Action);
+	/**
+	 * Photo mode's layer (docs/photo-freefly/): the free camera's commands are live only in photo mode, where the boat
+	 * takes no input, so they share keys with the boat's (WASD flies, F goes back to the boat). The shutter is in this
+	 * layer too (Enter, and A on the pad only while photo mode is open). Photo mode's own toggle is a boat command.
+	 */
+	SAILINGSIM_API bool IsPhotoAction(FName Action);
 	SAILINGSIM_API bool SameLayer(FName A, FName B);
+	/** Photo mode's input context (IMC_Photo, above the boat's): every photo command, and the toggle's pad button (the
+	 *  context takes that button for the orbit toggle, so it carries the hold that leaves too). */
+	SAILINGSIM_API bool InPhotoContext(const FSailingKeyBinding& Binding);
+	/** The boat's context: everything else, and the shutter's keyboard key (the Controls screen's Enter chooses). */
+	SAILINGSIM_API bool InBoatContext(const FSailingKeyBinding& Binding);
 
 	/** The row's key in a column (the first binding), or an invalid key. */
 	SAILINGSIM_API FKey Find(const TArray<FSailingKeyBinding>& Bindings, FName Action, bool bNegative, EColumn Column);
