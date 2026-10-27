@@ -120,6 +120,13 @@ namespace Sailing
 		double GetWheel() const { return Controls.Tiller; }
 		/** The crew's heavy-air tack help is under way (the jib let fly, then backed). */
 		bool IsCrewTacking() const { return TackPhase != 0; }
+		/**
+		 * "Ready about": from the helm's call until she has held the new tack (|TWA| 30-100 on the other side) for a second,
+		 * the crew's main trimmer holds the main in (FAutoTrim::bHoldMain). The player at the helm putting the wheel hard to
+		 * windward upwind calls it too. A player at the main station keeps their own sheet and traveller.
+		 */
+		void CallTack();
+		bool IsHoldingMain() const { return bHoldMain; }
 
 	private:
 		void Grind(double& Sheet, double Effort, double LoadN, double Dt, bool bPlayer);
@@ -137,6 +144,9 @@ namespace Sailing
 		int TackPhase = 0;       // 0 none, 1 heading up (jib let fly, main in), 2 through (jib backed, main out)
 		double TackTime = 0.0;
 		double LastTwaDeg = 0.0;
+		bool bHoldMain = false;  // a tack called: the main held in (CallTack)
+		int HoldFromSide = 0;    // the wind side she was on when it was called
+		double HoldTime = 0.0, HoldSettled = 0.0;
 		bool bCourseSet = false; // the crew's course and the wind side, from the first step with a real wind angle
 	};
 }

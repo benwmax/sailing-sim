@@ -95,10 +95,20 @@ namespace Sailing
 
 	/**
 	 * The prologue's tack in the gale (step 4's ready-about), the way SailingSim.Prologue.Gale sails it: close-hauled on
-	 * starboard with the crew at the stations (FStationControls), then at 60 + 7 x Seed s the helm takes the wheel and
-	 * steers hard (autopilot at 0.8 of the wheel, past the stall) for TWA -45. Returns the seconds from the call until
+	 * starboard with the crew at the stations (FStationControls), then at 60 + 7 x Seed s the helm calls the tack, takes
+	 * the wheel and steers hard (autopilot at 0.6 of the wheel, short of an over-stall) for TWA -45, timing it on the waves
+	 * (FAutopilot::bTimeTacks; the main held in from the call: FStationControls::CallTack). Returns the seconds from the call until
 	 * she has held port tack (TWA -30 to -100) for one second, or -1 if she has not within 90 s. Config as the scene sets
 	 * it (FSceneLimits applied by the caller).
 	 */
 	SAILINGPHYSICS_API double RunGaleTack(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0);
+
+	/** RunGaleTack's tack in detail: its seconds, her mean speed over the 20 s before the call and her slowest through it (kn). */
+	struct FGaleTackResult
+	{
+		double Seconds = -1.0;
+		double SpeedBeforeKnots = 0.0;
+		double MinSpeedKnots = 0.0;
+	};
+	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0);
 }

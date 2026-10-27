@@ -203,6 +203,12 @@ namespace Sailing
 
 	double RunGaleTack(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots)
 	{
+		return RunGaleTackDetail(Config, Reefs, Seed, bSea, Knots).Seconds;
+	}
+
+	FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots)
+	{
+		FGaleTackResult R;
 		// PrologueTests.cpp TackInGale, plain: the same crew, wheel and clock.
 		FTrialSea Gale(FTrialSeaSpec::Gale(Seed, Knots, bSea));
 		FBoatModel Boat(Config);
@@ -213,24 +219,37 @@ namespace Sailing
 		Sails.Reef = Reefs;
 		Stations.Reset(Boat, Sails, ECrewStation::JibTrimmer);
 		FAutopilot Hand;
-		Hand.TargetTWADeg = -45.0;
-		Hand.MaxTiller = 0.8;
+		Hand.TargetTWADeg = 45.0; // the tack she is on until the call
+		// Hard, but not past the stall (docs/gale-tack/: at 0.8 of the wheel, 25 deg, the stalled rudder braked her and
+		// half the tacks fell under 40% of her speed; at 0.6, 19 deg, 11 of 12 keep it).
+		Hand.MaxTiller = 0.6;
 		Hand.bKeepShortOfStall = false;
 		const double Called = 60.0 + 7.0 * Seed;
-		double T = 0.0, Settled = 0.0;
+		double T = 0.0, Settled = 0.0, Before = 0.0;
+		int BeforeN = 0;
+		R.MinSpeedKnots = 1e9;
 		for (int I = 0; I < int((Called + 90.0) * PhysicsHz); ++I, T += PhysicsDt)
 		{
 			const Vec3 O = Boat.OriginPosition();
 			Gale.Update(T, O.X, O.Y);
 			FStationInput In;
-			if (T >= Called && Stations.GetStation() != ECrewStation::Helm) Stations.MoveTo(Boat, ECrewStation::Helm);
-			if (T >= Called) In.Wheel = Clamp((Hand.Update(Boat) - Stations.GetControls().Tiller) * 8.0, -1.0, 1.0);
+			if (T >= Called && Stations.GetStation() != ECrewStation::Helm) { Stations.MoveTo(Boat, ECrewStation::Helm); Stations.CallTack(); Hand.TargetTWADeg = -45.0; }
+			// The helm watches her before the call (her upwind speed, for timing the tack) and steers from it.
+			const double Wheel = Hand.Update(Boat);
+			if (T >= Called) In.Wheel = Clamp((Wheel - Stations.GetControls().Tiller) * 8.0, -1.0, 1.0);
 			Boat.Step(PhysicsDt, Stations.Step(Boat, In, PhysicsDt), Gale.GetWind(), Gale.GetWaves());
-			if (T < Called) continue;
+			const double Knots10 = Boat.GetTelemetry().BoatSpeed / kKnot;
+			if (T < Called)
+			{
+				if (T >= Called - 20.0) { Before += Knots10; ++BeforeN; }
+				continue;
+			}
+			R.MinSpeedKnots = std::min(R.MinSpeedKnots, Knots10);
 			const double Twa = Boat.GetTelemetry().TrueWindAngle / kDegToRad;
 			Settled = Twa < -30.0 && Twa > -100.0 ? Settled + PhysicsDt : 0.0;
-			if (Settled >= 1.0) return T - Called - 1.0;
+			if (Settled >= 1.0) { R.Seconds = T - Called - 1.0; break; }
 		}
-		return -1.0;
+		R.SpeedBeforeKnots = BeforeN > 0 ? Before / BeforeN : 0.0;
+		return R;
 	}
 }

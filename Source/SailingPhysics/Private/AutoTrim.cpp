@@ -49,6 +49,7 @@ namespace Sailing
 		// (A dinghy sailor, dumping the sheet in the hand as she heels, keeps less of it out afterwards.)
 		const double Recover = (Heel < 0.0 ? std::min(-2.0, Heel * 3.0) : -2.0) * (Cfg.DinghyEasePerHeelDeg > 0.0 ? 4.0 : 1.0);
 		MainEase = Clamp(MainEase + (Excess > 0.0 ? Excess * EaseRate : Recover) * kDegToRad * Dt, 0.0, Cfg.TrimMaxEaseDeg * kDegToRad);
+		if (bHoldMain) MainEase = 0.0;
 
 		const double TwsKnots = T.TrueWindSpeed / kKnot;
 		const double Flatten = Clamp((TwsKnots - Set.FlattenFromKnots) / Set.FlattenRangeKnots, 0.0, 1.0);
@@ -82,7 +83,8 @@ namespace Sailing
 			PuffEase = PuffEaseDeg * Puff * Leeward * kDegToRad;
 			Dump += PuffEase;
 		}
-		const bool bOverpowered = bDinghy && (Excess > -3.0 || PuffEase > kDegToRad);
+		if (bHoldMain) Dump = 0.0;
+		const bool bOverpowered = !bHoldMain && bDinghy && (Excess > -3.0 || PuffEase > kDegToRad);
 		// After a dump she trims back on smoothly, not in step with the roll (sheet and body pumping together rock her over).
 		constexpr double TrimInRate = 0.25;
 		if (Set.bTrimMain && T.NumMainStrips > 0)
@@ -90,7 +92,7 @@ namespace Sailing
 			const double Foot = FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide) + MainEase + Dump;
 			// Traveler carries the boom toward the centerline upwind; the sheet does the rest.
 			const double Range = Cfg.TravelerRangeDeg * kDegToRad;
-			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0);
+			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0); // MainEase is 0 while bHoldMain
 			const double Sheet = Clamp((Foot - Clamp(Traveler, -1.0, 1.0) * Range) / (Cfg.MainMaxEaseDeg * kDegToRad), 0.0, 1.0);
 			Out.Traveler = MoveToward(Current.Traveler, Clamp(Traveler, -1.0, 1.0), Rate * 2.0);
 			if (Windward > 0.0) Out.MainSheet = MoveToward(Current.MainSheet, std::min(Sheet, Current.MainSheet), Cfg.DinghySheetRate * Dt);
@@ -148,8 +150,32 @@ namespace Sailing
 	double FAutopilot::Update(const FBoatModel& Boat) const
 	{
 		const FBoatTelemetry& T = Boat.GetTelemetry();
+		double Target = TargetTWADeg;
+		const double Now = Boat.GetState().Time;
+		const double Since = LastTime >= 0.0 ? Clamp(Now - LastTime, 0.0, 1.0) : 0.0;
+		LastTime = Now;
+		const bool bTackAsked = bTimeTacks && TargetTWADeg * T.TrueWindAngle < 0.0 && std::fabs(TargetTWADeg) < 90.0
+			&& std::fabs(T.TrueWindAngle) < 90.0 * kDegToRad;
+		if (!bTackAsked)
+		{
+			TackAskedAt = -1.0;
+			bTackGo = false;
+			if (std::fabs(T.TrueWindAngle) < 70.0 * kDegToRad && T.ForwardSpeed > 0.0)
+				UpwindSpeed = UpwindSpeed < 0.0 ? T.ForwardSpeed : UpwindSpeed + (T.ForwardSpeed - UpwindSpeed) * std::min(Since / 20.0, 1.0);
+		}
+		else if (!bTackGo)
+		{
+			if (TackAskedAt < 0.0) TackAskedAt = Now;
+			const FWaveField* Waves = Boat.GetWaves();
+			const Vec3 P = Boat.GetState().Position;
+			const bool bSea = Waves && !Waves->GetParams().bCalibrationSea && Waves->SignificantHeightAt(P.X, P.Y) >= 0.5;
+			const double Along = T.WaveSlopeSurge / std::max(Boat.TotalMass() * kGravity, 1.0);
+			const bool bReady = Along < 0.0 && T.ForwardSpeed >= TackSpeedShare * std::max(UpwindSpeed, 0.0);
+			if (!bSea || bReady || Now - TackAskedAt >= Waves->MeanPeriod()) bTackGo = true;
+			else Target = -TargetTWADeg; // the old tack's angle until then
+		}
 		// Heading error: to raise the TWA on starboard tack (wind from +Y side), turn the bow away (to port).
-		const double Error = WrapAngle(T.TrueWindAngle - TargetTWADeg * kDegToRad);
+		const double Error = WrapAngle(T.TrueWindAngle - Target * kDegToRad);
 		const double YawRate = Boat.GetState().AngularVelocity.Z;
 		// A good helmsman keeps the rudder a little short of its stall angle.
 		const FBoatConfig& Cfg = Boat.GetConfig();

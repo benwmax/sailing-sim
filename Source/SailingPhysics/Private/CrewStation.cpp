@@ -115,7 +115,9 @@ namespace Sailing
 		PlayerGrindM = 0.0;
 		TackPhase = 0;
 		TackTime = 0.0;
+		bHoldMain = false;
 		CrewTrim.Reset();
+		CrewTrim.bHoldMain = false;
 		// A boat just reset has no telemetry yet: the crew's course and the wind side wait for the first real angle.
 		bCourseSet = false;
 		WindSide = 0;
@@ -180,6 +182,14 @@ namespace Sailing
 		}
 	}
 
+	void FStationControls::CallTack()
+	{
+		if (bHoldMain) return;
+		bHoldMain = true;
+		HoldFromSide = WindSide;
+		HoldTime = HoldSettled = 0.0;
+	}
+
 	void FStationControls::TackHelp(const FBoatModel& Boat, FBoatControls& C)
 	{
 		// The crew's heavy-air tack while the player steers (the J/22 will not tack on the helm alone in 25 kn): as the
@@ -211,6 +221,18 @@ namespace Sailing
 			CrewHelm.TargetTWADeg = std::fabs(CrewHelm.TargetTWADeg) * WindSide;
 			if (TackPhase == 1) { TackPhase = 2; TackTime = 0.0; }
 		}
+
+		// Ready about: the player at the wheel puts it hard over to windward, close-hauled or close to it, and the main is held
+		// until she has settled on the new tack, or bears away again on the old one, or 40 s have passed (a hung tack).
+		if (Station == ECrewStation::Helm && bCourseSet && std::fabs(Twa) < 70.0 && Controls.Tiller * WindSide > 0.5) CallTack();
+		if (bHoldMain)
+		{
+			HoldTime += Dt;
+			const double OnNew = -Twa * HoldFromSide;
+			HoldSettled = OnNew > 30.0 && OnNew < 100.0 ? HoldSettled + Dt : 0.0;
+			if (HoldSettled >= 1.0 || HoldTime > 40.0 || (HoldTime > 5.0 && Twa * HoldFromSide > 70.0)) bHoldMain = false;
+		}
+		CrewTrim.bHoldMain = bHoldMain;
 
 		// The crew: everything the player is not holding, from where it is now.
 		Crew = Merge(Station, Controls, Crew);

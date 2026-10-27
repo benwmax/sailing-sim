@@ -241,9 +241,9 @@ namespace PrologueTestsLocal
 				}
 				else if (Id == "ready-about")
 				{
-					if (!bTacking) { Side = -Side; bTacking = true; }
+					if (!bTacking) { Side = -Side; bTacking = true; Stations.CallTack(); }
 					Hand.TargetTWADeg = 45.0 * Side;
-					Hand.MaxTiller = 0.8;
+					Hand.MaxTiller = 0.6; // hard, short of an over-stall (RunGaleTackDetail, docs/gale-tack/)
 					Hand.bKeepShortOfStall = false;
 				}
 				else if (Id == "grind") Hands.Grind = 1.0;
@@ -691,8 +691,8 @@ namespace PrologueTestsLocal
 		Sails.Reef = On.Reefs;
 		Stations.Reset(Boat, Sails, ECrewStation::JibTrimmer);
 		FAutopilot Hand;
-		Hand.TargetTWADeg = -45.0;
-		Hand.MaxTiller = 0.8;
+		Hand.TargetTWADeg = 45.0; // the tack she is on until the call (RunGaleTackDetail's helm)
+		Hand.MaxTiller = 0.6;
 		Hand.bKeepShortOfStall = false;
 		const double Called = 60.0 + 7.0 * Seed;
 		double T = 0.0, Settled = 0.0;
@@ -700,8 +700,9 @@ namespace PrologueTestsLocal
 		{
 			Gale.Update(T, Boat, nullptr);
 			FStationInput In;
-			if (T >= Called && Stations.GetStation() != ECrewStation::Helm) Stations.MoveTo(Boat, ECrewStation::Helm);
-			if (T >= Called) In.Wheel = FMath::Clamp((Hand.Update(Boat) - Stations.GetControls().Tiller) * 8.0, -1.0, 1.0);
+			if (T >= Called && Stations.GetStation() != ECrewStation::Helm) { Stations.MoveTo(Boat, ECrewStation::Helm); Stations.CallTack(); Hand.TargetTWADeg = -45.0; }
+			const double Wheel = Hand.Update(Boat);
+			if (T >= Called) In.Wheel = FMath::Clamp((Wheel - Stations.GetControls().Tiller) * 8.0, -1.0, 1.0);
 			Boat.Step(PhysicsDt, Stations.Step(Boat, In, PhysicsDt), Gale.Wind, Gale.Sea());
 			if (T < Called) continue;
 			const double Twa = Boat.GetTelemetry().TrueWindAngle / kDegToRad;

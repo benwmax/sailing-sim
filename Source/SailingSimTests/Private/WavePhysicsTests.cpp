@@ -97,7 +97,11 @@ bool FSailingWaveAddedResistanceScalingTest::RunTest(const FString&)
 
 /**
  * The prologue's gale (step 4: the mistral, Hs 3.5 m at 7 s on the Gulf stand-in, 32 kn, two reefs, the scene's limits):
- * the maxi tacks on the wheel (SailingSim.Prologue.Gale's helm) at least 5 times in 6, and beats 1 to 10% slower than on
+ * the maxi tacks on the wheel the way a crew does it (docs/gale-tack/: the main held in from the call, the helm waiting for a
+ * back with way on). A 100 ft maxi tacks in 3.5 m seas inside about 25 s and carries 40% of her speed or more through it:
+ * all 12 tacks (seeds 1-6, sea and flat water) go through inside 30 s, 11 of 12 inside 25 s, and 10 of 12 keep 40%; the
+ * rest are listed (flat seed 5: the wind veers 25 deg in a 44 kn gust as she is head to wind, 25.0 s at 11%). She beats
+ * 1 to 10% slower than on
  * flat water (before docs/wave-physics/ she made 5.8 kn against 12.3 and tacked 0 of 36). The band is ORC's (docs/surfing/):
  * her coefficient from ORC's length scaling, over this 7 s sea's spectrum, costs her 3.0% alone (1.4 to 3.6% across its log
  * reading); she loses 4% with the slope push and orbital flow (9% before the flow, which carried a false creep downwave).
@@ -107,18 +111,28 @@ bool FSailingGaleTackTest::RunTest(const FString&)
 {
 	FBoatConfig Maxi = FBoatConfig::Make(EBoatType::Maxi);
 	FSceneLimits::For(true).ApplyTo(Maxi);
-	int32 InSea = 0, Flat = 0;
-	TArray<FString> Times;
+	int32 Through = 0, Quick = 0, Carried = 0;
+	TArray<FString> Times, Rest;
 	for (uint32 Seed = 1; Seed <= 6; ++Seed)
 	{
-		const double W = RunGaleTack(Maxi, 2, Seed, true), F = RunGaleTack(Maxi, 2, Seed, false);
-		InSea += W > 0.0;
-		Flat += F > 0.0;
-		Times.Add(FString::Printf(TEXT("%.1f/%.1f"), W, F));
+		for (const bool bSea : { true, false })
+		{
+			const FGaleTackResult R = RunGaleTackDetail(Maxi, 2, Seed, bSea);
+			const double Share = R.MinSpeedKnots / FMath::Max(R.SpeedBeforeKnots, 1e-3);
+			const FString What = FString::Printf(TEXT("%s seed %u: %.1f s, slowest %.2f of %.2f kn (%.0f%%)"), bSea ? TEXT("sea") : TEXT("flat"), Seed,
+				R.Seconds, R.MinSpeedKnots, R.SpeedBeforeKnots, 100.0 * Share);
+			Times.Add(What);
+			Through += R.Seconds > 0.0 && R.Seconds < 30.0;
+			Quick += R.Seconds > 0.0 && R.Seconds < 25.0;
+			Carried += Share >= 0.4;
+			if (!(R.Seconds > 0.0 && R.Seconds < 25.0) || Share < 0.4) Rest.Add(What);
+		}
 	}
-	AddInfo(FString::Printf(TEXT("Tacks in the gale, seconds in the sea / on flat water (-1: not through in 90 s): %s"), *FString::Join(Times, TEXT(", "))));
-	TestTrue(FString::Printf(TEXT("She tacks in the gale's sea (%d of 6)"), InSea), InSea >= 5);
-	TestTrue(FString::Printf(TEXT("... and on flat water (%d of 6)"), Flat), Flat == 6);
+	AddInfo(FString::Printf(TEXT("Tacks in the gale (-1: not through in 90 s): %s"), *FString::Join(Times, TEXT("; "))));
+	AddInfo(FString::Printf(TEXT("Under 25 s or 40%%: %s"), Rest.Num() ? *FString::Join(Rest, TEXT("; ")) : TEXT("none missed")));
+	TestTrue(FString::Printf(TEXT("All 12 tacks go through inside 30 s (%d)"), Through), Through == 12);
+	TestTrue(FString::Printf(TEXT("... 11 of 12 inside 25 s (%d)"), Quick), Quick >= 11);
+	TestTrue(FString::Printf(TEXT("... and 10 of 12 keep 40%% of her speed (%d)"), Carried), Carried >= 10);
 	const FSeaRunResult Sea = RunInSea(Maxi, FTrialSeaSpec::Gale(1), 50.0, 2, false, 30.0, 120.0);
 	const FSeaRunResult Calm = RunInSea(Maxi, FTrialSeaSpec::Gale(1, 32.0, false), 50.0, 2, false, 30.0, 120.0);
 	const double Loss = 1.0 - Sea.MeanKnots / Calm.MeanKnots;
