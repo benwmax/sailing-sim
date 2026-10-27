@@ -66,6 +66,8 @@ namespace Sailing
 		 * cascade's surface field decays as exp(-k Depth) at its velocity-weighted mean wavenumber (deep water).
 		 */
 		void OrbitalVelocity(double X, double Y, double T, double Depth, double& OutU, double& OutV) const;
+		/** docs/foil-inertia/: the same flow's horizontal acceleration (m/s^2): the slope of its 30 Hz blend in time. */
+		void OrbitalAcceleration(double X, double Y, double T, double Depth, double& OutAx, double& OutAy) const;
 		/** The grids of one cascade at a time (for the renderer). */
 		const FGrid& Evaluate(int Cascade, double T) const;
 

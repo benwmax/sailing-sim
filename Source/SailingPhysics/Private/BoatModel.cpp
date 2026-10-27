@@ -585,9 +585,10 @@ namespace Sailing
 			const Vec3 P = Origin + State.Orientation.Rotate(Vec3(OrbitalX[S], 0.0, 0.0));
 			for (int D = 0; D < 2; ++D)
 			{
-				double U, V;
-				Waves->OrbitalVelocity(P.X, P.Y, State.Time, OrbitalDepth[D], U, V);
+				double U, V, Ax, Ay;
+				Waves->OrbitalFlow(P.X, P.Y, State.Time, OrbitalDepth[D], U, V, Ax, Ay);
 				OrbitalFlow[S][D] = Vec3(U, V, 0.0) * C.WaveOrbitalFlowScale;
+				OrbitalAccel[S][D] = Vec3(Ax, Ay, 0.0);
 			}
 		}
 	}
@@ -599,6 +600,16 @@ namespace Sailing
 		const double B = Clamp((-BodyPoint.Z - OrbitalDepth[0]) / std::max(OrbitalDepth[1] - OrbitalDepth[0], 1e-3), 0.0, 1.0);
 		const Vec3 Shallow = OrbitalFlow[0][0] * (1.0 - A) + OrbitalFlow[1][0] * A;
 		const Vec3 Deep = OrbitalFlow[0][1] * (1.0 - A) + OrbitalFlow[1][1] * A;
+		return Shallow * (1.0 - B) + Deep * B;
+	}
+
+	Vec3 FBoatModel::OrbitalAccelerationAt(const Vec3& BodyPoint) const
+	{
+		if (!bOrbitalFlow) return Vec3();
+		const double A = Clamp((BodyPoint.X - OrbitalX[0]) / std::max(OrbitalX[1] - OrbitalX[0], 1e-3), 0.0, 1.0);
+		const double B = Clamp((-BodyPoint.Z - OrbitalDepth[0]) / std::max(OrbitalDepth[1] - OrbitalDepth[0], 1e-3), 0.0, 1.0);
+		const Vec3 Shallow = OrbitalAccel[0][0] * (1.0 - A) + OrbitalAccel[1][0] * A;
+		const Vec3 Deep = OrbitalAccel[0][1] * (1.0 - A) + OrbitalAccel[1][1] * A;
 		return Shallow * (1.0 - B) + Deep * B;
 	}
 
@@ -632,7 +643,7 @@ namespace Sailing
 		double HullVolume[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 		if (ColumnMeanVolume.size() != Columns.size()) { ColumnMeanVolume.assign(Columns.size(), 0.0); bColumnMeanFresh = true; }
 		ColumnWater.resize(Columns.size());
-		double SlopeSurge = 0.0, CalmDrag = 0.0, WaveDrag = 0.0; // telemetry (docs/wave-physics/)
+		double SlopeSurge = 0.0, CalmDrag = 0.0, WaveDrag = 0.0, WaveFoilSurge = 0.0; // telemetry (docs/wave-physics/, docs/foil-inertia/)
 		const Vec3 Axis = Q.Up();
 		const bool bUpright = Axis.Z >= 0.0;
 		// First the water at each column's low end (the bottom when upright, the deck when inverted), and per hull the
@@ -724,6 +735,17 @@ namespace Sailing
 			const Vec3 P = Origin + Q.Rotate(C.AppendageCentre);
 			const double Wet = AppendageWet(P.Z - WaterAt(P));
 			if (Wet > 0.0) AddWorldForce(Vec3(0.0, 0.0, kWaterDensity * kGravity * C.AppendageVolume * Wet), P);
+			if (Wet > 0.0 && bOrbitalFlow && C.WaveFoilInertiaScale != 0.0)
+			{
+				// docs/foil-inertia/: the bulb in the waves' acceleration: rho V (1 + Ca) a across it, Ca 0.86 for a prolate
+				// spheroid four times as long as it is wide moving sideways (Lamb's k2; Newman, Marine Hydrodynamics, table 4.3),
+				// rho V (1 + 0.08) along it (k1).
+				const Vec3 Accel = Q.Unrotate(OrbitalAccelerationAt(C.AppendageCentre));
+				const double Scale = kWaterDensity * C.AppendageVolume * Wet * C.WaveFoilInertiaScale;
+				const Vec3 WaveForce(Scale * 1.08 * Accel.X, Scale * 1.86 * Accel.Y, 0.0);
+				WaveFoilSurge += WaveForce.X;
+				AddBodyForce(WaveForce, C.AppendageCentre);
+			}
 		}
 
 		// Crew: the CG assumes them on the centerline; moving them out (or onto the board) adds a gravity moment.
@@ -924,6 +946,24 @@ namespace Sailing
 					}
 					const double Wet = Immersion(P);
 					if (Wet <= 0.0) continue;
+					if (bOrbitalFlow && C.WaveFoilInertiaScale != 0.0)
+					{
+						// docs/foil-inertia/: the waves' inertia on the foil (Morison's inertia term). The water accelerating past
+						// a fin pushes it with rho (V + Ca V_R) a: its own displaced volume (Froude-Krylov) and the water it carries
+						// with it (diffraction). A fin is a flat plate across the flow: Ca = 1 on V_R = pi (c/2)^2 span (DNV-RP-C205
+						// table A-1, a flat plate's added mass per length rho pi a^2 with a the half chord; Newman, Marine
+						// Hydrodynamics, 4.13). Along the chord it has no added mass, only its volume: a NACA section of t/c 0.12
+						// holds 0.68 t c per length. The other half of Morison's term, the added mass the fin drags when it moves
+						// itself, is already in the boat's sway and yaw (FBoatConfig::AddedMassRatio, AddedInertiaRatio).
+						const double Span = P.Area / std::max(P.Chord, 1e-3);
+						const double Volume = 0.68 * 0.12 * P.Chord * P.Chord * Span;
+						const double Carried = 1.0 * kPi * 0.25 * P.Chord * P.Chord * Span;
+						const Vec3 Accel = Q.Unrotate(OrbitalAccelerationAt(P.Center));
+						const double Scale = kWaterDensity * Wet * C.WaveFoilInertiaScale;
+						const Vec3 WaveForce(Scale * Volume * Accel.X, Scale * (Volume + Carried) * Accel.Y, 0.0);
+						WaveFoilSurge += WaveForce.X;
+						AddBodyForce(WaveForce, P.Center);
+					}
 					const double Vent = 1.0 - F.VentDepth * SmoothStep(F.VentStartDeg * kDegToRad, F.VentEndDeg * kDegToRad, HeelAbs);
 					Vec3 Flow = -Q.Unrotate(PointVelocityThroughWater(P.Center));
 					FFoilResult R;
@@ -1191,6 +1231,7 @@ namespace Sailing
 		T.CalmResistance = CalmDrag;
 		T.WaveResistance = WaveDrag;
 		T.WaveSlopeSurge = SlopeSurge;
+		T.WaveFoilSurge = WaveFoilSurge;
 		bool bAnyPlaning = false;
 		for (const FHullShape& Hull : C.Hulls) bAnyPlaning |= Hull.PlaningLift > 0.0;
 		T.bPlaning = (bAnyPlaning || C.bMultihull) && MaxFroude > 0.65 && HeelAbs < 40.0 * kDegToRad;

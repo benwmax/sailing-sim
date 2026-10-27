@@ -424,7 +424,13 @@ namespace Sailing
 
 	void FWaveField::OrbitalVelocity(double X, double Y, double T, double Below, double& OutU, double& OutV) const
 	{
-		OutU = OutV = 0.0;
+		double Ax, Ay;
+		OrbitalFlow(X, Y, T, Below, OutU, OutV, Ax, Ay);
+	}
+
+	void FWaveField::OrbitalFlow(double X, double Y, double T, double Below, double& OutU, double& OutV, double& OutAx, double& OutAy) const
+	{
+		OutU = OutV = OutAx = OutAy = 0.0;
 		const double D = std::max(Below, 0.0);
 		float Ratio[kSeaChannels];
 		SeaRatiosAt(X, Y, Ratio);
@@ -437,17 +443,24 @@ namespace Sailing
 			// Finite depth: cosh(k (h - d)) / sinh(k h); deep (kh past 6, where the two agree to 1e-5) exp(-k d).
 			const double KH = K * Depth;
 			const double Profile = (Depth > 0.0 && KH < 6.0) ? std::cosh(K * std::max(Depth - D, 0.0)) / std::sinh(KH) : std::exp(-K * D);
-			const double A = C.Amplitude * Ratio[std::min(I, kSeaLongComponents)] * C.Omega * Profile
-				* std::sin(C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase) / K;
+			const double Arg = C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase;
+			const double Along = C.Amplitude * Ratio[std::min(I, kSeaLongComponents)] * C.Omega * Profile / K;
+			const double A = Along * std::sin(Arg);
+			const double Acc = -Along * C.Omega * std::cos(Arg);
 			OutU += A * C.Kx;
 			OutV += A * C.Ky;
+			OutAx += Acc * C.Kx;
+			OutAy += Acc * C.Ky;
 		}
 		if (Ocean)
 		{
-			double U, V;
+			double U, V, Ax, Ay;
 			Ocean->OrbitalVelocity(X, Y, T, D, U, V);
+			Ocean->OrbitalAcceleration(X, Y, T, D, Ax, Ay);
 			OutU += U;
 			OutV += V;
+			OutAx += Ax;
+			OutAy += Ay;
 		}
 	}
 

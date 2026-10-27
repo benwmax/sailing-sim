@@ -384,6 +384,23 @@ namespace Sailing
 		OutSlopeY *= M;
 	}
 
+	void FOcean::OrbitalAcceleration(double X, double Y, double T, double Depth, double& OutAx, double& OutAy) const
+	{
+		OutAx = OutAy = 0.0;
+		const double M = MaskAt(X, Y);
+		if (M <= 0.0) return;
+		const double T0 = std::floor(T * GridRate) / GridRate;
+		for (int C = 0; C < NumCascades; ++C)
+		{
+			const FGrid& A = Evaluate(C, T0);
+			const FGrid& B = Evaluate(C, T0 + 1.0 / GridRate);
+			const double Cell = Tile[C] / N, U = X / Cell, V = Y / Cell;
+			const double Scale = GridRate * M * std::exp(-VelocityK[C] * std::max(Depth, 0.0));
+			OutAx += Scale * (Bilinear(B.U, U, V) - Bilinear(A.U, U, V));
+			OutAy += Scale * (Bilinear(B.V, U, V) - Bilinear(A.V, U, V));
+		}
+	}
+
 	void FOcean::OrbitalVelocity(double X, double Y, double T, double Depth, double& OutU, double& OutV) const
 	{
 		OutU = OutV = 0.0;

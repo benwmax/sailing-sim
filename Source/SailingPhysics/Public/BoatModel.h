@@ -193,6 +193,9 @@ namespace Sailing
 		// docs/surfing/: the waves' orbital velocity as a flow past the hull, keels and rudders (1 is the physics, 0 the
 		// still water they met before, for comparisons). Never in the calibration sea (FWaveParams::bCalibrationSea).
 		double WaveOrbitalFlowScale = 1.0;
+		// docs/foil-inertia/: the waves' inertia on the keels and rudders (Morison's inertia term on the water's own
+		// acceleration; 1 is the physics, 0 leaves it out for comparisons). Never in the calibration sea, as the flow.
+		double WaveFoilInertiaScale = 1.0;
 
 		// Foils: keels, boards and rudders. Rudders are linked to one tiller (or wheel).
 		std::vector<FFoilDef> Foils;
@@ -341,6 +344,7 @@ namespace Sailing
 		double CalmResistance = 0.0;
 		double WaveResistance = 0.0;
 		double WaveSlopeSurge = 0.0;
+		double WaveFoilSurge = 0.0;  // N along the bow: the waves' inertia on the foils and bulb (docs/foil-inertia/)
 		bool IsStarboardTack() const { return TrueWindAngle > 0.0; }
 
 		FSailStripState MainStrips[kMaxSailStrips];
@@ -435,6 +439,8 @@ namespace Sailing
 		 */
 		void SampleOrbitalFlow(const FWaveField* Waves);
 		Vec3 OrbitalFlowAt(const Vec3& BodyPoint) const;
+		/** The flow's acceleration (world XY, m/s^2) at a body point, from the same samples. */
+		Vec3 OrbitalAccelerationAt(const Vec3& BodyPoint) const;
 		double ResistanceCoefficient(double Froude) const;
 		void BuildContactPoints();
 
@@ -466,6 +472,7 @@ namespace Sailing
 		bool bOrbitalFlow = false;
 		double OrbitalX[2] = {}, OrbitalDepth[2] = {}; // body x of the stations (aft, fore) and the sample depths (m)
 		Vec3 OrbitalFlow[2][2];                        // [station][depth], world XY
+		Vec3 OrbitalAccel[2][2];                       // the same samples' acceleration
 		std::vector<FMooringLine> Mooring;
 	};
 }
