@@ -54,7 +54,10 @@ Layout (1440x1080 reference, scale with the existing safe-zone rules):
   the certificate that opens them; the showroom still shows a locked boat (racing games let you look at cars you can't
   drive yet), but Choose and Next are disabled on it with the reason shown.
 - Backdrop: replace the left-heavy gradient on this screen with soft vignettes top and bottom only and a light one on
-  the left, so the boat stays bright.
+  the left, so the boat stays bright. Bean (Oct 27): the left fade behind the panel must not stretch into the boat's
+  side of the screen. It ends at the left column's right edge (about 460 px at 1440 wide, scale with width) and never
+  reaches the middle column. Same on the Conditions screen: any fade stops at the panel's edge, the world to its right
+  stays clear.
 - View mode (artboard 2): V or the gamepad View button hides every panel, leaving the boat name and the control hints;
   orbit and zoom work the same. Any of V, View, Esc or B brings the panels back.
 
