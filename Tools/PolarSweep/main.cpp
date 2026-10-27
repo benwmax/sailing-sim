@@ -35,11 +35,13 @@ int main(int Argc, char** Argv)
 		Argv += 2;
 		Argc -= 2;
 	}
-	// --ar <coef> and --surf <scale> override the boat's added resistance and wave slope push (calibration runs).
+	// --ar <coef>, --surf <scale> and --flow <scale> override the boat's added resistance, wave slope push and orbital flow
+	// (calibration runs).
 	FBoatConfig Config = FBoatConfig::Make(Type);
-	while (Argc > 2 && (std::strcmp(Argv[1], "--ar") == 0 || std::strcmp(Argv[1], "--surf") == 0))
+	while (Argc > 2 && (std::strcmp(Argv[1], "--ar") == 0 || std::strcmp(Argv[1], "--surf") == 0 || std::strcmp(Argv[1], "--flow") == 0))
 	{
-		(std::strcmp(Argv[1], "--ar") == 0 ? Config.AddedResistanceCoef : Config.WaveSlopeForceScale) = std::atof(Argv[2]);
+		(std::strcmp(Argv[1], "--ar") == 0 ? Config.AddedResistanceCoef
+			: std::strcmp(Argv[1], "--surf") == 0 ? Config.WaveSlopeForceScale : Config.WaveOrbitalFlowScale) = std::atof(Argv[2]);
 		Argv += 2;
 		Argc -= 2;
 	}

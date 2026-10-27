@@ -624,7 +624,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   her ends). `FAutopilot` reverses the helm from 0.3 m/s of sternway. `SeaTrials.h` (`RunInSea`, `RunGaleTack`) and
   `scripts/polar.sh [--boat b] [--ar c] [--surf s] --sea [gale | checks | orc <hs> <tws> | at <tws> <twa>]` (loads
   `Wind.mann` as the module does). Telemetry: `CalmResistance`, `WaveResistance`, `WaveSlopeSurge`. Surfing (`docs/surfing/`):
-  the hull, keels and rudders meet the waves' orbital flow (`FWaveField::OrbitalVelocity`, the ocean's `U`/`V` grids;
+  the orbital flow is on the hull, keel and rudder, off in the calibration sea (the "keels and rudders still meet still
+  water" gap is closed): they meet it (`FWaveField::OrbitalVelocity`, the ocean's `U`/`V` grids;
   `FBoatModel::OrbitalFlowAt` from bow and stern samples at two depths; `WaveOrbitalFlowScale`, never in the calibration
   sea); `scripts/polar.sh --sea surf` gives speed by wave phase with and without it. Wave inertia on the foils: a known gap.
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and

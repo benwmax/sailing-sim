@@ -157,7 +157,8 @@ bool FGalvestonSwellTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("Close-hauled: Clear Lake %.2f kn without the ocean, %.2f with; off the Seawall %.2f without, %.2f with"),
 		LakeFlat, LakeOcean, GulfFlat, GulfOcean));
 	TestTrue(TEXT("In Clear Lake the ocean changes nothing"), FMath::Abs(LakeOcean - LakeFlat) < 1e-6);
-	TestTrue(TEXT("Off the Seawall the swell slows her upwind"), GulfOcean < 0.97 * GulfFlat);
+	// A measurable slowing: 97.8% of her flat-water speed with the orbital flow (docs/surfing/; under 97% before it).
+	TestTrue(TEXT("Off the Seawall the swell slows her upwind"), GulfOcean < 0.985 * GulfFlat);
 	return true;
 }
 

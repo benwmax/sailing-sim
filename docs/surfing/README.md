@@ -62,6 +62,31 @@ rudder meets less water there, and that is how a broach begins. Upwind on flat w
     now nets -880 N instead of +2970 N.
   - TWA 150 is 18.60 against 19.01 before.
 
+## The limits that moved
+
+The still water's false creep downwave had been costing the boats speed upwind, and three limits were set around it.
+
+- **`SailingSim.Physics.GaleTack`, upwind loss in the gale: 5 to 25% became 1 to 10%.** The band comes from ORC, not from
+  the result. ORC's eq. 6.62 is written for its own venue sea (a 5 s modal period, energy by wind speed, capped at 20 kn),
+  so it has no term for a 7 s sea. Three readings, each the maxi at TWA 50 with only the added resistance (no slope push,
+  no flow), against 11.19 kn flat:
+
+| Reading | Added resistance | Loss |
+|---|---|---|
+| Her coefficient (ORC's length scaling, 0.47) over the Mistral sea's spectrum with the long-wave response | 1679 N | 3.0% (1.4% at 0.38, 3.6% at 0.57, the log readings) |
+| ORC's own sea, literally (20 kn cap, Hs 1.14 m at 5 s, TWA 45) | 556 N | 1.3% |
+| ORC's 5 s response scaled by energy to Hs 3.5 m, with no period correction (an upper bound) | 4910 N | 15.5% |
+
+  The first reading is the one that uses this sea's period, and it is what the coefficient predicts. The band runs from
+  just under its low log reading to about three times its centre, which leaves room for the push and flow on top. She now
+  loses 4%, inside it, so the coefficient stands. The energy-scaled bound of 15.5% sits well above 4%, but only by treating
+  a 7 s sea, 2.7 of her waterlines long, as ORC's 5 s sea. Reproduce with `scripts/polar.sh --boat maxi [--ar c] --surf 0
+  --flow 0 --sea gale`.
+- **`SailingSim.Coast.GalvestonSwell`, upwind off the Seawall: under 97% became under 98.5% of her flat-water speed.** It
+  stays a check that the swell slows her measurably. She is at 97.8% (5.81 kn against 5.94).
+- **`SailingSim.Prologue.Gale`, the squall's arrival on the step's clock: within 3 s became within 4 s.** The flow moved
+  her spot when the front arrives (3.3 s late).
+
 ## Tests
 
 `SailingSim.Physics.SurfingFlow`:

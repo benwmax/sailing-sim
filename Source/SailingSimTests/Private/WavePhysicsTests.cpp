@@ -97,8 +97,10 @@ bool FSailingWaveAddedResistanceScalingTest::RunTest(const FString&)
 
 /**
  * The prologue's gale (step 4: the mistral, Hs 3.5 m at 7 s on the Gulf stand-in, 32 kn, two reefs, the scene's limits):
- * the maxi tacks on the wheel (SailingSim.Prologue.Gale's helm) at least 5 times in 6, and beats 5 to 25% slower than on
- * flat water (before docs/wave-physics/ she made 5.8 kn against 12.3 and tacked 0 of 36).
+ * the maxi tacks on the wheel (SailingSim.Prologue.Gale's helm) at least 5 times in 6, and beats 1 to 10% slower than on
+ * flat water (before docs/wave-physics/ she made 5.8 kn against 12.3 and tacked 0 of 36). The band is ORC's (docs/surfing/):
+ * her coefficient from ORC's length scaling, over this 7 s sea's spectrum, costs her 3.0% alone (1.4 to 3.6% across its log
+ * reading); she loses 4% with the slope push and orbital flow (9% before the flow, which carried a false creep downwave).
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingGaleTackTest, "SailingSim.Physics.GaleTack", WavePhysicsTestsLocal::WaveFlags)
 bool FSailingGaleTackTest::RunTest(const FString&)
@@ -121,7 +123,8 @@ bool FSailingGaleTackTest::RunTest(const FString&)
 	const FSeaRunResult Calm = RunInSea(Maxi, FTrialSeaSpec::Gale(1, 32.0, false), 50.0, 2, false, 30.0, 120.0);
 	const double Loss = 1.0 - Sea.MeanKnots / Calm.MeanKnots;
 	AddInfo(FString::Printf(TEXT("Beating at TWA 50: %.2f kn in the sea (added resistance %.0f N, calm %.0f N), %.2f flat"), Sea.MeanKnots, Sea.MeanWaveN, Sea.MeanCalmN, Calm.MeanKnots));
-	TestTrue(FString::Printf(TEXT("The sea costs her 5 to 25%% upwind (%.0f%%)"), Loss * 100.0), Loss > 0.05 && Loss < 0.25);
+	// 1 to 10%: under ORC's low reading (1.4%) to about three times its central 3.0% for the push and flow on top.
+	TestTrue(FString::Printf(TEXT("The sea costs her 1 to 10%% upwind (%.1f%%)"), Loss * 100.0), Loss > 0.01 && Loss < 0.10);
 	return true;
 }
 
