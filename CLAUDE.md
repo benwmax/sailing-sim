@@ -455,7 +455,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   steepened by (U / 18 kn)^0.43 above 18 kn to follow the SWAN bake (`GrowthStressWind`, `docs/physics-gaps/`);
   the lake's sea grows on `FLakeTerrain::EffectiveFetch` (Saville, nine rays over +/-45 deg; cached in the game mode).
   Polar, scenario and reference runs set `FWaveParams::bCalibrationSea` (the old law in U, the sea the fleet was
-  calibrated in). `FShelterMap` builds the open-water speed-up and `GustAt` (gusts easing with fetch, W6's LES) from
+  calibrated in). On a short fetch the period follows the Ray Hubbard SWAN bake (`FWaveField::ShortFetchPeriodFactor`,
+  `docs/lake-periods/`). `FShelterMap` builds the open-water speed-up and `GustAt` (gusts easing with fetch, W6's LES) from
   the same march; `FWindField::GustScaleAt` scales every fluctuation by it (1 without a map).
 - Sea state by direction (W3, `docs/water-3/`): `FSeaFetch` (`SeaState.h`) is Saville's effective fetch for 16 wave
   directions on a 50 m grid (100 m bay, 200 m Gulf) plus depth, marched at load (~50 ms); `FSeaMap` holds, for the mean
