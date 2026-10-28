@@ -5,6 +5,7 @@
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
+#include "Showroom.h"
 #include "SailSave.h"
 #include "SailingAudio.h"
 #include "SailingSim.h"
@@ -115,10 +116,13 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			}
 		}
 	}
-	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value))
+	// A world the menus loaded behind them (docs/showroom-world/) wins over the command line's.
+	const USailSessionSubsystem* MenuSession = USailSessionSubsystem::Get(this);
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value) && !(MenuSession && MenuSession->MenuResumeScreen >= 0))
 	{
 		Settings->World = WorldIndexFromName(Value);
 	}
+	LoadedWorld = Settings->World;
 	Lake.Load(FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
 	// World streaming: the tile index (a streamed world's heights arrive in StartStreaming, at the end of InitGame).
 	Streamer.Start(Lake, FLakeData::DefaultDirectory(), WorldFileName(Settings->World));
@@ -535,6 +539,9 @@ void ASailingGameMode::ApplyConditions(const FSailConditions& C)
 
 void ASailingGameMode::PreviewConditions(const FSailConditions& C)
 {
+	// The PC's Conditions screen re-previews at 5 Hz: the same conditions again cost nothing.
+	if (bPreviewing && SailShowroom::SameConditions(C, LastPreviewed)) return;
+	LastPreviewed = C;
 	if (!bPreviewing)
 	{
 		// What Back (or the gallery's close) goes back to: the weather's inputs as they are now.
@@ -624,10 +631,12 @@ void ASailingGameMode::ApplyWeatherSettings()
 	const double Shift = FWeatherSystem::StormFrontSpeed() * StormDelay;
 	// W5b: a real day replaces the preset (its storm, if any, reaches the start when it reached the lake).
 	double StartHour = Settings->StartHour;
-	RealDay.reset();
-	if (!RealDayDate.IsEmpty() && Settings->World == 0)
+	// The baked day is read once per date (the Conditions screen re-previews at 5 Hz).
+	if (RealDayDate.IsEmpty() || Settings->World != 0) { RealDay.reset(); RealDayLoaded.Reset(); }
+	else if (!RealDay || RealDayLoaded != RealDayDate)
 	{
 		RealDay = LoadRealDay(RealDayDate);
+		RealDayLoaded = RealDay ? RealDayDate : FString();
 		if (!RealDay) UE_LOG(LogSailing, Warning, TEXT("SailingDay: no baked day %s in Content/TerrainData/Weather"), *RealDayDate);
 	}
 	if (RealDay)

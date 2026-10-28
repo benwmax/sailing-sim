@@ -219,6 +219,7 @@ private:
 	bool bWorldHeld = false;
 	bool bPreviewLive = false;
 	bool bPreviewing = false;
+	int32 LoadedWorld = 0;
 	/** What a preview goes back to: the weather's inputs as they were (a session's or the front end's). */
 	struct FWeatherInputs
 	{
@@ -229,6 +230,7 @@ private:
 		FDateTime SessionDate;
 	};
 	FWeatherInputs PreviewRestore;
+	FSailConditions LastPreviewed;
 	void ApplyConditionsLocal(const struct FSailConditions& Conditions);
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;
@@ -238,6 +240,7 @@ private:
 	FString RealDayDate;
 	bool bRealDayHour = false;
 	std::shared_ptr<const Sailing::FWeatherDay> RealDay;
+	FString RealDayLoaded;   // the date RealDay was read for
 	// Graphics G4: the session's date (the clock's day); unset = today or -SailingDate.
 	FDateTime SessionDate;
 	bool bSessionDate = false;
@@ -263,6 +266,8 @@ public:
 	void PreviewConditions(const struct FSailConditions& Conditions);
 	void EndPreview(bool bKeep);
 	bool IsPreviewing() const { return bPreviewing; }
+	/** The world this map was loaded with (USailingSettings::World at InitGame). */
+	int32 GetLoadedWorld() const { return LoadedWorld; }
 private:
 
 	float BenchSeconds = 0.f;

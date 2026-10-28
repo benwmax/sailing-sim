@@ -1,5 +1,6 @@
 #include "UI/SailFrontEnd.h"
 #include "BenchRunner.h"
+#include "SailingSim.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
 #include "UI/SailHud.h"
@@ -334,12 +335,44 @@ ASailboatPawn* SSailFrontEnd::Pawn() const
 	return Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 }
 
+bool SSailFrontEnd::TravelsOnPush(ESailScreen From, ESailScreen To, bool bInGame, int32 PendingWorld, int32 LoadedWorld)
+{
+	return !bInGame && From == ESailScreen::World && To == ESailScreen::Launch && PendingWorld != LoadedWorld;
+}
+
 void SSailFrontEnd::Push(ESailScreen Screen)
 {
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
+	if (bTravelling) return;
+	const ASailingGameMode* GM = GameMode();
+	if (GM && TravelsOnPush(Current(), Screen, bMenusInGame, Pending.World, GM->GetLoadedWorld()))
+	{
+		TravelToWorld(Screen);
+		return;
+	}
 	Stack.Add(Build(Screen));
 	Show(Stack.Last(), true);
+}
+
+void SSailFrontEnd::TravelToWorld(ESailScreen Resume)
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	bTravelling = true;
+	const FString Name = SailCatalog::World(Pending.World).Name;
+	UE_LOG(LogSailing, Display, TEXT("Menus: loading %s behind them (world %d)"), *Name, Pending.World);
+	Body->SetContent(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+		[ SailUI::Text(FString::Printf(TEXT("Loading %s"), *Name), EType::ScreenTitle, Fg) ]);
+	Footer->SetContent(SNullWidget::NullWidget);
+	RegisterActiveTimer(0.15f, FWidgetActiveTimerDelegate::CreateLambda([this, Resume](double, float)
+	{
+		if (USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr)
+		{
+			Session->TravelBehindMenus(Pending, int32(Resume), Player.Get());
+		}
+		return EActiveTimerReturnType::Stop;
+	}));
 }
 
 void SSailFrontEnd::Pop()

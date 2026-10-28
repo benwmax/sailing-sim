@@ -10,6 +10,9 @@
 #include "SailingGameMode.h"
 #include "UI/SailFrontEnd.h"
 #include "WaterSurface.h"
+#include "SailSession.h"
+#include "SailingSettings.h"
+#include "Engine/GameInstance.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -219,6 +222,38 @@ bool FSailingShowroomLiveTest::RunTest(const FString&)
 	GM->SetWorldHeld(false);
 	TestFalse(TEXT("No preview: EndPreview does nothing"), GM->IsPreviewing());
 	GM->EndPreview(false);
+	return true;
+}
+
+
+// docs/showroom-world/: the picked world loads behind the menus. Leaving the World screen for Launch with another world
+// travels (not in game, not for the world already loaded); the session carries the choices and the screen to come back to,
+// and the settings' world and spot are the picked ones (nothing saved).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShowroomWorldTest, "SailingSim.UI.Showroom.WorldBehindMenus", ShowroomFlags)
+bool FSailingShowroomWorldTest::RunTest(const FString&)
+{
+	TestTrue(TEXT("World to Launch with another world travels"), SSailFrontEnd::TravelsOnPush(ESailScreen::World, ESailScreen::Launch, false, 1, 0));
+	TestFalse(TEXT("The world already loaded does not"), SSailFrontEnd::TravelsOnPush(ESailScreen::World, ESailScreen::Launch, false, 0, 0));
+	TestFalse(TEXT("Nor in game"), SSailFrontEnd::TravelsOnPush(ESailScreen::World, ESailScreen::Launch, true, 1, 0));
+	TestFalse(TEXT("Nor any other push"), SSailFrontEnd::TravelsOnPush(ESailScreen::Launch, ESailScreen::Boat, false, 1, 0));
+
+	UGameInstance* GI = NewObject<UGameInstance>(GetTransientPackage());
+	USailSessionSubsystem* Session = NewObject<USailSessionSubsystem>(GI);
+	USailingSettings* S = USailingSettings::Get();
+	const int32 WasWorld = S->World, WasSpot = S->LaunchSpot;
+	FSailSessionConfig Pending = USailSessionSubsystem::MakeDefault();
+	Pending.World = 1;
+	Pending.LaunchSpot = 2;
+	Pending.Boat = 5;
+	Session->TravelBehindMenus(Pending, int32(ESailScreen::Launch), nullptr);
+	TestEqual(TEXT("The screen to come back to"), Session->MenuResumeScreen, int32(ESailScreen::Launch));
+	TestTrue(TEXT("The choices carried"), Session->bHasPending && Session->Pending.Boat == 5 && Session->Pending.World == 1);
+	TestTrue(TEXT("The picked place in the settings"), S->World == 1 && S->LaunchSpot == 2);
+	Session->ResetForRun();
+	TestEqual(TEXT("A new run ends the travel"), Session->MenuResumeScreen, -1);
+	TestFalse(TEXT("And the pending choices"), Session->bHasPending);
+	S->World = WasWorld;
+	S->LaunchSpot = WasSpot;
 	return true;
 }
 

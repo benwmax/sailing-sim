@@ -86,6 +86,13 @@ public:
 	FSailSessionConfig Pending;
 	/** The menus closed with Pending in hand (docs/showroom-wiring/): they open on it again until a session starts. */
 	bool bHasPending = false;
+	/**
+	 * docs/showroom-world/: the menus loaded the picked world behind them (Bean, Oct 27): the screen they go on from once
+	 * it has loaded (an ESailScreen; -1 none). The world the travel loads wins over -SailingWorld.
+	 */
+	int32 MenuResumeScreen = -1;
+	/** Loads Pending's world behind the menus (the map reloads; the menus open again on Resume with Pending). */
+	void TravelBehindMenus(const FSailSessionConfig& InPending, int32 Resume, UObject* WorldContext);
 	/** The config the running session was started with (valid when bHasActive). */
 	FSailSessionConfig Active;
 	bool bHasActive = false;

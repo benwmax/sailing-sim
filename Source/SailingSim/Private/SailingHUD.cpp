@@ -110,6 +110,17 @@ void ASailingHUD::BeginPlay()
 	}
 	if (!UsesFrontEnd() || !PlayerOwner) return;
 	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+	if (Session && Session->MenuResumeScreen >= 0 && !Session->bHasActive)
+	{
+		// docs/showroom-world/: the menus loaded this world behind them; they open again where they were (the flow walked to
+		// it, so Back works), with their choices (Session->Pending).
+		const int32 Resume = Session->MenuResumeScreen;
+		Session->MenuResumeScreen = -1;
+		OpenFrontEnd(ESailScreen::Title);
+		for (int32 K = 1; K <= Resume && K <= int32(ESailScreen::Mode); ++K) FrontEnd->Push(ESailScreen(K));
+		UE_LOG(LogSailing, Display, TEXT("Menus: back on screen %d with world %d loaded"), Resume, USailingSettings::Get()->World);
+		return;
+	}
 	FString Screen;
 	// A session that has just loaded goes to its loading screen, whatever screen the command line asked for first.
 	const bool bLoadingSession = Session && Session->bHasActive && !Session->bStarted && Session->Active.SavedAt > FDateTime::MinValue()
