@@ -457,7 +457,8 @@ namespace AiGybeLocal
 			if (Tm.bCapsized) R.bCapsized = true;
 			if (T > 10.0 && std::fabs(Tm.TrueWindAngle) > 120.0 * kDegToRad)
 			{
-				R.DeepestTwaDeg = std::max(R.DeepestTwaDeg, std::fabs(Tm.TrueWindAngle) * kRadToDeg);
+				// How deep she holds a run (through a gybe she is told to make she passes 180 by design).
+				if (!V->Pilot.IsGybing()) R.DeepestTwaDeg = std::max(R.DeepestTwaDeg, std::fabs(Tm.TrueWindAngle) * kRadToDeg);
 				const int Now = Tm.TrueWindAngle > 0.0 ? 1 : -1;
 				if (Side != 0 && Now != Side) ++R.Gybes;
 				Side = Now;
