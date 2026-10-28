@@ -146,6 +146,7 @@ void USailSessionSubsystem::ApplyToSettings(const FSailSessionConfig& Config)
 void USailSessionSubsystem::ResetForRun()
 {
 	Pending = FSailSessionConfig();
+	bHasPending = false;
 	Active = FSailSessionConfig();
 	bHasActive = false;
 	bStarted = false;
@@ -158,6 +159,7 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	Active = Config;
 	Active.SavedAt = FDateTime::Now();
 	bHasActive = true;
+	bHasPending = false;
 	bStarted = false;
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;

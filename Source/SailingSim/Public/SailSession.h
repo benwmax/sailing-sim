@@ -84,6 +84,8 @@ class SAILINGSIM_API USailSessionSubsystem : public UGameInstanceSubsystem
 public:
 	/** The config being built in the menus. */
 	FSailSessionConfig Pending;
+	/** The menus closed with Pending in hand (docs/showroom-wiring/): they open on it again until a session starts. */
+	bool bHasPending = false;
 	/** The config the running session was started with (valid when bHasActive). */
 	FSailSessionConfig Active;
 	bool bHasActive = false;

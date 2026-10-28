@@ -87,11 +87,12 @@ void AFreeCamera::SetMode(EFreeCameraMode InMode)
 	if (Mode == EFreeCameraMode::Orbit)
 	{
 		// Orbit from where the camera is: its distance and bearing from the pivot (it then turns to face it).
+		Orbit = FFreeCameraOrbit();
 		const FVector Off = GetActorLocation() - Pivot();
-		OrbitDistanceCm = FMath::Clamp(float(Off.Size()), 150.f, 30000.f);
+		Orbit.DistanceCm = FMath::Clamp(float(Off.Size()), Orbit.MinDistanceCm, Orbit.MaxDistanceCm);
 		const FRotator Toward = (-Off).Rotation();
 		Yaw = float(Toward.Yaw);
-		Pitch = float(FMath::Clamp(Toward.Pitch, -89.0, 60.0));
+		Pitch = float(FMath::Clamp(Toward.Pitch, double(Orbit.MinPitchDeg), double(Orbit.MaxPitchDeg)));
 	}
 	else
 	{
@@ -101,22 +102,46 @@ void AFreeCamera::SetMode(EFreeCameraMode InMode)
 	}
 }
 
+void AFreeCamera::SetOrbit(const FFreeCameraOrbit& InOrbit)
+{
+	Mode = EFreeCameraMode::Orbit;
+	VelocityMps = FVector::ZeroVector;
+	Orbit = InOrbit;
+	Orbit.DistanceCm = FMath::Clamp(Orbit.DistanceCm, Orbit.MinDistanceCm, Orbit.MaxDistanceCm);
+	Yaw = FMath::UnwindDegrees(Orbit.YawDeg);
+	Pitch = FMath::Clamp(Orbit.PitchDeg, Orbit.MinPitchDeg, Orbit.MaxPitchDeg);
+	SinceLookSeconds = 1e9; // a framing set from code may spin at once
+}
+
 void AFreeCamera::AddLook(const FVector2D& DeltaDeg)
 {
 	Yaw = FMath::UnwindDegrees(Yaw + float(DeltaDeg.X));
-	Pitch = FMath::Clamp(Pitch + float(DeltaDeg.Y), -89.f, Mode == EFreeCameraMode::Orbit ? 60.f : 89.f);
+	Pitch = Mode == EFreeCameraMode::Orbit ? FMath::Clamp(Pitch + float(DeltaDeg.Y), Orbit.MinPitchDeg, Orbit.MaxPitchDeg)
+		: FMath::Clamp(Pitch + float(DeltaDeg.Y), -89.f, 89.f);
+	if (!DeltaDeg.IsNearlyZero()) SinceLookSeconds = 0.0;
 }
 
 void AFreeCamera::StepSpeed(int32 Steps)
 {
-	if (Mode == EFreeCameraMode::Orbit) OrbitDistanceCm = FMath::Clamp(OrbitDistanceCm * FMath::Pow(0.85f, float(Steps)), 150.f, 30000.f);
+	if (Mode == EFreeCameraMode::Orbit)
+	{
+		Orbit.DistanceCm = FMath::Clamp(Orbit.DistanceCm * FMath::Pow(0.85f, float(Steps)), Orbit.MinDistanceCm, Orbit.MaxDistanceCm);
+		SinceLookSeconds = 0.0;
+	}
 	else SpeedIndex = FMath::Clamp(SpeedIndex + Steps, 0, FreeCameraMath::NumSpeeds - 1);
 }
 
 FVector AFreeCamera::Pivot() const
 {
 	const AActor* A = Anchor.Get();
-	return A ? A->GetActorLocation() + PivotOffsetCm : GetActorLocation();
+	FVector P = A ? A->GetActorLocation() + PivotOffsetCm : GetActorLocation();
+	if (Mode == EFreeCameraMode::Orbit)
+	{
+		// Offsets in the view's frame, so the subject keeps its place on screen as the camera turns.
+		const FRotator Level(0.f, Yaw, 0.f);
+		P += Level.RotateVector(FVector(0.f, Orbit.LateralOffsetCm, 0.f)) + FVector(0.f, 0.f, Orbit.UpOffsetCm);
+	}
+	return P;
 }
 
 double AFreeCamera::GetLeashDistanceM() const
@@ -186,7 +211,8 @@ FVector AFreeCamera::Constrain(const FVector& From, const FVector& To, bool bIgn
 void AFreeCamera::Update(float DeltaSeconds, const FFreeCameraInput& Input)
 {
 	const double Dt = FMath::Clamp(double(DeltaSeconds), 0.0, 0.1);
-	const double Alpha = FreeCameraMath::EaseAlpha(Dt);
+	const double Alpha = FreeCameraMath::EaseAlpha(Dt, Mode == EFreeCameraMode::Orbit ? Orbit.EaseSeconds : 0.25);
+	SinceLookSeconds += Dt;
 	Roll = FMath::Clamp(Roll + Input.Roll * 45.f * float(Dt), -45.f, 45.f);
 	const FVector From = GetActorLocation();
 	if (Mode == EFreeCameraMode::Fly)
@@ -210,9 +236,10 @@ void AFreeCamera::Update(float DeltaSeconds, const FFreeCameraInput& Input)
 		SetActorLocationAndRotation(To, FRotator(Pitch, Yaw, Roll));
 		return;
 	}
-	// Orbit: the camera eases to its place on the sphere about the pivot and faces it.
+	// Orbit: the camera eases to its place on the sphere about the pivot and faces it; idle, it turns slowly round.
+	if (Orbit.SpinDegPerSec != 0.f && SinceLookSeconds >= Orbit.SpinIdleSeconds) Yaw = FMath::UnwindDegrees(Yaw + Orbit.SpinDegPerSec * float(Dt));
 	const FVector P = Pivot();
-	const FVector Want = P - FRotator(Pitch, Yaw, 0.f).Vector() * OrbitDistanceCm;
+	const FVector Want = P - FRotator(Pitch, Yaw, 0.f).Vector() * Orbit.DistanceCm;
 	const FVector To = Constrain(From, FMath::Lerp(From, Want, Alpha), true);
 	FRotator Face = (P - To).Rotation();
 	Face.Roll = Roll;
