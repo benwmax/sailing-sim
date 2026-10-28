@@ -146,6 +146,13 @@ private:
 	FVector2D OrbitStick = FVector2D::ZeroVector;
 	float OrbitZoomStick = 0.f, OrbitZoomCarry = 0.f;
 	bool bOrbitDrag = false;
+	/** The showroom's screens (the Boat screen, Conditions and Change conditions): orbit input, View mode, the clear backdrop. */
+	bool IsStageScreen() const;
+	// The Conditions screen's blends (Inputs/ui-showroom/brief.md section 6): what the world shows, easing toward the
+	// pending choice (the wind over about 2 s, the clock as the slider moves), re-previewed five times a second.
+	FSailConditions Blend;
+	bool bBlendLive = false;
+	double BlendAppliedAt = 0.0, BlendTickAt = 0.0;
 	/** Moves along the strip (LB/RB, Q/E): the next boat is shown and focused. */
 	void StepBoat(int32 Dir);
 	EActiveTimerReturnType TickOrbitStick(double Time, float Delta);

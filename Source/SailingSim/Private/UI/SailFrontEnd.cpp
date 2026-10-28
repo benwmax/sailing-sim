@@ -79,8 +79,10 @@ namespace SailFrontEndImpl
 			SLATE_ATTRIBUTE(bool, Showroom)
 			/** A dip to dark over the whole screen (0..1): the boat swap's cover. */
 			SLATE_ATTRIBUTE(float, Dip)
+			/** The showroom's left fade ends here, a share of the width: the left panel's right edge. */
+			SLATE_ATTRIBUTE(float, FadeEnd)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { L = A._LeftAlpha; R = A._RightAlpha; Showroom = A._Showroom; Dip = A._Dip; }
+		void Construct(const FArguments& A) { L = A._LeftAlpha; R = A._RightAlpha; Showroom = A._Showroom; Dip = A._Dip; FadeEnd = A._FadeEnd; }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(8, 8); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -99,7 +101,7 @@ namespace SailFrontEndImpl
 				};
 				Band(FVector2f(0.f, 0.f), FVector2f(S.X, S.Y * 0.16f), 0.55f, 0.f, Orient_Horizontal);
 				Band(FVector2f(0.f, S.Y * 0.72f), FVector2f(S.X, S.Y * 0.28f), 0.f, 0.7f, Orient_Horizontal);
-				Band(FVector2f(0.f, 0.f), FVector2f(S.X * 460.f / 1440.f, S.Y), 0.45f, 0.f, Orient_Vertical);
+				Band(FVector2f(0.f, 0.f), FVector2f(S.X * FadeEnd.Get(460.f / 1440.f), S.Y), 0.45f, 0.f, Orient_Vertical);
 			}
 			else
 			{
@@ -113,7 +115,7 @@ namespace SailFrontEndImpl
 			return Layer + 1;
 		}
 	private:
-		TAttribute<float> L, R, Dip;
+		TAttribute<float> L, R, Dip, FadeEnd;
 		TAttribute<bool> Showroom;
 	};
 
@@ -289,7 +291,9 @@ void SSailFrontEnd::Construct(const FArguments& A)
 	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()[ SNew(SBackdrop).LeftAlpha(bInGame ? 0.80f : 0.86f).RightAlpha(bInGame ? 0.62f : 0.15f)
-			.Showroom_Lambda([this]() { return Current() == ESailScreen::Boat; })
+			.Showroom_Lambda([this]() { return IsStageScreen(); })
+			// (The Boat screen's left column ends at 460 px of 1440, Conditions' panel at 600.)
+			.FadeEnd_Lambda([this]() { return Current() == ESailScreen::Boat ? 460.f / 1440.f : 600.f / 1440.f; })
 			// The swap's cover: the moment the new boat is built the screen is dark, and it clears over 150 ms.
 			.Dip_Lambda([this]()
 			{
@@ -324,7 +328,35 @@ EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
 {
 	// The Boat screen shows the focused boat (focus is the selection there); every other screen the chosen one.
 	const int32 Shown = Current() == ESailScreen::Boat ? (ShowroomArg >= 0 ? ShowroomArg : FocusedBoat) : Pending.Boat;
-	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, Pending.Conditions, Time);
+	// Inputs/ui-showroom/brief.md section 6: the Conditions screen's preview eases rather than pops. The wind and gusts
+	// close on the choice over about 2 s (the waves and the heel build with them) and the clock sweeps at up to 3 hours a
+	// second while the slider moves; while they move, the world is re-previewed five times a second. The direction, sky,
+	// date and real day snap (the Mac's debounced preview, 200 ms after a change stands).
+	const bool bConditions = Current() == ESailScreen::Conditions || Current() == ESailScreen::ConditionsInGame;
+	const float Dt = BlendTickAt > 0.0 ? float(FMath::Clamp(Time - BlendTickAt, 0.0, 0.1)) : 0.f;
+	BlendTickAt = Time;
+	if (!bConditions) bBlendLive = false;
+	else if (!bBlendLive) { Blend = Pending.Conditions; bBlendLive = true; BlendAppliedAt = Time; }
+	else
+	{
+		const FSailConditions& To = Pending.Conditions;
+		const float K = 1.f - FMath::Exp(-Dt / 0.67f);
+		const float WindWas = Blend.WindKn, GustWas = Blend.GustKn, HourWas = Blend.LocalHour;
+		Blend.WindKn = FMath::Abs(To.WindKn - Blend.WindKn) < 0.05f ? To.WindKn : Blend.WindKn + (To.WindKn - Blend.WindKn) * K;
+		Blend.GustKn = FMath::Abs(To.GustKn - Blend.GustKn) < 0.05f ? To.GustKn : Blend.GustKn + (To.GustKn - Blend.GustKn) * K;
+		Blend.LocalHour = Blend.LocalHour + FMath::Clamp(To.LocalHour - Blend.LocalHour, -3.f * Dt, 3.f * Dt);
+		const float W = Blend.WindKn, G = Blend.GustKn, Hr = Blend.LocalHour;
+		Blend = To;
+		Blend.WindKn = W; Blend.GustKn = FMath::Max(G, W); Blend.LocalHour = Hr;
+		const bool bMoving = Blend.WindKn != WindWas || Blend.GustKn != GustWas || Blend.LocalHour != HourWas;
+		ASailingGameMode* GM = GameMode();
+		if (bMoving && GM && Showroom.GetStage() == EShowroomStage::Weather && Time - BlendAppliedAt >= 0.2)
+		{
+			GM->PreviewConditions(Blend);
+			BlendAppliedAt = Time;
+		}
+	}
+	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, bConditions ? Blend : Pending.Conditions, Time);
 	return EActiveTimerReturnType::Continue;
 }
 
@@ -475,14 +507,14 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		if (P && FocusedControlRow < P->GetKeyRows().Num()) ListenControls(FocusedControlRow, true);
 		return FReply::Handled();
 	}
-	if (Current() == ESailScreen::Boat)
+	if (IsStageScreen())
 	{
-		// Inputs/ui-showroom/brief.md section 2: V or the controller's View button hides the panels; it, Esc or B bring
-		// them back. LB/RB and Q/E move along the strip (Left and Right do too, between its cards); Home or R3 puts the
-		// camera back on the starboard quarter.
+		// Inputs/ui-showroom/brief.md sections 2 and 6: V or the controller's View button hides the panels; it, Esc or B
+		// bring them back. On the Boat screen LB/RB and Q/E move along the strip (Left and Right do too, between its
+		// cards). Home or R3 puts the camera back on its framing.
 		if (K == EKeys::V || K == EKeys::Gamepad_Special_Left || (bViewMode && IsBackKey(K))) { bViewMode = !bViewMode; return FReply::Handled(); }
-		if (K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) { StepBoat(-1); return FReply::Handled(); }
-		if (K == EKeys::E || K == EKeys::Gamepad_RightShoulder) { StepBoat(1); return FReply::Handled(); }
+		if (Current() == ESailScreen::Boat && (K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder)) { StepBoat(-1); return FReply::Handled(); }
+		if (Current() == ESailScreen::Boat && (K == EKeys::E || K == EKeys::Gamepad_RightShoulder)) { StepBoat(1); return FReply::Handled(); }
 		if (K == EKeys::Home || K == EKeys::Gamepad_RightThumbstick) { if (ASailboatPawn* P = Pawn()) P->ShowroomResetView(); return FReply::Handled(); }
 	}
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
@@ -519,7 +551,7 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 
 FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputEvent& E)
 {
-	if (Current() == ESailScreen::Boat)
+	if (IsStageScreen())
 	{
 		// The right stick turns the showroom's camera, the triggers zoom it (LT out, RT in); held, applied each frame.
 		const FKey K = E.GetKey();
@@ -567,7 +599,7 @@ EActiveTimerReturnType SSailFrontEnd::ScrollActive(double, float Delta)
 EActiveTimerReturnType SSailFrontEnd::TickOrbitStick(double, float Delta)
 {
 	ASailboatPawn* P = Pawn();
-	if (Current() != ESailScreen::Boat || !P || (OrbitStick.IsZero() && OrbitZoomStick == 0.f))
+	if (!IsStageScreen() || !P || (OrbitStick.IsZero() && OrbitZoomStick == 0.f))
 	{
 		OrbitStick = FVector2D::ZeroVector; OrbitZoomStick = 0.f; OrbitZoomCarry = 0.f;
 		return EActiveTimerReturnType::Stop;
@@ -578,6 +610,12 @@ EActiveTimerReturnType SSailFrontEnd::TickOrbitStick(double, float Delta)
 	const int32 Notches = FMath::TruncToInt32(OrbitZoomCarry);
 	if (Notches != 0) { P->ShowroomZoom(Notches); OrbitZoomCarry -= float(Notches); }
 	return EActiveTimerReturnType::Continue;
+}
+
+bool SSailFrontEnd::IsStageScreen() const
+{
+	const ESailScreen S = Current();
+	return S == ESailScreen::Boat || S == ESailScreen::Conditions || S == ESailScreen::ConditionsInGame;
 }
 
 void SSailFrontEnd::StepBoat(int32 Dir)
@@ -593,7 +631,7 @@ void SSailFrontEnd::StepBoat(int32 Dir)
 FReply SSailFrontEnd::OnMouseButtonDown(const FGeometry&, const FPointerEvent& E)
 {
 	// (Buttons and cards take their own clicks; what reaches here is empty space.)
-	if (Current() != ESailScreen::Boat || E.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+	if (!IsStageScreen() || E.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
 	bOrbitDrag = true;
 	return FReply::Handled().CaptureMouse(SharedThis(this));
 }
@@ -614,7 +652,7 @@ FReply SSailFrontEnd::OnMouseMove(const FGeometry&, const FPointerEvent& E)
 
 FReply SSailFrontEnd::OnMouseWheel(const FGeometry&, const FPointerEvent& E)
 {
-	if (Current() != ESailScreen::Boat) return FReply::Unhandled();
+	if (!IsStageScreen()) return FReply::Unhandled();
 	if (ASailboatPawn* P = Pawn()) P->ShowroomZoom(E.GetWheelDelta() > 0.f ? 1 : -1);
 	return FReply::Handled();
 }
@@ -1173,14 +1211,21 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
+	// Inputs/ui-showroom/brief.md section 6 (artboard 3): the world behind is the preview, so every control lives in one
+	// translucent column on the left (presets in two columns, then the rows) and the rest of the screen is the sky, the
+	// water and the boat under the conditions being set, with a "Live preview" badge, the wind near the boat and "What to
+	// expect" as a caption. V or View hides the column for a full look; a drag or the right stick looks around.
+	bViewMode = false;
 	FSailConditions* C = &Pending.Conditions;
 	auto Touch = [this]() { Pending.Conditions.PresetId = NAME_None; Pending.Conditions.RealDay.Empty(); };
 	const bool bGalveston = Pending.World == 1;
-	TSharedRef<SHorizontalBox> Presets = SNew(SHorizontalBox);
+	auto Panels = [this]() { return bViewMode ? EVisibility::Hidden : EVisibility::Visible; };
+	TSharedRef<SUniformGridPanel> Presets = SNew(SUniformGridPanel).SlotPadding(FMargin(4.f));
+	int32 Slot = 0;
 	for (const FSailPreset& P : USailSessionSubsystem::Presets())
 	{
 		const bool bOk = !P.bGalvestonOnly || bGalveston;
-		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(14.f, 10.f)).IsEnabled(bOk)
+		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(12.f, 8.f)).IsEnabled(bOk)
 			.IsSelected_Lambda([this, Id = P.Id]() { return Pending.Conditions.PresetId == Id; })
 			.OnClicked_Lambda([this, P, bInGame]()
 			{
@@ -1191,19 +1236,20 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(P.Name, EType::Ui, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? P.Summary : FString(TEXT("Galveston only")), EType::Small, Muted) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? P.Summary : FString(TEXT("Galveston only")), EType::Small, Muted, true) ]
 		];
-		Presets->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)[ B ];
+		Presets->AddSlot(Slot % 2, Slot / 2)[ B ];
+		++Slot;
 		if (!E.Focus.IsValid()) E.Focus = B;
 	}
 	// W5b: real days (HRRR timeline, radar replay of a storm), Lake Ray Hubbard only. Choosing one sets its date and start;
 	// the wind, gusts and sky are the day's own (touching them leaves the real day).
-	TSharedRef<SHorizontalBox> Days = SNew(SHorizontalBox);
-	Days->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(TEXT("Real day"), EType::Label, Muted) ];
+	TSharedRef<SUniformGridPanel> Days = SNew(SUniformGridPanel).SlotPadding(FMargin(4.f));
+	Slot = 0;
 	for (const SailCatalog::FRealDay& D : SailCatalog::RealDays())
 	{
 		const bool bOk = Pending.World == 0;
-		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOk)
+		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(12.f, 8.f)).IsEnabled(bOk)
 			.IsSelected_Lambda([this, Date = D.Date]() { return Pending.Conditions.RealDay == Date; })
 			.OnClicked_Lambda([this, D, bInGame]()
 			{
@@ -1218,69 +1264,44 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 			})
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(D.Title, EType::Ui, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? D.Summary : FString(TEXT("Lake Ray Hubbard only")), EType::Small, Muted) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(D.Title, EType::Ui, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? D.Summary : FString(TEXT("Lake Ray Hubbard only")), EType::Small, Muted, true) ]
 		];
-		Days->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)[ B ];
+		Days->AddSlot(Slot % 2, Slot / 2)[ B ];
+		++Slot;
 	}
 	auto Kn = [](float V) { return FString::Printf(TEXT("%.0f kn"), V); };
-	TSharedRef<SWidget> Dial = SNew(SWindDial).Degrees_Lambda([C]() { return C->WindFromDeg; }).OnChanged_Lambda([C, Touch](float D) { C->WindFromDeg = D; Touch(); });
-	TSharedRef<SWidget> Expect = PanelBox(SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("What to expect"), EType::Label, Muted) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
-		[
-			TextAttr(TAttribute<FText>::CreateLambda([this]()
-			{
-				const FSailConditions& K = Pending.Conditions;
-				return FText::FromString(SailCatalog::Expect(K.WindKn, K.GustKn, int32(K.Sky), K.LocalHour, K.Month, K.Day, Pending.Boat, Pending.World));
-			}), EType::Body, FSlateColor(Fg), true)
-		], FMargin(16.f));
-	// The two columns' rows line up in pairs (wind / time, gusts / date, sky / tide, air temp / lake level): each row is at
-	// least as tall as its partner, so a row that wraps (the Sky row at 1440x1080) doesn't push its column out of step.
-	TArray<TSharedRef<SWidget>> MidRows = {
-		SNew(SSailSlider).Label(TEXT("Wind speed")).Min(0.f).Max(30.f).Step(1.f).Value_Lambda([C]() { return C->WindKn; })
-				.ValueText_Lambda([C, Kn]() { return Kn(C->WindKn); }).OnChanged_Lambda([C, Touch](float V) { C->WindKn = V; C->GustKn = FMath::Max(C->GustKn, V); Touch(); }),
-		SNew(SSailSlider).Label(TEXT("Gusts to")).Min(0.f).Max(40.f).Step(1.f).Value_Lambda([C]() { return C->GustKn; })
-				.ValueText_Lambda([C, Kn]() { return Kn(C->GustKn); }).OnChanged_Lambda([C, Touch](float V) { C->GustKn = FMath::Max(V, C->WindKn); Touch(); }),
-		SNew(SSailChoice).Label(TEXT("Sky")).Options({ TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Rain"), TEXT("Storms"), TEXT("Fog") })
-				.Index_Lambda([C]() { return SailFrontEndImpl::SkyRowOrder.IndexOfByKey(C->Sky); })
-				.OnChanged_Lambda([C, Touch](int32 I) { C->Sky = SailFrontEndImpl::SkyRowOrder[FMath::Clamp(I, 0, SailFrontEndImpl::SkyRowOrder.Num() - 1)]; Touch(); }),
-		SNew(SSailSlider).Label(TEXT("Air temp")).Min(30.f).Max(105.f).Step(1.f).Value_Lambda([C]() { return C->AirTempF; })
-				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%.0f°F"), C->AirTempF); }).OnChanged_Lambda([C, Touch](float V) { C->AirTempF = V; Touch(); }) };
-	TArray<TSharedRef<SWidget>> RightRows = {
-		SNew(SSailSlider).Label(TEXT("Time of day")).Min(5.f).Max(22.f).Step(0.25f).Value_Lambda([C]() { return C->LocalHour; })
-				.ValueText_Lambda([C]() { return SailCatalog::ClockText(C->LocalHour); }).OnChanged_Lambda([C](float V) { C->LocalHour = V; C->PresetId = NAME_None; }),
-		SNew(SSailSlider).Label(TEXT("Date")).Min(1.f).Max(12.f).Step(1.f).Value_Lambda([C]() { return float(C->Month); })
-				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%s %d"), *SailCatalog::MonthName(C->Month), C->Day); })
-				.OnChanged_Lambda([C, Touch](float V) { C->Month = FMath::RoundToInt(V); C->Day = FMath::Min(C->Day, 28); Touch(); }) };
+	// Each row is a slot of the column's scroll box: it navigates from slot to slot, so rows sharing one slot were
+	// skipped going up.
+	TArray<TSharedRef<SWidget>> Rows;
+	auto Row = [&](TSharedRef<SWidget> W) { Rows.Add(W); };
+	Row(SNew(SSailSlider).Label(TEXT("Wind speed")).Min(0.f).Max(30.f).Step(1.f).Value_Lambda([C]() { return C->WindKn; })
+		.ValueText_Lambda([C, Kn]() { return Kn(C->WindKn); }).OnChanged_Lambda([C, Touch](float V) { C->WindKn = V; C->GustKn = FMath::Max(C->GustKn, V); Touch(); }));
+	Row(SNew(SSailSlider).Label(TEXT("Gusts to")).Min(0.f).Max(40.f).Step(1.f).Value_Lambda([C]() { return C->GustKn; })
+		.ValueText_Lambda([C, Kn]() { return Kn(C->GustKn); }).OnChanged_Lambda([C, Touch](float V) { C->GustKn = FMath::Max(V, C->WindKn); Touch(); }));
+	// (The wind dial was too big for one column: the direction is a slider here, its compass point beside it.)
+	Row(SNew(SSailSlider).Label(TEXT("Wind from")).Min(0.f).Max(355.f).Step(5.f).Value_Lambda([C]() { return C->WindFromDeg; })
+		.ValueText_Lambda([C]() { return FString::Printf(TEXT("%s  %03.0f°"), *USailSessionSubsystem::CompassPoint(C->WindFromDeg), C->WindFromDeg); })
+		.OnChanged_Lambda([C, Touch](float V) { C->WindFromDeg = V; Touch(); }));
+	Row(SNew(SSailChoice).Label(TEXT("Sky")).Options({ TEXT("Clear"), TEXT("Fair"), TEXT("Overcast"), TEXT("Rain"), TEXT("Storms"), TEXT("Fog") })
+		.Index_Lambda([C]() { return SailFrontEndImpl::SkyRowOrder.IndexOfByKey(C->Sky); })
+		.OnChanged_Lambda([C, Touch](int32 I) { C->Sky = SailFrontEndImpl::SkyRowOrder[FMath::Clamp(I, 0, SailFrontEndImpl::SkyRowOrder.Num() - 1)]; Touch(); }));
+	Row(SNew(SSailSlider).Label(TEXT("Time of day")).Min(5.f).Max(22.f).Step(0.25f).Value_Lambda([C]() { return C->LocalHour; })
+		.ValueText_Lambda([C]() { return SailCatalog::ClockText(C->LocalHour); }).OnChanged_Lambda([C](float V) { C->LocalHour = V; C->PresetId = NAME_None; }));
+	Row(SNew(SSailSlider).Label(TEXT("Date")).Min(1.f).Max(12.f).Step(1.f).Value_Lambda([C]() { return float(C->Month); })
+		.ValueText_Lambda([C]() { return FString::Printf(TEXT("%s %d"), *SailCatalog::MonthName(C->Month), C->Day); })
+		.OnChanged_Lambda([C, Touch](float V) { C->Month = FMath::RoundToInt(V); C->Day = FMath::Min(C->Day, 28); Touch(); }));
+	Row(SNew(SSailSlider).Label(TEXT("Air temp")).Min(30.f).Max(105.f).Step(1.f).Value_Lambda([C]() { return C->AirTempF; })
+		.ValueText_Lambda([C]() { return FString::Printf(TEXT("%.0f°F"), C->AirTempF); }).OnChanged_Lambda([C, Touch](float V) { C->AirTempF = V; Touch(); }));
 	if (bGalveston)
 	{
-		RightRows.Add(PanelBox(SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Tide"), EType::Ui, Fg) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
-				[ SailUI::Text(TEXT("Predicted from NOAA's harmonic constants for the date and time you pick: the tide and current follow the clock."), EType::Small, Muted, true) ],
-				FMargin(16.f, 12.f), RadiusButton));
+		Row(SailUI::Text(TEXT("Tide: predicted from NOAA's harmonic constants for the date and time you pick; the tide and current follow the clock."), EType::Small, Muted, true));
 	}
 	else
 	{
-		RightRows.Add(SNew(SSailChoice).Label(TEXT("Tide")).Options({ TEXT("None") }).Index(0).IsEnabled(false).Note(TEXT("No tide on Lake Ray Hubbard. Lake level replaces it.")));
-		RightRows.Add(SNew(SSailSlider).Label(TEXT("Lake level")).Min(-6.f).Max(3.f).Step(0.5f).Value_Lambda([C]() { return C->LakeLevelFt; })
-				.ValueText_Lambda([C]() { return FString::Printf(TEXT("%+.1f ft"), C->LakeLevelFt); }).OnChanged_Lambda([C](float V) { C->LakeLevelFt = V; }));
+		Row(SNew(SSailSlider).Label(TEXT("Lake level")).Min(-6.f).Max(3.f).Step(0.5f).Value_Lambda([C]() { return C->LakeLevelFt; })
+			.ValueText_Lambda([C]() { return FString::Printf(TEXT("%+.1f ft"), C->LakeLevelFt); }).OnChanged_Lambda([C](float V) { C->LakeLevelFt = V; }));
 	}
-	auto Paired = [](const TArray<TSharedRef<SWidget>>& Own, const TArray<TSharedRef<SWidget>>& Other, int32 I) -> TSharedRef<SWidget>
-	{
-		const TWeakPtr<SWidget> A = Own[I], B = Other.IsValidIndex(I) ? TWeakPtr<SWidget>(Other[I]) : TWeakPtr<SWidget>();
-		return SNew(SBox).MinDesiredHeight_Lambda([A, B]()
-		{
-			const TSharedPtr<SWidget> PA = A.Pin(), PB = B.Pin();
-			return FOptionalSize(float(FMath::Max(PA ? PA->GetDesiredSize().Y : 0.0, PB ? PB->GetDesiredSize().Y : 0.0)));
-		})
-		[ Own[I] ];
-	};
-	TSharedRef<SVerticalBox> Mid = SNew(SVerticalBox);
-	for (int32 I = 0; I < MidRows.Num(); ++I) Mid->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, I + 1 < MidRows.Num() ? 10.f : 0.f)[ Paired(MidRows, RightRows, I) ];
-	TSharedRef<SVerticalBox> Right = SNew(SVerticalBox);
-	for (int32 I = 0; I < RightRows.Num(); ++I) Right->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Paired(RightRows, MidRows, I) ];
 	TSharedRef<SSailButton> Next = bInGame
 		? ActionButton(TEXT("Apply"), FSimpleDelegate::CreateLambda([this]()
 			{
@@ -1288,28 +1309,66 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 				Pop();
 			}))
 		: ActionButton(TEXT("Next: mode"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Mode); }));
-	Right->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
-	Right->AddSlot().AutoHeight()[ Next ];
-	E.Content = SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()[ Header(bInGame ? TEXT("Paused") : TEXT("Weather and time"), bInGame ? TEXT("Change conditions") : TEXT("Set the conditions"), bInGame ? 0 : 4) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 24.f, 0.f, 10.f)[ Presets ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)[ Days ]
-		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 90.f)
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.26f).Padding(0.f, 0.f, 14.f, 0.f)
+	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
+	TitleFont.Size = 40;
+	// Keys and the pad move focus down the column: it scrolls to keep the focused row in view (rows under the fold are out
+	// of the hit-test grid that navigation searches: Down used to stop at the sky).
+	TSharedRef<SScrollBox> Scroll = SNew(SScrollBox).ScrollBarThickness(FVector2D(4.f, 4.f))
+		.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f)
+		+ SScrollBox::Slot().Padding(0.f, 0.f, 10.f, 0.f)[ Presets ]
+		+ SScrollBox::Slot().Padding(4.f, 8.f, 14.f, 2.f)[ SailUI::Text(TEXT("Real day"), EType::Label, Muted) ]
+		+ SScrollBox::Slot().Padding(0.f, 0.f, 10.f, 12.f)[ Days ];
+	for (const TSharedRef<SWidget>& R : Rows) Scroll->AddSlot().Padding(4.f, 0.f, 14.f, 8.f)[ R ];
+	TSharedRef<SWidget> Column = SNew(SBox).WidthOverride(540.f).Visibility_Lambda(Panels)
+	[
+		PanelBox(SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(bInGame ? TEXT("Paused") : TEXT("Weather and time"), EType::Eyebrow, Accent) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
+			[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(bInGame ? TEXT("CHANGE CONDITIONS") : TEXT("SET THE CONDITIONS"))) ]
+			+ SVerticalBox::Slot().FillHeight(1.f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ PanelBox(SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SailUI::Text(TEXT("True wind from"), EType::Label, Muted) ]
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Dial ], FMargin(12.f)) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ Expect ]
+				Scroll
 			]
-			+ SHorizontalBox::Slot().FillWidth(0.37f).Padding(0.f, 0.f, 14.f, 0.f)[ Mid ]
-			+ SHorizontalBox::Slot().FillWidth(0.37f)[ Right ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ Next ],
+			FMargin(22.f, 18.f))
+	];
+	// Over the world: the badge (the clock the preview shows), the wind near the boat, the caption.
+	auto Badge = PanelBox(SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 8.f, 0.f)[ SNew(SBox).WidthOverride(8.f).HeightOverride(8.f)[ SNew(SBorder).BorderImage(Rounded(Accent, 4.f)) ] ]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return FText::FromString(FString::Printf(TEXT("LIVE PREVIEW  ·  %s"), *SailCatalog::ClockText(bBlendLive ? Blend.LocalHour : Pending.Conditions.LocalHour))); }), EType::Label, FSlateColor(Fg)) ],
+		FMargin(14.f, 8.f));
+	TSharedRef<SWidget> WindLine = TextAttr(TAttribute<FText>::CreateLambda([this]()
+	{
+		const FSailConditions& K = bBlendLive ? Blend : Pending.Conditions;
+		if (!K.RealDay.IsEmpty()) return FText::FromString(FString::Printf(TEXT("The day's own wind  ·  %s"), *K.RealDay));
+		return FText::FromString(FString::Printf(TEXT("↓ %.0f kn from %s, gusts to %.0f"), K.WindKn, *USailSessionSubsystem::CompassPoint(K.WindFromDeg), K.GustKn));
+	}), EType::Ui, FSlateColor(Fg));
+	TSharedRef<SWidget> Expect = SNew(SBox).WidthOverride(440.f).Visibility_Lambda(Panels)
+	[
+		PanelBox(SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("What to expect"), EType::Label, Muted) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
+			[
+				TextAttr(TAttribute<FText>::CreateLambda([this]()
+				{
+					const FSailConditions& K = Pending.Conditions;
+					return FText::FromString(SailCatalog::Expect(K.WindKn, K.GustKn, int32(K.Sky), K.LocalHour, K.Month, K.Day, Pending.Boat, Pending.World));
+				}), EType::Body, FSlateColor(Fg), true)
+			], FMargin(16.f))
+	];
+	E.Content = SNew(SOverlay)
+		+ SOverlay::Slot().HAlign(HAlign_Left).Padding(0.f, 0.f, 0.f, 92.f)[ Column ]
+		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top)[ Badge ]
+		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 92.f)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 12.f)[ WindLine ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)[ Expect ]
 		];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), bInGame ? TEXT("Apply") : TEXT("Next")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")),
-		Prompt(TEXT("← →"), TEXT("← →"), TEXT("Adjust")) }, TEXT("Weather runs on the physics wind field; the sky and water follow it"));
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), bInGame ? TEXT("Apply") : TEXT("Next")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Adjust")),
+		Prompt(TEXT("Drag"), TEXT("R"), TEXT("Look")), Prompt(TEXT("V"), TEXT("View"), TEXT("Hide panel")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
+		TEXT("The world behind is the preview: the wind eases in; the sky changes once you stop"));
 	return E;
 }
 
