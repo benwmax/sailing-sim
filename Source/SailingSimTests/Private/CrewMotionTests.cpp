@@ -4,6 +4,7 @@
 #include "Wind.h"
 #include "CrewPose.h"
 #include "CrewMotion.h"
+#include "CockpitEye.h"
 #include "CrewClips.h"
 #include "CrewAnimInstance.h"
 #include "SailboatPawn.h"
@@ -1334,6 +1335,173 @@ bool FVisualCrewTackTest::RunTest(const FString& Parameters)
 			if (bGybe) TestTrue(Case + FString::Printf(TEXT(": still as the boom passes (%.3f m)"), WorstHold), WorstHold < 0.02);
 			TestTrue(Case + TEXT(": the stance takes over after it"), bEnded && Final != ECrewStance::Crossing);
 		}
+	}
+	return true;
+}
+
+/**
+ * docs/cockpit-tack/: the cockpit view's steadied eye through a J/22 tack and gybe, her three crew posed (SK_Sailor) and
+ * the eye fed the helm's head as the pawn does. It keeps 35 cm from every other head and 15 cm under the boom over it,
+ * does not bob with the steps, goes across one way, settles back onto the head after the crossing; at rest it is the
+ * head; the look's lead stays within 15 deg and is gone a second after the turn; switched on, it starts at the head.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCockpitEyeTest, "SailingSim.Visual.CockpitEye", CrewMotionFlags)
+bool FVisualCockpitEyeTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig Cfg = FBoatConfig::Make(EBoatType::J22);
+	const FBoatModel Model(Cfg);
+	TArray<FCrewBody> Bodies;
+	CrewBodies(*this, Bodies);
+	if (!TestTrue(TEXT("SK_Sailor loads"), Bodies.Num() > 0)) return false;
+	const FReferenceSkeleton& Ref = Bodies[0].Mesh->GetRefSkeleton();
+	const int32 HeadBone = Ref.FindBoneIndex(TEXT("head"));
+	if (!TestTrue(TEXT("SK_Sailor has a head"), HeadBone != INDEX_NONE)) return false;
+	const int32 N = Cfg.CrewCount;
+	FCrewCockpitWell W;
+	CrewCockpitWell(Cfg, W);
+	const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
+	for (const bool bGybe : { false, true })
+	{
+		TArray<FCrewCrossing> Cross;
+		Cross.SetNum(N);
+		TArray<FCrewMotionState> States;
+		States.SetNum(N);
+		FCockpitEye Eye;
+		const float Dt = 1.f / 60.f;
+		double Closest = 1e9, WorstBoom = 1e9, Back = 0.0, Bob = 0.0, Settled = -1.0, PrevY = 1e9, MaxLead = 0.0;
+		bool bWasCrossing = false, bEnded = false;
+		double EndAt = -1.0, FirstJump = -1.0;
+		TArray<double> CZ, CT;   // the eye's height through the steps, and whether the boom was near
+		for (int32 K = 0; K < 12 * 60; ++K)
+		{
+			const double T = K * Dt;
+			const double U = FMath::Clamp((T - 2.0) / 3.0, 0.0, 1.0);
+			const double Swing = FMath::Clamp((T - 3.4) / 0.8, 0.0, 1.0);
+			const double Over = FMath::Clamp((T - 3.2) / 1.6, 0.0, 1.0);
+			double Boom = 0.0, TurnRate = 0.0;
+			FVector Heads[8];
+			FVector RawEye = FVector::ZeroVector;
+			bool bHelmCrossing = false;
+			for (int32 I = 0; I < N; ++I)
+			{
+				FCrewPlaceInput In;
+				In.Config = &Cfg;
+				In.Index = I;
+				In.Crossing = &Cross[I];
+				In.Dt = Dt;
+				In.CrewOffset = FMath::Lerp(0.9, -0.9, Over);
+				In.OffsetRate = (T > 3.2 && T < 4.8) ? -1.8 / 1.6 : 0.0;
+				In.WindwardSide = Over < 0.5 ? 1 : -1;
+				if (!bGybe)
+				{
+					In.TrueWindAngle = FMath::Lerp(0.7, -0.7, U);
+					In.TurnRate = (T > 2.0 && T < 5.0) ? -1.4 / 3.0 : 0.0;
+					In.BoomAngle = FMath::Lerp(-0.25, 0.25, Swing);
+					In.BoomRate = (T > 3.4 && T < 4.2) ? 0.5 / 0.8 : 0.0;
+				}
+				else
+				{
+					In.TrueWindAngle = FMath::Lerp(2.9, -2.9 + 2.0 * PI, U);
+					if (In.TrueWindAngle > PI) In.TrueWindAngle -= 2.0 * PI;
+					In.TurnRate = (T > 2.0 && T < 5.0) ? -0.2 : 0.0;
+					In.BoomAngle = FMath::Lerp(-1.2, 1.2, Swing);
+					In.BoomRate = (T > 3.4 && T < 4.2) ? 2.4 / 0.8 : 0.0;
+				}
+				Boom = In.BoomAngle;
+				TurnRate = In.TurnRate;
+				FCrewPlacement Pl;
+				CrewPlacement(In, Pl);
+				FCrewMotionInput MI;
+				MI.Params = Pl.Params;
+				MI.Duck = Pl.Duck;
+				MI.ToBoat = FigureFrame(Pl, nullptr);
+				MI.SeatFromCG = Pl.Pelvis - CG;
+				MI.FootAnchor[0] = Pl.FootAnchor[0] * CmPerMeter;
+				MI.FootAnchor[1] = Pl.FootAnchor[1] * CmPerMeter;
+				MI.FootWeight = Pl.FootWeight;
+				MI.bClips = false;
+				MI.Time = float(T);
+				CrewMotionUpdate(States[I], MI, Dt);
+				TArray<FTransform> CS;
+				CrewMotionPose(Ref, nullptr, &Cfg, Model.HullDepth(), States[I], MI, CS);
+				Heads[I] = MI.ToBoat.TransformPosition(CS[HeadBone].GetLocation());
+				if (I == N - 1)
+				{
+					RawEye = Heads[I] + FVector(10.0, 0.0, 8.0);
+					bHelmCrossing = Cross[I].bActive;
+				}
+			}
+			FCockpitEyeInput EI;
+			EI.RawEye = RawEye;
+			EI.bCrossing = bHelmCrossing;
+			for (int32 I = 0; I + 1 < N; ++I) EI.Heads.Add(Heads[I]);
+			const double Along = (Cfg.MainLuffX * CmPerMeter - RawEye.X) / FMath::Max(FMath::Cos(Boom), 0.2);
+			const double BoomY = (Cfg.MainLuffX * CmPerMeter - RawEye.X) * FMath::Tan(Boom);
+			EI.bBoomOver = Along > 0.0 && Along < Cfg.MainFootChord * CmPerMeter && FMath::Abs(RawEye.Y - BoomY) < 30.0;
+			EI.bBoomNear = Along > 0.0 && Along < Cfg.MainFootChord * CmPerMeter && FMath::Abs(RawEye.Y - BoomY) < 100.0;
+			EI.BoomUnderZ = (Cfg.BoomZ - 0.05) * CmPerMeter;
+			EI.MinX = FMath::Max(W.X0, Cfg.Hulls[0].SternX + 0.1) * CmPerMeter;
+			EI.MaxX = W.X1 * CmPerMeter;
+			EI.TurnRate = TurnRate;
+			float Lead = 0.f;
+			const FVector At = Eye.Step(EI, Dt, Lead);
+			if (K == 0) FirstJump = FVector::Dist(At, RawEye);
+			for (int32 I = 0; I + 1 < N; ++I) Closest = FMath::Min(Closest, FVector::Dist(At, Heads[I]));
+			if (EI.bBoomOver) WorstBoom = FMath::Min(WorstBoom, EI.BoomUnderZ - At.Z);
+			MaxLead = FMath::Max(MaxLead, double(FMath::Abs(Lead)));
+			if (bHelmCrossing)
+			{
+				if (PrevY < 1e8 && At.Y > PrevY + 0.2) Back = FMath::Max(Back, At.Y - PrevY);
+				PrevY = At.Y;
+				const float Tau = Cross[N - 1].Tau();
+				// (Not while ducking the boom: that drop is planned, not a step's bob.)
+				if (Tau > -0.3f && Tau < 0.7f) { CZ.Add(At.Z); CT.Add(EI.bBoomNear ? 1.0 : 0.0); }
+			}
+			if (bWasCrossing && !bHelmCrossing && !bEnded) { bEnded = true; EndAt = T; }
+			bWasCrossing = bHelmCrossing;
+			if (bEnded && Settled < 0.0 && T >= EndAt + 1.5) Settled = FVector::Dist(At, RawEye);
+			if (T > 6.1 && T < 6.2) TestTrue(FString::Printf(TEXT("%s: the lead is gone a second after the turn (%.2f deg)"), bGybe ? TEXT("Gybe") : TEXT("Tack"), Lead), FMath::Abs(Lead) < 0.5f);
+		}
+		// The bob: over the steps, the eye's height less its own 0.5 s running mean (the planned drop is slower), peak to peak,
+		// away from the boom.
+		double BobLo = 0.0, BobHi = 0.0;
+		for (int32 J = 15; J + 15 < CZ.Num(); ++J)
+		{
+			if (CT[J] > 0.5) continue;
+			double Mean = 0.0;
+			for (int32 M = J - 15; M <= J + 15; ++M) Mean += CZ[M];
+			Mean /= 31.0;
+			BobLo = FMath::Min(BobLo, CZ[J] - Mean);
+			BobHi = FMath::Max(BobHi, CZ[J] - Mean);
+		}
+		Bob = BobHi - BobLo;
+		const FString Case = bGybe ? TEXT("Gybe") : TEXT("Tack");
+		AddInfo(Case + FString::Printf(TEXT(": closest head %.1f cm, boom clearance %.1f cm, bob %.1f cm, back %.2f cm, settled to %.1f cm, lead up to %.1f deg"),
+			Closest, WorstBoom, Bob, Back, Settled, MaxLead));
+		TestTrue(Case + TEXT(": the helm crossed"), bEnded);
+		TestTrue(Case + TEXT(": 35 cm from every other head"), Closest >= 35.0);
+		TestTrue(Case + TEXT(": 15 cm under the boom over it"), WorstBoom >= 15.0 - 0.5);
+		TestTrue(Case + TEXT(": no bob over the steps (3 cm)"), Bob < 3.0);
+		TestTrue(Case + TEXT(": across one way only"), Back < 0.2 + 1e-6);
+		TestTrue(Case + TEXT(": back on the head 1.5 s after (2 cm)"), Settled >= 0.0 && Settled < 2.0);
+		TestTrue(Case + TEXT(": the lead within 15 deg"), MaxLead <= 15.0 + 1e-3);
+		TestTrue(Case + TEXT(": starts at the head"), FirstJump < 1.0);
+	}
+	// At rest: a seated head swaying 3 cm at 0.5 Hz, no crossing: the eye stays within 1 cm of it.
+	{
+		FCockpitEye Eye;
+		double Worst = 0.0;
+		for (int32 K = 0; K < 20 * 60; ++K)
+		{
+			const double T = K / 60.0;
+			FCockpitEyeInput EI;
+			EI.RawEye = FVector(-150.0 + 3.0 * FMath::Sin(2.0 * PI * 0.5 * T), 60.0 + 3.0 * FMath::Sin(2.0 * PI * 0.37 * T), 140.0 + 2.0 * FMath::Sin(2.0 * PI * 0.8 * T));
+			float Lead = 0.f;
+			const FVector At = Eye.Step(EI, 1.f / 60.f, Lead);
+			if (T > 1.0) Worst = FMath::Max(Worst, FVector::Dist(At, EI.RawEye));
+		}
+		TestTrue(FString::Printf(TEXT("At rest: within 1 cm of the head (%.2f cm)"), Worst), Worst < 1.0);
 	}
 	return true;
 }
