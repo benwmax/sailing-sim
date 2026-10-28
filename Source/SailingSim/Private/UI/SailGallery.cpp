@@ -361,8 +361,6 @@ void SSailFrontEnd::OpenGallery()
 	Registry.ScanPathsSynchronous(SailGallery::RootFolders(), false);
 #endif
 	GalleryItems = SailGallery::ScanRegistry();
-	// Whole boats come with G3 (the Mac's): the stage shows meshes.
-	GalleryItems.RemoveAll([](const FGalleryItem& I) { return I.BoatType >= 0; });
 	bGalleryFolded = SailGalleryScreen::LoadFolded();
 	bGalleryFull = bGalleryClean = bGalleryViewer = bGalleryMore = bGalleryCompareShown = bGalleryCompareAsked = false;
 	GallerySelected = -1;

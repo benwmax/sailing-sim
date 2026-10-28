@@ -149,6 +149,9 @@ public:
 	UPROPERTY() bool bTrafficBoat = false;
 	FLinearColor TrafficHullColor = FLinearColor(0.94f, 0.94f, 0.92f);
 	Sailing::FBoatModel* InitTraffic(int32 Type, double X, double Y, double HeadingRad);
+	/** The gallery's whole boats (docs/gallery-core/, G3): a traffic-mode boat nobody steps, put still at a place (map m;
+	 *  Z her waterline's height), level, on a heading. */
+	void PoseForDisplay(double X, double Y, double Z, double HeadingRad);
 	void SetTrafficControls(const Sailing::FBoatControls& InControls) { Controls = InControls; }
 	Sailing::FBoatModel& GetMutableBoatModel() { return Boat; }
 	/** The ship's log (Y shows it). Other systems add events (race results, rules judgments). */

@@ -177,6 +177,28 @@ bool FSailingGalleryStageTest::RunTest(const FString&)
 			&& D->GetOverlayMaterial() && D->GetOverlayMaterial()->GetName() == TEXT("M_GalleryWire"));
 		Stage->SetView(EGalleryView::Lit);
 		TestTrue(TEXT("Lit: no overlay"), D && !D->GetOverlayMaterial());
+
+		// G3: a whole boat, the player's assembly, still on the stage with her keel on the floor; a mesh again puts her away.
+		FGalleryItem J22;
+		J22.Key = TEXT("Boat:0");
+		J22.Name = TEXT("J/22");
+		J22.BoatType = 0;
+		J22.Category = TEXT("Boats");
+		Stage->Show(J22);
+		++GFrameCounter;
+		World->Tick(LEVELTICK_All, 1.f / 60.f);
+		const FGalleryStats B = Stage->GetStats();
+		const FBoxSphereBounds Box = Stage->SubjectBounds();
+		AddInfo(FString::Printf(TEXT("J/22 whole: %d triangles in %d parts, %.2f x %.2f x %.2f m, lowest point %.2f m over the floor"), B.Triangles, B.Lods,
+			B.SizeM.X, B.SizeM.Y, B.SizeM.Z, (Box.Origin.Z - Box.BoxExtent.Z - Stage->GetActorLocation().Z) / 100.0));
+		TestTrue(TEXT("A whole boat is shown"), Stage->IsBoatShown() && B.Triangles > 1000 && B.Lods >= 4);
+		TestTrue(TEXT("About her length (22 ft, with her rig's spread)"), B.SizeM.GetMax() > 6.0 && B.SizeM.GetMax() < 14.0);
+		TestTrue(TEXT("Her keel on the floor (within 25 cm)"), FMath::Abs(float(Box.Origin.Z - Box.BoxExtent.Z - Stage->GetActorLocation().Z)) < 25.f);
+		Stage->SetView(EGalleryView::LitWire);
+		Stage->SetView(EGalleryView::Lit);
+		Stage->Show(Cube);
+		for (int32 I = 0; I < 60 && Stage->IsLoading(); ++I) { FlushAsyncLoading(); ++GFrameCounter; World->Tick(LEVELTICK_All, 1.f / 60.f); }
+		TestFalse(TEXT("A mesh again: the boat put away"), Stage->IsBoatShown());
 	}
 	World->EndPlay(EEndPlayReason::Quit);
 	GEngine->DestroyWorldContext(World);

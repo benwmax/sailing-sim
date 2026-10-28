@@ -8,6 +8,7 @@
 #include "GalleryStage.generated.h"
 
 class AFreeCamera;
+class ASailboatPawn;
 class UStaticMeshComponent;
 class UProceduralMeshComponent;
 class URectLightComponent;
@@ -70,6 +71,9 @@ public:
 	void SetDetail(EGalleryDetail Detail, int32 Lod = 0);
 	EGalleryDetail GetDetail() const { return DetailMode; }
 	FGalleryStats GetStats() const;
+	/** What the camera frames and the studio is sized for: the whole boat's (G3), or the display mesh's. */
+	FBoxSphereBounds SubjectBounds() const;
+	bool IsBoatShown() const;
 
 	/** The orbit (the screen forwards mouse and stick here): degrees, zoom steps, a pan in view-plane cm, reset. */
 	void Orbit(const FVector2D& DeltaDeg);
@@ -123,6 +127,8 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<URectLightComponent> Fill;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<URectLightComponent> Rim;
 	UPROPERTY(Transient) TObjectPtr<AFreeCamera> Camera;
+	/** G3: the whole boat shown (a still traffic-mode pawn with the player's visual assembly), or null. */
+	UPROPERTY(Transient) TObjectPtr<ASailboatPawn> BoatDisplay;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> WireMaterial;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> StudioMaterial;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> CompareA;
@@ -157,6 +163,10 @@ private:
 	FIntPoint CaptureSize = FIntPoint::ZeroValue;
 
 	void FinishLoad();
+	/** G3: a whole boat on the stage (spawned or swapped), posed for the light (keel on the studio floor, afloat on the lake). */
+	void ShowBoat();
+	void PoseBoat();
+
 	void EnsureMaterials();
 	UStaticMesh* MeshForDetail() const;
 	void ApplyMesh();
