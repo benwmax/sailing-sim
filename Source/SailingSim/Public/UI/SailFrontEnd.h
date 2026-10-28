@@ -37,6 +37,11 @@ public:
 	/** Credits and the world cards: the sticks scroll the text. */
 	virtual FReply OnAnalogValueChanged(const FGeometry& Geometry, const FAnalogInputEvent& Event) override;
 	virtual bool SupportsKeyboardFocus() const override { return true; }
+	/** The Boat screen (docs/showroom/pc/): a drag on empty space turns the showroom's camera, the wheel zooms it. */
+	virtual FReply OnMouseButtonDown(const FGeometry& Geometry, const FPointerEvent& Event) override;
+	virtual FReply OnMouseButtonUp(const FGeometry& Geometry, const FPointerEvent& Event) override;
+	virtual FReply OnMouseMove(const FGeometry& Geometry, const FPointerEvent& Event) override;
+	virtual FReply OnMouseWheel(const FGeometry& Geometry, const FPointerEvent& Event) override;
 
 	void Push(ESailScreen Screen);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
@@ -124,4 +129,15 @@ private:
 	TSharedPtr<class SScrollBox> ActiveScroll() const;
 	float ScrollStick = 0.f;
 	EActiveTimerReturnType ScrollActive(double Time, float Delta);
+	// The showroom's Boat screen (Inputs/ui-showroom/brief.md section 2): the strip's cards, View mode (the panels hidden),
+	// the right stick's held look and the triggers' zoom (applied by an active timer), a drag on empty space.
+	TArray<TSharedPtr<class SSailButton>> BoatCards;
+	TArray<int32> BoatCardTypes;
+	bool bViewMode = false;
+	FVector2D OrbitStick = FVector2D::ZeroVector;
+	float OrbitZoomStick = 0.f, OrbitZoomCarry = 0.f;
+	bool bOrbitDrag = false;
+	/** Moves along the strip (LB/RB, Q/E): the next boat is shown and focused. */
+	void StepBoat(int32 Dir);
+	EActiveTimerReturnType TickOrbitStick(double Time, float Delta);
 };

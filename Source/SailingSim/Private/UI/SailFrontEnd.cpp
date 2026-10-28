@@ -74,20 +74,46 @@ namespace SailFrontEndImpl
 		SLATE_BEGIN_ARGS(SBackdrop) {}
 			SLATE_ATTRIBUTE(float, LeftAlpha)
 			SLATE_ATTRIBUTE(float, RightAlpha)
+			/** The showroom's look (the Boat screen): no left-heavy wash. */
+			SLATE_ATTRIBUTE(bool, Showroom)
+			/** A dip to dark over the whole screen (0..1): the boat swap's cover. */
+			SLATE_ATTRIBUTE(float, Dip)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { L = A._LeftAlpha; R = A._RightAlpha; }
+		void Construct(const FArguments& A) { L = A._LeftAlpha; R = A._RightAlpha; Showroom = A._Showroom; Dip = A._Dip; }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(8, 8); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
-			TArray<FSlateGradientStop> Stops;
+			const FVector2f S(G.GetLocalSize());
+			if (Showroom.Get(false))
+			{
+				// Inputs/ui-showroom/brief.md section 2: soft vignettes top and bottom so the boat stays bright, and a light
+				// fade behind the left column that ends at its right edge (Bean, Oct 27: never into the boat's side), 460 px
+				// of 1440, with the width.
+				auto Band = [&](FVector2f At, FVector2f Size, float A0, float A1, EOrientation O)
+				{
+					TArray<FSlateGradientStop> St;
+					St.Add(FSlateGradientStop(FVector2f(0.f, 0.f), Ink.CopyWithNewOpacity(A0)));
+					St.Add(FSlateGradientStop(O == Orient_Vertical ? FVector2f(Size.X, 0.f) : FVector2f(0.f, Size.Y), Ink.CopyWithNewOpacity(A1)));
+					FSlateDrawElement::MakeGradient(Out, Layer, G.ToPaintGeometry(Size, FSlateLayoutTransform(At)), St, O);
+				};
+				Band(FVector2f(0.f, 0.f), FVector2f(S.X, S.Y * 0.16f), 0.55f, 0.f, Orient_Horizontal);
+				Band(FVector2f(0.f, S.Y * 0.72f), FVector2f(S.X, S.Y * 0.28f), 0.f, 0.7f, Orient_Horizontal);
+				Band(FVector2f(0.f, 0.f), FVector2f(S.X * 460.f / 1440.f, S.Y), 0.45f, 0.f, Orient_Vertical);
+			}
+			else
+			{
+				TArray<FSlateGradientStop> Stops;
 			Stops.Add(FSlateGradientStop(FVector2f(0.f, 0.f), Ink.CopyWithNewOpacity(L.Get(0.86f))));
 			Stops.Add(FSlateGradientStop(FVector2f(G.GetLocalSize().X * 0.55f, 0.f), Ink.CopyWithNewOpacity(FMath::Lerp(L.Get(0.86f), R.Get(0.15f), 0.6f))));
 			Stops.Add(FSlateGradientStop(FVector2f(G.GetLocalSize().X, 0.f), Ink.CopyWithNewOpacity(R.Get(0.15f))));
-			FSlateDrawElement::MakeGradient(Out, Layer, G.ToPaintGeometry(), Stops, Orient_Vertical);
-			return Layer;
+				FSlateDrawElement::MakeGradient(Out, Layer, G.ToPaintGeometry(), Stops, Orient_Vertical);
+			}
+			if (const float D = Dip.Get(0.f); D > 0.f) FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(), Rounded(Ink, 0.f), ESlateDrawEffect::None, Ink.CopyWithNewOpacity(D));
+			return Layer + 1;
 		}
 	private:
-		TAttribute<float> L, R;
+		TAttribute<float> L, R, Dip;
+		TAttribute<bool> Showroom;
 	};
 
 	/** A boat's silhouette for the cards (hull, rig and sails from its type), drawn rather than imported. */
@@ -261,7 +287,15 @@ void SSailFrontEnd::Construct(const FArguments& A)
 	ChildSlot
 	[
 		SNew(SOverlay)
-		+ SOverlay::Slot()[ SNew(SBackdrop).LeftAlpha(bInGame ? 0.80f : 0.86f).RightAlpha(bInGame ? 0.62f : 0.15f) ]
+		+ SOverlay::Slot()[ SNew(SBackdrop).LeftAlpha(bInGame ? 0.80f : 0.86f).RightAlpha(bInGame ? 0.62f : 0.15f)
+			.Showroom_Lambda([this]() { return Current() == ESailScreen::Boat; })
+			// The swap's cover: the moment the new boat is built the screen is dark, and it clears over 150 ms.
+			.Dip_Lambda([this]()
+			{
+				const ASailboatPawn* P = Current() == ESailScreen::Boat ? Pawn() : nullptr;
+				const double Since = P && P->GetShowroomSwapTime() > 0.0 ? FPlatformTime::Seconds() - P->GetShowroomSwapTime() : 1e9;
+				return Since < 0.15 ? float(0.6 * (1.0 - Since / 0.15)) : 0.f;
+			}) ]
 		+ SOverlay::Slot().Padding(FMargin(SafeX, SafeTop, SafeX, 0.f))[ SAssignNew(Body, SBox) ]
 		+ SOverlay::Slot().VAlign(VAlign_Bottom)[ SAssignNew(Footer, SBox) ]
 	];
@@ -408,6 +442,16 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		if (P && FocusedControlRow < P->GetKeyRows().Num()) ListenControls(FocusedControlRow, true);
 		return FReply::Handled();
 	}
+	if (Current() == ESailScreen::Boat)
+	{
+		// Inputs/ui-showroom/brief.md section 2: V or the controller's View button hides the panels; it, Esc or B bring
+		// them back. LB/RB and Q/E move along the strip (Left and Right do too, between its cards); Home or R3 puts the
+		// camera back on the starboard quarter.
+		if (K == EKeys::V || K == EKeys::Gamepad_Special_Left || (bViewMode && IsBackKey(K))) { bViewMode = !bViewMode; return FReply::Handled(); }
+		if (K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) { StepBoat(-1); return FReply::Handled(); }
+		if (K == EKeys::E || K == EKeys::Gamepad_RightShoulder) { StepBoat(1); return FReply::Handled(); }
+		if (K == EKeys::Home || K == EKeys::Gamepad_RightThumbstick) { if (ASailboatPawn* P = Pawn()) P->ShowroomResetView(); return FReply::Handled(); }
+	}
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
 	if (const TSharedPtr<SScrollBox> Scroll = ActiveScroll())
 	{
@@ -442,6 +486,20 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 
 FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputEvent& E)
 {
+	if (Current() == ESailScreen::Boat)
+	{
+		// The right stick turns the showroom's camera, the triggers zoom it (LT out, RT in); held, applied each frame.
+		const FKey K = E.GetKey();
+		const float V = FMath::Abs(E.GetAnalogValue()) > 0.15f ? E.GetAnalogValue() : 0.f;
+		const bool bWasIdle = OrbitStick.IsZero() && OrbitZoomStick == 0.f;
+		if (K == EKeys::Gamepad_RightX) OrbitStick.X = V;
+		else if (K == EKeys::Gamepad_RightY) OrbitStick.Y = V;
+		else if (K == EKeys::Gamepad_RightTriggerAxis) OrbitZoomStick = V;
+		else if (K == EKeys::Gamepad_LeftTriggerAxis) OrbitZoomStick = -V;
+		else return FReply::Unhandled();
+		if (bWasIdle && !(OrbitStick.IsZero() && OrbitZoomStick == 0.f)) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::TickOrbitStick));
+		return FReply::Handled();
+	}
 	if (!ActiveScroll().IsValid()) return FReply::Unhandled();
 	// Credits: either stick scrolls (up is positive Y); the world cards: the right stick (the left one moves between cards).
 	// The timer runs while it is held.
@@ -471,6 +529,61 @@ EActiveTimerReturnType SSailFrontEnd::ScrollActive(double, float Delta)
 	const float Speed = Current() == ESailScreen::Credits ? 900.f : 260.f;
 	Scroll->SetScrollOffset(FMath::Clamp(Scroll->GetScrollOffset() + ScrollStick * Speed * Delta, 0.f, Scroll->GetScrollOffsetOfEnd()));
 	return EActiveTimerReturnType::Continue;
+}
+
+EActiveTimerReturnType SSailFrontEnd::TickOrbitStick(double, float Delta)
+{
+	ASailboatPawn* P = Pawn();
+	if (Current() != ESailScreen::Boat || !P || (OrbitStick.IsZero() && OrbitZoomStick == 0.f))
+	{
+		OrbitStick = FVector2D::ZeroVector; OrbitZoomStick = 0.f; OrbitZoomCarry = 0.f;
+		return EActiveTimerReturnType::Stop;
+	}
+	// 90 deg/s at full stick; the zoom a notch every 0.15 s at full trigger.
+	P->ShowroomLook(OrbitStick * 90.0 * Delta);
+	OrbitZoomCarry += OrbitZoomStick * Delta / 0.15f;
+	const int32 Notches = FMath::TruncToInt32(OrbitZoomCarry);
+	if (Notches != 0) { P->ShowroomZoom(Notches); OrbitZoomCarry -= float(Notches); }
+	return EActiveTimerReturnType::Continue;
+}
+
+void SSailFrontEnd::StepBoat(int32 Dir)
+{
+	const int32 N = BoatCardTypes.Num();
+	if (N == 0) return;
+	const int32 At = FMath::Max(BoatCardTypes.IndexOfByKey(FocusedBoat), 0);
+	const int32 To = (At + Dir % N + N) % N;
+	FocusedBoat = BoatCardTypes[To];
+	if (BoatCards.IsValidIndex(To) && BoatCards[To].IsValid()) FSlateApplication::Get().SetUserFocus(0, BoatCards[To], EFocusCause::Navigation);
+}
+
+FReply SSailFrontEnd::OnMouseButtonDown(const FGeometry&, const FPointerEvent& E)
+{
+	// (Buttons and cards take their own clicks; what reaches here is empty space.)
+	if (Current() != ESailScreen::Boat || E.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+	bOrbitDrag = true;
+	return FReply::Handled().CaptureMouse(SharedThis(this));
+}
+
+FReply SSailFrontEnd::OnMouseButtonUp(const FGeometry&, const FPointerEvent& E)
+{
+	if (!bOrbitDrag || E.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+	bOrbitDrag = false;
+	return FReply::Handled().ReleaseMouseCapture();
+}
+
+FReply SSailFrontEnd::OnMouseMove(const FGeometry&, const FPointerEvent& E)
+{
+	if (!bOrbitDrag || !HasMouseCapture()) return FReply::Unhandled();
+	if (ASailboatPawn* P = Pawn()) P->ShowroomLook(FVector2D(E.GetCursorDelta().X * 0.25, -E.GetCursorDelta().Y * 0.25));
+	return FReply::Handled();
+}
+
+FReply SSailFrontEnd::OnMouseWheel(const FGeometry&, const FPointerEvent& E)
+{
+	if (Current() != ESailScreen::Boat) return FReply::Unhandled();
+	if (ASailboatPawn* P = Pawn()) P->ShowroomZoom(E.GetWheelDelta() > 0.f ? 1 : -1);
+	return FReply::Handled();
 }
 
 void SSailFrontEnd::SetSettingsTab(int32 Tab)
@@ -813,82 +926,210 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
-	// Career 1: boats open as certificates are earned; a locked boat's card says which certificate opens it.
+	// Inputs/ui-showroom/brief.md section 2 (car-select layout): the boat owns the middle of the screen; her name big on
+	// the left, her numbers as bars scaled to the fleet on the right, the fleet as a strip along the bottom. Focus is the
+	// selection: moving along the strip shows that boat (FSailShowroom swaps her in, debounced). Career 1: a locked boat
+	// can still be looked at, but not chosen; her card and the Next button say which certificate opens her.
 	const FCareerProgress Career = SailCareer::Progress();
 	if (!Career.IsBoatOpen(FSailSave::BoatId(Pending.Boat))) Pending.Boat = 0;
 	FocusedBoat = Pending.Boat;
-	TSharedRef<SUniformGridPanel> Grid = SNew(SUniformGridPanel).SlotPadding(FMargin(8.f));
-	for (const SailCatalog::FBoat& B : SailCatalog::Boats())
-	{
-		const int32 T = B.Type;
-		const FString Locked = Career.BoatLockReason(FSailSave::BoatId(T));
-		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(14.f)).IsEnabled(Locked.IsEmpty())
-			.IsSelected_Lambda([this, T]() { return Pending.Boat == T; })
-			.OnFocused_Lambda([this, T]() { FocusedBoat = T; })
-			.OnClicked_Lambda([this, T]() { if (Pending.Boat == T) Push(ESailScreen::Conditions); else Pending.Boat = T; })
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SNew(SBoatIcon).Type(T) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 2.f)[ SailUI::Text(B.Name, EType::CardTitleS, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Locked.IsEmpty() ? B.TypeLine : Locked, EType::Small, Locked.IsEmpty() ? Muted : Fg, true) ]
-		];
-		Grid->AddSlot(T % 4, T / 4)[ Card ];
-		if (T == Pending.Boat) E.Focus = Card;
-	}
+	bViewMode = false;
+	BoatCards.Reset();
+	BoatCardTypes.Reset();
+	const TArray<SailCatalog::FBoat>& Fleet = SailCatalog::Boats();
+	float MaxLen = 1.f, MaxBeam = 1.f, MaxKg = 1.f, MaxKn = 1.f;
+	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
 	auto Cur = [this]() -> const SailCatalog::FBoat& { return SailCatalog::Boat(FocusedBoat); };
 	auto Attr = [Cur](TFunction<FString(const SailCatalog::FBoat&)> F) { return TAttribute<FText>::CreateLambda([Cur, F]() { return FText::FromString(F(Cur())); }); };
-	auto Row = [&](const FString& Label, TFunction<FString(const SailCatalog::FBoat&)> F)
+	auto LockOf = [Career](int32 T) { return Career.BoatLockReason(FSailSave::BoatId(T)); };
+	auto Panels = [this]() { return bViewMode ? EVisibility::Hidden : EVisibility::Visible; };
+
+	// The strip: eight compact cards, LB/RB (and Q/E) at its ends.
+	TSharedRef<SHorizontalBox> Strip = SNew(SHorizontalBox);
+	Strip->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 8.f, 0.f)
+	[ SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { StepBoat(-1); })[ KeyCap(TEXT("Q"), TEXT("LB")) ] ];
+	for (const SailCatalog::FBoat& B : Fleet)
 	{
-		return SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Label, EType::Ui, Muted) ]
-			+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(F), EType::Value, FSlateColor(Fg)) ];
-	};
-	TSharedRef<SWidget> Detail = PanelBox(SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()
+		const int32 T = B.Type;
+		// The fleet of eight: the prologue's maxi isn't in the strip (brief section 8).
+		if (T == int32(Sailing::EBoatType::Maxi)) continue;
+		const FString Locked = LockOf(T);
+		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(8.f, 6.f))
+			.IsSelected_Lambda([this, T]() { return FocusedBoat == T; })
+			.OnFocused_Lambda([this, T]() { FocusedBoat = T; })
+			.OnClicked_Lambda([this, T, Locked]()
+			{
+				// A click shows her; a click on the boat shown moves on (as Enter does), unless she is locked.
+				if (FocusedBoat != T) { FocusedBoat = T; return; }
+				if (Locked.IsEmpty()) { Pending.Boat = T; Push(ESailScreen::Conditions); }
+			})
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.TypeLine.ToUpper(); }), EType::Eyebrow, FSlateColor(Muted)) ]
-			+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return FString::Join(B.Flags, TEXT(" · ")).ToUpper(); }), EType::Label, FSlateColor(Fg)) ]
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SNew(SBox).WidthOverride(120.f).HeightOverride(50.f)[ SNew(SBoatIcon).Type(T) ] ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(B.Name, EType::Label, Locked.IsEmpty() ? Fg : Muted) ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+			[
+				// Her meshes loading (brief section 5's spinner), or the lock.
+				TextAttr(TAttribute<FText>::CreateLambda([this, T, Locked]()
+				{
+					const ASailboatPawn* P = Pawn();
+					if (P && P->GetShowroomLoadingType() == T)
+					{
+						static const TCHAR* Dots[] = { TEXT("Loading ·"), TEXT("Loading · ·"), TEXT("Loading · · ·") };
+						return FText::FromString(Dots[int32(FPlatformTime::Seconds() * 4.0) % 3]);
+					}
+					return FText::FromString(Locked.IsEmpty() ? FString() : FString(TEXT("Locked")));
+				}), EType::Small, FSlateColor(Muted))
+			]
+		];
+		BoatCards.Add(Card);
+		BoatCardTypes.Add(T);
+		Strip->AddSlot().FillWidth(1.f).Padding(4.f, 0.f)[ Card ];
+		if (T == Pending.Boat) E.Focus = Card;
+	}
+	Strip->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(8.f, 0.f, 0.f, 0.f)
+	[ SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { StepBoat(1); })[ KeyCap(TEXT("E"), TEXT("RB")) ] ];
+
+	// Left column: type line, her name big, the pill, the description, the flags.
+	FSlateFontInfo NameFont = Font(EType::Logo);
+	NameFont.Size = 80;
+	TSharedRef<SWidget> Left = SNew(SBox).WidthOverride(380.f)
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.TypeLine.ToUpper(); }), EType::Eyebrow, FSlateColor(Accent)) ] ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 8.f)
+		[
+			SNew(STextBlock).Font(NameFont).ColorAndOpacity(Fg).AutoWrapText(true).LineHeightPercentage(0.85f)
+				.Text_Lambda([Cur]() { return FText::FromString(Cur().Name.ToUpper()); })
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 12.f)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Name.ToUpper(); }), EType::CardTitle, FSlateColor(Fg)) ]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[ SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 ? EVisibility::Visible : EVisibility::Collapsed; })[ Pill(TEXT("Your lesson boat"), true) ] ]
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 16.f)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Description; }), EType::Body, FSlateColor(Muted), true) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f)[ Row(TEXT("Length"), [](const SailCatalog::FBoat& B) { return B.Length; }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f)[ Row(TEXT("Beam"), [](const SailCatalog::FBoat& B) { return B.Beam; }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f)[ Row(TEXT("Draft"), [](const SailCatalog::FBoat& B) { return B.Draft; }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f)[ Row(TEXT("Weight"), [](const SailCatalog::FBoat& B) { return B.Weight; }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f)[ Row(TEXT("Close-hauled at 12 kn"), [](const SailCatalog::FBoat& B) { return B.CloseHauled; }) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 3.f)
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Handling"), EType::Ui, Muted) ]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			SNew(SBox).Visibility_Lambda([this, Panels]() { return Panels() == EVisibility::Visible && (FocusedBoat == 0 || !SailCareer::Progress().BoatLockReason(FSailSave::BoatId(FocusedBoat)).IsEmpty()) ? EVisibility::Visible : EVisibility::Collapsed; })
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().Padding(2.f, 0.f)[ SNew(SBox).WidthOverride(22.f).HeightOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([Cur]() { return Rounded(Cur().Handling >= 1 ? Accent : Line, 2.f); }) ] ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(2.f, 0.f)[ SNew(SBox).WidthOverride(22.f).HeightOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([Cur]() { return Rounded(Cur().Handling >= 2 ? Accent : Line, 2.f); }) ] ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(2.f, 0.f)[ SNew(SBox).WidthOverride(22.f).HeightOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([Cur]() { return Rounded(Cur().Handling >= 3 ? Accent : Line, 2.f); }) ] ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(2.f, 0.f)[ SNew(SBox).WidthOverride(22.f).HeightOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([Cur]() { return Rounded(Cur().Handling >= 4 ? Accent : Line, 2.f); }) ] ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(2.f, 0.f)[ SNew(SBox).WidthOverride(22.f).HeightOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([Cur]() { return Rounded(Cur().Handling >= 5 ? Accent : Line, 2.f); }) ] ]
+				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 ? EVisibility::Visible : EVisibility::Collapsed; })[ Pill(TEXT("Your lesson boat"), true) ] ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)
+				[
+					TextAttr(TAttribute<FText>::CreateLambda([this, LockOf]() { return FText::FromString(LockOf(FocusedBoat)); }), EType::Small, FSlateColor(Fg), true)
+				]
 			]
 		]
-		+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-		+ SVerticalBox::Slot().AutoHeight()[ ActionButton(TEXT("Next: conditions"), FSimpleDelegate::CreateLambda([this]() { Pending.Boat = FocusedBoat; Push(ESailScreen::Conditions); })) ],
-		FMargin(24.f));
+		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Description; }), EType::Body, FSlateColor(Muted), true) ] ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
+		[
+			SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return FString::Join(B.Flags, TEXT("   ·   ")).ToUpper(); }), EType::Label, FSlateColor(Fg), true) ]
+		]
+	];
+
+	// Right column: the numbers as bars against the fleet's biggest, the handling, the note, Next.
+	auto Bar = [&](const FString& Label, TFunction<FString(const SailCatalog::FBoat&)> Value, TFunction<float(const SailCatalog::FBoat&)> Share)
+	{
+		return SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Label, EType::Ui, Muted) ]
+				+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(Value), EType::Value, FSlateColor(Fg)) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 5.f, 0.f, 12.f)
+			[
+				SNew(SBox).HeightOverride(4.f)
+				[
+					SNew(SOverlay)
+					+ SOverlay::Slot()[ SNew(SBorder).BorderImage(Rounded(Line, 2.f)) ]
+					+ SOverlay::Slot().HAlign(HAlign_Left)
+					[
+						SNew(SBox).WidthOverride_Lambda([Cur, Share]() { return FOptionalSize(FMath::Clamp(Share(Cur()), 0.03f, 1.f) * 280.f); })
+						[ SNew(SBorder).BorderImage(Rounded(Accent, 2.f)) ]
+					]
+				]
+			];
+	};
+	TSharedRef<SHorizontalBox> Pips = SNew(SHorizontalBox);
+	for (int32 K = 1; K <= 5; ++K)
+	{
+		Pips->AddSlot().AutoWidth().Padding(2.f, 0.f)[ SNew(SBox).WidthOverride(22.f).HeightOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([Cur, K]() { return Rounded(Cur().Handling >= K ? Accent : Line, 2.f); }) ] ];
+	}
+	TSharedRef<SSailButton> Next = ActionButton(TEXT("Next: conditions"), FSimpleDelegate::CreateLambda([this, LockOf]()
+	{
+		if (!LockOf(FocusedBoat).IsEmpty()) return;
+		Pending.Boat = FocusedBoat;
+		Push(ESailScreen::Conditions);
+	}));
+	TSharedRef<SWidget> Right = SNew(SBox).WidthOverride(330.f).Visibility_Lambda(Panels)
+	[
+		PanelBox(SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ Bar(TEXT("Length"), [](const SailCatalog::FBoat& B) { return B.Length; }, [MaxLen](const SailCatalog::FBoat& B) { return B.LengthM / MaxLen; }) ]
+			+ SVerticalBox::Slot().AutoHeight()[ Bar(TEXT("Beam"), [](const SailCatalog::FBoat& B) { return B.Beam; }, [MaxBeam](const SailCatalog::FBoat& B) { return B.BeamM / MaxBeam; }) ]
+			+ SVerticalBox::Slot().AutoHeight()[ Bar(TEXT("Weight"), [](const SailCatalog::FBoat& B) { return B.Weight; }, [MaxKg](const SailCatalog::FBoat& B) { return B.WeightKg / MaxKg; }) ]
+			+ SVerticalBox::Slot().AutoHeight()[ Bar(TEXT("Close-hauled at 12 kn"), [](const SailCatalog::FBoat& B) { return B.CloseHauled; }, [MaxKn](const SailCatalog::FBoat& B) { return B.CloseHauledKn / MaxKn; }) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Handling"), EType::Ui, Muted) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Pips ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ SailUI::Text(TEXT("Speeds are the boat's reference polar at 12 kn true wind."), EType::Small, Muted, true) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).IsEnabled_Lambda([this, LockOf]() { return LockOf(FocusedBoat).IsEmpty(); })[ Next ] ],
+			FMargin(22.f))
+	];
+
+	// Under the boat: where the camera stands, the turn buttons for the mouse, the auto spin switch, the reset.
+	auto ViewName = [this]() -> FText
+	{
+		const ASailboatPawn* P = Pawn();
+		const float B = P ? P->GetShowroomViewBearing() : 135.f;
+		const float A = FMath::Abs(B);
+		const TCHAR* Side = B >= 0.f ? TEXT("starboard") : TEXT("port");
+		const FString Where = A < 22.5f ? FString(TEXT("ahead")) : (A > 157.5f ? FString(TEXT("astern"))
+			: FString::Printf(TEXT("%s %s"), Side, A < 67.5f ? TEXT("bow") : (A < 112.5f ? TEXT("beam") : TEXT("quarter"))));
+		return FText::FromString(FString::Printf(TEXT("View from %s"), *Where));
+	};
+	TSharedRef<SWidget> Orbit = SNew(SBox).Visibility_Lambda(Panels)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[ SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(12.f, 4.f)).OnClicked_Lambda([this]() { if (ASailboatPawn* P = Pawn()) P->ShowroomLook(FVector2D(-30.0, 0.0)); })[ SailUI::Text(TEXT("←"), EType::Ui, Fg) ] ]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f)[ SNew(SBox).MinDesiredWidth(230.f).HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda(ViewName), EType::Label, FSlateColor(Fg)) ] ]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[ SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(12.f, 4.f)).OnClicked_Lambda([this]() { if (ASailboatPawn* P = Pawn()) P->ShowroomLook(FVector2D(30.0, 0.0)); })[ SailUI::Text(TEXT("→"), EType::Ui, Fg) ] ]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(18.f, 0.f, 6.f, 0.f)
+		[
+			SNew(SSailButton).Look(EButtonLook::Chip).Padding(FMargin(12.f, 4.f))
+				.IsSelected_Lambda([this]() { const ASailboatPawn* P = Pawn(); return P && P->GetShowroomAutoSpin(); })
+				.OnClicked_Lambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetShowroomAutoSpin(!P->GetShowroomAutoSpin()); })
+			[ TextAttr(TAttribute<FText>::CreateLambda([this]() { const ASailboatPawn* P = Pawn(); return FText::FromString(P && P->GetShowroomAutoSpin() ? TEXT("Auto spin on") : TEXT("Auto spin off")); }), EType::Label,
+				TAttribute<FSlateColor>::CreateLambda([this]() { const ASailboatPawn* P = Pawn(); return FSlateColor(P && P->GetShowroomAutoSpin() ? Ink : Fg); })) ]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(6.f, 0.f)
+		[ SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(12.f, 4.f)).OnClicked_Lambda([this]() { if (ASailboatPawn* P = Pawn()) P->ShowroomResetView(); })[ SailUI::Text(TEXT("Reset view"), EType::Label, Fg) ] ]
+	];
+
+	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
+	TitleFont.Size = 44;
 	E.Content = SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Fleet of eight"), TEXT("Choose a boat"), 3) ]
-		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SOverlay).Visibility_Lambda(Panels)
+			+ SOverlay::Slot()[ Header(FString(), FString(), 3) ]
+			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Fleet of eight"), EType::Eyebrow, Accent) ]
+				+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(TEXT("CHOOSE A BOAT"))) ]
+			]
+		]
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 22.f, 0.f, 0.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.6f).Padding(0.f, 0.f, 16.f, 0.f)[ Grid ]
-			+ SHorizontalBox::Slot().FillWidth(0.4f)[ Detail ]
-		];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, TEXT("Speeds are the boat's reference polar at 12 kn true wind"));
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ Left ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(16.f, 0.f, 16.f, 10.f)[ Orbit ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ Right ]
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 92.f)[ SNew(SBox).Visibility_Lambda(Panels)[ Strip ] ];
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Q / E"), TEXT("LB / RB"), TEXT("Boat")),
+		Prompt(TEXT("Drag"), TEXT("R"), TEXT("Turn")), Prompt(TEXT("Wheel"), TEXT("LT / RT"), TEXT("Zoom")), Prompt(TEXT("V"), TEXT("View"), TEXT("Hide panels")),
+		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
 	return E;
 }
 

@@ -167,6 +167,20 @@ public:
 	int32 GetBoatTypeIndex() const { return int32(Boat.GetConfig().Type); }
 	/** The type loading for ShowBoat, or -1. */
 	int32 GetShowroomLoadingType() const { return ShowroomLoad.IsValid() ? ShowroomLoadType : -1; }
+	/** When the last ShowBoat swap was built (platform seconds; 0 none): the Boat screen's dip hides the change. */
+	double GetShowroomSwapTime() const { return ShowroomSwapTime; }
+	/**
+	 * The menus' orbit input on a stage (the front end has keyboard focus, so the pawn's own input doesn't see it): a look
+	 * in degrees (yaw right, pitch up), wheel notches in and out, the framing put back, and the Boat screen's auto spin
+	 * (on by default; off keeps the camera where it is left).
+	 */
+	void ShowroomLook(const FVector2D& DeltaDeg);
+	void ShowroomZoom(int32 Notches);
+	void ShowroomResetView();
+	void SetShowroomAutoSpin(bool bOn);
+	bool GetShowroomAutoSpin() const { return bShowroomSpin; }
+	/** Where the stage's camera stands from her bow, in degrees: 0 ahead, 90 her starboard beam, -90 port, 180 astern. */
+	float GetShowroomViewBearing() const;
 	/** The meshes a boat's model loads (ModelMeshesFor's paths), for the showroom's async load. */
 	TArray<FSoftObjectPath> ModelAssetPaths(Sailing::EBoatType Type) const;
 	/** The showroom spot (map m), where she is held. */
@@ -385,6 +399,8 @@ private:
 	Sailing::FAutopilot ShowroomPilot;
 	TSharedPtr<FStreamableHandle> ShowroomLoad, ShowroomResident;
 	int32 ShowroomLoadType = -1;
+	double ShowroomSwapTime = 0.0;
+	bool bShowroomSpin = true;
 	double ShowroomLoadStart = 0.0;
 	void FinishShowroomSwap();
 	void ApplyShowroomFraming(bool bKeepYaw);
