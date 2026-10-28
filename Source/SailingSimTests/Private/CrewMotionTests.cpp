@@ -1191,4 +1191,151 @@ bool FVisualDinghyStrapTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * docs/crew-tack/: the scripted crossing. A J/22 tack (the turn through the wind, the boom across when she is head to
+ * wind, the crew model taking them over) and a gybe, at 60 Hz: each sailor stays on the old side until 0.3 s before
+ * the boom, crosses one way only, inside the boat, under the boom; the feet step one at a time, the planted one still;
+ * the gybe holds still, crouched, as the boom goes over; three seconds on, the stance has taken over.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewTackTest, "SailingSim.Visual.CrewTack", CrewMotionFlags)
+bool FVisualCrewTackTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig Cfg = FBoatConfig::Make(EBoatType::J22);
+	const FBoatModel Model(Cfg);
+	const double BoomAft = Cfg.MainLuffX - Cfg.MainFootChord - 0.1;
+	TArray<FCrewBody> Bodies;
+	CrewBodies(*this, Bodies);
+	if (!TestTrue(TEXT("SK_Sailor loads"), Bodies.Num() > 0)) return false;
+	const FReferenceSkeleton& SailorRef = Bodies[0].Mesh->GetRefSkeleton();
+	const int32 HeadBone = SailorRef.FindBoneIndex(TEXT("head"));
+	for (const bool bGybe : { false, true })
+	{
+		for (int32 I = 0; I < Cfg.CrewCount; ++I)
+		{
+			FCrewCrossing Cross;
+			const float Dt = 1.f / 60.f;
+			bool bRan = false, bEnded = false;
+			int32 EarlySide = 0, Back = 0, Outside = 0, Head = 0, Slid = 0, HeldMoved = 0, Frames = 0;
+			double PrevY = 0.0, HoldY = 1e9, WorstHold = 0.0;
+			FVector PrevAnchor[2];
+			bool bPrevAnchor = false;
+			float EndAt = -1.f;
+			ECrewStance Final = ECrewStance::Crossing;
+			for (int32 K = 0; K < 12 * 60; ++K)
+			{
+				const double T = K * Dt;
+				// The turn from 2 s to 5 s; the boom swings across in 0.8 s from 3.4 s; the crew model moves them over 3.2..4.8 s.
+				const double U = FMath::Clamp((T - 2.0) / 3.0, 0.0, 1.0);
+				const double Swing = FMath::Clamp((T - 3.4) / 0.8, 0.0, 1.0);
+				const double Over = FMath::Clamp((T - 3.2) / 1.6, 0.0, 1.0);
+				FCrewPlaceInput In;
+				In.Config = &Cfg;
+				In.Index = I;
+				In.Crossing = &Cross;
+				In.Dt = Dt;
+				In.CrewOffset = FMath::Lerp(0.9, -0.9, Over);
+				In.OffsetRate = (T > 3.2 && T < 4.8) ? -1.8 / 1.6 : 0.0;
+				In.WindwardSide = Over < 0.5 ? 1 : -1;
+				if (!bGybe)
+				{
+					In.TrueWindAngle = FMath::Lerp(0.7, -0.7, U);
+					In.TurnRate = (T > 2.0 && T < 5.0) ? -1.4 / 3.0 : 0.0;
+					In.BoomAngle = FMath::Lerp(-0.25, 0.25, Swing);
+					In.BoomRate = (T > 3.4 && T < 4.2) ? 0.5 / 0.8 : 0.0;
+				}
+				else
+				{
+					// Downwind, the wind across the stern: the boom from well out to port over to starboard.
+					In.TrueWindAngle = FMath::Lerp(2.9, -2.9 + 2.0 * PI, U);
+					if (In.TrueWindAngle > PI) In.TrueWindAngle -= 2.0 * PI;
+					In.TurnRate = (T > 2.0 && T < 5.0) ? -0.2 : 0.0;   // bearing away through dead downwind
+					In.BoomAngle = FMath::Lerp(-1.2, 1.2, Swing);
+					In.BoomRate = (T > 3.4 && T < 4.2) ? 2.4 / 0.8 : 0.0;
+				}
+				FCrewPlacement Pl;
+				CrewPlacement(In, Pl);
+				if (!Pl.bScripted)
+				{
+					if (bRan && !bEnded) { bEnded = true; EndAt = float(T); }
+					if (bEnded && T > EndAt + 3.0) Final = Pl.Params.Stance;
+					bPrevAnchor = false;
+					continue;
+				}
+				bRan = true;
+				++Frames;
+				const float Tau = Pl.Tau;
+				const FVector& P = Pl.Pelvis;
+				// On the old side (starboard) until 0.3 s before the boom.
+				if (Tau < -0.3f && P.Y < 0.0) ++EarlySide;
+				// Across one way only.
+				if (Frames > 1 && P.Y > PrevY + 0.01) ++Back;
+				PrevY = P.Y;
+				// Inside the boat, over its floor.
+				const double Floor = CrewFloorZ(Cfg, P.X, P.Y);
+				if (FMath::Abs(P.Y) > Cfg.Hulls[0].DeckHalfBeam(P.X) || (Floor > -1e8 && P.Z < Floor + 0.05)) ++Outside;
+				// Under the boom while it is near the centreline (the head about 0.75 m over the pelvis, 10 cm clear).
+				// (Under it: within 0.35 m across of the boom's line from the gooseneck, the boom out at its angle. The head as
+				// posed, SK_Sailor in the crossing's crouch and duck: its top 12 cm over the head bone.)
+				const double BoomY = (Cfg.MainLuffX - P.X) * FMath::Tan(In.BoomAngle);
+				if (P.X > BoomAft && P.X < Cfg.MainLuffX && FMath::Abs(In.BoomAngle) < FMath::DegreesToRadians(30.0) && FMath::Abs(P.Y - BoomY) < 0.35 && HeadBone != INDEX_NONE)
+				{
+					FCrewMotionState State;
+					FCrewMotionInput MI;
+					MI.Params = Pl.Params;
+					MI.Duck = Pl.Duck;
+					MI.ToBoat = FigureFrame(Pl, nullptr);
+					MI.SeatFromCG = P - FVector(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
+					MI.FootAnchor[0] = Pl.FootAnchor[0] * CmPerMeter;
+					MI.FootAnchor[1] = Pl.FootAnchor[1] * CmPerMeter;
+					MI.FootWeight = Pl.FootWeight;
+					MI.bClips = false;
+					CrewMotionUpdate(State, MI, Dt);
+					TArray<FTransform> CS;
+					CrewMotionPose(SailorRef, nullptr, &Cfg, Model.HullDepth(), State, MI, CS);
+					const double HeadTop = MI.ToBoat.TransformPosition(CS[HeadBone].GetLocation()).Z / CmPerMeter + 0.12;
+					if (HeadTop > Cfg.BoomZ - 0.1 && Head++ == 0)
+					{
+						AddInfo(FString::Printf(TEXT("%s crew %d: head at the boom, tau %.2f, pelvis (%.2f, %.2f, %.2f), head top %.2f, boom %.2f m up at %.0f deg"),
+							bGybe ? TEXT("Gybe") : TEXT("Tack"), I, Tau, P.X, P.Y, P.Z, HeadTop, Cfg.BoomZ, FMath::RadiansToDegrees(In.BoomAngle)));
+					}
+				}
+				// The gybe holds still as the boom passes.
+				if (bGybe && Tau > -0.15f && Tau < 0.25f)
+				{
+					if (HoldY > 1e8) HoldY = P.Y;
+					WorstHold = FMath::Max(WorstHold, FMath::Abs(P.Y - HoldY));
+				}
+				// The feet: one steps at a time, the other stays where it is.
+				if (Pl.FootWeight > 0.99f && bPrevAnchor)
+				{
+					const double M0 = FVector::Dist(Pl.FootAnchor[0], PrevAnchor[0]), M1 = FVector::Dist(Pl.FootAnchor[1], PrevAnchor[1]);
+					if (M0 > 1e-4 && M1 > 1e-4) ++Slid;
+					for (int32 F = 0; F < 2; ++F)
+					{
+						const double FloorF = CrewFloorZ(Cfg, Pl.FootAnchor[F].X, Pl.FootAnchor[F].Y);
+						const bool bMoving = FVector::Dist(Pl.FootAnchor[F], PrevAnchor[F]) > 1e-4;
+						if (!bMoving && FloorF > -1e8 && FMath::Abs(Pl.FootAnchor[F].Z - (FloorF + 0.09)) > 0.02) ++HeldMoved;
+					}
+				}
+				PrevAnchor[0] = Pl.FootAnchor[0];
+				PrevAnchor[1] = Pl.FootAnchor[1];
+				bPrevAnchor = Pl.FootWeight > 0.99f;
+			}
+			const FString Case = FString::Printf(TEXT("%s, crew %d"), bGybe ? TEXT("Gybe") : TEXT("Tack"), I);
+			if (!TestTrue(Case + TEXT(": a scripted crossing ran"), bRan)) continue;
+			AddInfo(Case + FString::Printf(TEXT(": %d frames, ended at %.2f s"), Frames, EndAt));
+			TestEqual(Case + TEXT(": frames on the new side before tau -0.3"), EarlySide, 0);
+			TestEqual(Case + TEXT(": frames moving back toward the old side"), Back, 0);
+			TestEqual(Case + TEXT(": frames outside the boat or into the floor"), Outside, 0);
+			TestEqual(Case + TEXT(": frames with the head into the boom"), Head, 0);
+			TestEqual(Case + TEXT(": frames with both feet moving"), Slid, 0);
+			TestEqual(Case + TEXT(": frames with a planted foot off the floor"), HeldMoved, 0);
+			if (bGybe) TestTrue(Case + FString::Printf(TEXT(": still as the boom passes (%.3f m)"), WorstHold), WorstHold < 0.02);
+			TestTrue(Case + TEXT(": the stance takes over after it"), bEnded && Final != ECrewStance::Crossing);
+		}
+	}
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

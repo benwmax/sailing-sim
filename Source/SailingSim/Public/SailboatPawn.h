@@ -17,6 +17,7 @@
 #include "SailCloth.h"
 #include "ReferenceCapture.h"
 #include "CrewPose.h"
+#include "CrewMotion.h"
 #include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatPhysicsTask.h"
@@ -404,6 +405,7 @@ private:
 		FVector Location = FVector::ZeroVector; float Yaw = 0.f; float Roll = 0.f; bool bStarted = false; int32 Rig = -1;
 		ECrewStance Stance = ECrewStance::Cockpit; int32 Transition = 0; float TransitionS = 1.f, TransitionSeconds = 0.6f;
 		FVector FromLocation = FVector::ZeroVector; float FromYaw = 0.f, FromRoll = 0.f;
+		FCrewCrossing Crossing;   // docs/crew-tack/
 	};
 	TSharedPtr<const Sailing::FBoatConfig> CrewConfig; // the boat the crew stand on, shared with their animation (read on workers)
 	double PrevBoomAngle = 0.0;
