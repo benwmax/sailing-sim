@@ -14,6 +14,23 @@ enum class EFreeCameraMode : uint8
 	Orbit,   // turns about the anchor, the wheel in and out
 };
 
+/**
+ * Orbit parameters set from code (the menus' showroom and weather framings, docs/showroom-wiring/): where it turns,
+ * how far, its limits, and an idle auto-spin. Pitch is the camera's (negative looks down on the pivot).
+ */
+struct FFreeCameraOrbit
+{
+	float YawDeg = 0.f, PitchDeg = -12.f;
+	float DistanceCm = 1200.f, MinDistanceCm = 150.f, MaxDistanceCm = 30000.f;
+	float MinPitchDeg = -89.f, MaxPitchDeg = 60.f;
+	/** The pivot moved right (+) of the view, and up, so the subject sits off centre (a side panel covers part). */
+	float LateralOffsetCm = 0.f, UpOffsetCm = 0.f;
+	/** Turns about the pivot at this rate once SpinIdleSeconds pass without a look (0: never). */
+	float SpinDegPerSec = 0.f, SpinIdleSeconds = 4.f;
+	/** How long the camera takes to get to a new place (95%). */
+	float EaseSeconds = 0.25f;
+};
+
 /** One frame's held input (axes -1..1). Looks arrive as they come (AddLook). */
 struct FFreeCameraInput
 {
@@ -49,6 +66,11 @@ public:
 	/** Asks for a place (a still's, from the command line): through the leash, floor and ceiling, without the sweep. */
 	void PlaceAt(const FVector& LocationCm, const FRotator& Rotation);
 	void SetMode(EFreeCameraMode InMode);
+	/** Orbit with these parameters, easing over from wherever the camera is (no jump). */
+	void SetOrbit(const FFreeCameraOrbit& InOrbit);
+	const FFreeCameraOrbit& GetOrbit() const { return Orbit; }
+	/** The orbit's pivot right now (the anchor plus offsets), world cm. */
+	FVector GetPivot() const { return Pivot(); }
 	EFreeCameraMode GetMode() const { return Mode; }
 
 	/** Mouse or right stick, in degrees: yaw right, pitch up. */
@@ -75,7 +97,8 @@ private:
 	FVector PivotOffsetCm = FVector::ZeroVector;
 	EFreeCameraMode Mode = EFreeCameraMode::Fly;
 	float Yaw = 0.f, Pitch = 0.f, Roll = 0.f;
-	float OrbitDistanceCm = 1200.f;
+	FFreeCameraOrbit Orbit;
+	double SinceLookSeconds = 1e9;
 	int32 SpeedIndex = 1;
 	FVector VelocityMps = FVector::ZeroVector;
 

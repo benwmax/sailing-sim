@@ -242,6 +242,30 @@ namespace
 #include "J22CoilData.inl"
 }
 
+TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
+{
+	// The same paths ModelMeshesFor loads (keep them in step): the showroom loads them asynchronously before SetBoat.
+	TArray<FSoftObjectPath> Paths;
+	const bool bHero = Type == EBoatType::J22 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicJ22"))
+		&& ((!bTrafficBoat && !bGhost) || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
+	if (bHero)
+	{
+		for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Interior"), TEXT("Glass") })
+		{
+			Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/J22Hero/SM_J22H_%s.SM_J22H_%s"), Part, Part)));
+		}
+		return Paths;
+	}
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
+	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return Paths;
+	const TCHAR* Tag = BoatTags[int32(Type)];
+	for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder") })
+	{
+		Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
+	}
+	return Paths;
+}
+
 ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) const
 {
 	FBoatModelMeshes M;

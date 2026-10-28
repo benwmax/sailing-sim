@@ -5,6 +5,7 @@
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "SailSession.h"
 #include "Learning.h"
+#include "Showroom.h"
 
 class SBox;
 class APlayerController;
@@ -28,6 +29,8 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	/** The showroom behind the menus ends with them (and a front-end choice is kept for the next time they open). */
+	virtual ~SSailFrontEnd() override;
 	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
 	/** Controls: a listening row takes the next key before the focused button sees it (so Enter and A can be bound). */
 	virtual FReply OnPreviewKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
@@ -78,6 +81,13 @@ private:
 	TArray<FEntry> Stack;
 	TSharedPtr<SBox> Body, Footer;
 	FSailSessionConfig Pending;
+	/** docs/showroom-wiring/: the boat and the conditions behind the screens (FSailShowroom), driven each frame. */
+	FSailShowroom Showroom;
+	bool bMenusInGame = false;
+	/** Stills: -SailingShowroom=<boat type> shows that boat on the Boat screen (-1: the focused one). */
+	int32 ShowroomArg = -1;
+	EActiveTimerReturnType TickShowroom(double Time, float Delta);
+	class ASailingGameMode* GameMode() const;
 	int32 FocusedBoat = 0;
 	int32 SettingsTab = 0;
 	/** Bean's UI feedback (Oct 27): a clicked tab pill, a keycap, Q/E and LB/RB all come here; the rebuilt screen focuses

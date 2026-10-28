@@ -21,6 +21,8 @@
 #include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatPhysicsTask.h"
+#include "Showroom.h"
+#include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -152,6 +154,23 @@ public:
 	bool IsLogOpen() const { return bLogOpen; }
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
 	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
+	/**
+	 * The showroom (docs/showroom-wiring/): on a stage the boat is afloat and sailing on her spot (the trim assist trims
+	 * for a close reach, the helm holds it, her way over the ground is taken out) and the free camera orbits her in the
+	 * stage's framing; None is the chase camera and the still boat again. bRelocate (the front end) first moves her to
+	 * open water near where she is when she is tied up or close to the shore; in game she stays where she is.
+	 */
+	void SetShowroomStage(EShowroomStage Stage, bool bRelocate);
+	EShowroomStage GetShowroomStage() const { return ShowroomStage; }
+	/** Shows another boat in place: her meshes load asynchronously, then she is built where this one is (SetBoat). */
+	void ShowBoat(int32 Type);
+	int32 GetBoatTypeIndex() const { return int32(Boat.GetConfig().Type); }
+	/** The type loading for ShowBoat, or -1. */
+	int32 GetShowroomLoadingType() const { return ShowroomLoad.IsValid() ? ShowroomLoadType : -1; }
+	/** The meshes a boat's model loads (ModelMeshesFor's paths), for the showroom's async load. */
+	TArray<FSoftObjectPath> ModelAssetPaths(Sailing::EBoatType Type) const;
+	/** The showroom spot (map m), where she is held. */
+	FVector2D GetShowroomSpot() const { return ShowroomSpot; }
 	bool IsHeldByUI() const { return bHeldByUI; }
 	void SetLogOpen(bool bOpen) { bLogOpen = bOpen; }
 	bool HasLastRun() const { return !LastRun.IsEmpty(); }
@@ -355,6 +374,21 @@ private:
 	void ApplyMappingContexts();
 	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
 	bool bPhotoHideHints = false;
+	// The showroom: its stage, the spot (map m) and heading she is held on, the current that takes out her way over the
+	// ground, the side she sails on, the helm, and the async load of a boat being swapped in (the shown boat's stays
+	// resident until the next one is shown).
+	EShowroomStage ShowroomStage = EShowroomStage::None;
+	FVector2D ShowroomSpot = FVector2D::ZeroVector;
+	float ShowroomYaw = 0.f;
+	double ShowroomSide = 1.0;
+	bool bShowroomPose = false;
+	Sailing::FAutopilot ShowroomPilot;
+	TSharedPtr<FStreamableHandle> ShowroomLoad, ShowroomResident;
+	int32 ShowroomLoadType = -1;
+	double ShowroomLoadStart = 0.0;
+	void FinishShowroomSwap();
+	void ApplyShowroomFraming(bool bKeepYaw);
+	AFreeCamera* EnsureFreeCamera();
 	/** Stills: -SailingPhoto=<sim s> opens photo mode, -SailingPhotoCam="<fwd m>,<right m>,<up m>[,<yaw>,<pitch>]" places
 	 *  the free camera off the boat through its limits (yaw from her heading; without it the camera faces her). */
 	double PhotoAt = -1.0;
