@@ -36,7 +36,10 @@ namespace Sailing
 	class SAILINGPHYSICS_API FWaveDetail
 	{
 	public:
-		struct FCascadeSpec { int N = 128; double Tile = 23.0; double MinWavelength = 0.4, MaxWavelength = 4.0; };
+		/** Rotation (rad): the cascade's grid axes turned from the map's (docs/chop-cascades/: the long chop's tile, turned, so
+		 *  its repeat never lines up with the chop's). A grid's fields are in its own frame: sample it at the map point turned
+		 *  by -Rotation (ToGrid), and turn its displacement and slopes back by +Rotation. */
+		struct FCascadeSpec { int N = 128; double Tile = 23.0; double MinWavelength = 0.4, MaxWavelength = 4.0; double Rotation = 0.0; };
 		struct FGrid
 		{
 			int N = 0;
@@ -46,8 +49,16 @@ namespace Sailing
 			std::vector<float> H, Dx, Dy, Sx, Sy, J, JCap;
 		};
 
-		/** Default cascades: chop (128^2 over 23 m, 0.4-4 m) and ripples (64^2 over 3.1 m, 0.1-0.4 m). */
-		static FCascadeSpec ChopCascade() { return { 128, 23.0, 0.4, 4.0 }; }
+		/** Default cascades: chop (128^2 over 23 m, 0.4-1.6 m), the long chop (128^2 over 61.7 m turned 37 deg, 1.6-4 m) and
+		 *  ripples (64^2 over 3.1 m, 0.1-0.4 m). docs/chop-cascades/ (storm-water step 4): the chop was one 23 m tile from 0.4
+		 *  to 4 m, and every crest and cap came back on a 23 m grid; split at 1.6 m between two tiles with no common repeat
+		 *  (61.7 / 23 is no simple ratio, and the long chop's axes are turned), the sum is the same spectrum and nothing lines
+		 *  up again within kilometres. */
+		static constexpr double ChopSplitMeters = 1.6;
+		static FCascadeSpec ChopCascade() { return { 128, 23.0, 0.4, ChopSplitMeters }; }
+		static FCascadeSpec LongChopCascade() { return { 128, 61.7, ChopSplitMeters, 4.0, 37.0 * 3.14159265358979323846 / 180.0 }; }
+		/** A map point in a cascade's grid frame (its axes turned by Rotation). */
+		static void ToGrid(const FCascadeSpec& S, double X, double Y, double& OutX, double& OutY);
 		static FCascadeSpec RippleCascade() { return { 64, 3.1, 0.1, 0.4 }; }
 		/** docs/near-water/: the capillary-gravity wavelets (64^2 over 0.64 m: 1 cm texels, 2-10 cm), drawn near the camera. */
 		static FCascadeSpec CapillaryCascade() { return { 64, 0.64, 0.02, 0.1 }; }

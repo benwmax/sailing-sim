@@ -2389,6 +2389,15 @@ float df = saturate(1.0 - dist / DetailP.z);
     float4 da = DetailA.SampleLevel(DetailASampler, float2(p.y, p.x) / DetailP.x + 0.5 / 128.0, 0);
     h += da.r * df * SShort;
     d += da.gb * df * SShort;
+    // docs/chop-cascades/: the long chop (1.6-4 m) on its own 61.7 m tile with its axes turned (DetailQ: tile, cos, sin,
+    // on), so its repeat never lines up with the chop's 23 m one; its displacement turned back into the map frame.
+    [branch] if (DetailQ.w > 0.0)
+    {
+        float2 lq = float2(DetailQ.y * p.x + DetailQ.z * p.y, -DetailQ.z * p.x + DetailQ.y * p.y);
+        float4 dd = DetailD.SampleLevel(DetailDSampler, float2(lq.y, lq.x) / DetailQ.x + 0.5 / 128.0, 0);
+        h += dd.r * df * SShort;
+        d += float2(DetailQ.y * dd.g - DetailQ.z * dd.b, DetailQ.z * dd.g + DetailQ.y * dd.b) * df * SShort;
+    }
 }
 // The water the boats push around (FWakeGrid).
 float2 wg = (p.xy - WakeGridRect.xy) / WakeGridRect.z;
@@ -2517,6 +2526,21 @@ float chopK = calm * SShort;
 sx += db.r * chopK; sy += db.g * chopK;
 float jd = lerp(1.0, da.a, min(chopK, 2.0));
 float slopeVar = (max(db.b - db.r * db.r, 0.0) + max(db.a - db.g * db.g, 0.0)) * chopK * chopK;
+// docs/chop-cascades/: the long chop's slopes (turned back into the map frame) and its fold, which the caps read with the
+// chop's: the two tiles' folds never line up, so neither do the caps.
+float jB = 1.0;
+[branch] if (DetailQ.w > 0.0)
+{
+    float2 lq = float2(DetailQ.y * p.x + DetailQ.z * p.y, -DetailQ.z * p.x + DetailQ.y * p.y);
+    float2 lduv = float2(lq.y, lq.x) / DetailQ.x + 0.5 / 128.0;
+    float4 dd = Texture2DSample(DetailD, DetailDSampler, lduv);
+    float4 de = Texture2DSample(DetailE, DetailESampler, lduv);
+    sx += (DetailQ.y * de.r - DetailQ.z * de.g) * chopK;
+    sy += (DetailQ.z * de.r + DetailQ.y * de.g) * chopK;
+    slopeVar += (max(de.b - de.r * de.r, 0.0) + max(de.a - de.g * de.g, 0.0)) * chopK * chopK;
+    jB = lerp(1.0, dd.a, min(chopK, 2.0));
+    jd *= jB;
+}
 if (DetailP.w > 0.0)
 {
     // W2: the ripples face the local wind, not the sea's. The ripple tile (its spectrum faces the sea's wind) is sampled
@@ -2655,6 +2679,7 @@ float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness
 float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
 float kC = max(min(chopK, 2.0), 1e-3);
+// (The fold table holds both chops' fold, the long chop's at each texel's place: AWaterSurface's JCapBoth.)
 float tC = 1.0 - (1.0 - (capThr + 0.25 * shoalBreak) / max(J, 0.05)) / kC;
 float tR = 1.0 - (1.0 - (capThr + 0.08 + 0.25 * shoalBreak) / max(J, 0.05)) / kC;
 float crest, residue;
@@ -2961,20 +2986,22 @@ def build_water_v4():
     def tex(name, y):
         return node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, y, parameter_name=name, texture=linear,
                     sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid", "CapillaryB"))}
+    tx = {n: tex(n, 1300 + 150 * i) for i, n in enumerate(("OceanA", "OceanB", "OceanMask", "DetailA", "DetailB", "RippleB", "WakeGrid", "ShoreMap", "DetailC", "FoamGrid", "CapillaryB", "DetailD", "DetailE"))}
     ocean_p = vector(mat, "OceanParams", (480, 60, 0, 6000), -1800, 2400)
     ocean_rect = vector(mat, "OceanMaskRect", (0, 0, 1, 1), -1800, 2500)
     # x: chop tile (m), y: ripple tile (m), z: distance the short waves fade over (m), w: 1 = ripples on (High).
     detail_p = vector(mat, "DetailParams", (23, 3.1, 300, 0), -1800, 2600)
     # docs/near-water/: x: capillary tile (m), y, z: drawn in full to, faded out by (m), w: 1 = on (High and Ultra).
     capillary_p = vector(mat, "CapillaryP", (0.64, 12, 24, 0), -2000, 2600)
+    # docs/chop-cascades/: the long chop's tile (m), its turn's cos and sin, w = 1 when on (AWaterSurface::DrawnLongChop).
+    detail_q = vector(mat, "DetailQ", (61.7, 0.7986, 0.6018, 0), -2000, 2700)
     wake_rect = vector(mat, "WakeGridRect", (0, 0, 25.6, 128), -1800, 2700)
     # Shore map (water depth, m): x0, y0, size (m), w = 1 when bound.
     shore_rect = vector(mat, "ShoreRect", (0, 0, 1, 0), -1800, 2800)
     sea = sea_params(mat, -2000, 2400)
     common = ["P", "Cam", "T", "Fade", "Chop"] + [f"W{i}" for i in range(NUM_LONG)] + [f"A{i}" for i in range(NUM_LONG // 4)] \
         + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect",
-           "Sea", "SeaRect", "SeaP"]
+           "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ"]
     hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
     wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT4)])
@@ -3006,7 +3033,7 @@ def build_water_v4():
     wind = vector(mat, "WindParams", (1, 0, 5, 0), -1800, 900)
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP"]
+    shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ", "DetailE"]
     shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
@@ -3036,8 +3063,9 @@ def build_water_v4():
         connect(fade, "", c, "Fade")
     connect(interp, "", shade, "LongN")
     for c in (wpo, shade):
-        for n in ("OceanA", "OceanB", "OceanMask", "DetailA", "WakeGrid", "ShoreMap"):
+        for n in ("OceanA", "OceanB", "OceanMask", "DetailA", "WakeGrid", "ShoreMap", "DetailD"):
             connect(tx[n], "", c, n)
+        connect(detail_q, "RGBA", c, "DetailQ")
         connect(shore_rect, "RGBA", c, "ShoreRect")
         connect(ocean_p, "RGBA", c, "OceanP")
         connect(ocean_rect, "RGBA", c, "OceanMaskRect")
@@ -3045,6 +3073,7 @@ def build_water_v4():
         connect(wake_rect, "RGBA", c, "WakeGridRect")
         connect_sea(sea, c)
     connect(tx["DetailB"], "", shade, "DetailB")
+    connect(tx["DetailE"], "", shade, "DetailE")
     connect(tx["DetailC"], "", shade, "DetailC")
     connect(tx["FoamGrid"], "", shade, "FoamGrid")  # W4: the foam the caps leave (AWaterSurface's foam grid)
     connect(vector(mat, "FoamGridRect", (0, 0, 64, 0), -2000, 1500), "RGBA", shade, "FoamGridRect")
