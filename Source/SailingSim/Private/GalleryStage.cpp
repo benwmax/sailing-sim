@@ -304,11 +304,12 @@ void AGalleryStage::ApplyFraming(bool bKeepAngle)
 	O.MinPitchDeg = -80.f;
 	O.MaxPitchDeg = 10.f;
 	O.YawDeg = 135.f + 180.f;      // the three-quarter view
-	O.SpinDegPerSec = 6.f;
+	O.SpinDegPerSec = bAutoSpin ? 6.f : 0.f;   // the screen's Auto spin
 	O.SpinIdleSeconds = 4.f;
 	O.EaseSeconds = 0.4f;
-	// The left panel takes a quarter of the screen: the asset sits in the middle of the rest (pivot left of the view).
-	O.LateralOffsetCm = -0.25f * D * FMath::Tan(FMath::DegreesToRadians(kCameraFovDeg * 0.5f)) + float(PanCm.X);
+	// The left panel takes a quarter of the screen (PanelShare): the asset sits in the middle of the rest (pivot left of
+	// the view); full screen, in the middle.
+	O.LateralOffsetCm = -PanelShare * D * FMath::Tan(FMath::DegreesToRadians(kCameraFovDeg * 0.5f)) + float(PanCm.X);
 	O.UpOffsetCm = float(PanCm.Y);
 	if (bKeepAngle)
 	{
@@ -316,7 +317,6 @@ void AGalleryStage::ApplyFraming(bool bKeepAngle)
 		O.DistanceCm = FMath::Clamp(Was.DistanceCm, O.MinDistanceCm, O.MaxDistanceCm);
 		O.YawDeg = float(Camera->GetActorRotation().Yaw);
 		O.PitchDeg = float(Camera->GetActorRotation().Pitch);
-		O.SpinDegPerSec = Was.SpinDegPerSec;
 	}
 	Camera->SetOrbit(O);
 	// The studio's lights about the asset: key high on the right, fill low on the left, rim behind.
@@ -361,6 +361,25 @@ void AGalleryStage::ResetView()
 {
 	PanCm = FVector2D::ZeroVector;
 	ApplyFraming(false);
+}
+
+void AGalleryStage::SetAutoSpin(bool bOn)
+{
+	bAutoSpin = bOn;
+	ApplyFraming(true);
+}
+
+void AGalleryStage::SetPanelShare(float Share)
+{
+	PanelShare = Share;
+	ApplyFraming(true);
+}
+
+float AGalleryStage::GetZoom() const
+{
+	if (!Camera) return 1.f;
+	const FFreeCameraOrbit& O = Camera->GetOrbit();
+	return O.DistanceCm > 0.f ? O.MinDistanceCm * 6.f / O.DistanceCm : 1.f;
 }
 
 void AGalleryStage::SetLight(EGalleryLight Light)

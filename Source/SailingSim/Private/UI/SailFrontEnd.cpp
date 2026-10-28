@@ -2,6 +2,8 @@
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "UI/SailWidgets.h"
+#include "UI/SailGraphicsRows.h"
+#include "GalleryStage.h"
 #include "UI/SailCatalog.h"
 #include "UI/SailHud.h"
 #include "Engine/Engine.h"
@@ -291,9 +293,10 @@ void SSailFrontEnd::Construct(const FArguments& A)
 	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()[ SNew(SBackdrop).LeftAlpha(bInGame ? 0.80f : 0.86f).RightAlpha(bInGame ? 0.62f : 0.15f)
-			.Showroom_Lambda([this]() { return IsStageScreen(); })
-			// (The Boat screen's left column ends at 460 px of 1440, Conditions' panel at 600.)
-			.FadeEnd_Lambda([this]() { return Current() == ESailScreen::Boat ? 460.f / 1440.f : 600.f / 1440.f; })
+			.Visibility_Lambda([this]() { return IsGallery() && bGalleryClean ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })
+			.Showroom_Lambda([this]() { return IsStageScreen() || IsGallery(); })
+			// (The Boat screen's left column ends at 460 px of 1440, Conditions' panel at 600, the gallery's list at 430.)
+			.FadeEnd_Lambda([this]() { return Current() == ESailScreen::Boat ? 460.f / 1440.f : IsGallery() ? (bGalleryFull ? 0.f : 430.f / 1440.f) : 600.f / 1440.f; })
 			// The swap's cover: the moment the new boat is built the screen is dark, and it clears over 150 ms.
 			.Dip_Lambda([this]()
 			{
@@ -302,7 +305,7 @@ void SSailFrontEnd::Construct(const FArguments& A)
 				return Since < 0.15 ? float(0.6 * (1.0 - Since / 0.15)) : 0.f;
 			}) ]
 		+ SOverlay::Slot().Padding(FMargin(SafeX, SafeTop, SafeX, 0.f))[ SAssignNew(Body, SBox) ]
-		+ SOverlay::Slot().VAlign(VAlign_Bottom)[ SAssignNew(Footer, SBox) ]
+		+ SOverlay::Slot().VAlign(VAlign_Bottom)[ SAssignNew(Footer, SBox).Visibility_Lambda([this]() { return IsGallery() && bGalleryClean ? EVisibility::Collapsed : EVisibility::Visible; }) ]
 	];
 	Push(A._Start);
 	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::TickShowroom));
@@ -310,6 +313,7 @@ void SSailFrontEnd::Construct(const FArguments& A)
 
 SSailFrontEnd::~SSailFrontEnd()
 {
+	if (GalleryStage.IsValid()) CloseGallery(true);
 	Showroom.End(Pawn(), GameMode());
 	if (USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr; Session && !bMenusInGame && !Session->bHasActive)
 	{
@@ -419,6 +423,7 @@ void SSailFrontEnd::Pop()
 		return;
 	}
 	if (Current() == ESailScreen::Quiz) { Quiz.Reset(); CheckrideTierId.Reset(); }
+	if (IsGallery() && GalleryStage.IsValid()) { GalleryBack(); return; }
 	Stack.Pop();
 	// Rebuild the uncovered screen: its summary rows may show choices made further on.
 	const ESailScreen S = Stack.Last().Screen;
@@ -500,6 +505,11 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	const FKey K = E.GetKey();
+	if (IsGallery())
+	{
+		const FReply R = GalleryKeyDown(E);
+		if (R.IsEventHandled()) return R;
+	}
 	// Controls: Tab or Y rebinds the focused row's gamepad button (Enter or A, the row's click, its keyboard key).
 	if (Current() == ESailScreen::Controls && ListeningRow < 0 && (K == EKeys::Tab || K == EKeys::Gamepad_FaceButton_Top))
 	{
@@ -551,12 +561,20 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 
 FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputEvent& E)
 {
-	if (IsStageScreen())
+	if (IsGallery() && bGalleryViewer && (E.GetKey() == EKeys::Gamepad_LeftX || E.GetKey() == EKeys::Gamepad_LeftY))
+	{
+		const float V = FMath::Abs(E.GetAnalogValue()) > 0.15f ? E.GetAnalogValue() : 0.f;
+		const bool bWasIdle = OrbitStick.IsZero() && OrbitZoomStick == 0.f && GalleryPanStick.IsZero();
+		(E.GetKey() == EKeys::Gamepad_LeftX ? GalleryPanStick.X : GalleryPanStick.Y) = V;
+		if (bWasIdle && !GalleryPanStick.IsZero()) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::TickOrbitStick));
+		return FReply::Handled();
+	}
+	if (IsStageScreen() || IsGallery())
 	{
 		// The right stick turns the showroom's camera, the triggers zoom it (LT out, RT in); held, applied each frame.
 		const FKey K = E.GetKey();
 		const float V = FMath::Abs(E.GetAnalogValue()) > 0.15f ? E.GetAnalogValue() : 0.f;
-		const bool bWasIdle = OrbitStick.IsZero() && OrbitZoomStick == 0.f;
+		const bool bWasIdle = OrbitStick.IsZero() && OrbitZoomStick == 0.f && GalleryPanStick.IsZero();
 		if (K == EKeys::Gamepad_RightX) OrbitStick.X = V;
 		else if (K == EKeys::Gamepad_RightY) OrbitStick.Y = V;
 		else if (K == EKeys::Gamepad_RightTriggerAxis) OrbitZoomStick = V;
@@ -599,9 +617,20 @@ EActiveTimerReturnType SSailFrontEnd::ScrollActive(double, float Delta)
 EActiveTimerReturnType SSailFrontEnd::TickOrbitStick(double, float Delta)
 {
 	ASailboatPawn* P = Pawn();
+	if (IsGallery() && GalleryStage.IsValid() && !(OrbitStick.IsZero() && OrbitZoomStick == 0.f && GalleryPanStick.IsZero()))
+	{
+		// The gallery: the same rates on its stage; the left stick pans (the viewer focused), half the asset a second.
+		AGalleryStage* G = GalleryStage.Get();
+		if (!OrbitStick.IsZero()) { G->Orbit(OrbitStick * 90.0 * Delta); bGalleryCompareShown = false; }
+		OrbitZoomCarry += OrbitZoomStick * Delta / 0.15f;
+		const int32 Steps = FMath::TruncToInt32(OrbitZoomCarry);
+		if (Steps != 0) { G->Zoom(float(Steps)); OrbitZoomCarry -= float(Steps); }
+		if (!GalleryPanStick.IsZero()) G->Pan(GalleryPanStick * G->GetStats().SizeM.Size() * 50.0 * Delta);
+		return EActiveTimerReturnType::Continue;
+	}
 	if (!IsStageScreen() || !P || (OrbitStick.IsZero() && OrbitZoomStick == 0.f))
 	{
-		OrbitStick = FVector2D::ZeroVector; OrbitZoomStick = 0.f; OrbitZoomCarry = 0.f;
+		OrbitStick = FVector2D::ZeroVector; OrbitZoomStick = 0.f; OrbitZoomCarry = 0.f; GalleryPanStick = FVector2D::ZeroVector;
 		return EActiveTimerReturnType::Stop;
 	}
 	// 90 deg/s at full stick; the zoom a notch every 0.15 s at full trigger.
@@ -631,6 +660,13 @@ void SSailFrontEnd::StepBoat(int32 Dir)
 FReply SSailFrontEnd::OnMouseButtonDown(const FGeometry&, const FPointerEvent& E)
 {
 	// (Buttons and cards take their own clicks; what reaches here is empty space.)
+	if (IsGallery() && GalleryStage.IsValid() && (E.GetEffectingButton() == EKeys::LeftMouseButton || E.GetEffectingButton() == EKeys::RightMouseButton))
+	{
+		bGalleryPanDrag = E.GetEffectingButton() == EKeys::RightMouseButton || E.IsShiftDown();
+		bOrbitDrag = true;
+		bGalleryCompareShown = false;
+		return FReply::Handled().CaptureMouse(SharedThis(this));
+	}
 	if (!IsStageScreen() || E.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
 	bOrbitDrag = true;
 	return FReply::Handled().CaptureMouse(SharedThis(this));
@@ -638,7 +674,7 @@ FReply SSailFrontEnd::OnMouseButtonDown(const FGeometry&, const FPointerEvent& E
 
 FReply SSailFrontEnd::OnMouseButtonUp(const FGeometry&, const FPointerEvent& E)
 {
-	if (!bOrbitDrag || E.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+	if (!bOrbitDrag || (E.GetEffectingButton() != EKeys::LeftMouseButton && !(IsGallery() && E.GetEffectingButton() == EKeys::RightMouseButton))) return FReply::Unhandled();
 	bOrbitDrag = false;
 	return FReply::Handled().ReleaseMouseCapture();
 }
@@ -646,12 +682,27 @@ FReply SSailFrontEnd::OnMouseButtonUp(const FGeometry&, const FPointerEvent& E)
 FReply SSailFrontEnd::OnMouseMove(const FGeometry&, const FPointerEvent& E)
 {
 	if (!bOrbitDrag || !HasMouseCapture()) return FReply::Unhandled();
+	if (IsGallery())
+	{
+		if (AGalleryStage* G = GalleryStage.Get())
+		{
+			// A pan of the cursor's move at the asset's scale (its size over the screen's height); an orbit 0.25 deg a pixel.
+			if (bGalleryPanDrag) G->Pan(FVector2D(-E.GetCursorDelta().X, E.GetCursorDelta().Y) * G->GetStats().SizeM.Size() * 100.0 / 900.0);
+			else G->Orbit(FVector2D(E.GetCursorDelta().X * 0.25, -E.GetCursorDelta().Y * 0.25));
+		}
+		return FReply::Handled();
+	}
 	if (ASailboatPawn* P = Pawn()) P->ShowroomLook(FVector2D(E.GetCursorDelta().X * 0.25, -E.GetCursorDelta().Y * 0.25));
 	return FReply::Handled();
 }
 
 FReply SSailFrontEnd::OnMouseWheel(const FGeometry&, const FPointerEvent& E)
 {
+	if (IsGallery())
+	{
+		if (AGalleryStage* G = GalleryStage.Get()) G->Zoom(E.GetWheelDelta() > 0.f ? 1.f : -1.f);
+		return FReply::Handled();
+	}
 	if (!IsStageScreen()) return FReply::Unhandled();
 	if (ASailboatPawn* P = Pawn()) P->ShowroomZoom(E.GetWheelDelta() > 0.f ? 1 : -1);
 	return FReply::Handled();
@@ -683,11 +734,18 @@ void SSailFrontEnd::Close()
 
 void SSailFrontEnd::Confirm(const FString& Question, const FString& Yes, TFunction<void()> OnYes)
 {
+	Confirm(Question, Yes, MoveTemp(OnYes), FString(), nullptr);
+}
+
+void SSailFrontEnd::Confirm(const FString& Question, const FString& Yes, TFunction<void()> OnYes, const FString& No, TFunction<void()> OnNo)
+{
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	ConfirmQuestion = Question;
 	ConfirmYes = Yes;
 	ConfirmAction = MoveTemp(OnYes);
+	ConfirmNo = No;
+	ConfirmNoAction = MoveTemp(OnNo);
 	Push(ESailScreen::Confirm);
 }
 
@@ -713,6 +771,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Quiz: if (Quiz.Num() == 0) StartQuiz(); E = BuildQuiz(); break;
 	case ESailScreen::Credits: E = BuildCredits(); break;
 	case ESailScreen::Career: E = BuildCareer(); break;
+	case ESailScreen::Gallery: E = BuildGallery(); break;
 	}
 	E.Screen = S;
 	return E;
@@ -730,14 +789,16 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	TSharedPtr<SWidget> First;
 	auto Item = [&](const FString& Label, const FString& Sub, FSimpleDelegate Do)
 	{
-		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines.
-		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).Padding(FMargin(18.f, 3.f))
+		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines (tighter still
+		// with the developers' tenth, Gallery).
+		const bool bTen = USailingSettings::DeveloperTools();
+		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).Padding(FMargin(18.f, bTen ? 1.f : 3.f))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(Label, EType::MenuItem, Fg) ]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SailUI::Text(Sub, EType::Small, Muted) ]
 		];
-		Menu->AddSlot().AutoHeight().Padding(0.f, 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
+		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
 		if (!First.IsValid()) First = B;
 	};
 	const SailCatalog::FWorld& LastWorld = SailCatalog::World(Save->Last.World);
@@ -774,6 +835,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
 	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
+	// Inputs/gallery/brief.md section 6: developers only (USailingSettings::bDeveloperTools, an ini line in Shipping).
+	if (USailingSettings::DeveloperTools()) Item(TEXT("Gallery"), TEXT("Developer · every asset"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Gallery); }));
 	Item(TEXT("Credits"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Credits); }));
 	Item(TEXT("Quit"), FString(), FSimpleDelegate::CreateLambda([this]() { Pop(); }));
 
@@ -1603,32 +1666,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	{
 	case 0:
 	{
-		// The tier is the preset: choosing one puts every row below back on Auto (the tier's own).
-		Add(SNew(SSailChoice).Label(TEXT("Quality")).Options({ TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") })
-			.Index_Lambda([S]() { return int32(S->Quality); })
-			.OnChanged_Lambda([S, GM](int32 I) { S->Quality = ESailingQuality(I); S->ResetGraphicsRows(); S->Save(); if (GM) GM->ApplyQualitySettings(); }));
-		// Bean's playtest: anti-aliasing and each feature's detail on their own, Auto following the tier.
-		// NVIDIA DLSS's modes join the list where the optional plugin is installed and the GPU is NVIDIA's.
-		TArray<int32> AAValues = { -1, 0, 2, 4, 5 };
-		TArray<FString> AANames = { TEXT("Auto"), TEXT("Off"), TEXT("TAA"), TEXT("TSR"), TEXT("SMAA") };
-		const bool bDLSS = USailingSettings::DLSSAvailable();
-		if (bDLSS)
-		{
-			AAValues.Append({ 10, 11, 12, 13 });
-			AANames.Append({ TEXT("DLAA"), TEXT("DLSS Quality"), TEXT("DLSS Balanced"), TEXT("DLSS Performance") });
-		}
-		Add(SNew(SSailChoice).Label(TEXT("Anti-aliasing")).Options(AANames)
-			.Index_Lambda([S, IndexOf, AAValues]() { return IndexOf(AAValues, S->AntiAliasing); })
-			.OnChanged_Lambda([S, GM, AAValues](int32 I) { S->AntiAliasing = AAValues[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
-			.Note(bDLSS ? TEXT("TSR: the sharpest of the engine's own. DLAA and DLSS: NVIDIA's AI anti-aliasing and upscaling (DLSS sets its own render scale).")
-				: TEXT("TSR: the sharpest, upscales from the render resolution. TAA: lighter. SMAA: no ghosting, more shimmer.")));
-		auto Detail = [&](const TCHAR* Label, int32 USailingSettings::* Field, const TCHAR* Note)
-		{
-			Add(SNew(SSailChoice).Label(Label).Options({ TEXT("Auto"), TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") })
-				.Index_Lambda([S, Field]() { return FMath::Clamp(S->*Field + 1, 0, 4); })
-				.OnChanged_Lambda([S, GM, Field](int32 I) { S->*Field = I - 1; S->Save(); if (GM) GM->ApplyQualitySettings(); })
-				.Note(Note));
-		};
+		// The rows are shared with the gallery's Graphics & view card (SailGraphicsRows), so the two can't drift.
+		Add(SailGraphicsRows::Quality(GM));
+		Add(SailGraphicsRows::AntiAliasing(GM));
+		auto Detail = [&](const TCHAR* Label, int32 USailingSettings::* Field, const TCHAR* Note) { Add(SailGraphicsRows::Detail(GM, Label, Field, Note)); };
 		Section(TEXT("Detail"));
 		Detail(TEXT("Shadows"), &USailingSettings::ShadowQuality, TEXT("Shadow resolution and distance."));
 		Detail(TEXT("Lighting"), &USailingSettings::LightingQuality, TEXT("Lumen's bounced light: the shade inside crowns and under hulls."));
@@ -1637,16 +1678,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		Detail(TEXT("Water"), &USailingSettings::WaterQuality, TEXT("Low keeps the simple water; Medium and up the full sea."));
 		Detail(TEXT("Foliage"), &USailingSettings::FoliageQuality, TEXT("How many of the shore's trees are drawn."));
 		Detail(TEXT("View distance"), &USailingSettings::ViewDistanceQuality, TEXT(""));
-		static const TArray<int32> BlurValues = { -1, 0, 1 };
-		Add(SNew(SSailChoice).Label(TEXT("Motion blur")).Options({ TEXT("Auto"), TEXT("Off"), TEXT("On") })
-			.Index_Lambda([S, IndexOf]() { return IndexOf(BlurValues, S->MotionBlur); })
-			.OnChanged_Lambda([S, GM](int32 I) { S->MotionBlur = BlurValues[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); }));
+		Add(SailGraphicsRows::MotionBlur(GM));
 		Section(TEXT("Rendering"));
-		static const TArray<int32> Scales = { 0, 100, 82, 67, 50 };
-		Add(SNew(SSailChoice).Label(TEXT("Render scale")).Options({ TEXT("Auto"), TEXT("100%"), TEXT("82%"), TEXT("67%"), TEXT("50%") })
-			.Index_Lambda([S, IndexOf]() { return IndexOf(Scales, S->ResolutionScale); })
-			.OnChanged_Lambda([S, GM](int32 I) { S->ResolutionScale = Scales[I]; S->Save(); if (GM) GM->ApplyQualitySettings(); })
-			.Note(TEXT("Auto is the tier's own: 67% with TAA on Medium, native on High with the governor stepping to 82% in heavy views.")));
+		Add(SailGraphicsRows::RenderScale(GM));
 		static const TArray<int32> Caps = { 30, 45, 60, 120, 0 };
 		Add(SNew(SSailChoice).Label(TEXT("Frame rate cap")).Options({ TEXT("30"), TEXT("45"), TEXT("60"), TEXT("120"), TEXT("Uncapped") })
 			.Index_Lambda([S, IndexOf]() { return IndexOf(Caps, S->FrameCap); })
@@ -2344,7 +2378,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConfirm()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	TSharedRef<SSailButton> Yes = ActionButton(ConfirmYes, FSimpleDelegate::CreateLambda([this]() { TFunction<void()> Do = ConfirmAction; Pop(); if (Do) Do(); }));
-	TSharedRef<SSailButton> No = ActionButton(TEXT("Cancel"), FSimpleDelegate::CreateLambda([this]() { Pop(); }), false);
+	TSharedRef<SSailButton> No = ActionButton(ConfirmNo.IsEmpty() ? FString(TEXT("Cancel")) : ConfirmNo,
+		FSimpleDelegate::CreateLambda([this]() { TFunction<void()> Do = ConfirmNoAction; Pop(); if (Do) Do(); }), false);
 	E.Content = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
 	[
 		SNew(SBox).WidthOverride(560.f)
