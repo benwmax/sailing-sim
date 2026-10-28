@@ -1,6 +1,7 @@
 #include "Traffic.h"
 #include "FixedStepper.h"
 #include "LakeTerrain.h"
+#include "PolarReference.h"
 #include "Race.h"
 #include "Waves.h"
 #include "Wind.h"
@@ -14,7 +15,51 @@ namespace Sailing
 	{
 		constexpr double kDeg = kPi / 180.0;
 		constexpr double kBeatAngle = 44.0 * kDeg;   // close-hauled true wind angle the AI steers
-		constexpr double kRunAngle = 155.0 * kDeg;   // deepest angle before gybing (a non-spinnaker boat's best downwind VMG)
+		constexpr double kRunAngle = 155.0 * kDeg;   // deepest angle before gybing, for a boat without a polar downwind
+
+		/**
+		 * docs/ai-gybe/: a boat's best downwind angle in a wind, from her reference polar (the non-spinnaker points, the
+		 * AI flies no spinnaker): the angle of most VMG downwind, the speeds interpolated between the table's angles at the
+		 * nearest wind, held to 130-160 deg. Cached per boat and whole knot.
+		 */
+		double BestRunAngleFromPolar(EBoatType Type, int Knots)
+		{
+			const std::vector<FPolarPoint>& Polar = FleetReferencePolar(Type);
+			double NearestTws = -1.0;
+			for (const FPolarPoint& P : Polar) if (!P.bSpinnaker && P.TrueWindAngleDeg >= 100.0 && (NearestTws < 0.0 || std::fabs(P.TrueWindKnots - Knots) < std::fabs(NearestTws - Knots))) NearestTws = P.TrueWindKnots;
+			std::vector<std::pair<double, double>> Row; // angle, speed
+			for (const FPolarPoint& P : Polar) if (!P.bSpinnaker && P.TrueWindAngleDeg >= 100.0 && P.TrueWindKnots == NearestTws) Row.push_back({ P.TrueWindAngleDeg, P.BoatSpeedKnots });
+			std::sort(Row.begin(), Row.end());
+			double Best = kRunAngle / kDeg;
+			if (Row.size() >= 2)
+			{
+				double BestVmg = -1.0;
+				for (size_t I = 0; I + 1 < Row.size(); ++I)
+				{
+					for (double A = Row[I].first; A <= Row[I + 1].first; A += 1.0)
+					{
+						const double T = (A - Row[I].first) / std::max(Row[I + 1].first - Row[I].first, 1.0);
+						const double Vmg = (Row[I].second + (Row[I + 1].second - Row[I].second) * T) * -std::cos(A * kDeg);
+						if (Vmg > BestVmg) { BestVmg = Vmg; Best = A; }
+					}
+				}
+			}
+			return Clamp(Best, 130.0, 160.0);
+		}
+
+		double BestRunAngle(EBoatType Type, double WindKnots)
+		{
+			// Built once (a thread-safe static: the fleet steps in parallel), every boat and whole knot to 40.
+			struct FTable { double A[int(EBoatType::Count)][41]; };
+			static const FTable Table = []()
+			{
+				FTable T{};
+				for (int B = 0; B < int(EBoatType::Count); ++B)
+					for (int K = 0; K <= 40; ++K) T.A[B][K] = BestRunAngleFromPolar(EBoatType(B), K);
+				return T;
+			}();
+			return Table.A[int(Type)][int(std::lround(Clamp(WindKnots, 0.0, 40.0)))];
+		}
 		constexpr double kLaylineSlack = 3.0 * kDeg;
 
 		double Bearing(double FromX, double FromY, double ToX, double ToY) { return std::atan2(ToY - FromY, ToX - FromX); }
@@ -300,8 +345,22 @@ namespace Sailing
 		const double Twa = WrapAngle(WF - Heading); // + = wind from starboard
 		const int Side = bKeepTack ? V.Side : (Twa >= 0.0 ? 1 : -1);
 		if (std::fabs(Twa) < kBeatAngle) return WrapAngle(WF - Side * kBeatAngle);
-		if (std::fabs(Twa) > kRunAngle) return WrapAngle(WF - Side * kRunAngle);
+		const double Run = RunAngleFor(V);
+		if (std::fabs(Twa) > Run) return WrapAngle(WF - Side * Run);
 		return Heading;
+	}
+
+	double FTrafficSim::RunAngleFor(const FTrafficVessel& V) const
+	{
+		// No deeper than her helm's run guard keeps her (FAutopilot). A multihull sails her polar's best VMG angle in this
+		// wind (the hot angles a cat lives on); a monohull the 155 deg she always has: the polars' flat VMG from 150 to 172
+		// put the J/22s deeper and the races slower (docs/ai-gybe/: 1,840 s against 1,738 over traffic.sh 98's 32).
+		if (!V.Boat) return kRunAngle;
+		const FVesselSnapshot S = V.Snapshot();
+		const double Guard = 180.0 - V.Pilot.RunMarginDeg(S.X, S.Y);
+		const FBoatConfig& Config = V.Boat->GetConfig();
+		const double Best = Config.Hulls.size() > 1 ? BestRunAngle(Config.Type, Wind ? Wind->GetParams().SpeedKnots : 10.0) : kRunAngle / kDeg;
+		return std::min(Best, Guard) * kDeg;
 	}
 
 	void FTrafficSim::Navigate(FTrafficVessel& V)
@@ -356,10 +415,11 @@ namespace Sailing
 				V.LastTackTime = Time;
 			}
 		}
-		else if (std::fabs(Twa) > kRunAngle)
+		else if (std::fabs(Twa) > RunAngleFor(V))
 		{
+			// Downwind in gybes on her best VMG angle, gybing on the layline (docs/ai-gybe/).
 			const double Rel = WrapAngle(Target - (WF + kPi));
-			const double Off = kPi - kRunAngle;
+			const double Off = kPi - RunAngleFor(V);
 			if (bCanTack && ((V.Side > 0 && Rel < -(Off - kLaylineSlack)) || (V.Side < 0 && Rel > Off - kLaylineSlack)))
 			{
 				V.Side = -V.Side;
@@ -380,7 +440,7 @@ namespace Sailing
 			{
 				V.Side = -V.Side;
 				V.LastTackTime = Time;
-				Heading = SailableHeading(V, std::fabs(Twa) < kBeatAngle || std::fabs(Twa) > kRunAngle ? Target : WrapAngle(Target + kPi), true);
+				Heading = SailableHeading(V, std::fabs(Twa) < kBeatAngle || std::fabs(Twa) > RunAngleFor(V) ? Target : WrapAngle(Target + kPi), true);
 			}
 		}
 		V.DesiredHeading = Heading;
@@ -670,6 +730,7 @@ namespace Sailing
 		// W1: the wind she is sailing in (SailableHeading chose the course in it).
 		const double Twa = WrapAngle(LocalWindFrom(B.GetState().Position.X, B.GetState().Position.Y) - V.SteerHeading);
 		V.Pilot.TargetTWADeg = Clamp(Twa / kDeg, -180.0, 180.0);
+		V.Pilot.Wind = Wind; // the run guard (docs/hobie-run/, docs/ai-gybe/): no crash gybes; the gybes the AI decides go through
 		if (std::fabs(V.Pilot.TargetTWADeg) < kBeatAngle / kDeg) V.Pilot.TargetTWADeg = (V.Pilot.TargetTWADeg >= 0.0 ? 1.0 : -1.0) * kBeatAngle / kDeg;
 		// A hard tack needs the full rudder.
 		V.Pilot.bKeepShortOfStall = std::fabs(WrapAngle(V.SteerHeading - B.GetTelemetry().Heading)) < 40.0 * kDeg;

@@ -259,19 +259,26 @@ namespace Sailing
 				const Vec3 P = Boat.GetState().Position;
 				// A fast boat (a cat at 0.4 of the wind's speed) runs on a weak apparent wind from nearly astern, which any
 				// wobble swings across: she keeps further off, by her speed's share of the wind.
-				const double SpeedShare = T.TrueWindSpeed > 0.5 ? std::max(T.ForwardSpeed, 0.0) / T.TrueWindSpeed : 0.0;
+				// (A multihull's: a monohull rolls back upright from what tips a cat.)
+				const bool bMultihull = Boat.GetConfig().Hulls.size() > 1;
+				const double SpeedShare = bMultihull && T.TrueWindSpeed > 0.5 ? std::max(T.ForwardSpeed, 0.0) / T.TrueWindSpeed : 0.0;
 				const double FastMargin = RunMarginPerSpeedShare * Clamp(SpeedShare - 0.25, 0.0, 0.35);
 				Target = Side * std::min(std::fabs(Target), 180.0 - std::min(RunMarginDeg(P.X, P.Y) + FastMargin, 40.0));
 				// The sail feels the apparent wind: a fast boat's swings with her speed, so it goes by the lee (and the boom
 				// across) before the true wind does. Deep or by the lee in it, she heads up a little more, smartly.
 				const double Awa = T.ApparentWindAngle * kRadToDeg;
-				const bool bApparentDeep = Side * Awa > 168.0 || (Side * Awa < 0.0 && std::fabs(Awa) > 120.0);
+				const bool bApparentDeep = bMultihull && (Side * Awa > 168.0 || (Side * Awa < 0.0 && std::fabs(Awa) > 120.0));
 				if (bApparentDeep) Target = Side * (std::fabs(Target) - 10.0);
 				const bool bByTheLee = Side * Twa < 0.0;
 				if (bByTheLee || bApparentDeep || Side * Twa > 175.0) GainNow = 2.0 * Gain;
-				else GainNow = RunGainShare * Gain; // a light hand on a run: a hard bear-away rolls her to windward
-				bRun = true;
-				RunSide = Side;
+				else if (bMultihull && Side * Twa > 135.0)
+				{
+					// A multihull's light hand once she is deep (a hard bear-away rolls a cat to windward); until then, a
+					// rounding onto the run keeps the full helm. A monohull keeps her own (docs/ai-gybe/).
+					GainNow = RunGainShare * Gain;
+					bRun = true;
+					RunSide = Side;
+				}
 			}
 		}
 		// Heading error: to raise the TWA on starboard tack (wind from +Y side), turn the bow away (to port).
