@@ -15,6 +15,35 @@ struct FReferenceSkeleton;
  * is plain logic so the tests can drive it without a world.
  */
 
+/**
+ * docs/crew-tack/: one sailor's crossing on a tack or gybe, timed to the boom as real crews do it (the doc's sources):
+ * on the old side until the boom nears the centreline (A, set), up into a half-crouch facing forward (B), across low in
+ * two steps with a hand on the coaming (C, deepest as the boom passes), turning and sitting on the new side (D), then the
+ * stance takes over (E). Tau is the time from the boom crossing the centreline, re-estimated from its swing until it
+ * has; a gybe sets and crouches earlier and holds still as the boom passes; a dinghy's crossing takes 0.65 of the time.
+ * Kept by the caller between frames (the pawn, per figure; the tests).
+ */
+struct SAILINGSIM_API FCrewCrossing
+{
+	bool bActive = false;
+	bool bGybe = false;
+	bool bBoomPassed = false;
+	float Clock = 0.f;                       // s since the crossing began
+	float Cooldown = 0.f;                    // s before another may start
+	float TBoom = 1.2f;                      // s from its start to the boom at the centreline
+	float Scale = 1.f;                       // a dinghy's crossing is quicker
+	float StartBoomSign = 0.f;
+	FVector From = FVector::ZeroVector;      // the pelvis where it began (m, boat frame)
+	float FromYaw = 0.f;
+	FVector Last = FVector::ZeroVector;      // the last placement (the next crossing starts from it)
+	float LastYaw = 0.f;
+	bool bHasLast = false;
+	/** Seconds from the boom crossing the centreline, in the script's own time (a dinghy's runs faster). */
+	float Tau() const { return (Clock - TBoom) / FMath::Max(Scale, 0.1f); }
+	/** The phase's end (tau) after which the stance takes over. */
+	float EndTau() const { return bGybe ? 1.9f : 1.3f; }
+};
+
 /** Where a sailor sits and which stance they take: shared by ASailboatPawn::UpdateCrewFigures and the tests. */
 struct SAILINGSIM_API FCrewPlaceInput
 {
@@ -30,6 +59,8 @@ struct SAILINGSIM_API FCrewPlaceInput
 	double BoomRate = 0.0;         // rad/s
 	double TrueWindAngle = 0.5;    // rad, FBoatTelemetry::TrueWindAngle (+ from starboard)
 	double TurnRate = 0.0;         // rad/s, yaw (+ bow to starboard)
+	FCrewCrossing* Crossing = nullptr; // docs/crew-tack/: the scripted crossing's state (none: the crossing stance as before)
+	float Dt = 0.f;                // s since the last placement (the crossing's clock)
 };
 
 struct SAILINGSIM_API FCrewPlacement
@@ -40,6 +71,16 @@ struct SAILINGSIM_API FCrewPlacement
 	float Roll = 0.f;
 	float Duck = 0.f;                       // 0 upright .. 1 crouched as low as the stance goes, under the boom
 	bool bHelm = false;
+	// docs/crew-tack/: a scripted crossing: where it is (tau, s from the boom at the centreline), the feet's anchors on the
+	// floor (ankles, m, boat frame; [0] left, [1] right) and how much they hold, and the coaming the free hand takes
+	// ([0] starboard, [1] port; -1 none) with which hand (0 left, 1 right).
+	bool bScripted = false;
+	float Tau = 0.f;
+	FVector FootAnchor[2] = { FVector::ZeroVector, FVector::ZeroVector };
+	float FootWeight = 0.f;
+	int32 HoldSide = -1;
+	int32 HoldHand = 0;
+	bool bHoldCabin = false;                // the forward hand takes the cabin-top handrail, clear of the jib sheet's tail
 };
 
 /** The stance and place (the boom's swing over the cockpit sets when the crew cross and how low they go). */
@@ -117,6 +158,9 @@ struct SAILINGSIM_API FCrewMotionInput
 	float Tension[2] = { 0.f, 0.f };        // 0..1, the load on what each hand holds (helm force, sheet load)
 	FVector Gaze = FVector::ZeroVector;     // where they look (boat frame, cm); zero: ahead
 	FCrewAttachPoints Attach;               // handholds and braces
+	// docs/crew-tack/: a scripted crossing's foot anchors (boat frame, cm) and their weight (0: the stance's feet).
+	FVector FootAnchor[2] = { FVector::ZeroVector, FVector::ZeroVector };
+	float FootWeight = 0.f;
 	float Time = 0.f;                       // s, the game clock (breathing and sway)
 	uint32 Seed = 0;
 	bool bReact = true;                     // the reaction layer (off: the stance alone, as before C1)

@@ -1407,6 +1407,9 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		Place.BoomRate = BoomRate;
 		Place.TrueWindAngle = T.TrueWindAngle;
 		Place.TurnRate = S.AngularVelocity.Z;
+		// docs/crew-tack/: each sailor's crossing on a tack or gybe, scripted against the boom.
+		Place.Crossing = I < CrewFigures.Num() ? &CrewFigures[I].Crossing : nullptr;
+		Place.Dt = DeltaSeconds;
 		FCrewPlacement Pl;
 		CrewPlacement(Place, Pl);
 		const FCrewPoseParams& P = Pl.Params;
@@ -1473,7 +1476,8 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		const float SheetLoad = float(FMath::Clamp(FMath::Sqrt(FMath::Square(T.DriveForce) + FMath::Square(T.HeelingForce)) / 2500.0, 0.0, 1.0));
 		const bool bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::DinghyHike || P.Stance == ECrewStance::Cockpit
 			|| P.Stance == ECrewStance::RailHike;
-		if (bSeated && !bTrafficBoat)
+		// (Crossing on a tack, the helm keeps the extension and the mainsheet: docs/crew-tack/.)
+		if ((bSeated || (Pl.bScripted && bHelm)) && !bTrafficBoat)
 		{
 			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
 			const FVector Toward = FRotator(0.f, F.Yaw, 0.f).Vector();
@@ -1567,6 +1571,22 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			Socket(TEXT("FootBrace"), In.Attach.FootBrace[Sd]);
 			Socket(TEXT("SideDeck"), In.Attach.SideDeck[Sd]);
 		}
+		// docs/crew-tack/: crossing, a hand on the coaming (the old side's, then the new side's) and the feet stepping.
+		if (Pl.bScripted && Pl.HoldSide >= 0 && In.Attach.bValid)
+		{
+			const FVector At = Pl.bHoldCabin ? In.Attach.HandholdCabin[Pl.HoldSide] : In.Attach.HandholdCoaming[Pl.HoldSide];
+			const int32 H = Pl.HoldHand;
+			if (FVector::Dist(At, Shoulder[H]) < Reach * 1.05)
+			{
+				In.Hands.Mode[H] = FCrewHands::EMode::Reach;
+				In.Hands.Target[H] = CompTM.InverseTransformPosition(At);
+				In.Hands.Grip[H] = 0.85f;
+				In.Hands.Along[H] = CompTM.InverseTransformVectorNoScale(FVector::ForwardVector);
+			}
+		}
+		In.FootAnchor[0] = Pl.FootAnchor[0] * CmPerMeter;
+		In.FootAnchor[1] = Pl.FootAnchor[1] * CmPerMeter;
+		In.FootWeight = Pl.FootWeight;
 		// Glances of a couple of seconds: the helm and trimmer mostly at the telltales, the bow ahead and upwind.
 		const float Slot = FMath::FloorToFloat((float(S.Time) + 1.7f * I) / 2.4f);
 		const float R = Hash(In.Seed * 131u + uint32(int32(Slot)));
@@ -1578,7 +1598,11 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// Stills of a tack: -SailingShotCrew=<name> saves Saved/Bench/<name>.png once the helm is crouched under the boom.
 		static SailingArgs::FOnce CrewShotTaken;
 		FString CrewShot;
-		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(SailingArgs::Dev(), TEXT("SailingShotCrew="), CrewShot))
+		// (docs/crew-tack/: or at a sim time, -SailingShotAtSim=<s>, for a strip of stills through a demo tack.)
+		double ShotAt = -1.0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingShotAtSim="), ShotAt);
+		const bool bShotNow = ShotAt >= 0.0 ? S.Time >= ShotAt : Pl.Duck > 0.8f && F.TransitionS > 0.9f;
+		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && bShotNow && FParse::Value(SailingArgs::Dev(), TEXT("SailingShotCrew="), CrewShot))
 		{
 			CrewShotTaken.Take();
 			FScreenshotRequest::RequestScreenshot(FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *CrewShot)), false, false);

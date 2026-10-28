@@ -157,6 +157,101 @@ float CrewTransitionSeconds(ECrewStance From, ECrewStance To)
 	return 0.8f;
 }
 
+namespace
+{
+	/** Minimum jerk from 0 at A to 1 at B (tau). */
+	float Ease(float Tau, float A, float B) { return CrewMinJerk((Tau - A) / FMath::Max(B - A, 1e-3f)); }
+}
+
+static void CrewScriptCrossing(const Sailing::FBoatConfig& Cfg, FCrewCrossing& C, bool bDinghy, bool bUnderBoom, FCrewPlacement& Out)
+{
+	// docs/crew-tack/: the phases' times (tau, s from the boom at the centreline): A set on the old side, B up and turned to
+	// face forward, C across in two steps (deepest as the boom passes), D turned and down onto the new side. A gybe sets and
+	// crouches early, low, and holds still while the boom goes over before crossing.
+	const float T = C.Tau();
+	const bool bG = C.bGybe;
+	const float A0 = bG ? -2.0f : -1.2f, A1 = bG ? -1.6f : -0.8f, B1 = bG ? -1.0f : -0.3f;
+	const float C0 = bG ? 0.3f : -0.3f, C1 = bG ? 1.3f : 0.7f, D1 = C.EndTau();
+	const FVector From = C.From;
+	const double S = From.Y != 0.0 ? FMath::Sign(From.Y) : -double(Out.Params.Side);
+	const double ToY = -From.Y;
+	constexpr double In = 0.10;   // m inboard of the seat at the set and before sitting
+	// Across: set inboard, across, and out to the seat. Before a gybe, down off the rail into the well, at its edge: the
+	// boom sweeps the side deck at head height.
+	double SetY = From.Y - S * In;
+	FCrewCockpitWell SetWell;
+	if (bG && !bDinghy && !Cfg.bMultihull && CrewCockpitWell(Cfg, SetWell)) SetY = S * FMath::Min(FMath::Abs(From.Y) - In, FMath::Max(SetWell.HalfWidth - 0.05, 0.1));
+	double Y = From.Y;
+	Y = FMath::Lerp(Y, SetY, double(Ease(T, A0, A1)));
+	Y = FMath::Lerp(Y, ToY + S * In, double(Ease(T, C0, C1)));
+	Y = FMath::Lerp(Y, ToY, double(Ease(T, C1, D1)));
+	// Fore and aft they come down where they rose, the new side's seat mirroring the old: the crossing stance's own place
+	// (the well's forward end) put the J/22's bow 0.25 m forward of their rail seat, into the jib sheet's tail by its winch
+	// (SailingSim.Visual.SheetClearance), and moved with the crew model under the planted foot.
+	const double ToX = From.X;
+	const double X = FMath::Lerp(From.X, ToX, double(Ease(T, C0, C1)));
+	// Up and down: a half-crouch 0.55 m over the floor (the helm's no higher), lowest (0.5, a gybe's 0.45, under the boom
+	// lower still) as the boom passes, then down onto the seat.
+	const double Floor = CrewFloorZ(Cfg, X, Y);
+	double Z = From.Z;
+	if (Floor > -1e8)
+	{
+		double Rise = Floor + 0.55;
+		double Low = Floor + (bG ? 0.45 : 0.50);
+		// (Under the boom both stay under it, the head about 0.75 m over the pelvis and 10 cm clear, no lower than a deep
+		// crouch.)
+		if (bUnderBoom)
+		{
+			const double Clear = FMath::Max(Cfg.BoomZ - 0.85, Floor + 0.30);
+			Rise = FMath::Min(Rise, Clear);
+			Low = FMath::Min(Low, Clear);
+		}
+		const float Deep0 = bG ? -0.2f : -0.3f, Deep1 = bG ? 0.3f : 0.0f;
+		Z = FMath::Lerp(Z, Rise, double(Ease(T, A1, B1)));
+		Z = FMath::Lerp(Z, Low, double(Ease(T, Deep0, Deep1)));
+		Z = FMath::Lerp(Z, Rise, double(Ease(T, Deep1 + 0.3f, C1)));
+		Z = FMath::Lerp(Z, From.Z, double(Ease(T, C1, D1)));
+	}
+	Out.Pelvis = FVector(X, Y, Z);
+	// Facing: turned forward as they rise, to the new side's seat as they sit.
+	float Yaw = C.FromYaw;
+	Yaw = FMath::Lerp(Yaw, 0.f, Ease(T, A1, B1));
+	Yaw = FMath::Lerp(Yaw, -C.FromYaw, Ease(T, C1, D1));
+	Out.Yaw = Yaw;
+	Out.bScripted = true;
+	Out.Tau = T;
+	// The feet on the floor, a keelboat's: each ankle 12 cm to its side of the line across, 0.4 m in from the seat; the lead
+	// foot (toward the new side) steps first, 0.3 s each, on a 12 cm arc, the other planted.
+	FCrewCockpitWell W;
+	if (!bDinghy && !Cfg.bMultihull && CrewCockpitWell(Cfg, W))
+	{
+		const double Half = FMath::Max(W.HalfWidth - 0.10, 0.15);
+		const int32 Lead = ToY > 0.0 ? 1 : 0;   // the right foot leads to starboard
+		for (int32 K = 0; K < 2; ++K)
+		{
+			const double Side = K == 0 ? -0.12 : 0.12;   // facing forward: the left foot to port
+			const double OldY = FMath::Clamp(From.Y - S * 0.40 + Side, -Half, Half);
+			const double NewY = FMath::Clamp(ToY + S * 0.40 + Side, -Half, Half);
+			const float Start = K == Lead ? C0 : C0 + 0.5f;
+			const float U = FMath::Clamp((T - Start) / 0.3f, 0.f, 1.f);
+			const double FootY = FMath::Lerp(OldY, NewY, double(CrewMinJerk(U)));
+			const double FootX = FMath::Clamp(FMath::Lerp(From.X, ToX, double(CrewMinJerk(U))) + (K == 0 ? 0.04 : -0.04), W.X0 + 0.15, W.X1 - 0.15);
+			const double FloorK = CrewFloorZ(Cfg, FootX, FootY);
+			Out.FootAnchor[K] = FVector(FootX, FootY, (FloorK > -1e8 ? FloorK : W.SoleZ) + 0.09 + 0.12 * FMath::Sin(UE_PI * U));
+		}
+		Out.FootWeight = FMath::Min(Ease(T, A1, A1 + 0.2f), 1.f - Ease(T, D1 - 0.25f, D1));
+	}
+	// A hand on the coaming: the old side's until across the middle, then the new side's until seated (not the helm, whose
+	// hands keep the tiller and the mainsheet).
+	if (!Out.bHelm && T > A1 && T < D1 - 0.15f)
+	{
+		const bool bNew = T > C0 + 0.7f * (C1 - C0);
+		const double Toward = bNew ? -S : S;
+		Out.HoldSide = Toward > 0.0 ? 0 : 1;   // [0] starboard
+		Out.HoldHand = Toward > 0.0 ? 1 : 0;   // the hand on that side, facing forward
+	}
+}
+
 void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 {
 	using namespace Sailing;
@@ -265,8 +360,66 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	const bool bTacking = Twa < 28.0 && FMath::Abs(In.TurnRate) > FMath::DegreesToRadians(4.0);
 	const bool bGybing = Twa > 150.0 && FMath::Abs(In.BoomRate) > 0.3 && BoomDeg < 45.0;
 	// (Hiking in or out moves the crew model as fast as a tack does: only a move through the middle of the boat is a crossing.)
-	const bool bCrossing = (bUnderBoom && (bTacking || bGybing)) || ((bTacking || bGybing) && FMath::Abs(In.OffsetRate) > 0.3)
+	bool bCrossing = (bUnderBoom && (bTacking || bGybing)) || ((bTacking || bGybing) && FMath::Abs(In.OffsetRate) > 0.3)
 		|| (FMath::Abs(In.OffsetRate) > 0.6 && Off < (bDinghy ? FMath::Min(0.2, 0.8 * Cfg.CrewSitOut) : 0.8 * Cfg.CrewSitOut));
+	// docs/crew-tack/: the scripted crossing (when the caller keeps one): started where the stance would cross, from where
+	// the sailor last was, and timed to the boom until it has passed; once over, the stance takes over and a new crossing
+	// waits 1.5 s (the turn's last degrees still read as a tack).
+	// (A gybe is set up before the boom moves: turning past 165 deg toward dead downwind.)
+	const bool bGybeComing = !bDinghy && Twa > 165.0 && -FMath::Sign(In.TrueWindAngle) * In.TurnRate > 0.05;
+	FCrewCrossing* Cross = In.bRighting ? nullptr : In.Crossing;
+	bool bScript = false;
+	if (Cross)
+	{
+		FCrewCrossing& C = *Cross;
+		C.Cooldown = FMath::Max(0.f, C.Cooldown - In.Dt);
+		if (C.bActive)
+		{
+			C.Clock += In.Dt;
+			// (Re-estimated only until the cross begins, and never backwards: a step frozen mid-air, or a sailor drifting
+			// back toward the old side, when the boom's swing first showed.)
+			const float WasTBoom = C.TBoom;
+			if (!C.bBoomPassed && C.Tau() < (C.bGybe ? 0.3f : -0.3f))
+			{
+				const float Sign = float(FMath::Sign(In.BoomAngle));
+				if (C.StartBoomSign != 0.f && Sign != 0.f && Sign != C.StartBoomSign && FMath::Abs(In.BoomAngle) > 0.03)
+				{
+					C.bBoomPassed = true;
+					C.TBoom = FMath::Min(C.TBoom, C.Clock);
+				}
+				else if (FMath::Abs(In.BoomRate) > 0.05 && In.BoomAngle * In.BoomRate < 0.0)
+				{
+					C.TBoom = C.Clock + float(FMath::Clamp(FMath::Abs(In.BoomAngle) / FMath::Abs(In.BoomRate), 0.2, 2.0));
+				}
+				else
+				{
+					// The boom not swinging yet: still on the old side (short of the cross; a gybe crouched, holding still).
+					C.TBoom = FMath::Max(C.TBoom, C.Clock + (C.bGybe ? 0.2f : 0.35f) * C.Scale);
+				}
+				if (C.Clock > 4.f) C.bBoomPassed = true;
+				C.TBoom = FMath::Min(C.TBoom, WasTBoom + In.Dt);
+			}
+			if (C.Tau() > C.EndTau())
+			{
+				C.bActive = false;
+				C.Cooldown = 1.5f;
+			}
+		}
+		else if ((bCrossing || bGybeComing) && (bTacking || bGybing || bGybeComing) && C.bHasLast && C.Cooldown <= 0.f)
+		{
+			C.bActive = true;
+			C.Clock = 0.f;
+			C.bGybe = (bGybing || bGybeComing) && !bTacking;
+			C.Scale = bDinghy ? 0.65f : 1.f;
+			C.From = C.Last;
+			C.FromYaw = C.LastYaw;
+			C.StartBoomSign = float(FMath::Sign(In.BoomAngle));
+			C.bBoomPassed = false;
+			C.TBoom = (C.bGybe ? 2.0f : 1.2f) * C.Scale;
+		}
+		bScript = C.bActive;
+		if (!bScript && C.Cooldown > 0.f) bCrossing = false;
+	}
 	// docs/crew-hull-clip/: facing across the boat in the well (on a seat, or crossing), the hips are a body's width
 	// apart fore and aft; at 0.12 m from the well's forward end the forward hip went into the cabin trunk's face.
 	// (Each a body's width, 0.42 m, further aft than the one forward of them: held all to the same 0.3 m they sat in each
@@ -287,7 +440,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		Out.Pelvis = FVector(X, Side * (Rail + 0.8), Sheer + 0.35);
 		Out.Roll = 72.f * Side;
 	}
-	else if (bCrossing)
+	else if (bCrossing || bScript)
 	{
 		P.Stance = ECrewStance::Crossing;
 		// Heading for the new side: the crew model's motion, or (the boom ahead of it) away from where the boom is going.
@@ -413,6 +566,20 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		P.bFlatDeck = FootZ > SeatZ - 0.15;
 	}
 	Out.Yaw = CrewFacingYaw(P);
+	if (bScript && P.Stance == ECrewStance::Crossing)
+	{
+		CrewScriptCrossing(Cfg, *Cross, bDinghy, bUnderBoom, Out);
+		// (The forward hand's hold is the cabin-top handrail: on the coaming their arm went through the jib sheet's tail by
+		// its winch, SailingSim.Visual.SheetClearance.)
+		Out.bHoldCabin = I == 0 && N > 2;
+	}
+	else if (Cross) Cross->bActive = false;
+	if (Cross)
+	{
+		Cross->Last = Out.Pelvis;
+		Cross->LastYaw = Out.Yaw;
+		Cross->bHasLast = true;
+	}
 }
 
 void CrewDerivedAttachPoints(const Sailing::FBoatConfig& C, double X, FCrewAttachPoints& Out)
@@ -642,6 +809,19 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 				break; // one foot braces; the other stays planted
 			}
 		}
+	}
+	// docs/crew-tack/: crossing, the feet go where the script steps them (anchors on the floor, the swinging foot on its
+	// arc), blended in as the sailor rises and out as they sit.
+	if (!bBrace && In.FootWeight > 0.f)
+	{
+		for (int32 K = 0; K < 2; ++K)
+		{
+			const int32 Foot = Ref.FindBoneIndex(K == 0 ? TEXT("foot_l") : TEXT("foot_r"));
+			if (Foot == INDEX_NONE) continue;
+			const FVector Anchor = ToBoat.InverseTransformPosition(In.FootAnchor[K]);
+			CrewSolver::ReachArm(Ref, CS, D, Foot, FMath::Lerp(CS[Foot].GetLocation(), Anchor, double(FMath::Clamp(In.FootWeight, 0.f, 1.f))), Carried);
+		}
+		CrewSolver::Solve(Ref, RestCS, Carried, CS, &D);
 	}
 	// pc/sunfish-strap, pc/ilca-fidelity: hiking from a dinghy with a strap along its well (the Sunfish, the ILCA), the feet go under it: each ankle just
 	// to windward of the webbing, on the sole, the instep beneath it and the toes across the centreline (the legs reach
