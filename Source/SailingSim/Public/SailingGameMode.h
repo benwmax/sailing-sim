@@ -231,6 +231,8 @@ private:
 	};
 	FWeatherInputs PreviewRestore;
 	FSailConditions LastPreviewed;
+	double PreviewMsMax = 0.0, NextPreviewLog = 0.0;
+	int32 PreviewCount = 0;
 	void ApplyConditionsLocal(const struct FSailConditions& Conditions);
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;

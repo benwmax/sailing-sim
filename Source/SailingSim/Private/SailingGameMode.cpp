@@ -558,7 +558,19 @@ void ASailingGameMode::PreviewConditions(const FSailConditions& C)
 		R.bSessionDate = bSessionDate;
 		R.bWindArgsRead = bWindArgsRead;
 	}
+	const double Start = FPlatformTime::Seconds();
 	ApplyConditionsLocal(C);
+	UE_LOG(LogSailing, Verbose, TEXT("Preview conditions: %.2f ms"), (FPlatformTime::Seconds() - Start) * 1000.0);
+	PreviewMsMax = FMath::Max(PreviewMsMax, (FPlatformTime::Seconds() - Start) * 1000.0);
+	++PreviewCount;
+	if (FPlatformTime::Seconds() >= NextPreviewLog)
+	{
+		// Once every 2 s at most: what the previews cost (the PC's Conditions screen re-previews at 5 Hz).
+		UE_LOG(LogSailing, Display, TEXT("Preview conditions: %d applied, the slowest %.2f ms"), PreviewCount, PreviewMsMax);
+		NextPreviewLog = FPlatformTime::Seconds() + 2.0;
+		PreviewMsMax = 0.0;
+		PreviewCount = 0;
+	}
 }
 
 void ASailingGameMode::EndPreview(bool bKeep)
