@@ -2,6 +2,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/StaticMesh.h"
+#include "StaticMeshResources.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/WorldSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -155,7 +156,10 @@ bool FSailingGalleryStageTest::RunTest(const FString&)
 		Stage->Show(Cube);
 		for (int32 I = 0; I < 300 && Stage->IsLoading(); ++I) { FlushAsyncLoading(); ++GFrameCounter; World->Tick(LEVELTICK_All, 1.f / 60.f); }
 		const FGalleryStats St = Stage->GetStats();
-		TestEqual(TEXT("Shown: the cube's 12 triangles"), St.Triangles, 12);
+		// The engine's cube is subdivided (48 triangles on this engine): the count is its LOD 0's.
+		const UStaticMesh* CubeMesh = Cast<UStaticMesh>(Cube.Mesh.ResolveObject());
+		const int32 Lod0 = CubeMesh && CubeMesh->GetRenderData() ? CubeMesh->GetRenderData()->LODResources[0].GetNumTriangles() : -1;
+		TestTrue(FString::Printf(TEXT("Shown: the cube's LOD 0 triangles (%d)"), St.Triangles), St.Triangles >= 12 && St.Triangles == Lod0);
 		TestTrue(TEXT("A metre across"), St.SizeM.Equals(FVector(1.0), 0.01));
 		TestTrue(TEXT("Its path"), St.Path.Contains(TEXT("/Engine/BasicShapes/Cube")));
 		const UStaticMeshComponent* D = Stage->FindComponentByClass<UStaticMeshComponent>();
