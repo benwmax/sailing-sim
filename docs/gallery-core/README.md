@@ -106,3 +106,23 @@ internal developers only. G2, the screen, is the PC's. G3, whole boats on the st
   - the framing distance;
   - tier names;
   - the compare split.
+
+## G3: whole boats (Oct 28 2026)
+
+A boat item (`Boat:<type>`) shows her whole on the stage:
+- **The model.** She is the player's assembly, not a stand-in. `AGalleryStage::ShowBoat` spawns a still traffic-mode
+  `ASailboatPawn`, the ghost's path: nothing steps her, and `bGalleryDisplay` draws her with the player's models, so the
+  J/22 is the hero.
+- **Placement.** `PoseForDisplay` stands her keel on the studio floor, with her waterline her draft above it. On the lake
+  presets she floats.
+- **What follows her.** Framing, the cyclorama's size, the lighting channels, stats (her parts' triangles, their count,
+  materials) and the wire views. The wire views are an overlay on every part, so her liveries stay.
+- **Speed.** She builds in 2 to 15 ms.
+- **The screen.** The PC's screen lists the boats again; they have no thumbnails yet. The sails are the cloth's rest shape
+  in still air, and there is no cradle.
+
+![hero J/22](g3/j22-hero.jpg) ![Lagoon 42](g3/lagoon-studio.jpg)
+![Hobie at golden hour](g3/hobie-golden.jpg) ![J/22 with the wire](g3/j22-wire.jpg)
+
+`SailingSim.Smoke.GalleryStage` now also shows a whole J/22. It checks that she has more than 1,000 triangles in four or
+more parts, is about her length, and has her keel on the floor (0.00 m), and that showing a mesh again puts her away.
