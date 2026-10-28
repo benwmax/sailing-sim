@@ -214,8 +214,9 @@ static void CrewScriptCrossing(const Sailing::FBoatConfig& Cfg, FCrewCrossing& C
 		Z = FMath::Lerp(Z, From.Z, double(Ease(T, C1, D1)));
 	}
 	Out.Pelvis = FVector(X, Y, Z);
-	// A gybe's crouch is deep (chin to knees, the trunk folded: the stance's duck) from the set until the boom is over.
-	if (bG) Out.Duck = FMath::Max(Out.Duck, FMath::Min(Ease(T, A1, B1), 1.f - Ease(T, Deep1Gybe, C0 + 0.3f)));
+	// A gybe's crouch is deep (chin to knees, the trunk folded: the stance's duck) from the set until the boom is over,
+	// where the boom sweeps over them (the maxi's is far overhead: folded, her rail crew's necks went into the jib sheet).
+	if (bG && bUnderBoom) Out.Duck = FMath::Max(Out.Duck, FMath::Min(Ease(T, A1, B1), 1.f - Ease(T, Deep1Gybe, C0 + 0.3f)));
 	// Facing: turned forward as they rise, to the new side's seat as they sit.
 	float Yaw = C.FromYaw;
 	Yaw = FMath::Lerp(Yaw, 0.f, Ease(T, A1, B1));
