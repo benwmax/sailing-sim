@@ -231,7 +231,7 @@ namespace CrewSolver
 	/** Graphics G8, docs/crew-elbow/: two-bone IK for one arm (or leg) toward a wrist (ankle) target, component space. The
 	 *  middle joint is a hinge: the forearm turns only about the elbow's own axis, which the upper arm carries, flexed
 	 *  between straight and 145 deg (the knee 150), never backwards. The elbow sits in the stance's bend plane where that is
-	 *  within 45 deg of where the arm's own hinge puts it (or where Bend asks, a dinghy's knees up under the strap); the
+	 *  within 75 deg of where the arm's own hinge puts it (or where Bend asks, a dinghy's knees up under the strap); the
 	 *  upper arm turns so its hinge is square to that plane. Before, the elbow went in the stance's plane and the forearm
 	 *  was turned straight at the target about any axis: for a target across that plane it folded the wrong way, and the
 	 *  held line's swing walked it freely round the reach (Bean's playtest: elbows bent backwards). */
@@ -270,16 +270,18 @@ namespace CrewSolver
 		const FVector Z = FVector::CrossProduct(X, YHinge);
 		auto SwingOf = [&](const FVector& V) { return FMath::Atan2(FVector::DotProduct(V, Z), FVector::DotProduct(V, YHinge)); };
 		auto AtSwing = [&](double Rad) { return YHinge * FMath::Cos(Rad) + Z * FMath::Sin(Rad); };
-		constexpr double MaxSwing = UE_DOUBLE_PI / 4.0;
-		// The stance's bend plane (or the asked bend), within 45 deg of the hinge's.
+		// The upper arm's (thigh's) twist the plane may ask: about the humerus' and the hip's own range of rotation.
+		constexpr double MaxSwing = UE_DOUBLE_PI * 75.0 / 180.0;
+		// The stance's bend plane, within that of the hinge's; an asked bend (a dinghy's knees up under the strap) as asked.
 		FVector Want = (E - S) - X * FVector::DotProduct(E - S, X);
+		double Band = MaxSwing;
 		if (!Bend.IsNearlyZero())
 		{
 			const FVector YB = Bend - X * FVector::DotProduct(Bend, X);
-			if (YB.SizeSquared() > 0.01 * Bend.SizeSquared()) Want = YB;
+			if (YB.SizeSquared() > 0.01 * Bend.SizeSquared()) { Want = YB; Band = UE_DOUBLE_PI; }
 		}
-		double Swing = Want.SizeSquared() < 1.0 ? 0.0 : FMath::Clamp(SwingOf(Want), -MaxSwing, MaxSwing);
-		// Holding a line: the elbow swings about the reach (10 deg steps, still inside the band, the elbow kept low) to where
+		double Swing = Want.SizeSquared() < 1.0 ? 0.0 : FMath::Clamp(SwingOf(Want), -Band, Band);
+		// Holding a line: the elbow swings about the reach (10 deg steps, inside the shoulder's range, the elbow kept low) to where
 		// the forearm runs most nearly square to the line, so the line lies across the palm with the wrist near straight
 		// (the PC, Ultra: with the stance's elbow, a sheet led along the forearm cocked the wrist 60-70 deg).
 		if (!HeldLine.IsNearlyZero())
@@ -288,9 +290,10 @@ namespace CrewSolver
 			auto SquareAt = [&](double Rad) { return FMath::Abs(FVector::DotProduct((T2 - ElbowAt(AtSwing(Rad))).GetSafeNormal(), Line)); };
 			const double Stance = SquareAt(Swing);
 			double Best = Stance, BestSwing = Swing;
-			for (int32 K = -9; K <= 9; ++K)
+			for (int32 K = -6; K <= 6; ++K)
 			{
-				const double Rad = FMath::DegreesToRadians(10.0 * K);
+				// (Up to 60 deg from the stance's elbow, as before the hinge, and still inside the shoulder's range.)
+				const double Rad = Swing + FMath::DegreesToRadians(10.0 * K);
 				if (FMath::Abs(Rad) > MaxSwing + 1e-6) continue;
 				// (Never with the elbow raised: no higher than the shoulder; swung up, the trimmer's arm went up past the head
 				// and the shoulder's skin and vest tore.)
