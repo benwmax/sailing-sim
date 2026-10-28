@@ -537,11 +537,19 @@ void ASailingGameMode::PreviewConditions(const FSailConditions& C)
 {
 	if (!bPreviewing)
 	{
-		// What Back goes back to: the running session's conditions (the front end has none: its preview is the choice).
+		// What Back (or the gallery's close) goes back to: the weather's inputs as they are now.
 		bPreviewing = true;
-		const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
-		bPreviewRestore = Session && Session->bHasActive;
-		if (bPreviewRestore) PreviewRestore = Session->Active.Conditions;
+		FWeatherInputs& R = PreviewRestore;
+		R.Preset = uint8(USailingSettings::Get()->WeatherPreset);
+		R.StartHour = USailingSettings::Get()->StartHour;
+		R.WindOverrideKnots = WindOverrideKnots;
+		R.WindFromOverride = WindFromOverride;
+		R.GustOverride = GustOverride;
+		R.RealDayDate = RealDayDate;
+		R.bRealDayHour = bRealDayHour;
+		R.SessionDate = SessionDate;
+		R.bSessionDate = bSessionDate;
+		R.bWindArgsRead = bWindArgsRead;
 	}
 	ApplyConditionsLocal(C);
 }
@@ -550,7 +558,19 @@ void ASailingGameMode::EndPreview(bool bKeep)
 {
 	if (!bPreviewing) return;
 	bPreviewing = false;
-	if (!bKeep && bPreviewRestore) ApplyConditionsLocal(PreviewRestore);
+	if (bKeep) return;
+	const FWeatherInputs& R = PreviewRestore;
+	USailingSettings::Get()->WeatherPreset = ESailingWeather(R.Preset);
+	USailingSettings::Get()->StartHour = R.StartHour;
+	WindOverrideKnots = R.WindOverrideKnots;
+	WindFromOverride = R.WindFromOverride;
+	GustOverride = R.GustOverride;
+	RealDayDate = R.RealDayDate;
+	bRealDayHour = R.bRealDayHour;
+	SessionDate = R.SessionDate;
+	bSessionDate = R.bSessionDate;
+	bWindArgsRead = R.bWindArgsRead;
+	ApplyWeatherSettings();
 }
 
 void ASailingGameMode::ApplyConditionsLocal(const FSailConditions& C)

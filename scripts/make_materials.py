@@ -644,6 +644,27 @@ def build_emissive():
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
 
 
+def build_gallery_materials():
+    """The asset gallery's (docs/gallery-core/): M_GalleryWire, an unlit wireframe drawn over or instead of an asset's own
+    materials (the engine's wireframe view is not in Shipping), and M_GalleryStudio, the studio cyclorama's mid grey."""
+    wire = new_material("M_GalleryWire")
+    wire.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    wire.set_editor_property("wireframe", True)
+    wire.set_editor_property("two_sided", True)
+    color = vector(wire, "Color", (0.25, 0.75, 1.0, 1), -500, 0)
+    MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(wire)
+    unreal.EditorAssetLibrary.save_loaded_asset(wire)
+    studio = new_material("M_GalleryStudio")
+    studio.set_editor_property("two_sided", True)
+    grey = vector(studio, "Color", (0.18, 0.18, 0.18, 1), -500, 0)
+    rough = node(studio, unreal.MaterialExpressionConstant, -500, 150, r=0.85)
+    MEL.connect_material_property(grey, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.recompile_material(studio)
+    unreal.EditorAssetLibrary.save_loaded_asset(studio)
+
+
 def build_sail():
     mat = new_material("M_Sail")
     mat.set_editor_property("two_sided", True)
@@ -5575,6 +5596,7 @@ def build_crew_fabric():
 
 build(build_boat_library)
 build(build_crew_fabric)
+build(build_gallery_materials)
 build(build_sail_cloth)
 build(build_telltale)
 write_stamp()
