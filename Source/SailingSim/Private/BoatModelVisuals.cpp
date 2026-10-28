@@ -1574,7 +1574,11 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// Stills of a tack: -SailingShotCrew=<name> saves Saved/Bench/<name>.png once the helm is crouched under the boom.
 		static SailingArgs::FOnce CrewShotTaken;
 		FString CrewShot;
-		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && Pl.Duck > 0.8f && F.TransitionS > 0.9f && FParse::Value(SailingArgs::Dev(), TEXT("SailingShotCrew="), CrewShot))
+		// (docs/crew-tack/: or at a sim time, -SailingShotAtSim=<s>, for a strip of stills through a demo tack.)
+		double ShotAt = -1.0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingShotAtSim="), ShotAt);
+		const bool bShotNow = ShotAt >= 0.0 ? S.Time >= ShotAt : Pl.Duck > 0.8f && F.TransitionS > 0.9f;
+		if (!CrewShotTaken.Taken() && bHelm && !bTrafficBoat && bShotNow && FParse::Value(SailingArgs::Dev(), TEXT("SailingShotCrew="), CrewShot))
 		{
 			CrewShotTaken.Take();
 			FScreenshotRequest::RequestScreenshot(FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *CrewShot)), false, false);
