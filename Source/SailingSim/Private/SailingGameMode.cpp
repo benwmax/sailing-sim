@@ -422,12 +422,17 @@ const FChartData& ASailingGameMode::GetChart() const
 	return Chart;
 }
 
+double ASailingGameMode::GetDrawnHour() const
+{
+	return DrawnHourOverride >= 0.0 ? DrawnHourOverride : WeatherState.HourOfDay;
+}
+
 bool ASailingGameMode::IsDark() const
 {
 	static SailingArgs::FCachedFlag LightsOnArg(TEXT("SailingLightsOn")); // screenshots, debugging
 	const bool bForceOn = LightsOnArg.Get();
 	double Elevation = 0.0, Azimuth = 0.0;
-	ASailingEnvironment::SunPosition(WeatherState.HourOfDay, DayOfYear, Lake.Latitude, Lake.Longitude, UtcOffsetHours, Elevation, Azimuth);
+	ASailingEnvironment::SunPosition(GetDrawnHour(), DayOfYear, Lake.Latitude, Lake.Longitude, UtcOffsetHours, Elevation, Azimuth);
 	return bForceOn || Elevation < -1.0 || WeatherState.VisibilityKm < 2.0;
 }
 

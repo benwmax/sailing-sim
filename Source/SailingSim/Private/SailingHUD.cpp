@@ -7,6 +7,7 @@
 #include "UI/SailFrontEnd.h"
 #include "UI/SailLoading.h"
 #include "UI/SailHud.h"
+#include "UI/SailPhotoPanel.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Kismet/GameplayStatics.h"
@@ -107,6 +108,8 @@ void ASailingHUD::BeginPlay()
 	{
 		SlateHud = SNew(SSailHud).Player(PlayerOwner);
 		GEngine->GameViewport->AddViewportWidgetContent(SlateHud.ToSharedRef(), 5);
+		PhotoPanel = SNew(SSailPhotoPanel).Player(PlayerOwner);
+		GEngine->GameViewport->AddViewportWidgetContent(PhotoPanel.ToSharedRef(), 6);
 	}
 	if (!UsesFrontEnd() || !PlayerOwner) return;
 	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
@@ -251,6 +254,8 @@ void ASailingHUD::EndPlay(const EEndPlayReason::Type Reason)
 	RemoveWidgets();
 	if (SlateHud.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(SlateHud.ToSharedRef());
 	SlateHud.Reset();
+	if (PhotoPanel.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(PhotoPanel.ToSharedRef());
+	PhotoPanel.Reset();
 	Super::EndPlay(Reason);
 }
 
@@ -364,9 +369,9 @@ void ASailingHUD::DrawHUD()
 	if (Boat->IsCaptureMode()) return; // reference captures: the picture only
 	if (Boat->IsPhotoMode())
 	{
-		// Nothing over the picture but a moment's hint and the camera's speed (H hides both). The shot itself is taken
-		// after the HUD is drawn, so the hint is in it only while it shows: it fades 2.5 s after each photo.
-		if (Boat->ArePhotoHintsHidden()) return;
+		// Nothing over the picture but a moment's hint and the camera's speed (H hides both). The shot is the scene and
+		// this canvas, so neither is drawn while a photo is being taken (the panel and guides are Slate: never in it).
+		if (Boat->ArePhotoHintsHidden() || Boat->IsTakingPhoto()) return;
 		const double Now = FPlatformTime::Seconds();
 		const bool bPad = SailUI::UsingGamepad();
 		auto L = [bPad](const TCHAR* Action, bool bNegative = false) { return SailingBindings::Label(Action, bNegative, bPad); };
@@ -1275,6 +1280,9 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 			Pad(TEXT("PhotoForward"), false) + TEXT(", ") + Join(Pad(TEXT("PhotoUpDown"), true), Pad(TEXT("PhotoUpDown"), false)) + TEXT(", ") + Join(Pad(TEXT("PhotoRoll"), true), Pad(TEXT("PhotoRoll"), false)) },
 		FLine{ TEXT("Photo: speed, fast, orbit, back to the boat"), FString::Printf(TEXT("Wheel, %s, %s, %s"), *Kb(TEXT("PhotoBoost"), false), *Kb(TEXT("PhotoOrbit"), false), *Kb(TEXT("PhotoToBoat"), false)),
 			FString::Printf(TEXT("D-pad, %s, %s, %s"), *Pad(TEXT("PhotoBoost"), false), *Pad(TEXT("PhotoOrbit"), false), *Pad(TEXT("PhotoToBoat"), false)) },
+		FLine{ TEXT("Photo panel: row, change, page, hide"), FString::Printf(TEXT("%s %s, %s %s, %s %s, %s"), *Kb(TEXT("PhotoRowUp"), false), *Kb(TEXT("PhotoRowDown"), false),
+			*Kb(TEXT("PhotoValueDown"), false), *Kb(TEXT("PhotoValueUp"), false), *Kb(TEXT("PhotoPagePrev"), false), *Kb(TEXT("PhotoPageNext"), false), *Kb(TEXT("PhotoHideUI"), false)),
+			FString::Printf(TEXT("%s, %s %s, -, %s"), *Pad(TEXT("PhotoRowDown"), false), *Pad(TEXT("PhotoValueDown"), false), *Pad(TEXT("PhotoValueUp"), false), *Pad(TEXT("PhotoHideUI"), false)) },
 		One(TEXT("Learning mode"), TEXT("ToggleLearning")),
 		One(TEXT("Difficulty"), TEXT("ToggleDifficulty")),
 		One(TEXT("Settings (area, races, traffic, weather, keys)"), TEXT("Menu")),

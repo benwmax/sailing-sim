@@ -79,7 +79,14 @@ namespace SailingBindings
 	{
 		return Action == TEXT("PhotoShot") || Action == TEXT("PhotoForward") || Action == TEXT("PhotoRight") || Action == TEXT("PhotoUpDown")
 			|| Action == TEXT("PhotoRoll") || Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoBoost") || Action == TEXT("PhotoSlow")
-			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI");
+			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
+			|| IsPhotoPanelAction(Action);
+	}
+
+	bool IsPhotoPanelAction(FName Action)
+	{
+		return Action == TEXT("PhotoRowDown") || Action == TEXT("PhotoRowUp") || Action == TEXT("PhotoValueUp") || Action == TEXT("PhotoValueDown")
+			|| Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev");
 	}
 
 	bool SameLayer(FName A, FName B)
