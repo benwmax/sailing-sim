@@ -185,6 +185,10 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailAMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailBMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailCMap;
+	// docs/chop-cascades/: the long chop's height, displacement and whitecap Jacobian (D), slopes and their squares (E).
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailDMap;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> DetailEMap;
+	int32 LongChopCascade = -1;   // its index among the configured cascades
 	/** W8: the whitecap threshold solved on the drawn sea (FWaveDetail::CapThreshold), smoothed over a couple of seconds. */
 	float CapThrSmooth[4] = { 0.f, 0.f, 0.f, 0.f }, CapSlopeSmooth = 0.f;
 	/** The cap thresholds are solved at the short waves' 30 Hz (the blend in between reuses the last): when, and what. */
@@ -214,13 +218,14 @@ private:
 	 *  1440p against 70 without; docs/graphics-8/ultra). Needs a non-blocking detail pipeline first. */
 	bool bUltraDetail = false;
 	Sailing::FWaveDetail::FCascadeSpec DrawnChop() const;
+	Sailing::FWaveDetail::FCascadeSpec DrawnLongChop() const;
 	Sailing::FWaveDetail::FCascadeSpec DrawnRipple() const;
 	Sailing::FWaveDetail::FCascadeSpec DrawnCapillary() const;
 	struct FDetailFrame
 	{
 		const Sailing::FWaveDetail* Source = nullptr;
 		double Time = 0.0;
-		Sailing::FWaveDetail::FGrid Chop, Ripple, Capillary;
+		Sailing::FWaveDetail::FGrid Chop, Ripple, Capillary, LongChop;
 	};
 	using FDetailFramePtr = TSharedPtr<FDetailFrame, ESPMode::ThreadSafe>;
 	TSharedPtr<Sailing::FWaveDetail, ESPMode::ThreadSafe> Detail;
@@ -232,8 +237,11 @@ private:
 	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
 	struct FDetailUpload
 	{
-		TArray<uint8*> A, B, C, Ripple, Capillary; // half-float RGBA mips, new[] blocks
-		int32 N = 0, RippleN = 0, CapillaryN = 0;
+		TArray<uint8*> A, B, C, Ripple, Capillary, D, E; // half-float RGBA mips, new[] blocks
+		int32 N = 0, RippleN = 0, CapillaryN = 0, LongN = 0;
+		// docs/chop-cascades/: the long chop's blended whitecap Jacobian (the foam grid folds it in) and its grid.
+		Sailing::FWaveDetail::FGrid LongCap;
+		Sailing::FWaveDetail::FCascadeSpec LongSpec;
 		float CapFirst = 0.5f, CapStep = 0.05f; // the fold table's thresholds (CapTable)
 		// W8: the thresholds that cap Monahan's share of this sea as the mesh draws it at vertex spacings CapSpacing[k]
 		// (the long waves' fold fades with the spacing), and the slope at the nearest.
@@ -241,7 +249,7 @@ private:
 		// W4: the blended whitecap Jacobian and what the foam grid needs to read it (tile, chop scale, fold scale).
 		std::vector<float> JCap;
 		float Tile = 23.f, CapShort = 1.f, FoldScale = 1.f;
-		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : C) delete[] P; for (uint8* P : Ripple) delete[] P; for (uint8* P : Capillary) delete[] P; }
+		~FDetailUpload() { for (uint8* P : A) delete[] P; for (uint8* P : B) delete[] P; for (uint8* P : C) delete[] P; for (uint8* P : Ripple) delete[] P; for (uint8* P : Capillary) delete[] P; for (uint8* P : D) delete[] P; for (uint8* P : E) delete[] P; }
 	};
 	using FDetailUploadPtr = TSharedPtr<FDetailUpload, ESPMode::ThreadSafe>;
 	/** W4 (docs/water-4): the foam the caps leave, on a 64 m grid round the camera (256 cells of 0.25 m), stepped on a

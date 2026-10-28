@@ -321,6 +321,13 @@ FWaveDetail::FCascadeSpec AWaterSurface::DrawnChop() const
 	return S;
 }
 
+FWaveDetail::FCascadeSpec AWaterSurface::DrawnLongChop() const
+{
+	FWaveDetail::FCascadeSpec S = FWaveDetail::LongChopCascade();
+	if (bUltraDetail) { S.N *= 2; S.Tile *= 2.0; }
+	return S;
+}
+
 FWaveDetail::FCascadeSpec AWaterSurface::DrawnCapillary() const
 {
 	return FWaveDetail::CapillaryCascade();
@@ -389,6 +396,8 @@ void AWaterSurface::CreateWaterMaterial()
 			DetailAMap = MakeFloatMapMips(Chop.N);
 			DetailBMap = MakeFloatMapMips(Chop.N);
 			DetailCMap = MakeFloatMapMips(Chop.N);
+			DetailDMap = MakeFloatMapMips(DrawnLongChop().N);
+			DetailEMap = MakeFloatMapMips(DrawnLongChop().N);
 			RippleBMap = MakeFloatMapMips(Ripple.N);
 			CapillaryBMap = MakeFloatMapMips(Capillary.N);
 		}
@@ -404,6 +413,14 @@ void AWaterSurface::CreateWaterMaterial()
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailA"), DetailAMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailB"), DetailBMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailC"), DetailCMap);
+		// docs/chop-cascades/: the long chop, its tile and its turn (-SailingOneChop: the one 23 m tile from 0.4 to 4 m, as before).
+		WaterMaterial->SetTextureParameterValue(TEXT("DetailD"), DetailDMap);
+		WaterMaterial->SetTextureParameterValue(TEXT("DetailE"), DetailEMap);
+		{
+			const FWaveDetail::FCascadeSpec L = DrawnLongChop();
+			static SailingArgs::FCachedFlag OneChopArg(TEXT("SailingOneChop"));
+			WaterMaterial->SetVectorParameterValue(TEXT("DetailQ"), FLinearColor(float(L.Tile), float(FMath::Cos(L.Rotation)), float(FMath::Sin(L.Rotation)), OneChopArg.Get() ? 0.f : 1.f));
+		}
 		WaterMaterial->SetTextureParameterValue(TEXT("RippleB"), RippleBMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("CapillaryB"), CapillaryBMap);
 		// docs/near-water/: the capillaries' tile and the distances they are drawn to (High and Ultra).
@@ -811,8 +828,13 @@ void AWaterSurface::UpdateDetail()
 	{
 		if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
 		TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> New = MakeShared<FWaveDetail, ESPMode::ThreadSafe>();
-		std::vector<FWaveDetail::FCascadeSpec> Specs = { DrawnChop() };
+		static SailingArgs::FCachedFlag OneChopArg(TEXT("SailingOneChop"));
+		FWaveDetail::FCascadeSpec ChopSpec = DrawnChop();
+		if (OneChopArg.Get()) ChopSpec.MaxWavelength = 4.0;   // (the one tile, as before docs/chop-cascades/)
+		std::vector<FWaveDetail::FCascadeSpec> Specs = { ChopSpec };
 		if (Tier >= 2) { Specs.push_back(DrawnRipple()); Specs.push_back(DrawnCapillary()); }
+		LongChopCascade = OneChopArg.Get() ? -1 : int32(Specs.size());
+		if (LongChopCascade >= 0) Specs.push_back(DrawnLongChop());
 		New->Configure(P, Specs);
 		Detail = New;
 		DetailConfigured = P;
@@ -822,14 +844,16 @@ void AWaterSurface::UpdateDetail()
 	const double Scale = P.Development / DetailConfigured.Development;
 
 	TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> D = Detail;
-	auto Evaluate = [D, Scale](double At) -> FDetailFramePtr
+	const int32 LongIndex = LongChopCascade;
+	auto Evaluate = [D, Scale, LongIndex](double At) -> FDetailFramePtr
 	{
 		FDetailFramePtr F = MakeShared<FDetailFrame, ESPMode::ThreadSafe>();
 		F->Source = D.Get();
 		F->Time = At;
 		D->Evaluate(0, At, F->Chop, Scale);
-		if (D->NumCascades() > 1) D->Evaluate(1, At, F->Ripple, Scale);
-		if (D->NumCascades() > 2) D->Evaluate(2, At, F->Capillary, Scale);
+		if (D->NumCascades() > 1 && LongIndex != 1) D->Evaluate(1, At, F->Ripple, Scale);
+		if (D->NumCascades() > 2 && LongIndex != 2) D->Evaluate(2, At, F->Capillary, Scale);
+		if (LongIndex > 0 && LongIndex < D->NumCascades()) D->Evaluate(LongIndex, At, F->LongChop, Scale);
 		return F;
 	};
 	auto Launch = [&](double At)
@@ -883,6 +907,11 @@ void AWaterSurface::UpdateDetail()
 				if (DebugCapsArg.Get() && (++Logged % 30) == 0)
 					UE_LOG(LogSailing, Display, TEXT("Caps: thresholds %.3f %.3f %.3f %.3f, slope %.3f"), CapThrSmooth[0], CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], CapSlopeSmooth);
 			}
+			if (Done->LongN > 0)
+			{
+				UploadPackedMips(DetailDMap, Done->D, Done->LongN);
+				UploadPackedMips(DetailEMap, Done->E, Done->LongN);
+			}
 			if (Done->RippleN > 0) UploadPackedMips(RippleBMap, Done->Ripple, Done->RippleN);
 			if (Done->CapillaryN > 0) UploadPackedMips(CapillaryBMap, Done->Capillary, Done->CapillaryN);
 			UpdateFoamGrid(Done);
@@ -897,6 +926,8 @@ void AWaterSurface::UpdateDetail()
 	const FDetailFramePtr Prev = FramePrev, Next = FrameNext;
 	const bool bRipple = Prev->Ripple.N > 0 && Next->Ripple.N == Prev->Ripple.N;
 	const bool bCapillary = Prev->Capillary.N > 0 && Next->Capillary.N == Prev->Capillary.N;
+	const bool bLongChop = Prev->LongChop.N > 0 && Next->LongChop.N == Prev->LongChop.N;
+	const FWaveDetail::FCascadeSpec LongSpec = DrawnLongChop();
 	// W8: Monahan's whitecap cover for the sea's mean wind times the water body's share: the renderer solves the fold
 	// threshold that caps it on the sea it draws (the long trains here, the chop's whitecap Jacobian there). Below 12 kn
 	// only the share that breaks (WhitecapOnset); never quite zero, so the threshold is extrapolated below every sample.
@@ -923,11 +954,42 @@ void AWaterSurface::UpdateDetail()
 	if (bSolveCaps) CapsSolvedAt = Ahead;
 	const double LastThr[4] = { CapsLast[0], CapsLast[1], CapsLast[2], CapsLast[3] };
 	const double LastSlope = CapsLastSlope;
-	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, bCapillary, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, bCapillary, bLongChop, LongSpec, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
 		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
 		FDetailUploadPtr Out = MakeShared<FDetailUpload, ESPMode::ThreadSafe>();
+		// docs/chop-cascades/: the long chop first (the caps' samples fold it in): D = height, displacement, whitecap
+		// Jacobian; E = slopes and their squares, as the chop's A and B, in its own turned frame.
+		if (bLongChop)
+		{
+			const FWaveDetail::FGrid& A = Prev->LongChop;
+			const FWaveDetail::FGrid& B = Next->LongChop;
+			const int32 NN = A.N * A.N;
+			TArray<float> PixD, PixE;
+			PixD.SetNumUninitialized(NN * 4);
+			PixE.SetNumUninitialized(NN * 4);
+			FWaveDetail::FGrid& L = Out->LongCap;
+			L.N = A.N;
+			L.Tile = A.Tile;
+			L.JCap.resize(NN);
+			for (int32 I = 0; I < NN; ++I)
+			{
+				PixD[4 * I + 0] = Blend(A.H, B.H, I);
+				PixD[4 * I + 1] = Blend(A.Dx, B.Dx, I);
+				PixD[4 * I + 2] = Blend(A.Dy, B.Dy, I);
+				PixD[4 * I + 3] = L.JCap[I] = Blend(A.JCap, B.JCap, I);
+				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
+				PixE[4 * I + 0] = Sx;
+				PixE[4 * I + 1] = Sy;
+				PixE[4 * I + 2] = Sx * Sx;
+				PixE[4 * I + 3] = Sy * Sy;
+			}
+			Out->LongN = A.N;
+			Out->LongSpec = LongSpec;
+			PackMips(MoveTemp(PixD), A.N, Out->D);
+			PackMips(MoveTemp(PixE), A.N, Out->E);
+		}
 		{
 			const FWaveDetail::FGrid& A = Prev->Chop;
 			const FWaveDetail::FGrid& B = Next->Chop;
@@ -942,6 +1004,21 @@ void AWaterSurface::UpdateDetail()
 			// fold table is centred on the nearest.
 			std::vector<float> JCap(NN);
 			for (int32 I = 0; I < NN; ++I) JCap[I] = Blend(A.JCap, B.JCap, I);
+			// docs/chop-cascades/: the fold table and the foam grid's caps read both chops: the long chop's fold at each
+			// texel's place on the map (the table is read only where its mips average cover, so its own 23 m repeat doesn't
+			// show).
+			std::vector<float> JCapBoth = JCap;
+			if (Out->LongN > 0)
+			{
+				const double CellA = A.Tile / A.N;
+				for (int32 R = 0; R < A.N; ++R)
+					for (int32 Cc = 0; Cc < A.N; ++Cc)
+					{
+						double GX, GY;
+						FWaveDetail::ToGrid(Out->LongSpec, R * CellA, Cc * CellA, GX, GY);
+						JCapBoth[R * A.N + Cc] *= float(FWaveDetail::SampleCapJ(Out->LongCap, GX, GY));
+					}
+			}
 			const double Cell = A.Tile / A.N, OmegaMax = 2.0 * UE_DOUBLE_PI * SplitHz;
 			double CapThr[4] = { LastThr0, LastThr1, LastThr2, LastThr3 }, CapSlope = LastSlope;
 			if (bSolveCaps)
@@ -962,11 +1039,20 @@ void AWaterSurface::UpdateDetail()
 					for (int32 Cc = 0; Cc < A.N; Cc += 2)
 					{
 						const int32 I = R * A.N + Cc;
-						const double Chop = 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - JCap[I]); // the shader's jd
+						double Chop = 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - JCap[I]); // the shader's jd
 						// The long trains sampled over about 170 m (the chop's 23 m tile holds about one of their wavelengths, so a
 						// frame's sample sat on whatever crests crossed it), the chop at its own texel.
+						const double SX = R * Cell * 7.31, SY = Cc * Cell * 7.37;
+						// docs/chop-cascades/: and the long chop where that sample is (its own tile and turn), folded in as the
+						// shader folds it.
+						if (Out->LongN > 0)
+						{
+							double GX, GY;
+							FWaveDetail::ToGrid(Out->LongSpec, R * Cell, Cc * Cell, GX, GY);
+							Chop *= 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - FWaveDetail::SampleCapJ(Out->LongCap, GX, GY));
+						}
 						double Jl[4];
-						LongJ.Evaluate(R * Cell * 7.31, Cc * Cell * 7.37, CapTime, Jl);
+						LongJ.Evaluate(SX, SY, CapTime, Jl);
 						for (int32 K = 0; K < 4; ++K) Samples[K].push_back(float(1.0 - FoldScale * (1.0 - Jl[K] * Chop)));
 					}
 				for (int32 K = 0; K < 4; ++K)
@@ -986,7 +1072,7 @@ void AWaterSurface::UpdateDetail()
 				// W8: the Jacobian the foam reads is the whitecaps' (FWaveDetail::CapBlurTexels: caps on whole crests).
 				PixA[4 * I + 3] = JCap[I];
 				// W8: the fold table (CapTableEntry): its mips are whitecap cover.
-				for (int32 K = 0; K < 4; ++K) PixC[4 * I + K] = CapTableEntry(PixA[4 * I + 3], K, CapFirst, CapStep);
+				for (int32 K = 0; K < 4; ++K) PixC[4 * I + K] = CapTableEntry(JCapBoth[I], K, CapFirst, CapStep);
 				// Slopes and their squares (LEAN mapping: a mip's mean square minus its squared mean is the slope variance
 				// it averaged away, which the material turns into roughness).
 				const float Sx = Blend(A.Sx, B.Sx, I), Sy = Blend(A.Sy, B.Sy, I);
@@ -2337,7 +2423,13 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 			const bool bWakeRow = WakeF && WR >= 0 && WR < WakeN;
 			for (int32 C = 0; C < N; ++C)
 			{
-				const float Jd = 1.f - Ks * (1.f - D->JCap[DR * DN + DCs[C]]);
+				float Jd = 1.f - Ks * (1.f - D->JCap[DR * DN + DCs[C]]);
+				if (D->LongN > 0)
+				{
+					double GX, GY;
+					FWaveDetail::ToGrid(D->LongSpec, X, (F.OY + C + 0.5) * F.Cell, GX, GY);
+					Jd *= 1.f - Ks * (1.f - float(FWaveDetail::SampleCapJ(D->LongCap, GX, GY)));
+				}
 				const float Jt = 1.f - D->FoldScale * (1.f - Jd);
 				float Src = FMath::Clamp((Thr - Jt) / 0.05f + 0.5f, 0.f, 1.f);
 				// The boats' wash (the wake grid's foam, as M_WaterV4's wakeBreak without its bubble pattern).

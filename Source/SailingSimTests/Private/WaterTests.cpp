@@ -131,6 +131,8 @@ namespace
 	 * foam reads.
 	 */
 	struct FRendered { double H = 0.0, Dx = 0.0, Dy = 0.0, J = 1.0; };
+	/** docs/chop-cascades/: the long chop's grid (its own turned frame), drawn with the chop where a test evaluates it. */
+	const FWaveDetail::FGrid* GLongChop = nullptr;
 	FRendered RenderedVertex(const FWaveField& Waves, const FWaveDetail::FGrid* Detail, double X, double Y, double T, double Chop)
 	{
 		FRendered Out;
@@ -160,8 +162,45 @@ namespace
 			Out.Dx += Dx;
 			Out.Dy += Dy;
 			Out.J *= FWaveDetail::SampleCapJ(*Detail, X, Y); // W8: the foam reads the whitecaps' Jacobian
+			if (GLongChop)
+			{
+				const FWaveDetail::FCascadeSpec L = FWaveDetail::LongChopCascade();
+				double GX, GY;
+				FWaveDetail::ToGrid(L, X, Y, GX, GY);
+				FWaveDetail::Sample(*GLongChop, GX, GY, H, Dx, Dy, J);
+				const double Cr = FMath::Cos(L.Rotation), Sr = FMath::Sin(L.Rotation);
+				Out.H += H;
+				Out.Dx += Cr * Dx - Sr * Dy;
+				Out.Dy += Sr * Dx + Cr * Dy;
+				Out.J *= FWaveDetail::SampleCapJ(*GLongChop, GX, GY);
+			}
 		}
 		return Out;
+	}
+
+	/** docs/chop-cascades/: folds the long chop (cascade 1) at T into a chop grid's whitecap Jacobian at each texel's place,
+	 *  as AWaterSurface's fold table and foam grid read both chops. */
+	void FoldInLong(const FWaveDetail& Detail, double T, FWaveDetail::FGrid& Chop)
+	{
+		if (Detail.NumCascades() < 2) return;
+		FWaveDetail::FGrid Long;
+		Detail.Evaluate(1, T, Long);
+		const double Cell = Chop.Tile / Chop.N;
+		for (int32 R = 0; R < Chop.N; ++R)
+			for (int32 C = 0; C < Chop.N; ++C)
+			{
+				double GX, GY;
+				FWaveDetail::ToGrid(Detail.Spec(1), R * Cell, C * Cell, GX, GY);
+				Chop.JCap[size_t(R) * Chop.N + C] *= float(FWaveDetail::SampleCapJ(Long, GX, GY));
+			}
+	}
+
+	/** Evaluates the chop's two cascades (configured { ChopCascade, LongChopCascade }) at T, the long one for the helpers. */
+	void EvaluateChop(const FWaveDetail& Detail, double T, FWaveDetail::FGrid& Chop, FWaveDetail::FGrid& Long)
+	{
+		Detail.Evaluate(0, T, Chop);
+		Detail.Evaluate(1, T, Long);
+		GLongChop = &Long;
 	}
 
 	/** The drawn surface's height at a map point: the vertex whose displaced position lands there (fixed point). */
@@ -256,7 +295,7 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 		Waves.SetWind(WP);
 		Waves.SnapToTarget();
 		FWaveDetail Detail;
-		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
+		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
 		// The material draws exactly the first LongComponents trains: they must be the ones under the split.
 		int32 Matching = 0;
 		for (int32 I = 0; I < kWaveComponents; ++I) Matching += (Waves.GetComponents()[I].Omega < 2.0 * UE_DOUBLE_PI * AWaterSurface::SplitHz) == (I < AWaterSurface::LongComponents);
@@ -268,8 +307,8 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 		int32 Count = 0;
 		for (const double T : { 10.0, 37.3, 81.9 })
 		{
-			FWaveDetail::FGrid Grid;
-			Detail.Evaluate(0, T, Grid);
+			FWaveDetail::FGrid Grid, LongGrid;
+			EvaluateChop(Detail, T, Grid, LongGrid);
 			for (int32 I = 0; I < 1500; ++I)
 			{
 				const double X = U(), Y = U();
@@ -284,6 +323,7 @@ bool FWaterWaveMatchTest::RunTest(const FString&)
 				LongVar += Long * Long;
 				++Count;
 			}
+			GLongChop = nullptr;
 		}
 		const double HsPhys = 4.0 * FMath::Sqrt(Phys2 / Count), HsDrawn = 4.0 * FMath::Sqrt(Drawn2 / Count);
 		const double LongShare = LongVar / Phys2;
@@ -317,7 +357,7 @@ bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 		Waves.SetWind(WP);
 		Waves.SnapToTarget();
 		FWaveDetail Detail;
-		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
+		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
 		// The chop's own whitecap Jacobian, at thresholds that cap 0.2, 0.5 and 1.5 % of it (the long waves only move the
 		// threshold the shader reads it at); the table's entries a slope apart, the threshold between two of them.
 		std::vector<float> All;
@@ -325,6 +365,7 @@ bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 		{
 			FWaveDetail::FGrid Grid;
 			Detail.Evaluate(0, T, Grid);
+			FoldInLong(Detail, T, Grid);
 			All.insert(All.end(), Grid.JCap.begin(), Grid.JCap.end());
 		}
 		std::sort(All.begin(), All.end());
@@ -341,6 +382,7 @@ bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 		{
 			FWaveDetail::FGrid Grid;
 			Detail.Evaluate(0, T, Grid);
+			FoldInLong(Detail, T, Grid);
 			int32 N = Grid.N;
 			std::vector<float> J = Grid.JCap;
 			std::vector<float> C(size_t(N) * N * 4);
@@ -404,6 +446,7 @@ bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 			{
 				FWaveDetail::FGrid Grid;
 				Detail.Evaluate(0, T, Grid);
+				FoldInLong(Detail, T, Grid);
 				for (int32 I = 0; I < Grid.N * Grid.N; ++I)
 					Out.push_back(float(FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
 						X0 + (I / Grid.N) * 1.31, (I % Grid.N) * 1.37, T, 0.5) * Grid.JCap[I]));
@@ -463,7 +506,7 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		Waves.SetWind(WP);
 		Waves.SnapToTarget();
 		FWaveDetail Detail;
-		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
+		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
 		Sailing::FPortableRandom Rng(11);
 		auto U = [&Rng]() { return Rng.Uniform(0.0, 300.0); };
 		// 64 moments of 2 500 vertices: the chop is one periodic tile, so each moment is about one independent draw of it, and
@@ -473,12 +516,13 @@ bool FWaterWhitecapsTest::RunTest(const FString&)
 		for (int32 Moment = 0; Moment < 64; ++Moment)
 		{
 			const double T = 5.0 + 37.3 * Moment;
-			FWaveDetail::FGrid Grid;
-			Detail.Evaluate(0, T, Grid);
+			FWaveDetail::FGrid Grid, LongGrid;
+			EvaluateChop(Detail, T, Grid, LongGrid);
 			for (int32 I = 0; I < 2500; ++I)
 			{
 				Js.Add(RenderedVertex(Waves, &Grid, U(), U(), T, AWaterSurface::Choppiness).J);
 			}
+			GLongChop = nullptr;
 		}
 		auto CoverageAt = [&Js](double Thr)
 		{
@@ -579,7 +623,7 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 	Waves.SetWind(WP);
 	Waves.SnapToTarget();
 	FWaveDetail Detail;
-	Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade() });
+	Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
 	const double OmegaMax = 2.0 * UE_DOUBLE_PI * AWaterSurface::SplitHz;
 	// As the renderer samples it: every other texel of one frame.
 	auto Sea = [&](double T, double X0, int32 Stride)
@@ -641,7 +685,7 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 		W2.SetWind(P2);
 		W2.SnapToTarget();
 		FWaveDetail D2;
-		D2.Configure(DetailFor(K, P2.FetchMeters, P2.WindFromDegrees), { FWaveDetail::ChopCascade() });
+		D2.Configure(DetailFor(K, P2.FetchMeters, P2.WindFromDegrees), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
 		const float Fold = AWaterSurface::DrawnFoldScaleAt(float(K));
 		auto Drawn = [&](double T, double X0)
 		{
@@ -701,7 +745,7 @@ bool FWaterWhitecapSizeTest::RunTest(const FString&)
 	for (const double Knots : { 12.0, 16.0, 20.0 })
 	{
 		FWaveDetail Detail;
-		Detail.Configure(DetailFor(Knots, 8000.0, 0.0), { FWaveDetail::ChopCascade() });
+		Detail.Configure(DetailFor(Knots, 8000.0, 0.0), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
 		// The chop's own fold at the lake's share of Monahan's cover for this wind (the long trains only move where it
 		// lands), as connected caps (8-neighbours, periodic).
 		const double Share = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0);
@@ -711,6 +755,7 @@ bool FWaterWhitecapSizeTest::RunTest(const FString&)
 		{
 			Grids.emplace_back();
 			Detail.Evaluate(0, 5.0 + 7.3 * F, Grids.back());
+			FoldInLong(Detail, 5.0 + 7.3 * F, Grids.back());
 			All.insert(All.end(), Grids.back().JCap.begin(), Grids.back().JCap.end());
 		}
 		std::nth_element(All.begin(), All.begin() + size_t(Share * All.size()), All.end());
@@ -917,5 +962,80 @@ bool FWaterFarCapSpritesTest::RunTest(const FString&)
 		const float W = AWaterSurface::FarCapSpriteWeight(D, 20.0);
 		if (W < 0.f || W > 1.f) { AddError(FString::Printf(TEXT("Weight %.2f at %.0f m"), W, D)); break; }
 	}
+	return true;
+}
+
+/**
+ * docs/chop-cascades/ (storm-water step 4): the caps no longer repeat every 23 m. At 20 kn, the caps' mask (the
+ * whitecaps' Jacobian under the threshold that caps 1% of the sea) over 92 m, against itself moved by one chop tile
+ * (23 m along each axis): with the one 23 m tile from 0.4 to 4 m (as before) the caps came back exactly there; with the
+ * chop split at 1.6 m onto the 23 m tile and the 61.7 m tile turned 37 deg, they don't.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterCapRepeatTest, "SailingSim.Visual.CapRepeat", WaterFlags)
+bool FWaterCapRepeatTest::RunTest(const FString&)
+{
+	const double Knots = 20.0;
+	const FWaveDetailParams P = DetailFor(Knots, 8000.0, 30.0);
+	FWaveDetail::FCascadeSpec One = FWaveDetail::ChopCascade();
+	One.MaxWavelength = 4.0;
+	FWaveDetail Before, After;
+	Before.Configure(P, { One });
+	After.Configure(P, { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
+	const FWaveDetail::FCascadeSpec L = FWaveDetail::LongChopCascade();
+	constexpr int32 Side = 512;
+	constexpr double Step = 92.0 / Side;
+	auto Mask = [&](bool bSplit, double T)
+	{
+		FWaveDetail::FGrid A, B;
+		(bSplit ? After : Before).Evaluate(0, T, A);
+		if (bSplit) After.Evaluate(1, T, B);
+		std::vector<float> J(size_t(Side) * Side);
+		for (int32 R = 0; R < Side; ++R)
+			for (int32 C = 0; C < Side; ++C)
+			{
+				const double X = R * Step, Y = C * Step;
+				double V = FWaveDetail::SampleCapJ(A, X, Y);
+				if (bSplit)
+				{
+					double GX, GY;
+					FWaveDetail::ToGrid(L, X, Y, GX, GY);
+					V *= FWaveDetail::SampleCapJ(B, GX, GY);
+				}
+				J[size_t(R) * Side + C] = float(V);
+			}
+		std::vector<float> Sorted = J;
+		std::nth_element(Sorted.begin(), Sorted.begin() + Sorted.size() / 100, Sorted.end());
+		const float Thr = Sorted[Sorted.size() / 100];
+		std::vector<uint8> M(J.size());
+		for (size_t I = 0; I < J.size(); ++I) M[I] = J[I] <= Thr ? 1 : 0;
+		return M;
+	};
+	// The mask's correlation with itself moved by (DR, DC) texels: 1 = the same caps there, 0 = unrelated.
+	auto Corr = [](const std::vector<uint8>& M, int32 DR, int32 DC)
+	{
+		double Both = 0.0, N = 0.0, On = 0.0;
+		for (int32 R = 0; R + DR < Side; ++R)
+			for (int32 C = 0; C + DC < Side; ++C)
+			{
+				const uint8 A = M[size_t(R) * Side + C], B = M[size_t(R + DR) * Side + C + DC];
+				Both += A & B;
+				On += A;
+				N += 1.0;
+			}
+		const double Cover = On / FMath::Max(N, 1.0);
+		return (Both / FMath::Max(N, 1.0) - Cover * Cover) / FMath::Max(Cover - Cover * Cover, 1e-9);
+	};
+	const int32 Tile = FMath::RoundToInt(FWaveDetail::ChopCascade().Tile / Step);
+	double WorstBefore = 1.0, WorstAfter = 0.0;
+	for (const double T : { 5.0, 31.0 })
+	{
+		const std::vector<uint8> MB = Mask(false, T), MA = Mask(true, T);
+		const double B0 = Corr(MB, Tile, 0), B1 = Corr(MB, 0, Tile), A0 = Corr(MA, Tile, 0), A1 = Corr(MA, 0, Tile);
+		AddInfo(FString::Printf(TEXT("t %.0f s: caps' correlation one chop tile (23 m) along: one tile %.2f, %.2f; two cascades %.2f, %.2f"), T, B0, B1, A0, A1));
+		WorstBefore = FMath::Min(WorstBefore, FMath::Min(B0, B1));
+		WorstAfter = FMath::Max(WorstAfter, FMath::Max(A0, A1));
+	}
+	TestTrue(TEXT("With the one tile the caps repeat every 23 m"), WorstBefore > 0.8);
+	TestTrue(TEXT("With the two cascades they don't (under 0.3)"), WorstAfter < 0.3);
 	return true;
 }
