@@ -1409,6 +1409,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		Place.TurnRate = S.AngularVelocity.Z;
 		// docs/crew-tack/: each sailor's crossing on a tack or gybe, scripted against the boom.
 		Place.Crossing = I < CrewFigures.Num() ? &CrewFigures[I].Crossing : nullptr;
+		Place.TrueWindSpeed = T.TrueWindSpeed;
 		Place.Dt = DeltaSeconds;
 		FCrewPlacement Pl;
 		CrewPlacement(Place, Pl);
@@ -1498,14 +1499,28 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 			}
 			else if (bHelm && bTiller)
 			{
+				// docs/crew-tack/ (PR 3): after a tack the aft hand is the other one. The helm swaps behind the back once seated:
+				// the old hand keeps the extension for 0.7 s, then the hand that held the mainsheet takes it.
+				int32 ExtHand = Aft;
+				if (F.ExtHand >= 0 && F.ExtHand != Aft)
+				{
+					if (F.SwapAt < 0.0) F.SwapAt = S.Time + 0.7;
+					if (S.Time < F.SwapAt) ExtHand = F.ExtHand;
+					else F.SwapAt = -1.0;
+				}
+				else
+				{
+					F.SwapAt = -1.0;
+				}
+				F.ExtHand = ExtHand;
 				// The extension (about 90 cm) from the tiller's end up to the aft hand, held low beside the hip.
-				const FVector ToShoulder = Shoulder[Aft] + FVector(0.f, 0.f, -32.f) - TillerEnd;
+				const FVector ToShoulder = Shoulder[ExtHand] + FVector(0.f, 0.f, -32.f) - TillerEnd;
 				const double Len = FMath::Min(90.0, ToShoulder.Size() - 25.0);
-				if (Len > 20.0 && Hold(Aft, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm, TillerEnd)) Tension[Aft] = HelmLoad;
+				if (Len > 20.0 && Hold(ExtHand, TillerEnd + ToShoulder.GetSafeNormal() * Len, HelmGripCm, TillerEnd)) Tension[ExtHand] = HelmLoad;
 				// The mainsheet's tail from its block on the car, held out in front at lap height.
 				if (!MainsheetCarCm.IsZero())
 				{
-					const int32 Fwd = 1 - Aft;
+					const int32 Fwd = 1 - ExtHand;
 					const FVector At = Shoulder[Fwd] + (MainsheetCarCm - Shoulder[Fwd]).GetSafeNormal() * 8.0 + Toward * 30.0 + FVector(0.f, 0.f, -36.f);
 					if (Hold(Fwd, At, MainGripCm, MainsheetCarCm)) Tension[Fwd] = 0.6f * SheetLoad;
 				}
