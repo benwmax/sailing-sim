@@ -26,6 +26,11 @@ so a rounding onto the run, which needs a hard bear-away, crawled round.
     angle put the J/22s deeper and made the races slower (1,840 s over the 32).
 - **Gybes** stay where the AI decides them: on the layline, against the median wind. They are told to the helm, which
   takes them as ordered gybes (`bGybeOrdered`), not as by-the-lee accidents.
+- **They are controlled gybes, sailed with the crew's timing.** While she goes round (`FAutopilot::IsGybing`) the main is
+  held sheeted in (`FAutoTrim::bHoldMain`), then eased once she is on the new gybe. A multihull also turns at a quarter
+  of full tiller (`GybeTillerMax`) at most.
+  - Before this, the AI Hobie's own gybe was a crash gybe. The route switched gybes at 9 kn and the helm swung her round
+    85 deg at full tiller with the main fully eased; the heel went from 3 to 87 deg in 3 s, and she capsized.
 
 ## Numbers
 
@@ -35,7 +40,7 @@ All measured on this Mac holding the lock.
 |---|---|---|---|
 | main 050b6817 (no guard for the AI) | 1,751 s | 160 of 160 | 16 |
 | #367's guard on the AI as it was | 2,712 s | 136 of 160 | |
-| This branch | **1,738 s** | **160 of 160** | **13** |
+| This branch | **1,734 s** | **160 of 160** | **13** |
 
 The steps in between, all with every boat finishing:
 
@@ -45,20 +50,21 @@ The steps in between, all with every boat finishing:
 | Polar angles, with the guard | 1,841 s |
 | 155 deg, with the guard | 1,779 s |
 | 155 deg, the guard's extras multihull-only | 1,738 s |
+| ... and the crew's gybe (main in through it) | 1,734 s |
 
 The Navigation Rules scenarios (`scripts/traffic.sh`) all pass with the same distances. One metric moved: scenario 8's
 give-way slow factor, 0.31 to 0.32.
 
 The Hobie standalone sweep (`Tools/HobieRun seeds 24`: TWA +-170, 14 kn gusting about 18, 5 km of chop, 120 s): 0 of
 48 capsized, the boom across in 1, deepest TWA 167.7. These are #367's numbers; an intermediate scope of the light hand
-had regressed it to 1 capsize and 6. An ordered gybe in the same air goes through and she stays up (max heel 22 deg in
-the chop).
+had regressed it to 1 capsize and 6. An ordered gybe in the same air goes through and she stays up (max heel 13 deg in
+the chop with the main held in; 22 before).
 
 ## Tests
 
 - **`SailingSim.Traffic.AiGybesDownwind`**: a J/22 AI boat sent 2 km dead downwind in 12 kn gybes on the way, gets
   there, never deeper than her run angle, upright.
 - **`SailingSim.Traffic.HobieUprightOnAGustyRun`**: a Hobie 16 AI boat sent 3 km dead downwind in 14 kn gusting about
-  18 stays upright, kept off dead downwind, and gets there.
+  18 stays upright through her own gybes, kept off dead downwind, and gets there (20 min allowed).
 - **Unchanged:** `SailingSim.Physics.HobieRunGuard` (#367) and PolarGate. The polars give the helm no wind, so the guard
   can't touch them.

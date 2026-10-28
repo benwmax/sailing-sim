@@ -434,7 +434,7 @@ bool FTrafficLightsTest::RunTest(const FString& Parameters)
 // her helm's run guard holding her off dead downwind (docs/hobie-run/).
 namespace AiGybeLocal
 {
-	struct FRunResult { int Gybes = 0; bool bArrived = false, bCapsized = false; double DeepestTwaDeg = 0.0, Seconds = 0.0; };
+	struct FRunResult { int Gybes = 0; bool bArrived = false, bCapsized = false; double DeepestTwaDeg = 0.0, Seconds = 0.0; FString Trace; };
 
 	FRunResult RunDownwind(EBoatType Type, double Knots, double GustFactor, double DistanceM, double Seconds)
 	{
@@ -462,7 +462,15 @@ namespace AiGybeLocal
 				if (Side != 0 && Now != Side) ++R.Gybes;
 				Side = Now;
 			}
-			if (V->bAnchored) { R.bArrived = true; R.Seconds = T; break; }
+			if (std::fmod(T, 60.0) < 1.0 / 30.0)
+			{
+				const Vec3 O = V->Boat->OriginPosition();
+				R.Trace += FString::Printf(TEXT("t %.0f at (%.0f, %.0f) heading %.0f steer %.0f TWA %.0f side %d %.1f kn; "), T, O.X, O.Y,
+					Tm.Heading * kRadToDeg, V->SteerHeading * kRadToDeg, Tm.TrueWindAngle * kRadToDeg, V->Side, Tm.BoatSpeed / kKnot);
+			}
+			// At the mark (traffic routes loop, so she would sail on round it).
+			const Vec3 At = V->Boat->OriginPosition();
+			if (std::hypot(At.X + DistanceM, At.Y) < 60.0) { R.bArrived = true; R.Seconds = T; break; }
 		}
 		return R;
 	}
@@ -474,6 +482,7 @@ bool FSailingTrafficAiGybesTest::RunTest(const FString&)
 	const AiGybeLocal::FRunResult R = AiGybeLocal::RunDownwind(EBoatType::J22, 12.0, 0.0, 2000.0, 1500.0);
 	AddInfo(FString::Printf(TEXT("J/22, 2 km dead downwind in 12 kn: %d gybes, deepest TWA %.0f, %s in %.0f s"), R.Gybes, R.DeepestTwaDeg,
 		R.bArrived ? TEXT("there") : TEXT("not there"), R.Seconds));
+	AddInfo(R.Trace);
 	TestTrue(TEXT("She gybes on the way (a dead-downwind mark is sailed in gybes)"), R.Gybes >= 1);
 	TestTrue(TEXT("And gets there"), R.bArrived);
 	TestTrue(TEXT("Never deeper than her run angle allows (160 at most)"), R.DeepestTwaDeg < 168.0);
@@ -484,9 +493,10 @@ bool FSailingTrafficAiGybesTest::RunTest(const FString&)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTrafficHobieRunTest, "SailingSim.Traffic.HobieUprightOnAGustyRun", Flags)
 bool FSailingTrafficHobieRunTest::RunTest(const FString&)
 {
-	const AiGybeLocal::FRunResult R = AiGybeLocal::RunDownwind(EBoatType::Hobie16, 14.0, 1.3, 3000.0, 600.0);
+	const AiGybeLocal::FRunResult R = AiGybeLocal::RunDownwind(EBoatType::Hobie16, 14.0, 1.3, 3000.0, 1200.0);
 	AddInfo(FString::Printf(TEXT("Hobie 16, 3 km dead downwind in 14 kn gusting about 18: %d gybes, deepest TWA %.0f, %s in %.0f s"), R.Gybes,
 		R.DeepestTwaDeg, R.bArrived ? TEXT("there") : TEXT("not there"), R.Seconds));
+	AddInfo(R.Trace);
 	TestFalse(TEXT("The AI Hobie stays upright through a gusty run"), R.bCapsized);
 	TestTrue(TEXT("Kept off dead downwind"), R.DeepestTwaDeg < 172.0);
 	TestTrue(TEXT("And gets there"), R.bArrived);

@@ -296,7 +296,10 @@ namespace Sailing
 		// maxi's tacks were stopped by a face and fell back at 1 to 4 kn, the wheel still hard over). Not for the moment a
 		// dinghy stuffs her bow into a wave (0.5 kn astern for an instant): she is going again before the helm could act.
 		const double Astern = Clamp(1.0 + 4.0 * std::min(T.ForwardSpeed + 0.3, 0.0), -1.0, 1.0);
-		double Tiller = Clamp(Astern * (GainNow * Error + Lean - RateGain * YawRate), -Limit, Limit);
+		// A multihull's gybe she was told to make is a controlled one: a steady turn, not the hard-over swing that crash-gybed
+		// the AI Hobie (docs/ai-gybe/).
+		const double TurnLimit = Wind && bGybeOrdered && Cfg.Hulls.size() > 1 ? std::min(Limit, GybeTillerMax) : Limit;
+		double Tiller = Clamp(Astern * (GainNow * Error + Lean - RateGain * YawRate), -TurnLimit, TurnLimit);
 		// On a run the helm bears away only a little at a time (toward dead downwind: the tiller's sign that turns her
 		// away from the wind on this gybe, + to starboard with the wind from port); heading up stays free.
 		if (bRun)

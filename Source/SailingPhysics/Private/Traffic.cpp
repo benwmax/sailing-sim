@@ -734,6 +734,8 @@ namespace Sailing
 		if (std::fabs(V.Pilot.TargetTWADeg) < kBeatAngle / kDeg) V.Pilot.TargetTWADeg = (V.Pilot.TargetTWADeg >= 0.0 ? 1.0 : -1.0) * kBeatAngle / kDeg;
 		// A hard tack needs the full rudder.
 		V.Pilot.bKeepShortOfStall = std::fabs(WrapAngle(V.SteerHeading - B.GetTelemetry().Heading)) < 40.0 * kDeg;
+		// The crew's gybe: the main sheeted in while she goes round, eased again once she is on the new gybe (docs/ai-gybe/).
+		V.Trim.bHoldMain = V.Pilot.IsGybing();
 		V.Controls = V.Trim.Update(B, V.Controls, Dt);
 		if (V.SpeedFactor < 0.6 && B.GetState().Velocity.LengthXY() > 1.2)
 		{
