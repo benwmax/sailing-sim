@@ -54,3 +54,8 @@ back where that fit left them (1.07-1.16x). Cap size is unchanged (area-weighted
 
 `cap{12,14,16,20}-open300-crest-{before,after2}.png` (+ `.camera.json`): main and the fix, one heading each. `scenes.csv`:
 every run (`-before` main, `-after` the 1.7 km solve alone, `-after2` the fix). Counts: `../water-8/capshape-mac/count_caps.py`.
+
+## Gate (`scripts/gate.sh --scope water`, packaged, the Mac)
+
+Pass: 264 tests, every view over Medium 60 and High 45 (`gate-water.csv`): beam8 58.7, beat15 54.3, storm 46.8,
+marina 56.0, coast-day 52.7, gulf-sea 62.4, helm-eye 59.7, bridge 59.2 on High; storm 68.4 on Medium.
