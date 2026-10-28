@@ -102,3 +102,21 @@ Run with `scripts/long-wave-check.sh --swan`: 1,050 cases at SWAN's ten points (
 Height is right with any channel count. The period is not. On a short fetch the long bands fall away faster than the
 short ones, so the local peak moves to shorter waves. One scale per cascade can't move the peak when a cascade spans
 several bands. The brief's fallback, three lake cascades, still leaves the period 10% long.
+
+### Gate
+
+`scripts/gate.sh --scope water` on 2026-10-28 (main 6bbe9b09 merged in) passed: 275 tests.
+
+The game doesn't call the engine yet, so the bench should match main's last water gate, and it does:
+
+| View | Tier | fps | Last water gate on main |
+|---|---|---|---|
+| beam8 | High | 57.2 | 55.7 |
+| beat15 | High | 53.9 | 53.0 |
+| storm | High | 47.2 | 47.2 |
+| marina | High | 54.8 | 55.2 |
+| coast-day | High | 52.7 | 52.3 |
+| gulf-sea | High | 59.7 | 60.7 |
+| helm-eye | High | 56.6 | 58.2 |
+| bridge | High | 55.7 | 57.1 |
+| storm | Medium | 66.8 | 66.3 |
