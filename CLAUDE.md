@@ -651,6 +651,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   Pressed trigger (`BuildContext`), the pad's Photo is a 0.5 s hold of View and other commands on that button take the
   tap. Saved key lists get new commands' defaults (`USailingInputSettings::AddMissingActions`). Stills: `-SailingPhoto=<s>`,
   `-SailingPhotoCam="<fwd m>,<right m>,<up m>[,<yaw>,<pitch>]"`. Tests `SailingSim.UI.PhotoFreeFly.*`, `SailingSim.Smoke.PhotoWorldHeld`.
+- Showroom wiring (`docs/showroom-wiring/`, brief `Inputs/ui-showroom/brief.md`): `FSailShowroom` (`Showroom.h`), driven by
+  `SSailFrontEnd::TickShowroom`, puts the pawn on a stage (`SetShowroomStage`: Boat screen = showroom, Conditions = weather;
+  the boat sails, pinned to her spot by position, on `AFreeCamera`'s `FFreeCameraOrbit`), swaps boats in place
+  (`ShowBoat`: 200 ms debounce, async load of `ModelAssetPaths`, then `SetBoat` keeping the pose) and previews conditions
+  (`ASailingGameMode::PreviewConditions`/`EndPreview`; in game `SetPreviewLive` beats `SetWorldHeld` and the world is
+  unpaused). Stills: `-SailingShowroom=<type>`, `-SailingPreviewPreset=<id>`, `-SailingHideMenus` (with `-SailingFreeSail=1`).
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
