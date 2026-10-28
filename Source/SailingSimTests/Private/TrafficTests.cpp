@@ -448,6 +448,7 @@ namespace AiGybeLocal
 		const int Id = Sim.AddSailboat(Type, 0.0, 0.0, kPi + 0.6, { { -DistanceM, 0.0 } }, "Downwind");
 		FRunResult R;
 		int Side = 0;
+		double LastGybe = -100.0;
 		for (double T = 0.0; T < Seconds; T += 1.0 / 30.0)
 		{
 			Sim.Step(1.0 / 30.0);
@@ -457,8 +458,10 @@ namespace AiGybeLocal
 			if (Tm.bCapsized) R.bCapsized = true;
 			if (T > 10.0 && std::fabs(Tm.TrueWindAngle) > 120.0 * kDegToRad)
 			{
-				// How deep she holds a run (through a gybe she is told to make she passes 180 by design).
-				if (!V->Pilot.IsGybing()) R.DeepestTwaDeg = std::max(R.DeepestTwaDeg, std::fabs(Tm.TrueWindAngle) * kRadToDeg);
+				// How deep she holds a run: not through a gybe she is told to make (she passes 180 by design) nor the 20 s she
+				// takes to settle on the new gybe.
+				if (V->Pilot.IsGybing()) LastGybe = T;
+				if (T - LastGybe > 20.0) R.DeepestTwaDeg = std::max(R.DeepestTwaDeg, std::fabs(Tm.TrueWindAngle) * kRadToDeg);
 				const int Now = Tm.TrueWindAngle > 0.0 ? 1 : -1;
 				if (Side != 0 && Now != Side) ++R.Gybes;
 				Side = Now;
