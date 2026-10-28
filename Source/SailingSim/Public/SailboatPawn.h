@@ -207,7 +207,9 @@ public:
 
 	/** Replays: each run (from a reset, a drill or a race start) is recorded; watch the last one (,) or sail against
 	 *  it as a ghost (Tab > Ghost). Photo mode (9) freezes the world for pictures. */
-	UPROPERTY() bool bGhost = false;  // a traffic-mode actor drawn translucent: the replay's boat
+	UPROPERTY() bool bGhost = false;
+	/** The gallery's whole boat (G3): a traffic-mode boat drawn as the player's (the hero J/22), set before spawning ends. */
+	UPROPERTY() bool bGalleryDisplay = false;  // a traffic-mode actor drawn translucent: the replay's boat
 	void BeginRun(const FString& Label);
 	bool IsWatching() const { return bWatching; }
 	bool IsPhotoMode() const { return bPhoto; }

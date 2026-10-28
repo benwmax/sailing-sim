@@ -233,6 +233,7 @@ void AGalleryStage::ShowBoat()
 		BoatDisplay = GetWorld()->SpawnActorDeferred<ASailboatPawn>(ASailboatPawn::StaticClass(), At, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 		if (!BoatDisplay) return;
 		BoatDisplay->bTrafficBoat = true;
+		BoatDisplay->bGalleryDisplay = true; // the player's models (the hero J/22), not the AI boats' lighter ones
 		BoatDisplay->AutoPossessPlayer = EAutoReceiveInput::Disabled;
 		BoatDisplay->AutoPossessAI = EAutoPossessAI::Disabled;
 		BoatDisplay->FinishSpawning(At);

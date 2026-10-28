@@ -247,7 +247,7 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 	// The same paths ModelMeshesFor loads (keep them in step): the showroom loads them asynchronously before SetBoat.
 	TArray<FSoftObjectPath> Paths;
 	const bool bHero = Type == EBoatType::J22 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicJ22"))
-		&& ((!bTrafficBoat && !bGhost) || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
+		&& ((!bTrafficBoat && !bGhost) || bGalleryDisplay || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
 	if (bHero)
 	{
 		for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder"), TEXT("Interior"), TEXT("Glass") })
@@ -274,7 +274,7 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	// model's lifelines, grey box outboard and flat surfaces); AI boats and the ghost keep the light model and their
 	// liveries. -SailingClassicJ22 compares with the older model; -SailingJ22Hero puts the hero on AI boats too.
 	const bool bHero = Type == EBoatType::J22 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicJ22"))
-		&& ((!bTrafficBoat && !bGhost) || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
+		&& ((!bTrafficBoat && !bGhost) || bGalleryDisplay || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
 	if (bHero)
 	{
 		auto LoadHero = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/J22Hero/SM_J22H_%s.SM_J22H_%s"), Part, Part)); };
