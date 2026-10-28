@@ -18,6 +18,7 @@
 #include "ReferenceCapture.h"
 #include "CrewPose.h"
 #include "CrewMotion.h"
+#include "CockpitEye.h"
 #include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatPhysicsTask.h"
@@ -393,6 +394,9 @@ private:
 	bool bCockpit = false;
 	FVector CockpitAccel = FVector::ZeroVector, CockpitPrevVel = FVector::ZeroVector, CockpitHead = FVector::ZeroVector;
 	float CockpitRoll = 0.f;
+	FCockpitEye CockpitEye;                  // docs/cockpit-tack/: the steadied eye through a crossing
+	float CockpitLastYaw = 0.f;
+	double CockpitLookedAt = -1e9;           // when the player last turned the view
 	void UpdateCockpitCamera(float DeltaSeconds);
 	void UpdatePhotoLens();
 	/** The boat's context, and photo mode's above it while photo mode is open. */

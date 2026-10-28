@@ -77,6 +77,13 @@ public:
 	void Pan(const FVector2D& DeltaCm);
 	void ResetView();
 	AFreeCamera* GetCamera() const { return Camera; }
+	/** The screen's Auto spin (6 deg/s after 4 s idle; on by default) and the share of the view's width the left panel
+	 *  covers (the asset sits in the middle of the rest: 0.25 with the list, 0 full screen). */
+	void SetAutoSpin(bool bOn);
+	bool GetAutoSpin() const { return bAutoSpin; }
+	void SetPanelShare(float Share);
+	/** The zoom against the framing's own distance (1 = framed, 0.35 to 6). */
+	float GetZoom() const;
 
 	/** Compare tiers: the same shot at two Quality tiers, each captured after it settles; then the tier goes back. */
 	void StartCompare(uint8 TierA, uint8 TierB);
@@ -138,6 +145,8 @@ private:
 	FVector StudioCentre = FVector::ZeroVector, LakeCentre = FVector::ZeroVector;
 	SailGallery::FGraphicsSnapshot GraphicsOnOpen;
 	FVector2D PanCm = FVector2D::ZeroVector;
+	bool bAutoSpin = true;
+	float PanelShare = 0.25f;
 
 	// Compare: the step (0 off), when this step started, the tiers, the tier to go back to, the captures.
 	int32 CompareStep = 0;

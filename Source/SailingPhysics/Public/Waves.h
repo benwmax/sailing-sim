@@ -203,6 +203,9 @@ namespace Sailing
 		double Depth = 0.0;
 		bool bAnchored = false;
 		double AnchorDir = 0.0;
+		/** docs/wave-jitter/: each component's spreading density where it was drawn (its sampling density, 1/3 of the band
+		 *  each): a later wind shift reweights by the new density over this one. */
+		double AnchorDensity[kWaveComponents] = {};
 		uint32_t DirectionGeneration = 0;
 		/** The component each lake entry of BandCache came from (BandsAt scales them). */
 		mutable std::vector<int> BandComponent;

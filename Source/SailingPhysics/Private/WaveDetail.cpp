@@ -134,7 +134,9 @@ namespace Sailing
 					// height) at every frequency: at low wind and short fetch the peak sits inside the detail's range, and the
 					// wavelets that break a calm lake's reflection into long, regular streaks came out short-crested.
 					const double DfDk = 0.5 * std::sqrt(kGravity / Mode.K) / (2.0 * kPi);
-					const double Rel = WrapAngle(std::atan2(Mode.Ky, Mode.Kx) - Params.TravelDirRad);
+					// (The grid's axes are turned by the cascade's Rotation: a mode's direction on the map is its grid direction
+					// plus that.)
+					const double Rel = WrapAngle(std::atan2(Mode.Ky, Mode.Kx) + S.Rotation - Params.TravelDirRad);
 					const double D = 0.9 * FWaveField::DirectionalSpreading(F, Fp, Rel) + 0.1 / (2.0 * kPi);
 					const double Psi = (Alpha > 0.0 ? ShapedSpectrum(F, Fp, Alpha) : 0.0) * DfDk * D / Mode.K;
 					const double P = Psi * Dk * Dk * Params.Development * Params.Development;
@@ -197,6 +199,14 @@ namespace Sailing
 			const double Jxx = 1.0 - L * Cc[Idx].imag(), Jyy = 1.0 - L * D[Idx].real(), Jxy = -L * D[Idx].imag();
 			Out.J[Idx] = float(Jxx * Jyy - Jxy * Jxy);
 		}
+		// docs/chop-cascades/: the long chop's waves (1.6 m and longer) are wider than the caps' blur already, and its texels
+		// (0.48 m) too coarse for central differences of them (a 1.6 m wave's slope came out at half): its whitecap Jacobian is
+		// the exact one.
+		if (C.Spec.MinWavelength >= ChopSplitMeters - 1e-9)
+		{
+			Out.JCap = Out.J;
+			return;
+		}
 		// W8: the whitecaps' Jacobian, from the displacement box-blurred (periodic, separable) over CapBlurMeters either
 		// way, by central differences. The box's radius is fractional (its end taps weighted by the fraction), so the caps
 		// grow smoothly with the wind.
@@ -236,6 +246,13 @@ namespace Sailing
 				const double Yx = (At(By, R + 1, Cl) - At(By, R - 1, Cl)) / H2, Yy = (At(By, R, Cl + 1) - At(By, R, Cl - 1)) / H2;
 				Out.JCap[size_t(R) * N + Cl] = float((1.0 + Xx) * (1.0 + Yy) - Xy * Yx);
 			}
+	}
+
+	void FWaveDetail::ToGrid(const FCascadeSpec& S, double X, double Y, double& OutX, double& OutY)
+	{
+		const double C = std::cos(S.Rotation), Sn = std::sin(S.Rotation);
+		OutX = C * X + Sn * Y;
+		OutY = -Sn * X + C * Y;
 	}
 
 	double FWaveDetail::CapBlurMeters(double WindMs)

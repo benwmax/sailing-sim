@@ -1875,6 +1875,7 @@ void ASailboatPawn::SetWatching(bool bOn)
 void ASailboatPawn::SetCockpitView(bool bOn)
 {
 	bCockpit = bOn;
+	CockpitEye.bStarted = false;   // docs/cockpit-tack/: the steadied eye starts again where the head is
 	CockpitAccel = CockpitHead = FVector::ZeroVector;
 	CockpitPrevVel = FVector(Boat.GetState().Velocity.X, Boat.GetState().Velocity.Y, Boat.GetState().Velocity.Z);
 	CockpitRoll = 0.f;
@@ -1916,6 +1917,36 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	{
 		Eye = BoatRoot->GetComponentTransform().InverseTransformPositionNoScale(Helm->GetBoneLocation(TEXT("head"))) + FVector(10.f, 0.f, 8.f);
 	}
+	// docs/cockpit-tack/: through a tack or gybe the helm's head drops under the boom and bobs with their steps, and the
+	// trimmer crosses just ahead of it: the eye follows it steadied (FCockpitEye), keeping off the other heads and the
+	// boom, and leads the look a little into the turn. -SailingCockpitRaw is the head as it was.
+	static SailingArgs::FCachedFlag CockpitRawArg(TEXT("SailingCockpitRaw"));
+	float LeadDeg = 0.f;
+	if (!CockpitRawArg.Get())
+	{
+		const double Now = S.Time;
+		if (CameraYaw != CockpitLastYaw) CockpitLookedAt = Now;
+		CockpitLastYaw = CameraYaw;
+		FCockpitEyeInput EI;
+		EI.RawEye = Eye;
+		EI.bCrossing = CrewFigures.Num() > 0 && CrewFigures.Last().Crossing.bActive;
+		const FTransform Root = BoatRoot->GetComponentTransform();
+		for (int32 K = 0; K + 1 < Crew.Num(); ++K)
+		{
+			if (Crew[K] && Crew[K]->GetBoneIndex(TEXT("head")) != INDEX_NONE) EI.Heads.Add(Root.InverseTransformPositionNoScale(Crew[K]->GetBoneLocation(TEXT("head"))));
+		}
+		// The boom over the eye: within 30 cm across of its line from the gooseneck, along its foot.
+		const double Along = (C.MainLuffX * CmPerMeter - Eye.X) / FMath::Max(FMath::Cos(S.BoomAngle), 0.2);
+		const double BoomY = (C.MainLuffX * CmPerMeter - Eye.X) * FMath::Tan(S.BoomAngle);
+		EI.bBoomOver = !C.bMultihull && Along > 0.0 && Along < C.MainFootChord * CmPerMeter && FMath::Abs(Eye.Y - BoomY) < 30.0;
+		EI.bBoomNear = !C.bMultihull && Along > 0.0 && Along < C.MainFootChord * CmPerMeter && FMath::Abs(Eye.Y - BoomY) < 100.0;
+		EI.BoomUnderZ = (C.BoomZ - 0.05) * CmPerMeter;
+		FCrewCockpitWell W;
+		if (CrewCockpitWell(C, W)) { EI.MinX = FMath::Max(W.X0, H.SternX + 0.1) * CmPerMeter; EI.MaxX = W.X1 * CmPerMeter; }
+		EI.TurnRate = S.AngularVelocity.Z;
+		EI.bPlayerLooking = Now - CockpitLookedAt < 2.0;
+		Eye = CockpitEye.Step(EI, FMath::Max(DeltaSeconds, 1e-3f), LeadDeg);
+	}
 
 	// Accelerations felt at the head (the boat's, low-passed over 0.3 s): surging forward pushes the head back, a wave
 	// lifting the boat sinks it a little; plus a head-bob the neck lets through. A few centimetres at most.
@@ -1934,7 +1965,7 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	CockpitRoll += (FMath::Clamp(Heel * 0.33f, -8.f, 8.f) - CockpitRoll) * FMath::Clamp(Dt / 0.4f, 0.f, 1.f);
 	const FTransform BoatXf = BoatRoot->GetComponentTransform();
 	const FVector World = BoatXf.TransformPosition(Eye + CockpitHead);
-	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw);
+	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw) + LeadDeg;
 	// You are the helm: the helm's own figure is not drawn from inside it, but still posed (its head is the eye).
 	if (Helm)
 	{
@@ -1983,7 +2014,7 @@ void ASailboatPawn::UpdatePhotoLens()
 	PP.DepthOfFieldSensorWidth = 36.f;
 	// Exposure on top of the meter (never in place of it: Bean's band and Settings > Brightness stay under it).
 	const ASailingEnvironment* Env = nullptr;
-	for (TActorIterator<ASailingEnvironment> It(GetWorld()); It; ++It) { Env = *It; break; }
+	if (TActorIterator<ASailingEnvironment> It(GetWorld()); It) Env = *It;   // (a for loop that breaks at once is an error under clang: -Wunreachable-code-loop-increment)
 	const FPostProcessSettings* Scene = Env ? Env->GetSceneLook() : nullptr;
 	if (Scene && !PhotoSettings.bLookTaken)
 	{
