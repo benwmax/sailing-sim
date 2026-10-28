@@ -24,65 +24,81 @@ Nothing in the game calls it yet.
 - `LongWaveChecks.h` holds the checks. The automation tests `SailingSim.Physics.LongWaves.*` and
   `scripts/long-wave-check.sh` (standalone, about 2 s) both run them.
 
-### Cascade layout (as built)
+### Cascade layout: one cascade per band
 
-| Cascade | Tile | Rotation | Cell | Carries | Modes (lake) |
-|---|---|---|---|---|---|
-| L1 | 97.3 m | 0° | 0.76 m | 3.6 m to 12 m | 2,072 |
-| L2 | 331 m | 27.4° | 2.59 m | 12 m to 48 m (to tile/2 when L3 is off) | 2,240 |
-| L3 | 1,409 m | 61.9° | 11 m | 44 m and up | runs only when the spectrum reaches past 165 m (open sea); never on a lake |
+The engine builds two layouts (`ELongWaveLayout`). The game's is **PerBand**, which the coordinator chose after the
+brief's layout failed SeaMapSwan on period (below).
 
-L1's 97 m tile: `NoWeave` finds the sea correlated 0.17-0.23 with itself at L1's tile lags, which is L1's share of the
-variance. The 24 sines reach 0.67 at 81 m. Whether the 97 m repeat shows by eye is a phase 2 question, for the overhead
-view.
+**PerBand (the game's).** One 64² cascade per band 0-7 of FWaveField.
+- Tile: 16 of the band's shortest waves at the world's depth, so four cells each.
+- The band's longest waves are under 1.4 times its shortest, far inside tile / 2.
+- Each cascade is turned by the golden angle from the one before, so no two lattices line up.
+- The sea map scales each band, as it scales each sine today.
+- An open sea's range under band 0 gets the swell cascade L3 (1,409 m).
+
+| Band | Tile (deep) | Turned | Modes | Wavelengths |
+|---|---|---|---|---|
+| B0 | 557.6 m | 137.5° | 372 | 35.3 to 47.8 m |
+| B1 | 403.3 m | 275.0° | 372 | 25.5 to 34.6 m |
+| B2 | 291.8 m | 52.5° | 372 | 18.5 to 25.0 m |
+| B3 | 211.1 m | 190.0° | 372 | 13.4 to 18.1 m |
+| B4 | 152.7 m | 327.5° | 372 | 9.7 to 13.1 m |
+| B5 | 110.5 m | 105.0° | 372 | 7.0 to 9.5 m |
+| B6 | 79.9 m | 242.6° | 372 | 5.1 to 6.9 m |
+| B7 | 57.8 m | 20.1° | 372 | 3.7 to 5.0 m |
+
+**Ranges (the brief's, kept for comparison).** Three 128² cascades by wavelength:
+
+| Cascade | Tile | Turned | Carries | Modes |
+|---|---|---|---|---|
+| L1 | 97.3 m | 0° | 3.6 to 12 m | 2,072 |
+| L2 | 331 m | 27.4° | 12 to 48 m | 2,240 |
+| L3 | 1,409 m | 61.9° | 44 m and up | open sea only |
+
+Tile repeats in `NoWeave` at 20 kn: each band's lattice correlates at most 0.13 with itself (B5), against 0.17-0.23 at
+L1's 97 m. The 24 sines correlate 0.67 at 81 m.
 
 ### Measured on the M5 Pro (clang -O2, standalone)
 
-| What | Result | Budget |
-|---|---|---|
-| Kernel, 128² complex 2D inverse | 0.090 ms (p99 0.100) | brief's estimate 0.10-0.15 |
-| Kernel, 256² | 0.53 ms | |
-| A key's grids, 2 cascades, 4,312 modes, 1 thread | 1.36 ms (p99 1.40) | ≤ 2.0 ms per key |
-| The same on 4 threads (deterministic join) | 0.49 ms (p99 0.51) | |
-| One physics read (13 fields, 2 cascades, 2 keys) | 0.095 µs | today's 48-sine `Sample`: 0.38 µs |
+| What | Per band | Ranges | Budget or today |
+|---|---|---|---|
+| Kernel, 128² complex 2D inverse | | 0.09 ms | brief's estimate 0.10-0.15 |
+| A key's grids at 20 kn, 1 thread | 1.23 ms (8 cascades, 2,976 modes) | 1.39 ms (2 cascades, 4,312 modes) | ≤ 2.0 ms |
+| The same on 4 threads (deterministic join) | 0.42 ms | 0.50 ms | |
+| One physics read (13 fields, 2 keys) | 0.40 µs | 0.10 µs | today's 48-sine `Sample`: 0.38 µs |
 
-### Checks
+The GPU side waits for phase 2. Per band, the vertex shader reads 8 cascades × 2 textures (16 fetches) in place of today's
+24 sincos and 7 atlas fetches. Phase 2's switch gives the measurement, through the gate on both settings.
+
+### Checks (per band; the tool runs both layouts)
 
 | Check | Result |
 |---|---|
-| Spectrum | variance equal to the sines' bands 0-7 (0.00%) at 10-28 kn, deep and 5 m; Tm01 within 0.3%; direction within 0.1° |
-| MatchesDirectSum | every field within 3.6e-7 of the straight sum (L1, L2, and L3 on an open sea's range) |
-| TimeBlend | 0.12% of L1's RMS half way between keys |
-| Spreading | the sech² within a tenth of the peak bin, in 20° bins (10° bins alias on L1's 7° lattice at 12 m) |
+| Spectrum | variance equal to the sines' bands 0-7 (0.00%) at 10-28 kn, deep and 5 m; Tm01 within 0.6%; direction within 0.05° |
+| MatchesDirectSum | every field within 2.4e-7 of the straight sum (also with an open sea's range and L3) |
+| TimeBlend | 0.20% of band 7's RMS half way between keys |
+| Spreading | the sech² within 0.013 of the energy per 20° bin (10° bins alias on the coarser lattices) |
 | Growth | every band reaches 1 - 1/e in exactly its `GrowthSeconds` |
-| WindShift | 30° and 90°: no height step (5.8 mm per 1/120 s at most, inside the waves' own motion); the old direction under 0.01% after 3 τ |
+| WindShift | 30° and 90°: no height step (4.9 mm per 1/120 s at most, inside the waves' own motion); the old direction under 0.01% after 3 τ |
 | FrameRateFree | 30, 60, 144 fps give the same grids to the bit |
 | Determinism | 1, 2 and 8 workers, and a restart at 300 s, to the bit |
-| LongClock | t = 1e6 s: 1.2e-7 m from the straight sum |
+| LongClock | t = 1e6 s: 7.4e-8 m from the straight sum |
 | Golden | 64 heights (`LongWaveGolden.inl`, made on the Mac). The PC holds them to 1e-5 m in its next build |
-| NoWeave | 0.17 away from zero lag (limit 0.25); the sines reach 0.67 |
-| SeaMapSwan | **fails on period**, see below |
+| NoWeave | 0.18 away from zero lag (limit 0.25); the sines reach 0.67 |
+| SeaMapSwan | Tp bias +2.6% (limit 5%), Hs 0.069 |
 
-### SeaMapSwan: one sea-map channel per cascade is not enough
+### SeaMapSwan: why per band
 
-Run with `scripts/long-wave-check.sh --swan`: 1,050 cases at SWAN's ten points, written to
-`Artifacts/long-wave-sea-map.csv`.
+Run with `scripts/long-wave-check.sh --swan`: 1,050 cases at SWAN's ten points (`Artifacts/long-wave-sea-map.csv`).
 
 | Sea map channels for the long waves | Median abs(log Hs error) | Median abs(log Tp error) | Tp bias |
 |---|---|---|---|
 | One per sine (today) | 0.070 | 0.108 | +2.3% |
-| One per cascade (2) | 0.069 | 0.203 | **+22%** |
+| One per cascade, ranges (2) | 0.069 | 0.203 | **+22%** |
 | 3 groups of bands (0-2, 3-5, 6-7) | 0.071 | 0.159 | +10% |
 | 4 groups (0-1, 2-3, 4-5, 6-7) | 0.071 | 0.126 | +6.4% |
-| One per band (8) | 0.071 | 0.113 | +2.4% |
+| One per cascade, per band (8) | 0.069 | 0.106 | +2.6% |
 
 Height is right with any channel count. The period is not. On a short fetch the long bands fall away faster than the
-short ones, so the local peak moves to shorter waves. One scale for a whole cascade can't move the peak, so a sheltered
-spot keeps the open lake's long period.
-
-The brief's fallback, three lake cascades, leaves the period 10% long. Only a channel per band holds the 5% limit. To
-scale per band, each band needs its own grids.
-
-The layout is the open decision for phase 2. The alternative to measure is one 64² cascade per band: 8 small grids with
-tiles of about 16 wavelengths. Their total transform cost is close to two 128² cascades, but the physics and the shader
-read 8 cascades instead of 2.
+short ones, so the local peak moves to shorter waves. One scale per cascade can't move the peak when a cascade spans
+several bands. The brief's fallback, three lake cascades, still leaves the period 10% long.

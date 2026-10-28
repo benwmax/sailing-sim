@@ -74,12 +74,19 @@ namespace Sailing
 		return kBandMinHz * std::pow(BandRatio(), 8.0);
 	}
 
-	FLongWaves::FLongWaves(uint64_t InWorldSeed)
+	FLongWaves::FLongWaves(uint64_t InWorldSeed, ELongWaveLayout InLayout)
 		: WorldSeed(InWorldSeed)
-		, Fft(new FFft2D(N))
+		, Layout(InLayout)
+		, Fft64(new FFft2D(64))
+		, Fft128(new FFft2D(128))
 		, Ring(new FSlot[RingKeys])
 	{
 		LayModes();
+	}
+
+	double FLongWaves::MaxWavelength(int Cascade) const
+	{
+		return 2.0 * kPi / std::max(Cascades[Cascade].MinK, 1e-12);
 	}
 
 	void FLongWaves::SetDepth(double DepthMeters)
@@ -106,24 +113,59 @@ namespace Sailing
 	void FLongWaves::LayModes()
 	{
 		const double MaxHz = Params.MaxHz > 0.0 ? Params.MaxHz : SplitHz();
-		// L3 runs only when the spectrum reaches past L2's tile / 2; otherwise L2 takes everything to its tile / 2.
+		// The swell cascade runs only when the spectrum reaches past 165 m (L2's tile / 2): an open sea, never a lake.
 		const double Longest = 2.0 * kPi / WavenumberFor(2.0 * kPi * Params.MinHz, Depth);
-		const bool bSwell = Longest > 0.5 * kLongCascadeSpecs[1].Tile;
-		const int Last = bSwell ? kLongCascades - 1 : 1;
+		const bool bSwell = Longest > 0.5 * kLongRangeSpecs[1].Tile;
+
+		// The layout's cascades.
+		static const char* const BandNames[8] = { "B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7" };
+		NumCas = 0;
+		if (Layout == ELongWaveLayout::Ranges)
+		{
+			for (int C = 0; C < (bSwell ? 3 : 2); ++C) Cascades[NumCas++].Spec = kLongRangeSpecs[C];
+		}
+		else
+		{
+			for (int B = 0; B < 8; ++B)
+			{
+				// Tile: 16 of the band's shortest waves at this depth (four cells each on 64^2); its longest are under 2 of
+				// those, far inside tile / 2. Turned by the golden angle band to band, so no two lattices line up.
+				const double Shortest = 2.0 * kPi / WavenumberFor(2.0 * kPi * kBandMinHz * std::pow(BandRatio(), B + 1), Depth);
+				FLongWaveCascadeSpec& Spec = Cascades[NumCas++].Spec;
+				Spec = FLongWaveCascadeSpec();
+				Spec.Name = BandNames[B];
+				Spec.Tile = 16.0 * Shortest;
+				Spec.RotationDeg = std::fmod(137.50776405003785 * (B + 1), 360.0);
+				Spec.Band = B;
+				Spec.Size = 64;
+			}
+			if (bSwell)
+			{
+				FLongWaveCascadeSpec& Spec = Cascades[NumCas++].Spec;
+				Spec = kLongRangeSpecs[2];
+				Spec.MinWavelength = 0.0; // everything under band 0's frequency
+			}
+		}
+		const int Last = Layout == ELongWaveLayout::Ranges ? NumCas - 1 : -1;
 
 		const uint64_t Base = HashCombine(WorldSeed, HashString("longwave"));
-		std::vector<int> Lookup(size_t(N) * N);
 		for (int C = 0; C < kLongCascades; ++C)
 		{
-			const FLongWaveCascadeSpec& Spec = kLongCascadeSpecs[C];
 			FCascade& Cas = Cascades[C];
 			Cas.Modes.clear();
+			if (C >= NumCas) continue;
+			const FLongWaveCascadeSpec& Spec = Cas.Spec;
+			const int N = Spec.Size;
+			Cas.Fft = N == 64 ? Fft64.get() : Fft128.get();
 			const double Rot = Spec.RotationDeg * kDegToRad;
 			Cas.Cos = std::cos(Rot);
 			Cas.Sin = std::sin(Rot);
 			const double Dk = 2.0 * kPi / Spec.Tile;
-			Cas.MinK = 2.0 * kPi / (C == Last ? 0.5 * Spec.Tile : Spec.MaxWavelength);
-			Cas.MaxK = Spec.MinWavelength > 0.0 ? 2.0 * kPi / Spec.MinWavelength : 1e9;
+			const bool bBand = Spec.Band >= 0;
+			// (Per band, the swell cascade takes the frequencies under band 0, to its tile / 2.)
+			const bool bBelowBands = Layout == ELongWaveLayout::PerBand && !bBand;
+			Cas.MinK = 2.0 * kPi / (bBand || bBelowBands || C == Last ? 0.5 * Spec.Tile : Spec.MaxWavelength);
+			Cas.MaxK = !bBand && Spec.MinWavelength > 0.0 ? 2.0 * kPi / Spec.MinWavelength : 2.0 * kPi / (4.0 * Spec.Tile / N);
 
 			// Every node's Gaussian, drawn in index order whether it runs or not: the sea doesn't reshuffle with the depth.
 			FPortableRandom Rng(HashCombine(Base, HashString(Spec.Name)));
@@ -131,8 +173,7 @@ namespace Sailing
 			// (Each half carries a quarter: E|xi|^2 = 1/2, so the real field's variance is the modes' sum of Amp^2.)
 			for (double& G : Xi) G = Rng.Gaussian() * 0.5;
 
-			std::fill(Lookup.begin(), Lookup.end(), -1);
-			if (C > Last) continue;
+			std::vector<int> Lookup(size_t(N) * N, -1);
 			for (int I = 0; I < N; ++I)
 			{
 				if (I == N / 2) continue;
@@ -148,6 +189,9 @@ namespace Sailing
 					const double Omega = std::sqrt(kGravity * K * Th);
 					const double F = Omega / (2.0 * kPi);
 					if (F < Params.MinHz || F >= MaxHz) continue;
+					const int Band = BandOf(F);
+					if (bBand && Band != Spec.Band) continue;
+					if (bBelowBands && Band >= 0) continue;
 					FMode M;
 					M.Index = I * N + J;
 					M.Mirror = ((N - I) % N) * N + (N - J) % N;
@@ -156,7 +200,7 @@ namespace Sailing
 					M.K = K;
 					M.Omega = Omega;
 					M.Freq = F;
-					M.Band = BandOf(F);
+					M.Band = Band;
 					M.Coth = Depth > 0.0 && K * Depth < 20.0 ? 1.0 / Th : 1.0;
 					M.XiRe = Xi[size_t(M.Index) * 2];
 					M.XiIm = Xi[size_t(M.Index) * 2 + 1];
@@ -210,7 +254,7 @@ namespace Sailing
 		std::vector<double> Shape[kLongCascades];
 		for (int C = 0; C < kLongCascades; ++C)
 		{
-			const double Dk = 2.0 * kPi / kLongCascadeSpecs[C].Tile;
+			const double Dk = 2.0 * kPi / Cascades[C].Spec.Tile;
 			Shape[C].resize(Cascades[C].Modes.size());
 			for (size_t I = 0; I < Cascades[C].Modes.size(); ++I)
 			{
@@ -320,11 +364,11 @@ namespace Sailing
 		}
 		if (NumRunning == 0) return;
 
-		const size_t Count = size_t(N) * N;
 		std::vector<FComplexF> Work[kLongCascades][kPairs];
 		auto Fill = [&](int R)
 		{
 			const int C = Running[R];
+			const size_t Count = size_t(Cascades[C].Spec.Size) * Cascades[C].Spec.Size;
 			for (std::vector<FComplexF>& W : Work[C]) W.assign(Count, FComplexF());
 			FCplx Spec[kLongFields];
 			for (const FMode& M : Cascades[C].Modes)
@@ -343,7 +387,8 @@ namespace Sailing
 		auto Transform = [&](int Job)
 		{
 			const int C = Running[Job / kPairs], P = Job % kPairs;
-			Fft->Inverse(Work[C][P].data());
+			const size_t Count = size_t(Cascades[C].Spec.Size) * Cascades[C].Spec.Size;
+			Cascades[C].Fft->Inverse(Work[C][P].data());
 			const int FA = kPairField[P][0], FB = kPairField[P][1];
 			std::vector<float>& A = Out.F[C][FA];
 			A.resize(Count);
@@ -399,9 +444,8 @@ namespace Sailing
 	namespace
 	{
 		/** One cascade's fields, bilinear at a local grid position (in cells), added to Acc with weight W. */
-		void AddBilinear(const std::vector<float>* F, double U, double V, double W, double* Acc)
+		void AddBilinear(const std::vector<float>* F, int Size, double U, double V, double W, double* Acc)
 		{
-			constexpr int Size = FLongWaves::N;
 			const double Fu = std::floor(U), Fv = std::floor(V);
 			const double Tu = U - Fu, Tv = V - Fv;
 			const int I0 = int(FloorMod(int64_t(Fu), Size)), J0 = int(FloorMod(int64_t(Fv), Size));
@@ -424,14 +468,15 @@ namespace Sailing
 		auto Accumulate = [&](const FKeyGrids& G0, const FKeyGrids& G1)
 		{
 			for (int I = 0; I < kLongFields; ++I) Out[I] = 0.0;
-			for (int C = 0; C < kLongCascades; ++C)
+			for (int C = 0; C < NumCas; ++C)
 			{
 				const FCascade& Cas = Cascades[C];
-				const double Cell = kLongCascadeSpecs[C].Tile / N;
+				const int Size = Cas.Spec.Size;
+				const double Cell = Cas.Spec.Tile / Size;
 				const double U = (Cas.Cos * X + Cas.Sin * Y) / Cell, V = (-Cas.Sin * X + Cas.Cos * Y) / Cell;
 				const double R = Ratio ? double(Ratio[C]) : 1.0;
-				if (G0.bRunning[C] && !G0.F[C][0].empty()) AddBilinear(G0.F[C], U, V, (1.0 - W) * R, Out);
-				if (G1.bRunning[C] && !G1.F[C][0].empty()) AddBilinear(G1.F[C], U, V, W * R, Out);
+				if (G0.bRunning[C] && !G0.F[C][0].empty()) AddBilinear(G0.F[C], Size, U, V, (1.0 - W) * R, Out);
+				if (G1.bRunning[C] && !G1.F[C][0].empty()) AddBilinear(G1.F[C], Size, U, V, W * R, Out);
 			}
 		};
 		// Lock-free when both keys are in the ring and nobody wrote over them while they were read.
@@ -634,7 +679,7 @@ namespace Sailing
 	void FLongWaves::NodePosition(int Cascade, int I, int J, double& OutX, double& OutY) const
 	{
 		const FCascade& Cas = Cascades[Cascade];
-		const double Cell = kLongCascadeSpecs[Cascade].Tile / N;
+		const double Cell = Cas.Spec.Tile / Cas.Spec.Size;
 		const double Lx = I * Cell, Ly = J * Cell;
 		OutX = Cas.Cos * Lx - Cas.Sin * Ly;
 		OutY = Cas.Sin * Lx + Cas.Cos * Ly;

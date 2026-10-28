@@ -20,19 +20,30 @@ namespace Sailing
 	 */
 	struct FLongWaveCascadeSpec
 	{
-		const char* Name;      // seeds the cascade's random amplitudes (HashString), so it is part of the world
-		double Tile;           // m
-		double RotationDeg;    // the grid's axes against the map's
-		double MinWavelength;  // m, inclusive
-		double MaxWavelength;  // m, exclusive (the last running cascade takes everything longer, to its tile / 2)
+		const char* Name = "";      // seeds the cascade's random amplitudes (HashString), so it is part of the world
+		double Tile = 0.0;          // m
+		double RotationDeg = 0.0;   // the grid's axes against the map's
+		/** What it carries: a wavelength range (m, min inclusive, max exclusive; the last running cascade takes
+		 *  everything longer, to its tile / 2), or one of FWaveField's bands (Band >= 0: the modes of that frequency band). */
+		double MinWavelength = 0.0;
+		double MaxWavelength = 0.0;
+		int Band = -1;
+		int Size = 128;             // grid nodes a side (a power of two)
 	};
 
-	constexpr int kLongCascades = 3;
-	/** L1 "sea", L2 "long", L3 "swell" (runs only when the spectrum reaches past L2's tile / 2: the open sea, never a lake). */
-	inline constexpr FLongWaveCascadeSpec kLongCascadeSpecs[kLongCascades] = {
-		{ "L1", 97.3, 0.0, 0.0, 12.0 },
-		{ "L2", 331.0, 27.4, 12.0, 44.0 },
-		{ "L3", 1409.0, 61.9, 44.0, 1e9 },
+	/**
+	 * docs/long-wave-fft/: how the spectrum is split into cascades.
+	 * Ranges: the brief's three 128^2 cascades by wavelength (L1 97.3 m, L2 331 m, L3 1,409 m: kLongRangeSpecs; L3 runs only
+	 * when the spectrum reaches past L2's tile / 2, the open sea, never a lake).
+	 * PerBand: one 64^2 cascade per FWaveField band 0-7 (tile 16 of the band's shortest waves; the sea map scales each band,
+	 * as it scales each sine today: SeaMapSwan), plus L3 for an open sea's longer range.
+	 */
+	enum class ELongWaveLayout : uint8_t { Ranges, PerBand };
+	constexpr int kLongCascades = 9; // the most a layout has
+	inline constexpr FLongWaveCascadeSpec kLongRangeSpecs[3] = {
+		{ "L1", 97.3, 0.0, 0.0, 12.0, -1, 128 },
+		{ "L2", 331.0, 27.4, 12.0, 44.0, -1, 128 },
+		{ "L3", 1409.0, 61.9, 44.0, 1e9, -1, 128 },
 	};
 
 	/** The 13 real fields of a cascade (map frame: X north, Y east; slopes and velocities along the map's axes). */
@@ -62,8 +73,8 @@ namespace Sailing
 
 	/**
 	 * docs/long-wave-fft/: the long waves (FWaveField's components 0-23: 3.6 m to 48 m) as an FFT sea, computed once per
-	 * world on the CPU and shared by the physics and (phase 2) the renderer. Tessendorf's Hermitian modes on 128^2 grids,
-	 * one cascade per wavelength range (kLongCascadeSpecs), spectrum and growth exactly as the sines': JONSWAP at the
+	 * world on the CPU and shared by the physics and (phase 2) the renderer. Tessendorf's Hermitian modes on periodic grids,
+	 * cascades by ELongWaveLayout, spectrum and growth exactly as the sines': JONSWAP at the
 	 * growth laws' Hs and Tp, scaled so each of bands 0-7 carries the variance it has in FWaveField, Donelan-Hamilton-Hui /
 	 * Banner sech^2 spreading (nothing upwind), each mode approaching its target over its band's GrowthSeconds.
 	 *
@@ -77,7 +88,6 @@ namespace Sailing
 	class SAILINGPHYSICS_API FLongWaves
 	{
 	public:
-		static constexpr int N = 128;
 		static constexpr double KeyHz = 30.0;
 		static constexpr int TargetEveryKeys = 15;
 		static constexpr int RingKeys = 4;
@@ -85,7 +95,7 @@ namespace Sailing
 		/** Runs Count independent jobs (any order, any threads) and returns when all are done. Null = inline. */
 		using FParallelFor = std::function<void(int Count, const std::function<void(int)>& Job)>;
 
-		/** One key's grids: per cascade, kLongFields float grids of N x N (row = the cascade's local X index). */
+		/** One key's grids: per cascade, kLongFields float grids of Size x Size (row = the cascade's local X index). */
 		struct FKeyGrids
 		{
 			int64_t Key = 0;
@@ -93,7 +103,12 @@ namespace Sailing
 			std::vector<float> F[kLongCascades][kLongFields];
 		};
 
-		explicit FLongWaves(uint64_t WorldSeed = 1);
+		explicit FLongWaves(uint64_t WorldSeed = 1, ELongWaveLayout Layout = ELongWaveLayout::PerBand);
+		ELongWaveLayout GetLayout() const { return Layout; }
+		/** The layout's cascades (they follow the depth: per band, the tiles are 16 of each band's shortest waves there). */
+		int NumCascades() const { return NumCas; }
+		const FLongWaveCascadeSpec& Spec(int Cascade) const { return Cascades[Cascade].Spec; }
+		int GridSize(int Cascade) const { return Cascades[Cascade].Spec.Size; }
 
 		/** The water's depth for the dispersion (omega^2 = g k tanh(k h)); 0 = deep. Lays the modes again: call before use. */
 		void SetDepth(double DepthMeters);
@@ -125,7 +140,9 @@ namespace Sailing
 		bool IsRunning(int Cascade) const;
 		bool HasModes(int Cascade) const { return !Cascades[Cascade].Modes.empty(); }
 		int ModeCount(int Cascade) const { return int(Cascades[Cascade].Modes.size()); }
-		double Cell(int Cascade) const { return kLongCascadeSpecs[Cascade].Tile / N; }
+		double Cell(int Cascade) const { return Cascades[Cascade].Spec.Tile / Cascades[Cascade].Spec.Size; }
+		/** The longest wavelength a cascade may carry (m): its range's top, or tile / 2. */
+		double MaxWavelength(int Cascade) const;
 
 		/** Expected (configured) variance, m^2: of a cascade now, of everything now, and of the targets. */
 		double CascadeVariance(int Cascade) const;
@@ -168,7 +185,7 @@ namespace Sailing
 	private:
 		struct FMode
 		{
-			int Index = 0;       // into the N x N grid
+			int Index = 0;       // into the Size x Size grid
 			int Mirror = 0;      // the mode at -k
 			int Band = -1;       // FWaveField band, -1 below band 0
 			double Kx = 0.0, Ky = 0.0, K = 0.0; // map frame (rad/m)
@@ -181,6 +198,8 @@ namespace Sailing
 		};
 		struct FCascade
 		{
+			FLongWaveCascadeSpec Spec;
+			const FFft2D* Fft = nullptr;
 			double Cos = 1.0, Sin = 0.0;
 			double MinK = 0.0, MaxK = 0.0;
 			std::vector<FMode> Modes;
@@ -200,13 +219,15 @@ namespace Sailing
 		void ProduceLocked(int64_t Key, const FParallelFor& Parallel) const;
 
 		uint64_t WorldSeed = 1;
+		ELongWaveLayout Layout = ELongWaveLayout::PerBand;
+		int NumCas = 0;
 		double Depth = 0.0;
 		FLongWaveParams Params;
 		bool bParamsDirty = true;
 		bool bAdvanced = false;
 		int64_t StateKey = 0;
 		FCascade Cascades[kLongCascades];
-		std::unique_ptr<FFft2D> Fft;
+		std::unique_ptr<FFft2D> Fft64, Fft128;
 
 		// The ring of keys: a hit is lock-free (a slot's key is stored with release after its grids); a miss produces under
 		// the lock. Mutable: readers on the physics threads may produce.

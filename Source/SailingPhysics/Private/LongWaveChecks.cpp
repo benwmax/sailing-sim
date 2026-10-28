@@ -32,6 +32,9 @@ namespace Sailing
 			return Buffer;
 		}
 
+		/** The layout the running check builds its seas in (each check sets it from its argument). */
+		ELongWaveLayout GLayout = ELongWaveLayout::PerBand;
+
 		FLongWaveParams Sea(double Knots, double FromDeg = 0.0, double Fetch = 15000.0)
 		{
 			FLongWaveParams P;
@@ -43,7 +46,7 @@ namespace Sailing
 
 		std::unique_ptr<FLongWaves> SnappedSea(double Knots, uint64_t Seed = 1, double Depth = 0.0, double MinHz = 0.18, double FromDeg = 0.0)
 		{
-			auto W = std::make_unique<FLongWaves>(Seed);
+			auto W = std::make_unique<FLongWaves>(Seed, GLayout);
 			if (Depth > 0.0) W->SetDepth(Depth);
 			FLongWaveParams P = Sea(Knots, FromDeg);
 			P.MinHz = MinHz;
@@ -98,8 +101,9 @@ namespace Sailing
 		const char* kFieldNames[kLongFields] = { "H", "Vz", "Sx", "Sy", "U", "V", "Ax", "Ay", "Dx", "Dy", "Jxx", "Jyy", "Jxy" };
 	}
 
-	FLongWaveCheck LongWaveChecks::Spectrum()
+	FLongWaveCheck LongWaveChecks::Spectrum(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "Spectrum", true, {} };
 		for (const double Kn : { 10.0, 15.0, 20.0, 28.0 })
 		{
@@ -138,22 +142,24 @@ namespace Sailing
 			}
 		}
 		const auto W = SnappedSea(20.0);
-		for (int C = 0; C < kLongCascades; ++C)
+		for (int C = 0; C < W->NumCascades(); ++C)
 		{
-			if (!W->HasModes(C)) { R.Lines.push_back(Format("%s: no modes (the lake's spectrum ends inside L2)", kLongCascadeSpecs[C].Name)); continue; }
+			const FLongWaveCascadeSpec& Spec = W->Spec(C);
+			if (!W->HasModes(C)) { R.Lines.push_back(Format("%s: no modes", Spec.Name)); continue; }
 			double Lo = 0.0, Hi = 0.0;
 			W->WavelengthRange(C, Lo, Hi);
-			const double Max = C == 1 ? 0.5 * kLongCascadeSpecs[C].Tile : kLongCascadeSpecs[C].MaxWavelength;
-			const bool bIn = Lo >= kLongCascadeSpecs[C].MinWavelength && Hi <= Max + 1e-9 && Lo >= 4.0 * W->Cell(C);
+			const double Max = W->MaxWavelength(C);
+			const bool bIn = Lo >= Spec.MinWavelength && Hi <= Max + 1e-9 && Lo >= 4.0 * W->Cell(C) * (1.0 - 1e-9);
 			R.bPass &= bIn;
-			R.Lines.push_back(Format("%s: %d modes from %.2f to %.2f m (range %.1f to %.1f m; four cells %.2f m)%s", kLongCascadeSpecs[C].Name,
-				W->ModeCount(C), Lo, Hi, kLongCascadeSpecs[C].MinWavelength, Max, 4.0 * W->Cell(C), bIn ? "" : "  FAIL"));
+			R.Lines.push_back(Format("%s: %d^2 on %.1f m turned %.1f deg, %d modes from %.2f to %.2f m (allowed %.1f to %.1f m; four cells %.2f m)%s", Spec.Name,
+				Spec.Size, Spec.Tile, Spec.RotationDeg, W->ModeCount(C), Lo, Hi, Spec.MinWavelength, Max, 4.0 * W->Cell(C), bIn ? "" : "  FAIL"));
 		}
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::MatchesDirectSum()
+	FLongWaveCheck LongWaveChecks::MatchesDirectSum(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "MatchesDirectSum", true, {} };
 		struct FCase { const char* Name; double Knots, Depth, MinHz; };
 		const FCase Cases[] = { { "20 kn deep", 20.0, 0.0, 0.18 }, { "28 kn, 6 m deep", 28.0, 6.0, 0.18 }, { "25 kn with an open sea's range (L3)", 25.0, 0.0, 0.07 } };
@@ -181,13 +187,14 @@ namespace Sailing
 					}
 					for (int P = 0; P < 64; ++P)
 					{
-						const int I = Rng.UniformInt(0, FLongWaves::N - 1), J = Rng.UniformInt(0, FLongWaves::N - 1);
+						const int Size = W->GridSize(C);
+						const int I = Rng.UniformInt(0, Size - 1), J = Rng.UniformInt(0, Size - 1);
 						double X, Y, D[kLongFields];
 						W->NodePosition(C, I, J, X, Y);
 						W->DirectSum(C, X, Y, double(Key) / FLongWaves::KeyHz, D);
 						for (int F = 0; F < kLongFields; ++F)
 						{
-							const double Err = std::fabs(double(G.F[C][F][size_t(I) * FLongWaves::N + J]) - D[F]) / std::max(1.0, Rms[F]);
+							const double Err = std::fabs(double(G.F[C][F][size_t(I) * Size + J]) - D[F]) / std::max(1.0, Rms[F]);
 							if (Err > Worst) { Worst = Err; WorstField = F; }
 						}
 					}
@@ -195,14 +202,17 @@ namespace Sailing
 			}
 			const bool bOk = Worst < 1e-4;
 			R.bPass &= bOk;
-			R.Lines.push_back(Format("%s: cascades %s%s%s, worst error %.2e (field %s; tolerance 1e-4 x max(1, RMS))%s", Case.Name,
-				Running & 1 ? "L1 " : "", Running & 2 ? "L2 " : "", Running & 4 ? "L3" : "", Worst, kFieldNames[WorstField], bOk ? "" : "  FAIL"));
+			std::string Names;
+			for (int C = 0; C < W->NumCascades(); ++C) if (Running & (1 << C)) Names += std::string(Names.empty() ? "" : " ") + W->Spec(C).Name;
+			R.Lines.push_back(Format("%s: cascades %s, worst error %.2e (field %s; tolerance 1e-4 x max(1, RMS))%s", Case.Name,
+				Names.c_str(), Worst, kFieldNames[WorstField], bOk ? "" : "  FAIL"));
 		}
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::TimeBlend()
+	FLongWaveCheck LongWaveChecks::TimeBlend(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "TimeBlend", true, {} };
 		for (const double Kn : { 15.0, 28.0 })
 		{
@@ -210,30 +220,34 @@ namespace Sailing
 			FLongWaves::FKeyGrids A, B;
 			W->EvaluateInto(600, A);
 			W->EvaluateInto(601, B);
-			const std::vector<float>& HA = A.F[0][0];
-			const std::vector<float>& HB = B.F[0][0];
+			// The cascade with the shortest waves (L1, or band 7's).
+			const int Short = Layout == ELongWaveLayout::Ranges ? 0 : 7;
+			const int Size = W->GridSize(Short);
+			const std::vector<float>& HA = A.F[Short][0];
+			const std::vector<float>& HB = B.F[Short][0];
 			double S2 = 0.0, E2 = 0.0;
 			FPortableRandom Rng(5);
 			for (int P = 0; P < 256; ++P)
 			{
-				const int I = Rng.UniformInt(0, FLongWaves::N - 1), J = Rng.UniformInt(0, FLongWaves::N - 1);
+				const int I = Rng.UniformInt(0, Size - 1), J = Rng.UniformInt(0, Size - 1);
 				double X, Y, D[kLongFields];
-				W->NodePosition(0, I, J, X, Y);
-				W->DirectSum(0, X, Y, 600.5 / FLongWaves::KeyHz, D);
-				const size_t Ix = size_t(I) * FLongWaves::N + J;
+				W->NodePosition(Short, I, J, X, Y);
+				W->DirectSum(Short, X, Y, 600.5 / FLongWaves::KeyHz, D);
+				const size_t Ix = size_t(I) * Size + J;
 				const double Blend = 0.5 * (double(HA[Ix]) + HB[Ix]);
 				S2 += D[0] * D[0];
 				E2 += (Blend - D[0]) * (Blend - D[0]);
 			}
 			const double Rel = std::sqrt(E2 / S2);
 			R.bPass &= Rel < 0.02;
-			R.Lines.push_back(Format("%.0f kn: L1 half way between keys, RMS error %.2f%% of its RMS height (3.6 m waves at 30 Hz keys)%s", Kn, 100.0 * Rel, Rel < 0.02 ? "" : "  FAIL"));
+			R.Lines.push_back(Format("%.0f kn: the shortest waves' cascade half way between keys, RMS error %.2f%% of its RMS height (3.6 m waves at 30 Hz keys)%s", Kn, 100.0 * Rel, Rel < 0.02 ? "" : "  FAIL"));
 		}
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::Spreading()
+	FLongWaveCheck LongWaveChecks::Spreading(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "Spreading", true, {} };
 		for (const double Kn : { 12.0, 20.0 })
 		{
@@ -276,13 +290,14 @@ namespace Sailing
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::Growth()
+	FLongWaveCheck LongWaveChecks::Growth(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "Growth", true, {} };
 		const auto Target = SnappedSea(15.0);
 		double Want[kWaveBands];
 		Target->BandVariance(Want);
-		FLongWaves W(1);
+		FLongWaves W(1, GLayout);
 		W.SetParams(Sea(15.0));
 		W.Advance(0);
 		double Reached[kWaveBands];
@@ -307,8 +322,9 @@ namespace Sailing
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::WindShift()
+	FLongWaveCheck LongWaveChecks::WindShift(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "WindShift", true, {} };
 		for (const double Shift : { 30.0, 90.0 })
 		{
@@ -338,7 +354,7 @@ namespace Sailing
 			}
 			const bool bSmooth = WorstExcess <= 0.0 && W->GetSyncMisses() == 0;
 			// The old direction's energy: the modes the new wind doesn't feed, 3 tau of the longest band after the shift.
-			FLongWaves Decay(2);
+			FLongWaves Decay(2, GLayout);
 			Decay.SetParams(Sea(15.0));
 			Decay.SnapToTarget();
 			Decay.Advance(0);
@@ -358,13 +374,14 @@ namespace Sailing
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::FrameRateFree()
+	FLongWaveCheck LongWaveChecks::FrameRateFree(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "FrameRateFree", true, {} };
 		FLongWaves::FKeyGrids Ref;
 		for (const int Fps : { 30, 60, 144 })
 		{
-			FLongWaves W(4);
+			FLongWaves W(4, GLayout);
 			W.SetParams(Sea(12.0));
 			bool bShifted = false;
 			for (int Frame = 0; Frame <= 30 * Fps; ++Frame)
@@ -383,8 +400,9 @@ namespace Sailing
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::Determinism()
+	FLongWaveCheck LongWaveChecks::Determinism(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "Determinism", true, {} };
 		const auto W = SnappedSea(20.0, 11, 4.0);
 		FLongWaves::FKeyGrids One;
@@ -398,7 +416,7 @@ namespace Sailing
 			R.Lines.push_back(Format("%d workers: %s", Count, bSame ? "equal to one worker's to the bit" : "FAIL: grids differ"));
 		}
 		// A restart: the sea run 5 minutes from the start, and one started at that world time.
-		FLongWaves A(11), B(11);
+		FLongWaves A(11, GLayout), B(11, GLayout);
 		A.SetDepth(4.0);
 		B.SetDepth(4.0);
 		A.SetParams(Sea(20.0));
@@ -417,8 +435,9 @@ namespace Sailing
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::LongClock()
+	FLongWaveCheck LongWaveChecks::LongClock(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "LongClock", true, {} };
 		const auto W = SnappedSea(20.0, 9);
 		const int64_t Key = 30000000; // 1e6 s: eleven and a half days
@@ -431,11 +450,12 @@ namespace Sailing
 			if (!G.bRunning[C]) continue;
 			for (int P = 0; P < 32; ++P)
 			{
-				const int I = Rng.UniformInt(0, FLongWaves::N - 1), J = Rng.UniformInt(0, FLongWaves::N - 1);
+				const int Size = W->GridSize(C);
+				const int I = Rng.UniformInt(0, Size - 1), J = Rng.UniformInt(0, Size - 1);
 				double X, Y, D[kLongFields];
 				W->NodePosition(C, I, J, X, Y);
 				W->DirectSum(C, X, Y, double(Key) / FLongWaves::KeyHz, D);
-				Worst = std::max(Worst, std::fabs(double(G.F[C][0][size_t(I) * FLongWaves::N + J]) - D[0]));
+				Worst = std::max(Worst, std::fabs(double(G.F[C][0][size_t(I) * Size + J]) - D[0]));
 			}
 		}
 		R.bPass = Worst < 0.001;
@@ -445,16 +465,23 @@ namespace Sailing
 
 	namespace
 	{
-		// docs/long-wave-fft/: 64 heights (m) of seed 1's 20 kn sea at t = 100 s, made on the Mac (M5 Pro, clang). The PC
+		// docs/long-wave-fft/: 64 heights (m) of seed 1's 20 kn sea at t = 100 s (the per-band layout), made on the Mac (M5 Pro, clang). The PC
 		// runs SailingSim.Physics.LongWaves.Golden in its next build: within 1e-5 m, not to the bit (libm's last ulp).
 		const double kGolden[64] = {
 #include "LongWaveGolden.inl"
 		};
 	}
 
-	FLongWaveCheck LongWaveChecks::Golden()
+	FLongWaveCheck LongWaveChecks::Golden(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "Golden", true, {} };
+		if (Layout != ELongWaveLayout::PerBand)
+		{
+			R.bPass = true;
+			R.Lines.push_back("the table is the per-band layout's (the game's): not compared");
+			return R;
+		}
 		const auto W = SnappedSea(20.0, 1);
 		W->Produce(3000);
 		W->Produce(3001);
@@ -473,8 +500,9 @@ namespace Sailing
 		return R;
 	}
 
-	FLongWaveCheck LongWaveChecks::NoWeave()
+	FLongWaveCheck LongWaveChecks::NoWeave(ELongWaveLayout Layout)
 	{
+		GLayout = Layout;
 		FLongWaveCheck R { "NoWeave", true, {} };
 		constexpr double Knots = 20.0;
 		constexpr int M = 256, P = 512;
@@ -513,14 +541,16 @@ namespace Sailing
 					if (Overlap > 0.0) Rho[size_t(I) * P + J] = A[size_t(I) * P + J].Re / (double(P) * P) / Overlap / Var;
 				}
 		};
+		const auto W = SnappedSea(Knots, 1);
 		// Tile lags: a cascade's lattice (its tile along its own axes), where its share of the sea repeats.
-		auto TileLagNear = [](double Lx, double Ly, int& OutCascade, double& OutDist)
+		auto TileLagNear = [&W](double Lx, double Ly, int& OutCascade, double& OutDist)
 		{
 			OutDist = 1e30;
 			OutCascade = -1;
-			for (int C = 0; C < 2; ++C)
+			for (int C = 0; C < W->NumCascades(); ++C)
 			{
-				const double Rot = kLongCascadeSpecs[C].RotationDeg * kDegToRad, Tile = kLongCascadeSpecs[C].Tile;
+				if (!W->IsRunning(C)) continue;
+				const double Rot = W->Spec(C).RotationDeg * kDegToRad, Tile = W->Spec(C).Tile;
 				const double U = (std::cos(Rot) * Lx + std::sin(Rot) * Ly) / Tile, V = (-std::sin(Rot) * Lx + std::cos(Rot) * Ly) / Tile;
 				const double Ru = std::round(U), Rv = std::round(V);
 				if (Ru == 0.0 && Rv == 0.0) continue;
@@ -546,25 +576,28 @@ namespace Sailing
 					if (D < 3.0) { OutTile = std::max(OutTile, V); continue; }
 					if (V > OutFree) { OutFree = V; OutFreeLag = L; }
 				}
-			// Each tile lattice point inside the window, with the correlation there.
-			for (int C = 0; C < 2; ++C)
+			// The highest correlation at each cascade's tile lattice points inside the window.
+			for (int C = 0; C < W->NumCascades(); ++C)
 			{
-				const double Rot = kLongCascadeSpecs[C].RotationDeg * kDegToRad, Tile = kLongCascadeSpecs[C].Tile;
-				for (int A = -2; A <= 2; ++A)
-					for (int B = -2; B <= 2; ++B)
+				if (!W->IsRunning(C)) continue;
+				const double Rot = W->Spec(C).RotationDeg * kDegToRad, Tile = W->Spec(C).Tile;
+				double Best = -1.0, BestLx = 0.0, BestLy = 0.0;
+				for (int A = -3; A <= 3; ++A)
+					for (int B = -3; B <= 3; ++B)
 					{
 						if (A == 0 && B == 0) continue;
 						const double Lx = (std::cos(Rot) * A - std::sin(Rot) * B) * Tile, Ly = (std::sin(Rot) * A + std::cos(Rot) * B) * Tile;
 						if (Lx < 0.0 || std::hypot(Lx, Ly) > Rmax) continue;
 						const int Li = int(std::lround(Lx / Step)), Lj = int(std::lround(Ly / Step));
-						Tiles.push_back({ Rho[size_t(Li) * P + size_t((Lj + P) % P)], Format("%s (%+.0f, %+.0f) m: %.2f", kLongCascadeSpecs[C].Name, Lx, Ly, Rho[size_t(Li) * P + size_t((Lj + P) % P)]) });
+						const double V = Rho[size_t(Li) * P + size_t((Lj + P) % P)];
+						if (V > Best) { Best = V; BestLx = Lx; BestLy = Ly; }
 					}
+				if (Best > -1.0) Tiles.push_back({ Best, Format("%s (%+.0f, %+.0f) m: %.2f", W->Spec(C).Name, BestLx, BestLy, Best) });
 			}
 			OutTileList.clear();
 			for (const auto& T : Tiles) OutTileList += (OutTileList.empty() ? "" : "; ") + T.second;
 		};
 
-		const auto W = SnappedSea(Knots, 1);
 		W->Produce(3000);
 		W->Produce(3001);
 		std::vector<double> Rho;
@@ -594,8 +627,8 @@ namespace Sailing
 		return R;
 	}
 
-	std::vector<FLongWaveCheck> LongWaveChecks::RunAll()
+	std::vector<FLongWaveCheck> LongWaveChecks::RunAll(ELongWaveLayout L)
 	{
-		return { Spectrum(), MatchesDirectSum(), TimeBlend(), Spreading(), Growth(), WindShift(), FrameRateFree(), Determinism(), LongClock(), Golden(), NoWeave() };
+		return { Spectrum(L), MatchesDirectSum(L), TimeBlend(L), Spreading(L), Growth(L), WindShift(L), FrameRateFree(L), Determinism(L), LongClock(L), Golden(L), NoWeave(L) };
 	}
 }

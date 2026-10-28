@@ -74,16 +74,18 @@ static void Timings()
 		}
 		std::printf("kernel %d^2 complex 2D inverse: median %.3f ms, p99 %.3f ms\n", Size, Median(Ms), Percentile(Ms, 0.99));
 	}
+	for (const ELongWaveLayout Layout : { ELongWaveLayout::Ranges, ELongWaveLayout::PerBand })
 	for (const double Kn : { 10.0, 20.0, 28.0 })
 	{
-		FLongWaves W(1);
+		FLongWaves W(1, Layout);
 		FLongWaveParams P;
 		P.WindMs = Kn * kKnot;
 		P.FetchMeters = 15000.0;
 		W.SetParams(P);
 		W.SnapToTarget();
 		int Running = 0, Modes = 0;
-		for (int C = 0; C < kLongCascades; ++C) if (W.IsRunning(C)) { ++Running; Modes += W.ModeCount(C); }
+		for (int C = 0; C < W.NumCascades(); ++C) if (W.IsRunning(C)) { ++Running; Modes += W.ModeCount(C); }
+		std::printf("%s layout:\n", Layout == ELongWaveLayout::Ranges ? "ranges (L1, L2)" : "per band");
 		for (const int Threads : { 1, 4 })
 		{
 			const FLongWaves::FParallelFor Par = Threads > 1 ? Workers(Threads) : nullptr;
@@ -172,7 +174,7 @@ static std::vector<std::string> SplitCsv(const std::string& Line)
 	return F;
 }
 
-static bool SeaMapSwan(const char* PointsCsv)
+static bool SeaMapSwan(const char* PointsCsv, ELongWaveLayout Layout)
 {
 	FLakeTerrain T;
 	const std::vector<uint8_t> H = ReadFile("Content/TerrainData/RayHubbard.height");
@@ -213,7 +215,7 @@ static bool SeaMapSwan(const char* PointsCsv)
 		S.Map->Build(Fetch, S.Sines->GetComponents(), Kn * kKnot, FromDeg * kDegToRad + kPi);
 		S.Sines->SetSeaMap(S.Map);
 		S.Sines->SnapToTarget();
-		S.Long = std::make_unique<FLongWaves>(1);
+		S.Long = std::make_unique<FLongWaves>(1, Layout);
 		S.Long->SetDepth(Fetch.GetMedianDepth());
 		FLongWaveParams L;
 		L.WindMs = Kn * kKnot;
@@ -329,7 +331,7 @@ static bool SeaMapSwan(const char* PointsCsv)
 	for (int G = 0; G < kGroupings; ++G)
 		std::printf("  bands grouped %s: Hs %.3f, Tp |log| %.3f, bias %+.1f%%\n", kGroupName[G], Median(GHs[G]), Median(GTpAbs[G]), 100.0 * (std::exp(Median(GTp[G])) - 1.0));
 	const bool bPass = !ErrFft.empty() && Median(ErrFft) <= 0.10 && std::fabs(std::exp(Median(TBiasFft)) - 1.0) <= 0.05;
-	std::printf("\nSeaMapSwan: %zu cases against SWAN's points (Artifacts/long-wave-sea-map.csv)\n", ErrFft.size());
+	std::printf("\nSeaMapSwan, %s layout: %zu cases against SWAN's points (Artifacts/long-wave-sea-map.csv)\n", Layout == ELongWaveLayout::Ranges ? "ranges" : "per band", ErrFft.size());
 	std::printf("  median |log Hs error|: a channel per sine (today) %.3f, a channel per cascade %.3f (limit 0.10)\n", Median(ErrMap), Median(ErrFft));
 	std::printf("  Tp: median |log error| today %.3f, per cascade %.3f; median bias today %+.1f%%, per cascade %+.1f%% (limit 5%%)\n",
 		Median(TErrMap), Median(TErrFft), 100.0 * (std::exp(Median(TBiasMap)) - 1.0), 100.0 * (std::exp(Median(TBiasFft)) - 1.0));
@@ -341,14 +343,20 @@ int main(int Argc, char** Argv)
 {
 	bool bAll = true;
 	const double T0 = Now();
-	for (const FLongWaveCheck& C : LongWaveChecks::RunAll())
+	for (const ELongWaveLayout Layout : { ELongWaveLayout::PerBand, ELongWaveLayout::Ranges })
+	for (const FLongWaveCheck& C : LongWaveChecks::RunAll(Layout))
 	{
+		if (C.Name == "Spectrum") std::printf("--- %s layout\n", Layout == ELongWaveLayout::Ranges ? "ranges (the brief's L1, L2, L3)" : "per band (the game's)");
 		std::printf("%s  %s\n", C.bPass ? "pass" : "FAIL", C.Name.c_str());
 		for (const std::string& L : C.Lines) std::printf("      %s\n", L.c_str());
 		bAll &= C.bPass;
 	}
 	std::printf("checks took %.1f s\n", (Now() - T0) / 1000.0);
 	Timings();
-	if (Argc >= 3 && std::string(Argv[1]) == "--swan") bAll &= SeaMapSwan(Argv[2]);
+	if (Argc >= 3 && std::string(Argv[1]) == "--swan")
+	{
+		SeaMapSwan(Argv[2], ELongWaveLayout::Ranges);
+		bAll &= SeaMapSwan(Argv[2], ELongWaveLayout::PerBand);
+	}
 	return bAll ? 0 : 1;
 }
