@@ -102,9 +102,14 @@ namespace Sailing
 		 * wave period, for her to be on a back (the waves' slope push along her bow against her: going uphill, SeaTrials'
 		 * bins) with way on (forward speed at least TackSpeedShare of her upwind speed, the last 20 s's mean close-hauled),
 		 * and holds the old tack's angle meanwhile. On flat water and in lake chop she tacks at once, as before.
+		 * docs/maxi-tack-timing/: way on is her upwind speed or more (TackSpeedShare 1.1: over 48 gale tacks the speed at
+		 * the call decided whether she kept 40% of it through the wind, the sea's height in the turn did not), and while
+		 * she waits she foots TackFootDeg off the old tack's angle for it. Once started, the tack is held through a face
+		 * that knocks her back across the wind.
 		 */
 		bool bTimeTacks = true;
-		double TackSpeedShare = 0.7;
+		double TackSpeedShare = 1.1;
+		double TackFootDeg = 10.0;
 		/**
 		 * docs/hobie-run/: the run guard. With the wind field given, a target deeper than 180 - margin is held at it: the
 		 * margin is ByTheLeeMarginDeg, plus ByTheLeePerGust per unit of the gustiness where she is (GustIntensity and the
@@ -136,6 +141,7 @@ namespace Sailing
 		// The helm's own sense of the boat (Update is called every step): her upwind speed, and a tack she is waiting to start.
 		mutable double UpwindSpeed = -1.0, LastTime = -1.0, TackAskedAt = -1.0;
 		mutable bool bTackGo = false;
+		mutable double TackOrderSide = 0.0; // the side the target was on when the wait (or the tack) began
 		// The run guard: the side the target was on last step, and a gybe she was told to make (until she is round).
 		mutable double LastTargetSide = 0.0;
 		mutable bool bGybeOrdered = false;
