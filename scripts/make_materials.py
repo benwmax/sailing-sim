@@ -777,6 +777,9 @@ float h1 = frac(sin(dot(float2(Seed * 91.7, n), float2(127.1, 311.7))) * 43758.5
 float h2 = frac(sin(dot(float2(Seed * 37.3, n + 3.1), float2(127.1, 311.7))) * 43758.5453);
 float h3 = frac(sin(dot(float2(Seed * 53.9, n + 7.7), float2(127.1, 311.7))) * 43758.5453);
 float3 P = Pivot + float3((h2 - 0.5) * 1200.0, (h3 - 0.5) * 1200.0, Lift - 45.0);   // (the pivot stands 45 cm up: AWaterSurface::UpdateFarCaps)
+// Storm water step 1: it drifts downwind at 2 m/s through its life with the waves (MPC_World.Wind: the way it blows), as
+// M_WaterV4's flecks do.
+P.xy += WindDir.xy * (age * 800.0);
 float3 toCam = Cam - P;
 float dist = max(length(toCam.xy) / 100.0, 1.0);
 float w = smoothstep(300.0, 400.0, dist) * (1.0 - smoothstep(1100.0, 1250.0, dist)) * (1.0 - smoothstep(0.05, 0.14, (toCam.z / 100.0) / dist));
@@ -785,7 +788,9 @@ w = max(w, DebugAll);
 float Prob = (n - Seed * 7.13) * 4.0 < SwitchT ? (Born > 0.5 ? 0.0 : ProbA) : ProbB;
 Live = step(h1, max(Prob, DebugAll)) * w * saturate(1.6 * sin(3.14159265 * age));
 float2 side = normalize(float2(-toCam.y, toCam.x) + float2(1e-4, 0.0));
-float width = Size * 150.0 * (0.8 + 0.4 * h2), height = Size * CapH * 100.0 * (0.8 + 0.4 * h3);   // (Size: fewer, bigger caps past the slot budget)
+// (Storm water step 1: 1.45 times as wide, so the ragged top below, which keeps two thirds of the old outline, carries the
+// same cover.)
+float width = Size * 217.5 * (0.8 + 0.4 * h2), height = Size * CapH * 100.0 * (0.8 + 0.4 * h3);   // (Size: fewer, bigger caps past the slot budget)
 float k = Live > 1e-3 ? 1.0 : 0.0;
 float3 v = P + k * (float3(side * (Local.x / 100.0) * width, 0.0) + float3(0.0, 0.0, (Local.y / 100.0 + 0.5) * height));
 return v - WP;
@@ -816,6 +821,10 @@ def build_far_cap():
               "Born": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1600, 400, data_index=1), "CapH": scalar(mat, "CapH", 0.3, -1400, 600),
               "Lift": scalar(mat, "Lift", 0.0, -1600, 650), "DebugAll": scalar(mat, "DebugAll", 0.0, -1600, 750), "Size": scalar(mat, "Size", 1.0, -1600, 850),
               "Time": node(mat, unreal.MaterialExpressionTime, -1400, 700)}
+    wind = node(mat, unreal.MaterialExpressionCollectionParameter, -1600, 950)   # Storm water step 1: the caps drift with it
+    wind.set_editor_property("collection", world_collection())
+    wind.set_editor_property("parameter_name", "Wind")
+    inputs["WindDir"] = wind
     c = custom(mat, FAR_CAP_CODE, list(inputs.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -900, 200,
                extra_outputs=(("Live", unreal.CustomMaterialOutputType.CMOT_FLOAT1),))
     for name, n in inputs.items():
@@ -824,12 +833,23 @@ def build_far_cap():
     vi = node(mat, unreal.MaterialExpressionVertexInterpolator, -600, 400)
     connect(c, "Live", vi, "")
     uv = node(mat, unreal.MaterialExpressionTextureCoordinate, -600, 550)
+    # Storm water step 1: a breaking crest seen from the side is a ragged line of tumbling heaps, not a smooth oval (a band
+    # of smooth ovals read as floes): seven heaps along it, each its own height (0.35-1 of the cap's, mean 0.675).
     shape = custom(mat, """// A cap seen from the side: densest low in the middle, thinning out to its ends and up into its spray.
 float x = 2.0 * UV.x - 1.0, y = 2.0 * UV.y - 1.0;
-return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - y * y)) * 0.9;""", ["UV", "Live"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 450)
+float hk = 0.35 + 0.65 * frac(sin(floor(UV.x * 7.0) * 91.7 + Seed * 13.1) * 4375.5);
+return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - (y / hk) * (y / hk))) * 0.9;""", ["UV", "Live", "Seed"], unreal.CustomMaterialOutputType.CMOT_FLOAT1, -300, 450)
     connect(uv, "", shape, "UV")
     connect(vi, "", shape, "Live")
-    color = node(mat, unreal.MaterialExpressionConstant3Vector, -300, 0, constant=unreal.LinearColor(0.85, 0.88, 0.9, 1))
+    connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 650, data_index=0), "", shape, "Seed")
+    # Storm water step 1: each cap its own brightness (0.55-1, a hash of its seed and life, as M_WaterV4's flecks), dimming
+    # as it ages through its life (to 60% at the end): one even white across a band of caps read as floes of ice. The cover
+    # (the dither) is untouched: AWaterSurface's tiles still carry Monahan's.
+    color = custom(mat, """float ep = Time / 4.0 + Seed * 7.13;
+float br = 0.55 + 0.45 * frac(sin(dot(float2(Seed * 17.9, floor(ep) + 5.3), float2(127.1, 311.7))) * 43758.5453);
+return float3(0.85, 0.88, 0.9) * br * (1.0 - 0.4 * frac(ep));""", ["Seed", "Time"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 0)
+    connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, -50, data_index=0), "", color, "Seed")
+    connect(node(mat, unreal.MaterialExpressionTime, -600, -120), "", color, "Time")
     rough = node(mat, unreal.MaterialExpressionConstant, -300, 150, r=0.6)
     MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
@@ -2513,6 +2533,11 @@ if (DetailP.w > 0.0)
     slopeVar += (rvar + cvar * capW) * calm * calm;
 }
 float far = saturate((dist - 0.5 * DetailP.z) / (2.0 * DetailP.z));
+// Storm water step 1: past the mesh's fade (WaveFadeMeters) the long waves' slopes are gone from the normal, and the far
+// water was a flat mirror under the far caps. Their slope variance stays as roughness instead (LEAN, as the chop's and the
+// ripples' mips do): about a third of Cox and Munk's mean square slope for the sea's mean wind (the gravity waves the mesh
+// draws near), faded in as the mesh's waves fade out.
+slopeVar += (1.0 - fade) * 0.35 * (0.003 + 0.00512 * WindP.z) * calm;
 // The boats' own waves: slopes by finite differences, and their foam.
 float2 wg = (p.xy - WakeGridRect.xy) / WakeGridRect.z;
 float wakeFoam = 0.0;
@@ -2689,13 +2714,19 @@ float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) :
     * lerp(lerp(0.4, 1.0, smoothstep(0.15, 0.75, cells)), 0.6, patFade);
 // docs/far-flecks/ (option A of docs/far-caps/): far out the table's cover is the sea's share under foam, a fraction of a
 // percent spread evenly over each pixel, which no one can see. Real distant caps are bright flecks on dark water. So the
-// cover is redistributed into flecks, never added to: world-fixed cells (map frame, so they hold still as the camera
-// moves) five footprints across (the footprint's geometric mean, so a grazing view gets short horizontal dashes; a fleck
-// about three pixels: smaller ones, dimmed by their feather and the temporal AA, didn't read), stepping by twos with the footprint and cross-faded between two levels. Each cell holds one round
-// fleck (radius 0.3 of the cell, its edge feathered over at most a radius, which adds aa^2/12 to its area: share
-// 0.283 (1 + aa^2/12); centred within the middle tenth so the feather stays in its cell) for a 4 s life (a flat-topped
-// rise and fall, 1.6 sin clamped at 1: mean 0.7937), with the probability that makes the mean the cover. Keep FarCapFleck (WaterTests.cpp) in step:
-// SailingSim.Visual.FarCapFlecks holds the mean to the cover.
+// cover is redistributed into flecks, never added to: cells five footprints across (the footprint's geometric mean; a
+// fleck about three pixels: smaller ones, dimmed by their feather and the temporal AA, didn't read), stepping by twos
+// with the footprint and cross-faded between two levels.
+// Storm water step 1 (docs/storm-water/far-water/; Bean's playtest: "in the distance the whitecaps start to look like ice
+// floating on the water"): the round, world-fixed flecks of one brightness read as floes. Now the cells are laid in the
+// wind's frame (across it, along the crests; and downwind) and drift downwind at 2 m/s with the waves, and each holds a
+// dash along the crest (half-lengths 0.42 by 0.09 of the cell, edge feathered over at most its half-width: area 0.11875
+// (1 + aa^2/12)) with a soft streak downwind of it (an elliptic cone at 0.35, offset 0.16, half-axes 0.28 by 0.16: 0.01422
+// more where it shows past the dash), at its own brightness (0.5-1, mean 0.75), for a 4 s life that flares and then fades
+// (min(1, 8 age) (1 - age)^1.5: mean 0.3413). Where the long waves are drawn the caps gather on their crests (the fold J
+// under 1) and thin in the troughs (1 + clamp(4 (1 - J), -0.9, 0.9): its mean over a wave is 1, as J's is). The
+// probability makes the mean the cover. Keep FarCapFleck (WaterTests.cpp) in step: SailingSim.Visual.FarCapFlecks holds
+// the mean to the cover.
 float fleck = 0.0;
 [branch] if (useTable > 0.0)
 {
@@ -2703,16 +2734,20 @@ float fleck = 0.0;
     float fG = sqrt(fS * fL);
     float kLev = max(log2(max(5.0 * fG, 2.0) / 2.0), 0.0);
     float kF = floor(kLev), kW = kLev - kF;
-    float fcov = crest;
+    float fcov = crest * (1.0 + clamp(4.0 * (1.0 - J), -0.9, 0.9));
+    float2 wq = float2(dot(p.xy, wn), dot(p.xy, wd) - 2.0 * T);
     #define FLK_H(c_) frac(sin(dot(fmod(c_, 289.0), float2(127.1, 311.7))) * 43758.5453)
-    #define FLK(s_, out_) { float2 q_ = p.xy / (s_); float2 id_ = floor(q_); float2 f_ = q_ - id_; \
+    #define FLK(s_, out_) { float2 q_ = wq / (s_); float2 id_ = floor(q_); float2 f_ = q_ - id_; \
         float ep_ = T / 4.0 + FLK_H(id_ + 7.3); float age_ = frac(ep_); float n_ = floor(ep_); \
         float h_ = FLK_H(id_ + float2(n_ * 3.17, n_ * 1.93)); \
         float2 c_ = 0.45 + 0.1 * float2(FLK_H(id_ + n_ + 2.1), FLK_H(id_ + n_ + 5.9)); \
-        float aa_ = clamp(fG / ((s_) * 0.3), 1e-3, 1.0); float ar_ = 0.2827 * (1.0 + aa_ * aa_ / 12.0); \
-        float pr_ = saturate(fcov / (ar_ * 0.7937)); float g_ = fcov / max(pr_ * ar_ * 0.7937, 1e-6); \
-        float d_ = length(f_ - c_) / 0.3; \
-        out_ = saturate(step(h_, pr_) * saturate((1.0 - d_) / aa_ + 0.5) * saturate(1.6 * sin(3.14159265 * age_)) * g_); }
+        float aa_ = clamp(fG / ((s_) * 0.09), 1e-3, 1.0); float ar_ = 0.11875 * (1.0 + aa_ * aa_ / 12.0) + 0.01422; \
+        float br_ = 0.5 + 0.5 * FLK_H(id_ + n_ + 9.7); \
+        float pr_ = saturate(fcov / (ar_ * 0.3413 * 0.75)); float g_ = fcov / max(pr_ * ar_ * 0.3413 * 0.75, 1e-6); \
+        float dash_ = saturate((1.0 - length((f_ - c_) / float2(0.42, 0.09))) / aa_ + 0.5); \
+        float tail_ = 0.35 * saturate(1.0 - length((f_ - c_ - float2(0.0, 0.16)) / float2(0.28, 0.16))); \
+        float life_ = saturate(8.0 * age_) * pow(1.0 - age_, 1.5); \
+        out_ = saturate(step(h_, pr_) * max(dash_, tail_) * life_ * br_ * g_); }
     float fl0 = 0.0, fl1 = 0.0;
     FLK(2.0 * exp2(kF), fl0);
     FLK(4.0 * exp2(kF), fl1);
@@ -2835,6 +2870,10 @@ float3 vdir = normalize(cam - p);
 float inc = acos(saturate(vdir.z));
 Spec = 0.5 * (1.0 - 0.8 * Polarized * exp(-pow((inc - 0.93) / 0.42, 2.0)));
 Spec *= 1.0 - HULL_NEAR_SPEC * hullNear;
+// Storm water step 1: seen at a grazing angle the sea reflects most of the sky, so foam stands out less against it: the
+// foam's opacity falls with Schlick's Fresnel for the flat sea at this view (to 45% at the horizon), and the haze then
+// lies over both alike. Up close and from above nothing changes.
+Foam *= 1.0 - 0.55 * pow(1.0 - saturate(vdir.z), 5.0);
 OceanShare = om;
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 // W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
