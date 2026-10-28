@@ -1,5 +1,6 @@
 #include "GalleryStage.h"
 #include "FreeCamera.h"
+#include "SailboatPawn.h"
 #include "SailingFrame.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
@@ -149,6 +150,8 @@ void AGalleryStage::Close()
 	Shown.Reset();
 	if (Camera) Camera->Destroy();
 	Camera = nullptr;
+	if (BoatDisplay) BoatDisplay->Destroy();
+	BoatDisplay = nullptr;
 	CompareStep = 0;
 }
 
@@ -178,11 +181,11 @@ void AGalleryStage::Show(const FGalleryItem& InItem)
 	PanCm = FVector2D::ZeroVector;
 	if (Item.BoatType >= 0)
 	{
-		// Whole boats are G3 (an ABoatDisplay with the pawn's visual assembly); the list has them already.
 		Display->SetStaticMesh(nullptr);
-		UE_LOG(LogSailing, Display, TEXT("Gallery: %s is a whole boat (shown from G3: the showroom has her meanwhile)"), *Item.Name);
+		ShowBoat();
 		return;
 	}
+	if (BoatDisplay) { BoatDisplay->Destroy(); BoatDisplay = nullptr; }
 	TArray<FSoftObjectPath> Paths = { Item.Mesh };
 	if (Item.Light.IsValid()) Paths.Add(Item.Light);
 	if (Item.Far.IsValid()) Paths.Add(Item.Far);
@@ -213,8 +216,70 @@ UStaticMesh* AGalleryStage::MeshForDetail() const
 	return Base;
 }
 
+bool AGalleryStage::IsBoatShown() const
+{
+	return Item.BoatType >= 0 && BoatDisplay != nullptr;
+}
+
+void AGalleryStage::ShowBoat()
+{
+	// G3 (Inputs/gallery/brief.md section 7): the boat whole, as the player's: a traffic-mode pawn (the ghost's path, so the
+	// hull, rig, sails, crew and livery are the same assembly) that nothing steps, posed still on the turntable.
+	const double Start = FPlatformTime::Seconds();
+	if (BoatDisplay && BoatDisplay->GetBoatTypeIndex() != Item.BoatType) { BoatDisplay->Destroy(); BoatDisplay = nullptr; }
+	if (!BoatDisplay)
+	{
+		const FTransform At(GetActorRotation(), GetActorLocation());
+		BoatDisplay = GetWorld()->SpawnActorDeferred<ASailboatPawn>(ASailboatPawn::StaticClass(), At, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+		if (!BoatDisplay) return;
+		BoatDisplay->bTrafficBoat = true;
+		BoatDisplay->bGalleryDisplay = true; // the player's models (the hero J/22), not the AI boats' lighter ones
+		BoatDisplay->AutoPossessPlayer = EAutoReceiveInput::Disabled;
+		BoatDisplay->AutoPossessAI = EAutoPossessAI::Disabled;
+		BoatDisplay->FinishSpawning(At);
+		BoatDisplay->InitTraffic(Item.BoatType, 0.0, 0.0, 0.0);
+	}
+	ApplyMesh();
+	ApplyFraming(false);
+	const FGalleryStats S = GetStats();
+	UE_LOG(LogSailing, Display, TEXT("Gallery show %s (whole boat): built in %.0f ms; %d triangles in %d parts, %.2f x %.2f x %.2f m"), *Item.Name,
+		(FPlatformTime::Seconds() - Start) * 1000.0, S.Triangles, S.Lods, S.SizeM.X, S.SizeM.Y, S.SizeM.Z);
+}
+
+void AGalleryStage::PoseBoat()
+{
+	if (!BoatDisplay) return;
+	// In the studio her keel stands on the floor (her waterline her draft above it); on the lake she floats.
+	const bool bStudio = LightPreset == EGalleryLight::Studio;
+	const FVector Map = SailingFrame::ToMapCm(GetWorld(), GetActorLocation()) / 100.0;
+	const double Draft = BoatDisplay->GetBoatModel().GetConfig().Draft;
+	BoatDisplay->PoseForDisplay(Map.X, Map.Y, bStudio ? Map.Z + Draft : 0.0, FMath::DegreesToRadians(GetActorRotation().Yaw));
+	TInlineComponentArray<UPrimitiveComponent*> Parts(BoatDisplay.Get());
+	for (UPrimitiveComponent* P : Parts) P->SetLightingChannels(!bStudio, bStudio, false);
+}
+
+FBoxSphereBounds AGalleryStage::SubjectBounds() const
+{
+	if (IsBoatShown())
+	{
+		// The boat's own parts (not her camera boom or the cloth's invisible helpers): her static and procedural meshes.
+		FBox Box(ForceInit);
+		TInlineComponentArray<UMeshComponent*> Parts(BoatDisplay.Get());
+		for (const UMeshComponent* P : Parts) if (P->IsVisible() && P->IsRegistered()) Box += P->Bounds.GetBox();
+		if (Box.IsValid) return FBoxSphereBounds(Box);
+	}
+	return Display->Bounds;
+}
+
 void AGalleryStage::ApplyMesh()
 {
+	if (Item.BoatType >= 0)
+	{
+		PoseBoat();
+		ApplyView();
+		if (LightPreset == EGalleryLight::Studio) BuildCyclorama(FMath::Max(1500.f, float(SubjectBounds().SphereRadius) * 3.f));
+		return;
+	}
 	UStaticMesh* Mesh = MeshForDetail();
 	Display->SetStaticMesh(Mesh);
 	if (!Mesh) return;
@@ -242,6 +307,13 @@ void AGalleryStage::EnsureMaterials()
 void AGalleryStage::ApplyView()
 {
 	EnsureMaterials();
+	if (IsBoatShown())
+	{
+		// A whole boat's wire views are an overlay (her parts keep their liveries: overriding them would lose those).
+		TInlineComponentArray<UMeshComponent*> Parts(BoatDisplay.Get());
+		for (UMeshComponent* P : Parts) P->SetOverlayMaterial(ViewMode != EGalleryView::Lit ? WireMaterial.Get() : nullptr);
+		return;
+	}
 	Display->EmptyOverrideMaterials();
 	Display->SetOverlayMaterial(nullptr);
 	if (!WireMaterial || ViewMode == EGalleryView::Lit) return;
@@ -271,6 +343,25 @@ void AGalleryStage::SetDetail(EGalleryDetail Detail, int32 Lod)
 FGalleryStats AGalleryStage::GetStats() const
 {
 	FGalleryStats S;
+	if (IsBoatShown())
+	{
+		// A whole boat: her parts' triangles (Nanite's input, or LOD 0), their count (shown as LODs' place) and materials.
+		S.Path = FString::Printf(TEXT("Boat %s (%d)"), *Item.Name, Item.BoatType);
+		TInlineComponentArray<UStaticMeshComponent*> Parts(BoatDisplay.Get());
+		for (const UStaticMeshComponent* P : Parts)
+		{
+			const UStaticMesh* M = P->GetStaticMesh();
+			const FStaticMeshRenderData* R = M ? M->GetRenderData() : nullptr;
+			if (!R || !P->IsVisible()) continue;
+			++S.Lods;
+			S.Materials += M->GetStaticMaterials().Num();
+			if (M->HasValidNaniteData() && R->HasValidNaniteData()) { S.Triangles += int32(R->NaniteResourcesPtr->NumInputTriangles); S.bNanite = true; }
+			else if (R->LODResources.Num() > 0) S.Triangles += R->LODResources[0].GetNumTriangles();
+		}
+		S.SizeM = SubjectBounds().BoxExtent * 2.0 / 100.0;
+		if (const IConsoleVariable* SP = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))) S.ScreenPercentage = SP->GetFloat();
+		return S;
+	}
 	const UStaticMesh* Mesh = Display->GetStaticMesh();
 	if (!Mesh) return S;
 	S.Path = Mesh->GetPathName();
@@ -291,7 +382,7 @@ FGalleryStats AGalleryStage::GetStats() const
 void AGalleryStage::ApplyFraming(bool bKeepAngle)
 {
 	if (!Camera) return;
-	const FBoxSphereBounds B = Display->Bounds;
+	const FBoxSphereBounds B = SubjectBounds();
 	const float R = FMath::Max(float(B.SphereRadius), 2.f);
 	Camera->SetAnchor(this, B.Origin - GetActorLocation());
 	const float VFov = FMath::RadiansToDegrees(2.f * FMath::Atan(FMath::Tan(FMath::DegreesToRadians(kCameraFovDeg * 0.5f)) * 1080.f / 1440.f));
@@ -351,7 +442,7 @@ void AGalleryStage::Zoom(float Steps)
 
 void AGalleryStage::Pan(const FVector2D& DeltaCm)
 {
-	const float R = FMath::Max(float(Display->Bounds.SphereRadius), 2.f);
+	const float R = FMath::Max(float(SubjectBounds().SphereRadius), 2.f);
 	PanCm.X = FMath::Clamp(PanCm.X + DeltaCm.X, -R, R);
 	PanCm.Y = FMath::Clamp(PanCm.Y + DeltaCm.Y, -R, R);
 	ApplyFraming(true);

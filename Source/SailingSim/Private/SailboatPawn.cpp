@@ -1391,6 +1391,16 @@ Sailing::FBoatModel* ASailboatPawn::InitTraffic(int32 Type, double X, double Y, 
 	return &Boat;
 }
 
+void ASailboatPawn::PoseForDisplay(double X, double Y, double Z, double HeadingRad)
+{
+	const double Time = Boat.GetState().Time;
+	Boat.Reset(X, Y, HeadingRad, 0.0);
+	Boat.GetMutableState().Time = Time;
+	Boat.GetMutableState().Velocity = Vec3();
+	Boat.GetMutableState().Position.Z += Z - Boat.OriginPosition().Z;
+	ApplyStateToTransform();
+}
+
 void ASailboatPawn::SetHorn(float Level, float Hz)
 {
 	if (!Synth) return;
