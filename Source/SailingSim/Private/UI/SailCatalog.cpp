@@ -212,6 +212,8 @@ namespace SailCatalog
 					if (Vmg > BestVmg) { BestVmg = Vmg; Speed = Pt.BoatSpeedKnots; }
 				}
 				B.CloseHauled = Speed > 0.0 ? FString::Printf(TEXT("%.1f kn"), Speed * 12.0 / BestTws) : FString(TEXT("–"));
+				B.LengthM = float(C.LengthOverall); B.BeamM = float(C.Beam); B.WeightKg = float(C.HullRigMass + C.BallastMass);
+				B.CloseHauledKn = float(Speed * 12.0 / BestTws);
 				Out.Add(B);
 			}
 			return Out;

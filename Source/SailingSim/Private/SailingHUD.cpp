@@ -186,6 +186,17 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	const FString Token = Session->UIScript[0];
 	Session->UIScript.RemoveAt(0);
 	if (Token == TEXT("Wait")) { NextScriptKey += 2.0; return; }
+#if !UE_BUILD_SHIPPING
+	// docs/showroom/pc/: Cmd:<console command>, '+' for spaces (the showroom's memreport after cycling the fleet). Not in
+	// Shipping, where the release smoke's script is allowed but a console command is nothing a player can do.
+	if (Token.StartsWith(TEXT("Cmd:")))
+	{
+		const FString Cmd = Token.Mid(4).Replace(TEXT("+"), TEXT(" "));
+		UE_LOG(LogSailing, Display, TEXT("UI script: %s"), *Cmd);
+		if (GEngine) GEngine->Exec(GetWorld(), *Cmd);
+		return;
+	}
+#endif
 	if (Token == TEXT("Quit"))
 	{
 		// The save check's launches end themselves (no simulated input on the build Mac).

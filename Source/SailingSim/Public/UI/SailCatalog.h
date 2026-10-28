@@ -40,6 +40,7 @@ namespace SailCatalog
 		FString Name, TypeLine, Description;
 		TArray<FString> Flags;
 		FString Length, Beam, Draft, Weight, CloseHauled;
+		float LengthM = 0.f, BeamM = 0.f, WeightKg = 0.f, CloseHauledKn = 0.f;   // the same as numbers (the showroom's bars)
 		int32 Handling = 3;        // 1 easy .. 5 demanding (a designer rating)
 		bool bDinghy = false, bMultihull = false;
 		float ReefKn = 18.f, ComfortKn = 12.f;   // the "what to expect" bands

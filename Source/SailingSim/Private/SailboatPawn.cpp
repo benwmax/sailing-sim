@@ -2082,7 +2082,7 @@ void ASailboatPawn::ApplyShowroomFraming(bool bKeepYaw)
 		O.MinPitchDeg = -35.f;
 		O.MaxPitchDeg = -3.f;
 		O.YawDeg = Heading + 135.f + 180.f; // the camera on her starboard quarter, looking at her
-		O.SpinDegPerSec = 6.f;
+		O.SpinDegPerSec = bShowroomSpin ? 6.f : 0.f;
 		O.SpinIdleSeconds = 4.f;
 	}
 	else
@@ -2100,6 +2100,42 @@ void ASailboatPawn::ApplyShowroomFraming(bool bKeepYaw)
 	}
 	if (bKeepYaw && FreeCam->GetMode() == EFreeCameraMode::Orbit) O.YawDeg = float(FreeCam->GetActorRotation().Yaw);
 	FreeCam->SetOrbit(O);
+}
+
+void ASailboatPawn::ShowroomLook(const FVector2D& DeltaDeg)
+{
+	if (FreeCam && ShowroomStage != EShowroomStage::None && FreeCam->GetMode() == EFreeCameraMode::Orbit) FreeCam->AddLook(DeltaDeg);
+}
+
+void ASailboatPawn::ShowroomZoom(int32 Notches)
+{
+	if (FreeCam && ShowroomStage != EShowroomStage::None && FreeCam->GetMode() == EFreeCameraMode::Orbit) FreeCam->StepSpeed(Notches);
+}
+
+void ASailboatPawn::ShowroomResetView()
+{
+	ApplyShowroomFraming(false);
+}
+
+void ASailboatPawn::SetShowroomAutoSpin(bool bOn)
+{
+	bShowroomSpin = bOn;
+	if (!FreeCam || ShowroomStage != EShowroomStage::Boat || FreeCam->GetMode() != EFreeCameraMode::Orbit) return;
+	// Only the spin changes: the camera keeps the yaw, pitch and distance it has now (SetOrbit eases to what it is given).
+	FFreeCameraOrbit O = FreeCam->GetOrbit();
+	O.SpinDegPerSec = bOn ? 6.f : 0.f;
+	const FRotator R = FreeCam->GetActorRotation();
+	O.YawDeg = float(R.Yaw);
+	O.PitchDeg = float(R.Pitch);
+	O.DistanceCm = float(FVector::Distance(FreeCam->GetActorLocation(), FreeCam->GetPivot()));
+	FreeCam->SetOrbit(O);
+}
+
+float ASailboatPawn::GetShowroomViewBearing() const
+{
+	if (!FreeCam || ShowroomStage == EShowroomStage::None) return 0.f;
+	// The camera looks at her along its yaw, so it stands on the opposite bearing.
+	return FMath::UnwindDegrees(float(FreeCam->GetActorRotation().Yaw) + 180.f - float(GetActorRotation().Yaw));
 }
 
 void ASailboatPawn::ShowBoat(int32 Type)
@@ -2139,6 +2175,7 @@ void ASailboatPawn::FinishShowroomSwap()
 	// The shown boat's meshes stay resident; the one before is let go.
 	ShowroomResident = ShowroomLoad;
 	ShowroomLoad.Reset();
+	ShowroomSwapTime = FPlatformTime::Seconds();
 	ApplyShowroomFraming(true);
 	UE_LOG(LogSailing, Display, TEXT("Showroom swap %hs: load %.0f ms, build %.0f ms"), Boat.GetConfig().Name,
 		(Loaded - ShowroomLoadStart) * 1000.0, (Built - Loaded) * 1000.0);
