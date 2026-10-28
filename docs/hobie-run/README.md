@@ -42,3 +42,42 @@ Mac it is neither the demo autopilot, the trim assist, Easy mode nor the lake's 
 artefact. What the PC should check, in this order: the same args with `-SailingCapture=Chase` (the telemetry CSV, heel
 and `capsized` per frame); then `-SailingCrewFalls=0` (the crew's ragdolls are on by default on Ultra only); then
 `-SailingQuality=High` (Ultra's other differences); and the frame rate (the boat steps at most 12 physics steps a frame).
+
+## The PC's capsize, and the fix (Oct 28 2026)
+
+The PC reproduces it on main f91c8660 in every run (`pc/README.md`, its four CSVs here) off the I-30 bridge
+(`-SailingStartAt=6400,877,0`, AfternoonBreeze at 13:00, gusting 18). The Mac with the same args, High, uncooked:
+capsized at 15.2 s (the PC's 15.4 s). My six earlier runs started at the launch spot in steadier air.
+
+What tips her is not a gybe first. In the PC's trace the heel grows to windward from 5 to 43 deg while the TWA is still
+-164 to -178 and the tiller is hard over to head up; she gybes only past 50 deg. Standalone (`Tools/HobieRun`, 120 s
+holds at TWA +-170 in 14 kn with a 1.3 gust factor on 5 km of chop) shows the start: a hard bear-away to answer a
+wave's yaw rolls the cat to windward, and with the rig over to windward she keeps bearing away. And a fast cat at 0.4 of
+the wind's speed runs on a weak apparent wind from astern that swings 100 deg in half a second, so the boom comes across
+with the true wind still on one side.
+
+`FAutopilot`'s run guard (AutoTrim.h) is what a sailor does on a run: keep off dead downwind by a margin that grows with
+the gusts and with her speed over the wind's, a light hand on the tiller (half the gain, little bear-away), and a smart
+head-up past 175 deg, by the lee, or with the apparent wind deep. A gybe she is told to make goes through. It acts only
+where the helm is given the wind: the demo autopilot now (`-SailingNoRunGuard` compares). The polars, scenarios and sea
+trials don't give it, so PolarGate and `polar.sh --quick` (0 of 39 outside tolerance) can't move. The traffic AI is left
+without it: with it, the AI races (`traffic.sh 98`) went from a mean 1,751 s with every boat finishing to 2,712 s with 14
+of 32 races short, because the AI's route doesn't gybe downwind to make up the angle. That is a follow-up.
+
+| 48 holds, TWA +-170, 120 s | Capsized | The boom across | Deepest TWA |
+|---|---|---|---|
+| No guard | 8 | 48 | 180 |
+| Guard | 0 | 1 | 167.7 |
+
+In the game, with the PC's args (High): no guard capsized at 15.2 s; the guard, two runs, upright for 44 s, max heel
+11.7 and 13.7 deg, deepest TWA 171 and 175, never across dead downwind.
+
+### A controlled gybe (physics, not tuned)
+
+Told to gybe after 30 s from TWA -160 to +160 in 14 kn gusting to about 18, she goes round once and stays up: max heel 9
+deg on flat water, 22 deg in the chop. The same gybe with the old helm in the chop capsized 4 s after the call (the same
+windward roll, from the full-gain helm). So a controlled gybe in this breeze survives, as a real Hobie 16's does with
+the crew across; no realism question about the hull or sails from it.
+
+`SailingSim.Physics.HobieRunGuard` holds this: four seeds each side upright for 120 s, never across dead downwind and
+deepest under 175, and the ordered gybe through and upright.

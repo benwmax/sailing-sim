@@ -1115,6 +1115,9 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
 			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
 		}
+		// The run guard: off dead downwind by the gusts' margin (docs/hobie-run/); -SailingNoRunGuard compares without it.
+		static SailingArgs::FCachedFlag NoRunGuardArg(TEXT("SailingNoRunGuard"));
+		DemoPilot.Wind = NoRunGuardArg.Get() ? nullptr : &GetWind();
 		Controls.Tiller = DemoPilot.Update(Boat);
 		if (CrudeTackAt >= 0.0 && T >= CrudeTackAt)
 		{

@@ -5,6 +5,7 @@
 #include "SeaTrials.h"
 #include "Waves.h"
 #include "Wind.h"
+#include "WindClimate.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -343,6 +344,38 @@ bool FSailingFoilInertiaTest::RunTest(const FString&)
 	AddInfo(FString::Printf(TEXT("J/22 beam-on: the foils' wave inertia along her bow at most %.1f N in the calibration sea, %.1f N on the Gulf's swell"), InCalibration, InSwell));
 	TestTrue(TEXT("None in the calibration sea"), InCalibration == 0.0);
 	TestTrue(TEXT("... and some on the swell"), InSwell > 1.0);
+	return true;
+}
+
+
+// docs/hobie-run/: the Hobie 16 held at TWA 170 in 14 kn gusting about 18 (gust factor 1.3) on 5 km of lake chop, 120 s on
+// four seeds each side. With the run guard (the helm given the wind) she keeps off dead downwind and never capsizes; without
+// it she crash-gybes and goes over (the PC's in-game capsize). A gybe she is told to make still goes through.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingHobieRunGuardTest, "SailingSim.Physics.HobieRunGuard", WavePhysicsTestsLocal::WaveFlags)
+bool FSailingHobieRunGuardTest::RunTest(const FString&)
+{
+	const FBoatConfig Hobie = FBoatConfig::Make(EBoatType::Hobie16);
+	const double Gust = GustIntensityForFactor(1.3);
+	int Unguarded = 0;
+	for (uint32_t Seed = 1; Seed <= 4; ++Seed)
+	{
+		for (const double Side : { -1.0, 1.0 })
+		{
+			const FDeepRunResult R = RunDeep(Hobie, 170.0 * Side, 14.0, Gust, 5000.0, Seed, 120.0, true);
+			const FString Run = FString::Printf(TEXT("seed %u, TWA %+.0f"), Seed, 170.0 * Side);
+			AddInfo(FString::Printf(TEXT("%s: deepest TWA %.1f, max heel %.0f, boom across %d"), *Run, R.DeepestTwaDeg, R.MaxHeelDeg, R.Gybes));
+			TestTrue(FString::Printf(TEXT("%s: upright for 120 s"), *Run), R.CapsizedAt < 0.0);
+			TestEqual(FString::Printf(TEXT("%s: never by the lee across dead downwind"), *Run), R.TwaCrossings, 0);
+			TestTrue(FString::Printf(TEXT("%s: kept off (deepest TWA %.1f under 175)"), *Run, R.DeepestTwaDeg), R.DeepestTwaDeg < 175.0);
+			if (Seed <= 2) Unguarded += RunDeep(Hobie, 170.0 * Side, 14.0, Gust, 5000.0, Seed, 120.0, false).CapsizedAt >= 0.0;
+		}
+	}
+	AddInfo(FString::Printf(TEXT("Without the guard %d of 4 runs capsize"), Unguarded));
+	// Told to gybe after 30 s (from -160 to +160): she goes round once and stays up.
+	const FDeepRunResult G = RunDeep(Hobie, -160.0, 14.0, Gust, 5000.0, 1, 90.0, true, 30.0);
+	AddInfo(FString::Printf(TEXT("Ordered gybe: boom across %d, max heel %.0f"), G.Gybes, G.MaxHeelDeg));
+	TestTrue(TEXT("A gybe she is told to make goes through"), G.Gybes >= 1 && G.TwaCrossings >= 1);
+	TestTrue(TEXT("And she stays up"), G.CapsizedAt < 0.0);
 	return true;
 }
 
