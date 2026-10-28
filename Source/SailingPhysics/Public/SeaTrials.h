@@ -125,4 +125,19 @@ namespace Sailing
 		double GustIntensity, double Seconds, bool bHands = true);
 
 	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0);
+
+	/**
+	 * docs/hobie-run/: a deep run on the autopilot (FAutopilot holding TwaDeg, FAutoTrim with the crew's hands) in Knots
+	 * with GustIntensity and FetchMeters of chop, for Seconds; with bRunGuard the helm has the wind (its run guard). GybeAt
+	 * >= 0 tells her to gybe then (the target to -TwaDeg). Counted after the first 2 s.
+	 */
+	struct FDeepRunResult
+	{
+		double CapsizedAt = -1.0;      // s, or -1
+		double MaxHeelDeg = 0.0, DeepestTwaDeg = 0.0;
+		int TwaCrossings = 0;          // the true wind across dead downwind
+		int Gybes = 0;                 // the boom across (past 20 deg on the other side)
+	};
+	SAILINGPHYSICS_API FDeepRunResult RunDeep(const FBoatConfig& Config, double TwaDeg, double Knots, double GustIntensity, double FetchMeters,
+		uint32_t Seed, double Seconds, bool bRunGuard, double GybeAt = -1.0);
 }
