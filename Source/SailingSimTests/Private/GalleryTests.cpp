@@ -187,12 +187,12 @@ bool FSailingGalleryStageTest::RunTest(const FString&)
 		Stage->Show(J22);
 		++GFrameCounter;
 		World->Tick(LEVELTICK_All, 1.f / 60.f);
-		const FGalleryStats B = Stage->GetStats();
+		const FGalleryStats Whole = Stage->GetStats();
 		const FBoxSphereBounds Box = Stage->SubjectBounds();
-		AddInfo(FString::Printf(TEXT("J/22 whole: %d triangles in %d parts, %.2f x %.2f x %.2f m, lowest point %.2f m over the floor"), B.Triangles, B.Lods,
-			B.SizeM.X, B.SizeM.Y, B.SizeM.Z, (Box.Origin.Z - Box.BoxExtent.Z - Stage->GetActorLocation().Z) / 100.0));
-		TestTrue(TEXT("A whole boat is shown"), Stage->IsBoatShown() && B.Triangles > 1000 && B.Lods >= 4);
-		TestTrue(TEXT("About her length (22 ft, with her rig's spread)"), B.SizeM.GetMax() > 6.0 && B.SizeM.GetMax() < 14.0);
+		AddInfo(FString::Printf(TEXT("J/22 whole: %d triangles in %d parts, %.2f x %.2f x %.2f m, lowest point %.2f m over the floor"), Whole.Triangles, Whole.Lods,
+			Whole.SizeM.X, Whole.SizeM.Y, Whole.SizeM.Z, (Box.Origin.Z - Box.BoxExtent.Z - Stage->GetActorLocation().Z) / 100.0));
+		TestTrue(TEXT("A whole boat is shown"), Stage->IsBoatShown() && Whole.Triangles > 1000 && Whole.Lods >= 4);
+		TestTrue(TEXT("About her length (22 ft, with her rig's spread)"), Whole.SizeM.GetMax() > 6.0 && Whole.SizeM.GetMax() < 14.0);
 		TestTrue(TEXT("Her keel on the floor (within 25 cm)"), FMath::Abs(float(Box.Origin.Z - Box.BoxExtent.Z - Stage->GetActorLocation().Z)) < 25.f);
 		Stage->SetView(EGalleryView::LitWire);
 		Stage->SetView(EGalleryView::Lit);
