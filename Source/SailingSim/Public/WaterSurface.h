@@ -114,7 +114,10 @@ public:
 	 *  5.8x from 20 to 12 kn, the drawn 2.7x). Each wind's excess over its solved slope gives the scale that lands it:
 	 *  0.88 at 20 kn, 0.915 at 16, 0.94 at 12, linear in the wind, held below 12 kn (Callaghan's onset sets the target
 	 *  there) and not under W8's 0.85. Likely the long trains, which lose depth to the mesh's interpolation where the
-	 *  chop's blurred fold hardly loses any to the texture filter, carry more of the fold as the wind rises. */
+	 *  chop's blurred fold hardly loses any to the texture filter, carry more of the fold as the wind rises.
+	 *  Refit (docs/whitecaps-cascade/): with #374's jittered trains and #377's chop cascades the drawn fold ran deeper
+	 *  again (crest cover 1.4-2.1x the target at 12-20 kn once the solve sampled 1.7 km); by the same method 0.95 at
+	 *  14 kn, 0.94 at 16, 0.91 at 20 (12 kn, on 29 caps, asked 1.0): the same slope, 0.03 higher. */
 	static float DrawnFoldScaleAt(float MeanKnots);
 	static constexpr float CapLogMip = 3.f;
 	static void CapTable(float MeanKnots, float WaterScale, float& OutFirst, float& OutStep);

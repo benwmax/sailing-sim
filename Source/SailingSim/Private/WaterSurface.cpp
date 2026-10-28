@@ -488,7 +488,7 @@ float AWaterSurface::WhitecapScaleHere() const
 
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
 {
-	return FMath::Clamp(0.94f - 0.0075f * (MeanKnots - 12.f), 0.85f, 0.94f);
+	return FMath::Clamp(0.97f - 0.0075f * (MeanKnots - 12.f), 0.85f, 0.97f);
 }
 
 float AWaterSurface::BodyTransmission(float CosView)
@@ -1040,9 +1040,11 @@ void AWaterSurface::UpdateDetail()
 					{
 						const int32 I = R * A.N + Cc;
 						double Chop = 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - JCap[I]); // the shader's jd
-						// The long trains sampled over about 170 m (the chop's 23 m tile holds about one of their wavelengths, so a
-						// frame's sample sat on whatever crests crossed it), the chop at its own texel.
-						const double SX = R * Cell * 7.31, SY = Cc * Cell * 7.37;
+						// The long trains sampled over about 1.7 km, the chop at its own texel. The chop's 23 m tile holds about one
+						// of their wavelengths, so a frame's sample sat on whatever crests crossed it; the 170 m patch before
+						// (docs/whitecaps-cascade/) still sat on a few wave groups, and with #374's jittered trains a quiet stretch at
+						// 14 kn solved a threshold that capped 1.37x the target everywhere else.
+						const double SX = R * Cell * 73.1, SY = Cc * Cell * 73.7;
 						// docs/chop-cascades/: and the long chop where that sample is (its own tile and turn), folded in as the
 						// shader folds it.
 						if (Out->LongN > 0)
