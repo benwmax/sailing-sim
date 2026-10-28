@@ -156,6 +156,42 @@ bool FSailingGaleTackTest::RunTest(const FString&)
 }
 
 /**
+ * docs/maxi-tack-timing/: the helm's timing in the gale, over 24 tacks in the sea (seeds 1-24). Her speed at the call
+ * decided whether she kept 40% of it through the wind, so she waits (up to a wave period) for her upwind speed or more,
+ * footing 10 deg for it; and a face that knocks her back across the wind no longer restarts the tack (seed 23 used to hang
+ * for 90 s). Measured: median 12.8 s, 90th percentile 18.3 s, 23 of 24 keeping 40% (main 13cb19e9's helm: 13.0 s, 24.9 s,
+ * 15 of 24, seed 23 not through). The distribution, not each seed (see GaleTack).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingGaleTackTimingTest, "SailingSim.Physics.GaleTackTiming", WavePhysicsTestsLocal::WaveFlags)
+bool FSailingGaleTackTimingTest::RunTest(const FString&)
+{
+	FBoatConfig Maxi = FBoatConfig::Make(EBoatType::Maxi);
+	FSceneLimits::For(true).ApplyTo(Maxi);
+	int32 Carried = 0, Through = 0;
+	TArray<double> Seconds;
+	TArray<FString> Rest;
+	for (uint32 Seed = 1; Seed <= 24; ++Seed)
+	{
+		const FGaleTackResult R = RunGaleTackDetail(Maxi, 2, Seed, true);
+		const double Share = R.MinSpeedKnots / FMath::Max(R.SpeedBeforeKnots, 1e-3);
+		Seconds.Add(R.Seconds > 0.0 ? R.Seconds : 999.0);
+		Through += R.Seconds > 0.0;
+		Carried += Share >= 0.4;
+		if (!(R.Seconds > 0.0 && R.Seconds < 25.0) || Share < 0.4)
+			Rest.Add(FString::Printf(TEXT("seed %u: %.1f s, %.0f%%"), Seed, R.Seconds, 100.0 * Share));
+	}
+	Seconds.Sort();
+	const double Median = 0.5 * (Seconds[11] + Seconds[12]), P90 = Seconds[21];
+	AddInfo(FString::Printf(TEXT("Median %.1f s, 90th percentile %.1f s, %d of 24 keep 40%%; outliers: %s"), Median, P90, Carried,
+		Rest.Num() ? *FString::Join(Rest, TEXT("; ")) : TEXT("none")));
+	TestTrue(FString::Printf(TEXT("Every tack goes through (%d of 24)"), Through), Through == 24);
+	TestTrue(FString::Printf(TEXT("Median tack under 15 s (%.1f)"), Median), Median < 15.0);
+	TestTrue(FString::Printf(TEXT("... 90th percentile under 22 s (%.1f)"), P90), P90 < 22.0);
+	TestTrue(FString::Printf(TEXT("... and 21 of 24 keep 40%% of her speed (%d)"), Carried), Carried >= 21);
+	return true;
+}
+
+/**
  * Surfing: the waves' slope pushes her down a face and holds her on a back, and gives nothing for free. A J/22 running at
  * TWA 150 on the Gulf swell surfs (her best second 1.5 kn over the run without the push, a little faster on average);
  * the maxi running in the gale is faster than on flat water and peaks past 23 kn; the ILCA in 20 kn of lake chop rides

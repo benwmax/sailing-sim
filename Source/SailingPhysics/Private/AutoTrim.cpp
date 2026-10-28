@@ -223,10 +223,18 @@ namespace Sailing
 		LastTime = Now;
 		const bool bTackAsked = bTimeTacks && TargetTWADeg * T.TrueWindAngle < 0.0 && std::fabs(TargetTWADeg) < 90.0
 			&& std::fabs(T.TrueWindAngle) < 90.0 * kDegToRad;
-		if (!bTackAsked)
+		// docs/maxi-tack-timing/: a tack once started is the helm's until she is told otherwise. A face or a gust that knocks
+		// her back across head to wind used to read as a new order: she waited again, steering for the old tack, and then
+		// started over from a standstill.
+		const double OrderSide = TargetTWADeg >= 0.0 ? 1.0 : -1.0;
+		if (OrderSide != TackOrderSide)
 		{
+			TackOrderSide = OrderSide;
 			TackAskedAt = -1.0;
 			bTackGo = false;
+		}
+		if (!bTackAsked)
+		{
 			if (std::fabs(T.TrueWindAngle) < 70.0 * kDegToRad && T.ForwardSpeed > 0.0)
 				UpwindSpeed = UpwindSpeed < 0.0 ? T.ForwardSpeed : UpwindSpeed + (T.ForwardSpeed - UpwindSpeed) * std::min(Since / 20.0, 1.0);
 		}
@@ -239,7 +247,7 @@ namespace Sailing
 			const double Along = T.WaveSlopeSurge / std::max(Boat.TotalMass() * kGravity, 1.0);
 			const bool bReady = Along < 0.0 && T.ForwardSpeed >= TackSpeedShare * std::max(UpwindSpeed, 0.0);
 			if (!bSea || bReady || Now - TackAskedAt >= Waves->MeanPeriod()) bTackGo = true;
-			else Target = -TargetTWADeg; // the old tack's angle until then
+			else Target = -TargetTWADeg - OrderSide * TackFootDeg; // the old tack's angle, footing, until then
 		}
 		// The run guard (docs/hobie-run/): hold off dead downwind by a margin that grows with the gusts, and head up hard
 		// near it; a gybe she is told to make goes through.
