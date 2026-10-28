@@ -5,6 +5,7 @@
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "SailSession.h"
 #include "Learning.h"
+#include "Showroom.h"
 
 class SBox;
 class APlayerController;
@@ -28,10 +29,12 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	/** The showroom behind the menus ends with them (and a front-end choice is kept for the next time they open). */
+	virtual ~SSailFrontEnd() override;
 	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
 	/** Controls: a listening row takes the next key before the focused button sees it (so Enter and A can be bound). */
 	virtual FReply OnPreviewKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
-	/** Credits: the sticks scroll the text. */
+	/** Credits and the world cards: the sticks scroll the text. */
 	virtual FReply OnAnalogValueChanged(const FGeometry& Geometry, const FAnalogInputEvent& Event) override;
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 
@@ -78,8 +81,18 @@ private:
 	TArray<FEntry> Stack;
 	TSharedPtr<SBox> Body, Footer;
 	FSailSessionConfig Pending;
+	/** docs/showroom-wiring/: the boat and the conditions behind the screens (FSailShowroom), driven each frame. */
+	FSailShowroom Showroom;
+	bool bMenusInGame = false;
+	/** Stills: -SailingShowroom=<boat type> shows that boat on the Boat screen (-1: the focused one). */
+	int32 ShowroomArg = -1;
+	EActiveTimerReturnType TickShowroom(double Time, float Delta);
+	class ASailingGameMode* GameMode() const;
 	int32 FocusedBoat = 0;
 	int32 SettingsTab = 0;
+	/** Bean's UI feedback (Oct 27): a clicked tab pill, a keycap, Q/E and LB/RB all come here; the rebuilt screen focuses
+	 *  the tab's first row once it is laid out (Show). */
+	void SetSettingsTab(int32 Tab);
 	FString ConfirmQuestion, ConfirmYes;
 	// The quiz: its questions, the one on screen, the option chosen (-1: not yet), the score and the debrief line.
 	TArray<FQuizQuestion> Quiz;
@@ -102,8 +115,13 @@ private:
 	int32 FocusedControlRow = 0;
 	void ListenControls(int32 Row, bool bPad);
 	FString ControlsMessage;
-	// Credits: its scroll box and the stick's scroll speed (-1..1, held while the stick is), applied by an active timer.
+	// Credits: its scroll box. World: each card's description (the focused card's scrolls). The stick's scroll speed
+	// (-1..1, held while the stick is) is applied to the active one by an active timer.
 	TSharedPtr<class SScrollBox> CreditsScroll;
-	float CreditsStick = 0.f;
-	EActiveTimerReturnType ScrollCredits(double Time, float Delta);
+	TArray<TSharedPtr<class SScrollBox>> WorldScrolls;
+	TArray<TSharedPtr<class SSailButton>> WorldCards;
+	/** The scroll box the arrows, pages and sticks move on this screen: Credits' text, or the focused world card's. */
+	TSharedPtr<class SScrollBox> ActiveScroll() const;
+	float ScrollStick = 0.f;
+	EActiveTimerReturnType ScrollActive(double Time, float Delta);
 };

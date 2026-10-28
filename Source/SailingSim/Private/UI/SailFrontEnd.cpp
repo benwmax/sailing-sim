@@ -1,4 +1,5 @@
 #include "UI/SailFrontEnd.h"
+#include "BenchRunner.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
 #include "UI/SailHud.h"
@@ -243,9 +244,20 @@ void SSailFrontEnd::Construct(const FArguments& A)
 	Player = A._Player;
 	OnClose = A._OnClose;
 	USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr;
-	Pending = Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault();
-	RegisterInputTracker();
 	const bool bInGame = A._Start == ESailScreen::Pause || A._Start == ESailScreen::Briefing || A._Start == ESailScreen::Quiz;
+	// The menus' choices carry over when they close and open again before a cast off (the title's Logbook and back).
+	Pending = Session && Session->bHasActive ? Session->Active : Session && Session->bHasPending && !bInGame ? Session->Pending : USailSessionSubsystem::MakeDefault();
+	bMenusInGame = bInGame;
+	RegisterInputTracker();
+	// Showroom stills (docs/showroom-wiring/): the boat to show, the conditions to preview, and the menus drawn clear so
+	// the stage shows (they still run).
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingShowroom="), ShowroomArg);
+	FString PresetArg;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingPreviewPreset="), PresetArg))
+	{
+		for (const FSailPreset& P : USailSessionSubsystem::Presets()) if (P.Id == FName(*PresetArg)) USailSessionSubsystem::ApplyPreset(Pending.Conditions, P);
+	}
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingHideMenus"))) SetRenderOpacity(0.f);
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -254,6 +266,31 @@ void SSailFrontEnd::Construct(const FArguments& A)
 		+ SOverlay::Slot().VAlign(VAlign_Bottom)[ SAssignNew(Footer, SBox) ]
 	];
 	Push(A._Start);
+	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::TickShowroom));
+}
+
+SSailFrontEnd::~SSailFrontEnd()
+{
+	Showroom.End(Pawn(), GameMode());
+	if (USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr; Session && !bMenusInGame && !Session->bHasActive)
+	{
+		Session->Pending = Pending;
+		Session->bHasPending = true;
+	}
+}
+
+ASailingGameMode* SSailFrontEnd::GameMode() const
+{
+	UWorld* World = Player.IsValid() ? Player->GetWorld() : nullptr;
+	return World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr;
+}
+
+EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
+{
+	// The Boat screen shows the focused boat (focus is the selection there); every other screen the chosen one.
+	const int32 Shown = Current() == ESailScreen::Boat ? (ShowroomArg >= 0 ? ShowroomArg : FocusedBoat) : Pending.Boat;
+	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, Pending.Conditions, Time);
+	return EActiveTimerReturnType::Continue;
 }
 
 ASailboatPawn* SSailFrontEnd::Pawn() const
@@ -372,27 +409,27 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		return FReply::Handled();
 	}
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
-	if (Current() == ESailScreen::Credits && CreditsScroll.IsValid())
+	if (const TSharedPtr<SScrollBox> Scroll = ActiveScroll())
 	{
-		// Arrows, the D-pad and the stick's flicks step a few lines, Page Up/Down and the shoulders a screen.
-		const float Step = 60.f, Page = FMath::Max(200.f, float(CreditsScroll->GetCachedGeometry().GetLocalSize().Y) - 80.f);
-		const float Offset = CreditsScroll->GetScrollOffset();
-		float To = Offset;
+		// Credits and the world cards' descriptions (Bean's UI feedback, Oct 27: the cards cut their text off): arrows, the
+		// D-pad and the stick's flicks step a few lines, Page Up/Down a screen (and on Credits the shoulders and Space too;
+		// the world cards take Left and Right to move between cards, so only Up and Down scroll there).
+		const bool bCredits = Current() == ESailScreen::Credits;
+		const float Step = bCredits ? 60.f : 24.f, Page = FMath::Max(bCredits ? 200.f : 40.f, float(Scroll->GetCachedGeometry().GetLocalSize().Y) - (bCredits ? 80.f : 16.f));
+		float To = Scroll->GetScrollOffset();
 		if (K == EKeys::Down || K == EKeys::S || K == EKeys::Gamepad_DPad_Down || K == EKeys::Gamepad_LeftStick_Down) To += Step;
 		else if (K == EKeys::Up || K == EKeys::W || K == EKeys::Gamepad_DPad_Up || K == EKeys::Gamepad_LeftStick_Up) To -= Step;
-		else if (K == EKeys::PageDown || K == EKeys::SpaceBar || K == EKeys::Gamepad_RightShoulder || K == EKeys::Gamepad_RightTrigger) To += Page;
-		else if (K == EKeys::PageUp || K == EKeys::Gamepad_LeftShoulder || K == EKeys::Gamepad_LeftTrigger) To -= Page;
+		else if (K == EKeys::PageDown || (bCredits && (K == EKeys::SpaceBar || K == EKeys::Gamepad_RightShoulder || K == EKeys::Gamepad_RightTrigger))) To += Page;
+		else if (K == EKeys::PageUp || (bCredits && (K == EKeys::Gamepad_LeftShoulder || K == EKeys::Gamepad_LeftTrigger))) To -= Page;
 		else if (K == EKeys::Home) To = 0.f;
-		else if (K == EKeys::End) { CreditsScroll->ScrollToEnd(); return FReply::Handled(); }
+		else if (K == EKeys::End) { Scroll->ScrollToEnd(); return FReply::Handled(); }
 		else return FReply::Unhandled();
-		CreditsScroll->SetScrollOffset(FMath::Clamp(To, 0.f, CreditsScroll->GetScrollOffsetOfEnd()));
+		Scroll->SetScrollOffset(FMath::Clamp(To, 0.f, Scroll->GetScrollOffsetOfEnd()));
 		return FReply::Handled();
 	}
 	if (Current() == ESailScreen::Settings && (K == EKeys::Q || K == EKeys::E || K == EKeys::Gamepad_LeftShoulder || K == EKeys::Gamepad_RightShoulder))
 	{
-		SettingsTab = (SettingsTab + ((K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) ? 4 : 1)) % 5;
-		Stack.Last() = Build(ESailScreen::Settings);
-		Show(Stack.Last(), true);
+		SetSettingsTab(SettingsTab + ((K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder) ? 4 : 1));
 		return FReply::Handled();
 	}
 	if (Current() == ESailScreen::Mode && (K == EKeys::Gamepad_Special_Right))
@@ -405,21 +442,42 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 
 FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputEvent& E)
 {
-	if (Current() != ESailScreen::Credits) return FReply::Unhandled();
-	// Either stick scrolls (up is positive Y); the timer runs while it is held.
+	if (!ActiveScroll().IsValid()) return FReply::Unhandled();
+	// Credits: either stick scrolls (up is positive Y); the world cards: the right stick (the left one moves between cards).
+	// The timer runs while it is held.
 	const FKey K = E.GetKey();
-	if (K != EKeys::Gamepad_LeftY && K != EKeys::Gamepad_RightY) return FReply::Unhandled();
+	if (K != EKeys::Gamepad_RightY && (K != EKeys::Gamepad_LeftY || Current() != ESailScreen::Credits)) return FReply::Unhandled();
 	const float V = FMath::Abs(E.GetAnalogValue()) > 0.2f ? -E.GetAnalogValue() : 0.f;
-	if (V != 0.f && CreditsStick == 0.f) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::ScrollCredits));
-	CreditsStick = V;
+	if (V != 0.f && ScrollStick == 0.f) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::ScrollActive));
+	ScrollStick = V;
 	return FReply::Handled();
 }
 
-EActiveTimerReturnType SSailFrontEnd::ScrollCredits(double, float Delta)
+TSharedPtr<SScrollBox> SSailFrontEnd::ActiveScroll() const
 {
-	if (Current() != ESailScreen::Credits || !CreditsScroll.IsValid() || CreditsStick == 0.f) { CreditsStick = 0.f; return EActiveTimerReturnType::Stop; }
-	CreditsScroll->SetScrollOffset(FMath::Clamp(CreditsScroll->GetScrollOffset() + CreditsStick * 900.f * Delta, 0.f, CreditsScroll->GetScrollOffsetOfEnd()));
+	if (Current() == ESailScreen::Credits) return CreditsScroll;
+	if (Current() != ESailScreen::World) return nullptr;
+	for (int32 I = 0; I < WorldCards.Num() && I < WorldScrolls.Num(); ++I)
+	{
+		if (WorldCards[I].IsValid() && WorldCards[I]->HasKeyboardFocus()) return WorldScrolls[I];
+	}
+	return nullptr;
+}
+
+EActiveTimerReturnType SSailFrontEnd::ScrollActive(double, float Delta)
+{
+	const TSharedPtr<SScrollBox> Scroll = ActiveScroll();
+	if (!Scroll.IsValid() || ScrollStick == 0.f) { ScrollStick = 0.f; return EActiveTimerReturnType::Stop; }
+	const float Speed = Current() == ESailScreen::Credits ? 900.f : 260.f;
+	Scroll->SetScrollOffset(FMath::Clamp(Scroll->GetScrollOffset() + ScrollStick * Speed * Delta, 0.f, Scroll->GetScrollOffsetOfEnd()));
 	return EActiveTimerReturnType::Continue;
+}
+
+void SSailFrontEnd::SetSettingsTab(int32 Tab)
+{
+	SettingsTab = (Tab % 5 + 5) % 5;
+	Stack.Last() = Build(ESailScreen::Settings);
+	Show(Stack.Last(), true);
 }
 
 void SSailFrontEnd::CastOff()
@@ -612,6 +670,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
+	WorldScrolls.Reset();
+	WorldCards.Reset();
 	// Career 1: worlds open as certificates are earned (all of them in Free Sail).
 	const FCareerProgress Career = SailCareer::Progress();
 	if (!Career.IsWorldOpen(FSailSave::WorldId(Pending.World == 2 ? 1 : Pending.World))) { Pending.World = 0; Pending.LaunchSpot = 0; }
@@ -622,6 +682,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 		TSharedRef<SHorizontalBox> Facts = SNew(SHorizontalBox);
 		for (const TPair<FString, FString>& F : W.Facts) Facts->AddSlot().FillWidth(1.f)[ Fact(F.Key, F.Value) ];
 		const int32 Index = W.Index;
+		// Bean's UI feedback (Oct 27): the description scrolls in its 80 px (the wheel over the card, Up and Down, the D-pad,
+		// Page Up and Down, the right stick), with a thin bar that shows only when there is more.
+		TSharedRef<SScrollBox> Scroll = SNew(SScrollBox).ScrollBarThickness(FVector2D(3.f, 3.f)).ScrollBarPadding(FMargin(4.f, 0.f, 0.f, 0.f))
+			+ SScrollBox::Slot().Padding(0.f, 0.f, 8.f, 0.f)[ SailUI::Text(Locked.IsEmpty() ? W.Description : Locked, EType::Body, Locked.IsEmpty() ? Muted : Fg, true) ];
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(0.f)).IsEnabled(Locked.IsEmpty()).IsSelected_Lambda([this, Index]() { return Pending.World == Index; })
 			.OnClicked_Lambda([this, Index]() { if (Pending.World != Index) { Pending.World = Index; Pending.LaunchSpot = 0; if (Index == 0 && Pending.Mode == ESailMode::Passage) Pending.Mode = ESailMode::Free; } Push(ESailScreen::Launch); })
 		[
@@ -633,17 +697,26 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(16.f)[ Pill(Locked.IsEmpty() ? W.Tagline : FString(TEXT("Locked")), W.Index == 0) ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 20.f, 24.f, 6.f)[ SailUI::Text(W.Name, EType::CardTitle, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 16.f)[ SNew(SBox).HeightOverride(80.f)[ SailUI::Text(Locked.IsEmpty() ? W.Description : Locked, EType::Body, Locked.IsEmpty() ? Muted : Fg, true) ] ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 0.f)[ SNew(SBox).HeightOverride(80.f)[ Scroll ] ]
+			// "Read more" while the text runs on below the box.
+			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 2.f, 24.f, 12.f)
+			[
+				SNew(SBox).HeightOverride(18.f).Visibility_Lambda([Scroll]()
+					{ return Scroll->GetScrollOffsetOfEnd() - Scroll->GetScrollOffset() > 1.f ? EVisibility::HitTestInvisible : EVisibility::Hidden; })
+				[ SailUI::Text(TEXT("Read more  \u2193"), EType::Label, Accent) ]
+			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 22.f)[ Facts ]
 		];
+		WorldScrolls.Add(Scroll);
+		WorldCards.Add(Card);
 		Cards->AddSlot().FillWidth(1.f).Padding(W.Index == 0 ? FMargin(0.f, 0.f, 16.f, 0.f) : FMargin(16.f, 0.f, 0.f, 0.f))[ Card ];
 		if (W.Index == FMath::Min(Pending.World, 1)) E.Focus = Card;
 	}
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("New session"), TEXT("Choose a world"), 1) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 28.f, 0.f, 0.f)[ Cards ];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
-		TEXT("Worlds load from the same map: switching reloads it"));
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("\u2191 \u2193"), TEXT("R \u2195"), TEXT("Read more")),
+		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, TEXT("Worlds load from the same map: switching reloads it"));
 	return E;
 }
 
@@ -1167,16 +1240,23 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	USailingSettings* S = USailingSettings::Get();
 	static const TCHAR* Tabs[] = { TEXT("Graphics"), TEXT("Display"), TEXT("Audio"), TEXT("Gameplay"), TEXT("Accessibility") };
 	TSharedRef<SHorizontalBox> TabRow = SNew(SHorizontalBox);
-	TabRow->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ KeyCap(TEXT("Q"), TEXT("LB")) ];
+	// Bean's UI feedback (Oct 27): the pills and the Q and E keycaps are buttons too (the mouse), beside Q/E and LB/RB.
+	TabRow->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)
+	[
+		SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { SetSettingsTab(SettingsTab + 4); })[ KeyCap(TEXT("Q"), TEXT("LB")) ]
+	];
 	for (int32 I = 0; I < UE_ARRAY_COUNT(Tabs); ++I)
 	{
 		TabRow->AddSlot().AutoWidth().Padding(6.f, 0.f)
 		[
-			SNew(SBorder).BorderImage(Rounded(I == SettingsTab ? Fg : Raise, 13.f, Line, 1.f)).Padding(FMargin(14.f, 5.f))
+			SNew(SSailButton).Look(EButtonLook::Chip).IsSelected(I == SettingsTab).Padding(FMargin(14.f, 5.f)).OnClicked_Lambda([this, I]() { SetSettingsTab(I); })
 			[ SailUI::Text(Tabs[I], EType::Label, I == SettingsTab ? Ink : Fg) ]
 		];
 	}
-	TabRow->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)[ KeyCap(TEXT("E"), TEXT("RB")) ];
+	TabRow->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)
+	[
+		SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { SetSettingsTab(SettingsTab + 1); })[ KeyCap(TEXT("E"), TEXT("RB")) ]
+	];
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	FString Help;
 	auto Add = [&](TSharedRef<SWidget> W) { Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ W ]; if (!E.Focus.IsValid()) E.Focus = W; };

@@ -686,12 +686,19 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 				const FVector BallM = ToBoat.TransformPosition(CS[Ball].GetLocation()) / CrewMotionDetail::ToCm;
 				const double Len = FVector::Dist(AnkleM, BallM);
 				const double Drop = FMath::Clamp(AnkleM.Z - (StrapWell.SoleZ + 0.035), 0.0, 0.9 * Len);
-				const double Across = FMath::Sqrt(FMath::Max(Len * Len - Drop * Drop - FMath::Square(BallM.X - AnkleM.X), 0.0));
-				const FVector WantM(BallM.X, AnkleM.Y - Side * Across, AnkleM.Z - Drop);
+				// (The ball no more than 4 cm ahead of the ankle: where the turned thigh left the toes pointing forward, the forward
+				// foot's toes went into the well's forward wall and the foot was lifted onto the deck.)
+				const double BallX = FMath::Clamp(BallM.X, AnkleM.X - 0.04, AnkleM.X + 0.04);
+				const double Across = FMath::Sqrt(FMath::Max(Len * Len - Drop * Drop - FMath::Square(BallX - AnkleM.X), 0.0));
+				const FVector WantM(BallX, AnkleM.Y - Side * Across, AnkleM.Z - Drop);
 				const FVector Have = (CS[Ball].GetLocation() - AnkleCS).GetSafeNormal();
 				const FVector Want = (ToBoat.InverseTransformPosition(WantM * CrewMotionDetail::ToCm) - AnkleCS).GetSafeNormal();
 				if (Have.IsNearlyZero() || Want.IsNearlyZero()) continue;
-				const FQuat Turn = FQuat::FindBetweenNormals(Have, Want);
+				// (And the sole down: since the knee is a hinge (docs/crew-elbow/) the thigh turns to put the knee up, and a turn
+				// of the ankle-to-ball direction alone left the foot rolled on its side, the heel through the sole.)
+				const FVector FootUp = D[Foot].RotateVector(Frame.RotateVector(FVector::UpVector));
+				const FVector BoatUp = ToBoat.InverseTransformVectorNoScale(FVector::UpVector);
+				const FQuat Turn = FRotationMatrix::MakeFromXZ(Want, BoatUp).ToQuat() * FRotationMatrix::MakeFromXZ(Have, FootUp).ToQuat().Inverse();
 				Carried.Add(Ref.GetBoneName(Foot), D[Calf].Inverse() * Turn * D[Foot]);
 			}
 			CrewSolver::Solve(Ref, RestCS, Carried, CS, &D);

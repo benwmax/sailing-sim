@@ -766,9 +766,12 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	if (bV4)
 	{
 		{ SAILING_PERF_SCOPE(WaterUploads); UpdateDetail(); }
-		UpdateWakeGrid(DeltaSeconds);
+		// Photo mode holds the world (ASailingGameMode::SetWorldHeld): the wake and the spray stop where they are.
+		const ASailingGameMode* HeldGM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		const float SimDt = HeldGM && HeldGM->IsWorldHeld() ? 0.f : DeltaSeconds;
+		UpdateWakeGrid(SimDt);
 		UpdateShoreMap();
-		if (Tier >= 2) UpdateSpray(DeltaSeconds);
+		if (Tier >= 2) UpdateSpray(SimDt);
 		const double FarCapStart = FPlatformTime::Seconds();
 		UpdateFarCaps(DeltaSeconds);
 		FarCapCpuSeconds += FPlatformTime::Seconds() - FarCapStart;

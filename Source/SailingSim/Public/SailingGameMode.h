@@ -10,6 +10,7 @@
 #include "WorldClock.h"
 #include "ScriptedScene.h"
 #include "PerfScopes.h"
+#include "SailSession.h"
 #include "LakeData.h"
 #include "Chart.h"
 #include "WorldStreaming.h"
@@ -79,6 +80,14 @@ public:
 	/** Moves the world clock by this frame's time, once a frame: the game mode's tick or the first boat to tick, whichever
 	 *  runs first (boats step until they reach it, so it has to have moved before they do). */
 	void AdvanceClock(float DeltaSeconds);
+	/** Online readiness rule 9: the single-player hold at the top. Held, the world clock stops (so the boats, traffic,
+	 *  weather, tide and the water's own time stop with it) while the renderer and the cameras keep running: photo mode. */
+	void SetWorldHeld(bool bHeld) { bWorldHeld = bHeld; }
+	/** Held, unless the conditions preview has the world live (SetPreviewLive wins: the menus show the weather moving). */
+	bool IsWorldHeld() const { return bWorldHeld && !bPreviewLive; }
+	/** docs/showroom-wiring/: Change conditions in game keeps the world running while it is open, whatever holds it. */
+	void SetPreviewLive(bool bLive) { bPreviewLive = bLive; }
+	bool IsPreviewLive() const { return bPreviewLive; }
 	/** Seconds since the current weather started (the storm timeline runs on this). */
 	double GetWeatherTime() const { return GetSimTime() - WeatherStartTime; }
 
@@ -207,6 +216,11 @@ private:
 	double WeatherStartTime = 0.0;
 	Sailing::FWorldClock Clock;
 	uint64 ClockFrame = MAX_uint64;
+	bool bWorldHeld = false;
+	bool bPreviewLive = false;
+	bool bPreviewing = false, bPreviewRestore = false;
+	FSailConditions PreviewRestore;
+	void ApplyConditionsLocal(const struct FSailConditions& Conditions);
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;
 	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.
@@ -231,6 +245,15 @@ private:
 public:
 	/** Graphics G4: changes the running session's weather in place (Pause > Change conditions): no reload. */
 	void ApplyConditions(const struct FSailConditions& Conditions);
+	/**
+	 * The live preview behind the Conditions screen (Inputs/ui-showroom/brief.md section 6): the same path as
+	 * ApplyConditions, but local presentation only (the session is untouched). The first preview keeps what to go back
+	 * to: EndPreview(false) restores it (in game, Back), EndPreview(true) keeps the preview; ApplyConditions commits it.
+	 * Every value snaps (the weather timeline restarts at the chosen hour, as a cast off would).
+	 */
+	void PreviewConditions(const struct FSailConditions& Conditions);
+	void EndPreview(bool bKeep);
+	bool IsPreviewing() const { return bPreviewing; }
 private:
 
 	float BenchSeconds = 0.f;

@@ -204,8 +204,37 @@ namespace CrewSolver
 
 	const TCHAR* const FingerNames[5] = { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky"), TEXT("thumb") };
 
-	/** Graphics G8: two-bone IK for one arm toward a wrist target (component space). The elbow stays in the plane the
-	 *  stance put it in; the shoulder and elbow rotations are written back into the joint map. */
+	/** The middle joint's hinge in the rest pose (component space), its flexion positive about it, and that joint's limit
+	 *  (deg): the elbow turns about the character's up (+ on the left, - on the right: the T-posed arm's forearm swings
+	 *  forward), the knee about the character's right (the calf swings back). The right is read off the hips, so it holds
+	 *  for every rig's frame. */
+	bool LimbHinge(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Lower, FVector& OutRest, double& OutMaxDeg)
+	{
+		const FString Name = Ref.GetBoneName(Lower).ToString().ToLower();
+		const bool bLeft = Name.EndsWith(TEXT("_l"));
+		if (!bLeft && !Name.EndsWith(TEXT("_r"))) return false;
+		if (Name.StartsWith(TEXT("calf")) || Name.StartsWith(TEXT("shin")))
+		{
+			const int32 ThighL = Ref.FindBoneIndex(TEXT("thigh_l")), ThighR = Ref.FindBoneIndex(TEXT("thigh_r"));
+			if (ThighL == INDEX_NONE || ThighR == INDEX_NONE) return false;
+			const int32 Hips = Ref.GetParentIndex(ThighL);
+			if (Hips == INDEX_NONE) return false;
+			OutRest = D[Hips].UnrotateVector(CS[ThighR].GetLocation() - CS[ThighL].GetLocation()).GetSafeNormal();
+			OutMaxDeg = 160.0;   // a deep squat (and a Sunfish sailor's feet tucked under the strap beside the hips)
+			return !OutRest.IsNearlyZero();
+		}
+		OutRest = bLeft ? FVector::UpVector : -FVector::UpVector;
+		OutMaxDeg = 145.0;
+		return true;
+	}
+
+	/** Graphics G8, docs/crew-elbow/: two-bone IK for one arm (or leg) toward a wrist (ankle) target, component space. The
+	 *  middle joint is a hinge: the forearm turns only about the elbow's own axis, which the upper arm carries, flexed
+	 *  between straight and 145 deg (the knee 160), never backwards. The elbow sits in the stance's bend plane where that is
+	 *  within 75 deg of where the arm's own hinge puts it (or where Bend asks, a dinghy's knees up under the strap); the
+	 *  upper arm turns so its hinge is square to that plane. Before, the elbow went in the stance's plane and the forearm
+	 *  was turned straight at the target about any axis: for a target across that plane it folded the wrong way, and the
+	 *  held line's swing walked it freely round the reach (Bean's playtest: elbows bent backwards). */
 	void ReachArm(const FReferenceSkeleton& Ref, const TArray<FTransform>& CS, const TArray<FQuat>& D, int32 Hand, const FVector& Target,
 		TMap<FName, FQuat>& Joints, const FVector& HeldLine, const FVector& Bend)
 	{
@@ -213,53 +242,88 @@ namespace CrewSolver
 		const int32 Upper = Lower == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Lower);
 		const int32 Above = Upper == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Upper);
 		if (Above == INDEX_NONE) return;
+		FVector HingeRest;
+		double MaxFlex = 145.0;
+		if (!LimbHinge(Ref, CS, D, Lower, HingeRest, MaxFlex)) return;
 		const FVector S = CS[Upper].GetLocation(), E = CS[Lower].GetLocation(), W = CS[Hand].GetLocation();
 		const double A = FVector::Dist(S, E), B = FVector::Dist(E, W);
-		FVector ToT = Target - S;
-		const double Dist = FMath::Clamp(ToT.Size(), FMath::Abs(A - B) + 1.0, A + B - 0.5);
+		const FVector ToT = Target - S;
+		// Out of reach: the arm straight (half a centimetre short) and the hand falls short; too close: folded to the limit.
+		const double MinDist = FMath::Sqrt(FMath::Max(A * A + B * B - 2.0 * A * B * FMath::Cos(FMath::DegreesToRadians(180.0 - MaxFlex)), 0.0)) + 0.1;
+		const double Dist = FMath::Clamp(ToT.Size(), FMath::Max(FMath::Abs(A - B) + 1.0, MinDist), A + B - 0.5);
 		const FVector X = ToT.GetSafeNormal();
 		if (X.IsNearlyZero()) return;
-		FVector Y = (E - S) - X * FVector::DotProduct(E - S, X);
-		if (Y.SizeSquared() < 1.0) Y = FVector::CrossProduct(X, FVector::CrossProduct(FVector(0, 0, -1), X)); // a straight arm: elbow down
-		// A chosen bend (the legs under a dinghy's strap: knees up), where it isn't along the reach itself.
-		if (!Bend.IsNearlyZero())
-		{
-			const FVector YB = Bend - X * FVector::DotProduct(Bend, X);
-			if (YB.SizeSquared() > 0.01 * Bend.SizeSquared()) Y = YB;
-		}
-		Y = Y.GetSafeNormal();
 		const double CosA = FMath::Clamp((A * A + Dist * Dist - B * B) / (2.0 * A * Dist), -1.0, 1.0);
 		const double SinA = FMath::Sqrt(FMath::Max(0.0, 1.0 - CosA * CosA));
 		const FVector T2 = S + X * Dist;
-		// Holding a line: the elbow swings about the shoulder-to-wrist axis (up to 60 deg from where the stance had it, the elbow kept low) to the
-		// place whose forearm runs most nearly square to the line, so the line can lie across the palm with the wrist near
-		// straight (the PC, Ultra: with the stance's elbow, a sheet led along the forearm cocked the wrist 60-70 deg).
+		auto ElbowAt = [&](const FVector& Yk) { return S + X * (A * CosA) + Yk * (A * SinA); };
+		// The arm's own hinge now (the upper arm carries it), and the bend direction it gives: square to the hinge and the
+		// reach, on the side that flexes the joint the right way.
+		const FVector Hinge = D[Upper].RotateVector(HingeRest);
+		FVector YHinge = FVector::CrossProduct(Hinge, X);
+		if (YHinge.SizeSquared() < 1e-6) YHinge = FVector::CrossProduct(X, FVector::CrossProduct(FVector(0, 0, -1), X));
+		YHinge = YHinge.GetSafeNormal();
+		{
+			const FVector E2 = ElbowAt(YHinge);
+			if (FVector::DotProduct(Hinge, FVector::CrossProduct(E2 - S, T2 - E2)) < 0.0) YHinge = -YHinge;
+		}
+		const FVector Z = FVector::CrossProduct(X, YHinge);
+		auto SwingOf = [&](const FVector& V) { return FMath::Atan2(FVector::DotProduct(V, Z), FVector::DotProduct(V, YHinge)); };
+		auto AtSwing = [&](double Rad) { return YHinge * FMath::Cos(Rad) + Z * FMath::Sin(Rad); };
+		// The upper arm's (thigh's) twist the plane may ask: about the humerus' and the hip's own range of rotation.
+		constexpr double MaxSwing = UE_DOUBLE_PI * 75.0 / 180.0;
+		// The stance's bend plane, within that of the hinge's; an asked bend (a dinghy's knees up under the strap) as asked.
+		FVector Want = (E - S) - X * FVector::DotProduct(E - S, X);
+		double Band = MaxSwing;
+		if (!Bend.IsNearlyZero())
+		{
+			const FVector YB = Bend - X * FVector::DotProduct(Bend, X);
+			if (YB.SizeSquared() > 0.01 * Bend.SizeSquared()) { Want = YB; Band = UE_DOUBLE_PI; }
+		}
+		double Swing = Want.SizeSquared() < 1.0 ? 0.0 : FMath::Clamp(SwingOf(Want), -Band, Band);
+		// Holding a line: the elbow swings about the reach (10 deg steps, inside the shoulder's range, the elbow kept low) to where
+		// the forearm runs most nearly square to the line, so the line lies across the palm with the wrist near straight
+		// (the PC, Ultra: with the stance's elbow, a sheet led along the forearm cocked the wrist 60-70 deg).
 		if (!HeldLine.IsNearlyZero())
 		{
 			const FVector Line = HeldLine.GetSafeNormal();
-			const FVector Z = FVector::CrossProduct(X, Y);
-			auto SquareAt = [&](const FVector& Yk) { return FMath::Abs(FVector::DotProduct((T2 - (S + X * (A * CosA) + Yk * (A * SinA))).GetSafeNormal(), Line)); };
-			const double Stance = SquareAt(Y);
-			double Best = Stance;
-			FVector BestY = Y;
+			auto SquareAt = [&](double Rad) { return FMath::Abs(FVector::DotProduct((T2 - ElbowAt(AtSwing(Rad))).GetSafeNormal(), Line)); };
+			const double Stance = SquareAt(Swing);
+			double Best = Stance, BestSwing = Swing;
 			for (int32 K = -6; K <= 6; ++K)
 			{
-				const double Swing = FMath::DegreesToRadians(10.0 * K);
-				const FVector Yk = Y * FMath::Cos(Swing) + Z * FMath::Sin(Swing);
-				// (Never with the elbow raised: no higher than the shoulder; swung up, the trimmer's
-				// arm went up past the head and the shoulder's skin and vest tore.)
-				if ((X * (A * CosA) + Yk * (A * SinA)).Z > -0.05 * A) continue;
-				const double Cost = SquareAt(Yk) + 0.08 * FMath::Abs(Swing);   // (a little to stay near the stance's own elbow)
-				if (Cost < Best) { Best = Cost; BestY = Yk; }
+				// (Up to 60 deg from the stance's elbow, as before the hinge, and still inside the shoulder's range.)
+				const double Rad = Swing + FMath::DegreesToRadians(10.0 * K);
+				if (FMath::Abs(Rad) > MaxSwing + 1e-6) continue;
+				// (Never with the elbow raised: no higher than the shoulder; swung up, the trimmer's arm went up past the head
+				// and the shoulder's skin and vest tore.)
+				if ((ElbowAt(AtSwing(Rad)) - S).Z > -0.05 * A) continue;
+				const double Cost = SquareAt(Rad) + 0.08 * FMath::Abs(Rad - Swing);   // (a little to stay near the stance's own elbow)
+				if (Cost < Best) { Best = Cost; BestSwing = Rad; }
 			}
 			// (Only for a real gain: a line led along the reach is at the same angle to the forearm wherever the elbow goes.)
-			if (Stance - SquareAt(BestY) > 0.15) Y = BestY;
+			if (Stance - SquareAt(BestSwing) > 0.15) Swing = BestSwing;
 		}
-		const FVector E2 = S + X * (A * CosA) + Y * (A * SinA);
-		const FQuat Q1 = FQuat::FindBetweenVectors(E - S, E2 - S);
-		const FVector W1 = S + Q1.RotateVector(W - S);
-		const FQuat Q2 = FQuat::FindBetweenVectors(W1 - E2, T2 - E2);
-		const FQuat DU = Q1 * D[Upper], DL = Q2 * Q1 * D[Lower];
+		const FVector Y = AtSwing(Swing);
+		const FVector E2 = ElbowAt(Y);
+		const FVector Up = (E2 - S).GetSafeNormal(), Fore = (T2 - E2).GetSafeNormal();
+		// The hinge that bends this arm the right way: square to both bones (the straight arm keeps the swung hinge).
+		FVector NewHinge = FVector::CrossProduct(Up, Fore);
+		NewHinge = NewHinge.SizeSquared() < 1e-8 ? (Hinge - Up * FVector::DotProduct(Hinge, Up)).GetSafeNormal() : NewHinge.GetSafeNormal();
+		// Upper arm: aimed along its new direction with its hinge onto the new one (aim with an up vector).
+		auto Basis = [](const FVector& Dir, const FVector& Side)
+		{
+			const FVector Xb = Dir.GetSafeNormal();
+			const FVector Yb = (Side - Xb * FVector::DotProduct(Side, Xb)).GetSafeNormal();
+			return FQuat(FMatrix(Xb, Yb, FVector::CrossProduct(Xb, Yb), FVector::ZeroVector));
+		};
+		const FQuat Q1 = Basis(Up, NewHinge) * Basis(E - S, Hinge).Inverse();
+		const FQuat DU = Q1 * D[Upper];
+		// Forearm: the rest forearm, carried by the new upper arm, turned about the hinge alone onto the target.
+		const FVector RestFore = D[Lower].UnrotateVector(W - E).GetSafeNormal();
+		const FVector Carried = DU.RotateVector(RestFore);
+		const double Theta = FMath::Atan2(FVector::DotProduct(NewHinge, FVector::CrossProduct(Carried, Fore)), FVector::DotProduct(Carried, Fore));
+		const FQuat DL = FQuat(NewHinge, Theta) * DU;
 		Joints.Add(Ref.GetBoneName(Upper), D[Above].Inverse() * DU);
 		Joints.Add(Ref.GetBoneName(Lower), DU.Inverse() * DL);
 	}
@@ -646,6 +710,28 @@ const TCHAR* MetaHumanRoleName(int32 Role)
 {
 	static const TCHAR* Names[NumMetaHumanRoles] = { TEXT("Helm"), TEXT("Trimmer"), TEXT("Bow") };
 	return Names[FMath::Clamp(Role, 0, NumMetaHumanRoles - 1)];
+}
+
+bool CrewReachCheck(const FReferenceSkeleton& Ref, const TArray<FTransform>& RestCS, TMap<FName, FQuat>& Joints, int32 End,
+	const FVector& Target, double& OutFlexDeg, double& OutOffHingeDeg, double& OutMissCm)
+{
+	const int32 Lower = End == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(End);
+	const int32 Upper = Lower == INDEX_NONE ? INDEX_NONE : Ref.GetParentIndex(Lower);
+	if (Upper == INDEX_NONE) return false;
+	TArray<FTransform> CS;
+	TArray<FQuat> D;
+	CrewSolver::Solve(Ref, RestCS, Joints, CS, &D);
+	FVector HingeRest;
+	double MaxFlex = 0.0;
+	if (!CrewSolver::LimbHinge(Ref, CS, D, Lower, HingeRest, MaxFlex)) return false;
+	CrewSolver::ReachArm(Ref, CS, D, End, Target, Joints);
+	CrewSolver::Solve(Ref, RestCS, Joints, CS, &D);
+	const FVector Hinge = D[Upper].RotateVector(HingeRest);
+	const FVector U = CS[Lower].GetLocation() - CS[Upper].GetLocation(), F = CS[End].GetLocation() - CS[Lower].GetLocation();
+	OutFlexDeg = FMath::RadiansToDegrees(FMath::Atan2(FVector::DotProduct(Hinge, FVector::CrossProduct(U, F)), FVector::DotProduct(U, F)));
+	OutOffHingeDeg = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(FMath::Abs(FVector::DotProduct(Hinge, F.GetSafeNormal())), 0.0, 1.0)));
+	OutMissCm = FVector::Dist(CS[End].GetLocation(), Target);
+	return true;
 }
 
 bool LoadMetaHumanCrew(int32 Role, USkeletalMesh*& Body, USkeletalMesh*& Face, USkeletalMesh*& Outfit)

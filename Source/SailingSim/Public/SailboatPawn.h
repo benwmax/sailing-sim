@@ -20,6 +20,8 @@
 #include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatPhysicsTask.h"
+#include "Showroom.h"
+#include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
 class UCameraComponent;
@@ -29,6 +31,8 @@ class UProceduralMeshComponent;
 class UInstancedStaticMeshComponent;
 class UInputAction;
 class UInputMappingContext;
+class AFreeCamera;
+struct FSailingKeyBinding;
 class UMaterialInterface;
 class UAudioComponent;
 class USailingSynthWave;
@@ -149,6 +153,23 @@ public:
 	bool IsLogOpen() const { return bLogOpen; }
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
 	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
+	/**
+	 * The showroom (docs/showroom-wiring/): on a stage the boat is afloat and sailing on her spot (the trim assist trims
+	 * for a close reach, the helm holds it, her way over the ground is taken out) and the free camera orbits her in the
+	 * stage's framing; None is the chase camera and the still boat again. bRelocate (the front end) first moves her to
+	 * open water near where she is when she is tied up or close to the shore; in game she stays where she is.
+	 */
+	void SetShowroomStage(EShowroomStage Stage, bool bRelocate);
+	EShowroomStage GetShowroomStage() const { return ShowroomStage; }
+	/** Shows another boat in place: her meshes load asynchronously, then she is built where this one is (SetBoat). */
+	void ShowBoat(int32 Type);
+	int32 GetBoatTypeIndex() const { return int32(Boat.GetConfig().Type); }
+	/** The type loading for ShowBoat, or -1. */
+	int32 GetShowroomLoadingType() const { return ShowroomLoad.IsValid() ? ShowroomLoadType : -1; }
+	/** The meshes a boat's model loads (ModelMeshesFor's paths), for the showroom's async load. */
+	TArray<FSoftObjectPath> ModelAssetPaths(Sailing::EBoatType Type) const;
+	/** The showroom spot (map m), where she is held. */
+	FVector2D GetShowroomSpot() const { return ShowroomSpot; }
 	bool IsHeldByUI() const { return bHeldByUI; }
 	void SetLogOpen(bool bOpen) { bLogOpen = bOpen; }
 	bool HasLastRun() const { return !LastRun.IsEmpty(); }
@@ -175,12 +196,24 @@ public:
 	double GetWatchTime() const { return WatchTime; }
 	float GetWatchSpeed() const { return WatchSpeed; }
 	double GetPhotoHintUntil() const { return PhotoHintUntil; }
+	/** Photo mode's free camera (docs/photo-freefly/), while it is open; H hides its hint and readout. */
+	AFreeCamera* GetFreeCamera() const { return bPhoto ? FreeCam.Get() : nullptr; }
+	bool ArePhotoHintsHidden() const { return bPhotoHideHints; }
+	double GetPhotoReadoutUntil() const { return PhotoReadoutUntil; }
 	void SetGhostFrame(const FReplayFrame& Frame);
 
 	/** Reference capture (-SailingCapture=<preset>): a reference camera, locked exposure, no HUD, telemetry CSV. */
 	bool IsCaptureMode() const { return CapturePreset != ECapturePreset::None; }
 	/** Bean's playtest: the keys every mapping context gets beside the rebindable rows (Esc opens the pause menu). */
 	static void MapFixedKeys(class UInputMappingContext* Context, const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
+	/** The input actions for a list of bindings (Look is 2D, buttons are booleans, the rest axes). */
+	static void MakeActions(UObject* Outer, const TArray<FSailingKeyBinding>& Bindings, TMap<FName, TObjectPtr<class UInputAction>>& InOutActions);
+	/** The boat's mapping context (IMC_Sailboat, priority 0) or photo mode's (IMC_Photo, above it: its keys hide the
+	 *  boat's, so the left stick flies the camera instead of steering). Buttons fire once on the press; photo mode's pad
+	 *  toggle is a half-second hold, and another command on that button takes the tap. */
+	static UInputMappingContext* BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool bPhotoContext);
+	static constexpr int32 PhotoContextPriority = 1;
 	ECapturePreset GetCapturePreset() const { return CapturePreset; }
 	UCameraComponent* GetCaptureCamera() const { return CaptureCamera; }
 	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);
@@ -336,6 +369,30 @@ private:
 	float CockpitRoll = 0.f;
 	void UpdateCockpitCamera(float DeltaSeconds);
 	void UpdatePhotoLens();
+	/** The boat's context, and photo mode's above it while photo mode is open. */
+	void ApplyMappingContexts();
+	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
+	bool bPhotoHideHints = false;
+	// The showroom: its stage, the spot (map m) and heading she is held on, the current that takes out her way over the
+	// ground, the side she sails on, the helm, and the async load of a boat being swapped in (the shown boat's stays
+	// resident until the next one is shown).
+	EShowroomStage ShowroomStage = EShowroomStage::None;
+	FVector2D ShowroomSpot = FVector2D::ZeroVector;
+	float ShowroomYaw = 0.f;
+	double ShowroomSide = 1.0;
+	bool bShowroomPose = false;
+	Sailing::FAutopilot ShowroomPilot;
+	TSharedPtr<FStreamableHandle> ShowroomLoad, ShowroomResident;
+	int32 ShowroomLoadType = -1;
+	double ShowroomLoadStart = 0.0;
+	void FinishShowroomSwap();
+	void ApplyShowroomFraming(bool bKeepYaw);
+	AFreeCamera* EnsureFreeCamera();
+	/** Stills: -SailingPhoto=<sim s> opens photo mode, -SailingPhotoCam="<fwd m>,<right m>,<up m>[,<yaw>,<pitch>]" places
+	 *  the free camera off the boat through its limits (yaw from her heading; without it the camera faces her). */
+	double PhotoAt = -1.0;
+	FString PhotoCamArg;
+	double NextPhotoSpeedStep = 0.0, PhotoReadoutUntil = 0.0;
 public:
 	bool IsCockpitView() const { return bCockpit; }
 	void SetCockpitView(bool bOn);
@@ -554,6 +611,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> PhotoContext;
 	UPROPERTY(Transient) TMap<FName, TObjectPtr<UInputAction>> Actions;
 
 public:

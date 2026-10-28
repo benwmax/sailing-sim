@@ -37,6 +37,10 @@
 #include "InputMappingContext.h"
 #include "SailingBindings.h"
 #include "InputModifiers.h"
+#include "InputTriggers.h"
+#include "FreeCamera.h"
+#include "Engine/AssetManager.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "ProceduralMeshComponent.h"
@@ -77,7 +81,8 @@ namespace
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
-			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station");
+			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
+			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI");
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -867,6 +872,12 @@ void ASailboatPawn::BeginPlay()
 		float CrudeAt = -1.f;
 		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingCrudeTackAt="), CrudeAt)) CrudeTackAt = CrudeAt;
 	}
+	if (!bTrafficBoat)
+	{
+		float PhotoSeconds = -1.f;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingPhoto="), PhotoSeconds)) PhotoAt = PhotoSeconds;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingPhotoCam="), PhotoCamArg, false);
+	}
 	// Benchmarks and screenshots: camera angle (degrees) and distance (meters), and a drill to start in.
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamYaw="), CameraYaw);
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamPitch="), CameraPitch);
@@ -974,8 +985,14 @@ void ASailboatPawn::ResetBoat()
 	Boat.GetMooringLines().clear();
 	// Soaks: -SailingMooring parks the player's boat on a buoy 12 m upwind of the start, head to wind with the sails up,
 	// so the camera stays put (docs/budget/mac-soak-parked-2026-10-17.md).
-	const bool bMooring = !bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingMooring"));
+	const bool bMooring = !bTrafficBoat && !bShowroomPose && FParse::Param(SailingArgs::Dev(), TEXT("SailingMooring"));
 	if (bMooring) StartYaw = GetWind().GetParams().FromDegrees;
+	if (bShowroomPose && !bTrafficBoat)
+	{
+		// The showroom (a boat swapped in, or moved off the slip): on its spot and heading.
+		StartLocation = FVector(ShowroomSpot.X, ShowroomSpot.Y, 0.0) * CmPerMeter;
+		StartYaw = ShowroomYaw;
+	}
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
 	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : ResetSpeedKnots * kKnot);
@@ -1022,14 +1039,50 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (bKeysOpen) PollKeyCapture();
+	// The showroom's swap: the load's own callback comes on the streamable manager's tick; whichever sees it done first.
+	if (ShowroomLoad.IsValid() && ShowroomLoad->HasLoadCompleted()) FinishShowroomSwap();
+	if (ShowroomStage != EShowroomStage::None && FreeCam && !bPhoto)
+	{
+		// The stage's camera: it turns and eases on its own (the menus feed it no input yet), and stays the view (a
+		// stage set before the controller took the boat is otherwise lost to its view target).
+		FreeCam->Update(DeltaSeconds, FFreeCameraInput());
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC && PC->GetViewTarget() != FreeCam && PC->PlayerCameraManager && PC->PlayerCameraManager->PendingViewTarget.Target != FreeCam) PC->SetViewTargetWithBlend(FreeCam, 0.6f, VTBlend_EaseInOut, 2.f);
+	}
+	if (PhotoAt >= 0.0 && !bTrafficBoat && !bPhoto && Boat.GetState().Time >= PhotoAt)
+	{
+		PhotoAt = -1.0;
+		SetPhoto(true);
+		TArray<FString> V;
+		PhotoCamArg.ParseIntoArray(V, TEXT(","));
+		if (FreeCam && V.Num() >= 3)
+		{
+			const FRotator Heading(0.f, GetActorRotation().Yaw, 0.f);
+			const FVector At = GetActorLocation() + Heading.RotateVector(FVector(FCString::Atod(*V[0]), FCString::Atod(*V[1]), FCString::Atod(*V[2])) * 100.0);
+			const FRotator Look = V.Num() >= 5 ? FRotator(FCString::Atof(*V[4]), Heading.Yaw + FCString::Atof(*V[3]), 0.f) : (CameraBoom->GetComponentLocation() - At).Rotation();
+			FreeCam->PlaceAt(At, Look);
+			if (APlayerController* PC = Cast<APlayerController>(GetController())) PC->SetViewTarget(FreeCam);
+			UE_LOG(LogSailing, Display, TEXT("Photo camera at %.0f m from the boat, %.1f m up"), FreeCam->GetLeashDistanceM(),
+				SailingFrame::ToMapCm(GetWorld(), FreeCam->GetActorLocation()).Z / 100.0);
+		}
+	}
 	if (!bTrafficBoat && (bWatching || bPhoto))
 	{
-		// The world holds still (everything runs on the boat's clock); only the replay and the cameras move.
-		if (bPhoto)
+		// The boat holds still (photo mode holds the world clock too: ASailingGameMode::SetWorldHeld); only the replay
+		// and the cameras move.
+		if (bPhoto && FreeCam)
 		{
+			FFreeCameraInput In;
+			In.Move = FVector2D(HeldAxes.FindRef(TEXT("PhotoRight")), HeldAxes.FindRef(TEXT("PhotoForward")));
+			In.Vertical = HeldAxes.FindRef(TEXT("PhotoUpDown"));
+			In.Roll = HeldAxes.FindRef(TEXT("PhotoRoll"));
+			In.bBoost = HeldAxes.FindRef(TEXT("PhotoBoost")) > 0.5f;
+			In.bSlow = HeldAxes.FindRef(TEXT("PhotoSlow")) > 0.5f;
+			FreeCam->Update(DeltaSeconds, In);
 			// The lens: [ and ] (the twin-engine pivot keys) zoom in and out.
+			UCameraComponent* Lens = FreeCam->GetCamera();
 			const float Zoom = HeldAxes.FindRef(TEXT("ThrottleSplit"));
-			if (Zoom != 0.f) Camera->SetFieldOfView(FMath::Clamp(Camera->FieldOfView - Zoom * 30.f * DeltaSeconds, 10.f, 110.f));
+			if (Zoom != 0.f) Lens->SetFieldOfView(FMath::Clamp(Lens->FieldOfView - Zoom * 30.f * DeltaSeconds, 10.f, 110.f));
 			UpdatePhotoLens();
 		}
 		UpdateGhost(DeltaSeconds);
@@ -1039,7 +1092,9 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	{
 		// The traffic simulation sails her; draw where she is, her rig and sails, and her lights.
 		ApplyStateToTransform();
-		UpdateRigVisuals(DeltaSeconds);
+		// Held for photo mode, her sails hold their shape with her.
+		const ASailingGameMode* HeldGM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		if (!HeldGM || !HeldGM->IsWorldHeld()) UpdateRigVisuals(DeltaSeconds);
 		UpdateNavLights();
 		return;
 	}
@@ -1085,6 +1140,15 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		const Vec3 O = Boat.OriginPosition();
 		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
 	}
+	if (ShowroomStage != EShowroomStage::None && !bTrafficBoat)
+	{
+		// The showroom: she sails on (her speed and forces as ever) but is put back on her spot each frame, so she never
+		// sails away during a long stay on the menu.
+		const Vec3 O = Boat.OriginPosition();
+		Vec3& P = Boat.GetMutableState().Position;
+		P.X += ShowroomSpot.X - O.X;
+		P.Y += ShowroomSpot.Y - O.Y;
+	}
 	// Online readiness (rule 3): the boat steps until it reaches the world clock, so every boat (and a second player's)
 	// is on the same instant. Graphics G4: the front end and the loading screen hold the boat where it is while the world
 	// keeps moving: its time is carried along with the clock instead. A boat more than a second off the clock (spawned,
@@ -1094,12 +1158,19 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	{
 		ClockMode->AdvanceClock(DeltaSeconds);
 		const double Behind = ClockMode->GetSimTime() - Boat.GetState().Time;
-		if ((bHeldByUI && !bTrafficBoat) || FMath::Abs(Behind) > 1.0) Boat.GetMutableState().Time = ClockMode->GetSimTime();
+		const bool bStill = bHeldByUI && !bTrafficBoat && ShowroomStage == EShowroomStage::None;
+		if (bStill || FMath::Abs(Behind) > 1.0) Boat.GetMutableState().Time = ClockMode->GetSimTime();
 		else Steps = FMath::Clamp(FMath::RoundToInt32(Behind / Stepper.GetStepDt()), 0, 12);
 	}
-	else if (!(bHeldByUI && !bTrafficBoat))
+	else if (!(bHeldByUI && !bTrafficBoat && ShowroomStage == EShowroomStage::None))
 	{
 		Steps = Stepper.Advance(DeltaSeconds);
+	}
+	if (ShowroomStage != EShowroomStage::None && !bTrafficBoat)
+	{
+		// The showroom's helm holds a close reach on her side, whatever the wind does.
+		ShowroomPilot.TargetTWADeg = 70.0 * ShowroomSide;
+		Controls.Tiller = ShowroomPilot.Update(Boat);
 	}
 	// Stowed in her slip (covered and furled, as drawn), the sails give no force (docs/dock-look/).
 	Controls.bSailsDown = bSailsStowed && StowedDress && IsTiedUp();
@@ -1114,6 +1185,11 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	Job.StepDt = Stepper.GetStepDt();
 	Job.bTrimAssist = EasyAssists.bEnabled || USailingSettings::Get()->bTrimAssist; // IsTrimAssistActive, step by step
 	Job.LastManualTrimTime = LastManualTrimTime;
+	if (ShowroomStage != EShowroomStage::None && !bTrafficBoat)
+	{
+		Job.bTrimAssist = true; // the showroom trims her sails (the player's hands are on the menus)
+		Job.LastManualTrimTime = -1e9;
+	}
 	Job.TrimIdleSeconds = EasyAssists.bEnabled ? EasyAssists.TrimIdleSeconds : kTrimAssistIdleSeconds;
 	Job.bSimple = bSimple;
 	Job.Easy = &EasyAssists;
@@ -1469,6 +1545,13 @@ namespace
 			{ TEXT("Gps"), { TEXT("GPS on the chart"), TEXT("") } }, { TEXT("ClearPlot"), { TEXT("Clear the plot"), TEXT("") } },
 			{ TEXT("Logbook"), { TEXT("Ship's log"), TEXT("") } }, { TEXT("Replay"), { TEXT("Watch your last run"), TEXT("") } },
 			{ TEXT("Photo"), { TEXT("Photo mode"), TEXT("") } }, { TEXT("PhotoShot"), { TEXT("Take a photo / choose"), TEXT("") } },
+			{ TEXT("PhotoForward"), { TEXT("Photo: fly forward"), TEXT("Photo: fly back") } },
+			{ TEXT("PhotoRight"), { TEXT("Photo: fly right"), TEXT("Photo: fly left") } },
+			{ TEXT("PhotoUpDown"), { TEXT("Photo: fly up"), TEXT("Photo: fly down") } },
+			{ TEXT("PhotoRoll"), { TEXT("Photo: tilt right"), TEXT("Photo: tilt left") } }, { TEXT("PhotoRollReset"), { TEXT("Photo: level the camera"), TEXT("") } },
+			{ TEXT("PhotoBoost"), { TEXT("Photo: fast (hold)"), TEXT("") } }, { TEXT("PhotoSlow"), { TEXT("Photo: slow (hold)"), TEXT("") } },
+			{ TEXT("PhotoSpeed"), { TEXT("Photo: faster"), TEXT("Photo: slower") } }, { TEXT("PhotoToBoat"), { TEXT("Photo: back to the boat"), TEXT("") } },
+			{ TEXT("PhotoOrbit"), { TEXT("Photo: orbit the boat / fly"), TEXT("") } }, { TEXT("PhotoHideUI"), { TEXT("Photo: hide the hints"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
 			{ TEXT("CrewAction"), { TEXT("Crew station: answer the captain"), TEXT("") } }, { TEXT("Grind"), { TEXT("Crew station: grind the jib winch"), TEXT("") } },
@@ -1596,16 +1679,37 @@ bool ASailboatPawn::Rebind(FName Action, bool bNegative, const FKey& Key)
 // as Cancel. Tab (the rebindable key) keeps working; the editor's play-in-editor stops on Esc before the game sees it.
 void ASailboatPawn::MapFixedKeys(UInputMappingContext* Context, const TMap<FName, TObjectPtr<UInputAction>>& InActions)
 {
-	if (const TObjectPtr<UInputAction>* Menu = InActions.Find(TEXT("Menu")); Context && Menu && *Menu) Context->MapKey(*Menu, EKeys::Escape);
+	if (const TObjectPtr<UInputAction>* Menu = InActions.Find(TEXT("Menu")); Context && Menu && *Menu)
+	{
+		Context->MapKey(*Menu, EKeys::Escape).Triggers.Add(NewObject<UInputTriggerPressed>(Context));
+	}
 }
 
-void ASailboatPawn::RebuildMappings()
+void ASailboatPawn::MakeActions(UObject* Outer, const TArray<FSailingKeyBinding>& Bindings, TMap<FName, TObjectPtr<UInputAction>>& InOutActions)
 {
-	// The same actions (bound to the same handlers), mapped to the new keys.
-	UInputMappingContext* Context = NewObject<UInputMappingContext>(this, TEXT("IMC_Sailboat_Rebound"));
-	for (const FSailingKeyBinding& Binding : GetDefault<USailingInputSettings>()->GetBindings())
+	for (const FSailingKeyBinding& Binding : Bindings)
 	{
-		const TObjectPtr<UInputAction>* Action = Actions.Find(Binding.Action);
+		TObjectPtr<UInputAction>& Action = InOutActions.FindOrAdd(Binding.Action);
+		if (Action) continue;
+		Action = NewObject<UInputAction>(Outer, *FString::Printf(TEXT("IA_%s"), *Binding.Action.ToString()));
+		Action->ValueType = Binding.Action == NAME_Look ? EInputActionValueType::Axis2D
+			: (IsButtonAction(Binding.Action) ? EInputActionValueType::Boolean : EInputActionValueType::Axis1D);
+	}
+}
+
+UInputMappingContext* ASailboatPawn::BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+	const TMap<FName, TObjectPtr<UInputAction>>& InActions, bool bPhotoContext)
+{
+	// A rebind builds new contexts while the old ones are still mapped: each gets a name of its own.
+	UInputMappingContext* Context = NewObject<UInputMappingContext>(Outer, MakeUniqueObjectName(Outer, UInputMappingContext::StaticClass(), Name));
+	// Photo mode's pad toggle is a half-second hold of its button (View): the controls card (and, in photo mode, the
+	// orbit toggle) keep that button's tap. Every other button fires once, on the press.
+	TSet<FKey> HoldKeys;
+	for (const FSailingKeyBinding& B : Bindings) if (B.Action == TEXT("Photo") && B.Key.IsGamepadKey()) HoldKeys.Add(B.Key);
+	for (const FSailingKeyBinding& Binding : Bindings)
+	{
+		if (!(bPhotoContext ? SailingBindings::InPhotoContext(Binding) : SailingBindings::InBoatContext(Binding))) continue;
+		const TObjectPtr<UInputAction>* Action = InActions.Find(Binding.Action);
 		if (!Action || !*Action) continue;
 		FEnhancedActionKeyMapping& Mapping = Context->MapKey(*Action, Binding.Key);
 		if (Binding.Scale < 0.f) Mapping.Modifiers.Add(NewObject<UInputModifierNegate>(Context));
@@ -1615,17 +1719,46 @@ void ASailboatPawn::RebuildMappings()
 			Scalar->Scalar = FVector(FMath::Abs(Binding.Scale));
 			Mapping.Modifiers.Add(Scalar);
 		}
-	}
-	MapFixedKeys(Context, Actions);
-	MappingContext = Context;
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		if (!IsButtonAction(Binding.Action)) continue;
+		if (HoldKeys.Contains(Binding.Key) && Binding.Action == TEXT("Photo"))
 		{
-			Subsystem->ClearAllMappings();
-			Subsystem->AddMappingContext(MappingContext, 0);
+			UInputTriggerHold* Hold = NewObject<UInputTriggerHold>(Context);
+			Hold->HoldTimeThreshold = 0.5f;
+			Hold->bIsOneShot = true;
+			Mapping.Triggers.Add(Hold);
+		}
+		else if (HoldKeys.Contains(Binding.Key))
+		{
+			UInputTriggerTap* Tap = NewObject<UInputTriggerTap>(Context);
+			Tap->TapReleaseTimeThreshold = 0.5f;
+			Mapping.Triggers.Add(Tap);
+		}
+		else
+		{
+			Mapping.Triggers.Add(NewObject<UInputTriggerPressed>(Context));
 		}
 	}
+	if (!bPhotoContext) MapFixedKeys(Context, InActions);
+	return Context;
+}
+
+void ASailboatPawn::ApplyMappingContexts()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = PC ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()) : nullptr;
+	if (!Subsystem || !MappingContext) return;
+	Subsystem->ClearAllMappings();
+	Subsystem->AddMappingContext(MappingContext, 0);
+	if (bPhoto && PhotoContext) Subsystem->AddMappingContext(PhotoContext, PhotoContextPriority);
+}
+
+void ASailboatPawn::RebuildMappings()
+{
+	// The same actions (bound to the same handlers), mapped to the new keys.
+	const TArray<FSailingKeyBinding>& Bindings = GetDefault<USailingInputSettings>()->GetBindings();
+	MappingContext = BuildContext(this, TEXT("IMC_Sailboat_Rebound"), Bindings, Actions, false);
+	PhotoContext = BuildContext(this, TEXT("IMC_Photo_Rebound"), Bindings, Actions, true);
+	ApplyMappingContexts();
 }
 
 void ASailboatPawn::BeginRun(const FString& Label)
@@ -1716,7 +1849,7 @@ void ASailboatPawn::SetWatching(bool bOn)
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (bOn)
 	{
-		bPhoto = false;
+		if (bPhoto) SetPhoto(false);
 		WatchTime = 0.0;
 		WatchSpeed = 1.f;
 		UpdateGhost(0.f);
@@ -1809,9 +1942,11 @@ void ASailboatPawn::UpdatePhotoLens()
 {
 	// Photo mode is a camera: focus on the boat at f/2.8 on a full-frame sensor (the background softens with the lens),
 	// and the lens profile from Visual V1 (barrel distortion, vignetting and fringing, M_LensDistortion).
-	FPostProcessSettings& PP = Camera->PostProcessSettings;
+	if (!FreeCam) return;
+	UCameraComponent* Lens = FreeCam->GetCamera();
+	FPostProcessSettings& PP = Lens->PostProcessSettings;
 	PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = true;
-	PP.DepthOfFieldFocalDistance = float(FVector::Dist(Camera->GetComponentLocation(), BoatRoot->GetComponentLocation()));
+	PP.DepthOfFieldFocalDistance = float(FVector::Dist(Lens->GetComponentLocation(), BoatRoot->GetComponentLocation()));
 	PP.DepthOfFieldFstop = 2.8f;
 	PP.DepthOfFieldSensorWidth = 36.f;
 	if (LensDistortionAsset && !PP.WeightedBlendables.Array.ContainsByPredicate([&](const FWeightedBlendable& B) { return B.Object == LensDistortionAsset; }))
@@ -1822,24 +1957,191 @@ void ASailboatPawn::UpdatePhotoLens()
 
 void ASailboatPawn::SetPhoto(bool bOn)
 {
+	if (bOn == bPhoto) return;
+	if (bOn && bWatching) SetWatching(false);
 	bPhoto = bOn;
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	// Online readiness rule 9: the hold is the game mode's single switch, so the traffic, the weather, the tide and the
+	// water's time stop with the boat (before, only the boat stopped: it returns early from Tick in photo mode).
+	if (ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>()) GM->SetWorldHeld(bOn);
+	HeldAxes.Reset(); // the two contexts' keys overlap: nothing held carries across
 	if (bOn)
 	{
-		if (bWatching) SetWatching(false);
-		PhotoHintUntil = FPlatformTime::Seconds() + 4.0;
+		// docs/photo-freefly/: a free camera (AFreeCamera) where the chase camera is, the same lens and grade; the view
+		// blends over to it, so it opens without a jump. Its leash and orbit are about the boat.
+		if (EnsureFreeCamera())
+		{
+			FreeCam->Limits = FFreeCameraLimits();
+			FreeCam->SetAnchor(this, CameraBoom->GetComponentLocation() - GetActorLocation());
+			FreeCam->SetMode(EFreeCameraMode::Fly);
+			FreeCam->SnapTo(Camera->GetComponentLocation(), Camera->GetComponentRotation());
+			UCameraComponent* Lens = FreeCam->GetCamera();
+			Lens->PostProcessSettings = Camera->PostProcessSettings;
+			Lens->PostProcessBlendWeight = Camera->PostProcessBlendWeight;
+			Lens->SetFieldOfView(Camera->FieldOfView);
+			UpdatePhotoLens();
+			if (PC) PC->SetViewTargetWithBlend(FreeCam, 0.3f);
+		}
+		PhotoHintUntil = FPlatformTime::Seconds() + 5.0;
+		PhotoReadoutUntil = PhotoHintUntil;
+	}
+	else if (PC)
+	{
+		// Back on the chase camera (untouched while flying), the boat where she was.
+		PC->SetViewTargetWithBlend(this, 0.3f);
+	}
+	ApplyMappingContexts();
+}
+
+AFreeCamera* ASailboatPawn::EnsureFreeCamera()
+{
+	if (!FreeCam)
+	{
+		FActorSpawnParameters Params;
+		Params.ObjectFlags |= RF_Transient;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		FreeCam = GetWorld()->SpawnActor<AFreeCamera>(Camera->GetComponentLocation(), Camera->GetComponentRotation(), Params);
+	}
+	return FreeCam;
+}
+
+void ASailboatPawn::SetShowroomStage(EShowroomStage Stage, bool bRelocate)
+{
+	if (bTrafficBoat || bGhost) return;
+	const EShowroomStage Prev = ShowroomStage;
+	if (Stage == Prev)
+	{
+		return;
+	}
+	ShowroomStage = Stage;
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (Stage == EShowroomStage::None)
+	{
+		// Back on the chase camera, the boat held still where she is.
+		bShowroomPose = false;
+		if (PC && FreeCam && PC->GetViewTarget() == FreeCam) PC->SetViewTargetWithBlend(this, 0.6f, VTBlend_EaseInOut, 2.f);
+		return;
+	}
+	if (Prev == EShowroomStage::None)
+	{
+		// Her spot: where she is, or (in the front end) open water near it when she is in her slip or close to the shore.
+		const Vec3 O = Boat.OriginPosition();
+		ShowroomSpot = FVector2D(O.X, O.Y);
+		const double Twa = Boat.GetTelemetry().TrueWindAngle;
+		ShowroomSide = Twa < 0.0 ? -1.0 : 1.0;
+		ShowroomYaw = float(GetActorRotation().Yaw);
+		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		if (bRelocate && GM && GM->GetLake().IsLoaded())
+		{
+			const Sailing::FLakeTerrain& Terrain = GM->GetLake().Terrain;
+			const FVector2D Open = SailShowroom::FindOpenWater([&Terrain](double X, double Y) { return Terrain.HeightAt(X, Y); }, O.X, O.Y);
+			if (IsTiedUp() || !Open.Equals(ShowroomSpot, 0.5))
+			{
+				ShowroomSpot = Open;
+				ShowroomYaw = float(GetWind().GetParams().FromDegrees - 70.0 * ShowroomSide);
+				bShowroomPose = true;
+				ResetBoat();
+				UE_LOG(LogSailing, Display, TEXT("Showroom: moved to open water at (%.0f, %.0f)"), ShowroomSpot.X, ShowroomSpot.Y);
+			}
+		}
+		ShowroomPilot = Sailing::FAutopilot();
+		ShowroomPilot.MaxTiller = 0.6;
+		if (EnsureFreeCamera())
+		{
+			FreeCam->Limits = FFreeCameraLimits();
+			FreeCam->Limits.WaterClearM = 0.5; // the showroom's floor: half a metre over the waves
+			FreeCam->GetCamera()->PostProcessSettings = Camera->PostProcessSettings;
+			FreeCam->GetCamera()->SetFieldOfView(Camera->FieldOfView);
+			FreeCam->SnapTo(Camera->GetComponentLocation(), Camera->GetComponentRotation());
+			ApplyShowroomFraming(false);
+			if (PC) PC->SetViewTargetWithBlend(FreeCam, 0.6f, VTBlend_EaseInOut, 2.f);
+		}
+		return;
+	}
+	ApplyShowroomFraming(false);
+}
+
+void ASailboatPawn::ApplyShowroomFraming(bool bKeepYaw)
+{
+	if (!FreeCam || ShowroomStage == EShowroomStage::None) return;
+	// Inputs/ui-showroom/brief.md section 3: the showroom orbits the rig at 0.4 of its height from about 2.4 lengths (9 to
+	// 40 m, zoom 0.6x to 1.6x), 3 to 35 deg above the water, from the starboard quarter, turning slowly when left alone;
+	// the weather framing stands off about 4 lengths, higher, with the boat to the right of the panel and more sky.
+	const FBoatConfig& C = Boat.GetConfig();
+	FreeCam->SetAnchor(this, FVector(0.f, 0.f, float(C.MastheadZ) * 0.4f * CmPerMeter));
+	const float Heading = float(GetActorRotation().Yaw);
+	FFreeCameraOrbit O;
+	O.EaseSeconds = 0.6f;
+	if (ShowroomStage == EShowroomStage::Boat)
+	{
+		const float D = FMath::Clamp(float(C.LengthOverall) * 2.4f, 9.f, 40.f) * CmPerMeter;
+		O.DistanceCm = D;
+		O.MinDistanceCm = 0.6f * D;
+		O.MaxDistanceCm = 1.6f * D;
+		O.PitchDeg = -12.f;
+		O.MinPitchDeg = -35.f;
+		O.MaxPitchDeg = -3.f;
+		O.YawDeg = Heading + 135.f + 180.f; // the camera on her starboard quarter, looking at her
+		O.SpinDegPerSec = 6.f;
+		O.SpinIdleSeconds = 4.f;
 	}
 	else
 	{
-		// Back to the sailing camera: no depth of field, no lens profile.
-		FPostProcessSettings& PP = Camera->PostProcessSettings;
-		PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = false;
-		if (LensDistortionAsset) PP.RemoveBlendable(LensDistortionAsset);
-		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
-		CameraPitch = FMath::Clamp(CameraPitch, -75.f, 5.f);
-		CameraDistance = FMath::Clamp(CameraDistance, 400.f, 4000.f);
-		CameraBoom->TargetArmLength = CameraDistance;
-		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+		const float D = FMath::Clamp(float(C.LengthOverall) * 4.f, 20.f, 90.f) * CmPerMeter;
+		O.DistanceCm = D;
+		O.MinDistanceCm = 0.7f * D;
+		O.MaxDistanceCm = 1.5f * D;
+		O.PitchDeg = -4.f;
+		O.MinPitchDeg = -20.f;
+		O.MaxPitchDeg = 10.f;
+		O.YawDeg = Heading + 120.f + 180.f;
+		O.LateralOffsetCm = -0.3f * D; // the pivot left of the view: the boat sits right of the panel
+		O.UpOffsetCm = 0.12f * D;      // and the sky takes more of the frame
 	}
+	if (bKeepYaw && FreeCam->GetMode() == EFreeCameraMode::Orbit) O.YawDeg = float(FreeCam->GetActorRotation().Yaw);
+	FreeCam->SetOrbit(O);
+}
+
+void ASailboatPawn::ShowBoat(int32 Type)
+{
+	Type = FMath::Clamp(Type, 0, int32(EBoatType::Count) - 1);
+	if (ShowroomLoad.IsValid() && ShowroomLoadType == Type) return;
+	if (ShowroomLoad.IsValid()) { ShowroomLoad->CancelHandle(); ShowroomLoad.Reset(); }
+	if (Type == GetBoatTypeIndex()) return;
+	ShowroomLoadType = Type;
+	ShowroomLoadStart = FPlatformTime::Seconds();
+	// Inputs/ui-showroom/brief.md section 5: her meshes load off the game thread, then she is built in place.
+	const TArray<FSoftObjectPath> Paths = ModelAssetPaths(EBoatType(Type));
+	if (Paths.Num() > 0) ShowroomLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(Paths, FStreamableDelegate::CreateUObject(this, &ASailboatPawn::FinishShowroomSwap));
+	if (!ShowroomLoad.IsValid() || ShowroomLoad->HasLoadCompleted()) FinishShowroomSwap();
+}
+
+void ASailboatPawn::FinishShowroomSwap()
+{
+	if (ShowroomLoadType < 0) return;
+	const UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || IsActorBeingDestroyed()) { ShowroomLoadType = -1; ShowroomLoad.Reset(); return; }
+	const int32 Type = ShowroomLoadType;
+	ShowroomLoadType = -1;
+	const double Loaded = FPlatformTime::Seconds();
+	// In place: where she is now, on her heading (or the showroom's spot when she is on a stage).
+	if (!bShowroomPose)
+	{
+		const Vec3 O = Boat.OriginPosition();
+		ShowroomSpot = FVector2D(O.X, O.Y);
+		ShowroomYaw = float(GetActorRotation().Yaw);
+	}
+	const bool bWasPose = bShowroomPose;
+	bShowroomPose = true;
+	SetBoat(Type);
+	bShowroomPose = bWasPose && ShowroomStage != EShowroomStage::None;
+	const double Built = FPlatformTime::Seconds();
+	// The shown boat's meshes stay resident; the one before is let go.
+	ShowroomResident = ShowroomLoad;
+	ShowroomLoad.Reset();
+	ApplyShowroomFraming(true);
+	UE_LOG(LogSailing, Display, TEXT("Showroom swap %hs: load %.0f ms, build %.0f ms"), Boat.GetConfig().Name,
+		(Loaded - ShowroomLoadStart) * 1000.0, (Built - Loaded) * 1000.0);
 }
 
 void ASailboatPawn::TakePhoto()
@@ -2706,7 +3008,15 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 
 void ASailboatPawn::OnAxis(const FInputActionValue& Value, FName Action)
 {
-	HeldAxes.FindOrAdd(Action) = Value.Get<float>();
+	const float V = Value.Get<float>();
+	HeldAxes.FindOrAdd(Action) = V;
+	if (Action == TEXT("PhotoSpeed") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && FPlatformTime::Seconds() >= NextPhotoSpeedStep)
+	{
+		// The wheel (or the D-pad, held) steps the base speed; in orbit, the distance.
+		FreeCam->StepSpeed(V > 0.f ? 1 : -1);
+		NextPhotoSpeedStep = FPlatformTime::Seconds() + 0.15;
+		PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
+	}
 }
 
 void ASailboatPawn::OnAxisReleased(const FInputActionValue& Value, FName Action)
@@ -2730,10 +3040,7 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 	}
 	if (bPhoto)
 	{
-		// Photo mode: look from anywhere, below the boom to straight down.
-		CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
-		CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -89.f, 35.f);
-		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+		if (FreeCam) FreeCam->AddLook(Delta);
 		return;
 	}
 	if (bChartOpen)
@@ -2759,12 +3066,7 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 		GhostBoat->AddCameraOrbit(FVector2D::ZeroVector, Value.Get<float>());
 		return;
 	}
-	if (bPhoto)
-	{
-		CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 200.f, 150.f, 30000.f);
-		CameraBoom->TargetArmLength = CameraDistance;
-		return;
-	}
+	if (bPhoto) return; // the wheel is photo mode's speed (PhotoSpeed, in its own context)
 	CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 120.f, 400.f, 4000.f);
 	CameraBoom->TargetArmLength = CameraDistance;
 }
@@ -2810,6 +3112,15 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	if (bPhoto)
 	{
 		if (Action == TEXT("PhotoShot")) TakePhoto();
+		else if (Action == TEXT("Menu")) SetPhoto(false); // Esc (or the pad's Menu) leaves photo mode
+		else if (Action == TEXT("PhotoToBoat") && FreeCam) FreeCam->SnapTo(Camera->GetComponentLocation(), Camera->GetComponentRotation());
+		else if (Action == TEXT("PhotoOrbit") && FreeCam)
+		{
+			FreeCam->SetMode(FreeCam->GetMode() == EFreeCameraMode::Orbit ? EFreeCameraMode::Fly : EFreeCameraMode::Orbit);
+			PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
+		}
+		else if (Action == TEXT("PhotoRollReset") && FreeCam) FreeCam->ResetRoll();
+		else if (Action == TEXT("PhotoHideUI")) bPhotoHideHints = !bPhotoHideHints;
 		return;
 	}
 	if (bWatching)
@@ -3185,46 +3496,19 @@ void ASailboatPawn::CreateInput()
 		return;
 	}
 
-	// Actions and the mapping context are built from USailingInputSettings (Input.ini), so keys can be rebound
+	// Actions and the mapping contexts are built from USailingInputSettings (Input.ini), so keys can be rebound
 	// without editing assets.
-	MappingContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Sailboat"));
-	for (const FSailingKeyBinding& Binding : GetDefault<USailingInputSettings>()->GetBindings())
-	{
-		TObjectPtr<UInputAction>& Action = Actions.FindOrAdd(Binding.Action);
-		if (!Action)
-		{
-			Action = NewObject<UInputAction>(this, *FString::Printf(TEXT("IA_%s"), *Binding.Action.ToString()));
-			Action->ValueType = Binding.Action == NAME_Look ? EInputActionValueType::Axis2D
-				: (IsButtonAction(Binding.Action) ? EInputActionValueType::Boolean : EInputActionValueType::Axis1D);
-		}
-		FEnhancedActionKeyMapping& Mapping = MappingContext->MapKey(Action, Binding.Key);
-		if (Binding.Scale < 0.f)
-		{
-			Mapping.Modifiers.Add(NewObject<UInputModifierNegate>(MappingContext));
-		}
-		if (FMath::Abs(Binding.Scale) != 1.f)
-		{
-			UInputModifierScalar* Scalar = NewObject<UInputModifierScalar>(MappingContext);
-			Scalar->Scalar = FVector(FMath::Abs(Binding.Scale));
-			Mapping.Modifiers.Add(Scalar);
-		}
-	}
-	MapFixedKeys(MappingContext, Actions);
+	const TArray<FSailingKeyBinding>& Bindings = GetDefault<USailingInputSettings>()->GetBindings();
+	MakeActions(this, Bindings, Actions);
+	MappingContext = BuildContext(this, TEXT("IMC_Sailboat"), Bindings, Actions, false);
+	PhotoContext = BuildContext(this, TEXT("IMC_Photo"), Bindings, Actions, true);
 }
 
 void ASailboatPawn::PawnClientRestart()
 {
 	Super::PawnClientRestart();
 	CreateInput();
-
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
-		{
-			Subsystem->ClearAllMappings();
-			Subsystem->AddMappingContext(MappingContext, 0);
-		}
-	}
+	ApplyMappingContexts();
 }
 
 void ASailboatPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -3252,7 +3536,8 @@ void ASailboatPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		}
 		else if (IsButtonAction(Name))
 		{
-			Input->BindAction(Action, ETriggerEvent::Started, this, &ASailboatPawn::OnButton, Name);
+			// Each mapping's trigger decides when (BuildContext: the press, a hold or a tap).
+			Input->BindAction(Action, ETriggerEvent::Triggered, this, &ASailboatPawn::OnButton, Name);
 		}
 		else
 		{

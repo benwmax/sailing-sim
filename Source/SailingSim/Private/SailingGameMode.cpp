@@ -361,7 +361,7 @@ void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
 	if (ClockFrame == GFrameCounter) return;
 	ClockFrame = GFrameCounter;
-	if (!GetWorld()->IsPaused()) Clock.Advance(DeltaSeconds);
+	if (!GetWorld()->IsPaused() && !IsWorldHeld()) Clock.Advance(DeltaSeconds);
 }
 
 int32 ASailingGameMode::CentralEuropeanOffsetHours(const FDateTime& Date)
@@ -528,6 +528,33 @@ void ASailingGameMode::UpdateShelter()
 
 void ASailingGameMode::ApplyConditions(const FSailConditions& C)
 {
+	bPreviewing = false; // the preview, if any, is now the session's
+	ApplyConditionsLocal(C);
+	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->Active.Conditions = C;
+}
+
+void ASailingGameMode::PreviewConditions(const FSailConditions& C)
+{
+	if (!bPreviewing)
+	{
+		// What Back goes back to: the running session's conditions (the front end has none: its preview is the choice).
+		bPreviewing = true;
+		const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+		bPreviewRestore = Session && Session->bHasActive;
+		if (bPreviewRestore) PreviewRestore = Session->Active.Conditions;
+	}
+	ApplyConditionsLocal(C);
+}
+
+void ASailingGameMode::EndPreview(bool bKeep)
+{
+	if (!bPreviewing) return;
+	bPreviewing = false;
+	if (!bKeep && bPreviewRestore) ApplyConditionsLocal(PreviewRestore);
+}
+
+void ASailingGameMode::ApplyConditionsLocal(const FSailConditions& C)
+{
 	// The same weather path as a new session, without the reload: preset by sky, start hour, wind speed, direction, gusts.
 	USailingSettings* Settings = USailingSettings::Get();
 	Settings->WeatherPreset = ESailingWeather(USailSessionSubsystem::WeatherPresetFor(C.Sky));
@@ -540,7 +567,6 @@ void ASailingGameMode::ApplyConditions(const FSailConditions& C)
 	SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), 1) + FTimespan::FromDays(FMath::Max(C.Day, 1) - 1);
 	bSessionDate = true;
 	bWindArgsRead = true;   // the session's values stand
-	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->Active.Conditions = C;
 	ApplyWeatherSettings();
 }
 
@@ -1117,7 +1143,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	AdvanceClock(DeltaSeconds);
 	{ SAILING_PERF_SCOPE(Streaming); UpdateStreaming(); }
-	if (!GetWorld()->IsPaused())
+	if (!GetWorld()->IsPaused() && !IsWorldHeld())
 	{
 		UpdateWeather(DeltaSeconds);
 		UpdateTide();

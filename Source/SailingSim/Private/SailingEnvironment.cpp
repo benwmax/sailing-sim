@@ -506,6 +506,8 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		CamPos = Cam->GetCameraLocation();
 	}
 	const FWeatherState& W = GM->GetWeatherState();
+	// Held for photo mode: lightning and the rain curtains' fall stop with the world clock.
+	const float SimDt = GM->IsWorldHeld() ? 0.f : DeltaSeconds;
 	UpdateSun(W.HourOfDay);
 	UpdateClouds(DeltaSeconds);
 	UpdateCloudLayers(CamPos);
@@ -514,7 +516,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	UpdateHaze();
 	UpdateSkyline(CamPos);
 	UpdateRain(CamPos);
-	UpdateRainCurtains(CamPos, DeltaSeconds);
+	UpdateRainCurtains(CamPos, SimDt);
 	UpdateRainWall(CamPos);
 	if (WorldCollection)
 	{
@@ -539,7 +541,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Night"),
 			FMath::Max(NightAmount, FMath::Clamp(float(W.CloudDarkness) * 1.4f - 0.6f, 0.f, 0.6f)));
 	}
-	UpdateLightning(DeltaSeconds, CamPos);
+	UpdateLightning(SimDt, CamPos);
 }
 
 namespace
