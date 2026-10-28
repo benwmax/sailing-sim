@@ -220,7 +220,7 @@ namespace CrewSolver
 			const int32 Hips = Ref.GetParentIndex(ThighL);
 			if (Hips == INDEX_NONE) return false;
 			OutRest = D[Hips].UnrotateVector(CS[ThighR].GetLocation() - CS[ThighL].GetLocation()).GetSafeNormal();
-			OutMaxDeg = 150.0;
+			OutMaxDeg = 160.0;   // a deep squat (and a Sunfish sailor's feet tucked under the strap beside the hips)
 			return !OutRest.IsNearlyZero();
 		}
 		OutRest = bLeft ? FVector::UpVector : -FVector::UpVector;
@@ -230,7 +230,7 @@ namespace CrewSolver
 
 	/** Graphics G8, docs/crew-elbow/: two-bone IK for one arm (or leg) toward a wrist (ankle) target, component space. The
 	 *  middle joint is a hinge: the forearm turns only about the elbow's own axis, which the upper arm carries, flexed
-	 *  between straight and 145 deg (the knee 150), never backwards. The elbow sits in the stance's bend plane where that is
+	 *  between straight and 145 deg (the knee 160), never backwards. The elbow sits in the stance's bend plane where that is
 	 *  within 75 deg of where the arm's own hinge puts it (or where Bend asks, a dinghy's knees up under the strap); the
 	 *  upper arm turns so its hinge is square to that plane. Before, the elbow went in the stance's plane and the forearm
 	 *  was turned straight at the target about any axis: for a target across that plane it folded the wrong way, and the

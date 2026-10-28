@@ -72,7 +72,7 @@ bool FVisualCrewElbowTest::RunTest(const FString& Parameters)
 			const FVector Shoulder = S.Rest[Root].GetLocation();
 			const double Reach = FVector::Dist(Shoulder, S.Rest[Mid].GetLocation()) + FVector::Dist(S.Rest[Mid].GetLocation(), S.Rest[End].GetLocation());
 			const bool bLeg = K >= 2;
-			const double Limit = bLeg ? 150.0 : 145.0;
+			const double Limit = bLeg ? 160.0 : 145.0;
 			FRandomStream Rng(1234 + K);
 			int32 Backward = 0, OverLimit = 0, OffHinge = 0, Missed = 0, Reachable = 0;
 			double WorstFlex = 1e9, WorstOff = 0.0, WorstMiss = 0.0;
