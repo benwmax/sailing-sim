@@ -253,12 +253,21 @@ namespace Sailing
 		};
 		for (int B = 0; B < kWaveBands; ++B)
 		{
-			const double Side = SideAngle(SpreadingBeta(BandFrequency[B], Fp));
+			// docs/wave-jitter/ (storm-water step 2): each band's three directions drawn from the measured spreading, one in
+			// each third of its probability (stratified, so the band keeps the spreading's width). At
+			// -Delta, 0, +Delta in every band (the old layout) the 24 long trains crossed in the same diamond weave at 20 kn
+			// and over. The sech^2 spreading's CDF is (tanh(beta theta) / tanh(beta pi) + 1) / 2, inverted in closed form.
+			const double Beta = SpreadingBeta(BandFrequency[B], Fp);
+			const double TanhPi = std::tanh(Beta * kPi);
 			for (int D = 0; D < kWaveDirectionsPerBand; ++D)
 			{
 				FWaveComponent& C = Components[B * kWaveDirectionsPerBand + D];
-				// -Delta, 0, +Delta about the wind, each jittered by up to 3 deg so no two bands' crests line up exactly.
-				const double Dir = TravelDir + (D - 1) * Side + (Rand() - 0.5) * 0.1;
+				// (About the middle of its third, at random within the middle 60%: drawn across the whole third the outer
+				// directions often fell far out and the sea came out wider than the spreading.)
+				const double Q = (D + 0.5 + 0.6 * (Rand() - 0.5)) / kWaveDirectionsPerBand;
+				const double Rel = Clamp(std::atanh(Clamp((2.0 * Q - 1.0) * TanhPi, -0.999999, 0.999999)) / Beta, -80.0 * kDegToRad, 80.0 * kDegToRad);
+				AnchorDensity[B * kWaveDirectionsPerBand + D] = DirectionalSpreading(BandFrequency[B], Fp, Rel);
+				const double Dir = TravelDir + Rel;
 				const double K = WavenumberFor(C.Omega, Depth);
 				const double Kx = K * std::cos(Dir), Ky = K * std::sin(Dir);
 				C.Phase = std::fmod(C.Phase + (C.Kx - Kx) * HoldX + (C.Ky - Ky) * HoldY, 2.0 * kPi);
@@ -313,8 +322,12 @@ namespace Sailing
 			{
 				const FWaveComponent& C = Components[B * kWaveDirectionsPerBand + D];
 				const double Rel = WrapAngle(std::atan2(C.Ky, C.Kx) - TravelDir);
+				// (The anchored sea's directions were drawn from the spreading, a third of the band each: weighted by the
+				// spreading now over the density they were drawn at, equal while the wind is where it was.)
+				const double Drawn = AnchorDensity[B * kWaveDirectionsPerBand + D];
 				const double W = std::fabs(Rel) >= kPi * 0.5 ? 0.0
-					: Params.bCalibrationSea ? std::pow(std::cos(Rel), 2.0) : DirectionalSpreading(BandFrequency[B], Fp, Rel);
+					: Params.bCalibrationSea ? std::pow(std::cos(Rel), 2.0)
+					: DirectionalSpreading(BandFrequency[B], Fp, Rel) / (bAnchored && Drawn > 1e-12 ? Drawn : 1.0);
 				Weights[D] = W;
 				Sum += W;
 			}

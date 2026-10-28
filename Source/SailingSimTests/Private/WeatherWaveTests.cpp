@@ -144,17 +144,31 @@ bool FSailingWaveSpreadingTest::RunTest(const FString& Parameters)
 	// Wind from 70 deg: the waves travel toward 250 deg.
 	FWaveField Waves = MakeWaves(9.0, 70.0, 3000.0);
 	const double Travel = 250.0 * kDegToRad;
-	double MaxCentre = 0.0, MaxAsym = 0.0;
+	// docs/wave-jitter/ (storm-water step 2): each band's three directions are drawn from the spreading, one in each third
+	// of it, in order across the wind; the bands differ (the old -Delta, 0, +Delta in every band crossed in one diamond
+	// weave at 20 kn and over).
+	const double FpAnchor = 1.0 / FWaveField::TargetPeakPeriod(9.0 * kKnot, Waves.ReferenceFetch());
+	int32 OutOfThird = 0;
+	double CentreMin = 1e9, CentreMax = -1e9;
 	for (int32 B = 0; B < kWaveBands; ++B)
 	{
 		const FWaveComponent* C = Waves.GetComponents() + B * kWaveDirectionsPerBand;
-		const double L = WrapAngle(FMath::Atan2(C[0].Ky, C[0].Kx) - Travel), M = WrapAngle(FMath::Atan2(C[1].Ky, C[1].Kx) - Travel), R = WrapAngle(FMath::Atan2(C[2].Ky, C[2].Kx) - Travel);
-		MaxCentre = FMath::Max(MaxCentre, FMath::Abs(M));
-		MaxAsym = FMath::Max(MaxAsym, FMath::Abs(L + R));
+		for (int32 D = 0; D < kWaveDirectionsPerBand; ++D)
+		{
+			const double Rel = WrapAngle(FMath::Atan2(C[D].Ky, C[D].Kx) - Travel);
+			// Which third of the band's spreading it sits in (its CDF at Rel; beta from the component's own frequency, within
+			// its band of the band centre's the draw used: a little slack).
+			const double Omega = C[D].Omega;
+			const double Beta = FWaveField::SpreadingBeta(Omega / (2.0 * UE_DOUBLE_PI), FpAnchor);
+			const double Cdf = 0.5 * (FMath::Tanh(Beta * Rel) / FMath::Tanh(Beta * UE_DOUBLE_PI) + 1.0);
+			if (FMath::Abs(Rel) < 79.0 * kDegToRad && (Cdf < D / 3.0 - 0.08 || Cdf > (D + 1) / 3.0 + 0.08)) ++OutOfThird;
+			if (D == 1) { CentreMin = FMath::Min(CentreMin, Rel); CentreMax = FMath::Max(CentreMax, Rel); }
+		}
 	}
-	AddInfo(FString::Printf(TEXT("Anchored: centre directions within %.1f deg of the wind, sides symmetric within %.1f deg"), MaxCentre / kDegToRad, MaxAsym / kDegToRad));
-	TestTrue(TEXT("Every band's centre direction is the wind's within 3 deg"), Waves.IsAnchored() && MaxCentre < 3.01 * kDegToRad);
-	TestTrue(TEXT("The sides are symmetric about it within 6 deg"), MaxAsym < 6.01 * kDegToRad);
+	AddInfo(FString::Printf(TEXT("Anchored: middle directions from %.1f to %.1f deg off the wind across the bands; %d of %d outside their third"),
+		CentreMin / kDegToRad, CentreMax / kDegToRad, OutOfThird, kWaveComponents));
+	TestTrue(TEXT("Each direction lies in its own third of the band's spreading"), Waves.IsAnchored() && OutOfThird == 0);
+	TestTrue(TEXT("The bands are laid differently (the middle directions spread over 5 deg or more)"), CentreMax - CentreMin > 5.0 * kDegToRad);
 	TestEqual(TEXT("The anchored sea keeps its Hs"), Waves.SignificantHeight(), FWaveField::TargetSignificantHeight(9.0 * kKnot, 3000.0), 0.002);
 
 	// Energy-weighted mean cos(theta) about the wind, the sea's directional width: the old fields' was cos^2's or wider.
