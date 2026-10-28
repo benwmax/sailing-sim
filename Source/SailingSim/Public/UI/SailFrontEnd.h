@@ -84,6 +84,8 @@ private:
 	/** docs/showroom-wiring/: the boat and the conditions behind the screens (FSailShowroom), driven each frame. */
 	FSailShowroom Showroom;
 	bool bMenusInGame = false;
+	/** Stills: -SailingShowroom=<boat type> shows that boat on the Boat screen (-1: the focused one). */
+	int32 ShowroomArg = -1;
 	EActiveTimerReturnType TickShowroom(double Time, float Delta);
 	class ASailingGameMode* GameMode() const;
 	int32 FocusedBoat = 0;

@@ -40,6 +40,7 @@
 #include "InputTriggers.h"
 #include "FreeCamera.h"
 #include "Engine/AssetManager.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "ProceduralMeshComponent.h"
@@ -1040,6 +1041,14 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	if (bKeysOpen) PollKeyCapture();
 	// The showroom's swap: the load's own callback comes on the streamable manager's tick; whichever sees it done first.
 	if (ShowroomLoad.IsValid() && ShowroomLoad->HasLoadCompleted()) FinishShowroomSwap();
+	if (ShowroomStage != EShowroomStage::None && FreeCam && !bPhoto)
+	{
+		// The stage's camera: it turns and eases on its own (the menus feed it no input yet), and stays the view (a
+		// stage set before the controller took the boat is otherwise lost to its view target).
+		FreeCam->Update(DeltaSeconds, FFreeCameraInput());
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC && PC->GetViewTarget() != FreeCam && PC->PlayerCameraManager && PC->PlayerCameraManager->PendingViewTarget.Target != FreeCam) PC->SetViewTargetWithBlend(FreeCam, 0.6f, VTBlend_EaseInOut, 2.f);
+	}
 	if (PhotoAt >= 0.0 && !bTrafficBoat && !bPhoto && Boat.GetState().Time >= PhotoAt)
 	{
 		PhotoAt = -1.0;

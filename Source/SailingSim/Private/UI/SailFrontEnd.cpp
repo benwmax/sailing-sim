@@ -1,4 +1,5 @@
 #include "UI/SailFrontEnd.h"
+#include "BenchRunner.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
 #include "UI/SailHud.h"
@@ -248,6 +249,15 @@ void SSailFrontEnd::Construct(const FArguments& A)
 	Pending = Session && Session->bHasActive ? Session->Active : Session && Session->bHasPending && !bInGame ? Session->Pending : USailSessionSubsystem::MakeDefault();
 	bMenusInGame = bInGame;
 	RegisterInputTracker();
+	// Showroom stills (docs/showroom-wiring/): the boat to show, the conditions to preview, and the menus drawn clear so
+	// the stage shows (they still run).
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingShowroom="), ShowroomArg);
+	FString PresetArg;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingPreviewPreset="), PresetArg))
+	{
+		for (const FSailPreset& P : USailSessionSubsystem::Presets()) if (P.Id == FName(*PresetArg)) USailSessionSubsystem::ApplyPreset(Pending.Conditions, P);
+	}
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingHideMenus"))) SetRenderOpacity(0.f);
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -278,7 +288,7 @@ ASailingGameMode* SSailFrontEnd::GameMode() const
 EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
 {
 	// The Boat screen shows the focused boat (focus is the selection there); every other screen the chosen one.
-	const int32 Shown = Current() == ESailScreen::Boat ? FocusedBoat : Pending.Boat;
+	const int32 Shown = Current() == ESailScreen::Boat ? (ShowroomArg >= 0 ? ShowroomArg : FocusedBoat) : Pending.Boat;
 	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, Pending.Conditions, Time);
 	return EActiveTimerReturnType::Continue;
 }
