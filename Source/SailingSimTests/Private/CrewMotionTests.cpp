@@ -1218,6 +1218,7 @@ bool FVisualCrewTackTest::RunTest(const FString& Parameters)
 			bool bRan = false, bEnded = false;
 			int32 EarlySide = 0, Back = 0, Outside = 0, Head = 0, Slid = 0, HeldMoved = 0, Frames = 0;
 			double PrevY = 0.0, HoldY = 1e9, WorstHold = 0.0;
+			float LeastDuck = 1.f;
 			FVector PrevAnchor[2];
 			bool bPrevAnchor = false;
 			float EndAt = -1.f;
@@ -1305,6 +1306,7 @@ bool FVisualCrewTackTest::RunTest(const FString& Parameters)
 				{
 					if (HoldY > 1e8) HoldY = P.Y;
 					WorstHold = FMath::Max(WorstHold, FMath::Abs(P.Y - HoldY));
+					LeastDuck = FMath::Min(LeastDuck, Pl.Duck);
 				}
 				// The feet: one steps at a time, the other stays where it is.
 				if (Pl.FootWeight > 0.99f && bPrevAnchor)
@@ -1332,9 +1334,49 @@ bool FVisualCrewTackTest::RunTest(const FString& Parameters)
 			TestEqual(Case + TEXT(": frames with both feet moving"), Slid, 0);
 			TestEqual(Case + TEXT(": frames with a planted foot off the floor"), HeldMoved, 0);
 			if (bGybe) TestTrue(Case + FString::Printf(TEXT(": still as the boom passes (%.3f m)"), WorstHold), WorstHold < 0.02);
+			if (bGybe) TestTrue(Case + FString::Printf(TEXT(": folded deep as the boom passes (duck %.2f)"), LeastDuck), LeastDuck > 0.9f);
 			TestTrue(Case + TEXT(": the stance takes over after it"), bEnded && Final != ECrewStance::Crossing);
 		}
 	}
+
+	// PR 3, the light-air roll tack: the same tack in 6 kn and in 12 kn. In light air the bow hand crosses the centreline
+	// later (still heeling her as the boom comes over) and hikes hard on the new rail for the first second after.
+	double CrossAt[2] = { -1.0, -1.0 };
+	float HardHike[2] = { 0.f, 0.f };
+	for (int32 Light = 0; Light < 2; ++Light)
+	{
+		FCrewCrossing Cross;
+		const float Dt = 1.f / 60.f;
+		double EndAt = -1.0;
+		for (int32 K = 0; K < 10 * 60; ++K)
+		{
+			const double T = K * Dt;
+			const double U = FMath::Clamp((T - 2.0) / 3.0, 0.0, 1.0);
+			const double Swing = FMath::Clamp((T - 3.4) / 0.8, 0.0, 1.0);
+			const double Over = FMath::Clamp((T - 3.2) / 1.6, 0.0, 1.0);
+			FCrewPlaceInput In;
+			In.Config = &Cfg;
+			In.Index = 0;
+			In.Crossing = &Cross;
+			In.Dt = Dt;
+			In.TrueWindSpeed = Light ? 6.0 * 0.514444 : 12.0 * 0.514444;
+			In.CrewOffset = FMath::Lerp(0.9, -0.9, Over);
+			In.OffsetRate = (T > 3.2 && T < 4.8) ? -1.8 / 1.6 : 0.0;
+			In.WindwardSide = Over < 0.5 ? 1 : -1;
+			In.TrueWindAngle = FMath::Lerp(0.7, -0.7, U);
+			In.TurnRate = (T > 2.0 && T < 5.0) ? -1.4 / 3.0 : 0.0;
+			In.BoomAngle = FMath::Lerp(-0.25, 0.25, Swing);
+			In.BoomRate = (T > 3.4 && T < 4.2) ? 0.5 / 0.8 : 0.0;
+			FCrewPlacement Pl;
+			CrewPlacement(In, Pl);
+			if (Pl.bScripted && CrossAt[Light] < 0.0 && Pl.Pelvis.Y < 0.0) CrossAt[Light] = T;
+			if (!Pl.bScripted && CrossAt[Light] > 0.0 && EndAt < 0.0) EndAt = T;
+			if (EndAt > 0.0 && T < EndAt + 0.9 && Pl.Params.Stance == ECrewStance::RailHike) HardHike[Light] = FMath::Max(HardHike[Light], Pl.Params.Hike);
+		}
+	}
+	AddInfo(FString::Printf(TEXT("Roll tack: across the centreline at %.2f s in 12 kn, %.2f s in 6 kn; hike after %.2f and %.2f"), CrossAt[0], CrossAt[1], HardHike[0], HardHike[1]));
+	TestTrue(TEXT("Light air: the cross comes later"), CrossAt[0] > 0.0 && CrossAt[1] > CrossAt[0] + 0.3);
+	TestTrue(TEXT("Light air: a hard hike on the new rail"), HardHike[1] > 0.99f);
 	return true;
 }
 

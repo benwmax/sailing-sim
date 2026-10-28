@@ -28,6 +28,7 @@ struct SAILINGSIM_API FCrewCrossing
 	bool bActive = false;
 	bool bGybe = false;
 	bool bBoomPassed = false;
+	bool bRoll = false;                      // a light-air roll tack: the cross later, a hard hike after it
 	float Clock = 0.f;                       // s since the crossing began
 	float Cooldown = 0.f;                    // s before another may start
 	float TBoom = 1.2f;                      // s from its start to the boom at the centreline
@@ -59,6 +60,7 @@ struct SAILINGSIM_API FCrewPlaceInput
 	double BoomRate = 0.0;         // rad/s
 	double TrueWindAngle = 0.5;    // rad, FBoatTelemetry::TrueWindAngle (+ from starboard)
 	double TurnRate = 0.0;         // rad/s, yaw (+ bow to starboard)
+	double TrueWindSpeed = 5.0;    // m/s (FBoatTelemetry::TrueWindSpeed): under 8 kn a tack is rolled (docs/crew-tack/)
 	FCrewCrossing* Crossing = nullptr; // docs/crew-tack/: the scripted crossing's state (none: the crossing stance as before)
 	float Dt = 0.f;                // s since the last placement (the crossing's clock)
 };
