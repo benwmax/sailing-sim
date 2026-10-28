@@ -178,6 +178,8 @@ private:
 	/** 100 m cells within 200 m of a lidar crown: the canopy map's trees give way there (PlaceCrownTrees). */
 	TSharedPtr<TSet<FIntPoint>> CrownBand;
 	static void RemoveTreesInHouses(const struct FLakeData& Lake, TArray<struct FTreeInstance>& Trees);
+	/** Near-shore phase 3: young yard trees round the full-detail houses, from each lot's palette (-SailingNoYardTrees). */
+	static void AddYardTrees(const struct FLakeData& Lake, TArray<struct FTreeInstance>& Trees, ETreeRegion Region);
 	int32 DriftCursor = 0;
 	void UpdateModelTrees(const FVector2D& Camera);
 	FTransform TreeTransform(const struct FTreeInstance& I, bool bNear, const FVector2D& Camera, FTransform* OutProxy) const;

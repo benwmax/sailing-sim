@@ -833,6 +833,77 @@ void ALakeTerrainActor::RemoveTreesInHouses(const FLakeData& Lake, TArray<FTreeI
 	});
 }
 
+void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance>& Trees, ETreeRegion Region)
+{
+	// Near-shore phase 3 (audit item 7: the residential shore's trees repeat their species and sizes, the canopy one
+	// height): young yard trees, a second height class (a third to two-thirds grown) under the lidar's mature crowns, one
+	// to three round each full-detail house, most on the side toward the water (what the lake sees), from its lot's own palette (four on the lake, two on the coast: a street of
+	// live oaks, a yard of cedar elms and sugarberry, cedars along a fence). None in a 6 m cell where a tree already stands.
+	if (Lake.Houses.Num() == 0 || Region == ETreeRegion::Classic || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoYardTrees"))) return;
+	struct FPick { ETreeSpecies Species; float Upto; };
+	using S = ETreeSpecies;
+	static const FPick Lake0[] = { { S::LiveOak, 0.35f }, { S::CedarElm, 0.6f }, { S::RedCedar, 0.75f }, { S::Sugarberry, 0.9f }, { S::PostOak, 1.f } };
+	static const FPick Lake1[] = { { S::CedarElm, 0.4f }, { S::Sugarberry, 0.7f }, { S::LiveOak, 0.9f }, { S::RedCedar, 1.f } };
+	static const FPick Lake2[] = { { S::RedCedar, 0.35f }, { S::LiveOak, 0.7f }, { S::PostOak, 1.f } };
+	static const FPick Lake3[] = { { S::Sugarberry, 0.35f }, { S::CedarElm, 0.65f }, { S::BlackWillow, 0.85f }, { S::LiveOak, 1.f } };
+	static const FPick Coast0[] = { { S::LiveOak, 0.5f }, { S::Sugarberry, 0.8f }, { S::SaltCedar, 1.f } };
+	static const FPick Coast1[] = { { S::Sugarberry, 0.5f }, { S::LiveOak, 0.8f }, { S::CedarElm, 1.f } };
+	const TArrayView<const FPick> LakeSets[] = { Lake0, Lake1, Lake2, Lake3 }, CoastSets[] = { Coast0, Coast1 };
+	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
+	auto Rand = [&](uint32 Seed, uint32 K) { return float(Hash(Seed + K * 2654435761u) & 0xFFFFFF) / float(0xFFFFFF); };
+	TSet<FIntPoint> Taken;
+	auto CellOf = [](const FVector2D& P) { return FIntPoint(FMath::FloorToInt32(P.X / 6.0), FMath::FloorToInt32(P.Y / 6.0)); };
+	for (const FTreeInstance& I : Trees) Taken.Add(CellOf(I.Position));
+	const int32 Before = Trees.Num();
+	for (const FLakeHouse& H : Lake.Houses)
+	{
+		if (!H.bFullDetail || H.bCommercial) continue;
+		const uint32 Seed = Hash(uint32(FMath::RoundToInt32(H.X * 10.0)) * 73856093u ^ uint32(FMath::RoundToInt32(H.Y * 10.0)) * 19349663u);
+		const int32 N = 1 + int32(Rand(Seed, 1) * 2.4f);
+		// Which way the water lies, if it's within 80 m.
+		float WaterAz = -1.f;
+		for (int32 D = 20; D <= 80 && WaterAz < 0.f; D += 20)
+		{
+			for (int32 A = 0; A < 8; ++A)
+			{
+				const double Az = A * UE_DOUBLE_PI / 4.0;
+				if (Lake.Terrain.HeightAt(H.X + FMath::Cos(Az) * D, H.Y + FMath::Sin(Az) * D) < -0.05) { WaterAz = float(Az); break; }
+			}
+		}
+		double Extent = 6.0;
+		for (const FLakeHouse::FWing& W : H.Wings) Extent = FMath::Max(Extent, FVector2D::Distance(FVector2D(W.X, W.Y), FVector2D(H.X, H.Y)) + FMath::Max(W.HalfLength, W.HalfWidth));
+		// The palette is the lot's: neighbours a few lots apart share one (a street's planting), by a 60 m cell.
+		const uint32 Lot = Hash(uint32(FMath::FloorToInt32(H.X / 60.0)) * 92821u ^ uint32(FMath::FloorToInt32(H.Y / 60.0)) * 68917u);
+		const TArrayView<const FPick> Set = Region == ETreeRegion::GulfCoast ? CoastSets[Lot % 2] : LakeSets[Lot % 4];
+		for (int32 K = 0; K < N; ++K)
+		{
+			const float Az = WaterAz >= 0.f && Rand(Seed, 80 + K) < 0.65f ? WaterAz + (Rand(Seed, 10 + K) - 0.5f) * 2.f : 2.f * UE_PI * Rand(Seed, 10 + K);
+			const float R = float(Extent) + 4.f + 10.f * Rand(Seed, 20 + K);
+			const FVector2D P(H.X + FMath::Cos(Az) * R, H.Y + FMath::Sin(Az) * R);
+			const double Ground = Lake.Terrain.HeightAt(P.X, P.Y);
+			if (Ground < 0.5) continue;
+			const FIntPoint C = CellOf(P);
+			if (Taken.Contains(C)) continue;
+			const float U = Rand(Seed, 30 + K);
+			ETreeSpecies Species = Set.Last().Species;
+			for (const FPick& Pk : Set) if (U <= Pk.Upto) { Species = Pk.Species; break; }
+			if (Species == S::BlackWillow && Ground > 3.0) Species = S::CedarElm;   // willows only by the water
+			FTreeInstance I;
+			I.Position = P;
+			I.Ground = float(Ground);
+			float MinH, MaxH;
+			TreeHeightRange(Species, MinH, MaxH);
+			I.Species = Species;
+			I.Height = FMath::Lerp(MinH, MaxH, Rand(Seed, 40 + K)) * (0.4f + 0.3f * Rand(Seed, 50 + K));
+			I.Yaw = 360.f * Rand(Seed, 60 + K);
+			I.Variant = uint8(Rand(Seed, 70 + K) < 0.5f ? 0 : 1);
+			Trees.Add(I);
+			Taken.Add(C);
+		}
+	}
+	UE_LOG(LogSailing, Display, TEXT("Trees: %d young yard trees"), Trees.Num() - Before);
+}
+
 void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
 {
 	// World streaming: the model trees of each tile as it becomes resident, placed on a worker one tile at a time (the
@@ -914,6 +985,7 @@ void ALakeTerrainActor::PlaceTrees()
 		const int32 Before = Trees.Num();
 		RemoveTreesInHouses(*Lake, Trees);
 		UE_LOG(LogSailing, Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
+		AddYardTrees(*Lake, Trees, Region);
 	}
 	// World streaming: on a streamed world these are the trees of the tiles resident now; the others are placed as their
 	// tiles arrive (UpdateTreeTiles).

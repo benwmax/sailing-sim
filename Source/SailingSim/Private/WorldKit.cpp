@@ -533,6 +533,19 @@ void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
 		const float Bottom = Z0 - GirderDepth;               // where a mast strikes (FLakeData::BuildObstacles: deck - 1 m)
 		const float Spacing = bFoot ? 6.f : (bRail ? 20.f : (Road >= 16.f ? 36.f : 30.f));
 		double Along = 0.0, NextPier = 0.0, NextLamp = 20.0;
+		// Near-shore phase 3 (audit item 6): the concrete's weathering in M_WorldSurface reads UV1. The deck, girders and
+		// barriers carry (metres along the bridge / pier spacing, -1001), so the joints over the piers stain the fascia; the
+		// columns (their height, -1002), so the streaks run down from the cap; the caps (0, -1003). The house kit's is (0, 0).
+		FKitSection& Conc = G[EKitLook::Concrete];
+		auto TagAlong = [&](int32 From, const FVector2D& A, const FVector2D& Dir, double At)
+		{
+			for (int32 V = From; V < Conc.V.Num(); ++V)
+			{
+				const FVector2D P(Conc.V[V].X / 100.0, Conc.V[V].Y / 100.0);
+				Conc.UV1[V] = FVector2D((At + FVector2D::DotProduct(P - A, Dir)) / Spacing, -1001.0);
+			}
+		};
+		auto TagAll = [&](int32 From, const FVector2D& Tag) { for (int32 V = From; V < Conc.V.Num(); ++V) Conc.UV1[V] = Tag; };
 		for (int32 I = 1; I < Br.Points.Num(); ++I)
 		{
 			const FVector2D A = Br.Points[I - 1], B = Br.Points[I];
@@ -553,6 +566,7 @@ void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
 			}
 			else
 			{
+				const int32 DeckFrom = Conc.V.Num();
 				G[EKitLook::Concrete].Span(A1, B1, W, Z0, Z0 + 0.3f, true);
 				if (bRail)
 				{
@@ -577,6 +591,7 @@ void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
 						G[EKitLook::Concrete].Span(A1 + O, B1 + O, 0.3f, Z0 + 0.6f, Z0 + 1.15f);
 					}
 				}
+				TagAlong(DeckFrom, A, Dir, Along);
 			}
 			// Pier bents and lamp posts at their spacing along the whole way.
 			while (NextPier <= Along + Len)
@@ -602,9 +617,13 @@ void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
 				{
 					const double Off = Cols == 1 ? 0.0 : (double(K) / (Cols - 1) - 0.5) * (W - 3.0);
 					const FVector2D Q = P + Left * Off;
+					const int32 ColumnFrom = Conc.V.Num();
 					G[EKitLook::Concrete].Cylinder(FVector(Q.X, Q.Y, Bed), Radius, Bottom - 1.1f - Bed, 12);
+					TagAll(ColumnFrom, FVector2D(Bottom - 1.1f - Bed, -1002.0));
 				}
+				const int32 CapFrom = Conc.V.Num();
 				G[EKitLook::Concrete].Box(FVector(P.X, P.Y, Bottom - 0.55f), FVector(1.f, 0.5f * (W - 0.6f), 0.55f), Yaw, true);
+				TagAll(CapFrom, FVector2D(0.0, -1003.0));
 			}
 			while (!bRail && !bFoot && Road >= 10.f && NextLamp <= Along + Len)
 			{
