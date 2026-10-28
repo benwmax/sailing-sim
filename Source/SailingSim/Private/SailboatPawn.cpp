@@ -1038,6 +1038,8 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (bKeysOpen) PollKeyCapture();
+	// The showroom's swap: the load's own callback comes on the streamable manager's tick; whichever sees it done first.
+	if (ShowroomLoad.IsValid() && ShowroomLoad->HasLoadCompleted()) FinishShowroomSwap();
 	if (PhotoAt >= 0.0 && !bTrafficBoat && !bPhoto && Boat.GetState().Time >= PhotoAt)
 	{
 		PhotoAt = -1.0;
@@ -2110,6 +2112,8 @@ void ASailboatPawn::ShowBoat(int32 Type)
 void ASailboatPawn::FinishShowroomSwap()
 {
 	if (ShowroomLoadType < 0) return;
+	const UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || IsActorBeingDestroyed()) { ShowroomLoadType = -1; ShowroomLoad.Reset(); return; }
 	const int32 Type = ShowroomLoadType;
 	ShowroomLoadType = -1;
 	const double Loaded = FPlatformTime::Seconds();
