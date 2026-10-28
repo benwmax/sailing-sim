@@ -156,7 +156,13 @@ private:
 	void PlaceForLight();
 	void BuildCyclorama(float RadiusCm);
 	void SetTier(uint8 Tier);
-	bool CaptureViewport(TArray<FColor>& Out, FIntPoint& Size) const;
+	/** The capture goes through the engine's screenshot (the frame as shown, without the UI), into memory. */
+	void RequestCapture();
+	void OnCaptured(int32 Width, int32 Height, const TArray<FColor>& Colors);
+	FDelegateHandle CaptureHandle;
+	bool bCaptureWaiting = false, bCaptured = false;
+	TArray<FColor> CapturedNow;
+	FIntPoint CapturedNowSize = FIntPoint::ZeroValue;
 	UTexture2D* MakeTexture(const TArray<FColor>& Pixels, FIntPoint Size);
 	void TickCompare();
 };

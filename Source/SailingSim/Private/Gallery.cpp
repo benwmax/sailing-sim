@@ -67,7 +67,8 @@ namespace SailGallery
 			Spaced.ParseIntoArrayWS(Words);
 			for (int32 W = 1; W < Words.Num(); ++W)
 			{
-				const bool bAcronym = Words[W].Len() > 1 && Words[W].ToUpper() == Words[W] && !Words[W].IsNumeric();
+				// (FString's == ignores case: compare case-sensitively.)
+				const bool bAcronym = Words[W].Len() > 1 && Words[W].ToUpper().Equals(Words[W], ESearchCase::CaseSensitive) && !Words[W].IsNumeric();
 				if (!bAcronym) Words[W] = Words[W].ToLower();
 			}
 			return FString::Join(Words, TEXT(" "));

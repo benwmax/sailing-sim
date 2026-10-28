@@ -21,7 +21,7 @@ namespace
 
 	const FGalleryItem* ByName(const TArray<FGalleryItem>& Items, const TCHAR* Name)
 	{
-		return Items.FindByPredicate([Name](const FGalleryItem& I) { return I.Name == Name; });
+		return Items.FindByPredicate([Name](const FGalleryItem& I) { return I.Name.Equals(Name, ESearchCase::CaseSensitive); });
 	}
 }
 
@@ -76,6 +76,7 @@ bool FSailingGalleryIndexTest::RunTest(const FString&)
 	TestTrue(TEXT("Tags AND together"), Cottage && Matches(*Cottage, TEXT(""), TEXT("Houses & docks"), { TEXT("Near shore") })
 		&& !Matches(*Cottage, TEXT(""), TEXT(""), { TEXT("Near shore"), TEXT("Far shore") }));
 
+	TestTrue(TEXT("Names: CamelCase split, sentence case"), DisplayName(TEXT("SM_Kit_HornCleat")).Equals(TEXT("Horn cleat"), ESearchCase::CaseSensitive));
 	TestEqual(TEXT("Names: CamelCase split"), DisplayName(TEXT("SM_Kit_Block29")), FString(TEXT("Block 29")));
 	TestEqual(TEXT("Names: underscores"), DisplayName(TEXT("SM_Buoy_Can")), FString(TEXT("Buoy can")));
 	TestEqual(TEXT("Names: a prefix dropped"), DisplayName(TEXT("SM_Vessel_Committee")), FString(TEXT("Committee")));
@@ -125,12 +126,12 @@ bool FSailingGalleryStageTest::RunTest(const FString&)
 	TestEqual(TEXT("A 1 m sphere fills 70% of a 46.8 deg view from about 3.1 m"), AGalleryStage::FramingDistanceCm(100.f, 46.8f, 0.7f), 100.f / FMath::Sin(FMath::DegreesToRadians(46.8f * 0.35f)), 0.01f);
 	TestEqual(TEXT("Tiers by name"), AGalleryStage::TierFromName(TEXT("ultra")), 3);
 	TestEqual(TEXT("And an unknown one"), AGalleryStage::TierFromName(TEXT("Epic")), -1);
-	const FIntPoint Size(4, 2);
+	const FIntPoint Size(8, 2);
 	TArray<FColor> A, B;
-	A.Init(FColor::Red, 8);
-	B.Init(FColor::Blue, 8);
+	A.Init(FColor::Red, 16);
+	B.Init(FColor::Blue, 16);
 	const TArray<FColor> Split = AGalleryStage::CompareSplit(A, B, Size);
-	TestTrue(TEXT("Compare: A left, the split white, B right"), Split.Num() == 8 && Split[0] == FColor::Red && Split[2] == FColor::White && Split[7] == FColor::Blue);
+	TestTrue(TEXT("Compare: A left, the 3 px split white, B right"), Split.Num() == 16 && Split[0] == FColor::Red && Split[4] == FColor::White && Split[15] == FColor::Blue);
 
 	SailGallery::FGraphicsSnapshot Was = SailGallery::FGraphicsSnapshot::Capture();
 	USailingSettings* S = USailingSettings::Get();

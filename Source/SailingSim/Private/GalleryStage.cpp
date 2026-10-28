@@ -154,6 +154,7 @@ void AGalleryStage::Close()
 
 void AGalleryStage::EndPlay(const EEndPlayReason::Type Reason)
 {
+	if (bCaptureWaiting) UGameViewportClient::OnScreenshotCaptured().Remove(CaptureHandle);
 	if (bOpen && Reason != EEndPlayReason::EndPlayInEditor && Reason != EEndPlayReason::Quit) Close();
 	else if (bOpen) GNearClippingPlane = SavedNearClip;
 	Super::EndPlay(Reason);
@@ -379,7 +380,18 @@ void AGalleryStage::PlaceForLight()
 	// In the studio only the studio's lights (channel 1) and the sky light reach the asset; on the lake the sun does.
 	Display->SetLightingChannels(!bStudio, bStudio, false);
 	Cyclorama->SetLightingChannels(false, true, false);
-	if (Camera) Camera->Limits.WaterClearM = bStudio ? 0.0 : 0.3;
+	if (Camera)
+	{
+		Camera->Limits.WaterClearM = bStudio ? 0.0 : 0.3;
+		// The game's exposure follows the outdoor light (an incident meter); the closed studio meters its own frame.
+		FPostProcessSettings& PP = Camera->GetCamera()->PostProcessSettings;
+		PP.bOverride_AutoExposureMethod = PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = bStudio;
+		PP.bOverride_AutoExposureBias = bStudio;
+		PP.AutoExposureMethod = AEM_Histogram;
+		PP.AutoExposureMinBrightness = -6.f;
+		PP.AutoExposureMaxBrightness = 20.f;
+		PP.AutoExposureBias = 0.f;
+	}
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return;
 	if (bStudio)
@@ -463,12 +475,22 @@ void AGalleryStage::StartCompare(uint8 TierA, uint8 TierB)
 	SetTier(TierA);
 }
 
-bool AGalleryStage::CaptureViewport(TArray<FColor>& Out, FIntPoint& Size) const
+void AGalleryStage::RequestCapture()
 {
-	FViewport* VP = GEngine && GEngine->GameViewport ? GEngine->GameViewport->Viewport : nullptr;
-	if (!VP) return false;
-	Size = VP->GetSizeXY();
-	return VP->ReadPixels(Out) && Out.Num() == Size.X * Size.Y;
+	// Reading the viewport back directly gave black frames on Metal: the engine's own screenshot gives the shown frame.
+	bCaptured = false;
+	bCaptureWaiting = true;
+	CaptureHandle = UGameViewportClient::OnScreenshotCaptured().AddUObject(this, &AGalleryStage::OnCaptured);
+	FScreenshotRequest::RequestScreenshot(false);
+}
+
+void AGalleryStage::OnCaptured(int32 Width, int32 Height, const TArray<FColor>& Colors)
+{
+	UGameViewportClient::OnScreenshotCaptured().Remove(CaptureHandle);
+	CapturedNow = Colors;
+	CapturedNowSize = FIntPoint(Width, Height);
+	bCaptureWaiting = false;
+	bCaptured = true;
 }
 
 UTexture2D* AGalleryStage::MakeTexture(const TArray<FColor>& Pixels, FIntPoint Size)
@@ -485,17 +507,25 @@ UTexture2D* AGalleryStage::MakeTexture(const TArray<FColor>& Pixels, FIntPoint S
 
 void AGalleryStage::TickCompare()
 {
-	if (CompareStep == 0 || FPlatformTime::Seconds() - CompareAt < 1.5) return;
+	if (CompareStep == 0 || bCaptureWaiting) return;
+	if (!bCaptured)
+	{
+		// Each tier settles 1.5 s, then its frame is captured.
+		if (FPlatformTime::Seconds() - CompareAt >= 1.5) RequestCapture();
+		return;
+	}
+	bCaptured = false;
 	if (CompareStep == 1)
 	{
-		CaptureViewport(CapturedA, CaptureSize);
+		CapturedA = CapturedNow;
+		CaptureSize = CapturedNowSize;
 		SetTier(CompareTiers[1]);
 		CompareStep = 2;
 		CompareAt = FPlatformTime::Seconds();
 		return;
 	}
-	FIntPoint SizeB;
-	CaptureViewport(CapturedB, SizeB);
+	CapturedB = CapturedNow;
+	const FIntPoint SizeB = CapturedNowSize;
 	SetTier(CompareRestoreTier);
 	CompareStep = 0;
 	CompareA = MakeTexture(CapturedA, CaptureSize);
