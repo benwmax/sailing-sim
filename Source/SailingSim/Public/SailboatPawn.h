@@ -29,6 +29,8 @@ class UProceduralMeshComponent;
 class UInstancedStaticMeshComponent;
 class UInputAction;
 class UInputMappingContext;
+class AFreeCamera;
+struct FSailingKeyBinding;
 class UMaterialInterface;
 class UAudioComponent;
 class USailingSynthWave;
@@ -175,12 +177,24 @@ public:
 	double GetWatchTime() const { return WatchTime; }
 	float GetWatchSpeed() const { return WatchSpeed; }
 	double GetPhotoHintUntil() const { return PhotoHintUntil; }
+	/** Photo mode's free camera (docs/photo-freefly/), while it is open; H hides its hint and readout. */
+	AFreeCamera* GetFreeCamera() const { return bPhoto ? FreeCam.Get() : nullptr; }
+	bool ArePhotoHintsHidden() const { return bPhotoHideHints; }
+	double GetPhotoReadoutUntil() const { return PhotoReadoutUntil; }
 	void SetGhostFrame(const FReplayFrame& Frame);
 
 	/** Reference capture (-SailingCapture=<preset>): a reference camera, locked exposure, no HUD, telemetry CSV. */
 	bool IsCaptureMode() const { return CapturePreset != ECapturePreset::None; }
 	/** Bean's playtest: the keys every mapping context gets beside the rebindable rows (Esc opens the pause menu). */
 	static void MapFixedKeys(class UInputMappingContext* Context, const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
+	/** The input actions for a list of bindings (Look is 2D, buttons are booleans, the rest axes). */
+	static void MakeActions(UObject* Outer, const TArray<FSailingKeyBinding>& Bindings, TMap<FName, TObjectPtr<class UInputAction>>& InOutActions);
+	/** The boat's mapping context (IMC_Sailboat, priority 0) or photo mode's (IMC_Photo, above it: its keys hide the
+	 *  boat's, so the left stick flies the camera instead of steering). Buttons fire once on the press; photo mode's pad
+	 *  toggle is a half-second hold, and another command on that button takes the tap. */
+	static UInputMappingContext* BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool bPhotoContext);
+	static constexpr int32 PhotoContextPriority = 1;
 	ECapturePreset GetCapturePreset() const { return CapturePreset; }
 	UCameraComponent* GetCaptureCamera() const { return CaptureCamera; }
 	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);
@@ -336,6 +350,15 @@ private:
 	float CockpitRoll = 0.f;
 	void UpdateCockpitCamera(float DeltaSeconds);
 	void UpdatePhotoLens();
+	/** The boat's context, and photo mode's above it while photo mode is open. */
+	void ApplyMappingContexts();
+	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
+	bool bPhotoHideHints = false;
+	/** Stills: -SailingPhoto=<sim s> opens photo mode, -SailingPhotoCam="<fwd m>,<right m>,<up m>[,<yaw>,<pitch>]" places
+	 *  the free camera off the boat through its limits (yaw from her heading; without it the camera faces her). */
+	double PhotoAt = -1.0;
+	FString PhotoCamArg;
+	double NextPhotoSpeedStep = 0.0, PhotoReadoutUntil = 0.0;
 public:
 	bool IsCockpitView() const { return bCockpit; }
 	void SetCockpitView(bool bOn);
@@ -554,6 +577,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> PhotoContext;
 	UPROPERTY(Transient) TMap<FName, TObjectPtr<UInputAction>> Actions;
 
 public:

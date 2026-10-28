@@ -292,6 +292,11 @@ public:
 	const TArray<FSailingKeyBinding>& GetBindings() const { return Bindings.Num() > 0 ? Bindings : Defaults; }
 	const TArray<FSailingKeyBinding>& GetDefaults() const { return Defaults; }
 
+	virtual void PostInitProperties() override;
+	virtual void PostReloadConfig(FProperty* PropertyThatWasLoaded) override;
+
 private:
 	TArray<FSailingKeyBinding> Defaults;
+	/** A saved list from before a command existed (photo mode's free camera) gets that command's default keys. */
+	void AddMissingActions();
 };

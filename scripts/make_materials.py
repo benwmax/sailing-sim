@@ -4582,7 +4582,23 @@ else if (Pattern > 2.5 && Pattern < 3.5)
     c = lerp(c, float3(0.04, 0.05, 0.06), win);
     r = lerp(r, 0.08, win);
 }
-else if (Pattern > 3.5 && Pattern < 4.5)
+else if (Pattern > 4.15 && Pattern < 4.5)
+{
+    // Near-shore phase 3 (audit item 5): quarried limestone (MI_World_Rock, the riprap and breakwater rocks). Mottling and
+    // pits in world space (the rocks' box UVs are a metre at most), each rock its own shade where it carries custom data
+    // 15 (the marina's breakwater), pale weathered tops with lichen, and the water's ring dark and green below its wet line.
+    float3 q = WP * 0.01;
+    float m1 = 0.5 + 0.5 * sin(q.x * 2.3 + sin(q.y * 3.1 + q.z * 1.7)) * sin(q.y * 2.9 + sin(q.z * 2.2 + q.x * 1.3));
+    float m2 = 0.5 + 0.5 * sin(q.x * 9.1 + sin(q.y * 7.3)) * sin(q.y * 8.3 + q.z * 6.1);
+    float pit = step(0.82, frac(sin(dot(floor(q * 9.0), float3(12.99, 78.23, 37.71))) * 43758.5));
+    float shade = seeded ? 0.72 + 0.5 * frac(CD15 * 0.618 + 0.13) : 0.9 + 0.2 * wh2;
+    c *= shade * (0.82 + 0.3 * m1) * (0.92 + 0.12 * m2) * (1.0 - 0.3 * pit);
+    c = lerp(c, float3(0.48, 0.47, 0.38), 0.3 * saturate((m2 - 0.65) * 4.0) * saturate(zw - wetM));
+    float ringK = (1.0 - smoothstep(wetM - 0.1, wetM + 0.05, zw)) * (0.6 + 0.4 * m1);
+    c = lerp(c, c * float3(0.45, 0.5, 0.38), ringK);
+    r = lerp(r, 0.55, ringK * 0.6);
+}
+else if (Pattern > 3.5 && Pattern < 4.15)
 {
     // Concrete: smooth blotches, darker run-off streaks down from the top, form-tie lines every 1.2 m.
     float streak = frac(sin(floor(uv.x * 3.0) * 91.3) * 4375.5) * saturate(1.0 - frac(uv.y * 0.25));
@@ -4594,6 +4610,41 @@ else if (Pattern > 3.5 && Pattern < 4.5)
     float ringK = (1.0 - smoothstep(ringTop - 0.08, ringTop, zw)) * smoothstep(-1.5, -0.2, zw) * (0.55 + 0.45 * blot) * (0.6 + 0.4 * aged);
     c = lerp(c, c * lerp(float3(0.55, 0.6, 0.5), float3(0.5, 0.48, 0.45), salt), ringK);
     c = lerp(c, float3(0.78, 0.77, 0.73), salt * exp(-pow((zw - ringTop + 0.03) / 0.03, 2.0)) * 0.6 * (0.6 + 0.4 * aged));
+    // Near-shore phase 3 (audit item 6): a bridge's weathering, from UV1 (BuildBridgeGeometry; the house kit's concrete
+    // is 0, 0; y holds -1000 - the part). Deck (y 1, x the spacings along it): water from each joint over a pier stains a dark band about a metre
+    // wide down the fascia and the girders, ragged along its length, rust-brown at its core; the slab carries a general
+    // grime that is heavier toward the bottom edge. Columns (y 2, x their height): streaks run down from the cap, each
+    // lane its own length, and the ring at the water is deeper and greener. Caps (y 3): grimed, darkest at their foot.
+    // (The flags sit at -1000 and below: an imported mesh with one UV set reads its UV0 here, metres, never that low.)
+    float flag = -1000.0 - UV1.y;
+    if (flag > 0.5 && flag < 3.5)
+    {
+        float lane = floor(uv.x * 2.5);
+        float hl = frac(sin(lane * 57.31) * 4375.5), hl2 = frac(sin(lane * 13.7 + 3.1) * 4375.5);
+        if (flag < 1.5)
+        {
+            float f = frac(UV1.x);
+            float dj = min(f, 1.0 - f) * 30.0;                                   // metres from the joint (about)
+            float joint = exp(-pow(dj / (0.6 + 0.5 * blot), 2.0)) * (0.75 + 0.25 * hl);
+            c = lerp(c, c * float3(0.42, 0.38, 0.33), joint);
+            c = lerp(c, float3(0.24, 0.17, 0.11), joint * joint * 0.35);
+            c *= 0.9 - 0.08 * blot;
+            r = lerp(r, 0.6, joint * 0.5);
+        }
+        else if (flag < 2.5)
+        {
+            float below = UV1.x - uv.y;
+            float run = step(0.35, hl) * saturate(1.0 - below / (1.5 + 5.0 * hl2)) * saturate(below / 0.15);
+            c = lerp(c, c * float3(0.5, 0.47, 0.42), run * 0.7);
+            float deep = (1.0 - smoothstep(ringTop + 0.3, ringTop + 0.6, zw)) * smoothstep(-1.5, -0.2, zw);
+            c = lerp(c, c * float3(0.42, 0.48, 0.36), deep * 0.6);
+            c *= 0.9 - 0.1 * blot;
+        }
+        else
+        {
+            c *= (0.78 - 0.1 * blot) * lerp(0.7, 1.0, saturate(uv.y / 1.1));
+        }
+    }
 }
 else if (Pattern > 4.5 && Pattern < 5.5)
 {
@@ -4689,7 +4740,7 @@ def build_world_surface():
     night.set_editor_property("collection", world_collection())
     night.set_editor_property("parameter_name", "Night")
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site"] + [f"CD{k}" for k in range(10, 16)],
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site", "UV1"] + [f"CD{k}" for k in range(10, 16)],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
                extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
     connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 800), "", c, "WP")
@@ -4702,6 +4753,7 @@ def build_world_surface():
     for k in range(10, 16):   # E1's wear seed (FWearSeed, docs/environment-1); -1 = none: the baked tiles hash their own
         connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1100, 1000 + 60 * k, data_index=k, const_default_value=-1.0), "", c, f"CD{k}")
     connect(uv, "", c, "UV")
+    connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -900, -100, coordinate_index=1), "", c, "UV1")   # bridge weathering
     connect(color, "RGBA", c, "Color")
     connect(rough, "", c, "Rough")
     connect(pattern, "", c, "Pattern")
@@ -5173,7 +5225,7 @@ def build_house_kit_materials():
 # Slot -> (colour, roughness, pattern, windows, metallic). Rock: the pale Austin-chalk limestone riprap of the lake's shore.
 # The rest are the generated structures' looks and must match KitLook() in Source/SailingSim/Private/WorldKit.cpp.
 WORLD_LIBRARY = {
-    "Rock": ((0.52, 0.49, 0.43), 0.9, 4.0, 0.0, 0.0),
+    "Rock": ((0.52, 0.49, 0.43), 0.9, 4.25, 0.0, 0.0),   # 4.25: the stone variant of concrete's pattern (near-shore phase 3)
     "Decking": ((0.42, 0.40, 0.36), 0.85, 1.0, 0.0, 0.0),
     "Floats": ((0.05, 0.05, 0.05), 0.6, 0.0, 0.0, 0.0),
     "Pilings": ((0.32, 0.27, 0.21), 0.9, 9.0, 0.0, 0.0),    # Graphics G8: wood (pattern 9), was concrete

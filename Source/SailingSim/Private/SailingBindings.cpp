@@ -75,10 +75,29 @@ namespace SailingBindings
 		return Action == TEXT("CrewAction") || Action == TEXT("Grind") || Action == TEXT("TravellerDump") || Action == TEXT("Station");
 	}
 
+	bool IsPhotoAction(FName Action)
+	{
+		return Action == TEXT("PhotoShot") || Action == TEXT("PhotoForward") || Action == TEXT("PhotoRight") || Action == TEXT("PhotoUpDown")
+			|| Action == TEXT("PhotoRoll") || Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoBoost") || Action == TEXT("PhotoSlow")
+			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI");
+	}
+
 	bool SameLayer(FName A, FName B)
 	{
+		// The photo layer has its own keys for the menu (Tab orbits; Esc, fixed, still leaves).
+		if (IsPhotoAction(A) || IsPhotoAction(B)) return IsPhotoAction(A) == IsPhotoAction(B);
 		auto Global = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard"); };
 		return Global(A) || Global(B) || IsStationAction(A) == IsStationAction(B);
+	}
+
+	bool InPhotoContext(const FSailingKeyBinding& Binding)
+	{
+		return IsPhotoAction(Binding.Action) || (Binding.Action == TEXT("Photo") && Binding.Key.IsGamepadKey());
+	}
+
+	bool InBoatContext(const FSailingKeyBinding& Binding)
+	{
+		return !IsPhotoAction(Binding.Action) || (Binding.Action == TEXT("PhotoShot") && !Binding.Key.IsGamepadKey());
 	}
 
 	FKey Find(const TArray<FSailingKeyBinding>& Bindings, FName Action, bool bNegative, EColumn Column)
