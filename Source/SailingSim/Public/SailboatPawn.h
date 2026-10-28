@@ -149,6 +149,9 @@ public:
 	UPROPERTY() bool bTrafficBoat = false;
 	FLinearColor TrafficHullColor = FLinearColor(0.94f, 0.94f, 0.92f);
 	Sailing::FBoatModel* InitTraffic(int32 Type, double X, double Y, double HeadingRad);
+	/** The gallery's whole boats (docs/gallery-core/, G3): a traffic-mode boat nobody steps, put still at a place (map m;
+	 *  Z her waterline's height), level, on a heading. */
+	void PoseForDisplay(double X, double Y, double Z, double HeadingRad);
 	void SetTrafficControls(const Sailing::FBoatControls& InControls) { Controls = InControls; }
 	Sailing::FBoatModel& GetMutableBoatModel() { return Boat; }
 	/** The ship's log (Y shows it). Other systems add events (race results, rules judgments). */
@@ -204,7 +207,9 @@ public:
 
 	/** Replays: each run (from a reset, a drill or a race start) is recorded; watch the last one (,) or sail against
 	 *  it as a ghost (Tab > Ghost). Photo mode (9) freezes the world for pictures. */
-	UPROPERTY() bool bGhost = false;  // a traffic-mode actor drawn translucent: the replay's boat
+	UPROPERTY() bool bGhost = false;
+	/** The gallery's whole boat (G3): a traffic-mode boat drawn as the player's (the hero J/22), set before spawning ends. */
+	UPROPERTY() bool bGalleryDisplay = false;  // a traffic-mode actor drawn translucent: the replay's boat
 	void BeginRun(const FString& Label);
 	bool IsWatching() const { return bWatching; }
 	bool IsPhotoMode() const { return bPhoto; }
