@@ -185,10 +185,10 @@ static void CrewScriptCrossing(const Sailing::FBoatConfig& Cfg, FCrewCrossing& C
 	Y = FMath::Lerp(Y, SetY, double(Ease(T, A0, A1)));
 	Y = FMath::Lerp(Y, ToY + S * In, double(Ease(T, C0, C1)));
 	Y = FMath::Lerp(Y, ToY, double(Ease(T, C1, D1)));
-	// (Where they go fore and aft is taken once, as the cross begins: the stance's place moved with the crew model and
-	// slid the planted foot.)
-	if (T < C0 || C.ToX == 0.0) C.ToX = Out.Pelvis.X;
-	const double ToX = C.ToX;
+	// Fore and aft they come down where they rose, the new side's seat mirroring the old: the crossing stance's own place
+	// (the well's forward end) put the J/22's bow 0.25 m forward of their rail seat, into the jib sheet's tail by its winch
+	// (SailingSim.Visual.SheetClearance), and moved with the crew model under the planted foot.
+	const double ToX = From.X;
 	const double X = FMath::Lerp(From.X, ToX, double(Ease(T, C0, C1)));
 	// Up and down: a half-crouch 0.55 m over the floor (the helm's no higher), lowest (0.5, a gybe's 0.45, under the boom
 	// lower still) as the boom passes, then down onto the seat.
@@ -566,7 +566,13 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		P.bFlatDeck = FootZ > SeatZ - 0.15;
 	}
 	Out.Yaw = CrewFacingYaw(P);
-	if (bScript && P.Stance == ECrewStance::Crossing) CrewScriptCrossing(Cfg, *Cross, bDinghy, bUnderBoom, Out);
+	if (bScript && P.Stance == ECrewStance::Crossing)
+	{
+		CrewScriptCrossing(Cfg, *Cross, bDinghy, bUnderBoom, Out);
+		// (The forward hand's hold is the cabin-top handrail: on the coaming their arm went through the jib sheet's tail by
+		// its winch, SailingSim.Visual.SheetClearance.)
+		Out.bHoldCabin = I == 0 && N > 2;
+	}
 	else if (Cross) Cross->bActive = false;
 	if (Cross)
 	{

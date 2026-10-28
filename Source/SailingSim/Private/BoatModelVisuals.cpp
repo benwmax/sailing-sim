@@ -1550,7 +1550,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// docs/crew-tack/: crossing, a hand on the coaming (the old side's, then the new side's) and the feet stepping.
 		if (Pl.bScripted && Pl.HoldSide >= 0 && In.Attach.bValid)
 		{
-			const FVector At = In.Attach.HandholdCoaming[Pl.HoldSide];
+			const FVector At = Pl.bHoldCabin ? In.Attach.HandholdCabin[Pl.HoldSide] : In.Attach.HandholdCoaming[Pl.HoldSide];
 			const int32 H = Pl.HoldHand;
 			if (FVector::Dist(At, Shoulder[H]) < Reach * 1.05)
 			{

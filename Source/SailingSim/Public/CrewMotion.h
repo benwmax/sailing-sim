@@ -35,7 +35,6 @@ struct SAILINGSIM_API FCrewCrossing
 	float StartBoomSign = 0.f;
 	FVector From = FVector::ZeroVector;      // the pelvis where it began (m, boat frame)
 	float FromYaw = 0.f;
-	double ToX = 0.0;                        // m, where the cross goes fore and aft (taken as it begins)
 	FVector Last = FVector::ZeroVector;      // the last placement (the next crossing starts from it)
 	float LastYaw = 0.f;
 	bool bHasLast = false;
@@ -81,6 +80,7 @@ struct SAILINGSIM_API FCrewPlacement
 	float FootWeight = 0.f;
 	int32 HoldSide = -1;
 	int32 HoldHand = 0;
+	bool bHoldCabin = false;                // the forward hand takes the cabin-top handrail, clear of the jib sheet's tail
 };
 
 /** The stance and place (the boom's swing over the cockpit sets when the crew cross and how low they go). */
