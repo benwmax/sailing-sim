@@ -127,6 +127,10 @@ namespace Sailing
 		double Update(const FBoatModel& Boat) const;
 		/** The margin from dead downwind (deg) the run guard keeps at a point, for the wind given (ByTheLeeMarginDeg without). */
 		double RunMarginDeg(double X, double Y) const;
+		/** In a gybe she was told to make, until she is round (with the wind given): the crew sheet the main in for it
+		 *  (FAutoTrim::bHoldMain), and a multihull turns no faster than GybeTillerMax lets her (docs/ai-gybe/). */
+		bool IsGybing() const { return bGybeOrdered; }
+		double GybeTillerMax = 0.25;
 
 	private:
 		// The helm's own sense of the boat (Update is called every step): her upwind speed, and a tack she is waiting to start.

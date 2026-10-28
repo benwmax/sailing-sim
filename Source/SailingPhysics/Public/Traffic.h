@@ -172,6 +172,8 @@ namespace Sailing
 		void Navigate(FTrafficVessel& V);
 		void Apply(FTrafficVessel& V, double Dt);
 		double SailableHeading(const FTrafficVessel& V, double Heading, bool bKeepTack) const;
+		/** docs/ai-gybe/: her deepest downwind angle (rad): her polar's best VMG in this wind, within her helm's run guard. */
+		double RunAngleFor(const FTrafficVessel& V) const;
 		/** W1: tack upwind on a header, or for clearly more pressure on the other tack. */
 		bool WantsShiftTack(const FTrafficVessel& V, double Target) const;
 		double ChooseAvoidance(const FTrafficVessel& V, const FVesselSnapshot& Own, const FVesselSnapshot& Other, double Safe, bool bStarboardOnly, bool& bOutSlow,

@@ -8,6 +8,7 @@
 #include "PowerVesselActor.h"
 #include "Race.h"
 #include "Rules.h"
+#include "WindClimate.h"
 #include "RulesCoach.h"
 #include "SailboatPawn.h"
 #include "Traffic.h"
@@ -424,6 +425,85 @@ bool FTrafficLightsTest::RunTest(const FString& Parameters)
 	Ship->Destroy();
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+
+// docs/ai-gybe/: the AI's downwind legs. A J/22 sent to a mark dead downwind sails her run angle in gybes (she goes round
+// at least once, on the layline) and gets there; a Hobie 16 AI boat on a gusty run (14 kn gusting about 18) stays upright,
+// her helm's run guard holding her off dead downwind (docs/hobie-run/).
+namespace AiGybeLocal
+{
+	struct FRunResult { int Gybes = 0; bool bArrived = false, bCapsized = false; double DeepestTwaDeg = 0.0, Seconds = 0.0; FString Trace; };
+
+	FRunResult RunDownwind(EBoatType Type, double Knots, double GustFactor, double DistanceM, double Seconds)
+	{
+		FWindParams P;
+		P.SpeedKnots = Knots;
+		P.FromDegrees = 0.0; // from the north (+X): the mark is south
+		if (GustFactor > 1.0) P.GustIntensity = GustIntensityForFactor(GustFactor);
+		const FWindField Wind(P);
+		FTrafficSim Sim;
+		Sim.SetWorld(&Wind, nullptr, nullptr);
+		const int Id = Sim.AddSailboat(Type, 0.0, 0.0, kPi + 0.6, { { -DistanceM, 0.0 } }, "Downwind");
+		FRunResult R;
+		int Side = 0;
+		double LastGybe = -100.0;
+		for (double T = 0.0; T < Seconds; T += 1.0 / 30.0)
+		{
+			Sim.Step(1.0 / 30.0);
+			const FTrafficVessel* V = Sim.Find(Id);
+			if (!V || !V->Boat) break;
+			const FBoatTelemetry& Tm = V->Boat->GetTelemetry();
+			if (Tm.bCapsized) R.bCapsized = true;
+			if (T > 10.0 && std::fabs(Tm.TrueWindAngle) > 120.0 * kDegToRad)
+			{
+				// How deep she holds a run: not through a gybe she is told to make (she passes 180 by design) nor the 20 s she
+				// takes to settle on the new gybe.
+				if (V->Pilot.IsGybing()) LastGybe = T;
+				if (T - LastGybe > 20.0) R.DeepestTwaDeg = std::max(R.DeepestTwaDeg, std::fabs(Tm.TrueWindAngle) * kRadToDeg);
+				const int Now = Tm.TrueWindAngle > 0.0 ? 1 : -1;
+				if (Side != 0 && Now != Side) ++R.Gybes;
+				Side = Now;
+			}
+			if (std::fmod(T, 60.0) < 1.0 / 30.0)
+			{
+				const Vec3 O = V->Boat->OriginPosition();
+				R.Trace += FString::Printf(TEXT("t %.0f at (%.0f, %.0f) heading %.0f steer %.0f TWA %.0f side %d %.1f kn; "), T, O.X, O.Y,
+					Tm.Heading * kRadToDeg, V->SteerHeading * kRadToDeg, Tm.TrueWindAngle * kRadToDeg, V->Side, Tm.BoatSpeed / kKnot);
+			}
+			// At the mark (traffic routes loop, so she would sail on round it).
+			const Vec3 At = V->Boat->OriginPosition();
+			if (std::hypot(At.X + DistanceM, At.Y) < 60.0) { R.bArrived = true; R.Seconds = T; break; }
+		}
+		return R;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTrafficAiGybesTest, "SailingSim.Traffic.AiGybesDownwind", Flags)
+bool FSailingTrafficAiGybesTest::RunTest(const FString&)
+{
+	const AiGybeLocal::FRunResult R = AiGybeLocal::RunDownwind(EBoatType::J22, 12.0, 0.0, 2000.0, 1500.0);
+	AddInfo(FString::Printf(TEXT("J/22, 2 km dead downwind in 12 kn: %d gybes, deepest TWA %.0f, %s in %.0f s"), R.Gybes, R.DeepestTwaDeg,
+		R.bArrived ? TEXT("there") : TEXT("not there"), R.Seconds));
+	AddInfo(R.Trace);
+	TestTrue(TEXT("She gybes on the way (a dead-downwind mark is sailed in gybes)"), R.Gybes >= 1);
+	TestTrue(TEXT("And gets there"), R.bArrived);
+	TestTrue(TEXT("Never deeper than her run angle allows (160 at most)"), R.DeepestTwaDeg < 168.0);
+	TestFalse(TEXT("Upright"), R.bCapsized);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTrafficHobieRunTest, "SailingSim.Traffic.HobieUprightOnAGustyRun", Flags)
+bool FSailingTrafficHobieRunTest::RunTest(const FString&)
+{
+	const AiGybeLocal::FRunResult R = AiGybeLocal::RunDownwind(EBoatType::Hobie16, 14.0, 1.3, 3000.0, 1200.0);
+	AddInfo(FString::Printf(TEXT("Hobie 16, 3 km dead downwind in 14 kn gusting about 18: %d gybes, deepest TWA %.0f, %s in %.0f s"), R.Gybes,
+		R.DeepestTwaDeg, R.bArrived ? TEXT("there") : TEXT("not there"), R.Seconds));
+	AddInfo(R.Trace);
+	TestFalse(TEXT("The AI Hobie stays upright through a gusty run"), R.bCapsized);
+	TestTrue(TEXT("Kept off dead downwind"), R.DeepestTwaDeg < 172.0);
+	TestTrue(TEXT("And gets there"), R.bArrived);
 	return true;
 }
 
