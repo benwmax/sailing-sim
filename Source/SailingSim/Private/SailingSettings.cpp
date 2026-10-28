@@ -166,6 +166,26 @@ void USailingSettings::ResetGraphicsRows()
 	AntiAliasing = ShadowQuality = LightingQuality = ReflectionQuality = CloudQuality = WaterQuality = FoliageQuality = ViewDistanceQuality = MotionBlur = -1;
 }
 
+void USailingInputSettings::PostInitProperties()
+{
+	Super::PostInitProperties();
+	AddMissingActions();
+}
+
+void USailingInputSettings::PostReloadConfig(FProperty* PropertyThatWasLoaded)
+{
+	Super::PostReloadConfig(PropertyThatWasLoaded);
+	AddMissingActions();
+}
+
+void USailingInputSettings::AddMissingActions()
+{
+	if (Bindings.Num() == 0) return; // the defaults are in effect
+	TSet<FName> Known;
+	for (const FSailingKeyBinding& B : Bindings) Known.Add(B.Action);
+	for (const FSailingKeyBinding& B : Defaults) if (!Known.Contains(B.Action)) Bindings.Add(B);
+}
+
 USailingInputSettings::USailingInputSettings()
 {
 	auto Add = [this](const TCHAR* Action, const FKey& Key, float Scale = 1.f)
@@ -266,8 +286,39 @@ USailingInputSettings::USailingInputSettings()
 	// Debrief and pictures: watch the last run, photo mode and its shutter.
 	Add(TEXT("Replay"), EKeys::Comma);
 	Add(TEXT("Photo"), EKeys::Nine);
+	Add(TEXT("Photo"), EKeys::Gamepad_Special_Left);   // held half a second (a tap is the controls card)
 	Add(TEXT("CockpitView"), EKeys::Backslash);
 	Add(TEXT("PhotoShot"), EKeys::Enter);
+	Add(TEXT("PhotoShot"), EKeys::Gamepad_FaceButton_Bottom);
+	// Photo mode's free camera (docs/photo-freefly/): its own layer and context, so it shares keys with the boat's.
+	Add(TEXT("PhotoForward"), EKeys::W);
+	Add(TEXT("PhotoForward"), EKeys::S, -1.f);
+	Add(TEXT("PhotoForward"), EKeys::Gamepad_LeftY);
+	Add(TEXT("PhotoRight"), EKeys::D);
+	Add(TEXT("PhotoRight"), EKeys::A, -1.f);
+	Add(TEXT("PhotoRight"), EKeys::Gamepad_LeftX);
+	Add(TEXT("PhotoUpDown"), EKeys::E);
+	Add(TEXT("PhotoUpDown"), EKeys::Q, -1.f);
+	Add(TEXT("PhotoUpDown"), EKeys::Gamepad_RightTriggerAxis);
+	Add(TEXT("PhotoUpDown"), EKeys::Gamepad_LeftTriggerAxis, -1.f);
+	Add(TEXT("PhotoRoll"), EKeys::C);
+	Add(TEXT("PhotoRoll"), EKeys::Z, -1.f);
+	Add(TEXT("PhotoRoll"), EKeys::Gamepad_RightShoulder);
+	Add(TEXT("PhotoRoll"), EKeys::Gamepad_LeftShoulder, -1.f);
+	Add(TEXT("PhotoRollReset"), EKeys::X);
+	Add(TEXT("PhotoRollReset"), EKeys::Gamepad_RightThumbstick);
+	Add(TEXT("PhotoBoost"), EKeys::LeftShift);
+	Add(TEXT("PhotoBoost"), EKeys::Gamepad_LeftThumbstick);
+	Add(TEXT("PhotoSlow"), EKeys::LeftControl);
+	Add(TEXT("PhotoSpeed"), EKeys::MouseWheelAxis);
+	Add(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Up);
+	Add(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Down, -1.f);
+	Add(TEXT("PhotoToBoat"), EKeys::F);
+	Add(TEXT("PhotoToBoat"), EKeys::Gamepad_FaceButton_Top);
+	Add(TEXT("PhotoOrbit"), EKeys::Tab);
+	Add(TEXT("PhotoOrbit"), EKeys::Gamepad_Special_Left);
+	Add(TEXT("PhotoHideUI"), EKeys::H);
+	Add(TEXT("PhotoHideUI"), EKeys::Gamepad_FaceButton_Right);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);

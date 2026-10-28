@@ -361,7 +361,7 @@ void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
 	if (ClockFrame == GFrameCounter) return;
 	ClockFrame = GFrameCounter;
-	if (!GetWorld()->IsPaused()) Clock.Advance(DeltaSeconds);
+	if (!GetWorld()->IsPaused() && !bWorldHeld) Clock.Advance(DeltaSeconds);
 }
 
 int32 ASailingGameMode::CentralEuropeanOffsetHours(const FDateTime& Date)
@@ -1117,7 +1117,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	AdvanceClock(DeltaSeconds);
 	{ SAILING_PERF_SCOPE(Streaming); UpdateStreaming(); }
-	if (!GetWorld()->IsPaused())
+	if (!GetWorld()->IsPaused() && !bWorldHeld)
 	{
 		UpdateWeather(DeltaSeconds);
 		UpdateTide();

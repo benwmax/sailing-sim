@@ -642,6 +642,15 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   `FoilLiftLagScale`, `docs/foil-lag/`). The gale's sea tacks are chaotic: `GaleTack` holds their distribution over 24 seeds.
 - Weather helm: `FBoatConfig::HeelYawCoef` (the J/22's 0.06 and the maxi's 0.04; `Make()` resets the J/22's value for the other boats) and
   `FAutopilot::HelmPerHeel`. Tests that hold a course with a fixed tiller must steer with the autopilot now.
+- Photo mode (`docs/photo-freefly/`): `AFreeCamera` (`FreeCamera.h`, math in `FreeCameraMath.h`) is a reusable fly/orbit
+  camera with a leash anchor (5 km), floor (wave + 0.15 m, ground + 0.5 m), ceiling (1,500 m) and a 20 cm visibility
+  sweep; the owner feeds it (`Update`, `AddLook`, `StepSpeed`), it never touches a boat. The pawn's photo mode puts its
+  lens on it and holds the world through `ASailingGameMode::SetWorldHeld` (rule 9: the clock, weather, tide, wake, spray,
+  lightning and traffic sails stop). Input: `IMC_Photo` (`SailingBindings::InPhotoContext`, priority 1) over the boat's
+  context; photo commands are their own layer (`IsPhotoAction`); every button fires on `ETriggerEvent::Triggered` with a
+  Pressed trigger (`BuildContext`), the pad's Photo is a 0.5 s hold of View and other commands on that button take the
+  tap. Saved key lists get new commands' defaults (`USailingInputSettings::AddMissingActions`). Stills: `-SailingPhoto=<s>`,
+  `-SailingPhotoCam="<fwd m>,<right m>,<up m>[,<yaw>,<pitch>]"`. Tests `SailingSim.UI.PhotoFreeFly.*`, `SailingSim.Smoke.PhotoWorldHeld`.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.

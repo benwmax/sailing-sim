@@ -79,6 +79,10 @@ public:
 	/** Moves the world clock by this frame's time, once a frame: the game mode's tick or the first boat to tick, whichever
 	 *  runs first (boats step until they reach it, so it has to have moved before they do). */
 	void AdvanceClock(float DeltaSeconds);
+	/** Online readiness rule 9: the single-player hold at the top. Held, the world clock stops (so the boats, traffic,
+	 *  weather, tide and the water's own time stop with it) while the renderer and the cameras keep running: photo mode. */
+	void SetWorldHeld(bool bHeld) { bWorldHeld = bHeld; }
+	bool IsWorldHeld() const { return bWorldHeld; }
 	/** Seconds since the current weather started (the storm timeline runs on this). */
 	double GetWeatherTime() const { return GetSimTime() - WeatherStartTime; }
 
@@ -207,6 +211,7 @@ private:
 	double WeatherStartTime = 0.0;
 	Sailing::FWorldClock Clock;
 	uint64 ClockFrame = MAX_uint64;
+	bool bWorldHeld = false;
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;
 	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.
