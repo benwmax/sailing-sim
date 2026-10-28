@@ -133,7 +133,7 @@ bool FSailingPhotoCameraTest::RunTest(const FString&)
 		MaxDist = FMath::Max(MaxDist, Cam->GetLeashDistanceM());
 	}
 	TestTrue(TEXT("Flown away for 20 s at 600 m/s: never past 5 km"), MaxDist <= 5000.0 + 1e-6);
-	TestTrue(TEXT("And close to it"), MaxDist > 4990.0);
+	TestTrue(FString::Printf(TEXT("And close to it (the last 500 m ease in): %.0f m"), MaxDist), MaxDist > 4900.0);
 	TestTrue(TEXT("The leash shows"), Cam->IsAtLeash());
 	TestTrue(TEXT("Level heading: still at 10 m"), FMath::IsNearlyEqual(Cam->GetActorLocation().Z, 1000.0, 1.0));
 
@@ -158,6 +158,8 @@ bool FSailingPhotoCameraTest::RunTest(const FString&)
 		Wall->GetStaticMeshComponent()->SetWorldScale3D(FVector(1.0, 20.0, 20.0)); // 1 m thick, 20 m across
 		Wall->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		Wall->GetStaticMeshComponent()->SetCollisionResponseToAllChannels(ECR_Block);
+		++GFrameCounter;
+		W.World->Tick(LEVELTICK_All, 1.f / 60.f); // the physics scene takes the box in at a tick
 		Cam->SnapTo(FVector(0.0, 0.0, 500.0), FRotator::ZeroRotator);
 		FFreeCameraInput Ahead;
 		Ahead.Move = FVector2D(0.0, 1.0);
@@ -227,7 +229,8 @@ bool FSailingPhotoInputTest::RunTest(const FString&)
 	TestTrue(TEXT("The boat's context has no camera commands (the shutter's Enter only)"), bBoatClean);
 	TestTrue(TEXT("Photo's context has nothing of the boat's"), bPhotoClean);
 	// Every key photo mode needs from the boat's context is in its own, so nothing reaches the boat while flying.
-	for (const FKey& K : { EKeys::Gamepad_LeftX, EKeys::Gamepad_LeftY, EKeys::Gamepad_LeftTriggerAxis, EKeys::Gamepad_RightTriggerAxis,
+	TestTrue(TEXT("The stick's other axis flies too"), Only(ActionsOn(Photo, EKeys::Gamepad_LeftY), TEXT("PhotoForward")));
+	for (const FKey& K : { EKeys::Gamepad_LeftX, EKeys::Gamepad_LeftTriggerAxis, EKeys::Gamepad_RightTriggerAxis,
 		EKeys::Gamepad_LeftShoulder, EKeys::Gamepad_RightShoulder, EKeys::W, EKeys::A, EKeys::S, EKeys::D, EKeys::Q, EKeys::E, EKeys::Z, EKeys::C })
 	{
 		TestTrue(FString::Printf(TEXT("%s is photo mode's while it is open"), *K.ToString()), ActionsOn(Photo, K).Num() > 0 && ActionsOn(Boat, K).Num() > 0);
