@@ -440,6 +440,7 @@ private:
 		ECrewStance Stance = ECrewStance::Cockpit; int32 Transition = 0; float TransitionS = 1.f, TransitionSeconds = 0.6f;
 		FVector FromLocation = FVector::ZeroVector; float FromYaw = 0.f, FromRoll = 0.f;
 		FCrewCrossing Crossing;   // docs/crew-tack/
+		int32 ExtHand = -1; double SwapAt = -1.0;   // the helm's hand on the extension, and when it changes hands
 	};
 	TSharedPtr<const Sailing::FBoatConfig> CrewConfig; // the boat the crew stand on, shared with their animation (read on workers)
 	double PrevBoomAngle = 0.0;

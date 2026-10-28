@@ -172,6 +172,7 @@ static void CrewScriptCrossing(const Sailing::FBoatConfig& Cfg, FCrewCrossing& C
 	const bool bG = C.bGybe;
 	const float A0 = bG ? -2.0f : -1.2f, A1 = bG ? -1.6f : -0.8f, B1 = bG ? -1.0f : -0.3f;
 	const float C0 = bG ? 0.3f : -0.3f, C1 = bG ? 1.3f : 0.7f, D1 = C.EndTau();
+	const float Deep1Gybe = 0.3f;
 	const FVector From = C.From;
 	const double S = From.Y != 0.0 ? FMath::Sign(From.Y) : -double(Out.Params.Side);
 	const double ToY = -From.Y;
@@ -213,6 +214,8 @@ static void CrewScriptCrossing(const Sailing::FBoatConfig& Cfg, FCrewCrossing& C
 		Z = FMath::Lerp(Z, From.Z, double(Ease(T, C1, D1)));
 	}
 	Out.Pelvis = FVector(X, Y, Z);
+	// A gybe's crouch is deep (chin to knees, the trunk folded: the stance's duck) from the set until the boom is over.
+	if (bG) Out.Duck = FMath::Max(Out.Duck, FMath::Min(Ease(T, A1, B1), 1.f - Ease(T, Deep1Gybe, C0 + 0.3f)));
 	// Facing: turned forward as they rise, to the new side's seat as they sit.
 	float Yaw = C.FromYaw;
 	Yaw = FMath::Lerp(Yaw, 0.f, Ease(T, A1, B1));
@@ -385,11 +388,12 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 				if (C.StartBoomSign != 0.f && Sign != 0.f && Sign != C.StartBoomSign && FMath::Abs(In.BoomAngle) > 0.03)
 				{
 					C.bBoomPassed = true;
-					C.TBoom = FMath::Min(C.TBoom, C.Clock);
+					C.TBoom = FMath::Min(C.TBoom, C.Clock + (C.bRoll ? 0.5f : 0.f));
 				}
 				else if (FMath::Abs(In.BoomRate) > 0.05 && In.BoomAngle * In.BoomRate < 0.0)
 				{
-					C.TBoom = C.Clock + float(FMath::Clamp(FMath::Abs(In.BoomAngle) / FMath::Abs(In.BoomRate), 0.2, 2.0));
+					// (A roll tack's crew go half a second after the boom: they are still heeling her as it comes over.)
+					C.TBoom = C.Clock + float(FMath::Clamp(FMath::Abs(In.BoomAngle) / FMath::Abs(In.BoomRate), 0.2, 2.0)) + (C.bRoll ? 0.5f : 0.f);
 				}
 				else
 				{
@@ -416,6 +420,9 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 			C.StartBoomSign = float(FMath::Sign(In.BoomAngle));
 			C.bBoomPassed = false;
 			C.TBoom = (C.bGybe ? 2.0f : 1.2f) * C.Scale;
+			// docs/crew-tack/ (PR 3): in light air a tack is rolled: the crew stay up on the old side half a second longer, so
+			// their weight heels her into the turn, then cross together and hike hard for a second as she comes up.
+			C.bRoll = !C.bGybe && In.TrueWindSpeed < 8.0 * 0.514444;
 		}
 		bScript = C.bActive;
 		if (!bScript && C.Cooldown > 0.f) bCrossing = false;
@@ -566,6 +573,11 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		P.bFlatDeck = FootZ > SeatZ - 0.15;
 	}
 	Out.Yaw = CrewFacingYaw(P);
+	// (A roll tack's hard hike: the first second on the new rail.)
+	if (Cross && !bScript && Cross->bRoll && Cross->Cooldown > 0.5f && (P.Stance == ECrewStance::RailHike || P.Stance == ECrewStance::DinghyHike))
+	{
+		P.Hike = 1.f;
+	}
 	if (bScript && P.Stance == ECrewStance::Crossing)
 	{
 		CrewScriptCrossing(Cfg, *Cross, bDinghy, bUnderBoom, Out);
