@@ -449,7 +449,7 @@ bool FWaterWhitecapsSeenTest::RunTest(const FString&)
 				FoldInLong(Detail, T, Grid);
 				for (int32 I = 0; I < Grid.N * Grid.N; ++I)
 					Out.push_back(float(FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
-						X0 + (I / Grid.N) * 1.31, (I % Grid.N) * 1.37, T, 0.5) * Grid.JCap[I]));
+						X0 + (I / Grid.N) * 13.1, (I % Grid.N) * 13.7, T, 0.5) * Grid.JCap[I]));
 			}
 			return Out;
 		};
@@ -634,7 +634,7 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 		for (int32 R = 0; R < Grid.N; R += Stride)
 			for (int32 C = 0; C < Grid.N; C += Stride)
 				Out.push_back(float(FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
-					X0 + R * 1.31, C * 1.37, T, 0.5) * Grid.JCap[R * Grid.N + C]));
+					X0 + R * 13.1, C * 13.7, T, 0.5) * Grid.JCap[R * Grid.N + C]));
 		return Out;
 	};
 	const double Lake = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0);
@@ -695,7 +695,7 @@ bool FWaterWhitecapOnsetTest::RunTest(const FString&)
 			for (int32 R = 0; R < Grid.N; R += 2)
 				for (int32 C = 0; C < Grid.N; C += 2)
 					Out.push_back(float(1.0 - Fold * (1.0 - FWaveDetail::LongJacobian(W2.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
-						X0 + R * 1.31, C * 1.37, T, 0.5) * Grid.JCap[R * Grid.N + C])));
+						X0 + R * 13.1, C * 13.7, T, 0.5) * Grid.JCap[R * Grid.N + C])));
 			return Out;
 		};
 		const double Tgt = 3.84e-6 * FMath::Pow(K * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0) * AWaterSurface::WhitecapOnset(float(K));
@@ -1037,5 +1037,65 @@ bool FWaterCapRepeatTest::RunTest(const FString&)
 	}
 	TestTrue(TEXT("With the one tile the caps repeat every 23 m"), WorstBefore > 0.8);
 	TestTrue(TEXT("With the two cascades they don't (under 0.3)"), WorstAfter < 0.3);
+	return true;
+}
+
+// docs/whitecaps-cascade/: how far the solved cap threshold's cover strays from the target on other water, solved on one
+// stretch and read on eight (later and up to 2.7 km off), for two footprints of the long trains' sample: the old 170 m
+// (logged; at 14 kn its solve stretch was quiet and capped 1.37x the target everywhere else) and the renderer's 1.7 km.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterCapSpreadTest, "SailingSim.Visual.WhitecapSolveSpread", WaterFlags)
+bool FWaterCapSpreadTest::RunTest(const FString&)
+{
+	for (const double Knots : { 12.0, 14.0, 16.0, 20.0, 25.0 })
+	{
+		FWaveField Waves(1);
+		FWaveParams WP;
+		WP.WindSpeedKnots = Knots;
+		WP.FetchMeters = 8000.0;
+		Waves.SetWind(WP);
+		Waves.SnapToTarget();
+		FWaveDetail Detail;
+		Detail.Configure(DetailFor(Knots, WP.FetchMeters, WP.WindFromDegrees), { FWaveDetail::ChopCascade(), FWaveDetail::LongChopCascade() });
+		const double Target = 3.84e-6 * FMath::Pow(Knots * kKnot, 3.41) * AWaterSurface::WhitecapScaleFor(0);
+		const double OmegaMax = 2.0 * UE_DOUBLE_PI * AWaterSurface::SplitHz;
+		for (const double Stride : { 1.31, 13.1 })
+		{
+			auto Sea = [&](double T0, double X0)
+			{
+				std::vector<float> Out;
+				for (const double T : { T0, T0 + 7.0, T0 + 19.0 })
+				{
+					FWaveDetail::FGrid Grid;
+					Detail.Evaluate(0, T, Grid);
+					FoldInLong(Detail, T, Grid);
+					for (int32 I = 0; I < Grid.N * Grid.N; ++I)
+						Out.push_back(float(FWaveDetail::LongJacobian(Waves.GetComponents(), kWaveComponents, OmegaMax, AWaterSurface::Choppiness,
+							X0 + (I / Grid.N) * Stride, (I % Grid.N) * Stride * 1.046, T, 0.5) * Grid.JCap[I]));
+				}
+				return Out;
+			};
+			double Thr = 0.0, Slope = 0.0;
+			FWaveDetail::CapThreshold(Sea(11.0, 0.0), Target, Thr, Slope);
+			double Lo = 1e9, Hi = 0.0, Sum = 0.0;
+			int32 Count = 0;
+			for (const double T0 : { 140.0, 260.0, 380.0, 500.0 })
+				for (const double X0 : { 900.0, 2700.0 })
+				{
+					const std::vector<float> Other = Sea(T0, X0);
+					double Capped = 0.0;
+					for (const float V : Other) Capped += V < Thr ? 1.0 / Other.size() : 0.0;
+					const double R = Capped / Target;
+					Lo = FMath::Min(Lo, R);
+					Hi = FMath::Max(Hi, R);
+					Sum += R;
+					++Count;
+				}
+			AddInfo(FString::Printf(TEXT("%2.0f kn, footprint %4.0f m: solved %.3f; elsewhere cover / target mean %.2f, %.2f to %.2f"),
+				Knots, Stride * 128.0, Thr, Sum / Count, Lo, Hi));
+			if (Stride > 10.0)
+				TestTrue(FString::Printf(TEXT("%.0f kn: solved over 1.7 km, the mean cover elsewhere is the target's (within 15%%: %.2f)"), Knots, Sum / Count),
+					FMath::Abs(Sum / Count - 1.0) < 0.15);
+		}
+	}
 	return true;
 }
