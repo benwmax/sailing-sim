@@ -271,10 +271,10 @@ namespace Sailing
 				if (bApparentDeep) Target = Side * (std::fabs(Target) - 10.0);
 				const bool bByTheLee = Side * Twa < 0.0;
 				if (bByTheLee || bApparentDeep || Side * Twa > 175.0) GainNow = 2.0 * Gain;
-				else if (bMultihull && Side * Twa > 135.0)
+				else if (bMultihull)
 				{
-					// A multihull's light hand once she is deep (a hard bear-away rolls a cat to windward); until then, a
-					// rounding onto the run keeps the full helm. A monohull keeps her own (docs/ai-gybe/).
+					// A multihull's light hand on any run she holds (a hard bear-away rolls a cat to windward, docs/hobie-run/).
+					// A monohull keeps her own helm: the AI's roundings onto the run need it (docs/ai-gybe/).
 					GainNow = RunGainShare * Gain;
 					bRun = true;
 					RunSide = Side;
