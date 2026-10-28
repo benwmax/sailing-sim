@@ -15,6 +15,7 @@
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
 #include "UnrealClient.h"
+#include "HighResScreenshot.h"
 #include "Engine/GameViewportClient.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -82,7 +83,8 @@ namespace
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
 			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
-			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI");
+			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
+			|| SailingBindings::IsPhotoPanelAction(Action);
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -1554,7 +1556,10 @@ namespace
 			{ TEXT("PhotoRoll"), { TEXT("Photo: tilt right"), TEXT("Photo: tilt left") } }, { TEXT("PhotoRollReset"), { TEXT("Photo: level the camera"), TEXT("") } },
 			{ TEXT("PhotoBoost"), { TEXT("Photo: fast (hold)"), TEXT("") } }, { TEXT("PhotoSlow"), { TEXT("Photo: slow (hold)"), TEXT("") } },
 			{ TEXT("PhotoSpeed"), { TEXT("Photo: faster"), TEXT("Photo: slower") } }, { TEXT("PhotoToBoat"), { TEXT("Photo: back to the boat"), TEXT("") } },
-			{ TEXT("PhotoOrbit"), { TEXT("Photo: orbit the boat / fly"), TEXT("") } }, { TEXT("PhotoHideUI"), { TEXT("Photo: hide the hints"), TEXT("") } },
+			{ TEXT("PhotoOrbit"), { TEXT("Photo: orbit the boat / fly"), TEXT("") } }, { TEXT("PhotoHideUI"), { TEXT("Photo: hide the panel and hints"), TEXT("") } },
+			{ TEXT("PhotoRowDown"), { TEXT("Photo panel: next row"), TEXT("") } }, { TEXT("PhotoRowUp"), { TEXT("Photo panel: previous row"), TEXT("") } },
+			{ TEXT("PhotoValueUp"), { TEXT("Photo panel: more"), TEXT("") } }, { TEXT("PhotoValueDown"), { TEXT("Photo panel: less"), TEXT("") } },
+			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next page"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous page"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
 			{ TEXT("CrewAction"), { TEXT("Crew station: answer the captain"), TEXT("") } }, { TEXT("Grind"), { TEXT("Crew station: grind the jib winch"), TEXT("") } },
@@ -1943,18 +1948,149 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 
 void ASailboatPawn::UpdatePhotoLens()
 {
-	// Photo mode is a camera: focus on the boat at f/2.8 on a full-frame sensor (the background softens with the lens),
-	// and the lens profile from Visual V1 (barrel distortion, vignetting and fringing, M_LensDistortion).
+	// Photo mode is a camera: a full-frame sensor focused by the panel (centre, the boat or a set distance) at its
+	// aperture (f/2.8 to start, as before), exposure added to the metered bias, the panel's vignette, grain and look, and
+	// the lens profile from Visual V1 (barrel distortion, vignetting and fringing, M_LensDistortion). docs/photo-mode/pc/.
 	if (!FreeCam) return;
 	UCameraComponent* Lens = FreeCam->GetCamera();
 	FPostProcessSettings& PP = Lens->PostProcessSettings;
+	const FPhotoSettings& S = PhotoSettings;
+	const FVector Eye = Lens->GetComponentLocation();
+	float Want = float(FVector::Dist(Eye, BoatRoot->GetComponentLocation())) / 100.f;
+	if (S.Focus == EPhotoFocus::Manual) Want = S.ManualFocusM;
+	else if (S.Focus == EPhotoFocus::Auto)
+	{
+		// What the centre of the frame sees: the first thing a trace meets, else the water (which has no collision)
+		// under a camera looking down, else far off.
+		const FVector Dir = Lens->GetForwardVector();
+		FHitResult Hit;
+		FCollisionQueryParams Q(SCENE_QUERY_STAT(PhotoFocus), false, FreeCam);
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Eye, Eye + Dir * 500000.0, ECC_Visibility, Q)) Want = Hit.Distance / 100.f;
+		else
+		{
+			const double AboveM = SailingFrame::ToMapCm(GetWorld(), Eye).Z / 100.0 - FreeCam->WaveHeightAt(Eye);
+			Want = Dir.Z < -0.01 ? float(FMath::Max(AboveM, 0.1) / -Dir.Z) : 2000.f;
+		}
+		Want = FMath::Min(Want, 2000.f);
+	}
+	// Eased like a lens motor (a fifth of a second), in log distance so near and far settle alike.
+	const float Dt = FMath::Clamp(float(GetWorld()->GetDeltaSeconds()), 0.f, 0.1f);
+	PhotoFocusM = FMath::Exp(FMath::Lerp(FMath::Loge(FMath::Max(PhotoFocusM, 0.1f)), FMath::Loge(FMath::Max(Want, 0.1f)), FMath::Clamp(Dt / 0.2f, 0.f, 1.f)));
+	const bool bDof = S.ApertureStop < PhotoMath::NumApertures;
 	PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = true;
-	PP.DepthOfFieldFocalDistance = float(FVector::Dist(Lens->GetComponentLocation(), BoatRoot->GetComponentLocation()));
-	PP.DepthOfFieldFstop = 2.8f;
+	PP.DepthOfFieldFocalDistance = bDof ? PhotoFocusM * 100.f : 0.f;   // 0 turns the depth of field off
+	PP.DepthOfFieldFstop = PhotoMath::Aperture(S.ApertureStop);
 	PP.DepthOfFieldSensorWidth = 36.f;
+	// Exposure on top of the meter (never in place of it: Bean's band and Settings > Brightness stay under it).
+	const ASailingEnvironment* Env = nullptr;
+	for (TActorIterator<ASailingEnvironment> It(GetWorld()); It; ++It) { Env = *It; break; }
+	const FPostProcessSettings* Scene = Env ? Env->GetSceneLook() : nullptr;
+	if (Scene && !PhotoSettings.bLookTaken)
+	{
+		// The panel's vignette and grain start where the scene's look has them (the cinematic grade's on High).
+		PhotoSettings.bLookTaken = true;
+		PhotoSettings.Vignette = FMath::RoundToFloat((Scene->bOverride_VignetteIntensity ? Scene->VignetteIntensity : 0.4f) * 10.f) / 10.f;
+		PhotoSettings.Grain = FMath::RoundToFloat((Scene->bOverride_FilmGrainIntensity ? Scene->FilmGrainIntensity : 0.f) * 10.f) / 10.f;
+	}
+	PP.bOverride_AutoExposureBias = Scene != nullptr && S.ExposureEV != 0.f;
+	if (Scene) PP.AutoExposureBias = Scene->AutoExposureBias + S.ExposureEV;
+	PP.bOverride_VignetteIntensity = PP.bOverride_FilmGrainIntensity = true;
+	PP.VignetteIntensity = S.Vignette;
+	PP.FilmGrainIntensity = S.Grain;
+	PP.bOverride_ColorSaturation = S.Look == EPhotoLook::Mono;
+	PP.ColorSaturation = FVector4(1.0, 1.0, 1.0, S.Look == EPhotoLook::Mono ? 0.0 : 1.0);
 	if (LensDistortionAsset && !PP.WeightedBlendables.Array.ContainsByPredicate([&](const FWeightedBlendable& B) { return B.Object == LensDistortionAsset; }))
 	{
 		PP.AddBlendable(LensDistortionAsset, 1.f);
+	}
+	UpdatePhotoHullClip();
+}
+
+bool ASailboatPawn::PhotoHighTier()
+{
+	return USailingSettings::Get()->Quality >= ESailingQuality::High;
+}
+
+void ASailboatPawn::StepPhotoPanel(FName Action)
+{
+	// Rows run through the pages in order (X on a pad walks them all); Page Up/Down jumps to a page's first row.
+	const int32 N = int32(EPhotoRow::Count);
+	if (Action == TEXT("PhotoRowDown")) PhotoRow = EPhotoRow((int32(PhotoRow) + 1) % N);
+	else if (Action == TEXT("PhotoRowUp")) PhotoRow = EPhotoRow((int32(PhotoRow) + N - 1) % N);
+	else if (Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev"))
+	{
+		const int32 Page = (PhotoMath::PageOf(PhotoRow) + (Action == TEXT("PhotoPageNext") ? 1 : PhotoMath::NumPages - 1)) % PhotoMath::NumPages;
+		PhotoRow = PhotoMath::FirstRowOf(Page);
+	}
+	else if (FreeCam)
+	{
+		UCameraComponent* Lens = FreeCam->GetCamera();
+		float Fov = Lens->FieldOfView, Roll = FreeCam->GetRollDeg();
+		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+		const float Clock = GM ? float(GM->GetWeatherState().HourOfDay) : 12.f;
+		const FPhotoSettings Was = PhotoSettings;
+		PhotoMath::StepRow(PhotoSettings, PhotoRow, Action == TEXT("PhotoValueUp") ? 1 : -1, Fov, Roll, PhotoHighTier(), Clock);
+		Lens->SetFieldOfView(FMath::Clamp(Fov, 10.f, 110.f));
+		FreeCam->SetRollDeg(Roll);
+		if (PhotoSettings.bHideMyBoat != Was.bHideMyBoat || PhotoSettings.bHideOthers != Was.bHideOthers || PhotoSettings.bHideCrew != Was.bHideCrew
+			|| PhotoSettings.SunHour != Was.SunHour) ApplyPhotoScene(true);
+	}
+	if (FreeCam)
+	{
+		UE_LOG(LogSailing, Display, TEXT("Photo panel: %s = %s"), PhotoMath::RowLabel(PhotoRow),
+			*PhotoMath::RowValue(PhotoSettings, PhotoRow, FreeCam->GetCamera()->FieldOfView, FreeCam->GetRollDeg(), PhotoFocusM, PhotoHighTier()));
+	}
+}
+
+void ASailboatPawn::ApplyPhotoScene(bool bOn)
+{
+	// The panel's Scene page: my boat, the other boats, the crew hidden, and the time of day drawn. All of it drops on
+	// the way out of photo mode (the world is held meanwhile, so no boat comes or goes). Only what the panel hid is shown
+	// again (a ghost that was off stays off).
+	const FPhotoSettings& S = PhotoSettings;
+	static SailingArgs::FCachedFlag HideBoatArg(TEXT("SailingHideBoat"));
+	const bool bHideMine = bOn && S.bHideMyBoat, bHideOthers = bOn && S.bHideOthers, bHideCrew = bOn && (S.bHideCrew || S.bHideMyBoat);
+	if (bHideMine != bPhotoHidMine) SetActorHiddenInGame(bHideMine || HideBoatArg.Get());
+	if (bHideCrew != bPhotoHidCrew) for (const TObjectPtr<USkeletalMeshComponent>& C : Crew) if (C) C->SetVisibility(!bHideCrew, true);
+	if (bHideOthers && PhotoHidden.IsEmpty())
+	{
+		auto Hide = [this](AActor* A) { if (A != this && !A->IsHidden()) { A->SetActorHiddenInGame(true); PhotoHidden.Add(A); } };
+		for (TActorIterator<ASailboatPawn> It(GetWorld()); It; ++It) Hide(*It);
+		for (TActorIterator<APowerVesselActor> It(GetWorld()); It; ++It) Hide(*It);
+	}
+	else if (!bHideOthers)
+	{
+		for (const TWeakObjectPtr<AActor>& A : PhotoHidden) if (A.IsValid()) A->SetActorHiddenInGame(false);
+		PhotoHidden.Reset();
+	}
+	bPhotoHidMine = bHideMine;
+	bPhotoHidCrew = bHideCrew;
+	if (ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>()) GM->SetDrawnHourOverride(bOn ? S.SunHour : -1.0);
+}
+
+void ASailboatPawn::UpdatePhotoHullClip()
+{
+	// With my boat hidden, the water's hull clip would leave her shape cut in the sea: switch it off (HullClipA's w, as
+	// -SailingNoHullClip does). The water sets it each tick; the pawn ticks after the water while photo mode is open.
+	if (!bPhoto || !PhotoSettings.bHideMyBoat) return;
+	for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It)
+	{
+		TSet<UMaterialInstanceDynamic*> Done;
+		TInlineComponentArray<UPrimitiveComponent*> Prims(*It);
+		for (UPrimitiveComponent* Prim : Prims)
+		{
+			for (int32 I = 0; I < Prim->GetNumMaterials(); ++I)
+			{
+				UMaterialInstanceDynamic* M = Cast<UMaterialInstanceDynamic>(Prim->GetMaterial(I));
+				if (!M || Done.Contains(M)) continue;
+				Done.Add(M);
+				FLinearColor A;
+				if (M->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("HullClipA")), A) && A.A != 0.f)
+				{
+					M->SetVectorParameterValue(TEXT("HullClipA"), FLinearColor(A.R, A.G, A.B, 0.f));
+				}
+			}
+		}
 	}
 }
 
@@ -1968,6 +2104,13 @@ void ASailboatPawn::SetPhoto(bool bOn)
 	// water's time stop with the boat (before, only the boat stopped: it returns early from Tick in photo mode).
 	if (ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>()) GM->SetWorldHeld(bOn);
 	HeldAxes.Reset(); // the two contexts' keys overlap: nothing held carries across
+	// The panel's scene settings (hidden boats, the drawn hour) hold while photo mode is open and drop when it closes;
+	// the pawn ticks after the water meanwhile, so a hidden boat's hull clip stays off (UpdatePhotoHullClip).
+	ApplyPhotoScene(bOn);
+	for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It)
+	{
+		if (bOn) AddTickPrerequisiteActor(*It); else RemoveTickPrerequisiteActor(*It);
+	}
 	if (bOn)
 	{
 		// docs/photo-freefly/: a free camera (AFreeCamera) where the chase camera is, the same lens and grade; the view
@@ -1982,6 +2125,7 @@ void ASailboatPawn::SetPhoto(bool bOn)
 			Lens->PostProcessSettings = Camera->PostProcessSettings;
 			Lens->PostProcessBlendWeight = Camera->PostProcessBlendWeight;
 			Lens->SetFieldOfView(Camera->FieldOfView);
+			PhotoFocusM = float(FVector::Dist(Camera->GetComponentLocation(), BoatRoot->GetComponentLocation())) / 100.f;
 			UpdatePhotoLens();
 			if (PC) PC->SetViewTargetWithBlend(FreeCam, 0.3f);
 		}
@@ -2189,7 +2333,21 @@ void ASailboatPawn::TakePhoto()
 	const FString Name = FString::Printf(TEXT("Sailing %s.png"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H%M%S")));
 	const FString Path = FPaths::ProjectSavedDir() / TEXT("Photos") / Name;
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
-	FScreenshotRequest::RequestScreenshot(Path, false, false);
+	FViewport* View = GEngine && GEngine->GameViewport ? GEngine->GameViewport->Viewport : nullptr;
+	// The shot is the next frames' scene and canvas: keep the canvas clear until it is taken (HighResShot can take two).
+	PhotoCleanFrame = GFrameCounter + 4;
+	if (PhotoSettings.CaptureScale == 2 && PhotoHighTier() && View)
+	{
+		// 2x (High and Ultra): HighResShot renders the scene alone at twice the viewport, lens blendables included, no HUD.
+		FHighResScreenshotConfig& Config = GetHighResScreenshotConfig();
+		Config.SetResolution(View->GetSizeXY().X * 2, View->GetSizeXY().Y * 2);
+		Config.SetFilename(Path);
+		View->TakeHighResScreenShot();
+	}
+	else
+	{
+		FScreenshotRequest::RequestScreenshot(Path, false, false);
+	}
 	StatusMessage = FString::Printf(TEXT("Photo saved: %s"), *Name);
 	StatusUntil = Boat.GetState().Time + 3.0;
 	PhotoHintUntil = FPlatformTime::Seconds() + 2.5;
@@ -3161,6 +3319,7 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		}
 		else if (Action == TEXT("PhotoRollReset") && FreeCam) FreeCam->ResetRoll();
 		else if (Action == TEXT("PhotoHideUI")) bPhotoHideHints = !bPhotoHideHints;
+		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
 	if (bWatching)

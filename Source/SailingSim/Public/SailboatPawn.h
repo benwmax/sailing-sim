@@ -22,6 +22,7 @@
 #include "BoatLivery.h"
 #include "BoatPhysicsTask.h"
 #include "Showroom.h"
+#include "PhotoSettings.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -215,6 +216,16 @@ public:
 	AFreeCamera* GetFreeCamera() const { return bPhoto ? FreeCam.Get() : nullptr; }
 	bool ArePhotoHintsHidden() const { return bPhotoHideHints; }
 	double GetPhotoReadoutUntil() const { return PhotoReadoutUntil; }
+	/** Photo mode's panel (docs/photo-mode/pc/): its settings, the row it is on and the focus it last set. Natural takes
+	 *  the cinematic grade off while photo mode is open. */
+	const FPhotoSettings& GetPhotoSettings() const { return PhotoSettings; }
+	EPhotoRow GetPhotoRow() const { return PhotoRow; }
+	float GetPhotoFocusM() const { return PhotoFocusM; }
+	bool IsPhotoNatural() const { return bPhoto && PhotoSettings.Look == EPhotoLook::Natural; }
+	/** A photo is being taken: nothing is drawn on the canvas over it (the hint and the toast come after). */
+	bool IsTakingPhoto() const { return GFrameCounter <= PhotoCleanFrame; }
+	/** 2x capture is offered on High and Ultra. */
+	static bool PhotoHighTier();
 	void SetGhostFrame(const FReplayFrame& Frame);
 
 	/** Reference capture (-SailingCapture=<preset>): a reference camera, locked exposure, no HUD, telemetry CSV. */
@@ -388,6 +399,16 @@ private:
 	void ApplyMappingContexts();
 	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
 	bool bPhotoHideHints = false;
+	// The panel: settings kept for the session, the row it is on, the focus distance it eases to, the scene it hid.
+	FPhotoSettings PhotoSettings;
+	EPhotoRow PhotoRow = EPhotoRow::Focal;
+	float PhotoFocusM = 20.f;
+	uint64 PhotoCleanFrame = 0;
+	bool bPhotoHidMine = false, bPhotoHidCrew = false;
+	TArray<TWeakObjectPtr<AActor>> PhotoHidden;
+	void StepPhotoPanel(FName Action);
+	void ApplyPhotoScene(bool bOn);
+	void UpdatePhotoHullClip();
 	// The showroom: its stage, the spot (map m) and heading she is held on, the current that takes out her way over the
 	// ground, the side she sails on, the helm, and the async load of a boat being swapped in (the shown boat's stays
 	// resident until the next one is shown).

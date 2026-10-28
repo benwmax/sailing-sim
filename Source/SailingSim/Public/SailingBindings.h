@@ -43,6 +43,8 @@ namespace SailingBindings
 	 * layer too (Enter, and A on the pad only while photo mode is open). Photo mode's own toggle is a boat command.
 	 */
 	SAILINGSIM_API bool IsPhotoAction(FName Action);
+	/** The photo panel's rows, values and pages (docs/photo-mode/pc/), part of that layer. */
+	SAILINGSIM_API bool IsPhotoPanelAction(FName Action);
 	SAILINGSIM_API bool SameLayer(FName A, FName B);
 	/** Photo mode's input context (IMC_Photo, above the boat's): every photo command, and the toggle's pad button (the
 	 *  context takes that button for the orbit toggle, so it carries the hold that leaves too). */

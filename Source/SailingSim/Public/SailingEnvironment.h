@@ -66,6 +66,10 @@ public:
 	float GetCloudShade() const { return LastCloudShade; }
 	double GetCameraEV() const { return LastCameraEV; }
 
+	/** The scene's post-process settings as this frame left them (photo mode adds its exposure to the metered bias and
+	 *  starts its vignette and grain from the look's). */
+	const struct FPostProcessSettings* GetSceneLook() const;
+
 	/** 0..1 brightness of the current lightning flash, for the HUD and audio. */
 	float GetFlash() const { return Flash; }
 

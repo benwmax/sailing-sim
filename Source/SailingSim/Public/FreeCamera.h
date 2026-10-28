@@ -78,6 +78,8 @@ public:
 	/** Wheel notches: in fly mode they step the base speed, in orbit mode the distance. */
 	void StepSpeed(int32 Steps);
 	void ResetRoll() { Roll = 0.f; }
+	float GetRollDeg() const { return Roll; }
+	void SetRollDeg(float Deg) { Roll = FMath::Clamp(Deg, -45.f, 45.f); }
 	void Update(float DeltaSeconds, const FFreeCameraInput& Input);
 
 	int32 GetSpeedIndex() const { return SpeedIndex; }

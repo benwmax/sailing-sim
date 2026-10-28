@@ -13,6 +13,7 @@
 #include "SailingBindings.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
+#include "PhotoSettings.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -297,6 +298,91 @@ bool FSailingPhotoWorldHeldTest::RunTest(const FString&)
 	GM->SetWorldHeld(false);
 	Frames(60);
 	TestEqual(TEXT("Let go: on from where it stood"), GM->GetSimTime(), T0 + 1.0, 1.0 / 60.0);
+	return true;
+}
+
+// Photo mode PR 2 (docs/photo-mode/pc/): the panel's lens maths, its rows and pages, its keys in photo mode's context,
+// and the drawn time of day that never touches the clock.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPhotoPanelTest, "SailingSim.UI.PhotoPanel", PhotoFlags)
+bool FSailingPhotoPanelTest::RunTest(const FString&)
+{
+	using namespace PhotoMath;
+	// The lens: 50 mm on full frame is 39.6 deg across; the marks span the brief's 14-200 mm inside the old 10-110 deg zoom.
+	TestEqual(TEXT("50 mm is 39.6 deg"), FovForFocal(50.f), 39.6f, 0.05f);
+	TestEqual(TEXT("And back"), FocalForFov(FovForFocal(85.f)), 85.f, 0.01f);
+	TestTrue(TEXT("14 mm fits the zoom's 110 deg"), FovForFocal(14.f) <= 110.f && FovForFocal(200.f) >= 10.f);
+	TestEqual(TEXT("From 40 mm the next mark up is 50"), StepFocal(40.f, 1), 50.f);
+	TestEqual(TEXT("And down 35"), StepFocal(40.f, -1), 35.f);
+	TestEqual(TEXT("On a mark, the next one"), StepFocal(50.f, 1), 70.f);
+	TestEqual(TEXT("200 mm is the end"), StepFocal(200.f, 1), 200.f);
+	TestEqual(TEXT("f/1.4 to f/22"), Aperture(0), 1.4f);
+	TestEqual(TEXT("f/22"), Aperture(NumApertures - 1), 22.f);
+
+	// Stepping rows: the aperture runs past f/22 to off; exposure in half stops to +3; the look and crop cycle.
+	FPhotoSettings S;
+	float Fov = 90.f, Roll = 0.f;
+	for (int32 I = 0; I < 12; ++I) StepRow(S, EPhotoRow::Aperture, 1, Fov, Roll, true, 12.f);
+	TestEqual(TEXT("The aperture stops at off"), S.ApertureStop, NumApertures);
+	TestTrue(TEXT("Off reads as all sharp"), RowValue(S, EPhotoRow::Aperture, Fov, Roll, 20.f, true).StartsWith(TEXT("Off")));
+	for (int32 I = 0; I < 10; ++I) StepRow(S, EPhotoRow::Exposure, 1, Fov, Roll, true, 12.f);
+	TestEqual(TEXT("Exposure tops out at +3 EV"), S.ExposureEV, 3.f);
+	StepRow(S, EPhotoRow::Look, 1, Fov, Roll, true, 12.f);
+	TestTrue(TEXT("Cinematic, then black and white"), S.Look == EPhotoLook::Mono);
+	StepRow(S, EPhotoRow::Look, 1, Fov, Roll, true, 12.f);
+	TestTrue(TEXT("Then natural"), S.Look == EPhotoLook::Natural);
+	StepRow(S, EPhotoRow::Roll, -1, Fov, Roll, true, 12.f);
+	TestEqual(TEXT("Tilt in 5 deg steps"), Roll, -5.f);
+	StepRow(S, EPhotoRow::Focal, 1, Fov, Roll, true, 12.f);
+	TestEqual(TEXT("From 90 deg (18 mm) the lens goes to 24 mm"), FocalForFov(Fov), 24.f, 0.01f);
+	StepRow(S, EPhotoRow::Capture, 1, Fov, Roll, false, 12.f);
+	TestEqual(TEXT("No 2x below High"), S.CaptureScale, 1);
+	TestTrue(TEXT("And the row is idle there"), RowIdle(S, EPhotoRow::Capture, false));
+	StepRow(S, EPhotoRow::Capture, 1, Fov, Roll, true, 12.f);
+	TestEqual(TEXT("2x on High"), S.CaptureScale, 2);
+
+	// Time of day: half hours from the clock's, back to the clock passing it.
+	TestEqual(TEXT("From the clock (14:10) up"), StepSunHour(-1.f, 1, 14.17f), 14.5f);
+	TestEqual(TEXT("And down"), StepSunHour(-1.f, -1, 14.17f), 13.5f);
+	TestEqual(TEXT("Stepping back to the clock's half hour follows the clock"), StepSunHour(14.5f, -1, 14.17f), -1.f);
+	TestEqual(TEXT("Away from it, half hours"), StepSunHour(18.f, 1, 14.17f), 18.5f);
+
+	// Pages and rows: every row on one of five pages, in order.
+	int32 LastPage = 0;
+	bool bOrdered = true;
+	for (int32 R = 0; R < int32(EPhotoRow::Count); ++R) { const int32 P = PageOf(EPhotoRow(R)); bOrdered &= P >= LastPage && P < NumPages; LastPage = P; }
+	TestTrue(TEXT("Rows run through the pages in order"), bOrdered && LastPage == NumPages - 1);
+	TestTrue(TEXT("Frame starts at the grid"), FirstRowOf(4) == EPhotoRow::Grid);
+
+	// Crop guides: the largest centred rectangle.
+	const FVector4f Sq = CropRect(EPhotoCrop::Square, 1920.f, 1080.f);
+	TestTrue(TEXT("1:1 in 16:9 is 1080 square, centred"), FMath::IsNearlyEqual(Sq.Z, 1080.f) && FMath::IsNearlyEqual(Sq.W, 1080.f) && FMath::IsNearlyEqual(Sq.X, 420.f));
+	const FVector4f Cin = CropRect(EPhotoCrop::Cinema219, 1920.f, 1080.f);
+	TestTrue(TEXT("21:9 is full width, letterboxed"), FMath::IsNearlyEqual(Cin.Z, 1920.f) && FMath::IsNearlyEqual(Cin.W, 1920.f * 9.f / 21.f, 0.01f));
+
+	// Keys: arrows and Page Up/Down in photo mode's context (the boat's arrows are the menus'); X and the D-pad's sides on a pad.
+	const TArray<FSailingKeyBinding>& Defaults = GetDefault<USailingInputSettings>()->GetDefaults();
+	UObject* Outer = NewObject<UInputMappingContext>(GetTransientPackage());
+	TMap<FName, TObjectPtr<UInputAction>> Actions;
+	ASailboatPawn::MakeActions(Outer, Defaults, Actions);
+	const UInputMappingContext* Photo = ASailboatPawn::BuildContext(Outer, TEXT("IMC_TestPhotoPanel"), Defaults, Actions, true);
+	TestTrue(TEXT("Down steps the rows"), Only(ActionsOn(Photo, EKeys::Down), TEXT("PhotoRowDown")));
+	TestTrue(TEXT("Right raises the value"), Only(ActionsOn(Photo, EKeys::Right), TEXT("PhotoValueUp")));
+	TestTrue(TEXT("Page Down turns the page"), Only(ActionsOn(Photo, EKeys::PageDown), TEXT("PhotoPageNext")));
+	TestTrue(TEXT("X on a pad steps the rows"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Left), TEXT("PhotoRowDown")));
+	TestTrue(TEXT("The D-pad's left lowers the value"), Only(ActionsOn(Photo, EKeys::Gamepad_DPad_Left), TEXT("PhotoValueDown")));
+	TestTrue(TEXT("Panel keys fire on the press"), HasTrigger<UInputTriggerPressed>(Photo, EKeys::Right, TEXT("PhotoValueUp")));
+
+	// The drawn hour: set and cleared, the clock's hour untouched.
+	FBareWorld W;
+	ASailingGameMode* GM = W.World->SpawnActor<ASailingGameMode>();
+	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
+	const double Clock = GM->GetWeatherState().HourOfDay;
+	TestEqual(TEXT("Unset, the clock's hour is drawn"), GM->GetDrawnHour(), Clock);
+	GM->SetDrawnHourOverride(19.5);
+	TestEqual(TEXT("Set, photo mode's"), GM->GetDrawnHour(), 19.5);
+	TestEqual(TEXT("The weather's hour stays the clock's"), GM->GetWeatherState().HourOfDay, Clock);
+	GM->SetDrawnHourOverride(-1.0);
+	TestEqual(TEXT("Cleared"), GM->GetDrawnHour(), Clock);
 	return true;
 }
 
