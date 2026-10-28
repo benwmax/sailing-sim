@@ -74,6 +74,10 @@ public:
 	const FChartData& GetChart() const;
 	/** Whether lights are showing: from sunset to sunrise (sun below the horizon) and in restricted visibility. */
 	bool IsDark() const;
+	/** Photo mode's time of day (docs/photo-mode/pc/): the sun, sky and lights are drawn at this local hour while it is
+	 *  set (< 0 clears it). Visual only: the clock, the weather and the tide never see it. */
+	void SetDrawnHourOverride(double Hour) { DrawnHourOverride = Hour; }
+	double GetDrawnHour() const;
 
 	/** Physics time (s): the world clock (FWorldClock), which every boat, the wind, waves and water material run on. */
 	double GetSimTime() const { return Clock.GetTime(); }
@@ -217,6 +221,7 @@ private:
 	Sailing::FWorldClock Clock;
 	uint64 ClockFrame = MAX_uint64;
 	bool bWorldHeld = false;
+	double DrawnHourOverride = -1.0;
 	bool bPreviewLive = false;
 	bool bPreviewing = false, bPreviewRestore = false;
 	FSailConditions PreviewRestore;

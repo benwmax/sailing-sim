@@ -508,7 +508,7 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 	const FWeatherState& W = GM->GetWeatherState();
 	// Held for photo mode: lightning and the rain curtains' fall stop with the world clock.
 	const float SimDt = GM->IsWorldHeld() ? 0.f : DeltaSeconds;
-	UpdateSun(W.HourOfDay);
+	UpdateSun(GM->GetDrawnHour());   // photo mode's time of day draws another hour, the clock untouched
 	UpdateClouds(DeltaSeconds);
 	UpdateCloudLayers(CamPos);
 	UpdateSkyCache(CamPos, DeltaSeconds);
@@ -688,6 +688,11 @@ void ASailingEnvironment::ApplyCinematicLook(FPostProcessSettings& PP, double Cl
 	}
 }
 
+const FPostProcessSettings* ASailingEnvironment::GetSceneLook() const
+{
+	return PostProcess ? &PostProcess->Settings : nullptr;
+}
+
 void ASailingEnvironment::UpdateSun(double Hour)
 {
 	const FWeatherState& W = GetWorld()->GetAuthGameMode<ASailingGameMode>()->GetWeatherState();
@@ -749,7 +754,9 @@ void ASailingEnvironment::UpdateSun(double Hour)
 	{
 		{
 			const ASailboatPawn* Pawn = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
-			bCinematic = UsesCinematicLook(USailingSettings::Get()->Quality, USailingSettings::Get()->bCinematicLook, Pawn && Pawn->IsPhotoMode(), Pawn && Pawn->IsCaptureMode());
+			// Photo mode's Natural look takes the grade off (docs/photo-mode/pc/).
+			const bool bNatural = Pawn && Pawn->IsPhotoNatural();
+			bCinematic = UsesCinematicLook(USailingSettings::Get()->Quality, USailingSettings::Get()->bCinematicLook && !bNatural, Pawn && Pawn->IsPhotoMode() && !bNatural, Pawn && Pawn->IsCaptureMode());
 		}
 		ApplyCameraLook(bPhysicalCamera, W.CloudDarkness);
 		if (bPhysicalCamera)

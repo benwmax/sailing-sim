@@ -319,6 +319,17 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("PhotoOrbit"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("PhotoHideUI"), EKeys::H);
 	Add(TEXT("PhotoHideUI"), EKeys::Gamepad_FaceButton_Right);
+	// Its panel (docs/photo-mode/pc/): arrows for the row and its value, Page Up/Down for the page; X steps the rows
+	// on a pad and the D-pad's sides change the value (its up and down are the speed).
+	Add(TEXT("PhotoRowDown"), EKeys::Down);
+	Add(TEXT("PhotoRowDown"), EKeys::Gamepad_FaceButton_Left);
+	Add(TEXT("PhotoRowUp"), EKeys::Up);
+	Add(TEXT("PhotoValueUp"), EKeys::Right);
+	Add(TEXT("PhotoValueUp"), EKeys::Gamepad_DPad_Right);
+	Add(TEXT("PhotoValueDown"), EKeys::Left);
+	Add(TEXT("PhotoValueDown"), EKeys::Gamepad_DPad_Left);
+	Add(TEXT("PhotoPageNext"), EKeys::PageDown);
+	Add(TEXT("PhotoPagePrev"), EKeys::PageUp);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);
