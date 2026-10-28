@@ -386,6 +386,11 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
   from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
   runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
+- Menus over the picked world (`docs/showroom-world/`): leaving the World screen for another world loads it behind the menus
+  (`SSailFrontEnd::TravelsOnPush`, a wipe, `USailSessionSubsystem::TravelBehindMenus`: the map reloads, the HUD walks the
+  flow back to `MenuResumeScreen` with `Pending`; the travel's world wins over `-SailingWorld`). `PreviewConditions` returns
+  at once for the conditions it already shows (the PC re-previews at 5 Hz) and a real day's file is read once per date.
+  `-SailingUIScript` runs need `-SailingNoGpuSlices`: the bench's GPU Visualizer window steals keyboard focus mid-run.
 - Save file (`docs/save/`): `FSailSave`/`SailSaveStore` (`SailSave.h`) keep the settings, last session and progress in
   `Saved/SaveGames/profile.json` (JSON, `version`, string ids only; the ini is version 0); new fields per the README; the mode is
   `settings.career.freeSail` and `lastSession.freeSail` (an older file's `openEverything` reads as it). UI stills at a size

@@ -41,7 +41,7 @@ const TArray<FSailPreset>& USailSessionSubsystem::Presets()
 			Out.Add(S);
 		};
 		Add(TEXT("Lesson"), TEXT("ASA 101 lesson day"), TEXT("10 kn S · fair · 10:00"), 180.f, 10.f, 13.f, ESailSky::Fair, 10.f, 4, 18, 74.f, false);
-		Add(TEXT("July"), TEXT("Typical July afternoon"), TEXT("12 kn SSE · storms after 4 pm"), 170.f, 12.f, 20.f, ESailSky::Storms, 14.5f, 7, 15, 98.f, false);
+		Add(TEXT("July"), TEXT("Typical July afternoon"), TEXT("12 kn SSE · storms after 4 pm"), 157.5f, 12.f, 20.f, ESailSky::Storms, 14.5f, 7, 15, 98.f, false);
 		Add(TEXT("Glassy"), TEXT("Glassy morning"), TEXT("2 kn · clear, haze · 07:30"), 120.f, 2.f, 4.f, ESailSky::Clear, 7.5f, 8, 9, 79.f, false);
 		Add(TEXT("Norther"), TEXT("Blue norther"), TEXT("20 kn N · overcast · cold"), 0.f, 20.f, 28.f, ESailSky::Overcast, 11.f, 11, 22, 48.f, false);
 		Add(TEXT("SeaBreeze"), TEXT("Bay sea breeze"), TEXT("14 kn SE · fair · 15:00"), 140.f, 14.f, 18.f, ESailSky::Fair, 15.f, 6, 20, 88.f, true);
@@ -143,10 +143,23 @@ void USailSessionSubsystem::ApplyToSettings(const FSailSessionConfig& Config)
 	S->Save();
 }
 
+void USailSessionSubsystem::TravelBehindMenus(const FSailSessionConfig& InPending, int32 Resume, UObject* WorldContext)
+{
+	Pending = InPending;
+	bHasPending = true;
+	MenuResumeScreen = Resume;
+	// Only the place: the rest of the choices stay in Pending until Cast off (nothing is saved).
+	USailingSettings* S = USailingSettings::Get();
+	S->World = InPending.World;
+	S->LaunchSpot = InPending.LaunchSpot;
+	if (WorldContext) UGameplayStatics::OpenLevel(WorldContext, FName(*UGameplayStatics::GetCurrentLevelName(WorldContext)));
+}
+
 void USailSessionSubsystem::ResetForRun()
 {
 	Pending = FSailSessionConfig();
 	bHasPending = false;
+	MenuResumeScreen = -1;
 	Active = FSailSessionConfig();
 	bHasActive = false;
 	bStarted = false;
@@ -160,6 +173,7 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	Active.SavedAt = FDateTime::Now();
 	bHasActive = true;
 	bHasPending = false;
+	MenuResumeScreen = -1;
 	bStarted = false;
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;

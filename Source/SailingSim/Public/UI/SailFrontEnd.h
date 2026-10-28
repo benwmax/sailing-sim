@@ -44,6 +44,12 @@ public:
 	virtual FReply OnMouseWheel(const FGeometry& Geometry, const FPointerEvent& Event) override;
 
 	void Push(ESailScreen Screen);
+	/**
+	 * docs/showroom-world/: leaving the World screen for a world other than the one loaded loads it behind the menus (a
+	 * short wipe, the map reloads, the menus come back on the Launch screen with the choices kept), so the showroom and the
+	 * conditions preview show the real place. Not in game.
+	 */
+	static bool TravelsOnPush(ESailScreen From, ESailScreen To, bool bInGame, int32 PendingWorld, int32 LoadedWorld);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport). */
@@ -92,6 +98,9 @@ private:
 	/** Stills: -SailingShowroom=<boat type> shows that boat on the Boat screen (-1: the focused one). */
 	int32 ShowroomArg = -1;
 	EActiveTimerReturnType TickShowroom(double Time, float Delta);
+	/** The wipe over the reload, then the travel (a frame later, so the wipe is drawn). */
+	void TravelToWorld(ESailScreen Resume);
+	bool bTravelling = false;
 	class ASailingGameMode* GameMode() const;
 	int32 FocusedBoat = 0;
 	int32 SettingsTab = 0;
