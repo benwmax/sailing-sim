@@ -113,6 +113,11 @@ helm from 0.3 m/s astern to fully reversed by 0.8. Not sooner: the ILCA stuffing
 for an instant, and reversing on that capsized her on the 22 kn reach check. With the reversal she tacks 6 of 6 at 0.47
 and 0.57, and 5 of 6 at 0.38 (measured before the reset fix below; at 0.47 still 6 of 6 after it).
 
+On main ff875117 (Oct 28 2026, after the boom's rise, the orbital flow of `docs/surfing/` and the timed tacks of
+`docs/gale-tack/`), `scripts/polar.sh --boat maxi --sea gale`: 6 of 6 in the sea (6.7 to 32 s, 15.3 s mean; the slowest
+two, seeds 2 and 5, fall to 27% and 13% of her upwind speed) and 6 of 6 on flat water (7.1 to 12.2 s). Beat 10.54 kn in the
+sea (added resistance 1.7 kN) against 11.19 flat; reach 17.85 against 19.72; run 19.74 against 17.94.
+
 ## Before and after, every boat
 
 Polars (`scripts/polar.sh --boat <b>`; the J/22's is `SailingSim.Physics.PolarGate`, each boat's
@@ -190,8 +195,9 @@ game's fine turbulence (`Wind.mann`), as the module does; without it the gale's 
 - **The ILCA on a steady 22 kn reach** goes over at a couple of angles between 110 and 120 deg (main too, at others):
   a broach off a wave, a moment clear of the water and a crash gybe when she lands. The helm's tiller has no rate limit
   while she is airborne; a sailor's would.
-- **The maxi's tacks in the gale are slow** (9 to 46 s against 10 to 25 on flat water). Real crews time a tack for a
-  smooth patch; the scene's helm doesn't.
+- **The maxi's tacks in the gale** were slow here (9 to 46 s against 10 to 25 on flat water). `docs/gale-tack/` has the
+  crew time them on a back; on main ff875117 two of six still take 24 and 32 s and drop under 30% of her upwind speed
+  (above).
 - **The coefficients from ORC are estimates.** ORC's formula is a handicapping fit (its length baselines were tuned so
   light-air races were fair), and its log base is ambiguous: the maxi's 0.47 sits in 0.38-0.57.
 
