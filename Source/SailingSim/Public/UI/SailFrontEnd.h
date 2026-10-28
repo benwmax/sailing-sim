@@ -6,6 +6,7 @@
 #include "SailSession.h"
 #include "Learning.h"
 #include "Showroom.h"
+#include "Gallery.h"
 
 class SBox;
 class APlayerController;
@@ -16,7 +17,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery };
 
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
@@ -81,10 +82,14 @@ private:
 	FEntry BuildCareer();
 	/** Release readiness: every credit in CREDITS.md, after the Unreal Engine notice, as scrolling text. */
 	FEntry BuildCredits();
+	/** The developer-only asset gallery (docs/gallery/pc/, Inputs/gallery/brief.md G2; UI/SailGallery.cpp). */
+	FEntry BuildGallery();
 	void Show(const FEntry& Entry, bool bForward);
 	void CastOff();
 	void Close();
 	void Confirm(const FString& Question, const FString& Yes, TFunction<void()> OnYes);
+	/** Two answers (the gallery's "Keep these graphics settings?"): the second has focus; Esc cancels (neither). */
+	void Confirm(const FString& Question, const FString& Yes, TFunction<void()> OnYes, const FString& No, TFunction<void()> OnNo);
 	class ASailboatPawn* Pawn() const;
 
 	TWeakObjectPtr<APlayerController> Player;
@@ -107,7 +112,7 @@ private:
 	/** Bean's UI feedback (Oct 27): a clicked tab pill, a keycap, Q/E and LB/RB all come here; the rebuilt screen focuses
 	 *  the tab's first row once it is laid out (Show). */
 	void SetSettingsTab(int32 Tab);
-	FString ConfirmQuestion, ConfirmYes;
+	FString ConfirmQuestion, ConfirmYes, ConfirmNo;
 	// The quiz: its questions, the one on screen, the option chosen (-1: not yet), the score and the debrief line.
 	TArray<FQuizQuestion> Quiz;
 	int32 QuizIndex = 0, QuizChosen = -1, QuizRight = 0;
@@ -117,7 +122,7 @@ private:
 	FString CareerTierId, CheckrideTierId, QuizLessonId, QuizCareerLine;
 	// Free Sail: the title was rebuilt by its Mode switch, so the switch keeps the focus.
 	bool bTitleFocusMode = false;
-	TFunction<void()> ConfirmAction;
+	TFunction<void()> ConfirmAction, ConfirmNoAction;
 	// Screen transitions (3.3): a 180 ms fade with a 24 px slide.
 	double TransitionStart = 0.0;
 	bool bTransitionForward = true;
@@ -156,4 +161,37 @@ private:
 	/** Moves along the strip (LB/RB, Q/E): the next boat is shown and focused. */
 	void StepBoat(int32 Dir);
 	EActiveTimerReturnType TickOrbitStick(double Time, float Delta);
+
+	// The gallery (UI/SailGallery.cpp): its stage and index, the filters (search, category, tags), the list's rows (each
+	// row's item index), the selection, the views (full screen, clean, the viewer focused, the folded cards, More, the
+	// compare split), and the thumbnails rendered on the fly.
+	TWeakObjectPtr<class AGalleryStage> GalleryStage;
+	TArray<FGalleryItem> GalleryItems;
+	FString GallerySearch, GalleryCategory = TEXT("All");
+	TArray<FString> GalleryTags;
+	TSharedPtr<class SScrollBox> GalleryList;
+	TSharedPtr<class SWrapBox> GalleryChips, GalleryTagChips;
+	TSharedPtr<class SEditableText> GallerySearchBox;
+	TArray<TSharedPtr<class SSailButton>> GalleryRows;
+	TArray<int32> GalleryRowItems;
+	int32 GallerySelected = -1, GalleryMatches = 0;
+	bool bGalleryFull = false, bGalleryClean = false, bGalleryViewer = false, bGalleryFolded = false, bGalleryMore = false;
+	bool bGalleryCompareShown = false, bGalleryCompareAsked = false, bGalleryPanDrag = false;
+	uint8 GalleryCompareA = 0, GalleryCompareB = 3;
+	FVector2D GalleryPanStick = FVector2D::ZeroVector;
+	TSharedPtr<struct FGalleryThumbs> GalleryThumbs;
+	bool IsGallery() const { return Current() == ESailScreen::Gallery; }
+	void OpenGallery();
+	/** Leaving: the stage closes; graphics changed in the gallery are kept or restored (the caller asked). */
+	void CloseGallery(bool bRestoreGraphics);
+	/** The list, the chips and the counts again from the filters (focus to the first row when bFocusFirst). */
+	void RefreshGallery(bool bFocusFirst);
+	void SelectGalleryItem(int32 Item);
+	void StepGalleryCategory(int32 Dir);
+	void FocusGalleryRow();
+	/** The gallery's keys and buttons (before the screen's own); Handled when it took one. */
+	FReply GalleryKeyDown(const FKeyEvent& Event);
+	/** Esc / B in the gallery: out of compare, clean, full screen or the viewer first; then leave (asking about graphics). */
+	void GalleryBack();
+	EActiveTimerReturnType TickGallery(double Time, float Delta);
 };
