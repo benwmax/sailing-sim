@@ -76,3 +76,8 @@ periods: p90 28.6 s).
 
 The harness for the traces and sweeps is plain C++ over SailingPhysics, like `Tools/PolarSweep`. It is not kept; the
 numbers above are its output.
+
+## Gate (`scripts/gate.sh --scope water`, packaged, the Mac)
+
+Pass: 276 tests (PolarGate and GaleTack unchanged), every view over its floor. On High: beam8 58.5, beat15 54.6, storm
+47.8, marina 56.8, coast-day 53.5, gulf-sea 62.8, helm-eye 59.9, bridge 58.9. Storm on Medium: 68.1.
