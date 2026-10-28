@@ -160,16 +160,17 @@ FVector AFreeCamera::Constrain(const FVector& From, const FVector& To, bool bIgn
 		P.X = C.X + Off.X;
 		P.Y = C.Y + Off.Y;
 	}
-	// The sweep: stop at what it would enter. A start inside something (a mesh with no collision outside it) moves freely.
+	// The sweep: stop at what it would enter. Starting against something (stopped there last frame, or placed inside it),
+	// it may only move away from it.
 	if (World && bSweep && !From.Equals(P, 0.1))
 	{
 		FCollisionQueryParams Params(SCENE_QUERY_STAT(FreeCameraSweep), false, this);
 		if (bIgnoreAnchor && Anchor.IsValid()) Params.AddIgnoredActor(Anchor.Get());
 		FHitResult Hit;
-		if (World->SweepSingleByChannel(Hit, From, P, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(float(Limits.SweepRadiusM * 100.0)), Params)
-			&& !Hit.bStartPenetrating)
+		if (World->SweepSingleByChannel(Hit, From, P, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(float(Limits.SweepRadiusM * 100.0)), Params))
 		{
-			P = Hit.Location;
+			if (!Hit.bStartPenetrating) P = Hit.Location;
+			else if (FVector::DotProduct(P - From, Hit.Normal) < 0.0) P = From;
 		}
 	}
 	// The floor over the wave and the ground, the ceiling; in the physics frame (water at rest at 0).
