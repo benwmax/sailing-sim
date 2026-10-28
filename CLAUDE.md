@@ -657,6 +657,12 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   (`ShowBoat`: 200 ms debounce, async load of `ModelAssetPaths`, then `SetBoat` keeping the pose) and previews conditions
   (`ASailingGameMode::PreviewConditions`/`EndPreview`; in game `SetPreviewLive` beats `SetWorldHeld` and the world is
   unpaused). Stills: `-SailingShowroom=<type>`, `-SailingPreviewPreset=<id>`, `-SailingHideMenus` (with `-SailingFreeSail=1`).
+- Asset gallery (`docs/gallery-core/`, dev only: `USailingSettings::bDeveloperTools`, in Shipping an ini line): `SailGallery`
+  (`Gallery.h`: the index from the asset registry, a folder table, `_Light`/`_Far` twins grouped, unknown folders in Other)
+  and `AGalleryStage` (studio cyclorama 1 km up on lighting channel 1, metering its own frame; lake presets through
+  `PreviewConditions`; views by `M_GalleryWire`; forced LOD, Nanite fallback, twins; tier compare through the engine's
+  screenshot, in memory). Stills: `-SailingGallery=<asset>`, `-SailingGalleryLight=`, `-SailingGalleryView=`,
+  `-SailingGalleryDetail=`, `-SailingGalleryCompare=Low,Ultra`.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
