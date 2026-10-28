@@ -11,7 +11,7 @@ public class SailingSimTests : ModuleRules
 		bUseUnity = false;
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"Core", "CoreUObject", "Engine", "SailingPhysics", "SailingSim", "ProceduralMeshComponent", "Json", "InputCore", "MeshDescription", "StaticMeshDescription", "Slate", "SlateCore", "EnhancedInput"
+			"Core", "CoreUObject", "Engine", "SailingPhysics", "SailingSim", "ProceduralMeshComponent", "Json", "InputCore", "MeshDescription", "StaticMeshDescription", "Slate", "SlateCore", "EnhancedInput", "AssetRegistry"
 		});
 	}
 }

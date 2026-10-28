@@ -218,8 +218,17 @@ private:
 	uint64 ClockFrame = MAX_uint64;
 	bool bWorldHeld = false;
 	bool bPreviewLive = false;
-	bool bPreviewing = false, bPreviewRestore = false;
-	FSailConditions PreviewRestore;
+	bool bPreviewing = false;
+	/** What a preview goes back to: the weather's inputs as they were (a session's or the front end's). */
+	struct FWeatherInputs
+	{
+		uint8 Preset = 0;
+		float StartHour = 10.f, WindOverrideKnots = 0.f, WindFromOverride = 0.f, GustOverride = 0.f;
+		FString RealDayDate;
+		bool bRealDayHour = false, bSessionDate = false, bWindArgsRead = false;
+		FDateTime SessionDate;
+	};
+	FWeatherInputs PreviewRestore;
 	void ApplyConditionsLocal(const struct FSailConditions& Conditions);
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;

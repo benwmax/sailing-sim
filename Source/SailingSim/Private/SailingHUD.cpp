@@ -12,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "SailboatPawn.h"
 #include "FreeCamera.h"
+#include "GalleryStage.h"
 #include "UI/SailUIStyle.h"
 #include "SailingSettings.h"
 #include "SailingBindings.h"
@@ -95,6 +96,13 @@ void ASailingHUD::BeginPlay()
 {
 	using namespace SailingHUDLocal;
 	Super::BeginPlay();
+	// The asset gallery's stills (docs/gallery-core/): -SailingGallery=<asset> opens its stage a second in.
+	FString GalleryArg;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingGallery="), GalleryArg, false))
+	{
+		FTimerHandle Later;
+		GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this]() { AGalleryStage::OpenFromArgs(PlayerOwner); }), 1.f, false);
+	}
 	if (PlayerOwner && GEngine && GEngine->GameViewport && !IsRunningCommandlet())
 	{
 		SlateHud = SNew(SSailHud).Player(PlayerOwner);

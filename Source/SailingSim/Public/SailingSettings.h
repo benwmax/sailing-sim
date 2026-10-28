@@ -248,6 +248,15 @@ public:
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
 
 	static USailingSettings* Get() { return GetMutableDefault<USailingSettings>(); }
+	/**
+	 * Developer tools (the asset gallery, docs/gallery-core/): on in development builds; in Shipping only with this line
+	 * in the user's GameUserSettings.ini (no settings page shows it):
+	 *   [/Script/SailingSim.SailingSettings]
+	 *   bDeveloperTools=True
+	 */
+	UPROPERTY(config)
+	bool bDeveloperTools = !UE_BUILD_SHIPPING;
+	static bool DeveloperTools() { return Get()->bDeveloperTools; }
 	/** Writes the player's choices to the save file and GameUserSettings.ini (never in a run that ignores them). */
 	void Save();
 
