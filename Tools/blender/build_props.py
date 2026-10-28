@@ -34,9 +34,22 @@ def rock(index):
     for _ in range(rng.randint(3, 5)):                            # fracture planes: a direction and how deep they cut
         d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.6, 1.0))).normalized()
         cuts.append((d, rng.uniform(0.36, 0.46)))
+    # Near-shore phase 3 (audit item 5: "one large rounded shape repeated in a line"): rocks 6 to 11 are other shapes a
+    # quarry's armour stone comes in, a flat slab, a long block and a sharp angular piece, each with more fracture faces
+    # and less rounding than the first six (which keep their shapes: the shore's riprap uses them).
+    rounding = 0.5
+    if index >= 6:
+        kind = (index - 6) % 3
+        scale = [Vector((rng.uniform(1.1, 1.4), rng.uniform(0.9, 1.2), rng.uniform(0.32, 0.45))),
+                 Vector((rng.uniform(1.7, 2.1), rng.uniform(0.6, 0.8), rng.uniform(0.55, 0.7))),
+                 Vector((rng.uniform(0.9, 1.1), rng.uniform(0.8, 1.0), rng.uniform(0.75, 0.95)))][kind]
+        rounding = (0.3, 0.35, 0.15)[kind]
+        for _ in range(rng.randint(2, 4)):
+            d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.6, 1.0))).normalized()
+            cuts.append((d, rng.uniform(0.33, 0.42)))
     for v in bm.verts:
         d = v.co.normalized()
-        p = v.co.lerp(d * 0.62, 0.5)
+        p = v.co.lerp(d * 0.62, rounding)
         n = 0.0
         amp, freq = 0.14, 2.0
         for _ in range(5):                                        # ridged fBm: sharp crests, worn hollows
@@ -205,7 +218,7 @@ def semi():
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.context.scene.unit_settings.system = "METRIC"
-for i in range(6):
+for i in range(12):
     rock(i)
 sedan()
 pickup()
