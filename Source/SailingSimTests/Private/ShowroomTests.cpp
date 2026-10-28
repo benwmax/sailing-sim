@@ -164,8 +164,11 @@ bool FSailingShowroomPawnTest::RunTest(const FString&)
 	const double HeldTime = Boat->GetBoatModel().GetState().Time;
 	W.Tick(60);
 	TestEqual(TEXT("Held by the menus: still (no steps)"), Boat->GetBoatModel().GetState().Time, HeldTime);
+	const FVector OnStage = Boat->GetActorLocation();
 	Boat->SetShowroomStage(EShowroomStage::Boat, false);
 	W.Tick(60 * 15);
+	TestTrue(FString::Printf(TEXT("Fifteen seconds sailing: still on her spot (%.0f cm off)"), FVector::Dist2D(OnStage, Boat->GetActorLocation())),
+		FVector::Dist2D(OnStage, Boat->GetActorLocation()) < 150.0);
 	const Sailing::FBoatTelemetry& T = Boat->GetBoatModel().GetTelemetry();
 	TestTrue(TEXT("On the stage the physics runs"), Boat->GetBoatModel().GetState().Time > HeldTime + 10.0);
 	TestTrue(FString::Printf(TEXT("The helm holds a close reach: TWA %.0f"), FMath::RadiansToDegrees(T.TrueWindAngle)),
@@ -182,7 +185,7 @@ bool FSailingShowroomPawnTest::RunTest(const FString&)
 		W.Tick(1);
 	}
 	TestEqual(TEXT("The Hobie is shown"), Boat->GetBoatTypeIndex(), int32(Sailing::EBoatType::Hobie16));
-	TestTrue(FString::Printf(TEXT("Where the J/22 was (%.0f cm off)"), FVector::Dist2D(At, Boat->GetActorLocation())), FVector::Dist2D(At, Boat->GetActorLocation()) < 300.0);
+	TestTrue(FString::Printf(TEXT("Where the J/22 was (%.0f cm off)"), FVector::Dist2D(At, Boat->GetActorLocation())), FVector::Dist2D(At, Boat->GetActorLocation()) < 150.0);
 	TestTrue(TEXT("On her heading"), FMath::Abs(FMath::FindDeltaAngleDegrees(Yaw, float(Boat->GetActorRotation().Yaw))) < 5.f);
 	Boat->ShowBoat(int32(Sailing::EBoatType::Hobie16));
 	TestEqual(TEXT("The shown boat again: nothing to load"), Boat->GetShowroomLoadingType(), -1);

@@ -1129,18 +1129,16 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	{
 		// The tidal current where the boat is (it changes over minutes and kilometers, so once a frame is plenty).
 		const Vec3 O = Boat.OriginPosition();
-		if (ShowroomStage != EShowroomStage::None && !bTrafficBoat)
-		{
-			// The showroom: she sails through the water while the water carries her back, so she stays on her spot (the
-			// current is minus her speed through it, plus a slow pull onto the spot).
-			const Vec3 ThroughWater = Boat.GetState().Velocity - Boat.GetWaterCurrent();
-			const Vec3 Pull((ShowroomSpot.X - O.X) * 0.3, (ShowroomSpot.Y - O.Y) * 0.3, 0.0);
-			Boat.SetWaterCurrent(Pull - ThroughWater);
-		}
-		else
-		{
-			Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
-		}
+		Boat.SetWaterCurrent(GameMode->GetCurrentAt(O.X, O.Y));
+	}
+	if (ShowroomStage != EShowroomStage::None && !bTrafficBoat)
+	{
+		// The showroom: she sails on (her speed and forces as ever) but is put back on her spot each frame, so she never
+		// sails away during a long stay on the menu.
+		const Vec3 O = Boat.OriginPosition();
+		Vec3& P = Boat.GetMutableState().Position;
+		P.X += ShowroomSpot.X - O.X;
+		P.Y += ShowroomSpot.Y - O.Y;
 	}
 	// Online readiness (rule 3): the boat steps until it reaches the world clock, so every boat (and a second player's)
 	// is on the same instant. Graphics G4: the front end and the loading screen hold the boat where it is while the world
