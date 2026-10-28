@@ -105,12 +105,35 @@ namespace Sailing
 		 */
 		bool bTimeTacks = true;
 		double TackSpeedShare = 0.7;
+		/**
+		 * docs/hobie-run/: the run guard. With the wind field given, a target deeper than 180 - margin is held at it: the
+		 * margin is ByTheLeeMarginDeg, plus ByTheLeePerGust per unit of the gustiness where she is (GustIntensity and the
+		 * puffs, times the shelter's GustScaleAt), plus RunMarginPerSpeedShare per unit of her speed over the true wind's
+		 * past 0.25 (a fast cat's weak apparent wind from astern swings across with any wobble), 40 at most. On a run she
+		 * steers with RunGainShare of the gain and bears away by RunBearAwayMax of tiller at most (a hard bear-away rolls a
+		 * cat to windward); past 175 deg, by the lee, or with the apparent wind deep (past 168) she heads up 10 deg more at
+		 * twice the gain. A gybe she is told to make (the target moved to the other side) goes through untouched. Without
+		 * the wind (the calibrated polars, scenarios, sea trials, the traffic AI for now) nothing changes.
+		 */
+		const FWindField* Wind = nullptr;
+		double ByTheLeeMarginDeg = 5.0;
+		double ByTheLeePerGust = 80.0;
+		/** With the guard on a run: the share of Gain she steers with, and the most tiller she bears away with. */
+		double RunGainShare = 0.5;
+		/** Degrees more margin per unit of her speed over the true wind's past 0.25 (to 0.6). */
+		double RunMarginPerSpeedShare = 60.0;
+		double RunBearAwayMax = 0.08;
 
 		double Update(const FBoatModel& Boat) const;
+		/** The margin from dead downwind (deg) the run guard keeps at a point, for the wind given (ByTheLeeMarginDeg without). */
+		double RunMarginDeg(double X, double Y) const;
 
 	private:
 		// The helm's own sense of the boat (Update is called every step): her upwind speed, and a tack she is waiting to start.
 		mutable double UpwindSpeed = -1.0, LastTime = -1.0, TackAskedAt = -1.0;
 		mutable bool bTackGo = false;
+		// The run guard: the side the target was on last step, and a gybe she was told to make (until she is round).
+		mutable double LastTargetSide = 0.0;
+		mutable bool bGybeOrdered = false;
 	};
 }

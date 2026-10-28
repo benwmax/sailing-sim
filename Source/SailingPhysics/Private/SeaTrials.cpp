@@ -298,4 +298,51 @@ namespace Sailing
 		R.MeanKnots /= std::max(N, 1);
 		return R;
 	}
+
+	FDeepRunResult RunDeep(const FBoatConfig& Config, double TwaDeg, double Knots, double GustIntensity, double FetchMeters,
+		uint32_t Seed, double Seconds, bool bRunGuard, double GybeAt)
+	{
+		FTrialSeaSpec Spec;
+		Spec.WindKnots = Knots;
+		Spec.FetchMeters = FetchMeters;
+		Spec.GustIntensity = GustIntensity;
+		Spec.Seed = Seed;
+		FTrialSea Sea(Spec);
+		FBoatModel Boat(Config);
+		Boat.Reset(0.0, 0.0, Sea.HeadingFor(TwaDeg), 0.4 * Knots * kKnot);
+		FAutoTrim Trim;
+		FAutopilot Helm;
+		Helm.TargetTWADeg = TwaDeg;
+		if (bRunGuard) Helm.Wind = &Sea.GetWind();
+		FBoatControls C;
+		FDeepRunResult R;
+		double T = 0.0, PrevTwa = TwaDeg, BoomSide = 0.0;
+		for (int I = 0; I < int(Seconds * PhysicsHz); ++I, T += PhysicsDt)
+		{
+			if (GybeAt >= 0.0 && T >= GybeAt) Helm.TargetTWADeg = -TwaDeg;
+			const Vec3 O = Boat.OriginPosition();
+			Sea.Update(T, O.X, O.Y);
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Helm.Update(Boat);
+			Boat.Step(PhysicsDt, C, Sea.GetWind(), Sea.GetWaves());
+			const FBoatTelemetry& Tm = Boat.GetTelemetry();
+			const double Twa = Tm.TrueWindAngle * kRadToDeg;
+			if (T > 2.0)
+			{
+				R.MaxHeelDeg = std::max(R.MaxHeelDeg, std::fabs(Tm.Heel) * kRadToDeg);
+				R.DeepestTwaDeg = std::max(R.DeepestTwaDeg, std::fabs(Twa));
+				if (std::fabs(Twa) > 150.0 && std::fabs(PrevTwa) > 150.0 && Twa * PrevTwa < 0.0) ++R.TwaCrossings;
+				const double Boom = Boat.GetState().BoomAngle * kRadToDeg;
+				if (std::fabs(Boom) > 20.0)
+				{
+					const double Side = Boom > 0.0 ? 1.0 : -1.0;
+					if (BoomSide != 0.0 && Side != BoomSide) ++R.Gybes;
+					BoomSide = Side;
+				}
+			}
+			PrevTwa = Twa;
+			if (Tm.bCapsized) { R.CapsizedAt = T; break; }
+		}
+		return R;
+	}
 }

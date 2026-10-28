@@ -811,28 +811,33 @@ bool FWaterFarGridTest::RunTest(const FString& Parameters)
 
 namespace
 {
-	/** M_WaterV4's far whitecap fleck (make_materials.py, FLK; docs/far-flecks/): one level's cover at a map point and time. */
+	/** M_WaterV4's far whitecap fleck (make_materials.py, FLK; docs/far-flecks/, docs/storm-water/far-water/): one level's
+	 *  cover at a map point and time, in the frame of a wind blowing toward (Wx, Wy), off the long waves (J = 1). */
 	double FarCapFleckHash(double X, double Y)
 	{
 		const double A = FMath::Fmod(X, 289.0), B = FMath::Fmod(Y, 289.0);
 		const double V = FMath::Sin(A * 127.1 + B * 311.7) * 43758.5453;
 		return V - FMath::Floor(V);
 	}
-	double FarCapFleck(double Px, double Py, double T, double Size, double Cover, double FootG)
+	double FarCapFleck(double Px, double Py, double T, double Size, double Cover, double FootG, double Wx = 0.6, double Wy = 0.8)
 	{
-		const double Qx = Px / Size, Qy = Py / Size;
+		// Across the wind (along the crests) and downwind, drifting at 2 m/s.
+		const double Qx = (Px * -Wy + Py * Wx) / Size, Qy = (Px * Wx + Py * Wy - 2.0 * T) / Size;
 		const double Ix = FMath::Floor(Qx), Iy = FMath::Floor(Qy);
 		const double Fx = Qx - Ix, Fy = Qy - Iy;
 		const double Ep = T / 4.0 + FarCapFleckHash(Ix + 7.3, Iy + 7.3);
 		const double Age = Ep - FMath::Floor(Ep), N = FMath::Floor(Ep);
 		const double H = FarCapFleckHash(Ix + N * 3.17, Iy + N * 1.93);
 		const double Cx = 0.45 + 0.1 * FarCapFleckHash(Ix + N + 2.1, Iy + N + 2.1), Cy = 0.45 + 0.1 * FarCapFleckHash(Ix + N + 5.9, Iy + N + 5.9);
-		const double Aa = FMath::Clamp(FootG / (Size * 0.3), 1e-3, 1.0);
-		const double Ar = 0.2827 * (1.0 + Aa * Aa / 12.0);
-		const double Pr = FMath::Clamp(Cover / (Ar * 0.7937), 0.0, 1.0);
-		const double G = Cover / FMath::Max(Pr * Ar * 0.7937, 1e-6);
-		const double D = FMath::Sqrt(FMath::Square(Fx - Cx) + FMath::Square(Fy - Cy)) / 0.3;
-		return FMath::Clamp((H < Pr ? 1.0 : 0.0) * FMath::Clamp((1.0 - D) / Aa + 0.5, 0.0, 1.0) * FMath::Min(1.0, 1.6 * FMath::Sin(UE_DOUBLE_PI * Age)) * G, 0.0, 1.0);
+		const double Aa = FMath::Clamp(FootG / (Size * 0.09), 1e-3, 1.0);
+		const double Ar = 0.11875 * (1.0 + Aa * Aa / 12.0) + 0.01422;
+		const double Br = 0.5 + 0.5 * FarCapFleckHash(Ix + N + 9.7, Iy + N + 9.7);
+		const double Pr = FMath::Clamp(Cover / (Ar * 0.3413 * 0.75), 0.0, 1.0);
+		const double G = Cover / FMath::Max(Pr * Ar * 0.3413 * 0.75, 1e-6);
+		const double Dash = FMath::Clamp((1.0 - FMath::Sqrt(FMath::Square((Fx - Cx) / 0.42) + FMath::Square((Fy - Cy) / 0.09))) / Aa + 0.5, 0.0, 1.0);
+		const double Tail = 0.35 * FMath::Clamp(1.0 - FMath::Sqrt(FMath::Square((Fx - Cx) / 0.28) + FMath::Square((Fy - Cy - 0.16) / 0.16)), 0.0, 1.0);
+		const double Life = FMath::Clamp(8.0 * Age, 0.0, 1.0) * FMath::Pow(1.0 - Age, 1.5);
+		return FMath::Clamp((H < Pr ? 1.0 : 0.0) * FMath::Max(Dash, Tail) * Life * Br * G, 0.0, 1.0);
 	}
 }
 
