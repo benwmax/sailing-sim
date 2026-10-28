@@ -69,8 +69,18 @@ of 32 races short, because the AI's route doesn't gybe downwind to make up the a
 | No guard | 8 | 48 | 180 |
 | Guard | 0 | 1 | 167.7 |
 
-In the game, with the PC's args (High): no guard capsized at 15.2 s; the guard, two runs, upright for 44 s, max heel
-11.7 and 13.7 deg, deepest TWA 171 and 175, never across dead downwind.
+In the game, with the PC's args (High, the final code, 64 s each):
+
+| Run | Capsized | Max heel | Deepest TWA | Across dead downwind |
+|---|---|---|---|---|
+| `-SailingNoRunGuard` | at 15.2 s | 87.7 deg | 179.9 | twice |
+| Guard | no | 15.3 deg | 160.7 | never |
+| Guard, again | no | 15.2 deg | 160.7 | never |
+
+Gate: `scripts/gate.sh --scope water --merge hobie-run` (origin/main + 75df07a4): all 254 tests passed (the physics changed,
+so the whole suite with the heavy set, PolarGate and the new HobieRunGuard among them); the game packaged (full recook);
+every view ok: High beam8 59.9, beat15 54.8, storm 49.4, marina 57.8, coast-day 53.4, gulf-sea 63.1, helm-eye 60.0,
+bridge 59.1 fps; Medium storm 68.8.
 
 ### A controlled gybe (physics, not tuned)
 
