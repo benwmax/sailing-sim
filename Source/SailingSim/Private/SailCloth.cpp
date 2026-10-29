@@ -27,6 +27,7 @@ ETelltaleState LeechTelltaleState(const FSailStripState& St)
 
 void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 {
+	bClearCached = false;
 	WrinkleGrid.Reset();
 	Geo = InGeo;
 	Kind = InKind;
@@ -173,7 +174,11 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 	// (The luff's wrinkles from a soft halyard were a sine on this grid's target: at 20-33 cm a cell their 22 cm waves
 	// aliased. They are FSailWrinkles now, on the render grid.)
 
-	// Leech flutter at speed: a shiver of the last tenth of a drawing sail, a wave running up the leech, as a movement of
+	// The wires: the shape the cloth follows keeps clear of them too (the cloth itself is held clear after every substep).
+	KeepClearTarget(bStarted ? Drive.DeltaSeconds : 10.f);
+
+	// Leech flutter at speed (docs/sail-clear-cache/: after the clearance, so the kept clearance holds while the leech
+	// shivers; the leech is the cloth furthest from the wires): a shiver of the last tenth of a drawing sail, a wave running up the leech, as a movement of
 	// the target the cloth follows. docs/sails-1/: it was a push on the cloth at 11 Hz with neighbouring rows nearly
 	// opposite, near the drawing rows' own ringing (their spring rings at about 6 Hz), so it built up into a row-by-row
 	// zigzag along the leech: the dark leech creases.
@@ -192,10 +197,6 @@ void FSailCloth::Step(const FSailStripState* Strips, int32 Side, const FSailClot
 			}
 		}
 	}
-
-	// The wires: the shape the cloth follows keeps clear of them too (the cloth itself is held clear after every substep).
-	TurnDt = bStarted ? Drive.DeltaSeconds : 10.f;
-	KeepClear(Target, true);
 
 	// A cloth that has run away from its target (a bad frame's strips, a non-finite vertex) starts again from it.
 	bool bRunaway = Pos.Num() != Target.Num();
@@ -351,6 +352,51 @@ FVector FSailCloth::NormalAt(float U, float V) const
 	const FVector DU = ChordTangentAt(U, V);
 	const FVector DV = (PointAt(U, FMath::Min(V + 0.05f, 1.f)) - PointAt(U, FMath::Max(V - 0.05f, 0.f))).GetSafeNormal();
 	return FVector::CrossProduct(DU, DV).GetSafeNormal();
+}
+
+void FSailCloth::SetObstacles(const TArray<FSailObstacle>& In)
+{
+	// (The pawn hands the same wires every frame: only a change forgets the kept clearance.)
+	bool bSame = In.Num() == Obstacles.Num();
+	for (int32 I = 0; I < In.Num() && bSame; ++I)
+	{
+		bSame = In[I].A.Equals(Obstacles[I].A, 0.1) && In[I].B.Equals(Obstacles[I].B, 0.1) && In[I].RadiusCm == Obstacles[I].RadiusCm
+			&& In[I].FreeA == Obstacles[I].FreeA && In[I].FreeB == Obstacles[I].FreeB;
+	}
+	if (bSame) return;
+	Obstacles = In;
+	bClearCached = false;
+}
+
+void FSailCloth::KeepClearTarget(float Dt)
+{
+	constexpr float ReuseCm = 1.f;
+	constexpr float kClearMaxAge = 0.25f;
+	ClearAge += Dt;
+	if (bClearCached && !bClearEasing && ClearAge < kClearMaxAge && ClearFrom.Num() == Target.Num())
+	{
+		bool bNear = true;
+		for (int32 I = 0; I < Target.Num() && bNear; ++I) bNear = FVector::DistSquared(Target[I], ClearFrom[I]) <= ReuseCm * ReuseCm;
+		if (bNear)
+		{
+			for (int32 I = 0; I < Target.Num(); ++I) Target[I] += ClearOffset[I];
+			FootTurn = ClearFootTurn;
+			++ClearReuses;
+			return;
+		}
+	}
+	// (The main's turn eases over the time since the clearance was last worked out, as it would have frame by frame.)
+	TurnDt = bClearCached ? ClearAge : Dt;
+	const float WasTurn = MainTurn;
+	ClearFrom = Target;
+	KeepClear(Target, true);
+	ClearOffset.SetNumUninitialized(Target.Num());
+	for (int32 I = 0; I < Target.Num(); ++I) ClearOffset[I] = Target[I] - ClearFrom[I];
+	ClearFootTurn = FootTurn;
+	ClearAge = 0.f;
+	bClearCached = true;
+	bClearEasing = FMath::Abs(MainTurn - WasTurn) > 0.002f;
+	++ClearComputes;
 }
 
 void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)

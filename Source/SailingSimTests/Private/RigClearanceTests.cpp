@@ -382,6 +382,7 @@ bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
 		Tick(2);
 		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(Pawn->GetBoatModel().GetConfig().Type));
 		int32 Samples = 0, Hit = 0, HitLuff = 0, Poke = 0, PokeLuff = 0;
+		const int32 Computes0 = Pawn->GetSailCloth(0).GetClearComputes(), Reuses0 = Pawn->GetSailCloth(0).GetClearReuses();
 		FString First, FirstPoke;
 		bool bRig = false;
 		for (const double Knots : { 8.0, 15.0, 25.0 })
@@ -472,6 +473,10 @@ bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
 				}
 			}
 		if (!bRig) continue;
+		// docs/sail-clear-cache/: how often the main's clearance was worked out and how often reused.
+		const int32 Computes = Pawn->GetSailCloth(0).GetClearComputes() - Computes0, Reuses = Pawn->GetSailCloth(0).GetClearReuses() - Reuses0;
+		AddInfo(FString::Printf(TEXT("%s, %s: the main's clearance worked out %d times, reused %d (%.0f%%)"), Tier == ESailingQuality::High ? TEXT("High") : TEXT("Medium"), *BoatName,
+			Computes, Reuses, 100.0 * Reuses / FMath::Max(Computes + Reuses, 1)));
 		Total += Hit + Poke;
 		AddInfo(FString::Printf(TEXT("%s, %s, %d samples: a wire's centre through the main %d (at the luff, columns 0-1: %d), its surface %d (luff %d)%s%s%s%s"), Tier == ESailingQuality::High ? TEXT("High") : TEXT("Medium"), *BoatName, Samples,
 			Hit, HitLuff, Poke, PokeLuff, First.IsEmpty() ? TEXT("") : TEXT("; first through: "), *First, FirstPoke.IsEmpty() ? TEXT("") : TEXT("; first surface: "), *FirstPoke));
