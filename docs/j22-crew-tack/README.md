@@ -71,3 +71,12 @@ There were no false calls in any of these runs (each has a minute's gusty beat b
 - the ILCA's tack identical with the switch on.
 
 `RunTack`, the tack scenarios and PolarGate don't use the switch.
+
+## The crew under the held boom
+
+The first gate failed `SailingSim.Visual.SheetClearance`. With the main held in, the boom sat at 4 deg while she was still
+on the old tack, and the traveller car came up toward the centre. Crew 1 was still sitting up beside the helm, because the
+crossing only began at TWA 28, and their head was 6.7 cm into the mainsheet's tail in 3 samples. Now a called tack
+(`FCrewPlaceInput::bTackCalled`, from `FAutoTrim::IsHoldingForTack`) starts the crossing as she comes up, as a crew gets
+down under a centred boom when the helm calls it. What's left is one forearm sample at 2.4 cm, listed and not failed.
+`CrewHullClearance`, `CrewClipTack` and `RigClearance` are green.

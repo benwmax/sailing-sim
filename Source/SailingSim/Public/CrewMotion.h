@@ -61,6 +61,7 @@ struct SAILINGSIM_API FCrewPlaceInput
 	double TrueWindAngle = 0.5;    // rad, FBoatTelemetry::TrueWindAngle (+ from starboard)
 	double TurnRate = 0.0;         // rad/s, yaw (+ bow to starboard)
 	double TrueWindSpeed = 5.0;    // m/s (FBoatTelemetry::TrueWindSpeed): under 8 kn a tack is rolled (docs/crew-tack/)
+	bool bTackCalled = false;      // docs/j22-crew-tack/: the crew are holding the main for a tack the helm called (FAutoTrim)
 	FCrewCrossing* Crossing = nullptr; // docs/crew-tack/: the scripted crossing's state (none: the crossing stance as before)
 	float Dt = 0.f;                // s since the last placement (the crossing's clock)
 };
