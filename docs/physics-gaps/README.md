@@ -131,13 +131,10 @@ the bake). SWAN's Tp is the bake's SWAN / game ratio times the game's old period
   reason for one, so I left it.
 - Lee-shore periods (1.34 s against SWAN's 1.86 s at Rush Creek in a northerly, from W3 prep) are unchanged: that is 14 kn.
 - Shallow arms still grow too much sea (no depth limit), as in W3 prep.
-- **Whitecaps at 20 kn and over.** The steeper sea folds more crests. In `SailingSim.Visual.Whitecaps` the lake caps
-  1.44% of the surface at 20 kn and 3.37% at 25 kn. That is 3.3 and 3.6 times its target of 0.4 Monahan, past the test's
-  factor of three. In W0 the same speeds gave the lake 1.37% at 25 kn and the sea 2.55% against Monahan's 2.33%; now the
-  sea caps 5.42%. The threshold (`FoamThreshold`, `WhitecapScaleFor`, `CapSlope`) lives in `WaterSurface.cpp` and
-  `make_materials.py`, which belong to the PC's W2, so I didn't retune it. The test now reports the lake's band above 18
-  kn as a known-gap warning; below 18 kn it still fails outside the band. The sea and bay bands still pass. **W2 should
-  recalibrate the cap threshold to this sea.**
+- ~~**Whitecaps at 20 kn and over.**~~ Closed. The lake capped 3.3 and 3.6 times its target at 20 and 25 kn here. W8 then
+  solved the cap threshold each detail frame on the drawn sea (`docs/water-8/whitecaps/`, `docs/water-8/capshape-mac/`), and
+  `docs/whitecaps-cascade/` (#380) refit it after the chop cascades. The drawn lake cover is now 1.01-1.18 times its target
+  at 14-20 kn, and `SailingSim.Visual.Whitecaps` and `WhitecapsSeen` pass at 12-25 kn.
 - The Galveston SWAN bake is still running on the PC. The steepening comes from the lake's bake alone, and the bay's
   cases should check it.
 

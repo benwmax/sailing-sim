@@ -154,11 +154,16 @@ namespace Sailing
 		 *  (FAutoTrim::bHoldMain), and a multihull turns no faster than GybeTillerMax lets her (docs/ai-gybe/). */
 		bool IsGybing() const { return bGybeOrdered; }
 		double GybeTillerMax = 0.25;
+		/** docs/ilca-tiller/: the most the tiller moves a second (of its travel) while the rudder is clear of the water, on boats
+		 *  under AirborneTillerMassKg. */
+		double AirborneTillerRate = 0.3;
+		double AirborneTillerMassKg = 500.0;
 
 	private:
 		// The helm's own sense of the boat (Update is called every step): her upwind speed, and a tack she is waiting to start.
 		mutable double UpwindSpeed = -1.0, LastTime = -1.0, TackAskedAt = -1.0;
 		mutable bool bTackGo = false;
+		mutable double LastTiller = -10.0; // the last tiller given (-10: none yet)
 		mutable double TackOrderSide = 0.0; // the side the target was on when the wait (or the tack) began
 		// The run guard: the side the target was on last step, and a gybe she was told to make (until she is round).
 		mutable double LastTargetSide = 0.0;

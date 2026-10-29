@@ -3,6 +3,7 @@
 #include "BoatModel.h"
 #include "PolarReference.h"
 #include "ReferenceChecks.h"
+#include "AutoTrim.h"
 #include "ReferenceCapture.h"
 #include "SailingSim.h"
 #include "SailingEnvironment.h"
@@ -198,7 +199,8 @@ bool FMoonPhaseTest::RunTest(const FString& Parameters)
 // 21.6-22.2 kn in 40 kn of wind; since docs/wave-physics/ she surfs the chop), and the drag below Froude 1.3 is the shared
 // dinghy table's. She stays up at all but a few angles: between 110 and 120 deg she can round up on a wave, lift clear
 // over its crest and crash-gybe as she lands (main before docs/wave-physics/: 3 of these 16 angles, at 112, 116 and 118
-// deg; since: 2, at 114 and 120). The test used to sample four angles, which missed main's.
+// deg; since: 2, at 114 and 120; on c2cb055c 1, at 116; since docs/ilca-tiller/, none: SailingSim.Physics.AirborneTiller).
+// The test used to sample four angles, which missed main's.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingLaserPlaningDragTest, "SailingSim.Physics.LaserPlaningDrag", RefFlags)
 bool FSailingLaserPlaningDragTest::RunTest(const FString& Parameters)
 {
@@ -217,6 +219,29 @@ bool FSailingLaserPlaningDragTest::RunTest(const FString& Parameters)
 		Capsized += R.MaxTiltDeg >= 70.0;
 	}
 	TestTrue(FString::Printf(TEXT("She stays up at all but 3 of 16 angles (%d over)"), Capsized), Capsized <= 3);
+	return true;
+}
+
+// docs/ilca-tiller/: the ILCA's crash gybes on the 22 kn reach came with her rudder clear of the water. Over a crest the
+// helm, feeling nothing through it, had wound the tiller to the stop, and the rudder landed hard over (on c2cb055c at 116
+// deg: a spin past 130 deg/s and over). A light boat's helm now holds the tiller (0.3 of its travel a second at most while
+// the rudder is clear), so she stays up at all 16 angles from 100 to 130 deg, as fast; and a keelboat's helm is as before.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingAirborneTillerTest, "SailingSim.Physics.AirborneTiller", RefFlags)
+bool FSailingAirborneTillerTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig Ilca = FBoatConfig::Make(EBoatType::ILCA7);
+	TestTrue(TEXT("The ILCA is a light boat"), FBoatModel(Ilca).TotalMass() < FAutopilot().AirborneTillerMassKg);
+	TestTrue(TEXT("The J/22 is not"), FBoatModel(FBoatConfig()).TotalMass() >= FAutopilot().AirborneTillerMassKg);
+	int32 Capsized = 0;
+	for (int32 Twa = 100; Twa <= 130; Twa += 2)
+	{
+		const FSpeedRun R = SpeedRun(Ilca, 22.0, double(Twa), false, 0.0, 13000.0, 180.0);
+		Capsized += R.MaxTiltDeg >= 70.0;
+		if (R.MaxTiltDeg >= 70.0) AddInfo(FString::Printf(TEXT("ILCA, 22 kn at %d deg: over (tilt %.0f deg)"), Twa, R.MaxTiltDeg));
+		TestTrue(FString::Printf(TEXT("%d deg: still fast (%.2f kn mean)"), Twa, R.MeanKnots), R.MaxTiltDeg >= 70.0 || R.MeanKnots > 11.0);
+	}
+	TestEqual(TEXT("She stays up at all 16 angles"), Capsized, 0);
 	return true;
 }
 
