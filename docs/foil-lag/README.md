@@ -86,3 +86,22 @@ identical. Per seed in the sea (seconds, slowest share), main against this branc
 
 Of the two #349 tacks that meet a face head to wind, seed 6 is fixed and seed 5 still stalls. Seed 5 is stopped by the
 face's push on the hull and the wind, not by the fin.
+
+## Where it shows to a sailor (gap 7, Oct 29 2026)
+
+Gap 7 of the Oct 28 list asked for "unsteady foils (Theodorsen and Wagner)". This doc had already built them: Wagner's
+indicial lift with Jones's fit is the time-domain form of Theodorsen's lift deficiency for any motion. The foils' own
+added mass, the other half of Theodorsen's force, is in the boat's sway and yaw added mass (`docs/foil-inertia/`). So
+gap 7 measured whether the lag shows anywhere a sailor would notice: `FoilLiftLagScale` 0 against 1, three seeds each,
+in lake chop (5 km of fetch) where it is on.
+
+| | Lag off | Lag on (main f002aa2e) |
+|---|---|---|
+| J/22 tack on the player's helm (`RunPlayerTack`), 14 kn | 3.48 s, 57.3% of her speed kept | 3.76 s, 52.5% |
+| The same, 20 kn | 3.84 s, 44.6% | 3.93 s, 42.2% |
+| J/22 beating, 16 kn, gusts 0.12 | 5.147 kn, mean heel 11.75 deg, most tilt 25.8 deg | 5.147 kn, 11.81 deg, 27.1 deg |
+| ILCA reaching at TWA 100, 14 kn, gusts 0.10 | 8.790 kn, mean heel 4.00 deg, most tilt 8.3 deg | 8.784 kn, 3.99 deg, 8.6 deg |
+
+It shows only in a tack: 0.1-0.3 s slower, keeping 2-5 points less speed, as a rudder's lift builds over a few chords.
+That is hard to feel at the helm. In gusts the speed is the same and the worst heel about a degree more; the ILCA's roll
+doesn't change. Gap 7 is closed with no further work.
