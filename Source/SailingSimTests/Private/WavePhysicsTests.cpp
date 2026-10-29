@@ -474,4 +474,37 @@ bool FSailingWaveSteeringTest::RunTest(const FString&)
 	return true;
 }
 
+/**
+ * docs/tack-timing/: the helm reads the sea ahead before a timed tack, and doesn't start one whose bow would come through
+ * the wind into a face (FAutopilot::bTackLookAhead). Over 24 gale tacks the J/22's 90th percentile falls from 17.3 s to
+ * 12.9 and the Catalina 30's median from 22.4 to 17.2 (one more through); the maxi's tacks start when the wait runs out
+ * and are unchanged. Nothing changes in the calibration sea (bTimeTacks doesn't wait there).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTackLookAheadTest, "SailingSim.Physics.TackLookAhead", WavePhysicsTestsLocal::WaveFlags)
+bool FSailingTackLookAheadTest::RunTest(const FString&)
+{
+	auto P90 = [](TArray<double> Secs) { Secs.Sort(); return Secs[FMath::Min(int32(0.9 * Secs.Num() + 0.5) - 1, Secs.Num() - 1)]; };
+	FBoatConfig J22 = FBoatConfig::Make(EBoatType::J22);
+	FSceneLimits::For(true).ApplyTo(J22);
+	TArray<double> Own, Look;
+	for (uint32 Seed = 1; Seed <= 24; ++Seed)
+	{
+		const FGaleTackResult A = RunGaleTackDetail(J22, 2, Seed, true, 32.0, false, false), B = RunGaleTackDetail(J22, 2, Seed, true, 32.0, false, true);
+		Own.Add(A.Seconds > 0.0 ? A.Seconds : 999.0);
+		Look.Add(B.Seconds > 0.0 ? B.Seconds : 999.0);
+	}
+	const double OwnP90 = P90(Own), LookP90 = P90(Look);
+	AddInfo(FString::Printf(TEXT("J/22 gale tacks, 24 seeds: 90th percentile %.1f s reacting, %.1f s reading the sea ahead"), OwnP90, LookP90));
+	TestTrue(FString::Printf(TEXT("Reading the sea ahead, the J/22's slow gale tacks are quicker (p90 %.1f s against %.1f)"), LookP90, OwnP90), LookP90 < OwnP90 - 2.0);
+	// The maxi: the same tacks, step for step, on a few seeds.
+	FBoatConfig Maxi = FBoatConfig::Make(EBoatType::Maxi);
+	FSceneLimits::For(true).ApplyTo(Maxi);
+	for (const uint32 Seed : { 1u, 14u })
+	{
+		const FGaleTackResult A = RunGaleTackDetail(Maxi, 2, Seed, true, 32.0, false, false), B = RunGaleTackDetail(Maxi, 2, Seed, true, 32.0, false, true);
+		TestTrue(FString::Printf(TEXT("Maxi seed %u: unchanged (%.1f s)"), Seed, B.Seconds), A.Seconds == B.Seconds && A.MinSpeedKnots == B.MinSpeedKnots);
+	}
+	return true;
+}
+
 #endif

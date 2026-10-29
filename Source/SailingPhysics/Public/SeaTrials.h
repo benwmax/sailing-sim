@@ -127,7 +127,7 @@ namespace Sailing
 		double GustIntensity, double Seconds, bool bHands = true);
 
 	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0,
-		bool bWaveHelm = false);
+		bool bWaveHelm = false, bool bTackLookAhead = true);
 
 	/**
 	 * docs/j22-crew-tack/: a tack with the player on the helm, on lake chop (5 km of fetch) in a gusty wind (GustIntensity
