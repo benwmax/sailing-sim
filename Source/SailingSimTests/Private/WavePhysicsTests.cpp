@@ -415,4 +415,63 @@ bool FSailingHobieRunGuardTest::RunTest(const FString&)
 	return true;
 }
 
+/**
+ * docs/wave-steering/: the helm steers to the waves off the wind (FAutopilot::bWaveSteering: the AI's and Easy mode's
+ * helm). The ILCA reaching in a 1.2 m sea in 16 kn rides the faces and goes faster (+15% measured over three seeds); the
+ * Hobie 16 running stays up with it; the Catalina 30 and the maxi hold their course (no swing for them); and in the
+ * calibration sea or on flat water nothing changes, so the polars don't.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWaveSteeringTest, "SailingSim.Physics.WaveSteering", WavePhysicsTestsLocal::WaveFlags)
+bool FSailingWaveSteeringTest::RunTest(const FString&)
+{
+	auto SeaOf = [](double Knots, double Hs, double Tp, uint32 Seed, bool bHelm)
+	{
+		FTrialSeaSpec S;
+		S.WindKnots = Knots;
+		S.FetchMeters = 1.0;
+		S.bOcean = true;
+		S.Ocean.WindMs = Knots * kKnot;
+		S.Ocean.WindFromRad = 0.0;
+		S.Ocean.WindSeaHs = Hs;
+		S.Ocean.WindSeaTp = Tp;
+		S.Ocean.SwellHs = 0.0;
+		S.Seed = Seed;
+		S.bWaveHelm = bHelm;
+		return S;
+	};
+	const FBoatConfig Ilca = FBoatConfig::Make(EBoatType::ILCA7);
+	double Off = 0.0, On = 0.0;
+	for (uint32 Seed = 1; Seed <= 3; ++Seed)
+	{
+		Off += RunInSea(Ilca, SeaOf(16.0, 1.2, 5.0, Seed, false), 110.0, 0, false, 30.0, 240.0).MeanKnots / 3.0;
+		On += RunInSea(Ilca, SeaOf(16.0, 1.2, 5.0, Seed, true), 110.0, 0, false, 30.0, 240.0).MeanKnots / 3.0;
+	}
+	AddInfo(FString::Printf(TEXT("ILCA, 1.2 m sea, 16 kn, TWA 110: %.2f kn holding her course, %.2f steering to the waves"), Off, On));
+	TestTrue(FString::Printf(TEXT("The ILCA reaches faster steering to the waves (%.2f against %.2f kn)"), On, Off), On > 1.05 * Off);
+	const FBoatConfig Hobie = FBoatConfig::Make(EBoatType::Hobie16);
+	int32 Over = 0;
+	for (uint32 Seed = 1; Seed <= 3; ++Seed) Over += RunInSea(Hobie, SeaOf(16.0, 1.2, 5.0, Seed, true), 150.0, 0, false, 30.0, 240.0).bCapsized;
+	TestEqual(TEXT("The Hobie 16 runs upright steering to the waves"), Over, 0);
+	const FBoatConfig C30 = FBoatConfig::Make(EBoatType::Catalina30);
+	TestEqual(TEXT("The Catalina 30 holds her course"), FAutopilot::WaveSteerDegFor(C30), 0.0);
+	TestEqual(TEXT("... as the maxi does"), FAutopilot::WaveSteerDegFor(FBoatConfig::Make(EBoatType::Maxi)), 0.0);
+	// The calibration sea and flat water: the same run, step for step.
+	FTrialSeaSpec Cal;
+	Cal.WindKnots = 16.0;
+	Cal.FetchMeters = 13000.0;
+	Cal.bCalibrationSea = true;
+	FTrialSeaSpec CalOn = Cal;
+	CalOn.bWaveHelm = true;
+	const FSeaRunResult A = RunInSea(Ilca, Cal, 110.0, 0, false, 10.0, 60.0), B = RunInSea(Ilca, CalOn, 110.0, 0, false, 10.0, 60.0);
+	TestTrue(TEXT("Nothing changes in the calibration sea"), A.MeanKnots == B.MeanKnots && A.MeanTwaDeg == B.MeanTwaDeg);
+	FTrialSeaSpec Flat;
+	Flat.WindKnots = 16.0;
+	Flat.FetchMeters = 1.0;
+	FTrialSeaSpec FlatOn = Flat;
+	FlatOn.bWaveHelm = true;
+	const FSeaRunResult C = RunInSea(Ilca, Flat, 110.0, 0, false, 10.0, 60.0), D = RunInSea(Ilca, FlatOn, 110.0, 0, false, 10.0, 60.0);
+	TestTrue(TEXT("... or on flat water"), C.MeanKnots == D.MeanKnots && C.MeanTwaDeg == D.MeanTwaDeg);
+	return true;
+}
+
 #endif

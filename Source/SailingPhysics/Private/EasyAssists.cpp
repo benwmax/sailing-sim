@@ -94,6 +94,11 @@ namespace Sailing
 				const double Nudge = std::min(Inside / Assists.NoGoCueDeg * 2.0, 1.0) * Assists.GuardTiller;
 				Out.Tiller = Controls.Tiller - (Twa >= 0.0 ? 1.0 : -1.0) * Nudge;
 			}
+			// docs/wave-steering/: the tiller let go off the wind, the crew steer her down a face and up its back. Bearing
+			// away turns the bow away from the wind: to port (-) on starboard tack.
+			const double Swing = WaveHelm.WaveSteerFor(Boat, Twa, Dt);
+			if (Assists.bWaveHelm && Inside <= 0.0 && std::fabs(Controls.Tiller) < Assists.GuardDeadband)
+				Out.Tiller = Clamp(Out.Tiller - (Twa >= 0.0 ? 1.0 : -1.0) * Assists.WaveHelmShare * WaveHelm.Gain * Swing * kDegToRad, -1.0, 1.0);
 			return Out;
 		}
 		// Once the jib is backed the sheet holds it on its side (BoatModel chose it from the jib's own wind, which head to

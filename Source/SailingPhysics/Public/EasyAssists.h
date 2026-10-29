@@ -69,6 +69,10 @@ namespace Sailing
 		// lets go after a tack, or pinches, sails off at 45 instead of luffing into irons.
 		double GuardTiller = 0.3;
 		double GuardDeadband = 0.15;
+		// docs/wave-steering/: with the tiller let go (inside GuardDeadband) off the wind in a sea, the crew steer her to the
+		// waves as the AI's helm does (FAutopilot::WaveSteerFor), WaveHelmShare of the autopilot's gain on the swing.
+		bool bWaveHelm = true;
+		double WaveHelmShare = 0.5;
 
 		// The wind's gusts, puffs and shifts at half strength (the game mode applies it to the weather; kept from the
 		// old easy difficulty).
@@ -137,6 +141,7 @@ namespace Sailing
 	private:
 		double StuckTime = 0.0;
 		int Side = 0; // the tack she is falling off onto (+1 wind from starboard), 0 when not recovering
+		FAutopilot WaveHelm; // docs/wave-steering/: its sense of the slope, for the swing
 	};
 
 	/** The Easy mode checks (SailingSim.Physics.EasyMode, scripts/polar.sh --easy). */
