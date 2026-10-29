@@ -81,3 +81,8 @@ course she sails into it.
 - the Hobie 16 running upright with it;
 - the Catalina 30 and the maxi with no swing;
 - the same run, step for step, in the calibration sea and on flat water.
+
+## Gate (`scripts/gate.sh --scope boats`, packaged, the Mac)
+
+Pass: 279 tests, every view over its floor on High: beam8 56.8, beat15 52.6, marina 55.5, helm-eye 58.9, slip 49.1,
+crew 46.7.
