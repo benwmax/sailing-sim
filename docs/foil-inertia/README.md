@@ -61,7 +61,8 @@ since all of them sail the calibration sea or flat water.
   - What still sculls her along adrift is the foils' quasi-steady lift at near-zero speed. As she rolls and sways, the
     fin meets the water at large, fast-changing angles and makes thrust like a flapping foil.
   - A real fin's lift lags such changes: Theodorsen's function at the fin's reduced frequency (about 0.3 to 1 here)
-    halves the lift and turns it, and Wagner's for the start. That unsteady lift is the next gap.
+    halves the lift and turns it, and Wagner's for the start. That unsteady lift was the next gap; `docs/foil-lag/`
+    (Oct 27) built it, and gap 7 measured it (Oct 29).
   - The seeds 2 and 4 tacks are chaotic in this sea; any change moves them both ways (see `docs/gale-tack/`).
 
 ## Gate
