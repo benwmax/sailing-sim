@@ -1410,6 +1410,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// docs/crew-tack/: each sailor's crossing on a tack or gybe, scripted against the boom.
 		Place.Crossing = I < CrewFigures.Num() ? &CrewFigures[I].Crossing : nullptr;
 		Place.TrueWindSpeed = T.TrueWindSpeed;
+		Place.bTackCalled = TrimAssist.IsHoldingForTack();
 		Place.Dt = DeltaSeconds;
 		FCrewPlacement Pl;
 		CrewPlacement(Place, Pl);
