@@ -78,3 +78,31 @@ is seeded, so as predictable as the sea).
 
 Pass: 281 tests, every view over its floor on High: beam8 56.3, beat15 52.3, marina 54.8, helm-eye 59.1, slip 49.0,
 crew 46.8.
+
+## Follow-up: reading the wind ahead (Oct 29 2026)
+
+The wind field is seeded and as predictable as the sea (`FWindField::VelocityAt` at a later time). The question was
+whether a lift to tack on, or a veering gust to wait out, decides the maxi's three slow seeds. It doesn't.
+
+**Measured, 192 maxi tacks.** Seeds 1-24, each called at eight times 2 s apart, with #382's and #389's timing on:
+- **The shift through the turn** (the wind's direction over the call's first 12 s, + turning with her) doesn't predict the
+  tack: the correlation with the share of speed kept is -0.06. By quartile of the shift, she keeps 40% in 83%, 87%, 91% and
+  85% of them.
+- **A lull hurts a little.** Called in the lightest quarter of the wind she keeps 40% in 77% of them, against 89-91%; with
+  the strongest wind over the turn, 97%.
+
+**A lull veto, tried and dropped.** Ready by #382's rule, the helm also waited (within the period) if the predicted wind
+where she would be head to wind was under 85% of the last 20 s's mean. It made things worse:
+
+| 24 gale tacks | Without | With the veto (0.85) |
+|---|---|---|
+| Maxi, seeds 1-24 | median 12.8 s, 23 keeping 40% | 13.1 s, 22 |
+| Maxi, seeds 25-48 | 13.2 s, 20 | unchanged |
+| Catalina 30 | median 17.2 s, 15 inside 25 s, 5 not through | 26.2 s, 11, 8 not through |
+
+Seeds 14, 29 and 43 were unchanged (23.7 s at 38%, 21.5 s at 25%, 31.6 s at 35%). The sweep's stricter settings (0.95,
+1.05) were not finished. The veto was dropped, and nothing in the code changes.
+
+**What is left for those three.** Neither the sea nor the wind at the start of the tack, as the helm could read them,
+separates them from the rest. Most of the maxi's timed tacks start when the period's wait runs out. What is left is the
+tack itself: how she is steered through it, and how the crew work the sheets as she comes round.
