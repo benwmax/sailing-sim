@@ -1575,6 +1575,15 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	}
 }
 
+AWaterSurface::FGaleSpray AWaterSurface::GaleSprayFor(double MeanKnots)
+{
+	FGaleSpray G;
+	G.Gale = FMath::SmoothStep(24.f, 32.f, float(MeanKnots));
+	G.Spindrift = FMath::SmoothStep(33.f, 41.f, float(MeanKnots));
+	G.Samples = 24 + FMath::RoundToInt32(72.f * G.Gale);
+	return G;
+}
+
 void AWaterSurface::UpdateSpray(float DeltaSeconds)
 {
 	const FWaveField* Waves = GetWaves();
@@ -1720,11 +1729,18 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	}
 
 	// Breaking crests in a breeze (where the drawn waves fold, as the whitecaps): the wind tears spray off them.
+	// Storm water step 6: in a gale the spray sits on the caps the water draws (the fold under the threshold solved for this
+	// sea, CapCalib's; the old fixed 0.45 below 24 kn, so a breezy day is as it was), more crests are tried, more is torn off
+	// each, and from Beaufort 8 their edges blow off as spindrift: low sheets of mist streaming downwind.
 	const double WindMs = FVector2D(WindAt2m.X, WindAt2m.Y).Size();
-	if (WindMs > 6.5 && FramePrev)
+	const FGaleSpray Gale = GaleSprayFor(Waves->GetParams().WindSpeedKnots);
+	const bool bSolved = CapSlopeSmooth > 0.f;
+	const bool bCalmSea = bSolved && CapThrSmooth[0] < -0.5f;   // FWaveDetail::CapThreshold: nothing breaks
+	const double CapAt = FMath::Lerp(0.45, bSolved ? double(CapThrSmooth[0]) : 0.45, double(Gale.Gale));
+	if (WindMs > 6.5 && FramePrev && !bCalmSea)
 	{
 		const FWaveComponent* C = Waves->GetComponents();
-		for (int32 K = 0; K < 24; ++K)
+		for (int32 K = 0; K < Gale.Samples; ++K)
 		{
 			const float R = SprayRng.FRandRange(4.f, 60.f), A = SprayRng.FRandRange(0.f, 2.f * UE_PI);
 			const double X = CamM.X + R * FMath::Cos(A), Y = CamM.Y + R * FMath::Sin(A);
@@ -1739,15 +1755,23 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 			}
 			double Hd, Dx, Dy, Jd;
 			FWaveDetail::Sample(FramePrev->Chop, X, Y, Hd, Dx, Dy, Jd);
-			if ((Jxx * Jyy - Jxy * Jxy) * Jd > 0.45) continue;
+			if ((Jxx * Jyy - Jxy * Jxy) * Jd > CapAt) continue;
 			const double H = Waves->Height(X, Y, T) + Hd;
-			const int32 Count = FMath::RoundToInt(FMath::Clamp(float(WindMs - 6.5) * 2.f, 2.f, 14.f));
+			const int32 Count = FMath::RoundToInt(FMath::Clamp(float(WindMs - 6.5) * 2.f, 2.f, 14.f) * (1.f + Gale.Gale));
 			for (int32 I = 0; I < Count; ++I)
 			{
 				const FVector P(X + SprayRng.FRandRange(-0.4f, 0.4f), Y + SprayRng.FRandRange(-0.4f, 0.4f), H);
 				const FVector V = WindAt2m * SprayRng.FRandRange(0.3f, 0.7f) + FVector(0, 0, SprayRng.FRandRange(0.5f, 1.6f));
 				Emit(P, V, SprayRng.FRandRange(0.08f, 0.2f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
 				if (I == 0) Emit(P, V * 0.5f, SprayRng.FRandRange(0.6f, 1.2f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.5f));
+			}
+			// Spindrift: a sheet of mist torn off the crest, carried at most of the wind's speed, low over the water.
+			if (Gale.Spindrift > 0.f && SprayRng.FRand() < Gale.Spindrift)
+			{
+				const FVector P(X, Y, H + 0.25);
+				const FVector V = WindAt2m * SprayRng.FRandRange(0.6f, 0.85f) + FVector(0, 0, SprayRng.FRandRange(0.1f, 0.5f));
+				Emit(P, V, SprayRng.FRandRange(1.2f, 2.4f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 3.f));
+				Emit(P, V * 0.9f, SprayRng.FRandRange(0.4f, 0.8f), ESprayKind::Sheet, SprayRng.FRandRange(0.3f, 0.6f));
 			}
 		}
 	}

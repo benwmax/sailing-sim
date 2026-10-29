@@ -1099,3 +1099,34 @@ bool FWaterCapSpreadTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+/**
+ * Storm water step 6 (docs/storm-water/gale-streaks/): what a gale tears off the caps. A breezy day is as it was (24
+ * crests tried a frame, none of the gale's extra, no spindrift); the gale fades in from Beaufort 7 and the spindrift from
+ * Beaufort 8, both growing with the wind to their full share by 32 and 41 kn.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterGaleSprayTest, "SailingSim.Visual.GaleSpray", WaterFlags)
+bool FWaterGaleSprayTest::RunTest(const FString&)
+{
+	for (const double Kn : { 8.0, 15.0, 20.0, 24.0 })
+	{
+		const AWaterSurface::FGaleSpray G = AWaterSurface::GaleSprayFor(Kn);
+		TestEqual(FString::Printf(TEXT("%.0f kn: the usual 24 crests"), Kn), G.Samples, 24);
+		TestEqual(FString::Printf(TEXT("%.0f kn: no gale"), Kn), G.Gale, 0.f);
+		TestEqual(FString::Printf(TEXT("%.0f kn: no spindrift"), Kn), G.Spindrift, 0.f);
+	}
+	const AWaterSurface::FGaleSpray F7 = AWaterSurface::GaleSprayFor(28.0), F8 = AWaterSurface::GaleSprayFor(36.0), F9 = AWaterSurface::GaleSprayFor(45.0);
+	TestTrue(TEXT("Force 7: the gale half in, no spindrift yet"), F7.Gale > 0.3f && F7.Gale < 0.7f && F7.Spindrift == 0.f);
+	TestTrue(TEXT("Force 8: a full gale, spindrift starting"), F8.Gale == 1.f && F8.Spindrift > 0.f && F8.Spindrift < 1.f);
+	TestTrue(TEXT("Force 9: all of it"), F9.Gale == 1.f && F9.Spindrift == 1.f && F9.Samples == 96);
+	float Last = -1.f;
+	bool bMonotone = true;
+	for (double Kn = 20.0; Kn <= 45.0; Kn += 0.5)
+	{
+		const AWaterSurface::FGaleSpray G = AWaterSurface::GaleSprayFor(Kn);
+		bMonotone &= G.Gale + G.Spindrift >= Last;
+		Last = G.Gale + G.Spindrift;
+	}
+	TestTrue(TEXT("It only grows with the wind"), bMonotone);
+	return true;
+}

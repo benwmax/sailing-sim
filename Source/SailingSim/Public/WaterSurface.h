@@ -79,6 +79,12 @@ public:
 	 *  from 300 to 400 m out, faded again from 1100 to 1250 m (under a third of a pixel), and only seen low (from above the
 	 *  flat flecks are right, an upright sprite edge-on): gone as the view's rise passes 0.05 to 0.14 of the distance. */
 	static float FarCapSpriteWeight(double DistM, double HeightM);
+	/** Storm water step 6 (docs/storm-water/gale-streaks/): what a gale tears off the caps, by the sea's mean wind. Gale
+	 *  0..1 fades in from 24 to 32 kn (Beaufort 7; M_WaterV4's streaks fade in alike), Spindrift 0..1 from 33 to 41 kn
+	 *  (Beaufort 8: the crests' edges blow off), Samples the crest points UpdateSpray tries a frame (24, four times that in a
+	 *  full gale). */
+	struct FGaleSpray { int32 Samples = 24; float Gale = 0.f; float Spindrift = 0.f; };
+	static FGaleSpray GaleSprayFor(double MeanKnots);
 	static constexpr double FarCapArea = 1.5;      // m^2: one cap's foam on a lake (a metre or two along the wind)
 	static constexpr double FarCapTileM = 400.0;   // m
 	static constexpr int32 FarCapBudget = 30000;   // slots held at once; past it the caps get fewer and bigger (same cover)
