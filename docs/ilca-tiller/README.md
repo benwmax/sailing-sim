@@ -58,3 +58,8 @@ back.
 `SailingSim.Physics.AirborneTiller` (new) checks that the ILCA is a light boat and the J/22 isn't, and that the ILCA stays
 up at all 16 angles from 100 to 130 deg in a steady 22 kn, with a mean over 11 kn. `LaserPlaningDrag`'s band (three
 capsizes allowed) is unchanged; its comment now records the counts.
+
+## Gate (`scripts/gate.sh --scope boats`, packaged, the Mac)
+
+Pass: 278 tests, every view over its floor on High: beam8 56.7, beat15 52.4, marina 55.6, helm-eye 58.8, slip 48.8,
+crew 46.7.
