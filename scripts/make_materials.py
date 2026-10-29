@@ -2352,6 +2352,30 @@ def build_telltale():
 NUM_LONG = 24  # FWaveField's first eight bands (under AWaterSurface::SplitHz, 3.6 m and longer)
 
 
+LONG_FFT_CASCADES = 8   # docs/long-wave-fft/: one 64^2 cascade per band 0-7 (FLongWaves, ELongWaveLayout::PerBand)
+LONG_FFT_TILE = 66      # each tile in the atlases: 64 texels and a wrapped border either side (AWaterSurface::UpdateLongWaves)
+
+
+def long_fft_terms():
+    """docs/long-wave-fft/ phase 2: the long waves from the FFT sea the physics floats on (FLongWaves), in place of the 24
+    sines when LongP.x is on. Two atlases (AWaterSurface::UpdateLongWaves): LongA = displacement, height, dDx/dy (float);
+    LongB = slopes, dDx/dx, dDy/dy (half), one bordered 64^2 tile per band, already blended to the frame and in the map
+    frame. Each band is scaled by its three sines' energy-weighted sea-map ratio (LongW: their shares of the band) and its
+    slopes and fold kept as the mesh keeps a train of its mean wavenumber (LongC.w) at this spacing, as the sines are."""
+    lines = [f"float4 Q{i} = LongW{i} * S{i} * S{i};" for i in range(NUM_LONG // 4)]
+    width = LONG_FFT_CASCADES * LONG_FFT_TILE
+    for c in range(LONG_FFT_CASCADES):
+        terms = " + ".join(f"Q{i // 4}.{'xyzw'[i % 4]}" for i in range(3 * c, 3 * c + 3))
+        lines.append(
+            f"{{ float2 lq = float2(LongC{c}.x * p.x + LongC{c}.y * p.y, -LongC{c}.y * p.x + LongC{c}.x * p.y) * LongC{c}.z; "
+            f"float2 lf = frac(lq); "
+            f"float2 luv = float2(({c * LONG_FFT_TILE}.0 + 1.5 + lf.y * 64.0) / {width}.0, (1.5 + lf.x * 64.0) / {LONG_FFT_TILE}.0); "
+            f"float4 la = LongA.SampleLevel(LongASampler, luv, 0); float4 lb = LongB.SampleLevel(LongBSampler, luv, 0); "
+            f"float r = sqrt(max({terms}, 0.0)); float a = r * saturate(6.2832 / (LongC{c}.w * spacing) / 4.0 - 1.0); "
+            f"h += r * la.z; d += r * la.xy; lsx += a * lb.x; lsy += a * lb.y; ljxx += a * lb.z; ljyy += a * lb.w; ljxy += a * la.w; }}")
+    return "\n".join(lines)
+
+
 def long_wave_terms():
     """The physics' wave trains longer than 3.6 m (its first eight bands), drawn exactly, with Gerstner choppiness:
     vertices move toward the crests (crests sharpen, troughs flatten); the Jacobian of that map is where crests fold.
@@ -2378,7 +2402,15 @@ float spacing = max(0.5, dist / 64.0);
 float h = 0.0;
 float2 d = float2(0.0, 0.0);
 float lsx = 0.0, lsy = 0.0, ljxx = 1.0, ljyy = 1.0, ljxy = 0.0;
-""" + SEA_ATLAS + sea_amps(NUM_LONG) + long_wave_terms() + """
+""" + SEA_ATLAS + sea_amps(NUM_LONG) + """
+[branch] if (LongP.x > 0.5)
+{
+""" + long_fft_terms() + """
+}
+else
+{
+""" + long_wave_terms() + """
+}
 h *= fade; d *= fade;
 lsx *= fade; lsy *= fade;
 ljxx = lerp(1.0, ljxx, fade); ljyy = lerp(1.0, ljyy, fade); ljxy *= fade;
@@ -3003,7 +3035,8 @@ def build_water_v4():
         + ["OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect",
            "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ"]
     hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
-    wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
+    long_fft = ["LongA", "LongB", "LongP"] + [f"LongC{c}" for c in range(LONG_FFT_CASCADES)] + [f"LongW{i}" for i in range(NUM_LONG // 4)]
+    wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"] + long_fft, unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
                  extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT4)])
     # The player's boat (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D her x/y/z axes in the world. The
     # rest is the main hull's shape for the V7 clip (-SailingClassicHullClip): B/C/D.w sheer z, sheer rise, sheer rise
@@ -3012,6 +3045,15 @@ def build_water_v4():
     defaults = ((0, 0, 0, 0), (1, 0, 0, 0.62), (0, 1, 0, 0.1), (0, 0, 1, 1), (3.45, -3.41, -0.4, 1.22), (3, 0.27, 0, 4),
                 (-0.15, 2.9, 0.4, 0), (1.1, 0.5, 0, 0))
     hull_nodes = {n: vector(mat, n, v, -1800, 3000 + 100 * i) for i, (n, v) in enumerate(zip(hull_clip, defaults))}
+    # docs/long-wave-fft/ phase 2 (-SailingLongWaves=fft): the FFT's atlases, LongParams x = 1 when on; per band its axes'
+    # cos and sin, 1 / tile and mean wavenumber; LongW the sines' shares of their band (a third each until set).
+    connect(tex("LongA", 4300), "", wpo, "LongA")
+    connect(tex("LongB", 4450), "", wpo, "LongB")
+    connect(vector(mat, "LongParams", (0, 0, 0, 0), -2000, 4300), "RGBA", wpo, "LongP")
+    for c in range(LONG_FFT_CASCADES):
+        connect(vector(mat, f"LongC{c}", (1, 0, 0.01, 1), -2200, 4300 + 100 * c), "RGBA", wpo, f"LongC{c}")
+    for i in range(NUM_LONG // 4):
+        connect(vector(mat, f"LongW{i}", (1.0 / 3, 1.0 / 3, 1.0 / 3, 1.0 / 3), -2400, 4300 + 100 * i), "RGBA", wpo, f"LongW{i}")
     for n, v in hull_nodes.items():
         connect(v, "RGBA", wpo, n)
     # FHullClipMap (RGBA: bottom z, sheer z, side margin, end margin, in the boat frame) and its corner x, y and size.
