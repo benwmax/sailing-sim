@@ -348,7 +348,8 @@ namespace Sailing
 		double WaveResistance = 0.0;
 		double WaveSlopeSurge = 0.0;
 		double WaveFoilSurge = 0.0;  // N along the bow: the waves' inertia on the foils and bulb (docs/foil-inertia/)
-		double RudderImmersion = 1.0; // the rudders' wet share of their span, 0 (clear of the water) to 1 (docs/ilca-tiller/)
+		double RudderImmersion = 1.0; // the most immersed rudder's wet share of its span, 0 (clear) to 1 (docs/ilca-tiller/: a
+		                              // cat flying a hull steers on the rudder still in)
 		bool IsStarboardTack() const { return TrueWindAngle > 0.0; }
 
 		FSailStripState MainStrips[kMaxSailStrips];

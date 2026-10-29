@@ -23,6 +23,11 @@ On a boat under `AirborneTillerMassKg` (500 kg: the dinghies and beach cats, whe
 tiller moves at most `AirborneTillerRate` (0.3 of its travel a second) while the rudder is clear. It moves faster as the
 rudder goes back in (the rate over one minus the immersion) and is free once it is under.
 
+**The most immersed rudder.** The first gate failed `SailingSim.Physics.HobieRunGuard` (seed 3, TWA 170: by the lee and
+over). `RudderImmersion` was the mean over the rudders, and a cat flying a hull has her windward rudder in the air, so the
+Hobie read as half clear for long stretches and her run guard steered slowly. The helm steers with whichever rudder is in
+the water, so the telemetry is now the most immersed rudder's.
+
 **Why only light boats.** I first applied it to every boat. A keelboat's rudder never comes clear, but it is never quite
 fully under either, so the limit nibbled at the J/22: her 6 and 15 kn tack scenarios moved by 0.1 s, and three polar
 points moved. Freeing the tiller from 30, 45 or 60% immersed left the J/22 byte-identical but brought the ILCA's 116 deg
@@ -45,8 +50,8 @@ back.
 - The J/22: `scripts/polar.sh` and `--scenarios` are byte-identical to main.
 - The ILCA's, Sunfish's and Hobie 16's polars (`--boat`) are byte-identical too.
 - `scripts/reference-checks.sh --quick`: all 48 in range, as on main. The ILCA's 22 kn reach check heels to 41.7 deg
-  (21.6 on main; its band is 0-70). The capsize and righting checks move by under 0.2 s or 0.2 deg, and the Hobie's
-  12+ kn lap from 0.85 to 0.86.
+  (21.6 on main; its band is 0-70). The dinghies' capsize and righting checks move by under 0.2 s or 0.2 deg. The Hobie's
+  tacking angle and laps are unchanged.
 
 ## Tests
 
