@@ -73,3 +73,8 @@ is seeded, so as predictable as the sea).
 - the maxi's seeds 1 and 14 are step for step unchanged.
 
 `GaleTack` and `GaleTackTiming` pass unchanged.
+
+## Gate (`scripts/gate.sh --scope boats`, packaged, the Mac)
+
+Pass: 281 tests, every view over its floor on High: beam8 56.3, beat15 52.3, marina 54.8, helm-eye 59.1, slip 49.0,
+crew 46.8.
