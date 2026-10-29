@@ -519,6 +519,7 @@ public:
 	/** Whether the trimmer holds the working jib sheet's tail (the rig lines run it into their hand), for the tests. */
 	bool IsJibTailHeld() const { return JibGripCm.IsSet(); }
 	const UProceduralMeshComponent* GetSailMesh(int32 Sail) const { return Sail == 0 ? MainSail.Get() : Sail == 1 ? JibSail.Get() : SpinSail.Get(); }
+	const FSailCloth& GetSailCloth(int32 Sail) const { return Sail == 0 ? MainCloth : Sail == 1 ? JibCloth : SpinCloth; }
 	/** Crew C5: the crew's falls (CrewFalls.h), for the tests and the stills. */
 	const FCrewFalls& GetCrewFalls() const { return CrewFalls; }
 	bool HasCrewFalls() const { return bCrewFalls; }

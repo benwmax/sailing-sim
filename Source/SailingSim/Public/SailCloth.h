@@ -97,13 +97,13 @@ public:
 	void Init(const Sailing::FSailGeometry& Geo, ESailKind Kind);
 
 	/** Forgets the cloth's motion: the next Step starts again from the target shape (the boat was reset or moved). */
-	void Reset() { bStarted = false; Accumulator = 0.f; }
+	void Reset() { bStarted = false; Accumulator = 0.f; bClearCached = false; }
 
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
 
 	/** The wires this sail keeps clear of from the next Step (the pawn's shrouds and spreaders). */
-	void SetObstacles(const TArray<FSailObstacle>& In) { Obstacles = In; }
+	void SetObstacles(const TArray<FSailObstacle>& In);
 	/** How far the main's foot was turned to keep clear (radians about the boat's Z, + = from X toward Y): the boom is
 	 *  drawn turned with it (stopped at the shroud). */
 	float GetFootTurn() const { return FootTurn; }
@@ -148,6 +148,22 @@ private:
 	float FootTurn = 0.f;
 	float MainTurn = 0.f;  // the main's turn off the wires, eased (KeepClear)
 	float TurnDt = 0.f;
+	/**
+	 * docs/sail-clear-cache/: the target's clearance, kept. KeepClear on the target is the same work frame after frame while
+	 * the sail holds its shape (0.26 ms of game thread on the PC's Ultra), so its result is kept: each vertex's offset and
+	 * the foot's turn, from the target it was worked out on (ClearFrom). A frame whose target is within 1 cm of it everywhere takes the kept offset; the clearance is worked out again when it isn't, kClearMaxAge after the last, while
+	 * the main's turn is still easing, and when the wires change (SetObstacles) or the cloth resets.
+	 */
+	void KeepClearTarget(float Dt);
+	TArray<FVector> ClearFrom, ClearOffset;
+	float ClearFootTurn = 0.f, ClearAge = 0.f;
+	bool bClearCached = false, bClearEasing = false;
+	int32 ClearComputes = 0, ClearReuses = 0;
+public:
+	/** How often the target's clearance was worked out and how often it was reused (for the tests). */
+	int32 GetClearComputes() const { return ClearComputes; }
+	int32 GetClearReuses() const { return ClearReuses; }
+private:
 
 	Sailing::FSailGeometry Geo;
 	ESailKind Kind = ESailKind::Main;
