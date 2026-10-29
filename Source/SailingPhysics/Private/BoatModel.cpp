@@ -646,6 +646,7 @@ namespace Sailing
 		if (ColumnMeanVolume.size() != Columns.size()) { ColumnMeanVolume.assign(Columns.size(), 0.0); bColumnMeanFresh = true; }
 		ColumnWater.resize(Columns.size());
 		double SlopeSurge = 0.0, CalmDrag = 0.0, WaveDrag = 0.0, WaveFoilSurge = 0.0; // telemetry (docs/wave-physics/, docs/foil-inertia/)
+		double RudderWet = -1.0; // telemetry: the most immersed rudder's wet share (docs/ilca-tiller/)
 		const Vec3 Axis = Q.Up();
 		const bool bUpright = Axis.Z >= 0.0;
 		// First the water at each column's low end (the bottom when upright, the deck when inverted), and per hull the
@@ -947,6 +948,7 @@ namespace Sailing
 						P.Center.Z += 0.5 * (1.0 - Board) * Span;
 					}
 					const double Wet = Immersion(P);
+					if (bRudder) RudderWet = std::max(RudderWet, Wet);
 					if (Wet <= 0.0) continue;
 					if (bOrbitalFlow && C.WaveFoilInertiaScale != 0.0)
 					{
@@ -1262,6 +1264,7 @@ namespace Sailing
 		T.WaveResistance = WaveDrag;
 		T.WaveSlopeSurge = SlopeSurge;
 		T.WaveFoilSurge = WaveFoilSurge;
+		T.RudderImmersion = RudderWet >= 0.0 ? RudderWet : 1.0;
 		bool bAnyPlaning = false;
 		for (const FHullShape& Hull : C.Hulls) bAnyPlaning |= Hull.PlaningLift > 0.0;
 		T.bPlaning = (bAnyPlaning || C.bMultihull) && MaxFroude > 0.65 && HeelAbs < 40.0 * kDegToRad;

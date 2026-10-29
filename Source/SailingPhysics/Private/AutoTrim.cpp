@@ -345,6 +345,22 @@ namespace Sailing
 			const double AwaySign = -RunSide; // wind from port (Side -1): bow to starboard (+) bears away
 			if (Tiller * AwaySign > RunBearAwayMax) Tiller = AwaySign * RunBearAwayMax;
 		}
+		// docs/ilca-tiller/: a light boat's rudder clear of the water (over a crest, the bow buried): the helm, the tiller in the
+		// hand, feels nothing through it and holds it about where it was. A helm left to chase the yaw wound it to the stop,
+		// and the rudder landed hard over and threw the ILCA into a crash gybe. The tiller moves at most AirborneTillerRate a
+		// second with the rudder clear, faster as it goes back in, free once it is under. Boats under AirborneTillerMassKg
+		// (dinghies and beach cats); a keelboat's deep rudder never comes clear, but it is never quite fully under either,
+		// and the limit nibbled at the J/22's tacks.
+		if (Boat.TotalMass() < AirborneTillerMassKg)
+		{
+			const double Wet = Clamp(T.RudderImmersion, 0.0, 1.0);
+			if (LastTiller > -9.0 && Wet < 1.0 && Since > 0.0)
+			{
+				const double Step = AirborneTillerRate / std::max(1.0 - Wet, 1e-3) * Since;
+				Tiller = Clamp(Tiller, LastTiller - Step, LastTiller + Step);
+			}
+		}
+		LastTiller = Tiller;
 		return Tiller;
 	}
 
