@@ -948,6 +948,9 @@ void ASailboatPawn::ApplyDifficulty()
 	EasyAssists = FEasyAssists::For(Boat.GetConfig(), bEasy);
 	EasyAssists.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
 	EasyAssists.ApplyTo(TrimAssist.Settings);
+	// docs/j22-crew-tack/: her crew hold the main through a tack the player calls on the helm (keelboats only, FAutoTrim
+	// decides), in either mode; not on traffic boats, the ghost or in a measured run (benches and captures sail as before).
+	TrimAssist.Settings.bCrewTacks = !bTrafficBoat && !bGhost && !USailingSettings::IsMeasuring();
 	EasyHelm.Reset();
 	// Prologue step 3: a scene's assisted limits (the maxi never capsizes or broaches in the mistral); never in normal
 	// sailing, on traffic boats or the ghost.

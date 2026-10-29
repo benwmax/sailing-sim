@@ -39,21 +39,16 @@ namespace Sailing
 		double CreepDegPerSecond = 1.0; // below the dead band
 		double HeelDeadBandDeg = 1.0;  // a keelboat crew eases past the heel limit plus this, trims back below it minus this
 		/**
-		 * docs/j22-crew-tack/: the crew work a tack the helm calls (a monohull keelboat's, off by default: the pawn turns it on
-		 * for the player's boat). The tiller put over to windward close-hauled is the call: the main is held through head to
-		 * wind and the old jib sheet kept, so the jib backs as the bow comes through, until CrewTackBackDeg past the wind;
-		 * then the old tack's trim goes across (the main where it was, the traveller to the new leeward side, the new jib
-		 * sheet to the old one's mark), eased further for heel but never trimmed harder, until she is back to
-		 * CrewTackSpeedShare of her speed before the call (or CrewTackHoldSeconds), and the hands trim from there.
+		 * docs/j22-crew-tack/: a keelboat crew hold the main through a tack the helm calls (monohull keelboats; off by default,
+		 * the pawn turns it on for the player's boat). The call is the tiller held over to windward (past 0.5) for
+		 * CrewTackCallSeconds while she comes up CrewTackCallDeg from where it went over (a luff in a puff is let go sooner);
+		 * the main is then held as bHoldMain holds it until she is CrewTackThroughDeg past head to wind, or the helm lets go
+		 * before she is through. No backed jib and no carried-over trim: on the J/22 both cost her speed at every wind.
 		 */
 		bool bCrewTacks = false;
-		double CrewTackBackDeg = 15.0;
 		double CrewTackCallSeconds = 0.6;
 		double CrewTackCallDeg = 8.0;
-		bool bCrewTackHold = true;  // EXPERIMENT
-		bool bCrewTackBack = true;  // EXPERIMENT
-		double CrewTackSpeedShare = 0.8;
-		double CrewTackHoldSeconds = 8.0;
+		double CrewTackThroughDeg = 15.0;
 	};
 
 	/**
@@ -78,10 +73,10 @@ namespace Sailing
 		/** Deliberate adjustments the hands have started (moves past the dead band, not the creep), for the tests. */
 		int GetAdjustments() const { return Adjustments; }
 
-		/** In the crew's tack (Settings.bCrewTacks): 1 from the call to the bow through, 2 the old trim held after (for the tests). */
-		int GetCrewTack() const { return CrewTack; }
+		/** The crew's tack (Settings.bCrewTacks): true while they hold the main through a called tack (for the tests). */
+		bool IsHoldingForTack() const { return CrewTack == 2; }
 
-		void Reset() { CrewTack = 0; UpwindSpeed = -1.0; MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
+		void Reset() { CrewTack = 0; MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
 
 	private:
 		double MainEase = 0.0; // rad, extra ease from heel feedback
@@ -96,10 +91,10 @@ namespace Sailing
 		FHand MainHand, TravelerHand, JibHand;
 		// Each sail's foot angle as the trimmer sees it (rad): its angle of attack over ReactionSeconds, not each roll.
 		double MainFootSeen = 0.0, JibFootSeen = 0.0;
-		// The crew's tack (Settings.bCrewTacks): 0 none, 3 the helm over (not yet a tack), 1 called (main held, old jib sheet kept), 2 through (the old
-		// tack's trim held on the new side); the side she tacks from, the time in the phase, her trim and speed at the call.
+		// The crew's tack (Settings.bCrewTacks): 0 none, 1 the helm over (not yet a call), 2 called (the main held); the side
+		// she tacks from, the time since the helm went over, and her true wind angle then.
 		int CrewTack = 0;
-		double CrewTackSide = 0.0, CrewTackTime = 0.0, CrewTackFromDeg = 0.0, CrewMain = 0.0, CrewTraveler = 0.0, CrewJib = 0.0, CrewSpeed = 0.0, UpwindSpeed = -1.0;
+		double CrewTackSide = 0.0, CrewTackTime = 0.0, CrewTackFromDeg = 0.0;
 		double ReactionNow = 1.5, DeadBandNow = 2.0, RestNow = 1.5; // this step's (light air to a breeze)
 		bool bHandsNow = true;
 		mutable int Adjustments = 0;

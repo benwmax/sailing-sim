@@ -55,53 +55,35 @@ namespace Sailing
 		DeadBandNow = Lerp(Set.LightDeadBandDeg, Set.DeadBandDeg, Breeze);
 		RestNow = bInHand ? 0.0 : Set.RestSeconds * Breeze;
 
-		// docs/j22-crew-tack/: the crew's tack, called by the helm's tiller put over to windward close-hauled.
+		// docs/j22-crew-tack/: the helm calls a tack by holding the tiller over to windward while she comes up; the crew hold
+		// the main from the call until she is through the wind.
 		{
 			const double TwaDeg = T.TrueWindAngle * kRadToDeg, Side = TwaDeg >= 0.0 ? 1.0 : -1.0;
 			const bool bKeelboat = Cfg.DinghyEasePerHeelDeg <= 0.0 && !Cfg.bMultihull && Cfg.HasJib();
-			if (CrewTack == 0 && std::fabs(TwaDeg) < 70.0 && T.ForwardSpeed > 0.0)
-				UpwindSpeed = UpwindSpeed < 0.0 ? T.ForwardSpeed : UpwindSpeed + (T.ForwardSpeed - UpwindSpeed) * std::min(Dt / 10.0, 1.0);
 			if (!Set.bCrewTacks || !bKeelboat) CrewTack = 0;
-			else if (CrewTack == 0 && std::fabs(TwaDeg) < 70.0 && Current.Tiller * Side > 0.5)
+			else if (CrewTack == 0)
 			{
-				// The helm over to windward: a tack, or only a luff in a puff. Called once it has been held CrewTackCallSeconds
-				// and she has come up CrewTackCallDeg (3: armed).
-				CrewTack = 3;
-				CrewTackSide = Side;
-				CrewTackTime = 0.0;
-				CrewTackFromDeg = std::fabs(TwaDeg);
-				CrewMain = Current.MainSheet;
-				CrewTraveler = Current.Traveler;
-				CrewJib = Current.JibSheet;
-				CrewSpeed = std::max(UpwindSpeed, 0.0);
+				if (std::fabs(TwaDeg) < 70.0 && Current.Tiller * Side > 0.5)
+				{
+					CrewTack = 1;
+					CrewTackSide = Side;
+					CrewTackTime = 0.0;
+					CrewTackFromDeg = std::fabs(TwaDeg);
+				}
 			}
-			else if (CrewTack != 0)
+			else
 			{
 				CrewTackTime += Dt;
-				const double Through = -TwaDeg * CrewTackSide; // degrees past head to wind on the new side
-				if (CrewTack == 3)
-				{
-					if (Current.Tiller * CrewTackSide < 0.3 || Through < -70.0) CrewTack = 0;
-					else if (CrewTackTime >= Set.CrewTackCallSeconds && CrewTackFromDeg + Through >= Set.CrewTackCallDeg) { CrewTack = 1; CrewTackTime = 0.0; }
-				}
-				// The helm let go of the tack before she was through: the main goes back to the hands.
-				else if (CrewTack == 1 && Through < 0.0 && Current.Tiller * CrewTackSide < 0.3) { CrewTack = 0; Out.bBackJib = false; }
-				else if (CrewTack == 1 && Through >= Set.CrewTackBackDeg) { CrewTack = 2; CrewTackTime = 0.0; }
-				// Bore away again on the old tack, or hung in the wind: the tack is off.
-				else if (CrewTack == 1 && (CrewTackTime > 15.0 || (CrewTackTime > 3.0 && Through < -60.0)))
-				{
+				const double Up = CrewTackFromDeg + TwaDeg * -CrewTackSide; // degrees she has come up since the helm went over
+				const bool bLetGo = Current.Tiller * CrewTackSide < 0.3;
+				if (CrewTack == 1 && (bLetGo || Up < -20.0)) CrewTack = 0;
+				else if (CrewTack == 1 && CrewTackTime >= Set.CrewTackCallSeconds && Up >= Set.CrewTackCallDeg) CrewTack = 2;
+				// Through the wind, or the helm let go before she was: the main goes back to the hands.
+				else if (CrewTack == 2 && (Up - CrewTackFromDeg >= Set.CrewTackThroughDeg || (bLetGo && Up < CrewTackFromDeg) || CrewTackTime > 20.0))
 					CrewTack = 0;
-					Out.bBackJib = false;
-				}
-				else if (CrewTack == 2 && (T.ForwardSpeed >= Set.CrewTackSpeedShare * CrewSpeed || CrewTackTime > Set.CrewTackHoldSeconds))
-				{
-					// The hands take over from the trim they were holding, seeing the new tack's sails afresh.
-					CrewTack = 0;
-					bMainSeen = bJibSeen = false;
-				}
 			}
 		}
-		const bool bHold = bHoldMain || (CrewTack == 1 && Set.bCrewTackHold);
+		const bool bHold = bHoldMain || CrewTack == 2;
 
 		// Angle each sail's foot should sit at: apparent wind angle minus twist minus the target angle of attack, averaged over strips.
 		auto FootAngleFor = [&](const FSailStripState* Strips, int N, double FootAngleNow)
@@ -258,20 +240,6 @@ namespace Sailing
 			// 1.4 s; the same once the lines were off, drifting or backing out at under a knot.
 			const bool bNoWay = std::fabs(T.SpeedThroughWater) < 0.8 * kKnot && std::fabs(T.Heel) < 8.0 * kDegToRad;
 			if (!Boat.GetMooringLines().empty() || bNoWay) Out.Hike = MoveToward(Current.Hike, -0.5, HikeRate * Dt);
-		}
-		if (CrewTack == 1)
-		{
-			// The old jib sheet kept until the bow is through: past head to wind the jib is aback and pushes her round.
-			Out.JibSheet = Current.JibSheet;
-			Out.bBackJib = Set.bCrewTackBack && -T.TrueWindAngle * CrewTackSide > 0.0;
-		}
-		else if (CrewTack == 2)
-		{
-			// The old tack's trim on the new side, eased for heel but never trimmed harder, until she has her speed back.
-			Out.bBackJib = false;
-			Out.MainSheet = std::max(Out.MainSheet, CrewMain);
-			Out.Traveler = std::max(Out.Traveler, CrewTraveler);
-			Out.JibSheet = std::max(Out.JibSheet, CrewJib);
 		}
 		return Out;
 	}
