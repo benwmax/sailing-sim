@@ -1768,10 +1768,17 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 			// Spindrift: a sheet of mist torn off the crest, carried at most of the wind's speed, low over the water.
 			if (Gale.Spindrift > 0.f && SprayRng.FRand() < Gale.Spindrift)
 			{
+				// (Each seeded draw its own const: the order of draws inside one expression differs between compilers.)
 				const FVector P(X, Y, H + 0.25);
-				const FVector V = WindAt2m * SprayRng.FRandRange(0.6f, 0.85f) + FVector(0, 0, SprayRng.FRandRange(0.1f, 0.5f));
-				Emit(P, V, SprayRng.FRandRange(1.2f, 2.4f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 3.f));
-				Emit(P, V * 0.9f, SprayRng.FRandRange(0.4f, 0.8f), ESprayKind::Sheet, SprayRng.FRandRange(0.3f, 0.6f));
+				const float Carry = SprayRng.FRandRange(0.6f, 0.85f);
+				const float Lift = SprayRng.FRandRange(0.1f, 0.5f);
+				const FVector V = WindAt2m * Carry + FVector(0, 0, Lift);
+				const float MistSize = SprayRng.FRandRange(1.2f, 2.4f);
+				const float MistLife = SprayRng.FRandRange(1.5f, 3.f);
+				Emit(P, V, MistSize, ESprayKind::Mist, MistLife);
+				const float SheetSize = SprayRng.FRandRange(0.4f, 0.8f);
+				const float SheetLife = SprayRng.FRandRange(0.3f, 0.6f);
+				Emit(P, V * 0.9f, SheetSize, ESprayKind::Sheet, SheetLife);
 			}
 		}
 	}
