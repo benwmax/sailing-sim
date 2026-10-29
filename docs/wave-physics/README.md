@@ -182,12 +182,10 @@ game's fine turbulence (`Wind.mann`), as the module does; without it the gale's 
 
 ## Known gaps
 
-- **Keels and rudders meet the water as if it were still.** Foils get no orbital flow and no wave inertia. In a beam sea
-  the sideways push shoves the hull while the keel holds, and she sculls herself along: the J/22 adrift beam-on to a 1.2 m
-  swell, no wind, creeps at 1.3 kn (0.25 to 0.7 before, from the same keel flapping as she rolls). I tried giving the
-  hulls and foils the waves' orbital velocity (two more FFTs per ocean cascade). It made the keel scull harder
-  (0.85-1.4 kn), because the foils still have no added-mass forces. Next: orbital flow plus Morison inertia on the foils.
-  Then the push can surf the hull on the orbits too (near a crest the water runs with her and drag falls).
+- ~~**Keels and rudders meet the water as if it were still.**~~ Closed. Adrift beam-on to a 1.2 m swell, the J/22's keel
+  sculled her along at 1.3 kn here. Since then the hull, keel and rudder meet the waves' orbital flow (`docs/surfing/`,
+  #347), the foils and bulb take the waves' inertia (Morison: `docs/foil-inertia/`, #353), and the foils' lift lags the
+  angle of attack (Wagner: `docs/foil-lag/`).
 - **No wave technique.** The crew hold their course: no steering down a face, no pumping. Dinghies lock onto the lake's
   chop downwind (above). The chop in the model may also be more long-crested than a real lake's.
 - **Big head seas.** The maxi's mean push beating in the gale is -1.3 kN (the time she spends climbing faces at
