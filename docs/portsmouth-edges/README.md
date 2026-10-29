@@ -75,3 +75,8 @@ hull). A smaller one isn't justified by her geometry.
 So the Sunfish is unchanged. Her speed rises too steeply with the wind for either knob: 10% slow at 6 kn, 15% fast at 15.
 That looks like her hull's light-air drag (friction, `WettedAreaCoef` 3.2) rather than her rig. That knob wasn't in this
 round's scope.
+
+## Gate (`scripts/gate.sh --scope boats`, packaged, the Mac)
+
+Pass: 281 tests, every view over its floor on High: beam8 55.4, beat15 51.2, marina 54.4, helm-eye 57.6, slip 47.9,
+crew 45.8. No game behaviour changed: `ManeuverLossSeconds` is called by nothing in the game or the tests.
