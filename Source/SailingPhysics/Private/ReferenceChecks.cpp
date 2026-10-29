@@ -100,6 +100,55 @@ namespace Sailing
 		}
 	}
 
+	double ManeuverLossSeconds(const FBoatConfig& Config, double TrueWindKnots, bool bTack)
+	{
+		const FVmgResult Best = bTack ? BestUpwind(Config, TrueWindKnots) : BestDownwind(Config, TrueWindKnots);
+		const double Twa = Best.TwaDeg;
+		FWindParams WindParams;
+		WindParams.SpeedKnots = TrueWindKnots;
+		const FWindField Wind(WindParams);
+		FWaveField Waves(7);
+		FWaveParams WaveParams;
+		WaveParams.WindSpeedKnots = TrueWindKnots;
+		WaveParams.FetchMeters = kPolarFetchMeters;
+		WaveParams.bCalibrationSea = true;
+		Waves.SetWind(WaveParams);
+		Waves.SnapToTarget();
+		FBoatModel Boat(Config);
+		Boat.Reset(0.0, 0.0, -Twa * kDegToRad, 0.6 * TrueWindKnots * kKnot);
+		Boat.GetMutableState().WindwardSide = 1;
+		Boat.GetMutableState().CrewOffset = Config.CrewSitOut;
+		FAutopilot Pilot;
+		Pilot.TargetTWADeg = Twa;
+		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = Clamp(Twa / 180.0, 0.0, 1.0);
+		C.Hike = Clamp((TrueWindKnots - 6.0) / 6.0, 0.0, 1.0) * (1.0 - SmoothStep(95.0, 115.0, Twa));
+		// Progress along the wind: up it beating (+X, the wind is from the north), down it running.
+		const double Along = bTack ? 1.0 : -1.0;
+		auto Run = [&](double Seconds)
+		{
+			for (int I = 0; I < int(Seconds * PhysicsHz); ++I)
+			{
+				C = Trim.Update(Boat, C, PhysicsDt);
+				C.Tiller = Pilot.Update(Boat);
+				Boat.Step(PhysicsDt, C, Wind, &Waves);
+			}
+		};
+		Run(30.0);
+		const double X0 = Boat.GetState().Position.X;
+		Run(10.0);
+		const double Vmg = Along * (Boat.GetState().Position.X - X0) / 10.0;
+		const double X1 = Boat.GetState().Position.X;
+		Pilot.TargetTWADeg = -Twa;
+		Pilot.MaxTiller = 0.8;
+		Pilot.bKeepShortOfStall = false;
+		Run(40.0);
+		const double Progress = Along * (Boat.GetState().Position.X - X1);
+		return Vmg > 0.05 ? 40.0 - Progress / Vmg : 40.0;
+	}
+
 	FVmgResult BestUpwind(const FBoatConfig& Config, double TrueWindKnots)
 	{
 		// VMG is flat near its best angle, so the single best sample jumps about with noise: fit a parabola through the

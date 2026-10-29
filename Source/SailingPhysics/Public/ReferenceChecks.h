@@ -28,6 +28,13 @@ namespace Sailing
 	struct FVmgResult { double TwaDeg = 0.0, SpeedKnots = 0.0, VmgKnots = 0.0, HeelDeg = 0.0; };
 	SAILINGPHYSICS_API FVmgResult BestUpwind(const FBoatConfig& Config, double TrueWindKnots);
 	SAILINGPHYSICS_API FVmgResult BestDownwind(const FBoatConfig& Config, double TrueWindKnots);
+	/**
+	 * docs/portsmouth-edges/: what a tack (or a gybe) costs, in seconds of the leg: she sails her best VMG angle as the polar
+	 * crew sail it (autopilot, ideal trim, the calibration sea), then the autopilot takes her onto the other tack (or gybe)
+	 * with the tiller to 0.8 as RunTack does. The loss is the 40 s after the helm goes over less the time her progress along
+	 * the wind over them takes at her steady VMG (the 10 s before).
+	 */
+	SAILINGPHYSICS_API double ManeuverLossSeconds(const FBoatConfig& Config, double TrueWindKnots, bool bTack);
 
 	/** Free roll decay at rest in still water from a small heel: the natural roll period (s). */
 	SAILINGPHYSICS_API double RollPeriodSeconds(const FBoatConfig& Config, double StartHeelDeg = 8.0);
