@@ -43,3 +43,26 @@ Portsmouth ratios go out. No published wetted surface for a Sunfish was found to
   (the board's and rudder's positions, her `HeelYawCoef`) might be what tilts her slope.
 - **Her reference.** It is an estimate (the ILCA's polar times their Portsmouth ratio, 0.85 at 120 deg and beyond), not a
   measured Sunfish. The slope may be partly the reference's.
+
+## Her yaw balance against a real Sunfish (Oct 29 2026)
+
+Checked her geometry (`Fleet.cpp`, `Sunfish()`) against the class drawing. Her hull runs from x = 2.10 m (bow) to -2.09 m
+(transom), 4.19 m:
+
+| | The model | A real Sunfish | |
+|---|---|---|---|
+| Daggerboard | centre 1.55 m aft of the bow, chord 0.24 m: leading edge 1.43 m aft | the well about 1.4 m aft of the bow on a 4.2 m hull | right |
+| Board area | 0.17 m² | a 37 by 12 in board, about 0.6 m of it under the hull | right |
+| Rudder | transom-hung at x = -2.15 m, 0.08 m² | transom-hung | right |
+| Mast | 0.85 m aft of the bow | the mast step a little under 1 m aft of the bow | right |
+| Lateen | boom 0.55 m over the water, yard raked far aft | the boom low, the yard raked aft | right |
+| Centre of effort | about 0.3 m aft of x = 0 (the four corners' mean: tack 1.9, clew -1.7, head -0.6 and -0.85) | aft of the board | right: weather helm |
+
+She has weather helm, as sailors report: her rudder at the beat is 2.4 deg at 6 kn, 2.7 at 10 and 2.6 at 15 (her
+polar's rudder column). What she lacks is the feel of it. Her tiller load in the polar is 1 to 4 N, where sailors call a
+Sunfish's helm noticeably heavy (eased by raking the board aft). That is `HelmStiffness` and the helm's feel, not her
+geometry. More weather helm wouldn't help her speed: the laminar run above showed that a heavier helm slows her beat.
+
+So her geometry is already right. Only tuning would move her slope, and per the brief nothing is changed. What remains is
+the residuary table (the `LaserPlaningDrag` premise) and her reference polar itself (an estimate scaled from the ILCA by
+Portsmouth).
