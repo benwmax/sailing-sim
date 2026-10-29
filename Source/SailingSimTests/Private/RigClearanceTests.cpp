@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "CrewPose.h"
 #include "SailboatPawn.h"
+#include "SailingSettings.h"
 #include "SailCloth.h"
 #include "WaterSurface.h"
 #include "SailingSim.h"
@@ -330,6 +331,154 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 		AddError(FString::Printf(TEXT("%s (%d samples)%s"), *F.Key, F.Value, Where.Contains(F.Key) ? *(TEXT("; first ") + Where[F.Key]) : TEXT("")));
 	}
 
+	World->EndPlay(EEndPlayReason::Quit);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+/**
+ * docs/sail-shrouds/: a running main lies on its shrouds and spreaders and never through them. Every boat with a rig,
+ * both gybes at TWA 150, 165 and 175 in 8, 15 and 25 kn, three samples each (54 a boat), on Medium (the cloth) and High
+ * (its wrinkles too): a shroud's or spreader's centreline through the main's drawn cloth, or its surface on it (within
+ * its radius and 3 mm), away from its luff (column 2 and aft) and its head (below the last three rows), the wire's last
+ * 12 cm at its fittings left out; the luff's columns are counted and listed. With FSailCloth::KeepClear off for the main
+ * the same run finds 25 samples (the Catalina 22's and 30's upper shrouds at 25 kn, the Corsair's lower one), so it sees
+ * them; on main 84dc2f4b with it on, none.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSailShroudsTest, "SailingSim.Visual.SailShrouds", RigClearanceFlags)
+bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingSailShroudsWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	World->GetWorldSettings()->NotifyBeginPlay();
+	World->SpawnActor<AWaterSurface>(FVector(0.f, 0.f, 0.f), FRotator::ZeroRotator);
+	ASailboatPawn* Pawn = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+	if (!TestNotNull(TEXT("Boat spawns"), Pawn))
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+		return false;
+	}
+	auto Tick = [&](int32 Frames)
+	{
+		for (int32 F = 0; F < Frames; ++F)
+		{
+			++GFrameCounter;
+			World->Tick(LEVELTICK_All, 1.f / 30.f);
+		}
+	};
+	int32 Total = 0;
+	// Medium (the cloth) and High (its wrinkles on the render grid as well).
+	const ESailingQuality WasQuality = USailingSettings::Get()->Quality;
+	for (const ESailingQuality Tier : { ESailingQuality::Medium, ESailingQuality::High })
+	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
+	{
+		USailingSettings::Get()->Quality = Tier;
+		Pawn->SetBoat(Type);
+		Tick(2);
+		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(Pawn->GetBoatModel().GetConfig().Type));
+		int32 Samples = 0, Hit = 0, HitLuff = 0, Poke = 0, PokeLuff = 0;
+		FString First, FirstPoke;
+		bool bRig = false;
+		for (const double Knots : { 8.0, 15.0, 25.0 })
+			for (const double Twa : { 150.0, -150.0, 165.0, -165.0, 175.0, -175.0 })
+			{
+				Pawn->HoldForTests(Twa, Knots);
+				Tick(8 * 30);
+				for (int32 Sample = 0; Sample < 3; ++Sample)
+				{
+					Tick(15);
+					const UProceduralMeshComponent* Mesh = Pawn->GetSailMesh(0);
+					if (!Mesh || !Mesh->IsVisible() || Mesh->GetNumSections() == 0) continue;
+					const FProcMeshSection* Sec = const_cast<UProceduralMeshComponent*>(Mesh)->GetProcMeshSection(0);
+					if (!Sec || !Sec->bSectionVisible || Sec->ProcIndexBuffer.Num() < 3) continue;
+					const FTransform Root = Pawn->BoatRoot->GetComponentTransform();
+					const FTransform ToRoot = Mesh->GetComponentTransform().GetRelativeTransform(Root);
+					TArray<FVector> V;
+					for (const FProcMeshVertex& X : Sec->ProcVertexBuffer) V.Add(ToRoot.TransformPosition(X.Position));
+					const TArray<uint32>& Ix = Sec->ProcIndexBuffer;
+					++Samples;
+					bool bAny = false, bAnyLuff = false, bPoke = false, bPokeLuff = false;
+					// The wire's surface on or through the cloth: a point along it within its radius and 3 mm of a cloth triangle,
+					// the wire's last 12 cm left out.
+					auto PointTri = [](const FVector& P, const FVector& A, const FVector& B, const FVector& C)
+					{
+						return FVector::Dist(P, FMath::ClosestPointOnTriangleToPoint(P, A, B, C));
+					};
+					for (const ASailboatPawn::FRigLineSample& L : Pawn->GetRigLineSamples())
+					{
+						const FString What = L.Name;
+						if (!What.Contains(TEXT("shroud")) && What != TEXT("spreader")) continue;
+						bRig = true;
+						const double Len = FVector::Dist(L.A, L.B);
+						if (Len < 5.0) continue;
+						constexpr int32 NumU = 24;
+						for (int32 K = 0; K < NumU && !bAny; ++K)
+						{
+							const double U0 = double(K) / NumU, U1 = double(K + 1) / NumU;
+							const FVector P0 = LinePoint(L, U0), P1 = LinePoint(L, U1);
+							for (int32 T = 0; T + 2 < Ix.Num() && !bAny; T += 3)
+							{
+								const double H = SegmentHitsTriangle(P0, P1, V[Ix[T]], V[Ix[T + 1]], V[Ix[T + 2]]);
+								if (H < 0.0) continue;
+								const double U = FMath::Lerp(U0, U1, H);
+								if (FMath::Min(U, 1.0 - U) * Len < 12.0) continue;
+								const int32 Row = int32(Ix[T]) / FSailCloth::Cols, Col = int32(Ix[T]) % FSailCloth::Cols;
+								if (Row >= FSailCloth::Rows - 3) continue;
+								if (Col < 2) { bAnyLuff = true; continue; }
+								bAny = true;
+								if (First.IsEmpty())
+								{
+									const FVector P = FMath::Lerp(P0, P1, H);
+									First = FString::Printf(TEXT("%s at (%.0f, %.0f, %.0f), row %d, column %d, %.0f kn, TWA %.0f, boom %.0f"), *What, P.X, P.Y, P.Z, Row, Col, Knots, Twa,
+										FMath::RadiansToDegrees(Pawn->GetBoatModel().GetState().BoomAngle));
+								}
+							}
+						}
+						// The surface: every 2 cm along the wire, against the triangles in reach.
+						const int32 NumP = FMath::Clamp(int32(Len / 2.0), 2, 600);
+						for (int32 K = 1; K < NumP && !(bPoke && bPokeLuff); ++K)
+						{
+							const double U = double(K) / NumP;
+							if (FMath::Min(U, 1.0 - U) * Len < 12.0) continue;
+							const FVector P = LinePoint(L, U);
+							const double Reach = L.RadiusCm + 0.3; // touching (within 3 mm of its surface) or through
+							for (int32 T = 0; T + 2 < Ix.Num(); T += 3)
+							{
+								const FVector& A = V[Ix[T]];
+								if (FMath::Abs(A.Z - P.Z) > 60.0 || FMath::Abs(A.X - P.X) > 60.0 || FMath::Abs(A.Y - P.Y) > 60.0) continue;
+								if (PointTri(P, A, V[Ix[T + 1]], V[Ix[T + 2]]) >= Reach) continue;
+								const int32 Row = int32(Ix[T]) / FSailCloth::Cols, Col = int32(Ix[T]) % FSailCloth::Cols;
+								if (Row >= FSailCloth::Rows - 3) continue;
+								if (Col < 2) bPokeLuff = true;
+								else
+								{
+									if (!bPoke && FirstPoke.IsEmpty())
+										FirstPoke = FString::Printf(TEXT("%s at (%.0f, %.0f, %.0f), row %d, column %d, %.0f kn, TWA %.0f"), *What, P.X, P.Y, P.Z, Row, Col, Knots, Twa);
+									bPoke = true;
+								}
+								break;
+							}
+						}
+					}
+					Hit += bAny;
+					HitLuff += bAnyLuff;
+					Poke += bPoke;
+					PokeLuff += bPokeLuff;
+				}
+			}
+		if (!bRig) continue;
+		Total += Hit + Poke;
+		AddInfo(FString::Printf(TEXT("%s, %s, %d samples: a wire's centre through the main %d (at the luff, columns 0-1: %d), its surface %d (luff %d)%s%s%s%s"), Tier == ESailingQuality::High ? TEXT("High") : TEXT("Medium"), *BoatName, Samples,
+			Hit, HitLuff, Poke, PokeLuff, First.IsEmpty() ? TEXT("") : TEXT("; first through: "), *First, FirstPoke.IsEmpty() ? TEXT("") : TEXT("; first surface: "), *FirstPoke));
+	}
+	USailingSettings::Get()->Quality = WasQuality;
+	AddInfo(FString::Printf(TEXT("All boats: %d samples with a wire through the main"), Total));
+	TestEqual(TEXT("No shroud or spreader through a running main, on any boat, on Medium or High"), Total, 0);
 	World->EndPlay(EEndPlayReason::Quit);
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
