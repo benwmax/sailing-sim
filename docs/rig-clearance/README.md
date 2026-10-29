@@ -52,10 +52,10 @@ the main as one piece, with a small cap, looks right.
 
 ## Known gaps (listed by the test, not failed)
 
-- **A running main pressing on its shrouds near the mast.** Where the belly of an eased main bellies forward around a lower or
-  upper shroud close to the mast, the wire still shows through the cloth. That happens in about 8 of the 32 samples on
-  most keelboats, only when running. Turning the main further looks worse than the contact. A real fix needs the cloth to
-  wrap the wire, or a finer grid.
+- ~~**A running main pressing on its shrouds near the mast.**~~ Closed by `docs/sail-dent/` (the main turns as far as the
+  wires need, like a boom stopped at the shroud) and `docs/sail-spreaders/` (it lies over its spreaders). The wire showed
+  through the cloth in about 8 of 32 running samples here. `SailingSim.Visual.SailShrouds` (`docs/sail-shrouds/`) finds none
+  on any rigged boat at TWA 150-175 in 8-25 kn, on Medium or High.
 - **Small cases, a few centimetres:**
   - lines lying on a deck or trampoline under a resting calf (the Hobie's jib sheets);
   - the dinghies' tiller extension alongside the hip in light air;
