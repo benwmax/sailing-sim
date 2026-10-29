@@ -35,3 +35,23 @@ waves). A tolerance scaled with the luff (0.15%, 1.6 cm on the Catalina 30's, 5 
 under 1 point, so it stays at 1 cm. The 0.25 s refresh caps reuse at about 87% at 30 fps.
 
 `SailShrouds` stays at 0 wires through or on the main on every rigged boat, on Medium and High.
+
+## Cost (`cloth_cpu_ms`, all sails' cloth on the game thread, packaged High, the Mac)
+
+| View | Main (tack-timing's gate) | This change |
+|---|---|---|
+| beam8 | 0.845 ms | 0.806 ms |
+| beat15 | 0.802 | 0.750 |
+| marina | 0.815 | 0.769 |
+| helm-eye | 0.851 | 0.813 |
+| slip | 0.527 | 0.495 |
+| crew | 0.830 | 0.800 |
+
+The saving is 0.03-0.05 ms a frame on the Mac, out of the whole cloth. Most of these views aren't running, where the
+clearance does the most work. The PC's 0.26 ms was the clearance alone on Ultra.
+
+## Gate (`scripts/gate.sh --scope boats`, packaged, the Mac)
+
+Pass: 269 tests, every view over its floor on High: beam8 53.9, beat15 51.6, marina 53.8, helm-eye 57.4, slip 47.8,
+crew 46.0. That is 0.8-2.4 fps under tack-timing's gate, in GPU time (beam8's GPU frame 16.6 -> 17.2 ms), which this
+change (CPU, game thread) doesn't touch.
