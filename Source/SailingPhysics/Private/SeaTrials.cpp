@@ -104,6 +104,7 @@ namespace Sailing
 		Boat.GetMutableState().CrewOffset = Windward * Config.CrewSitOut;
 		FAutopilot Pilot;
 		Pilot.TargetTWADeg = TwaDeg;
+		Pilot.bWaveSteering = SeaSpec.bWaveHelm;
 		// A sea trial measures the boat in the sea, trimmed as the polars are (ideal hands: docs/trimmer-hands/).
 		FAutoTrim Trim;
 		Trim.Settings.bHands = false;
@@ -208,7 +209,7 @@ namespace Sailing
 		return RunGaleTackDetail(Config, Reefs, Seed, bSea, Knots).Seconds;
 	}
 
-	FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots)
+	FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots, bool bWaveHelm)
 	{
 		FGaleTackResult R;
 		// PrologueTests.cpp TackInGale, plain: the same crew, wheel and clock.
@@ -226,6 +227,7 @@ namespace Sailing
 		// half the tacks fell under 40% of her speed; at 0.6, 19 deg, 11 of 12 keep it).
 		Hand.MaxTiller = 0.6;
 		Hand.bKeepShortOfStall = false;
+		Hand.bWaveSteering = bWaveHelm;
 		const double Called = 60.0 + 7.0 * Seed;
 		double T = 0.0, Settled = 0.0, Before = 0.0;
 		int BeforeN = 0;

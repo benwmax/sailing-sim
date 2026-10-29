@@ -154,6 +154,24 @@ namespace Sailing
 		 *  (FAutoTrim::bHoldMain), and a multihull turns no faster than GybeTillerMax lets her (docs/ai-gybe/). */
 		bool IsGybing() const { return bGybeOrdered; }
 		double GybeTillerMax = 0.25;
+		/**
+		 * docs/wave-steering/: steering to the waves (off by default: the polars, scenarios and sea trials sail a course; the
+		 * AI and Easy mode's helm turn it on). In a sea (Hs 0.3 m or more, not the calibration sea) the helm bears away while
+		 * the slope pushes her downhill and heads up while she climbs: down a following sea's face to ride it and up on its
+		 * back for speed (upwind the slope comes too late to meet a head sea's face). The swing is WaveSteerDeg x the slope she feels
+		 * (FBoatTelemetry::WaveSlopeSurge over her weight, seen over WaveSteerSeconds) over WaveSteerSlope, at most
+		 * WaveSteerDeg, on |TWA| (the run guard still caps it); off the wind only (from 70 deg), not in a tack.
+		 * WaveSteerDegFor gives each class its swing: a dinghy's helm works every wave, a maxi hardly turns for them.
+		 */
+		bool bWaveSteering = false;
+		double WaveSteerDeg = -1.0;     // -1: WaveSteerDegFor the boat
+		double WaveSteerSlope = 0.03;
+		double WaveSteerSeconds = 0.25;
+		static double WaveSteerDegFor(const FBoatConfig& Config);
+		/** The swing the helm steered last step (deg on |TWA|, + = bearing away), for the tests and the Easy helm. */
+		double GetWaveSteer() const { return WaveSteerNow; }
+		/** The swing it would steer now for Boat (updates the slope it has seen): what the Easy helm nudges the tiller by. */
+		double WaveSteerFor(const FBoatModel& Boat, double TwaDeg, double Dt) const;
 		/** docs/ilca-tiller/: the most the tiller moves a second (of its travel) while the rudder is clear of the water, on boats
 		 *  under AirborneTillerMassKg. */
 		double AirborneTillerRate = 0.3;
@@ -164,6 +182,7 @@ namespace Sailing
 		mutable double UpwindSpeed = -1.0, LastTime = -1.0, TackAskedAt = -1.0;
 		mutable bool bTackGo = false;
 		mutable double LastTiller = -10.0; // the last tiller given (-10: none yet)
+		mutable double SlopeSeen = 0.0, SlopeMean = 0.0, WaveSteerNow = 0.0; // docs/wave-steering/
 		mutable double TackOrderSide = 0.0; // the side the target was on when the wait (or the tack) began
 		// The run guard: the side the target was on last step, and a gybe she was told to make (until she is round).
 		mutable double LastTargetSide = 0.0;

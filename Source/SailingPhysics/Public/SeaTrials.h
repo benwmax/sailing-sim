@@ -33,6 +33,8 @@ namespace Sailing
 		bool bGale = false;
 		bool bGaleSea = true;
 		double GaleHour = 17.5;
+		// docs/wave-steering/: the trial's helm steers to the waves (FAutopilot::bWaveSteering; RunInSea, RunGaleTackDetail).
+		bool bWaveHelm = false;
 
 		/** The prologue gale (Content/Prologue/prologue.json: 32 kn on the Gulf stand-in from 180 deg at 17.5 h). */
 		static FTrialSeaSpec Gale(uint32_t Seed, double Knots = 32.0, bool bSea = true);
@@ -124,7 +126,8 @@ namespace Sailing
 	SAILINGPHYSICS_API FTrimHandsResult MeasureTrimHands(const FBoatConfig& Config, double TrueWindKnots, double TwaDeg, double FetchMeters,
 		double GustIntensity, double Seconds, bool bHands = true);
 
-	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0);
+	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0,
+		bool bWaveHelm = false);
 
 	/**
 	 * docs/j22-crew-tack/: a tack with the player on the helm, on lake chop (5 km of fetch) in a gusty wind (GustIntensity

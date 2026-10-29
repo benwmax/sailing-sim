@@ -244,6 +244,43 @@ namespace Sailing
 		return Out;
 	}
 
+	double FAutopilot::WaveSteerDegFor(const FBoatConfig& Config)
+	{
+		// docs/wave-steering/: how far a helm turns for a wave, by what turning gained in 1.2-2 m seas. A dinghy surfs on every
+		// face she can catch (10 deg either way: the ILCA's reach +15%, her run +4%); a beach cat or a trimaran borne away
+		// far down a face buries her bows (the Hobie went over in all three runs at 10), so 2 (+1.5% running); a light
+		// keelboat that surfs, the J/22, 6 on a reach (+2%; running under the kite it cost her 2%, WaveSteerFor fades it). A
+		// heavy keelboat and the 100 ft maxi carry their way through: turning for the waves cost the Catalina 30 and the
+		// maxi 1-2% at 2 deg, so they hold their course.
+		const double Lwl = Config.Hulls.empty() ? 6.0 : Config.Hulls[0].WaterlineLength();
+		if (Config.bMultihull) return 2.0;
+		if (Config.DinghyEasePerHeelDeg > 0.0 || Lwl < 4.5) return 10.0;
+		if (Lwl < 7.0) return 6.0;
+		return 0.0;
+	}
+
+	double FAutopilot::WaveSteerFor(const FBoatModel& Boat, double TwaDeg, double Dt) const
+	{
+		const FBoatTelemetry& T = Boat.GetTelemetry();
+		const double Along = T.WaveSlopeSurge / std::max(Boat.TotalMass() * kGravity, 1.0); // + downhill along her bow
+		// The slope against its own 20 s mean: a wave's face and back, not the course's (a mean push off a course would walk
+		// the course: the Catalina 30's run came up 10 deg).
+		SlopeMean += (Along - SlopeMean) * Clamp(Dt / 20.0, 0.0, 1.0);
+		SlopeSeen += (Along - SlopeMean - SlopeSeen) * Clamp(Dt / std::max(WaveSteerSeconds, 1e-3), 0.0, 1.0);
+		const FWaveField* Waves = Boat.GetWaves();
+		if (!Waves || Waves->GetParams().bCalibrationSea) return 0.0;
+		const Vec3 P = Boat.GetState().Position;
+		const double Sea = SmoothStep(0.3, 0.6, Waves->SignificantHeightAt(P.X, P.Y));
+		// Off the wind only: upwind the slope she feels comes too late to meet a face (-1 to -3.5% at half the swing).
+		const FBoatConfig& Cfg = Boat.GetConfig();
+		const double Abs = std::fabs(TwaDeg);
+		// (A keelboat's swing is for reaching: from 120 deg it fades out by 150, where she runs under the kite.)
+		const bool bKeelboat = !Cfg.bMultihull && Cfg.DinghyEasePerHeelDeg <= 0.0;
+		const double Point = SmoothStep(70.0, 95.0, Abs) * (bKeelboat ? 1.0 - SmoothStep(120.0, 150.0, Abs) : 1.0);
+		const double Deg = WaveSteerDeg >= 0.0 ? WaveSteerDeg : WaveSteerDegFor(Cfg);
+		return Deg * Point * Sea * Clamp(SlopeSeen / std::max(WaveSteerSlope, 1e-4), -1.0, 1.0);
+	}
+
 	double FAutopilot::Update(const FBoatModel& Boat) const
 	{
 		const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -278,6 +315,14 @@ namespace Sailing
 			const bool bReady = Along < 0.0 && T.ForwardSpeed >= TackSpeedShare * std::max(UpwindSpeed, 0.0);
 			if (!bSea || bReady || Now - TackAskedAt >= Waves->MeanPeriod()) bTackGo = true;
 			else Target = -TargetTWADeg - OrderSide * TackFootDeg; // the old tack's angle, footing, until then
+		}
+		// docs/wave-steering/: down a face, up a back.
+		WaveSteerNow = 0.0;
+		if (bWaveSteering && !(bTackAsked && !bTackGo) && TargetTWADeg * T.TrueWindAngle >= 0.0)
+		{
+			const double Swing = WaveSteerFor(Boat, Target, Since);
+			WaveSteerNow = Swing;
+			Target = (Target >= 0.0 ? 1.0 : -1.0) * Clamp(std::fabs(Target) + Swing, 0.0, 179.0);
 		}
 		// The run guard (docs/hobie-run/): hold off dead downwind by a margin that grows with the gusts, and head up hard
 		// near it; a gybe she is told to make goes through.

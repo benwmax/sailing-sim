@@ -731,6 +731,7 @@ namespace Sailing
 		const double Twa = WrapAngle(LocalWindFrom(B.GetState().Position.X, B.GetState().Position.Y) - V.SteerHeading);
 		V.Pilot.TargetTWADeg = Clamp(Twa / kDeg, -180.0, 180.0);
 		V.Pilot.Wind = Wind; // the run guard (docs/hobie-run/, docs/ai-gybe/): no crash gybes; the gybes the AI decides go through
+		V.Pilot.bWaveSteering = true; // docs/wave-steering/: down the faces off the wind (none in the calibration sea or flat water)
 		if (std::fabs(V.Pilot.TargetTWADeg) < kBeatAngle / kDeg) V.Pilot.TargetTWADeg = (V.Pilot.TargetTWADeg >= 0.0 ? 1.0 : -1.0) * kBeatAngle / kDeg;
 		// A hard tack needs the full rudder.
 		V.Pilot.bKeepShortOfStall = std::fabs(WrapAngle(V.SteerHeading - B.GetTelemetry().Heading)) < 40.0 * kDeg;
