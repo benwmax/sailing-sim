@@ -2498,6 +2498,9 @@ LongN.w = h + ho;
 return float3(d.x * 100.0, d.y * 100.0, (h + ho - hin) * 100.0);
 """
 
+# T_FoamLace's channel means (Tools/water/make_foam_texture.py prints them; each matches the sine pattern it replaced).
+FOAM_MEAN = "float3(0.2498, 0.1249, 0.2500)"
+
 V4_SHADE = """
 FoamTone = 1.0;
 float3 p = P * 0.01;
@@ -2668,8 +2671,6 @@ float om = 0.0;
 // Shoaling waves steepen; in the last half metre they die on the beach.
 sx *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2); sy *= (1.0 + 0.6 * shoal) * saturate(sd / 0.4 + 0.2);
 float Jt = J * jd - 0.25 * shoalBreak;
-// Lacy, broken foam rather than flat patches: two crossed wavy bands at foam-bubble scale.
-float lace = (0.5 + 0.5 * sin(p.x * 9.1 + sin(p.y * 7.3) * 1.7)) * (0.5 + 0.5 * sin(p.y * 8.3 + sin(p.x * 6.1 + T * 0.2) * 1.9));
 // W0: the threshold moves so coverage follows Monahan's law for the local wind against the mean (caps gather in puffs and
 // thin in lulls) times the water body's share (WindP.w: fresh water 0.4); AWaterSurface::WhitecapThreshold mirrors it.
 // W8: the threshold is solved on the sea being drawn (CapCal: the threshold that caps Monahan's cover for the mean wind
@@ -2689,7 +2690,6 @@ float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10
 float capThr = (solved && capBase < -0.5) ? -1.0 : clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
 float2 wd = ldir; // W2: the foam streaks lie along the local wind
 float2 wn = float2(-wd.y, wd.x);
-float streak = 0.5 + 0.5 * sin(dot(p.xy, wn) * 7.0 + sin(dot(p.xy, wd) * 0.6) * 2.5);
 // W8 (docs/water-8/whitecaps): what the camera sees is the cover the test measures. A mip of the chop's Jacobian averages
 // toward 1 (flat water), so thresholding it lost every cap from about 40 m out (a 2 m eye's pixel spans several chop
 // texels there), and the far fill only began at 150 m: the round 11 lake at 20 kn showed almost no caps while its grid
@@ -2707,8 +2707,50 @@ float useTable = smoothstep(1.0, 2.5, footMip * 128.0 / DetailP.x);
 // cap, paw and windrow into a smooth smear from a few boat lengths out. A pattern aliasing along the long axis by up to
 // 4x is smoothed by the temporal AA.
 float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(length(fdx), length(fdy)) / 4.0));
+// Storm water step 2 (docs/storm-water/foam-texture/): the foam's look is one baked texture, T_FoamLace
+// (Tools/water/make_foam_texture.py, our own Worley and filtered noise): R lace (a crest's bubble films and holes), G
+// streaks (ageing foam drawn into strings along the wind), B cells (the bubbles). It replaces the crossed sines (lace,
+// streak x lace, cells), whose products read as a lattice; each channel is histogram-matched to the sine it replaces, so
+// every mean below (the crest's 0.92 white, the residue's pattern, the cells' 0.6) is unchanged: FOAM_MEAN.
+// Sampled in the local wind's frame (U downwind) with hex tiling (Mikkelsen, JCGT 2022: three taps on a triangle grid,
+// each at a random offset, blended so the variance holds) at two scales, the fine one (3.2 m a tile: R and B) and the
+// coarse one (12.8 m: G). The foam drifts downwind at 3.5 % of the wind; each tap runs its own 6 s phase (its offset
+// redrawn and its weight back to nothing at each phase's start, phases staggered by vertex), so the flow never stretches
+// where the wind turns: flow blending with no taps beyond the tiling's. Six taps where the pattern resolves, none where
+// it has faded to its means (patFade).
+float lace = FOAM_MEAN.x, foamStreak = FOAM_MEAN.y, cells = FOAM_MEAN.z;
+[branch] if (patFade < 1.0)
+{
+    float2 fq = float2(dot(p.xy, wd), dot(p.xy, wn));
+    float2 fgx = float2(dot(fdx, wd), dot(fdx, wn)), fgy = float2(dot(fdy, wd), dot(fdy, wn));
+    float fDrift = 0.035 * WindP.z * 6.0;
+    #define FX_H2(c_) frac(sin(float2(dot(fmod(c_, 289.0), float2(127.1, 311.7)), dot(fmod(c_, 289.0), float2(269.5, 183.3)))) * 43758.5453)
+    #define FX_TAP(v_, w_, tile_, uv_, gx_, gy_, S_, W1_, W2_) { \
+        float ph_ = FX_H2(v_ + 17.3).x; float tt_ = T / 6.0 + ph_; float n_ = floor(tt_); float a_ = tt_ - n_; \
+        float2 off_ = FX_H2(v_ + n_ * float2(3.17, 1.93)) * 8.0; \
+        float3 c_ = Texture2DSampleGrad(FoamTex, FoamTexSampler, uv_ + off_ - float2(fDrift * a_ / (tile_), 0.0), gx_, gy_).rgb; \
+        float W_ = pow(saturate(w_), 4.0) * sin(3.14159265 * a_); \
+        S_ += W_ * (c_ - FOAM_MEAN); W1_ += W_; W2_ += W_ * W_; }
+    #define FX_HEX(tile_, out_) { \
+        float2 uv_ = fq / (tile_); float2 gx_ = fgx / (tile_), gy_ = fgy / (tile_); \
+        float2 sk_ = float2(uv_.x, -0.57735027 * uv_.x + 1.15470054 * uv_.y) * 3.46410162; \
+        float2 b_ = floor(sk_); float3 t_ = float3(sk_ - b_, 0.0); t_.z = 1.0 - t_.x - t_.y; \
+        float s_ = step(0.0, -t_.z); float s2_ = 2.0 * s_ - 1.0; \
+        float w1_ = -t_.z * s2_, w2_ = s_ - t_.y * s2_, w3_ = s_ - t_.x * s2_; \
+        float3 S_ = 0.0; float W1_ = 0.0, W2_ = 0.0; \
+        FX_TAP(b_ + float2(s_, s_), w1_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
+        FX_TAP(b_ + float2(s_, 1.0 - s_), w2_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
+        FX_TAP(b_ + float2(1.0 - s_, s_), w3_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
+        out_ = saturate(FOAM_MEAN + S_ / max(sqrt(W2_), 1e-4)); }
+    float3 fine, coarse;
+    FX_HEX(3.2, fine);
+    FX_HEX(12.8, coarse);
+    lace = fine.r;
+    cells = fine.b;
+    foamStreak = coarse.g;
+}
 float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
-float patternE = lerp(smoothstep(0.55, 0.95, streak * lace), 0.06, patFade);
+float patternE = lerp(smoothstep(0.55, 0.95, foamStreak), 0.06, patFade);
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
 float kC = max(min(chopK, 2.0), 1e-3);
 // (The fold table holds both chops' fold, the long chop's at each texel's place: AWaterSurface's JCapBoth.)
@@ -2768,7 +2810,6 @@ float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + l
 // - the opacity follows cover to the power 1.5, so a pixel half covered is a third opaque and only the dense core of a cap
 //   is solid white; its edge thins out instead of stopping.
 float fresh = saturate(crest / max(caps, 1e-3));
-float cells = (0.5 + 0.5 * sin(p.x * 23.7 + sin(p.y * 19.1) * 2.3)) * (0.5 + 0.5 * sin(p.y * 21.3 + sin(p.x * 17.9 + T * 0.6) * 2.7));
 float cellsE = lerp(cells, 0.25, patFade);
 FoamTone = lerp(0.5, 1.0, fresh) * lerp(0.7, 1.0, saturate(cellsE * 2.0));
 FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps * 4.0)));   // boats' wash: fresh foam
@@ -2783,7 +2824,7 @@ float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 [branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
     persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
 float trail = saturate(persist - max(caps, wakeBreak));   // what outlives the cap or the boat's wash
-float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(streak * lace, 0.5, patFade)));
+float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(foamStreak, 0.5, patFade)));
 // Far (the fold table's cover): a pixel's cover there is the share of the sea under foam, not how much of one cap it holds,
 // so it is drawn as it is, not to the power 1.5 (a cap's thinning edge): at the lake's 0.2-0.4% that power drew a twentieth
 // of it and the caps vanished past about 200 m (docs/far-caps/). The bubble cells' factor fades to its mean (0.6), not to
@@ -2999,6 +3040,12 @@ return nOut;
 """
 
 
+def foam_texture():
+    """T_FoamLace (scripts/import_foam_texture.py), or the linear default until it is imported."""
+    path = "/Game/Materials/Foam/T_FoamLace"
+    return unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else linear_default()
+
+
 def build_water_v4():
     """M_WaterV4 (Visual V4, Medium and High): the physics' long waves drawn exactly with Gerstner choppiness, the short
     waves from the FFT of the same spectrum, whitecaps from folding crests, the boats' own waves (iWave), rain rings,
@@ -3076,8 +3123,8 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ", "DetailE"]
-    shade = custom(mat, V4_SHADE.replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites"],
+    shade = custom(mat, V4_SHADE.replace("FOAM_MEAN", FOAM_MEAN).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -3118,6 +3165,9 @@ def build_water_v4():
     connect(tx["DetailE"], "", shade, "DetailE")
     connect(tx["DetailC"], "", shade, "DetailC")
     connect(tx["FoamGrid"], "", shade, "FoamGrid")  # W4: the foam the caps leave (AWaterSurface's foam grid)
+    # Storm water step 2: the foam's look (scripts/import_foam_texture.py).
+    connect(node(mat, unreal.MaterialExpressionTextureObjectParameter, -2000, 1600, parameter_name="FoamTex", texture=foam_texture(),
+                 sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR), "", shade, "FoamTex")
     connect(vector(mat, "FoamGridRect", (0, 0, 64, 0), -2000, 1500), "RGBA", shade, "FoamGridRect")
     connect(vector(mat, "CapTable", (0.5, 0.05, 0, 0), -2000, 1200), "RGBA", shade, "CapT")
     connect(vector(mat, "CapCalib", (0, 0, 0, 0), -2000, 1300), "RGBA", shade, "CapCal")
