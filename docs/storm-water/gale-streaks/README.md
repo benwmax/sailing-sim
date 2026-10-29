@@ -98,4 +98,4 @@ this branch's:
 - `SailingSim.Visual.GaleSpray` (new) holds the fade-ins: 8-24 kn keep the usual 24 crest points with no gale and no
   spindrift; force 7 is half in; force 8 is a full gale with spindrift starting; force 9 has all of it; and it only grows
   with the wind.
-- Full tests: TEST_LINE
+- Full tests on MSVC: 280 of 280 pass on the branch merged with main 84dc2f4b.
