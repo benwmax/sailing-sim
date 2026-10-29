@@ -80,3 +80,8 @@ crossing only began at TWA 28, and their head was 6.7 cm into the mainsheet's ta
 (`FCrewPlaceInput::bTackCalled`, from `FAutoTrim::IsHoldingForTack`) starts the crossing as she comes up, as a crew gets
 down under a centred boom when the helm calls it. What's left is one forearm sample at 2.4 cm, listed and not failed.
 `CrewHullClearance`, `CrewClipTack` and `RigClearance` are green.
+
+## Gate (`scripts/gate.sh --scope water`, packaged, the Mac)
+
+Pass: 277 tests, every view over its floor. On High: beam8 56.4, beat15 52.4, storm 47.1, marina 55.5, coast-day 50.4,
+gulf-sea 59.2, helm-eye 59.1, bridge 55.9. Storm on Medium: 67.8.
