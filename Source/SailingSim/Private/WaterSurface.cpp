@@ -27,6 +27,8 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Waves.h"
+#include "LongWaves.h"
+#include <array>
 #include "Wind.h"
 #include "HAL/IConsoleManager.h"
 #include "EngineUtils.h"
@@ -780,6 +782,7 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	const double Start = FPlatformTime::Seconds();
 	UpdateMaterial();
 	UpdateOcean();
+	UpdateLongWaves();
 	if (bV4)
 	{
 		{ SAILING_PERF_SCOPE(WaterUploads); UpdateDetail(); }
@@ -948,13 +951,23 @@ void AWaterSurface::UpdateDetail()
 		CapShort = Ratio[kSeaLongComponents];
 	}
 	const float FoldScale = DrawnFoldScaleAt(float(Waves->GetParams().WindSpeedKnots));
+	// docs/long-wave-fft/: with the FFT's long waves on, their fold comes from its grids (each band by its sea-map ratio at
+	// the camera, as the trains above), not from the sines.
+	const std::shared_ptr<const FLongWaves> LongFft = Waves->UsesLongWaves() ? Waves->GetLongWavesShared() : nullptr;
+	std::array<float, kLongCascades> LongR;
+	LongR.fill(1.f);
+	if (LongFft)
+	{
+		const FVector2D CamL = SailingFrame::ToMap(GetWorld(), UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation());
+		Waves->LongRatiosAt(CamL.X, CamL.Y, LongR.data());
+	}
 	// The cap thresholds are solved at the short waves' rate (each solve is eased into what is drawn over about 12 frames,
 	// CapThrSmooth); between solves the blend reuses the last.
 	const bool bSolveCaps = CapsSolvedAt < 0.0 || CapsLastSlope <= 0.f || Ahead < CapsSolvedAt || Ahead - CapsSolvedAt >= 0.999 * kDetailStep;
 	if (bSolveCaps) CapsSolvedAt = Ahead;
 	const double LastThr[4] = { CapsLast[0], CapsLast[1], CapsLast[2], CapsLast[3] };
 	const double LastSlope = CapsLastSlope;
-	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, bCapillary, bLongChop, LongSpec, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
+	PendingUpload = Async(EAsyncExecution::ThreadPool, [Prev, Next, W, bRipple, bCapillary, bLongChop, LongSpec, CapTarget, CapTime, CapShort, FoldScale, Long = MoveTemp(Long), LongFft, LongR, bSolveCaps, LastThr0 = LastThr[0], LastThr1 = LastThr[1], LastThr2 = LastThr[2], LastThr3 = LastThr[3], LastSlope]() -> FDetailUploadPtr
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailBlend);
 		auto Blend = [W](const std::vector<float>& A, const std::vector<float>& B, size_t I) { return A[I] + W * (B[I] - A[I]); };
@@ -1054,7 +1067,8 @@ void AWaterSurface::UpdateDetail()
 							Chop *= 1.0 - FMath::Min(CapShort, 2.f) * (1.0 - FWaveDetail::SampleCapJ(Out->LongCap, GX, GY));
 						}
 						double Jl[4];
-						LongJ.Evaluate(SX, SY, CapTime, Jl);
+						if (LongFft) LongFft->FoldAt(SX, SY, CapTime, LongR.data(), Spacings, Fades, 4, Jl);
+						else LongJ.Evaluate(SX, SY, CapTime, Jl);
 						for (int32 K = 0; K < 4; ++K) Samples[K].push_back(float(1.0 - FoldScale * (1.0 - Jl[K] * Chop)));
 					}
 				for (int32 K = 0; K < 4; ++K)
@@ -1729,7 +1743,16 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 			const float R = SprayRng.FRandRange(4.f, 60.f), A = SprayRng.FRandRange(0.f, 2.f * UE_PI);
 			const double X = CamM.X + R * FMath::Cos(A), Y = CamM.Y + R * FMath::Sin(A);
 			double Jxx = 1.0, Jyy = 1.0, Jxy = 0.0;
-			for (int32 I = 0; I < LongComponents; ++I)
+			if (const FLongWaves* LongFft = Waves->UsesLongWaves() ? Waves->GetLongWaves() : nullptr)
+			{
+				// docs/long-wave-fft/: the FFT's fold, every band kept (the crests near the camera).
+				float LongR[kLongCascades];
+				Waves->LongRatiosAt(X, Y, LongR);
+				double J = 1.0;
+				LongFft->FoldAt(X, Y, T, LongR, nullptr, nullptr, 1, &J);
+				Jxx = J;
+			}
+			else for (int32 I = 0; I < LongComponents; ++I)
 			{
 				const double Kk = FMath::Sqrt(C[I].Kx * C[I].Kx + C[I].Ky * C[I].Ky);
 				const double Q = Choppiness * C[I].Amplitude * FMath::Sin(C[I].Kx * X + C[I].Ky * Y - C[I].Omega * T + C[I].Phase) / Kk;
@@ -1863,6 +1886,7 @@ void AWaterSurface::WaitForWorkers()
 	if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
 	if (bUploadPending) { PendingUpload.Wait(); bUploadPending = false; }
 	if (bFoamPending) { PendingFoam.Wait(); bFoamPending = false; }
+	if (bLongPending) { PendingLong.Wait(); bLongPending = false; }
 }
 
 void AWaterSurface::EndPlay(const EEndPlayReason::Type Reason)
@@ -1926,6 +1950,107 @@ void AWaterSurface::UpdateOcean()
 	}
 	// The sea runs out to the horizon: fade it only far away.
 	WaterMaterial->SetVectorParameterValue(TEXT("OceanParams"), FLinearColor(float(FOcean::Tile[0]), float(FOcean::Tile[1]), 1.f, 8000.f));
+}
+
+void AWaterSurface::UpdateLongWaves()
+{
+	const FWaveField* Waves = GetWaves();
+	const FLongWaves* LW = Waves && Waves->UsesLongWaves() ? Waves->GetLongWaves() : nullptr;
+	const bool bOn = bV4 && WaterMaterial && LW && LW->GetLayout() == ELongWaveLayout::PerBand;
+	if (WaterMaterial && bOn != bLongOn)
+	{
+		WaterMaterial->SetVectorParameterValue(TEXT("LongParams"), FLinearColor(bOn ? 1.f : 0.f, 0.f, 0.f, 0.f));
+		bLongOn = bOn;
+	}
+	if (!bOn) return;
+	// One bordered 64^2 tile per band (make_materials.py's LONG_FFT_TILE): texel (1 + j, 1 + i) is node (i, j), the border
+	// wraps, so the bilinear lookup never leaves a tile.
+	constexpr int32 Bands = 8, Grid = 64, TileW = Grid + 2, Width = Bands * TileW;
+	if (!LongAMap)
+	{
+		LongAMap = MakeFloatMap(Width, TileW, PF_A32B32G32R32F, false);
+		LongBMap = MakeFloatMap(Width, TileW, PF_FloatRGBA, false);
+		WaterMaterial->SetTextureParameterValue(TEXT("LongA"), LongAMap);
+		WaterMaterial->SetTextureParameterValue(TEXT("LongB"), LongBMap);
+	}
+	if (bLongPending && PendingLong.IsReady())
+	{
+		bLongPending = false;
+		const TSharedPtr<FLongPixels, ESPMode::ThreadSafe> P = PendingLong.Get();
+		UploadFloats(LongAMap, P->A, Width, TileW, 4);
+		const int32 Bytes = P->B.Num() * int32(sizeof(FFloat16));
+		uint8* Copy = new uint8[Bytes];
+		FMemory::Memcpy(Copy, P->B.GetData(), Bytes);
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, TileW);
+		LongBMap->UpdateTextureRegions(0, 1, Region, Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Copy,
+			[](uint8* Data, const FUpdateTextureRegion2D* Rg)
+			{
+				delete[] Data;
+				delete Rg;
+			});
+	}
+	// Each band's axes, tile and mean wavenumber (the mesh keeps its slopes and fold by it), and each sine's share of its
+	// band (the sea map scales a band by its three sines' energy-weighted ratio, as FWaveField::LongRatiosAt).
+	double MeanK[kLongCascades], Tm, Dir;
+	LW->Moments(nullptr, MeanK, Tm, Dir);
+	for (int32 C = 0; C < Bands && C < LW->NumCascades(); ++C)
+	{
+		const FLongWaveCascadeSpec& Spec = LW->Spec(C);
+		const double Rot = Spec.RotationDeg * kDegToRad;
+		WaterMaterial->SetVectorParameterValue(*FString::Printf(TEXT("LongC%d"), C),
+			FLinearColor(float(FMath::Cos(Rot)), float(FMath::Sin(Rot)), float(1.0 / Spec.Tile), float(FMath::Max(MeanK[C], 1e-3))));
+	}
+	const FWaveComponent* Comp = Waves->GetComponents();
+	float Share[kSeaLongComponents];
+	for (int32 B = 0; B < kSeaLongComponents / kWaveDirectionsPerBand; ++B)
+	{
+		double Sum = 0.0;
+		for (int32 D = 0; D < kWaveDirectionsPerBand; ++D) Sum += FMath::Square(Comp[B * kWaveDirectionsPerBand + D].Amplitude);
+		for (int32 D = 0; D < kWaveDirectionsPerBand; ++D)
+		{
+			const int32 I = B * kWaveDirectionsPerBand + D;
+			Share[I] = Sum > 1e-12 ? float(FMath::Square(Comp[I].Amplitude) / Sum) : 1.f / kWaveDirectionsPerBand;
+		}
+	}
+	for (int32 I = 0; I < kSeaLongComponents / 4; ++I)
+	{
+		WaterMaterial->SetVectorParameterValue(*FString::Printf(TEXT("LongW%d"), I), FLinearColor(Share[4 * I], Share[4 * I + 1], Share[4 * I + 2], Share[4 * I + 3]));
+	}
+	if (bLongPending) return;
+	// The next frame's instant (the upload lands then), as the short waves' blend.
+	const double Ahead = GetSimTime() + FMath::Clamp(double(GetWorld()->GetDeltaSeconds()), 0.0, 1.0 / FLongWaves::KeyHz);
+	bLongPending = true;
+	PendingLong = Async(EAsyncExecution::ThreadPool, [Grids = Waves->GetLongWavesShared(), Ahead]() -> TSharedPtr<FLongPixels, ESPMode::ThreadSafe>
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_LongWavePack);
+		std::vector<float> F[kLongCascades][kLongFields];
+		Grids->BlendCascades(Ahead, F);
+		TSharedPtr<FLongPixels, ESPMode::ThreadSafe> P = MakeShared<FLongPixels, ESPMode::ThreadSafe>();
+		P->A.SetNumZeroed(Width * TileW * 4);
+		P->B.SetNumZeroed(Width * TileW * 4);
+		const int32 FieldA[4] = { int32(ELongField::Dx), int32(ELongField::Dy), int32(ELongField::H), int32(ELongField::Jxy) };
+		const int32 FieldB[4] = { int32(ELongField::Sx), int32(ELongField::Sy), int32(ELongField::Jxx), int32(ELongField::Jyy) };
+		for (int32 C = 0; C < Bands; ++C)
+		{
+			if (F[C][0].size() != size_t(Grid * Grid)) continue;
+			for (int32 R = 0; R < TileW; ++R)
+			{
+				const int32 I = (R + Grid - 1) % Grid;
+				for (int32 Q = 0; Q < TileW; ++Q)
+				{
+					const int32 J = (Q + Grid - 1) % Grid;
+					const size_t Src = size_t(I) * Grid + J;
+					const int32 Dst = 4 * (R * Width + C * TileW + Q);
+					for (int32 K = 0; K < 4; ++K)
+					{
+						P->A[Dst + K] = F[C][FieldA[K]][Src];
+						P->B[Dst + K] = FFloat16(F[C][FieldB[K]][Src]);
+					}
+				}
+			}
+		}
+		return P;
+	});
 }
 
 void AWaterSurface::UpdateSeaMap()

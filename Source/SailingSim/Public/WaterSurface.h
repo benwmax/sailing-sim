@@ -211,6 +211,18 @@ private:
 	bool bSeaPending = false;
 	/** Uploads the field's sea map (or unbinds it) when it changed, and sets SeaRect and SeaParams. */
 	void UpdateSeaMap();
+	/**
+	 * docs/long-wave-fft/ phase 2 (-SailingLongWaves=fft): the FFT's long waves for M_WaterV4. The next frame's grids are
+	 * blended and packed on a worker into two atlases, a bordered 64^2 tile per band (A float: Dx, Dy, H, dDx/dy; B half:
+	 * Sx, Sy, dDx/dx, dDy/dy), uploaded when done; LongParams x switches the material's branch.
+	 */
+	void UpdateLongWaves();
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> LongAMap;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> LongBMap;
+	struct FLongPixels { TArray<float> A; TArray<FFloat16> B; };
+	TFuture<TSharedPtr<FLongPixels, ESPMode::ThreadSafe>> PendingLong;
+	bool bLongPending = false;
+	bool bLongOn = false;
 
 	int32 Tier = 2;
 	bool bV4 = false;

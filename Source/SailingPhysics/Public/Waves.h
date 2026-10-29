@@ -192,6 +192,7 @@ namespace Sailing
 		 */
 		void SetLongWaves(std::shared_ptr<FLongWaves> InLongWaves) { LongWaves = std::move(InLongWaves); bBandsDirty = true; }
 		const FLongWaves* GetLongWaves() const { return LongWaves.get(); }
+		std::shared_ptr<const FLongWaves> GetLongWavesShared() const { return LongWaves; }
 		bool UsesLongWaves() const { return LongWaves && !Params.bCalibrationSea; }
 		/** The sea map's scale for each of the long waves' cascades at a point (1 without a map). Out[kLongCascades]. */
 		void LongRatiosAt(double X, double Y, float* Out) const;

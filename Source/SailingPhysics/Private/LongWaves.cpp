@@ -91,6 +91,7 @@ namespace Sailing
 
 	void FLongWaves::SetDepth(double DepthMeters)
 	{
+		if (std::max(DepthMeters, 0.0) == Depth && NumCas > 0) return; // the same sea: keep its amplitudes
 		Depth = std::max(DepthMeters, 0.0);
 		LayModes();
 		bParamsDirty = true;
@@ -535,6 +536,27 @@ namespace Sailing
 		const FKeyGrids& G0 = GetKeyGrids(K0);
 		const FKeyGrids& G1 = GetKeyGrids(K0 + 1);
 		Accumulate(G0, G1);
+	}
+
+	void FLongWaves::BlendCascades(double T, std::vector<float> (*Out)[kLongFields]) const
+	{
+		const double KeyF = T * KeyHz;
+		const int64_t K0 = int64_t(std::floor(KeyF));
+		const float W = float(KeyF - double(K0));
+		std::lock_guard<std::mutex> Lock(ProduceLock);
+		const FKeyGrids& G0 = GetKeyGrids(K0);
+		const FKeyGrids& G1 = GetKeyGrids(K0 + 1);
+		for (int C = 0; C < kLongCascades; ++C)
+			for (int F = 0; F < kLongFields; ++F)
+			{
+				std::vector<float>& O = Out[C][F];
+				const bool bRun = C < NumCas && G0.bRunning[C] && G1.bRunning[C] && !G0.F[C][F].empty() && G0.F[C][F].size() == G1.F[C][F].size();
+				if (!bRun) { O.clear(); continue; }
+				const std::vector<float>& A = G0.F[C][F];
+				const std::vector<float>& B = G1.F[C][F];
+				O.resize(A.size());
+				for (size_t I = 0; I < A.size(); ++I) O[I] = A[I] + W * (B[I] - A[I]);
+			}
 	}
 
 	void FLongWaves::Sample(double X, double Y, double T, const float* Ratio, double* Out) const

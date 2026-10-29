@@ -90,7 +90,7 @@ namespace Sailing
 	public:
 		static constexpr double KeyHz = 30.0;
 		static constexpr int TargetEveryKeys = 15;
-		static constexpr int RingKeys = 4;
+		static constexpr int RingKeys = 8; // the boats' substeps, the renderer's next frame and the cap solve read different keys
 
 		/** Runs Count independent jobs (any order, any threads) and returns when all are done. Null = inline. */
 		using FParallelFor = std::function<void(int Count, const std::function<void(int)>& Job)>;
@@ -135,6 +135,9 @@ namespace Sailing
 		 * producer keeps two keys ahead so there are none). Out[kLongFields].
 		 */
 		void Sample(double X, double Y, double T, const float* Ratio, double* Out) const;
+		/** Every cascade's whole grids blended to world time T (the renderer's frame), copied out under the lock; empty for a
+		 *  cascade not running. Out[kLongCascades][kLongFields]. */
+		void BlendCascades(double T, std::vector<float> (*Out)[kLongFields]) const;
 		/** Sample's fields per cascade, unscaled: Out[kLongCascades * kLongFields] (cascade-major). */
 		void SampleCascades(double X, double Y, double T, double* Out) const;
 		/**

@@ -753,16 +753,30 @@ void ASailingGameMode::ApplyWeatherSettings()
 void ASailingGameMode::UpdateLongWaves(bool bNow)
 {
 	if (!LongWaves) return;
+	static double NextLog = 0.0;
+	if (GetSimTime() >= NextLog || GetSimTime() < NextLog - 10.0)
+	{
+		NextLog = GetSimTime() + 2.0;
+		double Var[Sailing::kLongCascades], MeanK[Sailing::kLongCascades], Tm, Dir, Sum = 0.0;
+		LongWaves->Moments(Var, MeanK, Tm, Dir);
+		for (const double V : Var) Sum += V;
+		UE_LOG(LogSailing, Display, TEXT("Long waves (FFT): key %lld, long Hs %.3f m, field Hs %.3f m at %.1f kn, depth %.1f m, sync misses %llu"),
+			(long long)LongWaves->GetKey(), 4.0 * FMath::Sqrt(Sum), Waves.SignificantHeight(), LongParams.WindMs / kKnot, LongWaves->GetDepth(),
+			(unsigned long long)LongWaves->GetSyncMisses());
+	}
 	// The physics samples keys floor(T x 30) and the next; two ahead leaves a frame of slack for the worker.
 	const int64 Want = int64(FMath::FloorToDouble(GetSimTime() * Sailing::FLongWaves::KeyHz)) + 2;
 	if (LongProducedKey >= Want) return;
+	// A long frame (a hitch) left the clock past what was produced: the boats step through those keys this frame, so make
+	// them here, before they do (a miss evaluates a key under the lock, once per key, from whichever thread asks).
+	if (LongProducedKey < Want - 2) bNow = true;
 	if (LongWaveJob.IsValid() && !LongWaveJob.IsReady())
 	{
 		if (!bNow) return;
 		LongWaveJob.Wait();
 	}
 	// After a stall only the keys the clock still needs are evaluated (the amplitudes step through every key regardless).
-	const int64 From = FMath::Max(LongProducedKey + 1, Want - 3);
+	const int64 From = FMath::Max(LongProducedKey + 1, Want - 5);
 	LongProducedKey = Want;
 	auto Job = [W = LongWaves, P = LongParams, From, Want]()
 	{
