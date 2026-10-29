@@ -45,6 +45,10 @@ namespace Sailing
 		 *  cascades' tile lags (reported); the 24 sines' (reported) for comparison. */
 		SAILINGPHYSICS_API FLongWaveCheck NoWeave(ELongWaveLayout Layout = ELongWaveLayout::PerBand);
 
+		/** FWaveField with the FFT attached: Hs as the sines', Bands() carry it, Height and Sample are the FFT plus the
+		 *  short sines, and the calibration sea never reads it. */
+		SAILINGPHYSICS_API FLongWaveCheck FieldWiring(ELongWaveLayout Layout = ELongWaveLayout::PerBand);
+
 		/** All of the above, in order. */
 		SAILINGPHYSICS_API std::vector<FLongWaveCheck> RunAll(ELongWaveLayout Layout = ELongWaveLayout::PerBand);
 	}

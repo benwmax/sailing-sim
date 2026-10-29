@@ -3,6 +3,7 @@
 #include "LongWaves.h"
 #include "PortableRandom.h"
 #include "SailingMath.h"
+#include "SeaState.h"
 #include "Waves.h"
 #include <algorithm>
 #include <atomic>
@@ -627,8 +628,68 @@ namespace Sailing
 		return R;
 	}
 
+	FLongWaveCheck LongWaveChecks::FieldWiring(ELongWaveLayout Layout)
+	{
+		GLayout = Layout;
+		FLongWaveCheck R { "FieldWiring", true, {} };
+		for (const double Kn : { 12.0, 20.0, 28.0 })
+		{
+			FWaveField F(2027);
+			FWaveParams P;
+			P.WindSpeedKnots = Kn;
+			P.FetchMeters = 15000.0;
+			F.SetWind(P);
+			F.SnapToTarget();
+			const double SinesHs = F.SignificantHeight();
+			auto L = std::make_shared<FLongWaves>(2027, Layout);
+			L->SetParams(Sea(Kn, 0.0, F.ReferenceFetch()));
+			L->SnapToTarget();
+			L->Produce(3000);
+			L->Produce(3001);
+			F.SetLongWaves(L);
+			const double FftHs = F.SignificantHeight();
+			double BandVar = 0.0;
+			for (const FWaveBand& B : F.Bands()) BandVar += B.Variance;
+			// The height is the FFT's plus the short sines (24-47), as they are.
+			double Worst = 0.0;
+			for (int I = 0; I < 32; ++I)
+			{
+				const double X = 23.1 * I - 300.0, Y = 41.7 * ((I * 5) % 32) - 600.0, T = 100.0 + 0.0137 * I;
+				double Fl[kLongFields];
+				L->Sample(X, Y, T, nullptr, Fl);
+				double Want = Fl[0];
+				for (int C = kSeaLongComponents; C < kWaveComponents; ++C)
+				{
+					const FWaveComponent& W = F.GetComponents()[C];
+					if (W.Amplitude > 1e-6) Want += W.Amplitude * std::sin(W.Kx * X + W.Ky * Y - W.Omega * T + W.Phase);
+				}
+				Worst = std::max(Worst, std::fabs(F.Height(X, Y, T) - Want));
+				double H, Vz, Sx, Sy;
+				F.Sample(X, Y, T, H, Vz, Sx, Sy);
+				Worst = std::max(Worst, std::fabs(H - Want));
+			}
+			// The calibration sea never reads it.
+			FWaveField Cal(2027), CalLong(2027);
+			P.bCalibrationSea = true;
+			Cal.SetWind(P);
+			Cal.SnapToTarget();
+			CalLong.SetWind(P);
+			CalLong.SnapToTarget();
+			CalLong.SetLongWaves(L);
+			const bool bCal = Cal.Height(12.0, 34.0, 100.0) == CalLong.Height(12.0, 34.0, 100.0);
+			const bool bHs = std::fabs(FftHs / SinesHs - 1.0) < 0.005;
+			const bool bBands = std::fabs(BandVar / (FftHs * FftHs / 16.0) - 1.0) < 0.01;
+			const bool bOk = bHs && bBands && Worst < 1e-6 && bCal;
+			R.bPass &= bOk;
+			R.Lines.push_back(Format("%2.0f kn: Hs %.4f m with the FFT against %.4f with the sines; Bands() carry %.2f%% of it; Height and Sample "
+				"= the FFT + the short sines within %.1e m; calibration sea %s%s", Kn, FftHs, SinesHs, 100.0 * BandVar / (FftHs * FftHs / 16.0),
+				Worst, bCal ? "unchanged" : "CHANGED", bOk ? "" : "  FAIL"));
+		}
+		return R;
+	}
+
 	std::vector<FLongWaveCheck> LongWaveChecks::RunAll(ELongWaveLayout L)
 	{
-		return { Spectrum(L), MatchesDirectSum(L), TimeBlend(L), Spreading(L), Growth(L), WindShift(L), FrameRateFree(L), Determinism(L), LongClock(L), Golden(L), NoWeave(L) };
+		return { Spectrum(L), MatchesDirectSum(L), TimeBlend(L), Spreading(L), Growth(L), WindShift(L), FrameRateFree(L), Determinism(L), LongClock(L), Golden(L), NoWeave(L), FieldWiring(L) };
 	}
 }

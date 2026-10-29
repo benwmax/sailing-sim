@@ -217,6 +217,7 @@ namespace Sailing
 		StateKey = 0;
 		for (int S = 0; S < RingKeys; ++S) Ring[S].Key.store(INT64_MIN, std::memory_order_release);
 		ComputeTargets();
+		Publish();
 	}
 
 	double FLongWaves::ModeShape(const FMode& M, double Fp, double TravelDir) const
@@ -298,6 +299,7 @@ namespace Sailing
 				for (FMode& M : C.Modes) M.Amp += (M.Target - M.Amp) * M.Decay;
 		}
 		StateKey = std::max(StateKey, Key);
+		Publish();
 	}
 
 	void FLongWaves::SnapToTarget()
@@ -305,6 +307,45 @@ namespace Sailing
 		if (bParamsDirty) ComputeTargets();
 		for (FCascade& C : Cascades)
 			for (FMode& M : C.Modes) M.Amp = M.Target;
+		Publish();
+	}
+
+	void FLongWaves::Publish()
+	{
+		std::lock_guard<std::mutex> Lock(SummaryLock);
+		FSummary& S = Summary;
+		S.NumCascades = NumCas;
+		for (int C = 0; C < kLongCascades; ++C)
+		{
+			S.Band[C] = C < NumCas ? Cascades[C].Spec.Band : -1;
+			S.Variance[C] = CascadeVariance(C);
+			S.MeanK[C] = MeanWavenumber(C);
+			if (C < NumCas) CascadeBands(C, S.Bands[C]);
+			else S.Bands[C].clear();
+		}
+		BandVariance(S.BandVariance);
+		S.Tm01 = MeanPeriod();
+		S.MeanDir = MeanDirection();
+		S.Generation = SummaryGeneration.load(std::memory_order_relaxed) + 1;
+		SummaryGeneration.store(S.Generation, std::memory_order_release);
+	}
+
+	void FLongWaves::Moments(double* OutVariance, double* OutMeanK, double& OutTm01, double& OutMeanDir) const
+	{
+		std::lock_guard<std::mutex> Lock(SummaryLock);
+		for (int C = 0; C < kLongCascades; ++C)
+		{
+			if (OutVariance) OutVariance[C] = Summary.Variance[C];
+			if (OutMeanK) OutMeanK[C] = Summary.MeanK[C];
+		}
+		OutTm01 = Summary.Tm01;
+		OutMeanDir = Summary.MeanDir;
+	}
+
+	void FLongWaves::GetSummary(FSummary& Out) const
+	{
+		std::lock_guard<std::mutex> Lock(SummaryLock);
+		Out = Summary;
 	}
 
 	namespace
@@ -337,11 +378,13 @@ namespace Sailing
 		Out[int(ELongField::V)] = Scale(G, Uy * Omega * Coth);
 		Out[int(ELongField::Ax)] = Scale(MulI(Ht), -Omega * Omega * Coth * Ux);
 		Out[int(ELongField::Ay)] = Scale(MulI(Ht), -Omega * Omega * Coth * Uy);
-		Out[int(ELongField::Dx)] = Scale(MulI(Ht), -Lambda * Ux);
-		Out[int(ELongField::Dy)] = Scale(MulI(Ht), -Lambda * Uy);
-		Out[int(ELongField::Jxx)] = Scale(Ht, Lambda * Kx * Ux);
-		Out[int(ELongField::Jyy)] = Scale(Ht, Lambda * Ky * Uy);
-		Out[int(ELongField::Jxy)] = Scale(Ht, Lambda * Kx * Uy);
+		// Gerstner, as M_WaterV4 draws the sines (h = a sin, d = Chop a k^ cos): the surface moves toward the crests, so
+		// crests sharpen and troughs flatten. D = Chop i k^ h~; its Jacobian dD/dx = -Chop k k^ h~.
+		Out[int(ELongField::Dx)] = Scale(MulI(Ht), Lambda * Ux);
+		Out[int(ELongField::Dy)] = Scale(MulI(Ht), Lambda * Uy);
+		Out[int(ELongField::Jxx)] = Scale(Ht, -Lambda * Kx * Ux);
+		Out[int(ELongField::Jyy)] = Scale(Ht, -Lambda * Ky * Uy);
+		Out[int(ELongField::Jxy)] = Scale(Ht, -Lambda * Kx * Uy);
 	}
 
 	bool FLongWaves::IsRunning(int Cascade) const
@@ -420,9 +463,10 @@ namespace Sailing
 		Slot.Key.store(Key, std::memory_order_release);
 	}
 
-	void FLongWaves::Produce(int64_t Key, const FParallelFor& Parallel)
+	void FLongWaves::Produce(int64_t Key, const FParallelFor& Parallel, const FLongWaveParams* InParams)
 	{
 		std::lock_guard<std::mutex> Lock(ProduceLock);
+		if (InParams) SetParams(*InParams);
 		Advance(Key);
 		ProduceLocked(Key, Parallel);
 	}
@@ -460,23 +504,23 @@ namespace Sailing
 		}
 	}
 
-	void FLongWaves::Sample(double X, double Y, double T, const float* Ratio, double* Out) const
+	void FLongWaves::SampleCascades(double X, double Y, double T, double* Out) const
 	{
 		const double KeyF = T * KeyHz;
 		const int64_t K0 = int64_t(std::floor(KeyF));
 		const double W = KeyF - double(K0);
 		auto Accumulate = [&](const FKeyGrids& G0, const FKeyGrids& G1)
 		{
-			for (int I = 0; I < kLongFields; ++I) Out[I] = 0.0;
+			for (int I = 0; I < kLongCascades * kLongFields; ++I) Out[I] = 0.0;
 			for (int C = 0; C < NumCas; ++C)
 			{
 				const FCascade& Cas = Cascades[C];
 				const int Size = Cas.Spec.Size;
 				const double Cell = Cas.Spec.Tile / Size;
 				const double U = (Cas.Cos * X + Cas.Sin * Y) / Cell, V = (-Cas.Sin * X + Cas.Cos * Y) / Cell;
-				const double R = Ratio ? double(Ratio[C]) : 1.0;
-				if (G0.bRunning[C] && !G0.F[C][0].empty()) AddBilinear(G0.F[C], Size, U, V, (1.0 - W) * R, Out);
-				if (G1.bRunning[C] && !G1.F[C][0].empty()) AddBilinear(G1.F[C], Size, U, V, W * R, Out);
+				double* Acc = Out + C * kLongFields;
+				if (G0.bRunning[C] && !G0.F[C][0].empty()) AddBilinear(G0.F[C], Size, U, V, 1.0 - W, Acc);
+				if (G1.bRunning[C] && !G1.F[C][0].empty()) AddBilinear(G1.F[C], Size, U, V, W, Acc);
 			}
 		};
 		// Lock-free when both keys are in the ring and nobody wrote over them while they were read.
@@ -491,6 +535,40 @@ namespace Sailing
 		const FKeyGrids& G0 = GetKeyGrids(K0);
 		const FKeyGrids& G1 = GetKeyGrids(K0 + 1);
 		Accumulate(G0, G1);
+	}
+
+	void FLongWaves::Sample(double X, double Y, double T, const float* Ratio, double* Out) const
+	{
+		double Each[kLongCascades * kLongFields];
+		SampleCascades(X, Y, T, Each);
+		for (int F = 0; F < kLongFields; ++F) Out[F] = 0.0;
+		for (int C = 0; C < NumCas; ++C)
+		{
+			const double R = Ratio ? double(Ratio[C]) : 1.0;
+			for (int F = 0; F < kLongFields; ++F) Out[F] += R * Each[C * kLongFields + F];
+		}
+	}
+
+	void FLongWaves::FoldAt(double X, double Y, double T, const float* Ratio, const double* Spacings, const double* Fades, int Pairs, double* OutJ) const
+	{
+		double Each[kLongCascades * kLongFields];
+		SampleCascades(X, Y, T, Each);
+		double MeanK[kLongCascades], Tm, Dir;
+		Moments(nullptr, MeanK, Tm, Dir);
+		for (int P = 0; P < Pairs; ++P)
+		{
+			double Jxx = 1.0, Jyy = 1.0, Jxy = 0.0;
+			for (int C = 0; C < NumCas; ++C)
+			{
+				const double Keep = Spacings && Spacings[P] > 0.0 && MeanK[C] > 0.0 ? Clamp(2.0 * kPi / (MeanK[C] * Spacings[P]) / 4.0 - 1.0, 0.0, 1.0) : 1.0;
+				const double S = (Ratio ? double(Ratio[C]) : 1.0) * Keep * (Fades ? Fades[P] : 1.0);
+				const double* F = Each + C * kLongFields;
+				Jxx += S * F[int(ELongField::Jxx)];
+				Jyy += S * F[int(ELongField::Jyy)];
+				Jxy += S * F[int(ELongField::Jxy)];
+			}
+			OutJ[P] = Jxx * Jyy - Jxy * Jxy;
+		}
 	}
 
 	double FLongWaves::CascadeVariance(int Cascade) const

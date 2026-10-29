@@ -11,6 +11,7 @@ namespace Sailing
 {
 	class FOcean;
 	class FSeaMap;
+	class FLongWaves;
 
 	constexpr int kWaveBands = 16;
 	constexpr int kWaveDirectionsPerBand = 3;
@@ -184,6 +185,17 @@ namespace Sailing
 		/** Bands() with the lake components' variance as it is at a point (the sea map's ratios). */
 		void BandsAt(double X, double Y, std::vector<FWaveBand>& Out) const;
 
+		/**
+		 * docs/long-wave-fft/ (storm water step 5, phase 2): the long waves (components 0-23) from an FFT sea instead of the
+		 * 24 sines, in everything this field reports, except in the calibration sea. The sea map scales each band by its
+		 * three sines' energy-weighted ratio. Null = the sines (the default until phase 3).
+		 */
+		void SetLongWaves(std::shared_ptr<FLongWaves> InLongWaves) { LongWaves = std::move(InLongWaves); bBandsDirty = true; }
+		const FLongWaves* GetLongWaves() const { return LongWaves.get(); }
+		bool UsesLongWaves() const { return LongWaves && !Params.bCalibrationSea; }
+		/** The sea map's scale for each of the long waves' cascades at a point (1 without a map). Out[kLongCascades]. */
+		void LongRatiosAt(double X, double Y, float* Out) const;
+
 		/** Open sea: an FFT ocean (wind sea and swell) added to everything this field reports. */
 		void SetOcean(std::shared_ptr<FOcean> InOcean) { Ocean = std::move(InOcean); bBandsDirty = true; }
 		const FOcean* GetOcean() const { return Ocean.get(); }
@@ -198,6 +210,9 @@ namespace Sailing
 		double BandWidth[kWaveBands];
 		FWaveParams Params;
 		std::shared_ptr<FOcean> Ocean;
+		std::shared_ptr<FLongWaves> LongWaves;
+		/** The cascades' ratios from the sea map's channels at a point. */
+		void LongRatiosFrom(const float* SeaRatio, float* Out) const;
 		std::shared_ptr<const FSeaMap> SeaMap;
 		uint32_t SeaMapGeneration = 0;
 		double Depth = 0.0;
@@ -214,6 +229,7 @@ namespace Sailing
 		mutable std::vector<FWaveBand> BandCache;
 		mutable bool bBandsDirty = true;
 		mutable uint64_t BandOceanGeneration = ~0ull;
+		mutable uint64_t BandLongGeneration = ~0ull;
 		mutable size_t BandOceanStart = 0;
 		struct FLock { std::mutex M; FLock() = default; FLock(const FLock&) {} FLock& operator=(const FLock&) { return *this; } };
 		mutable FLock BandLock;

@@ -1,4 +1,5 @@
 #include "Waves.h"
+#include "LongWaves.h"
 #include "Ocean.h"
 #include "SeaState.h"
 
@@ -6,6 +7,8 @@ namespace Sailing
 {
 	namespace
 	{
+		/** Bands() entries from the long waves' cascade C carry kLongBandCode + C in BandComponent. */
+		constexpr int kLongBandCode = 1000;
 		constexpr double kMinFrequency = 0.18; // Hz (wavelength about 48 m)
 		constexpr double kMaxFrequency = 2.4;  // Hz (about 0.27 m)
 	}
@@ -391,6 +394,39 @@ namespace Sailing
 		else for (int I = 0; I < kSeaChannels; ++I) Out[I] = 1.f;
 	}
 
+	void FWaveField::LongRatiosAt(double X, double Y, float* Out) const
+	{
+		float Ratio[kSeaChannels];
+		SeaRatiosAt(X, Y, Ratio);
+		LongRatiosFrom(Ratio, Out);
+	}
+
+	void FWaveField::LongRatiosFrom(const float* SeaRatio, float* Out) const
+	{
+		for (int C = 0; C < kLongCascades; ++C) Out[C] = 1.f;
+		if (!SeaMap || !LongWaves) return;
+		// A band's channel: its three sines' ratios, weighted by their share of the band's energy (their directions were
+		// drawn from the spreading, so this is the band's ratio over directions, as SeaMapSwan's per-mode one).
+		auto Weighted = [this, SeaRatio](int First, int Count)
+		{
+			double E = 0.0, ER = 0.0, Sum = 0.0;
+			for (int I = First; I < First + Count; ++I)
+			{
+				const double W = TargetAmplitude[I] * TargetAmplitude[I];
+				E += W;
+				ER += W * double(SeaRatio[I]) * SeaRatio[I];
+				Sum += SeaRatio[I];
+			}
+			return float(E > 1e-12 ? std::sqrt(ER / E) : Sum / Count);
+		};
+		for (int C = 0; C < LongWaves->NumCascades(); ++C)
+		{
+			const int Band = LongWaves->Spec(C).Band;
+			Out[C] = Band >= 0 && Band < kSeaLongComponents / kWaveDirectionsPerBand
+				? Weighted(Band * kWaveDirectionsPerBand, kWaveDirectionsPerBand) : Weighted(0, kSeaLongComponents);
+		}
+	}
+
 	void FWaveField::SetDepth(double DepthMeters)
 	{
 		Depth = std::max(DepthMeters, 0.0);
@@ -410,13 +446,22 @@ namespace Sailing
 		float Ratio[kSeaChannels];
 		SeaRatiosAt(X, Y, Ratio);
 		double H = 0.0;
-		for (int I = 0; I < kWaveComponents; ++I)
+		const bool bLong = UsesLongWaves();
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
 			const FWaveComponent& C = Components[I];
 			if (C.Amplitude > 1e-6)
 			{
 				H += C.Amplitude * Ratio[std::min(I, kSeaLongComponents)] * std::sin(C.Kx * X + C.Ky * Y - C.Omega * T + C.Phase);
 			}
+		}
+		if (bLong)
+		{
+			float LongRatio[kLongCascades];
+			LongRatiosFrom(Ratio, LongRatio);
+			double F[kLongFields];
+			LongWaves->Sample(X, Y, T, LongRatio, F);
+			H += F[int(ELongField::H)];
 		}
 		if (Ocean) H += Ocean->Height(X, Y, T);
 		return H;
@@ -427,7 +472,19 @@ namespace Sailing
 		OutHeight = OutVerticalVelocity = OutSlopeX = OutSlopeY = 0.0;
 		float Ratio[kSeaChannels];
 		SeaRatiosAt(X, Y, Ratio);
-		for (int I = 0; I < kWaveComponents; ++I)
+		const bool bLong = UsesLongWaves();
+		if (bLong)
+		{
+			float LongRatio[kLongCascades];
+			LongRatiosFrom(Ratio, LongRatio);
+			double F[kLongFields];
+			LongWaves->Sample(X, Y, T, LongRatio, F);
+			OutHeight = F[int(ELongField::H)];
+			OutVerticalVelocity = F[int(ELongField::Vz)];
+			OutSlopeX = F[int(ELongField::Sx)];
+			OutSlopeY = F[int(ELongField::Sy)];
+		}
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
 			const FWaveComponent& C = Components[I];
 			if (C.Amplitude <= 1e-6) continue;
@@ -463,7 +520,29 @@ namespace Sailing
 		const double D = std::max(Below, 0.0);
 		float Ratio[kSeaChannels];
 		SeaRatiosAt(X, Y, Ratio);
-		for (int I = 0; I < kWaveComponents; ++I)
+		const bool bLong = UsesLongWaves();
+		if (bLong)
+		{
+			// Each cascade's surface flow decays with depth at its velocity-weighted mean wavenumber (a band is narrow).
+			float LongRatio[kLongCascades];
+			LongRatiosFrom(Ratio, LongRatio);
+			double MeanK[kLongCascades], Tm, Dir;
+			LongWaves->Moments(nullptr, MeanK, Tm, Dir);
+			for (int C = 0; C < kLongCascades; ++C)
+			{
+				const double K = MeanK[C], KH = K * Depth;
+				// The surface field carries coth(k h): below it, cosh(k (h - d)) / cosh(k h); deep, exp(-k d).
+				const double Profile = K <= 0.0 ? 1.0 : (Depth > 0.0 && KH < 6.0) ? std::cosh(K * std::max(Depth - D, 0.0)) / std::cosh(KH) : std::exp(-K * D);
+				LongRatio[C] = float(LongRatio[C] * Profile);
+			}
+			double F[kLongFields];
+			LongWaves->Sample(X, Y, T, LongRatio, F);
+			OutU = F[int(ELongField::U)];
+			OutV = F[int(ELongField::V)];
+			OutAx = F[int(ELongField::Ax)];
+			OutAy = F[int(ELongField::Ay)];
+		}
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
 			const FWaveComponent& C = Components[I];
 			if (C.Amplitude <= 1e-6) continue;
@@ -496,7 +575,14 @@ namespace Sailing
 	double FWaveField::SignificantHeight() const
 	{
 		double Variance = 0.0;
-		for (const FWaveComponent& C : Components) Variance += 0.5 * C.Amplitude * C.Amplitude;
+		const bool bLong = UsesLongWaves();
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I) Variance += 0.5 * Components[I].Amplitude * Components[I].Amplitude;
+		if (bLong)
+		{
+			double Var[kLongCascades], Tm, Dir;
+			LongWaves->Moments(Var, nullptr, Tm, Dir);
+			for (const double V : Var) Variance += V;
+		}
 		if (Ocean) Variance += Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
 		return 4.0 * std::sqrt(Variance);
 	}
@@ -506,10 +592,19 @@ namespace Sailing
 		float Ratio[kSeaChannels];
 		SeaRatiosAt(X, Y, Ratio);
 		double Variance = 0.0;
-		for (int I = 0; I < kWaveComponents; ++I)
+		const bool bLong = UsesLongWaves();
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
 			const double A = Components[I].Amplitude * Ratio[std::min(I, kSeaLongComponents)];
 			Variance += 0.5 * A * A;
+		}
+		if (bLong)
+		{
+			float LongRatio[kLongCascades];
+			LongRatiosFrom(Ratio, LongRatio);
+			double Var[kLongCascades], Tm, Dir;
+			LongWaves->Moments(Var, nullptr, Tm, Dir);
+			for (int C = 0; C < kLongCascades; ++C) Variance += Var[C] * LongRatio[C] * LongRatio[C];
 		}
 		if (Ocean) Variance += OceanShareAt(X, Y) * Ocean->SignificantHeight() * Ocean->SignificantHeight() / 16.0;
 		return 4.0 * std::sqrt(Variance);
@@ -525,11 +620,22 @@ namespace Sailing
 	double FWaveField::MeanDirection() const
 	{
 		double X = 0.0, Y = 0.0;
-		for (const FWaveComponent& C : Components)
+		const bool bLong = UsesLongWaves();
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
+			const FWaveComponent& C = Components[I];
 			const double K = std::sqrt(C.Kx * C.Kx + C.Ky * C.Ky);
 			const double E = C.Amplitude * C.Amplitude;
 			if (K > 0.0) { X += E * C.Kx / K; Y += E * C.Ky / K; }
+		}
+		if (bLong)
+		{
+			// (Energy as the sines count it: a^2, twice the variance.)
+			double Var[kLongCascades], Tm, Dir, E = 0.0;
+			LongWaves->Moments(Var, nullptr, Tm, Dir);
+			for (const double V : Var) E += 2.0 * V;
+			X += E * std::cos(Dir);
+			Y += E * std::sin(Dir);
 		}
 		if (Ocean)
 		{
@@ -546,11 +652,20 @@ namespace Sailing
 	double FWaveField::MeanPeriod() const
 	{
 		double E = 0.0, EW = 0.0;
-		for (const FWaveComponent& C : Components)
+		const bool bLong = UsesLongWaves();
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
+			const FWaveComponent& C = Components[I];
 			const double Energy = C.Amplitude * C.Amplitude;
 			E += Energy;
 			EW += Energy * C.Omega;
+		}
+		if (bLong)
+		{
+			double Var[kLongCascades], Tm, Dir, Energy = 0.0;
+			LongWaves->Moments(Var, nullptr, Tm, Dir);
+			for (const double V : Var) Energy += 2.0 * V;
+			if (Tm > 0.0) { E += Energy; EW += Energy * 2.0 * kPi / Tm; }
 		}
 		if (Ocean && Ocean->MeanPeriod() > 0.0)
 		{
@@ -565,12 +680,28 @@ namespace Sailing
 	{
 		std::lock_guard<std::mutex> Lock(BandLock.M);
 		const uint64_t OceanGeneration = Ocean ? Ocean->GetGeneration() : ~1ull;
-		if (!bBandsDirty && OceanGeneration == BandOceanGeneration) return BandCache;
+		const bool bLong = UsesLongWaves();
+		const uint64_t LongGeneration = bLong ? LongWaves->GetSummaryGeneration() : ~1ull;
+		if (!bBandsDirty && OceanGeneration == BandOceanGeneration && LongGeneration == BandLongGeneration) return BandCache;
 		bBandsDirty = false;
 		BandOceanGeneration = OceanGeneration;
+		BandLongGeneration = LongGeneration;
 		BandCache.clear();
 		BandComponent.clear();
-		for (int I = 0; I < kWaveComponents; ++I)
+		if (bLong)
+		{
+			// The long waves' cascades in wavelength bins (kLongBandCode + the cascade: BandsAt scales them by its ratio).
+			FLongWaves::FSummary S;
+			LongWaves->GetSummary(S);
+			for (int C = 0; C < kLongCascades; ++C)
+				for (const FWaveBand& B : S.Bands[C])
+				{
+					if (B.Variance <= 1e-12) continue;
+					BandComponent.push_back(kLongBandCode + C);
+					BandCache.push_back(B);
+				}
+		}
+		for (int I = bLong ? kSeaLongComponents : 0; I < kWaveComponents; ++I)
 		{
 			const FWaveComponent& C = Components[I];
 			if (C.Amplitude <= 1e-6) continue;
@@ -593,10 +724,13 @@ namespace Sailing
 		if (!SeaMap) return;
 		float Ratio[kSeaChannels];
 		SeaMap->Sample(X, Y, Ratio);
+		float LongRatio[kLongCascades];
+		LongRatiosFrom(Ratio, LongRatio);
 		std::lock_guard<std::mutex> Lock(BandLock.M);
 		for (size_t I = 0; I < BandComponent.size() && I < Out.size(); ++I)
 		{
-			const double R = Ratio[std::min(BandComponent[I], kSeaLongComponents)];
+			const int Code = BandComponent[I];
+			const double R = Code >= kLongBandCode ? double(LongRatio[Code - kLongBandCode]) : double(Ratio[std::min(Code, kSeaLongComponents)]);
 			Out[I].Variance *= R * R;
 		}
 	}

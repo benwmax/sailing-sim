@@ -54,7 +54,7 @@ namespace Sailing
 		Sx, Sy, // dH/dx, dH/dy
 		U, V,   // the surface water's horizontal orbital velocity (m/s)
 		Ax, Ay, // its acceleration (m/s^2): the exact -omega^2 terms
-		Dx, Dy, // choppy displacement (m, Choppiness x Tessendorf's -i k/|k| h)
+		Dx, Dy, // choppy displacement (m, Choppiness x i k/|k| h: Gerstner toward the crests, as M_WaterV4)
 		Jxx, Jyy, Jxy, // the fold Jacobian of the displacement less the identity: dDx/dx, dDy/dy, dDx/dy
 		Count
 	};
@@ -125,8 +125,9 @@ namespace Sailing
 
 		/** The grids at Key from the amplitudes as they are now (a pure function of them). Parallel jobs join deterministically. */
 		void EvaluateInto(int64_t Key, FKeyGrids& Out, const FParallelFor& Parallel = nullptr) const;
-		/** Advance(Key), then its grids into the ring (the producer: a key or two ahead of the clock). */
-		void Produce(int64_t Key, const FParallelFor& Parallel = nullptr);
+		/** Advance(Key), then its grids into the ring (the producer: a key or two ahead of the clock). With Params, SetParams
+		 *  first, under the same lock (the game's producer owns the writes; readers on other threads only sample). */
+		void Produce(int64_t Key, const FParallelFor& Parallel = nullptr, const FLongWaveParams* InParams = nullptr);
 		/**
 		 * The 13 fields at a map point and world time: each cascade bilinear at its rotated point, blended linearly between
 		 * keys floor(T x 30) and the next, times Ratio[c] (the sea map's cascade channel; null = 1). A key not in the ring is
@@ -134,7 +135,37 @@ namespace Sailing
 		 * producer keeps two keys ahead so there are none). Out[kLongFields].
 		 */
 		void Sample(double X, double Y, double T, const float* Ratio, double* Out) const;
+		/** Sample's fields per cascade, unscaled: Out[kLongCascades * kLongFields] (cascade-major). */
+		void SampleCascades(double X, double Y, double T, double* Out) const;
+		/**
+		 * The long waves' fold Jacobian (1 + dDx/dx)(1 + dDy/dy) - (dDx/dy)^2 at a point as M_WaterV4 draws it at Pairs
+		 * vertex spacings: each cascade's terms times Ratio[c] (null = 1), kept as the mesh keeps a train of its mean
+		 * wavelength at that spacing (saturate(2 pi / (k spacing) / 4 - 1); spacing 0 keeps all) and times Fades[p]. The cap
+		 * threshold solve and the crest spray read it (FWaveDetail::FLongJacobians for the sines). Out[Pairs].
+		 */
+		void FoldAt(double X, double Y, double T, const float* Ratio, const double* Spacings, const double* Fades, int Pairs, double* OutJ) const;
 		uint64_t GetSyncMisses() const { return SyncMisses.load(std::memory_order_relaxed); }
+
+		/**
+		 * docs/long-wave-fft/ phase 2: what readers on other threads need of the amplitudes (the boats' added resistance, the
+		 * orbital flow's depth decay, the sea's statistics), published after every Advance and snap. A copy under a lock:
+		 * the producer advances the amplitudes on a worker while boats step.
+		 */
+		struct FSummary
+		{
+			uint64_t Generation = 0;      // changes with every publish
+			int NumCascades = 0;
+			int Band[kLongCascades] = {}; // each cascade's FWaveField band (-1: a wavelength range)
+			double Variance[kLongCascades] = {};
+			double MeanK[kLongCascades] = {};  // velocity-weighted (MeanWavenumber)
+			double BandVariance[kWaveBands] = {};
+			double Tm01 = 0.0, MeanDir = 0.0;
+			std::vector<FWaveBand> Bands[kLongCascades]; // CascadeBands
+		};
+		void GetSummary(FSummary& Out) const;
+		/** The summary's per-cascade numbers alone (cheap: no band vectors), for readers at 120 Hz. Arrays of kLongCascades. */
+		void Moments(double* OutVariance, double* OutMeanK, double& OutTm01, double& OutMeanDir) const;
+		uint64_t GetSummaryGeneration() const { return SummaryGeneration.load(std::memory_order_acquire); }
 
 		/** Does the cascade run (has modes, and variance over 1e-6 m^2 now)? */
 		bool IsRunning(int Cascade) const;
@@ -234,5 +265,9 @@ namespace Sailing
 		mutable std::unique_ptr<FSlot[]> Ring;
 		mutable std::mutex ProduceLock;
 		mutable std::atomic<uint64_t> SyncMisses { 0 };
+		void Publish();
+		FSummary Summary;
+		mutable std::mutex SummaryLock;
+		std::atomic<uint64_t> SummaryGeneration { 0 };
 	};
 }

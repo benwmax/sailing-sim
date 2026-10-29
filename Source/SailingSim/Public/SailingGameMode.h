@@ -5,6 +5,7 @@
 #include "Waves.h"
 #include "SeaState.h"
 #include "Ocean.h"
+#include "LongWaves.h"
 #include "Weather.h"
 #include "Wind.h"
 #include "WorldClock.h"
@@ -38,6 +39,8 @@ public:
 
 	const Sailing::FWindField& GetWind() const { return Wind; }
 	const Sailing::FWaveField& GetWaves() const { return Waves; }
+	/** The long waves' FFT sea when it is on (docs/long-wave-fft/), else null. */
+	const Sailing::FLongWaves* GetLongWaves() const { return LongWaves.get(); }
 	const Sailing::FWeatherState& GetWeatherState() const { return WeatherState; }
 	const Sailing::FWeatherSystem& GetWeather() const { return Weather; }
 	/** The lake (terrain, docks, bridges, launch spots); empty if no lake data is found (open water). */
@@ -176,6 +179,16 @@ private:
 	void UpdateOcean(double WindKnots, double WindFromDeg);
 	TSharedPtr<Sailing::FOcean> Ocean;
 	bool bOceanConfigured = false;
+	/**
+	 * docs/long-wave-fft/ phase 2: the long waves as an FFT sea (-SailingLongWaves=fft|sines, or sailing.LongWaves 1 at the
+	 * start of a session; never saved). Null = the 24 sines. Its keys are produced on a worker two ahead of the clock.
+	 */
+	std::shared_ptr<Sailing::FLongWaves> LongWaves;
+	Sailing::FLongWaveParams LongParams;
+	TFuture<void> LongWaveJob;
+	int64 LongProducedKey = MIN_int64;
+	/** Starts the next keys' grids on a worker (when the last job is done). bNow: produce them here (the start). */
+	void UpdateLongWaves(bool bNow = false);
 	void UpdateTide();
 	double StartUnix = 0.0;
 	double ClockBase = 0.0;

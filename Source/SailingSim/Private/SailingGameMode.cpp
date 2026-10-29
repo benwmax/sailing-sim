@@ -32,6 +32,7 @@
 #include "Misc/Paths.h"
 #include "Scalability.h"
 #include "Async/Async.h"
+#include "Async/ParallelFor.h"
 #include "LakeTerrainActor.h"
 #include "NavaidsActor.h"
 #include "FarLightsActor.h"
@@ -131,6 +132,20 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	{
 		Ocean = MakeShared<FOcean>();
 		Waves.SetOcean(std::shared_ptr<FOcean>(Ocean.Get(), [Keep = Ocean](FOcean*) {}));
+	}
+	// docs/long-wave-fft/ phase 2: the long waves as an FFT sea, behind a switch (off until phase 3).
+	{
+		static TAutoConsoleVariable<int32> CVarLongWaves(TEXT("sailing.LongWaves"), 0,
+			TEXT("docs/long-wave-fft/: 1 = the long waves as an FFT sea, 0 = the 24 sines (read when a session starts)"));
+		FString LongArg;
+		const bool bFft = FParse::Value(SailingArgs::Dev(), TEXT("SailingLongWaves="), LongArg)
+			? LongArg.Equals(TEXT("fft"), ESearchCase::IgnoreCase) : CVarLongWaves.GetValueOnGameThread() != 0;
+		LongWaves.reset();
+		if (bFft)
+		{
+			LongWaves = std::make_shared<Sailing::FLongWaves>(2027);
+			Waves.SetLongWaves(LongWaves);
+		}
 	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWeather="), Value))
 	{
@@ -233,6 +248,7 @@ void ASailingGameMode::StartStreaming()
 		Fetch->Build(DerivedTerrain(PhysicsWindow.CenterX, PhysicsWindow.CenterY));
 		SeaFetch = Fetch;
 		Waves.SetDepth(Fetch->GetMedianDepth());
+		if (LongWaves) LongWaves->SetDepth(Fetch->GetMedianDepth());
 		UE_LOG(LogSailing, Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
 			Fetch->GetRows(), Fetch->GetCols(), Fetch->GetCell(), Fetch->GetMedianDepth(), (FPlatformTime::Seconds() - Start) * 1000.0);
 	}
@@ -724,6 +740,41 @@ void ASailingGameMode::ApplyWeatherSettings()
 	}
 	UpdateWeather(0.f);
 	Waves.SnapToTarget();
+	if (LongWaves)
+	{
+		if (LongWaveJob.IsValid()) LongWaveJob.Wait();
+		LongWaves->SetParams(LongParams);
+		LongWaves->SnapToTarget();
+		LongProducedKey = MIN_int64;
+		UpdateLongWaves(true);
+	}
+}
+
+void ASailingGameMode::UpdateLongWaves(bool bNow)
+{
+	if (!LongWaves) return;
+	// The physics samples keys floor(T x 30) and the next; two ahead leaves a frame of slack for the worker.
+	const int64 Want = int64(FMath::FloorToDouble(GetSimTime() * Sailing::FLongWaves::KeyHz)) + 2;
+	if (LongProducedKey >= Want) return;
+	if (LongWaveJob.IsValid() && !LongWaveJob.IsReady())
+	{
+		if (!bNow) return;
+		LongWaveJob.Wait();
+	}
+	// After a stall only the keys the clock still needs are evaluated (the amplitudes step through every key regardless).
+	const int64 From = FMath::Max(LongProducedKey + 1, Want - 3);
+	LongProducedKey = Want;
+	auto Job = [W = LongWaves, P = LongParams, From, Want]()
+	{
+		SCOPED_NAMED_EVENT(SailingLongWaves, FColor::Cyan);
+		const Sailing::FLongWaves::FParallelFor Par = [](int Count, const std::function<void(int)>& Body)
+		{
+			ParallelFor(Count, [&Body](int32 I) { Body(I); });
+		};
+		for (int64 K = From; K <= Want; ++K) W->Produce(K, Par, &P);
+	};
+	if (bNow) Job();
+	else LongWaveJob = Async(EAsyncExecution::TaskGraph, MoveTemp(Job));
 }
 
 void ASailingGameMode::ApplyQualitySettings()
@@ -955,6 +1006,11 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	WaveParams.HoldY = BoatPos.Y;
 	Waves.SetWind(WaveParams);
 	UpdateSeaMap(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
+	// The FFT's long waves follow the same wind, growing toward the field's reference sea (the sea map's 15 km).
+	LongParams.WindMs = WaveParams.WindSpeedKnots * kKnot;
+	LongParams.WindFromRad = WaveParams.WindFromDegrees * kDegToRad;
+	LongParams.FetchMeters = Waves.ReferenceFetch();
+	UpdateLongWaves();
 	// Ripples and chop follow a puff within seconds, the longest lake waves over minutes (FWaveField::GrowthSeconds).
 	Waves.Update(DeltaSeconds);
 }

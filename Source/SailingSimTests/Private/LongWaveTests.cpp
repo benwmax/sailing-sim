@@ -34,6 +34,7 @@ LONG_WAVE_TEST(Determinism)
 LONG_WAVE_TEST(LongClock)
 LONG_WAVE_TEST(Golden)
 LONG_WAVE_TEST(NoWeave)
+LONG_WAVE_TEST(FieldWiring)
 
 #undef LONG_WAVE_TEST
 
