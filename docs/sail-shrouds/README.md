@@ -54,3 +54,9 @@ clearance on there are none, so the gap was already closed on main.
 - `HoldForTests` sails with ideal hands in a steady wind. A player's eased main in gusts and lake chop, flogging, isn't in
   these samples.
 - The Sunfish, ILCA and other unstayed rigs have no shrouds to meet.
+
+## Gate (`scripts/gate.sh --scope boats`, packaged, the Mac)
+
+Pass: 267 tests (the light set; the packaged game and the bench are unchanged, since no game code changed). On High:
+beam8 56.8, beat15 52.6, marina 55.5, helm-eye 58.9, slip 49.1, crew 46.7. `SailingSim.Visual.SailShrouds` was run on its
+own and passes in 90 s.
