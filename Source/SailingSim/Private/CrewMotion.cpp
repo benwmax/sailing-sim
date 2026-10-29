@@ -362,7 +362,9 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	const bool bUnderBoom = X > BoomAft && X < Cfg.MainLuffX && !Cfg.bMultihull;
 	const double BoomDeg = FMath::RadiansToDegrees(FMath::Abs(In.BoomAngle));
 	const double Twa = FMath::RadiansToDegrees(FMath::Abs(In.TrueWindAngle));
-	const bool bTacking = Twa < 28.0 && FMath::Abs(In.TurnRate) > FMath::DegreesToRadians(4.0);
+	// (docs/j22-crew-tack/: a called tack, the main held in, starts it sooner: the crew get down under the centred boom as she
+	// comes up, not once she is 28 deg off the wind; sitting up, crew 1's head was in the mainsheet's tail.)
+	const bool bTacking = (Twa < 28.0 || (In.bTackCalled && Twa < 70.0)) && FMath::Abs(In.TurnRate) > FMath::DegreesToRadians(4.0);
 	const bool bGybing = Twa > 150.0 && FMath::Abs(In.BoomRate) > 0.3 && BoomDeg < 45.0;
 	// (Hiking in or out moves the crew model as fast as a tack does: only a move through the middle of the boat is a crossing.)
 	bool bCrossing = (bUnderBoom && (bTacking || bGybing)) || ((bTacking || bGybing) && FMath::Abs(In.OffsetRate) > 0.3)

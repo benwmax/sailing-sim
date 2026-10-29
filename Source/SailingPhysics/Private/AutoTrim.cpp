@@ -55,6 +55,36 @@ namespace Sailing
 		DeadBandNow = Lerp(Set.LightDeadBandDeg, Set.DeadBandDeg, Breeze);
 		RestNow = bInHand ? 0.0 : Set.RestSeconds * Breeze;
 
+		// docs/j22-crew-tack/: the helm calls a tack by holding the tiller over to windward while she comes up; the crew hold
+		// the main from the call until she is through the wind.
+		{
+			const double TwaDeg = T.TrueWindAngle * kRadToDeg, Side = TwaDeg >= 0.0 ? 1.0 : -1.0;
+			const bool bKeelboat = Cfg.DinghyEasePerHeelDeg <= 0.0 && !Cfg.bMultihull && Cfg.HasJib();
+			if (!Set.bCrewTacks || !bKeelboat) CrewTack = 0;
+			else if (CrewTack == 0)
+			{
+				if (std::fabs(TwaDeg) < 70.0 && Current.Tiller * Side > 0.5)
+				{
+					CrewTack = 1;
+					CrewTackSide = Side;
+					CrewTackTime = 0.0;
+					CrewTackFromDeg = std::fabs(TwaDeg);
+				}
+			}
+			else
+			{
+				CrewTackTime += Dt;
+				const double Up = CrewTackFromDeg + TwaDeg * -CrewTackSide; // degrees she has come up since the helm went over
+				const bool bLetGo = Current.Tiller * CrewTackSide < 0.3;
+				if (CrewTack == 1 && (bLetGo || Up < -20.0)) CrewTack = 0;
+				else if (CrewTack == 1 && CrewTackTime >= Set.CrewTackCallSeconds && Up >= Set.CrewTackCallDeg) CrewTack = 2;
+				// Through the wind, or the helm let go before she was: the main goes back to the hands.
+				else if (CrewTack == 2 && (Up - CrewTackFromDeg >= Set.CrewTackThroughDeg || (bLetGo && Up < CrewTackFromDeg) || CrewTackTime > 20.0))
+					CrewTack = 0;
+			}
+		}
+		const bool bHold = bHoldMain || CrewTack == 2;
+
 		// Angle each sail's foot should sit at: apparent wind angle minus twist minus the target angle of attack, averaged over strips.
 		auto FootAngleFor = [&](const FSailStripState* Strips, int N, double FootAngleNow)
 		{
@@ -100,7 +130,7 @@ namespace Sailing
 		const double Band = bInHand || !bHands ? 0.0 : Set.HeelDeadBandDeg;
 		const double EaseNow = Excess > Band ? (Excess - Band) * EaseRate : Excess < -Band ? Recover : 0.0;
 		MainEase = Clamp(MainEase + EaseNow * kDegToRad * Dt, 0.0, Cfg.TrimMaxEaseDeg * kDegToRad);
-		if (bHoldMain) MainEase = 0.0;
+		if (bHold) MainEase = 0.0;
 
 		const double TwsKnots = T.TrueWindSpeed / kKnot;
 		const double Flatten = Clamp((TwsKnots - Set.FlattenFromKnots) / Set.FlattenRangeKnots, 0.0, 1.0);
@@ -141,8 +171,8 @@ namespace Sailing
 			PuffEase = PuffEaseDeg * Puff * Leeward * kDegToRad;
 			Dump += PuffEase;
 		}
-		if (bHoldMain) Dump = 0.0;
-		const bool bOverpowered = !bHoldMain && bDinghy && (Excess > -3.0 || PuffEase > kDegToRad);
+		if (bHold) Dump = 0.0;
+		const bool bOverpowered = !bHold && bDinghy && (Excess > -3.0 || PuffEase > kDegToRad);
 		// After a dump she trims back on smoothly, not in step with the roll (sheet and body pumping together rock her over).
 		constexpr double TrimInRate = 0.25;
 		if (Set.bTrimMain && T.NumMainStrips > 0)
@@ -151,7 +181,7 @@ namespace Sailing
 			const double Foot = See(MainFootSeen, bMainSeen, FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide), Dt) + MainEase + Dump;
 			// Traveler carries the boom toward the centerline upwind; the sheet does the rest.
 			const double Range = Cfg.TravelerRangeDeg * kDegToRad;
-			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0); // MainEase is 0 while bHoldMain
+			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0); // MainEase is 0 while the main is held
 			Out.Traveler = Work(TravelerHand, Current.Traveler, Clamp(Traveler, -1.0, 1.0), Cfg.TravelerRangeDeg, TravelerOut, TravelerIn, Dt);
 			// The sheet takes the boom the rest of the way from where the traveller car is (not where it is going).
 			const double Sheet = Clamp((Foot - (bHands ? Out.Traveler : Clamp(Traveler, -1.0, 1.0)) * Range) / (Cfg.MainMaxEaseDeg * kDegToRad), 0.0, 1.0);

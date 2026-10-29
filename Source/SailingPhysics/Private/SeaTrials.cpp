@@ -345,4 +345,57 @@ namespace Sailing
 		}
 		return R;
 	}
+
+	FPlayerTackResult RunPlayerTack(const FBoatConfig& Config, double Knots, uint32_t Seed, double TillerMax, bool bCrewTacks)
+	{
+		FTrialSeaSpec Spec;
+		Spec.WindKnots = Knots;
+		Spec.GustIntensity = 0.08;
+		Spec.Seed = Seed;
+		Spec.FetchMeters = 5000.0;
+		FTrialSea Sea(Spec);
+		FBoatModel Boat(Config);
+		Boat.Reset(0.0, 0.0, Sea.HeadingFor(42.0), 5.0 * kKnot);
+		FAutoTrim Trim;
+		Trim.Settings.bCrewTacks = bCrewTacks;
+		FAutopilot Helm;
+		Helm.TargetTWADeg = 42.0;
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 0.15;
+		const double Called = 60.0 + 3.0 * Seed;
+		double T = 0.0, Settled = 0.0, Before = 0.0;
+		int BeforeN = 0, Phase = 0; // 0 sailing, 1 the helm hard over, 2 steering onto the new tack
+		bool bWasHolding = false;
+		FPlayerTackResult R;
+		R.MinSpeedKnots = 1e9;
+		for (int I = 0; I < int((Called + 60.0) * PhysicsHz); ++I, T += PhysicsDt)
+		{
+			const Vec3 O = Boat.OriginPosition();
+			Sea.Update(T, O.X, O.Y);
+			const double Twa = Boat.GetTelemetry().TrueWindAngle * kRadToDeg;
+			if (Phase == 0 && T >= Called) Phase = 1;
+			if (Phase == 1 && Twa < -30.0) { Phase = 2; Helm.TargetTWADeg = -42.0; }
+			C = Trim.Update(Boat, C, PhysicsDt);
+			const bool bHolding = Trim.IsHoldingForTack();
+			if (Phase == 0 && bHolding && !bWasHolding) ++R.FalseCalls;
+			bWasHolding = bHolding;
+			if (Phase == 1) C.Tiller = std::min(C.Tiller + 2.5 * PhysicsDt, TillerMax);
+			else C.Tiller = Helm.Update(Boat);
+			Boat.Step(PhysicsDt, C, Sea.GetWind(), Sea.GetWaves());
+			const FBoatTelemetry& Tm = Boat.GetTelemetry();
+			const double Kn = Tm.BoatSpeed / kKnot;
+			if (T < Called)
+			{
+				if (T >= Called - 10.0) { Before += Kn; ++BeforeN; }
+				continue;
+			}
+			R.MinSpeedKnots = std::min(R.MinSpeedKnots, Kn);
+			const double NewTwa = Tm.TrueWindAngle * kRadToDeg;
+			Settled = NewTwa < -30.0 && NewTwa > -60.0 ? Settled + PhysicsDt : 0.0;
+			if (Settled >= 2.0) { R.bThrough = true; R.Seconds = T - Called - 2.0; break; }
+		}
+		R.SpeedBeforeKnots = BeforeN > 0 ? Before / BeforeN : 0.0;
+		R.KeptShare = R.MinSpeedKnots / std::max(R.SpeedBeforeKnots, 1e-3);
+		return R;
+	}
 }
