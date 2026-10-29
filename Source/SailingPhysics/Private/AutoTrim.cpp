@@ -244,6 +244,44 @@ namespace Sailing
 		return Out;
 	}
 
+	double FAutopilot::TackTurnSeconds(const FBoatConfig& Config, double TwaDeg)
+	{
+		// docs/tack-timing/: about 15 deg/s on a 6 m waterline (the J/22 is head to wind 3 s after the helm goes over from 45),
+		// slower as the square root of her length (the maxi's 28 m: 7 deg/s, head to wind in 6-7 s, as her gale traces show).
+		const double Lwl = Config.Hulls.empty() ? 6.0 : Config.Hulls[0].WaterlineLength();
+		const double Rate = Clamp(15.0 * std::sqrt(6.0 / std::max(Lwl, 1.0)), 5.0, 25.0);
+		return std::fabs(TwaDeg) / Rate;
+	}
+
+	double FAutopilot::TackFaceAhead(const FBoatModel& Boat, double Delay) const
+	{
+		const FWaveField* Waves = Boat.GetWaves();
+		if (!Waves) return 0.0;
+		const FBoatTelemetry& T = Boat.GetTelemetry();
+		const Vec3 P = Boat.GetState().Position;
+		const double Now = Boat.GetState().Time;
+		// She sails on for Delay, then turns: head to wind at Now + Delay + Turn, her bow along the wind's direction, having
+		// come on at about 60% of her speed through the turn. The slope she climbs along it (+ uphill: a face) from 1 s
+		// before to 2 s after, when a face stops her.
+		const double Turn = TackTurnSeconds(Boat.GetConfig(), T.TrueWindAngle * kRadToDeg);
+		const double Up = T.Heading + T.TrueWindAngle, Ux = std::cos(Up), Uy = std::sin(Up);
+		const double Hx = std::cos(T.Heading), Hy = std::sin(T.Heading);
+		const double Speed = std::max(T.ForwardSpeed, 0.0);
+		double Sum = 0.0;
+		int N = 0;
+		for (double Dt = -1.0; Dt <= 2.0; Dt += 0.5)
+		{
+			const double Ahead = Delay + Turn + Dt;
+			if (Ahead < 0.0) continue;
+			const double Run = Speed * (Delay + 0.6 * std::max(Turn + Dt, 0.0));
+			double H = 0.0, W = 0.0, Sx = 0.0, Sy = 0.0;
+			Waves->Sample(P.X + Hx * Run, P.Y + Hy * Run, Now + Ahead, H, W, Sx, Sy);
+			Sum += Sx * Ux + Sy * Uy;
+			++N;
+		}
+		return N > 0 ? Sum / N : 0.0;
+	}
+
 	double FAutopilot::WaveSteerDegFor(const FBoatConfig& Config)
 	{
 		// docs/wave-steering/: how far a helm turns for a wave, by what turning gained in 1.2-2 m seas. A dinghy surfs on every
@@ -299,6 +337,8 @@ namespace Sailing
 			TackOrderSide = OrderSide;
 			TackAskedAt = -1.0;
 			bTackGo = false;
+			TackLookAt = -1.0;
+			bTackLookGo = false;
 		}
 		if (!bTackAsked)
 		{
@@ -312,8 +352,21 @@ namespace Sailing
 			const Vec3 P = Boat.GetState().Position;
 			const bool bSea = Waves && !Waves->GetParams().bCalibrationSea && Waves->SignificantHeightAt(P.X, P.Y) >= 0.5;
 			const double Along = T.WaveSlopeSurge / std::max(Boat.TotalMass() * kGravity, 1.0);
-			const bool bReady = Along < 0.0 && T.ForwardSpeed >= TackSpeedShare * std::max(UpwindSpeed, 0.0);
-			if (!bSea || bReady || Now - TackAskedAt >= Waves->MeanPeriod()) bTackGo = true;
+			const bool bWayOn = T.ForwardSpeed >= TackSpeedShare * std::max(UpwindSpeed, 0.0);
+			bool bReady = Along < 0.0 && bWayOn;
+			double Wait = bSea ? Waves->MeanPeriod() : 0.0;
+			if (bSea && bTackLookAhead && bReady)
+			{
+				// docs/tack-timing/: ready by #382's rule, but not into a face: the slope she would climb head to wind, read from
+				// the sea ahead (10 Hz), over TackLookMaxFace waits for the next moment within the period.
+				if (TackLookAt < 0.0 || Now - TackLookAt >= 0.1)
+				{
+					TackLookAt = Now;
+					bTackLookGo = TackFaceAhead(Boat, 0.0) <= TackLookMaxFace;
+				}
+				bReady = bTackLookGo;
+			}
+			if (!bSea || bReady || Now - TackAskedAt >= Wait) bTackGo = true;
 			else Target = -TargetTWADeg - OrderSide * TackFootDeg; // the old tack's angle, footing, until then
 		}
 		// docs/wave-steering/: down a face, up a back.
