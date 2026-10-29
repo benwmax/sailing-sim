@@ -129,6 +129,19 @@ namespace Sailing
 		double TackSpeedShare = 1.1;
 		double TackFootDeg = 10.0;
 		/**
+		 * docs/tack-timing/: the helm looks at the sea she is sailing into (the waves are exactly predictable: FWaveField::Sample
+		 * at a later time). Ready to tack by the rule above, she still waits (within the same period) if her bow would come
+		 * through the wind into a face: the slope she would climb along the wind's direction over the seconds she spends
+		 * head to wind (from TackTurnSeconds after the start) over TackLookMaxFace. In the same seas as bTimeTacks (Hs 0.5 m+,
+		 * not the calibration sea).
+		 */
+		bool bTackLookAhead = true;
+		double TackLookMaxFace = 0.04;
+		/** Seconds from the helm going over to her bow head to wind, at a true wind angle: her turn rate by her length. */
+		static double TackTurnSeconds(const FBoatConfig& Config, double TwaDeg);
+		/** The slope she would climb head to wind if she started the tack Delay s from now (for the tests). */
+		double TackFaceAhead(const FBoatModel& Boat, double Delay) const;
+		/**
 		 * docs/hobie-run/: the run guard. With the wind field given, a target deeper than 180 - margin is held at it: the
 		 * margin is ByTheLeeMarginDeg, plus ByTheLeePerGust per unit of the gustiness where she is (GustIntensity and the
 		 * puffs, times the shelter's GustScaleAt), plus RunMarginPerSpeedShare per unit of her speed over the true wind's
@@ -184,6 +197,7 @@ namespace Sailing
 		mutable double LastTiller = -10.0; // the last tiller given (-10: none yet)
 		mutable double SlopeSeen = 0.0, SlopeMean = 0.0, WaveSteerNow = 0.0; // docs/wave-steering/
 		mutable double TackOrderSide = 0.0; // the side the target was on when the wait (or the tack) began
+		mutable double TackLookAt = -1.0; mutable bool bTackLookGo = false; // docs/tack-timing/: the look's last decision (10 Hz)
 		// The run guard: the side the target was on last step, and a gybe she was told to make (until she is round).
 		mutable double LastTargetSide = 0.0;
 		mutable bool bGybeOrdered = false;

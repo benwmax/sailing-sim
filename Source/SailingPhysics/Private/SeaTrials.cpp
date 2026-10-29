@@ -209,7 +209,7 @@ namespace Sailing
 		return RunGaleTackDetail(Config, Reefs, Seed, bSea, Knots).Seconds;
 	}
 
-	FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots, bool bWaveHelm)
+	FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots, bool bWaveHelm, bool bTackLookAhead)
 	{
 		FGaleTackResult R;
 		// PrologueTests.cpp TackInGale, plain: the same crew, wheel and clock.
@@ -228,6 +228,7 @@ namespace Sailing
 		Hand.MaxTiller = 0.6;
 		Hand.bKeepShortOfStall = false;
 		Hand.bWaveSteering = bWaveHelm;
+		Hand.bTackLookAhead = bTackLookAhead;
 		const double Called = 60.0 + 7.0 * Seed;
 		double T = 0.0, Settled = 0.0, Before = 0.0;
 		int BeforeN = 0;
