@@ -38,6 +38,17 @@ namespace Sailing
 		                               // meanwhile); in light air none
 		double CreepDegPerSecond = 1.0; // below the dead band
 		double HeelDeadBandDeg = 1.0;  // a keelboat crew eases past the heel limit plus this, trims back below it minus this
+		/**
+		 * docs/j22-crew-tack/: a keelboat crew hold the main through a tack the helm calls (monohull keelboats; off by default,
+		 * the pawn turns it on for the player's boat). The call is the tiller held over to windward (past 0.5) for
+		 * CrewTackCallSeconds while she comes up CrewTackCallDeg from where it went over (a luff in a puff is let go sooner);
+		 * the main is then held as bHoldMain holds it until she is CrewTackThroughDeg past head to wind, or the helm lets go
+		 * before she is through. No backed jib and no carried-over trim: on the J/22 both cost her speed at every wind.
+		 */
+		bool bCrewTacks = false;
+		double CrewTackCallSeconds = 0.6;
+		double CrewTackCallDeg = 8.0;
+		double CrewTackThroughDeg = 15.0;
 	};
 
 	/**
@@ -62,7 +73,10 @@ namespace Sailing
 		/** Deliberate adjustments the hands have started (moves past the dead band, not the creep), for the tests. */
 		int GetAdjustments() const { return Adjustments; }
 
-		void Reset() { MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
+		/** The crew's tack (Settings.bCrewTacks): true while they hold the main through a called tack (for the tests). */
+		bool IsHoldingForTack() const { return CrewTack == 2; }
+
+		void Reset() { CrewTack = 0; MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
 
 	private:
 		double MainEase = 0.0; // rad, extra ease from heel feedback
@@ -77,6 +91,10 @@ namespace Sailing
 		FHand MainHand, TravelerHand, JibHand;
 		// Each sail's foot angle as the trimmer sees it (rad): its angle of attack over ReactionSeconds, not each roll.
 		double MainFootSeen = 0.0, JibFootSeen = 0.0;
+		// The crew's tack (Settings.bCrewTacks): 0 none, 1 the helm over (not yet a call), 2 called (the main held); the side
+		// she tacks from, the time since the helm went over, and her true wind angle then.
+		int CrewTack = 0;
+		double CrewTackSide = 0.0, CrewTackTime = 0.0, CrewTackFromDeg = 0.0;
 		double ReactionNow = 1.5, DeadBandNow = 2.0, RestNow = 1.5; // this step's (light air to a breeze)
 		bool bHandsNow = true;
 		mutable int Adjustments = 0;

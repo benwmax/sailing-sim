@@ -127,6 +127,25 @@ namespace Sailing
 	SAILINGPHYSICS_API FGaleTackResult RunGaleTackDetail(const FBoatConfig& Config, int Reefs, uint32_t Seed, bool bSea, double Knots = 32.0);
 
 	/**
+	 * docs/j22-crew-tack/: a tack with the player on the helm, on lake chop (5 km of fetch) in a gusty wind (GustIntensity
+	 * 0.08): close-hauled at TWA 42 with the crew helper trimming (FAutoTrim, hands on; bCrewTacks as given) and the
+	 * autopilot standing in for the player's steering, then at 60 + 3 x Seed s the tiller goes to windward at the keys' ramp
+	 * (2.5 a second) to TillerMax and is held until she is 30 deg through the wind, then she is steered for TWA -42.
+	 * Through: TWA -30 to -60 held for 2 s, within 60 s; Seconds from the call. KeptShare: her slowest speed through it over
+	 * her mean in the 10 s before. FalseCalls: holds the crew began before the call (a luff read as a tack).
+	 */
+	struct FPlayerTackResult
+	{
+		bool bThrough = false;
+		double Seconds = -1.0;
+		double SpeedBeforeKnots = 0.0;
+		double MinSpeedKnots = 0.0;
+		double KeptShare = 0.0;
+		int FalseCalls = 0;
+	};
+	SAILINGPHYSICS_API FPlayerTackResult RunPlayerTack(const FBoatConfig& Config, double Knots, uint32_t Seed, double TillerMax, bool bCrewTacks);
+
+	/**
 	 * docs/hobie-run/: a deep run on the autopilot (FAutopilot holding TwaDeg, FAutoTrim with the crew's hands) in Knots
 	 * with GustIntensity and FetchMeters of chop, for Seconds; with bRunGuard the helm has the wind (its run guard). GybeAt
 	 * >= 0 tells her to gybe then (the target to -TwaDeg). Counted after the first 2 s.
