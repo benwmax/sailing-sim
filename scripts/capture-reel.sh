@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Renders one sim reel loop through Movie Render Queue (docs/sim-reel/README.md): Tools/reel/capture_reel.py with the
 # project's venv (numpy, Pillow). Run scripts/build.sh first: the game runs from the editor binary.
-# Usage: scripts/capture-reel.sh <wireframe|fleet|physics|storm|night> [--quality preview|master] [--passes a,b]
-#        [--compose-only] [--dry-run];  scripts/capture-reel.sh --list
+# The footage is recorded on the PC (scripts\windows\capture-reel.ps1, docs/sim-reel/PC-RUNBOOK.md); on the Mac this is
+# for smoke tests and dry runs.
+# Usage: scripts/capture-reel.sh <wireframe|fleet|physics|storm|night|all> [--quality check|preview] [--passes a,b]
+#        [--compose-only] [--dry-run [--platform win]] [--preflight];  scripts/capture-reel.sh --list
 source "$(dirname "$0")/env.sh"
 PY="$REPO_ROOT/Tools/venv/bin/python"
 [[ -x "$PY" ]] || PY=python3

@@ -212,6 +212,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    against the empty `/Game/Reel/LS_Reel`; `Tools/reel/compose.py` joins the passes (wipes, cuts, telemetry overlay) into a
    seamless loop and ffmpeg writes `master.mov`, the web mp4/webm and a poster to `Artifacts/reel/<shot>/<quality>/`.
    The sim steps identically under it (telemetry byte-identical across runs); pin AI liveries with `-SailingLiverySeed`.
+   Footage is recorded on the PC by Ben (`docs/sim-reel/PC-RUNBOOK.md`, `draft` then `master` on Ultra); Mac renders are
+   smoke tests (`check`, `preview`) and `--dry-run --platform win` prints the PC's commands.
 
 ## Conventions
 

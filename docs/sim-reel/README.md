@@ -4,6 +4,10 @@ The portfolio's `sim-reel` widget (benwmax/bmax-portfolio, `docs/side-projects/s
 the sim: `wireframe`, `fleet`, `physics`, `storm`, `night`. This folder is how they're made, so every loop can be rendered
 again from a command.
 
+**The footage is recorded on the Windows 4090 PC** (Ben's call: it has the better graphics). Ben runs it himself:
+[PC-RUNBOOK.md](PC-RUNBOOK.md) has the steps for each shot. Renders on the Mac are smoke tests of the pipeline, never
+footage (`meta.json` says `"footage": false`).
+
 ## Does Movie Render Queue step the sim correctly?
 
 Yes. Movie Render Queue (MRQ) renders at a fixed frame rate: it ticks the engine with fixed deltas, one tick per
@@ -75,21 +79,32 @@ use. No Take Recorder or Sequencer tracks are needed, and nothing is replayed: t
 
 ## How a shot is rendered
 
-```bash
-scripts/capture-reel.sh wireframe                    # preview: 1280x720, 1 spatial x 2 temporal samples, High, Mac
-```
+On the PC (the footage):
 
-```bash
-scripts/capture-reel.sh physics --quality check      # 640x360, 1 sample: a quick look, about 1.5 min a pass
-```
-
-```bash
-scripts/capture-reel.sh wireframe --quality master   # 4K, 4 x 4 samples, Ultra: the PC
+```powershell
+scripts\windows\capture-reel.ps1 -Shot wireframe -Quality draft   # 1080p, Ultra, 1 x 2 samples: check the framing
 ```
 
 ```powershell
-scripts\windows\capture-reel.ps1 wireframe            # master by default on the PC
+scripts\windows\capture-reel.ps1 -Shot wireframe                  # master: 4K, Ultra, 4 x 4 samples
 ```
+
+On the Mac (smoke tests):
+
+```bash
+scripts/capture-reel.sh wireframe                    # preview: 1280x720, High, 1 x 2 samples
+```
+
+```bash
+scripts/capture-reel.sh physics --quality check      # 640x360, 1 sample: about 1.5 min a pass
+```
+
+```bash
+scripts/capture-reel.sh all --dry-run --platform win # the PC's game commands, printed from the Mac
+```
+
+`--preflight` (`-Preflight` on the PC) checks the build, the sequence asset, Python's numpy and Pillow, ffmpeg and the
+crew before anything renders.
 
 For each pass of the shot (`Tools/reel/shots.json`), `Tools/reel/capture_reel.py`:
 1. Writes a job file and starts the game with:
@@ -159,27 +174,27 @@ These only apply with `-SailingReel`:
 
 | Shot | Command | Passes | Notes |
 |---|---|---|---|
-| `wireframe` | `scripts/capture-reel.sh wireframe` | wire, litwire, lit | J/22 on the studio stage, 8°/s, pitch -8°, zoom 1.25, warming 3–10 s, wipes at 2.5 s and 5.5 s |
-| `fleet` | `scripts/capture-reel.sh fleet` | the 8 boats (`Boat:0`–`Boat:7`) | Gallery whole-boat view at golden hour on the lake, 1.1 s each |
-| `physics` | `scripts/capture-reel.sh physics` | chase | J/22 tacking (`-SailingDemo`) in 14 kn, capture mode Chase, telemetry overlay |
-| `storm` | `scripts/capture-reel.sh storm` | front | Thunderstorm, seed 7, ShoreTele, 3× dilation keeping every 8th frame (24×) |
-| `night` | `scripts/capture-reel.sh night` | channel | Galveston at 20:36, traffic 2 and near, drone framing the nearest tanker (`-SailingCamVessel=3,...`) |
+| `wireframe` | `capture-reel.ps1 -Shot wireframe` | wire, litwire, lit | J/22 on the studio stage, 8°/s, pitch -8°, zoom 1.25, warming 3–10 s, wipes at 2.5 s and 5.5 s |
+| `fleet` | `capture-reel.ps1 -Shot fleet` | the 8 boats (`Boat:0`–`Boat:7`) | Gallery whole-boat view at golden hour on the lake, 1.1 s each |
+| `physics` | `capture-reel.ps1 -Shot physics` | chase | J/22 tacking (`-SailingDemo`) in 14 kn, capture mode Chase, telemetry overlay |
+| `storm` | `capture-reel.ps1 -Shot storm` | front | Thunderstorm, seed 7, ShoreTele, 3× dilation keeping every 8th frame (24×); its master is 4 × 1 samples (`quality_overrides`), since a time-lapse frame gains nothing from temporal blur |
+| `night` | `capture-reel.ps1 -Shot night` | channel | Galveston at 20:36, traffic 2 and near, drone framing the nearest tanker (`-SailingCamVessel=3,...`) |
 
-Add `--quality master` for the 4K masters on the PC.
-
-The camera angles, times and conditions in `shots.json` are first guesses, not chosen hero angles. Try a framing
-quickly with `scripts/run-game.sh 10 <the shot's args>`, then set it in `shots.json`.
+The commands are `scripts\windows\capture-reel.ps1` on the PC; `-Shot all` runs all five. The camera angles, times
+and conditions in `shots.json` are first guesses, not chosen hero angles: a `-Quality draft` render on the PC is the
+way to choose them.
 
 ## Mac or PC
 
 | Step | Where |
 |---|---|
-| Building the pipeline, previews (720p), checking a framing | Mac |
-| 4K masters (`--quality master`: 4 × 4 samples, 16 renders a frame) | Windows 4090 PC. On the Mac, a 10 s 4K loop would take hours a pass. |
-| Grooms as strands, Ultra-only effects (crew falls, FFT bloom) | PC only: the Mac draws hair cards |
+| All footage: drafts to choose the framing, then the 4K masters | Windows 4090 PC (Ultra, hair strands, crew falls, FFT bloom); Ben runs it ([PC-RUNBOOK.md](PC-RUNBOOK.md)) |
+| Building the pipeline, smoke tests (`check`, `preview` on High), dry runs of the PC's commands | Mac |
 
-The PC needs the commit, `scripts\windows\build.ps1`, ffmpeg (`winget install ffmpeg`), and a venv with numpy and
-Pillow (`Tools\venv`).
+The PC needs:
+- the commit, then `scripts\windows\build.ps1`;
+- ffmpeg (`winget install Gyan.FFmpeg`);
+- a Python with numpy and Pillow (`$env:PYTHON`, `Tools\venv`, or `python` on the PATH).
 
 ## Proof
 
@@ -204,9 +219,12 @@ tail).
 - `night`: 330 frames, 1.3 min.
 - `fleet`: 8 × 273 frames, 13 min. One pass took 7.8 min compiling the ILCA's shaders the first time.
 
+**The PC's commands, dry-run from the Mac.** `scripts/capture-reel.sh all --dry-run --platform win` prints all 14 passes'
+`UnrealEditor.exe` command lines. Not yet run on the PC.
+
 **A master estimate.** The 4K master is 16 renders a frame at 9× the pixels, on Ultra. At the Mac's preview rate that's
-over an hour a pass, hence the PC. On the 4090, expect a few seconds a frame: 10–20 minutes a pass. That's not measured
-yet.
+over an hour a pass. On the 4090, expect a few seconds a frame: 10–20 minutes a pass. That's not measured yet;
+`meta.json` will record it.
 
 ## Still open
 
@@ -215,7 +233,7 @@ yet.
   - night at 20:36 in June is still dusk;
   - the storm's shore tripod has the near bank across the bottom of the frame.
 - The MetaHuman crew stay grey in the wire-only pass: the wire material doesn't take on the skinned bodies and grooms.
-- The PC masters: `scripts\windows\capture-reel.ps1 <shot>`. It needs ffmpeg and the venv with numpy and Pillow.
-- Bean's OK before any of Bean's motion capture appears. The idles are CMU clips, but crew-2's capture solves are
-  Bean's.
+- The PC renders: drafts, then masters ([PC-RUNBOOK.md](PC-RUNBOOK.md)). The Windows script has only been dry-run.
+- Bean's OK before any of Bean's motion capture appears. Today the game never plays the crew-2 clips (nothing loads
+  `/Game/Crew/Capture`); the crew are procedural plus CMU idles.
 - Label each clip honestly in the portfolio (`render: "offline"`, as `meta.json` says).

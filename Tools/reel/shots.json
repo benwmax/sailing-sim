@@ -1,9 +1,10 @@
 {
-  "_doc": "The sim reel's five loops (docs/sim-reel/README.md). Each pass is one Movie Render Queue run of the game with these launch args; 'compose' joins the passes into the loop. seconds = the loop; tail = extra seconds rendered and dissolved over the head so the last frame flows into the first. start_s = game seconds before frame 0 (the gallery opens at 1 s, a capture's exposure settles by 2.5 s). dilation > 1 runs the world faster (-SailingSlowMo); keep dilation / fps <= 0.1 s per frame or the 120 Hz physics drops time (12 steps a frame). decimate keeps every n-th frame (a time-lapse past what dilation allows). Hero angles are placeholders for Ben to choose.",
+  "_doc": "The sim reel's five loops (docs/sim-reel/README.md). Each pass is one Movie Render Queue run of the game with these launch args; 'compose' joins the passes into the loop. seconds = the loop; tail = extra seconds rendered and dissolved over the head so the last frame flows into the first. start_s = game seconds before frame 0 (the gallery opens at 1 s, a capture's exposure settles by 2.5 s). dilation > 1 runs the world faster (-SailingSlowMo); keep dilation / fps <= 0.1 s per frame or the 120 Hz physics drops time (12 steps a frame). decimate keeps every n-th frame (a time-lapse past what dilation allows). Hero angles are placeholders for Ben to choose. Qualities: check and preview are the Mac's smoke tests (High); draft is the PC's quick look at a framing and master the PC's footage (Ultra).",
   "common_args": ["-SailingReel", "-SailingCinematic=1", "-SailingNoHud", "-SailingScreenPct=100", "-SailingNoGpuSlices", "-SailingSeed=7", "-SailingDate=2026-06-20"],
   "qualities": {
     "check": {"tier": "High", "width": 640, "height": 360, "spatial": 1, "temporal": 1, "render_warmup": 0, "format": "png"},
     "preview": {"tier": "High", "width": 1280, "height": 720, "spatial": 1, "temporal": 2, "render_warmup": 16, "format": "png"},
+    "draft": {"tier": "Ultra", "width": 1920, "height": 1080, "spatial": 1, "temporal": 2, "render_warmup": 16, "format": "png"},
     "master": {"tier": "Ultra", "width": 3840, "height": 2160, "spatial": 4, "temporal": 4, "render_warmup": 32, "format": "png"}
   },
   "shots": {
@@ -48,6 +49,7 @@
       "what": "The thunderstorm preset's gust front crossing the water, whitecaps building, then rain and lightning, time-lapsed.",
       "render": "offline",
       "fps": 30, "seconds": 10, "tail": 1, "start_s": 5, "dilation": 3, "decimate": 8,
+      "quality_overrides": {"master": {"temporal": 1}, "draft": {"temporal": 1}},
       "args": ["-SailingCapture=ShoreTele", "-SailingWeather=Thunderstorm", "-SailingHour=16", "-SailingWeatherTime=120", "-SailingBoat=J22", "-SailingWorld=Lake", "-SailingDemo"],
       "passes": [{"name": "front", "args": []}],
       "compose": {"type": "single"}

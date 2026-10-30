@@ -1,8 +1,12 @@
-"""Renders one sim reel loop through Movie Render Queue (docs/sim-reel/README.md). Mac and Windows.
+r"""Renders one sim reel loop through Movie Render Queue (docs/sim-reel/README.md). Mac and Windows.
 
-  python3 Tools/reel/capture_reel.py <shot> [--quality preview|master] [--passes a,b] [--compose-only] [--dry-run]
-  python3 Tools/reel/capture_reel.py --make-sequence      (builds /Game/Reel/LS_Reel; done for you when missing)
-  python3 Tools/reel/capture_reel.py --list
+  python Tools/reel/capture_reel.py <shot|all> [--quality check|preview|draft|master] [--passes a,b] [--compose-only]
+                                     [--dry-run [--platform win|mac]] [--preflight]
+  python Tools/reel/capture_reel.py --make-sequence      (rebuilds /Game/Reel/LS_Reel; it is committed)
+  python Tools/reel/capture_reel.py --list
+
+The footage is recorded on the Windows 4090 PC (scripts\windows\capture-reel.ps1, docs/sim-reel/PC-RUNBOOK.md); the Mac's
+check and preview renders are smoke tests of the pipeline, not footage.
 
 Shots and qualities are in Tools/reel/shots.json. For each pass it runs the game from the editor binary (-game, the
 uncooked content, no packaging) at a fixed step from launch, with the shot's args plus -SailingReel and the reel
@@ -15,6 +19,7 @@ Artifacts/reel/<shot>/<quality>/passes/<pass>/. Then Tools/reel/compose.py makes
 Uses the Mac lock (scripts/mac-lock.sh) on the Mac. Needs ffmpeg on the PATH (brew install ffmpeg / winget install ffmpeg).
 """
 import argparse
+import importlib.util
 import json
 import os
 import platform
@@ -33,7 +38,18 @@ EXECUTOR = ["-MoviePipelineLocalExecutorClass=/Script/MovieRenderPipelineCore.Mo
 SEQUENCE_ASSET = os.path.join(REPO, "Content", "Reel", "LS_Reel.uasset")
 
 sys.path.insert(0, HERE)
-import compose  # noqa: E402
+compose = None   # Tools/reel/compose.py, imported when needed (numpy and Pillow: a dry run doesn't need them)
+
+
+def load_compose():
+    global compose
+    if compose is None:
+        missing = [m for m in ("numpy", "PIL") if importlib.util.find_spec(m) is None]
+        if missing:
+            raise SystemExit(f"This Python ({sys.executable}) lacks {', '.join(missing)}: python -m pip install numpy pillow")
+        import compose as c
+        compose = c
+    return compose
 
 
 def log(msg):
@@ -42,6 +58,34 @@ def log(msg):
 
 def editor_cmd():
     return os.path.join(UE_ROOT, "Engine", "Binaries", "Mac" if IS_MAC else "Win64", "UnrealEditor-Cmd" if IS_MAC else "UnrealEditor-Cmd.exe")
+
+
+def preflight():
+    """What a render needs, checked before the first launch. Returns the problems (empty: ready)."""
+    bad, warn = [], []
+    plat = "Mac" if IS_MAC else "Win64"
+    game = os.path.join(UE_ROOT, "Engine", "Binaries", plat, "UnrealEditor.app" if IS_MAC else "UnrealEditor.exe")
+    if not os.path.exists(game):
+        bad.append(f"No Unreal editor at {game} (set UE_ROOT)")
+    module = os.path.join(REPO, "Binaries", plat, "libUnrealEditor-SailingSim.dylib" if IS_MAC else "UnrealEditor-SailingSim.dll")
+    if not os.path.isfile(module):
+        bad.append("The game isn't built for the editor: run " + ("scripts/build.sh" if IS_MAC else "scripts\\windows\\build.ps1"))
+    if not os.path.isfile(SEQUENCE_ASSET) or os.path.getsize(SEQUENCE_ASSET) < 1000:
+        bad.append("Content/Reel/LS_Reel.uasset is missing or an LFS pointer: git lfs pull")
+    missing = [m for m in ("numpy", "PIL") if importlib.util.find_spec(m) is None]
+    if missing:
+        bad.append(f"This Python ({sys.executable}) lacks {', '.join(missing)}: python -m pip install numpy pillow")
+    if not shutil.which("ffmpeg"):
+        warn.append("No ffmpeg on the PATH: the frames render but nothing is encoded ("
+                    + ("brew install ffmpeg" if IS_MAC else "winget install Gyan.FFmpeg, then open a new PowerShell") + ")")
+    if not os.path.isdir(os.path.join(REPO, "Content", "Crew", "MetaHumans")):
+        warn.append("No MetaHuman crew (Content/Crew/MetaHumans, git-ignored): the boats sail with the stand-in crew"
+                    + ("" if IS_MAC else " (unzip scripts/pack-metahumans.sh's zip; build-windows.bat does)"))
+    for w in warn:
+        log("Warning: " + w)
+    for b in bad:
+        log("Not ready: " + b)
+    return bad
 
 
 def make_sequence():
@@ -81,7 +125,7 @@ def game_args(cfg, shot, pass_, quality, job_path):
             f"-SailingShot={shot['_name']}-{pass_['name']}"]
     if shot.get("dilation", 1) != 1:
         args.append(f"-SailingSlowMo={shot['dilation']}")
-    return args + [f"-SailingQuality={cfg['qualities'][quality]['tier']}"] + cfg["common_args"] + shot["args"] + pass_["args"]
+    return args + [f"-SailingQuality={quality_for(cfg, shot, quality)['tier']}"] + cfg["common_args"] + shot["args"] + pass_["args"]
 
 
 def run_game(args, timeout_s):
@@ -103,8 +147,13 @@ def run_game(args, timeout_s):
     return time.time() - start
 
 
+def quality_for(cfg, shot, quality):
+    """The quality's settings with the shot's own overrides for it (shots.json quality_overrides)."""
+    return {**cfg["qualities"][quality], **shot.get("quality_overrides", {}).get(quality, {})}
+
+
 def render_pass(cfg, shot, pass_, quality, out_root, dry_run):
-    q = cfg["qualities"][quality]
+    q = quality_for(cfg, shot, quality)
     out = os.path.join(out_root, "passes", pass_["name"])
     decimate = shot.get("decimate", 1)
     frames = round((shot["seconds"] + shot.get("tail", 0)) * shot["fps"]) * decimate
@@ -114,7 +163,8 @@ def render_pass(cfg, shot, pass_, quality, out_root, dry_run):
            "dilation": shot.get("dilation", 1)}
     args = game_args(cfg, shot, pass_, quality, os.path.join(out, "job.json"))
     log(f"Pass {pass_['name']}: {frames} frames at {q['width']}x{q['height']}, {q['spatial']}x{q['temporal']} samples")
-    log("  " + " ".join(args))
+    exe = "open -n -W -a UnrealEditor.app --args" if IS_MAC else os.path.join(UE_ROOT, "Engine", "Binaries", "Win64", "UnrealEditor.exe")
+    log(f"  {exe} {PROJECT} " + " ".join(args))
     if dry_run:
         return {"pass": pass_["name"], "frames": frames}
     shutil.rmtree(out, ignore_errors=True)
@@ -132,7 +182,7 @@ def render_pass(cfg, shot, pass_, quality, out_root, dry_run):
     if os.path.isfile(os.path.join(out, "done.json")):
         with open(os.path.join(out, "done.json")) as f:
             done = json.load(f)
-    got = len(compose.frames_of(out))
+    got = len(load_compose().frames_of(out))
     log(f"  {got} frames in {seconds:.0f} s ({seconds / max(got, 1):.2f} s a frame); success {done.get('success')}")
     if not done.get("success") or got < frames:
         raise SystemExit(f"Pass {pass_['name']} failed: {got}/{frames} frames; see {out}/game.log")
@@ -160,36 +210,17 @@ def encode(loop_dir, out_root, name, fps):
     run("-i", os.path.join(out_root, f"{name}.mp4"), "-frames:v", "1", "-q:v", "3", os.path.join(out_root, f"{name}.jpg"))
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("shot", nargs="?")
-    ap.add_argument("--quality", default="preview")
-    ap.add_argument("--passes", help="render only these passes (comma-separated); the others are reused")
-    ap.add_argument("--compose-only", action="store_true", help="compose and encode the passes already rendered")
-    ap.add_argument("--dry-run", action="store_true", help="print the game commands only")
-    ap.add_argument("--make-sequence", action="store_true")
-    ap.add_argument("--list", action="store_true")
-    a = ap.parse_args()
-    with open(os.path.join(HERE, "shots.json")) as f:
-        cfg = json.load(f)
-    if a.list:
-        for name, s in cfg["shots"].items():
-            log(f"{name:10s} {s['seconds']:>4} s, {len(s['passes'])} pass(es): {s['what']}")
-        return
-    if a.make_sequence:
-        make_sequence()
-        return
-    if a.shot not in cfg["shots"]:
-        raise SystemExit(f"No shot {a.shot!r}; one of {', '.join(cfg['shots'])}")
-    shot = dict(cfg["shots"][a.shot], _name=a.shot)
-    out_root = os.path.join(REPO, "Artifacts", "reel", a.shot, a.quality)
+def run_shot(cfg, name, a):
+    shot = dict(cfg["shots"][name], _name=name)
+    out_root = os.path.join(REPO, "Artifacts", "reel", name, a.quality)
     want = set(a.passes.split(",")) if a.passes else None
     results = []
     started = time.time()
+    log(f"== {name} ({a.quality}): {shot['what']}")
     if not a.compose_only:
         if not os.path.isfile(SEQUENCE_ASSET) and not a.dry_run:
             make_sequence()
-        with MacLock(a.shot):
+        with MacLock(name):
             for p in shot["passes"]:
                 if want is None or p["name"] in want:
                     results.append(render_pass(cfg, shot, p, a.quality, out_root, a.dry_run))
@@ -208,23 +239,74 @@ def main():
         tele = os.path.join(pass_dirs[0], "telemetry.csv")
         with open(os.path.join(pass_dirs[0], "done.json")) as f:
             done = json.load(f)
-        q = cfg["qualities"][a.quality]
+        q = quality_for(cfg, shot, a.quality)
         # The first rendered frame comes after the engine's and the renderer's warm-up frames (one frame time each).
         d = shot.get("dilation", 1)
         t0 = done.get("game_time_at_start", 0.0) + (q.get("engine_warmup", 8) + q["render_warmup"]) * d / shot["fps"]
         dt = shot.get("decimate", 1) * d / shot["fps"]
     loop_dir = os.path.join(out_root, "loop")
     shutil.rmtree(loop_dir, ignore_errors=True)
-    n = compose.compose(shot, pass_dirs, loop_dir, shot["fps"], shot.get("decimate", 1), tele, t0, dt, log)
+    n = load_compose().compose(shot, pass_dirs, loop_dir, shot["fps"], shot.get("decimate", 1), tele, t0, dt, log)
     log("Encoding")
-    encode(loop_dir, out_root, a.shot, shot["fps"])
+    encode(loop_dir, out_root, name, shot["fps"])
     commit = subprocess.run(["git", "-C", REPO, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
-    meta = {"shot": a.shot, "what": shot["what"], "render": shot.get("render", "offline"), "quality": a.quality,
-            "frames": n, "fps": shot["fps"], "commit": commit, "machine": platform.node(), "args": cfg["common_args"] + shot["args"],
+    meta = {"shot": name, "what": shot["what"], "render": shot.get("render", "offline"), "quality": a.quality,
+            "footage": a.quality in ("draft", "master") and not IS_MAC,
+            "frames": n, "fps": shot["fps"], "commit": commit, "machine": platform.node(),
+            "args": [f"-SailingQuality={cfg['qualities'][a.quality]['tier']}"] + cfg["common_args"] + shot["args"],
             "passes": results, "total_seconds": round(time.time() - started, 1), "render_seconds": round(render_s, 1)}
     with open(os.path.join(out_root, "meta.json"), "w") as f:
         json.dump(meta, f, indent=1)
     log(f"Done in {meta['total_seconds']:.0f} s: {out_root}")
+
+
+def main():
+    global IS_MAC, UE_ROOT
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("shot", nargs="?", help="a shot from shots.json, or all")
+    ap.add_argument("--quality", help="check, preview, draft or master (default: master on Windows, preview on the Mac)")
+    ap.add_argument("--passes", help="render only these passes (comma-separated); the others are reused")
+    ap.add_argument("--compose-only", action="store_true", help="compose and encode the passes already rendered")
+    ap.add_argument("--dry-run", action="store_true", help="print the game commands only")
+    ap.add_argument("--platform", choices=["win", "mac"], help="with --dry-run: print the other platform's commands")
+    ap.add_argument("--preflight", action="store_true", help="check what a render needs, then stop")
+    ap.add_argument("--make-sequence", action="store_true")
+    ap.add_argument("--list", action="store_true")
+    a = ap.parse_args()
+    if a.platform:
+        if not a.dry_run:
+            raise SystemExit("--platform only goes with --dry-run")
+        IS_MAC = a.platform == "mac"
+        UE_ROOT = os.environ.get("UE_ROOT") if a.platform == platform_key() else (
+            "/Users/Shared/Epic Games/UE_5.8" if IS_MAC else r"C:\Program Files\Epic Games\UE_5.8")
+    a.quality = a.quality or ("preview" if IS_MAC else "master")
+    with open(os.path.join(HERE, "shots.json")) as f:
+        cfg = json.load(f)
+    if a.list:
+        for name, s in cfg["shots"].items():
+            log(f"{name:10s} {s['seconds']:>4} s, {len(s['passes'])} pass(es): {s['what']}")
+        return
+    if a.make_sequence:
+        make_sequence()
+        return
+    if a.preflight or not a.dry_run:
+        if preflight() and not a.compose_only:
+            raise SystemExit(1)
+        if a.preflight:
+            log("Ready.")
+            return
+    if a.quality not in cfg["qualities"]:
+        raise SystemExit(f"No quality {a.quality!r}; one of {', '.join(cfg['qualities'])}")
+    names = list(cfg["shots"]) if a.shot == "all" else [a.shot]
+    for name in names:
+        if name not in cfg["shots"]:
+            raise SystemExit(f"No shot {name!r}; one of all, {', '.join(cfg['shots'])}")
+    for name in names:
+        run_shot(cfg, name, a)
+
+
+def platform_key():
+    return "mac" if platform.system() == "Darwin" else "win"
 
 
 if __name__ == "__main__":
