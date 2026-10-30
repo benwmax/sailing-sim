@@ -2686,39 +2686,30 @@ float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(len
 // redrawn and its weight back to nothing at each phase's start, phases staggered by vertex), so the flow never stretches
 // where the wind turns: flow blending with no taps beyond the tiling's. Six taps where the pattern resolves, none where
 // it has faded to its means (patFade).
+// docs/storm-water/foam-cost/: the six taps cost 0.7-1.0 ms of water on the Mac's High, taken on every pixel near
+// enough to resolve the pattern, foam or not. The pattern only ever shapes foam, so it is taken at most once, where foam
+// is first drawn: FOAM_PAT, below (the caps, wake, trail, swash or a gale sea; the windrows).
 float lace = FOAM_MEAN.x, foamStreak = FOAM_MEAN.y, cells = FOAM_MEAN.z;
-[branch] if (patFade < 1.0)
-{
-    float2 fq = float2(dot(p.xy, wd), dot(p.xy, wn));
-    float2 fgx = float2(dot(fdx, wd), dot(fdx, wn)), fgy = float2(dot(fdy, wd), dot(fdy, wn));
-    float fDrift = 0.035 * WindP.z * 6.0;
-    #define FX_H2(c_) frac(sin(float2(dot(fmod(c_, 289.0), float2(127.1, 311.7)), dot(fmod(c_, 289.0), float2(269.5, 183.3)))) * 43758.5453)
-    #define FX_TAP(v_, w_, tile_, uv_, gx_, gy_, S_, W1_, W2_) { \
-        float ph_ = FX_H2(v_ + 17.3).x; float tt_ = T / 6.0 + ph_; float n_ = floor(tt_); float a_ = tt_ - n_; \
-        float2 off_ = FX_H2(v_ + n_ * float2(3.17, 1.93)) * 8.0; \
-        float3 c_ = Texture2DSampleGrad(FoamTex, FoamTexSampler, uv_ + off_ - float2(fDrift * a_ / (tile_), 0.0), gx_, gy_).rgb; \
-        float W_ = pow(saturate(w_), 4.0) * sin(3.14159265 * a_); \
-        S_ += W_ * (c_ - FOAM_MEAN); W1_ += W_; W2_ += W_ * W_; }
-    #define FX_HEX(tile_, out_) { \
-        float2 uv_ = fq / (tile_); float2 gx_ = fgx / (tile_), gy_ = fgy / (tile_); \
-        float2 sk_ = float2(uv_.x, -0.57735027 * uv_.x + 1.15470054 * uv_.y) * 3.46410162; \
-        float2 b_ = floor(sk_); float3 t_ = float3(sk_ - b_, 0.0); t_.z = 1.0 - t_.x - t_.y; \
-        float s_ = step(0.0, -t_.z); float s2_ = 2.0 * s_ - 1.0; \
-        float w1_ = -t_.z * s2_, w2_ = s_ - t_.y * s2_, w3_ = s_ - t_.x * s2_; \
-        float3 S_ = 0.0; float W1_ = 0.0, W2_ = 0.0; \
-        FX_TAP(b_ + float2(s_, s_), w1_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
-        FX_TAP(b_ + float2(s_, 1.0 - s_), w2_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
-        FX_TAP(b_ + float2(1.0 - s_, s_), w3_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
-        out_ = saturate(FOAM_MEAN + S_ / max(sqrt(W2_), 1e-4)); }
-    float3 fine, coarse;
-    FX_HEX(3.2, fine);
-    FX_HEX(12.8, coarse);
-    lace = fine.r;
-    cells = fine.b;
-    foamStreak = coarse.g;
-}
-float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
-float patternE = lerp(smoothstep(0.55, 0.95, foamStreak), 0.06, patFade);
+bool patDone = false;
+#define FX_H2(c_) frac(sin(float2(dot(fmod(c_, 289.0), float2(127.1, 311.7)), dot(fmod(c_, 289.0), float2(269.5, 183.3)))) * 43758.5453)
+#define FX_TAP(v_, w_, tile_, uv_, gx_, gy_, S_, W1_, W2_) { \
+    float ph_ = FX_H2(v_ + 17.3).x; float tt_ = T / 6.0 + ph_; float n_ = floor(tt_); float a_ = tt_ - n_; \
+    float2 off_ = FX_H2(v_ + n_ * float2(3.17, 1.93)) * 8.0; \
+    float3 c_ = Texture2DSampleGrad(FoamTex, FoamTexSampler, uv_ + off_ - float2(fDrift * a_ / (tile_), 0.0), gx_, gy_).rgb; \
+    float W_ = pow(saturate(w_), 4.0) * sin(3.14159265 * a_); \
+    S_ += W_ * (c_ - FOAM_MEAN); W1_ += W_; W2_ += W_ * W_; }
+#define FX_HEX(tile_, out_) { \
+    float2 uv_ = fq / (tile_); float2 gx_ = fgx / (tile_), gy_ = fgy / (tile_); \
+    float2 sk_ = float2(uv_.x, -0.57735027 * uv_.x + 1.15470054 * uv_.y) * 3.46410162; \
+    float2 b_ = floor(sk_); float3 t_ = float3(sk_ - b_, 0.0); t_.z = 1.0 - t_.x - t_.y; \
+    float s_ = step(0.0, -t_.z); float s2_ = 2.0 * s_ - 1.0; \
+    float w1_ = -t_.z * s2_, w2_ = s_ - t_.y * s2_, w3_ = s_ - t_.x * s2_; \
+    float3 S_ = 0.0; float W1_ = 0.0, W2_ = 0.0; \
+    FX_TAP(b_ + float2(s_, s_), w1_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
+    FX_TAP(b_ + float2(s_, 1.0 - s_), w2_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
+    FX_TAP(b_ + float2(1.0 - s_, s_), w3_, tile_, uv_, gx_, gy_, S_, W1_, W2_); \
+    out_ = saturate(FOAM_MEAN + S_ / max(sqrt(W2_), 1e-4)); }
+#define FOAM_PAT() { patDone = true; float2 fq = float2(dot(p.xy, wd), dot(p.xy, wn)); float2 fgx = float2(dot(fdx, wd), dot(fdx, wn)), fgy = float2(dot(fdy, wd), dot(fdy, wn)); float fDrift = 0.035 * WindP.z * 6.0; float3 fine, coarse; FX_HEX(3.2, fine); FX_HEX(12.8, coarse); lace = fine.r; cells = fine.b; foamStreak = coarse.g; }
 // The threshold on the chop's own Jacobian: Jt = J (1 - k (1 - jChop)) - 0.25 shoal.
 float kC = max(min(chopK, 2.0), 1e-3);
 // (The fold table holds both chops' fold, the long chop's at each texel's place: AWaterSurface's JCapBoth.)
@@ -2750,9 +2741,6 @@ else
 crest = saturate((capThr - Jt) / 0.05 + 0.5);
 residue = saturate((capThr + 0.08 - Jt) / 0.08 + 0.5);
 }
-crest *= saturate(0.8 + 1.3 * laceE);
-residue *= patternE * 0.25;
-float caps = max(crest, residue);
 // Foam the boats make. Its bubble patches are octaves of value noise (0.4 m, 0.14 m and 5 cm, rotated, drifting apart),
 // multiplied as the two sines they replace were (mean about 0.25): a product of sines read as a tread-plate lattice in a
 // wake seen from above (docs/spray/). Cells wrap every 289 so the hash keeps its precision far from the origin.
@@ -2765,8 +2753,27 @@ float2 wb3 = float2(0.6 * p.x + 0.8 * p.y, -0.8 * p.x + 0.6 * p.y) * 19.0 + floa
 // A third, finer octave (5 cm) laces the patches' edges so the wash isn't round blotches.
 float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 0.8 + WB_NOISE(wb3) * 0.5 - 0.15);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
-// Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them.
+// The shore's lapping line (lap, below).
 float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
+float persist = 0.0;
+float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
+[branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
+    persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
+// docs/storm-water/foam-cost/: the pattern where foam is drawn (a gale sea's streaks are everywhere: galeW, below). Drawn
+// means visibly: 1/255 of opacity or more (the residue's ramp, the table's exponential cover and the trail's decay never
+// quite reach zero, so "above zero" took the pattern almost everywhere); under that the pattern changes no shown value.
+#define FOAM_SEEN 0.004
+// (The trail is drawn as 0.85 trail^1.2 at 0.45 of its pattern at least, so it reaches 1/255 from a trail of 0.022, and
+// trail <= persist: 0.004 there had kept the taps on wherever the foam grid had held foam at all.)
+[branch] if (patFade < 1.0 && (crest > FOAM_SEEN || 0.25 * residue > FOAM_SEEN || wakeBreak > FOAM_SEEN || persist > 0.022
+    || swash > FOAM_SEEN || meanKn > 24.0)) FOAM_PAT();
+float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
+float patternE = lerp(smoothstep(0.55, 0.95, foamStreak), 0.06, patFade);
+crest *= saturate(0.8 + 1.3 * laceE);
+residue *= patternE * 0.25;
+float caps = max(crest, residue);
+// Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them
+// (swash, above).
 float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
 // Heavy rain: splashes and mist grey the surface.
 // W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
@@ -2787,10 +2794,6 @@ float soft = saturate((capThr - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * 
 // W4 step 2: the foam a cap leaves behind (AWaterSurface's foam grid, FoamGridRect: x0, y0, size m, on). It decays on
 // Monahan's residual-whitecap timescale and drifts downwind on the worker, so a cap that has stopped breaking leaves a
 // thinning, streaked patch instead of vanishing. Drawn thin and lacy along the wind, at the residue's tone.
-float persist = 0.0;
-float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
-[branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
-    persist = FoamGrid.SampleLevel(FoamGridSampler, float2(fg.y, fg.x), 0).r * saturate(min(min(fg.x, 1.0 - fg.x), min(fg.y, 1.0 - fg.y)) * 12.0);
 float trail = saturate(persist - max(caps, wakeBreak));   // what outlives the cap or the boat's wash
 float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(foamStreak, 0.5, patFade)));
 // Far (the fold table's cover): a pixel's cover there is the share of the sea under foam, not how much of one cap it holds,
@@ -2933,6 +2936,7 @@ float wrow = wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 260.0)
 float smoothing = max(max(glass, 0.8 * saturate(wakeSlick * 1.5)), max(0.65 * slick, 0.5 * wrow));
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
 slopeVar *= 1.0 - 0.92 * smoothing;
+[branch] if (patFade < 1.0 && 0.05 * wrow > FOAM_SEEN && !patDone) FOAM_PAT(); // docs/storm-water/foam-cost/: a windrow is foam too
 Foam = saturate(Foam + 0.05 * wrow * lace); // a faint, lacy line of bubbles and scum; mostly they read as smoother water
 // Storm water step 6 (docs/storm-water/gale-streaks/): in a gale the wind blows the breakers' foam into streaks along it,
 // over the whole sea (WMO: force 7 "foam ... begins to be blown in streaks", 8 "well-marked streaks", 9 "dense streaks").
