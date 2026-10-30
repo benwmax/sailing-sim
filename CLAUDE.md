@@ -662,7 +662,7 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
   (`ShowBoat`: 200 ms debounce, async load of `ModelAssetPaths`, then `SetBoat` keeping the pose) and previews conditions
   (`ASailingGameMode::PreviewConditions`/`EndPreview`; in game `SetPreviewLive` beats `SetWorldHeld` and the world is
   unpaused). Stills: `-SailingShowroom=<type>`, `-SailingPreviewPreset=<id>`, `-SailingHideMenus` (with `-SailingFreeSail=1`).
-- Asset gallery (`docs/gallery-core/`, dev only: `USailingSettings::bDeveloperTools`, in Shipping an ini line): `SailGallery`
+- Asset gallery (`docs/gallery-core/`, dev only: `USailingSettings::bShowDeveloperTools`, on by default for Bean's playtests and cut before release, `bShowDeveloperTools=False` in the user ini hides it): `SailGallery`
   (`Gallery.h`: the index from the asset registry, a folder table, `_Light`/`_Far` twins grouped, unknown folders in Other)
   and `AGalleryStage` (studio cyclorama 1 km up on lighting channel 1, metering its own frame; lake presets through
   `PreviewConditions`; views by `M_GalleryWire`; forced LOD, Nanite fallback, twins; tier compare through the engine's

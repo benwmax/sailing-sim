@@ -106,7 +106,7 @@ public:
 	 * Stills and checks without the screen (G2): -SailingGallery=<path, key or name> opens the stage on that asset;
 	 * -SailingGalleryLight=Studio|Noon|GoldenHour|Overcast, -SailingGalleryView=Lit|Wireframe|LitWire,
 	 * -SailingGalleryDetail=Auto|Lod1|Lod2|Fallback|Light|Far, -SailingGalleryCompare=Low,Ultra (5 s in; saves
-	 * Saved/Bench/<shot>-compare.png, tier A left of the split, B right). Developer tools only (bDeveloperTools).
+	 * Saved/Bench/<shot>-compare.png, tier A left of the split, B right). Developer tools only (bShowDeveloperTools).
 	 */
 	static AGalleryStage* OpenFromArgs(APlayerController* PC);
 	/** A tier's name and back ("Low", "Medium", "High", "Ultra"); -1 for a name it doesn't know. */

@@ -249,14 +249,17 @@ public:
 
 	static USailingSettings* Get() { return GetMutableDefault<USailingSettings>(); }
 	/**
-	 * Developer tools (the asset gallery, docs/gallery-core/): on in development builds; in Shipping only with this line
-	 * in the user's GameUserSettings.ini (no settings page shows it):
+	 * Developer tools (the asset gallery, docs/gallery-core/): on by default in every build while Bean playtests the
+	 * packaged game (his call, Oct 29; cut before any release). This line in the user's GameUserSettings.ini turns them
+	 * off (no settings page shows it):
 	 *   [/Script/SailingSim.SailingSettings]
-	 *   bDeveloperTools=True
+	 *   bShowDeveloperTools=False
+	 * (Renamed from bDeveloperTools, off in Shipping before: the settings save writes every config field, so a player's ini
+	 * already holds bDeveloperTools=False and would have kept the gallery hidden.)
 	 */
 	UPROPERTY(config)
-	bool bDeveloperTools = !UE_BUILD_SHIPPING;
-	static bool DeveloperTools() { return Get()->bDeveloperTools; }
+	bool bShowDeveloperTools = true;
+	static bool DeveloperTools() { return Get()->bShowDeveloperTools; }
 	/** Writes the player's choices to the save file and GameUserSettings.ini (never in a run that ignores them). */
 	void Save();
 
