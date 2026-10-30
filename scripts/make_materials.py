@@ -2934,6 +2934,32 @@ float smoothing = max(max(glass, 0.8 * saturate(wakeSlick * 1.5)), max(0.65 * sl
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
 slopeVar *= 1.0 - 0.92 * smoothing;
 Foam = saturate(Foam + 0.05 * wrow * lace); // a faint, lacy line of bubbles and scum; mostly they read as smoother water
+// Storm water step 6 (docs/storm-water/gale-streaks/): in a gale the wind blows the breakers' foam into streaks along it,
+// over the whole sea (WMO: force 7 "foam ... begins to be blown in streaks", 8 "well-marked streaks", 9 "dense streaks").
+// Two sets of soft bands along the slow wind (rows about 6 and 2.2 m apart, each row its own place and width, 8-22 % of
+// its spacing, the width wandering along it), meandering, broken into dashes some 35 and 15 m long and ragged by the foam
+// texture's strings, drifting downwind at 3 % of the wind. They fade in
+// from 24 to 32 kn of the sea's mean wind (none on a 20 kn day) and fill in (more rows drawn) toward 40 kn. Far out a line
+// narrower than the footprint across it is drawn as its mean cover, so the streaks become a faint whitening, never a
+// moire. Aged foam's tone (0.6), mottled by the foam texture's marbling. Not in the caps' mask: the cover tests and -SailingDebugFoam don't see them.
+float galeW = smoothstep(24.0, 32.0, meanKn);
+float galeFx = fwidth(across);
+[branch] if (galeW > 0.0)
+{
+    float galeDens = lerp(0.35, 0.85, smoothstep(30.0, 40.0, meanKn));
+    float galeAlong = along - 0.03 * slowMs * T;
+    float galeS = 0.0;
+    #define GALE_ROW(S_, L_, k_, out_) {         float x_ = across / (S_) + 1.6 * (SLK_VN(float2(galeAlong / ((L_) * 1.5), across / ((S_) * 5.0)) + 4.1 * (k_)) - 0.5)             + 0.5 * (SLK_VN(float2(galeAlong / ((L_) * 0.4), across / (S_) * 0.7) + 2.3 * (k_) + 8.0) - 0.5);         float id_ = floor(x_); float h_ = SLK_H(float2(id_, 7.1 * (k_) + 1.3));         float c_ = 0.5 + 0.3 * (frac(h_ * 31.7) - 0.5);         float w_ = lerp(0.08, 0.22, frac(h_ * 13.7)) * lerp(0.35, 1.25, SLK_VN(float2(galeAlong / 7.0 + id_ * 5.1, id_ + 3.0 * (k_))));         float aa_ = max(galeFx / (S_), 1e-4);         float prof_ = saturate(1.0 - abs(frac(x_) - c_) / (0.5 * w_ + aa_));         float ln_ = lerp(prof_ * prof_ * (3.0 - 2.0 * prof_), 0.5 * w_, saturate(aa_ / w_ - 0.5));         float seg_ = smoothstep(0.42, 0.72, SLK_VN(float2(galeAlong / (L_) + id_ * 3.7, id_ * 1.3 + 9.0 * (k_))));         out_ = ln_ * seg_ * step(h_, galeDens); }
+    float g1 = 0.0, g2 = 0.0;
+    GALE_ROW(6.0, 35.0, 0.0, g1);
+    GALE_ROW(2.2, 15.0, 1.0, g2);
+    // Ragged and stringy, not ruled: broken up by the foam texture's streaks (drawn along the wind) and mottled by its
+    // marbling.
+    galeS = max(g1, 0.7 * g2) * galeW * lerp(0.25, 1.0, smoothstep(0.03, 0.35, foamStreak)) * lerp(0.55, 1.0, smoothstep(0.1, 0.6, cells));
+    float galeDrawn = 0.7 * galeS;
+    FoamTone = lerp(FoamTone, 0.6, saturate((galeDrawn - Foam) / max(galeDrawn, 1e-3)));
+    Foam = max(Foam, galeDrawn);
+}
 // Glint: a calm morning's sharp sun path, broadening with the wind and the ripples it raises; rain flattens and greys.
 float r0 = lerp(lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7)), 0.004, smoothing);
 // GGX alpha = roughness^2; the unresolved slope variance adds to it (scaled down: the engine's GGX has no multiple
