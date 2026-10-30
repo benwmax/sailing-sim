@@ -63,3 +63,22 @@ cells.
 Drop the coarse scale on Medium and High only, taking the streaks from the fine tile's G (variant three above): about
 0.5 ms more where the pattern is taken, Ultra untouched. It changes the streaks' scale (3.2 m against 12.8 m tiles), so it
 waits for a call on the look.
+
+## Gate (`scripts/gate.sh --scope water`, packaged, the Mac)
+
+Pass: 269 tests, every view over its floor. Against #390's gate on main 833e757e:
+
+| View | Main | This cut |
+|---|---|---|
+| beam8 High | 56.1 | 59.1 |
+| beat15 High | 52.8 | 54.3 |
+| gulf-sea High | 59.5 | 61.1 |
+| bridge High | 56.5 | 59.2 |
+| coast-day High | 50.7 | 52.3 |
+| marina High | 54.9 | 56.1 |
+| helm-eye High | 58.9 | 59.4 |
+| storm High | 46.4 | 45.7 |
+| storm Medium | 67.1 | 66.9 |
+
+The storm view gains nothing: rain and cloud fill its frame. It read 45.7-47.0 across today's runs, so 45.7 is within its
+spread, but it is the view nearest its floor.
