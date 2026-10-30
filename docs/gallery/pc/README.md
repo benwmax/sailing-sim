@@ -4,14 +4,17 @@ This is the PC part of `Inputs/gallery/brief.md` (inputs branch, df60bd2). It si
 
 ## Getting in
 
-- **Title > Gallery** ("Developer · every asset") appears only when `USailingSettings::bDeveloperTools` is set.
-  - Development builds have it on.
-  - In Shipping, add this to the user's `GameUserSettings.ini` (`%LOCALAPPDATA%\SailingSim\Saved\Config\Windows\` on the PC):
+- **Title > Gallery** ("Developer · every asset") appears when `USailingSettings::bShowDeveloperTools` is set.
+  - Since Oct 29 it is **on by default in every build, Shipping included**, while Bean playtests the packaged game. It gets
+    cut before any release.
+  - To hide it, add this to the user's `GameUserSettings.ini` (`%LOCALAPPDATA%\SailingSim\Saved\Config\Windows\` on the PC):
 
         [/Script/SailingSim.SailingSettings]
-        bDeveloperTools=True
+        bShowDeveloperTools=False
 
-  - Without that line, players never see the entry.
+  - Before Oct 29 the key was `bDeveloperTools` (off in Shipping, on with an ini line). It was renamed because the
+    settings save writes every config field: a player's ini already held `bDeveloperTools=False`, which would have kept
+    the gallery hidden under the new default.
 - With the tenth Title item, the menu items are a little tighter, so Quit stays clear of the prompt bar at 1080 lines.
 - `-SailingFrontEnd=Gallery` opens it for stills (dev builds).
 - Whole boats are left out of the list until G3 (the Mac's), because the stage shows meshes only.

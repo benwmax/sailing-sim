@@ -695,7 +695,7 @@ AGalleryStage* AGalleryStage::OpenFromArgs(APlayerController* PC)
 	if (!PC || !FParse::Value(SailingArgs::Dev(), TEXT("SailingGallery="), Want, false)) return nullptr;
 	if (!USailingSettings::DeveloperTools())
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Gallery: developer tools are off (bDeveloperTools in GameUserSettings.ini)"));
+		UE_LOG(LogSailing, Warning, TEXT("Gallery: developer tools are off (bShowDeveloperTools=False in GameUserSettings.ini)"));
 		return nullptr;
 	}
 	FActorSpawnParameters P;

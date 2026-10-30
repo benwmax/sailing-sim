@@ -48,13 +48,11 @@ internal developers only. G2, the screen, is the PC's. G3, whole boats on the st
   captured. Tier B is captured the same way, then the tier goes back.
   - The captures come through the engine's own screenshot, in memory; reading the viewport back gave black frames on
     Metal. They are available as `UTexture2D` for the screen's split, and a still saves them side by side.
-- **Developer only**: `USailingSettings::bDeveloperTools` is on in development builds. In Shipping it is off unless the
-  user's `GameUserSettings.ini` has:
-
-      [/Script/SailingSim.SailingSettings]
-      bDeveloperTools=True
-
-  The screen (G2) shows the Title > Gallery entry only with it. The launch args below need it too.
+- **Developer only**: `USailingSettings::bShowDeveloperTools`.
+  - Since Oct 29 it is on by default in every build, Shipping included, for Bean's playtests; it gets cut before any release.
+  - `bShowDeveloperTools=False` under `[/Script/SailingSim.SailingSettings]` in `GameUserSettings.ini` turns it off.
+  - It was `bDeveloperTools` (off in Shipping); renamed because the settings save had written `False` into existing inis.
+  - The screen (G2) shows the Title > Gallery entry only with it. The launch args below need it too.
 - **Launch args for stills**:
   - `-SailingGallery=<path, key or name>`;
   - `-SailingGalleryLight=Studio|Noon|GoldenHour|Overcast`;

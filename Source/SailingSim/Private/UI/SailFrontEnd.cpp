@@ -835,7 +835,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
 	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
-	// Inputs/gallery/brief.md section 6: developers only (USailingSettings::bDeveloperTools, an ini line in Shipping).
+	// Inputs/gallery/brief.md section 6: developer tools (USailingSettings::bShowDeveloperTools: on while Bean playtests, an ini line turns it off).
 	if (USailingSettings::DeveloperTools()) Item(TEXT("Gallery"), TEXT("Developer · every asset"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Gallery); }));
 	Item(TEXT("Credits"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Credits); }));
 	Item(TEXT("Quit"), FString(), FSimpleDelegate::CreateLambda([this]() { Pop(); }));
