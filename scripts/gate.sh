@@ -53,6 +53,19 @@ case "$SCOPE" in
 	all) VIEWS=""; TIERS=(Low Medium High); MAIN_CHECK=0 ;;
 	*) echo "Unknown scope $SCOPE" >&2; exit 2 ;;
 esac
+# The Mac lock (scripts/mac-lock.sh): the gate builds, packages and benches on the shared GPU, so it holds the lock
+# throughout, and a failed take (no lock script, or still held after MAC_LOCK_WAIT) ends the gate: a gate run beside
+# another session's skews both benches. Under a wrapper that holds the lock with the same MAC_LOCK_OWNER it goes on
+# without taking or dropping it.
+export MAC_LOCK_OWNER="${MAC_LOCK_OWNER:-gate-$SCOPE pid $$}"
+LOCK_SCRIPT="$GATE_SCRIPTS/mac-lock.sh"
+[[ -x "$LOCK_SCRIPT" ]] || { echo "No lock script at $LOCK_SCRIPT: not gating without the Mac lock" >&2; exit 1; }
+if "$LOCK_SCRIPT" held; then
+	echo "[gate] the Mac lock is held by its owner ($MAC_LOCK_OWNER)"
+else
+	"$LOCK_SCRIPT" take || { echo "Could not take the Mac lock: not gating" >&2; exit 1; }
+	trap '"$LOCK_SCRIPT" drop' EXIT
+fi
 # Medium's one tight view: the storm (67-69 fps against 60 in every sweep since bench-fast).
 MEDIUM_VIEWS=""; [[ ",$VIEWS," == *",storm,"* ]] && MEDIUM_VIEWS="storm"
 LABEL="${LABEL:-gate-$SCOPE}"
