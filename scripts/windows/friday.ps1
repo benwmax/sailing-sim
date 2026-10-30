@@ -8,6 +8,9 @@
 #   Lake benches (the second reported: the first after a cook runs slow); the zip Packaged\SailingSim-<commit>-Win64.zip
 #   (Windows' own tar.exe: zip64, the .ucas is over 2 GB) with TESTER-GUIDE.md in it; Packaged\Shipping-<commit>\BUILD.md
 #   (commit, date, fps, the checks, the crash logs' place, what merged since the last Friday build).
+#   Crash reports: a Sentry DSN from Artifacts\sentry\dsn.txt (or $env:SENTRY_DSN) is appended to
+#   Config\Windows\WindowsEngine.ini for the cook and the file restored afterwards; the Shipping symbols go up with
+#   sentry-cli when it and Artifacts\sentry\auth.token and project.txt are there (skipped otherwise). All git-ignored.
 #   Result line in Artifacts\friday-<commit>.txt. Bean does the gamepad and settings checks by hand.
 param(
 	[string]$Commit = '',
@@ -19,6 +22,28 @@ $Start = Get-Date
 Push-Location $RepoRoot
 try {
 	function Step([string]$Text) { Write-Host ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $Text) -ForegroundColor Cyan }
+	function Upload-Symbols([string]$Dir, [string]$SentryDir) {
+		$Cli = Get-Command sentry-cli -ErrorAction SilentlyContinue
+		$TokenFile = Join-Path $SentryDir 'auth.token'
+		$ProjectFile = Join-Path $SentryDir 'project.txt'
+		if (-not $Cli) { return 'Symbols: skipped (sentry-cli is not installed)' }
+		if (-not (Test-Path $TokenFile)) { return 'Symbols: skipped (no Artifacts\sentry\auth.token)' }
+		if (-not (Test-Path $ProjectFile)) { return 'Symbols: skipped (no Artifacts\sentry\project.txt, "<org>/<project>")' }
+		$OrgProject = (Get-Content -Raw $ProjectFile).Trim().Split('/')
+		if ($OrgProject.Count -ne 2) { return 'Symbols: skipped (Artifacts\sentry\project.txt should read <org>/<project>)' }
+		Step 'Uploading debug symbols to Sentry'
+		# The token goes by environment, not on the command line.
+		$env:SENTRY_AUTH_TOKEN = (Get-Content -Raw $TokenFile).Trim()
+		try {
+			& $Cli.Source debug-files upload --org $OrgProject[0] --project $OrgProject[1] --include-sources $Dir
+			if ($LASTEXITCODE -ne 0) { return "Symbols: upload FAILED (sentry-cli exit $LASTEXITCODE); the build is fine" }
+			return 'Symbols: uploaded to Sentry'
+		} catch {
+			return "Symbols: upload FAILED ($($_.Exception.Message)); the build is fine"
+		} finally {
+			Remove-Item Env:\SENTRY_AUTH_TOKEN -ErrorAction SilentlyContinue
+		}
+	}
 
 	# 1. The commit.
 	if (git status --porcelain --untracked-files=no) { throw 'Tracked changes in the tree: commit or set them aside first' }
@@ -48,15 +73,37 @@ try {
 	$Date = Get-Date -Format 'MMM d yyyy'
 	# ASCII only: the game reads it without a byte order mark.
 	[System.IO.File]::WriteAllText((Join-Path $StampDir 'version.txt'), "$Sha, $Date", [System.Text.Encoding]::ASCII)
+	# Crash reports: the Sentry DSN lives on this PC only (Artifacts\sentry\dsn.txt, git-ignored, or $env:SENTRY_DSN; the
+	# file wins) and goes into the package through Config\Windows\WindowsEngine.ini, appended for the cook and put back
+	# byte for byte afterwards. Inert until the Sentry plugin is in the project.
+	$SentryDir = Join-Path $Artifacts 'sentry'
+	$DsnFile = Join-Path $SentryDir 'dsn.txt'
+	$Dsn = if (Test-Path $DsnFile) { (Get-Content -Raw $DsnFile).Trim() } elseif ($env:SENTRY_DSN) { $env:SENTRY_DSN.Trim() } else { '' }
+	$EngineIni = Join-Path $RepoRoot 'Config\Windows\WindowsEngine.ini'
+	$EngineIniBytes = if (Test-Path $EngineIni) { [System.IO.File]::ReadAllBytes($EngineIni) } else { $null }
 	try {
+		if ($Dsn) {
+			Step 'Crash reports: Sentry DSN staged for the cook'
+			$Section = "`r`n[/Script/Sentry.SentrySettings]`r`nDsn=$Dsn`r`nRelease=sailing-sim@$Sha`r`nEnvironment=tester`r`n"
+			[System.IO.File]::AppendAllText($EngineIni, $Section, [System.Text.Encoding]::ASCII)
+		} else {
+			Write-Host '  No Sentry DSN (Artifacts\sentry\dsn.txt or SENTRY_DSN): the build carries no crash-report key'
+		}
 		Step "Packaging Shipping into Packaged\$Into (full cook)"
 		& (Join-Path $PSScriptRoot 'package-win.ps1') -Config Shipping -Full -Into $Into
 		if ($LASTEXITCODE -ne 0) { throw 'package-win.ps1 failed' }
 	} finally {
 		Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $StampDir
+		if ($null -ne $EngineIniBytes) { [System.IO.File]::WriteAllBytes($EngineIni, $EngineIniBytes) }
+		elseif (Test-Path $EngineIni) { Remove-Item -Force $EngineIni }
 	}
 	$Exe = Join-Path $Folder 'Windows\SailingSim.exe'
 	if (-not (Test-Path $Exe)) { throw "No $Exe after packaging" }
+
+	# Debug symbols to Sentry, so crash reports have function names. Optional: skipped without sentry-cli, the token
+	# (Artifacts\sentry\auth.token) or the org/project (Artifacts\sentry\project.txt); a failed upload doesn't fail the build.
+	$Symbols = Upload-Symbols $Folder $SentryDir
+	Write-Host "  $Symbols"
 
 	# 3. Smoke checks: launch args and the UI script only.
 	$Saved = Join-Path $env:LOCALAPPDATA 'SailingSim\Saved'
@@ -109,6 +156,7 @@ try {
 		'',
 		'## Crash logs',
 		'',
+		"- Sentry: $(if ($Dsn) { "key staged (release sailing-sim@$Sha, environment tester; reports only once the game has the Sentry plugin)" } else { 'no key in this build' }). $Symbols.",
 		'`%LOCALAPPDATA%\SailingSim\Saved\Logs` (the log) and `%LOCALAPPDATA%\SailingSim\Saved\Crashes` (a folder per crash). Zip and send both with a report.',
 		'',
 		"## Merged $Since",
@@ -130,5 +178,12 @@ try {
 	Write-Host $Result -ForegroundColor Green
 	if (-not $GalleryOk) { exit 1 }
 } finally {
+	# The staged files (version line, Sentry section) must never stay in the tree: a commit would carry the DSN.
+	$Left = @(git status --porcelain -- Config Content)
+	if ($Left.Count -gt 0) {
+		Write-Host ''
+		Write-Host '!!! WARNING: friday.ps1 left changes under Config or Content. Restore them before any commit (git checkout -- <file>):' -ForegroundColor Red
+		$Left | ForEach-Object { Write-Host "!!!   $_" -ForegroundColor Red }
+	}
 	Pop-Location
 }
