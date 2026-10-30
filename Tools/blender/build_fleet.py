@@ -467,9 +467,33 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         tube(hull, rail, 0.011 if H.h["sheer_z"] < 0.8 else 0.02, "Rubrail", 8)
 
 
+WELL_CORNER = 0.10      # the Sunfish well's moulded corner radius, metres (pc/sunfish-hero-2)
+
+
 def cockpit(H, spec):
     """A self-draining well: walls down from the deck to the sole, seats along both sides."""
     x0, x1, w, depth = spec
+    if TAG == "Sunfish":
+        # pc/sunfish-hero-2: the moulded well's corners are rounded, 10 cm, as on the boat and the TurboSquid 1460907
+        # reference (they had been square). The deck's cut stays the rectangle; deck-level fillets close its corners.
+        R = WELL_CORNER
+        sole = lambda x: H.deck_z(x, H.cy + w) - depth
+        path = []
+        for (cx, cy, a0) in ((x1 - R, w - R, 0.0), (x0 + R, w - R, 90.0), (x0 + R, -w + R, 180.0), (x1 - R, -w + R, 270.0)):
+            for k in range(7):
+                a = math.radians(a0 + 90.0 * k / 6)
+                path.append((cx + R * math.cos(a), H.cy + cy + R * math.sin(a)))
+        mid = (0.5 * (x0 + x1), H.cy)
+        for (xa, ya), (xb, yb) in zip(path, path[1:] + path[:1]):
+            inward = Vector((mid[0] - 0.5 * (xa + xb), mid[1] - 0.5 * (ya + yb), 0))
+            oface(hull, [(xa, ya, H.deck_z(xa, ya)), (xb, yb, H.deck_z(xb, yb)), (xb, yb, sole(xb)), (xa, ya, sole(xa))], "Deck", tuple(inward))
+        for (xa, ya), (xb, yb) in zip(path, path[1:] + path[:1]):
+            oface(hull, [(mid[0], mid[1], sole(mid[0])), (xa, ya, sole(xa)), (xb, yb, sole(xb))], "NonSkid", (0, 0, 1))
+        for i, corner in enumerate(((x1, H.cy + w), (x0, H.cy + w), (x0, H.cy - w), (x1, H.cy - w))):
+            arc = path[7 * i:7 * i + 7]
+            for (xa, ya), (xb, yb) in zip(arc, arc[1:]):
+                oface(hull, [(corner[0], corner[1], H.deck_z(*corner)), (xa, ya, H.deck_z(xa, ya)), (xb, yb, H.deck_z(xb, yb))], "Deck", (0, 0, 1))
+        return
     xs = stations(x0, x1, 12)
     for side in (1, -1):
         y = H.cy + side * w
@@ -961,7 +985,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         guard = sunfish_splash_guard(H, bx + 0.5 * chord, mast_x)
         # Fleet hero: the well's moulded lip, a rounded rim along its edge (the deck's own gelcoat), and the hiking strap's
         # worn webbing ends screwed to the sole.
-        rim, rr = [], 0.05
+        rim, rr = [], WELL_CORNER if TAG == "Sunfish" else 0.05
         for (cx, cy, a0) in ((x1 - rr, w - rr, 0.0), (x0 + rr, w - rr, 90.0), (x0 + rr, -w + rr, 180.0), (x1 - rr, -w + rr, 270.0)):
             for k in range(5):
                 a = math.radians(a0 + 90.0 * k / 4)
@@ -1630,6 +1654,12 @@ def sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, top_chord, alu_tiller=Fa
     tube(m, [(bx, cy - half - 0.012 * k, bz), (bx, cy + half + 0.012 * k, bz)], 0.0045 * k, "Stainless", 8)
     for s in (1, -1):
         tube(m, [(bx, cy + s * (half + 0.007 * k), bz), (bx, cy + s * (half + 0.012 * k), bz)], 0.0095 * k, "Stainless", 6)
+    if TAG == "Sunfish":
+        # pc/sunfish-hero-2: the kick-up's spring pin through both cheeks aft of the pivot, holding the blade down, its
+        # pull ring on the port side (the TurboSquid 1460907 reference's)
+        px, pz = x - 0.125, 0.5 * (z0 + tz) + 0.01
+        tube(m, [(px, cy - half - 0.014, pz), (px, cy + half + 0.016, pz)], 0.0028, "Stainless", 6)
+        ring(m, (px, cy + half + 0.016 + 0.009, pz), (0, 0, 1), 0.009, 0.0016, "Stainless", 10, 4)
     # the tiller
     path = [(x - 0.11, cy, tz + 0.001), (x + 0.02, cy, tz + 0.008), (x + 0.22, cy, tz + 0.033), (x + 0.5, cy, tz + 0.06),
             (x + tl - 0.04, cy, tz + 0.078), (x + tl - 0.005, cy, tz + 0.08), (x + tl + 0.012, cy, tz + 0.08)]
