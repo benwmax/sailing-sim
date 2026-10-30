@@ -466,6 +466,14 @@ namespace SailCatalog
 		return Out;
 	}
 
+	FString BuildStamp()
+	{
+		FString Text;
+		if (!FFileHelper::LoadFileToString(Text, *(FPaths::ProjectContentDir() / TEXT("BuildStamp/version.txt")))) return FString();
+		Text.TrimStartAndEndInline();
+		return Text;
+	}
+
 	TArray<FCreditLine> Credits()
 	{
 		FString Text;

@@ -98,4 +98,7 @@ namespace SailCatalog
 	SAILINGSIM_API TArray<FCreditLine> ParseCredits(const FString& Markdown);
 	/** CREDITS.md read now (a few kB), or the notice and a missing-file line. */
 	SAILINGSIM_API TArray<FCreditLine> Credits();
+	/** The tester build's version line, "<commit> · <date>" (Content/BuildStamp/version.txt, written by
+	 *  scripts/windows/friday.ps1 and staged with the build); empty in builds without one (editor and dev runs). */
+	SAILINGSIM_API FString BuildStamp();
 }
