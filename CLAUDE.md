@@ -28,6 +28,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 
 `Artifacts/`, `Packaged/`, `Build/`, `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` are git-ignored.
 
+After every Xcode update run `xcodebuild -downloadComponent MetalToolchain` (Xcode 27 ships without the Metal compiler; check
+with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is missing): without it every shader compile fails
+("cannot execute tool 'metal' due to missing Metal Toolchain"), so run-game, packages with new materials and gates stop.
+
 6. `scripts/polar.sh [--quick | --scenarios | --point <tws> <twa>]` builds `Source/SailingPhysics` standalone with clang
    (no Unreal) and sails the J/22 reference polar in about 2 s. Use it for any physics tuning, then confirm with
    `scripts/test.sh` (`SailingSim.Physics.PolarGate`). `--scenarios` prints tack and irons results; `--point` dumps
