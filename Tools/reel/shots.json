@@ -1,0 +1,64 @@
+{
+  "_doc": "The sim reel's five loops (docs/sim-reel/README.md). Each pass is one Movie Render Queue run of the game with these launch args; 'compose' joins the passes into the loop. seconds = the loop; tail = extra seconds rendered and dissolved over the head so the last frame flows into the first. start_s = game seconds before frame 0 (the gallery opens at 1 s, a capture's exposure settles by 2.5 s). dilation > 1 runs the world faster (-SailingSlowMo); keep dilation / fps <= 0.1 s per frame or the 120 Hz physics drops time (12 steps a frame). decimate keeps every n-th frame (a time-lapse past what dilation allows). Hero angles are placeholders for Ben to choose.",
+  "common_args": ["-SailingReel", "-SailingCinematic=1", "-SailingNoHud", "-SailingScreenPct=100", "-SailingNoGpuSlices", "-SailingSeed=7", "-SailingDate=2026-06-20"],
+  "qualities": {
+    "check": {"tier": "High", "width": 640, "height": 360, "spatial": 1, "temporal": 1, "render_warmup": 0, "format": "png"},
+    "preview": {"tier": "High", "width": 1280, "height": 720, "spatial": 1, "temporal": 2, "render_warmup": 16, "format": "png"},
+    "master": {"tier": "Ultra", "width": 3840, "height": 2160, "spatial": 4, "temporal": 4, "render_warmup": 32, "format": "png"}
+  },
+  "shots": {
+    "wireframe": {
+      "what": "The J/22 turning on the gallery's studio stage, wiping Wireframe -> Lit+Wire -> Lit while the light warms to golden hour.",
+      "render": "offline",
+      "fps": 30, "seconds": 9, "tail": 1, "start_s": 4,
+      "args": ["-SailingGallery=Boat:0", "-SailingLiverySeed=0", "-SailingGalleryLight=Studio", "-SailingGallerySpin=8", "-SailingGalleryOrbit=-8,1.25", "-SailingGalleryWarm=3,10", "-SailingReelFstop=5.6"],
+      "passes": [
+        {"name": "wire", "args": ["-SailingGalleryView=Wireframe"]},
+        {"name": "litwire", "args": ["-SailingGalleryView=LitWire"]},
+        {"name": "lit", "args": ["-SailingGalleryView=Lit"]}
+      ],
+      "compose": {"type": "wipe", "at": [2.5, 5.5], "wipe_s": 1.0, "angle_deg": 20}
+    },
+    "fleet": {
+      "what": "All eight boats in the same framing and light, about a second each.",
+      "render": "offline",
+      "fps": 30, "seconds": 8.8, "tail": 0.3, "start_s": 4,
+      "args": ["-SailingLiverySeed=0", "-SailingGalleryLight=GoldenHour", "-SailingGallerySpin=4", "-SailingGalleryOrbit=-6,1.4", "-SailingReelFstop=8"],
+      "passes": [
+        {"name": "j22", "args": ["-SailingGallery=Boat:0"]},
+        {"name": "sunfish", "args": ["-SailingGallery=Boat:1"]},
+        {"name": "ilca7", "args": ["-SailingGallery=Boat:2"]},
+        {"name": "catalina22", "args": ["-SailingGallery=Boat:3"]},
+        {"name": "catalina30", "args": ["-SailingGallery=Boat:4"]},
+        {"name": "hobie16", "args": ["-SailingGallery=Boat:5"]},
+        {"name": "corsair880", "args": ["-SailingGallery=Boat:6"]},
+        {"name": "lagoon42", "args": ["-SailingGallery=Boat:7"]}
+      ],
+      "compose": {"type": "cuts", "each_s": 1.1, "crossfade_s": 0.15}
+    },
+    "physics": {
+      "what": "The J/22 tacking, seen from a chase boat, with heel, speed and wind from that run's telemetry.",
+      "render": "offline",
+      "fps": 30, "seconds": 10, "tail": 0.5, "start_s": 20,
+      "args": ["-SailingCapture=Chase", "-SailingBoat=J22", "-SailingWorld=Lake", "-SailingWind=14", "-SailingTWA=45", "-SailingHour=17.5", "-SailingDemo", "-SailingCaptureBearing=140"],
+      "passes": [{"name": "chase", "args": []}],
+      "compose": {"type": "single", "overlay": "telemetry"}
+    },
+    "storm": {
+      "what": "The thunderstorm preset's gust front crossing the water, whitecaps building, then rain and lightning, time-lapsed.",
+      "render": "offline",
+      "fps": 30, "seconds": 10, "tail": 1, "start_s": 5, "dilation": 3, "decimate": 8,
+      "args": ["-SailingCapture=ShoreTele", "-SailingWeather=Thunderstorm", "-SailingHour=16", "-SailingWeatherTime=120", "-SailingBoat=J22", "-SailingWorld=Lake", "-SailingDemo"],
+      "passes": [{"name": "front", "args": []}],
+      "compose": {"type": "single"}
+    },
+    "night": {
+      "what": "The Galveston ship channel after sunset: buoys flashing their charted characters, busy traffic, a tanker passing.",
+      "render": "offline",
+      "fps": 30, "seconds": 10, "tail": 1, "start_s": 8,
+      "args": ["-SailingWorld=1", "-SailingHour=20.6", "-SailingTraffic=2", "-SailingTrafficNear", "-SailingLightsOn", "-SailingCapture=Drone", "-SailingBoat=J22", "-SailingDemo", "-SailingCamVessel=3,140,60"],
+      "passes": [{"name": "channel", "args": []}],
+      "compose": {"type": "single"}
+    }
+  }
+}
