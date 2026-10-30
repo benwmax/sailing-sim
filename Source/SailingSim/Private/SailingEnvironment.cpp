@@ -1091,7 +1091,10 @@ void ASailingEnvironment::UpdateRainCurtains(const FVector& CameraPos, float Del
 		Curtains.Reset();
 		if (W.bStormRain)
 		{
-			const int32 MaxCurtains = USailingSettings::Get()->Quality == ESailingQuality::Low ? 16 : 32;
+			int32 MaxCurtains = USailingSettings::Get()->Quality == ESailingQuality::Low ? 16 : 32;
+			// -SailingRainCurtains=<n>: another cap, for measuring (docs/storm-cost/).
+			int32 CapArg = 0;
+			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingRainCurtains="), CapArg) && CapArg > 0) MaxCurtains = CapArg;
 			const int64 I0 = int64(FMath::FloorToDouble(Cx / Cell)), J0 = int64(FMath::FloorToDouble(Cy / Cell));
 			const int32 R = int32(Reach / Cell);
 			TArray<TPair<double, FRainCurtain>> Scored;

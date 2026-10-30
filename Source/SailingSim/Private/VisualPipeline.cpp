@@ -55,6 +55,11 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// through empty sky, r.VolumetricCloud.StepSizeOnZeroConservativeDensity, sparkled: left at 1.)
 	V.Add({ TEXT("r.VolumetricFog.GridPixelSize"), bUltra ? 4.f : (bHigh ? 8.f : 16.f) });
 	V.Add({ TEXT("r.VolumetricFog.GridSizeZ"), bUltra ? 128.f : (bHigh ? 96.f : 64.f) });
+	// docs/storm-cost/: the fog's conservative depth pass only culls froxels behind the scene, and on the Mac it cost more
+	// than it saved: 1.2 ms of the storm view's GPU on High, +0.8 fps off with the fog unchanged. Medium and High go
+	// without it; Ultra (a desktop GPU) and Low keep the engine's default.
+	const bool bMidTier = Quality == ESailingQuality::Medium || Quality == ESailingQuality::High;
+	V.Add({ TEXT("r.VolumetricFog.ConservativeDepth"), bMidTier ? 0.f : 1.f });
 		// Shadows: virtual shadow maps from Medium up (crisp rig and sail shadows on the deck); Low keeps cascades.
 	V.Add({ TEXT("r.Shadow.Virtual.Enable"), bLow ? 0.f : 1.f });
 	// Ray tracing is compiled in on demand; only High turns it on, for Lumen's hardware ray tracing.
