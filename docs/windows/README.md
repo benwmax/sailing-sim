@@ -181,6 +181,16 @@ never packaged over another. Then, in about 15 minutes on the 4090:
 
 The result line is in `Artifacts\friday-<commit>.txt`. The gamepad and settings checks are done by hand.
 
+**Crash reports (Sentry).** The DSN lives on the PC only, in `Artifacts\sentry\dsn.txt` (or `$env:SENTRY_DSN`; the file
+wins), and is never committed: `Artifacts/` is git-ignored. For the cook, friday.ps1 appends a
+`[/Script/Sentry.SentrySettings]` section (`Dsn`, `Release=sailing-sim@<commit>`, `Environment=tester`) to
+`Config\Windows\WindowsEngine.ini` and puts the file back byte for byte afterwards, even when packaging fails, then warns
+loudly if anything under `Config` or `Content` is left changed. The section does nothing until the game has the Sentry
+plugin. After packaging it uploads the Shipping symbols with `sentry-cli debug-files upload --include-sources` when
+sentry-cli, `Artifacts\sentry\auth.token` (a Sentry auth token with `project:releases` and `project:write`) and
+`Artifacts\sentry\project.txt` (`<org>/<project>`) are all there; otherwise it skips with one line and the build goes on.
+To install sentry-cli once Bean approves: `winget install Sentry.SentryCli` (or `npm install -g @sentry/cli`).
+
 ## Build times
 
 Measured on the PC (i9-9900K, RTX 4090, D:\ NVMe, Unreal's DDC on `D:\UnrealDDC`) on Oct 15 2026, after main 7149d537,
