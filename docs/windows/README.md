@@ -153,6 +153,34 @@ nothing and the token is unused (it stays in the staged config like every other 
 Never drive the game by sending keys or mouse clicks to the desktop: the window may not be in front, and the input lands
 in other apps. Use `-SailingUIScript`, which delivers keys through Slate inside the game.
 
+## The Friday tester build
+
+One command takes main to a zip for Bean and the testers (slice issue #406):
+
+```
+scripts\windows\friday.ps1                  # origin/main, fetched and checked out detached
+scripts\windows\friday.ps1 -Commit 29ecd2b6 # a given commit
+scripts\windows\friday.ps1 -NoCheckout      # what's checked out (a dry run of a branch)
+```
+
+It refuses a tree with tracked changes, and a commit that already has a `Packaged\Shipping-<commit>` folder: a build is
+never packaged over another. Then, in about 15 minutes on the 4090:
+
+1. `build.ps1`, then `package-win.ps1 -Config Shipping -Full -Into Shipping-<commit>` (a full cook, into a new folder).
+   For the package only, it writes `Content\BuildStamp\version.txt` ("<commit>, <date>", git-ignored, staged by
+   `DefaultGame.ini`), which the title screen shows small in its bottom corner (`SailCatalog::BuildStamp`); it's removed
+   afterwards. A build without the file shows no stamp.
+2. Smoke checks, by launch arguments and `-SailingUIScript` only (`-SailingShippingSmoke`, `-NoCrashReporter`):
+   - Title > Gallery opens and renders its thumbnails (more than 100 in `Saved\GalleryThumbs`);
+   - two Ultra Lake benches of 30 s (`-BenchSeconds`), the second reported: the first after a full cook runs slow.
+3. `Packaged\Shipping-<commit>\BUILD.md`: the commit, date, fps, the checks, where crash logs go, and what merged since
+   the last Friday build (the newest other `Packaged\Shipping-*\BUILD.md`'s commit, by `git log --first-parent`).
+4. `Packaged\SailingSim-<commit>-Win64.zip`: the `Windows` folder with `BUILD.md` and
+   [TESTER-GUIDE.md](TESTER-GUIDE.md) (install, the first-launch shader wait, controls, reporting, crash logs). Windows'
+   own `tar.exe` writes it: the .ucas is over 2 GB, past PowerShell 5's `Compress-Archive`.
+
+The result line is in `Artifacts\friday-<commit>.txt`. The gamepad and settings checks are done by hand.
+
 ## Build times
 
 Measured on the PC (i9-9900K, RTX 4090, D:\ NVMe, Unreal's DDC on `D:\UnrealDDC`) on Oct 15 2026, after main 7149d537,

@@ -24,6 +24,8 @@ Content/Crew/MetaHumans/
 Content/Crew/MetaHumanSources/
 # Crew C2: Bean's filmed clips and their solves (Tools/capture/capture_clips.py), like the MetaHumans
 Content/Crew/Capture/
+# Slice #406: the tester build's version line, written by scripts/windows/friday.ps1 for its package and removed after
+Content/BuildStamp/
 __pycache__/
 # NVIDIA DLSS (docs/windows/README.md): installed locally on the PC from NVIDIA's download; the RTX SDK licence allows it
 # only inside the shipped game, so it never goes in git. Optional in the .uproject: the game builds and runs without it.

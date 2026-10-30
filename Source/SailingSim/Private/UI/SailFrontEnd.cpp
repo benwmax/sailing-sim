@@ -905,7 +905,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 90.f)[ Card ];
 	E.Focus = bTitleFocusMode ? TSharedPtr<SWidget>(ModeChoice) : First;
 	bTitleFocusMode = false;
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Quit")) }, TEXT("Left / Right on Mode: Career or Free Sail"));
+	// Slice #406: a tester build names itself in the corner (its commit and date), so a report says which build it was.
+	const FString Stamp = SailCatalog::BuildStamp();
+	const FString Hint = FString(TEXT("Left / Right on Mode: Career or Free Sail")) + (Stamp.IsEmpty() ? FString() : TEXT("     Build ") + Stamp);
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Quit")) }, Hint);
 	return E;
 }
 
