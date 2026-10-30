@@ -189,7 +189,7 @@ loudly if anything under `Config` or `Content` is left changed. The section does
 plugin. After packaging it uploads the Shipping symbols with `sentry-cli debug-files upload --include-sources` when
 sentry-cli, `Artifacts\sentry\auth.token` (a Sentry auth token with `project:releases` and `project:write`) and
 `Artifacts\sentry\project.txt` (`<org>/<project>`) are all there; otherwise it skips with one line and the build goes on.
-To install sentry-cli once Bean approves: `winget install Sentry.SentryCli` (or `npm install -g @sentry/cli`).
+sentry-cli is installed on the PC (3.8.0, Oct 30: `winget install Sentry.sentry-cli`, which names the command `sentry`; friday.ps1 takes `sentry-cli` or `sentry`).
 
 ## Build times
 

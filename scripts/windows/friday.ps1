@@ -23,7 +23,8 @@ Push-Location $RepoRoot
 try {
 	function Step([string]$Text) { Write-Host ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $Text) -ForegroundColor Cyan }
 	function Upload-Symbols([string]$Dir, [string]$SentryDir) {
-		$Cli = Get-Command sentry-cli -ErrorAction SilentlyContinue
+		# winget installs it as `sentry` (Sentry.sentry-cli), npm as `sentry-cli`.
+		$Cli = Get-Command sentry-cli, sentry -ErrorAction SilentlyContinue | Select-Object -First 1
 		$TokenFile = Join-Path $SentryDir 'auth.token'
 		$ProjectFile = Join-Path $SentryDir 'project.txt'
 		if (-not $Cli) { return 'Symbols: skipped (sentry-cli is not installed)' }
