@@ -214,6 +214,9 @@ FString FSailSave::ToJson() const
 	Display->SetBoolField(TEXT("autoStart"), S.bAutoStart);
 	Display->SetBoolField(TEXT("pauseOnFocusLoss"), S.bPauseOnFocusLoss);
 	Set->SetObjectField(TEXT("display"), Display);
+	TSharedRef<FJsonObject> Privacy = Obj();
+	Privacy->SetBoolField(TEXT("sendCrashReports"), S.bSendCrashReports);
+	Set->SetObjectField(TEXT("privacy"), Privacy);
 	TSharedRef<FJsonObject> Start = Obj();
 	Start->SetStringField(TEXT("world"), S.WorldId);
 	Start->SetStringField(TEXT("launchSpot"), S.SpotId);
@@ -447,6 +450,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*St, TEXT("weatherSeed"), S.WeatherSeed);
 			Read(*St, TEXT("gaugeLakeLevel"), S.bGaugeLakeLevel);
 		}
+		if (const TSharedPtr<FJsonObject> Pr = Child(*Set, TEXT("privacy"))) Read(*Pr, TEXT("sendCrashReports"), S.bSendCrashReports);
 		if (const TSharedPtr<FJsonObject> In = Child(*Set, TEXT("input"))) Read(*In, TEXT("bindings"), S.InputBindings);
 		if (const TSharedPtr<FJsonObject> Ca = Child(*Set, TEXT("career")))
 		{
@@ -628,6 +632,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bHeadingsTrue = In.bHeadingsTrue;
 	S.bAutoStart = In.bAutoStart;
 	S.bPauseOnFocusLoss = In.bPauseOnFocusLoss;
+	S.bSendCrashReports = In.bSendCrashReports;
 	S.WorldId = WorldId(In.World);
 	S.SpotId = SpotIdOf(FMath::Clamp(In.World, 0, 2), In.LaunchSpot);
 	SpotAtOf(FMath::Clamp(In.World, 0, 2), In.LaunchSpot, S.bHasSpotAt, S.SpotLat, S.SpotLon);
@@ -706,6 +711,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bHeadingsTrue = S.bHeadingsTrue;
 	Out.bAutoStart = S.bAutoStart;
 	Out.bPauseOnFocusLoss = S.bPauseOnFocusLoss;
+	Out.bSendCrashReports = S.bSendCrashReports;
 	auto World = [](const FString& Id)
 	{
 		const int32 W = WorldIndex(Id);

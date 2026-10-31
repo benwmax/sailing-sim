@@ -312,6 +312,11 @@ a fourth zombie holding `D:\dev\sailing-sim\Binaries\Win64\UnrealEditor-Sailing*
 passes `-NoCrashReporter`, and every script that returns normally (`capture_clips.py`, `make_test_footage.py stage`,
 `solve_clips.py`, a dozen probes) exited cleanly.
 
+Oct 30 2026: a one-off marina bake script (UWorldKitLibrary::BakeMarina through `run-python.ps1`, `-NoCrashReporter`)
+ended with `os._exit(0)` as `import_world.py` does after its bakes. The bake saved, then the editor hit the same
+`LocalizableMessageProcessor.h` ensure on the way out, and stopping it left a fifth zombie. So `os._exit` crashes the
+exit on this PC with `-NoCrashReporter` too: scripts run here should return normally.
+
 If a zombie does appear, only a restart frees its files. Work that doesn't build or import (docs, the WSL jobs) can go
 on meanwhile. A zombie's module DLLs can still be renamed out of the way (a mapped image allows a rename), and the build
 then links new ones:

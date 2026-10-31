@@ -1,6 +1,7 @@
 #include "SailingSettings.h"
 #include "BenchRunner.h"
 #include "BoatModel.h"
+#include "CrashReports.h"
 #include "SailSave.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
@@ -153,6 +154,11 @@ void USailingSettings::ApplyDisplay() const
 	if (IConsoleVariable* Cap = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"))) Cap->Set(float(FrameCap), ECVF_SetByGameSetting);
 	if (IConsoleVariable* VSync = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VSync"))) VSync->Set(bVSync ? 1 : 0, ECVF_SetByGameSetting);
 	if (GEngine) GEngine->bPauseOnLossOfFocus = bPauseOnFocusLoss;
+}
+
+void USailingSettings::ApplyCrashReports() const
+{
+	SailCrashReports::SetConsent(bSendCrashReports);
 }
 
 bool USailingSettings::DLSSAvailable()
