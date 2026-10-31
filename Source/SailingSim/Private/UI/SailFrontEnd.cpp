@@ -2440,6 +2440,21 @@ void SSailFrontEnd::SendFeedbackForm()
 	R.Context.Add({ TEXT("Build"), Stamp.IsEmpty() ? FString::Printf(TEXT("dev %s"), FApp::GetBuildVersion()) : Stamp });
 	R.Context.Add({ TEXT("Platform"), FString::Printf(TEXT("%s, %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()), *GRHIAdapterName) });
 	R.Context.Add({ TEXT("Quality"), UEnum::GetValueAsString(S->Quality) });
+	// The bundle's tags (#410): short values to filter by, no personal ids.
+	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(Player.Get());
+	ASailboatPawn* Boat = Pawn();
+	R.Tags.Add(TEXT("feedback_kind"), SailFeedback::KindId(R.Kind));
+	R.Tags.Add(TEXT("world"), FSailSave::WorldId(S->World));
+	R.Tags.Add(TEXT("boat"), FSailSave::BoatId(S->BoatType));
+	R.Tags.Add(TEXT("lesson"), Boat && Boat->GetDrill().IsActive() ? FString(DrillName(Boat->GetDrill().GetDrill())) : FString(TEXT("none")));
+	R.Tags.Add(TEXT("game_mode"), USailSessionSubsystem::ModeName(Session && Session->bHasActive ? Session->Active.Mode : ESailMode::Free));
+	R.Tags.Add(TEXT("quality"), StaticEnum<ESailingQuality>()->GetNameStringByValue(int64(S->Quality)));
+	R.Tags.Add(TEXT("input"), SailUI::UsingGamepad() ? TEXT("gamepad") : TEXT("keyboard"));
+	if (Boat && !Boat->GetFeedbackRecorder().IsEmpty())
+	{
+		R.Tags.Add(TEXT("wind_kts"), FString::Printf(TEXT("%.0f"), Boat->GetFeedbackRecorder().Latest().TwsKn));
+		R.Tags.Add(TEXT("fps"), FString::Printf(TEXT("%.0f"), Boat->GetFeedbackRecorder().MeanFps()));
+	}
 	if (R.CarriesPlace())
 	{
 		const FString WorldId = FSailSave::WorldId(S->World), BoatId = FSailSave::BoatId(S->BoatType);
@@ -2449,13 +2464,17 @@ void SSailFrontEnd::SendFeedbackForm()
 		if (ASailboatPawn* P = Pawn())
 		{
 			const FFeedbackRecorder& Rec = P->GetFeedbackRecorder();
-			R.SamplesCsv = Rec.ToCsv();
+			R.TelemetryJson = Rec.ToJson();
 			if (!Rec.IsEmpty()) R.Repro = SailFeedback::ReproArgs(WorldId, BoatId, Rec.Latest(), Rec.Latest().TwsKn);
 			if (P->GetDrill().IsActive()) R.Context.Add({ TEXT("Drill"), DrillName(P->GetDrill().GetDrill()) });
 		}
 		R.LogTail = SailFeedback::LogTail();
 	}
-	if (IFileManager::Get().FileExists(*FeedbackShot)) R.ShotPaths.Add(FeedbackShot);
+	if (IFileManager::Get().FileExists(*FeedbackShot))
+	{
+		const FString Jpeg = FPaths::ChangeExtension(FeedbackShot, TEXT("jpg"));
+		R.ShotPaths.Add(SailFeedback::ShotToJpeg(FeedbackShot, Jpeg) ? Jpeg : FeedbackShot);
+	}
 	const FString Folder = SailFeedback::WriteLocal(R, SailFeedback::LocalDir());
 	const bool bSent = S->bSendCrashReports && SailCrashReports::SendFeedback(R);
 	UE_LOG(LogSailing, Log, TEXT("Feedback: %s report saved to %s%s"), SailFeedback::KindId(R.Kind), *SailFeedback::ScrubPaths(Folder), bSent ? TEXT(", sent") : TEXT(""));

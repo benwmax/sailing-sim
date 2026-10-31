@@ -4,6 +4,10 @@
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
+#include "Modules/ModuleManager.h"
+#include "Math/RandomStream.h"
 
 // Testers' bug and idea reports (docs/sentry, #410): the recorder keeps the last minute, paths lose the user's name, an
 // idea carries no place unless asked, and a report written to disk holds what it should.
@@ -31,7 +35,7 @@ bool FSailFeedbackRecorderTest::RunTest(const FString&)
 	Back.T = 1.0; // a restart: the clock went back
 	R.Offer(Back);
 	TestEqual(TEXT("a restart starts again"), R.GetSamples().Num(), 1);
-	TestTrue(TEXT("csv header"), R.ToCsv().StartsWith(TEXT("t_s,north_m,east_m")));
+	TestTrue(TEXT("json"), R.ToJson().StartsWith(TEXT("{\"interval_s\": 0.5, \"samples\": [")) && R.ToJson().Contains(TEXT("\"t_s\": 1.0")));
 	return true;
 }
 
@@ -62,7 +66,7 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	Idea.WhatHappened = TEXT("Show the current on the HUD.");
 	Idea.Expected = TEXT("ignored for ideas");
 	Idea.Repro = Repro;
-	Idea.SamplesCsv = TEXT("t_s\n1\n");
+	Idea.TelemetryJson = TEXT("{}");
 	Idea.LogTail = TEXT("log line\n");
 	const FString IdeaText = SailFeedback::ComposeMessage(Idea);
 	TestTrue(TEXT("idea header"), IdeaText.StartsWith(TEXT("[Idea] A tide arrow")));
@@ -76,7 +80,8 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	Bug.WhatHappened = TEXT("The boat stopped at /Users/dana/x");
 	Bug.Expected = TEXT("She should bear away");
 	Bug.Context.Add({ TEXT("World"), TEXT("ray-hubbard") });
-	Bug.SamplesCsv = TEXT("t_s,north_m\n1,2\n");
+	Bug.TelemetryJson = TEXT("{}");
+	Bug.Tags.Add(TEXT("boat"), TEXT("J22"));
 	Bug.LogTail = TEXT("LogSailing: /Users/dana/Saved\n");
 	const FString BugText = SailFeedback::ComposeMessage(Bug);
 	TestTrue(TEXT("bug header"), BugText.StartsWith(TEXT("[Bug] Stuck in irons")));
@@ -91,18 +96,46 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	TestFalse(TEXT("written"), Folder.IsEmpty());
 	FString Log;
 	TestTrue(TEXT("report.txt"), IFileManager::Get().FileExists(*FPaths::Combine(Folder, TEXT("report.txt"))));
-	TestTrue(TEXT("samples.csv"), IFileManager::Get().FileExists(*FPaths::Combine(Folder, TEXT("samples.csv"))));
+	TestTrue(TEXT("telemetry.json"), IFileManager::Get().FileExists(*FPaths::Combine(Folder, TEXT("telemetry.json"))));
+	FString TagsJson;
+	TestTrue(TEXT("tags.json"), FFileHelper::LoadFileToString(TagsJson, *FPaths::Combine(Folder, TEXT("tags.json"))) && TagsJson.Contains(TEXT("\"boat\": \"J22\"")));
 	TestTrue(TEXT("log.txt read"), FFileHelper::LoadFileToString(Log, *FPaths::Combine(Folder, TEXT("log.txt"))));
 	TestFalse(TEXT("log scrubbed"), Log.Contains(TEXT("dana")));
 	TestTrue(TEXT("folder named for the kind"), Folder.EndsWith(TEXT("-bug")));
 	FFeedbackReport Bare;
 	Bare.Kind = EFeedbackKind::Idea;
 	Bare.Title = TEXT("x");
-	Bare.SamplesCsv = TEXT("t_s\n1\n");
+	Bare.TelemetryJson = TEXT("{}");
 	const FString IdeaFolder = SailFeedback::WriteLocal(Bare, Dir);
-	TestFalse(TEXT("idea without place: no samples"), IFileManager::Get().FileExists(*FPaths::Combine(IdeaFolder, TEXT("samples.csv"))));
+	TestFalse(TEXT("idea without place: no samples"), IFileManager::Get().FileExists(*FPaths::Combine(IdeaFolder, TEXT("telemetry.json"))));
 	IFileManager::Get().DeleteDirectory(*Dir, false, true);
 
 	TestFalse(TEXT("no SDK in the editor's tests: nothing sent"), SailCrashReports::SendFeedback(Bug));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailFeedbackJpegTest, "SailingSim.UI.Feedback.Jpeg", SailFeedbackTestsLocal::Flags_)
+bool FSailFeedbackJpegTest::RunTest(const FString&)
+{
+	// A noisy 512x512 shot: a JPEG under 8 MB at once, and under a tiny cap only after halving.
+	IImageWrapperModule& Images = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
+	const int32 N = 512;
+	TArray<uint8> Raw;
+	Raw.SetNumUninitialized(N * N * 4);
+	FRandomStream Rng(410);
+	for (int32 I = 0; I < N * N; ++I)
+	{
+		Raw[4 * I] = uint8(Rng.RandRange(0, 255)); Raw[4 * I + 1] = uint8((I / N) % 256); Raw[4 * I + 2] = uint8(I % 256); Raw[4 * I + 3] = 255;
+	}
+	TSharedPtr<IImageWrapper> Png = Images.CreateImageWrapper(EImageFormat::PNG);
+	TestTrue(TEXT("png made"), Png->SetRaw(Raw.GetData(), Raw.Num(), N, N, ERGBFormat::BGRA, 8));
+	const FString Dir = FPaths::ConvertRelativePathToFull(FPaths::AutomationTransientDir() / TEXT("SailFeedbackJpeg"));
+	IFileManager::Get().MakeDirectory(*Dir, true);
+	const FString PngPath = Dir / TEXT("shot.png"), JpegPath = Dir / TEXT("shot.jpg");
+	TestTrue(TEXT("png saved"), FFileHelper::SaveArrayToFile(Png->GetCompressed(), *PngPath));
+	TestTrue(TEXT("jpeg under 8 MB"), SailFeedback::ShotToJpeg(PngPath, JpegPath) && IFileManager::Get().FileSize(*JpegPath) > 0);
+	TestTrue(TEXT("jpeg under 40 kB after halving"), SailFeedback::ShotToJpeg(PngPath, JpegPath, 40 * 1024) && IFileManager::Get().FileSize(*JpegPath) <= 40 * 1024);
+	TestFalse(TEXT("no png, no jpeg"), SailFeedback::ShotToJpeg(Dir / TEXT("missing.png"), JpegPath));
+	IFileManager::Get().DeleteDirectory(*Dir, false, true);
 	return true;
 }

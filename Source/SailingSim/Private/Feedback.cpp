@@ -3,6 +3,9 @@
 #include "HAL/PlatformOutputDevices.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
+#include "Modules/ModuleManager.h"
 
 void FFeedbackRecorder::Offer(const FFeedbackSample& Sample)
 {
@@ -14,15 +17,23 @@ void FFeedbackRecorder::Offer(const FFeedbackSample& Sample)
 	if (Drop) Samples.RemoveAt(0, Drop);
 }
 
-FString FFeedbackRecorder::ToCsv() const
+FString FFeedbackRecorder::ToJson() const
 {
-	FString Out = TEXT("t_s,north_m,east_m,heading_deg,speed_kn,heel_deg,twa_deg,tws_kn,fps\n");
-	for (const FFeedbackSample& S : Samples)
+	FString Out = FString::Printf(TEXT("{\"interval_s\": %.1f, \"samples\": ["), IntervalSeconds);
+	for (int32 I = 0; I < Samples.Num(); ++I)
 	{
-		Out += FString::Printf(TEXT("%.1f,%.1f,%.1f,%.1f,%.2f,%.1f,%.1f,%.1f,%.0f\n"),
-			S.T, S.North, S.East, S.HeadingDeg, S.SpeedKn, S.HeelDeg, S.TwaDeg, S.TwsKn, S.Fps);
+		const FFeedbackSample& S = Samples[I];
+		Out += FString::Printf(TEXT("%s\n{\"t_s\": %.1f, \"north_m\": %.1f, \"east_m\": %.1f, \"heading_deg\": %.1f, \"speed_kn\": %.2f, \"heel_deg\": %.1f, \"twa_deg\": %.1f, \"tws_kn\": %.1f, \"fps\": %.0f}"),
+			I ? TEXT(",") : TEXT(""), S.T, S.North, S.East, S.HeadingDeg, S.SpeedKn, S.HeelDeg, S.TwaDeg, S.TwsKn, S.Fps);
 	}
-	return Out;
+	return Out + TEXT("\n]}\n");
+}
+
+double FFeedbackRecorder::MeanFps() const
+{
+	double Sum = 0.0;
+	for (const FFeedbackSample& S : Samples) Sum += S.Fps;
+	return Samples.Num() ? Sum / Samples.Num() : 0.0;
 }
 
 const TCHAR* SailFeedback::KindId(EFeedbackKind Kind)
@@ -96,13 +107,23 @@ FString SailFeedback::WriteLocal(const FFeedbackReport& R, const FString& Dir)
 	bool bOk = FFileHelper::SaveStringToFile(ComposeMessage(R), *FPaths::Combine(Folder, TEXT("report.txt")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	if (R.CarriesPlace())
 	{
-		if (!R.SamplesCsv.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(R.SamplesCsv, *FPaths::Combine(Folder, TEXT("samples.csv")));
+		if (!R.TelemetryJson.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(R.TelemetryJson, *FPaths::Combine(Folder, TEXT("telemetry.json")));
 		if (!R.LogTail.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(ScrubPaths(R.LogTail), *FPaths::Combine(Folder, TEXT("log.txt")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	}
+	if (R.Tags.Num())
+	{
+		TArray<FString> Keys;
+		R.Tags.GetKeys(Keys);
+		Keys.Sort();
+		FString Json = TEXT("{");
+		for (int32 I = 0; I < Keys.Num(); ++I)
+			Json += FString::Printf(TEXT("%s\n  \"%s\": \"%s\""), I ? TEXT(",") : TEXT(""), *Keys[I], *R.Tags[Keys[I]].ReplaceCharWithEscapedChar());
+		bOk &= FFileHelper::SaveStringToFile(Json + TEXT("\n}\n"), *FPaths::Combine(Folder, TEXT("tags.json")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 	for (int32 I = 0; I < R.ShotPaths.Num(); ++I)
 	{
 		if (IFileManager::Get().FileExists(*R.ShotPaths[I]))
-			IFileManager::Get().Copy(*FPaths::Combine(Folder, FString::Printf(TEXT("shot%d.png"), I + 1)), *R.ShotPaths[I]);
+			IFileManager::Get().Copy(*FPaths::Combine(Folder, FString::Printf(TEXT("shot%d%s"), I + 1, *FPaths::GetExtension(R.ShotPaths[I], true))), *R.ShotPaths[I]);
 	}
 	return bOk ? Folder : FString();
 }
@@ -110,4 +131,40 @@ FString SailFeedback::WriteLocal(const FFeedbackReport& R, const FString& Dir)
 FString SailFeedback::LocalDir()
 {
 	return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Feedback"));
+}
+
+bool SailFeedback::ShotToJpeg(const FString& PngPath, const FString& JpegPath, int64 MaxBytes)
+{
+	TArray<uint8> Png;
+	if (!FFileHelper::LoadFileToArray(Png, *PngPath)) return false;
+	IImageWrapperModule& Images = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
+	TSharedPtr<IImageWrapper> In = Images.CreateImageWrapper(EImageFormat::PNG);
+	TArray<uint8> Raw;
+	if (!In.IsValid() || !In->SetCompressed(Png.GetData(), Png.Num()) || !In->GetRaw(ERGBFormat::BGRA, 8, Raw)) return false;
+	int32 W = In->GetWidth(), H = In->GetHeight();
+	for (int32 Pass = 0; Pass < 4; ++Pass)
+	{
+		for (const int32 Quality : { 85, 70, 55 })
+		{
+			TSharedPtr<IImageWrapper> Out = Images.CreateImageWrapper(EImageFormat::JPEG);
+			if (!Out.IsValid() || !Out->SetRaw(Raw.GetData(), Raw.Num(), W, H, ERGBFormat::BGRA, 8)) return false;
+			const TArray64<uint8>& Jpeg = Out->GetCompressed(Quality);
+			if (Jpeg.Num() > 0 && Jpeg.Num() <= MaxBytes) return FFileHelper::SaveArrayToFile(Jpeg, *JpegPath);
+		}
+		// Still too big: half the size (box filter).
+		const int32 W2 = FMath::Max(1, W / 2), H2 = FMath::Max(1, H / 2);
+		TArray<uint8> Half;
+		Half.SetNumUninitialized(W2 * H2 * 4);
+		for (int32 Y = 0; Y < H2; ++Y)
+			for (int32 X = 0; X < W2; ++X)
+				for (int32 C = 0; C < 4; ++C)
+				{
+					const int32 Sx = FMath::Min(2 * X + 1, W - 1), Sy = FMath::Min(2 * Y + 1, H - 1);
+					const int32 Sum = Raw[(2 * Y * W + 2 * X) * 4 + C] + Raw[(2 * Y * W + Sx) * 4 + C] + Raw[(Sy * W + 2 * X) * 4 + C] + Raw[(Sy * W + Sx) * 4 + C];
+					Half[(Y * W2 + X) * 4 + C] = uint8(Sum / 4);
+				}
+		Raw = MoveTemp(Half);
+		W = W2; H = H2;
+	}
+	return false;
 }

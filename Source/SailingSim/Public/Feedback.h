@@ -34,8 +34,10 @@ public:
 	bool IsEmpty() const { return Samples.Num() == 0; }
 	const FFeedbackSample& Latest() const { return Samples.Last(); }
 	void Reset() { Samples.Reset(); }
-	/** One row per sample with a header, oldest first. */
-	FString ToCsv() const;
+	/** {"interval_s", "samples": [{t_s, north_m, east_m, heading_deg, speed_kn, heel_deg, twa_deg, tws_kn, fps}]}, oldest first. */
+	FString ToJson() const;
+	/** The mean frame rate over the kept samples (0 when empty). */
+	double MeanFps() const;
 
 private:
 	TArray<FFeedbackSample> Samples;
@@ -49,12 +51,15 @@ struct SAILINGSIM_API FFeedbackReport
 	FString Expected;        // bugs only
 	/** Ideas carry where the player is only when asked; bugs always do. */
 	bool bAttachPlace = false;
-	/** Build stamp, world, boat, weather, quality, GPU...: shown in the message, sent as tags where short. */
+	/** Build stamp, world, boat, weather, quality, GPU...: lines in the message. */
 	TArray<TPair<FString, FString>> Context;
-	FString SamplesCsv;      // FFeedbackRecorder::ToCsv
+	/** Short values to filter reports by (#410's bundle: feedback_kind, boat, world, lesson, game_mode, wind_kts,
+	 *  quality, input, fps): Sentry tags, and tags.json in the local copy. No personal ids. */
+	TMap<FString, FString> Tags;
+	FString TelemetryJson;   // FFeedbackRecorder::ToJson
 	FString Repro;           // command-line args that start a session near the same place (SailFeedback::ReproArgs)
 	FString LogTail;
-	TArray<FString> ShotPaths; // PNGs on disk
+	TArray<FString> ShotPaths; // JPEGs (or PNGs) on disk
 
 	bool CarriesPlace() const { return Kind == EFeedbackKind::Bug || bAttachPlace; }
 };
@@ -75,10 +80,13 @@ namespace SailFeedback
 	/** The last MaxLines lines of the game's log, scrubbed. */
 	SAILINGSIM_API FString LogTail(int32 MaxLines = 200);
 
-	/** Writes the report under Dir/<UTC stamp>-<kind>/ (report.txt, samples.csv, log.txt, shots), scrubbed; returns the
+	/** Writes the report under Dir/<UTC stamp>-<kind>/ (report.txt, tags.json, telemetry.json, log.txt, shots), scrubbed; returns the
 	 *  folder, empty on failure. Testers keep a copy whether or not it was sent. */
 	SAILINGSIM_API FString WriteLocal(const FFeedbackReport& Report, const FString& Dir);
 
 	/** Where WriteLocal puts reports in the game: Saved/Feedback. */
 	SAILINGSIM_API FString LocalDir();
+
+	/** Re-encodes a PNG shot as a JPEG under MaxBytes (quality stepped down, then halved in size); false on failure. */
+	SAILINGSIM_API bool ShotToJpeg(const FString& PngPath, const FString& JpegPath, int64 MaxBytes = 8 * 1024 * 1024);
 }

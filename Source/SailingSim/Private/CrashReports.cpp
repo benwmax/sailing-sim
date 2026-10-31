@@ -71,7 +71,7 @@ bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
 	};
 	if (Report.CarriesPlace())
 	{
-		Attach(Report.SamplesCsv, TEXT("samples.csv"), TEXT("text/csv"));
+		Attach(Report.TelemetryJson, TEXT("telemetry.json"), TEXT("application/json"));
 		Attach(SailFeedback::ScrubPaths(Report.LogTail), TEXT("log.txt"), TEXT("text/plain"));
 	}
 	for (int32 I = 0; I < Report.ShotPaths.Num(); ++I)
@@ -79,13 +79,16 @@ bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
 		TArray<uint8> Png;
 		if (!FFileHelper::LoadFileToArray(Png, *Report.ShotPaths[I])) continue;
 		USentryAttachment* A = NewObject<USentryAttachment>();
-		A->InitializeWithData(Png, FString::Printf(TEXT("shot%d.png"), I + 1), TEXT("image/png"));
+		const bool bJpeg = Report.ShotPaths[I].EndsWith(TEXT(".jpg"));
+		A->InitializeWithData(Png, FString::Printf(TEXT("shot%d.%s"), I + 1, bJpeg ? TEXT("jpg") : TEXT("png")), bJpeg ? TEXT("image/jpeg") : TEXT("image/png"));
 		Feedback->AddAttachment(A);
 	}
 	const FString Kind = SailFeedback::KindId(Report.Kind);
-	S->CaptureFeedbackWithScope(Feedback, FConfigureScopeNativeDelegate::CreateLambda([Kind](USentryScope* Scope)
+	TMap<FString, FString> Tags = Report.Tags;
+	Tags.Add(TEXT("feedback_kind"), Kind);
+	S->CaptureFeedbackWithScope(Feedback, FConfigureScopeNativeDelegate::CreateLambda([Tags](USentryScope* Scope)
 	{
-		Scope->SetTag(TEXT("kind"), Kind);
+		Scope->SetTags(Tags);
 	}));
 	UE_LOG(LogSailing, Log, TEXT("Feedback: sent a %s report"), *Kind);
 	return true;
