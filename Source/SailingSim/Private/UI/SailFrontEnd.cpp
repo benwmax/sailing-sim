@@ -38,6 +38,13 @@
 #include "Widgets/SLeafWidget.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/Input/SEditableTextBox.h"
+#include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Feedback.h"
+#include "CrashReports.h"
+#include "UnrealClient.h"
+#include "RHI.h"
+#include "Misc/App.h"
 
 namespace SailFrontEndImpl
 {
@@ -772,6 +779,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Credits: E = BuildCredits(); break;
 	case ESailScreen::Career: E = BuildCareer(); break;
 	case ESailScreen::Gallery: E = BuildGallery(); break;
+	case ESailScreen::Feedback: E = BuildFeedback(); break;
 	}
 	E.Screen = S;
 	return E;
@@ -1569,6 +1577,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 	Item(TEXT("Photo mode"), TEXT("9"), FSimpleDelegate::CreateLambda([this]() { Close(); if (ASailboatPawn* B = Pawn()) B->SetPhotoFromUI(true); }));
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
 	Item(TEXT("Controls"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Controls); }));
+	Item(TEXT("Send feedback"), TEXT("Bug or idea"), FSimpleDelegate::CreateLambda([this]() { OpenFeedback(); }));
 	Item(TEXT("Quit to title"), FString(), FSimpleDelegate::CreateLambda([this]()
 	{
 		Confirm(TEXT("Leave this session? Your logbook entry is saved."), TEXT("Leave"), [this]()
@@ -2402,6 +2411,107 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConfirm()
 		]
 	];
 	E.Focus = No;
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Cancel")) }, FString());
+	return E;
+}
+
+// ---------------------------------------------------------------- Feedback (docs/sentry, #410)
+
+void SSailFrontEnd::OpenFeedback()
+{
+	// The view without the menus, for the report: the engine takes it at the end of the next frame.
+	FeedbackShot = FPaths::Combine(SailFeedback::LocalDir(), TEXT("pending-shot.png"));
+	IFileManager::Get().Delete(*FeedbackShot, false, true, true);
+	FScreenshotRequest::RequestScreenshot(FeedbackShot, false, false);
+	FeedbackResult.Reset();
+	Push(ESailScreen::Feedback);
+}
+
+void SSailFrontEnd::SendFeedbackForm()
+{
+	const USailingSettings* S = USailingSettings::Get();
+	FFeedbackReport R;
+	R.Kind = FeedbackKind == 1 ? EFeedbackKind::Idea : EFeedbackKind::Bug;
+	R.Title = FeedbackTitle.TrimStartAndEnd();
+	R.WhatHappened = FeedbackText.TrimStartAndEnd();
+	R.Expected = R.Kind == EFeedbackKind::Bug ? FeedbackExpected.TrimStartAndEnd() : FString();
+	R.bAttachPlace = bFeedbackPlace;
+	const FString Stamp = SailCatalog::BuildStamp();
+	R.Context.Add({ TEXT("Build"), Stamp.IsEmpty() ? FString::Printf(TEXT("dev %s"), FApp::GetBuildVersion()) : Stamp });
+	R.Context.Add({ TEXT("Platform"), FString::Printf(TEXT("%s, %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()), *GRHIAdapterName) });
+	R.Context.Add({ TEXT("Quality"), UEnum::GetValueAsString(S->Quality) });
+	if (R.CarriesPlace())
+	{
+		const FString WorldId = FSailSave::WorldId(S->World), BoatId = FSailSave::BoatId(S->BoatType);
+		R.Context.Add({ TEXT("World"), WorldId });
+		R.Context.Add({ TEXT("Boat"), BoatId });
+		R.Context.Add({ TEXT("Weather"), UEnum::GetValueAsString(S->WeatherPreset) });
+		if (ASailboatPawn* P = Pawn())
+		{
+			const FFeedbackRecorder& Rec = P->GetFeedbackRecorder();
+			R.SamplesCsv = Rec.ToCsv();
+			if (!Rec.IsEmpty()) R.Repro = SailFeedback::ReproArgs(WorldId, BoatId, Rec.Latest(), Rec.Latest().TwsKn);
+			if (P->GetDrill().IsActive()) R.Context.Add({ TEXT("Drill"), DrillName(P->GetDrill().GetDrill()) });
+		}
+		R.LogTail = SailFeedback::LogTail();
+	}
+	if (IFileManager::Get().FileExists(*FeedbackShot)) R.ShotPaths.Add(FeedbackShot);
+	const FString Folder = SailFeedback::WriteLocal(R, SailFeedback::LocalDir());
+	const bool bSent = S->bSendCrashReports && SailCrashReports::SendFeedback(R);
+	UE_LOG(LogSailing, Log, TEXT("Feedback: %s report saved to %s%s"), SailFeedback::KindId(R.Kind), *SailFeedback::ScrubPaths(Folder), bSent ? TEXT(", sent") : TEXT(""));
+	FeedbackResult = bSent ? FString(TEXT("Sent. Thank you!"))
+		: (S->bSendCrashReports ? FString(TEXT("Saved on this computer (this build can't send reports)."))
+			: FString(TEXT("Saved on this computer. To send reports too, turn on Settings > Gameplay > Send crash reports.")));
+	FeedbackTitle.Reset(); FeedbackText.Reset(); FeedbackExpected.Reset();
+	Pop();
+	Confirm(FeedbackResult, TEXT("Back to the game"), [this]() { Close(); }, TEXT("Back to the menu"), nullptr);
+}
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildFeedback()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	const bool bBug = FeedbackKind == 0;
+	auto Box = [](const FString& Hint, FString* Into, bool bMulti, float Height) -> TSharedRef<SWidget>
+	{
+		TSharedRef<SWidget> Field = bMulti
+			? StaticCastSharedRef<SWidget>(SNew(SMultiLineEditableTextBox).Font(Font(EType::Body)).HintText(FText::FromString(Hint)).AutoWrapText(true)
+				.Text(FText::FromString(*Into)).OnTextChanged_Lambda([Into](const FText& T) { *Into = T.ToString(); }))
+			: StaticCastSharedRef<SWidget>(SNew(SEditableTextBox).Font(Font(EType::Body)).HintText(FText::FromString(Hint))
+				.Text(FText::FromString(*Into)).OnTextChanged_Lambda([Into](const FText& T) { *Into = T.ToString(); }));
+		return SNew(SBox).HeightOverride(Height)[ Field ];
+	};
+	TSharedRef<SSailChoice> Kind = SNew(SSailChoice).Label(TEXT("This is")).Options({ TEXT("A bug"), TEXT("An idea") }).Index_Lambda([this]() { return FeedbackKind; })
+		.OnChanged_Lambda([this](int32 I) { FeedbackKind = I; Stack.Last() = Build(ESailScreen::Feedback); Show(Stack.Last(), true); });
+	TSharedRef<SVerticalBox> Form = SNew(SVerticalBox);
+	Form->AddSlot().AutoHeight()[ SailUI::Text(TEXT("Send feedback"), EType::ScreenTitle, Fg) ];
+	Form->AddSlot().AutoHeight().Padding(0.f, 4.f, 0.f, 16.f)[ SailUI::Text(bBug
+		? TEXT("Something went wrong? Say what you did and what you saw. A shot of the view and the last minute of sailing go with it.")
+		: TEXT("An idea or a change you'd like? Tell us. A shot of the view goes with it."), EType::Body, Muted, true) ];
+	Form->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Kind ];
+	Form->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Box(bBug ? TEXT("Title: the bug in a few words") : TEXT("Title: the idea in a few words"), &FeedbackTitle, false, 40.f) ];
+	Form->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Box(bBug ? TEXT("What happened?") : TEXT("Your idea: what would you change, and why?"), &FeedbackText, true, 120.f) ];
+	if (bBug) Form->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ Box(TEXT("What did you expect instead?"), &FeedbackExpected, true, 80.f) ];
+	else Form->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
+	[
+		SNew(SSailChoice).Label(TEXT("Attach where I am")).Options({ TEXT("No"), TEXT("Yes") }).Index_Lambda([this]() { return bFeedbackPlace ? 1 : 0; })
+			.OnChanged_Lambda([this](int32 I) { bFeedbackPlace = I == 1; })
+			.Note(TEXT("The place, boat, weather and the last minute of sailing, so we can see it in the game."))
+	];
+	TSharedRef<SSailButton> Send = ActionButton(TEXT("Send"), FSimpleDelegate::CreateLambda([this]() { SendFeedbackForm(); }));
+	TSharedRef<SSailButton> Cancel = ActionButton(TEXT("Cancel"), FSimpleDelegate::CreateLambda([this]() { Pop(); }), false);
+	Form->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 12.f, 0.f)[ Send ]
+		+ SHorizontalBox::Slot().FillWidth(1.f)[ Cancel ]
+	];
+	Form->AddSlot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(USailingSettings::Get()->bSendCrashReports
+		? TEXT("Reports go to the developer. No name, account or other screenshots.")
+		: TEXT("Send crash reports is off, so this is saved on this computer only (Saved/Feedback)."), EType::Small, Muted, true) ];
+	E.Content = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(720.f)[ PanelBox(Form, FMargin(28.f)) ] ];
+	E.Focus = Kind;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Cancel")) }, FString());
 	return E;
 }

@@ -24,6 +24,7 @@
 #include "BoatPhysicsTask.h"
 #include "Showroom.h"
 #include "PhotoSettings.h"
+#include "Feedback.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -156,6 +157,8 @@ public:
 	Sailing::FBoatModel& GetMutableBoatModel() { return Boat; }
 	/** The ship's log (Y shows it). Other systems add events (race results, rules judgments). */
 	const FLogbook& GetLogbook() const { return Logbook; }
+	/** The last minute of the player's boat for testers' bug reports (docs/sentry). */
+	const FFeedbackRecorder& GetFeedbackRecorder() const { return FeedbackRecorder; }
 	bool IsLogOpen() const { return bLogOpen; }
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
 	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
@@ -394,6 +397,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensDistortionMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> LensDistortionAsset; // referenced for the cook
 	bool bGhostOn = false, bWatching = false, bPhoto = false;
+	FFeedbackRecorder FeedbackRecorder;
 	/** Visual V7: the cockpit view (the helm's eyes): a filtered copy of the boat's accelerations moves the head, it
 	 *  leans a little into the heel (bounded so the instruments stay readable and the horizon honest). */
 	bool bCockpit = false;
