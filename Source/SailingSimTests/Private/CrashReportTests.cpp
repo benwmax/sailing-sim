@@ -35,6 +35,11 @@ bool FSailingCrashReportsScrubTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Lines kept"), ScrubPaths(TEXT("/Users/a/x\n/Users/b/y\n")), FString(TEXT("~/x\n~/y\n")));
 	TestEqual(TEXT("The bare folder is no home"), ScrubPaths(TEXT("ls /Users/ and /home/")), FString(TEXT("ls /Users/ and /home/")));
 	TestEqual(TEXT("Shared folders stay"), ScrubPaths(TEXT("/Users/Shared/Epic Games/UE_5.8")).Contains(TEXT("Epic Games")), true);
+	TestEqual(TEXT("A Windows name with a space"), ScrubPaths(TEXT("C:\\Users\\Dana Smith\\AppData\\Local")), FString(TEXT("~\\AppData\\Local")));
+	TestEqual(TEXT("A Mac name with a space"), ScrubPaths(TEXT("/Users/Dana Smith/Library/Logs")), FString(TEXT("~/Library/Logs")));
+	TestEqual(TEXT("... inside a quoted path"), ScrubPaths(TEXT("open \"C:\\Users\\Dana Smith\\x.log\" failed")), FString(TEXT("open \"~\\x.log\" failed")));
+	TestEqual(TEXT("No separator after the name: stop at the space"), ScrubPaths(TEXT("/Users/dana today")), FString(TEXT("~ today")));
+	TestEqual(TEXT("... and a later path is not part of the name"), ScrubPaths(TEXT("/Users/dana today /tmp/x")), FString(TEXT("~ today /tmp/x")));
 	TestEqual(TEXT("Nothing to scrub"), ScrubPaths(TEXT("LogSailing: world ray-hubbard")), FString(TEXT("LogSailing: world ray-hubbard")));
 	return true;
 }
