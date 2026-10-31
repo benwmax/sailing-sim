@@ -93,6 +93,8 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Weather and wind: NOAA HRRR and MRMS (NOAA Open Data Dissemination, public domain); NWS ASOS observations from
   NOAA NCEI and via the Iowa Environmental Mesonet (Iowa State University); NOAA CO-OPS winds (public domain).
 - Wind turbulence tile: generated with DTU Wind Energy's Hipersim (MIT).
+- Crash reporting: the Sentry SDK for Unreal (sentry-unreal, sentry-native, sentry-cocoa), Copyright (c) Sentry, MIT License
+  (`Plugins/Sentry/LICENSE`), with Google Crashpad (Apache License 2.0) on Windows.
 - Crew clothing textures: ambientCG (Fabric036, Fabric048, Fabric070, Leather038), CC0.
 - Tree leaves and bark: ambientCG (LeafSet016, LeafSet019, LeafSet022, LeafSet024, Bark001), CC0.
 - Fonts: Saira (The Saira Project Authors) and Source Sans 3 (Adobe), SIL Open Font License 1.1; the licence texts

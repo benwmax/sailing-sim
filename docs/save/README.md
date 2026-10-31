@@ -40,6 +40,7 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
     "start": { "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "launchSpotAt": { "lat": 32.82334959, "lon": -96.50040047 },
                "boat": "J22", "weather": "AfternoonBreeze",
                "startHour": 15, "traffic": 1, "weatherSeed": 2027, "gaugeLakeLevel": false },
+    "privacy": { "sendCrashReports": false },
     "career": { "freeSail": false },
     "input": { "bindings": "Input.ini" }
   },
@@ -81,6 +82,9 @@ mode reads it through `USailingSettings`); `lastSession` is what Continue sails.
 `launchSpotAt` (optional, added in version 1 without a version change: `docs/geo-anchor/README.md`) is the spot on the
 earth. When `launchSpot` names a spot the game no longer has (renamed or removed in a rebake), the spot nearest that
 lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's first spot.
+
+`settings.privacy.sendCrashReports` is the player's consent to crash reports (`docs/sentry/README.md`), added in version 1
+without a version change (a missing field reads as off).
 
 Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bindings` names that file.
 

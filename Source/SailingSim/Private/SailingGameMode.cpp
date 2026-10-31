@@ -2,6 +2,7 @@
 #include "SailingFrame.h"
 #include "EasyAssists.h"
 #include "BenchRunner.h"
+#include "CrashReports.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
@@ -828,6 +829,8 @@ void ASailingGameMode::ApplyQualitySettings()
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->Set(float(USailingSettings::Get()->FixedResolutionScale()), ECVF_SetByCode);
 	}
 	USailingSettings::Get()->ApplyDisplay();
+	USailingSettings::Get()->ApplyCrashReports();
+	SailCrashReports::SetPlace(FSailSave::WorldId(S->World), FSailSave::BoatId(S->BoatType));
 	int32 LumenHW = -1;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingLumenHW="), LumenHW))
 	{
