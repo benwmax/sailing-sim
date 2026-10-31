@@ -463,6 +463,41 @@ void AMarinaActor::Build(const FMarina& Marina)
 void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& G)
 {
 	const float Deck = FloatingDeckHeight;
+	// Club docks (#405 part 2): the floating docks' hardware, placed from the same rows and slips (the layout and the
+	// physics obstacles are unchanged). A piling's white cap; a steel hoop round it from the dock's edge, on black rollers.
+	auto PilingCap = [&](const FVector2D& P, float Radius, float Top)
+	{
+		G[EKitLook::White].Cylinder(FVector(P.X, P.Y, Top), Radius + 0.02f, 0.05f, 10);
+		G[EKitLook::White].Box(FVector(P.X, P.Y, Top + 0.06f), FVector(0.6f * Radius, 0.6f * Radius, 0.02f), 45.f);
+	};
+	auto PilingHoop = [&](const FVector2D& P, float Radius, const FVector2D& Edge)
+	{
+		const float Ring = Radius + 0.07f, Z = Deck - 0.06f;
+		for (int32 K = 0; K < 8; ++K)
+		{
+			const float Ang = 2.f * UE_PI * (K + 0.5f) / 8.f;
+			const FVector2D Q = P + FVector2D(FMath::Cos(Ang), FMath::Sin(Ang)) * Ring;
+			G[EKitLook::Metal].Box(FVector(Q.X, Q.Y, Z), FVector(0.025f, Ring * 0.42f, 0.03f), FMath::RadiansToDegrees(Ang));
+		}
+		const FVector2D Out = (P - Edge).GetSafeNormal(), Side(-Out.Y, Out.X);
+		for (const double S : { -1.0, 1.0 })
+		{
+			const FVector2D E = Edge + Side * (S * 0.7 * Ring);
+			G[EKitLook::Metal].Span(E, P + Side * (S * 0.7 * Ring), 0.04f, Z - 0.03f, Z + 0.03f);
+			const FVector2D Roller = P - Out * Ring + Side * (S * 0.45 * Ring);
+			G[EKitLook::Floats].Cylinder(FVector(Roller.X, Roller.Y, Z - 0.16f), 0.035f, 0.32f, 6);
+		}
+	};
+	// Black rub strip along a floating deck's edge.
+	auto RubStrips = [&](const FVector2D& A, const FVector2D& B, float Width, float Top)
+	{
+		const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
+		for (const double S : { -1.0, 1.0 })
+		{
+			const FVector2D O = Left * (S * (0.5 * Width + 0.03));
+			G[EKitLook::Floats].Span(A + O, B + O, 0.06f, Top - 0.16f, Top - 0.02f);
+		}
+	};
 	// Dock rows: floating deck on black floats, pilings every 9 m alternating sides, finger piers, cleats, boxes, power.
 	for (int32 RI = 0; RI < Marina.Rows.Num(); ++RI)
 	{
@@ -470,13 +505,50 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		if (!Generated(R.Id)) continue;
 		const FVector2D A = R.Points[0], B = R.Points.Last();
 		const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
-		G[EKitLook::Decking].Span(A, B, R.Width, Deck - 0.12f, Deck);
-		G[EKitLook::Floats].Span(A + Dir * 0.3, B - Dir * 0.3, R.Width * 0.85f, -0.35f, Deck - 0.12f);
 		const float Length = float(FVector2D::Distance(A, B));
+		// The deck in 6 m float sections with a joint between them, each on its own float modules (2.4 m, gaps between).
+		for (float S0 = 0.f; S0 < Length; S0 += 6.f)
+		{
+			const float S1 = FMath::Min(S0 + 6.f, Length);
+			G[EKitLook::Decking].Span(A + Dir * (S0 + 0.015f), A + Dir * (S1 - 0.015f), R.Width, Deck - 0.12f, Deck);
+		}
+		for (float F0 = 0.3f; F0 + 0.5f < Length - 0.3f; F0 += 2.65f)
+		{
+			const float F1 = FMath::Min(F0 + 2.4f, Length - 0.3f);
+			G[EKitLook::Floats].Span(A + Dir * F0, A + Dir * F1, R.Width * 0.85f, -0.35f, Deck - 0.12f);
+		}
+		RubStrips(A, B, R.Width, Deck);
+		// A hinged transition plate where the row meets the fixed walkway, with its side rails; a swim ladder at the row's end.
+		G[EKitLook::Metal].Span(A - Dir * 0.9, A + Dir * 0.2, R.Width * 0.9f, Deck + 0.01f, Deck + 0.04f);
+		for (const double S : { -1.0, 1.0 })
+		{
+			const FVector2D O = Left * (S * 0.45 * R.Width);
+			G[EKitLook::Trim].Span(A - Dir * 0.9 + O, A + Dir * 0.2 + O, 0.04f, Deck + 0.85f, Deck + 0.9f);
+			for (const float T : { -0.85f, 0.15f })
+			{
+				const FVector2D P = A + Dir * T + O;
+				G[EKitLook::Trim].Box(FVector(P.X, P.Y, Deck + 0.47f), FVector(0.025f, 0.025f, 0.43f), 0.f);
+			}
+		}
+		{
+			const FVector2D L0 = B - Left * 0.22, L1 = B + Left * 0.22;
+			const FVector2D Off = Dir * 0.05;
+			for (const FVector2D& P : { L0, L1 })
+			{
+				G[EKitLook::Metal].Box(FVector(P.X + Off.X, P.Y + Off.Y, Deck - 0.2f), FVector(0.02f, 0.02f, 0.85f), 0.f);
+			}
+			for (float Z = -0.9f; Z < Deck + 0.4f; Z += 0.3f)
+			{
+				G[EKitLook::Metal].Span(L0 + Off, L1 + Off, 0.03f, Z, Z + 0.03f);
+			}
+		}
 		for (float X = 1.0f; X < Length; X += 9.f)
 		{
+			const FVector2D Edge = A + Dir * X + Left * ((int32(X / 9.f) % 2 ? 1.0 : -1.0) * (0.5 * R.Width));
 			const FVector2D P = A + Dir * X + Left * ((int32(X / 9.f) % 2 ? 1.0 : -1.0) * (0.5 * R.Width + 0.2));
 			G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -3.f), 0.17f, 4.9f);
+			PilingCap(P, 0.17f, 1.9f);
+			PilingHoop(P, 0.17f, Edge);
 		}
 		for (float X = 4.0f; X < Length; X += 16.f)
 		{
@@ -494,26 +566,39 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		const FVector2D Along(Out.Y, -Out.X);
 		G[EKitLook::Decking].Span(Slip.FingerA, Slip.FingerB, 0.6f, Deck - 0.1f, Deck - 0.02f);
 		G[EKitLook::Floats].Span(Slip.FingerA + Out * 0.2, Slip.FingerB, 0.45f, -0.3f, Deck - 0.1f);
-		// Cleats at the finger's end and middle; a piling at its tip.
+		RubStrips(Slip.FingerA + Out * 0.1, Slip.FingerB, 0.6f, Deck - 0.02f);
+		// Cleats at the finger's end and middle (a cast base and two horns along the finger); a piling at its tip.
+		const float FingerYaw = float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X)));
 		for (const float T : { 0.45f, 0.95f })
 		{
 			const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
-			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.03f), FVector(0.14f, 0.03f, 0.04f), float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X))));
+			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.01f), FVector(0.06f, 0.035f, 0.03f), FingerYaw);
+			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.065f), FVector(0.16f, 0.022f, 0.016f), FingerYaw);
 		}
-		G[EKitLook::Pilings].Cylinder(FVector(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45, -3.f), 0.15f, 4.5f);
+		const FVector2D Tip(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45);
+		G[EKitLook::Pilings].Cylinder(FVector(Tip.X, Tip.Y, -3.f), 0.15f, 4.5f);
+		PilingCap(Tip, 0.15f, 1.5f);
 		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
 		const FVector2D Root = Slip.FingerA + Out * 0.6;
 		if (MRand(Seed) < 0.35f)
 		{
 			// A white dock box at the finger's root.
-			G[EKitLook::White].Box(FVector(Root.X, Root.Y, Deck + 0.3f), FVector(0.6f, 0.28f, 0.3f), float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X))));
+			G[EKitLook::White].Box(FVector(Root.X, Root.Y, Deck + 0.3f), FVector(0.6f, 0.28f, 0.3f), FingerYaw);
+			// its lid, proud of the box, and the hasp
+			G[EKitLook::Trim].Box(FVector(Root.X, Root.Y, Deck + 0.615f), FVector(0.62f, 0.3f, 0.02f), FingerYaw);
+			const FVector2D Hasp = Root + Along * 0.3;
+			G[EKitLook::Metal].Box(FVector(Hasp.X, Hasp.Y, Deck + 0.55f), FVector(0.03f, 0.012f, 0.04f), FingerYaw);
 		}
 		if (Slip.Index % 2 == 0)
 		{
-			// A power pedestal between two slips.
+			// A power pedestal between two slips: the post, the meter and outlet face toward the finger, the lamp head.
 			const FVector2D P = Slip.FingerA - Out * 0.4;
-			G[EKitLook::White].Box(FVector(P.X, P.Y, Deck + 0.5f), FVector(0.13f, 0.13f, 0.5f), 0.f);
-			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 1.03f), FVector(0.16f, 0.16f, 0.03f), 0.f);
+			G[EKitLook::White].Box(FVector(P.X, P.Y, Deck + 0.5f), FVector(0.13f, 0.13f, 0.5f), FingerYaw);
+			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 1.03f), FVector(0.16f, 0.16f, 0.03f), FingerYaw);
+			const FVector2D Face = P + Out * 0.135;
+			G[EKitLook::Floats].Box(FVector(Face.X, Face.Y, Deck + 0.62f), FVector(0.01f, 0.09f, 0.16f), FingerYaw);
+			G[EKitLook::Metal].Box(FVector(Face.X, Face.Y, Deck + 0.36f), FVector(0.012f, 0.07f, 0.05f), FingerYaw);
+			G[EKitLook::LampGlow].Box(FVector(P.X, P.Y, Deck + 0.93f), FVector(0.135f, 0.135f, 0.05f), FingerYaw);
 		}
 	}
 	// Walkways and fixed piers on pilings.
