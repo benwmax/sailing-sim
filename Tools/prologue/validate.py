@@ -31,7 +31,7 @@ EXPECTS = {
     "sheet": ({"sheet"}, {"by", "at_least", "at_most", "controls", "within_s"}),
     "tack": (set(), {"within_s"}),
     "gybe": (set(), {"within_s"}),
-    "hold": ({"hold_s"}, {"twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "controls", "within_s"}),
+    "hold": ({"hold_s"}, {"twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "max_speed_kn", "station", "controls", "within_s"}),
     "station": ({"station"}, {"within_s"}),
     "action": ({"action"}, {"within_s"}),
 }
