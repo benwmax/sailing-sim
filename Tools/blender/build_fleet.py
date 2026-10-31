@@ -467,9 +467,33 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         tube(hull, rail, 0.011 if H.h["sheer_z"] < 0.8 else 0.02, "Rubrail", 8)
 
 
+WELL_CORNER = 0.10      # the Sunfish well's moulded corner radius, metres (pc/sunfish-hero-2)
+
+
 def cockpit(H, spec):
     """A self-draining well: walls down from the deck to the sole, seats along both sides."""
     x0, x1, w, depth = spec
+    if TAG == "Sunfish":
+        # pc/sunfish-hero-2: the moulded well's corners are rounded, 10 cm, as on the boat and the TurboSquid 1460907
+        # reference (they had been square). The deck's cut stays the rectangle; deck-level fillets close its corners.
+        R = WELL_CORNER
+        sole = lambda x: H.deck_z(x, H.cy + w) - depth
+        path = []
+        for (cx, cy, a0) in ((x1 - R, w - R, 0.0), (x0 + R, w - R, 90.0), (x0 + R, -w + R, 180.0), (x1 - R, -w + R, 270.0)):
+            for k in range(7):
+                a = math.radians(a0 + 90.0 * k / 6)
+                path.append((cx + R * math.cos(a), H.cy + cy + R * math.sin(a)))
+        mid = (0.5 * (x0 + x1), H.cy)
+        for (xa, ya), (xb, yb) in zip(path, path[1:] + path[:1]):
+            inward = Vector((mid[0] - 0.5 * (xa + xb), mid[1] - 0.5 * (ya + yb), 0))
+            oface(hull, [(xa, ya, H.deck_z(xa, ya)), (xb, yb, H.deck_z(xb, yb)), (xb, yb, sole(xb)), (xa, ya, sole(xa))], "Deck", tuple(inward))
+        for (xa, ya), (xb, yb) in zip(path, path[1:] + path[:1]):
+            oface(hull, [(mid[0], mid[1], sole(mid[0])), (xa, ya, sole(xa)), (xb, yb, sole(xb))], "NonSkid", (0, 0, 1))
+        for i, corner in enumerate(((x1, H.cy + w), (x0, H.cy + w), (x0, H.cy - w), (x1, H.cy - w))):
+            arc = path[7 * i:7 * i + 7]
+            for (xa, ya), (xb, yb) in zip(arc, arc[1:]):
+                oface(hull, [(corner[0], corner[1], H.deck_z(*corner)), (xa, ya, H.deck_z(xa, ya)), (xb, yb, H.deck_z(xb, yb))], "Deck", (0, 0, 1))
+        return
     xs = stations(x0, x1, 12)
     for side in (1, -1):
         y = H.cy + side * w
@@ -748,40 +772,48 @@ def sunfish_splash_guard(H, trunk_fwd, mast_x):
     """pc/sunfish-fidelity: the Sunfish's V splash guard stands between the daggerboard trunk and the mast, its point
     forward (class photos; it had been behind the trunk, at the well). A white moulded wall 6 mm thick, 7 cm tall at the
     point and 4.5 cm at the arms' ends, a rolled top edge. Returns where a deck line from (x0, y0) to (x1, y1) crosses its
-    port arm: (x, y, top z) or None."""
+    port arm: (x, y, top z) or None.
+    pc/sunfish-hero: the arms reach 0.48 m out (they had stopped at 0.36, a narrow wedge) and bow forward as they go, the
+    moulded guard's sweep on the TurboSquid 1460907 reference (1.1 m across); 8 cm tall at the point."""
     apex = (mast_x - 0.2, 0.0)
-    ends = {s: (trunk_fwd + 0.08, s * 0.36) for s in (1, -1)}
-    height = lambda t: 0.07 - 0.025 * t
-    n = 10
+    ends = {s: (trunk_fwd + 0.08, s * 0.48) for s in (1, -1)}
+    height = lambda t: 0.08 - 0.03 * t
+    n = 14
+    arms = {}
     for s in (1, -1):
         ex, ey = ends[s]
-        d = Vector((ex - apex[0], ey - apex[1], 0)).normalized()
-        nrm = Vector((-d.y, d.x, 0)) * (1 if s > 0 else -1)          # out of the V: forward and outboard
-        if nrm.x < 0:
-            nrm = -nrm
-        off = nrm * 0.003
+        # a quadratic arc from the point to the arm's end, its control point pushed forward of the straight line
+        cx, cy = 0.5 * (apex[0] + ex) + 0.07, 0.5 * (apex[1] + ey)
         pts = []
         for k in range(n + 1):
             t = k / n
-            x, y = apex[0] + (ex - apex[0]) * t, apex[1] + (ey - apex[1]) * t
+            x = (1 - t) ** 2 * apex[0] + 2 * (1 - t) * t * cx + t * t * ex
+            y = (1 - t) ** 2 * apex[1] + 2 * (1 - t) * t * cy + t * t * ey
             pts.append((x, y, H.deck_z(x, y) - 0.004, H.deck_z(x, y) + height(t)))
+        arms[s] = pts
         for k in range(n):
             (xa, ya, za0, za1), (xb, yb, zb0, zb1) = pts[k], pts[k + 1]
+            d = Vector((xb - xa, yb - ya, 0)).normalized()
+            nrm = Vector((-d.y, d.x, 0))
+            if nrm.x < 0:                                              # out of the V: forward and outboard
+                nrm = -nrm
             for sg in (1, -1):
-                o = off * sg
+                o = nrm * 0.003 * sg
                 oface(hull, [(xa + o.x, ya + o.y, za0), (xb + o.x, yb + o.y, zb0), (xb + o.x, yb + o.y, zb1), (xa + o.x, ya + o.y, za1)], "Deck", tuple(nrm * sg))
         tube(hull, [(x, y, z1) for (x, y, _, z1) in pts], 0.0042, "Deck", 6)
     def hit(x0, y0, x1, y1):
-        (ax, ay), (bx, by) = apex, ends[-1]
-        den = (x1 - x0) * (by - ay) - (y1 - y0) * (bx - ax)
-        if abs(den) < 1e-9:
-            return None
-        t = ((ax - x0) * (by - ay) - (ay - y0) * (bx - ax)) / den
-        u = ((ax - x0) * (y1 - y0) - (ay - y0) * (x1 - x0)) / den
-        if not (0 <= t <= 1 and 0 <= u <= 1):
-            return None
-        x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
-        return (x, y, H.deck_z(x, y) + height(u) + 0.004)
+        pts = arms[-1]
+        for k in range(n):
+            (ax, ay, _, _), (bx, by, _, _) = pts[k], pts[k + 1]
+            den = (x1 - x0) * (by - ay) - (y1 - y0) * (bx - ax)
+            if abs(den) < 1e-9:
+                continue
+            t = ((ax - x0) * (by - ay) - (ay - y0) * (bx - ax)) / den
+            u = ((ax - x0) * (y1 - y0) - (ay - y0) * (x1 - x0)) / den
+            if 0 <= t <= 1 and 0 <= u <= 1:
+                x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+                return (x, y, H.deck_z(x, y) + height((k + u) / n) + 0.004)
+        return None
     return hit
 
 
@@ -953,7 +985,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         guard = sunfish_splash_guard(H, bx + 0.5 * chord, mast_x)
         # Fleet hero: the well's moulded lip, a rounded rim along its edge (the deck's own gelcoat), and the hiking strap's
         # worn webbing ends screwed to the sole.
-        rim, rr = [], 0.05
+        rim, rr = [], WELL_CORNER if TAG == "Sunfish" else 0.05
         for (cx, cy, a0) in ((x1 - rr, w - rr, 0.0), (x0 + rr, w - rr, 90.0), (x0 + rr, -w + rr, 180.0), (x1 - rr, -w + rr, 270.0)):
             for k in range(5):
                 a = math.radians(a0 + 90.0 * k / 4)
@@ -1205,7 +1237,10 @@ if TAG in ("Sunfish", "ILCA7"):
     if TAG not in ("Sunfish", "ILCA7"):    # (the dinghies' is webbing: dinghy_hiking_strap)
         tube(hull, [(ck[0] + 0.1, 0, MAIN.deck_z(ck[0], 0) - ck[3] + 0.06), (ck[1] - 0.1, 0, MAIN.deck_z(ck[1], 0) - ck[3] + 0.06)], 0.018, "Graphics", 6)
     tube(hull, [(mast_x, 0, mast_step_z - 0.02), (mast_x, 0, mast_step_z + 0.03)], RIG["mast_diameter"] * 0.7, "BlackPlastic", 12)
-    traveler = (MAIN.h["stern_x"] + 0.18, MAIN.deck_z(MAIN.h["stern_x"] + 0.18, 0) + 0.02, 0.32 if TAG == "ILCA7" else 0.2)
+    # (pc/sunfish-hero: the Sunfish's bridle eyes 0.30 m in from the transom and 0.30 m out, the TurboSquid 1460907
+    # reference's; they had been 0.18 in and 0.20 out)
+    tin = 0.30 if TAG == "Sunfish" else 0.18
+    traveler = (MAIN.h["stern_x"] + tin, MAIN.deck_z(MAIN.h["stern_x"] + tin, 0) + 0.02, 0.32 if TAG == "ILCA7" else 0.30)
     if TAG == "Sunfish":
         sunfish_bridle(MAIN, traveler)
     elif TAG == "ILCA7":
@@ -1619,6 +1654,12 @@ def sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, top_chord, alu_tiller=Fa
     tube(m, [(bx, cy - half - 0.012 * k, bz), (bx, cy + half + 0.012 * k, bz)], 0.0045 * k, "Stainless", 8)
     for s in (1, -1):
         tube(m, [(bx, cy + s * (half + 0.007 * k), bz), (bx, cy + s * (half + 0.012 * k), bz)], 0.0095 * k, "Stainless", 6)
+    if TAG == "Sunfish":
+        # pc/sunfish-hero-2: the kick-up's spring pin through both cheeks aft of the pivot, holding the blade down, its
+        # pull ring on the port side (the TurboSquid 1460907 reference's)
+        px, pz = x - 0.125, 0.5 * (z0 + tz) + 0.01
+        tube(m, [(px, cy - half - 0.014, pz), (px, cy + half + 0.016, pz)], 0.0028, "Stainless", 6)
+        ring(m, (px, cy + half + 0.016 + 0.009, pz), (0, 0, 1), 0.009, 0.0016, "Stainless", 10, 4)
     # the tiller
     path = [(x - 0.11, cy, tz + 0.001), (x + 0.02, cy, tz + 0.008), (x + 0.22, cy, tz + 0.033), (x + 0.5, cy, tz + 0.06),
             (x + tl - 0.04, cy, tz + 0.078), (x + tl - 0.005, cy, tz + 0.08), (x + tl + 0.012, cy, tz + 0.08)]
@@ -1685,6 +1726,13 @@ def build_rudder():
         z0 = tz - 0.45 if big else 0.10
         sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if big else 1.0)
         sunfish_gudgeon(Hh, stock_x, cy, st, z0)
+        if TAG == "Sunfish":
+            # pc/sunfish-hero: the tiller extension, as on the TurboSquid 1460907 reference: a black tube on a rubber
+            # universal joint at the tiller's end, stowed back along its top (the crew's hand stays on TillerEnd).
+            ex, ez = stock_x + tl - 0.012, tz + 0.085
+            tube(m, [(ex + 0.004, cy, ez - 0.012), (ex, cy, ez + 0.012)], 0.009, "Rubber", 8)
+            tube(m, [(ex, cy + 0.004, ez + 0.012), (ex - 0.64, cy + 0.024, tz + 0.058)], 0.0085, "BlackPlastic", 10)
+            tube(m, [(ex - 0.56, cy + 0.0215, tz + 0.0617), (ex - 0.645, cy + 0.0242, tz + 0.0578)], 0.0115, "BlackPlastic", 10)   # its grip
         socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
     elif transom and tillered and TAG == "Hobie16":
         # pc/hobie-fidelity: each rudder in its cast aluminium head (the Sunfish's: cheeks on a through-bolt, the pintle's

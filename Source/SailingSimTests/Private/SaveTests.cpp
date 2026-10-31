@@ -55,6 +55,7 @@ namespace SailSaveTestsLocal
 		T.bHeadingsTrue = true;
 		T.bAutoStart = true;
 		T.bPauseOnFocusLoss = true;
+		T.bSendCrashReports = true;
 		T.WorldId = TEXT("galveston-bay");
 		T.SpotId = SailCatalog::SpotIds(1).Last();
 		T.bHasSpotAt = true;
@@ -159,6 +160,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("headings true"), Y.bHeadingsTrue, X.bHeadingsTrue);
 	TestEqual(TEXT("auto start"), Y.bAutoStart, X.bAutoStart);
 	TestEqual(TEXT("pause on focus"), Y.bPauseOnFocusLoss, X.bPauseOnFocusLoss);
+	TestEqual(TEXT("send crash reports"), Y.bSendCrashReports, X.bSendCrashReports);
 	TestEqual(TEXT("world"), Y.WorldId, X.WorldId);
 	TestEqual(TEXT("spot"), Y.SpotId, X.SpotId);
 	TestTrue(TEXT("spot lat/lon"), Y.bHasSpotAt && Y.SpotLat == X.SpotLat && Y.SpotLon == X.SpotLon);

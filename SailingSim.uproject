@@ -124,6 +124,14 @@
 		{
 			"Name": "Fab",
 			"Enabled": false
+		},
+		{
+			"Name": "Sentry",
+			"Enabled": true,
+			"PlatformAllowList": [
+				"Win64",
+				"Mac"
+			]
 		}
 	],
 	"TargetPlatforms": [
