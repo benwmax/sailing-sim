@@ -36,24 +36,27 @@ bake leave those boxes out, so they never draw twice. Without the kit, the boxes
 
 ## Triangles per 40 m tile
 
-The baked tiles lose the boxes: 4,161 quads in 22 tiles. Counts are each mesh's LOD 0 by `get_num_triangles`, the
-Nanite fallback, the same measure for main and here:
+With pass 1 merged in (main 16a0835b + #416), the baked tiles keep pass 1's deck sections, rub strips and walkway
+plates and lose the boxes the kit replaces: 5,711 quads in 22 tiles (pass 1 alone had 15,562, pass 2 alone 4,161).
+Counts are each mesh's LOD 0 by `get_num_triangles`, the Nanite fallback, the same measure in every column:
 
-| Tile | Main | Pass 2 |
-| --- | ---: | ---: |
-| SM_Marina_0_3 | 339 | 256 |
-| SM_Marina_0_4 | 348 | 306 |
-| SM_Marina_m1_2 | 838 | 788 |
-| SM_Marina_m1_3 | 663 | 339 |
-| SM_Marina_m1_4 | 792 | 364 |
-| SM_Marina_m1_5 | 256 | 156 |
-| SM_Marina_m2_3 | 724 | 735 |
-| SM_Marina_m2_4 | 813 | 374 |
-| SM_Marina_m2_5 | 470 | 302 |
-| SM_Marina_m3_3 | 164 | 162 |
-| SM_Marina_m3_4 | 112 | 60 |
-| The other 11 (clubhouse, piers, walkway) | 1,807 | 1,807 |
-| **All 22** | **7,326** | **5,649** |
+| Tile | Main (16a0835b) | Pass 1 alone | Pass 2 alone | Merged |
+| --- | ---: | ---: | ---: | ---: |
+| SM_Marina_0_3 | 339 | 557 | 256 | 396 |
+| SM_Marina_0_4 | 348 | 455 | 306 | 331 |
+| SM_Marina_m1_2 | 838 | 809 | 788 | 898 |
+| SM_Marina_m1_3 | 663 | 970 | 339 | 854 |
+| SM_Marina_m1_4 | 792 | 1,105 | 364 | 950 |
+| SM_Marina_m1_5 | 256 | 289 | 156 | 256 |
+| SM_Marina_m2_3 | 724 | 1,241 | 735 | 857 |
+| SM_Marina_m2_4 | 813 | 1,116 | 374 | 975 |
+| SM_Marina_m2_5 | 470 | 811 | 302 | 473 |
+| SM_Marina_m3_3 | 164 | 256 | 162 | 242 |
+| SM_Marina_m3_4 | 112 | 252 | 60 | 84 |
+| The other 11 (clubhouse, piers, walkway) | 1,807 | 1,807 | 1,807 | 1,807 |
+| **All 22** | **7,326** | **9,668** | **5,649** | **8,123** |
+
+The kit adds 780 instances of 180-720 triangles each, drawn within 150 m (the floats to 600 m).
 
 ## Cost
 
@@ -77,13 +80,18 @@ High, 11:00, uncooked. Before (main, left) and after (right, the rebaked tiles a
 | At dock level | ![dock level](pass2-docklevel.jpg) |
 | The marina from above | ![overview](pass2-overview.jpg) |
 
+Merged with pass 1, at dock level (nothing drawn twice: one cap per piling, single pedestals and boxes, pass 1's
+rub strips on the fingers):
+
+![merged at dock level](pass2-merged-docklevel.jpg)
+
 ## Notes
 
-- `MI_World_SafetyRed` was made with `WORLD_LIBRARY`'s values by a one-off script on the PC, because a stuck editor
-  held `M_WorldSurface`. A `make_materials.py -Only build_world_surface` run after the PC restarts makes it the usual way.
-- Pass 1 (`pc/club-docks`) and pass 2 both change `BuildGeometry`. When both are in, pass 1's kit boxes for the same
-  hardware (caps, hoops, ladders, cleats, pedestal faces) are skipped under `bDockKitMeshes`, and the marina is rebaked.
+- `MI_World_SafetyRed` comes from `make_materials.py -Only build_world_surface` (a one-off stand-in while a stuck editor
+  held `M_WorldSurface` was replaced after the PC's restart).
+- Merged with pass 1 (#416): pass 1's kit boxes for the same hardware (floats, caps, hoops, ladders, cleats, dock boxes,
+  pedestal faces) are skipped under `bDockKitMeshes`, and the marina is rebaked from the merged generator.
 
 ## Checked
 
-MSVC build clean. `SailingSim.Lake.*` and `SailingSim.Smoke.*`: 36 of 36 pass.
+MSVC build clean. `SailingSim.Lake.*` and `SailingSim.Smoke.*`: 36 of 36 pass, before and after the merge.
