@@ -1794,6 +1794,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([S](int32 I) { S->bAutoStart = I == 1; S->Save(); }));
 		Add(SNew(SSailChoice).Label(TEXT("Pause when unfocused")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bPauseOnFocusLoss ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bPauseOnFocusLoss = I == 1; S->Save(); S->ApplyDisplay(); }));
+		Section(TEXT("Privacy"));
+		Add(SNew(SSailChoice).Label(TEXT("Send crash reports")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bSendCrashReports ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bSendCrashReports = I == 1; S->Save(); S->ApplyCrashReports(); })
+			.Note(TEXT("When the game crashes, send the crash, the game's log and where you were sailing to the developer. No name, account or screenshot.")));
 		Help = TEXT("Learning mode explains what the boat is doing; Game mode keeps score. The physics is the same in both.\n\n"
 			"Off, Start when loaded holds the loading screen until you press Enter, so the first frame you see is smooth.");
 		break;

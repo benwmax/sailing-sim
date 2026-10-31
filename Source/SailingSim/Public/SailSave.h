@@ -48,6 +48,7 @@ struct SAILINGSIM_API FSailSave
 		bool bHeadingsTrue = false;
 		bool bAutoStart = false;
 		bool bPauseOnFocusLoss = false;
+		bool bSendCrashReports = false;      // "privacy" in the file (docs/sentry)
 		// The next start.
 		FString WorldId = TEXT("ray-hubbard");
 		FString SpotId;                      // empty: the world's first spot

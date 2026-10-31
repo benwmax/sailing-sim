@@ -189,6 +189,11 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
 	bool bPauseOnFocusLoss = false;
 
+	/** Send crash and bug reports (docs/sentry): the player's consent, off until they say yes. Only a build with a Sentry
+	 *  DSN (the PC's tester builds) can send anything; the Mac and a fresh clone have none. */
+	UPROPERTY(config, EditAnywhere, Category = "Privacy")
+	bool bSendCrashReports = false;
+
 	/** The play mode (docs/free-sail), chosen on the title screen: Free Sail opens every world, spot, boat, condition and
 	 *  mode and earns no career medals or unlocks (the logbook still counts); false is Career. Career 1's Open
 	 *  everything switch became this. */
@@ -202,6 +207,8 @@ public:
 	const TCHAR* DepthUnit() const { return DepthUnits == 1 ? TEXT("m") : (DepthUnits == 2 ? TEXT("fm") : TEXT("ft")); }
 	/** Applies the display rows that live outside the quality tiers (frame cap, focus pause). */
 	void ApplyDisplay() const;
+	/** Hands bSendCrashReports to the crash reporter (SailCrashReports::SetConsent). */
+	void ApplyCrashReports() const;
 	/** A benchmark or capture run (-SailingBench): it measures the tiers as they are, not the player's display rows. */
 	static bool IsMeasuring();
 	/**
