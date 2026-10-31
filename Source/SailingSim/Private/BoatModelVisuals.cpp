@@ -8,6 +8,8 @@
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
 #include "SailingFrame.h"
+#include "SailingSim.h"
+#include "Misc/PackageName.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "BenchRunner.h"
 #include "CrewAnimInstance.h"
@@ -242,6 +244,22 @@ namespace
 #include "J22CoilData.inl"
 }
 
+namespace
+{
+	// Bought-model test (docs/bought-yacht): a purchased model fitted to a class by Tools/blender/prep_bought.py and imported
+	// by import_boats.py `bought <Tag>` into /Game/Boats/Bought/<Tag> (git-ignored: the licence lets it ship cooked, never as
+	// source). When it is there it stands in for the class's model on the player's boat; -SailingNoBoughtModel compares.
+	const TCHAR* const BoughtParts[] = { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder") };
+	FString BoughtPath(const TCHAR* Tag, const TCHAR* Part)
+	{
+		return FString::Printf(TEXT("/Game/Boats/Bought/%s/SM_%sB_%s.SM_%sB_%s"), Tag, Tag, Part, Tag, Part);
+	}
+	bool WantsBought(bool bTraffic, bool bGhost, bool bGallery)
+	{
+		return ((!bTraffic && !bGhost) || bGallery) && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoBoughtModel"));
+	}
+}
+
 TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 {
 	// The same paths ModelMeshesFor loads (keep them in step): the showroom loads them asynchronously before SetBoat.
@@ -259,6 +277,11 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return Paths;
 	const TCHAR* Tag = BoatTags[int32(Type)];
+	if (WantsBought(bTrafficBoat, bGhost, bGalleryDisplay) && FPackageName::DoesPackageExist(FPackageName::ObjectPathToPackageName(BoughtPath(Tag, TEXT("Hull")))))
+	{
+		for (const TCHAR* Part : BoughtParts) Paths.Add(FSoftObjectPath(BoughtPath(Tag, Part)));
+		return Paths;
+	}
 	for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder") })
 	{
 		Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
@@ -307,6 +330,21 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return M;
 	const TCHAR* Tag = BoatTags[int32(Type)];
+	if (WantsBought(bTrafficBoat, bGhost, bGalleryDisplay))
+	{
+		auto LoadBought = [Tag](const TCHAR* Part) { return Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *BoughtPath(Tag, Part), nullptr, LOAD_NoWarn | LOAD_Quiet)); };
+		M.Hull = LoadBought(TEXT("Hull"));
+		M.Mast = LoadBought(TEXT("Mast"));
+		M.Boom = LoadBought(TEXT("Boom"));
+		M.Rudder = LoadBought(TEXT("Rudder"));
+		if (M.Hull && M.Mast && M.Boom && M.Rudder)
+		{
+			M.bOwnOutboard = M.Hull->FindSocket(TEXT("Outboard")) != nullptr;
+			UE_LOG(LogSailing, Display, TEXT("%s: the bought model (/Game/Boats/Bought/%s)"), Tag, Tag);
+			return M;
+		}
+		M = FBoatModelMeshes();
+	}
 	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
 	M.Hull = Load(TEXT("Hull"));
 	M.Mast = Load(TEXT("Mast"));

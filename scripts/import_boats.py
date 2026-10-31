@@ -162,11 +162,68 @@ def import_gear():
             unreal.log(f"Imported {name}")
 
 
+def import_bought(tag):
+    """Bought-model test (docs/bought-yacht): a purchased model fitted to a class by Tools/blender/prep_bought.py
+    (Artifacts/models/bought/SM_<Tag>B_*.fbx and <Tag>B_sockets.json, the class's socket names at its physics points)
+    into the git-ignored /Game/Boats/Bought/<Tag>. It keeps its own PBR materials and textures (imported with it, into
+    the same folder); its sails are left out by prep_bought.py (the game draws its own). Nanite on all but the mast."""
+    folder = os.path.join(MODELS, "bought")
+    meta = json.load(open(os.path.join(folder, f"{tag}B_sockets.json")))
+    dest = f"/Game/Boats/Bought/{tag}"
+    for part, nanite in (("Hull", True), ("Mast", False), ("Boom", True), ("Rudder", True)):
+        name = f"SM_{tag}B_{part}"
+        path = os.path.join(folder, name + ".fbx")
+        asset_path = f"{dest}/{name}"
+        if unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            unreal.EditorAssetLibrary.delete_asset(asset_path)
+        ui = unreal.FbxImportUI()
+        ui.set_editor_property("import_mesh", True)
+        ui.set_editor_property("import_as_skeletal", False)
+        ui.set_editor_property("import_materials", True)
+        ui.set_editor_property("import_textures", True)
+        ui.set_editor_property("import_animations", False)
+        data = ui.get_editor_property("static_mesh_import_data")
+        data.set_editor_property("combine_meshes", True)
+        data.set_editor_property("auto_generate_collision", False)
+        data.set_editor_property("generate_lightmap_u_vs", False)
+        data.set_editor_property("normal_import_method", unreal.FBXNormalImportMethod.FBXNIM_IMPORT_NORMALS)
+        task = unreal.AssetImportTask()
+        task.set_editor_property("filename", path)
+        task.set_editor_property("destination_path", dest)
+        task.set_editor_property("destination_name", name)
+        task.set_editor_property("automated", True)
+        task.set_editor_property("replace_existing", True)
+        task.set_editor_property("save", True)
+        task.set_editor_property("options", ui)
+        ASSETS.import_asset_tasks([task])
+        mesh = unreal.load_asset(asset_path)
+        if not mesh:
+            raise RuntimeError(f"import failed: {path}")
+        ns = mesh.get_editor_property("nanite_settings")
+        ns.set_editor_property("enabled", nanite)
+        mesh.set_editor_property("nanite_settings", ns)
+        origin = meta["origins"][name]
+        for sname, loc in meta["sockets"].items():
+            if meta["owner"][sname] != name:
+                continue
+            sock = unreal.StaticMeshSocket(mesh)
+            sock.set_editor_property("socket_name", sname)
+            sock.set_editor_property("relative_location", unreal.Vector(loc[0] - origin[0], loc[1] - origin[1], loc[2] - origin[2]))
+            mesh.add_socket(sock)
+        unreal.EditorAssetLibrary.save_loaded_asset(mesh)
+        b = mesh.get_bounding_box()
+        unreal.log(f"Imported the bought {name}: Nanite {nanite}, bounds {b.min} .. {b.max}")
+
+
 import sys
 # Visual V7: the other seven boats (Tools/blender/build_fleet.py). `-- fleet` imports only them.
 FLEET = ("Sunfish", "ILCA7", "Catalina22", "Catalina30", "Hobie16", "Corsair880", "Lagoon42")
 only_fleet = "fleet" in sys.argv
-if "maxi" in sys.argv:
+if "bought" in sys.argv:
+    # Bought-model test: `-- bought <Tag>` (docs/bought-yacht). Returns normally (Windows: no os._exit).
+    import_bought(sys.argv[sys.argv.index("bought") + 1])
+    unreal.log("Import done")
+elif "maxi" in sys.argv:
     # The prologue's maxi (Tools/boats/maxi/build_maxi.py): Nanite with LODs under it, no berthed dress.
     import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
     unreal.log("Import done")

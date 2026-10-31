@@ -43,3 +43,6 @@ docs/hobie-detail/compare/
 docs/corsair-detail/compare/
 docs/c30-detail/compare/
 docs/gelcoat/compare/
+# Bought-model test (docs/bought-yacht): purchased models fitted to a class; their licences let them ship cooked only,
+# never as source in this public repo.
+Content/Boats/Bought/
