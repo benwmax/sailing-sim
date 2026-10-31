@@ -1,4 +1,5 @@
 #include "CrashReports.h"
+#include "Feedback.h"
 #include "SailingSim.h"
 #include "Async/Async.h"
 #include "Containers/Ticker.h"
@@ -11,6 +12,8 @@
 #if WITH_SAILING_SENTRY
 #include "SentryAttachment.h"
 #include "SentrySubsystem.h"
+#include "SentryFeedback.h"
+#include "SentryScope.h"
 #endif
 
 namespace SailCrashReportsLocal
@@ -126,4 +129,48 @@ FString SailCrashReports::ScrubPaths(const FString& Text)
 FString SailCrashReports::ScrubbedLogPath()
 {
 	return FPaths::ConvertRelativePathToFull(FPaths::ProjectLogDir() / TEXT("SailingSim-scrubbed.log"));
+}
+
+bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
+{
+#if WITH_SAILING_SENTRY
+	USentrySubsystem* S = SailCrashReportsLocal::Sentry();
+	if (!S) return false;
+	USentryFeedback* Feedback = NewObject<USentryFeedback>();
+	Feedback->Initialize(SailFeedback::ComposeMessage(Report));
+	auto Attach = [Feedback](const FString& Text, const TCHAR* Name, const TCHAR* Type)
+	{
+		if (Text.IsEmpty()) return;
+		FTCHARToUTF8 Utf8(*Text);
+		TArray<uint8> Bytes((const uint8*)Utf8.Get(), Utf8.Length());
+		USentryAttachment* A = NewObject<USentryAttachment>();
+		A->InitializeWithData(Bytes, Name, Type);
+		Feedback->AddAttachment(A);
+	};
+	if (Report.CarriesPlace())
+	{
+		Attach(Report.TelemetryJson, TEXT("telemetry.json"), TEXT("application/json"));
+		Attach(SailCrashReports::ScrubPaths(Report.LogTail), TEXT("log.txt"), TEXT("text/plain"));
+	}
+	for (int32 I = 0; I < Report.ShotPaths.Num(); ++I)
+	{
+		TArray<uint8> Png;
+		if (!FFileHelper::LoadFileToArray(Png, *Report.ShotPaths[I])) continue;
+		USentryAttachment* A = NewObject<USentryAttachment>();
+		const bool bJpeg = Report.ShotPaths[I].EndsWith(TEXT(".jpg"));
+		A->InitializeWithData(Png, FString::Printf(TEXT("shot%d.%s"), I + 1, bJpeg ? TEXT("jpg") : TEXT("png")), bJpeg ? TEXT("image/jpeg") : TEXT("image/png"));
+		Feedback->AddAttachment(A);
+	}
+	const FString Kind = SailFeedback::KindId(Report.Kind);
+	TMap<FString, FString> Tags = Report.Tags;
+	Tags.Add(TEXT("feedback_kind"), Kind);
+	S->CaptureFeedbackWithScope(Feedback, FConfigureScopeNativeDelegate::CreateLambda([Tags](USentryScope* Scope)
+	{
+		Scope->SetTags(Tags);
+	}));
+	UE_LOG(LogSailing, Log, TEXT("Feedback: sent a %s report"), *Kind);
+	return true;
+#else
+	return false;
+#endif
 }
