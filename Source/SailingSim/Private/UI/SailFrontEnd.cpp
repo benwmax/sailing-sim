@@ -2477,7 +2477,7 @@ void SSailFrontEnd::SendFeedbackForm()
 	}
 	const FString Folder = SailFeedback::WriteLocal(R, SailFeedback::LocalDir());
 	const bool bSent = S->bSendCrashReports && SailCrashReports::SendFeedback(R);
-	UE_LOG(LogSailing, Log, TEXT("Feedback: %s report saved to %s%s"), SailFeedback::KindId(R.Kind), *SailFeedback::ScrubPaths(Folder), bSent ? TEXT(", sent") : TEXT(""));
+	UE_LOG(LogSailing, Log, TEXT("Feedback: %s report saved to %s%s"), SailFeedback::KindId(R.Kind), *SailCrashReports::ScrubPaths(Folder), bSent ? TEXT(", sent") : TEXT(""));
 	FeedbackResult = bSent ? FString(TEXT("Sent. Thank you!"))
 		: (S->bSendCrashReports ? FString(TEXT("Saved on this computer (this build can't send reports)."))
 			: FString(TEXT("Saved on this computer. To send reports too, turn on Settings > Gameplay > Send crash reports.")));

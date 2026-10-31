@@ -1,4 +1,5 @@
 #include "Feedback.h"
+#include "CrashReports.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformOutputDevices.h"
 #include "Misc/FileHelper.h"
@@ -41,34 +42,6 @@ const TCHAR* SailFeedback::KindId(EFeedbackKind Kind)
 	return Kind == EFeedbackKind::Idea ? TEXT("idea") : TEXT("bug");
 }
 
-FString SailFeedback::ScrubPaths(const FString& Text)
-{
-	// Each home-folder prefix up to the next separator becomes "~".
-	struct FPrefix { const TCHAR* Text; TCHAR Sep; };
-	static const FPrefix Prefixes[] = { { TEXT("/Users/"), '/' }, { TEXT("/home/"), '/' }, { TEXT(":\\Users\\"), '\\' }, { TEXT(":/Users/"), '/' } };
-	FString Out = Text;
-	for (const FPrefix& P : Prefixes)
-	{
-		const int32 Len = FCString::Strlen(P.Text);
-		int32 From = 0;
-		for (;;)
-		{
-			const int32 At = Out.Find(P.Text, ESearchCase::IgnoreCase, ESearchDir::FromStart, From);
-			if (At == INDEX_NONE) break;
-			// A drive letter belongs to a Windows prefix.
-			const int32 Start = (P.Text[0] == ':' && At > 0) ? At - 1 : At;
-			int32 End = At + Len;
-			// A Windows user name may hold spaces; a Unix path in a sentence ends at one.
-			const bool bStopAtSpace = P.Sep == '/';
-			while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != '"' && !(bStopAtSpace && Out[End] == ' ')) ++End;
-			if (End == At + Len) { From = End; continue; } // nothing after the prefix: not a home folder
-			Out = Out.Left(Start) + TEXT("~") + Out.Mid(End);
-			From = Start + 1;
-		}
-	}
-	return Out;
-}
-
 FString SailFeedback::ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn)
 {
 	return FString::Printf(TEXT("-SailingWorld=%s -SailingBoat=%s \"-SailingStartAt=%.0f,%.0f,%.0f\" -SailingWind=%.0f -SailingTWA=%.0f"),
@@ -83,7 +56,7 @@ FString SailFeedback::ComposeMessage(const FFeedbackReport& R)
 	if (bBug && !R.Expected.IsEmpty()) Out += FString::Printf(TEXT("Expected:\n%s\n\n"), *R.Expected);
 	for (const TPair<FString, FString>& C : R.Context) Out += FString::Printf(TEXT("%s: %s\n"), *C.Key, *C.Value);
 	if (R.CarriesPlace() && !R.Repro.IsEmpty()) Out += FString::Printf(TEXT("Repro: %s\n"), *R.Repro);
-	return ScrubPaths(Out);
+	return SailCrashReports::ScrubPaths(Out);
 }
 
 FString SailFeedback::LogTail(int32 MaxLines)
@@ -97,7 +70,7 @@ FString SailFeedback::LogTail(int32 MaxLines)
 	const int32 First = FMath::Max(0, Lines.Num() - MaxLines);
 	FString Out;
 	for (int32 I = First; I < Lines.Num(); ++I) { Out += Lines[I]; Out += TEXT("\n"); }
-	return ScrubPaths(Out);
+	return SailCrashReports::ScrubPaths(Out);
 }
 
 FString SailFeedback::WriteLocal(const FFeedbackReport& R, const FString& Dir)
@@ -108,7 +81,7 @@ FString SailFeedback::WriteLocal(const FFeedbackReport& R, const FString& Dir)
 	if (R.CarriesPlace())
 	{
 		if (!R.TelemetryJson.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(R.TelemetryJson, *FPaths::Combine(Folder, TEXT("telemetry.json")));
-		if (!R.LogTail.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(ScrubPaths(R.LogTail), *FPaths::Combine(Folder, TEXT("log.txt")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+		if (!R.LogTail.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(SailCrashReports::ScrubPaths(R.LogTail), *FPaths::Combine(Folder, TEXT("log.txt")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 	if (R.Tags.Num())
 	{

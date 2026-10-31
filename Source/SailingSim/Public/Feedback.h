@@ -68,9 +68,6 @@ namespace SailFeedback
 {
 	SAILINGSIM_API const TCHAR* KindId(EFeedbackKind Kind); // "bug", "idea"
 
-	/** Replaces the user's home folder in paths (/Users/<name>, C:\Users\<name>, /home/<name>) with "~". */
-	SAILINGSIM_API FString ScrubPaths(const FString& Text);
-
 	/** Game args that start a session at the same spot: world, boat, place and heading, wind. */
 	SAILINGSIM_API FString ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn);
 

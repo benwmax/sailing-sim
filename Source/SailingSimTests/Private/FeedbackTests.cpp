@@ -39,18 +39,6 @@ bool FSailFeedbackRecorderTest::RunTest(const FString&)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailFeedbackScrubTest, "SailingSim.UI.Feedback.Scrub", SailFeedbackTestsLocal::Flags_)
-bool FSailFeedbackScrubTest::RunTest(const FString&)
-{
-	TestEqual(TEXT("mac"), SailFeedback::ScrubPaths(TEXT("open /Users/dana/Library/Logs/x.log failed")), FString(TEXT("open ~/Library/Logs/x.log failed")));
-	TestEqual(TEXT("windows, a space in the name"), SailFeedback::ScrubPaths(TEXT("at C:\\Users\\Dana Smith\\AppData\\x")), FString(TEXT("at ~\\AppData\\x")));
-	TestEqual(TEXT("windows, no space"), SailFeedback::ScrubPaths(TEXT("at C:\\Users\\dana\\AppData\\x")), FString(TEXT("at ~\\AppData\\x")));
-	TestEqual(TEXT("linux"), SailFeedback::ScrubPaths(TEXT("/home/dana/game")), FString(TEXT("~/game")));
-	TestEqual(TEXT("the shared folder stays"), SailFeedback::ScrubPaths(TEXT("/Users/Shared/Epic Games")), FString(TEXT("~/Epic Games")));
-	TestEqual(TEXT("nothing to scrub"), SailFeedback::ScrubPaths(TEXT("Saved/Feedback")), FString(TEXT("Saved/Feedback")));
-	return true;
-}
-
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailFeedbackReportTest, "SailingSim.UI.Feedback.Report", SailFeedbackTestsLocal::Flags_)
 bool FSailFeedbackReportTest::RunTest(const FString&)
 {
