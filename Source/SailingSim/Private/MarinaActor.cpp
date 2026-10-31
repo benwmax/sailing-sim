@@ -299,6 +299,8 @@ void AMarinaActor::Tick(float DeltaSeconds)
 	}
 }
 
+static UStaticMesh* LoadDockKit(AMarinaActor::EDockKit Kit);
+
 void AMarinaActor::Build(const FMarina& Marina)
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -324,7 +326,8 @@ void AMarinaActor::Build(const FMarina& Marina)
 	auto Generated = [&](const FString& Id) { return !Replaced.Contains(Id) && !Replaced.ContainsByPredicate([&](const FString& R) { return Id.StartsWith(R + TEXT(".")); }); };
 
 	FKitGeometry All;
-	BuildGeometry(Marina, Terrain, Generated, All);
+	const bool bKit = HasDockKit();
+	BuildGeometry(Marina, Terrain, Generated, All, bKit);
 	TMap<FIntPoint, FKitGeometry> Tiles;
 	All.SplitTiles(UWorldKitLibrary::TileM, Tiles);
 	// Each 40 m tile: the Nanite mesh baked from this same geometry (scripts/make-world-models.sh), or else procedural.
@@ -409,6 +412,32 @@ void AMarinaActor::Build(const FMarina& Marina)
 		Rocks.Add(C);
 	}
 
+	// Club docks pass 2: the docks' hardware as meshes, static instances drawn within 150 m (the floats to 600 m: they
+	// shape the docks' waterline from across the harbour).
+	if (bKit)
+	{
+		TArray<FTransform> KitX[int32(EDockKit::Count)];
+		DockKitPlacements(Marina, Generated, KitX);
+		int32 Instances = 0;
+		for (int32 K = 0; K < int32(EDockKit::Count); ++K)
+		{
+			UStaticMesh* Mesh = LoadDockKit(EDockKit(K));
+			if (!Mesh || KitX[K].Num() == 0) continue;
+			UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+			C->SetMobility(EComponentMobility::Static);
+			C->SetupAttachment(RootComponent);
+			C->SetStaticMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+			C->SetCullDistances(0, EDockKit(K) == EDockKit::Float ? 60000 : 15000);
+			C->RegisterComponent();
+			C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), KitX[K]), false, true);
+			DockKit.Add(C);
+			Instances += KitX[K].Num();
+		}
+		UE_LOG(LogSailing, Display, TEXT("Marina: %d dock kit instances in %d meshes"), Instances, DockKit.Num());
+	}
+
 	// Neighbours (Visual V7): J/22s and Catalina 22s bow in in their slips, Catalina 30s alongside the fixed pier, each
 	// the class's own model with what a boat in her slip wears (build_berthed.py: standing rigging, furled jib, sail
 	// cover, halyards, fenders, dock lines). Low keeps the docks but leaves the slips empty.
@@ -460,7 +489,86 @@ void AMarinaActor::Build(const FMarina& Marina)
 		Marina.HomeSlip != INDEX_NONE ? *Marina.Slips[Marina.HomeSlip].Id : TEXT("none"));
 }
 
-void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& G)
+const TCHAR* AMarinaActor::DockKitName(EDockKit Kit)
+{
+	static const TCHAR* Names[] = { TEXT("Cleat"), TEXT("Pedestal"), TEXT("Box"), TEXT("PilingCap"), TEXT("Hoop"), TEXT("Ladder"), TEXT("Float"), TEXT("Extinguisher") };
+	return Names[int32(Kit)];
+}
+
+static UStaticMesh* LoadDockKit(AMarinaActor::EDockKit Kit)
+{
+	const TCHAR* Name = AMarinaActor::DockKitName(Kit);
+	return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Docks/SM_Dock_%s.SM_Dock_%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+}
+
+bool AMarinaActor::HasDockKit()
+{
+	for (int32 K = 0; K < int32(EDockKit::Count); ++K)
+	{
+		if (!LoadDockKit(EDockKit(K))) return false;
+	}
+	return true;
+}
+
+void AMarinaActor::DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(const FString&)> Generated, TArray<FTransform> (&Out)[int32(EDockKit::Count)])
+{
+	// The same points BuildGeometry's kit boxes stand on (club docks pass 2: Tools/blender/build_docks.py's meshes stand
+	// there instead). Map frame in cm; each mesh's X along its finger, or out from the dock's edge.
+	const float Deck = FloatingDeckHeight;
+	auto Add = [&](EDockKit Kit, const FVector2D& P, float Z, const FVector2D& Facing, const FVector& Scale = FVector::OneVector)
+	{
+		const float Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(Facing.Y, Facing.X)));
+		Out[int32(Kit)].Add(FTransform(FRotator(0.f, Yaw, 0.f), FVector(P.X, P.Y, Z) * 100.0, Scale));
+	};
+	for (const FMarinaRow& R : Marina.Rows)
+	{
+		if (!Generated(R.Id)) continue;
+		const FVector2D A = R.Points[0], B = R.Points.Last();
+		const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
+		const float Length = float(FVector2D::Distance(A, B));
+		// Float modules under the deck: 2.4 m with gaps, their tops under the deck's frame.
+		for (float F0 = 0.3f; F0 + 0.5f < Length - 0.3f; F0 += 2.65f)
+		{
+			const float F1 = FMath::Min(F0 + 2.4f, Length - 0.3f);
+			Add(EDockKit::Float, A + Dir * (0.5f * (F0 + F1)), Deck - 0.12f, Dir, FVector(F1 - F0, R.Width * 0.85f, Deck - 0.12f + 0.35f));
+		}
+		// The row pilings' caps and hoops (BuildGeometry: every 9 m, alternating sides, 0.2 m off the deck's edge).
+		for (float X = 1.0f; X < Length; X += 9.f)
+		{
+			const double Side = int32(X / 9.f) % 2 ? 1.0 : -1.0;
+			const FVector2D P = A + Dir * X + Left * (Side * (0.5 * R.Width + 0.2));
+			Add(EDockKit::PilingCap, P, 1.9f, Dir);
+			Add(EDockKit::Hoop, P, Deck - 0.06f, Left * Side);
+		}
+		// A swim ladder off the row's end.
+		Add(EDockKit::Ladder, B, Deck, Dir);
+	}
+	for (const FMarinaSlip& Slip : Marina.Slips)
+	{
+		const FMarinaRow& R = Marina.Rows[Slip.Row];
+		if (!Generated(R.Id)) continue;
+		const FVector2D Out2 = (Slip.FingerB - Slip.FingerA).GetSafeNormal();
+		const FVector2D Along(Out2.Y, -Out2.X);
+		const float FingerLength = float(FVector2D::Distance(Slip.FingerA, Slip.FingerB));
+		Add(EDockKit::Float, FMath::Lerp(Slip.FingerA + Out2 * 0.2, Slip.FingerB, 0.5f), Deck - 0.1f, Out2, FVector(FingerLength - 0.2f, 0.45f, Deck - 0.1f + 0.3f));
+		for (const float T : { 0.45f, 0.95f })
+		{
+			Add(EDockKit::Cleat, FMath::Lerp(Slip.FingerA, Slip.FingerB, T), Deck - 0.02f, Out2);
+		}
+		Add(EDockKit::PilingCap, Slip.FingerB + Along * 0.45, 1.5f, Out2);
+		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
+		if (MRand(Seed) < 0.35f) Add(EDockKit::Box, Slip.FingerA + Out2 * 0.6, Deck - 0.02f, Out2);
+		if (Slip.Index % 2 == 0)
+		{
+			Add(EDockKit::Pedestal, Slip.FingerA - Out2 * 0.4, Deck, Out2);
+			// A fire extinguisher cabinet by every other pedestal, at the row deck's edge.
+			if (Slip.Index % 4 == 0) Add(EDockKit::Extinguisher, Slip.FingerA - Out2 * 0.4 + Along * 0.7, Deck, Out2);
+		}
+	}
+}
+
+void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& G,
+	bool bDockKitMeshes)
 {
 	const float Deck = FloatingDeckHeight;
 	// Dock rows: floating deck on black floats, pilings every 9 m alternating sides, finger piers, cleats, boxes, power.
@@ -471,7 +579,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		const FVector2D A = R.Points[0], B = R.Points.Last();
 		const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
 		G[EKitLook::Decking].Span(A, B, R.Width, Deck - 0.12f, Deck);
-		G[EKitLook::Floats].Span(A + Dir * 0.3, B - Dir * 0.3, R.Width * 0.85f, -0.35f, Deck - 0.12f);
+		if (!bDockKitMeshes) G[EKitLook::Floats].Span(A + Dir * 0.3, B - Dir * 0.3, R.Width * 0.85f, -0.35f, Deck - 0.12f);
 		const float Length = float(FVector2D::Distance(A, B));
 		for (float X = 1.0f; X < Length; X += 9.f)
 		{
@@ -493,22 +601,25 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		const FVector2D Out = (Slip.FingerB - Slip.FingerA).GetSafeNormal();
 		const FVector2D Along(Out.Y, -Out.X);
 		G[EKitLook::Decking].Span(Slip.FingerA, Slip.FingerB, 0.6f, Deck - 0.1f, Deck - 0.02f);
-		G[EKitLook::Floats].Span(Slip.FingerA + Out * 0.2, Slip.FingerB, 0.45f, -0.3f, Deck - 0.1f);
+		if (!bDockKitMeshes) G[EKitLook::Floats].Span(Slip.FingerA + Out * 0.2, Slip.FingerB, 0.45f, -0.3f, Deck - 0.1f);
 		// Cleats at the finger's end and middle; a piling at its tip.
-		for (const float T : { 0.45f, 0.95f })
+		if (!bDockKitMeshes)
 		{
-			const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
-			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.03f), FVector(0.14f, 0.03f, 0.04f), float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X))));
+			for (const float T : { 0.45f, 0.95f })
+			{
+				const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
+				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.03f), FVector(0.14f, 0.03f, 0.04f), float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X))));
+			}
 		}
 		G[EKitLook::Pilings].Cylinder(FVector(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45, -3.f), 0.15f, 4.5f);
 		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
 		const FVector2D Root = Slip.FingerA + Out * 0.6;
-		if (MRand(Seed) < 0.35f)
+		if (!bDockKitMeshes && MRand(Seed) < 0.35f)
 		{
 			// A white dock box at the finger's root.
 			G[EKitLook::White].Box(FVector(Root.X, Root.Y, Deck + 0.3f), FVector(0.6f, 0.28f, 0.3f), float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X))));
 		}
-		if (Slip.Index % 2 == 0)
+		if (!bDockKitMeshes && Slip.Index % 2 == 0)
 		{
 			// A power pedestal between two slips.
 			const FVector2D P = Slip.FingerA - Out * 0.4;

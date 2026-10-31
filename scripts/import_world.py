@@ -18,13 +18,13 @@ WORLD_SLOTS = {"Bark": "M_TreeBark", "Leaves": "M_TreeLeaves", "Crown": "M_TreeC
                "Dark": "MI_World_Tyre", "Steel": "MI_World_Steel", "Wood": "MI_World_Pilings", "Lantern": "MI_World_Glass",
                "Reflective": "MI_World_Reflective", "ContainerPaint": "MI_World_ContainerPaint", "Trim": "MI_World_Trim",
                "FarWeed": "M_FarWeed"}
-for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed", "Limestone", "StoneGreen", "RoofTile", "Gold"):
+for _slot in ("Reed", "ReedHead", "Door", "Decking", "White", "Concrete", "Roof", "Gelcoat", "Antifouling", "TrimGreen", "Deck", "Cushion", "Net", "Barge", "Cargo", "Pilothouse", "Funnel", "ShipHull", "Lifeboat", "AviationRed", "Limestone", "StoneGreen", "RoofTile", "Gold", "LampGlow", "SafetyRed"):
     WORLD_SLOTS[_slot] = f"MI_World_{_slot}"
 KINDS = (("SM_LiveOak", "Trees"), ("SM_PostOak", "Trees"), ("SM_CedarElm", "Trees"), ("SM_RedCedar", "Trees"), ("SM_Sugarberry", "Trees"), ("SM_BlackWillow", "Trees"), ("SM_Cottonwood", "Trees"), ("SM_SaltCedar", "Trees"), ("SM_Shrub", "Trees"), ("SM_Sapling", "Trees"), ("SM_Snag", "Trees"),
          ("SM_Rock", "Props"), ("SM_Deadfall", "Props"), ("SM_Car", "Vehicles"), ("SM_Pickup", "Vehicles"), ("SM_Semi", "Vehicles"),
          ("SM_Buoy", "Navaids"), ("SM_Beacon", "Navaids"), ("SM_Dayboard", "Navaids"), ("SM_Light_Tower", "Navaids"), ("SM_Light_MoleTower", "Navaids"),
          ("SM_Vessel", "Vessels"), ("SM_Barge", "Vessels"), ("SM_Container", "Vessels"),
-         ("SM_House", "Houses"), ("SM_Landmark", "Landmarks"), ("SM_Reeds", "Props"))
+         ("SM_House", "Houses"), ("SM_Landmark", "Landmarks"), ("SM_Reeds", "Props"), ("SM_Dock", "Docks"))
 
 
 def import_fbx(path, dest, name):
