@@ -1,6 +1,7 @@
 """Checks the prologue's scripted scene (Content/Prologue/prologue.json, docs/prologue/README.md): the same rules
 FScriptedScene::LoadText applies in the game (Source/SailingPhysics/Private/ScriptedScene.cpp), plus a few the loader
-leaves to the author (captions in every call, call ids under "captain.", every camera used, every step at a station).
+leaves to the author (captions in every call, call ids under "captain." or "instructor.", every camera used, every step at
+a station). The first job (#402, Content/FirstSail/first-sail.json) is the same format.
 
 Usage: python3 Tools/prologue/validate.py [scene.json ...]   (defaults to Content/Prologue/prologue.json)
        python3 Tools/prologue/validate.py --self-test         (the validator rejects broken scenes)
@@ -11,6 +12,7 @@ import copy, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..", "..")
 DEFAULT = os.path.join(ROOT, "Content", "Prologue", "prologue.json")
+FIRST_JOB = os.path.join(ROOT, "Content", "FirstSail", "first-sail.json")
 
 SCENE_KEYS = {"schema_version", "id", "title", "setting", "assist_caption", "cameras", "stations", "actions", "steps"}
 SETTING_KEYS = {"boat", "world", "weather", "rain", "wind_kn", "gust_kn", "sea_hs_m", "reefs", "hour", "world_stand_in", "stand_in", "then"}
@@ -31,7 +33,7 @@ EXPECTS = {
     "sheet": ({"sheet"}, {"by", "at_least", "at_most", "controls", "within_s"}),
     "tack": (set(), {"within_s"}),
     "gybe": (set(), {"within_s"}),
-    "hold": ({"hold_s"}, {"twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "controls", "within_s"}),
+    "hold": ({"hold_s"}, {"twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "max_speed_kn", "station", "controls", "within_s"}),
     "station": ({"station"}, {"within_s"}),
     "action": ({"action"}, {"within_s"}),
 }
@@ -147,7 +149,7 @@ def problems(scene):
         check(isinstance(c, dict), f"{sid}: missing call")
         if isinstance(c, dict):
             only(c, CALL_KEYS, f"{sid}.call")
-            check(isinstance(c.get("id"), str) and c["id"].startswith("captain."), f"{sid}.call: id must start with captain.")
+            check(isinstance(c.get("id"), str) and c["id"].startswith(("captain.", "instructor.")), f"{sid}.call: id must start with captain. or instructor.")
             check(c.get("id") not in call_ids, f"{sid}.call: repeated call id")
             call_ids.add(c.get("id"))
             check(isinstance(c.get("caption"), str) and c["caption"].strip(), f"{sid}.call: missing caption")
@@ -226,6 +228,15 @@ def self_test():
         errs = problems(scene)
         assert any(expect in e for e in errs), f"{name}: expected '{expect}', got {errs}"
         print(f"rejects {name}: {next(e for e in errs if expect in e)}")
+    first = json.load(open(FIRST_JOB, encoding="utf-8"))
+    assert not problems(first), problems(first)
+    stop = next(i for i, st in enumerate(first["steps"]) if st["id"] == "stop")
+    bad = copy.deepcopy(first); bad["steps"][stop]["expect"]["max_speed"] = 1; errs = problems(bad)
+    assert any("unknown field" in e for e in errs), errs
+    print(f"rejects a typo'd max_speed_kn: {next(e for e in errs if 'unknown field' in e)}")
+    bad = copy.deepcopy(first); bad["steps"][0]["call"]["id"] = "coach.steer"; errs = problems(bad)
+    assert any("must start with" in e for e in errs), errs
+    print(f"rejects a call id outside captain./instructor.: {next(e for e in errs if 'must start with' in e)}")
     print("self-test ok")
 
 
@@ -233,7 +244,7 @@ def main(args):
     if args == ["--self-test"]:
         self_test(); return 0
     status = 0
-    for path in args or [DEFAULT]:
+    for path in args or [DEFAULT, FIRST_JOB]:
         try:
             scene = json.load(open(path, encoding="utf-8"))
         except (OSError, ValueError) as e:

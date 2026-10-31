@@ -427,12 +427,13 @@ namespace Sailing
 					case ESceneExpect::Tack:
 					case ESceneExpect::Gybe: C.OnlyKeys(*E, EW, { "type", "within_s" }); break;
 					case ESceneExpect::Hold:
-						C.OnlyKeys(*E, EW, { "type", "hold_s", "twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "station", "controls", "within_s" });
+						C.OnlyKeys(*E, EW, { "type", "hold_s", "twa_min_deg", "twa_max_deg", "max_heel_deg", "min_speed_kn", "max_speed_kn", "station", "controls", "within_s" });
 						Ex.HoldSeconds = C.Num(*E, "hold_s", EW, 0.0, true);
 						Ex.TwaMinDeg = C.Num(*E, "twa_min_deg", EW, -1.0);
 						Ex.TwaMaxDeg = C.Num(*E, "twa_max_deg", EW, -1.0);
 						Ex.MaxHeelDeg = C.Num(*E, "max_heel_deg", EW, -1.0);
 						Ex.MinSpeedKn = C.Num(*E, "min_speed_kn", EW, -1.0);
+						Ex.MaxSpeedKn = C.Num(*E, "max_speed_kn", EW, -1.0);
 						Ex.Station = C.Str(*E, "station", EW);
 						if ((Ex.TwaMinDeg < 0.0) != (Ex.TwaMaxDeg < 0.0)) C.Bad(EW, "a TWA band needs both twa_min_deg and twa_max_deg");
 						break;
@@ -618,6 +619,7 @@ namespace Sailing
 			if (E.TwaMinDeg >= 0.0) bOk &= Twa >= E.TwaMinDeg && Twa <= E.TwaMaxDeg;
 			if (E.MaxHeelDeg >= 0.0) bOk &= std::fabs(Tel.Heel) / kDegToRad <= E.MaxHeelDeg;
 			if (E.MinSpeedKn >= 0.0) bOk &= Tel.BoatSpeed / kKnot >= E.MinSpeedKn;
+			if (E.MaxSpeedKn >= 0.0) bOk &= Tel.BoatSpeed / kKnot <= E.MaxSpeedKn;
 			if (!E.Station.empty()) bOk &= In.Station == E.Station;
 			bOk &= bControls;
 			HeldFor = bOk ? HeldFor + Dt : 0.0;
