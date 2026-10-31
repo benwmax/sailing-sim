@@ -72,8 +72,18 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	/** The generated structures (all but the rocks and boats), for drawing and for the editor's Nanite bake. */
-	static void BuildGeometry(const FMarina& Marina, const Sailing::FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& Out);
+	/** The generated structures (all but the rocks and boats), for drawing and for the editor's Nanite bake. With
+	 *  bDockKitMeshes the docks' hardware is left to the dock kit's meshes (DockKitPlacements) instead of kit boxes. */
+	static void BuildGeometry(const FMarina& Marina, const Sailing::FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& Out,
+		bool bDockKitMeshes = false);
+
+	/** Club docks (#405 pass 2): the floating docks' hardware as meshes (Tools/blender/build_docks.py, /Game/World/Docks). */
+	enum class EDockKit : uint8 { Cleat, Pedestal, Box, PilingCap, Hoop, Ladder, Float, Extinguisher, Count };
+	static const TCHAR* DockKitName(EDockKit Kit);
+	/** Whether every dock kit mesh is in the content (then the bake and the actor use them). */
+	static bool HasDockKit();
+	/** Each kit mesh's instances (map frame, cm), from the same rows and slips BuildGeometry draws. */
+	static void DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(const FString&)> Generated, TArray<FTransform> (&Out)[int32(EDockKit::Count)]);
 
 	/** Where the generated docks' decks are (m above the water), for tests. */
 	static constexpr float FloatingDeckHeight = 0.45f;
@@ -83,6 +93,7 @@ private:
 
 	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> Tiled;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Rocks;
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> DockKit;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Boats;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Scans;
 	/** Visual V7: the halyards clanking on the dock rows and the gulls over the harbour, spatialised. */
