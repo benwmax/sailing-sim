@@ -1455,7 +1455,16 @@ bool ASailingGameMode::IsPrologueRun()
 
 bool ASailingGameMode::LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError)
 {
-	const FString Path = FPaths::ProjectContentDir() / TEXT("Prologue/prologue.json");
+	return LoadSceneFile(FPaths::ProjectContentDir() / TEXT("Prologue/prologue.json"), Out, OutError);
+}
+
+bool ASailingGameMode::LoadFirstJob(Sailing::FScriptedScene& Out, FString* OutError)
+{
+	return LoadSceneFile(FPaths::ProjectContentDir() / TEXT("FirstSail/first-sail.json"), Out, OutError);
+}
+
+bool ASailingGameMode::LoadSceneFile(const FString& Path, Sailing::FScriptedScene& Out, FString* OutError)
+{
 	FString Text;
 	if (!FFileHelper::LoadFileToString(Text, *Path))
 	{
