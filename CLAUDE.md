@@ -205,6 +205,16 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    Far-shore haze (`docs/far-haze/`): the volumetric fog has the analytic fog's extinction (`FHaze::VolumetricExtinctionScale`, 2 ln 2)
    and, under Lumen, stops at Lumen's translucency volume (80 m: past it the fog has no skylight); `-SailingClassicVolumetricHaze` compares.
 
+27. Sim reel (`docs/sim-reel/`): `scripts/capture-reel.sh <wireframe|fleet|physics|storm|night> [--quality check|preview|master]`
+   (`scripts\windows\capture-reel.ps1` on the PC) renders a showcase loop offline through Movie Render Queue: the game from
+   the editor binary at a fixed step with the shot's args from `Tools/reel/shots.json` plus `-SailingReel` (motion blur and
+   depth of field even in capture mode: `ApplyReelLens`), timed by the Python executor `Content/Python/sailing_reel_executor.py`
+   against the empty `/Game/Reel/LS_Reel`; `Tools/reel/compose.py` joins the passes (wipes, cuts, telemetry overlay) into a
+   seamless loop and ffmpeg writes `master.mov`, the web mp4/webm and a poster to `Artifacts/reel/<shot>/<quality>/`.
+   The sim steps identically under it (telemetry byte-identical across runs); pin AI liveries with `-SailingLiverySeed`.
+   Footage is recorded on the PC by Ben (`docs/sim-reel/PC-RUNBOOK.md`, `draft` then `master` on Ultra); Mac renders are
+   smoke tests (`check`, `preview`) and `--dry-run --platform win` prints the PC's commands.
+
 ## Conventions
 
 - Physics lives in `Source/SailingPhysics`: plain standard C++ (no Unreal headers, so it builds standalone) in

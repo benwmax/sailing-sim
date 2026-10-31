@@ -1,6 +1,7 @@
 #include "SailboatPawn.h"
 #include "CrewOutfit.h"
 #include "SailingFrame.h"
+#include "VisualPipeline.h"
 #include "BenchRunner.h"
 #include "PerfScopes.h"
 #include "SailingHUD.h"
@@ -3820,7 +3821,8 @@ void ASailboatPawn::SetupCapture()
 		CaptureCamera->SetUsingAbsoluteRotation(true);
 	}
 
-	// A still that can be compared: exposure locked, no motion blur, no depth of field.
+	// A still that can be compared: exposure locked, no motion blur, no depth of field (a reel render keeps both:
+	// UpdateCapture puts its lens on each frame).
 	FPostProcessSettings& PP = CaptureCamera->PostProcessSettings;
 	CaptureCamera->PostProcessBlendWeight = 1.f;
 	PP.bOverride_MotionBlurAmount = true;
@@ -3832,7 +3834,10 @@ void ASailboatPawn::SetupCapture()
 		PP.AutoExposureBias = 0.f;
 		bExposureFrozen = true;
 	}
-	if (IConsoleVariable* Dof = IConsoleManager::Get().FindConsoleVariable(TEXT("r.DepthOfFieldQuality"))) Dof->Set(0, ECVF_SetByCode);
+	if (!IsReelRun())
+	{
+		if (IConsoleVariable* Dof = IConsoleManager::Get().FindConsoleVariable(TEXT("r.DepthOfFieldQuality"))) Dof->Set(0, ECVF_SetByCode);
+	}
 	if (Info.bBarrel && LensDistortionAsset)
 	{
 		LensDistortionMaterial = LensDistortionAsset;
@@ -3959,6 +3964,9 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		}
 		CaptureCamera->SetWorldLocationAndRotation(Location, Rotation);
 	}
+
+	// A reel render (docs/sim-reel/): the lens focused on the boat, motion blur on.
+	if (IsReelRun()) ApplyReelLens(CaptureCamera->PostProcessSettings, float(FVector::Dist(CaptureCamera->GetComponentLocation(), BoatRoot->GetComponentLocation())));
 
 	// Auto exposure settles in the first seconds; then it is held so the stills compare.
 	if (!bExposureFrozen && CaptureElapsed > 2.5)

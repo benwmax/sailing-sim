@@ -1107,6 +1107,9 @@ void ASailingGameMode::StartPlay()
 	int32 TrafficArg = 0;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingTraffic="), TrafficArg)) USailingSettings::Get()->TrafficLevel = FMath::Clamp(TrafficArg, 0, 2);
 	GetWorld()->SpawnActor<ATrafficManager>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
+	// The sim reel's time-lapse (docs/sim-reel/) takes the bench's -SailingSlowMo=<f> outside a bench too.
+	float ReelDilation = 1.f;
+	if (IsReelRun() && FParse::Value(SailingArgs::Dev(), TEXT("SailingSlowMo="), ReelDilation) && ReelDilation > 0.f && GetWorldSettings()) GetWorldSettings()->SetTimeDilation(ReelDilation);
 
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBench="), BenchSeconds) && BenchSeconds > 0.f)
 	{
