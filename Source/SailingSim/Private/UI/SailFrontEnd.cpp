@@ -2470,10 +2470,18 @@ void SSailFrontEnd::SendFeedbackForm()
 		}
 		R.LogTail = SailFeedback::LogTail();
 	}
-	if (IFileManager::Get().FileExists(*FeedbackShot))
+	// The view, then photo mode's latest two shots when asked: three at most, each a JPEG under 8 MB.
+	TArray<FString> Pngs;
+	if (IFileManager::Get().FileExists(*FeedbackShot)) Pngs.Add(FeedbackShot);
+	if (bFeedbackPhotos && Boat)
 	{
-		const FString Jpeg = FPaths::ChangeExtension(FeedbackShot, TEXT("jpg"));
-		R.ShotPaths.Add(SailFeedback::ShotToJpeg(FeedbackShot, Jpeg) ? Jpeg : FeedbackShot);
+		const TArray<FString>& Photos = Boat->GetSessionPhotos();
+		for (int32 I = FMath::Max(0, Photos.Num() - 2); I < Photos.Num(); ++I) if (IFileManager::Get().FileExists(*Photos[I])) Pngs.Add(Photos[I]);
+	}
+	for (int32 I = 0; I < Pngs.Num(); ++I)
+	{
+		const FString Jpeg = FPaths::Combine(SailFeedback::LocalDir(), FString::Printf(TEXT("pending-shot%d.jpg"), I + 1));
+		R.ShotPaths.Add(SailFeedback::ShotToJpeg(Pngs[I], Jpeg) ? Jpeg : Pngs[I]);
 	}
 	const FString Folder = SailFeedback::WriteLocal(R, SailFeedback::LocalDir());
 	const bool bSent = S->bSendCrashReports && SailCrashReports::SendFeedback(R);
@@ -2517,6 +2525,13 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFeedback()
 		SNew(SSailChoice).Label(TEXT("Attach where I am")).Options({ TEXT("No"), TEXT("Yes") }).Index_Lambda([this]() { return bFeedbackPlace ? 1 : 0; })
 			.OnChanged_Lambda([this](int32 I) { bFeedbackPlace = I == 1; })
 			.Note(TEXT("The place, boat, weather and the last minute of sailing, so we can see it in the game."))
+	];
+	const int32 Photos = Pawn() ? FMath::Min(Pawn()->GetSessionPhotos().Num(), 2) : 0;
+	if (Photos > 0) Form->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
+	[
+		SNew(SSailChoice).Label(Photos == 1 ? TEXT("Add my last photo") : TEXT("Add my last two photos")).Options({ TEXT("No"), TEXT("Yes") })
+			.Index_Lambda([this]() { return bFeedbackPhotos ? 1 : 0; }).OnChanged_Lambda([this](int32 I) { bFeedbackPhotos = I == 1; })
+			.Note(TEXT("From photo mode (9): fly the camera to the problem, take a photo, then send it here."))
 	];
 	TSharedRef<SSailButton> Send = ActionButton(TEXT("Send"), FSimpleDelegate::CreateLambda([this]() { SendFeedbackForm(); }));
 	TSharedRef<SSailButton> Cancel = ActionButton(TEXT("Cancel"), FSimpleDelegate::CreateLambda([this]() { Pop(); }), false);

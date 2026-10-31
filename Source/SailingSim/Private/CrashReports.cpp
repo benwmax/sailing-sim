@@ -164,6 +164,9 @@ bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
 	const FString Kind = SailFeedback::KindId(Report.Kind);
 	TMap<FString, FString> Tags = Report.Tags;
 	Tags.Add(TEXT("feedback_kind"), Kind);
+	// A bug sent after a crash is likely about it: Sentry pairs them by this tag and the time (the SDK gives no event id).
+	const ESentryCrashedLastRun Crashed = S->IsCrashedLastRun();
+	Tags.Add(TEXT("crashed_last_run"), Crashed == ESentryCrashedLastRun::Crashed ? TEXT("yes") : Crashed == ESentryCrashedLastRun::NotCrashed ? TEXT("no") : TEXT("unknown"));
 	S->CaptureFeedbackWithScope(Feedback, FConfigureScopeNativeDelegate::CreateLambda([Tags](USentryScope* Scope)
 	{
 		Scope->SetTags(Tags);

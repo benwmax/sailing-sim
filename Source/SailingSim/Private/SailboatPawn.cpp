@@ -2407,6 +2407,8 @@ void ASailboatPawn::TakePhoto()
 	{
 		FScreenshotRequest::RequestScreenshot(Path, false, false);
 	}
+	SessionPhotos.Add(Path);
+	if (SessionPhotos.Num() > 8) SessionPhotos.RemoveAt(0);
 	StatusMessage = FString::Printf(TEXT("Photo saved: %s"), *Name);
 	StatusUntil = Boat.GetState().Time + 3.0;
 	PhotoHintUntil = FPlatformTime::Seconds() + 2.5;

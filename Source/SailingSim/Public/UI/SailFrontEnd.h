@@ -121,6 +121,7 @@ private:
 	// The feedback form's draft, kept while the screen is rebuilt.
 	int32 FeedbackKind = 0;            // EFeedbackKind
 	bool bFeedbackPlace = false;       // ideas: attach where I am
+	bool bFeedbackPhotos = false;      // add photo mode's latest two shots
 	FString FeedbackTitle, FeedbackText, FeedbackExpected, FeedbackShot, FeedbackResult;
 	// The quiz: its questions, the one on screen, the option chosen (-1: not yet), the score and the debrief line.
 	TArray<FQuizQuestion> Quiz;
