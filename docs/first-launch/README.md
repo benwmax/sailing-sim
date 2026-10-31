@@ -1,6 +1,6 @@
 # First launch and the skipper's first job (#402, design)
 
-**Status: design, for Bean's OK before anything is built.** Part of the vertical slice (#399, Nov 21). The maxi prologue
+**Status: design, approved by Bean on Oct 31 2026 (the four decisions below, as written).** Part of the vertical slice (#399, Nov 21). The maxi prologue
 stays parked. The same design is in the Claude Doc "First launch and a guided first sail (design)"; this page is the
 repo's copy.
 
@@ -83,7 +83,7 @@ Mostly data on machinery that exists; about three to four days on the Mac.
 
 ## For Bean to decide
 
-- [ ] The two questions and their defaults (quality from the GPU, Easy pre-picked)
-- [ ] The six steps and their wording, and the "first job" framing
-- [ ] Easy earns up to silver; gold needs Realistic
-- [ ] Drop the title's "ASA 101 drills" item for good
+- [x] The two questions and their defaults (quality from the GPU, Easy pre-picked)
+- [x] The six steps and their wording, and the "first job" framing
+- [x] Easy earns up to silver; gold needs Realistic
+- [x] Drop the title's "ASA 101 drills" item for good
