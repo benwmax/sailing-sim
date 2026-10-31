@@ -112,8 +112,16 @@ FString SailCrashReports::ScrubPaths(const FString& Text)
 		{
 			const int32 At = Out.Find(P.Text, ESearchCase::IgnoreCase, ESearchDir::FromStart, From);
 			if (At == INDEX_NONE) break;
+			// The name runs to the next separator, spaces and all ("C:\Users\Dana Smith\AppData"); with no separator before the
+			// line or a quote ends, it stops at the first space instead ("/Users/dana today" reads "~ today").
 			int32 End = At + Len;
-			while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != ' ' && Out[End] != '"' && Out[End] != '\'') ++End;
+			while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != '\r' && Out[End] != '"' && Out[End] != '\'') ++End;
+			// A name neither starts nor ends with a space: "/Users/ and /home/" or "/Users/dana today /tmp" is a new path.
+			if (End >= Out.Len() || Out[End] != P.Sep || Out[At + Len] == ' ' || Out[End - 1] == ' ')
+			{
+				End = At + Len;
+				while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != '\r' && Out[End] != ' ' && Out[End] != '"' && Out[End] != '\'') ++End;
+			}
 			if (End == At + Len) { From = End; continue; }   // nothing after the prefix: not a home folder
 			const int32 Start = P.bDrive && At > 0 ? At - 1 : At;
 			Out = Out.Left(Start) + TEXT("~") + Out.Mid(End);
