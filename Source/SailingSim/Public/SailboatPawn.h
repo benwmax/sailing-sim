@@ -159,6 +159,8 @@ public:
 	const FLogbook& GetLogbook() const { return Logbook; }
 	/** The last minute of the player's boat for testers' bug reports (docs/sentry). */
 	const FFeedbackRecorder& GetFeedbackRecorder() const { return FeedbackRecorder; }
+	/** Photo mode's shots this session, newest last (paths): a bug report may take the latest two. */
+	const TArray<FString>& GetSessionPhotos() const { return SessionPhotos; }
 	bool IsLogOpen() const { return bLogOpen; }
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
 	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
@@ -398,6 +400,7 @@ private:
 	UPROPERTY() TObjectPtr<UMaterialInterface> LensDistortionAsset; // referenced for the cook
 	bool bGhostOn = false, bWatching = false, bPhoto = false;
 	FFeedbackRecorder FeedbackRecorder;
+	TArray<FString> SessionPhotos;
 	/** Visual V7: the cockpit view (the helm's eyes): a filtered copy of the boat's accelerations moves the head, it
 	 *  leans a little into the heel (bounded so the instruments stay readable and the horizon honest). */
 	bool bCockpit = false;
