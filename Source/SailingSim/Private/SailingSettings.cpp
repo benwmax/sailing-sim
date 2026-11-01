@@ -86,6 +86,24 @@ bool USailingSettings::IsEasy() const
 	return Difficulty == ESailingDifficulty::Easy;
 }
 
+bool USailingSettings::SliceOnly()
+{
+	static uint32 Gen = MAX_uint32;
+	static bool bSlice = false;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		int32 V = 0;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSlice="), V)) bSlice = V != 0;
+		else
+		{
+			bSlice = false;
+			if (GConfig) GConfig->GetBool(TEXT("SailingSim.Slice"), TEXT("bSliceBuild"), bSlice, GEngineIni);
+		}
+	}
+	return bSlice;
+}
+
 int32 USailingSettings::FreeSailArg()
 {
 	static uint32 Gen = MAX_uint32;

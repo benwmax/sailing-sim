@@ -2,6 +2,7 @@
 #include "SailSession.h"
 #include "SailSave.h"
 #include "BoatModel.h"
+#include "SailingSettings.h"
 #include "PolarReference.h"
 #include "SailingEnvironment.h"
 #include "LakeData.h"
@@ -482,5 +483,22 @@ namespace SailCatalog
 		Out.Add({ ECreditKind::Notice, UnrealNotice });
 		Out.Add({ ECreditKind::Paragraph, TEXT("CREDITS.md is missing from this build.") });
 		return Out;
+	}
+
+	bool InSliceWorld(int32 Index)
+	{
+		// Ray Hubbard (the slice) and Galveston Bay (the stretch, #407: decided at the Nov 14 build).
+		return !USailingSettings::SliceOnly() || Index == 0 || Index == 1;
+	}
+
+	bool InSliceBoat(int32 Type)
+	{
+		using Sailing::EBoatType;
+		return !USailingSettings::SliceOnly() || Type == int32(EBoatType::J22) || Type == int32(EBoatType::Sunfish) || Type == int32(EBoatType::Catalina22);
+	}
+
+	bool InSliceTier(const FString& TierId)
+	{
+		return !USailingSettings::SliceOnly() || TierId == TEXT("day-sailor") || TierId == TEXT("club-racer") || TierId == TEXT("coastal-cruiser");
 	}
 }

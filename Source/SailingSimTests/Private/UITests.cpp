@@ -6,6 +6,8 @@
 #include "BoatModel.h"
 #include "Misc/ConfigCacheIni.h"
 #include "UI/SailCatalog.h"
+#include "BenchRunner.h"
+#include "Misc/ScopeExit.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailHud.h"
 #include "UI/SailLoading.h"
@@ -379,5 +381,39 @@ bool FSailingUIEscMenuTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Esc is the Menu action's"), bEsc);
 	const bool bTab = GetDefault<USailingInputSettings>()->GetDefaults().ContainsByPredicate([](const FSailingKeyBinding& B) { return B.Action == TEXT("Menu") && B.Key == EKeys::Tab; });
 	TestTrue(TEXT("Tab stays the Menu row's default"), bTab);
+	return true;
+}
+/**
+ * The slice build (#399): with the switch on, the menus offer only the vertical slice (Ray Hubbard and Galveston Bay;
+ * the J/22, Sunfish and Catalina 22; Day Sailor, Club Racer and Coastal Cruiser), and everything is back with it off.
+ * -SailingSlice=0|1 wins over the build's ini; the Shipping smoke may pass it.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUISliceBuildTest, "SailingSim.UI.SliceBuild", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSailingUISliceBuildTest::RunTest(const FString&)
+{
+	const FString Saved = FCommandLine::Get();
+	ON_SCOPE_EXIT { SailingArgs::SetCommandLine(Saved); };
+	using Sailing::EBoatType;
+	SailingArgs::SetCommandLine(Saved + TEXT(" -SailingSlice=1"));
+	TestTrue(TEXT("On with -SailingSlice=1"), USailingSettings::SliceOnly());
+	TestTrue(TEXT("Ray Hubbard"), SailCatalog::InSliceWorld(0));
+	TestTrue(TEXT("Galveston Bay (the stretch)"), SailCatalog::InSliceWorld(1));
+	TestFalse(TEXT("No Marseille"), SailCatalog::InSliceWorld(3));
+	TestFalse(TEXT("No Texas coast"), SailCatalog::InSliceWorld(4));
+	TestTrue(TEXT("The J/22"), SailCatalog::InSliceBoat(int32(EBoatType::J22)));
+	TestTrue(TEXT("The Sunfish"), SailCatalog::InSliceBoat(int32(EBoatType::Sunfish)));
+	TestTrue(TEXT("The Catalina 22 (the stretch)"), SailCatalog::InSliceBoat(int32(EBoatType::Catalina22)));
+	for (const EBoatType T : { EBoatType::ILCA7, EBoatType::Catalina30, EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
+		TestFalse(*FString::Printf(TEXT("No %hs"), Sailing::BoatTypeName(T)), SailCatalog::InSliceBoat(int32(T)));
+	TestTrue(TEXT("Day Sailor"), SailCatalog::InSliceTier(TEXT("day-sailor")));
+	TestTrue(TEXT("Club Racer"), SailCatalog::InSliceTier(TEXT("club-racer")));
+	TestTrue(TEXT("Coastal Cruiser (the stretch)"), SailCatalog::InSliceTier(TEXT("coastal-cruiser")));
+	TestFalse(TEXT("No Passage Maker"), SailCatalog::InSliceTier(TEXT("passage-maker")));
+	SailingArgs::SetCommandLine(Saved + TEXT(" -SailingSlice=0"));
+	TestFalse(TEXT("Off with -SailingSlice=0"), USailingSettings::SliceOnly());
+	TestTrue(TEXT("... Marseille back"), SailCatalog::InSliceWorld(3));
+	TestTrue(TEXT("... the Lagoon back"), SailCatalog::InSliceBoat(int32(EBoatType::Lagoon42)));
+	TestTrue(TEXT("... Passage Maker back"), SailCatalog::InSliceTier(TEXT("passage-maker")));
+	TestTrue(TEXT("The Shipping smoke may pass the switch"), SailingArgs::ShippingSmokeArgs(TEXT("-SailingShippingSmoke -SailingSlice=0 -SailingQuality=Low")).Contains(TEXT("-SailingSlice=0")));
 	return true;
 }

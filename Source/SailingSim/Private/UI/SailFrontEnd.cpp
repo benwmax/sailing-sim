@@ -846,12 +846,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	}
 	// #402: the separate "ASA 101 drills" item is gone: Career's lessons are the same six drills (the Mode screen's Drills
 	// card still sails any of them freely).
-	Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
+	if (!USailingSettings::SliceOnly()) Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
 	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
 	// Inputs/gallery/brief.md section 6: developer tools (USailingSettings::bShowDeveloperTools: on while Bean playtests, an ini line turns it off).
-	if (USailingSettings::DeveloperTools()) Item(TEXT("Gallery"), TEXT("Developer · every asset"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Gallery); }));
+	if (USailingSettings::DeveloperTools() && !USailingSettings::SliceOnly()) Item(TEXT("Gallery"), TEXT("Developer · every asset"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Gallery); }));
 	Item(TEXT("Credits"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Credits); }));
 	Item(TEXT("Quit"), FString(), FSimpleDelegate::CreateLambda([this]() { Pop(); }));
 
@@ -941,6 +941,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 	if (!Career.IsWorldOpen(FSailSave::WorldId(Pending.World == 2 ? 1 : Pending.World))) { Pending.World = 0; Pending.LaunchSpot = 0; }
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
 	{
+		if (!SailCatalog::InSliceWorld(W.Index)) continue;   // #399: a slice build shows the slice's places only
 		const FString Locked = Career.WorldLockReason(W.Id);
 		TSharedPtr<FSlateBrush> Art = TextureBrush(W.CardTexture);
 		TSharedRef<SHorizontalBox> Facts = SNew(SHorizontalBox);
@@ -1104,6 +1105,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 		const int32 T = B.Type;
 		// The fleet of eight: the prologue's maxi isn't in the strip (brief section 8).
 		if (T == int32(Sailing::EBoatType::Maxi)) continue;
+		if (!SailCatalog::InSliceBoat(T)) continue;   // #399: the slice's boats only in a slice build
 		const FString Locked = LockOf(T);
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(8.f, 6.f))
 			.IsSelected_Lambda([this, T]() { return FocusedBoat == T; })
@@ -1466,6 +1468,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const FModeCard& M : Modes)
 	{
+		// #399: a slice build sails free and the drills only (Race and Passage stay on the command line).
+		if (USailingSettings::SliceOnly() && (M.Mode == ESailMode::Race || M.Mode == ESailMode::Passage)) continue;
 		// Passage: Galveston's to Freeport (the Gulf world, its own career lock) or Marseille's to Cassis.
 		const FString GulfLocked = Pending.World == 1 ? SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2)) : FString();
 		const bool bOk = M.Mode != ESailMode::Passage || (USailSessionSubsystem::HasPassage(Pending.World) && GulfLocked.IsEmpty());
@@ -2309,6 +2313,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 	TSharedRef<SVerticalBox> Tiers = SNew(SVerticalBox);
 	for (const FCareerTier& T : Content.Tiers)
 	{
+		if (!SailCatalog::InSliceTier(T.Id)) continue;   // #399: the slice's tiers (and the stretch) only
 		const bool bOpen = Career.IsTierOpen(T.Id), bHeld = Career.HasCertificate(T.CertificateId);
 		FString State;
 		if (bHeld) State = TEXT("Certificate earned");
