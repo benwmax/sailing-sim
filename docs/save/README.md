@@ -129,6 +129,17 @@ everything); Free Sail replaced it, so a file without `freeSail` reads that fiel
    at the old version to `SailingSim.Save.Migration`.
 4. Extend `SailingSim.Save.RoundTrip` (`Everything()` must leave nothing at its default).
 
+## Carry-over between Friday builds (#404)
+
+`Source/SailingSimTests/Fixtures/Saves/` holds one save per Friday tester build, named `<date>-<branch>-<commit>.json`
+(the first, `2026-11-01-main-26a4eb6a.json`, is today's format part way through Day Sailor: lessons with an Easy medal,
+a quiz to retake, the first job done, the first launch answered). `SailingSim.Slice.SaveCarryOver` loads every one in the
+build under test, and checks each lesson's medal and quiz, every checkride, certificate and scene, the first launch and
+the hours come through, before and after the save is written back. After each Friday build, copy a tester-style save
+from it here (a session sailed on that build: `Saved/SaveGames/profile.json`, the Mac's under
+`~/Library/Containers/com.benwmax.SailingSim/Data/Library/Application Support/Epic/SailingSim/Saved/SaveGames/`, the PC's
+under `%LOCALAPPDATA%/SailingSim/Saved/SaveGames/`). Never edit a fixture once committed: it is what that build wrote.
+
 ## Checking it on the packaged game
 
 The front end can drive a whole session and quit with no simulated input (`-SailingUIScript`: `Quit` ends the game,
