@@ -274,7 +274,8 @@ public:
 	 */
 	UPROPERTY(config)
 	bool bShowDeveloperTools = true;
-	static bool DeveloperTools() { return Get()->bShowDeveloperTools; }
+	/** Off in a slice build whatever the ini says (#436): a tester build never shows the developers' tools. */
+	static bool DeveloperTools() { return Get()->bShowDeveloperTools && !SliceOnly(); }
 	/** Writes the player's choices to the save file and GameUserSettings.ini (never in a run that ignores them). */
 	void Save();
 

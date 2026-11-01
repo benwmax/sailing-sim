@@ -409,8 +409,14 @@ bool FSailingUISliceBuildTest::RunTest(const FString&)
 	TestTrue(TEXT("Club Racer"), SailCatalog::InSliceTier(TEXT("club-racer")));
 	TestTrue(TEXT("Coastal Cruiser (the stretch)"), SailCatalog::InSliceTier(TEXT("coastal-cruiser")));
 	TestFalse(TEXT("No Passage Maker"), SailCatalog::InSliceTier(TEXT("passage-maker")));
+	USailingSettings* Dev = USailingSettings::Get();
+	const bool bDevWas = Dev->bShowDeveloperTools;
+	Dev->bShowDeveloperTools = true;
+	TestFalse(TEXT("No developer tools in a slice build, whatever the ini says (#436)"), USailingSettings::DeveloperTools());
 	SailingArgs::SetCommandLine(Saved + TEXT(" -SailingSlice=0"));
 	TestFalse(TEXT("Off with -SailingSlice=0"), USailingSettings::SliceOnly());
+	TestTrue(TEXT("... the developer tools back"), USailingSettings::DeveloperTools());
+	Dev->bShowDeveloperTools = bDevWas;
 	TestTrue(TEXT("... Marseille back"), SailCatalog::InSliceWorld(3));
 	TestTrue(TEXT("... the Lagoon back"), SailCatalog::InSliceBoat(int32(EBoatType::Lagoon42)));
 	TestTrue(TEXT("... Passage Maker back"), SailCatalog::InSliceTier(TEXT("passage-maker")));
