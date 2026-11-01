@@ -299,6 +299,8 @@ void AMarinaActor::Tick(float DeltaSeconds)
 	}
 }
 
+static UStaticMesh* LoadDockKit(AMarinaActor::EDockKit Kit);
+
 void AMarinaActor::Build(const FMarina& Marina)
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -324,7 +326,8 @@ void AMarinaActor::Build(const FMarina& Marina)
 	auto Generated = [&](const FString& Id) { return !Replaced.Contains(Id) && !Replaced.ContainsByPredicate([&](const FString& R) { return Id.StartsWith(R + TEXT(".")); }); };
 
 	FKitGeometry All;
-	BuildGeometry(Marina, Terrain, Generated, All);
+	const bool bKit = HasDockKit();
+	BuildGeometry(Marina, Terrain, Generated, All, bKit);
 	TMap<FIntPoint, FKitGeometry> Tiles;
 	All.SplitTiles(UWorldKitLibrary::TileM, Tiles);
 	// Each 40 m tile: the Nanite mesh baked from this same geometry (scripts/make-world-models.sh), or else procedural.
@@ -409,6 +412,32 @@ void AMarinaActor::Build(const FMarina& Marina)
 		Rocks.Add(C);
 	}
 
+	// Club docks pass 2: the docks' hardware as meshes, static instances drawn within 150 m (the floats to 600 m: they
+	// shape the docks' waterline from across the harbour).
+	if (bKit)
+	{
+		TArray<FTransform> KitX[int32(EDockKit::Count)];
+		DockKitPlacements(Marina, Generated, KitX);
+		int32 Instances = 0;
+		for (int32 K = 0; K < int32(EDockKit::Count); ++K)
+		{
+			UStaticMesh* Mesh = LoadDockKit(EDockKit(K));
+			if (!Mesh || KitX[K].Num() == 0) continue;
+			UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+			C->SetMobility(EComponentMobility::Static);
+			C->SetupAttachment(RootComponent);
+			C->SetStaticMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+			C->SetCullDistances(0, EDockKit(K) == EDockKit::Float ? 60000 : 15000);
+			C->RegisterComponent();
+			C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), KitX[K]), false, true);
+			DockKit.Add(C);
+			Instances += KitX[K].Num();
+		}
+		UE_LOG(LogSailing, Display, TEXT("Marina: %d dock kit instances in %d meshes"), Instances, DockKit.Num());
+	}
+
 	// Neighbours (Visual V7): J/22s and Catalina 22s bow in in their slips, Catalina 30s alongside the fixed pier, each
 	// the class's own model with what a boat in her slip wears (build_berthed.py: standing rigging, furled jib, sail
 	// cover, halyards, fenders, dock lines). Low keeps the docks but leaves the slips empty.
@@ -458,9 +487,266 @@ void AMarinaActor::Build(const FMarina& Marina)
 	UE_LOG(LogSailing, Display, TEXT("Marina %s: %d rows, %d slips (%d occupied), %d buildings, %d of %d tiles baked, home slip %s"), *Marina.Name, Marina.Rows.Num(), Marina.Slips.Num(),
 		Marina.Slips.FilterByPredicate([](const FMarinaSlip& Sl) { return Sl.bOccupied; }).Num(), Marina.Buildings.Num(), Baked, Tiles.Num(),
 		Marina.HomeSlip != INDEX_NONE ? *Marina.Slips[Marina.HomeSlip].Id : TEXT("none"));
+	BuildShore(Marina, Terrain);
 }
 
-void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& G)
+void AMarinaActor::BuildShore(const FMarina& Marina, const FLakeTerrain* Terrain)
+{
+	// Shore dressing (Poly Haven CC0 pieces, Tools/shore, imported to /Game/World/Shore by scripts/import_shore.py): the
+	// club's own shore around its walkway, piers and lawn, on High and Ultra. Along a true shoreline, rocks (one in eight
+	// cells) and now and then a drift log; on the bank above it, grass clumps and a few ferns; picnic tables and benches on
+	// the lawn by the clubhouse; a lifebuoy on the fixed piers' rails. Seeded from each cell, so it never moves.
+	const ESailingQuality Q = USailingSettings::Get()->Quality;
+	if (!Terrain || (Q != ESailingQuality::High && Q != ESailingQuality::Ultra) || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoShoreDressing"))) return;
+	auto Load = [](const TCHAR* Name) { return Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr,
+		*FString::Printf(TEXT("/Game/World/Shore/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet)); };
+	static const TCHAR* const RockNames[] = { TEXT("SM_Shore_Boulder01"), TEXT("SM_Shore_CoastRocks05"), TEXT("SM_Shore_RockMossSet01Rock01"),
+		TEXT("SM_Shore_RockMossSet01Rock02"), TEXT("SM_Shore_RockMossSet01Rock03"), TEXT("SM_Shore_RockMossSet01Rock04"),
+		TEXT("SM_Shore_RockMossSet01Rock05"), TEXT("SM_Shore_RockMossSet01Rock06") };
+	static const TCHAR* const LogNames[] = { TEXT("SM_Shore_DeadTreeTrunk"), TEXT("SM_Shore_DeadTreeTrunk02"), TEXT("SM_Shore_TreeStump01") };
+	static const TCHAR* const GrassNames[] = { TEXT("SM_Shore_GrassMedium01LargeA"), TEXT("SM_Shore_GrassMedium01LargeB"), TEXT("SM_Shore_GrassMedium01LargeC"),
+		TEXT("SM_Shore_GrassMedium01MidA"), TEXT("SM_Shore_GrassMedium01MidB"), TEXT("SM_Shore_GrassMedium01MidC"),
+		TEXT("SM_Shore_GrassMedium01TallA"), TEXT("SM_Shore_GrassMedium01TallB"), TEXT("SM_Shore_GrassMedium01TallC") };
+	static const TCHAR* const FernNames[] = { TEXT("SM_Shore_Fern02A"), TEXT("SM_Shore_Fern02B"), TEXT("SM_Shore_Fern02C"), TEXT("SM_Shore_Fern02D") };
+	if (!Load(RockNames[0])) return;   // not imported (a checkout without the shore set): nothing to dress
+
+	TMap<FString, TArray<FTransform>> X;
+	auto Put = [&](const TCHAR* Name, const FVector2D& P, double Z, float Yaw, float Scale, float Pitch = 0.f)
+	{
+		X.FindOrAdd(Name).Add(FTransform(FRotator(Pitch, Yaw, 0.f), FVector(P.X, P.Y, Z) * 100.0, FVector(Scale)));
+	};
+	// The club's ground: everything the marina lays out, 40 m round it. Cells under its structures stay clear.
+	FBox2D Area(ForceInit);
+	auto Near = [](const FVector2D& P, const FVector2D& A, const FVector2D& B, double R)
+	{
+		const FVector2D AB = B - A;
+		const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / FMath::Max(AB.SizeSquared(), 1e-6), 0.0, 1.0);
+		return FVector2D::Distance(P, A + AB * T) < R;
+	};
+	TArray<TPair<FMarinaLine, double>> Clear;
+	for (const FMarinaLine& L : Marina.Walkways) { for (const FVector2D& P : L.Points) Area += P; Clear.Add({ L, 0.5 * L.Width + 1.0 }); }
+	for (const FMarinaLine& L : Marina.Piers) { for (const FVector2D& P : L.Points) Area += P; Clear.Add({ L, 0.5 * L.Width + 1.0 }); }
+	for (const FMarinaBuilding& B : Marina.Buildings) Area += B.Center;
+	if (!Area.bIsValid) return;
+	Area = Area.ExpandBy(40.0);
+	auto Blocked = [&](const FVector2D& P)
+	{
+		for (const TPair<FMarinaLine, double>& C : Clear)
+		{
+			for (int32 I = 1; I < C.Key.Points.Num(); ++I) if (Near(P, C.Key.Points[I - 1], C.Key.Points[I], C.Value)) return true;
+		}
+		for (const FMarinaBuilding& B : Marina.Buildings)
+		{
+			if (FVector2D::Distance(P, B.Center) < 0.5 * B.Size.GetMax() + 3.0) return true;
+		}
+		return false;
+	};
+	// Land in the coarse grid too: all four 5 m nodes round the point above the water. The 1 m lidar detail reads
+	// structures over the water (boathouses, the piers' decks) as ground; the grid doesn't.
+	auto GridLand = [Terrain](const FVector2D& P)
+	{
+		const double G = Terrain->GetCell();
+		const int32 R = FMath::FloorToInt((P.X - Terrain->GetOriginX()) / G), C = FMath::FloorToInt((P.Y - Terrain->GetOriginY()) / G);
+		return FMath::Min(FMath::Min(Terrain->NodeHeight(R, C), Terrain->NodeHeight(R + 1, C)),
+			FMath::Min(Terrain->NodeHeight(R, C + 1), Terrain->NodeHeight(R + 1, C + 1))) > 0.05;
+	};
+	// A true shoreline: land (in both data sets) within 3 m. Off the club the bed is a wide shallow flat; rocks and logs
+	// strewn over all of it read as debris on open water.
+	auto Shoreline = [&](const FVector2D& P)
+	{
+		for (const FVector2D& D : { FVector2D(3, 0), FVector2D(-3, 0), FVector2D(0, 3), FVector2D(0, -3) })
+		{
+			if (Terrain->HeightAt(P.X + D.X, P.Y + D.Y) > 0.3 && GridLand(P + D)) return true;
+		}
+		return false;
+	};
+	constexpr double Cell = 1.5;
+	const bool bDebug = FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugShore"));
+	for (double CX = Area.Min.X; CX < Area.Max.X; CX += Cell)
+	{
+		for (double CY = Area.Min.Y; CY < Area.Max.Y; CY += Cell)
+		{
+			const uint32 Seed = MHash(uint32(int32(CX * 7.0) * 73856093) ^ uint32(int32(CY * 7.0) * 19349663));
+			const float Jx = MRand(Seed + 1);
+			const float Jy = MRand(Seed + 2);
+			const FVector2D P(CX + Jx * Cell, CY + Jy * Cell);
+			const double H = Terrain->HeightAt(P.X, P.Y);
+			if (H < -0.35 || H > 2.5 || Blocked(P)) continue;
+			const float Pick = MRand(Seed + 3);
+			const float Yaw = MRand(Seed + 4) * 360.f;
+			const float Size = MRand(Seed + 5);
+			if (bDebug && H >= 0.25 && H < 1.2 && Pick < 0.45f && MRand(Seed + 9) < 0.02f)
+			{
+				UE_LOG(LogSailing, Display, TEXT("Shore grass at %.1f, %.1f: height %.2f"), P.X, P.Y, H);
+			}
+			if (H < 0.25)
+			{
+				// The waterline: rocks, half sunk; a drift log now and then.
+				if (!Shoreline(P)) continue;
+				if (Pick < 0.125f) Put(RockNames[int32(Size * 7.99f)], P, H - 0.25, Yaw, 0.35f + 0.5f * MRand(Seed + 6));
+				else if (Pick < 0.135f) Put(LogNames[int32(Size * 2.99f)], P, H - 0.05, Yaw, 0.8f + 0.4f * MRand(Seed + 6));
+			}
+			else if (!GridLand(P))
+			{
+				continue;
+			}
+			else if (H < 1.2)
+			{
+				// The bank: grass clumps thick near the water, a fern here and there, a stone on the low beach.
+				if (H < 0.6 && Pick > 0.96f && Shoreline(P)) Put(RockNames[int32(Size * 7.99f)], P, H - 0.2, Yaw, 0.3f + 0.35f * MRand(Seed + 6));
+				else if (Pick < 0.45f) Put(GrassNames[int32(Size * 8.99f)], P, H - 0.02, Yaw, 1.0f + 1.2f * MRand(Seed + 6));
+				else if (Pick < 0.47f) Put(FernNames[int32(Size * 3.99f)], P, H - 0.02, Yaw, 0.9f + 0.5f * MRand(Seed + 6));
+			}
+			else if (Pick < 0.12f)
+			{
+				Put(GrassNames[int32(Size * 8.99f)], P, H - 0.02, Yaw, 0.8f + 0.8f * MRand(Seed + 6));
+			}
+		}
+	}
+	// The lawn by the clubhouse: three picnic tables toward the water and benches along the walkway's landward side.
+	for (const FMarinaBuilding& B : Marina.Buildings)
+	{
+		if (B.Kind != TEXT("clubhouse")) continue;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			const FVector2D P = B.Center + FVector2D(0.5 * B.Size.X + 6.0 + 3.5 * K, -4.0 + 4.0 * K).GetRotated(B.HeadingDeg);
+			if (!Blocked(P)) Put(TEXT("SM_Shore_WoodenPicnicTable"), P, Terrain->HeightAt(P.X, P.Y), B.HeadingDeg + 10.f * K, 1.f);
+		}
+	}
+	for (const FMarinaLine& L : Marina.Walkways)
+	{
+		for (int32 I = 1; I < L.Points.Num(); ++I)
+		{
+			const FVector2D A = L.Points[I - 1], Bp = L.Points[I];
+			const FVector2D Dir = (Bp - A).GetSafeNormal(), Side(-Dir.Y, Dir.X);
+			const float Len = float(FVector2D::Distance(A, Bp));
+			for (float T = 10.f; T < Len; T += 20.f)
+			{
+				// whichever side of the walkway is the higher ground
+				const FVector2D Land = Terrain->HeightAt((A + Dir * T + Side * 3.0).X, (A + Dir * T + Side * 3.0).Y) >
+					Terrain->HeightAt((A + Dir * T - Side * 3.0).X, (A + Dir * T - Side * 3.0).Y) ? Side : -Side;
+				const FVector2D P = A + Dir * T + Land * (0.5 * L.Width + 1.2);
+				const float Facing = float(FMath::RadiansToDegrees(FMath::Atan2(-Land.Y, -Land.X)));
+				Put(TEXT("SM_Shore_PaintedWoodenBench"), P, Terrain->HeightAt(P.X, P.Y), Facing - 90.f, 1.f);
+			}
+		}
+	}
+	// Lifebuoys on the fixed piers' rails, every 25 m, facing out.
+	for (const FMarinaLine& L : Marina.Piers)
+	{
+		for (int32 I = 1; I < L.Points.Num(); ++I)
+		{
+			const FVector2D A = L.Points[I - 1], Bp = L.Points[I];
+			const FVector2D Dir = (Bp - A).GetSafeNormal(), Side(-Dir.Y, Dir.X);
+			const float Len = float(FVector2D::Distance(A, Bp));
+			for (float T = 6.f; T < Len; T += 25.f)
+			{
+				const FVector2D P = A + Dir * T + Side * (0.5 * L.Width + 0.02);
+				Put(TEXT("SM_Shore_Lifebuoy"), P, L.Height + 0.55, float(FMath::RadiansToDegrees(FMath::Atan2(Side.Y, Side.X))), 1.f);
+			}
+		}
+	}
+	int32 Instances = 0;
+	for (TPair<FString, TArray<FTransform>>& KV : X)
+	{
+		UStaticMesh* Mesh = Load(*KV.Key);
+		if (!Mesh || KV.Value.Num() == 0) continue;
+		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+		C->SetMobility(EComponentMobility::Static);
+		C->SetupAttachment(RootComponent);
+		C->SetStaticMesh(Mesh);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		// grass and ferns to 150 m, the rest to 600 m
+		C->SetCullDistances(0, KV.Key.Contains(TEXT("Grass")) || KV.Key.Contains(TEXT("Fern")) ? 15000 : 60000);
+		C->RegisterComponent();
+		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), KV.Value), false, true);
+		Shore.Add(C);
+		Instances += KV.Value.Num();
+	}
+	UE_LOG(LogSailing, Display, TEXT("Marina shore: %d pieces in %d meshes (lake level offset %.2f m)"), Instances, Shore.Num(), Terrain->GetLevelBelowPool());
+}
+
+const TCHAR* AMarinaActor::DockKitName(EDockKit Kit)
+{
+	static const TCHAR* Names[] = { TEXT("Cleat"), TEXT("Pedestal"), TEXT("Box"), TEXT("PilingCap"), TEXT("Hoop"), TEXT("Ladder"), TEXT("Float"), TEXT("Extinguisher") };
+	return Names[int32(Kit)];
+}
+
+static UStaticMesh* LoadDockKit(AMarinaActor::EDockKit Kit)
+{
+	const TCHAR* Name = AMarinaActor::DockKitName(Kit);
+	return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Docks/SM_Dock_%s.SM_Dock_%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+}
+
+bool AMarinaActor::HasDockKit()
+{
+	for (int32 K = 0; K < int32(EDockKit::Count); ++K)
+	{
+		if (!LoadDockKit(EDockKit(K))) return false;
+	}
+	return true;
+}
+
+void AMarinaActor::DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(const FString&)> Generated, TArray<FTransform> (&Out)[int32(EDockKit::Count)])
+{
+	// The same points BuildGeometry's kit boxes stand on (club docks pass 2: Tools/blender/build_docks.py's meshes stand
+	// there instead). Map frame in cm; each mesh's X along its finger, or out from the dock's edge.
+	const float Deck = FloatingDeckHeight;
+	auto Add = [&](EDockKit Kit, const FVector2D& P, float Z, const FVector2D& Facing, const FVector& Scale = FVector::OneVector)
+	{
+		const float Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(Facing.Y, Facing.X)));
+		Out[int32(Kit)].Add(FTransform(FRotator(0.f, Yaw, 0.f), FVector(P.X, P.Y, Z) * 100.0, Scale));
+	};
+	for (const FMarinaRow& R : Marina.Rows)
+	{
+		if (!Generated(R.Id)) continue;
+		const FVector2D A = R.Points[0], B = R.Points.Last();
+		const FVector2D Dir = (B - A).GetSafeNormal(), Left(-Dir.Y, Dir.X);
+		const float Length = float(FVector2D::Distance(A, B));
+		// Float modules under the deck: 2.4 m with gaps, their tops under the deck's frame.
+		for (float F0 = 0.3f; F0 + 0.5f < Length - 0.3f; F0 += 2.65f)
+		{
+			const float F1 = FMath::Min(F0 + 2.4f, Length - 0.3f);
+			Add(EDockKit::Float, A + Dir * (0.5f * (F0 + F1)), Deck - 0.12f, Dir, FVector(F1 - F0, R.Width * 0.85f, Deck - 0.12f + 0.35f));
+		}
+		// The row pilings' caps and hoops (BuildGeometry: every 9 m, alternating sides, 0.2 m off the deck's edge).
+		for (float X = 1.0f; X < Length; X += 9.f)
+		{
+			const double Side = int32(X / 9.f) % 2 ? 1.0 : -1.0;
+			const FVector2D P = A + Dir * X + Left * (Side * (0.5 * R.Width + 0.2));
+			Add(EDockKit::PilingCap, P, 1.9f, Dir);
+			Add(EDockKit::Hoop, P, Deck - 0.06f, Left * Side);
+		}
+		// A swim ladder off the row's end.
+		Add(EDockKit::Ladder, B, Deck, Dir);
+	}
+	for (const FMarinaSlip& Slip : Marina.Slips)
+	{
+		const FMarinaRow& R = Marina.Rows[Slip.Row];
+		if (!Generated(R.Id)) continue;
+		const FVector2D Out2 = (Slip.FingerB - Slip.FingerA).GetSafeNormal();
+		const FVector2D Along(Out2.Y, -Out2.X);
+		const float FingerLength = float(FVector2D::Distance(Slip.FingerA, Slip.FingerB));
+		Add(EDockKit::Float, FMath::Lerp(Slip.FingerA + Out2 * 0.2, Slip.FingerB, 0.5f), Deck - 0.1f, Out2, FVector(FingerLength - 0.2f, 0.45f, Deck - 0.1f + 0.3f));
+		for (const float T : { 0.45f, 0.95f })
+		{
+			Add(EDockKit::Cleat, FMath::Lerp(Slip.FingerA, Slip.FingerB, T), Deck - 0.02f, Out2);
+		}
+		Add(EDockKit::PilingCap, Slip.FingerB + Along * 0.45, 1.5f, Out2);
+		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
+		if (MRand(Seed) < 0.35f) Add(EDockKit::Box, Slip.FingerA + Out2 * 0.6, Deck - 0.02f, Out2);
+		if (Slip.Index % 2 == 0)
+		{
+			Add(EDockKit::Pedestal, Slip.FingerA - Out2 * 0.4, Deck, Out2);
+			// A fire extinguisher cabinet by every other pedestal, at the row deck's edge.
+			if (Slip.Index % 4 == 0) Add(EDockKit::Extinguisher, Slip.FingerA - Out2 * 0.4 + Along * 0.7, Deck, Out2);
+		}
+	}
+}
+
+void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& G,
+	bool bDockKitMeshes)
 {
 	const float Deck = FloatingDeckHeight;
 	// Club docks (#405 part 2): the floating docks' hardware, placed from the same rows and slips (the layout and the
@@ -512,7 +798,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			const float S1 = FMath::Min(S0 + 6.f, Length);
 			G[EKitLook::Decking].Span(A + Dir * (S0 + 0.015f), A + Dir * (S1 - 0.015f), R.Width, Deck - 0.12f, Deck);
 		}
-		for (float F0 = 0.3f; F0 + 0.5f < Length - 0.3f; F0 += 2.65f)
+		for (float F0 = 0.3f; !bDockKitMeshes && F0 + 0.5f < Length - 0.3f; F0 += 2.65f)
 		{
 			const float F1 = FMath::Min(F0 + 2.4f, Length - 0.3f);
 			G[EKitLook::Floats].Span(A + Dir * F0, A + Dir * F1, R.Width * 0.85f, -0.35f, Deck - 0.12f);
@@ -530,6 +816,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 				G[EKitLook::Trim].Box(FVector(P.X, P.Y, Deck + 0.47f), FVector(0.025f, 0.025f, 0.43f), 0.f);
 			}
 		}
+		if (!bDockKitMeshes)
 		{
 			const FVector2D L0 = B - Left * 0.22, L1 = B + Left * 0.22;
 			const FVector2D Off = Dir * 0.05;
@@ -547,8 +834,11 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			const FVector2D Edge = A + Dir * X + Left * ((int32(X / 9.f) % 2 ? 1.0 : -1.0) * (0.5 * R.Width));
 			const FVector2D P = A + Dir * X + Left * ((int32(X / 9.f) % 2 ? 1.0 : -1.0) * (0.5 * R.Width + 0.2));
 			G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -3.f), 0.17f, 4.9f);
-			PilingCap(P, 0.17f, 1.9f);
-			PilingHoop(P, 0.17f, Edge);
+			if (!bDockKitMeshes)
+			{
+				PilingCap(P, 0.17f, 1.9f);
+				PilingHoop(P, 0.17f, Edge);
+			}
 		}
 		for (float X = 4.0f; X < Length; X += 16.f)
 		{
@@ -565,22 +855,25 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		const FVector2D Out = (Slip.FingerB - Slip.FingerA).GetSafeNormal();
 		const FVector2D Along(Out.Y, -Out.X);
 		G[EKitLook::Decking].Span(Slip.FingerA, Slip.FingerB, 0.6f, Deck - 0.1f, Deck - 0.02f);
-		G[EKitLook::Floats].Span(Slip.FingerA + Out * 0.2, Slip.FingerB, 0.45f, -0.3f, Deck - 0.1f);
+		if (!bDockKitMeshes) G[EKitLook::Floats].Span(Slip.FingerA + Out * 0.2, Slip.FingerB, 0.45f, -0.3f, Deck - 0.1f);
 		RubStrips(Slip.FingerA + Out * 0.1, Slip.FingerB, 0.6f, Deck - 0.02f);
 		// Cleats at the finger's end and middle (a cast base and two horns along the finger); a piling at its tip.
 		const float FingerYaw = float(FMath::RadiansToDegrees(FMath::Atan2(Out.Y, Out.X)));
-		for (const float T : { 0.45f, 0.95f })
+		if (!bDockKitMeshes)
 		{
-			const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
-			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.01f), FVector(0.06f, 0.035f, 0.03f), FingerYaw);
-			G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.065f), FVector(0.16f, 0.022f, 0.016f), FingerYaw);
+			for (const float T : { 0.45f, 0.95f })
+			{
+				const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
+				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.01f), FVector(0.06f, 0.035f, 0.03f), FingerYaw);
+				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.065f), FVector(0.16f, 0.022f, 0.016f), FingerYaw);
+			}
 		}
 		const FVector2D Tip(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45);
 		G[EKitLook::Pilings].Cylinder(FVector(Tip.X, Tip.Y, -3.f), 0.15f, 4.5f);
-		PilingCap(Tip, 0.15f, 1.5f);
+		if (!bDockKitMeshes) PilingCap(Tip, 0.15f, 1.5f);
 		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
 		const FVector2D Root = Slip.FingerA + Out * 0.6;
-		if (MRand(Seed) < 0.35f)
+		if (!bDockKitMeshes && MRand(Seed) < 0.35f)
 		{
 			// A white dock box at the finger's root.
 			G[EKitLook::White].Box(FVector(Root.X, Root.Y, Deck + 0.3f), FVector(0.6f, 0.28f, 0.3f), FingerYaw);
@@ -589,7 +882,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			const FVector2D Hasp = Root + Along * 0.3;
 			G[EKitLook::Metal].Box(FVector(Hasp.X, Hasp.Y, Deck + 0.55f), FVector(0.03f, 0.012f, 0.04f), FingerYaw);
 		}
-		if (Slip.Index % 2 == 0)
+		if (!bDockKitMeshes && Slip.Index % 2 == 0)
 		{
 			// A power pedestal between two slips: the post, the meter and outlet face toward the finger, the lamp head.
 			const FVector2D P = Slip.FingerA - Out * 0.4;

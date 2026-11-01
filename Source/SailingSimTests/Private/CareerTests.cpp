@@ -462,8 +462,9 @@ bool FSailingCareerPlaythroughTest::RunTest(const FString&)
 
 /**
  * Easy mode's honest grading (docs/easy-mode/README.md): a run on Easy earns at most career.json's easy_max_medal
- * (bronze), the lesson remembers that its medal was an Easy one until the same medal or better is sailed on Realistic,
- * the save keeps it, and the checkride (silver) cannot be reached on Easy alone.
+ * (silver since #402, docs/first-launch/: enough for the checkride; gold needs Realistic), the lesson remembers that its
+ * medal was an Easy one until the same medal or better is sailed on Realistic, the save keeps it, and a player who never
+ * leaves Easy can still certify.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerEasyMedalTest, "SailingSim.Career.EasyMedal", CareerTestsLocal::CareerFlags)
 bool FSailingCareerEasyMedalTest::RunTest(const FString&)
@@ -471,14 +472,14 @@ bool FSailingCareerEasyMedalTest::RunTest(const FString&)
 	using namespace CareerTestsLocal;
 	const FCareerContent* C = Load(*this);
 	if (!C) return false;
-	TestEqual(TEXT("career.json caps Easy at bronze"), FCareerContent::MedalName(C->EasyMaxMedal), FString(TEXT("Bronze")));
+	TestEqual(TEXT("career.json caps Easy at silver"), FCareerContent::MedalName(C->EasyMaxMedal), FString(TEXT("Silver")));
 	const FCareerLesson* Dock = C->Lesson(TEXT("day-sailor.leave-the-dock"));
 	if (!TestNotNull(TEXT("Leave the dock"), Dock)) return false;
 	const ESailingDrill D = ESailingDrill::LeaveTheDock;
 	auto Easy = [](FCareerRun R) { R.bEasy = true; return R; };
-	// The grade alone: a gold run is bronze on Easy; a run that misses bronze earns nothing either way.
+	// The grade alone: a gold run is silver on Easy; a run that misses bronze earns nothing either way.
 	TestEqual(TEXT("A gold run on Realistic: gold"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Run(D, TEXT("clean"), 170.0), C->EasyMaxMedal)), FString(TEXT("Gold")));
-	TestEqual(TEXT("The same run on Easy: bronze"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Easy(Run(D, TEXT("clean"), 170.0)), C->EasyMaxMedal)), FString(TEXT("Bronze")));
+	TestEqual(TEXT("The same run on Easy: silver"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Easy(Run(D, TEXT("clean"), 170.0)), C->EasyMaxMedal)), FString(TEXT("Silver")));
 	FCareerRun Unfinished = Easy(Run(D, FString(), 60.0));
 	Unfinished.bComplete = false;
 	TestEqual(TEXT("Unfinished on Easy: none"), FCareerContent::MedalName(FCareerContent::Grade(*Dock, Unfinished, C->EasyMaxMedal)), FString(TEXT("No medal")));
@@ -490,7 +491,7 @@ bool FSailingCareerEasyMedalTest::RunTest(const FString&)
 	FSailSave Save;
 	FCareerProgress Career(*C, Save.Progress);
 	FCareerProgress::FAward A = Career.RecordRun(Easy(Run(D, TEXT("clean"), 170.0)));
-	TestTrue(TEXT("Easy gold run: bronze, capped, an Easy best"), A.Medal == ECareerMedal::Bronze && A.bEasyCapped && A.bBestEasy && A.bNewBest);
+	TestTrue(TEXT("Easy gold run: silver, capped, an Easy best"), A.Medal == ECareerMedal::Silver && A.bEasyCapped && A.bBestEasy && A.bNewBest);
 	TestTrue(TEXT("... the lesson says Easy"), Career.IsLessonMedalEasy(Dock->Id));
 	A = Career.RecordRun(Easy(Run(D, TEXT("contact"), 150.0, 1, 0, 2.0)));
 	TestTrue(TEXT("An Easy bronze run is not capped"), A.Medal == ECareerMedal::Bronze && !A.bEasyCapped);
@@ -502,13 +503,15 @@ bool FSailingCareerEasyMedalTest::RunTest(const FString&)
 		TestTrue(TEXT("... the Easy mark kept"), FCareerProgress(*C, Back.Progress).IsLessonMedalEasy(Dock->Id) && Text.Contains(TEXT("\"medalEasy\": true")));
 	}
 	A = Career.RecordRun(Run(D, TEXT("contact"), 150.0, 1, 0, 2.0));
-	TestTrue(TEXT("The same bronze on Realistic clears the mark"), A.Medal == ECareerMedal::Bronze && !A.bBestEasy && !Career.IsLessonMedalEasy(Dock->Id));
+	TestTrue(TEXT("A lower medal on Realistic keeps the Easy silver's mark"), A.Medal == ECareerMedal::Bronze && Career.IsLessonMedalEasy(Dock->Id));
+	A = Career.RecordRun(Run(D, TEXT("clean"), 250.0));
+	TestTrue(TEXT("The same silver on Realistic clears the mark"), A.Medal == ECareerMedal::Silver && !A.bBestEasy && !Career.IsLessonMedalEasy(Dock->Id));
 	A = Career.RecordRun(Run(D, TEXT("clean"), 170.0));
 	TestTrue(TEXT("Gold on Realistic: gold, not Easy"), A.Best == ECareerMedal::Gold && !Career.IsLessonMedalEasy(Dock->Id));
 	A = Career.RecordRun(Easy(Run(D, TEXT("clean"), 120.0)));
 	TestTrue(TEXT("A later Easy run keeps the Realistic gold"), A.Best == ECareerMedal::Gold && !A.bBestEasy && !Career.IsLessonMedalEasy(Dock->Id));
 
-	// Every Day Sailor lesson at gold pace on Easy: all bronze, so the checkride (silver) is not ready.
+	// Every Day Sailor lesson at gold pace on Easy: all silver, so the checkride (silver) is ready without Realistic.
 	const FCareerTier& Day = *C->Tier(TEXT("day-sailor"));
 	FSailSave EasySave;
 	FCareerProgress EasyCareer(*C, EasySave.Progress);
@@ -517,11 +520,11 @@ bool FSailingCareerEasyMedalTest::RunTest(const FString&)
 		EasyCareer.RecordRun(Easy(Run(L.Drill, GoodOutcome(L.Drill), 30.0)));
 		EasyCareer.RecordLessonQuiz(L.Id, 3, 3);
 	}
-	TestEqual(TEXT("Easy alone: every lesson bronze"), EasyCareer.LessonsAtLeast(Day, ECareerMedal::Bronze), Day.Lessons.Num());
-	TestEqual(TEXT("... none at silver"), EasyCareer.LessonsAtLeast(Day, ECareerMedal::Silver), 0);
-	TestTrue(TEXT("The checkride asks for more than Easy earns"), Day.Checkride.MinMedal > C->EasyMaxMedal);
-	TestFalse(TEXT("... so it is not ready"), EasyCareer.IsCheckrideReady(Day.Id));
-	TestFalse(TEXT("... and a perfect written quiz awards nothing"), EasyCareer.RecordCheckrideQuiz(Day.Id, 12, 12, FDateTime(2026, 10, 18)));
+	TestEqual(TEXT("Easy alone: every lesson silver"), EasyCareer.LessonsAtLeast(Day, ECareerMedal::Silver), Day.Lessons.Num());
+	TestEqual(TEXT("... none at gold"), EasyCareer.LessonsAtLeast(Day, ECareerMedal::Gold), 0);
+	TestTrue(TEXT("The checkride asks for no more than Easy earns"), Day.Checkride.MinMedal <= C->EasyMaxMedal);
+	TestTrue(TEXT("... so it is ready"), EasyCareer.IsCheckrideReady(Day.Id));
+	TestTrue(TEXT("... and a passed written quiz awards the certificate"), EasyCareer.RecordCheckrideQuiz(Day.Id, 12, 12, FDateTime(2026, 10, 18)));
 	return true;
 }
 
@@ -586,5 +589,44 @@ bool FSailingCareerFreeSailTest::RunTest(const FString&)
 	TestFalse(TEXT("A Career session puts the settings in Career"), S->bFreeSail || SailCareer::IsFreeSail());
 	S->bFreeSail = bFree0;
 	S->Save();
+	return true;
+}
+
+/**
+ * #403 (docs/career/README.md, "Lessons as jobs"): every ready tier's lesson reads as a small job: a client, a brief, the
+ * objectives the player sees, stars rising with the medal and a reward. Data only: the save gains no field.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerJobsTest, "SailingSim.Career.Jobs", CareerTestsLocal::CareerFlags)
+bool FSailingCareerJobsTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	const FCareerContent* C = Load(*this);
+	if (!C) return false;
+	int32 Jobs = 0;
+	for (const FCareerTier& T : C->Tiers)
+	{
+		if (!T.IsReady()) continue;
+		for (const FCareerLesson& L : T.Lessons)
+		{
+			const FCareerJob& J = L.Job;
+			TestTrue(*(L.Id + TEXT(": a job")), J.IsSet());
+			TestTrue(*(L.Id + TEXT(": a client and a brief")), !J.Client.IsEmpty() && !J.Brief.IsEmpty());
+			TestTrue(*(L.Id + TEXT(": objectives")), J.Objectives.Num() > 0);
+			TestTrue(*(L.Id + TEXT(": stars rise with the medal")), J.Stars[0] >= 1 && J.Stars[0] < J.Stars[1] && J.Stars[1] < J.Stars[2]);
+			TestTrue(*(L.Id + TEXT(": it pays")), J.Money > 0 && J.Reputation > 0);
+			++Jobs;
+		}
+	}
+	TestTrue(TEXT("Day Sailor's and Club Racer's lessons are all jobs"), Jobs >= 10);
+	const FCareerLesson* Dock = C->Lesson(TEXT("day-sailor.leave-the-dock"));
+	if (TestNotNull(TEXT("Leave the dock"), Dock))
+		TestEqual(TEXT("... its objectives, as written"), Dock->Job.Objectives.Num(), 4);
+	// A lesson without a job loads as one with no job (older content, stub tiers).
+	FCareerContent NoJob;
+	TestTrue(TEXT("Loads"), NoJob.LoadText(TEXT(R"({"schema_version":1,"tiers":[{"id":"t","name":"T","status":"stub","world":"ray-hubbard","lessons":[]}]})")));
+	FCareerJob Empty;
+	TestFalse(TEXT("An unset job is not a job"), Empty.IsSet());
+	// The save gains no field from jobs.
+	TestFalse(TEXT("No money or reputation in the save"), FSailSave().ToJson().Contains(TEXT("reputation")));
 	return true;
 }

@@ -3,7 +3,7 @@
   "about": "The learn-to-sail career (docs/career/README.md). Edited by hand; check with python3 Tools/career/validate.py. Ids are stable: the save keeps them.",
   "school": "Blue Heron Sailing School",
   "medals": ["bronze", "silver", "gold"],
-  "easy_max_medal": "bronze",
+  "easy_max_medal": "silver",
   "always_open": {
     "tiers": ["day-sailor"],
     "worlds": ["ray-hubbard"],
@@ -24,7 +24,14 @@
           "title": "Leave the dock",
           "drill": "LeaveTheDock",
           "quiz": "LeaveTheDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Blue Heron Sailing School",
+            "brief": "Take the club's J/22 out of her slip and clear the marina for the afternoon's class.",
+            "objectives": ["Plan your way out from the wind", "Cast off and get the sails up", "Sail out without touching a dock or a boat", "Get 100 m clear of the marina"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 40, "reputation": 2 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["clean"], "max_seconds": 300, "max_infractions": 0 },
@@ -36,7 +43,14 @@
           "title": "Sail a triangle",
           "drill": "SailATriangle",
           "quiz": "SailATriangle",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Rush Creek race committee",
+            "brief": "Sail the committee's new course around its three marks so they can check the layout before Saturday.",
+            "objectives": ["Beat up to the windward mark", "Reach across to the wing mark", "Reach back to the start"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 60, "reputation": 3 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "max_seconds": 480, "max_collisions": 0, "max_infractions": 0 },
@@ -48,7 +62,14 @@
           "title": "Heave to",
           "drill": "HeaveTo",
           "quiz": "HeaveTo",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Blue Heron Sailing School",
+            "brief": "A student needs a break mid-lesson: park the boat under sail and hold her there.",
+            "objectives": ["Sail close-hauled", "Back the jib", "Ease the main", "Tiller to leeward", "Stay hove to for 20 seconds"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 40, "reputation": 2 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "max_seconds": 180, "max_infractions": 0 },
@@ -60,7 +81,14 @@
           "title": "Crew overboard: figure-eight",
           "drill": "CrewOverboardFigureEight",
           "quiz": "CrewOverboardFigureEight",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Lake Ray Hubbard safety day",
+            "brief": "The club's safety day: get back to the dummy in the water with the figure-eight and stop beside it.",
+            "objectives": ["Call it and keep pointing", "Reach away about five boat lengths", "Tack and come back below it", "Stop alongside at walking pace"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 70, "reputation": 4 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["proper"], "max_seconds": 300, "max_infractions": 0 },
@@ -72,7 +100,14 @@
           "title": "Crew overboard: quick-stop",
           "drill": "CrewOverboardQuickStop",
           "quiz": "CrewOverboardQuickStop",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Lake Ray Hubbard safety day",
+            "brief": "Second drill of the safety day: stop at once and circle back to the dummy with the quick-stop.",
+            "objectives": ["Call it and head up at once", "Tack, keep turning, circle downwind of it", "Stop alongside"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 70, "reputation": 4 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["proper"], "max_seconds": 180, "max_infractions": 0 },
@@ -84,7 +119,14 @@
           "title": "Return and dock",
           "drill": "ReturnAndDock",
           "quiz": "ReturnAndDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Blue Heron Sailing School",
+            "brief": "Bring the J/22 home to her slip at the end of the day without a scratch.",
+            "objectives": ["Come in on a close reach or into the wind", "Luff the sails well before the dock", "Come alongside under 1 knot and get the lines on"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 50, "reputation": 3 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["gentle"], "max_seconds": 360, "max_infractions": 0 },
@@ -122,7 +164,14 @@
           "title": "Sunfish: leave the dock",
           "drill": "LeaveTheDock",
           "quiz": "LeaveTheDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Rush Creek junior program",
+            "brief": "Rig the club's Sunfish and get her away from the dinghy dock on your own.",
+            "objectives": ["Plan your way out from the wind", "Cast off", "Sail out without touching anything", "Get 100 m clear"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 40, "reputation": 2 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["clean"], "max_seconds": 300, "max_infractions": 0 },
@@ -134,7 +183,14 @@
           "title": "Sunfish: sail the course",
           "drill": "SailATriangle",
           "quiz": "SailATriangle",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Rush Creek race committee",
+            "brief": "Sail the dinghy course before the juniors' race so the committee can time a lap.",
+            "objectives": ["Beat up to the windward mark", "Reach across to the wing mark", "Reach back to the start"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 60, "reputation": 3 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "max_seconds": 540, "max_collisions": 0, "max_infractions": 0 },
@@ -146,7 +202,14 @@
           "title": "Sunfish: quick-stop for a swimmer",
           "drill": "CrewOverboardQuickStop",
           "quiz": "CrewOverboardQuickStop",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Rush Creek junior program",
+            "brief": "A swimmer is in the water by the course: get back to them and stop alongside.",
+            "objectives": ["Head up at once", "Circle back below them", "Stop alongside"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 70, "reputation": 4 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["proper"], "max_seconds": 180, "max_infractions": 0 },
@@ -158,7 +221,14 @@
           "title": "Sunfish: return and dock",
           "drill": "ReturnAndDock",
           "quiz": "ReturnAndDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
+          "job": {
+            "client": "Rush Creek junior program",
+            "brief": "Bring the Sunfish back to the dinghy dock and tie her up.",
+            "objectives": ["Come in heading up toward the wind", "Let the sheet go well before the dock", "Come alongside gently and get the line on"],
+            "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+            "reward": { "money": 50, "reputation": 3 }
+          },
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["gentle"], "max_seconds": 360, "max_infractions": 0 },

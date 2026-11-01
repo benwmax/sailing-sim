@@ -176,6 +176,23 @@ bool FCareerContent::LoadText(const FString& Json, FString* OutError)
 					LO->TryGetStringField(TEXT("drill"), L.DrillId);
 					LO->TryGetStringField(TEXT("quiz"), L.QuizId);
 					LO->TryGetNumberField(TEXT("quiz_pass"), L.QuizPass);
+					LO->TryGetStringField(TEXT("conditions"), L.Conditions);
+					LO->TryGetNumberField(TEXT("traffic"), L.Traffic);
+					if (const TSharedPtr<FJsonObject> J = Child(*LO, TEXT("job")))
+					{
+						J->TryGetStringField(TEXT("client"), L.Job.Client);
+						J->TryGetStringField(TEXT("brief"), L.Job.Brief);
+						L.Job.Objectives = Strings(*J, TEXT("objectives"));
+						if (const TSharedPtr<FJsonObject> St = Child(*J, TEXT("stars")))
+						{
+							for (int32 I = 0; I < 3; ++I) St->TryGetNumberField(MedalIds[I + 1], L.Job.Stars[I]);
+						}
+						if (const TSharedPtr<FJsonObject> Rw = Child(*J, TEXT("reward")))
+						{
+							Rw->TryGetNumberField(TEXT("money"), L.Job.Money);
+							Rw->TryGetNumberField(TEXT("reputation"), L.Job.Reputation);
+						}
+					}
 					L.Drill = FLearningContent::DrillFromId(L.DrillId);
 					L.QuizDrill = FLearningContent::DrillFromId(L.QuizId);
 					if (const TSharedPtr<FJsonObject> M = Child(*LO, TEXT("medals")))

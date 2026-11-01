@@ -33,6 +33,8 @@ questions = json.load(open(os.path.join(learning, "quiz-bank.json"), encoding="u
 
 c = json.load(open(os.path.join(ROOT, "Content", "Career", "career.json"), encoding="utf-8"))
 check(c.get("schema_version") == 1, "schema_version must be 1")
+# The session presets a lesson may name (SailSession.cpp, USailSessionSubsystem::Presets).
+PRESETS = {"Lesson", "July", "Glassy", "Norther", "SeaBreeze", "Today"}
 check(c.get("medals") == MEDALS, f"medals must be {MEDALS}")
 check(c.get("easy_max_medal", "gold") in MEDALS, f"easy_max_medal must be one of {MEDALS}")
 tiers = c.get("tiers", [])
@@ -82,6 +84,26 @@ for t in tiers:
         q = briefings.get(l.get("quiz"))
         check(q is not None and q.get("quiz_after", 0) > 0, f"{lid}: quiz {l.get('quiz')} has no quiz in Content/Learning")
         check(0.0 < l.get("quiz_pass", 0) <= 1.0, f"{lid}: quiz_pass must be in (0, 1]")
+        # #402: a lesson sails in its own conditions (a USailSessionSubsystem::Presets id) with its own traffic (0 off, 1
+        # light, 2 busy); free choice stays in Free Sail.
+        check(l.get("conditions", "Lesson") in PRESETS, f"{lid}: conditions must be one of {sorted(PRESETS)}")
+        check(l.get("traffic", 0) in (0, 1, 2), f"{lid}: traffic is 0 (off), 1 (light) or 2 (busy)")
+        # #403: the lesson as a job (client, brief, objectives, stars per medal, reward). Every ready tier's lessons have one.
+        job = l.get("job")
+        if t.get("status") == "ready": check(isinstance(job, dict), f"{lid}: a ready tier's lesson needs a job")
+        if isinstance(job, dict):
+            check(set(job) <= {"client", "brief", "objectives", "stars", "reward"}, f"{lid}.job: client, brief, objectives, stars, reward only")
+            for f in ("client", "brief"):
+                check(isinstance(job.get(f), str) and job[f].strip(), f"{lid}.job: missing {f}")
+            check("ASA" not in job.get("brief", "") + job.get("client", ""), f"{lid}.job: ASA belongs in the learning text only")
+            obj = job.get("objectives")
+            check(isinstance(obj, list) and obj and all(isinstance(o, str) and o.strip() for o in obj), f"{lid}.job: objectives is a non-empty list of lines")
+            st = job.get("stars", {})
+            check(isinstance(st, dict) and list(st.keys()) == MEDALS and all(isinstance(st[m], int) for m in MEDALS)
+                  and st["bronze"] >= 1 and st["bronze"] < st["silver"] < st["gold"], f"{lid}.job: stars must rise bronze < silver < gold, from 1")
+            rw = job.get("reward", {})
+            check(isinstance(rw, dict) and set(rw) <= {"money", "reputation"} and all(isinstance(rw.get(k, 0), int) and rw.get(k, 0) >= 0 for k in ("money", "reputation")),
+                  f"{lid}.job.reward: money and reputation, whole numbers, not negative")
         outcomes = set(b["debrief"].keys()) if b else set()
         m = l.get("medals", {})
         check(list(m.keys()) == MEDALS, f"{lid}: medals must be {MEDALS} in that order")

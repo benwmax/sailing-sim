@@ -44,6 +44,18 @@ struct FCareerMedalRule
 	bool Holds(const FCareerRun& Run) const;
 };
 
+/** #403: a lesson as a small job (docs/career/README.md, "Lessons as jobs"): who it is for, what they want, the
+ *  objectives the player sees, the stars each medal is worth and what the job pays. Data only for now: no save field
+ *  holds money or reputation yet (a missing field reads as its default, docs/save). */
+struct FCareerJob
+{
+	FString Client, Brief;
+	TArray<FString> Objectives;
+	int32 Stars[3] = { 1, 2, 3 };    // bronze, silver, gold
+	int32 Money = 0, Reputation = 0; // the reward for the job's first medal
+	bool IsSet() const { return !Client.IsEmpty() || !Brief.IsEmpty(); }
+};
+
 struct FCareerLesson
 {
 	FString Id, Title, TierId;
@@ -51,6 +63,9 @@ struct FCareerLesson
 	ESailingDrill Drill = ESailingDrill::None;
 	ESailingDrill QuizDrill = ESailingDrill::None;
 	double QuizPass = 0.66;          // share of the quiz right to close the lesson
+	FString Conditions = TEXT("Lesson"); // #402: the session preset the lesson sails in (USailSessionSubsystem::Presets)
+	int32 Traffic = 0;               // #402: 0 off, 1 light, 2 busy
+	FCareerJob Job;                  // #403
 	FCareerMedalRule Medals[3];      // bronze, silver, gold
 };
 
