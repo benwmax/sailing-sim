@@ -808,19 +808,19 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	const USailSessionSave* Save = USailSessionSave::Get();
 	TSharedRef<SVerticalBox> Menu = SNew(SVerticalBox);
 	TSharedPtr<SWidget> First;
-	auto Item = [&](const FString& Label, const FString& Sub, FSimpleDelegate Do)
+	auto Item = [&](const FString& Label, const FString& Sub, FSimpleDelegate Do, bool bEnabled = true)
 	{
 		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines (tighter still
 		// with the developers' tenth, Gallery).
 		const bool bTen = USailingSettings::DeveloperTools();
-		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).Padding(FMargin(18.f, bTen ? 1.f : 3.f))
+		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).IsEnabled(bEnabled).Padding(FMargin(18.f, bTen ? 1.f : 3.f))
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(Label, EType::MenuItem, Fg) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(Label, EType::MenuItem, bEnabled ? Fg : Muted) ]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SailUI::Text(Sub, EType::Small, Muted) ]
 		];
 		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
-		if (!First.IsValid()) First = B;
+		if (!First.IsValid() && bEnabled) First = B;
 	};
 	const SailCatalog::FWorld& LastWorld = SailCatalog::World(Save->Last.World);
 	if (Save->bHasLast)
@@ -848,7 +848,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	// card still sails any of them freely).
 	Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
-	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
+	// #430: runs aren't kept across launches; with none yet this session the item is greyed and says why (it used to close
+	// the menus and play nothing).
+	const ASailboatPawn* RunPawn = Pawn();
+	const bool bHasRun = RunPawn && RunPawn->HasLastRun();
+	Item(TEXT("Replays"), bHasRun ? TEXT("Watch your last run") : TEXT("Sail a run first"),
+		FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn(); P && P->HasLastRun()) { P->WatchLastRun(); Close(); } }), bHasRun);
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
 	// Inputs/gallery/brief.md section 6: developer tools (USailingSettings::bShowDeveloperTools: on while Bean playtests, an ini line turns it off).
 	if (USailingSettings::DeveloperTools()) Item(TEXT("Gallery"), TEXT("Developer · every asset"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Gallery); }));
