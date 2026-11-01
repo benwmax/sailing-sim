@@ -157,6 +157,8 @@
       "learning": "Small-boat handling in the Sunfish on Lake Ray Hubbard: a boat that answers every move of your weight and the sheet in your hand. The first course of the Blue Heron club's racing program; starts and racing rules in the J/22 come later.",
       "world": "ray-hubbard",
       "boats": ["Sunfish", "J22"],
+      "opens_after": { "lessons": ["day-sailor.leave-the-dock", "day-sailor.sail-a-triangle", "day-sailor.heave-to"], "medal": "bronze",
+        "reason": "Sail Day Sailor's first three lessons" },
       "notes": "These lessons are sailed in the Sunfish (the tier's first boat). J/22 racing lessons (starts, mark roundings, the rules) are still to come.",
       "lessons": [
         {

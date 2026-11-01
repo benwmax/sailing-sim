@@ -133,12 +133,26 @@ for t in tiers:
     for w in u.get("worlds", []): check(w in WORLDS, f"{tid} unlocks: unknown world {w}")
     for b in u.get("boats", []): check(b in BOATS, f"{tid} unlocks: unknown boat {b}")
 
-# Every tier reachable from the always-open ones through certificates.
+# #432: a tier may open on other tiers' lessons (opens_after) before any certificate.
+for t in tiers:
+    oa = t.get("opens_after")
+    if oa is None: continue
+    tid = t.get("id")
+    for l in oa.get("lessons", []): check(l in lesson_ids and not l.startswith(tid + "."), f"{tid} opens_after: {l} is not another tier's lesson")
+    check(oa.get("lessons"), f"{tid} opens_after: no lessons")
+    check(oa.get("medal") in MEDALS, f"{tid} opens_after: medal must be one of {MEDALS}")
+    check(oa.get("reason"), f"{tid} opens_after: a reason for the locked card")
+
+# Every tier reachable from the always-open ones through certificates (or, with opens_after, a reachable tier's lessons).
 reach, todo = set(ao.get("tiers", [])), list(ao.get("tiers", []))
 by_id = {t["id"]: t for t in tiers if "id" in t}
 while todo:
     for x in by_id.get(todo.pop(), {}).get("unlocks", {}).get("tiers", []):
         if x not in reach: reach.add(x); todo.append(x)
+    for t in tiers:
+        oa = t.get("opens_after")
+        if oa and t["id"] not in reach and all(l.split(".")[0] in reach for l in oa.get("lessons", [])):
+            reach.add(t["id"]); todo.append(t["id"])
 for t in tier_ids: check(t in reach, f"{t}: no certificate unlocks it")
 
 if errors:

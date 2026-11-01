@@ -2321,7 +2321,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		else if (!bOpen)
 		{
 			const FCareerTier* By = Content.Tiers.FindByPredicate([&T](const FCareerTier& X) { return X.Unlocks.Tiers.Contains(T.Id); });
-			State = By ? FString::Printf(TEXT("Earn the %s"), *By->CertificateName) : FString(TEXT("Locked"));
+			State = T.OpensAfter.IsSet() ? T.OpensAfter.Reason : (By ? FString::Printf(TEXT("Earn the %s"), *By->CertificateName) : FString(TEXT("Locked")));
 		}
 		else if (!T.IsReady()) State = TEXT("Lessons to come");
 		else State = FString::Printf(TEXT("%d of %d lessons · %d at silver"), Career.LessonsAtLeast(T, ECareerMedal::Bronze), T.Lessons.Num(), Career.LessonsAtLeast(T, ECareerMedal::Silver));
