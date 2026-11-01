@@ -882,6 +882,13 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			const FVector2D Hasp = Root + Along * 0.3;
 			G[EKitLook::Metal].Box(FVector(Hasp.X, Hasp.Y, Deck + 0.55f), FVector(0.03f, 0.012f, 0.04f), FingerYaw);
 		}
+		// Club docks pass 3: each pedestal's lamp is a night-light fixture (ANightLightsActor lights the nearest from its
+		// fixed pool, so more fixtures don't add lights, they only put them where the boat is).
+		if (Slip.Index % 2 == 0)
+		{
+			const FVector2D Lamp = Slip.FingerA - Out * 0.4;
+			G.Lights.Add({ FVector(Lamp.X, Lamp.Y, Deck + 0.98f), 1 });
+		}
 		if (!bDockKitMeshes && Slip.Index % 2 == 0)
 		{
 			// A power pedestal between two slips: the post, the meter and outlet face toward the finger, the lamp head.
@@ -911,6 +918,17 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 					const FVector2D P = A + Dir * X + Left * (Side * (0.5 * L.Width - 0.12));
 					G[EKitLook::Pilings].Cylinder(FVector(P.X, P.Y, -3.f), 0.13f, 3.f + L.Height);
 				}
+				// Club docks pass 3: the bent's pile cap, a timber across both piles under the deck.
+				const FVector2D C = A + Dir * X;
+				G[EKitLook::Pilings].Span(C - Left * (0.5 * L.Width), C + Left * (0.5 * L.Width), 0.2f, L.Height - 0.42f, L.Height - 0.15f);
+			}
+			// The stringers along both edges under the deck, and the rails' middle course.
+			for (const double Side : { -1.0, 1.0 })
+			{
+				const FVector2D O = Left * (Side * (0.5 * L.Width - 0.04));
+				G[EKitLook::Pilings].Span(A + O, B + O, 0.08f, L.Height - 0.38f, L.Height - 0.15f);
+				const FVector2D R = Left * (Side * (0.5 * L.Width - 0.05));
+				G[EKitLook::Trim].Span(A + R, B + R, 0.05f, L.Height + 0.48f, L.Height + 0.54f);
 			}
 			// Hand rails along fixed piers, on posts every 2 m.
 			for (float X = 0.f; X <= Len; X += 2.f)
@@ -929,6 +947,30 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 	};
 	for (const FMarinaLine& L : Marina.Walkways) Fixed(L);
 	for (const FMarinaLine& L : Marina.Piers) Fixed(L);
+	// Club docks pass 3: the launch ramp, a concrete slab 5 m wide beside the ramp pier, from the shore down into the
+	// water along the pier (its shore end is the pier's higher ground), grooved across for grip (the concrete pattern).
+	for (const FMarinaLine& L : Marina.Piers)
+	{
+		if (!Terrain || !L.Id.EndsWith(TEXT(".ramp")) || L.Points.Num() < 2 || !Generated(L.Id)) continue;
+		FVector2D Shore = L.Points[0], Sea = L.Points[1];
+		if (Terrain->HeightAt(Sea.X, Sea.Y) > Terrain->HeightAt(Shore.X, Shore.Y)) Swap(Shore, Sea);
+		const FVector2D Dir = (Sea - Shore).GetSafeNormal(), Side(-Dir.Y, Dir.X);
+		const FVector2D In = Shore + Side * (0.5 * L.Width + 1.0), Out2 = In + Side * 5.0;
+		const float Top = float(FMath::Max(Terrain->HeightAt(Shore.X, Shore.Y), 0.3)) + 0.05f;
+		constexpr float RampLength = 18.f, RampFoot = -1.4f;
+		const FVector2D InFar = In + Dir * RampLength, OutFar = Out2 + Dir * RampLength;
+		// (the slab faces up: A->D along the ramp, A->B across it)
+		G[EKitLook::Concrete].Quad(FVector(In.X, In.Y, Top), FVector(Out2.X, Out2.Y, Top), FVector(OutFar.X, OutFar.Y, RampFoot), FVector(InFar.X, InFar.Y, RampFoot),
+			{ 0.f, 0.f }, { 0.f, 5.f }, { RampLength, 5.f }, { RampLength, 0.f });
+		// its kerbs' outer faces along both sides (the pier side faces away from the slab, the far side out)
+		for (const double S : { -1.0, 1.0 })
+		{
+			const FVector2D E = S < 0 ? In : Out2, EFar = E + Dir * RampLength;
+			const FVector T0(E.X, E.Y, Top + 0.15f), T1(EFar.X, EFar.Y, RampFoot + 0.15f), B1(EFar.X, EFar.Y, RampFoot), B0(E.X, E.Y, Top);
+			if (S < 0) G[EKitLook::Concrete].Quad(T0, T1, B1, B0, { 0.f, 0.15f }, { RampLength, 0.15f }, { RampLength, 0.f }, { 0.f, 0.f });
+			else G[EKitLook::Concrete].Quad(T1, T0, B0, B1, { RampLength, 0.15f }, { 0.f, 0.15f }, { 0.f, 0.f }, { RampLength, 0.f });
+		}
+	}
 
 	// Buildings: the clubhouse (lap siding with windows, hip roof with an overhang) and the pool.
 	for (const FMarinaBuilding& B : Marina.Buildings)
