@@ -772,6 +772,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Credits: E = BuildCredits(); break;
 	case ESailScreen::Career: E = BuildCareer(); break;
 	case ESailScreen::Gallery: E = BuildGallery(); break;
+	case ESailScreen::FirstLaunch: E = BuildFirstLaunch(); break;
 	}
 	E.Screen = S;
 	return E;
@@ -2374,6 +2375,83 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
 		SailCareer::IsFreeSail() ? TEXT("Free Sail: lessons sail without medals") : TEXT("A lesson sails its drill; Free Sail on the title opens everything"));
+	return E;
+}
+
+// ---------------------------------------------------------------- first launch (#402)
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	USailingSettings* S = USailingSettings::Get();
+	if (FirstQuality < 0) FirstQuality = int32(S->Quality);   // pre-picked from the GPU, as the settings already are
+#if PLATFORM_WINDOWS
+	const TArray<FString> Tiers = { TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Ultra") };
+#else
+	const TArray<FString> Tiers = { TEXT("Low"), TEXT("Medium"), TEXT("High") };
+#endif
+	FirstQuality = FMath::Clamp(FirstQuality, 0, Tiers.Num() - 1);
+	static const TCHAR* const TierLines[] = { TEXT("Plain water and sky; the lightest on the machine."), TEXT("Sun-lit water, clouds and sails; the usual choice."),
+		TEXT("Everything on, reflections and light that bounces; wants a strong GPU."), TEXT("A desktop GPU's best: finer clouds, sharper image.") };
+	TSharedRef<SSailChoice> Quality = SNew(SSailChoice).Label(TEXT("Picture quality")).Options(Tiers)
+		.Index_Lambda([this]() { return FirstQuality; }).OnChanged_Lambda([this](int32 I) { FirstQuality = I; });
+	TSharedRef<SSailChoice> Sails = SNew(SSailChoice).Label(TEXT("How the boat sails")).Options({ TEXT("Easy"), TEXT("Realistic") })
+		.Index_Lambda([this]() { return bFirstEasy ? 0 : 1; }).OnChanged_Lambda([this](int32 I) { bFirstEasy = I == 0; });
+	auto Remember = [](bool bSkipped)
+	{
+		FSailSave::FFirstLaunch& F = SailSaveStore::Progress().FirstLaunch;
+		F.bSeen = true;
+		F.bSkipped = bSkipped;
+		F.At = FDateTime::UtcNow();
+	};
+	TSharedRef<SSailButton> Start = ActionButton(TEXT("Start your first job"), FSimpleDelegate::CreateLambda([this, Remember]()
+	{
+		USailingSettings* Set = USailingSettings::Get();
+		Set->Quality = ESailingQuality(FirstQuality);
+		Remember(false);
+		// The first job: the J/22 sailing off Rush Creek (the lake's open-water spot), the lesson day, no traffic.
+		Pending = USailSessionSubsystem::MakeDefault();
+		Pending.World = 0;
+		Pending.LaunchSpot = 1;
+		Pending.Boat = FMath::Max(FSailSave::BoatIndex(TEXT("J22")), 0);
+		Pending.Mode = ESailMode::Free;
+		Pending.Traffic = 0;
+		Pending.bEasy = bFirstEasy;
+		Pending.bLearningMode = true;
+		Pending.bFreeSail = false;
+		Pending.SceneId = TEXT("first-job");
+		CastOff();
+	}));
+	TSharedRef<SSailButton> Skip = ActionButton(TEXT("Skip to the menu"), FSimpleDelegate::CreateLambda([this, Remember]()
+	{
+		USailingSettings* Set = USailingSettings::Get();
+		Set->Quality = ESailingQuality(FirstQuality);
+		Set->Difficulty = bFirstEasy ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic;
+		Remember(true);
+		Set->Save();
+		Stack.Last() = Build(ESailScreen::Title);
+		Show(Stack.Last(), true);
+	}), false);
+	E.Content = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+	[
+		SNew(SBox).WidthOverride(640.f)
+		[
+			PanelBox(SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Blue Heron Sailing School"), EType::Eyebrow, Accent) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 18.f)[ SailUI::Text(TEXT("Two things before your first job"), EType::CardTitleM, Fg, true) ]
+				+ SVerticalBox::Slot().AutoHeight()[ Quality ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 2.f, 16.f, 14.f)[ SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(TierLines[FMath::Clamp(FirstQuality, 0, 3)]); }).Font(Font(EType::Small)).ColorAndOpacity(Muted).AutoWrapText(true) ]
+				+ SVerticalBox::Slot().AutoHeight()[ Sails ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 2.f, 16.f, 22.f)[ SailUI::Text(TEXT("Easy: the helm and trim help you, and she won't round up or lay over. You can switch any time in Settings. Gold medals need Realistic."), EType::Small, Muted, true) ]
+				+ SVerticalBox::Slot().AutoHeight()[ Start ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ Skip ],
+				FMargin(28.f))
+		]
+	];
+	E.Focus = Start;
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")) }, TEXT("Both can be changed later in Settings"));
 	return E;
 }
 

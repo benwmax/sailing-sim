@@ -119,6 +119,14 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	}
 	// A world the menus loaded behind them (docs/showroom-world/) wins over the command line's.
 	const USailSessionSubsystem* MenuSession = USailSessionSubsystem::Get(this);
+	// #402: the first job (Content/FirstSail), when the first-launch screen started the session for it. Its place, boat and
+	// wind are the session's (the screen sets them); the scene sets the hour.
+	if (!bScene && MenuSession && MenuSession->bHasActive && MenuSession->Active.SceneId == TEXT("first-job"))
+	{
+		bScene = LoadFirstJob(Scene, &SceneError);
+		if (bScene && Scene.GetSetting().Hour >= 0.0) Settings->StartHour = float(Scene.GetSetting().Hour);
+		UE_LOG(LogSailing, Display, TEXT("First job: %s"), bScene ? TEXT("loaded") : *SceneError);
+	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value) && !(MenuSession && MenuSession->MenuResumeScreen >= 0))
 	{
 		Settings->World = WorldIndexFromName(Value);

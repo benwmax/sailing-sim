@@ -178,6 +178,7 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;
 	Save->Last = Active;
+	Save->Last.SceneId.Reset();   // Continue sails the same place freely, not the scene again
 	Save->Commit();
 	ApplyToSettings(Active);
 	if (WorldContext)

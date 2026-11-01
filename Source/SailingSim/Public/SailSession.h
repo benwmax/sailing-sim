@@ -51,6 +51,9 @@ struct FSailSessionConfig
 	UPROPERTY(config) bool bLearningTips = true;
 	UPROPERTY(config) bool bFreeSail = false;      // the play mode (docs/free-sail): Free Sail, or Career
 	UPROPERTY(config) int32 Traffic = 1;           // 0 off, 1 light, 2 busy
+	/** #402: a scripted scene this session sails ("first-job", Content/FirstSail): set by the first-launch screen, never
+	 *  saved (Continue sails free). Empty: none. */
+	UPROPERTY() FString SceneId;
 	UPROPERTY(config) FDateTime SavedAt;
 };
 

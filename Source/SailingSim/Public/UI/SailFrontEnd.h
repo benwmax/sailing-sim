@@ -17,7 +17,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, FirstLaunch };
 
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
@@ -84,6 +84,11 @@ private:
 	FEntry BuildCredits();
 	/** The developer-only asset gallery (docs/gallery/pc/, Inputs/gallery/brief.md G2; UI/SailGallery.cpp). */
 	FEntry BuildGallery();
+	/** #402 (docs/first-launch/): a new save's two questions, then the first job (or the title). */
+	FEntry BuildFirstLaunch();
+	/** The first-launch screen's answers (quality tier, Easy) while it is open. */
+	int32 FirstQuality = -1;
+	bool bFirstEasy = true;
 	void Show(const FEntry& Entry, bool bForward);
 	void CastOff();
 	void Close();
