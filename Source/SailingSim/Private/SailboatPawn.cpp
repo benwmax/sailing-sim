@@ -1044,6 +1044,21 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (bKeysOpen) PollKeyCapture();
+	if (!bTrafficBoat && !bGhost)
+	{
+		const Sailing::FBoatTelemetry& Tel = Boat.GetTelemetry();
+		FFeedbackSample Sample;
+		Sample.T = Boat.GetState().Time;
+		Sample.North = Boat.GetState().Position.X;
+		Sample.East = Boat.GetState().Position.Y;
+		Sample.HeadingDeg = FMath::RadiansToDegrees(Tel.Heading);
+		Sample.SpeedKn = Tel.SpeedThroughWater * 1.943844;
+		Sample.HeelDeg = FMath::RadiansToDegrees(Tel.Heel);
+		Sample.TwaDeg = FMath::RadiansToDegrees(Tel.TrueWindAngle);
+		Sample.TwsKn = Tel.TrueWindSpeed * 1.943844;
+		Sample.Fps = DeltaSeconds > 0.f ? 1.0 / DeltaSeconds : 0.0;
+		FeedbackRecorder.Offer(Sample);
+	}
 	// The showroom's swap: the load's own callback comes on the streamable manager's tick; whichever sees it done first.
 	if (ShowroomLoad.IsValid() && ShowroomLoad->HasLoadCompleted()) FinishShowroomSwap();
 	if (ShowroomStage != EShowroomStage::None && FreeCam && !bPhoto)

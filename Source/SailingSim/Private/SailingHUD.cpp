@@ -146,6 +146,14 @@ void ASailingHUD::BeginPlay()
 			FrontEnd->Push(Screen == TEXT("Career") ? ESailScreen::Career : Screen == TEXT("Gallery") ? ESailScreen::Gallery : ESailScreen::Credits);
 			return;
 		}
+		if (Screen == TEXT("Feedback"))
+		{
+			// Like Pause: 4 s in, so the view behind it is the sailing.
+			CloseFrontEnd();
+			FTimerHandle Later;
+			GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this]() { OpenPause(); if (FrontEnd.IsValid()) FrontEnd->OpenFeedback(); }), 4.f, false);
+			return;
+		}
 		if (Screen == TEXT("Loading"))
 		{
 			if (Session && !Session->bHasActive) { Session->Active = USailSessionSubsystem::MakeDefault(); Session->bHasActive = true; }
