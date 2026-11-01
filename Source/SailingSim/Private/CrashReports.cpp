@@ -1,4 +1,5 @@
 #include "CrashReports.h"
+#include "Feedback.h"
 #include "SailingSim.h"
 #include "Async/Async.h"
 #include "Containers/Ticker.h"
@@ -11,6 +12,8 @@
 #if WITH_SAILING_SENTRY
 #include "SentryAttachment.h"
 #include "SentrySubsystem.h"
+#include "SentryFeedback.h"
+#include "SentryScope.h"
 #endif
 
 namespace SailCrashReportsLocal
@@ -112,8 +115,16 @@ FString SailCrashReports::ScrubPaths(const FString& Text)
 		{
 			const int32 At = Out.Find(P.Text, ESearchCase::IgnoreCase, ESearchDir::FromStart, From);
 			if (At == INDEX_NONE) break;
+			// The name runs to the next separator, spaces and all ("C:\Users\Dana Smith\AppData"); with no separator before the
+			// line or a quote ends, it stops at the first space instead ("/Users/dana today" reads "~ today").
 			int32 End = At + Len;
-			while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != ' ' && Out[End] != '"' && Out[End] != '\'') ++End;
+			while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != '\r' && Out[End] != '"' && Out[End] != '\'') ++End;
+			// A name neither starts nor ends with a space: "/Users/ and /home/" or "/Users/dana today /tmp" is a new path.
+			if (End >= Out.Len() || Out[End] != P.Sep || Out[At + Len] == ' ' || Out[End - 1] == ' ')
+			{
+				End = At + Len;
+				while (End < Out.Len() && Out[End] != P.Sep && Out[End] != '\n' && Out[End] != '\r' && Out[End] != ' ' && Out[End] != '"' && Out[End] != '\'') ++End;
+			}
 			if (End == At + Len) { From = End; continue; }   // nothing after the prefix: not a home folder
 			const int32 Start = P.bDrive && At > 0 ? At - 1 : At;
 			Out = Out.Left(Start) + TEXT("~") + Out.Mid(End);
@@ -126,4 +137,48 @@ FString SailCrashReports::ScrubPaths(const FString& Text)
 FString SailCrashReports::ScrubbedLogPath()
 {
 	return FPaths::ConvertRelativePathToFull(FPaths::ProjectLogDir() / TEXT("SailingSim-scrubbed.log"));
+}
+
+bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
+{
+#if WITH_SAILING_SENTRY
+	USentrySubsystem* S = SailCrashReportsLocal::Sentry();
+	if (!S) return false;
+	USentryFeedback* Feedback = NewObject<USentryFeedback>();
+	Feedback->Initialize(SailFeedback::ComposeMessage(Report));
+	auto Attach = [Feedback](const FString& Text, const TCHAR* Name, const TCHAR* Type)
+	{
+		if (Text.IsEmpty()) return;
+		FTCHARToUTF8 Utf8(*Text);
+		TArray<uint8> Bytes((const uint8*)Utf8.Get(), Utf8.Length());
+		USentryAttachment* A = NewObject<USentryAttachment>();
+		A->InitializeWithData(Bytes, Name, Type);
+		Feedback->AddAttachment(A);
+	};
+	if (Report.CarriesPlace())
+	{
+		Attach(Report.TelemetryJson, TEXT("telemetry.json"), TEXT("application/json"));
+		Attach(SailCrashReports::ScrubPaths(Report.LogTail), TEXT("log.txt"), TEXT("text/plain"));
+	}
+	for (int32 I = 0; I < Report.ShotPaths.Num(); ++I)
+	{
+		TArray<uint8> Png;
+		if (!FFileHelper::LoadFileToArray(Png, *Report.ShotPaths[I])) continue;
+		USentryAttachment* A = NewObject<USentryAttachment>();
+		const bool bJpeg = Report.ShotPaths[I].EndsWith(TEXT(".jpg"));
+		A->InitializeWithData(Png, FString::Printf(TEXT("shot%d.%s"), I + 1, bJpeg ? TEXT("jpg") : TEXT("png")), bJpeg ? TEXT("image/jpeg") : TEXT("image/png"));
+		Feedback->AddAttachment(A);
+	}
+	const FString Kind = SailFeedback::KindId(Report.Kind);
+	TMap<FString, FString> Tags = Report.Tags;
+	Tags.Add(TEXT("feedback_kind"), Kind);
+	S->CaptureFeedbackWithScope(Feedback, FConfigureScopeNativeDelegate::CreateLambda([Tags](USentryScope* Scope)
+	{
+		Scope->SetTags(Tags);
+	}));
+	UE_LOG(LogSailing, Log, TEXT("Feedback: sent a %s report"), *Kind);
+	return true;
+#else
+	return false;
+#endif
 }

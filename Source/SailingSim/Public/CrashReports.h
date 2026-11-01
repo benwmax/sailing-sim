@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+struct FFeedbackReport;
+
 /** The game's edge to the Sentry plugin (docs/sentry, #410). Every call is safe without the plugin (platforms other than
  *  Mac and Win64) and without a DSN (the SDK stays off): it then does nothing. */
 namespace SailCrashReports
@@ -24,4 +26,8 @@ namespace SailCrashReports
 	SAILINGSIM_API FString ScrubbedLogPath();
 	inline constexpr float ScrubbedLogRefreshSeconds = 15.f;
 	inline constexpr int32 ScrubbedLogLines = 400;
+
+	/** Sends a tester's bug or idea as Sentry user feedback, tagged kind:bug or kind:idea, with its samples, log tail and
+	 *  shots attached when it carries the place. False when nothing could be sent (no SDK); the caller checks consent. */
+	SAILINGSIM_API bool SendFeedback(const FFeedbackReport& Report);
 }
