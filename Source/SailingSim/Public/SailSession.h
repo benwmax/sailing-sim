@@ -51,6 +51,9 @@ struct FSailSessionConfig
 	UPROPERTY(config) bool bLearningTips = true;
 	UPROPERTY(config) bool bFreeSail = false;      // the play mode (docs/free-sail): Free Sail, or Career
 	UPROPERTY(config) int32 Traffic = 1;           // 0 off, 1 light, 2 busy
+	/** #402: a scripted scene this session sails ("first-job", Content/FirstSail): set by the first-launch screen, never
+	 *  saved (Continue sails free). Empty: none. */
+	UPROPERTY() FString SceneId;
 	UPROPERTY(config) FDateTime SavedAt;
 };
 
@@ -118,6 +121,10 @@ public:
 	static bool HasPassage(int32 World) { return World == 1 || World == 3; }
 	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy, the title's play mode. */
 	static FSailSessionConfig MakeDefault();
+	/** #402: a Career lesson, sailed straight from its row (no menus in between): the tier's world and boat, the home
+	 *  spot, the lesson's own conditions (a Presets id, career.json) and traffic, Learning mode, the player's difficulty,
+	 *  Career mode. DrillIndex is ESailingDrill - 1. */
+	static FSailSessionConfig MakeLesson(const FString& WorldId, const FString& BoatId, int32 DrillIndex, const FString& PresetId = TEXT("Lesson"), int32 Traffic = 0);
 	static const TArray<FSailPreset>& Presets();
 	static void ApplyPreset(FSailConditions& Conditions, const FSailPreset& Preset);
 	/** The weather preset (Sailing::EWeatherPreset) a sky choice runs on. */

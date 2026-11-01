@@ -114,6 +114,10 @@ public:
 	bool RestartScene(double& OutTwaDeg, double& OutKnots);
 	/** Content/Prologue/prologue.json read and checked; false (with a log line) if it is missing or invalid. */
 	static bool LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError = nullptr);
+	/** #402: the first job, the guided first sail (Content/FirstSail/first-sail.json, the prologue's format). */
+	static bool LoadFirstJob(Sailing::FScriptedScene& Out, FString* OutError = nullptr);
+	/** A scripted scene file read and checked (the prologue's format). */
+	static bool LoadSceneFile(const FString& Path, Sailing::FScriptedScene& Out, FString* OutError = nullptr);
 	/** Prologue step 3: the scene sails its own boat (setting.boat, the maxi) unless -SailingPrologueBoat names its stand-in;
 	 *  the reefs the crew start with (setting.reefs, or the stand-in's). */
 	bool IsSceneStandIn() const { return bScene && bSceneStandIn; }

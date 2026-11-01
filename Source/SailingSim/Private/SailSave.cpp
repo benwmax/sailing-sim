@@ -331,6 +331,14 @@ FString FSailSave::ToJson() const
 		Scenes->SetObjectField(Sc.Id, O);
 	}
 	Prog->SetObjectField(TEXT("scenes"), Scenes);
+	if (Progress.FirstLaunch.bSeen)
+	{
+		TSharedRef<FJsonObject> First = Obj();
+		First->SetBoolField(TEXT("seen"), true);
+		First->SetBoolField(TEXT("skipped"), Progress.FirstLaunch.bSkipped);
+		First->SetStringField(TEXT("at"), Progress.FirstLaunch.At.ToIso8601());
+		Prog->SetObjectField(TEXT("firstLaunch"), First);
+	}
 	Root->SetObjectField(TEXT("progress"), Prog);
 
 	if (Raw.IsValid()) KeepUnknown(*Root, *Raw);
@@ -572,6 +580,12 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 				Read(O, TEXT("completedAt"), S.CompletedAt);
 				Out.Progress.Scenes.Add(S);
 			}
+		}
+		if (const TSharedPtr<FJsonObject> First = Child(*P, TEXT("firstLaunch")))
+		{
+			Read(*First, TEXT("seen"), Out.Progress.FirstLaunch.bSeen);
+			Read(*First, TEXT("skipped"), Out.Progress.FirstLaunch.bSkipped);
+			Read(*First, TEXT("at"), Out.Progress.FirstLaunch.At);
 		}
 	}
 	Say(bMigrated ? FString::Printf(TEXT("migrated from version %d"), Version) : FString(TEXT("ok")));

@@ -91,6 +91,10 @@ Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bind
 The progress block is the career's (`docs/career/README.md`): `lessons` (best medal, whether it was earned on Easy, fastest medal run, quiz),
 `checkrides` (the written quiz's best) and `certificates` (when each was earned, UTC), each an object keyed by its id;
 `hoursSailed` and the logbook counts grow at each session's end, `racesSailed` and `racesWon` when a race is over.
+`firstLaunch` (#402, `docs/first-launch/`) is written once the first-launch screen is answered: `seen`, `skipped`
+(the player chose "Skip to the menu", so the first job waits on the Career screen) and `at` (UTC). A save without it
+opens on the first-launch screen.
+
 `scenes` holds each scripted scene finished (`docs/prologue/README.md`), keyed by scene id: done (the prologue can be
 skipped from then on), plays, the quickest finish and the last finish's counts; added in version 1 without a version change.
 `settings.career.freeSail` is the title screen's Mode (Free Sail or Career, `docs/free-sail/README.md`) and

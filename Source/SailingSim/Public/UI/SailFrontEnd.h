@@ -17,7 +17,9 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch };
+
+struct FCareerLesson;
 
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
@@ -45,6 +47,8 @@ public:
 	virtual FReply OnMouseWheel(const FGeometry& Geometry, const FPointerEvent& Event) override;
 
 	void Push(ESailScreen Screen);
+	/** The pause menu's Send feedback: a shot of the view without the menus, then the form (docs/sentry). */
+	void OpenFeedback();
 	/**
 	 * docs/showroom-world/: leaving the World screen for a world other than the one loaded loads it behind the menus (a
 	 * short wipe, the map reloads, the menus come back on the Launch screen with the choices kept), so the showroom and the
@@ -84,6 +88,18 @@ private:
 	FEntry BuildCredits();
 	/** The developer-only asset gallery (docs/gallery/pc/, Inputs/gallery/brief.md G2; UI/SailGallery.cpp). */
 	FEntry BuildGallery();
+	/** #402 (docs/first-launch/): a new save's two questions, then the first job (or the title). */
+	FEntry BuildFirstLaunch();
+	/** #402: a lesson's quiz taken from its Career row or retaken from the finish panel (no drill sailed this time). */
+	FString QuizRetakeLessonId;
+	/** #402: the finish panel's way on: a lesson's session cast off at once (Next lesson, Sail it again). */
+	void StartLesson(const FCareerLesson& Lesson);
+	/** The first-launch screen's answers (quality tier, Easy) while it is open. */
+	int32 FirstQuality = -1;
+	bool bFirstEasy = true;
+	/** Testers' bug and idea form (docs/sentry, #410): opened from the pause menu over a shot of the view. */
+	FEntry BuildFeedback();
+	void SendFeedbackForm();
 	void Show(const FEntry& Entry, bool bForward);
 	void CastOff();
 	void Close();
@@ -113,6 +129,10 @@ private:
 	 *  the tab's first row once it is laid out (Show). */
 	void SetSettingsTab(int32 Tab);
 	FString ConfirmQuestion, ConfirmYes, ConfirmNo;
+	// The feedback form's draft, kept while the screen is rebuilt.
+	int32 FeedbackKind = 0;            // EFeedbackKind
+	bool bFeedbackPlace = false;       // ideas: attach where I am
+	FString FeedbackTitle, FeedbackText, FeedbackExpected, FeedbackShot, FeedbackResult;
 	// The quiz: its questions, the one on screen, the option chosen (-1: not yet), the score and the debrief line.
 	TArray<FQuizQuestion> Quiz;
 	int32 QuizIndex = 0, QuizChosen = -1, QuizRight = 0;

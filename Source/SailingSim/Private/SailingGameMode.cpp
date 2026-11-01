@@ -6,6 +6,7 @@
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
+#include "Career.h"
 #include "Showroom.h"
 #include "SailSave.h"
 #include "SailingAudio.h"
@@ -119,6 +120,14 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	}
 	// A world the menus loaded behind them (docs/showroom-world/) wins over the command line's.
 	const USailSessionSubsystem* MenuSession = USailSessionSubsystem::Get(this);
+	// #402: the first job (Content/FirstSail), when the first-launch screen started the session for it. Its place, boat and
+	// wind are the session's (the screen sets them); the scene sets the hour.
+	if (!bScene && MenuSession && MenuSession->bHasActive && MenuSession->Active.SceneId == TEXT("first-job"))
+	{
+		bScene = LoadFirstJob(Scene, &SceneError);
+		if (bScene && Scene.GetSetting().Hour >= 0.0) Settings->StartHour = float(Scene.GetSetting().Hour);
+		UE_LOG(LogSailing, Display, TEXT("First job: %s"), bScene ? TEXT("loaded") : *SceneError);
+	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value) && !(MenuSession && MenuSession->MenuResumeScreen >= 0))
 	{
 		Settings->World = WorldIndexFromName(Value);
@@ -1455,7 +1464,16 @@ bool ASailingGameMode::IsPrologueRun()
 
 bool ASailingGameMode::LoadPrologue(Sailing::FScriptedScene& Out, FString* OutError)
 {
-	const FString Path = FPaths::ProjectContentDir() / TEXT("Prologue/prologue.json");
+	return LoadSceneFile(FPaths::ProjectContentDir() / TEXT("Prologue/prologue.json"), Out, OutError);
+}
+
+bool ASailingGameMode::LoadFirstJob(Sailing::FScriptedScene& Out, FString* OutError)
+{
+	return LoadSceneFile(FPaths::ProjectContentDir() / TEXT("FirstSail/first-sail.json"), Out, OutError);
+}
+
+bool ASailingGameMode::LoadSceneFile(const FString& Path, Sailing::FScriptedScene& Out, FString* OutError)
+{
 	FString Text;
 	if (!FFileHelper::LoadFileToString(Text, *Path))
 	{
@@ -1528,6 +1546,24 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 		{
 			SailSaveStore::Progress().RecordScene(R, FDateTime::UtcNow());
 			USailSessionSave::Get()->Commit();
+		}
+		// #402: the first job hands over to its tier's first lesson (setting.then), once the instructor's last line has
+		// been on screen a moment; a measuring or automation run stays put.
+		const Sailing::FSceneSetting& Set = Scene.GetSetting();
+		if (Set.ThenCut == "lesson" && !USailingSettings::IgnoresSavedChoices())
+		{
+			const FCareerTier* Tier = FCareerContent::Get().Tier(UTF8_TO_TCHAR(Set.ThenTier.c_str()));
+			if (Tier && Tier->Lessons.Num())
+			{
+				const FSailSessionConfig Lesson = USailSessionSubsystem::MakeLesson(Tier->WorldId, Tier->Boats.Num() ? Tier->Boats[0] : FString(TEXT("J22")),
+					int32(Tier->Lessons[0].Drill) - 1, Tier->Lessons[0].Conditions, Tier->Lessons[0].Traffic);
+				FTimerHandle Later;
+				GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Lesson]()
+				{
+					if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->StartSession(Lesson, this);
+				}), 6.f, false);
+				UE_LOG(LogSailing, Display, TEXT("First job done: %s's first lesson, %s, in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
+			}
 		}
 	}
 }

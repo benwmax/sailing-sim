@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "Algo/AnyOf.h"
 #include "CrewOutfit.h"
 #include "SailingFrame.h"
 #include "BenchRunner.h"
@@ -1044,6 +1045,21 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (bKeysOpen) PollKeyCapture();
+	if (!bTrafficBoat && !bGhost)
+	{
+		const Sailing::FBoatTelemetry& Tel = Boat.GetTelemetry();
+		FFeedbackSample Sample;
+		Sample.T = Boat.GetState().Time;
+		Sample.North = Boat.GetState().Position.X;
+		Sample.East = Boat.GetState().Position.Y;
+		Sample.HeadingDeg = FMath::RadiansToDegrees(Tel.Heading);
+		Sample.SpeedKn = Tel.SpeedThroughWater * 1.943844;
+		Sample.HeelDeg = FMath::RadiansToDegrees(Tel.Heel);
+		Sample.TwaDeg = FMath::RadiansToDegrees(Tel.TrueWindAngle);
+		Sample.TwsKn = Tel.TrueWindSpeed * 1.943844;
+		Sample.Fps = DeltaSeconds > 0.f ? 1.0 / DeltaSeconds : 0.0;
+		FeedbackRecorder.Offer(Sample);
+	}
 	// The showroom's swap: the load's own callback comes on the streamable manager's tick; whichever sees it done first.
 	if (ShowroomLoad.IsValid() && ShowroomLoad->HasLoadCompleted()) FinishShowroomSwap();
 	if (ShowroomStage != EShowroomStage::None && FreeCam && !bPhoto)
@@ -3170,6 +3186,8 @@ void ASailboatPawn::UpdateStations(FStationInput& Out)
 	Out = FStationInput();
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FScriptedScene* Scene = GM && !bTrafficBoat && !bGhost ? GM->GetScene() : nullptr;
+	// #402: a scene whose steps name no station (the first job) leaves the player on the boat's own helm and sheets.
+	if (Scene && !Algo::AnyOf(Scene->GetSteps(), [](const FSceneStep& S) { return !S.Station.empty(); })) Scene = nullptr;
 	if (!Scene)
 	{
 		if (Stations.IsActive()) Stations.Reset(Boat, Controls, ECrewStation::None);

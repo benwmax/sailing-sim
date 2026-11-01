@@ -126,6 +126,9 @@ namespace SailSaveTestsLocal
 		Scene.Retries = 3;
 		Scene.CompletedAt = FDateTime(2026, 10, 18, 20, 1, 2);
 		S.Progress.Scenes.Add(Scene);
+		S.Progress.FirstLaunch.bSeen = true;
+		S.Progress.FirstLaunch.bSkipped = true;
+		S.Progress.FirstLaunch.At = FDateTime(2026, 10, 31, 17, 0, 0);
 		return S;
 	}
 }
@@ -223,6 +226,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 		TestTrue(TEXT("scene fields"), Q.Id == P.Id && Q.bDone && Q.Plays == P.Plays && Q.BestSeconds == P.BestSeconds && Q.StepsPassed == P.StepsPassed
 			&& Q.StepsAssisted == P.StepsAssisted && Q.Retries == P.Retries && Q.CompletedAt == P.CompletedAt);
 	}
+	TestTrue(TEXT("first launch"), B.Progress.FirstLaunch.bSeen && B.Progress.FirstLaunch.bSkipped && B.Progress.FirstLaunch.At == A.Progress.FirstLaunch.At);
 	TestEqual(TEXT("Written again, the same text"), B.ToJson(), Text);
 
 	// Through the game's objects and back: Apply then Capture gives the same save.
