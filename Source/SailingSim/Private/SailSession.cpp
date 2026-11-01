@@ -79,6 +79,22 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	return C;
 }
 
+FSailSessionConfig USailSessionSubsystem::MakeLesson(const FString& WorldId, const FString& BoatId, int32 DrillIndex)
+{
+	FSailSessionConfig C = MakeDefault();   // the lesson-day conditions
+	C.World = FMath::Max(FSailSave::WorldIndex(WorldId), 0);
+	C.LaunchSpot = 0;
+	C.Boat = FMath::Max(FSailSave::BoatIndex(BoatId), 0);
+	C.Mode = ESailMode::Drill;
+	C.DrillIndex = DrillIndex;
+	C.Traffic = 0;
+	C.bLearningMode = true;
+	C.bLearningTips = true;
+	C.bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
+	C.bFreeSail = false;
+	return C;
+}
+
 int32 USailSessionSubsystem::WeatherPresetFor(ESailSky Sky)
 {
 	// Sailing::EWeatherPreset: CalmMorning, AfternoonBreeze, Overcast, Rain, Thunderstorm, RandomDay. Fog has no preset of its

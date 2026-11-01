@@ -6,6 +6,7 @@
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
 #include "SailSession.h"
+#include "Career.h"
 #include "Showroom.h"
 #include "SailSave.h"
 #include "SailingAudio.h"
@@ -1545,6 +1546,24 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 		{
 			SailSaveStore::Progress().RecordScene(R, FDateTime::UtcNow());
 			USailSessionSave::Get()->Commit();
+		}
+		// #402: the first job hands over to its tier's first lesson (setting.then), once the instructor's last line has
+		// been on screen a moment; a measuring or automation run stays put.
+		const Sailing::FSceneSetting& Set = Scene.GetSetting();
+		if (Set.ThenCut == "lesson" && !USailingSettings::IgnoresSavedChoices())
+		{
+			const FCareerTier* Tier = FCareerContent::Get().Tier(UTF8_TO_TCHAR(Set.ThenTier.c_str()));
+			if (Tier && Tier->Lessons.Num())
+			{
+				const FSailSessionConfig Lesson = USailSessionSubsystem::MakeLesson(Tier->WorldId, Tier->Boats.Num() ? Tier->Boats[0] : FString(TEXT("J22")),
+					int32(Tier->Lessons[0].Drill) - 1);
+				FTimerHandle Later;
+				GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Lesson]()
+				{
+					if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->StartSession(Lesson, this);
+				}), 6.f, false);
+				UE_LOG(LogSailing, Display, TEXT("First job done: %s's first lesson, %s, in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
+			}
 		}
 	}
 }

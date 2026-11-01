@@ -2305,14 +2305,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			TSharedRef<SSailButton> Row = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOpen)
 				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat]()
 				{
-					// Sail this lesson: its drill, in the tier's world and first boat; the flow goes on from the launch spot.
-					Pending = USailSessionSubsystem::MakeDefault();
-					Pending.World = FMath::Max(FSailSave::WorldIndex(TierWorld), 0);
-					Pending.LaunchSpot = 0;
-					Pending.Boat = FMath::Max(FSailSave::BoatIndex(TierBoat), 0);
-					Pending.Mode = ESailMode::Drill;
-					Pending.DrillIndex = int32(Drill) - 1;
-					Push(ESailScreen::Launch);
+					// #402: Start lesson: its drill in the tier's world and first boat, cast off at once (the briefing opens
+					// as it loads); the lesson's conditions are the lesson day, traffic off.
+					Pending = USailSessionSubsystem::MakeLesson(TierWorld, TierBoat, int32(Drill) - 1);
+					CastOff();
 				})
 			[
 				SNew(SHorizontalBox)

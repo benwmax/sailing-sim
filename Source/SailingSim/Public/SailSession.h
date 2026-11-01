@@ -121,6 +121,9 @@ public:
 	static bool HasPassage(int32 World) { return World == 1 || World == 3; }
 	/** A fresh config: the last world, the J/22, the lesson-day preset, free sail, learning, easy, the title's play mode. */
 	static FSailSessionConfig MakeDefault();
+	/** #402: a Career lesson, sailed straight from its row (no menus in between): the tier's world and boat, the home
+	 *  spot, the lesson day, no traffic, Learning mode, the player's difficulty, Career mode. DrillIndex is ESailingDrill - 1. */
+	static FSailSessionConfig MakeLesson(const FString& WorldId, const FString& BoatId, int32 DrillIndex);
 	static const TArray<FSailPreset>& Presets();
 	static void ApplyPreset(FSailConditions& Conditions, const FSailPreset& Preset);
 	/** The weather preset (Sailing::EWeatherPreset) a sky choice runs on. */
