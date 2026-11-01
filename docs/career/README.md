@@ -67,6 +67,28 @@ that file into `Saved/SaveGames/`).*
   conditions stays in Free Sail.
 - ASA appears only in `learning` text (the trademark, used descriptively). Names in the game are generic.
 
+## Lessons as jobs (#403)
+
+Bean's direction (Oct 30 2026): the game leans toward jobs with a purpose, a career that pays, education behind it. Every
+ready tier's lesson carries a `job` that reads it that way, data only for now:
+
+```json
+"job": {
+  "client": "Blue Heron Sailing School",
+  "brief": "Take the club's J/22 out of her slip and clear the marina for the afternoon's class.",
+  "objectives": ["Plan your way out from the wind", "Cast off and get the sails up", "..."],
+  "stars": { "bronze": 1, "silver": 2, "gold": 3 },
+  "reward": { "money": 40, "reputation": 2 }
+}
+```
+
+- `client` and `brief` say who the job is for and what they want, in the school's or club's voice (no outside course
+  names); `objectives` are the lines the player sees, in the drill's order.
+- `stars` is what each medal is worth (rising, from 1); `reward` is what the job pays for its first medal (whole
+  numbers). Nothing pays yet: the save holds no money or reputation (a missing field reads as its default, so adding
+  them later needs no version change, `docs/save/README.md`).
+- `FCareerLesson::Job` (`FCareerJob`) reads it; `Tools/career/validate.py` checks it; `SailingSim.Career.Jobs`.
+
 ## Grading
 
 A medal comes from the sim's own result for the run (online rule 8: `FDrillRunner` and the boat's telemetry, never the

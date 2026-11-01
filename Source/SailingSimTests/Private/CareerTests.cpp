@@ -591,3 +591,42 @@ bool FSailingCareerFreeSailTest::RunTest(const FString&)
 	S->Save();
 	return true;
 }
+
+/**
+ * #403 (docs/career/README.md, "Lessons as jobs"): every ready tier's lesson reads as a small job: a client, a brief, the
+ * objectives the player sees, stars rising with the medal and a reward. Data only: the save gains no field.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerJobsTest, "SailingSim.Career.Jobs", CareerTestsLocal::CareerFlags)
+bool FSailingCareerJobsTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	const FCareerContent* C = Load(*this);
+	if (!C) return false;
+	int32 Jobs = 0;
+	for (const FCareerTier& T : C->Tiers)
+	{
+		if (!T.IsReady()) continue;
+		for (const FCareerLesson& L : T.Lessons)
+		{
+			const FCareerJob& J = L.Job;
+			TestTrue(*(L.Id + TEXT(": a job")), J.IsSet());
+			TestTrue(*(L.Id + TEXT(": a client and a brief")), !J.Client.IsEmpty() && !J.Brief.IsEmpty());
+			TestTrue(*(L.Id + TEXT(": objectives")), J.Objectives.Num() > 0);
+			TestTrue(*(L.Id + TEXT(": stars rise with the medal")), J.Stars[0] >= 1 && J.Stars[0] < J.Stars[1] && J.Stars[1] < J.Stars[2]);
+			TestTrue(*(L.Id + TEXT(": it pays")), J.Money > 0 && J.Reputation > 0);
+			++Jobs;
+		}
+	}
+	TestTrue(TEXT("Day Sailor's and Club Racer's lessons are all jobs"), Jobs >= 10);
+	const FCareerLesson* Dock = C->Lesson(TEXT("day-sailor.leave-the-dock"));
+	if (TestNotNull(TEXT("Leave the dock"), Dock))
+		TestEqual(TEXT("... its objectives, as written"), Dock->Job.Objectives.Num(), 4);
+	// A lesson without a job loads as one with no job (older content, stub tiers).
+	FCareerContent NoJob;
+	TestTrue(TEXT("Loads"), NoJob.LoadText(TEXT(R"({"schema_version":1,"tiers":[{"id":"t","name":"T","status":"stub","world":"ray-hubbard","lessons":[]}]})")));
+	FCareerJob Empty;
+	TestFalse(TEXT("An unset job is not a job"), Empty.IsSet());
+	// The save gains no field from jobs.
+	TestFalse(TEXT("No money or reputation in the save"), FSailSave().ToJson().Contains(TEXT("reputation")));
+	return true;
+}
