@@ -19,6 +19,8 @@ class APlayerController;
  */
 enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch };
 
+struct FCareerLesson;
+
 class SAILINGSIM_API SSailFrontEnd : public SCompoundWidget
 {
 public:
@@ -88,6 +90,10 @@ private:
 	FEntry BuildGallery();
 	/** #402 (docs/first-launch/): a new save's two questions, then the first job (or the title). */
 	FEntry BuildFirstLaunch();
+	/** #402: a lesson's quiz taken from its Career row or retaken from the finish panel (no drill sailed this time). */
+	FString QuizRetakeLessonId;
+	/** #402: the finish panel's way on: a lesson's session cast off at once (Next lesson, Sail it again). */
+	void StartLesson(const FCareerLesson& Lesson);
 	/** The first-launch screen's answers (quality tier, Easy) while it is open. */
 	int32 FirstQuality = -1;
 	bool bFirstEasy = true;

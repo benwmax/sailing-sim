@@ -429,7 +429,7 @@ void SSailFrontEnd::Pop()
 		else if (Current() == ESailScreen::Title) Confirm(TEXT("Quit Sailing Sim?"), TEXT("Quit"), [this]() { UKismetSystemLibrary::QuitGame(Player.Get(), Player.Get(), EQuitPreference::Quit, false); });
 		return;
 	}
-	if (Current() == ESailScreen::Quiz) { Quiz.Reset(); CheckrideTierId.Reset(); }
+	if (Current() == ESailScreen::Quiz) { Quiz.Reset(); CheckrideTierId.Reset(); QuizRetakeLessonId.Reset(); }
 	if (IsGallery() && GalleryStage.IsValid()) { GalleryBack(); return; }
 	Stack.Pop();
 	// Rebuild the uncovered screen: its summary rows may show choices made further on.
@@ -720,6 +720,18 @@ void SSailFrontEnd::SetSettingsTab(int32 Tab)
 	SettingsTab = (Tab % 5 + 5) % 5;
 	Stack.Last() = Build(ESailScreen::Settings);
 	Show(Stack.Last(), true);
+}
+
+void SSailFrontEnd::StartLesson(const FCareerLesson& Lesson)
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	const FCareerTier* T = FCareerContent::Get().Tier(Lesson.TierId);
+	if (!T) return;
+	Quiz.Reset();
+	QuizRetakeLessonId.Reset();
+	Pending = USailSessionSubsystem::MakeLesson(T->WorldId, T->Boats.Num() ? T->Boats[0] : FString(TEXT("J22")), int32(Lesson.Drill) - 1, Lesson.Conditions, Lesson.Traffic);
+	CastOff();
 }
 
 void SSailFrontEnd::CastOff()
@@ -2077,6 +2089,17 @@ void SSailFrontEnd::StartQuiz()
 			T->Checkride.Lessons.Num(), FMath::CeilToInt32(T->Checkride.Quiz.Pass * Quiz.Num() - 1e-6)) : FString();
 		return;
 	}
+	if (const FCareerLesson* Retake = QuizRetakeLessonId.IsEmpty() ? nullptr : FCareerContent::Get().Lesson(QuizRetakeLessonId))
+	{
+		// #402: the lesson's quiz without sailing it again (its row on the Career screen, or Retake the quiz).
+		Quiz = FLearningContent::Get().MakeQuiz(Retake->QuizDrill, Rng);
+		QuizIndex = QuizRight = 0;
+		QuizChosen = -1;
+		QuizDrillName = Retake->Title;
+		QuizLessonId = Retake->Id;
+		QuizDebrief = FString::Printf(TEXT("%d right closes the lesson."), FMath::CeilToInt32(Retake->QuizPass * Quiz.Num() - 1e-6));
+		return;
+	}
 	const ASailboatPawn* P = Pawn();
 	const ESailingDrill Drill = P ? P->GetDrill().GetDrill() : ESailingDrill::None;
 	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng);
@@ -2124,16 +2147,58 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	if (bDone)
 	{
 		const bool bCheckride = !CheckrideTierId.IsEmpty();
-		TSharedRef<SSailButton> Done = ActionButton(bCheckride ? TEXT("Back to the career") : TEXT("Back to sailing"), FSimpleDelegate::CreateLambda([this, bCheckride]()
+		const bool bFromCareer = bCheckride || !QuizRetakeLessonId.IsEmpty();
+		TSharedRef<SSailButton> Done = ActionButton(bFromCareer ? TEXT("Back to the career") : TEXT("Back to sailing"), FSimpleDelegate::CreateLambda([this, bFromCareer]()
 		{
-			if (bCheckride) Pop();
+			if (bFromCareer) { QuizRetakeLessonId.Reset(); Pop(); }
 			else { Quiz.Reset(); Close(); }
-		}));
+		}), !bFromCareer && QuizLessonId.IsEmpty());
 		Box->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 6.f)[ SailUI::Text(FString::Printf(TEXT("%d of %d right"), QuizRight, Quiz.Num()), EType::ScreenTitle, QuizRight == Quiz.Num() ? Starboard : Fg) ];
 		Box->AddSlot().AutoHeight()[ SailUI::Text(QuizRight == Quiz.Num() ? TEXT("All correct. On to the next drill.") : TEXT("The drill panel's coach notes and the briefing cover the ones you missed."), EType::Body, Muted, true) ];
 		if (!QuizCareerLine.IsEmpty()) Box->AddSlot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ SailUI::Text(QuizCareerLine, EType::Body, Accent, true) ];
-		Box->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SNew(SBox).WidthOverride(320.f)[ Done ] ];
-		E.Focus = Done;
+		// #402: the finish panel's way on after a lesson: the next lesson, the same again, or the quiz again (not passed).
+		TSharedRef<SVerticalBox> Ways = SNew(SVerticalBox);
+		TSharedPtr<SWidget> FirstWay;
+		const FCareerContent& Content = FCareerContent::Get();
+		if (const FCareerLesson* L = bCheckride ? nullptr : Content.Lesson(QuizLessonId))
+		{
+			const FCareerTier* T = Content.Tier(L->TierId);
+			const int32 At = T ? T->Lessons.IndexOfByPredicate([L](const FCareerLesson& X) { return X.Id == L->Id; }) : INDEX_NONE;
+			const FCareerLesson* NextL = T && T->Lessons.IsValidIndex(At + 1) ? &T->Lessons[At + 1] : nullptr;
+			const FSailSave::FLessonRecord* R = SailSaveStore::Progress().FindLesson(L->Id);
+			auto Way = [&](const FString& Label, FSimpleDelegate Do, bool bPrimary)
+			{
+				TSharedRef<SSailButton> B = ActionButton(Label, MoveTemp(Do), bPrimary);
+				Ways->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ SNew(SBox).WidthOverride(320.f)[ B ] ];
+				if (!FirstWay.IsValid()) FirstWay = B;
+			};
+			const FString LessonId = L->Id;
+			if (NextL)
+			{
+				const FString NextId = NextL->Id;
+				Way(FString::Printf(TEXT("Next lesson: %s"), *NextL->Title), FSimpleDelegate::CreateLambda([this, NextId]()
+				{
+					if (const FCareerLesson* N = FCareerContent::Get().Lesson(NextId)) StartLesson(*N);
+				}), true);
+			}
+			Way(TEXT("Sail it again"), FSimpleDelegate::CreateLambda([this, LessonId]()
+			{
+				if (const FCareerLesson* X = FCareerContent::Get().Lesson(LessonId)) StartLesson(*X);
+			}), !NextL);
+			if (!(R && R->bQuizPassed))
+			{
+				Way(TEXT("Retake the quiz"), FSimpleDelegate::CreateLambda([this, LessonId, Rebuild]()
+				{
+					QuizRetakeLessonId = LessonId;
+					Quiz.Reset();
+					StartQuiz();
+					Rebuild();
+				}), false);
+			}
+		}
+		Box->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ Ways ];
+		Box->AddSlot().AutoHeight()[ SNew(SBox).WidthOverride(320.f)[ Done ] ];
+		E.Focus = FirstWay.IsValid() ? FirstWay : TSharedPtr<SWidget>(Done);
 	}
 	else
 	{
@@ -2194,7 +2259,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 					{
 						const bool bPass = SailCareer::RecordLessonQuiz(L->Id, QuizRight, Quiz.Num());
 						QuizCareerLine = bPass ? FString::Printf(TEXT("%s: lesson closed."), *L->Title)
-							: FString::Printf(TEXT("%d right closes the lesson: sail the drill again to retake the quiz."), FMath::CeilToInt32(L->QuizPass * Quiz.Num() - 1e-6));
+							: FString::Printf(TEXT("%d right closes the lesson: retake the quiz when you're ready."), FMath::CeilToInt32(L->QuizPass * Quiz.Num() - 1e-6));
 					}
 				}
 				Rebuild();
@@ -2322,6 +2387,24 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(104.f)[ SailUI::Text(MedalText, EType::Label, MedalColour(M)) ] ]
 			];
 			Detail->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ Row ];
+			// #402: a lesson sailed to a medal whose quiz has not passed: take the quiz here, without sailing it again.
+			if (bOpen && M != ECareerMedal::None && !(R && R->bQuizPassed) && !SailCareer::IsFreeSail())
+			{
+				const FString LessonId = L.Id;
+				Detail->AddSlot().AutoHeight().Padding(34.f, 0.f, 0.f, 10.f)
+				[
+					SNew(SBox).WidthOverride(260.f).HAlign(HAlign_Left)
+					[
+						ActionButton(TEXT("Take the quiz"), FSimpleDelegate::CreateLambda([this, LessonId]()
+						{
+							QuizRetakeLessonId = LessonId;
+							CheckrideTierId.Reset();
+							Quiz.Reset();
+							Push(ESailScreen::Quiz);
+						}), false)
+					]
+				];
+			}
 		}
 		if (T.Lessons.Num() == 0)
 		{
