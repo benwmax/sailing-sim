@@ -94,6 +94,9 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> Tiled;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Rocks;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> DockKit;
+	/** Shore dressing: Poly Haven's CC0 rocks, drift logs, grass, ferns and club props on the club's shore (High, Ultra). */
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Shore;
+	void BuildShore(const FMarina& Marina, const Sailing::FLakeTerrain* Terrain);
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> Boats;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Scans;
 	/** Visual V7: the halyards clanking on the dock rows and the gulls over the harbour, spatialised. */

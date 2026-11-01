@@ -45,6 +45,8 @@ Ideas carry where the player is only when "Attach where I am" is on; bugs always
 | A repro arg line (`-SailingWorld`, `-SailingBoat`, `-SailingStartAt`, wind) | yes | asked | message |
 | The log's last 200 lines, scrubbed | yes | asked | `log.txt` |
 | The view, JPEG under 8 MB (`SailFeedback::ShotToJpeg`) | yes | yes | `shot1.jpg` |
+| Photo mode's last two shots this session, when asked ("Add my last photos") | asked | asked | `shot2.jpg`, `shot3.jpg` |
+| `crashed_last_run` (yes, no, unknown: the SDK gives no crash event id, so Sentry pairs them by tag and time) | yes | yes | Sentry tag |
 
 Every report is written to `Saved/Feedback/<UTC>-<kind>/` with user paths scrubbed (`SailCrashReports::ScrubPaths`), and
 sent as Sentry user feedback (`SailCrashReports::SendFeedback`) only when Send crash reports is on and the build has a
@@ -54,6 +56,6 @@ Tests `SailingSim.UI.Feedback.*`.
 ## Not checked yet
 
 - A crash, a bug report and an idea reaching Sentry from a Windows tester build (needs the PC and the DSN).
-- Photo-mode shots (up to three from the free camera) and the crash event id on a bug: next step of #410.
+- Syncing reports to the private repo benwmax/sailing-feedback.
 - Whether Unreal's own CrashReportClient (packaged in Shipping, `bIncludeCrashReporter`) and Sentry's Crashpad handler
   both want the crash on Windows; Sentry's docs suggest one handler. Check on the PC's first Friday build.

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "game": "SailingSim",
+  "writtenAt": "2026-11-01T21:00:00.000Z",
+  "settings": {
+    "quality": "Medium",
+    "difficulty": "Easy",
+    "learningMode": true,
+    "privacy": { "sendCrashReports": false },
+    "start": { "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "boat": "J22" },
+    "career": { "freeSail": false }
+  },
+  "lastSession": {
+    "world": "ray-hubbard", "launchSpot": "rush-creek-yacht-club", "boat": "J22", "mode": "Drill", "drill": "SailATriangle",
+    "learningMode": true, "easy": true, "learningTips": true, "freeSail": false, "traffic": 0, "savedAt": "2026-11-01T20:40:00.000Z",
+    "conditions": { "preset": "Lesson", "sky": "Fair", "windFromDeg": 180, "windKn": 10, "gustKn": 13, "localHour": 10, "month": 4, "day": 18, "airTempF": 74, "lakeLevelFt": 0, "realDay": "" }
+  },
+  "progress": {
+    "drillsPassed": ["LeaveTheDock", "SailATriangle"],
+    "racesSailed": 0, "racesWon": 0,
+    "logbook": { "sessions": 3, "entries": 14, "nauticalMiles": 4.2 },
+    "hoursSailed": 1.1,
+    "lessons": {
+      "day-sailor.leave-the-dock": { "medal": "silver", "medalEasy": true, "bestSeconds": 244, "runs": 2, "quizPassed": true, "quizBest": 3, "quizOf": 3 },
+      "day-sailor.sail-a-triangle": { "medal": "bronze", "medalEasy": false, "bestSeconds": 540, "runs": 1, "quizPassed": false, "quizBest": 2, "quizOf": 4 }
+    },
+    "checkrides": {},
+    "certificates": {},
+    "scenes": { "first-job": { "done": true, "plays": 1, "bestSeconds": 412, "stepsPassed": 5, "stepsAssisted": 1, "retries": 3, "completedAt": "2026-11-01T20:30:00.000Z" } },
+    "firstLaunch": { "seen": true, "skipped": false, "at": "2026-11-01T20:25:00.000Z" }
+  }
+}
