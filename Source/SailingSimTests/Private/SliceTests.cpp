@@ -8,6 +8,7 @@
 #include "Misc/Paths.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
 
 // #404 (the vertical slice, #399): the checks that make the first hour safe to hand a tester. Saves carry over from one
 // Friday build to the next with their progress, and every action the first hour asks for can be done on a controller.
@@ -65,12 +66,14 @@ bool FSailingSliceSaveCarryOverTest::RunTest(const FString&)
 			{
 				for (const auto& L : Lessons->Values)
 				{
-					const FSailSave::FLessonRecord* Rec = Out->Progress.FindLesson(L.Key);
-					if (!TestNotNull(*FString::Printf(TEXT("%s, %s: lesson %s kept"), *Name, *When, *L.Key), Rec)) continue;
+					FString Id;
+					Id = L.Key;
+					const FSailSave::FLessonRecord* Rec = Out->Progress.FindLesson(Id);
+					if (!TestNotNull(*FString::Printf(TEXT("%s, %s: lesson %s kept"), *Name, *When, *Id), Rec)) continue;
 					const FJsonObject& O = *L.Value->AsObject();
 					bool bPassed = false;
 					O.TryGetBoolField(TEXT("quizPassed"), bPassed);
-					TestEqual(*FString::Printf(TEXT("%s, %s: %s's quiz"), *Name, *When, *L.Key), Rec->bQuizPassed, bPassed);
+					TestEqual(*FString::Printf(TEXT("%s, %s: %s's quiz"), *Name, *When, *Id), Rec->bQuizPassed, bPassed);
 					// The medal back out as the file wrote it.
 					FString Medal;
 					if (O.TryGetStringField(TEXT("medal"), Medal))
@@ -78,24 +81,26 @@ bool FSailingSliceSaveCarryOverTest::RunTest(const FString&)
 						const TSharedPtr<FJsonObject> Written = Parse(Out->ToJson());
 						const FJsonObject* WP = Written.IsValid() ? Child(*Written, TEXT("progress")) : nullptr;
 						const FJsonObject* WL = WP ? Child(*WP, TEXT("lessons")) : nullptr;
-						const FJsonObject* WO = WL ? Child(*WL, *L.Key) : nullptr;
+						const FJsonObject* WO = WL ? Child(*WL, *Id) : nullptr;
 						FString Back;
 						if (WO) WO->TryGetStringField(TEXT("medal"), Back);
-						TestEqual(*FString::Printf(TEXT("%s, %s: %s's medal"), *Name, *When, *L.Key), Back, Medal);
+						TestEqual(*FString::Printf(TEXT("%s, %s: %s's medal"), *Name, *When, *Id), Back, Medal);
 					}
 				}
 			}
 			if (const FJsonObject* Certs = Child(*P, TEXT("certificates")))
-				for (const auto& C : Certs->Values) TestTrue(*FString::Printf(TEXT("%s, %s: certificate %s kept"), *Name, *When, *C.Key), Out->Progress.HasCertificate(C.Key));
+				for (const auto& C : Certs->Values) { FString Id; Id = C.Key; TestTrue(*FString::Printf(TEXT("%s, %s: certificate %s kept"), *Name, *When, *Id), Out->Progress.HasCertificate(Id)); }
 			if (const FJsonObject* Rides = Child(*P, TEXT("checkrides")))
-				for (const auto& C : Rides->Values) TestNotNull(*FString::Printf(TEXT("%s, %s: checkride %s kept"), *Name, *When, *C.Key), Out->Progress.FindCheckride(C.Key));
+				for (const auto& C : Rides->Values) { FString Id; Id = C.Key; TestNotNull(*FString::Printf(TEXT("%s, %s: checkride %s kept"), *Name, *When, *Id), Out->Progress.FindCheckride(Id)); }
 			if (const FJsonObject* Scenes = Child(*P, TEXT("scenes")))
 			{
 				for (const auto& Sc : Scenes->Values)
 				{
+					FString Id;
+					Id = Sc.Key;
 					bool bDone = false;
 					Sc.Value->AsObject()->TryGetBoolField(TEXT("done"), bDone);
-					TestEqual(*FString::Printf(TEXT("%s, %s: scene %s"), *Name, *When, *Sc.Key), Out->Progress.IsSceneDone(Sc.Key), bDone);
+					TestEqual(*FString::Printf(TEXT("%s, %s: scene %s"), *Name, *When, *Id), Out->Progress.IsSceneDone(Id), bDone);
 				}
 			}
 			if (const FJsonObject* First = Child(*P, TEXT("firstLaunch")))
@@ -142,6 +147,13 @@ bool FSailingSlicePadCoverageTest::RunTest(const FString&)
 	{
 		FString Text;
 		if (!FFileHelper::LoadFileToString(Text, *(Dir / F))) continue;
+		// The file's "conventions" block only explains the token ({key:Action}); the lessons' text is the rest.
+		if (const TSharedPtr<FJsonObject> Root = SliceTestsLocal::Parse(Text))
+		{
+			Root->RemoveField(TEXT("conventions"));
+			Text.Reset();
+			FJsonSerializer::Serialize(Root.ToSharedRef(), TJsonWriterFactory<>::Create(&Text));
+		}
 		FRegexMatcher M(FRegexPattern(TEXT("\\{key:([A-Za-z]+)")), Text);
 		while (M.FindNext()) Tokens.Add(M.GetCaptureGroup(1));
 	}
