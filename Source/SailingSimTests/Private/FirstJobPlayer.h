@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "AutoTrim.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
