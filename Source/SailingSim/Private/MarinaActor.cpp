@@ -487,6 +487,184 @@ void AMarinaActor::Build(const FMarina& Marina)
 	UE_LOG(LogSailing, Display, TEXT("Marina %s: %d rows, %d slips (%d occupied), %d buildings, %d of %d tiles baked, home slip %s"), *Marina.Name, Marina.Rows.Num(), Marina.Slips.Num(),
 		Marina.Slips.FilterByPredicate([](const FMarinaSlip& Sl) { return Sl.bOccupied; }).Num(), Marina.Buildings.Num(), Baked, Tiles.Num(),
 		Marina.HomeSlip != INDEX_NONE ? *Marina.Slips[Marina.HomeSlip].Id : TEXT("none"));
+	BuildShore(Marina, Terrain);
+}
+
+void AMarinaActor::BuildShore(const FMarina& Marina, const FLakeTerrain* Terrain)
+{
+	// Shore dressing (Poly Haven CC0 pieces, Tools/shore, imported to /Game/World/Shore by scripts/import_shore.py): the
+	// club's own shore around its walkway, piers and lawn, on High and Ultra. Along a true shoreline, rocks (one in eight
+	// cells) and now and then a drift log; on the bank above it, grass clumps and a few ferns; picnic tables and benches on
+	// the lawn by the clubhouse; a lifebuoy on the fixed piers' rails. Seeded from each cell, so it never moves.
+	const ESailingQuality Q = USailingSettings::Get()->Quality;
+	if (!Terrain || (Q != ESailingQuality::High && Q != ESailingQuality::Ultra) || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoShoreDressing"))) return;
+	auto Load = [](const TCHAR* Name) { return Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr,
+		*FString::Printf(TEXT("/Game/World/Shore/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet)); };
+	static const TCHAR* const RockNames[] = { TEXT("SM_Shore_Boulder01"), TEXT("SM_Shore_CoastRocks05"), TEXT("SM_Shore_RockMossSet01Rock01"),
+		TEXT("SM_Shore_RockMossSet01Rock02"), TEXT("SM_Shore_RockMossSet01Rock03"), TEXT("SM_Shore_RockMossSet01Rock04"),
+		TEXT("SM_Shore_RockMossSet01Rock05"), TEXT("SM_Shore_RockMossSet01Rock06") };
+	static const TCHAR* const LogNames[] = { TEXT("SM_Shore_DeadTreeTrunk"), TEXT("SM_Shore_DeadTreeTrunk02"), TEXT("SM_Shore_TreeStump01") };
+	static const TCHAR* const GrassNames[] = { TEXT("SM_Shore_GrassMedium01LargeA"), TEXT("SM_Shore_GrassMedium01LargeB"), TEXT("SM_Shore_GrassMedium01LargeC"),
+		TEXT("SM_Shore_GrassMedium01MidA"), TEXT("SM_Shore_GrassMedium01MidB"), TEXT("SM_Shore_GrassMedium01MidC"),
+		TEXT("SM_Shore_GrassMedium01TallA"), TEXT("SM_Shore_GrassMedium01TallB"), TEXT("SM_Shore_GrassMedium01TallC") };
+	static const TCHAR* const FernNames[] = { TEXT("SM_Shore_Fern02A"), TEXT("SM_Shore_Fern02B"), TEXT("SM_Shore_Fern02C"), TEXT("SM_Shore_Fern02D") };
+	if (!Load(RockNames[0])) return;   // not imported (a checkout without the shore set): nothing to dress
+
+	TMap<FString, TArray<FTransform>> X;
+	auto Put = [&](const TCHAR* Name, const FVector2D& P, double Z, float Yaw, float Scale, float Pitch = 0.f)
+	{
+		X.FindOrAdd(Name).Add(FTransform(FRotator(Pitch, Yaw, 0.f), FVector(P.X, P.Y, Z) * 100.0, FVector(Scale)));
+	};
+	// The club's ground: everything the marina lays out, 40 m round it. Cells under its structures stay clear.
+	FBox2D Area(ForceInit);
+	auto Near = [](const FVector2D& P, const FVector2D& A, const FVector2D& B, double R)
+	{
+		const FVector2D AB = B - A;
+		const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / FMath::Max(AB.SizeSquared(), 1e-6), 0.0, 1.0);
+		return FVector2D::Distance(P, A + AB * T) < R;
+	};
+	TArray<TPair<FMarinaLine, double>> Clear;
+	for (const FMarinaLine& L : Marina.Walkways) { for (const FVector2D& P : L.Points) Area += P; Clear.Add({ L, 0.5 * L.Width + 1.0 }); }
+	for (const FMarinaLine& L : Marina.Piers) { for (const FVector2D& P : L.Points) Area += P; Clear.Add({ L, 0.5 * L.Width + 1.0 }); }
+	for (const FMarinaBuilding& B : Marina.Buildings) Area += B.Center;
+	if (!Area.bIsValid) return;
+	Area = Area.ExpandBy(40.0);
+	auto Blocked = [&](const FVector2D& P)
+	{
+		for (const TPair<FMarinaLine, double>& C : Clear)
+		{
+			for (int32 I = 1; I < C.Key.Points.Num(); ++I) if (Near(P, C.Key.Points[I - 1], C.Key.Points[I], C.Value)) return true;
+		}
+		for (const FMarinaBuilding& B : Marina.Buildings)
+		{
+			if (FVector2D::Distance(P, B.Center) < 0.5 * B.Size.GetMax() + 3.0) return true;
+		}
+		return false;
+	};
+	// Land in the coarse grid too: all four 5 m nodes round the point above the water. The 1 m lidar detail reads
+	// structures over the water (boathouses, the piers' decks) as ground; the grid doesn't.
+	auto GridLand = [Terrain](const FVector2D& P)
+	{
+		const double G = Terrain->GetCell();
+		const int32 R = FMath::FloorToInt((P.X - Terrain->GetOriginX()) / G), C = FMath::FloorToInt((P.Y - Terrain->GetOriginY()) / G);
+		return FMath::Min(FMath::Min(Terrain->NodeHeight(R, C), Terrain->NodeHeight(R + 1, C)),
+			FMath::Min(Terrain->NodeHeight(R, C + 1), Terrain->NodeHeight(R + 1, C + 1))) > 0.05;
+	};
+	// A true shoreline: land (in both data sets) within 3 m. Off the club the bed is a wide shallow flat; rocks and logs
+	// strewn over all of it read as debris on open water.
+	auto Shoreline = [&](const FVector2D& P)
+	{
+		for (const FVector2D& D : { FVector2D(3, 0), FVector2D(-3, 0), FVector2D(0, 3), FVector2D(0, -3) })
+		{
+			if (Terrain->HeightAt(P.X + D.X, P.Y + D.Y) > 0.3 && GridLand(P + D)) return true;
+		}
+		return false;
+	};
+	constexpr double Cell = 1.5;
+	const bool bDebug = FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugShore"));
+	for (double CX = Area.Min.X; CX < Area.Max.X; CX += Cell)
+	{
+		for (double CY = Area.Min.Y; CY < Area.Max.Y; CY += Cell)
+		{
+			const uint32 Seed = MHash(uint32(int32(CX * 7.0) * 73856093) ^ uint32(int32(CY * 7.0) * 19349663));
+			const float Jx = MRand(Seed + 1);
+			const float Jy = MRand(Seed + 2);
+			const FVector2D P(CX + Jx * Cell, CY + Jy * Cell);
+			const double H = Terrain->HeightAt(P.X, P.Y);
+			if (H < -0.35 || H > 2.5 || Blocked(P)) continue;
+			const float Pick = MRand(Seed + 3);
+			const float Yaw = MRand(Seed + 4) * 360.f;
+			const float Size = MRand(Seed + 5);
+			if (bDebug && H >= 0.25 && H < 1.2 && Pick < 0.45f && MRand(Seed + 9) < 0.02f)
+			{
+				UE_LOG(LogSailing, Display, TEXT("Shore grass at %.1f, %.1f: height %.2f"), P.X, P.Y, H);
+			}
+			if (H < 0.25)
+			{
+				// The waterline: rocks, half sunk; a drift log now and then.
+				if (!Shoreline(P)) continue;
+				if (Pick < 0.125f) Put(RockNames[int32(Size * 7.99f)], P, H - 0.25, Yaw, 0.35f + 0.5f * MRand(Seed + 6));
+				else if (Pick < 0.135f) Put(LogNames[int32(Size * 2.99f)], P, H - 0.05, Yaw, 0.8f + 0.4f * MRand(Seed + 6));
+			}
+			else if (!GridLand(P))
+			{
+				continue;
+			}
+			else if (H < 1.2)
+			{
+				// The bank: grass clumps thick near the water, a fern here and there, a stone on the low beach.
+				if (H < 0.6 && Pick > 0.96f && Shoreline(P)) Put(RockNames[int32(Size * 7.99f)], P, H - 0.2, Yaw, 0.3f + 0.35f * MRand(Seed + 6));
+				else if (Pick < 0.45f) Put(GrassNames[int32(Size * 8.99f)], P, H - 0.02, Yaw, 1.0f + 1.2f * MRand(Seed + 6));
+				else if (Pick < 0.47f) Put(FernNames[int32(Size * 3.99f)], P, H - 0.02, Yaw, 0.9f + 0.5f * MRand(Seed + 6));
+			}
+			else if (Pick < 0.12f)
+			{
+				Put(GrassNames[int32(Size * 8.99f)], P, H - 0.02, Yaw, 0.8f + 0.8f * MRand(Seed + 6));
+			}
+		}
+	}
+	// The lawn by the clubhouse: three picnic tables toward the water and benches along the walkway's landward side.
+	for (const FMarinaBuilding& B : Marina.Buildings)
+	{
+		if (B.Kind != TEXT("clubhouse")) continue;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			const FVector2D P = B.Center + FVector2D(0.5 * B.Size.X + 6.0 + 3.5 * K, -4.0 + 4.0 * K).GetRotated(B.HeadingDeg);
+			if (!Blocked(P)) Put(TEXT("SM_Shore_WoodenPicnicTable"), P, Terrain->HeightAt(P.X, P.Y), B.HeadingDeg + 10.f * K, 1.f);
+		}
+	}
+	for (const FMarinaLine& L : Marina.Walkways)
+	{
+		for (int32 I = 1; I < L.Points.Num(); ++I)
+		{
+			const FVector2D A = L.Points[I - 1], Bp = L.Points[I];
+			const FVector2D Dir = (Bp - A).GetSafeNormal(), Side(-Dir.Y, Dir.X);
+			const float Len = float(FVector2D::Distance(A, Bp));
+			for (float T = 10.f; T < Len; T += 20.f)
+			{
+				// whichever side of the walkway is the higher ground
+				const FVector2D Land = Terrain->HeightAt((A + Dir * T + Side * 3.0).X, (A + Dir * T + Side * 3.0).Y) >
+					Terrain->HeightAt((A + Dir * T - Side * 3.0).X, (A + Dir * T - Side * 3.0).Y) ? Side : -Side;
+				const FVector2D P = A + Dir * T + Land * (0.5 * L.Width + 1.2);
+				const float Facing = float(FMath::RadiansToDegrees(FMath::Atan2(-Land.Y, -Land.X)));
+				Put(TEXT("SM_Shore_PaintedWoodenBench"), P, Terrain->HeightAt(P.X, P.Y), Facing - 90.f, 1.f);
+			}
+		}
+	}
+	// Lifebuoys on the fixed piers' rails, every 25 m, facing out.
+	for (const FMarinaLine& L : Marina.Piers)
+	{
+		for (int32 I = 1; I < L.Points.Num(); ++I)
+		{
+			const FVector2D A = L.Points[I - 1], Bp = L.Points[I];
+			const FVector2D Dir = (Bp - A).GetSafeNormal(), Side(-Dir.Y, Dir.X);
+			const float Len = float(FVector2D::Distance(A, Bp));
+			for (float T = 6.f; T < Len; T += 25.f)
+			{
+				const FVector2D P = A + Dir * T + Side * (0.5 * L.Width + 0.02);
+				Put(TEXT("SM_Shore_Lifebuoy"), P, L.Height + 0.55, float(FMath::RadiansToDegrees(FMath::Atan2(Side.Y, Side.X))), 1.f);
+			}
+		}
+	}
+	int32 Instances = 0;
+	for (TPair<FString, TArray<FTransform>>& KV : X)
+	{
+		UStaticMesh* Mesh = Load(*KV.Key);
+		if (!Mesh || KV.Value.Num() == 0) continue;
+		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+		C->SetMobility(EComponentMobility::Static);
+		C->SetupAttachment(RootComponent);
+		C->SetStaticMesh(Mesh);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		// grass and ferns to 150 m, the rest to 600 m
+		C->SetCullDistances(0, KV.Key.Contains(TEXT("Grass")) || KV.Key.Contains(TEXT("Fern")) ? 15000 : 60000);
+		C->RegisterComponent();
+		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), KV.Value), false, true);
+		Shore.Add(C);
+		Instances += KV.Value.Num();
+	}
+	UE_LOG(LogSailing, Display, TEXT("Marina shore: %d pieces in %d meshes (lake level offset %.2f m)"), Instances, Shore.Num(), Terrain->GetLevelBelowPool());
 }
 
 const TCHAR* AMarinaActor::DockKitName(EDockKit Kit)
