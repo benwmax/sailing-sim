@@ -452,7 +452,7 @@ void SSailHud::Construct(const FArguments& A)
 							+ SVerticalBox::Slot().AutoHeight()
 							[
 								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Captain"), EType::Eyebrow, Warn) ]
+								+ SHorizontalBox::Slot().FillWidth(1.f)[ TextAttr(Attr(CaptainWho), EType::Eyebrow, FSlateColor(Warn), false) ]
 								+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(CaptainStation), EType::Eyebrow, FSlateColor(Accent), false) ]
 							]
 							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 2.f)[ TextAttr(Attr(CaptainText), EType::Ui, FSlateColor(Fg), true) ]
@@ -709,6 +709,9 @@ void SSailHud::RefreshScene(const ASailboatPawn& P, const ASailingGameMode& GM)
 	CaptainText = FText::FromString(Caption);
 	FString Hint;
 	const Sailing::FSceneStep* Step = Scene ? Scene->GetStep() : nullptr;
+	// #402: the speaker by the call's id: the first job's instructor, the prologue's captain.
+	const bool bInstructor = Step && Step->Call.Id.rfind("instructor.", 0) == 0;
+	CaptainWho = FText::FromString(bInstructor ? TEXT("Instructor") : TEXT("Captain"));
 	// Step 2: the station the player works, and the key that answers the call there (or the one that gets them there).
 	const Sailing::FStationControls& Stations = P.GetStations();
 	FString StationName = Stations.IsActive() ? FString(UTF8_TO_TCHAR(Sailing::CrewStationName(Stations.GetStation()))).Replace(TEXT("-"), TEXT(" ")) : FString();
