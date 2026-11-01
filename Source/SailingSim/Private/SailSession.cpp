@@ -40,7 +40,7 @@ const TArray<FSailPreset>& USailSessionSubsystem::Presets()
 			S.Values.Month = Month; S.Values.Day = Day; S.Values.AirTempF = Temp; S.Values.PresetId = Id;
 			Out.Add(S);
 		};
-		Add(TEXT("Lesson"), TEXT("ASA 101 lesson day"), TEXT("10 kn S · fair · 10:00"), 180.f, 10.f, 13.f, ESailSky::Fair, 10.f, 4, 18, 74.f, false);
+		Add(TEXT("Lesson"), TEXT("Lesson day"), TEXT("10 kn S · fair · 10:00"), 180.f, 10.f, 13.f, ESailSky::Fair, 10.f, 4, 18, 74.f, false);
 		Add(TEXT("July"), TEXT("Typical July afternoon"), TEXT("12 kn SSE · storms after 4 pm"), 157.5f, 12.f, 20.f, ESailSky::Storms, 14.5f, 7, 15, 98.f, false);
 		Add(TEXT("Glassy"), TEXT("Glassy morning"), TEXT("2 kn · clear, haze · 07:30"), 120.f, 2.f, 4.f, ESailSky::Clear, 7.5f, 8, 9, 79.f, false);
 		Add(TEXT("Norther"), TEXT("Blue norther"), TEXT("20 kn N · overcast · cold"), 0.f, 20.f, 28.f, ESailSky::Overcast, 11.f, 11, 22, 48.f, false);
@@ -79,15 +79,16 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	return C;
 }
 
-FSailSessionConfig USailSessionSubsystem::MakeLesson(const FString& WorldId, const FString& BoatId, int32 DrillIndex)
+FSailSessionConfig USailSessionSubsystem::MakeLesson(const FString& WorldId, const FString& BoatId, int32 DrillIndex, const FString& PresetId, int32 Traffic)
 {
-	FSailSessionConfig C = MakeDefault();   // the lesson-day conditions
+	FSailSessionConfig C = MakeDefault();   // the lesson-day conditions, unless the lesson names others
+	for (const FSailPreset& P : Presets()) if (P.Id == FName(*PresetId)) ApplyPreset(C.Conditions, P);
 	C.World = FMath::Max(FSailSave::WorldIndex(WorldId), 0);
 	C.LaunchSpot = 0;
 	C.Boat = FMath::Max(FSailSave::BoatIndex(BoatId), 0);
 	C.Mode = ESailMode::Drill;
 	C.DrillIndex = DrillIndex;
-	C.Traffic = 0;
+	C.Traffic = FMath::Clamp(Traffic, 0, 2);
 	C.bLearningMode = true;
 	C.bLearningTips = true;
 	C.bEasy = USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy;
@@ -117,7 +118,7 @@ FString USailSessionSubsystem::SkyName(ESailSky Sky)
 
 FString USailSessionSubsystem::ModeName(ESailMode Mode)
 {
-	static const TCHAR* Names[] = { TEXT("Free sail"), TEXT("ASA 101 drills"), TEXT("Race"), TEXT("Passage") };
+	static const TCHAR* Names[] = { TEXT("Free sail"), TEXT("Drills"), TEXT("Race"), TEXT("Passage") };
 	return Names[FMath::Clamp(int32(Mode), 0, 3)];
 }
 

@@ -1556,7 +1556,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 			if (Tier && Tier->Lessons.Num())
 			{
 				const FSailSessionConfig Lesson = USailSessionSubsystem::MakeLesson(Tier->WorldId, Tier->Boats.Num() ? Tier->Boats[0] : FString(TEXT("J22")),
-					int32(Tier->Lessons[0].Drill) - 1);
+					int32(Tier->Lessons[0].Drill) - 1, Tier->Lessons[0].Conditions, Tier->Lessons[0].Traffic);
 				FTimerHandle Later;
 				GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Lesson]()
 				{

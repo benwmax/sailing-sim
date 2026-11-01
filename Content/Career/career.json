@@ -3,7 +3,7 @@
   "about": "The learn-to-sail career (docs/career/README.md). Edited by hand; check with python3 Tools/career/validate.py. Ids are stable: the save keeps them.",
   "school": "Blue Heron Sailing School",
   "medals": ["bronze", "silver", "gold"],
-  "easy_max_medal": "bronze",
+  "easy_max_medal": "silver",
   "always_open": {
     "tiers": ["day-sailor"],
     "worlds": ["ray-hubbard"],
@@ -24,7 +24,7 @@
           "title": "Leave the dock",
           "drill": "LeaveTheDock",
           "quiz": "LeaveTheDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["clean"], "max_seconds": 300, "max_infractions": 0 },
@@ -36,7 +36,7 @@
           "title": "Sail a triangle",
           "drill": "SailATriangle",
           "quiz": "SailATriangle",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "max_seconds": 480, "max_collisions": 0, "max_infractions": 0 },
@@ -48,7 +48,7 @@
           "title": "Heave to",
           "drill": "HeaveTo",
           "quiz": "HeaveTo",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "max_seconds": 180, "max_infractions": 0 },
@@ -60,7 +60,7 @@
           "title": "Crew overboard: figure-eight",
           "drill": "CrewOverboardFigureEight",
           "quiz": "CrewOverboardFigureEight",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["proper"], "max_seconds": 300, "max_infractions": 0 },
@@ -72,7 +72,7 @@
           "title": "Crew overboard: quick-stop",
           "drill": "CrewOverboardQuickStop",
           "quiz": "CrewOverboardQuickStop",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["proper"], "max_seconds": 180, "max_infractions": 0 },
@@ -84,7 +84,7 @@
           "title": "Return and dock",
           "drill": "ReturnAndDock",
           "quiz": "ReturnAndDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["gentle"], "max_seconds": 360, "max_infractions": 0 },
@@ -122,7 +122,7 @@
           "title": "Sunfish: leave the dock",
           "drill": "LeaveTheDock",
           "quiz": "LeaveTheDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["clean"], "max_seconds": 300, "max_infractions": 0 },
@@ -134,7 +134,7 @@
           "title": "Sunfish: sail the course",
           "drill": "SailATriangle",
           "quiz": "SailATriangle",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "max_seconds": 540, "max_collisions": 0, "max_infractions": 0 },
@@ -146,7 +146,7 @@
           "title": "Sunfish: quick-stop for a swimmer",
           "drill": "CrewOverboardQuickStop",
           "quiz": "CrewOverboardQuickStop",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["proper"], "max_seconds": 180, "max_infractions": 0 },
@@ -158,7 +158,7 @@
           "title": "Sunfish: return and dock",
           "drill": "ReturnAndDock",
           "quiz": "ReturnAndDock",
-          "quiz_pass": 0.66,
+          "quiz_pass": 0.66, "conditions": "Lesson", "traffic": 0,
           "medals": {
             "bronze": {},
             "silver": { "outcomes": ["gentle"], "max_seconds": 360, "max_infractions": 0 },

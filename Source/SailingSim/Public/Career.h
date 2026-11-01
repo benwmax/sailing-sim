@@ -51,6 +51,8 @@ struct FCareerLesson
 	ESailingDrill Drill = ESailingDrill::None;
 	ESailingDrill QuizDrill = ESailingDrill::None;
 	double QuizPass = 0.66;          // share of the quiz right to close the lesson
+	FString Conditions = TEXT("Lesson"); // #402: the session preset the lesson sails in (USailSessionSubsystem::Presets)
+	int32 Traffic = 0;               // #402: 0 off, 1 light, 2 busy
 	FCareerMedalRule Medals[3];      // bronze, silver, gold
 };
 

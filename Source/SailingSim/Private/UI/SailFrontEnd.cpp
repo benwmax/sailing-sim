@@ -832,14 +832,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		if (SailCareer::IsFreeSail()) Sub = TEXT("Medals count in Career mode");
 		Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
 	}
-	const int32 Passed = Save->DrillsPassed.Num();
-	Item(TEXT("ASA 101 drills"), FString::Printf(TEXT("6 drills · %d passed"), Passed), FSimpleDelegate::CreateLambda([this, Save]()
-	{
-		Pending = USailSessionSubsystem::MakeDefault();
-		Pending.Mode = ESailMode::Drill;
-		for (int32 I = 0; I < 6; ++I) if (!Save->DrillsPassed.Contains(I)) { Pending.DrillIndex = I; break; }
-		Push(ESailScreen::World);
-	}));
+	// #402: the separate "ASA 101 drills" item is gone: Career's lessons are the same six drills (the Mode screen's Drills
+	// card still sails any of them freely).
 	Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
 	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
@@ -1456,7 +1450,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	FEntry E;
 	struct FModeCard { ESailMode Mode; const TCHAR* Name; const TCHAR* Line; };
 	static const FModeCard Modes[] = { { ESailMode::Free, TEXT("Free sail"), TEXT("Go where you like") },
-		{ ESailMode::Drill, TEXT("ASA 101 drills"), TEXT("Six graded drills") }, { ESailMode::Race, TEXT("Race"), TEXT("Five AI boats, a 5-minute start") },
+		{ ESailMode::Drill, TEXT("Drills"), TEXT("Six graded drills") }, { ESailMode::Race, TEXT("Race"), TEXT("Five AI boats, a 5-minute start") },
 		{ ESailMode::Passage, TEXT("Passage"), TEXT("Galveston entrance to Freeport") } };
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const FModeCard& M : Modes)
@@ -2006,7 +2000,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 		];
 	}
 	TSharedRef<SVerticalBox> Left = SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Drill briefing · ASA 101 · %s"), *B->AsaSkill), EType::Eyebrow, Accent) ]
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Drill briefing · %s"), *B->AsaSkill), EType::Eyebrow, Accent) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 14.f)[ SailUI::Text(B->Name, B->Name.Len() > 18 ? EType::CardTitle : EType::ScreenTitle, Fg, true) ]
 		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->Goal, EType::Value, Fg, true) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SailUI::Text(B->Why, EType::Body, Muted, true) ]
@@ -2219,7 +2213,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	[
 		SNew(SBox).WidthOverride(940.f)[ PanelBox(Box, FMargin(34.f, 28.f)) ]
 	];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip the quiz")) }, TEXT("Questions in ASA 101 wording, set on the lake"));
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip the quiz")) }, TEXT("Questions on what you just sailed"));
 	return E;
 }
 
@@ -2312,11 +2306,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			const ESailingDrill Drill = L.Drill;
 			const FString TierWorld = T.WorldId, TierBoat = T.Boats.Num() ? T.Boats[0] : FString(TEXT("J22"));
 			TSharedRef<SSailButton> Row = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOpen)
-				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat]()
+				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat, LessonConditions = L.Conditions, LessonTraffic = L.Traffic]()
 				{
 					// #402: Start lesson: its drill in the tier's world and first boat, cast off at once (the briefing opens
 					// as it loads); the lesson's conditions are the lesson day, traffic off.
-					Pending = USailSessionSubsystem::MakeLesson(TierWorld, TierBoat, int32(Drill) - 1);
+					Pending = USailSessionSubsystem::MakeLesson(TierWorld, TierBoat, int32(Drill) - 1, LessonConditions, LessonTraffic);
 					CastOff();
 				})
 			[

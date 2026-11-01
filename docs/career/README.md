@@ -61,6 +61,10 @@ that file into `Saved/SaveGames/`).*
 - `drill` and `quiz` are `Content/Learning` drill ids: the lesson runs that drill, and its quiz is that drill's quiz
   (`FLearningContent::MakeQuiz`, `quiz_after` questions).
 - `status`: `ready` (lessons filled in) or `stub` (ids and names only: no checkride yet).
+- `conditions` and `traffic` (#402): the session preset a lesson sails in (`USailSessionSubsystem::Presets` ids: `Lesson`,
+  `July`, `Glassy`, `Norther`, `SeaBreeze`, `Today`; default `Lesson`) and its traffic (0 off, the default, 1 light, 2
+  busy). A Career row's **Start lesson** casts off with them at once (`USailSessionSubsystem::MakeLesson`); choosing
+  conditions stays in Free Sail.
 - ASA appears only in `learning` text (the trademark, used descriptively). Names in the game are generic.
 
 ## Grading
@@ -84,11 +88,12 @@ The Day Sailor times are first guesses, checked against the autopilot's own runs
 sails the triangle in 4:36 (gold under 5:30, silver under 8:00), the quick-stop recovers in 0:51 (gold under 1:30),
 heave-to holds in 0:27 (gold under 1:30). Tune them by playing; they live in the data.
 
-**Easy mode earns at most bronze** (`"easy_max_medal": "bronze"` at the top of `career.json`, read by `FCareerContent`;
-no field means no cap). The run carries its difficulty (`FCareerRun::bEasy`: the assists were on at any moment of the
-drill) and `FCareerContent::Grade` caps it; the lesson remembers that its best medal was an Easy one (`medalEasy` in the
-save) until the same medal or better is sailed on Realistic, and the Career screen shows it as "Easy: bronze". The
-checkride asks for silver, so it needs the lessons sailed on Realistic; the screen says so. See `docs/easy-mode/README.md`.
+**Easy mode earns at most silver** (`"easy_max_medal": "silver"` at the top of `career.json`, read by `FCareerContent`;
+no field means no cap; bronze until Bean's #402 decision, Oct 31 2026: `docs/first-launch/`). The run carries its
+difficulty (`FCareerRun::bEasy`: the assists were on at any moment of the drill) and `FCareerContent::Grade` caps it; the
+lesson remembers that its best medal was an Easy one (`medalEasy` in the save) until the same medal or better is sailed
+on Realistic, and the Career screen shows it as "Easy: silver". The checkride asks for silver, so a player who stays on
+Easy can certify; gold needs Realistic. See `docs/easy-mode/README.md`.
 
 A lesson keeps its best medal, its fastest medal run and its best quiz score. It is **closed** once it holds a medal and
 its quiz has passed (`quiz_pass`, two thirds for Day Sailor). A run counts for a lesson when the lesson's tier is open

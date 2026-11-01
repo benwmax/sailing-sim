@@ -399,7 +399,7 @@ void SSailHud::Construct(const FArguments& A)
 				SNew(SBox).WidthOverride(365.f).Visibility_Lambda([this]() { return bDrill ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 				[
 					PanelBox(SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("ASA 101 drill"), EType::Eyebrow, Accent) ]
+						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Drill"), EType::Eyebrow, Accent) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 10.f)[ TextAttr(Attr(DrillTitle), EType::CardTitleS, FSlateColor(Fg)) ]
 						+ SVerticalBox::Slot().AutoHeight()[ SAssignNew(DrillList, SVerticalBox) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextAttr(Attr(DrillFooter), EType::Small, FSlateColor(Muted), true) ],

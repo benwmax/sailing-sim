@@ -33,6 +33,8 @@ questions = json.load(open(os.path.join(learning, "quiz-bank.json"), encoding="u
 
 c = json.load(open(os.path.join(ROOT, "Content", "Career", "career.json"), encoding="utf-8"))
 check(c.get("schema_version") == 1, "schema_version must be 1")
+# The session presets a lesson may name (SailSession.cpp, USailSessionSubsystem::Presets).
+PRESETS = {"Lesson", "July", "Glassy", "Norther", "SeaBreeze", "Today"}
 check(c.get("medals") == MEDALS, f"medals must be {MEDALS}")
 check(c.get("easy_max_medal", "gold") in MEDALS, f"easy_max_medal must be one of {MEDALS}")
 tiers = c.get("tiers", [])
@@ -82,6 +84,10 @@ for t in tiers:
         q = briefings.get(l.get("quiz"))
         check(q is not None and q.get("quiz_after", 0) > 0, f"{lid}: quiz {l.get('quiz')} has no quiz in Content/Learning")
         check(0.0 < l.get("quiz_pass", 0) <= 1.0, f"{lid}: quiz_pass must be in (0, 1]")
+        # #402: a lesson sails in its own conditions (a USailSessionSubsystem::Presets id) with its own traffic (0 off, 1
+        # light, 2 busy); free choice stays in Free Sail.
+        check(l.get("conditions", "Lesson") in PRESETS, f"{lid}: conditions must be one of {sorted(PRESETS)}")
+        check(l.get("traffic", 0) in (0, 1, 2), f"{lid}: traffic is 0 (off), 1 (light) or 2 (busy)")
         outcomes = set(b["debrief"].keys()) if b else set()
         m = l.get("medals", {})
         check(list(m.keys()) == MEDALS, f"{lid}: medals must be {MEDALS} in that order")
