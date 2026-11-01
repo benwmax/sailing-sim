@@ -85,7 +85,7 @@
           {
             "call": "Casting off",
             "reply": "",
-            "meaning": "There is no crew to answer: say it to yourself, check behind you, and go."
+            "meaning": "Sailing alone, nobody answers: say it to yourself, check behind you, and go."
           }
         ],
         "steps": [
@@ -525,7 +525,7 @@
         ],
         "lake_notes": "In the summer heat a swimmer is not in immediate danger from cold, but powerboats and jet skis on a busy weekend may not see them. Stay between them and the traffic, and wave to anyone heading their way.",
         "debrief": {
-          "proper": "Recovered in {time}, and you never strayed far. In a dinghy the quick-stop is the method: all steering, no crew needed.",
+          "proper": "Recovered in {time}, and you never strayed far. In a dinghy the quick-stop is the method: all steering, nothing else to handle.",
           "improper": "Recovered, but you went too far away. Turn into the wind the moment they go in and keep circling close."
         }
       }
