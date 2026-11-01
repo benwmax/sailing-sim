@@ -6,8 +6,9 @@ night on main instead. `nightly.sh` runs `scripts/gate.sh --scope all --force` o
 
 - `Artifacts/nightly/<date>.csv`: the sweep (every view, Low, Medium, High);
 - `Artifacts/nightly/<date>.gate.txt` and `<date>.log`: the gate's output and the script's log;
-- `Artifacts/nightly/latest.txt`: one line, `PASS`, `FLOOR BREAK` (with the views under Medium 60 / High 45),
-  `SKIPPED` (with why) or `ERROR`.
+- `Artifacts/nightly/latest.txt`: one line, `PASS`, `TESTS FAILED` (naming the failed tests, #404: the first hour's
+  scripted runs are among them), `FLOOR BREAK` (with the views under Medium 60 / High 45), `SKIPPED` (with why) or
+  `ERROR`.
 
 It skips the night (a `SKIPPED` line) when the screen is locked (the game can't open its window, and on Nov 1 2026 even
 the headless test editor stalled for six hours until the screen was unlocked) or the Metal toolchain is missing (after

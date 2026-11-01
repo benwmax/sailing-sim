@@ -38,7 +38,10 @@ RC=$?
 cp Artifacts/visual-bench-gate-all.csv "$N/$DAY.csv" 2>/dev/null
 RESULT=$(grep -E "^gate: " "$N/$DAY.gate.txt" | tail -1)
 UNDER=$(grep -E "UNDER|lost" "$N/$DAY.gate.txt" | tr -s ' ' | head -6 | paste -sd ';' -)
-if [[ $RC == 0 ]]; then summary "PASS main $SHA: ${RESULT:-gate: pass} ($N/$DAY.csv)"
+# #404: a test failure names the tests (the gate's test.out), so the morning line says what broke.
+FAILED=$(grep -E "^Fail" Artifacts/gate/test.out 2>/dev/null | awk '{print $2}' | head -8 | paste -sd ',' -)
+if [[ -n "$FAILED" ]]; then summary "TESTS FAILED main $SHA: $FAILED ($N/$DAY.gate.txt)"
+elif [[ $RC == 0 ]]; then summary "PASS main $SHA: ${RESULT:-gate: pass} ($N/$DAY.csv)"
 elif [[ -z "$RESULT" ]]; then summary "ERROR main $SHA: the gate stopped before the bench (exit $RC): $(grep -vE '^\[gate' "$N/$DAY.gate.txt" | tail -1)"
 else summary "FLOOR BREAK main $SHA: $RESULT ${UNDER:+[$UNDER]} ($N/$DAY.csv)"; fi
 echo "nightly done $(date -u +%T) rc=$RC"
