@@ -44,11 +44,11 @@ Easy also keeps the Simple control layout (`UseSimpleControls`), as before.
 
 ## Honest grading
 
-`career.json` has `"easy_max_medal": "bronze"` at the top. A drill run is Easy if the assists were on at any moment of
-it (`ASailboatPawn::bDrillEasy` to `FCareerRun::bEasy`). `FCareerContent::Grade` caps the medal and the lesson keeps a
-`medalEasy` mark until the same medal or better is sailed on Realistic. The Career screen shows "Easy: bronze", and the
-debrief says when a run on Easy was worth more. The Day Sailor checkride asks for silver, so it needs Realistic; the
-screen says so under the checkride. Tests: `SailingSim.Career.EasyMedal`.
+`career.json` has `"easy_max_medal": "silver"` at the top (bronze until #402, `docs/first-launch/`). A drill run is Easy
+if the assists were on at any moment of it (`ASailboatPawn::bDrillEasy` to `FCareerRun::bEasy`). `FCareerContent::Grade`
+caps the medal and the lesson keeps a `medalEasy` mark until the same medal or better is sailed on Realistic. The Career
+screen shows "Easy: silver", and the debrief says when a run on Easy was worth more. The Day Sailor checkride asks for
+silver, so Easy can certify; gold needs Realistic. Tests: `SailingSim.Career.EasyMedal`.
 
 ## Checks
 

@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "Algo/AnyOf.h"
 #include "CrewOutfit.h"
 #include "SailingFrame.h"
 #include "BenchRunner.h"
@@ -3185,6 +3186,8 @@ void ASailboatPawn::UpdateStations(FStationInput& Out)
 	Out = FStationInput();
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FScriptedScene* Scene = GM && !bTrafficBoat && !bGhost ? GM->GetScene() : nullptr;
+	// #402: a scene whose steps name no station (the first job) leaves the player on the boat's own helm and sheets.
+	if (Scene && !Algo::AnyOf(Scene->GetSteps(), [](const FSceneStep& S) { return !S.Station.empty(); })) Scene = nullptr;
 	if (!Scene)
 	{
 		if (Stations.IsActive()) Stations.Reset(Boat, Controls, ECrewStation::None);

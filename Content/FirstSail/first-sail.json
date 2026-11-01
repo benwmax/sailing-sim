@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "id": "first-job",
+  "title": "Your first job",
+  "setting": {
+    "boat": "J22",
+    "world": "ray-hubbard",
+    "wind_kn": 9,
+    "gust_kn": 12,
+    "hour": 10,
+    "then": { "cut": "lesson", "tier": "day-sailor" }
+  },
+  "assist_caption": "I'll take it this time. Watch what I do.",
+  "cameras": [],
+  "stations": [],
+  "actions": [],
+  "steps": [
+    {
+      "id": "steer",
+      "checkpoint": true,
+      "restart": { "twa_deg": 90, "speed_kn": 5 },
+      "trigger": { "type": "time", "at_s": 4 },
+      "call": {
+        "id": "instructor.steer",
+        "caption": "Your first job: take her across to the lesson dock. She's yours. Keep the bow on a tree on the far shore.",
+        "retry": "Small moves on the tiller. Pick one tree and keep the bow pointed at it.",
+        "ok": "Nicely held."
+      },
+      "expect": { "type": "hold", "twa_min_deg": 70, "twa_max_deg": 110, "hold_s": 20, "within_s": 40 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "ease-main",
+      "trigger": { "type": "previous", "after_s": 2 },
+      "call": {
+        "id": "instructor.ease-main",
+        "caption": "Let the mainsheet out until the front of the sail starts to flap.",
+        "retry": "Ease the main a bit more, until the front edge shivers.",
+        "ok": "See it flap? That's too far out."
+      },
+      "expect": { "type": "sheet", "sheet": "main", "by": 0.15, "within_s": 15 },
+      "retry_after_s": 3,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "trim-main",
+      "trigger": { "type": "previous", "after_s": 1 },
+      "call": {
+        "id": "instructor.trim-main",
+        "caption": "Now pull it in just until the flapping stops. That's trimmed.",
+        "retry": "Bring the main back in, a little at a time, until it goes quiet.",
+        "ok": "That's a trimmed sail."
+      },
+      "expect": { "type": "sheet", "sheet": "main", "by": -0.05, "within_s": 10 },
+      "retry_after_s": 3,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "upwind",
+      "checkpoint": true,
+      "restart": { "twa_deg": 90, "speed_kn": 5 },
+      "trigger": { "type": "previous", "after_s": 2 },
+      "call": {
+        "id": "instructor.upwind",
+        "caption": "Turn toward the wind, slowly, until the sails start to flap, then bear off a touch.",
+        "retry": "Gently toward the wind. When the front of the sails shivers, turn back a little.",
+        "ok": "That's close-hauled: as close to the wind as she sails."
+      },
+      "expect": { "type": "hold", "twa_min_deg": 38, "twa_max_deg": 55, "hold_s": 15, "within_s": 40 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 3
+    },
+    {
+      "id": "tack",
+      "trigger": { "type": "previous", "after_s": 2 },
+      "call": {
+        "id": "instructor.tack",
+        "caption": "Ready about? Push the tiller away from you and hold it. Bow through the wind.",
+        "retry": "Tiller over, away from you, and keep it there until the sails fill on the other side.",
+        "ok": "Through she goes. That's a tack."
+      },
+      "expect": { "type": "tack", "within_s": 25 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 2
+    },
+    {
+      "id": "stop",
+      "checkpoint": true,
+      "restart": { "twa_deg": 45, "speed_kn": 4 },
+      "trigger": { "type": "previous", "after_s": 4 },
+      "call": {
+        "id": "instructor.stop",
+        "caption": "To stop, point her straight into the wind and let the sails flap.",
+        "retry": "Head right into the wind and hold her there. The sails go quiet and she slows down.",
+        "ok": "Job done: steer, trim, tack, stop. Next time you'll take her off the dock yourself."
+      },
+      "expect": { "type": "hold", "twa_min_deg": 0, "twa_max_deg": 30, "max_speed_kn": 1, "hold_s": 5, "within_s": 40 },
+      "retry_after_s": 4,
+      "crew_takes_over_after": 3,
+      "next": "end"
+    }
+  ]
+}

@@ -140,6 +140,11 @@ void ASailingHUD::BeginPlay()
 			GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Learn]() { OpenLearning(Learn); }), 4.f, false);
 			return;
 		}
+		if (Screen == TEXT("FirstLaunch"))
+		{
+			OpenFrontEnd(ESailScreen::FirstLaunch);
+			return;
+		}
 		if (Screen == TEXT("Credits") || Screen == TEXT("Career") || Screen == TEXT("Gallery"))
 		{
 			OpenFrontEnd(ESailScreen::Title);
@@ -194,7 +199,9 @@ void ASailingHUD::BeginPlay()
 	}
 	else if (!Session || !Session->bHasActive)
 	{
-		OpenFrontEnd(ESailScreen::Title);
+		// #402: a save that has not answered the first launch's questions opens on them (never in a measuring run).
+		const bool bFirst = !SailSaveStore::Progress().FirstLaunch.bSeen && !USailingSettings::IgnoresSavedChoices();
+		OpenFrontEnd(bFirst ? ESailScreen::FirstLaunch : ESailScreen::Title);
 	}
 }
 

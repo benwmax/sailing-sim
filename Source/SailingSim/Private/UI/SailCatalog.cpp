@@ -95,7 +95,7 @@ namespace SailCatalog
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
-				W.Facts.Add({ TEXT("6"), TEXT("ASA 101 drills") });
+				W.Facts.Add({ TEXT("6"), TEXT("Lessons in Day Sailor") });
 				W.Facts.Add({ TEXT("435.5 ft"), TEXT("Normal pool") });
 				if (W.Spots.Num() > 0) { W.Spots[0].Tag = TEXT("Home"); W.Spots[0].StartType = TEXT("At the dock"); }
 				Out.Add(W);
@@ -170,7 +170,7 @@ namespace SailCatalog
 		const FWords& Words(int32 Type)
 		{
 			static const FWords W[] = {
-				{ TEXT("Keelboat · 3 to 4 crew"), TEXT("The ASA 101 boat you sail at Rush Creek. Stable, responsive tiller, fractional rig. Shows every trim mistake without punishing it."), 2, { TEXT("Spinnaker") }, false, 14.f, 18.f },
+				{ TEXT("Keelboat · 3 to 4 crew"), TEXT("The keelboat you learn on at Rush Creek. Stable, responsive tiller, fractional rig. Shows every trim mistake without punishing it."), 2, { TEXT("Spinnaker") }, false, 14.f, 18.f },
 				{ TEXT("Dinghy · single-handed"), TEXT("The beach classic: a lateen rig on a surfboard of a hull. Wet, simple and quick to capsize, and quick to right again."), 3, { TEXT("Capsize"), TEXT("Lateen rig") }, true, 10.f, 15.f },
 				{ TEXT("Olympic dinghy · single"), TEXT("The Laser, now the ILCA 7. Hike hard upwind, steer through every wave. Rewards fitness and fine trim."), 4, { TEXT("Capsize"), TEXT("Hiking") }, true, 10.f, 16.f },
 				{ TEXT("Trailerable keelboat"), TEXT("The family weekender: a swing keel, a cabin and an outboard. Forgiving, roomy, a little sluggish."), 2, { TEXT("Outboard"), TEXT("Reef") }, false, 12.f, 16.f },

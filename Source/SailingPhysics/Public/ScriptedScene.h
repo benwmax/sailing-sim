@@ -66,6 +66,7 @@ namespace Sailing
 		double TwaMinDeg = -1.0, TwaMaxDeg = -1.0; // Hold: |TWA| band (unset < 0)
 		double MaxHeelDeg = -1.0;    // Hold
 		double MinSpeedKn = -1.0;    // Hold
+		double MaxSpeedKn = -1.0;    // Hold (#402: the first job's stop)
 		std::string Station;         // Station, or Hold's station
 		std::string Action;          // Action
 		double Seconds = 0.0;        // None

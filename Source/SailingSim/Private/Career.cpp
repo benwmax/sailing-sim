@@ -176,6 +176,8 @@ bool FCareerContent::LoadText(const FString& Json, FString* OutError)
 					LO->TryGetStringField(TEXT("drill"), L.DrillId);
 					LO->TryGetStringField(TEXT("quiz"), L.QuizId);
 					LO->TryGetNumberField(TEXT("quiz_pass"), L.QuizPass);
+					LO->TryGetStringField(TEXT("conditions"), L.Conditions);
+					LO->TryGetNumberField(TEXT("traffic"), L.Traffic);
 					L.Drill = FLearningContent::DrillFromId(L.DrillId);
 					L.QuizDrill = FLearningContent::DrillFromId(L.QuizId);
 					if (const TSharedPtr<FJsonObject> M = Child(*LO, TEXT("medals")))

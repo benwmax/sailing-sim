@@ -131,6 +131,16 @@ struct SAILINGSIM_API FSailSave
 		FDateTime CompletedAt;               // the first finish, UTC
 	};
 
+	/** #402 (docs/first-launch/): the first launch's two questions answered, and whether the player took the first job
+	 *  or skipped to the menu. Unset on a new save: the game opens on the first-launch screen. Added in version 1 without
+	 *  a version change. */
+	struct FFirstLaunch
+	{
+		bool bSeen = false;                  // the first-launch screen was answered
+		bool bSkipped = false;               // "Skip to the menu": the first job waits on the Career screen
+		FDateTime At;                        // UTC
+	};
+
 	/** Progress: drills passed, the career's lessons, checkrides and certificates, races, the logbook's totals. The
 	 *  career fields were added in version 1 without a version change (a missing field reads as empty). */
 	struct FProgress
@@ -145,6 +155,7 @@ struct SAILINGSIM_API FSailSave
 		const FCheckrideRecord* FindCheckride(const FString& Id) const { return Checkrides.FindByPredicate([&Id](const FCheckrideRecord& C) { return C.Id == Id; }); }
 		bool HasCertificate(const FString& Id) const { return Certificates.ContainsByPredicate([&Id](const FCertificateRecord& C) { return C.Id == Id; }); }
 		TArray<FSceneRecord> Scenes;         // by scene id
+		FFirstLaunch FirstLaunch;
 		const FSceneRecord* FindScene(const FString& Id) const { return Scenes.FindByPredicate([&Id](const FSceneRecord& S) { return S.Id == Id; }); }
 		bool IsSceneDone(const FString& Id) const { const FSceneRecord* S = FindScene(Id); return S && S->bDone; }
 		/** A finished scene (the sim's FSceneResult, rule 8); an unfinished one changes nothing. */
