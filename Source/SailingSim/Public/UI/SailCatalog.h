@@ -48,6 +48,10 @@ namespace SailCatalog
 
 	SAILINGSIM_API const TArray<FWorld>& Worlds();
 	SAILINGSIM_API const FWorld& World(int32 Index);
+	/** The slice build's menus (USailingSettings::SliceOnly): true for what they show; always true outside a slice build. */
+	SAILINGSIM_API bool InSliceWorld(int32 Index);
+	SAILINGSIM_API bool InSliceBoat(int32 Type);
+	SAILINGSIM_API bool InSliceTier(const FString& TierId);
 	/** The HUD minimap for a settings world (0 lake, 1 Galveston Bay, 2 the Gulf passage): its texture and grid extent. */
 	struct FMiniMap
 	{
