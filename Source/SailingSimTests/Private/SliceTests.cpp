@@ -371,7 +371,10 @@ namespace SliceFirstHour
 				C.Tiller = HelmToward(Boat, FMath::Atan2(Aim.Y - P.Y, Aim.X - P.X), false, 0.8);
 			}
 			Boat.Step(PhysicsDt, C, Wind);
+			const int32 Before = Run.Collisions;
 			Contacts.Update(Boat, Run);
+			if (Run.Collisions > Before)
+				Run.Notes += FString::Printf(TEXT("; touched in phase %d at %.0f s, %.1f kn, %.1f m astern of the slip"), Phase, T, Boat.GetTelemetry().BoatSpeed / kKnot, Backed);
 			FDrillContext Ctx;
 			Ctx.bTiedUp = Phase == 0;
 			Ctx.MaxContactSpeed = Run.MaxContactKn;
