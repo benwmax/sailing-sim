@@ -78,6 +78,6 @@ namespace SailGraphicsRows
 		return SNew(SSailChoice).Label(TEXT("Render scale")).Options({ TEXT("Auto"), TEXT("100%"), TEXT("82%"), TEXT("67%"), TEXT("50%") })
 			.Index_Lambda([S]() { return IndexOf(Scales, S->ResolutionScale); })
 			.OnChanged_Lambda([S, Mode](int32 I) { S->ResolutionScale = Scales[I]; S->Save(); if (Mode.IsValid()) Mode->ApplyQualitySettings(); })
-			.Note(bNote ? TEXT("Auto is the tier's own: 67% with TAA on Medium, native on High with the governor stepping to 82% in heavy views.") : TEXT(""));
+			.Note(bNote ? TEXT("Auto is the tier's own: 67% with TAA on Medium; native on High, stepping down to 82% in the busiest views.") : TEXT(""));
 	}
 }

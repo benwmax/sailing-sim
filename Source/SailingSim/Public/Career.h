@@ -94,7 +94,8 @@ struct FCareerUnlocks
 
 struct FCareerTier
 {
-	FString Id, Name, Status, Summary, Learning, WorldId, Notes;
+	FString Id, Name, Status, Summary, Learning, WorldId;
+	FString Notes;                   // for us, never shown to players (#436)
 	TArray<FString> Boats;           // FSailSave boat ids; empty: any boat counts
 	TArray<FCareerLesson> Lessons;
 	FCareerCheckride Checkride;

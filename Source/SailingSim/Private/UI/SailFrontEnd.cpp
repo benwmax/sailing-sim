@@ -916,7 +916,6 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 				.Font([] { FSlateFontInfo F = Font(EType::Eyebrow); F.LetterSpacing = 320; return F; }()).ColorAndOpacity(Muted) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]
-		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top)[ SailUI::Text(TEXT("Graphics G4 build"), EType::Label, Dim) ]
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 90.f)[ Card ];
 	E.Focus = bTitleFocusMode ? TSharedPtr<SWidget>(ModeChoice) : First;
 	bTitleFocusMode = false;
@@ -1691,7 +1690,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		auto Detail = [&](const TCHAR* Label, int32 USailingSettings::* Field, const TCHAR* Note) { Add(SailGraphicsRows::Detail(GM, Label, Field, Note)); };
 		Section(TEXT("Detail"));
 		Detail(TEXT("Shadows"), &USailingSettings::ShadowQuality, TEXT("Shadow resolution and distance."));
-		Detail(TEXT("Lighting"), &USailingSettings::LightingQuality, TEXT("Lumen's bounced light: the shade inside crowns and under hulls."));
+		Detail(TEXT("Lighting"), &USailingSettings::LightingQuality, TEXT("Bounced light: the shade inside tree crowns and under hulls."));
 		Detail(TEXT("Reflections"), &USailingSettings::ReflectionQuality, TEXT(""));
 		Detail(TEXT("Clouds"), &USailingSettings::CloudQuality, TEXT("Samples through the clouds: the costliest part of the sky."));
 		Detail(TEXT("Water"), &USailingSettings::WaterQuality, TEXT("Low keeps the simple water; Medium and up the full sea."));
@@ -1709,9 +1708,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([S](int32 I) { S->bCinematicLook = I == 1; S->Save(); })
 			.Note(TEXT("Cinematic: a photographic grade (warm highlights, cool shadows), wider bloom and sun glitter. Photo mode always uses it.")));
 		Help = TEXT("Quality is a preset: choosing a tier sets every row on Auto to that tier's own. Change a row to override it.\n\n"
-			"Measured on the packaged build, slowest view (docs/graphics-3/bench.csv): Medium 71.6 fps, High 45.3 fps on the M5 Pro. "
-			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor (RTX 4090 PC).\n\nRender scale draws the world "
-			"at a share of the screen's resolution and upscales it; a fixed scale turns High's governor off.");
+			"On a MacBook Pro with an M5 Pro, Medium keeps above 60 frames a second and High about 45 in the busiest views. "
+			"Ultra is for a desktop graphics card: fully ray-traced light, strand hair and full-resolution clouds.\n\nRender scale draws the "
+			"world at a share of the screen's resolution and upscales it; a fixed scale stops High lowering the resolution in busy views.");
 		break;
 	}
 	case 1:
@@ -2408,7 +2407,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		}
 		if (T.Lessons.Num() == 0)
 		{
-			Detail->AddSlot().AutoHeight().Padding(0.f, 6.f)[ PanelBox(SailUI::Text(T.Notes.IsEmpty() ? FString(TEXT("Lessons for this tier are still being written.")) : T.Notes, EType::Body, Muted, true), FMargin(16.f, 12.f)) ];
+			Detail->AddSlot().AutoHeight().Padding(0.f, 6.f)[ PanelBox(SailUI::Text(TEXT("Lessons for this tier are still being written."), EType::Body, Muted, true), FMargin(16.f, 12.f)) ];
 		}
 		// The checkride and the certificate.
 		FString Why;
