@@ -114,10 +114,12 @@ try {
 		return $P.ExitCode
 	}
 	# Title > Gallery: down to Quit, up past Credits, Enter; the gallery renders a thumbnail per mesh, then the script quits.
+	# Eight waits first (about 20 s): a fresh build's first launch reaches the title later than three gave it (27370bf8's
+	# walk started early and reported 0 thumbnails; the same walk with eight rendered all 132).
 	Step 'Smoke: Title > Gallery'
 	$Thumbs = Join-Path $Saved 'GalleryThumbs'
 	Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Thumbs
-	$Walk = (@('Wait', 'Wait', 'Wait') + (1..20 | ForEach-Object { 'Down' }) + @('Up', 'Up', 'Enter') + (1..10 | ForEach-Object { 'Wait' }) + @('Quit')) -join ','
+	$Walk = ((1..8 | ForEach-Object { 'Wait' }) + (1..20 | ForEach-Object { 'Down' }) + @('Up', 'Up', 'Enter') + (1..10 | ForEach-Object { 'Wait' }) + @('Quit')) -join ','
 	$GalleryExit = Run-Game "-SailingUIScript=$Walk" 300
 	$ThumbCount = if (Test-Path $Thumbs) { @(Get-ChildItem $Thumbs -Filter *.png).Count } else { 0 }
 	$GalleryOk = $GalleryExit -eq 0 -and $ThumbCount -gt 100
