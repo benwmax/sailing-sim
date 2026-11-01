@@ -5418,7 +5418,9 @@ WORLD_LIBRARY = {
     # Landmarks (Tools/blender/build_landmarks.py slots).
     "PlatformPaint": ((0.62, 0.45, 0.03), 0.6, 5.0, 0.0, 0.2),
     "AviationRed": ((0.55, 0.06, 0.02), 0.5, 0.0, 0.0, 0.0),
-    "Brick": ((0.36, 0.15, 0.09), 0.85, 4.0, 0.0, 0.0),
+    # Club docks pass 2 (Tools/blender/build_docks.py): the fire extinguisher cabinets' powder-coated red.
+    "SafetyRed": ((0.62, 0.04, 0.03), 0.45, 0.0, 0.0, 0.0),
+    "Brick":((0.36, 0.15, 0.09), 0.85, 4.0, 0.0, 0.0),
     # Marseille's landmarks (harbour kit): pale Cassis-type limestone, the basilica's green Golfolina stone courses, Roman
     # tile, gilded copper.
     "Limestone": ((0.64, 0.60, 0.52), 0.85, 4.0, 0.0, 0.0),

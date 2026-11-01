@@ -708,7 +708,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 	FLakeData Lake;
 	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || !Lake.Marina.IsLoaded()) return Out;
 	FKitGeometry All;
-	AMarinaActor::BuildGeometry(Lake.Marina, &Lake.Terrain, [](const FString&) { return true; }, All);
+	AMarinaActor::BuildGeometry(Lake.Marina, &Lake.Terrain, [](const FString&) { return true; }, All, AMarinaActor::HasDockKit());
 	TMap<FIntPoint, FKitGeometry> Tiles;
 	All.SplitTiles(TileM, Tiles);
 	for (const auto& KV : Tiles)
