@@ -4,7 +4,7 @@ A new player's first hour in the vertical slice (#399): **Lake Ray Hubbard, the 
 Racer**, Career mode, from a fresh save, on keyboard and controller. Galveston Bay and the Catalina 22 are the stretch
 (#407) and stay reachable; they are listed under "Outside the slice" only.
 
-**Status: draft.** Part A comes from the data (`Content/Career/career.json`, `Content/Learning/*.json`) and the menu code
+**Status: Part A and Part B done.** Part A comes from the data (`Content/Career/career.json`, `Content/Learning/*.json`) and the menu code
 (`SSailFrontEnd`, `ASailingHUD`, `FSailSessionConfig`) at main 964ccdcd. Part B, the scripted play-through with stills, is
 pending: each launch brings the game window to the front, and Bean is choosing when the Mac is free. Each finding below
 says whether it is **seen** (in a run), or **read** (in code or data, to confirm in the run).
@@ -81,6 +81,42 @@ Galveston and the Catalina 22 stay reachable (stretch, #407).
 - On the pad: casting off (`DockLines`), backing the jib (`BackJib`), the sheets, and whether the drill steps' key names
   follow the pad (`FLearningContent::ResolveKeys` uses the pad's labels when the pad is in use).
 
-## Part B: the play-through (pending)
+## Part B: the play-through (Nov 1 2026, main 8ab0048c)
 
-Stills and notes per screen, fresh save then an existing one (`docs/career/still-save.json`), keyboard then controller.
+34 stills of the packaged Development build at 1920x1080 on Medium, each the game's own screenshot of its window (never
+the desktop), on a fresh profile (Config and SaveGames moved aside, restored byte for byte after: `diff -r` clean), an
+existing save part way through Day Sailor (`docs/career/still-save.json`) and one with the Day Sailor certificate
+(`docs/free-sail/still-save.json`); keys and pad buttons through `-SailingUIScript`. Script and runner:
+`Artifacts/claude-6e6e/audit/` on the Mac (`night.sh`, `shot.sh`).
+
+### Seen
+
+| Still | What it shows |
+|---|---|
+| ![](stills/f-first-launch.jpg) | **A new save opens on the first-launch screen** (#402): the school, quality pre-picked (Medium), Easy pre-picked, Start your first job focused. Finding 1 fixed. |
+| ![](stills/f-title.jpg) | **The title** after Skip: no "ASA 101 drills" (finding 6 fixed), Career shows "Day Sailor · 0 of 6 lessons". Still there: **Gallery** (finding 10, developer tools on) and a faint **"GRAPHICS G4 BUILD"** label top right (17). Sail is still the first item and focused for a player who skipped. |
+| ![](stills/f-lesson1-r-launch.jpg) | **Start lesson**: Right then Enter on Day Sailor's first row goes straight to its loading screen, "J/22 · Leave the dock", the lesson day, Learning mode (finding 2 fixed). |
+| ![](stills/f-career.jpg) | **The Career screen** on a fresh save. Focus starts on the tiers; Down walks the tiers, not the lessons (19). |
+| ![](stills/f-lesson1-d-launch.jpg) | Down five times from the Career screen ends on **Passage Maker**, whose panel says **"The passage boat waits on Bean."** (17: developer notes shown to players). |
+| ![](stills/k-career.jpg) | **Day Sailor certified**: Club Racer open with its Sunfish lessons; **Take the quiz** under a lesson with a medal and an unpassed quiz (finding 7 fixed). Coastal Cruiser is open but "Lessons to come" (21). |
+| ![](stills/f-hud-sunfish-quickstop.jpg) | **The Sunfish's quick-stop** tells the player to "tack, leave the jib backed" (finding 12 seen): a Sunfish has no jib. |
+| ![](stills/f-hud-sunfish-heaveto.jpg) | **Heave to on the Sunfish**: "Back the jib ... (B)" (finding 14 seen: a drill the boat cannot sail, reachable from the Mode screen). |
+| ![](stills/f-quiz-sunfish-quickstop.jpg) | **The quiz** after the Sunfish quick-stop; footer "Questions on what you just sailed" (finding 6 fixed). |
+| ![](stills/g-career-pad.jpg) | **On the pad**: the prompts become A Choose, B Back (`SailingSim.Slice.PadCoverage` holds every first-hour action on the pad). |
+| ![](stills/f-replays.jpg) | **Settings > Graphics** (five Downs from the title now reach Settings, not Replays): the help panel quotes "Measured on the packaged build, slowest view (docs/graphics-3/bench.csv) ... on the M5 Pro" (17). |
+| ![](stills/f-enter.jpg) | **Sail > World**: Galveston locked (Day Sailor certificate), Marseille "Not in the career yet", the Texas coast; the cards' facts run into each other ("AIDS TO NAVIGALAUNCH SPOTS", "LESSONS IN DAYNORMAL POOL") (18). |
+
+### New findings from Part B and the PC's Windows check
+
+| # | Category | Finding |
+|---|---|---|
+| 15 | Missing explanation | The first job's caption header read "Captain"; the design says Instructor (PC, Windows Shipping 127081ee). Fixed on `first-launch-fixes`. |
+| 16 | Unclear objective | The first job's loading screen read "J/22 · Free sail" (PC). Fixed on `first-launch-fixes` ("Your first job"). |
+| 17 | Developer leftovers | Player-facing developer text: the Settings help quotes bench numbers and a docs path; Passage Maker says "The passage boat waits on Bean."; a "GRAPHICS G4 BUILD" label on the title. |
+| 18 | Layout | The World screen's card facts overflow into each other. |
+| 19 | Unclear objective | On the Career screen Down walks the tiers; the lessons are reached with Right, which nothing says. |
+| 20 | Dead end | A player who chose "Skip to the menu" has no way back to the first job (the design's "First job" entry on the Career screen isn't there). |
+| 21 | Dead end | Coastal Cruiser opens with the Day Sailor certificate but has no lessons ("Lessons to come"). |
+
+Not reached by the script: Replays with no run (9: still read only), the Sunfish's J/22 quiz questions (13: read; the
+still's first question happened to fit a dinghy), and every drill sailed by hand (Bean's, on keyboard and pad).
