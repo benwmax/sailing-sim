@@ -1487,9 +1487,15 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	{
 		TSharedRef<SUniformGridPanel> Drills = SNew(SUniformGridPanel).SlotPadding(FMargin(6.f));
 		const USailSessionSave* Save = USailSessionSave::Get();
+		// #435: only the drills the boat can sail (no heave to or figure-eight without a jib).
+		const Sailing::FBoatConfig DrillBoat = Sailing::FBoatConfig::Make(Sailing::EBoatType(Pending.Boat));
+		if (!FDrillRunner::CanSail(ESailingDrill(Pending.DrillIndex + 1), DrillBoat)) Pending.DrillIndex = 0;
+		int32 Shown = 0;
 		for (int32 I = 0; I < 6; ++I)
 		{
-			Drills->AddSlot(I % 3, I / 3)
+			if (!FDrillRunner::CanSail(ESailingDrill(I + 1), DrillBoat)) continue;
+			const int32 Cell = Shown++;
+			Drills->AddSlot(Cell % 3, Cell / 3)
 			[
 				SNew(SSailButton).Look(EButtonLook::Card).Padding(FMargin(14.f, 10.f)).IsSelected_Lambda([this, I]() { return Pending.DrillIndex == I; })
 				.OnClicked_Lambda([this, I]() { Pending.DrillIndex = I; })
@@ -1986,7 +1992,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	const ASailboatPawn* P = Pawn();
-	const FDrillBriefing* B = P ? FLearningContent::Get().Briefing(P->GetDrill().GetDrill()) : nullptr;
+	const FDrillBriefing* B = P ? FLearningContent::Get().Briefing(P->GetDrill().GetDrill(), P->GetDrill().IsDinghyRun()) : nullptr;
 	TSharedRef<SSailButton> Go = ActionButton(TEXT("Start the drill"), FSimpleDelegate::CreateLambda([this]() { Close(); }));
 	if (!B)
 	{
@@ -2081,7 +2087,7 @@ void SSailFrontEnd::StartQuiz()
 		// Career 1: a checkride's written quiz, from the Career screen.
 		const FCareerContent& Content = FCareerContent::Get();
 		const FCareerTier* T = Content.Tier(CheckrideTierId);
-		Quiz = T ? Content.MakeCheckrideQuiz(*T, FLearningContent::Get(), Rng) : TArray<FQuizQuestion>();
+		Quiz = T ? Content.MakeCheckrideQuiz(*T, FLearningContent::Get(), Rng, T->SailsDinghy()) : TArray<FQuizQuestion>();
 		QuizIndex = QuizRight = 0;
 		QuizChosen = -1;
 		QuizDrillName = T ? T->Checkride.Title : FString();
@@ -2092,7 +2098,8 @@ void SSailFrontEnd::StartQuiz()
 	if (const FCareerLesson* Retake = QuizRetakeLessonId.IsEmpty() ? nullptr : FCareerContent::Get().Lesson(QuizRetakeLessonId))
 	{
 		// #402: the lesson's quiz without sailing it again (its row on the Career screen, or Retake the quiz).
-		Quiz = FLearningContent::Get().MakeQuiz(Retake->QuizDrill, Rng);
+		const FCareerTier* RetakeTier = FCareerContent::Get().Tier(Retake->TierId);
+		Quiz = FLearningContent::Get().MakeQuiz(Retake->QuizDrill, Rng, RetakeTier && RetakeTier->SailsDinghy());
 		QuizIndex = QuizRight = 0;
 		QuizChosen = -1;
 		QuizDrillName = Retake->Title;
@@ -2102,7 +2109,7 @@ void SSailFrontEnd::StartQuiz()
 	}
 	const ASailboatPawn* P = Pawn();
 	const ESailingDrill Drill = P ? P->GetDrill().GetDrill() : ESailingDrill::None;
-	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng);
+	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng, P && P->GetDrill().IsDinghyRun());
 	QuizIndex = QuizRight = 0;
 	QuizChosen = -1;
 	QuizDrillName = DrillName(Drill);
@@ -2112,7 +2119,7 @@ void SSailFrontEnd::StartQuiz()
 		const FDrillRunner& D = P->GetDrill();
 		FString Outcome = D.GetOutcome();
 		if (Outcome.IsEmpty() && FDrillRunner::Outcomes(Drill).Num()) Outcome = FDrillRunner::Outcomes(Drill)[0];   // stills before the drill ends
-		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots());
+		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots(), D.IsDinghyRun());
 		// Career 1: the lesson this drill counted for, and its medal; the quiz closes it.
 		const FCareerProgress::FAward& A = P->GetCareerAward();
 		if (const FCareerLesson* L = A.IsValid() ? FCareerContent::Get().Lesson(A.LessonId) : nullptr)

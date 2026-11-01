@@ -6,7 +6,8 @@
     "drills": "drill ids from drill-briefings.json, or Any for questions that fit any sail (rules, weather, safety)",
     "answer": "zero-based index into options; shuffle options at run time and keep the answer with its text",
     "why": "one line shown after the player answers",
-    "source": "written for the sim; none duplicates a question in the ASA 101 Study Kit artifact"
+    "source": "written for the sim; none duplicates a question in the ASA 101 Study Kit artifact",
+    "class": "optional: keelboat (needs a jib, a crew, an engine or a keel: not asked on a dinghy) or dinghy (only asked on a boat with no jib); absent fits both"
   },
   "questions": [
     {
@@ -39,7 +40,8 @@
         "The mainsail"
       ],
       "answer": 3,
-      "why": "Head to wind, the main luffs harmlessly along the centreline; the jib adds power you do not need yet."
+      "why": "Head to wind, the main luffs harmlessly along the centreline; the jib adds power you do not need yet.",
+      "class": "keelboat"
     },
     {
       "id": "ld-03",
@@ -71,7 +73,8 @@
         "Walk the boat to a spot where it can point into the wind, or use the motor"
       ],
       "answer": 3,
-      "why": "Sailing off a leeward dock is very hard; move the boat or use the engine instead."
+      "why": "Sailing off a leeward dock is very hard; move the boat or use the engine instead.",
+      "class": "keelboat"
     },
     {
       "id": "ld-05",
@@ -103,7 +106,8 @@
         "Before you cast off"
       ],
       "answer": 0,
-      "why": "They protect the hull while you leave; after that they just drag and look sloppy."
+      "why": "They protect the hull while you leave; after that they just drag and look sloppy.",
+      "class": "keelboat"
     },
     {
       "id": "ld-07",
@@ -119,7 +123,8 @@
         "Coiled and stowed so nothing trails over the side"
       ],
       "answer": 3,
-      "why": "A trailing line can foul the rudder or outboard, and loose lines underfoot trip the crew."
+      "why": "A trailing line can foul the rudder or outboard, and loose lines underfoot trip the crew.",
+      "class": "keelboat"
     },
     {
       "id": "ld-08",
@@ -183,7 +188,42 @@
         "Only where the snacks are"
       ],
       "answer": 1,
-      "why": "A short briefing turns a scramble into a calm departure."
+      "why": "A short briefing turns a scramble into a calm departure.",
+      "class": "keelboat"
+    },
+    {
+      "id": "ld-12",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "class": "dinghy",
+      "topic": "sail",
+      "q": "Your Sunfish is tied at the dinghy dock with her sail up. Until you are sitting with the tiller in your hand, the sheet should be:",
+      "options": [
+        "Cleated in tight",
+        "Loose, so the sail luffs",
+        "Tied to the dock",
+        "Wrapped round the tiller"
+      ],
+      "answer": 1,
+      "why": "A loose sheet keeps the sail from filling and pulling the boat away before you are ready to steer."
+    },
+    {
+      "id": "ld-13",
+      "drills": [
+        "LeaveTheDock"
+      ],
+      "class": "dinghy",
+      "topic": "parts",
+      "q": "Why push the daggerboard down once you are clear of the dock and in deep water?",
+      "options": [
+        "It slows the boat",
+        "It keeps the sail from luffing",
+        "It lets the boat sail across and upwind instead of sliding sideways",
+        "It is only used for racing"
+      ],
+      "answer": 2,
+      "why": "Without the board a dinghy slips to leeward; lower it as soon as the water is deep enough."
     },
     {
       "id": "tri-01",
@@ -215,7 +255,8 @@
         "Ease the jib"
       ],
       "answer": 0,
-      "why": "The windward telltale lifting is the sign you have reached the edge of the no-go zone."
+      "why": "The windward telltale lifting is the sign you have reached the edge of the no-go zone.",
+      "class": "keelboat"
     },
     {
       "id": "tri-03",
@@ -263,7 +304,8 @@
         "In irons"
       ],
       "answer": 2,
-      "why": "On a beam reach the sails drive well and the apparent wind stays strong."
+      "why": "On a beam reach the sails drive well and the apparent wind stays strong.",
+      "class": "keelboat"
     },
     {
       "id": "tri-06",
@@ -295,7 +337,8 @@
         "The boat is about to jibe"
       ],
       "answer": 1,
-      "why": "It is the moment the turn starts; the crew release the old jib sheet as the jib luffs."
+      "why": "It is the moment the turn starts; the crew release the old jib sheet as the jib luffs.",
+      "class": "keelboat"
     },
     {
       "id": "tri-08",
@@ -407,7 +450,8 @@
         "Within about 45 degrees either side of the wind"
       ],
       "answer": 3,
-      "why": "Closer than about 45 degrees, the sails cannot fill and the boat stops."
+      "why": "Closer than about 45 degrees, the sails cannot fill and the boat stops.",
+      "class": "keelboat"
     },
     {
       "id": "tri-15",
@@ -439,7 +483,42 @@
         "Reefing both sails"
       ],
       "answer": 0,
-      "why": "Holding the jib out on the opposite side catches more wind on a run."
+      "why": "Holding the jib out on the opposite side catches more wind on a run.",
+      "class": "keelboat"
+    },
+    {
+      "id": "tri-17",
+      "drills": [
+        "SailATriangle"
+      ],
+      "class": "dinghy",
+      "topic": "trim",
+      "q": "Close-hauled in a Sunfish, a puff heels the boat hard. The quickest way to keep her flat is to:",
+      "options": [
+        "Hike out and ease the sheet a little",
+        "Trim the sheet in hard",
+        "Move to the leeward side",
+        "Pull the daggerboard all the way up"
+      ],
+      "answer": 0,
+      "why": "In a dinghy your weight and the sheet in your hand are the controls for heel."
+    },
+    {
+      "id": "tri-18",
+      "drills": [
+        "SailATriangle"
+      ],
+      "class": "dinghy",
+      "topic": "sail",
+      "q": "Sailing a dinghy alone, when do you cross to the new side during a tack?",
+      "options": [
+        "Before you start turning",
+        "As the boom comes across, ducking under it and facing forward",
+        "After the boat has stopped",
+        "You stay on the same side"
+      ],
+      "answer": 1,
+      "why": "Cross as the boom swings over, then settle on the new high side and swap the tiller and sheet hands."
     },
     {
       "id": "ht-01",
@@ -814,7 +893,8 @@
         "Lowered"
       ],
       "answer": 2,
-      "why": "The backed jib pushes the bow around so you can keep circling."
+      "why": "The backed jib pushes the bow around so you can keep circling.",
+      "class": "keelboat"
     },
     {
       "id": "qs-03",
@@ -862,7 +942,25 @@
         "Lower all sails and drift"
       ],
       "answer": 1,
-      "why": "The quick-stop is mostly steering, which one person can manage."
+      "why": "The quick-stop is mostly steering, which one person can manage.",
+      "class": "keelboat"
+    },
+    {
+      "id": "qs-06",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "class": "dinghy",
+      "topic": "safety",
+      "q": "Turning back for a swimmer in a Sunfish, the sheet during the turn should be:",
+      "options": [
+        "Trimmed in hard all the way round",
+        "Eased so the sail luffs as you slow",
+        "Taken off the boom",
+        "Held to windward to back the sail"
+      ],
+      "answer": 1,
+      "why": "A powered-up sail drives you away and heels you over; ease it, circle close, and trim again to sail back."
     },
     {
       "id": "dk-01",
@@ -910,7 +1008,8 @@
         "So the crew can rest"
       ],
       "answer": 2,
-      "why": "A J/22 weighs over 800 kg and glides a long way after the sails stop driving."
+      "why": "A J/22 weighs over 800 kg and glides a long way after the sails stop driving.",
+      "class": "keelboat"
     },
     {
       "id": "dk-04",
@@ -926,7 +1025,8 @@
         "About 3 knots for steerage"
       ],
       "answer": 2,
-      "why": "Arrive slowly enough that a crew member can step off and stop the boat with a line."
+      "why": "Arrive slowly enough that a crew member can step off and stop the boat with a line.",
+      "class": "keelboat"
     },
     {
       "id": "dk-05",
@@ -958,7 +1058,8 @@
         "Before you enter the marina, on the side you will dock"
       ],
       "answer": 3,
-      "why": "Set them early, at the height where the hull meets the dock."
+      "why": "Set them early, at the height where the hull meets the dock.",
+      "class": "keelboat"
     },
     {
       "id": "dk-07",
@@ -974,7 +1075,8 @@
         "Wait until the boat hits"
       ],
       "answer": 1,
-      "why": "Step, don't jump, and take a line so the boat can be stopped."
+      "why": "Step, don't jump, and take a line so the boat can be stopped.",
+      "class": "keelboat"
     },
     {
       "id": "dk-08",
@@ -1006,7 +1108,8 @@
         "Jib first, then main"
       ],
       "answer": 3,
-      "why": "The jib comes down first so the main keeps the bow head to wind."
+      "why": "The jib comes down first so the main keeps the bow head to wind.",
+      "class": "keelboat"
     },
     {
       "id": "dk-10",
@@ -1022,7 +1125,8 @@
         "Raise the outboard and wait"
       ],
       "answer": 0,
-      "why": "Heeling lifts the keel a little, and the way you came in is known to be deep enough."
+      "why": "Heeling lifts the keel a little, and the way you came in is known to be deep enough.",
+      "class": "keelboat"
     },
     {
       "id": "dk-11",
@@ -1038,7 +1142,59 @@
         "The sails fill backward"
       ],
       "answer": 2,
-      "why": "Get the windward lines on quickly, or the boat blows away from the crew on the dock."
+      "why": "Get the windward lines on quickly, or the boat blows away from the crew on the dock.",
+      "class": "keelboat"
+    },
+    {
+      "id": "dk-12",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "class": "dinghy",
+      "topic": "dock",
+      "q": "Coming in to the dinghy dock in a Sunfish, how do you slow down?",
+      "options": [
+        "Pull the daggerboard up",
+        "Let the sheet go so the sail luffs, with the bow toward the wind",
+        "Trim the sheet in harder",
+        "Steer straight downwind"
+      ],
+      "answer": 1,
+      "why": "With the sheet free and the bow near the wind the sail stops driving and a light dinghy soon stops."
+    },
+    {
+      "id": "dk-13",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "class": "dinghy",
+      "topic": "dock",
+      "q": "Why does a Sunfish stop so much sooner than a keelboat once the sail luffs?",
+      "options": [
+        "Its sail is smaller",
+        "It is light, so it carries little way",
+        "Its rudder is bigger",
+        "The dock pulls it in"
+      ],
+      "answer": 1,
+      "why": "The hull weighs about 55 kg (120 lb); a keelboat of several hundred kilograms keeps gliding."
+    },
+    {
+      "id": "dk-14",
+      "drills": [
+        "ReturnAndDock"
+      ],
+      "class": "dinghy",
+      "topic": "parts",
+      "q": "As you come alongside the dinghy dock where the water is shallow, the daggerboard should be:",
+      "options": [
+        "All the way down",
+        "Raised partway, so it clears the bottom but still helps you steer",
+        "Pulled out and dropped on the dock",
+        "Left as it is; it never matters"
+      ],
+      "answer": 1,
+      "why": "The board reaches well below the hull; raise it near the shallows but keep a little down."
     },
     {
       "id": "rul-01",
@@ -1102,7 +1258,8 @@
         "The other sailboat"
       ],
       "answer": 1,
-      "why": "With the engine propelling you, you are a power-driven vessel and give way to a sailing vessel."
+      "why": "With the engine propelling you, you are a power-driven vessel and give way to a sailing vessel.",
+      "class": "keelboat"
     },
     {
       "id": "rul-05",
@@ -1374,7 +1531,8 @@
         "Reduce power: ease sheets, flatten the sails, reef if you can"
       ],
       "answer": 3,
-      "why": "Depower before the boat is overpowered, not after."
+      "why": "Depower before the boat is overpowered, not after.",
+      "class": "keelboat"
     },
     {
       "id": "saf-05",

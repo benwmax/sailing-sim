@@ -12,6 +12,11 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "..")
 DRILLS = ["LeaveTheDock", "SailATriangle", "HeaveTo", "CrewOverboardFigureEight", "CrewOverboardQuickStop", "ReturnAndDock"]
 TOPICS = {"parts", "sail", "trim", "rules", "lights", "aton", "nav", "knots", "safety", "weather", "dock"}
 LEVELS = {"info", "good", "warn", "danger"}
+CLASSES = {"keelboat", "dinghy"}
+DINGHY_DRILLS = ["LeaveTheDock", "SailATriangle", "CrewOverboardQuickStop", "ReturnAndDock"]   # FDrillRunner::CanSail
+DINGHY_FIELDS = {"goal", "why_it_matters", "setup", "commands", "steps", "good", "mistakes", "lake_notes", "debrief"}
+# Words an untagged question (asked on any boat) must not lean on (its text, right answer or why): tag it keelboat instead.
+KEELBOAT_WORDS = re.compile(r"\b(jib|J/22|keelboat|keel|crew|outboard|motor|engine|fenders?|lifelines?|winch)\b", re.I)
 KEYS = {"DockLines", "BackJib", "JibSheet.trim", "JibSheet.ease", "MainSheet.trim", "MainSheet.ease", "Hike.out", "ToggleLearning"}
 
 errors = []
@@ -41,8 +46,19 @@ for d in b["drills"]:
     for i, s in enumerate(d["steps"]):
         check(s.get("sim_text") and s.get("coach"), f"{d['id']} step {i}: needs sim_text and coach")
         tokens(s.get("text", ""), f"{d['id']} step {i}")
-    n = sum(1 for x in q["questions"] if d["id"] in x["drills"] or "Any" in x["drills"])
+    n = sum(1 for x in q["questions"] if (d["id"] in x["drills"] or "Any" in x["drills"]) and x.get("class") != "dinghy")
     check(d["quiz_after"] <= n, f"{d['id']}: quiz_after {d['quiz_after']} but only {n} questions")
+    g = d.get("dinghy")
+    check((g is not None) == (d["id"] in DINGHY_DRILLS), f"{d['id']}: a dinghy block goes on exactly the drills a dinghy sails ({DINGHY_DRILLS})")
+    if g is not None:
+        check(set(g) <= DINGHY_FIELDS, f"{d['id']} dinghy: unknown fields {sorted(set(g) - DINGHY_FIELDS)}")
+        for i, st in enumerate(g.get("steps", [])):
+            check(st.get("sim_text") and st.get("coach"), f"{d['id']} dinghy step {i}: needs sim_text and coach")
+            tokens(st.get("text", ""), f"{d['id']} dinghy step {i}")
+        if "debrief" in g:
+            check(set(g["debrief"]) == set(d["debrief"]), f"{d['id']} dinghy: debrief outcomes differ from the drill's")
+        n = sum(1 for x in q["questions"] if (d["id"] in x["drills"] or "Any" in x["drills"]) and x.get("class") != "keelboat")
+        check(d["quiz_after"] <= n, f"{d['id']} dinghy: quiz_after {d['quiz_after']} but only {n} questions")
 
 # Steps against Drills.cpp
 cpp = os.path.join(ROOT, "Source", "SailingSim", "Private", "Drills.cpp")
@@ -61,6 +77,12 @@ if os.path.exists(cpp):
         code = steps_in(block)
         mine = [s["sim_text"] for s in d["steps"]]
         check(code == mine, f"{d['id']}: steps differ from Drills.cpp\n  code: {code}\n  json: {mine}")
+        if "dinghy" in d:
+            dsrc = src[src.index("TArray<FString> FDrillRunner::DinghySteps"):]
+            m = re.search(r"case ESailingDrill::" + d["id"] + r":\s*return \{(.*?)\};", dsrc, re.S)
+            dcode = [bytes(s, "utf-8").decode("unicode_escape") for s in re.findall(r'TEXT\("((?:[^"\\]|\\.)*)"\)', m.group(1))] if m else code
+            dmine = [s["sim_text"] for s in d["dinghy"].get("steps", d["steps"])]
+            check(dcode == dmine, f"{d['id']} dinghy: steps differ from Drills.cpp\n  code: {dcode}\n  json: {dmine}")
 else:
     print(f"note: {cpp} not found, step check skipped")
 
@@ -76,6 +98,10 @@ for x in t["tips"]:
     check(isinstance(x["cooldown_s"], (int, float)) and x["cooldown_s"] >= 0, f"tip {x['id']}: bad cooldown")
     check(len(x["text"]) <= 240, f"tip {x['id']}: text over 240 characters ({len(x['text'])})")
     tokens(x["text"], f"tip {x['id']}")
+    check(x.get("class", "keelboat") in CLASSES, f"tip {x['id']}: bad class {x.get('class')}")
+    if "class" not in x and any(dr in DINGHY_DRILLS or dr == "Any" for dr in x["drills"]):
+        hit = KEELBOAT_WORDS.search(x["text"].replace("Crew overboard", ""))
+        check(not hit, f"tip {x['id']}: shown on a dinghy but says '{hit.group(0) if hit else ''}' (tag it keelboat and add a dinghy twin)")
 unused = set(events) - {x["event"] for x in t["tips"]}
 check(not unused, f"learning-tips: events with no tip: {sorted(unused)}")
 
@@ -89,6 +115,11 @@ for x in q["questions"]:
     check(len(x["options"]) == 4 and len(set(x["options"])) == 4, f"quiz {x['id']}: needs 4 distinct options")
     check(isinstance(x["answer"], int) and 0 <= x["answer"] < 4, f"quiz {x['id']}: bad answer index")
     check(x["why"] and len(x["why"]) <= 200, f"quiz {x['id']}: why missing or over 200 characters")
+    check(x.get("class", "keelboat") in CLASSES, f"quiz {x['id']}: bad class {x.get('class')}")
+    if "class" not in x and any(dr in DINGHY_DRILLS or dr == "Any" for dr in x["drills"]):
+        said = " ".join([x["q"], x["options"][x["answer"]], x["why"]])
+        hit = KEELBOAT_WORDS.search(said.replace("Crew overboard", "").replace("crew-overboard", ""))
+        check(not hit, f"quiz {x['id']}: asked on a dinghy but says '{hit.group(0) if hit else ''}' (tag it keelboat)")
 for dr in DRILLS:
     n = sum(1 for x in q["questions"] if dr in x["drills"])
     check(n >= 5, f"quiz: only {n} questions for {dr}")

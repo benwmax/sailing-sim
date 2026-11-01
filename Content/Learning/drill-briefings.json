@@ -6,7 +6,8 @@
     "steps": "one entry per FDrillRunner step, same order and count as Drills.cpp; sim_text is copied verbatim from Drills.cpp so a drift shows up in validate.py; text, when present, is the same line with the hard-coded key letter swapped for a key token",
     "key_tokens": "{key:Action.direction} or {key:Action}; resolve to the player's current binding (see README key table)",
     "units": "speeds in knots, distances in boat lengths or metres as written; the HUD unit setting may convert metres",
-    "wording": "ASA 101 / Sailing Made Easy terms: jibe (not gybe), crew overboard, Helm's a-lee, Jibe-ho"
+    "wording": "ASA 101 / Sailing Made Easy terms: jibe (not gybe), crew overboard, Helm's a-lee, Jibe-ho",
+    "dinghy": "optional per drill: the wording for a boat with no jib (the Sunfish, the ILCA); its fields replace the drill's own (the rest are kept). Its steps match FDrillRunner::DinghySteps in Drills.cpp when that has the drill, else the drill's own steps"
   },
   "drills": [
     {
@@ -75,7 +76,65 @@
         "clean": "Clean departure. You planned around the wind and kept the speed under control.",
         "contact": "You got clear, but you touched at {contact_kn} knots. Next time, leave with less sail power and fend off by hand or foot, never by putting a leg between the boat and the dock."
       },
-      "quiz_after": 3
+      "quiz_after": 3,
+      "dinghy": {
+        "goal": "Get the dinghy away from the dock to open water on your own, without touching the dock or another boat.",
+        "why_it_matters": "Alone in a dinghy you steer, trim and fend off with the same two hands. A plan made before you cast off is what keeps the first hundred metres calm.",
+        "setup": "The Sunfish starts tied at the dinghy dock at Rush Creek with her sail up and luffing and the sheet loose. The wind arrow shows where the breeze is coming from.",
+        "commands": [
+          {
+            "call": "Casting off",
+            "reply": "",
+            "meaning": "There is no crew to answer: say it to yourself, check behind you, and go."
+          }
+        ],
+        "steps": [
+          {
+            "sim_text": "Check the wind and plan which way you will leave",
+            "coach": "Look at the flags on shore and the ripples on the water. Decide which way the bow must point and where the open water is before you untie: the sail can only drive you across or away from the wind."
+          },
+          {
+            "sim_text": "Cast off the dock line (T) with the sail luffing",
+            "text": "Cast off the dock line ({key:DockLines}) with the sail luffing",
+            "coach": "Keep the sheet loose so the sail luffs while you untie and settle in. Push the bow off toward your exit, take the tiller and the sheet, and only then trim in."
+          },
+          {
+            "sim_text": "Sail out without touching the docks or other boats",
+            "coach": "Trim in just enough to get moving: a dinghy picks up speed in a boat length, and the rudder needs that flow to steer. Sit on the side the wind comes from and keep her flat."
+          },
+          {
+            "sim_text": "Get 100 m clear of the marina",
+            "coach": "Once you are in deeper water, push the daggerboard all the way down and coil the dock line so it can't trail over the side."
+          }
+        ],
+        "good": [
+          "No contact with any dock or boat (the sim allows a touch under 1 knot).",
+          "You left with the sail luffing and trimmed in only once you were steering.",
+          "You left across the wind or with it, not trying to sail straight into it."
+        ],
+        "mistakes": [
+          {
+            "mistake": "Trimming in before you have the tiller.",
+            "fix": "Keep the sheet loose until you are sitting down with the tiller in your hand."
+          },
+          {
+            "mistake": "Trying to sail off a dock the wind is pushing you onto.",
+            "fix": "Walk the boat to the end of the dock where she can point across the wind, or paddle clear first."
+          },
+          {
+            "mistake": "Sitting on the low side as she starts to heel.",
+            "fix": "Move to the windward side and ease the sheet: in a dinghy your weight is half the steering."
+          },
+          {
+            "mistake": "Steering with no speed.",
+            "fix": "A rudder only works with water flowing past it. Build a little speed first, then turn."
+          }
+        ],
+        "debrief": {
+          "clean": "Clean departure. You let the sail luff until you were ready, then sailed off under control.",
+          "contact": "You got clear, but you touched at {contact_kn} knots. Next time, push the bow off before you trim in, and fend off with a hand on the dock, never a leg."
+        }
+      }
     },
     {
       "id": "SailATriangle",
@@ -152,7 +211,73 @@
       "debrief": {
         "done": "Triangle done in {time}. Every leg used a different point of sail: close-hauled, then reaching, with a jibe at the wing mark."
       },
-      "quiz_after": 4
+      "quiz_after": 4,
+      "dinghy": {
+        "commands": [
+          {
+            "call": "Ready about",
+            "reply": "",
+            "meaning": "Alone in a dinghy you say it to yourself: look to windward for room, get speed, then tack."
+          },
+          {
+            "call": "Helm's a-lee",
+            "reply": "",
+            "meaning": "The tiller is over and the bow is turning through the wind. Duck under the boom, cross to the new high side and take the tiller behind your back, then the sheet."
+          },
+          {
+            "call": "Prepare to jibe",
+            "reply": "",
+            "meaning": "Trim the sheet in a little and keep your head low: the boom crosses fast in a dinghy."
+          },
+          {
+            "call": "Jibe-ho",
+            "reply": "",
+            "meaning": "The stern is turning through the wind and the boom is coming across. Cross the boat as it goes."
+          }
+        ],
+        "steps": [
+          {
+            "sim_text": "Beat to the windward mark, tacking as needed (close-hauled)",
+            "coach": "The mark is in the no-go zone, so zigzag close-hauled on each tack. Trim the sheet in and steer by the telltales on the sail: head up until the sail starts to luff at the front, then bear away a touch. Hike out to keep her flat."
+          },
+          {
+            "sim_text": "Bear away and reach to the wing mark",
+            "coach": "Round the windward mark, bear away and ease the sheet as you turn, until the sail is just short of luffing. Slide aft a little as she speeds up."
+          },
+          {
+            "sim_text": "Reach back to the start mark",
+            "coach": "At the wing mark the wind will pass behind the stern as you turn: that is a jibe. Pull in some sheet before the boom crosses, keep your head low, cross the boat as it comes over and ease out on the new side."
+          }
+        ],
+        "good": [
+          "Every tack carried through without stopping in irons.",
+          "The boat kept nearly flat on the beat: hiking and easing the sheet in the puffs.",
+          "A controlled jibe at the wing mark with some sheet in first.",
+          "The sheet eased on the reaches rather than left in tight."
+        ],
+        "mistakes": [
+          {
+            "mistake": "Pinching: steering too close to the wind on the beat.",
+            "fix": "If the front of the sail luffs or the boat slows, bear away until it fills."
+          },
+          {
+            "mistake": "Tacking too slowly or with no speed and getting stuck in irons.",
+            "fix": "Build speed first and turn steadily all the way through. In irons, push the boom out toward the wind and steer backward until she falls off."
+          },
+          {
+            "mistake": "Letting her heel in a puff.",
+            "fix": "Hike out and ease the sheet a little; a dinghy sailed flat is faster and won't capsize."
+          },
+          {
+            "mistake": "Leaving the sheet in tight on a reach.",
+            "fix": "Ease until the sail luffs, then trim in just enough to stop it."
+          },
+          {
+            "mistake": "Letting the boom fly across in the jibe.",
+            "fix": "Pull in some sheet before the stern crosses the wind, keep low, then ease on the new side."
+          }
+        ]
+      }
     },
     {
       "id": "HeaveTo",
@@ -349,7 +474,61 @@
         "proper": "Recovered in {time}, and you never strayed far. The quick-stop is the method to reach for when you are short-handed.",
         "improper": "Recovered, but you went too far away. Turn into the wind the moment they go in and keep circling close."
       },
-      "quiz_after": 3
+      "quiz_after": 3,
+      "dinghy": {
+        "goal": "Turn at once and circle back to the person in the water, staying close the whole time, and stop beside them.",
+        "why_it_matters": "Alone in a dinghy nobody else can keep watch or handle the sail. The quick-stop is mostly steering, so one person can do it and never lose sight of the swimmer.",
+        "setup": "A swimmer is in the water just astern as the drill starts, drifting slowly downwind.",
+        "commands": [
+          {
+            "call": "Person in the water!",
+            "reply": "",
+            "meaning": "Shout it so anyone nearby looks, then turn at once and keep your eyes on them."
+          }
+        ],
+        "steps": [
+          {
+            "sim_text": "Shout \"Crew overboard!\" and head up into the wind at once",
+            "coach": "Shout, then push the tiller toward the sail to turn into the wind. The boat slows right away, close to them."
+          },
+          {
+            "sim_text": "Keep turning: tack, ease the sheet, and circle the person",
+            "coach": "Keep the turn going through the tack and ease the sheet so the sail luffs as you slow. Keep circling until you are a few lengths downwind of them, watching them the whole time."
+          },
+          {
+            "sim_text": "Approach slowly and stop alongside them",
+            "coach": "Come up toward them on a close reach, then let the sheet go and turn into the wind for the last boat length so she stops beside them. Bring them in over the side by the cockpit, keeping your weight on the other side."
+          }
+        ],
+        "good": [
+          "You turned the moment they went in.",
+          "You stayed close: the sim wants the person never more than 80 metres away.",
+          "You stopped within 3 metres at under about 1 knot."
+        ],
+        "mistakes": [
+          {
+            "mistake": "Hesitating before turning.",
+            "fix": "Turn into the wind as you shout. Every second sailing on adds distance."
+          },
+          {
+            "mistake": "Keeping the sheet in through the turn.",
+            "fix": "Ease it: the sail powering up as you come round drives you away and heels you over."
+          },
+          {
+            "mistake": "Turning so tight that the boat stalls head to wind.",
+            "fix": "Keep a steady turn with some speed; if you stop, push the boom out to back off."
+          },
+          {
+            "mistake": "Rushing the final approach.",
+            "fix": "You are already close. Take it slowly, let the sheet go and luff to stop."
+          }
+        ],
+        "lake_notes": "In the summer heat a swimmer is not in immediate danger from cold, but powerboats and jet skis on a busy weekend may not see them. Stay between them and the traffic, and wave to anyone heading their way.",
+        "debrief": {
+          "proper": "Recovered in {time}, and you never strayed far. In a dinghy the quick-stop is the method: all steering, no crew needed.",
+          "improper": "Recovered, but you went too far away. Turn into the wind the moment they go in and keep circling close."
+        }
+      }
     },
     {
       "id": "ReturnAndDock",
@@ -413,7 +592,61 @@
         "gentle": "Docked gently. That is how it should look: planned, slow and quiet.",
         "hard": "Docked, but you hit at {contact_kn} knots. Start luffing earlier, and abort if you are still fast a few lengths out."
       },
-      "quiz_after": 4
+      "quiz_after": 4,
+      "dinghy": {
+        "goal": "Bring the dinghy alongside the dock at under 1 knot and get the line on.",
+        "why_it_matters": "A dinghy is light and stops quickly once the sail luffs, but it also blows around quickly. Docking alone is about arriving slow and heading into the wind.",
+        "setup": "You start out on the lake with the dinghy dock at Rush Creek to come back to.",
+        "commands": [
+          {
+            "call": "Sheet free",
+            "reply": "",
+            "meaning": "Let the sheet run so the sail luffs and the boat slows."
+          }
+        ],
+        "steps": [
+          {
+            "sim_text": "Approach the dock on a close reach or heading into the wind",
+            "coach": "Plan the last approach so you are heading close to the wind when you arrive. That way letting the sheet go takes the power off."
+          },
+          {
+            "sim_text": "Let the sheet go to slow down well before the dock",
+            "coach": "Let the sheet run a few boat lengths out. A Sunfish is light and stops in a length or two once the sail luffs; if you are still fast, turn away and go around."
+          },
+          {
+            "sim_text": "Come alongside under 1 knot and get the line on (T)",
+            "text": "Come alongside under 1 knot and get the line on ({key:DockLines})",
+            "coach": "Raise the daggerboard partway if the water by the dock is shallow. Reach for the dock with a hand, take a turn of the line round a cleat and make it fast with a cleat hitch."
+          }
+        ],
+        "good": [
+          "You finished heading close to the wind with the sail luffing.",
+          "Contact under about 1.5 knots (the sim's limit), ideally slower than a walk.",
+          "A planned bail-out if the approach went wrong."
+        ],
+        "mistakes": [
+          {
+            "mistake": "Approaching on a run.",
+            "fix": "Downwind the sail keeps pulling even with the sheet free. Plan to finish heading into the wind."
+          },
+          {
+            "mistake": "Letting the sheet go too late.",
+            "fix": "Slow down early. You can always trim in a little more; you cannot take speed back."
+          },
+          {
+            "mistake": "Using a leg to stop the boat.",
+            "fix": "Fend off with a hand on the dock, never a leg between the boat and the dock."
+          },
+          {
+            "mistake": "Committing to a bad approach.",
+            "fix": "Abort early and go around."
+          }
+        ],
+        "debrief": {
+          "gentle": "Docked gently. That is how it should look: heading into the wind, sail luffing, slow and quiet.",
+          "hard": "Docked, but you hit at {contact_kn} knots. Let the sheet go earlier, and abort if you are still fast a few lengths out."
+        }
+      }
     }
   ]
 }

@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "Drills.h"
 #include "Learning.h"
+#include "Internationalization/Regex.h"
 
 using namespace Sailing;
 
@@ -90,6 +91,119 @@ bool FSailingLearningContentTest::RunTest(const FString& Parameters)
 	}
 	const FString Debrief = Content.Debrief(ESailingDrill::ReturnAndDock, TEXT("hard"), 125.0, 2.34);
 	TestTrue(TEXT("Debrief fills {contact_kn}"), Debrief.Contains(TEXT("2.3")) && !Debrief.Contains(TEXT("{")));
+	return true;
+}
+
+/**
+ * #433-#435: on a boat with no jib (the Sunfish) the drills, briefings, quizzes and tips use the dinghy wording, and the
+ * jib drills are not offered. The dinghy briefings match the runner's steps on the Sunfish, and nothing a Sunfish sailor
+ * reads or is asked mentions a jib, a crew, a keel or the J/22.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingDinghyContentTest, "SailingSim.Drills.DinghyContent", LearningFlags)
+bool FSailingDinghyContentTest::RunTest(const FString& Parameters)
+{
+	FLearningContent Content;
+	if (!TestTrue(TEXT("Content loads"), Content.Load(FLearningContent::Dir()))) return false;
+	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
+	const FBoatConfig J22;
+	TestTrue(TEXT("The Sunfish sails as a dinghy"), FDrillRunner::IsDinghy(Sunfish));
+	TestFalse(TEXT("The J/22 does not"), FDrillRunner::IsDinghy(J22));
+	const FRegexPattern Keelboat(TEXT("\\b(jib|J/22|keelboat|keel|crew|outboard|fenders?|lifelines?|winch)\\b"), ERegexPatternFlags::CaseInsensitive);
+	auto Says = [&Keelboat](const FString& Text)
+	{
+		// "Crew overboard!" is the call itself, said on any boat.
+		FRegexMatcher M(Keelboat, Text.Replace(TEXT("Crew overboard"), TEXT("")).Replace(TEXT("crew-overboard"), TEXT("")));
+		return M.FindNext() ? M.GetCaptureGroup(0) : FString();
+	};
+	int32 Offered = 0;
+	for (int32 I = 1; I < int32(ESailingDrill::Count); ++I)
+	{
+		const ESailingDrill Drill = ESailingDrill(I);
+		TestTrue(FString::Printf(TEXT("The J/22 sails %s"), DrillName(Drill)), FDrillRunner::CanSail(Drill, J22));
+		if (!FDrillRunner::CanSail(Drill, Sunfish)) continue;
+		++Offered;
+		FBoatModel Boat(Sunfish);
+		Boat.Reset(0.0, 0.0, 0.0, 2.0 * kKnot);
+		FDrillRunner Runner;
+		Runner.Start(Drill, Boat, 0.0);
+		TestTrue(FString::Printf(TEXT("%s on the Sunfish is a dinghy run"), DrillName(Drill)), Runner.IsDinghyRun());
+		const FDrillBriefing* B = Content.Briefing(Drill, true);
+		if (!TestNotNull(FString::Printf(TEXT("%s has a briefing"), DrillName(Drill)), B)) continue;
+		TestTrue(FString::Printf(TEXT("%s has its own dinghy briefing"), DrillName(Drill)), B != Content.Briefing(Drill));
+		if (TestEqual(FString::Printf(TEXT("%s dinghy step count"), DrillName(Drill)), B->Steps.Num(), Runner.GetSteps().Num()))
+		{
+			for (int32 S = 0; S < B->Steps.Num(); ++S)
+			{
+				TestEqual(FString::Printf(TEXT("%s dinghy step %d matches the runner"), DrillName(Drill), S + 1), B->Steps[S].SimText, Runner.GetSteps()[S]);
+				FString Bad;
+				TestTrue(FString::Printf(TEXT("%s dinghy step %d keys resolve (%s)"), DrillName(Drill), S + 1, *Bad), FLearningContent::KeysResolve(B->Steps[S].Text + B->Steps[S].Coach, &Bad));
+			}
+		}
+		for (const FString& Outcome : FDrillRunner::Outcomes(Drill)) TestTrue(FString::Printf(TEXT("%s dinghy debrief for '%s'"), DrillName(Drill), *Outcome), B->Debrief.Contains(Outcome));
+		// Everything the Sunfish sailor reads for the drill.
+		TArray<FString> Read = { B->Goal, B->Why, B->Setup, B->LakeNotes, Runner.GetStatus() };
+		Read.Append(Runner.GetSteps());
+		Read.Append(B->Good);
+		for (const FDrillBriefing::FCommand& C : B->Commands) Read.Append({ C.Call, C.Reply, C.Meaning });
+		for (const FDrillBriefing::FStep& S : B->Steps) Read.Append({ S.Text, S.Coach });
+		for (const TPair<FString, FString>& M : B->Mistakes) Read.Append({ M.Key, M.Value });
+		for (const TPair<FString, FString>& D : B->Debrief) Read.Add(D.Value);
+		for (const FString& Line : Read)
+		{
+			const FString Word = Says(Line);
+			TestTrue(FString::Printf(TEXT("%s dinghy text says no '%s': %s"), DrillName(Drill), *Word, *Line), Word.IsEmpty());
+		}
+		// The quiz: the full length, no keelboat question, nothing that leans on a jib or a crew.
+		for (int32 Seed = 1; Seed <= 20; ++Seed)
+		{
+			FRandomStream Rng(Seed);
+			const TArray<FQuizQuestion> Quiz = Content.MakeQuiz(Drill, Rng, true);
+			TestEqual(FString::Printf(TEXT("%s dinghy quiz length"), DrillName(Drill)), Quiz.Num(), B->QuizAfter);
+			for (const FQuizQuestion& Q : Quiz)
+			{
+				TestNotEqual(FString::Printf(TEXT("%s asked on a dinghy"), *Q.Id), Q.Class, FString(TEXT("keelboat")));
+				const FString Word = Says(Q.Question + TEXT(" ") + Q.Options[Q.Answer]);
+				TestTrue(FString::Printf(TEXT("%s on a dinghy says no '%s'"), *Q.Id, *Word), Q.Class == TEXT("dinghy") || Word.IsEmpty());
+			}
+		}
+		FRandomStream Rng(3);
+		for (const FQuizQuestion& Q : Content.MakeQuiz(Drill, Rng, false)) TestNotEqual(FString::Printf(TEXT("%s asked on the J/22"), *Q.Id), Q.Class, FString(TEXT("dinghy")));
+	}
+	TestEqual(TEXT("A dinghy is offered four drills"), Offered, 4);
+	TestFalse(TEXT("No heave to on the Sunfish"), FDrillRunner::CanSail(ESailingDrill::HeaveTo, Sunfish));
+	TestFalse(TEXT("No figure-eight on the Sunfish"), FDrillRunner::CanSail(ESailingDrill::CrewOverboardFigureEight, Sunfish));
+	// The J/22 keeps her own wording.
+	{
+		FBoatModel Boat;
+		FDrillRunner Runner;
+		Runner.Start(ESailingDrill::CrewOverboardQuickStop, Boat, 0.0);
+		TestFalse(TEXT("The J/22 run is not a dinghy run"), Runner.IsDinghyRun());
+		TestTrue(TEXT("The J/22 quick-stop keeps the jib backed"), Runner.GetSteps()[1].Contains(TEXT("jib")));
+	}
+	// Tips: on a dinghy no keelboat tip is shown, and every keelboat tip with a twin has a dinghy one for its event.
+	for (const FLearningTip& T : Content.Tips)
+	{
+		if (T.Class.IsEmpty() && T.Fits(ESailingDrill::SailATriangle))
+		{
+			const FString Word = Says(T.Text);
+			TestTrue(FString::Printf(TEXT("Tip %s, shown on any boat, says no '%s'"), *T.Id, *Word), Word.IsEmpty());
+		}
+		TestTrue(FString::Printf(TEXT("Tip %s has a known class"), *T.Id), T.Class.IsEmpty() || T.Class == TEXT("keelboat") || T.Class == TEXT("dinghy"));
+	}
+	FLearningCoach Coach;
+	FLearningFrame F;
+	F.bDinghy = true;
+	F.Drill = ESailingDrill::CrewOverboardQuickStop;
+	F.bDrillActive = true;
+	F.DummyDistance = 8.0;
+	F.TwsKnots = 10.0;
+	F.Knots = 3.0;
+	for (int32 I = 0; I < 200; ++I)
+	{
+		F.Time = I * 0.05;
+		Coach.Update(F, Content);
+		if (const FLearningTip* T = Coach.Current(F.Time)) TestNotEqual(FString::Printf(TEXT("Tip %s shown on a dinghy"), *T->Id), T->Class, FString(TEXT("keelboat")));
+	}
 	return true;
 }
 
