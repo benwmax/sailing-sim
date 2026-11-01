@@ -9,6 +9,24 @@ Racer**, Career mode, from a fresh save, on keyboard and controller. Galveston B
 pending: each launch brings the game window to the front, and Bean is choosing when the Mac is free. Each finding below
 says whether it is **seen** (in a run), or **read** (in code or data, to confirm in the run).
 
+## Fixed since (main 127081ee, #422: docs/first-launch/)
+
+The first-launch build answers findings 1 to 8 and 6's naming; Part B's stills (tonight) check them on the game itself.
+
+| # | Finding | Now |
+|---|---|---|
+| 1 | Two ways to learn on the title | A new save opens on the first-launch screen and the first job; the title's "ASA 101 drills" item is gone |
+| 2 | Five screens from a lesson row | Start lesson casts off from the row (`MakeLesson`) |
+| 3 | Easy caps at bronze, no certificate | Easy earns up to silver, enough for the checkride |
+| 4 | Light traffic can take the medal | Lessons sail with their own `traffic` (off) |
+| 5 | Any weather, same medals | Lessons sail in their own `conditions` (the lesson day) |
+| 6 | "ASA 101" in the menus | Gone from the title, Mode card, briefing, quiz footer, preset name and HUD |
+| 7 | No quiz retake | Retake the quiz after a lesson; Take the quiz on its Career row |
+| 8 | No next lesson | Next lesson and Sail it again on the finish panel |
+
+Still open: 9 (Replays with no run), 10 (Gallery on the title), 11 (Club Racer behind the checkride, a design
+question), 12 to 14 (the Sunfish's J/22 text and quizzes, drills a Sunfish can't sail).
+
 ## How it was run
 
 - Packaged Development build of main (`Packaged/Mac/SailingSim.app`), 1920x1080 windowed, Medium.

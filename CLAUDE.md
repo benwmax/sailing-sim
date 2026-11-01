@@ -143,6 +143,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
    gate.sh: `-SailingScreenPct=100`; the governor hid regressions at 82-97%). The CSVs carry `render_pct` and `foreground`,
    and a run whose window was not in front is run again. The game raises its own window through the warm-up, because a
    single run's BeginPlay request is dropped.
+   The nightly (#401, `scripts/nightly/`): PRs merge on fast checks; `--scope all --force` runs on main each night at
+   03:00 from `Artifacts/nightly/` (launchd), one line in `Artifacts/nightly/latest.txt`. It skips a locked screen.
 
 21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
    no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`
