@@ -205,4 +205,8 @@ private:
 	float SkyIntensity = 1.f;
 	float FogBaseDensity = 0.02f;
 	int32 AppliedCloudShadowSamples = -1;
+	/** Storm Lumen (docs/storm-lumen/): Lumen's diffuse GI is off under the storm deck on High; put back in EndPlay. */
+	bool bStormLumenOff = false;
+	void SetStormLumenOff(bool bOff, double CloudDarkness);
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 };

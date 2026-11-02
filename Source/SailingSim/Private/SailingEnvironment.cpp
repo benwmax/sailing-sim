@@ -606,6 +606,23 @@ void ASailingEnvironment::DumpExposureSettings(float EV, float Band, float IntoS
 	}
 }
 
+void ASailingEnvironment::SetStormLumenOff(bool bOff, double CloudDarkness)
+{
+	if (bOff == bStormLumenOff) return;
+	bStormLumenOff = bOff;
+	if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.DiffuseIndirect.Allow")))
+	{
+		Var->Set(bOff ? 0.f : 1.f, ECVF_SetByCode);
+		UE_LOG(LogSailing, Log, TEXT("Storm Lumen: diffuse GI %s (cloud darkness %.2f)"), bOff ? TEXT("off under the deck") : TEXT("back on"), CloudDarkness);
+	}
+}
+
+void ASailingEnvironment::EndPlay(const EEndPlayReason::Type Reason)
+{
+	SetStormLumenOff(false, 0.0);   // the console variable outlives the map (a reload, or the editor after a run)
+	Super::EndPlay(Reason);
+}
+
 void ASailingEnvironment::ApplyCameraLook(bool bPhysicalCamera, double CloudDarkness)
 {
 	// Visual V1: one filmic look on Medium and High. The engine's filmic tone curve with a slight warm bias for Texas
@@ -968,6 +985,14 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 						UE_LOG(LogSailing, Log, TEXT("Storm clouds: shadow samples x%.1f, view samples up to %d (cloud darkness %.2f)"), ShadowScale, ViewMax, W.CloudDarkness);
 					}
 				}
+				// Storm Lumen (docs/storm-lumen/): under the storm deck the light is its flat overcast, and Lumen's diffuse GI
+				// adds nothing the skylight doesn't show (the storm view's stills the same), for about 1.7 ms of its GPU
+				// frame on High (44.7-45.6 to 46.9-47.7 fps, one session, Nov 2 2026). Off past 0.7 cloud darkness, back
+				// on under 0.6 so the edge doesn't flicker; High only (Ultra keeps it, Medium and Low have no Lumen GI to
+				// spare). -SailingFullStormLumen compares.
+				static SailingArgs::FCachedFlag FullStormLumenArg(TEXT("SailingFullStormLumen"));
+				const bool bStormTier = USailingSettings::Get()->Quality == ESailingQuality::High && !FullStormLumenArg.Get();
+				SetStormLumenOff(bStormTier && W.CloudDarkness > (bStormLumenOff ? 0.6 : 0.7), W.CloudDarkness);
 				// The tracer spans only the layers present: its samples go where the cloud is.
 				double Base, Top;
 				W.Sky.Span(Base, Top);
