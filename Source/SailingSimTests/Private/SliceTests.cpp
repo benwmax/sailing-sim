@@ -346,8 +346,10 @@ namespace SliceFirstHour
 			if (Phase == 0 && T > 3.0) { Boat.GetMooringLines().clear(); Phase = 1; }   // cast off (the crew lets the lines go)
 			if (Phase == 1)
 			{
-				// Slow astern between the fingers: at -0.4 the prop walk set her stern onto a finger at 0.9 kn.
-				C.Throttle = Backed < 6.0 ? -0.25 : -0.4;
+				// Dead slow astern between the fingers: the 3.6 m slip leaves the J/22 a few centimetres a side, so she rubs the
+				// finger she lay against on the way out (at -0.4 throttle that rub was 0.9 kn, at -0.25 still 0.7: a dock
+				// touch over 1 kn costs the clean departure).
+				C.Throttle = Backed < 7.5 ? -0.15 : -0.4;
 				// Hold the slip's centreline against the prop walk: off to starboard, turn the bow to starboard so the stern,
 				// going first, comes back to port (and the other way round).
 				const FVector2D Starboard(-Bow.Y, Bow.X);
