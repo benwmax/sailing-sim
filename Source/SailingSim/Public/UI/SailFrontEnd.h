@@ -4,6 +4,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "SailSession.h"
+#include "SailSave.h"
 #include "Learning.h"
 #include "Showroom.h"
 #include "Gallery.h"
@@ -55,6 +56,11 @@ public:
 	 * conditions preview show the real place. Not in game.
 	 */
 	static bool TravelsOnPush(ESailScreen From, ESailScreen To, bool bInGame, int32 PendingWorld, int32 LoadedWorld);
+	/** Where the Career screen's focus starts (#439, #438): the First job card while the first job waits (its card shows:
+	 *  first launch seen, the first-job scene not done), else the next lesson until a tier is picked, else the tier card. */
+	enum class ECareerFocus : uint8 { FirstJob, NextLesson, TierCard };
+	static bool ShowsFirstJob(const FSailSave::FProgress& Progress);
+	static ECareerFocus CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport). */
