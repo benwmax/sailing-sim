@@ -10,6 +10,12 @@ night on main instead. `nightly.sh` runs `scripts/gate.sh --scope all --force` o
   scripted runs are among them), `FLOOR BREAK` (with the views under Medium 60 / High 45), `SKIPPED` (with why) or
   `ERROR`.
 
+A view under its floor is benched once more, alone, in the same run (`<date>.rerun-<view>-<tier>.txt`). If every view the
+gate counted passes on its rerun the night is `PASS main <sha> (flapping: storm High: first 44.8, rerun 45.6)`; a view
+under on both readings, or one the gate lost, makes it `FLOOR BREAK`, with the reruns listed. A view sitting on its floor
+reads either side of it from run to run (storm High: 44.7 to 45.6 in one session on Nov 2 2026, the same before and after
+the merges first suspected), so one reading under it doesn't flag the night.
+
 It skips the night (a `SKIPPED` line) when the screen is locked (the game can't open its window, and on Nov 1 2026 even
 the headless test editor stalled for six hours until the screen was unlocked) or the Metal toolchain is missing (after
 an Xcode update: `xcodebuild -downloadComponent MetalToolchain`).
