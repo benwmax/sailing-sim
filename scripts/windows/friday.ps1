@@ -1,7 +1,7 @@
 # The Friday tester build (slice issue #406): one command from main to a zip for Bean and the testers.
 # Usage: scripts\windows\friday.ps1 [-Commit <sha or ref>] [-NoCheckout] [-BenchSeconds 30]
 #   Checks out origin/main (fetched) or -Commit, detached; -NoCheckout builds whatever is checked out (a dry run of a
-#   branch). Refuses a tree with tracked changes.
+#   branch). Refuses a tree with tracked changes, and stops when the running script differs from the commit's own.
 #   Then: build.ps1, a full-cook Shipping package into Packaged\Shipping-<commit> (never over one that exists), with the
 #   version line on the title screen (Content\BuildStamp\version.txt, removed afterwards); the smoke checks by launch args
 #   and UI script only (no synthetic input): the game reaches Title > Gallery and renders its thumbnails, and two Ultra
@@ -62,6 +62,13 @@ try {
 	}
 	$Sha = (git rev-parse --short=8 HEAD).Trim()
 	$Subject = (git log -1 --format=%s HEAD).Trim()
+	# PowerShell read this script before the checkout: an older friday.ps1 would build the new commit the old way (it
+	# once made a full-game zip under the old name). Stop unless the running script is the commit's own.
+	$Mine = (Get-Content -Raw $PSCommandPath) -replace "`r`n", "`n"
+	$Theirs = (git show "HEAD:scripts/windows/friday.ps1" | Out-String) -replace "`r`n", "`n"
+	if ($Mine.TrimEnd() -ne $Theirs.TrimEnd()) {
+		throw "This friday.ps1 is not $Sha's own (it was read before the checkout). The tree is at $Sha now: run scripts\windows\friday.ps1 -NoCheckout"
+	}
 	$Into = "Shipping-$Sha"
 	$Folder = Join-Path $Packaged $Into
 	$Zip = Join-Path $Packaged "ReadyAbout-$Sha-Win64.zip"
@@ -116,34 +123,54 @@ try {
 
 	# 3. Smoke checks: launch args and the UI script only.
 	$Saved = Join-Path $env:LOCALAPPDATA 'SailingSim\Saved'
-	function Run-Game([string]$GameArgs, [int]$TimeoutS) {
-		$P = Start-Process -FilePath $Exe -ArgumentList "-SailingShippingSmoke $GameArgs -windowed -ResX=1920 -ResY=1080 -NoCrashReporter" -PassThru
-		if (-not $P.WaitForExit($TimeoutS * 1000)) { throw "The game did not quit within $TimeoutS s ($GameArgs)" }
-		return $P.ExitCode
+	# The PC's own save (Bean's career and settings) is held aside while the smokes run, on a copy of its SaveGames and
+	# Config (so the first-launch screen doesn't stop the walk), and put back however they end.
+	$Held = "$Saved.friday-hold"
+	if (Test-Path $Held) { throw "$Held exists: a previous Friday build didn't put the save back; rename it to Saved by hand" }
+	$Holding = Test-Path $Saved
+	if ($Holding) {
+		Rename-Item $Saved $Held
+		New-Item -ItemType Directory -Force $Saved | Out-Null
+		foreach ($Sub in 'SaveGames', 'Config') { if (Test-Path (Join-Path $Held $Sub)) { Copy-Item -Recurse (Join-Path $Held $Sub) $Saved } }
 	}
-	# Title > Gallery: down to Quit, up past Credits, Enter; the gallery renders a thumbnail per mesh, then the script quits.
-	# Eight waits first (about 20 s): a fresh build's first launch reaches the title later than three gave it (27370bf8's
-	# walk started early and reported 0 thumbnails; the same walk with eight rendered all 132).
-	Step 'Smoke: Title > Gallery'
-	$Thumbs = Join-Path $Saved 'GalleryThumbs'
-	Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Thumbs
-	$Walk = ((1..8 | ForEach-Object { 'Wait' }) + (1..20 | ForEach-Object { 'Down' }) + @('Up', 'Up', 'Enter') + (1..10 | ForEach-Object { 'Wait' }) + @('Quit')) -join ','
-	$GalleryExit = Run-Game "-SailingSlice=0 -SailingUIScript=$Walk" 300
-	$ThumbCount = if (Test-Path $Thumbs) { @(Get-ChildItem $Thumbs -Filter *.png).Count } else { 0 }
-	$GalleryOk = $GalleryExit -eq 0 -and $ThumbCount -gt 100
-	Write-Host "  exit $GalleryExit, $ThumbCount thumbnails: $(if ($GalleryOk) { 'ok' } else { 'FAILED' })"
-	# Two Ultra benches on the lake; the second is the number (the first after a cook runs slow).
-	$Json = Join-Path $Saved 'Bench\bench.json'
-	$Benches = @()
-	foreach ($Run in 1..2) {
-		Step "Smoke: Ultra Lake bench $Run of 2"
-		Remove-Item -Force -ErrorAction SilentlyContinue $Json
-		$null = Run-Game "-SailingWorld=Lake -SailingLaunch=1 -SailingBench=$BenchSeconds -SailingShot=friday-$Sha" ($BenchSeconds + 240)
-		if (-not (Test-Path $Json)) { throw "Bench $Run wrote no bench.json" }
-		$Benches += Get-Content -Raw $Json | ConvertFrom-Json
-		Write-Host ("  {0} fps, p99 {1} ms, GPU {2} ms, {3}" -f $Benches[-1].avg_fps, $Benches[-1].p99_ms, $Benches[-1].gpu_frame_ms, $Benches[-1].quality)
+	try {
+		function Run-Game([string]$GameArgs, [int]$TimeoutS) {
+			$P = Start-Process -FilePath $Exe -ArgumentList "-SailingShippingSmoke $GameArgs -windowed -ResX=1920 -ResY=1080 -NoCrashReporter" -PassThru
+			if (-not $P.WaitForExit($TimeoutS * 1000)) { throw "The game did not quit within $TimeoutS s ($GameArgs)" }
+			return $P.ExitCode
+		}
+		# Title > Gallery: down to Quit, up past Credits, Enter; the gallery renders a thumbnail per mesh, then the script quits.
+		# Eight waits first (about 20 s): a fresh build's first launch reaches the title later than three gave it (27370bf8's
+		# walk started early and reported 0 thumbnails; the same walk with eight rendered all 132).
+		Step 'Smoke: Title > Gallery'
+		$Thumbs = Join-Path $Saved 'GalleryThumbs'
+		Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Thumbs
+		$Walk = ((1..8 | ForEach-Object { 'Wait' }) + (1..20 | ForEach-Object { 'Down' }) + @('Up', 'Up', 'Enter') + (1..10 | ForEach-Object { 'Wait' }) + @('Quit')) -join ','
+		$GalleryExit = Run-Game "-SailingSlice=0 -SailingUIScript=$Walk" 300
+		$ThumbCount = if (Test-Path $Thumbs) { @(Get-ChildItem $Thumbs -Filter *.png).Count } else { 0 }
+		$GalleryOk = $GalleryExit -eq 0 -and $ThumbCount -gt 100
+		Write-Host "  exit $GalleryExit, $ThumbCount thumbnails: $(if ($GalleryOk) { 'ok' } else { 'FAILED' })"
+		# Two Ultra benches on the lake; the second is the number (the first after a cook runs slow).
+		$Json = Join-Path $Saved 'Bench\bench.json'
+		$Benches = @()
+		foreach ($Run in 1..2) {
+			Step "Smoke: Ultra Lake bench $Run of 2"
+			Remove-Item -Force -ErrorAction SilentlyContinue $Json
+			$null = Run-Game "-SailingWorld=Lake -SailingLaunch=1 -SailingBench=$BenchSeconds -SailingShot=friday-$Sha" ($BenchSeconds + 240)
+			if (-not (Test-Path $Json)) { throw "Bench $Run wrote no bench.json" }
+			$Benches += Get-Content -Raw $Json | ConvertFrom-Json
+			Write-Host ("  {0} fps, p99 {1} ms, GPU {2} ms, {3}" -f $Benches[-1].avg_fps, $Benches[-1].p99_ms, $Benches[-1].gpu_frame_ms, $Benches[-1].quality)
+		}
+		$B = $Benches[1]
+	} finally {
+		Get-Process SailingSim-Win64-Shipping -ErrorAction SilentlyContinue | Stop-Process -Force
+		if ($Holding) {
+			Start-Sleep -Seconds 2
+			Rename-Item $Saved "Saved.friday-$Sha"   # the smokes' own logs and crashes, kept beside it
+			Rename-Item $Held (Split-Path $Saved -Leaf)
+			Write-Host "  The PC's own save is back in place (the smokes' Saved is Saved.friday-$Sha)"
+		}
 	}
-	$B = $Benches[1]
 
 	# 4. BUILD.md, and what merged since the last Friday build (the newest other BUILD.md's commit).
 	$Previous = Get-ChildItem -Path $Packaged -Filter BUILD.md -Recurse -Depth 1 -ErrorAction SilentlyContinue |
