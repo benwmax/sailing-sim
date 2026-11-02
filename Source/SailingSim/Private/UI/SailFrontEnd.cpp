@@ -2320,8 +2320,24 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 	}
 	if (!Shown && Content.Tiers.Num()) Shown = &Content.Tiers[0];
 
-	// Left: the tiers.
+	// Left: the tiers, under the first job while it waits (#439: skipped on the first-launch screen, or left unfinished).
 	TSharedRef<SVerticalBox> Tiers = SNew(SVerticalBox);
+	if (Prog.FirstLaunch.bSeen && !Prog.IsSceneDone(TEXT("first-job")))
+	{
+		TSharedRef<SSailButton> FirstJob = SNew(SSailButton).Padding(FMargin(16.f, 12.f))
+			.OnClicked_Lambda([this]() { StartFirstJob(USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy); })
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("First job"), EType::CardTitleS, Fg) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(TEXT("Waiting"), false) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(TEXT("Take the J/22 across to the lesson dock with your instructor aboard."), EType::Small, Muted, true) ]
+		];
+		Tiers->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ FirstJob ];
+	}
 	for (const FCareerTier& T : Content.Tiers)
 	{
 		if (!SailCatalog::InSliceTier(T.Id)) continue;   // #399: the slice's tiers (and the stretch) only
@@ -2514,18 +2530,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 		USailingSettings* Set = USailingSettings::Get();
 		Set->Quality = ESailingQuality(FirstQuality);
 		Remember(false);
-		// The first job: the J/22 sailing off Rush Creek (the lake's open-water spot), the lesson day, no traffic.
-		Pending = USailSessionSubsystem::MakeDefault();
-		Pending.World = 0;
-		Pending.LaunchSpot = 1;
-		Pending.Boat = FMath::Max(FSailSave::BoatIndex(TEXT("J22")), 0);
-		Pending.Mode = ESailMode::Free;
-		Pending.Traffic = 0;
-		Pending.bEasy = bFirstEasy;
-		Pending.bLearningMode = true;
-		Pending.bFreeSail = false;
-		Pending.SceneId = TEXT("first-job");
-		CastOff();
+		StartFirstJob(bFirstEasy);
 	}));
 	TSharedRef<SSailButton> Skip = ActionButton(TEXT("Skip to the menu"), FSimpleDelegate::CreateLambda([this, Remember]()
 	{
@@ -2556,6 +2561,22 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 	E.Focus = Start;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")) }, TEXT("Both can be changed later in Settings"));
 	return E;
+}
+
+void SSailFrontEnd::StartFirstJob(bool bEasy)
+{
+	// The first job: the J/22 sailing off Rush Creek (the lake's open-water spot), the lesson day, no traffic.
+	Pending = USailSessionSubsystem::MakeDefault();
+	Pending.World = 0;
+	Pending.LaunchSpot = 1;
+	Pending.Boat = FMath::Max(FSailSave::BoatIndex(TEXT("J22")), 0);
+	Pending.Mode = ESailMode::Free;
+	Pending.Traffic = 0;
+	Pending.bEasy = bEasy;
+	Pending.bLearningMode = true;
+	Pending.bFreeSail = false;
+	Pending.SceneId = TEXT("first-job");
+	CastOff();
 }
 
 // ---------------------------------------------------------------- modal confirm
