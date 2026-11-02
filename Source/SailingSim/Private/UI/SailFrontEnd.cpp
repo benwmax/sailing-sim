@@ -426,7 +426,7 @@ void SSailFrontEnd::Pop()
 	{
 		// Pause's Back resumes; the title's asks to quit.
 		if (Current() == ESailScreen::Pause || Current() == ESailScreen::Briefing || Current() == ESailScreen::Quiz) Close();
-		else if (Current() == ESailScreen::Title) Confirm(TEXT("Quit Sailing Sim?"), TEXT("Quit"), [this]() { UKismetSystemLibrary::QuitGame(Player.Get(), Player.Get(), EQuitPreference::Quit, false); });
+		else if (Current() == ESailScreen::Title) Confirm(TEXT("Quit Ready About?"), TEXT("Quit"), [this]() { UKismetSystemLibrary::QuitGame(Player.Get(), Player.Get(), EQuitPreference::Quit, false); });
 		return;
 	}
 	if (Current() == ESailScreen::Quiz) { Quiz.Reset(); CheckrideTierId.Reset(); QuizRetakeLessonId.Reset(); }
@@ -898,13 +898,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
-			// The mode switch sits beside the logo's short second line, so the menu keeps its height.
+			// The game's name (Bean, Nov 2 2026): READY ABOUT, then SAILING on the subtitle row. The mode switch sits beside
+			// the logo's second line (ABOUT is wider than SIM was, so the box is too), so the menu keeps its height.
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(SBox).WidthOverride(560.f)
+				SNew(SBox).WidthOverride(780.f)
 				[
 					SNew(SOverlay)
-					+ SOverlay::Slot()[ SNew(STextBlock).Text(FText::FromString(TEXT("SAILING\nSIM"))).Font(Font(EType::Logo)).ColorAndOpacity(Fg).LineHeightPercentage(0.78f) ]
+					+ SOverlay::Slot()[ SNew(STextBlock).Text(FText::FromString(TEXT("READY\nABOUT"))).Font(Font(EType::Logo)).ColorAndOpacity(Fg).LineHeightPercentage(0.78f) ]
 					+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 6.f)
 					[
 						SNew(SBox).WidthOverride(330.f)
@@ -917,7 +918,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 					]
 				]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 6.f, 0.f, 36.f)[ SNew(STextBlock).Text(FText::FromString(TEXT("LAKE RAY HUBBARD  ·  GALVESTON BAY")))
+			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 6.f, 0.f, 36.f)[ SNew(STextBlock).Text(FText::FromString(TEXT("SAILING")))
 				.Font([] { FSlateFontInfo F = Font(EType::Eyebrow); F.LetterSpacing = 320; return F; }()).ColorAndOpacity(Muted) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]

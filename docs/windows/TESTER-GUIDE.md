@@ -1,6 +1,6 @@
-# SailingSim tester guide
+# Ready About: Sailing tester guide
 
-Thanks for testing. This is a work-in-progress build of the single-player game: Ray Hubbard and Galveston Bay, the J/22,
+Thanks for testing Ready About: Sailing. The program and its folders still use the working name SailingSim. This is a work-in-progress build of the single-player game: Ray Hubbard and Galveston Bay, the J/22,
 Sunfish and Catalina 22, and the first career tiers. `BUILD.md` beside this file says which build it is; the title
 screen's bottom corner shows the same build number.
 

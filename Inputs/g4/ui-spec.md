@@ -1,3 +1,5 @@
+# Ready About: Sailing
+
 # G4 front end and HUD: implementation spec
 
 For: the Mac session building phase G4 of benwmax/sailing-sim (Unreal 5.8.3, Common UI + UMG).
@@ -216,7 +218,7 @@ Each screen lists: class, widget tree in order, bindings, focus order (the numbe
 
 ### 5.1 Title (`W_Title`, Menu stack root, not a back handler)
 - Background: live title camera (2.3) or Low image; left gradient `Ink` 86% to 15% so text reads on any sky.
-- Tree: Logo ("SAILING SIM", `TS_Logo`), subtitle "LAKE RAY HUBBARD · GALVESTON BAY" (`Eyebrow` style in `Muted`, +32% tracking), menu list, Continue card (bottom right), build label (top right).
+- Tree: Logo ("READY ABOUT", `TS_Logo`; the game's name since Nov 2 2026), subtitle "SAILING" (was "LAKE RAY HUBBARD · GALVESTON BAY") (`Eyebrow` style in `Muted`, +32% tracking), menu list, Continue card (bottom right), build label (top right).
 - Menu items and actions:
   1. Continue: sub text = last boat · last launch spot short name; starts `StartSession(LastConfig)` directly to Loading. Hidden if no save.
   2. Sail: push World with a fresh `PendingConfig` (defaults: last world, J/22, ASA 101 lesson day, Free sail, Learning, Easy, tips on, Light traffic).
@@ -225,7 +227,7 @@ Each screen lists: class, widget tree in order, bindings, focus order (the numbe
   5. Logbook: opens the existing logbook UI. Sub text "N sessions · X nm" from logbook totals.
   6. Replays: opens the existing replay browser. Sub "Ghost boat".
   7. Settings: push Settings on the Menu stack.
-  8. Quit: Modal confirm "Quit Sailing Sim?" (Quit / Cancel).
+  8. Quit: Modal confirm "Quit Ready About?" (Quit / Cancel).
 - Continue card binds `LastConfig`: "Last session · <date>", "<Boat> on <World>", detail line "<spot> · <wind> kn <dir> gusting <gust> · <sky> · <Learning|Game> mode, <difficulty>." plus "Drill N, <name>, was in progress." when relevant. Not focusable; Continue in the list is its action.
 - Focus: 1 to 8 top to bottom, wraps. Default focus Continue (or Sail if no save).
 - Prompts: Confirm "Select", Back "Quit".
@@ -458,7 +460,7 @@ Glass panels with Background Blur 15, title-screen live camera, loading images, 
 ---
 
 ## 11. Questions for Bean (defaults in brackets; build with the default until answered)
-1. Game name on the title screen: keep "Sailing Sim" or something else? [Sailing Sim]
+1. Game name on the title screen: keep "Sailing Sim" or something else? [Sailing Sim] Decided Nov 2 2026: "Ready About: Sailing" (short form "Ready About").
 2. Old Tab menu: replace it with Pause (Tab opens Pause) as specced? [yes]
 3. Hold on the loading screen until "Start sailing" is pressed? [yes, with a setting to start automatically]
 4. Coach voice lines: none planned, so the Coach voice audio row stays hidden. [hidden]

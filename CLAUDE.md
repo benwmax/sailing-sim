@@ -1,4 +1,9 @@
-# SailingSim: notes for Claude sessions
+# Ready About: Sailing (working name SailingSim): notes for Claude sessions
+
+The game is "Ready About: Sailing" (short form "Ready About", Bean Nov 2 2026) in player-facing text, the window title,
+the docs and the Friday zip; the module, classes, .uproject, `SailingSim.*` tests, ini sections, bundle id, Sentry
+names, save folder and scripts keep SailingSim.
+
 
 Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 27) at
 `/Users/ben/myProjects/sailing-sim`. Engine at `/Users/Shared/Epic Games/UE_5.8` (override with `UE_ROOT`).
@@ -27,6 +32,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    The app is sandboxed: its log and Saved folder live in `~/Library/Containers/com.benwmax.SailingSim/Data/Library/`.
 
 `Artifacts/`, `Packaged/`, `Build/`, `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` are git-ignored.
+
+After every Xcode update run `xcodebuild -downloadComponent MetalToolchain` (Xcode 27 ships without the Metal compiler; check
+with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is missing): without it every shader compile fails
+("cannot execute tool 'metal' due to missing Metal Toolchain"), so run-game, packages with new materials and gates stop.
 
 6. `scripts/polar.sh [--quick | --scenarios | --point <tws> <twa>]` builds `Source/SailingPhysics` standalone with clang
    (no Unreal) and sails the J/22 reference polar in about 2 s. Use it for any physics tuning, then confirm with
@@ -139,6 +148,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    gate.sh: `-SailingScreenPct=100`; the governor hid regressions at 82-97%). The CSVs carry `render_pct` and `foreground`,
    and a run whose window was not in front is run again. The game raises its own window through the warm-up, because a
    single run's BeginPlay request is dropped.
+   The nightly (#401, `scripts/nightly/`): PRs merge on fast checks; `--scope all --force` runs on main each night at
+   03:00 from `Artifacts/nightly/` (launchd), one line in `Artifacts/nightly/latest.txt`. It skips a locked screen.
 
 21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
    no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`

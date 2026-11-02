@@ -43,3 +43,6 @@ docs/hobie-detail/compare/
 docs/corsair-detail/compare/
 docs/c30-detail/compare/
 docs/gelcoat/compare/
+
+# The Sentry plugin's native cache (#417), made in each worktree at editor start.
+.sentry-native/
