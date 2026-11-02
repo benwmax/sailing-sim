@@ -64,7 +64,9 @@ void SSailLoading::Construct(const FArguments& A)
 	if (Tex) { Image->SetResourceObject(Tex); Image->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
 	else Image->TintColor = FSlateColor(Ink);
 	const FString Spot = W.Spots.IsValidIndex(C.LaunchSpot) ? W.Spots[C.LaunchSpot].Name : FString();
-	const FString Second = C.Mode == ESailMode::Drill ? FString(DrillName(ESailingDrill(C.DrillIndex + 1))) : USailSessionSubsystem::ModeName(C.Mode);
+	// #402: the first job says so (not "free sail": its session is a free sail with the scene on it).
+	const FString Second = C.SceneId == TEXT("first-job") ? FString(TEXT("Your first job"))
+		: (C.Mode == ESailMode::Drill ? FString(DrillName(ESailingDrill(C.DrillIndex + 1))) : USailSessionSubsystem::ModeName(C.Mode));
 	const FSailConditions& K = C.Conditions;
 	const FString Sub = FString::Printf(TEXT("%.0f kn %s gusting %.0f · %s · %s %d, %s · %s mode"), K.WindKn, *USailSessionSubsystem::CompassPoint(K.WindFromDeg), K.GustKn,
 		*USailSessionSubsystem::SkyName(K.Sky), *SailCatalog::MonthName(K.Month), K.Day, *SailCatalog::ClockText(K.LocalHour), C.bLearningMode ? TEXT("Learning") : TEXT("Game"));

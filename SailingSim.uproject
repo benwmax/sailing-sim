@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.8",
 	"Category": "",
-	"Description": "Technically accurate sailing simulator. First boat: J/22. First world: Lake Ray Roberts, Texas.",
+	"Description": "Ready About: Sailing. A realistic sailing simulator: learn to sail on a Texas lake, then keep sailing. First boat: J/22. First world: Lake Ray Hubbard, Texas.",
 	"Modules": [
 		{
 			"Name": "SailingPhysics",

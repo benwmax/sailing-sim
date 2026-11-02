@@ -223,6 +223,13 @@ bool FCareerContent::LoadText(const FString& Json, FString* OutError)
 				C->TryGetStringField(TEXT("name"), T.CertificateName);
 			}
 			T.Unlocks = ReadUnlocks(Child(*O, TEXT("unlocks")));
+			if (const TSharedPtr<FJsonObject> A = Child(*O, TEXT("opens_after")))
+			{
+				T.OpensAfter.Lessons = Strings(*A, TEXT("lessons"));
+				FString Medal;
+				if (A->TryGetStringField(TEXT("medal"), Medal)) T.OpensAfter.Medal = MedalFromId(Medal);
+				A->TryGetStringField(TEXT("reason"), T.OpensAfter.Reason);
+			}
 			Tiers.Add(MoveTemp(T));
 		}
 	}
@@ -263,6 +270,10 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 			Check(!LessonIds.Contains(L.Id) && L.Id.StartsWith(T.Id + TEXT(".")), FString::Printf(TEXT("%s: lesson id repeated or outside its tier"), *L.Id));
 			LessonIds.Add(L.Id);
 			Check(L.Drill != ESailingDrill::None && Learning.Briefing(L.Drill), FString::Printf(TEXT("%s: drill %s is not in Content/Learning"), *L.Id, *L.DrillId));
+			const FString LessonBoat = T.Boats.Num() > 0 ? T.Boats[0] : FString();
+			const int32 BoatIndex = FSailSave::BoatIndex(LessonBoat);
+			Check(BoatIndex < 0 || FDrillRunner::CanSail(L.Drill, Sailing::FBoatConfig::Make(Sailing::EBoatType(BoatIndex))),
+				FString::Printf(TEXT("%s: the %s can't sail %s"), *L.Id, *LessonBoat, *L.DrillId));
 			const FDrillBriefing* Q = Learning.Briefing(L.QuizDrill);
 			Check(L.QuizDrill != ESailingDrill::None && Q && Q->QuizAfter > 0, FString::Printf(TEXT("%s: quiz %s has no quiz in Content/Learning"), *L.Id, *L.QuizId));
 			Check(L.QuizPass > 0.0 && L.QuizPass <= 1.0, FString::Printf(TEXT("%s: quiz_pass %.2f"), *L.Id, L.QuizPass));
@@ -284,7 +295,7 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 			int32 Available = 0;
 			for (const FQuizQuestion& Q : Learning.Questions)
 			{
-				Available += Q.Drills.Num() == 0 || Q.Drills.ContainsByPredicate([&T](ESailingDrill D) { return T.Checkride.Quiz.Drills.Contains(D); });
+				Available += Q.Fits(T.SailsDinghy()) && (Q.Drills.Num() == 0 || Q.Drills.ContainsByPredicate([&T](ESailingDrill D) { return T.Checkride.Quiz.Drills.Contains(D); }));
 			}
 			for (const ESailingDrill D : T.Checkride.Quiz.Drills) Check(D != ESailingDrill::None, FString::Printf(TEXT("%s checkride quiz: unknown drill"), *T.Id));
 			Check(T.Checkride.Quiz.Questions <= Available, FString::Printf(TEXT("%s checkride quiz: %d questions, %d available"), *T.Id, T.Checkride.Quiz.Questions, Available));
@@ -292,6 +303,11 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 		for (const FString& U : T.Unlocks.Tiers) Check(Tiers.ContainsByPredicate([&U](const FCareerTier& X) { return X.Id == U; }) && U != T.Id, FString::Printf(TEXT("%s unlocks: unknown tier %s"), *T.Id, *U));
 		for (const FString& W : T.Unlocks.Worlds) Check(FSailSave::WorldIndex(W) >= 0, FString::Printf(TEXT("%s unlocks: unknown world %s"), *T.Id, *W));
 		for (const FString& B : T.Unlocks.Boats) Check(FSailSave::BoatIndex(B) >= 0, FString::Printf(TEXT("%s unlocks: unknown boat %s"), *T.Id, *B));
+		for (const FString& L : T.OpensAfter.Lessons)
+		{
+			Check(LessonIds.Contains(L) && !L.StartsWith(T.Id + TEXT(".")), FString::Printf(TEXT("%s opens_after: %s is not another tier's lesson"), *T.Id, *L));
+		}
+		Check(!T.OpensAfter.IsSet() || (T.OpensAfter.Medal != ECareerMedal::None && !T.OpensAfter.Reason.IsEmpty()), FString::Printf(TEXT("%s opens_after: a medal and a reason"), *T.Id));
 	}
 	return Bad;
 }
@@ -315,11 +331,18 @@ const FCareerLesson* FCareerContent::Lesson(const FString& Id) const
 	return nullptr;
 }
 
-TArray<FQuizQuestion> FCareerContent::MakeCheckrideQuiz(const FCareerTier& T, const FLearningContent& Learning, FRandomStream& Rng) const
+bool FCareerTier::SailsDinghy() const
+{
+	const int32 Boat = Boats.Num() > 0 ? FSailSave::BoatIndex(Boats[0]) : -1;
+	return Boat >= 0 && FDrillRunner::IsDinghy(Sailing::FBoatConfig::Make(Sailing::EBoatType(Boat)));
+}
+
+TArray<FQuizQuestion> FCareerContent::MakeCheckrideQuiz(const FCareerTier& T, const FLearningContent& Learning, FRandomStream& Rng, bool bDinghy) const
 {
 	TArray<const FQuizQuestion*> Pool;
 	for (const FQuizQuestion& Q : Learning.Questions)
 	{
+		if (!Q.Fits(bDinghy)) continue;
 		if (Q.Drills.Num() == 0 || Q.Drills.ContainsByPredicate([&T](ESailingDrill D) { return T.Checkride.Quiz.Drills.Contains(D); })) Pool.Add(&Q);
 	}
 	for (int32 I = Pool.Num() - 1; I > 0; --I) Pool.Swap(I, Rng.RandRange(0, I));
@@ -510,13 +533,20 @@ bool FCareerProgress::RecordCheckrideQuiz(const FString& TierId, int32 Right, in
 bool FCareerProgress::IsTierOpen(const FString& TierId) const
 {
 	if (!Content.Tier(TierId)) return false;
-	if (bFreeSail || Content.AlwaysOpen.Tiers.Contains(TierId)) return true;
+	if (bFreeSail || Content.AlwaysOpen.Tiers.Contains(TierId) || OpenedByLessons(*Content.Tier(TierId))) return true;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
 	{
 		const FCareerTier* By = Content.TierOfCertificate(C.Id);
 		if (By && By->Unlocks.Tiers.Contains(TierId)) return true;
 	}
 	return false;
+}
+
+bool FCareerProgress::OpenedByLessons(const FCareerTier& T) const
+{
+	if (!T.OpensAfter.IsSet()) return false;
+	for (const FString& L : T.OpensAfter.Lessons) if (LessonMedal(L) < T.OpensAfter.Medal) return false;
+	return true;
 }
 
 void FCareerProgress::Opens(const FCareerTier& T, TSet<FString>& Worlds, TSet<FString>& Boats) const
@@ -538,7 +568,7 @@ bool FCareerProgress::IsWorldOpen(const FString& WorldId) const
 	if (bFreeSail || Content.AlwaysOpen.Worlds.Contains(WorldId)) return true;
 	for (const FCareerTier& T : Content.Tiers)
 	{
-		if (Content.AlwaysOpen.Tiers.Contains(T.Id) && T.WorldId == WorldId) return true;
+		if ((Content.AlwaysOpen.Tiers.Contains(T.Id) || OpenedByLessons(T)) && T.WorldId == WorldId) return true;
 	}
 	TSet<FString> Worlds, Boats;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
@@ -553,7 +583,7 @@ bool FCareerProgress::IsBoatOpen(const FString& BoatId) const
 	if (bFreeSail || Content.AlwaysOpen.Boats.Contains(BoatId)) return true;
 	for (const FCareerTier& T : Content.Tiers)
 	{
-		if (Content.AlwaysOpen.Tiers.Contains(T.Id) && T.Boats.Contains(BoatId)) return true;
+		if ((Content.AlwaysOpen.Tiers.Contains(T.Id) || OpenedByLessons(T)) && T.Boats.Contains(BoatId)) return true;
 	}
 	TSet<FString> Worlds, Boats;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
@@ -565,6 +595,11 @@ bool FCareerProgress::IsBoatOpen(const FString& BoatId) const
 
 FString FCareerProgress::LockReason(const FString& Id, bool bWorld) const
 {
+	// #432: a tier that opens on lessons says so first (it comes sooner than any certificate).
+	for (const FCareerTier& T : Content.Tiers)
+	{
+		if (T.OpensAfter.IsSet() && (bWorld ? T.WorldId == Id : T.Boats.Contains(Id))) return T.OpensAfter.Reason;
+	}
 	// The first certificate (in the file's order) whose earning would open it.
 	for (const FCareerTier& T : Content.Tiers)
 	{
