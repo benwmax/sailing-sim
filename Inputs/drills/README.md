@@ -46,13 +46,23 @@ drills[]: id, name (= DrillName()), asa_skill, goal, why_it_matters, setup,
   Placeholders: `{time}` as m:ss, `{contact_kn}` to one decimal.
 - `quiz_after` is how many questions to ask when the drill finishes: draw from questions tagged with that drill
   first, then `Any`.
+- `dinghy` (Nov 2026, #433-#435) is the wording for a boat with no jib (`FDrillRunner::IsDinghy`: the Sunfish, the
+  ILCA). Its fields (goal, why_it_matters, setup, commands, steps, good, mistakes, lake_notes, debrief) replace the
+  drill's own; the rest are kept. Its `sim_text` matches `FDrillRunner::DinghySteps` where that has the drill (Leave
+  the dock, the quick-stop, Return and dock), else the drill's own steps. Only the four drills a dinghy can sail have
+  one: `FDrillRunner::CanSail` keeps heave to (the backed jib) and the figure-eight (the keelboat method) off a boat
+  with no jib, on the Mode screen and in career.json (`FCareerContent::Validate`).
 
 ### learning-tips.json
 
 ```
 events: {event id: plain-language detection}
-tips[]: {id, event, drills[], level, cooldown_s, once_per_session, asa_topic, text}
+tips[]: {id, event, drills[], level, cooldown_s, once_per_session, asa_topic, text, class?}
 ```
+
+- `class` is `keelboat` (shown only on a boat with a jib), `dinghy` (only on a boat with no jib) or absent (both). A
+  keelboat tip that would fire on a dinghy has a dinghy twin, `<id>-dinghy`, on the same event. `validate.py` fails on
+  an untagged tip, shown on a drill a dinghy sails, that names a jib, a crew, a keel, the J/22 or an engine.
 
 - Event ids are dotted (`jib.luffing`, `tack.slow`, `cob.fast_approach`, `rules.port_starboard.give_way`,
   `weather.gust_front`). The detection strings use `FBoatTelemetry`, `FBoatControls`, `FDrillRunner`, `FRulesCoach`
@@ -68,8 +78,11 @@ tips[]: {id, event, drills[], level, cooldown_s, once_per_session, asa_topic, te
 ### quiz-bank.json
 
 ```
-questions[]: {id, drills[], topic, q, options[4], answer, why}
+questions[]: {id, drills[], topic, q, options[4], answer, why, class?}
 ```
+
+- `class` as the tips': a dinghy's quiz (and a dinghy tier's checkride) never asks a keelboat question, and a keelboat's
+  never a dinghy one. Each drill a dinghy sails keeps enough of both for its `quiz_after`.
 
 - `topic` uses the Study Kit's tags: parts, sail, trim, rules, lights, aton, nav, knots, safety, weather, dock.
 - `answer` is a zero-based index into `options`. The options are already in a mixed order, but shuffle them at run

@@ -846,7 +846,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	}
 	// #402: the separate "ASA 101 drills" item is gone: Career's lessons are the same six drills (the Mode screen's Drills
 	// card still sails any of them freely).
-	Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
+	if (!USailingSettings::SliceOnly()) Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
 	// #430: runs aren't kept across launches; with none yet this session the item is greyed and says why (it used to close
 	// the menus and play nothing).
@@ -921,7 +921,6 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 				.Font([] { FSlateFontInfo F = Font(EType::Eyebrow); F.LetterSpacing = 320; return F; }()).ColorAndOpacity(Muted) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]
-		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top)[ SailUI::Text(TEXT("Graphics G4 build"), EType::Label, Dim) ]
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 90.f)[ Card ];
 	E.Focus = bTitleFocusMode ? TSharedPtr<SWidget>(ModeChoice) : First;
 	bTitleFocusMode = false;
@@ -947,6 +946,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 	if (!Career.IsWorldOpen(FSailSave::WorldId(Pending.World == 2 ? 1 : Pending.World))) { Pending.World = 0; Pending.LaunchSpot = 0; }
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
 	{
+		if (!SailCatalog::InSliceWorld(W.Index)) continue;   // #399: a slice build shows the slice's places only
 		const FString Locked = Career.WorldLockReason(W.Id);
 		TSharedPtr<FSlateBrush> Art = TextureBrush(W.CardTexture);
 		TSharedRef<SHorizontalBox> Facts = SNew(SHorizontalBox);
@@ -1110,6 +1110,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 		const int32 T = B.Type;
 		// The fleet of eight: the prologue's maxi isn't in the strip (brief section 8).
 		if (T == int32(Sailing::EBoatType::Maxi)) continue;
+		if (!SailCatalog::InSliceBoat(T)) continue;   // #399: the slice's boats only in a slice build
 		const FString Locked = LockOf(T);
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(8.f, 6.f))
 			.IsSelected_Lambda([this, T]() { return FocusedBoat == T; })
@@ -1472,6 +1473,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	TSharedRef<SHorizontalBox> Cards = SNew(SHorizontalBox);
 	for (const FModeCard& M : Modes)
 	{
+		// #399: a slice build sails free and the drills only (Race and Passage stay on the command line).
+		if (USailingSettings::SliceOnly() && (M.Mode == ESailMode::Race || M.Mode == ESailMode::Passage)) continue;
 		// Passage: Galveston's to Freeport (the Gulf world, its own career lock) or Marseille's to Cassis.
 		const FString GulfLocked = Pending.World == 1 ? SailCareer::Progress().WorldLockReason(FSailSave::WorldId(2)) : FString();
 		const bool bOk = M.Mode != ESailMode::Passage || (USailSessionSubsystem::HasPassage(Pending.World) && GulfLocked.IsEmpty());
@@ -1492,9 +1495,15 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	{
 		TSharedRef<SUniformGridPanel> Drills = SNew(SUniformGridPanel).SlotPadding(FMargin(6.f));
 		const USailSessionSave* Save = USailSessionSave::Get();
+		// #435: only the drills the boat can sail (no heave to or figure-eight without a jib).
+		const Sailing::FBoatConfig DrillBoat = Sailing::FBoatConfig::Make(Sailing::EBoatType(Pending.Boat));
+		if (!FDrillRunner::CanSail(ESailingDrill(Pending.DrillIndex + 1), DrillBoat)) Pending.DrillIndex = 0;
+		int32 Shown = 0;
 		for (int32 I = 0; I < 6; ++I)
 		{
-			Drills->AddSlot(I % 3, I / 3)
+			if (!FDrillRunner::CanSail(ESailingDrill(I + 1), DrillBoat)) continue;
+			const int32 Cell = Shown++;
+			Drills->AddSlot(Cell % 3, Cell / 3)
 			[
 				SNew(SSailButton).Look(EButtonLook::Card).Padding(FMargin(14.f, 10.f)).IsSelected_Lambda([this, I]() { return Pending.DrillIndex == I; })
 				.OnClicked_Lambda([this, I]() { Pending.DrillIndex = I; })
@@ -1696,7 +1705,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		auto Detail = [&](const TCHAR* Label, int32 USailingSettings::* Field, const TCHAR* Note) { Add(SailGraphicsRows::Detail(GM, Label, Field, Note)); };
 		Section(TEXT("Detail"));
 		Detail(TEXT("Shadows"), &USailingSettings::ShadowQuality, TEXT("Shadow resolution and distance."));
-		Detail(TEXT("Lighting"), &USailingSettings::LightingQuality, TEXT("Lumen's bounced light: the shade inside crowns and under hulls."));
+		Detail(TEXT("Lighting"), &USailingSettings::LightingQuality, TEXT("Bounced light: the shade inside tree crowns and under hulls."));
 		Detail(TEXT("Reflections"), &USailingSettings::ReflectionQuality, TEXT(""));
 		Detail(TEXT("Clouds"), &USailingSettings::CloudQuality, TEXT("Samples through the clouds: the costliest part of the sky."));
 		Detail(TEXT("Water"), &USailingSettings::WaterQuality, TEXT("Low keeps the simple water; Medium and up the full sea."));
@@ -1714,9 +1723,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([S](int32 I) { S->bCinematicLook = I == 1; S->Save(); })
 			.Note(TEXT("Cinematic: a photographic grade (warm highlights, cool shadows), wider bloom and sun glitter. Photo mode always uses it.")));
 		Help = TEXT("Quality is a preset: choosing a tier sets every row on Auto to that tier's own. Change a row to override it.\n\n"
-			"Measured on the packaged build, slowest view (docs/graphics-3/bench.csv): Medium 71.6 fps, High 45.3 fps on the M5 Pro. "
-			"Ultra: full hardware Lumen, strand hair, full-res clouds, no resolution governor (RTX 4090 PC).\n\nRender scale draws the world "
-			"at a share of the screen's resolution and upscales it; a fixed scale turns High's governor off.");
+			"On a MacBook Pro with an M5 Pro, Medium keeps above 60 frames a second and High about 45 in the busiest views. "
+			"Ultra is for a desktop graphics card: fully ray-traced light, strand hair and full-resolution clouds.\n\nRender scale draws the "
+			"world at a share of the screen's resolution and upscales it; a fixed scale stops High lowering the resolution in busy views.");
 		break;
 	}
 	case 1:
@@ -1991,7 +2000,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	const ASailboatPawn* P = Pawn();
-	const FDrillBriefing* B = P ? FLearningContent::Get().Briefing(P->GetDrill().GetDrill()) : nullptr;
+	const FDrillBriefing* B = P ? FLearningContent::Get().Briefing(P->GetDrill().GetDrill(), P->GetDrill().IsDinghyRun()) : nullptr;
 	TSharedRef<SSailButton> Go = ActionButton(TEXT("Start the drill"), FSimpleDelegate::CreateLambda([this]() { Close(); }));
 	if (!B)
 	{
@@ -2086,7 +2095,7 @@ void SSailFrontEnd::StartQuiz()
 		// Career 1: a checkride's written quiz, from the Career screen.
 		const FCareerContent& Content = FCareerContent::Get();
 		const FCareerTier* T = Content.Tier(CheckrideTierId);
-		Quiz = T ? Content.MakeCheckrideQuiz(*T, FLearningContent::Get(), Rng) : TArray<FQuizQuestion>();
+		Quiz = T ? Content.MakeCheckrideQuiz(*T, FLearningContent::Get(), Rng, T->SailsDinghy()) : TArray<FQuizQuestion>();
 		QuizIndex = QuizRight = 0;
 		QuizChosen = -1;
 		QuizDrillName = T ? T->Checkride.Title : FString();
@@ -2097,7 +2106,8 @@ void SSailFrontEnd::StartQuiz()
 	if (const FCareerLesson* Retake = QuizRetakeLessonId.IsEmpty() ? nullptr : FCareerContent::Get().Lesson(QuizRetakeLessonId))
 	{
 		// #402: the lesson's quiz without sailing it again (its row on the Career screen, or Retake the quiz).
-		Quiz = FLearningContent::Get().MakeQuiz(Retake->QuizDrill, Rng);
+		const FCareerTier* RetakeTier = FCareerContent::Get().Tier(Retake->TierId);
+		Quiz = FLearningContent::Get().MakeQuiz(Retake->QuizDrill, Rng, RetakeTier && RetakeTier->SailsDinghy());
 		QuizIndex = QuizRight = 0;
 		QuizChosen = -1;
 		QuizDrillName = Retake->Title;
@@ -2107,7 +2117,7 @@ void SSailFrontEnd::StartQuiz()
 	}
 	const ASailboatPawn* P = Pawn();
 	const ESailingDrill Drill = P ? P->GetDrill().GetDrill() : ESailingDrill::None;
-	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng);
+	Quiz = FLearningContent::Get().MakeQuiz(Drill, Rng, P && P->GetDrill().IsDinghyRun());
 	QuizIndex = QuizRight = 0;
 	QuizChosen = -1;
 	QuizDrillName = DrillName(Drill);
@@ -2117,7 +2127,7 @@ void SSailFrontEnd::StartQuiz()
 		const FDrillRunner& D = P->GetDrill();
 		FString Outcome = D.GetOutcome();
 		if (Outcome.IsEmpty() && FDrillRunner::Outcomes(Drill).Num()) Outcome = FDrillRunner::Outcomes(Drill)[0];   // stills before the drill ends
-		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots());
+		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots(), D.IsDinghyRun());
 		// Career 1: the lesson this drill counted for, and its medal; the quiz closes it.
 		const FCareerProgress::FAward& A = P->GetCareerAward();
 		if (const FCareerLesson* L = A.IsValid() ? FCareerContent::Get().Lesson(A.LessonId) : nullptr)
@@ -2315,6 +2325,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 	TSharedRef<SVerticalBox> Tiers = SNew(SVerticalBox);
 	for (const FCareerTier& T : Content.Tiers)
 	{
+		if (!SailCatalog::InSliceTier(T.Id)) continue;   // #399: the slice's tiers (and the stretch) only
 		const bool bOpen = Career.IsTierOpen(T.Id), bHeld = Career.HasCertificate(T.CertificateId);
 		FString State;
 		if (bHeld) State = TEXT("Certificate earned");
@@ -2413,7 +2424,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		}
 		if (T.Lessons.Num() == 0)
 		{
-			Detail->AddSlot().AutoHeight().Padding(0.f, 6.f)[ PanelBox(SailUI::Text(T.Notes.IsEmpty() ? FString(TEXT("Lessons for this tier are still being written.")) : T.Notes, EType::Body, Muted, true), FMargin(16.f, 12.f)) ];
+			Detail->AddSlot().AutoHeight().Padding(0.f, 6.f)[ PanelBox(SailUI::Text(TEXT("Lessons for this tier are still being written."), EType::Body, Muted, true), FMargin(16.f, 12.f)) ];
 		}
 		// The checkride and the certificate.
 		FString Why;

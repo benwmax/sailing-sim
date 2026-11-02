@@ -263,6 +263,10 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 			Check(!LessonIds.Contains(L.Id) && L.Id.StartsWith(T.Id + TEXT(".")), FString::Printf(TEXT("%s: lesson id repeated or outside its tier"), *L.Id));
 			LessonIds.Add(L.Id);
 			Check(L.Drill != ESailingDrill::None && Learning.Briefing(L.Drill), FString::Printf(TEXT("%s: drill %s is not in Content/Learning"), *L.Id, *L.DrillId));
+			const FString LessonBoat = T.Boats.Num() > 0 ? T.Boats[0] : FString();
+			const int32 BoatIndex = FSailSave::BoatIndex(LessonBoat);
+			Check(BoatIndex < 0 || FDrillRunner::CanSail(L.Drill, Sailing::FBoatConfig::Make(Sailing::EBoatType(BoatIndex))),
+				FString::Printf(TEXT("%s: the %s can't sail %s"), *L.Id, *LessonBoat, *L.DrillId));
 			const FDrillBriefing* Q = Learning.Briefing(L.QuizDrill);
 			Check(L.QuizDrill != ESailingDrill::None && Q && Q->QuizAfter > 0, FString::Printf(TEXT("%s: quiz %s has no quiz in Content/Learning"), *L.Id, *L.QuizId));
 			Check(L.QuizPass > 0.0 && L.QuizPass <= 1.0, FString::Printf(TEXT("%s: quiz_pass %.2f"), *L.Id, L.QuizPass));
@@ -284,7 +288,7 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 			int32 Available = 0;
 			for (const FQuizQuestion& Q : Learning.Questions)
 			{
-				Available += Q.Drills.Num() == 0 || Q.Drills.ContainsByPredicate([&T](ESailingDrill D) { return T.Checkride.Quiz.Drills.Contains(D); });
+				Available += Q.Fits(T.SailsDinghy()) && (Q.Drills.Num() == 0 || Q.Drills.ContainsByPredicate([&T](ESailingDrill D) { return T.Checkride.Quiz.Drills.Contains(D); }));
 			}
 			for (const ESailingDrill D : T.Checkride.Quiz.Drills) Check(D != ESailingDrill::None, FString::Printf(TEXT("%s checkride quiz: unknown drill"), *T.Id));
 			Check(T.Checkride.Quiz.Questions <= Available, FString::Printf(TEXT("%s checkride quiz: %d questions, %d available"), *T.Id, T.Checkride.Quiz.Questions, Available));
@@ -315,11 +319,18 @@ const FCareerLesson* FCareerContent::Lesson(const FString& Id) const
 	return nullptr;
 }
 
-TArray<FQuizQuestion> FCareerContent::MakeCheckrideQuiz(const FCareerTier& T, const FLearningContent& Learning, FRandomStream& Rng) const
+bool FCareerTier::SailsDinghy() const
+{
+	const int32 Boat = Boats.Num() > 0 ? FSailSave::BoatIndex(Boats[0]) : -1;
+	return Boat >= 0 && FDrillRunner::IsDinghy(Sailing::FBoatConfig::Make(Sailing::EBoatType(Boat)));
+}
+
+TArray<FQuizQuestion> FCareerContent::MakeCheckrideQuiz(const FCareerTier& T, const FLearningContent& Learning, FRandomStream& Rng, bool bDinghy) const
 {
 	TArray<const FQuizQuestion*> Pool;
 	for (const FQuizQuestion& Q : Learning.Questions)
 	{
+		if (!Q.Fits(bDinghy)) continue;
 		if (Q.Drills.Num() == 0 || Q.Drills.ContainsByPredicate([&T](ESailingDrill D) { return T.Checkride.Quiz.Drills.Contains(D); })) Pool.Add(&Q);
 	}
 	for (int32 I = Pool.Num() - 1; I > 0; --I) Pool.Swap(I, Rng.RandRange(0, I));

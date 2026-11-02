@@ -7,7 +7,8 @@
     "cooldown_s": "minimum seconds before the same tip shows again",
     "once_per_session": "show at most once per sail",
     "key_tokens": "{key:Action.direction} or {key:Action}; see README",
-    "events": "the event table says what each event means and a suggested detection; tune thresholds on the Mac"
+    "events": "the event table says what each event means and a suggested detection; tune thresholds on the Mac",
+    "class": "optional: keelboat (shown only on a boat with a jib) or dinghy (only on a boat with no jib, the Sunfish or the ILCA); absent fits both. A dinghy twin keeps its keelboat tip's event, drills, level and cooldown"
   },
   "events": {
     "jib.luffing": "Two or more jib strips Luffing or Backed while not in irons and |TWA| >= 35 (as SailingCollectTips does)",
@@ -85,7 +86,8 @@
       "cooldown_s": 30,
       "once_per_session": false,
       "asa_topic": "trim",
-      "text": "The jib is luffing: its front edge is bubbling. Trim it in ({key:JibSheet.trim}) or bear away a little. Upwind, the windward telltale lifting means you are too close to the wind."
+      "text": "The jib is luffing: its front edge is bubbling. Trim it in ({key:JibSheet.trim}) or bear away a little. Upwind, the windward telltale lifting means you are too close to the wind.",
+      "class": "keelboat"
     },
     {
       "id": "jib-luff-reach",
@@ -97,7 +99,8 @@
       "cooldown_s": 30,
       "once_per_session": false,
       "asa_topic": "trim",
-      "text": "Luffing is the sail flapping because it is eased too far for the wind angle. Trim the jib ({key:JibSheet.trim}) just until the bubble stops."
+      "text": "Luffing is the sail flapping because it is eased too far for the wind angle. Trim the jib ({key:JibSheet.trim}) just until the bubble stops.",
+      "class": "keelboat"
     },
     {
       "id": "jib-stall",
@@ -109,7 +112,8 @@
       "cooldown_s": 30,
       "once_per_session": false,
       "asa_topic": "trim",
-      "text": "The leeward jib telltale is drooping: the sail is trimmed too tight for this course. Ease it ({key:JibSheet.ease}) or head up a little."
+      "text": "The leeward jib telltale is drooping: the sail is trimmed too tight for this course. Ease it ({key:JibSheet.ease}) or head up a little.",
+      "class": "keelboat"
     },
     {
       "id": "main-luff",
@@ -157,7 +161,21 @@
       "cooldown_s": 30,
       "once_per_session": false,
       "asa_topic": "sail",
-      "text": "You are pinching: so close to the wind that the boat slows and the jib softens. Bear away a few degrees, let the speed build, then head up gently."
+      "text": "You are pinching: so close to the wind that the boat slows and the jib softens. Bear away a few degrees, let the speed build, then head up gently.",
+      "class": "keelboat"
+    },
+    {
+      "id": "pinching-dinghy",
+      "event": "pinching",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "You are pinching: so close to the wind that the front of the sail softens and the boat slows. Bear away a few degrees, let the speed build, then head up gently.",
+      "class": "dinghy"
     },
     {
       "id": "irons",
@@ -169,7 +187,21 @@
       "cooldown_s": 20,
       "once_per_session": false,
       "asa_topic": "sail",
-      "text": "You are in irons: stopped head to wind with the sails luffing. Push the tiller toward the boom, back the jib ({key:BackJib}) to the side you want the bow to go, and wait for the bow to fall off."
+      "text": "You are in irons: stopped head to wind with the sails luffing. Push the tiller toward the boom, back the jib ({key:BackJib}) to the side you want the bow to go, and wait for the bow to fall off.",
+      "class": "keelboat"
+    },
+    {
+      "id": "irons-dinghy",
+      "event": "irons",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 20,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "You are in irons: stopped head to wind with the sail luffing. Push the tiller toward the boom and push the boom out toward the wind on the side you want the bow to go; she sails backward and the bow falls off.",
+      "class": "dinghy"
     },
     {
       "id": "irons-escaped",
@@ -229,7 +261,21 @@
       "cooldown_s": 120,
       "once_per_session": false,
       "asa_topic": "sail",
-      "text": "As the jib luffs during the tack, release the old sheet and trim the new one on the other side once the bow is through."
+      "text": "As the jib luffs during the tack, release the old sheet and trim the new one on the other side once the bow is through.",
+      "class": "keelboat"
+    },
+    {
+      "id": "tack-jib-dinghy",
+      "event": "tack.start",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Tacking a dinghy alone: as the boom comes over, duck under it, cross facing forward and sit on the new high side, then swap the tiller and sheet hands.",
+      "class": "dinghy"
     },
     {
       "id": "tack-done",
@@ -241,7 +287,21 @@
       "cooldown_s": 120,
       "once_per_session": false,
       "asa_topic": "sail",
-      "text": "Through the tack. Check the new jib sheet is trimmed and you have settled close-hauled on the new tack, not pointing too high."
+      "text": "Through the tack. Check the new jib sheet is trimmed and you have settled close-hauled on the new tack, not pointing too high.",
+      "class": "keelboat"
+    },
+    {
+      "id": "tack-done-dinghy",
+      "event": "tack.complete",
+      "drills": [
+        "Any"
+      ],
+      "level": "good",
+      "cooldown_s": 120,
+      "once_per_session": false,
+      "asa_topic": "sail",
+      "text": "Through the tack. Trim the sheet in, hike out to keep her flat and settle close-hauled on the new tack, not pointing too high.",
+      "class": "dinghy"
     },
     {
       "id": "tack-slow",
@@ -361,7 +421,21 @@
       "cooldown_s": 60,
       "once_per_session": false,
       "asa_topic": "nav",
-      "text": "Shallow water under the keel. The J/22 draws about 1.2 m (3 ft 10 in). Ray Hubbard's coves and points shoal quickly, and the lake level changes with rain and drought."
+      "text": "Shallow water under the keel. The J/22 draws about 1.2 m (3 ft 10 in). Ray Hubbard's coves and points shoal quickly, and the lake level changes with rain and drought.",
+      "class": "keelboat"
+    },
+    {
+      "id": "shallow-dinghy",
+      "event": "shallow",
+      "drills": [
+        "Any"
+      ],
+      "level": "warn",
+      "cooldown_s": 60,
+      "once_per_session": false,
+      "asa_topic": "nav",
+      "text": "Shallow water under the daggerboard and rudder. Raise the board partway and keep clear: Ray Hubbard's coves and points shoal quickly, and the lake level changes with rain and drought.",
+      "class": "dinghy"
     },
     {
       "id": "aground",
@@ -373,7 +447,21 @@
       "cooldown_s": 30,
       "once_per_session": false,
       "asa_topic": "safety",
-      "text": "Aground. Ease the sails, turn back the way you came, and move the crew to leeward to heel the boat: heeling lifts the keel a little."
+      "text": "Aground. Ease the sails, turn back the way you came, and move the crew to leeward to heel the boat: heeling lifts the keel a little.",
+      "class": "keelboat"
+    },
+    {
+      "id": "aground-dinghy",
+      "event": "aground",
+      "drills": [
+        "Any"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": false,
+      "asa_topic": "safety",
+      "text": "Aground. Let the sheet go, raise the daggerboard and rudder partway, and turn back the way you came; you can step out in shallow water and push her off.",
+      "class": "dinghy"
     },
     {
       "id": "cob-first",
@@ -386,7 +474,22 @@
       "cooldown_s": 30,
       "once_per_session": true,
       "asa_topic": "safety",
-      "text": "Crew overboard! Shout it, throw flotation, and have one person point at them and never stop pointing."
+      "text": "Crew overboard! Shout it, throw flotation, and have one person point at them and never stop pointing.",
+      "class": "keelboat"
+    },
+    {
+      "id": "cob-first-dinghy",
+      "event": "cob.start",
+      "drills": [
+        "CrewOverboardFigureEight",
+        "CrewOverboardQuickStop"
+      ],
+      "level": "danger",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Person in the water! Shout it so others look, keep your eyes on them, and turn back at once: alone in a dinghy, nobody else can point.",
+      "class": "dinghy"
     },
     {
       "id": "cob-fig8-reach",
@@ -410,7 +513,21 @@
       "cooldown_s": 30,
       "once_per_session": true,
       "asa_topic": "safety",
-      "text": "Quick-stop: head up into the wind now, tack, leave the jib backed and keep turning around them."
+      "text": "Quick-stop: head up into the wind now, tack, leave the jib backed and keep turning around them.",
+      "class": "keelboat"
+    },
+    {
+      "id": "cob-quickstop-dinghy",
+      "event": "cob.start",
+      "drills": [
+        "CrewOverboardQuickStop"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "safety",
+      "text": "Quick-stop: head up into the wind now, tack, ease the sheet and keep turning around them.",
+      "class": "dinghy"
     },
     {
       "id": "cob-far",
@@ -534,7 +651,21 @@
       "cooldown_s": 30,
       "once_per_session": true,
       "asa_topic": "dock",
-      "text": "Coming in: fenders over the side you will dock on, at the height where the hull meets the dock, and bow and stern lines ready."
+      "text": "Coming in: fenders over the side you will dock on, at the height where the hull meets the dock, and bow and stern lines ready.",
+      "class": "keelboat"
+    },
+    {
+      "id": "dock-fenders-dinghy",
+      "event": "dock.fenders",
+      "drills": [
+        "Any"
+      ],
+      "level": "info",
+      "cooldown_s": 30,
+      "once_per_session": true,
+      "asa_topic": "dock",
+      "text": "Coming in: plan to finish heading into the wind, have the dock line ready in your hand, and raise the daggerboard partway if it is shallow by the dock.",
+      "class": "dinghy"
     },
     {
       "id": "dock-fast",
@@ -678,7 +809,8 @@
       "cooldown_s": 120,
       "once_per_session": false,
       "asa_topic": "rules",
-      "text": "With the outboard running in gear you are a power-driven vessel under the rules, even with the sails up."
+      "text": "With the outboard running in gear you are a power-driven vessel under the rules, even with the sails up.",
+      "class": "keelboat"
     },
     {
       "id": "r-fishing",
@@ -846,7 +978,7 @@
       "cooldown_s": 30,
       "once_per_session": true,
       "asa_topic": "safety",
-      "text": "Texas summer heat: drink water before you are thirsty, wear a hat and sunscreen, and watch the crew for heat exhaustion: heavy sweating, dizziness, nausea."
+      "text": "Texas summer heat: drink water before you are thirsty, wear a hat and sunscreen, and know the signs of heat exhaustion: heavy sweating, dizziness, nausea."
     },
     {
       "id": "wx-front",
