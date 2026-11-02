@@ -935,6 +935,7 @@ void ASailboatPawn::BeginPlay()
 		&& Session->Active.Mode == ESailMode::Drill)
 	{
 		MenuDrill = ESailingDrill(FMath::Clamp(Session->Active.DrillIndex + 1, 1, int32(ESailingDrill::Count) - 1));
+		if (!FDrillRunner::CanSail(MenuDrill, Boat.GetConfig())) MenuDrill = ESailingDrill::LeaveTheDock;   // an older session's jib drill
 		StartDrill(MenuDrill);
 	}
 	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingMenu"))) bMenuOpen = true; // screenshots of the settings menu
@@ -2583,6 +2584,7 @@ void ASailboatPawn::UpdateLearning()
 	F.MainLuff = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Luffing, ESailFlow::Backed);
 	F.MainStall = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Stalled, ESailFlow::Stalled);
 	F.Drill = DrillRunner.GetDrill();
+	F.bDinghy = FDrillRunner::IsDinghy(Boat.GetConfig());
 	F.bDrillActive = DrillRunner.IsActive();
 	F.bDrillComplete = DrillRunner.IsComplete();
 	F.DrillStep = DrillRunner.GetStep();
@@ -3699,7 +3701,9 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:
-		MenuDrill = ESailingDrill((int32(MenuDrill) + int32(ESailingDrill::Count) + Direction) % int32(ESailingDrill::Count));
+		// #435: past the drills this boat can't sail (no heave to or figure-eight without a jib).
+		do MenuDrill = ESailingDrill((int32(MenuDrill) + int32(ESailingDrill::Count) + Direction) % int32(ESailingDrill::Count));
+		while (MenuDrill != ESailingDrill::None && !FDrillRunner::CanSail(MenuDrill, Boat.GetConfig()));
 		StartDrill(MenuDrill);
 		break;
 	case RowLaunch:

@@ -131,30 +131,55 @@ bool FLearningContent::Load(const FString& Directory, FString* OutError)
 	const TArray<TSharedPtr<FJsonValue>>* List = nullptr;
 	if (B->TryGetArrayField(TEXT("drills"), List))
 	{
+		// Each field the object has replaces the briefing's: the whole briefing, then a "dinghy" block over a copy of it.
+		auto Read = [](const TSharedPtr<FJsonObject>& O, FDrillBriefing& D)
+		{
+			auto Field = [&O](const TCHAR* Name, FString& Out) { if (O->HasField(Name)) Out = Str(O, Name); };
+			Field(TEXT("name"), D.Name);
+			Field(TEXT("asa_skill"), D.AsaSkill);
+			Field(TEXT("goal"), D.Goal);
+			Field(TEXT("why_it_matters"), D.Why);
+			Field(TEXT("setup"), D.Setup);
+			Field(TEXT("lake_notes"), D.LakeNotes);
+			if (O->HasField(TEXT("good"))) D.Good = Strings(O, TEXT("good"));
+			if (O->HasField(TEXT("quiz_after"))) D.QuizAfter = O->GetIntegerField(TEXT("quiz_after"));
+			const TArray<TSharedPtr<FJsonValue>>* Items = nullptr;
+			if (O->TryGetArrayField(TEXT("commands"), Items))
+			{
+				D.Commands.Reset();
+				for (const TSharedPtr<FJsonValue>& C : *Items) D.Commands.Add({ Str(C->AsObject(), TEXT("call")), Str(C->AsObject(), TEXT("reply")), Str(C->AsObject(), TEXT("meaning")) });
+			}
+			if (O->TryGetArrayField(TEXT("steps"), Items))
+			{
+				D.Steps.Reset();
+				for (const TSharedPtr<FJsonValue>& S : *Items) D.Steps.Add({ Str(S->AsObject(), TEXT("sim_text")), Str(S->AsObject(), TEXT("text")), Str(S->AsObject(), TEXT("coach")) });
+			}
+			if (O->TryGetArrayField(TEXT("mistakes"), Items))
+			{
+				D.Mistakes.Reset();
+				for (const TSharedPtr<FJsonValue>& M : *Items) D.Mistakes.Add({ Str(M->AsObject(), TEXT("mistake")), Str(M->AsObject(), TEXT("fix")) });
+			}
+			const TSharedPtr<FJsonObject>* Debrief = nullptr;
+			if (O->TryGetObjectField(TEXT("debrief"), Debrief))
+			{
+				D.Debrief.Reset();
+				for (const TPair<FString, TSharedPtr<FJsonValue>>& P : (*Debrief)->Values) D.Debrief.Add(P.Key, P.Value->AsString());
+			}
+		};
 		for (const TSharedPtr<FJsonValue>& V : *List)
 		{
 			const TSharedPtr<FJsonObject> O = V->AsObject();
 			FDrillBriefing D;
 			D.Id = Str(O, TEXT("id"));
 			D.Drill = DrillFromId(D.Id);
-			D.Name = Str(O, TEXT("name"));
-			D.AsaSkill = Str(O, TEXT("asa_skill"));
-			D.Goal = Str(O, TEXT("goal"));
-			D.Why = Str(O, TEXT("why_it_matters"));
-			D.Setup = Str(O, TEXT("setup"));
-			D.LakeNotes = Str(O, TEXT("lake_notes"));
-			D.Good = Strings(O, TEXT("good"));
-			D.QuizAfter = O->GetIntegerField(TEXT("quiz_after"));
-			const TArray<TSharedPtr<FJsonValue>>* Items = nullptr;
-			if (O->TryGetArrayField(TEXT("commands"), Items))
-				for (const TSharedPtr<FJsonValue>& C : *Items) D.Commands.Add({ Str(C->AsObject(), TEXT("call")), Str(C->AsObject(), TEXT("reply")), Str(C->AsObject(), TEXT("meaning")) });
-			if (O->TryGetArrayField(TEXT("steps"), Items))
-				for (const TSharedPtr<FJsonValue>& S : *Items) D.Steps.Add({ Str(S->AsObject(), TEXT("sim_text")), Str(S->AsObject(), TEXT("text")), Str(S->AsObject(), TEXT("coach")) });
-			if (O->TryGetArrayField(TEXT("mistakes"), Items))
-				for (const TSharedPtr<FJsonValue>& M : *Items) D.Mistakes.Add({ Str(M->AsObject(), TEXT("mistake")), Str(M->AsObject(), TEXT("fix")) });
-			const TSharedPtr<FJsonObject>* Debrief = nullptr;
-			if (O->TryGetObjectField(TEXT("debrief"), Debrief))
-				for (const TPair<FString, TSharedPtr<FJsonValue>>& P : (*Debrief)->Values) D.Debrief.Add(P.Key, P.Value->AsString());
+			Read(O, D);
+			const TSharedPtr<FJsonObject>* Dinghy = nullptr;
+			if (O->TryGetObjectField(TEXT("dinghy"), Dinghy))
+			{
+				FDrillBriefing DD = D;
+				Read(*Dinghy, DD);
+				DinghyBriefings.Add(MoveTemp(DD));
+			}
 			Briefings.Add(MoveTemp(D));
 		}
 	}
@@ -175,6 +200,7 @@ bool FLearningContent::Load(const FString& Directory, FString* OutError)
 			Tip.Level = LevelFromName(Str(O, TEXT("level")));
 			Tip.Cooldown = O->GetNumberField(TEXT("cooldown_s"));
 			Tip.bOncePerSession = O->GetBoolField(TEXT("once_per_session"));
+			Tip.Class = Str(O, TEXT("class"));
 			Tips.Add(MoveTemp(Tip));
 		}
 	}
@@ -191,6 +217,7 @@ bool FLearningContent::Load(const FString& Directory, FString* OutError)
 			Qn.Drills = Drills(O);
 			Qn.Options = Strings(O, TEXT("options"));
 			Qn.Answer = O->GetIntegerField(TEXT("answer"));
+			Qn.Class = Str(O, TEXT("class"));
 			Questions.Add(MoveTemp(Qn));
 		}
 	}
@@ -199,18 +226,21 @@ bool FLearningContent::Load(const FString& Directory, FString* OutError)
 	return bLoaded;
 }
 
-const FDrillBriefing* FLearningContent::Briefing(ESailingDrill Drill) const
+const FDrillBriefing* FLearningContent::Briefing(ESailingDrill Drill, bool bDinghy) const
 {
+	if (bDinghy)
+		if (const FDrillBriefing* D = DinghyBriefings.FindByPredicate([Drill](const FDrillBriefing& B) { return B.Drill == Drill; })) return D;
 	return Briefings.FindByPredicate([Drill](const FDrillBriefing& B) { return B.Drill == Drill; });
 }
 
-TArray<FQuizQuestion> FLearningContent::MakeQuiz(ESailingDrill Drill, FRandomStream& Rng) const
+TArray<FQuizQuestion> FLearningContent::MakeQuiz(ESailingDrill Drill, FRandomStream& Rng, bool bDinghy) const
 {
-	const FDrillBriefing* B = Briefing(Drill);
+	const FDrillBriefing* B = Briefing(Drill, bDinghy);
 	const int32 Count = B ? B->QuizAfter : 3;
 	TArray<const FQuizQuestion*> Own, Any;
 	for (const FQuizQuestion& Q : Questions)
 	{
+		if (!Q.Fits(bDinghy)) continue;
 		if (Q.Drills.Contains(Drill)) Own.Add(&Q);
 		else if (Q.Drills.Num() == 0) Any.Add(&Q);
 	}
@@ -231,10 +261,10 @@ TArray<FQuizQuestion> FLearningContent::MakeQuiz(ESailingDrill Drill, FRandomStr
 	return Out;
 }
 
-FString FLearningContent::Debrief(ESailingDrill Drill, const FString& Outcome, double ElapsedSeconds, double ContactKnots) const
+FString FLearningContent::Debrief(ESailingDrill Drill, const FString& Outcome, double ElapsedSeconds, double ContactKnots, bool bDinghy) const
 {
 	using namespace LearningLocal;
-	const FDrillBriefing* B = Briefing(Drill);
+	const FDrillBriefing* B = Briefing(Drill, bDinghy);
 	const FString* Line = B ? B->Debrief.Find(Outcome) : nullptr;
 	if (!Line) return FString();
 	return Line->Replace(TEXT("{time}"), *MinSec(ElapsedSeconds)).Replace(TEXT("{contact_kn}"), *FString::Printf(TEXT("%.1f"), ContactKnots));
@@ -499,7 +529,7 @@ void FLearningCoach::Update(const FLearningFrame& F, const FLearningContent& Con
 	{
 		for (const FLearningTip& T : Content.Tips)
 		{
-			if (T.Event != Event || !T.Fits(F.Drill)) continue;
+			if (T.Event != Event || !T.Fits(F.Drill) || !T.FitsBoat(F.bDinghy)) continue;
 			if (T.bOncePerSession && Shown.Contains(T.Id)) continue;
 			if (const double* Last = LastShown.Find(T.Id); Last && F.Time - *Last < T.Cooldown) continue;
 			// The running drill's own tip beats an Any tip; then the higher level.

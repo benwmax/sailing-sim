@@ -250,6 +250,14 @@ public:
 	bool IsFreeSail() const;
 	/** -SailingFreeSail=0|1, or -1 when the command line doesn't say. */
 	static int32 FreeSailArg();
+	/**
+	 * The slice build (#399): a tester build's menus show only the vertical slice: Lake Ray Hubbard and Galveston Bay,
+	 * the J/22, Sunfish and Catalina 22, free sail and the drills, the slice's career tiers; no Race, Passage or Gallery.
+	 * Everything else stays cooked and reachable from the command line. Set for a build in the engine ini
+	 * ([SailingSim.Slice] bSliceBuild=True: scripts/windows/friday.ps1 stages it with the Friday cook), off otherwise;
+	 * -SailingSlice=0|1 overrides it. Menus only: the save is untouched.
+	 */
+	static bool SliceOnly();
 
 	/** Simple layout is in effect (always on Easy). */
 	bool UseSimpleControls() const { return Difficulty == ESailingDifficulty::Easy || ControlLayout == ESailingControlLayout::Simple; }
@@ -266,7 +274,8 @@ public:
 	 */
 	UPROPERTY(config)
 	bool bShowDeveloperTools = true;
-	static bool DeveloperTools() { return Get()->bShowDeveloperTools; }
+	/** Off in a slice build whatever the ini says (#436): a tester build never shows the developers' tools. */
+	static bool DeveloperTools() { return Get()->bShowDeveloperTools && !SliceOnly(); }
 	/** Writes the player's choices to the save file and GameUserSettings.ini (never in a run that ignores them). */
 	void Save();
 
