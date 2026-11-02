@@ -36,7 +36,7 @@ namespace SailSaveLocal
 		const int64 V = StaticEnum<TEnum>()->GetValueByNameString(Id);
 		if (V == INDEX_NONE || V >= StaticEnum<TEnum>()->GetMaxEnumValue())
 		{
-			if (!Id.IsEmpty()) UE_LOG(LogSailing, Warning, TEXT("Save: unknown %s \"%s\", using %s"), What, *Id, *EnumId(Fallback));
+			if (!Id.IsEmpty()) SAIL_LOG(Warning, TEXT("Save: unknown %s \"%s\", using %s"), What, *Id, *EnumId(Fallback));
 			return Fallback;
 		}
 		return TEnum(V);
@@ -157,7 +157,7 @@ int32 FSailSave::SpotIndex(int32 World, const FString& Id, bool bHasAt, double L
 		UE_LOG(LogSailing, Log, TEXT("Save: launch spot \"%s\" is gone from %s; %s is at its saved position (%.6f, %.6f)"), *Id, *WorldId(World),
 			*SailCatalog::Spots(World)[I].Id, Lat, Lon);
 	}
-	if (I < 0 && !Id.IsEmpty()) UE_LOG(LogSailing, Warning, TEXT("Save: unknown launch spot \"%s\" in %s, using the first"), *Id, *WorldId(World));
+	if (I < 0 && !Id.IsEmpty()) SAIL_LOG(Warning, TEXT("Save: unknown launch spot \"%s\" in %s, using the first"), *Id, *WorldId(World));
 	return FMath::Max(I, 0);
 }
 
@@ -360,7 +360,7 @@ namespace SailSaveLocal
 		// One step per version, e.g. if (From == 1) { ...; Root.SetNumberField(TEXT("version"), 2); return true; }
 		// (an if chain, not a switch: MSVC rejects a switch with only a default, C4065, while there is no step yet).
 		(void)Root;
-		UE_LOG(LogSailing, Error, TEXT("Save: no migration from version %d"), From);
+		SAIL_LOG(Error, TEXT("Save: no migration from version %d"), From);
 		return false;
 	}
 }
@@ -729,13 +729,13 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	auto World = [](const FString& Id)
 	{
 		const int32 W = WorldIndex(Id);
-		if (W < 0) UE_LOG(LogSailing, Warning, TEXT("Save: unknown world \"%s\", using %s"), *Id, *WorldId(0));
+		if (W < 0) SAIL_LOG(Warning, TEXT("Save: unknown world \"%s\", using %s"), *Id, *WorldId(0));
 		return FMath::Max(W, 0);
 	};
 	auto Boat = [](const FString& Id)
 	{
 		const int32 B = BoatIndex(Id);
-		if (B < 0) UE_LOG(LogSailing, Warning, TEXT("Save: unknown boat \"%s\", using %s"), *Id, *BoatId(0));
+		if (B < 0) SAIL_LOG(Warning, TEXT("Save: unknown boat \"%s\", using %s"), *Id, *BoatId(0));
 		return FMath::Max(B, 0);
 	};
 	Out.World = World(S.WorldId);
@@ -840,7 +840,7 @@ void SailSaveStore::LoadOnce()
 		// Version 0: GameUserSettings.ini, already loaded into the objects. Migrated once into a version-1 file.
 		St.Save.Capture(*Settings, *Session);
 		St.Status = FString::Printf(TEXT("no save at %s: migrated GameUserSettings.ini (version 0)"), *File);
-		UE_LOG(LogSailing, Display, TEXT("Save: %s"), *St.Status);
+		SAIL_LOG(Display, TEXT("Save: %s"), *St.Status);
 		Commit();
 		return;
 	}
@@ -852,7 +852,7 @@ void SailSaveStore::LoadOnce()
 	case FSailSave::EResult::Refused:
 		St.bRefused = true;
 		St.Status = FString::Printf(TEXT("refused %s: %s; using the defaults and leaving the file as it is"), *File, *Message);
-		UE_LOG(LogSailing, Warning, TEXT("Save: %s"), *St.Status);
+		SAIL_LOG(Warning, TEXT("Save: %s"), *St.Status);
 		USailingSettings::RestoreClassDefaults();
 		Session->bHasLast = false;
 		Session->Last = FSailSessionConfig();
@@ -866,7 +866,7 @@ void SailSaveStore::LoadOnce()
 		IFileManager::Get().Move(*Bad, *File, true, true);
 		St.Save.Capture(*Settings, *Session);
 		St.Status = FString::Printf(TEXT("unreadable %s (%s): moved to %s, migrated GameUserSettings.ini"), *File, *Message, *Bad);
-		UE_LOG(LogSailing, Warning, TEXT("Save: %s"), *St.Status);
+		SAIL_LOG(Warning, TEXT("Save: %s"), *St.Status);
 		Commit();
 		return;
 	}
@@ -876,7 +876,7 @@ void SailSaveStore::LoadOnce()
 	St.Save = MoveTemp(Loaded);
 	St.Save.Apply(*Settings, *Session);
 	St.Status = FString::Printf(TEXT("loaded %s (%s)"), *File, *Message);
-	UE_LOG(LogSailing, Display, TEXT("Save: %s"), *St.Status);
+	SAIL_LOG(Display, TEXT("Save: %s"), *St.Status);
 	if (Result == FSailSave::EResult::Migrated) Commit();   // written back at the current version
 }
 
@@ -888,5 +888,5 @@ void SailSaveStore::Commit()
 	St.Save.Capture(*USailingSettings::Get(), *USailSessionSave::Get());
 	St.Save.WrittenAt = FDateTime::UtcNow();
 	const FString File = Path();
-	if (!FSailSave::WriteAtomic(File, St.Save.ToJson())) UE_LOG(LogSailing, Warning, TEXT("Save: could not write %s"), *File);
+	if (!FSailSave::WriteAtomic(File, St.Save.ToJson())) SAIL_LOG(Warning, TEXT("Save: could not write %s"), *File);
 }

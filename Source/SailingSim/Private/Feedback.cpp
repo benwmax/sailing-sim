@@ -1,4 +1,5 @@
 #include "Feedback.h"
+#include "SessionLog.h"
 #include "CrashReports.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformOutputDevices.h"
@@ -61,8 +62,10 @@ FString SailFeedback::ComposeMessage(const FFeedbackReport& R)
 
 FString SailFeedback::LogTail(int32 MaxLines)
 {
+	// The engine's log where the build writes one (editor, Development), else the game's session log (Shipping:
+	// docs/session-log/).
 	FString Text;
-	const FString Path = FPlatformOutputDevices::GetAbsoluteLogFilename();
+	const FString Path = SailSessionLog::ReportLogPath();
 	if (GLog) GLog->Flush();
 	if (!FFileHelper::LoadFileToString(Text, *Path, FFileHelper::EHashOptions::None, FILEREAD_AllowWrite)) return FString();
 	TArray<FString> Lines;

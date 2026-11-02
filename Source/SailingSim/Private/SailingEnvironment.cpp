@@ -329,7 +329,7 @@ void ASailingEnvironment::FindSceneActors()
 			UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Base, this);
 			Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(ProxyAlbedo, ProxyAlbedo, ProxyAlbedo));
 			Proxy->SetMaterial(0, Mid);
-			UE_LOG(LogSailing, Display, TEXT("Water GI proxy: albedo %.3f at z %.0f cm"), ProxyAlbedo, Water->GetActorLocation().Z);
+			SAIL_LOG(Display, TEXT("Water GI proxy: albedo %.3f at z %.0f cm"), ProxyAlbedo, Water->GetActorLocation().Z);
 		}
 	}
 
@@ -575,17 +575,17 @@ void ASailingEnvironment::DumpExposureSettings(float EV, float Band, float IntoS
 	static SailingArgs::FCachedFlag DumpArg(TEXT("SailingDumpExposure"));
 	static SailingArgs::FOnce Once;
 	if (!DumpArg.Get() || GetWorld()->GetTimeSeconds() < 6.0 || Once.Taken() || !Once.Take()) return;
-	UE_LOG(LogSailing, Display, TEXT("ExposureDump: quality %d, incident EV100 %.3f, band %.3f, into-sun %.3f"), int32(USailingSettings::Get()->Quality), EV, Band, IntoSun);
+	SAIL_LOG(Display, TEXT("ExposureDump: quality %d, incident EV100 %.3f, band %.3f, into-sun %.3f"), int32(USailingSettings::Get()->Quality), EV, Band, IntoSun);
 	for (const TCHAR* Prefix : { TEXT("r.EyeAdaptation"), TEXT("r.DefaultFeature.AutoExposure"), TEXT("r.LocalExposure"), TEXT("r.Tonemapper") })
 	{
 		IConsoleManager::Get().ForEachConsoleObjectThatStartsWith(FConsoleObjectVisitor::CreateLambda([](const TCHAR* Name, IConsoleObject* Obj)
 		{
-			if (IConsoleVariable* V = Obj->AsVariable()) UE_LOG(LogSailing, Display, TEXT("ExposureDump: cvar %s = %s"), Name, *V->GetString());
+			if (IConsoleVariable* V = Obj->AsVariable()) SAIL_LOG(Display, TEXT("ExposureDump: cvar %s = %s"), Name, *V->GetString());
 		}), Prefix);
 	}
 	auto DumpPP = [](const TCHAR* Who, const FPostProcessSettings& P, float Weight)
 	{
-		UE_LOG(LogSailing, Display, TEXT("ExposureDump: %s weight %.2f | method %d (set %d) | min %.3f (set %d) max %.3f (set %d) | bias %.3f (set %d) | percent %.1f..%.1f (set %d/%d) | speed up %.4f down %.4f (set %d/%d) | histogram EV %.1f..%.1f (set %d/%d) | apply physical camera %d (set %d) | bias curve %s | meter mask %s | local exposure highlight %.2f shadow %.2f (set %d/%d)"),
+		SAIL_LOG(Display, TEXT("ExposureDump: %s weight %.2f | method %d (set %d) | min %.3f (set %d) max %.3f (set %d) | bias %.3f (set %d) | percent %.1f..%.1f (set %d/%d) | speed up %.4f down %.4f (set %d/%d) | histogram EV %.1f..%.1f (set %d/%d) | apply physical camera %d (set %d) | bias curve %s | meter mask %s | local exposure highlight %.2f shadow %.2f (set %d/%d)"),
 			Who, Weight, int32(P.AutoExposureMethod.GetValue()), P.bOverride_AutoExposureMethod, P.AutoExposureMinBrightness, P.bOverride_AutoExposureMinBrightness,
 			P.AutoExposureMaxBrightness, P.bOverride_AutoExposureMaxBrightness, P.AutoExposureBias, P.bOverride_AutoExposureBias,
 			P.AutoExposureLowPercent, P.AutoExposureHighPercent, P.bOverride_AutoExposureLowPercent, P.bOverride_AutoExposureHighPercent,
@@ -1790,7 +1790,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 				FullAt->Set(kSkyCacheSplitM / 1000.f, ECVF_SetByCode);
 			}
 		}
-		UE_LOG(LogSailing, Display, TEXT("Sky cache: first panorama in %.2f s (%dx%d, %d steps); live clouds now to %.1f km"), CacheRefreshSeconds,
+		SAIL_LOG(Display, TEXT("Sky cache: first panorama in %.2f s (%dx%d, %d steps); live clouds now to %.1f km"), CacheRefreshSeconds,
 			CacheTargets[0]->SizeX, CacheTargets[0]->SizeY, SkyCacheSize().Steps, kSkyCacheSplitM / 1000.f);
 	}
 	// This frame already shows the swapped textures: start the fade now. With the CacheParams set at the top (blend 1, and
@@ -1823,7 +1823,7 @@ void ASailingEnvironment::UpdateSkyline(const FVector& CameraPos)
 		SkylineTex->AddressY = TA_Clamp;
 		SkylineTex->UpdateResource();
 		SkyMaterial->SetTextureParameterValue(TEXT("Skyline"), SkylineTex);
-		UE_LOG(LogSailing, Display, TEXT("Skyline: %s.skyline loaded (mountains %.0f to %.0f km)"), *GM->GetLake().FileName, kFromM / 1000.0, kToM / 1000.0);
+		SAIL_LOG(Display, TEXT("Skyline: %s.skyline loaded (mountains %.0f to %.0f km)"), *GM->GetLake().FileName, kFromM / 1000.0, kToM / 1000.0);
 	}
 	if (!Skyline->IsValid()) return;
 	// The haze fades the mountains as it fades everything (Koschmieder: contrast exp(-3.912 d / V)).

@@ -459,7 +459,7 @@ void AWaterSurface::CreateWaterMaterial()
 		FramePrev.Reset();
 		FrameNext.Reset();
 	}
-	UE_LOG(LogSailing, Display, TEXT("Water: tier %d, %s"), Tier, *Parent->GetName());
+	SAIL_LOG(Display, TEXT("Water: tier %d, %s"), Tier, *Parent->GetName());
 }
 
 float AWaterSurface::WhitecapScaleFor(int32 World)
@@ -905,7 +905,7 @@ void AWaterSurface::UpdateDetail()
 				static SailingArgs::FCachedFlag DebugCapsArg(TEXT("SailingDebugCaps"));
 				static int32 Logged = 0;
 				if (DebugCapsArg.Get() && (++Logged % 30) == 0)
-					UE_LOG(LogSailing, Display, TEXT("Caps: thresholds %.3f %.3f %.3f %.3f, slope %.3f"), CapThrSmooth[0], CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], CapSlopeSmooth);
+					SAIL_LOG(Display, TEXT("Caps: thresholds %.3f %.3f %.3f %.3f, slope %.3f"), CapThrSmooth[0], CapThrSmooth[1], CapThrSmooth[2], CapThrSmooth[3], CapSlopeSmooth);
 			}
 			if (Done->LongN > 0)
 			{
@@ -1564,7 +1564,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	{
 		int32 Placed = 0;
 		for (const TPair<FIntPoint, FFarCapTile>& Tl : FarCapTiles) Placed += Tl.Value.Mesh ? Tl.Value.Mesh->GetInstanceCount() : 0;
-		UE_LOG(LogSailing, Display, TEXT("FarCaps: cam (%.0f, %.0f) h %.1f m, %d tiles wanted, %d held, %d sprites, water %.2f, cover at cam %.5f"), Cam.X, Cam.Y, CamH, Want.Num(), FarCapTiles.Num(), Placed, WaterZ,
+		SAIL_LOG(Display, TEXT("FarCaps: cam (%.0f, %.0f) h %.1f m, %d tiles wanted, %d held, %d sprites, water %.2f, cover at cam %.5f"), Cam.X, Cam.Y, CamH, Want.Num(), FarCapTiles.Num(), Placed, WaterZ,
 			FarCapCover(Wind->MeanSurfaceRoughnessAt(Cam.X, Cam.Y, T) * 8.0, Scale, Onset));
 	}
 	for (auto It = FarCapTiles.CreateIterator(); It; ++It)
@@ -2174,7 +2174,7 @@ void AWaterSurface::BindTreeWind()
 					Mid = UMaterialInstanceDynamic::Create(M, this);
 					Mid->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
 					Mid->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
-					UE_LOG(LogSailing, Display, TEXT("Water: trees read the local wind (%s)"), *M->GetName());
+					SAIL_LOG(Display, TEXT("Water: trees read the local wind (%s)"), *M->GetName());
 				}
 				Comp->SetMaterial(I, Mid);
 			}

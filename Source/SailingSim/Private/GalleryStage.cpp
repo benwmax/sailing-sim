@@ -130,7 +130,7 @@ void AGalleryStage::Open(APlayerController* PC)
 		PC->SetViewTargetWithBlend(Camera, 0.4f, VTBlend_EaseInOut, 2.f);
 	}
 	SetLight(EGalleryLight::Studio);
-	UE_LOG(LogSailing, Display, TEXT("Gallery: open, studio at %.0f m over the water, the lake presets at (%.0f, %.0f)"), kStudioUpCm / 100.f, Open.X, Open.Y);
+	SAIL_LOG(Display, TEXT("Gallery: open, studio at %.0f m over the water, the lake presets at (%.0f, %.0f)"), kStudioUpCm / 100.f, Open.X, Open.Y);
 }
 
 void AGalleryStage::Close()
@@ -204,7 +204,7 @@ void AGalleryStage::FinishLoad()
 	ApplyMesh();
 	ApplyFraming(false);
 	const FGalleryStats S = GetStats();
-	UE_LOG(LogSailing, Display, TEXT("Gallery show %s: load %.0f ms; %d triangles%s, %d LODs, %d materials, %.2f x %.2f x %.2f m"), *Item.Name, Ms,
+	SAIL_LOG(Display, TEXT("Gallery show %s: load %.0f ms; %d triangles%s, %d LODs, %d materials, %.2f x %.2f x %.2f m"), *Item.Name, Ms,
 		S.Triangles, S.bNanite ? TEXT(" (Nanite)") : TEXT(""), S.Lods, S.Materials, S.SizeM.X, S.SizeM.Y, S.SizeM.Z);
 }
 
@@ -242,7 +242,7 @@ void AGalleryStage::ShowBoat()
 	ApplyMesh();
 	ApplyFraming(false);
 	const FGalleryStats S = GetStats();
-	UE_LOG(LogSailing, Display, TEXT("Gallery show %s (whole boat): built in %.0f ms; %d triangles in %d parts, %.2f x %.2f x %.2f m"), *Item.Name,
+	SAIL_LOG(Display, TEXT("Gallery show %s (whole boat): built in %.0f ms; %d triangles in %d parts, %.2f x %.2f x %.2f m"), *Item.Name,
 		(FPlatformTime::Seconds() - Start) * 1000.0, S.Triangles, S.Lods, S.SizeM.X, S.SizeM.Y, S.SizeM.Z);
 }
 
@@ -640,7 +640,7 @@ void AGalleryStage::TickCompare()
 	CompareStep = 0;
 	CompareA = MakeTexture(CapturedA, CaptureSize);
 	CompareB = SizeB == CaptureSize ? MakeTexture(CapturedB, SizeB) : nullptr;
-	UE_LOG(LogSailing, Display, TEXT("Gallery compare: tiers %d and %d captured at %d x %d"), CompareTiers[0], CompareTiers[1], CaptureSize.X, CaptureSize.Y);
+	SAIL_LOG(Display, TEXT("Gallery compare: tiers %d and %d captured at %d x %d"), CompareTiers[0], CompareTiers[1], CaptureSize.X, CaptureSize.Y);
 	if (OnCompareDone && CompareB) OnCompareDone(CapturedA, CapturedB, CaptureSize);
 	// Back to turning.
 	if (Camera)
@@ -695,7 +695,7 @@ AGalleryStage* AGalleryStage::OpenFromArgs(APlayerController* PC)
 	if (!PC || !FParse::Value(SailingArgs::Dev(), TEXT("SailingGallery="), Want, false)) return nullptr;
 	if (!USailingSettings::DeveloperTools())
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Gallery: developer tools are off (bShowDeveloperTools=False in GameUserSettings.ini)"));
+		SAIL_LOG(Warning, TEXT("Gallery: developer tools are off (bShowDeveloperTools=False in GameUserSettings.ini)"));
 		return nullptr;
 	}
 	FActorSpawnParameters P;
@@ -707,7 +707,7 @@ AGalleryStage* AGalleryStage::OpenFromArgs(APlayerController* PC)
 	const FGalleryItem* Item = SailGallery::Find(Items, Want);
 	if (!Item)
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Gallery: no asset %s; showing the first"), *Want);
+		SAIL_LOG(Warning, TEXT("Gallery: no asset %s; showing the first"), *Want);
 		Item = Items.FindByPredicate([](const FGalleryItem& I) { return I.BoatType < 0; });
 	}
 	FString Arg;
@@ -738,7 +738,7 @@ AGalleryStage* AGalleryStage::OpenFromArgs(APlayerController* PC)
 			FImageUtils::PNGCompressImageArray(Size.X, Size.Y, TArrayView64<const FColor>(Split.GetData(), Split.Num()), Png);
 			const FString Path = FPaths::ProjectSavedDir() / TEXT("Bench") / (Shot + TEXT("-compare.png"));
 			FFileHelper::SaveArrayToFile(Png, *Path);
-			UE_LOG(LogSailing, Display, TEXT("Gallery compare saved to %s"), *Path);
+			SAIL_LOG(Display, TEXT("Gallery compare saved to %s"), *Path);
 		};
 		const uint8 TA = uint8(TierFromName(A)), TB = uint8(TierFromName(B));
 		TWeakObjectPtr<AGalleryStage> Weak = S;

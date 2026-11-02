@@ -24,7 +24,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		// the tiles around the boat into Terrain (empty until then).
 		if (!FPaths::FileExists(Directory / (Name + TEXT(".tiles"))))
 		{
-			UE_LOG(LogSailing, Warning, TEXT("Lake %s: no terrain in %s"), *Name, *Directory);
+			SAIL_LOG(Warning, TEXT("Lake %s: no terrain in %s"), *Name, *Directory);
 			return false;
 		}
 		bStreamed = true;
@@ -50,7 +50,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		}
 		else
 		{
-			UE_LOG(LogSailing, Warning, TEXT("Lake %s: shore detail did not load"), *Name);
+			SAIL_LOG(Warning, TEXT("Lake %s: shore detail did not load"), *Name);
 		}
 	}
 
@@ -59,7 +59,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	if (!FFileHelper::LoadFileToString(JsonText, *(Directory / (Name + TEXT(".json"))))
 		|| !FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(JsonText), Root) || !Root.IsValid())
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Lake %s: no metadata"), *Name);
+		SAIL_LOG(Warning, TEXT("Lake %s: no metadata"), *Name);
 		return true;
 	}
 	FileName = Name;
@@ -103,7 +103,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	if (!Root->TryGetStringField(TEXT("projection"), Projection) || !Sailing::FGeoAnchor::ParseProj4(TCHAR_TO_UTF8(*Projection), Anchor))
 	{
 		Anchor = Sailing::FGeoAnchor::ForWorld(TCHAR_TO_UTF8(*Name));
-		UE_LOG(LogSailing, Warning, TEXT("Lake %s: no tmerc projection in the header, using the build script's centre"), *Name);
+		SAIL_LOG(Warning, TEXT("Lake %s: no tmerc projection in the header, using the build script's centre"), *Name);
 	}
 	const TArray<TSharedPtr<FJsonValue>>* PassageArray = nullptr;
 	if (Root->TryGetArrayField(TEXT("passage"), PassageArray))
@@ -188,7 +188,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
 	}
 	BuildObstacles();
-	UE_LOG(LogSailing, Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d decks, %d moored boats, %d bridges, %d buildings, %d houses, %d launch spots, %d navaids, %d tide stations"), *LakeName,
+	SAIL_LOG(Display, TEXT("Lake %s: %dx%d terrain, %d docks, %d decks, %d moored boats, %d bridges, %d buildings, %d houses, %d launch spots, %d navaids, %d tide stations"), *LakeName,
 		Terrain.GetCols(), Terrain.GetRows(), Docks.Num(), Decks.Num(), MooredBoats.Num(), Bridges.Num(), Buildings.Num(), Houses.Num(), LaunchSpots.Num(), Navaids.Num(), int32(Tides.HeightStations.size()));
 	return true;
 }
@@ -255,7 +255,7 @@ void FLakeData::LoadPiers(const FString& Path)
 	TSharedPtr<FJsonObject> Root;
 	if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Root) || !Root.IsValid())
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Piers: bad JSON in %s"), *Path);
+		SAIL_LOG(Warning, TEXT("Piers: bad JSON in %s"), *Path);
 		return;
 	}
 	auto Points = [](const TArray<TSharedPtr<FJsonValue>>& A)
@@ -344,7 +344,7 @@ void FLakeData::LoadPiers(const FString& Path)
 		M.Marina = int32(B[6]->AsNumber());
 		MooredBoats.Add(M);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Piers: %d lidar decks (%d OSM piers they cover dropped), %d riprap lines, %d inferred walkways, %d moored boats"),
+	SAIL_LOG(Display, TEXT("Piers: %d lidar decks (%d OSM piers they cover dropped), %d riprap lines, %d inferred walkways, %d moored boats"),
 		Decks.Num(), Superseded, Riprap, Walkways, MooredBoats.Num());
 }
 

@@ -656,7 +656,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeBridges(const FString& LakeName)
 	{
 		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Bridges_") + LakeName, KV.Key))) Out.Add(M);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Baked the %s bridges: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+	SAIL_LOG(Display, TEXT("Baked the %s bridges: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
 #endif
 	return Out;
 }
@@ -675,7 +675,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeShore(const FString& LakeName)
 	{
 		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Shore_") + LakeName, KV.Key))) Out.Add(M);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Baked the %s shore: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+	SAIL_LOG(Display, TEXT("Baked the %s shore: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
 #endif
 	return Out;
 }
@@ -696,7 +696,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
 		Quads += G.NumQuads();
 		if (UStaticMesh* M = BakeMesh(G, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Houses_") + LakeName, KV.Key))) Out.Add(M);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Baked the %s houses: %d houses, %lld quads in %d tiles"), *LakeName, Lake.Houses.Num(), Quads, Out.Num());
+	SAIL_LOG(Display, TEXT("Baked the %s houses: %d houses, %lld quads in %d tiles"), *LakeName, Lake.Houses.Num(), Quads, Out.Num());
 #endif
 	return Out;
 }
@@ -715,7 +715,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 	{
 		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key))) Out.Add(M);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Baked the %s marina: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+	SAIL_LOG(Display, TEXT("Baked the %s marina: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
 #endif
 	return Out;
 }
@@ -816,7 +816,7 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeFarRing(const FString& WorldName)
 		FAssetRegistryModule::AssetCreated(Mesh);
 		Out.Add(Mesh);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Baked the %s far ring: %d tiles, %lld triangles"), *WorldName, Out.Num(), Triangles);
+	SAIL_LOG(Display, TEXT("Baked the %s far ring: %d tiles, %lld triangles"), *WorldName, Out.Num(), Triangles);
 #endif
 	return Out;
 }

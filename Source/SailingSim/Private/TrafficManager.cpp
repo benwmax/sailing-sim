@@ -237,7 +237,7 @@ void ATrafficManager::Populate(int32 Level)
 	std::vector<std::pair<double, double>> Channel = TrafficRoutes::DeepWaterPath(*T, Bolivar->X, Bolivar->Y, Morgans->X, Morgans->Y, 11.0);
 	if (Channel.size() < 2)
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Traffic: no ship channel found"));
+		SAIL_LOG(Warning, TEXT("Traffic: no ship channel found"));
 		return;
 	}
 	// Out and back along it: a loop of the channel's legs.
@@ -263,7 +263,7 @@ void ATrafficManager::Populate(int32 Level)
 			bTug ? TEXT("Towboat Miss Lynn with two barges") : (I == 0 ? TEXT("Tanker Gulf Pride") : TEXT("Container ship Bayport Star")));
 		if (FTrafficVessel* V = Sim.Find(Id)) V->RouteIndex = size_t(Leg + 1);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Traffic: %d vessels, ship channel %d legs"), int32(Sim.GetVessels().size()), int32(Channel.size()) - 1);
+	SAIL_LOG(Display, TEXT("Traffic: %d vessels, ship channel %d legs"), int32(Sim.GetVessels().size()), int32(Channel.size()) - 1);
 }
 
 void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
@@ -401,7 +401,7 @@ void ATrafficManager::Message(const FString& Text)
 {
 	Messages.Add({ Sim.GetTime(), Text });
 	if (Messages.Num() > 30) Messages.RemoveAt(0);
-	UE_LOG(LogSailing, Display, TEXT("Traffic: %s"), *Text);
+	SAIL_LOG(Display, TEXT("Traffic: %s"), *Text);
 }
 
 void ATrafficManager::UpdateHorns(double Now)

@@ -197,7 +197,7 @@ void ANavaidsActor::Build()
 	if (BuildModels())
 	{
 		for (UInstancedStaticMeshComponent* M : Meshes) { M->UpdateBounds(); M->MarkRenderStateDirty(); }
-		UE_LOG(LogSailing, Display, TEXT("Navaids: %d aids (models), %d buoys afloat, %d lights"), GM->GetLake().Navaids.Num(), Buoys.Num(), Lights.Num());
+		SAIL_LOG(Display, TEXT("Navaids: %d aids (models), %d buoys afloat, %d lights"), GM->GetLake().Navaids.Num(), Buoys.Num(), Lights.Num());
 		return;
 	}
 	Lights.Reset();
@@ -295,7 +295,7 @@ void ANavaidsActor::Build()
 		M->UpdateBounds();
 		M->MarkRenderStateDirty();
 	}
-	UE_LOG(LogSailing, Display, TEXT("Navaids: %d aids, %d lights, %d meshes"), Navaids.Num(), Lights.Num(), Meshes.Num());
+	SAIL_LOG(Display, TEXT("Navaids: %d aids, %d lights, %d meshes"), Navaids.Num(), Lights.Num(), Meshes.Num());
 }
 
 void ANavaidsActor::Tick(float DeltaSeconds)
@@ -364,6 +364,6 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	if (GetWorld()->GetTimeSeconds() > NextLog)
 	{
 		NextLog = GetWorld()->GetTimeSeconds() + 5.0;
-		UE_LOG(LogSailing, Display, TEXT("Navaids: %d lights showing (dark %d)"), LitCount, bDark);
+		SAIL_LOG(Display, TEXT("Navaids: %d lights showing (dark %d)"), LitCount, bDark);
 	}
 }

@@ -42,13 +42,13 @@ bool FChartData::Load(const FString& Path)
 	FString Json;
 	if (!FFileHelper::LoadFileToString(Json, *Path))
 	{
-		UE_LOG(LogSailing, Warning, TEXT("No chart at %s"), *Path);
+		SAIL_LOG(Warning, TEXT("No chart at %s"), *Path);
 		return false;
 	}
 	TSharedPtr<FJsonObject> Root;
 	if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Json), Root) || !Root.IsValid())
 	{
-		UE_LOG(LogSailing, Warning, TEXT("Could not parse the chart %s"), *Path);
+		SAIL_LOG(Warning, TEXT("Could not parse the chart %s"), *Path);
 		return false;
 	}
 	const TArray<TSharedPtr<FJsonValue>>* Array = nullptr;
@@ -84,7 +84,7 @@ bool FChartData::Load(const FString& Path)
 			if (A.Num() >= 3) Soundings.Add(FVector3d(A[0]->AsNumber(), A[1]->AsNumber(), A[2]->AsNumber()));
 		}
 	}
-	UE_LOG(LogSailing, Display, TEXT("Chart: %d triangles, %d contours, %d soundings, %d coast lines"),
+	SAIL_LOG(Display, TEXT("Chart: %d triangles, %d contours, %d soundings, %d coast lines"),
 		TriangleClass.Num(), Contours.Num(), Soundings.Num(), Coast.Num());
 	return IsLoaded();
 }

@@ -217,7 +217,7 @@ struct FGalleryThumbs
 	void Finish()
 	{
 		if (!Rig.IsValid()) return;
-		UE_LOG(LogSailing, Display, TEXT("Gallery thumbnails: %d rendered, %d from Saved/GalleryThumbs"), Rendered, FromDisk);
+		SAIL_LOG(Display, TEXT("Gallery thumbnails: %d rendered, %d from Saved/GalleryThumbs"), Rendered, FromDisk);
 		Rig->Destroy();
 		Rig.Reset();
 		Mesh = nullptr;
@@ -406,7 +406,7 @@ void SSailFrontEnd::SelectGalleryItem(int32 Item)
 	{
 		// Focus is the selection (the showroom's strip): a flick down the list loads only where it stops (200 ms).
 		Stage->Select(GalleryItems[Item]);
-		UE_LOG(LogSailing, Display, TEXT("Gallery: %s (%s)"), *GalleryItems[Item].Name, *GalleryItems[Item].Category);
+		SAIL_LOG(Display, TEXT("Gallery: %s (%s)"), *GalleryItems[Item].Name, *GalleryItems[Item].Category);
 	}
 }
 

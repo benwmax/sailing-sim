@@ -121,7 +121,7 @@ void ASailingHUD::BeginPlay()
 		Session->MenuResumeScreen = -1;
 		OpenFrontEnd(ESailScreen::Title);
 		for (int32 K = 1; K <= Resume && K <= int32(ESailScreen::Mode); ++K) FrontEnd->Push(ESailScreen(K));
-		UE_LOG(LogSailing, Display, TEXT("Menus: back on screen %d with world %d loaded"), Resume, USailingSettings::Get()->World);
+		SAIL_LOG(Display, TEXT("Menus: back on screen %d with world %d loaded"), Resume, USailingSettings::Get()->World);
 		return;
 	}
 	FString Screen;
@@ -229,7 +229,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	if (Token.StartsWith(TEXT("Cmd:")))
 	{
 		const FString Cmd = Token.Mid(4).Replace(TEXT("+"), TEXT(" "));
-		UE_LOG(LogSailing, Display, TEXT("UI script: %s"), *Cmd);
+		SAIL_LOG(Display, TEXT("UI script: %s"), *Cmd);
 		if (GEngine) GEngine->Exec(GetWorld(), *Cmd);
 		return;
 	}
@@ -237,7 +237,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	if (Token == TEXT("Quit"))
 	{
 		// The save check's launches end themselves (no simulated input on the build Mac).
-		UE_LOG(LogSailing, Display, TEXT("UI script: quit"));
+		SAIL_LOG(Display, TEXT("UI script: quit"));
 		FPlatformMisc::RequestExit(false, TEXT("SailingUIScript"));
 		return;
 	}
@@ -246,10 +246,10 @@ void ASailingHUD::Tick(float DeltaSeconds)
 		const USailingSettings* S = USailingSettings::Get();
 		FString Stage = TEXT("-");
 		const float Progress = Loading.IsValid() ? Loading->Progress(Stage) : 1.f;
-		UE_LOG(LogSailing, Display, TEXT("UI script: world %d, launch %d, boat %d, preset %d, hour %.2f, traffic %d, front end %s, loading %.0f%% (%s)"),
+		SAIL_LOG(Display, TEXT("UI script: world %d, launch %d, boat %d, preset %d, hour %.2f, traffic %d, front end %s, loading %.0f%% (%s)"),
 			S->World, S->LaunchSpot, S->BoatType, int32(S->WeatherPreset), S->StartHour, S->TrafficLevel, IsFrontEndOpen() ? TEXT("open") : TEXT("closed"), Progress * 100.f, *Stage);
 		const USailSessionSave* Last = USailSessionSave::Get();
-		UE_LOG(LogSailing, Display, TEXT("UI script: save %s; last session %s, world %d, launch %d, boat %d, mode %d; %d drills passed"), *SailSaveStore::Status(),
+		SAIL_LOG(Display, TEXT("UI script: save %s; last session %s, world %d, launch %d, boat %d, mode %d; %d drills passed"), *SailSaveStore::Status(),
 			Last->bHasLast ? TEXT("yes") : TEXT("no"), Last->Last.World, Last->Last.LaunchSpot, Last->Last.Boat, int32(Last->Last.Mode), Last->DrillsPassed.Num());
 		return;
 	}
@@ -259,7 +259,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	const FKeyEvent Down(Key, FModifierKeysState(), 0, false, 0, 0);
 	const TSharedPtr<SWidget> Focused = App.GetUserFocusedWidget(0);
 	const bool bHandled = App.ProcessKeyDownEvent(Down);
-	UE_LOG(LogSailing, Display, TEXT("UI script: %s -> %s (%s)"), *Token, Focused.IsValid() ? *Focused->ToString() : TEXT("nothing"), bHandled ? TEXT("handled") : TEXT("unhandled"));
+	SAIL_LOG(Display, TEXT("UI script: %s -> %s (%s)"), *Token, Focused.IsValid() ? *Focused->ToString() : TEXT("nothing"), bHandled ? TEXT("handled") : TEXT("unhandled"));
 	App.ProcessKeyUpEvent(FKeyEvent(Key, FModifierKeysState(), 0, false, 0, 0));
 }
 
