@@ -40,6 +40,7 @@ private:
 	bool bShallow = false, bTidal = false, bTip = false, bDrill = false, bToast = false;
 	// Prologue step 1: the captain's call (FScriptedScene's caption) and the keys that answer it.
 	bool bCaptain = false;
+	FText CaptainWho = FText::FromString(TEXT("Captain")); // #402: who speaks: "Instructor" in the first job (its calls are instructor.*)
 	FText CaptainText, CaptainHint, CaptainStation; // step 2: the station the player is at ("You: jib trimmer")
 	double ToastSince = 0.0;
 	FString LastToast, LastTip;

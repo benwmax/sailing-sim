@@ -11,10 +11,14 @@
 #   Crash reports: a Sentry DSN from Artifacts\sentry\dsn.txt (or $env:SENTRY_DSN) is appended to
 #   Config\Windows\WindowsEngine.ini for the cook and the file restored afterwards; the Shipping symbols go up with
 #   sentry-cli when it and Artifacts\sentry\auth.token and project.txt are there (skipped otherwise). All git-ignored.
+#   The slice build (#399): [SailingSim.Slice] bSliceBuild=True goes into the same ini for the cook, so the testers' menus
+#   show only the vertical slice (USailingSettings::SliceOnly); -FullGame leaves it out. The Gallery smoke runs with
+#   -SailingSlice=0 (its menus hide the Gallery).
 #   Result line in Artifacts\friday-<commit>.txt. Bean does the gamepad and settings checks by hand.
 param(
 	[string]$Commit = '',
 	[switch]$NoCheckout,
+	[switch]$FullGame,
 	[int]$BenchSeconds = 30
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
@@ -90,6 +94,10 @@ try {
 		} else {
 			Write-Host '  No Sentry DSN (Artifacts\sentry\dsn.txt or SENTRY_DSN): the build carries no crash-report key'
 		}
+		if (-not $FullGame) {
+			Step 'Slice build: the menus show the vertical slice only (-FullGame for everything)'
+			[System.IO.File]::AppendAllText($EngineIni, "`r`n[SailingSim.Slice]`r`nbSliceBuild=True`r`n", [System.Text.Encoding]::ASCII)
+		}
 		Step "Packaging Shipping into Packaged\$Into (full cook)"
 		& (Join-Path $PSScriptRoot 'package-win.ps1') -Config Shipping -Full -Into $Into
 		if ($LASTEXITCODE -ne 0) { throw 'package-win.ps1 failed' }
@@ -120,7 +128,7 @@ try {
 	$Thumbs = Join-Path $Saved 'GalleryThumbs'
 	Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Thumbs
 	$Walk = ((1..8 | ForEach-Object { 'Wait' }) + (1..20 | ForEach-Object { 'Down' }) + @('Up', 'Up', 'Enter') + (1..10 | ForEach-Object { 'Wait' }) + @('Quit')) -join ','
-	$GalleryExit = Run-Game "-SailingUIScript=$Walk" 300
+	$GalleryExit = Run-Game "-SailingSlice=0 -SailingUIScript=$Walk" 300
 	$ThumbCount = if (Test-Path $Thumbs) { @(Get-ChildItem $Thumbs -Filter *.png).Count } else { 0 }
 	$GalleryOk = $GalleryExit -eq 0 -and $ThumbCount -gt 100
 	Write-Host "  exit $GalleryExit, $ThumbCount thumbnails: $(if ($GalleryOk) { 'ok' } else { 'FAILED' })"
