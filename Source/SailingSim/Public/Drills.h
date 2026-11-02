@@ -34,6 +34,13 @@ struct FDrillContext
 class SAILINGSIM_API FDrillRunner
 {
 public:
+	/** A boat with no jib (the Sunfish, the ILCA): the drills' and briefings' dinghy wording, and no jib drills (#433, #435). */
+	static bool IsDinghy(const Sailing::FBoatConfig& Config) { return !Config.HasJib(); }
+	/** Heave to backs the jib and the figure-eight is the keelboat method: a dinghy is offered the other four. */
+	static bool CanSail(ESailingDrill Drill, const Sailing::FBoatConfig& Config);
+	/** A dinghy's steps where a drill's own name a jib or a crew (same count and meaning); empty where they fit. */
+	static TArray<FString> DinghySteps(ESailingDrill Drill);
+
 	/** Starts a drill for a boat at its current position, with the true wind coming from WindFromRad. */
 	void Start(ESailingDrill InDrill, const Sailing::FBoatModel& Boat, double WindFromRad);
 	void Stop() { Drill = ESailingDrill::None; }
@@ -42,6 +49,8 @@ public:
 	bool Update(const Sailing::FBoatModel& Boat, const FDrillContext& Context, double Dt);
 
 	ESailingDrill GetDrill() const { return Drill; }
+	/** Started on a boat with no jib: the HUD, briefing and quiz take the dinghy wording. */
+	bool IsDinghyRun() const { return bDinghy; }
 	bool IsComplete() const { return bComplete; }
 	bool IsActive() const { return Drill != ESailingDrill::None && !bComplete; }
 	double GetElapsed() const { return Elapsed; }
@@ -63,6 +72,7 @@ public:
 
 private:
 	ESailingDrill Drill = ESailingDrill::None;
+	bool bDinghy = false;
 	TArray<FString> Steps;
 	int32 Step = 0;
 	FString Status, Outcome;
