@@ -223,6 +223,13 @@ bool FCareerContent::LoadText(const FString& Json, FString* OutError)
 				C->TryGetStringField(TEXT("name"), T.CertificateName);
 			}
 			T.Unlocks = ReadUnlocks(Child(*O, TEXT("unlocks")));
+			if (const TSharedPtr<FJsonObject> A = Child(*O, TEXT("opens_after")))
+			{
+				T.OpensAfter.Lessons = Strings(*A, TEXT("lessons"));
+				FString Medal;
+				if (A->TryGetStringField(TEXT("medal"), Medal)) T.OpensAfter.Medal = MedalFromId(Medal);
+				A->TryGetStringField(TEXT("reason"), T.OpensAfter.Reason);
+			}
 			Tiers.Add(MoveTemp(T));
 		}
 	}
@@ -296,6 +303,11 @@ TArray<FString> FCareerContent::Validate(const FLearningContent& Learning) const
 		for (const FString& U : T.Unlocks.Tiers) Check(Tiers.ContainsByPredicate([&U](const FCareerTier& X) { return X.Id == U; }) && U != T.Id, FString::Printf(TEXT("%s unlocks: unknown tier %s"), *T.Id, *U));
 		for (const FString& W : T.Unlocks.Worlds) Check(FSailSave::WorldIndex(W) >= 0, FString::Printf(TEXT("%s unlocks: unknown world %s"), *T.Id, *W));
 		for (const FString& B : T.Unlocks.Boats) Check(FSailSave::BoatIndex(B) >= 0, FString::Printf(TEXT("%s unlocks: unknown boat %s"), *T.Id, *B));
+		for (const FString& L : T.OpensAfter.Lessons)
+		{
+			Check(LessonIds.Contains(L) && !L.StartsWith(T.Id + TEXT(".")), FString::Printf(TEXT("%s opens_after: %s is not another tier's lesson"), *T.Id, *L));
+		}
+		Check(!T.OpensAfter.IsSet() || (T.OpensAfter.Medal != ECareerMedal::None && !T.OpensAfter.Reason.IsEmpty()), FString::Printf(TEXT("%s opens_after: a medal and a reason"), *T.Id));
 	}
 	return Bad;
 }
@@ -521,13 +533,20 @@ bool FCareerProgress::RecordCheckrideQuiz(const FString& TierId, int32 Right, in
 bool FCareerProgress::IsTierOpen(const FString& TierId) const
 {
 	if (!Content.Tier(TierId)) return false;
-	if (bFreeSail || Content.AlwaysOpen.Tiers.Contains(TierId)) return true;
+	if (bFreeSail || Content.AlwaysOpen.Tiers.Contains(TierId) || OpenedByLessons(*Content.Tier(TierId))) return true;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
 	{
 		const FCareerTier* By = Content.TierOfCertificate(C.Id);
 		if (By && By->Unlocks.Tiers.Contains(TierId)) return true;
 	}
 	return false;
+}
+
+bool FCareerProgress::OpenedByLessons(const FCareerTier& T) const
+{
+	if (!T.OpensAfter.IsSet()) return false;
+	for (const FString& L : T.OpensAfter.Lessons) if (LessonMedal(L) < T.OpensAfter.Medal) return false;
+	return true;
 }
 
 void FCareerProgress::Opens(const FCareerTier& T, TSet<FString>& Worlds, TSet<FString>& Boats) const
@@ -549,7 +568,7 @@ bool FCareerProgress::IsWorldOpen(const FString& WorldId) const
 	if (bFreeSail || Content.AlwaysOpen.Worlds.Contains(WorldId)) return true;
 	for (const FCareerTier& T : Content.Tiers)
 	{
-		if (Content.AlwaysOpen.Tiers.Contains(T.Id) && T.WorldId == WorldId) return true;
+		if ((Content.AlwaysOpen.Tiers.Contains(T.Id) || OpenedByLessons(T)) && T.WorldId == WorldId) return true;
 	}
 	TSet<FString> Worlds, Boats;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
@@ -564,7 +583,7 @@ bool FCareerProgress::IsBoatOpen(const FString& BoatId) const
 	if (bFreeSail || Content.AlwaysOpen.Boats.Contains(BoatId)) return true;
 	for (const FCareerTier& T : Content.Tiers)
 	{
-		if (Content.AlwaysOpen.Tiers.Contains(T.Id) && T.Boats.Contains(BoatId)) return true;
+		if ((Content.AlwaysOpen.Tiers.Contains(T.Id) || OpenedByLessons(T)) && T.Boats.Contains(BoatId)) return true;
 	}
 	TSet<FString> Worlds, Boats;
 	for (const FSailSave::FCertificateRecord& C : Progress.Certificates)
@@ -576,6 +595,11 @@ bool FCareerProgress::IsBoatOpen(const FString& BoatId) const
 
 FString FCareerProgress::LockReason(const FString& Id, bool bWorld) const
 {
+	// #432: a tier that opens on lessons says so first (it comes sooner than any certificate).
+	for (const FCareerTier& T : Content.Tiers)
+	{
+		if (T.OpensAfter.IsSet() && (bWorld ? T.WorldId == Id : T.Boats.Contains(Id))) return T.OpensAfter.Reason;
+	}
 	// The first certificate (in the file's order) whose earning would open it.
 	for (const FCareerTier& T : Content.Tiers)
 	{

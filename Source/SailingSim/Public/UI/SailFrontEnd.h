@@ -94,6 +94,9 @@ private:
 	FString QuizRetakeLessonId;
 	/** #402: the finish panel's way on: a lesson's session cast off at once (Next lesson, Sail it again). */
 	void StartLesson(const FCareerLesson& Lesson);
+	/** #439: casts off on the first job (the J/22 off Rush Creek, the lesson day, no traffic), from the first-launch screen
+	 *  or the Career screen's First job card after a skip. */
+	void StartFirstJob(bool bEasy);
 	/** The first-launch screen's answers (quality tier, Easy) while it is open. */
 	int32 FirstQuality = -1;
 	bool bFirstEasy = true;

@@ -133,12 +133,16 @@ in `FCareerProgress` (`IsCheckrideReady`, `RecordCheckrideQuiz`), not the UI.
 - `always_open` tiers, worlds and boats, plus the world and boats of every always-open tier.
 - A certificate opens its tier's `unlocks`: the tiers listed (and with them their world and boats), and any worlds and
   boats listed outright.
+- A tier with `opens_after` (#432) also opens, with its world and boats, once every lesson listed is sailed to the
+  medal given (`FCareerProgress::OpenedByLessons`); its locked card, and any boat or world only it opens, says `reason`.
+  Club Racer has one (Bean, Nov 1 2026, "yes to club racer opening before"): Day Sailor's first three lessons at
+  bronze open it and the Sunfish, so a first hour meets the Sunfish; the Day Sailor certificate still opens it too.
 - **Free Sail** (the title screen's Mode switch, also Settings > Gameplay > Mode; `USailingSettings::bFreeSail`, saved as
   `settings.career.freeSail`; `-SailingFreeSail=0|1`) opens every tier, world and boat, and records no lesson, medal,
   quiz, checkride or certificate (`FCareerProgress`'s `bFreeSail`); the logbook and races still count. It replaced
   Career 1's Open everything switch, under which progress still counted (`docs/free-sail/README.md`).
 
-With the current data: Day Sailor opens Club Racer and Coastal Cruiser, so the Sunfish, Galveston Bay and the Catalina 22
+With the current data: Day Sailor's first three lessons open Club Racer and the Sunfish; the certificate opens Club Racer and Coastal Cruiser, so the Sunfish, Galveston Bay and the Catalina 22
 and 30, and outright the Texas coast (`texas-coast`, world streaming's one-piece bay and Gulf: Bean, Oct 20 2026, "Career
 unlocks the Texas coast after the lake"; `SailingSim.Career.TexasCoastUnlock`); Marseille is not in the career yet (Free
 Sail); Club Racer opens the ILCA 7; Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says

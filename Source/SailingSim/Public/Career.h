@@ -92,6 +92,16 @@ struct FCareerUnlocks
 	TArray<FString> Tiers, Worlds, Boats;
 };
 
+/** #432: a tier that opens before any certificate, once these lessons are sailed to this medal (its world and boats with
+ *  it); Reason is what the locked card says. */
+struct FCareerOpensAfter
+{
+	TArray<FString> Lessons;
+	ECareerMedal Medal = ECareerMedal::Bronze;
+	FString Reason;
+	bool IsSet() const { return Lessons.Num() > 0; }
+};
+
 struct FCareerTier
 {
 	FString Id, Name, Status, Summary, Learning, WorldId;
@@ -101,6 +111,7 @@ struct FCareerTier
 	FCareerCheckride Checkride;
 	FString CertificateId, CertificateName;
 	FCareerUnlocks Unlocks;
+	FCareerOpensAfter OpensAfter;
 	bool IsReady() const { return Status == TEXT("ready") && Lessons.Num() > 0; }
 	/** The lessons are sailed in the first boat; true when it has no jib (FDrillRunner::IsDinghy): dinghy wording and
 	 *  quizzes, and only the drills a dinghy can sail (#433-#435). */
@@ -194,6 +205,8 @@ public:
 	bool HasCertificate(const FString& CertificateId) const { return Progress.HasCertificate(CertificateId); }
 
 	bool IsTierOpen(const FString& TierId) const;
+	/** #432: the tier's opens_after lessons are all sailed to its medal. */
+	bool OpenedByLessons(const FCareerTier& Tier) const;
 	bool IsWorldOpen(const FString& WorldId) const;
 	bool IsBoatOpen(const FString& BoatId) const;
 	/** One line on why a world or boat is locked ("Earn the Day Sailor certificate"); empty when it is open. */
