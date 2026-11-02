@@ -33,8 +33,10 @@ struct FLearningTip
 	int32 Level = 0;                // 0 info, 1 good, 2 warn, 3 danger (the tip card's severities)
 	double Cooldown = 30.0;
 	bool bOncePerSession = false;
+	FString Class;                  // "keelboat", "dinghy" or empty (both), as FQuizQuestion's
 	bool IsAny() const { return Drills.Num() == 0; }
 	bool Fits(ESailingDrill Drill) const { return IsAny() || Drills.Contains(Drill); }
+	bool FitsBoat(bool bDinghy) const { return Class.IsEmpty() || Class == (bDinghy ? TEXT("dinghy") : TEXT("keelboat")); }
 };
 
 struct FQuizQuestion
@@ -43,6 +45,9 @@ struct FQuizQuestion
 	TArray<ESailingDrill> Drills;   // empty: Any
 	TArray<FString> Options;
 	int32 Answer = 0;
+	FString Class;                  // "keelboat", "dinghy" or empty (both): #434
+	/** Asked on this boat: a dinghy (no jib) skips keelboat questions, any other boat skips dinghy ones. */
+	bool Fits(bool bDinghy) const { return Class.IsEmpty() || Class == (bDinghy ? TEXT("dinghy") : TEXT("keelboat")); }
 };
 
 class SAILINGSIM_API FLearningContent
@@ -54,11 +59,13 @@ public:
 	bool Load(const FString& Directory, FString* OutError = nullptr);
 	bool IsLoaded() const { return bLoaded; }
 
-	const FDrillBriefing* Briefing(ESailingDrill Drill) const;
-	/** The quiz after a drill: QuizAfter questions, the drill's own first, then Any; options shuffled. */
-	TArray<FQuizQuestion> MakeQuiz(ESailingDrill Drill, FRandomStream& Rng) const;
+	/** The drill's briefing; on a dinghy (FDrillRunner::IsDinghy) its dinghy wording where it has one (#433). */
+	const FDrillBriefing* Briefing(ESailingDrill Drill, bool bDinghy = false) const;
+	/** The quiz after a drill: QuizAfter questions, the drill's own first, then Any; options shuffled; only questions
+	 *  that fit the boat (FQuizQuestion::Fits). */
+	TArray<FQuizQuestion> MakeQuiz(ESailingDrill Drill, FRandomStream& Rng, bool bDinghy = false) const;
 	/** The debrief line for a finished drill ({time} m:ss, {contact_kn}); empty if none. */
-	FString Debrief(ESailingDrill Drill, const FString& Outcome, double ElapsedSeconds, double ContactKnots) const;
+	FString Debrief(ESailingDrill Drill, const FString& Outcome, double ElapsedSeconds, double ContactKnots, bool bDinghy = false) const;
 
 	/** {key:Action.trim|ease|out} or {key:Action}: the player's current keyboard binding. */
 	static FString ResolveKeys(const FString& Text);
@@ -69,6 +76,7 @@ public:
 	static int32 LevelFromName(const FString& Name);
 
 	TArray<FDrillBriefing> Briefings;
+	TArray<FDrillBriefing> DinghyBriefings;   // a drill's "dinghy" block over its own briefing
 	TMap<FString, FString> Events;   // event id -> what it means
 	TArray<FLearningTip> Tips;
 	TArray<FQuizQuestion> Questions;
@@ -84,6 +92,7 @@ struct FLearningFrame
 	// The boat (degrees, knots; tiller and sheets as FBoatControls).
 	double TwaDeg = 0.0, Knots = 0.0, TwsKnots = 0.0, HeelLeewardDeg = 0.0, HelmForce = 0.0, DepthUnderKeel = 100.0;
 	double Tiller = 0.0, MainSheet = 0.3, JibSheet = 0.3;
+	bool bDinghy = false;   // no jib (FDrillRunner::IsDinghy): the tips' dinghy wording
 	bool bInIrons = false, bAground = false, bCollision = false, bVesselContact = false, bBackJib = false, bTiedUp = false, bMotoring = false;
 	int32 JibLuff = 0, JibStall = 0, MainLuff = 0, MainStall = 0;
 	// The drill.
