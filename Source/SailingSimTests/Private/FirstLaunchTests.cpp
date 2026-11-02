@@ -11,6 +11,7 @@
 #include "SailSession.h"
 #include "SailingSettings.h"
 #include "FirstJobPlayer.h"
+#include "UI/SailFrontEnd.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -106,6 +107,26 @@ bool FSailingUIFirstLaunchTest::RunTest(const FString&)
 	{
 		TestTrue(TEXT("Its lessons sail with traffic off by default"), !Day->Lessons.ContainsByPredicate([](const FCareerLesson& L) { return L.Traffic != 0; }));
 		TestEqual(TEXT("The first job hands over to Leave the dock"), int32(Day->Lessons[0].Drill), int32(ESailingDrill::LeaveTheDock));
+	}
+
+	// The Career screen's starting focus (#439, the PC's checklist run of 5382a5f2): while the first job waits, its card has
+	// the focus, so Enter starts the first job and doesn't skip it for Leave the dock.
+	{
+		using EFocus = SSailFrontEnd::ECareerFocus;
+		FSailSave::FProgress P;
+		TestFalse(TEXT("A save that never saw the first launch shows no First job card"), SSailFrontEnd::ShowsFirstJob(P));
+		TestTrue(TEXT("... and starts on the next lesson"), SSailFrontEnd::CareerFocus(P, false) == EFocus::NextLesson);
+		P.FirstLaunch.bSeen = true;
+		P.FirstLaunch.bSkipped = true;
+		TestTrue(TEXT("Skipped: the First job card shows"), SSailFrontEnd::ShowsFirstJob(P));
+		TestTrue(TEXT("... and has the focus, not Leave the dock"), SSailFrontEnd::CareerFocus(P, false) == EFocus::FirstJob);
+		TestTrue(TEXT("... until the player picks a tier"), SSailFrontEnd::CareerFocus(P, true) == EFocus::TierCard);
+		FSailSave::FSceneRecord Done;
+		Done.Id = TEXT("first-job");
+		Done.bDone = true;
+		P.Scenes.Add(Done);
+		TestFalse(TEXT("The first job finished: no card"), SSailFrontEnd::ShowsFirstJob(P));
+		TestTrue(TEXT("... and focus on the next lesson again"), SSailFrontEnd::CareerFocus(P, false) == EFocus::NextLesson);
 	}
 
 	// The first job's session: its scene id goes with the session but never into the save's last session.

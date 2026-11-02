@@ -2314,8 +2314,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		return M == ECareerMedal::Gold ? Hex(0xE2B84E) : (M == ECareerMedal::Silver ? Hex(0xC4CDD3) : (M == ECareerMedal::Bronze ? Hex(0xC08552) : Dim));
 	};
 	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Career); Show(Stack.Last(), true); };
-	// #438: until a tier is picked, focus starts on the next lesson to sail (the first without a medal), not the tier card.
-	const bool bFocusLesson = CareerTierId.IsEmpty();
+	// #438: until a tier is picked, focus starts on the next lesson to sail (the first without a medal), not the tier card;
+	// while the first job waits, on its card (#439: the lesson's focus used to win, so Enter skipped the first job).
+	const ECareerFocus StartFocus = CareerFocus(Prog, !CareerTierId.IsEmpty());
+	const bool bFocusLesson = StartFocus == ECareerFocus::NextLesson;
+	TSharedPtr<SWidget> FirstJobFocus;
 	bool bLessonFocused = false;
 	// The tier on show: the one chosen, else the first open tier without its certificate.
 	const FCareerTier* Shown = Content.Tier(CareerTierId);
@@ -2328,7 +2331,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 
 	// Left: the tiers, under the first job while it waits (#439: skipped on the first-launch screen, or left unfinished).
 	TSharedRef<SVerticalBox> Tiers = SNew(SVerticalBox);
-	if (Prog.FirstLaunch.bSeen && !Prog.IsSceneDone(TEXT("first-job")))
+	if (ShowsFirstJob(Prog))
 	{
 		TSharedRef<SSailButton> FirstJob = SNew(SSailButton).Padding(FMargin(16.f, 12.f))
 			.OnClicked_Lambda([this]() { StartFirstJob(USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy); })
@@ -2343,6 +2346,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(TEXT("Take the J/22 across to the lesson dock with your instructor aboard."), EType::Small, Muted, true) ]
 		];
 		Tiers->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ FirstJob ];
+		FirstJobFocus = FirstJob;
 	}
 	for (const FCareerTier& T : Content.Tiers)
 	{
@@ -2497,6 +2501,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Tiers ] ]
 			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
 		];
+	if (StartFocus == ECareerFocus::FirstJob && FirstJobFocus.IsValid()) E.Focus = FirstJobFocus;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Tiers, lessons")),
 		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
 		SailCareer::IsFreeSail() ? TEXT("Free Sail: lessons sail without medals") : TEXT("A lesson sails its drill; Free Sail on the title opens everything"));
@@ -2567,6 +2572,17 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 	E.Focus = Start;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")) }, TEXT("Both can be changed later in Settings"));
 	return E;
+}
+
+bool SSailFrontEnd::ShowsFirstJob(const FSailSave::FProgress& Progress)
+{
+	return Progress.FirstLaunch.bSeen && !Progress.IsSceneDone(TEXT("first-job"));
+}
+
+SSailFrontEnd::ECareerFocus SSailFrontEnd::CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked)
+{
+	if (bTierPicked) return ECareerFocus::TierCard;
+	return ShowsFirstJob(Progress) ? ECareerFocus::FirstJob : ECareerFocus::NextLesson;
 }
 
 void SSailFrontEnd::StartFirstJob(bool bEasy)
