@@ -808,19 +808,19 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	const USailSessionSave* Save = USailSessionSave::Get();
 	TSharedRef<SVerticalBox> Menu = SNew(SVerticalBox);
 	TSharedPtr<SWidget> First;
-	auto Item = [&](const FString& Label, const FString& Sub, FSimpleDelegate Do)
+	auto Item = [&](const FString& Label, const FString& Sub, FSimpleDelegate Do, bool bEnabled = true)
 	{
 		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines (tighter still
 		// with the developers' tenth, Gallery).
 		const bool bTen = USailingSettings::DeveloperTools();
-		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).Padding(FMargin(18.f, bTen ? 1.f : 3.f))
+		TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::MenuItem).OnClicked(Do).IsEnabled(bEnabled).Padding(FMargin(18.f, bTen ? 1.f : 3.f))
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(Label, EType::MenuItem, Fg) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(Label, EType::MenuItem, bEnabled ? Fg : Muted) ]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SailUI::Text(Sub, EType::Small, Muted) ]
 		];
 		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
-		if (!First.IsValid()) First = B;
+		if (!First.IsValid() && bEnabled) First = B;
 	};
 	const SailCatalog::FWorld& LastWorld = SailCatalog::World(Save->Last.World);
 	if (Save->bHasLast)
@@ -848,7 +848,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	// card still sails any of them freely).
 	if (!USailingSettings::SliceOnly()) Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
 	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
-	Item(TEXT("Replays"), TEXT("Watch your last run"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->WatchLastRun(); Close(); }));
+	// #430: runs aren't kept across launches; with none yet this session the item is greyed and says why (it used to close
+	// the menus and play nothing).
+	const ASailboatPawn* RunPawn = Pawn();
+	const bool bHasRun = RunPawn && RunPawn->HasLastRun();
+	Item(TEXT("Replays"), bHasRun ? TEXT("Watch your last run") : TEXT("Sail a run first"),
+		FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn(); P && P->HasLastRun()) { P->WatchLastRun(); Close(); } }), bHasRun);
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
 	// Inputs/gallery/brief.md section 6: developer tools (USailingSettings::bShowDeveloperTools: on while Bean playtests, an ini line turns it off).
 	if (USailingSettings::DeveloperTools()) Item(TEXT("Gallery"), TEXT("Developer · every asset"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Gallery); }));
@@ -2321,8 +2326,24 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 	}
 	if (!Shown && Content.Tiers.Num()) Shown = &Content.Tiers[0];
 
-	// Left: the tiers.
+	// Left: the tiers, under the first job while it waits (#439: skipped on the first-launch screen, or left unfinished).
 	TSharedRef<SVerticalBox> Tiers = SNew(SVerticalBox);
+	if (Prog.FirstLaunch.bSeen && !Prog.IsSceneDone(TEXT("first-job")))
+	{
+		TSharedRef<SSailButton> FirstJob = SNew(SSailButton).Padding(FMargin(16.f, 12.f))
+			.OnClicked_Lambda([this]() { StartFirstJob(USailingSettings::Get()->Difficulty == ESailingDifficulty::Easy); })
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("First job"), EType::CardTitleS, Fg) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(TEXT("Waiting"), false) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(TEXT("Take the J/22 across to the lesson dock with your instructor aboard."), EType::Small, Muted, true) ]
+		];
+		Tiers->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ FirstJob ];
+	}
 	for (const FCareerTier& T : Content.Tiers)
 	{
 		if (!SailCatalog::InSliceTier(T.Id)) continue;   // #399: the slice's tiers (and the stretch) only
@@ -2333,7 +2354,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		else if (!bOpen)
 		{
 			const FCareerTier* By = Content.Tiers.FindByPredicate([&T](const FCareerTier& X) { return X.Unlocks.Tiers.Contains(T.Id); });
-			State = By ? FString::Printf(TEXT("Earn the %s"), *By->CertificateName) : FString(TEXT("Locked"));
+			State = T.OpensAfter.IsSet() ? T.OpensAfter.Reason : (By ? FString::Printf(TEXT("Earn the %s"), *By->CertificateName) : FString(TEXT("Locked")));
 		}
 		else State = FString::Printf(TEXT("%d of %d lessons · %d at silver"), Career.LessonsAtLeast(T, ECareerMedal::Bronze), T.Lessons.Num(), Career.LessonsAtLeast(T, ECareerMedal::Silver));
 		const FString Id = T.Id;
@@ -2515,18 +2536,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 		USailingSettings* Set = USailingSettings::Get();
 		Set->Quality = ESailingQuality(FirstQuality);
 		Remember(false);
-		// The first job: the J/22 sailing off Rush Creek (the lake's open-water spot), the lesson day, no traffic.
-		Pending = USailSessionSubsystem::MakeDefault();
-		Pending.World = 0;
-		Pending.LaunchSpot = 1;
-		Pending.Boat = FMath::Max(FSailSave::BoatIndex(TEXT("J22")), 0);
-		Pending.Mode = ESailMode::Free;
-		Pending.Traffic = 0;
-		Pending.bEasy = bFirstEasy;
-		Pending.bLearningMode = true;
-		Pending.bFreeSail = false;
-		Pending.SceneId = TEXT("first-job");
-		CastOff();
+		StartFirstJob(bFirstEasy);
 	}));
 	TSharedRef<SSailButton> Skip = ActionButton(TEXT("Skip to the menu"), FSimpleDelegate::CreateLambda([this, Remember]()
 	{
@@ -2557,6 +2567,22 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 	E.Focus = Start;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")) }, TEXT("Both can be changed later in Settings"));
 	return E;
+}
+
+void SSailFrontEnd::StartFirstJob(bool bEasy)
+{
+	// The first job: the J/22 sailing off Rush Creek (the lake's open-water spot), the lesson day, no traffic.
+	Pending = USailSessionSubsystem::MakeDefault();
+	Pending.World = 0;
+	Pending.LaunchSpot = 1;
+	Pending.Boat = FMath::Max(FSailSave::BoatIndex(TEXT("J22")), 0);
+	Pending.Mode = ESailMode::Free;
+	Pending.Traffic = 0;
+	Pending.bEasy = bEasy;
+	Pending.bLearningMode = true;
+	Pending.bFreeSail = false;
+	Pending.SceneId = TEXT("first-job");
+	CastOff();
 }
 
 // ---------------------------------------------------------------- modal confirm

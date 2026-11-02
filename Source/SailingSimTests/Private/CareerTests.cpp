@@ -239,9 +239,29 @@ bool FSailingCareerUnlocksTest::RunTest(const FString&)
 	TestEqual(TEXT("The Gulf: the Coastal Cruiser certificate"), Career.WorldLockReason(TEXT("gulf")), FString(TEXT("Earn the Coastal Cruiser certificate")));
 	TestTrue(TEXT("The J/22 is open"), Career.IsBoatOpen(TEXT("J22")));
 	TestEqual(TEXT("The Catalina 22: the Day Sailor certificate"), Career.BoatLockReason(TEXT("Catalina22")), FString(TEXT("Earn the Day Sailor certificate")));
-	TestEqual(TEXT("The Sunfish: the Day Sailor certificate (it opens Club Racer)"), Career.BoatLockReason(TEXT("Sunfish")), FString(TEXT("Earn the Day Sailor certificate")));
+	TestEqual(TEXT("The Sunfish: Day Sailor's first three lessons (#432: they open Club Racer)"), Career.BoatLockReason(TEXT("Sunfish")), FString(TEXT("Sail Day Sailor's first three lessons")));
 	TestTrue(TEXT("A boat no tier names yet says so"), Career.BoatLockReason(TEXT("Hobie16")).StartsWith(TEXT("Not in the career yet")));
 	TestTrue(TEXT("Day Sailor open, Club Racer not"), Career.IsTierOpen(TEXT("day-sailor")) && !Career.IsTierOpen(TEXT("club-racer")));
+	// #432 (Bean, Nov 1 2026): Club Racer and its Sunfish open once Day Sailor's first three lessons are sailed, before the
+	// certificate; two aren't enough, and a medal sailed in Free Sail counts for nothing.
+	{
+		FSailSave::FProgress Early;
+		FCareerProgress Starter(*C, Early);
+		const ESailingDrill FirstThree[] = { ESailingDrill::LeaveTheDock, ESailingDrill::SailATriangle, ESailingDrill::HeaveTo };
+		for (int32 I = 0; I < 3; ++I)
+		{
+			TestFalse(FString::Printf(TEXT("Club Racer shut after %d of the three"), I), Starter.IsTierOpen(TEXT("club-racer")));
+			const FCareerProgress::FAward A = Starter.RecordRun(Run(FirstThree[I], GoodOutcome(FirstThree[I]), 1000.0));
+			TestTrue(FString::Printf(TEXT("Lesson %d at bronze"), I + 1), A.Medal == ECareerMedal::Bronze);
+		}
+		TestTrue(TEXT("Club Racer open after the first three lessons"), Starter.IsTierOpen(TEXT("club-racer")));
+		TestTrue(TEXT("... the Sunfish with it"), Starter.IsBoatOpen(TEXT("Sunfish")) && Starter.BoatLockReason(TEXT("Sunfish")).IsEmpty());
+		TestFalse(TEXT("... no certificate yet, so not Galveston"), Starter.IsWorldOpen(TEXT("galveston-bay")));
+		TestFalse(TEXT("... nor Coastal Cruiser"), Starter.IsTierOpen(TEXT("coastal-cruiser")));
+		FCareerRun Fish = Run(ESailingDrill::LeaveTheDock, GoodOutcome(ESailingDrill::LeaveTheDock), 200.0);
+		Fish.BoatId = TEXT("Sunfish");
+		TestEqual(TEXT("A Sunfish run now counts for Club Racer"), Starter.RecordRun(Fish).LessonId, FString(TEXT("club-racer.sunfish-leave-the-dock")));
+	}
 	// Free Sail: every world and boat, no reasons (FreeSail tests the rest).
 	FCareerProgress Free(*C, P, true);
 	for (int32 W = 0; W < 3; ++W)
