@@ -133,6 +133,17 @@ void FMarina::PlaceAlongside(TFunctionRef<double(double, double)> DepthAt)
 {
 	Alongside.Reset();
 	const Sailing::FBoatConfig C30 = Sailing::FBoatConfig::Make(Sailing::EBoatType::Catalina30);
+	// Not lying over a launch ramp (PlaceRamps first): the slab runs out under the water beside its pier.
+	auto OverRamp = [&](const FVector2D& P)
+	{
+		for (const FMarinaRamp& R : Ramps)
+		{
+			const FVector2D A = 0.5 * (R.In + R.Out), AB = R.Dir * FMarinaRamp::Length;
+			const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / AB.SizeSquared(), 0.0, 1.0);
+			if (FVector2D::Distance(P, A + AB * T) < 0.5 * FMarinaRamp::Width + 0.5 * C30.Beam + 0.5) return true;
+		}
+		return false;
+	};
 	for (const FMarinaLine& L : Piers)
 	{
 		for (int32 I = 1; I < L.Points.Num(); ++I)
@@ -145,7 +156,7 @@ void FMarina::PlaceAlongside(TFunctionRef<double(double, double)> DepthAt)
 				for (const double Side : { 1.0, -1.0 })
 				{
 					const FVector2D Center = A + Dir * At + Left * (Side * (0.5 * L.Width + 0.5 * C30.Beam + 0.35));
-					if (DepthAt(Center.X, Center.Y) < C30.Draft + 0.3) continue;
+					if (DepthAt(Center.X, Center.Y) < C30.Draft + 0.3 || OverRamp(Center)) continue;
 					FMarinaAlongside B30;
 					B30.Center = Center;
 					B30.HeadingDeg = float(FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X)));
@@ -155,6 +166,32 @@ void FMarina::PlaceAlongside(TFunctionRef<double(double, double)> DepthAt)
 				}
 			}
 		}
+	}
+}
+
+void FMarina::PlaceRamps(TFunctionRef<double(double, double)> HeightAt)
+{
+	// A ramp starts on ground at least this high above the water: a pier's shore end can stand in the shallows (Rush
+	// Creek's does, about 15 m off the beach), and a slab begun there would float off the end of the pier.
+	constexpr double DryGround = 0.4;
+	Ramps.Reset();
+	for (const FMarinaLine& L : Piers)
+	{
+		if (!L.Id.EndsWith(TEXT(".ramp")) || L.Points.Num() < 2) continue;
+		FVector2D Shore = L.Points[0], Sea = L.Points[1];
+		if (HeightAt(Sea.X, Sea.Y) > HeightAt(Shore.X, Shore.Y)) Swap(Shore, Sea);
+		FMarinaRamp R;
+		R.PierId = L.Id;
+		R.Dir = (Sea - Shore).GetSafeNormal();
+		const FVector2D Side(-R.Dir.Y, R.Dir.X);
+		// Beside the pier (a metre clear of its edge), the head walked back up the beach a metre at a time, then a metre more.
+		FVector2D Head = Shore + Side * (0.5 * L.Width + 1.0 + 0.5 * FMarinaRamp::Width);
+		for (int32 Step = 0; Step < 40 && HeightAt(Head.X, Head.Y) < DryGround; ++Step) Head -= R.Dir;
+		Head -= R.Dir;
+		R.In = Head - Side * (0.5 * FMarinaRamp::Width);
+		R.Out = Head + Side * (0.5 * FMarinaRamp::Width);
+		R.Top = float(FMath::Max3(HeightAt(R.In.X, R.In.Y), HeightAt(R.Out.X, R.Out.Y), 0.3)) + 0.05f;
+		Ramps.Add(R);
 	}
 }
 
@@ -179,6 +216,12 @@ void FMarina::ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, co
 	};
 	for (const FMarinaSlip& S : Slips) if (S.bOccupied) Boat(S.Center, S.HeadingDeg, S.BoatType);
 	for (const FMarinaAlongside& A : Alongside) Boat(A.Center, A.HeadingDeg, A.BoatType);
+	// A ramp only where it stands above the water: under it the slab is no higher than the bottom a boat grounds on.
+	for (const FMarinaRamp& R : Ramps)
+	{
+		const FVector2D Head = 0.5 * (R.In + R.Out);
+		Visit({ Head, Head + R.Dir * R.DryLength() }, TEXT("ramp"), 0.5f * FMarinaRamp::Width + 0.15f);
+	}
 }
 
 FBox2D FMarina::Bounds(double Margin) const

@@ -184,6 +184,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	FarLights.Load(Directory / (Name + TEXT(".farlights.json")));
 	if (Marina.Load(FPaths::Combine(Directory, Name + TEXT(".marina.json"))))
 	{
+		Marina.PlaceRamps([this](double X, double Y) { return Terrain.HeightAt(X, Y); });
 		Marina.PlaceAlongside([this](double X, double Y) { return -Terrain.HeightAt(X, Y); });
 	}
 	BuildObstacles();

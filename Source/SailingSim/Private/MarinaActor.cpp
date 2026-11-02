@@ -947,28 +947,23 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 	};
 	for (const FMarinaLine& L : Marina.Walkways) Fixed(L);
 	for (const FMarinaLine& L : Marina.Piers) Fixed(L);
-	// Club docks pass 3: the launch ramp, a concrete slab 5 m wide beside the ramp pier, from the shore down into the
-	// water along the pier (its shore end is the pier's higher ground), grooved across for grip (the concrete pattern).
-	for (const FMarinaLine& L : Marina.Piers)
+	// Club docks pass 3: the launch ramps (FMarina::PlaceRamps), concrete slabs beside their piers from dry ground down
+	// into the water, grooved across for grip (the concrete pattern).
+	for (const FMarinaRamp& R : Marina.Ramps)
 	{
-		if (!Terrain || !L.Id.EndsWith(TEXT(".ramp")) || L.Points.Num() < 2 || !Generated(L.Id)) continue;
-		FVector2D Shore = L.Points[0], Sea = L.Points[1];
-		if (Terrain->HeightAt(Sea.X, Sea.Y) > Terrain->HeightAt(Shore.X, Shore.Y)) Swap(Shore, Sea);
-		const FVector2D Dir = (Sea - Shore).GetSafeNormal(), Side(-Dir.Y, Dir.X);
-		const FVector2D In = Shore + Side * (0.5 * L.Width + 1.0), Out2 = In + Side * 5.0;
-		const float Top = float(FMath::Max(Terrain->HeightAt(Shore.X, Shore.Y), 0.3)) + 0.05f;
-		constexpr float RampLength = 18.f, RampFoot = -1.4f;
-		const FVector2D InFar = In + Dir * RampLength, OutFar = Out2 + Dir * RampLength;
+		if (!Generated(R.PierId)) continue;
+		constexpr float W = FMarinaRamp::Width, Len = FMarinaRamp::Length, Foot = FMarinaRamp::Foot;
+		const FVector2D In = R.In, Out2 = R.Out, InFar = In + R.Dir * Len, OutFar = Out2 + R.Dir * Len;
 		// (the slab faces up: A->D along the ramp, A->B across it)
-		G[EKitLook::Concrete].Quad(FVector(In.X, In.Y, Top), FVector(Out2.X, Out2.Y, Top), FVector(OutFar.X, OutFar.Y, RampFoot), FVector(InFar.X, InFar.Y, RampFoot),
-			{ 0.f, 0.f }, { 0.f, 5.f }, { RampLength, 5.f }, { RampLength, 0.f });
+		G[EKitLook::Concrete].Quad(FVector(In.X, In.Y, R.Top), FVector(Out2.X, Out2.Y, R.Top), FVector(OutFar.X, OutFar.Y, Foot), FVector(InFar.X, InFar.Y, Foot),
+			{ 0.f, 0.f }, { 0.f, W }, { Len, W }, { Len, 0.f });
 		// its kerbs' outer faces along both sides (the pier side faces away from the slab, the far side out)
 		for (const double S : { -1.0, 1.0 })
 		{
-			const FVector2D E = S < 0 ? In : Out2, EFar = E + Dir * RampLength;
-			const FVector T0(E.X, E.Y, Top + 0.15f), T1(EFar.X, EFar.Y, RampFoot + 0.15f), B1(EFar.X, EFar.Y, RampFoot), B0(E.X, E.Y, Top);
-			if (S < 0) G[EKitLook::Concrete].Quad(T0, T1, B1, B0, { 0.f, 0.15f }, { RampLength, 0.15f }, { RampLength, 0.f }, { 0.f, 0.f });
-			else G[EKitLook::Concrete].Quad(T1, T0, B0, B1, { RampLength, 0.15f }, { 0.f, 0.15f }, { 0.f, 0.f }, { RampLength, 0.f });
+			const FVector2D E = S < 0 ? In : Out2, EFar = E + R.Dir * Len;
+			const FVector T0(E.X, E.Y, R.Top + 0.15f), T1(EFar.X, EFar.Y, Foot + 0.15f), B1(EFar.X, EFar.Y, Foot), B0(E.X, E.Y, R.Top);
+			if (S < 0) G[EKitLook::Concrete].Quad(T0, T1, B1, B0, { 0.f, 0.15f }, { Len, 0.15f }, { Len, 0.f }, { 0.f, 0.f });
+			else G[EKitLook::Concrete].Quad(T1, T0, B0, B1, { Len, 0.15f }, { 0.f, 0.15f }, { 0.f, 0.f }, { Len, 0.f });
 		}
 	}
 
