@@ -33,6 +33,10 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
 
 `Artifacts/`, `Packaged/`, `Build/`, `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` are git-ignored.
 
+After every Xcode update run `xcodebuild -downloadComponent MetalToolchain` (Xcode 27 ships without the Metal compiler; check
+with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is missing): without it every shader compile fails
+("cannot execute tool 'metal' due to missing Metal Toolchain"), so run-game, packages with new materials and gates stop.
+
 6. `scripts/polar.sh [--quick | --scenarios | --point <tws> <twa>]` builds `Source/SailingPhysics` standalone with clang
    (no Unreal) and sails the J/22 reference polar in about 2 s. Use it for any physics tuning, then confirm with
    `scripts/test.sh` (`SailingSim.Physics.PolarGate`). `--scenarios` prints tack and irons results; `--point` dumps
@@ -144,6 +148,8 @@ Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 2
    gate.sh: `-SailingScreenPct=100`; the governor hid regressions at 82-97%). The CSVs carry `render_pct` and `foreground`,
    and a run whose window was not in front is run again. The game raises its own window through the warm-up, because a
    single run's BeginPlay request is dropped.
+   The nightly (#401, `scripts/nightly/`): PRs merge on fast checks; `--scope all --force` runs on main each night at
+   03:00 from `Artifacts/nightly/` (launchd), one line in `Artifacts/nightly/latest.txt`. It skips a locked screen.
 
 21. Licences (`docs/licences/`): Bean may sell the game, so only commercially usable assets, data and code (no NC/ND,
    no LAFAN1, Bandai or AMASS motion). Every file under `Content/` or `Audio/` needs a row in `docs/licences/assets.csv`
