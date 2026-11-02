@@ -652,7 +652,7 @@ void SSailHud::Refresh()
 		DrillFooter = FText::FromString(FString::Printf(TEXT("%s · %s%s"), S->bLearningMode ? TEXT("Learning mode") : TEXT("Game mode"),
 			S->Difficulty == ESailingDifficulty::Easy ? TEXT("Easy") : TEXT("Realistic"), D.GetStatus().IsEmpty() ? TEXT("") : *(FString(TEXT(" · ")) + D.GetStatus())));
 		// The briefing's wording (keys follow rebinding) and, in learning mode, the coach's line under the current step.
-		const FDrillBriefing* Brief = FLearningContent::Get().Briefing(D.GetDrill());
+		const FDrillBriefing* Brief = FLearningContent::Get().Briefing(D.GetDrill(), D.IsDinghyRun());
 		const bool bBrief = Brief && Brief->Steps.Num() == D.GetSteps().Num();
 		TArray<TTuple<FString, int32, FString>> Steps;
 		for (int32 I = 0; I < D.GetSteps().Num(); ++I)

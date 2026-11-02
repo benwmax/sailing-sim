@@ -102,6 +102,9 @@ struct FCareerTier
 	FString CertificateId, CertificateName;
 	FCareerUnlocks Unlocks;
 	bool IsReady() const { return Status == TEXT("ready") && Lessons.Num() > 0; }
+	/** The lessons are sailed in the first boat; true when it has no jib (FDrillRunner::IsDinghy): dinghy wording and
+	 *  quizzes, and only the drills a dinghy can sail (#433-#435). */
+	bool SailsDinghy() const;
 	const FCareerLesson* Lesson(const FString& LessonId) const { return Lessons.FindByPredicate([&LessonId](const FCareerLesson& L) { return L.Id == LessonId; }); }
 };
 
@@ -123,7 +126,7 @@ public:
 	const FCareerTier* TierOfCertificate(const FString& CertificateId) const;
 	const FCareerLesson* Lesson(const FString& Id) const;
 	/** The checkride's written quiz: its questions from the listed drills (and Any), shuffled, options shuffled. */
-	TArray<FQuizQuestion> MakeCheckrideQuiz(const FCareerTier& Tier, const FLearningContent& Learning, FRandomStream& Rng) const;
+	TArray<FQuizQuestion> MakeCheckrideQuiz(const FCareerTier& Tier, const FLearningContent& Learning, FRandomStream& Rng, bool bDinghy = false) const;
 
 	/** The best medal a run earns in a lesson (None if the drill was not finished or misses bronze); a run on Easy earns
 	 *  at most EasyMax. */
