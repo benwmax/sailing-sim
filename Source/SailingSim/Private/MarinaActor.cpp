@@ -745,6 +745,128 @@ void AMarinaActor::DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(co
 	}
 }
 
+// Marina polish: the clubhouse's grounds in its own frame (X along the long side, +Y the side facing the docks), placed
+// round the lidar crowns near it (none stands in a lot, walk or the porch): a covered porch with steps at its west end,
+// doors, concrete walks from the steps to the shore walkway and the ramp pier and from the back door to the pool, low
+// bollard lights along the dock walks, an eight-stall lot past the north-east end, and the club's flagpole with its
+// yardarm by the walk. The walks and the lot follow the ground (the lidar shore detail, through HeightAt).
+static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLakeTerrain* Terrain, const FMarina& Marina, FKitGeometry& G)
+{
+	const FRotator Rot(0.f, B.HeadingDeg, 0.f);
+	const float HX = 0.5f * B.Size.X, HY = 0.5f * B.Size.Y, Floor = Ground + 0.2f;
+	auto L = [&](double X, double Y) { return B.Center + FVector2D(Rot.RotateVector(FVector(X, Y, 0.0))); };
+	auto At = [&](const FVector2D& Q, double Z) { return FVector(Q.X, Q.Y, Z); };
+	auto GZ = [&](const FVector2D& Q) { return Terrain ? float(FMath::Max(Terrain->HeightAt(Q.X, Q.Y), 0.3)) : Ground; };
+	// A walk W wide from A to B, in slabs of up to 2 m that each sit 4 cm over the ground at both ends.
+	auto Walk = [&](const FVector2D& A, const FVector2D& Bp, float W)
+	{
+		const double Len = FVector2D::Distance(A, Bp);
+		const FVector2D D = (Bp - A) / FMath::Max(Len, 1e-3), S(-D.Y, D.X);
+		const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 2.0));
+		for (int32 I = 0; I < N; ++I)
+		{
+			const double T0 = Len * I / N, T1 = Len * (I + 1) / N;
+			const FVector2D P0 = A + D * T0, P1 = A + D * T1;
+			const float Z0 = GZ(P0) + 0.04f, Z1 = GZ(P1) + 0.04f;
+			G[EKitLook::Concrete].Quad(At(P0 - S * (0.5 * W), Z0), At(P0 + S * (0.5 * W), Z0), At(P1 + S * (0.5 * W), Z1), At(P1 - S * (0.5 * W), Z1),
+				{ float(T0), 0.f }, { float(T0), W }, { float(T1), W }, { float(T1), 0.f });
+		}
+	};
+	auto Bollards = [&](const FVector2D& A, const FVector2D& Bp)
+	{
+		const double Len = FVector2D::Distance(A, Bp);
+		const FVector2D D = (Bp - A) / FMath::Max(Len, 1e-3), S(-D.Y, D.X);
+		for (double T = 6.0; T < Len - 3.0; T += 12.0)
+		{
+			const FVector2D Q = A + D * T + S * 1.25;
+			G[EKitLook::White].Cylinder(At(Q, GZ(Q)), 0.09f, 0.85f, 8);
+			G.Lights.Add({ At(Q, GZ(Q) + 0.8f), 1 });
+		}
+	};
+
+	// The porch along the dock side: deck flush with the floor, posts, a rail with a gap at the steps, a shed roof under
+	// the eaves with a ceiling below it, and two lights.
+	constexpr float PX = 9.f, PD = 4.f, PostH = 2.75f;
+	G[EKitLook::Decking].Box(At(L(0.0, HY + 0.5 * PD), Floor - 0.1f), FVector(PX, 0.5f * PD, 0.1f), B.HeadingDeg);
+	for (const float X : { -PX + 0.15f, -3.f, 3.f, PX - 0.15f }) G[EKitLook::White].Cylinder(At(L(X, HY + PD - 0.15), Floor), 0.09f, PostH, 8);
+	for (const TPair<float, float>& R : { TPair<float, float>(-PX + 0.15f, -8.f), TPair<float, float>(-6.f, PX - 0.15f) })
+	{
+		G[EKitLook::Trim].Span(L(R.Key, HY + PD - 0.15), L(R.Value, HY + PD - 0.15), 0.06f, Floor + 0.9f, Floor + 0.96f);
+		G[EKitLook::Trim].Span(L(R.Key, HY + PD - 0.15), L(R.Value, HY + PD - 0.15), 0.04f, Floor + 0.12f, Floor + 0.16f);
+	}
+	G[EKitLook::Trim].Span(L(-PX + 0.15f, HY), L(-PX + 0.15f, HY + PD), 0.06f, Floor + 0.9f, Floor + 0.96f);
+	G[EKitLook::Trim].Span(L(PX - 0.15f, HY), L(PX - 0.15f, HY + PD), 0.06f, Floor + 0.9f, Floor + 0.96f);
+	{
+		const float ZIn = Floor + 3.05f, ZOut = Floor + PostH;
+		const FVector A = At(L(-PX - 0.3, HY), ZIn), Bq = At(L(-PX - 0.3, HY + PD + 0.4), ZOut), Cq = At(L(PX + 0.3, HY + PD + 0.4), ZOut), D = At(L(PX + 0.3, HY), ZIn);
+		const float Run = FMath::Sqrt(FMath::Square(PD + 0.4f) + FMath::Square(ZIn - ZOut)), W = 2.f * PX + 0.6f;
+		G[EKitLook::Roof].Quad(A, Bq, Cq, D, { 0.f, 0.f }, { 0.f, Run }, { W, Run }, { W, 0.f });
+		G[EKitLook::Trim].Quad(D - FVector(0, 0, 0.12f), Cq - FVector(0, 0, 0.12f), Bq - FVector(0, 0, 0.12f), A - FVector(0, 0, 0.12f), { 0.f, 0.f }, { 0.f, Run }, { W, Run }, { W, 0.f });
+		G[EKitLook::Trim].Span(FVector2D(Bq), FVector2D(Cq), 0.05f, ZOut - 0.22f, ZOut);
+	}
+	for (const float X : { -4.5f, 4.5f }) G.Lights.Add({ At(L(X, HY + 0.5 * PD), Floor + PostH - 0.2f), 1 });
+	// Steps down from the porch's west end, and the doors: double doors onto the porch by the steps, one in the north-east
+	// end wall toward the lot, one at the back toward the pool.
+	G[EKitLook::Concrete].Box(At(L(-7.0, HY + PD + 0.35), Floor - 0.07f), FVector(1.1f, 0.35f, 0.07f), B.HeadingDeg);
+	G[EKitLook::Concrete].Box(At(L(-7.0, HY + PD + 0.75), GZ(L(-7.0, HY + PD + 0.75)) + 0.02f), FVector(1.1f, 0.3f, 0.07f), B.HeadingDeg);
+	G[EKitLook::Metal].Box(At(L(-7.0, HY + 0.03), Floor + 1.1f), FVector(0.9f, 0.04f, 1.1f), B.HeadingDeg);
+	G[EKitLook::Trim].Box(At(L(-7.0, HY + 0.05), Floor + 2.27f), FVector(1.05f, 0.05f, 0.07f), B.HeadingDeg);
+	G[EKitLook::Metal].Box(At(L(HX + 0.03, 0.0), Floor + 1.05f), FVector(0.04f, 0.5f, 1.05f), B.HeadingDeg);
+	G[EKitLook::Metal].Box(At(L(-11.0, -HY - 0.03), Floor + 1.05f), FVector(0.5f, 0.04f, 1.05f), B.HeadingDeg);
+
+	// Walks from the steps to the nearest end of the shore walkway and to the ramp pier's landward end, with bollards.
+	const FVector2D Steps = L(-7.0, HY + PD + 1.1);
+	auto Nearest = [&](const TArray<FVector2D>& Pts) { FVector2D Best = Pts[0]; for (const FVector2D& Q : Pts) if (FVector2D::Distance(Q, Steps) < FVector2D::Distance(Best, Steps)) Best = Q; return Best; };
+	for (const FMarinaLine& W : Marina.Walkways) if (W.Points.Num()) { const FVector2D E = Nearest(W.Points); Walk(Steps, E, 1.8f); Bollards(Steps, E); }
+	for (const FMarinaLine& P : Marina.Piers)
+	{
+		if (!P.Id.EndsWith(TEXT(".ramp")) || P.Points.Num() < 2) continue;
+		const FVector2D E = GZ(P.Points[0]) >= GZ(P.Points.Last()) ? P.Points[0] : P.Points.Last();
+		Walk(Steps, E, 1.8f);
+		Bollards(Steps, E);
+	}
+	// The back door to the pool's deck.
+	Walk(L(-11.0, -HY - 0.4), L(-11.0, -HY - 15.7), 1.5f);
+
+	// The lot past the north-east end: one row of eight 2.7 m stalls on an aisle, kerbed, its lines painted, a walk to the
+	// end door. Strips of 2.7 m follow the ground.
+	constexpr int32 Stalls = 8;
+	constexpr float StallW = 2.7f, StallD = 5.5f, Aisle = 6.f, LotY0 = 4.f;
+	const float LotX0 = HX + 9.75f;
+	const float LotX1 = LotX0 + Aisle + StallD, LotY1 = LotY0 + Stalls * StallW;
+	for (int32 I = 0; I < Stalls; ++I)
+	{
+		const float Y0 = LotY0 + I * StallW, Y1 = Y0 + StallW;
+		for (const TPair<float, float>& Xs : { TPair<float, float>(LotX0, LotX0 + Aisle), TPair<float, float>(LotX0 + Aisle, LotX1) })
+		{
+			const FVector2D A = L(Xs.Key, Y0), Bq = L(Xs.Key, Y1), Cq = L(Xs.Value, Y1), D = L(Xs.Value, Y0);
+			G[EKitLook::Asphalt].Quad(At(A, GZ(A) + 0.03f), At(Bq, GZ(Bq) + 0.03f), At(Cq, GZ(Cq) + 0.03f), At(D, GZ(D) + 0.03f),
+				{ Xs.Key, Y0 }, { Xs.Key, Y1 }, { Xs.Value, Y1 }, { Xs.Value, Y0 });
+		}
+	}
+	for (int32 I = 0; I <= Stalls; ++I)
+	{
+		const float Y = LotY0 + I * StallW;
+		const FVector2D A = L(LotX0 + Aisle + 0.3f, Y - 0.05f), Bq = L(LotX0 + Aisle + 0.3f, Y + 0.05f), Cq = L(LotX1 - 0.4f, Y + 0.05f), D = L(LotX1 - 0.4f, Y - 0.05f);
+		G[EKitLook::White].Quad(At(A, GZ(A) + 0.045f), At(Bq, GZ(Bq) + 0.045f), At(Cq, GZ(Cq) + 0.045f), At(D, GZ(D) + 0.045f), { 0.f, 0.f }, { 0.f, 0.1f }, { 5.f, 0.1f }, { 5.f, 0.f });
+	}
+	for (const TPair<FVector2D, FVector2D>& K : { TPair<FVector2D, FVector2D>(L(LotX1, LotY0), L(LotX1, LotY1)), TPair<FVector2D, FVector2D>(L(LotX0, LotY1), L(LotX1, LotY1)),
+		TPair<FVector2D, FVector2D>(L(LotX0, LotY0), L(LotX1, LotY0)) })
+	{
+		const FVector2D Mid = 0.5 * (K.Key + K.Value);
+		G[EKitLook::Concrete].Span(K.Key, K.Value, 0.15f, GZ(Mid) - 0.05f, GZ(Mid) + 0.15f);
+	}
+	Walk(L(HX + 0.4, 0.0), L(LotX0, LotY0 + 2.0), 1.5f);
+
+	// The flagpole by the walk: a white mast with a yardarm, lit from its foot.
+	const FVector2D Pole = L(-12.0, HY + 9.0);
+	const float PoleZ = GZ(Pole);
+	G[EKitLook::Concrete].Box(At(Pole, PoleZ + 0.05f), FVector(0.6f, 0.6f, 0.12f), B.HeadingDeg);
+	G[EKitLook::White].Cylinder(At(Pole, PoleZ), 0.08f, 10.f, 10);
+	G[EKitLook::White].Span(Pole - FVector2D(Rot.RotateVector(FVector(1.6, 0, 0))), Pole + FVector2D(Rot.RotateVector(FVector(1.6, 0, 0))), 0.06f, PoleZ + 7.f, PoleZ + 7.08f);
+	G.Lights.Add({ At(Pole + FVector2D(Rot.RotateVector(FVector(0, 1.2, 0))), PoleZ + 0.3f), 2 });
+}
+
 void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& G,
 	bool bDockKitMeshes)
 {
@@ -978,6 +1100,20 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		{
 			G[EKitLook::Concrete].Box(C + FVector(0, 0, 0.05f), FVector(0.5f * B.Size.X + 2.f, 0.5f * B.Size.Y + 2.f, 0.12f), B.HeadingDeg);
 			G[EKitLook::PoolWater].Box(C + FVector(0, 0, 0.12f), FVector(0.5f * B.Size.X, 0.5f * B.Size.Y, 0.06f), B.HeadingDeg);
+			// Marina polish: a 1.2 m pool fence round the deck, posts every 2.4 m, with a gate gap toward the clubhouse's
+			// back walk (pool-local X -5 to -2.6 on the +Y side).
+			const float FX = 0.5f * B.Size.X + 2.1f, FY = 0.5f * B.Size.Y + 2.1f;
+			auto PL = [&](float X, float Y) { return B.Center + FVector2D(Rot.RotateVector(FVector(X, Y, 0.f))); };
+			const FVector2D Ring[] = { PL(-FX, -FY), PL(FX, -FY), PL(FX, FY), PL(-2.6f, FY), PL(-5.f, FY), PL(-FX, FY) };
+			for (int32 I = 0; I < 6; ++I)
+			{
+				if (I == 3) continue;   // the gate
+				const FVector2D A = Ring[I], E = Ring[(I + 1) % 6];
+				const int32 N = FMath::Max(1, FMath::CeilToInt32(FVector2D::Distance(A, E) / 2.4));
+				for (int32 K = 0; K <= N; ++K) G[EKitLook::Metal].Cylinder(FVector(FMath::Lerp(A, E, double(K) / N), Ground + 0.1f), 0.03f, 1.1f, 6);
+				G[EKitLook::Metal].Span(A, E, 0.04f, Ground + 1.16f, Ground + 1.2f);
+				G[EKitLook::Metal].Span(A, E, 0.03f, Ground + 0.22f, Ground + 0.25f);
+			}
 			continue;
 		}
 		const float HX = 0.5f * B.Size.X, HY = 0.5f * B.Size.Y, H = B.Height;
@@ -1001,6 +1137,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		G[EKitLook::Trim].Span(FVector2D(E10), FVector2D(E11), 0.06f, Z0 - 0.25f, Z0);
 		G[EKitLook::Trim].Span(FVector2D(E11), FVector2D(E01), 0.06f, Z0 - 0.25f, Z0);
 		G[EKitLook::Trim].Span(FVector2D(E01), FVector2D(E00), 0.06f, Z0 - 0.25f, Z0);
+		if (B.Kind == TEXT("clubhouse")) BuildClubGrounds(B, Ground, Terrain, Marina, G);
 	}
 
 }
