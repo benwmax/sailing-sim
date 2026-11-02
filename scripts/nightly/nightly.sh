@@ -40,8 +40,27 @@ RESULT=$(grep -E "^gate: " "$N/$DAY.gate.txt" | tail -1)
 UNDER=$(grep -E "UNDER|lost" "$N/$DAY.gate.txt" | tr -s ' ' | head -6 | paste -sd ';' -)
 # #404: a test failure names the tests (the gate's test.out), so the morning line says what broke.
 FAILED=$(grep -E "^Fail" Artifacts/gate/test.out 2>/dev/null | awk '{print $2}' | head -8 | paste -sd ',' -)
+# A view on its floor reads either side of it from run to run (storm High: 44.7 to 45.6 in one session on Nov 2 2026, the
+# same before and after the merges suspected). Each view under its floor is benched once more, alone, in this run; the
+# night breaks only when the rerun is under too, and a lost view (no reading) always breaks it.
+FLAPS=(); BREAKS=()
+if [[ -z "$FAILED" && $RC != 0 && -n "$RESULT" ]]; then
+	while read -r VIEW Q FPS REST; do
+		FLOOR=${REST##* }
+		if ! MAC_LOCK_WAIT=3600 bash scripts/mac-lock.sh take; then BREAKS+=("$VIEW $Q $FPS, no rerun (lock)"); continue; fi
+		PIN_HIGH=1 ONLY=$VIEW bash scripts/bench-visual.sh 12 nightly-rerun "$Q" > "$N/$DAY.rerun-$VIEW-$Q.txt" 2>&1
+		bash scripts/mac-lock.sh drop
+		AGAIN=$(awk -v v="$VIEW" -v q="$Q" '$1 == v && $2 == q { print $3 }' "$N/$DAY.rerun-$VIEW-$Q.txt" | tail -1)
+		if [[ -n "$AGAIN" ]] && awk -v a="$AGAIN" -v f="$FLOOR" 'BEGIN { exit !(a >= f) }'; then FLAPS+=("$VIEW $Q: first $FPS, rerun $AGAIN")
+		else BREAKS+=("$VIEW $Q: $FPS, rerun ${AGAIN:-none}, floor $FLOOR"); fi
+	done < <(grep -E " UNDER [0-9.]+$" "$N/$DAY.gate.txt")
+fi
+# Every view the gate counted (under or lost) must be one rerun and passed for the night to pass.
+COUNTED=$(echo "$RESULT" | grep -oE "[0-9]+ view" | grep -oE "[0-9]+")
 if [[ -n "$FAILED" ]]; then summary "TESTS FAILED main $SHA: $FAILED ($N/$DAY.gate.txt)"
 elif [[ $RC == 0 ]]; then summary "PASS main $SHA: ${RESULT:-gate: pass} ($N/$DAY.csv)"
 elif [[ -z "$RESULT" ]]; then summary "ERROR main $SHA: the gate stopped before the bench (exit $RC): $(grep -vE '^\[gate' "$N/$DAY.gate.txt" | tail -1)"
-else summary "FLOOR BREAK main $SHA: $RESULT ${UNDER:+[$UNDER]} ($N/$DAY.csv)"; fi
+elif [[ ${#BREAKS[@]} == 0 && ${#FLAPS[@]} -gt 0 && "${COUNTED:-0}" == "${#FLAPS[@]}" ]]; then
+	summary "PASS main $SHA (flapping: $(IFS=';'; echo "${FLAPS[*]}")) ($N/$DAY.csv)"
+else summary "FLOOR BREAK main $SHA: $RESULT ${UNDER:+[$UNDER]}${BREAKS:+ [reruns: $(IFS=';'; echo "${BREAKS[*]}")]} ($N/$DAY.csv)"; fi
 echo "nightly done $(date -u +%T) rc=$RC"
