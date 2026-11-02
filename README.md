@@ -1,6 +1,8 @@
-# SailingSim
+# Ready About: Sailing
 
-A technically accurate sailing simulator built in Unreal Engine 5.8. First boat: J/22. Home water: Lake Ray Hubbard, Texas, sailing from Rush Creek Yacht Club in Heath.
+Ready About: Sailing (short form Ready About) is a realistic sailing simulator built in Unreal Engine 5.8: learn to sail
+on a Texas lake, then keep sailing. The code, the module, the project file and the test names keep the working name
+SailingSim. First boat: J/22. Home water: Lake Ray Hubbard, Texas, sailing from Rush Creek Yacht Club in Heath.
 
 The research and phased plan live in the Claude Doc "Sailing Game: Research and Phased Plan". Phases so far:
 0 (project and build loop), 1 (J/22 physics), 2 (wind, waves and weather), 3 (the home lake), 4 (the fleet),
