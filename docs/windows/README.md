@@ -164,7 +164,10 @@ scripts\windows\friday.ps1 -NoCheckout      # what's checked out (a dry run of a
 ```
 
 It refuses a tree with tracked changes, and a commit that already has a `Packaged\Shipping-<commit>` folder: a build is
-never packaged over another. Then, in about 15 minutes on the 4090:
+never packaged over another. It stops, too, when the checkout brings a different `friday.ps1`
+(PowerShell had already read the old one): run `scripts\windows\friday.ps1 -NoCheckout` from the checked-out commit.
+The smokes run on a copy of the PC's own `%LOCALAPPDATA%\SailingSim\Saved`, which is held aside and put back however
+they end. Then, in about 15 minutes on the 4090:
 
 1. `build.ps1`, then `package-win.ps1 -Config Shipping -Full -Into Shipping-<commit>` (a full cook, into a new folder).
    For the package only, it writes `Content\BuildStamp\version.txt` ("<commit>, <date>", git-ignored, staged by

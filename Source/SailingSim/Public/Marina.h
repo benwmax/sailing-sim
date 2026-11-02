@@ -43,6 +43,18 @@ struct FMarinaAlongside
 	uint8 BoatType = 0;
 };
 
+/** Club docks pass 3: a launch ramp's concrete slab beside its pier (`*.ramp`), from dry ground down into the water. */
+struct FMarinaRamp
+{
+	FString PierId;
+	FVector2D In = FVector2D::ZeroVector, Out = FVector2D::ZeroVector;  // the slab's head corners, pier side first
+	FVector2D Dir = FVector2D(1.0, 0.0);                                // down the ramp, toward the water
+	float Top = 0.35f;                                                  // the head's height above the water (m)
+	static constexpr float Width = 5.f, Length = 18.f, Foot = -1.4f;
+	/** How far down the slab it stays above the water (m): the part a boat can run into. */
+	float DryLength() const { return Length * Top / (Top - Foot); }
+};
+
 struct FMarinaBuilding
 {
 	FString Id;
@@ -61,14 +73,17 @@ struct SAILINGSIM_API FMarina
 	TArray<FMarinaBuilding> Buildings;
 	TArray<FMarinaSlip> Slips;
 	TArray<FMarinaAlongside> Alongside;
+	TArray<FMarinaRamp> Ramps;
 	int32 HomeSlip = INDEX_NONE;
 
 	bool IsLoaded() const { return Rows.Num() > 0 || Piers.Num() > 0; }
 	/** Reads the layout and lays out the slips (deterministic occupancy). */
 	bool Load(const FString& Path);
-	/** Visual V7: Catalina 30s alongside the fixed piers, on whichever side has the water for them. */
+	/** Visual V7: Catalina 30s alongside the fixed piers, on whichever side has the water for them (and no launch ramp: PlaceRamps first). */
 	void PlaceAlongside(TFunctionRef<double(double, double)> DepthAt);
-	/** Every deck, breakwater and berthed boat as polylines for the obstacles: (points, kind, half-width). */
+	/** Club docks pass 3: the launch ramps beside the `*.ramp` piers, their heads walked up the beach to dry ground. */
+	void PlaceRamps(TFunctionRef<double(double, double)> HeightAt);
+	/** Every deck, breakwater, berthed boat and the dry part of each ramp as polylines for the obstacles: (points, kind, half-width). */
 	void ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, const FString&, float)> Visit) const;
 	/** The marina's footprint plus a margin: OSM docks inside it are replaced by the marina's own (drawn and in physics). */
 	FBox2D Bounds(double Margin = 20.0) const;

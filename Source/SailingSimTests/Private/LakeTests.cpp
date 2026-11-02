@@ -800,6 +800,17 @@ bool FSailingMarinaTest::RunTest(const FString& Parameters)
 		M.Slips.FilterByPredicate([](const FMarinaSlip& S) { return S.bOccupied; }).Num(), *Home.Id, Home.Center.X, Home.Center.Y, HomeDepth, Shallow));
 	TestEqual(TEXT("Every drawn deck is an obstacle"), Missing, 0);
 	TestTrue(TEXT("The home slip floats a J/22"), HomeDepth > 1.2);
+	// Club docks pass 3: the launch ramp starts on dry ground, and only its dry part stops a boat.
+	if (TestEqual(TEXT("One launch ramp"), M.Ramps.Num(), 1))
+	{
+		const FMarinaRamp& R = M.Ramps[0];
+		const FVector2D Head = 0.5 * (R.In + R.Out), Wet = Head + R.Dir * (R.DryLength() + 3.0);
+		AddInfo(FString::Printf(TEXT("Ramp head %.2f m up at (%.1f, %.1f), dry for %.1f of %.0f m"), R.Top, Head.X, Head.Y, R.DryLength(), FMarinaRamp::Length));
+		TestTrue(TEXT("The ramp's head is on dry ground"), Lake.Terrain.HeightAt(Head.X, Head.Y) > 0.3);
+		TestTrue(TEXT("The ramp runs down into the water"), R.DryLength() > 1.0 && R.DryLength() < FMarinaRamp::Length);
+		TestTrue(TEXT("The ramp's dry part is an obstacle"), Covered(Head + R.Dir * (0.5 * R.DryLength()), 0.0));
+		TestFalse(TEXT("The submerged slab is not"), Covered(Wet, 0.0));
+	}
 	// Moored in the home slip, the boat lies between its fingers without touching them.
 	FBoatModel Boat;
 	Boat.SetTerrain(&Lake.Terrain);
