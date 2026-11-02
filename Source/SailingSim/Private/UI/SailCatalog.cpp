@@ -96,8 +96,8 @@ namespace SailCatalog
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
-				W.Facts.Add({ TEXT("6"), TEXT("Lessons in Day Sailor") });
-				W.Facts.Add({ TEXT("435.5 ft"), TEXT("Normal pool") });
+				W.Facts.Add({ TEXT("6"), TEXT("Day Sailor lessons") });
+				W.Facts.Add({ TEXT("435.5 ft"), TEXT("Pool level") });
 				if (W.Spots.Num() > 0) { W.Spots[0].Tag = TEXT("Home"); W.Spots[0].StartType = TEXT("At the dock"); }
 				Out.Add(W);
 			}
