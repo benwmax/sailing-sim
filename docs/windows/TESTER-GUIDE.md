@@ -11,6 +11,8 @@ screen's bottom corner shows the same build number.
 2. Unzip the whole zip into a folder of its own (not inside another game's folder, and not run from inside the zip).
 3. Run `SailingSim.exe`. If Windows SmartScreen says it doesn't recognise the app, choose More info, then Run anyway:
    test builds aren't signed.
+4. If it says the Microsoft Visual C++ Redistributable is needed and asks to install it, choose Yes (the installer is in
+   the zip). Update your graphics driver from NVIDIA, AMD or Intel if it's more than a few months old.
 
 ## The first launch
 

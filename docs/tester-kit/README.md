@@ -28,7 +28,9 @@ Windows 10 or 11, 64-bit, a DirectX 12 graphics card, about 10 GB free.
 1. Unzip `ReadyAbout-<build>-Win64.zip` into a folder of its own.
 2. Run `SailingSim.exe` (the program keeps its working name). Test builds aren't signed: if SmartScreen stops it, choose
    More info, then Run anyway.
-3. The first launch compiles shaders for your card: the title can take a few minutes, and the first minute on the water
+3. If it says the Microsoft Visual C++ Redistributable is needed and asks to install it, choose Yes: the installer is in
+   the zip, and most PCs that play games already have it. A current graphics driver helps (NVIDIA, AMD or Intel's own).
+4. The first launch compiles shaders for your card: the title can take a few minutes, and the first minute on the water
    can stutter. Once per build.
 
 A pad (Xbox layout) works everywhere. On the water `/` (or a tap of View) shows the controls card; Settings > Controls
@@ -58,7 +60,8 @@ minute of the boat's numbers (speed, wind, controls). No name, account or other 
 
 - With Settings > Gameplay > **Send crash reports** on, the report goes straight to the developer.
 - Off, it's kept on your computer in `%LOCALAPPDATA%\SailingSim\Saved\Feedback`: zip that folder and send it.
-- After a crash, send `%LOCALAPPDATA%\SailingSim\Saved\Crashes` and `...\Saved\Logs` too.
+- After a crash, send `%LOCALAPPDATA%\SailingSim\Saved\Crashes` too (a folder per crash). The Shipping build writes no
+  log file, so `...\Saved\Logs` is usually empty.
 
 Anything is worth sending: a crash, a boat that does what a real one wouldn't, a lesson or menu that confused you, a slow
 frame rate (say the Settings > Graphics tier), and what you enjoyed. Say the build number from the title screen.
