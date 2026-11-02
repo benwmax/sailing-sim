@@ -255,11 +255,11 @@ namespace SailFrontEndImpl
 		bool bDrag = false;
 	};
 
-	TSharedRef<SWidget> Fact(const FString& Value, const FString& Label)
+	TSharedRef<SWidget> Fact(const FString& Value, const FString& Label, bool bWrapLabel = false)
 	{
 		return SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Value, EType::Value, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Label, EType::Label, Muted) ];
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Label, EType::Label, Muted, bWrapLabel) ];
 	}
 
 	TSharedRef<SWidget> SpecRow(const FString& Label, const FString& Value)
@@ -945,7 +945,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 		const FString Locked = Career.WorldLockReason(W.Id);
 		TSharedPtr<FSlateBrush> Art = TextureBrush(W.CardTexture);
 		TSharedRef<SHorizontalBox> Facts = SNew(SHorizontalBox);
-		for (const TPair<FString, FString>& F : W.Facts) Facts->AddSlot().FillWidth(1.f)[ Fact(F.Key, F.Value) ];
+		// #437: labels wrap inside their column, with a gutter, so five facts don't run into each other at 1920 wide.
+		for (const TPair<FString, FString>& F : W.Facts) Facts->AddSlot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)[ Fact(F.Key, F.Value, true) ];
 		const int32 Index = W.Index;
 		// Bean's UI feedback (Oct 27): the description scrolls in its 80 px (the wheel over the card, Up and Down, the D-pad,
 		// Page Up and Down, the right stick), with a thin bar that shows only when there is more.
@@ -2307,6 +2308,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		return M == ECareerMedal::Gold ? Hex(0xE2B84E) : (M == ECareerMedal::Silver ? Hex(0xC4CDD3) : (M == ECareerMedal::Bronze ? Hex(0xC08552) : Dim));
 	};
 	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Career); Show(Stack.Last(), true); };
+	// #438: until a tier is picked, focus starts on the next lesson to sail (the first without a medal), not the tier card.
+	const bool bFocusLesson = CareerTierId.IsEmpty();
+	bool bLessonFocused = false;
 	// The tier on show: the one chosen, else the first open tier without its certificate.
 	const FCareerTier* Shown = Content.Tier(CareerTierId);
 	for (const FCareerTier& T : Content.Tiers)
@@ -2324,12 +2328,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		const bool bOpen = Career.IsTierOpen(T.Id), bHeld = Career.HasCertificate(T.CertificateId);
 		FString State;
 		if (bHeld) State = TEXT("Certificate earned");
+		else if (!T.IsReady()) State = TEXT("Lessons to come");   // #440: coming, not open, until it has lessons
 		else if (!bOpen)
 		{
 			const FCareerTier* By = Content.Tiers.FindByPredicate([&T](const FCareerTier& X) { return X.Unlocks.Tiers.Contains(T.Id); });
 			State = By ? FString::Printf(TEXT("Earn the %s"), *By->CertificateName) : FString(TEXT("Locked"));
 		}
-		else if (!T.IsReady()) State = TEXT("Lessons to come");
 		else State = FString::Printf(TEXT("%d of %d lessons · %d at silver"), Career.LessonsAtLeast(T, ECareerMedal::Bronze), T.Lessons.Num(), Career.LessonsAtLeast(T, ECareerMedal::Silver));
 		const FString Id = T.Id;
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(16.f, 12.f)).IsSelected_Lambda([Shown, Id]() { return Shown && Shown->Id == Id; })
@@ -2339,8 +2343,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(T.Name, EType::CardTitleS, bOpen ? Fg : Muted) ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(bHeld ? TEXT("Certified") : (bOpen ? TEXT("Open") : TEXT("Locked")), bHeld) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(T.Name, EType::CardTitleS, bOpen && T.IsReady() ? Fg : Muted) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(bHeld ? TEXT("Certified") : (!T.IsReady() ? TEXT("Coming") : (bOpen ? TEXT("Open") : TEXT("Locked"))), bHeld) ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(State, EType::Small, Muted) ]
 		];
@@ -2398,6 +2402,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(104.f)[ SailUI::Text(MedalText, EType::Label, MedalColour(M)) ] ]
 			];
 			Detail->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ Row ];
+			if (bFocusLesson && bOpen && !bLessonFocused && M == ECareerMedal::None)
+			{
+				E.Focus = Row;
+				bLessonFocused = true;
+			}
 			// #402: a lesson sailed to a medal whose quiz has not passed: take the quiz here, without sailing it again.
 			if (bOpen && M != ECareerMedal::None && !(R && R->bQuizPassed) && !SailCareer::IsFreeSail())
 			{
@@ -2466,7 +2475,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Tiers ] ]
 			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
 		];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Tiers, lessons")),
+		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) },
 		SailCareer::IsFreeSail() ? TEXT("Free Sail: lessons sail without medals") : TEXT("A lesson sails its drill; Free Sail on the title opens everything"));
 	return E;
 }
