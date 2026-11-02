@@ -346,7 +346,8 @@ namespace SliceFirstHour
 			if (Phase == 0 && T > 3.0) { Boat.GetMooringLines().clear(); Phase = 1; }   // cast off (the crew lets the lines go)
 			if (Phase == 1)
 			{
-				C.Throttle = -0.4;
+				// Slow astern between the fingers: at -0.4 the prop walk set her stern onto a finger at 0.9 kn.
+				C.Throttle = Backed < 6.0 ? -0.25 : -0.4;
 				C.Tiller = HelmToward(Boat, SlipHeading, true, 0.6);
 				if (Backed > 8.5) { Phase = 2; Run.Notes += FString::Printf(TEXT("; backed out at %.0f s"), T); }
 			}
