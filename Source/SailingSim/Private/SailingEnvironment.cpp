@@ -1273,10 +1273,21 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		PendingThunder.Add({ float(FWeatherSystem::ThunderDelaySeconds(S, Listener.X, Listener.Y)), FMath::Clamp(2500.f / FMath::Max(Distance, 300.f), 0.1f, 1.f) });
 	}
 
+	// Stills (docs/storm-lumen/): -SailingFlashHold holds the storm's first strike at full flash, so a still shows the
+	// scene lit by lightning (a flash lasts about 0.3 s; a bench's screenshot never lands on one).
+	static SailingArgs::FCachedFlag FlashHoldArg(TEXT("SailingFlashHold"));
+	const bool bFlashHold = FlashHoldArg.Get() && !bNoLightning && !Strikes.empty();
+	if (bFlashHold)
+	{
+		const FLightningStrike& S = Strikes[0];
+		FlashParams = FVector4f(float(S.X), float(S.Y), S.bCloudToGround ? 2500.f : 4500.f, 1.f);
+		FlashLight->SetWorldRotation(FVector(Listener.X - S.X, Listener.Y - S.Y, -1500.f).GetSafeNormal().Rotation());
+		Flash = 1.f;
+	}
 	// Flash: a few flickers, then gone.
 	if (Flash > 0.f)
 	{
-		const float Flicker = 0.6f + 0.4f * FMath::Abs(FMath::Sin(GetWorld()->GetTimeSeconds() * 47.f));
+		const float Flicker = bFlashHold ? 1.f : 0.6f + 0.4f * FMath::Abs(FMath::Sin(GetWorld()->GetTimeSeconds() * 47.f));
 		FlashLight->SetIntensity(14.f * Flash * Flicker);
 		Flash = FMath::Max(0.f, Flash - DeltaSeconds * 3.5f);
 	}
