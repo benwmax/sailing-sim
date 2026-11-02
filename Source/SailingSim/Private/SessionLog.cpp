@@ -132,7 +132,7 @@ FString SailSessionLog::Tail(int32 MaxLines)
 	FString Text;
 	if (!FFileHelper::LoadFileToString(Text, *Path(), FFileHelper::EHashOptions::None, FILEREAD_AllowWrite)) return FString();
 	TArray<FString> Lines;
-	Text.ParseIntoArrayLines(Lines, false);
+	Text.ParseIntoArrayLines(Lines, true);   // every line ends in a newline: no empty last line
 	FString Out;
 	for (int32 I = FMath::Max(0, Lines.Num() - MaxLines); I < Lines.Num(); ++I) { Out += Lines[I]; Out += TEXT("\n"); }
 	return Out;
