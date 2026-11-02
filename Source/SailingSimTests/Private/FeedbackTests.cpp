@@ -141,8 +141,9 @@ bool FSailSessionLogTest::RunTest(const FString&)
 	const FString Dir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation/SessionLog"));
 	IFileManager::Get().DeleteDirectory(*Dir, false, true);
 	const FString Was = SailSessionLog::OpenIn(Dir, true);
-	SAIL_LOG(Display, TEXT("Session: world %s, boat %s"), TEXT("ray-hubbard"), TEXT("J22"));
-	SAIL_LOG(Warning, TEXT("Save: could not write /Users/dana/Library/Containers/x/profile.json"));
+	// What SAIL_LOG writes to the session log (its UE_LOG half needs LogSailing, which the game module keeps to itself).
+	SailSessionLogLine(TEXT("Display"), FString::Printf(TEXT("Session: world %s, boat %s"), TEXT("ray-hubbard"), TEXT("J22")));
+	SailSessionLogLine(TEXT("Warning"), TEXT("Save: could not write /Users/dana/Library/Containers/x/profile.json"));
 	SailSessionLog::Write(TEXT("Error"), TEXT("C:\\Users\\Dana Smith\\AppData\\Local\\SailingSim\\Saved for dana.smith@example.com"));
 	SailSessionLog::Write(TEXT("Display"), TEXT("Drill: Leave the dock started\nwith a second line"));
 	const FString Tail = SailSessionLog::Tail(20);
