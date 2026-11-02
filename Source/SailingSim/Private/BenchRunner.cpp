@@ -35,7 +35,8 @@ namespace SailingArgs
 	FString ShippingSmokeArgs(const TCHAR* CommandLine)
 	{
 		if (!CommandLine || !FParse::Param(CommandLine, TEXT("SailingShippingSmoke"))) return FString();
-		static const TCHAR* Allowed[] = { TEXT("-SailingUIScript="), TEXT("-SailingWorld="), TEXT("-SailingLaunch="), TEXT("-SailingShot="), TEXT("-SailingBench=") };
+		// #399: -SailingSlice=0 lets the smoke walk to the Gallery in a slice build (its menus hide it).
+		static const TCHAR* Allowed[] = { TEXT("-SailingUIScript="), TEXT("-SailingWorld="), TEXT("-SailingLaunch="), TEXT("-SailingShot="), TEXT("-SailingBench="), TEXT("-SailingSlice=") };
 		TArray<FString> Tokens;
 		FString(CommandLine).ParseIntoArrayWS(Tokens);
 		FString Out;

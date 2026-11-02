@@ -1,4 +1,9 @@
-# SailingSim: notes for Claude sessions
+# Ready About: Sailing (working name SailingSim): notes for Claude sessions
+
+The game is "Ready About: Sailing" (short form "Ready About", Bean Nov 2 2026) in player-facing text, the window title,
+the docs and the Friday zip; the module, classes, .uproject, `SailingSim.*` tests, ini sections, bundle id, Sentry
+names, save folder and scripts keep SailingSim.
+
 
 Unreal Engine 5.8.3 C++ project. Builds run on Bean's Mac (Apple M5 Pro, Xcode 27) at
 `/Users/ben/myProjects/sailing-sim`. Engine at `/Users/Shared/Epic Games/UE_5.8` (override with `UE_ROOT`).

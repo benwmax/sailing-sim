@@ -5,16 +5,20 @@
 #   Then: build.ps1, a full-cook Shipping package into Packaged\Shipping-<commit> (never over one that exists), with the
 #   version line on the title screen (Content\BuildStamp\version.txt, removed afterwards); the smoke checks by launch args
 #   and UI script only (no synthetic input): the game reaches Title > Gallery and renders its thumbnails, and two Ultra
-#   Lake benches (the second reported: the first after a cook runs slow); the zip Packaged\SailingSim-<commit>-Win64.zip
+#   Lake benches (the second reported: the first after a cook runs slow); the zip Packaged\ReadyAbout-<commit>-Win64.zip
 #   (Windows' own tar.exe: zip64, the .ucas is over 2 GB) with TESTER-GUIDE.md in it; Packaged\Shipping-<commit>\BUILD.md
 #   (commit, date, fps, the checks, the crash logs' place, what merged since the last Friday build).
 #   Crash reports: a Sentry DSN from Artifacts\sentry\dsn.txt (or $env:SENTRY_DSN) is appended to
 #   Config\Windows\WindowsEngine.ini for the cook and the file restored afterwards; the Shipping symbols go up with
 #   sentry-cli when it and Artifacts\sentry\auth.token and project.txt are there (skipped otherwise). All git-ignored.
+#   The slice build (#399): [SailingSim.Slice] bSliceBuild=True goes into the same ini for the cook, so the testers' menus
+#   show only the vertical slice (USailingSettings::SliceOnly); -FullGame leaves it out. The Gallery smoke runs with
+#   -SailingSlice=0 (its menus hide the Gallery).
 #   Result line in Artifacts\friday-<commit>.txt. Bean does the gamepad and settings checks by hand.
 param(
 	[string]$Commit = '',
 	[switch]$NoCheckout,
+	[switch]$FullGame,
 	[int]$BenchSeconds = 30
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
@@ -60,7 +64,7 @@ try {
 	$Subject = (git log -1 --format=%s HEAD).Trim()
 	$Into = "Shipping-$Sha"
 	$Folder = Join-Path $Packaged $Into
-	$Zip = Join-Path $Packaged "SailingSim-$Sha-Win64.zip"
+	$Zip = Join-Path $Packaged "ReadyAbout-$Sha-Win64.zip"
 	if (Test-Path $Folder) { throw "$Folder exists: this commit already has a Friday build" }
 	if (Test-Path $Zip) { throw "$Zip exists" }
 	Step "Friday build of $Sha ($Subject)"
@@ -89,6 +93,10 @@ try {
 			[System.IO.File]::AppendAllText($EngineIni, $Section, [System.Text.Encoding]::ASCII)
 		} else {
 			Write-Host '  No Sentry DSN (Artifacts\sentry\dsn.txt or SENTRY_DSN): the build carries no crash-report key'
+		}
+		if (-not $FullGame) {
+			Step 'Slice build: the menus show the vertical slice only (-FullGame for everything)'
+			[System.IO.File]::AppendAllText($EngineIni, "`r`n[SailingSim.Slice]`r`nbSliceBuild=True`r`n", [System.Text.Encoding]::ASCII)
 		}
 		Step "Packaging Shipping into Packaged\$Into (full cook)"
 		& (Join-Path $PSScriptRoot 'package-win.ps1') -Config Shipping -Full -Into $Into
@@ -120,7 +128,7 @@ try {
 	$Thumbs = Join-Path $Saved 'GalleryThumbs'
 	Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Thumbs
 	$Walk = ((1..8 | ForEach-Object { 'Wait' }) + (1..20 | ForEach-Object { 'Down' }) + @('Up', 'Up', 'Enter') + (1..10 | ForEach-Object { 'Wait' }) + @('Quit')) -join ','
-	$GalleryExit = Run-Game "-SailingUIScript=$Walk" 300
+	$GalleryExit = Run-Game "-SailingSlice=0 -SailingUIScript=$Walk" 300
 	$ThumbCount = if (Test-Path $Thumbs) { @(Get-ChildItem $Thumbs -Filter *.png).Count } else { 0 }
 	$GalleryOk = $GalleryExit -eq 0 -and $ThumbCount -gt 100
 	Write-Host "  exit $GalleryExit, $ThumbCount thumbnails: $(if ($GalleryOk) { 'ok' } else { 'FAILED' })"
@@ -145,11 +153,11 @@ try {
 	$Merged = if ($PrevSha) { @(git log --first-parent --format='- %s (%h)' "$PrevSha..HEAD") } else { @(git log --first-parent --format='- %s (%h)' -20 HEAD) }
 	$Since = if ($PrevSha) { "since the last Friday build, ``$PrevSha``" } else { 'the last 20 on main (no earlier Friday build on this PC)' }
 	$Md = @(
-		"# SailingSim Friday build $Sha",
+		"# Ready About: Sailing, Friday build $Sha",
 		'',
 		"- Commit: ``$Sha`` ($Subject)",
 		"- Built: $(Get-Date -Format 'yyyy-MM-dd HH:mm') on Bean's RTX 4090 PC, Windows Shipping, full cook",
-		"- Zip: ``Packaged\SailingSim-$Sha-Win64.zip`` (unzip anywhere, run ``SailingSim.exe``; see TESTER-GUIDE.md inside)",
+		"- Zip: ``Packaged\ReadyAbout-$Sha-Win64.zip`` (unzip anywhere, run ``SailingSim.exe``; see TESTER-GUIDE.md inside)",
 		"- The title screen's bottom corner reads: Build $Sha, $Date",
 		'',
 		'## Smoke checks (launch args and a UI script only; gamepad and settings by hand)',

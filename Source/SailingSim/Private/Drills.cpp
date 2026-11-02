@@ -24,6 +24,7 @@ namespace
 void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double WindFromRad)
 {
 	Drill = InDrill;
+	bDinghy = IsDinghy(Boat.GetConfig());
 	Steps.Reset();
 	Marks.Reset();
 	Step = 0;
@@ -49,7 +50,8 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 		Marks = { Start2D + Up * 250.0, Start2D + Up * 125.0 + Across * 180.0, Start2D };
 		Steps = { TEXT("Beat to the windward mark, tacking as needed (close-hauled)"), TEXT("Bear away and reach to the wing mark"),
 			TEXT("Reach back to the start mark") };
-		Status = TEXT("Sail close-hauled toward the windward mark. Keep the jib telltales streaming.");
+		Status = bDinghy ? TEXT("Sail close-hauled toward the windward mark. Keep the telltales on the sail streaming.")
+			: TEXT("Sail close-hauled toward the windward mark. Keep the jib telltales streaming.");
 		break;
 	case ESailingDrill::HeaveTo:
 		Steps = { TEXT("Sail close-hauled"), TEXT("Back the jib: tack without releasing it, or hold it to windward (B)"),
@@ -83,6 +85,11 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 		break;
 	default:
 		break;
+	}
+	if (bDinghy)
+	{
+		const TArray<FString> Own = DinghySteps(Drill);
+		if (Own.Num()) Steps = Own;
 	}
 }
 
@@ -275,4 +282,28 @@ std::vector<FMooringLine> FindDockLines(const FBoatModel& Boat, const std::vecto
 	}
 	if (Lines.size() < 2) Lines.clear();
 	return Lines;
+}
+
+bool FDrillRunner::CanSail(ESailingDrill InDrill, const FBoatConfig& Config)
+{
+	return !IsDinghy(Config) || (InDrill != ESailingDrill::HeaveTo && InDrill != ESailingDrill::CrewOverboardFigureEight);
+}
+
+TArray<FString> FDrillRunner::DinghySteps(ESailingDrill InDrill)
+{
+	// Same count and order as Start's (Update picks the step by index); Inputs/drills/validate.py reads these too.
+	switch (InDrill)
+	{
+	case ESailingDrill::LeaveTheDock:
+		return { TEXT("Check the wind and plan which way you will leave"), TEXT("Cast off the dock line (T) with the sail luffing"),
+			TEXT("Sail out without touching the docks or other boats"), TEXT("Get 100 m clear of the marina") };
+	case ESailingDrill::CrewOverboardQuickStop:
+		return { TEXT("Shout \"Crew overboard!\" and head up into the wind at once"), TEXT("Keep turning: tack, ease the sheet, and circle the person"),
+			TEXT("Approach slowly and stop alongside them") };
+	case ESailingDrill::ReturnAndDock:
+		return { TEXT("Approach the dock on a close reach or heading into the wind"), TEXT("Let the sheet go to slow down well before the dock"),
+			TEXT("Come alongside under 1 knot and get the line on (T)") };
+	default:
+		return {};
+	}
 }
