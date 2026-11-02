@@ -348,7 +348,11 @@ namespace SliceFirstHour
 			{
 				// Slow astern between the fingers: at -0.4 the prop walk set her stern onto a finger at 0.9 kn.
 				C.Throttle = Backed < 6.0 ? -0.25 : -0.4;
-				C.Tiller = HelmToward(Boat, SlipHeading, true, 0.6);
+				// Hold the slip's centreline against the prop walk: off to starboard, turn the bow to starboard so the stern,
+				// going first, comes back to port (and the other way round).
+				const FVector2D Starboard(-Bow.Y, Bow.X);
+				const double Off = FVector2D::DotProduct(P - Home.Center, Starboard);
+				C.Tiller = HelmToward(Boat, SlipHeading + FMath::Clamp(0.15 * Off, -0.17, 0.17), true, 0.6);
 				if (Backed > 8.5) { Phase = 2; Run.Notes += FString::Printf(TEXT("; backed out at %.0f s"), T); }
 			}
 			else if (Phase == 2)
