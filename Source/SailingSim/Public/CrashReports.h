@@ -22,7 +22,7 @@ namespace SailCrashReports
 
 	/** The log every report carries instead of the raw file (the SDK's own log attachment is off in DefaultEngine.ini):
 	 *  the last ScrubbedLogLines lines of the game's log, scrubbed, rewritten off the game thread every
-	 *  ScrubbedLogRefreshSeconds once the player has said yes, so a crash uploads it too. Empty in Shipping (no log). */
+	 *  ScrubbedLogRefreshSeconds once the player has said yes, so a crash uploads it too. In Shipping (no engine log) it is the session log's tail: SessionLog.h. */
 	SAILINGSIM_API FString ScrubbedLogPath();
 	inline constexpr float ScrubbedLogRefreshSeconds = 15.f;
 	inline constexpr int32 ScrubbedLogLines = 400;

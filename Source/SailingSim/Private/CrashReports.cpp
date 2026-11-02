@@ -1,4 +1,5 @@
 #include "CrashReports.h"
+#include "SessionLog.h"
 #include "Feedback.h"
 #include "SailingSim.h"
 #include "Async/Async.h"
@@ -34,7 +35,7 @@ namespace SailCrashReportsLocal
 		Async(EAsyncExecution::ThreadPool, []()
 		{
 			FString Text;
-			const FString Log = FPlatformOutputDevices::GetAbsoluteLogFilename();
+			const FString Log = SailSessionLog::ReportLogPath();   // the session log in Shipping (no engine log there)
 			if (FFileHelper::LoadFileToString(Text, *Log, FFileHelper::EHashOptions::None, FILEREAD_AllowWrite))
 			{
 				TArray<FString> Lines;

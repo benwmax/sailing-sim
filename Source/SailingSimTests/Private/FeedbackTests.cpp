@@ -1,6 +1,8 @@
 #include "Misc/AutomationTest.h"
 #include "Feedback.h"
 #include "CrashReports.h"
+#include "SessionLog.h"
+#include "SailingSim.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -124,6 +126,56 @@ bool FSailFeedbackJpegTest::RunTest(const FString&)
 	TestTrue(TEXT("jpeg under 8 MB"), SailFeedback::ShotToJpeg(PngPath, JpegPath) && IFileManager::Get().FileSize(*JpegPath) > 0);
 	TestTrue(TEXT("jpeg under 40 kB after halving"), SailFeedback::ShotToJpeg(PngPath, JpegPath, 40 * 1024) && IFileManager::Get().FileSize(*JpegPath) <= 40 * 1024);
 	TestFalse(TEXT("no png, no jpeg"), SailFeedback::ShotToJpeg(Dir / TEXT("missing.png"), JpegPath));
+	IFileManager::Get().DeleteDirectory(*Dir, false, true);
+	return true;
+}
+
+/**
+ * The game's session log (docs/session-log/), which Shipping keeps where it has no engine log: SAIL_LOG lines and events
+ * land in it with the time since launch, the tail reads them back, paths lose the user's name and e-mail addresses go,
+ * each launch rotates the last ones, and a launch's log stops at its cap.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailSessionLogTest, "SailingSim.Feedback.SessionLog", SailFeedbackTestsLocal::Flags_)
+bool FSailSessionLogTest::RunTest(const FString&)
+{
+	const FString Dir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation/SessionLog"));
+	IFileManager::Get().DeleteDirectory(*Dir, false, true);
+	const FString Was = SailSessionLog::OpenIn(Dir, true);
+	// What SAIL_LOG writes to the session log (its UE_LOG half needs LogSailing, which the game module keeps to itself).
+	SailSessionLogLine(TEXT("Display"), FString::Printf(TEXT("Session: world %s, boat %s"), TEXT("ray-hubbard"), TEXT("J22")));
+	SailSessionLogLine(TEXT("Warning"), TEXT("Save: could not write /Users/dana/Library/Containers/x/profile.json"));
+	SailSessionLog::Write(TEXT("Error"), TEXT("C:\\Users\\Dana Smith\\AppData\\Local\\SailingSim\\Saved for dana.smith@example.com"));
+	SailSessionLog::Write(TEXT("Display"), TEXT("Drill: Leave the dock started\nwith a second line"));
+	const FString Tail = SailSessionLog::Tail(20);
+	AddInfo(Tail);
+	TestTrue(TEXT("The header names the game and the build"), Tail.Contains(TEXT("Ready About: Sailing session log")) && Tail.Contains(TEXT("Build ")));
+	TestTrue(TEXT("A Display line, no level shown"), Tail.Contains(TEXT("] Session: world ray-hubbard, boat J22")));
+	TestTrue(TEXT("A warning says so"), Tail.Contains(TEXT("] Warning: Save: could not write ~/Library")));
+	TestTrue(TEXT("An error says so"), Tail.Contains(TEXT("] Error: ~\\AppData")));
+	TestFalse(TEXT("No user name"), Tail.Contains(TEXT("dana")) || Tail.Contains(TEXT("Dana")));
+	TestTrue(TEXT("No e-mail address"), !Tail.Contains(TEXT("example.com")) && Tail.Contains(TEXT("<email>")));
+	TestTrue(TEXT("One line per event"), Tail.Contains(TEXT("started with a second line")));
+	TestTrue(TEXT("Times since launch"), Tail.Contains(TEXT("[+")));
+	TestTrue(TEXT("The tail is a tail"), SailSessionLog::Tail(2).Contains(TEXT("Drill: Leave the dock")) && !SailSessionLog::Tail(2).Contains(TEXT("Session:")));
+	// Each launch rotates: the last KeepLaunches kept.
+	for (int32 I = 0; I < SailSessionLog::KeepLaunches + 1; ++I)
+	{
+		SailSessionLog::OpenIn(Dir, true);
+		SailSessionLog::Write(TEXT("Display"), FString::Printf(TEXT("launch %d"), I));
+	}
+	TestTrue(TEXT("The oldest kept launch is there"), IFileManager::Get().FileExists(*(Dir / FString::Printf(TEXT("session-%d.txt"), SailSessionLog::KeepLaunches - 1))));
+	TestFalse(TEXT("... and none older"), IFileManager::Get().FileExists(*(Dir / FString::Printf(TEXT("session-%d.txt"), SailSessionLog::KeepLaunches))));
+	FString Prev;
+	FFileHelper::LoadFileToString(Prev, *(Dir / TEXT("session-1.txt")));
+	TestTrue(TEXT("The previous launch is session-1"), Prev.Contains(FString::Printf(TEXT("launch %d"), SailSessionLog::KeepLaunches - 1)));
+	// A launch's log stops at its cap, with a note.
+	const FString Big = FString::ChrN(1000, 'x');
+	for (int32 I = 0; I < int32(SailSessionLog::MaxBytes / 1000) + 10; ++I) SailSessionLog::Write(TEXT("Display"), Big);
+	TestTrue(TEXT("Capped"), IFileManager::Get().FileSize(*SailSessionLog::Path()) <= SailSessionLog::MaxBytes + 200);
+	TestTrue(TEXT("... with a note"), SailSessionLog::Tail(1).Contains(TEXT("log full")));
+	// The report's log: this build's engine log in the editor (it has one), the session log where it doesn't.
+	TestFalse(TEXT("The report has a log"), SailSessionLog::ReportLogPath().IsEmpty());
+	SailSessionLog::OpenIn(Was, false);   // the editor's own session log again, appended to
 	IFileManager::Get().DeleteDirectory(*Dir, false, true);
 	return true;
 }

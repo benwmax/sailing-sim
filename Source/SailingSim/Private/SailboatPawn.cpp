@@ -841,7 +841,7 @@ void ASailboatPawn::BeginPlay()
 		// -SailingBoat=Hobie (the first letters of a fleet boat's name, any case; J22 is the J/22), for this run only.
 		const int32 Match = USailingSettings::MatchBoatName(BoatArg);
 		if (Match >= 0) USailingSettings::Get()->BoatType = Match;
-		else UE_LOG(LogSailing, Warning, TEXT("-SailingBoat=%s matches no boat; sailing the %s"), *BoatArg, UTF8_TO_TCHAR(BoatTypeName(EBoatType(USailingSettings::Get()->BoatType))));
+		else SAIL_LOG(Warning, TEXT("-SailingBoat=%s matches no boat; sailing the %s"), *BoatArg, UTF8_TO_TCHAR(BoatTypeName(EBoatType(USailingSettings::Get()->BoatType))));
 	}
 	SetBoat(USailingSettings::Get()->BoatType);
 	// -SailingHideBoat (stills): the player's boat and crew hidden, so the water's hull clip shows (docs/boat-water-clip/).
@@ -1084,7 +1084,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			const FRotator Look = V.Num() >= 5 ? FRotator(FCString::Atof(*V[4]), Heading.Yaw + FCString::Atof(*V[3]), 0.f) : (CameraBoom->GetComponentLocation() - At).Rotation();
 			FreeCam->PlaceAt(At, Look);
 			if (APlayerController* PC = Cast<APlayerController>(GetController())) PC->SetViewTarget(FreeCam);
-			UE_LOG(LogSailing, Display, TEXT("Photo camera at %.0f m from the boat, %.1f m up"), FreeCam->GetLeashDistanceM(),
+			SAIL_LOG(Display, TEXT("Photo camera at %.0f m from the boat, %.1f m up"), FreeCam->GetLeashDistanceM(),
 				SailingFrame::ToMapCm(GetWorld(), FreeCam->GetActorLocation()).Z / 100.0);
 		}
 	}
@@ -1280,6 +1280,8 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 			if (!bDrillGraded)
 			{
 				bDrillGraded = true;
+				SAIL_LOG(Display, TEXT("Drill: %s finished, %s in %.0f s, %d contacts (hardest %.1f kn), %d infractions%s"), DrillName(DrillRunner.GetDrill()),
+					*DrillRunner.GetOutcome(), DrillRunner.GetElapsed(), DrillCollisions, MaxContactKnots, DrillInfractions, bDrillEasy ? TEXT(", Easy") : TEXT(""));
 				CareerAward = SailCareer::RecordRun(MakeCareerRun(DrillRunner, MaxContactKnots, DrillCollisions, DrillInfractions,
 					FSailSave::WorldId(USailingSettings::Get()->World), FSailSave::BoatId(int32(Boat.GetConfig().Type)), bDrillEasy));
 				if (CareerAward.IsValid()) AddLogEvent(FString::Printf(TEXT("Lesson: %s, %s medal (%d:%02d)"), DrillName(DrillRunner.GetDrill()),
@@ -2098,7 +2100,7 @@ void ASailboatPawn::StepPhotoPanel(FName Action)
 	}
 	if (FreeCam)
 	{
-		UE_LOG(LogSailing, Display, TEXT("Photo panel: %s = %s"), PhotoMath::RowLabel(PhotoRow),
+		SAIL_LOG(Display, TEXT("Photo panel: %s = %s"), PhotoMath::RowLabel(PhotoRow),
 			*PhotoMath::RowValue(PhotoSettings, PhotoRow, FreeCam->GetCamera()->FieldOfView, FreeCam->GetRollDeg(), PhotoFocusM, PhotoHighTier()));
 	}
 }
@@ -2249,7 +2251,7 @@ void ASailboatPawn::SetShowroomStage(EShowroomStage Stage, bool bRelocate)
 				ShowroomYaw = float(GetWind().GetParams().FromDegrees - 70.0 * ShowroomSide);
 				bShowroomPose = true;
 				ResetBoat();
-				UE_LOG(LogSailing, Display, TEXT("Showroom: moved to open water at (%.0f, %.0f)"), ShowroomSpot.X, ShowroomSpot.Y);
+				SAIL_LOG(Display, TEXT("Showroom: moved to open water at (%.0f, %.0f)"), ShowroomSpot.X, ShowroomSpot.Y);
 			}
 		}
 		ShowroomPilot = Sailing::FAutopilot();
@@ -2385,7 +2387,7 @@ void ASailboatPawn::FinishShowroomSwap()
 	ShowroomLoad.Reset();
 	ShowroomSwapTime = FPlatformTime::Seconds();
 	ApplyShowroomFraming(true);
-	UE_LOG(LogSailing, Display, TEXT("Showroom swap %hs: load %.0f ms, build %.0f ms"), Boat.GetConfig().Name,
+	SAIL_LOG(Display, TEXT("Showroom swap %hs: load %.0f ms, build %.0f ms"), Boat.GetConfig().Name,
 		(Loaded - ShowroomLoadStart) * 1000.0, (Built - Loaded) * 1000.0);
 }
 
@@ -2414,7 +2416,7 @@ void ASailboatPawn::TakePhoto()
 	StatusMessage = FString::Printf(TEXT("Photo saved: %s"), *Name);
 	StatusUntil = Boat.GetState().Time + 3.0;
 	PhotoHintUntil = FPlatformTime::Seconds() + 2.5;
-	UE_LOG(LogSailing, Display, TEXT("Photo saved to %s"), *Path);
+	SAIL_LOG(Display, TEXT("Photo saved to %s"), *Path);
 }
 
 void ASailboatPawn::AddLogEvent(const FString& Remarks)
@@ -2495,6 +2497,7 @@ void ASailboatPawn::UpdateNavLights()
 void ASailboatPawn::StartDrill(ESailingDrill Drill)
 {
 	if (Drill != ESailingDrill::None) BeginRun(FString(DrillName(Drill)));
+	if (Drill != ESailingDrill::None && !bTrafficBoat && !bGhost) SAIL_LOG(Display, TEXT("Drill: %s started"), DrillName(Drill));
 	ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (Drill == ESailingDrill::None)
 	{
@@ -2735,10 +2738,10 @@ void ASailboatPawn::StartSampleLayer()
 			}
 		}
 		if (PackShotKinds.Contains(uint8(SailingSound::EPackShot::HalyardSlap)) && !SampleCues[int32(ESailingCue::HalyardSlap)]) Mask |= 1u << uint32(ESailingCue::HalyardSlap);
-		if (PackLoopComps.Num()) UE_LOG(LogSailing, Display, TEXT("Sound: sample pack, %d loops and %d one-shots"), PackLoopComps.Num(), PackShotSounds.Num());
+		if (PackLoopComps.Num()) SAIL_LOG(Display, TEXT("Sound: sample pack, %d loops and %d one-shots"), PackLoopComps.Num(), PackShotSounds.Num());
 	}
 	if (Synth) Synth->Params.SampledMask = Mask;
-	if (Mask) UE_LOG(LogSailing, Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
+	if (Mask) SAIL_LOG(Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
 }
 
 void ASailboatPawn::UpdateSound(float DeltaSeconds)
@@ -3786,7 +3789,7 @@ void ASailboatPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (!Input)
 	{
-		UE_LOG(LogSailing, Warning, TEXT("SailboatPawn expects an EnhancedInputComponent; check DefaultInput.ini."));
+		SAIL_LOG(Warning, TEXT("SailboatPawn expects an EnhancedInputComponent; check DefaultInput.ini."));
 		return;
 	}
 	for (const TPair<FName, TObjectPtr<UInputAction>>& Pair : Actions)

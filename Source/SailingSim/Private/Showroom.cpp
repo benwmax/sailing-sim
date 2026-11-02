@@ -107,7 +107,7 @@ void FSailShowroom::SetStage(ASailboatPawn* Pawn, ASailingGameMode* GameMode, ES
 	ConditionsDebounce.Cancel();
 	bHavePreviewed = false;
 	bUnpaused = false;
-	UE_LOG(LogSailing, Display, TEXT("Showroom: stage %d (was %d)%s%s"), int32(NewStage), int32(Stage), bInGame ? TEXT(", in game") : TEXT(""), Pawn ? TEXT("") : TEXT(", no boat"));
+	SAIL_LOG(Display, TEXT("Showroom: stage %d (was %d)%s%s"), int32(NewStage), int32(Stage), bInGame ? TEXT(", in game") : TEXT(""), Pawn ? TEXT("") : TEXT(", no boat"));
 	Stage = NewStage;
 	bStageInGame = bInGame;
 	if (Stage == EShowroomStage::Weather && bInGame && GameMode)

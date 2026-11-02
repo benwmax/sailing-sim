@@ -180,7 +180,7 @@ void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown>
 		I.Variant = uint8(TreeRand(Seed + 6) < 0.5f ? 0 : 1);
 		Out.Add(I);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Trees: %d lidar crowns placed, %d canopy-map trees outside their band"), Out.Num() - Filled, Filled);
+	SAIL_LOG(Display, TEXT("Trees: %d lidar crowns placed, %d canopy-map trees outside their band"), Out.Num() - Filled, Filled);
 }
 
 FTreeLook TreeLookFor(const FTreeInstance& Tree)

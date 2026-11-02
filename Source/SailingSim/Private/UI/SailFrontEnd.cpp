@@ -404,7 +404,7 @@ void SSailFrontEnd::TravelToWorld(ESailScreen Resume)
 	using namespace SailFrontEndImpl;
 	bTravelling = true;
 	const FString Name = SailCatalog::World(Pending.World).Name;
-	UE_LOG(LogSailing, Display, TEXT("Menus: loading %s behind them (world %d)"), *Name, Pending.World);
+	SAIL_LOG(Display, TEXT("Menus: loading %s behind them (world %d)"), *Name, Pending.World);
 	Body->SetContent(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
 		[ SailUI::Text(FString::Printf(TEXT("Loading %s"), *Name), EType::ScreenTitle, Fg) ]);
 	Footer->SetContent(SNullWidget::NullWidget);

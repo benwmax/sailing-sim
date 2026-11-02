@@ -34,7 +34,7 @@ bool FWorldStreamer::Start(FLakeData& InLake, const FString& Directory, const FS
 			if (File->Read(Head.GetData(), Head.Num())) Index.Parse(Head.GetData(), Head.Num());
 		}
 		delete File;
-		if (!Index.IsValid()) UE_LOG(LogSailing, Warning, TEXT("World streaming: %s is not a tile index"), *Path);
+		if (!Index.IsValid()) SAIL_LOG(Warning, TEXT("World streaming: %s is not a tile index"), *Path);
 	}
 	if (!Index.IsValid())
 	{
@@ -51,7 +51,7 @@ bool FWorldStreamer::Start(FLakeData& InLake, const FString& Directory, const FS
 	Bytes = 0;
 	Loads = Drops = 0;
 	++Generation;
-	UE_LOG(LogSailing, Display, TEXT("World streaming: %s, %d tiles of %.1f km%s"), *Name, N, Index.GetTileM() / 1000.0,
+	SAIL_LOG(Display, TEXT("World streaming: %s, %d tiles of %.1f km%s"), *Name, N, Index.GetTileM() / 1000.0,
 		Index.IsStreamed() ? TEXT(" streamed from the .tiles file") : TEXT(" over the whole grid (resident)"));
 	return true;
 }
@@ -95,7 +95,7 @@ void FWorldStreamer::Install(FLoaded&& L)
 	InFlightFlags[L.Tile] = 0;
 	if (!L.Data)
 	{
-		UE_LOG(LogSailing, Warning, TEXT("World streaming: tile %d did not read"), L.Tile);
+		SAIL_LOG(Warning, TEXT("World streaming: tile %d did not read"), L.Tile);
 		return;
 	}
 	if (!ResidentFlags[L.Tile]) { ++Resident; ++Loads; }
@@ -142,7 +142,7 @@ void FWorldStreamer::LoadAround(double X, double Y, double RadiusM)
 	for (FLoaded& L : Read) Install(MoveTemp(L));
 	Publish();
 	PlannedX = PlannedY = 1e300;   // plan again from here
-	UE_LOG(LogSailing, Display, TEXT("World streaming: %d tiles within %.0f km read in %.0f ms (%d resident, %.1f MB)"), Want.Num(), RadiusM / 1000.0,
+	SAIL_LOG(Display, TEXT("World streaming: %d tiles within %.0f km read in %.0f ms (%d resident, %.1f MB)"), Want.Num(), RadiusM / 1000.0,
 		(FPlatformTime::Seconds() - Start) * 1000.0, Resident, Bytes / 1e6);
 }
 

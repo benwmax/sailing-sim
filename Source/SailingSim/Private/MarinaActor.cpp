@@ -320,7 +320,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 			C->RegisterComponent();
 			Scans.Add(C);
 			Replaced.Add(KV.Key);
-			UE_LOG(LogSailing, Display, TEXT("Marina: %s replaced by the scan %s"), *KV.Key, *KV.Value);
+			SAIL_LOG(Display, TEXT("Marina: %s replaced by the scan %s"), *KV.Key, *KV.Value);
 		}
 	}
 	auto Generated = [&](const FString& Id) { return !Replaced.Contains(Id) && !Replaced.ContainsByPredicate([&](const FString& R) { return Id.StartsWith(R + TEXT(".")); }); };
@@ -435,7 +435,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 			DockKit.Add(C);
 			Instances += KitX[K].Num();
 		}
-		UE_LOG(LogSailing, Display, TEXT("Marina: %d dock kit instances in %d meshes"), Instances, DockKit.Num());
+		SAIL_LOG(Display, TEXT("Marina: %d dock kit instances in %d meshes"), Instances, DockKit.Num());
 	}
 
 	// Neighbours (Visual V7): J/22s and Catalina 22s bow in in their slips, Catalina 30s alongside the fixed pier, each
@@ -484,7 +484,7 @@ void AMarinaActor::Build(const FMarina& Marina)
 		GullPoints.Add(At);
 	}
 
-	UE_LOG(LogSailing, Display, TEXT("Marina %s: %d rows, %d slips (%d occupied), %d buildings, %d of %d tiles baked, home slip %s"), *Marina.Name, Marina.Rows.Num(), Marina.Slips.Num(),
+	SAIL_LOG(Display, TEXT("Marina %s: %d rows, %d slips (%d occupied), %d buildings, %d of %d tiles baked, home slip %s"), *Marina.Name, Marina.Rows.Num(), Marina.Slips.Num(),
 		Marina.Slips.FilterByPredicate([](const FMarinaSlip& Sl) { return Sl.bOccupied; }).Num(), Marina.Buildings.Num(), Baked, Tiles.Num(),
 		Marina.HomeSlip != INDEX_NONE ? *Marina.Slips[Marina.HomeSlip].Id : TEXT("none"));
 	BuildShore(Marina, Terrain);
@@ -577,7 +577,7 @@ void AMarinaActor::BuildShore(const FMarina& Marina, const FLakeTerrain* Terrain
 			const float Size = MRand(Seed + 5);
 			if (bDebug && H >= 0.25 && H < 1.2 && Pick < 0.45f && MRand(Seed + 9) < 0.02f)
 			{
-				UE_LOG(LogSailing, Display, TEXT("Shore grass at %.1f, %.1f: height %.2f"), P.X, P.Y, H);
+				SAIL_LOG(Display, TEXT("Shore grass at %.1f, %.1f: height %.2f"), P.X, P.Y, H);
 			}
 			if (H < 0.25)
 			{
@@ -664,7 +664,7 @@ void AMarinaActor::BuildShore(const FMarina& Marina, const FLakeTerrain* Terrain
 		Shore.Add(C);
 		Instances += KV.Value.Num();
 	}
-	UE_LOG(LogSailing, Display, TEXT("Marina shore: %d pieces in %d meshes (lake level offset %.2f m)"), Instances, Shore.Num(), Terrain->GetLevelBelowPool());
+	SAIL_LOG(Display, TEXT("Marina shore: %d pieces in %d meshes (lake level offset %.2f m)"), Instances, Shore.Num(), Terrain->GetLevelBelowPool());
 }
 
 const TCHAR* AMarinaActor::DockKitName(EDockKit Kit)

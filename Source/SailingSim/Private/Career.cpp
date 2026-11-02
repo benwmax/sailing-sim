@@ -108,7 +108,7 @@ const FCareerContent& FCareerContent::Get()
 	{
 		bTried = true;
 		FString Error;
-		if (!Content.Load(Dir(), &Error)) UE_LOG(LogSailing, Warning, TEXT("Career content: %s"), *Error);
+		if (!Content.Load(Dir(), &Error)) SAIL_LOG(Warning, TEXT("Career content: %s"), *Error);
 	}
 	return Content;
 }
@@ -646,7 +646,7 @@ FCareerProgress::FAward SailCareer::RecordRun(const FCareerRun& Run)
 	const FCareerProgress::FAward A = Progress().RecordRun(Run);
 	if (A.IsValid())
 	{
-		UE_LOG(LogSailing, Display, TEXT("Career: %s %s in %.0f s (best %s)"), *A.LessonId, *FCareerContent::MedalName(A.Medal), A.Seconds, *FCareerContent::MedalName(A.Best));
+		SAIL_LOG(Display, TEXT("Career: %s %s in %.0f s (best %s)"), *A.LessonId, *FCareerContent::MedalName(A.Medal), A.Seconds, *FCareerContent::MedalName(A.Best));
 		USailSessionSave::Get()->Commit();
 	}
 	return A;
@@ -655,6 +655,7 @@ FCareerProgress::FAward SailCareer::RecordRun(const FCareerRun& Run)
 bool SailCareer::RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of)
 {
 	const bool bPass = Progress().RecordLessonQuiz(LessonId, Right, Of);
+	SAIL_LOG(Display, TEXT("Career: %s quiz %d of %d, %s"), *LessonId, Right, Of, bPass ? TEXT("passed") : TEXT("not passed"));
 	USailSessionSave::Get()->Commit();
 	return bPass;
 }
@@ -662,7 +663,7 @@ bool SailCareer::RecordLessonQuiz(const FString& LessonId, int32 Right, int32 Of
 bool SailCareer::RecordCheckrideQuiz(const FString& TierId, int32 Right, int32 Of)
 {
 	const bool bAwarded = Progress().RecordCheckrideQuiz(TierId, Right, Of, FDateTime::UtcNow());
-	if (bAwarded) UE_LOG(LogSailing, Display, TEXT("Career: %s certificate awarded"), *TierId);
+	SAIL_LOG(Display, TEXT("Career: %s checkride quiz %d of %d%s"), *TierId, Right, Of, bAwarded ? TEXT(", certificate awarded") : TEXT(""));
 	USailSessionSave::Get()->Commit();
 	return bAwarded;
 }

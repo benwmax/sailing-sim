@@ -114,7 +114,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingPrologueStep="), StepId))
 			{
 				SceneStartStep = FMath::Max(0, Scene.FindStep(TCHAR_TO_UTF8(*StepId)));
-				UE_LOG(LogSailing, Display, TEXT("Prologue: starting at step %d (%s)"), SceneStartStep, *StepId);
+				SAIL_LOG(Display, TEXT("Prologue: starting at step %d (%s)"), SceneStartStep, *StepId);
 			}
 		}
 	}
@@ -126,7 +126,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 	{
 		bScene = LoadFirstJob(Scene, &SceneError);
 		if (bScene && Scene.GetSetting().Hour >= 0.0) Settings->StartHour = float(Scene.GetSetting().Hour);
-		UE_LOG(LogSailing, Display, TEXT("First job: %s"), bScene ? TEXT("loaded") : *SceneError);
+		SAIL_LOG(Display, TEXT("First job: %s"), bScene ? TEXT("loaded") : *SceneError);
 	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), Value) && !(MenuSession && MenuSession->MenuResumeScreen >= 0))
 	{
@@ -202,11 +202,11 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = float(Kn);
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), Value) && (bStandInWind || !bScenePreset))
 				GustOverride = float(FMath::Clamp(Gust / FMath::Max(Kn, 1.0) - 1.0, 0.0, 1.0));
-			UE_LOG(LogSailing, Display, TEXT("Prologue: \"%s\", %d steps, %s%s in %.0f kn gusting %.0f, %d reefs"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
+			SAIL_LOG(Display, TEXT("Prologue: \"%s\", %d steps, %s%s in %.0f kn gusting %.0f, %d reefs"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
 				int32(Scene.GetSteps().size()), UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(Settings->BoatType))), bSceneStandIn ? TEXT(" (stand-in)") : TEXT(""),
 				Kn, Gust, SceneReefs);
 		}
-		else UE_LOG(LogSailing, Warning, TEXT("Prologue: %s"), *SceneError);
+		else SAIL_LOG(Warning, TEXT("Prologue: %s"), *SceneError);
 	}
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingQuality="), Value))
 	{
@@ -243,7 +243,7 @@ void ASailingGameMode::StartStreaming()
 		Fetch->Build(DerivedTerrain(PhysicsWindow.CenterX, PhysicsWindow.CenterY));
 		SeaFetch = Fetch;
 		Waves.SetDepth(Fetch->GetMedianDepth());
-		UE_LOG(LogSailing, Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
+		SAIL_LOG(Display, TEXT("Sea fetch map: %d x %d cells of %.0f m, median depth %.1f m, built in %.0f ms"),
 			Fetch->GetRows(), Fetch->GetCols(), Fetch->GetCell(), Fetch->GetMedianDepth(), (FPlatformTime::Seconds() - Start) * 1000.0);
 	}
 }
@@ -287,13 +287,13 @@ bool ASailingGameMode::RecentreAt(double NorthM, double EastM)
 	if (!World->SetNewWorldOrigin(To)) return false;
 	ENQUEUE_RENDER_COMMAND(SailingRecentreEnd)([RenderStart](FRHICommandListImmediate&)
 	{
-		UE_LOG(LogSailing, Display, TEXT("World streaming: the scene's shift took %.2f ms of render thread"), (FPlatformTime::Seconds() - *RenderStart) * 1000.0);
+		SAIL_LOG(Display, TEXT("World streaming: the scene's shift took %.2f ms of render thread"), (FPlatformTime::Seconds() - *RenderStart) * 1000.0);
 	});
 	PublishRenderOrigin();
 	const double Ms = (FPlatformTime::Seconds() - Start) * 1000.0;
 	LongestRecentreMs = FMath::Max(LongestRecentreMs, Ms);
 	++Recentres;
-	UE_LOG(LogSailing, Display, TEXT("World streaming: render origin to %.1f N %.1f E km (%.2f ms)"), NorthM / 1000.0, EastM / 1000.0, Ms);
+	SAIL_LOG(Display, TEXT("World streaming: render origin to %.1f N %.1f E km (%.2f ms)"), NorthM / 1000.0, EastM / 1000.0, Ms);
 	return true;
 }
 
@@ -364,7 +364,7 @@ void ASailingGameMode::UpdateStreaming()
 			Shelter = G.Shelter;
 			Wind.SetShelter(Shelter.Get());
 		}
-		UE_LOG(LogSailing, Display, TEXT("World streaming: physics window at %.1f N %.1f E km marched in %.0f ms (worker)"), G.CenterX / 1000.0, G.CenterY / 1000.0, G.Ms);
+		SAIL_LOG(Display, TEXT("World streaming: physics window at %.1f N %.1f E km marched in %.0f ms (worker)"), G.CenterX / 1000.0, G.CenterY / 1000.0, G.Ms);
 	}
 	if (!bWindowMarching && (bMoved || !PhysicsWindow.Contains(At.X, At.Y))) MarchWindow(At.X, At.Y);
 	else if (!bWindowMarching && bWindowStale) MarchWindow(PhysicsWindow.CenterX, PhysicsWindow.CenterY);
@@ -539,7 +539,7 @@ void ASailingGameMode::UpdateShelter()
 			const double Start = FPlatformTime::Seconds();
 			TSharedPtr<Sailing::FShelterMap> Map = MakeShared<Sailing::FShelterMap>();
 			Map->Build(Terrain, From, 40.0, Obstacles);
-			UE_LOG(LogSailing, Display, TEXT("Shelter map for wind from %.0f built in %.0f ms"), FMath::RadiansToDegrees(From), (FPlatformTime::Seconds() - Start) * 1000.0);
+			SAIL_LOG(Display, TEXT("Shelter map for wind from %.0f built in %.0f ms"), FMath::RadiansToDegrees(From), (FPlatformTime::Seconds() - Start) * 1000.0);
 			return Map;
 		});
 	}
@@ -581,7 +581,7 @@ void ASailingGameMode::PreviewConditions(const FSailConditions& C)
 	if (FPlatformTime::Seconds() >= NextPreviewLog)
 	{
 		// Once every 2 s at most: what the previews cost (the PC's Conditions screen re-previews at 5 Hz).
-		UE_LOG(LogSailing, Display, TEXT("Preview conditions: %d applied, the slowest %.2f ms"), PreviewCount, PreviewMsMax);
+		SAIL_LOG(Display, TEXT("Preview conditions: %d applied, the slowest %.2f ms"), PreviewCount, PreviewMsMax);
 		NextPreviewLog = FPlatformTime::Seconds() + 2.0;
 		PreviewMsMax = 0.0;
 		PreviewCount = 0;
@@ -592,6 +592,8 @@ void ASailingGameMode::EndPreview(bool bKeep)
 {
 	if (!bPreviewing) return;
 	bPreviewing = false;
+	SAIL_LOG(Display, TEXT("Conditions: %s (wind %.0f kn gusting %.0f from %.0f, sky %d, %.1f h, %d/%d)"), bKeep ? TEXT("kept") : TEXT("put back"),
+		LastPreviewed.WindKn, LastPreviewed.GustKn, LastPreviewed.WindFromDeg, int32(LastPreviewed.Sky), LastPreviewed.LocalHour, LastPreviewed.Month, LastPreviewed.Day);
 	if (bKeep) return;
 	const FWeatherInputs& R = PreviewRestore;
 	USailingSettings::Get()->WeatherPreset = ESailingWeather(R.Preset);
@@ -633,7 +635,7 @@ std::shared_ptr<const FWeatherDay> ASailingGameMode::LoadRealDay(const FString& 
 	std::string Error;
 	if (!Day->LoadFromMemory(Bytes.GetData(), size_t(Bytes.Num()), &Error))
 	{
-		UE_LOG(LogSailing, Warning, TEXT("SailingDay: %s: %hs"), *Path, Error.c_str());
+		SAIL_LOG(Warning, TEXT("SailingDay: %s: %hs"), *Path, Error.c_str());
 		return nullptr;
 	}
 	return Day;
@@ -664,7 +666,7 @@ void ASailingGameMode::ApplyWeatherSettings()
 	{
 		RealDay = LoadRealDay(RealDayDate);
 		RealDayLoaded = RealDay ? RealDayDate : FString();
-		if (!RealDay) UE_LOG(LogSailing, Warning, TEXT("SailingDay: no baked day %s in Content/TerrainData/Weather"), *RealDayDate);
+		if (!RealDay) SAIL_LOG(Warning, TEXT("SailingDay: no baked day %s in Content/TerrainData/Weather"), *RealDayDate);
 	}
 	if (RealDay)
 	{
@@ -720,7 +722,7 @@ void ASailingGameMode::ApplyWeatherSettings()
 		for (int32 I = 0; I < 20; ++I) { const double Mid = 0.5 * (Lo + Hi); (Elev(Mid) > 0.0 ? Lo : Hi) = Mid; }
 		SunsetHour = 0.5 * (Lo + Hi);
 		Weather.SetSunset(SunsetHour);
-		UE_LOG(LogSailing, Display, TEXT("Sunset %02d:%02d local (day %d)"), int32(SunsetHour), int32(FMath::Fmod(SunsetHour, 1.0) * 60.0), DayOfYear);
+		SAIL_LOG(Display, TEXT("Sunset %02d:%02d local (day %d)"), int32(SunsetHour), int32(FMath::Fmod(SunsetHour, 1.0) * 60.0), DayOfYear);
 	}
 	ClockBase = GetSimTime() - WeatherOffset;
 	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (StartHour - UtcOffsetHours) * 3600.0;
@@ -840,6 +842,19 @@ void ASailingGameMode::ApplyQualitySettings()
 	USailingSettings::Get()->ApplyDisplay();
 	USailingSettings::Get()->ApplyCrashReports();
 	SailCrashReports::SetPlace(FSailSave::WorldId(S->World), FSailSave::BoatId(S->BoatType));
+	{
+		// The session log's line for this load (docs/session-log/): what a tester's report needs to place it.
+		const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+		const bool bSession = Session && Session->bHasActive;
+		SAIL_LOG(Display, TEXT("Session: world %s, spot %d, boat %s, mode %s%s, weather %s at %.1f h (seed %d), %s, %s; quality %d, %dx%d (window mode %d), RHI %s, GPU %s"),
+			*FSailSave::WorldId(S->World), S->LaunchSpot, *FSailSave::BoatId(S->BoatType),
+			bSession ? *USailSessionSubsystem::ModeName(Session->Active.Mode) : TEXT("free"),
+			bSession && !Session->Active.SceneId.IsEmpty() ? *(TEXT(" (") + Session->Active.SceneId + TEXT(")")) : TEXT(""),
+			*UEnum::GetValueAsString(S->WeatherPreset), S->StartHour, S->WeatherSeed,
+			S->IsEasy() ? TEXT("Easy") : TEXT("Realistic"), S->IsFreeSail() ? TEXT("Free Sail") : TEXT("Career"),
+			int32(Quality), GSystemResolution.ResX, GSystemResolution.ResY, int32(GSystemResolution.WindowMode),
+			GDynamicRHI ? GDynamicRHI->GetName() : TEXT("none"), *GRHIAdapterName);
+	}
 	int32 LumenHW = -1;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingLumenHW="), LumenHW))
 	{
@@ -853,7 +868,7 @@ void ASailingGameMode::ApplyQualitySettings()
 		It->SetRingCount(WaterTier == ESailingQuality::Low ? 4 : 5);
 		It->SetQualityTier(WaterTier == ESailingQuality::Low ? 0 : (WaterTier == ESailingQuality::Medium ? 1 : 2));
 	}
-	UE_LOG(LogSailing, Display, TEXT("Quality %d: AA %d, screen %d%%, VSM %d, ray tracing supported %d enabled %d, Lumen HW %d, Substrate %d"),
+	SAIL_LOG(Display, TEXT("Quality %d: AA %d, screen %d%%, VSM %d, ray tracing supported %d enabled %d, Lumen HW %d, Substrate %d"),
 		int32(Quality), IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->GetInt(),
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->GetInt(),
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.Shadow.Virtual.Enable"))->GetInt(), int32(GRHISupportsRayTracing),
@@ -1123,7 +1138,7 @@ void ASailingGameMode::StartPlay()
 		// (Saved/Bench/<shot>.frames.csv) to see where the frames settle.
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingBenchWarmup="), BenchWarmup);
 		bBenchTrace = FParse::Param(SailingArgs::Dev(), TEXT("SailingBenchTrace"));
-		UE_LOG(LogSailing, Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmup);
+		SAIL_LOG(Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmup);
 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecord="), RecordSeconds);
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecordInterval="), RecordInterval);
@@ -1187,7 +1202,7 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	if (Next != Now)
 	{
 		Pct->Set(Next, ECVF_SetByCode);
-		UE_LOG(LogSailing, Display, TEXT("Resolution governor: %.0f%% -> %.0f%% (frame %.2f ms smoothed)"), Now, Next, GovernorMs);
+		SAIL_LOG(Display, TEXT("Resolution governor: %.0f%% -> %.0f%% (frame %.2f ms smoothed)"), Now, Next, GovernorMs);
 	}
 }
 
@@ -1293,7 +1308,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		if (const APawn* Pawn = PC ? PC->GetPawn() : nullptr)
 		{
 			const FVector Pos = SailingFrame::ToMapCm(GetWorld(), Pawn->GetActorLocation()) / CmPerMeter;
-			UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y,
+			SAIL_LOG(Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y,
 				NextPosLog > 0.f ? FVector::Dist2D(Pos, LastPosLog) : 0.0);
 			LastPosLog = Pos;
 		}
@@ -1302,7 +1317,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 
 	while (NextExecAt < ExecAt.Num() && Elapsed >= ExecAt[NextExecAt].Key)
 	{
-		UE_LOG(LogSailing, Display, TEXT("SailingBench: at %.0f s: %s"), Elapsed, *ExecAt[NextExecAt].Value);
+		SAIL_LOG(Display, TEXT("SailingBench: at %.0f s: %s"), Elapsed, *ExecAt[NextExecAt].Value);
 		GEngine->Exec(GetWorld(), *ExecAt[NextExecAt].Value);
 		++NextExecAt;
 	}
@@ -1428,7 +1443,7 @@ void ASailingGameMode::FinishBenchmark()
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"mem_used_mb\":%.0f,\"mem_peak_mb\":%.0f,\"tex_mem_mb\":%.0f}"),
 		Mem.UsedPhysical / 1048576.0, Mem.PeakUsedPhysical / 1048576.0, TexMem.StreamingMemorySize / 1048576.0 + TexMem.NonStreamingMemorySize / 1048576.0);
 
-	UE_LOG(LogSailing, Display, TEXT("SailingBench result: %s"), *Summary);
+	SAIL_LOG(Display, TEXT("SailingBench result: %s"), *Summary);
 	FFileHelper::SaveStringToFile(Summary, *(FPaths::ProjectSavedDir() / TEXT("Bench/bench.json")));
 	if (bBenchTrace)
 	{
@@ -1524,7 +1539,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 		const Vec3 O = Boat.OriginPosition(), V = Boat.GetState().Velocity;
 		Weather.ApplySceneCue(Cue ? Cue->WeatherCue : std::string(), Cue && Cue == Scene.GetStep() ? Cue->WeatherInSeconds : 0.0,
 			Now - WeatherStartTime, O.X, O.Y, V.X, V.Y);
-		UE_LOG(LogSailing, Display, TEXT("Prologue %.1f s: weather %hs (squall at %.0f s, clearing at %.0f s of sim time)"), Scene.GetElapsed(),
+		SAIL_LOG(Display, TEXT("Prologue %.1f s: weather %hs (squall at %.0f s, clearing at %.0f s of sim time)"), Scene.GetElapsed(),
 			Cue ? Cue->WeatherCue.c_str() : "none yet", Weather.GetSquallArrives() + WeatherStartTime, Weather.GetClearingStarts() + WeatherStartTime);
 	}
 	// The captain's voice: a recording named for the call id, if the pack has one (none yet: the caption carries it).
@@ -1534,14 +1549,14 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 		const FString CallId = UTF8_TO_TCHAR(Scene.GetCallId().c_str());
 		const FString Cue = CallId.Replace(TEXT("."), TEXT("_")).Replace(TEXT("-"), TEXT("_"));
 		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice);
-		UE_LOG(LogSailing, Display, TEXT("Prologue %.1f s: %s (repeat %d)"), Scene.GetElapsed(), *CallId, Scene.GetCallRepeats());
+		SAIL_LOG(Display, TEXT("Prologue %.1f s: %s (repeat %d)"), Scene.GetElapsed(), *CallId, Scene.GetCallRepeats());
 	}
 	// The sim judged the scene finished: the save keeps it by id (rule 7), unless this run never writes the save.
 	if (Scene.IsComplete() && !bSceneRecorded)
 	{
 		bSceneRecorded = true;
 		const Sailing::FSceneResult& R = Scene.GetResult();
-		UE_LOG(LogSailing, Display, TEXT("Prologue done in %.0f s: %d steps answered, %d by the crew, %d repeats"), R.Seconds, R.StepsPassed, R.StepsAssisted, R.Retries);
+		SAIL_LOG(Display, TEXT("Prologue done in %.0f s: %d steps answered, %d by the crew, %d repeats"), R.Seconds, R.StepsPassed, R.StepsAssisted, R.Retries);
 		if (!USailingSettings::IgnoresSavedChoices())
 		{
 			SailSaveStore::Progress().RecordScene(R, FDateTime::UtcNow());
@@ -1562,7 +1577,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 				{
 					if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->StartSession(Lesson, this);
 				}), 6.f, false);
-				UE_LOG(LogSailing, Display, TEXT("First job done: %s's first lesson, %s, in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
+				SAIL_LOG(Display, TEXT("First job done: %s's first lesson, %s, in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
 			}
 		}
 	}

@@ -130,7 +130,7 @@ void AFarLightsActor::BeginPlay()
 			}
 		}
 	}
-	UE_LOG(LogSailing, Display, TEXT("Far lights: %d lights (%d colours), %d shore sprites, %d horizon ships on %d lanes, %d city domes"),
+	SAIL_LOG(Display, TEXT("Far lights: %d lights (%d colours), %d shore sprites, %d horizon ships on %d lanes, %d city domes"),
 		Data.Lights.Num(), LightIsms.Num(), Data.Shore.Num(), Ships.Num(), Data.Lanes.Num(), Data.Cities.Num());
 }
 
@@ -275,6 +275,6 @@ void AFarLightsActor::Tick(float DeltaSeconds)
 	if (GetWorld()->GetTimeSeconds() > NextLog)
 	{
 		NextLog = GetWorld()->GetTimeSeconds() + 5.0;
-		UE_LOG(LogSailing, Display, TEXT("Far lights: %d showing, %d looms (dark %d, visibility %.0f km)"), Shown, Looms, bDark, Visibility);
+		SAIL_LOG(Display, TEXT("Far lights: %d showing, %d looms (dark %d, visibility %.0f km)"), Shown, Looms, bDark, Visibility);
 	}
 }

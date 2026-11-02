@@ -95,7 +95,7 @@ void ALandmarksActor::BeginPlay()
 		Instances.Add({ Ism, Ism->GetInstanceCount() - 1, FVector(L.X, L.Y, Ground), Yaw, float(Pl.Scale) });
 		++Placed;
 	}
-	UE_LOG(LogSailing, Display, TEXT("Landmarks: %d of %d placed with %d models"), Placed, Lake.Landmarks.Num(), Meshes.Num());
+	SAIL_LOG(Display, TEXT("Landmarks: %d of %d placed with %d models"), Placed, Lake.Landmarks.Num(), Meshes.Num());
 }
 void ALandmarksActor::Tick(float DeltaSeconds)
 {

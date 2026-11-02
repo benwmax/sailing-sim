@@ -227,7 +227,7 @@ namespace SailGallery
 		TArray<FGalleryItem> Items = BuildIndex(Refs, &Other);
 		TSet<FString> Used;
 		for (const FGalleryItem& I : Items) Used.Add(I.Category);
-		UE_LOG(LogSailing, Display, TEXT("Gallery index: %d assets, %d categories, %d in Other (%d meshes in the registry)"), Items.Num(), Used.Num(), Other, Found.Num());
+		SAIL_LOG(Display, TEXT("Gallery index: %d assets, %d categories, %d in Other (%d meshes in the registry)"), Items.Num(), Used.Num(), Other, Found.Num());
 		return Items;
 	}
 

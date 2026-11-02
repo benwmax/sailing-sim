@@ -135,8 +135,8 @@ void ABridgesActor::BeginPlay()
 			Boulders += RockX[K].Num();
 		}
 	}
-	UE_LOG(LogSailing, Display, TEXT("Riprap: %d boulders"), Boulders);
-	UE_LOG(LogSailing, Display, TEXT("Bridges %s: %d ways, %d quads in %d tiles (%d baked), %d lanes, %d vehicles; shore %d quads in %d tiles (%d baked)"), *Lake.FileName,
+	SAIL_LOG(Display, TEXT("Riprap: %d boulders"), Boulders);
+	SAIL_LOG(Display, TEXT("Bridges %s: %d ways, %d quads in %d tiles (%d baked), %d lanes, %d vehicles; shore %d quads in %d tiles (%d baked)"), *Lake.FileName,
 		Lake.Bridges.Num(), All.NumQuads(), Tiles.Num(), Baked, Lanes.Num(), Vehicles.Num(), Shore.NumQuads(), ShoreTiles.Num(), ShoreBaked);
 }
 

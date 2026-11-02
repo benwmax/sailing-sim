@@ -74,7 +74,7 @@ void ANightLightsActor::BeginPlay()
 		L->RegisterComponent();
 		Pool.Add(L);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Night lights: %d fixtures, a pool of %d"), Fixtures.Num(), Pool.Num());
+	SAIL_LOG(Display, TEXT("Night lights: %d fixtures, a pool of %d"), Fixtures.Num(), Pool.Num());
 }
 
 void ANightLightsActor::Tick(float DeltaSeconds)

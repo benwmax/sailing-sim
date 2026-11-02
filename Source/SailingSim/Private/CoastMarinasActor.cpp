@@ -83,5 +83,5 @@ void ACoastMarinasActor::BeginPlay()
 		G.SplitTiles(UWorldKitLibrary::ShoreTileM, Tiles);
 		SpawnKitTiles(this, Tiles, TEXT("Walkways_") + Lake.SourceFor(TEXT("piers")), true, KitMaterial, Walkways, EComponentMobility::Static);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Coast marinas: %d moored boats in %d instanced meshes, %d floating walkways"), Placed.Num(), Boats.Num(), Count);
+	SAIL_LOG(Display, TEXT("Coast marinas: %d moored boats in %d instanced meshes, %d floating walkways"), Placed.Num(), Boats.Num(), Count);
 }

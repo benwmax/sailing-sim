@@ -131,7 +131,7 @@ void ALakeTerrainActor::BeginPlay()
 	// world's tile index, and dropped behind it.
 	GChunkCells = ChunkCellsFor(Lake->Terrain.IsValid() ? Lake->Terrain.GetCell() : 10.0);
 	// Wide World Rendering PR 1: the far coast ring, if the world has one (Galveston Bay and the Gulf; -SailingNoFarRing).
-	if (FarLoader.Start(Lake->FileName)) UE_LOG(LogSailing, Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
+	if (FarLoader.Start(Lake->FileName)) SAIL_LOG(Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
 	PlaceTrees();
 	PlaceReeds();
 	PlaceUnderstory();
@@ -154,7 +154,7 @@ void ALakeTerrainActor::BeginPlay()
 		FString Top;
 		int32 K = 0;
 		for (const TPair<FString, int32>& P : ByMesh) { if (K++ >= 12) break; Top += FString::Printf(TEXT(" %s %d;"), *P.Key, P.Value); }
-		UE_LOG(LogSailing, Display, TEXT("Terrain instances: %lld in %d components:%s"), Total, Ism.Num(), *Top);
+		SAIL_LOG(Display, TEXT("Terrain instances: %lld in %d components:%s"), Total, Ism.Num(), *Top);
 	}
 }
 
@@ -485,7 +485,7 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		for (int32 K = 0; K < A.Trees.Num(); ++K) { TreeComp[A.Trees[K]] = P.Key; TreeSlot[A.Trees[K]] = First + K; CompTrees[P.Key].Add(A.Trees[K]); }
 		if (C->GetInstanceCount() == A.X.Num()) CompPlacedAt[P.Key] = Camera;
 	}
-	if (Adds.Num() > 64) UE_LOG(LogSailing, Display, TEXT("Trees: %d components (%d tiles)"), TreeComps.Num(), TileComps.Num());
+	if (Adds.Num() > 64) SAIL_LOG(Display, TEXT("Trees: %d components (%d tiles)"), TreeComps.Num(), TileComps.Num());
 }
 
 void ALakeTerrainActor::Tick(float DeltaSeconds)
@@ -509,7 +509,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		FString Top;
 		int32 K = 0;
 		for (const TPair<FString, int64>& P : By) { if (K++ >= 16) break; Top += FString::Printf(TEXT(" %s %lld;"), *P.Key, P.Value); }
-		UE_LOG(LogSailing, Display, TEXT("World instances: %lld:%s"), Total, *Top);
+		SAIL_LOG(Display, TEXT("World instances: %lld:%s"), Total, *Top);
 	}
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;
@@ -774,7 +774,7 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 	{
 		NearCapM = Ring->InnerM;
 		LodTime = -1e30;   // look at the chunks again now
-		UE_LOG(LogSailing, Display, TEXT("Far ring: %d tiles in (%d failed), near terrain to %.0f km, longest game-thread call %.2f ms"),
+		SAIL_LOG(Display, TEXT("Far ring: %d tiles in (%d failed), near terrain to %.0f km, longest game-thread call %.2f ms"),
 			FarLoader.NumArrived(), FarLoader.NumFailed(), NearCapM / 1000.0, FarLoader.LongestCallMs());
 	}
 	// Tiles in or out of the band as the camera moves (whole tiles inside the burial or past the outer edge are left out);
@@ -901,7 +901,7 @@ void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance
 			Taken.Add(C);
 		}
 	}
-	UE_LOG(LogSailing, Display, TEXT("Trees: %d young yard trees"), Trees.Num() - Before);
+	SAIL_LOG(Display, TEXT("Trees: %d young yard trees"), Trees.Num() - Before);
 }
 
 void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
@@ -984,7 +984,7 @@ void ALakeTerrainActor::PlaceTrees()
 	{
 		const int32 Before = Trees.Num();
 		RemoveTreesInHouses(*Lake, Trees);
-		UE_LOG(LogSailing, Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
+		SAIL_LOG(Display, TEXT("Trees: %d inside G2 houses removed"), Before - Trees.Num());
 		AddYardTrees(*Lake, Trees, Region);
 	}
 	// World streaming: on a streamed world these are the trees of the tiles resident now; the others are placed as their
@@ -1102,7 +1102,7 @@ void ALakeTerrainActor::PlaceTrees()
 		TreeCenter = FVector2D(1e12, 1e12); // rebuilt around the camera on the next tick
 		TreeBand.Reset();                   // every band, not only the trees crossing an edge
 		bTreesPlaced = true;
-		UE_LOG(LogSailing, Display, TEXT("Trees: %d (Nanite models; leaf cards within %.0f m)"), ModelTrees.Num(), NearTreesM());
+		SAIL_LOG(Display, TEXT("Trees: %d (Nanite models; leaf cards within %.0f m)"), ModelTrees.Num(), NearTreesM());
 		return;
 	}
 
@@ -1154,7 +1154,7 @@ void ALakeTerrainActor::PlaceTrees()
 	TreeMeshes[1]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Elm), false, true);
 	TreeMeshes[2]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Cedar), false, true);
 	TreeMeshes[3]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Trunk), false, true);
-	UE_LOG(LogSailing, Display, TEXT("Trees: %d oak, %d cedar elm, %d red cedar"), Oak.Num(), Elm.Num(), Cedar.Num());
+	SAIL_LOG(Display, TEXT("Trees: %d oak, %d cedar elm, %d red cedar"), Oak.Num(), Elm.Num(), Cedar.Num());
 	bTreesPlaced = true;
 }
 
@@ -1281,7 +1281,7 @@ void ALakeTerrainActor::PlaceReeds()
 		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Out[Kind]), false, true);
 		ReedModels.Add(C);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass, %d weed clumps and %d far strips (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(), Out[4].Num(),
+	SAIL_LOG(Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass, %d weed clumps and %d far strips (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(), Out[4].Num(),
 		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
 }
 
@@ -1416,7 +1416,7 @@ void ALakeTerrainActor::PlaceUnderstory()
 		static_cast<UInstancedStaticMeshComponent*>(C)->SetCustomData(0, Out[Kind].Num() - 1, TConstArrayView<float>(Data[Kind]), true);   // (the range form: HISM hides it)
 		UnderstoryModels.Add(C);
 	}
-	UE_LOG(LogSailing, Display, TEXT("Understory: %d crowns by the water; %d yaupon, %d dogwood, %d coralberry, %d saplings, %d logs, %d brush piles, %d snags"), Crowns,
+	SAIL_LOG(Display, TEXT("Understory: %d crowns by the water; %d yaupon, %d dogwood, %d coralberry, %d saplings, %d logs, %d brush piles, %d snags"), Crowns,
 		Out[Yaupon0].Num() + Out[Yaupon1].Num(), Out[Dogwood].Num(), Out[Coralberry].Num(), Out[Elm].Num() + Out[Cedar].Num(), Out[Log].Num(), Out[Brush].Num(), Out[Snag].Num());
 }
 
@@ -1482,7 +1482,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 			}
 		}
 		const int32 Baked = SpawnKitTiles(this, Tiles, Prefix, false, [](EKitLook L) { return KitMaterial(L); }, HouseTileMeshes);
-		UE_LOG(LogSailing, Display, TEXT("Houses: %d from the G2 footprints in %d tiles (%d baked, %d procedural)"), Lake.Houses.Num(), Tiles.Num(), Baked, Procedural);
+		SAIL_LOG(Display, TEXT("Houses: %d from the G2 footprints in %d tiles (%d baked, %d procedural)"), Lake.Houses.Num(), Tiles.Num(), Baked, Procedural);
 	}
 	static const TCHAR* Names[] = { TEXT("SM_House_Gable"), TEXT("SM_House_Hip"), TEXT("SM_House_Flat") };
 	TArray<UInstancedStaticMeshComponent*> Ism;
@@ -1661,7 +1661,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		for (int32 I = 0; I < DockX[Which].Num(); ++I) DockIsm[Which]->SetCustomData(I, TArrayView<const float>(&DockD[Which][Stride * I], Stride), false);
 		DockIsm[Which]->MarkRenderStateDirty();
 	}
-	UE_LOG(LogSailing, Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks; %d near the water modelled, %d private docks"),
+	SAIL_LOG(Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks; %d near the water modelled, %d private docks"),
 		X[0].Num(), X[1].Num(), X[2].Num(), NearCount, DockX[0].Num() + DockX[1].Num());
 	return true;
 }
