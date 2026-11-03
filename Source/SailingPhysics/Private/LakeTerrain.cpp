@@ -130,7 +130,8 @@ namespace Sailing
 		const FDetail& D = *Detail;
 		const double Span = D.Tile * D.Cell;
 		const double TX = (X - D.OriginX) / Span, TY = (Y - D.OriginY) / Span;
-		if (TX < 0.0 || TY < 0.0) return -1;
+		// (not just < 0: a NaN passes that test and int(NaN) indexes far outside the tile table; the soak's crash-01)
+		if (!(TX >= 0.0 && TY >= 0.0) || !std::isfinite(TX) || !std::isfinite(TY)) return -1;
 		const int R = int(TX), C = int(TY);
 		if (R >= D.Rows || C >= D.Cols) return -1;
 		U = (TX - R) * D.Tile;
@@ -266,6 +267,9 @@ namespace Sailing
 	double FLakeTerrain::HeightAt(double X, double Y) const
 	{
 		if (Rows == 0 && !Heights && !Tiles) return -1000.0; // no terrain: open water everywhere
+		// A non-finite position (a diverged boat state) reads as land rather than indexing the grid and tiles with
+		// int(NaN): the soak's crash-01 (EffectiveFetch from the game mode's weather update, 10 min into a free sail).
+		if (!std::isfinite(X) || !std::isfinite(Y)) return 50.0;
 		double Fine;
 		if (DetailHeightAt(X, Y, Fine)) return Fine;
 		return GroundAt(X, Y);
