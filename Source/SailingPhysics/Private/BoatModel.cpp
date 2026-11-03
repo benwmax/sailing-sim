@@ -1079,7 +1079,14 @@ namespace Sailing
 		{
 			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld) - SurfaceVel;
 			const double Vn = Vel.Dot(Normal);
-			const double Fn = std::max(0.0, Stiffness * Penetration - Damping * Vn);
+			// Damping capped at what one step can take out of the point's motion along the normal (its effective mass there,
+			// half of it: several points touch at once). The gains are a J/22's, where the cap is far off; a Sunfish against
+			// a pile has a few tens of kilograms at her ends, and the uncapped damping overshot each step until she spun off
+			// at 300 kn (Galveston, SailingSim.Lake.SunfishInIronsAtLaunch).
+			const Vec3 Rb = Q.Unrotate(PointWorld - CGWorld), Nb = Q.Unrotate(Normal), RxN = Rb.Cross(Nb);
+			const double InvMass = Nb.X * Nb.X / EffectiveMass.X + Nb.Y * Nb.Y / EffectiveMass.Y + Nb.Z * Nb.Z / EffectiveMass.Z
+				+ RxN.X * RxN.X / EffectiveInertia.X + RxN.Y * RxN.Y / EffectiveInertia.Y + RxN.Z * RxN.Z / EffectiveInertia.Z;
+			const double Fn = std::max(0.0, Stiffness * Penetration - std::min(Damping, 0.5 / (InvMass * Dt)) * Vn);
 			const Vec3 Vt = Vel - Normal * Vn;
 			const double VtLen = Vt.Length();
 			// Regularized Coulomb friction: smooth near zero slip so a grounded boat settles instead of jittering.
