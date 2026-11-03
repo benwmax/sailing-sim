@@ -1,4 +1,5 @@
 #include "FreeCamera.h"
+#include "SailingAngles.h"
 #include "SailingFrame.h"
 #include "SailingGameMode.h"
 #include "Camera/CameraComponent.h"
@@ -108,14 +109,14 @@ void AFreeCamera::SetOrbit(const FFreeCameraOrbit& InOrbit)
 	VelocityMps = FVector::ZeroVector;
 	Orbit = InOrbit;
 	Orbit.DistanceCm = FMath::Clamp(Orbit.DistanceCm, Orbit.MinDistanceCm, Orbit.MaxDistanceCm);
-	Yaw = FMath::UnwindDegrees(Orbit.YawDeg);
+	Yaw = SailingAngles::WrapDegrees(Orbit.YawDeg);
 	Pitch = FMath::Clamp(Orbit.PitchDeg, Orbit.MinPitchDeg, Orbit.MaxPitchDeg);
 	SinceLookSeconds = 1e9; // a framing set from code may spin at once
 }
 
 void AFreeCamera::AddLook(const FVector2D& DeltaDeg)
 {
-	Yaw = FMath::UnwindDegrees(Yaw + float(DeltaDeg.X));
+	Yaw = SailingAngles::WrapDegrees(Yaw + float(DeltaDeg.X));
 	Pitch = Mode == EFreeCameraMode::Orbit ? FMath::Clamp(Pitch + float(DeltaDeg.Y), Orbit.MinPitchDeg, Orbit.MaxPitchDeg)
 		: FMath::Clamp(Pitch + float(DeltaDeg.Y), -89.f, 89.f);
 	if (!DeltaDeg.IsNearlyZero()) SinceLookSeconds = 0.0;
@@ -237,7 +238,7 @@ void AFreeCamera::Update(float DeltaSeconds, const FFreeCameraInput& Input)
 		return;
 	}
 	// Orbit: the camera eases to its place on the sphere about the pivot and faces it; idle, it turns slowly round.
-	if (Orbit.SpinDegPerSec != 0.f && SinceLookSeconds >= Orbit.SpinIdleSeconds) Yaw = FMath::UnwindDegrees(Yaw + Orbit.SpinDegPerSec * float(Dt));
+	if (Orbit.SpinDegPerSec != 0.f && SinceLookSeconds >= Orbit.SpinIdleSeconds) Yaw = SailingAngles::WrapDegrees(Yaw + Orbit.SpinDegPerSec * float(Dt));
 	const FVector P = Pivot();
 	const FVector Want = P - FRotator(Pitch, Yaw, 0.f).Vector() * Orbit.DistanceCm;
 	const FVector To = Constrain(From, FMath::Lerp(From, Want, Alpha), true);

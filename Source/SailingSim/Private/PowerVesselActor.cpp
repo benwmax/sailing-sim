@@ -1,4 +1,5 @@
 #include "PowerVesselActor.h"
+#include "SailingAngles.h"
 #include "SailingFrame.h"
 #include "SailingSim.h"
 #include "Components/StaticMeshComponent.h"
@@ -343,7 +344,7 @@ void APowerVesselActor::UpdateFrom(const FTrafficVessel& V, bool bDark, const FV
 	const FRotator Rot(Motion * FMath::Sin(Time * 0.9f + S.Id), FMath::RadiansToDegrees(S.Heading), Motion * 1.6f * FMath::Sin(Time * 0.7f + 2.f * S.Id));
 	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 0.0), Rot);
 	const FVector D = Observer - GetActorLocation();
-	const float Rel = FMath::UnwindDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X) - S.Heading));
+	const float Rel = SailingAngles::WrapDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X) - S.Heading));
 	const float Dist = float(D.Size()) / 100.f;
 	for (const FNavLight& L : Lights)
 	{
