@@ -752,16 +752,22 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
  * with nobody on the helm, Realistic and Easy (its helm and trim, as FBoatStepJob runs them), 15 minutes of sim time:
  * she stays finite, under 20 kn, and somewhere on the lake.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSunfishIronsTest, "SailingSim.Lake.SunfishInIronsAtLaunch", Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSunfishIronsTest, "SailingSim.Lake.InIronsAtLaunch", Flags)
 bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 {
-	// Rush Creek (the crash) and Galveston (the PC's hang in UnwindDegrees on a 1e17 heading).
+	// The slice's boats left head to wind at the first launch spot, nobody on the helm, Realistic and Easy: Rush Creek
+	// (the Sunfish's crash) and Galveston (her hang in UnwindDegrees on a 1e17 heading, after 13 minutes against a pier).
+	// The Sunfish sails 15 minutes for that; the keelboats 10.
+	struct FIronsBoat { EBoatType Type; const TCHAR* Name; double Minutes; };
+	const FIronsBoat Boats[] = { { EBoatType::Sunfish, TEXT("Sunfish"), 15.0 }, { EBoatType::J22, TEXT("J/22"), 10.0 },
+		{ EBoatType::Catalina22, TEXT("Catalina 22"), 10.0 } };
 	for (const TCHAR* World : { TEXT("RayHubbard"), TEXT("GalvestonBay") })
 	{
 		FLakeData Lake;
 		if (!TestTrue(FString::Printf(TEXT("%s loads"), World), Lake.Load(FLakeData::DefaultDirectory(), World))) return false;
 		if (!TestTrue(TEXT("Launch spots"), Lake.LaunchSpots.Num() > 0)) return false;
 		const FLaunchSpot& Spot = Lake.LaunchSpots[0];
+		for (const FIronsBoat& Kind : Boats)
 		for (const bool bEasy : { false, true })
 		{
 			FWeatherSystem Weather;
@@ -772,7 +778,7 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 			WP.FromDegrees = W.Wind.FromDegrees;
 			FWindField Wind(WP);
 			FWaveField Waves(7);
-			FBoatModel Boat(FBoatConfig::Make(EBoatType::Sunfish));
+			FBoatModel Boat(FBoatConfig::Make(Kind.Type));
 			Boat.SetTerrain(&Lake.Terrain);
 			Boat.SetObstacles(&Lake.Obstacles);
 			Boat.Reset(Spot.X, Spot.Y, W.Wind.FromDegrees * kDegToRad, 0.0);   // head to wind
@@ -789,7 +795,7 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 			double MaxSpeed = 0.0, MaxFrom = 0.0, T = 0.0;
 			bool bFinite = true;
 			int32 Contacts = 0;
-			for (int32 I = 0; I < int32(15 * 60 * PhysicsHz) && bFinite; ++I, T += PhysicsDt)
+			for (int32 I = 0; I < int32(Kind.Minutes * 60 * PhysicsHz) && bFinite; ++I, T += PhysicsDt)
 			{
 				if (I % 2 == 0)
 				{
@@ -819,11 +825,12 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 				Contacts += Boat.GetTelemetry().bCollision ? 1 : 0;
 			}
 			const Vec3 O = Boat.OriginPosition();
-			AddInfo(FString::Printf(TEXT("%s %s: %.0f s, ended at %.1f, %.1f (%.0f m out at most), fastest %.1f kn, in contact %.0f s"), World, bEasy ? TEXT("Easy") : TEXT("Realistic"),
+			const FString Case = FString::Printf(TEXT("%s, %s, %s"), World, Kind.Name, bEasy ? TEXT("Easy") : TEXT("Realistic"));
+			AddInfo(FString::Printf(TEXT("%s: %.0f s, ended at %.1f, %.1f (%.0f m out at most), fastest %.1f kn, in contact %.0f s"), *Case,
 				T, O.X, O.Y, MaxFrom, MaxSpeed, Contacts / PhysicsHz));
-			TestTrue(FString::Printf(TEXT("%s %s: finite and under 100 m/s for 15 minutes"), World, bEasy ? TEXT("Easy") : TEXT("Realistic")), bFinite);
-			TestTrue(FString::Printf(TEXT("%s %s: never past 20 kn"), World, bEasy ? TEXT("Easy") : TEXT("Realistic")), MaxSpeed < 20.0);
-			TestTrue(FString::Printf(TEXT("%s %s: still on the lake"), World, bEasy ? TEXT("Easy") : TEXT("Realistic")), MaxFrom < 5000.0);
+			TestTrue(FString::Printf(TEXT("%s: finite and under 100 m/s for %.0f minutes"), *Case, Kind.Minutes), bFinite);
+			TestTrue(FString::Printf(TEXT("%s: never past 20 kn"), *Case), MaxSpeed < 20.0);
+			TestTrue(FString::Printf(TEXT("%s: still on the lake"), *Case), MaxFrom < 5000.0);
 		}
 	}
 	return true;
