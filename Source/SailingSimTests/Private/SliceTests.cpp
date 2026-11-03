@@ -42,12 +42,32 @@ namespace SliceTestsLocal
 		const TSharedPtr<FJsonObject>* C = nullptr;
 		return O.TryGetObjectField(Key, C) && C && C->IsValid() ? C->Get() : nullptr;
 	}
+
+	/** Every value in Want (nested objects too) is the same in Got: the names of the ones that are not. */
+	void Missing(const FJsonObject& Want, const FJsonObject& Got, const FString& At, TArray<FString>& Out)
+	{
+		for (const auto& W : Want.Values)
+		{
+			FString Key;
+			Key = W.Key;
+			const FString Path = At.IsEmpty() ? Key : At + TEXT(".") + Key;
+			const TSharedPtr<FJsonValue> G = Got.TryGetField(Key);
+			if (!G.IsValid()) { Out.Add(Path); continue; }
+			if (W.Value->Type == EJson::Object && G->Type == EJson::Object) { Missing(*W.Value->AsObject(), *G->AsObject(), Path, Out); continue; }
+			bool bSame = false;
+			if (W.Value->Type == EJson::Number && G->Type == EJson::Number) bSame = FMath::IsNearlyEqual(W.Value->AsNumber(), G->AsNumber(), 1e-4);
+			else if (W.Value->Type == EJson::Boolean && G->Type == EJson::Boolean) bSame = W.Value->AsBool() == G->AsBool();
+			else if (W.Value->Type == EJson::String && G->Type == EJson::String) bSame = W.Value->AsString() == G->AsString();
+			else bSame = W.Value->Type == G->Type;
+			if (!bSame) Out.Add(Path);
+		}
+	}
 }
 
 /**
  * Save carry-over: every save in Source/SailingSimTests/Fixtures/Saves (one per Friday build, named <date>-<branch>-<commit>,
  * docs/save/README.md) loads in this build, and every lesson, medal, quiz, checkride, certificate, scene and the first
- * launch it holds come through, and again after it is written back. A new build that loses a tester's progress fails here.
+ * launch it holds come through, with the settings and the last session value for value, and again after it is written back. A new build that loses a tester's progress fails here.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSliceSaveCarryOverTest, "SailingSim.Slice.SaveCarryOver", SliceTestsLocal::SliceFlags)
 bool FSailingSliceSaveCarryOverTest::RunTest(const FString&)
@@ -74,6 +94,20 @@ bool FSailingSliceSaveCarryOverTest::RunTest(const FString&)
 		for (const FSailSave* Out : { &S, &Again })
 		{
 			const FString When = Out == &S ? FString(TEXT("loaded")) : FString(TEXT("after a write"));
+			// The settings and the last session (Continue), value for value, as this build writes them back.
+			if (const TSharedPtr<FJsonObject> Written = Parse(Out->ToJson()))
+			{
+				for (const TCHAR* Part : { TEXT("settings"), TEXT("lastSession") })
+				{
+					const FJsonObject* Want = Child(*Raw, Part);
+					const FJsonObject* Got = Child(*Written, Part);
+					if (!Want) continue;
+					TArray<FString> Lost;
+					if (Got) Missing(*Want, *Got, Part, Lost);
+					TestTrue(*FString::Printf(TEXT("%s, %s: %s kept%s"), *Name, *When, Part, Lost.Num() ? *(TEXT(" (not: ") + FString::Join(Lost, TEXT(", ")) + TEXT(")")) : TEXT("")),
+						Got && Lost.Num() == 0);
+				}
+			}
 			if (const FJsonObject* Lessons = Child(*P, TEXT("lessons")))
 			{
 				for (const auto& L : Lessons->Values)
