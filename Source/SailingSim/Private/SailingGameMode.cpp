@@ -1566,7 +1566,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 	{
 		bSceneRecorded = true;
 		const Sailing::FSceneResult& R = Scene.GetResult();
-		SAIL_LOG(Display, TEXT("Prologue done in %.0f s: %d steps answered, %d by the crew, %d repeats"), R.Seconds, R.StepsPassed, R.StepsAssisted, R.Retries);
+		SAIL_LOG(Display, TEXT("Scene %hs"), Sailing::SceneResultSummary(R).c_str());
 		if (!USailingSettings::IgnoresSavedChoices())
 		{
 			SailSaveStore::Progress().RecordScene(R, FDateTime::UtcNow());
@@ -1587,7 +1587,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 				{
 					if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->StartSession(Lesson, this);
 				}), 6.f, false);
-				SAIL_LOG(Display, TEXT("First job done: %s's first lesson, %s, in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
+				SAIL_LOG(Display, TEXT("Next: %s's first lesson, %s, loads in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
 			}
 		}
 	}

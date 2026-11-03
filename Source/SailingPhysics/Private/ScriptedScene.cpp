@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
+#include <cstdio>
 
 namespace Sailing
 {
@@ -720,5 +721,14 @@ namespace Sailing
 		static const std::string Empty;
 		const FSceneStep* S = GetStep();
 		return IsActive() && S ? S->Camera : Empty;
+	}
+
+	std::string SceneResultSummary(const FSceneResult& Result)
+	{
+		char Line[256];
+		std::snprintf(Line, sizeof(Line), "%s %s in %.0f s: %d steps answered, %d done for the player, %d repeats, %d restarts",
+			Result.SceneId.c_str(), Result.bComplete ? "done" : "left", Result.Seconds, Result.StepsPassed, Result.StepsAssisted,
+			Result.Retries, Result.Restarts);
+		return Line;
 	}
 }

@@ -143,6 +143,10 @@ namespace Sailing
 		double Seconds = 0.0;  // on the sim clock
 	};
 
+	/** The session log's line for a finished scene, timed from its start: "first-job done in 539 s: 2 steps answered,
+	 *  4 done for the player, 9 repeats, 0 restarts". */
+	SAILINGPHYSICS_API std::string SceneResultSummary(const FSceneResult& Result);
+
 	class SAILINGPHYSICS_API FScriptedScene
 	{
 	public:
