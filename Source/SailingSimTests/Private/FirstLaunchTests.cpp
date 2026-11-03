@@ -61,6 +61,14 @@ bool FSailingFirstSailTest::RunTest(const FString&)
 		Silent.Result.StepsPassed, Silent.Result.StepsAssisted, Silent.Result.Retries, Silent.Result.Seconds));
 	TestTrue(TEXT("A player who answers nothing still reaches the end (no fail)"), Silent.Result.bComplete);
 	TestTrue(TEXT("... with the instructor doing the steps"), Silent.Result.StepsAssisted >= 4);
+	// The PC's soak: by design (docs/first-launch: "never a fail", the instructor does a step after its tries) a player who
+	// touches nothing still finishes the job, in minutes; the session log's line says how long from the job's start and
+	// how many steps were done for them (it used to print only the hand-off's 6 s timer, read as the job's time).
+	TestTrue(TEXT("... in minutes on the sim clock, from the job's start"), Silent.Result.Seconds > 60.0 && Silent.Result.Seconds < 1200.0);
+	const FString Line = UTF8_TO_TCHAR(SceneResultSummary(Silent.Result).c_str());
+	AddInfo(Line);
+	TestTrue(TEXT("The log line times the whole job"), Line.StartsWith(FString::Printf(TEXT("first-job done in %.0f s: "), Silent.Result.Seconds)));
+	TestTrue(TEXT("... and counts the steps done for the player"), Line.Contains(FString::Printf(TEXT("%d done for the player"), Silent.Result.StepsAssisted)));
 	return true;
 }
 
