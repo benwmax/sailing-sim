@@ -1082,7 +1082,7 @@ namespace Sailing
 			// Damping capped at what one step can take out of the point's motion along the normal (its effective mass there,
 			// half of it: several points touch at once). The gains are a J/22's, where the cap is far off; a Sunfish against
 			// a pile has a few tens of kilograms at her ends, and the uncapped damping overshot each step until she spun off
-			// at 300 kn (Galveston, SailingSim.Lake.SunfishInIronsAtLaunch).
+			// at 300 kn (Galveston, SailingSim.Lake.InIronsAtLaunch).
 			const Vec3 Rb = Q.Unrotate(PointWorld - CGWorld), Nb = Q.Unrotate(Normal), RxN = Rb.Cross(Nb);
 			const double InvMass = Nb.X * Nb.X / EffectiveMass.X + Nb.Y * Nb.Y / EffectiveMass.Y + Nb.Z * Nb.Z / EffectiveMass.Z
 				+ RxN.X * RxN.X / EffectiveInertia.X + RxN.Y * RxN.Y / EffectiveInertia.Y + RxN.Z * RxN.Z / EffectiveInertia.Z;
