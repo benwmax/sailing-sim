@@ -1238,9 +1238,37 @@ void ASailboatPawn::RegisterActorTickFunctions(bool bRegister)
 	FBoatPhysicsTask::RegisterJoin(this, PhysicsJoinTick, bRegister);
 }
 
+void ASailboatPawn::TraceBoatState()
+{
+	static SailingArgs::FCachedFlag TraceArg(TEXT("SailingTraceBoat"));
+	const FBoatState& St = Boat.GetState();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const Vec3 O = Boat.OriginPosition();
+	const bool bFinite = FMath::IsFinite(O.X) && FMath::IsFinite(O.Y) && FMath::IsFinite(O.Z) && FMath::IsFinite(St.Velocity.X)
+		&& FMath::IsFinite(St.Velocity.Y) && FMath::IsFinite(St.Velocity.Z) && FMath::IsFinite(St.AngularVelocity.Z);
+	const bool bDiverged = !bFinite || St.Velocity.Length() > 100.0 || St.AngularVelocity.Length() > 50.0;
+	double Every = 0.0;
+	const bool bTrace = TraceArg.Get() && FParse::Value(SailingArgs::Dev(), TEXT("SailingTraceBoat="), Every) && Every > 0.0;
+	if (!(bDiverged && !bBoatDivergedLogged) && !(bTrace && St.Time >= NextBoatTraceAt)) return;
+	if (bTrace) NextBoatTraceAt = St.Time + Every;
+	const FString Line = FString::Printf(TEXT("t %.2f: at %.2f, %.2f, %.2f; vel %.3f, %.3f, %.3f m/s; spin %.3f, %.3f, %.3f rad/s; heading %.1f, heel %.1f, tilt %.1f deg; TWA %.1f; ")
+		TEXT("tiller %.2f, main %.2f, jib %.2f, board %.2f, hike %.2f, aft %.2f, back jib %d; easy %d (recovering %d); contact %d, aground %d, depth %.2f m"),
+		St.Time, O.X, O.Y, O.Z, St.Velocity.X, St.Velocity.Y, St.Velocity.Z, St.AngularVelocity.X, St.AngularVelocity.Y, St.AngularVelocity.Z,
+		FMath::RadiansToDegrees(T.Heading), FMath::RadiansToDegrees(T.Heel), FMath::RadiansToDegrees(St.Orientation.Tilt()), FMath::RadiansToDegrees(T.TrueWindAngle),
+		Controls.Tiller, Controls.MainSheet, Controls.JibSheet, Controls.Board, Controls.Hike, Controls.CrewAft, int32(Controls.bBackJib),
+		int32(EasyAssists.bEnabled), int32(EasyHelm.IsRecovering()), int32(T.bCollision), int32(T.bAground), T.DepthUnderKeel);
+	if (bDiverged && !bBoatDivergedLogged)
+	{
+		bBoatDivergedLogged = true;
+		SAIL_LOG(Warning, TEXT("Boat state diverged (%hs): %s"), Boat.GetConfig().Name, *Line);
+	}
+	else SAIL_LOG(Display, TEXT("Boat trace: %s"), *Line);
+}
+
 void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 {
 	if (PhysicsTask.IsPending()) { SAILING_PERF_SCOPE(BoatPhysics); PhysicsTask.Wait(); }
+	if (!bTrafficBoat && !bGhost) TraceBoatState();
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform();
