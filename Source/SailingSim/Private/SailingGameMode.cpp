@@ -947,7 +947,17 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	WaveParams.WindFromDegrees = WeatherState.Wind.FromDegrees;
 	// On the lake, fetch is the open water upwind of the boat, to the real shore: W3's effective fetch over +/-45 deg of
 	// the wind (the chop at a lee shore grows along the lake too).
-	if (Lake.IsLoaded())
+	// The soak's crash-01: a boat position of 1.26e17 m (a diverged state) reached the fetch march below. Off any map
+	// (or non-finite), keep the last fetch and say so in the log once a minute, so the state shows instead of a crash.
+	const bool bBoatOnMap = FMath::IsFinite(BoatPos.X) && FMath::IsFinite(BoatPos.Y) && FMath::Abs(BoatPos.X) < 1.0e7 && FMath::Abs(BoatPos.Y) < 1.0e7
+		&& FMath::IsFinite(WeatherState.Wind.FromDegrees);
+	if (!bBoatOnMap && FPlatformTime::Seconds() > NextOffMapLog)
+	{
+		NextOffMapLog = FPlatformTime::Seconds() + 60.0;
+		SAIL_LOG(Warning, TEXT("Weather: the boat is off the map or not finite (%g, %g; wind from %g deg): fetch kept at %.0f m"),
+			BoatPos.X, BoatPos.Y, WeatherState.Wind.FromDegrees, FetchCacheMeters);
+	}
+	if (Lake.IsLoaded() && bBoatOnMap)
 	{
 		const double From = WeatherState.Wind.FromDegrees * kDegToRad;
 		if (FMath::Square(BoatPos.X - FetchCacheX) + FMath::Square(BoatPos.Y - FetchCacheY) > 25.0 * 25.0
@@ -962,7 +972,7 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	}
 	else
 	{
-		WaveParams.FetchMeters = WeatherState.FetchMeters;
+		WaveParams.FetchMeters = Lake.IsLoaded() ? FetchCacheMeters : WeatherState.FetchMeters;
 	}
 	UpdateShelter();
 	if (WeatherState.Front.bActive && WeatherState.Front.DistanceAhead(BoatPos.X, BoatPos.Y, Now) < 0.0 && Now < WeatherState.Front.DecayStartTime)

@@ -130,9 +130,10 @@ namespace Sailing
 		const FDetail& D = *Detail;
 		const double Span = D.Tile * D.Cell;
 		const double TX = (X - D.OriginX) / Span, TY = (Y - D.OriginY) / Span;
-		if (TX < 0.0 || TY < 0.0) return -1;
+		// The range is checked in doubles, before int(): the soak's crash-01 came in at X 1.26e17 m (a diverged position),
+		// where int(TX) is INT_MIN and passed the old int test, indexing the tile table ~2^38 bytes away. NaN fails too.
+		if (!(TX >= 0.0 && TY >= 0.0 && TX < double(D.Rows) && TY < double(D.Cols))) return -1;
 		const int R = int(TX), C = int(TY);
-		if (R >= D.Rows || C >= D.Cols) return -1;
 		U = (TX - R) * D.Tile;
 		V = (TY - C) * D.Tile;
 		return D.Index[size_t(R) * D.Cols + C];
@@ -266,6 +267,9 @@ namespace Sailing
 	double FLakeTerrain::HeightAt(double X, double Y) const
 	{
 		if (Rows == 0 && !Heights && !Tiles) return -1000.0; // no terrain: open water everywhere
+		// A non-finite position reads as land rather than indexing the grid and tiles with int(NaN) (crash-01, a diverged
+		// boat position reaching EffectiveFetch from the game mode's weather update, was finite but huge: DetailTileAt).
+		if (!std::isfinite(X) || !std::isfinite(Y)) return 50.0;
 		double Fine;
 		if (DetailHeightAt(X, Y, Fine)) return Fine;
 		return GroundAt(X, Y);
