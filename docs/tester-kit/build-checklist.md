@@ -27,6 +27,9 @@ Unzip the zip somewhere new, as a tester would, and run `SailingSim.exe` from th
       the corner matches `BUILD.md`'s commit and date. No Race, no Gallery (slice build). Replays is greyed.
 - [ ] **World and Boat screens:** only Ray Hubbard and Galveston Bay; only the J/22, Sunfish and Catalina 22, with
       their lock reasons.
+- [ ] **VC++ prompt:** it appears only on a PC without the Visual C++ 2015-2022 runtime (the 4090 PC has it, so expect
+      none). If a spare PC or VM is to hand, run the zip there: choose Yes at the prompt and the game starts. Otherwise
+      check the zip has `Engine\Extras\Redist\en-us\vc_redist.x64.exe`.
 - [ ] **First job:** play it through; the caption says Instructor, the loading screen "Your first job".
 - [ ] **One lesson on the pad:** Day Sailor's Leave the dock with the controller only: cast off, back out, sail clear,
       the quiz, the finish panel's Next lesson. Note anything the pad couldn't do.
@@ -34,6 +37,12 @@ Unzip the zip somewhere new, as a tester would, and run `SailingSim.exe` from th
       check it works, reset it.
 - [ ] **Send feedback:** pause > Send feedback, a Bug with a title; it says sent (crash reports on) or kept on this
       computer (off), and the folder is in `Saved\Feedback`.
+- [ ] **Session log:** `Saved\Logs\session.txt` exists and starts with the build stamp matching `BUILD.md`; it has a
+      `Session:` line for the map you sailed and the first job's `first-job done in ... s` line; no Windows user name in
+      it. The kept feedback report includes its tail.
+- [ ] **Sunfish in irons:** Free Sail, the Sunfish at Galveston on Easy, head to wind and hands off for five minutes
+      beside the pier: she stays put, no freeze (the Nov 2 zip's hang). Then the Catalina 22 at the dock: the new deck
+      hardware is there (turnbuckles, mast step, vents).
 - [ ] Put the real `Saved` folder back.
 
 ## 3. Hand over
