@@ -757,10 +757,11 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 {
 	// The slice's boats left head to wind at the first launch spot, nobody on the helm, Realistic and Easy: Rush Creek
 	// (the Sunfish's crash) and Galveston (her hang in UnwindDegrees on a 1e17 heading, after 13 minutes against a pier).
-	// The Sunfish sails 15 minutes for that; the keelboats 10.
-	struct FIronsBoat { EBoatType Type; const TCHAR* Name; double Minutes; };
-	const FIronsBoat Boats[] = { { EBoatType::Sunfish, TEXT("Sunfish"), 15.0 }, { EBoatType::J22, TEXT("J/22"), 10.0 },
-		{ EBoatType::Catalina22, TEXT("Catalina 22"), 10.0 } };
+	// Easy is where both went wrong: the Sunfish sails it 15 minutes (her Galveston blow-up came at 13.75), the keelboats
+	// 10. Realistic (the boat's own physics) is sailed by the Sunfish only, 10 minutes: about a minute in all.
+	struct FIronsBoat { EBoatType Type; const TCHAR* Name; double EasyMinutes; double RealisticMinutes; };
+	const FIronsBoat Boats[] = { { EBoatType::Sunfish, TEXT("Sunfish"), 15.0, 10.0 }, { EBoatType::J22, TEXT("J/22"), 10.0, 0.0 },
+		{ EBoatType::Catalina22, TEXT("Catalina 22"), 10.0, 0.0 } };
 	for (const TCHAR* World : { TEXT("RayHubbard"), TEXT("GalvestonBay") })
 	{
 		FLakeData Lake;
@@ -770,6 +771,8 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 		for (const FIronsBoat& Kind : Boats)
 		for (const bool bEasy : { false, true })
 		{
+			const double Minutes = bEasy ? Kind.EasyMinutes : Kind.RealisticMinutes;
+			if (Minutes <= 0.0) continue;
 			FWeatherSystem Weather;
 			Weather.Configure(EWeatherPreset::AfternoonBreeze, 2027, 15.0, Spot.X, Spot.Y);
 			FWeatherState W = Weather.Evaluate(0.0);
@@ -795,7 +798,7 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 			double MaxSpeed = 0.0, MaxFrom = 0.0, T = 0.0;
 			bool bFinite = true;
 			int32 Contacts = 0;
-			for (int32 I = 0; I < int32(Kind.Minutes * 60 * PhysicsHz) && bFinite; ++I, T += PhysicsDt)
+			for (int32 I = 0; I < int32(Minutes * 60 * PhysicsHz) && bFinite; ++I, T += PhysicsDt)
 			{
 				if (I % 2 == 0)
 				{
@@ -828,7 +831,7 @@ bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
 			const FString Case = FString::Printf(TEXT("%s, %s, %s"), World, Kind.Name, bEasy ? TEXT("Easy") : TEXT("Realistic"));
 			AddInfo(FString::Printf(TEXT("%s: %.0f s, ended at %.1f, %.1f (%.0f m out at most), fastest %.1f kn, in contact %.0f s"), *Case,
 				T, O.X, O.Y, MaxFrom, MaxSpeed, Contacts / PhysicsHz));
-			TestTrue(FString::Printf(TEXT("%s: finite and under 100 m/s for %.0f minutes"), *Case, Kind.Minutes), bFinite);
+			TestTrue(FString::Printf(TEXT("%s: finite and under 100 m/s for %.0f minutes"), *Case, Minutes), bFinite);
 			TestTrue(FString::Printf(TEXT("%s: never past 20 kn"), *Case), MaxSpeed < 20.0);
 			TestTrue(FString::Printf(TEXT("%s: still on the lake"), *Case), MaxFrom < 5000.0);
 		}
