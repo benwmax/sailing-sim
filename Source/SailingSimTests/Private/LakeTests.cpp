@@ -111,18 +111,20 @@ bool FSailingShorelineTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingNonFiniteHeightTest, "SailingSim.Lake.HeightAtNonFinite", Flags)
 bool FSailingNonFiniteHeightTest::RunTest(const FString& Parameters)
 {
-	// The soak's crash-01 (docs: Artifacts/soak-54ead319): a NaN boat position reached EffectiveFetch from the game
-	// mode's weather update, and int(NaN) indexed the shore detail's tile table far out of range. Non-finite positions
-	// now read as land, and the fetch march from one stays finite.
+	// The soak's crash-01 (Artifacts/soak-54ead319 on the PC): a boat position of 1.26e17 m reached EffectiveFetch from
+	// the game mode's weather update, and int() of it indexed the shore detail's tile table far out of range. Non-finite
+	// and far-off positions now read as land, and the fetch march from one stays finite.
 	FLakeData Lake;
 	if (!TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
 	const FLakeTerrain& T = Lake.Terrain;
 	TestTrue(TEXT("Shore detail loaded (the path that crashed)"), T.HasDetail());
 	const double NaN = std::numeric_limits<double>::quiet_NaN(), Inf = std::numeric_limits<double>::infinity();
 	for (const TPair<double, double>& P : { TPair<double, double>(NaN, 0.0), TPair<double, double>(0.0, NaN), TPair<double, double>(NaN, NaN),
-		TPair<double, double>(Inf, 0.0), TPair<double, double>(0.0, -Inf) })
+		TPair<double, double>(Inf, 0.0), TPair<double, double>(0.0, -Inf), TPair<double, double>(1.2592402116827616e17, 5.448209933821165e16),
+		TPair<double, double>(-3.0e15, 2.0e12) })
 	{
-		TestEqual(TEXT("A non-finite position reads as land"), T.HeightAt(P.Key, P.Value), 50.0);
+		// (the last two finite but far off the map: crash-01's position, from its dump, and its mirror)
+		TestEqual(TEXT("A non-finite or far-off position reads as land"), T.HeightAt(P.Key, P.Value), 50.0);
 		TestTrue(TEXT("The fetch from it is finite"), FMath::IsFinite(T.EffectiveFetch(P.Key, P.Value, 0.5)));
 	}
 	TestTrue(TEXT("A finite position still reads the detail"), T.HeightAt(0.0, 0.0) < 50.0);
