@@ -875,10 +875,16 @@ namespace Sailing
 			TorqueBody.X += -C.ExtraRollDamping * State.AngularVelocity.X;
 			if (C.HeelCapDeg > 0.0)
 			{
-				// Easy mode: no capsize. Measured by the tilt (the heel alone turns back toward zero past 90 degrees).
+				// Easy mode: no capsize. Measured by the roll angle over the whole circle, atan2(right.z, up.z): pitch-free (the
+				// tilt counts pitch, so a boat put down bow first on a bank read past the cap with her heel near zero, and the
+				// cap's roll push flipped with that heel's sign every step: a Sunfish in irons at Rush Creek ran off to 1e17 m),
+				// and still past the cap when she is knocked down beyond 90 degrees (the heel alone turns back toward zero
+				// there). The push is held to nine times the cap's so no step can fire her over: Over <= 3.
+				const Vec3 Up = Q.Rotate(Vec3(0.0, 0.0, 1.0));
+				const double Roll = std::atan2(Q.Right().Z, Up.Z);
 				const double Soft = std::max(C.HeelCapSoftDeg, 0.5) * kDegToRad;
-				const double Over = std::max(Q.Tilt() - C.HeelCapDeg * kDegToRad + Soft, 0.0) / Soft;
-				TorqueBody.X += -Sign(Q.Heel()) * Mass * kGravity * C.HeelCapLeverM * Over * Over;
+				const double Over = std::min(std::max(std::fabs(Roll) - C.HeelCapDeg * kDegToRad + Soft, 0.0) / Soft, 3.0);
+				TorqueBody.X += -Sign(Roll) * Mass * kGravity * C.HeelCapLeverM * Over * Over;
 			}
 		}
 
