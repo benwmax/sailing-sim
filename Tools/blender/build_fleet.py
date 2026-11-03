@@ -726,8 +726,9 @@ def keelboat_cockpit_detail(H, ck, cb, top, half, st, bw):
     ax = bw - 0.75
     box(hull, (ax, 0, H.deck_z(ax, 0) + 0.006), (0.42, 0.5, 0.014), "Deck")
     box(hull, (ax - 0.2, 0, H.deck_z(ax - 0.2, 0) + 0.016), (0.03, 0.4, 0.015), "Stainless")
-    if TAG != "Corsair880":                    # the Corsair's bowsprit takes the stem
+    if TAG not in ("Corsair880", "Catalina22"):   # the Corsair's bowsprit takes the stem; the 22 has the kit's stemhead (c22_hardware)
         box(hull, (bw - 0.22, 0, H.deck_z(bw - 0.22, 0) + 0.03), (0.3, 0.07, 0.05), "Stainless")
+    if TAG not in ("Corsair880", "Catalina22"):
         tube(hull, [(bw - 0.12, -0.03, H.deck_z(bw - 0.12, 0) + 0.05), (bw - 0.12, 0.03, H.deck_z(bw - 0.12, 0) + 0.05)], 0.025, "BlackPlastic", 10)
     # running lights: a bicolour on the pulpit, a white stern light on the pushpit
     hgt = 0.6 if H.h["sheer_z"] < 0.9 else 0.68
@@ -742,6 +743,30 @@ def keelboat_cockpit_detail(H, ck, cb, top, half, st, bw):
             tube(hull, [(st - 0.03, -0.17, z), (st - 0.03, 0.17, z)], 0.012, "Stainless", 6)
         for y in (-0.17, 0.17):
             tube(hull, [(st - 0.03, y, H.sheer(st)), (st - 0.03, y, H.sheer(st) - 0.8)], 0.012, "Stainless", 6)
+
+
+C22_TURNBUCKLE_TOP = 0.035 + 0.216      # the wire's eye on a turnbuckle stood on a chainplate's pin (bk_parts: Pin, Wire)
+
+
+def c22_hardware(H, top, mast_x, st, bw):
+    """pc/boats-c22-ilca: the Catalina 22's standing-rigging and deck hardware a tester sees from the helm and the side
+    deck, from the shared kit: a stainless chainplate and turnbuckle under each shroud (the wires now end on the
+    turnbuckles' eyes: the chainplate sockets below), the cast mast step with its hinge pin on the cabin top, the stemhead
+    fitting with its forestay tang at the bow (for the box and roller it had), two mushroom vents on the cabin top
+    forward of the hatch and a scupper either side of the cockpit's aft end."""
+    for side in (1, -1):
+        for (dx, k) in ((-0.05, 1.0), (-0.35, 0.96)):
+            x = mast_x + dx
+            y = side * (H.sharp_half_beam(mast_x) - 0.08) * k
+            z = H.deck_z(x, y)
+            kit_part("Chainplate", x, y, z, math.pi / 2)
+            kit_part("Turnbuckle", x, y, z + 0.035, math.pi / 2)
+    kit_part("MastStep", mast_x, 0.0, top(mast_x))
+    kit_part("Stemhead", bw - 0.12, 0.0, H.deck_z(bw - 0.12, 0.0))
+    for y in (-0.16, 0.16):
+        kit_part("VentMushroom", mast_x + 0.45, y, top(mast_x + 0.45))
+    for side in (1, -1):
+        kit_part("Scupper", st + 0.02, side * 0.25, H.sheer(st) - 0.3, -math.pi / 2)
 
 
 def winch(x, y, z, r=0.055):
@@ -981,6 +1006,14 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         # shock cord from the transom holding the hiking strap up off the sole (pc/ilca-fidelity: to the webbing)
         dinghy_hiking_strap(H, ck)
         tube(hull, [(x0 + 0.1, 0, sole(x0) + STRAP_TOP_ABOVE_SOLE[0] - 0.006), (x0 - 0.25, 0, H.deck_z(x0 - 0.25, 0) + 0.005)], 0.003, "BlackPlastic", 4, cap=False)
+        # pc/boats-c22-ilca: the ILCA's screw-out inspection ports (the kit's 100 mm deck plate) on the aft deck's centre
+        # and the foredeck beside the board, and the moulded collar the mast drops through at the deck.
+        for (px, py) in ((H.h["stern_x"] + 0.55, 0.0), (x1 + 0.32, 0.17)):
+            kit_part("DeckPlate", px, py, H.deck_z(px, py))
+        mr = 0.5 * RIG["mast_diameter"]
+        mz = H.deck_z(mast_x, 0)
+        lathe(hull, mast_x, 0.0, [(mr + 0.002, mz - 0.004), (mr + 0.030, mz - 0.004), (mr + 0.028, mz + 0.004), (mr + 0.016, mz + 0.012),
+                                  (mr + 0.004, mz + 0.014), (mr + 0.002, mz + 0.012)], "Deck", 24)
     else:
         guard = sunfish_splash_guard(H, bx + 0.5 * chord, mast_x)
         # Fleet hero: the well's moulded lip, a rounded rim along its edge (the deck's own gelcoat), and the hiking strap's
@@ -1262,6 +1295,8 @@ elif TAG in ("Catalina22", "Catalina30"):
     keelboat_deck_detail(MAIN, top, half, cb, mast_x, st, bw)
     keelboat_cockpit_detail(MAIN, ck, cb, top, half, st, bw)
     if TAG == "Catalina22":
+        c22_hardware(MAIN, top, mast_x, st, bw)
+    if TAG == "Catalina22":
         traveler = (ck[0] + 0.35, MAIN.deck_z(ck[0], 0) + 0.04, ck[2] - 0.12)
     else:
         # The 30's traveler on the cabin top just forward of the companionway hatch, sheeted mid-boom, as on most hulls
@@ -1492,8 +1527,12 @@ if SPEC["rig"] in ("masthead", "tri"):
 if SPEC["rig"] == "masthead":
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (MAIN.sharp_half_beam(mast_x) - 0.08)
-        socket(f"ChainplateUpper_{tag}", (mast_x - 0.05, y, MAIN.deck_z(mast_x, y)))
-        socket(f"ChainplateLower_{tag}", (mast_x - 0.35, y * 0.96, MAIN.deck_z(mast_x - 0.35, y)))
+        if TAG == "Catalina22":    # (the 22's wires end on its turnbuckles' eyes: c22_hardware)
+            socket(f"ChainplateUpper_{tag}", (mast_x - 0.05, y, MAIN.deck_z(mast_x - 0.05, y) + C22_TURNBUCKLE_TOP))
+            socket(f"ChainplateLower_{tag}", (mast_x - 0.35, y * 0.96, MAIN.deck_z(mast_x - 0.35, y * 0.96) + C22_TURNBUCKLE_TOP))
+        else:
+            socket(f"ChainplateUpper_{tag}", (mast_x - 0.05, y, MAIN.deck_z(mast_x, y)))
+            socket(f"ChainplateLower_{tag}", (mast_x - 0.35, y * 0.96, MAIN.deck_z(mast_x - 0.35, y)))
 
 
 # ---------------------------------------------------------------- mast, boom, rudder

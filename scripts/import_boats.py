@@ -188,7 +188,12 @@ else:
         import_crew()
     if not only_fleet or "gear" in sys.argv:
         import_gear()
+    # `only=<Tag>,<Tag>` (make-boat-models.ps1 -Fleet): just those classes. Without it every class with an FBX in
+    # Artifacts/models was imported, so a narrowed rebuild re-imported the others from whatever stale FBX was left there.
+    only = next((a.split("=", 1)[1].split(",") for a in sys.argv if a.startswith("only=")), None)
     for tag in FLEET:
+        if only is not None and tag not in only:
+            continue
         if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
             import_boat(tag, f"/Game/Boats/{tag}")
     if not only_fleet and os.path.exists(os.path.join(MODELS, "Maxi_sockets.json")):   # `fleet` is the seven; `maxi` imports her

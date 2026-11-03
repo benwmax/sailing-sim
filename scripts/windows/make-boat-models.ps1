@@ -71,7 +71,7 @@ if ($NoImport) { exit 0 }
 # keelboats' berthed dresses). The old single run passed `dress` whenever berthed was asked for, and that branch
 # imports only what its flags name, so `-Parts j22,berthed` (and the default, every part) never re-imported the J/22.
 $Runs = @()
-if ($Parts -contains 'fleet') { $Runs += 'fleet' }
+if ($Parts -contains 'fleet') { $Runs += $(if ($PSBoundParameters.ContainsKey('Fleet')) { "fleet only=$($Fleet -join ',')" } else { 'fleet' }) }   # (-Fleet: import just those classes)
 if ($Parts -contains 'j22') { $Runs += 'j22only' }
 if ($Parts -contains 'gear') { $Runs += 'gearonly' }
 if ($Parts -contains 'berthed') { $Runs += 'dress' }
