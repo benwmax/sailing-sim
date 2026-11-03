@@ -7,6 +7,9 @@
 #include "LakeTerrain.h"
 #include "Marina.h"
 #include "WorldKit.h"
+#include "EasyAssists.h"
+#include "Waves.h"
+#include "Weather.h"
 #include <limits>
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -739,6 +742,90 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		QuickStopSeconds = Drill.GetElapsed();
 	}
 	AddInfo(FString::Printf(TEXT("Sunfish: triangle %.0f s, quick-stop %.0f s (the club-racer lessons' gold limits sit above these)"), TriangleSeconds, QuickStopSeconds));
+	return true;
+}
+
+/**
+ * The PC's soak (Nov 3 2026): a Sunfish left in irons at Rush Creek on Easy, free sail, ran off to 1e17 m after about ten
+ * minutes and crashed the fetch in HeightAt. Here: the Rush Creek launch spot (where Continue puts her), the lake's
+ * terrain and the marina's obstacles, the Afternoon breeze stepping as the game mode steps it, the Sunfish head to wind
+ * with nobody on the helm, Realistic and Easy (its helm and trim, as FBoatStepJob runs them), 15 minutes of sim time:
+ * she stays finite, under 20 kn, and somewhere on the lake.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSunfishIronsTest, "SailingSim.Lake.SunfishInIronsAtLaunch", Flags)
+bool FSailingSunfishIronsTest::RunTest(const FString& Parameters)
+{
+	// Rush Creek (the crash) and Galveston (the PC's hang in UnwindDegrees on a 1e17 heading).
+	for (const TCHAR* World : { TEXT("RayHubbard"), TEXT("GalvestonBay") })
+	{
+		FLakeData Lake;
+		if (!TestTrue(FString::Printf(TEXT("%s loads"), World), Lake.Load(FLakeData::DefaultDirectory(), World))) return false;
+		if (!TestTrue(TEXT("Launch spots"), Lake.LaunchSpots.Num() > 0)) return false;
+		const FLaunchSpot& Spot = Lake.LaunchSpots[0];
+		for (const bool bEasy : { false, true })
+		{
+			FWeatherSystem Weather;
+			Weather.Configure(EWeatherPreset::AfternoonBreeze, 2027, 15.0, Spot.X, Spot.Y);
+			FWeatherState W = Weather.Evaluate(0.0);
+			FWindParams WP;
+			WP.SpeedKnots = W.Wind.SpeedKnots;
+			WP.FromDegrees = W.Wind.FromDegrees;
+			FWindField Wind(WP);
+			FWaveField Waves(7);
+			FBoatModel Boat(FBoatConfig::Make(EBoatType::Sunfish));
+			Boat.SetTerrain(&Lake.Terrain);
+			Boat.SetObstacles(&Lake.Obstacles);
+			Boat.Reset(Spot.X, Spot.Y, W.Wind.FromDegrees * kDegToRad, 0.0);   // head to wind
+			FEasyAssists Easy;
+			Easy.bEnabled = bEasy;
+			FEasyHelm Helm;
+			FAutoTrim Trim = ScriptedTrim();
+			if (bEasy)
+			{
+				Easy.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
+				Easy.ApplyTo(Trim.Settings);
+			}
+			FBoatControls C;
+			double MaxSpeed = 0.0, MaxFrom = 0.0, T = 0.0;
+			bool bFinite = true;
+			int32 Contacts = 0;
+			for (int32 I = 0; I < int32(15 * 60 * PhysicsHz) && bFinite; ++I, T += PhysicsDt)
+			{
+				if (I % 2 == 0)
+				{
+					W = Weather.Evaluate(T);
+					const Vec3 P = Boat.OriginPosition();
+					FWeatherSystem::ApplyToWind(W, Wind, T, P.X, P.Y);
+					FWaveParams WvP;
+					WvP.WindSpeedKnots = W.Wind.SpeedKnots;
+					WvP.WindFromDegrees = W.Wind.FromDegrees;
+					WvP.FetchMeters = 3000.0;
+					Waves.SetWind(WvP);
+					Waves.Update(2.0 * PhysicsDt);
+				}
+				if (bEasy)
+				{
+					const double Tiller = C.Tiller;
+					C = Trim.Update(Boat, C, PhysicsDt);
+					C.Tiller = Tiller;
+					Boat.Step(PhysicsDt, Helm.Update(Boat, C, Easy, PhysicsDt), Wind, &Waves);
+				}
+				else Boat.Step(PhysicsDt, C, Wind, &Waves);
+				const Vec3 O = Boat.OriginPosition();
+				const Vec3 V = Boat.GetState().Velocity;
+				bFinite = FMath::IsFinite(O.X) && FMath::IsFinite(O.Y) && FMath::IsFinite(V.X) && FMath::IsFinite(V.Y) && V.Length() < 100.0;
+				MaxSpeed = FMath::Max(MaxSpeed, V.Length() / kKnot);
+				MaxFrom = FMath::Max(MaxFrom, FMath::Sqrt(FMath::Square(O.X - Spot.X) + FMath::Square(O.Y - Spot.Y)));
+				Contacts += Boat.GetTelemetry().bCollision ? 1 : 0;
+			}
+			const Vec3 O = Boat.OriginPosition();
+			AddInfo(FString::Printf(TEXT("%s %s: %.0f s, ended at %.1f, %.1f (%.0f m out at most), fastest %.1f kn, in contact %.0f s"), World, bEasy ? TEXT("Easy") : TEXT("Realistic"),
+				T, O.X, O.Y, MaxFrom, MaxSpeed, Contacts / PhysicsHz));
+			TestTrue(FString::Printf(TEXT("%s %s: finite and under 100 m/s for 15 minutes"), World, bEasy ? TEXT("Easy") : TEXT("Realistic")), bFinite);
+			TestTrue(FString::Printf(TEXT("%s %s: never past 20 kn"), World, bEasy ? TEXT("Easy") : TEXT("Realistic")), MaxSpeed < 20.0);
+			TestTrue(FString::Printf(TEXT("%s %s: still on the lake"), World, bEasy ? TEXT("Easy") : TEXT("Realistic")), MaxFrom < 5000.0);
+		}
+	}
 	return true;
 }
 

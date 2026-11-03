@@ -3,7 +3,10 @@
 #include "BoatModel.h"
 #include "EasyAssists.h"
 #include "FixedStepper.h"
+#include "LakeTerrain.h"
 #include "Wind.h"
+#include <cmath>
+#include <vector>
 
 using namespace Sailing;
 
@@ -95,6 +98,62 @@ bool FSailingEasyModeTest::RunTest(const FString&)
 		const FEasyTackResult Tack = RunEasyTack(EBoatType::J22, true, Tws);
 		AddInfo(FString::Printf(TEXT("Crude tack %.0f kn on Easy: TWA %.0f, %.1f kn, max heel %.1f"), Tws, Tack.FinalTwaDeg, Tack.FinalSpeedKnots, Tack.MaxHeelDeg));
 		TestTrue(FString::Printf(TEXT("Crude tack %.0f kn: tacked"), Tws), Tack.bTacked);
+	}
+	return true;
+}
+
+// The Sunfish blow-up (docs/easy-mode/README.md): Easy's heel cap read the tilt, which counts pitch, and pushed on the heel's
+// sign. A Sunfish head to wind put down bow first on a bank read past her cap with the heel near zero, the push flipped
+// every step and she ran off to 1e17 m in under a second. Here she starts 0.6 m into a sloping bank with the shore astern,
+// in irons on 13 kn, nobody on the helm: the state stays finite and on the map for a minute.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingEasyHeelCapAgroundTest, "SailingSim.Physics.EasyHeelCapAground", EasyModeTestsLocal::EasyFlags)
+bool FSailingEasyHeelCapAgroundTest::RunTest(const FString&)
+{
+	const int Rows = 200, Cols = 100;
+	std::vector<float> Heights(Rows * Cols);
+	for (int R = 0; R < Rows; ++R)
+	{
+		const double D = -2.0 - (-300.0 + R * 2.0);   // metres past the bank's foot, downwind
+		const float H = float(D < -10.0 ? -3.0 : (D > 0.0 ? 1.0 + 0.1 * D : -3.0 + 0.3 * (D + 10.0)));
+		for (int Col = 0; Col < Cols; ++Col)
+			Heights[R * Cols + Col] = H;
+	}
+	FLakeTerrain Terrain;
+	Terrain.InitSynthetic(Rows, Cols, 2.0, -300.0, -100.0, Heights);
+	FWindParams WP;
+	WP.SpeedKnots = 13.0;
+	WP.FromDegrees = 0.0;
+	const FWindField Wind(WP);
+	for (const bool bEasy : {false, true})
+	{
+		FBoatModel Boat(FBoatConfig::Make(EBoatType::Sunfish));
+		Boat.SetTerrain(&Terrain);
+		Boat.Reset(0.0, 0.0, 0.0, 0.0);
+		FEasyAssists Easy;
+		Easy.bEnabled = bEasy;
+		Easy.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
+		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
+		Easy.ApplyTo(Trim.Settings);
+		FEasyHelm Helm;
+		FBoatControls Controls;
+		bool bSane = true;
+		double DivergedAt = -1.0;
+		for (int I = 0; I < 60 * 120 && bSane; ++I)
+		{
+			const double Tiller = Controls.Tiller;
+			Controls = Trim.Update(Boat, Controls, 1.0 / 120.0);
+			Controls.Tiller = Tiller;
+			Boat.Step(1.0 / 120.0, bEasy ? Helm.Update(Boat, Controls, Easy, 1.0 / 120.0) : Controls, Wind);
+			const Vec3 O = Boat.OriginPosition();
+			const Vec3 V = Boat.GetState().Velocity;
+			bSane = std::isfinite(O.X) && std::isfinite(O.Y) && std::isfinite(O.Z) && std::isfinite(V.X) && V.Length() < 100.0
+				&& std::fabs(O.X) < 1000.0 && std::fabs(O.Y) < 1000.0;
+			if (!bSane)
+				DivergedAt = I / 120.0;
+		}
+		TestTrue(FString::Printf(TEXT("%s Sunfish aground in irons stays finite and on the map for 60 s (went off at %.2f s)"),
+			bEasy ? TEXT("Easy") : TEXT("Realistic"), DivergedAt), bSane);
 	}
 	return true;
 }

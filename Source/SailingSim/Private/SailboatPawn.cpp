@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "SailingAngles.h"
 #include "Algo/AnyOf.h"
 #include "CrewOutfit.h"
 #include "SailingFrame.h"
@@ -1150,7 +1151,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		if (T > 5.0) RunMaxHeelDeg = FMath::Max(RunMaxHeelDeg, FMath::Abs(Boat.GetTelemetry().Heel) * kRadToDeg);
 		if (bDemoTacks)
 		{
-			CameraYaw = FMath::UnwindDegrees(CameraYaw + 4.f * DeltaSeconds);
+			CameraYaw = SailingAngles::WrapDegrees(CameraYaw + 4.f * DeltaSeconds);
 		}
 		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	}
@@ -1238,9 +1239,37 @@ void ASailboatPawn::RegisterActorTickFunctions(bool bRegister)
 	FBoatPhysicsTask::RegisterJoin(this, PhysicsJoinTick, bRegister);
 }
 
+void ASailboatPawn::TraceBoatState()
+{
+	static SailingArgs::FCachedFlag TraceArg(TEXT("SailingTraceBoat"));
+	const FBoatState& St = Boat.GetState();
+	const FBoatTelemetry& T = Boat.GetTelemetry();
+	const Vec3 O = Boat.OriginPosition();
+	const bool bFinite = FMath::IsFinite(O.X) && FMath::IsFinite(O.Y) && FMath::IsFinite(O.Z) && FMath::IsFinite(St.Velocity.X)
+		&& FMath::IsFinite(St.Velocity.Y) && FMath::IsFinite(St.Velocity.Z) && FMath::IsFinite(St.AngularVelocity.Z);
+	const bool bDiverged = !bFinite || St.Velocity.Length() > 100.0 || St.AngularVelocity.Length() > 50.0;
+	double Every = 0.0;
+	const bool bTrace = TraceArg.Get() && FParse::Value(SailingArgs::Dev(), TEXT("SailingTraceBoat="), Every) && Every > 0.0;
+	if (!(bDiverged && !bBoatDivergedLogged) && !(bTrace && St.Time >= NextBoatTraceAt)) return;
+	if (bTrace) NextBoatTraceAt = St.Time + Every;
+	const FString Line = FString::Printf(TEXT("t %.2f: at %.2f, %.2f, %.2f; vel %.3f, %.3f, %.3f m/s; spin %.3f, %.3f, %.3f rad/s; heading %.1f, heel %.1f, tilt %.1f deg; TWA %.1f; ")
+		TEXT("tiller %.2f, main %.2f, jib %.2f, board %.2f, hike %.2f, aft %.2f, back jib %d; easy %d (recovering %d); contact %d, aground %d, depth %.2f m"),
+		St.Time, O.X, O.Y, O.Z, St.Velocity.X, St.Velocity.Y, St.Velocity.Z, St.AngularVelocity.X, St.AngularVelocity.Y, St.AngularVelocity.Z,
+		FMath::RadiansToDegrees(T.Heading), FMath::RadiansToDegrees(T.Heel), FMath::RadiansToDegrees(St.Orientation.Tilt()), FMath::RadiansToDegrees(T.TrueWindAngle),
+		Controls.Tiller, Controls.MainSheet, Controls.JibSheet, Controls.Board, Controls.Hike, Controls.CrewAft, int32(Controls.bBackJib),
+		int32(EasyAssists.bEnabled), int32(EasyHelm.IsRecovering()), int32(T.bCollision), int32(T.bAground), T.DepthUnderKeel);
+	if (bDiverged && !bBoatDivergedLogged)
+	{
+		bBoatDivergedLogged = true;
+		SAIL_LOG(Warning, TEXT("Boat state diverged (%hs): %s"), Boat.GetConfig().Name, *Line);
+	}
+	else SAIL_LOG(Display, TEXT("Boat trace: %s"), *Line);
+}
+
 void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 {
 	if (PhysicsTask.IsPending()) { SAILING_PERF_SCOPE(BoatPhysics); PhysicsTask.Wait(); }
+	if (!bTrafficBoat && !bGhost) TraceBoatState();
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform();
@@ -1476,7 +1505,7 @@ bool ASailboatPawn::TakeBearing()
 	{
 		const double Dist = FVector2D::Distance(Me, Pos);
 		if (Dist > FMath::Min(Range, Visibility) || Dist < 20.0) return;
-		const double Error = FMath::Abs(FMath::UnwindDegrees(SailingNav::BearingDeg(Me, Pos) - Sight));
+		const double Error = FMath::Abs(SailingAngles::WrapDegrees(SailingNav::BearingDeg(Me, Pos) - Sight));
 		if (Error < BestError) { BestError = Error; BestName = Name; BestPos = Pos; }
 	};
 	for (const FNavaid& N : Lake.Navaids)
@@ -1845,7 +1874,7 @@ void ASailboatPawn::SetGhostFrame(const FReplayFrame& Frame)
 
 void ASailboatPawn::AddCameraOrbit(const FVector2D& Delta, float ZoomDelta)
 {
-	CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
+	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -85.f, 20.f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	if (ZoomDelta != 0.f)
@@ -2345,7 +2374,7 @@ float ASailboatPawn::GetShowroomViewBearing() const
 {
 	if (!FreeCam || ShowroomStage == EShowroomStage::None) return 0.f;
 	// The camera looks at her along its yaw, so it stands on the opposite bearing.
-	return FMath::UnwindDegrees(float(FreeCam->GetActorRotation().Yaw) + 180.f - float(GetActorRotation().Yaw));
+	return SailingAngles::WrapDegrees(float(FreeCam->GetActorRotation().Yaw) + 180.f - float(GetActorRotation().Yaw));
 }
 
 void ASailboatPawn::ShowBoat(int32 Type)
@@ -2479,7 +2508,7 @@ void ASailboatPawn::UpdateNavLights()
 	if (const APlayerCameraManager* Cam = GetWorld()->GetFirstPlayerController() ? GetWorld()->GetFirstPlayerController()->PlayerCameraManager.Get() : nullptr)
 	{
 		const FVector D = Cam->GetCameraLocation() - GetActorLocation();
-		Rel = FMath::UnwindDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)) - FMath::RadiansToDegrees(Boat.GetTelemetry().Heading));
+		Rel = SailingAngles::WrapDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)) - FMath::RadiansToDegrees(Boat.GetTelemetry().Heading));
 		Dist = D.Size() / CmPerMeter;
 	}
 	const bool bArc[4] = { Rel <= 2.0 && Rel >= -112.5, Rel >= -2.0 && Rel <= 112.5, FMath::Abs(Rel) >= 112.5, FMath::Abs(Rel) <= 112.5 };
@@ -3316,7 +3345,7 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		ChartCenter += FVector2D(Delta.Y, Delta.X) * ChartMetersPerPixel * 4.0;
 		return;
 	}
-	CameraYaw = FMath::UnwindDegrees(CameraYaw + Delta.X);
+	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 }
@@ -3924,7 +3953,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		// reference stood, e.g. looking into an approaching storm), fixed when the stand is set.
 		if (!FMath::IsNaN(CaptureBearing) && !bCaptureBearingResolved && FParse::Param(SailingArgs::Dev(), TEXT("SailingCaptureAbsolute")))
 		{
-			CaptureBearing = FMath::UnwindDegrees(CaptureBearing - float(FMath::RadiansToDegrees(T.Heading)));
+			CaptureBearing = SailingAngles::WrapDegrees(CaptureBearing - float(FMath::RadiansToDegrees(T.Heading)));
 		}
 		bCaptureBearingResolved = true;
 		const float Bearing = FMath::IsNaN(CaptureBearing) ? -90.f : CaptureBearing;

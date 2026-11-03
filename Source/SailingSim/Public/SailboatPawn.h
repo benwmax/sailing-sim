@@ -337,6 +337,11 @@ private:
 	Sailing::FAutoTrim TrimAssist;
 	Sailing::FEasyAssists EasyAssists;
 	Sailing::FEasyHelm EasyHelm;
+	/** -SailingTraceBoat=<s> (docs/session-log/): the boat's state in the session log every s seconds of sim time; and,
+	 *  in every run, one warning the first time it diverges (non-finite, or faster than 100 m/s). */
+	double NextBoatTraceAt = 0.0;
+	bool bBoatDivergedLogged = false;
+	void TraceBoatState();
 	/** -SailingDemo: the autopilot sails close-hauled and tacks every few seconds, for recordings and the QA gate. */
 	bool bDemo = false;
 	FString StatusMessage;

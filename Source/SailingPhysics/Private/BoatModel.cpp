@@ -875,10 +875,15 @@ namespace Sailing
 			TorqueBody.X += -C.ExtraRollDamping * State.AngularVelocity.X;
 			if (C.HeelCapDeg > 0.0)
 			{
-				// Easy mode: no capsize. Measured by the tilt (the heel alone turns back toward zero past 90 degrees).
+				// Easy mode: no capsize. Measured by the tilt (pitch counts: the gale tacks of FSceneLimits are tuned to it), on
+				// the heel's side. That side used to be Sign(Heel), and the push Over^2 unbounded: a Sunfish in irons put down bow
+				// first on a bank read far past her cap with her heel near zero, the push flipped every step and she ran off to
+				// 1e17 m in under a second. Now the side ramps over the first 2 degrees of heel and the push is held to nine times
+				// the cap's (Over <= 3), so no step can fire her over; otherwise it is the cap it was.
 				const double Soft = std::max(C.HeelCapSoftDeg, 0.5) * kDegToRad;
-				const double Over = std::max(Q.Tilt() - C.HeelCapDeg * kDegToRad + Soft, 0.0) / Soft;
-				TorqueBody.X += -Sign(Q.Heel()) * Mass * kGravity * C.HeelCapLeverM * Over * Over;
+				const double Over = std::min(std::max(Q.Tilt() - C.HeelCapDeg * kDegToRad + Soft, 0.0) / Soft, 3.0);
+				const double Side = Clamp(Q.Heel() / (2.0 * kDegToRad), -1.0, 1.0);
+				TorqueBody.X += -Side * Mass * kGravity * C.HeelCapLeverM * Over * Over;
 			}
 		}
 
@@ -1074,7 +1079,14 @@ namespace Sailing
 		{
 			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld) - SurfaceVel;
 			const double Vn = Vel.Dot(Normal);
-			const double Fn = std::max(0.0, Stiffness * Penetration - Damping * Vn);
+			// Damping capped at what one step can take out of the point's motion along the normal (its effective mass there,
+			// half of it: several points touch at once). The gains are a J/22's, where the cap is far off; a Sunfish against
+			// a pile has a few tens of kilograms at her ends, and the uncapped damping overshot each step until she spun off
+			// at 300 kn (Galveston, SailingSim.Lake.SunfishInIronsAtLaunch).
+			const Vec3 Rb = Q.Unrotate(PointWorld - CGWorld), Nb = Q.Unrotate(Normal), RxN = Rb.Cross(Nb);
+			const double InvMass = Nb.X * Nb.X / EffectiveMass.X + Nb.Y * Nb.Y / EffectiveMass.Y + Nb.Z * Nb.Z / EffectiveMass.Z
+				+ RxN.X * RxN.X / EffectiveInertia.X + RxN.Y * RxN.Y / EffectiveInertia.Y + RxN.Z * RxN.Z / EffectiveInertia.Z;
+			const double Fn = std::max(0.0, Stiffness * Penetration - std::min(Damping, 0.5 / (InvMass * Dt)) * Vn);
 			const Vec3 Vt = Vel - Normal * Vn;
 			const double VtLen = Vt.Length();
 			// Regularized Coulomb friction: smooth near zero slip so a grounded boat settles instead of jittering.
