@@ -205,6 +205,8 @@ private:
 	bool bShelterBuilding = false;
 	// W3: the effective fetch at the boat (nine marches), recomputed when she has moved 25 m or the wind turned 2 deg.
 	double FetchCacheX = 1e18, FetchCacheY = 1e18, FetchCacheFrom = 1e18, FetchCacheMeters = 4000.0;
+	/** When the off-map warning may be logged again (UpdateWeather, crash-01). */
+	double NextOffMapLog = 0.0;
 	std::vector<Sailing::FShelterObstacle> ShelterObstacles; // W1: the houses, for the lee map
 	// W3, sea state by direction (SeaState.h): the fetch map, built at load; the sea map for the mean wind, rebuilt on a
 	// worker when the wind's speed changes 5% or its direction 11.25 deg (-SailingNoSeaMap: one sea everywhere, as before).
