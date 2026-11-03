@@ -795,7 +795,20 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Feedback: E = BuildFeedback(); break;
 	}
 	E.Screen = S;
+	RefocusChoice = NAME_None;
 	return E;
+}
+
+void SSailFrontEnd::RebuildKeeping(FName Choice)
+{
+	RefocusChoice = Choice;
+	Stack.Last() = Build(Current());
+	Show(Stack.Last(), true);
+}
+
+void SSailFrontEnd::KeepFocus(FEntry& E, FName Choice, const TSharedRef<SWidget>& Widget) const
+{
+	if (RefocusChoice == Choice) E.Focus = Widget;
 }
 
 // ---------------------------------------------------------------- 5.1 Title
@@ -1534,8 +1547,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 	};
 	const bool bTipsOk = Pending.bLearningMode;
 	TSharedRef<SGridPanel> Toggles = SNew(SGridPanel).FillColumn(0, 1.f).FillColumn(1, 1.f);
-	Toggles->AddSlot(0, 0).Padding(0.f, 0.f, 10.f, 10.f)[ Seg(TEXT("Mode"), { TEXT("Learning"), TEXT("Game") }, [this]() { return Pending.bLearningMode ? 0 : 1; },
-		[this](int32 I) { Pending.bLearningMode = I == 0; if (!Pending.bLearningMode) Pending.bLearningTips = false; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); }) ];
+	// The PC's UI script: Right on Mode rebuilt the screen (Learning tips greys out in Game) and focus went to the mode card.
+	const TSharedRef<SSailChoice> ModeChoice = Seg(TEXT("Mode"), { TEXT("Learning"), TEXT("Game") }, [this]() { return Pending.bLearningMode ? 0 : 1; },
+		[this](int32 I) { Pending.bLearningMode = I == 0; if (!Pending.bLearningMode) Pending.bLearningTips = false; RebuildKeeping(TEXT("Mode")); });
+	KeepFocus(E, TEXT("Mode"), ModeChoice);
+	Toggles->AddSlot(0, 0).Padding(0.f, 0.f, 10.f, 10.f)[ ModeChoice ];
 	Toggles->AddSlot(1, 0).Padding(0.f, 0.f, 0.f, 10.f)[ Seg(TEXT("Difficulty"), { TEXT("Easy sailing"), TEXT("Realistic") }, [this]() { return Pending.bEasy ? 0 : 1; }, [this](int32 I) { Pending.bEasy = I == 0; }) ];
 	Toggles->AddSlot(0, 1).Padding(0.f, 0.f, 10.f, 0.f)[ Seg(TEXT("Learning tips"), { TEXT("On"), TEXT("Off") }, [this]() { return Pending.bLearningTips ? 0 : 1; },
 		[this](int32 I) { Pending.bLearningTips = I == 0; }, bTipsOk, bTipsOk ? FString() : FString(TEXT("Tips off in Game mode"))) ];
@@ -1696,7 +1712,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	auto IndexOf = [](const TArray<int32>& Values, int32 V) { const int32 I = Values.IndexOfByKey(V); return I == INDEX_NONE ? 0 : I; };
 	ASailingGameMode* GM = Player.IsValid() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
 	// Text size rebuilds the screen so the change shows at once.
-	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Settings); Show(Stack.Last(), true); };
+	auto Rebuild = [this]() { RebuildKeeping(TEXT("TextSize")); };
 	switch (SettingsTab)
 	{
 	case 0:
@@ -1836,10 +1852,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	default:
 	{
 		static const TArray<int32> Texts = { 100, 115, 130, 150 };
-		Add(SNew(SSailChoice).Label(TEXT("Text size")).Options({ TEXT("100%"), TEXT("115%"), TEXT("130%"), TEXT("150%") })
+		const TSharedRef<SSailChoice> TextSize = SNew(SSailChoice).Label(TEXT("Text size")).Options({ TEXT("100%"), TEXT("115%"), TEXT("130%"), TEXT("150%") })
 			.Index_Lambda([S, IndexOf]() { return IndexOf(Texts, S->TextScale); })
 			.OnChanged_Lambda([S, Rebuild](int32 I) { S->TextScale = Texts[I]; S->Save(); Rebuild(); })
-			.Note(TEXT("Body text, notes and instrument labels. The HUD takes it at the next session.")));
+			.Note(TEXT("Body text, notes and instrument labels. The HUD takes it at the next session."));
+		Add(TextSize);
+		KeepFocus(E, TEXT("TextSize"), TextSize);
 		Add(SNew(SSailChoice).Label(TEXT("Port and starboard colours")).Options({ TEXT("Red and green") }).Index(0)
 			.Note(TEXT("The HUD pairs every side colour with a letter (P and S) or a word, so it never relies on colour alone.")));
 		Help = TEXT("Every screen works with the keyboard, a controller or the mouse; the prompts follow whichever you used last.");
@@ -2725,7 +2743,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFeedback()
 		return SNew(SBox).HeightOverride(Height)[ Field ];
 	};
 	TSharedRef<SSailChoice> Kind = SNew(SSailChoice).Label(TEXT("This is")).Options({ TEXT("A bug"), TEXT("An idea") }).Index_Lambda([this]() { return FeedbackKind; })
-		.OnChanged_Lambda([this](int32 I) { FeedbackKind = I; Stack.Last() = Build(ESailScreen::Feedback); Show(Stack.Last(), true); });
+		.OnChanged_Lambda([this](int32 I) { FeedbackKind = I; RebuildKeeping(TEXT("Kind")); });
 	TSharedRef<SVerticalBox> Form = SNew(SVerticalBox);
 	Form->AddSlot().AutoHeight()[ SailUI::Text(TEXT("Send feedback"), EType::ScreenTitle, Fg) ];
 	Form->AddSlot().AutoHeight().Padding(0.f, 4.f, 0.f, 16.f)[ SailUI::Text(bBug
