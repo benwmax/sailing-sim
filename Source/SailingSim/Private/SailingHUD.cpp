@@ -259,7 +259,9 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	const FKeyEvent Down(Key, FModifierKeysState(), 0, false, 0, 0);
 	const TSharedPtr<SWidget> Focused = App.GetUserFocusedWidget(0);
 	const bool bHandled = App.ProcessKeyDownEvent(Down);
-	SAIL_LOG(Display, TEXT("UI script: %s -> %s (%s)"), *Token, Focused.IsValid() ? *Focused->ToString() : TEXT("nothing"), bHandled ? TEXT("handled") : TEXT("unhandled"));
+	const FString FocusName = !Focused.IsValid() ? FString(TEXT("nothing"))
+		: (Focused->GetTag().IsNone() ? Focused->ToString() : FString::Printf(TEXT("%s '%s'"), *Focused->ToString(), *Focused->GetTag().ToString()));
+	SAIL_LOG(Display, TEXT("UI script: %s -> %s (%s)"), *Token, *FocusName, bHandled ? TEXT("handled") : TEXT("unhandled"));
 	App.ProcessKeyUpEvent(FKeyEvent(Key, FModifierKeysState(), 0, false, 0, 0));
 }
 

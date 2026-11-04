@@ -348,6 +348,7 @@ int32 SSailSlider::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 void SSailChoice::Construct(const FArguments& A)
 {
 	Options = A._Options; Index = A._Index; Enabled = A._IsEnabled; OnChanged = A._OnChanged;
+	SetTag(FName(*A._Label));   // names the choice in the UI script's log (every Seg choice has the same source line)
 	// The chips take the width the row gives them and wrap (right-aligned) when it's too narrow; six or more sit a little
 	// tighter. (The Sky row's six ran past its panel over the next column at 1440x1080.)
 	const bool bMany = Options.Num() >= 6;
