@@ -4,6 +4,7 @@
 #include "Marina.h"
 #include "MarinaActor.h"
 #include "FarRing.h"
+#include "LakeTerrainActor.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
@@ -250,6 +251,11 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out, EComponentMobility::Type Mobility)
 {
 	int32 Baked = 0;
+	// A Static tile can't attach to a movable root (the terrain actor's: it follows the tide): that actor keeps it instead.
+	USceneComponent* const Root = Owner->GetRootComponent();
+	ALakeTerrainActor* const Keeper = Mobility == EComponentMobility::Static && Root && Root->Mobility != EComponentMobility::Static
+		? Cast<ALakeTerrainActor>(Owner) : nullptr;
+	auto Place = [Root, Keeper](USceneComponent* C) { if (Keeper) Keeper->KeepWithActor(C); else C->SetupAttachment(Root); };
 	for (const auto& KV : Tiles)
 	{
 		const FString Name = FKitGeometry::TileAssetName(Prefix, KV.Key);
@@ -258,7 +264,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		{
 			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
 			C->SetMobility(Mobility);
-			C->SetupAttachment(Owner->GetRootComponent());
+			Place(C);
 			C->SetStaticMesh(Mesh);
 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -270,7 +276,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		// No Nanite: on High a big procedural layout overflows the virtual shadow map's non-Nanite marking (rebake instead).
 		UProceduralMeshComponent* M = NewObject<UProceduralMeshComponent>(Owner);
 		M->SetMobility(Mobility);
-		M->SetupAttachment(Owner->GetRootComponent());
+		Place(M);
 		M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		M->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		M->RegisterComponent();
