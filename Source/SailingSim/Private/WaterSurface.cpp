@@ -590,6 +590,22 @@ void AWaterSurface::SetRingCount(int32 Count)
 	}
 }
 
+int32 AWaterSurface::RingHoleQuads(int32 Level)
+{
+	// N/4 coarse cells is the finer ring's half-width; one cell for the snaps' offset (up to a cell) and one to spare.
+	return Level == 0 ? 0 : kRingQuads / 4 - 2;
+}
+
+double AWaterSurface::RingOverlapM(int32 Level, double CamX)
+{
+	if (Level <= 0) return 0.0;
+	const double Coarse = kFinestSpacingM * double(1 << Level), Fine = 0.5 * Coarse;
+	// As Tick places them: each ring on a grid of twice its spacing.
+	const double CoarseAt = FMath::GridSnap(CamX, 2.0 * Coarse), FineAt = FMath::GridSnap(CamX, 2.0 * Fine);
+	const double FineHalf = 0.5 * kRingQuads * Fine, HoleHalf = RingHoleQuads(Level) * Coarse;
+	return FMath::Min((FineAt + FineHalf) - (CoarseAt + HoleHalf), (CoarseAt - HoleHalf) - (FineAt - FineHalf));
+}
+
 void AWaterSurface::BuildRings()
 {
 	for (UProceduralMeshComponent* Ring : Rings)
@@ -603,8 +619,9 @@ void AWaterSurface::BuildRings()
 	{
 		const float Spacing = kFinestSpacingM * float(1 << Level);
 		const int32 N = kRingQuads;
-		// Inner hole for every ring but the first: the next finer ring fills it (one coarse cell of overlap).
-		const int32 Hole = Level == 0 ? 0 : N / 4 - 1;
+		// Inner hole for every ring but the first: the next finer ring fills it (RingHoleQuads: never less than one coarse
+		// cell of overlap, whatever the two rings' snaps).
+		const int32 Hole = RingHoleQuads(Level);
 
 		TArray<FVector> Verts;
 		TArray<int32> Tris;

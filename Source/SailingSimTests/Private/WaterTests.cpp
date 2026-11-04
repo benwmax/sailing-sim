@@ -1130,3 +1130,25 @@ bool FWaterGaleSprayTest::RunTest(const FString&)
 	TestTrue(TEXT("It only grows with the wind"), bMonotone);
 	return true;
 }
+
+// Feedback #6: white lines between the water's tiles as the camera turned. Each ring's hole is filled by the next finer ring;
+// both snap to the camera on their own grids, so for some camera positions their centres sit a coarse cell apart. The finer
+// ring must still overlap the hole by a coarse cell on both sides, or the edges meet in T-junctions the waves pull open.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterRingOverlapTest, "SailingSim.Visual.WaterRingOverlap", WaterFlags)
+bool FWaterRingOverlapTest::RunTest(const FString&)
+{
+	for (int32 Level = 1; Level < 7; ++Level)
+	{
+		const double Coarse = 0.5 * double(1 << Level);
+		double Least = 1e9, LeastAt = 0.0;
+		for (int32 I = 0; I < 4000; ++I)
+		{
+			const double CamX = -5000.0 + I * 2.5371;   // camera positions across many snaps of every ring
+			const double O = AWaterSurface::RingOverlapM(Level, CamX);
+			if (O < Least) { Least = O; LeastAt = CamX; }
+		}
+		TestTrue(FString::Printf(TEXT("Ring %d: the finer ring overlaps its hole by a coarse cell (%.2f m) wherever the camera is (least %.2f m, at %.1f m)"),
+			Level, Coarse, Least, LeastAt), Least >= Coarse - 1e-6);
+	}
+	return true;
+}
