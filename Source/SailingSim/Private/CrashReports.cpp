@@ -15,6 +15,11 @@
 #include "SentrySubsystem.h"
 #include "SentryFeedback.h"
 #include "SentryScope.h"
+#include "SentrySettings.h"
+#include "HttpModule.h"
+#include "Interfaces/IHttpRequest.h"
+#include "Interfaces/IHttpResponse.h"
+#include "Misc/Guid.h"
 #endif
 
 namespace SailCrashReportsLocal
@@ -145,30 +150,25 @@ bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
 #if WITH_SAILING_SENTRY
 	USentrySubsystem* S = SailCrashReportsLocal::Sentry();
 	if (!S) return false;
-	USentryFeedback* Feedback = NewObject<USentryFeedback>();
-	Feedback->Initialize(SailFeedback::ComposeMessage(Report));
-	auto Attach = [Feedback](const FString& Text, const TCHAR* Name, const TCHAR* Type)
+	// What goes with the message: the samples and the log tail when it carries the place, and the shots.
+	TArray<SailFeedback::FEnvelopeAttachment> Files;
+	auto AddText = [&Files](const FString& Text, const TCHAR* Name, const TCHAR* Type)
 	{
 		if (Text.IsEmpty()) return;
 		FTCHARToUTF8 Utf8(*Text);
-		TArray<uint8> Bytes((const uint8*)Utf8.Get(), Utf8.Length());
-		USentryAttachment* A = NewObject<USentryAttachment>();
-		A->InitializeWithData(Bytes, Name, Type);
-		Feedback->AddAttachment(A);
+		Files.Add({ Name, Type, TArray<uint8>((const uint8*)Utf8.Get(), Utf8.Length()) });
 	};
 	if (Report.CarriesPlace())
 	{
-		Attach(Report.TelemetryJson, TEXT("telemetry.json"), TEXT("application/json"));
-		Attach(SailCrashReports::ScrubPaths(Report.LogTail), TEXT("log.txt"), TEXT("text/plain"));
+		AddText(Report.TelemetryJson, TEXT("telemetry.json"), TEXT("application/json"));
+		AddText(SailCrashReports::ScrubPaths(Report.LogTail), TEXT("log.txt"), TEXT("text/plain"));
 	}
 	for (int32 I = 0; I < Report.ShotPaths.Num(); ++I)
 	{
-		TArray<uint8> Png;
-		if (!FFileHelper::LoadFileToArray(Png, *Report.ShotPaths[I])) continue;
-		USentryAttachment* A = NewObject<USentryAttachment>();
+		TArray<uint8> Bytes;
+		if (!FFileHelper::LoadFileToArray(Bytes, *Report.ShotPaths[I])) continue;
 		const bool bJpeg = Report.ShotPaths[I].EndsWith(TEXT(".jpg"));
-		A->InitializeWithData(Png, FString::Printf(TEXT("shot%d.%s"), I + 1, bJpeg ? TEXT("jpg") : TEXT("png")), bJpeg ? TEXT("image/jpeg") : TEXT("image/png"));
-		Feedback->AddAttachment(A);
+		Files.Add({ FString::Printf(TEXT("shot%d.%s"), I + 1, bJpeg ? TEXT("jpg") : TEXT("png")), bJpeg ? TEXT("image/jpeg") : TEXT("image/png"), MoveTemp(Bytes) });
 	}
 	const FString Kind = SailFeedback::KindId(Report.Kind);
 	TMap<FString, FString> Tags = Report.Tags;
@@ -176,6 +176,44 @@ bool SailCrashReports::SendFeedback(const FFeedbackReport& Report)
 	// A bug sent after a crash is likely about it: Sentry pairs them by this tag and the time (the SDK gives no event id).
 	const ESentryCrashedLastRun Crashed = S->IsCrashedLastRun();
 	Tags.Add(TEXT("crashed_last_run"), Crashed == ESentryCrashedLastRun::Crashed ? TEXT("yes") : Crashed == ESentryCrashedLastRun::NotCrashed ? TEXT("no") : TEXT("unknown"));
+	const FString Message = SailFeedback::ComposeMessage(Report);
+
+	// pc/feedback-send: a report is the player's own deliberate send, so it goes with Send crash reports off too, but not
+	// through the SDK: without consent the SDK caches every envelope and sends the whole cache once consent is given.
+	// Then the report alone goes to the envelope endpoint over HTTP; the SDK's consent and cache are not touched.
+	if (SendsOnItsOwn(S->IsUserConsentRequired(), S->GetUserConsent() == EUserConsent::Given))
+	{
+		const USentrySettings* Settings = GetDefault<USentrySettings>();
+		SailFeedback::FSentryDsn Dsn;
+		if (!Settings || !Dsn.Parse(Settings->Dsn)) return false;
+		const FString EventId = FGuid::NewGuid().ToString(EGuidFormats::Digits).ToLower();
+		const TArray<uint8> Body = SailFeedback::FeedbackEnvelope(EventId, FDateTime::UtcNow().ToUnixTimestampDecimal(), Message, Tags,
+			Settings->Release, Settings->Environment, Files);
+		const TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+		Request->SetURL(Dsn.EnvelopeUrl());
+		Request->SetVerb(TEXT("POST"));
+		Request->SetHeader(TEXT("Content-Type"), TEXT("application/x-sentry-envelope"));
+		Request->SetHeader(TEXT("X-Sentry-Auth"), Dsn.AuthHeader());
+		Request->SetContent(Body);
+		Request->OnProcessRequestComplete().BindLambda([Kind](FHttpRequestPtr, FHttpResponsePtr Response, bool bOk)
+		{
+			// (the endpoint's answer is logged, never the URL: it carries the key)
+			UE_LOG(LogSailing, Log, TEXT("Feedback: the %s report's upload %s (HTTP %d)"), *Kind, bOk && Response.IsValid() && Response->GetResponseCode() / 100 == 2 ? TEXT("arrived") : TEXT("failed"),
+				Response.IsValid() ? Response->GetResponseCode() : 0);
+		});
+		if (!Request->ProcessRequest()) return false;
+		UE_LOG(LogSailing, Log, TEXT("Feedback: sent a %s report on its own (%d bytes; crash reports stay off)"), *Kind, Body.Num());
+		return true;
+	}
+
+	USentryFeedback* Feedback = NewObject<USentryFeedback>();
+	Feedback->Initialize(Message);
+	for (const SailFeedback::FEnvelopeAttachment& F : Files)
+	{
+		USentryAttachment* A = NewObject<USentryAttachment>();
+		A->InitializeWithData(F.Bytes, F.Name, F.ContentType);
+		Feedback->AddAttachment(A);
+	}
 	S->CaptureFeedbackWithScope(Feedback, FConfigureScopeNativeDelegate::CreateLambda([Tags](USentryScope* Scope)
 	{
 		Scope->SetTags(Tags);

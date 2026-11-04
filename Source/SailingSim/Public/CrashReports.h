@@ -28,6 +28,11 @@ namespace SailCrashReports
 	inline constexpr int32 ScrubbedLogLines = 400;
 
 	/** Sends a tester's bug or idea as Sentry user feedback, tagged kind:bug or kind:idea, with its samples, log tail and
-	 *  shots attached when it carries the place. False when nothing could be sent (no SDK); the caller checks consent. */
+	 *  shots attached when it carries the place. False when nothing could be sent (no SDK, no DSN). With Send crash
+	 *  reports off it still goes, on its own over HTTP (SendsOnItsOwn): the SDK's consent and cache are left alone. */
 	SAILINGSIM_API bool SendFeedback(const FFeedbackReport& Report);
+
+	/** True when a report must skip the SDK (pc/feedback-send): consent is required and not given, so the SDK would cache it
+	 *  with everything else the player said no to, and a later yes would send them all. */
+	inline bool SendsOnItsOwn(bool bConsentRequired, bool bConsentGiven) { return bConsentRequired && !bConsentGiven; }
 }

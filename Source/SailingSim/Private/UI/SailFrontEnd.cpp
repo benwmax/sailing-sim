@@ -2719,11 +2719,10 @@ void SSailFrontEnd::SendFeedbackForm()
 		R.ShotPaths.Add(SailFeedback::ShotToJpeg(Pngs[I], Jpeg) ? Jpeg : Pngs[I]);
 	}
 	const FString Folder = SailFeedback::WriteLocal(R, SailFeedback::LocalDir());
-	const bool bSent = S->bSendCrashReports && SailCrashReports::SendFeedback(R);
+	// pc/feedback-send: a report goes whether or not Send crash reports is on (SailCrashReports::SendFeedback lends the consent).
+	const bool bSent = SailCrashReports::SendFeedback(R);
 	UE_LOG(LogSailing, Log, TEXT("Feedback: %s report saved to %s%s"), SailFeedback::KindId(R.Kind), *SailCrashReports::ScrubPaths(Folder), bSent ? TEXT(", sent") : TEXT(""));
-	FeedbackResult = bSent ? FString(TEXT("Sent. Thank you!"))
-		: (S->bSendCrashReports ? FString(TEXT("Saved on this computer (this build can't send reports)."))
-			: FString(TEXT("Saved on this computer. To send reports too, turn on Settings > Gameplay > Send crash reports.")));
+	FeedbackResult = SailFeedback::ResultLine(bSent);
 	FeedbackTitle.Reset(); FeedbackText.Reset(); FeedbackExpected.Reset();
 	Pop();
 	Confirm(FeedbackResult, TEXT("Back to the game"), [this]() { Close(); }, TEXT("Back to the menu"), nullptr);
@@ -2776,9 +2775,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFeedback()
 		+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 12.f, 0.f)[ Send ]
 		+ SHorizontalBox::Slot().FillWidth(1.f)[ Cancel ]
 	];
-	Form->AddSlot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(USailingSettings::Get()->bSendCrashReports
-		? TEXT("Reports go to the developer. No name, account or other screenshots.")
-		: TEXT("Send crash reports is off, so this is saved on this computer only (Saved/Feedback)."), EType::Small, Muted, true) ];
+	Form->AddSlot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Reports go to the developer, with crash reports on or off. No name, account or other screenshots."), EType::Small, Muted, true) ];
 	E.Content = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(720.f)[ PanelBox(Form, FMargin(28.f)) ] ];
 	E.Focus = Kind;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Cancel")) }, FString());

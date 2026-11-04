@@ -10,6 +10,8 @@
 #include "IImageWrapperModule.h"
 #include "Modules/ModuleManager.h"
 #include "Math/RandomStream.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonSerializer.h"
 
 // Testers' bug and idea reports (docs/sentry, #410): the recorder keeps the last minute, paths lose the user's name, an
 // idea carries no place unless asked, and a report written to disk holds what it should.
@@ -38,6 +40,63 @@ bool FSailFeedbackRecorderTest::RunTest(const FString&)
 	R.Offer(Back);
 	TestEqual(TEXT("a restart starts again"), R.GetSamples().Num(), 1);
 	TestTrue(TEXT("json"), R.ToJson().StartsWith(TEXT("{\"interval_s\": 0.5, \"samples\": [")) && R.ToJson().Contains(TEXT("\"t_s\": 1.0")));
+	return true;
+}
+
+// pc/feedback-send (Nov 4: Bean's two bug reports stayed on the PC): a report is sent with Send crash reports off, on its
+// own, not through the SDK (which, without consent, caches every envelope and sends the lot on a later yes): the choice,
+// the DSN's endpoint and auth, and the envelope (one feedback item with the message and tags, an item per attachment,
+// lengths that match). The screen's answer never sends the player to that setting.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailFeedbackSendsWithoutConsentTest, "SailingSim.UI.Feedback.SendsWithCrashReportsOff", SailFeedbackTestsLocal::Flags_)
+bool FSailFeedbackSendsWithoutConsentTest::RunTest(const FString&)
+{
+	TestTrue(TEXT("consent required, crash reports off: on its own"), SailCrashReports::SendsOnItsOwn(true, false));
+	TestFalse(TEXT("crash reports on: the SDK"), SailCrashReports::SendsOnItsOwn(true, true));
+	TestFalse(TEXT("no consent asked: the SDK"), SailCrashReports::SendsOnItsOwn(false, false));
+	TestEqual(TEXT("sent"), SailFeedback::ResultLine(true), FString(TEXT("Sent. Thank you!")));
+	TestFalse(TEXT("unsent: no pointer to Send crash reports"), SailFeedback::ResultLine(false).Contains(TEXT("crash reports")));
+
+	SailFeedback::FSentryDsn D;
+	TestTrue(TEXT("a DSN parses"), D.Parse(TEXT("https://abc123@o42.ingest.example.io/7")));
+	TestEqual(TEXT("endpoint"), D.EnvelopeUrl(), FString(TEXT("https://o42.ingest.example.io/api/7/envelope/")));
+	TestTrue(TEXT("auth carries the key"), D.AuthHeader().Contains(TEXT("sentry_key=abc123")) && D.AuthHeader().StartsWith(TEXT("Sentry sentry_version=7")));
+	SailFeedback::FSentryDsn D2;
+	TestTrue(TEXT("a path before the project"), D2.Parse(TEXT("http://k:secret@host:9000/sub/12")) && D2.EnvelopeUrl() == TEXT("http://host:9000/sub/api/12/envelope/") && D2.PublicKey == TEXT("k"));
+	SailFeedback::FSentryDsn Bad;
+	TestFalse(TEXT("\"https:\" is not a DSN"), Bad.Parse(TEXT("https:")));
+	TestFalse(TEXT("empty is not a DSN"), Bad.Parse(FString()));
+
+	TMap<FString, FString> Tags;
+	Tags.Add(TEXT("feedback_kind"), TEXT("bug"));
+	TArray<SailFeedback::FEnvelopeAttachment> Files;
+	Files.Add({ TEXT("shot1.jpg"), TEXT("image/jpeg"), TArray<uint8>({ 0xFF, 0xD8, 0x0A, 0xFF, 0xD9 }) });   // a newline inside: lengths, not lines
+	const TArray<uint8> Env = SailFeedback::FeedbackEnvelope(TEXT("0123456789abcdef0123456789abcdef"), 1762300000.5, TEXT("[Bug] \"quoted\"\nline two"),
+		Tags, TEXT("sailing-sim@abc"), TEXT("tester"), Files);
+	// Walk it as Sentry does: a header line, then per item a header line with "length" and that many bytes and a newline.
+	int32 At = 0;
+	auto Line = [&Env, &At]() { int32 E = At; while (E < Env.Num() && Env[E] != '\n') ++E; const FString S = FString(FUTF8ToTCHAR((const ANSICHAR*)Env.GetData() + At, E - At)); At = E + 1; return S; };
+	TSharedPtr<FJsonObject> Head;
+	TestTrue(TEXT("envelope header"), FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Line()), Head) && Head->GetStringField(TEXT("event_id")) == TEXT("0123456789abcdef0123456789abcdef"));
+	TArray<FString> Types;
+	TSharedPtr<FJsonObject> Event;
+	while (At < Env.Num())
+	{
+		TSharedPtr<FJsonObject> ItemHead;
+		if (!TestTrue(TEXT("item header"), FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Line()), ItemHead))) break;
+		const int32 Len = int32(ItemHead->GetNumberField(TEXT("length")));
+		if (!TestTrue(TEXT("length within the envelope"), At + Len <= Env.Num())) break;
+		Types.Add(ItemHead->GetStringField(TEXT("type")));
+		if (Types.Last() == TEXT("feedback"))
+			FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(FString(FUTF8ToTCHAR((const ANSICHAR*)Env.GetData() + At, Len))), Event);
+		if (Types.Last() == TEXT("attachment")) TestTrue(TEXT("attachment bytes intact"), FMemory::Memcmp(Env.GetData() + At, Files[0].Bytes.GetData(), Len) == 0 && ItemHead->GetStringField(TEXT("filename")) == TEXT("shot1.jpg"));
+		At += Len;
+		TestTrue(TEXT("a newline after each item"), At < Env.Num() && Env[At] == '\n');
+		++At;
+	}
+	TestTrue(TEXT("one feedback item, then the attachment"), Types.Num() == 2 && Types[0] == TEXT("feedback") && Types[1] == TEXT("attachment"));
+	TestTrue(TEXT("the message survives quoting"), Event.IsValid() && Event->GetObjectField(TEXT("contexts"))->GetObjectField(TEXT("feedback"))->GetStringField(TEXT("message")) == TEXT("[Bug] \"quoted\"\nline two"));
+	TestTrue(TEXT("tags, release and environment"), Event.IsValid() && Event->GetObjectField(TEXT("tags"))->GetStringField(TEXT("feedback_kind")) == TEXT("bug")
+		&& Event->GetStringField(TEXT("release")) == TEXT("sailing-sim@abc") && Event->GetStringField(TEXT("environment")) == TEXT("tester"));
 	return true;
 }
 

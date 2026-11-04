@@ -8,6 +8,10 @@
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Modules/ModuleManager.h"
+#include "Dom/JsonObject.h"
+#include "Policies/CondensedJsonPrintPolicy.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
 
 void FFeedbackRecorder::Offer(const FFeedbackSample& Sample)
 {
@@ -41,6 +45,110 @@ double FFeedbackRecorder::MeanFps() const
 const TCHAR* SailFeedback::KindId(EFeedbackKind Kind)
 {
 	return Kind == EFeedbackKind::Idea ? TEXT("idea") : TEXT("bug");
+}
+
+FString SailFeedback::ResultLine(bool bSent)
+{
+	return bSent ? FString(TEXT("Sent. Thank you!")) : FString(TEXT("Saved on this computer (this build can't send reports)."));
+}
+
+bool SailFeedback::FSentryDsn::Parse(const FString& Dsn)
+{
+	// scheme://publickey[:secret]@host[:port]/[path/]project
+	FString Rest;
+	if (!Dsn.TrimStartAndEnd().Split(TEXT("://"), &Scheme, &Rest)) return false;
+	FString Key, HostPath;
+	if (!Rest.Split(TEXT("@"), &Key, &HostPath)) return false;
+	Key.Split(TEXT(":"), &Key, nullptr);
+	PublicKey = Key;
+	FString Path;
+	if (!HostPath.Split(TEXT("/"), &Host, &Path)) return false;
+	FString Prefix;
+	ProjectId = Path;
+	if (Path.Split(TEXT("/"), &Prefix, &ProjectId, ESearchCase::CaseSensitive, ESearchDir::FromEnd)) Host += TEXT("/") + Prefix;
+	ProjectId.TrimEndInline();
+	return !Scheme.IsEmpty() && !PublicKey.IsEmpty() && !Host.IsEmpty() && !ProjectId.IsEmpty();
+}
+
+FString SailFeedback::FSentryDsn::EnvelopeUrl() const
+{
+	return FString::Printf(TEXT("%s://%s/api/%s/envelope/"), *Scheme, *Host, *ProjectId);
+}
+
+FString SailFeedback::FSentryDsn::AuthHeader() const
+{
+	return FString::Printf(TEXT("Sentry sentry_version=7, sentry_key=%s, sentry_client=sailingsim-feedback/1.0"), *PublicKey);
+}
+
+namespace SailFeedbackEnvelopeLocal
+{
+	FString JsonLine(const TSharedRef<FJsonObject>& O)
+	{
+		FString Out;
+		const TSharedRef<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> W = TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&Out);
+		FJsonSerializer::Serialize(O, W);
+		return Out;
+	}
+
+	void Append(TArray<uint8>& Out, const FString& Text)
+	{
+		const FTCHARToUTF8 Utf8(*Text);
+		Out.Append((const uint8*)Utf8.Get(), Utf8.Length());
+	}
+
+	/** One item: its header line (type, length and the extra fields), then the payload and a newline. */
+	void Item(TArray<uint8>& Out, TSharedRef<FJsonObject> Header, const TArray<uint8>& Payload)
+	{
+		Header->SetNumberField(TEXT("length"), Payload.Num());
+		Append(Out, JsonLine(Header) + TEXT("\n"));
+		Out.Append(Payload);
+		Append(Out, TEXT("\n"));
+	}
+}
+
+TArray<uint8> SailFeedback::FeedbackEnvelope(const FString& EventId, double TimestampUnix, const FString& Message, const TMap<FString, FString>& Tags,
+	const FString& Release, const FString& Environment, const TArray<FEnvelopeAttachment>& Attachments)
+{
+	using namespace SailFeedbackEnvelopeLocal;
+	TArray<uint8> Out;
+	const TSharedRef<FJsonObject> Head = MakeShared<FJsonObject>();
+	Head->SetStringField(TEXT("event_id"), EventId);
+	Head->SetStringField(TEXT("sent_at"), FDateTime::FromUnixTimestamp(int64(TimestampUnix)).ToIso8601());
+	Append(Out, JsonLine(Head) + TEXT("\n"));
+
+	// The feedback event: the message in the feedback context, as the SDK's own sentry_capture_feedback sends it.
+	const TSharedRef<FJsonObject> Event = MakeShared<FJsonObject>();
+	Event->SetStringField(TEXT("event_id"), EventId);
+	Event->SetNumberField(TEXT("timestamp"), TimestampUnix);
+	Event->SetStringField(TEXT("platform"), TEXT("native"));
+	Event->SetStringField(TEXT("level"), TEXT("info"));
+	if (!Release.IsEmpty()) Event->SetStringField(TEXT("release"), Release);
+	if (!Environment.IsEmpty()) Event->SetStringField(TEXT("environment"), Environment);
+	const TSharedRef<FJsonObject> TagObj = MakeShared<FJsonObject>();
+	for (const TPair<FString, FString>& T : Tags) TagObj->SetStringField(T.Key, T.Value);
+	Event->SetObjectField(TEXT("tags"), TagObj);
+	const TSharedRef<FJsonObject> Fb = MakeShared<FJsonObject>();
+	Fb->SetStringField(TEXT("message"), Message);
+	const TSharedRef<FJsonObject> Contexts = MakeShared<FJsonObject>();
+	Contexts->SetObjectField(TEXT("feedback"), Fb);
+	Event->SetObjectField(TEXT("contexts"), Contexts);
+	TArray<uint8> EventBytes;
+	Append(EventBytes, JsonLine(Event));
+	const TSharedRef<FJsonObject> FbHead = MakeShared<FJsonObject>();
+	FbHead->SetStringField(TEXT("type"), TEXT("feedback"));
+	FbHead->SetStringField(TEXT("content_type"), TEXT("application/json"));
+	Item(Out, FbHead, EventBytes);
+
+	for (const FEnvelopeAttachment& A : Attachments)
+	{
+		if (A.Bytes.Num() == 0) continue;
+		const TSharedRef<FJsonObject> AHead = MakeShared<FJsonObject>();
+		AHead->SetStringField(TEXT("type"), TEXT("attachment"));
+		AHead->SetStringField(TEXT("filename"), A.Name);
+		AHead->SetStringField(TEXT("content_type"), A.ContentType);
+		Item(Out, AHead, A.Bytes);
+	}
+	return Out;
 }
 
 FString SailFeedback::ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn)
