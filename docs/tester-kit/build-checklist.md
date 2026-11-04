@@ -33,6 +33,8 @@ Unzip the zip somewhere new, as a tester would, and run `SailingSim.exe` from th
 - [ ] **First job:** play it through; the caption says Instructor, the loading screen "Your first job".
 - [ ] **One lesson on the pad:** Day Sailor's Leave the dock with the controller only: cast off, back out, sail clear,
       the quiz, the finish panel's Next lesson. Note anything the pad couldn't do.
+- [ ] **Mode screen on the pad:** Free Sail through to the Mode screen, then on the Mode choice press Right (Learning
+      to Game) and Down: the focus stays on Mode, then moves on (it used to jump to the mode cards).
 - [ ] **Settings:** change the quality tier and Easy / Realistic; quit and relaunch: both kept. Controls: rebind one key,
       check it works, reset it.
 - [ ] **Send feedback:** pause > Send feedback, a Bug with a title; it says sent (crash reports on) or kept on this
@@ -41,7 +43,8 @@ Unzip the zip somewhere new, as a tester would, and run `SailingSim.exe` from th
       `Session:` line for the map you sailed and the first job's `first-job done in ... s` line; no Windows user name in
       it. The kept feedback report includes its tail.
 - [ ] **Sunfish in irons:** Free Sail, the Sunfish at Galveston on Easy, head to wind and hands off for five minutes
-      beside the pier: she stays put, no freeze (the Nov 2 zip's hang). Then the Catalina 22 at the dock: the new deck
+      beside the pier: she stays put, no freeze (the Nov 2 zip's hang). Note SailingSim's memory in Task Manager at the
+      start and after the five minutes: it should barely move (it used to climb about 3 MB a minute on High and Ultra). Then the Catalina 22 at the dock: the new deck
       hardware is there (turnbuckles, mast step, vents).
 - [ ] Put the real `Saved` folder back.
 
