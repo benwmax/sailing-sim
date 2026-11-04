@@ -14,6 +14,8 @@
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "PhotoSettings.h"
+#include "SailingFrame.h"
+#include "Camera/CameraTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -276,6 +278,43 @@ bool FSailingPhotoInputTest::RunTest(const FString&)
 	TestEqual(TEXT("An old list: the free camera's keys added"), Find(Settings->Bindings, TEXT("PhotoToBoat"), false, EColumn::Keyboard), EKeys::F);
 	TestEqual(TEXT("And nothing else"), Settings->Bindings.Num(), Defaults.Num());
 	Settings->Bindings = Saved;
+	return true;
+}
+
+// Feedback #5: the chase camera tilted fully up and pulled out to its longest arm went under the water. On the J/22
+// and the Sunfish (the low cockpit), chase and cockpit views: the view the player gets stays over the wave at the lens.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCameraAboveWaterTest, "SailingSim.Smoke.CameraAboveWater", PhotoFlags)
+bool FSailingCameraAboveWaterTest::RunTest(const FString&)
+{
+	FBareWorld W;
+	ASailingGameMode* GM = W.World->SpawnActor<ASailingGameMode>();
+	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
+	ASailboatPawn* Pawn = W.World->SpawnActor<ASailboatPawn>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("A boat"), Pawn)) return false;
+	auto Ticks = [&](int32 N) { for (int32 I = 0; I < N; ++I) { ++GFrameCounter; W.World->Tick(LEVELTICK_All, 1.f / 60.f); } };
+	auto Clearance = [&]() -> double
+	{
+		FMinimalViewInfo View;
+		Pawn->CalcCamera(1.f / 60.f, View);
+		const FVector Map = SailingFrame::ToMapCm(W.World, View.Location) / 100.0;
+		return Map.Z - GM->GetWaves().Height(Map.X, Map.Y, GM->GetSimTime());
+	};
+	for (const int32 Type : { 0, int32(Sailing::EBoatType::Sunfish) })
+	{
+		Pawn->SetBoat(Type);
+		Ticks(30);
+		// The chase camera: the look's whole way up, then the zoom's whole way out.
+		Pawn->AddCameraOrbit(FVector2D(0.f, 200.f), -200.f);
+		Ticks(180);
+		const double Chase = Clearance();
+		TestTrue(FString::Printf(TEXT("Boat %d, chase camera tilted up and out: over the water (%.2f m)"), Type, Chase), Chase >= 0.25);
+		Pawn->SetCockpitView(true);
+		Ticks(30);
+		const double Cockpit = Clearance();
+		TestTrue(FString::Printf(TEXT("Boat %d, cockpit view: over the water (%.2f m)"), Type, Cockpit), Cockpit >= 0.25);
+		Pawn->SetCockpitView(false);
+		Pawn->AddCameraOrbit(FVector2D(0.f, -200.f), 200.f);
+	}
 	return true;
 }
 

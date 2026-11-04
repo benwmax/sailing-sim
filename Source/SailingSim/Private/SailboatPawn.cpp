@@ -1886,6 +1886,23 @@ void ASailboatPawn::SetGhostFrame(const FReplayFrame& Frame)
 	ApplyStateToTransform();
 }
 
+void ASailboatPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	Super::CalcCamera(DeltaTime, OutResult);
+	// Feedback #5: tilted up on a long arm the chase camera went under the water (and the cockpit eye can on a heeled
+	// dinghy). The view is lifted to CameraWaterClearM over the wave at the lens, as photo mode's floor does: the same
+	// height a frame later wherever it is clear, so it rides the surface without a jump. The capture modes are left alone.
+	UWorld* World = GetWorld();
+	if (!World || IsCaptureMode()) return;
+	const ASailingGameMode* GM = World->GetAuthGameMode<ASailingGameMode>();
+	// (a world without an authority game mode, the smoke test's: the one spawned in it)
+	if (!GM) for (TActorIterator<ASailingGameMode> It(World); It && !GM; ++It) GM = *It;
+	if (!GM) return;
+	const FVector Map = SailingFrame::ToMapCm(World, OutResult.Location) / 100.0;
+	const double FloorM = GM->GetWaves().Height(Map.X, Map.Y, GM->GetSimTime()) + CameraWaterClearM;
+	if (Map.Z < FloorM) OutResult.Location.Z += float((FloorM - Map.Z) * 100.0);
+}
+
 void ASailboatPawn::AddCameraOrbit(const FVector2D& Delta, float ZoomDelta)
 {
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);

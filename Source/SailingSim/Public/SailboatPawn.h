@@ -60,6 +60,11 @@ public:
 	/** Career 1: the session ends here (map reload or quit): its time on the world clock goes to the hours sailed. */
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	virtual void Tick(float DeltaSeconds) override;
+	/** Feedback #5: the chase and cockpit views are kept over the wave at the lens (not the capture modes: their stills place
+	 *  the camera themselves; photo mode's free camera has its own floor). */
+	virtual void CalcCamera(float DeltaTime, struct FMinimalViewInfo& OutResult) override;
+	/** How far over the wave at the lens the chase and cockpit views stay, metres. */
+	static constexpr double CameraWaterClearM = 0.3;
 	virtual void RegisterActorTickFunctions(bool bRegister) override;
 	/** Perf 1: the rest of the tick after the physics steps (from the join tick when they ran on a task). */
 	void TickAfterPhysics(float DeltaSeconds);
