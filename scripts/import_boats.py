@@ -78,7 +78,7 @@ def add_lods(mesh, nanite):
         mesh.set_editor_property("nanite_settings", ns)
 
 
-def import_boat(tag, dest, lods=False):
+def import_boat(tag, dest, lods=False, berthed=True):
     meta = json.load(open(os.path.join(MODELS, f"{tag}_sockets.json")))
     for name, nanite in ((f"SM_{tag}_Hull", True), (f"SM_{tag}_Mast", False), (f"SM_{tag}_Boom", True), (f"SM_{tag}_Rudder", True)):
         mesh = import_fbx(os.path.join(MODELS, name + ".fbx"), dest, name)
@@ -90,7 +90,8 @@ def import_boat(tag, dest, lods=False):
         b = mesh.get_bounding_box()
         unreal.log(f"Imported {name}: {len(sockets)} sockets, Nanite {nanite}, bounds {b.min} .. {b.max}")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
-    import_berthed(tag, dest)
+    if berthed:
+        import_berthed(tag, dest)
 
 
 def import_berthed(tag, dest):
@@ -195,7 +196,9 @@ else:
         if only is not None and tag not in only:
             continue
         if os.path.exists(os.path.join(MODELS, f"{tag}_sockets.json")):
-            import_boat(tag, f"/Game/Boats/{tag}")
+            # A narrowed import leaves the berthed dresses alone unless asked (`berthed`): make-boat-models -Fleet rebuilds the
+            # sailing model only, and the dresses' FBXs in Artifacts/models can be from an older build (pc/import-boats-only).
+            import_boat(tag, f"/Game/Boats/{tag}", berthed=only is None or "berthed" in sys.argv)
     if not only_fleet and os.path.exists(os.path.join(MODELS, "Maxi_sockets.json")):   # `fleet` is the seven; `maxi` imports her
         import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
     unreal.log("Import done")
