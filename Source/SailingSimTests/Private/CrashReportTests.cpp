@@ -32,6 +32,10 @@ bool FSailingCrashReportsScrubTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Windows, forward slashes"), ScrubPaths(TEXT("D:/Users/ben/Saved")), FString(TEXT("~/Saved")));
 	TestEqual(TEXT("Linux home"), ScrubPaths(TEXT("/home/ben/.config")), FString(TEXT("~/.config")));
 	TestEqual(TEXT("Every occurrence"), ScrubPaths(TEXT("/Users/a/x and /Users/b/y")), FString(TEXT("~/x and ~/y")));
+	// pc/feedback-send: the engine log's header lines that name the machine and the account go whole.
+	TestEqual(TEXT("Computer and user lines dropped"),
+		ScrubPaths(TEXT("[0]LogInit: Build: x\n[0]LogInit: Computer: DESKTOP-ABC123\n[0]LogInit: User: dana\n[0]LogInit: CPU Page size=4096")),
+		FString(TEXT("[0]LogInit: Build: x\n[0]LogInit: CPU Page size=4096")));
 	TestEqual(TEXT("Lines kept"), ScrubPaths(TEXT("/Users/a/x\n/Users/b/y\n")), FString(TEXT("~/x\n~/y\n")));
 	TestEqual(TEXT("The bare folder is no home"), ScrubPaths(TEXT("ls /Users/ and /home/")), FString(TEXT("ls /Users/ and /home/")));
 	TestEqual(TEXT("Shared folders stay"), ScrubPaths(TEXT("/Users/Shared/Epic Games/UE_5.8")).Contains(TEXT("Epic Games")), true);

@@ -64,12 +64,20 @@ struct SAILINGSIM_API FFeedbackReport
 	bool CarriesPlace() const { return Kind == EFeedbackKind::Bug || bAttachPlace; }
 };
 
+/** What became of a report after Send (pc/feedback-send): kept here only, handed to the crash reporter, or on its way by
+ *  itself (a copy waits in Saved/Feedback/Pending until the endpoint takes it, and goes again at the next launch). */
+enum class EFeedbackSend : uint8 { Saved, Sent, Sending };
+
 namespace SailFeedback
 {
 	SAILINGSIM_API const TCHAR* KindId(EFeedbackKind Kind); // "bug", "idea"
-	/** The Feedback screen's answer after Send: sent, or saved here only when the build can't send (no SDK). It never asks
-	 *  for Send crash reports: a report goes either way (pc/feedback-send). */
-	SAILINGSIM_API FString ResultLine(bool bSent);
+	/** The Feedback screen's answer after Send. It never asks for Send crash reports: a report goes either way. */
+	SAILINGSIM_API FString ResultLine(EFeedbackSend Result);
+	/** Whether Send tries to send at all: whenever the build has a crash reporter, Send crash reports on or off (a report is
+	 *  the player's own deliberate send; the setting is for crashes). */
+	SAILINGSIM_API bool SendsReport(bool bCrashReportsOn, bool bReporterRunning);
+	/** Where a report sent by itself waits until the endpoint has taken it: Saved/Feedback/Pending/<event id>.envelope. */
+	SAILINGSIM_API FString PendingDir();
 
 	/**
 	 * pc/feedback-send: the report sent on its own when Send crash reports is off. The SDK can't be used then: without

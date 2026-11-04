@@ -47,20 +47,37 @@ const TCHAR* SailFeedback::KindId(EFeedbackKind Kind)
 	return Kind == EFeedbackKind::Idea ? TEXT("idea") : TEXT("bug");
 }
 
-FString SailFeedback::ResultLine(bool bSent)
+FString SailFeedback::ResultLine(EFeedbackSend Result)
 {
-	return bSent ? FString(TEXT("Sent. Thank you!")) : FString(TEXT("Saved on this computer (this build can't send reports)."));
+	switch (Result)
+	{
+	case EFeedbackSend::Sent: return TEXT("Sent. Thank you!");
+	case EFeedbackSend::Sending: return TEXT("Sending. Thank you! A copy stays on this computer, and if it doesn't get through it goes again the next time you start the game.");
+	default: return TEXT("Saved on this computer (this build can't send reports).");
+	}
+}
+
+bool SailFeedback::SendsReport(bool bCrashReportsOn, bool bReporterRunning)
+{
+	(void)bCrashReportsOn;   // a report goes either way: the setting is for crashes
+	return bReporterRunning;
+}
+
+FString SailFeedback::PendingDir()
+{
+	return FPaths::Combine(LocalDir(), TEXT("Pending"));
 }
 
 bool SailFeedback::FSentryDsn::Parse(const FString& Dsn)
 {
 	// scheme://publickey[:secret]@host[:port]/[path/]project
-	FString Rest;
-	if (!Dsn.TrimStartAndEnd().Split(TEXT("://"), &Scheme, &Rest)) return false;
+	FString Rest, Text = Dsn.TrimStartAndEnd();
+	while (Text.EndsWith(TEXT("/"))) Text.LeftChopInline(1);   // "…/12/" is the same DSN
+	if (!Text.Split(TEXT("://"), &Scheme, &Rest)) return false;
 	FString Key, HostPath;
 	if (!Rest.Split(TEXT("@"), &Key, &HostPath)) return false;
-	Key.Split(TEXT(":"), &Key, nullptr);
-	PublicKey = Key;
+	FString Public;
+	PublicKey = Key.Split(TEXT(":"), &Public, nullptr) ? Public : Key;
 	FString Path;
 	if (!HostPath.Split(TEXT("/"), &Host, &Path)) return false;
 	FString Prefix;

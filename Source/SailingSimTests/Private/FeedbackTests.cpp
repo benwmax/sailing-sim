@@ -53,8 +53,14 @@ bool FSailFeedbackSendsWithoutConsentTest::RunTest(const FString&)
 	TestTrue(TEXT("consent required, crash reports off: on its own"), SailCrashReports::SendsOnItsOwn(true, false));
 	TestFalse(TEXT("crash reports on: the SDK"), SailCrashReports::SendsOnItsOwn(true, true));
 	TestFalse(TEXT("no consent asked: the SDK"), SailCrashReports::SendsOnItsOwn(false, false));
-	TestEqual(TEXT("sent"), SailFeedback::ResultLine(true), FString(TEXT("Sent. Thank you!")));
-	TestFalse(TEXT("unsent: no pointer to Send crash reports"), SailFeedback::ResultLine(false).Contains(TEXT("crash reports")));
+	// The Feedback screen's gate: with Send crash reports off a build with a crash reporter still sends (it used to keep the
+	// report on the PC); a build without one can't.
+	TestTrue(TEXT("crash reports off: the report is sent"), SailFeedback::SendsReport(false, true));
+	TestTrue(TEXT("crash reports on: sent"), SailFeedback::SendsReport(true, true));
+	TestFalse(TEXT("no crash reporter in the build: kept here"), SailFeedback::SendsReport(false, false) || SailFeedback::SendsReport(true, false));
+	TestEqual(TEXT("sent"), SailFeedback::ResultLine(EFeedbackSend::Sent), FString(TEXT("Sent. Thank you!")));
+	TestTrue(TEXT("sending: says so, and that a copy stays"), SailFeedback::ResultLine(EFeedbackSend::Sending).StartsWith(TEXT("Sending")) && SailFeedback::ResultLine(EFeedbackSend::Sending).Contains(TEXT("copy")));
+	TestFalse(TEXT("saved: no pointer to Send crash reports"), SailFeedback::ResultLine(EFeedbackSend::Saved).Contains(TEXT("crash reports")));
 
 	SailFeedback::FSentryDsn D;
 	TestTrue(TEXT("a DSN parses"), D.Parse(TEXT("https://abc123@o42.ingest.example.io/7")));
@@ -62,6 +68,8 @@ bool FSailFeedbackSendsWithoutConsentTest::RunTest(const FString&)
 	TestTrue(TEXT("auth carries the key"), D.AuthHeader().Contains(TEXT("sentry_key=abc123")) && D.AuthHeader().StartsWith(TEXT("Sentry sentry_version=7")));
 	SailFeedback::FSentryDsn D2;
 	TestTrue(TEXT("a path before the project"), D2.Parse(TEXT("http://k:secret@host:9000/sub/12")) && D2.EnvelopeUrl() == TEXT("http://host:9000/sub/api/12/envelope/") && D2.PublicKey == TEXT("k"));
+	SailFeedback::FSentryDsn D3;
+	TestTrue(TEXT("a trailing slash"), D3.Parse(TEXT("https://k@host/12/")) && D3.EnvelopeUrl() == TEXT("https://host/api/12/envelope/"));
 	SailFeedback::FSentryDsn Bad;
 	TestFalse(TEXT("\"https:\" is not a DSN"), Bad.Parse(TEXT("https:")));
 	TestFalse(TEXT("empty is not a DSN"), Bad.Parse(FString()));
@@ -159,7 +167,7 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	TestFalse(TEXT("idea without place: no samples"), IFileManager::Get().FileExists(*FPaths::Combine(IdeaFolder, TEXT("telemetry.json"))));
 	IFileManager::Get().DeleteDirectory(*Dir, false, true);
 
-	TestFalse(TEXT("no SDK in the editor's tests: nothing sent"), SailCrashReports::SendFeedback(Bug));
+	TestTrue(TEXT("no SDK in the editor's tests: nothing sent"), SailCrashReports::SendFeedback(Bug) == EFeedbackSend::Saved);
 	return true;
 }
 

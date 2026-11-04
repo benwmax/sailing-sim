@@ -49,8 +49,11 @@ Ideas carry where the player is only when "Attach where I am" is on; bugs always
 | `crashed_last_run` (yes, no, unknown: the SDK gives no crash event id, so Sentry pairs them by tag and time) | yes | yes | Sentry tag |
 
 Every report is written to `Saved/Feedback/<UTC>-<kind>/` with user paths scrubbed (`SailCrashReports::ScrubPaths`), and
-sent as Sentry user feedback (`SailCrashReports::SendFeedback`) only when Send crash reports is on and the build has a
-DSN; otherwise the form says it was kept on this computer. Still `-SailingFrontEnd=Feedback` (4 s in, like Pause).
+sent as Sentry user feedback (`SailCrashReports::SendFeedback`) whenever the build has a DSN, Send crash reports on or
+off (pc/feedback-send): on, through the SDK; off, by itself as one envelope to the DSN's endpoint over HTTP, so the
+SDK's consent and its cache of unconsented envelopes are never touched, with a copy in `Saved/Feedback/Pending` until the
+endpoint takes it (`ResendPendingFeedback` sends what's left at the next launch). A build without a DSN keeps it on this
+computer and the form says so. Still `-SailingFrontEnd=Feedback` (4 s in, like Pause).
 Tests `SailingSim.UI.Feedback.*`.
 
 ## Not checked yet
