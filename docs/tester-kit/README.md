@@ -2,7 +2,7 @@
 
 For the testers of the first Friday build, and for Bean handing it to them. The install and controls card that goes in
 the zip is [`docs/windows/TESTER-GUIDE.md`](../windows/TESTER-GUIDE.md); this page is the wider brief. Written from main
-aafcb21d (Nov 3 2026); the build's own `BUILD.md` says exactly which commit it is.
+839817af (Nov 4 2026); the build's own `BUILD.md` says exactly which commit it is.
 
 ## What's in it
 
@@ -12,7 +12,7 @@ The vertical slice (#399): one lake, three boats and the first career tiers, in 
   stretch, #407).
 - **Boats:** the J/22 from the start, the Sunfish with Club Racer, the Catalina 22 with the Day Sailor certificate. The
   Catalina 22 now has her deck hardware up close: chainplates and turnbuckles on the shrouds, the mast step, the
-  stemhead, cabin-top vents and cockpit scuppers.
+  stemhead, cabin-top vents and cockpit scuppers, the traveller's track on its moulded bridge and a folding stern ladder.
 - **Career:** the first job (a guided first sail with an instructor), then **Day Sailor** (six lessons, a checkride and a
   certificate) and **Club Racer** (four Sunfish lessons), which opens after Day Sailor's first three lessons. Coastal
   Cruiser shows as "Coming".
@@ -74,9 +74,16 @@ frame rate (say the Settings > Graphics tier), and what you enjoyed. Say the bui
 
 ## Known issues
 
-Fixed since the first zip (Nov 2): a Sunfish left in irons, or pressed against a pier, could fly off at hundreds of knots
-and then crash the game (Rush Creek) or freeze it (Galveston). If you see a boat go suddenly wild, report it with the
-session log: it notes the moment a boat's numbers go wrong ("Boat state diverged").
+Fixed since the first zip (Nov 2):
+
+- A Sunfish left in irons, or pressed against a pier, could fly off at hundreds of knots and then crash the game (Rush
+  Creek) or freeze it (Galveston). If you see a boat go suddenly wild, report it with the session log: it notes the
+  moment a boat's numbers go wrong ("Boat state diverged").
+- A long session used more and more memory (about 180 MB an hour on High and Ultra, from warnings the game kept as the
+  far whitecaps and trees changed). If the game still gets slower or heavier the longer you sail, say so, with how long
+  you sailed and the Settings > Graphics tier; Task Manager's memory for SailingSim at the start and the end helps.
+- With a controller, changing Learning or Game on the Mode screen lost your place, so the next button press went
+  elsewhere. The choice now keeps the focus.
 
 - **Leave the dock:** backing out of the J/22's slip, the hull can brush the finger pier she was tied to. The slip is
   barely wider than the boat. A brush under 1 knot still counts as a clean departure; back out slowly.
