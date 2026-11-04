@@ -1085,7 +1085,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLaunch()
 					]
 				]
 			]
-			+ SHorizontalBox::Slot().FillWidth(0.4f)[ SNew(SScrollBox) + SScrollBox::Slot()[ List ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.4f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ List ] ]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, TEXT("Map from the game's own terrain and charts"));
 	return E;
@@ -1870,13 +1870,15 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f)).OnClicked_Lambda([this]() { Push(ESailScreen::Credits); })
 		[ SailUI::Text(TEXT("Credits and licences"), EType::Ui, Fg) ]
 	];
+	// The PC's menu sweep (Nov 4): every list follows the keyboard's focus (Graphics and Gameplay run past 1080 lines, and
+	// the focus used to go on below the screen, unseen).
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Settings"), Tabs[SettingsTab], 0) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 20.f)[ TabRow ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Rows ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Rows ] ]
 			+ SHorizontalBox::Slot().FillWidth(0.38f).VAlign(VAlign_Top)[ PanelBox(SailUI::Text(Help, EType::Body, Muted, true)) ]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")), Prompt(TEXT("Q / E"), TEXT("LB / RB"), TEXT("Tab")),
@@ -1944,7 +1946,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.66f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Rows ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.66f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Rows ] ]
 			+ SHorizontalBox::Slot().FillWidth(0.34f)
 			[
 				PanelBox(SNew(SVerticalBox)
@@ -2096,8 +2098,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 		}
 	}
 	E.Content = SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().FillWidth(0.46f).Padding(0.f, 0.f, 40.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Left ] ]
-		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox) + SScrollBox::Slot()[ Right ], FMargin(26.f, 22.f)) ];
+		+ SHorizontalBox::Slot().FillWidth(0.46f).Padding(0.f, 0.f, 40.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Left ] ]
+		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Right ], FMargin(26.f, 22.f)) ];
 	E.Focus = Go;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Start the drill")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip")) }, TEXT("The game is paused while you read"));
 	return E;
@@ -2516,8 +2518,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox) + SScrollBox::Slot()[ Tiers ] ]
-			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Tiers ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
 		];
 	if (StartFocus == ECareerFocus::FirstJob && FirstJobFocus.IsValid()) E.Focus = FirstJobFocus;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Tiers, lessons")),
