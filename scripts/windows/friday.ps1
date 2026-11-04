@@ -87,8 +87,8 @@ try {
 	[System.IO.File]::WriteAllText((Join-Path $StampDir 'version.txt'), "$Sha, $Date", [System.Text.Encoding]::ASCII)
 	# Crash reports: the Sentry DSN lives on this PC only (Artifacts\sentry\dsn.txt, git-ignored, or $env:SENTRY_DSN; the
 	# file wins) and goes into the package through Config\Windows\WindowsEngine.ini, appended for the cook and put back
-	# byte for byte afterwards. OverrideReleaseName makes the SDK use our Release (without it the plugin reports the
-	# project's own name and version, so crash reports and HTTP-sent feedback named different releases).
+	# byte for byte afterwards. OverrideReleaseName makes the plugin use our Release: every report path (SDK crashes and the
+	# HTTP feedback) reads GetEffectiveRelease, which without it ignores Release= and names the project's own version.
 	$SentryDir = Join-Path $Artifacts 'sentry'
 	$DsnFile = Join-Path $SentryDir 'dsn.txt'
 	$Dsn = if (Test-Path $DsnFile) { (Get-Content -Raw $DsnFile).Trim() } elseif ($env:SENTRY_DSN) { $env:SENTRY_DSN.Trim() } else { '' }

@@ -122,6 +122,16 @@ bool FSailFeedbackDefaultTitleTest::RunTest(const FString&)
 	TestTrue(TEXT("long line cut under 84"), Long.Len() <= 83);
 	TestTrue(TEXT("cut at a word"), Long == FString::ChrN(30, TEXT('a')) + TEXT(" ") + FString::ChrN(30, TEXT('b')) + TEXT("..."));
 
+	R.WhatHappened = TEXT("\r\n  Sails flogging after the tack \r\nsecond line");
+	TestEqual(TEXT("CRLF text"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("Sails flogging after the tack")));
+
+	R.WhatHappened = TEXT("short ") + FString::ChrN(100, TEXT('x'));   // no space in the second half of the first 80
+	TestEqual(TEXT("no late space: hard cut"), SailFeedback::DefaultTitle(R, Now), (TEXT("short ") + FString::ChrN(100, TEXT('x'))).Left(80) + TEXT("..."));
+
+	const FString Exact = FString::ChrN(40, TEXT('y')) + TEXT(" ") + FString::ChrN(39, TEXT('z'));
+	R.WhatHappened = Exact;
+	TestEqual(TEXT("exactly 80 kept whole"), SailFeedback::DefaultTitle(R, Now), Exact);
+
 	R.WhatHappened = TEXT("  \n ");
 	TestEqual(TEXT("empty: bug report and time"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("Bug report 2026-11-04 14:05")));
 	R.Kind = EFeedbackKind::Idea;

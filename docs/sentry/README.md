@@ -17,7 +17,7 @@ consent switch. The bug capture form (shots from the free camera, what happened,
 
 ## Where the DSN comes from
 
-Never from the repo. `scripts/windows/friday.ps1` appends `Dsn`, `OverrideReleaseName=True`, `Release=sailing-sim@<commit>` (without the override the SDK names the project's own version, not ours) and
+Never from the repo. `scripts/windows/friday.ps1` appends `Dsn`, `OverrideReleaseName=True`, `Release=sailing-sim@<commit>` (every report path, crashes and HTTP feedback, reads the plugin's `GetEffectiveRelease`, which without the override ignores `Release` and names the project's own version) and
 `Environment=tester` to `Config/Windows/WindowsEngine.ini` for the cook and restores the file afterwards, then uploads
 the Shipping symbols with sentry-cli (`docs/windows/README.md`, "Crash reports"). Mac builds carry no DSN, so the SDK
 stays off there.
