@@ -56,11 +56,25 @@
 #include "CrewAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Misc/ConfigCacheIni.h"
 
 using namespace Sailing;
 
 namespace
 {
+	/**
+	 * The Controls screen's bindings to the player's Input.ini, written at once (the PC's settings check, Nov 4: a rebound
+	 * key was gone at the next launch, and the tester build kept no Input.ini at all). BaseInput.ini saves only the
+	 * sections in its [SectionsToSave], so DefaultInput.ini lists this one; the flush puts it on disk now rather than at
+	 * exit, so a crash doesn't lose it.
+	 */
+	void SaveBindings(USailingInputSettings* Settings)
+	{
+		if (USailingSettings::IgnoresSavedChoices()) return;
+		Settings->SaveConfig();
+		if (GConfig) GConfig->Flush(false, Settings->GetClass()->GetConfigName());
+	}
+
 	FVector ToCm(const Vec3& V) { return FVector(V.X, V.Y, V.Z) * CmPerMeter; }
 	FVector ToCm(double X, double Y, double Z) { return FVector(X, Y, Z) * CmPerMeter; }
 
@@ -1715,7 +1729,7 @@ bool ASailboatPawn::AssignKey(int32 Row, const FKey& Key)
 		else KeysMessage = SailingBindings::IsPadAxis(Key) ? FString(TEXT("Sticks and triggers stay on their axes")) : FString::Printf(TEXT("%s can't be bound here"), *KeyName);
 		return false;
 	}
-	if (!USailingSettings::IgnoresSavedChoices()) Settings->SaveConfig();
+	SaveBindings(Settings);
 	RebuildMappings();
 	BuildKeyRows();
 	const FString Other = CommandLabel(R.OtherAction, R.bOtherNegative);
@@ -1729,7 +1743,7 @@ void ASailboatPawn::ResetKeys()
 {
 	USailingInputSettings* Settings = GetMutableDefault<USailingInputSettings>();
 	Settings->Bindings = Settings->GetDefaults();
-	if (!USailingSettings::IgnoresSavedChoices()) Settings->SaveConfig();
+	SaveBindings(Settings);
 	RebuildMappings();
 	BuildKeyRows();
 	KeysMessage = TEXT("Keys and buttons back to the defaults");
