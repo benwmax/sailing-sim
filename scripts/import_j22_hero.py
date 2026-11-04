@@ -403,12 +403,17 @@ def materials():
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[name] = mi
+    # pc/boats-closeup (Nov 4): the hero's woods take M_BoatSurface's grain (BOAT_CODE, Grain 1) and the varnished ones its
+    # clear coat; from the helm the companionway's varnished plywood hatch had read as a flat tan board, the ash tiller
+    # and the weathered teak trims as paint.
+    wood = ("PlywoodVarnish", "AshVarnish", "TeakVarnish", "TeakWeathered")
+
     def flat_values(name):
         v = META["flat_materials"][name]
-        gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish")
+        gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish", "PlywoodVarnish", "AshVarnish")
         return v["base_color_linear"], {"Roughness": v["roughness"], "Metallic": v["metallic"], "ClearCoat": 1.0 if gel else 0.0, "NonSkid": 0.0,
                                         "Porosity": HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1), "IsHull": 0.0,
-                                        "Surface": float(HERO_SURFACE.get(name, 0)), "Grain": 0.0}
+                                        "Surface": float(HERO_SURFACE.get(name, 0)), "Grain": 1.0 if name in wood else 0.0}
 
     for name in META["flat_materials"]:
         if name in out:
@@ -417,8 +422,7 @@ def materials():
         c, values = flat_values(name)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(c[0], c[1], c[2], 1.0))
         for pname, value in values.items():
-            if pname != "Grain":
-                MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+            MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[name] = mi
