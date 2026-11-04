@@ -423,3 +423,46 @@ bool FSailingUISliceBuildTest::RunTest(const FString&)
 	TestTrue(TEXT("The Shipping smoke may pass the switch"), SailingArgs::ShippingSmokeArgs(TEXT("-SailingShippingSmoke -SailingSlice=0 -SailingQuality=Low")).Contains(TEXT("-SailingSlice=0")));
 	return true;
 }
+
+namespace
+{
+	/** The SSailChoice under W whose label reads Label (its texts include it, upper-cased). */
+	TSharedPtr<SWidget> FindChoice(const TSharedRef<SWidget>& W, const FString& Label)
+	{
+		if (W->GetType() == TEXT("SSailChoice"))
+		{
+			TArray<FString> Texts;
+			CollectTexts(W, Texts);
+			if (Texts.Contains(Label.ToUpper())) return W;
+		}
+		FChildren* Children = W->GetChildren();
+		for (int32 I = 0; Children && I < Children->Num(); ++I)
+			if (TSharedPtr<SWidget> Found = FindChoice(Children->GetChildAt(I), Label)) return Found;
+		return nullptr;
+	}
+}
+
+// The PC's UI script: Right on the Mode screen's Mode choice rebuilt the screen and the focus left the choice (to the
+// mode card), so a pad-only player's next key went elsewhere. A choice that rebuilds its screen keeps the focus
+// (SSailFrontEnd::RebuildKeeping): the rebuilt screen's focus target is the same choice, rebuilt. Slate's navigation
+// itself needs a window, so the Down that follows is checked with -SailingUIScript on the build Mac (docs in the PR).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIChoiceKeepsFocusTest, "SailingSim.UI.ChoiceKeepsFocus", UIFlags)
+bool FSailingUIChoiceKeepsFocusTest::RunTest(const FString&)
+{
+	if (!FSlateApplication::IsInitialized()) { AddWarning(TEXT("No Slate application")); return true; }
+	struct FCase { ESailScreen Screen; const TCHAR* Label; };
+	for (const FCase& C : { FCase{ ESailScreen::Mode, TEXT("Mode") }, FCase{ ESailScreen::Feedback, TEXT("This is") } })
+	{
+		TSharedRef<SSailFrontEnd> F = SNew(SSailFrontEnd).Start(C.Screen);
+		const TSharedPtr<SWidget> Before = FindChoice(F, C.Label);
+		if (!TestTrue(FString::Printf(TEXT("%s: the choice is on screen"), C.Label), Before.IsValid())) continue;
+		const FReply Reply = Before->OnKeyDown(FGeometry(), FKeyEvent(EKeys::Right, FModifierKeysState(), 0, false, 0, 0));
+		TestTrue(FString::Printf(TEXT("%s: Right is handled"), C.Label), Reply.IsEventHandled());
+		const TSharedPtr<SWidget> Target = F->FocusTarget();
+		const TSharedPtr<SWidget> After = FindChoice(F, C.Label);
+		TestTrue(FString::Printf(TEXT("%s: the screen was rebuilt"), C.Label), After.IsValid() && After != Before);
+		TestTrue(FString::Printf(TEXT("%s: the focus stays on the choice (%s)"), C.Label, Target.IsValid() ? *Target->ToString() : TEXT("none")),
+			Target.IsValid() && Target == After);
+	}
+	return true;
+}

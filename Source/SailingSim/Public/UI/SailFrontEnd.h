@@ -66,6 +66,8 @@ public:
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport). */
 	void FocusCurrent();
 	ESailScreen Current() const { return Stack.Num() ? Stack.Last().Screen : ESailScreen::Title; }
+	/** What FocusCurrent focuses on the current screen (tests). */
+	TSharedPtr<SWidget> FocusTarget() const { return Stack.Num() ? Stack.Last().Focus : TSharedPtr<SWidget>(); }
 
 private:
 	struct FEntry
@@ -134,6 +136,12 @@ private:
 	class ASailingGameMode* GameMode() const;
 	int32 FocusedBoat = 0;
 	int32 SettingsTab = 0;
+	/** A choice that rebuilds its screen (the Mode screen's Mode, Settings' Text size) names itself here and rebuilds; its
+	 *  builder makes it the new screen's focus (KeepFocus), which Show sets once the screen is laid out. Without it the
+	 *  rebuilt screen focused its default and the next key went elsewhere, or nowhere. */
+	FName RefocusChoice;
+	void RebuildKeeping(FName Choice);
+	void KeepFocus(FEntry& E, FName Choice, const TSharedRef<SWidget>& Widget) const;
 	/** Bean's UI feedback (Oct 27): a clicked tab pill, a keycap, Q/E and LB/RB all come here; the rebuilt screen focuses
 	 *  the tab's first row once it is laid out (Show). */
 	void SetSettingsTab(int32 Tab);
