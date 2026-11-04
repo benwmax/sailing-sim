@@ -63,8 +63,23 @@ public:
 	/** Feedback #5: the chase and cockpit views are kept over the wave at the lens (not the capture modes: their stills place
 	 *  the camera themselves; photo mode's free camera has its own floor). */
 	virtual void CalcCamera(float DeltaTime, struct FMinimalViewInfo& OutResult) override;
-	/** How far over the wave at the lens the chase and cockpit views stay, metres. */
-	static constexpr double CameraWaterClearM = 0.3;
+	/** How far over the wave at the lens the chase and cockpit views stay, metres: as the showroom's 0.5, because the drawn
+	 *  surface carries the short-wave chop and the Gerstner shift that FWaveField::Height leaves out. */
+	static constexpr double CameraWaterClearM = 0.5;
+	/** The chase camera's pitch limit keeps the lens this far over the hull at rest (feedback #5), metres: a metre, so the
+	 *  lift above only works in a sea or on a heel. */
+	static constexpr double CameraPitchClearM = 1.0;
+	/** The highest pitch (deg) at which a spring arm of ArmCm with its socket SocketUpCm up holds the lens ClearCm over its
+	 *  origin. */
+	static float MaxChasePitchDeg(float SocketUpCm, float ArmCm, float ClearCm);
+	/** A view's location kept CameraWaterClearM over the wave under it. */
+	FVector LiftedOverWater(const FVector& WorldCm) const;
+	/** Where the player's view is (the chase or cockpit camera, lifted as CalcCamera lifts it): photo mode starts here. */
+	FVector ViewLocation() const;
+	/** The chase camera's pitch inside [MinDeg, MaxDeg] and under MaxChasePitchDeg for its arm now. */
+	float ClampChasePitch(float Pitch, float MinDeg, float MaxDeg) const;
+	/** The chase and cockpit lens (before the lift). */
+	const UCameraComponent* GetCameraComponent() const { return Camera; }
 	virtual void RegisterActorTickFunctions(bool bRegister) override;
 	/** Perf 1: the rest of the tick after the physics steps (from the join tick when they ran on a task). */
 	void TickAfterPhysics(float DeltaSeconds);

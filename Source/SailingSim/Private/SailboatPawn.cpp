@@ -1886,35 +1886,59 @@ void ASailboatPawn::SetGhostFrame(const FReplayFrame& Frame)
 	ApplyStateToTransform();
 }
 
+FVector ASailboatPawn::LiftedOverWater(const FVector& WorldCm) const
+{
+	// Feedback #5's backstop: a view is lifted to CameraWaterClearM over the wave under it (heel, a sea bigger than the pitch
+	// limit's allowance), the same height a frame later wherever it is clear, so it rides the surface without a jump.
+	UWorld* World = GetWorld();
+	if (!World) return WorldCm;
+	const ASailingGameMode* GM = World->GetAuthGameMode<ASailingGameMode>();
+	if (!GM) return WorldCm;
+	const FVector Map = SailingFrame::ToMapCm(World, WorldCm) / 100.0;
+	const double FloorM = GM->GetWaves().Height(Map.X, Map.Y, GM->GetSimTime()) + CameraWaterClearM;
+	return Map.Z < FloorM ? WorldCm + FVector(0.f, 0.f, float((FloorM - Map.Z) * 100.0)) : WorldCm;
+}
+
+FVector ASailboatPawn::ViewLocation() const
+{
+	return IsCaptureMode() ? Camera->GetComponentLocation() : LiftedOverWater(Camera->GetComponentLocation());
+}
+
 void ASailboatPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 {
 	Super::CalcCamera(DeltaTime, OutResult);
-	// Feedback #5: tilted up on a long arm the chase camera went under the water (and the cockpit eye can on a heeled
-	// dinghy). The view is lifted to CameraWaterClearM over the wave at the lens, as photo mode's floor does: the same
-	// height a frame later wherever it is clear, so it rides the surface without a jump. The capture modes are left alone.
-	UWorld* World = GetWorld();
-	if (!World || IsCaptureMode()) return;
-	const ASailingGameMode* GM = World->GetAuthGameMode<ASailingGameMode>();
-	// (a world without an authority game mode, the smoke test's: the one spawned in it)
-	if (!GM) for (TActorIterator<ASailingGameMode> It(World); It && !GM; ++It) GM = *It;
-	if (!GM) return;
-	const FVector Map = SailingFrame::ToMapCm(World, OutResult.Location) / 100.0;
-	const double FloorM = GM->GetWaves().Height(Map.X, Map.Y, GM->GetSimTime()) + CameraWaterClearM;
-	if (Map.Z < FloorM) OutResult.Location.Z += float((FloorM - Map.Z) * 100.0);
+	// Feedback #5: the chase and cockpit views stay over the water (the capture modes place their own camera).
+	if (!IsCaptureMode()) OutResult.Location = LiftedOverWater(OutResult.Location);
+}
+
+float ASailboatPawn::MaxChasePitchDeg(float SocketUpCm, float ArmCm, float ClearCm)
+{
+	// The lens over the arm's origin (the hull at rest): SocketUp cos p - Arm sin p. Highest pitch keeping it ClearCm up:
+	// R cos(p + phi) = ClearCm, R = |(SocketUp, Arm)|, phi = atan2(Arm, SocketUp).
+	const float R = FMath::Sqrt(SocketUpCm * SocketUpCm + ArmCm * ArmCm);
+	if (R <= ClearCm) return -89.f;
+	return FMath::RadiansToDegrees(FMath::Acos(ClearCm / R) - FMath::Atan2(ArmCm, SocketUpCm));
+}
+
+float ASailboatPawn::ClampChasePitch(float Pitch, float MinDeg, float MaxDeg) const
+{
+	// Feedback #5's limit: the arm can't aim the lens under the water (CameraPitchClearM over the hull at rest), on top of
+	// the look's own range; the CalcCamera lift stays the backstop for heel and waves.
+	const float Limit = MaxChasePitchDeg(CameraBoom->SocketOffset.Z + CameraBoom->GetRelativeLocation().Z, CameraBoom->TargetArmLength, float(CameraPitchClearM * 100.0));
+	return FMath::Clamp(Pitch, MinDeg, FMath::Max(MinDeg, FMath::Min(MaxDeg, Limit)));
 }
 
 void ASailboatPawn::AddCameraOrbit(const FVector2D& Delta, float ZoomDelta)
 {
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
-	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -85.f, 20.f);
-	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	if (ZoomDelta != 0.f)
 	{
 		CameraDistance = FMath::Clamp(CameraDistance - ZoomDelta * 150.f, 400.f, 8000.f);
 		CameraBoom->TargetArmLength = CameraDistance;
 	}
+	CameraPitch = ClampChasePitch(CameraPitch + Delta.Y, -85.f, 20.f);
+	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 }
-
 void ASailboatPawn::UpdateGhost(float DeltaSeconds)
 {
 	if (bWatching)
@@ -2243,12 +2267,12 @@ void ASailboatPawn::SetPhoto(bool bOn)
 			FreeCam->Limits = FFreeCameraLimits();
 			FreeCam->SetAnchor(this, CameraBoom->GetComponentLocation() - GetActorLocation());
 			FreeCam->SetMode(EFreeCameraMode::Fly);
-			FreeCam->SnapTo(Camera->GetComponentLocation(), Camera->GetComponentRotation());
+			FreeCam->SnapTo(ViewLocation(), Camera->GetComponentRotation());
 			UCameraComponent* Lens = FreeCam->GetCamera();
 			Lens->PostProcessSettings = Camera->PostProcessSettings;
 			Lens->PostProcessBlendWeight = Camera->PostProcessBlendWeight;
 			Lens->SetFieldOfView(Camera->FieldOfView);
-			PhotoFocusM = float(FVector::Dist(Camera->GetComponentLocation(), BoatRoot->GetComponentLocation())) / 100.f;
+			PhotoFocusM = float(FVector::Dist(ViewLocation(), BoatRoot->GetComponentLocation())) / 100.f;
 			UpdatePhotoLens();
 			if (PC) PC->SetViewTargetWithBlend(FreeCam, 0.3f);
 		}
@@ -2270,7 +2294,7 @@ AFreeCamera* ASailboatPawn::EnsureFreeCamera()
 		FActorSpawnParameters Params;
 		Params.ObjectFlags |= RF_Transient;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		FreeCam = GetWorld()->SpawnActor<AFreeCamera>(Camera->GetComponentLocation(), Camera->GetComponentRotation(), Params);
+		FreeCam = GetWorld()->SpawnActor<AFreeCamera>(ViewLocation(), Camera->GetComponentRotation(), Params);
 	}
 	return FreeCam;
 }
@@ -2322,7 +2346,7 @@ void ASailboatPawn::SetShowroomStage(EShowroomStage Stage, bool bRelocate)
 			FreeCam->Limits.WaterClearM = 0.5; // the showroom's floor: half a metre over the waves
 			FreeCam->GetCamera()->PostProcessSettings = Camera->PostProcessSettings;
 			FreeCam->GetCamera()->SetFieldOfView(Camera->FieldOfView);
-			FreeCam->SnapTo(Camera->GetComponentLocation(), Camera->GetComponentRotation());
+			FreeCam->SnapTo(ViewLocation(), Camera->GetComponentRotation());
 			ApplyShowroomFraming(false);
 			if (PC) PC->SetViewTargetWithBlend(FreeCam, 0.6f, VTBlend_EaseInOut, 2.f);
 		}
@@ -3377,7 +3401,7 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		return;
 	}
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
-	CameraPitch = FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f);
+	CameraPitch = ClampChasePitch(CameraPitch + Delta.Y, -75.f, 5.f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 }
 
@@ -3396,6 +3420,9 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 	if (bPhoto) return; // the wheel is photo mode's speed (PhotoSpeed, in its own context)
 	CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 120.f, 400.f, 4000.f);
 	CameraBoom->TargetArmLength = CameraDistance;
+	// (zoomed out, the pitch the limit allows is lower: the arm comes down with it rather than the lens going under)
+	CameraPitch = ClampChasePitch(CameraPitch, -75.f, 5.f);
+	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 }
 
 void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
@@ -3440,7 +3467,7 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	{
 		if (Action == TEXT("PhotoShot")) TakePhoto();
 		else if (Action == TEXT("Menu")) SetPhoto(false); // Esc (or the pad's Menu) leaves photo mode
-		else if (Action == TEXT("PhotoToBoat") && FreeCam) FreeCam->SnapTo(Camera->GetComponentLocation(), Camera->GetComponentRotation());
+		else if (Action == TEXT("PhotoToBoat") && FreeCam) FreeCam->SnapTo(ViewLocation(), Camera->GetComponentRotation());
 		else if (Action == TEXT("PhotoOrbit") && FreeCam)
 		{
 			FreeCam->SetMode(FreeCam->GetMode() == EFreeCameraMode::Orbit ? EFreeCameraMode::Fly : EFreeCameraMode::Orbit);

@@ -1,6 +1,8 @@
 #include "Misc/AutomationTest.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Engine/GameInstance.h"
+#include "Camera/CameraComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
@@ -287,7 +289,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCameraAboveWaterTest, "SailingSim.Smoke
 bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 {
 	FBareWorld W;
-	ASailingGameMode* GM = W.World->SpawnActor<ASailingGameMode>();
+	// The world's own (authority) game mode, as in the game: the pawn asks GetAuthGameMode for the waves.
+	W.World->SetGameInstance(NewObject<UGameInstance>(GEngine));
+	W.World->SetGameMode(FURL());
+	ASailingGameMode* GM = W.World->GetAuthGameMode<ASailingGameMode>();
 	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
 	ASailboatPawn* Pawn = W.World->SpawnActor<ASailboatPawn>(FVector::ZeroVector, FRotator::ZeroRotator);
 	if (!TestNotNull(TEXT("A boat"), Pawn)) return false;
@@ -307,11 +312,21 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 		Pawn->AddCameraOrbit(FVector2D(0.f, 200.f), -200.f);
 		Ticks(180);
 		const double Chase = Clearance();
-		TestTrue(FString::Printf(TEXT("Boat %d, chase camera tilted up and out: over the water (%.2f m)"), Type, Chase), Chase >= 0.25);
+		TestTrue(FString::Printf(TEXT("Boat %d, chase camera tilted up and out: over the water (%.2f m)"), Type, Chase), Chase >= 0.45);
+		// The pitch limit (not only the lift): the lens itself stays a metre up, and the boat stays in the middle of the frame.
+		const FVector Lens = Pawn->GetCameraComponent()->GetComponentLocation();
+		TestTrue(FString::Printf(TEXT("Boat %d, the arm keeps the lens up (%.2f m)"), Type, SailingFrame::ToMapCm(W.World, Lens).Z / 100.0), SailingFrame::ToMapCm(W.World, Lens).Z / 100.0 >= 0.9);
+		FMinimalViewInfo View;
+		Pawn->CalcCamera(1.f / 60.f, View);
+		const FVector ToBoat = (Pawn->GetActorLocation() + FVector(0.f, 0.f, 150.f) - View.Location).GetSafeNormal();
+		const double OffDeg = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(ToBoat, View.Rotation.Vector())));
+		TestTrue(FString::Printf(TEXT("Boat %d, the boat in frame (%.1f deg off centre)"), Type, OffDeg), OffDeg < 15.0);
+		// Photo mode starts where the player's view is.
+		TestTrue(TEXT("photo mode's start is the view's"), Pawn->ViewLocation().Equals(View.Location, 1.f));
 		Pawn->SetCockpitView(true);
 		Ticks(30);
 		const double Cockpit = Clearance();
-		TestTrue(FString::Printf(TEXT("Boat %d, cockpit view: over the water (%.2f m)"), Type, Cockpit), Cockpit >= 0.25);
+		TestTrue(FString::Printf(TEXT("Boat %d, cockpit view: over the water (%.2f m)"), Type, Cockpit), Cockpit >= 0.45);
 		Pawn->SetCockpitView(false);
 		Pawn->AddCameraOrbit(FVector2D(0.f, -200.f), 200.f);
 	}
