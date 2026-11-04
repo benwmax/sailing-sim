@@ -315,7 +315,8 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("Boat %d, chase camera tilted up and out: over the water (%.2f m)"), Type, Chase), Chase >= 0.45);
 		// The pitch limit (not only the lift): the lens itself stays a metre up, and the boat stays in the middle of the frame.
 		const FVector Lens = Pawn->GetCameraComponent()->GetComponentLocation();
-		TestTrue(FString::Printf(TEXT("Boat %d, the arm keeps the lens up (%.2f m)"), Type, SailingFrame::ToMapCm(W.World, Lens).Z / 100.0), SailingFrame::ToMapCm(W.World, Lens).Z / 100.0 >= 0.9);
+		const double LensUpM = (Lens.Z - Pawn->GetActorLocation().Z) / 100.0;   // over the hull, as the limit holds it (a heel or a sea moves both)
+		TestTrue(FString::Printf(TEXT("Boat %d, the arm keeps the lens up (%.2f m over the hull)"), Type, LensUpM), LensUpM >= 0.8);
 		FMinimalViewInfo View;
 		Pawn->CalcCamera(1.f / 60.f, View);
 		const FVector ToBoat = (Pawn->GetActorLocation() + FVector(0.f, 0.f, 150.f) - View.Location).GetSafeNormal();

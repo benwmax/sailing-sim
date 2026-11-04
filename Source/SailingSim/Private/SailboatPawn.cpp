@@ -306,6 +306,8 @@ void ASailboatPawn::SetBoat(int32 Type)
 	CameraDistance = FMath::Clamp(float(C.LengthOverall) * 2.4f, 9.f, 40.f) * CmPerMeter;
 	CameraBoom->TargetArmLength = CameraDistance;
 	CameraBoom->SocketOffset = FVector(0.f, 0.f, float(C.MastheadZ) * 0.33f * CmPerMeter);
+	// (a new arm and socket: the chase camera's pitch limit moves with them, feedback #5)
+	if (!bCockpit) { CameraPitch = ClampChasePitch(CameraPitch, -85.f, 20.f); CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f)); }
 	ResetBoat();
 	// The Phase 4 gate asks that every boat loads fast: building one is physics setup plus a few dozen meshes.
 	UE_LOG(LogSailing, Log, TEXT("Boat ready: %hs in %.1f ms"), C.Name, (FPlatformTime::Seconds() - StartSeconds) * 1000.0);
@@ -926,6 +928,9 @@ void ASailboatPawn::BeginPlay()
 			CameraBoom->bEnableCameraLag = false;
 		}
 	}
+	// (the chase camera's pitch from the arguments under the arm's limit too, feedback #5)
+	CameraPitch = ClampChasePitch(CameraPitch, -85.f, 20.f);
+	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 	FString CaptureArg;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCapture="), CaptureArg))
 	{
@@ -3401,7 +3406,8 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		return;
 	}
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
-	CameraPitch = ClampChasePitch(CameraPitch + Delta.Y, -75.f, 5.f);
+	// (the cockpit look keeps its own range: UpdateCockpitCamera clamps it; the arm's limit is the chase camera's)
+	CameraPitch = bCockpit ? FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f) : ClampChasePitch(CameraPitch + Delta.Y, -75.f, 5.f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 }
 
@@ -3421,8 +3427,11 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 	CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 120.f, 400.f, 4000.f);
 	CameraBoom->TargetArmLength = CameraDistance;
 	// (zoomed out, the pitch the limit allows is lower: the arm comes down with it rather than the lens going under)
-	CameraPitch = ClampChasePitch(CameraPitch, -75.f, 5.f);
-	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	if (!bCockpit)
+	{
+		CameraPitch = ClampChasePitch(CameraPitch, -75.f, 5.f);
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	}
 }
 
 void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
