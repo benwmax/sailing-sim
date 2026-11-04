@@ -1477,7 +1477,9 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 				{
 					UInstancedStaticMeshComponent* Mesh = NewObject<UInstancedStaticMeshComponent>(this);
 					Mesh->SetMobility(EComponentMobility::Static);
-					Mesh->SetupAttachment(RootComponent);
+					// Not attached: a Static tile can't attach to the movable root, and each refusal was a message-log warning
+					// (300 to 600 a minute on Ultra as the tiles turn over: the PC's soak grew its MessageLog and Localization).
+					// Its placement is absolute anyway.
 					Mesh->SetUsingAbsoluteLocation(true);
 					Mesh->SetUsingAbsoluteRotation(true);
 					Mesh->SetStaticMesh(DropletMesh);
