@@ -748,6 +748,28 @@ def keelboat_cockpit_detail(H, ck, cb, top, half, st, bw):
 C22_TURNBUCKLE_TOP = 0.035 + 0.216      # the wire's eye on a turnbuckle stood on a chainplate's pin (bk_parts: Pin, Wire)
 
 
+def c22_traveller_and_ladder(H, ck, traveler, st):
+    """pc/boats-c22-2: the Catalina 22's mainsheet traveller as the boat has it, the kit's track and car on a moulded
+    bridge across the cockpit's aft end (it had been a bare bar in the air), and the folding stern boarding ladder on the
+    transom's port side, clear of the outboard on the starboard quarter: two stainless rails from the transom top down to
+    the water, three treads, and the hinge brackets at the top."""
+    x, z, half = traveler
+    w = ck[2]
+    # the bridge: a moulded beam from coaming to coaming, its top 3 cm under the car's socket (the kit's track and car)
+    box(hull, (x, 0.0, z - 0.06), (0.16, 2 * w, 0.06), "Deck")
+    kit_part("Traveler", x, 0.0, z - 0.03, math.pi / 2, length=2 * half + 0.06)
+    # the ladder, 0.32 m wide, hung 4 cm off the transom from hinges at the sheer, its foot 0.35 m under the water
+    y0, lx = -0.36, st - 0.04
+    top_z, foot_z = H.sheer(st) - 0.02, -0.35
+    for dy in (-0.16, 0.16):
+        tube(hull, [(lx, y0 + dy, top_z), (lx - 0.02, y0 + dy, foot_z)], 0.011, "Stainless", 8)
+        box(hull, (st + 0.01, y0 + dy, top_z + 0.01), (0.07, 0.03, 0.04), "Stainless")      # hinge bracket on the transom
+    for k in range(3):
+        zz = top_z - 0.28 - 0.26 * k
+        xx = lx - 0.02 * (top_z - zz) / (top_z - foot_z)
+        box(hull, (xx - 0.02, y0, zz), (0.09, 0.34, 0.022), "BlackPlastic")                 # tread (moulded, non-slip)
+
+
 def c22_hardware(H, top, mast_x, st, bw):
     """pc/boats-c22-ilca: the Catalina 22's standing-rigging and deck hardware a tester sees from the helm and the side
     deck, from the shared kit: a stainless chainplate and turnbuckle under each shroud (the wires now end on the
@@ -1306,6 +1328,8 @@ elif TAG in ("Catalina22", "Catalina30"):
     if TAG == "Catalina30":
         # the kit's traveler (track, car with its control sheaves, end stops) across the cabin top: its car at Traveler_C
         kit_part("Traveler", traveler[0], 0.0, top(traveler[0]), math.pi / 2, length=2 * traveler[2] + 0.06)
+    elif TAG == "Catalina22":
+        c22_traveller_and_ladder(MAIN, ck, traveler, st)
     else:
         tube(hull, [(traveler[0], -traveler[2], traveler[1]), (traveler[0], traveler[2], traveler[1])], 0.012, "Aluminium", 8)
     wx = SPEC["winch_x"]
