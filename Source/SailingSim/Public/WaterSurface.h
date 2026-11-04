@@ -150,11 +150,16 @@ public:
 	static void BuildFarGrid(float InnerHalfM, float OuterHalfM, int32 PerSide, TArray<FVector>& OutVerts, TArray<int32>& OutTris);
 	/**
 	 * Feedback #6 (white lines between the water's tiles as the camera turned): each ring but the first has a hole the next
-	 * finer ring fills. The rings snap to the camera on their own grids (twice their spacing), so their centres can sit a
-	 * coarse cell apart; with a hole of N/4 - 1 coarse cells the overlap then fell to nothing on one side and the edges met
-	 * in T-junctions, which the waves pulled open. The hole's half-width in the ring's quads, and the narrowest overlap
-	 * of the finer ring over it, in metres, for a camera at CamX (m) on either axis.
+	 * finer ring fills. The rings snap to the camera on their own grids (RingSnapM: twice their spacing), so their centres
+	 * can sit a coarse cell apart; with a hole of N/4 - 1 coarse cells the overlap then fell to nothing on the hole's near
+	 * side (the far side had two cells) and the edges met in T-junctions, which the waves pulled open. With N/4 - 2 it is
+	 * at least a cell. The guarantee is geometric: the displacement is per vertex on both rings, so only a folding cap
+	 * (Jacobian near 0) could carry the fine edge back over the hole's within a cell. Tick, BuildRings and the test read
+	 * the spacing, snap and size from here. RingOverlapM: the narrowest overlap in metres for a camera at CamX (m).
 	 */
+	static float RingSpacingM(int32 Level);
+	static float RingSnapM(int32 Level);
+	static int32 RingQuads();
 	static int32 RingHoleQuads(int32 Level);
 	static double RingOverlapM(int32 Level, double CamX);
 	/** Where the far grid starts for a ring count: one outer-ring cell inside the outer ring's edge. */

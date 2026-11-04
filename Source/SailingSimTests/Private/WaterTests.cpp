@@ -1139,7 +1139,7 @@ bool FWaterRingOverlapTest::RunTest(const FString&)
 {
 	for (int32 Level = 1; Level < 7; ++Level)
 	{
-		const double Coarse = 0.5 * double(1 << Level);
+		const double Coarse = AWaterSurface::RingSpacingM(Level);
 		double Least = 1e9, LeastAt = 0.0;
 		for (int32 I = 0; I < 4000; ++I)
 		{

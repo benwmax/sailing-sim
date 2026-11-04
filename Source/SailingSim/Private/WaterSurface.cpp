@@ -590,6 +590,21 @@ void AWaterSurface::SetRingCount(int32 Count)
 	}
 }
 
+float AWaterSurface::RingSpacingM(int32 Level)
+{
+	return kFinestSpacingM * float(1 << Level);
+}
+
+float AWaterSurface::RingSnapM(int32 Level)
+{
+	return 2.f * RingSpacingM(Level);   // twice the spacing, so the vertices don't swim
+}
+
+int32 AWaterSurface::RingQuads()
+{
+	return kRingQuads;
+}
+
 int32 AWaterSurface::RingHoleQuads(int32 Level)
 {
 	// N/4 coarse cells is the finer ring's half-width; one cell for the snaps' offset (up to a cell) and one to spare.
@@ -599,10 +614,10 @@ int32 AWaterSurface::RingHoleQuads(int32 Level)
 double AWaterSurface::RingOverlapM(int32 Level, double CamX)
 {
 	if (Level <= 0) return 0.0;
-	const double Coarse = kFinestSpacingM * double(1 << Level), Fine = 0.5 * Coarse;
-	// As Tick places them: each ring on a grid of twice its spacing.
-	const double CoarseAt = FMath::GridSnap(CamX, 2.0 * Coarse), FineAt = FMath::GridSnap(CamX, 2.0 * Fine);
-	const double FineHalf = 0.5 * kRingQuads * Fine, HoleHalf = RingHoleQuads(Level) * Coarse;
+	const double Coarse = RingSpacingM(Level), Fine = RingSpacingM(Level - 1);
+	// As Tick places them (RingSnapM) and BuildRings lays them out (RingQuads across, RingHoleQuads in).
+	const double CoarseAt = FMath::GridSnap(CamX, double(RingSnapM(Level))), FineAt = FMath::GridSnap(CamX, double(RingSnapM(Level - 1)));
+	const double FineHalf = 0.5 * RingQuads() * Fine, HoleHalf = RingHoleQuads(Level) * Coarse;
 	return FMath::Min((FineAt + FineHalf) - (CoarseAt + HoleHalf), (CoarseAt - HoleHalf) - (FineAt - FineHalf));
 }
 
@@ -617,8 +632,8 @@ void AWaterSurface::BuildRings()
 
 	for (int32 Level = 0; Level < RingCount; ++Level)
 	{
-		const float Spacing = kFinestSpacingM * float(1 << Level);
-		const int32 N = kRingQuads;
+		const float Spacing = RingSpacingM(Level);
+		const int32 N = RingQuads();
 		// Inner hole for every ring but the first: the next finer ring fills it (RingHoleQuads: never less than one coarse
 		// cell of overlap, whatever the two rings' snaps).
 		const int32 Hole = RingHoleQuads(Level);
@@ -764,7 +779,7 @@ void AWaterSurface::Tick(float DeltaSeconds)
 	}
 	for (int32 I = 0; I < Rings.Num(); ++I)
 	{
-		const float Snap = 2.f * RingSpacing[I] * CmPerMeter;
+		const float Snap = RingSnapM(I) * CmPerMeter;
 		Rings[I]->SetWorldLocation(FVector(FMath::GridSnap(CamPos.X, Snap), FMath::GridSnap(CamPos.Y, Snap), GetActorLocation().Z));
 	}
 	// The far grid on the outer ring's snap, 10 cm down so the ring wins where they overlap.
