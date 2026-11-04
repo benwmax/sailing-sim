@@ -33,6 +33,18 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+	virtual void ApplyWorldOffset(const FVector& InOffset, bool bWorldShift) override;
+
+	/**
+	 * Static components (the far ring's tiles, the crown proxies and tiles, the houses and docks) can't attach to the
+	 * movable root: the engine refuses it with a message-log warning (1,077 at the lake's load) and leaves them behind
+	 * when the actor moves (a coast's tide, in 2 cm steps) or the world re-centres. Kept here instead: placed where
+	 * attaching would put them, then moved with the actor by the offset path (FollowActor, ApplyWorldOffset). Call it
+	 * before the component registers.
+	 */
+	void KeepWithActor(USceneComponent* Component);
+	/** Moves the kept components by the actor's movement since the last call (Tick does it). */
+	void FollowActor();
 
 	/** Tree density multiplier for the quality tier (0..1). */
 	void SetTreeFraction(float Fraction);
@@ -46,6 +58,8 @@ public:
 	bool IsFarRingSettled() const { return !FarLoader.Data() || (FarLoader.IsDone() && FarArrived.Num() == 0); }
 
 private:
+	TArray<TWeakObjectPtr<USceneComponent>> Kept;
+	FVector KeptAt = FVector::ZeroVector;
 	struct FChunkMesh
 	{
 		TArray<FVector> Vertices;

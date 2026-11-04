@@ -12,6 +12,10 @@
 #include "Navigation.h"
 #include "Tides.h"
 #include "SailingEnvironment.h"
+#include "LakeTerrainActor.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Dom/JsonObject.h"
 #include "Misc/FileHelper.h"
 #include "Serialization/JsonReader.h"
@@ -640,3 +644,41 @@ bool FCoastLandmarksTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("%d of %d landmarks drawn"), Placed.Num(), Lake.Landmarks.Num()));
 	return true;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+// The terrain actor's Static components (far ring tiles, crown proxies and tiles, houses, docks) can't attach to its movable
+// root, so they are kept with it instead (ALakeTerrainActor::KeepWithActor): placed where attaching would put them, then
+// moved by the tide's 2 cm steps and by a world re-centre. Before, the attach was refused (1,077 message-log warnings at
+// the lake's load) and on a coast they stayed behind as the tide moved the terrain.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCoastKeptStaticFollowsTideTest, "SailingSim.Coast.KeptStaticFollowsTide", Flags)
+bool FSailingCoastKeptStaticFollowsTideTest::RunTest(const FString&)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingKeptStaticWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	ALakeTerrainActor* Terrain = World->SpawnActor<ALakeTerrainActor>(FVector(0.0, 0.0, -30.0), FRotator::ZeroRotator);   // a 30 cm tide
+	if (TestNotNull(TEXT("Terrain actor"), Terrain))
+	{
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Terrain);
+		C->SetMobility(EComponentMobility::Static);
+		C->SetRelativeLocation(FVector(5000.0, 2000.0, 300.0));   // made in the actor's frame
+		Terrain->KeepWithActor(C);
+		C->RegisterComponent();
+		TestNull(TEXT("Not attached (a Static child of a movable root is refused)"), C->GetAttachParent());
+		TestTrue(FString::Printf(TEXT("Placed where attaching would put it (%s)"), *C->GetComponentLocation().ToString()),
+			C->GetComponentLocation().Equals(FVector(5000.0, 2000.0, 270.0), 0.01));
+		Terrain->SetActorLocation(FVector(0.0, 0.0, -32.0));   // the tide rises 2 cm: the terrain goes down
+		Terrain->FollowActor();
+		TestTrue(FString::Printf(TEXT("Follows the tide's step (%s)"), *C->GetComponentLocation().ToString()),
+			C->GetComponentLocation().Equals(FVector(5000.0, 2000.0, 268.0), 0.01));
+		Terrain->ApplyWorldOffset(FVector(-1920000.0, 0.0, 0.0), true);   // a re-centre of the render frame
+		Terrain->FollowActor();
+		TestTrue(FString::Printf(TEXT("Follows a world shift once, not twice (%s)"), *C->GetComponentLocation().ToString()),
+			C->GetComponentLocation().Equals(FVector(5000.0 - 1920000.0, 2000.0, 268.0), 0.01));
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+#endif

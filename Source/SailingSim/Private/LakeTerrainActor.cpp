@@ -119,6 +119,7 @@ void ALakeTerrainActor::SetTreeFraction(float Fraction)
 void ALakeTerrainActor::BeginPlay()
 {
 	Super::BeginPlay();
+	KeptAt = GetActorLocation();
 	// The bed is hidden where the water (Single Layer Water, Visual V4) absorbs 99% of the light coming back from it:
 	// about 2 m in the lake's and the bay's silt, 14 m offshore; with a metre to spare for the lake level and the tide.
 	HideBelow = (USailingSettings::Get()->World == 2 || USailingSettings::Get()->World == 3) ? -15.0 : -3.5;   // the Gulf and the clear Mediterranean
@@ -349,13 +350,14 @@ int32 ALakeTerrainActor::TileComponent(int32 Tile, uint8 Band, int32 Model)
 	UInstancedStaticMeshComponent* Template = Band == 2 ? TreeMid[Model].Get() : TreeFar[Model].Get();
 	UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this, NAME_None, RF_NoFlags, Template);
 	C->ClearInstances();
-	C->SetupAttachment(RootComponent);
+	C->SetRelativeTransform(FTransform::Identity);   // the template's own placement is the actor's; KeepWithActor gives it again
 	C->SetRemoveSwap();
 	// Bounds far past r.SceneCulling.MaxCellSize (10.5 km), as the lake-wide band components had: the renderer then
 	// leaves the tile's crowns out of its culling hierarchy and culls them per instance on the GPU. Hashed into the
 	// hierarchy, the tiles' 294,000 crowns cost the render thread 0.3 ms a frame (SceneCulling_Update_FinalizeAndClear on
 	// the 4090) with the GPU no faster. A tile can hold a single tree, hence the large scale.
 	C->SetBoundsScale(2000.f);
+	KeepWithActor(C);
 	C->RegisterComponent();
 	const int32 Id = TreeComps.Add(C);
 	CompTrees.AddDefaulted();
@@ -488,10 +490,35 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	if (Adds.Num() > 64) SAIL_LOG(Display, TEXT("Trees: %d components (%d tiles)"), TreeComps.Num(), TileComps.Num());
 }
 
+void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
+{
+	FollowActor();
+	Component->SetRelativeTransform(Component->GetRelativeTransform() * GetActorTransform());   // where attaching would put it
+	Kept.Add(Component);
+}
+
+void ALakeTerrainActor::FollowActor()
+{
+	const FVector At = GetActorLocation();
+	if (At.Equals(KeptAt, 0.01)) return;
+	const FVector Delta = At - KeptAt;
+	KeptAt = At;
+	// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
+	for (const TWeakObjectPtr<USceneComponent>& C : Kept) if (C.IsValid()) C->ApplyWorldOffset(Delta, false);
+}
+
+void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
+{
+	Super::ApplyWorldOffset(InOffset, bWorldShift);   // the root and what is attached to it
+	for (const TWeakObjectPtr<USceneComponent>& C : Kept) if (C.IsValid()) C->ApplyWorldOffset(InOffset, bWorldShift);
+	KeptAt += InOffset;
+}
+
 void ALakeTerrainActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	SAILING_PERF_SCOPE(Terrain);
+	FollowActor();
 	// Once, 8 s in: every instanced mesh in the world by owner and mesh (the render thread culls each instance).
 	if (!bLoggedInstances && GetWorld()->GetTimeSeconds() > 8.0)
 	{
@@ -750,7 +777,6 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 		const FFarRingTile& Tile = Ring->Tiles[A.Key];
 		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
 		C->SetMobility(EComponentMobility::Static);
-		C->SetupAttachment(RootComponent);
 		C->SetRelativeLocation(FVector(Ring->TileOrigin(Tile) * CmPerMeter, 0.0));
 		C->SetStaticMesh(Mesh);
 		if (FarMaterial) C->SetMaterial(0, FarMaterial);
@@ -764,6 +790,7 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetVisibleFlag(FarRing::TileVisible(*Ring, Tile, Camera));
+		KeepWithActor(C);   // Static: not attached (a Static child of the movable root is refused)
 		C->RegisterComponent();
 		FarTiles[A.Key] = C;
 		++Added;
@@ -1049,7 +1076,6 @@ void ALakeTerrainActor::PlaceTrees()
 						// Static: a movable instanced primitive is re-culled as dynamic by the renderer every frame (scene culling's
 						// IsOftenMoving), and the regroups only add and remove instances. The tiles cloned from these inherit it.
 						P->SetMobility(EComponentMobility::Static);
-						P->SetupAttachment(RootComponent);
 						P->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name)));
 						P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 						// Hidden, but in the indirect lighting (kept out of the main pass instead, Lumen left them out too).
@@ -1060,6 +1086,7 @@ void ALakeTerrainActor::PlaceTrees()
 						P->bAffectDistanceFieldLighting = true;
 						P->bVisibleInRayTracing = bTreeRayTracing;
 						P->SetCullDistances(0, (NearTreesM() + 200.0) * 100.0);
+						KeepWithActor(P);   // Static: not attached (a Static child of the movable root is refused)
 						P->RegisterComponent();
 						TreeProxy.Add(P);
 						continue;
@@ -1067,7 +1094,6 @@ void ALakeTerrainActor::PlaceTrees()
 					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
 					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 					C->SetMobility(EComponentMobility::Static);   // as the proxies above
-					C->SetupAttachment(RootComponent);
 					C->SetStaticMesh(Mesh);
 					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 					// Out of Lumen's scene and ray tracing: capturing thousands of leaf cards into Lumen's surface cache
@@ -1090,6 +1116,7 @@ void ALakeTerrainActor::PlaceTrees()
 					C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 					C->SetCullDistances(0, (Pass == 0 ? NearTreesM() + 200.0 : (Pass == 1 ? MidTreesM() + 200.0 : 9000.0)) * 100.0);
 					C->SetWorldPositionOffsetDisableDistance(int32((Pass == 0 ? NearTreesM() : 1500.0) * 100.0));
+					KeepWithActor(C);   // Static: not attached (a Static child of the movable root is refused)
 					C->RegisterComponent();
 					(Pass == 0 ? TreeModels : (Pass == 1 ? TreeMid : TreeFar)).Add(C);
 				}
@@ -1492,12 +1519,12 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		if (!Mesh) return false;
 		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this);
 		I->SetMobility(EComponentMobility::Static);
-		I->SetupAttachment(RootComponent);
 		I->SetStaticMesh(Mesh);
 		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		I->SetCullDistances(0, 8000 * 100);
 		I->NumCustomDataFloats = FWearSeed::TotalFloats;  // paint 0-9, then the wear seed (Environment E1)
 		I->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		KeepWithActor(I);   // Static: not attached (a Static child of the movable root is refused)
 		I->RegisterComponent();
 		Ism.Add(I);
 		BuildingMeshes.Add(I);
@@ -1522,12 +1549,12 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		if (!Mesh) return nullptr;
 		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this);
 		I->SetMobility(EComponentMobility::Static);
-		I->SetupAttachment(RootComponent);
 		I->SetStaticMesh(Mesh);
 		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		I->SetCullDistances(0, CullM * 100.f);
 		I->NumCustomDataFloats = CustomFloats;
 		I->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		KeepWithActor(I);   // Static: not attached (a Static child of the movable root is refused)
 		I->RegisterComponent();
 		BuildingMeshes.Add(I);
 		return I;
