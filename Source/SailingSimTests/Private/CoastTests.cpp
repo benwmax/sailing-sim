@@ -685,7 +685,7 @@ bool FSailingCoastKeptStaticFollowsTideTest::RunTest(const FString&)
 			Tile->DestroyComponent();
 		}
 		TestTrue(FString::Printf(TEXT("A thousand tiles kept and destroyed leave the list short (%d entries)"), Terrain->KeptCount()), Terrain->KeptCount() <= 130);
-		Terrain->SetActorLocation(FVector(0.0, 0.0, -34.0));
+		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));   // another 2 cm step, from where the shift left her
 		Terrain->FollowActor();
 		TestEqual(TEXT("A tide step drops the dead entries: only the live one is left"), Terrain->KeptCount(), 1);
 		TestTrue(TEXT("... and it still follows"), C->GetComponentLocation().Equals(FVector(5000.0 - 1920000.0, 2000.0, 266.0), 0.01));
