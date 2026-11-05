@@ -125,16 +125,10 @@ if [[ -n "$TESTS" ]]; then
 	if [[ $FORCE == 0 && "$(cat "$STATE/tests.hash" 2>/dev/null)" == "$PACKAGE_HASH $TESTS" ]]; then
 		step "tests: passed on these inputs already"
 	elif [[ $FORCE == 0 && "$TESTS" == SailingSim && -f "$STATE/tests-all.txt" && "$(cat "$STATE/heavy.hash" 2>/dev/null)" == "$HEAVY_HASH" ]]; then
-		LIGHT="$(python3 - "$STATE/tests-all.txt" "$GATE_SCRIPTS/gate-heavy-tests.txt" <<'PY'
-import sys
-heavy = [l.strip() for l in open(sys.argv[2]) if l.strip() and not l.startswith('#')]
-names = [l.strip() for l in open(sys.argv[1]) if l.strip()]
-print('+'.join(n for n in names if not any(n.startswith(h) for h in heavy)))
-PY
-)"
+		LIGHT="$(python3 "$GATE_SCRIPTS/gate-light-tests.py" "$STATE/tests-all.txt" "$GATE_SCRIPTS/gate-heavy-tests.txt" "$REPO_ROOT/Source/SailingSimTests")"
 		step "tests: the heavy set passed on these physics inputs; $(echo "$LIGHT" | tr '+' '\n' | wc -l | tr -d ' ') others"
 		run_tests "$LIGHT"
-		# New tests (not in the last full run's list) are picked up by the next full run.
+		# Tests declared since the last full run are in LIGHT too (gate-light-tests.py).
 		echo "$PACKAGE_HASH $TESTS" > "$STATE/tests.hash"
 	else
 		step "tests ($TESTS)"
