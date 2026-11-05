@@ -14,7 +14,9 @@
  * 2026): SailingSim.Smoke.CameraAboveWater gave its world a game instance outered to GEngine, never shut down, and the
  * photo-mode copy of this helper destroyed the world without EndPlay, so a game mode and a ticked player pawn were left
  * for a later purge. Every such test goes through this one helper now: EndPlay first, and a game instance a test asks
- * for (UseGameInstance, in the transient package) is released with the world.
+ * for (UseGameInstance, in the transient package) is released with the world. EndPlay must come first: on both the
+ * Mac and Windows the purge ran inside a later test's World->Tick (Visual.RigClearance) and crashed in the engine Water
+ * plugin's objects left from the bare world torn down without it.
  */
 struct FBareTestWorld
 {
