@@ -73,3 +73,9 @@ From the reported spot (J/22, 12 kn, TWA 106), chase camera astern and above:
 
 The lane is still there, as it should be, a little narrower near the stern and fainter at its far end; from this camera
 it mirrors the bright sky, so it reads light here, where the reported view read it dark. No foam at the bow mid-tack.
+
+The reported view (Ultra, a low chase camera off the quarter about 8 m up: pitch -12, 38 m, 45 s in at 5.5 kn, no HUD),
+main and fix at camera yaw 150, 200 and 230: [150 main](fb9-quarter-150-main.jpg) / [fix](fb9-quarter-150-fix.jpg),
+[200 main](fb9-quarter-200-main.jpg) / [fix](fb9-quarter-200-fix.jpg), [230 main](fb9-quarter-230-main.jpg) /
+[fix](fb9-quarter-230-fix.jpg). At 200 and 230 main's long pale lane astern is gone on the fix, fading within a few
+lengths; at 150, into the sun's glitter, the two look alike. (The dark shape beside her is her shadow, not the wake.)
