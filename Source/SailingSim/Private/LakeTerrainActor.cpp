@@ -494,7 +494,19 @@ void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 {
 	FollowActor();
 	Component->SetRelativeTransform(Component->GetRelativeTransform() * GetActorTransform());   // where attaching would put it
+	// The crown tiles turn over as the trees regroup (their clones are destroyed): on a lake nothing else walks the list,
+	// so drop the dead entries whenever it has doubled since the last time.
+	if (Kept.Num() >= KeptPruneAt)
+	{
+		PruneKept();
+		KeptPruneAt = FMath::Max(64, 2 * Kept.Num());
+	}
 	Kept.Add(Component);
+}
+
+void ALakeTerrainActor::PruneKept()
+{
+	Kept.RemoveAllSwap([](const TWeakObjectPtr<USceneComponent>& C) { return !C.IsValid(); }, EAllowShrinking::No);
 }
 
 void ALakeTerrainActor::FollowActor()
@@ -504,13 +516,15 @@ void ALakeTerrainActor::FollowActor()
 	const FVector Delta = At - KeptAt;
 	KeptAt = At;
 	// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
-	for (const TWeakObjectPtr<USceneComponent>& C : Kept) if (C.IsValid()) C->ApplyWorldOffset(Delta, false);
+	PruneKept();
+	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(Delta, false);
 }
 
 void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
 {
 	Super::ApplyWorldOffset(InOffset, bWorldShift);   // the root and what is attached to it
-	for (const TWeakObjectPtr<USceneComponent>& C : Kept) if (C.IsValid()) C->ApplyWorldOffset(InOffset, bWorldShift);
+	PruneKept();
+	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(InOffset, bWorldShift);
 	KeptAt += InOffset;
 }
 
