@@ -60,3 +60,16 @@ grid there is 128 m, and the 40 s lane held its full strength for most of it). N
   there, fading 20 m astern (0.05-0.4, under 0.6 of its 5 m value), gone 40 s after she stops, and that there is foam
   2 m astern and none 6 m ahead of the bow. An offline model of the slick step (calibrated on the old 0.47) gives 0.63
   at 5 m, 0.27 at 20 m and 0.05 at 40 m.
+
+### Stills (feedback #9, Mac, High, uncooked; main 0cf4f6bc before, this branch after)
+
+From the reported spot (J/22, 12 kn, TWA 106), chase camera astern and above:
+
+| | before | after |
+| --- | --- | --- |
+| Sailing at 5.5 kn, 45 s in, no HUD | [before](fb9-sailing-5kn-before.jpg) | [after](fb9-sailing-5kn-after.jpg) |
+| The start, 14 s in, 2.3 kn | [before](fb9-start-before.jpg) | [after](fb9-start-after.jpg) |
+| Mid-tack (bow checked for stray foam) | [before](fb9-mid-tack-before.jpg) | [after](fb9-mid-tack-after.jpg) |
+
+The lane is still there, as it should be, a little narrower near the stern and fainter at its far end; from this camera
+it mirrors the bright sky, so it reads light here, where the reported view read it dark. No foam at the bow mid-tack.
