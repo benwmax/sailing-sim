@@ -2667,8 +2667,9 @@ void SSailFrontEnd::SendFeedbackForm()
 	const USailingSettings* S = USailingSettings::Get();
 	FFeedbackReport R;
 	R.Kind = FeedbackKind == 1 ? EFeedbackKind::Idea : EFeedbackKind::Bug;
-	R.Title = FeedbackTitle.TrimStartAndEnd();
 	R.WhatHappened = FeedbackText.TrimStartAndEnd();
+	R.Title = FeedbackTitle;
+	R.Title = SailFeedback::DefaultTitle(R, FDateTime::Now());   // no title: the first line, else the kind and time
 	R.Expected = R.Kind == EFeedbackKind::Bug ? FeedbackExpected.TrimStartAndEnd() : FString();
 	R.bAttachPlace = bFeedbackPlace;
 	const FString Stamp = SailCatalog::BuildStamp();

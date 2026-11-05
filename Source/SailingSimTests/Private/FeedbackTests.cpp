@@ -171,6 +171,43 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailFeedbackDefaultTitleTest, "SailingSim.UI.Feedback.DefaultTitle", SailFeedbackTestsLocal::Flags_)
+bool FSailFeedbackDefaultTitleTest::RunTest(const FString&)
+{
+	const FDateTime Now(2026, 11, 4, 14, 5, 30);
+	FFeedbackReport R;
+	R.Title = TEXT("  Stuck in irons ");
+	R.WhatHappened = TEXT("ignored");
+	TestEqual(TEXT("own title kept, trimmed"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("Stuck in irons")));
+
+	R.Title.Empty();
+	R.WhatHappened = TEXT("\n   \n  The boom went through the mast  \nthen it froze");
+	TestEqual(TEXT("first non-empty line"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("The boom went through the mast")));
+
+	R.WhatHappened = FString::ChrN(30, TEXT('a')) + TEXT(" ") + FString::ChrN(30, TEXT('b')) + TEXT(" ") + FString::ChrN(30, TEXT('c'));
+	const FString Long = SailFeedback::DefaultTitle(R, Now);
+	TestTrue(TEXT("long line cut under 84"), Long.Len() <= 83);
+	TestTrue(TEXT("cut at a word"), Long == FString::ChrN(30, TEXT('a')) + TEXT(" ") + FString::ChrN(30, TEXT('b')) + TEXT("..."));
+
+	R.WhatHappened = TEXT("\r\n  Sails flogging after the tack \r\nsecond line");
+	TestEqual(TEXT("CRLF text"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("Sails flogging after the tack")));
+
+	R.WhatHappened = TEXT("short ") + FString::ChrN(100, TEXT('x'));   // no space in the second half of the first 80
+	TestEqual(TEXT("no late space: hard cut"), SailFeedback::DefaultTitle(R, Now), (TEXT("short ") + FString::ChrN(100, TEXT('x'))).Left(80) + TEXT("..."));
+
+	const FString Exact = FString::ChrN(40, TEXT('y')) + TEXT(" ") + FString::ChrN(39, TEXT('z'));
+	R.WhatHappened = Exact;
+	TestEqual(TEXT("exactly 80 kept whole"), SailFeedback::DefaultTitle(R, Now), Exact);
+
+	R.WhatHappened = TEXT("  \n ");
+	TestEqual(TEXT("empty: bug report and time"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("Bug report 2026-11-04 14:05")));
+	R.Kind = EFeedbackKind::Idea;
+	TestEqual(TEXT("empty idea"), SailFeedback::DefaultTitle(R, Now), FString(TEXT("Idea 2026-11-04 14:05")));
+	R.Title = SailFeedback::DefaultTitle(R, Now);
+	TestTrue(TEXT("message carries it"), SailFeedback::ComposeMessage(R).StartsWith(TEXT("[Idea] Idea 2026-11-04 14:05")));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailFeedbackJpegTest, "SailingSim.UI.Feedback.Jpeg", SailFeedbackTestsLocal::Flags_)
 bool FSailFeedbackJpegTest::RunTest(const FString&)
 {

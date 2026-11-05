@@ -17,7 +17,7 @@ consent switch. The bug capture form (shots from the free camera, what happened,
 
 ## Where the DSN comes from
 
-Never from the repo. `scripts/windows/friday.ps1` appends `Dsn`, `Release=sailing-sim@<commit>` and
+Never from the repo. `scripts/windows/friday.ps1` appends `Dsn`, `OverrideReleaseName=True`, `Release=sailing-sim@<commit>` (every report path, crashes and HTTP feedback, reads the plugin's `GetEffectiveRelease`, which without the override ignores `Release` and names the project's own version) and
 `Environment=tester` to `Config/Windows/WindowsEngine.ini` for the cook and restores the file afterwards, then uploads
 the Shipping symbols with sentry-cli (`docs/windows/README.md`, "Crash reports"). Mac builds carry no DSN, so the SDK
 stays off there.
@@ -31,7 +31,7 @@ changes (`ApplyCrashReports`: `GiveUserConsent` / `RevokeUserConsent`).
 ## Bug and idea reports
 
 Pause > **Send feedback** (`SSailFrontEnd::OpenFeedback`, `ESailScreen::Feedback`) takes a shot of the view without the
-menus or HUD, then opens the form: **A bug** or **An idea**, a title, what happened (bugs also: what you expected).
+menus or HUD, then opens the form: **A bug** or **An idea**, a title, what happened (bugs also: what you expected). A report sent with no title goes out under the first line of what happened, or "Bug report <local time>" (`SailFeedback::DefaultTitle`).
 Ideas carry where the player is only when "Attach where I am" is on; bugs always do.
 
 ![The form on the lake](feedback-form.jpg)

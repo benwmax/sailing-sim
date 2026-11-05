@@ -102,6 +102,11 @@ namespace SailFeedback
 	/** Game args that start a session at the same spot: world, boat, place and heading, wind. */
 	SAILINGSIM_API FString ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn);
 
+	/** The title a report goes out under: the player's own, else the first line of what they wrote (cut at about 80
+	 *  characters, on a word when there is one), else "Bug report <local time>" ("Idea <local time>" for an idea).
+	 *  LocalNow is the player's local time on purpose (the title is for them); WriteLocal's folder stamp stays UTC. */
+	SAILINGSIM_API FString DefaultTitle(const FFeedbackReport& Report, const FDateTime& LocalNow);
+
 	/** The report as one readable message: title, the player's words, then the context lines (place only if it carries it). */
 	SAILINGSIM_API FString ComposeMessage(const FFeedbackReport& Report);
 

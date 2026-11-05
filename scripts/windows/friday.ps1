@@ -87,7 +87,8 @@ try {
 	[System.IO.File]::WriteAllText((Join-Path $StampDir 'version.txt'), "$Sha, $Date", [System.Text.Encoding]::ASCII)
 	# Crash reports: the Sentry DSN lives on this PC only (Artifacts\sentry\dsn.txt, git-ignored, or $env:SENTRY_DSN; the
 	# file wins) and goes into the package through Config\Windows\WindowsEngine.ini, appended for the cook and put back
-	# byte for byte afterwards. Inert until the Sentry plugin is in the project.
+	# byte for byte afterwards. OverrideReleaseName makes the plugin use our Release: every report path (SDK crashes and the
+	# HTTP feedback) reads GetEffectiveRelease, which without it ignores Release= and names the project's own version.
 	$SentryDir = Join-Path $Artifacts 'sentry'
 	$DsnFile = Join-Path $SentryDir 'dsn.txt'
 	$Dsn = if (Test-Path $DsnFile) { (Get-Content -Raw $DsnFile).Trim() } elseif ($env:SENTRY_DSN) { $env:SENTRY_DSN.Trim() } else { '' }
@@ -96,7 +97,7 @@ try {
 	try {
 		if ($Dsn) {
 			Step 'Crash reports: Sentry DSN staged for the cook'
-			$Section = "`r`n[/Script/Sentry.SentrySettings]`r`nDsn=$Dsn`r`nRelease=sailing-sim@$Sha`r`nEnvironment=tester`r`n"
+			$Section = "`r`n[/Script/Sentry.SentrySettings]`r`nDsn=$Dsn`r`nOverrideReleaseName=True`r`nRelease=sailing-sim@$Sha`r`nEnvironment=tester`r`n"
 			[System.IO.File]::AppendAllText($EngineIni, $Section, [System.Text.Encoding]::ASCII)
 		} else {
 			Write-Host '  No Sentry DSN (Artifacts\sentry\dsn.txt or SENTRY_DSN): the build carries no crash-report key'

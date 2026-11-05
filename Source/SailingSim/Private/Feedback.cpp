@@ -174,6 +174,30 @@ FString SailFeedback::ReproArgs(const FString& WorldId, const FString& BoatId, c
 		*WorldId, *BoatId, At.North, At.East, At.HeadingDeg, WindKn, At.TwaDeg);
 }
 
+FString SailFeedback::DefaultTitle(const FFeedbackReport& R, const FDateTime& LocalNow)
+{
+	FString Title = R.Title.TrimStartAndEnd();
+	if (!Title.IsEmpty()) return Title;
+	TArray<FString> Lines;
+	R.WhatHappened.ParseIntoArrayLines(Lines, true);
+	for (const FString& Line : Lines)
+	{
+		Title = Line.TrimStartAndEnd();
+		if (Title.IsEmpty()) continue;
+		constexpr int32 MaxChars = 80;
+		if (Title.Len() > MaxChars)
+		{
+			// Cut at the last space before the limit when there is one, so the title doesn't end mid-word.
+			int32 Space = INDEX_NONE;
+			Title.Left(MaxChars).FindLastChar(TEXT(' '), Space);
+			Title = (Space > MaxChars / 2 ? Title.Left(Space) : Title.Left(MaxChars)).TrimEnd() + TEXT("...");
+		}
+		return Title;
+	}
+	return FString::Printf(TEXT("%s %s"), R.Kind == EFeedbackKind::Idea ? TEXT("Idea") : TEXT("Bug report"),
+		*LocalNow.ToString(TEXT("%Y-%m-%d %H:%M")));
+}
+
 FString SailFeedback::ComposeMessage(const FFeedbackReport& R)
 {
 	const bool bBug = R.Kind == EFeedbackKind::Bug;
