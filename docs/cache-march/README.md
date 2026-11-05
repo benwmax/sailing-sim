@@ -35,9 +35,11 @@ blocks, pillars and blades. On High's coarser panorama they stood as soft crease
 
 - **Jittered shadow shells** (`CACHE_SHADOW`). Each shadow sample is jittered over the middle half of its step, offset
   by the golden ratio per step. Over the whole step the grain showed; over half, neither the grain nor the terraces
-  do. The jitter is shared by a block of 4 x 4 texels on Ultra's panorama (2 x 2 on High's). One per texel cost up to
-  1.2 ms of GPU on High, because neighbouring texels' shadow samples no longer read the same places; 8 x 8 brought the
-  terraces partly back. `jitter-blocks.jpg`: per texel, 8 x 8, 4 x 4 (the one kept) and main.
+  do. The jitter is shared by a block of 2 x 2 texels on High's panorama. One per texel cost up to 1.2 ms of GPU on
+  High, because neighbouring texels' shadow samples no longer read the same places; 8 x 8 brought the terraces partly
+  back. `jitter-blocks.jpg`: per texel, 8 x 8, 4 x 4 and main. Ultra kept 4 x 4 at first, but its blocks stood as
+  square patches in the cumulus's shadowed creases (feedback #8), so Ultra's 8192-wide panorama now jitters every texel
+  (`CacheShadow.w`, set from the targets' width; `-SailingSkyCacheJitter=<w>` measures, 0 is the old fixed grid).
 - **The dome's spline knots** (`M_SkyDome`). The knots are never finer than two of Ultra's texels above 3 deg (nearer
   than about 23 km over a 1.2 km base, where the march's 35 m fine step spans two texels). That averages the jitter's
   grain on the near cumulus. Below 1.5 deg, where Ultra's panorama draws the small far cumulus, the spline still reads

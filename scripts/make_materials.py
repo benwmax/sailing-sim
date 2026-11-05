@@ -3780,10 +3780,20 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
     // blended, the clouds' drift between refreshes stacked into ghosts), so each refresh's grain stays in it; M_SkyDome
     // reads it through a B-spline that softens it (docs/far-cloud-rims/).
     float jit = frac(sin(dot(floor(UV * float2(8192.0, 2048.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
-    // docs/cache-march/: the shadow shells' jitter is shared by a block of texels (4 x 4 on Ultra's panorama, 2 x 2 on
-    // High's), so neighbouring texels' shadow samples read the same places (one per texel cost up to 1.2 ms on High in
-    // texture fetches); the dome's spline blends the blocks' edges.
-    float jitB = frac(sin(dot(floor(UV * float2(2048.0, 256.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    // docs/cache-march/: the shadow shells' jitter is shared by a block of texels, so neighbouring texels' shadow samples
+    // read the same places (one per texel cost up to 1.2 ms on High in texture fetches); the dome's spline blends the
+    // blocks' edges. Feedback #8: the block is CacheShadow.w texels a side, set by the game from the panorama's size:
+    // 2 on High's 4096 x 512 (the 2048 x 256 grid as before), 1 on Ultra's 8192 x 1024 (every texel its own: its old
+    // 4 x 4 blocks stood as square patches in the cumulus's shadowed creases and undersides, which the texel-scale
+    // spline can't hide). 0 (unset) keeps the fixed 2048 x 256 grid.
+    float2 jitGrid = float2(2048.0, 256.0);
+    [branch] if (CacheShadow.w > 0.0)
+    {
+        float2 csz;
+        CachePrev.GetDimensions(csz.x, csz.y);
+        jitGrid = csz / CacheShadow.w;
+    }
+    float jitB = frac(sin(dot(floor(UV * jitGrid) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
     // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud
