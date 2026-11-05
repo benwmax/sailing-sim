@@ -45,6 +45,8 @@ public:
 	void KeepWithActor(USceneComponent* Component);
 	/** Moves the kept components by the actor's movement since the last call (Tick does it). */
 	void FollowActor();
+	/** Kept components, destroyed ones not yet dropped included (tests). */
+	int32 KeptCount() const { return Kept.Num(); }
 
 	/** Tree density multiplier for the quality tier (0..1). */
 	void SetTreeFraction(float Fraction);
@@ -60,6 +62,8 @@ public:
 private:
 	TArray<TWeakObjectPtr<USceneComponent>> Kept;
 	FVector KeptAt = FVector::ZeroVector;
+	int32 KeptPruneAt = 64;
+	void PruneKept();
 	struct FChunkMesh
 	{
 		TArray<FVector> Vertices;

@@ -675,6 +675,20 @@ bool FSailingCoastKeptStaticFollowsTideTest::RunTest(const FString&)
 		Terrain->FollowActor();
 		TestTrue(FString::Printf(TEXT("Follows a world shift once, not twice (%s)"), *C->GetComponentLocation().ToString()),
 			C->GetComponentLocation().Equals(FVector(5000.0 - 1920000.0, 2000.0, 268.0), 0.01));
+		// The crown tiles turn over as the trees regroup: their clones are destroyed and the list must not keep them all.
+		for (int32 I = 0; I < 1000; ++I)
+		{
+			UStaticMeshComponent* Tile = NewObject<UStaticMeshComponent>(Terrain);
+			Tile->SetMobility(EComponentMobility::Static);
+			Terrain->KeepWithActor(Tile);
+			Tile->RegisterComponent();
+			Tile->DestroyComponent();
+		}
+		TestTrue(FString::Printf(TEXT("A thousand tiles kept and destroyed leave the list short (%d entries)"), Terrain->KeptCount()), Terrain->KeptCount() <= 130);
+		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));   // another 2 cm step, from where the shift left her
+		Terrain->FollowActor();
+		TestEqual(TEXT("A tide step drops the dead entries: only the live one is left"), Terrain->KeptCount(), 1);
+		TestTrue(TEXT("... and it still follows"), C->GetComponentLocation().Equals(FVector(5000.0 - 1920000.0, 2000.0, 266.0), 0.01));
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
