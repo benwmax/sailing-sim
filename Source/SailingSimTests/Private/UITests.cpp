@@ -18,6 +18,7 @@
 #include "Dom/JsonObject.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/FileHelper.h"
+#include "HAL/FileManager.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -463,6 +464,49 @@ bool FSailingUIChoiceKeepsFocusTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s: the screen was rebuilt"), C.Label), After.IsValid() && After != Before);
 		TestTrue(FString::Printf(TEXT("%s: the focus stays on the choice (%s)"), C.Label, Target.IsValid() ? *Target->ToString() : TEXT("none")),
 			Target.IsValid() && Target == After);
+	}
+	return true;
+}
+
+// #404, the first hour on a controller: every command the slice's lessons name in their text ({key:Command.direction}
+// in Content/Learning and the first job's script) has a controller button or axis by default, in that direction, and so
+// do the steering and mainsheet the first job asks for without naming them. A pad-only player is never told to press a
+// key the pad doesn't have. (The outboard's throttle and the Sunfish's board have no button yet; no lesson asks for them.)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadCoversLessonKeysTest, "SailingSim.UI.PadCoversLessonKeys", UIFlags)
+bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
+{
+	using namespace SailingBindings;
+	const TArray<FSailingKeyBinding>& Defaults = GetDefault<USailingInputSettings>()->GetDefaults();
+	TSet<FString> Tokens = { TEXT("Tiller.ease"), TEXT("Tiller.trim"), TEXT("MainSheet.ease"), TEXT("MainSheet.trim") };
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *(FPaths::ProjectContentDir() / TEXT("Learning/*.json")), true, false);
+	for (FString& F : Files) F = FPaths::ProjectContentDir() / TEXT("Learning") / F;
+	Files.Add(FPaths::ProjectContentDir() / TEXT("FirstSail/first-sail.json"));
+	for (const FString& Path : Files)
+	{
+		FString Text;
+		if (!TestTrue(FString::Printf(TEXT("%s reads"), *FPaths::GetCleanFilename(Path)), FFileHelper::LoadFileToString(Text, *Path))) continue;
+		int32 From = 0;
+		while (true)
+		{
+			const int32 Start = Text.Find(TEXT("{key:"), ESearchCase::CaseSensitive, ESearchDir::FromStart, From);
+			if (Start == INDEX_NONE) break;
+			const int32 End = Text.Find(TEXT("}"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Start);
+			if (End == INDEX_NONE) break;
+			const FString Token = Text.Mid(Start + 5, End - Start - 5);
+			if (!Token.StartsWith(TEXT("Action"))) Tokens.Add(Token);   // {key:Action...} is the README's example
+			From = End + 1;
+		}
+	}
+	TestTrue(FString::Printf(TEXT("The lessons name commands (%d with the first job's)"), Tokens.Num()), Tokens.Num() > 4);
+	for (const FString& Token : Tokens)
+	{
+		FString Action = Token, Dir;
+		Token.Split(TEXT("."), &Action, &Dir);
+		const bool bNegative = Dir == TEXT("trim");   // as FLearningContent::ResolveKeys reads a direction
+		const FName Name(*Action);
+		const bool bPad = Find(Defaults, Name, bNegative, EColumn::Gamepad).IsValid() || FindPadAxis(Defaults, Name, bNegative).IsValid();
+		TestTrue(FString::Printf(TEXT("{key:%s} has a controller binding"), *Token), bPad);
 	}
 	return true;
 }
