@@ -9,7 +9,8 @@
 #   (Windows' own tar.exe: zip64, the .ucas is over 2 GB) with TESTER-GUIDE.md in it; Packaged\Shipping-<commit>\BUILD.md
 #   (commit, date, fps, the checks, the crash logs' place, what merged since the last Friday build).
 #   Crash reports: a Sentry DSN from Artifacts\sentry\dsn.txt (or $env:SENTRY_DSN) is appended to
-#   Config\Windows\WindowsEngine.ini for the cook and the file restored afterwards; the Shipping symbols go up with
+#   Config\Windows\WindowsEngine.ini for the cook and the file restored afterwards (the values quoted; the build stops
+#   unless the staged Dsn line reads back as a quoted https:// URL); the Shipping symbols go up with
 #   sentry-cli when it and Artifacts\sentry\auth.token and project.txt are there (skipped otherwise). All git-ignored.
 #   The slice build (#399): [SailingSim.Slice] bSliceBuild=True goes into the same ini for the cook, so the testers' menus
 #   show only the vertical slice (USailingSettings::SliceOnly); -FullGame leaves it out. The Gallery smoke runs with
@@ -97,13 +98,13 @@ try {
 	try {
 		if ($Dsn) {
 			Step 'Crash reports: Sentry DSN staged for the cook'
-			# The string values go in quotes: an unquoted value is read only up to the first '/', so every zip before
-			# pc/feedback-dsn carried the DSN as just "https:" (the SDK rejected it and nothing could be sent). The release
+			# The string values go in quotes: unquoted, the DSN was read as just "https:", so every zip before
+			# pc/feedback-dsn carried an invalid DSN (the SDK rejected it and nothing could be sent). The release
 			# and environment are quoted too, so an '@' or a later change can't cut them the same way.
 			$Section = "`r`n[/Script/Sentry.SentrySettings]`r`nDsn=`"$Dsn`"`r`nOverrideReleaseName=True`r`nRelease=`"sailing-sim@$Sha`"`r`nEnvironment=`"tester`"`r`n"
 			[System.IO.File]::AppendAllText($EngineIni, $Section, [System.Text.Encoding]::ASCII)
 			# Guard: read the staged line back and stop the build unless the DSN is quoted and is an https:// URL (only
-			# yes/no is printed, never the key).
+			# yes/no is printed, never the key). A self-hosted http:// DSN is rejected on purpose: ours is https.
 			$Staged = @(Get-Content $EngineIni | Where-Object { $_ -match '^\s*Dsn\s*=' } | Select-Object -Last 1)
 			$Quoted = $Staged.Count -eq 1 -and $Staged[0] -match '^\s*Dsn\s*="https://[^"\s]+"\s*$'
 			Write-Host "  Sentry DSN staged, quoted: $(if ($Quoted) { 'yes' } else { 'no' })"
