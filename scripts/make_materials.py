@@ -3781,7 +3781,17 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
     // docs/cache-march/: the shadow shells' jitter is shared by a block of texels (4 x 4 on Ultra's panorama, 2 x 2 on
     // High's), so neighbouring texels' shadow samples read the same places (one per texel cost up to 1.2 ms on High in
     // texture fetches); the dome's spline blends the blocks' edges.
-    float jitB = frac(sin(dot(floor(UV * float2(2048.0, 256.0)) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    // Feedback #8: the block is CacheShadow.w texels a side, set per tier by the game (High 2: the 2048 x 256 grid as
+    // before; Ultra 1: every texel its own, since Ultra's 4 x 4 blocks stood as square patches in the cumulus's
+    // shadowed creases and undersides, which the texel-scale spline can't hide). 0 (unset) keeps the 2048 x 256 grid.
+    float2 jitGrid = float2(2048.0, 256.0);
+    [branch] if (CacheShadow.w > 0.0)
+    {
+        float2 csz;
+        CachePrev.GetDimensions(csz.x, csz.y);
+        jitGrid = csz / CacheShadow.w;
+    }
+    float jitB = frac(sin(dot(floor(UV * jitGrid) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
     // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud

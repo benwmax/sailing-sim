@@ -1740,7 +1740,9 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		// Shadow step (m), this refresh's number (its jitter) and its weight against the panorama before. Each replaces
 		// the last: blended a third at a time, the clouds' drift between refreshes stacked into ghosts.
 		++CacheRefreshes;
-		CacheMaterial->SetVectorParameterValue(TEXT("CacheShadow"), FLinearColor(300.f, float(CacheRefreshes % 97), 1.f, 0.f));
+		// w: the shadow jitter's block in texels (feedback #8): every texel on Ultra (its 4 x 4 blocks showed as squares),
+		// 2 x 2 on High as before (the Mac measured per-texel jitter at up to 1.2 ms there).
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheShadow"), FLinearColor(300.f, float(CacheRefreshes % 97), 1.f, bUltraSky ? 1.f : 2.f));
 		CacheMaterial->SetTextureParameterValue(TEXT("CachePrev"), CacheTargets[1 - CacheBack]);
 	}
 	const int32 CacheW = CacheTargets[CacheBack]->SizeX, CacheH = CacheTargets[CacheBack]->SizeY;   // Ultra's finer panorama too
