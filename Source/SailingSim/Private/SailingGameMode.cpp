@@ -841,6 +841,7 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 	USailingSettings::Get()->ApplyDisplay();
 	USailingSettings::Get()->ApplyCrashReports();
+	if (!GIsAutomationTesting) SailCrashReports::ResendPendingFeedback();   // pc/feedback-send: reports that didn't get through last time
 	SailCrashReports::SetPlace(FSailSave::WorldId(S->World), FSailSave::BoatId(S->BoatType));
 	{
 		// The session log's line for this load (docs/session-log/): what a tester's report needs to place it.

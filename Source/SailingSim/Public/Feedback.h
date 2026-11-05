@@ -64,9 +64,40 @@ struct SAILINGSIM_API FFeedbackReport
 	bool CarriesPlace() const { return Kind == EFeedbackKind::Bug || bAttachPlace; }
 };
 
+/** What became of a report after Send (pc/feedback-send): kept here only, handed to the crash reporter, or on its way by
+ *  itself (a copy waits in Saved/Feedback/Pending until the endpoint takes it, and goes again at the next launch). */
+enum class EFeedbackSend : uint8 { Saved, Sent, Sending };
+
 namespace SailFeedback
 {
 	SAILINGSIM_API const TCHAR* KindId(EFeedbackKind Kind); // "bug", "idea"
+	/** The Feedback screen's answer after Send. It never asks for Send crash reports: a report goes either way. */
+	SAILINGSIM_API FString ResultLine(EFeedbackSend Result);
+	/** Whether Send tries to send at all: whenever the build has a crash reporter, Send crash reports on or off (a report is
+	 *  the player's own deliberate send; the setting is for crashes). */
+	SAILINGSIM_API bool SendsReport(bool bCrashReportsOn, bool bReporterRunning);
+	/** Where a report sent by itself waits until the endpoint has taken it: Saved/Feedback/Pending/<event id>.envelope. */
+	SAILINGSIM_API FString PendingDir();
+
+	/**
+	 * pc/feedback-send: the report sent on its own when Send crash reports is off. The SDK can't be used then: without
+	 * consent it caches every envelope and sends that whole cache once consent is given, so a report would carry what the
+	 * player said no to. Instead the report goes to the project's envelope endpoint by itself (Sentry's envelope format:
+	 * a header line, then one feedback item and an item per attachment, each a JSON header line and its bytes).
+	 */
+	struct FSentryDsn
+	{
+		FString Scheme, Host, PublicKey, ProjectId;   // scheme://key@host/project
+		/** False when the text isn't a DSN (no key, host or project). */
+		SAILINGSIM_API bool Parse(const FString& Dsn);
+		SAILINGSIM_API FString EnvelopeUrl() const;   // scheme://host/api/<project>/envelope/
+		SAILINGSIM_API FString AuthHeader() const;    // X-Sentry-Auth's value
+	};
+	struct FEnvelopeAttachment { FString Name, ContentType; TArray<uint8> Bytes; };
+	/** The envelope for one report: Message (ComposeMessage) as user feedback with Tags, Release and Environment, and the
+	 *  attachments; TimestampUnix the send time, EventId 32 lower-case hex digits. */
+	SAILINGSIM_API TArray<uint8> FeedbackEnvelope(const FString& EventId, double TimestampUnix, const FString& Message, const TMap<FString, FString>& Tags,
+		const FString& Release, const FString& Environment, const TArray<FEnvelopeAttachment>& Attachments);
 
 	/** Game args that start a session at the same spot: world, boat, place and heading, wind. */
 	SAILINGSIM_API FString ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn);

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 struct FFeedbackReport;
+enum class EFeedbackSend : uint8;
 
 /** The game's edge to the Sentry plugin (docs/sentry, #410). Every call is safe without the plugin (platforms other than
  *  Mac and Win64) and without a DSN (the SDK stays off): it then does nothing. */
@@ -28,6 +29,16 @@ namespace SailCrashReports
 	inline constexpr int32 ScrubbedLogLines = 400;
 
 	/** Sends a tester's bug or idea as Sentry user feedback, tagged kind:bug or kind:idea, with its samples, log tail and
-	 *  shots attached when it carries the place. False when nothing could be sent (no SDK); the caller checks consent. */
-	SAILINGSIM_API bool SendFeedback(const FFeedbackReport& Report);
+	 *  shots attached when it carries the place. Saved when nothing could be sent (no SDK, no DSN). With Send crash
+	 *  reports off it still goes, on its own over HTTP (SendsOnItsOwn: Sending, its envelope kept in
+	 *  SailFeedback::PendingDir until the endpoint takes it); the SDK's consent and cache are left alone. */
+	SAILINGSIM_API EFeedbackSend SendFeedback(const FFeedbackReport& Report);
+
+	/** Sends again the reports that went on their own and didn't get through (offline, a server error, rate-limited): once a
+	 *  launch, from the game mode. A refused one (4xx but 429) or one a month old is dropped. */
+	SAILINGSIM_API void ResendPendingFeedback();
+
+	/** True when a report must skip the SDK (pc/feedback-send): consent is required and not given, so the SDK would cache it
+	 *  with everything else the player said no to, and a later yes would send them all. */
+	inline bool SendsOnItsOwn(bool bConsentRequired, bool bConsentGiven) { return bConsentRequired && !bConsentGiven; }
 }
