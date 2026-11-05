@@ -49,7 +49,7 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	N = InN;
 	Cell = InCell;
 	const int32 NN = N * N;
-	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch }) A->Init(0.f, NN);
+	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir, &NearStir, &StirMid, &PrevStirMid }) A->Init(0.f, NN);
 	Spectrum.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
@@ -96,7 +96,7 @@ void FWakeGrid::Follow(const FVector2D& Point)
 		}
 		A = MoveTemp(B);
 	};
-	for (TArray<float>* A : { &H, &Velocity, &Depth, &PrevDepth, &FoamField, &SlickField }) Shift(*A);
+	for (TArray<float>* A : { &H, &Velocity, &Depth, &PrevDepth, &FoamField, &SlickField, &Stir, &StirMid }) Shift(*A);
 	Corner += FVector2D(DR * Cell, DC * Cell);
 }
 
@@ -115,6 +115,17 @@ float FWakeGrid::DisplacedDepth(const FHull& Hull, const FVector2D& P) const
 	return FMath::Max(0.f, -Bottom - Yc * FMath::Sin(Hull.Heel) + Hull.Sink);
 }
 
+float FWakeGrid::SideRatio(const FHull& Hull, const FVector2D& P) const
+{
+	// How far out from her centreline a point is, as a share of her half beam there (0 middle, 1 at the deck edge).
+	const FVector2D D = P - Hull.Position;
+	const float Cs = FMath::Cos(Hull.Heading), Sn = FMath::Sin(Hull.Heading);
+	const float X = D.X * Cs + D.Y * Sn, Y = -D.X * Sn + D.Y * Cs;
+	const Sailing::FHullShape& S = *Hull.Shape;
+	const float HalfBeam = FMath::Max(float(S.DeckHalfBeam(X)), 1e-3f);
+	return FMath::Min(FMath::Abs(Y - float(S.CenterY)) / HalfBeam, 1.f);
+}
+
 void FWakeGrid::Step(float DeltaSeconds, const TArray<FHull>& Hulls)
 {
 	if (!IsValid()) return;
@@ -130,20 +141,36 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 {
 	// Each hull's draft at every cell (its pressure on the surface).
 	Swap(Depth, PrevDepth);
+	Swap(Stir, PrevStir);
+	Swap(StirMid, PrevStirMid);
 	ParallelFor(N, [&](int32 R)
 	{
 		for (int32 C = 0; C < N; ++C)
 		{
 			const FVector2D P = Corner + FVector2D((R + 0.5f) * Cell, (C + 0.5f) * Cell);
-			float D = 0.f;
+			float D = 0.f, St = 0.f, Nr = 0.f, Mid = 0.f;
 			for (const FHull& Hull : Hulls)
 			{
 				if (Hull.Shape && FVector2D::DistSquared(P, Hull.Position) < FMath::Square(float(Hull.Shape->BowX - Hull.Shape->SternX) + 2.f))
 				{
-					D = FMath::Max(D, DisplacedDepth(Hull, P));
+					const float HullD = DisplacedDepth(Hull, P);
+					Nr = FMath::Max(Nr, FMath::Min(FMath::Abs(Hull.Speed) / 2.5f, 1.f));
+					D = FMath::Max(D, HullD);
+					// sailing-feedback #9: the lane she leaves goes with her speed (full from 2.5 m/s, about 5 kn), so a
+					// boat drifting or tied up leaves none.
+					if (HullD > 0.02f)
+					{
+						const float HullSt = FMath::Min(FMath::Abs(Hull.Speed) / 2.5f, 1.f);
+						St = FMath::Max(St, HullSt);
+						// Her middle (full to 20% of her half beam, none past 65%, inside her wetted width): where the bubble trail starts.
+						Mid = FMath::Max(Mid, HullSt * (1.f - FMath::SmoothStep(0.2f, 0.65f, SideRatio(Hull, P))));
+					}
 				}
 			}
 			Depth[R * N + C] = D;
+			Stir[R * N + C] = St;
+			NearStir[R * N + C] = Nr;
+			StirMid[R * N + C] = Mid;
 		}
 	});
 	if (!bHasDepth) { PrevDepth = Depth; bHasDepth = true; }
@@ -229,18 +256,31 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Rate = FMath::Abs(Next - Old) / Dt;
 			constexpr float kFoamRate = 0.25f, kFoamLife = 4.f;
 			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
-			FoamField[I] = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
+			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
+			// sailing-feedback #9: the water a moving hull has just left (astern of her, never ahead) is stirred full of
+			// bubbles: a white, broken trail, thickest down her middle and thinning to nothing at her sides (StirMid, so the
+			// trail has no hard edge and her sides leave little under leeway or in a tack), fading
+			// over kFoamLife: the bubbles over two or three lengths, the residue a few more (0.7 down her middle, Bean
+			// Nov 5: the first 0.35 was too faint from the chase camera). Only while a hull is still there and moving
+			// (NearStir), so a boat that stops dead, is moved or leaves the list leaves no hull-shaped stamp.
+			if (PrevStir[I] > 0.f && Stir[I] == 0.f)
+			{
+				Foam = FMath::Max(Foam, 0.7f * FMath::Min(PrevStirMid[I], NearStir[I]));
+			}
+			FoamField[I] = Foam;
 			H[I] = FMath::Clamp(Next, -0.6f, 0.6f);
 			Velocity[I] = Vel;
 		}
 	});
 
-	// The wake's smooth lane (docs/wake-slick/): the water a hull has stirred damps the wind's ripples behind her for a
-	// minute or so, a darker, glossier track tens of lengths long (a sailboat's wake seen from a following boat or the
-	// air). Set where she passes, decaying over kSlickSeconds and widening slowly (a diffusion of about 0.15 m^2/s: her
-	// beam to about twice it over its life). Not with the sponge's edge (it would show the grid's outline).
-	constexpr float kSlickSeconds = 40.f;
-	constexpr float kSlickDiffusion = 0.15f; // m^2/s
+	// The wake's smooth lane (docs/wake-slick/): the water a hull has stirred damps the wind's ripples behind her, a
+	// smoother track astern. Set where she passes (by her speed), decaying over kSlickSeconds and widening as it goes.
+	// sailing-feedback #9: a 40 s life drew it as a long dark ribbon with hard edges out to the grid's end on Ultra (128 m
+	// behind a J/22 at 5 kn); now it is mostly gone a few boat lengths astern (about 0.3 of its start 20 m behind her at
+	// 6 kn, 0.05 at 40 m), and it spreads twice as fast, so its edges are soft. Not with the sponge's edge (it would show
+	// the grid's outline).
+	constexpr float kSlickSeconds = 12.f;
+	constexpr float kSlickDiffusion = 0.3f; // m^2/s
 	const float SlickDecay = FMath::Exp(-Dt / kSlickSeconds);
 	const float Mix = FMath::Min(kSlickDiffusion * Dt / (Cell * Cell), 0.2f);
 	ParallelFor(N, [&](int32 R)
@@ -252,7 +292,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Left = C > 0 ? SlickField[I - 1] : 0.f, Right = C < N - 1 ? SlickField[I + 1] : 0.f;
 			float S = SlickField[I] + Mix * (Up + Down + Left + Right - 4.f * SlickField[I]);
 			S *= SlickDecay;
-			if (Depth[I] > 0.02f) S = 1.f;
+			S = FMath::Max(S, Stir[I]);
 			const int32 Edge = FMath::Min(FMath::Min(R, N - 1 - R), FMath::Min(C, N - 1 - C));
 			if (Edge < kSponge) S *= float(Edge) / kSponge;
 			SlickScratch[I] = S;

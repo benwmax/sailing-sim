@@ -44,7 +44,8 @@ public:
 	FVector2D Origin() const { return Corner; }
 	const TArray<float>& Heights() const { return H; }
 	const TArray<float>& Foam() const { return FoamField; }
-	/** The turbulent lane a hull leaves (0..1): its wake's smooth track, where the stirred water damps the wind's ripples. */
+	/** The turbulent lane a hull leaves (0..1, set by her speed): her wake's smooth track, where the stirred water damps the
+	 * wind's ripples for a few lengths astern (sailing-feedback #9). */
 	const TArray<float>& Slick() const { return SlickField; }
 	/** Height (m) at a map point (0 outside). */
 	float HeightAt(const FVector2D& Point) const;
@@ -52,11 +53,15 @@ public:
 private:
 	void StepOnce(float Dt, const TArray<FHull>& Hulls);
 	float DisplacedDepth(const FHull& Hull, const FVector2D& Point) const;
+	float SideRatio(const FHull& Hull, const FVector2D& Point) const;
 
 	int32 N = 0;
 	float Cell = 0.2f;
 	FVector2D Corner = FVector2D::ZeroVector;
 	TArray<float> H, Velocity, Pressure, Depth, PrevDepth, FoamField, SlickField, SlickScratch;
+	TArray<float> Stir, PrevStir;             // per cell, this step and the last: how hard a hull over it stirs the water (0..1, her speed)
+	TArray<float> StirMid, PrevStirMid;       // as Stir, fading to 0 toward her sides: where her bubble trail starts
+	TArray<float> NearStir;                   // per cell, this step: the fastest hull within reach of it (0..1, as Stir)
 	TArray<float> Omega;                      // per mode, rad/s (deep water)
 	TArray<std::complex<float>> Spectrum;     // scratch
 	float Accumulator = 0.f;
