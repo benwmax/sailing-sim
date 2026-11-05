@@ -87,9 +87,9 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 	TestTrue(TEXT("Water rises at the bow"), BowCrest > 0.01f);
 	TestTrue(TEXT("Most of the wake lies inside the Kelvin wedge"), Share > 0.7);
 
-	// docs/wake-slick/: the smooth lane she leaves: set under her, still there 20 m astern on her track (6.5 s at 6 kn, of
-	// a 40 s life: 0.85 left by the decay, spread from her beam to about 3 m, measured 0.47), none 8 m to the side, and
-	// wider than her beam by then.
+	// docs/wake-slick/, sailing-feedback #9: the smooth lane she leaves. Set under her and plain just astern, but mostly
+	// gone a few lengths back (20 m astern is 6.5 s at 6 kn, of a 12 s life, spreading as it goes): it used to hold 0.47
+	// there and run on to the grid's edge as a long dark ribbon. None 8 m to the side.
 	const TArray<float>& Sl = Grid.Slick();
 	auto SlickAt = [&](const FVector2D& P)
 	{
@@ -98,15 +98,14 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 		return R >= 0 && C >= 0 && R < N && C < N ? Sl[R * N + C] : -1.f;
 	};
 	const FVector2D Astern = Stern - FVector2D(20.0, 0.0);
-	const float Under = SlickAt(Hulls[0].Position), OnTrack = SlickAt(Astern), Aside = SlickAt(Astern + FVector2D(0.0, 8.0));
-	float Width = 0.f;
-	for (double Y = -6.0; Y <= 6.0; Y += Grid.CellSize()) Width += SlickAt(Astern + FVector2D(0.0, Y)) > 0.3f ? Grid.CellSize() : 0.f;
-	const float Beam = 2.f * float(Config.Hulls[0].MaxHalfBeam);
-	AddInfo(FString::Printf(TEXT("Wake lane: %.2f under her, %.2f 20 m astern (%.1f m wide; beam %.1f m), %.2f 8 m aside"), Under, OnTrack, Width, Beam, Aside));
+	const float Under = SlickAt(Hulls[0].Position), Near = SlickAt(Stern - FVector2D(5.0, 0.0)), OnTrack = SlickAt(Astern);
+	const float Aside = SlickAt(Astern + FVector2D(0.0, 8.0));
+	AddInfo(FString::Printf(TEXT("Wake lane: %.2f under her, %.2f 5 m astern, %.2f 20 m astern, %.2f 8 m aside"), Under, Near, OnTrack, Aside));
 	TestTrue(TEXT("The lane is set under her"), Under > 0.95f);
-	TestTrue(TEXT("It is still there 20 m astern"), OnTrack > 0.35f);
+	TestTrue(TEXT("It is plain just astern"), Near > 0.4f);
+	TestTrue(TEXT("It is fading 20 m astern"), OnTrack > 0.05f && OnTrack < 0.4f);
+	TestTrue(TEXT("It fades along its length"), OnTrack < 0.6f * Near);
 	TestTrue(TEXT("Not 8 m to the side"), Aside >= 0.f && Aside < 0.1f);
-	TestTrue(TEXT("It has spread wider than her beam"), Width > Beam && Width < 4.f * Beam);
 
 	// Stopped, the waves run off and die away.
 	Hulls[0].Speed = 0.f;
@@ -119,6 +118,11 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 	}
 	AddInfo(FString::Printf(TEXT("40 s after stopping: largest wave %.4f m"), After));
 	TestTrue(TEXT("The waves die away once she stops"), After < 0.25f * MaxH);
+	// sailing-feedback #9: stopped (drifting, or tied up), she leaves no lane, not even round her own hull.
+	float SlickLeft = 0.f;
+	for (int32 I = 0; I < N * N; ++I) SlickLeft = FMath::Max(SlickLeft, Sl[I]);
+	AddInfo(FString::Printf(TEXT("40 s after stopping: lane %.3f at most"), SlickLeft));
+	TestTrue(TEXT("The lane is gone once she stops"), SlickLeft < 0.1f);
 	return true;
 }
 

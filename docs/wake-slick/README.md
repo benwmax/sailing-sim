@@ -43,3 +43,17 @@ High, J/22 on a reach, before (main) and after:
 `scripts/gate.sh --scope water` on 134545de: pass, 221/221 tests. beam8 61.4, beat15 60.5, storm 46.7, marina 59.7,
 coast-day 53.8, gulf-sea 62.9, helm-eye 59.1, bridge 63.7, storm on Medium 65.1. The slick's step adds one 3×3 pass
 over the grid on its worker thread.
+
+## Follow-up: shorter and softer (sailing-feedback #9, Nov 2026)
+
+Testers saw the lane as a long, dark, flat ribbon with hard edges running out of frame (Ultra, J/22 at 5.3 kn: the
+grid there is 128 m, and the 40 s lane held its full strength for most of it). Now:
+
+- **Life 12 s, not 40; spreading 0.3 m²/s, not 0.15.** About 0.3 of its start 20 m astern at 6 kn and close to nothing
+  by 40 m, a few boat lengths, with soft edges.
+- **Set by her speed** (full from 2.5 m/s, about 5 kn), so a boat drifting or tied up leaves no lane round her.
+- **The shader** follows the lane instead of saturating it: `0.45 * slick^1.5`, not `0.8 * saturate(1.5 slick)`.
+- **Its young end is pale:** where the lane is fresh (over 0.55, about a length and a half astern) the stirred water
+  shows as a faint, broken trail of bubbles (the wake's foam channel, drawn with the boats' bubble pattern).
+- **The test** `SailingSim.Visual.WakeGrid` now checks the lane is plain 5 m astern, fading 20 m astern (0.05-0.4, under
+  0.6 of its 5 m value), and gone 40 s after she stops.

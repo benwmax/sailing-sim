@@ -49,7 +49,7 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	N = InN;
 	Cell = InCell;
 	const int32 NN = N * N;
-	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch }) A->Init(0.f, NN);
+	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir }) A->Init(0.f, NN);
 	Spectrum.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
@@ -135,15 +135,20 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 		for (int32 C = 0; C < N; ++C)
 		{
 			const FVector2D P = Corner + FVector2D((R + 0.5f) * Cell, (C + 0.5f) * Cell);
-			float D = 0.f;
+			float D = 0.f, St = 0.f;
 			for (const FHull& Hull : Hulls)
 			{
 				if (Hull.Shape && FVector2D::DistSquared(P, Hull.Position) < FMath::Square(float(Hull.Shape->BowX - Hull.Shape->SternX) + 2.f))
 				{
-					D = FMath::Max(D, DisplacedDepth(Hull, P));
+					const float HullD = DisplacedDepth(Hull, P);
+					D = FMath::Max(D, HullD);
+					// sailing-feedback #9: the lane she leaves goes with her speed (full from 2.5 m/s, about 5 kn), so a
+					// boat drifting or tied up leaves none.
+					if (HullD > 0.02f) St = FMath::Max(St, FMath::Min(FMath::Abs(Hull.Speed) / 2.5f, 1.f));
 				}
 			}
 			Depth[R * N + C] = D;
+			Stir[R * N + C] = St;
 		}
 	});
 	if (!bHasDepth) { PrevDepth = Depth; bHasDepth = true; }
@@ -235,12 +240,14 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 		}
 	});
 
-	// The wake's smooth lane (docs/wake-slick/): the water a hull has stirred damps the wind's ripples behind her for a
-	// minute or so, a darker, glossier track tens of lengths long (a sailboat's wake seen from a following boat or the
-	// air). Set where she passes, decaying over kSlickSeconds and widening slowly (a diffusion of about 0.15 m^2/s: her
-	// beam to about twice it over its life). Not with the sponge's edge (it would show the grid's outline).
-	constexpr float kSlickSeconds = 40.f;
-	constexpr float kSlickDiffusion = 0.15f; // m^2/s
+	// The wake's smooth lane (docs/wake-slick/): the water a hull has stirred damps the wind's ripples behind her, a
+	// smoother track astern. Set where she passes (by her speed), decaying over kSlickSeconds and widening as it goes.
+	// sailing-feedback #9: a 40 s life drew it as a long dark ribbon with hard edges out to the grid's end on Ultra (128 m
+	// behind a J/22 at 5 kn); now it is mostly gone a few boat lengths astern (about 0.3 of its start 20 m behind her at
+	// 6 kn, 0.1 at 40 m), and it spreads twice as fast, so its edges are soft. Not with the sponge's edge (it would show
+	// the grid's outline).
+	constexpr float kSlickSeconds = 12.f;
+	constexpr float kSlickDiffusion = 0.3f; // m^2/s
 	const float SlickDecay = FMath::Exp(-Dt / kSlickSeconds);
 	const float Mix = FMath::Min(kSlickDiffusion * Dt / (Cell * Cell), 0.2f);
 	ParallelFor(N, [&](int32 R)
@@ -252,7 +259,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Left = C > 0 ? SlickField[I - 1] : 0.f, Right = C < N - 1 ? SlickField[I + 1] : 0.f;
 			float S = SlickField[I] + Mix * (Up + Down + Left + Right - 4.f * SlickField[I]);
 			S *= SlickDecay;
-			if (Depth[I] > 0.02f) S = 1.f;
+			S = FMath::Max(S, Stir[I]);
 			const int32 Edge = FMath::Min(FMath::Min(R, N - 1 - R), FMath::Min(C, N - 1 - C));
 			if (Edge < kSponge) S *= float(Edge) / kSponge;
 			SlickScratch[I] = S;
