@@ -18,7 +18,11 @@ consent switch. The bug capture form (shots from the free camera, what happened,
 ## Where the DSN comes from
 
 Never from the repo. `scripts/windows/friday.ps1` appends `Dsn`, `OverrideReleaseName=True`, `Release=sailing-sim@<commit>` (every report path, crashes and HTTP feedback, reads the plugin's `GetEffectiveRelease`, which without the override ignores `Release` and names the project's own version) and
-`Environment=tester` to `Config/Windows/WindowsEngine.ini` for the cook and restores the file afterwards, then uploads
+`Environment=tester` to `Config/Windows/WindowsEngine.ini` for the cook and restores the file afterwards. The string values go in quotes:
+an unquoted value is read only up to its first `/`, so every Friday zip before pc/feedback-dsn (up to 0cf4f6bc) carried
+the DSN as just `https:`, the SDK rejected it ("the provided DSN \"https:\" is not valid") and those builds could send
+no crash or bug reports (they kept them in `Saved/Feedback` only). friday.ps1 now reads the staged `Dsn` line back and
+stops the build unless it is a quoted `https://` URL (it prints only "quoted: yes/no"). Then it uploads
 the Shipping symbols with sentry-cli (`docs/windows/README.md`, "Crash reports"). Mac builds carry no DSN, so the SDK
 stays off there.
 

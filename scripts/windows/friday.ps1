@@ -97,8 +97,17 @@ try {
 	try {
 		if ($Dsn) {
 			Step 'Crash reports: Sentry DSN staged for the cook'
-			$Section = "`r`n[/Script/Sentry.SentrySettings]`r`nDsn=$Dsn`r`nOverrideReleaseName=True`r`nRelease=sailing-sim@$Sha`r`nEnvironment=tester`r`n"
+			# The string values go in quotes: an unquoted value is read only up to the first '/', so every zip before
+			# pc/feedback-dsn carried the DSN as just "https:" (the SDK rejected it and nothing could be sent). The release
+			# and environment are quoted too, so an '@' or a later change can't cut them the same way.
+			$Section = "`r`n[/Script/Sentry.SentrySettings]`r`nDsn=`"$Dsn`"`r`nOverrideReleaseName=True`r`nRelease=`"sailing-sim@$Sha`"`r`nEnvironment=`"tester`"`r`n"
 			[System.IO.File]::AppendAllText($EngineIni, $Section, [System.Text.Encoding]::ASCII)
+			# Guard: read the staged line back and stop the build unless the DSN is quoted and is an https:// URL (only
+			# yes/no is printed, never the key).
+			$Staged = @(Get-Content $EngineIni | Where-Object { $_ -match '^\s*Dsn\s*=' } | Select-Object -Last 1)
+			$Quoted = $Staged.Count -eq 1 -and $Staged[0] -match '^\s*Dsn\s*="https://[^"\s]+"\s*$'
+			Write-Host "  Sentry DSN staged, quoted: $(if ($Quoted) { 'yes' } else { 'no' })"
+			if (-not $Quoted) { throw 'The staged Sentry DSN is not a quoted https:// URL: the game would not read it' }
 		} else {
 			Write-Host '  No Sentry DSN (Artifacts\sentry\dsn.txt or SENTRY_DSN): the build carries no crash-report key'
 		}
