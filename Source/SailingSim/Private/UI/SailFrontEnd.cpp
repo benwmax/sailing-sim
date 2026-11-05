@@ -2705,6 +2705,7 @@ void SSailFrontEnd::SendFeedbackForm()
 			if (P->GetDrill().IsActive()) R.Context.Add({ TEXT("Drill"), DrillName(P->GetDrill().GetDrill()) });
 		}
 		R.LogTail = SailFeedback::LogTail();
+		R.SaveJson = SailFeedback::SaveForReport();
 	}
 	// The view, then photo mode's latest two shots when asked: three at most, each a JPEG under 8 MB.
 	TArray<FString> Pngs;

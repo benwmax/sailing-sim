@@ -59,6 +59,9 @@ struct SAILINGSIM_API FFeedbackReport
 	FString TelemetryJson;   // FFeedbackRecorder::ToJson
 	FString Repro;           // command-line args that start a session near the same place (SailFeedback::ReproArgs)
 	FString LogTail;
+	/** #410's optional save: the player's profile.json (settings, progress, last session; string ids only), so a bug in a
+	 *  lesson, a medal or a menu can be loaded as the player had it. Goes with the place, paths scrubbed. */
+	FString SaveJson;
 	TArray<FString> ShotPaths; // JPEGs (or PNGs) on disk
 
 	bool CarriesPlace() const { return Kind == EFeedbackKind::Bug || bAttachPlace; }
@@ -100,6 +103,8 @@ namespace SailFeedback
 		const FString& Release, const FString& Environment, const TArray<FEnvelopeAttachment>& Attachments);
 
 	/** Game args that start a session at the same spot: world, boat, place and heading, wind. */
+	/** The save to attach (SailSaveStore::Path), or empty when there is none or it is over 256 KB. */
+	SAILINGSIM_API FString SaveForReport();
 	SAILINGSIM_API FString ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn);
 
 	/** The title a report goes out under: the player's own, else the first line of what they wrote (cut at about 80

@@ -1,4 +1,5 @@
 #include "Feedback.h"
+#include "SailSave.h"
 #include "SessionLog.h"
 #include "CrashReports.h"
 #include "HAL/FileManager.h"
@@ -168,6 +169,15 @@ TArray<uint8> SailFeedback::FeedbackEnvelope(const FString& EventId, double Time
 	return Out;
 }
 
+FString SailFeedback::SaveForReport()
+{
+	const FString Path = SailSaveStore::Path();
+	const int64 Size = IFileManager::Get().FileSize(*Path);
+	FString Text;
+	if (Size <= 0 || Size > 256 * 1024 || !FFileHelper::LoadFileToString(Text, *Path)) return FString();
+	return Text;
+}
+
 FString SailFeedback::ReproArgs(const FString& WorldId, const FString& BoatId, const FFeedbackSample& At, double WindKn)
 {
 	return FString::Printf(TEXT("-SailingWorld=%s -SailingBoat=%s \"-SailingStartAt=%.0f,%.0f,%.0f\" -SailingWind=%.0f -SailingTWA=%.0f"),
@@ -234,6 +244,7 @@ FString SailFeedback::WriteLocal(const FFeedbackReport& R, const FString& Dir)
 	{
 		if (!R.TelemetryJson.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(R.TelemetryJson, *FPaths::Combine(Folder, TEXT("telemetry.json")));
 		if (!R.LogTail.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(SailCrashReports::ScrubPaths(R.LogTail), *FPaths::Combine(Folder, TEXT("log.txt")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+		if (!R.SaveJson.IsEmpty()) bOk &= FFileHelper::SaveStringToFile(SailCrashReports::ScrubPaths(R.SaveJson), *FPaths::Combine(Folder, TEXT("save.json")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 	}
 	if (R.Tags.Num())
 	{
