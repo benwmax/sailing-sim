@@ -86,7 +86,8 @@ namespace
 	struct FSkyCacheSize { int32 Width, Height, Steps; };
 	/** The panorama's size and march for this tier; -SailingSkyCacheSize=<w>,<h>,<steps> (measuring) overrides it. Read where
 	 *  the targets are made and at each panorama's start (not cached: a bench list or a settings change can swap it); the
-	 *  strips follow the targets' own size. */
+	 *  strips follow the targets' own size, and so does the shadow jitter's grid (feedback #8: one texel a block from 8192
+	 *  wide, two below, so an override moves it with the panorama). */
 	FSkyCacheSize SkyCacheSize()
 	{
 		const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
@@ -1740,9 +1741,13 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 		// Shadow step (m), this refresh's number (its jitter) and its weight against the panorama before. Each replaces
 		// the last: blended a third at a time, the clouds' drift between refreshes stacked into ghosts.
 		++CacheRefreshes;
-		// w: the shadow jitter's block in texels (feedback #8): every texel on Ultra (its 4 x 4 blocks showed as squares),
-		// 2 x 2 on High as before (the Mac measured per-texel jitter at up to 1.2 ms there).
-		CacheMaterial->SetVectorParameterValue(TEXT("CacheShadow"), FLinearColor(300.f, float(CacheRefreshes % 97), 1.f, bUltraSky ? 1.f : 2.f));
+		// w: the shadow jitter's block in texels (feedback #8): every texel on Ultra's 8192-wide panorama (its 4 x 4 blocks
+		// showed as squares), 2 x 2 on High's 4096 as before (the Mac measured per-texel jitter at up to 1.2 ms there). Read
+		// from the targets, not the tier: they are made once in BeginPlay, and a live quality switch keeps them.
+		// Measuring: -SailingSkyCacheJitter=<w> (0: the old fixed 2048 x 256 grid).
+		float JitterBlock = CacheTargets[CacheBack]->SizeX >= kSkyCacheWidthUltra ? 1.f : 2.f;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCacheJitter="), JitterBlock);
+		CacheMaterial->SetVectorParameterValue(TEXT("CacheShadow"), FLinearColor(300.f, float(CacheRefreshes % 97), 1.f, JitterBlock));
 		CacheMaterial->SetTextureParameterValue(TEXT("CachePrev"), CacheTargets[1 - CacheBack]);
 	}
 	const int32 CacheW = CacheTargets[CacheBack]->SizeX, CacheH = CacheTargets[CacheBack]->SizeY;   // Ultra's finer panorama too
