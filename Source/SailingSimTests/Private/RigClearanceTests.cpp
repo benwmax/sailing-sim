@@ -101,6 +101,7 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 	ASailboatPawn* Pawn = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
 	if (!TestNotNull(TEXT("Boat spawns"), Pawn))
 	{
+		World->EndPlay(EEndPlayReason::Quit);   // before the world goes (BareTestWorld.h)
 		GEngine->DestroyWorldContext(World);
 		World->DestroyWorld(false);
 		return false;
@@ -359,6 +360,7 @@ bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
 	ASailboatPawn* Pawn = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
 	if (!TestNotNull(TEXT("Boat spawns"), Pawn))
 	{
+		World->EndPlay(EEndPlayReason::Quit);   // before the world goes (BareTestWorld.h)
 		GEngine->DestroyWorldContext(World);
 		World->DestroyWorld(false);
 		return false;
@@ -553,6 +555,7 @@ bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 	ASailboatPawn* Pawn = World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
 	if (!TestNotNull(TEXT("Boat spawns"), Pawn))
 	{
+		World->EndPlay(EEndPlayReason::Quit);   // before the world goes (BareTestWorld.h)
 		GEngine->DestroyWorldContext(World);
 		World->DestroyWorld(false);
 		return false;

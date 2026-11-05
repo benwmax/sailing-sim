@@ -1,8 +1,6 @@
 #include "Misc/AutomationTest.h"
-#include "Engine/Engine.h"
-#include "Engine/World.h"
+#include "BareTestWorld.h"
 #include "Engine/StaticMeshActor.h"
-#include "GameFramework/WorldSettings.h"
 #include "UObject/UObjectGlobals.h"
 #include "FreeCamera.h"
 #include "Showroom.h"
@@ -21,32 +19,8 @@ namespace
 {
 	constexpr EAutomationTestFlags ShowroomFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
-	struct FBareWorld
-	{
-		UWorld* World = nullptr;
-		FBareWorld()
-		{
-			World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingShowroomWorld"));
-			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
-			Context.SetCurrentWorld(World);
-			World->InitializeActorsForPlay(FURL());
-			World->GetWorldSettings()->NotifyBeginPlay();
-		}
-		~FBareWorld()
-		{
-			World->EndPlay(EEndPlayReason::Quit);
-			GEngine->DestroyWorldContext(World);
-			World->DestroyWorld(false);
-		}
-		void Tick(int32 Frames)
-		{
-			for (int32 I = 0; I < Frames; ++I)
-			{
-				++GFrameCounter;
-				World->Tick(LEVELTICK_All, 1.f / 60.f);
-			}
-		}
-	};
+	// Every test that ticks a bare game world goes through BareTestWorld.h, which ends play before the world goes.
+	struct FBareWorld : FBareTestWorld { FBareWorld() : FBareTestWorld(TEXT("SailingShowroomWorld")) {} };
 }
 
 // The pure parts: which screen shows which stage, when two sets of conditions look alike, the debounce, and the
