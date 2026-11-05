@@ -205,6 +205,7 @@ EFeedbackSend SailCrashReports::SendFeedback(const FFeedbackReport& Report)
 	if (Report.CarriesPlace())
 	{
 		AddText(Report.TelemetryJson, TEXT("telemetry.json"), TEXT("application/json"));
+		AddText(SailCrashReports::ScrubPaths(Report.SaveJson), TEXT("save.json"), TEXT("application/json"));
 		AddText(SailCrashReports::ScrubPaths(Report.LogTail), TEXT("log.txt"), TEXT("text/plain"));
 	}
 	for (int32 I = 0; I < Report.ShotPaths.Num(); ++I)

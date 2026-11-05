@@ -140,6 +140,7 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	Bug.TelemetryJson = TEXT("{}");
 	Bug.Tags.Add(TEXT("boat"), TEXT("J22"));
 	Bug.LogTail = TEXT("LogSailing: /Users/dana/Saved\n");
+	Bug.SaveJson = TEXT("{\"version\": 1, \"lastSession\": {\"world\": \"ray-hubbard\"}, \"note\": \"/Users/dana/x\"}");
 	const FString BugText = SailFeedback::ComposeMessage(Bug);
 	TestTrue(TEXT("bug header"), BugText.StartsWith(TEXT("[Bug] Stuck in irons")));
 	TestTrue(TEXT("bug expected"), BugText.Contains(TEXT("Expected:\nShe should bear away")));
@@ -159,12 +160,17 @@ bool FSailFeedbackReportTest::RunTest(const FString&)
 	TestTrue(TEXT("log.txt read"), FFileHelper::LoadFileToString(Log, *FPaths::Combine(Folder, TEXT("log.txt"))));
 	TestFalse(TEXT("log scrubbed"), Log.Contains(TEXT("dana")));
 	TestTrue(TEXT("folder named for the kind"), Folder.EndsWith(TEXT("-bug")));
+	FString Save;
+	TestTrue(TEXT("#410: the save goes with a bug (save.json)"), FFileHelper::LoadFileToString(Save, *FPaths::Combine(Folder, TEXT("save.json"))) && Save.Contains(TEXT("ray-hubbard")));
+	TestFalse(TEXT("... with its paths scrubbed"), Save.Contains(TEXT("dana")));
 	FFeedbackReport Bare;
 	Bare.Kind = EFeedbackKind::Idea;
 	Bare.Title = TEXT("x");
 	Bare.TelemetryJson = TEXT("{}");
+	Bare.SaveJson = TEXT("{\"version\": 1}");
 	const FString IdeaFolder = SailFeedback::WriteLocal(Bare, Dir);
 	TestFalse(TEXT("idea without place: no samples"), IFileManager::Get().FileExists(*FPaths::Combine(IdeaFolder, TEXT("telemetry.json"))));
+	TestFalse(TEXT("... and no save"), IFileManager::Get().FileExists(*FPaths::Combine(IdeaFolder, TEXT("save.json"))));
 	IFileManager::Get().DeleteDirectory(*Dir, false, true);
 
 	TestTrue(TEXT("no SDK in the editor's tests: nothing sent"), SailCrashReports::SendFeedback(Bug) == EFeedbackSend::Saved);
