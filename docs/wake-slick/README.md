@@ -79,3 +79,11 @@ main and fix at camera yaw 150, 200 and 230: [150 main](fb9-quarter-150-main.jpg
 [200 main](fb9-quarter-200-main.jpg) / [fix](fb9-quarter-200-fix.jpg), [230 main](fb9-quarter-230-main.jpg) /
 [fix](fb9-quarter-230-fix.jpg). At 200 and 230 main's long pale lane astern is gone on the fix, fading within a few
 lengths; at 150, into the sun's glitter, the two look alike. (The dark shape beside her is her shadow, not the wake.)
+
+Round 2 (the stern's bubble stamp 0.35 to 0.7, tapered across her beam; main 7a5cfb88 against this branch, the same Ultra
+quarter view): [150 main](fb9-quarter2-150-main.jpg) / [fix](fb9-quarter2-150-fix.jpg), [200 main](fb9-quarter2-200-main.jpg)
+/ [fix](fb9-quarter2-200-fix.jpg), [230 main](fb9-quarter2-230-main.jpg) / [fix](fb9-quarter2-230-fix.jpg), and mid-tack
+at yaw 200 ([main](fb9-quarter2-tack-main.jpg) / [fix](fb9-quarter2-tack-fix.jpg)). Sailing, main's wide pale lane gives
+way to a short white trail off the stern, a few metres, solid at the stern and breaking into streaks at its end. In the
+tack there is no foam at the bow (away from the camera), but the fix's trail is brighter than main's: a fairly solid
+white streak about 10 m long beside her, where the stern swept through the turn.
