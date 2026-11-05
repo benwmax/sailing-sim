@@ -49,7 +49,7 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	N = InN;
 	Cell = InCell;
 	const int32 NN = N * N;
-	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir }) A->Init(0.f, NN);
+	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir, &NearStir }) A->Init(0.f, NN);
 	Spectrum.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
@@ -136,12 +136,13 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 		for (int32 C = 0; C < N; ++C)
 		{
 			const FVector2D P = Corner + FVector2D((R + 0.5f) * Cell, (C + 0.5f) * Cell);
-			float D = 0.f, St = 0.f;
+			float D = 0.f, St = 0.f, Nr = 0.f;
 			for (const FHull& Hull : Hulls)
 			{
 				if (Hull.Shape && FVector2D::DistSquared(P, Hull.Position) < FMath::Square(float(Hull.Shape->BowX - Hull.Shape->SternX) + 2.f))
 				{
 					const float HullD = DisplacedDepth(Hull, P);
+					Nr = FMath::Max(Nr, FMath::Min(FMath::Abs(Hull.Speed) / 2.5f, 1.f));
 					D = FMath::Max(D, HullD);
 					// sailing-feedback #9: the lane she leaves goes with her speed (full from 2.5 m/s, about 5 kn), so a
 					// boat drifting or tied up leaves none.
@@ -150,6 +151,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			}
 			Depth[R * N + C] = D;
 			Stir[R * N + C] = St;
+			NearStir[R * N + C] = Nr;
 		}
 	});
 	if (!bHasDepth) { PrevDepth = Depth; bHasDepth = true; }
@@ -237,8 +239,10 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
 			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
 			// sailing-feedback #9: the water a moving hull has just left (astern of her, never ahead) is stirred full of
-			// bubbles: a pale, broken trail that fades over kFoamLife, a length or two behind a J/22 at 6 kn.
-			if (PrevStir[I] > 0.f && Stir[I] == 0.f) Foam = FMath::Max(Foam, 0.35f * PrevStir[I]);
+			// bubbles: a pale, broken trail that fades over kFoamLife, a length or two behind a J/22 at 6 kn. Only while a
+			// hull is still there and moving (NearStir), so a boat that stops dead, is moved or leaves the list leaves no
+			// hull-shaped stamp.
+			if (PrevStir[I] > 0.f && Stir[I] == 0.f) Foam = FMath::Max(Foam, 0.35f * FMath::Min(PrevStir[I], NearStir[I]));
 			FoamField[I] = Foam;
 			H[I] = FMath::Clamp(Next, -0.6f, 0.6f);
 			Velocity[I] = Vel;
