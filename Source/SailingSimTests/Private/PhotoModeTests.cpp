@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "BareTestWorld.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
@@ -26,23 +27,8 @@ namespace
 {
 	constexpr EAutomationTestFlags PhotoFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
-	struct FBareWorld
-	{
-		UWorld* World = nullptr;
-		FBareWorld()
-		{
-			World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingPhotoWorld"));
-			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
-			Context.SetCurrentWorld(World);
-			World->InitializeActorsForPlay(FURL());
-			World->GetWorldSettings()->NotifyBeginPlay();
-		}
-		~FBareWorld()
-		{
-			GEngine->DestroyWorldContext(World);
-			World->DestroyWorld(false);
-		}
-	};
+	// Every test that ticks a bare game world goes through BareTestWorld.h, which ends play before the world goes.
+	struct FBareWorld : FBareTestWorld { FBareWorld() : FBareTestWorld(TEXT("SailingPhotoWorld")) {} };
 
 	/** The actions a context maps a key to. */
 	TArray<FName> ActionsOn(const UInputMappingContext* Context, const FKey& Key)
@@ -290,7 +276,7 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 {
 	FBareWorld W;
 	// The world's own (authority) game mode, as in the game: the pawn asks GetAuthGameMode for the waves.
-	W.World->SetGameInstance(NewObject<UGameInstance>(GEngine));
+	W.UseGameInstance();   // released with the world (BareTestWorld.h): outered to GEngine it outlived the test
 	W.World->SetGameMode(FURL());
 	ASailingGameMode* GM = W.World->GetAuthGameMode<ASailingGameMode>();
 	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
