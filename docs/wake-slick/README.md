@@ -54,7 +54,7 @@ grid there is 128 m, and the 40 s lane held its full strength for most of it). N
 - **Set by her speed** (full from 2.5 m/s, about 5 kn), so a boat drifting or tied up leaves no lane round her.
 - **The shader** follows the lane instead of saturating it: `0.45 * slick^1.5`, not `0.8 * saturate(1.5 slick)`.
 - **A pale trail just astern:** water a moving hull has just left gets bubbles (foam 0.7 at full speed, fading over
-  the foam's 4 s life), a broken white trail two or three lengths behind her (0.35 at first; too faint, Bean Nov 5). Only where she has been, never ahead or round a
+  the foam's 4 s life), a broken white trail two or three lengths behind her, thickest down her middle and fading to nothing at her sides (0.35 across her whole beam at first: too faint, Bean Nov 5; then 0.7 across her beam drew a hard-edged band, QA). Only where she has been, never ahead or round a
   stopped boat.
 - **The test** `SailingSim.Visual.WakeGrid` now checks the lane is plain 5 m astern and a little wider than her beam
   there, fading 20 m astern (0.05-0.4, under 0.6 of its 5 m value), gone 40 s after she stops, and that there is foam
