@@ -5,18 +5,17 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/WorldSettings.h"
-#include "UObject/Package.h"
 
 /**
  * A bare game world for the tests that spawn and tick actors in one, torn down the way the game tears its own down.
  *
- * The one-process suite crashed in garbage collection (FObjectPurge::DestroyObjects, as a later test started; Nov 5
- * 2026): SailingSim.Smoke.CameraAboveWater gave its world a game instance outered to GEngine, never shut down, and the
- * photo-mode copy of this helper destroyed the world without EndPlay, so a game mode and a ticked player pawn were left
- * for a later purge. Every such test goes through this one helper now: EndPlay first, and a game instance a test asks
- * for (UseGameInstance, in the transient package) is released with the world. EndPlay must come first: on both the
- * Mac and Windows the purge ran inside a later test's World->Tick (Visual.RigClearance) and crashed in the engine Water
- * plugin's objects left from the bare world torn down without it.
+ * The one-process suite crashed in garbage collection (FObjectPurge::DestroyObjects inside a later test's World->Tick,
+ * Visual.RigClearance, with the engine Water plugin's frames on the stack; Mac and Windows; Nov 5 2026). The photo-mode
+ * copy of this helper destroyed its world without EndPlay, and SailingSim.Smoke.CameraAboveWater had ticked a game mode
+ * and a player pawn in it. On main, CameraAboveWater + Visual in one process: EndPlay added alone, 74/74 pass; the game
+ * instance released alone (no EndPlay), it still crashes. So EndPlay is the change that matters; which object the purge
+ * fell over is not identified. EndPlay runs first here; a game instance a test asks for (UseGameInstance) is released
+ * with the world too. The tests built on this helper and the ones that hand-roll a world end play the same way.
  */
 struct FBareTestWorld
 {
@@ -32,6 +31,7 @@ struct FBareTestWorld
 	}
 	~FBareTestWorld()
 	{
+		if (!World) return;
 		World->EndPlay(EEndPlayReason::Quit);
 		if (UGameInstance* Instance = World->GetGameInstance())
 		{
@@ -44,10 +44,11 @@ struct FBareTestWorld
 	FBareTestWorld(const FBareTestWorld&) = delete;
 	FBareTestWorld& operator=(const FBareTestWorld&) = delete;
 
-	/** The world's game instance (an authority game mode reads it): one for this world only. */
+	/** The world's game instance (an authority game mode reads it), released with the world. Outered to the engine:
+	 *  UGameInstance::GetEngine() is CastChecked<UEngine>(GetOuter()). */
 	UGameInstance* UseGameInstance()
 	{
-		UGameInstance* Instance = NewObject<UGameInstance>(GetTransientPackage());
+		UGameInstance* Instance = NewObject<UGameInstance>(GEngine);
 		World->SetGameInstance(Instance);
 		return Instance;
 	}

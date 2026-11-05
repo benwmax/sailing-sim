@@ -423,6 +423,7 @@ bool FTrafficLightsTest::RunTest(const FString& Parameters)
 		Sail->Destroy();
 	}
 	Ship->Destroy();
+	World->EndPlay(EEndPlayReason::Quit);   // before the world goes (BareTestWorld.h)
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	return true;
