@@ -162,8 +162,8 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 					{
 						const float HullSt = FMath::Min(FMath::Abs(Hull.Speed) / 2.5f, 1.f);
 						St = FMath::Max(St, HullSt);
-						// Her middle (full to 35% of her half beam, none past 90%): where the bubble trail starts.
-						Mid = FMath::Max(Mid, HullSt * (1.f - FMath::SmoothStep(0.35f, 0.9f, SideRatio(Hull, P))));
+						// Her middle (full to 20% of her half beam, none past 65%, inside her wetted width): where the bubble trail starts.
+						Mid = FMath::Max(Mid, HullSt * (1.f - FMath::SmoothStep(0.2f, 0.65f, SideRatio(Hull, P))));
 					}
 				}
 			}
