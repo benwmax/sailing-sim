@@ -121,8 +121,10 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 		return R >= 0 && C >= 0 && R < N && C < N ? Fm[R * N + C] : -1.f;
 	};
 	const float FoamAstern = FoamAt(Stern - FVector2D(2.0, 0.0)), FoamAhead = FoamAt(Bow + FVector2D(6.0, 0.0));
-	AddInfo(FString::Printf(TEXT("Foam 2 m astern %.2f, 6 m ahead of the bow %.2f"), FoamAstern, FoamAhead));
-	TestTrue(TEXT("A pale trail of bubbles just astern"), FoamAstern > 0.15f);
+	const float FoamFar = FoamAt(Stern - FVector2D(25.0, 0.0));
+	AddInfo(FString::Printf(TEXT("Foam 2 m astern %.2f, 25 m astern %.2f, 6 m ahead of the bow %.2f"), FoamAstern, FoamFar, FoamAhead));
+	TestTrue(TEXT("A white trail of bubbles just astern"), FoamAstern > 0.4f);
+	TestTrue(TEXT("The trail thins out a few lengths astern"), FoamFar >= 0.f && FoamFar < 0.25f);
 	TestTrue(TEXT("No foam ahead of her"), FoamAhead >= 0.f && FoamAhead < 0.05f);
 
 	// Stopped, the waves run off and die away.

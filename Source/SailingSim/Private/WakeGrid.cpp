@@ -239,10 +239,11 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
 			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
 			// sailing-feedback #9: the water a moving hull has just left (astern of her, never ahead) is stirred full of
-			// bubbles: a pale, broken trail that fades over kFoamLife, a length or two behind a J/22 at 6 kn. Only while a
+			// bubbles: a white, broken trail that thins over kFoamLife, two or three lengths behind a J/22 at 6 kn (0.7, Bean
+			// Nov 5: the first 0.35 was too faint to see from the chase camera). Only while a
 			// hull is still there and moving (NearStir), so a boat that stops dead, is moved or leaves the list leaves no
 			// hull-shaped stamp.
-			if (PrevStir[I] > 0.f && Stir[I] == 0.f) Foam = FMath::Max(Foam, 0.35f * FMath::Min(PrevStir[I], NearStir[I]));
+			if (PrevStir[I] > 0.f && Stir[I] == 0.f) Foam = FMath::Max(Foam, 0.7f * FMath::Min(PrevStir[I], NearStir[I]));
 			FoamField[I] = Foam;
 			H[I] = FMath::Clamp(Next, -0.6f, 0.6f);
 			Velocity[I] = Vel;
