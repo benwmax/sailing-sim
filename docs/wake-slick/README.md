@@ -53,7 +53,10 @@ grid there is 128 m, and the 40 s lane held its full strength for most of it). N
   by 40 m, a few boat lengths, with soft edges.
 - **Set by her speed** (full from 2.5 m/s, about 5 kn), so a boat drifting or tied up leaves no lane round her.
 - **The shader** follows the lane instead of saturating it: `0.45 * slick^1.5`, not `0.8 * saturate(1.5 slick)`.
-- **Its young end is pale:** where the lane is fresh (over 0.55, about a length and a half astern) the stirred water
-  shows as a faint, broken trail of bubbles (the wake's foam channel, drawn with the boats' bubble pattern).
-- **The test** `SailingSim.Visual.WakeGrid` now checks the lane is plain 5 m astern, fading 20 m astern (0.05-0.4, under
-  0.6 of its 5 m value), and gone 40 s after she stops.
+- **A pale trail just astern:** water a moving hull has just left gets bubbles (foam 0.35 at full speed, fading over
+  the foam's 4 s life), a broken white trail a length or two behind her. Only where she has been, never ahead or round a
+  stopped boat.
+- **The test** `SailingSim.Visual.WakeGrid` now checks the lane is plain 5 m astern and a little wider than her beam
+  there, fading 20 m astern (0.05-0.4, under 0.6 of its 5 m value), gone 40 s after she stops, and that there is foam
+  2 m astern and none 6 m ahead of the bow. An offline model of the slick step (calibrated on the old 0.47) gives 0.63
+  at 5 m, 0.27 at 20 m and 0.05 at 40 m.

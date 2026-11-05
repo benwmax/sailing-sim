@@ -58,7 +58,7 @@ private:
 	float Cell = 0.2f;
 	FVector2D Corner = FVector2D::ZeroVector;
 	TArray<float> H, Velocity, Pressure, Depth, PrevDepth, FoamField, SlickField, SlickScratch;
-	TArray<float> Stir;                       // per cell, this step: how hard a hull over it stirs the water (0..1, her speed)
+	TArray<float> Stir, PrevStir;             // per cell, this step and the last: how hard a hull over it stirs the water (0..1, her speed)
 	TArray<float> Omega;                      // per mode, rad/s (deep water)
 	TArray<std::complex<float>> Spectrum;     // scratch
 	float Accumulator = 0.f;

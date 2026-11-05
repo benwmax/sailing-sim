@@ -106,6 +106,24 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 	TestTrue(TEXT("It is fading 20 m astern"), OnTrack > 0.05f && OnTrack < 0.4f);
 	TestTrue(TEXT("It fades along its length"), OnTrack < 0.6f * Near);
 	TestTrue(TEXT("Not 8 m to the side"), Aside >= 0.f && Aside < 0.1f);
+	// Soft-edged: just astern it has already spread a little wider than her beam, never into a broad band.
+	float Width = 0.f;
+	for (double Y = -6.0; Y <= 6.0; Y += Grid.CellSize()) Width += SlickAt(Stern - FVector2D(5.0, Y)) > 0.3f ? Grid.CellSize() : 0.f;
+	const float Beam = 2.f * float(Config.Hulls[0].MaxHalfBeam);
+	AddInfo(FString::Printf(TEXT("Wake lane 5 m astern: %.1f m wide (beam %.1f m)"), Width, Beam));
+	TestTrue(TEXT("The lane spreads a little wider than her beam"), Width > Beam && Width < 3.f * Beam);
+	// The water she has just left is full of bubbles (a pale trail astern); none ahead of her bow wave.
+	const TArray<float>& Fm = Grid.Foam();
+	auto FoamAt = [&](const FVector2D& P)
+	{
+		const FVector2D L = (P - Grid.Origin()) / Grid.CellSize();
+		const int32 R = FMath::FloorToInt(L.X), C = FMath::FloorToInt(L.Y);
+		return R >= 0 && C >= 0 && R < N && C < N ? Fm[R * N + C] : -1.f;
+	};
+	const float FoamAstern = FoamAt(Stern - FVector2D(2.0, 0.0)), FoamAhead = FoamAt(Bow + FVector2D(6.0, 0.0));
+	AddInfo(FString::Printf(TEXT("Foam 2 m astern %.2f, 6 m ahead of the bow %.2f"), FoamAstern, FoamAhead));
+	TestTrue(TEXT("A pale trail of bubbles just astern"), FoamAstern > 0.15f);
+	TestTrue(TEXT("No foam ahead of her"), FoamAhead >= 0.f && FoamAhead < 0.05f);
 
 	// Stopped, the waves run off and die away.
 	Hulls[0].Speed = 0.f;

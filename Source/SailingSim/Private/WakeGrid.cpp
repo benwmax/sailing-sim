@@ -49,7 +49,7 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	N = InN;
 	Cell = InCell;
 	const int32 NN = N * N;
-	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir }) A->Init(0.f, NN);
+	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir }) A->Init(0.f, NN);
 	Spectrum.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
@@ -96,7 +96,7 @@ void FWakeGrid::Follow(const FVector2D& Point)
 		}
 		A = MoveTemp(B);
 	};
-	for (TArray<float>* A : { &H, &Velocity, &Depth, &PrevDepth, &FoamField, &SlickField }) Shift(*A);
+	for (TArray<float>* A : { &H, &Velocity, &Depth, &PrevDepth, &FoamField, &SlickField, &Stir }) Shift(*A);
 	Corner += FVector2D(DR * Cell, DC * Cell);
 }
 
@@ -130,6 +130,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 {
 	// Each hull's draft at every cell (its pressure on the surface).
 	Swap(Depth, PrevDepth);
+	Swap(Stir, PrevStir);
 	ParallelFor(N, [&](int32 R)
 	{
 		for (int32 C = 0; C < N; ++C)
@@ -234,7 +235,11 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Rate = FMath::Abs(Next - Old) / Dt;
 			constexpr float kFoamRate = 0.25f, kFoamLife = 4.f;
 			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
-			FoamField[I] = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
+			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
+			// sailing-feedback #9: the water a moving hull has just left (astern of her, never ahead) is stirred full of
+			// bubbles: a pale, broken trail that fades over kFoamLife, a length or two behind a J/22 at 6 kn.
+			if (PrevStir[I] > 0.f && Stir[I] == 0.f) Foam = FMath::Max(Foam, 0.35f * PrevStir[I]);
+			FoamField[I] = Foam;
 			H[I] = FMath::Clamp(Next, -0.6f, 0.6f);
 			Velocity[I] = Vel;
 		}
@@ -244,7 +249,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	// smoother track astern. Set where she passes (by her speed), decaying over kSlickSeconds and widening as it goes.
 	// sailing-feedback #9: a 40 s life drew it as a long dark ribbon with hard edges out to the grid's end on Ultra (128 m
 	// behind a J/22 at 5 kn); now it is mostly gone a few boat lengths astern (about 0.3 of its start 20 m behind her at
-	// 6 kn, 0.1 at 40 m), and it spreads twice as fast, so its edges are soft. Not with the sponge's edge (it would show
+	// 6 kn, 0.05 at 40 m), and it spreads twice as fast, so its edges are soft. Not with the sponge's edge (it would show
 	// the grid's outline).
 	constexpr float kSlickSeconds = 12.f;
 	constexpr float kSlickDiffusion = 0.3f; // m^2/s
