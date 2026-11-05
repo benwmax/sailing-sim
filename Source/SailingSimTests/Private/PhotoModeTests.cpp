@@ -1,12 +1,9 @@
 #include "Misc/AutomationTest.h"
-#include "Engine/Engine.h"
-#include "Engine/World.h"
-#include "Engine/GameInstance.h"
+#include "BareTestWorld.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
-#include "GameFramework/WorldSettings.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "InputTriggers.h"
@@ -26,23 +23,8 @@ namespace
 {
 	constexpr EAutomationTestFlags PhotoFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
-	struct FBareWorld
-	{
-		UWorld* World = nullptr;
-		FBareWorld()
-		{
-			World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingPhotoWorld"));
-			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
-			Context.SetCurrentWorld(World);
-			World->InitializeActorsForPlay(FURL());
-			World->GetWorldSettings()->NotifyBeginPlay();
-		}
-		~FBareWorld()
-		{
-			GEngine->DestroyWorldContext(World);
-			World->DestroyWorld(false);
-		}
-	};
+	// Every test that ticks a bare game world goes through BareTestWorld.h, which ends play before the world goes.
+	struct FBareWorld : FBareTestWorld { FBareWorld() : FBareTestWorld(TEXT("SailingPhotoWorld")) {} };
 
 	/** The actions a context maps a key to. */
 	TArray<FName> ActionsOn(const UInputMappingContext* Context, const FKey& Key)
@@ -163,8 +145,7 @@ bool FSailingPhotoCameraTest::RunTest(const FString&)
 		Wall->GetStaticMeshComponent()->SetWorldScale3D(FVector(1.0, 20.0, 20.0)); // 1 m thick, 20 m across
 		Wall->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		Wall->GetStaticMeshComponent()->SetCollisionResponseToAllChannels(ECR_Block);
-		++GFrameCounter;
-		W.World->Tick(LEVELTICK_All, 1.f / 60.f); // the physics scene takes the box in at a tick
+		W.Tick(1); // the physics scene takes the box in at a tick
 		Cam->SnapTo(FVector(0.0, 0.0, 500.0), FRotator::ZeroRotator);
 		FFreeCameraInput Ahead;
 		Ahead.Move = FVector2D(0.0, 1.0);
@@ -290,13 +271,12 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 {
 	FBareWorld W;
 	// The world's own (authority) game mode, as in the game: the pawn asks GetAuthGameMode for the waves.
-	W.World->SetGameInstance(NewObject<UGameInstance>(GEngine));
+	W.UseGameInstance();   // released with the world (BareTestWorld.h); EndPlay at teardown is what stopped the crash
 	W.World->SetGameMode(FURL());
 	ASailingGameMode* GM = W.World->GetAuthGameMode<ASailingGameMode>();
 	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
 	ASailboatPawn* Pawn = W.World->SpawnActor<ASailboatPawn>(FVector::ZeroVector, FRotator::ZeroRotator);
 	if (!TestNotNull(TEXT("A boat"), Pawn)) return false;
-	auto Ticks = [&](int32 N) { for (int32 I = 0; I < N; ++I) { ++GFrameCounter; W.World->Tick(LEVELTICK_All, 1.f / 60.f); } };
 	auto Clearance = [&]() -> double
 	{
 		FMinimalViewInfo View;
@@ -307,10 +287,10 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 	for (const int32 Type : { 0, int32(Sailing::EBoatType::Sunfish) })
 	{
 		Pawn->SetBoat(Type);
-		Ticks(30);
+		W.Tick(30);
 		// The chase camera: the look's whole way up, then the zoom's whole way out.
 		Pawn->AddCameraOrbit(FVector2D(0.f, 200.f), -200.f);
-		Ticks(180);
+		W.Tick(180);
 		const double Chase = Clearance();
 		TestTrue(FString::Printf(TEXT("Boat %d, chase camera tilted up and out: over the water (%.2f m)"), Type, Chase), Chase >= 0.45);
 		// The pitch limit (not only the lift): the lens itself stays a metre up, and the boat stays in the middle of the frame.
@@ -325,7 +305,7 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 		// Photo mode starts where the player's view is.
 		TestTrue(TEXT("photo mode's start is the view's"), Pawn->ViewLocation().Equals(View.Location, 1.f));
 		Pawn->SetCockpitView(true);
-		Ticks(30);
+		W.Tick(30);
 		const double Cockpit = Clearance();
 		TestTrue(FString::Printf(TEXT("Boat %d, cockpit view: over the water (%.2f m)"), Type, Cockpit), Cockpit >= 0.45);
 		Pawn->SetCockpitView(false);

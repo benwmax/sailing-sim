@@ -2931,9 +2931,11 @@ float wdash = 0.5 + 0.5 * sin(along / lerp(3.5, 6.5, wh) + wk * 2.3 + 1.7 * sin(
 float ww = lerp(0.6, 1.8, wh2);   // each row its own width
 float wline = (1.0 - smoothstep(0.008 * ww, 0.025 * ww, abs(frac(wx) - (0.35 + 0.3 * wh)))) * smoothstep(0.35, 0.8, wdash) * lerp(0.3, 1.0, step(0.25, wh));
 float wrow = wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 260.0) * saturate(1.0 - fwidth(wx) * 8.0);
-// docs/wake-slick/: a boat's wake lane (FWakeGrid's slick: the water she stirred, for a minute behind her), the wind's
-// ripples damped along it: the smooth, darker track a sailboat leaves, tens of lengths long.
-float smoothing = max(max(glass, 0.8 * saturate(wakeSlick * 1.5)), max(0.65 * slick, 0.5 * wrow));
+// docs/wake-slick/: a boat's wake lane (FWakeGrid's slick: the water she stirred behind her), the wind's ripples damped
+// along it. sailing-feedback #9: it was 0.8 * saturate(1.5 slick), flat at full strength for most of its length, and drew
+// a long dark ribbon with hard edges; now it follows the lane (0.45 at most against 0.8, softer as it thins), a
+// faint smoother track that fades out a few lengths astern.
+float smoothing = max(max(glass, 0.45 * saturate(wakeSlick) * sqrt(saturate(wakeSlick))), max(0.65 * slick, 0.5 * wrow));
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
 slopeVar *= 1.0 - 0.92 * smoothing;
 [branch] if (patFade < 1.0 && 0.05 * wrow > FOAM_SEEN && !patDone) FOAM_PAT(); // docs/storm-water/foam-cost/: a windrow is foam too

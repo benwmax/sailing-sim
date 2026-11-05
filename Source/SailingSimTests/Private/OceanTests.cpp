@@ -375,6 +375,7 @@ bool FKeyRebindTest::RunTest(const FString& Parameters)
 	// Leave the player's keys as they were.
 	Settings->Bindings = Saved;
 	Settings->SaveConfig();
+	World->EndPlay(EEndPlayReason::Quit);   // before the world goes (BareTestWorld.h)
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	return true;
