@@ -133,3 +133,46 @@ existing save part way through Day Sailor (`docs/career/still-save.json`) and on
 
 Not reached by the script: Replays with no run (9: still read only), the Sunfish's J/22 quiz questions (13: read; the
 still's first question happened to fit a dinghy), and every drill sailed by hand (Bean's, on keyboard and pad).
+
+## Second audit (Nov 6 2026, main ffe85d69)
+
+The same method as Part B: a fresh `FULL=1` package of main as a **slice build** (`-SailingSlice=1`, the testers'
+menus), 1920x1080 windowed, Medium. There were 42 stills, each the game's own screenshot. The profiles were a fresh one, the
+part-way save (`docs/career/still-save.json`) and the certified one (`docs/free-sail/still-save.json`). The Mac's own Config
+and SaveGames were backed up and restored after every launch (`diff -r` clean). Keys and pad buttons went only through
+`-SailingUIScript`. It covers the first launch and the first job (keys and pad), every title item, the Career screen's focus
+and tiers, the Settings tabs, the Mode screen on the pad, Feedback, the J/22's and the Sunfish's briefings, quizzes and drill
+HUD, and Club Racer from a certified save. Stills: `stills2/`.
+
+### The 21 findings
+
+**None regressed.** The fixes for 1–21 still hold on the game, including:
+- **First launch.** Medium and Easy pre-picked, and focus on Start your first job ([first-launch](stills2/first-launch.jpg)).
+- **First job.** Its loading screen reads "Your first job" ([first-job-loading](stills2/first-job-loading.jpg)).
+- **Title.** No "ASA 101" item, no Gallery and no build label, and Replays greyed ([title](stills2/title.jpg)).
+- **Career screen.**
+  - Focus starts on the next lesson, and the prompts say Left / Right ([career](stills2/career.jpg)), with pad prompts on a controller ([career-pad](stills2/career-pad.jpg)).
+  - Club Racer is locked with "Sail Day Sailor's first three lessons", then opens with Take the quiz ([career-certified](stills2/career-certified.jpg)).
+  - Coastal Cruiser reads "Coming", and Passage Maker is gone from a slice build.
+- **World screen.** The cards' facts sit in their columns ([world](stills2/world.jpg)).
+- **The Sunfish.** Its briefings, quizzes and HUD use the dinghy wording, and there is no jib drill.
+- **Mode screen on the pad.** The choice keeps the focus (#468) ([mode-pad](stills2/mode-pad.jpg)).
+
+### New
+
+| # | Category | Finding | Still | Issue |
+|---|---|---|---|---|
+| 22 | Developer leftovers | Title > **Credits** renders `CREDITS.md` as it is: code paths (`Source/SailingSim/Private/SailingAudio.cpp`, `/Game/Materials`, `scripts/make_materials.py`), "Since Graphics G7", "placeholder art until a later phase". Settings > Gameplay > Headings says "the lake's **bake** has no variation". | [credits](stills2/credits.jpg), [settings-gameplay](stills2/settings-gameplay.jpg) | #487 |
+| 23 | Missing explanation | Learning tips fire while the boat is still **tied up** at the start of Leave the dock: "Jib is luffing" on the J/22, "In irons" on the Sunfish, while the drill asks the player to plan and cast off. | [hud-j22-dock](stills2/hud-j22-dock.jpg), [hud-sunfish-dock](stills2/hud-sunfish-dock.jpg) | #488 |
+| 24 | Polish (PC lane) | A Club Racer lesson's loading screen shows the J/22 artwork under "SUNFISH". | [clubracer-loading](stills2/clubracer-loading.jpg) | (art; not filed) |
+| 25 | Unclear objective (noted Nov 1) | A returning Career player's title still focuses **Sail** first, not Career. | [title-returning](stills2/title-returning.jpg) | (noted) |
+
+### Also seen
+
+- **No crash or stuck state** in 42 launches.
+- **Two handled ensures at every launch, both already there on Nov 1:**
+  - `PSOPrecache.cpp:296`;
+  - a matrix precision check (`DoubleFloat.cpp:21`, from `FDistanceFieldSceneData::UpdateDistanceFieldObjectBuffers`): one distance-field object's transform is past the renderer's range.
+
+  They are logged in Development builds and don't reach players. They're worth a look if the distance-field one turns out to be a mis-placed object.
+- **Not reached by the script:** Replays with no run (read only), a finish panel and medal moment (they need a sailed drill), and every lesson sailed by hand on keyboard and pad (Bean's). `SailingSim.UI.PadCoversLessonKeys` (#486) now holds that every key a lesson names has a controller binding.
