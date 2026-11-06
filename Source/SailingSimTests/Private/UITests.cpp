@@ -502,6 +502,45 @@ bool FSailingUIChoiceKeepsFocusTest::RunTest(const FString&)
 	return true;
 }
 
+// Slice audit finding 25 (Bean, Nov 6 2026): a returning Career player (progress in the save, no last session) starts on
+// Career, not Sail; a new save and Free Sail start on Sail; a last session starts on Continue.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUITitleFocusTest, "SailingSim.UI.TitleFocus", UIFlags)
+bool FSailingUITitleFocusTest::RunTest(const FString&)
+{
+	if (!FSlateApplication::IsInitialized()) { AddWarning(TEXT("No Slate application")); return true; }
+	USailingSettings* S = USailingSettings::Get();
+	USailSessionSave* Save = USailSessionSave::Get();
+	FSailSave::FProgress& Progress = SailSaveStore::Progress();
+	const FSailSave::FProgress WasProgress = Progress;
+	const bool bWasFree = S->bFreeSail, bHadLast = Save->bHasLast;
+	ON_SCOPE_EXIT { S->bFreeSail = bWasFree; Save->bHasLast = bHadLast; Progress = WasProgress; };
+	auto Focused = [this]()
+	{
+		TSharedRef<SSailFrontEnd> F = SNew(SSailFrontEnd).Start(ESailScreen::Title);
+		TArray<FString> Texts;
+		if (const TSharedPtr<SWidget> Target = F->FocusTarget()) CollectTexts(Target.ToSharedRef(), Texts);
+		return FString::Join(Texts, TEXT(" ")).ToUpper();
+	};
+	Save->bHasLast = false;
+	S->bFreeSail = false;
+	Progress = FSailSave::FProgress();
+	FString Got = Focused();
+	TestTrue(FString::Printf(TEXT("A new save starts on Sail (%s)"), *Got), Got.StartsWith(TEXT("SAIL")));
+	FSailSave::FLessonRecord Lesson;
+	Lesson.Id = TEXT("leave-the-dock");
+	Progress.Lessons.Add(Lesson);
+	Got = Focused();
+	TestTrue(FString::Printf(TEXT("A returning Career player starts on Career (%s)"), *Got), Got.StartsWith(TEXT("CAREER")));
+	S->bFreeSail = true;
+	Got = Focused();
+	TestTrue(FString::Printf(TEXT("Free Sail starts on Sail (%s)"), *Got), Got.StartsWith(TEXT("SAIL")));
+	Save->bHasLast = true;
+	S->bFreeSail = false;
+	Got = Focused();
+	TestTrue(FString::Printf(TEXT("A last session starts on Continue (%s)"), *Got), Got.StartsWith(TEXT("CONTINUE")));
+	return true;
+}
+
 // #404, the first hour on a controller: every command the slice's lessons name in their text ({key:Command.direction}
 // in Content/Learning and the first job's script) has a controller button or axis by default, in that direction, and so
 // do the steering and mainsheet the first job asks for without naming them. A pad-only player is never told to press a
