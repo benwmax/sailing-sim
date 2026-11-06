@@ -9,7 +9,11 @@ rm -rf "$REPORT_DIR"
 mkdir -p "$REPORT_DIR"
 
 set +e
+# No Home screen: its recent-projects list scans ~/Documents/Unreal Projects, and on a Mac that hasn't granted the editor
+# the Documents folder macOS asks with a dialog and the scan waits for an answer (the nightly sat 6.6 hours on frame 0 on
+# Nov 6 2026, and on Nov 1). A headless run never needs it.
 "$EDITOR_CMD" "$PROJECT" \
+	-ini:Engine:[ConsoleVariables]:HomeScreen.EnableHomeScreen=0 \
 	-ExecCmds="Automation RunTests $FILTER; Quit" \
 	-TestExit="Automation Test Queue Empty" \
 	-ReportExportPath="$REPORT_DIR" \
