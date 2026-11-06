@@ -74,6 +74,10 @@ public:
 	static float MaxChasePitchDeg(float SocketUpCm, float ArmCm, float ClearCm);
 	/** A view's location kept CameraWaterClearM over the wave under it. */
 	FVector LiftedOverWater(const FVector& WorldCm) const;
+	/** #498: the lowest a chase view may be (map metres) at a map XY: CameraShoreClearM over the ground (the lake's terrain,
+	 *  below the tide on a coast) and over any dock, pier or bridge deck the lens would be in. -1e9 where there is nothing. */
+	static double ShoreFloorM(const struct FLakeData& Lake, double X, double Y, double LensZ, double TideM);
+	static constexpr double CameraShoreClearM = 1.0;
 	/** Where the player's view is (the chase or cockpit camera, lifted as CalcCamera lifts it): photo mode starts here. */
 	FVector ViewLocation() const;
 	/** The chase camera's pitch inside [MinDeg, MaxDeg] and under MaxChasePitchDeg for its arm now. */
@@ -660,6 +664,8 @@ private:
 	float CameraYaw = 0.f;
 	float CameraPitch = -14.f;
 	float CameraDistance = 1600.f;
+	/** #498: the chase view's lift over the shore and docks (cm), eased toward ShoreFloorM so it doesn't pop. */
+	float CameraShoreLiftCm = 0.f;
 	float VisualTime = 0.f;
 
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;

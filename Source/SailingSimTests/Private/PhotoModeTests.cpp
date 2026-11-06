@@ -11,6 +11,7 @@
 #include "SailboatPawn.h"
 #include "SailingBindings.h"
 #include "SailingGameMode.h"
+#include "LakeData.h"
 #include "SailingSettings.h"
 #include "PhotoSettings.h"
 #include "SailingFrame.h"
@@ -314,6 +315,67 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 	return true;
 }
 
+// #498: zoomed far out near the shore, the chase camera went inside the shore rocks and the docks: its only floor was the
+// water. ASailboatPawn::ShoreFloorM is the floor CalcCamera eases the chase view onto, on Ray Hubbard's own data: over
+// land the ground plus CameraShoreClearM, in or beside a dock its top, nothing new over open water or under a bridge deck.
+// (A bare world's game mode does not run InitGame, so the lake is loaded here, as the game mode loads it.)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCameraOffShoreTest, "SailingSim.Smoke.CameraOffShore", PhotoFlags)
+bool FSailingCameraOffShoreTest::RunTest(const FString&)
+{
+	static FLakeData Lake;
+	if (!Lake.IsLoaded() && !TestTrue(TEXT("Ray Hubbard loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	if (!TestTrue(TEXT("A launch spot"), Lake.LaunchSpots.Num() > 1)) return false;
+	const double Clear = ASailboatPawn::CameraShoreClearM;
+	// Land: march out from the home slip until the ground is 2 m up (the club's shore).
+	const FLaunchSpot& Home = Lake.LaunchSpots[0];
+	bool bLand = false;
+	for (int32 R = 10; R <= 600 && !bLand; R += 10)
+	{
+		for (int32 A = 0; A < 360 && !bLand; A += 15)
+		{
+			const double X = Home.X + R * FMath::Cos(FMath::DegreesToRadians(double(A))), Y = Home.Y + R * FMath::Sin(FMath::DegreesToRadians(double(A)));
+			const double Ground = Lake.Terrain.HeightAt(X, Y);
+			if (Ground < 2.0 || Ground > 100.0) continue;
+			bLand = true;
+			const double Floor = ASailboatPawn::ShoreFloorM(Lake, X, Y, 0.5, 0.0);
+			TestTrue(FString::Printf(TEXT("Over land (%.0f m out, ground %.2f m): the floor is the ground plus the clearance (%.2f m)"), double(R), Ground, Floor),
+				Floor >= Ground + Clear - 1e-6);
+		}
+	}
+	TestTrue(TEXT("Land near the home slip"), bLand);
+	// A dock: the middle of a low obstacle segment (deck under 3 m), the lens at its height.
+	const Sailing::FObstacleSegment* Dock = nullptr;
+	const Sailing::FObstacleSegment* Bridge = nullptr;
+	for (const Sailing::FObstacleSegment& S : Lake.Obstacles)
+	{
+		if (!Dock && S.Top > -0.5 && S.Top < 3.0 && S.Bottom < 0.5) Dock = &S;
+		if (!Bridge && S.Bottom > 4.0) Bridge = &S;
+	}
+	if (TestNotNull(TEXT("A dock among the obstacles"), Dock))
+	{
+		const double X = 0.5 * (Dock->AX + Dock->BX), Y = 0.5 * (Dock->AY + Dock->BY);
+		const double Floor = ASailboatPawn::ShoreFloorM(Lake, X, Y, Dock->Top - 0.2, 0.0);
+		TestTrue(FString::Printf(TEXT("In a dock (top %.2f m): over its top (%.2f m)"), Dock->Top, Floor), Floor >= Dock->Top + Clear - 1e-6);
+	}
+	if (Bridge)
+	{
+		// Well under a bridge deck: the deck sets no floor (the water's, or the bed's, is all).
+		const double X = 0.5 * (Bridge->AX + Bridge->BX), Y = 0.5 * (Bridge->AY + Bridge->BY);
+		const double Lens = Bridge->Bottom - Clear - 1.0;
+		const double Floor = ASailboatPawn::ShoreFloorM(Lake, X, Y, Lens, 0.0);
+		TestTrue(FString::Printf(TEXT("Under a bridge deck (bottom %.2f m, lens %.2f m): no deck floor (%.2f m)"), Bridge->Bottom, Lens, Floor), Floor < Bridge->Bottom);
+	}
+	// Open water: the open-water launch spot's bed is well under the water, so no floor over it.
+	const FLaunchSpot& Open = Lake.LaunchSpots[1];
+	const double OpenFloor = ASailboatPawn::ShoreFloorM(Lake, Open.X, Open.Y, 3.0, 0.0);
+	TestTrue(FString::Printf(TEXT("Open water: the floor (%.2f m) is under the water"), OpenFloor), OpenFloor < 0.0);
+	if (bLand)
+	{
+		const double X = Home.X, Y = Home.Y;
+		TestEqual(TEXT("Off the grid (the ground unknown): no floor"), ASailboatPawn::ShoreFloorM(Lake, X + 1e6, Y, 0.0, 1.0), -1e9);
+	}
+	return true;
+}
 // Rule 9: the hold is the game mode's one switch. Held, the world clock stops (the boats, traffic, weather and water
 // run on it); let go, it runs on from where it stood.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPhotoWorldHeldTest, "SailingSim.Smoke.PhotoWorldHeld", PhotoFlags)

@@ -1913,16 +1913,55 @@ FVector ASailboatPawn::LiftedOverWater(const FVector& WorldCm) const
 	return Map.Z < FloorM ? WorldCm + FVector(0.f, 0.f, float((FloorM - Map.Z) * 100.0)) : WorldCm;
 }
 
+double ASailboatPawn::ShoreFloorM(const FLakeData& Lake, double X, double Y, double LensZ, double TideM)
+{
+	double Floor = -1e9;
+	if (Lake.Terrain.IsValid())
+	{
+		// Heights are above the pool (the lake) or chart datum (a coast, where the water stands at the tide). Off the map (or a
+		// streamed tile not resident) FLakeTerrain reads exactly 50 m, its "land" for the boat: there the ground is unknown, so
+		// it sets no floor (a view out there would otherwise jump 50 m up).
+		const double Ground = Lake.Terrain.HeightAt(X, Y);
+		if (Ground != 50.0) Floor = Ground - TideM + CameraShoreClearM;
+	}
+	// Docks, piers and bridge decks (the boat's obstacles: segments with a radius, Bottom..Top above the water): a lens in or
+	// just around one goes over its top. A lens well under a bridge deck stays under it.
+	for (const Sailing::FObstacleSegment& S : Lake.Obstacles)
+	{
+		if (LensZ < S.Bottom - CameraShoreClearM || LensZ > S.Top + CameraShoreClearM) continue;
+		const double DX = S.BX - S.AX, DY = S.BY - S.AY;
+		const double L2 = DX * DX + DY * DY;
+		const double T = L2 > 1e-9 ? FMath::Clamp(((X - S.AX) * DX + (Y - S.AY) * DY) / L2, 0.0, 1.0) : 0.0;
+		const double PX = S.AX + T * DX - X, PY = S.AY + T * DY - Y;
+		if (PX * PX + PY * PY <= FMath::Square(S.Radius + CameraShoreClearM)) Floor = FMath::Max(Floor, S.Top + CameraShoreClearM);
+	}
+	return Floor;
+}
+
 FVector ASailboatPawn::ViewLocation() const
 {
-	return IsCaptureMode() ? Camera->GetComponentLocation() : LiftedOverWater(Camera->GetComponentLocation());
+	if (IsCaptureMode()) return Camera->GetComponentLocation();
+	return LiftedOverWater(Camera->GetComponentLocation() + FVector(0.f, 0.f, bCockpit ? 0.f : CameraShoreLiftCm));
 }
 
 void ASailboatPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 {
 	Super::CalcCamera(DeltaTime, OutResult);
 	// Feedback #5: the chase and cockpit views stay over the water (the capture modes place their own camera).
-	if (!IsCaptureMode()) OutResult.Location = LiftedOverWater(OutResult.Location);
+	if (IsCaptureMode()) return;
+	// #498: zoomed out near the shore, the chase view goes over the ground and the docks instead of into them, eased (up in
+	// about a fifth of a second, down over about a second) so a rock passing under it doesn't pop it. The cockpit view and
+	// open water are untouched (no floor there).
+	float TargetCm = 0.f;
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	if (!bCockpit && GM && GM->GetLake().IsLoaded())
+	{
+		const FVector Map = SailingFrame::ToMapCm(GetWorld(), OutResult.Location) / 100.0;
+		const double Floor = ShoreFloorM(GM->GetLake(), Map.X, Map.Y, Map.Z, GM->GetTideHeight());
+		if (Floor > Map.Z) TargetCm = float((Floor - Map.Z) * 100.0);
+	}
+	CameraShoreLiftCm = bCockpit || DeltaTime <= 0.f ? TargetCm : FMath::FInterpTo(CameraShoreLiftCm, TargetCm, DeltaTime, TargetCm > CameraShoreLiftCm ? 10.f : 2.f);
+	OutResult.Location = LiftedOverWater(OutResult.Location + FVector(0.f, 0.f, CameraShoreLiftCm));
 }
 
 float ASailboatPawn::MaxChasePitchDeg(float SocketUpCm, float ArmCm, float ClearCm)
