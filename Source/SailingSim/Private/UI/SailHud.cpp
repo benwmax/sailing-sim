@@ -601,7 +601,8 @@ void SSailHud::Refresh()
 	DepthUnitText = FText::FromString(Units->DepthUnit());
 	DepthSub = FText::FromString(FString::Printf(TEXT("Keel %.1f · alarm %.1f"), Units->DepthIn(Cfg.Draft), Units->DepthIn(AlarmM)));
 	bShallow = DepthM < AlarmM;
-	PointText = FText::FromString(FString::Printf(TEXT("%s · %s"), *SailingPointOfSail(Twa, T.bInIrons), Twa >= 0.0 ? TEXT("starboard") : TEXT("port")));
+	PointText = FText::FromString(P->IsTiedUp() ? FString(TEXT("Tied up"))   // feedback #488: not "In irons" at the dock
+		: FString::Printf(TEXT("%s · %s"), *SailingPointOfSail(Twa, T.bInIrons), Twa >= 0.0 ? TEXT("starboard") : TEXT("port")));
 	// The tip card: the coach's most pressing tip, kept at least 6 s unless something worse comes up.
 	const USailingSettings* S = USailingSettings::Get();
 	const bool bTipsOn = S->bLearningMode && (!Session || !Session->bHasActive || Session->Active.bLearningTips);

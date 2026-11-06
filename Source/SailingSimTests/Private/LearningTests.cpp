@@ -2,6 +2,8 @@
 #include "BoatModel.h"
 #include "Drills.h"
 #include "Learning.h"
+#include "EasyAssists.h"
+#include "SailingHUD.h"
 #include "Internationalization/Regex.h"
 
 using namespace Sailing;
@@ -273,5 +275,65 @@ bool FSailingLearningEventsTest::RunTest(const FString& Parameters)
 		if (bDrillTipExists) TestTrue(TEXT("The drill's own tip wins"), Tip->Drills.Contains(C.Drill));
 		TestFalse(TEXT("Keys resolved in the shown text"), Coach.CurrentText().Contains(TEXT("{key:")));
 	}
+	return true;
+}
+
+/**
+ * feedback #488: tied up at the dock (Leave the dock's first steps) the coach shows no trim, irons or heel tips, from
+ * the HUD's tip list or the learning events; off the dock the same boat gets them.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTipsTiedUpTest, "SailingSim.Drills.TipsTiedUp", LearningFlags)
+bool FSailingTipsTiedUpTest::RunTest(const FString& Parameters)
+{
+	const FEasyAssists Easy = FEasyAssists::For(FBoatConfig(), false);
+	FBoatControls C;
+	FBoatTelemetry T;
+	T.NumJibStrips = T.NumMainStrips = 4;
+	for (int32 I = 0; I < 4; ++I) T.JibStrips[I].Flow = T.MainStrips[I].Flow = ESailFlow::Luffing;
+	auto Tips = [&](bool bTied)
+	{
+		TArray<TPair<FString, int32>> Out;
+		SailingCollectBoatTips(T, 1.0, C, Easy, false, bTied, Out);
+		return Out;
+	};
+	auto Has = [](const TArray<TPair<FString, int32>>& Out, const TCHAR* S) { return Out.ContainsByPredicate([S](const TPair<FString, int32>& P) { return P.Key.Contains(S); }); };
+
+	// Broad reach with the sails luffing (the J/22 in her slip).
+	T.TrueWindAngle = FMath::DegreesToRadians(-120.0);
+	TestTrue(TEXT("Under way: jib luffing tip"), Has(Tips(false), TEXT("Jib is luffing")));
+	TestEqual(TEXT("Tied up: only the first line"), Tips(true).Num(), 1);
+	TestFalse(TEXT("Tied up: no jib tip"), Has(Tips(true), TEXT("Jib is")));
+	// Head to wind and stopped (the Sunfish on her dock).
+	T.TrueWindAngle = FMath::DegreesToRadians(5.0);
+	T.bInIrons = true;
+	TestTrue(TEXT("Under way: in irons tip"), Has(Tips(false), TEXT("Stuck head to wind")));
+	TestEqual(TEXT("Tied up head to wind: only the first line"), Tips(true).Num(), 1);
+	TestFalse(TEXT("Tied up: not in irons"), Has(Tips(true), TEXT("irons")));
+
+	// The learning events: none of the sailing ones fire while tied up, and they do once she is off.
+	auto Fired = [](bool bTied)
+	{
+		FLearningEvents Events;
+		FLearningFrame F;
+		F.TwsKnots = 10.0;
+		F.bTiedUp = bTied;
+		TSet<FString> Out;
+		for (double S = 0.0; S < 8.0; S += 0.05)
+		{
+			F.Time = S;
+			F.TwaDeg = S < 4.0 ? -120.0 : 5.0;
+			F.bInIrons = S >= 4.0;
+			F.JibLuff = 4;
+			TArray<FString> Ids;
+			Events.Update(F, Ids);
+			Out.Append(Ids);
+		}
+		return Out;
+	};
+	const TSet<FString> Tied = Fired(true), Free = Fired(false);
+	TestTrue(TEXT("Events under way: jib.luffing"), Free.Contains(TEXT("jib.luffing")));
+	TestTrue(TEXT("Events under way: irons"), Free.Contains(TEXT("irons")));
+	TestFalse(TEXT("Events tied up: no jib.luffing"), Tied.Contains(TEXT("jib.luffing")));
+	TestFalse(TEXT("Events tied up: no irons"), Tied.Contains(TEXT("irons")));
 	return true;
 }
