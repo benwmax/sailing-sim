@@ -834,6 +834,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		];
 		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
 		if (!First.IsValid() && bEnabled) First = B;
+		return B;
 	};
 	const SailCatalog::FWorld& LastWorld = SailCatalog::World(Save->Last.World);
 	if (Save->bHasLast)
@@ -855,7 +856,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 			if (!Career.HasCertificate(T.CertificateId)) break;
 		}
 		if (SailCareer::IsFreeSail()) Sub = TEXT("Medals count in Career mode");
-		Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
+		TSharedRef<SSailButton> CareerItem = Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
+		// Slice audit finding 25 (Bean, Nov 6): a returning Career player (any lesson, checkride or certificate in the save)
+		// lands on Career, not Sail; Continue, when there is a last session, stays first. Free Sail and a new save keep Sail.
+		const FSailSave::FProgress& Saved = SailSaveStore::Progress();
+		const bool bReturning = Saved.Lessons.Num() > 0 || Saved.Checkrides.Num() > 0 || Saved.Certificates.Num() > 0;
+		if (bReturning && !Save->bHasLast && !SailCareer::IsFreeSail()) First = CareerItem;
 	}
 	// #402: the separate "ASA 101 drills" item is gone: Career's lessons are the same six drills (the Mode screen's Drills
 	// card still sails any of them freely).
