@@ -441,8 +441,9 @@ namespace SailCatalog
 			const FString Trimmed = Line.TrimStart();
 			if (Trimmed.StartsWith(TEXT("<!--")))
 			{
-				if (Trimmed.StartsWith(TEXT("<!-- game:skip"))) bSkip = true;
-				else if (Trimmed.StartsWith(TEXT("<!-- game:end"))) bSkip = false;
+				const FString Marker = Trimmed.Mid(4).TrimStart();   // any spacing after <!--
+				if (Marker.StartsWith(TEXT("game:skip"))) bSkip = true;
+				else if (Marker.StartsWith(TEXT("game:end"))) bSkip = false;
 				bOpen = false;
 				continue;   // comments are never shown
 			}

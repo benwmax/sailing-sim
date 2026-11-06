@@ -106,9 +106,10 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 
 ## Sound and map credits
 
-- The game also credits "Larus atricilla" (Tony Phillips, CC BY 3.0) and the two public-domain Commons recordings on
-  Settings > Sound, and names Overture Maps Foundation, Esri Community Maps contributors and Microsoft's Global ML
-  Building Footprints beside OpenStreetMap in the in-game map credit.
+- Sounds: "Larus atricilla" by Tony Phillips (CC BY 3.0) and two public-domain recordings from Wikimedia Commons,
+  also listed under Settings > Sound.
+- Map: Overture Maps Foundation, Esri Community Maps contributors and Microsoft's Global ML Building Footprints,
+  beside OpenStreetMap.
 - Boat model photo match: the J/22 broadside is [J-22 sailboat Jay2PLay on trailer](https://commons.wikimedia.org/wiki/File:J-22_sailboat_Jay2PLay_on_trailer.jpg)
   by Thomas Gutenstein, CC BY-SA 3.0 (credited as a courtesy; the photo is not copied).
 
