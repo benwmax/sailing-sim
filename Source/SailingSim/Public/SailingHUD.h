@@ -6,9 +6,14 @@
 
 class ASailboatPawn;
 enum class ESailScreen : uint8;
+namespace Sailing { struct FBoatTelemetry; struct FBoatControls; struct FEasyAssists; }
 
 /** Graphics G4: the coach's trim and safety tips (severity 0 note, 1 good, 2 caution, 3 fault). */
 SAILINGSIM_API void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<TPair<FString, int32>>& Tips);
+/** The boat's own tips (no weather), for the tests. Tied up, there is only the first line: no trim, irons or heel
+ *  tips while the lines hold her (feedback #488). */
+SAILINGSIM_API void SailingCollectBoatTips(const Sailing::FBoatTelemetry& T, double WindwardSide, const Sailing::FBoatControls& C,
+	const Sailing::FEasyAssists& Easy, bool bEasyRecovering, bool bTiedUp, TArray<TPair<FString, int32>>& Tips);
 SAILINGSIM_API FString SailingPointOfSail(double TwaDeg, bool bInIrons);
 
 /**

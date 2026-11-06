@@ -1368,17 +1368,45 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 {
 	using namespace SailingHUDLocal;
 	const FBoatModel& Model = Boat.GetBoatModel();
-	const FBoatTelemetry& T = Model.GetTelemetry();
-	const FBoatControls& C = Boat.GetControls();
-	const double TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
-	const double HeelLeeward = FMath::RadiansToDegrees(T.Heel) * Model.GetState().WindwardSide;
+	SailingCollectBoatTips(Model.GetTelemetry(), Model.GetState().WindwardSide, Boat.GetControls(), Boat.GetEasyAssists(),
+		Boat.IsEasyRecovering(), Boat.IsTiedUp(), Tips);
+	if (const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr)
+	{
+		const FWeatherState& W = GM->GetWeatherState();
+		if (W.bSquall)
+		{
+			// A squall line in a gale (the mistral's): no thunderstorm, no lightning.
+			if (W.Storm == EStormPhase::Building)
+				Tips.Add({ TEXT("Squall coming: a line of heavier rain and a harder gust behind it. Watch for the dark water upwind and be ready to depower."), 3 });
+			else if (W.Storm == EStormPhase::GustFront)
+				Tips.Add({ TEXT("Squall: depower (ease sheets, traveller down) and keep the bow off the wind until it passes."), 3 });
+		}
+		else if (W.Storm == EStormPhase::Building)
+			Tips.Add({ TEXT("Thunderstorm building to the west-northwest: watch for the dark line of the gust front on the water and reef or head in."), 3 });
+		else if (W.Storm == EStormPhase::GustFront || W.Storm == EStormPhase::Rain)
+			Tips.Add({ TEXT("Storm: depower (ease sheets, hike), keep the bow off the wind, and stay clear of the mast in lightning."), 3 });
+	}
+}
 
+void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const FBoatControls& C, const FEasyAssists& Easy,
+	bool bEasyRecovering, bool bTiedUp, TArray<TPair<FString, int32>>& Tips)
+{
+	using namespace SailingHUDLocal;
+	const double TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
+	const double HeelLeeward = FMath::RadiansToDegrees(T.Heel) * WindwardSide;
+
+	// feedback #488: at the dock the sails can't draw and she can't be in irons; the drill panel says what to do.
+	if (bTiedUp)
+	{
+		Tips.Add({ TEXT("Tied up"), 0 });
+		return;
+	}
 	const FString Pos = PointOfSail(TwaDeg, T.bInIrons);
 	Tips.Add({ FString::Printf(TEXT("%s  (%s tack)"), *Pos, TwaDeg >= 0.0 ? TEXT("starboard") : TEXT("port")), 0 });
 
 	// The no-go cue is the sim's (EasyAssists.h): Easy draws it wider and warns before the bow gets there.
-	const ENoGoCue Cue = NoGoCueFor(T, Boat.GetEasyAssists());
-	if (Boat.IsEasyRecovering())
+	const ENoGoCue Cue = NoGoCueFor(T, Easy);
+	if (bEasyRecovering)
 	{
 		Tips.Add({ TEXT("In irons: your crew is backing the jib and steering the bow off. Watch how: next time you can do it yourself."), 2 });
 	}
@@ -1427,22 +1455,6 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 		Tips.Add({ TEXT("Building breeze: get the crew hiking (F)."), 0 });
 	if (T.HelmForce > 40.0)
 		Tips.Add({ TEXT("Heavy weather helm: the boat wants to round up. Ease the main to balance her."), 2 });
-	if (const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr)
-	{
-		const FWeatherState& W = GM->GetWeatherState();
-		if (W.bSquall)
-		{
-			// A squall line in a gale (the mistral's): no thunderstorm, no lightning.
-			if (W.Storm == EStormPhase::Building)
-				Tips.Add({ TEXT("Squall coming: a line of heavier rain and a harder gust behind it. Watch for the dark water upwind and be ready to depower."), 3 });
-			else if (W.Storm == EStormPhase::GustFront)
-				Tips.Add({ TEXT("Squall: depower (ease sheets, traveller down) and keep the bow off the wind until it passes."), 3 });
-		}
-		else if (W.Storm == EStormPhase::Building)
-			Tips.Add({ TEXT("Thunderstorm building to the west-northwest: watch for the dark line of the gust front on the water and reef or head in."), 3 });
-		else if (W.Storm == EStormPhase::GustFront || W.Storm == EStormPhase::Rain)
-			Tips.Add({ TEXT("Storm: depower (ease sheets, hike), keep the bow off the wind, and stay clear of the mast in lightning."), 3 });
-	}
 	if (FMath::Abs(TwaDeg) > 160.0 && !C.bWingOnWing)
 		Tips.Add({ TEXT("Dead downwind: try wing-on-wing (G), jib out on the opposite side. Watch for an accidental gybe."), 0 });
 	if (FMath::Abs(TwaDeg) > 170.0)
