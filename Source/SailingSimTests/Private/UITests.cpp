@@ -144,12 +144,12 @@ bool FSailingUICreditsTest::RunTest(const FString&)
 {
 	FString Markdown;
 	if (!TestTrue(TEXT("CREDITS.md loads"), FFileHelper::LoadFileToString(Markdown, *SailCatalog::CreditsPath()))) return false;
-	TArray<FString> Lines, Headings;
-	Markdown.ParseIntoArrayLines(Lines);
-	for (const FString& L : Lines) if (L.StartsWith(TEXT("#"))) Headings.Add(L.Replace(TEXT("#"), TEXT("")).TrimStartAndEnd());
-	TestTrue(TEXT("CREDITS.md has its sections"), Headings.Num() >= 4);
-
 	const TArray<SailCatalog::FCreditLine> Credits = SailCatalog::Credits();
+	TArray<FString> Headings;
+	for (const SailCatalog::FCreditLine& L : Credits)
+		if (L.Kind == SailCatalog::ECreditKind::Heading1 || L.Kind == SailCatalog::ECreditKind::Heading2 || L.Kind == SailCatalog::ECreditKind::Heading3)
+			Headings.Add(L.Text);
+	TestTrue(TEXT("CREDITS.md has its sections"), Headings.Num() >= 4);
 	TestTrue(TEXT("The Unreal notice comes first"), Credits.Num() > 1 && Credits[0].Kind == SailCatalog::ECreditKind::Notice
 		&& Credits[0].Text.Contains(TEXT("Made with Unreal Engine")) && Credits[0].Text.Contains(TEXT("trademark of Epic Games")));
 	bool bLarus = false, bMarkdown = false;
@@ -160,6 +160,15 @@ bool FSailingUICreditsTest::RunTest(const FString&)
 	}
 	TestTrue(TEXT("Credits Larus atricilla (CC BY 3.0)"), bLarus);
 	TestFalse(TEXT("No Markdown marks left"), bMarkdown);
+	// feedback #487: the screen is for players, so no repo paths, phase or round notes, names of the team or the
+	// repo-only photo list (CREDITS.md keeps those between <!-- game:skip --> and <!-- game:end -->).
+	for (const SailCatalog::FCreditLine& L : Credits)
+		for (const TCHAR* Dev : { TEXT("docs/"), TEXT("/Users"), TEXT("phase"), TEXT("Bean"), TEXT("Graphics G"), TEXT("/Game/"),
+			TEXT("Source/"), TEXT("scripts/"), TEXT("Inputs/"), TEXT("Tools/"), TEXT("placeholder"), TEXT("the repo"), TEXT("<!--") })
+			if (L.Text.Contains(Dev)) AddError(FString::Printf(TEXT("Credits show developer text \"%s\": %s"), Dev, *L.Text.Left(120)));
+	const TArray<SailCatalog::FCreditLine> Skipped = SailCatalog::ParseCredits(TEXT("## A\nShown.\n<!-- game:skip -->\n## B\nHidden.\n<!-- game:end -->\nAfter."));
+	TestEqual(TEXT("game:skip drops its block"), Skipped.Num(), 4);
+	if (Skipped.Num() == 4) TestEqual(TEXT("game:end resumes"), Skipped[3].Text, FString(TEXT("After.")));
 	const TArray<SailCatalog::FCreditLine> Sample = SailCatalog::ParseCredits(TEXT("## A\n- [OSM](https://osm.org/c) and\n  `x` **y**\n\nPara [P](https://commons.wikimedia.org/wiki/File:P.jpg)."));
 	TestEqual(TEXT("Parsed lines"), Sample.Num(), 4);
 	if (Sample.Num() == 4)
