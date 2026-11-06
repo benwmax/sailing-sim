@@ -370,13 +370,16 @@ bool FSailingObstacleTest::RunTest(const FString& Parameters)
 	// Issue #503: a 5 m deck is a slab from 4 to 8 m, below the masthead; the mast itself must meet it.
 	const auto RailBridge = RunInto(4.0, 8.0, 8.0);
 	TestTrue(TEXT("A 5 m bridge stops the mast below its head"), RailBridge.Value && RailBridge.Key < 55.0);
-	// A light boat's mast has little effective mass, and a hull pitched under the deck lies metres inside its capsule:
-	// the deck must stop her and let her heel, not fire her out (the plain spring spun a Hobie at 30 rad/s).
-	const auto HobieBridge = RunInto(4.0, 8.0, 8.0, EBoatType::Hobie16);
-	const double HobieTilt = MaxTiltDeg;
-	AddInfo(FString::Printf(TEXT("Hobie 16 at the 5 m bridge: stopped at %.1f m, tilted at most %.0f deg"), HobieBridge.Key, HobieTilt));
-	TestTrue(TEXT("A 5 m bridge stops the Hobie 16"), HobieBridge.Value && HobieBridge.Key < 60.0);
-	TestTrue(TEXT("She heels against it without going over"), HobieTilt < 90.0);
+	// A light boat: the push is taken low on the spar, so the deck stops her like a dock instead of letting her slide
+	// under pitched up (a few kilograms at the masthead made the spring soft) or firing her out once her hull lay
+	// inside the deck's capsule (the plain spring spun a Hobie at 30 rad/s).
+	for (const double Deck : { 5.0, 7.0 })
+	{
+		const auto HobieBridge = RunInto(Deck - 1.0, Deck + 3.0, 8.0, EBoatType::Hobie16);
+		AddInfo(FString::Printf(TEXT("Hobie 16 at the %.0f m bridge: stopped at %.1f m, tilted at most %.0f deg"), Deck, HobieBridge.Key, MaxTiltDeg));
+		TestTrue(FString::Printf(TEXT("A %.0f m bridge stops the Hobie 16 at its face"), Deck), HobieBridge.Value && HobieBridge.Key < 55.0);
+		TestTrue(TEXT("She heels against it without going over"), MaxTiltDeg < 60.0);
+	}
 	const auto HighBridge = RunInto(12.0, 16.0, 8.0);
 	AddInfo(FString::Printf(TEXT("Dock: stopped at %.1f m. Low bridge: %.1f m. 5 m bridge: %.1f m. High bridge: sailed on to %.1f m"), Dock.Key, LowBridge.Key, RailBridge.Key, HighBridge.Key));
 	TestTrue(TEXT("A 12 m bridge lets the boat pass under"), !HighBridge.Value && HighBridge.Key > 80.0);

@@ -1085,10 +1085,10 @@ namespace Sailing
 		Telemetry.bAground = false;
 		Telemetry.bCollision = false;
 		Telemetry.DepthUnderKeel = 100.0;
-		// MaxOutSpeed > 0 (the mast against a deck): the spring may give the point at most that much outward speed in a
-		// step, and friction at most takes the slip out. A mast tip has a few kilograms of effective mass (a Hobie's or
-		// an ILCA's a handful), and a hull that pitchpoles under a deck buries the spar metres deep in it: the plain
-		// spring then fires the boat out at tens of metres a second (#504). Capped, she is eased out and stopped.
+		// MaxOutSpeed > 0 (contacts with a bridge deck): the spring may give the point at most that much outward speed
+		// in a step, and friction at most takes the slip out. A hull pitched or capsized under a deck lies metres inside
+		// its capsule, and the plain spring then fires the boat out at tens of metres a second (#504): capped, she is
+		// eased out. Docks and piles keep the plain spring.
 		auto Contact = [&](const Vec3& PointWorld, const Vec3& Normal, double Penetration, double Stiffness, double Damping, double Friction, const Vec3& SurfaceVel = Vec3(), double MaxOutSpeed = 0.0)
 		{
 			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld) - SurfaceVel;
@@ -1117,6 +1117,8 @@ namespace Sailing
 			AddWorldForce(Normal * Fn + Ft, PointWorld);
 		};
 		const double ContactScale = std::max(1.0, Mass / 1052.0); // stiffer contacts for heavier boats, same feel
+		// A contact with a bridge deck may add at most this much outward speed (m/s) to its point in one step.
+		const double kDeckOutSpeed = 3.0;
 		if (Terrain && Terrain->IsValid())
 		{
 			for (const Vec3& B : BottomPoints)
@@ -1157,7 +1159,7 @@ namespace Sailing
 					{
 						// A hull point in a deck's slab is a boat pitched or capsized under the deck, metres inside its
 						// capsule: eased out like the mast, not fired out. Docks and piles (Bottom below the water) as before.
-						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), S.Bottom > 0.0 ? 1.0 : 0.0);
+						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), S.Bottom > 0.0 ? kDeckOutSpeed : 0.0);
 						Telemetry.bCollision = true;
 					}
 				}
@@ -1182,18 +1184,30 @@ namespace Sailing
 					const FObstacleSegment& S = (*Obstacles)[SegmentIndex];
 					const double SlabLo = std::max(S.Bottom, LoZ), SlabHi = std::min(S.Top, HiZ);
 					if (SlabLo > SlabHi) continue;
-					// The point of the spar at the middle of the slab it crosses.
-					const double F = HiZ > LoZ + 1e-6 ? Clamp((0.5 * (SlabLo + SlabHi) - Base.Z) / (Head.Z - Base.Z), 0.0, 1.0) : 0.0;
-					const Vec3 P = Base + (Head - Base) * F;
+					// The spar's point inside the slab nearest the deck: its crossing at the slab's bottom or top, whichever
+					// leans closer (a heeled spar meets the face low or high, not in the middle). A spar lying flat
+					// (HiZ = LoZ) is taken at its foot.
 					const double SX = S.BX - S.AX, SY = S.BY - S.AY;
 					const double Len2 = SX * SX + SY * SY;
-					const double T = Len2 > 1e-9 ? Clamp(((P.X - S.AX) * SX + (P.Y - S.AY) * SY) / Len2, 0.0, 1.0) : 0.0;
-					const double DX = P.X - (S.AX + SX * T), DY = P.Y - (S.AY + SY * T);
-					const double Dist = std::sqrt(DX * DX + DY * DY);
+					Vec3 P; double DX = 0.0, DY = 0.0, Dist = 1e30;
+					for (const double ZAt : { SlabLo, SlabHi })
+					{
+						const double F = HiZ > LoZ + 1e-6 ? Clamp((ZAt - Base.Z) / (Head.Z - Base.Z), 0.0, 1.0) : 0.0;
+						const Vec3 Pz = Base + (Head - Base) * F;
+						const double T = Len2 > 1e-9 ? Clamp(((Pz.X - S.AX) * SX + (Pz.Y - S.AY) * SY) / Len2, 0.0, 1.0) : 0.0;
+						const double Dx = Pz.X - (S.AX + SX * T), Dy = Pz.Y - (S.AY + SY * T);
+						const double D = std::sqrt(Dx * Dx + Dy * Dy);
+						if (D < Dist) { Dist = D; DX = Dx; DY = Dy; P = Pz; }
+					}
 					const double Pen = S.Radius + 0.1 - Dist;
 					if (Pen > 0.0 && Dist > 1e-6)
 					{
-						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), 1.0);
+						// The push is taken low on the spar (within 2 m of the centre of gravity): the rig is rigid here,
+						// so at the masthead the few kilograms behind it would make the spring soft and let the hull slide
+						// on under the deck, pitched up on her transoms, while the real rig would bend or break. Low, the
+						// deck stops the boat as a dock does, with a modest heel.
+						const Vec3 Low(P.X, P.Y, std::min(P.Z, CGWorld.Z + 2.0));
+						Contact(Low, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), kDeckOutSpeed);
 						Telemetry.bCollision = true;
 					}
 				}
