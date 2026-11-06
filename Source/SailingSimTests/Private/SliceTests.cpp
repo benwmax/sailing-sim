@@ -77,8 +77,12 @@ bool FSailingSliceSaveCarryOverTest::RunTest(const FString&)
 	IFileManager::Get().FindFiles(Files, *(FixtureDir() / TEXT("*.json")), true, false);
 	Files.Sort();
 	if (!TestTrue(TEXT("At least one Friday build's save to carry over"), Files.Num() > 0)) return false;
+	// docs/save/README.md: <date>-<branch>-<commit>.json, so a dropped-in save says which build wrote it.
+	const FRegexPattern FixtureName(TEXT("^[0-9]{4}-[0-9]{2}-[0-9]{2}-[A-Za-z0-9._-]+-[0-9a-f]{7,40}\\.json$"));
 	for (const FString& Name : Files)
 	{
+		FRegexMatcher Named(FixtureName, Name);
+		TestTrue(*(Name + TEXT(": named <date>-<branch>-<commit>.json")), Named.FindNext());
 		FString Text;
 		if (!TestTrue(*(Name + TEXT(": reads")), FFileHelper::LoadFileToString(Text, *(FixtureDir() / Name)))) continue;
 		const TSharedPtr<FJsonObject> Raw = Parse(Text);
@@ -90,6 +94,14 @@ bool FSailingSliceSaveCarryOverTest::RunTest(const FString&)
 		FSailSave Again;
 		TestEqual(*(Name + TEXT(": written back, reads again")), int32(FSailSave::FromJson(S.ToJson(), Again)), int32(FSailSave::EResult::Ok));
 		const FJsonObject* P = Child(*Raw, TEXT("progress"));
+		{
+			const FJsonObject* Lessons = P ? Child(*P, TEXT("lessons")) : nullptr;
+			const FJsonObject* Certs = P ? Child(*P, TEXT("certificates")) : nullptr;
+			int32 Version = 0;
+			Raw->TryGetNumberField(TEXT("version"), Version);
+			AddInfo(FString::Printf(TEXT("%s: version %d, %s, %d lesson(s), %d certificate(s)"), *Name, Version,
+				R == FSailSave::EResult::Migrated ? TEXT("migrated") : TEXT("read as is"), Lessons ? Lessons->Values.Num() : 0, Certs ? Certs->Values.Num() : 0));
+		}
 		if (!P) continue;
 		for (const FSailSave* Out : { &S, &Again })
 		{
