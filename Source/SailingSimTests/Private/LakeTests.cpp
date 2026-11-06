@@ -360,8 +360,11 @@ bool FSailingObstacleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("A dock stops the hull"), Dock.Value && Dock.Key < 60.0);
 	const auto LowBridge = RunInto(6.0, 10.0, 8.0);
 	TestTrue(TEXT("A 6 m bridge stops the 9.2 m mast"), LowBridge.Value && LowBridge.Key < 62.0);
+	// Issue #503: a 5 m deck is a slab from 4 to 8 m, below the masthead; the mast itself must meet it.
+	const auto RailBridge = RunInto(4.0, 8.0, 8.0);
+	TestTrue(TEXT("A 5 m bridge stops the mast below its head"), RailBridge.Value && RailBridge.Key < 62.0);
 	const auto HighBridge = RunInto(12.0, 16.0, 8.0);
-	AddInfo(FString::Printf(TEXT("Dock: stopped at %.1f m. Low bridge: %.1f m. High bridge: sailed on to %.1f m"), Dock.Key, LowBridge.Key, HighBridge.Key));
+	AddInfo(FString::Printf(TEXT("Dock: stopped at %.1f m. Low bridge: %.1f m. 5 m bridge: %.1f m. High bridge: sailed on to %.1f m"), Dock.Key, LowBridge.Key, RailBridge.Key, HighBridge.Key));
 	TestTrue(TEXT("A 12 m bridge lets the boat pass under"), !HighBridge.Value && HighBridge.Key > 80.0);
 	return true;
 }

@@ -410,7 +410,14 @@ namespace Sailing
 			OutlinePoints.push_back(Vec3(H.SternX + 0.05, H.CenterY - BT, H.SheerZ - 0.2));
 			OutlinePoints.push_back(Vec3(H.SternX, H.CenterY, H.SheerZ - 0.2));
 		}
-		OutlinePoints.push_back(Vec3(Config.MastX, 0.0, Config.MastheadZ - 0.05));
+		// The mast as a spar, not just its head: a bridge deck is a slab a few metres thick, and a deck lower than the
+		// masthead but with its top below it (a 5 m deck under a 9.2 m mast) must still stop her. Points every metre
+		// from above the boom to the masthead, so any slab thicker than a metre meets one at any heel.
+		if (Config.MastheadZ > 2.0)
+		{
+			for (double Z = 2.0; Z < Config.MastheadZ - 0.55; Z += 1.0) OutlinePoints.push_back(Vec3(Config.MastX, 0.0, Z));
+			OutlinePoints.push_back(Vec3(Config.MastX, 0.0, Config.MastheadZ - 0.05));
+		}
 	}
 
 	std::vector<Vec3> FBoatModel::CleatPoints() const
