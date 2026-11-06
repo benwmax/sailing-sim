@@ -121,6 +121,28 @@ A lesson keeps its best medal, its fastest medal run and its best quiz score. It
 its quiz has passed (`quiz_pass`, two thirds for Day Sailor). A run counts for a lesson when the lesson's tier is open
 and the run's boat is one of the tier's boats (empty: any boat); the tier on the run's world is preferred.
 
+### What went well, what to improve (#403)
+
+After a Career lesson the quiz's debrief adds two lines under the medal (`CareerMedalLines`, kept on the award by
+`RecordRun`; Free Sail has no award, so no lines):
+
+- **What went well:** of the limits gold sets (then silver's, then bronze's), the one the run met with the most to spare:
+  no touches, no rules penalties, the asked-for finish, a gentle touch, then the time by how far inside it was. With no
+  limit met, the job's last objective ("Job done: Get 100 m clear of the marina.").
+- **To improve:** of the next medal's limits, the one the run missed by the most relative to the limit (the one that cost
+  it), with the run's number and the limit ("Time 3:20: Gold needs 3:00 or less."). After gold, a faster time. None when
+  Easy capped the medal: the line about Easy says how to earn more. An unfinished run gets only this, naming the job's
+  last objective.
+
+Both lines come from the lesson's medal rules and job in `career.json`, so a new lesson needs no wording of its own
+(`SailingSim.Career.MedalLines` runs every lesson at each medal). Stills without sailing:
+`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz -SailingStillRun=<outcome>,<seconds>[,<touches>,<penalties>]` grades a
+made-up run, records nothing (the debrief's first line stays the drill's own).
+
+| Silver, 3:20, clean | Bronze, 6:40, two touches, not clean |
+| --- | --- |
+| ![](medal-lines/silver.jpg) | ![](medal-lines/bronze.jpg) |
+
 ## Checkride and certificate
 
 The checkride is ready when every lesson it lists holds at least `min_medal` (silver for Day Sailor). Its written quiz
