@@ -139,10 +139,19 @@ after the week: the first launch skipped, Day Sailor certified with mixed Easy a
 Club Racer's Sunfish lesson open early (#448), Realistic on High, the last session the Sunfish's drill.
 `SailingSim.Slice.SaveCarryOver` loads every one in the build under test, and checks each lesson's medal and quiz, every
 checkride, certificate and scene, the first launch, the hours, and the settings and last session value for value, before
-and after the save is written back. After each Friday build, copy a tester-style save
-from it here (a session sailed on that build: `Saved/SaveGames/profile.json`, the Mac's under
-`~/Library/Containers/com.benwmax.SailingSim/Data/Library/Application Support/Epic/SailingSim/Saved/SaveGames/`, the PC's
-under `%LOCALAPPDATA%/SailingSim/Saved/SaveGames/`). Never edit a fixture once committed: it is what that build wrote.
+and after the save is written back, and logs one line per fixture (its version, read as is or migrated, its lessons and
+certificates). Never edit a fixture once committed: it is what that build wrote.
+
+Adding a Friday build's save (a file drop, no code):
+
+1. Unzip the tester build, play a short session on it (a lesson or two, a quiz) and quit.
+2. Copy the `profile.json` it wrote (the Mac's
+   `~/Library/Containers/com.benwmax.SailingSim/Data/Library/Application Support/Epic/SailingSim/Saved/SaveGames/`, the
+   PC's `%LOCALAPPDATA%/SailingSim/Saved/SaveGames/`; a tester can send theirs from the same place) here as `<date>-<branch>-<commit>.json` (the build's date, branch
+   and short commit, as on the zip). Copy it as it is: a save holds only ids, settings, times and medals, nothing
+   personal, and the test is about exactly what that build wrote.
+3. `scripts/test.sh SailingSim.Slice.SaveCarryOver`: the new file is picked up by name (the test fails on a name that
+   isn't `<date>-<branch>-<commit>.json`).
 
 ## Checking it on the packaged game
 
