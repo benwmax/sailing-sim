@@ -3794,20 +3794,23 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
         jitGrid = csz / CacheShadow.w;
     }
     float jitB = frac(sin(dot(floor(UV * jitGrid) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
-    // pc/clouds-high: on High's 2 x 2 blocks (w 2) the block's jitter is blended toward its neighbours' over the block
-    // (smoothstep between block centres), so the sunlit term no longer steps at the block edges (the faint squares left
-    // after #8) while neighbouring texels still read nearly the same shadow places (the fetches stay coherent: per texel
-    // cost up to 1.2 ms on the Mac's High). Ultra (w 1) and the old fixed grid (w 0, measuring) are unchanged.
+    // pc/clouds-high: on High's 2 x 2 blocks (w 2) each texel's jitter is a linear blend of the four nearest blocks' (by
+    // block centres: at w 2 a texel sits a quarter block from its centre, so it takes 3/4 of its own block and 1/4 of the
+    // next), which reduces the step at the block edges (the faint squares left after #8) to a blend while neighbouring
+    // texels still read nearly the same shadow places (the fetches stay coherent: per texel cost up to 1.2 ms on the Mac's
+    // High). The azimuth wraps (the dome reads the panorama with TA_Wrap), so the north seam blends like any other edge.
+    // Ultra (w 1) and the old fixed grid (w 0, measuring) are unchanged.
     [branch] if (CacheShadow.w > 1.5)
     {
         float2 g = UV * jitGrid - 0.5;
         float2 c = floor(g), f = g - c;
-        f = f * f * (3.0 - 2.0 * f);
         float2 s = CacheShadow.y * float2(7.13, 3.71);
-        float h00 = frac(sin(dot(c + s, float2(12.9898, 78.233))) * 43758.5453);
-        float h10 = frac(sin(dot(c + float2(1.0, 0.0) + s, float2(12.9898, 78.233))) * 43758.5453);
-        float h01 = frac(sin(dot(c + float2(0.0, 1.0) + s, float2(12.9898, 78.233))) * 43758.5453);
-        float h11 = frac(sin(dot(c + float2(1.0, 1.0) + s, float2(12.9898, 78.233))) * 43758.5453);
+        float c0 = c.x - jitGrid.x * floor(c.x / jitGrid.x), c1 = c0 + 1.0;
+        c1 -= c1 >= jitGrid.x ? jitGrid.x : 0.0;
+        float h00 = frac(sin(dot(float2(c0, c.y) + s, float2(12.9898, 78.233))) * 43758.5453);
+        float h10 = frac(sin(dot(float2(c1, c.y) + s, float2(12.9898, 78.233))) * 43758.5453);
+        float h01 = frac(sin(dot(float2(c0, c.y + 1.0) + s, float2(12.9898, 78.233))) * 43758.5453);
+        float h11 = frac(sin(dot(float2(c1, c.y + 1.0) + s, float2(12.9898, 78.233))) * 43758.5453);
         jitB = lerp(lerp(h00, h10, f.x), lerp(h01, h11, f.x), f.y);
     }
     float cosT = dot(dir, SunDir.xyz);
