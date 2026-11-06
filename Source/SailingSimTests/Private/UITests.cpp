@@ -502,10 +502,30 @@ bool FSailingUIChoiceKeepsFocusTest::RunTest(const FString&)
 	return true;
 }
 
+// Bean's call (Nov 6 2026, #497): the boat commands with no controller button stay keyboard-only for the slice, and
+// the Controls screen says so on their rows (it showed a dash). The rest show their button or their fixed stick.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIKeyboardOnlyRowsTest, "SailingSim.UI.KeyboardOnlyRows", UIFlags)
+bool FSailingUIKeyboardOnlyRowsTest::RunTest(const FString&)
+{
+	using namespace SailingBindings;
+	const TArray<FSailingKeyBinding>& Defaults = GetDefault<USailingInputSettings>()->GetDefaults();
+	struct FRow { const TCHAR* Action; bool bNegative; };
+	for (const FRow& R : { FRow{ TEXT("Board"), false }, FRow{ TEXT("Spinnaker"), false }, FRow{ TEXT("Reef"), false }, FRow{ TEXT("Righting"), false },
+		FRow{ TEXT("EngineNeutral"), false }, FRow{ TEXT("ThrottleSplit"), false }, FRow{ TEXT("ThrottleSplit"), true } })
+	{
+		const FKey Button = Find(Defaults, R.Action, R.bNegative, EColumn::Gamepad), Axis = FindPadAxis(Defaults, R.Action, R.bNegative);
+		TestEqual(FString::Printf(TEXT("%s%s reads Keyboard only"), R.Action, R.bNegative ? TEXT(" (-)") : TEXT("")), PadColumnText(Button, Axis), FString(TEXT("Keyboard only")));
+		TestTrue(FString::Printf(TEXT("%s has a key"), R.Action), Find(Defaults, R.Action, R.bNegative, EColumn::Keyboard).IsValid());
+	}
+	TestEqual(TEXT("A button reads its label"), PadColumnText(Find(Defaults, TEXT("DockLines"), false, EColumn::Gamepad), FKey()), PadLabel(EKeys::Gamepad_RightThumbstick));
+	TestEqual(TEXT("A stick reads fixed"), PadColumnText(FKey(), FindPadAxis(Defaults, TEXT("Throttle"), false)), FString(TEXT("Left stick (fixed)")));
+	return true;
+}
+
 // #404, the first hour on a controller: every command the slice's lessons name in their text ({key:Command.direction}
 // in Content/Learning and the first job's script) has a controller button or axis by default, in that direction, and so
 // do the steering and mainsheet the first job asks for without naming them. A pad-only player is never told to press a
-// key the pad doesn't have. (The outboard's throttle and the Sunfish's board have no button yet; no lesson asks for them.)
+// key the pad doesn't have. (The Sunfish's board has no button: keyboard only for the slice, #497; no lesson asks for it.)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadCoversLessonKeysTest, "SailingSim.UI.PadCoversLessonKeys", UIFlags)
 bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 {

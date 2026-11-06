@@ -65,6 +65,13 @@ namespace SailingBindings
 		return Key.IsGamepadKey() ? PadLabel(Key) : Key.GetDisplayName().ToString();
 	}
 
+	FString PadColumnText(const FKey& PadKey, const FKey& PadAxis)
+	{
+		if (PadKey.IsValid()) return PadLabel(PadKey);
+		if (PadAxis.IsValid()) return PadLabel(PadAxis) + TEXT(" (fixed)");
+		return TEXT("Keyboard only");
+	}
+
 	bool IsRowAction(FName Action)
 	{
 		return Action != TEXT("MenuUp") && Action != TEXT("MenuDown") && Action != TEXT("MenuLeft") && Action != TEXT("MenuRight");

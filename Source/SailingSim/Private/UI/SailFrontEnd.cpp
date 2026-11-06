@@ -1910,11 +1910,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 		for (int32 I = 0; I < Keys.Num(); ++I)
 		{
 			const bool bListenKey = ListeningRow == I && !bListeningPad, bListenPad = ListeningRow == I && bListeningPad;
-			// The gamepad column: its button, else the stick or trigger that drives it (fixed, dimmed), else a dash.
+			// The gamepad column: its button, else the stick or trigger that drives it (fixed, dimmed), else "Keyboard only".
 			const ASailboatPawn::FKeyRow& Row = Keys[I];
 			const bool bAxis = !Row.PadKey.IsValid() && Row.PadAxis.IsValid();
-			const FString Pad = bListenPad ? FString(TEXT("Press a button…")) : Row.PadKey.IsValid() ? SailingBindings::PadLabel(Row.PadKey)
-				: bAxis ? SailingBindings::PadLabel(Row.PadAxis) + TEXT(" (fixed)") : FString(TEXT("–"));
+			const FString Pad = bListenPad ? FString(TEXT("Press a button…")) : SailingBindings::PadColumnText(Row.PadKey, Row.PadAxis);
 			TSharedRef<SSailButton> B = SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f))
 				.OnClicked_Lambda([this, I]() { ListenControls(I, false); })
 				.OnFocused_Lambda([this, I]() { FocusedControlRow = I; })
@@ -1952,6 +1951,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 				PanelBox(SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Select a command, then press the new key (Enter or A) or controller button (Tab or Y). A key or button that another command used swaps over, so nothing is left without one."), EType::Body, Muted, true) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Sticks and triggers stay on their axes (steering, the mainsheet, the camera) and can't be rebound. B cancels a listen, so B itself is reached by a swap or the defaults."), EType::Body, Muted, true) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Keyboard only: no controller button by default yet. You can give one a button here (Tab or Y)."), EType::Body, Muted, true) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(ControlsMessage, EType::Body, Accent, true) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Bindings are saved in Input.ini, so the Mac and the PC can differ."), EType::Small, Dim, true) ])
 			]
