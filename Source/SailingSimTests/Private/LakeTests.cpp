@@ -340,12 +340,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingObstacleTest, "SailingSim.Lake.DocksAnd
 bool FSailingObstacleTest::RunTest(const FString& Parameters)
 {
 	const FWindField Wind = WindFrom(10.0, 90.0);
-	auto RunInto = [&](double Bottom, double Top, double Radius)
+	double MaxTiltDeg = 0.0;
+	auto RunInto = [&](double Bottom, double Top, double Radius, EBoatType Type = EBoatType::J22)
 	{
 		std::vector<FObstacleSegment> Obs(1);
 		Obs[0].AX = 60.0; Obs[0].AY = -60.0; Obs[0].BX = 60.0; Obs[0].BY = 60.0;
 		Obs[0].Bottom = Bottom; Obs[0].Top = Top; Obs[0].Radius = Radius;
-		FBoatModel Boat;
+		FBoatModel Boat(FBoatConfig::Make(Type));
+		MaxTiltDeg = 0.0;
 		Boat.SetObstacles(&Obs);
 		Boat.Reset(0.0, 0.0, 0.0, 4.0 * kKnot);
 		FBoatControls C;
@@ -353,7 +355,12 @@ bool FSailingObstacleTest::RunTest(const FString& Parameters)
 		FAutopilot Helm; // steered on a beam reach (with the tiller let go she would round up)
 		Helm.TargetTWADeg = 90.0;
 		bool bHit = false;
-		SailFor(Boat, C, Wind, 40.0, &Trim, [&] { C.Tiller = Helm.Update(Boat); bHit |= Boat.GetTelemetry().bCollision; });
+		SailFor(Boat, C, Wind, 40.0, &Trim, [&]
+		{
+			C.Tiller = Helm.Update(Boat);
+			bHit |= Boat.GetTelemetry().bCollision;
+			MaxTiltDeg = FMath::Max(MaxTiltDeg, FMath::RadiansToDegrees(Boat.GetState().Orientation.Tilt()));
+		});
 		return TPair<double, bool>(Boat.OriginPosition().X, bHit);
 	};
 	const auto Dock = RunInto(-2.0, 0.8, 0.25);
@@ -362,7 +369,14 @@ bool FSailingObstacleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("A 6 m bridge stops the 9.2 m mast"), LowBridge.Value && LowBridge.Key < 62.0);
 	// Issue #503: a 5 m deck is a slab from 4 to 8 m, below the masthead; the mast itself must meet it.
 	const auto RailBridge = RunInto(4.0, 8.0, 8.0);
-	TestTrue(TEXT("A 5 m bridge stops the mast below its head"), RailBridge.Value && RailBridge.Key < 62.0);
+	TestTrue(TEXT("A 5 m bridge stops the mast below its head"), RailBridge.Value && RailBridge.Key < 55.0);
+	// A light boat's mast has little effective mass, and a hull pitched under the deck lies metres inside its capsule:
+	// the deck must stop her and let her heel, not fire her out (the plain spring spun a Hobie at 30 rad/s).
+	const auto HobieBridge = RunInto(4.0, 8.0, 8.0, EBoatType::Hobie16);
+	const double HobieTilt = MaxTiltDeg;
+	AddInfo(FString::Printf(TEXT("Hobie 16 at the 5 m bridge: stopped at %.1f m, tilted at most %.0f deg"), HobieBridge.Key, HobieTilt));
+	TestTrue(TEXT("A 5 m bridge stops the Hobie 16"), HobieBridge.Value && HobieBridge.Key < 60.0);
+	TestTrue(TEXT("She heels against it without going over"), HobieTilt < 90.0);
 	const auto HighBridge = RunInto(12.0, 16.0, 8.0);
 	AddInfo(FString::Printf(TEXT("Dock: stopped at %.1f m. Low bridge: %.1f m. 5 m bridge: %.1f m. High bridge: sailed on to %.1f m"), Dock.Key, LowBridge.Key, RailBridge.Key, HighBridge.Key));
 	TestTrue(TEXT("A 12 m bridge lets the boat pass under"), !HighBridge.Value && HighBridge.Key > 80.0);
