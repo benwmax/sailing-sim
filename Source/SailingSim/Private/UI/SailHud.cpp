@@ -632,6 +632,7 @@ void SSailHud::Refresh()
 		TipTitle = FText::FromString(Dot > 0 ? Best->Key.Left(Dot) : Tips[0].Key);
 		TipBody = FText::FromString(Dot > 0 ? Best->Key.Mid(Dot + 1).TrimStart() : Best->Key);
 	}
+	if (P->IsTiedUp() && !Learned) LastTip.Reset();   // feedback #488: no sailing tip left on the card at the dock
 	bTip = bTipsOn && !LastTip.IsEmpty();
 	// Toasts: the boat's status line, the states that matter (aground, capsized, contact).
 	FString Toast = P->GetStatusMessage();
