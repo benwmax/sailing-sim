@@ -434,10 +434,20 @@ namespace SailCatalog
 		TArray<FString> Lines;
 		Markdown.ParseIntoArrayLines(Lines, false);
 		bool bOpen = false;   // the last line is a paragraph or bullet that the next indented or plain line continues
+		bool bSkip = false;   // inside <!-- game:skip --> ... <!-- game:end -->: the repo's own notes, not for players
 		for (const FString& Raw : Lines)
 		{
 			const FString Line = Raw.TrimEnd();
 			const FString Trimmed = Line.TrimStart();
+			if (Trimmed.StartsWith(TEXT("<!--")))
+			{
+				const FString Marker = Trimmed.Mid(4).TrimStart();   // any spacing after <!--
+				if (Marker.StartsWith(TEXT("game:skip"))) bSkip = true;
+				else if (Marker.StartsWith(TEXT("game:end"))) bSkip = false;
+				bOpen = false;
+				continue;   // comments are never shown
+			}
+			if (bSkip) continue;
 			if (Trimmed.IsEmpty()) { bOpen = false; continue; }
 			if (Trimmed.StartsWith(TEXT("#")))
 			{

@@ -1836,7 +1836,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([S](int32 I) { S->DepthUnits = I; S->Save(); }));
 		Add(SNew(SSailChoice).Label(TEXT("Headings")).Options({ TEXT("Magnetic"), TEXT("True") }).Index_Lambda([S]() { return S->bHeadingsTrue ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bHeadingsTrue = I == 1; S->Save(); })
-			.Note(TEXT("Galveston applies 1°28′ E. The lake's bake has no variation, so it reads true there.")));
+			.Note(TEXT("Galveston applies 1°28′ E. Lake Ray Hubbard's headings are always true.")));
 		Section(TEXT("Sessions"));
 		Add(SNew(SSailChoice).Label(TEXT("Start when loaded")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bAutoStart ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bAutoStart = I == 1; S->Save(); }));
@@ -1999,7 +1999,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCredits()
 			break;
 		}
 	}
-	Rows->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SailUI::Text(TEXT("From CREDITS.md, shipped with the game."), EType::Small, Dim, true) ];
+	Rows->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SailUI::Text(TEXT("The sources and licences of the game's data, art and sound."), EType::Small, Dim, true) ];
 	CreditsScroll = SNew(SScrollBox).ScrollBarAlwaysVisible(true) + SScrollBox::Slot().Padding(0.f, 0.f, 18.f, 0.f)[ Rows ];
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Credits"), Title, 0) ]

@@ -18,6 +18,7 @@
 #include "Dom/JsonObject.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/FileHelper.h"
+#include "Internationalization/Regex.h"
 #include "HAL/FileManager.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Serialization/JsonReader.h"
@@ -144,12 +145,12 @@ bool FSailingUICreditsTest::RunTest(const FString&)
 {
 	FString Markdown;
 	if (!TestTrue(TEXT("CREDITS.md loads"), FFileHelper::LoadFileToString(Markdown, *SailCatalog::CreditsPath()))) return false;
-	TArray<FString> Lines, Headings;
-	Markdown.ParseIntoArrayLines(Lines);
-	for (const FString& L : Lines) if (L.StartsWith(TEXT("#"))) Headings.Add(L.Replace(TEXT("#"), TEXT("")).TrimStartAndEnd());
-	TestTrue(TEXT("CREDITS.md has its sections"), Headings.Num() >= 4);
-
 	const TArray<SailCatalog::FCreditLine> Credits = SailCatalog::Credits();
+	TArray<FString> Headings;
+	for (const SailCatalog::FCreditLine& L : Credits)
+		if (L.Kind == SailCatalog::ECreditKind::Heading1 || L.Kind == SailCatalog::ECreditKind::Heading2 || L.Kind == SailCatalog::ECreditKind::Heading3)
+			Headings.Add(L.Text);
+	TestTrue(TEXT("CREDITS.md has its sections"), Headings.Num() >= 4);
 	TestTrue(TEXT("The Unreal notice comes first"), Credits.Num() > 1 && Credits[0].Kind == SailCatalog::ECreditKind::Notice
 		&& Credits[0].Text.Contains(TEXT("Made with Unreal Engine")) && Credits[0].Text.Contains(TEXT("trademark of Epic Games")));
 	bool bLarus = false, bMarkdown = false;
@@ -160,6 +161,38 @@ bool FSailingUICreditsTest::RunTest(const FString&)
 	}
 	TestTrue(TEXT("Credits Larus atricilla (CC BY 3.0)"), bLarus);
 	TestFalse(TEXT("No Markdown marks left"), bMarkdown);
+	// feedback #487: the screen is for players, so no repo paths, phase or round notes, names of the team or the
+	// repo-only photo list (CREDITS.md keeps those between <!-- game:skip --> and <!-- game:end -->).
+	// "Phase" only as a phase number (a moon phase is fine); the team's names are matched with their case.
+	const FRegexPattern PhaseNote(TEXT("[Pp]hase[ -]?[0-9]"));
+	for (const SailCatalog::FCreditLine& L : Credits)
+	{
+		for (const TCHAR* Dev : { TEXT("docs/"), TEXT("/Users"), TEXT("Graphics G"), TEXT("/Game/"), TEXT("Source/"), TEXT("scripts/"),
+			TEXT("Inputs/"), TEXT("Tools/"), TEXT("placeholder"), TEXT("the repo"), TEXT("<!--") })
+			if (L.Text.Contains(Dev)) AddError(FString::Printf(TEXT("Credits show developer text \"%s\": %s"), Dev, *L.Text.Left(120)));
+		FRegexMatcher Phase(PhaseNote, L.Text);
+		if (Phase.FindNext() || L.Text.Contains(TEXT("Bean"), ESearchCase::CaseSensitive))
+			AddError(FString::Printf(TEXT("Credits show a phase note or a name: %s"), *L.Text.Left(120)));
+	}
+	// Every skip is closed (an open one hides the rest of the file), and the player's last section still shows.
+	int32 Open = 0;
+	{
+		TArray<FString> Lines;
+		Markdown.ParseIntoArrayLines(Lines);
+		for (const FString& Raw : Lines)
+		{
+			const FString T = Raw.TrimStart();
+			if (!T.StartsWith(TEXT("<!--"))) continue;
+			const FString M = T.Mid(4).TrimStart();
+			if (M.StartsWith(TEXT("game:skip"))) { TestEqual(TEXT("game:skip not nested"), Open, 0); ++Open; }
+			else if (M.StartsWith(TEXT("game:end"))) { TestEqual(TEXT("game:end closes a skip"), Open, 1); Open = 0; }
+		}
+	}
+	TestEqual(TEXT("Every game:skip in CREDITS.md has its game:end"), Open, 0);
+	TestTrue(TEXT("The credits reach their last section"), Headings.Contains(TEXT("Sound and map credits")));
+	const TArray<SailCatalog::FCreditLine> Skipped = SailCatalog::ParseCredits(TEXT("## A\nShown.\n<!--game:skip-->\n## B\nHidden.\n<!--  game:end -->\nAfter."));
+	TestEqual(TEXT("game:skip drops its block (any spacing)"), Skipped.Num(), 4);
+	if (Skipped.Num() == 4) TestEqual(TEXT("game:end resumes"), Skipped[3].Text, FString(TEXT("After.")));
 	const TArray<SailCatalog::FCreditLine> Sample = SailCatalog::ParseCredits(TEXT("## A\n- [OSM](https://osm.org/c) and\n  `x` **y**\n\nPara [P](https://commons.wikimedia.org/wiki/File:P.jpg)."));
 	TestEqual(TEXT("Parsed lines"), Sample.Num(), 4);
 	if (Sample.Num() == 4)
