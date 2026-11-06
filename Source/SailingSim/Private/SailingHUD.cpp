@@ -162,10 +162,15 @@ void ASailingHUD::BeginPlay()
 		if (Screen == TEXT("Loading"))
 		{
 			if (Session && !Session->bHasActive) { Session->Active = USailSessionSubsystem::MakeDefault(); Session->bHasActive = true; }
-			// #490 stills: -SailingBoat=<name> loads under that boat (its title and its loading still).
-			FString BoatArg;
-			if (Session && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoat="), BoatArg) && USailingSettings::MatchBoatName(BoatArg) >= 0)
-				Session->Active.Boat = USailingSettings::MatchBoatName(BoatArg);
+			// #490 stills: -SailingBoat=<name> loads under that boat (its title and its loading still), -SailingWorld in that
+			// world (the game mode has applied it to the settings by now).
+			FString BoatArg, WorldArg;
+			if (Session && FParse::Value(SailingArgs::Dev(), TEXT("SailingWorld="), WorldArg)) Session->Active.World = USailingSettings::Get()->World == 2 ? 1 : USailingSettings::Get()->World;
+			if (Session && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoat="), BoatArg))
+			{
+				const int32 Match = USailingSettings::MatchBoatName(BoatArg);
+				if (Match >= 0) Session->Active.Boat = Match;
+			}
 			Session->bStarted = false;
 		}
 		else

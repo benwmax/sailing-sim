@@ -92,8 +92,10 @@ namespace SailCatalog
 				W.MapTexture = TEXT("/Game/UI/T_Map_RayHubbard.T_Map_RayHubbard");
 				W.CardTexture = TEXT("/Game/UI/T_Card_RayHubbard.T_Card_RayHubbard");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_RayHubbard.T_Title_RayHubbard");
-				// #490: what each still shows (Tools/ui/make_ui_art.py): a Catalina 30, the J/22, the storm (no boat), the Sunfish, the Catalina 22.
-				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), FWorld::NoBoat, int32(EBoatType::Sunfish), int32(EBoatType::Catalina22) };
+				// #490: what each still shows (Tools/ui/make_ui_art.py): a Catalina 30, the J/22, the storm (the J/22 small under the shelf
+				// cloud: storm-lake.camera.json is a Chase shot of her), the Sunfish, the Catalina 22. The lake has no boat-free still,
+				// so its other boats load on the plain screen.
+				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::Catalina22) };
 				for (int32 I = 0; I < W.LoadingBoats.Num(); ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });
@@ -239,7 +241,8 @@ namespace SailCatalog
 		TArray<FString> Own, Neutral;
 		for (int32 I = 0; I < W.LoadingTextures.Num(); ++I)
 		{
-			const int32 Shows = W.LoadingBoats.IsValidIndex(I) ? W.LoadingBoats[I] : FWorld::NoBoat;
+			if (!W.LoadingBoats.IsValidIndex(I)) continue;   // untagged: could show any boat, so never shown
+			const int32 Shows = W.LoadingBoats[I];
 			if (Shows == BoatType) Own.Add(W.LoadingTextures[I]);
 			else if (Shows == FWorld::NoBoat) Neutral.Add(W.LoadingTextures[I]);
 		}

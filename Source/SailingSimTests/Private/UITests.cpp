@@ -583,5 +583,27 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 	Bare.LoadingBoats.Add(SailCatalog::FWorld::NoBoat);
 	TestTrue(TEXT("a neutral still when there is no own one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)) == TArray<FString>({ TEXT("/Game/UI/C") }));
 	TestTrue(TEXT("the own still before the neutral one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::J22)) == TArray<FString>({ TEXT("/Game/UI/A") }));
+	// An untagged still (past LoadingBoats) could show any boat: never shown, not even as a neutral one.
+	Bare.LoadingTextures.Add(TEXT("/Game/UI/D"));
+	TestFalse(TEXT("an untagged still is left out"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Contains(TEXT("/Game/UI/D")));
+	// Decided, not an accident: the Catalina 22 on Galveston Bay (no still of her there, none without a boat) loads on the
+	// plain screen.
+	TestEqual(TEXT("Galveston, Catalina 22: the plain screen"), SailCatalog::LoadingStills(SailCatalog::World(1), int32(EBoatType::Catalina22)).Num(), 0);
+	// The loading screen itself, for a Sunfish session on the lake: the Sunfish still (no world needed: the session is given).
+	if (FSlateApplication::IsInitialized())
+	{
+		FSailSessionConfig C = USailSessionSubsystem::MakeDefault();
+		C.World = 0;
+		C.Boat = int32(EBoatType::Sunfish);
+		TSharedRef<SSailLoading> Loading = SNew(SSailLoading).Config(C);
+		const UObject* Still = Loading->ShownStill();
+		TestTrue(FString::Printf(TEXT("A Sunfish session on the lake loads under T_Load_RayHubbard_3 (%s)"), Still ? *Still->GetName() : TEXT("none")),
+			Still && Still->GetName() == TEXT("T_Load_RayHubbard_3"));
+		C.World = 1;
+		C.Boat = int32(EBoatType::Catalina22);
+		TSharedRef<SSailLoading> Plain = SNew(SSailLoading).Config(C);
+		TestTrue(TEXT("A Catalina 22 session on the bay: the plain screen"), Plain->ShownStill() == nullptr);
+	}
+	else AddWarning(TEXT("No Slate application: the loading screen itself is not built"));
 	return true;
 }
