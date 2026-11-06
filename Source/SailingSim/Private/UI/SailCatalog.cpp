@@ -92,7 +92,9 @@ namespace SailCatalog
 				W.MapTexture = TEXT("/Game/UI/T_Map_RayHubbard.T_Map_RayHubbard");
 				W.CardTexture = TEXT("/Game/UI/T_Card_RayHubbard.T_Card_RayHubbard");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_RayHubbard.T_Title_RayHubbard");
-				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), I, I));
+				// #490: what each still shows (Tools/ui/make_ui_art.py): a Catalina 30, the J/22, the storm (no boat), the Sunfish, the Catalina 22.
+				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), FWorld::NoBoat, int32(EBoatType::Sunfish), int32(EBoatType::Catalina22) };
+				for (int32 I = 0; I < W.LoadingBoats.Num(); ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -110,6 +112,7 @@ namespace SailCatalog
 				W.MapTexture = TEXT("/Game/UI/T_Map_GalvestonBay.T_Map_GalvestonBay");
 				W.CardTexture = TEXT("/Game/UI/T_Card_GalvestonBay.T_Card_GalvestonBay");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_GalvestonBay.T_Title_GalvestonBay");
+				W.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16), int32(EBoatType::Sunfish) };   // #490
 				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_GalvestonBay_%d.T_Load_GalvestonBay_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -127,6 +130,7 @@ namespace SailCatalog
 				W.MapTexture = TEXT("/Game/UI/T_Map_Marseille.T_Map_Marseille");
 				W.CardTexture = TEXT("/Game/UI/T_Card_Marseille.T_Card_Marseille");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_Marseille.T_Title_Marseille");
+				W.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::J22) };   // #490: the J/22 in all three
 				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_Marseille_%d.T_Load_Marseille_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -146,6 +150,7 @@ namespace SailCatalog
 				W.MapTexture = TEXT("/Game/UI/T_Map_GalvestonBay.T_Map_GalvestonBay");
 				W.CardTexture = TEXT("/Game/UI/T_Card_GalvestonBay.T_Card_GalvestonBay");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_GalvestonBay.T_Title_GalvestonBay");
+				W.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16), int32(EBoatType::Sunfish) };   // #490
 				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_GalvestonBay_%d.T_Load_GalvestonBay_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -228,6 +233,17 @@ namespace SailCatalog
 		const int32 Want = Index == 2 ? 1 : Index;
 		for (const FWorld& W : Worlds()) if (W.Index == Want) return W;
 		return Worlds()[0];
+	}
+	TArray<FString> LoadingStills(const FWorld& W, int32 BoatType)
+	{
+		TArray<FString> Own, Neutral;
+		for (int32 I = 0; I < W.LoadingTextures.Num(); ++I)
+		{
+			const int32 Shows = W.LoadingBoats.IsValidIndex(I) ? W.LoadingBoats[I] : FWorld::NoBoat;
+			if (Shows == BoatType) Own.Add(W.LoadingTextures[I]);
+			else if (Shows == FWorld::NoBoat) Neutral.Add(W.LoadingTextures[I]);
+		}
+		return Own.Num() ? Own : Neutral;
 	}
 	const FMiniMap& MiniMap(int32 SettingsWorld)
 	{

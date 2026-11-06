@@ -543,3 +543,45 @@ bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+// #490: a session's loading screen shows its own boat, or no boat, never another boat's. Every slice boat on every slice
+// world; on the lake each slice boat has its own still.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUILoadingStillTest, "SailingSim.UI.LoadingStill", UIFlags)
+bool FSailingUILoadingStillTest::RunTest(const FString&)
+{
+	using Sailing::EBoatType;
+	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
+	{
+		TestEqual(FString::Printf(TEXT("%s: a boat for every loading still"), *W.File), W.LoadingBoats.Num(), W.LoadingTextures.Num());
+	}
+	for (const int32 Index : { 0, 1 })
+	{
+		const SailCatalog::FWorld& W = SailCatalog::World(Index);
+		for (const EBoatType Type : { EBoatType::J22, EBoatType::Sunfish, EBoatType::Catalina22 })
+		{
+			const TArray<FString> Stills = SailCatalog::LoadingStills(W, int32(Type));
+			for (const FString& Still : Stills)
+			{
+				const int32 At = W.LoadingTextures.IndexOfByKey(Still);
+				const int32 Shows = W.LoadingBoats.IsValidIndex(At) ? W.LoadingBoats[At] : -2;
+				TestTrue(FString::Printf(TEXT("%s, boat %d: %s shows that boat or none (%d)"), *W.File, int32(Type), *Still, Shows),
+					Shows == int32(Type) || Shows == SailCatalog::FWorld::NoBoat);
+			}
+			if (Index == 0)
+			{
+				TestTrue(FString::Printf(TEXT("Ray Hubbard, boat %d: a still of its own"), int32(Type)),
+					Stills.Num() > 0 && W.LoadingBoats[W.LoadingTextures.IndexOfByKey(Stills[0])] == int32(Type));
+			}
+		}
+	}
+	// A boat with no still and no neutral still in the world: nothing (a plain screen), not another boat.
+	SailCatalog::FWorld Bare;
+	Bare.LoadingTextures = { TEXT("/Game/UI/A"), TEXT("/Game/UI/B") };
+	Bare.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16) };
+	TestEqual(TEXT("no own or neutral still: none"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Num(), 0);
+	Bare.LoadingTextures.Add(TEXT("/Game/UI/C"));
+	Bare.LoadingBoats.Add(SailCatalog::FWorld::NoBoat);
+	TestTrue(TEXT("a neutral still when there is no own one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)) == TArray<FString>({ TEXT("/Game/UI/C") }));
+	TestTrue(TEXT("the own still before the neutral one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::J22)) == TArray<FString>({ TEXT("/Game/UI/A") }));
+	return true;
+}

@@ -162,6 +162,10 @@ void ASailingHUD::BeginPlay()
 		if (Screen == TEXT("Loading"))
 		{
 			if (Session && !Session->bHasActive) { Session->Active = USailSessionSubsystem::MakeDefault(); Session->bHasActive = true; }
+			// #490 stills: -SailingBoat=<name> loads under that boat (its title and its loading still).
+			FString BoatArg;
+			if (Session && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoat="), BoatArg) && USailingSettings::MatchBoatName(BoatArg) >= 0)
+				Session->Active.Boat = USailingSettings::MatchBoatName(BoatArg);
 			Session->bStarted = false;
 		}
 		else

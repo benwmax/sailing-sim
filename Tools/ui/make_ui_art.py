@@ -132,6 +132,11 @@ crop(CAP + "j22-light-chase.png", "T_Card_RayHubbard.jpg", aspect=2.2, size=(132
 crop(CAP4 + "bay-hobie-chase.png", "T_Card_GalvestonBay.jpg", aspect=2.2, size=(1320, 600))
 for i, src in enumerate((CAP + "rh-c30-evening.png", CAP + "j22-moderate-chase.png", CAP + "storm-lake.png")):
     crop(src, f"T_Load_RayHubbard_{i}.jpg")
+# #490: the slice's other boats on the lake, so a Sunfish or Catalina 22 session loads under its own boat (the chase camera
+# of j22-moderate-chase, Afternoon breeze 12 kn; Artifacts/ui-490/capture.ps1). SailCatalog tags every still with its boat.
+CAP490 = "docs/ui-490/captures/"
+for i, src in ((3, CAP490 + "sunfish-chase.jpg"), (4, CAP490 + "catalina22-chase.jpg")):
+    crop(src, f"T_Load_RayHubbard_{i}.jpg")
 for i, src in enumerate((CAP4 + "bay-j22-chase.png", CAP4 + "bay-hobie-chase.png", CAP + "sunfish-reach.png")):
     crop(src, f"T_Load_GalvestonBay_{i}.jpg")
 crop(CAP + "j22-heavy-chase.png", "T_Title_RayHubbard.jpg")
