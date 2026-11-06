@@ -322,9 +322,10 @@ public:
 
 	virtual void PostInitProperties() override;
 	virtual void PostReloadConfig(FProperty* PropertyThatWasLoaded) override;
+	/** A saved list from before a command existed (photo mode's free camera) gets that command's default keys, and a
+	 *  known command a new default pad axis (the stick throttle) where nothing in its layer holds that axis. */
+	void AddMissingActions();
 
 private:
 	TArray<FSailingKeyBinding> Defaults;
-	/** A saved list from before a command existed (photo mode's free camera) gets that command's default keys. */
-	void AddMissingActions();
 };

@@ -271,6 +271,8 @@ public:
 	static UInputMappingContext* BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
 		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool bPhotoContext);
 	static constexpr int32 PhotoContextPriority = 1;
+	/** The pad throttle's dead zone on the left stick's Y axis (the tiller is its X). */
+	static constexpr float ThrottleStickDeadZone = 0.5f;
 	ECapturePreset GetCapturePreset() const { return CapturePreset; }
 	UCameraComponent* GetCaptureCamera() const { return CaptureCamera; }
 	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);

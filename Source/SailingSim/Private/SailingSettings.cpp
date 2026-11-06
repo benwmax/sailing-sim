@@ -1,4 +1,5 @@
 #include "SailingSettings.h"
+#include "SailingBindings.h"
 #include "BenchRunner.h"
 #include "BoatModel.h"
 #include "CrashReports.h"
@@ -208,6 +209,18 @@ void USailingInputSettings::AddMissingActions()
 	TSet<FName> Known;
 	for (const FSailingKeyBinding& B : Bindings) Known.Add(B.Action);
 	for (const FSailingKeyBinding& B : Defaults) if (!Known.Contains(B.Action)) Bindings.Add(B);
+	// A pad stick or trigger can't be rebound from the Controls screen, so a saved list gets a known command's new
+	// default axis (the throttle's left stick) unless the command has one or another command in its layer holds it.
+	for (const FSailingKeyBinding& D : Defaults)
+	{
+		if (!SailingBindings::IsPadAxis(D.Key)) continue;
+		const bool bTaken = Bindings.ContainsByPredicate([&D](const FSailingKeyBinding& B)
+		{
+			return (B.Action == D.Action && SailingBindings::IsPadAxis(B.Key))
+				|| (B.Key == D.Key && B.Action != D.Action && SailingBindings::SameLayer(B.Action, D.Action));
+		});
+		if (!bTaken) Bindings.Add(D);
+	}
 }
 
 USailingInputSettings::USailingInputSettings()
@@ -299,6 +312,10 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("Throttle"), EKeys::Hyphen, -1.f);
 	Add(TEXT("Throttle"), EKeys::PageUp);
 	Add(TEXT("Throttle"), EKeys::PageDown, -1.f);
+	// The pad's throttle is the left stick pushed forward (ahead) or back (astern), past a 0.5 dead zone so steering
+	// on the same stick doesn't touch it (ASailboatPawn::BuildContext); it does nothing without an engine. The board has
+	// no free pad button and stays on the keyboard (docs/slice-audit: every boat-layer button is taken).
+	Add(TEXT("Throttle"), EKeys::Gamepad_LeftY);
 	Add(TEXT("ThrottleSplit"), EKeys::RightBracket);
 	Add(TEXT("ThrottleSplit"), EKeys::LeftBracket, -1.f);
 	// Navigation: chart, hand-bearing compass, GPS on the chart, clear the plot.

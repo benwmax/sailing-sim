@@ -15,6 +15,7 @@
 #include "SailboatPawn.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
+#include "InputModifiers.h"
 #include "Dom/JsonObject.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/FileHelper.h"
@@ -541,5 +542,71 @@ bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 		const bool bPad = Find(Defaults, Name, bNegative, EColumn::Gamepad).IsValid() || FindPadAxis(Defaults, Name, bNegative).IsValid();
 		TestTrue(FString::Printf(TEXT("{key:%s} has a controller binding"), *Token), bPad);
 	}
+	// Bean's pick (Nov 6): the throttle is on the left stick both ways; the board stays on the keyboard.
+	TestEqual(TEXT("Throttle ahead on the left stick"), FindPadAxis(Defaults, TEXT("Throttle"), false), EKeys::Gamepad_LeftY);
+	TestEqual(TEXT("Throttle astern on the left stick"), FindPadAxis(Defaults, TEXT("Throttle"), true), EKeys::Gamepad_LeftY);
+	TestEqual(TEXT("Controls screen: throttle row reads Left stick"), Label(TEXT("Throttle"), false, true), FString(TEXT("Left stick")));
+	return true;
+}
+
+// No two default controller bindings share a button or axis in the same layer (SailingBindings::SameLayer), except photo
+// mode's pad toggle, a half-second hold of the controls card's button (ASailboatPawn::BuildContext). A saved key list from
+// before the stick throttle gets it, and the throttle mapping carries its dead zone.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadNoCollisionsTest, "SailingSim.UI.PadNoCollisions", UIFlags)
+bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
+{
+	using namespace SailingBindings;
+	const TArray<FSailingKeyBinding>& Defaults = GetDefault<USailingInputSettings>()->GetDefaults();
+	int32 Pad = 0;
+	for (int32 I = 0; I < Defaults.Num(); ++I)
+	{
+		const FSailingKeyBinding& A = Defaults[I];
+		if (!A.Key.IsGamepadKey() || !IsRowAction(A.Action)) continue;
+		++Pad;
+		for (int32 J = I + 1; J < Defaults.Num(); ++J)
+		{
+			const FSailingKeyBinding& B = Defaults[J];
+			if (B.Key != A.Key || !IsRowAction(B.Action) || !SameLayer(A.Action, B.Action)) continue;
+			if (A.Action == B.Action && (A.Scale < 0.f) == (B.Scale < 0.f)) continue;
+			const bool bHoldTap = (A.Action == TEXT("Photo") && B.Action == TEXT("ControlsCard")) || (A.Action == TEXT("ControlsCard") && B.Action == TEXT("Photo"));
+			if (bHoldTap) continue;
+			AddError(FString::Printf(TEXT("%s is on both %s%s and %s%s"), *PadLabel(A.Key), *A.Action.ToString(), A.Scale < 0.f ? TEXT(" (-)") : TEXT(""),
+				*B.Action.ToString(), B.Scale < 0.f ? TEXT(" (-)") : TEXT("")));
+		}
+	}
+	TestTrue(FString::Printf(TEXT("Checked %d default pad bindings"), Pad), Pad > 20);
+
+	// An older saved list (no stick throttle) gains it; one whose left stick Y someone gave to another command doesn't.
+	USailingInputSettings* Settings = NewObject<USailingInputSettings>();
+	auto HasStick = [](const TArray<FSailingKeyBinding>& L) { return L.ContainsByPredicate([](const FSailingKeyBinding& B) { return B.Action == TEXT("Throttle") && B.Key == EKeys::Gamepad_LeftY; }); };
+	Settings->Bindings = Settings->GetDefaults().FilterByPredicate([](const FSailingKeyBinding& B) { return !(B.Action == TEXT("Throttle") && B.Key == EKeys::Gamepad_LeftY); });
+	Settings->AddMissingActions();
+	TestTrue(TEXT("A saved list gets the stick throttle"), HasStick(Settings->Bindings));
+	const int32 Before = Settings->Bindings.Num();
+	Settings->AddMissingActions();
+	TestEqual(TEXT("Added once"), Settings->Bindings.Num(), Before);
+	Settings->Bindings = Settings->GetDefaults().FilterByPredicate([](const FSailingKeyBinding& B) { return !(B.Action == TEXT("Throttle") && B.Key == EKeys::Gamepad_LeftY); });
+	FSailingKeyBinding Taken;
+	Taken.Action = TEXT("Hike");
+	Taken.Key = EKeys::Gamepad_LeftY;
+	Settings->Bindings.Add(Taken);
+	Settings->AddMissingActions();
+	TestFalse(TEXT("Not over another command's stick"), HasStick(Settings->Bindings));
+
+	// The mapping: the throttle's stick has the dead zone, the tiller's doesn't.
+	TMap<FName, TObjectPtr<UInputAction>> Actions;
+	ASailboatPawn::MakeActions(GetTransientPackage(), Defaults, Actions);
+	UInputMappingContext* Context = ASailboatPawn::BuildContext(GetTransientPackage(), TEXT("IMC_PadTest"), Defaults, Actions, false);
+	bool bThrottle = false, bTillerClean = true;
+	for (const FEnhancedActionKeyMapping& M : Context->GetMappings())
+	{
+		const UInputModifierDeadZone* Dead = nullptr;
+		for (const TObjectPtr<UInputModifier>& Mod : M.Modifiers) if (const UInputModifierDeadZone* D = Cast<UInputModifierDeadZone>(Mod)) Dead = D;
+		if (M.Key == EKeys::Gamepad_LeftY && M.Action == Actions.FindRef(TEXT("Throttle")))
+			bThrottle = Dead && FMath::IsNearlyEqual(Dead->LowerThreshold, ASailboatPawn::ThrottleStickDeadZone);
+		if (M.Key == EKeys::Gamepad_LeftX && M.Action == Actions.FindRef(TEXT("Tiller"))) bTillerClean = Dead == nullptr;
+	}
+	TestTrue(TEXT("Throttle stick has a 0.5 dead zone"), bThrottle);
+	TestTrue(TEXT("The tiller has none of it"), bTillerClean);
 	return true;
 }
