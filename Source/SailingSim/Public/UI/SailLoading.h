@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
+#include "SailSession.h"
 
 /**
  * Graphics G4: the loading screen (ui-spec.md 5.7), shown from the map's load until the player confirms "Start sailing":
@@ -15,6 +16,8 @@ public:
 	SLATE_BEGIN_ARGS(SSailLoading) {}
 		SLATE_ARGUMENT(TWeakObjectPtr<UWorld>, World)
 		SLATE_EVENT(FSimpleDelegate, OnStart)
+		/** The session to show instead of the world's (tests: SailingSim.UI.LoadingStill). */
+		SLATE_ARGUMENT(TOptional<FSailSessionConfig>, Config)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -24,6 +27,8 @@ public:
 	/** Readiness, 0..1, and the current stage's label. */
 	float Progress(FString& Stage) const;
 	bool IsReady() const;
+	/** The loading still shown (null: the plain screen). */
+	const UObject* ShownStill() const;
 
 private:
 	TWeakObjectPtr<UWorld> World;

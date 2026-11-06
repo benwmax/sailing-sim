@@ -56,10 +56,12 @@ void SSailLoading::Construct(const FArguments& A)
 	RegisterInputTracker();
 	ShownAt = FPlatformTime::Seconds();
 	const USailSessionSubsystem* Session = World.IsValid() ? USailSessionSubsystem::Get(World.Get()) : nullptr;
-	const FSailSessionConfig C = Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault();
+	const FSailSessionConfig C = A._Config.IsSet() ? A._Config.GetValue() : (Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault());
 	const SailCatalog::FWorld& W = SailCatalog::World(C.World);
 	Tip = int32(FMath::Rand() % UE_ARRAY_COUNT(Tips));
-	UTexture2D* Tex = W.LoadingTextures.Num() ? SailUI::KeptTexture(W.LoadingTextures[FMath::Rand() % W.LoadingTextures.Num()]) : nullptr;
+	// #490: a still of the session's own boat (or none at all), never another boat's.
+	const TArray<FString> Stills = SailCatalog::LoadingStills(W, C.Boat);
+	UTexture2D* Tex = Stills.Num() ? SailUI::KeptTexture(Stills[FMath::Rand() % Stills.Num()]) : nullptr;
 	Image = MakeShared<FSlateBrush>();
 	if (Tex) { Image->SetResourceObject(Tex); Image->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
 	else Image->TintColor = FSlateColor(Ink);
@@ -171,6 +173,11 @@ float SSailLoading::Progress(FString& Stage) const
 		if (!Done[I] && Stage == TEXT("Ready")) Stage = Names[I];
 	}
 	return Sum / float(N);
+}
+
+const UObject* SSailLoading::ShownStill() const
+{
+	return Image.IsValid() ? Image->GetResourceObject() : nullptr;
 }
 
 bool SSailLoading::IsReady() const

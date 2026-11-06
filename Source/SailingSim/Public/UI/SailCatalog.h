@@ -32,6 +32,9 @@ namespace SailCatalog
 		Sailing::FGeoAnchor Anchor;   // the bake's projection (FLakeData::Anchor without loading the terrain)
 		FString MapTexture, CardTexture, TitleTexture;
 		TArray<FString> LoadingTextures;
+		/** #490: the boat each loading still shows (EBoatType), NoBoat for a sky or water still; parallel to LoadingTextures. */
+		TArray<int32> LoadingBoats;
+		static constexpr int32 NoBoat = -1;
 	};
 
 	struct FBoat
@@ -48,6 +51,9 @@ namespace SailCatalog
 
 	SAILINGSIM_API const TArray<FWorld>& Worlds();
 	SAILINGSIM_API const FWorld& World(int32 Index);
+	/** #490: the world's loading stills that suit a session's boat: those showing that boat, else those showing none; empty
+	 *  when there is neither (the loading screen goes plain rather than show another boat). */
+	SAILINGSIM_API TArray<FString> LoadingStills(const FWorld& World, int32 BoatType);
 	/** The slice build's menus (USailingSettings::SliceOnly): true for what they show; always true outside a slice build. */
 	SAILINGSIM_API bool InSliceWorld(int32 Index);
 	SAILINGSIM_API bool InSliceBoat(int32 Type);

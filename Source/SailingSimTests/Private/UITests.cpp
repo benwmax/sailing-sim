@@ -543,3 +543,67 @@ bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+// #490: a session's loading screen shows its own boat, or no boat, never another boat's. Every slice boat on every slice
+// world; on the lake each slice boat has its own still.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUILoadingStillTest, "SailingSim.UI.LoadingStill", UIFlags)
+bool FSailingUILoadingStillTest::RunTest(const FString&)
+{
+	using Sailing::EBoatType;
+	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
+	{
+		TestEqual(FString::Printf(TEXT("%s: a boat for every loading still"), *W.File), W.LoadingBoats.Num(), W.LoadingTextures.Num());
+	}
+	for (const int32 Index : { 0, 1 })
+	{
+		const SailCatalog::FWorld& W = SailCatalog::World(Index);
+		for (const EBoatType Type : { EBoatType::J22, EBoatType::Sunfish, EBoatType::Catalina22 })
+		{
+			const TArray<FString> Stills = SailCatalog::LoadingStills(W, int32(Type));
+			for (const FString& Still : Stills)
+			{
+				const int32 At = W.LoadingTextures.IndexOfByKey(Still);
+				const int32 Shows = W.LoadingBoats.IsValidIndex(At) ? W.LoadingBoats[At] : -2;
+				TestTrue(FString::Printf(TEXT("%s, boat %d: %s shows that boat or none (%d)"), *W.File, int32(Type), *Still, Shows),
+					Shows == int32(Type) || Shows == SailCatalog::FWorld::NoBoat);
+			}
+			if (Index == 0)
+			{
+				TestTrue(FString::Printf(TEXT("Ray Hubbard, boat %d: a still of its own"), int32(Type)),
+					Stills.Num() > 0 && W.LoadingBoats[W.LoadingTextures.IndexOfByKey(Stills[0])] == int32(Type));
+			}
+		}
+	}
+	// A boat with no still and no neutral still in the world: nothing (a plain screen), not another boat.
+	SailCatalog::FWorld Bare;
+	Bare.LoadingTextures = { TEXT("/Game/UI/A"), TEXT("/Game/UI/B") };
+	Bare.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16) };
+	TestEqual(TEXT("no own or neutral still: none"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Num(), 0);
+	Bare.LoadingTextures.Add(TEXT("/Game/UI/C"));
+	Bare.LoadingBoats.Add(SailCatalog::FWorld::NoBoat);
+	TestTrue(TEXT("a neutral still when there is no own one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)) == TArray<FString>({ TEXT("/Game/UI/C") }));
+	TestTrue(TEXT("the own still before the neutral one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::J22)) == TArray<FString>({ TEXT("/Game/UI/A") }));
+	// An untagged still (past LoadingBoats) could show any boat: never shown, not even as a neutral one.
+	Bare.LoadingTextures.Add(TEXT("/Game/UI/D"));
+	TestFalse(TEXT("an untagged still is left out"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Contains(TEXT("/Game/UI/D")));
+	// Decided, not an accident: the Catalina 22 on Galveston Bay (no still of her there, none without a boat) loads on the
+	// plain screen.
+	TestEqual(TEXT("Galveston, Catalina 22: the plain screen"), SailCatalog::LoadingStills(SailCatalog::World(1), int32(EBoatType::Catalina22)).Num(), 0);
+	// The loading screen itself, for a Sunfish session on the lake: the Sunfish still (no world needed: the session is given).
+	if (FSlateApplication::IsInitialized())
+	{
+		FSailSessionConfig C = USailSessionSubsystem::MakeDefault();
+		C.World = 0;
+		C.Boat = int32(EBoatType::Sunfish);
+		TSharedRef<SSailLoading> Loading = SNew(SSailLoading).Config(C);
+		const UObject* Still = Loading->ShownStill();
+		TestTrue(FString::Printf(TEXT("A Sunfish session on the lake loads under T_Load_RayHubbard_3 (%s)"), Still ? *Still->GetName() : TEXT("none")),
+			Still && Still->GetName() == TEXT("T_Load_RayHubbard_3"));
+		C.World = 1;
+		C.Boat = int32(EBoatType::Catalina22);
+		TSharedRef<SSailLoading> Plain = SNew(SSailLoading).Config(C);
+		TestTrue(TEXT("A Catalina 22 session on the bay: the plain screen"), Plain->ShownStill() == nullptr);
+	}
+	else AddWarning(TEXT("No Slate application: the loading screen itself is not built"));
+	return true;
+}
