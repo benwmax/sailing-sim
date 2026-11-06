@@ -386,6 +386,74 @@ FString FCareerContent::MedalName(ECareerMedal Medal)
 	return TEXT("No medal");
 }
 
+// ---------------------------------------------------------------- medal lines
+
+namespace CareerLinesLocal
+{
+	FString Clock(double Seconds)
+	{
+		const int32 S = FMath::Max(0, FMath::RoundToInt32(Seconds));
+		return FString::Printf(TEXT("%d:%02d"), S / 60, S % 60);
+	}
+	FString Times(int32 N, const TCHAR* One, const TCHAR* Many) { return FString::Printf(TEXT("%d %s"), N, N == 1 ? One : Many); }
+	FString Outcomes(const FCareerMedalRule& R) { return FString::Join(R.Outcomes, TEXT(" or ")); }
+}
+
+FCareerMedalLines CareerMedalLines(const FCareerLesson& Lesson, const FCareerRun& Run, ECareerMedal Medal)
+{
+	using namespace CareerLinesLocal;
+	FCareerMedalLines Out;
+	const TArray<FString>& Objectives = Lesson.Job.Objectives;
+	if (!Run.bComplete)
+	{
+		Out.Improve = Objectives.Num() ? FString::Printf(TEXT("Finish the job for a medal: %s."), *Objectives.Last()) : FString(TEXT("Finish the lesson for a medal."));
+		return Out;
+	}
+	// Improve: the next medal up's limits the run missed, the biggest miss first (relative to the limit).
+	if (Medal == ECareerMedal::Gold)
+	{
+		Out.Improve = FString::Printf(TEXT("Gold. Next time, try it faster than %s."), *Clock(Run.Seconds));
+	}
+	else
+	{
+		const ECareerMedal NextMedal = ECareerMedal(int32(Medal) + 1);
+		const FCareerMedalRule& Bar = Lesson.Medals[int32(NextMedal) - 1];
+		const FString Name = FCareerContent::MedalName(NextMedal);
+		double Worst = -1.0;
+		auto Miss = [&](bool bMissed, double By, const FString& Line) { if (bMissed && By > Worst) { Worst = By; Out.Improve = Line; } };
+		Miss(Bar.Outcomes.Num() && !Bar.Outcomes.Contains(Run.Outcome), 1.0,
+			FString::Printf(TEXT("%s needs a %s finish; this one was %s."), *Name, *Outcomes(Bar), Run.Outcome.IsEmpty() ? TEXT("not") : *Run.Outcome));
+		Miss(Bar.MaxCollisions >= 0 && Run.Collisions > Bar.MaxCollisions, double(Run.Collisions - Bar.MaxCollisions) / double(Bar.MaxCollisions + 1),
+			FString::Printf(TEXT("%s with a dock or a boat: %s needs %s."), *Times(Run.Collisions, TEXT("touch"), TEXT("touches")), *Name,
+				Bar.MaxCollisions == 0 ? TEXT("none") : *FString::Printf(TEXT("%d at most"), Bar.MaxCollisions)));
+		Miss(Bar.MaxContactKnots >= 0.0 && Run.MaxContactKnots > Bar.MaxContactKnots, (Run.MaxContactKnots - Bar.MaxContactKnots) / FMath::Max(Bar.MaxContactKnots, 0.5),
+			FString::Printf(TEXT("A touch at %.1f kn: %s allows %.1f kn at most. Come in slower."), Run.MaxContactKnots, *Name, Bar.MaxContactKnots));
+		Miss(Bar.MaxInfractions >= 0 && Run.Infractions > Bar.MaxInfractions, double(Run.Infractions - Bar.MaxInfractions) / double(Bar.MaxInfractions + 1),
+			FString::Printf(TEXT("%s: %s needs %s. Keep clear of the boats you must give way to."), *Times(Run.Infractions, TEXT("rules penalty"), TEXT("rules penalties")), *Name,
+				Bar.MaxInfractions == 0 ? TEXT("none") : *FString::Printf(TEXT("%d at most"), Bar.MaxInfractions)));
+		Miss(Bar.MaxSeconds >= 0.0 && Run.Seconds > Bar.MaxSeconds, (Run.Seconds - Bar.MaxSeconds) / FMath::Max(Bar.MaxSeconds, 1.0),
+			FString::Printf(TEXT("Time %s: %s needs %s or less."), *Clock(Run.Seconds), *Name, *Clock(Bar.MaxSeconds)));
+	}
+	// Did well: the limit met with the most to spare, gold's first; a limit of none met counts as fully spared.
+	for (int32 I = 2; I >= 0 && Out.DidWell.IsEmpty(); --I)
+	{
+		const FCareerMedalRule& R = Lesson.Medals[I];
+		double Best = -1.0;
+		auto Met = [&](bool bMet, double Spare, const FString& Line) { if (bMet && Spare > Best) { Best = Spare; Out.DidWell = Line; } };
+		Met(R.MaxCollisions >= 0 && Run.Collisions <= R.MaxCollisions, Run.Collisions == 0 ? 1.0 : 0.5, Run.Collisions == 0
+			? FString(TEXT("No touches: you kept clear of every dock and boat.")) : FString::Printf(TEXT("Only %s."), *Times(Run.Collisions, TEXT("touch"), TEXT("touches"))));
+		Met(R.MaxInfractions >= 0 && Run.Infractions <= R.MaxInfractions, Run.Infractions == 0 ? 0.95 : 0.45,
+			Run.Infractions == 0 ? FString(TEXT("No rules penalties: you gave way when you had to.")) : FString::Printf(TEXT("Only %s."), *Times(Run.Infractions, TEXT("rules penalty"), TEXT("rules penalties"))));
+		Met(R.Outcomes.Num() > 0 && R.Outcomes.Contains(Run.Outcome), 0.9, FString::Printf(TEXT("A %s finish, as the %s medal asks."), *Run.Outcome, *FCareerContent::MedalName(ECareerMedal(I + 1)).ToLower()));
+		Met(R.MaxContactKnots >= 0.0 && Run.MaxContactKnots <= R.MaxContactKnots, Run.MaxContactKnots <= 0.0 ? 0.85 : 0.4,
+			Run.MaxContactKnots <= 0.0 ? FString(TEXT("No touches at all.")) : FString::Printf(TEXT("Gentle: your hardest touch was %.1f kn."), Run.MaxContactKnots));
+		Met(R.MaxSeconds > 0.0 && Run.Seconds <= R.MaxSeconds, (R.MaxSeconds - Run.Seconds) / R.MaxSeconds,
+			FString::Printf(TEXT("Quick: %s, inside the %s time of %s."), *Clock(Run.Seconds), *FCareerContent::MedalName(ECareerMedal(I + 1)).ToLower(), *Clock(R.MaxSeconds)));
+	}
+	if (Out.DidWell.IsEmpty()) Out.DidWell = Objectives.Num() ? FString::Printf(TEXT("Job done: %s."), *Objectives.Last()) : FString(TEXT("You finished the lesson."));
+	return Out;
+}
+
 // ---------------------------------------------------------------- progress
 
 const FCareerLesson* FCareerProgress::LessonForRun(const FCareerRun& Run) const
@@ -414,6 +482,8 @@ FCareerProgress::FAward FCareerProgress::RecordRun(const FCareerRun& Run)
 	A.Seconds = Run.Seconds;
 	A.Medal = FCareerContent::Grade(*L, Run, Content.EasyMaxMedal);
 	A.bEasyCapped = Run.bEasy && FCareerContent::Grade(*L, Run) > A.Medal;
+	A.Lines = CareerMedalLines(*L, Run, A.Medal);
+	if (A.bEasyCapped) A.Lines.Improve.Reset();   // the medal screen says Easy capped it, and how to earn more
 	FSailSave::FLessonRecord* R = Progress.FindLesson(L->Id);
 	if (!R)
 	{
