@@ -109,6 +109,9 @@ namespace Sailing
 
 		/** Ground height (m, relative to pool) at a world XY, bilinear; far outside the grid returns high land. */
 		double HeightAt(double X, double Y) const;
+		/** True where HeightAt reads real ground: on the grid (or a resident streamed tile, or the shore detail), not its
+		 *  off-the-map land, no-terrain water or non-finite stand-ins. */
+		bool HasGroundAt(double X, double Y) const;
 		/** Water depth below the pool level (0 on land). */
 		double DepthAt(double X, double Y, double WaterLevel = 0.0) const { const double H = HeightAt(X, Y); return H < WaterLevel ? WaterLevel - H : 0.0; }
 		/** Tree canopy height (m) at a world XY: density x 12 m (post oak / cedar elm / red cedar). */
