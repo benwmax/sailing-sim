@@ -385,7 +385,20 @@ bool FSailingCameraOffShoreTest::RunTest(const FString&)
 		TestTrue(TEXT("Inside a bridge deck: no floor from it"), ASailboatPawn::ShoreFloorM(Lake, X, Y, Lens) < Bridge->Bottom);
 		const double Ceiling = ASailboatPawn::ShoreCeilingM(Lake, X, Y, Lens);
 		TestTrue(FString::Printf(TEXT("Inside a bridge deck (bottom %.2f m): the ceiling is under it (%.2f m)"), Bridge->Bottom, Ceiling), Ceiling <= Bridge->Bottom - Clear + 1e-6);
-		// Eased down under it fast (a fifth of a second gets most of the way), as the floor eases up.
+		// Beside the deck, off its line by 7 m more than the boat's radius and a third of the way along (the drawn deck is
+		// wider than the boat's line; maybe another bucket cell): still under it.
+		{
+			const double DX = Bridge->BX - Bridge->AX, DY = Bridge->BY - Bridge->AY, L = FMath::Max(FMath::Sqrt(DX * DX + DY * DY), 1e-6);
+			const double Off = Bridge->Radius + 7.0;
+			const double SX = Bridge->AX + DX / 3.0 - DY / L * Off, SY = Bridge->AY + DY / 3.0 + DX / L * Off;
+			const double Side = ASailboatPawn::ShoreCeilingM(Lake, SX, SY, Lens);
+			TestTrue(FString::Printf(TEXT("Beside the deck (%.0f m off its line): under it too (%.2f m)"), Off, Side), Side <= Bridge->Bottom - Clear + 1e-6);
+		}
+		// High in the deck's slab (over its roadway): still under it, never over (the railway's lower deck beside the I-30
+		// otherwise sent the view up onto the highway), and no deck floor.
+		const double High = Bridge->Top - 0.5;
+		TestTrue(TEXT("Over the roadway: under the deck all the same"), ASailboatPawn::ShoreCeilingM(Lake, X, Y, High) <= Bridge->Bottom - Clear + 1e-6);
+		TestTrue(TEXT("Over the roadway: no floor from the deck"), ASailboatPawn::ShoreFloorM(Lake, X, Y, High) < Bridge->Bottom);		// Eased down under it fast (a fifth of a second gets most of the way), as the floor eases up.
 		const float Down = float((Ceiling - Lens) * 100.0);
 		float Lift = 0.f;
 		for (int32 F = 0; F < 12; ++F) Lift = ASailboatPawn::ShoreLiftStep(Lift, Down, 1.f / 60.f);

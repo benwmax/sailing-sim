@@ -1917,35 +1917,23 @@ FVector ASailboatPawn::LiftedOverWater(const FVector& WorldCm) const
 
 namespace SailboatPawnShore
 {
-	/** The lake's obstacle segments bucketed on a 50 m grid by their reach (radius plus the clearance), built once per lake:
-	 *  Galveston has about 1e5 segments, too many to walk every frame. */
-	struct FBuckets
-	{
-		const FLakeData* Lake = nullptr;
-		size_t Count = 0;
-		TMap<FIntPoint, TArray<int32>> Cells;
-	};
-	constexpr double kBucketM = 50.0;
+	static_assert(ASailboatPawn::BridgeDeckMarginM <= FLakeData::ObstacleBucketReachM && ASailboatPawn::CameraShoreClearM <= FLakeData::ObstacleBucketReachM,
+		"the obstacle buckets must reach as far as the camera looks");
 
-	const TArray<int32>* SegmentsNear(const FLakeData& Lake, double X, double Y)
+	/** How far from a segment's line the camera counts as at it: a deck's drawn width (the I-30's two roadways are wider
+	 *  than the boat's radius) or a dock's clearance. */
+	double Reach(const Sailing::FObstacleSegment& S)
 	{
-		static FBuckets B;   // the game thread only (CalcCamera, the tests)
-		if (B.Lake != &Lake || B.Count != Lake.Obstacles.size())
-		{
-			B.Lake = &Lake;
-			B.Count = Lake.Obstacles.size();
-			B.Cells.Reset();
-			for (int32 I = 0; I < int32(Lake.Obstacles.size()); ++I)
-			{
-				const Sailing::FObstacleSegment& S = Lake.Obstacles[I];
-				const double R = S.Radius + ASailboatPawn::CameraShoreClearM;
-				const int32 X0 = FMath::FloorToInt32((FMath::Min(S.AX, S.BX) - R) / kBucketM), X1 = FMath::FloorToInt32((FMath::Max(S.AX, S.BX) + R) / kBucketM);
-				const int32 Y0 = FMath::FloorToInt32((FMath::Min(S.AY, S.BY) - R) / kBucketM), Y1 = FMath::FloorToInt32((FMath::Max(S.AY, S.BY) + R) / kBucketM);
-				if ((X1 - X0 + 1) * (Y1 - Y0 + 1) > 4096) continue;   // a degenerate (km-long) segment: not a dock or a deck
-				for (int32 BX = X0; BX <= X1; ++BX) for (int32 BY = Y0; BY <= Y1; ++BY) B.Cells.FindOrAdd(FIntPoint(BX, BY)).Add(I);
-			}
-		}
-		return B.Cells.Find(FIntPoint(FMath::FloorToInt32(X / kBucketM), FMath::FloorToInt32(Y / kBucketM)));
+		return S.Radius + (S.Bottom > 0.0 ? ASailboatPawn::BridgeDeckMarginM : ASailboatPawn::CameraShoreClearM);
+	}
+
+	bool Within(const Sailing::FObstacleSegment& S, double X, double Y)
+	{
+		const double DX = S.BX - S.AX, DY = S.BY - S.AY;
+		const double L2 = DX * DX + DY * DY;
+		const double T = L2 > 1e-9 ? FMath::Clamp(((X - S.AX) * DX + (Y - S.AY) * DY) / L2, 0.0, 1.0) : 0.0;
+		const double PX = S.AX + T * DX - X, PY = S.AY + T * DY - Y;
+		return PX * PX + PY * PY <= FMath::Square(Reach(S));
 	}
 }
 
@@ -1957,19 +1945,15 @@ double ASailboatPawn::ShoreFloorM(const FLakeData& Lake, double X, double Y, dou
 	// sets no floor (a view out there would otherwise jump 50 m up).
 	if (Lake.Terrain.HasGroundAt(X, Y)) Floor = Lake.Terrain.HeightAt(X, Y) + CameraShoreClearM;
 	// Docks and piers (Bottom at or under the water): a lens in or just around one goes over its top. Bridge decks (Bottom
-	// above the water) set no floor: a lens in a deck goes under it instead (ShoreCeilingM), as a chase boat would.
-	if (const TArray<int32>* Near = SailboatPawnShore::SegmentsNear(Lake, X, Y))
+	// above the water) set no floor: a lens in a deck goes under it (ShoreCeilingM).
+	if (const TArray<int32>* Near = Lake.ObstaclesNear(X, Y))
 	{
 		for (const int32 I : *Near)
 		{
 			const Sailing::FObstacleSegment& S = Lake.Obstacles[I];
-			if (S.Bottom > 0.0) continue;
 			if (LensZ < S.Bottom - CameraShoreClearM || LensZ > S.Top + CameraShoreClearM) continue;
-			const double DX = S.BX - S.AX, DY = S.BY - S.AY;
-			const double L2 = DX * DX + DY * DY;
-			const double T = L2 > 1e-9 ? FMath::Clamp(((X - S.AX) * DX + (Y - S.AY) * DY) / L2, 0.0, 1.0) : 0.0;
-			const double PX = S.AX + T * DX - X, PY = S.AY + T * DY - Y;
-			if (PX * PX + PY * PY <= FMath::Square(S.Radius + CameraShoreClearM)) Floor = FMath::Max(Floor, S.Top + CameraShoreClearM);
+			if (S.Bottom > 0.0) continue;   // a bridge deck: ShoreCeilingM
+			if (SailboatPawnShore::Within(S, X, Y)) Floor = FMath::Max(Floor, S.Top + CameraShoreClearM);
 		}
 	}
 	return Floor;
@@ -1977,27 +1961,23 @@ double ASailboatPawn::ShoreFloorM(const FLakeData& Lake, double X, double Y, dou
 
 double ASailboatPawn::ShoreCeilingM(const FLakeData& Lake, double X, double Y, double LensZ)
 {
-	// #498: a bridge deck (an obstacle with its underside above the water: the slab Bottom..Top) the lens is in sends the
-	// view under it, CameraShoreClearM below the underside: the J/22's chase lens sits about at the I-30 deck's height.
+	// #498: a bridge deck (an obstacle with its underside above the water: the slab Bottom..Top) the lens is in sends the view
+	// under it, CameraShoreClearM below the underside: the J/22's chase lens sits about at the I-30 deck's height. Going over
+	// a deck the lens is in the upper part of was tried (QA on #500): beside the I-30 the railway's lower deck sent the lens
+	// over it, into the I-30's slab and on over the highway, riding the roadway for the whole approach; under every deck there
+	// keeps the view on the water.
 	double Ceiling = 1e9;
-	if (const TArray<int32>* Near = SailboatPawnShore::SegmentsNear(Lake, X, Y))
+	if (const TArray<int32>* Near = Lake.ObstaclesNear(X, Y))
 	{
 		for (const int32 I : *Near)
 		{
 			const Sailing::FObstacleSegment& S = Lake.Obstacles[I];
 			if (S.Bottom <= 0.0 || LensZ < S.Bottom - CameraShoreClearM || LensZ > S.Top + CameraShoreClearM) continue;
-			const double DX = S.BX - S.AX, DY = S.BY - S.AY;
-			const double L2 = DX * DX + DY * DY;
-			const double T = L2 > 1e-9 ? FMath::Clamp(((X - S.AX) * DX + (Y - S.AY) * DY) / L2, 0.0, 1.0) : 0.0;
-			const double PX = S.AX + T * DX - X, PY = S.AY + T * DY - Y;
-			// The segment's radius is the boat's (its keel and rig); the drawn deck is wider (the I-30's two roadways), so the view
-			// keeps out of BridgeDeckMarginM more.
-			if (PX * PX + PY * PY <= FMath::Square(S.Radius + BridgeDeckMarginM)) Ceiling = FMath::Min(Ceiling, S.Bottom - CameraShoreClearM);
+			if (SailboatPawnShore::Within(S, X, Y)) Ceiling = FMath::Min(Ceiling, S.Bottom - CameraShoreClearM);
 		}
 	}
 	return Ceiling;
 }
-
 float ASailboatPawn::ShoreLiftStep(float CurrentCm, float TargetCm, float DeltaTime)
 {
 	// Away in about a fifth of a second, back over about a second, so a rock passing under the view doesn't pop it. A frame
@@ -2033,10 +2013,12 @@ void ASailboatPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 		if (GM && GM->GetLake().IsLoaded())
 		{
 			const FVector Map = SailingFrame::ToMapCm(GetWorld(), OutResult.Location) / 100.0;
+			// Over the ground and the docks; under a bridge deck the lens is in, but never below the ground or a dock (a low
+			// span over a bank). The water floor still holds after.
 			const double Floor = ShoreFloorM(GM->GetLake(), Map.X, Map.Y, Map.Z);
 			const double Ceiling = ShoreCeilingM(GM->GetLake(), Map.X, Map.Y, Map.Z);
 			if (Floor > Map.Z) TargetCm = float((Floor - Map.Z) * 100.0);
-			else if (Ceiling < Map.Z) TargetCm = float((Ceiling - Map.Z) * 100.0);   // under a bridge deck (the water floor still holds)
+			else if (Ceiling < Map.Z) TargetCm = float((FMath::Max(Ceiling, Floor) - Map.Z) * 100.0);
 		}
 		CameraShoreLiftCm = ShoreLiftStep(CameraShoreLiftCm, TargetCm, DeltaTime);
 	}

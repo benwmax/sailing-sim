@@ -147,6 +147,16 @@ struct SAILINGSIM_API FLakeData
 	FString LakeName;
 	Sailing::FLakeTerrain Terrain;
 	std::vector<Sailing::FObstacleSegment> Obstacles;
+	/** #498: Obstacles' indices on a ObstacleBucketM grid by each segment's footprint (its radius plus ObstacleBucketReachM:
+	 *  the chase camera's widest look, a bridge deck's drawn margin), built with them. */
+	TMap<FIntPoint, TArray<int32>> ObstacleBuckets;
+	static constexpr double ObstacleBucketM = 50.0;
+	static constexpr double ObstacleBucketReachM = 10.0;
+	/** The obstacles whose footprint reaches the cell of (X, Y); null when none do. */
+	const TArray<int32>* ObstaclesNear(double X, double Y) const
+	{
+		return ObstacleBuckets.Find(FIntPoint(FMath::FloorToInt32(X / ObstacleBucketM), FMath::FloorToInt32(Y / ObstacleBucketM)));
+	}
 	TArray<FLaunchSpot> LaunchSpots;
 	TArray<FLakeDock> Docks;
 	/** Graphics G7: the lidar decks and the moored boats (<Name>.piers). */

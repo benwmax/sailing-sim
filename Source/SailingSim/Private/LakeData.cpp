@@ -485,6 +485,17 @@ void FLakeData::BuildObstacles()
 			Obstacles.push_back(S);
 		}
 	}
+	// #498: bucketed for the chase camera's shore floor and deck ceiling (Galveston has about 1e5 segments).
+	ObstacleBuckets.Reset();
+	for (int32 I = 0; I < int32(Obstacles.size()); ++I)
+	{
+		const Sailing::FObstacleSegment& S = Obstacles[I];
+		const double R = S.Radius + ObstacleBucketReachM;
+		const int32 X0 = FMath::FloorToInt32((FMath::Min(S.AX, S.BX) - R) / ObstacleBucketM), X1 = FMath::FloorToInt32((FMath::Max(S.AX, S.BX) + R) / ObstacleBucketM);
+		const int32 Y0 = FMath::FloorToInt32((FMath::Min(S.AY, S.BY) - R) / ObstacleBucketM), Y1 = FMath::FloorToInt32((FMath::Max(S.AY, S.BY) + R) / ObstacleBucketM);
+		if (int64(X1 - X0 + 1) * int64(Y1 - Y0 + 1) > 4096) continue;   // a degenerate (km-long) segment: not a dock or a deck
+		for (int32 BX = X0; BX <= X1; ++BX) for (int32 BY = Y0; BY <= Y1; ++BY) ObstacleBuckets.FindOrAdd(FIntPoint(BX, BY)).Add(I);
+	}
 }
 
 namespace
