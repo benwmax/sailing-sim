@@ -40,6 +40,9 @@ blocks, pillars and blades. On High's coarser panorama they stood as soft crease
   back. `jitter-blocks.jpg`: per texel, 8 x 8, 4 x 4 and main. Ultra kept 4 x 4 at first, but its blocks stood as
   square patches in the cumulus's shadowed creases (feedback #8), so Ultra's 8192-wide panorama now jitters every texel
   (`CacheShadow.w`, set from the targets' width; `-SailingSkyCacheJitter=<w>` measures, 0 is the old fixed grid).
+  High's 2 x 2 blocks still showed faintly; since pc/clouds-high each block's jitter is blended toward its neighbours'
+  (smoothstep between block centres), which hides the block edges at High's old cost (Artifacts/clouds-high: gpu 6.44 ms
+  before and after on the PC; per texel was the Mac's 1.2 ms).
 - **The dome's spline knots** (`M_SkyDome`). The knots are never finer than two of Ultra's texels above 3 deg (nearer
   than about 23 km over a 1.2 km base, where the march's 35 m fine step spans two texels). That averages the jitter's
   grain on the near cumulus. Below 1.5 deg, where Ultra's panorama draws the small far cumulus, the spline still reads

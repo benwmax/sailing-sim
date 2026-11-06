@@ -3794,6 +3794,22 @@ float S = 0.0, Amb = 0.0, Tr = 1.0;
         jitGrid = csz / CacheShadow.w;
     }
     float jitB = frac(sin(dot(floor(UV * jitGrid) + CacheShadow.y * float2(7.13, 3.71), float2(12.9898, 78.233))) * 43758.5453);
+    // pc/clouds-high: on High's 2 x 2 blocks (w 2) the block's jitter is blended toward its neighbours' over the block
+    // (smoothstep between block centres), so the sunlit term no longer steps at the block edges (the faint squares left
+    // after #8) while neighbouring texels still read nearly the same shadow places (the fetches stay coherent: per texel
+    // cost up to 1.2 ms on the Mac's High). Ultra (w 1) and the old fixed grid (w 0, measuring) are unchanged.
+    [branch] if (CacheShadow.w > 1.5)
+    {
+        float2 g = UV * jitGrid - 0.5;
+        float2 c = floor(g), f = g - c;
+        f = f * f * (3.0 - 2.0 * f);
+        float2 s = CacheShadow.y * float2(7.13, 3.71);
+        float h00 = frac(sin(dot(c + s, float2(12.9898, 78.233))) * 43758.5453);
+        float h10 = frac(sin(dot(c + float2(1.0, 0.0) + s, float2(12.9898, 78.233))) * 43758.5453);
+        float h01 = frac(sin(dot(c + float2(0.0, 1.0) + s, float2(12.9898, 78.233))) * 43758.5453);
+        float h11 = frac(sin(dot(c + float2(1.0, 1.0) + s, float2(12.9898, 78.233))) * 43758.5453);
+        jitB = lerp(lerp(h00, h10, f.x), lerp(h01, h11, f.x), f.y);
+    }
     float cosT = dot(dir, SunDir.xyz);
     float g1 = 0.72, g2 = -0.3;
     // Adaptive: coarse steps through clear air; on meeting cloud, one step back and then steps six times finer (a cloud
