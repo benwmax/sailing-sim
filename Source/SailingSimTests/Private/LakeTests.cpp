@@ -131,6 +131,12 @@ bool FSailingNonFiniteHeightTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("The fetch from it is finite"), FMath::IsFinite(T.EffectiveFetch(P.Key, P.Value, 0.5)));
 	}
 	TestTrue(TEXT("A finite position still reads the detail"), T.HeightAt(0.0, 0.0) < 50.0);
+	// #498: HasGroundAt tells real ground from those stand-ins (the chase camera's shore floor ignores the stand-ins).
+	for (const TPair<double, double>& P : { TPair<double, double>(NaN, 0.0), TPair<double, double>(Inf, 0.0), TPair<double, double>(-3.0e15, 2.0e12),
+		TPair<double, double>(1.0e6, 0.0) })
+		TestFalse(TEXT("No ground off the map or at a non-finite position"), T.HasGroundAt(P.Key, P.Value));
+	TestTrue(TEXT("Ground at the club"), T.HasGroundAt(0.0, 0.0));
+	TestFalse(TEXT("No terrain: no ground"), FLakeTerrain().HasGroundAt(0.0, 0.0));
 	return true;
 }
 
