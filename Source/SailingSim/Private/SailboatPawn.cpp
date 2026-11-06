@@ -1807,6 +1807,15 @@ UInputMappingContext* ASailboatPawn::BuildContext(UObject* Outer, FName Name, co
 			Scalar->Scalar = FVector(FMath::Abs(Binding.Scale));
 			Mapping.Modifiers.Add(Scalar);
 		}
+		if (Binding.Action == TEXT("Throttle") && SailingBindings::IsPadAxis(Binding.Key))
+		{
+			// The throttle shares the left stick with the tiller: only a firm push forward or back moves it.
+			UInputModifierDeadZone* Dead = NewObject<UInputModifierDeadZone>(Context);
+			Dead->LowerThreshold = ThrottleStickDeadZone;
+			Dead->UpperThreshold = 1.f;
+			Dead->Type = EDeadZoneType::Axial;
+			Mapping.Modifiers.Insert(Dead, 0);
+		}
 		if (!IsButtonAction(Binding.Action)) continue;
 		if (HoldKeys.Contains(Binding.Key) && Binding.Action == TEXT("Photo"))
 		{
