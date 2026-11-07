@@ -28,7 +28,7 @@ namespace
 	const int32 kPlayerPolos[] = { 0, 3, 2 };
 	const int32 kPlayerVests[] = { 2, 0, 4 };
 
-	uint32 Hash(uint32 X)
+	uint32 OutfitHash(uint32 X)
 	{
 		X ^= X >> 16; X *= 0x7feb352du; X ^= X >> 15; X *= 0x846ca68bu; X ^= X >> 16;
 		return X;
@@ -46,7 +46,7 @@ FCrewOutfit SampleCrewOutfit(uint32 Seed, int32 Sailor)
 		return O;
 	}
 	// A boat's start in each palette, then a step per sailor coprime to its size, so a crew of up to its size never repeats.
-	const uint32 H = Hash(Seed * 2654435761u + 0x9e3779b9u);
+	const uint32 H = OutfitHash(Seed * 2654435761u + 0x9e3779b9u);
 	const int32 NP = UE_ARRAY_COUNT(kPolos), NV = UE_ARRAY_COUNT(kVests);
 	O.Polo = kPolos[(int32(H % uint32(NP)) + 2 * S) % NP];          // step 2 (9 polos)
 	// Jackets by colour (yellow, red, light blue: three sailors three colours) and, separately, new or faded.

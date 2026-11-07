@@ -264,6 +264,19 @@ namespace Sailing
 		return Lerp(Lerp(H00, H01, FC), Lerp(H10, H11, FC), FR) + LevelBelowPool;
 	}
 
+	bool FLakeTerrain::HasGroundAt(double X, double Y) const
+	{
+		// #498: where HeightAt reads real ground (not its stand-ins: open water with no terrain, land off the map, a
+		// non-finite position or a streamed tile not resident).
+		if (Rows == 0 && !Heights && !Tiles) return false;
+		if (!std::isfinite(X) || !std::isfinite(Y)) return false;
+		double Fine;
+		if (DetailHeightAt(X, Y, Fine)) return true;
+		if (Tiles) return Tiles->At(X, Y) != nullptr;
+		const double R = (X - GridOriginX) / Cell, C = (Y - GridOriginY) / Cell;
+		return !(R < -1.0 || C < -1.0 || R > GridRows || C > GridCols);
+	}
+
 	double FLakeTerrain::HeightAt(double X, double Y) const
 	{
 		if (Rows == 0 && !Heights && !Tiles) return -1000.0; // no terrain: open water everywhere

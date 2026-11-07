@@ -11,6 +11,7 @@
 #include "SailboatPawn.h"
 #include "SailingBindings.h"
 #include "SailingGameMode.h"
+#include "LakeData.h"
 #include "SailingSettings.h"
 #include "PhotoSettings.h"
 #include "SailingFrame.h"
@@ -314,6 +315,102 @@ bool FSailingCameraAboveWaterTest::RunTest(const FString&)
 	return true;
 }
 
+// #498: zoomed far out near the shore, the chase camera went inside the shore rocks and the docks: its only floor was the
+// water. ASailboatPawn::ShoreFloorM is the floor CalcCamera eases the chase view onto (ShoreLiftStep), on Ray Hubbard's own
+// data: over land the ground plus CameraShoreClearM, in or beside a dock its top, inside a bridge deck under its underside
+// (ShoreCeilingM), nothing new over open water, under a deck or off the map. (A bare world's game mode does not run InitGame, so the lake is loaded here, as the game mode
+// loads it; no world is built.)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCameraOffShoreTest, "SailingSim.Smoke.CameraOffShore", PhotoFlags)
+bool FSailingCameraOffShoreTest::RunTest(const FString&)
+{
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Ray Hubbard loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	if (!TestTrue(TEXT("A launch spot"), Lake.LaunchSpots.Num() > 1)) return false;
+	const double Clear = ASailboatPawn::CameraShoreClearM;
+	// Land: march out from the home slip until the ground is 2 m up (the club's shore).
+	const FLaunchSpot& Home = Lake.LaunchSpots[0];
+	double LandX = 0.0, LandY = 0.0, LandGround = 0.0;
+	bool bLand = false;
+	for (int32 R = 10; R <= 600 && !bLand; R += 10)
+	{
+		for (int32 A = 0; A < 360 && !bLand; A += 15)
+		{
+			const double X = Home.X + R * FMath::Cos(FMath::DegreesToRadians(double(A))), Y = Home.Y + R * FMath::Sin(FMath::DegreesToRadians(double(A)));
+			if (!Lake.Terrain.HasGroundAt(X, Y) || Lake.Terrain.HeightAt(X, Y) < 2.0) continue;
+			bLand = true;
+			LandX = X; LandY = Y; LandGround = Lake.Terrain.HeightAt(X, Y);
+		}
+	}
+	if (TestTrue(TEXT("Land near the home slip"), bLand))
+	{
+		const double Floor = ASailboatPawn::ShoreFloorM(Lake, LandX, LandY, 0.5);
+		TestTrue(FString::Printf(TEXT("Over land (ground %.2f m): the floor is the ground plus the clearance (%.2f m)"), LandGround, Floor),
+			Floor >= LandGround + Clear - 1e-6);
+		// The lift CalcCamera applies, frame by frame from none, with the lens 1 m under that ground: after a second at 60 Hz
+		// the lens is over the floor; with no time passing the lift holds.
+		const double Lens = LandGround - 1.0;
+		const float Target = float((Floor - Lens) * 100.0);
+		float Lift = 0.f;
+		for (int32 F = 0; F < 60; ++F) Lift = ASailboatPawn::ShoreLiftStep(Lift, Target, 1.f / 60.f);
+		TestTrue(FString::Printf(TEXT("Eased onto the floor in a second (lens %.2f m, floor %.2f m)"), Lens + Lift / 100.0, Floor), Lens + Lift / 100.0 >= Floor - 0.02);
+		TestEqual(TEXT("No time passing: the lift holds"), ASailboatPawn::ShoreLiftStep(Lift, 0.f, 0.f), Lift);
+		TestTrue(TEXT("Coming down is slower than going up"), Target - ASailboatPawn::ShoreLiftStep(Target, 0.f, 1.f / 60.f) < ASailboatPawn::ShoreLiftStep(0.f, Target, 1.f / 60.f));
+	}
+	// A dock: the middle of a low obstacle segment (deck under 3 m), the lens at its height.
+	const Sailing::FObstacleSegment* Dock = nullptr;
+	const Sailing::FObstacleSegment* Bridge = nullptr;
+	for (const Sailing::FObstacleSegment& S : Lake.Obstacles)
+	{
+		const double MX = 0.5 * (S.AX + S.BX), MY = 0.5 * (S.AY + S.BY);
+		if (!Dock && S.Bottom <= 0.0 && S.Top > -0.5 && S.Top < 3.0) Dock = &S;
+		// A bridge span over open water (the middle of the segment at least 2 m deep), so only the deck can set a floor.
+		if (!Bridge && S.Bottom > 4.0 && Lake.Terrain.HasGroundAt(MX, MY) && Lake.Terrain.HeightAt(MX, MY) < -2.0) Bridge = &S;
+	}
+	if (TestNotNull(TEXT("A dock among the obstacles"), Dock))
+	{
+		const double X = 0.5 * (Dock->AX + Dock->BX), Y = 0.5 * (Dock->AY + Dock->BY);
+		const double Floor = ASailboatPawn::ShoreFloorM(Lake, X, Y, Dock->Top - 0.2);
+		TestTrue(FString::Printf(TEXT("In a dock (top %.2f m): over its top (%.2f m)"), Dock->Top, Floor), Floor >= Dock->Top + Clear - 1e-6);
+	}
+	if (TestNotNull(TEXT("A bridge span over open water"), Bridge))
+	{
+		const double X = 0.5 * (Bridge->AX + Bridge->BX), Y = 0.5 * (Bridge->AY + Bridge->BY);
+		// The chase view sailing under the deck (just under its underside): no floor from the deck.
+		const double Under = ASailboatPawn::ShoreFloorM(Lake, X, Y, Bridge->Bottom - 0.3);
+		TestTrue(FString::Printf(TEXT("Under a bridge deck (bottom %.2f m): no deck floor (%.2f m)"), Bridge->Bottom, Under), Under < Bridge->Bottom - 0.3);
+		// (a parallel or lower span within the deck margin may set its own ceiling, so the lens is a low one: under them all)
+		TestTrue(TEXT("Low under a bridge deck (1.5 m): not pushed down"), ASailboatPawn::ShoreCeilingM(Lake, X, Y, 1.5) >= 1.5);
+		// Inside the deck's slab (the J/22's chase lens is about at the I-30 deck's height): under it, never over it.
+		const double Lens = Bridge->Bottom + 0.5;
+		TestTrue(TEXT("Inside a bridge deck: no floor from it"), ASailboatPawn::ShoreFloorM(Lake, X, Y, Lens) < Bridge->Bottom);
+		const double Ceiling = ASailboatPawn::ShoreCeilingM(Lake, X, Y, Lens);
+		TestTrue(FString::Printf(TEXT("Inside a bridge deck (bottom %.2f m): the ceiling is under it (%.2f m)"), Bridge->Bottom, Ceiling), Ceiling <= Bridge->Bottom - Clear + 1e-6);
+		// Beside the deck, off its line by 7 m more than the boat's radius and a third of the way along (the drawn deck is
+		// wider than the boat's line; maybe another bucket cell): still under it.
+		{
+			const double DX = Bridge->BX - Bridge->AX, DY = Bridge->BY - Bridge->AY, L = FMath::Max(FMath::Sqrt(DX * DX + DY * DY), 1e-6);
+			const double Off = Bridge->Radius + 7.0;
+			const double SX = Bridge->AX + DX / 3.0 - DY / L * Off, SY = Bridge->AY + DY / 3.0 + DX / L * Off;
+			const double Side = ASailboatPawn::ShoreCeilingM(Lake, SX, SY, Lens);
+			TestTrue(FString::Printf(TEXT("Beside the deck (%.0f m off its line): under it too (%.2f m)"), Off, Side), Side <= Bridge->Bottom - Clear + 1e-6);
+		}
+		// High in the deck's slab (over its roadway): still under it, never over (the railway's lower deck beside the I-30
+		// otherwise sent the view up onto the highway), and no deck floor.
+		const double High = Bridge->Top - 0.5;
+		TestTrue(TEXT("Over the roadway: under the deck all the same"), ASailboatPawn::ShoreCeilingM(Lake, X, Y, High) <= Bridge->Bottom - Clear + 1e-6);
+		TestTrue(TEXT("Over the roadway: no floor from the deck"), ASailboatPawn::ShoreFloorM(Lake, X, Y, High) < Bridge->Bottom);		// Eased down under it fast (a fifth of a second gets most of the way), as the floor eases up.
+		const float Down = float((Ceiling - Lens) * 100.0);
+		float Lift = 0.f;
+		for (int32 F = 0; F < 12; ++F) Lift = ASailboatPawn::ShoreLiftStep(Lift, Down, 1.f / 60.f);
+		TestTrue(FString::Printf(TEXT("Pushed under the deck within 0.2 s (%.0f of %.0f cm)"), Lift, Down), Lift <= 0.8f * Down);
+	}
+	// Open water: the open-water launch spot's bed is well under the water, so no floor over it.
+	const FLaunchSpot& Open = Lake.LaunchSpots[1];
+	const double OpenFloor = ASailboatPawn::ShoreFloorM(Lake, Open.X, Open.Y, 3.0);
+	TestTrue(FString::Printf(TEXT("Open water: the floor (%.2f m) is under the water"), OpenFloor), OpenFloor < 0.0);
+	TestEqual(TEXT("Off the map (the ground unknown): no floor"), ASailboatPawn::ShoreFloorM(Lake, Home.X + 1e6, Home.Y, 0.0), -1e9);
+	return true;
+}
 // Rule 9: the hold is the game mode's one switch. Held, the world clock stops (the boats, traffic, weather and water
 // run on it); let go, it runs on from where it stood.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPhotoWorldHeldTest, "SailingSim.Smoke.PhotoWorldHeld", PhotoFlags)

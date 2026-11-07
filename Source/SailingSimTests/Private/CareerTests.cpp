@@ -650,3 +650,72 @@ bool FSailingCareerJobsTest::RunTest(const FString&)
 	TestFalse(TEXT("No money or reputation in the save"), FSailSave().ToJson().Contains(TEXT("reputation")));
 	return true;
 }
+
+/**
+ * #403: the medal screen's two lines. Improve names the next medal's limit the run missed by the most (the one that cost
+ * it), with the run's number and the limit; What went well names a limit met with room to spare; after gold, Improve asks
+ * for a faster time; an unfinished run gets only Improve. Every lesson in career.json gets both lines for every medal, so
+ * no lesson needs its own wording.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerMedalLinesTest, "SailingSim.Career.MedalLines", CareerTestsLocal::CareerFlags)
+bool FSailingCareerMedalLinesTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	FCareerLesson L;
+	L.Drill = ESailingDrill::LeaveTheDock;
+	L.Job.Objectives = { TEXT("Cast off"), TEXT("Get 100 m clear of the marina") };
+	L.Medals[1].Outcomes = { TEXT("clean") };
+	L.Medals[1].MaxSeconds = 300.0;
+	L.Medals[1].MaxInfractions = 0;
+	L.Medals[2] = L.Medals[1];
+	L.Medals[2].MaxSeconds = 180.0;
+	L.Medals[2].MaxCollisions = 0;
+	auto Lines = [&L](const FCareerRun& R) { return CareerMedalLines(L, R, FCareerContent::Grade(L, R)); };
+
+	// Silver: too slow for gold (200 s against 180 s), and nothing else missed.
+	FCareerMedalLines M = Lines(Run(ESailingDrill::LeaveTheDock, TEXT("clean"), 200.0));
+	TestTrue(FString::Printf(TEXT("Silver, slow: improve names the time (%s)"), *M.Improve), M.Improve.Contains(TEXT("3:20")) && M.Improve.Contains(TEXT("Gold needs 3:00")));
+	TestTrue(FString::Printf(TEXT("... and went well names no touches (%s)"), *M.DidWell), M.DidWell.Contains(TEXT("No touches")));
+	// Silver: fast enough for gold but touched once; the touch cost gold, not the time.
+	M = Lines(Run(ESailingDrill::LeaveTheDock, TEXT("clean"), 150.0, 1));
+	TestTrue(FString::Printf(TEXT("Silver, one touch: improve names the touch (%s)"), *M.Improve), M.Improve.Contains(TEXT("1 touch")) && M.Improve.Contains(TEXT("Gold needs none")));
+	TestFalse(TEXT("... not the time"), M.Improve.Contains(TEXT("Time")));
+	// Bronze: not clean and slow; the outcome is the whole miss for silver.
+	M = Lines(Run(ESailingDrill::LeaveTheDock, TEXT("contact"), 400.0, 2));
+	TestTrue(FString::Printf(TEXT("Bronze: improve names silver's finish (%s)"), *M.Improve), M.Improve.StartsWith(TEXT("Silver needs a clean finish")));
+	TestFalse(TEXT("... and something went well"), M.DidWell.IsEmpty());
+	// Gold: a faster time next.
+	M = Lines(Run(ESailingDrill::LeaveTheDock, TEXT("clean"), 120.0));
+	TestTrue(FString::Printf(TEXT("Gold: try it faster (%s)"), *M.Improve), M.Improve.Contains(TEXT("faster than 2:00")));
+	TestTrue(FString::Printf(TEXT("... and went well is the clean run or the time (%s)"), *M.DidWell), !M.DidWell.IsEmpty());
+	// Unfinished: the job's last objective.
+	FCareerRun Stopped = Run(ESailingDrill::LeaveTheDock, TEXT(""), 50.0);
+	Stopped.bComplete = false;
+	M = CareerMedalLines(L, Stopped, ECareerMedal::None);
+	TestTrue(FString::Printf(TEXT("Unfinished: finish the job (%s)"), *M.Improve), M.Improve.Contains(TEXT("100 m clear")));
+	TestTrue(TEXT("... and nothing to praise"), M.DidWell.IsEmpty());
+
+	// Every lesson, at each medal: both lines, no lesson-specific wording needed.
+	const FCareerContent* Content = Load(*this);
+	if (!Content) return false;
+	int32 Checked = 0;
+	for (const FCareerTier& T : Content->Tiers)
+	{
+		for (const FCareerLesson& Lesson : T.Lessons)
+		{
+			const TArray<FString> Outcomes = FDrillRunner::Outcomes(Lesson.Drill);
+			const FString Good = Lesson.Medals[2].Outcomes.Num() ? Lesson.Medals[2].Outcomes[0] : (Outcomes.Num() ? Outcomes[0] : FString());
+			const FString Bad = Outcomes.Num() > 1 ? Outcomes.Last() : Good;
+			for (const FCareerRun& R : { Run(Lesson.Drill, Good, 30.0), Run(Lesson.Drill, Good, 3000.0), Run(Lesson.Drill, Bad, 3000.0, 3, 2, 2.0) })
+			{
+				const ECareerMedal Medal = FCareerContent::Grade(Lesson, R);
+				const FCareerMedalLines X = CareerMedalLines(Lesson, R, Medal);
+				TestTrue(FString::Printf(TEXT("%s, %s: both lines (%s | %s)"), *Lesson.Id, *FCareerContent::MedalName(Medal), *X.DidWell, *X.Improve),
+					!X.DidWell.IsEmpty() && !X.Improve.IsEmpty());
+				++Checked;
+			}
+		}
+	}
+	TestTrue(FString::Printf(TEXT("Checked %d runs over the career's lessons"), Checked), Checked >= 18);
+	return true;
+}

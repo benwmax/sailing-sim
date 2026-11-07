@@ -156,6 +156,16 @@ private:
 	bool bLoaded = false;
 };
 
+/** #403: the medal screen's two lines after a lesson. DidWell is the limit the run met with the most to spare (gold's
+ *  limits first, then the lower medals'), or the job's last objective when no limit was set; Improve is the limit of the
+ *  next medal up that the run missed by the most (the one that cost it), or a faster time after gold. Built from the
+ *  lesson's medal rules and job (career.json), never per lesson. An unfinished run gets only Improve. */
+struct FCareerMedalLines
+{
+	FString DidWell, Improve;
+};
+SAILINGSIM_API FCareerMedalLines CareerMedalLines(const FCareerLesson& Lesson, const FCareerRun& Run, ECareerMedal Medal);
+
 /**
  * The player's career over the save's progress (edits it in place): records drill runs and quizzes, decides
  * checkrides and certificates, and answers what is open. Nothing here reads the HUD or a "current player".
@@ -179,6 +189,7 @@ public:
 		bool bEasyCapped = false;                  // the run on Easy held a better medal than Easy may earn
 		bool bBestEasy = false;                    // the lesson's best is an Easy medal
 		double Seconds = 0.0;
+		FCareerMedalLines Lines;                   // #403: what went well, what to improve (Improve is empty when Easy capped it)
 		bool IsValid() const { return !LessonId.IsEmpty(); }
 	};
 	/** The lesson a run counts for: the drill's lesson in an open tier whose boats include the run's (the run's world's

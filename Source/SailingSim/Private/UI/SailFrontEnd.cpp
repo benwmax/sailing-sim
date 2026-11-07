@@ -834,6 +834,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		];
 		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(560.f)[ B ] ];
 		if (!First.IsValid() && bEnabled) First = B;
+		return B;
 	};
 	const SailCatalog::FWorld& LastWorld = SailCatalog::World(Save->Last.World);
 	if (Save->bHasLast)
@@ -855,7 +856,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 			if (!Career.HasCertificate(T.CertificateId)) break;
 		}
 		if (SailCareer::IsFreeSail()) Sub = TEXT("Medals count in Career mode");
-		Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
+		TSharedRef<SSailButton> CareerItem = Item(TEXT("Career"), Sub, FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Career); }));
+		// Slice audit finding 25 (Bean, Nov 6): a returning Career player (any lesson, checkride or certificate in the save)
+		// lands on Career, not Sail; Continue, when there is a last session, stays first. Free Sail and a new save keep Sail.
+		const FSailSave::FProgress& Saved = SailSaveStore::Progress();
+		const bool bReturning = Saved.Lessons.Num() > 0 || Saved.Checkrides.Num() > 0 || Saved.Certificates.Num() > 0;
+		if (bReturning && !Save->bHasLast && !SailCareer::IsFreeSail()) First = CareerItem;
 	}
 	// #402: the separate "ASA 101 drills" item is gone: Career's lessons are the same six drills (the Mode screen's Drills
 	// card still sails any of them freely).
@@ -2151,7 +2157,32 @@ void SSailFrontEnd::StartQuiz()
 		if (Outcome.IsEmpty() && FDrillRunner::Outcomes(Drill).Num()) Outcome = FDrillRunner::Outcomes(Drill)[0];   // stills before the drill ends
 		QuizDebrief = FLearningContent::Get().Debrief(Drill, Outcome, D.GetElapsed(), P->GetMaxContactKnots(), D.IsDinghyRun());
 		// Career 1: the lesson this drill counted for, and its medal; the quiz closes it.
-		const FCareerProgress::FAward& A = P->GetCareerAward();
+		FCareerProgress::FAward A = P->GetCareerAward();
+		// Stills of the medal moment without sailing the lesson (-SailingStillRun=<outcome>,<seconds>[,<touches>,<penalties>]
+		// with -SailingDrill and -SailingFrontEnd=Quiz): graded as a run would be, nothing recorded. Career mode only.
+		FString StillRun;
+		if (!A.IsValid() && !SailCareer::IsFreeSail() && FParse::Value(SailingArgs::Dev(), TEXT("SailingStillRun="), StillRun, false))
+		{
+			TArray<FString> Parts;
+			StillRun.ParseIntoArray(Parts, TEXT(","));
+			FCareerRun Run;
+			Run.Drill = Drill;
+			Run.bComplete = true;
+			Run.Outcome = Parts.IsValidIndex(0) ? Parts[0] : Outcome;
+			Run.Seconds = Parts.IsValidIndex(1) ? FCString::Atod(*Parts[1]) : D.GetElapsed();
+			Run.Collisions = Parts.IsValidIndex(2) ? FCString::Atoi(*Parts[2]) : 0;
+			Run.Infractions = Parts.IsValidIndex(3) ? FCString::Atoi(*Parts[3]) : 0;
+			for (const FCareerTier& T : FCareerContent::Get().Tiers)
+			{
+				const FCareerLesson* Found = T.Lessons.FindByPredicate([Drill](const FCareerLesson& X) { return X.Drill == Drill; });
+				if (!Found) continue;
+				A.LessonId = Found->Id;
+				A.Seconds = Run.Seconds;
+				A.Medal = FCareerContent::Grade(*Found, Run);
+				A.Lines = CareerMedalLines(*Found, Run, A.Medal);
+				break;
+			}
+		}
 		if (const FCareerLesson* L = A.IsValid() ? FCareerContent::Get().Lesson(A.LessonId) : nullptr)
 		{
 			QuizLessonId = L->Id;
@@ -2161,6 +2192,9 @@ void SSailFrontEnd::StartQuiz()
 			// Easy mode: honest grading (career.json's easy_max_medal).
 			if (A.bEasyCapped) QuizDebrief += FString::Printf(TEXT(" Sailed on Easy, which earns at most %s: sail it on Realistic for more."),
 				*FCareerContent::MedalName(FCareerContent::Get().EasyMaxMedal).ToLower());
+			// #403: what went well, and what to work on for the next medal.
+			if (!A.Lines.DidWell.IsEmpty()) QuizDebrief += TEXT("\nWhat went well: ") + A.Lines.DidWell;
+			if (!A.Lines.Improve.IsEmpty()) QuizDebrief += TEXT("\nTo improve: ") + A.Lines.Improve;
 		}
 		else if (SailCareer::IsFreeSail() && D.IsComplete())
 		{
