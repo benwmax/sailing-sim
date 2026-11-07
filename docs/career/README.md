@@ -143,6 +143,14 @@ made-up run, records nothing (the debrief's first line stays the drill's own).
 | --- | --- |
 | ![](medal-lines/silver.jpg) | ![](medal-lines/bronze.jpg) |
 
+## The title for a returning player
+
+With Career progress in the save (a lesson, checkride or certificate) and Career mode on, the title's focus starts on
+**Career**, even when there is a last session (Bean, Nov 6 and 7, slice audit finding 25): Continue stays listed first,
+just not focused. A last session without Career progress starts on Continue; a new save and Free Sail start on Sail
+(`SSailFrontEnd::BuildTitle`, `SailingSim.UI.TitleFocus`). Continue sails the last session as it was saved, Easy or
+Realistic over the Settings difficulty (Bean, Nov 7; `SailingSim.UI.ContinueKeepsItsDifficulty`).
+
 ## Checkride and certificate
 
 The checkride is ready when every lesson it lists holds at least `min_medal` (silver for Day Sailor). Its written quiz

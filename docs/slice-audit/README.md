@@ -165,7 +165,7 @@ HUD, and Club Racer from a certified save. Stills: `stills2/`.
 | 22 | Developer leftovers | Title > **Credits** renders `CREDITS.md` as it is: code paths (`Source/SailingSim/Private/SailingAudio.cpp`, `/Game/Materials`, `scripts/make_materials.py`), "Since Graphics G7", "placeholder art until a later phase". Settings > Gameplay > Headings says "the lake's **bake** has no variation". | [credits](stills2/credits.jpg), [settings-gameplay](stills2/settings-gameplay.jpg) | #487 |
 | 23 | Missing explanation | Learning tips fire while the boat is still **tied up** at the start of Leave the dock: "Jib is luffing" on the J/22, "In irons" on the Sunfish, while the drill asks the player to plan and cast off. | [hud-j22-dock](stills2/hud-j22-dock.jpg), [hud-sunfish-dock](stills2/hud-sunfish-dock.jpg) | #488 |
 | 24 | Polish (PC lane) | A Club Racer lesson's loading screen shows the J/22 artwork under "SUNFISH". | [clubracer-loading](stills2/clubracer-loading.jpg) | (art; not filed) |
-| 25 | Unclear objective (noted Nov 1) | A returning Career player's title still focuses **Sail** first, not Career. | [title-returning](stills2/title-returning.jpg) | (noted) |
+| 25 | Unclear objective (noted Nov 1) | A returning Career player's title still focuses **Sail** first, not Career. | [title-returning](stills2/title-returning.jpg) | fixed (Nov 7): Career is focused for a returning Career player, over Continue too ([career](../career/README.md#the-title-for-a-returning-player)) |
 
 ### Also seen
 
