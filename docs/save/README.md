@@ -84,9 +84,8 @@ earth. When `launchSpot` names a spot the game no longer has (renamed or removed
 lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's first spot.
 
 `settings.privacy.sendCrashReports` is the player's consent to crash reports (`docs/sentry/README.md`), added in version 1
-without a version change. Since Nov 7 2026 (Bean) a missing field reads as **on**; a file that has the field keeps its value
-(every save written since the field was added has it, so an existing tester's `false` stays off until they change it in
-Settings). `SailingSim.Save.CrashReportsDefault` holds both.
+without a version change. Since Nov 7 2026 (Bean) the default is **on**: the default applies when the key is missing; a stored choice is never
+changed (no save is switched on by a migration). `SailingSim.Save.CrashReportsDefault` holds both.
 
 Key bindings stay in `Input.ini` (`USailingInputSettings`); `settings.input.bindings` names that file.
 
