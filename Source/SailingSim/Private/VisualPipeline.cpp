@@ -1,5 +1,6 @@
 #include "VisualPipeline.h"
 #include "BenchRunner.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 
@@ -105,6 +106,32 @@ bool UsesCinematicLook(ESailingQuality Quality, bool bSettingOn, bool bPhotoMode
 		return Arg != 0;
 	}
 	return !bCaptureMode && (bSettingOn || bPhotoMode);
+}
+
+bool IsReelRun()
+{
+	static SailingArgs::FCachedFlag ReelArg(TEXT("SailingReel"));
+	return ReelArg.Get();
+}
+
+void ApplyReelLens(FPostProcessSettings& PP, float FocusCm)
+{
+	static SailingArgs::FOnce DofQuality;
+	if (DofQuality.Take())
+	{
+		// Capture mode turns the depth of field off for its reference stills; the reel wants it.
+		if (IConsoleVariable* Dof = IConsoleManager::Get().FindConsoleVariable(TEXT("r.DepthOfFieldQuality"))) Dof->Set(4, ECVF_SetByCode);
+	}
+	float Fstop = 4.f;
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingReelFstop="), Fstop);
+	PP.bOverride_DepthOfFieldFocalDistance = PP.bOverride_DepthOfFieldFstop = PP.bOverride_DepthOfFieldSensorWidth = true;
+	PP.DepthOfFieldFocalDistance = FMath::Max(FocusCm, 10.f);
+	PP.DepthOfFieldFstop = FMath::Max(Fstop, 0.7f);
+	PP.DepthOfFieldSensorWidth = 36.f;
+	// A 180 degree shutter (Movie Render Queue's temporal samples blur within the same open time).
+	PP.bOverride_MotionBlurAmount = PP.bOverride_MotionBlurMax = true;
+	PP.MotionBlurAmount = 0.5f;
+	PP.MotionBlurMax = 5.f;
 }
 
 double SceneIlluminanceLux(double SunElevationDeg, double CloudShade, double CloudDarkness, double MoonElevationDeg, double MoonLit)
