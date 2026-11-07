@@ -1,4 +1,5 @@
 #include "BoatModel.h"
+#include <algorithm>
 #include <cmath>
 #include <utility>
 
@@ -410,7 +411,16 @@ namespace Sailing
 			OutlinePoints.push_back(Vec3(H.SternX + 0.05, H.CenterY - BT, H.SheerZ - 0.2));
 			OutlinePoints.push_back(Vec3(H.SternX, H.CenterY, H.SheerZ - 0.2));
 		}
-		OutlinePoints.push_back(Vec3(Config.MastX, 0.0, Config.MastheadZ - 0.05));
+		// The mast as a spar, not just its head: a bridge deck is a slab a few metres thick, and a deck lower than the
+		// masthead but with its top below it (a 5 m deck under a 9.2 m mast) must still stop her (#503). The spar runs
+		// from 2 m (above the boom, clear of other hulls) to the masthead; the probes only gather the nearby decks, the
+		// contact itself is made once per deck where the spar crosses its slab (ContactObstacles).
+		MastPoints.clear();
+		if (Config.MastheadZ > 2.0)
+		{
+			for (double Z = 2.0; Z < Config.MastheadZ - 0.55; Z += 1.0) MastPoints.push_back(Vec3(Config.MastX, 0.0, Z));
+			MastPoints.push_back(Vec3(Config.MastX, 0.0, Config.MastheadZ - 0.05));
+		}
 	}
 
 	std::vector<Vec3> FBoatModel::CleatPoints() const
@@ -1075,7 +1085,11 @@ namespace Sailing
 		Telemetry.bAground = false;
 		Telemetry.bCollision = false;
 		Telemetry.DepthUnderKeel = 100.0;
-		auto Contact = [&](const Vec3& PointWorld, const Vec3& Normal, double Penetration, double Stiffness, double Damping, double Friction, const Vec3& SurfaceVel = Vec3())
+		// MaxOutSpeed > 0 (contacts with a bridge deck): the spring may give the point at most that much outward speed
+		// in a step, and friction at most takes the slip out. A hull pitched or capsized under a deck lies metres inside
+		// its capsule, and the plain spring then fires the boat out at tens of metres a second (#504): capped, she is
+		// eased out. Docks and piles keep the plain spring.
+		auto Contact = [&](const Vec3& PointWorld, const Vec3& Normal, double Penetration, double Stiffness, double Damping, double Friction, const Vec3& SurfaceVel = Vec3(), double MaxOutSpeed = 0.0)
 		{
 			const Vec3 Vel = State.Velocity + OmegaWorld.Cross(PointWorld - CGWorld) - SurfaceVel;
 			const double Vn = Vel.Dot(Normal);
@@ -1086,14 +1100,25 @@ namespace Sailing
 			const Vec3 Rb = Q.Unrotate(PointWorld - CGWorld), Nb = Q.Unrotate(Normal), RxN = Rb.Cross(Nb);
 			const double InvMass = Nb.X * Nb.X / EffectiveMass.X + Nb.Y * Nb.Y / EffectiveMass.Y + Nb.Z * Nb.Z / EffectiveMass.Z
 				+ RxN.X * RxN.X / EffectiveInertia.X + RxN.Y * RxN.Y / EffectiveInertia.Y + RxN.Z * RxN.Z / EffectiveInertia.Z;
-			const double Fn = std::max(0.0, Stiffness * Penetration - std::min(Damping, 0.5 / (InvMass * Dt)) * Vn);
+			const double Spring = MaxOutSpeed > 0.0 ? std::min(Stiffness * Penetration, MaxOutSpeed / (InvMass * Dt)) : Stiffness * Penetration;
+			const double Fn = std::max(0.0, Spring - std::min(Damping, 0.5 / (InvMass * Dt)) * Vn);
 			const Vec3 Vt = Vel - Normal * Vn;
 			const double VtLen = Vt.Length();
 			// Regularized Coulomb friction: smooth near zero slip so a grounded boat settles instead of jittering.
-			const Vec3 Ft = VtLen > 1e-6 ? Vt * (-Friction * Fn / std::max(VtLen, 0.05)) * std::min(1.0, VtLen / 0.05) : Vec3();
+			Vec3 Ft = VtLen > 1e-6 ? Vt * (-Friction * Fn / std::max(VtLen, 0.05)) * std::min(1.0, VtLen / 0.05) : Vec3();
+			if (MaxOutSpeed > 0.0 && VtLen > 1e-6)
+			{
+				const Vec3 Tb = Q.Unrotate(Vt / VtLen), RxT = Rb.Cross(Tb);
+				const double InvMassT = Tb.X * Tb.X / EffectiveMass.X + Tb.Y * Tb.Y / EffectiveMass.Y + Tb.Z * Tb.Z / EffectiveMass.Z
+					+ RxT.X * RxT.X / EffectiveInertia.X + RxT.Y * RxT.Y / EffectiveInertia.Y + RxT.Z * RxT.Z / EffectiveInertia.Z;
+				const double FtMax = 0.5 * VtLen / (InvMassT * Dt);
+				if (Ft.Length() > FtMax) Ft = Ft * (FtMax / Ft.Length());
+			}
 			AddWorldForce(Normal * Fn + Ft, PointWorld);
 		};
 		const double ContactScale = std::max(1.0, Mass / 1052.0); // stiffer contacts for heavier boats, same feel
+		// A contact with a bridge deck may add at most this much outward speed (m/s) to its point in one step.
+		const double kDeckOutSpeed = 3.0;
 		if (Terrain && Terrain->IsValid())
 		{
 			for (const Vec3& B : BottomPoints)
@@ -1132,7 +1157,57 @@ namespace Sailing
 					const double Pen = S.Radius + 0.1 - Dist;
 					if (Pen > 0.0 && Dist > 1e-6)
 					{
-						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3);
+						// A hull point in a deck's slab is a boat pitched or capsized under the deck, metres inside its
+						// capsule: eased out like the mast, not fired out. Docks and piles (Bottom below the water) as before.
+						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), S.Bottom > 0.0 ? kDeckOutSpeed : 0.0);
+						Telemetry.bCollision = true;
+					}
+				}
+			}
+			// The mast against bridge decks: the decks near any point of the spar, each met once where the spar crosses
+			// its slab (several probes on one deck would stack their springs and spin a light boat round, #504).
+			if (!MastPoints.empty())
+			{
+				const Vec3 Base = Origin + Q.Rotate(MastPoints.front()), Head = Origin + Q.Rotate(MastPoints.back());
+				const double LoZ = std::min(Base.Z, Head.Z), HiZ = std::max(Base.Z, Head.Z);
+				MastSegments.clear();
+				for (const Vec3& MP : MastPoints)
+				{
+					const Vec3 P = Origin + Q.Rotate(MP);
+					const int BR = int(std::floor((P.X - ObstacleX0) / ObstacleCell)), BC = int(std::floor((P.Y - ObstacleY0) / ObstacleCell));
+					if (BR < 0 || BC < 0 || BR >= ObstacleRows || BC >= ObstacleCols) continue;
+					for (const int SegmentIndex : ObstacleBuckets[size_t(BR) * ObstacleCols + BC])
+						if (std::find(MastSegments.begin(), MastSegments.end(), SegmentIndex) == MastSegments.end()) MastSegments.push_back(SegmentIndex);
+				}
+				for (const int SegmentIndex : MastSegments)
+				{
+					const FObstacleSegment& S = (*Obstacles)[SegmentIndex];
+					const double SlabLo = std::max(S.Bottom, LoZ), SlabHi = std::min(S.Top, HiZ);
+					if (SlabLo > SlabHi) continue;
+					// The spar's point inside the slab nearest the deck: its crossing at the slab's bottom or top, whichever
+					// leans closer (a heeled spar meets the face low or high, not in the middle). A spar lying flat
+					// (HiZ = LoZ) is taken at its foot.
+					const double SX = S.BX - S.AX, SY = S.BY - S.AY;
+					const double Len2 = SX * SX + SY * SY;
+					Vec3 P; double DX = 0.0, DY = 0.0, Dist = 1e30;
+					for (const double ZAt : { SlabLo, SlabHi })
+					{
+						const double F = HiZ > LoZ + 1e-6 ? Clamp((ZAt - Base.Z) / (Head.Z - Base.Z), 0.0, 1.0) : 0.0;
+						const Vec3 Pz = Base + (Head - Base) * F;
+						const double T = Len2 > 1e-9 ? Clamp(((Pz.X - S.AX) * SX + (Pz.Y - S.AY) * SY) / Len2, 0.0, 1.0) : 0.0;
+						const double Dx = Pz.X - (S.AX + SX * T), Dy = Pz.Y - (S.AY + SY * T);
+						const double D = std::sqrt(Dx * Dx + Dy * Dy);
+						if (D < Dist) { Dist = D; DX = Dx; DY = Dy; P = Pz; }
+					}
+					const double Pen = S.Radius + 0.1 - Dist;
+					if (Pen > 0.0 && Dist > 1e-6)
+					{
+						// The push is taken low on the spar (within 2 m of the centre of gravity): the rig is rigid here,
+						// so at the masthead the few kilograms behind it would make the spring soft and let the hull slide
+						// on under the deck, pitched up on her transoms, while the real rig would bend or break. Low, the
+						// deck stops the boat as a dock does, with a modest heel.
+						const Vec3 Low(P.X, P.Y, std::min(P.Z, CGWorld.Z + 2.0));
+						Contact(Low, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), kDeckOutSpeed);
 						Telemetry.bCollision = true;
 					}
 				}

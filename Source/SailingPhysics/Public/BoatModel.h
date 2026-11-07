@@ -460,6 +460,8 @@ namespace Sailing
 		std::vector<double> DesignHullVolume; // m^3 each hull displaces floating upright at rest
 		double DesignVolume = 0.0;
 		std::vector<Vec3> BottomPoints, OutlinePoints; // grounding and collision probes (body frame)
+		std::vector<Vec3> MastPoints;                  // along the spar, 2 m to the masthead: bridge decks (body frame)
+		std::vector<int> MastSegments;                 // scratch: the decks near the spar this step
 		double MainMeanLift = 0.0;
 		std::vector<double> ColumnMeanVolume; // each column's immersion below her mean waterplane, averaged (the slope push, m^3)
 		struct FColumnWater { Vec3 Low; double Water, VZ, SlopeX, SlopeY; bool bNear; };
