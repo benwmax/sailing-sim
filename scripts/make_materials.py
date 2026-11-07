@@ -2210,8 +2210,8 @@ if (Detail > 0.5 && Layout < 3.5)
     float patch = lerp(lerp(p00, p10, spm.x), lerp(p01, p11, spm.x), spm.y);
     float thC = 0.78 - 0.40 * ageC;   // patches over about a fifth of a new sail, a third at the default, two thirds of an old one
     float cover = smoothstep(thC - 0.12, thC + 0.12, patch);
-    float sAmp = 0.11 * (0.5 + ageC);   // the fold's peak slope (radians): 5.4 deg at the default age, 8 at an old sail's
-    float wd = 0.06;                     // the fold's half width in noise units: a tenth of a cell
+    float sAmp = 0.08 * (0.5 + ageC);   // the fold's peak slope (radians): 3.9 deg at the default age, 6 at an old sail's (0.11 still read embossed in a patch)
+    float wd = 0.045;                    // the fold's half width in noise units: under a tenth of a cell (0.06 read as rounded bumps)
     float2 cg = float2(0.0, 0.0);
     float scales[2] = { 0.03, 0.012 };
     if (cover > 0.0)
