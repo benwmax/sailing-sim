@@ -522,8 +522,9 @@ bool FSailingUIKeyboardOnlyRowsTest::RunTest(const FString&)
 	return true;
 }
 
-// Slice audit finding 25 (Bean, Nov 6 2026): a returning Career player (progress in the save, no last session) starts on
-// Career, not Sail; a new save and Free Sail start on Sail; a last session starts on Continue.
+// Slice audit finding 25: a returning Career player (progress in the save) starts on Career, not Sail (Bean, Nov 6 2026),
+// even with a last session to continue (Bean, Nov 7: Career wins); a last session without Career progress starts on
+// Continue; a new save and Free Sail start on Sail.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUITitleFocusTest, "SailingSim.UI.TitleFocus", UIFlags)
 bool FSailingUITitleFocusTest::RunTest(const FString&)
 {
@@ -557,7 +558,40 @@ bool FSailingUITitleFocusTest::RunTest(const FString&)
 	Save->bHasLast = true;
 	S->bFreeSail = false;
 	Got = Focused();
-	TestTrue(FString::Printf(TEXT("A last session starts on Continue (%s)"), *Got), Got.StartsWith(TEXT("CONTINUE")));
+	TestTrue(FString::Printf(TEXT("A last session with Career progress starts on Career (%s)"), *Got), Got.StartsWith(TEXT("CAREER")));
+	Progress = FSailSave::FProgress();
+	Got = Focused();
+	TestTrue(FString::Printf(TEXT("A last session without Career progress starts on Continue (%s)"), *Got), Got.StartsWith(TEXT("CONTINUE")));
+	return true;
+}
+
+// Bean, Nov 7 2026: Continue overwrites the difficulty. Continue casts off with the last session as it was saved, and
+// applying a session (USailSessionSubsystem::ApplyToSettings, StartSession's path) writes its Easy or Realistic over the
+// Settings difficulty. Behaviour locked here, not changed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIContinueKeepsItsDifficultyTest, "SailingSim.UI.ContinueKeepsItsDifficulty", UIFlags)
+bool FSailingUIContinueKeepsItsDifficultyTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	const int32 World = S->World, Spot = S->LaunchSpot, Traffic = S->TrafficLevel, Boat = S->BoatType;
+	const ESailingWeather Weather = S->WeatherPreset;
+	const float Hour = S->StartHour;
+	const ESailingDifficulty Difficulty = S->Difficulty;
+	const bool bLearning = S->bLearningMode, bFree = S->bFreeSail;
+	ON_SCOPE_EXIT
+	{
+		S->World = World; S->LaunchSpot = Spot; S->TrafficLevel = Traffic; S->BoatType = Boat; S->WeatherPreset = Weather;
+		S->StartHour = Hour; S->Difficulty = Difficulty; S->bLearningMode = bLearning; S->bFreeSail = bFree;
+		S->Save();
+	};
+	FSailSessionConfig Last = USailSessionSubsystem::MakeDefault();
+	Last.bEasy = false;
+	S->Difficulty = ESailingDifficulty::Easy;
+	USailSessionSubsystem::ApplyToSettings(Last);
+	TestTrue(TEXT("A Realistic last session over an Easy setting sails Realistic"), S->Difficulty == ESailingDifficulty::Realistic);
+	Last.bEasy = true;
+	S->Difficulty = ESailingDifficulty::Realistic;
+	USailSessionSubsystem::ApplyToSettings(Last);
+	TestTrue(TEXT("An Easy last session over a Realistic setting sails Easy"), S->Difficulty == ESailingDifficulty::Easy);
 	return true;
 }
 
