@@ -176,3 +176,34 @@ HUD, and Club Racer from a certified save. Stills: `stills2/`.
 
   They are logged in Development builds and don't reach players. They're worth a look if the distance-field one turns out to be a mis-placed object.
 - **Not reached by the script:** Replays with no run (read only), a finish panel and medal moment (they need a sailed drill), and every lesson sailed by hand on keyboard and pad (Bean's). `SailingSim.UI.PadCoversLessonKeys` (#486) now holds that every key a lesson names has a controller binding.
+
+## Third audit (Nov 7 2026, main 6e01ebbb)
+
+**Method:** as the second audit. It used a fresh `FULL=1` slice build (`-SailingSlice=1`) at 1920x1080 windowed, Medium. Profiles were fresh, part-way (`docs/career/still-save.json`) and certified (`docs/free-sail/still-save.json`), plus a **returning** profile: the Nov 2 tester fixture, with Day Sailor certified, Club Racer started and a last session. Keys and pad buttons went through `-SailingUIScript` only, on 55 launches, all ok. The Mac's own Config and SaveGames were restored after each launch. It checked what changed since Nov 6 in particular; stills are in `stills3/`.
+
+### What changed since Nov 6, as seen
+
+| Change | Seen | Still |
+|---|---|---|
+| **Title focus** (#501, #508): a returning Career player lands on Career, even with a last session | Career focused with Continue listed first, on keys and pad. The part-way save without a last session lands on Career too, and a fresh save on Sail. | [r-title](stills3/r-title.jpg), [r-title-pad](stills3/r-title-pad.jpg), [f-title](stills3/f-title.jpg) |
+| **Medal lines** (#502) | Under the medal: "What went well: No touches…" / "To improve: Time 3:20: Gold needs 3:00 or less." (silver); "Silver needs a clean finish; this one was contact." (bronze); "Gold. Next time, try it faster than 1:00." (Sunfish quick-stop) | [m-quiz-j22-silver](stills3/m-quiz-j22-silver.jpg), [m-quiz-j22-bronze](stills3/m-quiz-j22-bronze.jpg), [m-quiz-sunfish-gold](stills3/m-quiz-sunfish-gold.jpg) |
+| **Controls "Keyboard only"** (#506) | Vang, cunningham and outhaul read Keyboard only, with the side panel's line; pad navigation reaches them | [c-controls](stills3/c-controls.jpg), [c-controls-pad](stills3/c-controls-pad.jpg) |
+| **Dock tips** (#491, finding 23) | J/22 and Sunfish at the dock: "Tied up" on the trim panel; no "Jib is luffing" or "In irons" | [f-hud-j22-dock](stills3/f-hud-j22-dock.jpg), [f-hud-sunfish-dock](stills3/f-hud-sunfish-dock.jpg) |
+| **Credits** (#492, finding 22) | No paths, phase notes or names | [c-credits](stills3/c-credits.jpg) |
+| **Club Racer loading art** (#493, finding 24) | The Sunfish under "SUNFISH" | [k-clubracer-start](stills3/k-clubracer-start.jpg) |
+| **Sunfish sail crinkle** (#509), **clouds** (#499), **shore camera** (#500) | Sail, sky and chase camera as expected | [s-sunfish-sail](stills3/s-sunfish-sail.jpg), [s-j22-sky](stills3/s-j22-sky.jpg) |
+
+**Earlier findings:** none of the 25 regressed. Findings 22 to 24 are fixed (above), and finding 25 is fixed by #508.
+
+### New
+
+| # | Category | Finding | Still | Issue |
+|---|---|---|---|---|
+| 26 | Unclear objective | Return and dock (lesson 6) opens head to wind at 3.1 kn, so "Too close to the wind" shows at once. Launched with `-SailingDrill`; the Career launch should be checked too. | [s-shore-camera](stills3/s-shore-camera.jpg) | #510 |
+| 27 | Polish | Medal lines: the improve line names the raw outcome ("this one was contact"), and a crew-overboard "went well" line talks about docks | [m-quiz-j22-bronze](stills3/m-quiz-j22-bronze.jpg) | #511 |
+
+### Also seen
+
+- A certified player's Career screen opens on **First job (waiting)**, not the next Club Racer lesson ([r-title-enter](stills3/r-title-enter.jpg)). That is #402's rule: a skipped first job waits on the Career screen. It's noted, not filed.
+- **Not in this build** (main 6e01ebbb; they are on `bean-calls-nov7`): Restore the defaults at the top of Controls, crash reports on by default, and lessons leaving Free Sail on. This run therefore shows Restore at the bottom.
+- **Not reached by the script:** sailing a lesson by hand, and Replays with a run. The nightly playthrough (`nightly-playthrough`) reaches the medal screen through the drill's own finish.
