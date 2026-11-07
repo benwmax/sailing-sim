@@ -2189,8 +2189,13 @@ dhdv += dth * (ca / cr2);
 float pucker = (1.0 - smoothstep(0.01, 0.05, seamDist)) * 0.0005;
 dhdu += pucker * 55.0 * cos(UV0.x * 55.0);
 // Ultra audit item 5, the shading half (docs/sail-cloth-shading; Detail: High and Ultra). What close-up Dacron carries:
-// - crinkle: the resin's fine broken creases from use (two octaves of ridged value noise, 3 and 1.2 cm, turned off the
-//   cloth's axes; about 5 deg of slope at a crease, more with age), into the normal, faded where a crease falls under about two pixels;
+// - crinkle: the resin's fine broken creases from use (Nov 7, docs/sail-crinkle/: Bean, from the Sunfish's helm, "crumpled
+//   paper"). A used sail is not crinkled all over: most of the cloth is smooth and the creases run in patches, each a
+//   narrow fold line with flat cloth between. Patches: a slow value noise (40 cm cells) over a threshold that follows
+//   the sail's age (about a fifth of a cared-for new sail, a third at the default, two thirds of an old one). Lines: the
+//   0.5 contours of two octaves of value noise (3 and 1.2 cm cells, turned off the cloth's axes and bent by a slow warp)
+//   drawn as a Gaussian fold a tenth of a cell wide, up to about 5 deg of slope at the default age; the old ridged
+//   field (a tent in every cell, every cell a dent) read as hammered metal. An octave fades where its fold falls under about two pixels;
 // - the weave: a 0.6 mm plain weave in the normal, only where a pixel is under about 0.3 mm (the cloth at arm's reach).
 // Both are slopes in the normal, nothing finer than the pixel (px: metres a pixel at this depth).
 float crinkle = 0.0;
@@ -2198,16 +2203,25 @@ if (Detail > 0.5 && Layout < 3.5)
 {
     float pxC = max(Depth, 1.0) * 1.25e-5;
     float ageC = Age >= 0.0 ? saturate(0.3 + Age / 12.0) * (1.0 - 0.5 * saturate(Care)) : 0.5;
-    float ampC = 0.0009 * (0.5 + ageC);   // a crease is narrow: its slope is what shows (0.15 mm high read as nothing, 1.5 mm as hammered metal)
+    float2 qp = UV0 / 0.4 + float2(3.7, 1.9);
+    float2 qpi = floor(qp), qpf = frac(qp), spm = qpf * qpf * (3.0 - 2.0 * qpf);
+    float p00 = frac(sin(dot(qpi, float2(269.5, 183.3))) * 43758.5), p10 = frac(sin(dot(qpi + float2(1, 0), float2(269.5, 183.3))) * 43758.5);
+    float p01 = frac(sin(dot(qpi + float2(0, 1), float2(269.5, 183.3))) * 43758.5), p11 = frac(sin(dot(qpi + float2(1, 1), float2(269.5, 183.3))) * 43758.5);
+    float patch = lerp(lerp(p00, p10, spm.x), lerp(p01, p11, spm.x), spm.y);
+    float thC = 0.78 - 0.40 * ageC;   // patches over about a fifth of a new sail, a third at the default, two thirds of an old one
+    float cover = smoothstep(thC - 0.12, thC + 0.12, patch);
+    float sAmp = 0.08 * (0.5 + ageC);   // the fold's peak slope (radians): 3.9 deg at the default age, 6 at an old sail's (0.11 still read embossed in a patch)
+    float wd = 0.045;                    // the fold's half width in noise units: under a tenth of a cell (0.06 read as rounded bumps)
     float2 cg = float2(0.0, 0.0);
     float scales[2] = { 0.03, 0.012 };
+    if (cover > 0.0)
     for (int o = 0; o < 2; o++)
     {
         float sC = scales[o];
-        float fadeC = 1.0 - smoothstep(0.08 * sC, 0.2 * sC, pxC);   // a crease about a tenth of its cell wide: gone under two pixels
+        float fadeC = 1.0 - smoothstep(0.08 * sC, 0.2 * sC, pxC);   // a fold about a tenth of its cell wide: gone under two pixels
         if (fadeC <= 0.0) continue;
-        // Turned off the cloth's axes (a different angle each octave) and bent by a slow warp, or the cells' ridges read
-        // as a grid maze; the warp's own slope is left out of the gradient (it is a quarter of the cell's at most).
+        // Turned off the cloth's axes (a different angle each octave) and bent by a slow warp, or the lines follow a grid;
+        // the warp's own slope is left out of the gradient (it is a quarter of the cell's at most).
         float ca0 = o == 0 ? 0.8290 : 0.2588, sa0 = o == 0 ? 0.5592 : 0.9659;   // 34 and 75 deg
         float2 q = float2(ca0 * UV0.x - sa0 * UV0.y, sa0 * UV0.x + ca0 * UV0.y) / sC + o * 7.31;
         q += 0.4 * float2(sin(q.y * 0.61 + 1.3), sin(q.x * 0.53 + 2.1));
@@ -2216,12 +2230,16 @@ if (Detail > 0.5 && Layout < 3.5)
         float a00 = frac(sin(dot(qi, float2(127.1, 311.7))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(127.1, 311.7))) * 43758.5);
         float a01 = frac(sin(dot(qi + float2(0, 1), float2(127.1, 311.7))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(127.1, 311.7))) * 43758.5);
         float n = lerp(lerp(a00, a10, sm.x), lerp(a01, a11, sm.x), sm.y);
-        float2 dq = float2(lerp(a10 - a00, a11 - a01, sm.y) * dsm.x, lerp(a01 - a00, a11 - a10, sm.x) * dsm.y) / sC;
+        float2 dq = float2(lerp(a10 - a00, a11 - a01, sm.y) * dsm.x, lerp(a01 - a00, a11 - a10, sm.x) * dsm.y);
         float2 dn = float2(ca0 * dq.x + sa0 * dq.y, -sa0 * dq.x + ca0 * dq.y);   // back to the cloth's axes
-        // Ridged: h = 1 - |2n - 1|, sharp along n = 0.5 (a crease line), its slope's sign flipping across the line.
-        float sgn = n > 0.5 ? -1.0 : 1.0;
-        cg += ampC * fadeC * (o == 0 ? 1.0 : 0.6) * sgn * 2.0 * dn;
-        crinkle = max(crinkle, fadeC * (1.0 - smoothstep(0.0, 0.06, abs(n - 0.5))));
+        // The fold: height exp(-x^2 / wd^2) across the 0.5 contour, x the noise's distance from it; its slope along the
+        // noise's gradient direction (unit: the fold's slope is set by sAmp, not by how steep the noise happens to be).
+        float x = n - 0.5;
+        float h = exp(-x * x / (wd * wd));
+        float2 unitN = dn / max(length(dn), 1e-4);
+        float foldS = cover * fadeC * (o == 0 ? 1.0 : 0.6) * sAmp * (-2.0 * x / wd) * h;
+        cg += foldS * unitN;
+        crinkle = max(crinkle, cover * fadeC * h);
     }
     float weaveK = 1.0 - smoothstep(0.0002, 0.0004, pxC);
     float2 wv = UV0 * (6.2831853 / 0.0006);
