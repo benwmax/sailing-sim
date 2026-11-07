@@ -189,10 +189,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Gameplay")
 	bool bPauseOnFocusLoss = false;
 
-	/** Send crash and bug reports (docs/sentry): the player's consent, off until they say yes. Only a build with a Sentry
-	 *  DSN (the PC's tester builds) can send anything; the Mac and a fresh clone have none. */
+	/** Send crash and bug reports (docs/sentry): on by default for testers (Bean, Nov 7 2026), off in Settings > Gameplay >
+	 *  Privacy. Only a build with a Sentry DSN (the PC's tester builds) can send anything; the Mac and a fresh clone have none. */
 	UPROPERTY(config, EditAnywhere, Category = "Privacy")
-	bool bSendCrashReports = false;
+	bool bSendCrashReports = true;
 
 	/** The play mode (docs/free-sail), chosen on the title screen: Free Sail opens every world, spot, boat, condition and
 	 *  mode and earns no career medals or unlocks (the logbook still counts); false is Career. Career 1's Open
@@ -246,8 +246,15 @@ public:
 	bool IsEasy() const;
 	/** -SailingEasy=0|1, or -1 when the command line doesn't say. */
 	static int32 EasyArg();
-	/** The run is in Free Sail mode: -SailingFreeSail=0|1 decides, otherwise bFreeSail (docs/free-sail). */
+	/** The run is in Free Sail mode: -SailingFreeSail=0|1 decides, then the running session's mode (RunFreeSail), otherwise
+	 *  bFreeSail (docs/free-sail). */
 	bool IsFreeSail() const;
+	/** The player's own choice (the title's Mode switch, Settings): -SailingFreeSail, otherwise bFreeSail; a session's mode
+	 *  never changes it. */
+	bool IsFreeSailChoice() const;
+	/** The mode of the session being sailed, set by USailSessionSubsystem::ApplyToSettings and cleared on the title
+	 *  (-1): a Career lesson or the first job sails as Career over a Free Sail choice without writing it (Bean, Nov 7). */
+	int32 RunFreeSail = -1;
 	/** -SailingFreeSail=0|1, or -1 when the command line doesn't say. */
 	static int32 FreeSailArg();
 	/**

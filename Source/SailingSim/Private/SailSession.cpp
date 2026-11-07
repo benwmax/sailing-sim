@@ -75,7 +75,7 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	C.Boat = Save->bHasLast ? Save->Last.Boat : 0;
 	C.LaunchSpot = Save->bHasLast && Save->Last.World == C.World ? Save->Last.LaunchSpot : 0;
 	ApplyPreset(C.Conditions, Presets()[0]);
-	C.bFreeSail = USailingSettings::Get()->IsFreeSail();
+	C.bFreeSail = USailingSettings::Get()->IsFreeSailChoice();
 	return C;
 }
 
@@ -156,7 +156,9 @@ void USailSessionSubsystem::ApplyToSettings(const FSailSessionConfig& Config)
 	S->TrafficLevel = FMath::Clamp(Config.Traffic, 0, 2);
 	S->Difficulty = Config.bEasy ? ESailingDifficulty::Easy : ESailingDifficulty::Realistic;
 	S->bLearningMode = Config.bLearningMode;
-	S->bFreeSail = Config.bFreeSail;
+	// Bean, Nov 7: the session sails in its own mode (a lesson as Career, medals count) but never writes the player's
+	// Free Sail choice; the title clears the run's mode (USailingSettings::RunFreeSail).
+	S->RunFreeSail = Config.bFreeSail ? 1 : 0;
 	S->Save();
 }
 
