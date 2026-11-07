@@ -44,6 +44,10 @@ public:
 	/** Starts a drill for a boat at its current position, with the true wind coming from WindFromRad. */
 	void Start(ESailingDrill InDrill, const Sailing::FBoatModel& Boat, double WindFromRad);
 	void Stop() { Drill = ESailingDrill::None; }
+	/** #404's nightly playthrough (a developer-only UI script step, ASailboatPawn::DevFinishDrill): ends the running drill
+	 *  with one of its outcomes (an unknown one takes the drill's first) at the time sailed so far, so the medal grading
+	 *  and the medal screen follow their normal path. */
+	void Finish(const FString& InOutcome);
 
 	/** Call every physics step (or frame). Returns true while the drill is running. */
 	bool Update(const Sailing::FBoatModel& Boat, const FDrillContext& Context, double Dt);

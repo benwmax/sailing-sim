@@ -1,4 +1,5 @@
 #include "SailingHUD.h"
+#include "UnrealClient.h"
 #include "BenchRunner.h"
 #include "Learning.h"
 #include "SailingSim.h"
@@ -248,6 +249,40 @@ void ASailingHUD::Tick(float DeltaSeconds)
 		// The save check's launches end themselves (no simulated input on the build Mac).
 		SAIL_LOG(Display, TEXT("UI script: quit"));
 		FPlatformMisc::RequestExit(false, TEXT("SailingUIScript"));
+		return;
+	}
+	// #404's nightly playthrough (scripts/nightly/playthrough.sh): Expect:<screen> logs whether that screen is up (a front
+	// end screen, Loading, or Hud when the menus are closed), Shot:<name> saves the window with its UI to Saved/Bench, and
+	// Finish:<outcome> ends the running drill with that outcome through the drill's own finish (developer builds or
+	// developer tools only).
+	if (Token.StartsWith(TEXT("Expect:")))
+	{
+		static const TCHAR* const Names[] = { TEXT("Title"), TEXT("World"), TEXT("Launch"), TEXT("Boat"), TEXT("Conditions"), TEXT("Mode"),
+			TEXT("Pause"), TEXT("ConditionsInGame"), TEXT("Settings"), TEXT("Controls"), TEXT("Confirm"), TEXT("Briefing"), TEXT("Quiz"),
+			TEXT("Credits"), TEXT("Career"), TEXT("Gallery"), TEXT("Feedback"), TEXT("FirstLaunch") };
+		FString Now = TEXT("Hud");
+		if (FrontEnd.IsValid()) { const int32 I = int32(FrontEnd->Current()); Now = I < UE_ARRAY_COUNT(Names) ? Names[I] : TEXT("?"); }
+		else if (Loading.IsValid()) Now = TEXT("Loading");
+		const FString Want = Token.Mid(7);
+		SAIL_LOG(Display, TEXT("UI script: expect %s: %s"), *Want, Now == Want ? TEXT("ok") : *FString::Printf(TEXT("MISSING (on %s)"), *Now));
+		return;
+	}
+	if (Token.StartsWith(TEXT("Shot:")))
+	{
+		const FString Path = FPaths::ProjectSavedDir() / TEXT("Bench") / (Token.Mid(5) + TEXT(".png"));
+		FScreenshotRequest::RequestScreenshot(Path, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
+		SAIL_LOG(Display, TEXT("UI script: shot %s"), *Path);
+		return;
+	}
+	if (Token.StartsWith(TEXT("Finish:")))
+	{
+		bool bAllowed = USailingSettings::DeveloperTools();
+#if !UE_BUILD_SHIPPING
+		bAllowed = true;
+#endif
+		ASailboatPawn* Pawn = bAllowed && PlayerOwner ? Cast<ASailboatPawn>(PlayerOwner->GetPawn()) : nullptr;
+		const bool bDone = Pawn && Pawn->DevFinishDrill(Token.Mid(7));
+		SAIL_LOG(Display, TEXT("UI script: finish %s: %s"), *Token.Mid(7), bDone ? TEXT("ok") : bAllowed ? TEXT("no drill running") : TEXT("not in this build"));
 		return;
 	}
 	if (Token == TEXT("Log"))

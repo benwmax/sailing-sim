@@ -93,6 +93,16 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	}
 }
 
+void FDrillRunner::Finish(const FString& InOutcome)
+{
+	if (!IsActive()) return;
+	const TArray<FString> Known = Outcomes(Drill);
+	Outcome = Known.Contains(InOutcome) || Known.Num() == 0 ? InOutcome : Known[0];
+	bComplete = true;
+	Step = Steps.Num();
+	Status = FString::Printf(TEXT("Finished by the playthrough script (%s)."), *Outcome);
+}
+
 TArray<FString> FDrillRunner::Outcomes(ESailingDrill Drill)
 {
 	switch (Drill)

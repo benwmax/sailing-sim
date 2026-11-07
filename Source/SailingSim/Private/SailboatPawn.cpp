@@ -1319,7 +1319,8 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		DrillCollisions += Tel.bCollision && !bDrillTouching;
 		bDrillEasy |= EasyAssists.bEnabled;
 		bDrillTouching = Tel.bCollision;
-		DrillRunner.Update(Boat, Ctx, DeltaSeconds);
+		if (!DevFinishOutcome.IsEmpty()) { DrillRunner.Finish(DevFinishOutcome); DevFinishOutcome.Reset(); }
+		else DrillRunner.Update(Boat, Ctx, DeltaSeconds);
 		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
 		if (DrillRunner.IsComplete() && !bTrafficBoat && !bGhost)
 		{
@@ -2752,6 +2753,13 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	DrillRunner.Start(Drill, Boat, WindFrom);
 	if (!bTrafficBoat) ++DrillSerial;
 	bMenuOpen = false;
+}
+
+bool ASailboatPawn::DevFinishDrill(const FString& Outcome)
+{
+	if (!DrillRunner.IsActive() || bTrafficBoat || bGhost) return false;
+	DevFinishOutcome = Outcome.IsEmpty() ? TEXT("-") : Outcome;
+	return true;
 }
 
 void ASailboatPawn::UpdateLearning()
