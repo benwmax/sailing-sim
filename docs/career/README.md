@@ -151,8 +151,6 @@ just not focused. A last session without Career progress starts on Continue; a n
 (`SSailFrontEnd::BuildTitle`, `SailingSim.UI.TitleFocus`). Continue sails the last session as it was saved, Easy or
 Realistic over the Settings difficulty (Bean, Nov 7; `SailingSim.UI.ContinueKeepsItsDifficulty`).
 
-![The title for a returning Career player (the Nov 2 tester fixture: Day Sailor certified, a last session)](title-career-wins.jpg)
-
 ## Checkride and certificate
 
 The checkride is ready when every lesson it lists holds at least `min_medal` (silver for Day Sailor). Its written quiz
