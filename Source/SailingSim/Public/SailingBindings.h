@@ -27,6 +27,9 @@ namespace SailingBindings
 	SAILINGSIM_API FString PadLabel(const FKey& Key);
 	/** PadLabel for gamepad keys, the key's display name otherwise. */
 	SAILINGSIM_API FString KeyLabel(const FKey& Key);
+	/** The Controls screen's controller column for a command: its button, else the stick or trigger that drives it
+	 *  ("<axis> (fixed)"), else "Keyboard only" (no controller button yet: Bean's call for the slice, #497). */
+	SAILINGSIM_API FString PadColumnText(const FKey& PadKey, const FKey& PadAxis);
 
 	/** Menu navigation (MenuUp/Down/Left/Right) shares the arrows and the D-pad with game commands: no row, never swapped. */
 	SAILINGSIM_API bool IsRowAction(FName Action);
