@@ -1,0 +1,138 @@
+{
+	"version": 1,
+	"game": "SailingSim",
+	"writtenAt": "2026-11-07T01:28:08.485Z",
+	"settings":
+	{
+		"quality": "Ultra",
+		"difficulty": "Easy",
+		"controlLayout": "Simple",
+		"learningMode": true,
+		"trimAssist": true,
+		"showHud": true,
+		"audio":
+		{
+			"volume": 0.80000001192092896
+		},
+		"graphics":
+		{
+			"antiAliasing": -1,
+			"shadowQuality": -1,
+			"lightingQuality": -1,
+			"reflectionQuality": -1,
+			"cloudQuality": -1,
+			"waterQuality": -1,
+			"foliageQuality": -1,
+			"viewDistanceQuality": -1,
+			"motionBlur": -1,
+			"fieldOfView": 0,
+			"brightness": 100,
+			"vsync": false
+		},
+		"display":
+		{
+			"resolutionScale": 0,
+			"frameCap": 0,
+			"cinematicLook": false,
+			"hudScale": 100,
+			"textScale": 100,
+			"speedUnits": "kn",
+			"depthUnits": "ft",
+			"headingsTrue": false,
+			"autoStart": false,
+			"pauseOnFocusLoss": false
+		},
+		"privacy":
+		{
+			"sendCrashReports": false
+		},
+		"start":
+		{
+			"world": "ray-hubbard",
+			"launchSpot": "off-rush-creek-open-water",
+			"launchSpotAt":
+			{
+				"lat": 32.82898058,
+				"lon": -96.505980789999995
+			},
+			"boat": "J22",
+			"weather": "AfternoonBreeze",
+			"startHour": 10,
+			"traffic": 0,
+			"weatherSeed": 2027,
+			"gaugeLakeLevel": false
+		},
+		"career":
+		{
+			"freeSail": false
+		},
+		"input":
+		{
+			"bindings": "Input.ini"
+		}
+	},
+	"lastSession":
+	{
+		"world": "ray-hubbard",
+		"launchSpot": "off-rush-creek-open-water",
+		"launchSpotAt":
+		{
+			"lat": 32.82898058,
+			"lon": -96.505980789999995
+		},
+		"boat": "J22",
+		"mode": "Free",
+		"drill": "LeaveTheDock",
+		"learningMode": true,
+		"easy": true,
+		"learningTips": true,
+		"freeSail": false,
+		"traffic": 0,
+		"savedAt": "2026-11-07T01:25:16.100Z",
+		"conditions":
+		{
+			"preset": "Lesson",
+			"sky": "Fair",
+			"windFromDeg": 180,
+			"windKn": 10,
+			"gustKn": 13,
+			"localHour": 10,
+			"month": 4,
+			"day": 18,
+			"airTempF": 74,
+			"lakeLevelFt": 0,
+			"realDay": ""
+		}
+	},
+	"progress":
+	{
+		"drillsPassed": [],
+		"racesSailed": 0,
+		"racesWon": 0,
+		"logbook":
+		{
+			"sessions": 2,
+			"entries": 2,
+			"nauticalMiles": 0.031035083893744913
+		},
+		"hoursSailed": 0.035289351851856013,
+		"lessons":
+		{
+		},
+		"checkrides":
+		{
+		},
+		"certificates":
+		{
+		},
+		"scenes":
+		{
+		},
+		"firstLaunch":
+		{
+			"seen": true,
+			"skipped": false,
+			"at": "2026-11-07T01:25:16.100Z"
+		}
+	}
+}
