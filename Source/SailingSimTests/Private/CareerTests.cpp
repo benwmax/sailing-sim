@@ -600,14 +600,19 @@ bool FSailingCareerFreeSailTest::RunTest(const FString&)
 	// The game's edge: the settings carry the mode, a session config carries it over the reload.
 	USailingSettings* S = USailingSettings::Get();
 	const bool bFree0 = S->bFreeSail;
+	const int32 Run0 = S->RunFreeSail;
 	S->bFreeSail = true;
+	S->RunFreeSail = -1;
 	TestTrue(TEXT("Settings in Free Sail: SailCareer is"), SailCareer::IsFreeSail() && SailCareer::Progress().IsFreeSail());
 	TestTrue(TEXT("A new session takes the title's mode"), USailSessionSubsystem::MakeDefault().bFreeSail);
 	FSailSessionConfig Session = USailSessionSubsystem::MakeDefault();
 	Session.bFreeSail = false;
 	USailSessionSubsystem::ApplyToSettings(Session);
-	TestFalse(TEXT("A Career session puts the settings in Career"), S->bFreeSail || SailCareer::IsFreeSail());
+	// Bean, Nov 7: a Career session sails as Career for its run but leaves the player's Free Sail choice alone.
+	TestFalse(TEXT("A Career session sails as Career"), SailCareer::IsFreeSail());
+	TestTrue(TEXT("... and keeps the player's Free Sail choice"), S->bFreeSail);
 	S->bFreeSail = bFree0;
+	S->RunFreeSail = Run0;
 	S->Save();
 	return true;
 }
