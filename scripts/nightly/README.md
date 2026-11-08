@@ -24,6 +24,27 @@ under on both readings, or one the gate lost, makes it `FLOOR BREAK`, with the r
 reads either side of it from run to run (storm High: 44.7 to 45.6 in one session on Nov 2 2026, the same before and after
 the merges first suspected), so one reading under it doesn't flag the night.
 
+## The playthrough (#404, #399)
+
+After the gate, on the night's own package, `scripts/nightly/playthrough.sh` plays the career's slice on a fresh profile,
+once on the keyboard and once on the pad's buttons, through `-SailingUIScript`:
+
+1. the first launch, Skip to the menu, the title, Career;
+2. Day Sailor's six lessons, each from its loading screen and briefing to the lesson, ended by `Finish:<outcome>` (the
+   drill's own finish, so the grading and the save are real), its medal screen, its quiz answered right by `Answer:all`
+   (the quiz's own buttons), its score, the next lesson;
+3. the Day Sailor checkride's written quiz and the certificate (Club Racer opens);
+4. Club Racer's four Sunfish lessons the same way, its checkride and certificate;
+5. back to the title.
+
+Every step waits for its screen (`WaitFor:<screen>`, at most two minutes) and checks it (`Expect:<screen>`), and a still
+of each goes to `Artifacts/nightly/<date>/playthrough/` (72 screens an input). A screen that doesn't appear turns a
+passing night into `PLAYTHROUGH FAILED main <sha>: keys: FAIL Quiz (on Hud) in ds3; pad: ...`: the first missing screen,
+the one that was up, and the lesson (`Stage:` label: ds1-ds6, ds-checkride, cr1-cr4, cr-checkride). `Finish:` and
+`Answer:` act only outside Shipping or with developer tools on. The two inputs take about 22 minutes, so a whole night
+runs about 1 h 15 min: **keep the Mac lock free from 08:55 to 11:00 UTC.** `PLAYTHROUGH_FLOWS=keys` runs one input;
+`playthrough.sh --self-test` checks the log reading and the flow without the game.
+
 It skips the night (a `SKIPPED` line) when the screen is locked (the game can't open its window) or the Metal toolchain
 is missing (after an Xcode update: `xcodebuild -downloadComponent MetalToolchain`).
 
