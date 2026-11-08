@@ -119,7 +119,7 @@ def _self_tailer(s=1.0):
     prof += [(rd - 0.0004 * s, 0.079 * s), (rd, 0.091 * s)]
     prof += _fillet((rd + 0.010 * s, 0.091 * s), 0.010 * s, 0.009 * s, 180, 112, 5)
     prof += [(0.0475 * s, 0.1018 * s), (0.0475 * s, 0.1028 * s), (0.0, 0.1028 * s)]
-    body = G.lathe("drum", prof, al, 72)
+    body = G.lathe("drum", prof, al, 64)
     G.finish(body, 0.0, sharp=40)
     # --- the self-tailer: the jaws' V groove, the ribbed outer band, the dark top rising to the cap
     T = [(0.0, 0.1030 * s), (0.0395 * s, 0.1030 * s), (0.0480 * s, 0.1036 * s),       # lower jaw's lip
@@ -127,25 +127,29 @@ def _self_tailer(s=1.0):
          (0.0385 * s, 0.1108 * s), (0.0490 * s, 0.1150 * s), (0.0508 * s, 0.1162 * s),   # up to the upper jaw's lip
          (0.0510 * s, 0.1222 * s)]                                                       # the ribbed, lettered outer band
     T += _fillet((0.0480 * s, 0.1222 * s), 0.0030 * s, 0.0030 * s, 0, 90, 3)
-    T += [(0.0400 * s, 0.1290 * s), (0.0330 * s, 0.1310 * s), (0.0275 * s, 0.1318 * s),   # the top sloping up inward
-          (0.0270 * s, 0.1335 * s), (0.0250 * s, 0.1352 * s), (0.0190 * s, 0.1362 * s), (0.0, 0.1364 * s)]   # the cap
+    T += [(0.0400 * s, 0.1290 * s), (0.0335 * s, 0.1310 * s), (0.0305 * s, 0.1314 * s)]   # the top sloping up inward
+    # the cap (Bean, round 4): a black cone rising steeply from a short rim inside the stripper's crescent to the socket,
+    # which sits down in it nearly flush; open in the middle for the socket
+    T += [(0.0302 * s, 0.1348 * s), (0.0296 * s, 0.1356 * s), (0.0284 * s, 0.1360 * s), (0.0200 * s, 0.1408 * s),
+          (0.0150 * s, 0.1432 * s), (0.0128 * s, 0.1438 * s), (0.0126 * s, 0.1330 * s), (0.0, 0.1330 * s)]
     jaws = G.lathe("tailer", T, bp, 120)
     panel = (-math.pi / 2 + math.radians(40), math.radians(17))          # the smooth panel the lettering sits on
     _ribs(jaws, 0.1164 * s, 0.1220 * s, 60, 0.0008 * s, 0.050 * s, panel)
     _ribs(jaws, 0.1223 * s, 0.1290 * s, 60, 0.0004 * s, 0.040 * s, panel)    # and over the rounded rim onto the top's edge
     G.finish(jaws, 0.0, sharp=40)
     # --- the handle socket: a polished boss with a ten-point star hole
-    boss = G.lathe("socket", [(0.0, 0.1350 * s), (0.0125 * s, 0.1350 * s), (0.0125 * s, 0.1440 * s), (0.0118 * s, 0.1452 * s),
-                              (0.0102 * s, 0.1455 * s), (0.0, 0.1455 * s)], ss, 40)
-    G.boolean(boss, _star("star", 0.0078 * s, 0.0062 * s, 0.1300 * s, 0.1470 * s, 10))
+    # the socket set down in the cap: a polished ring standing about 1.5 mm proud of the cap, a deep star hole
+    boss = G.lathe("socket", [(0.0, 0.1330 * s), (0.0125 * s, 0.1330 * s), (0.0125 * s, 0.1446 * s), (0.0119 * s, 0.1453 * s),
+                              (0.0105 * s, 0.1455 * s), (0.0, 0.1455 * s)], ss, 30)
+    G.boolean(boss, _star("star", 0.0082 * s, 0.0066 * s, 0.1345 * s, 0.1470 * s, 10))
     G.finish(boss, 0.0, sharp=40)
-    floor = G.lathe("socketfloor", [(0.0, 0.1395 * s), (0.008 * s, 0.1395 * s), (0.008 * s, 0.1396 * s), (0.0, 0.1396 * s)], bp, 20)
+    floor = G.lathe("socketfloor", [(0.0, 0.1346 * s), (0.008 * s, 0.1346 * s), (0.008 * s, 0.1347 * s), (0.0, 0.1347 * s)], bp, 20)
     G.finish(floor, 0.0)
     # --- the stripper arm: a polished crescent round the cap, its arm out over the jaws and down the side, the tip
     # curling in under the jaws (it lifts the tail out of the groove)
     arm_a = -math.pi / 2                                   # the arm on -Y
     span = math.radians(300)
-    w_in, w_out = 0.0262 * s, 0.0360 * s
+    w_in, w_out = 0.0304 * s, 0.0385 * s
     zc = 0.1322 * s
     n = 36
     outline = []
@@ -158,7 +162,7 @@ def _self_tailer(s=1.0):
     crescent = G.prism("stripper_ring", outline, zc - 0.0004 * s, zc + 0.0030 * s, ss)
     G.finish(crescent, 0.0006 * s, segs=2)
     # the arm in the radial plane at arm_a: (r, z) path, the section 2.4 mm thick and 15 mm wide (tapering to 11)
-    rz = [(0.030 * s, zc + 0.0009 * s), (0.040 * s, 0.1302 * s), (0.0475 * s, 0.1270 * s)]
+    rz = [(0.0335 * s, zc + 0.0009 * s), (0.040 * s, 0.1302 * s), (0.0475 * s, 0.1270 * s)]
     rz += [(0.0475 * s + 0.0065 * s * math.sin(math.radians(a)), 0.1222 * s + 0.0060 * s * math.cos(math.radians(a))) for a in (25, 50, 75, 90)]
     rz += [(0.0540 * s, 0.1120 * s), (0.0540 * s, 0.1040 * s), (0.0530 * s, 0.0980 * s), (0.0505 * s, 0.0945 * s),
            (0.0470 * s, 0.0932 * s), (0.0440 * s, 0.0945 * s), (0.0425 * s, 0.0975 * s)]
