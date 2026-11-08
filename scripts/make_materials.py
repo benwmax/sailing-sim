@@ -1842,6 +1842,7 @@ BOAT_LIBRARY = {
     "Aluminium": ("M_BoatSurface", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),        # clear anodized spars
     "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
     "Wood": ("M_BoatSurface", (0.30, 0.17, 0.07), 0.30, 0.0, 1.0, 0.0, 0.15),           # varnished ash tiller
+    "WoodMahogany": ("M_BoatSurface", (0.12, 0.042, 0.018), 0.30, 0.0, 1.0, 0.0, 0.15),  # varnished mahogany: a laminated tiller's dark strips (part loop, Nov 2026)
     "Teak": ("M_BoatSurface", (0.22, 0.19, 0.15), 0.85, 0.0, 0.0, 0.0, 0.5),           # weathered grey teak toe rails (G6)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
@@ -1899,7 +1900,7 @@ BOAT_LIBRARY = {
 # unlisted slots (crew, plastics, glass, antifouling) are 0: no detail map, no extra weathering.
 BOAT_SURFACE = {
     "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
-    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8,
+    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "WoodMahogany": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
 }
@@ -1925,7 +1926,7 @@ def boat_slot_values(slot):
     """A library slot's material values: colour, then the scalars by parameter name."""
     parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
     return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
-                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "Teak") else 0.0,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak") else 0.0,
                  "Surface": float(BOAT_SURFACE.get(slot, 0))}
 
 
