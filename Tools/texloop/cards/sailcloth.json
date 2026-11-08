@@ -1,0 +1,17 @@
+{
+ "surface": "Sailcloth",
+ "kind": 10,
+ "what": "Woven polyester (Dacron) sailcloth with a resin finish: the J/22's crosscut main and jib, the Sunfish's striped sail. The white cloth carries the wear; the Sunfish's dyed bands keep their own sun fade (Livery SailFade).",
+ "boats": {"J/22": "main + jib, Layout 0, 0.9 m panels", "Sunfish": "Layout 1 striped; only its white band ages by these rules"},
+ "material": "M_SailCloth (SAIL_CODE in scripts/make_materials.py); the boat-kit Dacron slot (BOAT_CODE surf 10) uses the same targets for furled cloth and sail bags",
+ "closest_camera_m": 1.0,
+ "pattern": {"weave_mm": 0.6, "panel_m": 0.9, "crinkle_cells_cm": [3.0, 1.2], "note": "weave and panel sizes already match the real cloth (docs/sail-cloth-shading); this loop does not change them"},
+ "levels": ["L0", "L1", "L2", "L3", "L4"],
+ "replaces": "Today's look: yellowing at the leech and head and mildew specks at the foot are fixed (the same on every sail, whatever its Age and Care); only the foot grime (dirtK) and the crinkle (ageC) follow Age/Care. A brand-new sail is already yellow and speckled, and a kept 30-year-old sail is as grimy as a half-neglected one.",
+ "wear": {
+  "time": "UV yellowing (whole cloth, most at the leech and head), crinkle cover and fold strength, resin loss (roughness up, sheen down), stitched repairs and sail tape",
+  "dirt": "foot grime from the deck, tan clay smudges where hands and the boom touch, mildew specks (foot and folds), grey dinge over the whole cloth"
+ },
+ "budget": "Medium: colour and roughness math only (no new maps, no texture reads). High/Ultra: the existing crinkle and weave normals; no new maps.",
+ "tests": "SailRigTests (M_SailCloth has Age/Care), BoatTextureBudget, the Mac boats gate (scripts/gate.sh --scope boats)"
+}

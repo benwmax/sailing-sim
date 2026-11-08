@@ -1,0 +1,397 @@
+{
+ "surface": "gelcoat",
+ "colour": {
+  "ok": false,
+  "levels": {
+   "L0": {
+    "a": -0.96,
+    "b": 5.91,
+    "target": [
+     0.91,
+     -6.7
+    ],
+    "dE_ab": 12.75,
+    "n_photos": 2,
+    "ok": false,
+    "mottle": 0.05,
+    "target_mottle": 4.5,
+    "gloss": 1.45,
+    "target_gloss": 12.51
+   },
+   "L1": {
+    "a": -0.98,
+    "b": 6.12,
+    "target": null
+   },
+   "L2": {
+    "a": -1.02,
+    "b": 6.96,
+    "target": [
+     -0.39,
+     -3.6
+    ],
+    "dE_ab": 10.58,
+    "n_photos": 1,
+    "ok": false,
+    "mottle": 0.1,
+    "target_mottle": 2.86,
+    "gloss": 0.73,
+    "target_gloss": 21.18
+   },
+   "L3": {
+    "a": -1.14,
+    "b": 7.99,
+    "target": [
+     -1.31,
+     1.35
+    ],
+    "dE_ab": 6.64,
+    "n_photos": 4,
+    "ok": false,
+    "mottle": 0.07,
+    "target_mottle": 2.99,
+    "gloss": 0.73,
+    "target_gloss": 3.96
+   },
+   "L4": {
+    "a": -1.04,
+    "b": 7.71,
+    "target": null
+   }
+  }
+ },
+ "colour_before": {
+  "ok": false,
+  "levels": {
+   "L0": {
+    "a": -0.97,
+    "b": 5.9,
+    "target": [
+     0.91,
+     -6.7
+    ],
+    "dE_ab": 12.74,
+    "n_photos": 2,
+    "ok": false,
+    "mottle": 0.08,
+    "target_mottle": 4.5,
+    "gloss": 1.45,
+    "target_gloss": 12.51
+   },
+   "L1": {
+    "a": -0.97,
+    "b": 5.9,
+    "target": null
+   },
+   "L2": {
+    "a": -0.96,
+    "b": 5.91,
+    "target": [
+     -0.39,
+     -3.6
+    ],
+    "dE_ab": 9.53,
+    "n_photos": 1,
+    "ok": false,
+    "mottle": 0.08,
+    "target_mottle": 2.86,
+    "gloss": 1.42,
+    "target_gloss": 21.18
+   },
+   "L3": {
+    "a": -0.94,
+    "b": 5.93,
+    "target": [
+     -1.31,
+     1.35
+    ],
+    "dE_ab": 4.59,
+    "n_photos": 4,
+    "ok": true,
+    "mottle": 0.08,
+    "target_mottle": 2.99,
+    "gloss": 1.17,
+    "target_gloss": 3.96
+   },
+   "L4": {
+    "a": -0.93,
+    "b": 5.98,
+    "target": null
+   }
+  }
+ },
+ "size": {
+  "ok": true,
+  "px_per_mm": 4.1,
+  "tile_m": [
+   0.25,
+   0.25
+  ],
+  "px": [
+   1024,
+   1024
+  ]
+ },
+ "tiling": {
+  "ok": true,
+  "maps": {
+   "T_Detail_Gelcoat_N.png": {
+    "seam_ratio": 0.8,
+    "repeat_peak": 0.012,
+    "ok": true
+   },
+   "T_Detail_Gelcoat_M.png": {
+    "seam_ratio": 1.36,
+    "repeat_peak": 0.278,
+    "ok": true
+   }
+  }
+ },
+ "ladder": {
+  "ok": true,
+  "reviewers": [
+   5,
+   5,
+   5
+  ]
+ },
+ "ab": {
+  "ok": true,
+  "wins": 3,
+  "of": 3,
+  "wrong_material": 0
+ },
+ "budget": {
+  "ok": true,
+  "new_maps": 0,
+  "medium_mb": 0.0,
+  "high_mb": 0.0,
+  "note": "no new textures; frame time: Mac boats gate"
+ },
+ "numbers": {
+  "after": {
+   "L0": {
+    "topsides": {
+     "a": -0.96,
+     "b": 5.91,
+     "chroma": 5.99,
+     "mottle": 0.05,
+     "gloss": 1.45,
+     "L": 94.21,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.89,
+     "b": 5.92,
+     "chroma": 5.99,
+     "mottle": 0.07,
+     "gloss": 8.75,
+     "L": 88.34,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L1": {
+    "topsides": {
+     "a": -0.98,
+     "b": 6.12,
+     "chroma": 6.2,
+     "mottle": 0.06,
+     "gloss": 0.83,
+     "L": 94.47,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.9,
+     "b": 6.16,
+     "chroma": 6.22,
+     "mottle": 0.07,
+     "gloss": 8.33,
+     "L": 88.68,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L2": {
+    "topsides": {
+     "a": -1.02,
+     "b": 6.96,
+     "chroma": 7.04,
+     "mottle": 0.1,
+     "gloss": 0.73,
+     "L": 93.94,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.93,
+     "b": 7.02,
+     "chroma": 7.08,
+     "mottle": 0.06,
+     "gloss": 2.86,
+     "L": 92.79,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L3": {
+    "topsides": {
+     "a": -1.14,
+     "b": 7.99,
+     "chroma": 8.07,
+     "mottle": 0.07,
+     "gloss": 0.73,
+     "L": 94.26,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -1.02,
+     "b": 7.75,
+     "chroma": 7.82,
+     "mottle": 0.07,
+     "gloss": 6.15,
+     "L": 90.46,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L4": {
+    "topsides": {
+     "a": -1.04,
+     "b": 7.71,
+     "chroma": 7.79,
+     "mottle": 0.16,
+     "gloss": 0.73,
+     "L": 93.37,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.95,
+     "b": 7.7,
+     "chroma": 7.76,
+     "mottle": 0.05,
+     "gloss": 1.08,
+     "L": 93.85,
+     "px": 106596,
+     "balanced": true
+    }
+   }
+  },
+  "before": {
+   "L0": {
+    "topsides": {
+     "a": -0.97,
+     "b": 5.9,
+     "chroma": 5.98,
+     "mottle": 0.08,
+     "gloss": 1.45,
+     "L": 94.14,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.89,
+     "b": 5.92,
+     "chroma": 5.99,
+     "mottle": 0.07,
+     "gloss": 8.75,
+     "L": 88.35,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L1": {
+    "topsides": {
+     "a": -0.97,
+     "b": 5.9,
+     "chroma": 5.98,
+     "mottle": 0.08,
+     "gloss": 1.45,
+     "L": 94.14,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.9,
+     "b": 5.95,
+     "chroma": 6.01,
+     "mottle": 0.07,
+     "gloss": 8.67,
+     "L": 88.4,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L2": {
+    "topsides": {
+     "a": -0.96,
+     "b": 5.91,
+     "chroma": 5.99,
+     "mottle": 0.08,
+     "gloss": 1.42,
+     "L": 94.23,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.89,
+     "b": 6.11,
+     "chroma": 6.18,
+     "mottle": 0.07,
+     "gloss": 6.15,
+     "L": 90.17,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L3": {
+    "topsides": {
+     "a": -0.94,
+     "b": 5.93,
+     "chroma": 6.01,
+     "mottle": 0.08,
+     "gloss": 1.17,
+     "L": 94.36,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.89,
+     "b": 6.24,
+     "chroma": 6.31,
+     "mottle": 0.07,
+     "gloss": 3.65,
+     "L": 92.0,
+     "px": 106596,
+     "balanced": true
+    }
+   },
+   "L4": {
+    "topsides": {
+     "a": -0.93,
+     "b": 5.98,
+     "chroma": 6.06,
+     "mottle": 0.08,
+     "gloss": 0.72,
+     "L": 94.53,
+     "px": 148392,
+     "balanced": true
+    },
+    "deck": {
+     "a": -0.89,
+     "b": 6.34,
+     "chroma": 6.41,
+     "mottle": 0.05,
+     "gloss": 0.78,
+     "L": 94.21,
+     "px": 106596,
+     "balanced": true
+    }
+   }
+  }
+ }
+}
