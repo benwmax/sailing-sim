@@ -1368,7 +1368,7 @@ float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * 
 grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // Boat fidelity 1 (docs/boat-fidelity-1): the shared library. Surface is the part's kind (0 none: crew, plastics, glass;
 // 1 gelcoat, 2 non-skid, 3 stainless, 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber,
-// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel): first its weathering with ageK (anchored to the boat by the grime's noise), then,
+// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic): first its weathering with ageK (anchored to the boat by the grime's noise), then,
 // close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
@@ -1472,8 +1472,60 @@ else if (surf >= 9 && surf <= 11)     // rope, sailcloth, canvas: dingy, and on 
     float mil = (1.0 - saturate(care)) * ageK * step(0.9, milCell) * saturate(vn * 2.5 - 1.0);
     col = lerp(col, float3(0.05, 0.05, 0.04), 0.5 * mil);
 }
+if (surf == 13)        // black moulded plastic (texture loop, black plastic): see the block below, shared with M_BoatKit
+{
+float bpCav = 0.0;     // M_BoatKit: the trim sheet's cavities; here none (no detail map)
+float2 bpP = hwP;      // cm, the hardware's projection across the face (rust lane)
+// PLASTIC_WEAR >>> (texture loop, black plastic: docs/texloop-plastic; Tools/texloop/plastic/port.py mirrors these lines
+// and scripts/import_hardware_kit.py copies them into M_BoatKit). Black moulded acetal and nylon (blocks, cam cleats,
+// fairleads, ratchets, clutches): the sun chalks it grey on the faces that see the sky (the years, timeK; heavier and
+// blotchy where it's left, dirtK), lake dust settles on the tops and in the hollows (dirtK), lines and hands polish the
+// sharp edges back to a glossy black, and stress-whitened scuffs gather with use. Age unset: as before (no weathering).
+float bpOn = step(0.0, age);
+float bpNz = dot(n, V) < 0.0 ? -n.z : n.z;
+float bpSky = saturate(0.5 + 0.5 * bpNz);                       // UV dose: the tops all of it, the sides half, undersides none
+float2 bpQ = bpP / 1.2;
+float bpN = 0.0;
+for (int bpO = 0; bpO < 2; ++bpO)                               // 1.2 and 0.39 cm value noise: chalk comes off in wiped patches
+{
+    float2 bpI = floor(bpQ), bpF = smoothstep(0.0, 1.0, frac(bpQ));
+    bpN += (bpO == 0 ? 0.65f : 0.35f) * lerp(lerp(frac(sin(dot(bpI, float2(31.7, 57.1))) * 4375.5), frac(sin(dot(bpI + float2(1, 0), float2(31.7, 57.1))) * 4375.5), bpF.x),
+                                           lerp(frac(sin(dot(bpI + float2(0, 1), float2(31.7, 57.1))) * 4375.5), frac(sin(dot(bpI + float2(1, 1), float2(31.7, 57.1))) * 4375.5), bpF.x), bpF.y);
+    bpQ = float2(bpQ.x * 0.8 - bpQ.y * 0.6, bpQ.x * 0.6 + bpQ.y * 0.8) * 3.1 + 7.7;
+}
+float bpChalk = bpOn * saturate(timeK * (0.25 + 1.3 * dirtK) * bpSky * sunF * (1.0 + (bpN - 0.5) * (0.4 + 1.2 * dirtK)));   // even if kept, blotchy if left
+col = lerp(col, float3(0.190, 0.185, 0.172), (0.85 - 0.45 * saturate(care)) * bpChalk);  // chalk: a warm pale grey, matt;
+rough = lerp(rough, lerp(0.82, 0.55, saturate(care)), bpChalk);   // a kept boat's is wiped with protectant: darker, satin
+float bpDust = bpOn * dirtK * saturate(bpNz * 1.5) * (0.5 + 0.5 * bpCav) * (0.5 + 0.5 * bpN);
+col = lerp(col, float3(0.13, 0.105, 0.075), 0.6 * bpDust);     // the lake's tan clay dust
+rough = lerp(rough, 0.9, 0.5 * bpDust);
+// Rope and hand polish on sharp edges (curvature from the normal's screen derivatives: radius under about 1.4 cm), close up.
+float bpNear = 1.0 - smoothstep(150.0, 400.0, Depth);
+float bpCurv = length(fwidth(n)) / max(length(fwidth(WP)), 0.01);
+float bpPol = bpOn * saturate(timeK * 2.0) * saturate((bpCurv - 0.7) * 2.0) * bpNear * (0.6 + 0.4 * bpN);
+col = lerp(col, C.rgb * 0.85, 0.85 * bpPol);
+rough = lerp(rough, 0.2, 0.8 * bpPol);
+// Scuffs: stress-whitened scratches, up to 1 mm wide, tapered, 0.5 to 1.2 cm long, one in some 1.5 cm cells (more with use).
+float2 bpC = bpP / 1.5, bpCf = frac(bpC) - 0.5;
+float bpH = frac(sin(dot(floor(bpC), float2(17.9, 83.3))) * 43758.5);
+float2 bpDir = float2(cos(bpH * 31.4159), sin(bpH * 31.4159));
+float bpAlong = dot(bpCf, bpDir) * 1.5, bpAcross = dot(bpCf, float2(-bpDir.y, bpDir.x)) * 1.5;
+float bpLen = 0.25 + 0.35 * frac(bpH * 7.3), bpT = saturate(1.0 - abs(bpAlong) / bpLen);    // tapered at both ends, bent
+bpAcross += (frac(bpH * 5.9) - 0.5) * 0.5 * bpAlong * bpAlong;
+float bpScr = bpOn * bpNear * step(1.0 - 0.08 * saturate(4.0 * timeK) - 0.35 * timeK - 0.15 * dirtK, frac(bpH * 3.1))
+    * (1.0 - smoothstep(0.03, 0.08, abs(bpAcross) / max(sqrt(bpT), 0.05))) * step(0.001, bpT) * (0.35 + 0.65 * frac(bpH * 11.3));
+col = lerp(col, float3(0.085, 0.085, 0.082), 0.6 * bpScr);
+rough = lerp(rough, 0.6, bpScr);
+// Mildew: dark specks in the dust on a left boat (they show on the chalk).
+float2 bpMc = bpP / 0.15;
+float bpM = frac(sin(dot(floor(bpMc), float2(19.3, 47.9))) * 4375.5);
+float bpMil = bpOn * saturate((dirtK - 0.6) / 0.4) * (1.0 - saturate(care)) * step(0.93, bpM) * saturate(bpN * 2.0 - 0.6)
+    * (1.0 - smoothstep(0.25, 0.4, length(frac(bpMc) - 0.5)));    // round specks, under a millimetre
+col = lerp(col, float3(0.02, 0.024, 0.016), 0.7 * bpMil);
+// PLASTIC_WEAR <<<
+}
 float cav = 0.0;        // the detail's cavities: grime and standing water collect there
-if (DetailOn > 0.5 && surf > 0)
+if (DetailOn > 0.5 && surf > 0 && surf != 13)
 {
     float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
     float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.3, 0.15)
@@ -1895,11 +1947,12 @@ BOAT_LIBRARY = {
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
-# 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 9 rope, 10 sailcloth, 11 canvas;
-# unlisted slots (crew, plastics, glass, antifouling) are 0: no detail map, no extra weathering.
+# 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 9 rope, 10 sailcloth, 11 canvas,
+# 12 galvanised or plain steel, 13 black moulded plastic (texture loop: weathering only, no detail map); unlisted slots
+# (crew, other plastics, glass, antifouling) are 0: no detail map, no extra weathering.
 BOAT_SURFACE = {
     "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
-    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8,
+    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8, "BlackPlastic": 13,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
 }

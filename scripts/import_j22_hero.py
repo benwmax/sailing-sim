@@ -363,15 +363,15 @@ def glass_material():
 
 # Boat fidelity 1: the flat materials' kinds in M_BoatSurface's shared library (make_materials.py BOAT_SURFACE: 1 gelcoat,
 # 3 stainless, 4 anodised aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 10 sailcloth, 11 canvas, 12 galvanised or
-# plain steel; 0 none), and how
+# plain steel, 13 black moulded plastic; 0 none), and how
 # much each darkens wet.
 HERO_SURFACE = {
     "Gelcoat": 1, "GelcoatHull": 1, "CabinGelcoat": 1, "InteriorLiner": 1, "InteriorSole": 1,
     "Stainless": 3, "Chrome": 3, "Galvanised": 12, "KeelBoltSteel": 12, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
-    "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10,
+    "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10, "BlackPlastic": 13, "CamBase": 13,
     "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 11,
 }
-HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0}
+HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0, 13: 0.05}
 
 
 def instance(name, parent):
