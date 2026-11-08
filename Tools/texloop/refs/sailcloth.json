@@ -1,0 +1,25 @@
+{
+ "surface": "Sailcloth",
+ "note": "Numbers only; no photos in the repo. Raw photos live in the git-ignored Data/Reference/raw/textures/Sailcloth/L0..L4/. Colour is CIELAB (D65) of the cloth after white balance, in the clew/foot area (0.1-0.6 m above the foot). L2 is measured; the other levels are estimates until photos are measured (see 'wanted').",
+ "references": [
+  {"id": "bean-j22-clew", "level": "L2", "kind": "photo", "licence": "ours (Bean's own photo; shows people, never in the repo)",
+   "where": "project files sailing-sim-ref/j22-lessons/1000032829.jpg (Oct 4 2026, overcast, Lake Ray Hubbard)",
+   "what": "the lesson J/22 TX 7295 EC's mainsail at the clew: off-white cloth with tan clay smudges, a few brown specks, soft crinkle, the clew patch's zigzag stitching, a darker leech tabling",
+   "measure": "python3 -I sailcloth_measure.py <photo> --cloth 20,300,230,800 --white 50,960,350,1080 (white = the white boom, albedo 0.80 assumed)",
+   "result": {"lab_mean": [88.96, 0.83, 6.47], "lab_sd": [5.04, 0.66, 1.73], "cloth_over_white_luminance": 0.932},
+   "caveat": "the sail is lit through from behind by the overcast and the boom's albedo is assumed, so its L* reads high; its hue (a*, b*) is the solid number"},
+  {"id": "bean-other-boat", "level": "L1", "kind": "photo", "licence": "ours",
+   "where": "project upload e04e0fec (main and jib against the sun, sail tag on the jib)", "what": "a newer, crisper sail: smooth cloth, no visible stains; backlit, so used for look only, not colour"}
+ ],
+ "targets": {
+  "L0": {"lab": [89.5, 0.0, 1.5], "lab_tol": 6, "sd_L_max": 1.0, "rough": [0.35, 0.48], "source": "estimate: new white Dacron with optical brightener reads slightly cool; no crinkle, no stains, no specks"},
+  "L1": {"lab": [88.5, 0.0, 3.0], "lab_tol": 6, "sd_L_max": 1.0, "rough": [0.4, 0.52], "source": "estimate: brightener fading, first folds at the flaking lines, the foot a shade greyer"},
+  "L2": {"lab": [85.0, 0.8, 6.5], "lab_tol": 6, "sd_L_min": 0.8, "rough": [0.5, 0.65], "source": "measured hue from bean-j22-clew (a* 0.83, b* 6.47); L* held at 85 (the photo's 89 is lifted by light through the cloth)"},
+  "L3": {"lab": [84.0, 0.5, 9.5], "lab_tol": 6, "sd_L_max": 1.0, "rough": [0.65, 0.8], "source": "estimate: kept 30-year-old Dacron is cleaned but yellowed by UV, soft and matt, crinkled all over; no mildew"},
+  "L4": {"lab": [79.0, 0.5, 10.5], "lab_tol": 6, "sd_L_min": 2.5, "rough": [0.65, 0.8], "source": "estimate: neglected 20-year-old sail, grey-brown dinge and tan smudges over the yellowing, mildew clusters low down"}
+ },
+ "wanted": [
+  "Bean, at Rush Creek: square-on close-ups of the oldest and the newest sails in the yard, with a coin and something white in frame, overcast or shade",
+  "Wikimedia Commons (measure only): Category:Parts of sails (Kopfbrett1, Hals (Vorsegel), Liekleine), Category:J/22 (keelboat), Category:Sailmaking; the cloud was rate-limited by Wikimedia on Nov 8 2026, retry from the PC or a later session"
+ ]
+}
