@@ -24,6 +24,10 @@ def hwnoise(P,axis='y'):
         q=np.stack([q[...,0]*0.8-q[...,1]*0.6,q[...,0]*0.6+q[...,1]*0.8],-1)*2.9+5.3
     return n
 def lerp(a,b,t): return a+(b-a)*t
+def fnoise2(P,sc,k1=63.7,k2=11.9):   # one octave at sc cm on a rotated lattice
+    q=np.stack([P[...,0]*0.6-P[...,2]*0.8,P[...,0]*0.8+P[...,2]*0.6],-1)/sc
+    qi=np.floor(q); qf=sm(q-qi); f=lambda d: h2(qi+d,k1,k2,4375.5)
+    return (f([0,0])*(1-qf[...,0])+f([1,0])*qf[...,0])*(1-qf[...,1])+(f([0,1])*(1-qf[...,0])+f([1,1])*qf[...,0])*qf[...,1]
 def fnoise(P):   # one octave at 0.5 cm on a rotated lattice: tea stain specks
     q=np.stack([P[...,0]*0.8-P[...,2]*0.6,P[...,0]*0.6+P[...,2]*0.8],-1)/0.5
     qi=np.floor(q); qf=sm(q-qi); f=lambda d: h2(qi+d,41.3,17.7,4375.5)
@@ -55,7 +59,10 @@ def shade(surf,level,ppcm=20,salt=0.0,size=20.0,y=3.0):
         halo=smooth(t-0.09,t,f)*(1-r)*(stK>=0.02)
         col=lerp(col,np.array([0.24,0.12,0.05]),(0.45*halo)[...,None])
         fl=smooth(0.72,0.80,fn)*smooth(t-0.16,t-0.04,f)*(1-r)*(stK>=0.02)   # flecks scattered round each patch
-        col=lerp(col,rustc,r[...,None]); col=lerp(col,np.array([0.20,0.065,0.020]),(0.8*fl)[...,None]); metal*=1-r-0.4*halo-0.8*fl; mask=r
+        sp=fnoise2(P,0.18); spF=1.0   # fade with distance in the shader
+        spk=smooth(0.80,0.86,sp)*smooth(t-0.30,t-0.05,f)*(1-r)*(stK>=0.02)*spF   # fine speckle that leads each patch
+        col=col*(0.95+0.10*sp)[...,None]                     # the zinc's fine grain
+        col=lerp(col,rustc,r[...,None]); col=lerp(col,np.array([0.20,0.065,0.020]),(0.8*np.maximum(fl,spk))[...,None]); metal*=1-r-0.4*halo-0.8*np.maximum(fl,spk); mask=r
     return col,metal,mask
 def shade_old(surf,level,ppcm=20,size=20.0,y=3.0):
     age,care=LEVELS[level]; ageK=min(age/20,1)*(1-0.6*care)

@@ -63,14 +63,14 @@ Patches are projected on the two boat axes across each face (the grime's slanted
 parts) with a rotated second octave (no lattice blocks). Stainless (kind 3) and aluminium (kind 4) belong to the metals
 thread and are unchanged here.
 
-| Check (`hardware_scores.json`, round 4) | Result |
+| Check (`hardware_scores.json`, round 5) | Result |
 |---|---|
 | Colour | L4 rust Lab 29.4, 17.8, 23.7 vs 30.8, 18.4, 25.0: dE 2.0 (pass); spread sdL 4.4 vs 5.3 (pass, within 25%) |
 | Coverage | L2 1.2%, L3 2.1%, L4 20.2% (targets 0.5-3, 1-4, 15-30) |
 | Wear ladder | Round 2, 3 reviewers: all ordered L1 < L3 < L2 < L4. They read the kept classic as cleaner than the club boat (its white bloom reads as neglect). That is a 0.8 rank match, which passes the 0.8 bar, and it is arguably right for a kept boat. One reviewer of three called L3 vs L2 marginal. |
-| Blind A/B | Round 2 beat main 3/3 ("main reads as plain flat grey"), but all three called the rust "cartoon blobs with dark outlines". Round 3 (no rims) lost to round 2, 1-2. Round 4 adds the zinc mottle, darker crust cores and flecks, and beat round 2 3/3. |
+| Blind A/B | Round 2 beat main 3/3 ("main reads as plain flat grey"), but all three called the rust "cartoon blobs with dark outlines". Round 3 (no rims) lost to round 2, 1-2. Round 4 adds the zinc mottle, darker crust cores and flecks, and beat round 2 3/3. Round 5 adds a 1.8 mm zinc grain and pin-head rust specks ahead of each patch (faded out by 3 m so they don't shimmer) and beat round 4 2 of 3 (one reviewer preferred the smoother round 4 as 'less procedural noise'). Colour unchanged: L4 dE 2.0, sdL 4.4. |
 
-Still different (round 4 reviewers): the grey base is still too even (no spangle, scratches or grime); the rust sits in a few
+Still different (round 4 and 5 reviewers: patches are soft blobs with no flaking or downhill streaks, no spangle): the grey base is still too even (no spangle, scratches or grime); the rust sits in a few
 large soft clumps where real rust also has fine speckle and streaks.
 
 ## Not done here

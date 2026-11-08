@@ -1414,6 +1414,15 @@ else if (surf == 12)    // galvanised or plain steel (anchor, keel bolts and nut
     // orange at a patch's edges, a dark crust at its heart (no dark rim)
     col = lerp(col, lerp(float3(0.075, 0.024, 0.010), float3(0.256, 0.071, 0.020), saturate(1.3 - (stF - stT) / 0.18) * (0.4 + 0.6 * hwF)), stRust);
     float stFleck = smoothstep(0.72, 0.80, hwF) * smoothstep(stT - 0.16, stT - 0.04, stF) * (1.0 - stRust) * stOn;   // flecks round each patch
+    // round 5: a 1.8 mm grain in the zinc and pin-head rust specks ahead of each patch, faded out by 3 m (no shimmer)
+    float2 sq = float2(hwP.x * 0.6 - hwP.y * 0.8, hwP.x * 0.8 + hwP.y * 0.6) / 0.18, si = floor(sq), sf = smoothstep(0.0, 1.0, frac(sq));
+    float stSp = lerp(lerp(frac(sin(dot(si, float2(63.7, 11.9))) * 4375.5), frac(sin(dot(si + float2(1, 0), float2(63.7, 11.9))) * 4375.5), sf.x),
+                      lerp(frac(sin(dot(si + float2(0, 1), float2(63.7, 11.9))) * 4375.5), frac(sin(dot(si + float2(1, 1), float2(63.7, 11.9))) * 4375.5), sf.x), sf.y);
+    float stNear = 1.0 - smoothstep(100.0, 300.0, Depth);
+    stSp = lerp(0.5, stSp, stNear);
+    col *= 0.95 + 0.10 * stSp;
+    float stSpk = smoothstep(0.80, 0.86, stSp) * smoothstep(stT - 0.30, stT - 0.05, stF) * (1.0 - stRust) * stOn * stNear;
+    stFleck = max(stFleck, stSpk);
     col = lerp(col, float3(0.20, 0.065, 0.020), 0.8 * stFleck);
     rough = lerp(rough, 0.85, max(stRust, 0.5 * stHalo));
     metalOut *= saturate(1.0 - stRust - 0.4 * stHalo - 0.8 * stFleck);
