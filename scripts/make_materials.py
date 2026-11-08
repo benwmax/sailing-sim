@@ -1331,10 +1331,28 @@ float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * 
 grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // Boat fidelity 1 (docs/boat-fidelity-1): the shared library. Surface is the part's kind (0 none: crew, plastics, glass;
 // 1 gelcoat, 2 non-skid, 3 stainless, 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber,
-// 9 rope, 10 sailcloth, 11 canvas): first its weathering with ageK (anchored to the boat by the grime's noise), then,
+// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel): first its weathering with ageK (anchored to the boat by the grime's noise), then,
 // close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
+float metalOut = Metal;    // rust is no metal: what it covers loses its metallic response (texture loop, rust lane)
+// Texture loop, rust lane (Tools/texloop/cards/rust.json): rust on the hardware itself. A 0.5 cm value noise (two octaves,
+// 1.3 and 0.45 cm) breaks it into patches on parts too small for the grime's noise; the rust is the colour measured from
+// CC0 scans (Lab 26-31, 17, 23), matt, with a crusty mottle.
+// Projected on the two boat axes across the face (the grime's slanted projection streaks on small upright parts).
+float3 hwAn = abs(float3(dot(n, LX), dot(n, LY), dot(n, cross(LX, LY))));
+float2 hwP = hwAn.z >= max(hwAn.x, hwAn.y) ? LP.xy : hwAn.y >= hwAn.x ? LP.xz : LP.yz;
+float2 hwQ = hwP / 1.3;
+float hwN = 0.0;
+for (int ho = 0; ho < 2; ++ho)
+{
+    float2 hi = floor(hwQ), hf = smoothstep(0.0, 1.0, frac(hwQ));
+    hwN += (ho == 0 ? 0.65f : 0.35f) * lerp(lerp(frac(sin(dot(hi, float2(27.1, 61.7))) * 4375.5), frac(sin(dot(hi + float2(1, 0), float2(27.1, 61.7))) * 4375.5), hf.x),
+                                          lerp(frac(sin(dot(hi + float2(0, 1), float2(27.1, 61.7))) * 4375.5), frac(sin(dot(hi + float2(1, 1), float2(27.1, 61.7))) * 4375.5), hf.x), hf.y);
+    hwQ = float2(hwQ.x * 0.8 - hwQ.y * 0.6, hwQ.x * 0.6 + hwQ.y * 0.8) * 2.9 + 5.3;   // rotated: no lattice blocks
+}
+float hwMt = abs(frac(hwN * 3.5) * 2.0 - 1.0);   // a continuous mottle (no contour steps): dark crust to orange
+float3 hwRust = lerp(float3(0.075, 0.024, 0.010), float3(0.256, 0.071, 0.020), hwMt);
 if (surf == 3)          // 316 stainless: tea-staining, a brown bloom round welds and crevices, worse on salt water
 {
     float tea = ageK * (0.35 + 0.65 * salt) * saturate(vn * 1.6 - 0.35);
@@ -1372,7 +1390,36 @@ else if (surf == 8)     // rubber and soft PVC: UV bloom, a grey chalky skin
     col = lerp(col, col + 0.05, ageK);
     rough = lerp(rough, 0.85, ageK);
 }
-else if (surf >= 9)     // rope, sailcloth, canvas: dingy, and on a neglected boat specks of mildew
+else if (surf == 12)    // galvanised or plain steel (anchor, keel bolts and nuts; trailers and chain in the world)
+{
+    // Rust lane: the zinc's spangle dulls to grey within a few years, kept or not; on a left boat it blooms white; then
+    // it wears through to red rust, in pits and edges first, spreading in patches (coverage stands in for the CC0
+    // rusty-steel scans, Metal020-026: about 1% on a club boat, 2-3% on a kept classic, a quarter on a neglected boat).
+    float stDull = age >= 0.0 ? saturate(age / 3.0) : 1.0f;
+    float stK = age >= 0.0 ? saturate((age - 1.0) / 12.0) * (1.0 - 0.7 * saturate(care)) : ageK;
+    // a fine octave (0.5 cm, rotated lattice) mottles the zinc and rags the rust's edges
+    float2 fq = float2(hwP.x * 0.8 - hwP.y * 0.6, hwP.x * 0.6 + hwP.y * 0.8) / 0.5, fi = floor(fq), ff = smoothstep(0.0, 1.0, frac(fq));
+    float hwF = lerp(lerp(frac(sin(dot(fi, float2(41.3, 17.7))) * 4375.5), frac(sin(dot(fi + float2(1, 0), float2(41.3, 17.7))) * 4375.5), ff.x),
+                     lerp(frac(sin(dot(fi + float2(0, 1), float2(41.3, 17.7))) * 4375.5), frac(sin(dot(fi + float2(1, 1), float2(41.3, 17.7))) * 4375.5), ff.x), ff.y);
+    col = lerp(col, float3(0.30, 0.31, 0.31), 0.6 * stDull);
+    col *= 0.93 + 0.14 * (0.6 * hwN + 0.4 * hwF);      // zinc's tonal mottle
+    rough = lerp(rough, 0.6, stDull);
+    float bloom = stDull * (1.0 - saturate(care)) * saturate(hwN * 3.0 - 1.6);
+    col = lerp(col, float3(0.55, 0.55, 0.53), 0.6 * bloom);
+    metalOut *= 1.0 - 0.8 * bloom;
+    float stT = 1.0 - 0.286 * stK, stF = hwN + 0.25 * vn + 0.12 * (hwF - 0.5), stOn = step(0.02, stK);
+    float stRust = smoothstep(stT, stT + 0.10, stF) * stOn;
+    float stHalo = smoothstep(stT - 0.09, stT, stF) * (1.0 - stRust) * stOn;     // a brown bleed round each patch
+    col = lerp(col, float3(0.24, 0.12, 0.05), 0.45 * stHalo);
+    // orange at a patch's edges, a dark crust at its heart (no dark rim)
+    col = lerp(col, lerp(float3(0.075, 0.024, 0.010), float3(0.256, 0.071, 0.020), saturate(1.3 - (stF - stT) / 0.18) * (0.4 + 0.6 * hwF)), stRust);
+    float stFleck = smoothstep(0.72, 0.80, hwF) * smoothstep(stT - 0.16, stT - 0.04, stF) * (1.0 - stRust) * stOn;   // flecks round each patch
+    col = lerp(col, float3(0.20, 0.065, 0.020), 0.8 * stFleck);
+    rough = lerp(rough, 0.85, max(stRust, 0.5 * stHalo));
+    metalOut *= saturate(1.0 - stRust - 0.4 * stHalo - 0.8 * stFleck);
+    coat *= 1.0 - stRust;
+}
+else if (surf >= 9 && surf <= 11)     // rope, sailcloth, canvas: dingy, and on a neglected boat specks of mildew
 {
     col = lerp(col, col * 0.8 + float3(0.035, 0.033, 0.026), ageK);
     float milCell = frac(sin(dot(floor(LP.xz / 0.6), float2(19.3, 47.9))) * 4375.5);
@@ -1383,7 +1430,7 @@ float cav = 0.0;        // the detail's cavities: grime and standing water colle
 if (DetailOn > 0.5 && surf > 0)
 {
     float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
-    float2 tile = (surf == 2 || surf == 3) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.3, 0.15)
+    float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.3, 0.15)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : float2(0.25, 0.25);
     // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
     // shaders refuse FP64: the material had fallen back to the default on High.)
@@ -1400,7 +1447,7 @@ if (DetailOn > 0.5 && surf > 0)
 #define BOAT_TRI(T, o0, o1, o2) o0 = Texture2DSample(T, DS, uv0); o1 = Texture2DSample(T, DS, uv1); o2 = Texture2DSample(T, DS, uv2)
     // Surface is a parameter (uniform), or in a pack (M_BoatPacked) uniform over each triangle, so one pair is sampled.
     if (surf == 2) { BOAT_TRI(TNonSkidN, n0, n1, n2); BOAT_TRI(TNonSkidM, m0, m1, m2); }
-    else if (surf == 3 || surf == 4) { BOAT_TRI(TMetalN, n0, n1, n2); BOAT_TRI(TMetalM, m0, m1, m2); }
+    else if (surf == 3 || surf == 4 || surf == 12) { BOAT_TRI(TMetalN, n0, n1, n2); BOAT_TRI(TMetalM, m0, m1, m2); }
     else if (surf == 6) { BOAT_TRI(TWoodN, n0, n1, n2); BOAT_TRI(TWoodM, m0, m1, m2); }
     else if (surf == 7) { BOAT_TRI(TTeakN, n0, n1, n2); BOAT_TRI(TTeakM, m0, m1, m2); }
     else if (surf == 8) { BOAT_TRI(TRubberN, n0, n1, n2); }
@@ -1418,12 +1465,15 @@ if (DetailOn > 0.5 && surf > 0)
         col *= lerp(1.0, lerp(0.70 + 0.2 * (1.0 - dirt), 1.06, m.r), fadeD);
         rough = saturate(rough + fadeD * (0.12 * (1.0 - m.r) - 0.15 * m.g));
     }
-    else if (surf == 3 || surf == 4)     // brushing streaks in the gloss; stainless tea-stains in its pits first
+    else if (surf == 3 || surf == 4 || surf == 12)     // brushing streaks in the gloss; stainless tea-stains in its pits first
     {
         cav = m.b * fadeD;
         col *= lerp(1.0, lerp(0.94, 1.04, m.r), fadeD);
         rough = saturate(rough + fadeD * (m.g - 0.5) * 0.2);
         col = lerp(col, float3(0.28, 0.17, 0.09), (surf == 3 ? 0.6f : 0.0f) * cav * ageK * (0.4 + 0.6 * salt));
+        float pit = surf == 12 ? saturate(cav * (age >= 0.0 ? saturate((age - 1.0) / 12.0) * (1.0 - 0.7 * saturate(care)) : ageK)) : 0.0f;
+        col = lerp(col, hwRust, pit);     // steel rusts in its pits first
+        metalOut *= 1.0 - pit;
     }
     else if (surf == 6)                  // varnished wood: the figure under the film, open pores
     {
@@ -1525,8 +1575,8 @@ float AO = 1.0;
 float cornerK = (1.0 - AO) * (1.0 - smoothstep(400.0, 800.0, Depth)) * (1.0 - Metal) * (1.0 - Grain);
 col *= 1.0 - 0.45 * cornerK;
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
-AlbedoOut = base * (1.0 - Metal);
-F0Out = lerp(float3(0.04, 0.04, 0.04), base, Metal);
+AlbedoOut = base * (1.0 - metalOut);
+F0Out = lerp(float3(0.04, 0.04, 0.04), base, metalOut);
 RoughOut = lerp(rough, lerp(0.06, rough, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
 // Rain deck: a puddle is a mirror (sharper on High and Ultra); rain on metal tightens its gloss between the beads.

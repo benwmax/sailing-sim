@@ -265,6 +265,32 @@
   "roughness": {
    "rust": 0.8,
    "note": "the deposit is matt; clear coat cut by 70% under it"
+  },
+  "hardware_steel": {
+   "coverage_pct": {
+    "from": "ambientCG Metal024 0.3, Metal021 1.2, Metal020 3.9, Metal026 9.3, Metal023 16.7, Metal025 17.2, Metal022 25.8 (hue 35-75, chroma>18)",
+    "L2": [
+     0.5,
+     3
+    ],
+    "L3": [
+     1,
+     4
+    ],
+    "L4": [
+     15,
+     30
+    ]
+   },
+   "rust_colour": {
+    "lab": [
+     30.8,
+     18.4,
+     25.0
+    ],
+    "sd_L_within_photo": 5.3,
+    "check": "L4 plate, pixels fully rusted: mean within dE 6, spread within 25%"
+   }
   }
  }
 }
