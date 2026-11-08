@@ -1,0 +1,39 @@
+{
+ "part": "SnapShackle",
+ "card": {
+  "what": "70 mm stainless snap shackle with a fixed eye: a hinged bail that snaps shut on a spring plunger and opens under load with a pull ring",
+  "boats": "J/22 spinnaker sheets, guys and halyard (clipped to the kite's clews and head); later the Catalina 22's jib halyard",
+  "distance": "arm's reach: in the hand on the foredeck and at the shrouds, and in close-ups of the spinnaker hoist and drop",
+  "before": "nothing in the kit: the nearest part is ShackleD, the 5 mm D-shackle with a screw pin, so the sheet shows that as the stand-in"
+ },
+ "references": [
+  {"id": "bean", "kind": "photo", "use": "outline and proportions (near square-on side view: fixed eye, bail, latch boss, plunger ring); measuring only",
+   "url": "Bean's hardware reference sheet, 'Snap Shackle' (project upload, Nov 8 2026: a maker's product photo, third party, not shared)", "mask": "bean.mask.png"},
+  {"id": "splice", "kind": "photo", "use": "in use: a snap shackle spliced to a line; bail and plunger seen three-quarter",
+   "url": "https://commons.wikimedia.org/wiki/File:Splice_on_snap_shackle.jpg", "licence": "CC BY-SA 3.0 / GFDL, BenFrantzDale"},
+  {"id": "mets", "kind": "photo", "use": "trade show display of snap shackles of several sizes and eye styles",
+   "url": "https://commons.wikimedia.org/wiki/File:Amsterdam_RAI_METS_2011_(015).JPG", "licence": "CC BY-SA 3.0, S.J. de Waard"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "Wichard 2472 (fixed eye, 70 mm) retailer listings: Jimmy Green, Blue Marine Store, CE Marine (numbers only)",
+   "note": "length 70 mm, A 21 mm, B 13 mm, 90 g, working load 1280 kg; Wichard 2473 swivel eye 70 mm is 65 g. The listings don't say what A and B measure: on the photo the bail's inside width is about 21 mm and the eye's about 15 mm"}
+ ],
+ "sizes": [
+  {"id": "height", "name": "Overall length, top of the bail to the bottom of the eye", "target": 70.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 70 mm"},
+  {"id": "aspect_full", "name": "Length / width across (pull ring included)", "target": "ref:bean", "unit": "ratio", "tol": 0.08, "source": "measured on the photo"},
+  {"id": "length", "name": "Width across, pull ring to bail", "target": null, "unit": "mm", "tol": null, "source": "reported only: the ring hangs where it falls"},
+  {"id": "width", "name": "Thickness through the body", "target": null, "unit": "mm", "tol": null, "source": "no edge-on reference: reported only"}
+ ],
+ "outline": {"ref": "bean", "pass": 0.90, "whole": true},
+ "features": [
+  {"id": "eye", "text": "Fixed oval eye forged into the body, big enough for a spliced sheet", "objects": ["body"], "manual": true},
+  {"id": "body", "text": "One forged body: a diagonal crossbar and a plunger column, soft fillets, no seams", "manual": true},
+  {"id": "bail", "text": "Hinged bail of round bar arcing over the top from the hinge to the latch", "objects": ["bail"]},
+  {"id": "hinge", "text": "Hinge: the bail's fork round a knuckle on a cross pin with heads", "objects": ["bail_fork", "pin", "pin_head"]},
+  {"id": "latch", "text": "Round latch boss at the top of the column where the bail's tip seats", "objects": ["latch"]},
+  {"id": "plunger", "text": "Plunger lug out of the column with a pull ring (about 12 mm) to open it", "objects": ["plunger", "ring"]},
+  {"id": "opening", "text": "Bail opening about 21 mm across: room for a clew ring or a sail's head", "manual": true},
+  {"id": "mark", "text": "Maker's mark on the crossbar's face (made up, no real logo)", "objects": ["mark"]},
+  {"id": "metal", "text": "All stainless", "slots": ["Stainless"]}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}
