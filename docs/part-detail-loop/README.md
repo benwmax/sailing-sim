@@ -188,8 +188,13 @@ their names (`Wrap`, `HornFwd`, `HornAft`) and gain `Hole`.
 Note for the next run: Wikimedia rate-limits the cloud's shared address; fetching the standard 1280 px thumbnail
 (`/thumb/.../1280px-<name>`) one file at a time, 30 s apart, works.
 
+## Third test: the boom vang
+
+The J/22's 4:1 vang and its two 40 mm fiddle blocks (one with a cam cleat), judged as parts and in place on the boat:
+[vang.md](vang.md).
+
 ## Next parts
 
-In order of how close the camera gets on the J/22 (the horn cleat is done above): the cam cleat, the jib winch, the tiller and extension, the
-mainsheet fiddle (the kit's `FiddleCam` is really a side-by-side double: worth a look) and the mast-base turning
-blocks. Each gets its own card, reference pack and rounds, and Bean's sheet before it ships.
+In order of how close the camera gets on the J/22 (the horn cleat and the mainsheet and vang fiddles are done above):
+the cam cleat, the jib winch, the tiller and extension and the mast-base turning blocks. Each gets its own card,
+reference pack and rounds, and Bean's sheet before it ships.

@@ -110,8 +110,25 @@ def main():
         R_ = abs(socks["LineIn"][0]) / 1000
         az = socks["Axle"][2] / 1000
         rp, rr = R_ + 0.002, 0.0048
-        path = [(rp, 0, az - 0.09), (rp, 0, az)] + G.arc_pts((0, 0, az), rp, 0, math.pi, 24, "xz")[1:-1] + [(-rp, 0, az), (-rp, 0, az - 0.09)]
-        rope = G.tube("RenderRope", path, rr, None, 16)
+        right, a_end = [(rp, 0, az - 0.09), (rp, 0, az)], 0.0
+        if "Cam" in socks:
+            # a fiddle with a cam: the tail leaves the sheave where its tangent meets the jaws' entry and runs out
+            # through them toward the foot (render-only)
+            cx, cz_ = socks["Cam"][0] / 1000, socks["Cam"][2] / 1000
+            lead = Vector(socks.get("CamLead", (socks["Cam"][0], 0, socks["Cam"][2] - 10))) / 1000 - Vector((cx, 0, cz_))
+            lead.normalize()                               # along the tail through the jaws, away from the sheave
+            ex, ez = cx - lead.x * 0.012, cz_ - lead.z * 0.012   # the jaws' entry
+            d = math.hypot(ex, ez - az)
+            a_end = math.atan2(ez - az, ex) + math.acos(min(1.0, rp / d))
+            right = [(cx + lead.x * 0.07, 0, cz_ + lead.z * 0.07), (cx + lead.x * 0.010, 0, cz_ + lead.z * 0.010), (ex, 0, ez)]
+        path = right + G.arc_pts((0, 0, az), rp, a_end, math.pi, 24, "xz")[(0 if a_end else 1):-1] + [(-rp, 0, az), (-rp, 0, az - 0.09)]
+        ropes = [G.tube("RenderRope", path, rr, None, 16)]
+        if "LineIn2" in socks and "Axle2" in socks:
+            # a fiddle's small sheave: a second line over it, both legs down between the big sheave's
+            r2, a2 = abs(socks["LineIn2"][0]) / 1000 + 0.002, socks["Axle2"][2] / 1000
+            ropes.append(G.tube("RenderRope2", [(r2, 0, a2 - 0.06), (r2, 0, a2)] + G.arc_pts((0, 0, a2), r2, 0, math.pi, 20, "xz")[1:-1]
+                                + [(-r2, 0, a2), (-r2, 0, a2 - 0.06)], rr, None, 16))
+        rope = G.join("RenderRope", ropes) if len(ropes) > 1 else ropes[0]
         rm = bpy.data.materials.new("RenderRopeMat")
         rm.use_nodes = True
         rb_ = rm.node_tree.nodes["Principled BSDF"]

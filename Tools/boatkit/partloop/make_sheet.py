@@ -2,6 +2,7 @@
 
     python3 Tools/boatkit/partloop/make_sheet.py <ref photo> <before dir> <after dir> <out.jpg>
         [--title T] [--credit "photo credit"] [--in-use <photo crop>] [--in-use-label L] [--line "12 mm line"] [--zoom 0.6]
+        [--ref-label L] [--assembly <before dir> <after dir>]
 
 Row 1: the square-on reference photo, then the side view before and after at the same scale. Row 2: three-quarter
 before and after, and the after from below. Row 3: edge-on before and after, and the after in clay. Optional row: a crop
@@ -85,13 +86,16 @@ def main():
     ap.add_argument("--in-use-label", dest="in_use_label", default="In use on a real boat (photo crop)")
     ap.add_argument("--line", default="10 mm line", help="the in-use renders' line, for their captions")
     ap.add_argument("--zoom", type=float, default=1.0, help="crop the renders to this share of the frame (0.6 for a long, low part)")
+    ap.add_argument("--ref-label", dest="ref_label", default="Reference photo (square-on)")
+    ap.add_argument("--assembly", nargs=2, metavar=("BEFORE", "AFTER"), default=None,
+                    help="render_assembly.py output dirs: adds a row of the part in place, before and after")
     a = ap.parse_args()
     z = a.zoom
     ref, before, after, out, title = a.ref, a.before, a.after, a.out, a.title
     sb = json.load(open(os.path.join(before, "score.json")))
     sa = json.load(open(os.path.join(after, "score.json")))
     rows = [
-        [(tile(ref), "Reference photo (square-on)"), (tile(os.path.join(before, "side.png"), crop=z), "Before: side"), (tile(os.path.join(after, "side.png"), crop=z), "After: side")],
+        [(tile(ref), a.ref_label), (tile(os.path.join(before, "side.png"), crop=z), "Before: side"), (tile(os.path.join(after, "side.png"), crop=z), "After: side")],
         [(tile(os.path.join(before, "threeq.png"), crop=z), "Before: three-quarter"), (tile(os.path.join(after, "threeq.png"), crop=z), "After: three-quarter"),
          (tile(os.path.join(after, "threeq_low.png"), crop=z), "After: from below, far side")],
         [(tile(os.path.join(before, "edge.png"), crop=z), "Before: edge-on"), (tile(os.path.join(after, "edge.png"), crop=z), "After: edge-on"),
@@ -100,10 +104,15 @@ def main():
     if a.in_use:
         rows.append([(tile(a.in_use), a.in_use_label), (tile(os.path.join(before, "in_use.png")), f"Before: in use, {a.line}"),
                      (tile(os.path.join(after, "in_use.png")), f"After: in use, {a.line}")])
-    rows += [
-        [(card(sb, "Before"), ""), (card(sa, "After"), ""),
-         (tile(os.path.join(after, "outline_compare.png"), crop=1.0), "After outline vs photo (blue ours, red photo)")],
-    ]
+    if a.assembly:
+        ab, aa = a.assembly
+        rows.append([(tile(os.path.join(ab, "threeq.png")), "Before: in place on the J/22"), (tile(os.path.join(aa, "threeq.png")), "After: in place on the J/22"),
+                     (tile(os.path.join(aa, "close.png")), "After: in place, close")])
+    oc = os.path.join(after, "outline_compare.png")
+    # a card without a square-on reference has no outline compare: show the after's clay outline instead
+    last = (tile(oc, crop=1.0), "After outline vs photo (blue ours, red photo)") if os.path.exists(oc) else \
+        (tile(os.path.join(after, "outline_side.png")), "After outline (no square-on photo to compare)")
+    rows += [[(card(sb, "Before"), ""), (card(sa, "After"), ""), last]]
     pad, cap, head = 14, 30, 64
     W = 3 * T + 4 * pad
     foot = 34 if a.credit else 0
