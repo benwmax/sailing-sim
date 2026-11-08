@@ -70,6 +70,8 @@ thread and are unchanged here.
 | Wear ladder | Round 2, 3 reviewers: all ordered L1 < L3 < L2 < L4. They read the kept classic as cleaner than the club boat (its white bloom reads as neglect). That is a 0.8 rank match, which passes the 0.8 bar, and it is arguably right for a kept boat. One reviewer of three called L3 vs L2 marginal. |
 | Blind A/B | Round 2 beat main 3/3 ("main reads as plain flat grey"), but all three called the rust "cartoon blobs with dark outlines". Round 3 (no rims) lost to round 2, 1-2. Round 4 adds the zinc mottle, darker crust cores and flecks, and beat round 2 3/3. Round 5 adds a 1.8 mm zinc grain and pin-head rust specks ahead of each patch (faded out by 3 m so they don't shimmer) and beat round 4 2 of 3 (one reviewer preferred the smoother round 4 as 'less procedural noise'). Colour unchanged: L4 dE 2.0, sdL 4.4. |
 
+Weeps round 9 (rejected, kept in the port behind `r9`): the run fanned out (1.5x wider at its foot), split into rivulets (0.35 cm strands) and got an orange dye halo round the bolt. It still met the colour check (crust dE 3.7, stain dE 5.9) but lost the blind A/B to round 8 on the close-up and at 2 m, 3 of 3 reviewers each ("soft, airbrushed, a halo"); at 0.5 m they called it a tie. Round 8 stays in the shader. What they still want: a real fitting at the head (crust, washer edge), drip beads and pooling, and a gelcoat with sheen and dirt (the gelcoat thread's surface).
+
 Still different (round 4 and 5 reviewers: patches are soft blobs with no flaking or downhill streaks, no spangle): the grey base is still too even (no spangle, scratches or grime); the rust sits in a few
 large soft clumps where real rust also has fine speckle and streaks.
 

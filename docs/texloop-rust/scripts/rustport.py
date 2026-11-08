@@ -19,7 +19,7 @@ def old_block(col,x,y,z,wearw,salt=0.0,**k):
     rust=wearw*(lane>=0.93-0.05*salt)*thin*sat((z-(top-runLen))/runLen)*(z<=top)
     a=(0.5*rust*(1+0.6*salt))[...,None]
     return col+(np.array([0.30,0.13,0.05])-col)*a, a[...,0]
-P=dict(slot=25.0,share=0.6,top0=50.0,topR=28.0,len0=6.0,lenR=24.0,w0=0.60,wT=-0.15,decay=1.2,head=0.9,core=(0.11,0.033,0.011),T=(0.149,0.045,0.017),amax=1.0,careK=0.85,age0=1.5,ageR=12.0)
+P=dict(slot=25.0,share=0.6,top0=50.0,topR=28.0,len0=6.0,lenR=24.0,w0=0.60,wT=-0.15,decay=1.2,head=0.9,core=(0.11,0.033,0.011),T=(0.149,0.045,0.017),amax=1.0,careK=0.85,age0=1.5,ageR=12.0,r9=False,fan=1.5,riv=0.4,halo=0.35,haloR=2.2)
 def new_block(col,x,y,z,age,care,depth,salt=0.0,wearw=0.0,p=P):
     rwN=sat((age-p['age0'])/p['ageR']) if age>=0 else 0.5*wearw
     rwA=(1-p['careK']*sat(care)) if age>=0 else 0.8*wearw
@@ -33,23 +33,38 @@ def new_block(col,x,y,z,age,care,depth,salt=0.0,wearw=0.0,p=P):
     dx=(frac(rwX)-(0.3+0.4*h3))*p['slot']+0.5*np.sin(z*0.31+I*2.1)*t
     ws=0.7+0.9*frac(h*13.1)
     w=ws*p['w0']*(1+p['wT']/p['w0']*t)
+    if p.get('r9'): w=ws*p['w0']*(1+p['fan']*t)      # the stain fans out as it runs down
     px=np.maximum(depth,1.0)*1.25e-3*0.7
     we=np.sqrt(w*w+px*px)
     zq=z/3.0+I*7.0; zi=np.floor(zq); zf=zq-zi; zf=zf*zf*(3-2*zf)
     blot=0.7+0.6*(frac(np.sin(zi*12.9)*4375.5)*(1-zf)+frac(np.sin((zi+1)*12.9)*4375.5)*zf)
-    run=blot*(w/we)*np.exp(-dx*dx/(we*we))*np.exp(-p['decay']*t)*(1-smooth(0.75,1.0,t))*(d>=0)
+    if p.get('r9'):
+        # rivulets: value noise across the run (0.35 cm) stretched down it (5 cm), so the fan reads as strands
+        rq=np.stack([dx/0.35+I*3.0,z/5.0],-1); ri=np.floor(rq); rf=rq-ri; rf=rf*rf*(3-2*rf)
+        rh=lambda o: frac(np.sin((ri+o)@np.array([17.3,71.9]))*4375.5)
+        rn=(rh(np.array([0,0]))*(1-rf[...,0])+rh(np.array([1,0]))*rf[...,0])*(1-rf[...,1])+(rh(np.array([0,1]))*(1-rf[...,0])+rh(np.array([1,1]))*rf[...,0])*rf[...,1]
+        riv=1+p['riv']*(rn-0.5)*2*sat(t*4)*(w/we)
+        run=blot*riv*np.sqrt(ws*p['w0']/np.maximum(w,1e-3))*(w/we)*np.exp(-dx*dx/(we*we))*np.exp(-p['decay']*t)*(1-smooth(0.75,1.0,t))*smooth(-0.6,0.4,d)
+    else:
+        run=blot*(w/we)*np.exp(-dx*dx/(we*we))*np.exp(-p['decay']*t)*(1-smooth(0.75,1.0,t))*(d>=0)
     fdx=dx-0.9-0.6*h; fw=np.sqrt(0.18**2+px*px)
     fg=(0.18/fw)*np.exp(-fdx*fdx/(fw*fw))*smooth(0.15,0.35,t)*np.exp(-3*t)*(1-smooth(0.6,0.9,t))*(h2>=0.5)
     hr=np.sqrt(p['head']**2+px*px)
     head=(p['head']/hr)**2*np.exp(-(dx*dx+d*d)/(hr*hr))
     k=on*sat(rwA*(1.25*np.maximum(run,0.6*fg)+1.6*head))
     a=(p['amax']*k)[...,None]
+    halo=0
+    if p.get('r9'):   # an orange dye halo round the fitting (washer-sized, a little more below it)
+        hd=np.sqrt(dx*dx+np.where(d>0,0.6,1.0)**2*d*d)
+        halo=on*rwA*p['halo']*np.exp(-(hd/p['haloR'])**2)
     # rust crust mottle: smooth value noise on 0.6 cm cells, darker and lighter rust
     q=np.stack([x/0.6,z/0.6],-1); qi=np.floor(q); qf=q-qi; qf=qf*qf*(3-2*qf)
     hh=lambda o: frac(np.sin((qi+o)@np.array([27.1,61.7]))*4375.5)
     mn=(hh(np.array([0,0]))*(1-qf[...,0])+hh(np.array([1,0]))*qf[...,0])*(1-qf[...,1])+(hh(np.array([0,1]))*(1-qf[...,0])+hh(np.array([1,1]))*qf[...,0])*qf[...,1]
     core=np.array(p['core'])*(0.7+0.6*mn)[...,None]; T=np.array(p['T'])*(0.7+0.6*mn)[...,None]
-    return 0.5*(col+(core-col)*a)+0.5*col*T**a, a[...,0]
+    out=0.5*(col+(core-col)*a)+0.5*col*T**a
+    if p.get('r9'): out=out*np.array([1.0,0.80,0.62])**halo[...,None]
+    return out, a[...,0]
 def lin_to_srgb8(c):
     c=np.clip(c,0,1); return (np.where(c<=0.0031308,c*12.92,1.055*c**(1/2.4)-0.055)*255+0.5).astype(np.uint8)
 def render(kind,level,x0,x1,z0,z1,ppcm,depth=60.0,ss=2,wearw=0.5,p=P,salt=0.0):
