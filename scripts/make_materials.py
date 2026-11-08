@@ -1203,12 +1203,24 @@ col *= seeded ? 1.0 + gel * 0.03 * (frac(CD15 * 0.618 + 0.31) * 2.0 - 1.0) : 1.0
 // ageK (0 new .. 1 worn out) drives every surface's weathering; unset, the livery's oxidation channel stands in.
 float age = CD10 >= 0.0 ? CD10 : Age, care = CD10 >= 0.0 ? CD11 : Care;
 float ageK = age >= 0.0 ? saturate(age / 20.0) * (1.0 - 0.6 * saturate(care)) : wear.x;
-// Oxidation: gelcoat chalks under the Texas sun, decks and tops first: paler, flatter, the clear coat gone.
-float ox = saturate(max(wear.x, ageK) * sunF) * gel * (0.55 + 0.45 * up);
+// Texture loop (docs/texture-loop, Bean Nov 8 2026): one number can't tell a few-months boat from a new one, and gave a
+// kept 30-year-old hull a half-neglected boat's chalk. Two numbers from the same Age and Care (Tools/texloop/wear.py
+// mirrors them): timeK, what the years do and care can't undo (fade, yellowing, dock rash), a quarter of it in the first
+// year or two; dirtK, what care removes (chalk, grime, stains), quick in the first months and as heavy as the boat is
+// left. Unset (Age -1), both are the livery's oxidation channel, as ageK was. The gelcoat and the grime use them; the
+// other surfaces move over as each goes through the loop.
+float timeK = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-age / 0.75)) + 0.75 * (1.0 - exp(-age / 18.0))) : wear.x;
+float dirtK = age >= 0.0 ? saturate((1.0 - exp(-age)) * (0.15 + 0.85 * (1.0 - saturate(care)))) : wear.x;
+// Oxidation: gelcoat chalks under the Texas sun, decks and tops first: paler, flatter, the clear coat gone. Mostly dirt
+// (compound and wax take it off), but a kept old hull never polishes back to new.
+float ox = saturate(max(wear.x, max(dirtK, 0.3 * timeK)) * sunF) * gel * (0.55 + 0.45 * up);
 float lum = dot(col, float3(0.3, 0.59, 0.11));
 // Pale gelcoat goes toward chalk; dark paint (linear polyurethane, slower to chalk) only greys and loses depth.
 float3 chalk = lerp(lerp(float3(lum, lum, lum), float3(0.82, 0.80, 0.74), 0.5) * 1.02, col * 1.25 + lum * 0.35 + 0.01, saturate(1.0 - lum * 2.5));
 col = lerp(col, chalk, 0.4 * ox);
+// White gelcoat yellows with the years in the sun, however well it's kept.
+float whiteG = saturate((min(col.r, min(col.g, col.b)) - 0.45) * 4.0);
+col *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.975, 0.90), timeK * gel * whiteG * saturate(sunF) * step(0.0, age));   // wear.py YELLOW; unset: as before
 rough = lerp(rough, 0.72, ox);
 coat *= 1.0 - 0.85 * ox;
 // Worn, grimy non-skid.
@@ -1230,7 +1242,7 @@ for (int o = 0; o < 3; ++o)
 vn /= 1.05;
 float deckish = up * (1.0 - Metal) * (1.0 - IsHull) * (1.0 - Grain);
 // How dirty: from the age and care above, else the livery's oxidation channel.
-float dirt = age >= 0.0 ? saturate(0.15 + age / 18.0) * (1.0 - 0.65 * saturate(care)) : 0.3 + 0.7 * wear.x;
+float dirt = age >= 0.0 ? dirtK : 0.3 + 0.7 * wear.x;     // texture loop: care removes it
 float grime = saturate(vn * 1.8 - 0.6) * deckish * dirt * (0.45 + 0.55 * saturate(NonSkid));
 col = lerp(col, col * 0.76 + float3(0.014, 0.011, 0.007), grime);
 rough = lerp(rough, min(rough + 0.18, 0.9), grime);
@@ -1253,7 +1265,8 @@ float2 cellS = floor(cs);
 float patchS = frac(sin(dot(cellS, float2(41.3, 17.7))) * 4375.5);
 float2 fs = frac(cs) - 0.5;
 float smudge = 1.0 - smoothstep(0.12, 0.45, length(fs * float2(1.0, 1.8)));
-float scuff = wear.z * IsHull * step(abs(n.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
+float scuff = max(wear.z, 0.7 * timeK * step(0.0, age)) * IsHull *   // dock rash comes with the years (texture loop)
+    step(abs(n.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
 col = lerp(col, col * 0.78 + float3(0.01, 0.01, 0.008), scuff);
 // Rust streaks from fittings: thin, tapering runs down vertical faces, few and far between.
 float laneX = LP.x / 9.0 + LP.y / 23.0;
@@ -1268,7 +1281,7 @@ col = lerp(col, float3(0.30, 0.13, 0.05), 0.5 * rust * (1.0 + 0.6 * salt));
 float wetCm = seeded ? max(CD13, 0.0) * 100.0 : 0.0;
 float bandTop = wetCm * (0.75 + 0.25 * streak);
 float stainBand = IsHull * step(abs(n.z), 0.8) * smoothstep(-2.0, 1.0, zcm) * (1.0 - smoothstep(bandTop - 3.0, bandTop, zcm)) * step(0.5, wetCm);
-float stainK = stainBand * (age >= 0.0 ? saturate(0.2 + age / 20.0) * (1.0 - 0.7 * saturate(care)) : 0.4) * (0.75 + 0.25 * vn);
+float stainK = stainBand * (age >= 0.0 ? saturate(1.15 * dirtK) : 0.4) * (0.75 + 0.25 * vn);
 col = lerp(col, lerp(float3(0.16, 0.17, 0.08), float3(0.42, 0.36, 0.24), salt), 0.65 * stainK);
 float crust = salt * IsHull * stainK * exp(-pow((zcm - bandTop + 1.5) / 1.2, 2.0)) * step(0.5, frac(sin(floor(LP.x / 1.5) * 12.7) * 437.5) + 0.3);
 col = lerp(col, float3(0.74, 0.73, 0.69), crust);
@@ -1283,7 +1296,7 @@ float sw = exp(-pow((frac(sx) - 0.5) * (5.0 + 10.0 * sh2), 2.0));
 float sLen = 25.0 + 70.0 * sh;
 float sTop = 55.0 + 70.0 * sh2;
 float blk = IsHull * step(abs(n.z), 0.75) * step(0.45, sh) * sw * saturate((zcm - (sTop - sLen)) / sLen) * smoothstep(sTop + 15.0, sTop - 5.0, zcm);
-col = lerp(col, col * float3(0.62, 0.61, 0.58), saturate(blk * (0.25 + 0.9 * wear.y)));
+col = lerp(col, col * float3(0.62, 0.61, 0.58), saturate(blk * (age >= 0.0 ? 1.15 * dirtK : 0.25 + 0.9 * wear.y)));   // a kept hull is washed
 // Large, faint tone differences across a hull or deck (gelcoat batches, sun on one side, old repairs): plus or minus 3%.
 float2 tp = LP.xz / 160.0;
 float2 ti = floor(tp), tf = smoothstep(0.0, 1.0, frac(tp));
