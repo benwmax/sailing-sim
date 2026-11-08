@@ -687,7 +687,7 @@ bool FSailingCareerMedalLinesTest::RunTest(const FString&)
 	TestFalse(TEXT("... not the time"), M.Improve.Contains(TEXT("Time")));
 	// Bronze: not clean and slow; the outcome is the whole miss for silver.
 	M = Lines(Run(ESailingDrill::LeaveTheDock, TEXT("contact"), 400.0, 2));
-	TestTrue(FString::Printf(TEXT("Bronze: improve names silver's finish (%s)"), *M.Improve), M.Improve.StartsWith(TEXT("Silver needs a clean finish")));
+	TestTrue(FString::Printf(TEXT("Bronze: improve names silver's finish (%s)"), *M.Improve), M.Improve.StartsWith(TEXT("Silver needs a clean departure; this one touched on the way out")));
 	TestFalse(TEXT("... and something went well"), M.DidWell.IsEmpty());
 	// Gold: a faster time next.
 	M = Lines(Run(ESailingDrill::LeaveTheDock, TEXT("clean"), 120.0));
@@ -787,5 +787,44 @@ bool FSailingCareerReturnStartTest::RunTest(const FString&)
 			const double From = FMath::DegreesToRadians(double(W)), Bear = FMath::DegreesToRadians(double(B));
 			if (Twa(FDrillRunner::ReturnStartHeading(Bear, From), From) < 60.0 - 1e-6) { AddError(FString::Printf(TEXT("Wind %d, dock %d: in the no-go zone"), W, B)); return false; }
 		}
+	return true;
+}
+
+/**
+ * #511: the medal lines say a drill's outcome in plain words (never its id: contact, improper, hard) and talk about docks
+ * only in the drills sailed among them.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerMedalWordsTest, "SailingSim.Career.MedalWords", CareerTestsLocal::CareerFlags)
+bool FSailingCareerMedalWordsTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	const FCareerContent* Content = Load(*this);
+	if (!Content) return false;
+	for (const FCareerTier& T : Content->Tiers)
+	{
+		for (const FCareerLesson& L : T.Lessons)
+		{
+			for (const FString& O : FDrillRunner::Outcomes(L.Drill))
+			{
+				for (const FCareerRun& R : { Run(L.Drill, O, 30.0), Run(L.Drill, O, 3000.0, 2) })
+				{
+					const FCareerMedalLines X = CareerMedalLines(L, R, FCareerContent::Grade(L, R));
+					const FString Both = X.DidWell + TEXT(" | ") + X.Improve;
+					for (const TCHAR* Id : { TEXT("contact"), TEXT("improper"), TEXT("hard") })
+						if (Both.Contains(FString::Printf(TEXT("was %s"), Id)) || Both.Contains(FString::Printf(TEXT("a %s finish"), Id)))
+							AddError(FString::Printf(TEXT("%s, %s: an outcome id in the lines: %s"), *L.Id, *O, *Both));
+					const bool bDock = L.Drill == ESailingDrill::LeaveTheDock || L.Drill == ESailingDrill::ReturnAndDock;
+					if (!bDock && (Both.Contains(TEXT("dock and boat")) || Both.Contains(TEXT("with a dock"))))
+						AddError(FString::Printf(TEXT("%s, %s: dock wording away from the dock: %s"), *L.Id, *O, *Both));
+				}
+			}
+		}
+	}
+	const FCareerLesson* Quick = Content->Lesson(TEXT("day-sailor.crew-overboard-quick-stop"));
+	if (TestNotNull(TEXT("The quick-stop lesson"), Quick))
+	{
+		const FCareerMedalLines Q = CareerMedalLines(*Quick, Run(Quick->Drill, TEXT("proper"), 40.0), ECareerMedal::Gold);
+		TestEqual(TEXT("Quick-stop, no touches: no docks"), Q.DidWell, FString(TEXT("No touches: you kept clear of everything around you.")));
+	}
 	return true;
 }
