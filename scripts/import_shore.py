@@ -64,7 +64,11 @@ def flat_grey(name, level):
     """A 4x4 texture of one grey level, linear (TC_GRAYSCALE, no sRGB): the default for the Linear Grayscale parameters."""
     path = f"{TEX}/{name}"
     if EAL.does_asset_exist(path):
-        return unreal.load_asset(path)
+        t = unreal.load_asset(path)   # settings re-applied below, in case it was touched by hand
+        t.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
+        t.set_editor_property("srgb", False)
+        EAL.save_loaded_asset(t)
+        return t
     import struct, tempfile, zlib
     raw = b"".join(b"\x00" + bytes([level]) * 4 for _ in range(4))
     def chunk(t, d):
