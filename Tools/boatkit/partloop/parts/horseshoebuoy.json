@@ -1,0 +1,86 @@
+{
+ "part": "HorseshoeBuoy",
+ "card": {
+  "what": "US Type IV horseshoe buoy, 610 x 585 x 100 mm, faded yellow vinyl over foam, welded edge seams, four reflective patches, a slack web strap with a snap across the open end; floats flat about a third under",
+  "boats": "crew-overboard drills (figure eight, quick stop): the object thrown over and picked up",
+  "distance": "picked up at the shrouds at 1 to 2 m; watched from 50 m",
+  "before": "Engine BasicShapes sphere 0.6 m in yellow, centre 0.1 m above the water"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Jim-Buoy 920 standard horseshoe (West Marine: 24 in wide, 23 in long, 4 in thick); Jim-Buoy 1040 pony (23 x 20.5 x 3.25 in); Plastimo horseshoe 64 x 57 x 10 cm",
+   "note": "numbers only; no photo could be fetched from this container"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Length, closed bend to open ends",
+   "target": 585.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "Jim-Buoy 920 class: 23 in"
+  },
+  {
+   "id": "width",
+   "name": "Width across the legs",
+   "target": 610.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "Jim-Buoy 920 class: 24 in"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "shape",
+   "text": "U shape: a round bend and two straight legs with rounded ends",
+   "objects": [
+    "cover",
+    "end-1",
+    "end1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "seams",
+   "text": "Welded seam round the inner and outer edge",
+   "objects": [
+    "seam0",
+    "seam1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "tape",
+   "text": "Four reflective patches over the top",
+   "objects": [
+    "tape0",
+    "tape1",
+    "tape2",
+    "tape3"
+   ],
+   "manual": true
+  },
+  {
+   "id": "strap",
+   "text": "Slack web strap with a snap across the open end, wrapped round each leg",
+   "objects": [
+    "strap",
+    "snap",
+    "wrap-1",
+    "wrap1"
+   ],
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

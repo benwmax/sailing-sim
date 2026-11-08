@@ -1,4 +1,5 @@
 #include "SailboatPawn.h"
+#include "CourseMarks.h"
 #include "SailingAngles.h"
 #include "Algo/AnyOf.h"
 #include "CrewOutfit.h"
@@ -2879,19 +2880,42 @@ void ASailboatPawn::UpdateDrillVisuals()
 			C->SetVisibility(false);
 			return C;
 		};
-		for (int32 I = 0; I < 3; ++I) MarkMeshes.Add(Make(Cylinder, FLinearColor(1.f, 0.35f, 0.02f), FVector(1.2f, 1.2f, 2.0f)));
-		DummyMesh = Make(Sphere, FLinearColor(1.f, 0.85f, 0.05f), FVector(0.6f));
+		// The kit's inflatable lesson mark and Type IV horseshoe buoy (docs/part-detail-loop/marks.md) once imported; until
+		// then the engine shapes. Kit marks sit on the waterline at their own size and colours.
+		UStaticMesh* KitMark = CourseMarks::Load(TEXT("LessonMark"));
+		// The crew-overboard set (horseshoe, MOB pole with its flag, floating line) reads from far off; the bare horseshoe
+		// is the fallback.
+		UStaticMesh* KitBuoy = CourseMarks::Load(TEXT("MOBBuoy"));
+		if (!KitBuoy) KitBuoy = CourseMarks::Load(TEXT("HorseshoeBuoy"));
+		auto MakeKit = [&](UStaticMesh* Mesh, float YawDeg)
+		{
+			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+			C->SetStaticMesh(Mesh);
+			C->SetUsingAbsoluteLocation(true);
+			C->SetUsingAbsoluteRotation(true);
+			C->SetUsingAbsoluteScale(true);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetWorldRotation(FRotator(0.f, YawDeg, 0.f));
+			C->SetupAttachment(RootComponent);
+			C->RegisterComponent();
+			C->SetVisibility(false);
+			return C;
+		};
+		for (int32 I = 0; I < 3; ++I) MarkMeshes.Add(KitMark ? MakeKit(KitMark, 37.f + 113.f * I) : Make(Cylinder, FLinearColor(1.f, 0.35f, 0.02f), FVector(1.2f, 1.2f, 2.0f)));
+		DummyMesh = KitBuoy ? MakeKit(KitBuoy, 20.f) : Make(Sphere, FLinearColor(1.f, 0.85f, 0.05f), FVector(0.6f));
+		bKitDrillMarks = KitMark != nullptr;
+		bKitDummy = KitBuoy != nullptr;
 	}
 	const TArray<FVector2D>& Marks = DrillRunner.GetMarks();
 	for (int32 I = 0; I < MarkMeshes.Num(); ++I)
 	{
 		const bool bShow = DrillRunner.IsActive() && I < Marks.Num() && I >= DrillRunner.GetNextMark();
 		MarkMeshes[I]->SetVisibility(bShow);
-		if (bShow) MarkMeshes[I]->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), Marks[I].X, Marks[I].Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + 60.f));
+		if (bShow) MarkMeshes[I]->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), Marks[I].X, Marks[I].Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + (bKitDrillMarks ? 0.f : 60.f)));
 	}
 	const bool bDummy = DrillRunner.IsActive() && DrillRunner.HasDummy();
 	DummyMesh->SetVisibility(bDummy);
-	if (bDummy) DummyMesh->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), DrillRunner.GetDummy().X, DrillRunner.GetDummy().Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + 10.f));
+	if (bDummy) DummyMesh->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), DrillRunner.GetDummy().X, DrillRunner.GetDummy().Y, 0.0) + FVector(0.0, 0.0, WaterSurfaceZ + (bKitDummy ? 0.f : 10.f)));
 }
 
 void ASailboatPawn::StartSampleLayer()

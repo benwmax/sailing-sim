@@ -478,7 +478,8 @@ def handrail(side):
     return join(f"Handrail_{side}", parts)
 
 
-KIT_MATS = {"Teak": "TeakWeathered", "Wood": "TeakVarnish", "Deck": "Gelcoat", "CabinWindow": "HatchAcrylic"}
+KIT_MATS = {"Teak": "TeakWeathered", "Wood": "TeakVarnish", "Deck": "Gelcoat", "CabinWindow": "HatchAcrylic",
+            "Graphics": "RedPlastic"}       # the kit's red slot: the cams of FiddleCam
 
 
 def kit_part(name, part, at, yaw=0.0, surface=None, **kw):
@@ -797,13 +798,33 @@ def build_rig():
     parts += BG.boom_end("BoomEnd", b1, MAT)
     xo = b0.x - 0.95             # (aft of the vang's bail)
     parts += BG.outhaul_cleat("BoomOuthaulCleat", (xo, 0, BOOM_Z + 0.03 * (b0.x - xo) / (b0.x - b1.x) - 0.0375), MAT)
-    parts += D.vang("Vang", (MAST_X - 0.06, 0, zm + 0.10), (MAST_X - 0.80, 0, BOOM_Z - 0.03), MAT, MAT["RopeVang"])
+    # the vang (part detail loop, docs/part-detail-loop/boomgear.md): the tang on the mast step, a strap bail through-bolted
+    # on the boom, the kit's Fiddle40 hanging from it (on the boom: bake BOOM_PARTS) and its FiddleCam on the tang, cam up,
+    # the line reeved 4:1 (stills only: "Vang_" is live rope in the game)
     va, vb = Vector((MAST_X - 0.06, 0, zm + 0.10)), Vector((MAST_X - 0.80, 0, BOOM_Z - 0.03))
     vd = (vb - va).normalized()
-    for o in [o for o in parts if o.name.startswith("Vang_hi")]:     # the upper block: the big one from the photo
-        parts.remove(o)
-        bpy.data.objects.remove(o, do_unlink=True)
-    parts += BG.big_block("VangBlock", vb - vd * 0.075, vd, MAT)   # on the boom (bake BOOM_PARTS): "Vang_" is live rope
+    parts += D.vang("Vang", tuple(va), tuple(vb), MAT, MAT["RopeVang"], blocks=False)
+    zc_v = BOOM_Z + 0.03 * (b0.x - vb.x) / (b0.x - b1.x)
+    bail, pin = BG.boom_bail("VangBlock_bail", vb.x, zc_v, MAT)
+    parts += bail
+    anchor = bpy.data.objects.new("anchor_Boom_Vang", None)     # the socket where the October bail's centre was
+    anchor.location = (vb.x, 0.0, vb.z - 0.0015)
+    link(anchor)
+
+    def kit_frame(head, z_axis, flip=False):
+        z = Vector(z_axis).normalized()
+        y = Vector((0, -1 if flip else 1, 0))
+        m = Matrix((y.cross(z).normalized(), y, z)).transposed().to_4x4()
+        m.translation = head
+        return m
+    top = kit_part("VangBlock", "Fiddle40", (0, 0, 0))[0]
+    top.matrix_world = kit_frame(pin + Vector((0, 0, 0.0035)), vd)
+    bot = kit_part("Vang_lowblock", "FiddleCam", (0, 0, 0))[0]
+    bot.matrix_world = kit_frame(va + vd * 0.012, -vd, flip=True)
+    parts += [top, bot]
+    socks = lambda ob: {k[5:]: Vector(ob[k]) for k in ob.keys() if k.startswith("sock_")}  # noqa: E731
+    wires.append(BG.vang_line("Vang_rope", top.matrix_world.copy(), bot.matrix_world.copy(), socks(top), socks(bot), MAT["RopeVang"],
+                              cabin_top_z))
     # end-boom sheeting (Bean's feedback 1, the Harken layout): the bail and upper block over the traveler, near the end cap
     top = Vector((TRAVELER_X, 0, BOOM_Z + 0.03 * (b0.x - TRAVELER_X) / (b0.x - b1.x) - 0.03))
     parts.append(D.tube("MainBail", [(top.x - 0.03, -0.03, top.z + 0.03), (top.x - 0.03, -0.03, top.z - 0.005), (top.x, 0, top.z - 0.02),
