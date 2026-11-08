@@ -1,0 +1,43 @@
+{
+ "part": "Block40",
+ "card": {
+  "what": "40 mm single swivel block with becket: sheets, vangs and control lines on small boats",
+  "boats": "kit part for the fleet (not yet placed by a layout); the J/22 mainsheet and the Sunfish use the same family",
+  "distance": "arm's reach in the cockpit",
+  "before": "kit Block40 from _block_parts (Oct 2026)"
+ },
+ "references": [
+  {"id": "harken57c", "kind": "photo", "use": "outline and proportions (square-on side view, 57 mm block: proportions only)",
+   "url": "https://commons.wikimedia.org/wiki/File:Harken_57C_block.jpg", "mask": "Harken_57C_block.mask.png"},
+  {"id": "bean-j22-mainsheet", "kind": "photo", "use": "features in use on our J/22: black moulded cheeks, swivel, fiddle with cam",
+   "url": "project upload 84310630 (Bean, J/22 at Rush Creek)"},
+  {"id": "folkboat3", "kind": "photo", "use": "three-quarter view, cheek thickness and rivets", "url": "https://commons.wikimedia.org/wiki/File:Details_of_a_Nordic_Folkboat_03.jpg"},
+  {"id": "traveller", "kind": "photo", "use": "block on a traveller car, head and shackle", "url": "https://commons.wikimedia.org/wiki/File:Traveller_(sailing).jpg"},
+  {"id": "violin", "kind": "photo", "use": "becket and shackle construction", "url": "https://commons.wikimedia.org/wiki/File:Violinblock.JPG"},
+  {"id": "regatta", "kind": "photo", "use": "sheave and strap construction (older style)", "url": "https://commons.wikimedia.org/wiki/File:Regattablock.JPG"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes", "url": "https://clcboats.com/products/harken-swivel-carbo-block-40mm",
+   "also": ["https://europe.roostersailing.com/products/128827", "https://www.westmarine.com/harken-40mm-carbo-air-single-block-24112203.html"]}
+ ],
+ "sizes": [
+  {"id": "overall", "name": "Overall length, top of the shackle to the foot of the cheeks", "target": 86.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 86 mm (3-3/8 in)"},
+  {"id": "sheave", "name": "Sheave diameter", "target": 40.0, "unit": "mm", "tol": 0.02, "source": "catalogue: 40 mm"},
+  {"id": "aspect", "name": "Cheek height / width", "target": "ref:harken57c", "unit": "ratio", "tol": 0.05, "source": "measured on the square-on photo"},
+  {"id": "head", "name": "Head width / cheek width", "target": "ref:harken57c", "unit": "ratio", "tol": 0.10, "source": "measured on the square-on photo"},
+  {"id": "thick", "name": "Thickness across the cheeks", "target": null, "unit": "mm", "tol": null, "source": "no edge-on reference yet: reported only"}
+ ],
+ "outline": {"ref": "harken57c", "pass": 0.90},
+ "features": [
+  {"id": "teardrop", "text": "Cheeks: round round the sheave, narrowing to a flat head (teardrop)", "manual": true},
+  {"id": "black", "text": "Cheeks matte black plastic, metal parts bright stainless", "slots": ["BlackPlastic", "Stainless"]},
+  {"id": "head-rivets", "text": "Two rivets through the head", "objects": ["rivet"]},
+  {"id": "see-through", "text": "Hollow centre: a stainless axle you can see through, with its bearing race round it", "objects": ["axle"]},
+  {"id": "lightening", "text": "Lightening holes and slots in the cheeks, sheave showing through", "manual": true},
+  {"id": "groove", "text": "Grooved sheave visible between the cheeks, wide enough for 10 mm line", "objects": ["sheave"], "manual": true},
+  {"id": "swivel", "text": "Swivel post with a collar on the head", "objects": ["post", "collar", "eye"]},
+  {"id": "shackle", "text": "Shackle with a pin and a pin head", "objects": ["bow", "pin", "pinhead"]},
+  {"id": "becket", "text": "Becket loop under the cheeks", "objects": ["becket"]},
+  {"id": "plate", "text": "Maker's plate (made-up TERNWAY, never a real brand)", "objects": ["plate"]},
+  {"id": "no-hoop", "text": "Nothing sticking out sideways past the cheeks", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}

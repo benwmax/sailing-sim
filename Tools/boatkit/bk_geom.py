@@ -264,6 +264,8 @@ def bezier(p0, p1, p2, p3, n=16):
 
 
 def boolean(ob, cutter, op="DIFFERENCE"):
+    if not cutter.data.materials and ob.data.materials:
+        cutter.data.materials.append(ob.data.materials[0])  # a slot-less cutter adds an empty slot on Blender 5.x
     m = ob.modifiers.new("bool", "BOOLEAN")
     m.operation, m.object, m.solver = op, cutter, "EXACT"
     apply(ob)
