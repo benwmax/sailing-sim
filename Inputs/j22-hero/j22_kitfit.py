@@ -106,7 +106,8 @@ def bridle_eye(side, base, toward, MAT):
     return [pad, sh]
 
 
-TRANSOM_BOTTOM = 0.176    # the hero hull's transom, its lowest point on the centreline (build_j22_hero.py's hull)
+TRANSOM_BOTTOM = 0.225    # the hero hull's flat transom ends here; below it the bottom curves forward (x -3.33 at z 0.18)
+LOWER_PINTLE_Z = TRANSOM_BOTTOM + 0.028 + 0.0125 + 0.005   # both of its gudgeons' lugs and flanges on the flat transom
 
 
 def rudder_fittings(MAT, S):
@@ -117,9 +118,9 @@ def rudder_fittings(MAT, S):
     off = S.TRANSOM_X - S.PIVOT_X
     pintles, gudgeons = [], []
     for k, z in enumerate(S.PINTLE_Z):
-        # the hero's lower pintle (z 0.05) is below the transom, whose bottom edge is at z 0.176 on the centreline: its
-        # gudgeons hung in the water in front of nothing. The J/22's lower gudgeon sits at the transom's bottom edge.
-        z = max(z, TRANSOM_BOTTOM + 0.035)
+        # the hero's lower pintle (z 0.05) is below the transom (flat down to z 0.225 on the centreline): its gudgeons
+        # hung in open water. The J/22's lower gudgeon sits at the transom's bottom edge.
+        z = max(z, LOWER_PINTLE_Z)
         pintles.append(place(f"Pintle_{k}", "Pintle", Matrix.Translation((S.PIVOT_X, 0, z)) @ flip, MAT,
                              blade=0.036, chord=0.35, length=0.27))
         for lug, dz in ((0, 0.028), (1, -0.028)):
