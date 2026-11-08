@@ -228,7 +228,16 @@ the card's outline, and measures `across`, `depth`, `top_aspect` and `axles`; `r
 and dresses cam cleats with a 10 mm line between the cams; `make_sheet.py` leaves a blank tile for a missing image and
 shows "-" for a size a round doesn't have. Block40's and HornCleat's numbers are unchanged.
 
-Still different from the photo (the reviewers' shared notes on r1, for a later round):
+**Round 5 (Bean: "improve a bit if you can").** r4 sank the bushings into counterbores, thickened the base and deepened
+the teeth; it lost 1 of 3 to r1 (reviewers read the photo's bushings as standing proud). r5 keeps the bushings proud
+but chunkier and rimmed (14 mm across, 2.4 mm tall), rounds the cams' top edges (2 mm bevel), runs the teeth on round
+onto the inner side of the round back (0.06 W behind the axle, 1.5 mm deep) and thickens the base to 5.5 mm. It
+passes every check (axles 38 mm, across 63 mm, depth/width 0.58, top outline 94%, 8/8, 8,864 triangles) and won
+3 of 3 against r1 (confidence 2, 2, 2: deeper wrapped teeth, chunkier redder bushings).
+
+![CamCleat r1 vs r5](camcleat_round5.jpg)
+
+Still different from the photo (the reviewers' shared notes on r1 and r5, for a later round):
 
 - The cams are tall and slab-sided; real ones are lower, softly domed and blend into the base.
 - The base reads as a thin plate; the real one is a thicker moulding with a bridge between the cams.

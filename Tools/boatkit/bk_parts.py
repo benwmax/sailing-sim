@@ -231,13 +231,13 @@ def cam_cleat(spacing=0.038):
     S = spacing
     W = S / 0.618                            # width across the cams (photo: axle centres are 0.618 of it)
     al, bk, red, ss = M("Aluminium"), M("BlackPlastic"), M("Graphics"), M("Stainless")
-    zb, zc, zr, zs = 0.0050, 0.0160, 0.0174, 0.0186          # base top, cam top, bushing top, screw top
+    zb, zc, zr, zs = 0.0055, 0.0160, 0.0180, 0.0192          # base top, cam top, bushing top, screw top
     objs = []
     # moulded base: a rounded slab across the line, its ends under the cams' backs
     half = S / 2 + 0.205 * W
     x0, x1 = -0.188 * W, 0.222 * W
     base = G.prism("base", [(x + (x0 + x1) / 2, y) for x, y in G.rrect(x1 - x0, 2 * half, 0.2 * W, 8)], 0, zb, bk, taper=0.97)
-    objs.append(G.finish(base, 0.0012, segs=2))
+    objs.append(G.finish(base, 0.0018, segs=3))
     for side in (-1, 1):
         ay = side * S / 2
         inward = -side                        # toward the line
@@ -252,7 +252,7 @@ def cam_cleat(spacing=0.038):
             q = hull[(i + 1) % len(hull)]
             out.append(p)
             mid = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
-            if mid[1] * inward > 0.02 * W and mid[0] < -0.02 * W:          # inner flank only
+            if mid[1] * inward > 0.02 * W and mid[0] < 0.06 * W:           # inner flank, wrapping onto the round back
                 dx, dy = q[0] - p[0], q[1] - p[1]
                 L = math.hypot(dx, dy)
                 n = max(1, int(L / 0.0021))           # fine raked teeth (round 2's bolder 3 mm teeth lost the blind review)
@@ -262,16 +262,16 @@ def cam_cleat(spacing=0.038):
                 for k in range(n):
                     t0, t1 = k / n, (k + 0.7) / n
                     out.append((p[0] + dx * t0 + nx * 0.0, p[1] + dy * t0))
-                    out.append((p[0] + dx * t1 + nx * 0.0011, p[1] + dy * t1 + ny * 0.0011))
+                    out.append((p[0] + dx * t1 + nx * 0.0015, p[1] + dy * t1 + ny * 0.0015))
         cam = G.prism(f"cam{side}", [(x, y + ay) for x, y in out], zb - 0.0004, zc, bk)
-        objs.append(G.finish(cam, 0.0005, segs=2, angle=40, sharp=55))
-        # red bushing over the axle and its Phillips pan-head screw
-        bush = G.lathe(f"bushing{side}", [(0.0026, zc - 0.0002), (0.0062, zc - 0.0002), (0.0062, zr - 0.0004), (0.0058, zr),
-                                           (0.0026, zr)], red, 40)
+        objs.append(G.finish(cam, 0.0020, segs=4, angle=40, sharp=55))     # softly rounded top edge, like a moulding
+        # chunky red bushing standing proud of the cam (a recessed one lost the blind review), domed at its rim
+        bush = G.lathe(f"bushing{side}", [(0.0026, zc - 0.0004), (0.0070, zc - 0.0004), (0.0070, zr - 0.0010), (0.0066, zr - 0.0003),
+                                           (0.0058, zr), (0.0036, zr), (0.0032, zr - 0.0004), (0.0026, zr - 0.0004)], red, 40)
         bush.location = (0, ay, 0)
         G.bake_xform(bush)
         objs.append(G.finish(bush, 0, weighted=False))
-        scr = G.lathe(f"screw{side}", [(0, zr), (0.0030, zr), (0.0029, zr + 0.0005), (0.0024, zs - 0.0002), (0.0012, zs), (0, zs)], ss, 32)
+        scr = G.lathe(f"screw{side}", [(0, zr - 0.0005), (0.0030, zr - 0.0005), (0.0029, zr + 0.0005), (0.0024, zs - 0.0002), (0.0012, zs), (0, zs)], ss, 32)
         scr.location = (0, ay, 0)
         G.bake_xform(scr)
         for ang in (0, 90):
